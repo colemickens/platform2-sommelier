@@ -40,14 +40,14 @@
 #include <mojo/public/cpp/bindings/binding.h>
 #include <mojo/public/cpp/bindings/interface_ptr.h>
 
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_core.h"
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
 #include "diagnostics/wilco_dtc_supportd/fake_browser.h"
-#include "diagnostics/wilco_dtc_supportd/fake_diagnostics_processor.h"
+#include "diagnostics/wilco_dtc_supportd/fake_wilco_dtc.h"
 #include "diagnostics/wilco_dtc_supportd/file_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_utils.h"
 #include "diagnostics/wilco_dtc_supportd/protobuf_test_utils.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core.h"
 #include "diagnosticsd.pb.h"  // NOLINT(build/include)
 #include "mojo/diagnosticsd.mojom.h"
 
@@ -92,7 +92,7 @@ base::Callback<void(std::unique_ptr<ValueType>)> MakeAsyncResponseWriter(
       base::Unretained(response), base::Unretained(run_loop));
 }
 
-class MockDiagnosticsdCoreDelegate : public DiagnosticsdCore::Delegate {
+class MockWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
  public:
   std::unique_ptr<mojo::Binding<MojomDiagnosticsdServiceFactory>>
   BindDiagnosticsdMojoServiceFactory(
@@ -112,30 +112,28 @@ class MockDiagnosticsdCoreDelegate : public DiagnosticsdCore::Delegate {
   MOCK_METHOD0(BeginDaemonShutdown, void());
 };
 
-// Tests for the DiagnosticsdCore class.
-class DiagnosticsdCoreTest : public testing::Test {
+// Tests for the WilcoDtcSupportdCore class.
+class WilcoDtcSupportdCoreTest : public testing::Test {
  protected:
-  DiagnosticsdCoreTest() { InitializeMojo(); }
+  WilcoDtcSupportdCoreTest() { InitializeMojo(); }
 
-  ~DiagnosticsdCoreTest() { SetDBusShutdownExpectations(); }
+  ~WilcoDtcSupportdCoreTest() { SetDBusShutdownExpectations(); }
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
 
     wilco_dtc_supportd_grpc_uri_ = base::StringPrintf(
         kWilcoDtcSupportdGrpcUriTemplate, temp_dir_.GetPath().value().c_str());
-    ui_message_receiver_diagnostics_processor_grpc_uri_ =
+    ui_message_receiver_wilco_dtc_grpc_uri_ =
         base::StringPrintf(kUiMessageReceiverWilcoDtcGrpcUriTemplate,
                            temp_dir_.GetPath().value().c_str());
 
-    diagnostics_processor_grpc_uri_ = base::StringPrintf(
+    wilco_dtc_grpc_uri_ = base::StringPrintf(
         kWilcoDtcGrpcUriTemplate, temp_dir_.GetPath().value().c_str());
 
-    core_ = std::make_unique<DiagnosticsdCore>(
-        wilco_dtc_supportd_grpc_uri_,
-        ui_message_receiver_diagnostics_processor_grpc_uri_,
-        std::vector<std::string>{diagnostics_processor_grpc_uri_},
-        &core_delegate_);
+    core_ = std::make_unique<WilcoDtcSupportdCore>(
+        wilco_dtc_supportd_grpc_uri_, ui_message_receiver_wilco_dtc_grpc_uri_,
+        std::vector<std::string>{wilco_dtc_grpc_uri_}, &core_delegate_);
     core_->set_root_dir_for_testing(temp_dir_.GetPath());
 
     SetUpEcEventService();
@@ -162,7 +160,7 @@ class DiagnosticsdCoreTest : public testing::Test {
     return temp_dir_.GetPath();
   }
 
-  MockDiagnosticsdCoreDelegate* core_delegate() { return &core_delegate_; }
+  MockWilcoDtcSupportdCoreDelegate* core_delegate() { return &core_delegate_; }
 
   mojo::InterfacePtr<MojomDiagnosticsdServiceFactory>*
   mojo_service_factory_interface_ptr() {
@@ -199,7 +197,7 @@ class DiagnosticsdCoreTest : public testing::Test {
   }
 
   void WriteEcEventToEcEventFile(
-      const DiagnosticsdEcEventService::EcEvent& ec_event) const {
+      const WilcoDtcSupportdEcEventService::EcEvent& ec_event) const {
     ASSERT_EQ(write(ec_event_service_fd_.get(), &ec_event, sizeof(ec_event)),
               sizeof(ec_event));
   }
@@ -214,15 +212,14 @@ class DiagnosticsdCoreTest : public testing::Test {
     return wilco_dtc_supportd_grpc_uri_;
   }
 
-  const std::string& ui_message_receiver_diagnostics_processor_grpc_uri()
-      const {
-    DCHECK(!ui_message_receiver_diagnostics_processor_grpc_uri_.empty());
-    return ui_message_receiver_diagnostics_processor_grpc_uri_;
+  const std::string& ui_message_receiver_wilco_dtc_grpc_uri() const {
+    DCHECK(!ui_message_receiver_wilco_dtc_grpc_uri_.empty());
+    return ui_message_receiver_wilco_dtc_grpc_uri_;
   }
 
-  const std::string& diagnostics_processor_grpc_uri() const {
-    DCHECK(!diagnostics_processor_grpc_uri_.empty());
-    return diagnostics_processor_grpc_uri_;
+  const std::string& wilco_dtc_grpc_uri() const {
+    DCHECK(!wilco_dtc_grpc_uri_.empty());
+    return wilco_dtc_grpc_uri_;
   }
 
  private:
@@ -234,26 +231,26 @@ class DiagnosticsdCoreTest : public testing::Test {
     const dbus::ObjectPath kDBusObjectPath(kDiagnosticsdServicePath);
 
     // Expect that the /org/chromium/Diagnosticsd object is exported.
-    diagnosticsd_dbus_object_ = new StrictMock<dbus::MockExportedObject>(
+    wilco_dtc_supportd_dbus_object_ = new StrictMock<dbus::MockExportedObject>(
         dbus_bus_.get(), kDBusObjectPath);
     EXPECT_CALL(*dbus_bus_, GetExportedObject(kDBusObjectPath))
-        .WillOnce(Return(diagnosticsd_dbus_object_.get()));
+        .WillOnce(Return(wilco_dtc_supportd_dbus_object_.get()));
 
     // Expect that standard methods on the org.freedesktop.DBus.Properties
     // interface are exported.
     EXPECT_CALL(
-        *diagnosticsd_dbus_object_,
+        *wilco_dtc_supportd_dbus_object_,
         ExportMethod(dbus::kPropertiesInterface, dbus::kPropertiesGet, _, _));
     EXPECT_CALL(
-        *diagnosticsd_dbus_object_,
+        *wilco_dtc_supportd_dbus_object_,
         ExportMethod(dbus::kPropertiesInterface, dbus::kPropertiesSet, _, _));
-    EXPECT_CALL(*diagnosticsd_dbus_object_,
+    EXPECT_CALL(*wilco_dtc_supportd_dbus_object_,
                 ExportMethod(dbus::kPropertiesInterface,
                              dbus::kPropertiesGetAll, _, _));
 
     // Expect that methods on the org.chromium.DiagnosticsdInterface interface
     // are exported.
-    EXPECT_CALL(*diagnosticsd_dbus_object_,
+    EXPECT_CALL(*wilco_dtc_supportd_dbus_object_,
                 ExportMethod(kDiagnosticsdServiceInterface,
                              kDiagnosticsdBootstrapMojoConnectionMethod, _, _))
         .WillOnce(SaveArg<2 /* method_call_callback */>(
@@ -270,7 +267,7 @@ class DiagnosticsdCoreTest : public testing::Test {
 
   // Set mock expectations for calls triggered during test destruction.
   void SetDBusShutdownExpectations() {
-    EXPECT_CALL(*diagnosticsd_dbus_object_, Unregister());
+    EXPECT_CALL(*wilco_dtc_supportd_dbus_object_, Unregister());
   }
 
   // Creates FIFO to emulates the EC event file used by EC event service.
@@ -281,7 +278,8 @@ class DiagnosticsdCoreTest : public testing::Test {
   }
 
   // Setups |ec_event_service_fd_| FIFO file descriptor. Must be called only
-  // after |DiagnosticsdCore::Start()| call. Otherwise, it will block thread.
+  // after |WilcoDtcSupportdCore::Start()| call. Otherwise, it will block
+  // thread.
   void SetUpEcEventServiceFifoWriteEnd() {
     ASSERT_FALSE(ec_event_service_fd_.is_valid());
     ec_event_service_fd_.reset(
@@ -298,20 +296,21 @@ class DiagnosticsdCoreTest : public testing::Test {
   base::ScopedTempDir temp_dir_;
 
   // gRPC URI on which the tested "Diagnosticsd" gRPC service (owned by
-  // DiagnosticsdCore) is listening.
+  // WilcoDtcSupportdCore) is listening.
   std::string wilco_dtc_supportd_grpc_uri_;
   // gRPC URI on which the fake "DiagnosticsProcessor" gRPC service (owned by
-  // FakeDiagnosticsProcessor) is listening, eligible to receive UI messages.
-  std::string ui_message_receiver_diagnostics_processor_grpc_uri_;
+  // FakeWilcoDtc) is listening, eligible to receive UI messages.
+  std::string ui_message_receiver_wilco_dtc_grpc_uri_;
   // gRPC URI on which the fake "DiagnosticsProcessor" gRPC service (owned by
-  // FakeDiagnosticsProcessor) is listening.
-  std::string diagnostics_processor_grpc_uri_;
+  // FakeWilcoDtc) is listening.
+  std::string wilco_dtc_grpc_uri_;
 
   scoped_refptr<StrictMock<dbus::MockBus>> dbus_bus_ =
       new StrictMock<dbus::MockBus>(dbus::Bus::Options());
 
   // Mock D-Bus integration helper for the object exposed by the tested code.
-  scoped_refptr<StrictMock<dbus::MockExportedObject>> diagnosticsd_dbus_object_;
+  scoped_refptr<StrictMock<dbus::MockExportedObject>>
+      wilco_dtc_supportd_dbus_object_;
 
   // Mojo interface to the service factory exposed by the tested code.
   mojo::InterfacePtr<MojomDiagnosticsdServiceFactory>
@@ -319,12 +318,12 @@ class DiagnosticsdCoreTest : public testing::Test {
 
   // Write end of FIFO that emulates EC event file. EC event service
   // operates with read end of FIFO as with usual file.
-  // Must be initialized only after |DiagnosticsdCore::Start()| call.
+  // Must be initialized only after |WilcoDtcSupportdCore::Start()| call.
   base::ScopedFD ec_event_service_fd_;
 
-  StrictMock<MockDiagnosticsdCoreDelegate> core_delegate_;
+  StrictMock<MockWilcoDtcSupportdCoreDelegate> core_delegate_;
 
-  std::unique_ptr<DiagnosticsdCore> core_;
+  std::unique_ptr<WilcoDtcSupportdCore> core_;
 
   // Callback that the tested code exposed as the BootstrapMojoConnection D-Bus
   // method.
@@ -338,7 +337,7 @@ class DiagnosticsdCoreTest : public testing::Test {
 
 // Test that the Mojo service gets successfully bootstrapped after the
 // BootstrapMojoConnection D-Bus method is called.
-TEST_F(DiagnosticsdCoreTest, MojoBootstrapSuccess) {
+TEST_F(WilcoDtcSupportdCoreTest, MojoBootstrapSuccess) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
   SetSuccessMockBindDiagnosticsdMojoService(&fake_mojo_fd_generator);
 
@@ -349,7 +348,7 @@ TEST_F(DiagnosticsdCoreTest, MojoBootstrapSuccess) {
 
 // Test failure to bootstrap the Mojo service due to en error returned by
 // BindDiagnosticsdMojoService() delegate method.
-TEST_F(DiagnosticsdCoreTest, MojoBootstrapErrorToBind) {
+TEST_F(WilcoDtcSupportdCoreTest, MojoBootstrapErrorToBind) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
   EXPECT_CALL(*core_delegate(), BindDiagnosticsdMojoServiceFactoryImpl(_, _))
       .WillOnce(Return(nullptr));
@@ -363,7 +362,7 @@ TEST_F(DiagnosticsdCoreTest, MojoBootstrapErrorToBind) {
 
 // Test that second attempt to bootstrap the Mojo service results in error and
 // the daemon shutdown.
-TEST_F(DiagnosticsdCoreTest, MojoBootstrapErrorRepeated) {
+TEST_F(WilcoDtcSupportdCoreTest, MojoBootstrapErrorRepeated) {
   FakeMojoFdGenerator first_fake_mojo_fd_generator;
   SetSuccessMockBindDiagnosticsdMojoService(&first_fake_mojo_fd_generator);
 
@@ -382,7 +381,7 @@ TEST_F(DiagnosticsdCoreTest, MojoBootstrapErrorRepeated) {
 
 // Test that the daemon gets shut down when the previously bootstrapped Mojo
 // connection aborts.
-TEST_F(DiagnosticsdCoreTest, MojoBootstrapSuccessThenAbort) {
+TEST_F(WilcoDtcSupportdCoreTest, MojoBootstrapSuccessThenAbort) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
   SetSuccessMockBindDiagnosticsdMojoService(&fake_mojo_fd_generator);
 
@@ -400,13 +399,13 @@ TEST_F(DiagnosticsdCoreTest, MojoBootstrapSuccessThenAbort) {
 
 namespace {
 
-// Tests for the DiagnosticsdCore class with the already established Mojo
+// Tests for the WilcoDtcSupportdCore class with the already established Mojo
 // connection to the fake browser and gRPC communication with the fake
-// diagnostics_processor.
-class BootstrappedDiagnosticsdCoreTest : public DiagnosticsdCoreTest {
+// wilco_dtc.
+class BootstrappedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
  protected:
   void SetUp() override {
-    ASSERT_NO_FATAL_FAILURE(DiagnosticsdCoreTest::SetUp());
+    ASSERT_NO_FATAL_FAILURE(WilcoDtcSupportdCoreTest::SetUp());
 
     FakeMojoFdGenerator fake_mojo_fd_generator;
     SetSuccessMockBindDiagnosticsdMojoService(&fake_mojo_fd_generator);
@@ -414,28 +413,25 @@ class BootstrappedDiagnosticsdCoreTest : public DiagnosticsdCoreTest {
         fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator));
     ASSERT_TRUE(*mojo_service_factory_interface_ptr());
 
-    fake_diagnostics_processor_ = std::make_unique<FakeDiagnosticsProcessor>(
-        diagnostics_processor_grpc_uri(), wilco_dtc_supportd_grpc_uri());
+    fake_wilco_dtc_ = std::make_unique<FakeWilcoDtc>(
+        wilco_dtc_grpc_uri(), wilco_dtc_supportd_grpc_uri());
 
-    fake_ui_message_receiver_diagnostics_processor_ =
-        std::make_unique<FakeDiagnosticsProcessor>(
-            ui_message_receiver_diagnostics_processor_grpc_uri(),
-            wilco_dtc_supportd_grpc_uri());
+    fake_ui_message_receiver_wilco_dtc_ =
+        std::make_unique<FakeWilcoDtc>(ui_message_receiver_wilco_dtc_grpc_uri(),
+                                       wilco_dtc_supportd_grpc_uri());
   }
 
   void TearDown() override {
-    fake_diagnostics_processor_.reset();
-    fake_ui_message_receiver_diagnostics_processor_.reset();
-    DiagnosticsdCoreTest::TearDown();
+    fake_wilco_dtc_.reset();
+    fake_ui_message_receiver_wilco_dtc_.reset();
+    WilcoDtcSupportdCoreTest::TearDown();
   }
 
-  FakeDiagnosticsProcessor* fake_ui_message_receiver_diagnostics_processor() {
-    return fake_ui_message_receiver_diagnostics_processor_.get();
+  FakeWilcoDtc* fake_ui_message_receiver_wilco_dtc() {
+    return fake_ui_message_receiver_wilco_dtc_.get();
   }
 
-  FakeDiagnosticsProcessor* fake_diagnostics_processor() {
-    return fake_diagnostics_processor_.get();
-  }
+  FakeWilcoDtc* fake_wilco_dtc() { return fake_wilco_dtc_.get(); }
 
   base::Callback<void(mojo::ScopedHandle)> fake_browser_valid_handle_callback(
       const base::Closure& callback,
@@ -469,50 +465,46 @@ class BootstrappedDiagnosticsdCoreTest : public DiagnosticsdCoreTest {
   }
 
  private:
-  std::unique_ptr<FakeDiagnosticsProcessor>
-      fake_ui_message_receiver_diagnostics_processor_;
-  std::unique_ptr<FakeDiagnosticsProcessor> fake_diagnostics_processor_;
+  std::unique_ptr<FakeWilcoDtc> fake_ui_message_receiver_wilco_dtc_;
+  std::unique_ptr<FakeWilcoDtc> fake_wilco_dtc_;
 };
 
 }  // namespace
 
-// Test that the UI message receiver diagnostics processor will receive message
-// from browser.
-TEST_F(BootstrappedDiagnosticsdCoreTest,
-       SendGrpcUiMessageToDiagnosticsProcessor) {
+// Test that the UI message receiver wilco_dtc will receive message from
+// browser.
+TEST_F(BootstrappedWilcoDtcSupportdCoreTest, SendGrpcUiMessageToWilcoDtc) {
   const std::string json_message = "{\"some_key\": \"some_value\"}";
   const std::string response_json_message = "{\"key\": \"value\"}";
 
-  base::RunLoop run_loop_diagnostics_processor;
+  base::RunLoop run_loop_wilco_dtc;
   base::RunLoop run_loop_fake_browser;
 
-  fake_ui_message_receiver_diagnostics_processor()
-      ->set_handle_message_from_ui_callback(
-          run_loop_diagnostics_processor.QuitClosure());
-  fake_ui_message_receiver_diagnostics_processor()
+  fake_ui_message_receiver_wilco_dtc()->set_handle_message_from_ui_callback(
+      run_loop_wilco_dtc.QuitClosure());
+  fake_ui_message_receiver_wilco_dtc()
       ->set_handle_message_from_ui_json_message_response(response_json_message);
-  fake_diagnostics_processor()->set_handle_message_from_ui_callback(
-      base::Bind([]() {
-        // The diagnostics processor not eligible to receive messages from UI
-        // must not receive them.
-        FAIL();
-      }));
+  fake_wilco_dtc()->set_handle_message_from_ui_callback(base::Bind([]() {
+    // The wilco_dtc not eligible to receive messages from UI must not
+    // receive them.
+    FAIL();
+  }));
 
   auto callback = fake_browser_valid_handle_callback(
       run_loop_fake_browser.QuitClosure(), response_json_message);
   EXPECT_TRUE(fake_browser()->SendUiMessageToDiagnosticsProcessor(json_message,
                                                                   callback));
 
-  run_loop_diagnostics_processor.Run();
+  run_loop_wilco_dtc.Run();
   run_loop_fake_browser.Run();
-  EXPECT_EQ(json_message, fake_ui_message_receiver_diagnostics_processor()
+  EXPECT_EQ(json_message, fake_ui_message_receiver_wilco_dtc()
                               ->handle_message_from_ui_actual_json_message());
 }
 
-// Test that the UI message receiver diagnostics processor will not receive
-// message from browser if JSON message is invalid.
-TEST_F(BootstrappedDiagnosticsdCoreTest,
-       SendGrpcUiMessageToDiagnosticsProcessorInvalidJSON) {
+// Test that the UI message receiver wilco_dtc will not receive message from
+// browser if JSON message is invalid.
+TEST_F(BootstrappedWilcoDtcSupportdCoreTest,
+       SendGrpcUiMessageToWilcoDtcInvalidJSON) {
   const std::string json_message = "{'some_key': 'some_value'}";
 
   base::RunLoop run_loop_fake_browser;
@@ -529,25 +521,24 @@ TEST_F(BootstrappedDiagnosticsdCoreTest,
   // such a bug.
   base::RunLoop().RunUntilIdle();
 
-  EXPECT_FALSE(fake_ui_message_receiver_diagnostics_processor()
+  EXPECT_FALSE(fake_ui_message_receiver_wilco_dtc()
                    ->handle_message_from_ui_actual_json_message()
                    .has_value());
 }
 
-// Test that the UI message receiver diagnostics processor will receive message
-// from browser.
-TEST_F(BootstrappedDiagnosticsdCoreTest,
-       SendGrpcUiMessageToDiagnosticsProcessorInvalidResponseJSON) {
+// Test that the UI message receiver wilco_dtc will receive message from
+// browser.
+TEST_F(BootstrappedWilcoDtcSupportdCoreTest,
+       SendGrpcUiMessageToWilcoDtcInvalidResponseJSON) {
   const std::string json_message = "{\"some_key\": \"some_value\"}";
   const std::string response_json_message = "{'key': 'value'}";
 
-  base::RunLoop run_loop_diagnostics_processor;
+  base::RunLoop run_loop_wilco_dtc;
   base::RunLoop run_loop_fake_browser;
 
-  fake_ui_message_receiver_diagnostics_processor()
-      ->set_handle_message_from_ui_callback(
-          run_loop_diagnostics_processor.QuitClosure());
-  fake_ui_message_receiver_diagnostics_processor()
+  fake_ui_message_receiver_wilco_dtc()->set_handle_message_from_ui_callback(
+      run_loop_wilco_dtc.QuitClosure());
+  fake_ui_message_receiver_wilco_dtc()
       ->set_handle_message_from_ui_json_message_response(response_json_message);
 
   auto callback =
@@ -555,15 +546,15 @@ TEST_F(BootstrappedDiagnosticsdCoreTest,
   EXPECT_TRUE(fake_browser()->SendUiMessageToDiagnosticsProcessor(json_message,
                                                                   callback));
 
-  run_loop_diagnostics_processor.Run();
+  run_loop_wilco_dtc.Run();
   run_loop_fake_browser.Run();
-  EXPECT_EQ(json_message, fake_ui_message_receiver_diagnostics_processor()
+  EXPECT_EQ(json_message, fake_ui_message_receiver_wilco_dtc()
                               ->handle_message_from_ui_actual_json_message());
 }
 
 // Test that the GetProcData() method exposed by the daemon's gRPC server
 // returns a dump of the corresponding file from the disk.
-TEST_F(BootstrappedDiagnosticsdCoreTest, GetProcDataGrpcCall) {
+TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetProcDataGrpcCall) {
   const std::string kFakeFileContents = "foo";
   const base::FilePath file_path = temp_dir_path().Append("proc/uptime");
   ASSERT_TRUE(WriteFileAndCreateParentDirs(file_path, kFakeFileContents));
@@ -572,8 +563,8 @@ TEST_F(BootstrappedDiagnosticsdCoreTest, GetProcDataGrpcCall) {
   request.set_type(grpc_api::GetProcDataRequest::FILE_UPTIME);
   std::unique_ptr<grpc_api::GetProcDataResponse> response;
   base::RunLoop run_loop;
-  fake_diagnostics_processor()->GetProcData(
-      request, MakeAsyncResponseWriter(&response, &run_loop));
+  fake_wilco_dtc()->GetProcData(request,
+                                MakeAsyncResponseWriter(&response, &run_loop));
   run_loop.Run();
 
   ASSERT_TRUE(response);
@@ -591,7 +582,7 @@ TEST_F(BootstrappedDiagnosticsdCoreTest, GetProcDataGrpcCall) {
 // Test that the RunEcCommand() method exposed by the daemon's gRPC server
 // writes payload to sysfs file exposed by the EC driver and reads response
 // using the same file.
-TEST_F(BootstrappedDiagnosticsdCoreTest, RunEcCommandGrpcCall) {
+TEST_F(BootstrappedWilcoDtcSupportdCoreTest, RunEcCommandGrpcCall) {
   const base::FilePath file_path =
       temp_dir_path().Append(kEcDriverSysfsPath).Append(kEcRunCommandFilePath);
   const std::string kRequestPayload = "1";
@@ -601,8 +592,8 @@ TEST_F(BootstrappedDiagnosticsdCoreTest, RunEcCommandGrpcCall) {
   request.set_payload(kRequestPayload);
   std::unique_ptr<grpc_api::RunEcCommandResponse> response;
   base::RunLoop run_loop;
-  fake_diagnostics_processor()->RunEcCommand(
-      request, MakeAsyncResponseWriter(&response, &run_loop));
+  fake_wilco_dtc()->RunEcCommand(request,
+                                 MakeAsyncResponseWriter(&response, &run_loop));
   run_loop.Run();
 
   ASSERT_TRUE(response);
@@ -615,7 +606,7 @@ TEST_F(BootstrappedDiagnosticsdCoreTest, RunEcCommandGrpcCall) {
 
 // Test that the GetEcProperty() method exposed by the daemon's gRPC server
 // returns a dump of the corresponding file from the disk.
-TEST_F(BootstrappedDiagnosticsdCoreTest, GetEcPropertyGrpcCall) {
+TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetEcPropertyGrpcCall) {
   const base::FilePath file_path = temp_dir_path()
                                        .Append(kEcDriverSysfsPath)
                                        .Append(kEcDriverSysfsPropertiesPath)
@@ -628,7 +619,7 @@ TEST_F(BootstrappedDiagnosticsdCoreTest, GetEcPropertyGrpcCall) {
       grpc_api::GetEcPropertyRequest::PROPERTY_GLOBAL_MIC_MUTE_LED);
   std::unique_ptr<grpc_api::GetEcPropertyResponse> response;
   base::RunLoop run_loop;
-  fake_diagnostics_processor()->GetEcProperty(
+  fake_wilco_dtc()->GetEcProperty(
       request, MakeAsyncResponseWriter(&response, &run_loop));
   run_loop.Run();
 
@@ -642,7 +633,7 @@ TEST_F(BootstrappedDiagnosticsdCoreTest, GetEcPropertyGrpcCall) {
 
 // Test that PerformWebRequest() method exposed by the daemon's gRPC returns a
 // Web request response from the browser.
-TEST_F(BootstrappedDiagnosticsdCoreTest, PerformWebRequestToBrowser) {
+TEST_F(BootstrappedWilcoDtcSupportdCoreTest, PerformWebRequestToBrowser) {
   constexpr char kHttpsUrl[] = "https://www.google.com";
   constexpr int kHttpStatusOk = 200;
 
@@ -654,7 +645,7 @@ TEST_F(BootstrappedDiagnosticsdCoreTest, PerformWebRequestToBrowser) {
   std::unique_ptr<grpc_api::PerformWebRequestResponse> response;
   {
     base::RunLoop run_loop;
-    fake_diagnostics_processor()->PerformWebRequest(
+    fake_wilco_dtc()->PerformWebRequest(
         request, MakeAsyncResponseWriter(&response, &run_loop));
     run_loop.Run();
   }
@@ -674,30 +665,29 @@ const uint16_t kFakeEcEventType1 = 0xabcd;
 const uint16_t kFakeEcEventType2 = 0x1234;
 
 // Tests for EC event service.
-class EcEventServiceBootstrappedDiagnosticsdCoreTest
-    : public BootstrappedDiagnosticsdCoreTest {
+class EcEventServiceBootstrappedWilcoDtcSupportdCoreTest
+    : public BootstrappedWilcoDtcSupportdCoreTest {
  protected:
   void EmulateEcEvent(uint16_t size, uint16_t type) const {
     WriteEcEventToEcEventFile(GetEcEvent(size, type));
   }
 
-  void ExpectFakeProcessorEcEventCalled(
-      FakeDiagnosticsProcessor* fake_diagnostics_processor,
-      uint16_t expected_size,
-      uint16_t type) {
-    const std::string payload = GetPayload(
-        expected_size * sizeof(DiagnosticsdEcEventService::EcEvent::data[0]));
+  void ExpectFakeWilcoDtcEcEventCalled(FakeWilcoDtc* fake_wilco_dtc,
+                                       uint16_t expected_size,
+                                       uint16_t type) {
+    const std::string payload =
+        GetPayload(expected_size *
+                   sizeof(WilcoDtcSupportdEcEventService::EcEvent::data[0]));
     base::RunLoop run_loop;
-    fake_diagnostics_processor->set_handle_ec_event_request_callback(
-        base::BindRepeating(
-            [](const base::Closure& callback, int32_t expected_type,
-               const std::string& expected_payload, int32_t type,
-               const std::string& payload) {
-              ASSERT_EQ(type, expected_type);
-              ASSERT_EQ(payload, expected_payload);
-              callback.Run();
-            },
-            run_loop.QuitClosure(), type, payload));
+    fake_wilco_dtc->set_handle_ec_event_request_callback(base::BindRepeating(
+        [](const base::Closure& callback, int32_t expected_type,
+           const std::string& expected_payload, int32_t type,
+           const std::string& payload) {
+          ASSERT_EQ(type, expected_type);
+          ASSERT_EQ(payload, expected_payload);
+          callback.Run();
+        },
+        run_loop.QuitClosure(), type, payload));
     run_loop.Run();
   }
 
@@ -707,9 +697,9 @@ class EcEventServiceBootstrappedDiagnosticsdCoreTest
   const uint8_t kPayload[12]{0x02, 0x01, 0x14, 0x13, 0x26, 0x25,
                              0x38, 0x37, 0x4a, 0x49, 0x5c, 0x5b};
 
-  DiagnosticsdEcEventService::EcEvent GetEcEvent(uint16_t size,
-                                                 uint16_t type) const {
-    return DiagnosticsdEcEventService::EcEvent(size, type, kData);
+  WilcoDtcSupportdEcEventService::EcEvent GetEcEvent(uint16_t size,
+                                                     uint16_t type) const {
+    return WilcoDtcSupportdEcEventService::EcEvent(size, type, kData);
   }
 
   std::string GetPayload(size_t expected_size_in_bytes) const {
@@ -720,66 +710,60 @@ class EcEventServiceBootstrappedDiagnosticsdCoreTest
 
 }  // namespace
 
-// Test that the method |HandleEcNotification()| exposed by diagnostics
-// processor gRPC is called by diagnostics deamon.
+// Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
+// called by wilco_dtc support daemon.
 // TODO(b/124598866): Disabled due to flakiness.
-TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
-       DISABLED_SendGrpcEcEventToDiagnosticsProcessorSize0) {
+TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
+       DISABLED_SendGrpcEcEventToWilcoDtcSize0) {
   EmulateEcEvent(0, kFakeEcEventType1);
-  ExpectFakeProcessorEcEventCalled(fake_diagnostics_processor(), 0,
-                                   kFakeEcEventType1);
-  ExpectFakeProcessorEcEventCalled(
-      fake_ui_message_receiver_diagnostics_processor(), 0, kFakeEcEventType1);
+  ExpectFakeWilcoDtcEcEventCalled(fake_wilco_dtc(), 0, kFakeEcEventType1);
+  ExpectFakeWilcoDtcEcEventCalled(fake_ui_message_receiver_wilco_dtc(), 0,
+                                  kFakeEcEventType1);
 }
 
 // TODO(b/124598866): Disabled due to flakiness.
-TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
-       DISABLED_SendGrpcEcEventToDiagnosticsProcessorSize5) {
+TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
+       DISABLED_SendGrpcEcEventToWilcoDtcSize5) {
   EmulateEcEvent(5, kFakeEcEventType1);
-  ExpectFakeProcessorEcEventCalled(fake_diagnostics_processor(), 5,
-                                   kFakeEcEventType1);
-  ExpectFakeProcessorEcEventCalled(
-      fake_ui_message_receiver_diagnostics_processor(), 5, kFakeEcEventType1);
+  ExpectFakeWilcoDtcEcEventCalled(fake_wilco_dtc(), 5, kFakeEcEventType1);
+  ExpectFakeWilcoDtcEcEventCalled(fake_ui_message_receiver_wilco_dtc(), 5,
+                                  kFakeEcEventType1);
 }
 
 // TODO(b/124598866): Disabled due to flakiness.
-TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
-       DISABLED_SendGrpcEcEventToDiagnosticsProcessorSize6) {
+TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
+       DISABLED_SendGrpcEcEventToDiagnosticsWilcoDtcSize6) {
   EmulateEcEvent(6, kFakeEcEventType1);
-  ExpectFakeProcessorEcEventCalled(fake_diagnostics_processor(), 6,
-                                   kFakeEcEventType1);
-  ExpectFakeProcessorEcEventCalled(
-      fake_ui_message_receiver_diagnostics_processor(), 6, kFakeEcEventType1);
+  ExpectFakeWilcoDtcEcEventCalled(fake_wilco_dtc(), 6, kFakeEcEventType1);
+  ExpectFakeWilcoDtcEcEventCalled(fake_ui_message_receiver_wilco_dtc(), 6,
+                                  kFakeEcEventType1);
 }
 
-// Test that the method |HandleEcNotification()| exposed by diagnostics
-// processor gRPC is called by diagnostics deamon multiple times.
+// Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
+// called by wilco_dtc support deamon multiple times.
 // TODO(b/124598866): Disabled due to flakiness.
-TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
-       DISABLED_SendGrpcEcEventToDiagnosticsProcessorMultipleEvents) {
+TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
+       DISABLED_SendGrpcEcEventToDiagnosticsWilcoDtcMultipleEvents) {
   EmulateEcEvent(3, kFakeEcEventType1);
   EmulateEcEvent(4, kFakeEcEventType2);
-  ExpectFakeProcessorEcEventCalled(fake_diagnostics_processor(), 3,
-                                   kFakeEcEventType1);
-  ExpectFakeProcessorEcEventCalled(fake_diagnostics_processor(), 4,
-                                   kFakeEcEventType2);
-  ExpectFakeProcessorEcEventCalled(
-      fake_ui_message_receiver_diagnostics_processor(), 3, kFakeEcEventType1);
-  ExpectFakeProcessorEcEventCalled(
-      fake_ui_message_receiver_diagnostics_processor(), 4, kFakeEcEventType2);
+  ExpectFakeWilcoDtcEcEventCalled(fake_wilco_dtc(), 3, kFakeEcEventType1);
+  ExpectFakeWilcoDtcEcEventCalled(fake_wilco_dtc(), 4, kFakeEcEventType2);
+  ExpectFakeWilcoDtcEcEventCalled(fake_ui_message_receiver_wilco_dtc(), 3,
+                                  kFakeEcEventType1);
+  ExpectFakeWilcoDtcEcEventCalled(fake_ui_message_receiver_wilco_dtc(), 4,
+                                  kFakeEcEventType2);
 }
 
-// Test that the method |HandleEcNotification()| exposed by diagnostics
-// processor gRPC is called by diagnostics deamon even when |ec_event.size|
-// exceeds allocated data array.
+// Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
+// called by wilco_dtc support deamon even when |ec_event.size| exceeds
+// allocated data array.
 // TODO(b/124598866): Disabled due to flakiness.
-TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
-       DISABLED_SendGrpcEcEventToDiagnosticsProcessorInvalidSize) {
+TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
+       DISABLED_SendGrpcEcEventToDiagnosticsWilcoDtcInvalidSize) {
   EmulateEcEvent(7, kFakeEcEventType1);
-  ExpectFakeProcessorEcEventCalled(fake_diagnostics_processor(), 6,
-                                   kFakeEcEventType1);
-  ExpectFakeProcessorEcEventCalled(
-      fake_ui_message_receiver_diagnostics_processor(), 6, kFakeEcEventType1);
+  ExpectFakeWilcoDtcEcEventCalled(fake_wilco_dtc(), 6, kFakeEcEventType1);
+  ExpectFakeWilcoDtcEcEventCalled(fake_ui_message_receiver_wilco_dtc(), 6,
+                                  kFakeEcEventType1);
 }
 
 }  // namespace diagnostics

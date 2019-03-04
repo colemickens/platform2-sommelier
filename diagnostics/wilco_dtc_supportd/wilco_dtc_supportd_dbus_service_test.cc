@@ -10,8 +10,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_dbus_service.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_test_utils.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_dbus_service.h"
 
 using testing::_;
 using testing::DoAll;
@@ -24,8 +24,8 @@ namespace diagnostics {
 
 namespace {
 
-class MockDiagnosticsdDBusServiceDelegate
-    : public DiagnosticsdDBusService::Delegate {
+class MockWilcoDtcSupportdDBusServiceDelegate
+    : public WilcoDtcSupportdDBusService::Delegate {
  public:
   // Delegate overrides:
   bool StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
@@ -39,18 +39,18 @@ class MockDiagnosticsdDBusServiceDelegate
                bool(int mojo_pipe_fd, std::string* error_message));
 };
 
-// Tests for the DiagnosticsdDBusService class.
-class DiagnosticsdDBusServiceTest : public testing::Test {
+// Tests for the WilcoDtcSupportdDBusService class.
+class WilcoDtcSupportdDBusServiceTest : public testing::Test {
  protected:
-  StrictMock<MockDiagnosticsdDBusServiceDelegate> delegate_;
-  DiagnosticsdDBusService service_{&delegate_};
+  StrictMock<MockWilcoDtcSupportdDBusServiceDelegate> delegate_;
+  WilcoDtcSupportdDBusService service_{&delegate_};
 };
 
 }  // namespace
 
 // Test that BootstrapMojoConnection() successfully calls into the delegate
 // method when called with a valid file descriptor.
-TEST_F(DiagnosticsdDBusServiceTest, BootstrapMojoConnectionBasic) {
+TEST_F(WilcoDtcSupportdDBusServiceTest, BootstrapMojoConnectionBasic) {
   const FakeMojoFdGenerator fake_mojo_fd_generator;
 
   EXPECT_CALL(delegate_, StartMojoServiceFactoryImpl(_, _))
@@ -69,7 +69,7 @@ TEST_F(DiagnosticsdDBusServiceTest, BootstrapMojoConnectionBasic) {
 
 // Test that BootstrapMojoConnection() fails when an empty file descriptor is
 // supplied.
-TEST_F(DiagnosticsdDBusServiceTest, BootstrapMojoConnectionInvalidFd) {
+TEST_F(WilcoDtcSupportdDBusServiceTest, BootstrapMojoConnectionInvalidFd) {
   brillo::ErrorPtr error;
   EXPECT_FALSE(service_.BootstrapMojoConnection(
       &error, base::ScopedFD() /* mojo_pipe_fd */));

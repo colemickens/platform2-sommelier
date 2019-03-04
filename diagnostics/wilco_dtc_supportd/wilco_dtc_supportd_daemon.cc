@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_daemon.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_daemon.h"
 
 #include <cstdlib>
 
@@ -18,25 +18,25 @@
 
 namespace diagnostics {
 
-DiagnosticsdDaemon::DiagnosticsdDaemon()
+WilcoDtcSupportdDaemon::WilcoDtcSupportdDaemon()
     : DBusServiceDaemon(kDiagnosticsdServiceName /* service_name */),
-      diagnosticsd_core_(kWilcoDtcSupportdGrpcUri,
-                         kUiMessageReceiverWilcoDtcGrpcUri,
-                         {kWilcoDtcGrpcUri},
-                         &diagnosticsd_core_delegate_impl_) {}
+      wilco_dtc_supportd_core_(kWilcoDtcSupportdGrpcUri,
+                               kUiMessageReceiverWilcoDtcGrpcUri,
+                               {kWilcoDtcGrpcUri},
+                               &wilco_dtc_supportd_core_delegate_impl_) {}
 
-DiagnosticsdDaemon::~DiagnosticsdDaemon() = default;
+WilcoDtcSupportdDaemon::~WilcoDtcSupportdDaemon() = default;
 
-int DiagnosticsdDaemon::OnInit() {
+int WilcoDtcSupportdDaemon::OnInit() {
   VLOG(0) << "Starting";
   const int exit_code = DBusServiceDaemon::OnInit();
   if (exit_code != EXIT_SUCCESS)
     return exit_code;
 
-  if (!diagnosticsd_core_.Start()) {
+  if (!wilco_dtc_supportd_core_.Start()) {
     LOG(ERROR) << "Shutting down due to fatal initialization failure";
     base::RunLoop run_loop;
-    diagnosticsd_core_.ShutDown(run_loop.QuitClosure());
+    wilco_dtc_supportd_core_.ShutDown(run_loop.QuitClosure());
     run_loop.Run();
     return EXIT_FAILURE;
   }
@@ -50,13 +50,13 @@ int DiagnosticsdDaemon::OnInit() {
   return EXIT_SUCCESS;
 }
 
-void DiagnosticsdDaemon::RegisterDBusObjectsAsync(
+void WilcoDtcSupportdDaemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   DCHECK(bus_);
-  diagnosticsd_core_.RegisterDBusObjectsAsync(bus_, sequencer);
+  wilco_dtc_supportd_core_.RegisterDBusObjectsAsync(bus_, sequencer);
 }
 
-void DiagnosticsdDaemon::OnShutdown(int* error_code) {
+void WilcoDtcSupportdDaemon::OnShutdown(int* error_code) {
   // Gracefully tear down pieces that require asynchronous shutdown.
   VLOG(1) << "Shutting down";
 
@@ -64,7 +64,7 @@ void DiagnosticsdDaemon::OnShutdown(int* error_code) {
   const base::Closure barrier_closure =
       BarrierClosure(2, run_loop.QuitClosure());
   mojo::edk::ShutdownIPCSupport(barrier_closure);
-  diagnosticsd_core_.ShutDown(barrier_closure);
+  wilco_dtc_supportd_core_.ShutDown(barrier_closure);
   run_loop.Run();
 
   VLOG(0) << "Shutting down with code " << *error_code;

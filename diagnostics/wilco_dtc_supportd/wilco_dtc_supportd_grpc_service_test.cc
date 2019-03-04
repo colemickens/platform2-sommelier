@@ -18,10 +18,10 @@
 #include <google/protobuf/repeated_field.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_grpc_service.h"
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
 #include "diagnostics/wilco_dtc_supportd/file_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/protobuf_test_utils.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_grpc_service.h"
 
 #include "diagnosticsd.pb.h"  // NOLINT(build/include)
 
@@ -39,9 +39,9 @@ namespace diagnostics {
 namespace {
 
 using DelegateWebRequestHttpMethod =
-    DiagnosticsdGrpcService::Delegate::WebRequestHttpMethod;
+    WilcoDtcSupportdGrpcService::Delegate::WebRequestHttpMethod;
 using DelegateWebRequestStatus =
-    DiagnosticsdGrpcService::Delegate::WebRequestStatus;
+    WilcoDtcSupportdGrpcService::Delegate::WebRequestStatus;
 
 constexpr char kFakeFileContentsChars[] = "\0fake row 1\nfake row 2\n\0\377";
 constexpr char kFakeSecondFileContentsChars[] =
@@ -167,10 +167,10 @@ std::unique_ptr<grpc_api::RunRoutineRequest> MakeRunUrandomRoutineRequest() {
   return request;
 }
 
-class MockDiagnosticsdGrpcServiceDelegate
-    : public DiagnosticsdGrpcService::Delegate {
+class MockWilcoDtcSupportdGrpcServiceDelegate
+    : public WilcoDtcSupportdGrpcService::Delegate {
  public:
-  // DiagnosticsGrpcService::Delegate overrides:
+  // WilcoDtcSupportdGrpcService::Delegate overrides:
   MOCK_METHOD5(PerformWebRequestToBrowser,
                void(WebRequestHttpMethod http_method,
                     const std::string& url,
@@ -189,17 +189,17 @@ class MockDiagnosticsdGrpcServiceDelegate
                     const GetRoutineUpdateRequestToServiceCallback& callback));
 };
 
-// Tests for the DiagnosticsdGrpcService class.
-class DiagnosticsdGrpcServiceTest : public testing::Test {
+// Tests for the WilcoDtcSupportdGrpcService class.
+class WilcoDtcSupportdGrpcServiceTest : public testing::Test {
  protected:
-  DiagnosticsdGrpcServiceTest() = default;
+  WilcoDtcSupportdGrpcServiceTest() = default;
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     service_.set_root_dir_for_testing(temp_dir_.GetPath());
   }
 
-  DiagnosticsdGrpcService* service() { return &service_; }
+  WilcoDtcSupportdGrpcService* service() { return &service_; }
 
   void ExecuteGetProcData(grpc_api::GetProcDataRequest::Type request_type,
                           std::vector<grpc_api::FileDump>* file_dumps) {
@@ -358,13 +358,13 @@ class DiagnosticsdGrpcServiceTest : public testing::Test {
 
  private:
   base::ScopedTempDir temp_dir_;
-  StrictMock<MockDiagnosticsdGrpcServiceDelegate> delegate_;
-  DiagnosticsdGrpcService service_{&delegate_};
+  StrictMock<MockWilcoDtcSupportdGrpcServiceDelegate> delegate_;
+  WilcoDtcSupportdGrpcService service_{&delegate_};
 };
 
 }  // namespace
 
-TEST_F(DiagnosticsdGrpcServiceTest, GetProcDataUnsetType) {
+TEST_F(WilcoDtcSupportdGrpcServiceTest, GetProcDataUnsetType) {
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetProcData(grpc_api::GetProcDataRequest::TYPE_UNSET, &file_dumps);
 
@@ -373,7 +373,7 @@ TEST_F(DiagnosticsdGrpcServiceTest, GetProcDataUnsetType) {
       << GetProtosRangeDebugString(file_dumps.begin(), file_dumps.end());
 }
 
-TEST_F(DiagnosticsdGrpcServiceTest, GetSysfsDataUnsetType) {
+TEST_F(WilcoDtcSupportdGrpcServiceTest, GetSysfsDataUnsetType) {
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetSysfsData(grpc_api::GetSysfsDataRequest::TYPE_UNSET, &file_dumps);
 
@@ -382,7 +382,7 @@ TEST_F(DiagnosticsdGrpcServiceTest, GetSysfsDataUnsetType) {
       << GetProtosRangeDebugString(file_dumps.begin(), file_dumps.end());
 }
 
-TEST_F(DiagnosticsdGrpcServiceTest, RunRoutineUnsetType) {
+TEST_F(WilcoDtcSupportdGrpcServiceTest, RunRoutineUnsetType) {
   auto request = std::make_unique<grpc_api::RunRoutineRequest>();
   request->set_routine(grpc_api::ROUTINE_UNSET);
   auto response = std::make_unique<grpc_api::RunRoutineResponse>();
@@ -392,7 +392,7 @@ TEST_F(DiagnosticsdGrpcServiceTest, RunRoutineUnsetType) {
   EXPECT_EQ(response->status(), grpc_api::ROUTINE_STATUS_FAILED_TO_START);
 }
 
-TEST_F(DiagnosticsdGrpcServiceTest, GetRoutineUpdateUnsetType) {
+TEST_F(WilcoDtcSupportdGrpcServiceTest, GetRoutineUpdateUnsetType) {
   std::unique_ptr<grpc_api::GetRoutineUpdateResponse> response;
   constexpr bool kIncludeOutput = false;
   ExecuteGetRoutineUpdate(kFakeUuid,
@@ -405,7 +405,7 @@ TEST_F(DiagnosticsdGrpcServiceTest, GetRoutineUpdateUnsetType) {
 
 // Test that RunEcCommand() response contains expected |status| and |payload|
 // field values.
-TEST_F(DiagnosticsdGrpcServiceTest, RunEcCommandErrorAccessingDriver) {
+TEST_F(WilcoDtcSupportdGrpcServiceTest, RunEcCommandErrorAccessingDriver) {
   std::unique_ptr<grpc_api::RunEcCommandResponse> response;
   ExecuteRunEcCommand(FakeFileContents(), &response);
   ASSERT_TRUE(response);
@@ -417,7 +417,7 @@ TEST_F(DiagnosticsdGrpcServiceTest, RunEcCommandErrorAccessingDriver) {
 
 // Test that GetEcProperty() returns invalid property error status when
 // property is unset or invalid.
-TEST_F(DiagnosticsdGrpcServiceTest, GetEcPropertyInputPropertyIsUnset) {
+TEST_F(WilcoDtcSupportdGrpcServiceTest, GetEcPropertyInputPropertyIsUnset) {
   std::unique_ptr<grpc_api::GetEcPropertyResponse> response;
   ExecuteGetEcProperty(grpc_api::GetEcPropertyRequest::PROPERTY_UNSET,
                        &response);
@@ -430,7 +430,7 @@ TEST_F(DiagnosticsdGrpcServiceTest, GetEcPropertyInputPropertyIsUnset) {
 
 // Test that GetAvailableRoutines returns the expected list of diagnostic
 // routines.
-TEST_F(DiagnosticsdGrpcServiceTest, GetAvailableRoutines) {
+TEST_F(WilcoDtcSupportdGrpcServiceTest, GetAvailableRoutines) {
   std::unique_ptr<grpc_api::GetAvailableRoutinesResponse> response;
   ExecuteGetAvailableRoutines(&response);
   auto expected_response = MakeGetAvailableRoutinesResponse();
@@ -439,7 +439,7 @@ TEST_F(DiagnosticsdGrpcServiceTest, GetAvailableRoutines) {
 }
 
 // Test that we can request that the battery routine be run.
-TEST_F(DiagnosticsdGrpcServiceTest, RunBatteryRoutine) {
+TEST_F(WilcoDtcSupportdGrpcServiceTest, RunBatteryRoutine) {
   std::unique_ptr<grpc_api::RunRoutineResponse> response;
   ExecuteRunRoutine(MakeRunBatteryRoutineRequest(), &response,
                     true /* is_valid_request */);
@@ -449,7 +449,7 @@ TEST_F(DiagnosticsdGrpcServiceTest, RunBatteryRoutine) {
 }
 
 // Test that a battery routine with no parameters will fail.
-TEST_F(DiagnosticsdGrpcServiceTest, RunBatteryRoutineNoParameters) {
+TEST_F(WilcoDtcSupportdGrpcServiceTest, RunBatteryRoutineNoParameters) {
   std::unique_ptr<grpc_api::RunRoutineResponse> response;
   auto request = std::make_unique<grpc_api::RunRoutineRequest>();
   request->set_routine(grpc_api::ROUTINE_BATTERY);
@@ -460,7 +460,7 @@ TEST_F(DiagnosticsdGrpcServiceTest, RunBatteryRoutineNoParameters) {
 }
 
 // Test that we can request that the urandom routine be run.
-TEST_F(DiagnosticsdGrpcServiceTest, RunUrandomRoutine) {
+TEST_F(WilcoDtcSupportdGrpcServiceTest, RunUrandomRoutine) {
   std::unique_ptr<grpc_api::RunRoutineResponse> response;
   ExecuteRunRoutine(MakeRunUrandomRoutineRequest(), &response,
                     true /* is_valid_request */);
@@ -470,7 +470,7 @@ TEST_F(DiagnosticsdGrpcServiceTest, RunUrandomRoutine) {
 }
 
 // Test that a urandom routine with no parameters will fail.
-TEST_F(DiagnosticsdGrpcServiceTest, RunUrandomRoutineNoParameters) {
+TEST_F(WilcoDtcSupportdGrpcServiceTest, RunUrandomRoutineNoParameters) {
   std::unique_ptr<grpc_api::RunRoutineResponse> response;
   auto request = std::make_unique<grpc_api::RunRoutineRequest>();
   request->set_routine(grpc_api::ROUTINE_URANDOM);
@@ -482,7 +482,7 @@ TEST_F(DiagnosticsdGrpcServiceTest, RunUrandomRoutineNoParameters) {
 
 namespace {
 
-// Tests for the GetProcData() method of DiagnosticsdGrpcServiceTest when a
+// Tests for the GetProcData() method of WilcoDtcSupportdGrpcServiceTest when a
 // single file is requested.
 //
 // This is a parameterized test with the following parameters:
@@ -490,8 +490,8 @@ namespace {
 //   (see GetProcDataRequest::Type);
 // * |relative_file_path| - relative path to the file which is expected to be
 //    read by the executed GetProcData() request.
-class SingleProcFileDiagnosticsdGrpcServiceTest
-    : public DiagnosticsdGrpcServiceTest,
+class SingleProcFileWilcoDtcSupportdGrpcServiceTest
+    : public WilcoDtcSupportdGrpcServiceTest,
       public testing::WithParamInterface<std::tuple<
           grpc_api::GetProcDataRequest::Type /* proc_data_request_type */,
           std::string /* relative_file_path */>> {
@@ -515,7 +515,7 @@ class SingleProcFileDiagnosticsdGrpcServiceTest
 
 // Test that GetProcData() returns a single item with the requested file data
 // when the file exists.
-TEST_P(SingleProcFileDiagnosticsdGrpcServiceTest, Basic) {
+TEST_P(SingleProcFileWilcoDtcSupportdGrpcServiceTest, Basic) {
   EXPECT_TRUE(
       WriteFileAndCreateParentDirs(absolute_file_path(), FakeFileContents()));
 
@@ -530,7 +530,7 @@ TEST_P(SingleProcFileDiagnosticsdGrpcServiceTest, Basic) {
 }
 
 // Test that GetProcData() returns empty result when the file doesn't exist.
-TEST_P(SingleProcFileDiagnosticsdGrpcServiceTest, NonExisting) {
+TEST_P(SingleProcFileWilcoDtcSupportdGrpcServiceTest, NonExisting) {
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetProcData(proc_data_request_type(), &file_dumps);
 
@@ -541,7 +541,7 @@ TEST_P(SingleProcFileDiagnosticsdGrpcServiceTest, NonExisting) {
 
 INSTANTIATE_TEST_CASE_P(
     ,
-    SingleProcFileDiagnosticsdGrpcServiceTest,
+    SingleProcFileWilcoDtcSupportdGrpcServiceTest,
     testing::Values(
         std::tie(grpc_api::GetProcDataRequest::FILE_UPTIME, "proc/uptime"),
         std::tie(grpc_api::GetProcDataRequest::FILE_MEMINFO, "proc/meminfo"),
@@ -553,7 +553,7 @@ INSTANTIATE_TEST_CASE_P(
 
 namespace {
 
-// Tests for the GetSysfsData() method of DiagnosticsdGrpcServiceTest when a
+// Tests for the GetSysfsData() method of WilcoDtcSupportdGrpcServiceTest when a
 // directory is requested.
 //
 // This is a parameterized test with the following parameters:
@@ -561,8 +561,8 @@ namespace {
 //    executed (see GetSysfsDataRequest::Type);
 // * |relative_dir_path| - relative path to the directory which is expected to
 //    be read by the executed GetSysfsData() request.
-class SysfsDirectoryDiagnosticsdGrpcServiceTest
-    : public DiagnosticsdGrpcServiceTest,
+class SysfsDirectoryWilcoDtcSupportdGrpcServiceTest
+    : public WilcoDtcSupportdGrpcServiceTest,
       public testing::WithParamInterface<std::tuple<
           grpc_api::GetSysfsDataRequest::Type /* sysfs_data_request_type */,
           std::string /* relative_dir_path */,
@@ -619,7 +619,7 @@ class SysfsDirectoryDiagnosticsdGrpcServiceTest
 
 // Test that GetSysfsData() returns an empty result when the directory doesn't
 // exist.
-TEST_P(SysfsDirectoryDiagnosticsdGrpcServiceTest, NonExisting) {
+TEST_P(SysfsDirectoryWilcoDtcSupportdGrpcServiceTest, NonExisting) {
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetSysfsData(sysfs_data_request_type(), &file_dumps);
 
@@ -630,7 +630,7 @@ TEST_P(SysfsDirectoryDiagnosticsdGrpcServiceTest, NonExisting) {
 
 // Test that GetSysfsData() returns a single file when called on a directory
 // containing a single file.
-TEST_P(SysfsDirectoryDiagnosticsdGrpcServiceTest, SingleFileInDirectory) {
+TEST_P(SysfsDirectoryWilcoDtcSupportdGrpcServiceTest, SingleFileInDirectory) {
   ASSERT_TRUE(
       WriteFileAndCreateParentDirs(absolute_file_path(), FakeFileContents()));
 
@@ -646,7 +646,7 @@ TEST_P(SysfsDirectoryDiagnosticsdGrpcServiceTest, SingleFileInDirectory) {
 
 // Test that GetSysfsData() returns an empty result when given a directory with
 // only a cyclic symlink.
-TEST_P(SysfsDirectoryDiagnosticsdGrpcServiceTest, CyclicSymLink) {
+TEST_P(SysfsDirectoryWilcoDtcSupportdGrpcServiceTest, CyclicSymLink) {
   ASSERT_TRUE(CreateCyclicSymbolicLink(absolute_dir_path()));
 
   std::vector<grpc_api::FileDump> file_dumps;
@@ -659,7 +659,7 @@ TEST_P(SysfsDirectoryDiagnosticsdGrpcServiceTest, CyclicSymLink) {
 
 // Test that GetSysfsData() returns a single result when given a directory
 // containing a file and a symlink to that same file.
-TEST_P(SysfsDirectoryDiagnosticsdGrpcServiceTest, DuplicateSymLink) {
+TEST_P(SysfsDirectoryWilcoDtcSupportdGrpcServiceTest, DuplicateSymLink) {
   ASSERT_EQ(absolute_file_path().DirName(), absolute_symlink_path().DirName());
   ASSERT_TRUE(WriteFileAndCreateSymbolicLink(
       absolute_file_path(), FakeFileContents(), absolute_symlink_path()));
@@ -681,7 +681,7 @@ TEST_P(SysfsDirectoryDiagnosticsdGrpcServiceTest, DuplicateSymLink) {
 }
 
 // Test that GetSysfsData() follows allowable symlinks.
-TEST_P(SysfsDirectoryDiagnosticsdGrpcServiceTest, ShouldFollowSymlink) {
+TEST_P(SysfsDirectoryWilcoDtcSupportdGrpcServiceTest, ShouldFollowSymlink) {
   base::ScopedTempDir other_dir;
   ASSERT_TRUE(other_dir.CreateUniqueTempDir());
   base::FilePath file_path = other_dir.GetPath().Append("foo_file");
@@ -708,7 +708,8 @@ TEST_P(SysfsDirectoryDiagnosticsdGrpcServiceTest, ShouldFollowSymlink) {
 
 // Test that GetSysfsData returns correct file dumps for files in nested
 // directories.
-TEST_P(SysfsDirectoryDiagnosticsdGrpcServiceTest, GetFileInNestedDirectory) {
+TEST_P(SysfsDirectoryWilcoDtcSupportdGrpcServiceTest,
+       GetFileInNestedDirectory) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(absolute_nested_file_path(),
                                            FakeFileContents()));
   ASSERT_TRUE(WriteFileAndCreateParentDirs(absolute_file_path(),
@@ -730,7 +731,7 @@ TEST_P(SysfsDirectoryDiagnosticsdGrpcServiceTest, GetFileInNestedDirectory) {
 
 INSTANTIATE_TEST_CASE_P(
     ,
-    SysfsDirectoryDiagnosticsdGrpcServiceTest,
+    SysfsDirectoryWilcoDtcSupportdGrpcServiceTest,
     testing::Values(
         std::make_tuple(grpc_api::GetSysfsDataRequest::CLASS_HWMON,
                         "sys/class/hwmon/",
@@ -744,14 +745,14 @@ INSTANTIATE_TEST_CASE_P(
 
 namespace {
 
-// Tests for the RunEcCommand() method of DiagnosticsdGrpcServiceTest.
+// Tests for the RunEcCommand() method of WilcoDtcSupportdGrpcServiceTest.
 //
 // This is a parameterized test with the following parameters:
 // * |request_payload| - payload of the RunEcCommand() request;
 // * |expected_response_status| - expected RunEcCommand() response status;
 // * |expected_response_payload| - expected RunEcCommand() response payload.
-class RunEcCommandDiagnosticsdGrpcServiceTest
-    : public DiagnosticsdGrpcServiceTest,
+class RunEcCommandWilcoDtcSupportdGrpcServiceTest
+    : public WilcoDtcSupportdGrpcServiceTest,
       public testing::WithParamInterface<std::tuple<
           std::string /* request_payload */,
           grpc_api::RunEcCommandResponse::Status /* expected_response_status */,
@@ -778,7 +779,7 @@ class RunEcCommandDiagnosticsdGrpcServiceTest
 
 // Test that RunEcCommand() response contains expected |status| and |payload|
 // field values.
-TEST_P(RunEcCommandDiagnosticsdGrpcServiceTest, Base) {
+TEST_P(RunEcCommandWilcoDtcSupportdGrpcServiceTest, Base) {
   EXPECT_TRUE(WriteFileAndCreateParentDirs(sysfs_raw_file(), ""));
   std::unique_ptr<grpc_api::RunEcCommandResponse> response;
   ExecuteRunEcCommand(request_payload(), &response);
@@ -791,7 +792,7 @@ TEST_P(RunEcCommandDiagnosticsdGrpcServiceTest, Base) {
 
 INSTANTIATE_TEST_CASE_P(
     ,
-    RunEcCommandDiagnosticsdGrpcServiceTest,
+    RunEcCommandWilcoDtcSupportdGrpcServiceTest,
     testing::Values(
         std::make_tuple(FakeFileContents(),
                         grpc_api::RunEcCommandResponse::STATUS_OK,
@@ -810,7 +811,7 @@ INSTANTIATE_TEST_CASE_P(
 
 namespace {
 
-// Tests for the GetEcProperty() method of DiagnosticsdGrpcServiceTest.
+// Tests for the GetEcProperty() method of WilcoDtcSupportdGrpcServiceTest.
 //
 // This is a parameterized test with the following parameters:
 // * |ec_property| - property of the GetEcProperty() request to be executed
@@ -818,8 +819,8 @@ namespace {
 // * |sysfs_file_name| - sysfs file in |kEcDriverSysfsPropertiesPath|
 //   properties folder which is expected to be read by the executed
 //   GetEcProperty() request.
-class GetEcPropertyDiagnosticsdGrpcServiceTest
-    : public DiagnosticsdGrpcServiceTest,
+class GetEcPropertyWilcoDtcSupportdGrpcServiceTest
+    : public WilcoDtcSupportdGrpcServiceTest,
       public testing::WithParamInterface<
           std::tuple<grpc_api::GetEcPropertyRequest::Property /* ec_property */,
                      std::string /* sysfs_file_name */>> {
@@ -842,7 +843,7 @@ class GetEcPropertyDiagnosticsdGrpcServiceTest
 
 // Test that GetEcProperty() returns EC property value when appropriate
 // sysfs file exists.
-TEST_P(GetEcPropertyDiagnosticsdGrpcServiceTest, SysfsFileExists) {
+TEST_P(GetEcPropertyWilcoDtcSupportdGrpcServiceTest, SysfsFileExists) {
   EXPECT_TRUE(
       WriteFileAndCreateParentDirs(sysfs_file_path(), FakeFileContents()));
   std::unique_ptr<grpc_api::GetEcPropertyResponse> response;
@@ -856,7 +857,7 @@ TEST_P(GetEcPropertyDiagnosticsdGrpcServiceTest, SysfsFileExists) {
 
 // Test that GetEcProperty() returns accessing driver error status when
 // appropriate sysfs file does not exist.
-TEST_P(GetEcPropertyDiagnosticsdGrpcServiceTest, SysfsFileDoesNotExist) {
+TEST_P(GetEcPropertyWilcoDtcSupportdGrpcServiceTest, SysfsFileDoesNotExist) {
   std::unique_ptr<grpc_api::GetEcPropertyResponse> response;
   ExecuteGetEcProperty(ec_property(), &response);
   ASSERT_TRUE(response);
@@ -869,7 +870,7 @@ TEST_P(GetEcPropertyDiagnosticsdGrpcServiceTest, SysfsFileDoesNotExist) {
 
 INSTANTIATE_TEST_CASE_P(
     ,
-    GetEcPropertyDiagnosticsdGrpcServiceTest,
+    GetEcPropertyWilcoDtcSupportdGrpcServiceTest,
     testing::Values(
         std::tie(grpc_api::GetEcPropertyRequest::PROPERTY_GLOBAL_MIC_MUTE_LED,
                  kEcPropertyGlobalMicMuteLed),
@@ -890,7 +891,7 @@ INSTANTIATE_TEST_CASE_P(
 
 namespace {
 
-// Tests for the PerformWebRequest() method of DiagnosticsdGrpcService.
+// Tests for the PerformWebRequest() method of WilcoDtcSupportdGrpcService.
 //
 // This is a parameterized test with the following parameters:
 //
@@ -903,9 +904,9 @@ namespace {
 // The intermediate parameters to verify by the test:
 // * |delegate_http_method| - this is an optional value, a nullptr if the
 //                            intermediate verification is not needed.
-//                            DiagnosticsdGrpcService's Delegate's HTTP method
-//                            to verify the mapping between gRPC and Delegate's
-//                            HTTP method names.
+//                            WilcoDtcSupportdGrpcService's Delegate's HTTP
+//                            method to verify the mapping between gRPC and
+//                            Delegate's HTTP method names.
 //
 // The expected response values to verify PerformWebRequestResponse:
 // * |status| - gRPC PerformWebRequestResponse status.
@@ -914,8 +915,8 @@ namespace {
 //                   the passed |status|, pass a nullptr.
 // * |response_body| - this is an optional value. gRPC PerformWebRequestResponse
 //                     body. If not set, pass a nullptr.
-class PerformWebRequestDiagnosticsdGrpcServiceTest
-    : public DiagnosticsdGrpcServiceTest,
+class PerformWebRequestWilcoDtcSupportdGrpcServiceTest
+    : public WilcoDtcSupportdGrpcServiceTest,
       public testing::WithParamInterface<
           std::tuple<grpc_api::PerformWebRequestParameter::HttpMethod,
                      std::string /* URL */,
@@ -946,7 +947,7 @@ class PerformWebRequestDiagnosticsdGrpcServiceTest
 
 // Tests that PerformWebRequest() returns an appropriate status and HTTP status
 // code.
-TEST_P(PerformWebRequestDiagnosticsdGrpcServiceTest, PerformWebRequest) {
+TEST_P(PerformWebRequestWilcoDtcSupportdGrpcServiceTest, PerformWebRequest) {
   std::unique_ptr<grpc_api::PerformWebRequestResponse> response;
   ExecutePerformWebRequest(http_method(), url(), headers(), request_body(),
                            delegate_http_method(), &response);
@@ -960,10 +961,10 @@ TEST_P(PerformWebRequestDiagnosticsdGrpcServiceTest, PerformWebRequest) {
 
 // Test cases to run a PerformWebRequest test.
 // Make sure that the delegate_http_header is not set if the flow does not
-// involve the calls to DiagnosticsdGrpcService::Delegate.
+// involve the calls to WilcoDtcSupportdGrpcService::Delegate.
 INSTANTIATE_TEST_CASE_P(
     ,
-    PerformWebRequestDiagnosticsdGrpcServiceTest,
+    PerformWebRequestWilcoDtcSupportdGrpcServiceTest,
     testing::Values(
         // Tests an incorrect HTTP method.
         std::make_tuple(grpc_api::PerformWebRequestParameter::HTTP_METHOD_UNSET,
@@ -1063,14 +1064,14 @@ INSTANTIATE_TEST_CASE_P(
 
 namespace {
 
-// Tests for the GetRoutineUpdate() method of DiagnosticsdGrpcService.
+// Tests for the GetRoutineUpdate() method of WilcoDtcSupportdGrpcService.
 //
 // This is a parameterized test with the following parameters:
 //
 // The input arguments to create a GetRoutineUpdateRequest:
 // * |command| - gRPC GetRoutineUpdateRequest command.
-class GetRoutineUpdateRequestDiagnosticsdGrpcServiceTest
-    : public DiagnosticsdGrpcServiceTest,
+class GetRoutineUpdateRequestWilcoDtcSupportdGrpcServiceTest
+    : public WilcoDtcSupportdGrpcServiceTest,
       public testing::WithParamInterface<
           grpc_api::GetRoutineUpdateRequest::Command /* command */> {
  protected:
@@ -1083,7 +1084,7 @@ class GetRoutineUpdateRequestDiagnosticsdGrpcServiceTest
 
 // Tests that GetRoutineUpdate() returns an appropriate uuid, status, progress
 // percent, user message and output.
-TEST_P(GetRoutineUpdateRequestDiagnosticsdGrpcServiceTest,
+TEST_P(GetRoutineUpdateRequestWilcoDtcSupportdGrpcServiceTest,
        GetRoutineUpdateRequestWithOutput) {
   std::unique_ptr<grpc_api::GetRoutineUpdateResponse> response;
   constexpr bool kIncludeOutput = true;
@@ -1098,7 +1099,7 @@ TEST_P(GetRoutineUpdateRequestDiagnosticsdGrpcServiceTest,
 
 // Tests that GetRoutineUpdate() does not return output when include_output is
 // false.
-TEST_P(GetRoutineUpdateRequestDiagnosticsdGrpcServiceTest,
+TEST_P(GetRoutineUpdateRequestWilcoDtcSupportdGrpcServiceTest,
        GetRoutineUpdateRequestNoOutput) {
   std::unique_ptr<grpc_api::GetRoutineUpdateResponse> response;
   constexpr bool kIncludeOutput = false;
@@ -1113,7 +1114,7 @@ TEST_P(GetRoutineUpdateRequestDiagnosticsdGrpcServiceTest,
 
 // Test cases to run a GetRoutineUpdateRequest test.
 INSTANTIATE_TEST_CASE_P(,
-                        GetRoutineUpdateRequestDiagnosticsdGrpcServiceTest,
+                        GetRoutineUpdateRequestWilcoDtcSupportdGrpcServiceTest,
                         testing::Values(
                             // Test each possible command value.
                             grpc_api::GetRoutineUpdateRequest::PAUSE,

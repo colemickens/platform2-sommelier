@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_grpc_service.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_grpc_service.h"
 
 #include <cstdint>
 #include <iterator>
@@ -28,16 +28,16 @@ const int kMaxNumberOfHeadersInPerformWebRequestParameter = 1000 * 1000;
 namespace {
 
 using PerformWebRequestResponseCallback =
-    DiagnosticsdGrpcService::PerformWebRequestResponseCallback;
+    WilcoDtcSupportdGrpcService::PerformWebRequestResponseCallback;
 using DelegateWebRequestStatus =
-    DiagnosticsdGrpcService::Delegate::WebRequestStatus;
+    WilcoDtcSupportdGrpcService::Delegate::WebRequestStatus;
 using DelegateWebRequestHttpMethod =
-    DiagnosticsdGrpcService::Delegate::WebRequestHttpMethod;
+    WilcoDtcSupportdGrpcService::Delegate::WebRequestHttpMethod;
 using GetAvailableRoutinesCallback =
-    DiagnosticsdGrpcService::GetAvailableRoutinesCallback;
-using RunRoutineCallback = DiagnosticsdGrpcService::RunRoutineCallback;
+    WilcoDtcSupportdGrpcService::GetAvailableRoutinesCallback;
+using RunRoutineCallback = WilcoDtcSupportdGrpcService::RunRoutineCallback;
 using GetRoutineUpdateCallback =
-    DiagnosticsdGrpcService::GetRoutineUpdateCallback;
+    WilcoDtcSupportdGrpcService::GetRoutineUpdateCallback;
 
 // Https prefix expected to be a prefix of URL in PerformWebRequestParameter.
 constexpr char kHttpsPrefix[] = "https://";
@@ -105,7 +105,7 @@ void ForwardWebGrpcResponse(const PerformWebRequestResponseCallback& callback,
   callback.Run(std::move(reply));
 }
 
-// Converts gRPC HTTP method into DiagnosticsdGrpcService::Delegate's HTTP
+// Converts gRPC HTTP method into WilcoDtcSupportdGrpcService::Delegate's HTTP
 // method, returns false if HTTP method is invalid.
 bool GetDelegateWebRequestHttpMethod(
     grpc_api::PerformWebRequestParameter::HttpMethod http_method,
@@ -209,20 +209,20 @@ bool ShouldFollowSymlink(const base::FilePath& link, base::FilePath root_dir) {
 
 }  // namespace
 
-DiagnosticsdGrpcService::DiagnosticsdGrpcService(Delegate* delegate)
+WilcoDtcSupportdGrpcService::WilcoDtcSupportdGrpcService(Delegate* delegate)
     : delegate_(delegate) {
   DCHECK(delegate_);
 }
 
-DiagnosticsdGrpcService::~DiagnosticsdGrpcService() = default;
+WilcoDtcSupportdGrpcService::~WilcoDtcSupportdGrpcService() = default;
 
-void DiagnosticsdGrpcService::SendMessageToUi(
+void WilcoDtcSupportdGrpcService::SendMessageToUi(
     std::unique_ptr<grpc_api::SendMessageToUiRequest> request,
     const SendMessageToUiCallback& callback) {
   NOTIMPLEMENTED();
 }
 
-void DiagnosticsdGrpcService::GetProcData(
+void WilcoDtcSupportdGrpcService::GetProcData(
     std::unique_ptr<grpc_api::GetProcDataRequest> request,
     const GetProcDataCallback& callback) {
   DCHECK(request);
@@ -259,7 +259,7 @@ void DiagnosticsdGrpcService::GetProcData(
   callback.Run(std::move(reply));
 }
 
-void DiagnosticsdGrpcService::GetSysfsData(
+void WilcoDtcSupportdGrpcService::GetSysfsData(
     std::unique_ptr<grpc_api::GetSysfsDataRequest> request,
     const GetSysfsDataCallback& callback) {
   DCHECK(request);
@@ -289,7 +289,7 @@ void DiagnosticsdGrpcService::GetSysfsData(
   callback.Run(std::move(reply));
 }
 
-void DiagnosticsdGrpcService::RunEcCommand(
+void WilcoDtcSupportdGrpcService::RunEcCommand(
     std::unique_ptr<grpc_api::RunEcCommandRequest> request,
     const RunEcCommandCallback& callback) {
   DCHECK(request);
@@ -339,7 +339,7 @@ void DiagnosticsdGrpcService::RunEcCommand(
   callback.Run(std::move(reply));
 }
 
-void DiagnosticsdGrpcService::GetEcProperty(
+void WilcoDtcSupportdGrpcService::GetEcProperty(
     std::unique_ptr<grpc_api::GetEcPropertyRequest> request,
     const GetEcPropertyCallback& callback) {
   DCHECK(request);
@@ -374,7 +374,7 @@ void DiagnosticsdGrpcService::GetEcProperty(
   callback.Run(std::move(reply));
 }
 
-void DiagnosticsdGrpcService::PerformWebRequest(
+void WilcoDtcSupportdGrpcService::PerformWebRequest(
     std::unique_ptr<grpc_api::PerformWebRequestParameter> parameter,
     const PerformWebRequestResponseCallback& callback) {
   DCHECK(parameter);
@@ -428,7 +428,7 @@ void DiagnosticsdGrpcService::PerformWebRequest(
       parameter->request_body(), base::Bind(&ForwardWebGrpcResponse, callback));
 }
 
-void DiagnosticsdGrpcService::GetAvailableRoutines(
+void WilcoDtcSupportdGrpcService::GetAvailableRoutines(
     std::unique_ptr<grpc_api::GetAvailableRoutinesRequest> request,
     const GetAvailableRoutinesCallback& callback) {
   DCHECK(request);
@@ -436,7 +436,7 @@ void DiagnosticsdGrpcService::GetAvailableRoutines(
       base::Bind(&ForwardGetAvailableRoutinesResponse, callback));
 }
 
-void DiagnosticsdGrpcService::RunRoutine(
+void WilcoDtcSupportdGrpcService::RunRoutine(
     std::unique_ptr<grpc_api::RunRoutineRequest> request,
     const RunRoutineCallback& callback) {
   DCHECK(request);
@@ -480,7 +480,7 @@ void DiagnosticsdGrpcService::RunRoutine(
       *request, base::Bind(&ForwardRunRoutineResponse, callback));
 }
 
-void DiagnosticsdGrpcService::GetRoutineUpdate(
+void WilcoDtcSupportdGrpcService::GetRoutineUpdate(
     std::unique_ptr<grpc_api::GetRoutineUpdateRequest> request,
     const GetRoutineUpdateCallback& callback) {
   DCHECK(request);
@@ -499,7 +499,7 @@ void DiagnosticsdGrpcService::GetRoutineUpdate(
       base::Bind(&ForwardGetRoutineUpdateResponse, callback));
 }
 
-void DiagnosticsdGrpcService::AddFileDump(
+void WilcoDtcSupportdGrpcService::AddFileDump(
     const base::FilePath& relative_file_path,
     google::protobuf::RepeatedPtrField<grpc_api::FileDump>* file_dumps) {
   DCHECK(!relative_file_path.IsAbsolute());
@@ -512,7 +512,7 @@ void DiagnosticsdGrpcService::AddFileDump(
   file_dumps->Add()->Swap(&file_dump);
 }
 
-void DiagnosticsdGrpcService::AddDirectoryDump(
+void WilcoDtcSupportdGrpcService::AddDirectoryDump(
     const base::FilePath& relative_file_path,
     google::protobuf::RepeatedPtrField<grpc_api::FileDump>* file_dumps) {
   DCHECK(!relative_file_path.IsAbsolute());
@@ -521,7 +521,7 @@ void DiagnosticsdGrpcService::AddDirectoryDump(
                   file_dumps);
 }
 
-void DiagnosticsdGrpcService::SearchDirectory(
+void WilcoDtcSupportdGrpcService::SearchDirectory(
     const base::FilePath& root_dir,
     std::set<std::string>* visited_paths,
     google::protobuf::RepeatedPtrField<diagnostics::grpc_api::FileDump>*

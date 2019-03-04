@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_CORE_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_CORE_H_
+#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_CORE_H_
+#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_CORE_H_
 
 #include <cstdint>
 #include <memory>
@@ -22,11 +22,11 @@
 
 #include "diagnostics/grpc_async_adapter/async_grpc_client.h"
 #include "diagnostics/grpc_async_adapter/async_grpc_server.h"
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_dbus_service.h"
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_ec_event_service.h"
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_grpc_service.h"
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_mojo_service.h"
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_routine_service.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_dbus_service.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_ec_event_service.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_grpc_service.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_mojo_service.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_routine_service.h"
 
 #include "diagnostics_processor.grpc.pb.h"  // NOLINT(build/include)
 #include "diagnosticsd.grpc.pb.h"           // NOLINT(build/include)
@@ -35,12 +35,12 @@
 namespace diagnostics {
 
 // Integrates together all pieces which implement separate IPC services exposed
-// by the diagnosticsd daemon and IPC clients.
-class DiagnosticsdCore final
-    : public DiagnosticsdDBusService::Delegate,
-      public DiagnosticsdEcEventService::Delegate,
-      public DiagnosticsdGrpcService::Delegate,
-      public DiagnosticsdMojoService::Delegate,
+// by the wilco_dtc_supportd daemon and IPC clients.
+class WilcoDtcSupportdCore final
+    : public WilcoDtcSupportdDBusService::Delegate,
+      public WilcoDtcSupportdEcEventService::Delegate,
+      public WilcoDtcSupportdGrpcService::Delegate,
+      public WilcoDtcSupportdMojoService::Delegate,
       public chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactory {
  public:
   class Delegate {
@@ -62,27 +62,27 @@ class DiagnosticsdCore final
         MojomDiagnosticsdServiceFactory* mojo_service_factory,
         base::ScopedFD mojo_pipe_fd) = 0;
 
-    // Begins the graceful shutdown of the diagnosticsd daemon.
+    // Begins the graceful shutdown of the wilco_dtc_supportd daemon.
     virtual void BeginDaemonShutdown() = 0;
   };
 
   // |grpc_service_uri| is the URI on which the gRPC interface exposed by the
-  // diagnosticsd daemon will be listening.
-  // |ui_message_receiver_diagnostics_processor_grpc_uri| is the URI which is
+  // wilco_dtc_supportd daemon will be listening.
+  // |ui_message_receiver_wilco_dtc_grpc_uri| is the URI which is
   // used for making requests to the gRPC interface exposed by the
-  // diagnostics_processor daemon which is explicitly eligible to receive
+  // wilco_dtc daemon which is explicitly eligible to receive
   // messages from UI extension (hosted by browser), no other gRPC client
   // recieves messages from UI extension.
-  // |diagnostics_processor_grpc_uris| is the list of URI's which are used for
-  // making requests to the gRPC interface exposed by the diagnostics_processor
+  // |wilco_dtc_grpc_uris| is the list of URI's which are used for
+  // making requests to the gRPC interface exposed by the wilco_dtc
   // daemons. Should not contain the URI equal to
-  // |ui_message_receiver_diagnostics_processor_grpc_uri|.
-  DiagnosticsdCore(
+  // |ui_message_receiver_wilco_dtc_grpc_uri|.
+  WilcoDtcSupportdCore(
       const std::string& grpc_service_uri,
-      const std::string& ui_message_receiver_diagnostics_processor_grpc_uri,
-      const std::vector<std::string>& diagnostics_processor_grpc_uris,
+      const std::string& ui_message_receiver_wilco_dtc_grpc_uri,
+      const std::vector<std::string>& wilco_dtc_grpc_uris,
       Delegate* delegate);
-  ~DiagnosticsdCore() override;
+  ~WilcoDtcSupportdCore() override;
 
   // Overrides the file system root directory for file operations in tests.
   void set_root_dir_for_testing(const base::FilePath& root_dir) {
@@ -106,8 +106,8 @@ class DiagnosticsdCore final
   // destroyed only after |on_shutdown| has been called.
   void ShutDown(const base::Closure& on_shutdown);
 
-  // Register the D-Bus object that the diagnosticsd daemon exposes and tie
-  // methods exposed by this object with the actual implementation.
+  // Register the D-Bus object that the wilco_dtc_supportd daemon exposes and
+  // tie methods exposed by this object with the actual implementation.
   void RegisterDBusObjectsAsync(
       const scoped_refptr<dbus::Bus>& bus,
       brillo::dbus_utils::AsyncEventSequencer* sequencer);
@@ -118,18 +118,18 @@ class DiagnosticsdCore final
   using MojomDiagnosticsdServiceRequest =
       chromeos::diagnosticsd::mojom::DiagnosticsdServiceRequest;
 
-  // DiagnosticsdDBusService::Delegate overrides:
+  // WilcoDtcSupportdDBusService::Delegate overrides:
   bool StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
                                std::string* error_message) override;
 
   // Shuts down the self instance after a Mojo fatal error happens.
   void ShutDownDueToMojoError(const std::string& debug_reason);
 
-  // DiagnosticsdEcEventService::Delegate overrides:
-  void SendGrpcEcEventToDiagnosticsProcessor(
-      const DiagnosticsdEcEventService::EcEvent& ec_event) override;
+  // WilcoDtcSupportdEcEventService::Delegate overrides:
+  void SendGrpcEcEventToWilcoDtc(
+      const WilcoDtcSupportdEcEventService::EcEvent& ec_event) override;
 
-  // DiagnosticsdGrpcService::Delegate overrides:
+  // WilcoDtcSupportdGrpcService::Delegate overrides:
   void PerformWebRequestToBrowser(
       WebRequestHttpMethod http_method,
       const std::string& url,
@@ -147,10 +147,10 @@ class DiagnosticsdCore final
       bool include_output,
       const GetRoutineUpdateRequestToServiceCallback& callback) override;
 
-  // DiagnosticsdMojoService::Delegate overrides:
-  void SendGrpcUiMessageToDiagnosticsProcessor(
+  // WilcoDtcSupportdMojoService::Delegate overrides:
+  void SendGrpcUiMessageToWilcoDtc(
       base::StringPiece json_message,
-      const SendGrpcUiMessageToDiagnosticsProcessorCallback& callback) override;
+      const SendGrpcUiMessageToWilcoDtcCallback& callback) override;
 
   // chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactory overrides:
   void GetService(MojomDiagnosticsdServiceRequest service,
@@ -165,32 +165,34 @@ class DiagnosticsdCore final
   // gRPC URI on which the |grpc_server_| is listening for incoming requests.
   const std::string grpc_service_uri_;
   // gRPC URI which is used by
-  // |ui_message_receiver_diagnostics_processor_grpc_client_| for sending UI
+  // |ui_message_receiver_wilco_dtc_grpc_client_| for sending UI
   // messages and EC notifications over the gRPC interface.
-  const std::string ui_message_receiver_diagnostics_processor_grpc_uri_;
-  // gRPC URIs which are used by |diagnostics_processor_grpc_clients_| for
-  // accessing the gRPC interface exposed by the diagnostics_processor daemons.
-  const std::vector<std::string> diagnostics_processor_grpc_uris_;
-  // Implementation of the gRPC interface exposed by the diagnosticsd daemon.
-  DiagnosticsdGrpcService grpc_service_{this /* delegate */};
+  const std::string ui_message_receiver_wilco_dtc_grpc_uri_;
+  // gRPC URIs which are used by |wilco_dtc_grpc_clients_| for
+  // accessing the gRPC interface exposed by the wilco_dtc daemons.
+  const std::vector<std::string> wilco_dtc_grpc_uris_;
+  // Implementation of the gRPC interface exposed by the wilco_dtc_supportd
+  // daemon.
+  WilcoDtcSupportdGrpcService grpc_service_{this /* delegate */};
   // Connects |grpc_service_| with the gRPC server that listens for incoming
   // requests.
   AsyncGrpcServer<grpc_api::Diagnosticsd::AsyncService> grpc_server_;
   // Allows to make outgoing requests to the gRPC interfaces exposed by the
-  // diagnostics_processor daemons.
+  // wilco_dtc daemons.
   std::vector<std::unique_ptr<AsyncGrpcClient<grpc_api::DiagnosticsProcessor>>>
-      diagnostics_processor_grpc_clients_;
+      wilco_dtc_grpc_clients_;
   // The pre-defined gRPC client that is allowed to respond to UI messages.
-  // Owned by |diagnostics_processor_grpc_clients_|.
+  // Owned by |wilco_dtc_grpc_clients_|.
   AsyncGrpcClient<grpc_api::DiagnosticsProcessor>*
-      ui_message_receiver_diagnostics_processor_grpc_client_;
+      ui_message_receiver_wilco_dtc_grpc_client_;
 
   // D-Bus-related members:
 
-  // Implementation of the D-Bus interface exposed by the diagnosticsd daemon.
-  DiagnosticsdDBusService dbus_service_{this /* delegate */};
+  // Implementation of the D-Bus interface exposed by the wilco_dtc_supportd
+  // daemon.
+  WilcoDtcSupportdDBusService dbus_service_{this /* delegate */};
   // Connects |dbus_service_| with the methods of the D-Bus object exposed by
-  // the diagnosticsd daemon.
+  // the wilco_dtc_supportd daemon.
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
   // Mojo-related members:
@@ -202,11 +204,11 @@ class DiagnosticsdCore final
   // Gets created after the BootstrapMojoConnection D-Bus method is called.
   std::unique_ptr<mojo::Binding<DiagnosticsdServiceFactory>>
       mojo_service_factory_binding_;
-  // Implementation of the Mojo interface exposed by the diagnosticsd daemon and
-  // a proxy that allows sending outgoing Mojo requests.
+  // Implementation of the Mojo interface exposed by the wilco_dtc_supportd
+  // daemon and a proxy that allows sending outgoing Mojo requests.
   //
   // Gets created after the GetService() Mojo method is called.
-  std::unique_ptr<DiagnosticsdMojoService> mojo_service_;
+  std::unique_ptr<WilcoDtcSupportdMojoService> mojo_service_;
   // Whether binding of the Mojo service was attempted.
   //
   // This flag is needed for detecting repeated Mojo bootstrapping attempts
@@ -215,17 +217,17 @@ class DiagnosticsdCore final
   bool mojo_service_bind_attempted_ = false;
 
   // EcEvent-related members:
-  DiagnosticsdEcEventService ec_event_service_{this /* delegate */};
+  WilcoDtcSupportdEcEventService ec_event_service_{this /* delegate */};
 
   // Diagnostic routine-related members:
 
   // Implementation of the diagnostic routine interface exposed by the
-  // diagnosticsd daemon.
-  DiagnosticsdRoutineService routine_service_;
+  // wilco_dtc_supportd daemon.
+  WilcoDtcSupportdRoutineService routine_service_;
 
-  DISALLOW_COPY_AND_ASSIGN(DiagnosticsdCore);
+  DISALLOW_COPY_AND_ASSIGN(WilcoDtcSupportdCore);
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_CORE_H_
+#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_CORE_H_

@@ -2,35 +2,36 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_routine_service.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_routine_service.h"
 
 #include <iterator>
 #include <utility>
 
 namespace diagnostics {
 
-DiagnosticsdRoutineService::DiagnosticsdRoutineService() {
-  routine_factory_impl_ = std::make_unique<DiagnosticsdRoutineFactoryImpl>();
+WilcoDtcSupportdRoutineService::WilcoDtcSupportdRoutineService() {
+  routine_factory_impl_ =
+      std::make_unique<WilcoDtcSupportdRoutineFactoryImpl>();
   routine_factory_ = routine_factory_impl_.get();
 }
 
-DiagnosticsdRoutineService::DiagnosticsdRoutineService(
-    DiagnosticsdRoutineFactory* routine_factory)
+WilcoDtcSupportdRoutineService::WilcoDtcSupportdRoutineService(
+    WilcoDtcSupportdRoutineFactory* routine_factory)
     : routine_factory_(routine_factory) {}
 
-DiagnosticsdRoutineService::~DiagnosticsdRoutineService() = default;
+WilcoDtcSupportdRoutineService::~WilcoDtcSupportdRoutineService() = default;
 
-void DiagnosticsdRoutineService::GetAvailableRoutines(
+void WilcoDtcSupportdRoutineService::GetAvailableRoutines(
     const GetAvailableRoutinesToServiceCallback& callback) {
   callback.Run(available_routines_);
 }
 
-void DiagnosticsdRoutineService::SetAvailableRoutinesForTesting(
+void WilcoDtcSupportdRoutineService::SetAvailableRoutinesForTesting(
     const std::vector<grpc_api::DiagnosticRoutine>& available_routines) {
   available_routines_ = available_routines;
 }
 
-void DiagnosticsdRoutineService::RunRoutine(
+void WilcoDtcSupportdRoutineService::RunRoutine(
     const grpc_api::RunRoutineRequest& request,
     const RunRoutineToServiceCallback& callback) {
   auto new_routine = routine_factory_->CreateRoutine(request);
@@ -47,7 +48,7 @@ void DiagnosticsdRoutineService::RunRoutine(
   callback.Run(uuid, active_routines_[uuid]->GetStatus());
 }
 
-void DiagnosticsdRoutineService::GetRoutineUpdate(
+void WilcoDtcSupportdRoutineService::GetRoutineUpdate(
     int uuid,
     grpc_api::GetRoutineUpdateRequest::Command command,
     bool include_output,

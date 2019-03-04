@@ -23,9 +23,7 @@ namespace diagnostics {
 
 namespace {
 
-
-std::string GetDiagnosticsProcessorGrpcUri(
-    DpslRpcServer::GrpcServerUri grpc_server_uri) {
+std::string GetWilcoDtcGrpcUri(DpslRpcServer::GrpcServerUri grpc_server_uri) {
   switch (grpc_server_uri) {
     case DpslRpcServer::GrpcServerUri::kLocalDomainSocket:
       return kWilcoDtcGrpcUri;
@@ -120,8 +118,7 @@ std::unique_ptr<DpslRpcServer> DpslRpcServer::Create(
   CHECK(thread_context->BelongsToCurrentThread());
 
   auto dpsl_rpc_server_impl = std::make_unique<DpslRpcServerImpl>(
-      rpc_handler, grpc_server_uri,
-      GetDiagnosticsProcessorGrpcUri(grpc_server_uri));
+      rpc_handler, grpc_server_uri, GetWilcoDtcGrpcUri(grpc_server_uri));
   if (!dpsl_rpc_server_impl->Init())
     return nullptr;
   return dpsl_rpc_server_impl;

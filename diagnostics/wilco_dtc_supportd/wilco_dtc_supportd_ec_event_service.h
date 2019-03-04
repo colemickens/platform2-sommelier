@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_EC_EVENT_SERVICE_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_EC_EVENT_SERVICE_H_
+#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_EC_EVENT_SERVICE_H_
+#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_EC_EVENT_SERVICE_H_
 
 #include <algorithm>
 #include <cstdint>
@@ -26,9 +26,8 @@ namespace internal {
 class EcEventMonitoringThreadDelegate;
 }  // namespace internal
 
-// Subscribes on EC events and redirects EC events to diagnostics
-// processor.
-class DiagnosticsdEcEventService final {
+// Subscribes on EC events and redirects EC events to wilco_dtc.
+class WilcoDtcSupportdEcEventService final {
  public:
   struct alignas(2) EcEvent {
     EcEvent() { memset(this, 0, sizeof(EcEvent)); }
@@ -56,14 +55,13 @@ class DiagnosticsdEcEventService final {
 
     // Called when event from EC was received.
     //
-    // Calls diagnostics processor |HandleEcNotification| gRPC function with
-    // |payload| in request.
-    virtual void SendGrpcEcEventToDiagnosticsProcessor(
-        const EcEvent& ec_event) = 0;
+    // Calls wilco_dtc |HandleEcNotification| gRPC function with |payload| in
+    // request.
+    virtual void SendGrpcEcEventToWilcoDtc(const EcEvent& ec_event) = 0;
   };
 
-  explicit DiagnosticsdEcEventService(Delegate* delegate);
-  ~DiagnosticsdEcEventService();
+  explicit WilcoDtcSupportdEcEventService(Delegate* delegate);
+  ~WilcoDtcSupportdEcEventService();
 
   // Starts service.
   bool Start();
@@ -124,9 +122,9 @@ class DiagnosticsdEcEventService final {
 
   base::SequenceCheckerImpl sequence_checker_;
 
-  DISALLOW_COPY_AND_ASSIGN(DiagnosticsdEcEventService);
+  DISALLOW_COPY_AND_ASSIGN(WilcoDtcSupportdEcEventService);
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_EC_EVENT_SERVICE_H_
+#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_EC_EVENT_SERVICE_H_

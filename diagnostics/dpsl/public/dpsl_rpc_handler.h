@@ -52,8 +52,8 @@ class DPSL_EXPORT DpslRpcHandler {
   // should be used by the implementation to return method results.
   //
   // When |response| is passed as null, the whole request is considered canceled
-  // (i.e., the diagnosticsd daemon receives the cancellation error for this
-  // request).
+  // (i.e., the wilco_dtc_supportd daemon receives the cancellation error for
+  // this request).
   using HandleMessageFromUiCallback = std::function<void(
       std::unique_ptr<grpc_api::HandleMessageFromUiResponse> response)>;
   using HandleEcNotificationCallback = std::function<void(

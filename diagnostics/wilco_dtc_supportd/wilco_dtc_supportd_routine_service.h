@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_ROUTINE_SERVICE_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_ROUTINE_SERVICE_H_
+#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_ROUTINE_SERVICE_H_
+#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_ROUTINE_SERVICE_H_
 
 #include <map>
 #include <memory>
@@ -14,15 +14,15 @@
 #include <base/macros.h>
 
 #include "diagnostics/routines/diag_routine.h"
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_routine_factory.h"
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_routine_factory_impl.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_routine_factory.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_routine_factory_impl.h"
 #include "diagnosticsd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 
 // The routine service is responsible for creating and managing diagnostic
 // routines.
-class DiagnosticsdRoutineService final {
+class WilcoDtcSupportdRoutineService final {
  public:
   using GetAvailableRoutinesToServiceCallback = base::Callback<void(
       const std::vector<grpc_api::DiagnosticRoutine>& routines)>;
@@ -35,10 +35,10 @@ class DiagnosticsdRoutineService final {
                           grpc_api::DiagnosticRoutineUserMessage user_message,
                           const std::string& output)>;
 
-  DiagnosticsdRoutineService();
-  explicit DiagnosticsdRoutineService(
-      DiagnosticsdRoutineFactory* routine_factory);
-  ~DiagnosticsdRoutineService();
+  WilcoDtcSupportdRoutineService();
+  explicit WilcoDtcSupportdRoutineService(
+      WilcoDtcSupportdRoutineFactory* routine_factory);
+  ~WilcoDtcSupportdRoutineService();
 
   void GetAvailableRoutines(
       const GetAvailableRoutinesToServiceCallback& callback);
@@ -53,8 +53,8 @@ class DiagnosticsdRoutineService final {
       const GetRoutineUpdateRequestToServiceCallback& callback);
 
  private:
-  std::unique_ptr<DiagnosticsdRoutineFactoryImpl> routine_factory_impl_;
-  DiagnosticsdRoutineFactory* routine_factory_;
+  std::unique_ptr<WilcoDtcSupportdRoutineFactoryImpl> routine_factory_impl_;
+  WilcoDtcSupportdRoutineFactory* routine_factory_;
   // Map from uuids to instances of diagnostics routines that have
   // been started.
   std::map<int, std::unique_ptr<DiagnosticRoutine>> active_routines_;
@@ -64,9 +64,9 @@ class DiagnosticsdRoutineService final {
   std::vector<grpc_api::DiagnosticRoutine> available_routines_{
       grpc_api::ROUTINE_BATTERY, grpc_api::ROUTINE_URANDOM};
 
-  DISALLOW_COPY_AND_ASSIGN(DiagnosticsdRoutineService);
+  DISALLOW_COPY_AND_ASSIGN(WilcoDtcSupportdRoutineService);
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_ROUTINE_SERVICE_H_
+#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_ROUTINE_SERVICE_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// gRPC API exposed by the diagnostics_processor daemon. Normally the consumer
-// of the API is the diagnosticsd daemon.
+// gRPC API exposed by the wilco_dtc daemon. Normally the consumer
+// of the API is the wilco_dtc_supportd daemon.
 
 syntax = "proto3";
 
@@ -15,13 +15,13 @@ service DiagnosticsProcessor {
   rpc HandleMessageFromUi(HandleMessageFromUiRequest)
       returns (HandleMessageFromUiResponse) {}
 
-  // Called when the diagnosticsd daemon received EC event.
+  // Called when the wilco_dtc_supportd daemon received EC event.
   rpc HandleEcNotification(HandleEcNotificationRequest)
       returns (HandleEcNotificationResponse) {}
 
-  // Called when the diagnosticsd daemon received new configuration data blob,
-  // this happens when the device policy, passing this configuration data blob,
-  // gets updated.
+  // Called when the wilco_dtc_supportd daemon received new configuration data
+  // blob, this happens when the device policy, passing this configuration data
+  // blob, gets updated.
   // It is only a notification that the configuration data has been changed.
   // The GetConfigurationData needs to be called to retrieve the actual
   // configuration data.
@@ -40,7 +40,7 @@ message HandleMessageFromUiRequest {
 
 // Return value of the HandleMessageFromUi RPC.
 message HandleMessageFromUiResponse {
-  // Response message contents, as sent by the diagnostics_processor daemon.
+  // Response message contents, as sent by the wilco_dtc daemon.
   // When set, should be a valid JSON string.
   string response_json_message = 1;
 }

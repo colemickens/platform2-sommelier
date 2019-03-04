@@ -18,8 +18,8 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/wilco_dtc_supportd/bind_utils.h"
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_ec_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_ec_event_service.h"
 
 using testing::_;
 using testing::Invoke;
@@ -29,16 +29,16 @@ namespace diagnostics {
 
 namespace {
 
-class MockDiagnosticsdEcEventServiceDelegate
-    : public DiagnosticsdEcEventService::Delegate {
+class MockWilcoDtcSupportdEcEventServiceDelegate
+    : public WilcoDtcSupportdEcEventService::Delegate {
  public:
-  MOCK_METHOD1(SendGrpcEcEventToDiagnosticsProcessor,
-               void(const DiagnosticsdEcEventService::EcEvent& ec_event));
+  MOCK_METHOD1(SendGrpcEcEventToWilcoDtc,
+               void(const WilcoDtcSupportdEcEventService::EcEvent& ec_event));
 };
 
-class DiagnosticsdEcEventServiceTest : public testing::Test {
+class WilcoDtcSupportdEcEventServiceTest : public testing::Test {
  protected:
-  DiagnosticsdEcEventServiceTest() : service_(&delegate_) {}
+  WilcoDtcSupportdEcEventServiceTest() : service_(&delegate_) {}
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -71,26 +71,27 @@ class DiagnosticsdEcEventServiceTest : public testing::Test {
   }
 
   void WriteEventToEcEventFile(
-      const DiagnosticsdEcEventService::EcEvent& ec_event,
+      const WilcoDtcSupportdEcEventService::EcEvent& ec_event,
       const base::RepeatingClosure& callback) {
     ASSERT_EQ(write(fifo_write_end_.get(), &ec_event, sizeof(ec_event)),
               sizeof(ec_event));
 
-    EXPECT_CALL(delegate_, SendGrpcEcEventToDiagnosticsProcessor(ec_event))
+    EXPECT_CALL(delegate_, SendGrpcEcEventToWilcoDtc(ec_event))
         .WillOnce(Invoke(
-            [callback](const DiagnosticsdEcEventService::EcEvent& ec_event) {
+            [callback](
+                const WilcoDtcSupportdEcEventService::EcEvent& ec_event) {
               callback.Run();
             }));
   }
 
-  MockDiagnosticsdEcEventServiceDelegate* delegate() { return &delegate_; }
+  MockWilcoDtcSupportdEcEventServiceDelegate* delegate() { return &delegate_; }
 
-  DiagnosticsdEcEventService* service() { return &service_; }
+  WilcoDtcSupportdEcEventService* service() { return &service_; }
 
  private:
   base::MessageLoop message_loop_;
-  StrictMock<MockDiagnosticsdEcEventServiceDelegate> delegate_;
-  DiagnosticsdEcEventService service_;
+  StrictMock<MockWilcoDtcSupportdEcEventServiceDelegate> delegate_;
+  WilcoDtcSupportdEcEventService service_;
 
   base::ScopedTempDir temp_dir_;
 
@@ -99,16 +100,16 @@ class DiagnosticsdEcEventServiceTest : public testing::Test {
 
 }  // namespace
 
-TEST_F(DiagnosticsdEcEventServiceTest, Start) {
+TEST_F(WilcoDtcSupportdEcEventServiceTest, Start) {
   CreateEcEventFile();
   ASSERT_TRUE(service()->Start());
 }
 
-TEST_F(DiagnosticsdEcEventServiceTest, StartFailure) {
+TEST_F(WilcoDtcSupportdEcEventServiceTest, StartFailure) {
   ASSERT_FALSE(service()->Start());
 }
 
-TEST_F(DiagnosticsdEcEventServiceTest, ReadEvent) {
+TEST_F(WilcoDtcSupportdEcEventServiceTest, ReadEvent) {
   CreateEcEventFile();
   ASSERT_TRUE(service()->Start());
 
@@ -117,12 +118,12 @@ TEST_F(DiagnosticsdEcEventServiceTest, ReadEvent) {
   base::RunLoop run_loop;
   const uint16_t data[6] = {0xaaaa, 0xbbbb, 0xcccc, 0xdddd, 0xeeee, 0xffff};
   WriteEventToEcEventFile(
-      DiagnosticsdEcEventService::EcEvent(0x8888, 0x9999, data),
+      WilcoDtcSupportdEcEventService::EcEvent(0x8888, 0x9999, data),
       run_loop.QuitClosure());
   run_loop.Run();
 }
 
-TEST_F(DiagnosticsdEcEventServiceTest, ReadManyEvent) {
+TEST_F(WilcoDtcSupportdEcEventServiceTest, ReadManyEvent) {
   CreateEcEventFile();
   ASSERT_TRUE(service()->Start());
 
@@ -133,10 +134,10 @@ TEST_F(DiagnosticsdEcEventServiceTest, ReadManyEvent) {
       2 /* num_closures */, run_loop.QuitClosure() /* done closure */);
   const uint16_t data1[6] = {0xaaaa, 0xbbbb, 0xcccc, 0xdddd, 0xeeee, 0xffff};
   WriteEventToEcEventFile(
-      DiagnosticsdEcEventService::EcEvent(0x8888, 0x9999, data1), callback);
+      WilcoDtcSupportdEcEventService::EcEvent(0x8888, 0x9999, data1), callback);
   const uint16_t data2[6] = {0x0000, 0x1111, 0x2222, 0x3333, 0x4444, 0x5555};
   WriteEventToEcEventFile(
-      DiagnosticsdEcEventService::EcEvent(0x6666, 0x7777, data2), callback);
+      WilcoDtcSupportdEcEventService::EcEvent(0x6666, 0x7777, data2), callback);
   run_loop.Run();
 }
 

@@ -19,10 +19,10 @@
 #include <mojo/public/cpp/bindings/interface_ptr.h>
 #include <mojo/public/cpp/system/buffer.h>
 
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_mojo_service.h"
-#include "diagnostics/wilco_dtc_supportd/mock_mojom_diagnosticsd_client.h"
+#include "diagnostics/wilco_dtc_supportd/mock_mojom_wilco_dtc_supportd_client.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_utils.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_mojo_service.h"
 
 #include "mojo/diagnosticsd.mojom.h"
 
@@ -51,21 +51,19 @@ constexpr char kFakeBody[] = "fake response/request body";
 void EmptySendUiMessageToDiagnosticsProcessorCallback(
     mojo::ScopedHandle response_json_message) {}
 
-class MockDiagnosticsdMojoServiceDelegate
-    : public DiagnosticsdMojoService::Delegate {
+class MockWilcoDtcSupportdMojoServiceDelegate
+    : public WilcoDtcSupportdMojoService::Delegate {
  public:
-  MOCK_METHOD2(
-      SendGrpcUiMessageToDiagnosticsProcessor,
-      void(base::StringPiece json_message,
-           const SendGrpcUiMessageToDiagnosticsProcessorCallback& callback));
+  MOCK_METHOD2(SendGrpcUiMessageToWilcoDtc,
+               void(base::StringPiece json_message,
+                    const SendGrpcUiMessageToWilcoDtcCallback& callback));
 };
 
-// Tests for the DiagnosticsdMojoService class.
-class DiagnosticsdMojoServiceTest : public testing::Test {
+// Tests for the WilcoDtcSupportdMojoService class.
+class WilcoDtcSupportdMojoServiceTest : public testing::Test {
  protected:
-  DiagnosticsdMojoServiceTest() {
+  WilcoDtcSupportdMojoServiceTest() {
     mojo::edk::Init();
-
     // Obtain Mojo interface pointer that talks to |mojo_client_| - the
     // connection between them will be maintained by |mojo_client_binding_|.
     MojomDiagnosticsdClientPtr mojo_client_interface_ptr;
@@ -74,14 +72,14 @@ class DiagnosticsdMojoServiceTest : public testing::Test {
             &mojo_client_, &mojo_client_interface_ptr);
     DCHECK(mojo_client_interface_ptr);
 
-    service_ = std::make_unique<DiagnosticsdMojoService>(
+    service_ = std::make_unique<WilcoDtcSupportdMojoService>(
         &delegate_,
         MojomDiagnosticsdServiceRequest() /* self_interface_request */,
         std::move(mojo_client_interface_ptr));
   }
 
-  MockDiagnosticsdMojoServiceDelegate* delegate() { return &delegate_; }
-  MockMojomDiagnosticsdClient* mojo_client() { return &mojo_client_; }
+  MockWilcoDtcSupportdMojoServiceDelegate* delegate() { return &delegate_; }
+  MockMojomWilcoDtcSupportdClient* mojo_client() { return &mojo_client_; }
 
   // TODO(lamzin@google.com): Extract the response JSON message and verify its
   // value.
@@ -101,7 +99,7 @@ class DiagnosticsdMojoServiceTest : public testing::Test {
                          MojomDiagnosticsdWebRequestStatus expected_status,
                          int expected_http_status) {
     base::RunLoop run_loop;
-    // According to the implementation of MockMojomDiagnosticsdClient
+    // According to the implementation of MockMojomWilcoDtcSupportdClient
     // response_body is equal to request_body.
     service_->PerformWebRequest(
         http_method, url, headers, request_body,
@@ -123,30 +121,27 @@ class DiagnosticsdMojoServiceTest : public testing::Test {
 
  private:
   base::MessageLoop message_loop_;
-  StrictMock<MockMojomDiagnosticsdClient> mojo_client_;
+  StrictMock<MockMojomWilcoDtcSupportdClient> mojo_client_;
   std::unique_ptr<mojo::Binding<MojomDiagnosticsdClient>> mojo_client_binding_;
-  StrictMock<MockDiagnosticsdMojoServiceDelegate> delegate_;
-  std::unique_ptr<DiagnosticsdMojoService> service_;
+  StrictMock<MockWilcoDtcSupportdMojoServiceDelegate> delegate_;
+  std::unique_ptr<WilcoDtcSupportdMojoService> service_;
 };
 
 }  // namespace
 
-TEST_F(DiagnosticsdMojoServiceTest, SendUiMessageToDiagnosticsProcessor) {
+TEST_F(WilcoDtcSupportdMojoServiceTest, SendUiMessageToWilcoDtc) {
   base::StringPiece json_message("{\"message\": \"Hello world!\"}");
-  EXPECT_CALL(*delegate(),
-              SendGrpcUiMessageToDiagnosticsProcessor(json_message, _));
+  EXPECT_CALL(*delegate(), SendGrpcUiMessageToWilcoDtc(json_message, _));
   ASSERT_NO_FATAL_FAILURE(SendJsonMessage(json_message));
 }
 
-TEST_F(DiagnosticsdMojoServiceTest,
-       SendUiMessageToDiagnosticsProcessorInvalidJSON) {
+TEST_F(WilcoDtcSupportdMojoServiceTest, SendUiMessageToWilcoDtcInvalidJSON) {
   base::StringPiece json_message("{'message': 'Hello world!'}");
-  EXPECT_CALL(*delegate(), SendGrpcUiMessageToDiagnosticsProcessor(_, _))
-      .Times(0);
+  EXPECT_CALL(*delegate(), SendGrpcUiMessageToWilcoDtc(_, _)).Times(0);
   ASSERT_NO_FATAL_FAILURE(SendJsonMessage(json_message));
 }
 
-TEST_F(DiagnosticsdMojoServiceTest, PerformWebRequest) {
+TEST_F(WilcoDtcSupportdMojoServiceTest, PerformWebRequest) {
   EXPECT_CALL(
       *mojo_client(),
       PerformWebRequestImpl(MojomDiagnosticsdWebRequestHttpMethod::kGet,

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_core_delegate_impl.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core_delegate_impl.h"
 
 #include <utility>
 
@@ -19,16 +19,16 @@ namespace diagnostics {
 using MojomDiagnosticsdServiceFactory =
     chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactory;
 
-DiagnosticsdCoreDelegateImpl::DiagnosticsdCoreDelegateImpl(
+WilcoDtcSupportdCoreDelegateImpl::WilcoDtcSupportdCoreDelegateImpl(
     brillo::Daemon* daemon)
     : daemon_(daemon) {
   DCHECK(daemon_);
 }
 
-DiagnosticsdCoreDelegateImpl::~DiagnosticsdCoreDelegateImpl() = default;
+WilcoDtcSupportdCoreDelegateImpl::~WilcoDtcSupportdCoreDelegateImpl() = default;
 
 std::unique_ptr<mojo::Binding<MojomDiagnosticsdServiceFactory>>
-DiagnosticsdCoreDelegateImpl::BindDiagnosticsdMojoServiceFactory(
+WilcoDtcSupportdCoreDelegateImpl::BindDiagnosticsdMojoServiceFactory(
     MojomDiagnosticsdServiceFactory* mojo_service_factory,
     base::ScopedFD mojo_pipe_fd) {
   DCHECK(mojo_pipe_fd.is_valid());
@@ -48,7 +48,7 @@ DiagnosticsdCoreDelegateImpl::BindDiagnosticsdMojoServiceFactory(
       mojo_service_factory, std::move(mojo_pipe_handle));
 }
 
-void DiagnosticsdCoreDelegateImpl::BeginDaemonShutdown() {
+void WilcoDtcSupportdCoreDelegateImpl::BeginDaemonShutdown() {
   daemon_->Quit();
 }
 

@@ -22,13 +22,15 @@ using MojomDiagnosticsdService =
     chromeos::diagnosticsd::mojom::DiagnosticsdService;
 
 FakeBrowser::FakeBrowser(
-    MojomDiagnosticsdServiceFactoryPtr* diagnosticsd_service_factory_ptr,
+    MojomDiagnosticsdServiceFactoryPtr* wilco_dtc_supportd_service_factory_ptr,
     DBusMethodCallCallback bootstrap_mojo_connection_dbus_method)
-    : diagnosticsd_service_factory_ptr_(diagnosticsd_service_factory_ptr),
+    : wilco_dtc_supportd_service_factory_ptr_(
+          wilco_dtc_supportd_service_factory_ptr),
       bootstrap_mojo_connection_dbus_method_(
           bootstrap_mojo_connection_dbus_method),
-      diagnosticsd_client_binding_(&diagnosticsd_client_ /* impl */) {
-  DCHECK(diagnosticsd_service_factory_ptr);
+      wilco_dtc_supportd_client_binding_(
+          &wilco_dtc_supportd_client_ /* impl */) {
+  DCHECK(wilco_dtc_supportd_service_factory_ptr);
   DCHECK(!bootstrap_mojo_connection_dbus_method.is_null());
 }
 
@@ -50,7 +52,7 @@ bool FakeBrowser::SendUiMessageToDiagnosticsProcessor(
   if (!handle.is_valid()) {
     return false;
   }
-  diagnosticsd_service_ptr_->SendUiMessageToDiagnosticsProcessor(
+  wilco_dtc_supportd_service_ptr_->SendUiMessageToDiagnosticsProcessor(
       std::move(handle), callback);
   return true;
 }
@@ -85,18 +87,17 @@ bool FakeBrowser::CallBootstrapMojoConnectionDBusMethod(
 void FakeBrowser::CallGetServiceMojoMethod() {
   // Queue a Mojo GetService() method call that allows to establish full-duplex
   // Mojo communication with the tested Mojo service.
-  // After this call, |diagnosticsd_service_ptr_| can be used for requests to
-  // the tested service and |diagnosticsd_client_| for receiving requests made
-  // by the tested service.
-  // Note that despite that GetService() is an asynchronous call, it's actually
-  // allowed to use |diagnosticsd_service_ptr_| straight away, before the call
-  // completes.
-  MojomDiagnosticsdClientPtr diagnosticsd_client_proxy;
-  diagnosticsd_client_binding_.Bind(
-      mojo::MakeRequest(&diagnosticsd_client_proxy));
-  (*diagnosticsd_service_factory_ptr_)
-      ->GetService(mojo::MakeRequest(&diagnosticsd_service_ptr_),
-                   std::move(diagnosticsd_client_proxy), base::Closure());
+  // After this call, |wilco_dtc_supportd_service_ptr_| can be used for requests
+  // to the tested service and |wilco_dtc_supportd_client_| for receiving
+  // requests made by the tested service. Note that despite that GetService() is
+  // an asynchronous call, it's actually allowed to use
+  // |wilco_dtc_supportd_service_ptr_| straight away, before the call completes.
+  MojomDiagnosticsdClientPtr wilco_dtc_supportd_client_proxy;
+  wilco_dtc_supportd_client_binding_.Bind(
+      mojo::MakeRequest(&wilco_dtc_supportd_client_proxy));
+  (*wilco_dtc_supportd_service_factory_ptr_)
+      ->GetService(mojo::MakeRequest(&wilco_dtc_supportd_service_ptr_),
+                   std::move(wilco_dtc_supportd_client_proxy), base::Closure());
 }
 
 }  // namespace diagnostics

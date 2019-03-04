@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_ROUTINE_FACTORY_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_ROUTINE_FACTORY_H_
+#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_ROUTINE_FACTORY_H_
+#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_ROUTINE_FACTORY_H_
 
 #include <memory>
 
@@ -13,9 +13,9 @@
 namespace diagnostics {
 
 // Interface for constructing DiagnosticRoutines from RunRoutineRequests.
-class DiagnosticsdRoutineFactory {
+class WilcoDtcSupportdRoutineFactory {
  public:
-  virtual ~DiagnosticsdRoutineFactory() = default;
+  virtual ~WilcoDtcSupportdRoutineFactory() = default;
 
   virtual std::unique_ptr<DiagnosticRoutine> CreateRoutine(
       const grpc_api::RunRoutineRequest& request) = 0;
@@ -23,4 +23,4 @@ class DiagnosticsdRoutineFactory {
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_ROUTINE_FACTORY_H_
+#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_ROUTINE_FACTORY_H_

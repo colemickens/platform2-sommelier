@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_core.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -31,88 +31,88 @@ using MojomDiagnosticsdWebRequestHttpMethod =
 
 // Converts HTTP method into an appropriate mojom one.
 MojomDiagnosticsdWebRequestHttpMethod ConvertWebRequestHttpMethodToMojom(
-    DiagnosticsdCore::WebRequestHttpMethod http_method) {
+    WilcoDtcSupportdCore::WebRequestHttpMethod http_method) {
   switch (http_method) {
-    case DiagnosticsdCore::WebRequestHttpMethod::kGet:
+    case WilcoDtcSupportdCore::WebRequestHttpMethod::kGet:
       return MojomDiagnosticsdWebRequestHttpMethod::kGet;
-    case DiagnosticsdCore::WebRequestHttpMethod::kHead:
+    case WilcoDtcSupportdCore::WebRequestHttpMethod::kHead:
       return MojomDiagnosticsdWebRequestHttpMethod::kHead;
-    case DiagnosticsdCore::WebRequestHttpMethod::kPost:
+    case WilcoDtcSupportdCore::WebRequestHttpMethod::kPost:
       return MojomDiagnosticsdWebRequestHttpMethod::kPost;
-    case DiagnosticsdCore::WebRequestHttpMethod::kPut:
+    case WilcoDtcSupportdCore::WebRequestHttpMethod::kPut:
       return MojomDiagnosticsdWebRequestHttpMethod::kPut;
   }
 }
 
 // Convert the result back from mojom status.
-DiagnosticsdCore::WebRequestStatus ConvertStatusFromMojom(
+WilcoDtcSupportdCore::WebRequestStatus ConvertStatusFromMojom(
     MojomDiagnosticsdWebRequestStatus status) {
   switch (status) {
     case MojomDiagnosticsdWebRequestStatus::kOk:
-      return DiagnosticsdCore::WebRequestStatus::kOk;
+      return WilcoDtcSupportdCore::WebRequestStatus::kOk;
     case MojomDiagnosticsdWebRequestStatus::kNetworkError:
-      return DiagnosticsdCore::WebRequestStatus::kNetworkError;
+      return WilcoDtcSupportdCore::WebRequestStatus::kNetworkError;
     case MojomDiagnosticsdWebRequestStatus::kHttpError:
-      return DiagnosticsdCore::WebRequestStatus::kHttpError;
+      return WilcoDtcSupportdCore::WebRequestStatus::kHttpError;
   }
 }
 
 }  // namespace
 
-DiagnosticsdCore::DiagnosticsdCore(
+WilcoDtcSupportdCore::WilcoDtcSupportdCore(
     const std::string& grpc_service_uri,
-    const std::string& ui_message_receiver_diagnostics_processor_grpc_uri,
-    const std::vector<std::string>& diagnostics_processor_grpc_uris,
+    const std::string& ui_message_receiver_wilco_dtc_grpc_uri,
+    const std::vector<std::string>& wilco_dtc_grpc_uris,
     Delegate* delegate)
     : delegate_(delegate),
       grpc_service_uri_(grpc_service_uri),
-      ui_message_receiver_diagnostics_processor_grpc_uri_(
-          ui_message_receiver_diagnostics_processor_grpc_uri),
-      diagnostics_processor_grpc_uris_(diagnostics_processor_grpc_uris),
+      ui_message_receiver_wilco_dtc_grpc_uri_(
+          ui_message_receiver_wilco_dtc_grpc_uri),
+      wilco_dtc_grpc_uris_(wilco_dtc_grpc_uris),
       grpc_server_(base::ThreadTaskRunnerHandle::Get(), grpc_service_uri_) {
   DCHECK(delegate);
 }
 
-DiagnosticsdCore::~DiagnosticsdCore() = default;
+WilcoDtcSupportdCore::~WilcoDtcSupportdCore() = default;
 
-bool DiagnosticsdCore::Start() {
+bool WilcoDtcSupportdCore::Start() {
   // Associate RPCs of the to-be-exposed gRPC interface with methods of
   // |grpc_service_|.
   grpc_server_.RegisterHandler(
       &grpc_api::Diagnosticsd::AsyncService::RequestSendMessageToUi,
-      base::Bind(&DiagnosticsdGrpcService::SendMessageToUi,
+      base::Bind(&WilcoDtcSupportdGrpcService::SendMessageToUi,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::Diagnosticsd::AsyncService::RequestGetProcData,
-      base::Bind(&DiagnosticsdGrpcService::GetProcData,
+      base::Bind(&WilcoDtcSupportdGrpcService::GetProcData,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::Diagnosticsd::AsyncService::RequestGetSysfsData,
-      base::Bind(&DiagnosticsdGrpcService::GetSysfsData,
+      base::Bind(&WilcoDtcSupportdGrpcService::GetSysfsData,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::Diagnosticsd::AsyncService::RequestRunEcCommand,
-      base::Bind(&DiagnosticsdGrpcService::RunEcCommand,
+      base::Bind(&WilcoDtcSupportdGrpcService::RunEcCommand,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::Diagnosticsd::AsyncService::RequestGetEcProperty,
-      base::Bind(&DiagnosticsdGrpcService::GetEcProperty,
+      base::Bind(&WilcoDtcSupportdGrpcService::GetEcProperty,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::Diagnosticsd::AsyncService::RequestPerformWebRequest,
-      base::Bind(&DiagnosticsdGrpcService::PerformWebRequest,
+      base::Bind(&WilcoDtcSupportdGrpcService::PerformWebRequest,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::Diagnosticsd::AsyncService::RequestGetAvailableRoutines,
-      base::Bind(&DiagnosticsdGrpcService::GetAvailableRoutines,
+      base::Bind(&WilcoDtcSupportdGrpcService::GetAvailableRoutines,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::Diagnosticsd::AsyncService::RequestRunRoutine,
-      base::Bind(&DiagnosticsdGrpcService::RunRoutine,
+      base::Bind(&WilcoDtcSupportdGrpcService::RunRoutine,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::Diagnosticsd::AsyncService::RequestGetRoutineUpdate,
-      base::Bind(&DiagnosticsdGrpcService::GetRoutineUpdate,
+      base::Bind(&WilcoDtcSupportdGrpcService::GetRoutineUpdate,
                  base::Unretained(&grpc_service_)));
 
   // Start the gRPC server that listens for incoming gRPC requests.
@@ -125,43 +125,43 @@ bool DiagnosticsdCore::Start() {
   VLOG(0) << "Successfully started gRPC server listening on "
           << grpc_service_uri_;
 
-  // Start the gRPC clients that talk to the diagnostics_processor daemon.
-  for (const auto& uri : diagnostics_processor_grpc_uris_) {
-    diagnostics_processor_grpc_clients_.push_back(
+  // Start the gRPC clients that talk to the wilco_dtc daemon.
+  for (const auto& uri : wilco_dtc_grpc_uris_) {
+    wilco_dtc_grpc_clients_.push_back(
         std::make_unique<AsyncGrpcClient<grpc_api::DiagnosticsProcessor>>(
             base::ThreadTaskRunnerHandle::Get(), uri));
-    VLOG(0) << "Created gRPC diagnostics_processor client on " << uri;
+    VLOG(0) << "Created gRPC wilco_dtc client on " << uri;
   }
 
   // Start the gRPC client that is allowed to receive UI messages as a normal
-  // gRPC client that talks to the diagnostics_processor daemon.
-  diagnostics_processor_grpc_clients_.push_back(
+  // gRPC client that talks to the wilco_dtc daemon.
+  wilco_dtc_grpc_clients_.push_back(
       std::make_unique<AsyncGrpcClient<grpc_api::DiagnosticsProcessor>>(
           base::ThreadTaskRunnerHandle::Get(),
-          ui_message_receiver_diagnostics_processor_grpc_uri_));
-  VLOG(0) << "Created gRPC diagnostics_processor client on "
-          << ui_message_receiver_diagnostics_processor_grpc_uri_;
-  ui_message_receiver_diagnostics_processor_grpc_client_ =
-      diagnostics_processor_grpc_clients_.back().get();
+          ui_message_receiver_wilco_dtc_grpc_uri_));
+  VLOG(0) << "Created gRPC wilco_dtc client on "
+          << ui_message_receiver_wilco_dtc_grpc_uri_;
+  ui_message_receiver_wilco_dtc_grpc_client_ =
+      wilco_dtc_grpc_clients_.back().get();
 
   // Start EC event service.
   return ec_event_service_.Start();
 }
 
-void DiagnosticsdCore::ShutDown(const base::Closure& on_shutdown) {
-  VLOG(1) << "Tearing down gRPC server, gRPC diagnostics_processor clients and "
+void WilcoDtcSupportdCore::ShutDown(const base::Closure& on_shutdown) {
+  VLOG(1) << "Tearing down gRPC server, gRPC wilco_dtc clients and "
              "EC event service";
-  const base::Closure barrier_closure = BarrierClosure(
-      diagnostics_processor_grpc_clients_.size() + 2, on_shutdown);
+  const base::Closure barrier_closure =
+      BarrierClosure(wilco_dtc_grpc_clients_.size() + 2, on_shutdown);
   ec_event_service_.Shutdown(barrier_closure);
   grpc_server_.Shutdown(barrier_closure);
-  for (const auto& client : diagnostics_processor_grpc_clients_) {
+  for (const auto& client : wilco_dtc_grpc_clients_) {
     client->Shutdown(barrier_closure);
   }
-  ui_message_receiver_diagnostics_processor_grpc_client_ = nullptr;
+  ui_message_receiver_wilco_dtc_grpc_client_ = nullptr;
 }
 
-void DiagnosticsdCore::RegisterDBusObjectsAsync(
+void WilcoDtcSupportdCore::RegisterDBusObjectsAsync(
     const scoped_refptr<dbus::Bus>& bus,
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   DCHECK(bus);
@@ -175,14 +175,14 @@ void DiagnosticsdCore::RegisterDBusObjectsAsync(
   dbus_interface->AddSimpleMethodHandlerWithError(
       kDiagnosticsdBootstrapMojoConnectionMethod,
       base::Unretained(&dbus_service_),
-      &DiagnosticsdDBusService::BootstrapMojoConnection);
+      &WilcoDtcSupportdDBusService::BootstrapMojoConnection);
   dbus_object_->RegisterAsync(sequencer->GetHandler(
       "Failed to register D-Bus object" /* descriptive_message */,
       true /* failure_is_fatal */));
 }
 
-bool DiagnosticsdCore::StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
-                                               std::string* error_message) {
+bool WilcoDtcSupportdCore::StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
+                                                   std::string* error_message) {
   DCHECK(mojo_pipe_fd.is_valid());
 
   if (mojo_service_bind_attempted_) {
@@ -213,15 +213,15 @@ bool DiagnosticsdCore::StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
     return false;
   }
   mojo_service_factory_binding_->set_connection_error_handler(base::Bind(
-      &DiagnosticsdCore::ShutDownDueToMojoError, base::Unretained(this),
+      &WilcoDtcSupportdCore::ShutDownDueToMojoError, base::Unretained(this),
       "Mojo connection error" /* debug_reason */));
   LOG(INFO) << "Successfully bootstrapped Mojo connection";
   return true;
 }
 
-void DiagnosticsdCore::GetService(MojomDiagnosticsdServiceRequest service,
-                                  MojomDiagnosticsdClientPtr client,
-                                  const GetServiceCallback& callback) {
+void WilcoDtcSupportdCore::GetService(MojomDiagnosticsdServiceRequest service,
+                                      MojomDiagnosticsdClientPtr client,
+                                      const GetServiceCallback& callback) {
   // Mojo guarantees that these parameters are nun-null (see
   // VALIDATION_ERROR_UNEXPECTED_INVALID_HANDLE).
   DCHECK(service.is_pending());
@@ -235,17 +235,18 @@ void DiagnosticsdCore::GetService(MojomDiagnosticsdServiceRequest service,
     mojo_service_.reset();
   }
 
-  // Create an instance of DiagnosticsdMojoService that will handle incoming
+  // Create an instance of WilcoDtcSupportdMojoService that will handle incoming
   // Mojo calls. Pass |service| to it to fulfill the remote endpoint's request,
   // allowing it to call into |mojo_service_|. Pass also |client| to allow
   // |mojo_service_| to do calls in the opposite direction.
-  mojo_service_ = std::make_unique<DiagnosticsdMojoService>(
+  mojo_service_ = std::make_unique<WilcoDtcSupportdMojoService>(
       this /* delegate */, std::move(service), std::move(client));
 
   callback.Run();
 }
 
-void DiagnosticsdCore::ShutDownDueToMojoError(const std::string& debug_reason) {
+void WilcoDtcSupportdCore::ShutDownDueToMojoError(
+    const std::string& debug_reason) {
   // Our daemon has to be restarted to be prepared for future Mojo connection
   // bootstraps. We can't do this without a restart since Mojo EDK gives no
   // guarantee to support repeated bootstraps. Therefore tear down and exit from
@@ -256,13 +257,13 @@ void DiagnosticsdCore::ShutDownDueToMojoError(const std::string& debug_reason) {
   delegate_->BeginDaemonShutdown();
 }
 
-void DiagnosticsdCore::PerformWebRequestToBrowser(
+void WilcoDtcSupportdCore::PerformWebRequestToBrowser(
     WebRequestHttpMethod http_method,
     const std::string& url,
     const std::vector<std::string>& headers,
     const std::string& request_body,
     const PerformWebRequestToBrowserCallback& callback) {
-  VLOG(1) << "DiagnosticsCore::PerformWebRequestToBrowser";
+  VLOG(1) << "WilcoDtcSupportdCore::PerformWebRequestToBrowser";
 
   if (!mojo_service_) {
     LOG(WARNING) << "PerformWebRequestToBrowser happens before Mojo connection "
@@ -285,9 +286,9 @@ void DiagnosticsdCore::PerformWebRequestToBrowser(
           callback));
 }
 
-void DiagnosticsdCore::SendGrpcEcEventToDiagnosticsProcessor(
-    const DiagnosticsdEcEventService::EcEvent& ec_event) {
-  VLOG(1) << "DiagnosticsdCore::SendGrpcEcEventToDiagnosticsProcessor";
+void WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc(
+    const WilcoDtcSupportdEcEventService::EcEvent& ec_event) {
+  VLOG(1) << "WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc";
 
   grpc_api::HandleEcNotificationRequest request;
   request.set_type(ec_event.type);
@@ -297,7 +298,7 @@ void DiagnosticsdCore::SendGrpcEcEventToDiagnosticsProcessor(
 
   request.set_payload(ec_event.data, data_size);
 
-  for (auto& client : diagnostics_processor_grpc_clients_) {
+  for (auto& client : wilco_dtc_grpc_clients_) {
     client->CallRpc(
         &grpc_api::DiagnosticsProcessor::Stub::AsyncHandleEcNotification,
         request,
@@ -306,27 +307,27 @@ void DiagnosticsdCore::SendGrpcEcEventToDiagnosticsProcessor(
           if (!response) {
             LOG(ERROR)
                 << "Failed to call HandleEcNotificationRequest gRPC method on "
-                   "diagnostics_processor: response message is nullptr";
+                   "wilco_dtc: response message is nullptr";
             return;
           }
           VLOG(1) << "gRPC method HandleEcNotificationRequest was successfully"
-                     "called on diagnostics_processor";
+                     "called on wilco_dtc";
         }));
   }
 }
 
-void DiagnosticsdCore::GetAvailableRoutinesToService(
+void WilcoDtcSupportdCore::GetAvailableRoutinesToService(
     const GetAvailableRoutinesToServiceCallback& callback) {
   routine_service_.GetAvailableRoutines(callback);
 }
 
-void DiagnosticsdCore::RunRoutineToService(
+void WilcoDtcSupportdCore::RunRoutineToService(
     const grpc_api::RunRoutineRequest& request,
     const RunRoutineToServiceCallback& callback) {
   routine_service_.RunRoutine(request, callback);
 }
 
-void DiagnosticsdCore::GetRoutineUpdateRequestToService(
+void WilcoDtcSupportdCore::GetRoutineUpdateRequestToService(
     int uuid,
     grpc_api::GetRoutineUpdateRequest::Command command,
     bool include_output,
@@ -334,12 +335,12 @@ void DiagnosticsdCore::GetRoutineUpdateRequestToService(
   routine_service_.GetRoutineUpdate(uuid, command, include_output, callback);
 }
 
-void DiagnosticsdCore::SendGrpcUiMessageToDiagnosticsProcessor(
+void WilcoDtcSupportdCore::SendGrpcUiMessageToWilcoDtc(
     base::StringPiece json_message,
-    const SendGrpcUiMessageToDiagnosticsProcessorCallback& callback) {
-  VLOG(1) << "DiagnosticsdCore::SendGrpcMessageToDiagnosticsdProcessor";
+    const SendGrpcUiMessageToWilcoDtcCallback& callback) {
+  VLOG(1) << "WilcoDtcSupportdCore::SendGrpcMessageToWilcoDtc";
 
-  if (!ui_message_receiver_diagnostics_processor_grpc_client_) {
+  if (!ui_message_receiver_wilco_dtc_grpc_client_) {
     VLOG(1) << "The UI message is discarded since the recipient has been shut "
             << "down.";
     callback.Run(std::string() /* response_json_message */);
@@ -350,21 +351,21 @@ void DiagnosticsdCore::SendGrpcUiMessageToDiagnosticsProcessor(
   request.set_json_message(json_message.data() ? json_message.data() : "",
                            json_message.length());
 
-  ui_message_receiver_diagnostics_processor_grpc_client_->CallRpc(
+  ui_message_receiver_wilco_dtc_grpc_client_->CallRpc(
       &grpc_api::DiagnosticsProcessor::Stub::AsyncHandleMessageFromUi, request,
       base::Bind(
-          [](const SendGrpcUiMessageToDiagnosticsProcessorCallback& callback,
+          [](const SendGrpcUiMessageToWilcoDtcCallback& callback,
              std::unique_ptr<grpc_api::HandleMessageFromUiResponse> response) {
             if (!response) {
               LOG(ERROR)
                   << "Failed to call HandleMessageFromUiRequest gRPC method on "
-                     "diagnostics_processor: response message is nullptr";
+                     "wilco_dtc: response message is nullptr";
               callback.Run(std::string() /* response_json_message */);
               return;
             }
 
             VLOG(1) << "gRPC method HandleMessageFromUiRequest was "
-                       "successfully called on diagnostics_processor";
+                       "successfully called on wilco_dtc";
 
             std::string json_error_message;
             if (!IsJsonValid(

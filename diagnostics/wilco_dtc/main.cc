@@ -8,8 +8,8 @@
 
 int main(int argc, char** argv) {
   brillo::FlagHelper::Init(argc, argv,
-                           "diagnostics_processor - Device telemetry and "
-                           "diagnostics data processing daemon.");
+                           "wilco_dtc - Device telemetry and diagnostics data "
+                           "processing daemon.");
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 

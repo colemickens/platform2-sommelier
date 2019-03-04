@@ -26,7 +26,7 @@ void DiagAsyncGrpcClientAdapterImpl::Connect(const std::string& target_uri) {
   // Create the DiagAsyncGrpcClient, listening over the specified gRPC URI.
   client_ = std::make_unique<AsyncGrpcClient<grpc_api::Diagnosticsd>>(
       base::ThreadTaskRunnerHandle::Get(), target_uri);
-  VLOG(0) << "Created gRPC diagnosticsd client on " << target_uri;
+  VLOG(0) << "Created gRPC wilco_dtc_supportd client on " << target_uri;
 }
 
 void DiagAsyncGrpcClientAdapterImpl::Shutdown(

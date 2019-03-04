@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_DBUS_SERVICE_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_DBUS_SERVICE_H_
+#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_DBUS_SERVICE_H_
+#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_DBUS_SERVICE_H_
 
 #include <string>
 
@@ -16,9 +16,9 @@
 namespace diagnostics {
 
 // Implements the "org.chromium.DiagnosticsdInterface" D-Bus interface exposed
-// by the diagnosticsd daemon (see constants for the API methods at
+// by the wilco_dtc_supportd daemon (see constants for the API methods at
 // src/platform/system_api/dbus/diagnosticsd/dbus-constants.h).
-class DiagnosticsdDBusService final {
+class WilcoDtcSupportdDBusService final {
  public:
   class Delegate {
    public:
@@ -26,10 +26,10 @@ class DiagnosticsdDBusService final {
 
     // Called when a Mojo invitation is received via a D-Bus call.
     //
-    // Should start the diagnosticsd Mojo service factory that talks through the
-    // pipe specified by the passed |mojo_pipe_fd|. Should return whether the
-    // Mojo service factory was successfully started, and when false should fill
-    // |*error_message|.
+    // Should start the wilco_dtc_supportd Mojo service factory that talks
+    // through the pipe specified by the passed |mojo_pipe_fd|. Should return
+    // whether the Mojo service factory was successfully started, and when false
+    // should fill |*error_message|.
     //
     // In production the pipe's parent side end belongs to the Chrome browser
     // process.
@@ -37,8 +37,8 @@ class DiagnosticsdDBusService final {
                                          std::string* error_message) = 0;
   };
 
-  explicit DiagnosticsdDBusService(Delegate* delegate);
-  ~DiagnosticsdDBusService();
+  explicit WilcoDtcSupportdDBusService(Delegate* delegate);
+  ~WilcoDtcSupportdDBusService();
 
   // Implementation of the "org.chromium.DiagnosticsdInterface" D-Bus interface:
   bool BootstrapMojoConnection(brillo::ErrorPtr* error,
@@ -53,9 +53,9 @@ class DiagnosticsdDBusService final {
   // Unowned. The delegate should outlive this instance.
   Delegate* const delegate_;
 
-  DISALLOW_COPY_AND_ASSIGN(DiagnosticsdDBusService);
+  DISALLOW_COPY_AND_ASSIGN(WilcoDtcSupportdDBusService);
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_DBUS_SERVICE_H_
+#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_DBUS_SERVICE_H_

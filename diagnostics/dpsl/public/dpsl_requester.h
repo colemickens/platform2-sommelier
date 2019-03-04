@@ -17,10 +17,10 @@ namespace diagnostics {
 class DpslThreadContext;
 
 // Interface of the class that allows to make outgoing requests to the
-// gRPC server ran by the diagnosticsd daemon (the interface is defined at
+// gRPC server ran by the wilco_dtc_supportd daemon (the interface is defined at
 // grpc/diagnosticsd.proto).
 //
-// On construction, starts a gRPC client that connects to the diagnosticsd
+// On construction, starts a gRPC client that connects to the wilco_dtc_supportd
 // daemon on the specified URI. When a request is made, DPSL sends it and
 // immediately returns; after the response arrives, the DPSL puts a task into
 // the event loop that invokes the specified callback.

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_FAKE_DIAGNOSTICS_PROCESSOR_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_FAKE_DIAGNOSTICS_PROCESSOR_H_
+#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_FAKE_WILCO_DTC_H_
+#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_FAKE_WILCO_DTC_H_
 
 #include <memory>
 #include <string>
@@ -20,13 +20,13 @@
 
 namespace diagnostics {
 
-// Helper class that allows to test gRPC communication between
-// diagnostics daemon and diagnostics processor.
+// Helper class that allows to test gRPC communication between wilco_dtc and
+// support daemon.
 //
 // This class runs a "DiagnosticsProcessor" gRPC server on the given
 // |grpc_server_uri| URI, and a gRPC client to the "Diagnosticsd" gRPC service
 // on the |wilco_dtc_supportd_grpc_uri| gRPC URI.
-class FakeDiagnosticsProcessor final {
+class FakeWilcoDtc final {
  public:
   using GetProcDataCallback =
       base::Callback<void(std::unique_ptr<grpc_api::GetProcDataResponse>)>;
@@ -44,13 +44,12 @@ class FakeDiagnosticsProcessor final {
   using HandleEcNotificationRequestCallback =
       base::RepeatingCallback<void(int32_t, const std::string&)>;
 
-  FakeDiagnosticsProcessor(const std::string& grpc_server_uri,
-                           const std::string& wilco_dtc_supportd_grpc_uri);
-  ~FakeDiagnosticsProcessor();
+  FakeWilcoDtc(const std::string& grpc_server_uri,
+               const std::string& wilco_dtc_supportd_grpc_uri);
+  ~FakeWilcoDtc();
 
   // Methods that correspond to the "Diagnosticsd" gRPC interface and allow
-  // to perform actual gRPC requests as if the diagnostics_processor daemon
-  // would do them:
+  // to perform actual gRPC requests as if the wilco_dtc daemon would do them:
   void GetProcData(const grpc_api::GetProcDataRequest& request,
                    GetProcDataCallback callback);
   void RunEcCommand(const grpc_api::RunEcCommandRequest& request,
@@ -98,7 +97,7 @@ class FakeDiagnosticsProcessor final {
       const HandleEcNotificationCallback& callback);
 
   AsyncGrpcDiagnosticsProcessorServer grpc_server_;
-  AsyncGrpcDiagnosticsdClient diagnosticsd_grpc_client_;
+  AsyncGrpcDiagnosticsdClient wilco_dtc_supportd_grp_client_;
 
   base::Optional<base::Closure> handle_message_from_ui_callback_;
   base::Optional<std::string> handle_message_from_ui_actual_json_message_;
@@ -107,9 +106,9 @@ class FakeDiagnosticsProcessor final {
   base::Optional<HandleEcNotificationRequestCallback>
       handle_ec_event_request_callback_;
 
-  DISALLOW_COPY_AND_ASSIGN(FakeDiagnosticsProcessor);
+  DISALLOW_COPY_AND_ASSIGN(FakeWilcoDtc);
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_FAKE_DIAGNOSTICS_PROCESSOR_H_
+#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_FAKE_WILCO_DTC_H_

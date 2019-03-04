@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_mojo_service.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_mojo_service.h"
 
 #include <memory>
 #include <utility>
@@ -15,13 +15,13 @@
 
 namespace diagnostics {
 
-using SendUiMessageToDiagnosticsProcessorCallback =
-    DiagnosticsdMojoService::SendUiMessageToDiagnosticsProcessorCallback;
+using SendUiMessageToWilcoDtcCallback =
+    WilcoDtcSupportdMojoService::SendUiMessageToDiagnosticsProcessorCallback;
 
 namespace {
 
 void ForwardMojoJsonResponse(
-    const SendUiMessageToDiagnosticsProcessorCallback& mojo_response_callback,
+    const SendUiMessageToWilcoDtcCallback& mojo_response_callback,
     std::string response_json_message) {
   if (response_json_message.empty()) {
     mojo_response_callback.Run(
@@ -35,8 +35,8 @@ void ForwardMojoJsonResponse(
 }
 
 void ForwardMojoWebResponse(
-    const DiagnosticsdMojoService::MojomPerformWebRequestCallback& callback,
-    DiagnosticsdMojoService::MojomDiagnosticsdWebRequestStatus status,
+    const WilcoDtcSupportdMojoService::MojomPerformWebRequestCallback& callback,
+    WilcoDtcSupportdMojoService::MojomDiagnosticsdWebRequestStatus status,
     int http_status,
     mojo::ScopedHandle response_body_handle) {
   if (!response_body_handle.is_valid()) {
@@ -47,8 +47,8 @@ void ForwardMojoWebResponse(
       GetReadOnlySharedMemoryFromMojoHandle(std::move(response_body_handle));
   if (!shared_memory) {
     LOG(ERROR) << "Failed to read data from mojo handle";
-    callback.Run(DiagnosticsdMojoService::MojomDiagnosticsdWebRequestStatus::
-                     kNetworkError,
+    callback.Run(WilcoDtcSupportdMojoService::
+                     MojomDiagnosticsdWebRequestStatus::kNetworkError,
                  0, base::StringPiece());
     return;
   }
@@ -60,7 +60,7 @@ void ForwardMojoWebResponse(
 
 }  // namespace
 
-DiagnosticsdMojoService::DiagnosticsdMojoService(
+WilcoDtcSupportdMojoService::WilcoDtcSupportdMojoService(
     Delegate* delegate,
     MojomDiagnosticsdServiceRequest self_interface_request,
     MojomDiagnosticsdClientPtr client_ptr)
@@ -72,9 +72,9 @@ DiagnosticsdMojoService::DiagnosticsdMojoService(
   DCHECK(client_ptr_);
 }
 
-DiagnosticsdMojoService::~DiagnosticsdMojoService() = default;
+WilcoDtcSupportdMojoService::~WilcoDtcSupportdMojoService() = default;
 
-void DiagnosticsdMojoService::SendUiMessageToDiagnosticsProcessor(
+void WilcoDtcSupportdMojoService::SendUiMessageToDiagnosticsProcessor(
     mojo::ScopedHandle json_message,
     const SendUiMessageToDiagnosticsProcessorCallback& callback) {
   std::unique_ptr<base::SharedMemory> shared_memory =
@@ -95,11 +95,11 @@ void DiagnosticsdMojoService::SendUiMessageToDiagnosticsProcessor(
     return;
   }
 
-  delegate_->SendGrpcUiMessageToDiagnosticsProcessor(
+  delegate_->SendGrpcUiMessageToWilcoDtc(
       json_message_content, base::Bind(&ForwardMojoJsonResponse, callback));
 }
 
-void DiagnosticsdMojoService::PerformWebRequest(
+void WilcoDtcSupportdMojoService::PerformWebRequest(
     MojomDiagnosticsdWebRequestHttpMethod http_method,
     const std::string& url,
     const std::vector<std::string>& headers,

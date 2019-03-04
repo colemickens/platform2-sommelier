@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/diagnosticsd_dbus_service.h"
+#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_dbus_service.h"
 
 #include <unistd.h>
 #include <utility>
@@ -15,14 +15,14 @@
 
 namespace diagnostics {
 
-DiagnosticsdDBusService::DiagnosticsdDBusService(Delegate* delegate)
+WilcoDtcSupportdDBusService::WilcoDtcSupportdDBusService(Delegate* delegate)
     : delegate_(delegate) {
   DCHECK(delegate_);
 }
 
-DiagnosticsdDBusService::~DiagnosticsdDBusService() = default;
+WilcoDtcSupportdDBusService::~WilcoDtcSupportdDBusService() = default;
 
-bool DiagnosticsdDBusService::BootstrapMojoConnection(
+bool WilcoDtcSupportdDBusService::BootstrapMojoConnection(
     brillo::ErrorPtr* error, const base::ScopedFD& mojo_fd) {
   VLOG(0) << "Received BootstrapMojoConnection D-Bus request";
   std::string error_message;
@@ -34,7 +34,7 @@ bool DiagnosticsdDBusService::BootstrapMojoConnection(
   return true;
 }
 
-bool DiagnosticsdDBusService::DoBootstrapMojoConnection(
+bool WilcoDtcSupportdDBusService::DoBootstrapMojoConnection(
     const base::ScopedFD& mojo_fd, std::string* error_message) {
   if (!mojo_fd.is_valid()) {
     LOG(ERROR) << "Invalid Mojo file descriptor";

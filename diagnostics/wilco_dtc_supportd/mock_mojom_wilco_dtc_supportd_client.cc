@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/mock_mojom_diagnosticsd_client.h"
+#include "diagnostics/wilco_dtc_supportd/mock_mojom_wilco_dtc_supportd_client.h"
 
 #include <utility>
 
@@ -11,7 +11,7 @@
 
 namespace diagnostics {
 
-void MockMojomDiagnosticsdClient::SendDiagnosticsProcessorMessageToUi(
+void MockMojomWilcoDtcSupportdClient::SendDiagnosticsProcessorMessageToUi(
     mojo::ScopedHandle json_message,
     const SendDiagnosticsProcessorMessageToUiCallback& callback) {
   // Redirect to a separate mockable method to workaround GMock's issues with
@@ -19,7 +19,7 @@ void MockMojomDiagnosticsdClient::SendDiagnosticsProcessorMessageToUi(
   SendDiagnosticsProcessorMessageToUiImpl(&json_message, callback);
 }
 
-void MockMojomDiagnosticsdClient::PerformWebRequest(
+void MockMojomWilcoDtcSupportdClient::PerformWebRequest(
     MojoDiagnosticsdWebRequestHttpMethod http_method,
     mojo::ScopedHandle url,
     std::vector<mojo::ScopedHandle> headers,

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// API exposed by the diagnosticsd daemon. Normally the consumer of this API is
-// the browser.
+// API exposed by the wilco_dtc_supportd daemon. Normally the consumer of this
+// API is the browser.
 
 // NOTE: This mojom should be kept in sync with the copy in Chromium's repo in
 // src/chrome/services/diagnosticsd/public/mojom/diagnosticsd.mojom.
@@ -30,8 +30,8 @@ enum DiagnosticsdWebRequestStatus {
   kHttpError,
 };
 
-// Factory interface exposed by the diagnosticsd daemon, which allows both
-// endpoints (the diagnosticsd and the browser) to exchange with their
+// Factory interface exposed by the wilco_dtc_supportd daemon, which allows both
+// endpoints (the wilco_dtc_supportd and the browser) to exchange with their
 // interfaces (DiagnosticsdService and DiagnosticsdClient correspondingly).
 interface DiagnosticsdServiceFactory {
   // Returns an interface to DiagnosticsdService in response to the passed
@@ -39,16 +39,16 @@ interface DiagnosticsdServiceFactory {
   GetService@0(DiagnosticsdService& service, DiagnosticsdClient client) => ();
 };
 
-// Interface exposed by the diagnosticsd daemon.
+// Interface exposed by the wilco_dtc_supportd daemon.
 interface DiagnosticsdService {
   // Sends a message, originating from the diagnostics UI extension (hosted by
-  // the browser), to the diagnostics_processor daemon. The message contents are
-  // serialized JSON. Delivery of the message is not guaranteed (for example, if
-  // the diagnostics_processor daemon isn't running at the moment).
+  // the browser), to the wilco_dtc daemon. The message contents are serialized
+  // JSON. Delivery of the message is not guaranteed (for example, if the
+  // wilco_dtc daemon isn't running at the moment).
   //
-  // The response will contain the JSON message returned by the
-  // diagnostics_processor daemon. The response handle will be unset if the
-  // request wasn't delivered to the daemon or the daemon made no reply.
+  // The response will contain the JSON message returned by the wilco_dtc
+  // daemon. The response handle will be unset if the request wasn't delivered
+  // to the daemon or the daemon made no reply.
   SendUiMessageToDiagnosticsProcessor@0(handle json_message)
       => (handle? response_json_message);
 };
@@ -56,7 +56,7 @@ interface DiagnosticsdService {
 // Interface exposed by the consumer of DiagnosticsdService. In production this
 // is the browser.
 interface DiagnosticsdClient {
-  // Performs a web request, originating from the diagnostics_processor daemon,
+  // Performs a web request, originating from the wilco_dtc daemon,
   // by the browser's network stack.
   //
   // The web request:
@@ -79,15 +79,14 @@ interface DiagnosticsdClient {
       => (DiagnosticsdWebRequestStatus status, int32 http_status,
           handle? response_body);
 
-  // Sends a message, originating from the diagnostics_processor daemon, to the
-  // diagnositcs UI extension (hosted by the browser). The message contents are
-  // serialized JSON. Delivery of the message is not guaranteed (for example, if
-  // no user is currently logged in that has the diagnostics UI extension
-  // installed).
+  // Sends a message, originating from the wilco_dtc daemon, to the diagnositcs
+  // UI extension (hosted by the browser). The message contents are serialized
+  // JSON. Delivery of the message is not guaranteed (for example, if no user is
+  // currently logged in that has the diagnostics UI extension installed).
   //
-  // The response will contain the JSON message returned by the
-  // diagnostics_processor daemon. The response handle will be unset if the
-  // request wasn't delivered to the extension or the extension made no reply.
+  // The response will contain the JSON message returned by the wilco_dtc
+  // daemon. The response handle will be unset if the request wasn't delivered
+  // to the extension or the extension made no reply.
   SendDiagnosticsProcessorMessageToUi@1(handle json_message)
       => (handle? response_json_message);
 };

@@ -15,21 +15,21 @@
 namespace diagnostics {
 
 // Provides an interface for connecting to and communicating
-// with the diagnosticsd daemon.
+// with the wilco_dtc_supportd daemon.
 class AsyncGrpcClientAdapter {
  public:
   virtual ~AsyncGrpcClientAdapter() = default;
 
   // Whether or not the AsyncGrpcClientAdapter is currently
-  // connected to the diagnosticsd daemon.
+  // connected to the wilco_dtc_supportd daemon.
   virtual bool IsConnected() const = 0;
 
-  // Connects to the diagnosticsd daemon. This method should
+  // Connects to the wilco_dtc_supportd daemon. This method should
   // only be called a single time. The resulting connection
   // lasts for the lifetime of the AsyncGrpcClientAdapter.
   virtual void Connect(const std::string& target_uri) = 0;
 
-  // Gracefully shutdown the connection to the diagnosticsd
+  // Gracefully shutdown the connection to the wilco_dtc_supportd
   // daemon.
   virtual void Shutdown(const base::Closure& on_shutdown) = 0;
 

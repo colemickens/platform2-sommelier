@@ -8,16 +8,16 @@ Please see ../README.md for general information on this project.
 ## Overview
 
 This library is intended to be used by third-party implementors of the
-`diagnostics_processor` daemon.
+`wilco_dtc` daemon.
 
 Essentially, it's a helper library for writing an asynchronous program
 that is able to:
 
-* Make gRPC requests to the `diagnosticsd` daemon in order to fetch
+* Make gRPC requests to the `wilco_dtc_supportd` daemon in order to fetch
   device telemetry information, make network requests, etc. See the API
   definition at grpc/diagnosticsd.proto.
 
-* Serve incoming gRPC requests that the `diagnosticsd` daemon is making,
+* Serve incoming gRPC requests that the `wilco_dtc_supportd` daemon is making,
   which allow to pass the output of the telemetry processing. See the
   API definition at grpc/diagnostics_processor.proto.
 

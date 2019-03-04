@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_MOJO_SERVICE_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_MOJO_SERVICE_H_
+#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_MOJO_SERVICE_H_
+#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_MOJO_SERVICE_H_
 
 #include <string>
 #include <vector>
@@ -20,8 +20,8 @@
 namespace diagnostics {
 
 // Implements the "DiagnosticsdService" Mojo interface exposed by the
-// diagnosticsd daemon (see the API definition at mojo/diagnosticsd.mojom).
-class DiagnosticsdMojoService final
+// wilco_dtc_supportd daemon (see the API definition at mojo/diagnosticsd.mojom)
+class WilcoDtcSupportdMojoService final
     : public chromeos::diagnosticsd::mojom::DiagnosticsdService {
  public:
   using MojomDiagnosticsdClientPtr =
@@ -39,22 +39,21 @@ class DiagnosticsdMojoService final
 
   class Delegate {
    public:
-    using SendGrpcUiMessageToDiagnosticsProcessorCallback =
+    using SendGrpcUiMessageToWilcoDtcCallback =
         base::Callback<void(std::string response_json_message)>;
 
     virtual ~Delegate() = default;
 
-    // Called when diagnosticsd daemon mojo function
+    // Called when wilco_dtc_supportd daemon mojo function
     // |SendUiMessageToDiagnosticsProcessor| was called.
     //
-    // Calls gRPC HandleMessageFromUiRequest method on diagnostics processor and
-    // puts |json_message| to the gRPC |HandleMessageFromUiRequest| request
-    // message. Result of the call is returned via |callback|; if the request
-    // succeeded, it will receive the message returned by the diagnostics
-    // processor.
-    virtual void SendGrpcUiMessageToDiagnosticsProcessor(
+    // Calls gRPC HandleMessageFromUiRequest method on wilco_dtc and puts
+    // |json_message| to the gRPC |HandleMessageFromUiRequest| request message.
+    // Result of the call is returned via |callback|; if the request succeeded,
+    // it will receive the message returned by the wilco_dtc.
+    virtual void SendGrpcUiMessageToWilcoDtc(
         base::StringPiece json_message,
-        const SendGrpcUiMessageToDiagnosticsProcessorCallback& callback) = 0;
+        const SendGrpcUiMessageToWilcoDtcCallback& callback) = 0;
   };
 
   // |delegate| - Unowned pointer; must outlive this instance.
@@ -63,11 +62,11 @@ class DiagnosticsdMojoService final
   // browser process, and allows the browser to call our methods.
   // |client_ptr| - Mojo interface to the DiagnosticsdServiceClient endpoint. In
   // production, it allows this instance to call browser's methods.
-  DiagnosticsdMojoService(
+  WilcoDtcSupportdMojoService(
       Delegate* delegate,
       MojomDiagnosticsdServiceRequest self_interface_request,
       MojomDiagnosticsdClientPtr client_ptr);
-  ~DiagnosticsdMojoService() override;
+  ~WilcoDtcSupportdMojoService() override;
 
   // chromeos::diagnosticsd::mojom::DiagnosticsdService overrides:
   void SendUiMessageToDiagnosticsProcessor(
@@ -94,9 +93,9 @@ class DiagnosticsdMojoService final
   // In production this interface is implemented in the Chrome browser process.
   MojomDiagnosticsdClientPtr client_ptr_;
 
-  DISALLOW_COPY_AND_ASSIGN(DiagnosticsdMojoService);
+  DISALLOW_COPY_AND_ASSIGN(WilcoDtcSupportdMojoService);
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_MOJO_SERVICE_H_
+#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_MOJO_SERVICE_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_GRPC_SERVICE_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_GRPC_SERVICE_H_
+#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_GRPC_SERVICE_H_
+#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_GRPC_SERVICE_H_
 
 #include <memory>
 #include <set>
@@ -27,9 +27,9 @@ extern const int kMaxPerformWebRequestParameterSizeInBytes;
 // Max number of headers in PerformWebRequestParameter.
 extern const int kMaxNumberOfHeadersInPerformWebRequestParameter;
 
-// Implements the "Diagnosticsd" gRPC interface exposed by the diagnosticsd
-// daemon (see the API definition at grpc/diagnosticsd.proto).
-class DiagnosticsdGrpcService final {
+// Implements the "Diagnosticsd" gRPC interface exposed by the
+// wilco_dtc_supportd daemon (see the API definition at grpc/diagnosticsd.proto)
+class WilcoDtcSupportdGrpcService final {
  public:
   class Delegate {
    public:
@@ -68,9 +68,10 @@ class DiagnosticsdGrpcService final {
 
     // Called when gRPC |PerformWebRequest| was called.
     //
-    // Calls diagnosticsd daemon mojo function |PerformWebRequestToBrowser|
-    // method and passes all fields of |PerformWebRequestParameter| to perform
-    // a web request. The result of the call is returned via |callback|.
+    // Calls wilco_dtc_supportd daemon mojo function
+    // |PerformWebRequestToBrowser| method and passes all fields of
+    // |PerformWebRequestParameter| to perform a web request.
+    // The result of the call is returned via |callback|.
     virtual void PerformWebRequestToBrowser(
         WebRequestHttpMethod httpMethod,
         const std::string& url,
@@ -79,7 +80,7 @@ class DiagnosticsdGrpcService final {
         const PerformWebRequestToBrowserCallback& callback) = 0;
     // Called when gRPC |GetAvailableRoutines| was called.
     //
-    // Calls diagnosticsd daemon routine function |GetAvailableRoutines|
+    // Calls wilco_dtc_supportd daemon routine function |GetAvailableRoutines|
     // method and passes all fields of |GetAvailableRoutinesRequest| to
     // determine which routines are available on the platform. The result
     // of the call is returned via |callback|.
@@ -87,15 +88,15 @@ class DiagnosticsdGrpcService final {
         const GetAvailableRoutinesToServiceCallback& callback) = 0;
     // Called when gRPC |RunRoutine| was called.
     //
-    // Calls diagnosticsd daemon routine function |RunRoutine| method and passes
-    // all fields of |RunRoutineRequest| to ask the platform to run a
+    // Calls wilco_dtc_supportd daemon routine function |RunRoutine| method and
+    // passes all fields of |RunRoutineRequest| to ask the platform to run a
     // diagnostic routine. The result of the call is returned via |callback|.
     virtual void RunRoutineToService(
         const grpc_api::RunRoutineRequest& request,
         const RunRoutineToServiceCallback& callback) = 0;
     // Called when gRPC |GetRoutineUpdate| was called.
     //
-    // Calls diagnosticsd daemon routine function |GetRoutineUpdate|
+    // Calls wilco_dtc_supportd daemon routine function |GetRoutineUpdate|
     // method and passes all fields of |GetRoutineUpdateRequest| to
     // control or get the status of an existing diagnostic routine. The result
     // of the call is returned via |callback|.
@@ -125,8 +126,8 @@ class DiagnosticsdGrpcService final {
   using GetRoutineUpdateCallback =
       base::Callback<void(std::unique_ptr<grpc_api::GetRoutineUpdateResponse>)>;
 
-  explicit DiagnosticsdGrpcService(Delegate* delegate);
-  ~DiagnosticsdGrpcService();
+  explicit WilcoDtcSupportdGrpcService(Delegate* delegate);
+  ~WilcoDtcSupportdGrpcService();
 
   // Overrides the file system root directory for file operations in tests.
   void set_root_dir_for_testing(const base::FilePath& root_dir) {
@@ -183,9 +184,9 @@ class DiagnosticsdGrpcService final {
   // The file system root directory. Can be overridden in tests.
   base::FilePath root_dir_{"/"};
 
-  DISALLOW_COPY_AND_ASSIGN(DiagnosticsdGrpcService);
+  DISALLOW_COPY_AND_ASSIGN(WilcoDtcSupportdGrpcService);
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_DIAGNOSTICSD_GRPC_SERVICE_H_
+#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_GRPC_SERVICE_H_

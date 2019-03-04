@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// gRPC API exposed by the diagnosticsd daemon. Normally the consumer of the API
-// is the diagnostics_processor daemon.
+// gRPC API exposed by the wilco_dtc_supportd daemon. Normally the consumer of
+// the API is the wilco_dtc daemon.
 
 syntax = "proto3";
 
@@ -36,11 +36,11 @@ service Diagnosticsd {
   // Retrieves EC property.
   rpc GetEcProperty(GetEcPropertyRequest) returns (GetEcPropertyResponse) {}
 
-  // Retrieves a list of diagnostic routines which diagnosticsd can run.
+  // Retrieves a list of diagnostic routines which wilco_dtc_supportd can run.
   rpc GetAvailableRoutines(GetAvailableRoutinesRequest)
       returns (GetAvailableRoutinesResponse) {}
 
-  // Requests that diagnosticsd start a particular diagnostics routine.
+  // Requests that wilco_dtc_supportd start a particular diagnostics routine.
   rpc RunRoutine(RunRoutineRequest) returns (RunRoutineResponse) {}
 
   // Requests an update on a particular diagnostics routine's status.
@@ -210,8 +210,8 @@ message PerformWebRequestResponse {
     STATUS_HTTP_ERROR = 6;
     // Other errors that prevented a request with valid parameters from being
     // sent over the network.
-    // E.g. the diagnosticsd daemon is unable to talk to the OS component that
-    // hosts the network stack.
+    // E.g. the wilco_dtc_supportd daemon is unable to talk to the OS component
+    // that hosts the network stack.
     STATUS_INTERNAL_ERROR = 7;
   }
 

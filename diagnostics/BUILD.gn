@@ -153,18 +153,18 @@ static_library("libwilco_dtc_supportd") {
   ]
   all_dependent_configs = [ ":libwilco_dtc_supportd_pkg_deps" ]
   sources = [
-    "wilco_dtc_supportd/diagnosticsd_core.cc",
-    "wilco_dtc_supportd/diagnosticsd_core_delegate_impl.cc",
-    "wilco_dtc_supportd/diagnosticsd_daemon.cc",
-    "wilco_dtc_supportd/diagnosticsd_dbus_service.cc",
-    "wilco_dtc_supportd/diagnosticsd_ec_event_service.cc",
-    "wilco_dtc_supportd/diagnosticsd_grpc_service.cc",
-    "wilco_dtc_supportd/diagnosticsd_mojo_service.cc",
-    "wilco_dtc_supportd/diagnosticsd_routine_factory_impl.cc",
-    "wilco_dtc_supportd/diagnosticsd_routine_service.cc",
     "wilco_dtc_supportd/ec_constants.cc",
     "wilco_dtc_supportd/json_utils.cc",
     "wilco_dtc_supportd/mojo_utils.cc",
+    "wilco_dtc_supportd/wilco_dtc_supportd_core.cc",
+    "wilco_dtc_supportd/wilco_dtc_supportd_core_delegate_impl.cc",
+    "wilco_dtc_supportd/wilco_dtc_supportd_daemon.cc",
+    "wilco_dtc_supportd/wilco_dtc_supportd_dbus_service.cc",
+    "wilco_dtc_supportd/wilco_dtc_supportd_ec_event_service.cc",
+    "wilco_dtc_supportd/wilco_dtc_supportd_grpc_service.cc",
+    "wilco_dtc_supportd/wilco_dtc_supportd_mojo_service.cc",
+    "wilco_dtc_supportd/wilco_dtc_supportd_routine_factory_impl.cc",
+    "wilco_dtc_supportd/wilco_dtc_supportd_routine_service.cc",
   ]
 }
 
@@ -373,20 +373,20 @@ if (use.test) {
       "../common-mk/testrunner:testrunner",
     ]
     sources = [
-      "wilco_dtc_supportd/diagnosticsd_core_test.cc",
-      "wilco_dtc_supportd/diagnosticsd_dbus_service_test.cc",
-      "wilco_dtc_supportd/diagnosticsd_ec_event_service_test.cc",
-      "wilco_dtc_supportd/diagnosticsd_grpc_service_test.cc",
-      "wilco_dtc_supportd/diagnosticsd_mojo_service_test.cc",
-      "wilco_dtc_supportd/diagnosticsd_routine_service_test.cc",
       "wilco_dtc_supportd/ec_constants_test.cc",
       "wilco_dtc_supportd/fake_browser.cc",
-      "wilco_dtc_supportd/fake_diagnostics_processor.cc",
-      "wilco_dtc_supportd/fake_diagnosticsd_routine_factory.cc",
+      "wilco_dtc_supportd/fake_wilco_dtc.cc",
+      "wilco_dtc_supportd/fake_wilco_dtc_supportd_routine_factory.cc",
       "wilco_dtc_supportd/file_test_utils.cc",
-      "wilco_dtc_supportd/mock_mojom_diagnosticsd_client.cc",
+      "wilco_dtc_supportd/mock_mojom_wilco_dtc_supportd_client.cc",
       "wilco_dtc_supportd/mojo_test_utils.cc",
       "wilco_dtc_supportd/mojo_utils_test.cc",
+      "wilco_dtc_supportd/wilco_dtc_supportd_core_test.cc",
+      "wilco_dtc_supportd/wilco_dtc_supportd_dbus_service_test.cc",
+      "wilco_dtc_supportd/wilco_dtc_supportd_ec_event_service_test.cc",
+      "wilco_dtc_supportd/wilco_dtc_supportd_grpc_service_test.cc",
+      "wilco_dtc_supportd/wilco_dtc_supportd_mojo_service_test.cc",
+      "wilco_dtc_supportd/wilco_dtc_supportd_routine_service_test.cc",
     ]
   }
 
