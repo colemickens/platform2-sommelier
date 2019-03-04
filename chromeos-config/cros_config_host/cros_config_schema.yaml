@@ -188,6 +188,7 @@ properties:
                     cr50: *firmware_build_target
                     depthcharge: *firmware_build_target
                     ec: *firmware_build_target
+                    ish: *firmware_build_target
                     libpayload: *firmware_build_target
                     u-boot: *firmware_build_target
                   additionalProperties: false
