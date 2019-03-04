@@ -723,7 +723,7 @@ class Nl80211AttributeMac : public NetlinkRawAttribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeMac() : NetlinkRawAttribute(kName, kNameString) {}
-  virtual bool ToString(std::string* value) const;
+  bool ToString(std::string* value) const override;
 
   // Stringizes the MAC address found in 'arg'.  If there are problems (such
   // as a NULL |arg|), |value| is set to a bogus MAC address.

@@ -135,11 +135,11 @@ class NetlinkU8Attribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkU8Attribute(int id, const char* id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  virtual bool InitFromValue(const ByteString& data);
-  virtual bool GetU8Value(uint8_t* value) const;
-  virtual bool SetU8Value(uint8_t new_value);
-  virtual bool ToString(std::string* value) const;
-  virtual ByteString Encode() const;
+  bool InitFromValue(const ByteString& data) override;
+  bool GetU8Value(uint8_t* value) const override;
+  bool SetU8Value(uint8_t new_value) override;
+  bool ToString(std::string* value) const override;
+  ByteString Encode() const override;
 
  private:
   uint8_t value_;
@@ -153,11 +153,11 @@ class NetlinkU16Attribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkU16Attribute(int id, const char* id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  virtual bool InitFromValue(const ByteString& data);
-  virtual bool GetU16Value(uint16_t* value) const;
-  virtual bool SetU16Value(uint16_t new_value);
-  virtual bool ToString(std::string* value) const;
-  virtual ByteString Encode() const;
+  bool InitFromValue(const ByteString& data) override;
+  bool GetU16Value(uint16_t* value) const override;
+  bool SetU16Value(uint16_t new_value) override;
+  bool ToString(std::string* value) const override;
+  ByteString Encode() const override;
 
  private:
   uint16_t value_;
@@ -172,11 +172,11 @@ class SHILL_EXPORT NetlinkU32Attribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkU32Attribute(int id, const char* id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  virtual bool InitFromValue(const ByteString& data);
-  virtual bool GetU32Value(uint32_t* value) const;
-  virtual bool SetU32Value(uint32_t new_value);
-  virtual bool ToString(std::string* value) const;
-  virtual ByteString Encode() const;
+  bool InitFromValue(const ByteString& data) override;
+  bool GetU32Value(uint32_t* value) const override;
+  bool SetU32Value(uint32_t new_value) override;
+  bool ToString(std::string* value) const override;
+  ByteString Encode() const override;
 
  private:
   uint32_t value_;
@@ -190,11 +190,11 @@ class NetlinkU64Attribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkU64Attribute(int id, const char* id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  virtual bool InitFromValue(const ByteString& data);
-  virtual bool GetU64Value(uint64_t* value) const;
-  virtual bool SetU64Value(uint64_t new_value);
-  virtual bool ToString(std::string* value) const;
-  virtual ByteString Encode() const;
+  bool InitFromValue(const ByteString& data) override;
+  bool GetU64Value(uint64_t* value) const override;
+  bool SetU64Value(uint64_t new_value) override;
+  bool ToString(std::string* value) const override;
+  ByteString Encode() const override;
 
  private:
   uint64_t value_;
@@ -208,11 +208,11 @@ class NetlinkFlagAttribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkFlagAttribute(int id, const char* id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  virtual bool InitFromValue(const ByteString& data);
-  virtual bool GetFlagValue(bool* value) const;
-  virtual bool SetFlagValue(bool new_value);
-  virtual bool ToString(std::string* value) const;
-  virtual ByteString Encode() const;
+  bool InitFromValue(const ByteString& data) override;
+  bool GetFlagValue(bool* value) const override;
+  bool SetFlagValue(bool new_value) override;
+  bool ToString(std::string* value) const override;
+  ByteString Encode() const override;
 
  private:
   bool value_;
@@ -227,11 +227,11 @@ class SHILL_EXPORT NetlinkStringAttribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkStringAttribute(int id, const char* id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  virtual bool InitFromValue(const ByteString& data);
-  virtual bool GetStringValue(std::string* value) const;
-  virtual bool SetStringValue(const std::string& new_value);
-  virtual bool ToString(std::string* value) const;
-  virtual ByteString Encode() const;
+  bool InitFromValue(const ByteString& data) override;
+  bool GetStringValue(std::string* value) const override;
+  bool SetStringValue(const std::string& new_value) override;
+  bool ToString(std::string* value) const override;
+  ByteString Encode() const override;
   std::string value() const { return value_; }
   void set_value(const std::string& value) { value_ = value; }
 
@@ -247,7 +247,7 @@ class NetlinkSsidAttribute : public NetlinkStringAttribute {
       : NetlinkStringAttribute(id, id_string) {}
 
   // NOTE: |ToString| or |Print| must be used for logging to allow scrubbing.
-  virtual bool ToString(std::string* output) const;
+  bool ToString(std::string* output) const override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NetlinkSsidAttribute);
@@ -258,14 +258,14 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   static const char kMyTypeString[];
   static const Type kType;
   NetlinkNestedAttribute(int id, const char* id_string);
-  virtual bool InitFromValue(const ByteString& data);
-  virtual bool GetNestedAttributeList(AttributeListRefPtr* value);
-  virtual bool ConstGetNestedAttributeList(
-      AttributeListConstRefPtr* value) const;
-  virtual bool SetNestedHasAValue();
-  virtual void Print(int log_level, int indent) const;
-  virtual bool ToString(std::string* value) const;
-  virtual ByteString Encode() const;
+  bool InitFromValue(const ByteString& data) override;
+  bool GetNestedAttributeList(AttributeListRefPtr* value) override;
+  bool ConstGetNestedAttributeList(
+      AttributeListConstRefPtr* value) const override;
+  bool SetNestedHasAValue() override;
+  void Print(int log_level, int indent) const override;
+  bool ToString(std::string* value) const override;
+  ByteString Encode() const override;
 
  protected:
   // Describes a single nested attribute.  Provides the expected values and
@@ -353,13 +353,13 @@ class NetlinkRawAttribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkRawAttribute(int id, const char* id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  virtual bool InitFromValue(const ByteString& data);
+  bool InitFromValue(const ByteString& data) override;
   // Gets the value of the data (the header is not stored).
-  virtual bool GetRawValue(ByteString* value) const;
+  bool GetRawValue(ByteString* value) const override;
   // Should set the value of the data (not the attribute header).
-  virtual bool SetRawValue(const ByteString value);
-  virtual bool ToString(std::string* value) const;
-  virtual ByteString Encode() const;
+  bool SetRawValue(const ByteString value) override;
+  bool ToString(std::string* value) const override;
+  ByteString Encode() const override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NetlinkRawAttribute);
@@ -368,7 +368,7 @@ class NetlinkRawAttribute : public NetlinkAttribute {
 class NetlinkAttributeGeneric : public NetlinkRawAttribute {
  public:
   explicit NetlinkAttributeGeneric(int id);
-  virtual const char* id_string() const;
+  const char* id_string() const override;
 
  private:
   std::string id_string_;

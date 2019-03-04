@@ -165,8 +165,8 @@ class SHILL_EXPORT NoopMessage : public NetlinkMessage {
 
   NoopMessage() : NetlinkMessage(kMessageType) {}
   static uint16_t GetMessageType() { return kMessageType; }
-  virtual ByteString Encode(uint32_t sequence_number);
-  virtual void Print(int header_log_level, int detail_log_level) const;
+  ByteString Encode(uint32_t sequence_number) override;
+  void Print(int header_log_level, int detail_log_level) const override;
   std::string ToString() const { return "<NOOP>"; }
 
  private:
@@ -180,8 +180,8 @@ class SHILL_EXPORT DoneMessage : public NetlinkMessage {
 
   DoneMessage() : NetlinkMessage(kMessageType) {}
   static uint16_t GetMessageType() { return kMessageType; }
-  virtual ByteString Encode(uint32_t sequence_number);
-  virtual void Print(int header_log_level, int detail_log_level) const;
+  ByteString Encode(uint32_t sequence_number) override;
+  void Print(int header_log_level, int detail_log_level) const override;
   std::string ToString() const { return "<DONE with multipart message>"; }
 
  private:
@@ -195,8 +195,8 @@ class SHILL_EXPORT OverrunMessage : public NetlinkMessage {
 
   OverrunMessage() : NetlinkMessage(kMessageType) {}
   static uint16_t GetMessageType() { return kMessageType; }
-  virtual ByteString Encode(uint32_t sequence_number);
-  virtual void Print(int header_log_level, int detail_log_level) const;
+  ByteString Encode(uint32_t sequence_number) override;
+  void Print(int header_log_level, int detail_log_level) const override;
   std::string ToString() const { return "<OVERRUN - data lost>"; }
 
  private:
@@ -208,8 +208,8 @@ class SHILL_EXPORT UnknownMessage : public NetlinkMessage {
  public:
   UnknownMessage(uint16_t message_type, ByteString message_body) :
       NetlinkMessage(message_type), message_body_(message_body) {}
-  virtual ByteString Encode(uint32_t sequence_number);
-  virtual void Print(int header_log_level, int detail_log_level) const;
+  ByteString Encode(uint32_t sequence_number) override;
+  void Print(int header_log_level, int detail_log_level) const override;
 
  private:
   ByteString message_body_;
