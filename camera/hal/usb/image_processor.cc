@@ -527,6 +527,7 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
   struct timespec tp;
   struct tm time_info;
   bool time_available = clock_gettime(CLOCK_REALTIME, &tp) != -1;
+  tzset();
   localtime_r(&tp.tv_sec, &time_info);
   if (!utils->SetDateTime(time_info)) {
     LOGF(ERROR) << "Setting data time failed.";
