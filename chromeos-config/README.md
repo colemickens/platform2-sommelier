@@ -371,7 +371,6 @@ In the tables below,
 | cr50 | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | depthcharge | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | ec | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
-| ish | string |  | False |  | True | Build target from EC to build and include ISH (Intel Integrated Sensor Hub) firmware in filesystem. |
 | ec_extras | array - string |  | False |  | True | Extra EC build targets to build within chromeos-ec. |
 | libpayload | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | u-boot | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
