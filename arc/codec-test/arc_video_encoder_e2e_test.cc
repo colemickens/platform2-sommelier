@@ -263,8 +263,8 @@ bool GetOption(int argc, char** argv, std::string* test_stream_data) {
         *test_stream_data = optarg;
         break;
       default:
-        ALOGE("Unknown option: getopt_long() returned code 0x%x.", opt);
-        return false;
+        ALOGW("Unknown option: getopt_long() returned code 0x%x.", opt);
+        break;
     }
   }
 
