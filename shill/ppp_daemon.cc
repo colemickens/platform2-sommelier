@@ -22,10 +22,27 @@
 
 namespace shill {
 
-const char PPPDaemon::kDaemonPath[] = "/usr/sbin/pppd";
+namespace {
+
+const char kDaemonPath[] = "/usr/sbin/pppd";
+const char kPPPoEPluginPath[] = "rp-pppoe.so";
+const uint32_t kUnspecifiedValue = UINT32_MAX;
+
+}  // namespace
+
+PPPDaemon::Options::Options()
+    : debug(false),
+      no_detach(false),
+      no_default_route(false),
+      use_peer_dns(false),
+      use_shim_plugin(true),
+      use_pppoe_plugin(false),
+      lcp_echo_interval(kUnspecifiedValue),
+      lcp_echo_failure(kUnspecifiedValue),
+      max_fail(kUnspecifiedValue),
+      use_ipv6(false) {}
+
 const char PPPDaemon::kShimPluginPath[] = SHIMDIR "/shill-pppd-plugin.so";
-const char PPPDaemon::kPPPoEPluginPath[] = "rp-pppoe.so";
-const uint32_t PPPDaemon::kUnspecifiedValue = UINT32_MAX;
 
 std::unique_ptr<ExternalTask> PPPDaemon::Start(
     ControlInterface* control_interface,

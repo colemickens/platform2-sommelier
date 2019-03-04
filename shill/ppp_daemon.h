@@ -34,17 +34,7 @@ class PPPDaemon {
   // to pppd command-line options.  Refer to https://ppp.samba.org/pppd.html for
   // more details about the meaning of each.
   struct Options {
-    Options()
-        : debug(false),
-          no_detach(false),
-          no_default_route(false),
-          use_peer_dns(false),
-          use_shim_plugin(true),
-          use_pppoe_plugin(false),
-          lcp_echo_interval(kUnspecifiedValue),
-          lcp_echo_failure(kUnspecifiedValue),
-          max_fail(kUnspecifiedValue),
-          use_ipv6(false) {}
+    Options();
 
     // Causes pppd to emit log messages useful for debugging connectivity.
     bool debug;
@@ -101,10 +91,6 @@ class PPPDaemon {
 
  private:
   FRIEND_TEST(PPPDaemonTest, PluginUsed);
-
-  static const char kDaemonPath[];
-  static const char kPPPoEPluginPath[];
-  static const uint32_t kUnspecifiedValue;
 
   PPPDaemon();
   ~PPPDaemon();
