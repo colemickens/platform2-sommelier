@@ -14,6 +14,7 @@
 using file_attrs_cleaner::ScanDir;
 
 int main(int argc, char* argv[]) {
+  DEFINE_string(skip_dir, "", "Subdirectory name to skip.");
   brillo::FlagHelper::Init(argc, argv, "Chromium OS File Attrs Cleaner");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
@@ -22,8 +23,12 @@ int main(int argc, char* argv[]) {
     return EX_USAGE;
   }
 
+  std::vector<std::string> skip_recurse;
+  if (!FLAGS_skip_dir.empty())
+    skip_recurse.push_back(FLAGS_skip_dir);
+
   bool ret = true;
-  for (int i = 1; i < argc; ++i)
-    ret &= ScanDir(argv[i]);
+  for (int i = 2; i < argc; ++i)
+    ret &= ScanDir(argv[i], skip_recurse);
   return ret ? EX_OK : 1;
 }

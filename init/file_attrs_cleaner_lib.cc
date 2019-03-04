@@ -98,7 +98,8 @@ bool RemoveURLExtendedAttributes(const base::FilePath& path) {
   return xattr_success;
 }
 
-bool ScanDir(const base::FilePath& dir) {
+bool ScanDir(const base::FilePath& dir,
+             const std::vector<std::string>& skip_recurse) {
   // Internally glibc will use O_CLOEXEC when opening the directory.
   // Unfortunately, there is no opendirat() helper we could use (so that ScanDir
   // could accept a fd argument).
@@ -149,6 +150,11 @@ bool ScanDir(const base::FilePath& dir) {
     if (name == "." || name == "..")
       continue;
 
+    // If the path component is listed in |skip_recurse|, skip it.
+    if (std::find(skip_recurse.begin(), skip_recurse.end(), name) !=
+        skip_recurse.end())
+      continue;
+
     const base::FilePath path = dir.Append(de->d_name);
     if (de->d_type == DT_DIR) {
       // Don't cross mountpoints.
@@ -175,7 +181,7 @@ bool ScanDir(const base::FilePath& dir) {
       }
 
       // Descend into this directory.
-      ret &= ScanDir(path);
+      ret &= ScanDir(path, skip_recurse);
     } else if (de->d_type == DT_REG) {
       // Check the settings on this file.
 

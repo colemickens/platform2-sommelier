@@ -6,6 +6,7 @@
 #define INIT_FILE_ATTRS_CLEANER_H_
 
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 
@@ -30,11 +31,15 @@ bool CheckFileAttributes(const base::FilePath& path, bool isdir, int fd);
 bool RemoveURLExtendedAttributes(const base::FilePath& path);
 
 // Recursively scan the file attributes of paths under |dir|.
-bool ScanDir(const base::FilePath& dir);
+// Don't recurse into any subdirectories that exactly match any string in
+// |skip_recurse|.
+bool ScanDir(const base::FilePath& dir,
+             const std::vector<std::string>& skip_recurse);
 
 // Convenience function.
-static inline bool ScanDir(const std::string& dir) {
-  return ScanDir(base::FilePath(dir));
+static inline bool ScanDir(const std::string& dir,
+                           const std::vector<std::string>& skip_recurse) {
+  return ScanDir(base::FilePath(dir), skip_recurse);
 }
 
 }  // namespace file_attrs_cleaner

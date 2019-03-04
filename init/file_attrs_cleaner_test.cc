@@ -207,7 +207,7 @@ TEST_F(RemoveURLExtendedAttributesTest, OtherAttributesUnchanged) {
   EXPECT_EQ(0, setxattr(path.value().c_str(), "user.test", NULL, 0, 0));
   EXPECT_TRUE(RemoveURLExtendedAttributes(path));
 
-  // fgetxattr(2) call should succeed.
+  // getxattr(2) call should succeed.
   EXPECT_EQ(0, getxattr(path.value().c_str(), "user.test", NULL, 0));
 }
 
@@ -227,13 +227,13 @@ class ScanDirTest : public ::testing::Test {
 }  // namespace
 
 TEST_F(ScanDirTest, Empty) {
-  EXPECT_TRUE(ScanDir(test_dir_));
+  EXPECT_TRUE(ScanDir(test_dir_, {}));
 }
 
 TEST_F(ScanDirTest, Leaf) {
   CreateFile(test_dir_.Append("file1"), "");
   CreateFile(test_dir_.Append("file2"), "");
-  EXPECT_TRUE(ScanDir(test_dir_));
+  EXPECT_TRUE(ScanDir(test_dir_, {}));
 }
 
 TEST_F(ScanDirTest, Nested) {
@@ -253,5 +253,25 @@ TEST_F(ScanDirTest, Nested) {
   CreateFile(dir2.Append("file2"), "");
   EXPECT_TRUE(base::CreateDirectory(dir2.Append("emptydir")));
 
-  EXPECT_TRUE(ScanDir(test_dir_));
+  EXPECT_TRUE(ScanDir(test_dir_, {}));
+}
+
+TEST_F(ScanDirTest, SkipRecurse) {
+  CreateFile(test_dir_.Append("file1"), "");
+  CreateFile(test_dir_.Append("file2"), "");
+
+  const base::FilePath subdir(test_dir_.Append("subdir"));
+  EXPECT_TRUE(base::CreateDirectory(subdir));
+  const base::FilePath subfile(subdir.Append("subfile"));
+  CreateFile(subfile, "");
+  const char* subf_cstr = subfile.value().c_str();
+
+  EXPECT_EQ(
+      0, setxattr(subf_cstr, file_attrs_cleaner::xdg_origin_url, NULL, 0, 0));
+
+  std::vector<std::string> skip = {"subdir"};
+  EXPECT_TRUE(ScanDir(test_dir_, skip));
+
+  EXPECT_EQ(0,
+            getxattr(subf_cstr, file_attrs_cleaner::xdg_origin_url, NULL, 0));
 }
