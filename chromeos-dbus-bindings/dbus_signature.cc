@@ -320,6 +320,7 @@ std::unique_ptr<DBusType> DBusSignature::GetTypenameForSignature(
       break;
     case DBUS_TYPE_CHROMEOS_PROTOBUF:
       type = std::make_unique<ProtobufClass>(string(cur, end));
+      cur = end;
       break;
     default:
       LOG(ERROR) << "Unexpected token " << *signature;
