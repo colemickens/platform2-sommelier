@@ -41,15 +41,18 @@ using KeysetSignatureChallengeInfo =
 
 namespace {
 
-ChallengePublicKeyInfo MakePublicKeyInfo(
+KeyData MakeKeyData(
     const Blob& set_public_key_spki_der,
     const std::vector<ChallengeSignatureAlgorithm>& key_algorithms) {
-  ChallengePublicKeyInfo public_key_info;
-  public_key_info.set_public_key_spki_der(
+  KeyData key_data;
+  key_data.set_type(KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
+  ChallengePublicKeyInfo* const public_key_info =
+      key_data.add_challenge_response_key();
+  public_key_info->set_public_key_spki_der(
       BlobToString(set_public_key_spki_der));
   for (auto key_algorithm : key_algorithms)
-    public_key_info.add_signature_algorithm(key_algorithm);
-  return public_key_info;
+    public_key_info->add_signature_algorithm(key_algorithm);
+  return key_data;
 }
 
 KeysetSignatureChallengeInfo MakeFakeKeysetChallengeInfo(
@@ -88,14 +91,13 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
     std::unique_ptr<Blob> salt_signature;
     if (pass_salt_signature)
       salt_signature = std::make_unique<Blob>(kSaltSignature);
-    const ChallengePublicKeyInfo public_key_info =
-        MakePublicKeyInfo(kPublicKeySpkiDer, key_algorithms);
+    const KeyData key_data = MakeKeyData(kPublicKeySpkiDer, key_algorithms);
     const KeysetSignatureChallengeInfo keyset_challenge_info =
         MakeFakeKeysetChallengeInfo(kPublicKeySpkiDer, kSalt,
                                     salt_challenge_algorithm);
     operation_ = std::make_unique<ChallengeCredentialsDecryptOperation>(
         &challenge_service_, &tpm_, kDelegateBlob, kDelegateSecret, kUserEmail,
-        public_key_info, keyset_challenge_info, std::move(salt_signature),
+        key_data, keyset_challenge_info, std::move(salt_signature),
         MakeChallengeCredentialsDecryptResultWriter(&operation_result_));
   }
 
@@ -205,7 +207,7 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
   // KeyChallengeService, and to be present in the resulting UsernamePasskey.
   const std::string kUserEmail = "foo@example.com";
   // Fake Subject Public Key Information of the challenged cryptographic key.
-  // It's supplied to the operation as a field of both |public_key_info| and
+  // It's supplied to the operation as a field of both |key_data| and
   // |keyset_challenge_info| parameters. Then it's verified to be passed into
   // SignatureSealingBackend methods and to be used for challenge requests made
   // via KeyChallengeService.

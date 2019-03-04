@@ -45,7 +45,7 @@ class ChallengeCredentialsDecryptOperation
 
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.
-  // |public_key_info| describes the cryptographic key.
+  // |key_data| must have the |KEY_TYPE_CHALLENGE_RESPONSE| type.
   // |keyset_challenge_info| contains the encrypted representation of secrets.
   // |salt_signature| is an optional parameter which, when set, should contain a
   // signature of the salt.
@@ -56,7 +56,7 @@ class ChallengeCredentialsDecryptOperation
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret,
       const std::string& account_id,
-      const ChallengePublicKeyInfo& public_key_info,
+      const KeyData& key_data,
       const KeysetSignatureChallengeInfo& keyset_challenge_info,
       std::unique_ptr<brillo::Blob> salt_signature,
       const CompletionCallback& completion_callback);
@@ -95,11 +95,12 @@ class ChallengeCredentialsDecryptOperation
   const brillo::Blob delegate_blob_;
   const brillo::Blob delegate_secret_;
   const std::string account_id_;
-  const ChallengePublicKeyInfo public_key_info_;
+  const KeyData key_data_;
   const KeysetSignatureChallengeInfo keyset_challenge_info_;
   std::unique_ptr<brillo::Blob> salt_signature_;
   CompletionCallback completion_callback_;
   SignatureSealingBackend* const signature_sealing_backend_;
+  ChallengePublicKeyInfo public_key_info_;
   std::unique_ptr<SignatureSealingBackend::UnsealingSession> unsealing_session_;
   std::unique_ptr<brillo::SecureBlob> unsealed_secret_;
   base::WeakPtrFactory<ChallengeCredentialsDecryptOperation> weak_ptr_factory_{

@@ -43,7 +43,7 @@ ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
     const Blob& delegate_blob,
     const Blob& delegate_secret,
     const std::string& account_id,
-    const ChallengePublicKeyInfo& public_key_info,
+    const KeyData& key_data,
     const KeysetSignatureChallengeInfo& keyset_challenge_info,
     std::unique_ptr<brillo::Blob> salt_signature,
     const CompletionCallback& completion_callback)
@@ -52,11 +52,13 @@ ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
       delegate_blob_(delegate_blob),
       delegate_secret_(delegate_secret),
       account_id_(account_id),
-      public_key_info_(public_key_info),
+      key_data_(key_data),
       keyset_challenge_info_(keyset_challenge_info),
       salt_signature_(std::move(salt_signature)),
       completion_callback_(completion_callback),
-      signature_sealing_backend_(tpm_->GetSignatureSealingBackend()) {}
+      signature_sealing_backend_(tpm_->GetSignatureSealingBackend()) {
+  DCHECK_EQ(key_data.type(), KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
+}
 
 ChallengeCredentialsDecryptOperation::~ChallengeCredentialsDecryptOperation() =
     default;
@@ -90,6 +92,16 @@ bool ChallengeCredentialsDecryptOperation::StartProcessing() {
     LOG(ERROR) << "Signature sealing is disabled";
     return false;
   }
+  if (!key_data_.challenge_response_key_size()) {
+    LOG(ERROR) << "Missing challenge-response key information";
+    return false;
+  }
+  if (key_data_.challenge_response_key_size() > 1) {
+    LOG(ERROR)
+        << "Using multiple challenge-response keys at once is unsupported";
+    return false;
+  }
+  public_key_info_ = key_data_.challenge_response_key(0);
   if (!public_key_info_.signature_algorithm_size()) {
     LOG(ERROR) << "The key does not support any signature algorithm";
     return false;
@@ -185,9 +197,7 @@ void ChallengeCredentialsDecryptOperation::ProceedIfChallengesDone() {
     return;
   auto username_passkey = std::make_unique<UsernamePasskey>(account_id_.c_str(),
                                                             ConstructPasskey());
-  KeyData key_data;
-  key_data.set_type(KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
-  username_passkey->set_key_data(key_data);
+  username_passkey->set_key_data(key_data_);
   Complete(&completion_callback_, std::move(username_passkey));
   // |this| can be already destroyed at this point.
 }

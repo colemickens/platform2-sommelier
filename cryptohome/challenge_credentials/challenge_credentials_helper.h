@@ -81,15 +81,15 @@ class ChallengeCredentialsHelper final {
   ~ChallengeCredentialsHelper();
 
   // Generates and returns fresh random-based credentials for the given user
-  // and the referenced cryptographic key, and also returns the encrypted
+  // and the referenced key, and also returns the encrypted
   // (challenge-protected) representation of the created secrets that should
   // be stored in the created vault keyset. This operation may involve making
   // challenge request(s) against the specified key.
   //
-  // |public_key_info| describes the cryptographic key.
+  // |key_data| must have the |KEY_TYPE_CHALLENGE_RESPONSE| type.
   // The result is reported via |callback|.
   void GenerateNew(const std::string& account_id,
-                   const ChallengePublicKeyInfo& public_key_info,
+                   const KeyData& key_data,
                    std::unique_ptr<KeyChallengeService> key_challenge_service,
                    const GenerateNewCallback& callback);
 
@@ -100,12 +100,12 @@ class ChallengeCredentialsHelper final {
   // supported algorithms may be tolerated in some cases. This operation
   // involves making challenge request(s) against the key.
   //
-  // |public_key_info| describes the cryptographic key.
+  // |key_data| must have the |KEY_TYPE_CHALLENGE_RESPONSE| type.
   // |keyset_challenge_info| is the encrypted representation of secrets as
   // created via GenerateNew().
   // The result is reported via |callback|.
   void Decrypt(const std::string& account_id,
-               const ChallengePublicKeyInfo& public_key_info,
+               const KeyData& key_data,
                const KeysetSignatureChallengeInfo& keyset_challenge_info,
                std::unique_ptr<KeyChallengeService> key_challenge_service,
                const DecryptCallback& callback);
@@ -116,12 +116,12 @@ class ChallengeCredentialsHelper final {
   // lightweight analog of Decrypt() for cases where the actual credentials
   // aren't needed.
   //
-  // |public_key_info| describes the cryptographic key.
+  // |key_data| must have the |KEY_TYPE_CHALLENGE_RESPONSE| type.
   // |keyset_challenge_info| is the encrypted representation of secrets as
   // created via GenerateNew().
   // The result is reported via |callback|.
   void VerifyKey(const std::string& account_id,
-                 const ChallengePublicKeyInfo& public_key_info,
+                 const KeyData& key_data,
                  const KeysetSignatureChallengeInfo& keyset_challenge_info,
                  std::unique_ptr<KeyChallengeService> key_challenge_service,
                  const VerifyKeyCallback& callback);

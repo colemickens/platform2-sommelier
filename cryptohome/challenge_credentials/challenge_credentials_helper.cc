@@ -34,10 +34,11 @@ ChallengeCredentialsHelper::~ChallengeCredentialsHelper() {
 
 void ChallengeCredentialsHelper::GenerateNew(
     const std::string& account_id,
-    const ChallengePublicKeyInfo& public_key_info,
+    const KeyData& key_data,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     const GenerateNewCallback& callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
+  DCHECK_EQ(key_data.type(), KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
   DCHECK(!callback.is_null());
   CancelRunningOperation();
   DCHECK(!key_challenge_service_);
@@ -50,19 +51,19 @@ void ChallengeCredentialsHelper::GenerateNew(
 
 void ChallengeCredentialsHelper::Decrypt(
     const std::string& account_id,
-    const ChallengePublicKeyInfo& public_key_info,
+    const KeyData& key_data,
     const KeysetSignatureChallengeInfo& keyset_challenge_info,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     const DecryptCallback& callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
+  DCHECK_EQ(key_data.type(), KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
   DCHECK(!callback.is_null());
   CancelRunningOperation();
   DCHECK(!key_challenge_service_);
   key_challenge_service_ = std::move(key_challenge_service);
   operation_ = std::make_unique<ChallengeCredentialsDecryptOperation>(
       key_challenge_service_.get(), tpm_, delegate_blob_, delegate_secret_,
-      account_id, public_key_info, keyset_challenge_info,
-      nullptr /* salt_signature */,
+      account_id, key_data, keyset_challenge_info, nullptr /* salt_signature */,
       base::Bind(&ChallengeCredentialsHelper::OnDecryptCompleted,
                  base::Unretained(this), callback));
   operation_->Start();
@@ -70,11 +71,12 @@ void ChallengeCredentialsHelper::Decrypt(
 
 void ChallengeCredentialsHelper::VerifyKey(
     const std::string& account_id,
-    const ChallengePublicKeyInfo& public_key_info,
+    const KeyData& key_data,
     const KeysetSignatureChallengeInfo& keyset_challenge_info,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     const VerifyKeyCallback& callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
+  DCHECK_EQ(key_data.type(), KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
   DCHECK(!callback.is_null());
   CancelRunningOperation();
   DCHECK(!key_challenge_service_);
