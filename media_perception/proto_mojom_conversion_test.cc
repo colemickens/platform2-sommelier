@@ -313,6 +313,16 @@ TEST(ProtoMojomConversionTest, PresencePerceptionToMojom) {
   EXPECT_FLOAT_EQ(perception_ptr->presence_confidence, 0.5);
 }
 
+TEST(ProtoMojomConversionTest, OccupancyTriggerToMojom) {
+  mri::OccupancyTrigger occupancy_trigger;
+  occupancy_trigger.set_trigger(true);
+  occupancy_trigger.set_timestamp_ms(100);
+
+  OccupancyTriggerPtr occupancy_ptr = ToMojom(occupancy_trigger);
+  EXPECT_EQ(occupancy_ptr->trigger, true);
+  EXPECT_EQ(occupancy_ptr->timestamp_ms, 100);
+}
+
 }  // namespace
 }  // namespace mojom
 }  // namespace media_perception
@@ -651,6 +661,17 @@ TEST(ProtoMojomConversionTest, PresencePerceptionToProto) {
   PresencePerception perception = ToProto(perception_ptr);
   EXPECT_EQ(perception.timestamp_us(), 100);
   EXPECT_FLOAT_EQ(perception.presence_confidence(), 0.5);
+}
+
+TEST(ProtoMojomConversionTest, OccupancyTriggerToProto) {
+  chromeos::media_perception::mojom::OccupancyTriggerPtr occupancy_ptr =
+      chromeos::media_perception::mojom::OccupancyTrigger::New();
+  occupancy_ptr->trigger = true;
+  occupancy_ptr->timestamp_ms = 100;
+
+  OccupancyTrigger occupancy_trigger = ToProto(occupancy_ptr);
+  EXPECT_EQ(occupancy_trigger.trigger(), true);
+  EXPECT_EQ(occupancy_trigger.timestamp_ms(), 100);
 }
 
 }  // namespace

@@ -7,6 +7,7 @@ enum PipelineOutputType {
   OUTPUT_FRAME_PERCEPTION = 1;
   OUTPUT_HOTWORD_DETECTION = 2;
   OUTPUT_PRESENCE_PERCEPTION = 3;
+  OUTPUT_OCCUPANCY_TRIGGER = 4;
 }
 
 message PipelineOutput {
@@ -19,6 +20,7 @@ enum PerceptionInterfaceType {
   INTERFACE_FRAME_PERCEPTION = 1;
   INTERFACE_HOTWORD_DETECTION = 2;
   INTERFACE_PRESENCE_PERCEPTION = 3;
+  INTERFACE_OCCUPANCY_TRIGGER = 4;
 }
 
 message PerceptionInterface {

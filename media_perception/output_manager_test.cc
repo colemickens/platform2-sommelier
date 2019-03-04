@@ -84,6 +84,26 @@ class PresencePerceptionHandlerImpl :
       binding_;
 };
 
+class OccupancyTriggerHandlerImpl :
+  public chromeos::media_perception::mojom::OccupancyTriggerHandler {
+ public:
+  OccupancyTriggerHandlerImpl(
+      chromeos::media_perception::mojom::OccupancyTriggerHandlerRequest
+      request) : binding_(this, std::move(request)) {
+    LOG(INFO) << "Binding is bound: " << binding_.is_bound();
+  }
+
+  void OnOccupancyTrigger(
+      chromeos::media_perception::mojom::OccupancyTriggerPtr
+      occupancy_trigger) override {
+    occupancy_trigger_ = ToProto(occupancy_trigger);
+  }
+
+  OccupancyTrigger occupancy_trigger_;
+
+  mojo::Binding<chromeos::media_perception::mojom::OccupancyTriggerHandler>
+      binding_;
+};
 
 class OutputManagerTest : public testing::Test {
  protected:
@@ -203,6 +223,42 @@ TEST_F(OutputManagerTest, PresencePerceptionOutputManagerTest) {
 
   EXPECT_EQ(
       presence_perception_handler_impl.presence_perception_.timestamp_us(), 1);
+}
+
+TEST_F(OutputManagerTest, OccupancyTriggerOutputManagerTest) {
+  PerceptionInterfaces perception_interfaces;
+  PerceptionInterface* interface = perception_interfaces.add_interface();
+  interface->set_interface_type(
+      PerceptionInterfaceType::INTERFACE_OCCUPANCY_TRIGGER);
+  PipelineOutput* output = interface->add_output();
+  output->set_output_type(
+      PipelineOutputType::OUTPUT_OCCUPANCY_TRIGGER);
+  output->set_stream_name("fake_stream_name");
+
+  chromeos::media_perception::mojom::PerceptionInterfacesPtr interfaces_ptr =
+      chromeos::media_perception::mojom::PerceptionInterfaces::New();
+  OutputManager output_manager(
+      "fake_presence_perception_configuration",
+      rtanalytics_,
+      perception_interfaces,
+      &interfaces_ptr);
+  // Verify that the mojo interface was created correctly.
+  EXPECT_TRUE(interfaces_ptr->occupancy_trigger_handler_request.is_pending());
+  EXPECT_EQ(fake_rtanalytics_->GetMostRecentOutputStreamName(),
+            "fake_stream_name");
+
+  OccupancyTriggerHandlerImpl occupancy_trigger_handler_impl(
+      std::move(interfaces_ptr->occupancy_trigger_handler_request));
+  base::RunLoop().RunUntilIdle();
+
+  OccupancyTrigger occupancy_trigger;
+  occupancy_trigger.set_trigger(true);
+  output_manager.HandleOccupancyTrigger(
+      Serialized<OccupancyTrigger>(occupancy_trigger).GetBytes());
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_EQ(
+      occupancy_trigger_handler_impl.occupancy_trigger_.trigger(), true);
 }
 
 }  // namespace

@@ -291,6 +291,13 @@ PresencePerceptionPtr ToMojom(const mri::PresencePerception& perception) {
   return perception_ptr;
 }
 
+OccupancyTriggerPtr ToMojom(const mri::OccupancyTrigger& occupancy_trigger) {
+  OccupancyTriggerPtr occupancy_ptr = OccupancyTrigger::New();
+  occupancy_ptr->trigger = occupancy_trigger.trigger();
+  occupancy_ptr->timestamp_ms = occupancy_trigger.timestamp_ms();
+  return occupancy_ptr;
+}
+
 }  // namespace mojom
 }  // namespace media_perception
 }  // namespace chromeos
@@ -645,6 +652,18 @@ PresencePerception ToProto(
   perception.set_timestamp_us(perception_ptr->timestamp_us);
   perception.set_presence_confidence(perception_ptr->presence_confidence);
   return perception;
+}
+
+OccupancyTrigger ToProto(
+    const chromeos::media_perception::mojom::OccupancyTriggerPtr&
+        occupancy_ptr) {
+  OccupancyTrigger occupancy_trigger;
+  if (occupancy_ptr.is_null())
+    return occupancy_trigger;
+
+  occupancy_trigger.set_trigger(occupancy_ptr->trigger);
+  occupancy_trigger.set_timestamp_ms(occupancy_ptr->timestamp_ms);
+  return occupancy_trigger;
 }
 
 }  // namespace mri

@@ -8,6 +8,7 @@
 
 #include "media_perception/frame_perception.pb.h"
 #include "media_perception/hotword_detection.pb.h"
+#include "media_perception/occupancy_trigger.pb.h"
 #include "media_perception/presence_perception.pb.h"
 #include "media_perception/proto_mojom_conversion.h"
 #include "media_perception/serialized_proto.h"
@@ -118,6 +119,37 @@ OutputManager::OutputManager(
       }
       continue;
     }
+
+    // Occupancy trigger interface setup.
+    if (interface.interface_type() ==
+        PerceptionInterfaceType::INTERFACE_OCCUPANCY_TRIGGER) {
+      (*interfaces_ptr)->occupancy_trigger_handler_request =
+          mojo::MakeRequest(&occupancy_trigger_handler_ptr_);
+      occupancy_trigger_handler_ptr_.set_connection_error_handler(
+          base::Bind(&OnConnectionClosedOrError,
+          "INTERFACE_OCCUPANCY_TRIGGER"));
+
+      // Occpancy trigger outputs setup.
+      for (const PipelineOutput& output : interface.output()) {
+        if (output.output_type() ==
+            PipelineOutputType::OUTPUT_OCCUPANCY_TRIGGER) {
+          SerializedSuccessStatus serialized_status =
+              rtanalytics->SetPipelineOutputHandler(
+                  configuration_name, output.stream_name(),
+                  std::bind(&OutputManager::HandleOccupancyTrigger,
+                            this, std::placeholders::_1));
+          SuccessStatus status = Serialized<SuccessStatus>(
+              serialized_status).Deserialize();
+          if (!status.success()) {
+            LOG(ERROR) << "Failed to set output handler for "
+                       << configuration_name << " with output "
+                       << output.stream_name();
+          }
+        }
+      }
+      continue;
+    }
+
   }
 }
 
@@ -173,6 +205,25 @@ void OutputManager::HandlePresencePerception(
       Serialized<PresencePerception>(bytes).Deserialize();
   presence_perception_handler_ptr_->OnPresencePerception(
       chromeos::media_perception::mojom::ToMojom(presence_perception));
+}
+
+void OutputManager::HandleOccupancyTrigger(
+    const std::vector<uint8_t>& bytes) {
+  if (!occupancy_trigger_handler_ptr_.is_bound()) {
+    LOG(WARNING)
+        << "Got occupancy trigger output but handler ptr is not bound.";
+    return;
+  }
+
+  if (occupancy_trigger_handler_ptr_.get() == nullptr) {
+    LOG(ERROR) << "Handler ptr is null.";
+    return;
+  }
+
+  OccupancyTrigger occupancy_trigger =
+      Serialized<OccupancyTrigger>(bytes).Deserialize();
+  occupancy_trigger_handler_ptr_->OnOccupancyTrigger(
+      chromeos::media_perception::mojom::ToMojom(occupancy_trigger));
 }
 
 }  // namespace mri

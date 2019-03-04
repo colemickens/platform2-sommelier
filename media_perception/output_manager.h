@@ -36,6 +36,8 @@ class OutputManager {
 
   void HandlePresencePerception(const std::vector<uint8_t>& bytes);
 
+  void HandleOccupancyTrigger(const std::vector<uint8_t>& bytes);
+
  private:
   chromeos::media_perception::mojom::FramePerceptionHandlerPtr
       frame_perception_handler_ptr_;
@@ -45,6 +47,9 @@ class OutputManager {
 
   chromeos::media_perception::mojom::PresencePerceptionHandlerPtr
       presence_perception_handler_ptr_;
+
+  chromeos::media_perception::mojom::OccupancyTriggerHandlerPtr
+      occupancy_trigger_handler_ptr_;
 };
 
 }  // namespace mri

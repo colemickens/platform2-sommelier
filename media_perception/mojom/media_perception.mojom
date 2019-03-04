@@ -9,6 +9,7 @@ module chromeos.media_perception.mojom;
 import "mojom/device_management.mojom";
 import "mojom/frame_perception.mojom";
 import "mojom/hotword_detection.mojom";
+import "mojom/occupancy_trigger.mojom";
 import "mojom/pipeline.mojom";
 import "mojom/presence_perception.mojom";
 
@@ -23,6 +24,7 @@ struct PerceptionInterfaces {
   FramePerceptionHandler&? frame_perception_handler_request@0;
   HotwordDetectionHandler&? hotword_detection_handler_request@1;
   PresencePerceptionHandler&? presence_perception_handler_request@2;
+  OccupancyTriggerHandler&? occupancy_trigger_handler_request@3;
 };
 
 interface MediaPerception {

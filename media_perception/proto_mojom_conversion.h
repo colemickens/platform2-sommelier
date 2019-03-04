@@ -12,6 +12,7 @@
 #include "media_perception/frame_perception.pb.h"
 #include "media_perception/hotword_detection.pb.h"
 #include "media_perception/media_perception_mojom.pb.h"
+#include "media_perception/occupancy_trigger.pb.h"
 #include "media_perception/pipeline.pb.h"
 #include "media_perception/presence_perception.pb.h"
 #include "mojom/common.mojom.h"
@@ -19,6 +20,7 @@
 #include "mojom/frame_perception.mojom.h"
 #include "mojom/hotword_detection.mojom.h"
 #include "mojom/media_perception.mojom.h"
+#include "mojom/occupancy_trigger.mojom.h"
 #include "mojom/pipeline.mojom.h"
 #include "mojom/presence_perception.mojom.h"
 
@@ -61,6 +63,9 @@ PipelineStatePtr ToMojom(const mri::PipelineState& state);
 
 // Presence perception conversions.
 PresencePerceptionPtr ToMojom(const mri::PresencePerception& perception);
+
+// Occupancy trigger conversions.
+OccupancyTriggerPtr ToMojom(const mri::OccupancyTrigger& occupancy_trigger);
 
 }  // namespace mojom
 }  // namespace media_perception
@@ -129,6 +134,11 @@ PipelineState ToProto(
 PresencePerception ToProto(
     const chromeos::media_perception::mojom::PresencePerceptionPtr&
         perception_ptr);
+
+// Occupancy trigger conversions.
+OccupancyTrigger ToProto(
+    const chromeos::media_perception::mojom::OccupancyTriggerPtr&
+    occupancy_ptr);
 
 }  // namespace mri
 
