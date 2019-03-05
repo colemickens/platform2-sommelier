@@ -328,22 +328,14 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   static const char* const kDefaultBgscanMethod;
   static const uint16_t kBackgroundScanIntervalSeconds;
-  static const uint16_t kDefaultBgscanShortIntervalSeconds;
-  static const int32_t kDefaultBgscanSignalThresholdDbm;
-  static const uint16_t kDefaultRoamThresholdDb;
   static const uint16_t kDefaultScanIntervalSeconds;
   static const time_t kMaxBSSResumeAgeSeconds;
   static const char kInterfaceStateUnknown[];
-  // Delay between scans when supplicant finds "No suitable network".
-  static const time_t kRescanIntervalSeconds;
   // Number of times to quickly attempt a scan after startup / disconnect.
   static const int kNumFastScanAttempts;
   static const int kFastScanIntervalSeconds;
-  static const int kPendingTimeoutSeconds;
   static const int kReconnectTimeoutSeconds;
   static const int kRequestStationInfoPeriodSeconds;
-  static const int kMaxRetryCreateInterfaceAttempts;
-  static const int kRetryCreateInterfaceIntervalSeconds;
   static const size_t kStuckQueueLengthThreshold;
   // Number of milliseconds to wait after waking from suspend to report the
   // connection status to metrics.

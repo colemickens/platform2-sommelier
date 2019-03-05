@@ -71,10 +71,7 @@ static string ObjectID(WiFi* w) { return w->GetRpcIdentifier(); }
 // statics
 const char* const WiFi::kDefaultBgscanMethod =
     WPASupplicant::kNetworkBgscanMethodSimple;
-const uint16_t WiFi::kDefaultBgscanShortIntervalSeconds = 64;
-const int32_t WiFi::kDefaultBgscanSignalThresholdDbm = -72;
 const uint16_t WiFi::kDefaultScanIntervalSeconds = 60;
-const uint16_t WiFi::kDefaultRoamThresholdDb = 18;  // Supplicant's default.
 
 // Scan interval while connected.
 const uint16_t WiFi::kBackgroundScanIntervalSeconds = 360;
@@ -82,14 +79,10 @@ const uint16_t WiFi::kBackgroundScanIntervalSeconds = 360;
 // across a suspend/resume.
 const time_t WiFi::kMaxBSSResumeAgeSeconds = 10;
 const char WiFi::kInterfaceStateUnknown[] = "shill-unknown";
-const time_t WiFi::kRescanIntervalSeconds = 1;
 const int WiFi::kNumFastScanAttempts = 3;
 const int WiFi::kFastScanIntervalSeconds = 10;
-const int WiFi::kPendingTimeoutSeconds = 15;
 const int WiFi::kReconnectTimeoutSeconds = 10;
 const int WiFi::kRequestStationInfoPeriodSeconds = 20;
-const int WiFi::kMaxRetryCreateInterfaceAttempts = 6;
-const int WiFi::kRetryCreateInterfaceIntervalSeconds = 10;
 const size_t WiFi::kStuckQueueLengthThreshold = 40;  // ~1 full-channel scan
 // 1 second is less than the time it takes to scan and establish a new
 // connection after waking, but should be enough time for supplicant to update
@@ -107,6 +100,15 @@ const int WiFi::kDefaultDisconnectReason = INT32_MAX;
 const std::vector<unsigned char> WiFi::kRandomMACMask{255, 255, 255, 0, 0, 0};
 
 namespace {
+const uint16_t kDefaultBgscanShortIntervalSeconds = 64;
+const int32_t kDefaultBgscanSignalThresholdDbm = -72;
+const uint16_t kDefaultRoamThresholdDb = 18;  // Supplicant's default.
+// Delay between scans when supplicant finds "No suitable network".
+const time_t kRescanIntervalSeconds = 1;
+const int kPendingTimeoutSeconds = 15;
+const int kMaxRetryCreateInterfaceAttempts = 6;
+const int kRetryCreateInterfaceIntervalSeconds = 10;
+
 bool IsPrintableAsciiChar(char c) {
   return (c >= ' ' && c <= '~');
 }
