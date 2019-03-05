@@ -9,4 +9,4 @@ PartOf=boot-services.target
 
 [Service]
 Restart=always
-ExecStart=/usr/share/cros/init/chapsd.sh
+ExecStart=/usr/sbin/chapsd --auto_load_system_token
