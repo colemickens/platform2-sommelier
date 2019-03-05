@@ -49,7 +49,6 @@ _IUSE = [
     'gdmwimax',
     'hammerd_api',
     'iwlwifi_dump',
-    'json_store',
     'kvm_host',
     'metrics_uploader',
     'mojo',

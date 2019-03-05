@@ -31,12 +31,6 @@ using std::vector;
 
 namespace shill {
 
-#if defined(ENABLE_JSON_STORE)
-namespace {
-const char kFileExtensionJson[] = "json";
-}
-#endif
-
 // static
 const char Profile::kUserProfileListPathname[] =
     RUNDIR "/loaded_profile_list";
@@ -420,11 +414,7 @@ FilePath Profile::GetFinalStoragePath(
 
   // TODO(petkov): Validate the directory permissions, etc.
 
-#if defined(ENABLE_JSON_STORE)
-  return base_path.AddExtension(kFileExtensionJson);
-#else
   return base_path;
-#endif
 }
 
 }  // namespace shill

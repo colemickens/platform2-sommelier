@@ -291,13 +291,8 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
 }
 
 TEST_F(DefaultProfileTest, GetStoragePath) {
-#if defined(ENABLE_JSON_STORE)
-  EXPECT_EQ(storage_path() + "/default.profile.json",
-            profile_->persistent_profile_path().value());
-#else
   EXPECT_EQ(storage_path() + "/default.profile",
             profile_->persistent_profile_path().value());
-#endif
 }
 
 TEST_F(DefaultProfileTest, ConfigureService) {

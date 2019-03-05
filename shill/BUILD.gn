@@ -66,10 +66,6 @@ pkg_config("target_defaults") {
     defines += [ "DISABLE_DHCPV6" ]
   }
 
-  if (use.json_store) {
-    defines += [ "ENABLE_JSON_STORE" ]
-  }
-
   if (!use.pppoe) {
     defines += [ "DISABLE_PPPOE" ]
   }
@@ -208,16 +204,14 @@ pkg_config("libshill_config") {
 
 pkg_config("libshill_all_dependent_config") {
   pkg_deps = [
+    # For g_key_*(), etc in key_file_store.*
+    "glib-2.0",
     "libcares",
     "libmetrics-${libbase_ver}",
     "libpasswordprovider",
     "libpower_manager-client",
     "protobuf-lite",
   ]
-  if (!use.json_store) {
-    # for g_key_*(), etc.
-    pkg_deps += [ "glib-2.0" ]
-  }
   if (use.wimax) {
     pkg_deps += [ "libwimax_manager-client" ]
   }
@@ -342,6 +336,7 @@ static_library("libshill") {
     "icmp_session_factory.cc",
     "ip_address_store.cc",
     "ipconfig.cc",
+    "key_file_store.cc",
     "key_value_store.cc",
     "link_monitor.cc",
     "logging.cc",
@@ -440,14 +435,6 @@ static_library("libshill") {
       "protobuf_lite_streams.cc",
     ]
     deps += [ ":generate_cellular_proxies" ]
-  }
-
-  if (!use.json_store) {
-    sources += [ "key_file_store.cc" ]
-  }
-
-  if (use.json_store) {
-    sources += [ "json_store.cc" ]
   }
 
   if (use.vpn) {
@@ -712,8 +699,8 @@ if (use.test) {
       "ethernet/ethernet_service_test.cc",
       "ethernet/ethernet_test.cc",
       "ethernet/mock_ethernet.cc",
-      "ethernet/mock_ethernet_service.cc",
       "ethernet/mock_ethernet_provider.cc",
+      "ethernet/mock_ethernet_service.cc",
       "external_task_test.cc",
       "fake_store.cc",
       "file_reader_test.cc",
@@ -724,6 +711,7 @@ if (use.test) {
       "icmp_test.cc",
       "ip_address_store_test.cc",
       "ipconfig_test.cc",
+      "key_file_store_test.cc",
       "key_value_store_test.cc",
       "link_monitor_test.cc",
       "manager_test.cc",
@@ -866,14 +854,6 @@ if (use.test) {
 
     if (use.dhcpv6) {
       sources += [ "dhcp/dhcpv6_config_test.cc" ]
-    }
-
-    if (!use.json_store) {
-      sources += [ "key_file_store_test.cc" ]
-    }
-
-    if (use.json_store) {
-      sources += [ "json_store_test.cc" ]
     }
 
     if (use.vpn) {

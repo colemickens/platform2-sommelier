@@ -210,13 +210,8 @@ TEST_F(ProfileTest, GetStoragePath) {
   profile = new Profile(
       control_interface(), metrics(), manager(), id, FilePath(kDirectory),
       false);
-#if defined(ENABLE_JSON_STORE)
-  EXPECT_EQ("/a/place/for/chronos/someprofile.profile.json",
-            profile->persistent_profile_path_.value());
-#else
   EXPECT_EQ("/a/place/for/chronos/someprofile.profile",
             profile->persistent_profile_path_.value());
-#endif
 }
 
 TEST_F(ProfileTest, ServiceManagement) {
@@ -446,9 +441,6 @@ TEST_F(ProfileTest, InitStorage) {
   FilePath final_path(
       base::StringPrintf("%s/%s/%s.profile", storage_path().c_str(),
                          id.user.c_str(), id.identifier.c_str()));
-#ifdef ENABLE_JSON_STORE
-  final_path = final_path.AddExtension("json");
-#endif
   string data = "]corrupt_data[";
   EXPECT_EQ(data.size(), base::WriteFile(final_path, data.data(), data.size()));
 
