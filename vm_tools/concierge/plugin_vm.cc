@@ -27,11 +27,22 @@ namespace {
 // Path to the crosvm binary.
 constexpr char kCrosvmBin[] = "/usr/bin/crosvm";
 
+// Name of the plugin dispatcher runtime directory.
+constexpr char kDispatcherRuntimeDir[] = "/run/pvm";
+
+// Name of the plugin dispatcher socket.
+constexpr char kDispatcherSocket[] = "vmplugin_dispatcher.socket";
+
 // Path to the plugin binaries and other assets.
 constexpr char kPluginBinDir[] = "/opt/pita/";
 
 // Name of the plugin VM binary.
 constexpr char kPluginBinName[] = "pvm";
+
+constexpr gid_t kPluginGidMap[] = {
+    7,    // lp
+    600,  // cras
+};
 
 // Name of the runtime directory inside the jail.
 constexpr char kRuntimeDir[] = "/run/pvm";
@@ -176,6 +187,11 @@ bool PluginVm::Start(uint32_t cpus,
   // clang-format on
 
   std::vector<string> bind_mounts = {
+      "/dev/log:/dev/log:true",
+      // TODO(b:117218264) replace with CUPS proxy socket when ready.
+      "/run/cups/cups.sock:/run/cups/cups.sock:true",
+      // TODO(b:127478233) replace with CRAS proxy socket when ready.
+      "/run/cras/.cras_socket:/run/cras/.cras_socket:true",
       base::StringPrintf("%s:%s:false", kPluginBinDir, kPluginBinDir),
       // This is directory where the VM image resides.
       base::StringPrintf("%s:%s:true", stateful_dir.value().c_str(),
@@ -195,9 +211,27 @@ bool PluginVm::Start(uint32_t cpus,
                              .c_str()),
   };
 
+  // When testing dispatcher socket might be missing, let's warn and continue.
+  if (!PathExists(
+          base::FilePath(kDispatcherRuntimeDir).Append(kDispatcherSocket))) {
+    LOG(WARNING) << "Plugin dispatcher socket is missing";
+  } else {
+    bind_mounts.emplace_back(base::StringPrintf(
+        "%s:%s:true",
+        base::FilePath(kDispatcherRuntimeDir)
+            .Append(kDispatcherSocket)
+            .value()
+            .c_str(),
+        base::FilePath(kRuntimeDir).Append(kDispatcherSocket).value().c_str()));
+  }
+
   // Put everything into the brillo::ProcessImpl.
   for (auto& arg : args) {
     process_.AddArg(std::move(arg));
+  }
+  for (auto gid : kPluginGidMap) {
+    process_.AddArg("--plugin-gid-map");
+    process_.AddArg(base::StringPrintf("%u:%u:1", gid, gid));
   }
   for (auto& mount : bind_mounts) {
     process_.AddArg("--plugin-mount");
