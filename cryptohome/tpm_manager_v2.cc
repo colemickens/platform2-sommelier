@@ -121,6 +121,7 @@ bool GetVersionInfo(cryptohome::Tpm::TpmVersionInfo* version_info) {
     return false;
   }
   ::tpm_manager::GetTpmStatusRequest request;
+  request.set_include_version_info(true);
   auto method = base::Bind(&::tpm_manager::TpmOwnershipDBusProxy::GetTpmStatus,
                            base::Unretained(&proxy), request);
   ::tpm_manager::GetTpmStatusReply reply;
