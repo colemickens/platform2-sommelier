@@ -1,3 +1,0 @@
-Name: libmidis
-Description: MIDI service client library
-Libs: -lmidis
