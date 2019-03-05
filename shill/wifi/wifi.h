@@ -344,8 +344,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static const int kRequestStationInfoPeriodSeconds;
   static const int kMaxRetryCreateInterfaceAttempts;
   static const int kRetryCreateInterfaceIntervalSeconds;
-  static const size_t kMinumumFrequenciesToScan;
-  static const float kDefaultFractionPerScan;
   static const size_t kStuckQueueLengthThreshold;
   // Number of milliseconds to wait after waking from suspend to report the
   // connection status to metrics.

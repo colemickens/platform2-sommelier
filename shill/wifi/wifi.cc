@@ -90,8 +90,6 @@ const int WiFi::kReconnectTimeoutSeconds = 10;
 const int WiFi::kRequestStationInfoPeriodSeconds = 20;
 const int WiFi::kMaxRetryCreateInterfaceAttempts = 6;
 const int WiFi::kRetryCreateInterfaceIntervalSeconds = 10;
-const size_t WiFi::kMinumumFrequenciesToScan = 4;  // Arbitrary but > 0.
-const float WiFi::kDefaultFractionPerScan = 0.34;
 const size_t WiFi::kStuckQueueLengthThreshold = 40;  // ~1 full-channel scan
 // 1 second is less than the time it takes to scan and establish a new
 // connection after waking, but should be enough time for supplicant to update
