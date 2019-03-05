@@ -6,6 +6,8 @@
 #define VM_TOOLS_CONCIERGE_USB_CONTROL_H_
 
 #include <stdint.h>
+#include <string>
+#include <vector>
 
 namespace vm_tools {
 namespace concierge {
@@ -17,7 +19,8 @@ enum UsbControlResponseType {
   NO_SUCH_DEVICE,       // Format: "no_such_device"
   NO_SUCH_PORT,         // Format: "no_such_port"
   FAIL_TO_OPEN_DEVICE,  // Format: "fail_to_open_device"
-  DEVICE,               // Fomrat: "device <port> <vid> <pid>"
+  DEVICES,              // Format: "devices <port> <vid> <pid>"
+  ERROR,                // Format: "error <reason>"
 };
 
 // A device connected to guest kernel.
@@ -30,10 +33,9 @@ struct UsbDevice {
 // Response type from crosvm usb control commands.
 struct UsbControlResponse {
   UsbControlResponseType type;
-  union {
-    uint8_t port;
-    UsbDevice device;
-  };
+  std::string reason;              // type_ == ERROR
+  std::vector<UsbDevice> devices;  // type_ == DEVICES
+  uint8_t port;                    // type_ == OK
 };
 
 }  // namespace concierge

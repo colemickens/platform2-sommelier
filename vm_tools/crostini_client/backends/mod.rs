@@ -224,5 +224,25 @@ impl_backend! {
             container_name: &str,
             username: &str,
         ) -> Result<(), Box<Error>>;
+
+        // USB
+        fn usb_attach(
+            &mut self,
+            vm_name: &str,
+            user_id_hash: &str,
+            bus: u8,
+            device: u8,
+        ) -> Result<u8, Box<Error>>;
+        fn usb_detach(
+            &mut self,
+            vm_name: &str,
+            user_id_hash: &str,
+            port: u8,
+        ) -> Result<(), Box<Error>>;
+        fn usb_list(
+            &mut self,
+            vm_name: &str,
+            user_id_hash: &str,
+        ) -> Result<Vec<(u8, u16, u16, String)>, Box<Error>>;
     }
 }

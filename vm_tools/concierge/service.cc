@@ -1977,7 +1977,8 @@ std::unique_ptr<dbus::Response> Service::AttachUsbDevice(
   if (!iter->second->AttachUsbDevice(
           request.bus_number(), request.port_number(), request.vendor_id(),
           request.product_id(), fd.get(), &usb_response)) {
-    LOG(ERROR) << "Failed to attach USB device";
+    LOG(ERROR) << "Failed to attach USB device: " << usb_response.reason;
+    response.set_reason(std::move(usb_response.reason));
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }

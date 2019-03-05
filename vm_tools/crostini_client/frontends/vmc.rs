@@ -15,10 +15,15 @@ enum VmcError {
     Command(&'static str, u32, Box<Error>),
     ExpectedCrosUserIdHash,
     ExpectedName,
+    ExpectedNoArgs,
+    ExpectedU8Bus,
+    ExpectedU8Device,
+    ExpectedU8Port,
     ExpectedVmAndContainer,
     ExpectedVmAndFileName,
     ExpectedVmAndPath,
-    ExpectedNoArgs,
+    ExpectedVmBusDevice,
+    ExpectedVmPort,
     InvalidEmail,
     MissingActiveSession,
     UnknownSubcommand(String),
@@ -54,7 +59,12 @@ impl fmt::Display for VmcError {
                 write!(f, "expected <vm name> <file name> [removable storage name]")
             }
             ExpectedVmAndPath => write!(f, "expected <vm name> <path>"),
+            ExpectedVmBusDevice => write!(f, "expected <vm name> <bus>:<device>"),
             ExpectedNoArgs => write!(f, "expected no arguments"),
+            ExpectedU8Bus => write!(f, "expected <bus> to fit into an 8-bit integer"),
+            ExpectedU8Device => write!(f, "expected <device> to fit into an 8-bit integer"),
+            ExpectedU8Port => write!(f, "expected <port> to fit into an 8-bit integer"),
+            ExpectedVmPort => write!(f, "expected <vm name> <port>"),
             InvalidEmail => write!(f, "the active session has an invalid email address"),
             MissingActiveSession => write!(
                 f,
@@ -266,6 +276,79 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 
         Ok(())
     }
+
+    fn usb_attach(&mut self) -> VmcResult {
+        let (vm_name, bus_device) = match self.args.len() {
+            2 => (self.args[0], self.args[1]),
+            _ => return Err(ExpectedVmBusDevice.into()),
+        };
+
+        let mut bus_device_parts = bus_device.splitn(2, ':');
+        let (bus, device) = match (bus_device_parts.next(), bus_device_parts.next()) {
+            (Some(bus_str), Some(device_str)) => (
+                bus_str.parse().or(Err(ExpectedU8Bus))?,
+                device_str.parse().or(Err(ExpectedU8Device))?,
+            ),
+            _ => return Err(ExpectedVmBusDevice.into()),
+        };
+
+        let user_id_hash = self
+            .environ
+            .get("CROS_USER_ID_HASH")
+            .ok_or(ExpectedCrosUserIdHash)?;
+
+        let guest_port = try_command!(self.backend.usb_attach(vm_name, user_id_hash, bus, device));
+
+        println!(
+            "usb device at bus={} device={} attached to vm {} at port={}",
+            bus, device, vm_name, guest_port
+        );
+
+        Ok(())
+    }
+
+    fn usb_detach(&mut self) -> VmcResult {
+        let (vm_name, port) = match self.args.len() {
+            2 => (self.args[0], self.args[1].parse().or(Err(ExpectedU8Port))?),
+            _ => return Err(ExpectedVmPort.into()),
+        };
+
+        let user_id_hash = self
+            .environ
+            .get("CROS_USER_ID_HASH")
+            .ok_or(ExpectedCrosUserIdHash)?;
+
+        try_command!(self.backend.usb_detach(vm_name, user_id_hash, port));
+
+        println!("usb device detached from port {}", port);
+
+        Ok(())
+    }
+
+    fn usb_list(&mut self) -> VmcResult {
+        if self.args.len() != 1 {
+            return Err(ExpectedName.into());
+        }
+
+        let vm_name = self.args[0];
+        let user_id_hash = self
+            .environ
+            .get("CROS_USER_ID_HASH")
+            .ok_or(ExpectedCrosUserIdHash)?;
+
+        let devices = try_command!(self.backend.usb_list(vm_name, user_id_hash));
+        if devices.is_empty() {
+            println!("No attached usb devices");
+        }
+        for (port, vendor_id, product_id, name) in devices {
+            println!(
+                "Port {:03} ID {:04x}:{:04x} {}",
+                port, vendor_id, product_id, name
+            );
+        }
+
+        Ok(())
+    }
 }
 
 const USAGE: &str = r#"
@@ -275,7 +358,11 @@ const USAGE: &str = r#"
      export <vm name> <file name> [removable storage name] |
      list |
      share <vm name> <path> |
-     container <vm name> <container name> [ <image server> <image alias> ] ]
+     container <vm name> <container name> [ <image server> <image alias> ]  |
+     usb-attach <vm name> <bus>:<device> |
+     usb-detach <vm name> <port> |
+     usb-list <vm name> |
+     help ]
 "#;
 
 /// A frontend that implements a `vmc` (Virtual Machine Controller) style command line interface.
@@ -323,6 +410,9 @@ impl Frontend for Vmc {
             "list" => command.list(),
             "share" => command.share(),
             "container" => command.container(),
+            "usb-attach" => command.usb_attach(),
+            "usb-detach" => command.usb_detach(),
+            "usb-list" => command.usb_list(),
             _ => Err(UnknownSubcommand(command_name.to_owned()).into()),
         }
     }
@@ -345,6 +435,10 @@ mod tests {
             &["vmc", "export", "termina", "file name", "removable media"],
             &["vmc", "list"],
             &["vmc", "share", "termina", "my-folder"],
+            &["vmc", "usb-attach", "termina", "1:2"],
+            &["vmc", "usb-detach", "termina", "5"],
+            &["vmc", "usb-detach", "termina", "5"],
+            &["vmc", "usb-list", "termina"],
             &["vmc", "--help"],
             &["vmc", "-h"],
         ];
@@ -362,6 +456,14 @@ mod tests {
             &["vmc", "list", "extra args"],
             &["vmc", "share"],
             &["vmc", "share", "too", "many", "args"],
+            &["vmc", "usb-attach"],
+            &["vmc", "usb-attach", "termina"],
+            &["vmc", "usb-attach", "termina", "whatever"],
+            &["vmc", "usb-attach", "termina", "1:2:1dee:93d2"],
+            &["vmc", "usb-detach"],
+            &["vmc", "usb-detach", "not-a-number"],
+            &["vmc", "usb-list"],
+            &["vmc", "usb-list", "termina", "args"],
         ];
 
         let environ = vec![("CROS_USER_ID_HASH", "fake_hash")]

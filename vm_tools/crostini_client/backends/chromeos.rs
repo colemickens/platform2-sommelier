@@ -10,7 +10,7 @@ use std::fmt;
 use std::fs::OpenOptions;
 use std::os::unix::fs::OpenOptionsExt;
 use std::os::unix::io::IntoRawFd;
-use std::path::{Component, Path};
+use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 
 use dbus::{BusType, Connection, ConnectionItem, Message, OwnedFd};
@@ -56,6 +56,11 @@ const EXPORT_DISK_IMAGE_METHOD: &str = "ExportDiskImage";
 const LIST_VM_DISKS_METHOD: &str = "ListVmDisks";
 const START_CONTAINER_METHOD: &str = "StartContainer";
 const GET_CONTAINER_SSH_KEYS_METHOD: &str = "GetContainerSshKeys";
+const SYNC_VM_TIMES_METHOD: &str = "SyncVmTimes";
+const ATTACH_USB_DEVICE_METHOD: &str = "AttachUsbDevice";
+const DETACH_USB_DEVICE_METHOD: &str = "DetachUsbDevice";
+const LIST_USB_DEVICE_METHOD: &str = "ListUsbDevices";
+const START_PLUGIN_VM_METHOD: &str = "StartPluginVm";
 const CONTAINER_STARTUP_FAILED_SIGNAL: &str = "ContainerStartupFailed";
 
 // cicerone dbus-constants.h
@@ -94,21 +99,40 @@ const START_SERVER_METHOD: &str = "StartServer";
 const STOP_SERVER_METHOD: &str = "StopServer";
 const SHARE_PATH_METHOD: &str = "SharePath";
 
+// permission_broker dbus-constants.h
+const PERMISSION_BROKER_INTERFACE: &str = "org.chromium.PermissionBroker";
+const PERMISSION_BROKER_SERVICE_PATH: &str = "/org/chromium/PermissionBroker";
+const PERMISSION_BROKER_SERVICE_NAME: &str = "org.chromium.PermissionBroker";
+const CHECK_PATH_ACCESS: &str = "CheckPathAccess";
+const OPEN_PATH: &str = "OpenPath";
+const REQUEST_TCP_PORT_ACCESS: &str = "RequestTcpPortAccess";
+const REQUEST_UDP_PORT_ACCESS: &str = "RequestUdpPortAccess";
+const RELEASE_TCP_PORT: &str = "ReleaseTcpPort";
+const RELEASE_UDP_PORT: &str = "ReleaseUdpPort";
+const REQUEST_VPN_SETUP: &str = "RequestVpnSetup";
+const REMOVE_VPN_SETUP: &str = "RemoveVpnSetup";
+const POWER_CYCLE_USB_PORTS: &str = "PowerCycleUsbPorts";
+
 enum ChromeOSError {
     BadConciergeStatus,
     BadDiskImageStatus(DiskImageStatus, String),
     BadVmStatus(VmStatus, String),
     EnableGpuOnStable,
     ExportPathExists,
+    FailedAttachUsb(String),
     FailedComponentUpdater(String),
     FailedCreateContainer(CreateLxdContainerResponse_Status, String),
     FailedCreateContainerSignal(LxdContainerCreatedSignal_Status, String),
+    FailedDetachUsb(String),
+    FailedGetOpenPath(PathBuf),
     FailedGetVmInfo,
     FailedListDiskImages(String),
+    FailedListUsb,
     FailedMetricsSend { exit_code: Option<i32> },
-    FailedStartContainerSignal(LxdContainerStartingSignal_Status, String),
+    FailedOpenPath(dbus::Error),
     FailedSetupContainerUser(SetUpLxdContainerUserResponse_Status, String),
     FailedSharePath(String),
+    FailedStartContainerSignal(LxdContainerStartingSignal_Status, String),
     FailedStartContainerStatus(StartLxdContainerResponse_Status, String),
     FailedStopVm { vm_name: String, reason: String },
     InvalidExportPath,
@@ -127,6 +151,8 @@ impl fmt::Display for ChromeOSError {
             BadVmStatus(s, reason) => write!(f, "bad VM status: `{:?}`: {}", s, reason),
             EnableGpuOnStable => write!(f, "gpu support is disabled on the stable channel"),
             ExportPathExists => write!(f, "disk export path already exists"),
+            FailedAttachUsb(reason) => write!(f, "failed to attach usb device to vm: {}", reason),
+            FailedDetachUsb(reason) => write!(f, "failed to detach usb device from vm: {}", reason),
             FailedComponentUpdater(name) => {
                 write!(f, "component updater could not load component `{}`", name)
             }
@@ -139,6 +165,7 @@ impl fmt::Display for ChromeOSError {
             FailedStartContainerSignal(s, reason) => {
                 write!(f, "failed to start container: `{:?}`: {}", s, reason)
             }
+            FailedGetOpenPath(path) => write!(f, "failed to request OpenPath {}", path.display()),
             FailedGetVmInfo => write!(f, "failed to get vm info"),
             FailedSetupContainerUser(s, reason) => {
                 write!(f, "failed to setup container user: `{:?}`: {}", s, reason)
@@ -148,6 +175,7 @@ impl fmt::Display for ChromeOSError {
                 write!(f, "failed to start container: `{:?}`: {}", s, reason)
             }
             FailedListDiskImages(reason) => write!(f, "failed to list disk images: {}", reason),
+            FailedListUsb => write!(f, "failed to get list of usb devices attached to vm"),
             FailedMetricsSend { exit_code } => {
                 write!(f, "failed to send metrics")?;
                 if let Some(code) = exit_code {
@@ -155,6 +183,11 @@ impl fmt::Display for ChromeOSError {
                 }
                 Ok(())
             }
+            FailedOpenPath(e) => write!(
+                f,
+                "failed permission_broker OpenPath: {}",
+                e.message().unwrap_or("")
+            ),
             FailedStopVm { vm_name, reason } => {
                 write!(f, "failed to stop vm `{}`: {}", vm_name, reason)
             }
@@ -200,7 +233,7 @@ impl ChromeOS {
         message: Message,
         request: &I,
     ) -> Result<O, Box<Error>> {
-        self.sync_protobus_timeout(message, request, DEFAULT_TIMEOUT_MS)
+        self.sync_protobus_timeout(message, request, &[], DEFAULT_TIMEOUT_MS)
     }
 
     /// Helper for doing protobuf over dbus requests and responses.
@@ -208,9 +241,10 @@ impl ChromeOS {
         &mut self,
         message: Message,
         request: &I,
+        fds: &[OwnedFd],
         timeout_millis: i32,
     ) -> Result<O, Box<Error>> {
-        let method = message.append1(request.write_to_bytes()?);
+        let method = message.append1(request.write_to_bytes()?).append_ref(fds);
         let message = self
             .connection
             .send_with_reply_and_block(method, timeout_millis)?;
@@ -672,6 +706,115 @@ impl ChromeOS {
             _ => Err(FailedSetupContainerUser(response.status, response.failure_reason).into()),
         }
     }
+
+    fn attach_usb(
+        &mut self,
+        vm_name: &str,
+        user_id_hash: &str,
+        bus: u8,
+        device: u8,
+        usb_fd: OwnedFd,
+    ) -> Result<u8, Box<Error>> {
+        let mut request = AttachUsbDeviceRequest::new();
+        request.owner_id = user_id_hash.to_owned();
+        request.vm_name = vm_name.to_owned();
+        request.bus_number = bus as u32;
+        request.port_number = device as u32;
+
+        let response: AttachUsbDeviceResponse = self.sync_protobus_timeout(
+            Message::new_method_call(
+                VM_CONCIERGE_SERVICE_NAME,
+                VM_CONCIERGE_SERVICE_PATH,
+                VM_CONCIERGE_INTERFACE,
+                ATTACH_USB_DEVICE_METHOD,
+            )?,
+            &request,
+            &[usb_fd],
+            DEFAULT_TIMEOUT_MS,
+        )?;
+
+        if response.success {
+            Ok(response.guest_port as u8)
+        } else {
+            Err(FailedAttachUsb(response.reason).into())
+        }
+    }
+
+    fn detach_usb(
+        &mut self,
+        vm_name: &str,
+        user_id_hash: &str,
+        port: u8,
+    ) -> Result<(), Box<Error>> {
+        let mut request = DetachUsbDeviceRequest::new();
+        request.owner_id = user_id_hash.to_owned();
+        request.vm_name = vm_name.to_owned();
+        request.guest_port = port as u32;
+
+        let response: DetachUsbDeviceResponse = self.sync_protobus(
+            Message::new_method_call(
+                VM_CONCIERGE_SERVICE_NAME,
+                VM_CONCIERGE_SERVICE_PATH,
+                VM_CONCIERGE_INTERFACE,
+                DETACH_USB_DEVICE_METHOD,
+            )?,
+            &request,
+        )?;
+
+        if response.success {
+            Ok(())
+        } else {
+            Err(FailedDetachUsb(response.reason).into())
+        }
+    }
+
+    fn list_usb(
+        &mut self,
+        vm_name: &str,
+        user_id_hash: &str,
+    ) -> Result<Vec<UsbDeviceMessage>, Box<Error>> {
+        let mut request = ListUsbDeviceRequest::new();
+        request.owner_id = user_id_hash.to_owned();
+        request.vm_name = vm_name.to_owned();
+
+        let response: ListUsbDeviceResponse = self.sync_protobus(
+            Message::new_method_call(
+                VM_CONCIERGE_SERVICE_NAME,
+                VM_CONCIERGE_SERVICE_PATH,
+                VM_CONCIERGE_INTERFACE,
+                LIST_USB_DEVICE_METHOD,
+            )?,
+            &request,
+        )?;
+
+        if response.success {
+            Ok(response.usb_devices.into())
+        } else {
+            Err(FailedListUsb.into())
+        }
+    }
+
+    fn permission_broker_open_path(&mut self, path: &Path) -> Result<OwnedFd, Box<Error>> {
+        let path_str = path
+            .to_str()
+            .ok_or_else(|| FailedGetOpenPath(path.into()))?;
+        let method = Message::new_method_call(
+            PERMISSION_BROKER_SERVICE_NAME,
+            PERMISSION_BROKER_SERVICE_PATH,
+            PERMISSION_BROKER_INTERFACE,
+            OPEN_PATH,
+        )?
+        .append1(path_str);
+
+        let message = self
+            .connection
+            .send_with_reply_and_block(method, DEFAULT_TIMEOUT_MS)
+            .map_err(FailedOpenPath)?;
+
+        message
+            .get1()
+            .ok_or_else(|| FailedGetOpenPath(path.into()).into())
+    }
 }
 
 impl Backend for ChromeOS {
@@ -841,5 +984,49 @@ impl Backend for ChromeOS {
     ) -> Result<(), Box<Error>> {
         self.start_concierge()?;
         self.setup_container_user(vm_name, user_id_hash, container_name, username)
+    }
+
+    fn usb_attach(
+        &mut self,
+        vm_name: &str,
+        user_id_hash: &str,
+        bus: u8,
+        device: u8,
+    ) -> Result<u8, Box<Error>> {
+        self.start_concierge()?;
+        let usb_file_path = format!("/dev/bus/usb/{:03}/{:03}", bus, device);
+        let usb_fd = self.permission_broker_open_path(Path::new(&usb_file_path))?;
+        self.attach_usb(vm_name, user_id_hash, bus, device, usb_fd)
+    }
+
+    fn usb_detach(
+        &mut self,
+        vm_name: &str,
+        user_id_hash: &str,
+        port: u8,
+    ) -> Result<(), Box<Error>> {
+        self.start_concierge()?;
+        self.detach_usb(vm_name, user_id_hash, port)
+    }
+
+    fn usb_list(
+        &mut self,
+        vm_name: &str,
+        user_id_hash: &str,
+    ) -> Result<Vec<(u8, u16, u16, String)>, Box<Error>> {
+        self.start_concierge()?;
+        let device_list = self
+            .list_usb(vm_name, user_id_hash)?
+            .into_iter()
+            .map(|mut d| {
+                (
+                    d.get_guest_port() as u8,
+                    d.get_vendor_id() as u16,
+                    d.get_product_id() as u16,
+                    d.take_device_name(),
+                )
+            })
+            .collect();
+        Ok(device_list)
     }
 }
