@@ -19,18 +19,14 @@ allow $1 cros_var_lib:dir search; # date
 
 define(`filetrans_pattern', `
 allow $1 $2:dir rw_dir_perms;
-ifelse(`$4', `dir',
-`allow $1 $3:dir create_dir_perms;',
-`allow $1 $3:$4 create_file_perms;')
-type_transition $1 $2:$4 $3 $5;
-')
-
-define(`filetrans_pattern_no_target_perm', `
-allow $1 $2:dir rw_dir_perms;
 allow $1 $3:$4 create;
 type_transition $1 $2:$4 $3 $5;
 ')
 
+# TODO(fqj): remove this
+define(`filetrans_pattern_no_target_perm', `
+filetrans_pattern($1, $2, $3, $4, $5)
+');
 
 # Chrome OS specific macros
 define(`use_init_fd', `

@@ -7,4 +7,3 @@ filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_secure_log, f
 filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_syslog, file, "messages");
 filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_tlsdate_log, file, "tlsdate.log");
 filetrans_pattern(cros_log_file_creator_domain, cros_var_lib, cros_tz_data_file, dir, "timezone");
-

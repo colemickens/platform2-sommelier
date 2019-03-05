@@ -8,6 +8,7 @@ allow cros_anomaly_collector cros_syslog:file r_file_perms;
 
 type cros_anomaly_collector_tmp_file, file_type, cros_tmpfile_type;
 filetrans_pattern(cros_anomaly_collector, {tmpfs cros_minijail_minijail_tmp_file}, cros_anomaly_collector_tmp_file, file);
+allow cros_anomaly_collector cros_anomaly_collector_tmp_file:file create_file_perms;
 
 # minijail mounts it.
 minijail_mounts(

@@ -6,8 +6,10 @@ cros_net(cros_rsyslogd);
 
 type cros_rsyslogd_pid_file, file_type, cros_tmpfile_type;
 filetrans_pattern(cros_rsyslogd, {tmpfs cros_minijail_minijail_tmp_file}, cros_rsyslogd_pid_file, file, "rsyslogd.pid.tmp");
+allow cros_rsyslogd cros_rsyslogd_pid_file:file create_file_perms;
 
 filetrans_pattern(cros_rsyslogd, cros_run_journal, logger_device, sock_file, "syslog");
+allow cros_rsyslogd logger_device:sock_file create_file_perms;
 
 r_dir_file(cros_rsyslogd, cros_rsyslog_conf_file);
 allow cros_rsyslogd cros_log_type:file rw_file_perms;

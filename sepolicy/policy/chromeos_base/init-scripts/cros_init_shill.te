@@ -12,7 +12,7 @@ r_dir_file(cros_init_shill, cros_network_conf_file);
 r_dir_file(cros_init_shill, cros_passwd_file);
 
 allow cros_init_shill self:capability { chown fowner fsetid };
-allow cros_init_shill {cros_run_shill cros_var_lib_shill cros_var_cache_shill}:dir rw_dir_perms;
+allow cros_init_shill {cros_run_shill cros_var_lib_shill cros_var_cache_shill}:dir create_dir_perms;
 allow cros_init_shill {cros_run_shill cros_var_lib_shill cros_var_cache_shill}:file create_file_perms;
 allow cros_init_shill cros_home_chronos:dir search;
 allow cros_init_shill cros_home_chronos:file getattr;

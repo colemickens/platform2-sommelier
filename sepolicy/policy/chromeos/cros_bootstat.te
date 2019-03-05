@@ -9,3 +9,4 @@ allow cros_bootstat cros_bootstat_domain:fd use;
 allow cros_bootstat proc_uptime:file { open read };
 allow cros_bootstat device:blk_file getattr;
 filetrans_pattern(cros_bootstat, tmpfs, cros_bootstat_tmp_file, file);
+allow cros_bootstat cros_bootstat_tmp_file:file rw_file_perms;
