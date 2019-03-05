@@ -998,7 +998,7 @@ bool GenerateCmk(TpmImpl* const tpm,
     return false;
   }
   SecureBlob local_cmk_pubkey;
-  if (tpm->GetDataAttribute(tpm_handle, cmk_handle, TSS_TSPATTRIB_KEY_BLOB,
+  if (tpm->GetDataAttribute(tpm_context, cmk_handle, TSS_TSPATTRIB_KEY_BLOB,
                             TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY,
                             &local_cmk_pubkey) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Failed to read the certified migratable public key";
@@ -1007,7 +1007,7 @@ bool GenerateCmk(TpmImpl* const tpm,
   // TODO(emaxx): Replace with a direct usage of Blob for the attribute read.
   cmk_pubkey->assign(local_cmk_pubkey.begin(), local_cmk_pubkey.end());
   SecureBlob local_srk_wrapped_cmk;
-  if (tpm->GetDataAttribute(tpm_handle, cmk_handle, TSS_TSPATTRIB_KEY_BLOB,
+  if (tpm->GetDataAttribute(tpm_context, cmk_handle, TSS_TSPATTRIB_KEY_BLOB,
                             TSS_TSPATTRIB_KEYBLOB_BLOB,
                             &local_srk_wrapped_cmk) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Failed to read the certified migratable key";
