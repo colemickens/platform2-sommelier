@@ -14,7 +14,6 @@
           'libcamera_client',
           'libcamera_common',
           'libcamera_exif',
-          'libcamera_jpeg',
           'libcamera_metadata',
           'libcamera_v4l2_device',
           'libcbm',
@@ -52,6 +51,9 @@
         'NAMESPACE_DECLARATION_END=}',
         'REMOTE_3A_SERVER',
         'USING_DECLARED_NAMESPACE=using namespace android::camera2',
+      ],
+      'dependencies': [
+        '../../common/libcamera_jpeg.gyp:libcamera_jpeg',
       ],
       'sources': [
         'AAL/Camera3HAL.cpp',

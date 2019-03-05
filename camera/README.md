@@ -105,10 +105,6 @@ handle some general functions for the camera HAL:
 
   Provides utility functions to fill in the EXIF headers of a JPEG image.
 
-- `media-libs/cros-camera-libcamera_jpeg`
-
-  Provides utility functions to encode JPEG image.
-
 - `media-libs/cros-camera-libcamera_timezone`
 
   Provides utility functions to get the local timezone.

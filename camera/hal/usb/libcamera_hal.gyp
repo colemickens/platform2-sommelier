@@ -6,7 +6,6 @@
     'variables': {
       'deps': [
         'cros-camera-android-headers',
-        'libcamera_jpeg',
         'libcbm',
         'libcamera_client',
         'libcamera_common',
@@ -24,6 +23,9 @@
     {
       'target_name': 'libcamera_hal',
       'type': 'shared_library',
+      'dependencies': [
+        '../../common/libcamera_jpeg.gyp:libcamera_jpeg',
+      ],
       'sources': [
         '../../common/utils/camera_config.cc',
         'cached_frame.cc',

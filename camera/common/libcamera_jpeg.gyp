@@ -5,7 +5,6 @@
   'target_defaults': {
     'variables': {
       'deps': [
-        'libmojo-<(libbase_ver)',
         'libyuv',
       ],
     },
@@ -13,13 +12,17 @@
   'targets': [
     {
       'target_name': 'libcamera_jpeg',
-      'type': 'shared_library',
+      'includes': [
+        '../build/standalone_static_library.gypi',
+      ],
       'dependencies': [
         'jpeg/libjea.gyp:libjea',
       ],
-      'libraries': [
-        '-ljpeg',
-      ],
+      'direct_dependent_settings': {
+        'libraries': [
+          '-ljpeg',
+        ],
+      },
       'sources': [
         'jpeg_compressor_impl.cc',
       ],

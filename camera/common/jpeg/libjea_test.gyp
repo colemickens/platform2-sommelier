@@ -8,7 +8,6 @@
         'libcamera_common',
         'libcamera_exif',
         'libcamera_ipc',
-        'libcamera_jpeg',
         'libyuv',
       ],
     },
@@ -22,10 +21,8 @@
       ],
       'dependencies': [
         '../libcamera_ipc.gyp:libcamera_ipc',
+        '../libcamera_jpeg.gyp:libcamera_jpeg',
         'libjea.gyp:libjea',
-      ],
-      'libraries': [
-        '-ljpeg',
       ],
       'sources': [
         'jpeg_encode_accelerator_test.cc',

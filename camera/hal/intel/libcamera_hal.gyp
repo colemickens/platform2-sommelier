@@ -14,7 +14,6 @@
           'libcamera_client',
           'libcamera_common',
           'libcamera_exif',
-          'libcamera_jpeg',
           'libcamera_metadata',
           'libcamera_v4l2_device',
           'libcbm',
@@ -49,6 +48,9 @@
         'DUMP_IMAGE',
         'HAL_PIXEL_FORMAT_NV12_LINEAR_CAMERA_INTEL=0x10F',
         'MACRO_KBL_AIC',
+      ],
+      'dependencies': [
+        '../../common/libcamera_jpeg.gyp:libcamera_jpeg',
       ],
       'sources': [
         'AAL/Camera3HAL.cpp',
