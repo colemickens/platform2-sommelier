@@ -30,7 +30,7 @@ class DarkResumeInterface;
 class DBusWrapperInterface;
 class DisplayPowerSetterInterface;
 class DisplayWatcherInterface;
-class EcWakeupHelperInterface;
+class EcHelperInterface;
 class InputWatcherInterface;
 class LockfileCheckerInterface;
 class PeripheralBatteryWatcher;
@@ -107,8 +107,7 @@ class DaemonDelegate {
   virtual std::unique_ptr<system::AcpiWakeupHelperInterface>
   CreateAcpiWakeupHelper() = 0;
 
-  virtual std::unique_ptr<system::EcWakeupHelperInterface>
-  CreateEcWakeupHelper() = 0;
+  virtual std::unique_ptr<system::EcHelperInterface> CreateEcHelper() = 0;
 
   // Test implementations may return null.
   virtual std::unique_ptr<system::PeripheralBatteryWatcher>

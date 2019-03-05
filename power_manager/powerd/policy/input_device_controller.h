@@ -19,7 +19,7 @@ class PrefsInterface;
 
 namespace system {
 class AcpiWakeupHelperInterface;
-class EcWakeupHelperInterface;
+class EcHelperInterface;
 class TaggedDevice;
 class UdevInterface;
 }  // namespace system
@@ -71,7 +71,7 @@ class InputDeviceController : public policy::BacklightControllerObserver,
   void Init(policy::BacklightController* backlight_controller,
             system::UdevInterface* udev,
             system::AcpiWakeupHelperInterface* acpi_wakeup_helper,
-            system::EcWakeupHelperInterface* ec_wakeup_helper,
+            system::EcHelperInterface* ec_helper,
             LidState lid_state,
             TabletMode tablet_mode,
             DisplayMode display_mode,
@@ -115,7 +115,7 @@ class InputDeviceController : public policy::BacklightControllerObserver,
   system::UdevInterface* udev_ = nullptr;                            // weak
   policy::BacklightController* backlight_controller_ = nullptr;      // weak
   system::AcpiWakeupHelperInterface* acpi_wakeup_helper_ = nullptr;  // weak
-  system::EcWakeupHelperInterface* ec_wakeup_helper_ = nullptr;      // weak
+  system::EcHelperInterface* ec_helper_ = nullptr;                   // weak
 
   PrefsInterface* prefs_ = nullptr;  // weak
 

@@ -49,7 +49,7 @@
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
-#include "power_manager/powerd/system/ec_wakeup_helper_interface.h"
+#include "power_manager/powerd/system/ec_helper_interface.h"
 #include "power_manager/powerd/system/event_device_interface.h"
 #include "power_manager/powerd/system/input_watcher_interface.h"
 #include "power_manager/powerd/system/lockfile_checker.h"
@@ -375,11 +375,11 @@ void Daemon::Init() {
                              dbus_wrapper_.get(), prefs_.get());
 
   acpi_wakeup_helper_ = delegate_->CreateAcpiWakeupHelper();
-  ec_wakeup_helper_ = delegate_->CreateEcWakeupHelper();
-  input_device_controller_->Init(
-      display_backlight_controller_.get(), udev_.get(),
-      acpi_wakeup_helper_.get(), ec_wakeup_helper_.get(), lid_state,
-      tablet_mode, DisplayMode::NORMAL, prefs_.get());
+  ec_helper_ = delegate_->CreateEcHelper();
+  input_device_controller_->Init(display_backlight_controller_.get(),
+                                 udev_.get(), acpi_wakeup_helper_.get(),
+                                 ec_helper_.get(), lid_state, tablet_mode,
+                                 DisplayMode::NORMAL, prefs_.get());
 
   const PowerSource power_source =
       power_status.line_power_on ? PowerSource::AC : PowerSource::BATTERY;

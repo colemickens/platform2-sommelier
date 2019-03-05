@@ -42,7 +42,7 @@
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
-#include "power_manager/powerd/system/ec_wakeup_helper.h"
+#include "power_manager/powerd/system/ec_helper.h"
 #include "power_manager/powerd/system/event_device.h"
 #include "power_manager/powerd/system/input_watcher.h"
 #include "power_manager/powerd/system/internal_backlight.h"
@@ -174,9 +174,8 @@ class DaemonDelegateImpl : public DaemonDelegate {
     return base::WrapUnique(new system::AcpiWakeupHelper());
   }
 
-  std::unique_ptr<system::EcWakeupHelperInterface> CreateEcWakeupHelper()
-      override {
-    return base::WrapUnique(new system::EcWakeupHelper());
+  std::unique_ptr<system::EcHelperInterface> CreateEcHelper() override {
+    return base::WrapUnique(new system::EcHelper());
   }
 
   std::unique_ptr<system::PeripheralBatteryWatcher>

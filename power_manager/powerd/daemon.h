@@ -67,7 +67,7 @@ class ChargeControllerHelperInterface;
 class DarkResumeInterface;
 class DisplayPowerSetterInterface;
 class DisplayWatcherInterface;
-class EcWakeupHelperInterface;
+class EcHelperInterface;
 class InputWatcherInterface;
 class LockfileCheckerInterface;
 class PeripheralBatteryWatcher;
@@ -272,7 +272,7 @@ class Daemon : public policy::InputEventHandler::Delegate,
   std::unique_ptr<policy::StateController> state_controller_;
   std::unique_ptr<policy::InputEventHandler> input_event_handler_;
   std::unique_ptr<system::AcpiWakeupHelperInterface> acpi_wakeup_helper_;
-  std::unique_ptr<system::EcWakeupHelperInterface> ec_wakeup_helper_;
+  std::unique_ptr<system::EcHelperInterface> ec_helper_;
   std::unique_ptr<policy::InputDeviceController> input_device_controller_;
   std::unique_ptr<system::AudioClientInterface> audio_client_;  // May be null.
   std::unique_ptr<system::PeripheralBatteryWatcher>

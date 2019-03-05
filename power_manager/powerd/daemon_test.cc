@@ -34,7 +34,7 @@
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
 #include "power_manager/powerd/system/display/display_watcher_stub.h"
-#include "power_manager/powerd/system/ec_wakeup_helper_stub.h"
+#include "power_manager/powerd/system/ec_helper_stub.h"
 #include "power_manager/powerd/system/input_watcher_stub.h"
 #include "power_manager/powerd/system/lockfile_checker_stub.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
@@ -67,7 +67,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
             new policy::BacklightControllerStub()),
         passed_input_watcher_(new system::InputWatcherStub()),
         passed_acpi_wakeup_helper_(new system::AcpiWakeupHelperStub()),
-        passed_ec_wakeup_helper_(new system::EcWakeupHelperStub()),
+        passed_ec_helper_(new system::EcHelperStub()),
         passed_power_supply_(new system::PowerSupplyStub()),
         passed_sar_watcher_(new system::SarWatcherStub()),
         passed_dark_resume_(new system::DarkResumeStub()),
@@ -92,7 +92,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
             passed_keyboard_backlight_controller_.get()),
         input_watcher_(passed_input_watcher_.get()),
         acpi_wakeup_helper_(passed_acpi_wakeup_helper_.get()),
-        ec_wakeup_helper_(passed_ec_wakeup_helper_.get()),
+        ec_helper_(passed_ec_helper_.get()),
         power_supply_(passed_power_supply_.get()),
         sar_watcher_(passed_sar_watcher_.get()),
         dark_resume_(passed_dark_resume_.get()),
@@ -229,9 +229,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       override {
     return std::move(passed_acpi_wakeup_helper_);
   }
-  std::unique_ptr<system::EcWakeupHelperInterface> CreateEcWakeupHelper()
-      override {
-    return std::move(passed_ec_wakeup_helper_);
+  std::unique_ptr<system::EcHelperInterface> CreateEcHelper() override {
+    return std::move(passed_ec_helper_);
   }
   std::unique_ptr<system::PeripheralBatteryWatcher>
   CreatePeripheralBatteryWatcher(
@@ -336,7 +335,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       passed_keyboard_backlight_controller_;
   std::unique_ptr<system::InputWatcherStub> passed_input_watcher_;
   std::unique_ptr<system::AcpiWakeupHelperStub> passed_acpi_wakeup_helper_;
-  std::unique_ptr<system::EcWakeupHelperStub> passed_ec_wakeup_helper_;
+  std::unique_ptr<system::EcHelperStub> passed_ec_helper_;
   std::unique_ptr<system::PowerSupplyStub> passed_power_supply_;
   std::unique_ptr<system::SarWatcherStub> passed_sar_watcher_;
   std::unique_ptr<system::DarkResumeStub> passed_dark_resume_;
@@ -362,7 +361,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   policy::BacklightControllerStub* keyboard_backlight_controller_;
   system::InputWatcherStub* input_watcher_;
   system::AcpiWakeupHelperStub* acpi_wakeup_helper_;
-  system::EcWakeupHelperStub* ec_wakeup_helper_;
+  system::EcHelperStub* ec_helper_;
   system::PowerSupplyStub* power_supply_;
   system::SarWatcherStub* sar_watcher_;
   system::DarkResumeStub* dark_resume_;

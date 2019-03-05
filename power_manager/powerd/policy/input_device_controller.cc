@@ -11,7 +11,7 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
-#include "power_manager/powerd/system/ec_wakeup_helper.h"
+#include "power_manager/powerd/system/ec_helper.h"
 #include "power_manager/powerd/system/tagged_device.h"
 #include "power_manager/powerd/system/udev.h"
 
@@ -126,7 +126,7 @@ void InputDeviceController::Init(
     BacklightController* backlight_controller,
     system::UdevInterface* udev,
     system::AcpiWakeupHelperInterface* acpi_wakeup_helper,
-    system::EcWakeupHelperInterface* ec_wakeup_helper,
+    system::EcHelperInterface* ec_helper,
     LidState lid_state,
     TabletMode tablet_mode,
     DisplayMode display_mode,
@@ -134,7 +134,7 @@ void InputDeviceController::Init(
   backlight_controller_ = backlight_controller;
   udev_ = udev;
   acpi_wakeup_helper_ = acpi_wakeup_helper;
-  ec_wakeup_helper_ = ec_wakeup_helper;
+  ec_helper_ = ec_helper;
 
   if (backlight_controller_)
     backlight_controller_->AddObserver(this);
@@ -236,10 +236,10 @@ void InputDeviceController::ConfigureWakeup(
 
 void InputDeviceController::ConfigureEcWakeup() {
   // Force the EC to do keyboard wakeups even in tablet mode when display off.
-  if (!ec_wakeup_helper_->IsSupported())
+  if (!ec_helper_->IsWakeAngleSupported())
     return;
 
-  ec_wakeup_helper_->AllowWakeupAsTablet(mode_ == Mode::DISPLAY_OFF);
+  ec_helper_->AllowWakeupAsTablet(mode_ == Mode::DISPLAY_OFF);
 }
 
 void InputDeviceController::ConfigureAcpiWakeup() {

@@ -12,7 +12,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/backlight_controller_stub.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper_stub.h"
-#include "power_manager/powerd/system/ec_wakeup_helper_stub.h"
+#include "power_manager/powerd/system/ec_helper_stub.h"
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
 
@@ -93,7 +93,7 @@ class InputDeviceControllerTest : public ::testing::Test {
   void InitInputDeviceController() {
     prefs_.SetInt64(kAllowDockedModePref, default_allow_docked_mode_);
     input_device_controller_.Init(&backlight_controller_, &udev_,
-                                  &acpi_wakeup_helper_, &ec_wakeup_helper_,
+                                  &acpi_wakeup_helper_, &ec_helper_,
                                   initial_lid_state_, initial_tablet_mode_,
                                   initial_display_mode_, &prefs_);
   }
@@ -101,7 +101,7 @@ class InputDeviceControllerTest : public ::testing::Test {
   policy::BacklightControllerStub backlight_controller_;
   system::UdevStub udev_;
   system::AcpiWakeupHelperStub acpi_wakeup_helper_;
-  system::EcWakeupHelperStub ec_wakeup_helper_;
+  system::EcHelperStub ec_helper_;
   FakePrefs prefs_;
 
   bool default_allow_docked_mode_ = true;
@@ -262,28 +262,28 @@ TEST_F(InputDeviceControllerTest, AllowEcWakeupAsTabletWhenDisplayOff) {
       100.0, BacklightBrightnessChange_Cause_USER_REQUEST);
 
   // EC wakeups should be inhibited in tablet mode while backlight is on.
-  EXPECT_FALSE(ec_wakeup_helper_.IsWakeupAsTabletAllowed());
+  EXPECT_FALSE(ec_helper_.IsWakeupAsTabletAllowed());
 
   // Automated display off should not trigger a mode change.
   backlight_controller_.NotifyObservers(
       0.0, BacklightBrightnessChange_Cause_USER_INACTIVITY);
-  EXPECT_FALSE(ec_wakeup_helper_.IsWakeupAsTabletAllowed());
+  EXPECT_FALSE(ec_helper_.IsWakeupAsTabletAllowed());
 
   // ...but manual should.
   backlight_controller_.NotifyObservers(
       0.0, BacklightBrightnessChange_Cause_USER_REQUEST);
-  EXPECT_TRUE(ec_wakeup_helper_.IsWakeupAsTabletAllowed());
+  EXPECT_TRUE(ec_helper_.IsWakeupAsTabletAllowed());
 
   // Leaving presentation mode should disallow it.
   input_device_controller_.SetDisplayMode(DisplayMode::NORMAL);
-  EXPECT_FALSE(ec_wakeup_helper_.IsWakeupAsTabletAllowed());
+  EXPECT_FALSE(ec_helper_.IsWakeupAsTabletAllowed());
   input_device_controller_.SetDisplayMode(DisplayMode::PRESENTATION);
-  EXPECT_TRUE(ec_wakeup_helper_.IsWakeupAsTabletAllowed());
+  EXPECT_TRUE(ec_helper_.IsWakeupAsTabletAllowed());
 
   // As should raising the brightness, even if automatic.
   backlight_controller_.NotifyObservers(10.0,
                                         BacklightBrightnessChange_Cause_OTHER);
-  EXPECT_FALSE(ec_wakeup_helper_.IsWakeupAsTabletAllowed());
+  EXPECT_FALSE(ec_helper_.IsWakeupAsTabletAllowed());
 }
 
 TEST_F(InputDeviceControllerTest, HandleTabletMode) {
@@ -359,8 +359,8 @@ TEST_F(InputDeviceControllerTest, UsableWithoutWakeup) {
 TEST_F(InputDeviceControllerTest, InitWithoutBacklightController) {
   // Init with null backlight controller shouldn't crash.
   input_device_controller_.Init(
-      nullptr, &udev_, &acpi_wakeup_helper_, &ec_wakeup_helper_,
-      initial_lid_state_, initial_tablet_mode_, initial_display_mode_, &prefs_);
+      nullptr, &udev_, &acpi_wakeup_helper_, &ec_helper_, initial_lid_state_,
+      initial_tablet_mode_, initial_display_mode_, &prefs_);
 }
 
 }  // namespace policy
