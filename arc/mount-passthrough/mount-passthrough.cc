@@ -6,6 +6,10 @@
 
 #define FUSE_USE_VERSION 26
 
+#include <base/logging.h>
+#include <base/strings/string_split.h>
+#include <base/strings/stringprintf.h>
+#include <brillo/flag_helper.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -20,6 +24,8 @@
 #include <sys/vfs.h>
 #include <unistd.h>
 
+#include <fstream>
+#include <sstream>
 #include <string>
 
 #define USER_NS_SHIFT 655360
@@ -30,9 +36,92 @@
 
 namespace {
 
+const uid_t kAndroidAppUidStart = 10000 + USER_NS_SHIFT;
+const gid_t kAndroidAppUidEnd = 19999 + USER_NS_SHIFT;
+
+struct FusePrivateData {
+  std::string android_app_access_type;
+};
+
+// Given android_app_access_type, figure out the source of /storage mount in
+// Android.
+std::string get_storage_source(const std::string& android_app_access_type) {
+  std::string storage_source;
+  // Either full (if no Android permission check is needed), read (for Android
+  // READ_EXTERNAL_STORAGE permission check), or write (for Android
+  // WRITE_EXTERNAL_STORAGE_PERMISSION).
+  if (android_app_access_type == "full") {
+    return "";
+  } else if (android_app_access_type == "read") {
+    return "/runtime/read";
+  } else if (android_app_access_type == "write") {
+    return "/runtime/write";
+  } else {
+    NOTREACHED();
+    return "notreached";
+  }
+}
+
+// Perform the following checks (only for Android apps):
+// 1. if android_app_access_type is read, checks if READ_EXTERNAL_STORAGE
+// permission is granted
+// 2. if android_app_access_type is write, checks if WRITE_EXTERNAL_STORAGE
+// permission is granted
+// 3. if android_app_access_type is full, performs no check.
+// Caveat: This method is implemented based on Android storage permission that
+// uses mount namespace. If Android changes their permission in the future
+// release, than this method needs to be adjusted.
+int check_allowed() {
+  fuse_context* context = fuse_get_context();
+  // We only check Android app process for the Android external storage
+  // permissions. Other kind of permissions (such as uid/gid) should be checked
+  // through the standard Linux permission checks.
+  if (context->uid < kAndroidAppUidStart || context->uid > kAndroidAppUidEnd) {
+    return 0;
+  }
+
+  std::string storage_source =
+      get_storage_source(static_cast<FusePrivateData*>(context->private_data)
+                             ->android_app_access_type);
+  // No check is required because the android_app_access_type is "full".
+  if (storage_source.empty()) {
+    return 0;
+  }
+
+  std::string mountinfo_path =
+      base::StringPrintf("/proc/%d/mountinfo", context->pid);
+  std::ifstream in(mountinfo_path);
+  if (!in.is_open()) {
+    PLOG(ERROR) << "Failed to open " << mountinfo_path;
+    return -EPERM;
+  }
+  while (!in.eof()) {
+    std::string line;
+    std::getline(in, line);
+    if (in.bad()) {
+      return -EPERM;
+    }
+    std::vector<std::string> tokens = base::SplitString(
+        line, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+    if (tokens.size() < 5) {
+      continue;
+    }
+    std::string source = tokens[3];
+    std::string target = tokens[4];
+    if (source == storage_source && target == "/storage") {
+      return 0;
+    }
+  }
+  return -EPERM;
+}
+
 int passthrough_create(const char* path,
                        mode_t mode,
                        struct fuse_file_info* fi) {
+  int check_allowed_result = check_allowed();
+  if (check_allowed_result < 0) {
+    return check_allowed_result;
+  }
   // Ignore specified |mode| and always use a fixed mode since we do not allow
   // chmod anyway. Note that we explicitly set the umask to 0022 in main().
   int fd = open(path, fi->flags, 0644);
@@ -68,15 +157,27 @@ int passthrough_ftruncate(const char*, off_t size, struct fuse_file_info* fi) {
 }
 
 int passthrough_getattr(const char* path, struct stat* buf) {
+  int check_allowed_result = check_allowed();
+  if (check_allowed_result < 0) {
+    return check_allowed_result;
+  }
   // File owner is overridden by uid/gid options passed to fuse.
   return WRAP_FS_CALL(lstat(path, buf));
 }
 
 int passthrough_mkdir(const char* path, mode_t mode) {
+  int check_allowed_result = check_allowed();
+  if (check_allowed_result < 0) {
+    return check_allowed_result;
+  }
   return WRAP_FS_CALL(mkdir(path, mode));
 }
 
 int passthrough_open(const char* path, struct fuse_file_info* fi) {
+  int check_allowed_result = check_allowed();
+  if (check_allowed_result < 0) {
+    return check_allowed_result;
+  }
   int fd = open(path, fi->flags);
   if (fd < 0) {
     return -errno;
@@ -86,6 +187,10 @@ int passthrough_open(const char* path, struct fuse_file_info* fi) {
 }
 
 int passthrough_opendir(const char* path, struct fuse_file_info* fi) {
+  int check_allowed_result = check_allowed();
+  if (check_allowed_result < 0) {
+    return check_allowed_result;
+  }
   DIR* dirp = opendir(path);
   if (!dirp) {
     return -errno;
@@ -154,26 +259,50 @@ int passthrough_releasedir(const char*, struct fuse_file_info* fi) {
 }
 
 int passthrough_rename(const char* oldpath, const char* newpath) {
+  int check_allowed_result = check_allowed();
+  if (check_allowed_result < 0) {
+    return check_allowed_result;
+  }
   return WRAP_FS_CALL(rename(oldpath, newpath));
 }
 
 int passthrough_rmdir(const char* path) {
+  int check_allowed_result = check_allowed();
+  if (check_allowed_result < 0) {
+    return check_allowed_result;
+  }
   return WRAP_FS_CALL(rmdir(path));
 }
 
 int passthrough_statfs(const char* path, struct statvfs* buf) {
+  int check_allowed_result = check_allowed();
+  if (check_allowed_result < 0) {
+    return check_allowed_result;
+  }
   return WRAP_FS_CALL(statvfs(path, buf));
 }
 
 int passthrough_truncate(const char* path, off_t size) {
+  int check_allowed_result = check_allowed();
+  if (check_allowed_result < 0) {
+    return check_allowed_result;
+  }
   return WRAP_FS_CALL(truncate(path, size));
 }
 
 int passthrough_unlink(const char* path) {
+  int check_allowed_result = check_allowed();
+  if (check_allowed_result < 0) {
+    return check_allowed_result;
+  }
   return WRAP_FS_CALL(unlink(path));
 }
 
 int passthrough_utimens(const char* path, const struct timespec tv[2]) {
+  int check_allowed_result = check_allowed();
+  if (check_allowed_result < 0) {
+    return check_allowed_result;
+  }
   return WRAP_FS_CALL(utimensat(AT_FDCWD, path, tv, 0));
 }
 
@@ -236,8 +365,10 @@ void setup_passthrough_ops(struct fuse_operations* passthrough_ops) {
 }  // namespace
 
 int main(int argc, char** argv) {
-  if (argc != 6) {
-    fprintf(stderr, "usage: %s <source> <destination> <umask> <uid> <gid>\n",
+  if (argc != 7) {
+    fprintf(stderr,
+            "usage: %s <source> <destination> <umask> <uid> <gid> "
+            "<android_app_access_type>\n",
             argv[0]);
     return 1;
   }
@@ -277,6 +408,8 @@ int main(int argc, char** argv) {
   int fuse_argc = sizeof(fuse_argv) / sizeof(fuse_argv[0]);
 
   umask(0022);
+  FusePrivateData private_data;
+  private_data.android_app_access_type = argv[6];
   return fuse_main(fuse_argc, const_cast<char**>(fuse_argv), &passthrough_ops,
-                   NULL);
+                   &private_data);
 }

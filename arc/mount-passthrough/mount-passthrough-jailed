@@ -11,8 +11,8 @@ SOURCE_IN_CONTAINER=/mnt/source
 DEST_IN_CONTAINER=/mnt/dest
 
 main() {
-  if [ $# -ne 5 ]; then
-    echo "Usage: $0 source dest umask uid gid"
+  if [ $# -ne 6 ]; then
+    echo "Usage: $0 source dest umask uid gid android_app_access_type"
     exit 1
   fi
 
@@ -21,6 +21,7 @@ main() {
   local umask="$3"
   local uid="$4"
   local gid="$5"
+  local android_app_access_type="$6"
 
   # Set large enough open file limit since this process handles many open files.
   ulimit -n 8192
@@ -85,7 +86,7 @@ main() {
   # Finally, specify command line arguments.
   set -- "$@" -- /usr/bin/mount-passthrough
   set -- "$@" "${SOURCE_IN_CONTAINER}" "${DEST_IN_CONTAINER}" "${umask}" \
-      "${uid}" "${gid}"
+      "${uid}" "${gid}" "${android_app_access_type}"
 
   exec minijail0 "$@"
 }
