@@ -12,7 +12,7 @@ When maitred starts a VM, it also launches the VM log forwarding service
 (`vmlog_forwarder`).  This service listens on a well known port number on the
 host system for kernel and userspace logs from VMs. Log entries are represented
 with the `LogRecord` protobuf message, which is defined in
-[guest.proto](../proto/vm_guest.proto).
+[vm_host.proto](../proto/vm_host.proto).
 
 `vmlog_forwarder` converts `LogRecord` messages into an
 [RFC3164](https://tools.ietf.org/html/rfc3164) syslog message and forwards it to
