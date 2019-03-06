@@ -539,8 +539,8 @@ bool RTNLMessage::EncodeNeighbor(RTNLHeader* hdr) const {
 }
 
 void RTNLMessage::Reset() {
-  mode_ = kModeUnknown;
   type_ = kTypeUnknown;
+  mode_ = kModeUnknown;
   flags_ = 0;
   seq_ = 0;
   pid_ = 0;
@@ -549,6 +549,8 @@ void RTNLMessage::Reset() {
   link_status_ = LinkStatus();
   address_status_ = AddressStatus();
   route_status_ = RouteStatus();
+  neighbor_status_ = NeighborStatus();
+  rdnss_option_ = RdnssOption();
   attributes_.clear();
 }
 

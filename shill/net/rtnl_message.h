@@ -242,6 +242,7 @@ class SHILL_EXPORT RTNLMessage {
   NeighborStatus neighbor_status_;
   RdnssOption rdnss_option_;
   std::unordered_map<uint16_t, ByteString> attributes_;
+  // NOTE: Update Reset() accordingly when adding a new member field.
 
   DISALLOW_COPY_AND_ASSIGN(RTNLMessage);
 };
