@@ -195,6 +195,17 @@
 			]
 		},
 		{
+			"destination": "/apex",
+			"type": "tmpfs",
+			"source": "tmpfs",
+			"options": [
+				"mode=755",
+				"noexec",
+				"nosuid",
+				"nodev"
+			]
+		},
+		{
 			"destination": "/data/dalvik-cache/arm",
 			"type": "bind",
 			"source": "/mnt/stateful_partition/unencrypted/art-data/dalvik-cache/arm",
