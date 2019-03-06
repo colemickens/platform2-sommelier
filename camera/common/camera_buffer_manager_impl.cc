@@ -291,7 +291,7 @@ int CameraBufferManagerImpl::Register(buffer_handle_t buffer) {
 
   if (handle->type == GRALLOC) {
     // Import the buffer if we haven't done so.
-    struct gbm_import_fd_planar_data import_data;
+    struct gbm_import_fd_modifier_data import_data;
     memset(&import_data, 0, sizeof(import_data));
     import_data.width = handle->width;
     import_data.height = handle->height;
@@ -300,6 +300,8 @@ int CameraBufferManagerImpl::Register(buffer_handle_t buffer) {
     if (num_planes <= 0) {
       return -EINVAL;
     }
+
+    import_data.num_fds = num_planes;
     for (size_t i = 0; i < num_planes; ++i) {
       import_data.fds[i] = handle->fds[i];
       import_data.strides[i] = handle->strides[i];
@@ -308,7 +310,7 @@ int CameraBufferManagerImpl::Register(buffer_handle_t buffer) {
 
     uint32_t usage = GBM_BO_USE_CAMERA_READ | GBM_BO_USE_CAMERA_WRITE |
                      GBM_BO_USE_SW_READ_OFTEN | GBM_BO_USE_SW_WRITE_OFTEN;
-    buffer_context->bo = gbm_bo_import(gbm_device_, GBM_BO_IMPORT_FD_PLANAR,
+    buffer_context->bo = gbm_bo_import(gbm_device_, GBM_BO_IMPORT_FD_MODIFIER,
                                        &import_data, usage);
     if (!buffer_context->bo) {
       LOGF(ERROR) << "Failed to import buffer 0x" << std::hex
