@@ -4,7 +4,7 @@
 
 #include "cros-disks/archive_manager.h"
 
-#include <linux/capability.h>
+#include <memory>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -13,11 +13,12 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
 
+#include "cros-disks/fuse_helper.h"
+#include "cros-disks/fuse_mounter.h"
 #include "cros-disks/metrics.h"
 #include "cros-disks/mount_info.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
-#include "cros-disks/sandboxed_process.h"
 #include "cros-disks/system_mounter.h"
 
 using base::FilePath;
@@ -54,6 +55,8 @@ const AVFSPathMapping kAVFSPathMapping[] = {
     {kMediaDirectory, kAVFSMediaDirectory},
     {kUserRootDirectory, kAVFSUsersDirectory},
 };
+const char kAVFSModulesOption[] = "modules=subdir";
+const char kAVFSSubdirOptionPrefix[] = "subdir=";
 
 }  // namespace
 
@@ -301,21 +304,10 @@ MountErrorType ArchiveManager::StartAVFS() {
 
   avfs_started_ = true;
   for (const auto& mapping : kAVFSPathMapping) {
-    const string& avfs_path = mapping.avfs_path;
-    if (!base::PathExists(FilePath(mapping.base_path)) ||
-        !base::PathExists(FilePath(avfs_path)) ||
-        !platform()->GetOwnership(avfs_path, &dir_user_id, &dir_group_id) ||
-        !platform()->GetPermissions(avfs_path, &dir_mode) ||
-        (dir_user_id != avfs_user_id) || (dir_group_id != avfs_group_id) ||
-        ((dir_mode & 07777) != kAVFSDirectoryPermissions)) {
-      LOG(ERROR) << avfs_path << " isn't created properly";
-      StopAVFS();
-      return MOUNT_ERROR_INTERNAL;
-    }
-
-    MountErrorType mount_error = MountAVFSPath(mapping.base_path, avfs_path);
+    MountErrorType mount_error =
+        MountAVFSPath(mapping.base_path, mapping.avfs_path);
     if (mount_error != MOUNT_ERROR_NONE) {
-      LOG(ERROR) << "Failed to mount AVFS path " << avfs_path;
+      LOG(ERROR) << "Failed to mount AVFS path " << mapping.avfs_path;
       StopAVFS();
       return mount_error;
     }
@@ -355,34 +347,34 @@ MountErrorType ArchiveManager::MountAVFSPath(const string& base_path,
     return MOUNT_ERROR_INTERNAL;
   }
 
-  uid_t user_id;
-  gid_t group_id;
-  if (!platform()->GetUserAndGroupId(kAVFSMountUser, &user_id, nullptr) ||
-      !platform()->GetGroupId(kAVFSMountGroup, &group_id)) {
-    return MOUNT_ERROR_INTERNAL;
+  MountOptions mount_options;
+  mount_options.WhitelistOption(FUSEHelper::kOptionAllowOther);
+  mount_options.WhitelistOption(kAVFSModulesOption);
+  mount_options.WhitelistOptionPrefix(kAVFSSubdirOptionPrefix);
+  std::vector<std::string> options = {
+      MountOptions::kOptionReadOnly,
+      kAVFSModulesOption,
+      kAVFSSubdirOptionPrefix + base_path,
+  };
+  mount_options.Initialize(options, false, "", "");
+
+  std::unique_ptr<FUSEMounter> fuse_mounter = std::make_unique<FUSEMounter>(
+      "", avfs_path, "avfs", mount_options, platform(), kAVFSMountProgram,
+      kAVFSMountUser, kAVFSSeccompFilterPolicyFile,
+      std::vector<FUSEMounter::BindPath>({
+          // This needs to be recursively bind mounted so that any external
+          // media (mounted under /media) or user (under /home/chronos) mounts
+          // are visiable to AVFS.
+          {base_path, false /* writable*/, true /* recursive */},
+      }),
+      false /* permit_network_access */, true /* unprivileged_mount */,
+      kAVFSMountGroup);
+
+  MountErrorType mount_error = fuse_mounter->Mount();
+  if (mount_error != MOUNT_ERROR_NONE) {
+    return mount_error;
   }
 
-  SandboxedProcess mount_process;
-  mount_process.AddArgument(kAVFSMountProgram);
-  mount_process.AddArgument("-o");
-  mount_process.AddArgument(base::StringPrintf(
-      "ro,nodev,noexec,nosuid,allow_other,user=%s,modules=subdir,subdir=%s",
-      kAVFSMountUser, base_path.c_str()));
-  mount_process.AddArgument(avfs_path);
-  mount_process.SetNoNewPrivileges();
-  mount_process.LoadSeccompFilterPolicy(kAVFSSeccompFilterPolicyFile);
-  // TODO(benchan): Enable PID and VFS namespace.
-  // TODO(wad,ellyjones,benchan): Enable network namespace once libminijail
-  // supports it.
-  mount_process.SetUserId(user_id);
-  mount_process.SetGroupId(group_id);
-  // TODO(crbug.com/866377): Run FUSE fully deprivileged.
-  mount_process.SetCapabilities(CAP_TO_MASK(CAP_SYS_ADMIN));
-  int return_code = mount_process.Run();
-  if (return_code != 0) {
-    LOG(WARNING) << "AVFS program failed with a return code " << return_code;
-    return MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
-  }
   if (!mount_info.RetrieveFromCurrentProcess() ||
       !mount_info.HasMountPath(avfs_path)) {
     LOG(WARNING) << "Failed to mount '" << base_path << "' to '" << avfs_path

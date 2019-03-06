@@ -71,7 +71,10 @@ std::unique_ptr<FUSEMounter> DrivefsHelper::CreateMounter(
       platform()->PathExists(kSeccompPolicyFile) ? kSeccompPolicyFile : "";
 
   // Bind datadir and DBus communication socket into the sandbox.
-  std::vector<std::string> paths = {data_dir.value(), kDbusSocketPath};
+  std::vector<FUSEMounter::BindPath> paths = {
+      {data_dir.value(), true /* writable */},
+      {kDbusSocketPath, true},
+  };
   return std::make_unique<FUSEMounter>(
       "", target_path.value(), type(), mount_options, platform(),
       program_path().value(), user(), seccomp, paths, true);

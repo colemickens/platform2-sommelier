@@ -46,13 +46,15 @@ FUSEMounter::FUSEMounter(const string& source_path,
                          const string& mount_program_path,
                          const string& mount_user,
                          const std::string& seccomp_policy,
-                         const std::vector<std::string>& accessible_paths,
+                         const std::vector<BindPath>& accessible_paths,
                          bool permit_network_access,
-                         bool unprivileged_mount)
+                         bool unprivileged_mount,
+                         const std::string& mount_group)
     : Mounter(source_path, target_path, filesystem_type, mount_options),
       platform_(platform),
       mount_program_path_(mount_program_path),
       mount_user_(mount_user),
+      mount_group_(mount_group),
       seccomp_policy_(seccomp_policy),
       accessible_paths_(accessible_paths),
       permit_network_access_(permit_network_access),
@@ -68,6 +70,10 @@ MountErrorType FUSEMounter::MountImpl() {
   gid_t mount_group_id;
   if (!platform_->GetUserAndGroupId(mount_user_, &mount_user_id,
                                     &mount_group_id)) {
+    return MOUNT_ERROR_INTERNAL;
+  }
+  if (!mount_group_.empty() &&
+      !platform_->GetGroupId(mount_group_, &mount_group_id)) {
     return MOUNT_ERROR_INTERNAL;
   }
 
@@ -144,7 +150,7 @@ MountErrorType FUSEMounter::MountImpl() {
 
   // If a block device is being mounted, bind mount it into the sandbox.
   if (base::StartsWith(source_path(), "/dev/", base::CompareCase::SENSITIVE)) {
-    if (!mount_process.BindMount(source_path(), source_path(), true)) {
+    if (!mount_process.BindMount(source_path(), source_path(), true, false)) {
       LOG(ERROR) << "Unable to bind mount device " << source_path();
       return MOUNT_ERROR_INTERNAL;
     }
@@ -155,7 +161,7 @@ MountErrorType FUSEMounter::MountImpl() {
     LOG(ERROR) << "Can't mount /run";
     return MOUNT_ERROR_INTERNAL;
   }
-  if (!mount_process.BindMount("/run/fuse", "/run/fuse", false)) {
+  if (!mount_process.BindMount("/run/fuse", "/run/fuse", false, false)) {
     LOG(ERROR) << "Can't bind /run/fuse";
     return MOUNT_ERROR_INTERNAL;
   }
@@ -166,13 +172,14 @@ MountErrorType FUSEMounter::MountImpl() {
 
   if (!unprivileged_mount_) {
     // Bind the FUSE device file.
-    if (!mount_process.BindMount(kFuseDeviceFile, kFuseDeviceFile, true)) {
+    if (!mount_process.BindMount(kFuseDeviceFile, kFuseDeviceFile, true,
+                                 false)) {
       LOG(ERROR) << "Unable to bind mount FUSE device file";
       return MOUNT_ERROR_INTERNAL;
     }
 
     // Mounts are exposed to the rest of the system through this shared mount.
-    if (!mount_process.BindMount("/media", "/media", true)) {
+    if (!mount_process.BindMount("/media", "/media", true, false)) {
       LOG(ERROR) << "Can't bind mount /media";
       return MOUNT_ERROR_INTERNAL;
     }
@@ -180,8 +187,9 @@ MountErrorType FUSEMounter::MountImpl() {
 
   // This is for additional data dirs.
   for (const auto& path : accessible_paths_) {
-    if (!mount_process.BindMount(path, path, true)) {
-      LOG(ERROR) << "Can't bind " << path;
+    if (!mount_process.BindMount(path.path, path.path, path.writable,
+                                 path.recursive)) {
+      LOG(ERROR) << "Can't bind " << path.path;
       return MOUNT_ERROR_INVALID_ARGUMENT;
     }
   }
@@ -207,13 +215,14 @@ MountErrorType FUSEMounter::MountImpl() {
     mount_process.NewNetworkNamespace();
   } else {
     // Network DNS configs are in /run/shill.
-    if (!mount_process.BindMount("/run/shill", "/run/shill", false)) {
+    if (!mount_process.BindMount("/run/shill", "/run/shill", false, false)) {
       LOG(ERROR) << "Can't bind /run/shill";
       return MOUNT_ERROR_INTERNAL;
     }
     // Hardcoded hosts are mounted into /etc/hosts.d when Crostini is enabled.
     if (platform_->PathExists("/etc/hosts.d") &&
-        !mount_process.BindMount("/etc/hosts.d", "/etc/hosts.d", false)) {
+        !mount_process.BindMount("/etc/hosts.d", "/etc/hosts.d", false,
+                                 false)) {
       LOG(ERROR) << "Can't bind /etc/hosts.d";
       return MOUNT_ERROR_INTERNAL;
     }

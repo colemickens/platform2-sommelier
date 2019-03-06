@@ -21,6 +21,12 @@ class Platform;
 // A class for mounting a device file using a FUSE mount program.
 class FUSEMounter : public Mounter {
  public:
+  struct BindPath {
+    std::string path;
+    bool writable = false;
+    bool recursive = false;
+  };
+
   FUSEMounter(const std::string& source_path,
               const std::string& target_path,
               const std::string& filesystem_type,
@@ -29,9 +35,10 @@ class FUSEMounter : public Mounter {
               const std::string& mount_program_path,
               const std::string& mount_user,
               const std::string& seccomp_policy,
-              const std::vector<std::string>& accessible_paths,
+              const std::vector<BindPath>& accessible_paths,
               bool permit_network_access,
-              bool unprivileged_mount = false);
+              bool unprivileged_mount = false,
+              const std::string& mount_group = {});
 
  protected:
   // Mounts a device file using the FUSE mount program at |mount_program_path_|.
@@ -46,12 +53,15 @@ class FUSEMounter : public Mounter {
   // User to run the FUSE mount program as.
   const std::string mount_user_;
 
+  // Group to run the FUSE mount program as.
+  const std::string mount_group_;
+
   // If not empty the path to BPF seccomp filter policy.
   const std::string seccomp_policy_;
 
   // Directories the FUSE module should be able to access (beyond basic
   // /proc, /dev, etc).
-  const std::vector<std::string> accessible_paths_;
+  const std::vector<BindPath> accessible_paths_;
 
   // Whether to leave network access to the mount program.
   const bool permit_network_access_;

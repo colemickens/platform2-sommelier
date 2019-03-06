@@ -4,8 +4,12 @@
 
 #include "cros-disks/sandboxed_process.h"
 
+#include <sys/mount.h>
+
 #include <base/logging.h>
 #include <chromeos/libminijail.h>
+
+#include "cros-disks/mount_options.h"
 
 using std::string;
 
@@ -51,8 +55,16 @@ bool SandboxedProcess::SetUpMinimalMounts() {
 
 bool SandboxedProcess::BindMount(const std::string& from,
                                  const std::string& to,
-                                 bool writeable) {
-  return minijail_bind(jail_, from.c_str(), to.c_str(), writeable) == 0;
+                                 bool writeable,
+                                 bool recursive) {
+  MountOptions::Flags flags = MS_BIND;
+  if (!writeable) {
+    flags |= MS_RDONLY;
+  }
+  if (recursive) {
+    flags |= MS_REC;
+  }
+  return minijail_mount(jail_, from.c_str(), to.c_str(), "", flags) == 0;
 }
 
 bool SandboxedProcess::Mount(const std::string& src,

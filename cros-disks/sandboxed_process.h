@@ -43,7 +43,8 @@ class SandboxedProcess : public Process {
   // Maps a file or a folder into process' mount namespace.
   bool BindMount(const std::string& from,
                  const std::string& to,
-                 bool writeable);
+                 bool writeable,
+                 bool recursive);
 
   // Mounts source to the specified folder in the new mount namespace.
   bool Mount(const std::string& src,
