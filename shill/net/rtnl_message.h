@@ -138,10 +138,10 @@ class SHILL_EXPORT RTNLMessage {
   // Build an RTNL message from arguments
   RTNLMessage(Type type,
               Mode mode,
-              unsigned int flags,
+              uint16_t flags,
               uint32_t seq,
               uint32_t pid,
-              int interface_index,
+              int32_t interface_index,
               IPAddress::Family family);
 
   // Parse an RTNL message.  Returns true on success.
@@ -158,7 +158,7 @@ class SHILL_EXPORT RTNLMessage {
   uint32_t seq() const { return seq_; }
   void set_seq(uint32_t seq) { seq_ = seq; }
   uint32_t pid() const { return pid_; }
-  uint32_t interface_index() const { return interface_index_; }
+  int32_t interface_index() const { return interface_index_; }
   IPAddress::Family family() const { return family_; }
 
   const LinkStatus& link_status() const { return link_status_; }
@@ -234,7 +234,7 @@ class SHILL_EXPORT RTNLMessage {
   uint16_t flags_;
   uint32_t seq_;
   uint32_t pid_;
-  unsigned int interface_index_;
+  int32_t interface_index_;
   IPAddress::Family family_;
   LinkStatus link_status_;
   AddressStatus address_status_;

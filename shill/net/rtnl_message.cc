@@ -40,10 +40,10 @@ RTNLMessage::RTNLMessage()
 
 RTNLMessage::RTNLMessage(Type type,
                          Mode mode,
-                         unsigned int flags,
+                         uint16_t flags,
                          uint32_t seq,
                          uint32_t pid,
-                         int interface_index,
+                         int32_t interface_index,
                          IPAddress::Family family)
     : type_(type),
       mode_(mode),
