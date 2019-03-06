@@ -57,7 +57,7 @@ static bool has_vaapi_entrypoint(VADisplay va_display, VAProfile va_profile,
  * |format|.
  */
 static bool match_vaapi_capabilities(VADisplay va_display,
-    VAProfile* required_profiles,
+    const VAProfile* required_profiles,
     VAEntrypoint entrypoint, unsigned int format) {
   int i;
   bool found = false;
@@ -102,7 +102,7 @@ static bool match_vaapi_capabilities(VADisplay va_display,
 /* Returns true if libva supports any given profiles. And that profile has said
  * entrypoint with format.
  */
-bool is_vaapi_support_formats(int fd, VAProfile* profiles,
+bool is_vaapi_support_formats(int fd, const VAProfile* profiles,
     VAEntrypoint entrypoint, unsigned int format) {
   bool found = false;
   VAStatus va_res;
@@ -254,7 +254,7 @@ static bool get_max_resolution(
 /* Returns success or failure of getting resolution. The maximum resolution
  * among passed profiles is returned through arguments. */
 bool get_vaapi_max_resolution(
-    int fd, VAProfile* profiles, VAEntrypoint entrypoint,
+    int fd, const VAProfile* profiles, VAEntrypoint entrypoint,
     int32_t* const resolution_width, int32_t* const resolution_height) {
   *resolution_width = 0;
   *resolution_height = 0;

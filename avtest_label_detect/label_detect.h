@@ -33,10 +33,10 @@ bool get_v4l2_max_resolution(
 
 /* util_vaapi */
 #ifdef HAS_VAAPI
-bool is_vaapi_support_formats(int fd, VAProfile* profiles,
+bool is_vaapi_support_formats(int fd, const VAProfile* profiles,
     VAEntrypoint entrypoint, unsigned int format);
 bool get_vaapi_max_resolution(
-    int fd, VAProfile* profiles, VAEntrypoint entrypoit,
+    int fd, const VAProfile* profiles, VAEntrypoint entrypoit,
     int32_t* const resolution_width, int32_t* const resolution_height);
 #endif
 
@@ -54,4 +54,7 @@ extern bool detect_jpeg_acc_enc(void);
 bool detect_4k_device_h264(void);
 bool detect_4k_device_vp8(void);
 bool detect_4k_device_vp9(void);
+bool detect_4k_device_enc_h264(void);
+bool detect_4k_device_enc_vp8(void);
+bool detect_4k_device_enc_vp9(void);
 #endif  // AVTEST_LABEL_DETECT_LABEL_DETECT_H_
