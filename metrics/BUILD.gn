@@ -1,0 +1,267 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# TODO(crbug.com/932128): Fix the visibility on the shared lib.
+# gnlint: disable=GypLintVisibilityFlags
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":libmetrics-${libbase_ver}",
+    ":libmetrics_daemon",
+    ":libupload_service",
+    ":metrics_client",
+  ]
+  if (use.passive_metrics) {
+    deps += [ ":metrics_daemon" ]
+  }
+  if (use.test) {
+    deps += [
+      ":cumulative_metrics_test",
+      ":metrics_library_test",
+      ":persistent_integer_test",
+      ":timer_test",
+      ":upload_service_test",
+    ]
+  }
+  if (use.passive_metrics && use.test) {
+    deps += [ ":metrics_daemon_test" ]
+  }
+  if (use.fuzzer) {
+    deps += [
+      ":metrics_library_consent_id_fuzzer",
+      ":metrics_serialization_utils_fuzzer",
+    ]
+  }
+}
+
+shared_library("libmetrics-${libbase_ver}") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libsession_manager-client",
+  ]
+  configs += [ "//common-mk:visibility_default" ]
+  cflags_cc = [ "-fno-exceptions" ]
+  libs = [ "policy-${libbase_ver}" ]
+  sources = [
+    "c_metrics_library.cc",
+    "cumulative_metrics.cc",
+    "metrics_library.cc",
+    "persistent_integer.cc",
+    "serialization/metric_sample.cc",
+    "serialization/serialization_utils.cc",
+    "timer.cc",
+  ]
+  include_dirs = [ "." ]
+  if (use.metrics_uploader) {
+    defines = [ "USE_METRICS_UPLOADER=1" ]
+  }
+}
+
+pkg_config("target_defaults_pkg_deps") {
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libpcrecpp",
+  ]
+}
+
+config("target_defaults") {
+  cflags_cc = [ "-fno-exceptions" ]
+  configs = [ ":target_defaults_pkg_deps" ]
+}
+
+static_library("libmetrics_daemon") {
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":libmetrics-${libbase_ver}",
+    ":libupload_service",
+    ":metrics_proto",
+  ]
+  libs = [
+    "rootdev",
+    "system_api-power_manager-protos",
+  ]
+  sources = [
+    "metrics_daemon.cc",
+    "metrics_daemon_main.cc",
+    "vmlog_writer.cc",
+  ]
+  include_dirs = [ "." ]
+}
+
+executable("metrics_client") {
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":libmetrics-${libbase_ver}",
+  ]
+  sources = [
+    "metrics_client.cc",
+  ]
+}
+
+static_library("libupload_service") {
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":libmetrics-${libbase_ver}",
+    ":metrics_proto",
+  ]
+  all_dependent_pkg_deps = [
+    "protobuf-lite",
+    "vboot_host",
+  ]
+  sources = [
+    "uploader/metrics_hashes.cc",
+    "uploader/metrics_log.cc",
+    "uploader/metrics_log_base.cc",
+    "uploader/sender_http.cc",
+    "uploader/system_profile_cache.cc",
+    "uploader/upload_service.cc",
+  ]
+  include_dirs = [ "." ]
+}
+
+proto_library("metrics_proto") {
+  proto_in_dir = "uploader/proto"
+  proto_out_dir = "include/metrics/uploader/proto"
+  sources = [
+    "${proto_in_dir}/chrome_user_metrics_extension.proto",
+    "${proto_in_dir}/histogram_event.proto",
+    "${proto_in_dir}/system_profile.proto",
+    "${proto_in_dir}/user_action_event.proto",
+  ]
+}
+
+if (use.passive_metrics) {
+  executable("metrics_daemon") {
+    configs += [ ":target_defaults" ]
+    deps = [
+      ":libmetrics_daemon",
+    ]
+  }
+}
+
+if (use.test) {
+  executable("persistent_integer_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      "//common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "persistent_integer.cc",
+      "persistent_integer_test.cc",
+    ]
+  }
+  executable("cumulative_metrics_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      "../common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "cumulative_metrics.cc",
+      "cumulative_metrics_test.cc",
+      "persistent_integer.cc",
+    ]
+  }
+  executable("metrics_library_test") {
+    deps = [
+      ":libmetrics-${libbase_ver}",
+      "../common-mk/testrunner:testrunner",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "metrics_library_test.cc",
+      "serialization/serialization_utils_test.cc",
+    ]
+    libs = [ "policy-${libbase_ver}" ]
+  }
+  executable("timer_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      "../common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "timer.cc",
+      "timer_test.cc",
+    ]
+  }
+  executable("upload_service_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "persistent_integer.cc",
+      "uploader/metrics_hashes_test.cc",
+      "uploader/metrics_log_base_test.cc",
+      "uploader/mock/sender_mock.cc",
+      "uploader/upload_service_test.cc",
+    ]
+    deps = [
+      ":libupload_service",
+      "../common-mk/testrunner:testrunner",
+    ]
+    include_dirs = [ "." ]
+  }
+}
+
+if (use.passive_metrics && use.test) {
+  executable("metrics_daemon_test") {
+    deps = [
+      ":libmetrics_daemon",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "metrics_daemon_test.cc",
+      "vmlog_writer_test.cc",
+    ]
+    include_dirs = [ "." ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("metrics_library_consent_id_fuzzer") {
+    deps = [
+      ":libmetrics-${libbase_ver}",
+    ]
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "metrics_library_consent_id_fuzzer.cc",
+    ]
+  }
+  executable("metrics_serialization_utils_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libmetrics-${libbase_ver}",
+    ]
+    sources = [
+      "serialization/metrics_serialization_utils_fuzzer.cc",
+    ]
+  }
+}
