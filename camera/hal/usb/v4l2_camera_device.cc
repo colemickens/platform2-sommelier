@@ -87,6 +87,18 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
                   << ", maybe camera is being used by another app.";
     return -errno;
   }
+
+  // Only set power line frequency when the value is correct.
+  if (device_info_.power_line_frequency != PowerLineFrequency::FREQ_ERROR) {
+    ret = SetPowerLineFrequency(device_info_.power_line_frequency);
+    if (ret < 0) {
+      if (IsExternalCamera()) {
+        VLOGF(2) << "Ignore SetPowerLineFrequency error for external camera";
+      } else {
+        return -EINVAL;
+      }
+    }
+  }
   return 0;
 }
 
@@ -177,20 +189,6 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
   if (std::fabs(fps - frame_rate) > std::numeric_limits<float>::epsilon()) {
     LOGF(ERROR) << "Unsupported frame rate " << frame_rate;
     return -EINVAL;
-  }
-
-  // Only set power line frequency when the value is correct.
-  if (device_info_.power_line_frequency != PowerLineFrequency::FREQ_ERROR) {
-    // TODO(shik): We don't need to set power line frequency every time here.
-    // Maybe we could move this to initialization stage?
-    ret = SetPowerLineFrequency(device_info_.power_line_frequency);
-    if (ret < 0) {
-      if (IsExternalCamera()) {
-        VLOGF(2) << "Ignore SetPowerLineFrequency error for external camera";
-      } else {
-        return -EINVAL;
-      }
-    }
   }
 
   v4l2_requestbuffers req_buffers;

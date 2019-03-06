@@ -121,7 +121,18 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
                  << ", maybe camera is being used by another app.";
     return -errno;
   }
-  power_line_frequency_ = GetPowerLineFrequency(device_path);
+
+  cros::PowerLineFrequency power_line_frequency =
+      GetPowerLineFrequency(device_path);
+
+  // Only set power line frequency when the value is correct.
+  if (power_line_frequency != cros::PowerLineFrequency::FREQ_ERROR) {
+    ret = SetPowerLineFrequency(power_line_frequency);
+    if (ret < 0) {
+      LOG(ERROR) << __func__ << ": Set power frequency error";
+      return -EINVAL;
+    }
+  }
   return 0;
 }
 
@@ -202,15 +213,6 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
   }
   *buffer_size = fmt.fmt.pix.sizeimage;
   VLOG(1) << "Buffer size: " << *buffer_size;
-
-  // Only set power line frequency when the value is correct.
-  if (power_line_frequency_ != cros::PowerLineFrequency::FREQ_ERROR) {
-    ret = SetPowerLineFrequency(power_line_frequency_);
-    if (ret < 0) {
-      LOG(ERROR) << __func__ << ": Set power frequency error";
-      return -EINVAL;
-    }
-  }
 
   v4l2_requestbuffers req_buffers;
   memset(&req_buffers, 0, sizeof(req_buffers));

@@ -66,9 +66,6 @@ class V4L2CameraDevice : public CameraDeviceDelegate {
   // The opened device fd.
   base::ScopedFD device_fd_;
 
-  // Power line frequency.
-  cros::PowerLineFrequency power_line_frequency_;
-
   // StreamOn state
   bool stream_on_;
 
