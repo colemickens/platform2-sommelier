@@ -159,6 +159,10 @@ MountErrorType FUSEMounter::MountImpl() {
     LOG(ERROR) << "Can't bind /run/fuse";
     return MOUNT_ERROR_INTERNAL;
   }
+  if (!mount_process.Mount("tmpfs", "/home", "tmpfs", "mode=0755,size=10M")) {
+    LOG(ERROR) << "Can't mount /home";
+    return MOUNT_ERROR_INTERNAL;
+  }
 
   if (!unprivileged_mount_) {
     // Bind the FUSE device file.

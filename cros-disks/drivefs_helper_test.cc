@@ -145,15 +145,8 @@ class DrivefsHelperTest : public ::testing::Test {
   TestDrivefsHelper helper_;
 };
 
-MATCHER(HasBindBitSet, "") {
-  return (arg & MS_BIND) == MS_BIND;
-}
-
 TEST_F(DrivefsHelperTest, CreateMounter) {
   EXPECT_CALL(helper_, SetupDirectoryForFUSEAccess(base::FilePath("/foo/bar")))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_,
-              Mount("/foo/bar", "/tmp/working_dir", "", HasBindBitSet(), _))
       .WillOnce(Return(true));
 
   auto mounter = helper_.CreateMounter(
@@ -166,7 +159,7 @@ TEST_F(DrivefsHelperTest, CreateMounter) {
   EXPECT_TRUE(mounter->source_path().empty());
   EXPECT_EQ("/media/fuse/drivefs/id", mounter->target_path());
   auto options_string = mounter->mount_options().ToString();
-  EXPECT_THAT(options_string, HasSubstr("datadir=/tmp/working_dir"));
+  EXPECT_THAT(options_string, HasSubstr("datadir=/foo/bar"));
   EXPECT_THAT(options_string, HasSubstr("identity=id"));
   EXPECT_THAT(options_string, HasSubstr("rw"));
   EXPECT_THAT(options_string, HasSubstr("uid=700"));
@@ -179,9 +172,6 @@ TEST_F(DrivefsHelperTest, CreateMounter_CreateDataDir) {
       .WillOnce(DoAll(SetArgPointee<1>("/foo"), Return(true)));
   EXPECT_CALL(helper_, SetupDirectoryForFUSEAccess(base::FilePath("/foo/bar")))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_,
-              Mount("/foo/bar", "/tmp/working_dir", "", HasBindBitSet(), _))
-      .WillOnce(Return(true));
 
   auto mounter = helper_.CreateMounter(
       base::FilePath("/tmp/working_dir"), Uri::Parse("drivefs://id"),
@@ -193,7 +183,7 @@ TEST_F(DrivefsHelperTest, CreateMounter_CreateDataDir) {
   EXPECT_TRUE(mounter->source_path().empty());
   EXPECT_EQ("/media/fuse/drivefs/id", mounter->target_path());
   auto options_string = mounter->mount_options().ToString();
-  EXPECT_THAT(options_string, HasSubstr("datadir=/tmp/working_dir"));
+  EXPECT_THAT(options_string, HasSubstr("datadir=/foo/bar"));
   EXPECT_THAT(options_string, HasSubstr("identity=id"));
   EXPECT_THAT(options_string, HasSubstr("rw"));
   EXPECT_THAT(options_string, HasSubstr("uid=700"));
@@ -261,18 +251,6 @@ TEST_F(DrivefsHelperTest, CreateMounter_NoDatadir) {
 
 TEST_F(DrivefsHelperTest, CreateMounter_SetupDirectoryFails) {
   EXPECT_CALL(helper_, SetupDirectoryForFUSEAccess(base::FilePath("/foo/bar")))
-      .WillOnce(Return(false));
-
-  EXPECT_FALSE(helper_.CreateMounter(
-      base::FilePath("/tmp/working_dir"), Uri::Parse("drivefs://id"),
-      base::FilePath("/media/fuse/drivefs/id"), {"rw", "datadir=/foo/bar"}));
-}
-
-TEST_F(DrivefsHelperTest, CreateMounter_BindMountFails) {
-  EXPECT_CALL(helper_, SetupDirectoryForFUSEAccess(base::FilePath("/foo/bar")))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_,
-              Mount("/foo/bar", "/tmp/working_dir", _, HasBindBitSet(), _))
       .WillOnce(Return(false));
 
   EXPECT_FALSE(helper_.CreateMounter(

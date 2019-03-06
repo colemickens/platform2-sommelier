@@ -57,12 +57,11 @@ std::unique_ptr<FUSEMounter> DrivefsHelper::CreateMounter(
     LOG(ERROR) << "Invalid user configuration.";
     return nullptr;
   }
-  if (!SetupDirectoryForFUSEAccess(data_dir) ||
-      !BindMount(data_dir, working_dir)) {
+  if (!SetupDirectoryForFUSEAccess(data_dir)) {
     return nullptr;
   }
   MountOptions mount_options;
-  mount_options.EnforceOption(kDataDirOptionPrefix + working_dir.value());
+  mount_options.EnforceOption(kDataDirOptionPrefix + data_dir.value());
   mount_options.EnforceOption(kIdentityOptionPrefix + identity);
   mount_options.Initialize(options, true, base::IntToString(files_uid),
                            base::IntToString(files_gid));
@@ -71,8 +70,8 @@ std::unique_ptr<FUSEMounter> DrivefsHelper::CreateMounter(
   std::string seccomp =
       platform()->PathExists(kSeccompPolicyFile) ? kSeccompPolicyFile : "";
 
-  // Bind working dir and DBus communication socket into the sandbox.
-  std::vector<std::string> paths = {working_dir.value(), kDbusSocketPath};
+  // Bind datadir and DBus communication socket into the sandbox.
+  std::vector<std::string> paths = {data_dir.value(), kDbusSocketPath};
   return std::make_unique<FUSEMounter>(
       "", target_path.value(), type(), mount_options, platform(),
       program_path().value(), user(), seccomp, paths, true);
