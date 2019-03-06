@@ -37,6 +37,7 @@ proto_library("protos") {
 }
 
 util_sources = [
+  "address_manager.cc",
   "mac_address_generator.cc",
   "subnet.cc",
   "subnet_pool.cc",
@@ -96,6 +97,7 @@ if (use.test) {
       ":test_config",
     ]
     sources = [
+      "address_manager_test.cc",
       "arc_ip_config_test.cc",
       "device_manager_test.cc",
       "device_test.cc",

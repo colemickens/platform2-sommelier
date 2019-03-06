@@ -19,33 +19,30 @@
 
 namespace arc_networkd {
 
-// Manages IPv4 subnets that can be assigned to virtual machines and containers.
+// Manages up to 32 IPv4 subnets that can be assigned to guest interfaces.
 // These use non-publicly routable addresses in the range 100.115.92.0/24.
 class BRILLO_EXPORT SubnetPool {
  public:
-  SubnetPool() = default;
+  // Returns a new pool or nullptr if num_subnets exceeds 32.
+  static std::unique_ptr<SubnetPool> New(uint32_t base_addr,
+                                         uint32_t prefix,
+                                         uint32_t num_subnets);
   ~SubnetPool();
 
-  // Allocates and returns a new VM Subnet in the range 100.115.92.0/24. Returns
-  // nullptr if no subnets are available.
-  std::unique_ptr<Subnet> AllocateVM();
-
-  // Allocates and returns a new Container Subnet in the range 100.115.92.0/24.
-  // Returns nullptr if no subnets are available.
-  std::unique_ptr<Subnet> AllocateContainer();
+  // Allocates and returns a new subnet or nullptr if none are available.
+  std::unique_ptr<Subnet> Allocate();
 
  private:
-  // Called by Subnets on destruction to free a given subnet.
-  void ReleaseVM(size_t index);
+  SubnetPool(uint32_t base_addr, uint32_t prefix, uint32_t num_subnets);
 
   // Called by Subnets on destruction to free a given subnet.
-  void ReleaseContainer(size_t index);
+  void Release(uint32_t index);
 
-  // There are 26 /30 subnets.
-  std::bitset<26> vm_subnets_;
-
-  // There are 4 /28 subnets.
-  std::bitset<4> container_subnets_;
+  const uint32_t base_addr_;
+  const uint32_t prefix_;
+  const uint32_t num_subnets_;
+  const uint32_t addr_per_index_;
+  std::bitset<32> subnets_;
 
   base::WeakPtrFactory<SubnetPool> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(SubnetPool);

@@ -24,7 +24,7 @@ uint32_t SubnetAddress::Address() const {
   return htonl(addr_);
 }
 
-Subnet::Subnet(uint32_t network_id, size_t prefix, base::Closure release_cb)
+Subnet::Subnet(uint32_t network_id, uint32_t prefix, base::Closure release_cb)
     : network_id_(network_id),
       prefix_(prefix),
       release_cb_(std::move(release_cb)),
@@ -59,6 +59,11 @@ std::unique_ptr<SubnetAddress> Subnet::Allocate(uint32_t addr) {
       addr, base::Bind(&Subnet::Free, weak_factory_.GetWeakPtr(), offset));
 }
 
+std::unique_ptr<SubnetAddress> Subnet::AllocateAtOffset(uint32_t offset) {
+  uint32_t addr = AddressAtOffset(offset);
+  return (addr != INADDR_ANY) ? Allocate(ntohl(addr)) : nullptr;
+}
+
 uint32_t Subnet::AddressAtOffset(uint32_t offset) const {
   if (offset >= AvailableCount())
     return INADDR_ANY;
@@ -67,7 +72,7 @@ uint32_t Subnet::AddressAtOffset(uint32_t offset) const {
   return htonl(network_id_ + 1 + offset);
 }
 
-size_t Subnet::AvailableCount() const {
+uint32_t Subnet::AvailableCount() const {
   // The available IP count is all IPs in a subnet, minus the network ID
   // and the broadcast address.
   return addrs_.size() - 2;
@@ -77,7 +82,7 @@ uint32_t Subnet::Netmask() const {
   return htonl((0xffffffffull << (32 - prefix_)) & 0xffffffff);
 }
 
-size_t Subnet::Prefix() const {
+uint32_t Subnet::Prefix() const {
   return prefix_;
 }
 

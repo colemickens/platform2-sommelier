@@ -14,9 +14,9 @@
 #include <utility>
 #include <vector>
 
+#include <arc/network/address_manager.h>
 #include <arc/network/mac_address_generator.h>
 #include <arc/network/subnet.h>
-#include <arc/network/subnet_pool.h>
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/callback.h>
@@ -133,8 +133,8 @@ class TerminaVmTest : public ::testing::Test {
   base::ScopedTempDir temp_dir_;
 
   // Resource allocators for the VM.
+  std::unique_ptr<arc_networkd::AddressManager> network_address_manager_;
   arc_networkd::MacAddressGenerator mac_address_generator_;
-  arc_networkd::SubnetPool subnet_pool_;
   VsockCidPool vsock_cid_pool_;
 
   // Addresses assigned to the VM.
@@ -369,9 +369,13 @@ void TerminaVmTest::SetUp() {
   ASSERT_TRUE(stub);
 
   // Allocate resources for the VM.
+  network_address_manager_.reset(new arc_networkd::AddressManager(
+      {arc_networkd::AddressManager::Guest::VM_TERMINA}));
   arc_networkd::MacAddress mac_addr = mac_address_generator_.Generate();
   uint32_t vsock_cid = vsock_cid_pool_.Allocate();
-  std::unique_ptr<arc_networkd::Subnet> subnet = subnet_pool_.AllocateVM();
+  std::unique_ptr<arc_networkd::Subnet> subnet =
+      network_address_manager_->AllocateIPv4Subnet(
+          arc_networkd::AddressManager::Guest::VM_TERMINA);
 
   ASSERT_TRUE(subnet);
 

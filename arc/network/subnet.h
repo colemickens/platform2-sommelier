@@ -40,17 +40,21 @@ class BRILLO_EXPORT SubnetAddress {
 // Represents an allocated subnet.
 class BRILLO_EXPORT Subnet {
  public:
-  // Creates a new Subnet with the given network id and prefix.  |release_cb|
+  // Creates a new Subnet with the given network id and prefix. |release_cb|
   // runs in the destructor of this class and can be used to free other
   // resources associated with the subnet.
-  Subnet(uint32_t network_id, size_t prefix, base::Closure release_cb);
+  Subnet(uint32_t network_id, uint32_t prefix, base::Closure release_cb);
   ~Subnet();
 
-  // Marks |addr| as allocated.  |addr| must be in host-byte order.  Returns
+  // Marks |addr| as allocated. |addr| must be in host-byte order. Returns
   // nullptr if |addr| has already been allocated or if |addr| is not contained
-  // within this subnet.  Otherwise, the allocated address is automatically
+  // within this subnet. Otherwise, the allocated address is automatically
   // freed when the returned SubnetAddress is destroyed.
   std::unique_ptr<SubnetAddress> Allocate(uint32_t addr);
+
+  // Allocates the address at |offset|. Returns nullptr if |offset| is invalid
+  // (exceeds available IPs in the subnet) or is already allocated.
+  std::unique_ptr<SubnetAddress> AllocateAtOffset(uint32_t offset);
 
   // Returns the address at the given |offset| in network byte order. Returns
   // INADDR_ANY if the offset exceeds the available IPs in the subnet.
@@ -58,13 +62,13 @@ class BRILLO_EXPORT Subnet {
   uint32_t AddressAtOffset(uint32_t offset) const;
 
   // Returns the number of available IPs in this subnet.
-  size_t AvailableCount() const;
+  uint32_t AvailableCount() const;
 
   // Returns the netmask in network-byte order.
   uint32_t Netmask() const;
 
   // Returns the prefix.
-  size_t Prefix() const;
+  uint32_t Prefix() const;
 
  private:
   // Marks the address at |offset| as free.
@@ -74,7 +78,7 @@ class BRILLO_EXPORT Subnet {
   uint32_t network_id_;
 
   // Prefix.
-  size_t prefix_;
+  uint32_t prefix_;
 
   // Keeps track of allocated addresses.
   std::vector<bool> addrs_;

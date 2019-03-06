@@ -154,6 +154,22 @@ TEST(PluginSubnet, Allocate) {
     addrs.emplace_back(std::move(addr));
   }
 }
+// Tests that the subnet allows allocating all addresses in the subnet's range
+// using an offset.
+TEST(PluginSubnet, AllocateAtOffset) {
+  Subnet subnet(kPluginBaseAddress, kPluginSubnetPrefix,
+                base::Bind(&base::DoNothing));
+
+  std::vector<std::unique_ptr<SubnetAddress>> addrs;
+  addrs.reserve(subnet.AvailableCount());
+
+  for (size_t offset = 0; offset < subnet.AvailableCount(); ++offset) {
+    auto addr = subnet.AllocateAtOffset(offset);
+    EXPECT_TRUE(addr);
+    EXPECT_EQ(htonl(kPluginBaseAddress + offset + 1), addr->Address());
+    addrs.emplace_back(std::move(addr));
+  }
+}
 
 // Tests that the subnet frees addresses when they are destroyed.
 TEST(PluginSubnet, Free) {

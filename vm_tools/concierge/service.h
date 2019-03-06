@@ -13,9 +13,9 @@
 #include <utility>
 #include <vector>
 
+#include <arc/network/address_manager.h>
 #include <arc/network/mac_address_generator.h>
 #include <arc/network/subnet.h>
-#include <arc/network/subnet_pool.h>
 #include <base/callback.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
@@ -159,7 +159,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Resource allocators for VMs.
   arc_networkd::MacAddressGenerator mac_address_generator_;
-  arc_networkd::SubnetPool subnet_pool_;
+  arc_networkd::AddressManager network_address_manager_;
   VsockCidPool vsock_cid_pool_;
 
   // Current DNS resolution config.

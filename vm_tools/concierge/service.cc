@@ -129,10 +129,6 @@ const std::map<string, string> kLxdEnv = {
     {"LXD_UNPRIVILEGED_ONLY", "true"},
 };
 
-// Base address for the plugin vm subnet.
-constexpr size_t kPluginBaseAddress = 0x64735c80;  // 100.115.92.128
-constexpr size_t kPluginSubnetPrefix = 28;
-
 constexpr uint64_t kMinimumDiskSize = 1ll * 1024 * 1024 * 1024;  // 1 GiB
 constexpr uint64_t kDiskSizeMask = ~511ll;  // Round to disk block size.
 
@@ -441,8 +437,6 @@ base::ScopedFD Create9PUnixSocket(const base::FilePath& path) {
   return fd;
 }
 
-void DoNothing() {}
-
 }  // namespace
 
 std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
@@ -456,7 +450,12 @@ std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
 }
 
 Service::Service(base::Closure quit_closure)
-    : watcher_(FROM_HERE),
+    : network_address_manager_({
+          arc_networkd::AddressManager::Guest::VM_TERMINA,
+          arc_networkd::AddressManager::Guest::VM_PLUGIN,
+          arc_networkd::AddressManager::Guest::CONTAINER,
+      }),
+      watcher_(FROM_HERE),
       next_seneschal_server_port_(kFirstSeneschalServerPort),
       quit_closure_(std::move(quit_closure)),
 #ifdef __arm__
@@ -465,11 +464,11 @@ Service::Service(base::Closure quit_closure)
       resync_vm_clocks_on_resume_(false),
 #endif
       weak_ptr_factory_(this) {
-  plugin_subnet_ = std::make_unique<arc_networkd::Subnet>(
-      kPluginBaseAddress, kPluginSubnetPrefix, base::Bind(&DoNothing));
+  plugin_subnet_ = network_address_manager_.AllocateIPv4Subnet(
+      arc_networkd::AddressManager::Guest::VM_PLUGIN);
 
   // The first address is the gateway and cannot be used by VMs.
-  plugin_gateway_ = plugin_subnet_->Allocate(kPluginBaseAddress + 1);
+  plugin_gateway_ = plugin_subnet_->AllocateAtOffset(0);
 }
 
 Service::~Service() {
@@ -872,7 +871,9 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
   // Allocate resources for the VM.
   arc_networkd::MacAddress mac_address = mac_address_generator_.Generate();
-  std::unique_ptr<arc_networkd::Subnet> subnet = subnet_pool_.AllocateVM();
+  std::unique_ptr<arc_networkd::Subnet> subnet =
+      network_address_manager_.AllocateIPv4Subnet(
+          arc_networkd::AddressManager::Guest::VM_TERMINA);
   if (!subnet) {
     LOG(ERROR) << "No available subnets; unable to start VM";
 
@@ -1405,7 +1406,8 @@ bool Service::StartTermina(TerminaVm* vm, string* failure_reason) {
 
   // Allocate the subnet for lxd's bridge to use.
   std::unique_ptr<arc_networkd::Subnet> container_subnet =
-      subnet_pool_.AllocateContainer();
+      network_address_manager_.AllocateIPv4Subnet(
+          arc_networkd::AddressManager::Guest::CONTAINER);
   if (!container_subnet) {
     LOG(ERROR) << "Could not allocate container subnet";
     *failure_reason = "could not allocate container subnet";
