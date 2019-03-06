@@ -163,16 +163,17 @@ class DeviceInfoTest : public Test {
   static const int kReceiveByteCount;
   static const int kTransmitByteCount;
 
-  RTNLMessage* BuildLinkMessage(RTNLMessage::Mode mode);
-  RTNLMessage* BuildLinkMessageWithInterfaceName(RTNLMessage::Mode mode,
-                                                 const string& interface_name);
-  RTNLMessage* BuildAddressMessage(RTNLMessage::Mode mode,
-                                   const IPAddress& address,
-                                   unsigned char flags,
-                                   unsigned char scope);
-  RTNLMessage* BuildRdnssMessage(RTNLMessage::Mode mode,
-                                 uint32_t lifetime,
-                                 const vector<IPAddress>& dns_servers);
+  unique_ptr<RTNLMessage> BuildLinkMessage(RTNLMessage::Mode mode);
+  unique_ptr<RTNLMessage> BuildLinkMessageWithInterfaceName(
+      RTNLMessage::Mode mode, const string& interface_name);
+  unique_ptr<RTNLMessage> BuildAddressMessage(RTNLMessage::Mode mode,
+                                              const IPAddress& address,
+                                              unsigned char flags,
+                                              unsigned char scope);
+  unique_ptr<RTNLMessage> BuildRdnssMessage(
+      RTNLMessage::Mode mode,
+      uint32_t lifetime,
+      const vector<IPAddress>& dns_servers);
   void SendMessageToDeviceInfo(const RTNLMessage& message);
 
   MockControl control_interface_;
@@ -206,16 +207,11 @@ const char DeviceInfoTest::kTestIPAddress7[] = "fe80::1aa9:5ff:abcd:1238";
 const int DeviceInfoTest::kReceiveByteCount = 1234;
 const int DeviceInfoTest::kTransmitByteCount = 5678;
 
-RTNLMessage* DeviceInfoTest::BuildLinkMessageWithInterfaceName(
+unique_ptr<RTNLMessage> DeviceInfoTest::BuildLinkMessageWithInterfaceName(
     RTNLMessage::Mode mode, const string& interface_name) {
-  RTNLMessage* message = new RTNLMessage(
-      RTNLMessage::kTypeLink,
-      mode,
-      0,
-      0,
-      0,
-      kTestDeviceIndex,
-      IPAddress::kFamilyIPv4);
+  auto message =
+      std::make_unique<RTNLMessage>(RTNLMessage::kTypeLink, mode, 0, 0, 0,
+                                    kTestDeviceIndex, IPAddress::kFamilyIPv4);
   message->SetAttribute(static_cast<uint16_t>(IFLA_IFNAME),
                         ByteString(interface_name, true));
   ByteString test_address(kTestMACAddress, sizeof(kTestMACAddress));
@@ -223,40 +219,33 @@ RTNLMessage* DeviceInfoTest::BuildLinkMessageWithInterfaceName(
   return message;
 }
 
-RTNLMessage* DeviceInfoTest::BuildLinkMessage(RTNLMessage::Mode mode) {
+unique_ptr<RTNLMessage> DeviceInfoTest::BuildLinkMessage(
+    RTNLMessage::Mode mode) {
   return BuildLinkMessageWithInterfaceName(mode, kTestDeviceName);
 }
 
-RTNLMessage* DeviceInfoTest::BuildAddressMessage(RTNLMessage::Mode mode,
-                                                 const IPAddress& address,
-                                                 unsigned char flags,
-                                                 unsigned char scope) {
-  RTNLMessage* message = new RTNLMessage(
-      RTNLMessage::kTypeAddress,
-      mode,
-      0,
-      0,
-      0,
-      kTestDeviceIndex,
-      address.family());
+unique_ptr<RTNLMessage> DeviceInfoTest::BuildAddressMessage(
+    RTNLMessage::Mode mode,
+    const IPAddress& address,
+    unsigned char flags,
+    unsigned char scope) {
+  auto message =
+      std::make_unique<RTNLMessage>(RTNLMessage::kTypeAddress, mode, 0, 0, 0,
+                                    kTestDeviceIndex, address.family());
   message->SetAttribute(IFA_ADDRESS, address.address());
   message->set_address_status(
       RTNLMessage::AddressStatus(address.prefix(), flags, scope));
   return message;
 }
 
-RTNLMessage* DeviceInfoTest::BuildRdnssMessage(RTNLMessage::Mode mode,
-    uint32_t lifetime, const vector<IPAddress>& dns_servers) {
-  RTNLMessage* message = new RTNLMessage(
-      RTNLMessage::kTypeRdnss,
-      mode,
-      0,
-      0,
-      0,
-      kTestDeviceIndex,
-      IPAddress::kFamilyIPv6);
-  message->set_rdnss_option(
-      RTNLMessage::RdnssOption(lifetime, dns_servers));
+unique_ptr<RTNLMessage> DeviceInfoTest::BuildRdnssMessage(
+    RTNLMessage::Mode mode,
+    uint32_t lifetime,
+    const vector<IPAddress>& dns_servers) {
+  auto message =
+      std::make_unique<RTNLMessage>(RTNLMessage::kTypeRdnss, mode, 0, 0, 0,
+                                    kTestDeviceIndex, IPAddress::kFamilyIPv6);
+  message->set_rdnss_option(RTNLMessage::RdnssOption(lifetime, dns_servers));
   return message;
 }
 
@@ -317,7 +306,7 @@ TEST_F(DeviceInfoTest, RequestLinkStatistics) {
 }
 
 TEST_F(DeviceInfoTest, DeviceEnumeration) {
-  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
   EXPECT_EQ(-1, device_info_.GetIndex(kTestDeviceName));
@@ -333,13 +322,13 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
                                         sizeof(kTestMACAddress))));
   EXPECT_EQ(kTestDeviceIndex, device_info_.GetIndex(kTestDeviceName));
 
-  message.reset(BuildLinkMessage(RTNLMessage::kModeAdd));
+  message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_UP | IFF_RUNNING, 0));
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(device_info_.GetFlags(kTestDeviceIndex, &flags));
   EXPECT_EQ(IFF_UP | IFF_RUNNING, flags);
 
-  message.reset(BuildLinkMessage(RTNLMessage::kModeDelete));
+  message = BuildLinkMessage(RTNLMessage::kModeDelete);
   EXPECT_CALL(manager_, DeregisterDevice(_)).Times(1);
   SendMessageToDeviceInfo(*message);
   EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
@@ -353,7 +342,7 @@ TEST_F(DeviceInfoTest, DeviceRemovedEvent) {
       &control_interface_, &dispatcher_, &metrics_, &manager_,
       "null0", "addr0", kTestDeviceIndex));
   device_info_.infos_[kTestDeviceIndex].device = device0;
-  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeDelete));
+  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeDelete);
   EXPECT_CALL(*device0, technology()).WillRepeatedly(Return(Technology::kWifi));
   EXPECT_CALL(manager_, DeregisterDevice(_)).Times(1);
   EXPECT_CALL(metrics_, DeregisterDevice(kTestDeviceIndex)).Times(1);
@@ -425,7 +414,7 @@ TEST_F(DeviceInfoTest, GetByteCounts) {
       kTestDeviceIndex, &rx_bytes, &tx_bytes));
 
   // No link statistics in the message.
-  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(device_info_.GetByteCounts(
       kTestDeviceIndex, &rx_bytes, &tx_bytes));
@@ -433,7 +422,7 @@ TEST_F(DeviceInfoTest, GetByteCounts) {
   EXPECT_EQ(0, tx_bytes);
 
   // Short link statistics message.
-  message.reset(BuildLinkMessage(RTNLMessage::kModeAdd));
+  message = BuildLinkMessage(RTNLMessage::kModeAdd);
   struct old_rtnl_link_stats64 stats;
   memset(&stats, 0, sizeof(stats));
   stats.rx_bytes = kReceiveByteCount;
@@ -448,7 +437,7 @@ TEST_F(DeviceInfoTest, GetByteCounts) {
   EXPECT_EQ(0, tx_bytes);
 
   // Correctly sized link statistics message.
-  message.reset(BuildLinkMessage(RTNLMessage::kModeAdd));
+  message = BuildLinkMessage(RTNLMessage::kModeAdd);
   ByteString stats_bytes1(reinterpret_cast<const unsigned char*>(&stats),
                           sizeof(stats));
   message->SetAttribute(IFLA_STATS64, stats_bytes1);
@@ -679,7 +668,7 @@ TEST_F(DeviceInfoTest, DeviceBlackList) {
   // Manager is not running by default.
   EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(0);
   device_info_.AddDeviceToBlackList(kTestDeviceName);
-  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
 
   DeviceRefPtr device = device_info_.GetDevice(kTestDeviceIndex);
@@ -691,7 +680,7 @@ TEST_F(DeviceInfoTest, AddDeviceToBlackListWithManagerRunning) {
   SetManagerRunning(true);
   EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(1);
   device_info_.AddDeviceToBlackList(kTestDeviceName);
-  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
 
   DeviceRefPtr device = device_info_.GetDevice(kTestDeviceIndex);
@@ -701,7 +690,7 @@ TEST_F(DeviceInfoTest, AddDeviceToBlackListWithManagerRunning) {
 
 TEST_F(DeviceInfoTest, RenamedBlacklistedDevice) {
   device_info_.AddDeviceToBlackList(kTestDeviceName);
-  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
 
   DeviceRefPtr device = device_info_.GetDevice(kTestDeviceIndex);
@@ -710,9 +699,8 @@ TEST_F(DeviceInfoTest, RenamedBlacklistedDevice) {
 
   // Rename the test device.
   const char kRenamedDeviceName[] = "renamed-device";
-  unique_ptr<RTNLMessage> rename_message(
-      BuildLinkMessageWithInterfaceName(
-          RTNLMessage::kModeAdd, kRenamedDeviceName));
+  unique_ptr<RTNLMessage> rename_message = BuildLinkMessageWithInterfaceName(
+      RTNLMessage::kModeAdd, kRenamedDeviceName);
   EXPECT_CALL(manager_, DeregisterDevice(_));
   EXPECT_CALL(metrics_, DeregisterDevice(kTestDeviceIndex));
   SendMessageToDeviceInfo(*rename_message);
@@ -730,11 +718,10 @@ TEST_F(DeviceInfoTest, RenamedBlacklistedDevice) {
 
 TEST_F(DeviceInfoTest, RenamedNonBlacklistedDevice) {
   const char kInitialDeviceName[] = "initial-device";
-  unique_ptr<RTNLMessage> initial_message(
-      BuildLinkMessageWithInterfaceName(
-          RTNLMessage::kModeAdd, kInitialDeviceName));
+  unique_ptr<RTNLMessage> initial_message = BuildLinkMessageWithInterfaceName(
+      RTNLMessage::kModeAdd, kInitialDeviceName);
   SendMessageToDeviceInfo(*initial_message);
-  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
 
   DeviceRefPtr initial_device = device_info_.GetDevice(kTestDeviceIndex);
   ASSERT_TRUE(initial_device.get());
@@ -746,9 +733,8 @@ TEST_F(DeviceInfoTest, RenamedNonBlacklistedDevice) {
   // Rename the test device.
   const char kRenamedDeviceName[] = "renamed-device";
   device_info_.AddDeviceToBlackList(kRenamedDeviceName);
-  unique_ptr<RTNLMessage> rename_message(
-      BuildLinkMessageWithInterfaceName(
-          RTNLMessage::kModeAdd, kRenamedDeviceName));
+  unique_ptr<RTNLMessage> rename_message = BuildLinkMessageWithInterfaceName(
+      RTNLMessage::kModeAdd, kRenamedDeviceName);
   EXPECT_CALL(manager_, DeregisterDevice(_)).Times(0);
   EXPECT_CALL(metrics_, DeregisterDevice(kTestDeviceIndex)).Times(0);
   SendMessageToDeviceInfo(*rename_message);
@@ -763,7 +749,7 @@ TEST_F(DeviceInfoTest, RenamedNonBlacklistedDevice) {
 }
 
 TEST_F(DeviceInfoTest, DeviceAddressList) {
-  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
 
   vector<DeviceInfo::AddressData> addresses;
@@ -774,7 +760,7 @@ TEST_F(DeviceInfoTest, DeviceAddressList) {
   IPAddress ip_address0(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(ip_address0.SetAddressFromString(kTestIPAddress0));
   ip_address0.set_prefix(kTestIPAddressPrefix0);
-  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd, ip_address0, 0, 0));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, ip_address0, 0, 0);
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(device_info_.GetAddresses(kTestDeviceIndex, &addresses));
   EXPECT_EQ(1, addresses.size());
@@ -790,7 +776,7 @@ TEST_F(DeviceInfoTest, DeviceAddressList) {
   IPAddress ip_address1(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ip_address1.SetAddressFromString(kTestIPAddress1));
   ip_address1.set_prefix(kTestIPAddressPrefix1);
-  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd, ip_address1, 0, 0));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, ip_address1, 0, 0);
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(device_info_.GetAddresses(kTestDeviceIndex, &addresses));
   EXPECT_EQ(2, addresses.size());
@@ -798,67 +784,53 @@ TEST_F(DeviceInfoTest, DeviceAddressList) {
   EXPECT_TRUE(ip_address1.Equals(addresses[1].address));
 
   // Deleting an address should reduce the list
-  message.reset(BuildAddressMessage(RTNLMessage::kModeDelete,
-                                    ip_address0,
-                                    0,
-                                    0));
+  message = BuildAddressMessage(RTNLMessage::kModeDelete, ip_address0, 0, 0);
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(device_info_.GetAddresses(kTestDeviceIndex, &addresses));
   EXPECT_EQ(1, addresses.size());
   EXPECT_TRUE(ip_address1.Equals(addresses[0].address));
 
   // Delete last item
-  message.reset(BuildAddressMessage(RTNLMessage::kModeDelete,
-                                    ip_address1,
-                                    0,
-                                    0));
+  message = BuildAddressMessage(RTNLMessage::kModeDelete, ip_address1, 0, 0);
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(device_info_.GetAddresses(kTestDeviceIndex, &addresses));
   EXPECT_TRUE(addresses.empty());
 
   // Delete device
-  message.reset(BuildLinkMessage(RTNLMessage::kModeDelete));
+  message = BuildLinkMessage(RTNLMessage::kModeDelete);
   EXPECT_CALL(manager_, DeregisterDevice(_)).Times(1);
   SendMessageToDeviceInfo(*message);
 
   // Should be able to handle message for interface that doesn't exist
-  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd, ip_address0, 0, 0));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, ip_address0, 0, 0);
   SendMessageToDeviceInfo(*message);
   EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
 }
 
 TEST_F(DeviceInfoTest, FlushAddressList) {
-  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
 
   IPAddress address1(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(address1.SetAddressFromString(kTestIPAddress1));
   address1.set_prefix(kTestIPAddressPrefix1);
-  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
-                                    address1,
-                                    0,
-                                    RT_SCOPE_UNIVERSE));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, address1, 0,
+                                RT_SCOPE_UNIVERSE);
   SendMessageToDeviceInfo(*message);
   IPAddress address2(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(address2.SetAddressFromString(kTestIPAddress2));
-  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
-                                    address2,
-                                    IFA_F_TEMPORARY,
-                                    RT_SCOPE_UNIVERSE));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, address2,
+                                IFA_F_TEMPORARY, RT_SCOPE_UNIVERSE);
   SendMessageToDeviceInfo(*message);
   IPAddress address3(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(address3.SetAddressFromString(kTestIPAddress3));
-  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
-                                    address3,
-                                    0,
-                                    RT_SCOPE_LINK));
+  message =
+      BuildAddressMessage(RTNLMessage::kModeAdd, address3, 0, RT_SCOPE_LINK);
   SendMessageToDeviceInfo(*message);
   IPAddress address4(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(address4.SetAddressFromString(kTestIPAddress4));
-  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
-                                    address4,
-                                    IFA_F_PERMANENT,
-                                    RT_SCOPE_UNIVERSE));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, address4,
+                                IFA_F_PERMANENT, RT_SCOPE_UNIVERSE);
   SendMessageToDeviceInfo(*message);
 
   // DeviceInfo now has 4 addresses associated with it, but only two of
@@ -871,7 +843,7 @@ TEST_F(DeviceInfoTest, FlushAddressList) {
 }
 
 TEST_F(DeviceInfoTest, HasOtherAddress) {
-  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
 
   IPAddress address0(IPAddress::kFamilyIPv4);
@@ -880,27 +852,21 @@ TEST_F(DeviceInfoTest, HasOtherAddress) {
   // There are no addresses on this interface.
   EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address0));
 
-  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
-                                    address0,
-                                    0,
-                                    RT_SCOPE_UNIVERSE));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, address0, 0,
+                                RT_SCOPE_UNIVERSE);
   SendMessageToDeviceInfo(*message);
 
   IPAddress address1(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(address1.SetAddressFromString(kTestIPAddress1));
   address1.set_prefix(kTestIPAddressPrefix1);
-  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
-                                    address1,
-                                    0,
-                                    RT_SCOPE_LINK));
+  message =
+      BuildAddressMessage(RTNLMessage::kModeAdd, address1, 0, RT_SCOPE_LINK);
   SendMessageToDeviceInfo(*message);
 
   IPAddress address2(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(address2.SetAddressFromString(kTestIPAddress2));
-  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
-                                    address2,
-                                    IFA_F_TEMPORARY,
-                                    RT_SCOPE_UNIVERSE));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, address2,
+                                IFA_F_TEMPORARY, RT_SCOPE_UNIVERSE);
   SendMessageToDeviceInfo(*message);
 
   IPAddress address3(IPAddress::kFamilyIPv6);
@@ -910,11 +876,8 @@ TEST_F(DeviceInfoTest, HasOtherAddress) {
   // temporary, or they are not universally scoped.
   EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address3));
 
-
-  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
-                                    address3,
-                                    0,
-                                    RT_SCOPE_UNIVERSE));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, address3, 0,
+                                RT_SCOPE_UNIVERSE);
   SendMessageToDeviceInfo(*message);
 
   // address0 is on this interface.
@@ -933,10 +896,8 @@ TEST_F(DeviceInfoTest, HasOtherAddress) {
   // IPv6 address.
   EXPECT_TRUE(device_info_.HasOtherAddress(kTestDeviceIndex, address4));
 
-  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
-                                    address4,
-                                    IFA_F_PERMANENT,
-                                    RT_SCOPE_UNIVERSE));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, address4,
+                                IFA_F_PERMANENT, RT_SCOPE_UNIVERSE);
   SendMessageToDeviceInfo(*message);
 
   // address4 is now on this interface.
@@ -947,10 +908,8 @@ TEST_F(DeviceInfoTest, HasOtherAddress) {
   // address5 is not on this interface, but address0 is.
   EXPECT_TRUE(device_info_.HasOtherAddress(kTestDeviceIndex, address5));
 
-  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
-                                    address5,
-                                    IFA_F_PERMANENT,
-                                    RT_SCOPE_UNIVERSE));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, address5,
+                                IFA_F_PERMANENT, RT_SCOPE_UNIVERSE);
   SendMessageToDeviceInfo(*message);
 
   // address5 is now on this interface.
@@ -958,7 +917,7 @@ TEST_F(DeviceInfoTest, HasOtherAddress) {
 }
 
 TEST_F(DeviceInfoTest, HasDirectConnectivityTo) {
-  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
 
   IPAddress address0(IPAddress::kFamilyIPv4);
@@ -970,10 +929,8 @@ TEST_F(DeviceInfoTest, HasDirectConnectivityTo) {
 
   IPAddress address1(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(address1.SetAddressFromString(kTestIPAddress1));
-  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
-                                    address1,
-                                    IFA_F_PERMANENT,
-                                    RT_SCOPE_UNIVERSE));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, address1,
+                                IFA_F_PERMANENT, RT_SCOPE_UNIVERSE);
   SendMessageToDeviceInfo(*message);
 
   // No current addresses are of the same family as |address0|.
@@ -983,10 +940,8 @@ TEST_F(DeviceInfoTest, HasDirectConnectivityTo) {
   IPAddress address6(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(address6.SetAddressFromString(kTestIPAddress6));
   address6.set_prefix(kTestIPAddressPrefix0);
-  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
-                                    address6,
-                                    IFA_F_PERMANENT,
-                                    RT_SCOPE_UNIVERSE));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, address6,
+                                IFA_F_PERMANENT, RT_SCOPE_UNIVERSE);
   SendMessageToDeviceInfo(*message);
 
   // |address0| is not reachable from |address6|.
@@ -996,10 +951,8 @@ TEST_F(DeviceInfoTest, HasDirectConnectivityTo) {
   IPAddress address5(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(address5.SetAddressFromString(kTestIPAddress5));
   address5.set_prefix(kTestIPAddressPrefix0);
-  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
-                                    address5,
-                                    IFA_F_PERMANENT,
-                                    RT_SCOPE_UNIVERSE));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, address5,
+                                IFA_F_PERMANENT, RT_SCOPE_UNIVERSE);
   SendMessageToDeviceInfo(*message);
 
   // |address0| is reachable from |address5| which is associated with the
@@ -1036,7 +989,7 @@ TEST_F(DeviceInfoTest, GetMACAddressFromKernelUnknownDevice) {
 TEST_F(DeviceInfoTest, GetMACAddressFromKernelUnableToOpenSocket) {
   SetSockets();
   EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(-1));
-  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(device_info_.GetDevice(kTestDeviceIndex).get());
@@ -1053,7 +1006,7 @@ TEST_F(DeviceInfoTest, GetMACAddressFromKernelIoctlFails) {
       .WillOnce(Return(-1));
   EXPECT_CALL(*mock_sockets_, Close(kFd));
 
-  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(device_info_.GetDevice(kTestDeviceIndex).get());
@@ -1088,7 +1041,7 @@ TEST_F(DeviceInfoTest, GetMACAddressFromKernel) {
       .WillOnce(DoAll(SetIfreq(ifr), Return(0)));
   EXPECT_CALL(*mock_sockets_, Close(kFd));
 
-  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(device_info_.GetDevice(kTestDeviceIndex).get());
@@ -1112,7 +1065,7 @@ TEST_F(DeviceInfoTest, GetMACAddressOfPeerUnknownDevice) {
 
 TEST_F(DeviceInfoTest, GetMACAddressOfPeerBadAddress) {
   SetSockets();
-  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(device_info_.GetDevice(kTestDeviceIndex).get());
@@ -1135,7 +1088,7 @@ TEST_F(DeviceInfoTest, GetMACAddressOfPeerBadAddress) {
 TEST_F(DeviceInfoTest, GetMACAddressOfPeerUnableToOpenSocket) {
   SetSockets();
   EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(-1));
-  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
   IPAddress ip_address(IPAddress::kFamilyIPv4);
@@ -1151,7 +1104,7 @@ TEST_F(DeviceInfoTest, GetMACAddressOfPeerIoctlFails) {
   EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(kFd));
   EXPECT_CALL(*mock_sockets_, Ioctl(kFd, SIOCGARP, NotNull()))
       .WillOnce(Return(-1));
-  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
   IPAddress ip_address(IPAddress::kFamilyIPv4);
@@ -1187,7 +1140,7 @@ ACTION_P(SetArpreq, areq) {
 }
 
 TEST_F(DeviceInfoTest, GetMACAddressOfPeer) {
-  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
 
@@ -1238,8 +1191,8 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
 
   IPAddress ipv4_address(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(ipv4_address.SetAddressFromString(kTestIPAddress0));
-  unique_ptr<RTNLMessage> message(
-      BuildAddressMessage(RTNLMessage::kModeAdd, ipv4_address, 0, 0));
+  unique_ptr<RTNLMessage> message =
+      BuildAddressMessage(RTNLMessage::kModeAdd, ipv4_address, 0, 0);
 
   EXPECT_CALL(*device, OnIPv6AddressChanged()).Times(0);
 
@@ -1249,8 +1202,8 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
 
   IPAddress ipv6_address1(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ipv6_address1.SetAddressFromString(kTestIPAddress1));
-  message.reset(BuildAddressMessage(
-      RTNLMessage::kModeAdd, ipv6_address1, 0, RT_SCOPE_LINK));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, ipv6_address1, 0,
+                                RT_SCOPE_LINK);
 
   // We should ignore non-SCOPE_UNIVERSE messages for IPv6.
   SendMessageToDeviceInfo(*message);
@@ -1259,9 +1212,8 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
   Mock::VerifyAndClearExpectations(device.get());
   IPAddress ipv6_address2(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ipv6_address2.SetAddressFromString(kTestIPAddress2));
-  message.reset(BuildAddressMessage(
-      RTNLMessage::kModeAdd, ipv6_address2, IFA_F_TEMPORARY,
-      RT_SCOPE_UNIVERSE));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, ipv6_address2,
+                                IFA_F_TEMPORARY, RT_SCOPE_UNIVERSE);
 
   // Add a temporary address.
   EXPECT_CALL(*device, OnIPv6AddressChanged());
@@ -1273,8 +1225,8 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
 
   IPAddress ipv6_address3(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ipv6_address3.SetAddressFromString(kTestIPAddress3));
-  message.reset(BuildAddressMessage(
-      RTNLMessage::kModeAdd, ipv6_address3, 0, RT_SCOPE_UNIVERSE));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, ipv6_address3, 0,
+                                RT_SCOPE_UNIVERSE);
 
   // Adding a non-temporary address alerts the Device, but does not override
   // the primary address since the previous one was temporary.
@@ -1287,9 +1239,9 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
 
   IPAddress ipv6_address4(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ipv6_address4.SetAddressFromString(kTestIPAddress4));
-  message.reset(BuildAddressMessage(
-      RTNLMessage::kModeAdd, ipv6_address4, IFA_F_TEMPORARY | IFA_F_DEPRECATED,
-      RT_SCOPE_UNIVERSE));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, ipv6_address4,
+                                IFA_F_TEMPORARY | IFA_F_DEPRECATED,
+                                RT_SCOPE_UNIVERSE);
 
   // Adding a temporary deprecated address alerts the Device, but does not
   // override the primary address since the previous one was non-deprecated.
@@ -1302,9 +1254,8 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
 
   IPAddress ipv6_address7(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ipv6_address7.SetAddressFromString(kTestIPAddress7));
-  message.reset(BuildAddressMessage(
-      RTNLMessage::kModeAdd, ipv6_address7, IFA_F_TEMPORARY,
-      RT_SCOPE_UNIVERSE));
+  message = BuildAddressMessage(RTNLMessage::kModeAdd, ipv6_address7,
+                                IFA_F_TEMPORARY, RT_SCOPE_UNIVERSE);
 
   // Another temporary (non-deprecated) address alerts the Device, and will
   // override the previous primary address.
@@ -1345,8 +1296,8 @@ TEST_F(DeviceInfoTest, IPv6DnsServerAddressesChanged) {
 
   // Infinite lifetime
   const uint32_t kInfiniteLifetime = 0xffffffff;
-  unique_ptr<RTNLMessage> message(BuildRdnssMessage(
-      RTNLMessage::kModeAdd, kInfiniteLifetime, dns_server_addresses_in));
+  unique_ptr<RTNLMessage> message = BuildRdnssMessage(
+      RTNLMessage::kModeAdd, kInfiniteLifetime, dns_server_addresses_in);
   EXPECT_CALL(time_, GetSecondsBoottime(_)).
       WillOnce(DoAll(SetArgPointee<0>(0), Return(true)));
   EXPECT_CALL(*device, OnIPv6DnsServerAddressesChanged()).Times(1);
@@ -1669,7 +1620,7 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
   }
 
   void AddDelayedDevice(Technology::Identifier delayed_technology) {
-    unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+    unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
     EXPECT_CALL(test_device_info_, GetDeviceTechnology(kTestDeviceName))
         .WillOnce(Return(delayed_technology));
     EXPECT_CALL(test_device_info_, CreateDevice(
