@@ -1068,7 +1068,8 @@ bool MetricsDaemon::ReadFileToUint64(const base::FilePath& path,
 bool MetricsDaemon::ReadMMStat(const base::FilePath& zram_dir,
                                uint64_t* compr_data_size_out,
                                uint64_t* orig_data_size_out,
-                               uint64_t* zero_pages_out) {
+                               uint64_t* zero_pages_out,
+                               uint64_t* incompr_pages_out) {
   const base::FilePath mm_stat_path = zram_dir.Append(kMMStatName);
   std::string content;
 
@@ -1077,12 +1078,18 @@ bool MetricsDaemon::ReadMMStat(const base::FilePath& zram_dir,
     return false;
   }
 
-  int num_items = sscanf(
-      content.c_str(), "%" PRIu64 " %" PRIu64 " %*d %*d %*d %" PRIu64 " %*d",
-      orig_data_size_out, compr_data_size_out, zero_pages_out);
-  if (num_items != 3) {
+  int num_items =
+      sscanf(content.c_str(),
+             "%" PRIu64 " %" PRIu64 " %*d %*d %*d %" PRIu64 " %*d %" PRIu64,
+             orig_data_size_out, compr_data_size_out, zero_pages_out,
+             incompr_pages_out);
+  // incompr_pages is only expected in kernel >= 4.19
+  if (num_items == 3) {
+    *incompr_pages_out = 0;
+  }
+  if (num_items < 3) {
     LOG(WARNING) << "Found " << num_items << " item(s) in "
-                 << mm_stat_path.value() << ", expected 3";
+                 << mm_stat_path.value() << ", expected at least 3";
     return false;
   }
 
@@ -1094,11 +1101,13 @@ bool MetricsDaemon::ReportZram(const base::FilePath& zram_dir) {
     return false;
   }
 
-  // Data sizes are in bytes.  |zero_pages| is in number of pages.
-  uint64_t compr_data_size, orig_data_size, zero_pages;
+  // Data sizes are in bytes.  |zero_pages| and |incompr_pages| are in number of
+  // pages.
+  uint64_t compr_data_size, orig_data_size, zero_pages, incompr_pages;
   const size_t page_size = 4096;
 
-  if (!ReadMMStat(zram_dir, &compr_data_size, &orig_data_size, &zero_pages) &&
+  if (!ReadMMStat(zram_dir, &compr_data_size, &orig_data_size, &zero_pages,
+                  &incompr_pages) &&
       (!ReadFileToUint64(zram_dir.Append(kComprDataSizeName),
                          &compr_data_size) ||
        !ReadFileToUint64(zram_dir.Append(kOrigDataSizeName), &orig_data_size) ||
@@ -1108,6 +1117,19 @@ bool MetricsDaemon::ReportZram(const base::FilePath& zram_dir) {
 
   // |orig_data_size| does not include zero-filled pages.
   orig_data_size += zero_pages * page_size;
+
+  if (incompr_pages > 0) {
+    // incompr_pages is the number of incompressible 4k pages.
+    const int incompr_pages_size = incompr_pages * page_size;
+    // The values of interest for incompr_pages size is between 1MB and 1GB.
+    // The units are number of 4k pages.
+    SendSample("Platform.ZramIncompressiblePages", incompr_pages, 256,
+               256 * 1024, 50);
+    SendLinearSample("Platform.ZramIncompressibleRatioPercent.PreCompression",
+                     incompr_pages_size * 100 / orig_data_size, 100, 101);
+    SendLinearSample("Platform.ZramIncompressibleRatioPercent.PostCompression",
+                     incompr_pages_size * 100 / compr_data_size, 100, 101);
+  }
 
   const int compr_data_size_mb = compr_data_size >> 20;
   const int savings_mb = (orig_data_size - compr_data_size) >> 20;

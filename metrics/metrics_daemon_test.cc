@@ -545,6 +545,46 @@ TEST_F(MetricsDaemonTest, SendZramMetricsOld) {
   EXPECT_TRUE(daemon_.ReportZram(base::FilePath(".")));
 }
 
+TEST_F(MetricsDaemonTest, SendZramMetricsWithIncompressiblePageStats) {
+  EXPECT_TRUE(daemon_.testing_);
+
+  // |compr_data_size| is the size in bytes of compressed data.
+  const uint64_t compr_data_size = 50 * 1000 * 1000;
+  // The constant '3' is a realistic but random choice.
+  // |orig_data_size| does not include zero pages.
+  const uint64_t orig_data_size = compr_data_size * 3;
+  const uint64_t page_size = 4096;
+  const uint64_t zero_pages = 10 * 1000 * 1000 / page_size;
+  const uint64_t incompr_pages = 5 * 1000 * 1000 / page_size;
+  std::string value_string = "150000000 50000000 0 0 0 2441 0 1220";
+
+  ASSERT_EQ(value_string.length(),
+            base::WriteFile(base::FilePath(MetricsDaemon::kMMStatName),
+                            value_string.c_str(), value_string.length()));
+
+  const uint64_t real_orig_size = orig_data_size + zero_pages * page_size;
+  const uint64_t zero_ratio_percent =
+      zero_pages * page_size * 100 / real_orig_size;
+  // Ratio samples are in percents.
+  const uint64_t actual_ratio_sample = real_orig_size * 100 / compr_data_size;
+  const uint64_t incompr_pages_ratio_pre =
+      incompr_pages * page_size * 100 / real_orig_size;
+  const uint64_t incompr_pages_ratio_post =
+      incompr_pages * page_size * 100 / compr_data_size;
+
+  EXPECT_CALL(metrics_lib_, SendToUMA(_, compr_data_size >> 20, _, _, _));
+  EXPECT_CALL(metrics_lib_,
+              SendToUMA(_, (real_orig_size - compr_data_size) >> 20, _, _, _));
+  EXPECT_CALL(metrics_lib_, SendToUMA(_, actual_ratio_sample, _, _, _));
+  EXPECT_CALL(metrics_lib_, SendToUMA(_, zero_pages, _, _, _));
+  EXPECT_CALL(metrics_lib_, SendToUMA(_, zero_ratio_percent, _, _, _));
+  EXPECT_CALL(metrics_lib_, SendToUMA(_, incompr_pages, _, _, _));
+  EXPECT_CALL(metrics_lib_, SendEnumToUMA(_, incompr_pages_ratio_pre, _));
+  EXPECT_CALL(metrics_lib_, SendEnumToUMA(_, incompr_pages_ratio_post, _));
+
+  EXPECT_TRUE(daemon_.ReportZram(base::FilePath(".")));
+}
+
 TEST_F(MetricsDaemonTest, GetDetachableBaseTimes) {
   EXPECT_TRUE(daemon_.testing_);
 

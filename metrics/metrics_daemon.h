@@ -129,6 +129,7 @@ class MetricsDaemon : public brillo::DBusDaemon {
   FRIEND_TEST(MetricsDaemonTest, DoNotSendTemperatureShortResume);
   FRIEND_TEST(MetricsDaemonTest, SendZramMetrics);
   FRIEND_TEST(MetricsDaemonTest, SendZramMetricsOld);
+  FRIEND_TEST(MetricsDaemonTest, SendZramMetricsWithIncompressiblePageStats);
   FRIEND_TEST(MetricsDaemonTest, GetDetachableBaseTimes);
 
   // State for disk stats collector callback.
@@ -376,7 +377,8 @@ class MetricsDaemon : public brillo::DBusDaemon {
   static bool ReadMMStat(const base::FilePath& zram_dir,
                          uint64_t* compr_data_size_out,
                          uint64_t* orig_data_size_out,
-                         uint64_t* zero_pages_out);
+                         uint64_t* zero_pages_out,
+                         uint64_t* incompr_pages_out);
 
   // VARIABLES
 
