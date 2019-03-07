@@ -44,6 +44,12 @@ class CryptoLib {
   static bool CreateRsaKey(size_t bits, brillo::SecureBlob* n,
                            brillo::SecureBlob* p);
 
+  // Fills out all fields related to the RSA private key information, given the
+  // public key information provided via |rsa| and the secret prime via
+  // |secret_prime|.
+  static bool FillRsaPrivateKeyFromSecretPrime(
+      const brillo::SecureBlob& secret_prime, RSA* rsa);
+
   // TODO(jorgelo,crbug.com/728047): Review current usage of these functions and
   // consider making the functions that take a plain Blob also return a plain
   // Blob.

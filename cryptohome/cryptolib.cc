@@ -149,6 +149,82 @@ bool CryptoLib::CreateRsaKey(size_t key_bits, SecureBlob* n, SecureBlob* p) {
   return true;
 }
 
+bool CryptoLib::FillRsaPrivateKeyFromSecretPrime(
+    const SecureBlob& secret_prime, RSA* rsa) {
+  crypto::ScopedOpenSSL<BN_CTX, BN_CTX_free> bn_context(BN_CTX_new());
+  if (!bn_context) {
+    LOG(ERROR) << "Failed to allocate BN_CTX structure";
+    return false;
+  }
+  // Load the first prime from the parameter.
+  rsa->p =
+      BN_bin2bn(secret_prime.data(), secret_prime.size(), nullptr /* ret */);
+  if (!rsa->p) {
+    LOG(ERROR) << "Failed to construct secret prime from binary blob";
+    return false;
+  }
+  // Calculate the second prime by dividing the public modulus.
+  rsa->q = BN_new();
+  crypto::ScopedBIGNUM remainder(BN_new());
+  if (!rsa->q || !remainder) {
+    LOG(ERROR) << "Failed to allocate BIGNUM structure";
+    return false;
+  }
+  if (!BN_div(rsa->q, remainder.get(), rsa->n, rsa->p, bn_context.get())) {
+    LOG(ERROR) << "Failed to divide public modulus";
+    return false;
+  }
+  if (!BN_is_zero(remainder.get())) {
+    LOG(ERROR) << "Bad secret prime: does not divide the modulus evenly";
+    return false;
+  }
+  // Calculate the private exponent.
+  rsa->d = BN_new();
+  crypto::ScopedBIGNUM decremented_p(BN_new());
+  crypto::ScopedBIGNUM decremented_q(BN_new());
+  crypto::ScopedBIGNUM totient(BN_new());
+  if (!rsa->d || !decremented_p || !decremented_q || !totient) {
+    LOG(ERROR) << "Failed to allocate BIGNUM structure";
+    return false;
+  }
+  if (!BN_sub(decremented_p.get(), rsa->p, BN_value_one()) ||
+      !BN_sub(decremented_q.get(), rsa->q, BN_value_one()) ||
+      !BN_mul(totient.get(), decremented_p.get(), decremented_q.get(),
+              bn_context.get())) {
+    LOG(ERROR) << "Failed to calculate totient function";
+    return false;
+  }
+  if (!BN_mod_inverse(rsa->d, rsa->e, totient.get(), bn_context.get())) {
+    LOG(ERROR) << "Failed to calculate modular inverse";
+    return false;
+  }
+  // Calculate the private exponent modulo the decremented first and second
+  // primes.
+  rsa->dmp1 = BN_new();
+  rsa->dmq1 = BN_new();
+  if (!rsa->dmp1 || !rsa->dmq1) {
+    LOG(ERROR) << "Failed to allocate BIGNUM structure";
+    return false;
+  }
+  if (!BN_mod(rsa->dmp1, rsa->d, decremented_p.get(), bn_context.get()) ||
+      !BN_mod(rsa->dmq1, rsa->d, decremented_q.get(), bn_context.get())) {
+    LOG(ERROR) << "Failed to calculate the private exponent over the modulo";
+    return false;
+  }
+  // Calculate the inverse of the second prime modulo the first prime.
+  rsa->iqmp = BN_new();
+  if (!rsa->iqmp) {
+    LOG(ERROR) << "Failed to allocate BIGNUM structure";
+    return false;
+  }
+  if (!BN_mod_inverse(rsa->iqmp, rsa->q, rsa->p, bn_context.get())) {
+    LOG(ERROR) << "Failed to calculate the inverse of the prime module the "
+                  "other prime";
+    return false;
+  }
+  return true;
+}
+
 brillo::Blob CryptoLib::Sha1(const brillo::Blob& data) {
   return Sha1Helper<brillo::Blob, brillo::Blob>(data);
 }
