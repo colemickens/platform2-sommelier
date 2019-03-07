@@ -13,15 +13,14 @@
 #include <unordered_map>
 #include <utility>
 
-#include <system/camera_metadata_hidden.h>
-
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/logging.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
+#include <camera/camera_metadata.h>
+#include <system/camera_metadata_hidden.h>
 
-#include "camera/camera_metadata.h"
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
 #include "hal_adapter/camera_device_adapter.h"

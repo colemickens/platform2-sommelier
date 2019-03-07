@@ -16,10 +16,12 @@
  */
 
 #include <memory>
-#include "ExifCreater.h"
+
+#include <camera/camera_metadata.h>
+
 #include "3ATypes.h"
-#include "camera/camera_metadata.h"
 #include "EXIFMetaData.h"
+#include "ExifCreater.h"
 
 
 #ifndef _EXIFMAKER_H_

@@ -8,8 +8,8 @@
 
 #include <vector>
 
+#include <camera/camera_metadata.h>
 #include <hardware/camera3.h>
-#include "camera/camera_metadata.h"
 
 namespace cros {
 
