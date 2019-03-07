@@ -67,6 +67,13 @@ typeDefs:
     description: "Defines the name that is reported by 'mosys platform name'
       This is typically the reference design name with the first letter capitalized"
     type: string
+  stylus-category: &stylus-category
+    description: "Denotes the category of stylus this device contains."
+    type: string
+    enum:
+    - none
+    - internal
+    - external
 type: object
 properties:
   chromeos:
@@ -387,14 +394,15 @@ properties:
               additionalProperties: false
             hardware-properties:
               type: object
-              description: Contains boolean flags for hardware properties of
-                this board, for example if it's convertible, has a touchscreen,
+              description: Contains boolean flags or enums for hardware properties
+                of this board, for example if it's convertible, has a touchscreen,
                 has a camera, etc. This information is used to auto-generate C
                 code that is consumed by the EC build process in order to do
                 run-time configuration. If a value is defined within a config
                 file, but not for a specific model, that value will be assumed
-                to be false for that model.
-                All properties must be booleans. If non-boolean
+                to be false for that model. If a value is an enum and is not
+                specified for a specific model, it will default to "none".
+                All properties must be booleans or enums. If non-boolean
                 properties are desired, the generation code in
                 cros_config_schema.py must be updated to support them.
               properties:
@@ -421,6 +429,7 @@ properties:
                 has-touchscreen:
                   description: Does the device have a touchscreen.
                   type: boolean
+                stylus-category: *stylus-category
               additionalProperties: false
           additionalProperties: false
           required:

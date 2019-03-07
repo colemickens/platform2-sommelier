@@ -12,6 +12,7 @@ import collections
 import copy
 from jinja2 import Template
 import json
+import math
 import os
 import re
 import sys
@@ -375,18 +376,24 @@ const struct config_map *cros_config_get_config_map(int *num_entries) {
   return file_format % (',\n'.join(structs), len(structs))
 
 
-def GenerateEcCBindings(config):
+def GenerateEcCBindings(config, schema_yaml):
   """Generates EC C struct bindings
 
   Generates .h and .c file containing C struct bindings that can be used by ec.
 
   Args:
     config: Config (transformed) that is the transform basis.
+    schema_yaml: Cros_config_schema in yaml format.
   """
 
   json_config = json.loads(config)
   device_properties = collections.defaultdict(dict)
-  flag_set = set()
+  # Store the number of bits required for a hwprop's value.
+  hwprop_values_count = collections.defaultdict(int)
+  # Store a list of the elements for every enum. This
+  # will be used in the ec_config.h auto-generation code.
+  enum_to_elements_map = collections.defaultdict(list)
+  hwprop_set = set()
   for config in json_config[CHROMEOS][CONFIGS]:
     firmware = config['firmware']
 
@@ -409,24 +416,40 @@ def GenerateEcCBindings(config):
       sku = config['identity']['sku-id']
       ec_build_target = firmware['build-targets']['ec'].upper()
 
-      # Default flag value will be false.
-      flag_values = collections.defaultdict(bool)
+      # Default hwprop value will be false.
+      hwprop_values = collections.defaultdict(bool)
 
       hwprops = config.get('hardware-properties', None)
       if hwprops:
-        # |flag| is a user specified property of the hardware, for example
+        # |hwprop| is a user specified property of the hardware, for example
         # 'is-lid-convertible', which means that the device can rotate 360.
-        for flag, value in hwprops.iteritems():
-          # Convert the name of the flag to a valid C identifier.
-          clean_flag = flag.replace('-', '_')
-          flag_set.add(clean_flag)
-          flag_values[clean_flag] = value
+        for hwprop, value in hwprops.items():
+          # Convert the name of the hwprop to a valid C identifier.
+          clean_hwprop = hwprop.replace('-', '_')
+          hwprop_set.add(clean_hwprop)
+          if isinstance(value, bool):
+            hwprop_values_count[clean_hwprop] = 1
+            hwprop_values[clean_hwprop] = value
+          elif isinstance(value, unicode):
+            # Calculate the number of bits by taking the log_2 of the number
+            # of possible enumerations. Use math.ceil to round up.
+            # For example, if an enum has 7 possible values (elements, we will
+            # need 3 bits to represent all the values.
+            # log_2(7) ~= 2.807 -> round up to 3.
+            element_to_int_map = _GetElementToIntMap(schema_yaml, hwprop)
+            if value not in element_to_int_map:
+              raise ValidationError('Not a valid enum value: %s' % value)
+            enum_to_elements_map[clean_hwprop] = element_to_int_map
+            element_count = len(element_to_int_map)
+            hwprop_values_count[clean_hwprop] = int(
+                math.ceil(math.log(element_count)))
+            hwprop_values[clean_hwprop] = element_to_int_map[value]
 
       # Duplicate skus take the last value in the config file.
-      device_properties[ec_build_target][sku] = flag_values
+      device_properties[ec_build_target][sku] = hwprop_values
 
-  flags = list(flag_set)
-  flags.sort()
+  hwprops = list(hwprop_set)
+  hwprops.sort()
   for ec_build_target in device_properties.iterkeys():
     # Order struct definitions by sku.
     device_properties[ec_build_target] = \
@@ -440,10 +463,34 @@ def GenerateEcCBindings(config):
       this_dir, TEMPLATE_DIR, (EC_OUTPUT_NAME + '.c' + TEMPLATE_SUFFIX))
   c_template = Template(open(c_template_path).read())
 
-  h_output = h_template.render(flags=flags)
-  c_output = c_template.render(device_properties=device_properties, flags=flags)
+  h_output = h_template.render(
+      hwprops=hwprops,
+      hwprop_values_count=hwprop_values_count,
+      enum_to_elements_map=enum_to_elements_map)
+  c_output = c_template.render(
+      device_properties=device_properties, hwprops=hwprops)
   return (h_output, c_output)
 
+
+def _GetElementToIntMap(schema_yaml, hwprop):
+  """Returns a mapping of an enum's elements to a distinct integer.
+
+  Used in the c_template to assign an integer to
+  the stylus category type.
+
+  Args:
+    schema_yaml: Cros_config_schema in yaml format.
+    hwprop: String representing the hardware property
+    of the enum (ex. stylus-category)
+  """
+  schema_json_from_yaml = libcros_schema.FormatJson(schema_yaml)
+  schema_json = json.loads(schema_json_from_yaml)
+  if hwprop not in schema_json['typeDefs']:
+    raise ValidationError('Hardware property not found: %s' % str(hwprop))
+  if "enum" not in schema_json["typeDefs"][hwprop]:
+    raise ValidationError('Hardware property is not an enum: %s' % str(hwprop))
+  return dict((element, i) for (i, element) in enumerate(
+      schema_json["typeDefs"][hwprop]["enum"]))
 
 def FilterBuildElements(config, build_only_elements):
   """Removes build only elements from the schema.
@@ -598,7 +645,7 @@ def _ValidateWhitelabelBrandChangesOnly(json_config):
                                  compare_str))
 
 
-def _ValidateHardwarePropertiesAreBoolean(json_config):
+def _ValidateHardwarePropertiesAreValidType(json_config):
   """Checks that all fields under hardware-properties are boolean
 
      Ensures that no key is added to hardware-properties that has a non-boolean
@@ -612,9 +659,11 @@ def _ValidateHardwarePropertiesAreBoolean(json_config):
     hardware_properties = config.get('hardware-properties', None)
     if hardware_properties:
       for key, value in hardware_properties.iteritems():
-        if not isinstance(value, bool):
+        valid_type = isinstance(value, bool) or isinstance(value, unicode)
+        if not valid_type:
           raise ValidationError(
-              ('All configs under hardware-properties must be boolean flags\n'
+              ('All configs under hardware-properties must be '
+               'boolean or an enum\n'
                'However, key \'{}\' has value \'{}\'.').format(key, value))
 
 
@@ -630,7 +679,7 @@ def ValidateConfig(config):
   json_config = json.loads(config)
   _ValidateUniqueIdentities(json_config)
   _ValidateWhitelabelBrandChangesOnly(json_config)
-  _ValidateHardwarePropertiesAreBoolean(json_config)
+  _ValidateHardwarePropertiesAreValidType(json_config)
 
 
 def MergeConfigs(configs):
@@ -737,7 +786,8 @@ def Main(schema,
     as output_stream:
       # Using print function adds proper trailing newline.
       print(GenerateMosysCBindings(full_json_transform), file=output_stream)
-    h_output, c_output = GenerateEcCBindings(full_json_transform)
+    h_output, c_output = GenerateEcCBindings(
+        full_json_transform, schema_yaml=yaml.load(schema_contents))
     with open(os.path.join(gen_c_output_dir, EC_OUTPUT_NAME + ".h"), 'w') \
     as output_stream:
       print(h_output, file=output_stream)

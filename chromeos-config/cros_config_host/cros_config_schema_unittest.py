@@ -14,12 +14,12 @@ import jsonschema
 import os
 import unittest
 import re
+import yaml
 
 import cros_config_schema
 import libcros_schema
 
 from chromite.lib import cros_test_lib
-
 
 BASIC_CONFIG = """
 reef-9042-fw: &reef-9042-fw
@@ -333,7 +333,7 @@ chromeos:
     except cros_config_schema.ValidationError as err:
       self.assertIn('Whitelabel configs can only', err.__str__())
 
-  def testHardwarePropertiesNonBoolean(self):
+  def testHardwarePropertiesInvalid(self):
     config = \
 """
 chromeos:
@@ -402,6 +402,13 @@ class GetValidSchemaProperties(cros_test_lib.TestCase):
 
 
 class MainTests(cros_test_lib.TempDirTestCase):
+
+  def _GetSchemaYaml(self):
+    with open(os.path.join(
+        this_dir, 'cros_config_schema.yaml')) as schema_stream:
+      schema_contents = schema_stream.read()
+      return yaml.load(schema_contents)
+
   def assertFileEqual(self, file_expected, file_actual, regen_cmd=''):
     self.assertTrue(os.path.isfile(file_expected),
                     "Expected file does not exist at path: {}" \
@@ -554,7 +561,8 @@ class MainTests(cros_test_lib.TempDirTestCase):
               "hardware-properties": {
                 "is-lid-convertible": false,
                 "has-base-accelerometer": true,
-                "has-lid-accelerometer": true
+                "has-lid-accelerometer": true,
+                "stylus-category": "external"
               },
               "identity": {
                 "sku-id": 9
@@ -583,7 +591,8 @@ class MainTests(cros_test_lib.TempDirTestCase):
     h_expected = open(h_expected_path).read()
     c_expected = open(c_expected_path).read()
 
-    h_actual, c_actual = cros_config_schema.GenerateEcCBindings(input_json)
+    h_actual, c_actual = cros_config_schema.GenerateEcCBindings(
+        input_json, self._GetSchemaYaml())
     self.assertMultilineStringEqual(h_expected, h_actual)
     self.assertMultilineStringEqual(c_expected, c_actual)
 
@@ -597,7 +606,8 @@ class MainTests(cros_test_lib.TempDirTestCase):
     h_expected = open(h_expected_path).read()
     c_expected = open(c_expected_path).read()
 
-    h_actual, c_actual = cros_config_schema.GenerateEcCBindings(input_json)
+    h_actual, c_actual = cros_config_schema.GenerateEcCBindings(
+        input_json, self._GetSchemaYaml())
     self.assertMultilineStringEqual(h_expected, h_actual)
     self.assertMultilineStringEqual(c_expected, c_actual)
 
@@ -614,7 +624,8 @@ class MainTests(cros_test_lib.TempDirTestCase):
     h_expected = open(h_expected_path).read()
     c_expected = open(c_expected_path).read()
 
-    h_actual, c_actual = cros_config_schema.GenerateEcCBindings(input_json)
+    h_actual, c_actual = cros_config_schema.GenerateEcCBindings(
+        input_json, self._GetSchemaYaml())
     self.assertMultilineStringEqual(h_expected, h_actual)
     self.assertMultilineStringEqual(c_expected, c_actual)
 

@@ -16,10 +16,10 @@
   {%- endif %}
 
 const struct sku_info ALL_SKUS[] = {
-  {%- for sku, flag_values in skus %}
+  {%- for sku, hwprop_values in skus %}
   {.sku = {{ sku }}
-    {%- for flag in flags %},
-   .{{ flag }} = {{ flag_values[flag] | int }}
+    {%- for hwprop in hwprops %},
+   .{{ hwprop }} = {{ hwprop_values[hwprop] | int }}
     {%- endfor -%}
   }
     {%- if not loop.last -%} , {%- endif -%}

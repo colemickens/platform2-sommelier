@@ -8,10 +8,24 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+{% for hwprop in enum_to_elements_map -%}
+{% set elems = [] -%}
+{% set namespace = hwprop | upper -%}
+{% for elem, i in (enum_to_elements_map[hwprop]).items() -%}
+{{ elems.append([namespace, '_', elem | string | upper, ' = ', i | string] | join) | default("", True) }}
+{%- if loop.last %}
+enum {{ hwprop ~ '_type' }} {
+  {{ (elems | join(',\n  ')) }}
+};
+
+{% endif -%}
+{%- endfor -%}
+{% endfor -%}
+
 struct sku_info {
   const uint8_t sku;
-  {%- for flag in flags %}
-  const uint8_t {{ flag }} :1;
+  {%- for hwprop in hwprops %}
+  const uint8_t {{ hwprop }} :{{ hwprop_values_count[hwprop] }};
   {%- endfor %}
 };
 

@@ -285,7 +285,7 @@ In the tables below,
 | camera | [camera](#camera) |  | False |  | False |  |
 | firmware | [firmware](#firmware) |  | True |  | True |  |
 | firmware-signing | [firmware-signing](#firmware-signing) |  | False |  | True |  |
-| hardware-properties | [hardware-properties](#hardware-properties) |  | False |  | False | Contains boolean flags for hardware properties of this board, for example if it's convertible, has a touchscreen, has a camera, etc. This information is used to auto-generate C code that is consumed by the EC build process in order to do run-time configuration. If a value is defined within a config file, but not for a specific model, that value will be assumed to be false for that model. All properties must be booleans. If non-boolean properties are desired, the generation code in cros_config_schema.py must be updated to support them. |
+| hardware-properties | [hardware-properties](#hardware-properties) |  | False |  | False | Contains boolean flags or enums for hardware properties of this board, for example if it's convertible, has a touchscreen, has a camera, etc. This information is used to auto-generate C code that is consumed by the EC build process in order to do run-time configuration. If a value is defined within a config file, but not for a specific model, that value will be assumed to be false for that model. If a value is an enum and is not specified for a specific model, it will default to "none". All properties must be booleans or enums. If non-boolean properties are desired, the generation code in cros_config_schema.py must be updated to support them. |
 | identity | [identity](#identity) |  | False |  | False | Defines attributes that are used by cros_config to detect the identity of the platform and which corresponding config should be used. This tuple must either contain x86 properties only or ARM properties only. |
 | modem | [modem](#modem) |  | False |  | False |  |
 | name | string | ```^[_a-zA-Z0-9]{3,}``` | True |  | False | Unique name for the given model. |
@@ -399,6 +399,7 @@ In the tables below,
 | has-lid-accelerometer | boolean |  | False |  | False | Is there an accelerometer in the lid of the device. |
 | has-touchscreen | boolean |  | False |  | False | Does the device have a touchscreen. |
 | is-lid-convertible | boolean |  | False |  | False | Can the lid be rotated 360 degrees. |
+| stylus-category | string |  | False |  | False | Denotes the category of stylus this device contains. |
 
 ### identity
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

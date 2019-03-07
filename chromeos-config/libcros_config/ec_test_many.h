@@ -8,11 +8,19 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+
+enum stylus_category_type {
+  STYLUS_CATEGORY_NONE = 0,
+  STYLUS_CATEGORY_INTERNAL = 1,
+  STYLUS_CATEGORY_EXTERNAL = 2
+};
+
 struct sku_info {
   const uint8_t sku;
   const uint8_t has_base_accelerometer :1;
   const uint8_t has_lid_accelerometer :1;
   const uint8_t is_lid_convertible :1;
+  const uint8_t stylus_category :2;
 };
 
 extern const size_t NUM_SKUS;
