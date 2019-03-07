@@ -117,9 +117,6 @@
       <arg type="ay" name="account_id" direction="in" />
       <arg type="ay" name="get_account_disk_usage_reply" direction="out" />
     </method>
-    <method name="Unmount">
-      <arg type="b" name="done" direction="out" />
-    </method>
     <method name="UnmountEx">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in" />

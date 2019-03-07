@@ -164,11 +164,6 @@ gboolean cryptohome_mount_guest_ex(Cryptohome* self,
   // Leave the response called error to reuse WRAP.
   CRYPTOHOME_WRAP_METHOD(MountGuestEx, request);
 }
-gboolean cryptohome_unmount(Cryptohome* self,
-                            gboolean* OUT_result,
-                            GError** error) {
-  CRYPTOHOME_WRAP_METHOD(Unmount, OUT_result);
-}
 gboolean cryptohome_unmount_ex(Cryptohome* self,
                                GArray* request,
                                DBusGMethodInvocation* error) {
