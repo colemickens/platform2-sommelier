@@ -1002,7 +1002,10 @@ void CameraClient::RequestHandler::NotifyShutter(uint32_t frame_number) {
   memset(&m, 0, sizeof(m));
   m.type = CAMERA3_MSG_SHUTTER;
   m.message.shutter.frame_number = frame_number;
-  m.message.shutter.timestamp = current_buffer_timestamp_in_v4l2_;
+  m.message.shutter.timestamp =
+      device_info_.lens_facing == ANDROID_LENS_FACING_EXTERNAL
+          ? current_buffer_timestamp_in_user_
+          : current_buffer_timestamp_in_v4l2_;
   callback_ops_->notify(callback_ops_, &m);
 }
 
@@ -1035,6 +1038,8 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
   // See b/119635561 for detail.
   do {
     if (delta_user_ts > 0) {
+      VLOGF(1) << "Drop outdated frame: delta_user_ts = " << delta_user_ts
+               << ", delta_v4l2_ts = " << delta_v4l2_ts;
       device_->ReuseFrameBuffer(buffer_id);
       if (ret) {
         LOGFID(ERROR, device_id_)
@@ -1060,7 +1065,8 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
     delta_user_ts = user_ts - current_buffer_timestamp_in_user_;
     delta_v4l2_ts = v4l2_ts - current_buffer_timestamp_in_v4l2_;
   } while (allowed_shift_frame_duration_ns + delta_v4l2_ts < delta_user_ts &&
-           !is_video_recording_);
+           !is_video_recording_ &&
+           device_info_.lens_facing != ANDROID_LENS_FACING_EXTERNAL);
   current_buffer_timestamp_in_user_ = user_ts;
   current_buffer_timestamp_in_v4l2_ = v4l2_ts;
 
