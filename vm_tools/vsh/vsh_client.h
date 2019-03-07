@@ -42,6 +42,7 @@ class VshClient {
   void HandleStdinReadable();
   bool SendCurrentWindowSize();
   bool GetCurrentWindowSize(struct winsize* ws);
+  void CancelStdinTask();
 
   base::ScopedFD sock_fd_;
   brillo::MessageLoop::TaskId stdin_task_;

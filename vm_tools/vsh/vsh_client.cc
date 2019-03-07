@@ -243,9 +243,7 @@ void VshClient::HandleStdinReadable() {
     Shutdown();
     return;
   } else if (count == 0) {
-    brillo::MessageLoop* message_loop = brillo::MessageLoop::current();
-    message_loop->CancelTask(stdin_task_);
-    stdin_task_ = brillo::MessageLoop::kTaskIdNull;
+    CancelStdinTask();
   }
 
   data_message->set_stream(STDIN_STREAM);
@@ -253,8 +251,10 @@ void VshClient::HandleStdinReadable() {
 
   if (!SendMessage(sock_fd_.get(), guest_message)) {
     LOG(ERROR) << "Failed to send guest data message";
-    // Sending a partial message will break framing. Shut down the connection.
-    Shutdown();
+    // Sending a partial message will break framing. Shut down the socket
+    // write end, but don't quit entirely yet since there may be unprocessed
+    // messages to read.
+    CancelStdinTask();
     return;
   }
 }
@@ -294,6 +294,12 @@ bool VshClient::GetCurrentWindowSize(struct winsize* ws) {
   }
 
   return true;
+}
+
+void VshClient::CancelStdinTask() {
+  brillo::MessageLoop* message_loop = brillo::MessageLoop::current();
+  message_loop->CancelTask(stdin_task_);
+  stdin_task_ = brillo::MessageLoop::kTaskIdNull;
 }
 
 int VshClient::exit_code() {
