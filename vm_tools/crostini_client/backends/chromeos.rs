@@ -16,7 +16,7 @@ use std::process::Command;
 use dbus::{BusType, Connection, ConnectionItem, Message, OwnedFd};
 use protobuf::Message as ProtoMessage;
 
-use backends::Backend;
+use backends::{Backend, VmFeatures};
 use lsb_release::{LsbRelease, ReleaseChannel};
 use proto::system_api::cicerone_service::{self, *};
 use proto::system_api::seneschal_service::*;
@@ -137,6 +137,7 @@ enum ChromeOSError {
     FailedStopVm { vm_name: String, reason: String },
     InvalidExportPath,
     RetrieveActiveSessions,
+    TpmOnStable,
 }
 
 use self::ChromeOSError::*;
@@ -193,6 +194,7 @@ impl fmt::Display for ChromeOSError {
             }
             InvalidExportPath => write!(f, "disk export path is invalid"),
             RetrieveActiveSessions => write!(f, "failed to retrieve active sessions"),
+            TpmOnStable => write!(f, "TPM device is not available on stable channel"),
         }
     }
 }
@@ -464,13 +466,14 @@ impl ChromeOS {
         &mut self,
         vm_name: &str,
         user_id_hash: &str,
-        enable_gpu: bool,
+        features: VmFeatures,
         disk_image_path: String,
     ) -> Result<(), Box<Error>> {
         let mut request = StartVmRequest::new();
         request.start_termina = true;
         request.owner_id = user_id_hash.to_owned();
-        request.enable_gpu = enable_gpu;
+        request.enable_gpu = features.gpu;
+        request.software_tpm = features.software_tpm;
         request.name = vm_name.to_owned();
         {
             let disk_image = request.mut_disks().push_default();
@@ -857,18 +860,18 @@ impl Backend for ChromeOS {
         &mut self,
         name: &str,
         user_id_hash: &str,
-        enable_gpu: bool,
+        features: VmFeatures,
     ) -> Result<(), Box<Error>> {
-        if enable_gpu {
-            if let Ok(lsb_release) = LsbRelease::gather() {
-                if lsb_release.release_channel() == Some(ReleaseChannel::Stable) {
-                    return Err(EnableGpuOnStable.into());
-                }
-            }
+        let is_stable_channel = is_stable_channel();
+        if features.gpu && is_stable_channel {
+            return Err(EnableGpuOnStable.into());
+        }
+        if features.software_tpm && is_stable_channel {
+            return Err(TpmOnStable.into());
         }
         self.start_concierge()?;
         let disk_image_path = self.create_disk_image(name, user_id_hash)?;
-        self.start_vm_with_disk(name, user_id_hash, enable_gpu, disk_image_path)
+        self.start_vm_with_disk(name, user_id_hash, features, disk_image_path)
     }
 
     fn vm_stop(&mut self, name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {
@@ -1029,5 +1032,15 @@ impl Backend for ChromeOS {
             })
             .collect();
         Ok(device_list)
+    }
+}
+
+fn is_stable_channel() -> bool {
+    match LsbRelease::gather() {
+        Ok(lsb) => lsb.release_channel() == Some(ReleaseChannel::Stable),
+        Err(_) => {
+            // Weird /etc/lsb-release, do not enforce stable restrictions.
+            false
+        }
     }
 }

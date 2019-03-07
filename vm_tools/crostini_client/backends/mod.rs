@@ -32,6 +32,12 @@ impl fmt::Debug for UnimplementedError {
 
 impl Error for UnimplementedError {}
 
+#[derive(Default)]
+pub struct VmFeatures {
+    pub gpu: bool,
+    pub software_tpm: bool,
+}
+
 // The input for this macro is an ordinary trait declaration, with some restrictions. Each method
 // must take `&mut self` and return a `Result` where the `Ok` variant implements `Default` and the
 // `Err` variant is `Box<Error>`. All other arguments types must implement `Default` and no provided
@@ -82,7 +88,7 @@ macro_rules! impl_backend {
 
         #[cfg(test)]
         mod dummy_unimplemented_backend_tests {
-            use super::{$trait_nm, DummyUnimplementedBackend};
+            use super::*;
 
             $(
                 #[test]
@@ -118,7 +124,7 @@ macro_rules! impl_backend {
 
         #[cfg(test)]
         mod dummy_default_backend_tests {
-            use super::{$trait_nm, DummyDefaultBackend};
+            use super::*;
 
             $(
                 #[test]
@@ -152,7 +158,7 @@ impl_backend! {
             &mut self,
             name: &str,
             user_id_hash: &str,
-            enable_gpu: bool,
+            features: VmFeatures,
         ) -> Result<(), Box<Error>>;
         /// Stop `name` VM with given `user_id_hash`.
         fn vm_stop(&mut self, name: &str, user_id_hash: &str) -> Result<(), Box<Error>>;

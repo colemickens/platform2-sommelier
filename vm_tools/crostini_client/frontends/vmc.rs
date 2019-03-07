@@ -7,7 +7,7 @@ use std::fmt;
 
 use getopts::Options;
 
-use backends::Backend;
+use backends::{Backend, VmFeatures};
 use frontends::Frontend;
 use EnvMap;
 
@@ -112,6 +112,11 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     fn start(&mut self) -> VmcResult {
         let mut opts = Options::new();
         opts.optflag("", "enable-gpu", "when starting the vm, enable gpu support");
+        opts.optflag(
+            "",
+            "software-tpm",
+            "provide software-based virtual Trusted Platform Module",
+        );
         let matches = opts.parse(self.args)?;
 
         if matches.free.len() != 1 {
@@ -128,7 +133,10 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         try_command!(self.backend.vm_start(
             vm_name,
             user_id_hash,
-            matches.opt_present("enable-gpu")
+            VmFeatures {
+                gpu: matches.opt_present("enable-gpu"),
+                software_tpm: matches.opt_present("software-tpm"),
+            },
         ));
         self.metrics_send_sample("Vm.VmcStartSuccess");
         try_command!(self.backend.vsh_exec(vm_name, user_id_hash));
@@ -429,6 +437,8 @@ mod tests {
             &["vmc", "start", "termina"],
             &["vmc", "start", "--enable-gpu", "termina"],
             &["vmc", "start", "termina", "--enable-gpu"],
+            &["vmc", "start", "termina", "--software-tpm"],
+            &["vmc", "start", "termina", "--enable-gpu", "--software-tpm"],
             &["vmc", "stop", "termina"],
             &["vmc", "destroy", "termina"],
             &["vmc", "export", "termina", "file name"],

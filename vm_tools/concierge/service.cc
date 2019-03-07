@@ -932,10 +932,14 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   startup_listener_.AddPendingVm(vsock_cid, &event);
 
   // Start the VM and build the response.
+  VmFeatures features{
+      .gpu = request.enable_gpu(),
+      .software_tpm = request.software_tpm(),
+  };
   auto vm = TerminaVm::Create(
       std::move(kernel), std::move(rootfs), std::move(disks),
       std::move(mac_address), std::move(subnet), vsock_cid,
-      std::move(server_proxy), std::move(runtime_dir), request.enable_gpu());
+      std::move(server_proxy), std::move(runtime_dir), features);
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 
