@@ -220,6 +220,7 @@ static_library("libcrostpm") {
   if (!use.tpm2) {
     sources += [
       "../signature_sealing_backend_tpm1_impl.cc",
+      "../tpm1_static_utils.cc",
       "../tpm_impl.cc",
       "../tpm_metrics.cc",
     ]

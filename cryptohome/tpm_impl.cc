@@ -32,11 +32,11 @@
 
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
+#include "cryptohome/tpm1_static_utils.h"
 #include "cryptohome/tpm_metrics.h"
 
-#define TPM_LOG(severity, result)                                      \
-  LOG(severity) << base::StringPrintf("TPM error 0x%x (%s): ", result, \
-                                      Trspi_Error_String(result))
+#define TPM_LOG(severity, result) \
+  LOG(severity) << ::cryptohome::FormatTrousersErrorCode(result) << ": "
 
 using base::PlatformThread;
 using brillo::Blob;
@@ -116,41 +116,6 @@ Tpm::TpmRetryAction ResultToRetryAction(TSS_RESULT result) {
   return ResultToRetryActionWithMessage(result, "");
 }
 
-// Decodes a serialized TPM_PUBKEY into an OpenSSL RSA key object.
-// |public_key| is the serialized TPM_PUBKEY structure. Returns the key object
-// wrapped in ScopedRSA (containing a nullptr if decoding failed).
-crypto::ScopedRSA ParsePublicKey(const SecureBlob& public_key) {
-  // Parse the serialized TPM_PUBKEY.
-  UINT64 offset = 0;
-  BYTE* buffer = const_cast<BYTE*>(public_key.data());
-  TPM_PUBKEY parsed;
-  TSS_RESULT result = Trspi_UnloadBlob_PUBKEY(&offset, buffer, &parsed);
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Failed to parse TPM_PUBKEY.";
-    return nullptr;
-  }
-  ScopedByteArray scoped_key(parsed.pubKey.key);
-  ScopedByteArray scoped_parms(parsed.algorithmParms.parms);
-  TPM_RSA_KEY_PARMS* parms =
-      reinterpret_cast<TPM_RSA_KEY_PARMS*>(parsed.algorithmParms.parms);
-  crypto::ScopedRSA rsa(RSA_new());
-  CHECK(rsa.get());
-  // Get the public exponent.
-  if (parms->exponentSize == 0) {
-    rsa.get()->e = BN_new();
-    CHECK(rsa.get()->e);
-    BN_set_word(rsa.get()->e, kWellKnownExponent);
-  } else {
-    rsa.get()->e = BN_bin2bn(parms->exponent, parms->exponentSize, NULL);
-    CHECK(rsa.get()->e);
-  }
-  // Get the modulus.
-  rsa.get()->n = BN_bin2bn(parsed.pubKey.key, parsed.pubKey.keyLength, NULL);
-  CHECK(rsa.get()->n);
-
-  return rsa;
-}
-
 // Creates a DER encoded RSA public key given a serialized TPM_PUBKEY.
 //
 // Parameters
@@ -158,7 +123,8 @@ crypto::ScopedRSA ParsePublicKey(const SecureBlob& public_key) {
 //   public_key_der - The same public key in DER encoded form.
 bool ConvertPublicKeyToDER(const SecureBlob& public_key,
                            SecureBlob* public_key_der) {
-  crypto::ScopedRSA rsa = ParsePublicKey(public_key);
+  crypto::ScopedRSA rsa =
+      ParseRsaFromTpmPubkeyBlob(Blob(public_key.begin(), public_key.end()));
   if (!rsa) {
     return false;
   }
@@ -325,7 +291,7 @@ void TpmImpl::GetStatus(TpmKeyHandle key_handle,
   status->can_load_srk_public_key = true;
 
   // Perform ROCA vulnerability check.
-  crypto::ScopedRSA public_srk = ParsePublicKey(SecureBlob(
+  crypto::ScopedRSA public_srk = ParseRsaFromTpmPubkeyBlob(Blob(
       public_srk_bytes.value(), public_srk_bytes.value() + public_srk_size));
   status->srk_vulnerable_roca =
       public_srk && CryptoLib::TestRocaVulnerable(public_srk.get()->n);

@@ -10,7 +10,6 @@
 
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
-#include <base/strings/stringprintf.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/bn.h>
@@ -22,6 +21,7 @@
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
 
 #include "cryptohome/cryptolib.h"
+#include "cryptohome/tpm1_static_utils.h"
 #include "cryptohome/tpm_impl.h"
 #include "key.pb.h"                    // NOLINT(build/include)
 #include "signature_sealed_data.pb.h"  // NOLINT(build/include)
@@ -153,11 +153,6 @@ class UnsealingSessionTpm1Impl final
 
   DISALLOW_COPY_AND_ASSIGN(UnsealingSessionTpm1Impl);
 };
-
-std::string FormatTrousersErrorCode(TSS_RESULT result) {
-  return base::StringPrintf("TPM error 0x%x (%s): ", result,
-                            Trspi_Error_String(result));
-}
 
 // Extracts the public modulus from the OpenSSL RSA struct.
 bool GetRsaModulus(const RSA& rsa, Blob* modulus) {
