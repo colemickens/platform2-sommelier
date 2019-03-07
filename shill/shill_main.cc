@@ -27,44 +27,46 @@
 using std::string;
 using std::vector;
 
+namespace {
+
 namespace switches {
 
 // Don't daemon()ize; run in foreground.
-static const char kForeground[] = "foreground";
+const char kForeground[] = "foreground";
 // Don't attempt to manage these devices.
-static const char kDeviceBlackList[] = "device-black-list";
+const char kDeviceBlackList[] = "device-black-list";
 // Manage only these devices.
-static const char kDeviceWhiteList[] = "device-white-list";
+const char kDeviceWhiteList[] = "device-white-list";
 // ARC network device.
-static const char kArcDevice[] = "arc-device";
+const char kArcDevice[] = "arc-device";
 // Ignore Ethernet-like devices that don't have any driver information.
-static const char kIgnoreUnknownEthernet[] = "ignore-unknown-ethernet";
+const char kIgnoreUnknownEthernet[] = "ignore-unknown-ethernet";
 // Technologies to enable for portal check at startup.
-static const char kPortalList[] = "portal-list";
+const char kPortalList[] = "portal-list";
 // When in passive mode, Shill will not manage any devices by default.
 // Remote service can instruct Shill to manage/unmanage devices through
 // org.chromium.flimflam.Manager's ClaimInterface/ReleaseInterface APIs.
-static const char kPassiveMode[] = "passive-mode";
+const char kPassiveMode[] = "passive-mode";
 // Default priority order of the technologies.
-static const char kTechnologyOrder[] = "default-technology-order";
+const char kTechnologyOrder[] = "default-technology-order";
 // Comma-separated list of DNS servers to prepend to the resolver list.
-static const char kPrependDNSServers[] = "prepend-dns-servers";
+const char kPrependDNSServers[] = "prepend-dns-servers";
 // The minimum MTU value that will be respected in DHCP responses.
-static const char kMinimumMTU[] = "minimum-mtu";
+const char kMinimumMTU[] = "minimum-mtu";
 // Accept hostname from the DHCP server for the specified devices.
 // eg. eth0 or eth*
-static const char kAcceptHostnameFrom[] = "accept-hostname-from";
+const char kAcceptHostnameFrom[] = "accept-hostname-from";
 // Flag that causes shill to run third party VPN client programs in a minijail.
-static const char kJailVpnClients[] = "jail-vpn-clients";
+const char kJailVpnClients[] = "jail-vpn-clients";
 #ifndef DISABLE_DHCPV6
 // List of devices to enable DHCPv6.
-static const char kDhcpv6EnabledDevices[] = "dhcpv6-enabled-devices";
+const char kDhcpv6EnabledDevices[] = "dhcpv6-enabled-devices";
 #endif  // DISABLE_DHCPV6
 // Flag that causes shill to show the help message and exit.
-static const char kHelp[] = "help";
+const char kHelp[] = "help";
 
 // The help message shown if help flag is passed to the program.
-static const char kHelpMessage[] = "\n"
+const char kHelpMessage[] = "\n"
     "Available Switches: \n"
     "  --foreground\n"
     "    Don\'t daemon()ize; run in foreground.\n"
@@ -100,13 +102,9 @@ static const char kHelpMessage[] = "\n"
     "    Spawn third party VPN client programs in a minijail.\n";
 }  // namespace switches
 
-namespace {
-
 const char kLoggerCommand[] = "/usr/bin/logger";
 const char kLoggerUser[] = "syslog";
 const char kDefaultTechnologyOrder[] = "vpn,ethernet,wifi,wimax,cellular";
-
-}  // namespace
 
 // Always logs to the syslog and logs to stderr if
 // we are running in the foreground.
@@ -153,6 +151,8 @@ void OnStartup(const char *daemon_name, base::CommandLine* cl) {
   SetupLogging(cl->HasSwitch(switches::kForeground), daemon_name);
   shill::SetLogLevelFromCommandLine(cl);
 }
+
+}  // namespace
 
 int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
