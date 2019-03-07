@@ -82,6 +82,9 @@ class MockTpmUtility : public TpmUtility {
                     std::string*,
                     std::string*,
                     std::string*));
+  MOCK_CONST_METHOD2(GetNVDataSize,
+                     bool(uint32_t,
+                          uint16_t*));
   MOCK_METHOD5(CertifyNV,
                bool(uint32_t,
                     int,

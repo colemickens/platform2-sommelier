@@ -150,6 +150,10 @@ class TpmUtility {
   // populates |_pcr_value|.
   virtual bool ReadPCR(uint32_t pcr_index, std::string* pcr_value) const = 0;
 
+  // Gets the data size for the NV data at |nv_index| and stores it into
+  // |nv_size| if successful. Returns true for success, false otherwise.
+  virtual bool GetNVDataSize(uint32_t nv_index, uint16_t* nv_size) const = 0;
+
   // Certifies NV data at |nv_index|. The amount of data to be certified,
   // starting at offset 0, is specified by |nv_size|. The |key_blob| must be a
   // restricted signing key. On success returns true and populates:

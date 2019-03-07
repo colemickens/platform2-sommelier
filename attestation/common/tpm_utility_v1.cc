@@ -595,6 +595,11 @@ bool TpmUtilityV1::ReadPCR(uint32_t pcr_index, std::string* pcr_value) const {
   return false;
 }
 
+bool TpmUtilityV1::GetNVDataSize(uint32_t nv_index, uint16_t* nv_size) const {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  return false;
+}
+
 bool TpmUtilityV1::CertifyNV(uint32_t nv_index,
                              int nv_size,
                              const std::string& key_blob,

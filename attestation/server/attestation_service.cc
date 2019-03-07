@@ -380,15 +380,16 @@ constexpr int kLastPcrToQuote = 1;
 
 #if USE_TPM2
 
-// Description of the NVRAM indices used for attestation. Note that quotes
-// for all these indices are sent to the ACA when requesting an enrollment
-// certificate. When adding to this, please ensure that only BOARD_ID and
-// SN_BITS are sent for that certificte request.
+// The index in NVRAM space where the RSA EK certificate is stored.
+// TODO(crbug.com/910519): Define this in a common header file.
+constexpr uint32_t kRSAEndorsementCertificateIndex = 0x1C00000;
+
+// Description of virtual NVRAM indices used for attestation.
 const struct {
   NVRAMQuoteType quote_type;
   const char* quote_name;
   uint32_t nv_index;            // From CertifyNV().
-  int nv_size;                  // From CertifyNV().
+  uint16_t nv_size;             // From CertifyNV().
 } kNvramIndexData[] = {
   {
     BOARD_ID,
@@ -402,6 +403,12 @@ const struct {
     VIRTUAL_NV_INDEX_SN_DATA,
     VIRTUAL_NV_INDEX_SN_DATA_SIZE
   }
+};
+
+// Types of quotes needed to obtain an enrollment certificate.
+const NVRAMQuoteType kNvramQuoteTypeForEnrollmentCertificate[] = {
+  BOARD_ID,
+  SN_BITS
 };
 
 #endif
@@ -1151,6 +1158,32 @@ bool AttestationService::CreateEnrollRequestInternal(ACAType aca_type,
           enterprise_enrollment_nonce.data(),
           enterprise_enrollment_nonce.size());
     }
+
+    if (GetEndorsementKeyType() != KEY_TYPE_RSA) {
+      // Include an encrypted quote of the RSA pub EK certificate so that
+      // an EID can be computed during enrollment.
+
+      auto found = identity_data.nvram_quotes().find(RSA_PUB_EK_CERT);
+      if (found == identity_data.nvram_quotes().end()) {
+        LOG(ERROR) << __func__
+                   << ": Cannot find RSA pub EK certificate quote in identity "
+                   << identity << ".";
+        return false;
+      }
+
+      std::string serialized_quote;
+      if (!found->second.SerializeToString(&serialized_quote)) {
+        LOG(ERROR) << __func__
+                   << ": Failed to serialize RSA pub EK quote protobuf.";
+        return false;
+      }
+      if (!EncryptDataForAttestationCA(aca_type, serialized_quote,
+          request_pb.mutable_encrypted_rsa_endorsement_quote())) {
+        LOG(ERROR) << "Attestation: Failed to encrypt RSA pub EK certificate for "
+                     << GetACAName(aca_type) << ".";
+        return false;
+      }
+    }
   }
 
   if (!request_pb.SerializeToString(enroll_request)) {
@@ -1236,12 +1269,26 @@ bool AttestationService::CreateCertificateRequestInternal(
   request_pb.set_identity_credential(
       identity_certificate.identity_credential());
   request_pb.set_profile(profile);
+
+#if USE_TPM2
+
   if (profile == ENTERPRISE_ENROLLMENT_CERTIFICATE) {
     const AttestationDatabase::Identity& identity_data =
         database_->GetProtobuf().identities().Get(
             identity_certificate.identity());
-    *request_pb.mutable_nvram_quotes() = identity_data.nvram_quotes();
+    // Copy NVRAM quotes to include in an enrollment certificate.
+    for (int i = 0; i < arraysize(kNvramQuoteTypeForEnrollmentCertificate);
+         ++i) {
+      auto index = kNvramQuoteTypeForEnrollmentCertificate[i];
+      auto found = identity_data.nvram_quotes().find(index);
+      if (found != identity_data.nvram_quotes().end()) {
+        (*request_pb.mutable_nvram_quotes())[index] = found->second;
+      }
+    }
   }
+
+#endif
+
   if (!origin.empty() &&
       (profile == CONTENT_PROTECTION_CERTIFICATE_WITH_STABLE_ID)) {
     request_pb.set_origin(origin);
@@ -1615,7 +1662,7 @@ void AttestationService::PrepareForEnrollment() {
   base::TimeTicks start = base::TimeTicks::Now();
   LOG(INFO) << "Attestation: Preparing for enrollment...";
 
-  KeyType key_type = KEY_TYPE_RSA;
+  KeyType key_type = GetEndorsementKeyType();
 
   // Gather information about the endorsement key.
   std::string ek_public_key;
@@ -1743,31 +1790,27 @@ int AttestationService::CreateIdentity(int identity_features,
   // Certify device-specific NV data and insert them in the identity when
   // we can certify them. This is an almost identical process to the PCR
   // quotes above.
-  auto* nv_quote_map = identity_data->mutable_nvram_quotes();
 
   for (int i = 0; i < arraysize(kNvramIndexData); ++i) {
-    std::string certified_value;
-    std::string signature;
-    if (tpm_utility_->CertifyNV(kNvramIndexData[i].nv_index,
-                                kNvramIndexData[i].nv_size,
-                                rsa_identity_key_blob,
-                                &certified_value,
-                                &signature)) {
-      Quote pb;
-      pb.set_quote(signature);
-      pb.set_quoted_data(certified_value);
-
-      auto in_bid = nv_quote_map->insert(QuoteMap::value_type(
-         kNvramIndexData[i].quote_type , pb));
-      if (!in_bid.second) {
-        LOG(ERROR) << "Attestation: Failed to store "
-                   << kNvramIndexData[i].quote_name
-                   << " quote for identity " << identity << ".";
+    if (!InsertCertifiedNvramData(identity,
+                                  kNvramIndexData[i].quote_type,
+                                  kNvramIndexData[i].quote_name,
+                                  kNvramIndexData[i].nv_index,
+                                  kNvramIndexData[i].nv_size,
+                                  false /* must_be_present */)) {
         return -1;
-      }
-    } else {
-      LOG(WARNING) << "Attestation: Failed to certify "
-                   << kNvramIndexData[i].quote_name << " NV data.";
+    }
+  }
+
+  if ((identity_features & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) &&
+      GetEndorsementKeyType() != KEY_TYPE_RSA) {
+    if (!InsertCertifiedNvramData(identity,
+                                  RSA_PUB_EK_CERT,
+                                  "RSA Public EK Certificate",
+                                  kRSAEndorsementCertificateIndex,
+                                  0,
+                                  true /* must_be_present */)) {
+      return -1;
     }
   }
 
@@ -1775,6 +1818,59 @@ int AttestationService::CreateIdentity(int identity_features,
 
   // Return the index of the newly created identity.
   return database_pb->identities().size() - 1;
+}
+
+bool AttestationService::InsertCertifiedNvramData(
+    int identity,
+    NVRAMQuoteType quote_type,
+    const char* quote_name,
+    uint32_t nv_index,
+    int nv_size,
+    bool must_be_present) {
+  auto* database_pb = database_->GetMutableProtobuf();
+  if (database_pb->identities().size() < identity) {
+    LOG(ERROR) << __func__ << ": Identity " << identity << " does not exist.";
+    return false;
+  }
+  if (nv_size <= 0) {
+    uint16_t nv_data_size;
+    if (!tpm_utility_->GetNVDataSize(nv_index, &nv_data_size)) {
+        LOG(ERROR) << "Attestation: Failed to obtain data about the "
+                  << quote_name << ".";
+        return -1;
+    }
+    nv_size = nv_data_size;
+  }
+
+  auto* identity_data = database_pb->mutable_identities()->Mutable(identity);
+  auto identity_key_blob = identity_data->identity_key().identity_key_blob();
+  auto* nv_quote_map = identity_data->mutable_nvram_quotes();
+
+  std::string certified_value;
+  std::string signature;
+
+  if (tpm_utility_->CertifyNV(nv_index,
+                              nv_size,
+                              identity_key_blob,
+                              &certified_value,
+                              &signature)) {
+    Quote pb;
+    pb.set_quote(signature);
+    pb.set_quoted_data(certified_value);
+
+    auto in_bid = nv_quote_map->insert(QuoteMap::value_type(quote_type, pb));
+    if (!in_bid.second) {
+      LOG(ERROR) << "Attestation: Failed to store " << quote_name
+                 << " quote for identity " << identity << ".";
+      return false;
+    }
+    return true;
+  } else {
+    LOG(WARNING) << "Attestation: Failed to certify " << quote_name
+                 << " NV data of size " << nv_size <<
+                 " at address " << std::hex << std::showbase << nv_index << ".";
+    return !must_be_present;
+  }
 }
 
 int AttestationService::GetIdentitiesCount() const {
@@ -1812,7 +1908,7 @@ bool AttestationService::EncryptAllEndorsementCredentials() {
     ACAType aca_type = GetACAType(static_cast<ACATypeInternal>(aca));
     LOG(INFO) << "Attestation: Encrypting endorsement credential for "
               << GetACAName(aca_type) << ".";
-    if (!EncryptEndorsementCredential(aca_type, rsa_ek_certificate,
+    if (!EncryptDataForAttestationCA(aca_type, rsa_ek_certificate,
         &(*credentials_pb->mutable_encrypted_endorsement_credentials())[aca])) {
       LOG(ERROR) << "Attestation: Failed to encrypt EK certificate for "
                    << GetACAName(static_cast<ACAType>(aca)) << ".";
@@ -1822,10 +1918,10 @@ bool AttestationService::EncryptAllEndorsementCredentials() {
   return true;
 }
 
-bool AttestationService::EncryptEndorsementCredential(
+bool AttestationService::EncryptDataForAttestationCA(
     ACAType aca_type,
-    const std::string& credential,
-    EncryptedData* encrypted_credential) {
+    const std::string& data,
+    EncryptedData* encrypted_data) {
   std::string key;
   std::string key_id;
   switch (aca_type) {
@@ -1843,7 +1939,7 @@ bool AttestationService::EncryptEndorsementCredential(
       NOTREACHED();
   }
   if (!crypto_utility_->EncryptDataForGoogle(
-       credential, key, key_id, encrypted_credential)) {
+       data, key, key_id, encrypted_data)) {
       return false;
   }
   return true;
@@ -2850,6 +2946,11 @@ std::string AttestationService::ComputeEnterpriseEnrollmentId() {
 
   // Compute the EID based on den and ekm.
   return crypto_utility_->HmacSha256(den, ekm);
+}
+
+KeyType AttestationService::GetEndorsementKeyType() const {
+  // TODO(crbug.com/910519): Switch to KEY_TYPE_ECC when ready.
+  return KEY_TYPE_RSA;
 }
 
 base::WeakPtr<AttestationService> AttestationService::GetWeakPtr() {

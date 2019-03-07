@@ -246,6 +246,10 @@ class AttestationServiceBaseTest : public testing::Test {
 #if USE_TPM2
     (*identity_data->mutable_nvram_quotes())[BOARD_ID].set_quote("board_id");
     (*identity_data->mutable_nvram_quotes())[SN_BITS].set_quote("sn_bits");
+    if (service_->GetEndorsementKeyType() != KEY_TYPE_RSA) {
+      (*identity_data->mutable_nvram_quotes())[RSA_PUB_EK_CERT]
+          .set_quote("rsa_pub_ek_cert");
+    }
 #endif
   }
 
@@ -1850,6 +1854,8 @@ TEST_P(AttestationServiceTest, PrepareForEnrollment) {
 #if USE_TPM2
   EXPECT_EQ(1, identity_data.nvram_quotes().count(BOARD_ID));
   EXPECT_EQ(1, identity_data.nvram_quotes().count(SN_BITS));
+  EXPECT_EQ(service_->GetEndorsementKeyType() != KEY_TYPE_RSA ? 1 : 0,
+            identity_data.nvram_quotes().count(RSA_PUB_EK_CERT));
 #else
   EXPECT_TRUE(identity_data.nvram_quotes().empty());
 #endif
@@ -2157,11 +2163,8 @@ TEST_P(AttestationServiceTest, CreateEnrollmentCertificateRequestSuccess) {
     EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
     EXPECT_EQ(ENTERPRISE_ENROLLMENT_CERTIFICATE, pca_request.profile());
 #if USE_TPM2
-    EXPECT_NE(pca_request.nvram_quotes().end(),
-              pca_request.nvram_quotes().find(BOARD_ID));
+    EXPECT_EQ(2, pca_request.nvram_quotes().size());
     EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
-    EXPECT_NE(pca_request.nvram_quotes().end(),
-              pca_request.nvram_quotes().find(SN_BITS));
     EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
 #else
   EXPECT_TRUE(pca_request.nvram_quotes().empty());

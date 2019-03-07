@@ -149,6 +149,9 @@ class AttestationService : public AttestationInterface {
       const GetEnrollmentIdRequest& request,
       const GetEnrollmentIdCallback& callback) override;
 
+  // Return the type of the endorsement key.
+  KeyType GetEndorsementKeyType() const;
+
   // Mutators useful for testing.
   void set_crypto_utility(CryptoUtility* crypto_utility) {
     crypto_utility_ = crypto_utility;
@@ -505,6 +508,17 @@ class AttestationService : public AttestationInterface {
   int CreateIdentity(int identity_features,
                      const std::string& rsa_ek_public_key);
 
+  // Certify NVRAM data and insert it into the given |identity|. Returns false
+  // if data cannot be inserted, or if |must_be_present| is true and the data
+  // cannot be certified.
+  bool InsertCertifiedNvramData(
+    int identity,
+    NVRAMQuoteType quote_type,
+    const char* quote_name,
+    uint32_t nv_index,
+    int nv_size,
+    bool must_be_present);
+
   // Returns the count of identities in the attestation database.
   virtual int GetIdentitiesCount() const;
   // Returns the identity features of |identity|.
@@ -516,11 +530,11 @@ class AttestationService : public AttestationInterface {
   // ENcrypts all the endorsement credentials that we don't have yet.
   bool EncryptAllEndorsementCredentials();
 
-  // Encrypts the endorsement credential for the given |aca_type|.
-  bool EncryptEndorsementCredential(
+  // Encrypts data for the given |aca_type|.
+  bool EncryptDataForAttestationCA(
       ACAType aca_type,
-      const std::string& credential,
-      EncryptedData* encrypted_credential);
+      const std::string& data,
+      EncryptedData* encrypted_data);
 
   // Activates an attestation key given an |encrypted_certificate|. On success
   // returns true and provides the decrypted |certificate| if not null. If
