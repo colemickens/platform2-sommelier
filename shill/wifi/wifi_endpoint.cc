@@ -281,7 +281,7 @@ const WiFiEndpoint::Ap80211krvSupport& WiFiEndpoint::krv_support() const {
 }
 
 // static
-WiFiEndpoint* WiFiEndpoint::MakeOpenEndpoint(
+WiFiEndpointRefPtr WiFiEndpoint::MakeOpenEndpoint(
     ControlInterface* control_interface,
     const WiFiRefPtr& wifi,
     const string& ssid,
@@ -295,15 +295,16 @@ WiFiEndpoint* WiFiEndpoint::MakeOpenEndpoint(
 
 
 // static
-WiFiEndpoint* WiFiEndpoint::MakeEndpoint(ControlInterface* control_interface,
-                                         const WiFiRefPtr& wifi,
-                                         const string& ssid,
-                                         const string& bssid,
-                                         const string& network_mode,
-                                         uint16_t frequency,
-                                         int16_t signal_dbm,
-                                         bool has_wpa_property,
-                                         bool has_rsn_property) {
+WiFiEndpointRefPtr WiFiEndpoint::MakeEndpoint(
+    ControlInterface* control_interface,
+    const WiFiRefPtr& wifi,
+    const string& ssid,
+    const string& bssid,
+    const string& network_mode,
+    uint16_t frequency,
+    int16_t signal_dbm,
+    bool has_wpa_property,
+    bool has_rsn_property) {
   KeyValueStore args;
 
   args.SetUint8s(WPASupplicant::kBSSPropertySSID,

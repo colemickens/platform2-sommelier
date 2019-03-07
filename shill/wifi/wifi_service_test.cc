@@ -102,24 +102,29 @@ class WiFiServiceTest : public PropertyStoreTest {
     service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
     return service->connectable();
   }
-  WiFiEndpoint* MakeEndpoint(const string& ssid, const string& bssid,
-                             uint16_t frequency, int16_t signal_dbm,
-                             bool has_wpa_property, bool has_rsn_property) {
+  WiFiEndpointRefPtr MakeEndpoint(const string& ssid,
+                                  const string& bssid,
+                                  uint16_t frequency,
+                                  int16_t signal_dbm,
+                                  bool has_wpa_property,
+                                  bool has_rsn_property) {
     return WiFiEndpoint::MakeEndpoint(
         nullptr, wifi(), ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
         frequency, signal_dbm, has_wpa_property, has_rsn_property);
   }
-  WiFiEndpoint* MakeOpenEndpoint(const string& ssid, const string& bssid,
-                                 uint16_t frequency, int16_t signal_dbm) {
+  WiFiEndpointRefPtr MakeOpenEndpoint(const string& ssid,
+                                      const string& bssid,
+                                      uint16_t frequency,
+                                      int16_t signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
         nullptr, wifi(), ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
         frequency, signal_dbm);
   }
-  WiFiEndpoint* MakeOpenEndpointWithWiFi(WiFiRefPtr wifi,
-                                         const string& ssid,
-                                         const string& bssid,
-                                         uint16_t frequency,
-                                         int16_t signal_dbm) {
+  WiFiEndpointRefPtr MakeOpenEndpointWithWiFi(WiFiRefPtr wifi,
+                                              const string& ssid,
+                                              const string& bssid,
+                                              uint16_t frequency,
+                                              int16_t signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
         nullptr, wifi, ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
         frequency, signal_dbm);
@@ -1814,7 +1819,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, FrequencyList) {
 TEST_F(WiFiServiceTest, SecurityFromCurrentEndpoint) {
   WiFiServiceRefPtr service(MakeSimpleService(kSecurityPsk));
   EXPECT_EQ(kSecurityPsk, service->GetSecurity(nullptr));
-  WiFiEndpoint* endpoint = MakeOpenEndpoint(
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
         simple_ssid_string(), "00:00:00:00:00:00", 0, 0);
   service->AddEndpoint(endpoint);
   EXPECT_EQ(kSecurityPsk, service->GetSecurity(nullptr));

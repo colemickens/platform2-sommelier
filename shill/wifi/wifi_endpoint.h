@@ -136,23 +136,24 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   };
 
   // Build a simple WiFiEndpoint, for testing purposes.
-  static WiFiEndpoint* MakeEndpoint(ControlInterface* control_interface,
-                                    const WiFiRefPtr& wifi,
-                                    const std::string& ssid,
-                                    const std::string& bssid,
-                                    const std::string& network_mode,
-                                    uint16_t frequency,
-                                    int16_t signal_dbm,
-                                    bool has_wpa_property,
-                                    bool has_rsn_property);
+  static WiFiEndpointRefPtr MakeEndpoint(ControlInterface* control_interface,
+                                         const WiFiRefPtr& wifi,
+                                         const std::string& ssid,
+                                         const std::string& bssid,
+                                         const std::string& network_mode,
+                                         uint16_t frequency,
+                                         int16_t signal_dbm,
+                                         bool has_wpa_property,
+                                         bool has_rsn_property);
   // As above, but with the last two parameters false.
-  static WiFiEndpoint* MakeOpenEndpoint(ControlInterface* control_interface,
-                                        const WiFiRefPtr& wifi,
-                                        const std::string& ssid,
-                                        const std::string& bssid,
-                                        const std::string& network_mode,
-                                        uint16_t frequency,
-                                        int16_t signal_dbm);
+  static WiFiEndpointRefPtr MakeOpenEndpoint(
+      ControlInterface* control_interface,
+      const WiFiRefPtr& wifi,
+      const std::string& ssid,
+      const std::string& bssid,
+      const std::string& network_mode,
+      uint16_t frequency,
+      int16_t signal_dbm);
   // Maps mode strings from supplicant into flimflam's nomenclature, as defined
   // in chromeos/dbus/service_constants.h.
   static const char* ParseMode(const std::string& mode_string);
