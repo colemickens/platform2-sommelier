@@ -212,7 +212,7 @@ class Daemon::StateControllerDelegate
         suspend_reason = SuspendImminent_Reason_LID_CLOSED;
         break;
     }
-    daemon_->Suspend(suspend_reason, false, 0);
+    daemon_->Suspend(suspend_reason, false, 0, base::TimeDelta());
   }
 
   void StopSession() override {
@@ -627,24 +627,24 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa7", true);
   }
 
-  std::string args;
+  std::vector<std::string> args;
   if (wakeup_count_valid) {
-    args += base::StringPrintf(
-        " --suspend_wakeup_count_valid"
-        " --suspend_wakeup_count=%" PRIu64,
-        wakeup_count);
+    args.push_back("--suspend_wakeup_count_valid");
+    args.push_back(base::StringPrintf("--suspend_wakeup_count=%" PRIu64,
+                                      wakeup_count));
   }
 
   if (duration != base::TimeDelta()) {
-    args += base::StringPrintf(" --suspend_duration=%" PRId64,
-                               duration.InSeconds());
+    args.push_back(base::StringPrintf("--suspend_duration=%" PRId64,
+                                      duration.InSeconds()));
   }
 
   if (suspend_to_idle_)
-    args += " --suspend_to_idle";
+    args.push_back("--suspend_to_idle");
 
   suspend_configurator_->PrepareForSuspend();
-  const int exit_code = RunSetuidHelper("suspend", args, true);
+  const int exit_code = RunSetuidHelper("suspend", base::JoinString(args, " "),
+                                        true);
   LOG(INFO) << "powerd_suspend returned " << exit_code;
   suspend_configurator_->UndoPrepareForSuspend();
 
@@ -1039,8 +1039,13 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
                           .c_str()
                     : "")
             << " from " << method_call->GetSender();
+  // Read an optional int32_t argument specifying the wakeup timeout for a
+  // suspend request.
+  int32_t wakeup_timeout = 0;
+  reader.PopInt32(&wakeup_timeout);
+  base::TimeDelta duration = base::TimeDelta::FromSeconds(wakeup_timeout);
   Suspend(SuspendImminent_Reason_OTHER, got_external_wakeup_count,
-          external_wakeup_count);
+          external_wakeup_count, duration);
   return nullptr;
 }
 
@@ -1233,7 +1238,8 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
 
 void Daemon::Suspend(SuspendImminent::Reason reason,
                      bool use_external_wakeup_count,
-                     uint64_t external_wakeup_count) {
+                     uint64_t external_wakeup_count,
+                     base::TimeDelta duration) {
   if (shutting_down_) {
     LOG(INFO) << "Ignoring request for suspend with outstanding shutdown";
     return;
@@ -1241,7 +1247,8 @@ void Daemon::Suspend(SuspendImminent::Reason reason,
 
   if (use_external_wakeup_count) {
     suspender_->RequestSuspendWithExternalWakeupCount(reason,
-                                                      external_wakeup_count);
+                                                      external_wakeup_count,
+                                                      duration);
   } else {
     suspender_->RequestSuspend(reason);
   }

@@ -44,10 +44,11 @@ void PrintAddrMap(void* vaddr) {
          (page_data & (1LL << 63)) >> 63);
 }
 
-int Suspend(uint64_t wakeup_count) {
+int Suspend(uint64_t wakeup_count, int32_t wakeup_timeout) {
   return system(
       base::StringPrintf(
-          "powerd_dbus_suspend --delay=0 --wakeup_count=%" PRIu64, wakeup_count)
+          "powerd_dbus_suspend --delay=0 --wakeup_count=%" PRIu64
+          " --wakeup_timeout=%" PRIi32, wakeup_count, wakeup_timeout)
           .c_str());
 }
 
@@ -115,6 +116,8 @@ int main(int argc, char* argv[]) {
                "Amount of memory to allocate "
                "(0 means as much as possible)");
   DEFINE_uint64(wakeup_count, 0, "Value read from /sys/power/wakeup_count");
+  DEFINE_int32(wakeup_timeout, 0,
+                "Pass a RTC wakealarm in seconds to powerd_dbus_suspend");
 
   brillo::FlagHelper::Init(
       argc, argv,
@@ -144,7 +147,7 @@ int main(int argc, char* argv[]) {
   CHECK(ptr);
 
   Fill(ptr, size);
-  if (Suspend(FLAGS_wakeup_count)) {
+  if (Suspend(FLAGS_wakeup_count, FLAGS_wakeup_timeout)) {
     printf("Error suspending\n");
     return 1;
   }

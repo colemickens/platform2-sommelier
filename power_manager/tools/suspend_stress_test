@@ -253,14 +253,13 @@ while true; do
   last_ignore_count=$(get_wakeup_source_event_count \
                       ${FLAGS_ignore_wakeup_source})
   wakeup_count=$(cat /sys/power/wakeup_count)
-  echo 0 > /sys/class/rtc/rtc0/wakealarm
-  echo "+${sus_time}" > /sys/class/rtc/rtc0/wakealarm
+  # TODO (harrypan): How to deal with the backup_rtc?
   if [ ${FLAGS_backup_rtc} -eq ${FLAGS_TRUE} ]; then
     echo 0 > /sys/class/rtc/rtc1/wakealarm
     echo "+$(( sus_time + 5 ))" > /sys/class/rtc/rtc1/wakealarm
   fi
 
-  ${suspend_cmd} --wakeup_count=${wakeup_count}
+  ${suspend_cmd} --wakeup_count=${wakeup_count} --wakeup_timeout=${sus_time}
 
   if [ -n "${FLAGS_post_resume_command}" ]; then
     # Leading space because this will appear on the same line as the

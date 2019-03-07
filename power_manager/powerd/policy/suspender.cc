@@ -96,10 +96,12 @@ void Suspender::RequestSuspend(SuspendImminent::Reason reason) {
 }
 
 void Suspender::RequestSuspendWithExternalWakeupCount(
-    SuspendImminent::Reason reason, uint64_t wakeup_count) {
+    SuspendImminent::Reason reason, uint64_t wakeup_count,
+    base::TimeDelta duration) {
   suspend_request_reason_ = reason;
   suspend_request_supplied_wakeup_count_ = true;
   suspend_request_wakeup_count_ = wakeup_count;
+  suspend_duration_ = duration;
   HandleEvent(Event::SUSPEND_REQUESTED);
 }
 
@@ -487,6 +489,10 @@ Suspender::State Suspender::Suspend() {
   system::DarkResumeInterface::Action action;
   base::TimeDelta duration;
   dark_resume_->GetActionForSuspendAttempt(&action, &duration);
+
+  if (suspend_duration_ != base::TimeDelta())
+    duration = std::max(duration, suspend_duration_);
+
   switch (action) {
     case system::DarkResumeInterface::Action::SHUT_DOWN:
       LOG(INFO) << "Shutting down from dark resume";
@@ -514,8 +520,12 @@ Suspender::State Suspender::Suspend() {
   const Delegate::SuspendResult result =
       delegate_->DoSuspend(wakeup_count_, wakeup_count_valid_, duration);
 
-  if (result == Delegate::SuspendResult::SUCCESS)
+  if (result == Delegate::SuspendResult::SUCCESS) {
+    // Reset this immediately right after a successful suspend, leave it
+    // for retry attempts
+    suspend_duration_ = base::TimeDelta();
     dark_resume_->HandleSuccessfulResume();
+  }
 
   // TODO(crbug.com/790898): Identify attempts that are canceled due to wakeup
   // events from dark resume sources and call HandleDarkResume instead.

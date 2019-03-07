@@ -388,7 +388,8 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   // in the request gets ignored for the eventual retry.
   const uint64_t kExternalWakeupCount = 32542;
   suspender_.RequestSuspendWithExternalWakeupCount(SuspendImminent_Reason_IDLE,
-                                                   kExternalWakeupCount);
+                                                   kExternalWakeupCount,
+                                                   base::TimeDelta());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
 
@@ -599,7 +600,8 @@ TEST_F(SuspenderTest, ExternalWakeupCount) {
   const uint64_t kWakeupCount = 452;
   delegate_.set_wakeup_count(kWakeupCount);
   suspender_.RequestSuspendWithExternalWakeupCount(SuspendImminent_Reason_OTHER,
-                                                   kWakeupCount - 1);
+                                                   kWakeupCount - 1,
+                                                   base::TimeDelta());
   EXPECT_EQ(kPrepare, delegate_.GetActions());
 
   // Make the delegate report that powerd_suspend reported a wakeup count
@@ -618,7 +620,8 @@ TEST_F(SuspenderTest, ExternalWakeupCount) {
   // and check that the suspend attempt is retried using the external wakeup
   // count.
   suspender_.RequestSuspendWithExternalWakeupCount(SuspendImminent_Reason_OTHER,
-                                                   kWakeupCount);
+                                                   kWakeupCount,
+                                                   base::TimeDelta());
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::FAILURE);
   AnnounceReadyForSuspend(test_api_.suspend_id());
@@ -1083,6 +1086,85 @@ TEST_F(SuspenderTest, ReportInitialSuspendAttempts) {
   EXPECT_TRUE(delegate_.suspend_was_successful());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
   EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
+}
+
+// Tests the standard suspend/resume cycle with a wakeup timeout.
+TEST_F(SuspenderTest, SuspendWakeupTimeout) {
+  Init();
+
+  const uint64_t kWakeupCount = 452;
+  delegate_.set_wakeup_count(kWakeupCount);
+  const base::TimeDelta kDuration = base::TimeDelta::FromSeconds(5);
+  suspender_.RequestSuspendWithExternalWakeupCount(SuspendImminent_Reason_OTHER,
+                                                   kWakeupCount,
+                                                   kDuration);
+  const int suspend_id = test_api_.suspend_id();
+  EXPECT_EQ(suspend_id, GetSuspendImminentId(0));
+  EXPECT_EQ(SuspendImminent_Reason_OTHER, GetSuspendImminentReason(0));
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_TRUE(delegate_.suspend_announced());
+
+  // Simulate suspending.
+  delegate_.set_suspend_advance_time(kDuration);
+
+  // When Suspender receives notice that the system is ready to be
+  // suspended, it should immediately suspend the system.
+  AnnounceReadyForSuspend(suspend_id);
+
+  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, nullptr), delegate_.GetActions());
+  EXPECT_EQ(kWakeupCount, delegate_.suspend_wakeup_count());
+  EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
+  EXPECT_TRUE(delegate_.suspend_was_successful());
+
+  // Suspender shall pass a right duration to delegate
+  EXPECT_EQ(kDuration, delegate_.suspend_duration());
+  EXPECT_EQ(1, delegate_.num_suspend_attempts());
+  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
+
+  // A resuspend timeout shouldn't be set.
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
+}
+
+// Tests that suspend is retried on failure.
+TEST_F(SuspenderTest, SuspendWakeupTimoutRetryOnFailure) {
+  Init();
+
+  const uint64_t kWakeupCount = 46;
+  delegate_.set_wakeup_count(kWakeupCount);
+  delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::FAILURE);
+  const base::TimeDelta kDuration = base::TimeDelta::FromSeconds(7);
+  suspender_.RequestSuspendWithExternalWakeupCount(SuspendImminent_Reason_OTHER,
+                                                   kWakeupCount,
+                                                   kDuration);
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_TRUE(delegate_.suspend_announced());
+
+  AnnounceReadyForSuspend(test_api_.suspend_id());
+
+  // Before the next attempt, suspender should keep the assigned duration
+  EXPECT_EQ(kDuration, delegate_.suspend_duration());
+
+  // Simulate a successful suspend attempt then.
+  delegate_.set_suspend_advance_time(kDuration);
+  delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::SUCCESS);
+
+  // The timeout should trigger another suspend attempt.
+  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(kWakeupCount, delegate_.suspend_wakeup_count());
+  EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
+  EXPECT_TRUE(delegate_.suspend_was_successful());
+  EXPECT_EQ(kDuration, delegate_.suspend_duration());
+
+  // There shall be two attempts.
+  EXPECT_EQ(2, delegate_.num_suspend_attempts());
+
+  // A resuspend timeout shouldn't be set.
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
+
+  // Simulate another suspend request, validate empty duration passed in
+  suspender_.RequestSuspend(SuspendImminent_Reason_IDLE);
+  AnnounceReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(base::TimeDelta(), delegate_.suspend_duration());
 }
 
 }  // namespace policy

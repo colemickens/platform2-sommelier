@@ -215,7 +215,8 @@ class Suspender : public SuspendDelayObserver {
   // TODO(derat): Delete this and add a base::Optional<uint64_t> arg to
   // RequestSuspend once base::Optional is available.
   void RequestSuspendWithExternalWakeupCount(SuspendImminent::Reason reason,
-                                             uint64_t wakeup_count);
+                                             uint64_t wakeup_count,
+                                             base::TimeDelta duration);
 
   // Handles events that may abort in-progress suspend attempts.
   void HandleLidOpened();
@@ -375,6 +376,7 @@ class Suspender : public SuspendDelayObserver {
   // RequestSuspendWithExternalWakeupCount().
   bool suspend_request_supplied_wakeup_count_ = false;
   uint64_t suspend_request_wakeup_count_ = 0;
+  base::TimeDelta suspend_duration_;
 
   // Number of wakeup events received at the start of the current suspend
   // attempt. Passed to the kernel to cancel an attempt if user activity is

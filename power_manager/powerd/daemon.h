@@ -236,7 +236,8 @@ class Daemon : public policy::InputEventHandler::Delegate,
   // policy::Suspender::RequestSuspendWithExternalWakeupCount();
   void Suspend(SuspendImminent::Reason reason,
                bool use_external_wakeup_count,
-               uint64_t external_wakeup_count);
+               uint64_t external_wakeup_count,
+               base::TimeDelta duration);
 
   // Updates state in |all_backlight_controllers_|.
   void SetBacklightsDimmedForInactivity(bool dimmed);

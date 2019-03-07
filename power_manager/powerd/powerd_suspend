@@ -230,8 +230,9 @@ send_uma_result() {
   metrics_client -e Power.SuspendResult "$1" "${RESULT_MAX}" &
 }
 
-setup_dark_resume() {
+setup_resume() {
   if [ "${FLAGS_suspend_duration}" -ne -1 ]; then
+    log_msg "Set RTC wakealarm in" ${FLAGS_suspend_duration} "seconds"
     echo 0 > /sys/class/rtc/rtc0/wakealarm
     echo "+${FLAGS_suspend_duration}" > /sys/class/rtc/rtc0/wakealarm
   fi
@@ -362,11 +363,10 @@ else
   # your suspend and cause you hours of pain and confusion!
   if [ -f "${TIMESTAMP_FILE}" ]; then
     /sbin/hwclock -V > /dev/null
-  else
-    # We don't want to overwrite the alarm for whatever test might be
-    # running.
-    setup_dark_resume
   fi
+
+  # Set RTC wakealarm for normal or dark resume
+  setup_resume
 
   # Echo freeze to /sys/power/state on platforms that support suspend to idle.
   action='mem'
