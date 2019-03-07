@@ -565,7 +565,8 @@ class U2FTest : public ::testing::Test {
     brillo::Blob cert;
 
     EXPECT_FALSE(
-        u2f_.Register(challenge,
+        u2f_.Register(-1,  // Default P1
+                      challenge,
                       application,
                       false,  // G2F
                       &public_key,
@@ -583,7 +584,8 @@ class U2FTest : public ::testing::Test {
     brillo::Blob signature;
 
     EXPECT_FALSE(
-        u2f_.Authenticate(challenge,
+        u2f_.Authenticate(-1,  // Default P1
+                          challenge,
                           application,
                           key_handle,
                           &presence_verified,
@@ -631,7 +633,8 @@ TEST_F(U2FTest, RegisterSuccess) {
   brillo::Blob cert;
 
   EXPECT_TRUE(
-      u2f_.Register(challenge,
+      u2f_.Register(-1,  // Default P1
+                    challenge,
                     application,
                     false,  // G2F
                     &public_key,
@@ -721,7 +724,8 @@ TEST_F(U2FTest, AuthenticateSuccess) {
   brillo::Blob signature;
 
   EXPECT_TRUE(
-      u2f_.Authenticate(challenge,
+      u2f_.Authenticate(-1,  // Default P1
+                        challenge,
                         application,
                         key_handle,
                         &presence_verified,

@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <string>
 
+#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <hidapi/hidapi.h>
 
@@ -180,14 +181,16 @@ class U2F {
   explicit U2F(U2FHid* u2f_device) : u2f_device_(u2f_device) {}
 
   // This sends a U2F_REGISTER message.
-  bool Register(const brillo::Blob& challenge,
+  bool Register(base::Optional<uint8_t> p1,
+                const brillo::Blob& challenge,
                 const brillo::Blob& application,
                 bool use_g2f_att_key,
                 brillo::Blob* public_key,
                 brillo::Blob* key_handle,
                 brillo::Blob* certificate_and_signature);
   // This sends a U2F_AUTHENTICATE message.
-  bool Authenticate(const brillo::Blob& challenge,
+  bool Authenticate(base::Optional<uint8_t> p1,
+                    const brillo::Blob& challenge,
                     const brillo::Blob& application,
                     const brillo::Blob& key_handle,
                     bool* presence_verified,

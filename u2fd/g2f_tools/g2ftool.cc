@@ -32,6 +32,7 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(lock_timeout, 10, "lock_timeout in seconds [0..10]");
   DEFINE_string(payload, "", "request payload bytes (hex) for --raw or --msg");
   DEFINE_int32(cc, -1, "command code to send for --raw");
+  DEFINE_int32(p1, -1, "P1 value to send for --reg or --auth, -1 for default");
   DEFINE_string(challenge, "", "challenge parameter for --reg or --auth");
   DEFINE_string(application, "", "application parameter for --reg or --auth");
   DEFINE_string(key_handle, "", "key handle parameter for --auth");
@@ -118,6 +119,14 @@ int main(int argc, char* argv[]) {
     std::cout << base::HexEncode(response.data(), response.size())
               << std::endl;
   } else if (FLAGS_reg) {
+    if (FLAGS_p1 < -1 || FLAGS_p1 > 255) {
+      LOG(ERROR) << "P1 value should be 0-255, or -1 for default" << std::endl;
+      return EX_USAGE;
+    }
+    base::Optional<uint8_t> p1;
+    if (FLAGS_p1 > -1) {
+      p1 = FLAGS_p1;
+    }
     brillo::Blob challenge;
     if (!FLAGS_challenge.empty() &&
         !base::HexStringToBytes(FLAGS_challenge, &challenge)) {
@@ -133,9 +142,9 @@ int main(int argc, char* argv[]) {
     brillo::Blob public_key;
     brillo::Blob key_handle;
     brillo::Blob certificate_and_signature;
-    if (!u2f.Register(challenge, application, FLAGS_g2f,
-                          &public_key, &key_handle,
-                          &certificate_and_signature)) {
+    if (!u2f.Register(p1, challenge, application, FLAGS_g2f,
+                      &public_key, &key_handle,
+                      &certificate_and_signature)) {
       return EX_SOFTWARE;
     }
     std::cout << "public_key="
@@ -149,6 +158,14 @@ int main(int argc, char* argv[]) {
                                  certificate_and_signature.size())
               << std::endl;
   } else if (FLAGS_auth) {
+    if (FLAGS_p1 < -1 || FLAGS_p1 > 255) {
+      LOG(ERROR) << "P1 value should be 0-255, or -1 for default" << std::endl;
+      return EX_USAGE;
+    }
+    base::Optional<uint8_t> p1;
+    if (FLAGS_p1 > -1) {
+      p1 = FLAGS_p1;
+    }
     brillo::Blob challenge;
     if (!FLAGS_challenge.empty() &&
         !base::HexStringToBytes(FLAGS_challenge, &challenge)) {
@@ -170,9 +187,9 @@ int main(int argc, char* argv[]) {
     bool presence_verified;
     brillo::Blob counter;
     brillo::Blob signature;
-    if (!u2f.Authenticate(challenge, application, key_handle,
-                              &presence_verified, &counter,
-                              &signature)) {
+    if (!u2f.Authenticate(p1, challenge, application, key_handle,
+                          &presence_verified, &counter,
+                          &signature)) {
       return EX_SOFTWARE;
     }
     std::cout << "presence_verified=" << presence_verified

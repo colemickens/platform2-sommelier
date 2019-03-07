@@ -569,7 +569,8 @@ bool CheckBlobLength(const brillo::Blob& blob, int expected_length,
 
 }  // namespace
 
-bool U2F::Register(const brillo::Blob& challenge,
+bool U2F::Register(base::Optional<uint8_t> p1,
+                   const brillo::Blob& challenge,
                    const brillo::Blob& application,
                    bool use_g2f_att_key,
                    brillo::Blob* public_key,
@@ -581,18 +582,21 @@ bool U2F::Register(const brillo::Blob& challenge,
     return false;
   }
 
+  // If P1 is not set, use default value of 0x3 - "check-user-presence"
+  p1 = p1 ? *p1 : U2F_AUTH_ENFORCE;
+
+  if (use_g2f_att_key)
+    *p1 |= G2F_ATTEST;
+
   // Message format defined in sections 3 and 4.1 of the
   // U2F Raw Message Formats Spec v1.2.
   brillo::Blob request = {
-    0x00,   // CLA
-    0x01,   // INS: U2F_REGISTER
-    0x00,   // P1
-    0x00,   // P2
-    64,     // Request length
+    0x00,       // CLA
+    0x01,       // INS: U2F_REGISTER
+    *p1,        // P1
+    0x00,       // P2
+    64,         // Request length
   };
-
-  if (use_g2f_att_key)
-    request[2 /* P1 */] |= G2F_ATTEST;
 
   AppendBlob(challenge, &request);
   AppendBlob(application, &request);
@@ -644,7 +648,8 @@ bool U2F::Register(const brillo::Blob& challenge,
   return true;
 }
 
-bool U2F::Authenticate(const brillo::Blob& challenge,
+bool U2F::Authenticate(base::Optional<uint8_t> p1,
+                       const brillo::Blob& challenge,
                        const brillo::Blob& application,
                        const brillo::Blob& key_handle,
                        bool* presence_verified,
@@ -662,12 +667,15 @@ bool U2F::Authenticate(const brillo::Blob& challenge,
   }
   uint8_t req_length = 65 + key_handle.size();
 
+  // If P1 is not set, use default value of 0x3 - "check-user-presence-and-sign"
+  p1 = p1 ? *p1 : U2F_AUTH_ENFORCE;
+
   // Message format defined in sections 3 and 4.1 of the
   // U2F Raw Message Formats Spec v1.2.
   brillo::Blob request = {
     0x00,        // CLA
     0x02,        // INS: U2F_AUTHENTICATE
-    0x08,        // P1: Sign without presence
+    *p1,         // P1
     0x00,        // P2
     req_length,  // Request length
   };
