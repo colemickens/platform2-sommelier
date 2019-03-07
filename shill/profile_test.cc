@@ -47,7 +47,7 @@ class ProfileTest : public PropertyStoreTest {
     profile_->SetStorageForTest(std::make_unique<FakeStore>());
   }
 
-  MockService* CreateMockService() {
+  scoped_refptr<MockService> CreateMockService() {
     return new StrictMock<MockService>(control_interface(),
                                        dispatcher(),
                                        metrics(),
@@ -215,8 +215,8 @@ TEST_F(ProfileTest, GetStoragePath) {
 }
 
 TEST_F(ProfileTest, ServiceManagement) {
-  scoped_refptr<MockService> service1(CreateMockService());
-  scoped_refptr<MockService> service2(CreateMockService());
+  scoped_refptr<MockService> service1 = CreateMockService();
+  scoped_refptr<MockService> service2 = CreateMockService();
 
   EXPECT_CALL(*service1, Save(_))
       .WillRepeatedly(Invoke(service1.get(), &MockService::FauxSave));
@@ -274,8 +274,8 @@ TEST_F(ProfileTest, ServiceConfigure) {
 }
 
 TEST_F(ProfileTest, Save) {
-  scoped_refptr<MockService> service1(CreateMockService());
-  scoped_refptr<MockService> service2(CreateMockService());
+  scoped_refptr<MockService> service1 = CreateMockService();
+  scoped_refptr<MockService> service2 = CreateMockService();
   EXPECT_CALL(*service1, Save(_)).WillOnce(Return(true));
   EXPECT_CALL(*service2, Save(_)).WillOnce(Return(true));
 
@@ -286,8 +286,8 @@ TEST_F(ProfileTest, Save) {
 }
 
 TEST_F(ProfileTest, EntryEnumeration) {
-  scoped_refptr<MockService> service1(CreateMockService());
-  scoped_refptr<MockService> service2(CreateMockService());
+  scoped_refptr<MockService> service1 = CreateMockService();
+  scoped_refptr<MockService> service2 = CreateMockService();
   string service1_storage_name = Technology::NameFromIdentifier(
       Technology::kCellular) + "_1";
   string service2_storage_name = Technology::NameFromIdentifier(
@@ -485,7 +485,7 @@ TEST_F(ProfileTest, GetServiceFromEntry) {
 
   // Service entry already registered with the manager, the registered service
   // is returned.
-  scoped_refptr<MockService> registered_service(CreateMockService());
+  scoped_refptr<MockService> registered_service = CreateMockService();
   EXPECT_CALL(*manager,
               GetServiceWithStorageIdentifier(profile_, kEntryName, _))
       .WillOnce(Return(registered_service));
@@ -499,7 +499,7 @@ TEST_F(ProfileTest, GetServiceFromEntry) {
 
   // Service entry not registered with the manager, a temporary service is
   // created/returned.
-  scoped_refptr<MockService> temporary_service(CreateMockService());
+  scoped_refptr<MockService> temporary_service = CreateMockService();
   EXPECT_CALL(*manager,
               GetServiceWithStorageIdentifier(profile_, kEntryName, _))
       .WillOnce(Return(nullptr));

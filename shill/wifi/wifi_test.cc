@@ -725,10 +725,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     WiFiServiceRefPtr service_;
   };
 
-  EndpointRemovalHandler* MakeEndpointRemovalHandler(
+  unique_ptr<EndpointRemovalHandler> MakeEndpointRemovalHandler(
       const WiFiServiceRefPtr& service) {
-    return new EndpointRemovalHandler(wifi_, service);
+    return std::make_unique<EndpointRemovalHandler>(wifi_, service);
   }
+
   void CancelScanTimer() {
     wifi_->scan_timer_callback_.Cancel();
   }
@@ -1574,8 +1575,8 @@ TEST_F(WiFiMainTest, OnSupplicantVanishedWhileConnected) {
                        EndsWith("silently resetting current_service_.")));
   EXPECT_CALL(*manager(), DeregisterDevice(_))
       .WillOnce(InvokeWithoutArgs(this, &WiFiObjectTest::StopWiFi));
-  unique_ptr<EndpointRemovalHandler> handler(
-      MakeEndpointRemovalHandler(service));
+  unique_ptr<EndpointRemovalHandler> handler =
+      MakeEndpointRemovalHandler(service);
   EXPECT_CALL(*wifi_provider(), OnEndpointRemoved(EndpointMatch(endpoint)))
       .WillOnce(Invoke(handler.get(),
                 &EndpointRemovalHandler::OnEndpointRemoved));
@@ -1880,8 +1881,8 @@ TEST_F(WiFiMainTest, LoneBSSRemovedWhileConnected) {
   string bss_path;
   WiFiServiceRefPtr service(
       SetupConnectedService("", &endpoint, &bss_path));
-  unique_ptr<EndpointRemovalHandler> handler(
-      MakeEndpointRemovalHandler(service));
+  unique_ptr<EndpointRemovalHandler> handler =
+      MakeEndpointRemovalHandler(service);
   EXPECT_CALL(*wifi_provider(), OnEndpointRemoved(EndpointMatch(endpoint)))
       .WillOnce(Invoke(handler.get(),
                 &EndpointRemovalHandler::OnEndpointRemoved));
@@ -2274,8 +2275,8 @@ TEST_F(WiFiMainTest, StopWhileConnected) {
   WiFiEndpointRefPtr endpoint;
   WiFiServiceRefPtr service(
       SetupConnectedService("", &endpoint, nullptr));
-  unique_ptr<EndpointRemovalHandler> handler(
-      MakeEndpointRemovalHandler(service));
+  unique_ptr<EndpointRemovalHandler> handler =
+      MakeEndpointRemovalHandler(service);
   EXPECT_CALL(*wifi_provider(), OnEndpointRemoved(EndpointMatch(endpoint)))
       .WillOnce(Invoke(handler.get(),
                 &EndpointRemovalHandler::OnEndpointRemoved));
