@@ -43,6 +43,11 @@ struct ScopedDirDeleter {
 };
 using ScopedDir = std::unique_ptr<DIR, ScopedDirDeleter>;
 
+bool CheckSucceeded(AttributeCheckStatus status) {
+  return status == AttributeCheckStatus::NO_ATTR ||
+         status == AttributeCheckStatus::CLEARED;
+}
+
 }  // namespace
 
 bool ImmutableAllowed(const base::FilePath& path, bool isdir) {
@@ -58,11 +63,13 @@ bool ImmutableAllowed(const base::FilePath& path, bool isdir) {
   return false;
 }
 
-bool CheckFileAttributes(const base::FilePath& path, bool isdir, int fd) {
+AttributeCheckStatus CheckFileAttributes(const base::FilePath& path,
+                                         bool isdir,
+                                         int fd) {
   long flags;  // NOLINT(runtime/int)
   if (ioctl(fd, FS_IOC_GETFLAGS, &flags) != 0) {
     PLOG(WARNING) << "Getting flags on " << path.value() << " failed";
-    return false;
+    return AttributeCheckStatus::ERROR;
   }
 
   if (flags & FS_IMMUTABLE_FL) {
@@ -72,20 +79,24 @@ bool CheckFileAttributes(const base::FilePath& path, bool isdir, int fd) {
       flags &= ~FS_IMMUTABLE_FL;
       if (ioctl(fd, FS_IOC_SETFLAGS, &flags) != 0) {
         PLOG(ERROR) << "Unable to clear immutable bit on " << path.value();
-        return false;
+        return AttributeCheckStatus::CLEAR_FAILED;
       }
     }
+    return AttributeCheckStatus::CLEARED;
   }
 
   // The other file attribute flags look benign at this point.
-  return true;
+  return AttributeCheckStatus::NO_ATTR;
 }
 
-bool RemoveURLExtendedAttributes(const base::FilePath& path) {
+AttributeCheckStatus RemoveURLExtendedAttributes(const base::FilePath& path) {
+  bool found_xattr = false;
   bool xattr_success = true;
+
   for (const auto& attr_name : {xdg_origin_url, xdg_referrer_url}) {
     if (getxattr(path.value().c_str(), attr_name, nullptr, 0) >= 0) {
       // Attribute exists, clear it.
+      found_xattr = true;
       bool res = removexattr(path.value().c_str(), attr_name) == 0;
       if (!res) {
         PLOG(ERROR) << "Unable to remove extended attribute '" << attr_name
@@ -95,11 +106,17 @@ bool RemoveURLExtendedAttributes(const base::FilePath& path) {
     }
   }
 
-  return xattr_success;
+  if (found_xattr) {
+    return xattr_success ? AttributeCheckStatus::CLEARED
+                         : AttributeCheckStatus::CLEAR_FAILED;
+  } else {
+    return AttributeCheckStatus::NO_ATTR;
+  }
 }
 
 bool ScanDir(const base::FilePath& dir,
-             const std::vector<std::string>& skip_recurse) {
+             const std::vector<std::string>& skip_recurse,
+             int* url_xattrs_count) {
   // Internally glibc will use O_CLOEXEC when opening the directory.
   // Unfortunately, there is no opendirat() helper we could use (so that ScanDir
   // could accept a fd argument).
@@ -118,6 +135,9 @@ bool ScanDir(const base::FilePath& dir,
   // to scan, we stick with opendir() here.  Since this program only runs during
   // early OS init, there shouldn't be other programs in the system racing with
   // us to cause problems.
+
+  *url_xattrs_count = 0;
+
   ScopedDir dirp(opendir(dir.value().c_str()));
   if (dirp.get() == nullptr) {
     PLOG(WARNING) << "Unable to open directory " << dir.value();
@@ -125,8 +145,8 @@ bool ScanDir(const base::FilePath& dir,
   }
 
   int dfd = dirfd(dirp.get());
-  if (!CheckFileAttributes(dir, true, dfd)) {
-    // This should never really fail ...
+  if (!CheckSucceeded(CheckFileAttributes(dir, true /*isdir*/, dfd))) {
+    // This should never really fail...
     return false;
   }
 
@@ -191,11 +211,13 @@ bool ScanDir(const base::FilePath& dir,
     } else if (de->d_type == DT_REG) {
       // Check the settings on this file.
 
-      // Extended attributes can be read even on encrypted files, so remove them
-      // by path and not by file descriptor.
-      // Since the removal is best-effort anyway, TOCTOU issues should not be
-      // a problem.
-      ret &= RemoveURLExtendedAttributes(path);
+      // Extended attributes can be read even on encrypted files, so remove
+      // them by path and not by file descriptor. Since the removal is
+      // best-effort anyway, TOCTOU issues should not be a problem.
+      AttributeCheckStatus status = RemoveURLExtendedAttributes(path);
+      ret &= CheckSucceeded(status);
+      if (status == AttributeCheckStatus::CLEARED)
+        ++(*url_xattrs_count);
 
       base::ScopedFD fd(openat(dfd, de->d_name,
                                O_RDONLY | O_NONBLOCK | O_NOFOLLOW | O_CLOEXEC));
@@ -210,7 +232,9 @@ bool ScanDir(const base::FilePath& dir,
         continue;
       }
 
-      ret &= CheckFileAttributes(path, false, fd.get());
+      ret &=
+          CheckSucceeded(CheckFileAttributes(path, false /*is_dir*/, fd.get()));
+
     } else {
       LOG(WARNING) << "Skipping path: " << path.value() << ": unknown type "
                    << de->d_type;
@@ -220,9 +244,13 @@ bool ScanDir(const base::FilePath& dir,
   if (closedir(dirp.release()) != 0)
     PLOG(ERROR) << "Unable to close directory " << dir.value();
 
+  int sub_xattrs_count = 0;
   for (const auto& subdir : subdirs) {
     // Descend into this directory.
-    ret &= ScanDir(subdir, skip_recurse);
+    if (ScanDir(subdir, skip_recurse, &sub_xattrs_count))
+      *url_xattrs_count += sub_xattrs_count;
+    else
+      ret = false;
   }
 
   return ret;

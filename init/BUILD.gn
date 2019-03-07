@@ -25,6 +25,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "libmetrics-${libbase_ver}",
     "vboot_host",
   ]
   libs = [

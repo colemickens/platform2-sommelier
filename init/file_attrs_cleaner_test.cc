@@ -19,6 +19,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
+using file_attrs_cleaner::AttributeCheckStatus;
 using file_attrs_cleaner::CheckFileAttributes;
 using file_attrs_cleaner::ImmutableAllowed;
 using file_attrs_cleaner::RemoveURLExtendedAttributes;
@@ -93,10 +94,11 @@ class CheckFileAttributesTest : public ::testing::Test {
 
 TEST_F(CheckFileAttributesTest, BadFd) {
   const base::FilePath path = test_dir_.Append("asdf");
-  EXPECT_FALSE(CheckFileAttributes(path, false, -1));
-  EXPECT_FALSE(CheckFileAttributes(path, true, -1));
-  EXPECT_FALSE(CheckFileAttributes(path, true, 1000));
-  EXPECT_FALSE(CheckFileAttributes(path, false, 1000));
+  EXPECT_EQ(AttributeCheckStatus::ERROR, CheckFileAttributes(path, false, -1));
+  EXPECT_EQ(AttributeCheckStatus::ERROR, CheckFileAttributes(path, true, -1));
+  EXPECT_EQ(AttributeCheckStatus::ERROR, CheckFileAttributes(path, true, 1000));
+  EXPECT_EQ(AttributeCheckStatus::ERROR,
+            CheckFileAttributes(path, false, 1000));
 }
 
 // Accept paths w/out the immutable bit set.
@@ -106,13 +108,15 @@ TEST_F(CheckFileAttributesTest, NormalPaths) {
 
   base::ScopedFD fd(open(path.value().c_str(), O_RDONLY | O_CLOEXEC));
   ASSERT_TRUE(fd.is_valid());
-  EXPECT_TRUE(CheckFileAttributes(path, false, fd.get()));
+  EXPECT_EQ(AttributeCheckStatus::NO_ATTR,
+            CheckFileAttributes(path, false, fd.get()));
 
   const base::FilePath dir = test_dir_.Append("dir");
   ASSERT_EQ(0, mkdir(dir.value().c_str(), 0700));
   fd.reset(open(dir.value().c_str(), O_RDONLY | O_CLOEXEC));
   ASSERT_TRUE(fd.is_valid());
-  EXPECT_TRUE(CheckFileAttributes(dir, false, fd.get()));
+  EXPECT_EQ(AttributeCheckStatus::NO_ATTR,
+            CheckFileAttributes(dir, false, fd.get()));
 }
 
 // Clear files w/the immutable bit set.
@@ -133,10 +137,11 @@ TEST_F(CheckFileAttributesTest, ResetFile) {
   flags |= FS_IMMUTABLE_FL;
   EXPECT_EQ(0, ioctl(fd.get(), FS_IOC_SETFLAGS, &flags));
 
-  EXPECT_TRUE(CheckFileAttributes(path, false, fd.get()));
+  EXPECT_EQ(AttributeCheckStatus::CLEARED,
+            CheckFileAttributes(path, false, fd.get()));
 }
 
-// Clear files w/the immutable bit set.
+// Clear dirs w/the immutable bit set.
 TEST_F(CheckFileAttributesTest, ResetDir) {
   if (!CanSetFileAttributes()) {
     SUCCEED();
@@ -154,7 +159,8 @@ TEST_F(CheckFileAttributesTest, ResetDir) {
   flags |= FS_IMMUTABLE_FL;
   EXPECT_EQ(0, ioctl(fd.get(), FS_IOC_SETFLAGS, &flags));
 
-  EXPECT_TRUE(CheckFileAttributes(dir, false, fd.get()));
+  EXPECT_EQ(AttributeCheckStatus::CLEARED,
+            CheckFileAttributes(dir, false, fd.get()));
 }
 
 namespace {
@@ -176,7 +182,7 @@ class RemoveURLExtendedAttributesTest : public ::testing::Test {
 TEST_F(RemoveURLExtendedAttributesTest, NoAttributesSucceeds) {
   const base::FilePath path = test_dir_.Append("xattr");
   ASSERT_TRUE(CreateFile(path, ""));
-  EXPECT_TRUE(RemoveURLExtendedAttributes(path));
+  EXPECT_EQ(AttributeCheckStatus::NO_ATTR, RemoveURLExtendedAttributes(path));
 }
 
 // Clear files with the "xdg" xattrs set, see crbug.com/919486.
@@ -190,7 +196,7 @@ TEST_F(RemoveURLExtendedAttributesTest, Success) {
   EXPECT_EQ(
       0, setxattr(path_cstr, file_attrs_cleaner::xdg_referrer_url, NULL, 0, 0));
 
-  EXPECT_TRUE(RemoveURLExtendedAttributes(path));
+  EXPECT_EQ(AttributeCheckStatus::CLEARED, RemoveURLExtendedAttributes(path));
 
   // getxattr(2) call should fail now.
   EXPECT_GT(0,
@@ -205,7 +211,7 @@ TEST_F(RemoveURLExtendedAttributesTest, OtherAttributesUnchanged) {
   ASSERT_TRUE(CreateFile(path, ""));
 
   EXPECT_EQ(0, setxattr(path.value().c_str(), "user.test", NULL, 0, 0));
-  EXPECT_TRUE(RemoveURLExtendedAttributes(path));
+  EXPECT_EQ(AttributeCheckStatus::NO_ATTR, RemoveURLExtendedAttributes(path));
 
   // getxattr(2) call should succeed.
   EXPECT_EQ(0, getxattr(path.value().c_str(), "user.test", NULL, 0));
@@ -217,23 +223,25 @@ class ScanDirTest : public ::testing::Test {
   void SetUp() {
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
     test_dir_ = scoped_temp_dir_.GetPath();
+    url_xattrs_count_ = 0;
   }
 
  protected:
   base::FilePath test_dir_;
   base::ScopedTempDir scoped_temp_dir_;
+  int url_xattrs_count_;
 };
 
 }  // namespace
 
 TEST_F(ScanDirTest, Empty) {
-  EXPECT_TRUE(ScanDir(test_dir_, {}));
+  EXPECT_TRUE(ScanDir(test_dir_, {}, &url_xattrs_count_));
 }
 
 TEST_F(ScanDirTest, Leaf) {
   CreateFile(test_dir_.Append("file1"), "");
   CreateFile(test_dir_.Append("file2"), "");
-  EXPECT_TRUE(ScanDir(test_dir_, {}));
+  EXPECT_TRUE(ScanDir(test_dir_, {}, &url_xattrs_count_));
 }
 
 TEST_F(ScanDirTest, Nested) {
@@ -253,7 +261,7 @@ TEST_F(ScanDirTest, Nested) {
   CreateFile(dir2.Append("file2"), "");
   EXPECT_TRUE(base::CreateDirectory(dir2.Append("emptydir")));
 
-  EXPECT_TRUE(ScanDir(test_dir_, {}));
+  EXPECT_TRUE(ScanDir(test_dir_, {}, &url_xattrs_count_));
 }
 
 TEST_F(ScanDirTest, RecurseAndClearAttributes) {
@@ -282,7 +290,9 @@ TEST_F(ScanDirTest, RecurseAndClearAttributes) {
   EXPECT_EQ(
       0, setxattr(subf3_cstr, file_attrs_cleaner::xdg_origin_url, NULL, 0, 0));
 
-  EXPECT_TRUE(ScanDir(test_dir_, {}));
+  EXPECT_TRUE(ScanDir(test_dir_, {}, &url_xattrs_count_));
+
+  EXPECT_EQ(url_xattrs_count_, 3);
 
   EXPECT_GT(0,
             getxattr(file1_cstr, file_attrs_cleaner::xdg_origin_url, NULL, 0));
@@ -306,7 +316,7 @@ TEST_F(ScanDirTest, SkipRecurse) {
       0, setxattr(subf_cstr, file_attrs_cleaner::xdg_origin_url, NULL, 0, 0));
 
   std::vector<std::string> skip = {"subdir"};
-  EXPECT_TRUE(ScanDir(test_dir_, skip));
+  EXPECT_TRUE(ScanDir(test_dir_, skip, &url_xattrs_count_));
 
   EXPECT_EQ(0,
             getxattr(subf_cstr, file_attrs_cleaner::xdg_origin_url, NULL, 0));
