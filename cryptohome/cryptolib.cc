@@ -697,6 +697,27 @@ bool CryptoLib::UnobscureRSAMessage(const SecureBlob& ciphertext,
   return true;
 }
 
+bool CryptoLib::RsaOaepEncrypt(const brillo::SecureBlob& plaintext,
+                               RSA* key,
+                               brillo::Blob* ciphertext) {
+  if (plaintext.empty())
+    return false;
+  ciphertext->resize(RSA_size(key));
+  const int encryption_result =
+      RSA_public_encrypt(plaintext.size(), plaintext.data(), ciphertext->data(),
+                         key, RSA_PKCS1_OAEP_PADDING);
+  if (encryption_result == -1) {
+    LOG(ERROR) << "Failed to perform RSAES-OAEP MGF1 encryption";
+    return false;
+  }
+  if (encryption_result != ciphertext->size()) {
+    NOTREACHED()
+        << "RSAES-OAEP MGF1 encryption returned unexpected amount of data";
+    return false;
+  }
+  return true;
+}
+
 bool CryptoLib::RsaOaepDecrypt(const brillo::SecureBlob& ciphertext,
                                const brillo::SecureBlob& oaep_label,
                                RSA* key,

@@ -140,6 +140,11 @@ class CryptoLib {
                                   const brillo::SecureBlob& key,
                                   brillo::SecureBlob* plaintext);
 
+  // Encrypts data using the RSA OAEP scheme with the SHA-1 hash function, the
+  // MGF1 mask function, and an empty label parameter.
+  static bool RsaOaepEncrypt(const brillo::SecureBlob& plaintext,
+                             RSA* key,
+                             brillo::Blob* ciphertext);
   // Decrypts the data encrypted with RSA OAEP with the SHA-1 hash function, the
   // MGF1 mask function, and the label parameter equal to |oaep_label|.
   static bool RsaOaepDecrypt(const brillo::SecureBlob& ciphertext,
