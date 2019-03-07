@@ -218,6 +218,15 @@ bool ParseAdpuBody(
 
 base::Optional<U2fRegisterRequestAdpu> U2fRegisterRequestAdpu::FromCommandAdpu(
     const U2fCommandAdpu& adpu) {
+  // We require that P1 be set to 0x03 (though may optionally have the
+  // G2F_ATTEST bit set), implying a test of user presence, and that presence
+  // should be consumed.
+  if ((adpu.P1() & ~G2F_ATTEST) != U2F_AUTH_ENFORCE) {
+    LOG(INFO) << "Received register APDU with invalid P1 value: " << std::hex
+              << adpu.P1();
+    return base::nullopt;
+  }
+
   // Request body for U2F_REGISTER ADPUs are in the following format:
   //
   // Byte(s)  | Description
@@ -245,6 +254,17 @@ base::Optional<U2fRegisterRequestAdpu> U2fRegisterRequestAdpu::FromCommandAdpu(
 
 base::Optional<U2fAuthenticateRequestAdpu>
 U2fAuthenticateRequestAdpu::FromCommandAdpu(const U2fCommandAdpu& adpu) {
+  // The P1 field must be set to a value of 0x03 or 0x07, indicating
+  // respectively a request to authenticate with user presence, or a request
+  // merely trying to determine whether the key handle is owned by this U2F
+  // device, in which case no user presence is required and authentication
+  // should not be performed.
+  if (adpu.P1() != U2F_AUTH_ENFORCE && adpu.P1() != U2F_AUTH_CHECK_ONLY) {
+    LOG(INFO) << "Received authenticate APDU with invalid P1 value: "
+              << std::hex << adpu.P1();
+    return base::nullopt;
+  }
+
   // Request body for U2F_AUTHENTICATE ADPUs are in the following format:
   //
   // Byte(s)  | Description
@@ -258,12 +278,6 @@ U2fAuthenticateRequestAdpu::FromCommandAdpu(const U2fCommandAdpu& adpu) {
   int body_size = adpu.Body().size();
   int kh_length = body_size - kAdpuFixedFieldsSize;
 
-  // The P1 field may be set to the following value to indicate that the request
-  // is merely trying to determine whether the key handle is owned by this U2F
-  // device, no user presence is required and authentication should be performed
-  // in this case.
-  constexpr uint8_t kAuthCheckOnly = 0x07;
-
   U2fAuthenticateRequestAdpu auth_adpu;
   if (body_size < kAdpuFixedFieldsSize || kh_length != adpu.Body()[64] ||
       !ParseAdpuBody(adpu.Body(),
@@ -275,7 +289,7 @@ U2fAuthenticateRequestAdpu::FromCommandAdpu(const U2fCommandAdpu& adpu) {
     return base::nullopt;
   }
 
-  auth_adpu.auth_check_only_ = adpu.P1() == kAuthCheckOnly;
+  auth_adpu.auth_check_only_ = adpu.P1() == U2F_AUTH_CHECK_ONLY;
 
   return auth_adpu;
 }

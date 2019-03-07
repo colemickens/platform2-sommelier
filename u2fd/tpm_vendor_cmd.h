@@ -65,6 +65,9 @@ class TpmVendorCommandProxy : public trunks::TrunksDBusProxy {
 
   // Sends the VENDOR_CC_U2F_SIGN command to cr50, and populates
   // resp_out with the reply.
+  // If U2F_SIGN_REQ specifies flags indicating a 'check-only' request,
+  // no response body will be returned from cr50, and so resp_out will
+  // not be populated. In this case resp_out may be set to nullptr.
   // Returns the TPM response code, or kVendorRcInvalidResponse if the
   // response was invalid.
   uint32_t SendU2fSign(const U2F_SIGN_REQ& req, U2F_SIGN_RESP* resp_out);

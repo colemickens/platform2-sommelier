@@ -605,9 +605,11 @@ std::vector<uint8_t> BuildU2fAuthenticateResponseSignedData(
 
 int U2fHid::ProcessU2fAuthenticate(U2fAuthenticateRequestAdpu request,
                                    std::string* resp) {
-  if (!request.IsAuthenticateCheckOnly()) {
-    IgnorePowerButton();
+  if (request.IsAuthenticateCheckOnly()) {
+    return DoU2fSignCheckOnly(request.GetAppId(), request.GetKeyHandle());
   }
+
+  IgnorePowerButton();
 
   // This will increment the counter even if this request ends up failing due to
   // lack of presence of an invalid keyhandle.
@@ -647,7 +649,7 @@ int U2fHid::DoU2fGenerate(const std::vector<uint8_t>& app_id,
   }
 
   U2F_GENERATE_REQ generate_req = {
-      .flags = U2F_AUTH_FLAG_TUP  // Require user presence
+      .flags = U2F_AUTH_ENFORCE  // Require user presence, consume.
   };
   util::VectorToObject(app_id, &generate_req.appId);
   util::VectorToObject(*user_secret, &generate_req.userSecret);
@@ -685,7 +687,7 @@ int U2fHid::DoU2fSign(const std::vector<uint8_t>& app_id,
   }
 
   U2F_SIGN_REQ sign_req = {
-      // TODO(louiscollard): Copy G2F_CONSUME to flags.
+      .flags = U2F_AUTH_ENFORCE  // Require user presence, consume.
   };
   util::VectorToObject(app_id, sign_req.appId);
   util::VectorToObject(*user_secret, sign_req.userSecret);
@@ -722,6 +724,42 @@ int U2fHid::DoU2fSign(const std::vector<uint8_t>& app_id,
   *signature_out = *signature;
 
   return 0;
+}
+
+int U2fHid::DoU2fSignCheckOnly(const std::vector<uint8_t>& app_id,
+                               const std::vector<uint8_t>& key_handle) {
+  base::Optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
+  if (!user_secret.has_value()) {
+    ReturnError(U2fHidError::kOther, transaction_->cid, true);
+    return -EINVAL;
+  }
+
+  U2F_SIGN_REQ sign_req = {
+      .flags = U2F_AUTH_CHECK_ONLY  // No user presence required, no consume.
+  };
+  util::VectorToObject(app_id, sign_req.appId);
+  util::VectorToObject(*user_secret, sign_req.userSecret);
+  util::VectorToObject(key_handle, sign_req.keyHandle);
+
+  uint32_t sign_status = tpm_sign_.Run(sign_req, nullptr);
+
+  if (sign_status == kVendorCmdRcSuccess) {
+    // Success indicates the key handle is owned.
+    // FIDO spec requires us to indicate this with the following error
+    // (which requests user presence).
+    ReturnFailureResponse(U2F_SW_CONDITIONS_NOT_SATISFIED);
+  } else if (sign_status == kVendorCmdRcPasswordRequired) {
+    // We have specified an invalid key handle.
+    ReturnFailureResponse(U2F_SW_WRONG_DATA);
+  } else {
+    // We sent an invalid request (u2fd programming error),
+    // or internal cr50 error.
+    ReturnError(U2fHidError::kOther, transaction_->cid, true);
+  }
+
+  // We always return a response from this function; never allow a response
+  // to be returned later.
+  return -EINVAL;
 }
 
 int U2fHid::DoG2fAttest(const std::vector<uint8_t>& data,

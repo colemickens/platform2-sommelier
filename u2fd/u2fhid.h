@@ -189,6 +189,9 @@ class U2fHid {
                 const std::vector<uint8_t>& key_handle,
                 const std::vector<uint8_t>& hash,
                 std::vector<uint8_t>* signature);
+  // Run a U2F_SIGN command to check if a key handle is valid.
+  int DoU2fSignCheckOnly(const std::vector<uint8_t>& app_id,
+                         const std::vector<uint8_t>& key_handle);
   // Run a U2F_ATTEST command to sign data using the cr50 individual attestation
   // certificate.
   int DoG2fAttest(const std::vector<uint8_t>& data,

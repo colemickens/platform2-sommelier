@@ -222,7 +222,30 @@ uint32_t TpmVendorCommandProxy::SendU2fGenerate(const U2F_GENERATE_REQ& req,
 
 uint32_t TpmVendorCommandProxy::SendU2fSign(const U2F_SIGN_REQ& req,
                                             U2F_SIGN_RESP* resp_out) {
-  return VendorCommandStruct(kVendorCcU2fSign, req, resp_out);
+  std::string output_str;
+  uint32_t resp_code =
+      VendorCommand(kVendorCcU2fSign, RequestToString(req), &output_str);
+
+  if (resp_code == 0) {
+    // A success response may or may not have a body, depending on whether the
+    // request was a full sign request, or simply a 'check only' request, to
+    // test ownership of the specified key handle.
+    if (req.flags == U2F_AUTH_CHECK_ONLY && output_str.size() == 0) {
+      // We asked to test ownership of a key handle; success response code
+      // indicates it is owned. No response body expected.
+      return resp_code;
+    } else if (output_str.size() == sizeof(U2F_SIGN_RESP)) {
+      DCHECK(resp_out);  // It is a programming error for this to fail.
+      memcpy(resp_out, output_str.data(), sizeof(*resp_out));
+    } else {
+      LOG(ERROR) << "Invalid response size for successful vendor command, "
+                 << "expected: " << (resp_out ? sizeof(U2F_SIGN_RESP) : 0)
+                 << ", actual: " << output_str.size();
+      return kVendorRcInvalidResponse;
+    }
+  }
+
+  return resp_code;
 }
 
 uint32_t TpmVendorCommandProxy::SendU2fAttest(const U2F_ATTEST_REQ& req,
