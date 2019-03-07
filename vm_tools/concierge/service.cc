@@ -357,8 +357,41 @@ bool GetPluginStatefulDirectory(const string& vm_id,
       vm_id, path_out);
 }
 
-bool GetPluginRuntimeDirectory(const string& vm_id, base::FilePath* path_out) {
-  return GetPluginDirectory(base::FilePath("/run/pvm"), vm_id, path_out);
+bool GetPluginRuntimeDirectory(const string& vm_id,
+                               base::ScopedTempDir* runtime_dir_out) {
+  base::FilePath path;
+  if (GetPluginDirectory(base::FilePath("/run/pvm"), vm_id, &path)) {
+    // Take ownership of directory
+    CHECK(runtime_dir_out->Set(path));
+    return true;
+  }
+
+  return false;
+}
+
+bool GetPluginRootDirectory(const string& vm_id,
+                            base::ScopedTempDir* root_dir_out) {
+  base::FilePath path;
+  if (!base::CreateTemporaryDirInDir(base::FilePath(kRuntimeDir), "vm.",
+                                     &path)) {
+    PLOG(ERROR) << "Unable to create root directory for VM";
+    return false;
+  }
+
+  // Take ownership of directory
+  CHECK(root_dir_out->Set(path));
+  return true;
+}
+
+bool CreatePluginRootHierarchy(const base::FilePath& root_path) {
+  base::File::Error dir_error;
+  if (!CreateDirectoryAndGetError(root_path.Append("etc"), &dir_error)) {
+    LOG(ERROR) << "Unable to create /etc in root directory for VM "
+               << base::File::ErrorToString(dir_error);
+    return false;
+  }
+
+  return true;
 }
 
 void DoNothing() {}
@@ -1040,7 +1073,7 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
   }
 
   // Create the runtime directory.
-  base::FilePath runtime_dir;
+  base::ScopedTempDir runtime_dir;
   if (!GetPluginRuntimeDirectory(request.name(), &runtime_dir)) {
     LOG(ERROR) << "Unable to create runtime directory for VM";
 
@@ -1049,11 +1082,36 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
     return dbus_response;
   }
 
+  // Create the root directory.
+  base::ScopedTempDir root_dir;
+  if (!GetPluginRootDirectory(request.name(), &root_dir)) {
+    LOG(ERROR) << "Unable to create runtime directory for VM";
+
+    response.set_failure_reason("Unable to create runtime directory");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (!CreatePluginRootHierarchy(root_dir.GetPath())) {
+    response.set_failure_reason("Unable to create plugin root hierarchy");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (!PluginVm::WriteResolvConf(root_dir.GetPath().Append("etc"), nameservers_,
+                                 search_domains_)) {
+    LOG(ERROR) << "Unable to seed resolv.conf for the Plugin VM";
+
+    response.set_failure_reason("Unable to seed resolv.conf");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
   // Generate the token used by cicerone to identify the VM and write it to
   // a VM specific directory that gets mounted into the VM.
-
   std::string vm_token = base::GenerateGUID();
-  if (base::WriteFile(runtime_dir.Append("cicerone.token"), vm_token.c_str(),
+  if (base::WriteFile(runtime_dir.GetPath().Append("cicerone.token"),
+                      vm_token.c_str(),
                       vm_token.length()) != vm_token.length()) {
     PLOG(ERROR) << "Failure writing out cicerone token to file";
 
@@ -1068,11 +1126,11 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
       std::make_move_iterator(request.mutable_params()->end()));
 
   // Now start the VM.
-  auto vm =
-      PluginVm::Create(request.cpus(), std::move(params), std::move(mac_addr),
-                       std::move(ipv4_addr), plugin_subnet_->Netmask(),
-                       plugin_subnet_->AddressAtOffset(0),
-                       std::move(stateful_dir), std::move(runtime_dir));
+  auto vm = PluginVm::Create(
+      request.cpus(), std::move(params), std::move(mac_addr),
+      std::move(ipv4_addr), plugin_subnet_->Netmask(),
+      plugin_subnet_->AddressAtOffset(0), std::move(stateful_dir),
+      root_dir.Take(), runtime_dir.Take());
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
     response.set_failure_reason("Unable to start VM");
@@ -1964,8 +2022,8 @@ void Service::OnResolvConfigChanged(std::vector<string> nameservers,
     return;
   }
 
-  for (TerminaVm* termina_vm : termina_vms_) {
-    termina_vm->SetResolvConfig(nameservers_, search_domains_);
+  for (auto& vm_entry : vms_) {
+    vm_entry.second->SetResolvConfig(nameservers_, search_domains_);
   }
 }
 
@@ -2111,8 +2169,8 @@ void Service::HandleSuspendDone() {
   }
 
   if (update_resolv_config_on_resume_) {
-    for (TerminaVm* termina_vm : termina_vms_) {
-      termina_vm->SetResolvConfig(nameservers_, search_domains_);
+    for (auto& vm_entry : vms_) {
+      vm_entry.second->SetResolvConfig(nameservers_, search_domains_);
     }
 
     update_resolv_config_on_resume_ = false;

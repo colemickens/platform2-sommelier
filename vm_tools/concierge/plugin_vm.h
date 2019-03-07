@@ -33,6 +33,7 @@ class PluginVm final : public VmInterface {
       uint32_t ipv4_netmask,
       uint32_t ipv4_gateway,
       base::FilePath stateful_dir,
+      base::FilePath root_dir,
       base::FilePath runtime_dir);
   ~PluginVm() override;
 
@@ -49,18 +50,30 @@ class PluginVm final : public VmInterface {
   bool ListUsbDevice(std::vector<UsbDevice>* devices) override;
   void HandleSuspendImminent() override {}
   void HandleSuspendDone() override {}
+  bool SetResolvConfig(const std::vector<std::string>& nameservers,
+                       const std::vector<std::string>& search_domains) override;
+
+  static bool WriteResolvConf(const base::FilePath& parent_dir,
+                              const std::vector<std::string>& nameservers,
+                              const std::vector<std::string>& search_domains);
 
  private:
   PluginVm(arc_networkd::MacAddress mac_addr,
            std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr,
            uint32_t ipv4_netmask,
            uint32_t ipv4_gateway,
+           base::FilePath root_dir,
            base::FilePath runtime_dir);
   bool Start(uint32_t cpus,
              std::vector<std::string> params,
              base::FilePath stateful_dir);
 
-  // Runtime directory for the crosvm instance.
+  // Allows to build skeleton of root file system for the plugin.
+  // Individual directories, such as /etc, are mounted plugin jail.
+  base::ScopedTempDir root_dir_;
+
+  // Runtime directory for the crosvm instance. It is shared with dispatcher
+  // and mounted as /run/pvm in plugin jail.
   base::ScopedTempDir runtime_dir_;
 
   // Handle to the VM process.

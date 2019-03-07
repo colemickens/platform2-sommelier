@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#include <string>
 #include <vector>
 
 #include "vm_tools/concierge/usb_control.h"
@@ -75,6 +76,11 @@ class VmInterface {
 
   // Handle the device resuming from a suspend.
   virtual void HandleSuspendDone() = 0;
+
+  // Update resolv.conf data.
+  virtual bool SetResolvConfig(
+      const std::vector<std::string>& nameservers,
+      const std::vector<std::string>& search_domains) = 0;
 };
 
 }  // namespace concierge

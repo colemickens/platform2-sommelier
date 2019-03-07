@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
@@ -76,10 +77,11 @@ std::unique_ptr<PluginVm> PluginVm::Create(
     uint32_t ipv4_netmask,
     uint32_t ipv4_gateway,
     base::FilePath stateful_dir,
+    base::FilePath root_dir,
     base::FilePath runtime_dir) {
   auto vm = base::WrapUnique(
       new PluginVm(std::move(mac_addr), std::move(ipv4_addr), ipv4_netmask,
-                   ipv4_gateway, std::move(runtime_dir)));
+                   ipv4_gateway, std::move(root_dir), std::move(runtime_dir)));
   if (!vm->Start(cpus, std::move(params), std::move(stateful_dir))) {
     vm.reset();
   }
@@ -147,19 +149,86 @@ bool PluginVm::ListUsbDevice(std::vector<UsbDevice>* device) {
   return false;
 }
 
+bool PluginVm::WriteResolvConf(const base::FilePath& parent_dir,
+                               const std::vector<string>& nameservers,
+                               const std::vector<string>& search_domains) {
+  // Create temporary directory on the same file system so that we
+  // can atomically replace old resolv.conf with new one.
+  base::ScopedTempDir temp_dir;
+  if (!temp_dir.CreateUniqueTempDirUnderPath(parent_dir)) {
+    LOG(ERROR) << "Failed to create temporary directory under "
+               << parent_dir.value();
+    return false;
+  }
+
+  base::FilePath path = temp_dir.GetPath().Append("resolv.conf");
+  base::File file(path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  if (!file.IsValid()) {
+    LOG(ERROR) << "Failed to create temporary file " << path.value();
+    return false;
+  }
+
+  for (auto& ns : nameservers) {
+    string nameserver_line = base::StringPrintf("nameserver %s\n", ns.c_str());
+    if (!file.WriteAtCurrentPos(nameserver_line.c_str(),
+                                nameserver_line.length())) {
+      LOG(ERROR) << "Failed to write nameserver to temporary file";
+      return false;
+    }
+  }
+
+  if (!search_domains.empty()) {
+    string search_domains_line = base::StringPrintf(
+        "search %s\n", base::JoinString(search_domains, " ").c_str());
+    if (!file.WriteAtCurrentPos(search_domains_line.c_str(),
+                                search_domains_line.length())) {
+      LOG(ERROR) << "Failed to write search domains to temporary file";
+      return false;
+    }
+  }
+
+  constexpr char kResolvConfOptions[] =
+      "options single-request timeout:1 attempts:5\n";
+  if (!file.WriteAtCurrentPos(kResolvConfOptions, strlen(kResolvConfOptions))) {
+    LOG(ERROR) << "Failed to write search resolver options to temporary file";
+    return false;
+  }
+
+  // This should flush the buffers.
+  file.Close();
+
+  base::File::Error err;
+  if (!ReplaceFile(path, parent_dir.Append("resolv.conf"), &err)) {
+    LOG(ERROR) << "Failed to replace resolv.conf with new instance: "
+               << base::File::ErrorToString(err);
+    return false;
+  }
+
+  return true;
+}
+
+bool PluginVm::SetResolvConfig(const std::vector<string>& nameservers,
+                               const std::vector<string>& search_domains) {
+  return WriteResolvConf(root_dir_.GetPath().Append("etc"), nameservers,
+                         search_domains);
+}
+
 PluginVm::PluginVm(arc_networkd::MacAddress mac_addr,
                    std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr,
                    uint32_t ipv4_netmask,
                    uint32_t ipv4_gateway,
+                   base::FilePath root_dir,
                    base::FilePath runtime_dir)
     : mac_addr_(std::move(mac_addr)),
       ipv4_addr_(std::move(ipv4_addr)),
       netmask_(ipv4_netmask),
       gateway_(ipv4_gateway) {
   CHECK(ipv4_addr_);
+  CHECK(base::DirectoryExists(root_dir));
   CHECK(base::DirectoryExists(runtime_dir));
 
-  // Take ownership of the runtime directory.
+  // Take ownership of the root and runtime directories.
+  CHECK(root_dir_.Set(root_dir));
   CHECK(runtime_dir_.Set(runtime_dir));
 }
 
@@ -200,6 +269,10 @@ bool PluginVm::Start(uint32_t cpus,
       // runtime data lives.
       base::StringPrintf("%s:%s:true", runtime_dir_.GetPath().value().c_str(),
                          kRuntimeDir),
+      // Plugin '/etc' directory.
+      base::StringPrintf("%s:%s:true",
+                         root_dir_.GetPath().Append("etc").value().c_str(),
+                         "/etc"),
       // This is the directory where the cicerone host socket lives. The plugin
       // VM also creates the guest socket for cicerone in this same directory
       // using the following <token>.sock as the name. The token resides in

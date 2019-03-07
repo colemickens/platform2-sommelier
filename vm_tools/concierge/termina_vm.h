@@ -89,7 +89,7 @@ class TerminaVm final : public VmInterface {
   // Sets the resolv.conf in the VM to |config|. Returns true if successful,
   // false if the resolv.conf in the guest could not be updated.
   bool SetResolvConfig(const std::vector<std::string>& nameservers,
-                       const std::vector<std::string>& search_domains);
+                       const std::vector<std::string>& search_domains) override;
 
   // Set the guest time to the current time as given by gettimeofday.
   bool SetTime(std::string* failure_reason);
