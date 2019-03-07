@@ -17,7 +17,7 @@
 namespace diagnostics {
 
 namespace {
-constexpr char kUrandomExePath[] = "/usr/bin/urandom";
+constexpr char kUrandomExePath[] = "/usr/libexec/diagnostics/urandom";
 }  // namespace
 
 const char kUrandomProcessRunningMessage[] = "Test is still running.";

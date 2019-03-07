@@ -32,7 +32,7 @@ constexpr int kPercentCompleted = 43;
 
 const std::vector<std::string> ConstructUrandomArgs() {
   std::vector<std::string> args;
-  args.push_back("/usr/bin/urandom");  // Executable path.
+  args.push_back("/usr/libexec/diagnostics/urandom");  // Executable path.
   args.push_back("--time_delta_ms=" +
                  std::to_string(kLengthSeconds * 1000));  // Length in ms.
   args.push_back(
