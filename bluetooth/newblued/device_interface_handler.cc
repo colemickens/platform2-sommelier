@@ -258,13 +258,8 @@ void DeviceInterfaceHandler::OnDeviceDiscovered(
     int8_t rssi,
     uint8_t reply_type,
     const std::vector<uint8_t>& eir) {
-  Device* device = FindDevice(address);
-  if (!device) {
-    discovered_devices_[address] = std::make_unique<Device>(address);
-    device = discovered_devices_[address].get();
-  }
+  Device* device = AddOrGetDiscoveredDevice(address, address_type);
 
-  device->is_random_address = (address_type == BT_ADDR_TYPE_LE_RANDOM);
   device->rssi.SetValue(rssi);
 
   VLOG(1) << base::StringPrintf("Discovered device with %s address %s, rssi %d",
@@ -272,7 +267,21 @@ void DeviceInterfaceHandler::OnDeviceDiscovered(
                                 address.c_str(), device->rssi.value());
 
   UpdateEir(device, eir);
+  ExportOrUpdateDevice(device);
+}
 
+Device* DeviceInterfaceHandler::AddOrGetDiscoveredDevice(
+    const std::string& address, uint8_t address_type) {
+  Device* device = FindDevice(address);
+  if (!device) {
+    discovered_devices_[address] = std::make_unique<Device>(address);
+    device = discovered_devices_[address].get();
+  }
+  device->is_random_address = (address_type == BT_ADDR_TYPE_LE_RANDOM);
+  return device;
+}
+
+void DeviceInterfaceHandler::ExportOrUpdateDevice(Device* device) {
   bool is_new_device = false;
   dbus::ObjectPath device_path(
       ConvertDeviceAddressToObjectPath(device->address.c_str()));
@@ -784,14 +793,8 @@ void DeviceInterfaceHandler::OnPairStateChanged(const std::string& address,
       break;
   }
 
-  dbus::ObjectPath device_path(
-      ConvertDeviceAddressToObjectPath(device->address.c_str()));
-  ExportedInterface* device_interface =
-      exported_object_manager_wrapper_->GetExportedInterface(
-          device_path, bluetooth_device::kBluetoothDeviceInterface);
-
   if (device->address != ongoing_pairing_.address) {
-    UpdateDeviceProperties(device_interface, *device, false);
+    ExportOrUpdateDevice(device);
     return;
   }
 
@@ -871,7 +874,7 @@ void DeviceInterfaceHandler::OnPairStateChanged(const std::string& address,
 
   ongoing_pairing_.cancel_pair_response.reset();
 
-  UpdateDeviceProperties(device_interface, *device, false);
+  ExportOrUpdateDevice(device);
 }
 
 }  // namespace bluetooth

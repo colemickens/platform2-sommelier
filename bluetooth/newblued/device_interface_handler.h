@@ -108,6 +108,15 @@ class DeviceInterfaceHandler {
                           const std::vector<uint8_t>& eir);
 
  private:
+  // Returns the in-memory discovered device based on its address, adding it if
+  // does not already exist.
+  Device* AddOrGetDiscoveredDevice(const std::string& address,
+                                   uint8_t address_type);
+
+  // Exports the device to D-Bus (if not already exported) and updates its
+  // current properties.
+  void ExportOrUpdateDevice(Device* device);
+
   // Installs org.bluez.Device1 method handlers.
   void AddDeviceMethodHandlers(ExportedInterface* device_interface);
 
