@@ -64,6 +64,14 @@ class SarWatcherTest : public testing::Test {
   SarWatcherTest() : sar_watcher_(std::make_unique<SarWatcher>()) {
     sar_watcher_->set_open_iio_events_func_for_testing(
         base::Bind(&SarWatcherTest::OpenTestIioFd, base::Unretained(this)));
+  }
+
+  void Init(uint32_t roles) {
+    prefs_.SetInt64(kSetCellularTransmitPowerForProximityPref,
+                    roles & SarWatcher::SensorRole::SENSOR_ROLE_LTE);
+    prefs_.SetInt64(kSetWifiTransmitPowerForProximityPref,
+                    roles & SarWatcher::SensorRole::SENSOR_ROLE_WIFI);
+
     CHECK(sar_watcher_->Init(&prefs_, &udev_));
     observer_.reset(new TestObserver(sar_watcher_.get(), &loop_runner_));
   }
@@ -75,6 +83,8 @@ class SarWatcherTest : public testing::Test {
     }
   }
 
+  int GetNumOpenedSensors() const { return open_sensor_count_; }
+
   // Returns the "read" file descriptor.
   int OpenTestIioFd(const base::FilePath& file) {
     const std::string path(file.value());
@@ -84,6 +94,7 @@ class SarWatcherTest : public testing::Test {
     int fd[2];
     if (pipe2(fd, O_DIRECT | O_NONBLOCK) == -1)
       return -1;
+    ++open_sensor_count_;
     fds_.emplace(path, std::make_pair(fd[0], fd[1]));
     return fd[0];
   }
@@ -128,21 +139,55 @@ class SarWatcherTest : public testing::Test {
   std::unique_ptr<SarWatcher> sar_watcher_;
   TestMainLoopRunner loop_runner_;
   std::unique_ptr<TestObserver> observer_;
+  int open_sensor_count_ = 0;
 };
 
-TEST_F(SarWatcherTest, DetectWiFiDevice) {
+TEST_F(SarWatcherTest, DetectUsableWifiDevice) {
+  Init(SarWatcher::SensorRole::SENSOR_ROLE_WIFI);
+
   AddDevice("/sys/mockproximity", "/dev/proximity-wifi-right");
   EXPECT_EQ(JoinActions("OnNewSensor(roles=0x1)", nullptr),
             observer_->GetActions());
+  EXPECT_EQ(1, GetNumOpenedSensors());
 }
 
-TEST_F(SarWatcherTest, DetectLteDevice) {
+TEST_F(SarWatcherTest, DetectUsableLteDevice) {
+  Init(SarWatcher::SensorRole::SENSOR_ROLE_LTE);
+
   AddDevice("/sys/mockproximity", "/dev/proximity-lte");
   EXPECT_EQ(JoinActions("OnNewSensor(roles=0x2)", nullptr),
             observer_->GetActions());
+  EXPECT_EQ(1, GetNumOpenedSensors());
+}
+
+TEST_F(SarWatcherTest, DetectNotUsableWifiDevice) {
+  Init(SarWatcher::SensorRole::SENSOR_ROLE_LTE);
+
+  AddDevice("/sys/mockproximity", "/dev/proximity-wifi-right");
+  EXPECT_EQ(JoinActions(nullptr), observer_->GetActions());
+  EXPECT_EQ(0, GetNumOpenedSensors());
+}
+
+TEST_F(SarWatcherTest, DetectNotUsableLteDevice) {
+  Init(SarWatcher::SensorRole::SENSOR_ROLE_WIFI);
+
+  AddDevice("/sys/mockproximity", "/dev/proximity-lte");
+  EXPECT_EQ(JoinActions(nullptr), observer_->GetActions());
+  EXPECT_EQ(0, GetNumOpenedSensors());
+}
+
+TEST_F(SarWatcherTest, DetectUsableMixDevice) {
+  Init(SarWatcher::SensorRole::SENSOR_ROLE_WIFI);
+
+  AddDevice("/sys/mockproximity", "/dev/proximity-wifi-lte");
+  EXPECT_EQ(JoinActions("OnNewSensor(roles=0x1)", nullptr),
+            observer_->GetActions());
+  EXPECT_EQ(1, GetNumOpenedSensors());
 }
 
 TEST_F(SarWatcherTest, ReceiveProximityInfo) {
+  Init(SarWatcher::SensorRole::SENSOR_ROLE_LTE);
+
   AddDevice("/sys/mockproximity", "/dev/proximity-lte");
   observer_->GetActions();  // consume OnNewSensor
   SendEvent("/dev/proximity-lte", UserProximity::NEAR);

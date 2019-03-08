@@ -80,6 +80,12 @@ class SarWatcher : public SarWatcherInterface,
     std::unique_ptr<base::MessageLoopForIO::FileDescriptorWatcher> watcher;
   };
 
+  // Returns which subsystems the sensor at |path| should provide proximity
+  // data for. The allowed roles are filtered based on whether the preferences
+  // allow using proximity sensor as an input for a given subsystem. The
+  // return value is a bitwise combination of SensorRole values.
+  uint32_t GetUsableSensorRoles(const std::string& path);
+
   // Determines whether |dev| represents a proximity sensor connected via
   // the IIO subsystem. If so, |devlink_out| is the path to the file to be used
   // to read proximity events from this device.
@@ -98,6 +104,9 @@ class SarWatcher : public SarWatcherInterface,
 
   // Mapping between IIO event file descriptors and sensor details.
   std::unordered_map<int, SensorInfo> sensors_;
+
+  bool use_proximity_for_cellular_ = false;
+  bool use_proximity_for_wifi_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(SarWatcher);
 };

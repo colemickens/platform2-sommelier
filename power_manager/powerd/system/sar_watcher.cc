@@ -54,23 +54,6 @@ int OpenIioFd(const base::FilePath& path) {
   return event_fd;
 }
 
-// Returns which subsystems the sensor at |path| can provide proximity
-// data for. The return value is a bitwise combination of SensorRole values.
-uint32_t GetSensorRole(const std::string& path) {
-  uint32_t responsibility = SarWatcher::SensorRole::SENSOR_ROLE_NONE;
-
-  const auto proximity_index = path.find("proximity-");
-  if (proximity_index == std::string::npos)
-    return responsibility;
-
-  if (path.find("-lte", proximity_index) != std::string::npos)
-    responsibility |= SarWatcher::SensorRole::SENSOR_ROLE_LTE;
-  if (path.find("-wifi", proximity_index) != std::string::npos)
-    responsibility |= SarWatcher::SensorRole::SENSOR_ROLE_WIFI;
-
-  return responsibility;
-}
-
 }  // namespace
 
 const char SarWatcher::kIioUdevSubsystem[] = "iio";
@@ -89,6 +72,12 @@ SarWatcher::~SarWatcher() {
 }
 
 bool SarWatcher::Init(PrefsInterface* prefs, UdevInterface* udev) {
+  prefs->GetBool(kSetCellularTransmitPowerForProximityPref,
+                 &use_proximity_for_cellular_);
+
+  prefs->GetBool(kSetWifiTransmitPowerForProximityPref,
+                 &use_proximity_for_wifi_);
+
   udev_ = udev;
   udev_->AddSubsystemObserver(kIioUdevSubsystem, this);
 
@@ -188,11 +177,34 @@ bool SarWatcher::IsIioProximitySensor(const UdevDeviceInfo& dev,
   return false;
 }
 
+uint32_t SarWatcher::GetUsableSensorRoles(const std::string& path) {
+  uint32_t responsibility = SarWatcher::SensorRole::SENSOR_ROLE_NONE;
+
+  const auto proximity_index = path.find("proximity-");
+  if (proximity_index == std::string::npos)
+    return responsibility;
+
+  if (use_proximity_for_cellular_ &&
+      path.find("-lte", proximity_index) != std::string::npos)
+    responsibility |= SarWatcher::SensorRole::SENSOR_ROLE_LTE;
+
+  if (use_proximity_for_wifi_ &&
+      path.find("-wifi", proximity_index) != std::string::npos)
+    responsibility |= SarWatcher::SensorRole::SENSOR_ROLE_WIFI;
+
+  return responsibility;
+}
+
 bool SarWatcher::OnSensorDetected(const std::string& syspath,
                                   const std::string& devlink) {
   using MLIO = base::MessageLoopForIO;
 
-  uint32_t role = GetSensorRole(devlink);
+  uint32_t role = GetUsableSensorRoles(devlink);
+
+  if (role == SensorRole::SENSOR_ROLE_NONE) {
+    LOG(INFO) << "Sensor at " << devlink << " not usable for any subsystem";
+    return true;
+  }
 
   int event_fd = open_iio_events_func_.Run(base::FilePath(devlink));
   if (event_fd == -1) {
