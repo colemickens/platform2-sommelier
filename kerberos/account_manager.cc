@@ -27,6 +27,16 @@ ErrorType AccountManager::RemoveAccount(const std::string& principal_name) {
   return ERROR_NONE;
 }
 
+ErrorType AccountManager::SetConfig(const std::string& principal_name,
+                                    const std::string& krb5_conf) {
+  base::Optional<AccountData> data = GetAccountData(principal_name);
+  if (!data)
+    return ERROR_UNKNOWN_PRINCIPAL_NAME;
+
+  // TODO(ljusten): Implement.
+  return ERROR_NONE;
+}
+
 ErrorType AccountManager::AcquireTgt(const std::string& principal_name,
                                      const std::string& password) {
   base::Optional<AccountData> data = GetAccountData(principal_name);

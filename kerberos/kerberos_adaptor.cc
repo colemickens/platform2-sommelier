@@ -40,11 +40,15 @@ ParseProto(google::protobuf::MessageLite* proto,
   return ERROR_NONE;
 }
 
-void PrintResult(const char* msg, ErrorType error) {
+void PrintRequest(const char* method_name) {
+  LOG(INFO) << ">>> " << method_name;
+}
+
+void PrintResult(const char* method_name, ErrorType error) {
   if (error == ERROR_NONE)
-    LOG(INFO) << msg << " succeeded";
+    LOG(INFO) << "<<< " << method_name << " succeeded";
   else
-    LOG(INFO) << msg << " failed with " << GetErrorString(error);
+    LOG(ERROR) << "<<< " << method_name << " failed: " << GetErrorString(error);
 }
 
 }  // namespace
@@ -65,14 +69,14 @@ void KerberosAdaptor::RegisterAsync(
 
 std::vector<uint8_t> KerberosAdaptor::AddAccount(
     const std::vector<uint8_t>& request_blob) {
-  LOG(INFO) << "Received AddAccount request";
+  PrintRequest(__FUNCTION__);
   AddAccountRequest request;
   ErrorType error = ParseProto(&request, request_blob);
 
   if (error == ERROR_NONE)
     error = manager_.AddAccount(request.principal_name());
 
-  PrintResult("AddAccount", error);
+  PrintResult(__FUNCTION__, error);
   AddAccountResponse response;
   response.set_error(error);
   return SerializeProto(response);
@@ -80,15 +84,30 @@ std::vector<uint8_t> KerberosAdaptor::AddAccount(
 
 std::vector<uint8_t> KerberosAdaptor::RemoveAccount(
     const std::vector<uint8_t>& request_blob) {
-  LOG(INFO) << "Received RemoveAccount request";
+  PrintRequest(__FUNCTION__);
   RemoveAccountRequest request;
   ErrorType error = ParseProto(&request, request_blob);
 
   if (error == ERROR_NONE)
     error = manager_.RemoveAccount(request.principal_name());
 
-  PrintResult("RemoveAccount", error);
+  PrintResult(__FUNCTION__, error);
   RemoveAccountResponse response;
+  response.set_error(error);
+  return SerializeProto(response);
+}
+
+std::vector<uint8_t> KerberosAdaptor::SetConfig(
+    const std::vector<uint8_t>& request_blob) {
+  PrintRequest(__FUNCTION__);
+  SetConfigRequest request;
+  ErrorType error = ParseProto(&request, request_blob);
+
+  if (error == ERROR_NONE)
+    error = manager_.SetConfig(request.principal_name(), request.krb5conf());
+
+  PrintResult(__FUNCTION__, error);
+  SetConfigResponse response;
   response.set_error(error);
   return SerializeProto(response);
 }
@@ -96,7 +115,7 @@ std::vector<uint8_t> KerberosAdaptor::RemoveAccount(
 std::vector<uint8_t> KerberosAdaptor::AcquireKerberosTgt(
     const std::vector<uint8_t>& request_blob,
     const base::ScopedFD& password_fd) {
-  LOG(INFO) << "Received AcquireKerberosTgt request";
+  PrintRequest(__FUNCTION__);
   AcquireKerberosTgtRequest request;
   ErrorType error = ParseProto(&request, request_blob);
 
@@ -112,7 +131,7 @@ std::vector<uint8_t> KerberosAdaptor::AcquireKerberosTgt(
   if (error == ERROR_NONE)
     error = manager_.AcquireTgt(request.principal_name(), password.value());
 
-  PrintResult("AcquireKerberosTgt", error);
+  PrintResult(__FUNCTION__, error);
   AcquireKerberosTgtResponse response;
   response.set_error(error);
   return SerializeProto(response);
@@ -120,7 +139,7 @@ std::vector<uint8_t> KerberosAdaptor::AcquireKerberosTgt(
 
 std::vector<uint8_t> KerberosAdaptor::GetKerberosFiles(
     const std::vector<uint8_t>& request_blob) {
-  LOG(INFO) << "Received GetKerberosFiles request";
+  PrintRequest(__FUNCTION__);
   GetKerberosFilesRequest request;
   ErrorType error = ParseProto(&request, request_blob);
 
@@ -130,7 +149,7 @@ std::vector<uint8_t> KerberosAdaptor::GetKerberosFiles(
                                       response.mutable_files());
   }
 
-  PrintResult("GetKerberosFiles", error);
+  PrintResult(__FUNCTION__, error);
   response.set_error(error);
   return SerializeProto(response);
 }

@@ -35,19 +35,15 @@ class KerberosAdaptor : public org::chromium::KerberosAdaptor,
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
           completion_callback);
 
+  using ByteArray = std::vector<uint8_t>;
+
   // org::chromium::KerberosInterface: (see org.chromium.Kerberos.xml).
-  std::vector<uint8_t> AddAccount(
-      const std::vector<uint8_t>& request_blob) override;
-
-  std::vector<uint8_t> RemoveAccount(
-      const std::vector<uint8_t>& request_blob) override;
-
-  std::vector<uint8_t> AcquireKerberosTgt(
-      const std::vector<uint8_t>& request_blob,
-      const base::ScopedFD& password_fd) override;
-
-  std::vector<uint8_t> GetKerberosFiles(
-      const std::vector<uint8_t>& request_blob) override;
+  ByteArray AddAccount(const ByteArray& request_blob) override;
+  ByteArray RemoveAccount(const ByteArray& request_blob) override;
+  ByteArray SetConfig(const ByteArray& request_blob) override;
+  ByteArray AcquireKerberosTgt(const ByteArray& request_blob,
+                               const base::ScopedFD& password_fd) override;
+  ByteArray GetKerberosFiles(const ByteArray& request_blob) override;
 
  private:
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;

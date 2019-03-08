@@ -37,6 +37,23 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
 
+    <method name="SetConfig">
+      <tp:docstring>
+        Sets the Kerberos configuration for the given account.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <tp:docstring>
+          Serialized SetConfigRequest message.
+        </tp:docstring>
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <tp:docstring>
+          Serialized SetConfigResponse message.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
     <method name="AcquireKerberosTgt">
       <tp:docstring>
         Acquires a Kerberos ticket-granting-ticket from the Key Distribution

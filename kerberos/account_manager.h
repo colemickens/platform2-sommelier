@@ -34,6 +34,11 @@ class AccountManager {
   // such account.
   ErrorType RemoveAccount(const std::string& principal_name) WARN_UNUSED_RESULT;
 
+  // Sets the Kerberos configuration (krb5.conf) used for the given
+  // |principal_name|.
+  ErrorType SetConfig(const std::string& principal_name,
+                      const std::string& krb5_conf) WARN_UNUSED_RESULT;
+
   // Acquires a Kerberos ticket-granting-ticket for the account keyed by
   // |principal_name| (user@REALM.COM). Returns |ERROR_UNKNOWN_PRINCIPAL_NAME|
   // if there is no such account.
