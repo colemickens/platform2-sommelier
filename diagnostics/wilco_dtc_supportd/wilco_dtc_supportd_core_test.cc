@@ -48,8 +48,8 @@
 #include "diagnostics/wilco_dtc_supportd/mojo_utils.h"
 #include "diagnostics/wilco_dtc_supportd/protobuf_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core.h"
-#include "diagnosticsd.pb.h"  // NOLINT(build/include)
 #include "mojo/diagnosticsd.mojom.h"
+#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 using testing::_;
 using testing::Invoke;
@@ -295,14 +295,14 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
 
   base::ScopedTempDir temp_dir_;
 
-  // gRPC URI on which the tested "Diagnosticsd" gRPC service (owned by
+  // gRPC URI on which the tested "WilcoDtcSupportd" gRPC service (owned by
   // WilcoDtcSupportdCore) is listening.
   std::string wilco_dtc_supportd_grpc_uri_;
-  // gRPC URI on which the fake "DiagnosticsProcessor" gRPC service (owned by
-  // FakeWilcoDtc) is listening, eligible to receive UI messages.
+  // gRPC URI on which the fake "WilcoDtc" gRPC service (owned by FakeWilcoDtc)
+  // is listening, eligible to receive UI messages.
   std::string ui_message_receiver_wilco_dtc_grpc_uri_;
-  // gRPC URI on which the fake "DiagnosticsProcessor" gRPC service (owned by
-  // FakeWilcoDtc) is listening.
+  // gRPC URI on which the fake "WilcoDtc" gRPC service (owned by FakeWilcoDtc)
+  // is listening.
   std::string wilco_dtc_grpc_uri_;
 
   scoped_refptr<StrictMock<dbus::MockBus>> dbus_bus_ =

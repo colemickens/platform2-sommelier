@@ -16,7 +16,7 @@
 #include "diagnostics/dpsl/internal/callback_utils.h"
 #include "diagnostics/dpsl/public/dpsl_thread_context.h"
 
-#include "diagnosticsd.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 
@@ -35,10 +35,11 @@ std::string GetWilcoDtcSupportdGrpcUri(
 
 }  // namespace
 
-DpslRequesterImpl::DpslRequesterImpl(const std::string& diagnosticsd_grpc_uri)
+DpslRequesterImpl::DpslRequesterImpl(
+    const std::string& wilco_dtc_supportd_grpc_uri)
     : message_loop_(base::MessageLoop::current()),
       async_grpc_client_(base::ThreadTaskRunnerHandle::Get(),
-                         diagnosticsd_grpc_uri) {
+                         wilco_dtc_supportd_grpc_uri) {
   DCHECK(message_loop_);
 }
 
@@ -60,31 +61,31 @@ void DpslRequesterImpl::SendMessageToUi(
     std::unique_ptr<grpc_api::SendMessageToUiRequest> request,
     SendMessageToUiCallback callback) {
   ScheduleGrpcClientMethodCall(
-      FROM_HERE, &grpc_api::Diagnosticsd::Stub::AsyncSendMessageToUi,
+      FROM_HERE, &grpc_api::WilcoDtcSupportd::Stub::AsyncSendMessageToUi,
       std::move(request), std::move(callback));
 }
 
 void DpslRequesterImpl::GetProcData(
     std::unique_ptr<grpc_api::GetProcDataRequest> request,
     GetProcDataCallback callback) {
-  ScheduleGrpcClientMethodCall(FROM_HERE,
-                               &grpc_api::Diagnosticsd::Stub::AsyncGetProcData,
-                               std::move(request), std::move(callback));
+  ScheduleGrpcClientMethodCall(
+      FROM_HERE, &grpc_api::WilcoDtcSupportd::Stub::AsyncGetProcData,
+      std::move(request), std::move(callback));
 }
 
 void DpslRequesterImpl::GetSysfsData(
     std::unique_ptr<grpc_api::GetSysfsDataRequest> request,
     GetSysfsDataCallback callback) {
-  ScheduleGrpcClientMethodCall(FROM_HERE,
-                               &grpc_api::Diagnosticsd::Stub::AsyncGetSysfsData,
-                               std::move(request), std::move(callback));
+  ScheduleGrpcClientMethodCall(
+      FROM_HERE, &grpc_api::WilcoDtcSupportd::Stub::AsyncGetSysfsData,
+      std::move(request), std::move(callback));
 }
 
 void DpslRequesterImpl::PerformWebRequest(
     std::unique_ptr<grpc_api::PerformWebRequestParameter> request,
     PerformWebRequestCallback callback) {
   ScheduleGrpcClientMethodCall(
-      FROM_HERE, &grpc_api::Diagnosticsd::Stub::AsyncPerformWebRequest,
+      FROM_HERE, &grpc_api::WilcoDtcSupportd::Stub::AsyncPerformWebRequest,
       std::move(request), std::move(callback));
 }
 

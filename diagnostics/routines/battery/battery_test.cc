@@ -12,7 +12,7 @@
 
 #include "diagnostics/routines/battery/battery.h"
 #include "diagnostics/wilco_dtc_supportd/file_test_utils.h"
-#include "diagnosticsd.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 

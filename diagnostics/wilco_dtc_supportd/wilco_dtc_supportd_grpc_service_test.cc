@@ -23,7 +23,7 @@
 #include "diagnostics/wilco_dtc_supportd/protobuf_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_grpc_service.h"
 
-#include "diagnosticsd.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 using testing::_;
 using testing::AnyOf;

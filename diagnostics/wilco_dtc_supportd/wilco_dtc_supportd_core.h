@@ -28,9 +28,9 @@
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_mojo_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_routine_service.h"
 
-#include "diagnostics_processor.grpc.pb.h"  // NOLINT(build/include)
-#include "diagnosticsd.grpc.pb.h"           // NOLINT(build/include)
 #include "mojo/diagnosticsd.mojom.h"
+#include "wilco_dtc.grpc.pb.h"           // NOLINT(build/include)
+#include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 
@@ -176,14 +176,14 @@ class WilcoDtcSupportdCore final
   WilcoDtcSupportdGrpcService grpc_service_{this /* delegate */};
   // Connects |grpc_service_| with the gRPC server that listens for incoming
   // requests.
-  AsyncGrpcServer<grpc_api::Diagnosticsd::AsyncService> grpc_server_;
+  AsyncGrpcServer<grpc_api::WilcoDtcSupportd::AsyncService> grpc_server_;
   // Allows to make outgoing requests to the gRPC interfaces exposed by the
   // wilco_dtc daemons.
-  std::vector<std::unique_ptr<AsyncGrpcClient<grpc_api::DiagnosticsProcessor>>>
+  std::vector<std::unique_ptr<AsyncGrpcClient<grpc_api::WilcoDtc>>>
       wilco_dtc_grpc_clients_;
   // The pre-defined gRPC client that is allowed to respond to UI messages.
   // Owned by |wilco_dtc_grpc_clients_|.
-  AsyncGrpcClient<grpc_api::DiagnosticsProcessor>*
+  AsyncGrpcClient<grpc_api::WilcoDtc>*
       ui_message_receiver_wilco_dtc_grpc_client_;
 
   // D-Bus-related members:

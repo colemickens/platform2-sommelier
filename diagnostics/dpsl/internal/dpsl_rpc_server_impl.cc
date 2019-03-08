@@ -54,12 +54,11 @@ DpslRpcServerImpl::DpslRpcServerImpl(DpslRpcHandler* rpc_handler,
       break;
   }
   async_grpc_server_.RegisterHandler(
-      &grpc_api::DiagnosticsProcessor::AsyncService::RequestHandleMessageFromUi,
+      &grpc_api::WilcoDtc::AsyncService::RequestHandleMessageFromUi,
       base::Bind(handle_message_from_ui_handler, base::Unretained(this)));
 
   async_grpc_server_.RegisterHandler(
-      &grpc_api::DiagnosticsProcessor::AsyncService::
-          RequestHandleEcNotification,
+      &grpc_api::WilcoDtc::AsyncService::RequestHandleEcNotification,
       base::Bind(&DpslRpcServerImpl::HandleEcNotification,
                  base::Unretained(this)));
 }

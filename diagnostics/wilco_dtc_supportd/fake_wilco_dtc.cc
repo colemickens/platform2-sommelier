@@ -19,11 +19,10 @@ FakeWilcoDtc::FakeWilcoDtc(const std::string& grpc_server_uri,
       wilco_dtc_supportd_grp_client_(base::ThreadTaskRunnerHandle::Get(),
                                      wilco_dtc_supportd_grpc_uri) {
   grpc_server_.RegisterHandler(
-      &grpc_api::DiagnosticsProcessor::AsyncService::RequestHandleMessageFromUi,
+      &grpc_api::WilcoDtc::AsyncService::RequestHandleMessageFromUi,
       base::Bind(&FakeWilcoDtc::HandleMessageFromUi, base::Unretained(this)));
   grpc_server_.RegisterHandler(
-      &grpc_api::DiagnosticsProcessor::AsyncService::
-          RequestHandleEcNotification,
+      &grpc_api::WilcoDtc::AsyncService::RequestHandleEcNotification,
       base::Bind(&FakeWilcoDtc::HandleEcNotification, base::Unretained(this)));
   grpc_server_.Start();
 }
@@ -41,26 +40,26 @@ FakeWilcoDtc::~FakeWilcoDtc() {
 void FakeWilcoDtc::GetProcData(const grpc_api::GetProcDataRequest& request,
                                GetProcDataCallback callback) {
   wilco_dtc_supportd_grp_client_.CallRpc(
-      &grpc_api::Diagnosticsd::Stub::AsyncGetProcData, request, callback);
+      &grpc_api::WilcoDtcSupportd::Stub::AsyncGetProcData, request, callback);
 }
 
 void FakeWilcoDtc::RunEcCommand(const grpc_api::RunEcCommandRequest& request,
                                 RunEcCommandCallback callback) {
   wilco_dtc_supportd_grp_client_.CallRpc(
-      &grpc_api::Diagnosticsd::Stub::AsyncRunEcCommand, request, callback);
+      &grpc_api::WilcoDtcSupportd::Stub::AsyncRunEcCommand, request, callback);
 }
 
 void FakeWilcoDtc::GetEcProperty(const grpc_api::GetEcPropertyRequest& request,
                                  GetEcPropertyCallback callback) {
   wilco_dtc_supportd_grp_client_.CallRpc(
-      &grpc_api::Diagnosticsd::Stub::AsyncGetEcProperty, request, callback);
+      &grpc_api::WilcoDtcSupportd::Stub::AsyncGetEcProperty, request, callback);
 }
 
 void FakeWilcoDtc::PerformWebRequest(
     const grpc_api::PerformWebRequestParameter& parameter,
     const PerformWebRequestResponseCallback& callback) {
   wilco_dtc_supportd_grp_client_.CallRpc(
-      &grpc_api::Diagnosticsd::Stub::AsyncPerformWebRequest, parameter,
+      &grpc_api::WilcoDtcSupportd::Stub::AsyncPerformWebRequest, parameter,
       callback);
 }
 

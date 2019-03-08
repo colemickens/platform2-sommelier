@@ -9,7 +9,7 @@ syntax = "proto3";
 
 package diagnostics.grpc_api;
 
-service Diagnosticsd {
+service WilcoDtcSupportd {
   // Sends a message to the diagnostics UI extension (hosted by the browser).
   // Delivery of the message is not guaranteed (for example, if the diagnostics
   // UI extension isn't running at the moment).

@@ -15,8 +15,8 @@
 #include "diagnostics/dpsl/public/dpsl_rpc_server.h"
 #include "diagnostics/grpc_async_adapter/async_grpc_server.h"
 
-#include "diagnostics_processor.grpc.pb.h"  // NOLINT(build/include)
-#include "diagnostics_processor.pb.h"       // NOLINT(build/include)
+#include "wilco_dtc.grpc.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc.pb.h"       // NOLINT(build/include)
 
 namespace diagnostics {
 
@@ -39,8 +39,8 @@ class DpslRpcServerImpl final : public DpslRpcServer {
   using HandleEcNotificationCallback = base::Callback<void(
       std::unique_ptr<grpc_api::HandleEcNotificationResponse>)>;
 
-  // Methods corresponding to the "DiagnosticsProcessor" gRPC interface (each of
-  // these methods just calls the corresponding method of |rpc_handler_|):
+  // Methods corresponding to the "WilcoDtc" gRPC interface (each of these
+  // methods just calls the corresponding method of |rpc_handler_|):
   void HandleMessageFromUi(
       std::unique_ptr<grpc_api::HandleMessageFromUiRequest> request,
       const HandleMessageFromUiCallback& callback);
@@ -49,8 +49,7 @@ class DpslRpcServerImpl final : public DpslRpcServer {
       const HandleEcNotificationCallback& callback);
 
   // The method corresponding to the HandleMessageFromUi method of the
-  // "DiagnosticsProcessor" gRPC interface and returning back a nullptr
-  // response.
+  // "WilcoDtc" gRPC interface and returning back a nullptr response.
   void HandleMessageFromUiStub(
       std::unique_ptr<grpc_api::HandleMessageFromUiRequest> request,
       const HandleMessageFromUiCallback& callback);
@@ -58,8 +57,7 @@ class DpslRpcServerImpl final : public DpslRpcServer {
   // Unowned.
   DpslRpcHandler* const rpc_handler_;
 
-  AsyncGrpcServer<grpc_api::DiagnosticsProcessor::AsyncService>
-      async_grpc_server_;
+  AsyncGrpcServer<grpc_api::WilcoDtc::AsyncService> async_grpc_server_;
 
   base::SequenceCheckerImpl sequence_checker_;
 

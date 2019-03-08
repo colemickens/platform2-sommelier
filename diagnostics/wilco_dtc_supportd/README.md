@@ -22,10 +22,10 @@ This daemon uses three IPC mechanisms:
      |   // gRPC-related members:
      +-> `WilcoDtcSupportdGrpcService`
      |       (handles incoming gRPC requests)
-     +-> `AsyncGrpcServer<grpc_api::Diagnosticsd>`
+     +-> `AsyncGrpcServer<grpc_api::WilcoDtcSupportd>`
      |       (connects `WilcoDtcSupportdGrpcService` with the actual gRPC
      |        pipe)
-     +-> `AsyncGrpcClient<grpc_api::DiagnosticsProcessor>`
+     +-> `AsyncGrpcClient<grpc_api::WilcoDtc>`
      |       (sends outgoing gRPC requests through the actual gRPC pipe)
      |
      |   // Mojo-related members:

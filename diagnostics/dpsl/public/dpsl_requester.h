@@ -10,7 +10,7 @@
 
 #include "diagnostics/dpsl/public/export.h"
 
-#include "diagnosticsd.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 
@@ -18,7 +18,7 @@ class DpslThreadContext;
 
 // Interface of the class that allows to make outgoing requests to the
 // gRPC server ran by the wilco_dtc_supportd daemon (the interface is defined at
-// grpc/diagnosticsd.proto).
+// grpc/wilco_dtc_supportd.proto).
 //
 // On construction, starts a gRPC client that connects to the wilco_dtc_supportd
 // daemon on the specified URI. When a request is made, DPSL sends it and
@@ -92,7 +92,7 @@ class DPSL_EXPORT DpslRequester {
 
   virtual ~DpslRequester() = default;
 
-  // Methods of the Diagnosticsd gRPC interface.
+  // Methods of the WilcoDtcSupportd gRPC interface.
   //
   // NOTE ON THREADING: These methods are allowed to be called from any thread
   // (even from ones without a DpslThreadContext instance). However, the

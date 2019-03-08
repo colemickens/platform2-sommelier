@@ -13,7 +13,7 @@
 
 #include "diagnostics/routines/diag_routine.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_routine_factory.h"
-#include "diagnosticsd.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 

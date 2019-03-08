@@ -10,7 +10,7 @@
 
 #include <base/callback.h>
 
-#include "diagnosticsd.grpc.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 

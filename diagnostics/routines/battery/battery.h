@@ -11,7 +11,7 @@
 #include <base/macros.h>
 
 #include "diagnostics/routines/diag_routine.h"
-#include "diagnosticsd.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 

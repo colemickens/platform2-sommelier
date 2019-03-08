@@ -9,7 +9,7 @@ syntax = "proto3";
 
 package diagnostics.grpc_api;
 
-service DiagnosticsProcessor {
+service WilcoDtc {
   // Called when a message is sent by the diagnostics UI extension (hosted by
   // the browser).
   rpc HandleMessageFromUi(HandleMessageFromUiRequest)

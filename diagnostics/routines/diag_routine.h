@@ -5,7 +5,7 @@
 #ifndef DIAGNOSTICS_ROUTINES_DIAG_ROUTINE_H_
 #define DIAGNOSTICS_ROUTINES_DIAG_ROUTINE_H_
 
-#include "diagnosticsd.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 

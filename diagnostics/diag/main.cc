@@ -17,7 +17,7 @@
 
 #include "diagnostics/constants/grpc_constants.h"
 #include "diagnostics/diag/diag_routine_requester.h"
-#include "diagnosticsd.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 namespace {
 // Poll interval while waiting for a routine to finish.

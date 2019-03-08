@@ -24,7 +24,7 @@ void DiagAsyncGrpcClientAdapterImpl::Connect(const std::string& target_uri) {
   DCHECK(!client_);
 
   // Create the DiagAsyncGrpcClient, listening over the specified gRPC URI.
-  client_ = std::make_unique<AsyncGrpcClient<grpc_api::Diagnosticsd>>(
+  client_ = std::make_unique<AsyncGrpcClient<grpc_api::WilcoDtcSupportd>>(
       base::ThreadTaskRunnerHandle::Get(), target_uri);
   VLOG(0) << "Created gRPC wilco_dtc_supportd client on " << target_uri;
 }
@@ -38,7 +38,7 @@ void DiagAsyncGrpcClientAdapterImpl::GetAvailableRoutines(
     const grpc_api::GetAvailableRoutinesRequest& request,
     base::Callback<void(std::unique_ptr<grpc_api::GetAvailableRoutinesResponse>
                             response)> callback) {
-  client_->CallRpc(&grpc_api::Diagnosticsd::Stub::AsyncGetAvailableRoutines,
+  client_->CallRpc(&grpc_api::WilcoDtcSupportd::Stub::AsyncGetAvailableRoutines,
                    request, callback);
 }
 
@@ -46,7 +46,7 @@ void DiagAsyncGrpcClientAdapterImpl::RunRoutine(
     const grpc_api::RunRoutineRequest& request,
     base::Callback<void(std::unique_ptr<grpc_api::RunRoutineResponse>)>
         callback) {
-  client_->CallRpc(&grpc_api::Diagnosticsd::Stub::AsyncRunRoutine, request,
+  client_->CallRpc(&grpc_api::WilcoDtcSupportd::Stub::AsyncRunRoutine, request,
                    callback);
 }
 
@@ -54,7 +54,7 @@ void DiagAsyncGrpcClientAdapterImpl::GetRoutineUpdate(
     const grpc_api::GetRoutineUpdateRequest& request,
     base::Callback<void(std::unique_ptr<grpc_api::GetRoutineUpdateResponse>)>
         callback) {
-  client_->CallRpc(&grpc_api::Diagnosticsd::Stub::AsyncGetRoutineUpdate,
+  client_->CallRpc(&grpc_api::WilcoDtcSupportd::Stub::AsyncGetRoutineUpdate,
                    request, callback);
 }
 

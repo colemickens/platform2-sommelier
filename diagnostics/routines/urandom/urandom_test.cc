@@ -16,7 +16,7 @@
 
 #include "diagnostics/routines/diag_process_adapter.h"
 #include "diagnostics/routines/urandom/urandom.h"
-#include "diagnosticsd.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 using testing::_;
 using testing::DoAll;

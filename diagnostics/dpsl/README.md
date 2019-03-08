@@ -15,11 +15,11 @@ that is able to:
 
 * Make gRPC requests to the `wilco_dtc_supportd` daemon in order to fetch
   device telemetry information, make network requests, etc. See the API
-  definition at grpc/diagnosticsd.proto.
+  definition at grpc/wilco_dtc_supportd.proto.
 
 * Serve incoming gRPC requests that the `wilco_dtc_supportd` daemon is making,
   which allow to pass the output of the telemetry processing. See the
-  API definition at grpc/diagnostics_processor.proto.
+  API definition at grpc/wilco_dtc.proto.
 
 ## API considerations
 

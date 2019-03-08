@@ -13,7 +13,7 @@
 
 #include "diagnostics/diag/diag_async_grpc_client_adapter.h"
 #include "diagnostics/diag/diag_async_grpc_client_adapter_impl.h"
-#include "diagnosticsd.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 

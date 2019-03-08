@@ -79,39 +79,39 @@ bool WilcoDtcSupportdCore::Start() {
   // Associate RPCs of the to-be-exposed gRPC interface with methods of
   // |grpc_service_|.
   grpc_server_.RegisterHandler(
-      &grpc_api::Diagnosticsd::AsyncService::RequestSendMessageToUi,
+      &grpc_api::WilcoDtcSupportd::AsyncService::RequestSendMessageToUi,
       base::Bind(&WilcoDtcSupportdGrpcService::SendMessageToUi,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
-      &grpc_api::Diagnosticsd::AsyncService::RequestGetProcData,
+      &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetProcData,
       base::Bind(&WilcoDtcSupportdGrpcService::GetProcData,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
-      &grpc_api::Diagnosticsd::AsyncService::RequestGetSysfsData,
+      &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetSysfsData,
       base::Bind(&WilcoDtcSupportdGrpcService::GetSysfsData,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
-      &grpc_api::Diagnosticsd::AsyncService::RequestRunEcCommand,
+      &grpc_api::WilcoDtcSupportd::AsyncService::RequestRunEcCommand,
       base::Bind(&WilcoDtcSupportdGrpcService::RunEcCommand,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
-      &grpc_api::Diagnosticsd::AsyncService::RequestGetEcProperty,
+      &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetEcProperty,
       base::Bind(&WilcoDtcSupportdGrpcService::GetEcProperty,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
-      &grpc_api::Diagnosticsd::AsyncService::RequestPerformWebRequest,
+      &grpc_api::WilcoDtcSupportd::AsyncService::RequestPerformWebRequest,
       base::Bind(&WilcoDtcSupportdGrpcService::PerformWebRequest,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
-      &grpc_api::Diagnosticsd::AsyncService::RequestGetAvailableRoutines,
+      &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetAvailableRoutines,
       base::Bind(&WilcoDtcSupportdGrpcService::GetAvailableRoutines,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
-      &grpc_api::Diagnosticsd::AsyncService::RequestRunRoutine,
+      &grpc_api::WilcoDtcSupportd::AsyncService::RequestRunRoutine,
       base::Bind(&WilcoDtcSupportdGrpcService::RunRoutine,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
-      &grpc_api::Diagnosticsd::AsyncService::RequestGetRoutineUpdate,
+      &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetRoutineUpdate,
       base::Bind(&WilcoDtcSupportdGrpcService::GetRoutineUpdate,
                  base::Unretained(&grpc_service_)));
 
@@ -128,7 +128,7 @@ bool WilcoDtcSupportdCore::Start() {
   // Start the gRPC clients that talk to the wilco_dtc daemon.
   for (const auto& uri : wilco_dtc_grpc_uris_) {
     wilco_dtc_grpc_clients_.push_back(
-        std::make_unique<AsyncGrpcClient<grpc_api::DiagnosticsProcessor>>(
+        std::make_unique<AsyncGrpcClient<grpc_api::WilcoDtc>>(
             base::ThreadTaskRunnerHandle::Get(), uri));
     VLOG(0) << "Created gRPC wilco_dtc client on " << uri;
   }
@@ -136,7 +136,7 @@ bool WilcoDtcSupportdCore::Start() {
   // Start the gRPC client that is allowed to receive UI messages as a normal
   // gRPC client that talks to the wilco_dtc daemon.
   wilco_dtc_grpc_clients_.push_back(
-      std::make_unique<AsyncGrpcClient<grpc_api::DiagnosticsProcessor>>(
+      std::make_unique<AsyncGrpcClient<grpc_api::WilcoDtc>>(
           base::ThreadTaskRunnerHandle::Get(),
           ui_message_receiver_wilco_dtc_grpc_uri_));
   VLOG(0) << "Created gRPC wilco_dtc client on "
@@ -305,8 +305,7 @@ void WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc(
 
   for (auto& client : wilco_dtc_grpc_clients_) {
     client->CallRpc(
-        &grpc_api::DiagnosticsProcessor::Stub::AsyncHandleEcNotification,
-        request,
+        &grpc_api::WilcoDtc::Stub::AsyncHandleEcNotification, request,
         base::Bind([](std::unique_ptr<grpc_api::HandleEcNotificationResponse>
                           response) {
           if (!response) {
@@ -357,7 +356,7 @@ void WilcoDtcSupportdCore::SendGrpcUiMessageToWilcoDtc(
                            json_message.length());
 
   ui_message_receiver_wilco_dtc_grpc_client_->CallRpc(
-      &grpc_api::DiagnosticsProcessor::Stub::AsyncHandleMessageFromUi, request,
+      &grpc_api::WilcoDtc::Stub::AsyncHandleMessageFromUi, request,
       base::Bind(
           [](const SendGrpcUiMessageToWilcoDtcCallback& callback,
              std::unique_ptr<grpc_api::HandleMessageFromUiResponse> response) {

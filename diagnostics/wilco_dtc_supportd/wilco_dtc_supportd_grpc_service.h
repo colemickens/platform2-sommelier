@@ -16,7 +16,7 @@
 #include <base/macros.h>
 #include <google/protobuf/repeated_field.h>
 
-#include "diagnosticsd.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 
@@ -27,8 +27,9 @@ extern const int kMaxPerformWebRequestParameterSizeInBytes;
 // Max number of headers in PerformWebRequestParameter.
 extern const int kMaxNumberOfHeadersInPerformWebRequestParameter;
 
-// Implements the "Diagnosticsd" gRPC interface exposed by the
-// wilco_dtc_supportd daemon (see the API definition at grpc/diagnosticsd.proto)
+// Implements the "WilcoDtcSupportd" gRPC interface exposed by the
+// wilco_dtc_supportd daemon (see the API definition at
+// grpc/wilco_dtc_supportd.proto)
 class WilcoDtcSupportdGrpcService final {
  public:
   class Delegate {
@@ -134,7 +135,7 @@ class WilcoDtcSupportdGrpcService final {
     root_dir_ = root_dir;
   }
 
-  // Implementation of the "Diagnosticsd" gRPC interface:
+  // Implementation of the "WilcoDtcSupportd" gRPC interface:
   void SendMessageToUi(
       std::unique_ptr<grpc_api::SendMessageToUiRequest> request,
       const SendMessageToUiCallback& callback);

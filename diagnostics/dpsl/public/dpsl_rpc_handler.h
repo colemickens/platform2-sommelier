@@ -8,12 +8,12 @@
 #include <functional>
 #include <memory>
 
-#include "diagnostics_processor.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 
-// Abstract class that corresponds to the DiagnosticsProcessor gRPC interface
-// (defined at grpc/diagnostics_processor.proto).
+// Abstract class that corresponds to the WilcoDtc gRPC interface
+// (defined at grpc/wilco_dtc.proto).
 //
 // EXAMPLE USAGE:
 //
@@ -29,8 +29,8 @@ namespace diagnostics {
 //   thread_context->RunEventLoop();
 //
 // This will start a gRPC server that listens for incoming requests on the
-// DiagnosticsProcessor interface at the specified gRPC URI. These requests will
-// be transformed by DPSL into |my_rpc_handler|'s method calls.
+// WilcoDtc interface at the specified gRPC URI. These requests will be
+// transformed by DPSL into |my_rpc_handler|'s method calls.
 //
 // NOTE ON THREADING MODEL: The DPSL implementation ensures that, whenever it
 // calls methods of this class, it does that on the same thread - the one on
@@ -61,7 +61,7 @@ class DPSL_EXPORT DpslRpcHandler {
 
   virtual ~DpslRpcHandler() = default;
 
-  // Methods of the DiagnosticsProcessor gRPC interface.
+  // Methods of the WilcoDtc gRPC interface.
   //
   // The |request| parameters are guaranteed to be non-null. The supplied
   // |callback| must be run no more than once (and until this happens, the

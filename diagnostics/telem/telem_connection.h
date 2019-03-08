@@ -20,7 +20,7 @@
 #include "diagnostics/telem/telem_cache.h"
 #include "diagnostics/telem/telemetry_group_enum.h"
 #include "diagnostics/telem/telemetry_item_enum.h"
-#include "diagnosticsd.grpc.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 

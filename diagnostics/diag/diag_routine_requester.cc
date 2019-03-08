@@ -10,6 +10,8 @@
 #include <base/logging.h>
 #include <base/run_loop.h>
 
+#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
+
 namespace diagnostics {
 
 namespace {

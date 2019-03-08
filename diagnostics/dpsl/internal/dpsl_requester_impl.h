@@ -18,14 +18,14 @@
 #include "diagnostics/dpsl/public/dpsl_requester.h"
 #include "diagnostics/grpc_async_adapter/async_grpc_client.h"
 
-#include "diagnosticsd.grpc.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 
 // Real implementation of the DpslRequester interface.
 class DpslRequesterImpl final : public DpslRequester {
  public:
-  explicit DpslRequesterImpl(const std::string& diagnosticsd_grpc_uri);
+  explicit DpslRequesterImpl(const std::string& wilco_dtc_supportd_grpc_uri);
   ~DpslRequesterImpl() override;
 
   // DpslRequester overrides:
@@ -41,7 +41,8 @@ class DpslRequesterImpl final : public DpslRequester {
       PerformWebRequestCallback callback) override;
 
  private:
-  using AsyncGrpcDiagnosticsdClient = AsyncGrpcClient<grpc_api::Diagnosticsd>;
+  using AsyncGrpcWilcoDtcSupportdClient =
+      AsyncGrpcClient<grpc_api::WilcoDtcSupportd>;
 
   // Posts a task to the main thread that runs CallGrpcClientMethod() with the
   // specified arguments.
@@ -68,7 +69,7 @@ class DpslRequesterImpl final : public DpslRequester {
   // Message loop of the main thread (on which this instance was created).
   base::MessageLoop* const message_loop_;
 
-  AsyncGrpcDiagnosticsdClient async_grpc_client_;
+  AsyncGrpcWilcoDtcSupportdClient async_grpc_client_;
 
   // Whether Shutdown() was already called on |async_grpc_client_|.
   bool async_grpc_client_shutting_down_ = false;

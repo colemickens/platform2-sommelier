@@ -12,7 +12,7 @@
 
 #include "diagnostics/grpc_async_adapter/async_grpc_client.h"
 #include "diagnostics/telem/async_grpc_client_adapter.h"
-#include "diagnosticsd.grpc.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 
@@ -34,7 +34,7 @@ class AsyncGrpcClientAdapterImpl final : public AsyncGrpcClientAdapter {
                               response)> callback) override;
 
  private:
-  std::unique_ptr<AsyncGrpcClient<grpc_api::Diagnosticsd>> client_;
+  std::unique_ptr<AsyncGrpcClient<grpc_api::WilcoDtcSupportd>> client_;
 
   DISALLOW_COPY_AND_ASSIGN(AsyncGrpcClientAdapterImpl);
 };

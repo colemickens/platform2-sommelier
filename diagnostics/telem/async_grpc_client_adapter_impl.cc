@@ -24,9 +24,9 @@ void AsyncGrpcClientAdapterImpl::Connect(const std::string& target_uri) {
   DCHECK(!client_);
 
   // Create the AsyncGrpcClient, listening over the specified gRPC URI.
-  client_ = std::make_unique<AsyncGrpcClient<grpc_api::Diagnosticsd>>(
+  client_ = std::make_unique<AsyncGrpcClient<grpc_api::WilcoDtcSupportd>>(
       base::ThreadTaskRunnerHandle::Get(), target_uri);
-  VLOG(0) << "Created gRPC diagnosticsd client on " << target_uri;
+  VLOG(0) << "Created gRPC wilco_dtc_supportd client on " << target_uri;
 }
 
 void AsyncGrpcClientAdapterImpl::Shutdown(const base::Closure& on_shutdown) {
@@ -37,7 +37,7 @@ void AsyncGrpcClientAdapterImpl::GetProcData(
     const grpc_api::GetProcDataRequest& request,
     base::Callback<void(
         std::unique_ptr<grpc_api::GetProcDataResponse> response)> callback) {
-  client_->CallRpc(&grpc_api::Diagnosticsd::Stub::AsyncGetProcData, request,
+  client_->CallRpc(&grpc_api::WilcoDtcSupportd::Stub::AsyncGetProcData, request,
                    callback);
 }
 
@@ -45,8 +45,8 @@ void AsyncGrpcClientAdapterImpl::GetSysfsData(
     const grpc_api::GetSysfsDataRequest& request,
     base::Callback<void(
         std::unique_ptr<grpc_api::GetSysfsDataResponse> response)> callback) {
-  client_->CallRpc(&grpc_api::Diagnosticsd::Stub::AsyncGetSysfsData, request,
-                   callback);
+  client_->CallRpc(&grpc_api::WilcoDtcSupportd::Stub::AsyncGetSysfsData,
+                   request, callback);
 }
 
 }  // namespace diagnostics

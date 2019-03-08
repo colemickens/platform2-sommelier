@@ -15,17 +15,17 @@
 #include "diagnostics/grpc_async_adapter/async_grpc_client.h"
 #include "diagnostics/grpc_async_adapter/async_grpc_server.h"
 
-#include "diagnostics_processor.grpc.pb.h"  // NOLINT(build/include)
-#include "diagnosticsd.grpc.pb.h"           // NOLINT(build/include)
+#include "wilco_dtc.grpc.pb.h"           // NOLINT(build/include)
+#include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 
 // Helper class that allows to test gRPC communication between wilco_dtc and
 // support daemon.
 //
-// This class runs a "DiagnosticsProcessor" gRPC server on the given
-// |grpc_server_uri| URI, and a gRPC client to the "Diagnosticsd" gRPC service
-// on the |wilco_dtc_supportd_grpc_uri| gRPC URI.
+// This class runs a "WilcoDtc" gRPC server on the given |grpc_server_uri| URI,
+// and a gRPC client to the "WilcoDtcSupportd" gRPC service on the
+// |wilco_dtc_supportd_grpc_uri| gRPC URI.
 class FakeWilcoDtc final {
  public:
   using GetProcDataCallback =
@@ -48,7 +48,7 @@ class FakeWilcoDtc final {
                const std::string& wilco_dtc_supportd_grpc_uri);
   ~FakeWilcoDtc();
 
-  // Methods that correspond to the "Diagnosticsd" gRPC interface and allow
+  // Methods that correspond to the "WilcoDtcSupportd" gRPC interface and allow
   // to perform actual gRPC requests as if the wilco_dtc daemon would do them:
   void GetProcData(const grpc_api::GetProcDataRequest& request,
                    GetProcDataCallback callback);
@@ -78,9 +78,10 @@ class FakeWilcoDtc final {
   handle_message_from_ui_actual_json_message() const;
 
  private:
-  using AsyncGrpcDiagnosticsProcessorServer =
-      AsyncGrpcServer<grpc_api::DiagnosticsProcessor::AsyncService>;
-  using AsyncGrpcDiagnosticsdClient = AsyncGrpcClient<grpc_api::Diagnosticsd>;
+  using AsyncGrpcWilcoDtcServer =
+      AsyncGrpcServer<grpc_api::WilcoDtc::AsyncService>;
+  using AsyncGrpcWilcoDtcSupportdClient =
+      AsyncGrpcClient<grpc_api::WilcoDtcSupportd>;
 
   // Receives gRPC request and saves json message from request in
   // |handle_message_from_ui_actual_json_message_|.
@@ -96,8 +97,8 @@ class FakeWilcoDtc final {
       std::unique_ptr<grpc_api::HandleEcNotificationRequest> request,
       const HandleEcNotificationCallback& callback);
 
-  AsyncGrpcDiagnosticsProcessorServer grpc_server_;
-  AsyncGrpcDiagnosticsdClient wilco_dtc_supportd_grp_client_;
+  AsyncGrpcWilcoDtcServer grpc_server_;
+  AsyncGrpcWilcoDtcSupportdClient wilco_dtc_supportd_grp_client_;
 
   base::Optional<base::Closure> handle_message_from_ui_callback_;
   base::Optional<std::string> handle_message_from_ui_actual_json_message_;

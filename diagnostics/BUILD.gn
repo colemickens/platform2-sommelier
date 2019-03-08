@@ -40,8 +40,8 @@ proto_library("diagnostics_grpc_protos") {
   gen_grpc = true
   all_dependent_configs = [ ":diagnostics_grpc_protos_exported_pkg_deps" ]
   sources = [
-    "${proto_in_dir}/diagnostics_processor.proto",
-    "${proto_in_dir}/diagnosticsd.proto",
+    "${proto_in_dir}/wilco_dtc.proto",
+    "${proto_in_dir}/wilco_dtc_supportd.proto",
   ]
 
   # libdiagnostics_grpc_protos.a is used by a shared_library object, so we need

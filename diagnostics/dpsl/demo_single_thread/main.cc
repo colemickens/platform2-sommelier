@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Demo for a diagnostics_processor program built using the DPSL library.
+// Demo for a wilco_dtc program built using the DPSL library.
 //
 // The demo functionality: waits for a message from UI, and, when receiving one,
 // fetches system uptime (/proc/uptime) and sends it back to the UI.
@@ -20,7 +20,7 @@
 #include "diagnostics/dpsl/public/dpsl_rpc_server.h"
 #include "diagnostics/dpsl/public/dpsl_thread_context.h"
 
-#include "diagnostics_processor.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc.pb.h"  // NOLINT(build/include)
 
 namespace {
 
