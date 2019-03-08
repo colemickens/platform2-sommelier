@@ -349,7 +349,7 @@ bool DebugdDBusAdaptor::EnableDevCoredumpUpload(brillo::ErrorPtr* error) {
   if (base::PathExists(
       base::FilePath(debugd::kDeviceCoredumpUploadFlagPath))) {
     VLOG(1) << "Device coredump upload already enabled";
-    return false;
+    return true;
   }
   if (base::WriteFile(
       base::FilePath(debugd::kDeviceCoredumpUploadFlagPath), "", 0) < 0) {
@@ -366,7 +366,7 @@ bool DebugdDBusAdaptor::DisableDevCoredumpUpload(brillo::ErrorPtr* error) {
   if (!base::PathExists(
       base::FilePath(debugd::kDeviceCoredumpUploadFlagPath))) {
     VLOG(1) << "Device coredump upload already disabled";
-    return false;
+    return true;
   }
   if (!base::DeleteFile(
       base::FilePath(debugd::kDeviceCoredumpUploadFlagPath), false)) {
