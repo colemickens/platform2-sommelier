@@ -231,6 +231,26 @@ size_t CameraBufferManager::GetPlaneSize(buffer_handle_t buffer, size_t plane) {
           DIV_ROUND_UP(handle->height, vertical_subsampling));
 }
 
+// static
+uint32_t CameraBufferManager::GetWidth(buffer_handle_t buffer) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return 0;
+  }
+
+  return handle->width;
+}
+
+// static
+uint32_t CameraBufferManager::GetHeight(buffer_handle_t buffer) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return 0;
+  }
+
+  return handle->height;
+}
+
 CameraBufferManagerImpl::CameraBufferManagerImpl()
     : gbm_device_(internal::CreateGbmDevice()) {}
 

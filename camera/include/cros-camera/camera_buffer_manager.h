@@ -203,6 +203,24 @@ class CROS_CAMERA_EXPORT CameraBufferManager {
   //    0 on success; -EINVAL on invalid buffer handle.
   virtual int Unlock(buffer_handle_t buffer) = 0;
 
+  // Get the width of the buffer handle.
+  //
+  // Args:
+  //    |buffer|: The buffer handle to query.
+  //
+  // Returns:
+  //    The width; 0 if |buffer| is invalid.
+  static uint32_t GetWidth(buffer_handle_t buffer);
+
+  // Get the height of the buffer handle.
+  //
+  // Args:
+  //    |buffer|: The buffer handle to query.
+  //
+  // Returns:
+  //    The height; 0 if |buffer| is invalid.
+  static uint32_t GetHeight(buffer_handle_t buffer);
+
   // Get the number of physical planes associated with |buffer|.
   //
   // Args:
