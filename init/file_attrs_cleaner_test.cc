@@ -256,6 +256,42 @@ TEST_F(ScanDirTest, Nested) {
   EXPECT_TRUE(ScanDir(test_dir_, {}));
 }
 
+TEST_F(ScanDirTest, RecurseAndClearAttributes) {
+  const base::FilePath file1 = test_dir_.Append("file1");
+  CreateFile(file1, "");
+  CreateFile(test_dir_.Append("file1"), "");
+  CreateFile(test_dir_.Append("file2"), "");
+
+  const base::FilePath subdir(test_dir_.Append("subdir"));
+  EXPECT_TRUE(base::CreateDirectory(subdir));
+  const base::FilePath subfile1(subdir.Append("subfile1"));
+  const base::FilePath subfile2(subdir.Append("subfile2"));
+  const base::FilePath subfile3(subdir.Append("subfile3"));
+  CreateFile(subfile1, "");
+  CreateFile(subfile2, "");
+  CreateFile(subfile3, "");
+
+  const char* file1_cstr = file1.value().c_str();
+  const char* subf1_cstr = subfile1.value().c_str();
+  const char* subf3_cstr = subfile3.value().c_str();
+
+  EXPECT_EQ(
+      0, setxattr(file1_cstr, file_attrs_cleaner::xdg_origin_url, NULL, 0, 0));
+  EXPECT_EQ(
+      0, setxattr(subf1_cstr, file_attrs_cleaner::xdg_origin_url, NULL, 0, 0));
+  EXPECT_EQ(
+      0, setxattr(subf3_cstr, file_attrs_cleaner::xdg_origin_url, NULL, 0, 0));
+
+  EXPECT_TRUE(ScanDir(test_dir_, {}));
+
+  EXPECT_GT(0,
+            getxattr(file1_cstr, file_attrs_cleaner::xdg_origin_url, NULL, 0));
+  EXPECT_GT(0,
+            getxattr(subf1_cstr, file_attrs_cleaner::xdg_origin_url, NULL, 0));
+  EXPECT_GT(0,
+            getxattr(subf3_cstr, file_attrs_cleaner::xdg_origin_url, NULL, 0));
+}
+
 TEST_F(ScanDirTest, SkipRecurse) {
   CreateFile(test_dir_.Append("file1"), "");
   CreateFile(test_dir_.Append("file2"), "");

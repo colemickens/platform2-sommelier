@@ -6,6 +6,10 @@
 
 #include <sysexits.h>
 
+#include <string>
+#include <vector>
+
+#include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
@@ -27,8 +31,10 @@ int main(int argc, char* argv[]) {
   if (!FLAGS_skip_dir.empty())
     skip_recurse.push_back(FLAGS_skip_dir);
 
+  auto args = base::CommandLine::ForCurrentProcess()->GetArgs();
   bool ret = true;
-  for (int i = 2; i < argc; ++i)
-    ret &= ScanDir(argv[i], skip_recurse);
+  for (const auto& arg : args)
+    ret &= ScanDir(arg, skip_recurse);
+
   return ret ? EX_OK : 1;
 }

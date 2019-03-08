@@ -138,6 +138,7 @@ bool ScanDir(const base::FilePath& dir,
   // Scan all the entries in this directory.
   bool ret = true;
   struct dirent* de;
+  std::vector<base::FilePath> subdirs;
   while ((de = readdir(dirp.get())) != nullptr) {
     CHECK(de->d_type != DT_UNKNOWN);
 
@@ -180,8 +181,13 @@ bool ScanDir(const base::FilePath& dir,
         continue;
       }
 
-      // Descend into this directory.
-      ret &= ScanDir(path, skip_recurse);
+      // Enqueue this directory for recursing.
+      // Recursing here is problematic because it means that |dirp| remains
+      // open for the lifetime of the process. Having a handle to the directory
+      // open for that long causes problems if the tool is still running when
+      // a user logs in. This can happen if the user has a lot of files in
+      // their home directory.
+      subdirs.push_back(path);
     } else if (de->d_type == DT_REG) {
       // Check the settings on this file.
 
@@ -209,6 +215,14 @@ bool ScanDir(const base::FilePath& dir,
       LOG(WARNING) << "Skipping path: " << path.value() << ": unknown type "
                    << de->d_type;
     }
+  }
+
+  if (closedir(dirp.release()) != 0)
+    PLOG(ERROR) << "Unable to close directory " << dir.value();
+
+  for (const auto& subdir : subdirs) {
+    // Descend into this directory.
+    ret &= ScanDir(subdir, skip_recurse);
   }
 
   return ret;
