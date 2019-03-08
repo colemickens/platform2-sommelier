@@ -46,6 +46,17 @@ WARN_UNUSED_RESULT ErrorType ReadFile(const base::FilePath& path,
   return ERROR_NONE;
 }
 
+// Writes |data| to the file at |path|. Returns |ERROR_LOCAL_IO| if the file
+// could not be written.
+ErrorType SaveFile(const base::FilePath& path, const std::string& data) {
+  const int data_size = static_cast<int>(data.size());
+  if (base::WriteFile(path, data.data(), data_size) != data_size) {
+    LOG(ERROR) << "Failed to write '" << path.value() << "'";
+    return ERROR_LOCAL_IO;
+  }
+  return ERROR_NONE;
+}
+
 }  // namespace
 
 AccountManager::AccountManager(
@@ -85,21 +96,50 @@ ErrorType AccountManager::RemoveAccount(const std::string& principal_name) {
   return ERROR_NONE;
 }
 
+ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) {
+  for (const auto& it : accounts_) {
+    const std::string& principal_name = it.first;
+    const AccountData* data = it.second.get();
+    DCHECK(data);
+
+    Account account;
+    account.set_principal_name(principal_name);
+
+    // Do a best effort reporting results, don't bail on the first error. If
+    // there's a broken account, the user is able to recover the situation this
+    // way (reauthenticate or remove account and add back).
+
+    // Check PathExists, so that no error is printed if the file doesn't exist.
+    std::string krb5conf;
+    if (base::PathExists(data->krb5conf_path) &&
+        ReadFile(data->krb5conf_path, &krb5conf) == ERROR_NONE) {
+      account.set_krb5conf(krb5conf);
+    }
+
+    // A missing krb5cc file just translates to an invalid ticket (lifetime 0).
+    Krb5Interface::TgtStatus tgt_status;
+    if (base::PathExists(data->krb5cc_path) &&
+        krb5_->GetTgtStatus(data->krb5cc_path, &tgt_status) == ERROR_NONE) {
+      account.set_tgt_validity_seconds(tgt_status.validity_seconds);
+      account.set_tgt_renewal_seconds(tgt_status.renewal_seconds);
+    }
+
+    accounts->push_back(std::move(account));
+  }
+
+  return ERROR_NONE;
+}
+
 ErrorType AccountManager::SetConfig(const std::string& principal_name,
-                                    const std::string& krb5_conf) {
+                                    const std::string& krb5conf) {
   base::Optional<AccountData> data = GetAccountData(principal_name);
   if (!data)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
-  const int krb5_conf_size = static_cast<int>(krb5_conf.size());
-  if (base::WriteFile(data->krb5conf_path, krb5_conf.data(), krb5_conf_size) !=
-      krb5_conf_size) {
-    LOG(ERROR) << "Failed to write '" << data->krb5conf_path.value() << "'";
-    return ERROR_LOCAL_IO;
-  }
-
-  TriggerKerberosFilesChanged(principal_name);
-  return ERROR_NONE;
+  ErrorType error = SaveFile(data->krb5conf_path, krb5conf);
+  if (error == ERROR_NONE)
+    TriggerKerberosFilesChanged(principal_name);
+  return error;
 }
 
 ErrorType AccountManager::AcquireTgt(const std::string& principal_name,

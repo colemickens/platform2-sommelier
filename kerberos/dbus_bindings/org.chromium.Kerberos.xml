@@ -37,6 +37,24 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
 
+    <method name="ListAccounts">
+      <tp:docstring>
+        Gets a list of all existing accounts, including current status like
+        remaining Kerberos ticket lifetime.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <tp:docstring>
+          Serialized ListAccountsRequest message.
+        </tp:docstring>
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <tp:docstring>
+          Serialized ListAccountsResponse message.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
     <method name="SetConfig">
       <tp:docstring>
         Sets the Kerberos configuration for the given account.

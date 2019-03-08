@@ -5,12 +5,12 @@
 #ifndef KERBEROS_KERBEROS_ADAPTOR_H_
 #define KERBEROS_KERBEROS_ADAPTOR_H_
 
+#include <base/macros.h>
+#include <brillo/dbus/async_event_sequencer.h>
+
 #include <memory>
 #include <string>
 #include <vector>
-
-#include <base/macros.h>
-#include <brillo/dbus/async_event_sequencer.h>
 
 #include "kerberos/account_manager.h"
 #include "kerberos/org.chromium.Kerberos.h"
@@ -40,6 +40,7 @@ class KerberosAdaptor : public org::chromium::KerberosAdaptor,
 
   // org::chromium::KerberosInterface: (see org.chromium.Kerberos.xml).
   ByteArray AddAccount(const ByteArray& request_blob) override;
+  ByteArray ListAccounts(const ByteArray& request_blob) override;
   ByteArray RemoveAccount(const ByteArray& request_blob) override;
   ByteArray SetConfig(const ByteArray& request_blob) override;
   ByteArray AcquireKerberosTgt(const ByteArray& request_blob,

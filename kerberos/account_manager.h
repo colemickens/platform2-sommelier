@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/compiler_specific.h>
@@ -47,6 +48,11 @@ class AccountManager {
 
   // Removes the account keyed by |principal_name| from the list of accounts.
   ErrorType RemoveAccount(const std::string& principal_name) WARN_UNUSED_RESULT;
+
+  // Returns a list of all existing accounts, including current status like
+  // remaining Kerberos ticket lifetime. Does a best effort returning results.
+  // See documentation of |Account| for more details.
+  ErrorType ListAccounts(std::vector<Account>* accounts);
 
   // Sets the Kerberos configuration (krb5.conf) used for the given
   // |principal_name|.

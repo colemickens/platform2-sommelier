@@ -4,6 +4,7 @@
 
 #include "kerberos/krb5_interface.h"
 
+#include <algorithm>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -17,6 +18,107 @@ namespace {
 
 // Environment variable for the Kerberos configuration (krb5.conf).
 constexpr char kKrb5ConfigEnvVar[] = "KRB5_CONFIG";
+
+// Wrapper classes for safe construction and destruction.
+struct ScopedKrb5Context {
+  ScopedKrb5Context() = default;
+  ~ScopedKrb5Context() {
+    if (ctx) {
+      krb5_free_context(ctx);
+      ctx = nullptr;
+    }
+  }
+
+  // Converts the krb5 |code| to a human readable error message.
+  std::string GetErrorMessage(errcode_t code) {
+    DCHECK(ctx);
+    const char* emsg = krb5_get_error_message(ctx, code);
+    std::string msg = base::StringPrintf("%s (%ld)", emsg, code);
+    krb5_free_error_message(ctx, emsg);
+    return msg;
+  }
+
+  krb5_context get() const { return ctx; }
+  krb5_context* get_mutable_ptr() { return &ctx; }
+
+ private:
+  krb5_context ctx = nullptr;
+};
+
+struct ScopedKrb5CCache {
+  explicit ScopedKrb5CCache(krb5_context ctx) : ctx(ctx) { DCHECK(ctx); }
+  ~ScopedKrb5CCache() {
+    if (ccache) {
+      krb5_cc_destroy(ctx, ccache);
+      ccache = nullptr;
+    }
+  }
+
+  krb5_ccache get() const { return ccache; }
+  krb5_ccache* get_mutable_ptr() { return &ccache; }
+
+ private:
+  // Pointer to parent data, not owned.
+  const krb5_context ctx = nullptr;
+  krb5_ccache ccache = nullptr;
+};
+
+// Maps some common krb5 error codes to our internal codes. If something is not
+// reported properly, add more cases here.
+ErrorType TranslateErrorCode(errcode_t code) {
+  switch (code) {
+    case KRB5KDC_ERR_NONE:
+      return ERROR_NONE;
+
+    case KRB5_KDC_UNREACH:
+      return ERROR_NETWORK_PROBLEM;
+
+    case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
+      return ERROR_BAD_PRINCIPAL;
+
+    case KRB5KRB_AP_ERR_BAD_INTEGRITY:
+    case KRB5KDC_ERR_PREAUTH_FAILED:
+      return ERROR_BAD_PASSWORD;
+
+    case KRB5KDC_ERR_KEY_EXP:
+      return ERROR_PASSWORD_EXPIRED;
+
+    // TODO(https://crbug.com/951741): Verify
+    case KRB5_KPASSWD_SOFTERROR:
+      return ERROR_PASSWORD_REJECTED;
+
+    // TODO(https://crbug.com/951741): Verify
+    case KRB5_FCC_NOFILE:
+      return ERROR_NO_CREDENTIALS_CACHE_FOUND;
+
+    // TODO(https://crbug.com/951741): Verify
+    case KRB5KRB_AP_ERR_TKT_EXPIRED:
+      return ERROR_KERBEROS_TICKET_EXPIRED;
+
+    case KRB5KDC_ERR_ETYPE_NOSUPP:
+      return ERROR_KDC_DOES_NOT_SUPPORT_ENCRYPTION_TYPE;
+
+    case KRB5_REALM_UNKNOWN:
+      return ERROR_CONTACTING_KDC_FAILED;
+
+    default:
+      return ERROR_UNKNOWN_KRB5_ERROR;
+  }
+}
+
+// Returns true if the string contained in |data| matches |str_to_match|.
+bool DataMatches(const krb5_data& data, const char* str_to_match) {
+  // It is not clear whether data.data is null terminated, so a strcmp might
+  // not work.
+  return strlen(str_to_match) == data.length &&
+         memcmp(str_to_match, data.data, data.length) == 0;
+}
+
+// Returns true if |creds| has a server that starts with "krbtgt".
+bool IsTgt(const krb5_creds& creds) {
+  return creds.server && creds.server->length > 0 &&
+         DataMatches(creds.server->data[0], "krbtgt");
+}
 
 enum class Action { AcquireTgt, RenewTgt };
 
@@ -55,7 +157,6 @@ class KinitContext {
   // It has been formatted to fit this screen.
 
   struct Krb5Data {
-    krb5_context ctx;
     krb5_ccache out_cc;
     krb5_principal me;
     char* name;
@@ -64,99 +165,51 @@ class KinitContext {
   // Wrapper around krb5 data to get rid of the gotos in the original code.
   struct KInitData {
     // Pointer to parent data, not owned.
+    const krb5_context ctx = nullptr;
+    // Pointer to parent data, not owned.
     const Krb5Data* k5 = nullptr;
     krb5_creds my_creds;
     krb5_get_init_creds_opt* options = nullptr;
 
     // The lifetime of the |k5| pointer must exceed the lifetime of this object.
-    explicit KInitData(const Krb5Data* k5) : k5(k5) {
+    explicit KInitData(const krb5_context ctx, const Krb5Data* k5)
+        : ctx(ctx), k5(k5) {
       memset(&my_creds, 0, sizeof(my_creds));
     }
 
     ~KInitData() {
       if (options)
-        krb5_get_init_creds_opt_free(k5->ctx, options);
+        krb5_get_init_creds_opt_free(ctx, options);
       if (my_creds.client == k5->me)
         my_creds.client = nullptr;
-      krb5_free_cred_contents(k5->ctx, &my_creds);
+      krb5_free_cred_contents(ctx, &my_creds);
     }
   };
 
-  // Maps some common krb5 error codes to our internal codes. If something is
-  // not reported properly, add more cases here.
-  ErrorType TranslateErrorCode(errcode_t code) {
-    switch (code) {
-      case KRB5KDC_ERR_NONE:
-        return ERROR_NONE;
-
-      case KRB5_KDC_UNREACH:
-        return ERROR_NETWORK_PROBLEM;
-
-      case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
-        return ERROR_BAD_PRINCIPAL;
-
-      case KRB5KRB_AP_ERR_BAD_INTEGRITY:
-      case KRB5KDC_ERR_PREAUTH_FAILED:
-        return ERROR_BAD_PASSWORD;
-
-      case KRB5KDC_ERR_KEY_EXP:
-        return ERROR_PASSWORD_EXPIRED;
-
-      // TODO(https://crbug.com/951741): Verify
-      case KRB5_KPASSWD_SOFTERROR:
-        return ERROR_PASSWORD_REJECTED;
-
-      // TODO(https://crbug.com/951741): Verify
-      case KRB5_FCC_NOFILE:
-        return ERROR_NO_CREDENTIALS_CACHE_FOUND;
-
-      // TODO(https://crbug.com/951741): Verify
-      case KRB5KRB_AP_ERR_TKT_EXPIRED:
-        return ERROR_KERBEROS_TICKET_EXPIRED;
-
-      case KRB5KDC_ERR_ETYPE_NOSUPP:
-        return ERROR_KDC_DOES_NOT_SUPPORT_ENCRYPTION_TYPE;
-
-      case KRB5_REALM_UNKNOWN:
-        return ERROR_CONTACTING_KDC_FAILED;
-
-      default:
-        return ERROR_UNKNOWN_KRB5_ERROR;
-    }
-  }
-
-  // Converts the krb5 |code| to a human readable error message.
-  std::string GetErrorMessage(errcode_t code) {
-    const char* emsg = krb5_get_error_message(k5_.ctx, code);
-    std::string msg = base::StringPrintf("%s (%ld)", emsg, code);
-    krb5_free_error_message(k5_.ctx, emsg);
-    return msg;
-  }
-
   // Initializes krb5 data.
   ErrorType Initialize() {
-    krb5_error_code ret = krb5_init_context(&k5_.ctx);
+    krb5_error_code ret = krb5_init_context(ctx.get_mutable_ptr());
     if (ret) {
-      LOG(ERROR) << GetErrorMessage(ret) << " while initializing context";
+      LOG(ERROR) << ctx.GetErrorMessage(ret) << " while initializing context";
       return TranslateErrorCode(ret);
     }
 
-    ret = krb5_cc_resolve(k5_.ctx, options_.krb5cc_path.c_str(), &k5_.out_cc);
+    ret = krb5_cc_resolve(ctx.get(), options_.krb5cc_path.c_str(), &k5_.out_cc);
     if (ret) {
-      LOG(ERROR) << GetErrorMessage(ret) << " resolving ccache";
+      LOG(ERROR) << ctx.GetErrorMessage(ret) << " resolving ccache";
       return TranslateErrorCode(ret);
     }
 
-    ret = krb5_parse_name_flags(k5_.ctx, options_.principal_name.c_str(),
+    ret = krb5_parse_name_flags(ctx.get(), options_.principal_name.c_str(),
                                 0 /* flags */, &k5_.me);
     if (ret) {
-      LOG(ERROR) << GetErrorMessage(ret) << " when parsing name";
+      LOG(ERROR) << ctx.GetErrorMessage(ret) << " when parsing name";
       return TranslateErrorCode(ret);
     }
 
-    ret = krb5_unparse_name(k5_.ctx, k5_.me, &k5_.name);
+    ret = krb5_unparse_name(ctx.get(), k5_.me, &k5_.name);
     if (ret) {
-      LOG(ERROR) << GetErrorMessage(ret) << " when unparsing name";
+      LOG(ERROR) << ctx.GetErrorMessage(ret) << " when unparsing name";
       return TranslateErrorCode(ret);
     }
 
@@ -166,29 +219,28 @@ class KinitContext {
 
   // Finalizes krb5 data.
   void Finalize() {
-    krb5_free_unparsed_name(k5_.ctx, k5_.name);
-    krb5_free_principal(k5_.ctx, k5_.me);
+    krb5_free_unparsed_name(ctx.get(), k5_.name);
+    krb5_free_principal(ctx.get(), k5_.me);
     if (k5_.out_cc != nullptr)
-      krb5_cc_close(k5_.ctx, k5_.out_cc);
-    krb5_free_context(k5_.ctx);
+      krb5_cc_close(ctx.get(), k5_.out_cc);
     memset(&k5_, 0, sizeof(k5_));
   }
 
   // Runs the actual kinit code and acquires/renews tickets.
   ErrorType RunKinit() {
     krb5_error_code ret;
-    KInitData d(&k5_);
+    KInitData d(ctx.get(), &k5_);
 
-    ret = krb5_get_init_creds_opt_alloc(k5_.ctx, &d.options);
+    ret = krb5_get_init_creds_opt_alloc(ctx.get(), &d.options);
     if (ret) {
-      LOG(ERROR) << GetErrorMessage(ret) << "while getting options";
+      LOG(ERROR) << ctx.GetErrorMessage(ret) << " while getting options";
       return TranslateErrorCode(ret);
     }
 
-    ret =
-        krb5_get_init_creds_opt_set_out_ccache(k5_.ctx, d.options, k5_.out_cc);
+    ret = krb5_get_init_creds_opt_set_out_ccache(ctx.get(), d.options,
+                                                 k5_.out_cc);
     if (ret) {
-      LOG(ERROR) << GetErrorMessage(ret) << "while getting options";
+      LOG(ERROR) << ctx.GetErrorMessage(ret) << " while getting options";
       return TranslateErrorCode(ret);
     }
 
@@ -198,31 +250,31 @@ class KinitContext {
     switch (options_.action) {
       case Action::AcquireTgt:
         ret = krb5_get_init_creds_password(
-            k5_.ctx, &d.my_creds, k5_.me, options_.password.c_str(),
+            ctx.get(), &d.my_creds, k5_.me, options_.password.c_str(),
             nullptr /* prompter */, nullptr /* data */, 0 /* start_time */,
             nullptr /* in_tkt_service */, d.options);
         break;
       case Action::RenewTgt:
-        ret = krb5_get_renewed_creds(k5_.ctx, &d.my_creds, k5_.me, k5_.out_cc,
+        ret = krb5_get_renewed_creds(ctx.get(), &d.my_creds, k5_.me, k5_.out_cc,
                                      nullptr /* options_.in_tkt_service */);
         break;
     }
 
     if (ret) {
-      LOG(ERROR) << GetErrorMessage(ret);
+      LOG(ERROR) << ctx.GetErrorMessage(ret);
       return TranslateErrorCode(ret);
     }
 
     if (options_.action != Action::AcquireTgt) {
-      ret = krb5_cc_initialize(k5_.ctx, k5_.out_cc, k5_.me);
+      ret = krb5_cc_initialize(ctx.get(), k5_.out_cc, k5_.me);
       if (ret) {
-        LOG(ERROR) << GetErrorMessage(ret) << " when initializing cache";
+        LOG(ERROR) << ctx.GetErrorMessage(ret) << " when initializing cache";
         return TranslateErrorCode(ret);
       }
 
-      ret = krb5_cc_store_cred(k5_.ctx, k5_.out_cc, &d.my_creds);
+      ret = krb5_cc_store_cred(ctx.get(), k5_.out_cc, &d.my_creds);
       if (ret) {
-        LOG(ERROR) << GetErrorMessage(ret) << " while storing credentials";
+        LOG(ERROR) << ctx.GetErrorMessage(ret) << " while storing credentials";
         return TranslateErrorCode(ret);
       }
     }
@@ -230,6 +282,7 @@ class KinitContext {
     return ERROR_NONE;
   }
 
+  ScopedKrb5Context ctx;
   Krb5Data k5_;
   Options options_;
   bool did_run_ = false;
@@ -267,6 +320,77 @@ ErrorType Krb5Interface::RenewTgt(const std::string& principal_name,
   ErrorType error = KinitContext(std::move(options)).Run();
   unsetenv(kKrb5ConfigEnvVar);
   return error;
+}
+
+ErrorType Krb5Interface::GetTgtStatus(const base::FilePath& krb5cc_path,
+                                      TgtStatus* status) {
+  DCHECK(status);
+
+  ScopedKrb5Context ctx;
+  krb5_error_code ret = krb5_init_context(ctx.get_mutable_ptr());
+  if (ret) {
+    LOG(ERROR) << ctx.GetErrorMessage(ret) << " while initializing context";
+    return TranslateErrorCode(ret);
+  }
+
+  ScopedKrb5CCache cache(ctx.get());
+  std::string prefixed_krb5cc_path = "FILE:" + krb5cc_path.value();
+  ret = krb5_cc_resolve(ctx.get(), prefixed_krb5cc_path.c_str(),
+                        cache.get_mutable_ptr());
+  if (ret) {
+    LOG(ERROR) << ctx.GetErrorMessage(ret) << " while resolving ccache";
+    return TranslateErrorCode(ret);
+  }
+
+  krb5_cc_cursor cur;
+  ret = krb5_cc_start_seq_get(ctx.get(), cache.get(), &cur);
+  if (ret) {
+    LOG(ERROR) << ctx.GetErrorMessage(ret)
+               << " while starting to retrieve tickets";
+    return TranslateErrorCode(ret);
+  }
+
+  krb5_timestamp now = time(nullptr);
+
+  krb5_creds creds;
+  bool found_tgt = false;
+  while ((ret = krb5_cc_next_cred(ctx.get(), cache.get(), &cur, &creds)) == 0) {
+    if (IsTgt(creds)) {
+      if (creds.times.endtime)
+        status->validity_seconds =
+            std::max<int64_t>(creds.times.endtime - now, 0);
+
+      if (creds.times.renew_till) {
+        status->renewal_seconds =
+            std::max<int64_t>(creds.times.renew_till - now, 0);
+      }
+
+      if (found_tgt) {
+        LOG(WARNING) << "More than one TGT found in credential cache '"
+                     << krb5cc_path.value() << ".";
+      }
+      found_tgt = true;
+    }
+    krb5_free_cred_contents(ctx.get(), &creds);
+  }
+  if (!found_tgt) {
+    LOG(WARNING) << "No TGT found in credential cache '" << krb5cc_path.value()
+                 << ".";
+  }
+
+  if (ret != KRB5_CC_END) {
+    LOG(ERROR) << ctx.GetErrorMessage(ret) << " while retrieving a ticket";
+    return TranslateErrorCode(ret);
+  }
+
+  ret = krb5_cc_end_seq_get(ctx.get(), cache.get(), &cur);
+  if (ret) {
+    LOG(ERROR) << ctx.GetErrorMessage(ret)
+               << " while finishing ticket retrieval";
+    return TranslateErrorCode(ret);
+  }
+
+  return ERROR_NONE;
 }
 
 }  // namespace kerberos

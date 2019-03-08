@@ -20,20 +20,20 @@ namespace kerberos {
 
 namespace {
 
+using ByteArray = KerberosAdaptor::ByteArray;
+
 // Serializes |proto| to a vector of bytes. CHECKs for success (should
 // never fail if there are no required proto fields).
-std::vector<uint8_t> SerializeProto(
-    const google::protobuf::MessageLite& proto) {
-  std::vector<uint8_t> proto_blob(proto.ByteSizeLong());
+ByteArray SerializeProto(const google::protobuf::MessageLite& proto) {
+  ByteArray proto_blob(proto.ByteSizeLong());
   CHECK(proto.SerializeToArray(proto_blob.data(), proto_blob.size()));
   return proto_blob;
 }
 
 // Parses a proto from an array of bytes |proto_blob|. Returns
 // ERROR_PARSE_REQUEST_FAILED on error.
-WARN_UNUSED_RESULT ErrorType
-ParseProto(google::protobuf::MessageLite* proto,
-           const std::vector<uint8_t>& proto_blob) {
+WARN_UNUSED_RESULT ErrorType ParseProto(google::protobuf::MessageLite* proto,
+                                        const ByteArray& proto_blob) {
   if (!proto->ParseFromArray(proto_blob.data(), proto_blob.size())) {
     LOG(ERROR) << "Failed to parse proto";
     return ERROR_PARSE_REQUEST_FAILED;
@@ -75,8 +75,7 @@ void KerberosAdaptor::RegisterAsync(
   dbus_object_->RegisterAsync(completion_callback);
 }
 
-std::vector<uint8_t> KerberosAdaptor::AddAccount(
-    const std::vector<uint8_t>& request_blob) {
+ByteArray KerberosAdaptor::AddAccount(const ByteArray& request_blob) {
   PrintRequest(__FUNCTION__);
   AddAccountRequest request;
   ErrorType error = ParseProto(&request, request_blob);
@@ -90,8 +89,7 @@ std::vector<uint8_t> KerberosAdaptor::AddAccount(
   return SerializeProto(response);
 }
 
-std::vector<uint8_t> KerberosAdaptor::RemoveAccount(
-    const std::vector<uint8_t>& request_blob) {
+ByteArray KerberosAdaptor::RemoveAccount(const ByteArray& request_blob) {
   PrintRequest(__FUNCTION__);
   RemoveAccountRequest request;
   ErrorType error = ParseProto(&request, request_blob);
@@ -105,8 +103,25 @@ std::vector<uint8_t> KerberosAdaptor::RemoveAccount(
   return SerializeProto(response);
 }
 
-std::vector<uint8_t> KerberosAdaptor::SetConfig(
-    const std::vector<uint8_t>& request_blob) {
+ByteArray KerberosAdaptor::ListAccounts(const ByteArray& request_blob) {
+  PrintRequest(__FUNCTION__);
+  ListAccountsRequest request;
+  ErrorType error = ParseProto(&request, request_blob);
+
+  // Note: request is empty right now, but keeping it for future changes.
+  std::vector<Account> accounts;
+  if (error == ERROR_NONE)
+    error = manager_.ListAccounts(&accounts);
+
+  PrintResult(__FUNCTION__, error);
+  ListAccountsResponse response;
+  response.set_error(error);
+  for (const auto& account : accounts)
+    *response.add_accounts() = account;
+  return SerializeProto(response);
+}
+
+ByteArray KerberosAdaptor::SetConfig(const ByteArray& request_blob) {
   PrintRequest(__FUNCTION__);
   SetConfigRequest request;
   ErrorType error = ParseProto(&request, request_blob);
@@ -120,9 +135,8 @@ std::vector<uint8_t> KerberosAdaptor::SetConfig(
   return SerializeProto(response);
 }
 
-std::vector<uint8_t> KerberosAdaptor::AcquireKerberosTgt(
-    const std::vector<uint8_t>& request_blob,
-    const base::ScopedFD& password_fd) {
+ByteArray KerberosAdaptor::AcquireKerberosTgt(
+    const ByteArray& request_blob, const base::ScopedFD& password_fd) {
   PrintRequest(__FUNCTION__);
   AcquireKerberosTgtRequest request;
   ErrorType error = ParseProto(&request, request_blob);
@@ -145,8 +159,7 @@ std::vector<uint8_t> KerberosAdaptor::AcquireKerberosTgt(
   return SerializeProto(response);
 }
 
-std::vector<uint8_t> KerberosAdaptor::GetKerberosFiles(
-    const std::vector<uint8_t>& request_blob) {
+ByteArray KerberosAdaptor::GetKerberosFiles(const ByteArray& request_blob) {
   PrintRequest(__FUNCTION__);
   GetKerberosFilesRequest request;
   ErrorType error = ParseProto(&request, request_blob);
