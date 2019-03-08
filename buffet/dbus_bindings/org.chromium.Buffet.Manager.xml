@@ -49,6 +49,10 @@
       <arg name="echoed_message" type="s" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="SetXmppChannel">
+      <arg name="channel" type="s" direction="in"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+    </method>
     <property name="Status" type="s" access="read">
       <tp:docstring>
         State of Buffet's cloud registration.

@@ -250,6 +250,12 @@ bool Manager::GetState(brillo::ErrorPtr* error, std::string* state) {
   return true;
 }
 
+void Manager::SetXmppChannel(DBusMethodResponsePtr<> response,
+                             const std::string& channel) {
+  device_->SetXmppChannel(channel);
+  response->Return();
+}
+
 void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
                          const std::string& json_command) {
   std::string error_message;

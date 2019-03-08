@@ -92,6 +92,8 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   bool GetState(brillo::ErrorPtr* error, std::string* state) override;
   void AddCommand(DBusMethodResponsePtr<std::string> response,
                   const std::string& json_command) override;
+  void SetXmppChannel(DBusMethodResponsePtr<> response,
+                      const std::string& channel) override;
   std::string TestMethod(const std::string& message) override;
 
   void StartPrivet(const Options& options,
