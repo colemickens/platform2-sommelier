@@ -25,6 +25,7 @@
 
 using ::testing::_;
 using ::testing::AnyNumber;
+using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::SaveArg;
 
@@ -171,6 +172,26 @@ class NewblueDaemonTest : public ::testing::Test {
         .WillOnce(Return(true));
   }
 
+  scoped_refptr<dbus::MockExportedObject> AddOrGetMockExportedObject(
+      const dbus::ObjectPath& object_path) {
+    if (base::ContainsKey(mock_exported_objects_, object_path))
+      return mock_exported_objects_[object_path];
+
+    scoped_refptr<dbus::MockExportedObject> exported_object =
+        new dbus::MockExportedObject(bus_.get(), object_path);
+    mock_exported_objects_[object_path] = exported_object;
+    return exported_object;
+  }
+
+  void ExpectDeviceObjectExported(const dbus::ObjectPath& device_object_path) {
+    scoped_refptr<dbus::MockExportedObject> exported_dev_object =
+        AddOrGetMockExportedObject(device_object_path);
+    ExpectDeviceMethodsExported(exported_dev_object);
+    ExpectPropertiesMethodsExportedSync(exported_dev_object);
+    EXPECT_CALL(*bus_, GetExportedObject(device_object_path))
+        .WillOnce(Return(exported_dev_object.get()));
+  }
+
   scoped_refptr<dbus::MockExportedObject> SetupExportedRootObject() {
     dbus::ObjectPath root_path(
         newblue_object_manager::kNewblueObjectManagerServicePath);
@@ -222,6 +243,34 @@ class NewblueDaemonTest : public ::testing::Test {
                            bluez_object_manager::kBluezObjectManagerServiceName,
                            object_path))
         .WillRepeatedly(Return(bluez_object_manager_.get()));
+  }
+
+  struct smKnownDevNode* CreateSmKnownDeviceNode(const std::string& address,
+                                                 bool is_random_address,
+                                                 bool is_paired,
+                                                 std::string name) {
+    struct smKnownDevNode* node =
+        (struct smKnownDevNode*)calloc(1, sizeof(struct smKnownDevNode));
+    ConvertToBtAddr(is_random_address, address, &node->addr);
+    node->isPaired = is_paired;
+    node->name = strdup(name.c_str());
+    return node;
+  }
+
+  struct smKnownDevNode* StubGetKnownDevices() {
+    struct smKnownDevNode* node1 = CreateSmKnownDeviceNode(
+        "01:AA:BB:CC:DD:EE", /* is_random_address */ true,
+        /* is_paired */ true, "Test Device 1");
+    struct smKnownDevNode* node2 = CreateSmKnownDeviceNode(
+        "02:AA:BB:CC:DD:EE", /* is_random_address */ true,
+        /* is_paired */ false, "Test Device 2");
+    struct smKnownDevNode* node3 = CreateSmKnownDeviceNode(
+        "03:AA:BB:CC:DD:EE", /* is_random_address */ false,
+        /* is_paired */ true, "Test Device 3");
+    node1->next = node2;
+    node2->next = node3;
+    node3->next = nullptr;
+    return node1;
   }
 
   void ExpectTestInit(
@@ -283,6 +332,18 @@ class NewblueDaemonTest : public ::testing::Test {
         .WillOnce(Return(true));
     EXPECT_CALL(*libnewblue_, SmRegisterPairStateObserver(_, _))
         .WillOnce(Return(true));
+
+    // At initialization, newblued should export the saved paired devices.
+    ExpectDeviceObjectExported(
+        dbus::ObjectPath("/org/bluez/hci0/dev_01_AA_BB_CC_DD_EE"));
+    ExpectDeviceObjectExported(
+        dbus::ObjectPath("/org/bluez/hci0/dev_03_AA_BB_CC_DD_EE"));
+    struct smKnownDevNode* known_devices = StubGetKnownDevices();
+    EXPECT_CALL(*libnewblue_, SmGetKnownDevices())
+        .WillOnce(Return(known_devices));
+    EXPECT_CALL(*libnewblue_, SmKnownDevicesFree(known_devices))
+        .WillOnce(Invoke(&smKnownDevicesFree));
+
     newblue_daemon_->OnHciReadyForUp();
   }
 
@@ -290,6 +351,10 @@ class NewblueDaemonTest : public ::testing::Test {
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockObjectProxy> bluez_object_proxy_;
   scoped_refptr<dbus::MockObjectManager> bluez_object_manager_;
+  // Declare mock_exported_objects_ before newblue_daemon_ to make sure the
+  // MockExportedObject-s are destroyed after newblue_daemon_.
+  std::map<dbus::ObjectPath, scoped_refptr<dbus::MockExportedObject>>
+      mock_exported_objects_;
   std::unique_ptr<NewblueDaemon> newblue_daemon_;
   MockLibNewblue* libnewblue_;
   dbus::ExportedObject::MethodCallCallback dummy_method_handler_;
@@ -410,13 +475,7 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
   EXPECT_EQ("", start_discovery_response->GetErrorName());
 
   // Device discovered.
-  dbus::ObjectPath device_object_path(kTestDeviceObjectPath);
-  scoped_refptr<dbus::MockExportedObject> exported_device_object =
-      new dbus::MockExportedObject(bus_.get(), device_object_path);
-  EXPECT_CALL(*bus_, GetExportedObject(device_object_path))
-      .WillOnce(Return(exported_device_object.get()));
-  ExpectDeviceMethodsExported(exported_device_object);
-  ExpectPropertiesMethodsExportedSync(exported_device_object);
+  ExpectDeviceObjectExported(dbus::ObjectPath(kTestDeviceObjectPath));
   struct bt_addr address;
   ConvertToBtAddr(false, kTestDeviceAddress, &address);
   inquiry_response_callback(inquiry_response_callback_data, &address,

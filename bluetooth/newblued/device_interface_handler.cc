@@ -33,6 +33,25 @@ constexpr uint16_t kDefaultManufacturerId = 0xFFFF;
 
 constexpr char kDeviceTypeLe[] = "LE";
 
+// Updates device alias based on its name or address.
+void UpdateDeviceAlias(Device* device) {
+  // In BlueZ, if alias is never provided or is set to empty for a device, the
+  // value of Alias property is set to the value of Name property if
+  // |device.name| is not empty. If |device.name| is also empty, then Alias
+  // is set to |device.address| in the following string format.
+  // xx-xx-xx-xx-xx-xx
+  std::string alias;
+  if (!device->internal_alias.empty()) {
+    alias = device->internal_alias;
+  } else if (!device->name.value().empty()) {
+    alias = device->name.value();
+  } else {
+    alias = device->address;
+    std::replace(alias.begin(), alias.end(), ':', '-');
+  }
+  device->alias.SetValue(std::move(alias));
+}
+
 // Canonicalizes UUIDs and wraps them as a vector for exposing or updating
 // service UUIDs.
 std::vector<std::string> CanonicalizeUuids(const std::set<Uuid>& uuids) {
@@ -237,6 +256,21 @@ DeviceInterfaceHandler::DeviceInterfaceHandler(
       weak_ptr_factory_(this) {}
 
 bool DeviceInterfaceHandler::Init() {
+  // Retrieve the previously saved scan results, and export only the paired
+  // devices.
+  std::vector<KnownDevice> known_devices = newblue_->GetKnownDevices();
+  for (const auto& known_device : known_devices) {
+    if (!known_device.is_paired)
+      continue;
+
+    Device* device = AddOrGetDiscoveredDevice(known_device.address,
+                                              known_device.address_type);
+    device->paired.SetValue(true);
+    device->name.SetValue(known_device.name);
+    UpdateDeviceAlias(device);
+    ExportOrUpdateDevice(device);
+  }
+
   // Register for pairing state changed events.
   pair_observer_id_ = newblue_->RegisterAsPairObserver(
       base::Bind(&DeviceInterfaceHandler::OnPairStateChanged,
@@ -593,21 +627,7 @@ void DeviceInterfaceHandler::UpdateEir(Device* device,
     pos += field_len + 1;
   }
 
-  // In BlueZ, if alias is never provided or is set to empty for a device, the
-  // value of Alias property is set to the value of Name property if
-  // |device.name| is not empty. If |device.name| is also empty, then Alias
-  // is set to |device.address| in the following string format.
-  // xx-xx-xx-xx-xx-xx
-  if (device->internal_alias.empty()) {
-    std::string alias;
-    if (!device->name.value().empty()) {
-      alias = device->name.value();
-    } else {
-      alias = device->address;
-      std::replace(alias.begin(), alias.end(), ':', '-');
-    }
-    device->alias.SetValue(std::move(alias));
-  }
+  UpdateDeviceAlias(device);
 
   // This is different from BlueZ where it memorizes all service UUIDs and
   // service data ever received for the same device. If there is no service

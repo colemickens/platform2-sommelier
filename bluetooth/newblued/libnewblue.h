@@ -108,6 +108,12 @@ class LibNewblue {
   LIBNEWBLUE_METHOD2(SmRegisterPasskeyDisplayObserver,
                      smRegisterPasskeyDisplayObserver,
                      uniq_t(void*, smPasskeyDisplayCbk));
+  LIBNEWBLUE_METHOD0(SmGetKnownDevices,
+                     smGetKnownDevices,
+                     struct smKnownDevNode*());
+  LIBNEWBLUE_METHOD1(SmKnownDevicesFree,
+                     smKnownDevicesFree,
+                     void(struct smKnownDevNode*));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(LibNewblue);

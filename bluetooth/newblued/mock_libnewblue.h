@@ -52,6 +52,8 @@ class MockLibNewblue : public LibNewblue {
   MOCK_METHOD1(SmUnpair, void(const struct bt_addr*));
   MOCK_METHOD2(SmRegisterPasskeyDisplayObserver,
                uniq_t(void*, smPasskeyDisplayCbk));
+  MOCK_METHOD0(SmGetKnownDevices, struct smKnownDevNode*());
+  MOCK_METHOD1(SmKnownDevicesFree, void(struct smKnownDevNode*));
 };
 
 }  // namespace bluetooth

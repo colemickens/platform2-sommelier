@@ -90,6 +90,18 @@ class PairingAgent {
   // RequestAuthorization, AuthorizeService.
 };
 
+// Structure representing a known device.
+struct KnownDevice {
+  // The known device name.
+  std::string name;
+  // MAC address (in format XX:XX:XX:XX:XX:XX).
+  std::string address;
+  // libnewblue's BT_ADDR_TYPE_*
+  uint8_t address_type;
+  // Whether the device was previously paired.
+  bool is_paired;
+};
+
 // A higher-level API wrapper of the low-level libnewblue C interface.
 // This class abstracts away the C interface details of libnewblue and provides
 // event handling model that is compatible with libchrome's main loop.
@@ -154,6 +166,9 @@ class Newblue {
   // Cancels LE pairing.
   virtual bool CancelPair(const std::string& device_address,
                           bool is_random_address);
+
+  // Retrieves the known devices from NewBlue's persist.
+  virtual std::vector<KnownDevice> GetKnownDevices();
 
  private:
   // Posts task to the thread which created this Newblue object.

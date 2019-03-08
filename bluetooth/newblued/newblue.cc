@@ -236,6 +236,26 @@ bool Newblue::CancelPair(const std::string& device_address,
   return true;
 }
 
+std::vector<KnownDevice> Newblue::GetKnownDevices() {
+  struct smKnownDevNode* head = libnewblue_->SmGetKnownDevices();
+  struct smKnownDevNode* node = head;
+  std::vector<KnownDevice> devices;
+
+  while (node) {
+    KnownDevice device;
+    device.address = ConvertBtAddrToString(node->addr);
+    device.address_type = node->addr.type;
+    device.is_paired = node->isPaired;
+    if (node->name)
+      device.name = std::string(node->name);
+    devices.push_back(device);
+    node = node->next;
+  }
+
+  libnewblue_->SmKnownDevicesFree(head);
+  return devices;
+}
+
 void Newblue::PairStateCallbackThunk(void* data,
                                      const void* pair_state_change,
                                      uniq_t observer_id) {
