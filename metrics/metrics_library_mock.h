@@ -13,7 +13,7 @@
 
 class MetricsLibraryMock : public MetricsLibraryInterface {
  public:
-  MOCK_METHOD0(Init, void());
+  MOCK_METHOD0(Init, void());  // TODO(chromium:940343): Remove this function.
   MOCK_METHOD5(SendToUMA,
                bool(const std::string& name,
                     int sample,

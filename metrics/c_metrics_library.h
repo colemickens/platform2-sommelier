@@ -17,6 +17,7 @@ CMetricsLibrary CMetricsLibraryNew(void);
 void CMetricsLibraryDelete(CMetricsLibrary handle);
 
 // C wrapper for MetricsLibrary::Init.
+// TODO(chromium:940343): Remove this function.
 void CMetricsLibraryInit(CMetricsLibrary handle);
 
 // C wrapper for MetricsLibrary::SendToUMA.

@@ -19,7 +19,7 @@
 
 class MetricsLibraryInterface {
  public:
-  virtual void Init() = 0;
+  virtual void Init() = 0;  // TODO(chromium:940343): Remove this function.
   virtual bool AreMetricsEnabled() = 0;
   virtual bool IsGuestMode() = 0;
   virtual bool SendToUMA(
@@ -45,7 +45,8 @@ class MetricsLibrary : public MetricsLibraryInterface {
   MetricsLibrary();
   virtual ~MetricsLibrary();
 
-  // Initializes the library.
+  // Formerly used to initialize the library.
+  // TODO(chromium:940343): Remove this function.
   void Init() override;
 
   // Returns whether or not the machine is running in guest mode.

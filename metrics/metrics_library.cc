@@ -76,7 +76,10 @@ const char* kCrosEventNames[] = {
 time_t MetricsLibrary::cached_enabled_time_ = 0;
 bool MetricsLibrary::cached_enabled_ = false;
 
-MetricsLibrary::MetricsLibrary() : consent_file_(kConsentFile) {}
+MetricsLibrary::MetricsLibrary()
+    : uma_events_file_(base::FilePath(kUMAEventsPath)),
+      consent_file_(base::FilePath(kConsentFile)) {}
+
 MetricsLibrary::~MetricsLibrary() {}
 
 bool MetricsLibrary::IsGuestMode() {
@@ -201,7 +204,8 @@ bool MetricsLibrary::DisableMetrics() {
 }
 
 void MetricsLibrary::Init() {
-  uma_events_file_ = base::FilePath(kUMAEventsPath);
+  // Deprecated.  Initialization code should go in constructor.
+  // Remove this function when it is no longer used.
 }
 
 void MetricsLibrary::SetOutputFile(const std::string& output_file) {

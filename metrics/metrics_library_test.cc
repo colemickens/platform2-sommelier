@@ -38,7 +38,7 @@ class MetricsLibraryTest : public testing::Test {
  protected:
   void SetUp() override {
     lib_.SetConsentFileForTest(kTestConsentIdFile);
-    EXPECT_TRUE(lib_.uma_events_file_.empty());
+    EXPECT_FALSE(lib_.uma_events_file_.empty());
     lib_.Init();
     EXPECT_FALSE(lib_.uma_events_file_.empty());
     lib_.SetOutputFile(kTestUMAEventsFile.value());
@@ -215,7 +215,7 @@ class CMetricsLibraryTest : public testing::Test {
   void SetUp() override {
     lib_ = CMetricsLibraryNew();
     MetricsLibrary& ml = *reinterpret_cast<MetricsLibrary*>(lib_);
-    EXPECT_TRUE(ml.uma_events_file_.empty());
+    EXPECT_FALSE(ml.uma_events_file_.empty());
     CMetricsLibraryInit(lib_);
     EXPECT_FALSE(ml.uma_events_file_.empty());
     ml.SetOutputFile(kTestUMAEventsFile.value());
