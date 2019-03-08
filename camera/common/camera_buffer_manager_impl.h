@@ -104,32 +104,32 @@ class CameraBufferManagerImpl final : public CameraBufferManager {
   CameraBufferManagerImpl();
 
   // CameraBufferManager implementation.
-  ~CameraBufferManagerImpl() final;
+  ~CameraBufferManagerImpl();
   int Allocate(size_t width,
                size_t height,
                uint32_t format,
                uint32_t usage,
                BufferType type,
                buffer_handle_t* out_buffer,
-               uint32_t* out_stride) final;
-  int Free(buffer_handle_t buffer) final;
-  int Register(buffer_handle_t buffer) final;
-  int Deregister(buffer_handle_t buffer) final;
+               uint32_t* out_stride);
+  int Free(buffer_handle_t buffer);
+  int Register(buffer_handle_t buffer);
+  int Deregister(buffer_handle_t buffer);
   int Lock(buffer_handle_t buffer,
            uint32_t flags,
            uint32_t x,
            uint32_t y,
            uint32_t width,
            uint32_t height,
-           void** out_addr) final;
+           void** out_addr);
   int LockYCbCr(buffer_handle_t buffer,
                 uint32_t flags,
                 uint32_t x,
                 uint32_t y,
                 uint32_t width,
                 uint32_t height,
-                struct android_ycbcr* out_ycbcr) final;
-  int Unlock(buffer_handle_t buffer) final;
+                struct android_ycbcr* out_ycbcr);
+  int Unlock(buffer_handle_t buffer);
 
  private:
   friend class CameraBufferManager;
