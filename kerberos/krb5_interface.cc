@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <krb5.h>
@@ -101,15 +102,15 @@ class KinitContext {
       case KRB5KDC_ERR_KEY_EXP:
         return ERROR_PASSWORD_EXPIRED;
 
-      // TODO(ljusten): Verify
+      // TODO(https://crbug.com/951741): Verify
       case KRB5_KPASSWD_SOFTERROR:
         return ERROR_PASSWORD_REJECTED;
 
-      // TODO(ljusten): Verify
+      // TODO(https://crbug.com/951741): Verify
       case KRB5_FCC_NOFILE:
         return ERROR_NO_CREDENTIALS_CACHE_FOUND;
 
-      // TODO(ljusten): Verify
+      // TODO(https://crbug.com/951741): Verify
       case KRB5KRB_AP_ERR_TKT_EXPIRED:
         return ERROR_KERBEROS_TICKET_EXPIRED;
 
@@ -242,27 +243,27 @@ Krb5Interface::~Krb5Interface() = default;
 
 ErrorType Krb5Interface::AcquireTgt(const std::string& principal_name,
                                     const std::string& password,
-                                    const std::string& krb5cc_path,
-                                    const std::string& krb5conf_path) {
+                                    const base::FilePath& krb5cc_path,
+                                    const base::FilePath& krb5conf_path) {
   Options options;
   options.action = Action::AcquireTgt;
   options.principal_name = principal_name;
   options.password = password;
-  options.krb5cc_path = krb5cc_path;
-  setenv(kKrb5ConfigEnvVar, krb5conf_path.c_str(), 1);
+  options.krb5cc_path = krb5cc_path.value();
+  setenv(kKrb5ConfigEnvVar, krb5conf_path.value().c_str(), 1);
   ErrorType error = KinitContext(std::move(options)).Run();
   unsetenv(kKrb5ConfigEnvVar);
   return error;
 }
 
 ErrorType Krb5Interface::RenewTgt(const std::string& principal_name,
-                                  const std::string& krb5cc_path,
-                                  const std::string& config_path) {
+                                  const base::FilePath& krb5cc_path,
+                                  const base::FilePath& config_path) {
   Options options;
   options.action = Action::RenewTgt;
   options.principal_name = principal_name;
-  options.krb5cc_path = krb5cc_path;
-  setenv(kKrb5ConfigEnvVar, config_path.c_str(), 1);
+  options.krb5cc_path = krb5cc_path.value();
+  setenv(kKrb5ConfigEnvVar, config_path.value().c_str(), 1);
   ErrorType error = KinitContext(std::move(options)).Run();
   unsetenv(kKrb5ConfigEnvVar);
   return error;

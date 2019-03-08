@@ -4,12 +4,13 @@
 
 #include "kerberos/kerberos_adaptor.h"
 
-#include <string>
-#include <utility>
-
 #include <base/compiler_specific.h>
+#include <base/files/file_util.h>
 #include <base/optional.h>
 #include <brillo/dbus/dbus_object.h>
+
+#include <string>
+#include <utility>
 
 #include "kerberos/error_strings.h"
 #include "kerberos/platform_helper.h"
@@ -56,7 +57,12 @@ void PrintResult(const char* method_name, ErrorType error) {
 KerberosAdaptor::KerberosAdaptor(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object)
     : org::chromium::KerberosAdaptor(this),
-      dbus_object_(std::move(dbus_object)) {}
+      dbus_object_(std::move(dbus_object)),
+      // TODO(https://crbug.com/951718): Figure out user hash and set storage
+      // dir to daemon store folder.
+      manager_(base::FilePath("/tmp/kerberosd")) {
+  base::CreateDirectory(base::FilePath("/tmp/kerberosd"));
+}
 
 KerberosAdaptor::~KerberosAdaptor() = default;
 

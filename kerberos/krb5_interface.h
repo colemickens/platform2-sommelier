@@ -11,6 +11,10 @@
 
 #include "kerberos/proto_bindings/kerberos_service.pb.h"
 
+namespace base {
+class FilePath;
+}
+
 namespace kerberos {
 
 class Krb5Interface {
@@ -25,16 +29,16 @@ class Krb5Interface {
   // configuration file (krb5.conf).
   ErrorType AcquireTgt(const std::string& principal_name,
                        const std::string& password,
-                       const std::string& krb5cc_path,
-                       const std::string& krb5conf_path) WARN_UNUSED_RESULT;
+                       const base::FilePath& krb5cc_path,
+                       const base::FilePath& krb5conf_path) WARN_UNUSED_RESULT;
 
   // Renews an existing Kerberos ticket-granting-ticketfor the given
   // |principal_name| (user@REALM.COM). |krb5cc_path| is the file path of the
   // Kerberos credential cache. |krb5conf_path| is the path to a Kerberos
   // configuration file (krb5.conf).
   ErrorType RenewTgt(const std::string& principal_name,
-                     const std::string& krb5cc_path,
-                     const std::string& krb5conf_path) WARN_UNUSED_RESULT;
+                     const base::FilePath& krb5cc_path,
+                     const base::FilePath& krb5conf_path) WARN_UNUSED_RESULT;
 };
 
 }  // namespace kerberos
