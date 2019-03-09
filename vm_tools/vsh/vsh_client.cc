@@ -52,10 +52,11 @@ constexpr int kDefaultExitCode = 123;
 
 std::unique_ptr<VshClient> VshClient::Create(base::ScopedFD sock_fd,
                                              const std::string& user,
-                                             const std::string& container) {
+                                             const std::string& container,
+                                             bool interactive) {
   auto client = std::unique_ptr<VshClient>(new VshClient(std::move(sock_fd)));
 
-  if (!client->Init(user, container)) {
+  if (!client->Init(user, container, interactive)) {
     return nullptr;
   }
 
@@ -67,7 +68,9 @@ VshClient::VshClient(base::ScopedFD sock_fd)
       stdin_task_(brillo::MessageLoop::kTaskIdNull),
       exit_code_(kDefaultExitCode) {}
 
-bool VshClient::Init(const std::string& user, const std::string& container) {
+bool VshClient::Init(const std::string& user,
+                     const std::string& container,
+                     bool interactive) {
   // Set up the connection with the guest. The setup process is:
   //
   // 1) Client opens connection and sends a SetupConnectionRequest.
@@ -78,7 +81,6 @@ bool VshClient::Init(const std::string& user, const std::string& container) {
   //    from client(host) to server(guest), and vice versa for HostMessages.
   // 4) If the client or server receives a message with a new ConnectionStatus
   //    that does not indicate READY, the recepient must exit.
-  // TODO(smbarber): Connect to an lxd container instead of the VM.
   SetupConnectionRequest connection_request;
   if (container.empty()) {
     connection_request.set_target(vm_tools::vsh::kVmShell);
@@ -87,6 +89,7 @@ bool VshClient::Init(const std::string& user, const std::string& container) {
   }
 
   connection_request.set_user(user);
+  connection_request.set_nopty(!interactive);
 
   auto env = connection_request.mutable_env();
 
@@ -197,13 +200,30 @@ void VshClient::HandleVsockReadable() {
 
   switch (host_message.msg_case()) {
     case HostMessage::kDataMessage: {
-      // Data messages from the guest should go to stdout.
+      // Data messages from the guest should go to stdout/stderr.
       DataMessage data_message = host_message.data_message();
-      DCHECK_EQ(data_message.stream(), STDOUT_STREAM);
+      int target_fd = -1;
+      switch (data_message.stream()) {
+        case STDOUT_STREAM:
+          target_fd = STDOUT_FILENO;
+          break;
+        case STDERR_STREAM:
+          target_fd = STDERR_FILENO;
+          break;
+        default:
+          LOG(ERROR) << "Invalid stream type from guest: "
+                     << data_message.stream();
+          return;
+      }
 
-      if (!base::WriteFileDescriptor(STDOUT_FILENO, data_message.data().data(),
+      if (data_message.data().size() == 0) {
+        // On EOF from guest, close the host-side fd.
+        close(target_fd);
+      }
+
+      if (!base::WriteFileDescriptor(target_fd, data_message.data().data(),
                                      data_message.data().size())) {
-        PLOG(ERROR) << "Failed to write data to stdout";
+        PLOG(ERROR) << "Failed to write data to fd " << target_fd;
         return;
       }
       break;

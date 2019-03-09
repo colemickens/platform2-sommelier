@@ -26,7 +26,8 @@ class VshClient {
  public:
   static std::unique_ptr<VshClient> Create(base::ScopedFD sock_fd,
                                            const std::string& user,
-                                           const std::string& container);
+                                           const std::string& container,
+                                           bool interactive);
   ~VshClient() = default;
 
   int exit_code();
@@ -34,7 +35,9 @@ class VshClient {
  private:
   explicit VshClient(base::ScopedFD sock_fd);
 
-  bool Init(const std::string& user, const std::string& container);
+  bool Init(const std::string& user,
+            const std::string& container,
+            bool interactive);
 
   bool HandleTermSignal(const struct signalfd_siginfo& siginfo);
   bool HandleWindowResizeSignal(const struct signalfd_siginfo& siginfo);

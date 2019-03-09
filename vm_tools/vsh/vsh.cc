@@ -251,6 +251,8 @@ int main(int argc, char** argv) {
   opts.bus_type = dbus::Bus::SYSTEM;
   scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(opts)));
 
+  bool interactive = isatty(STDIN_FILENO) && isatty(STDOUT_FILENO);
+
   if (FLAGS_listen_port != VMADDR_PORT_ANY || !FLAGS_target_container.empty()) {
     unsigned int port = 0;
     if (FLAGS_listen_port != 0) {
@@ -275,7 +277,7 @@ int main(int argc, char** argv) {
     }
 
     client = VshClient::Create(std::move(sock_fd), FLAGS_user,
-                               FLAGS_target_container);
+                               FLAGS_target_container, interactive);
 
     if (!client) {
       return EXIT_FAILURE;
@@ -326,8 +328,8 @@ int main(int argc, char** argv) {
 
     string user =
         FLAGS_user.empty() ? string("chronos") : std::move(FLAGS_user);
-    client =
-        VshClient::Create(std::move(sock_fd), user, FLAGS_target_container);
+    client = VshClient::Create(std::move(sock_fd), user, FLAGS_target_container,
+                               interactive);
   }
 
   if (!client) {
@@ -341,8 +343,7 @@ int main(int argc, char** argv) {
   // Set terminal to raw mode. Note that the client /must/ cleanly exit
   // the message loop below to restore termios settings.
   ScopedTermios termios(std::move(ttyfd));
-  if (isatty(termios.GetRawFD()) &&
-      !termios.SetTermiosMode(ScopedTermios::TermiosMode::RAW)) {
+  if (interactive && !termios.SetTermiosMode(ScopedTermios::TermiosMode::RAW)) {
     return EXIT_FAILURE;
   }
 

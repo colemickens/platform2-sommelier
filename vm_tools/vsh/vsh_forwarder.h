@@ -36,7 +36,7 @@ class VshForwarder {
 
   bool HandleSigchld(const struct signalfd_siginfo& siginfo);
   void HandleVsockReadable();
-  void HandlePtmReadable();
+  void HandleTargetReadable(int fd, StdioStream stream_type);
 
   bool SendConnectionResponse(vm_tools::vsh::ConnectionStatus status,
                               const std::string& description);
@@ -45,9 +45,15 @@ class VshForwarder {
       const struct passwd* passwd,
       const vm_tools::vsh::SetupConnectionRequest& connection_request);
 
+  void SendExitMessage();
+
+  std::array<base::ScopedFD, 3> stdio_pipes_;
+  brillo::MessageLoop::TaskId stdout_task_;
+  brillo::MessageLoop::TaskId stderr_task_;
   base::ScopedFD ptm_fd_;
   base::ScopedFD sock_fd_;
   bool inherit_env_;
+  bool interactive_;
 
   brillo::AsynchronousSignalHandler signal_handler_;
 

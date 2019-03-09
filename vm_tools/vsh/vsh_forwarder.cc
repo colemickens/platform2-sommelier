@@ -97,8 +97,11 @@ std::unique_ptr<VshForwarder> VshForwarder::Create(base::ScopedFD sock_fd,
 }
 
 VshForwarder::VshForwarder(base::ScopedFD sock_fd, bool inherit_env)
-    : sock_fd_(std::move(sock_fd)),
+    : stdout_task_(brillo::MessageLoop::kTaskIdNull),
+      stderr_task_(brillo::MessageLoop::kTaskIdNull),
+      sock_fd_(std::move(sock_fd)),
       inherit_env_(inherit_env),
+      interactive_(true),
       exit_pending_(false) {}
 
 bool VshForwarder::Init() {
@@ -181,37 +184,56 @@ bool VshForwarder::Init() {
     }
   }
 
-  ptm_fd_.reset(HANDLE_EINTR(posix_openpt(O_RDWR | O_NOCTTY | O_CLOEXEC)));
-  if (!ptm_fd_.is_valid()) {
-    PLOG(ERROR) << "Failed to open pseudoterminal master";
-    SendConnectionResponse(FAILED, "could not allocate pty");
-    return false;
-  }
+  interactive_ = !connection_request.nopty();
+  int stdin_pipe[2];
+  int stdout_pipe[2];
+  int stderr_pipe[2];
 
-  if (grantpt(ptm_fd_.get()) < 0) {
-    PLOG(ERROR) << "Failed to grant psuedoterminal";
-    SendConnectionResponse(FAILED, "could not grant pty");
-    return false;
-  }
-
-  if (unlockpt(ptm_fd_.get()) < 0) {
-    PLOG(ERROR) << "Failed to unlock psuedoterminal";
-    SendConnectionResponse(FAILED, "could not unlock pty");
-    return false;
-  }
-
-  // Set up the pseudoterminal dimensions.
-  if (connection_request.window_rows() > 0 &&
-      connection_request.window_cols() > 0 &&
-      connection_request.window_rows() <= USHRT_MAX &&
-      connection_request.window_cols() <= USHRT_MAX) {
-    struct winsize ws {
-      .ws_row = (unsigned short)connection_request.window_rows(),
-      .ws_col = (unsigned short)connection_request.window_cols(),
-    };
-    if (ioctl(ptm_fd_.get(), TIOCSWINSZ, &ws) < 0) {
-      PLOG(ERROR) << "Failed to set initial window size";
+  if (interactive_) {
+    // If the client is interactive, set up a pseudoterminal. This will
+    // populate the stdin/stdout/stderr file descriptors.
+    ptm_fd_.reset(HANDLE_EINTR(posix_openpt(O_RDWR | O_NOCTTY | O_CLOEXEC)));
+    if (!ptm_fd_.is_valid()) {
+      PLOG(ERROR) << "Failed to open pseudoterminal master";
+      SendConnectionResponse(FAILED, "could not allocate pty");
       return false;
+    }
+
+    if (grantpt(ptm_fd_.get()) < 0) {
+      PLOG(ERROR) << "Failed to grant psuedoterminal";
+      SendConnectionResponse(FAILED, "could not grant pty");
+      return false;
+    }
+
+    if (unlockpt(ptm_fd_.get()) < 0) {
+      PLOG(ERROR) << "Failed to unlock psuedoterminal";
+      SendConnectionResponse(FAILED, "could not unlock pty");
+      return false;
+    }
+
+    // Set up the pseudoterminal dimensions.
+    if (connection_request.window_rows() > 0 &&
+        connection_request.window_cols() > 0 &&
+        connection_request.window_rows() <= USHRT_MAX &&
+        connection_request.window_cols() <= USHRT_MAX) {
+      struct winsize ws {
+        .ws_row = (unsigned short)  // NOLINT(runtime/int)
+                  connection_request.window_rows(),
+        .ws_col = (unsigned short)  // NOLINT(runtime/int)
+                  connection_request.window_cols(),
+      };
+      if (ioctl(ptm_fd_.get(), TIOCSWINSZ, &ws) < 0) {
+        PLOG(ERROR) << "Failed to set initial window size";
+        return false;
+      }
+    }
+  } else {
+    // In the noninteractive case, set up pipes for stdio.
+    for (auto p : {stdin_pipe, stdout_pipe, stderr_pipe}) {
+      if (pipe2(p, O_CLOEXEC) < 0) {
+        PLOG(ERROR) << "Failed to open target process pipe";
+        return false;
+      }
     }
   }
 
@@ -226,10 +248,22 @@ bool VshForwarder::Init() {
   // fork() a child process that will exec the target process/shell.
   int pid = fork();
   if (pid == 0) {
-    const char* pts = ptsname(ptm_fd_.get());
-    if (!pts) {
-      PLOG(ERROR) << "Failed to find pts";
-      return false;
+    const char* pts = nullptr;
+    if (interactive_) {
+      pts = ptsname(ptm_fd_.get());
+      if (!pts) {
+        PLOG(ERROR) << "Failed to find pts";
+        return false;
+      }
+    } else {
+      // Stuff the guest ends of the pipes into stdio_pipes_. These won't be
+      // around for long before exec.
+      stdio_pipes_[STDIN_FILENO].reset(stdin_pipe[0]);
+      stdio_pipes_[STDOUT_FILENO].reset(stdout_pipe[1]);
+      stdio_pipes_[STDERR_FILENO].reset(stderr_pipe[1]);
+      close(stdin_pipe[1]);
+      close(stdout_pipe[0]);
+      close(stderr_pipe[0]);
     }
 
     // These fds are CLOEXEC, but close them manually for good measure.
@@ -241,15 +275,40 @@ bool VshForwarder::Init() {
     return false;
   }
 
+  // Adopt the forwarder-side of the pipes.
+  if (!interactive_) {
+    stdio_pipes_[STDIN_FILENO].reset(stdin_pipe[1]);
+    stdio_pipes_[STDOUT_FILENO].reset(stdout_pipe[0]);
+    stdio_pipes_[STDERR_FILENO].reset(stderr_pipe[0]);
+    close(stdin_pipe[0]);
+    close(stdout_pipe[1]);
+    close(stderr_pipe[1]);
+  }
+
   brillo::MessageLoop* message_loop = brillo::MessageLoop::current();
   message_loop->WatchFileDescriptor(
       FROM_HERE, sock_fd_.get(), brillo::MessageLoop::WatchMode::kWatchRead,
       true,
       base::Bind(&VshForwarder::HandleVsockReadable, base::Unretained(this)));
-  message_loop->WatchFileDescriptor(
-      FROM_HERE, ptm_fd_.get(), brillo::MessageLoop::WatchMode::kWatchRead,
-      true,
-      base::Bind(&VshForwarder::HandlePtmReadable, base::Unretained(this)));
+
+  if (interactive_) {
+    stdout_task_ = message_loop->WatchFileDescriptor(
+        FROM_HERE, ptm_fd_.get(), brillo::MessageLoop::WatchMode::kWatchRead,
+        true,
+        base::Bind(&VshForwarder::HandleTargetReadable, base::Unretained(this),
+                   ptm_fd_.get(), STDOUT_STREAM));
+  } else {
+    stdout_task_ = message_loop->WatchFileDescriptor(
+        FROM_HERE, stdio_pipes_[STDOUT_FILENO].get(),
+        brillo::MessageLoop::WatchMode::kWatchRead, true,
+        base::Bind(&VshForwarder::HandleTargetReadable, base::Unretained(this),
+                   stdio_pipes_[STDOUT_FILENO].get(), STDOUT_STREAM));
+    stderr_task_ = message_loop->WatchFileDescriptor(
+        FROM_HERE, stdio_pipes_[STDERR_FILENO].get(),
+        brillo::MessageLoop::WatchMode::kWatchRead, true,
+        base::Bind(&VshForwarder::HandleTargetReadable, base::Unretained(this),
+                   stdio_pipes_[STDERR_FILENO].get(), STDERR_STREAM));
+  }
 
   SendConnectionResponse(READY, "vsh ready");
 
@@ -281,17 +340,42 @@ void VshForwarder::PrepareExec(
     const char* pts,
     const struct passwd* passwd,
     const SetupConnectionRequest& connection_request) {
-  base::ScopedFD pty(HANDLE_EINTR(open(pts, O_RDWR | O_CLOEXEC | O_NOCTTY)));
-  if (!pty.is_valid()) {
-    PLOG(ERROR) << "Failed to open pseudoterminal slave";
-    return;
-  }
-
-  // Dup the pty fd into stdin/stdout/stderr.
-  for (int fd : {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO}) {
-    if (dup2(pty.get(), fd) < 0) {
-      PLOG(ERROR) << "Failed to dup pty into fd " << fd;
+  base::ScopedFD pty;
+  if (interactive_) {
+    pty.reset(HANDLE_EINTR(open(pts, O_RDWR | O_CLOEXEC | O_NOCTTY)));
+    if (!pty.is_valid()) {
+      PLOG(ERROR) << "Failed to open pseudoterminal slave";
       return;
+    }
+
+    // Dup the pty fd into stdin/stdout/stderr.
+    for (int fd : {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO}) {
+      if (dup2(pty.get(), fd) < 0) {
+        PLOG(ERROR) << "Failed to dup pty into fd " << fd;
+        return;
+      }
+    }
+
+    // Close the pty fd if it's not one of the stdio fds.
+    if (pty.get() != STDIN_FILENO && pty.get() != STDOUT_FILENO &&
+        pty.get() != STDERR_FILENO) {
+      pty.reset();
+    }
+  } else {
+    // Dup the pipe ends into stdin/stdout/stderr.
+    for (int fd : {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO}) {
+      if (dup2(stdio_pipes_[fd].get(), fd) < 0) {
+        PLOG(ERROR) << "Failed to dup pipe into fd " << fd;
+        return;
+      }
+    }
+    // Close the pipe fds if it's not one of the stdio fds.
+    for (int fd : {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO}) {
+      if (stdio_pipes_[fd].get() != STDIN_FILENO &&
+          stdio_pipes_[fd].get() != STDOUT_FILENO &&
+          stdio_pipes_[fd].get() != STDERR_FILENO) {
+        stdio_pipes_[fd].reset();
+      }
     }
   }
 
@@ -304,14 +388,9 @@ void VshForwarder::PrepareExec(
   }
 
   // Set the controlling terminal for the process.
-  if (ioctl(pty.get(), TIOCSCTTY, nullptr) < 0) {
+  if (pty.is_valid() && ioctl(pty.get(), TIOCSCTTY, nullptr) < 0) {
     PLOG(ERROR) << "Failed to set controlling terminal";
     return;
-  }
-
-  if (pty.get() != STDIN_FILENO && pty.get() != STDOUT_FILENO &&
-      pty.get() != STDERR_FILENO) {
-    pty.reset();
   }
 
   if (chdir(passwd->pw_dir) < 0) {
@@ -409,6 +488,13 @@ bool VshForwarder::HandleSigchld(const struct signalfd_siginfo& siginfo) {
   exit_code_ = siginfo.ssi_status;
   exit_pending_ = true;
 
+  // There's no output to flush, so it's safe to quit.
+  if (stdout_task_ == brillo::MessageLoop::kTaskIdNull &&
+      stderr_task_ == brillo::MessageLoop::kTaskIdNull) {
+    SendExitMessage();
+    return true;
+  }
+
   return true;
 }
 
@@ -430,18 +516,26 @@ void VshForwarder::HandleVsockReadable() {
       DataMessage data_message = guest_message.data_message();
       DCHECK_EQ(data_message.stream(), STDIN_STREAM);
 
+      int target_fd =
+          interactive_ ? ptm_fd_.get() : stdio_pipes_[STDIN_FILENO].get();
+
       const string& data = data_message.data();
-      // On EOF, send EOT character. This will be interpreted by the tty
-      // driver/line discipline and generate an EOF.
       if (data.size() == 0) {
-        if (!base::WriteFileDescriptor(ptm_fd_.get(), "\004", 1)) {
-          PLOG(ERROR) << "Failed to write EOF to ptm";
+        if (interactive_) {
+          // On EOF, send EOT character. This will be interpreted by the tty
+          // driver/line discipline and generate an EOF.
+          if (!base::WriteFileDescriptor(target_fd, "\004", 1)) {
+            PLOG(ERROR) << "Failed to write EOF to ptm";
+          }
+        } else {
+          // For pipes, just close the pipe.
+          stdio_pipes_[STDIN_FILENO].reset();
         }
         return;
       }
 
-      if (!base::WriteFileDescriptor(ptm_fd_.get(), data.data(), data.size())) {
-        PLOG(ERROR) << "Failed to write data to ptm";
+      if (!base::WriteFileDescriptor(target_fd, data.data(), data.size())) {
+        PLOG(ERROR) << "Failed to write data to stdin";
         return;
       }
       break;
@@ -462,6 +556,10 @@ void VshForwarder::HandleVsockReadable() {
       break;
     }
     case GuestMessage::kResizeMessage: {
+      if (!ptm_fd_.is_valid()) {
+        LOG(ERROR) << "Cannot resize window without ptm";
+        return;
+      }
       WindowResizeMessage resize_message = guest_message.resize_message();
       struct winsize winsize;
       winsize.ws_row = resize_message.rows();
@@ -478,45 +576,69 @@ void VshForwarder::HandleVsockReadable() {
   }
 }
 
-// Forwards output from the pseudoterminal master to the host.
-void VshForwarder::HandlePtmReadable() {
+// Forwards output from the guest to the host.
+void VshForwarder::HandleTargetReadable(int fd, StdioStream stream_type) {
   char buf[kMaxDataSize];
   HostMessage host_message;
   DataMessage* data_message = host_message.mutable_data_message();
 
-  ssize_t count = HANDLE_EINTR(read(ptm_fd_.get(), buf, sizeof(buf)));
+  ssize_t count = HANDLE_EINTR(read(fd, buf, sizeof(buf)));
 
   if (count < 0) {
-    // It's likely that we'll get an EIO from the ptm before getting a SIGCHLD,
-    // so don't treat that as an error. We'll shut down normally with the
-    // SIGCHLD that will be processed later.
+    // It's likely that we'll get an EIO before getting a SIGCHLD, so don't
+    // treat that as an error. We'll shut down normally with the SIGCHLD that
+    // will be processed later.
     if (errno == EAGAIN || errno == EIO) {
       if (exit_pending_) {
-        HostMessage host_message;
-        ConnectionStatusMessage* status_message =
-            host_message.mutable_status_message();
-        status_message->set_status(EXITED);
-        status_message->set_description("target process has exited");
-        status_message->set_code(exit_code_);
-
-        if (!SendMessage(sock_fd_.get(), host_message)) {
-          LOG(ERROR) << "Failed to send EXITED message";
-        }
-        Shutdown();
+        SendExitMessage();
       }
       return;
     }
-    PLOG(ERROR) << "Failed to read from ptm";
+    PLOG(ERROR) << "Failed to read from stdio";
     return;
+  } else if (count == 0) {
+    // Cancel the watch task, otherwise the handler will fire forever.
+    if (stream_type == STDOUT_STREAM) {
+      brillo::MessageLoop* message_loop = brillo::MessageLoop::current();
+      message_loop->CancelTask(stdout_task_);
+      stdout_task_ = brillo::MessageLoop::kTaskIdNull;
+    } else {
+      brillo::MessageLoop* message_loop = brillo::MessageLoop::current();
+      message_loop->CancelTask(stderr_task_);
+      stderr_task_ = brillo::MessageLoop::kTaskIdNull;
+    }
+
+    // Only exit if we got SIGCHLD and all output is flushed to the host.
+    if (exit_pending_) {
+      if (stdout_task_ == brillo::MessageLoop::kTaskIdNull &&
+          stderr_task_ == brillo::MessageLoop::kTaskIdNull) {
+        SendExitMessage();
+        return;
+      }
+    }
   }
 
-  data_message->set_stream(STDOUT_STREAM);
+  data_message->set_stream(stream_type);
   data_message->set_data(buf, count);
 
   if (!SendMessage(sock_fd_.get(), host_message)) {
-    LOG(ERROR) << "Failed to forward ptm to host";
+    LOG(ERROR) << "Failed to forward stdio to host";
     Shutdown();
   }
+}
+
+void VshForwarder::SendExitMessage() {
+  HostMessage host_message;
+  ConnectionStatusMessage* status_message =
+      host_message.mutable_status_message();
+  status_message->set_status(EXITED);
+  status_message->set_description("target process has exited");
+  status_message->set_code(exit_code_);
+
+  if (!SendMessage(sock_fd_.get(), host_message)) {
+    LOG(ERROR) << "Failed to send EXITED message";
+  }
+  Shutdown();
 }
 
 }  // namespace vsh
