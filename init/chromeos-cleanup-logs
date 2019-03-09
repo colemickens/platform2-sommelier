@@ -133,6 +133,11 @@ metrics_client Platform.DiskUsageChronos \
 # Report overall stateful usage.
 metrics_client -e Platform.StatefulUsage "$(get_stateful_usage_percent)" 101
 
+# Report lifetime writes from the stateful partition in GBs.
+LIFETIME_WRITES="$(get_stateful_lifetime_writes)"
+metrics_client Platform.StatefulLifetimeWrites \
+  $((${LIFETIME_WRITES} / 1000000)) 0 16777216 100
+
 NUMBER_OF_USERS=$(ls /home/user/ | wc -l)
 metrics_client Platform.DiskUsage.NumUserHomeDirectories \
                $NUMBER_OF_USERS 1 50 50

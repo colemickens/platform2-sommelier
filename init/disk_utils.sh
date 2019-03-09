@@ -9,6 +9,16 @@ get_stateful_df_data() {
   df --block-size "${bs}" -P "${STATEFUL}" | grep -m 1 "${STATEFUL}"
 }
 
+# Get the lifetime writes from the stateful partition.
+get_stateful_lifetime_writes() {
+  local stateful_dev="$(get_stateful_df_data | awk '{print $1}' | \
+    sed -e 's#^/dev/##')"
+  local lifetime_writes="$(cat \
+    /sys/fs/ext4/${stateful_dev}/lifetime_write_kbytes)"
+  : "${lifetime_writes:=0}"
+  echo "${lifetime_writes}"
+}
+
 # Get the percentage of space used on the stateful partition.
 get_stateful_usage_percent() {
   local stateful_space="$(get_stateful_df_data)"
