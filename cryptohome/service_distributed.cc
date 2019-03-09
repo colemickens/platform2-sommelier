@@ -368,7 +368,13 @@ gboolean ServiceDistributed::TpmIsAttestationPrepared(gboolean* OUT_prepared,
   if (!ObtainTpmAttestationEnrollmentPreparations(request, &reply, error)) {
     return FALSE;
   }
-  *OUT_prepared = reply.enrollment_preparations().size() ? TRUE : FALSE;
+  *OUT_prepared = FALSE;
+  for (const auto& preparation : reply.enrollment_preparations()) {
+    if (preparation.second) {
+      *OUT_prepared = TRUE;
+      break;
+    }
+  }
   return TRUE;
 }
 
