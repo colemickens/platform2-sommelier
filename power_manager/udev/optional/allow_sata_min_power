@@ -5,27 +5,21 @@
 # found in the LICENSE file.
 
 # This script configures link power management for sata devices. It is executed
-# at boot time and whenever power is plugged or unplugged (through udev).
+# at boot time when a scsi controller is found.
 #
-# When battery is plugged in and the device supports it, set link to min_power.
-# On charger, use max_power, it improves latencies.
+# Return success if it is ok to use min_power link power management setting.
 
 . /usr/share/misc/chromeos-common.sh
 . /usr/sbin/write_gpt.sh
 
 load_base_vars
 
-if dump_power_status | grep -qF 'line_power_connected 1'; then
-  on_ac="1"
-else
-  on_ac="0"
-fi
-
+device="$1"
 drive="$(get_fixed_dst_drive)"
 
 if [ -z "${drive}" ]; then
   # Root device could not be located."
-  exit
+  exit 0
 fi
 
 dev_sysfs="/sys/block/${drive##*/}"
@@ -35,20 +29,12 @@ link_pm_path_glob="$(echo "${dev_sysfs_full_path}" | \
 # No "" inside, link_pm_path_glob has wildcard.
 link_pm_path="$(echo ${link_pm_path_glob})"
 
-if [ ! -f "${link_pm_path}" ]; then
-  # Older kernel, or the device is not a SATA device.
-  exit
-fi
-
-if [ "${on_ac}" = "1" ]; then
-  link_pm_policy="max_performance"
-else
+if ! echo "${link_pm_path}" | grep -qF "${device}"; then
+  # Disable unused link, we don't expect hot-plug.
+  exit 0
+elif grep -q "TS.*MTS400" "${dev_sysfs}/device/model"; then
   # Transcend SSD have issues with DLPM: b:115398975
-  if grep -q "TS.*MTS400" "${dev_sysfs}/device/model"; then
-    link_pm_policy="max_performance"
-  else
-    link_pm_policy="min_power"
-  fi
+  exit 1
+else
+  exit 0
 fi
-
-echo "${link_pm_policy}" > "${link_pm_path}"

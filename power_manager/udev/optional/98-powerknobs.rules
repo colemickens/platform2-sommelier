@@ -8,4 +8,10 @@ ACTION=="add", SUBSYSTEM=="module", DEVPATH=="/module/snd_hda_intel", \
 # Configure SSD/HDD power management setting on power plug/unplug
 ACTION=="change", SUBSYSTEM=="power_supply", ATTR{type}!="Battery", \
   RUN+="/usr/bin/set_blkdev_pm" \
-  RUN+="/usr/bin/set_sata_link_pm"
+
+# Minimize link power for SATA drives if kernel has not taken care of it.
+ACTION=="add|change", SUBSYSTEM=="scsi_host", \
+  TEST=="link_power_management_policy", \
+  ATTR{link_power_management_policy}=="max_performance", \
+  PROGRAM="/usr/bin/allow_sata_min_power %k" \
+  ATTR{link_power_management_policy}="min_power"
