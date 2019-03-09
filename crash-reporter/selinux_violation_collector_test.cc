@@ -12,7 +12,6 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <base/files/file_enumerator.h>
 
 #include "crash-reporter/test_util.h"
 
@@ -38,20 +37,6 @@ constexpr char TestSELinuxViolationMessageContent[] =
 
 bool IsMetrics() {
   return s_metrics;
-}
-
-// Returns true if at least one file in this directory matches the pattern.
-// found_file_path is not assigned if found_file_path is nullptr.
-// Only the first found path is stored into found_file_path.
-bool DirectoryHasFileWithPattern(const FilePath& directory,
-                                 const std::string& pattern,
-                                 FilePath* found_file_path) {
-  base::FileEnumerator enumerator(
-      directory, false, base::FileEnumerator::FileType::FILES, pattern);
-  FilePath path = enumerator.Next();
-  if (!path.empty() && found_file_path)
-    *found_file_path = path;
-  return !path.empty();
 }
 
 }  // namespace
@@ -92,10 +77,10 @@ TEST_F(SELinuxViolationCollectorTest, CollectOK) {
   ASSERT_TRUE(test_util::CreateFile(test_path_, TestSELinuxViolationMessage));
   EXPECT_TRUE(collector_.Collect());
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
-  EXPECT_TRUE(DirectoryHasFileWithPattern(test_crash_directory_,
-                                          "selinux_violation.*.meta", NULL));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory_, "selinux_violation.*.meta", NULL));
   FilePath file_path;
-  EXPECT_TRUE(DirectoryHasFileWithPattern(
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "selinux_violation.*.log", &file_path));
   std::string content;
   base::ReadFileToString(file_path, &content);
@@ -108,10 +93,10 @@ TEST_F(SELinuxViolationCollectorTest, CollectSample) {
   ASSERT_TRUE(test_util::CreateFile(test_path_, TestSELinuxViolationMessage));
   EXPECT_TRUE(collector_.Collect());
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
-  EXPECT_TRUE(DirectoryHasFileWithPattern(test_crash_directory_,
-                                          "selinux_violation.*.meta", NULL));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory_, "selinux_violation.*.meta", NULL));
   FilePath file_path;
-  EXPECT_TRUE(DirectoryHasFileWithPattern(
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "selinux_violation.*.log", &file_path));
   std::string content;
   base::ReadFileToString(file_path, &content);

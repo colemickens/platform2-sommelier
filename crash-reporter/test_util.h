@@ -24,6 +24,13 @@ bool CreateFile(const base::FilePath& file_path, base::StringPiece content);
 void SetActiveSessions(org::chromium::SessionManagerInterfaceProxyMock* mock,
                        const std::map<std::string, std::string>& sessions);
 
+// Returns true if at least one file in this directory matches the pattern.
+// found_file_path is not assigned if found_file_path is nullptr.
+// Only the first found path is stored into found_file_path.
+bool DirectoryHasFileWithPattern(const base::FilePath& directory,
+                                 const std::string& pattern,
+                                 base::FilePath* found_file_path);
+
 }  // namespace test_util
 
 #endif  // CRASH_REPORTER_TEST_UTIL_H_

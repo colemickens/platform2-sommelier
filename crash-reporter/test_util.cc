@@ -4,6 +4,7 @@
 
 #include "crash-reporter/test_util.h"
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <gtest/gtest.h>
 
@@ -44,6 +45,17 @@ void SetActiveSessions(org::chromium::SessionManagerInterfaceProxyMock* mock,
 
   EXPECT_CALL(*mock, RetrieveActiveSessions(_, _, _))
       .WillRepeatedly(Invoke(&RetrieveActiveSessionsImpl));
+}
+
+bool DirectoryHasFileWithPattern(const base::FilePath& directory,
+                                 const std::string& pattern,
+                                 base::FilePath* found_file_path) {
+  base::FileEnumerator enumerator(
+      directory, false, base::FileEnumerator::FileType::FILES, pattern);
+  base::FilePath path = enumerator.Next();
+  if (!path.empty() && found_file_path)
+    *found_file_path = path;
+  return !path.empty();
 }
 
 }  // namespace test_util

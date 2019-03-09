@@ -18,6 +18,7 @@
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/arc_collector.h"
+#include "crash-reporter/arc_service_failure_collector.h"
 #include "crash-reporter/bert_collector.h"
 #include "crash-reporter/chrome_collector.h"
 #include "crash-reporter/ec_collector.h"
@@ -298,6 +299,8 @@ int main(int argc, char* argv[]) {
               "Report collected kernel wifi warning");
   DEFINE_bool(kernel_suspend_warning, false,
               "Report collected kernel suspend warning");
+  DEFINE_bool(arc_service_failure, false,
+              "Report collected ARC service failure");
   DEFINE_bool(service_failure, false, "Report collected service failure");
   DEFINE_bool(selinux_violation, false, "Report collected SELinux violation");
   DEFINE_string(chrome, "", "Chrome crash dump file");
@@ -357,6 +360,9 @@ int main(int argc, char* argv[]) {
   KernelWarningCollector kernel_warning_collector;
   kernel_warning_collector.Initialize(IsFeedbackAllowed);
 
+  ArcServiceFailureCollector arc_service_failure_collector;
+  arc_service_failure_collector.Initialize(IsFeedbackAllowed);
+
   ServiceFailureCollector service_failure_collector;
   service_failure_collector.Initialize(IsFeedbackAllowed);
 
@@ -403,6 +409,10 @@ int main(int argc, char* argv[]) {
   if (FLAGS_kernel_suspend_warning) {
     return HandleKernelWarning(&kernel_warning_collector,
                                KernelWarningCollector::WarningType::kSuspend);
+  }
+
+  if (FLAGS_arc_service_failure) {
+    return HandleServiceFailure(&arc_service_failure_collector);
   }
 
   if (FLAGS_service_failure) {

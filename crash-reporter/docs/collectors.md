@@ -283,8 +283,8 @@ The program name is `selinux-violation`.
 
 ## service_failure_collector
 
-Collects warnings from the init (e.g. Upstart) for services that failed to
-startup or exited unexpectedly at runtime.
+Collects warnings from the init (e.g. Upstart) for non-ARC services that failed
+to startup or exited unexpectedly at runtime.
 This catches syntax errors in the init scripts and daemons that simply exit
 non-zero but didn't otherwise trigger an abort or crash.
 
@@ -295,6 +295,15 @@ The program name is `service-failure`.
     `<daemon> <job phase> process (<pid>) terminated with status <status>`.
 *   All non-normal exits are recorded this way.
 *   The signature is constructed from the exit status and service name.
+
+## arc_service_failure_collector
+
+Similar to the above "service failure collector" except that it collects ARC
+services failures. ARC services are services with names started with "arc-".
+A separate ARC services specific collector is created because the ARC services
+system log messages are kept in a separate file /var/log/arc.log.
+
+The program name is `arc-service-failure`.
 
 ## Out-Of-Memory kill signal (OOM kill)
 

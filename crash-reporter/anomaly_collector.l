@@ -343,7 +343,11 @@ static int ReportServiceFailure(const char *service_name, const int exit_status)
   /* Include exit status in the "stable signature" for crash reports. */
   fprintf(yyout, "%08x-exit%d-%s\n", hash, exit_status, service_name);
 
-  AnomalyEnd("--service_failure");
+  if (strncmp("arc-", service_name, 4) == 0) {
+    AnomalyEnd("--arc_service_failure");
+  } else {
+    AnomalyEnd("--service_failure");
+  }
   return 1;
 }
 

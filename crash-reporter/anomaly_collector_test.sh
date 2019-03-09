@@ -136,4 +136,12 @@ cat "${SRC}/TEST_SELINUX" >> messages
 sleep 1
 check_log 10 selinux
 
+# Emit an ARC service failure to messages. Check that it is collected.
+sed s/crash-crash/arc-crash/ < "${SRC}/TEST_SERVICE_FAILURE" >> messages
+sleep 1
+check_log 11 '-exit2-arc-'
+if [[ ! -f "arc-service-failure" ]]; then
+  fail "arc-service-failure was not generated."
+fi
+
 exit 0

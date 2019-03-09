@@ -24,9 +24,11 @@ class ServiceFailureCollector : public CrashCollector {
 
  protected:
   std::string failure_report_path_;
+  std::string exec_name_;
 
  private:
   friend class ServiceFailureCollectorTest;
+  friend class ArcServiceFailureCollectorTest;
   FRIEND_TEST(ServiceFailureCollectorTest, CollectOK);
 
   // Service failure dump consists only of the signature.
