@@ -663,6 +663,7 @@ if (use.fuzzer) {
     pkg_deps = [
       "libbrillo-${libbase_ver}",
       "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
       "openssl",
     ]
   }
