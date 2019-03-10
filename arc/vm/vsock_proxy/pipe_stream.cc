@@ -12,6 +12,8 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 
+#include "arc/vm/vsock_proxy/message.pb.h"
+
 namespace arc {
 
 PipeStream::PipeStream(base::ScopedFD pipe_fd) : pipe_fd_(std::move(pipe_fd)) {}
@@ -41,6 +43,13 @@ bool PipeStream::Write(arc_proxy::Data* data) {
     return false;
   }
   return true;
+}
+
+bool PipeStream::Pread(uint64_t count,
+                       uint64_t offset,
+                       arc_proxy::PreadResponse* response) {
+  LOG(ERROR) << "Pread for pipe file descriptor is unsupported.";
+  return false;
 }
 
 }  // namespace arc

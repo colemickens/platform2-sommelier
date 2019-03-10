@@ -5,9 +5,13 @@
 #ifndef ARC_VM_VSOCK_PROXY_STREAM_BASE_H_
 #define ARC_VM_VSOCK_PROXY_STREAM_BASE_H_
 
-#include <base/optional.h>
+#include <stdint.h>
 
-#include "arc/vm/vsock_proxy/message.pb.h"
+namespace arc_proxy {
+class Data;
+class PreadResponse;
+class VSockMessage;
+}  // namespace arc_proxy
 
 namespace arc {
 
@@ -24,6 +28,15 @@ class StreamBase {
   // Writes the serialized |data| to the file descriptor.
   // Returns true iff the whole message is written.
   virtual bool Write(arc_proxy::Data* data) = 0;
+
+  // Reads |count| bytes from the stream starting at |offset|.
+  // Returns whether pread() is supported or not.
+  // If supported, the result will be constructed in |response|.
+  // Note: Internally, it is expected to call pread(2). Even if pread(2) fails,
+  // this method will still return true (because pread is supported), then.
+  virtual bool Pread(uint64_t count,
+                     uint64_t offset,
+                     arc_proxy::PreadResponse* response) = 0;
 };
 
 }  // namespace arc

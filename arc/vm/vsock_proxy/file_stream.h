@@ -1,9 +1,9 @@
-// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ARC_VM_VSOCK_PROXY_PIPE_STREAM_H_
-#define ARC_VM_VSOCK_PROXY_PIPE_STREAM_H_
+#ifndef ARC_VM_VSOCK_PROXY_FILE_STREAM_H_
+#define ARC_VM_VSOCK_PROXY_FILE_STREAM_H_
 
 #include "arc/vm/vsock_proxy/stream_base.h"
 
@@ -12,12 +12,11 @@
 
 namespace arc {
 
-// Wrapper of pipe file descriptor to support reading and writing
-// Message protocol buffer.
-class PipeStream : public StreamBase {
+// Wrapper of a regularfile file descriptor.
+class FileStream : public StreamBase {
  public:
-  explicit PipeStream(base::ScopedFD pipe_fd);
-  ~PipeStream() override;
+  explicit FileStream(base::ScopedFD file_fd);
+  ~FileStream() override;
 
   // StreamBase overrides:
   bool Read(arc_proxy::VSockMessage* message) override;
@@ -27,11 +26,11 @@ class PipeStream : public StreamBase {
              arc_proxy::PreadResponse* response) override;
 
  private:
-  base::ScopedFD pipe_fd_;
+  base::ScopedFD file_fd_;
 
-  DISALLOW_COPY_AND_ASSIGN(PipeStream);
+  DISALLOW_COPY_AND_ASSIGN(FileStream);
 };
 
 }  // namespace arc
 
-#endif  // ARC_VM_VSOCK_PROXY_PIPE_STREAM_H_
+#endif  // ARC_VM_VSOCK_PROXY_FILE_STREAM_H_

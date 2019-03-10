@@ -4,12 +4,19 @@
 
 #include "arc/vm/vsock_proxy/vsock_proxy.h"
 
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include <base/bind.h>
 #include <base/files/file_descriptor_watcher_posix.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
@@ -55,6 +62,7 @@ class VSockProxyTest : public testing::Test {
     client_fd_ = std::move(client_socket_pair->second);
   }
 
+  VSockProxy* server() { return server_.get(); }
   VSockProxy* client() { return client_.get(); }
 
   int server_fd() const { return server_fd_.get(); }
@@ -229,6 +237,47 @@ TEST_F(VSockProxyTest, Connect) {
 
   TestDataTransfer(client_fd.get(), server_fd.get());
   TestDataTransfer(server_fd.get(), client_fd.get());
+}
+
+TEST_F(VSockProxyTest, Pread) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  const base::FilePath file_path = temp_dir.GetPath().Append("test.txt");
+  constexpr char kFileContent[] = "abcdefghijklmnopqrstuvwxyz";
+  // Trim trailing '\0'.
+  ASSERT_EQ(sizeof(kFileContent) - 1,
+            base::WriteFile(file_path, kFileContent, sizeof(kFileContent) - 1));
+
+  base::ScopedFD fd(HANDLE_EINTR(open(file_path.value().c_str(), O_RDONLY)));
+  ASSERT_TRUE(fd.is_valid());
+  const int64_t handle = client()->RegisterFileDescriptor(
+      std::move(fd), arc_proxy::FileDescriptor::REGULAR_FILE, 0);
+
+  base::RunLoop run_loop;
+  server()->Pread(
+      handle, 10, 10,
+      base::BindOnce(
+          [](base::RunLoop* run_loop, int error_code, const std::string& blob) {
+            run_loop->Quit();
+            EXPECT_EQ(0, error_code);
+            EXPECT_EQ("klmnopqrst", blob);
+          },
+          &run_loop));
+  run_loop.Run();
+}
+
+TEST_F(VSockProxyTest, Pread_UnknownHandle) {
+  constexpr int64_t kUnknownHandle = 100;
+  base::RunLoop run_loop;
+  server()->Pread(
+      kUnknownHandle, 10, 10,
+      base::BindOnce(
+          [](base::RunLoop* run_loop, int error_code, const std::string& blob) {
+            run_loop->Quit();
+            EXPECT_EQ(EBADF, error_code);
+          },
+          &run_loop));
+  run_loop.Run();
 }
 
 }  // namespace

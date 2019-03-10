@@ -4,6 +4,8 @@
 
 #include "arc/vm/vsock_proxy/vsock_proxy.h"
 
+#include <errno.h>
+
 #include <utility>
 
 #include <base/bind.h>
@@ -11,6 +13,7 @@
 #include <base/logging.h>
 
 #include "arc/vm/vsock_proxy/file_descriptor_util.h"
+#include "arc/vm/vsock_proxy/file_stream.h"
 #include "arc/vm/vsock_proxy/pipe_stream.h"
 #include "arc/vm/vsock_proxy/socket_stream.h"
 
@@ -27,6 +30,8 @@ std::unique_ptr<StreamBase> CreateStream(
     case arc_proxy::FileDescriptor::FIFO_READ:
     case arc_proxy::FileDescriptor::FIFO_WRITE:
       return std::make_unique<PipeStream>(std::move(fd));
+    case arc_proxy::FileDescriptor::REGULAR_FILE:
+      return std::make_unique<FileStream>(std::move(fd));
     default:
       LOG(ERROR) << "Unknown FileDescriptor::Type: " << fd_type;
       return nullptr;
@@ -113,6 +118,34 @@ void VSockProxy::Connect(const base::FilePath& path, ConnectCallback callback) {
   pending_connect_.emplace(cookie, std::move(callback));
 }
 
+void VSockProxy::Pread(int64_t handle,
+                       uint64_t count,
+                       uint64_t offset,
+                       PreadCallback callback) {
+  // TODO(hidehiko): Ensure cookie is unique in case of overflow.
+  const int64_t cookie = next_cookie_;
+  if (type_ == Type::SERVER)
+    ++next_cookie_;
+  else
+    --next_cookie_;
+
+  arc_proxy::VSockMessage message;
+  auto* request = message.mutable_pread_request();
+  request->set_cookie(cookie);
+  request->set_handle(handle);
+  request->set_count(count);
+  request->set_offset(offset);
+  if (!vsock_.Write(message)) {
+    // Failed to write a message to VSock. Delete everything.
+    handle_map_.clear();
+    fd_map_.clear();
+    vsock_controller_.reset();
+    std::move(callback).Run(ECONNREFUSED, 0 /* invalid */);
+    return;
+  }
+  pending_pread_.emplace(cookie, std::move(callback));
+}
+
 void VSockProxy::OnVSockReadReady() {
   arc_proxy::VSockMessage message;
   if (!vsock_.Read(&message)) {
@@ -138,6 +171,14 @@ void VSockProxy::OnVSockReadReady() {
     case arc_proxy::VSockMessage::kConnectResponse:
       OnConnectResponse(message.mutable_connect_response());
       return;
+    case arc_proxy::VSockMessage::kPreadRequest: {
+      OnPreadRequest(message.mutable_pread_request());
+      return;
+    }
+    case arc_proxy::VSockMessage::kPreadResponse: {
+      OnPreadResponse(message.mutable_pread_response());
+      return;
+    }
     default:
       LOG(ERROR) << "Unknown message type: " << message.command_case();
   }
@@ -218,6 +259,58 @@ void VSockProxy::OnConnectResponse(arc_proxy::ConnectResponse* response) {
   auto callback = std::move(it->second);
   pending_connect_.erase(it);
   std::move(callback).Run(response->error_code(), response->handle());
+}
+
+void VSockProxy::OnPreadRequest(arc_proxy::PreadRequest* request) {
+  arc_proxy::VSockMessage reply;
+  auto* response = reply.mutable_pread_response();
+  response->set_cookie(request->cookie());
+
+  OnPreadRequestInternal(request, response);
+
+  if (!vsock_.Write(reply)) {
+    // Failed to write a message to VSock. Delete everything.
+    handle_map_.clear();
+    fd_map_.clear();
+    vsock_controller_.reset();
+  }
+}
+
+void VSockProxy::OnPreadRequestInternal(arc_proxy::PreadRequest* request,
+                                        arc_proxy::PreadResponse* response) {
+  auto it = handle_map_.find(request->handle());
+  if (it == handle_map_.end()) {
+    LOG(ERROR) << "Couldn't find handle: handle=" << request->handle();
+    response->set_error_code(EBADF);
+    return;
+  }
+
+  auto fd_it = fd_map_.find(it->second);
+  if (fd_it == fd_map_.end()) {
+    LOG(ERROR) << "Couldn't find fd: handle=" << request->handle()
+               << " fd=" << it->second;
+    response->set_error_code(EBADF);
+    return;
+  }
+
+  if (!fd_it->second.stream->Pread(request->count(), request->offset(),
+                                   response)) {
+    response->set_error_code(EINVAL);
+    return;
+  }
+}
+
+void VSockProxy::OnPreadResponse(arc_proxy::PreadResponse* response) {
+  auto it = pending_pread_.find(response->cookie());
+  if (it == pending_pread_.end()) {
+    LOG(ERROR) << "Unexpected pread response: cookie=" << response->cookie();
+    return;
+  }
+
+  auto callback = std::move(it->second);
+  pending_pread_.erase(it);
+  std::move(callback).Run(response->error_code(),
+                          std::move(*response->mutable_blob()));
 }
 
 void VSockProxy::OnLocalFileDesciptorReadReady(int fd) {

@@ -17,6 +17,7 @@
 #include <base/posix/unix_domain_socket_linux.h>
 
 #include "arc/vm/vsock_proxy/file_descriptor_util.h"
+#include "arc/vm/vsock_proxy/message.pb.h"
 #include "arc/vm/vsock_proxy/vsock_proxy.h"
 
 namespace arc {
@@ -150,6 +151,13 @@ bool SocketStream::Write(arc_proxy::Data* data) {
   }
 
   return true;
+}
+
+bool SocketStream::Pread(uint64_t count,
+                         uint64_t offset,
+                         arc_proxy::PreadResponse* response) {
+  LOG(ERROR) << "Pread for socket file descriptor is unsupported.";
+  return false;
 }
 
 }  // namespace arc

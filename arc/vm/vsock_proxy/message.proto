@@ -34,6 +34,8 @@ message VSockMessage {
 
     ConnectRequest connect_request = 3;
     ConnectResponse connect_response = 4;
+    PreadRequest pread_request = 5;
+    PreadResponse pread_response = 6;
   }
 }
 
@@ -49,6 +51,7 @@ message FileDescriptor {
     SOCKET = 0;
     FIFO_READ = 1;
     FIFO_WRITE = 2;
+    REGULAR_FILE = 3;
     // TODO(b/123432308): Support more file descriptor types.
   }
   Type type = 1;
@@ -82,4 +85,27 @@ message ConnectResponse {
 
   // Handle corresponding to the opened socket.
   int64 handle = 3;
+}
+
+// Request to pread(2) a file.
+message PreadRequest {
+  int64 cookie = 1;
+
+  // Handle to read the data. Its type needs to be REGULAR_FILE.
+  int64 handle = 2;
+
+  // Number of bytes to read.
+  uint64 count = 3;
+
+  // The file position to read the data.
+  uint64 offset = 4;
+}
+
+// Response to the PreadRequest.
+message PreadResponse {
+  int64 cookie = 1;
+  int32 error_code = 2;
+
+  // Read data.
+  bytes blob = 3;
 }

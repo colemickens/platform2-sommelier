@@ -9,6 +9,7 @@
 
 #include <map>
 #include <memory>
+#include <string>
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
@@ -61,6 +62,15 @@ class VSockProxy {
   using ConnectCallback = base::OnceCallback<void(int, int64_t)>;
   void Connect(const base::FilePath& path, ConnectCallback callback);
 
+  // Requests to call pread(2) for the file in the other side represented by
+  // the |handle| with |count| and |offset|.
+  // |callback| will be called with errno, and read blob iff succeeded.
+  using PreadCallback = base::OnceCallback<void(int, const std::string&)>;
+  void Pread(int64_t handle,
+             uint64_t count,
+             uint64_t offset,
+             PreadCallback callback);
+
  private:
   // Callback called when VSOCK gets ready to read.
   // Reads Message from VSOCK file descriptor, and dispatches it to the
@@ -74,6 +84,10 @@ class VSockProxy {
   void OnData(arc_proxy::Data* data);
   void OnConnectRequest(arc_proxy::ConnectRequest* request);
   void OnConnectResponse(arc_proxy::ConnectResponse* response);
+  void OnPreadRequest(arc_proxy::PreadRequest* request);
+  void OnPreadRequestInternal(arc_proxy::PreadRequest* request,
+                              arc_proxy::PreadResponse* response);
+  void OnPreadResponse(arc_proxy::PreadResponse* response);
 
   // Callback called when local file descriptor gets ready to read.
   // Reads Message from |fd|, and forwards to VSOCK file descriptor.
@@ -111,6 +125,7 @@ class VSockProxy {
 
   // Map from cookie to its pending callback.
   std::map<int64_t, ConnectCallback> pending_connect_;
+  std::map<int64_t, PreadCallback> pending_pread_;
 
   // WeakPtrFactory needs to be declared as the member of the class, so that
   // on destruction, any pending Callbacks bound to WeakPtr are cancelled

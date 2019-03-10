@@ -28,6 +28,9 @@ class SocketStream : public StreamBase {
   // StreamBase overrides:
   bool Read(arc_proxy::VSockMessage* message) override;
   bool Write(arc_proxy::Data* data) override;
+  bool Pread(uint64_t count,
+             uint64_t offset,
+             arc_proxy::PreadResponse* response) override;
 
  private:
   base::ScopedFD socket_fd_;
