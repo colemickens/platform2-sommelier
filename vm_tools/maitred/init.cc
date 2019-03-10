@@ -79,6 +79,11 @@ constexpr base::TimeDelta kRespawnWindowSeconds =
 // shutdown.
 constexpr base::TimeDelta kShutdownTimeout = base::TimeDelta::FromSeconds(10);
 
+// Number of seconds that we should wait for tremplin to attempt to gracefully
+// shut down containers.
+constexpr base::TimeDelta kTremplinShutdownTimeout =
+    base::TimeDelta::FromSeconds(2);
+
 // Mounts that must be created on boot.
 constexpr struct {
   const char* source;
@@ -1002,6 +1007,10 @@ class Init::Worker : public base::MessageLoopForIO::Watcher {
   void OnFileCanReadWithoutBlocking(int fd) override;
   void OnFileCanWriteWithoutBlocking(int fd) override;
 
+  // Finds the pid of a process with |name|. Returns 0 if such a process doesn't
+  // exist.
+  pid_t FindProcessByName(const string& name);
+
  private:
   // File descriptor on which we will receive SIGCHLD events.
   base::ScopedFD signal_fd_;
@@ -1163,17 +1172,18 @@ void Init::Worker::Shutdown(int notify_fd) {
   watcher_.StopWatchingFileDescriptor();
   signal_fd_.reset();
 
-  // First send SIGPWR to lxd, if it is running.  This will cause lxd to shut
-  // down all running containers in parallel.
-  pid_t lxd_pid = 0;
-  for (const auto& pair : children_) {
-    const ChildInfo& info = pair.second;
-    if (info.argv[0] == "lxd") {
-      lxd_pid = pair.first;
-      break;
-    }
+  // First send SIGPWR to tremplin, if it is running. This runs "poweroff"
+  // in every container, which is necessary to work around the version
+  // of systemd in stretch that hangs after receiving SIGRTMIN + 3.
+  pid_t tremplin_pid = FindProcessByName("tremplin");
+  if (tremplin_pid != 0 && kill(tremplin_pid, SIGPWR) == 0) {
+    WaitForChildren({tremplin_pid},
+                    base::Time::Now() + kTremplinShutdownTimeout);
   }
 
+  // Second, send SIGPWR to lxd, if it is running.  This will cause lxd to shut
+  // down all running containers in parallel.
+  pid_t lxd_pid = FindProcessByName("lxd");
   if (lxd_pid != 0 && kill(lxd_pid, SIGPWR) == 0) {
     WaitForChildren({lxd_pid}, base::Time::Now() + kShutdownTimeout);
   }
@@ -1303,6 +1313,17 @@ void Init::Worker::OnFileCanReadWithoutBlocking(int fd) {
 
 void Init::Worker::OnFileCanWriteWithoutBlocking(int fd) {
   NOTREACHED();
+}
+
+pid_t Init::Worker::FindProcessByName(const string& name) {
+  for (const auto& pair : children_) {
+    const ChildInfo& info = pair.second;
+    if (info.argv[0] == name) {
+      return pair.first;
+    }
+  }
+
+  return 0;
 }
 
 std::unique_ptr<Init> Init::Create() {
