@@ -1,7 +1,7 @@
 type cros_chapsd, domain, chromeos_domain, mlstrustedobject;
 
-domain_auto_trans(cros_chapsd_sh, cros_chapsd_exec, cros_chapsd);
-allow cros_chapsd cros_chapsd_sh:fd use;
+domain_auto_trans(cros_init, cros_chapsd_exec, cros_chapsd);
+allow cros_chapsd cros_init:fd use;
 
 log_writer(cros_chapsd);
 uma_writer(cros_chapsd);

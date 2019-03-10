@@ -83,7 +83,6 @@ include(sepolicy/file_contexts/coreutils)
 /usr/share/cros(/.*)?           u:object_r:cros_usr_dirs:s0
 /usr/share/cros/init(/.*)?      u:object_r:cros_init_shell_scripts:s0
 /usr/share/cros/init/activate_date.sh u:object_r:cros_init_activate_date_script:s0
-/usr/share/cros/init/chapsd.sh u:object_r:cros_init_chapsd_shell_script:s0
 /usr/share/cros/init/crx-import.sh u:object_r:cros_init_crx_import_script:s0
 /usr/share/cros/init/lockbox-cache.sh u:object_r:cros_init_lockbox_cache_script:s0
 /usr/share/cros/init/powerd-pre-start.sh u:object_r:cros_init_powerd_pre_start_script:s0
