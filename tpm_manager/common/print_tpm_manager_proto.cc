@@ -187,6 +187,40 @@ std::string GetProtoDebugStringWithIndent(const NvramPolicyRecord& value,
   return output;
 }
 
+std::string GetProtoDebugString(const AuthDelegate& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const AuthDelegate& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_blob()) {
+    output += indent + "  blob: ";
+    base::StringAppendF(
+        &output, "%s",
+        base::HexEncode(value.blob().data(), value.blob().size()).c_str());
+    output += "\n";
+  }
+  if (value.has_secret()) {
+    output += indent + "  secret: ";
+    base::StringAppendF(
+        &output, "%s",
+        base::HexEncode(value.secret().data(), value.secret().size()).c_str());
+    output += "\n";
+  }
+  if (value.has_has_reset_lock_permissions()) {
+    output += indent + "  has_reset_lock_permissions: ";
+    base::StringAppendF(&output, "%s",
+                        value.has_reset_lock_permissions() ? "true" : "false");
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
 std::string GetProtoDebugString(const LocalData& value) {
   return GetProtoDebugStringWithIndent(value, 0);
 }
@@ -240,6 +274,44 @@ std::string GetProtoDebugStringWithIndent(const LocalData& value,
             .c_str());
   }
   output += "}\n";
+  if (value.has_owner_delegate()) {
+    output += indent + "  owner_delegate: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.owner_delegate(), indent_size + 2)
+            .c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const OwnershipTakenSignal& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const OwnershipTakenSignal& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_owner_password()) {
+    output += indent + "  owner_password: ";
+    base::StringAppendF(&output, "%s",
+                        base::HexEncode(value.owner_password().data(),
+                                        value.owner_password().size())
+                            .c_str());
+    output += "\n";
+  }
+  if (value.has_endorsement_password()) {
+    output += indent + "  endorsement_password: ";
+    base::StringAppendF(&output, "%s",
+                        base::HexEncode(value.endorsement_password().data(),
+                                        value.endorsement_password().size())
+                            .c_str());
+    output += "\n";
+  }
   output += indent + "}\n";
   return output;
 }

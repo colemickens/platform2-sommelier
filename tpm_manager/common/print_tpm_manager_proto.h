@@ -39,9 +39,15 @@ std::string GetProtoDebugString(NvramSpacePolicy value);
 std::string GetProtoDebugStringWithIndent(const NvramPolicyRecord& value,
                                           int indent_size);
 std::string GetProtoDebugString(const NvramPolicyRecord& value);
+std::string GetProtoDebugStringWithIndent(const AuthDelegate& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const AuthDelegate& value);
 std::string GetProtoDebugStringWithIndent(const LocalData& value,
                                           int indent_size);
 std::string GetProtoDebugString(const LocalData& value);
+std::string GetProtoDebugStringWithIndent(const OwnershipTakenSignal& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const OwnershipTakenSignal& value);
 std::string GetProtoDebugStringWithIndent(const DefineSpaceRequest& value,
                                           int indent_size);
 std::string GetProtoDebugString(const DefineSpaceRequest& value);
