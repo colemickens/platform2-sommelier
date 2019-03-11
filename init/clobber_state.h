@@ -151,11 +151,6 @@ class ClobberState {
   // devices.
   bool WipeKeysets();
 
-  // Perform media-dependent wipe of the device based on if the device is
-  // an MTD device or not.
-  // |device_path| should be the path under /dev/, e.g. /dev/sda3, /dev/ubi5_0.
-  bool WipeDevice(const base::FilePath& device_name);
-
   // Returns vector of files to be preserved. All FilePaths are relative to
   // stateful_.
   std::vector<base::FilePath> GetPreservedFilesList();
@@ -166,14 +161,11 @@ class ClobberState {
   // otherwise false.
   bool IsRotational(const base::FilePath& device_path);
 
-  // Makes a new filesystem on |wipe_info_.stateful_device|.
-  int CreateStatefulFileSystem();
-
   void SetArgsForTest(const Arguments& args);
   Arguments GetArgsForTest();
-  void SetStatefulForTest(base::FilePath stateful_path);
-  void SetDevForTest(base::FilePath dev_path);
-  void SetSysForTest(base::FilePath sys_path);
+  void SetStatefulForTest(const base::FilePath& stateful_path);
+  void SetDevForTest(const base::FilePath& dev_path);
+  void SetSysForTest(const base::FilePath& sys_path);
 
  protected:
   // These functions are marked protected so they can be overridden for tests.
@@ -181,7 +173,7 @@ class ClobberState {
   // Wrapper around stat(2).
   virtual int Stat(const base::FilePath& path, struct stat* st);
 
-  // Forces a 5 minute delay, writing progress to the TTY at |terminal_path_|.
+  // Forces a 5 minute delay, writing progress to the TTY at |terminal_|.
   // This is used to prevent developer mode transitions from happening too
   // quickly.
   virtual void ForceDelay();
@@ -196,6 +188,15 @@ class ClobberState {
 
  private:
   bool ClearBiometricSensorEntropy();
+
+  // Perform media-dependent wipe of the device based on if the device is
+  // an MTD device or not.
+  // |device_path| should be the path under /dev/, e.g. /dev/sda3, /dev/ubi5_0.
+  bool WipeDevice(const base::FilePath& device_name);
+
+  // Makes a new filesystem on |wipe_info_.stateful_device|.
+  int CreateStatefulFileSystem();
+
   int Reboot();
 
   Arguments args_;
@@ -209,7 +210,6 @@ class ClobberState {
 
   // File for writing progress to TTY.
   base::File terminal_;
-  base::FilePath terminal_path_;
 };
 
 #endif  // INIT_CLOBBER_STATE_H_

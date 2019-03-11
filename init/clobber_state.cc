@@ -26,7 +26,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/time/time.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_number_conversions.h>
@@ -227,10 +226,6 @@ int ClobberState::PreserveFiles(
   // Remove any stale tar files from previous clobber-state runs.
   base::DeleteFile(tar_file_path, /*recursive=*/false);
 
-  // We don't want to create an empty tar file.
-  if (preserved_files.size() == 0)
-    return 0;
-
   // We want to preserve permissions and recreate the directory structure
   // for all of the files in |preserved_files|. In order to do so we run tar
   // --no-recursion and specify the names of each of the parent directories.
@@ -259,12 +254,18 @@ int ClobberState::PreserveFiles(
     }
   }
 
+  // We can't create an empty tar file.
+  if (paths_to_tar.size() == 0) {
+    LOG(INFO)
+        << "PreserveFiles found no files to preserve, no tar file created.";
+    return 0;
+  }
+
   brillo::ProcessImpl tar;
   tar.AddArg("/bin/tar");
-  tar.AddArg("-cf");
-  tar.AddArg(tar_file_path.value());
-  tar.AddArg("-C");
-  tar.AddArg(preserved_files_root.value());
+  tar.AddArg("-c");
+  tar.AddStringOption("-f", tar_file_path.value());
+  tar.AddStringOption("-C", preserved_files_root.value());
   tar.AddArg("--no-recursion");
   tar.AddArg("--");
 
@@ -375,23 +376,36 @@ bool ClobberState::GetDevicesToWipe(
   }
 
   std::string base_device;
-  int partition_number;
-  if (!GetDevicePathComponents(root_device, &base_device, &partition_number)) {
+  int active_root_partition;
+  if (!GetDevicePathComponents(root_device, &base_device,
+                               &active_root_partition)) {
     LOG(ERROR) << "Extracting partition number and base device from "
                   "root_device failed: "
                << root_device.value();
     return false;
   }
 
-  if (partition_number != partitions.root_a &&
-      partition_number != partitions.root_b) {
-    LOG(ERROR) << "Root device partition number (" << partition_number
+  ClobberState::DeviceWipeInfo wipe_info;
+  if (active_root_partition == partitions.root_a) {
+    wipe_info.inactive_root_device =
+        base::FilePath(base_device + std::to_string(partitions.root_b));
+    wipe_info.inactive_kernel_device =
+        base::FilePath(base_device + std::to_string(partitions.kernel_b));
+    wipe_info.active_kernel_partition = partitions.kernel_a;
+  } else if (active_root_partition == partitions.root_b) {
+    wipe_info.inactive_root_device =
+        base::FilePath(base_device + std::to_string(partitions.root_a));
+    wipe_info.inactive_kernel_device =
+        base::FilePath(base_device + std::to_string(partitions.kernel_a));
+    wipe_info.active_kernel_partition = partitions.kernel_b;
+  } else {
+    LOG(ERROR) << "Active root device partition number ("
+               << active_root_partition
                << ") does not match either root partition number: "
                << partitions.root_a << ", " << partitions.root_b;
     return false;
   }
 
-  ClobberState::DeviceWipeInfo wipe_info;
   base::FilePath kernel_device;
   if (root_disk == base::FilePath(kUbiRootDisk)) {
     /*
@@ -406,10 +420,10 @@ bool ClobberState::GetDevicesToWipe(
         base::StringPrintf(kUbiDeviceStatefulFormat, partitions.stateful));
 
     // On NAND, kernel is stored on /dev/mtdX.
-    if (partition_number == partitions.root_a) {
+    if (active_root_partition == partitions.root_a) {
       kernel_device =
           base::FilePath("/dev/mtd" + std::to_string(partitions.kernel_a));
-    } else if (partition_number == partitions.root_b) {
+    } else if (active_root_partition == partitions.root_b) {
       kernel_device =
           base::FilePath("/dev/mtd" + std::to_string(partitions.kernel_b));
     }
@@ -421,38 +435,13 @@ bool ClobberState::GetDevicesToWipe(
     wipe_info.stateful_device =
         base::FilePath(base_device + std::to_string(partitions.stateful));
 
-    if (partition_number == partitions.root_a) {
+    if (active_root_partition == partitions.root_a) {
       kernel_device =
           base::FilePath(base_device + std::to_string(partitions.kernel_a));
-    } else if (partition_number == partitions.root_b) {
+    } else if (active_root_partition == partitions.root_b) {
       kernel_device =
           base::FilePath(base_device + std::to_string(partitions.kernel_b));
     }
-  }
-
-  int root_partition_to_wipe = 0;
-  if (partition_number == partitions.root_a) {
-    wipe_info.inactive_root_device =
-        base::FilePath(base_device + std::to_string(partitions.root_b));
-    wipe_info.inactive_kernel_device =
-        base::FilePath(base_device + std::to_string(partitions.kernel_b));
-    wipe_info.active_kernel_partition = partitions.kernel_a;
-    root_partition_to_wipe = partitions.root_b;
-  } else if (partition_number == partitions.root_b) {
-    wipe_info.inactive_root_device =
-        base::FilePath(base_device + std::to_string(partitions.root_a));
-    wipe_info.inactive_kernel_device =
-        base::FilePath(base_device + std::to_string(partitions.kernel_a));
-    wipe_info.active_kernel_partition = partitions.kernel_b;
-    root_partition_to_wipe = partitions.root_a;
-  }
-
-  if (root_partition_to_wipe != partitions.root_a &&
-      root_partition_to_wipe != partitions.root_b) {
-    LOG(ERROR) << "Partition number to wipe (" << root_partition_to_wipe
-               << ") does not match either root partition number: "
-               << partitions.root_a << ", " << partitions.root_b;
-    return false;
   }
 
   *wipe_info_out = wipe_info;
@@ -637,13 +626,12 @@ bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
     }
   }
 
-  std::vector<char> buffer;
-  buffer.resize(write_block_size, '\0');
+  const std::vector<char> buffer(write_block_size, '\0');
   int64_t total_written = 0;
   while (total_written < to_write) {
     int write_size = std::min(static_cast<int64_t>(write_block_size),
                               to_write - total_written);
-    int64_t bytes_written = device.WriteAtCurrentPos(&buffer[0], write_size);
+    int64_t bytes_written = device.WriteAtCurrentPos(buffer.data(), write_size);
     if (bytes_written < 0) {
       PLOG(ERROR) << "Failed to write to " << device_path.value();
       LOG(ERROR) << "Wrote " << total_written << " bytes before failing";
@@ -798,19 +786,19 @@ ClobberState::ClobberState(const Arguments& args,
       stateful_(kStatefulPath),
       dev_("/dev"),
       sys_("/sys") {
+  base::FilePath terminal_path;
   if (base::PathExists(base::FilePath("/sbin/frecon"))) {
-    terminal_path_ = base::FilePath("/run/frecon/vt0");
+    terminal_path = base::FilePath("/run/frecon/vt0");
   } else {
-    terminal_path_ = base::FilePath("/dev/tty1");
+    terminal_path = base::FilePath("/dev/tty1");
   }
-  terminal_ = base::File(terminal_path_,
-                         base::File::FLAG_OPEN | base::File::FLAG_WRITE);
+  terminal_ =
+      base::File(terminal_path, base::File::FLAG_OPEN | base::File::FLAG_WRITE);
 
   if (!terminal_.IsValid()) {
-    PLOG(WARNING) << "Could not open terminal " << terminal_path_.value()
+    PLOG(WARNING) << "Could not open terminal " << terminal_path.value()
                   << " falling back to /dev/null";
-    terminal_path_ = base::FilePath("/dev/null");
-    terminal_ = base::File(terminal_path_,
+    terminal_ = base::File(base::FilePath("/dev/null"),
                            base::File::FLAG_OPEN | base::File::FLAG_WRITE);
   }
 
@@ -1066,10 +1054,9 @@ int ClobberState::Run() {
   if (base::PathExists(preserved_tar_file)) {
     brillo::ProcessImpl tar;
     tar.AddArg("/bin/tar");
-    tar.AddArg("-C");
-    tar.AddArg(stateful_.value());
-    tar.AddArg("-xf");
-    tar.AddArg(preserved_tar_file.value());
+    tar.AddStringOption("-C", stateful_.value());
+    tar.AddArg("-x");
+    tar.AddStringOption("-f", preserved_tar_file.value());
     tar.RedirectOutput(temp_file.value());
     ret = tar.Run();
     AppendFileToLog(temp_file);
@@ -1280,15 +1267,15 @@ ClobberState::Arguments ClobberState::GetArgsForTest() {
   return args_;
 }
 
-void ClobberState::SetStatefulForTest(base::FilePath stateful_path) {
+void ClobberState::SetStatefulForTest(const base::FilePath& stateful_path) {
   stateful_ = stateful_path;
 }
 
-void ClobberState::SetDevForTest(base::FilePath dev_path) {
+void ClobberState::SetDevForTest(const base::FilePath& dev_path) {
   dev_ = dev_path;
 }
 
-void ClobberState::SetSysForTest(base::FilePath sys_path) {
+void ClobberState::SetSysForTest(const base::FilePath& sys_path) {
   sys_ = sys_path;
 }
 

@@ -190,6 +190,36 @@ TEST(PreserveFiles, NoFiles) {
   EXPECT_FALSE(base::PathExists(tar_file));
 }
 
+TEST(PreserveFiles, NoExistingFiles) {
+  base::ScopedTempDir fake_stateful_dir;
+  ASSERT_TRUE(fake_stateful_dir.CreateUniqueTempDir());
+  base::FilePath fake_stateful = fake_stateful_dir.GetPath();
+  ASSERT_TRUE(base::CreateDirectory(
+      fake_stateful.Append("unimportant/directory/structure")));
+
+  base::ScopedTempDir fake_tmp_dir;
+  ASSERT_TRUE(fake_tmp_dir.CreateUniqueTempDir());
+  base::FilePath tar_file = fake_tmp_dir.GetPath().Append("preserved.tar");
+  base::FilePath nonexistent_file = fake_tmp_dir.GetPath().Append("test.txt");
+
+  EXPECT_EQ(ClobberState::PreserveFiles(
+                fake_stateful, std::vector<base::FilePath>({nonexistent_file}),
+                tar_file),
+            0);
+
+  EXPECT_FALSE(base::PathExists(tar_file));
+
+  ASSERT_TRUE(WriteFile(tar_file, ""));
+  EXPECT_TRUE(base::PathExists(tar_file));
+  EXPECT_EQ(ClobberState::PreserveFiles(
+                fake_stateful, std::vector<base::FilePath>({nonexistent_file}),
+                tar_file),
+            0);
+
+  // PreserveFiles should have deleted existing tar_file.
+  EXPECT_FALSE(base::PathExists(tar_file));
+}
+
 TEST(PreserveFiles, OneFile) {
   base::FilePath not_preserved_file("unimportant/directory/structure/file.img");
   base::FilePath preserved_file("good/directory/file.tiff");
@@ -1217,6 +1247,17 @@ class GetDevicesToWipeTest : public ::testing::Test {
 
   ClobberState::PartitionNumbers partitions_;
 };
+
+TEST_F(GetDevicesToWipeTest, Error) {
+  base::FilePath root_disk("/dev/sda");
+  base::FilePath root_device("/dev/sda4");
+
+  ClobberState::DeviceWipeInfo wipe_info;
+  // Partition number for root_device does not match root_a or root_b in
+  // partitions_ struct.
+  EXPECT_FALSE(ClobberState::GetDevicesToWipe(root_disk, root_device,
+                                              partitions_, &wipe_info));
+}
 
 TEST_F(GetDevicesToWipeTest, MMC) {
   base::FilePath root_disk("/dev/mmcblk0");

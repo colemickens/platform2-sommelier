@@ -14,7 +14,7 @@ group("all") {
   ]
   if (use.test) {
     deps += [
-      ":clobber_state_unittest",
+      ":clobber_state_test",
       ":file_attrs_cleaner_test",
       ":usermode-helper_test",
     ]
@@ -106,7 +106,7 @@ if (use.test) {
     pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
 
-  executable("clobber_state_unittest") {
+  executable("clobber_state_test") {
     configs += [
       "//common-mk:test",
       ":target_defaults",
@@ -114,7 +114,7 @@ if (use.test) {
     ]
     sources = [
       "clobber_state.cc",
-      "clobber_state_unittest.cc",
+      "clobber_state_test.cc",
     ]
     deps = [
       ":libcrossystem",
