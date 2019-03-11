@@ -8,8 +8,8 @@
 #include <vector>
 
 #include <base/timer/elapsed_timer.h>
-#include <cryptohome-client/cryptohome/dbus-proxies.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
+#include <cryptohome-client/cryptohome/dbus-proxies.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <dbus/dbus.h>
 
@@ -65,20 +65,12 @@ bool BootLockboxClient::Sign(const std::string& digest,
   base::ElapsedTimer timer;
   cryptohome::SignBootLockboxRequest request;
   request.set_data(digest);
-  std::vector<uint8_t> request_array(request.ByteSize());
-  request.SerializeToArray(request_array.data(), request_array.size());
-
-  std::vector<uint8_t> reply_array;
-  brillo::ErrorPtr error;
-  if (!cryptohome_->SignBootLockbox(request_array, &reply_array, &error)) {
-    LOG(ERROR) << "Failed to call SignBootLockbox, error: "
-               << error->GetMessage();
-    return false;
-  }
 
   cryptohome::BaseReply base_reply;
-  if (!base_reply.ParseFromArray(reply_array.data(), reply_array.size())) {
-    LOG(ERROR) << "Failed to parse SignBootLockboxReply";
+  brillo::ErrorPtr error;
+  if (!cryptohome_->SignBootLockbox(request, &base_reply, &error)) {
+    LOG(ERROR) << "Failed to call SignBootLockbox, error: "
+               << error->GetMessage();
     return false;
   }
 
@@ -110,19 +102,11 @@ bool BootLockboxClient::Verify(const std::string& digest,
   cryptohome::VerifyBootLockboxRequest request;
   request.set_data(digest);
   request.set_signature(signature);
-  std::vector<uint8_t> request_array(request.ByteSize());
-  request.SerializeToArray(request_array.data(), request_array.size());
-
-  std::vector<uint8_t> reply_array;
-  brillo::ErrorPtr error;
-  if (!cryptohome_->VerifyBootLockbox(request_array, &reply_array, &error)) {
-    LOG(ERROR) << "Failed to call VerifyBootLockbox, " << error->GetMessage();
-    return false;
-  }
 
   cryptohome::BaseReply base_reply;
-  if (!base_reply.ParseFromArray(reply_array.data(), reply_array.size())) {
-    LOG(ERROR) << "Failed to parse VerifyBootLockbox reply message";
+  brillo::ErrorPtr error;
+  if (!cryptohome_->VerifyBootLockbox(request, &base_reply, &error)) {
+    LOG(ERROR) << "Failed to call VerifyBootLockbox, " << error->GetMessage();
     return false;
   }
 
@@ -139,19 +123,11 @@ bool BootLockboxClient::Verify(const std::string& digest,
 bool BootLockboxClient::Finalize() {
   base::ElapsedTimer timer;
   cryptohome::FinalizeBootLockboxRequest request;
-  std::vector<uint8_t> request_array(request.ByteSize());
-  request.SerializeToArray(request_array.data(), request_array.size());
-
-  std::vector<uint8_t> reply_array;
-  brillo::ErrorPtr error;
-  if (!cryptohome_->FinalizeBootLockbox(request_array, &reply_array, &error)) {
-    LOG(ERROR) << "Failed to call FinalizeBootLockbox";
-    return false;
-  }
 
   cryptohome::BaseReply base_reply;
-  if (!base_reply.ParseFromArray(reply_array.data(), reply_array.size())) {
-    LOG(ERROR) << "Failed to parse FinalizeBootLockbox reply";
+  brillo::ErrorPtr error;
+  if (!cryptohome_->FinalizeBootLockbox(request, &base_reply, &error)) {
+    LOG(ERROR) << "Failed to call FinalizeBootLockbox";
     return false;
   }
 

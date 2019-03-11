@@ -21,69 +21,159 @@
     </method>
     <method name="ListKeysEx">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="account_id" direction="in" />
+      <arg type="ay" name="account_id" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AccountIdentifier" />
+      </arg>
       <!-- No authorization is required. -->
-      <arg type="ay" name="authorization_request" direction="in" />
-      <arg type="ay" name="list_keys_request" direction="in" />
+      <arg type="ay" name="authorization_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AuthorizationRequest" />
+      </arg>
+      <arg type="ay" name="list_keys_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::ListKeysRequest" />
+      </arg>
       <!-- Returns a list of key labels as a ListKeysReply protobuf. -->
-      <arg type="ay" name="list_keys_reply" direction="out" />
+      <arg type="ay" name="list_keys_reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <method name="CheckKeyEx">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="account_id" direction="in" />
-      <arg type="ay" name="authorization_request" direction="in" />
-      <arg type="ay" name="check_key_request" direction="in" />
-      <arg type="ay" name="check_key_reply" direction="out" />
+      <arg type="ay" name="account_id" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AccountIdentifier" />
+      </arg>
+      <arg type="ay" name="authorization_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AuthorizationRequest" />
+      </arg>
+      <arg type="ay" name="check_key_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::CheckKeyRequest" />
+      </arg>
+      <arg type="ay" name="check_key_reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <method name="RemoveKeyEx">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="account_id" direction="in" />
-      <arg type="ay" name="authorization_request" direction="in" />
-      <arg type="ay" name="remove_key_request" direction="in" />
-      <arg type="ay" name="remove_key_reply" direction="out" />
+      <arg type="ay" name="account_id" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AccountIdentifier" />
+      </arg>
+      <arg type="ay" name="authorization_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AuthorizationRequest" />
+      </arg>
+      <arg type="ay" name="remove_key_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::RemoveKeyRequest" />
+      </arg>
+      <arg type="ay" name="remove_key_reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <method name="GetKeyDataEx">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="account_id" direction="in" />
+      <arg type="ay" name="account_id" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AccountIdentifier" />
+      </arg>
       <!-- This should be an empty AuthorizationRequest.
            In the future, authorization may be used to decrypt and return
            secrets, like the UpdateAuthorization secret.
         -->
-      <arg type="ay" name="authorization_request" direction="in" />
-      <arg type="ay" name="get_key_data_request" direction="in" />
-      <arg type="ay" name="get_key_data_reply" direction="out" />
+      <arg type="ay" name="authorization_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AuthorizationRequest" />
+      </arg>
+      <arg type="ay" name="get_key_data_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::GetKeyDataRequest" />
+      </arg>
+      <arg type="ay" name="get_key_data_reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <!-- This may be called asynchronously. -->
     <method name="MigrateKeyEx">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="account" direction="in" />
-      <arg type="ay" name="authorization_request" direction="in" />
-      <arg type="ay" name="migrate_request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="account" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AccountIdentifier" />
+      </arg>
+      <arg type="ay" name="authorization_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AuthorizationRequest" />
+      </arg>
+      <arg type="ay" name="migrate_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::MigrateKeyRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <!-- This may be called asynchronously. -->
     <method name="AddKeyEx">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="account_id" direction="in" />
-      <arg type="ay" name="authorization_request" direction="in" />
-      <arg type="ay" name="add_key_request" direction="in" />
-      <arg type="ay" name="add_key_reply" direction="out" />
+      <arg type="ay" name="account_id" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AccountIdentifier" />
+      </arg>
+      <arg type="ay" name="authorization_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AuthorizationRequest" />
+      </arg>
+      <arg type="ay" name="add_key_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AddKeyRequest" />
+      </arg>
+      <arg type="ay" name="add_key_reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <!-- This method looks like an AddKeyEx(clobber=true)
          but it updates the authorizing key exclusively.
     -->
     <method name="UpdateKeyEx">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="account_id" direction="in" />
-      <arg type="ay" name="authorization_request" direction="in" />
-      <arg type="ay" name="update_key_request" direction="in" />
-      <arg type="ay" name="update_key_reply" direction="out" />
+      <arg type="ay" name="account_id" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AccountIdentifier" />
+      </arg>
+      <arg type="ay" name="authorization_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AuthorizationRequest" />
+      </arg>
+      <arg type="ay" name="update_key_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::UpdateKeyRequest" />
+      </arg>
+      <arg type="ay" name="update_key_reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <!-- This may be called asynchronously. -->
     <method name="RemoveEx">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="account" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="account" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AccountIdentifier" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <method name="GetSystemSalt">
       <arg type="ay" name="salt" direction="out" />
@@ -95,32 +185,71 @@
     <!-- This may be called asynchronously. -->
     <method name="MountEx">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="account_id" direction="in" />
-      <arg type="ay" name="authorization_request" direction="in" />
-      <arg type="ay" name="mount_request" direction="in" />
-      <arg type="ay" name="mount_reply" direction="out" />
+      <arg type="ay" name="account_id" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AccountIdentifier" />
+      </arg>
+      <arg type="ay" name="authorization_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AuthorizationRequest" />
+      </arg>
+      <arg type="ay" name="mount_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::MountRequest" />
+      </arg>
+      <arg type="ay" name="mount_reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <!-- This may be called asynchronously. -->
     <method name="MountGuestEx">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true" />
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::MountGuestRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <method name="RenameCryptohome">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="cryptohome_id_from" direction="in" />
-      <arg type="ay" name="cryptohome_id_to" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="cryptohome_id_from" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AccountIdentifier" />
+      </arg>
+      <arg type="ay" name="cryptohome_id_to" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AccountIdentifier" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <method name="GetAccountDiskUsage">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="account_id" direction="in" />
-      <arg type="ay" name="get_account_disk_usage_reply" direction="out" />
+      <arg type="ay" name="account_id" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AccountIdentifier" />
+      </arg>
+      <arg type="ay" name="get_account_disk_usage_reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <method name="UnmountEx">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::UnmountRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <method name="UpdateCurrentUserActivityTimestamp">
       <arg type="i" name="time_shift_sec" direction="in" />
@@ -149,8 +278,14 @@
     </method>
     <method name="TpmAttestationGetEnrollmentPreparationsEx">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="response" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AttestationGetEnrollmentPreparationsRequest" />
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <method name="TpmVerifyAttestationData">
       <arg type="b" name="is_cros_core" />
@@ -360,8 +495,14 @@
     -->
     <method name="SignBootLockbox">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::SignBootLockboxRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <!-- May be called asynchronously.  Both arguments are protobufs:
          request: VerifyBootLockboxRequest
@@ -369,8 +510,14 @@
     -->
     <method name="VerifyBootLockbox">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::VerifyBootLockboxRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <!-- May be called asynchronously.  Both arguments are protobufs:
          request: FinalizeBootLockboxRequest
@@ -378,8 +525,14 @@
     -->
     <method name="FinalizeBootLockbox">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::FinalizeBootLockboxRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <!-- May be called asynchronously.  Both arguments are protobufs:
          request: GetBootAttributeRequest
@@ -387,8 +540,14 @@
     -->
     <method name="GetBootAttribute">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::GetBootAttributeRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <!-- May be called asynchronously.  Both arguments are protobufs:
          request: SetBootAttributeRequest
@@ -396,8 +555,14 @@
     -->
     <method name="SetBootAttribute">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::SetBootAttributeRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <!-- May be called asynchronously.  Both arguments are protobufs:
          request: FlushAndSignBootAttributes
@@ -405,8 +570,14 @@
     -->
     <method name="FlushAndSignBootAttributes">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::FlushAndSignBootAttributesRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <!-- May be called asynchronously.  Both arguments are protobufs:
          request: GetLoginStatusRequest
@@ -414,8 +585,14 @@
     -->
     <method name="GetLoginStatus">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::GetLoginStatusRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <!-- May be called asynchronously.  Both arguments are protobufs:
          request: GetTpmStatusRequest
@@ -423,8 +600,14 @@
     -->
     <method name="GetTpmStatus">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::GetTpmStatusRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <!-- May be called asynchronously.  Both arguments are protobufs:
          request: GetEndorsementInfoRequest
@@ -432,8 +615,14 @@
     -->
     <method name="GetEndorsementInfo">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::GetEndorsementInfoRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <!-- May be called asynchronously.  Both arguments are protobufs:
          request: InitializeCastKey
@@ -441,8 +630,14 @@
     -->
     <method name="InitializeCastKey">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::InitializeCastKeyRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
 
     <!-- May be called asynchronously.  Both arguments are protobufs:
@@ -452,8 +647,14 @@
     -->
     <method name="GetFirmwareManagementParameters">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::GetFirmwareManagementParametersRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <!-- May be called asynchronously.  Both arguments are protobufs:
          request: SetFirmwareManagementParametersRequest
@@ -461,8 +662,14 @@
     -->
     <method name="SetFirmwareManagementParameters">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::SetFirmwareManagementParametersRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <!-- May be called asynchronously.  Both arguments are protobufs:
          request: RemoveFirmwareManagementParametersRequest
@@ -470,8 +677,14 @@
     -->
     <method name="RemoveFirmwareManagementParameters">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::RemoveFirmwareManagementParametersRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <!-- The account_id argument is a protobuf. Since the migration process
          may take arbitrary long time, this dbus method just kicks it and
@@ -481,20 +694,35 @@
          migrate_request: MigrateToDircryptoRequest
     -->
     <method name="MigrateToDircrypto">
-      <arg type="ay" name="account_id" direction="in" />
-      <arg type="ay" name="migrate_request" direction="in" />
+      <arg type="ay" name="account_id" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AccountIdentifier" />
+      </arg>
+      <arg type="ay" name="migrate_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::MigrateToDircryptoRequest" />
+      </arg>
     </method>
     <!-- Whether the user identified by |account_id| needs to migrate to
          dircrypto. Returns true if the migration has not started or incomplete.
     -->
     <method name="NeedsDircryptoMigration">
-      <arg type="ay" name="account_id" direction="in" />
+      <arg type="ay" name="account_id" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AccountIdentifier" />
+      </arg>
       <arg type="b" name="needs_dircrypto_migration" direction="out" />
     </method>
     <method name="GetSupportedKeyPolicies">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::GetSupportedKeyPoliciesRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
     <!-- Whether quota-based disk usage statistics is supported.
     -->
@@ -516,8 +744,14 @@
 
     <method name="LockToSingleUserMountUntilReboot">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::LockToSingleUserMountUntilRebootRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
     </method>
 
     <!-- Signals:
