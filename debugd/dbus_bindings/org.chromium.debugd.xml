@@ -384,12 +384,6 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
-    <method name="CupsResetState">
-      <tp:docstring>
-        Stop CUPS daemon and reset its state.
-      </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
-    </method>
     <method name="GetInterfaces">
       <tp:docstring>
         Returns information about network interfaces as a JSON string.

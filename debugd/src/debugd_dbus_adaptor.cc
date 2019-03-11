@@ -225,10 +225,6 @@ bool DebugdDBusAdaptor::CupsRemovePrinter(const std::string& name) {
   return cups_tool_->RemovePrinter(name);
 }
 
-void DebugdDBusAdaptor::CupsResetState() {
-  cups_tool_->ResetState();
-}
-
 std::string DebugdDBusAdaptor::GetInterfaces() {
   return netif_tool_->GetInterfaces();
 }

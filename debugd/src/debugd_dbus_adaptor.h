@@ -116,7 +116,6 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
       const std::string& uri,
       const std::vector<uint8_t>& ppd_contents) override;
   bool CupsRemovePrinter(const std::string& name) override;
-  void CupsResetState() override;
   std::string GetInterfaces() override;
   std::string TestICMP(const std::string& host) override;
   std::string TestICMPWithOptions(

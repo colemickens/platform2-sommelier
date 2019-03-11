@@ -5,25 +5,16 @@
 // Tool to manipulate CUPS.
 #include "debugd/src/cups_tool.h"
 
-#include <errno.h>
-#include <ftw.h>
 #include <signal.h>
-#include <sys/types.h>
 #include <unistd.h>
 
-#include <algorithm>
 #include <string>
 #include <vector>
 
-#include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/strings/string_piece.h>
-#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <brillo/flag_helper.h>
-#include <brillo/userdb_utils.h>
 #include <chromeos/dbus/debugd/dbus-constants.h>
 
 #include "debugd/src/constants.h"
@@ -33,57 +24,16 @@ namespace debugd {
 
 namespace {
 
-const char kJobName[] = "cupsd";
-const char kLpadminCommand[] = "/usr/sbin/lpadmin";
-const char kLpadminSeccompPolicy[] = "/usr/share/policy/lpadmin-seccomp.policy";
-const char kTestPPDCommand[] = "/usr/bin/cupstestppd";
-const char kTestPPDSeccompPolicy[] =
+constexpr char kLpadminCommand[] = "/usr/sbin/lpadmin";
+constexpr char kLpadminSeccompPolicy[] =
+    "/usr/share/policy/lpadmin-seccomp.policy";
+constexpr char kTestPPDCommand[] = "/usr/bin/cupstestppd";
+constexpr char kTestPPDSeccompPolicy[] =
     "/usr/share/policy/cupstestppd-seccomp.policy";
 
-const char kLpadminUser[] = "lpadmin";
-const char kLpadminGroup[] = "lpadmin";
-const char kLpGroup[] = "lp";
-
-int StopCups() {
-  int result;
-
-  result = ProcessWithOutput::RunProcess("initctl", {"stop", kJobName},
-                                         true,     // requires root
-                                         false,    // disable_sandbox
-                                         nullptr,  // stdin
-                                         nullptr,  // stdout
-                                         nullptr,  // stderr
-                                         nullptr);
-
-  // Don't log errors, since job may not be started.
-  return result;
-}
-
-int RemovePath(const char* fpath, const struct stat* sb, int typeflag,
-               struct FTW* ftwbuf) {
-  int ret = remove(fpath);
-  if (ret)
-    PLOG(WARNING) << "could not remove file/path: " << fpath;
-
-  return ret;
-}
-
-int ClearDirectory(const char* path) {
-  if (access(path, F_OK) && errno == ENOENT)
-    // Directory doesn't exist.  Skip quietly.
-    return 0;
-
-  return nftw(path, RemovePath, FTW_D, FTW_DEPTH | FTW_PHYS);
-}
-
-int ClearCupsState() {
-  int ret = 0;
-
-  ret |= ClearDirectory("/var/cache/cups");
-  ret |= ClearDirectory("/var/spool/cups");
-
-  return ret;
-}
+constexpr char kLpadminUser[] = "lpadmin";
+constexpr char kLpadminGroup[] = "lpadmin";
+constexpr char kLpGroup[] = "lp";
 
 // Returns the exit code for the executed process.
 // By default disallow root mount namespace. Passing true as optional argument
@@ -277,20 +227,6 @@ int32_t CupsTool::AddManuallyConfiguredPrinter(
 // Invokes lpadmin with -x to delete a printer.
 bool CupsTool::RemovePrinter(const std::string& name) {
   return Lpadmin({"-x", name}) == EXIT_SUCCESS;
-}
-
-// Stop cupsd and clear its state.  Needs to launch helper with root
-// permissions, so we can restart Upstart jobs, and clear privileged
-// directories.
-void CupsTool::ResetState() {
-  StopCups();
-
-  // There's technically a race -- cups can be restarted in the meantime -- but
-  // (a) we don't expect applications to be racing with this (e.g., this method
-  // may be used on logout or login) and
-  // (b) clearing CUPS's state while it's running should at most confuse CUPS
-  // (e.g., missing printers or jobs).
-  ClearCupsState();
 }
 
 // Check if a URI starts with a known scheme and comprises only

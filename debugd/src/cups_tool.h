@@ -5,6 +5,8 @@
 #ifndef DEBUGD_SRC_CUPS_TOOL_H_
 #define DEBUGD_SRC_CUPS_TOOL_H_
 
+#include <stdint.h>
+
 #include <string>
 #include <vector>
 
@@ -29,9 +31,6 @@ class CupsTool {
 
   // Remove a printer from CUPS using lpadmin.
   bool RemovePrinter(const std::string& name);
-
-  // Clear CUPS state.
-  void ResetState();
 
   // Test for a valid URI.
   bool UriSeemsReasonable(const std::string& uri);
