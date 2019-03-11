@@ -14,8 +14,7 @@
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-
-#include "container_guest.grpc.pb.h"  // NOLINT(build/include)
+#include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 
 namespace vm_tools {
 namespace cicerone {

@@ -14,8 +14,7 @@
 #include <base/sequenced_task_runner.h>
 #include <base/time/time.h>
 #include <grpcpp/grpcpp.h>
-
-#include "container_host.grpc.pb.h"  // NOLINT(build/include)
+#include <vm_protos/proto_bindings/container_host.grpc.pb.h>
 
 namespace vm_tools {
 namespace cicerone {

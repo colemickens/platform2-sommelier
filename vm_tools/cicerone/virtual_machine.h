@@ -13,11 +13,10 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
+#include <vm_protos/proto_bindings/tremplin.grpc.pb.h>
 
 #include "vm_tools/cicerone/container.h"
-
-#include "container_guest.grpc.pb.h"  // NOLINT(build/include)
-#include "tremplin.grpc.pb.h"         // NOLINT(build/include)
 
 namespace vm_tools {
 namespace cicerone {

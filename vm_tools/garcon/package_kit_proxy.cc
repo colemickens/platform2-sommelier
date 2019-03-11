@@ -23,8 +23,7 @@
 #include <dbus/message.h>
 #include <dbus/property.h>
 #include <dbus/scoped_dbus_error.h>
-
-#include "container_guest.grpc.pb.h"  // NOLINT(build/include)
+#include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 
 namespace vm_tools {
 namespace garcon {

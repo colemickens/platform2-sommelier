@@ -13,7 +13,6 @@ group("guest") {
     ":virtwl_guest_proxy",
     ":vm_syslog",
     ":vshd",
-    "//vm_tools:tremplin-gorpcs",
   ]
   if (use.test) {
     deps += [
@@ -39,8 +38,10 @@ static_library("libmaitred") {
     "../maitred/service_impl.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [
-    "//vm_tools:vm-rpcs",
+  pkg_deps = [
+    "grpc++",
+    "protobuf",
+    "vm_protos",
   ]
 }
 
@@ -57,8 +58,10 @@ static_library("libgarcon") {
     "../garcon/service_impl.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [
-    "//vm_tools:container-rpcs",
+  pkg_deps = [
+    "grpc++",
+    "protobuf",
+    "vm_protos",
   ]
 }
 
@@ -69,8 +72,10 @@ static_library("libsyslog") {
   ]
   configs += [ ":target_defaults" ]
   all_dependent_pkg_deps = [ "libminijail" ]
-  deps = [
-    "//vm_tools:vm-rpcs",
+  pkg_deps = [
+    "grpc++",
+    "protobuf",
+    "vm_protos",
   ]
 }
 
@@ -118,10 +123,14 @@ executable("vshd") {
     "../vsh/vshd.cc",
   ]
   configs += [ ":target_defaults" ]
-  pkg_deps = [ "libbrillo-${libbase_ver}" ]
+  pkg_deps = [
+    "grpc++",
+    "libbrillo-${libbase_ver}",
+    "protobuf",
+    "vm_protos",
+  ]
   deps = [
     "//vm_tools:libvsh",
-    "//vm_tools:vsh-protos",
   ]
 }
 

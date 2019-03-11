@@ -11,8 +11,8 @@
 #include <base/callback.h>
 #include <base/macros.h>
 #include <grpcpp/grpcpp.h>
+#include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
-#include "vm_guest.grpc.pb.h"  // NOLINT(build/include)
 #include "vm_tools/maitred/init.h"
 
 namespace vm_tools {

@@ -14,9 +14,9 @@
 #include <base/macros.h>
 #include <brillo/asynchronous_signal_handler.h>
 #include <google/protobuf/message_lite.h>
+#include <vm_protos/proto_bindings/vsh.pb.h>
 
 #include "vm_tools/vsh/scoped_termios.h"
-#include "vsh.pb.h"  // NOLINT(build/include)
 
 namespace vm_tools {
 namespace vsh {

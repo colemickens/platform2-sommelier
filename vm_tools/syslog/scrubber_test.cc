@@ -11,8 +11,8 @@
 #include <base/macros.h>
 #include <base/strings/string_util.h>
 #include <gtest/gtest.h>
+#include <vm_protos/proto_bindings/vm_host.pb.h>
 
-#include "vm_host.pb.h"  // NOLINT(build/include)
 #include "vm_tools/syslog/scrubber.h"
 
 using std::string;

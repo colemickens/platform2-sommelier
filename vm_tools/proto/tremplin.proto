@@ -478,7 +478,6 @@ message ImportContainerResponse {
 
   // Details relating to the failure state.
   string failure_reason = 2;
-
 }
 
 // Sent by tremplin to update the host on the import progress of a container.

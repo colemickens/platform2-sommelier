@@ -13,8 +13,7 @@
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
 #include <grpcpp/grpcpp.h>
-
-#include "vm_host.grpc.pb.h"  // NOLINT(build/include)
+#include <vm_protos/proto_bindings/vm_host.grpc.pb.h>
 
 namespace vm_tools {
 namespace concierge {

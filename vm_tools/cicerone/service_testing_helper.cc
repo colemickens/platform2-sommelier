@@ -10,6 +10,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <gmock/gmock.h>
+#include <vm_protos/proto_bindings/container_host.grpc.pb.h>
+#include <vm_protos/proto_bindings/tremplin.grpc.pb.h>
 
 #include "base/strings/string_number_conversions.h"
 #include "vm_tools/cicerone/container_listener_impl.h"
@@ -18,8 +20,6 @@
 #include "vm_tools/cicerone/tremplin_listener_impl.h"
 #include "vm_tools/common/constants.h"
 
-#include "container_host.grpc.pb.h"  // NOLINT(build/include)
-#include "tremplin.grpc.pb.h"        // NOLINT(build/include)
 
 namespace vm_tools {
 namespace cicerone {

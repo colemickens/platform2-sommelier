@@ -11,6 +11,8 @@
 #include <brillo/syslog_logging.h>
 #include <libprotobuf-mutator/src/libfuzzer/libfuzzer_macro.h>
 #include <gmock/gmock.h>
+#include <vm_protos/proto_bindings/container_host.grpc.pb.h>
+#include <vm_protos/proto_bindings/fuzzer.pb.h>
 
 #include "vm_tools/cicerone/container_listener_impl.h"
 #include "vm_tools/cicerone/mock_tremplin_stub.h"
@@ -18,8 +20,6 @@
 #include "vm_tools/cicerone/service_testing_helper.h"
 #include "vm_tools/cicerone/tremplin_listener_impl.h"
 
-#include "container_host.grpc.pb.h"  // NOLINT(build/include)
-#include "fuzzer.pb.h"               // NOLINT(build/include)
 
 namespace {
 

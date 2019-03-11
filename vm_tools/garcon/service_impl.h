@@ -11,8 +11,7 @@
 #include <grpcpp/grpcpp.h>
 #include <string>
 #include <vector>
-
-#include "container_guest.grpc.pb.h"  // NOLINT(build/include)
+#include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 
 namespace vm_tools {
 namespace garcon {

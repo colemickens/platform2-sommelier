@@ -18,9 +18,8 @@
 #include <base/synchronization/lock.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
-
-#include "container_guest.grpc.pb.h"  // NOLINT(build/include)
-#include "container_host.grpc.pb.h"  // NOLINT(build/include)
+#include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
+#include <vm_protos/proto_bindings/container_host.grpc.pb.h>
 
 namespace vm_tools {
 namespace garcon {

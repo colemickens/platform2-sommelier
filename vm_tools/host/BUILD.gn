@@ -44,8 +44,10 @@ executable("maitred_client") {
   ]
   configs += [ ":host_target_defaults" ]
   libs = [ "gpr" ]
-  deps = [
-    "//vm_tools:vm-rpcs",
+  pkg_deps = [
+    "grpc++",
+    "protobuf",
+    "vm_protos",
   ]
 }
 
@@ -55,8 +57,10 @@ static_library("libforwarder") {
     "../syslog/scrubber.cc",
   ]
   configs += [ ":host_target_defaults" ]
-  deps = [
-    "//vm_tools:vm-rpcs",
+  all_dependent_pkg_deps = [
+    "grpc++",
+    "protobuf",
+    "vm_protos",
   ]
 }
 
@@ -67,7 +71,6 @@ executable("vmlog_forwarder") {
   configs += [ ":host_target_defaults" ]
   deps = [
     ":libforwarder",
-    "//vm_tools:vm-rpcs",
   ]
 }
 
@@ -78,10 +81,13 @@ executable("vsh") {
     "../vsh/vsh_client.cc",
   ]
   configs += [ ":host_target_defaults" ]
-  pkg_deps = [ "system_api" ]
+  pkg_deps = [
+    "protobuf",
+    "system_api",
+    "vm_protos",
+  ]
   deps = [
     "//vm_tools:libvsh",
-    "//vm_tools:vsh-protos",
   ]
 }
 
@@ -106,15 +112,14 @@ static_library("libconcierge") {
   configs += [ ":host_target_defaults" ]
   libs = [ "gpr" ]
   all_dependent_pkg_deps = [
+    "grpc++",
     "libarchive",
     "libminijail",
     "libqcow_utils",
     "libshill-client",
+    "protobuf",
     "system_api",
-  ]
-  deps = [
-    "//vm_tools:container-rpcs",
-    "//vm_tools:vm-rpcs",
+    "vm_protos",
   ]
 }
 
@@ -151,10 +156,11 @@ static_library("libcicerone") {
   ]
   configs += [ ":host_target_defaults" ]
   libs = [ "gpr" ]
-  all_dependent_pkg_deps = [ "system_api" ]
-  deps = [
-    "//vm_tools:container-rpcs",
-    "//vm_tools:tremplin-rpcs",
+  all_dependent_pkg_deps = [
+    "grpc++",
+    "protobuf",
+    "system_api",
+    "vm_protos",
   ]
 }
 

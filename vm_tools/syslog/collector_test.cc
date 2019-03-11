@@ -30,9 +30,9 @@
 #include <google/protobuf/util/message_differencer.h>
 #include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
+#include <vm_protos/proto_bindings/vm_host.grpc.pb.h>
+#include <vm_protos/proto_bindings/vm_host.pb.h>
 
-#include "vm_host.grpc.pb.h"  // NOLINT(build/include)
-#include "vm_host.pb.h"       // NOLINT(build/include)
 #include "vm_tools/syslog/collector.h"
 
 using std::string;

@@ -8,8 +8,7 @@
 #include <stdint.h>
 
 #include <base/time/time.h>
-
-#include "vm_host.pb.h"  // NOLINT(build/include)
+#include <vm_protos/proto_bindings/vm_host.pb.h>
 
 namespace vm_tools {
 namespace syslog {

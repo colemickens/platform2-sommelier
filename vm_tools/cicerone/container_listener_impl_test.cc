@@ -6,20 +6,19 @@
 #include <set>
 #include <string>
 
+#include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <grpcpp/impl/call.h>
 #include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
 #include <chromeos/dbus/service_constants.h>
 #include <vm_applications/proto_bindings/apps.pb.h>
+#include <vm_protos/proto_bindings/container_host.grpc.pb.h>
 
-#include "base/strings/string_number_conversions.h"
 #include "vm_tools/cicerone/container_listener_impl.h"
 #include "vm_tools/cicerone/dbus_message_testing_helper.h"
 #include "vm_tools/cicerone/service.h"
 #include "vm_tools/cicerone/service_testing_helper.h"
-
-#include "container_host.grpc.pb.h"  // NOLINT(build/include)
 
 namespace vm_tools {
 namespace cicerone {

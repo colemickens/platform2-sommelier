@@ -15,8 +15,7 @@
 #include <base/time/time.h>
 #include <grpcpp/grpcpp.h>
 #include <vm_applications/proto_bindings/apps.pb.h>
-
-#include "tremplin.grpc.pb.h"  // NOLINT(build/include)
+#include <vm_protos/proto_bindings/tremplin.grpc.pb.h>
 
 namespace vm_tools {
 namespace cicerone {

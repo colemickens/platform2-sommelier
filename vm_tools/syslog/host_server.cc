@@ -17,8 +17,8 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <grpcpp/grpcpp.h>
+#include <vm_protos/proto_bindings/vm_host.grpc.pb.h>
 
-#include "vm_host.grpc.pb.h"  // NOLINT(build/include)
 #include "vm_tools/syslog/forwarder.h"
 
 namespace {

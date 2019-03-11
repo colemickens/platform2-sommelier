@@ -31,12 +31,11 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/text_format.h>
 #include <grpcpp/grpcpp.h>
+#include <vm_protos/proto_bindings/vm_host.grpc.pb.h>
 
 #include "vm_tools/common/constants.h"
 #include "vm_tools/maitred/init.h"
 #include "vm_tools/maitred/service_impl.h"
-
-#include "vm_host.grpc.pb.h"  // NOLINT(build/include)
 
 using std::string;
 

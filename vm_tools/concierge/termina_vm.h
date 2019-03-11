@@ -20,12 +20,11 @@
 #include <base/macros.h>
 #include <base/time/time.h>
 #include <brillo/process.h>
+#include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/vm_interface.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
-
-#include "vm_guest.grpc.pb.h"  // NOLINT(build/include)
 
 namespace vm_tools {
 namespace concierge {

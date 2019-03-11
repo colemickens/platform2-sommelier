@@ -14,8 +14,8 @@
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
 #include <grpcpp/grpcpp.h>
+#include <vm_protos/proto_bindings/container_host.grpc.pb.h>
 
-#include "container_host.grpc.pb.h"  // NOLINT(build/include)
 #include "vm_tools/garcon/package_kit_proxy.h"
 
 namespace vm_tools {

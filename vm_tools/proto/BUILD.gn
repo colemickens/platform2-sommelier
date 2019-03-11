@@ -1,0 +1,111 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":common-protos",
+    ":container-rpcs",
+    ":fuzzer-protos",
+    ":tremplin-gorpcs",
+    ":tremplin-rpcs",
+    ":vm-rpcs",
+    ":vsh-protos",
+  ]
+}
+
+proto_library("common-protos") {
+  proto_in_dir = "./"
+  proto_out_dir = "include/vm_protos/proto_bindings"
+  gen_grpc = true
+  sources = [
+    "${proto_in_dir}/common.proto",
+  ]
+  standalone = true
+}
+
+proto_library("container-rpcs") {
+  proto_in_dir = "./"
+  proto_out_dir = "include/vm_protos/proto_bindings"
+  gen_grpc = true
+  sources = [
+    "${proto_in_dir}/container_guest.proto",
+    "${proto_in_dir}/container_host.proto",
+  ]
+  deps = [
+    ":common-protos",
+  ]
+  all_dependent_pkg_deps = [
+    "grpc++",
+    "protobuf",
+  ]
+  standalone = true
+}
+
+proto_library("fuzzer-protos") {
+  proto_in_dir = "./"
+  proto_out_dir = "include/vm_protos/proto_bindings"
+  gen_grpc = true
+  sources = [
+    "${proto_in_dir}/fuzzer.proto",
+  ]
+  standalone = true
+}
+
+proto_library("tremplin-rpcs") {
+  proto_in_dir = "./"
+  proto_out_dir = "include/vm_protos/proto_bindings"
+  gen_grpc = true
+  sources = [
+    "${proto_in_dir}/tremplin.proto",
+  ]
+  all_dependent_pkg_deps = [
+    "grpc++",
+    "protobuf",
+  ]
+  gen_grpc_gmock = true
+  standalone = true
+}
+
+goproto_library("tremplin-gorpcs") {
+  proto_in_dir = "./"
+  proto_out_dir = "go/src/chromiumos/vm_tools/tremplin_proto"
+  gen_grpc = true
+  sources = [
+    "${proto_in_dir}/tremplin.proto",
+  ]
+}
+
+proto_library("vm-rpcs") {
+  proto_in_dir = "./"
+  proto_out_dir = "include/vm_protos/proto_bindings"
+  gen_grpc = true
+  sources = [
+    "${proto_in_dir}/vm_guest.proto",
+    "${proto_in_dir}/vm_host.proto",
+  ]
+  deps = [
+    ":common-protos",
+  ]
+  all_dependent_pkg_deps = [
+    "grpc++",
+    "protobuf",
+  ]
+  standalone = true
+}
+
+proto_library("vsh-protos") {
+  proto_in_dir = "./"
+  proto_out_dir = "include/vm_protos/proto_bindings"
+  gen_grpc = true
+  sources = [
+    "${proto_in_dir}/vsh.proto",
+  ]
+  all_dependent_pkg_deps = [
+    "grpc++",
+    "protobuf",
+  ]
+  standalone = true
+}

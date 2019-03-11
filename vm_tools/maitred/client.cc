@@ -22,8 +22,7 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/text_format.h>
 #include <grpcpp/grpcpp.h>
-
-#include "vm_guest.grpc.pb.h"  // NOLINT(build/include)
+#include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
 using std::string;
 

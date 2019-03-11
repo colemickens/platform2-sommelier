@@ -36,10 +36,9 @@
 #include <google/protobuf/util/message_differencer.h>
 #include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
+#include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
 #include "vm_tools/concierge/vsock_cid_pool.h"
-
-#include "vm_guest.grpc.pb.h"  // NOLINT(build/include)
 
 using std::string;
 
