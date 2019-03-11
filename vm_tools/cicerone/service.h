@@ -164,11 +164,15 @@ class Service final : public base::MessageLoopForIO::Watcher {
                                  bool* result,
                                  base::WaitableEvent* event);
 
-  // Notifies the service that a container with |container_token| and running
-  // in a VM with |cid| is shutting down. Sets |result| to true if this maps to
-  // a currently running VM and |container_token| matches a security token for
-  // that VM; false otherwise. Signals |event| when done.
-  void ContainerShutdown(const std::string& container_token,
+  // Notifies the service that a container with |container_name| or
+  // |container_token| and running in a VM with |cid| is shutting down. Sets
+  // |result| to true if this maps to a currently running VM and
+  // |container_token| matches a security token for that VM; false otherwise.
+  // Signals |event| when done.  Callers from within the VM (tremplin) may set
+  // |container_name|, but callers from wihtin a container (garcon) should not
+  // be trusted to use |container_name| and must use |container_token|.
+  void ContainerShutdown(std::string container_name,
+                         std::string container_token,
                          const uint32_t cid,
                          bool* result,
                          base::WaitableEvent* event);

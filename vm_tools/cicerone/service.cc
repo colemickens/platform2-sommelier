@@ -725,11 +725,14 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
   event->Signal();
 }
 
-void Service::ContainerShutdown(const std::string& container_token,
+void Service::ContainerShutdown(std::string container_name,
+                                std::string container_token,
                                 const uint32_t cid,
                                 bool* result,
                                 base::WaitableEvent* event) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
+  CHECK(!container_name.empty() || !container_token.empty())
+      << "One of container_name or container_token must be provided";
   CHECK(result);
   CHECK(event);
   *result = false;
@@ -741,7 +744,18 @@ void Service::ContainerShutdown(const std::string& container_token,
     event->Signal();
     return;
   }
-  std::string container_name = vm->GetContainerNameForToken(container_token);
+  // Get container_name and container_token.
+  if (container_name.empty()) {
+    container_name = vm->GetContainerNameForToken(container_token);
+  } else if (container_token.empty()) {
+    Container* container = vm->GetContainerForName(container_name);
+    if (!container) {
+      LOG(ERROR) << "Container not found with name " << container_name;
+      event->Signal();
+      return;
+    }
+    container_token = container->token();
+  }
   if (!vm->UnregisterContainer(container_token)) {
     LOG(ERROR) << "Invalid container token passed back from VM " << vm_name
                << " of " << container_token;

@@ -269,6 +269,34 @@ grpc::Status TremplinListenerImpl::UpdateImportStatus(
   return grpc::Status::OK;
 }
 
+grpc::Status TremplinListenerImpl::ContainerShutdown(
+    grpc::ServerContext* ctx,
+    const vm_tools::tremplin::ContainerShutdownInfo* request,
+    vm_tools::tremplin::EmptyMessage* response) {
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
+  if (cid == 0) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failed parsing vsock cid for TremplinListener");
+  }
+
+  // Calls coming from tremplin are trusted to use container_name rather than
+  // container_token.
+  std::string container_token = "";
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+
+  bool result = false;
+  task_runner_->PostTask(
+      FROM_HERE, base::Bind(&vm_tools::cicerone::Service::ContainerShutdown,
+                            service_, request->container_name(),
+                            container_token, cid, &result, &event));
+  event.Wait();
+  if (!result) {
+    LOG(ERROR) << "Error in tremplin listener ContainerShutdown for "
+               << request->container_name();
+  }
+  return grpc::Status::OK;
+}
 // Returns 0 on failure, otherwise returns the 32-bit vsock cid.
 uint32_t TremplinListenerImpl::ExtractCidFromPeerAddress(
     grpc::ServerContext* ctx) {

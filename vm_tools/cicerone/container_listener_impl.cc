@@ -78,12 +78,16 @@ grpc::Status ContainerListenerImpl::ContainerShutdown(
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Failed parsing cid for ContainerListener");
   }
+  // Calls coming from garcon should not be trusted to set container_name and
+  // must use container_token.
+  std::string container_name = "";
   bool result = false;
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&vm_tools::cicerone::Service::ContainerShutdown,
-                            service_, request->token(), cid, &result, &event));
+      FROM_HERE,
+      base::Bind(&vm_tools::cicerone::Service::ContainerShutdown, service_,
+                 container_name, request->token(), cid, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Received ContainerShutdown but could not find matching VM: "
