@@ -101,21 +101,20 @@ class ClobberState {
   //   recovery_count
   static void RemoveVPDKeys();
 
-  // Partition metadata fields that can be read using ReadCgptProperty.
-  // |kSuccessfulProperty| is a 1 bit value indicating if a kernel partition
-  // has been successfully booted, while |kPriorityProperty| is a 4 bit value
+  // Reads successful and priority metadata from partition numbered
+  // |partition_number| on |disk|, storing the results in |successful_out| and
+  // |priority_out|, respectively. Returns true on success.
+  //
+  // successful is a 1 bit value indicating if a kernel partition
+  // has been successfully booted, while priority is a 4 bit value
   // indicating what order the kernel partitions should be booted in, 15 being
   // the highest, 1 the lowest, and 0 meaning not bootable.
   // More information on partition metadata is available at.
   // https://www.chromium.org/chromium-os/chromiumos-design-docs/disk-format
-  enum CgptProperty { kSuccessfulProperty, kPriorityProperty };
-
-  // Reads partition metadata from partition numbered |partition_number| on
-  // |disk|, storing the value in |value_out|. Returns true on success.
-  static bool ReadCgptProperty(const base::FilePath& disk,
-                               int partition_number,
-                               CgptProperty property,
-                               int* value_out);
+  static bool ReadPartitionMetadata(const base::FilePath& disk,
+                                    int partition_number,
+                                    bool* successful_out,
+                                    int* priority_out);
 
   // Searches |drive_name| for the partition labeled |partition_label| and
   // returns its partition number if exactly one partition was found. Returns

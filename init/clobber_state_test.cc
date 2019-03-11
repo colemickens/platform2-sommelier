@@ -458,45 +458,36 @@ TEST_F(CgptTest, FindValidPartitions) {
             12);
 }
 
-TEST_F(CgptTest, ReadCgptProperties) {
-  int value;
-  EXPECT_TRUE(ClobberState::ReadCgptProperty(
-      test_image_path_, 2, ClobberState::kSuccessfulProperty, &value));
-  EXPECT_EQ(value, 1);
-  EXPECT_TRUE(ClobberState::ReadCgptProperty(
-      test_image_path_, 2, ClobberState::kPriorityProperty, &value));
-  EXPECT_EQ(value, 2);
-  EXPECT_TRUE(ClobberState::ReadCgptProperty(
-      test_image_path_, 4, ClobberState::kSuccessfulProperty, &value));
-  EXPECT_EQ(value, 0);
-  EXPECT_TRUE(ClobberState::ReadCgptProperty(
-      test_image_path_, 4, ClobberState::kPriorityProperty, &value));
-  EXPECT_EQ(value, 1);
-  EXPECT_TRUE(ClobberState::ReadCgptProperty(
-      test_image_path_, 6, ClobberState::kSuccessfulProperty, &value));
-  EXPECT_EQ(value, 0);
-  EXPECT_TRUE(ClobberState::ReadCgptProperty(
-      test_image_path_, 6, ClobberState::kPriorityProperty, &value));
-  EXPECT_EQ(value, 0);
+TEST_F(CgptTest, ReadPartitionMetadata) {
+  bool successful;
+  int priority;
+  EXPECT_TRUE(ClobberState::ReadPartitionMetadata(test_image_path_, 2,
+                                                  &successful, &priority));
+  EXPECT_TRUE(successful);
+  EXPECT_EQ(priority, 2);
+  EXPECT_TRUE(ClobberState::ReadPartitionMetadata(test_image_path_, 4,
+                                                  &successful, &priority));
+  EXPECT_FALSE(successful);
+  EXPECT_EQ(priority, 1);
+  EXPECT_TRUE(ClobberState::ReadPartitionMetadata(test_image_path_, 6,
+                                                  &successful, &priority));
+  EXPECT_FALSE(successful);
+  EXPECT_EQ(priority, 0);
 }
 
 TEST_F(CgptTest, EnsureKernelIsBootable) {
   ClobberState::EnsureKernelIsBootable(test_image_path_, 4);
-  int successful;
-  EXPECT_TRUE(ClobberState::ReadCgptProperty(
-      test_image_path_, 4, ClobberState::kSuccessfulProperty, &successful));
-  EXPECT_EQ(successful, 1);
+  bool successful;
   int priority;
-  EXPECT_TRUE(ClobberState::ReadCgptProperty(
-      test_image_path_, 4, ClobberState::kPriorityProperty, &priority));
+  EXPECT_TRUE(ClobberState::ReadPartitionMetadata(test_image_path_, 4,
+                                                  &successful, &priority));
+  EXPECT_TRUE(successful);
   EXPECT_GT(priority, 0);
 
   ClobberState::EnsureKernelIsBootable(test_image_path_, 6);
-  EXPECT_TRUE(ClobberState::ReadCgptProperty(
-      test_image_path_, 6, ClobberState::kSuccessfulProperty, &successful));
-  EXPECT_EQ(successful, 1);
-  EXPECT_TRUE(ClobberState::ReadCgptProperty(
-      test_image_path_, 6, ClobberState::kPriorityProperty, &priority));
+  EXPECT_TRUE(ClobberState::ReadPartitionMetadata(test_image_path_, 6,
+                                                  &successful, &priority));
+  EXPECT_TRUE(successful);
   EXPECT_GT(priority, 0);
 }
 

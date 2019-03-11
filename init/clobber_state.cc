@@ -692,53 +692,39 @@ int ClobberState::GetPartitionNumber(const base::FilePath& drive_name,
 }
 
 // static
-bool ClobberState::ReadCgptProperty(const base::FilePath& disk,
-                                    int partition_number,
-                                    CgptProperty property,
-                                    int* value_out) {
-  // TODO(b/120644363) Convert this to use a proper cgpt API for reading
-  // partition metadata once one is created.
-  if (!value_out)
+bool ClobberState::ReadPartitionMetadata(const base::FilePath& disk,
+                                         int partition_number,
+                                         bool* successful_out,
+                                         int* priority_out) {
+  if (!successful_out || !priority_out)
     return false;
-  base::FilePath output;
-  base::CreateTemporaryFile(&output);
-  brillo::ProcessImpl cgpt;
-  cgpt.RedirectOutput(output.value());
-  cgpt.AddArg("/usr/bin/cgpt");
-  cgpt.AddArg("show");
-  if (property == kSuccessfulProperty) {
-    cgpt.AddArg("-S");
-  } else if (property == kPriorityProperty) {
-    cgpt.AddArg("-P");
+  // TODO(C++20): Switch to aggregate initialization once we require C++20.
+  CgptAddParams params = {};
+  params.drive_name = disk.value().c_str();
+  params.partition = partition_number;
+  if (CgptGetPartitionDetails(&params) == CGPT_OK) {
+    *successful_out = params.successful;
+    *priority_out = params.priority;
+    return true;
   } else {
     return false;
   }
-  cgpt.AddIntOption("-i", partition_number);
-  cgpt.AddArg(disk.value());
-  if (cgpt.Run() != CGPT_OK)
-    return false;
-
-  int value;
-  if (!ReadFileToInt(output, &value))
-    return false;
-  *value_out = value;
-  return true;
 }
 
 // static
 void ClobberState::EnsureKernelIsBootable(const base::FilePath root_disk,
                                           int kernel_partition) {
-  int successful;
-  if (!ReadCgptProperty(root_disk, kernel_partition, kSuccessfulProperty,
-                        &successful)) {
-    LOG(ERROR) << "Failed to read successful value from partition "
+  bool successful = false;
+  int priority = 0;
+  if (!ReadPartitionMetadata(root_disk, kernel_partition, &successful,
+                             &priority)) {
+    LOG(ERROR) << "Failed to read partition metadata from partition "
                << kernel_partition << " on disk " << root_disk.value();
     // If we couldn't read, we'll err on the side of caution and try to set the
-    // successful bit anyways.
-    successful = 0;
+    // successful bit and priority anyways.
   }
 
-  if (successful < 1) {
+  if (!successful) {
     // TODO(C++20): Switch to aggregate initialization once we require C++20.
     CgptAddParams params = {};
     params.partition = kernel_partition;
@@ -749,16 +735,6 @@ void ClobberState::EnsureKernelIsBootable(const base::FilePath root_disk,
       LOG(ERROR) << "Failed to set sucessful for active kernel partition: "
                  << kernel_partition;
     }
-  }
-
-  int priority;
-  if (!ReadCgptProperty(root_disk, kernel_partition, kPriorityProperty,
-                        &priority)) {
-    LOG(ERROR) << "Failed to read priority value from partition "
-               << kernel_partition << " on disk " << root_disk.value();
-    // If we couldn't read, we'll err on the side of caution and try to set the
-    // priority anyways.
-    priority = 0;
   }
 
   if (priority < 1) {
