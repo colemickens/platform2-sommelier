@@ -9,6 +9,7 @@ group("all") {
   deps = [
     ":cryptohome",
     ":cryptohome-path",
+    ":cryptohome-proxy",
     ":cryptohomed",
     ":lockbox-cache",
     ":mount-encrypted",
@@ -123,6 +124,26 @@ executable("cryptohomed") {
     "system_api",
     "protobuf",
     "vboot_host",
+  ]
+}
+
+# This executable is used for the transition between old DBus interface
+# and the new DBus interface.
+executable("cryptohome-proxy") {
+  configs += [ "libs:target_defaults" ]
+  sources = [
+    "proxy/cryptohome_proxy.cc",
+  ]
+  deps = [
+    "libs:cryptohome-proto-external",
+    "libs:libcryptohome",
+  ]
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libmetrics-${libbase_ver}",
+    "protobuf",
   ]
 }
 
