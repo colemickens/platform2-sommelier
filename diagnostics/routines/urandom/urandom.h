@@ -66,7 +66,7 @@ class UrandomRoutine final : public DiagnosticRoutine {
 
   grpc_api::DiagnosticRoutineStatus status_;
   grpc_api::UrandomRoutineParameters parameters_;
-  std::string output_;
+  std::string status_message_;
   std::unique_ptr<DiagProcessAdapter> process_adapter_;
   std::unique_ptr<base::TickClock> tick_clock_;
   base::TimeTicks start_ticks_;

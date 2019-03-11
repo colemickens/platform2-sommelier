@@ -57,7 +57,7 @@ void BatteryRoutine::Start() {
   DCHECK_EQ(status_, grpc_api::ROUTINE_STATUS_READY);
   status_ = RunBatteryRoutine();
   if (status_ != grpc_api::ROUTINE_STATUS_PASSED)
-    LOG(ERROR) << "Routine failed: " << output_;
+    LOG(ERROR) << "Routine failed: " << status_message_;
 }
 
 // The battery test can only be started.
@@ -71,9 +71,7 @@ void BatteryRoutine::PopulateStatusUpdate(
   // user message.
   response->set_status(status_);
   response->set_progress_percent(CalculateProgressPercent(status_));
-
-  if (include_output)
-    response->set_output(output_);
+  response->set_status_message(status_message_);
 }
 
 grpc_api::DiagnosticRoutineStatus BatteryRoutine::GetStatus() {
@@ -90,7 +88,7 @@ grpc_api::DiagnosticRoutineStatus BatteryRoutine::RunBatteryRoutine() {
       parameters_.high_mah() ? parameters_.high_mah() : kDefaultHighmAh;
 
   if (low_mah > high_mah) {
-    output_ = kBatteryRoutineParametersInvalidMessage;
+    status_message_ = kBatteryRoutineParametersInvalidMessage;
     return grpc_api::ROUTINE_STATUS_ERROR;
   }
 
@@ -98,14 +96,14 @@ grpc_api::DiagnosticRoutineStatus BatteryRoutine::RunBatteryRoutine() {
       root_dir_.AppendASCII(kBatteryChargeFullDesignPath));
 
   if (!base::PathExists(charge_full_design_path)) {
-    output_ = kBatteryNoChargeFullDesignMessage;
+    status_message_ = kBatteryNoChargeFullDesignMessage;
     return grpc_api::ROUTINE_STATUS_ERROR;
   }
 
   std::string charge_full_design_contents;
   if (!base::ReadFileToString(charge_full_design_path,
                               &charge_full_design_contents)) {
-    output_ = kBatteryFailedReadingChargeFullDesignMessage;
+    status_message_ = kBatteryFailedReadingChargeFullDesignMessage;
     return grpc_api::ROUTINE_STATUS_ERROR;
   }
 
@@ -114,7 +112,7 @@ grpc_api::DiagnosticRoutineStatus BatteryRoutine::RunBatteryRoutine() {
   int charge_full_design_uah;
   if (!base::StringToInt(charge_full_design_contents,
                          &charge_full_design_uah)) {
-    output_ = kBatteryFailedParsingChargeFullDesignMessage;
+    status_message_ = kBatteryFailedParsingChargeFullDesignMessage;
     return grpc_api::ROUTINE_STATUS_ERROR;
   }
 
@@ -123,11 +121,11 @@ grpc_api::DiagnosticRoutineStatus BatteryRoutine::RunBatteryRoutine() {
   int charge_full_design_mah = charge_full_design_uah / kuAhTomAhDivisor;
   if (!(charge_full_design_mah >= low_mah) ||
       !(charge_full_design_mah <= high_mah)) {
-    output_ = kBatteryRoutineFailedMessage;
+    status_message_ = kBatteryRoutineFailedMessage;
     return grpc_api::ROUTINE_STATUS_FAILED;
   }
 
-  output_ = kBatteryRoutineSucceededMessage;
+  status_message_ = kBatteryRoutineSucceededMessage;
   return grpc_api::ROUTINE_STATUS_PASSED;
 }
 

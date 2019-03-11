@@ -158,13 +158,15 @@ void ForwardGetRoutineUpdateResponse(
     grpc_api::DiagnosticRoutineStatus status,
     int progress_percent,
     grpc_api::DiagnosticRoutineUserMessage user_message,
-    const std::string& output) {
+    const std::string& output,
+    const std::string& status_message) {
   auto reply = std::make_unique<grpc_api::GetRoutineUpdateResponse>();
   reply->set_uuid(uuid);
   reply->set_status(status);
   reply->set_progress_percent(progress_percent);
   reply->set_user_message(user_message);
   reply->set_output(output);
+  reply->set_status_message(status_message);
   callback.Run(std::move(reply));
 }
 
@@ -486,11 +488,10 @@ void WilcoDtcSupportdGrpcService::GetRoutineUpdate(
   DCHECK(request);
 
   if (request->command() == grpc_api::GetRoutineUpdateRequest::COMMAND_UNSET) {
-    std::string output =
-        request->include_output() ? "No command specified." : "";
     ForwardGetRoutineUpdateResponse(
         callback, request->uuid(), grpc_api::ROUTINE_STATUS_ERROR,
-        0 /* progress_percent */, grpc_api::ROUTINE_USER_MESSAGE_UNSET, output);
+        0 /* progress_percent */, grpc_api::ROUTINE_USER_MESSAGE_UNSET,
+        "" /* output */, "No command specified.");
     return;
   }
 

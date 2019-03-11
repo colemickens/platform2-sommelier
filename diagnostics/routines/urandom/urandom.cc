@@ -61,12 +61,12 @@ void UrandomRoutine::Start() {
   DCHECK_EQ(status_, grpc_api::ROUTINE_STATUS_READY);
   if (parameters_.length_seconds() == 0) {
     status_ = grpc_api::ROUTINE_STATUS_PASSED;
-    output_ = kUrandomRoutineSucceededMessage;
+    status_message_ = kUrandomRoutineSucceededMessage;
     return;
   }
   if (parameters_.length_seconds() < 0) {
     status_ = grpc_api::ROUTINE_STATUS_ERROR;
-    output_ = kUrandomInvalidParametersMessage;
+    status_message_ = kUrandomInvalidParametersMessage;
     LOG(ERROR) << kUrandomInvalidParametersMessage;
     return;
   }
@@ -103,9 +103,7 @@ void UrandomRoutine::PopulateStatusUpdate(
 
   response->set_status(status_);
   response->set_progress_percent(CalculateProgressPercent());
-
-  if (include_output)
-    response->set_output(output_);
+  response->set_status_message(status_message_);
 }
 
 grpc_api::DiagnosticRoutineStatus UrandomRoutine::GetStatus() {
@@ -144,7 +142,7 @@ void UrandomRoutine::StartProcess() {
                                    "--urandom_path=/dev/urandom"},
           &handle_)) {
     status_ = grpc_api::ROUTINE_STATUS_ERROR;
-    output_ = kUrandomFailedToLaunchProcessMessage;
+    status_message_ = kUrandomFailedToLaunchProcessMessage;
     LOG(ERROR) << kUrandomFailedToLaunchProcessMessage;
   }
 }
@@ -162,7 +160,7 @@ bool UrandomRoutine::KillProcess(const std::string& failure_message) {
     // which has reused our old PID.
     handle_ = base::kNullProcessHandle;
     status_ = grpc_api::ROUTINE_STATUS_ERROR;
-    output_ = failure_message;
+    status_message_ = failure_message;
     LOG(ERROR) << "Failed to kill process.";
     return false;
   }
@@ -175,27 +173,27 @@ void UrandomRoutine::CheckProcessStatus() {
   DCHECK_NE(handle_, base::kNullProcessHandle);
   switch (process_adapter_->GetStatus(handle_)) {
     case base::TERMINATION_STATUS_STILL_RUNNING:
-      output_ = kUrandomProcessRunningMessage;
+      status_message_ = kUrandomProcessRunningMessage;
       break;
     case base::TERMINATION_STATUS_NORMAL_TERMINATION:
       handle_ = base::kNullProcessHandle;
       status_ = grpc_api::ROUTINE_STATUS_PASSED;
-      output_ = kUrandomRoutineSucceededMessage;
+      status_message_ = kUrandomRoutineSucceededMessage;
       break;
     case base::TERMINATION_STATUS_ABNORMAL_TERMINATION:
       handle_ = base::kNullProcessHandle;
       status_ = grpc_api::ROUTINE_STATUS_FAILED;
-      output_ = kUrandomRoutineFailedMessage;
+      status_message_ = kUrandomRoutineFailedMessage;
       break;
     case base::TERMINATION_STATUS_LAUNCH_FAILED:
       handle_ = base::kNullProcessHandle;
       status_ = grpc_api::ROUTINE_STATUS_ERROR;
-      output_ = kUrandomFailedToLaunchProcessMessage;
+      status_message_ = kUrandomFailedToLaunchProcessMessage;
       break;
     default:
       handle_ = base::kNullProcessHandle;
       status_ = grpc_api::ROUTINE_STATUS_ERROR;
-      output_ = kUrandomProcessCrashedOrKilledMessage;
+      status_message_ = kUrandomProcessCrashedOrKilledMessage;
       break;
   }
 }

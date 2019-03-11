@@ -77,7 +77,7 @@ class BatteryRoutineTest : public testing::Test {
 // Test that the battery routine fails if charge_full_design does not exist.
 TEST_F(BatteryRoutineTest, NoChargeFullDesign) {
   RunRoutineAndWaitForExit();
-  EXPECT_EQ(response()->output(), kBatteryNoChargeFullDesignMessage);
+  EXPECT_EQ(response()->status_message(), kBatteryNoChargeFullDesignMessage);
   EXPECT_EQ(response()->status(), grpc_api::ROUTINE_STATUS_ERROR);
 }
 
@@ -86,7 +86,7 @@ TEST_F(BatteryRoutineTest, NoChargeFullDesign) {
 TEST_F(BatteryRoutineTest, LowChargeFullDesign) {
   WriteChargeFullDesign(FakeBadFileContents());
   RunRoutineAndWaitForExit();
-  EXPECT_EQ(response()->output(), kBatteryRoutineFailedMessage);
+  EXPECT_EQ(response()->status_message(), kBatteryRoutineFailedMessage);
   EXPECT_EQ(response()->status(), grpc_api::ROUTINE_STATUS_FAILED);
 }
 
@@ -95,7 +95,7 @@ TEST_F(BatteryRoutineTest, LowChargeFullDesign) {
 TEST_F(BatteryRoutineTest, GoodChargeFullDesign) {
   WriteChargeFullDesign(FakeGoodFileContents());
   RunRoutineAndWaitForExit();
-  EXPECT_EQ(response()->output(), kBatteryRoutineSucceededMessage);
+  EXPECT_EQ(response()->status_message(), kBatteryRoutineSucceededMessage);
   EXPECT_EQ(response()->status(), grpc_api::ROUTINE_STATUS_PASSED);
 }
 

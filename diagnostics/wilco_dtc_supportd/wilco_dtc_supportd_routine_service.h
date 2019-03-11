@@ -33,7 +33,8 @@ class WilcoDtcSupportdRoutineService final {
                           grpc_api::DiagnosticRoutineStatus status,
                           int progress_percent,
                           grpc_api::DiagnosticRoutineUserMessage user_message,
-                          const std::string& output)>;
+                          const std::string& output,
+                          const std::string& status_message)>;
 
   WilcoDtcSupportdRoutineService();
   explicit WilcoDtcSupportdRoutineService(

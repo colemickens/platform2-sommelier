@@ -51,7 +51,7 @@ class BatteryRoutine final : public DiagnosticRoutine {
 
   grpc_api::DiagnosticRoutineStatus status_;
   const grpc_api::BatteryRoutineParameters parameters_;
-  std::string output_;
+  std::string status_message_;
   base::FilePath root_dir_{"/"};
 
   DISALLOW_COPY_AND_ASSIGN(BatteryRoutine);

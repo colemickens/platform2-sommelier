@@ -70,6 +70,7 @@ constexpr int kFakeProgressPercent = 37;
 constexpr grpc_api::DiagnosticRoutineUserMessage kFakeUserMessage =
     grpc_api::ROUTINE_USER_MESSAGE_UNSET;
 constexpr char kFakeOutput[] = "Some output.";
+constexpr char kFakeStatusMessage[] = "Status message.";
 
 std::string FakeFileContents() {
   return std::string(std::begin(kFakeFileContentsChars),
@@ -146,6 +147,7 @@ MakeGetRoutineUpdateResponse(int uuid, bool include_output) {
   response->set_progress_percent(kFakeProgressPercent);
   response->set_user_message(kFakeUserMessage);
   response->set_output(include_output ? kFakeOutput : "");
+  response->set_status_message(kFakeStatusMessage);
   return response;
 }
 
@@ -324,14 +326,14 @@ class WilcoDtcSupportdGrpcServiceTest : public testing::Test {
     if (command != grpc_api::GetRoutineUpdateRequest::COMMAND_UNSET) {
       EXPECT_CALL(delegate_, GetRoutineUpdateRequestToService(
                                  uuid, command, include_output, _))
-          .WillOnce(WithArgs<3>(
-              Invoke([=](const base::Callback<void(
-                             int, grpc_api::DiagnosticRoutineStatus, int,
-                             grpc_api::DiagnosticRoutineUserMessage,
-                             const std::string&)>& callback) {
-                callback.Run(uuid, kFakeStatus, kFakeProgressPercent,
-                             kFakeUserMessage,
-                             include_output ? kFakeOutput : "");
+          .WillOnce(WithArgs<3>(Invoke(
+              [=](const base::Callback<void(
+                      int, grpc_api::DiagnosticRoutineStatus, int,
+                      grpc_api::DiagnosticRoutineUserMessage,
+                      const std::string&, const std::string&)>& callback) {
+                callback.Run(
+                    uuid, kFakeStatus, kFakeProgressPercent, kFakeUserMessage,
+                    include_output ? kFakeOutput : "", kFakeStatusMessage);
               })));
     }
     auto request = std::make_unique<grpc_api::GetRoutineUpdateRequest>();

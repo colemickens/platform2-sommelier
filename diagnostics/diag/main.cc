@@ -118,6 +118,7 @@ bool RunRoutineWithRequest(
   LOG_IF(FATAL, !status_found)
       << "Invalid readable status lookup with status: " << status;
 
+  std::cout << "Status message: " << response->status_message() << std::endl;
   std::cout << "Output: " << response->output() << std::endl;
   std::cout << "Progress: " << response->progress_percent() << std::endl;
 

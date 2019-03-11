@@ -118,7 +118,7 @@ TEST_F(UrandomRoutineTest, ExeFailsToStart) {
       .WillOnce(Return(false));
   routine()->Start();
   PopulateStatusUpdate();
-  EXPECT_EQ(response()->output(), kUrandomFailedToLaunchProcessMessage);
+  EXPECT_EQ(response()->status_message(), kUrandomFailedToLaunchProcessMessage);
   EXPECT_EQ(response()->status(), grpc_api::ROUTINE_STATUS_ERROR);
 }
 
@@ -129,7 +129,7 @@ TEST_F(UrandomRoutineTest, ExeReturnsFailure) {
                       Return(true)));
   RunRoutineWithTerminationStatus(
       base::TERMINATION_STATUS_ABNORMAL_TERMINATION);
-  EXPECT_EQ(response()->output(), kUrandomRoutineFailedMessage);
+  EXPECT_EQ(response()->status_message(), kUrandomRoutineFailedMessage);
   EXPECT_EQ(response()->status(), grpc_api::ROUTINE_STATUS_FAILED);
 }
 
@@ -139,12 +139,12 @@ TEST_F(UrandomRoutineTest, NormalOperation) {
       .WillOnce(DoAll(SetArgPointee<1>(base::GetCurrentProcessHandle()),
                       Return(true)));
   RunRoutineWithTerminationStatus(base::TERMINATION_STATUS_STILL_RUNNING);
-  EXPECT_EQ(response()->output(), kUrandomProcessRunningMessage);
+  EXPECT_EQ(response()->status_message(), kUrandomProcessRunningMessage);
   EXPECT_EQ(response()->status(), grpc_api::ROUTINE_STATUS_RUNNING);
   tick_clock()->Advance(base::TimeDelta::FromSeconds(kLengthSeconds));
   PopulateStatusUpdateForRunningRoutine(
       base::TERMINATION_STATUS_NORMAL_TERMINATION);
-  EXPECT_EQ(response()->output(), kUrandomRoutineSucceededMessage);
+  EXPECT_EQ(response()->status_message(), kUrandomRoutineSucceededMessage);
   EXPECT_EQ(response()->status(), grpc_api::ROUTINE_STATUS_PASSED);
 }
 

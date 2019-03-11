@@ -57,7 +57,7 @@ void WilcoDtcSupportdRoutineService::GetRoutineUpdate(
   if (itr == active_routines_.end()) {
     LOG(ERROR) << "Bad uuid in GetRoutineUpdateRequest.";
     callback.Run(uuid, grpc_api::ROUTINE_STATUS_ERROR, 0 /* progress_percent */,
-                 grpc_api::ROUTINE_USER_MESSAGE_UNSET,
+                 grpc_api::ROUTINE_USER_MESSAGE_UNSET, "" /* output */,
                  "Specified routine does not exist.");
     return;
   }
@@ -83,21 +83,23 @@ void WilcoDtcSupportdRoutineService::GetRoutineUpdate(
       active_routines_.erase(itr);
       // |routine| is invalid at this point!
       callback.Run(uuid, response.status(), response.progress_percent(),
-                   response.user_message(), response.output());
+                   response.user_message(), response.output(),
+                   response.status_message());
       return;
     default:
       LOG(ERROR) << "Invalid command in GetRoutineUpdateRequest.";
       routine->PopulateStatusUpdate(&response, include_output);
       callback.Run(uuid, grpc_api::ROUTINE_STATUS_ERROR,
                    response.progress_percent(), response.user_message(),
-                   response.output());
+                   response.output(), response.status_message());
       return;
   }
 
   routine->PopulateStatusUpdate(&response, include_output);
 
   callback.Run(uuid, response.status(), response.progress_percent(),
-               response.user_message(), response.output());
+               response.user_message(), response.output(),
+               response.status_message());
 }
 
 }  // namespace diagnostics

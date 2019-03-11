@@ -427,6 +427,10 @@ message GetRoutineUpdateResponse {
   // Accumulated output from the routine, e.g. logs. Output is not
   // flushed when returned.
   string output = 5;
+  // More detailed status, e.g. "Cannot find battery path." This field should
+  // be used to give the user more detail on a routine reporting
+  // ROUTINE_STATUS_ERROR or ROUTINE_STATUS_FAILED.
+  string status_message = 6;
 }
 
 // Parameters for the GetConfigurationData RPC. The message is currently empty.

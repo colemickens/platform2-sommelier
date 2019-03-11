@@ -50,12 +50,14 @@ void SaveGetRoutineUpdateResponse(
     grpc_api::DiagnosticRoutineStatus status,
     int progress_percent,
     grpc_api::DiagnosticRoutineUserMessage user_message,
-    const std::string& output) {
+    const std::string& output,
+    const std::string& status_message) {
   response->set_uuid(uuid);
   response->set_status(status);
   response->set_progress_percent(progress_percent);
   response->set_user_message(user_message);
   response->set_output(output);
+  response->set_status_message(status_message);
   callback.Run();
 }
 
@@ -127,7 +129,7 @@ TEST_F(WilcoDtcSupportdRoutineServiceTest, BadRoutineStatus) {
       0 /* uuid */, grpc_api::GetRoutineUpdateRequest::GET_STATUS,
       false /* include_output */);
   EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_ERROR);
-  EXPECT_EQ(response.output(), kInvalidRoutineOutput);
+  EXPECT_EQ(response.status_message(), kInvalidRoutineOutput);
 }
 
 // Test that a routine can be run.
@@ -156,7 +158,7 @@ TEST_F(WilcoDtcSupportdRoutineServiceTest, AccessStoppedRoutine) {
       run_routine_response.uuid(),
       grpc_api::GetRoutineUpdateRequest::GET_STATUS, true /* include_output */);
   EXPECT_EQ(update_response.status(), grpc_api::ROUTINE_STATUS_ERROR);
-  EXPECT_EQ(update_response.output(), kInvalidRoutineOutput);
+  EXPECT_EQ(update_response.status_message(), kInvalidRoutineOutput);
 }
 
 }  // namespace diagnostics
