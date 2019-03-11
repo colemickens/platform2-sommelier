@@ -17,6 +17,7 @@
 #include "tpm_manager/server/tpm_initializer_impl.h"
 
 #include <string>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/stl_util.h>
@@ -31,8 +32,12 @@
 
 namespace {
 
-const int kMaxOwnershipTimeoutRetries = 5;
-const char* kWellKnownSrkSecret = "well_known_srk_secret";
+constexpr int kMaxOwnershipTimeoutRetries = 5;
+constexpr char kWellKnownSrkSecret[] = "well_known_srk_secret";
+constexpr int kDelegateSecretSize = 20;
+constexpr uint32_t kDefaultDelegateBoundPcrs[] = {0};
+constexpr uint8_t kDefaultDelegateLabel = 2;
+constexpr uint8_t kDefaultDelegateFamilyLabel = 1;
 
 }  // namespace
 
@@ -75,7 +80,7 @@ bool TpmInitializerImpl::InitializeTpm() {
   }
   local_data.set_owner_password(owner_password);
   if (!local_data_store_->Write(local_data)) {
-    LOG(ERROR) << "Error saving local data.";
+    LOG(ERROR) << ": Error saving local data after |set_owner_password|.";
     return false;
   }
   if (!ChangeOwnerPassword(&connection, owner_password)) {
@@ -86,6 +91,21 @@ bool TpmInitializerImpl::InitializeTpm() {
   if (!ownership_taken_callback_.is_null()) {
     ownership_taken_callback_.Run();
   }
+
+  // for performance sake, continue using the same |local_data| so we don't need
+  // to read the data from file once again.
+  AuthDelegate owner_delegate;
+  if (CreateDelegateWithDefaultLabel(&owner_delegate)) {
+    local_data.mutable_owner_delegate()->Swap(&owner_delegate);
+    if (!local_data_store_->Write(local_data)) {
+      LOG(ERROR) << ": Cannot persist delegate.";
+      return false;
+    }
+  } else {
+    LOG(ERROR) << __func__ << ": Cannot create delegate.";
+    return false;
+  }
+
   return true;
 }
 
@@ -223,8 +243,7 @@ bool TpmInitializerImpl::InitializeSrk(TpmConnection* connection) {
 }
 
 bool TpmInitializerImpl::ChangeOwnerPassword(
-    TpmConnection* connection,
-    const std::string& owner_password) {
+    TpmConnection* connection, const std::string& owner_password) {
   TSS_RESULT result;
   trousers::ScopedTssPolicy policy_handle(connection->GetContext());
   if (TPM_ERROR(result = Tspi_Context_CreateObject(
@@ -248,6 +267,203 @@ bool TpmInitializerImpl::ChangeOwnerPassword(
     return false;
   }
 
+  return true;
+}
+
+bool TpmInitializerImpl::ReadOwnerPasswordFromLocalData(
+    std::string* owner_password) {
+  LocalData local_data;
+  if (!local_data_store_->Read(&local_data)) {
+    LOG(ERROR) << __func__ << ": Cannot read local data to get owner password.";
+    return false;
+  }
+  if (local_data.owner_password().empty()) {
+    LOG(ERROR) << __func__ << ": empty owner password in local data store.";
+    return false;
+  }
+  *owner_password = local_data.owner_password();
+  return true;
+}
+
+bool TpmInitializerImpl::CreateDelegateWithDefaultLabel(
+    AuthDelegate* delegate) {
+  const std::vector<uint32_t> bound_pcrs(std::begin(kDefaultDelegateBoundPcrs),
+                                         std::end(kDefaultDelegateBoundPcrs));
+
+  std::string delegate_blob;
+  std::string delegate_secret;
+
+  if (!CreateAuthDelegate(bound_pcrs, kDefaultDelegateFamilyLabel,
+                          kDefaultDelegateLabel, &delegate_blob,
+                          &delegate_secret)) {
+    LOG(ERROR) << __func__ << ": Failed to create delegate.";
+    return false;
+  }
+  delegate->set_blob(delegate_blob);
+  delegate->set_secret(delegate_secret);
+  delegate->set_has_reset_lock_permissions(true);
+  return true;
+}
+
+bool TpmInitializerImpl::CreateAuthDelegate(
+    const std::vector<uint32_t>& bound_pcrs,
+    uint8_t delegate_family_label,
+    uint8_t delegate_label,
+    std::string* delegate_blob,
+    std::string* delegate_secret) {
+  CHECK(delegate_blob && delegate_secret);
+
+  // Connects to the TPM as the owner.
+
+  // read the owner password.
+  // TODO(cylai): provide a clean way to retrieve owner password for this class.
+  std::string owner_password;
+  if (!ReadOwnerPasswordFromLocalData(&owner_password)) {
+    LOG(ERROR) << __func__ << "Cannot get owner password";
+    return false;
+  }
+
+  TpmConnection connection(owner_password);
+  TSS_HCONTEXT context_handle = connection.GetContext();
+  TSS_HTPM tpm_handle = connection.GetTpm();
+  if (!context_handle || !tpm_handle) {
+    LOG(ERROR) << __func__ << "TPM connection error.";
+    return false;
+  }
+
+  // Generate a delegate secret.
+  if (!openssl_util_.GetRandomBytes(kDelegateSecretSize, delegate_secret)) {
+    return false;
+  }
+
+  // Create an owner delegation policy.
+  trousers::ScopedTssPolicy policy(context_handle);
+  TSS_RESULT result;
+  result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_POLICY,
+                                     TSS_POLICY_USAGE, policy.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to create policy.";
+    return false;
+  }
+  result = Tspi_Policy_SetSecret(
+      policy, TSS_SECRET_MODE_PLAIN, delegate_secret->size(),
+      reinterpret_cast<BYTE*>(const_cast<char*>(delegate_secret->data())));
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to set policy secret.";
+    return false;
+  }
+  result =
+      Tspi_SetAttribUint32(policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
+                           TSS_TSPATTRIB_POLDEL_TYPE, TSS_DELEGATIONTYPE_OWNER);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to set delegation type.";
+    return false;
+  }
+  // These are the privileged operations we will allow the delegate to perform.
+  constexpr UINT32 permissions =
+      TPM_DELEGATE_ActivateIdentity | TPM_DELEGATE_DAA_Join |
+      TPM_DELEGATE_DAA_Sign | TPM_DELEGATE_ResetLockValue |
+      TPM_DELEGATE_OwnerReadInternalPub | TPM_DELEGATE_CMK_ApproveMA |
+      TPM_DELEGATE_CMK_CreateTicket | TPM_DELEGATE_AuthorizeMigrationKey;
+  result = Tspi_SetAttribUint32(policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
+                                TSS_TSPATTRIB_POLDEL_PER1, permissions);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to set permissions.";
+    return false;
+  }
+  result = Tspi_SetAttribUint32(policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
+                                TSS_TSPATTRIB_POLDEL_PER2, 0);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to set permissions.";
+    return false;
+  }
+
+  // Bind the delegate to the specified PCRs. Note: it's crucial to pass a null
+  // TSS_HPCRS to Tspi_TPM_Delegate_CreateDelegation() when no PCR is selected,
+  // otherwise it will fail with TPM_E_BAD_PARAM_SIZE.
+  trousers::ScopedTssPcrs pcrs_handle(context_handle);
+  if (!bound_pcrs.empty()) {
+    result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_PCRS,
+                                       TSS_PCRS_STRUCT_INFO_SHORT,
+                                       pcrs_handle.ptr());
+    if (TPM_ERROR(result)) {
+      TPM_LOG(ERROR, result) << "CreateDelegate: Failed to create PCRS object.";
+      return false;
+    }
+    for (auto bound_pcr : bound_pcrs) {
+      UINT32 pcr_len = 0;
+      trousers::ScopedTssMemory pcr_value(context_handle);
+      if (TPM_ERROR(result = Tspi_TPM_PcrRead(tpm_handle, bound_pcr, &pcr_len,
+                                              pcr_value.ptr()))) {
+        TPM_LOG(ERROR, result) << "Could not read PCR value";
+        return false;
+      }
+      result = Tspi_PcrComposite_SetPcrValue(pcrs_handle, bound_pcr, pcr_len,
+                                             pcr_value.value());
+      if (TPM_ERROR(result)) {
+        TPM_LOG(ERROR, result) << "Could not set value for PCR in PCRS handle";
+        return false;
+      }
+    }
+    constexpr unsigned int kTpmPCRLocality = 1;
+    result = Tspi_PcrComposite_SetPcrLocality(pcrs_handle, kTpmPCRLocality);
+    if (TPM_ERROR(result)) {
+      TPM_LOG(ERROR, result)
+          << "Could not set locality for PCRs in PCRS handle";
+      return false;
+    }
+  }
+
+  // Create a delegation family.
+  trousers::ScopedTssObject<TSS_HDELFAMILY> family(context_handle);
+  result = Tspi_TPM_Delegate_AddFamily(tpm_handle, delegate_family_label,
+                                       family.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to create family.";
+    return false;
+  }
+
+  // Create the delegation.
+  result = Tspi_TPM_Delegate_CreateDelegation(tpm_handle, delegate_label, 0,
+                                              pcrs_handle, family, policy);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to create delegation.";
+    return false;
+  }
+
+  // Enable the delegation family.
+  result = Tspi_SetAttribUint32(family, TSS_TSPATTRIB_DELFAMILY_STATE,
+                                TSS_TSPATTRIB_DELFAMILYSTATE_ENABLED, TRUE);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to enable family.";
+    return false;
+  }
+
+  // Save the delegation blob for later.
+  if (!GetDataAttribute(context_handle, policy,
+                        TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
+                        TSS_TSPATTRIB_POLDEL_OWNERBLOB, delegate_blob)) {
+    LOG(ERROR) << "CreateDelegate: Failed to get delegate blob.";
+    return false;
+  }
+
+  return true;
+}
+
+bool TpmInitializerImpl::GetDataAttribute(TSS_HCONTEXT context,
+                                          TSS_HOBJECT object,
+                                          TSS_FLAG flag,
+                                          TSS_FLAG sub_flag,
+                                          std::string* data) {
+  UINT32 length = 0;
+  trousers::ScopedTssMemory buffer(context);
+  TSS_RESULT result =
+      Tspi_GetAttribData(object, flag, sub_flag, &length, buffer.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << __func__ << "Failed to read object attribute.";
+    return false;
+  }
+  data->assign(buffer.value(), buffer.value() + length);
   return true;
 }
 

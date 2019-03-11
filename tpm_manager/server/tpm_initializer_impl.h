@@ -18,6 +18,7 @@
 #define TPM_MANAGER_SERVER_TPM_INITIALIZER_IMPL_H_
 
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <trousers/tss.h>
@@ -83,6 +84,42 @@ class TpmInitializerImpl : public TpmInitializer {
   // owner password injected.
   bool ChangeOwnerPassword(TpmConnection* connection,
                            const std::string& owner_password);
+
+  bool ReadOwnerPasswordFromLocalData(std::string* owner_password);
+
+  // create delegate with the default label and store the result in |delegate|.
+  bool CreateDelegateWithDefaultLabel(AuthDelegate* delegate);
+
+  // Creates a TPM owner delegate for future use.
+  //
+  // Parameters
+  //   bound_pcrs - Specifies the PCRs to which the delegate is bound.
+  //   delegate_family_label - Specifies the label of the created delegate
+  //                           family. Should be equal to
+  //                           |kDefaultDelegateFamilyLabel| in most cases. Non-
+  //                           default values are primarily intended for testing
+  //                           purposes.
+  //   delegate_label - Specifies the label of the created delegate. Should be
+  //                    equal to |kDefaultDelegateLabel| in most cases. Non-
+  //                    default values are primarily intended for testing
+  //                    purposes.
+  //   delegate_blob - The blob for the owner delegate.
+  //   delegate_secret - The delegate secret that will be required to perform
+  //                     privileged operations in the future.
+  bool CreateAuthDelegate(const std::vector<uint32_t>& bound_pcrs,
+                          uint8_t delegate_family_label,
+                          uint8_t delegate_label,
+                          std::string* delegate_blob,
+                          std::string* delegate_secret);
+
+  // Retrieves a |data| attribute defined by |flag| and |sub_flag| from a TSS
+  // |object_handle|. The |context_handle| is only used for TSS memory
+  // management.
+  bool GetDataAttribute(TSS_HCONTEXT context,
+                        TSS_HOBJECT object,
+                        TSS_FLAG flag,
+                        TSS_FLAG sub_flag,
+                        std::string* data);
 
   OpensslCryptoUtilImpl openssl_util_;
   LocalDataStore* local_data_store_;
