@@ -490,6 +490,12 @@ message ContainerImportProgress {
   string failure_reason = 5;
 }
 
+// Sent by tremplin to update the host that a container has shutdown.
+message ContainerShutdownInfo {
+  // Name of the container.
+  string container_name = 1;
+}
+
 // Tremplin service methods.
 service Tremplin {
   rpc CreateContainer(CreateContainerRequest) returns (CreateContainerResponse);
@@ -513,4 +519,5 @@ service TremplinListener {
   rpc UpdateStartStatus(ContainerStartProgress) returns (EmptyMessage);
   rpc UpdateExportStatus(ContainerExportProgress) returns (EmptyMessage);
   rpc UpdateImportStatus(ContainerImportProgress) returns (EmptyMessage);
+  rpc ContainerShutdown(ContainerShutdownInfo) returns (EmptyMessage);
 }
