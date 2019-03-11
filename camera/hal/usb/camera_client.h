@@ -193,6 +193,15 @@ class CameraClient {
     // Check whether we should drop frames when frame is out of date.
     bool IsVideoRecording(const android::CameraMetadata& metadata);
 
+    // Returns true if the connected device is an external camera.
+    bool IsExternalCamera();
+
+    // Returns the current buffer timestamp.  For built-in camera, it uses
+    // hardware timestamp from v4l2 buffer; for external camera, it uses
+    // software timestamp from userspace, because the hardware timestamp is not
+    // reliable and sometimes even jump backwards.
+    uint64_t CurrentBufferTimestamp();
+
     // Check whether we should enable constant frame rate according to metadata.
     bool ShouldEnableConstantFrameRate(const android::CameraMetadata& metadata);
 

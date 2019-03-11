@@ -679,7 +679,7 @@ void CameraClient::RequestHandler::HandleRequest(
 
   NotifyShutter(capture_result.frame_number);
   ret = metadata_handler_->PostHandleRequest(
-      capture_result.frame_number, current_buffer_timestamp_in_v4l2_, metadata);
+      capture_result.frame_number, CurrentBufferTimestamp(), metadata);
   if (ret) {
     LOGFID(WARNING, device_id_)
         << "Update metadata in PostHandleRequest failed";
@@ -825,6 +825,15 @@ bool CameraClient::RequestHandler::IsVideoRecording(
     }
   }
   return false;
+}
+
+bool CameraClient::RequestHandler::IsExternalCamera() {
+  return device_info_.lens_facing == ANDROID_LENS_FACING_EXTERNAL;
+}
+
+uint64_t CameraClient::RequestHandler::CurrentBufferTimestamp() {
+  return IsExternalCamera() ? current_buffer_timestamp_in_user_
+                            : current_buffer_timestamp_in_v4l2_;
 }
 
 bool CameraClient::RequestHandler::ShouldEnableConstantFrameRate(
@@ -1002,10 +1011,7 @@ void CameraClient::RequestHandler::NotifyShutter(uint32_t frame_number) {
   memset(&m, 0, sizeof(m));
   m.type = CAMERA3_MSG_SHUTTER;
   m.message.shutter.frame_number = frame_number;
-  m.message.shutter.timestamp =
-      device_info_.lens_facing == ANDROID_LENS_FACING_EXTERNAL
-          ? current_buffer_timestamp_in_user_
-          : current_buffer_timestamp_in_v4l2_;
+  m.message.shutter.timestamp = CurrentBufferTimestamp();
   callback_ops_->notify(callback_ops_, &m);
 }
 
@@ -1064,9 +1070,14 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
 
     delta_user_ts = user_ts - current_buffer_timestamp_in_user_;
     delta_v4l2_ts = v4l2_ts - current_buffer_timestamp_in_v4l2_;
-  } while (allowed_shift_frame_duration_ns + delta_v4l2_ts < delta_user_ts &&
-           !is_video_recording_ &&
-           device_info_.lens_facing != ANDROID_LENS_FACING_EXTERNAL);
+
+    // Some special conditions:
+    // 1. Do not drop frames for video recording because we don't want to skip
+    //    frames in the video.
+    // 2. Do not drop frames for external camera, because it may not support
+    //    constant frame rate and the hardware timestamp is not stable enough.
+  } while (!is_video_recording_ && !IsExternalCamera() &&
+           allowed_shift_frame_duration_ns + delta_v4l2_ts < delta_user_ts);
   current_buffer_timestamp_in_user_ = user_ts;
   current_buffer_timestamp_in_v4l2_ = v4l2_ts;
 
