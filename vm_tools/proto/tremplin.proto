@@ -475,6 +475,9 @@ message ContainerImportProgress {
 
     // The image is being unpacked to create a container.
     IMPORTING_UNPACK = 4;
+
+    // The container could be imported due to mismatched architecture.
+    FAILED_ARCHITECTURE = 5;
   }
 
   // Container status.
@@ -488,6 +491,13 @@ message ContainerImportProgress {
 
   // Details relating to the failure state.
   string failure_reason = 5;
+
+  // Architecture of device.  Set when status is FAILED_ARCHITECTURE.
+  string architecture_device = 6;
+
+  // Architecture of container which failed to import.
+  // Set when status is FAILED_ARCHITECTURE.
+  string architecture_container = 7;
 }
 
 // Sent by tremplin to update the host that a container has shutdown.

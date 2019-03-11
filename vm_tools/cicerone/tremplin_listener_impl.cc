@@ -252,6 +252,8 @@ grpc::Status TremplinListenerImpl::UpdateImportStatus(
   progress_signal.set_progress_percent(request->progress_percent());
   progress_signal.set_progress_speed(request->progress_speed());
   progress_signal.set_failure_reason(request->failure_reason());
+  progress_signal.set_architecture_device(request->architecture_device());
+  progress_signal.set_architecture_container(request->architecture_container());
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool result = false;
