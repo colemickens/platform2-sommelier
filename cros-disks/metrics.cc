@@ -20,7 +20,6 @@ const char kFilesystemTypeMetricName[] = "CrosDisks.FilesystemType";
 namespace cros_disks {
 
 Metrics::Metrics() {
-  metrics_library_.Init();
   InitializeArchiveTypeMap();
   InitializeFilesystemTypeMap();
 }

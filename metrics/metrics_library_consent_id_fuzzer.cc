@@ -37,7 +37,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static MetricsLibrary lib;
 
   lib.SetConsentFileForTest(env.temp_file());
-  lib.Init();
 
   base::WriteFile(env.temp_file(), reinterpret_cast<const char*>(data), size);
 

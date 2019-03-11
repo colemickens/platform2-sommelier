@@ -138,7 +138,6 @@ int main(int argc, char* argv[]) {
 
     // Report the metrics.
     MetricsLibrary metrics_lib;
-    metrics_lib.Init();
     peer_selector.ReportMetrics(&metrics_lib);
 
     if (url == "")

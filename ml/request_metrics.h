@@ -82,9 +82,7 @@ constexpr int kCpuTimeBuckets = 100;
 template <class RequestEventEnum>
 RequestMetrics<RequestEventEnum>::RequestMetrics(const std::string& name_base)
     : name_base_(std::string(kGlobalMetricsPrefix) + name_base),
-      process_metrics_(nullptr) {
-  metrics_library_.Init();
-}
+      process_metrics_(nullptr) {}
 
 template <class RequestEventEnum>
 void RequestMetrics<RequestEventEnum>::RecordRequestEvent(

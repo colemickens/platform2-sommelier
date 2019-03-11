@@ -84,8 +84,6 @@ int main(int argc, char* argv[]) {
     }
   }
   MetricsLibrary metrics_lib;
-  metrics_lib.Init();
-
   p2p::server::HttpServer* http_server = p2p::server::HttpServer::Construct(
       &metrics_lib, path, FilePath("/usr/sbin"), http_port);
 

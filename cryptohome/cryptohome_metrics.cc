@@ -124,7 +124,6 @@ namespace cryptohome {
 
 void InitializeMetrics() {
   g_metrics = new MetricsLibrary();
-  g_metrics->Init();
   chromeos_metrics::TimerReporter::set_metrics_lib(g_metrics);
 }
 

@@ -48,8 +48,6 @@ int LoginMetrics::PolicyFilesStatusCode(const PolicyFilesStatus& status) {
 
 LoginMetrics::LoginMetrics(const base::FilePath& per_boot_flag_dir)
     : per_boot_flag_file_(per_boot_flag_dir.Append(kLoginMetricsFlagFile)) {
-  metrics_lib_.Init();
-
   if (metrics_lib_.AreMetricsEnabled()) {
     arc_cumulative_use_time_.reset(new CumulativeUseTimeMetric(
         kArcCumulativeUseTimeMetric, &metrics_lib_, base::FilePath(kMetricsDir),

@@ -41,11 +41,7 @@ namespace {
 // Encapsulate UMA event generation.
 class MetricsWrapper {
  public:
-  MetricsWrapper() {
-#ifndef NO_METRICS
-    metrics_.Init();
-#endif
-  }
+  MetricsWrapper() {}
 
   bool SendUMAEvent(const std::string& event) {
 #ifndef NO_METRICS

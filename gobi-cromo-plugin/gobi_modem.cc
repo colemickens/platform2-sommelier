@@ -353,7 +353,6 @@ GobiModem::GobiModem(DBus::Connection& connection,
 void GobiModem::Init() {
   sdk_->set_current_modem_path(path());
   metrics_lib_.reset(new MetricsLibrary());
-  metrics_lib_->Init();
 
   // Initialize DBus object properties
   IpMethod = MM_MODEM_IP_METHOD_DHCP;

@@ -516,7 +516,6 @@ int AnomalyLexer(bool flag_filter, bool flag_test) {
   filter = flag_filter;
 
   metrics_library = CMetricsLibraryNew();
-  CMetricsLibraryInit(metrics_library);
 
   /* When filtering with --filter (for development) use stdin for input.
    * Otherwise read input from a file.

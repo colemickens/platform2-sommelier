@@ -28,9 +28,7 @@ constexpr char kSdkVersionUpgradeType[] = "Arc.SdkVersionUpgradeType";
 }  // namespace
 
 ArcSetupMetrics::ArcSetupMetrics()
-    : metrics_library_(std::make_unique<MetricsLibrary>()) {
-  metrics_library_->Init();
-}
+    : metrics_library_(std::make_unique<MetricsLibrary>()) {}
 
 bool ArcSetupMetrics::SendCodeVerificationResult(
     ArcCodeVerificationResult verification_result) {

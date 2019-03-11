@@ -45,9 +45,7 @@ const char Manager::kMetricConverterResult[] = "DocumentScan.ConverterResult";
 Manager::Manager(base::Callback<void()> activity_callback)
     : org::chromium::lorgnette::ManagerAdaptor(this),
       activity_callback_(activity_callback),
-      metrics_library_(new MetricsLibrary) {
-  metrics_library_->Init();
-}
+      metrics_library_(new MetricsLibrary) {}
 
 Manager::~Manager() {}
 

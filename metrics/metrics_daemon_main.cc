@@ -80,7 +80,6 @@ int main(int argc, char** argv) {
 
   base::FilePath backing_dir_path(kPersistentIntegerBackingDir);
   MetricsLibrary metrics_lib;
-  metrics_lib.Init();
   chromeos_metrics::MetricsDaemon daemon;
   daemon.Init(FLAGS_uploader_test, FLAGS_uploader | FLAGS_uploader_test,
               &metrics_lib, MetricsMainDiskStatsPath(), "/proc/vmstat",

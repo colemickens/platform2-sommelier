@@ -74,7 +74,6 @@ bool VpdProcessImpl::HandleExit(const siginfo_t& info) {
   }
 
   MetricsLibrary metrics;
-  metrics.Init();
   metrics.SendSparseToUMA(kVpdUpdateMetric, info.si_status);
 
   const bool success = (info.si_status == 0);

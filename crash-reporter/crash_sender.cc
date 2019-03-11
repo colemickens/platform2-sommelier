@@ -102,7 +102,6 @@ int RunChildMain(int argc, char* argv[]) {
   }
 
   auto metrics_lib = std::make_unique<MetricsLibrary>();
-  metrics_lib->Init();
   util::Sender::Options options;
   options.max_spread_time = flags.max_spread_time;
   util::Sender sender(std::move(metrics_lib), options);

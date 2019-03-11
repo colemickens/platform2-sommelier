@@ -541,7 +541,6 @@ Metrics::Metrics(EventDispatcher* dispatcher)
       wake_on_wifi_throttled_(false),
       wake_reason_received_(false),
       dark_resume_scan_retries_(0) {
-  metrics_library_.Init();
   chromeos_metrics::TimerReporter::set_metrics_lib(library_);
 }
 

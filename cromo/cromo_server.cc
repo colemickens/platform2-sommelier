@@ -27,9 +27,7 @@ static const char kDBusInvalidArgs[] = "org.freedesktop.DBus.Error.InvalidArgs";
 CromoServer::CromoServer(
     DBus::Connection& connection)  // NOLINT(runtime/references)
     : DBus::ObjectAdaptor(connection, kServicePath),
-      metrics_lib_(new MetricsLibrary()) {
-  metrics_lib_->Init();
-}
+      metrics_lib_(new MetricsLibrary()) {}
 
 CromoServer::~CromoServer() {}
 

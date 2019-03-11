@@ -14,9 +14,7 @@ constexpr char kRollbackSaveResultMetricName[] = "Rollback.RollbackSaveResult";
 
 namespace oobe_config {
 
-Metrics::Metrics() {
-  metrics_library_.Init();
-}
+Metrics::Metrics() {}
 
 void Metrics::RecordRestoreResult(OobeRestoreResult result) {
   metrics_library_.SendEnumToUMA(kOobeRestoreResultMetricName,

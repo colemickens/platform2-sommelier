@@ -228,7 +228,6 @@ class DaemonDelegateImpl : public DaemonDelegate {
 
   std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() override {
     auto metrics_lib = std::make_unique<MetricsLibrary>();
-    metrics_lib->Init();
     return std::make_unique<MetricsSender>(std::move(metrics_lib));
   }
 

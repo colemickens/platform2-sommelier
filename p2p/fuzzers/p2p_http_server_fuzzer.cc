@@ -50,7 +50,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // Create HTTP server external process.
   MetricsLibrary metrics_lib;
-  metrics_lib.Init();
   auto process = std::make_unique<HttpServerExternalProcess>(
       &metrics_lib, FilePath("/tmp/p2p-fuzzing.XXXXXX"), FilePath("."), 0);
 

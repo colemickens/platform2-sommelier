@@ -125,7 +125,6 @@ AuthPolicyMetrics::AuthPolicyMetrics() {
   CheckArrayOrder<HistogramParams, kMetricHistogramParams, 0>();
   CheckArrayOrder<ErrorMetricParams, kErrorMetricParams, 0>();
 
-  metrics_.Init();
   chromeos_metrics::TimerReporter::set_metrics_lib(&metrics_);
 }
 

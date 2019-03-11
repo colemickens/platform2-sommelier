@@ -57,9 +57,7 @@ void RecordCumulativeMetrics(
 }  // namespace
 
 Metrics::Metrics()
-    : process_metrics_(base::ProcessMetrics::CreateCurrentProcessMetrics()) {
-  metrics_library_.Init();
-}
+    : process_metrics_(base::ProcessMetrics::CreateCurrentProcessMetrics()) {}
 
 void Metrics::StartCollectingProcessMetrics() {
   if (cumulative_metrics_) {

@@ -28,9 +28,7 @@ constexpr char kFpNoMatchDurationOverall[] =
 
 }  // namespace metrics
 
-BiodMetrics::BiodMetrics() : metrics_lib_(std::make_unique<MetricsLibrary>()) {
-  metrics_lib_->Init();
-}
+BiodMetrics::BiodMetrics() : metrics_lib_(std::make_unique<MetricsLibrary>()) {}
 
 bool BiodMetrics::SendEnrolledFingerCount(int finger_count) {
   return metrics_lib_->SendEnumToUMA(metrics::kFpEnrolledFingerCount,

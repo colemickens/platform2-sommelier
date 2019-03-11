@@ -25,9 +25,7 @@ MetricsStopwatch::MetricsStopwatch(const char* name,
       max_(max),
       nbuckets_(nbuckets),
       start_(kInvalid),
-      stop_(kInvalid) {
-  metrics_->Init();
-}
+      stop_(kInvalid) {}
 
 uint64_t MetricsStopwatch::GetTimeMs() {
   struct timespec ts;

@@ -239,7 +239,6 @@ int main(int argc, char* argv[]) {
                                        &device_mapper);
 
   MetricsLibrary metrics;
-  metrics.Init();
   metrics.SetOutputFile(kMountEncryptedMetricsPath);
 
   LOG(INFO) << "Starting.";

@@ -322,7 +322,6 @@ int main(int argc, char* argv[]) {
 
   OpenStandardFileDescriptors();
   FilePath my_path = base::MakeAbsoluteFilePath(FilePath(argv[0]));
-  s_metrics_lib.Init();
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Crash Reporter");
   brillo::OpenLog(my_path.BaseName().value().c_str(), true);
   brillo::InitLog(brillo::kLogToSyslog);

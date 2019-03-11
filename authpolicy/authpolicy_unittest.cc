@@ -294,7 +294,6 @@ class TestMetrics : public AuthPolicyMetrics {
  public:
   TestMetrics() {
     // Prevent some error messages from timers.
-    test_metrics_.Init();
     chromeos_metrics::TimerReporter::set_metrics_lib(&test_metrics_);
   }
 
