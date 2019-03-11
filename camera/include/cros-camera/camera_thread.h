@@ -56,9 +56,9 @@ class CROS_CAMERA_EXPORT CameraThread {
     }
 
     auto future = cros::Future<T>::Create(nullptr);
-    base::Closure closure = base::Bind(
-        &CameraThread::ProcessSyncTaskOnThread<T>,
-        base::Unretained(this), task, future);
+    base::Closure closure =
+        base::Bind(&CameraThread::ProcessSyncTaskOnThread<T>,
+                   base::Unretained(this), task, future);
     if (!thread_.task_runner()->PostTask(from_here, closure)) {
       LOG(ERROR) << "Failed to post task";
       return -EIO;
@@ -78,9 +78,9 @@ class CROS_CAMERA_EXPORT CameraThread {
       LOG(ERROR) << "Thread is not started";
       return -EIO;
     }
-    base::Closure closure = base::Bind(
-        &CameraThread::ProcessASyncTaskOnThread<T>,
-        base::Unretained(this), task);
+    base::Closure closure =
+        base::Bind(&CameraThread::ProcessASyncTaskOnThread<T>,
+                   base::Unretained(this), task);
 
     if (!thread_.task_runner()->PostTask(from_here, closure)) {
       LOG(ERROR) << "Failed to post task";
@@ -100,9 +100,9 @@ class CROS_CAMERA_EXPORT CameraThread {
     }
 
     auto future = cros::Future<void>::Create(nullptr);
-    base::Closure closure = base::Bind(
-        &CameraThread::ProcessClosureSyncTaskOnThread,
-        base::Unretained(this), task, future);
+    base::Closure closure =
+        base::Bind(&CameraThread::ProcessClosureSyncTaskOnThread,
+                   base::Unretained(this), task, future);
     if (!thread_.task_runner()->PostTask(from_here, closure)) {
       LOG(ERROR) << "Failed to post task";
       return -EIO;

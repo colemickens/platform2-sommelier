@@ -30,17 +30,17 @@ class JpegCompressorImpl : public JpegCompressor {
   JpegCompressorImpl();
   ~JpegCompressorImpl() override;
 
-  bool CompressImage(const void* image,
-                     int width,
-                     int height,
-                     int quality,
-                     const void* app1_buffer,
-                     uint32_t app1_size,
-                     uint32_t out_buffer_size,
-                     void* out_buffer,
-                     uint32_t* out_data_size,
-                     JpegCompressor::Mode mode =
-                         JpegCompressor::Mode::kDefault) override;
+  bool CompressImage(
+      const void* image,
+      int width,
+      int height,
+      int quality,
+      const void* app1_buffer,
+      uint32_t app1_size,
+      uint32_t out_buffer_size,
+      void* out_buffer,
+      uint32_t* out_data_size,
+      JpegCompressor::Mode mode = JpegCompressor::Mode::kDefault) override;
 
   bool GenerateThumbnail(const void* image,
                          int image_width,

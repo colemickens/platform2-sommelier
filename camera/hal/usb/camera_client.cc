@@ -901,7 +901,6 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
 
   int ret = 0;
 
-
   GrallocFrameBuffer output_frame(*buffer->buffer, buffer->stream->width,
                                   buffer->stream->height);
 
@@ -980,8 +979,8 @@ bool CameraClient::RequestHandler::WaitGrallocBufferSync(
       // If buffer is not ready, set |release_fence| to notify framework to
       // wait the buffer again.
       b->release_fence = b->acquire_fence;
-      LOGFID(ERROR, device_id_) << "Fence sync_wait failed: "
-                                << b->acquire_fence;
+      LOGFID(ERROR, device_id_)
+          << "Fence sync_wait failed: " << b->acquire_fence;
       fence_timeout = true;
     } else {
       close(b->acquire_fence);

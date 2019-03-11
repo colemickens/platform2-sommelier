@@ -26,7 +26,7 @@
 
 #define STATIC_ASSERT_ENUM(name)                                 \
   static_assert(static_cast<int>(JpegEncodeAccelerator::name) == \
-                static_cast<int>(mojom::EncodeStatus::name),     \
+                    static_cast<int>(mojom::EncodeStatus::name), \
                 "mismatching enum: " #name)
 
 namespace cros {
@@ -75,9 +75,9 @@ bool JpegEncodeAcceleratorImpl::Start() {
   cancellation_relay_ = std::make_unique<CancellationRelay>();
   auto is_initialized = Future<bool>::Create(cancellation_relay_.get());
   ipc_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&JpegEncodeAcceleratorImpl::InitializeOnIpcThread,
-                            base::Unretained(this),
-                            GetFutureCallback(is_initialized)));
+      FROM_HERE,
+      base::Bind(&JpegEncodeAcceleratorImpl::InitializeOnIpcThread,
+                 base::Unretained(this), GetFutureCallback(is_initialized)));
   if (!is_initialized->Wait()) {
     return false;
   }
@@ -142,8 +142,8 @@ int JpegEncodeAcceleratorImpl::EncodeSync(int input_fd,
 
   auto future = Future<int>::Create(cancellation_relay_.get());
   auto callback = base::Bind(&JpegEncodeAcceleratorImpl::EncodeSyncCallback,
-      base::Unretained(this), GetFutureCallback(future),
-      output_data_size);
+                             base::Unretained(this), GetFutureCallback(future),
+                             output_data_size);
 
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
@@ -231,8 +231,7 @@ void JpegEncodeAcceleratorImpl::EncodeOnIpcThread(
 
   mojo::ScopedHandle input_handle = WrapPlatformHandle(dup_input_fd);
   mojo::ScopedHandle exif_handle = WrapPlatformHandle(dup_exif_fd);
-  mojo::ScopedHandle output_handle =
-      WrapPlatformHandle(dup_output_fd);
+  mojo::ScopedHandle output_handle = WrapPlatformHandle(dup_output_fd);
 
   input_shm_map_[buffer_id] = std::move(input_shm);
   exif_shm_map_[buffer_id] = std::move(exif_shm);
@@ -246,8 +245,11 @@ void JpegEncodeAcceleratorImpl::EncodeOnIpcThread(
 }
 
 void JpegEncodeAcceleratorImpl::EncodeSyncCallback(
-    base::Callback<void(int)> callback, uint32_t* output_data_size,
-    int32_t buffer_id, uint32_t output_size, int status) {
+    base::Callback<void(int)> callback,
+    uint32_t* output_data_size,
+    int32_t buffer_id,
+    uint32_t output_size,
+    int status) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   *output_data_size = output_size;
   callback.Run(status);

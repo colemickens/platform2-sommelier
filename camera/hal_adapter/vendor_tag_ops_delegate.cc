@@ -36,8 +36,7 @@ void VendorTagOpsDelegate::GetAllTags(const GetAllTagsCallback& callback) {
 }
 
 void VendorTagOpsDelegate::GetSectionName(
-    uint32_t tag,
-    const GetSectionNameCallback& callback) {
+    uint32_t tag, const GetSectionNameCallback& callback) {
   VLOGF_ENTER();
   DCHECK_NE(vendor_tag_ops_, nullptr);
   DCHECK(task_runner_->BelongsToCurrentThread());

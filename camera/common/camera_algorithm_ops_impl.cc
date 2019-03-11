@@ -87,8 +87,7 @@ void CameraAlgorithmOpsImpl::Initialize(
 }
 
 void CameraAlgorithmOpsImpl::RegisterBuffer(
-    mojo::ScopedHandle buffer_fd,
-    const RegisterBufferCallback& callback) {
+    mojo::ScopedHandle buffer_fd, const RegisterBufferCallback& callback) {
   DCHECK(cam_algo_);
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();

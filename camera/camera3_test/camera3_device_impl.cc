@@ -154,8 +154,7 @@ int Camera3DeviceImpl::AllocateOutputBuffersByStreams(
 }
 
 int Camera3DeviceImpl::RegisterOutputBuffer(
-    const camera3_stream_t& stream,
-    BufferHandleUniquePtr unique_buffer) {
+    const camera3_stream_t& stream, BufferHandleUniquePtr unique_buffer) {
   VLOGF_ENTER();
   int32_t result = -EIO;
   hal_thread_.PostTaskSync(
@@ -287,8 +286,7 @@ void Camera3DeviceImpl::IsTemplateSupportedOnThread(int32_t type,
 }
 
 void Camera3DeviceImpl::ConstructDefaultRequestSettingsOnThread(
-    int type,
-    const camera_metadata_t** result) {
+    int type, const camera_metadata_t** result) {
   DCHECK(thread_checker_.CalledOnValidThread());
   if (initialized_) {
     *result =
@@ -316,8 +314,7 @@ void Camera3DeviceImpl::AddStreamOnThread(int format,
 }
 
 void Camera3DeviceImpl::ConfigureStreamsOnThread(
-    std::vector<const camera3_stream_t*>* streams,
-    int* result) {
+    std::vector<const camera3_stream_t*>* streams, int* result) {
   DCHECK(thread_checker_.CalledOnValidThread());
   *result = -EINVAL;
   if (!initialized_) {
@@ -447,8 +444,7 @@ void Camera3DeviceImpl::RegisterOutputBufferOnThread(
 }
 
 void Camera3DeviceImpl::ProcessCaptureRequestOnThread(
-    camera3_capture_request_t* request,
-    int* result) {
+    camera3_capture_request_t* request, int* result) {
   DCHECK(thread_checker_.CalledOnValidThread());
   VLOGF_ENTER();
   if (!initialized_) {
@@ -624,8 +620,7 @@ const Camera3Device::StaticInfo* Camera3DeviceImpl::GetStaticInfo() const {
 }
 
 void Camera3DeviceImpl::ProcessCaptureResultForwarder(
-    const camera3_callback_ops* cb,
-    const camera3_capture_result_t* result) {
+    const camera3_callback_ops* cb, const camera3_capture_result_t* result) {
   // Forward to callback of instance
   Camera3DeviceImpl* d =
       const_cast<Camera3DeviceImpl*>(static_cast<const Camera3DeviceImpl*>(cb));
@@ -710,7 +705,7 @@ void Camera3DeviceImpl::ProcessPartialResult(CaptureResult* result) {
     EXPECT_LE(result->partial_result, static_info_->GetPartialResultCount());
     EXPECT_GE(result->partial_result, 1);
     is_final_partial_result =
-      (result->partial_result == static_info_->GetPartialResultCount());
+        (result->partial_result == static_info_->GetPartialResultCount());
   }
 
   // Did we get the (final) result metadata for this capture?
@@ -772,8 +767,7 @@ Camera3DeviceImpl::CaptureResultInfo::MergePartialMetadata() {
 }
 
 bool Camera3DeviceImpl::CaptureResultInfo::GetMetadataKeyEntry(
-    int32_t key,
-    camera_metadata_ro_entry_t* entry) const {
+    int32_t key, camera_metadata_ro_entry_t* entry) const {
   DCHECK(thread_checker_.CalledOnValidThread());
   camera_metadata_ro_entry_t local_entry;
   entry = entry ? entry : &local_entry;

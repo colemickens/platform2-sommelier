@@ -127,13 +127,13 @@ int DeserializeStreamBuffer(
   return 0;
 }
 
-const size_t CameraMetadataTypeSize[NUM_TYPES] =
-    {[TYPE_BYTE] = sizeof(uint8_t),
-     [TYPE_INT32] = sizeof(int32_t),
-     [TYPE_FLOAT] = sizeof(float),
-     [TYPE_INT64] = sizeof(int64_t),
-     [TYPE_DOUBLE] = sizeof(double),
-     [TYPE_RATIONAL] = sizeof(camera_metadata_rational_t)};
+const size_t CameraMetadataTypeSize[NUM_TYPES] = {
+    [TYPE_BYTE] = sizeof(uint8_t),
+    [TYPE_INT32] = sizeof(int32_t),
+    [TYPE_FLOAT] = sizeof(float),
+    [TYPE_INT64] = sizeof(int64_t),
+    [TYPE_DOUBLE] = sizeof(double),
+    [TYPE_RATIONAL] = sizeof(camera_metadata_rational_t)};
 
 cros::mojom::CameraMetadataPtr SerializeCameraMetadata(
     const camera_metadata_t* metadata) {

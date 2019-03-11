@@ -36,8 +36,7 @@ static int configure_streams(const camera3_device_t* dev,
 }
 
 static const camera_metadata_t* construct_default_request_settings(
-    const camera3_device_t* dev,
-    int type) {
+    const camera3_device_t* dev, int type) {
   CameraClient* client = camdev_to_camera(dev);
   if (!client) {
     LOGF(ERROR) << "Camera device is NULL";

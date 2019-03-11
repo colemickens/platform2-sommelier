@@ -81,15 +81,17 @@ class JpegEncodeAcceleratorTest : public ::testing::Test {
   void SetUp() {}
   void TearDown() {}
 
-  void ParseInputFileString(
-      const base::FilePath::CharType* yuv_filename, int* width, int* height,
-      base::FilePath* yuv_file);
+  void ParseInputFileString(const base::FilePath::CharType* yuv_filename,
+                            int* width,
+                            int* height,
+                            base::FilePath* yuv_file);
   void LoadFrame(const base::FilePath::CharType* yuv_filename, Frame* frame);
   void PrepareMemory(Frame* frame);
   bool GetSoftwareEncodeResult(Frame* frame);
   bool CompareHwAndSwResults(Frame* frame);
   double GetMeanAbsoluteDifference(uint8_t* hw_yuv_result,
-      uint8_t* sw_yuv_result, size_t yuv_size);
+                                   uint8_t* sw_yuv_result,
+                                   size_t yuv_size);
   void EncodeTest(Frame* frame);
   void EncodeSyncCallback(base::Callback<void(int)> callback,
                           int32_t buffer_id,
@@ -123,18 +125,18 @@ class JpegEncodeTestEnvironment : public ::testing::Environment {
 
 void JpegEncodeAcceleratorTest::ParseInputFileString(
     const base::FilePath::CharType* yuv_filename,
-    int* width, int* height, base::FilePath* yuv_file) {
-
+    int* width,
+    int* height,
+    base::FilePath* yuv_file) {
   std::vector<base::FilePath::StringType> filename_and_size =
-    base::SplitString(yuv_filename, base::FilePath::StringType(1, ':'),
-        base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+      base::SplitString(yuv_filename, base::FilePath::StringType(1, ':'),
+                        base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   ASSERT_EQ(2, filename_and_size.size());
   base::FilePath::StringType filename(filename_and_size[0]);
 
-  std::vector<base::FilePath::StringType> image_resolution =
-    base::SplitString(filename_and_size[1],
-        base::FilePath::StringType(1, 'x'),
-        base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  std::vector<base::FilePath::StringType> image_resolution = base::SplitString(
+      filename_and_size[1], base::FilePath::StringType(1, 'x'),
+      base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   ASSERT_EQ(2u, image_resolution.size());
   ASSERT_TRUE(base::StringToInt(image_resolution[0], width));
   ASSERT_TRUE(base::StringToInt(image_resolution[1], height));
@@ -144,8 +146,8 @@ void JpegEncodeAcceleratorTest::ParseInputFileString(
 
 void JpegEncodeAcceleratorTest::LoadFrame(
     const base::FilePath::CharType* yuv_filename, Frame* frame) {
-  ParseInputFileString(yuv_filename,
-      &frame->width, &frame->height, &frame->yuv_file);
+  ParseInputFileString(yuv_filename, &frame->width, &frame->height,
+                       &frame->yuv_file);
   base::FilePath yuv_filepath = frame->yuv_file;
   if (!PathExists(yuv_filepath)) {
     LOG(ERROR) << "There is no test image file: " << yuv_filepath.value();
@@ -284,8 +286,8 @@ void JpegEncodeAcceleratorTest::EncodeTest(Frame* frame) {
     if (g_env->save_to_file_) {
       base::FilePath encoded_file = frame->yuv_file.ReplaceExtension(".jpg");
       base::WriteFile(encoded_file,
-          static_cast<char*>(frame->hw_out_shm->memory()),
-          frame->hw_out_size);
+                      static_cast<char*>(frame->hw_out_shm->memory()),
+                      frame->hw_out_size);
     }
 
     EXPECT_EQ(true, GetSoftwareEncodeResult(frame));

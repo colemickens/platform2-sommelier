@@ -23,7 +23,8 @@ static std::vector<int> kSupportedHalFormats{
 static const std::vector<uint32_t> GetSupportedFourCCs() {
   // The preference of supported fourccs in the list is from high to low.
   static const std::vector<uint32_t> kSupportedFourCCs = {
-      V4L2_PIX_FMT_YUYV, V4L2_PIX_FMT_MJPEG,
+      V4L2_PIX_FMT_YUYV,
+      V4L2_PIX_FMT_MJPEG,
   };
   return kSupportedFourCCs;
 }

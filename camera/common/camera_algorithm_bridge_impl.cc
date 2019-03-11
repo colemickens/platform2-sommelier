@@ -182,8 +182,7 @@ void CameraAlgorithmBridgeImpl::DestroyOnIpcThread() {
 }
 
 void CameraAlgorithmBridgeImpl::RegisterBufferOnIpcThread(
-    int buffer_fd,
-    base::Callback<void(int32_t)> cb) {
+    int buffer_fd, base::Callback<void(int32_t)> cb) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
   if (!interface_ptr_.is_bound()) {

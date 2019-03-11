@@ -366,8 +366,7 @@ int32_t CameraDeviceAdapter::Close() {
 
 // static
 void CameraDeviceAdapter::ProcessCaptureResult(
-    const camera3_callback_ops_t* ops,
-    const camera3_capture_result_t* result) {
+    const camera3_callback_ops_t* ops, const camera3_capture_result_t* result) {
   VLOGF_ENTER();
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
       static_cast<const CameraDeviceAdapter*>(ops));

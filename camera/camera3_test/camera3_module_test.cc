@@ -363,8 +363,8 @@ void Camera3Module::GetStreamConfigEntry(int cam_id,
   entry->count = 0;
 
   camera_info info;
-  ASSERT_EQ(0, GetCameraInfo(cam_id, &info)) << "Can't get camera info for"
-                                             << cam_id;
+  ASSERT_EQ(0, GetCameraInfo(cam_id, &info))
+      << "Can't get camera info for" << cam_id;
 
   camera_metadata_ro_entry_t local_entry = {};
   ASSERT_EQ(
@@ -455,8 +455,7 @@ std::vector<int32_t> Camera3Module::GetOutputFormats(int cam_id) {
 }
 
 std::vector<ResolutionInfo> Camera3Module::GetSortedOutputResolutions(
-    int cam_id,
-    int32_t format) {
+    int cam_id, int32_t format) {
   if (!cam_module_) {
     return std::vector<ResolutionInfo>();
   }
@@ -510,9 +509,7 @@ int64_t Camera3Module::GetOutputKeyParameterI64(
 }
 
 int64_t Camera3Module::GetOutputStallDuration(
-    int cam_id,
-    int32_t format,
-    const ResolutionInfo& resolution) {
+    int cam_id, int32_t format, const ResolutionInfo& resolution) {
   int64_t value = GetOutputKeyParameterI64(
       cam_id, format, resolution, ANDROID_SCALER_AVAILABLE_STALL_DURATIONS,
       STREAM_CONFIG_STALL_DURATION_INDEX);
@@ -522,9 +519,7 @@ int64_t Camera3Module::GetOutputStallDuration(
 }
 
 int64_t Camera3Module::GetOutputMinFrameDuration(
-    int cam_id,
-    int32_t format,
-    const ResolutionInfo& resolution) {
+    int cam_id, int32_t format, const ResolutionInfo& resolution) {
   return GetOutputKeyParameterI64(cam_id, format, resolution,
                                   ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS,
                                   STREAM_CONFIG_MIN_DURATION_INDEX);
@@ -637,19 +632,19 @@ TEST_F(Camera3ModuleFixture, OpenDeviceTwice) {
     ASSERT_NE(nullptr, cam_dev) << "Camera open() returned a NULL device";
     // Open the device again
     camera3_device* cam_bad_dev = cam_module_.OpenDevice(cam_id);
-    ASSERT_EQ(nullptr, cam_bad_dev) << "Opening camera device " << cam_id
-                                    << " should have failed";
+    ASSERT_EQ(nullptr, cam_bad_dev)
+        << "Opening camera device " << cam_id << " should have failed";
     cam_module_.CloseDevice(cam_dev);
   }
 }
 
 TEST_F(Camera3ModuleFixture, RequiredFormats) {
-  auto IsResolutionSupported = [](
-      const std::vector<ResolutionInfo>& resolution_list,
-      const ResolutionInfo& resolution) {
-    return std::find(resolution_list.begin(), resolution_list.end(),
-                     resolution) != resolution_list.end();
-  };
+  auto IsResolutionSupported =
+      [](const std::vector<ResolutionInfo>& resolution_list,
+         const ResolutionInfo& resolution) {
+        return std::find(resolution_list.begin(), resolution_list.end(),
+                         resolution) != resolution_list.end();
+      };
   auto RemoveResolution = [](std::vector<ResolutionInfo>& resolution_list,
                              const ResolutionInfo& resolution) {
     auto it =
@@ -782,16 +777,16 @@ TEST_F(Camera3ModuleFixture, RequiredFormats) {
       std::set_difference(jpeg_resolutions.begin(), jpeg_resolutions.end(),
                           yuv_resolutions.begin(), yuv_resolutions.end(),
                           std::inserter(diff, diff.begin()));
-      EXPECT_TRUE(diff.empty()) << "Sizes " << PrintResolutions(diff)
-                                << " not found in YUV format";
+      EXPECT_TRUE(diff.empty())
+          << "Sizes " << PrintResolutions(diff) << " not found in YUV format";
     }
 
     std::vector<ResolutionInfo> diff;
     std::set_difference(jpeg_resolutions.begin(), jpeg_resolutions.end(),
                         private_resolutions.begin(), private_resolutions.end(),
                         std::inserter(diff, diff.begin()));
-    EXPECT_TRUE(diff.empty()) << "Sizes " << PrintResolutions(diff)
-                              << " not found in private format";
+    EXPECT_TRUE(diff.empty())
+        << "Sizes " << PrintResolutions(diff) << " not found in private format";
   }
 }
 

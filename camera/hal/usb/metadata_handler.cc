@@ -435,12 +435,12 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
       ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE,
   };
   if (is_builtin) {
-    available_request_keys.insert(
-        available_request_keys.end(),
-        {
-            ANDROID_LENS_APERTURE, ANDROID_LENS_FOCAL_LENGTH,
-            ANDROID_LENS_FOCUS_DISTANCE,
-        });
+    available_request_keys.insert(available_request_keys.end(),
+                                  {
+                                      ANDROID_LENS_APERTURE,
+                                      ANDROID_LENS_FOCAL_LENGTH,
+                                      ANDROID_LENS_FOCUS_DISTANCE,
+                                  });
   }
   UPDATE(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS, available_request_keys.data(),
          available_request_keys.size());
@@ -490,12 +490,12 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
       ANDROID_STATISTICS_SCENE_FLICKER,
   };
   if (is_builtin) {
-    available_result_keys.insert(
-        available_result_keys.end(),
-        {
-            ANDROID_LENS_APERTURE, ANDROID_LENS_FOCAL_LENGTH,
-            ANDROID_LENS_FOCUS_DISTANCE,
-        });
+    available_result_keys.insert(available_result_keys.end(),
+                                 {
+                                     ANDROID_LENS_APERTURE,
+                                     ANDROID_LENS_FOCAL_LENGTH,
+                                     ANDROID_LENS_FOCUS_DISTANCE,
+                                 });
   }
   UPDATE(ANDROID_REQUEST_AVAILABLE_RESULT_KEYS, available_result_keys.data(),
          available_result_keys.size());
@@ -701,8 +701,10 @@ int MetadataHandler::PostHandleRequest(int frame_number,
 
   // android.scaler
   const int32_t crop_region[] = {
-      active_array_size.data.i32[0], active_array_size.data.i32[1],
-      active_array_size.data.i32[2], active_array_size.data.i32[3],
+      active_array_size.data.i32[0],
+      active_array_size.data.i32[1],
+      active_array_size.data.i32[2],
+      active_array_size.data.i32[3],
   };
   UPDATE(ANDROID_SCALER_CROP_REGION, crop_region, ARRAY_SIZE(crop_region));
 

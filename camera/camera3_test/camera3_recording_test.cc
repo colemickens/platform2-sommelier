@@ -57,8 +57,7 @@ class Camera3BasicRecordingTest
 };
 
 void Camera3BasicRecordingTest::ValidateRecordingFrameRate(
-    float duration_ms,
-    float frame_duration_ms) {
+    float duration_ms, float frame_duration_ms) {
   ASSERT_NE(0, duration_ms);
   ASSERT_NE(0, frame_duration_ms);
   float max_frame_duration_ms =

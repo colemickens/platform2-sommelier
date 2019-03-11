@@ -23,8 +23,7 @@
 namespace camera3_test {
 
 int32_t Camera3FrameFixture::CreateCaptureRequest(
-    const camera_metadata_t& metadata,
-    uint32_t* frame_number) {
+    const camera_metadata_t& metadata, uint32_t* frame_number) {
   // Allocate output buffers
   std::vector<camera3_stream_buffer_t> output_buffers;
   if (cam_device_.AllocateOutputStreamBuffers(&output_buffers)) {
@@ -48,14 +47,12 @@ int32_t Camera3FrameFixture::CreateCaptureRequest(
 }
 
 int32_t Camera3FrameFixture::CreateCaptureRequestByMetadata(
-    const CameraMetadataUniquePtr& metadata,
-    uint32_t* frame_number) {
+    const CameraMetadataUniquePtr& metadata, uint32_t* frame_number) {
   return CreateCaptureRequest(*metadata, frame_number);
 }
 
 int32_t Camera3FrameFixture::CreateCaptureRequestByTemplate(
-    int32_t type,
-    uint32_t* frame_number) {
+    int32_t type, uint32_t* frame_number) {
   const camera_metadata_t* default_settings;
   default_settings = cam_device_.ConstructDefaultRequestSettings(type);
   if (!default_settings) {
@@ -581,7 +578,8 @@ void Camera3FlushRequestsTest::ProcessCaptureResult(
   EXPECT_EQ(result->result != nullptr, result->partial_result != 0)
       << "Inconsistent partial metadata";
 
-  if (result->result && result->partial_result ==
+  if (result->result &&
+      result->partial_result ==
           cam_device_.GetStaticInfo()->GetPartialResultCount()) {
     metadata_complete_frame_numbers_.insert(result->frame_number);
   }

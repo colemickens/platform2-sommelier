@@ -165,8 +165,7 @@ const Camera3Device::StaticInfo* Camera3Service::GetStaticInfo(int cam_id) {
 }
 
 const camera_metadata_t* Camera3Service::ConstructDefaultRequestSettings(
-    int cam_id,
-    int type) {
+    int cam_id, int type) {
   base::AutoLock l(lock_);
   if (initialized_ &&
       cam_dev_service_map_.find(cam_id) != cam_dev_service_map_.end()) {
@@ -379,8 +378,7 @@ void Camera3Service::Camera3DeviceService::StopRecording() {
 }
 
 int Camera3Service::Camera3DeviceService::WaitForPreviewFrames(
-    uint32_t num_frames,
-    uint32_t timeout_ms) {
+    uint32_t num_frames, uint32_t timeout_ms) {
   VLOGF_ENTER();
   while (sem_trywait(&preview_frame_sem_) == 0) {
   }
@@ -574,16 +572,14 @@ void Camera3Service::Camera3DeviceService::StartAEPrecaptureOnServiceThread() {
 }
 
 void Camera3Service::Camera3DeviceService::TakeStillCaptureOnServiceThread(
-    const camera_metadata_t* metadata,
-    base::Callback<void()> cb) {
+    const camera_metadata_t* metadata, base::Callback<void()> cb) {
   DCHECK(service_thread_.IsCurrentThread());
   still_capture_metadata_ = metadata;
   still_capture_cb_ = cb;
 }
 
 void Camera3Service::Camera3DeviceService::StartRecordingOnServiceThread(
-    const camera_metadata_t* metadata,
-    base::Callback<void(int)> cb) {
+    const camera_metadata_t* metadata, base::Callback<void(int)> cb) {
   DCHECK(service_thread_.IsCurrentThread());
   VLOGF_ENTER();
   if (!metadata) {

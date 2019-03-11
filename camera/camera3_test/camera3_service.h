@@ -52,8 +52,8 @@ class Camera3Service {
                               BufferHandleUniquePtr buffer)>
       ProcessStillCaptureResultCallback;
 
-  typedef base::Callback<
-      void(int cam_id, uint32_t frame_number, CameraMetadataUniquePtr metadata)>
+  typedef base::Callback<void(
+      int cam_id, uint32_t frame_number, CameraMetadataUniquePtr metadata)>
       ProcessRecordingResultCallback;
 
   // Initialize service and corresponding devices and register processing
@@ -212,8 +212,7 @@ class Camera3Service::Camera3DeviceService {
                                           int32_t* result);
 
   void DeleteMetadataListenerOnServiceThread(
-      int32_t key,
-      std::unordered_set<int32_t> values);
+      int32_t key, std::unordered_set<int32_t> values);
 
   void LockAWBOnServiceThread();
 

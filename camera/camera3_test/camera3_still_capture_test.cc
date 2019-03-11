@@ -37,8 +37,7 @@ void Camera3StillCaptureFixture::ProcessStillCaptureResult(
 }
 
 int Camera3StillCaptureFixture::WaitStillCaptureResult(
-    int cam_id,
-    const struct timespec& timeout) {
+    int cam_id, const struct timespec& timeout) {
   // Wait for capture result callback
   return sem_timedwait(&still_capture_results_[cam_id].capture_result_sem,
                        &timeout);
@@ -255,9 +254,8 @@ TEST_P(Camera3JpegResolutionTest, JpegResolutionTest) {
 
   ASSERT_EQ(1, still_capture_results_[cam_id_].buffer_handles.size())
       << "Incorrect number of still captures received";
-  JpegExifInfo jpeg_exif_info(
-      still_capture_results_[cam_id_].buffer_handles[0],
-      jpeg_max_sizes_[cam_id_]);
+  JpegExifInfo jpeg_exif_info(still_capture_results_[cam_id_].buffer_handles[0],
+                              jpeg_max_sizes_[cam_id_]);
   ASSERT_TRUE(jpeg_exif_info.Initialize());
   EXPECT_EQ(jpeg_resolution, jpeg_exif_info.jpeg_resolution)
       << "JPEG size result and request should match";

@@ -40,15 +40,15 @@ class CROS_CAMERA_EXPORT JpegCompressor {
   // encoded successfully. Returns false if errors occur during compression.
   // |mode| controls the HW/SW encode selection strategy.
   virtual bool CompressImage(const void* image,
-                     int width,
-                     int height,
-                     int quality,
-                     const void* app1_buffer,
-                     uint32_t app1_size,
-                     uint32_t out_buffer_size,
-                     void* out_buffer,
-                     uint32_t* out_data_size,
-                     Mode mode = Mode::kDefault) = 0;
+                             int width,
+                             int height,
+                             int quality,
+                             const void* app1_buffer,
+                             uint32_t app1_size,
+                             uint32_t out_buffer_size,
+                             void* out_buffer,
+                             uint32_t* out_data_size,
+                             Mode mode = Mode::kDefault) = 0;
 
   // Compresses YU12 image to JPEG format. |quality| is the resulted jpeg
   // image quality. It ranges from 1 (poorest quality) to 100 (highest quality).
@@ -57,14 +57,14 @@ class CROS_CAMERA_EXPORT JpegCompressor {
   // be written into |out_data_size| if image encoded successfully. Returns
   // false if errors occur during compression.
   virtual bool GenerateThumbnail(const void* image,
-                         int image_width,
-                         int image_height,
-                         int thumbnail_width,
-                         int thumbnail_height,
-                         int quality,
-                         uint32_t out_buffer_size,
-                         void* out_buffer,
-                         uint32_t* out_data_size) = 0;
+                                 int image_width,
+                                 int image_height,
+                                 int thumbnail_width,
+                                 int thumbnail_height,
+                                 int quality,
+                                 uint32_t out_buffer_size,
+                                 void* out_buffer,
+                                 uint32_t* out_data_size) = 0;
 };
 
 }  // namespace cros

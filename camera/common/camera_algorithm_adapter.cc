@@ -26,8 +26,7 @@ CameraAlgorithmAdapter::CameraAlgorithmAdapter()
       ipc_thread_("IPC thread") {}
 
 void CameraAlgorithmAdapter::Run(
-    std::string mojo_token,
-    mojo::edk::ScopedPlatformHandle channel_handle) {
+    std::string mojo_token, mojo::edk::ScopedPlatformHandle channel_handle) {
   VLOGF_ENTER();
   auto future = cros::Future<void>::Create(&relay_);
   ipc_lost_cb_ = cros::GetFutureCallback(future);
@@ -43,8 +42,7 @@ void CameraAlgorithmAdapter::Run(
 }
 
 void CameraAlgorithmAdapter::InitializeOnIpcThread(
-    std::string mojo_token,
-    mojo::edk::ScopedPlatformHandle channel_handle) {
+    std::string mojo_token, mojo::edk::ScopedPlatformHandle channel_handle) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   VLOGF(1) << "Setting up message pipe";
   mojo::edk::Init();

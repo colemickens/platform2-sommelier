@@ -90,8 +90,7 @@ void CameraHalServerImpl::SetTracingEnabled(bool enabled) {
 }
 
 void CameraHalServerImpl::OnSocketFileStatusChange(
-    const base::FilePath& socket_path,
-    bool error) {
+    const base::FilePath& socket_path, bool error) {
   VLOGF_ENTER();
   DCHECK(main_task_runner_->BelongsToCurrentThread());
   if (!PathExists(socket_path)) {

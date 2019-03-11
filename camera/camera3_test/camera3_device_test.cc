@@ -204,9 +204,7 @@ bool Camera3Device::StaticInfo::IsColorOutputSupported() const {
 }
 
 std::set<uint8_t> Camera3Device::StaticInfo::GetAvailableModes(
-    int32_t key,
-    int32_t min_value,
-    int32_t max_value) const {
+    int32_t key, int32_t min_value, int32_t max_value) const {
   camera_metadata_ro_entry_t entry;
   if (find_camera_metadata_ro_entry(characteristics_, key, &entry) != 0) {
     ADD_FAILURE() << "Cannot find the metadata "
@@ -668,11 +666,11 @@ static void ExpectKeyValue(const camera_metadata_t* settings,
   ASSERT_EQ(0, find_camera_metadata_ro_entry(settings, key, &entry))
       << "Cannot find the metadata " << key_name;
   if (compare_type == 0) {
-    ASSERT_EQ(value, entry.data.i32[0]) << "Wrong value of metadata "
-                                        << key_name;
+    ASSERT_EQ(value, entry.data.i32[0])
+        << "Wrong value of metadata " << key_name;
   } else {
-    ASSERT_NE(value, entry.data.i32[0]) << "Wrong value of metadata "
-                                        << key_name;
+    ASSERT_NE(value, entry.data.i32[0])
+        << "Wrong value of metadata " << key_name;
   }
 }
 #define EXPECT_KEY_VALUE_EQ(settings, key, value) \

@@ -98,15 +98,13 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
                          camera3_stream_type_t output);
 
   void ConstructDefaultRequestSettingsOnThread(
-      int type,
-      const camera_metadata_t** result);
+      int type, const camera_metadata_t** result);
 
   void ConfigureStreamsOnThread(std::vector<const camera3_stream_t*>* streams,
                                 int* result);
 
   void AllocateOutputStreamBuffersOnThread(
-      std::vector<camera3_stream_buffer_t>* output_buffers,
-      int32_t* result);
+      std::vector<camera3_stream_buffer_t>* output_buffers, int32_t* result);
 
   void AllocateOutputBuffersByStreamsOnThread(
       const std::vector<const camera3_stream_t*>* streams,
@@ -124,8 +122,7 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
 
   // Static callback forwarding methods from HAL to instance
   static void ProcessCaptureResultForwarder(
-      const camera3_callback_ops* cb,
-      const camera3_capture_result_t* result);
+      const camera3_callback_ops* cb, const camera3_capture_result_t* result);
 
   // Static callback forwarding methods from HAL to instance
   static void NotifyForwarder(const camera3_callback_ops* cb,
