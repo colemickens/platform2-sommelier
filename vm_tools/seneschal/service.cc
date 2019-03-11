@@ -838,7 +838,7 @@ std::unique_ptr<dbus::Response> Service::SharePath(
       src = base::FilePath("/media/fuse/")
                 .Append(drivefs_mount_name)
                 .Append("team_drives");
-      dst = dst.Append("GoogleDrive").Append("TeamDrives");
+      dst = dst.Append("GoogleDrive").Append("SharedDrives");
       break;
     case SharePathRequest::DRIVEFS_COMPUTERS:
       src = base::FilePath("/media/fuse/")
