@@ -171,6 +171,11 @@ void Metadata::writeMiscMetadata(RequestCtrlState &reqState) const
     int faceIds[1] = {0};
     reqState.ctrlUnitResult->update(ANDROID_STATISTICS_FACE_IDS,
                                     faceIds, 1);
+
+    // Since there's only one fixed set of lens parameters, this state will
+    // always be STATIONARY.
+    uint8_t lensState = ANDROID_LENS_STATE_STATIONARY;
+    reqState.ctrlUnitResult->update(ANDROID_LENS_STATE, &lensState, 1);
 }
 
 void Metadata::writeLSCMetadata(std::shared_ptr<RequestCtrlState> &reqState) const
