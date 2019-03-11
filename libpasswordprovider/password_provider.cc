@@ -100,10 +100,9 @@ bool PasswordProvider::SavePassword(const Password& password) const {
     PLOG(ERROR) << "Could not change keyring group.";
   }
 
-  result = keyctl_setperm(
-      keyring_id, KEY_POS_ALL | KEY_USR_VIEW | KEY_USR_READ | KEY_USR_SEARCH |
-                      KEY_USR_WRITE | KEY_GRP_VIEW | KEY_GRP_READ |
-                      KEY_GRP_SEARCH | KEY_GRP_WRITE);
+  result =
+      keyctl_setperm(keyring_id, KEY_POS_ALL | KEY_GRP_VIEW | KEY_GRP_READ |
+                                     KEY_GRP_SEARCH | KEY_GRP_WRITE);
 
   if (result == -1) {
     PLOG(ERROR) << "Error setting permissions on keyring. ";
@@ -128,10 +127,9 @@ bool PasswordProvider::SavePassword(const Password& password) const {
     PLOG(ERROR) << "Could not change key group.";
   }
 
-  result = keyctl_setperm(key_serial, KEY_POS_ALL | KEY_USR_VIEW |
-                                          KEY_USR_READ | KEY_USR_SEARCH |
-                                          KEY_GRP_VIEW | KEY_GRP_READ |
-                                          KEY_GRP_SEARCH | KEY_GRP_WRITE);
+  result =
+      keyctl_setperm(key_serial, KEY_POS_ALL | KEY_GRP_VIEW | KEY_GRP_READ |
+                                     KEY_GRP_SEARCH | KEY_GRP_WRITE);
 
   if (result == -1) {
     PLOG(ERROR) << "Error setting permissions on key. ";
