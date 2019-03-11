@@ -9,6 +9,7 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
+#include <openssl/err.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
@@ -20,6 +21,10 @@ using crypto::ScopedRSA;
 using cryptohome::CryptoLib;
 
 namespace {
+
+struct ScopedOpensslErrorClearer {
+  ~ScopedOpensslErrorClearer() { ERR_clear_error(); }
+};
 
 bool SplitFuzzerInput(const uint8_t* data,
                       size_t data_size,
@@ -73,6 +78,9 @@ struct Environment {
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment environment;
+  // Prevent OpenSSL errors from accumulating in the error queue and leaking the
+  // memory across fuzzer executions.
+  ScopedOpensslErrorClearer scoped_openssl_error_clearer;
 
   SecureBlob ciphertext;
   SecureBlob oaep_label;
