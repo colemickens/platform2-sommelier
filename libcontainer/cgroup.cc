@@ -118,17 +118,27 @@ std::string GetDeviceString(const int major, const int minor) {
 bool CreateCgroupAsOwner(const base::FilePath& cgroup_path,
                          uid_t cgroup_owner,
                          gid_t cgroup_group) {
+  base::ScopedClosureRunner runner;
+
   // If running as root and the cgroup owner is a user, create the cgroup
   // as that user.
-  base::ScopedClosureRunner reset_setegid, reset_seteuid;
   if (getuid() == 0 && (cgroup_owner != 0 || cgroup_group != 0)) {
-    if (setegid(cgroup_group) != 0)
-      return false;
-    reset_setegid.ReplaceClosure(base::Bind(base::IgnoreResult(&setegid), 0));
+    // Ensure that we reset the euid and egid no matter what.
+    // TODO(ejcaruso, hidehiko): change to OnceClosure when libchrome is
+    // upreved again.
+    runner.ReplaceClosure(base::Bind(
+        [](uid_t euid, gid_t egid) {
+          if (seteuid(euid) != 0)
+            PLOG(ERROR) << "Failed to reset euid";
+          if (setegid(egid) != 0)
+            PLOG(ERROR) << "Failed to reset egid";
+        },
+        geteuid(), getegid()));
 
-    if (seteuid(cgroup_owner) != 0)
+    if (setegid(cgroup_group) != 0 || seteuid(cgroup_owner) != 0) {
+      PLOG(ERROR) << "Failed to set cgroup owner";
       return false;
-    reset_seteuid.ReplaceClosure(base::Bind(base::IgnoreResult(&seteuid), 0));
+    }
   }
 
   if (mkdir(cgroup_path.value().c_str(), S_IRWXU | S_IRWXG) < 0 &&
