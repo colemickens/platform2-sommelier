@@ -27,7 +27,12 @@ namespace permission_broker {
 // go/usb-power_ctl).
 const UsbDeviceInfo kDeviceWhitelist[] = {
     // Huddly camera VID and PID.
-    UsbDeviceInfo(0x2bd9, 0x0011, 0xEF /* Miscellaneous */)};
+    UsbDeviceInfo(0x2bd9, 0x0011, 0xEF /* Miscellaneous */),
+    // MIMO VUE HD VID and PID.
+    // This is a touch controller with a small screen for CFM devices.
+    // https://www.mimomonitors.com/products/mimo-vue-hd-display
+    UsbDeviceInfo(0x17e9, 0x416d, 0xFF /* Miscellaneous */),
+};
 
 std::string DeviceInfoString(uint16_t vid, uint16_t pid) {
   return base::StringPrintf("(vid: 0x%04x, pid: 0x%04x)", vid, pid);
