@@ -59,6 +59,7 @@ copies.
 | [glib-bridge](./glib-bridge/) | library for libchrome-glib message loop interoperation |
 | [gobi-cromo-plugin](./gobi-cromo-plugin/) | plugin for supporting gobi3k modems with cromo |
 | [goldfishd](./goldfishd/) | Android Emulator Daemon |
+| [graphics_tests](./graphics_tests/) | Compiled executables used by Tast graphics tests |
 | [hammerd](./hammerd/) | Firmware updater utility for hammer hardware |
 | [hermes](./hermes/) | Chrome OS LPA implementation for eSIM hardware support |
 | [image-burner](./image-burner/) | Daemon for writing disk images (e.g. recovery) to USB sticks & SD cards |
