@@ -68,6 +68,7 @@ rt_sigprocmask: 1
 rt_sigreturn: 1
 rt_sigsuspend: 1
 sendmsg: 1
+sendmmsg: 1
 sendto: 1
 setgroups: 1
 setresgid: 1
