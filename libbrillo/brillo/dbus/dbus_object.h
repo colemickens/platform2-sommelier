@@ -45,7 +45,8 @@ class MyDbusObject {
   void Method3(std::unique_ptr<DBusMethodResponse<int_32>> response,
                const std::string& message) {
     if (message.empty()) {
-       response->ReplyWithError(brillo::errors::dbus::kDomain,
+       response->ReplyWithError(FROM_HERE,
+                                brillo::errors::dbus::kDomain,
                                 DBUS_ERROR_INVALID_ARGS,
                                 "Message string cannot be empty");
        return;
