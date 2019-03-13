@@ -60,9 +60,10 @@ void OnDBusChallengeKeyFailure(
 KeyChallengeServiceImpl::KeyChallengeServiceImpl(
     scoped_refptr<dbus::Bus> dbus_bus,
     const std::string& key_delegate_dbus_service_name)
-    : dbus_proxy_(dbus_bus, key_delegate_dbus_service_name) {
+    : key_delegate_dbus_service_name_(key_delegate_dbus_service_name),
+      dbus_proxy_(dbus_bus, key_delegate_dbus_service_name_) {
   DCHECK(dbus_bus);
-  DCHECK(!key_delegate_dbus_service_name.empty());
+  DCHECK(!key_delegate_dbus_service_name_.empty());
 }
 
 KeyChallengeServiceImpl::~KeyChallengeServiceImpl() = default;
@@ -71,6 +72,15 @@ void KeyChallengeServiceImpl::ChallengeKey(
     const AccountIdentifier& account_id,
     const KeyChallengeRequest& key_challenge_request,
     const ResponseCallback& response_callback) {
+  if (!dbus_validate_bus_name(key_delegate_dbus_service_name_.c_str(),
+                              nullptr /* error */)) {
+    // Bail out to avoid crashing inside the D-Bus library.
+    // TODO(emaxx): Remove this special handling once libchrome is uprev'ed to
+    // include the fix from crbug.com/927196.
+    LOG(ERROR) << "Invalid key challenge service name";
+    response_callback.Run(nullptr /* response */);
+    return;
+  }
   dbus_proxy_.ChallengeKeyAsync(
       SerializeProto(account_id), SerializeProto(key_challenge_request),
       base::Bind(&OnDBusChallengeKeySuccess, response_callback),

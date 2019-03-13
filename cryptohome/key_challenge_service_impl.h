@@ -38,6 +38,7 @@ class KeyChallengeServiceImpl final : public KeyChallengeService {
                     const ResponseCallback& response_callback) override;
 
  private:
+  const std::string key_delegate_dbus_service_name_;
   org::chromium::CryptohomeKeyDelegateInterfaceProxy dbus_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(KeyChallengeServiceImpl);
