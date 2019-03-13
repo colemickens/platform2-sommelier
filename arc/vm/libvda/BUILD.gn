@@ -9,13 +9,17 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":libvda",
+    ":libvda_gpu_unittest",
     ":libvda_pc",
   ]
 
   if (use.test) {
     deps += [ ":libvda_fake_unittest" ]
   }
-  deps += [ ":libvda_gpu_unittest" ]
+
+  if (use.fuzzer) {
+    deps += [ ":libvda_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -127,4 +131,20 @@ executable("libvda_gpu_unittest") {
     "test/encoded_data_helper.cc",
     "test/libvda_unittest_common.cc",
   ]
+}
+
+if (use.fuzzer) {
+  executable("libvda_fuzzer") {
+    configs += [ "//common-mk/common_fuzzer" ]
+    configs -= [ "//common-mk:no_exceptions" ]
+    sources = [
+      "at_exit_util.cc",
+      "libvda_fuzzer.cc",
+      "test/libvda_unittest_common.cc",
+    ]
+    pkg_deps = [ "gbm" ]
+    deps = [
+      ":libvda_source_set",
+    ]
+  }
 }

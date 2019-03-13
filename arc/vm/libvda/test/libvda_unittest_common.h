@@ -16,7 +16,7 @@ struct ImplDeleter {
 using ImplPtr = std::unique_ptr<void, ImplDeleter>;
 
 struct SessionDeleter {
-  explicit SessionDeleter(void* impl = nullptr) : impl_(impl) {}
+  explicit SessionDeleter(void* impl) : impl_(impl) {}
 
   void operator()(vda_session_info_t* session) {
     close_decode_session(impl_, session);
