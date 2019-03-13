@@ -834,9 +834,9 @@ void AttestationService::GetAttestationKeyInfoTask(
     result->set_public_key(public_key_info);
   }
   if (identity_pb.has_identity_binding() &&
-      identity_pb.identity_binding().has_identity_public_key()) {
+      identity_pb.identity_binding().has_identity_public_key_tpm_format()) {
     result->set_public_key_tpm_format(
-        identity_pb.identity_binding().identity_public_key());
+        identity_pb.identity_binding().identity_public_key_tpm_format());
   }
   if (identity_certificate.has_identity_credential()) {
     result->set_certificate(identity_certificate.identity_credential());
@@ -1138,7 +1138,7 @@ bool AttestationService::CreateEnrollRequestInternal(ACAType aca_type,
   const AttestationDatabase::Identity& identity_data =
       database_pb.identities().Get(identity);
   request_pb.set_identity_public_key(
-      identity_data.identity_binding().identity_public_key());
+      identity_data.identity_binding().identity_public_key_tpm_format());
   *request_pb.mutable_pcr0_quote() = identity_data.pcr_quotes().at(0);
   *request_pb.mutable_pcr1_quote() = identity_data.pcr_quotes().at(1);
 
@@ -1703,7 +1703,8 @@ int AttestationService::CreateIdentity(int identity_features,
   }
   IdentityBinding* binding_pb = identity_data->mutable_identity_binding();
   binding_pb->set_identity_public_key_der(rsa_identity_public_key_der);
-  binding_pb->set_identity_public_key(rsa_identity_public_key_tpm_format);
+  binding_pb->set_identity_public_key_tpm_format(
+      rsa_identity_public_key_tpm_format);
 
   // Quote PCRs and store them in the identity. These quotes are intended to
   // be valid for the lifetime of the identity key so they do not need
@@ -2035,7 +2036,7 @@ bool AttestationService::VerifyIdentityBinding(
     }
     if (!crypto_utility_->VerifySignature(
             identity_public_key_info,
-            header + digest + binding.identity_public_key(),
+            header + digest + binding.identity_public_key_tpm_format(),
             binding.identity_binding())) {
       LOG(ERROR) << __func__
                  << ": Failed to verify identity binding signature.";
@@ -2309,8 +2310,8 @@ void AttestationService::VerifyTask(
     return;
   }
   if (!VerifyActivateIdentity(
-           ek_public_key_info,
-           identity_data.identity_binding().identity_public_key())) {
+          ek_public_key_info,
+          identity_data.identity_binding().identity_public_key_tpm_format())) {
     LOG(ERROR) << __func__ << ": Failed to verify identity activation.";
     return;
   }

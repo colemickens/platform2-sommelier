@@ -156,7 +156,8 @@ message AttestationEnrollmentRequest {
   //   Data encryption: 256-bit key, AES-CBC with PKCS5 padding.
   //   MAC: HMAC-SHA-512 using the AES key.
   optional EncryptedData encrypted_endorsement_credential = 1;
-  // The AIK public key, in TPM_PUBKEY form (TPMT_PUBLIC for TPM 2.0).
+  // The AIK public key, the raw TPM format. (TPM_PUBKEY for TPM 1.2,
+  // TPMT_PUBLIC for TPM 2.0).
   optional bytes identity_public_key = 2;
   // PCR0 quoted by AIK.
   optional Quote pcr0_quote = 3;

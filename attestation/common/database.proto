@@ -52,8 +52,9 @@ message IdentityBinding {
   optional bytes identity_binding = 1;
   // The AIK public key, DER encoded.
   optional bytes identity_public_key_der = 2;
-  // The AIK public key, in TPM_PUBKEY form (TPMT_PUBLIC for TPM 2.0).
-  optional bytes identity_public_key = 3;
+  // The AIK public key, the raw TPM format. (TPM_PUBKEY for TPM 1.2,
+  // TPMT_PUBLIC for TPM 2.0).
+  optional bytes identity_public_key_tpm_format = 3;
   // The label used during AIK creation.
   optional bytes identity_label = 4;
   // The PCA public key used during AIK creation, in TPM_PUBKEY form.

@@ -240,7 +240,7 @@ class AttestationServiceBaseTest : public testing::Test {
     identity_data->mutable_identity_key()->set_identity_public_key_der(
         "public_key");
     identity_data->mutable_identity_binding()
-        ->set_identity_public_key("public_key_tpm");
+        ->set_identity_public_key_tpm_format("public_key_tpm");
     (*identity_data->mutable_pcr_quotes())[0].set_quote("pcr0");
     (*identity_data->mutable_pcr_quotes())[1].set_quote("pcr1");
 #if USE_TPM2
@@ -343,7 +343,7 @@ TEST_F(AttestationServiceBaseTest, MigrateAttestationDatabase) {
   db->clear_identities();
   db->clear_identity_certificates();
   db->mutable_identity_binding()->set_identity_binding("identity_binding");
-  db->mutable_identity_binding()->set_identity_public_key(
+  db->mutable_identity_binding()->set_identity_public_key_tpm_format(
       "identity_public_key");
   db->mutable_identity_key()->set_identity_credential("identity_cred");
   db->mutable_pcr0_quote()->set_quote("pcr0_quote");
@@ -377,11 +377,11 @@ TEST_F(AttestationServiceBaseTest, MigrateAttestationDatabase) {
             default_identity_data.features());
   EXPECT_EQ("identity_binding",
             default_identity_data.identity_binding().identity_binding());
-  EXPECT_EQ("identity_public_key",
-            default_identity_data.identity_binding().identity_public_key());
+  EXPECT_EQ("identity_public_key", default_identity_data.identity_binding()
+                                       .identity_public_key_tpm_format());
   EXPECT_EQ("identity_binding", const_db.identity_binding().identity_binding());
   EXPECT_EQ("identity_public_key",
-            const_db.identity_binding().identity_public_key());
+            const_db.identity_binding().identity_public_key_tpm_format());
   EXPECT_EQ("pcr0_quote", default_identity_data.pcr_quotes().at(0).quote());
   EXPECT_EQ("pcr0_quote", const_db.pcr0_quote().quote());
   EXPECT_EQ("pcr1_quote", default_identity_data.pcr_quotes().at(1).quote());
@@ -413,7 +413,7 @@ TEST_F(AttestationServiceBaseTest,
   db->clear_identities();
   db->clear_identity_certificates();
   db->mutable_identity_binding()->set_identity_binding("identity_binding");
-  db->mutable_identity_binding()->set_identity_public_key(
+  db->mutable_identity_binding()->set_identity_public_key_tpm_format(
       "identity_public_key");
   db->mutable_identity_key()->set_identity_credential("identity_cred");
   // Note that we are missing a PCR0 quote.
@@ -444,7 +444,7 @@ TEST_F(AttestationServiceBaseTest,
   ASSERT_TRUE(const_db.identities().empty());
   ASSERT_EQ("identity_binding", const_db.identity_binding().identity_binding());
   ASSERT_EQ("identity_public_key",
-            const_db.identity_binding().identity_public_key());
+            const_db.identity_binding().identity_public_key_tpm_format());
   EXPECT_EQ("pcr1_quote", const_db.pcr1_quote().quote());
 
   // There is no identity certificate since there is no identity.
@@ -470,7 +470,7 @@ TEST_F(AttestationServiceBaseTest,
   db->clear_identities();
   db->clear_identity_certificates();
   db->mutable_identity_binding()->set_identity_binding("identity_binding");
-  db->mutable_identity_binding()->set_identity_public_key(
+  db->mutable_identity_binding()->set_identity_public_key_tpm_format(
       "identity_public_key");
   db->mutable_identity_key()->set_identity_credential("identity_cred");
   db->mutable_pcr0_quote()->set_quote("pcr0_quote");
@@ -1107,7 +1107,8 @@ TEST_P(AttestationServiceTest, GetAttestationKeyInfoSomeInfo) {
       mock_database_.GetMutableProtobuf()->mutable_identities()->Mutable(
           identity_);
   identity_data->mutable_identity_key()->clear_identity_public_key_der();
-  identity_data->mutable_identity_binding()->clear_identity_public_key();
+  identity_data->mutable_identity_binding()
+      ->clear_identity_public_key_tpm_format();
   identity_data->mutable_pcr_quotes()->erase(0);
   SetUpIdentityCertificate(identity_, aca_type_);
   // Set expectations on the outputs.
