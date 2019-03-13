@@ -4,7 +4,7 @@
   Use of this source code is governed by a BSD-style license that can be
   found in the LICENSE file.
 -->
-<node name="/org/chromium/">
+<node name="/org/chromium/CryptohomeKeyDelegate">
   <!-- Interface for a delegate service to be used by cryptohome for operations
        related to user protection keys.
   -->
