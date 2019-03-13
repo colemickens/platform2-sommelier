@@ -286,7 +286,9 @@ IPAddress IPAddress::MergeWith(const IPAddress& b) const {
 }
 
 IPAddress IPAddress::GetNetworkPart() const {
-  return MaskWith(GetAddressMaskFromPrefix(family(), prefix()));
+  auto address = MaskWith(GetAddressMaskFromPrefix(family(), prefix()));
+  address.set_prefix(prefix());
+  return address;
 }
 
 IPAddress IPAddress::GetDefaultBroadcast() {
@@ -300,7 +302,7 @@ bool IPAddress::CanReachAddress(const IPAddress& b) const {
   CHECK_EQ(family(), b.family());
   IPAddress b_prefixed(b);
   b_prefixed.set_prefix(prefix());
-  return GetNetworkPart().Equals(b_prefixed.GetNetworkPart());
+  return GetNetworkPart().HasSameAddressAs(b_prefixed.GetNetworkPart());
 }
 
 bool IPAddress::operator<(const IPAddress& b) const {

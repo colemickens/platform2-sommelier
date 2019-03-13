@@ -348,6 +348,7 @@ TEST_P(IPAddressNetworkPartMappingTest, TestNetworkPartMapping) {
   EXPECT_TRUE(expected_network.SetAddressFromString(
       GetParam().expected_network));
   address.set_prefix(GetParam().prefix);
+  expected_network.set_prefix(GetParam().prefix);
   EXPECT_TRUE(expected_network.Equals(address.GetNetworkPart()));
   IPAddress expected_broadcast(GetParam().family);
   EXPECT_TRUE(expected_broadcast.SetAddressFromString(
