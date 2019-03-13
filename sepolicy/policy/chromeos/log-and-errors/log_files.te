@@ -2,6 +2,7 @@
 filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_arc_log, file, "arc.log");
 filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_authpolicy_log, file, "authpolicy.log");
 filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_boot_log, file, "boot.log");
+filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_hammerd_log, file, "hammerd.log");
 filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_net_log, file, "net.log");
 filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_secure_log, file, "secure");
 filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_syslog, file, "messages");

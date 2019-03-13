@@ -141,6 +141,7 @@ type cros_var_lib_whitelist, file_type;
 type cros_arc_log, file_type, cros_log_type;
 type cros_authpolicy_log, file_type, cros_log_type;
 type cros_boot_log, file_type, cros_log_type;
+type cros_hammerd_log, file_type, cros_log_type;
 type cros_metrics_file, file_type;
 type cros_metrics_uma_events_file, file_type;
 type cros_net_log, file_type, cros_log_type;
