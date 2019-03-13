@@ -22,14 +22,15 @@ class Error;
 
 namespace dbus_utils {
 
-using ResponseSender = dbus::ExportedObject::ResponseSender;
+using ResponseSender = ::dbus::ExportedObject::ResponseSender;
 
 // DBusMethodResponseBase is a helper class used with asynchronous D-Bus method
 // handlers to encapsulate the information needed to send the method call
 // response when it is available.
 class BRILLO_EXPORT DBusMethodResponseBase {
  public:
-  DBusMethodResponseBase(dbus::MethodCall* method_call, ResponseSender sender);
+  DBusMethodResponseBase(::dbus::MethodCall* method_call,
+                         ResponseSender sender);
   virtual ~DBusMethodResponseBase();
 
   // Sends an error response. Marshals the |error| object over D-Bus.
@@ -48,10 +49,10 @@ class BRILLO_EXPORT DBusMethodResponseBase {
                       const std::string& error_message);
 
   // Sends a raw D-Bus response message.
-  void SendRawResponse(std::unique_ptr<dbus::Response> response);
+  void SendRawResponse(std::unique_ptr<::dbus::Response> response);
 
   // Creates a custom response object for the current method call.
-  std::unique_ptr<dbus::Response> CreateCustomResponse() const;
+  std::unique_ptr<::dbus::Response> CreateCustomResponse() const;
 
   // Checks if the response has been sent already.
   bool IsResponseSent() const;
@@ -69,7 +70,7 @@ class BRILLO_EXPORT DBusMethodResponseBase {
   // in the bound parameter list in the Callback). We set it to nullptr after
   // the method call response has been sent to ensure we can't possibly try
   // to send a response again somehow.
-  dbus::MethodCall* method_call_;
+  ::dbus::MethodCall* method_call_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusMethodResponseBase);
 };
@@ -88,7 +89,7 @@ class DBusMethodResponse : public DBusMethodResponseBase {
   inline void Return(const Types&... return_values) {
     CheckCanSendResponse();
     auto response = CreateCustomResponse();
-    dbus::MessageWriter writer(response.get());
+    ::dbus::MessageWriter writer(response.get());
     DBusParamWriter::Append(&writer, return_values...);
     SendRawResponse(std::move(response));
   }

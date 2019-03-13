@@ -31,13 +31,13 @@ namespace dbus_utils {
 // If the signal message doesn't contain correct number or types of arguments,
 // an error message is logged to the system log and the signal is ignored
 // (|signal_callback| is not invoked).
-template<typename... Args>
+template <typename... Args>
 void ConnectToSignal(
-    dbus::ObjectProxy* object_proxy,
+    ::dbus::ObjectProxy* object_proxy,
     const std::string& interface_name,
     const std::string& signal_name,
     base::Callback<void(Args...)> signal_callback,
-    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+    ::dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
   // DBusParamReader::Invoke() needs a functor object, not a base::Callback.
   // Wrap the callback with lambda so we can redirect the call.
   auto signal_callback_wrapper = [signal_callback](const Args&... args) {
@@ -51,8 +51,8 @@ void ConnectToSignal(
   // |signal_callback_wrapper| which, in turn, would call the user-provided
   // |signal_callback|.
   auto dbus_signal_callback = [](std::function<void(const Args&...)> callback,
-                                 dbus::Signal* signal) {
-    dbus::MessageReader reader(signal);
+                                 ::dbus::Signal* signal) {
+    ::dbus::MessageReader reader(signal);
     DBusParamReader<false, Args...>::Invoke(callback, &reader, nullptr);
   };
 

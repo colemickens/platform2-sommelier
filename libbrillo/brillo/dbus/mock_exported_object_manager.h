@@ -27,11 +27,11 @@ class MockExportedObjectManager : public ExportedObjectManager {
   MOCK_METHOD1(RegisterAsync,
                void(const CompletionAction& completion_callback));
   MOCK_METHOD3(ClaimInterface,
-               void(const dbus::ObjectPath& path,
+               void(const ::dbus::ObjectPath& path,
                     const std::string& interface_name,
                     const ExportedPropertySet::PropertyWriter& writer));
   MOCK_METHOD2(ReleaseInterface,
-               void(const dbus::ObjectPath& path,
+               void(const ::dbus::ObjectPath& path,
                     const std::string& interface_name));
 };
 

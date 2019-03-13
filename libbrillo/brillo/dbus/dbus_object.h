@@ -200,10 +200,10 @@ class BRILLO_EXPORT DBusInterface final {
 
   // Register sync DBus method handler for |method_name| as base::Callback.
   // Passing the method sender as a first parameter to the callback.
-  template<typename... Args>
+  template <typename... Args>
   inline void AddSimpleMethodHandlerWithErrorAndMessage(
       const std::string& method_name,
-      const base::Callback<bool(ErrorPtr*, dbus::Message*, Args...)>&
+      const base::Callback<bool(ErrorPtr*, ::dbus::Message*, Args...)>&
           handler) {
     Handler<SimpleDBusInterfaceMethodHandlerWithErrorAndMessage<Args...>>::Add(
         this, method_name, handler);
@@ -212,10 +212,10 @@ class BRILLO_EXPORT DBusInterface final {
   // Register sync D-Bus method handler for |method_name| as a static
   // function. Passing the method D-Bus message as the second parameter to the
   // callback.
-  template<typename... Args>
+  template <typename... Args>
   inline void AddSimpleMethodHandlerWithErrorAndMessage(
       const std::string& method_name,
-      bool(*handler)(ErrorPtr*, dbus::Message*, Args...)) {
+      bool (*handler)(ErrorPtr*, ::dbus::Message*, Args...)) {
     Handler<SimpleDBusInterfaceMethodHandlerWithErrorAndMessage<Args...>>::Add(
         this, method_name, base::Bind(handler));
   }
@@ -223,21 +223,21 @@ class BRILLO_EXPORT DBusInterface final {
   // Register sync D-Bus method handler for |method_name| as a class member
   // function. Passing the method D-Bus message as the second parameter to the
   // callback.
-  template<typename Instance, typename Class, typename... Args>
+  template <typename Instance, typename Class, typename... Args>
   inline void AddSimpleMethodHandlerWithErrorAndMessage(
       const std::string& method_name,
       Instance instance,
-      bool(Class::*handler)(ErrorPtr*, dbus::Message*, Args...)) {
+      bool (Class::*handler)(ErrorPtr*, ::dbus::Message*, Args...)) {
     Handler<SimpleDBusInterfaceMethodHandlerWithErrorAndMessage<Args...>>::Add(
         this, method_name, base::Bind(handler, instance));
   }
 
   // Same as above but for const-method of a class.
-  template<typename Instance, typename Class, typename... Args>
+  template <typename Instance, typename Class, typename... Args>
   inline void AddSimpleMethodHandlerWithErrorAndMessage(
       const std::string& method_name,
       Instance instance,
-      bool(Class::*handler)(ErrorPtr*, dbus::Message*, Args...) const) {
+      bool (Class::*handler)(ErrorPtr*, ::dbus::Message*, Args...) const) {
     Handler<SimpleDBusInterfaceMethodHandlerWithErrorAndMessage<Args...>>::Add(
         this, method_name, base::Bind(handler, instance));
   }
@@ -297,11 +297,11 @@ class BRILLO_EXPORT DBusInterface final {
   }
 
   // Register an async DBus method handler for |method_name| as base::Callback.
-  template<typename Response, typename... Args>
+  template <typename Response, typename... Args>
   inline void AddMethodHandlerWithMessage(
       const std::string& method_name,
-      const base::Callback<void(std::unique_ptr<Response>, dbus::Message*,
-                                Args...)>& handler) {
+      const base::Callback<void(
+          std::unique_ptr<Response>, ::dbus::Message*, Args...)>& handler) {
     static_assert(std::is_base_of<DBusMethodResponseBase, Response>::value,
                   "Response must be DBusMethodResponse<T...>");
     Handler<DBusInterfaceMethodHandlerWithMessage<Response, Args...>>::Add(
@@ -310,10 +310,10 @@ class BRILLO_EXPORT DBusInterface final {
 
   // Register an async D-Bus method handler for |method_name| as a static
   // function.
-  template<typename Response, typename... Args>
+  template <typename Response, typename... Args>
   inline void AddMethodHandlerWithMessage(
       const std::string& method_name,
-      void (*handler)(std::unique_ptr<Response>, dbus::Message*, Args...)) {
+      void (*handler)(std::unique_ptr<Response>, ::dbus::Message*, Args...)) {
     static_assert(std::is_base_of<DBusMethodResponseBase, Response>::value,
                   "Response must be DBusMethodResponse<T...>");
     Handler<DBusInterfaceMethodHandlerWithMessage<Response, Args...>>::Add(
@@ -322,15 +322,16 @@ class BRILLO_EXPORT DBusInterface final {
 
   // Register an async D-Bus method handler for |method_name| as a class member
   // function.
-  template<typename Response,
-           typename Instance,
-           typename Class,
-           typename... Args>
+  template <typename Response,
+            typename Instance,
+            typename Class,
+            typename... Args>
   inline void AddMethodHandlerWithMessage(
       const std::string& method_name,
       Instance instance,
-      void(Class::*handler)(std::unique_ptr<Response>,
-                            dbus::Message*, Args...)) {
+      void (Class::*handler)(std::unique_ptr<Response>,
+                             ::dbus::Message*,
+                             Args...)) {
     static_assert(std::is_base_of<DBusMethodResponseBase, Response>::value,
                   "Response must be DBusMethodResponse<T...>");
     Handler<DBusInterfaceMethodHandlerWithMessage<Response, Args...>>::Add(
@@ -338,15 +339,16 @@ class BRILLO_EXPORT DBusInterface final {
   }
 
   // Same as above but for const-method of a class.
-  template<typename Response,
-           typename Instance,
-           typename Class,
-           typename... Args>
+  template <typename Response,
+            typename Instance,
+            typename Class,
+            typename... Args>
   inline void AddMethodHandlerWithMessage(
       const std::string& method_name,
       Instance instance,
-      void(Class::*handler)(std::unique_ptr<Response>, dbus::Message*,
-                            Args...) const) {
+      void (Class::*handler)(std::unique_ptr<Response>,
+                             ::dbus::Message*,
+                             Args...) const) {
     static_assert(std::is_base_of<DBusMethodResponseBase, Response>::value,
                   "Response must be DBusMethodResponse<T...>");
     Handler<DBusInterfaceMethodHandlerWithMessage<Response, Args...>>::Add(
@@ -356,17 +358,18 @@ class BRILLO_EXPORT DBusInterface final {
   // Register a raw D-Bus method handler for |method_name| as base::Callback.
   inline void AddRawMethodHandler(
       const std::string& method_name,
-      const base::Callback<void(dbus::MethodCall*, ResponseSender)>& handler) {
+      const base::Callback<void(::dbus::MethodCall*, ResponseSender)>&
+          handler) {
     Handler<RawDBusInterfaceMethodHandler>::Add(this, method_name, handler);
   }
 
   // Register a raw D-Bus method handler for |method_name| as a class member
   // function.
-  template<typename Instance, typename Class>
-  inline void AddRawMethodHandler(
-      const std::string& method_name,
-      Instance instance,
-      void(Class::*handler)(dbus::MethodCall*, ResponseSender)) {
+  template <typename Instance, typename Class>
+  inline void AddRawMethodHandler(const std::string& method_name,
+                                  Instance instance,
+                                  void (Class::*handler)(::dbus::MethodCall*,
+                                                         ResponseSender)) {
     Handler<RawDBusInterfaceMethodHandler>::Add(
         this, method_name, base::Bind(handler, instance));
   }
@@ -447,7 +450,7 @@ class BRILLO_EXPORT DBusInterface final {
   // A generic D-Bus method handler for the interface. It extracts the method
   // name from |method_call|, looks up a registered handler from |handlers_|
   // map and dispatched the call to that handler.
-  void HandleMethodCall(dbus::MethodCall* method_call, ResponseSender sender);
+  void HandleMethodCall(::dbus::MethodCall* method_call, ResponseSender sender);
   // Helper to add a handler for method |method_name| to the |handlers_| map.
   // Not marked BRILLO_PRIVATE because it needs to be called by the inline
   // template functions AddMethodHandler(...)
@@ -470,9 +473,9 @@ class BRILLO_EXPORT DBusInterface final {
   //                       registration operation is completed.
   BRILLO_PRIVATE void ExportAsync(
       ExportedObjectManager* object_manager,
-      dbus::Bus* bus,
-      dbus::ExportedObject* exported_object,
-      const dbus::ObjectPath& object_path,
+      ::dbus::Bus* bus,
+      ::dbus::ExportedObject* exported_object,
+      const ::dbus::ObjectPath& object_path,
       const AsyncEventSequencer::CompletionAction& completion_callback);
   // Exports all the methods and properties of this interface and claims the
   // D-Bus interface synchronously.
@@ -481,25 +484,24 @@ class BRILLO_EXPORT DBusInterface final {
   // exported_object - instance of D-Bus object the interface is being added to.
   // object_path - D-Bus object path for the object instance.
   // interface_name - name of interface being registered.
-  BRILLO_PRIVATE void ExportAndBlock(
-      ExportedObjectManager* object_manager,
-      dbus::Bus* bus,
-      dbus::ExportedObject* exported_object,
-      const dbus::ObjectPath& object_path);
+  BRILLO_PRIVATE void ExportAndBlock(ExportedObjectManager* object_manager,
+                                     ::dbus::Bus* bus,
+                                     ::dbus::ExportedObject* exported_object,
+                                     const ::dbus::ObjectPath& object_path);
   // Releases the D-Bus interface and unexports all the methods asynchronously.
   BRILLO_PRIVATE void UnexportAsync(
       ExportedObjectManager* object_manager,
-      dbus::ExportedObject* exported_object,
-      const dbus::ObjectPath& object_path,
+      ::dbus::ExportedObject* exported_object,
+      const ::dbus::ObjectPath& object_path,
       const AsyncEventSequencer::CompletionAction& completion_callback);
   // Releases the D-Bus interface and unexports all the methods synchronously.
   BRILLO_PRIVATE void UnexportAndBlock(ExportedObjectManager* object_manager,
-                                       dbus::ExportedObject* exported_object,
-                                       const dbus::ObjectPath& object_path);
+                                       ::dbus::ExportedObject* exported_object,
+                                       const ::dbus::ObjectPath& object_path);
 
   BRILLO_PRIVATE void ClaimInterface(
       base::WeakPtr<ExportedObjectManager> object_manager,
-      const dbus::ObjectPath& object_path,
+      const ::dbus::ObjectPath& object_path,
       const ExportedPropertySet::PropertyWriter& writer,
       bool all_succeeded);
 
@@ -531,8 +533,8 @@ class BRILLO_EXPORT DBusObject {
   //                  changes on those interfaces.
   // object_path - D-Bus object path for the object instance.
   DBusObject(ExportedObjectManager* object_manager,
-             const scoped_refptr<dbus::Bus>& bus,
-             const dbus::ObjectPath& object_path);
+             const scoped_refptr<::dbus::Bus>& bus,
+             const ::dbus::ObjectPath& object_path);
 
   // property_handler_setup_callback - To be called when setting up property
   //                                   method handlers. Clients can register
@@ -540,8 +542,8 @@ class BRILLO_EXPORT DBusObject {
   //                                   (GetAll/Get/Set) by passing in this
   //                                   callback.
   DBusObject(ExportedObjectManager* object_manager,
-             const scoped_refptr<dbus::Bus>& bus,
-             const dbus::ObjectPath& object_path,
+             const scoped_refptr<::dbus::Bus>& bus,
+             const ::dbus::ObjectPath& object_path,
              PropertyHandlerSetupCallback property_handler_setup_callback);
 
   virtual ~DBusObject();
@@ -611,10 +613,10 @@ class BRILLO_EXPORT DBusObject {
   }
 
   // Sends a signal from the exported D-Bus object.
-  bool SendSignal(dbus::Signal* signal);
+  bool SendSignal(::dbus::Signal* signal);
 
   // Returns the reference to dbus::Bus this object is associated with.
-  scoped_refptr<dbus::Bus> GetBus() { return bus_; }
+  scoped_refptr<::dbus::Bus> GetBus() { return bus_; }
 
  private:
   // Add the org.freedesktop.DBus.Properties interface to the object.
@@ -628,11 +630,11 @@ class BRILLO_EXPORT DBusObject {
   // Delegate object implementing org.freedesktop.DBus.ObjectManager interface.
   base::WeakPtr<ExportedObjectManager> object_manager_;
   // D-Bus bus object.
-  scoped_refptr<dbus::Bus> bus_;
+  scoped_refptr<::dbus::Bus> bus_;
   // D-Bus object path for this object.
-  dbus::ObjectPath object_path_;
+  ::dbus::ObjectPath object_path_;
   // D-Bus object instance once this object is successfully exported.
-  dbus::ExportedObject* exported_object_ = nullptr;  // weak; owned by |bus_|.
+  ::dbus::ExportedObject* exported_object_ = nullptr;  // weak; owned by |bus_|.
   // Sets up property method handlers.
   PropertyHandlerSetupCallback property_handler_setup_callback_;
 

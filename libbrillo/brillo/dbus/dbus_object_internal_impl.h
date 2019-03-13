@@ -53,7 +53,7 @@ class DBusInterfaceMethodHandlerInterface {
 
   // Returns true if the method has been handled synchronously (whether or not
   // a success or error response message had been sent).
-  virtual void HandleMethod(dbus::MethodCall* method_call,
+  virtual void HandleMethod(::dbus::MethodCall* method_call,
                             ResponseSender sender) = 0;
 };
 
@@ -77,7 +77,7 @@ class SimpleDBusInterfaceMethodHandler
   explicit SimpleDBusInterfaceMethodHandler(
       const base::Callback<R(Args...)>& handler) : handler_(handler) {}
 
-  void HandleMethod(dbus::MethodCall* method_call,
+  void HandleMethod(::dbus::MethodCall* method_call,
                     ResponseSender sender) override {
     DBusMethodResponse<R> method_response(method_call, sender);
     auto invoke_callback = [this, &method_response](const Args&... args) {
@@ -85,7 +85,7 @@ class SimpleDBusInterfaceMethodHandler
     };
 
     ErrorPtr param_reader_error;
-    dbus::MessageReader reader(method_call);
+    ::dbus::MessageReader reader(method_call);
     // The handler is expected a return value, don't allow output parameters.
     if (!DBusParamReader<false, Args...>::Invoke(
             invoke_callback, &reader, &param_reader_error)) {
@@ -111,19 +111,19 @@ class SimpleDBusInterfaceMethodHandler<void, Args...>
   explicit SimpleDBusInterfaceMethodHandler(
       const base::Callback<void(Args...)>& handler) : handler_(handler) {}
 
-  void HandleMethod(dbus::MethodCall* method_call,
+  void HandleMethod(::dbus::MethodCall* method_call,
                     ResponseSender sender) override {
     DBusMethodResponseBase method_response(method_call, sender);
     auto invoke_callback = [this, &method_response](const Args&... args) {
       handler_.Run(args...);
       auto response = method_response.CreateCustomResponse();
-      dbus::MessageWriter writer(response.get());
+      ::dbus::MessageWriter writer(response.get());
       DBusParamWriter::AppendDBusOutParams(&writer, args...);
       method_response.SendRawResponse(std::move(response));
     };
 
     ErrorPtr param_reader_error;
-    dbus::MessageReader reader(method_call);
+    ::dbus::MessageReader reader(method_call);
     if (!DBusParamReader<true, Args...>::Invoke(
             invoke_callback, &reader, &param_reader_error)) {
       // Error parsing method arguments.
@@ -157,7 +157,7 @@ class SimpleDBusInterfaceMethodHandlerWithError
       const base::Callback<bool(ErrorPtr*, Args...)>& handler)
       : handler_(handler) {}
 
-  void HandleMethod(dbus::MethodCall* method_call,
+  void HandleMethod(::dbus::MethodCall* method_call,
                     ResponseSender sender) override {
     DBusMethodResponseBase method_response(method_call, sender);
     auto invoke_callback = [this, &method_response](const Args&... args) {
@@ -166,14 +166,14 @@ class SimpleDBusInterfaceMethodHandlerWithError
         method_response.ReplyWithError(error.get());
       } else {
         auto response = method_response.CreateCustomResponse();
-        dbus::MessageWriter writer(response.get());
+        ::dbus::MessageWriter writer(response.get());
         DBusParamWriter::AppendDBusOutParams(&writer, args...);
         method_response.SendRawResponse(std::move(response));
       }
     };
 
     ErrorPtr param_reader_error;
-    dbus::MessageReader reader(method_call);
+    ::dbus::MessageReader reader(method_call);
     if (!DBusParamReader<true, Args...>::Invoke(
             invoke_callback, &reader, &param_reader_error)) {
       // Error parsing method arguments.
@@ -205,10 +205,10 @@ class SimpleDBusInterfaceMethodHandlerWithErrorAndMessage
   // A constructor that takes a |handler| to be called when HandleMethod()
   // virtual function is invoked.
   explicit SimpleDBusInterfaceMethodHandlerWithErrorAndMessage(
-      const base::Callback<bool(ErrorPtr*, dbus::Message*, Args...)>& handler)
+      const base::Callback<bool(ErrorPtr*, ::dbus::Message*, Args...)>& handler)
       : handler_(handler) {}
 
-  void HandleMethod(dbus::MethodCall* method_call,
+  void HandleMethod(::dbus::MethodCall* method_call,
                     ResponseSender sender) override {
     DBusMethodResponseBase method_response(method_call, sender);
     auto invoke_callback =
@@ -218,14 +218,14 @@ class SimpleDBusInterfaceMethodHandlerWithErrorAndMessage
         method_response.ReplyWithError(error.get());
       } else {
         auto response = method_response.CreateCustomResponse();
-        dbus::MessageWriter writer(response.get());
+        ::dbus::MessageWriter writer(response.get());
         DBusParamWriter::AppendDBusOutParams(&writer, args...);
         method_response.SendRawResponse(std::move(response));
       }
     };
 
     ErrorPtr param_reader_error;
-    dbus::MessageReader reader(method_call);
+    ::dbus::MessageReader reader(method_call);
     if (!DBusParamReader<true, Args...>::Invoke(
             invoke_callback, &reader, &param_reader_error)) {
       // Error parsing method arguments.
@@ -235,7 +235,7 @@ class SimpleDBusInterfaceMethodHandlerWithErrorAndMessage
 
  private:
   // C++ callback to be called when a DBus method is dispatched.
-  base::Callback<bool(ErrorPtr*, dbus::Message*, Args...)> handler_;
+  base::Callback<bool(ErrorPtr*, ::dbus::Message*, Args...)> handler_;
   DISALLOW_COPY_AND_ASSIGN(SimpleDBusInterfaceMethodHandlerWithErrorAndMessage);
 };
 
@@ -258,7 +258,7 @@ class DBusInterfaceMethodHandler : public DBusInterfaceMethodHandlerInterface {
   // This method forwards the call to |handler_| after extracting the required
   // arguments from the DBus message buffer specified in |method_call|.
   // The output parameters of |handler_| (if any) are sent back to the called.
-  void HandleMethod(dbus::MethodCall* method_call,
+  void HandleMethod(::dbus::MethodCall* method_call,
                     ResponseSender sender) override {
     auto invoke_callback = [this, method_call, &sender](const Args&... args) {
       std::unique_ptr<Response> response(new Response(method_call, sender));
@@ -266,7 +266,7 @@ class DBusInterfaceMethodHandler : public DBusInterfaceMethodHandlerInterface {
     };
 
     ErrorPtr param_reader_error;
-    dbus::MessageReader reader(method_call);
+    ::dbus::MessageReader reader(method_call);
     if (!DBusParamReader<false, Args...>::Invoke(
             invoke_callback, &reader, &param_reader_error)) {
       // Error parsing method arguments.
@@ -298,14 +298,14 @@ class DBusInterfaceMethodHandlerWithMessage
   // A constructor that takes a |handler| to be called when HandleMethod()
   // virtual function is invoked.
   explicit DBusInterfaceMethodHandlerWithMessage(
-      const base::Callback<void(std::unique_ptr<Response>, dbus::Message*,
-                                Args...)>& handler)
+      const base::Callback<
+          void(std::unique_ptr<Response>, ::dbus::Message*, Args...)>& handler)
       : handler_(handler) {}
 
   // This method forwards the call to |handler_| after extracting the required
   // arguments from the DBus message buffer specified in |method_call|.
   // The output parameters of |handler_| (if any) are sent back to the called.
-  void HandleMethod(dbus::MethodCall* method_call,
+  void HandleMethod(::dbus::MethodCall* method_call,
                     ResponseSender sender) override {
     auto invoke_callback = [this, method_call, &sender](const Args&... args) {
       std::unique_ptr<Response> response(new Response(method_call, sender));
@@ -313,7 +313,7 @@ class DBusInterfaceMethodHandlerWithMessage
     };
 
     ErrorPtr param_reader_error;
-    dbus::MessageReader reader(method_call);
+    ::dbus::MessageReader reader(method_call);
     if (!DBusParamReader<false, Args...>::Invoke(
             invoke_callback, &reader, &param_reader_error)) {
       // Error parsing method arguments.
@@ -324,8 +324,8 @@ class DBusInterfaceMethodHandlerWithMessage
 
  private:
   // C++ callback to be called when a D-Bus method is dispatched.
-  base::Callback<void(std::unique_ptr<Response>,
-                      dbus::Message*, Args...)> handler_;
+  base::Callback<void(std::unique_ptr<Response>, ::dbus::Message*, Args...)>
+      handler_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusInterfaceMethodHandlerWithMessage);
 };
@@ -343,17 +343,17 @@ class RawDBusInterfaceMethodHandler
   // A constructor that takes a |handler| to be called when HandleMethod()
   // virtual function is invoked.
   RawDBusInterfaceMethodHandler(
-      const base::Callback<void(dbus::MethodCall*, ResponseSender)>& handler)
+      const base::Callback<void(::dbus::MethodCall*, ResponseSender)>& handler)
       : handler_(handler) {}
 
-  void HandleMethod(dbus::MethodCall* method_call,
+  void HandleMethod(::dbus::MethodCall* method_call,
                     ResponseSender sender) override {
     handler_.Run(method_call, sender);
   }
 
  private:
   // C++ callback to be called when a D-Bus method is dispatched.
-  base::Callback<void(dbus::MethodCall*, ResponseSender)> handler_;
+  base::Callback<void(::dbus::MethodCall*, ResponseSender)> handler_;
 
   DISALLOW_COPY_AND_ASSIGN(RawDBusInterfaceMethodHandler);
 };

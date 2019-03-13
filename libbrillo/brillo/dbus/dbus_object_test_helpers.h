@@ -28,7 +28,7 @@ namespace dbus_utils {
 class DBusInterfaceTestHelper final {
  public:
   static void HandleMethodCall(DBusInterface* itf,
-                               dbus::MethodCall* method_call,
+                               ::dbus::MethodCall* method_call,
                                ResponseSender sender) {
     itf->HandleMethodCall(method_call, sender);
   }
@@ -43,11 +43,11 @@ namespace testing {
 // ResponseHolder::ReceiveResponse() will not be called since we bind the
 // callback to the object instance via a weak pointer.
 struct ResponseHolder final : public base::SupportsWeakPtr<ResponseHolder> {
-  void ReceiveResponse(std::unique_ptr<dbus::Response> response) {
+  void ReceiveResponse(std::unique_ptr<::dbus::Response> response) {
     response_ = std::move(response);
   }
 
-  std::unique_ptr<dbus::Response> response_;
+  std::unique_ptr<::dbus::Response> response_;
 };
 
 // Dispatches a D-Bus method call to the corresponding handler.
@@ -56,10 +56,10 @@ struct ResponseHolder final : public base::SupportsWeakPtr<ResponseHolder> {
 // call sites. Returns a response from the method handler or nullptr if the
 // method hasn't provided the response message immediately
 // (i.e. it is asynchronous).
-inline std::unique_ptr<dbus::Response> CallMethod(
-    const DBusObject& object, dbus::MethodCall* method_call) {
+inline std::unique_ptr<::dbus::Response> CallMethod(
+    const DBusObject& object, ::dbus::MethodCall* method_call) {
   DBusInterface* itf = object.FindInterface(method_call->GetInterface());
-  std::unique_ptr<dbus::Response> response;
+  std::unique_ptr<::dbus::Response> response;
   if (!itf) {
     response = CreateDBusErrorResponse(
         method_call,
@@ -98,7 +98,7 @@ struct MethodHandlerInvoker {
                            Params...),
       Args... args) {
     ResponseHolder response_holder;
-    dbus::MethodCall method_call("test.interface", "TestMethod");
+    ::dbus::MethodCall method_call("test.interface", "TestMethod");
     method_call.SetSerial(123);
     std::unique_ptr<DBusMethodResponse<RetType>> method_response{
       new DBusMethodResponse<RetType>(
@@ -125,7 +125,7 @@ struct MethodHandlerInvoker<void> {
       void(Class::*method)(std::unique_ptr<DBusMethodResponse<>>, Params...),
       Args... args) {
     ResponseHolder response_holder;
-    dbus::MethodCall method_call("test.interface", "TestMethod");
+    ::dbus::MethodCall method_call("test.interface", "TestMethod");
     method_call.SetSerial(123);
     std::unique_ptr<DBusMethodResponse<>> method_response{
       new DBusMethodResponse<>(&method_call,

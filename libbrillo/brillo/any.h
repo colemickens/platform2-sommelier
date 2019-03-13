@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <string>
+#include <utility>
 
 #include <brillo/brillo_export.h>
 #include <brillo/type_name_undecorate.h>
@@ -190,7 +191,7 @@ class BRILLO_EXPORT Any final {
   // (an appropriate specialization of AppendValueToWriter<T>() is available).
   // Returns false if the Any is empty or if there is no serialization method
   // defined for the contained data.
-  void AppendToDBusMessageWriter(dbus::MessageWriter* writer) const;
+  void AppendToDBusMessageWriter(::dbus::MessageWriter* writer) const;
 
  private:
   // Returns a pointer to a static buffer containing type tag (sort of a type
