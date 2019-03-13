@@ -237,8 +237,8 @@ class AttestationServiceBaseTest : public testing::Test {
       }
     }
     identity_data->set_features(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID);
-    identity_data->mutable_identity_key()
-        ->set_identity_public_key("public_key");
+    identity_data->mutable_identity_key()->set_identity_public_key_der(
+        "public_key");
     identity_data->mutable_identity_binding()
         ->set_identity_public_key("public_key_tpm");
     (*identity_data->mutable_pcr_quotes())[0].set_quote("pcr0");
@@ -1106,7 +1106,7 @@ TEST_P(AttestationServiceTest, GetAttestationKeyInfoSomeInfo) {
   auto* identity_data =
       mock_database_.GetMutableProtobuf()->mutable_identities()->Mutable(
           identity_);
-  identity_data->mutable_identity_key()->clear_identity_public_key();
+  identity_data->mutable_identity_key()->clear_identity_public_key_der();
   identity_data->mutable_identity_binding()->clear_identity_public_key();
   identity_data->mutable_pcr_quotes()->erase(0);
   SetUpIdentityCertificate(identity_, aca_type_);

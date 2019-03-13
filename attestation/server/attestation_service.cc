@@ -821,11 +821,11 @@ void AttestationService::GetAttestationKeyInfoTask(
     result->set_status(STATUS_NOT_AVAILABLE);
     return;
   }
-  if (identity_pb.identity_key().has_identity_public_key()) {
+  if (identity_pb.identity_key().has_identity_public_key_der()) {
     std::string public_key_info;
     if (!GetSubjectPublicKeyInfo(
             request.key_type(),
-            identity_pb.identity_key().identity_public_key(),
+            identity_pb.identity_key().identity_public_key_der(),
             &public_key_info)) {
       LOG(ERROR) << __func__ << ": Bad public key.";
       result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
@@ -1696,7 +1696,7 @@ int AttestationService::CreateIdentity(int identity_features,
   identity_data->set_features(identity_features);
 
   IdentityKey* key_pb = identity_data->mutable_identity_key();
-  key_pb->set_identity_public_key(rsa_identity_public_key_der);
+  key_pb->set_identity_public_key_der(rsa_identity_public_key_der);
   key_pb->set_identity_key_blob(rsa_identity_key_blob);
   if (identity_features & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
     key_pb->set_enrollment_id(database_pb->enrollment_id());

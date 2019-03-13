@@ -33,7 +33,7 @@ message TPMCredentials {
 // Holds information relevant to a particular AIK.
 message IdentityKey {
   // The DER encoded public key.
-  optional bytes identity_public_key = 1;
+  optional bytes identity_public_key_der = 1;
   // The TPM-specific key blob that can be loaded back into the TPM.
   optional bytes identity_key_blob = 2;
   // A credential issued by the attestation server. (Now in
