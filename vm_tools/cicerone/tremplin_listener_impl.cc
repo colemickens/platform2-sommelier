@@ -279,6 +279,11 @@ grpc::Status TremplinListenerImpl::ContainerShutdown(
                         "Failed parsing vsock cid for TremplinListener");
   }
 
+  if (request->container_name().empty()) {
+    return grpc::Status(grpc::INVALID_ARGUMENT,
+                        "`container_name` cannot be empty");
+  }
+
   // Calls coming from tremplin are trusted to use container_name rather than
   // container_token.
   std::string container_token = "";

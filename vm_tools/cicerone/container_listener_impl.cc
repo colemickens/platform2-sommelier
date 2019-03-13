@@ -78,6 +78,11 @@ grpc::Status ContainerListenerImpl::ContainerShutdown(
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Failed parsing cid for ContainerListener");
   }
+
+  if (request->token().empty()) {
+    return grpc::Status(grpc::INVALID_ARGUMENT, "`token` cannot be empty");
+  }
+
   // Calls coming from garcon should not be trusted to set container_name and
   // must use container_token.
   std::string container_name = "";
