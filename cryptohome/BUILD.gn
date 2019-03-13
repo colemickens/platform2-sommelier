@@ -408,6 +408,8 @@ if (use.test) {
         "trunks_test",
         "tpm_manager_test",
       ]
+    } else {
+      sources += [ "tpm1_static_utils_unittest.cc" ]
     }
 
     if (use.cert_provision) {
