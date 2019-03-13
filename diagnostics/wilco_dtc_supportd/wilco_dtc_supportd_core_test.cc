@@ -740,7 +740,7 @@ TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
 }
 
 // Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
-// called by wilco_dtc support deamon multiple times.
+// called by wilco_dtc support daemon multiple times.
 // TODO(b/124598866): Disabled due to flakiness.
 TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
        DISABLED_SendGrpcEcEventToDiagnosticsWilcoDtcMultipleEvents) {
@@ -755,7 +755,7 @@ TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
 }
 
 // Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
-// called by wilco_dtc support deamon even when |ec_event.size| exceeds
+// called by wilco_dtc support daemon even when |ec_event.size| exceeds
 // allocated data array.
 // TODO(b/124598866): Disabled due to flakiness.
 TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
