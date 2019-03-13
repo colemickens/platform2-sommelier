@@ -7,8 +7,6 @@ domain_auto_trans(cros_init, cros_udevd_exec, cros_udevd);
 filetrans_pattern(cros_udevd, cros_run, cros_run_udev, dir, "udev");
 allow cros_udevd cros_run_udev:{file lnk_file} create_file_perms;
 allow cros_udevd cros_run_udev:dir rw_dir_perms;
-r_dir_file(cros_udevd, cros_udev_conf_file);
-r_dir_file(cros_udevd, cros_network_conf_file);
 
 exec_coreutils(cros_udevd);
 
@@ -29,7 +27,6 @@ allow cros_udevd cros_kernel_modules_ko_file:system module_load;
 
 allow cros_udevd cros_kernel_modules_file:dir r_dir_perms;
 allow cros_udevd {cros_kernel_modules_file cros_kernel_modules_ko_file}:file getattr;
-r_dir_file(cros_udevd, cros_modprobe_conf_file);
 
 allow cros_udevd self:netlink_kobject_uevent_socket create_socket_perms_no_ioctl;
 

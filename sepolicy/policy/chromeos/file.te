@@ -1,7 +1,7 @@
 # TODO(fqj): go over files of cros_system_file, and to label exec only and rename with _exec suffix.
 type cros_system_file, exec_type, file_type, cros_system_file_type;
 type cros_usr_dirs, file_type, cros_system_file_type;
-type cros_etc, file_type, cros_system_file_type;
+type cros_conf_file, file_type, cros_system_file_type;
 allow chromeos_domain cros_system_file_type:dir search;
 
 type cros_kernel_modules_ko_file, file_type;
@@ -105,9 +105,7 @@ type cros_init_ui_respawn_shell_script, exec_type, file_type, cros_init_scripts_
 
 type cros_ionice_exec, exec_type, file_type;
 
-type cros_init_conf_file, file_type;
 type cros_selinux_config_file, file_type;
-type cros_sysctl_conf_file, file_type;
 
 type cros_var, file_type;
 type cros_var_cache, file_type;
@@ -162,20 +160,11 @@ type cros_run_udev, file_type;
 type cros_conntrackd_lock_file, file_type;
 type cros_power_override_lock_file, file_type;
 
-type cros_conntrackd_conf_file, file_type;
-type cros_journal_conf_file, file_type;
-type cros_ld_conf_cache, file_type;
-type cros_modprobe_conf_file, file_type;
-type cros_network_conf_file, file_type;
 type cros_passwd_file, file_type;
-type cros_rsyslog_conf_file, file_type;
+type cros_shadow_file, file_type;
 type cros_tz_data_file, file_type;
-type cros_udev_conf_file, file_type;
 
 r_dir_file(chromeos_domain, cros_tz_data_file)
-r_dir_file(domain, cros_ld_conf_cache);
-filetrans_pattern(cros_ssh_session, cros_etc, cros_ld_conf_cache, file, "ld.so.cache~");
-filetrans_pattern(frecon, cros_etc, cros_ld_conf_cache, file, "ld.so.cache~");
 
 type cros_periodic_scheduler_cache_t, file_type;
 

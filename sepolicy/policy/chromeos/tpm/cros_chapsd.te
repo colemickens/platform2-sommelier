@@ -13,7 +13,6 @@ rw_dir_file(cros_chapsd, cros_var_lib_chaps);
 allow cros_chapsd cros_var_lib_chaps:{file dir} { create unlink rename };
 
 r_dir_file(cros_chapsd, cros_passwd_file);
-r_dir_file(cros_chapsd, cros_network_conf_file);
 
 allow cros_chapsd self:tcp_socket create_socket_perms_no_ioctl;
 allow cros_chapsd port:tcp_socket name_connect;

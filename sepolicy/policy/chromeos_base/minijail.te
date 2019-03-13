@@ -3,7 +3,6 @@ type minijail, cros_miscdomain, chromeos_domain, domain, minijail_domain, mlstru
 permissive minijail;
 
 
-r_dir_file(minijail_domain, cros_network_conf_file);
 r_dir_file(minijail_domain, cros_passwd_file);
 
 #TODO(fqj): init boot-update-firmware.conf didn't enter minijail.

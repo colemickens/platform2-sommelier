@@ -31,7 +31,6 @@ domain_auto_trans(kernel, chromeos_init_exec, cros_init)
 
 r_dir_file(cros_init, sysfs);
 r_dir_file(cros_init, cros_system_file);
-r_dir_file(cros_init, cros_init_conf_file);
 
 execute_file_follow_link(cros_init, sh_exec);
 execute_file_follow_link(cros_init, cros_ionice_exec);

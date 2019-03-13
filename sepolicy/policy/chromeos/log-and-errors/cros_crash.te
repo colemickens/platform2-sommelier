@@ -46,7 +46,6 @@ filetrans_pattern(cros_crash, {cros_minijail_minijail_tmp_file tmpfs}, cros_cras
 
 r_dir_file(cros_crash, cros_var_lib_whitelist);
 r_dir_file(cros_crash, cros_passwd_file);
-r_dir_file(cros_crash, cros_network_conf_file);
 
 r_dir_file(cros_crash, cros_anomaly_collector_tmp_file);
 

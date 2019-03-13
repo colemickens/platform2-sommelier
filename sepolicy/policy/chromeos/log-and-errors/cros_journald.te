@@ -6,8 +6,6 @@ log_writer(cros_journald);
 
 filetrans_pattern(cros_journald, cros_run_journal, logger_device, sock_file, "dev-log");
 
-r_dir_file(cros_journald, cros_journal_conf_file);
-
 allow cros_journald cros_run_journal:dir rw_dir_perms;
 
 allow cros_journald proc_kmsg:file rw_file_perms;

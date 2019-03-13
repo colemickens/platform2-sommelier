@@ -8,7 +8,6 @@ filetrans_pattern(cros_init_shill, cros_var_lib, cros_var_lib_shill, dir, "dhcpc
 filetrans_pattern(cros_init_shill, cros_run, cros_run_shill, dir);
 
 uma_writer(cros_init_shill);
-r_dir_file(cros_init_shill, cros_network_conf_file);
 r_dir_file(cros_init_shill, cros_passwd_file);
 
 allow cros_init_shill self:capability { chown fowner fsetid };

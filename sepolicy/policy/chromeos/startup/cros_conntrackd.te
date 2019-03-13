@@ -10,4 +10,3 @@ allow cros_conntrackd self:capability { net_admin };
 allow cros_conntrackd self:netlink_netfilter_socket create_socket_perms_no_ioctl;
 
 filetrans_pattern(cros_conntrackd, cros_run_lock, cros_conntrackd_lock_file, file);
-r_dir_file(cros_conntrackd, cros_conntrackd_conf_file);

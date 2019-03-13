@@ -127,29 +127,13 @@ include(sepolicy/file_contexts/coreutils)
 /opt/google/chrome/chrome       u:object_r:chrome_browser_exec:s0
 
 # /etc
-/etc                            u:object_r:cros_etc:s0
-# Safe to be readable by anyone.
-/etc/lsb-release                u:object_r:cros_etc:s0
+/etc(/.*)?                      u:object_r:cros_conf_file:s0
 
 # Intential blank lines to put all cros_etc labelled files above.
-/etc/conntrackd(/.*)?           u:object_r:cros_conntrackd_conf_file:s0
-/etc/dhcpcd.conf                u:object_r:cros_network_conf_file:s0
 /etc/group                      u:object_r:cros_passwd_file:s0
-/etc/hosts                      u:object_r:cros_network_conf_file:s0
-/etc/hosts.d(/.*)?              u:object_r:cros_network_conf_file:s0
-/etc/init(/.*)?                 u:object_r:cros_init_conf_file:s0
-/etc/ld.so.*                    u:object_r:cros_ld_conf_cache:s0
-/etc/ld.so.cache~               u:object_r:cros_ld_conf_cache:s0
-/etc/modprobe.d(/.*)?           u:object_r:cros_modprobe_conf_file:s0
-/etc/nsswitch.conf              u:object_r:cros_network_conf_file:s0
 /etc/passwd                     u:object_r:cros_passwd_file:s0
-/etc/resolv.conf                u:object_r:cros_network_conf_file:s0
-/etc/rsyslog(.*)?               u:object_r:cros_rsyslog_conf_file:s0
+/etc/shadow                     u:object_r:cros_shadow_file:s0
 /etc/selinux(/.*)?              u:object_r:cros_selinux_config_file:s0
-/etc/sysctl.d(/.*)?             u:object_r:cros_sysctl_conf_file:s0
-/etc/systemd/network(/.*)?      u:object_r:cros_network_conf_file:s0
-/etc/systemd/journald.conf      u:object_r:cros_journal_conf_file:s0
-/etc/udev(/.*)?                 u:object_r:cros_udev_conf_file:s0
 
 # These files are mounted into the mini-container before real /data, /cache are
 # available.

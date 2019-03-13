@@ -8,9 +8,7 @@ domain_auto_trans({ cros_init_shill minijail }, cros_shill_exec, cros_shill);
 allow cros_shill { cros_init_shill minijail }:fd use;
 allow cros_shill { cros_init_shill minijail }:fifo_file rw_file_perms;
 
-r_dir_file(cros_shill, cros_network_conf_file);
 r_dir_file(cros_shill, cros_passwd_file);
-r_dir_file(cros_shill, cros_etc);
 r_dir_file(cros_shill, cros_var_lib_whitelist);
 
 allow cros_shill { cros_run_shill cros_var_lib_shill cros_var_cache_shill }:file create_file_perms;

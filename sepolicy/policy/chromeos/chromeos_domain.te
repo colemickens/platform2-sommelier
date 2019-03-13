@@ -54,6 +54,8 @@ allow chromeos_domain cros_var_lib:dir r_dir_perms;
 allow chromeos_domain cros_var_log:dir r_dir_perms;
 allow chromeos_domain cros_run_lock:dir r_dir_perms;
 
+r_dir_file(chromeos_domain, cros_conf_file);
+
 # Do the same xperm restriction as Android for ioctl.
 
 # Restrict all domains to a whitelist for common socket types. Additional

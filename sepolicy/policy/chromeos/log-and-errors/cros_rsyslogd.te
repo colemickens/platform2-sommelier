@@ -11,7 +11,6 @@ allow cros_rsyslogd cros_rsyslogd_pid_file:file create_file_perms;
 filetrans_pattern(cros_rsyslogd, cros_run_journal, logger_device, sock_file, "syslog");
 allow cros_rsyslogd logger_device:sock_file create_file_perms;
 
-r_dir_file(cros_rsyslogd, cros_rsyslog_conf_file);
 allow cros_rsyslogd cros_log_type:file rw_file_perms;
 
 allow cros_rsyslogd cros_passwd_file:file r_file_perms;
