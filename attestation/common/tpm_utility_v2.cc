@@ -70,16 +70,17 @@ crypto::ScopedRSA GetRSAPublicKeyFromTpmPublicArea(
   return key;
 }
 
-template <typename OpenSSLType,
-          int (*openssl_func)(const OpenSSLType*, unsigned char**)>
-std::string OpenSSLObjectToString(const OpenSSLType* type) {
+template <typename OpenSSLType>
+std::string OpenSSLObjectToString(
+    int (*i2d_convert_function)(OpenSSLType*, unsigned char**),
+    typename std::remove_const<OpenSSLType>::type* type) {
   if (type == nullptr) {
     return nullptr;
   }
 
   unsigned char* openssl_buffer = nullptr;
 
-  int size = openssl_func(type, &openssl_buffer);
+  int size = i2d_convert_function(type, &openssl_buffer);
   if (size < 0) {
     return std::string();
   }
@@ -89,7 +90,7 @@ std::string OpenSSLObjectToString(const OpenSSLType* type) {
 }
 
 std::string RsaPublicKeyToString(const crypto::ScopedRSA& key) {
-  return OpenSSLObjectToString<RSA, i2d_RSAPublicKey>(key.get());
+  return OpenSSLObjectToString(i2d_RSAPublicKey, key.get());
 }
 
 // An authorization delegate to manage multiple authorization sessions for a
