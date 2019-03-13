@@ -1857,7 +1857,6 @@ bool AttestationService::ActivateAttestationKeyInternal(
   if (encrypted_certificate.tpm_version() == TPM_1_2) {
     // TPM 1.2 style activate.
     if (!tpm_utility_->ActivateIdentity(
-            database_pb.delegate().blob(), database_pb.delegate().secret(),
             identity_data.identity_key().identity_key_blob(),
             encrypted_certificate.asym_ca_contents(),
             encrypted_certificate.sym_ca_attestation(),

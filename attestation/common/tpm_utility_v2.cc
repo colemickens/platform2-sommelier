@@ -266,9 +266,7 @@ bool TpmUtilityV2::IsTpmReady() {
   return is_ready_;
 }
 
-bool TpmUtilityV2::ActivateIdentity(const std::string& delegate_blob,
-                                    const std::string& delegate_secret,
-                                    const std::string& identity_key_blob,
+bool TpmUtilityV2::ActivateIdentity(const std::string& identity_key_blob,
                                     const std::string& asym_ca_contents,
                                     const std::string& sym_ca_attestation,
                                     std::string* credential) {

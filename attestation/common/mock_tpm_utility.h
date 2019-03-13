@@ -41,10 +41,8 @@ class MockTpmUtility : public TpmUtility {
   MOCK_METHOD0(Initialize, bool());
   MOCK_METHOD0(GetVersion, TpmVersion());
   MOCK_METHOD0(IsTpmReady, bool());
-  MOCK_METHOD6(ActivateIdentity,
+  MOCK_METHOD4(ActivateIdentity,
                bool(const std::string&,
-                    const std::string&,
-                    const std::string&,
                     const std::string&,
                     const std::string&,
                     std::string*));

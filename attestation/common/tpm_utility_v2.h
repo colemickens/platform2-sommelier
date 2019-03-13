@@ -47,9 +47,7 @@ class TpmUtilityV2 : public TpmUtility {
   bool Initialize() override;
   TpmVersion GetVersion() override { return TPM_2_0; }
   bool IsTpmReady() override;
-  bool ActivateIdentity(const std::string& delegate_blob,
-                        const std::string& delegate_secret,
-                        const std::string& identity_key_blob,
+  bool ActivateIdentity(const std::string& identity_key_blob,
                         const std::string& asym_ca_contents,
                         const std::string& sym_ca_attestation,
                         std::string* credential) override;

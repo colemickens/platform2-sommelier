@@ -86,9 +86,7 @@ bool TpmUtilityV1::Initialize() {
   return true;
 }
 
-bool TpmUtilityV1::ActivateIdentity(const std::string& delegate_blob,
-                                    const std::string& delegate_secret,
-                                    const std::string& identity_key_blob,
+bool TpmUtilityV1::ActivateIdentity(const std::string& identity_key_blob,
                                     const std::string& asym_ca_contents,
                                     const std::string& sym_ca_attestation,
                                     std::string* credential) {
@@ -101,8 +99,8 @@ bool TpmUtilityV1::ActivateIdentity(const std::string& delegate_blob,
   // Connect to the TPM as the owner delegate.
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
-  if (!ConnectContextAsDelegate(delegate_blob, delegate_secret, &context_handle,
-                                &tpm_handle)) {
+  if (!ConnectContextAsDelegate(delegate_blob_, delegate_secret_,
+                                &context_handle, &tpm_handle)) {
     LOG(ERROR) << __func__ << ": Could not connect to the TPM.";
     return false;
   }

@@ -38,9 +38,7 @@ class TpmUtilityV1 : public TpmUtilityCommon {
   // TpmUtility methods.
   bool Initialize() override;
   TpmVersion GetVersion() override { return TPM_1_2; }
-  bool ActivateIdentity(const std::string& delegate_blob,
-                        const std::string& delegate_secret,
-                        const std::string& identity_key_blob,
+  bool ActivateIdentity(const std::string& identity_key_blob,
                         const std::string& asym_ca_contents,
                         const std::string& sym_ca_attestation,
                         std::string* credential) override;
@@ -152,7 +150,6 @@ class TpmUtilityV1 : public TpmUtilityCommon {
   trousers::ScopedTssContext context_handle_;
   TSS_HTPM tpm_handle_{0};
   trousers::ScopedTssKey srk_handle_{0};
-  std::string owner_password_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmUtilityV1);
 };

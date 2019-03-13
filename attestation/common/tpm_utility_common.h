@@ -22,7 +22,6 @@
 
 namespace attestation {
 
-
 // A TpmUtility implementation for version-independent functions.
 class TpmUtilityCommon : public TpmUtility {
  public:
@@ -96,10 +95,11 @@ class TpmUtilityCommon : public TpmUtility {
   static crypto::ScopedRSA CreateRSAFromRawModulus(uint8_t* modulus_buffer,
                                                    size_t modulus_size);
 
-
   bool is_ready_{false};
   std::string endorsement_password_;
   std::string owner_password_;
+  std::string delegate_blob_;
+  std::string delegate_secret_;
   // |tpm_owner_| and |tpm_nvram_| typically point to |default_tpm_owner_| and
   // |default_tpm_nvram_| respectively, created/destroyed on the
   // |tpm_manager_thread_|. As such, should not be accessed after that thread

@@ -42,16 +42,12 @@ class TpmUtility {
 
   // Activates an attestation identity key for TPM 1.2. Effectively this
   // decrypts a certificate or some other type of credential with the
-  // endorsement key. The |delegate_blob| and |delegate_secret| must be
-  // authorized to activate with owner privilege. The |identity_key_blob| is the
-  // key to which the credential is bound. The |asym_ca_contents| and
-  // |sym_ca_attestation| parameters are encrypted TPM structures, typically
-  // created by a CA (TPM_ASYM_CA_CONTENTS and TPM_SYM_CA_ATTESTATION
-  // respectively). On success returns true and populates the decrypted
-  // |credential|.
-  virtual bool ActivateIdentity(const std::string& delegate_blob,
-                                const std::string& delegate_secret,
-                                const std::string& identity_key_blob,
+  // endorsement key.  The |identity_key_blob| is the key to which the
+  // credential is bound. The |asym_ca_contents| and |sym_ca_attestation|
+  // parameters are encrypted TPM structures, typically created by a CA
+  // (TPM_ASYM_CA_CONTENTS and TPM_SYM_CA_ATTESTATION respectively). On success
+  // returns true and populates the decrypted |credential|.
+  virtual bool ActivateIdentity(const std::string& identity_key_blob,
                                 const std::string& asym_ca_contents,
                                 const std::string& sym_ca_attestation,
                                 std::string* credential) = 0;

@@ -143,8 +143,11 @@ bool TpmUtilityCommon::CacheTpmState() {
     return false;
   }
   is_ready_ = tpm_status.enabled() && tpm_status.owned();
-  endorsement_password_ = tpm_status.local_data().endorsement_password();
-  owner_password_ = tpm_status.local_data().owner_password();
+  const auto& local_data = tpm_status.local_data();
+  endorsement_password_ = local_data.endorsement_password();
+  owner_password_ = local_data.owner_password();
+  delegate_blob_ = local_data.owner_delegate().blob();
+  delegate_secret_ = local_data.owner_delegate().secret();
   return true;
 }
 

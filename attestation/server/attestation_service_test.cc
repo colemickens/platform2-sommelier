@@ -1137,8 +1137,8 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeySuccess) {
   const std::string cert_name = GetCertificateName(identity_, aca_type_);
   if (kTpmVersionUnderTest == TPM_1_2) {
     EXPECT_CALL(mock_tpm_utility_,
-                ActivateIdentity(_, _, _, "encrypted1", "encrypted2", _))
-        .WillOnce(DoAll(SetArgPointee<5>(cert_name), Return(true)));
+                ActivateIdentity(_, "encrypted1", "encrypted2", _))
+        .WillOnce(DoAll(SetArgPointee<3>(cert_name), Return(true)));
   } else {
     EXPECT_CALL(
         mock_tpm_utility_,
@@ -1178,8 +1178,8 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeySuccessNoSave) {
   const std::string cert_name = GetCertificateName(identity_, aca_type_);
   if (kTpmVersionUnderTest == TPM_1_2) {
     EXPECT_CALL(mock_tpm_utility_,
-                ActivateIdentity(_, _, _, "encrypted1", "encrypted2", _))
-        .WillOnce(DoAll(SetArgPointee<5>(cert_name), Return(true)));
+                ActivateIdentity(_, "encrypted1", "encrypted2", _))
+        .WillOnce(DoAll(SetArgPointee<3>(cert_name), Return(true)));
   } else {
     EXPECT_CALL(
         mock_tpm_utility_,
@@ -1242,7 +1242,7 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeyActivateFailure) {
   SetUpIdentity(identity_);
   if (kTpmVersionUnderTest == TPM_1_2) {
     EXPECT_CALL(mock_tpm_utility_,
-                ActivateIdentity(_, _, _, "encrypted1", "encrypted2", _))
+                ActivateIdentity(_, "encrypted1", "encrypted2", _))
         .WillRepeatedly(Return(false));
   } else {
     EXPECT_CALL(
@@ -2066,7 +2066,7 @@ TEST_P(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmNotReady) {
 }
 
 TEST_P(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmActivateFailure) {
-  EXPECT_CALL(mock_tpm_utility_, ActivateIdentity(_, _, _, _, _, _))
+  EXPECT_CALL(mock_tpm_utility_, ActivateIdentity(_, _, _, _))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_utility_, ActivateIdentityForTpm2(_, _, _, _, _, _))
       .WillRepeatedly(Return(false));
