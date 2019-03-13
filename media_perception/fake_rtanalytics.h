@@ -47,6 +47,7 @@ class FakeRtanalytics : public Rtanalytics {
   SerializedSuccessStatus SetPipelineOutputHandler(
       const std::string& configuration_name, const std::string& output_stream,
       PipelineOutputHandler output_handler) override;
+  SerializedGlobalPipelineState GetGlobalPipelineState() const override;
 
  private:
   // A list of device templates to be returned by GetTemplateDevices.

@@ -263,5 +263,20 @@ TEST_F(MediaPerceptionImplTest, TestSetPipelineState) {
   ASSERT_TRUE(set_pipeline_callback_done);
 }
 
+TEST_F(MediaPerceptionImplTest, TestGetGlobalPipelineState) {
+  bool get_global_pipeline_callback_done = false;
+
+  media_perception_ptr_->GetGlobalPipelineState(
+      base::Bind([](
+          bool* get_global_pipeline_callback_done,
+          chromeos::media_perception::mojom::GlobalPipelineStatePtr state) {
+        EXPECT_EQ(*state->states[0]->configuration_name,
+                  "fake_configuration");
+        *get_global_pipeline_callback_done = true;
+      }, &get_global_pipeline_callback_done));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(get_global_pipeline_callback_done);
+}
+
 }  // namespace
 }  // namespace mri

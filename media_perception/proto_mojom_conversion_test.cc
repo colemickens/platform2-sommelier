@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+const char kMockConfigurationName[] = "fake_configuration";
 const char kMockErrorSource[] = "Mock Error Source";
 const char kMockErrorString[] = "Mock Error String";
 
@@ -287,6 +288,7 @@ TEST(ProtoMojomConversionTest, PipelineErrorToMojom) {
 
 TEST(ProtoMojomConversionTest, PipelineStateToMojom) {
   mri::PipelineState state;
+  state.set_configuration_name(kMockConfigurationName);
   state.set_status(mri::PipelineStatus::RUNNING);
 
   mri::PipelineError& error = *state.mutable_error();
@@ -296,11 +298,22 @@ TEST(ProtoMojomConversionTest, PipelineStateToMojom) {
 
   PipelineStatePtr state_ptr = ToMojom(state);
   EXPECT_EQ(state_ptr->status, PipelineStatus::RUNNING);
+  EXPECT_EQ(*state_ptr->configuration_name, kMockConfigurationName);
 
   PipelineErrorPtr& error_ptr = state_ptr->error;
   EXPECT_EQ(error_ptr->error_type, PipelineErrorType::CONFIGURATION);
   EXPECT_EQ(*error_ptr->error_source, kMockErrorSource);
   EXPECT_EQ(*error_ptr->error_string, kMockErrorString);
+}
+
+TEST(ProtoMojomConversionTest, GlobalPipelineStateToMojom) {
+  mri::GlobalPipelineState state;
+  state.add_states()->set_configuration_name("0");
+  state.add_states()->set_configuration_name("1");
+
+  GlobalPipelineStatePtr state_ptr = ToMojom(state);
+  EXPECT_EQ(*state_ptr->states[0]->configuration_name, "0");
+  EXPECT_EQ(*state_ptr->states[1]->configuration_name, "1");
 }
 
 TEST(ProtoMojomConversionTest, PresencePerceptionToMojom) {
@@ -645,8 +658,11 @@ TEST(ProtoMojomConversionTest, PipelineStateToProto) {
   *state_ptr->error->error_source = kMockErrorSource;
   *state_ptr->error->error_string = kMockErrorString;
 
+  *state_ptr->configuration_name = kMockConfigurationName;
+
   PipelineState state = ToProto(state_ptr);
   EXPECT_EQ(state.status(), PipelineStatus::RUNNING);
+  EXPECT_EQ(state.configuration_name(), kMockConfigurationName);
   EXPECT_EQ(state.error().error_type(), PipelineErrorType::CONFIGURATION);
   EXPECT_EQ(state.error().error_source(), kMockErrorSource);
   EXPECT_EQ(state.error().error_string(), kMockErrorString);

@@ -63,6 +63,13 @@ struct PipelineState {
 
   // Filled in if the status is ERROR.
   PipelineError? error@1;
+
+  // Associated configuration name with this pipeline.
+  string? configuration_name@2;
+};
+
+struct GlobalPipelineState {
+  array<PipelineState> states@0;
 };
 
 interface PipelineEventHandler {

@@ -20,6 +20,7 @@ namespace mri {
 using SerializedPerceptionInterfaces = std::vector<uint8_t>;
 using SerializedSuccessStatus = std::vector<uint8_t>;
 using SerializedPipelineState = std::vector<uint8_t>;
+using SerializedGlobalPipelineState = std::vector<uint8_t>;
 using SerializedDeviceTemplate = std::vector<uint8_t>;
 using SerializedVideoDevice = std::vector<uint8_t>;
 using SerializedAudioDevice = std::vector<uint8_t>;
@@ -75,6 +76,9 @@ class Rtanalytics {
   virtual SerializedPipelineState SetPipelineState(
       const std::string& configuration_name,
       const SerializedPipelineState& desired_state) = 0;
+
+  // Returns states of all existing pipelines.
+  virtual SerializedGlobalPipelineState GetGlobalPipelineState() const = 0;
 
   // ------------------- End of Media Perception Mojo API ----------------------
 

@@ -34,5 +34,10 @@ message PipelineError {
 message PipelineState {
   optional PipelineStatus status = 1;
   optional PipelineError error = 2;
+  optional string configuration_name = 3;
+}
+
+message GlobalPipelineState {
+  repeated PipelineState states = 1;
 }
 

@@ -71,5 +71,8 @@ interface MediaPerception {
   SetPipelineState@8(string configuration_name, PipelineState desired_state)
       => (PipelineState state);
 
+  // Returns the state of all pipelines.
+  GetGlobalPipelineState@9() => (GlobalPipelineState state);
+
   // ------------------- End of pipeline state definitions. ------------------
 };

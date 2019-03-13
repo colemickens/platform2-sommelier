@@ -184,4 +184,15 @@ void MediaPerceptionImpl::SetPipelineState(
   callback.Run(chromeos::media_perception::mojom::ToMojom(pipeline_state));
 }
 
+void MediaPerceptionImpl::GetGlobalPipelineState(
+    const GetGlobalPipelineStateCallback& callback) {
+  SerializedGlobalPipelineState serialized_state =
+      rtanalytics_->GetGlobalPipelineState();
+
+  GlobalPipelineState state = Serialized<GlobalPipelineState>(
+      serialized_state).Deserialize();
+  callback.Run(chromeos::media_perception::mojom::ToMojom(state));
+}
+
+
 }  // namespace mri

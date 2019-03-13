@@ -78,6 +78,12 @@ SerializedPipelineState FakeRtanalytics::SetPipelineState(
   return Serialized<PipelineState>(pipeline_state).GetBytes();
 }
 
+SerializedGlobalPipelineState FakeRtanalytics::GetGlobalPipelineState() const {
+  GlobalPipelineState state;
+  state.add_states()->set_configuration_name("fake_configuration");
+  return Serialized<GlobalPipelineState>(state).GetBytes();
+}
+
 SerializedSuccessStatus FakeRtanalytics::SetPipelineOutputHandler(
     const std::string& configuration_name, const std::string& output_stream,
     PipelineOutputHandler output_handler) {

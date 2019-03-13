@@ -281,6 +281,17 @@ PipelineStatePtr ToMojom(const mri::PipelineState& state) {
   PipelineStatePtr state_ptr = PipelineState::New();
   state_ptr->status = ToMojom(state.status());
   state_ptr->error = ToMojom(state.error());
+  state_ptr->configuration_name = state.configuration_name();
+  return state_ptr;
+}
+
+GlobalPipelineStatePtr ToMojom(const mri::GlobalPipelineState& state) {
+  GlobalPipelineStatePtr state_ptr = GlobalPipelineState::New();
+  std::vector<PipelineStatePtr> states;
+  for (const mri::PipelineState& pipeline_state : state.states()) {
+    states.push_back(ToMojom(pipeline_state));
+  }
+  state_ptr->states = std::move(states);
   return state_ptr;
 }
 
@@ -639,6 +650,7 @@ PipelineState ToProto(
   state.set_status(ToProto(state_ptr->status));
 
   *state.mutable_error() = ToProto(state_ptr->error);
+  state.set_configuration_name(*state_ptr->configuration_name);
   return state;
 }
 

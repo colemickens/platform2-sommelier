@@ -56,6 +56,8 @@ class MediaPerceptionImpl :
       const std::string& configuration_name,
       chromeos::media_perception::mojom::PipelineStatePtr desired_state,
       const SetPipelineStateCallback& callback) override;
+  void GetGlobalPipelineState(
+      const GetGlobalPipelineStateCallback& callback) override;
 
   void set_connection_error_handler(base::Closure connection_error_handler);
 

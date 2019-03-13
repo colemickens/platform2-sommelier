@@ -60,6 +60,7 @@ PipelineStatus ToMojom(mri::PipelineStatus status);
 PipelineErrorType ToMojom(mri::PipelineErrorType error_type);
 PipelineErrorPtr ToMojom(const mri::PipelineError& error);
 PipelineStatePtr ToMojom(const mri::PipelineState& state);
+GlobalPipelineStatePtr ToMojom(const mri::GlobalPipelineState& state);
 
 // Presence perception conversions.
 PresencePerceptionPtr ToMojom(const mri::PresencePerception& perception);
