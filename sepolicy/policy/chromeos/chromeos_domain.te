@@ -56,6 +56,28 @@ allow chromeos_domain cros_run_lock:dir r_dir_perms;
 
 r_dir_file(chromeos_domain, cros_conf_file);
 
+# Files in /var/{spool,lib,log,cache,...} and /run with scontext unidentified yet.
+filetrans_pattern(chromeos_domain, cros_var_lib, cros_var_lib_bluetooth, dir, "bluetooth");
+filetrans_pattern(chromeos_domain, cros_var_lib, cros_var_lib_imageloader, dir, "imageloader");
+filetrans_pattern(chromeos_domain, cros_var_lib, cros_var_lib_oemcrypto, dir, "oemcrypto");
+filetrans_pattern(chromeos_domain, cros_var_lib, cros_var_lib_oobe_config_restore, dir, "oobe_config_restore");
+filetrans_pattern(chromeos_domain, cros_var_lib, cros_var_lib_trim, dir, "trim");
+filetrans_pattern(chromeos_domain, cros_var_lib, cros_var_lib_ureadahead, dir, "ureadahead");
+filetrans_pattern(chromeos_domain, cros_var_lib, cros_var_lib_ui, dir, "ui");
+dev_only(`
+auditallow {chromeos_domain -cros_init -cros_init_scripts} {cros_var_lib_bluetooth cros_var_lib_oemcrypto cros_var_lib_oobe_config_restore cros_var_lib_trim cros_var_lib_ureadahead}:dir create;
+auditallow {chromeos_domain -cros_init_ui_respawn} cros_var_lib_ui:dir create;
+auditallow chromeos_domain cros_var_lib_imageloader:dir create;
+')
+
+# Files in home with creation scontext unidentified yet.
+filetrans_pattern(chromeos_domain, cros_home_shadow_uid_root, cros_home_shadow_uid_root_shill, dir, "shill");
+filetrans_pattern(chromeos_domain, cros_home_shadow_uid_root, cros_home_shadow_uid_root_shill_logs, dir, "shill_logs");
+dev_only(`
+auditallow chromeos_domain cros_home_shadow_uid_root_shill:dir create;
+auditallow chromeos_domain cros_home_shadow_uid_root_shill_logs:dir create;
+');
+
 # Do the same xperm restriction as Android for ioctl.
 
 # Restrict all domains to a whitelist for common socket types. Additional

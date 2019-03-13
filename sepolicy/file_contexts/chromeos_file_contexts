@@ -96,15 +96,23 @@ include(sepolicy/file_contexts/coreutils)
 /var/cache/shill(/.*)?          u:object_r:cros_var_cache_shill:s0
 /var/empty                      u:object_r:cros_var_empty:s0
 /var/lib                        u:object_r:cros_var_lib:s0
+/var/lib/bluetooth(/.*)?        u:object_r:cros_var_lib_bluetooth:s0
 /var/lib/chaps(/.*)?            u:object_r:cros_var_lib_chaps:s0
 /var/lib/crash_reporter(/.*)?   u:object_r:cros_var_lib_crash_reporter:s0
 /var/lib/dbus(/.*)?             u:object_r:cros_var_lib_dbus:s0
 /var/lib/dhcpcd(/.*)?           u:object_r:cros_var_lib_shill:s0
+/var/lib/imageloader(/.*)?      u:object_r:cros_var_lib_imageloader:s0
 /var/lib/metrics(/.*)?          u:object_r:cros_metrics_file:s0
 /var/lib/metrics/uma-events     u:object_r:cros_metrics_uma_events_file:s0
+/var/lib/oemcrypto(/.*)?        u:object_r:cros_var_lib_oemcrypto:s0
+/var/lib/oobe_config_restore(/.*)? u:object_r:cros_var_lib_oobe_config_restore:s0
 /var/lib/power_manager(/.*)?    u:object_r:cros_var_lib_power_manager:s0
+/var/lib/preload-network-drivers.* u:object_r:cros_var_lib_preload_network_drivers:s0
 /var/lib/shill(/.*)?            u:object_r:cros_var_lib_shill:s0
+/var/lib/trim(/.*)?             u:object_r:cros_var_lib_trim:s0
+/var/lib/ui(/.*)?               u:object_r:cros_var_lib_ui:s0
 /var/lib/update_engine(/.*)?    u:object_r:cros_var_lib_update_engine:s0
+/var/lib/ureadahead(/.*)?       u:object_r:cros_var_lib_ureadahead:s0
 /var/lib/whitelist(/.*)?        u:object_r:cros_var_lib_whitelist:s0
 /var/log                        u:object_r:cros_var_log:s0
 /var/log/eventlog.txt           u:object_r:cros_var_log_eventlog:s0
@@ -122,6 +130,7 @@ include(sepolicy/file_contexts/coreutils)
 /var/spool                      u:object_r:cros_var_spool:s0
 /var/spool/cron-lite(/.*)?      u:object_r:cros_periodic_scheduler_cache_t:s0
 /var/spool/crash_reporter(/.*)? u:object_r:cros_crash_spool:s0
+/var/spool/power_manager(/.*)?  u:object_r:cros_var_spool_power_manager:s0
 
 # /opt/google
 /opt/google/chrome/chrome       u:object_r:chrome_browser_exec:s0
@@ -198,4 +207,9 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data u:object_r:cros_home_shadow_uid_root_android:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data/cache(/.*)? u:object_r:cros_home_shadow_uid_root_android_cache:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data/data u:object_r:system_data_file:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/authpolicyd(/.*)?   u:object_r:cros_home_shadow_uid_root_authpolicyd:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/chaps(/.*)?   u:object_r:cros_home_shadow_uid_root_chaps:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/session_manager(/.*)?   u:object_r:cros_home_shadow_uid_root_session_manager:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/shill(/.*)?   u:object_r:cros_home_shadow_uid_root_shill:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/shill_logs(/.*)?   u:object_r:cros_home_shadow_uid_root_shill_logs:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/usb_bouncer(/.*)?   u:object_r:cros_home_shadow_uid_root_usb_bouncer:s0

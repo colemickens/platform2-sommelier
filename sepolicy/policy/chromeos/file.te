@@ -76,9 +76,14 @@ type cros_home_shadow_uid, file_type;
 type cros_home_shadow_low_entropy_creds, file_type;
 type cros_home_shadow_uid_user, file_type;
 type cros_home_shadow_uid_root, file_type;
-type cros_home_shadow_uid_root_chaps, file_type;
 type cros_home_shadow_uid_root_android, file_type;
 type cros_home_shadow_uid_root_android_cache, file_type;
+type cros_home_shadow_uid_root_authpolicyd, file_type;
+type cros_home_shadow_uid_root_chaps, file_type;
+type cros_home_shadow_uid_root_session_manager, file_type;
+type cros_home_shadow_uid_root_shill, file_type;
+type cros_home_shadow_uid_root_shill_logs, file_type;
+type cros_home_shadow_uid_root_usb_bouncer, file_type;
 type system_data_file, file_type; # this is Android file label.
 allow domain cros_home:dir r_dir_perms;
 
@@ -117,12 +122,20 @@ type cros_var_empty, file_type;
 
 type cros_var_cache_shill, file_type;
 
+type cros_var_lib_bluetooth, file_type;
 type cros_var_lib_chaps, file_type;
 type cros_var_lib_crash_reporter, file_type;
 type cros_var_lib_dbus, file_type;
+type cros_var_lib_imageloader, file_type;
+type cros_var_lib_oemcrypto, file_type;
+type cros_var_lib_oobe_config_restore, file_type;
 type cros_var_lib_power_manager, file_type;
+type cros_var_lib_preload_network_drivers, file_type;
 type cros_var_lib_shill, file_type;
+type cros_var_lib_trim, file_type;
+type cros_var_lib_ui, file_type;
 type cros_var_lib_update_engine, file_type;
+type cros_var_lib_ureadahead, file_type;
 type cros_var_lib_whitelist, file_type;
 
 type cros_arc_log, file_type, cros_log_type;
@@ -139,6 +152,8 @@ type cros_var_log_chrome, file_type, cros_log_type;
 type cros_var_log_eventlog, file_type, cros_log_type;
 
 type cros_crash_spool, file_type;
+type cros_periodic_scheduler_cache_t, file_type;
+type cros_var_spool_power_manager, file_type;
 
 type camera_socket, file_type; # compatible to existing Android names.
 type cras_socket, file_type; # compatible to existing Android names.
@@ -167,7 +182,6 @@ type cros_tz_data_file, file_type;
 
 r_dir_file(chromeos_domain, cros_tz_data_file)
 
-type cros_periodic_scheduler_cache_t, file_type;
 
 allow fs_type self:filesystem associate;
 allow file_type labeledfs:filesystem associate;

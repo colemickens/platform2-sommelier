@@ -77,3 +77,6 @@ filetrans_pattern_no_target_perm(cros_init_scripts, device, logger_device, lnk_f
 
 # init/tpm-probe.conf
 filetrans_pattern_no_target_perm(cros_init_scripts, cros_run, cros_run_tcsd, dir, "tcsd");
+
+# init/preload-network.conf
+filetrans_pattern(cros_init_scripts, cros_var_lib, cros_var_lib_preload_network_drivers, file, "preload-network-drivers");
