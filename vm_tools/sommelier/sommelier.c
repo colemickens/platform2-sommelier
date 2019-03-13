@@ -2004,6 +2004,12 @@ static void sl_handle_client_message(struct sl_context* ctx,
           zxdg_toplevel_v6_unset_maximized(window->xdg_toplevel);
       }
     }
+  } else if (event->type == ctx->atoms[ATOM_WM_CHANGE_STATE].value &&
+             event->data.data32[0] == WM_STATE_ICONIC) {
+    struct sl_window* window = sl_lookup_window(ctx, event->window);
+    if (window && window->xdg_toplevel) {
+      zxdg_toplevel_v6_set_minimized(window->xdg_toplevel);
+    }
   }
 }
 
@@ -3275,34 +3281,35 @@ int main(int argc, char **argv) {
       .selection_data_ack_pending = 0,
       .atoms =
           {
-                  [ATOM_WM_S0] = {"WM_S0"},
-                  [ATOM_WM_PROTOCOLS] = {"WM_PROTOCOLS"},
-                  [ATOM_WM_STATE] = {"WM_STATE"},
-                  [ATOM_WM_DELETE_WINDOW] = {"WM_DELETE_WINDOW"},
-                  [ATOM_WM_TAKE_FOCUS] = {"WM_TAKE_FOCUS"},
-                  [ATOM_WM_CLIENT_LEADER] = {"WM_CLIENT_LEADER"},
-                  [ATOM_WL_SURFACE_ID] = {"WL_SURFACE_ID"},
-                  [ATOM_UTF8_STRING] = {"UTF8_STRING"},
-                  [ATOM_MOTIF_WM_HINTS] = {"_MOTIF_WM_HINTS"},
-                  [ATOM_NET_FRAME_EXTENTS] = {"_NET_FRAME_EXTENTS"},
-                  [ATOM_NET_STARTUP_ID] = {"_NET_STARTUP_ID"},
-                  [ATOM_NET_SUPPORTING_WM_CHECK] = {"_NET_SUPPORTING_WM_CHECK"},
-                  [ATOM_NET_WM_NAME] = {"_NET_WM_NAME"},
-                  [ATOM_NET_WM_MOVERESIZE] = {"_NET_WM_MOVERESIZE"},
-                  [ATOM_NET_WM_STATE] = {"_NET_WM_STATE"},
-                  [ATOM_NET_WM_STATE_FULLSCREEN] = {"_NET_WM_STATE_FULLSCREEN"},
-                  [ATOM_NET_WM_STATE_MAXIMIZED_VERT] =
-                      {"_NET_WM_STATE_MAXIMIZED_VERT"},
-                  [ATOM_NET_WM_STATE_MAXIMIZED_HORZ] =
-                      {"_NET_WM_STATE_MAXIMIZED_HORZ"},
-                  [ATOM_CLIPBOARD] = {"CLIPBOARD"},
-                  [ATOM_CLIPBOARD_MANAGER] = {"CLIPBOARD_MANAGER"},
-                  [ATOM_TARGETS] = {"TARGETS"},
-                  [ATOM_TIMESTAMP] = {"TIMESTAMP"},
-                  [ATOM_TEXT] = {"TEXT"},
-                  [ATOM_INCR] = {"INCR"},
-                  [ATOM_WL_SELECTION] = {"_WL_SELECTION"},
-                  [ATOM_GTK_THEME_VARIANT] = {"_GTK_THEME_VARIANT"},
+              [ATOM_WM_S0] = {"WM_S0"},
+              [ATOM_WM_PROTOCOLS] = {"WM_PROTOCOLS"},
+              [ATOM_WM_STATE] = {"WM_STATE"},
+              [ATOM_WM_CHANGE_STATE] = {"WM_CHANGE_STATE"},
+              [ATOM_WM_DELETE_WINDOW] = {"WM_DELETE_WINDOW"},
+              [ATOM_WM_TAKE_FOCUS] = {"WM_TAKE_FOCUS"},
+              [ATOM_WM_CLIENT_LEADER] = {"WM_CLIENT_LEADER"},
+              [ATOM_WL_SURFACE_ID] = {"WL_SURFACE_ID"},
+              [ATOM_UTF8_STRING] = {"UTF8_STRING"},
+              [ATOM_MOTIF_WM_HINTS] = {"_MOTIF_WM_HINTS"},
+              [ATOM_NET_FRAME_EXTENTS] = {"_NET_FRAME_EXTENTS"},
+              [ATOM_NET_STARTUP_ID] = {"_NET_STARTUP_ID"},
+              [ATOM_NET_SUPPORTING_WM_CHECK] = {"_NET_SUPPORTING_WM_CHECK"},
+              [ATOM_NET_WM_NAME] = {"_NET_WM_NAME"},
+              [ATOM_NET_WM_MOVERESIZE] = {"_NET_WM_MOVERESIZE"},
+              [ATOM_NET_WM_STATE] = {"_NET_WM_STATE"},
+              [ATOM_NET_WM_STATE_FULLSCREEN] = {"_NET_WM_STATE_FULLSCREEN"},
+              [ATOM_NET_WM_STATE_MAXIMIZED_VERT] =
+                  {"_NET_WM_STATE_MAXIMIZED_VERT"},
+              [ATOM_NET_WM_STATE_MAXIMIZED_HORZ] =
+                  {"_NET_WM_STATE_MAXIMIZED_HORZ"},
+              [ATOM_CLIPBOARD] = {"CLIPBOARD"},
+              [ATOM_CLIPBOARD_MANAGER] = {"CLIPBOARD_MANAGER"},
+              [ATOM_TARGETS] = {"TARGETS"},
+              [ATOM_TIMESTAMP] = {"TIMESTAMP"},
+              [ATOM_TEXT] = {"TEXT"},
+              [ATOM_INCR] = {"INCR"},
+              [ATOM_WL_SELECTION] = {"_WL_SELECTION"},
+              [ATOM_GTK_THEME_VARIANT] = {"_GTK_THEME_VARIANT"},
           },
       .visual_ids = {0},
       .colormaps = {0}};
