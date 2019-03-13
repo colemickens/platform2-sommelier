@@ -42,12 +42,12 @@ class MulticastForwarder : public MessageLoopForIO::Watcher {
   // create a state table entry; "unsolicited" traffic from
   // |lan_ifname| will be silently discarded.
   //
-  // |mdns_ipaddr|, if non-empty, will be used to rewrite mDNS A records to use
-  // the IP address from |lan_ifname|.
+  // |mdns_ipaddr|, if != INADDR_ANY, will be used to rewrite mDNS A records
+  // to use the IP address from |lan_ifname|.
   bool Start(const std::string& int_ifname,
              const std::string& lan_ifname,
-             const std::string& mdns_ipaddr,
-             const std::string& mcast_addr,
+             uint32_t mdns_ipaddr,
+             uint32_t mcast_addr,
              unsigned short port,
              bool allow_stateless);
 

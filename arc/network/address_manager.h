@@ -13,6 +13,7 @@
 #include <base/memory/weak_ptr.h>
 #include <brillo/brillo_export.h>
 
+#include "arc/network/mac_address_generator.h"
 #include "arc/network/subnet.h"
 #include "arc/network/subnet_pool.h"
 
@@ -31,7 +32,12 @@ class BRILLO_EXPORT AddressManager {
   };
 
   AddressManager(std::initializer_list<Guest> guests);
-  ~AddressManager() = default;
+  virtual ~AddressManager() = default;
+
+  // Generates a MAC address guaranteed to be unique for the lifetime of this
+  // object.
+  // Virtual for testing only.
+  virtual MacAddress GenerateMacAddress();
 
   // Allocates a subnet from the specified guest network pool if available.
   // Returns nullptr if the guest was configured or no more subnets are
@@ -39,6 +45,7 @@ class BRILLO_EXPORT AddressManager {
   std::unique_ptr<Subnet> AllocateIPv4Subnet(Guest guest);
 
  private:
+  MacAddressGenerator mac_addrs_;
   std::map<Guest, std::unique_ptr<SubnetPool>> pools_;
 
   base::WeakPtrFactory<AddressManager> weak_ptr_factory_{this};

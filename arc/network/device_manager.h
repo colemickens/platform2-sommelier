@@ -10,6 +10,7 @@
 #include <set>
 #include <string>
 
+#include "arc/network/address_manager.h"
 #include "arc/network/device.h"
 #include "arc/network/ipc.pb.h"
 
@@ -19,7 +20,9 @@ namespace arc_networkd {
 // presentation in the container.
 class DeviceManager {
  public:
-  DeviceManager(const Device::MessageSink& msg_sink,
+  // |addr_mgr| must not be null.
+  DeviceManager(AddressManager* addr_mgr,
+                const Device::MessageSink& msg_sink,
                 const std::string& arc_device);
   ~DeviceManager();
 
@@ -36,7 +39,14 @@ class DeviceManager {
   bool Enable(const std::string& ifname);
   bool Disable();
 
+  // Returns a new fully configured device.
+  // Note this is public mainly for testing and should not be called directly.
+  std::unique_ptr<Device> MakeDevice(const std::string& name) const;
+
  private:
+  // Provisions and tracks subnets and addresses.
+  AddressManager* addr_mgr_;
+
   // Enables the devices to send messages to the helper process.
   const Device::MessageSink msg_sink_;
 

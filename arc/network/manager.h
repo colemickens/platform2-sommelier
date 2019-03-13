@@ -14,6 +14,7 @@
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/process_reaper.h>
 
+#include "arc/network/address_manager.h"
 #include "arc/network/arc_ip_config.h"
 #include "arc/network/device_manager.h"
 #include "arc/network/helper_process.h"
@@ -60,12 +61,16 @@ class Manager final : public brillo::DBusDaemon {
 
   friend std::ostream& operator<<(std::ostream& stream, const Manager& manager);
 
-  bool enable_multinet_;
+  AddressManager addr_mgr_;
   brillo::ProcessReaper process_reaper_;
   std::unique_ptr<ShillClient> shill_client_;
   std::unique_ptr<HelperProcess> ip_helper_;
   std::unique_ptr<DeviceManager> device_mgr_;
+
+  bool enable_multinet_;
+
   base::WeakPtrFactory<Manager> weak_factory_{this};
+  DISALLOW_COPY_AND_ASSIGN(Manager);
 };
 
 }  // namespace arc_networkd

@@ -30,9 +30,9 @@ constexpr uint32_t kDefaultSubnetPrefix = 30;
 AddressManager::AddressManager(
     std::initializer_list<AddressManager::Guest> guests) {
   for (auto g : guests) {
-    size_t base_addr = kBaseAddress;
-    size_t prefix = kDefaultSubnetPrefix;
-    size_t subnets = 1;
+    uint32_t base_addr = kBaseAddress;
+    uint32_t prefix = kDefaultSubnetPrefix;
+    uint32_t subnets = 1;
     switch (g) {
       case Guest::ARC:
         break;
@@ -61,9 +61,13 @@ AddressManager::AddressManager(
   }
 }
 
+MacAddress AddressManager::GenerateMacAddress() {
+  return mac_addrs_.Generate();
+}
+
 std::unique_ptr<Subnet> AddressManager::AllocateIPv4Subnet(
     AddressManager::Guest guest) {
-  auto it = pools_.find(guest);
+  const auto it = pools_.find(guest);
   return (it != pools_.end()) ? it->second->Allocate() : nullptr;
 }
 

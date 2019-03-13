@@ -28,7 +28,11 @@ const char kUnprivilegedUser[] = "arc-networkd";
 namespace arc_networkd {
 
 Manager::Manager(std::unique_ptr<HelperProcess> ip_helper, bool enable_multinet)
-    : enable_multinet_(enable_multinet) {
+    : addr_mgr_({
+          AddressManager::Guest::ARC,
+          AddressManager::Guest::ARC_NET,
+      }),
+      enable_multinet_(enable_multinet) {
   ip_helper_ = std::move(ip_helper);
 }
 
@@ -72,7 +76,7 @@ int Manager::OnInit() {
 void Manager::InitialSetup() {
   shill_client_ = std::make_unique<ShillClient>(std::move(bus_));
   device_mgr_ = std::make_unique<DeviceManager>(
-      base::Bind(&Manager::SendMessage, weak_factory_.GetWeakPtr()),
+      &addr_mgr_, base::Bind(&Manager::SendMessage, weak_factory_.GetWeakPtr()),
       enable_multinet_ ? kAndroidDevice : kAndroidLegacyDevice);
 
   if (enable_multinet_) {

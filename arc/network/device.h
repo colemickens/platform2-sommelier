@@ -14,11 +14,14 @@
 
 #include <base/bind.h>
 #include <base/memory/weak_ptr.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "arc/network/ipc.pb.h"
+#include "arc/network/mac_address_generator.h"
 #include "arc/network/multicast_forwarder.h"
 #include "arc/network/neighbor_finder.h"
 #include "arc/network/router_finder.h"
+#include "arc/network/subnet.h"
 
 namespace arc_networkd {
 
@@ -36,15 +39,45 @@ class Device {
  public:
   using MessageSink = base::Callback<void(const IpHelperMessage&)>;
 
-  Device(const std::string& ifname,
-         const DeviceConfig& config,
-         const MessageSink& msg_sink);
-  virtual ~Device();
+  class Config {
+   public:
+    Config(const std::string& host_ifname,
+           const std::string& guest_ifname,
+           const MacAddress& guest_mac_addr,
+           std::unique_ptr<Subnet> ipv4_subnet,
+           std::unique_ptr<SubnetAddress> host_ipv4_addr,
+           std::unique_ptr<SubnetAddress> guest_ipv4_addr);
+    ~Config() = default;
 
-  // Returns |nullptr| if the device configuration could not be generated
-  // for the interface.
-  static std::unique_ptr<Device> ForInterface(const std::string& ifname,
-                                              const MessageSink& msg_sink);
+    std::string host_ifname() const { return host_ifname_; }
+    std::string guest_ifname() const { return guest_ifname_; }
+    MacAddress guest_mac_addr() const { return guest_mac_addr_; }
+    uint32_t host_ipv4_addr() const { return host_ipv4_addr_->Address(); }
+    uint32_t guest_ipv4_addr() const { return guest_ipv4_addr_->Address(); }
+
+   private:
+    std::string host_ifname_;
+    std::string guest_ifname_;
+    MacAddress guest_mac_addr_;
+    std::unique_ptr<Subnet> ipv4_subnet_;
+    std::unique_ptr<SubnetAddress> host_ipv4_addr_;
+    std::unique_ptr<SubnetAddress> guest_ipv4_addr_;
+
+    DISALLOW_COPY_AND_ASSIGN(Config);
+  };
+
+  struct Options {
+    bool fwd_multicast;
+    bool find_ipv6_routes;
+  };
+
+  Device(const std::string& ifname,
+         std::unique_ptr<Config> config,
+         const Options& options,
+         const MessageSink& msg_sink);
+  ~Device();
+
+  void FillProto(DeviceConfig* msg);
 
   // |ifname| should always be empty for devices that represent physical host
   // interfaces. For others, like the ARC device 'android' that represents the
@@ -52,8 +85,6 @@ class Device {
   // real interfaces (e.g. eth0) to the container.
   void Enable(const std::string& ifname);
   void Disable();
-
-  const DeviceConfig& config() const { return config_; }
 
  private:
   // Callback from RouterFinder.  May be triggered multiple times, e.g.
@@ -67,7 +98,8 @@ class Device {
   void OnNeighborCheckResult(bool found);
 
   const std::string ifname_;
-  const DeviceConfig config_;
+  std::unique_ptr<Config> config_;
+  const Options options_;
   const MessageSink msg_sink_;
 
   // Only used for the legacy Android device; points to the interface currently
@@ -85,6 +117,7 @@ class Device {
 
   base::WeakPtrFactory<Device> weak_factory_{this};
 
+  FRIEND_TEST(DeviceTest, DisableLegacyAndroidDeviceSendsTwoMessages);
   DISALLOW_COPY_AND_ASSIGN(Device);
 };
 

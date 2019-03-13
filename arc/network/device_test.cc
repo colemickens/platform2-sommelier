@@ -4,36 +4,46 @@
 
 #include "arc/network/device.h"
 
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
+
+#include "arc/network/mac_address_generator.h"
+#include "arc/network/subnet.h"
 
 namespace arc_networkd {
 
 namespace {
 
+void DoNothing() {}
+
 class DeviceTest : public testing::Test {
  protected:
   void SetUp() override { capture_msgs_ = false; }
 
-  std::unique_ptr<Device> NewDevice(const std::string& name) {
-    return Device::ForInterface(
-        name, base::Bind(&DeviceTest::RecvMsg, base::Unretained(this)));
-  }
-
   std::unique_ptr<Device> NewDevice(const std::string& name,
-                                    bool fwd_multicast,
-                                    bool find_ipv6_routes) {
-    DeviceConfig config;
-    config.set_br_ifname(name);
-    config.set_arc_ifname(name);
-    config.set_br_ipv4("1.2.3.4");
-    config.set_arc_ipv4("1.2.3.4");
-    config.set_mac_addr("mac");
-    config.set_fwd_multicast(fwd_multicast);
-    config.set_find_ipv6_routes(find_ipv6_routes);
-    return std::make_unique<Device>(
-        name, config, base::Bind(&DeviceTest::RecvMsg, base::Unretained(this)));
+                                    const Device::Options& options) {
+    auto ipv4_subnet =
+        std::make_unique<Subnet>(0x64646464, 30, base::Bind(&DoNothing));
+    EXPECT_TRUE(ipv4_subnet);
+
+    auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
+    EXPECT_TRUE(host_ipv4_addr);
+
+    auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+    EXPECT_TRUE(guest_ipv4_addr);
+
+    auto config = std::make_unique<Device::Config>(
+        "host", "guest", MacAddressGenerator().Generate(),
+        std::move(ipv4_subnet), std::move(host_ipv4_addr),
+        std::move(guest_ipv4_addr));
+    auto dev = std::make_unique<Device>(
+        name, std::move(config), options,
+        base::Bind(&DeviceTest::RecvMsg, base::Unretained(this)));
+
+    dev->FillProto(&msg_);
+    return dev;
   }
 
   void VerifyMsgs(const std::vector<IpHelperMessage>& expected) {
@@ -44,6 +54,7 @@ class DeviceTest : public testing::Test {
   }
 
   bool capture_msgs_;
+  DeviceConfig msg_;
 
  private:
   void RecvMsg(const IpHelperMessage& msg) {
@@ -56,76 +67,33 @@ class DeviceTest : public testing::Test {
 
 }  // namespace
 
-TEST_F(DeviceTest, ConfigForLegacyAndroid) {
-  auto dev = NewDevice(kAndroidLegacyDevice);
-  ASSERT_NE(dev, nullptr);
-  auto& config = dev->config();
-  EXPECT_EQ(config.br_ifname(), "arcbr0");
-  EXPECT_EQ(config.br_ipv4(), "100.115.92.1");
-  EXPECT_EQ(config.arc_ifname(), "arc0");
-  EXPECT_EQ(config.arc_ipv4(), "100.115.92.2");
-  EXPECT_EQ(config.mac_addr(), "00:FF:AA:00:00:55");
-  EXPECT_TRUE(config.fwd_multicast());
-  EXPECT_TRUE(config.find_ipv6_routes());
-}
-
-TEST_F(DeviceTest, ConfigForAndroid) {
-  auto dev = NewDevice(kAndroidDevice);
-  ASSERT_NE(dev, nullptr);
-  auto& config = dev->config();
-  EXPECT_EQ(config.br_ifname(), "arcbr0");
-  EXPECT_EQ(config.br_ipv4(), "100.115.92.1");
-  EXPECT_EQ(config.arc_ifname(), "arc0");
-  EXPECT_EQ(config.arc_ipv4(), "100.115.92.2");
-  EXPECT_EQ(config.mac_addr(), "00:FF:AA:00:00:55");
-  EXPECT_FALSE(config.fwd_multicast());
-  EXPECT_FALSE(config.find_ipv6_routes());
-}
-
-TEST_F(DeviceTest, ConfigForEth0) {
-  auto dev = NewDevice("eth0");
-  ASSERT_NE(dev, nullptr);
-  auto& config = dev->config();
-  EXPECT_EQ(config.br_ifname(), "arc_eth0");
-  EXPECT_EQ(config.br_ipv4(), "100.115.92.9");
-  EXPECT_EQ(config.arc_ifname(), "eth0");
-  EXPECT_EQ(config.arc_ipv4(), "100.115.92.10");
-  EXPECT_EQ(config.mac_addr(), "00:FF:AA:00:00:5d");
-  EXPECT_FALSE(config.fwd_multicast());
-  EXPECT_FALSE(config.find_ipv6_routes());
-}
-
-TEST_F(DeviceTest, ConfigForWlan0) {
-  auto dev = NewDevice("wlan0");
-  ASSERT_NE(dev, nullptr);
-  auto& config = dev->config();
-  EXPECT_EQ(config.br_ifname(), "arc_wlan0");
-  EXPECT_EQ(config.br_ipv4(), "100.115.92.13");
-  EXPECT_EQ(config.arc_ifname(), "wlan0");
-  EXPECT_EQ(config.arc_ipv4(), "100.115.92.14");
-  EXPECT_EQ(config.mac_addr(), "00:FF:AA:00:00:61");
-  EXPECT_FALSE(config.fwd_multicast());
-  EXPECT_FALSE(config.find_ipv6_routes());
-}
-
-TEST_F(DeviceTest, ConfigForUnknown) {
-  EXPECT_EQ(NewDevice(""), nullptr);
-  EXPECT_EQ(NewDevice("unk"), nullptr);
-  EXPECT_EQ(NewDevice("eth1"), nullptr);
-  EXPECT_EQ(NewDevice("wlan1"), nullptr);
+TEST_F(DeviceTest, FillProto) {
+  Device::Options opts = {true, true};
+  auto dev = NewDevice(kAndroidDevice, opts);
+  DeviceConfig msg;
+  dev->FillProto(&msg);
+  EXPECT_EQ(msg.br_ifname(), "host");
+  EXPECT_EQ(msg.arc_ifname(), "guest");
+  EXPECT_EQ(msg.br_ipv4(), "100.100.100.101");
+  EXPECT_EQ(msg.arc_ipv4(), "100.100.100.102");
+  EXPECT_FALSE(msg.mac_addr().empty());
+  EXPECT_TRUE(msg.fwd_multicast());
+  EXPECT_TRUE(msg.find_ipv6_routes());
 }
 
 TEST_F(DeviceTest, CtorSendsAnnounce) {
   capture_msgs_ = true;
-  auto dev = NewDevice(kAndroidDevice);
+  Device::Options opts = {true, true};
+  auto dev = NewDevice(kAndroidDevice, opts);
   IpHelperMessage msg;
   msg.set_dev_ifname(kAndroidDevice);
-  *msg.mutable_dev_config() = dev->config();
+  *msg.mutable_dev_config() = msg_;
   VerifyMsgs({msg});
 }
 
 TEST_F(DeviceTest, DtorSendsTeardown) {
-  auto dev = NewDevice(kAndroidDevice);
+  Device::Options opts = {true, true};
+  auto dev = NewDevice(kAndroidDevice, opts);
   capture_msgs_ = true;
   dev.reset();
   IpHelperMessage msg;
@@ -135,7 +103,8 @@ TEST_F(DeviceTest, DtorSendsTeardown) {
 }
 
 TEST_F(DeviceTest, EnableSendsMessageForLegacyAndroid) {
-  auto dev = NewDevice(kAndroidLegacyDevice, false, false);
+  Device::Options opts = {false, false};
+  auto dev = NewDevice(kAndroidLegacyDevice, opts);
   capture_msgs_ = true;
   dev->Enable("eth0");
   IpHelperMessage enable_msg;
@@ -145,21 +114,24 @@ TEST_F(DeviceTest, EnableSendsMessageForLegacyAndroid) {
 }
 
 TEST_F(DeviceTest, EnableDoesNothingForNonLegacyAndroid) {
-  auto dev = NewDevice(kAndroidDevice, false, false);
+  Device::Options opts = {false, false};
+  auto dev = NewDevice(kAndroidDevice, opts);
   capture_msgs_ = true;
   dev->Enable("eth0");
   VerifyMsgs({});
 }
 
 TEST_F(DeviceTest, DisableLegacyAndroidDeviceSendsTwoMessages) {
-  auto dev = NewDevice(kAndroidLegacyDevice, false, false);
+  Device::Options opts = {false, false};
+  auto dev = NewDevice(kAndroidLegacyDevice, opts);
+  dev->Enable("eth0");
   capture_msgs_ = true;
   // HACK(garrick): We have to turn off IPv6 route finding during testing
   // to avoid an unrelated crash but the Android device does have IPv6
   // route finding enabled, so we want to verify the 'clear' message is
   // emitted for this device. This hack allows the check to pass and the
   // message to be sent.
-  const_cast<DeviceConfig*>(&dev->config())->set_find_ipv6_routes(true);
+  const_cast<Device::Options*>(&dev->options_)->find_ipv6_routes = true;
   dev->Disable();
   IpHelperMessage clear_msg;
   clear_msg.set_dev_ifname(kAndroidLegacyDevice);
@@ -171,14 +143,25 @@ TEST_F(DeviceTest, DisableLegacyAndroidDeviceSendsTwoMessages) {
 }
 
 TEST_F(DeviceTest, DisableDoesNothingForNonLegacyAndroid) {
-  auto dev = NewDevice(kAndroidDevice, false, false);
+  Device::Options opts = {false, false};
+  auto dev = NewDevice(kAndroidDevice, opts);
+  capture_msgs_ = true;
+  dev->Disable();
+  VerifyMsgs({});
+}
+
+TEST_F(DeviceTest, DisableDoesNothingIfNotEnabled) {
+  Device::Options opts = {false, false};
+  auto dev = NewDevice(kAndroidLegacyDevice, opts);
   capture_msgs_ = true;
   dev->Disable();
   VerifyMsgs({});
 }
 
 TEST_F(DeviceTest, ClearMessageNotSentIfIPv6RouteFindingIsOff) {
-  auto dev = NewDevice(kAndroidLegacyDevice, false, false);
+  Device::Options opts = {false, false};
+  auto dev = NewDevice(kAndroidLegacyDevice, opts);
+  dev->Enable("eth0");
   capture_msgs_ = true;
   dev->Disable();
   IpHelperMessage disable_msg;

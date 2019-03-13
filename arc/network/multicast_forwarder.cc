@@ -34,24 +34,16 @@ namespace arc_networkd {
 
 bool MulticastForwarder::Start(const std::string& int_ifname,
                                const std::string& lan_ifname,
-                               const std::string& mdns_ipaddr,
-                               const std::string& mcast_addr,
+                               uint32_t mdns_ipaddr,
+                               uint32_t mcast_addr,
                                unsigned short port,
                                bool allow_stateless) {
   int_ifname_ = int_ifname;
   lan_ifname_ = lan_ifname;
+  mcast_addr_.s_addr = mcast_addr;
+  mdns_ip_.s_addr = mdns_ipaddr;
   port_ = port;
   allow_stateless_ = allow_stateless;
-
-  if (!inet_aton(mcast_addr.c_str(), &mcast_addr_)) {
-    LOG(ERROR) << "invalid multicast address " << mcast_addr;
-    return false;
-  }
-
-  mdns_ip_.s_addr = INADDR_ANY;
-  if (!mdns_ipaddr.empty() && !inet_aton(mdns_ipaddr.c_str(), &mdns_ip_)) {
-    LOG(WARNING) << "invalid internal IP address " << mdns_ipaddr;
-  }
 
   int_socket_.reset(new MulticastSocket());
   if (!int_socket_->Bind(int_ifname, mcast_addr_, port, this)) {
@@ -70,8 +62,8 @@ bool MulticastForwarder::Start(const std::string& int_ifname,
     lan_ip_ = lan_socket_->interface_ip();
   }
 
-  VLOG(1) << "Started forwarding between " << lan_ifname << " and "
-          << int_ifname << " for " << mcast_addr_ << ":" << port;
+  LOG(INFO) << "Started forwarding between " << lan_ifname << " and "
+            << int_ifname << " for " << mcast_addr_ << ":" << port;
 
   CleanupTask();
   return true;

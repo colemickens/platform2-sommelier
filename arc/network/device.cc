@@ -4,11 +4,15 @@
 
 #include "arc/network/device.h"
 
+#include <arpa/inet.h>
+#include <sys/socket.h>
 #include <sys/types.h>
 
 #include <map>
+#include <utility>
 
 #include <base/bind.h>
+#include <base/lazy_instance.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
@@ -23,51 +27,56 @@ const char kAndroidLegacyDevice[] = "android";
 
 namespace {
 
-const char kIPv4AddrFmt[] = "100.115.92.%d";
-const char kMacAddrFmt[] = "00:FF:AA:00:00:%x";
-const int kMacAddrBase = 85;
+constexpr uint32_t kMdnsMcastAddress = 0xfb0000e0;  // 224.0.0.251 (NBO)
+constexpr uint16_t kMdnsPort = 5353;
+constexpr uint32_t kSsdpMcastAddress = 0xfaffffef;  // 239.255.255.250 (NBO)
+constexpr uint16_t kSsdpPort = 1900;
 
-const char kMdnsMcastAddress[] = "224.0.0.251";
-const uint16_t kMdnsPort = 5353;
-const char kSsdpMcastAddress[] = "239.255.255.250";
-const uint16_t kSsdpPort = 1900;
+constexpr int kMaxRandomAddressTries = 3;
 
-const int kMaxRandomAddressTries = 3;
+std::string MacAddressToString(const MacAddress& addr) {
+  return base::StringPrintf("%02x:%02x:%02x:%02x:%02x:%02x", addr[0], addr[1],
+                            addr[2], addr[3], addr[4], addr[5]);
+}
 
-bool AssignAddr(const std::string& ifname, DeviceConfig* config) {
-  // To make this easier for now, hardcode the interfaces to support;
-  // maps device names to the subnet base address (used in kIPv4AddrFmt).
-  // Note that the .4/30 subnet is skipped since it is in use elsewhere.
-  // Note that only one Android interface is intended to be used.
-  // TODO(garrick): Generalize and support arbitrary interfaces.
-  static const std::map<std::string, int> cur_ifaces = {
-      {kAndroidDevice, 0}, {kAndroidLegacyDevice, 0},
-      {"eth0", 8},         {"wlan0", 12},
-      {"wwan0", 16},       {"rmnet0", 20}};
-  const auto it = cur_ifaces.find(ifname);
-  if (it == cur_ifaces.end())
-    return false;
-
-  const int addr_off = it->second;
-  config->set_br_ipv4(base::StringPrintf(kIPv4AddrFmt, addr_off + 1));
-  config->set_arc_ipv4(base::StringPrintf(kIPv4AddrFmt, addr_off + 2));
-  config->set_mac_addr(
-      base::StringPrintf(kMacAddrFmt, kMacAddrBase + addr_off));
-  return true;
+std::string IPv4AddressToString(uint32_t addr) {
+  char buf[INET_ADDRSTRLEN] = {0};
+  struct in_addr ia;
+  ia.s_addr = addr;
+  return !inet_ntop(AF_INET, &ia, buf, sizeof(buf)) ? "" : buf;
 }
 
 }  // namespace
 
+Device::Config::Config(const std::string& host_ifname,
+                       const std::string& guest_ifname,
+                       const MacAddress& guest_mac_addr,
+                       std::unique_ptr<Subnet> ipv4_subnet,
+                       std::unique_ptr<SubnetAddress> host_ipv4_addr,
+                       std::unique_ptr<SubnetAddress> guest_ipv4_addr)
+    : host_ifname_(host_ifname),
+      guest_ifname_(guest_ifname),
+      guest_mac_addr_(guest_mac_addr),
+      ipv4_subnet_(std::move(ipv4_subnet)),
+      host_ipv4_addr_(std::move(host_ipv4_addr)),
+      guest_ipv4_addr_(std::move(guest_ipv4_addr)) {}
+
 Device::Device(const std::string& ifname,
-               const DeviceConfig& config,
+               std::unique_ptr<Device::Config> config,
+               const Device::Options& options,
                const MessageSink& msg_sink)
-    : ifname_(ifname), config_(config), msg_sink_(msg_sink) {
+    : ifname_(ifname),
+      config_(std::move(config)),
+      options_(options),
+      msg_sink_(msg_sink) {
+  DCHECK(config_);
   if (msg_sink_.is_null())
     return;
 
   IpHelperMessage msg;
   msg.set_dev_ifname(ifname_);
-  *msg.mutable_dev_config() = config_;
+  auto* dev_config = msg.mutable_dev_config();
+  FillProto(dev_config);
   msg_sink_.Run(msg);
 }
 
@@ -81,31 +90,15 @@ Device::~Device() {
   msg_sink_.Run(msg);
 }
 
-// static
-std::unique_ptr<Device> Device::ForInterface(const std::string& ifname,
-                                             const MessageSink& msg_sink) {
-  DeviceConfig config;
-  if (!AssignAddr(ifname, &config))
-    return nullptr;
+void Device::FillProto(DeviceConfig* msg) {
+  msg->set_br_ifname(config_->host_ifname());
+  msg->set_br_ipv4(IPv4AddressToString(config_->host_ipv4_addr()));
+  msg->set_arc_ifname(config_->guest_ifname());
+  msg->set_arc_ipv4(IPv4AddressToString(config_->guest_ipv4_addr()));
+  msg->set_mac_addr(MacAddressToString(config_->guest_mac_addr()));
 
-  // TODO(garrick): Multicast forwarding should be only on for Ethernet and
-  // Wifi.
-  if (ifname == kAndroidLegacyDevice) {
-    config.set_br_ifname("arcbr0");
-    config.set_arc_ifname("arc0");
-    config.set_find_ipv6_routes(true);
-    config.set_fwd_multicast(true);
-  } else {
-    if (ifname == kAndroidDevice)
-      config.set_br_ifname("arcbr0");
-    else
-      config.set_br_ifname(base::StringPrintf("arc_%s", ifname.c_str()));
-
-    config.set_arc_ifname(ifname);
-    config.set_find_ipv6_routes(false);
-    config.set_fwd_multicast(false);
-  }
-  return std::make_unique<Device>(ifname, config, msg_sink);
+  msg->set_fwd_multicast(options_.fwd_multicast);
+  msg->set_find_ipv6_routes(options_.find_ipv6_routes);
 }
 
 void Device::Enable(const std::string& ifname) {
@@ -130,18 +123,20 @@ void Device::Enable(const std::string& ifname) {
 
   // TODO(garrick): Revisit multicast forwarding when NAT rules are enabled
   // for other devices.
-  if (config_.fwd_multicast()) {
+  if (options_.fwd_multicast) {
     mdns_forwarder_.reset(new MulticastForwarder());
-    ssdp_forwarder_.reset(new MulticastForwarder());
-    mdns_forwarder_->Start(config_.br_ifname(), legacy_lan_ifname_,
-                           config_.arc_ipv4(), kMdnsMcastAddress, kMdnsPort,
+    mdns_forwarder_->Start(config_->host_ifname(), legacy_lan_ifname_,
+                           config_->guest_ipv4_addr(), kMdnsMcastAddress,
+                           kMdnsPort,
                            /* allow_stateless */ true);
-    ssdp_forwarder_->Start(config_.br_ifname(), legacy_lan_ifname_,
-                           /* arc_ipaddr */ "", kSsdpMcastAddress, kSsdpPort,
+
+    ssdp_forwarder_.reset(new MulticastForwarder());
+    ssdp_forwarder_->Start(config_->host_ifname(), legacy_lan_ifname_,
+                           INADDR_ANY, kSsdpMcastAddress, kSsdpPort,
                            /* allow_stateless */ false);
   }
 
-  if (config_.find_ipv6_routes()) {
+  if (options_.find_ipv6_routes) {
     router_finder_.reset(new RouterFinder());
     router_finder_->Start(
         legacy_lan_ifname_,
@@ -163,7 +158,7 @@ void Device::Disable() {
     return;
 
   // Clear IPv6 info, if necessary.
-  if (config_.find_ipv6_routes()) {
+  if (options_.find_ipv6_routes) {
     IpHelperMessage msg;
     msg.set_dev_ifname(ifname_);
     msg.set_clear_arc_ip(true);
@@ -171,7 +166,7 @@ void Device::Disable() {
   }
 
   // Disable inbound traffic.
-  {
+  if (!legacy_lan_ifname_.empty()) {
     LOG(INFO) << "Unbinding interface " << legacy_lan_ifname_ << " from device "
               << ifname_;
     legacy_lan_ifname_.clear();
@@ -225,9 +220,9 @@ void Device::OnNeighborCheckResult(bool found) {
   } else {
     struct in6_addr router;
 
-    if (!ArcIpConfig::GetV6Address(config_.br_ifname(), &router)) {
+    if (!ArcIpConfig::GetV6Address(config_->host_ifname(), &router)) {
       LOG(ERROR) << "Error reading link local address for "
-                 << config_.br_ifname();
+                 << config_->host_ifname();
       return;
     }
 
