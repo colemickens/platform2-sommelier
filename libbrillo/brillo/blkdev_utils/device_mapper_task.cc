@@ -27,12 +27,21 @@ bool DevmapperTaskImpl::AddTarget(uint64_t start,
                                   uint64_t length,
                                   const std::string& type,
                                   const SecureBlob& parameters) {
+  // Strings stored in SecureBlob don't end with '\0'. Unfortunately,
+  // this causes accesses beyond the allocated storage space if any
+  // of the functions expecting a c-string get passed a SecureBlob.data().
+  // Temporarily, assign to a string.
+  // TODO(sarthakkukreti): Evaluate creation of a SecureCString to keep
+  // string data safe.
+  std::string parameters_str = parameters.to_string();
   if (!task_ ||
       !dm_task_add_target(task_.get(), start, length, type.c_str(),
-                          reinterpret_cast<const char*>(parameters.data()))) {
+                          parameters_str.c_str())) {
     LOG(ERROR) << "AddTarget failed";
     return false;
   }
+  // Clear the string.
+  parameters_str.clear();
   return true;
 }
 
