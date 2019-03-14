@@ -38,6 +38,7 @@ from datetime import date
 import os
 import re
 import subprocess
+import sys
 
 
 # Holds information about a protobuf message field.
@@ -222,6 +223,8 @@ def GenerateFileHeaders(proto_name, package, imports, subdir, header_file_name,
 //
 
 // THIS CODE IS GENERATED.
+// Generated with command:
+// %(cmd)s
 
 #ifndef %(guard_name)s
 #define %(guard_name)s
@@ -235,7 +238,8 @@ namespace %(package)s {
        'guard_name': guard_name,
        'package': package,
        'proto': proto_name,
-       'package_with_subdir': package_with_subdir}
+       'package_with_subdir': package_with_subdir,
+       'cmd': ' '.join(sys.argv)}
   impl = """\
 //
 // Copyright (C) %(year)s The Android Open Source Project
@@ -254,6 +258,8 @@ namespace %(package)s {
 //
 
 // THIS CODE IS GENERATED.
+// Generated with command:
+// %(cmd)s
 
 #include "%(package_with_subdir)s/%(header_file_name)s"
 
@@ -271,7 +277,8 @@ namespace %(package)s {
        'package': package,
        'package_with_subdir': package_with_subdir,
        'header_file_name': header_file_name,
-       'includes': includes}
+       'includes': includes,
+       'cmd': ' '.join(sys.argv)}
 
   header_file.write(header)
   impl_file.write(impl)
