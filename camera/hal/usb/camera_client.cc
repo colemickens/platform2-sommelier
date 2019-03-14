@@ -1035,17 +1035,22 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
   // we should return next frame.
   const uint64_t allowed_shift_frame_duration_ns =
       (1'000'000'000LL / stream_on_fps_) * 0.2;
+  size_t drop_count = 0;
 
   // Some requests take a long time and cause several frames are buffered in
   // V4L2 buffers in UVC driver. It causes user can get several frames during
   // one frame duration when user send capture requests seamlessly. We should
   // drop out-of-date frames to pass testResultTimestamps CTS test.
   // See b/119635561 for detail.
+  // Since UVC HW timestamp may error when UVC driver drops frames, we at most
+  // drop the size of |input_buffers_| frames here to avoid infinite loop.
+  // TODO(henryhsu): Have another thread to fetch frame and report latest one.
   do {
     if (delta_user_ts > 0) {
       VLOGF(1) << "Drop outdated frame: delta_user_ts = " << delta_user_ts
                << ", delta_v4l2_ts = " << delta_v4l2_ts;
       device_->ReuseFrameBuffer(buffer_id);
+      drop_count++;
       if (ret) {
         LOGFID(ERROR, device_id_)
             << "ReuseFrameBuffer failed: " << base::safe_strerror(-ret)
@@ -1076,7 +1081,8 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
     // 2. Do not drop frames for external camera, because it may not support
     //    constant frame rate and the hardware timestamp is not stable enough.
   } while (!is_video_recording_ && !IsExternalCamera() &&
-           allowed_shift_frame_duration_ns + delta_v4l2_ts < delta_user_ts);
+           allowed_shift_frame_duration_ns + delta_v4l2_ts < delta_user_ts &&
+           drop_count < input_buffers_.size());
   current_buffer_timestamp_in_user_ = user_ts;
   current_buffer_timestamp_in_v4l2_ = v4l2_ts;
 
