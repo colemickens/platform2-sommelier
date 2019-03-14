@@ -17,6 +17,8 @@ namespace {
 const char kUnprivilegedUser[] = "nobody";
 const uint64_t kIpTablesCapMask =
     CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
+const uint64_t kModprobeCapMask = CAP_TO_MASK(CAP_SYS_MODULE);
+const char kModprobePath[] = "/sbin/modprobe";
 const char kNsEnterPath[] = "/usr/bin/nsenter";
 const char kTouchPath[] = "/system/bin/touch";
 const char kSentinelFile[] = "/dev/.arc_network_ready";
@@ -37,14 +39,14 @@ int RunSyncDestroy(const std::vector<std::string>& argv,
     LOG(ERROR) << "Could not execute '" << base::JoinString(argv, " ") << "'";
   } else if (log_failures && (!WIFEXITED(status) || WEXITSTATUS(status) != 0)) {
     if (WIFEXITED(status)) {
-      LOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
-                   << "' exited with code " << WEXITSTATUS(status);
+      PLOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
+                    << "' exited with code " << WEXITSTATUS(status);
     } else if (WIFSIGNALED(status)) {
-      LOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
-                   << "' exited with signal " << WTERMSIG(status);
+      PLOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
+                    << "' exited with signal " << WTERMSIG(status);
     } else {
-      LOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
-                   << "' exited with unknown status " << status;
+      PLOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
+                    << "' exited with unknown status " << status;
     }
   }
   return ran && WIFEXITED(status) ? WEXITSTATUS(status) : -1;
@@ -97,6 +99,16 @@ int MinijailedProcessRunner::WriteSentinelToContainer(
   return RunSync({kNsEnterPath, "-t", con_pid, "--mount", "--pid", "--",
                   kTouchPath, kSentinelFile},
                  mj_, true);
+}
+
+int MinijailedProcessRunner::ModprobeAll(
+    const std::vector<std::string>& modules) {
+  minijail* jail = mj_->New();
+  CHECK(mj_->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser));
+  mj_->UseCapabilities(jail, kModprobeCapMask);
+  std::vector<std::string> args = {kModprobePath, "-a"};
+  args.insert(args.end(), modules.begin(), modules.end());
+  return RunSyncDestroy(args, mj_, jail, true);
 }
 
 }  // namespace arc_networkd

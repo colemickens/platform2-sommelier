@@ -24,6 +24,7 @@
 #include <shill/net/rtnl_handler.h>
 #include <shill/net/rtnl_message.h>
 
+#include "arc/network/minijailed_process_runner.h"
 #include "arc/network/scoped_ns.h"
 
 namespace {
@@ -92,6 +93,43 @@ int IpHelper::OnInit() {
 }
 
 void IpHelper::InitialSetup() {
+  // Load networking modules needed by Android that are not compiled in the
+  // kernel. Android does not allow auto-loading of kernel modules.
+  // Only applicable for ARC++ container.
+  auto process_runner = std::make_unique<MinijailedProcessRunner>();
+
+  // These must succeed.
+  if (process_runner->ModprobeAll({
+          // The netfilter modules needed by netd for iptables commands.
+          "ip6table_filter",
+          "ip6t_ipv6header",
+          "ip6t_REJECT",
+          // The xfrm modules needed for Android's ipsec APIs.
+          "xfrm4_mode_transport",
+          "xfrm4_mode_tunnel",
+          "xfrm6_mode_transport",
+          "xfrm6_mode_tunnel",
+          // The ipsec modules for AH and ESP encryption for ipv6.
+          "ah6",
+          "esp6",
+      }) != 0) {
+    LOG(ERROR) << "Aborting setup flow because one or more required kernel "
+                  "modules failed to load.";
+    Quit();
+    return;
+  }
+
+  // Optional modules.
+  process_runner->ModprobeAll({
+      // This module is not available in kernels < 3.18
+      "nf_reject_ipv6",
+      // These modules are needed for supporting Chrome traffic on Android
+      // VPN which uses Android's NAT feature. Android NAT sets up iptables
+      // rules that use these conntrack modules for FTP/TFTP.
+      "nf_nat_ftp",
+      "nf_nat_tftp",
+  });
+
   // Ensure that the parent is alive before trying to continue the setup.
   char buffer = 0;
   if (!base::UnixDomainSocket::SendMsg(control_fd_.get(), &buffer,

@@ -47,6 +47,9 @@ class MinijailedProcessRunner {
   // the host networking is ready.
   virtual int WriteSentinelToContainer(const std::string& con_pid);
 
+  // Installs all |modules| via modprobe.
+  virtual int ModprobeAll(const std::vector<std::string>& modules);
+
  private:
   brillo::Minijail* mj_;
 

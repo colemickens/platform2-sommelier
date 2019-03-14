@@ -112,4 +112,16 @@ TEST_F(MinijailProcessRunnerTest, WriteSentinelToContainer) {
   runner_.WriteSentinelToContainer("12345");
 }
 
+TEST_F(MinijailProcessRunnerTest, ModprobeAll) {
+  uint64_t caps = CAP_TO_MASK(CAP_SYS_MODULE);
+
+  const std::vector<std::string> args = {"-a", "module1", "module2"};
+  EXPECT_CALL(mj_, New());
+  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")));
+  EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
+  EXPECT_CALL(mj_,
+              RunSyncAndDestroy(_, IsProcessArgs("/sbin/modprobe", args), _));
+  runner_.ModprobeAll({"module1", "module2"});
+}
+
 }  // namespace arc_networkd
