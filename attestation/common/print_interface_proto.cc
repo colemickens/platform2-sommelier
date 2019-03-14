@@ -15,6 +15,8 @@
 //
 
 // THIS CODE IS GENERATED.
+// Generated with command:
+// ./proto_print.py --subdir common interface.proto
 
 #include "attestation/common/print_interface_proto.h"
 

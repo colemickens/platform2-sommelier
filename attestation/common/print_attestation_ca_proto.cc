@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2018 The Android Open Source Project
+// Copyright (C) 2019 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 //
 
 // THIS CODE IS GENERATED.
+// Generated with command:
+// ./proto_print.py --subdir common attestation_ca.proto
 
 #include "attestation/common/print_attestation_ca_proto.h"
 
@@ -379,6 +381,15 @@ std::string GetProtoDebugStringWithIndent(
             .c_str());
     output += "\n";
   }
+  if (value.has_encrypted_rsa_endorsement_quote()) {
+    output += indent + "  encrypted_rsa_endorsement_quote: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.encrypted_rsa_endorsement_quote(),
+                                      indent_size + 2)
+            .c_str());
+    output += "\n";
+  }
   output += indent + "}\n";
   return output;
 }
@@ -413,6 +424,11 @@ std::string GetProtoDebugStringWithIndent(
         GetProtoDebugStringWithIndent(value.encrypted_identity_credential(),
                                       indent_size + 2)
             .c_str());
+    output += "\n";
+  }
+  if (value.has_extra_details()) {
+    output += indent + "  extra_details: ";
+    base::StringAppendF(&output, "%s", value.extra_details().c_str());
     output += "\n";
   }
   output += indent + "}\n";
@@ -559,6 +575,11 @@ std::string GetProtoDebugStringWithIndent(
             .c_str());
   }
   output += "}\n";
+  if (value.has_extra_details()) {
+    output += indent + "  extra_details: ";
+    base::StringAppendF(&output, "%s", value.extra_details().c_str());
+    output += "\n";
+  }
   output += indent + "}\n";
   return output;
 }
@@ -622,6 +643,11 @@ std::string GetProtoDebugStringWithIndent(const AttestationResetResponse& value,
   if (value.has_detail()) {
     output += indent + "  detail: ";
     base::StringAppendF(&output, "%s", value.detail().c_str());
+    output += "\n";
+  }
+  if (value.has_extra_details()) {
+    output += indent + "  extra_details: ";
+    base::StringAppendF(&output, "%s", value.extra_details().c_str());
     output += "\n";
   }
   output += indent + "}\n";
