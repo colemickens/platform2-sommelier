@@ -12,7 +12,6 @@
 #include <imageloader/dbus-proxy-mocks.h>
 #include <update_engine/dbus-constants.h>
 #include <update_engine/dbus-proxy-mocks.h>
-#include <update_engine/proto_bindings/update_engine.pb.h>
 
 #include "dlcservice/boot_slot.h"
 #include "dlcservice/dlc_service_dbus_adaptor.h"
@@ -31,7 +30,7 @@ constexpr char kManifestName[] = "imageloader.json";
 MATCHER_P(ProtoHasUrl,
           url,
           std::string("The protobuf provided does not have url: ") + url) {
-  chromeos_update_engine::DlcParameters dlc_parameters;
+  dlcservice::DlcModuleList dlc_parameters;
   if (!dlc_parameters.ParseFromString(arg)) {
     return false;
   }

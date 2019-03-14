@@ -15,7 +15,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <update_engine/dbus-constants.h>
-#include <update_engine/proto_bindings/update_engine.pb.h>
 
 #include "dlcservice/boot_slot.h"
 #include "dlcservice/utils.h"
@@ -197,9 +196,9 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
   }
 
   // Invokes update_engine to install the DLC module.
-  chromeos_update_engine::DlcParameters dlc_parameters;
+  dlcservice::DlcModuleList dlc_parameters;
   dlc_parameters.set_omaha_url(omaha_url_in);
-  chromeos_update_engine::DlcInfo* dlc_info = dlc_parameters.add_dlc_infos();
+  dlcservice::DlcModuleInfo* dlc_info = dlc_parameters.add_dlc_module_infos();
   dlc_info->set_dlc_id(id_in);
   std::string dlc_request;
   if (!dlc_parameters.SerializeToString(&dlc_request)) {
