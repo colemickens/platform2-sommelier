@@ -34,7 +34,6 @@ _IUSE = [
     'cfm_enabled_device',
     'cheets',
     'chromeless_tty',
-    'chromeos_dbus',
     'containers',
     'coverage',
     'cros_host',

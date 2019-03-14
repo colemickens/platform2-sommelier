@@ -36,7 +36,6 @@
     'USE_buffet%': 0,
     'USE_cellular%': 0,
     'USE_cfm_enabled_device%': 0,
-    'USE_chromeos_dbus%': 0,
     'USE_containers%': 0,
     'USE_coverage%': 0,
     'USE_cros_host%': 0,
