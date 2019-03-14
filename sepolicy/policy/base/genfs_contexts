@@ -46,12 +46,17 @@ genfscon proc /sysrq-trigger u:object_r:proc_sysrq:s0
 genfscon proc /uid_cputime/remove_uid_range u:object_r:proc_uid_cputime_removeuid:s0
 genfscon proc /uid_cputime/show_uid_stat u:object_r:proc_uid_cputime_showstat:s0
 genfscon proc /uptime u:object_r:proc_uptime:s0
+genfscon proc /vmstat u:object_r:proc_vmstat:s0
 
 # selinuxfs booleans can be individually labeled.
 genfscon selinuxfs / u:object_r:selinuxfs:s0
 
 # sysfs labeling
 genfscon sysfs / u:object_r:sysfs:s0
+genfscon sysfs /devices/virtual/block/zram0 u:object_r:sysfs_zram:s0
+genfscon sysfs /devices/virtual/block/zram1 u:object_r:sysfs_zram:s0
+genfscon sysfs /devices/virtual/block/zram0/uevent u:object_r:sysfs_zram_uevent:s0
+genfscon sysfs /devices/virtual/block/zram1/uevent u:object_r:sysfs_zram_uevent:s0
 
 # debugfs labeling
 genfscon debugfs / u:object_r:debugfs:s0

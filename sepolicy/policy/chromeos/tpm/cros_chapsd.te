@@ -15,8 +15,7 @@ allow cros_chapsd cros_var_lib_chaps:{file dir} { create unlink rename };
 
 r_dir_file(cros_chapsd, cros_passwd_file);
 
-allow cros_chapsd self:tcp_socket create_socket_perms_no_ioctl;
-allow cros_chapsd port:tcp_socket name_connect;
+cros_tcp_connect(cros_chapsd);
 
 allow cros_chapsd sysfs:file r_file_perms;
 

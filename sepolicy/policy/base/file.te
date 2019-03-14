@@ -47,6 +47,7 @@ type proc_sysrq, fs_type, proc_type;
 type proc_uid_cputime_removeuid, fs_type, proc_type;
 type proc_uid_cputime_showstat, fs_type, proc_type;
 type proc_uptime, fs_type, proc_type;
+type proc_vmstat, fs_type, proc_type;
 type pstorefs, fs_type;
 type qtaguid_proc, fs_type;
 type usbfs, fs_type;
@@ -55,3 +56,5 @@ type vfat, fs_type;
 
 
 type sysfs_devices_system_cpu, fs_type, sysfs_type;
+type sysfs_zram, fs_type, sysfs_type;
+type sysfs_zram_uevent, fs_type, sysfs_type;

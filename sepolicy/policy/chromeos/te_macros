@@ -50,8 +50,19 @@ define(`cros_tcp_create', `
 allow $1 self:tcp_socket create_socket_perms;
 ')
 
+define(`cros_tcp_connect', `
+cros_tcp_create($1);
+allow $1 port:tcp_socket name_connect;
+');
+
 define(`cros_udp_create', `
 allow $1 self:udp_socket create_socket_perms;
+');
+
+define(`cros_udp_listen', `
+cros_udp_create($1);
+allow $1 node:udp_socket node_bind;
+allow $1 port:udp_socket name_bind;
 ');
 
 define(`cros_netlink', `

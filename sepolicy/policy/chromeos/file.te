@@ -71,6 +71,7 @@ type cros_home, file_type, cros_file_type, cros_home_file_type;
 type cros_home_user, file_type, cros_file_type, cros_home_file_type;
 type cros_home_root, file_type, cros_file_type, cros_home_file_type;
 type cros_home_chronos, file_type, cros_file_type, cros_home_file_type;
+#type cros_home_chronos_crash, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_low_entropy_creds, file_type, cros_file_type, cros_home_file_type;
@@ -158,6 +159,7 @@ type cros_tlsdate_log, file_type, cros_log_type, cros_file_type, cros_var_file_t
 type cros_var_log_chrome, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_eventlog, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_journal, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_var_log_vmlog, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 
 # /var/spool
 type cros_crash_spool, file_type, cros_file_type, cros_var_file_type;
@@ -237,13 +239,9 @@ filetrans_pattern_no_target_perm(chromeos_domain, cros_var, cros_var_empty, dir,
 filetrans_pattern_no_target_perm(chromeos_domain, cros_var, cros_var_log, dir, "log");
 filetrans_pattern_no_target_perm(chromeos_domain, cros_var, cros_var_spool, dir, "spool");
 
-# CTS!!
-# neverallow {     domain     -init     -vold     -vold_prepare_subdirs } vold_metadata_file:{ file lnk_file sock_file fifo_file } ~{ relabelto getattr };
-# neverallow {     domain     -init     -kernel     -vendor_init     -vold     -vold_prepare_subdirs } { vold_data_file vold_metadata_file }:{ file lnk_file sock_file fifo_file } *;
-# neverallow { domain -keystore } keystore_data_file:{ file lnk_file sock_file fifo_file } ~{ relabelto getattr };
-# neverallow {   domain   -shell      -installd } shell_data_file:lnk_file read;
-# should restrict to chromeos link file only.
-# allow chromeos_domain file_type:lnk_file { read getattr };
-
-
 neverallow domain cros_system_file_type:file { unlink append write };
+
+allow chromeos_domain cros_system_file_type:dir { read search getattr };
+allow chromeos_domain cros_system_file_type:file { read open getattr };
+allow chromeos_domain cros_system_file_type:lnk_file { read getattr };
+

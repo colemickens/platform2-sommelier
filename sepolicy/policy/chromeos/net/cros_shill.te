@@ -27,12 +27,12 @@ allow cros_shill self:capability { net_admin net_raw setgid setpcap setuid kill 
 allow cros_shill self:netlink_generic_socket { bind create read setopt write };
 allow cros_shill self:netlink_route_socket { bind create nlmsg_read nlmsg_write read setopt write };
 allow cros_shill self:packet_socket { bind create };
-allow cros_shill self:tcp_socket { connect create getattr getopt read setopt write };
-allow cros_shill self:udp_socket { connect create ioctl read setopt write };
 
-allow cros_shill port:tcp_socket name_connect;
 allow cros_shill proc_net:file rw_file_perms;
 allow cros_shill proc_uptime:file r_file_perms;
+
+cros_tcp_connect(cros_shill);
+cros_udp_listen(cros_shill);
 
 allow cros_shill kernel:system module_request;
 
@@ -40,11 +40,8 @@ allow cros_shill device:blk_file getattr;
 
 # dhcpcd-specific
 allow cros_shill cros_dhcpcd_exec:file rx_file_perms;
-allow cros_shill port:udp_socket name_bind;
-allow cros_shill node:udp_socket node_bind;
 allow cros_shill self:capability net_bind_service;
 allow cros_shill self:packet_socket { setopt write read };
-allow cros_shill self:udp_socket bind;
 allow cros_shill self:netlink_route_socket getattr;
 allowxperm cros_shill self:udp_socket ioctl { SIOCETHTOOL SIOCGIWESSID };
 
