@@ -1,4 +1,4 @@
-type cros_browser, cros_miscdomain, chromeos_domain, domain, mlstrustedobject;
+type cros_browser, cros_miscdomain, chromeos_domain, domain, mlstrustedobject, mlstrustedsubject;
 
 permissive cros_browser;
 
@@ -6,6 +6,7 @@ domain_auto_trans(chromeos_domain, chrome_browser_exec, cros_browser);
 
 allow cros_browser domain:dir { getattr search };
 allow cros_browser domain:file { getattr open read };
+allow cros_browser domain:lnk_file { read getattr };
 
 filetrans_pattern({cros_session_manager cros_browser}, cros_run, arc_dir, dir, "chrome");
 filetrans_pattern(cros_browser, arc_dir, wayland_socket, sock_file, "wayland-0");

@@ -226,3 +226,4 @@ filetrans_pattern_no_target_perm(chromeos_domain, cros_var, cros_var_empty, dir,
 filetrans_pattern_no_target_perm(chromeos_domain, cros_var, cros_var_log, dir, "log");
 filetrans_pattern_no_target_perm(chromeos_domain, cros_var, cros_var_spool, dir, "spool");
 
+allow chromeos_domain file_type:lnk_file { read getattr };

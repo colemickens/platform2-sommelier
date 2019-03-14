@@ -15,3 +15,7 @@ allow cros_journald cros_var_log:file rw_file_perms;
 
 allow cros_journald kernel:system syslog_mod;
 allow cros_journald self:capability2 syslog;
+
+allow cros_journald domain:dir { getattr search };
+allow cros_journald domain:file { getattr open read };
+allow cros_journald domain:lnk_file { getattr read };
