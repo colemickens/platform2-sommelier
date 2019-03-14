@@ -1,4 +1,5 @@
-#!/usr/bin/python2
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
 
 #
 # Copyright (C) 2015 The Android Open Source Project
