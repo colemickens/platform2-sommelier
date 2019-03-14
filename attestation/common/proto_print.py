@@ -180,8 +180,8 @@ def ParseProto(input_file):
   return package, imports, messages, enums
 
 
-def GenerateFileHeaders(proto_name, package, imports, subdir, header_file_name,
-                        header_file, impl_file):
+def GenerateFileHeaders(proto_name, package, imports, subdir, proto_include,
+                        header_file_name, header_file, impl_file):
   """Generates and prints file headers.
 
   Args:
@@ -189,6 +189,8 @@ def GenerateFileHeaders(proto_name, package, imports, subdir, header_file_name,
     package: The protobuf package.
     imports: A list of imported protos.
     subdir: The --subdir arg.
+    proto_include: Include directory override for the #include statement
+                   in generated code
     header_file_name: The header file name.
     header_file: The header file handle, open for writing.
     impl_file: The implementation file handle, open for writing.
@@ -201,6 +203,9 @@ def GenerateFileHeaders(proto_name, package, imports, subdir, header_file_name,
   else:
     guard_name = '%s_PRINT_%s_PROTO_H_' % (package.upper(), proto_name.upper())
     package_with_subdir = package
+  proto_include_dir = package_with_subdir
+  if proto_include is not None:
+    proto_include_dir = proto_include
   includes = '\n'.join(
       ['#include "%(package_with_subdir)s/print_%(import)s_proto.h"' % {
           'package_with_subdir': package_with_subdir,
@@ -231,14 +236,14 @@ def GenerateFileHeaders(proto_name, package, imports, subdir, header_file_name,
 
 #include <string>
 
-#include "%(package_with_subdir)s/%(proto)s.pb.h"
+#include "%(proto_include_dir)s/%(proto)s.pb.h"
 
 namespace %(package)s {
 """ % {'year': date.today().year,
        'guard_name': guard_name,
        'package': package,
        'proto': proto_name,
-       'package_with_subdir': package_with_subdir,
+       'proto_include_dir': proto_include_dir,
        'cmd': ' '.join(sys.argv)}
   impl = """\
 //
@@ -431,7 +436,12 @@ def FormatFile(filename):
 def main():
   parser = argparse.ArgumentParser(description='print proto code generator')
   parser.add_argument('input_file')
-  parser.add_argument('--subdir', default='')
+  parser.add_argument('--subdir', default='',
+                      help=('The subdirectory under which the generated ' +
+                            'file will reside in'))
+  parser.add_argument('--proto-include', default=None,
+                      help=('Override for the include path of *.pb.h in' +
+                            'generated header'))
   args = parser.parse_args()
   with open(args.input_file) as input_file:
     package, imports, messages, enums = ParseProto(input_file)
@@ -441,7 +451,8 @@ def main():
   with open(header_file_name, 'w') as header_file:
     with open(impl_file_name, 'w') as impl_file:
       GenerateFileHeaders(proto_name, package, imports, args.subdir,
-                          header_file_name, header_file, impl_file)
+                          args.proto_include, header_file_name, header_file,
+                          impl_file)
       for enum in enums:
         GenerateEnumPrinter(enum, header_file, impl_file)
       for message in messages:
