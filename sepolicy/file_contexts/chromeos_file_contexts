@@ -188,6 +188,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /home/chronos/u-[0-9a-z]{40}     u:object_r:cros_home_chronos:s0
 /home/.shadow                    u:object_r:cros_home_shadow:s0
 /home/.shadow/(?![0-9a-z]{40}).* u:object_r:cros_home_shadow:s0
+/home/.shadow/low_entropy_creds(/.*)? u:object_r:cros_home_shadow_low_entropy_creds:s0
 # exclude <uid>/mount/root/android-data/data
 /home/.shadow/[0-9a-z]{40}(/(?!mount/root/android-data/data).*)? u:object_r:cros_home_shadow_uid:s0
 /home/.shadow/[0-9a-z]{40}/mount/root(/(?!android-data/data).*)? u:object_r:cros_home_shadow_uid_root:s0

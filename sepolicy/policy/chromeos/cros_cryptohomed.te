@@ -10,6 +10,7 @@ log_writer(cros_cryptohomed);
 uma_writer(cros_cryptohomed);
 
 filetrans_pattern(cros_cryptohomed, cros_home, cros_home_shadow, dir, ".shadow");
+filetrans_pattern(cros_cryptohomed, cros_home_shadow, cros_home_shadow_low_entropy_creds, dir, "low_entropy_creds");
 filetrans_pattern(cros_cryptohomed, cros_home_shadow, cros_home_shadow_uid, dir);
 filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid, cros_home_shadow_uid_root, dir, "root");
 filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid, cros_home_shadow_uid_user, dir, "user");

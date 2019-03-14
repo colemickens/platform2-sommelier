@@ -73,6 +73,7 @@ type cros_home_root, file_type;
 type cros_home_chronos, file_type;
 type cros_home_shadow, file_type;
 type cros_home_shadow_uid, file_type;
+type cros_home_shadow_low_entropy_creds, file_type;
 type cros_home_shadow_uid_user, file_type;
 type cros_home_shadow_uid_root, file_type;
 type cros_home_shadow_uid_root_chaps, file_type;
