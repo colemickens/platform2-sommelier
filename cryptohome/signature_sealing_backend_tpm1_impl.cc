@@ -1200,6 +1200,7 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
     const Blob& delegate_blob,
     const Blob& delegate_secret,
+    brillo::SecureBlob* secret_value,
     SignatureSealedData* sealed_secret_data) {
   // TODO(chromium:806788,b:77799573): Support absence of PCR restrictions.
   DCHECK(!pcr_restrictions.empty());
@@ -1290,12 +1291,11 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     return false;
   }
   // Generate the secret value randomly.
-  SecureBlob secret_value;
-  if (!tpm_->GetRandomDataSecureBlob(kSecretSizeBytes, &secret_value)) {
+  if (!tpm_->GetRandomDataSecureBlob(kSecretSizeBytes, secret_value)) {
     LOG(ERROR) << "Error generating random secret";
     return false;
   }
-  DCHECK_EQ(secret_value.size(), kSecretSizeBytes);
+  DCHECK_EQ(secret_value->size(), kSecretSizeBytes);
   // Bind the secret value to each of the specified sets of PCR restrictions.
   DCHECK(!pcr_restrictions.empty());
   std::vector<Blob> pcr_bound_secret_values;
@@ -1309,7 +1309,7 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
           BlobToString(pcr_index_and_value.second);
     }
     if (tpm_->SealToPcrWithAuthorization(
-            kInvalidKeyHandle /* key_handle */, secret_value, auth_data,
+            kInvalidKeyHandle /* key_handle */, *secret_value, auth_data,
             pcr_values_strings,
             &pcr_bound_secret_value) != Tpm::kTpmRetryNone) {
       LOG(ERROR)

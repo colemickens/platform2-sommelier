@@ -43,9 +43,8 @@ void ChallengeCredentialsHelper::GenerateNew(
   CancelRunningOperation();
   DCHECK(!key_challenge_service_);
   // TODO(emaxx, https://crbug.com/842791): This should generate a salt, request
-  // its signature, create a sealed secret, start unsealing session for
-  // unsealing it, request signature of its challenge, complete unsealing,
-  // generate credentials from the salt signature and the unsealed secret.
+  // its signature, create a sealed secret, generate credentials from the salt
+  // signature and the secret value.
   NOTIMPLEMENTED() << "ChallengeCredentialsHelper::GenerateNew";
 }
 

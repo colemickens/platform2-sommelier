@@ -24,12 +24,13 @@ class MockSignatureSealingBackend : public SignatureSealingBackend {
   MockSignatureSealingBackend();
   ~MockSignatureSealingBackend() override;
 
-  MOCK_METHOD6(CreateSealedSecret,
+  MOCK_METHOD7(CreateSealedSecret,
                bool(const brillo::Blob&,
                     const std::vector<ChallengeSignatureAlgorithm>&,
                     const std::vector<std::map<uint32_t, brillo::Blob>>&,
                     const brillo::Blob&,
                     const brillo::Blob&,
+                    brillo::SecureBlob*,
                     SignatureSealedData*));
 
   // Wrap a mockable method to workaround gmock's issue with noncopyable types.

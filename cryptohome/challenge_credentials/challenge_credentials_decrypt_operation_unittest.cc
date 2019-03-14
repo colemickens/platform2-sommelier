@@ -137,7 +137,7 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
     mocker->set_chosen_algorithm(unsealing_algorithm);
     mocker->set_challenge_value(kUnsealingChallengeValue);
     mocker->set_challenge_signature(kUnsealingChallengeSignature);
-    mocker->set_unsealed_secret(kUnsealedSecret);
+    mocker->set_secret_value(kUnsealedSecret);
     return mocker;
   }
 

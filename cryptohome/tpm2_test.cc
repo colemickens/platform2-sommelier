@@ -1548,10 +1548,13 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
           DoAll(SetArgPointee<4>(kSealedSecretValue), Return(TPM_RC_SUCCESS)));
 
   // Trigger the secret creation.
+  SecureBlob secret_value;
   SignatureSealedData sealed_data;
   EXPECT_TRUE(signature_sealing_backend()->CreateSealedSecret(
       key_spki_der_, supported_algorithms(), {pcr_values},
-      Blob() /* delegate_blob */, Blob() /* delegate_secret */, &sealed_data));
+      Blob() /* delegate_blob */, Blob() /* delegate_secret */, &secret_value,
+      &sealed_data));
+  EXPECT_EQ(secret_value, SecureBlob(kSecretValue));
   ASSERT_TRUE(sealed_data.has_tpm2_policy_signed_data());
   const SignatureSealedData_Tpm2PolicySignedData& sealed_data_contents =
       sealed_data.tpm2_policy_signed_data();

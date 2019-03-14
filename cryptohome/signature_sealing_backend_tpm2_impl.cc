@@ -257,6 +257,7 @@ bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
     const Blob& /* delegate_blob */,
     const Blob& /* delegate_secret */,
+    brillo::SecureBlob* secret_value,
     SignatureSealedData* sealed_secret_data) {
   // Choose the algorithm. Respect the input's algorithm prioritization, with
   // the exception of considering SHA-1 as the least preferred option.
@@ -389,16 +390,16 @@ bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     return false;
   }
   // Generate the secret value randomly.
-  SecureBlob secret_value;
-  if (!tpm_->GetRandomDataSecureBlob(kSecretSizeBytes, &secret_value)) {
+  if (!tpm_->GetRandomDataSecureBlob(kSecretSizeBytes, secret_value)) {
     LOG(ERROR) << "Error generating random secret";
     return false;
   }
+  DCHECK_EQ(secret_value->size(), kSecretSizeBytes);
   // Seal the secret value.
   std::string sealed_value;
   tpm_result =
-      trunks->tpm_utility->SealData(secret_value.to_string(), policy_digest, "",
-                                    session->GetDelegate(), &sealed_value);
+      trunks->tpm_utility->SealData(secret_value->to_string(), policy_digest,
+                                    "", session->GetDelegate(), &sealed_value);
   if (tpm_result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error sealing secret data: " << GetErrorString(tpm_result);
     return false;

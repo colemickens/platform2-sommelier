@@ -47,20 +47,19 @@ SignatureSealedCreationMocker::~SignatureSealedCreationMocker() = default;
 void SignatureSealedCreationMocker::SetUpSuccessfulMock() {
   const SignatureSealedData sealed_data_to_return =
       MakeFakeSignatureSealedData(public_key_spki_der_);
-  EXPECT_CALL(
-      *mock_backend_,
-      CreateSealedSecret(public_key_spki_der_, key_algorithms_,
-                         pcr_restrictions_, delegate_blob_,
-                         delegate_secret_, _))
-      .WillOnce(DoAll(SetArgPointee<5>(sealed_data_to_return), Return(true)));
+  EXPECT_CALL(*mock_backend_,
+              CreateSealedSecret(public_key_spki_der_, key_algorithms_,
+                                 pcr_restrictions_, delegate_blob_,
+                                 delegate_secret_, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>(SecureBlob(secret_value_)),
+                      SetArgPointee<6>(sealed_data_to_return), Return(true)));
 }
 
 void SignatureSealedCreationMocker::SetUpFailingMock() {
-  EXPECT_CALL(
-      *mock_backend_,
-      CreateSealedSecret(public_key_spki_der_, key_algorithms_,
-                         pcr_restrictions_, delegate_blob_,
-                         delegate_secret_, _))
+  EXPECT_CALL(*mock_backend_,
+              CreateSealedSecret(public_key_spki_der_, key_algorithms_,
+                                 pcr_restrictions_, delegate_blob_,
+                                 delegate_secret_, _, _))
       .WillOnce(Return(false));
 }
 
@@ -74,7 +73,7 @@ void SignatureSealedUnsealingMocker::SetUpSuccessfulMock() {
   MockUnsealingSession* mock_unsealing_session = AddSessionCreationMock();
   EXPECT_CALL(*mock_unsealing_session, Unseal(challenge_signature_, _))
       .WillOnce(
-          DoAll(SetArgPointee<1>(SecureBlob(unsealed_secret_)), Return(true)));
+          DoAll(SetArgPointee<1>(SecureBlob(secret_value_)), Return(true)));
 }
 
 void SignatureSealedUnsealingMocker::SetUpCreationFailingMock(

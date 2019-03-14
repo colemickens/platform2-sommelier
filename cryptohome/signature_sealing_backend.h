@@ -73,13 +73,15 @@ class SignatureSealingBackend {
   //                      constraint on the maximum allowed number of sets.
   //   delegate_blob - The blob for the owner delegation.
   //   delegate_secret - The delegate secret for the delegate blob.
-  //   sealed_secret_data - The created sealed secret value.
+  //   secret_value - The created secret value.
+  //   sealed_secret_data - Securely sealed representation of the secret value.
   virtual bool CreateSealedSecret(
       const brillo::Blob& public_key_spki_der,
       const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
       const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret,
+      brillo::SecureBlob* secret_value,
       SignatureSealedData* sealed_secret_data) = 0;
 
   // Initiates a session for unsealing the passed sealed data.

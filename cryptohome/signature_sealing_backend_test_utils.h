@@ -55,6 +55,9 @@ class SignatureSealedCreationMocker final {
   void set_delegate_secret(const brillo::Blob& delegate_secret) {
     delegate_secret_ = delegate_secret;
   }
+  void set_secret_value(const brillo::Blob& secret_value) {
+    secret_value_ = secret_value;
+  }
 
   // Sets up the CreateSealedSecret() mock that will report success and return a
   // fake result (see MakeFakeSignatureSealedData()).
@@ -69,6 +72,7 @@ class SignatureSealedCreationMocker final {
   std::vector<std::map<uint32_t, brillo::Blob>> pcr_restrictions_;
   brillo::Blob delegate_blob_;
   brillo::Blob delegate_secret_;
+  brillo::Blob secret_value_;
 
   DISALLOW_COPY_AND_ASSIGN(SignatureSealedCreationMocker);
 };
@@ -110,8 +114,8 @@ class SignatureSealedUnsealingMocker final {
   void set_challenge_signature(const brillo::Blob& challenge_signature) {
     challenge_signature_ = challenge_signature;
   }
-  void set_unsealed_secret(const brillo::Blob& unsealed_secret) {
-    unsealed_secret_ = unsealed_secret;
+  void set_secret_value(const brillo::Blob& secret_value) {
+    secret_value_ = secret_value;
   }
 
   // Sets up mocks that will simulate the successful unsealing.
@@ -139,7 +143,7 @@ class SignatureSealedUnsealingMocker final {
       CHALLENGE_RSASSA_PKCS1_V1_5_SHA1;
   brillo::Blob challenge_value_;
   brillo::Blob challenge_signature_;
-  brillo::Blob unsealed_secret_;
+  brillo::Blob secret_value_;
 
   DISALLOW_COPY_AND_ASSIGN(SignatureSealedUnsealingMocker);
 };

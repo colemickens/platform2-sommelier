@@ -604,8 +604,9 @@ class SignatureSealedSecretTestCase final {
       return true;
     }
     // Create a secret.
+    SecureBlob secret_value;
     SignatureSealedData sealed_secret_data;
-    if (!CreateSecret(&sealed_secret_data)) {
+    if (!CreateSecret(&secret_value, &sealed_secret_data)) {
       LOG(ERROR) << "Error creating a secret";
       return false;
     }
@@ -616,6 +617,11 @@ class SignatureSealedSecretTestCase final {
     if (!Unseal(sealed_secret_data, &first_challenge_value,
                 &first_challenge_signature, &first_unsealed_value)) {
       LOG(ERROR) << "Error unsealing a secret";
+      return false;
+    }
+    if (first_unsealed_value != secret_value) {
+      LOG(ERROR)
+          << "Error: unsealing returned different value than at creation time";
       return false;
     }
     // Unseal the secret again - the challenge is different, but the result is
@@ -632,8 +638,9 @@ class SignatureSealedSecretTestCase final {
       LOG(ERROR) << "Error: challenge value collision";
       return false;
     }
-    if (first_unsealed_value != second_unsealed_value) {
-      LOG(ERROR) << "Error: unsealing result differs";
+    if (second_unsealed_value != secret_value) {
+      LOG(ERROR)
+          << "Error: unsealing returned different value than at creation time";
       return false;
     }
     // Unsealing with a bad challenge response fails.
@@ -651,9 +658,14 @@ class SignatureSealedSecretTestCase final {
       return false;
     }
     // Create and unseal another secret - it has a different value.
+    SecureBlob another_secret_value;
     SignatureSealedData another_sealed_secret_data;
-    if (!CreateSecret(&another_sealed_secret_data)) {
+    if (!CreateSecret(&another_secret_value, &another_sealed_secret_data)) {
       LOG(ERROR) << "Error creating another secret";
+      return false;
+    }
+    if (another_secret_value == secret_value) {
+      LOG(ERROR) << "Error: secret value collision";
       return false;
     }
     Blob third_challenge_value;
@@ -664,8 +676,9 @@ class SignatureSealedSecretTestCase final {
       LOG(ERROR) << "Error unsealing another secret";
       return false;
     }
-    if (first_unsealed_value == third_unsealed_value) {
-      LOG(ERROR) << "Error: secret value collision";
+    if (third_unsealed_value != another_secret_value) {
+      LOG(ERROR)
+          << "Error: unsealing returned different value than at creation time";
       return false;
     }
     // Unsealing after PCRs change fails.
@@ -806,16 +819,17 @@ class SignatureSealedSecretTestCase final {
 #endif  // !USE_TPM2
   }
 
-  bool CreateSecret(SignatureSealedData* sealed_secret_data) {
+  bool CreateSecret(SecureBlob* secret_value,
+                    SignatureSealedData* sealed_secret_data) {
     std::map<uint32_t, Blob> pcr_values;
     if (!GetCurrentPcrValues(&pcr_values)) {
       LOG(ERROR) << "Error reading PCR values";
       return false;
     }
-    if (!backend()->CreateSealedSecret(key_spki_der_,
-                                       param_.supported_algorithms,
-                                       {pcr_values, pcr_values}, delegate_blob_,
-                                       delegate_secret_, sealed_secret_data)) {
+    if (!backend()->CreateSealedSecret(
+            key_spki_der_, param_.supported_algorithms,
+            {pcr_values, pcr_values}, delegate_blob_, delegate_secret_,
+            secret_value, sealed_secret_data)) {
       LOG(ERROR) << "Error creating signature-sealed secret";
       return false;
     }
@@ -828,10 +842,12 @@ class SignatureSealedSecretTestCase final {
       LOG(ERROR) << "Error reading PCR values";
       return false;
     }
+    SecureBlob secret_value;
     SignatureSealedData sealed_secret_data;
-    if (backend()->CreateSealedSecret(
-            key_spki_der_, param_.supported_algorithms, {pcr_values},
-            delegate_blob_, delegate_secret_, &sealed_secret_data)) {
+    if (backend()->CreateSealedSecret(key_spki_der_,
+                                      param_.supported_algorithms, {pcr_values},
+                                      delegate_blob_, delegate_secret_,
+                                      &secret_value, &sealed_secret_data)) {
       LOG(ERROR) << "Error: secret creation completed unexpectedly";
       return false;
     }
