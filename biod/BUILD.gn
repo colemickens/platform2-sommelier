@@ -7,6 +7,7 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":bio_crypto_init",
+    ":bio_fw_updater",
     ":bio_wash",
     ":biod",
     ":biod_client_tool",
@@ -25,6 +26,7 @@ pkg_config("target_defaults") {
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
     "libmetrics-${libbase_ver}",
+    "fmap",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear
     # before protobuf here or the linker flags won't be in the right
@@ -42,6 +44,8 @@ static_library("libbiod") {
     "biometrics_daemon.cc",
     "cros_fp_biometrics_manager.cc",
     "cros_fp_device.cc",
+    "cros_fp_firmware.cc",
+    "cros_fp_updater.cc",
     "scoped_umask.cc",
     "uinput_device.cc",
   ]
@@ -84,6 +88,16 @@ executable("biod_client_tool") {
   ]
 }
 
+executable("bio_fw_updater") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "tools/bio_fw_updater.cc",
+  ]
+  deps = [
+    ":libbiod",
+  ]
+}
+
 if (use.test) {
   pkg_config("libchrome_test_config") {
     pkg_deps = [ "libchrome-test-${libbase_ver}" ]
@@ -97,6 +111,7 @@ if (use.test) {
     sources = [
       "biod_metrics_test.cc",
       "biod_storage_test.cc",
+      "cros_fp_firmware_test.cc",
     ]
     deps = [
       ":libbiod",
