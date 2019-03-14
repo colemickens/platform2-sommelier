@@ -279,7 +279,7 @@ status_t CameraBuffer::lock_()
     if (planeNum == 1) {
         void* data = nullptr;
         ret = (mFormat == HAL_PIXEL_FORMAT_BLOB)
-                ? mGbmBufferManager->Lock(mHandle, 0, 0, 0, mStride, 1, &data)
+                ? mGbmBufferManager->Lock(mHandle, 0, 0, 0, mGbmBufferManager->GetWidth(mHandle), 1, &data)
                 : mGbmBufferManager->Lock(mHandle, 0, 0, 0, mWidth, mHeight, &data);
         CheckError(ret, UNKNOWN_ERROR, "@%s: Lock fails, mHandle:%p", __FUNCTION__, mHandle);
         mDataPtr = data;
