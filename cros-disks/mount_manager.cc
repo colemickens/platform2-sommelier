@@ -77,7 +77,7 @@ bool MountManager::StartSession() {
 }
 
 bool MountManager::StopSession() {
-  return true;
+  return UnmountAll();
 }
 
 bool MountManager::CanUnmount(const string& path) const {

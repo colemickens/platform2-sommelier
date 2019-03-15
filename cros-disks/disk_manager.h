@@ -57,9 +57,6 @@ class DiskManager : public MountManager, public DeviceEventSourceInterface {
   // Returns true on success.
   bool Initialize() override;
 
-  // Stops a session. Returns true on success.
-  bool StopSession() override;
-
   // Returns true if mounting |source_path| is supported.
   bool CanMount(const std::string& source_path) const override;
 

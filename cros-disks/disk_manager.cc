@@ -133,10 +133,6 @@ bool DiskManager::Initialize() {
   return MountManager::Initialize();
 }
 
-bool DiskManager::StopSession() {
-  return UnmountAll();
-}
-
 bool DiskManager::EmulateBlockDeviceEvent(const char* action,
                                           udev_device* dev) {
   DCHECK(dev);

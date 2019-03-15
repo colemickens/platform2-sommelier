@@ -29,7 +29,9 @@ FUSEMountManager::FUSEMountManager(const string& mount_root,
     : MountManager(mount_root, platform, metrics),
       working_dirs_root_(working_dirs_root) {}
 
-FUSEMountManager::~FUSEMountManager() {}
+FUSEMountManager::~FUSEMountManager() {
+  UnmountAll();
+}
 
 bool FUSEMountManager::Initialize() {
   if (!MountManager::Initialize())
