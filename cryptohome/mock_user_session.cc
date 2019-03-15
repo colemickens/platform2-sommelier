@@ -20,6 +20,8 @@ MockUserSession::MockUserSession() {
       .WillByDefault(Invoke(&user_session_, &UserSession::CheckUser));
   ON_CALL(*this, Verify(_))
       .WillByDefault(Invoke(&user_session_, &UserSession::Verify));
+  ON_CALL(*this, set_key_index(_))
+      .WillByDefault(Invoke(&user_session_, &UserSession::set_key_index));
 }
 
 MockUserSession::~MockUserSession() {}

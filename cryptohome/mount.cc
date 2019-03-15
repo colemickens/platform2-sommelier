@@ -1956,6 +1956,13 @@ FilePath Mount::GetEphemeralSparseFile(const std::string& obfuscated_username) {
       .Append(obfuscated_username);
 }
 
+bool Mount::SetUserCreds(const Credentials& credentials, int key_index) {
+  if (!current_user_->SetUser(credentials))
+    return false;
+  current_user_->set_key_index(key_index);
+  return true;
+}
+
 bool Mount::MountLegacyHome(const FilePath& from) {
   // Multiple mounts can't live on the legacy mountpoint.
   if (platform_->IsDirectoryMounted(FilePath(kDefaultHomeDir))) {

@@ -875,6 +875,7 @@ class ServiceExTest : public ServiceTest {
     auth_.reset(new AuthorizationRequest);
     add_req_.reset(new AddKeyRequest);
     check_req_.reset(new CheckKeyRequest);
+    migrate_req_.reset(new MigrateKeyRequest);
     mount_req_.reset(new MountRequest);
     remove_req_.reset(new RemoveKeyRequest);
     list_keys_req_.reset(new ListKeysRequest);
@@ -898,6 +899,7 @@ class ServiceExTest : public ServiceTest {
   std::unique_ptr<AuthorizationRequest> auth_;
   std::unique_ptr<AddKeyRequest> add_req_;
   std::unique_ptr<CheckKeyRequest> check_req_;
+  std::unique_ptr<MigrateKeyRequest> migrate_req_;
   std::unique_ptr<MountRequest> mount_req_;
   std::unique_ptr<RemoveKeyRequest> remove_req_;
   std::unique_ptr<ListKeysRequest> list_keys_req_;
@@ -1114,6 +1116,42 @@ TEST_F(ServiceExTest, CheckKeyMountTest) {
   DispatchEvents();
   ASSERT_TRUE(reply());
   EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED, reply()->error());
+}
+
+MATCHER_P(CredentialsEqual, credentials, "") {
+  const Credentials& expected_creds = credentials;
+  brillo::SecureBlob l;
+  brillo::SecureBlob r;
+  expected_creds.GetPasskey(&l);
+  arg.GetPasskey(&r);
+  return expected_creds.username() == arg.username() && l == r;
+}
+
+TEST_F(ServiceExTest, MigrateKeyTest) {
+  constexpr char kUser[] = "chromeos-user";
+  constexpr char kOldKey[] = "274146c6e8886a843ddfea373e2dc71b";
+  constexpr char kNewKey[] = "274146c6e8886a843ddfea373e2dc71c";
+
+  PrepareArguments();
+  SetupMount(kUser);
+
+  id_->set_account_id(kUser);
+  auth_->mutable_key()->set_secret(kOldKey);
+  migrate_req_->set_secret(kNewKey);
+
+  Credentials credentials(kUser, SecureBlob(kNewKey));
+
+  EXPECT_CALL(homedirs_,
+              Migrate(CredentialsEqual(testing::ByRef(credentials)),
+                      SecureBlob(kOldKey),
+                      scoped_refptr<cryptohome::Mount>(mount_.get())))
+      .WillRepeatedly(Return(true));
+  service_.DoMigrateKeyEx(id_.get(), auth_.get(), migrate_req_.get(), nullptr);
+
+  // Expect an empty reply as success.
+  DispatchEvents();
+  EXPECT_TRUE(ReplyIsEmpty());
+  Mock::VerifyAndClearExpectations(mount_.get());
 }
 
 TEST_F(ServiceExTest, CheckKeyHomedirsTest) {

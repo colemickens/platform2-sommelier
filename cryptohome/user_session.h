@@ -96,7 +96,7 @@ class UserSession {
   brillo::SecureBlob username_salt_;
   brillo::SecureBlob key_salt_;
   brillo::SecureBlob cipher_;
-  int key_index_;
+  int key_index_ = -1;
   KeyData key_data_;
 
   DISALLOW_COPY_AND_ASSIGN(UserSession);

@@ -320,6 +320,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   static base::FilePath GetEphemeralSparseFile(
       const std::string& obfuscated_username);
 
+  // Sets |credentials| and |key_index| on |current_user_|.
+  bool SetUserCreds(const Credentials& credentials, int key_index);
+
   void set_legacy_mount(bool legacy) { legacy_mount_ = legacy; }
 
   // Does not take ownership.

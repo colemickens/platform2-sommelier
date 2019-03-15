@@ -644,6 +644,32 @@ TEST_P(MountTest, CurrentCredentialsTest) {
   ASSERT_TRUE(mount_->AreValid(credentials));
 }
 
+MATCHER_P(CredentialsEqual, credentials, "") {
+  const Credentials& expected_creds = credentials;
+  brillo::SecureBlob l;
+  brillo::SecureBlob r;
+  expected_creds.GetPasskey(&l);
+  arg.GetPasskey(&r);
+  return expected_creds.username() == arg.username() && l == r;
+}
+
+TEST_P(MountTest, PropagateCredentialsToUser) {
+  SecureBlob passkey;
+  cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[3].password,
+                                        helper_.system_salt, &passkey);
+  Credentials up(kDefaultUsers[3].username, passkey);
+
+  const int key_index = 2;
+
+  NiceMock<MockUserSession> user_session;
+  mount_->set_current_user(&user_session);
+
+  EXPECT_CALL(user_session, SetUser(CredentialsEqual(testing::ByRef(up))))
+      .WillOnce(Return(true));
+  EXPECT_CALL(user_session, set_key_index(key_index));
+  ASSERT_TRUE(mount_->SetUserCreds(up, key_index));
+}
+
 TEST_P(MountTest, BadDecryptTest) {
   // Create a Mount instance that points to a good shadow root, test that it
   // properly denies access with a bad passkey.

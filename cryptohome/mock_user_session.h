@@ -23,6 +23,7 @@ class MockUserSession : public UserSession {
   MOCK_METHOD0(Reset, void(void));
   MOCK_CONST_METHOD1(CheckUser, bool(const Credentials&));
   MOCK_CONST_METHOD1(Verify, bool(const Credentials&));
+  MOCK_METHOD1(set_key_index, void(int));
  private:
   UserSession user_session_;
 };

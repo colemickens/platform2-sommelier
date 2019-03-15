@@ -1443,8 +1443,13 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
   std::string obfuscated = newcreds.GetObfuscatedUsername(system_salt_);
   if (!user_mount) {
     user_mount = mount_factory_->New();
-    user_mount->Init(platform_, crypto_, timestamp_cache_,
-                     base::BindRepeating(&base::DoNothing));
+    if (!user_mount->Init(platform_, crypto_, timestamp_cache_,
+                          base::BindRepeating(&base::DoNothing))) {
+      LOG(ERROR) << "Migrate: Init mount failed";
+      return false;
+    }
+  }
+  if (!user_mount->IsMounted()) {
     if (!user_mount->MountCryptohome(oldcreds, Mount::MountArgs(), NULL)) {
       LOG(ERROR) << "Migrate: Mount failed";
       // Fail as early as possible. Note that we don't have to worry about
@@ -1532,6 +1537,9 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
     LOG(INFO) << "Removing keyset " << index << " due to migration.";
     ForceRemoveKeyset(obfuscated, index);  // Failure is ok.
   }
+
+  if (!user_mount->SetUserCreds(newcreds, key_index))
+    LOG(WARNING) << "Failed to set new creds";
 
   return true;
 }
