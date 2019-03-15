@@ -102,6 +102,7 @@ static_library("libdiag_routine") {
   all_dependent_configs = [ ":libdiag_routine_pkg_deps" ]
   sources = [
     "routines/battery/battery.cc",
+    "routines/battery_sysfs/battery_sysfs.cc",
     "routines/diag_process_adapter_impl.cc",
     "routines/urandom/urandom.cc",
   ]
@@ -482,6 +483,7 @@ if (use.test) {
     ]
     sources = [
       "routines/battery/battery_test.cc",
+      "routines/battery_sysfs/battery_sysfs_test.cc",
       "routines/urandom/urandom_test.cc",
       "wilco_dtc_supportd/file_test_utils.cc",
     ]

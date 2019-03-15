@@ -456,9 +456,14 @@ void WilcoDtcSupportdGrpcService::RunRoutine(
       }
       break;
     case grpc_api::ROUTINE_BATTERY_SYSFS:
-      // TODO(pmoy@chromium.org): Add check once the BATTERY_SYSFS parameters
-      // have been defined.
-      NOTIMPLEMENTED();
+      if (!request->has_battery_sysfs_params()) {
+        LOG(ERROR) << "RunRoutineRequest with routine type BATTERY_SYSFS has "
+                      "no battery_sysfs parameters.";
+        ForwardRunRoutineResponse(callback, 0 /* uuid */,
+                                  grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+        return;
+      }
+      break;
     case grpc_api::ROUTINE_BAD_BLOCKS:
       // TODO(pmoy@chromium.org): Add check once the BAD_BLOCKS parameters have
       // been defined.

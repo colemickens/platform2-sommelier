@@ -7,6 +7,7 @@
 #include <base/logging.h>
 
 #include "diagnostics/routines/battery/battery.h"
+#include "diagnostics/routines/battery_sysfs/battery_sysfs.h"
 #include "diagnostics/routines/urandom/urandom.h"
 
 namespace diagnostics {
@@ -22,6 +23,9 @@ WilcoDtcSupportdRoutineFactoryImpl::CreateRoutine(
   switch (request.parameters_case()) {
     case grpc_api::RunRoutineRequest::kBatteryParams:
       return std::make_unique<BatteryRoutine>(request.battery_params());
+    case grpc_api::RunRoutineRequest::kBatterySysfsParams:
+      return std::make_unique<BatterySysfsRoutine>(
+          request.battery_sysfs_params());
     case grpc_api::RunRoutineRequest::kUrandomParams:
       return std::make_unique<UrandomRoutine>(request.urandom_params());
     case grpc_api::RunRoutineRequest::PARAMETERS_NOT_SET:

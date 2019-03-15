@@ -69,6 +69,17 @@ grpc_api::RunRoutineRequest ConstructRunBatteryRoutineRequest(int low_mah,
   return request;
 }
 
+grpc_api::RunRoutineRequest ConstructRunBatterySysfsRoutineRequest(
+    int maximum_cycle_count, int percent_battery_wear_allowed) {
+  grpc_api::RunRoutineRequest request;
+  request.set_routine(grpc_api::ROUTINE_BATTERY_SYSFS);
+  request.mutable_battery_sysfs_params()->set_maximum_cycle_count(
+      maximum_cycle_count);
+  request.mutable_battery_sysfs_params()->set_percent_battery_wear_allowed(
+      percent_battery_wear_allowed);
+  return request;
+}
+
 grpc_api::RunRoutineRequest ConstructRunUrandomRoutineRequest(
     int length_seconds) {
   grpc_api::RunRoutineRequest request;
@@ -207,6 +218,17 @@ TEST_F(DiagRoutineRequesterTest, RunBatteryRoutine) {
   SetRunRoutineResponse(kExpectedUuid, kExpectedStatus);
   auto response =
       routine_requester()->RunRoutine(ConstructRunBatteryRoutineRequest(0, 10));
+  ASSERT_TRUE(response);
+  EXPECT_EQ(response->uuid(), kExpectedUuid);
+  EXPECT_EQ(response->status(), kExpectedStatus);
+}
+
+// Test that we can run the battery_sysfs routine.
+TEST_F(DiagRoutineRequesterTest, RunBatterySysfsRoutine) {
+  SetRunRoutineResponse(kExpectedUuid, kExpectedStatus);
+  auto response =
+      routine_requester()->RunRoutine(ConstructRunBatterySysfsRoutineRequest(
+          5 /* maximum_cycle_count */, 90 /* percent_battery_wear_allowed */));
   ASSERT_TRUE(response);
   EXPECT_EQ(response->uuid(), kExpectedUuid);
   EXPECT_EQ(response->status(), kExpectedStatus);

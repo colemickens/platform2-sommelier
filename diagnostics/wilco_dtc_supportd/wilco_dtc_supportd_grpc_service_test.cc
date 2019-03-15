@@ -164,6 +164,19 @@ std::unique_ptr<grpc_api::RunRoutineRequest> MakeRunBatteryRoutineRequest() {
   return request;
 }
 
+std::unique_ptr<grpc_api::RunRoutineRequest>
+MakeRunBatterySysfsRoutineRequest() {
+  constexpr int kMaximumCycleCount = 5;
+  constexpr int kPercentBatteryWearAllowed = 10;
+  auto request = std::make_unique<grpc_api::RunRoutineRequest>();
+  request->set_routine(grpc_api::ROUTINE_BATTERY_SYSFS);
+  request->mutable_battery_sysfs_params()->set_maximum_cycle_count(
+      kMaximumCycleCount);
+  request->mutable_battery_sysfs_params()->set_percent_battery_wear_allowed(
+      kPercentBatteryWearAllowed);
+  return request;
+}
+
 std::unique_ptr<grpc_api::RunRoutineRequest> MakeRunUrandomRoutineRequest() {
   constexpr int kLengthSeconds = 10;
   auto request = std::make_unique<grpc_api::RunRoutineRequest>();
@@ -469,6 +482,27 @@ TEST_F(WilcoDtcSupportdGrpcServiceTest, RunBatteryRoutineNoParameters) {
   std::unique_ptr<grpc_api::RunRoutineResponse> response;
   auto request = std::make_unique<grpc_api::RunRoutineRequest>();
   request->set_routine(grpc_api::ROUTINE_BATTERY);
+  ExecuteRunRoutine(std::move(request), &response,
+                    false /* is_valid_request */);
+  EXPECT_EQ(response->uuid(), 0);
+  EXPECT_EQ(response->status(), grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+}
+
+// Test that we can request that the battery_sysfs routine be run.
+TEST_F(WilcoDtcSupportdGrpcServiceTest, RunBatterySysfsRoutine) {
+  std::unique_ptr<grpc_api::RunRoutineResponse> response;
+  ExecuteRunRoutine(MakeRunBatterySysfsRoutineRequest(), &response,
+                    true /* is_valid_request */);
+  auto expected_response = MakeRunRoutineResponse();
+  EXPECT_THAT(*response, ProtobufEquals(*expected_response))
+      << "Actual response: {" << response->ShortDebugString() << "}";
+}
+
+// Test that a battery_sysfs routine with no parameters will fail.
+TEST_F(WilcoDtcSupportdGrpcServiceTest, RunBatterySysfsRoutineNoParameters) {
+  std::unique_ptr<grpc_api::RunRoutineResponse> response;
+  auto request = std::make_unique<grpc_api::RunRoutineRequest>();
+  request->set_routine(grpc_api::ROUTINE_BATTERY_SYSFS);
   ExecuteRunRoutine(std::move(request), &response,
                     false /* is_valid_request */);
   EXPECT_EQ(response->uuid(), 0);

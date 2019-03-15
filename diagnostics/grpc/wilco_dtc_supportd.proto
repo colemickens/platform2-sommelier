@@ -359,6 +359,7 @@ message RunRoutineRequest {
   oneof parameters {
     BatteryRoutineParameters battery_params = 2;
     UrandomRoutineParameters urandom_params = 3;
+    BatterySysfsRoutineParameters battery_sysfs_params = 4;
   }
 }
 
@@ -370,6 +371,14 @@ message BatteryRoutineParameters {
   // will default to low_mah = 1000 and high_mah = 10000 if unset.
   int32 low_mah = 1;
   int32 high_mah = 2;
+}
+
+// Parameters for the battery_sysfs diagnostics routine.
+message BatterySysfsRoutineParameters {
+  // Maximum cycle count allowed for the routine to pass.
+  int32 maximum_cycle_count = 1;
+  // Maximum percent battery wear allowed for the routine to pass.
+  int32 percent_battery_wear_allowed = 2;
 }
 
 // Parameters for the urandom diagnostics routine.

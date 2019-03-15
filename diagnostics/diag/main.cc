@@ -32,6 +32,7 @@ const struct {
   diagnostics::grpc_api::DiagnosticRoutine routine;
 } kDiagnosticRoutineSwitches[] = {
     {"battery", diagnostics::grpc_api::ROUTINE_BATTERY},
+    {"battery_sysfs", diagnostics::grpc_api::ROUTINE_BATTERY_SYSFS},
     {"urandom", diagnostics::grpc_api::ROUTINE_URANDOM}};
 
 const struct {
@@ -159,6 +160,17 @@ bool ActionRunBatteryRoutine(int low_mah, int high_mah) {
   return RunRoutineWithRequest(request);
 }
 
+bool ActionRunBatterySysfsRoutine(int maximum_cycle_count,
+                                  int percent_battery_wear_allowed) {
+  diagnostics::grpc_api::RunRoutineRequest request;
+  request.set_routine(diagnostics::grpc_api::ROUTINE_BATTERY_SYSFS);
+  request.mutable_battery_sysfs_params()->set_maximum_cycle_count(
+      maximum_cycle_count);
+  request.mutable_battery_sysfs_params()->set_percent_battery_wear_allowed(
+      percent_battery_wear_allowed);
+  return RunRoutineWithRequest(request);
+}
+
 bool ActionRunUrandomRoutine(int length_seconds) {
   diagnostics::grpc_api::RunRoutineRequest request;
   request.set_routine(diagnostics::grpc_api::ROUTINE_URANDOM);
@@ -181,6 +193,12 @@ int main(int argc, char** argv) {
                 "run 'diag --action=get_routines'.");
   DEFINE_int32(low_mah, 1000, "Lower bound for the battery routine, in mAh.");
   DEFINE_int32(high_mah, 10000, "Upper bound for the battery routine, in mAh.");
+  DEFINE_int32(
+      maximum_cycle_count, 0,
+      "Maximum cycle count allowed for the battery_sysfs routine to pass.");
+  DEFINE_int32(percent_battery_wear_allowed, 100,
+               "Maximum percent battery wear allowed for the battery_sysfs "
+               "routine to pass.");
   DEFINE_int32(length_seconds, 10,
                "Number of seconds to run the urandom routine for.");
   brillo::FlagHelper::Init(argc, argv, "diag - Device diagnostic tool.");
@@ -213,6 +231,10 @@ int main(int argc, char** argv) {
     switch (itr->second) {
       case diagnostics::grpc_api::ROUTINE_BATTERY:
         routine_result = ActionRunBatteryRoutine(FLAGS_low_mah, FLAGS_high_mah);
+        break;
+      case diagnostics::grpc_api::ROUTINE_BATTERY_SYSFS:
+        routine_result = ActionRunBatterySysfsRoutine(
+            FLAGS_maximum_cycle_count, FLAGS_percent_battery_wear_allowed);
         break;
       case diagnostics::grpc_api::ROUTINE_URANDOM:
         routine_result = ActionRunUrandomRoutine(FLAGS_length_seconds);
