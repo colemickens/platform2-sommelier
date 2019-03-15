@@ -111,11 +111,6 @@ enable_debug() {
   fi
 }
 
-# Checks if the system has a Novatel Wireless Gobi 3000 E396/E396U modem.
-has_gobi_modem() {
-  lsusb -d 1410:a021 || lsusb -d 1410:a023
-}
-
 # Blaze modems need to be powered off (MODEM_EN low) when suspending and
 # powered back on (MODEM_EN high) when resuming.
 
