@@ -188,7 +188,13 @@ Merging of YAML files applies the following characteristics:
 2. Identity is important.  Config is merged based on ONE OF the following:
 
    1. name - If the name attribute matches, the config is merged
-   2. identity - Identity can be matched on all or some of the attributes.
+   2. identity - all fields of identity must match explicitly for code
+      generation purposes. The fields are documented in [identity](#identity).
+      All fields that are present in the second file must be present in the
+      first file.
+      Note that a null value (the field is not present) and an empty string
+      (the field is assigned the value of "") are not considered a match
+      for code generation purposes.
 
 For a detailed example of how merging works, see the following test files:
 
