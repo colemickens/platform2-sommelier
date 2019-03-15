@@ -29,7 +29,7 @@ class MediaPerceptionServiceImpl :
       std::shared_ptr<Rtanalytics> rtanalytics);
 
   void ConnectToVideoCaptureService(
-      video_capture::mojom::DeviceFactoryRequest request);
+      video_capture::mojom::VideoSourceProviderRequest request);
 
   // chromeos::media_perception::mojom::MediaPerceptionService:
   void GetController(

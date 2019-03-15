@@ -59,18 +59,14 @@ class MojoConnector {
   void GetDevices(
       const VideoCaptureServiceClient::GetDevicesCallback& callback);
 
-  // Attempts to acquire exclusive access to a video device. Note that this does
-  // not block another client of the video capture service from taking over
-  // access on this device, which would disconnect this client.
+  // Attempts to acquire access to a video device.
   void OpenDevice(
       const std::string& device_id,
+      std::shared_ptr<ReceiverImpl> receiver_impl,
+      const VideoStreamParams& capture_format,
       const VideoCaptureServiceClient::OpenDeviceCallback& callback);
 
-  // Starts video capture on the active device.
-  void StartVideoCapture(
-      const std::string& device_id,
-      std::shared_ptr<ReceiverImpl> receiver_impl,
-      const VideoStreamParams& capture_format);
+  bool ActivateDevice(const std::string& device_id);
 
   // Stops video capture on the specified active device.
   void StopVideoCapture(const std::string& device_id);
@@ -97,7 +93,7 @@ class MojoConnector {
   void OnConnectionErrorOrClosed();
 
   // Handler for when device pointer connection is closed or errors out.
-  void OnDeviceFactoryConnectionErrorOrClosed();
+  void OnVideoSourceProviderConnectionErrorOrClosed();
 
   void AcceptConnectionOnIpcThread(base::ScopedFD fd);
 
@@ -112,17 +108,15 @@ class MojoConnector {
 
   void OpenDeviceOnIpcThread(
       const std::string& device_id,
+      std::shared_ptr<ReceiverImpl> receiver_impl,
+      const VideoStreamParams& capture_format,
       const VideoCaptureServiceClient::OpenDeviceCallback& callback);
 
-  void OnOpenDeviceCallback(
+  void OnCreatePushSubscriptionCallback(
       const std::string& device_id,
       const VideoCaptureServiceClient::OpenDeviceCallback& callback,
-      video_capture::mojom::DeviceAccessResultCode code);
-
-  void StartVideoCaptureOnIpcThread(
-      const std::string& device_id,
-      std::shared_ptr<ReceiverImpl> receiver_impl,
-      const VideoStreamParams& capture_format);
+      video_capture::mojom::CreatePushSubscriptionResultCode code,
+      media::mojom::VideoCaptureParamsPtr settings_opened_with);
 
   void StopVideoCaptureOnIpcThread(const std::string& device_id);
 
@@ -153,11 +147,17 @@ class MojoConnector {
   std::unique_ptr<MediaPerceptionServiceImpl> media_perception_service_impl_;
 
   // Entry point Mojo object for talking to the video capture service API.
-  video_capture::mojom::DeviceFactoryPtr device_factory_;
+  video_capture::mojom::VideoSourceProviderPtr video_source_provider_;
+
+  struct VideoSourceAndPushSubscription {
+    video_capture::mojom::VideoSourcePtr video_source;
+    video_capture::mojom::PushVideoStreamSubscriptionPtr
+        push_video_stream_subscription;
+  };
 
   // Store a map from device ids to active devices.
   std::map<std::string /* obfuscated device_id */,
-      video_capture::mojom::DevicePtr /* active_device */>
+      VideoSourceAndPushSubscription /* active_device */>
           device_id_to_active_device_map_;
 
   int unique_device_counter_;

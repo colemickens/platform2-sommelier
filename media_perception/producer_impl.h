@@ -10,7 +10,7 @@
 #include <memory>
 
 #include "media_perception/shared_memory_provider.h"
-#include "mojom/device_factory.mojom.h"
+#include "mojom/video_source_provider.mojom.h"
 
 namespace mri {
 
@@ -19,8 +19,8 @@ class ProducerImpl : public video_capture::mojom::Producer {
   ProducerImpl() : binding_(this) {}
 
   // factory is owned by the caller.
-  void RegisterVirtualDeviceAtFactory(
-      video_capture::mojom::DeviceFactoryPtr* factory,
+  void RegisterVirtualDevice(
+      video_capture::mojom::VideoSourceProviderPtr* provider,
       media::mojom::VideoCaptureDeviceInfoPtr info);
 
   void PushNextFrame(std::shared_ptr<ProducerImpl> producer_impl,

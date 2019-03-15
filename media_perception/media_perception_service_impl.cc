@@ -51,7 +51,7 @@ void MediaPerceptionServiceImpl::GetController(
 }
 
 void MediaPerceptionServiceImpl::ConnectToVideoCaptureService(
-    video_capture::mojom::DeviceFactoryRequest request) {
+    video_capture::mojom::VideoSourceProviderRequest request) {
   if (client_)
     client_->ConnectToVideoCaptureService(std::move(request));
 }

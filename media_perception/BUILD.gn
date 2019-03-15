@@ -44,6 +44,7 @@ generate_mojom_bindings("media_perception_mojo_bindings") {
     "mojom/device.mojom",
     "mojom/device_factory.mojom",
     "mojom/device_management.mojom",
+    "mojom/devices_changed_observer.mojom",
     "mojom/frame_perception.mojom",
     "mojom/geometry.mojom",
     "mojom/hotword_detection.mojom",
@@ -63,6 +64,8 @@ generate_mojom_bindings("media_perception_mojo_bindings") {
     "mojom/time.mojom",
     "mojom/values.mojom",
     "mojom/video_capture_types.mojom",
+    "mojom/video_source.mojom",
+    "mojom/video_source_provider.mojom",
     "mojom/virtual_device.mojom",
   ]
 }

@@ -35,13 +35,13 @@ class VideoCaptureServiceClientImpl : public VideoCaptureServiceClient {
   bool IsConnected() override;
   void GetDevices(const GetDevicesCallback& callback) override;
   void OpenDevice(const std::string& device_id,
+                  const SerializedVideoStreamParams& capture_format,
                   const OpenDeviceCallback& callback) override;
   bool IsVideoCaptureStartedForDevice(
       const std::string& device_id,
       SerializedVideoStreamParams* capture_format) override;
   int AddFrameHandler(
       const std::string& device_id,
-      const SerializedVideoStreamParams& capture_format,
       FrameHandler handler) override;
   bool RemoveFrameHandler(
       const std::string& device_id, int frame_handler_id) override;
@@ -56,6 +56,12 @@ class VideoCaptureServiceClientImpl : public VideoCaptureServiceClient {
   void CloseVirtualDevice(const std::string& device_id) override;
 
  private:
+  void OnOpenDeviceCallback(
+      const OpenDeviceCallback& callback,
+      std::string device_id,
+      CreatePushSubscriptionResultCode code,
+      SerializedVideoStreamParams params);
+
   MojoConnector* mojo_connector_;
 
   // Stores a map of device ids to receivers for receiving frame for the correct

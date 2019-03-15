@@ -62,6 +62,7 @@ class ReceiverImpl : public video_capture::mojom::Receiver {
   void OnLog(const std::string& message) override;
   void OnStarted() override;
   void OnStartedUsingGpuDecode() override;
+  void OnStopped() override;
 
  private:
   // Incremented to create unique frame handler ids.

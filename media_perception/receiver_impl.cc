@@ -120,4 +120,6 @@ void ReceiverImpl::OnStartedUsingGpuDecode() {
   LOG(INFO) << "Got call on OnStartedUsingGpuDecode";
 }
 
+void ReceiverImpl::OnStopped() { LOG(INFO) << "Got call to OnStopped"; }
+
 }  // namespace mri

@@ -21,10 +21,10 @@ video_capture::mojom::ProducerPtr ProducerImpl::CreateInterfacePtr() {
   return binding_.CreateInterfacePtrAndBind();
 }
 
-void ProducerImpl::RegisterVirtualDeviceAtFactory(
-    video_capture::mojom::DeviceFactoryPtr* factory,
+void ProducerImpl::RegisterVirtualDevice(
+    video_capture::mojom::VideoSourceProviderPtr* provider,
     media::mojom::VideoCaptureDeviceInfoPtr info) {
-  (*factory)->AddSharedMemoryVirtualDevice(std::move(info),
+  (*provider)->AddSharedMemoryVirtualDevice(std::move(info),
                                            CreateInterfacePtr(), true,
                                            mojo::MakeRequest(&virtual_device_));
 }

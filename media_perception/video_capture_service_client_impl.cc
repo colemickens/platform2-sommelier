@@ -40,8 +40,70 @@ void VideoCaptureServiceClientImpl::GetDevices(
 }
 
 void VideoCaptureServiceClientImpl::OpenDevice(
-    const std::string& device_id, const OpenDeviceCallback& callback) {
-  mojo_connector_->OpenDevice(device_id, callback);
+    const std::string& device_id,
+    const SerializedVideoStreamParams& capture_format,
+    const OpenDeviceCallback& callback) {
+  VideoStreamParams format = Serialized<VideoStreamParams>(
+      capture_format).Deserialize();
+
+  std::lock_guard<std::mutex> lock(device_id_to_receiver_map_lock_);
+  std::map<std::string, std::shared_ptr<ReceiverImpl>>::iterator it =
+      device_id_to_receiver_map_.find(device_id);
+  if (it != device_id_to_receiver_map_.end() &&
+      it->second->HasValidCaptureFormat()) {
+    LOG(INFO) << "Device with " << device_id << " already open.";
+    SerializedVideoStreamParams current_format =
+        Serialized<VideoStreamParams>(
+            it->second->GetCaptureFormat()).GetBytes();
+
+    // Device already open with the same settings.
+    if (it->second->CaptureFormatsMatch(format)) {
+      callback(
+          device_id,
+          CreatePushSubscriptionResultCode::CREATED_WITH_REQUESTED_SETTINGS,
+          current_format);
+      return;
+    }
+    // Device already open but with different settings.
+    callback(
+        device_id,
+        CreatePushSubscriptionResultCode::CREATED_WITH_DIFFERENT_SETTINGS,
+        current_format);
+    return;
+  }
+
+  std::shared_ptr<ReceiverImpl> receiver_impl;
+  if (it != device_id_to_receiver_map_.end()) {
+    receiver_impl = it->second;
+  } else {  // Create receiver if it doesn't exist.
+    receiver_impl = std::make_shared<ReceiverImpl>();
+  }
+  device_id_to_receiver_map_.insert(
+      std::make_pair(device_id, receiver_impl));
+  mojo_connector_->OpenDevice(
+      device_id, receiver_impl, format,
+      std::bind(&VideoCaptureServiceClientImpl::OnOpenDeviceCallback,
+                this, callback, std::placeholders::_1,
+                std::placeholders::_2, std::placeholders::_3));
+}
+
+void VideoCaptureServiceClientImpl::OnOpenDeviceCallback(
+      const OpenDeviceCallback& callback,
+      std::string device_id,
+      CreatePushSubscriptionResultCode code,
+      SerializedVideoStreamParams params) {
+  VideoStreamParams format = Serialized<VideoStreamParams>(
+      params).Deserialize();
+  {
+    std::lock_guard<std::mutex> lock(device_id_to_receiver_map_lock_);
+    std::map<std::string, std::shared_ptr<ReceiverImpl>>::iterator it =
+        device_id_to_receiver_map_.find(device_id);
+    if (it != device_id_to_receiver_map_.end() &&
+        code != CreatePushSubscriptionResultCode::FAILED) {
+      it->second->SetCaptureFormat(format);
+    }
+  }
+  callback(device_id, code, params);
 }
 
 bool VideoCaptureServiceClientImpl::IsVideoCaptureStartedForDevice(
@@ -61,37 +123,23 @@ bool VideoCaptureServiceClientImpl::IsVideoCaptureStartedForDevice(
 
 int VideoCaptureServiceClientImpl::AddFrameHandler(
     const std::string& device_id,
-    const SerializedVideoStreamParams& capture_format,
     FrameHandler handler) {
   std::lock_guard<std::mutex> lock(device_id_to_receiver_map_lock_);
-  VideoStreamParams format = Serialized<VideoStreamParams>(
-      capture_format).Deserialize();
 
   std::map<std::string, std::shared_ptr<ReceiverImpl>>::iterator it =
       device_id_to_receiver_map_.find(device_id);
-  if (it != device_id_to_receiver_map_.end() &&
-      it->second->HasValidCaptureFormat()) {
-    LOG(INFO) << "Device with " << device_id << " already open.";
-    if (!it->second->CaptureFormatsMatch(format)) {
-      LOG(WARNING) << "Device " << device_id << " is already open but with "
-                   << "different capture formats.";
-      return 0;
+  if (it != device_id_to_receiver_map_.end()) {
+    if (it->second->GetFrameHandlerCount() == 0) {
+      // If no frame handlers exist for receiver, need to activate video
+      // device.
+      if (!mojo_connector_->ActivateDevice(device_id)) {
+        // Failed to activate the device.
+        return 0;
+      }
     }
     return it->second->AddFrameHandler(std::move(handler));
   }
-
-  std::shared_ptr<ReceiverImpl> receiver_impl;
-  if (it != device_id_to_receiver_map_.end()) {
-    receiver_impl = it->second;
-  } else {  // Create receiver if it doesn't exist.
-    receiver_impl = std::make_shared<ReceiverImpl>();
-  }
-  receiver_impl->SetCaptureFormat(format);
-  device_id_to_receiver_map_.insert(
-      std::make_pair(device_id, receiver_impl));
-  mojo_connector_->StartVideoCapture(
-      device_id, receiver_impl, format);
-  return receiver_impl->AddFrameHandler(std::move(handler));
+  return 0;
 }
 
 bool VideoCaptureServiceClientImpl::RemoveFrameHandler(

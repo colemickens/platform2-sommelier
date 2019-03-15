@@ -23,11 +23,12 @@ using SerializedVideoStreamParams = std::vector<uint8_t>;
 using SerializedVideoDevice = std::vector<uint8_t>;
 using RawPixelFormat = uint32_t;
 
-enum DeviceAccessResultCode {
+enum CreatePushSubscriptionResultCode {
   RESULT_UNKNOWN,
-  NOT_INITIALIZED,
-  SUCCESS,
-  ERROR_DEVICE_NOT_FOUND
+  CREATED_WITH_REQUESTED_SETTINGS,
+  CREATED_WITH_DIFFERENT_SETTINGS,
+  ALREADY_OPEN,
+  FAILED
 };
 
 // Provides the interface definition for the rtanalytics library to interact
@@ -38,7 +39,10 @@ class VideoCaptureServiceClient {
  public:
   using GetDevicesCallback = std::function<void(
       std::vector<SerializedVideoDevice>)>;
-  using OpenDeviceCallback = std::function<void(DeviceAccessResultCode)>;
+  using OpenDeviceCallback = std::function<void(
+      std::string, /* device_id */
+      CreatePushSubscriptionResultCode,
+      SerializedVideoStreamParams)>;
   using VirtualDeviceCallback = std::function<void(SerializedVideoDevice)>;
   using FrameHandler =
       std::function<void(uint64_t timestamp_us, const uint8_t* data,
@@ -58,8 +62,10 @@ class VideoCaptureServiceClient {
   // Sets a device to be opened by the Video Capture Service with the exact
   // device_id specified. OpenDeviceCallback provides information on the success
   // or failure of the request.
-  virtual void OpenDevice(const std::string& device_id,
-                          const OpenDeviceCallback& callback) = 0;
+  virtual void OpenDevice(
+      const std::string& device_id,
+      const SerializedVideoStreamParams& capture_format,
+      const OpenDeviceCallback& callback) = 0;
 
   // Determines if a particular device has already started capture and if it
   // has, fills in the |capture_format| with the current parameters used to
@@ -75,7 +81,6 @@ class VideoCaptureServiceClient {
   // start video capture.
   virtual int AddFrameHandler(
       const std::string& device_id,
-      const SerializedVideoStreamParams& capture_format,
       FrameHandler handler) = 0;
 
   // Remove a frame handler for a particular device by specifying the frame
