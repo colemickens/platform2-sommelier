@@ -86,6 +86,7 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
   void CreateOperation(
       const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
       ChallengeSignatureAlgorithm salt_challenge_algorithm,
+      const Blob& salt,
       bool pass_salt_signature) {
     DCHECK(!operation_);
     std::unique_ptr<Blob> salt_signature;
@@ -93,7 +94,7 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
       salt_signature = std::make_unique<Blob>(kSaltSignature);
     const KeyData key_data = MakeKeyData(kPublicKeySpkiDer, key_algorithms);
     const KeysetSignatureChallengeInfo keyset_challenge_info =
-        MakeFakeKeysetChallengeInfo(kPublicKeySpkiDer, kSalt,
+        MakeFakeKeysetChallengeInfo(kPublicKeySpkiDer, salt,
                                     salt_challenge_algorithm);
     operation_ = std::make_unique<ChallengeCredentialsDecryptOperation>(
         &challenge_service_, &tpm_, kDelegateBlob, kDelegateSecret, kUserEmail,
@@ -194,7 +195,7 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
     unsealing_challenge_mock_controller_.SimulateFailureResponse();
   }
 
- private:
+ protected:
   // Constants which are passed as fake data inputs to the
   // ChallengeCredentialsDecryptOperation operation:
 
@@ -215,7 +216,8 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
   // Fake salt value. It's supplied to the operation as a field of the
   // |keyset_challenge_info| parameter. Then it's verified to be used as the
   // challenge value for one of requests made via KeyChallengeService.
-  const Blob kSalt{{4, 4, 4}};
+  const Blob kSalt = CombineBlobs(
+      {ChallengeCredentialsOperation::GetSaltConstantPrefix(), Blob{4, 4, 4}});
 
   // Constants which are injected as fake data into intermediate steps of the
   // tested operation:
@@ -246,6 +248,7 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
   const Blob kPasskey =
       CombineBlobs({kUnsealedSecret, CryptoLib::Sha256(kSaltSignature)});
 
+ private:
   // Mock objects:
 
   StrictMock<MockTpm> tpm_;
@@ -271,6 +274,60 @@ class ChallengeCredentialsDecryptOperationSingleAlgorithmTestBase
       CHALLENGE_RSASSA_PKCS1_V1_5_SHA256;
 };
 
+// Base fixture class that uses a single algorithm and have the sealing backend
+// available.
+class ChallengeCredentialsDecryptOperationNoOperationConstructedBasicTest
+    : public ChallengeCredentialsDecryptOperationSingleAlgorithmTestBase {
+ protected:
+  // The single algorithm to be used in this test.
+  static constexpr ChallengeSignatureAlgorithm kAlgorithm =
+      CHALLENGE_RSASSA_PKCS1_V1_5_SHA256;
+
+  ChallengeCredentialsDecryptOperationNoOperationConstructedBasicTest() {
+    PrepareSignatureSealingBackend(true /* enabled */);
+  }
+};
+
+}  // namespace
+
+// Test failure of the operation due to the input salt being empty.
+TEST_F(ChallengeCredentialsDecryptOperationNoOperationConstructedBasicTest,
+       EmptySaltFailure) {
+  CreateOperation({kAlgorithm} /* key_algorithms */,
+                  kAlgorithm /* salt_challenge_algorithm */, Blob() /* salt */,
+                  false /* pass_salt_signature */);
+  StartOperation();
+  VerifyFailedResult();
+}
+
+// Test failure of the operation due to the input salt not starting with the
+// expected constant prefix.
+TEST_F(ChallengeCredentialsDecryptOperationNoOperationConstructedBasicTest,
+       BadSaltNotPrefixedFailure) {
+  Blob salt = kSalt;
+  salt[ChallengeCredentialsOperation::GetSaltConstantPrefix().size() - 1] ^= 1;
+  CreateOperation({kAlgorithm} /* key_algorithms */,
+                  kAlgorithm /* salt_challenge_algorithm */, salt,
+                  false /* pass_salt_signature */);
+  StartOperation();
+  VerifyFailedResult();
+}
+
+// Test failure of the operation due to the input salt containing nothing
+// besides the expected constant prefix.
+TEST_F(ChallengeCredentialsDecryptOperationNoOperationConstructedBasicTest,
+       BadSaltNothingBesidesPrefixFailure) {
+  CreateOperation(
+      {kAlgorithm} /* key_algorithms */,
+      kAlgorithm /* salt_challenge_algorithm */,
+      ChallengeCredentialsOperation::GetSaltConstantPrefix() /* salt */,
+      false /* pass_salt_signature */);
+  StartOperation();
+  VerifyFailedResult();
+}
+
+namespace {
+
 // Basic tests that use a single algorithm, have the sealing backend available
 // and don't skip signing of salt.
 class ChallengeCredentialsDecryptOperationBasicTest
@@ -279,7 +336,7 @@ class ChallengeCredentialsDecryptOperationBasicTest
   ChallengeCredentialsDecryptOperationBasicTest() {
     PrepareSignatureSealingBackend(true /* enabled */);
     CreateOperation({kAlgorithm} /* key_algorithms */,
-                    kAlgorithm /* salt_challenge_algorithm */,
+                    kAlgorithm /* salt_challenge_algorithm */, kSalt,
                     false /* pass_salt_signature */);
   }
 };
@@ -485,7 +542,7 @@ class ChallengeCredentialsDecryptOperationSaltSkippingTest
   ChallengeCredentialsDecryptOperationSaltSkippingTest() {
     PrepareSignatureSealingBackend(true /* enabled */);
     CreateOperation({kAlgorithm} /* key_algorithms */,
-                    kAlgorithm /* salt_challenge_algorithm */,
+                    kAlgorithm /* salt_challenge_algorithm */, kSalt,
                     true /* pass_salt_signature */);
   }
 };
@@ -517,7 +574,7 @@ class ChallengeCredentialsDecryptOperationNoBackendTest
   ChallengeCredentialsDecryptOperationNoBackendTest() {
     PrepareSignatureSealingBackend(false /* enabled */);
     CreateOperation({kAlgorithm} /* key_algorithms */,
-                    kAlgorithm /* salt_challenge_algorithm */,
+                    kAlgorithm /* salt_challenge_algorithm */, kSalt,
                     false /* pass_salt_signature */);
   }
 };
@@ -549,7 +606,7 @@ class ChallengeCredentialsDecryptOperationAlgorithmsTest
   ChallengeCredentialsDecryptOperationAlgorithmsTest() {
     PrepareSignatureSealingBackend(true /* enabled */);
     CreateOperation(GetParam().key_algorithms,
-                    GetParam().salt_challenge_algorithm,
+                    GetParam().salt_challenge_algorithm, kSalt,
                     false /* pass_salt_signature */);
   }
 };

@@ -32,7 +32,7 @@ class UsernamePasskey;
 //
 // This class is not expected to be used directly by client code; instead,
 // methods of ChallengeCredentialsHelper should be called.
-class ChallengeCredentialsDecryptOperation
+class ChallengeCredentialsDecryptOperation final
     : public ChallengeCredentialsOperation {
  public:
   using KeysetSignatureChallengeInfo =

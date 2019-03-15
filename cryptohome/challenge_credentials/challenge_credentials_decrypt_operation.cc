@@ -4,6 +4,7 @@
 
 #include "cryptohome/challenge_credentials/challenge_credentials_decrypt_operation.h"
 
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -18,7 +19,6 @@
 
 using brillo::Blob;
 using brillo::BlobFromString;
-using brillo::CombineBlobs;
 using brillo::SecureBlob;
 
 namespace cryptohome {
@@ -121,13 +121,24 @@ bool ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
     LOG(ERROR) << "Missing salt";
     return false;
   }
+  const Blob salt = BlobFromString(keyset_challenge_info_.salt());
+  // IMPORTANT: Verify that the salt is correctly prefixed. See the comment on
+  // ChallengeCredentialsOperation::GetSaltConstantPrefix() for details. Note
+  // also that, as an extra validation, we require the salt to contain at least
+  // one extra byte after the prefix.
+  const Blob& salt_constant_prefix = GetSaltConstantPrefix();
+  if (salt.size() <= salt_constant_prefix.size() ||
+      !std::equal(salt_constant_prefix.begin(), salt_constant_prefix.end(),
+                  salt.begin())) {
+    LOG(ERROR) << "Bad salt: not correctly prefixed";
+    return false;
+  }
   if (!keyset_challenge_info_.has_salt_signature_algorithm()) {
     LOG(ERROR) << "Missing signature algorithm for salt";
     return false;
   }
   MakeKeySignatureChallenge(
-      account_id_, BlobFromString(public_key_info_.public_key_spki_der()),
-      BlobFromString(keyset_challenge_info_.salt()),
+      account_id_, BlobFromString(public_key_info_.public_key_spki_der()), salt,
       keyset_challenge_info_.salt_signature_algorithm(),
       base::Bind(&ChallengeCredentialsDecryptOperation::OnSaltChallengeResponse,
                  weak_ptr_factory_.GetWeakPtr()));
