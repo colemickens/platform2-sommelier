@@ -34,12 +34,23 @@ class CrosFpDevice : public MessageLoopForIO::Watcher {
             FROM_HERE)) {}
   ~CrosFpDevice();
 
+  struct EcVersion {
+    std::string ro_version;
+    std::string rw_version;
+    ec_current_image current_image = EC_IMAGE_UNKNOWN;
+  };
+
   static std::unique_ptr<CrosFpDevice> Open(const MkbpCallback& callback);
 
   // Run a simple command to get the version information from FP MCU and check
   // whether the image type returned is the same as |expected_image|.
   static bool WaitOnEcBoot(const base::ScopedFD& cros_fp_fd,
                            ec_current_image expected_image);
+
+  // Run a simple command to get the version information from FP MCU.
+  // The retrieved version is written to |ver|.
+  // Returns true if successfully retrieved the version.
+  static bool GetVersion(const base::ScopedFD& cros_fp_fd, EcVersion* ver);
 
   bool FpMode(uint32_t mode);
   bool GetFpMode(uint32_t* mode);

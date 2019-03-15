@@ -234,6 +234,29 @@ bool CrosFpDevice::WaitOnEcBoot(const base::ScopedFD& cros_fp_fd,
   return false;
 }
 
+// static
+bool CrosFpDevice::GetVersion(const base::ScopedFD& cros_fp_fd,
+                              EcVersion* ver) {
+  CHECK(ver);
+
+  EcCommand<EmptyParam, struct ec_response_get_version> cmd(EC_CMD_GET_VERSION);
+  if (!cmd.Run(cros_fp_fd.get())) {
+    LOG(ERROR) << "Failed to fetch cros_fp firmware version.";
+    return false;
+  }
+
+  // buffers should already be null terminated -- this is a safeguard
+  cmd.Resp()->version_string_ro[sizeof(cmd.Resp()->version_string_ro) - 1] =
+      '\0';
+  cmd.Resp()->version_string_rw[sizeof(cmd.Resp()->version_string_rw) - 1] =
+      '\0';
+
+  ver->ro_version = std::string(cmd.Resp()->version_string_ro);
+  ver->rw_version = std::string(cmd.Resp()->version_string_rw);
+  ver->current_image = static_cast<ec_current_image>(cmd.Resp()->current_image);
+  return true;
+}
+
 bool CrosFpDevice::EcReboot(ec_current_image to_image) {
   DCHECK(to_image == EC_IMAGE_RO || to_image == EC_IMAGE_RW);
 
