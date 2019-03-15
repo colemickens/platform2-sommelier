@@ -32,14 +32,9 @@ int main(int argc, const char* argv[]) {
 
   // Validate the program and its arguments, and reject all others.
   if (!usermode_helper::ValidateProgramArgs(argc, argv)) {
-    // TODO(crbug.com/915974): Remove this fork until we've tracked down all
-    // current usermode calls from the kernel.  This lets us get a crash dump
-    // in a child process without blocking the kernel call.
-    if (fork() == 0) {
-      base::CommandLine cmdline(argc, argv);
-      LOG(FATAL) << "program invocation not permitted: "
-                 << cmdline.GetCommandLineString();
-    }
+    base::CommandLine cmdline(argc, argv);
+    LOG(FATAL) << "program invocation not permitted: "
+               << cmdline.GetCommandLineString();
   }
 
   // We could use execveat(), but it's not a clear win.
