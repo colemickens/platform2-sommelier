@@ -244,19 +244,6 @@ bool ChromiumCommandBuilder::SetUpChromium() {
   return true;
 }
 
-void ChromiumCommandBuilder::EnableCoreDumps() {
-  if (!util::EnsureDirectoryExists(base::FilePath("/var/coredumps"), uid_, gid_,
-                                   0700))
-    return;
-
-  struct rlimit limit = {RLIM_INFINITY, RLIM_INFINITY};
-  if (setrlimit(RLIMIT_CORE, &limit) != 0)
-    PLOG(ERROR) << "Setting unlimited coredumps with setrlimit() failed";
-  const std::string kPattern("/var/coredumps/core.%e.%p");
-  base::WriteFile(base::FilePath("/proc/sys/kernel/core_pattern"),
-                  kPattern.c_str(), kPattern.size());
-}
-
 bool ChromiumCommandBuilder::ApplyUserConfig(
     const base::FilePath& path,
     const std::set<std::string>& disallowed_prefixes) {

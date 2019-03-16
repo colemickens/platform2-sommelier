@@ -82,10 +82,6 @@ class ChromiumCommandBuilder {
   // Returns true on success.
   bool SetUpChromium();
 
-  // Configures the environment so a core dump will be written when the binary
-  // crashes.
-  void EnableCoreDumps();
-
   // Reads a user-supplied file requesting modifications to the current set of
   // arguments. The following directives are supported:
   //

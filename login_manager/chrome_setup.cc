@@ -329,11 +329,6 @@ void InitCrashHandling(ChromiumCommandBuilder* builder) {
       base::CreateSymbolicLink(minidump_dir, reports_dir);
     }
   }
-
-  // Enable gathering of core dumps via a file in the stateful partition so it
-  // can be enabled post-build.
-  if (base::PathExists(stateful_etc.Append("enable_chromium_coredumps")))
-    builder->EnableCoreDumps();
 }
 
 // Adds system-related flags to the command line.
