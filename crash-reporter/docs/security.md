@@ -189,6 +189,34 @@ There are a few class fixes that would help with this:
     Rewrite crash_sender in C++ to avoid all usage of external programs like
     `sed` or `awk` and thus any arbitrary code execution they introduce.
 
+### crbug.com/866895 (priv escalation)
+
+https://crbug.com/866895
+
+This bug allowed people to chown arbitrary paths to `chronos` as root.
+
+The scenario is as follows:
+*   User deletes their `crash` spool directory in their profile.
+*   User symlinks `crash` to an arbitrary path.
+*   User triggers a crash.
+*   `crash_reporter` is invoked by the kernel as root.
+    It derefs the symlink and then chowns the target to `chronos`.
+
+The fix was to improve the spool directory walking code to avoid any TOCTOU
+races, and to have all filesystem operations avoid derefing any symlinks.
+*   https://crrev.com/c/1156064:
+    All paths are processed relative to the spool directory instead of absolute
+    paths.  This allows us to guarantee the directory we open isn't a symlink,
+    and that it never changes on us while we're processing it.
+*   https://crrev.com/c/1152078:
+    We use filesystem funcs that reject symlinks to initialize all spool
+    directories.
+
+The larger class fix involved blocking symlinks entirely.
+*   https://crbug.com/655606:
+    Disallow following symlinks in the kernel on writable partitions (stateful).
+
+
 [anomaly_collector]: ../anomaly_collector.cc
 [crash_reporter]: ../crash_reporter.cc
 [crash_reporter_logs.conf]: ../crash_reporter_logs.conf
