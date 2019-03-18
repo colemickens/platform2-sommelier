@@ -852,14 +852,30 @@ bool CryptoUtilityImpl::VerifyCertificate(
 bool CryptoUtilityImpl::GetCertificatePublicKey(
     const std::string& certificate,
     std::string* public_key) {
+  // Some TPM 1.2 certificates use OAEP key type (rsaOAEP (PKCS #1)). It is not
+  // supported algorithm in OpenSSL, so we can't parse the public key data to
+  // public key object.
+  //
+  // At here, we only decode X509 format and store raw byte string
+  // (ASN1_BIT_STRING) of SubjectPublicKeyInfo to x509->cert_info->key, such
+  // that we can safely pass this i2d_X509_PUBKEY, since it directly output raw
+  // byte string. But we can't pass it some utility which attempt to parse it
+  // such like X509_PUBKEY_get().
   auto x509 = CreateX509FromCertificate(certificate);
   if (!x509.get()) {
     LOG(ERROR) << __func__ << ": Failed to parse certificate.";
     return false;
   }
-  public_key->assign(
-      reinterpret_cast<char *>(x509.get()->cert_info->key->public_key->data),
-      x509.get()->cert_info->key->public_key->length);
+
+  unsigned char* pubkey_buffer = nullptr;
+  int length = i2d_X509_PUBKEY(x509.get()->cert_info->key, &pubkey_buffer);
+  if (length < 0) {
+    LOG(ERROR) << __func__
+               << ": Failed to dump SubjectPublicKeyInfo from cert.";
+    return false;
+  }
+  crypto::ScopedOpenSSLBytes scoped_pubkey_buffer(pubkey_buffer);
+  public_key->assign(reinterpret_cast<char*>(pubkey_buffer), length);
   return true;
 }
 

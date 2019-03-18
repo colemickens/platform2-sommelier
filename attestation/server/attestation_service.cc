@@ -2218,6 +2218,7 @@ void AttestationService::VerifyTask(
   std::string ek_public_key;
   std::string ek_cert;
   result->set_verified(false);
+
   if (credentials.has_endorsement_credential()) {
     ek_cert = credentials.endorsement_credential();
   } else {
@@ -2234,6 +2235,7 @@ void AttestationService::VerifyTask(
       return;
     }
   }
+
   std::string issuer;
   if (!crypto_utility_->GetCertificateIssuerName(ek_cert, &issuer)) {
     LOG(ERROR) << __func__ << ": Failed to get certificate issuer.";
@@ -2248,18 +2250,29 @@ void AttestationService::VerifyTask(
     LOG(WARNING) << __func__ << ": Bad endorsement credential.";
     return;
   }
+
   // Verify that the given public key matches the public key in the credential.
   // Note: Do not use any openssl functions that attempt to decode the public
   // key. These will fail because openssl does not recognize the OAEP key type.
-  std::string cert_public_key;
-  if (!crypto_utility_->GetCertificatePublicKey(ek_cert, &cert_public_key)) {
+  // Note2: GetCertificatePublicKey will return SubjectPublicKeyInfo.
+  // TODO(crbug/942487): remove Note2 comments after migration
+  std::string cert_public_key_info;
+  if (!crypto_utility_->GetCertificatePublicKey(ek_cert,
+                                                &cert_public_key_info)) {
     LOG(ERROR) << __func__ << ": Failed to get certificate public key.";
     return;
   }
-  if (cert_public_key != ek_public_key) {
+  std::string ek_public_key_info;
+  if (!GetSubjectPublicKeyInfo(KEY_TYPE_RSA, ek_public_key,
+                               &ek_public_key_info)) {
+    LOG(ERROR) << __func__ << ": Failed to get EK public key info.";
+    return;
+  }
+  if (cert_public_key_info != ek_public_key_info) {
     LOG(ERROR) << __func__ << ": Bad certificate public key.";
     return;
   }
+
   // All done if we only needed to verify EK. Otherwise, continue with full
   // verification.
   if (request.ek_only()) {
@@ -2292,12 +2305,6 @@ void AttestationService::VerifyTask(
            identity_data.identity_key().identity_key_blob(),
            identity_public_key_info)) {
     LOG(ERROR) << __func__ << ": Failed to verify certified key generation.";
-    return;
-  }
-  std::string ek_public_key_info;
-  if (!GetSubjectPublicKeyInfo(KEY_TYPE_RSA, ek_public_key,
-                               &ek_public_key_info)) {
-    LOG(ERROR) << __func__ << ": Failed to get EK public key info.";
     return;
   }
   if (!VerifyActivateIdentity(

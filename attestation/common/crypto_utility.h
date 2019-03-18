@@ -136,8 +136,8 @@ class CryptoUtility {
   virtual bool GetCertificateIssuerName(const std::string& certificate,
                                         std::string* issuer_name) = 0;
 
-  // Gets public key for the X.509 |certificate|. On success returns true and
-  // populates |public_key|.
+  // Gets SubjectPublicKeyInfo of public key for the X.509 |certificate|.
+  // On success returns true and populates |public_key|.
   virtual bool GetCertificatePublicKey(const std::string& certificate,
                                        std::string* public_key) = 0;
 
