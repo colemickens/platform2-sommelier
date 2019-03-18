@@ -105,4 +105,6 @@
       '<(SHARED_INTERMEDIATE_DIR)',
     ],
   },
+  # Protobuf 3.7.0 introduced generated code that is sometimes unreachable.
+  'cflags_cc': [ "-Wno-unreachable-code" ],
 }
