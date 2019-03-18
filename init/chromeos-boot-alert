@@ -108,23 +108,12 @@ match_char_timeout() {
   return 0
 }
 
-# Returns if current device is using virtual developer switch.
-has_virtual_dev_switch() {
-  local VBSD_HONOR_VIRT_DEV_SWITCH="0x400"
-  local vdat_flags="$(crossystem vdat_flags || echo 0)"
-  [ "$((vdat_flags & VBSD_HONOR_VIRT_DEV_SWITCH))" != "0" ]
-}
-
 # Prints message when entering developer mode
 # Argument: time to countdown (in seconds)
 mode_enter_dev() {
   local delay_secs="${1:-30}"
 
-  if has_virtual_dev_switch; then
-    show_assets_message "enter_dev1_virtual"
-  else
-    show_assets_message "enter_dev1"
-  fi
+  show_assets_message "enter_dev1_virtual"
 
   local format='\r  %-30s'
   for dev_count_down in $(seq $delay_secs -1 1); do
@@ -161,36 +150,23 @@ mode_self_repair() {
 }
 
 # Prints a message telling the user that developer mode has been disabled for
-# the device upon request by the device owner. Depending on hardware support,
-# the system switches back to verified boot mode automatically or prompts the
-# user to do so. The system reboots after the user confirms by pressing space or
-# after timeout.
+# the device upon request by the device owner.  After a timeout, or after the
+# user confirms by pressing space, the system then switches back to verified
+# boot mode automatically, and reboots.
 mode_block_devmode() {
   local delay_secs=30
 
-  if has_virtual_dev_switch; then
-    show_assets_message "block_devmode_virtual"
-  else
-    # Leave the notification on the screen for 5 minutes to increase chances
-    # the user actually sees it before shutting down the device.
-    delay_secs=300
-    show_assets_message "block_devmode"
-  fi
+  show_assets_message "block_devmode_virtual"
 
   # Read a space bar or timeout.
   local input=$(match_char_timeout "${TTY}" "${delay_secs}" 20)
   tput clear >>"${TTY}"
 
-  if has_virtual_dev_switch; then
-    # Return to verified mode.
-    crossystem disable_dev_request=1
-    reboot
-  else
-    # Shut down instead of rebooting in a loop.
-    halt
-  fi
+  # Return to verified mode.
+  crossystem disable_dev_request=1
+  reboot
 
-  # To prevent the system from continuing to boot.
+  # In case reboot fails, prevent the system from continuing to boot.
   sleep infinity
 }
 
