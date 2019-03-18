@@ -1614,21 +1614,11 @@ void AttestationService::PrepareForEnrollment() {
     LOG(ERROR) << "Attestation: Failed to get RSA EK public key.";
     return;
   }
-  std::string ecc_ek_public_key;
-  if (!tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_ECC,
-                                             &ecc_ek_public_key)) {
-    LOG(WARNING) << "Attestation: Failed to get ECC EK public key.";
-  }
   std::string rsa_ek_certificate;
   if (!tpm_utility_->GetEndorsementCertificate(KEY_TYPE_RSA,
                                                &rsa_ek_certificate)) {
     LOG(ERROR) << "Attestation: Failed to get RSA EK certificate.";
     return;
-  }
-  std::string ecc_ek_certificate;
-  if (!tpm_utility_->GetEndorsementCertificate(KEY_TYPE_ECC,
-                                               &ecc_ek_certificate)) {
-    LOG(WARNING) << "Attestation: Failed to get ECC EK certificate.";
   }
 
   // Create a new AIK and PCR quotes for the first identity with default
@@ -1642,8 +1632,6 @@ void AttestationService::PrepareForEnrollment() {
   TPMCredentials* credentials_pb = database_pb->mutable_credentials();
   credentials_pb->set_endorsement_public_key(rsa_ek_public_key);
   credentials_pb->set_endorsement_credential(rsa_ek_certificate);
-  credentials_pb->set_ecc_endorsement_public_key(ecc_ek_public_key);
-  credentials_pb->set_ecc_endorsement_credential(ecc_ek_certificate);
 
   // Encrypt the endorsement credential for all the ACAs we know of.
   EncryptAllEndorsementCredentials();

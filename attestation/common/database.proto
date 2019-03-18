@@ -15,6 +15,7 @@ package attestation;
 // credentials must be cleared once the attestation server has certified the
 // AIK.
 message TPMCredentials {
+  reserved 7, 8;
   optional bytes endorsement_public_key = 1;
   optional bytes endorsement_credential = 2;
   optional bytes platform_credential = 3;
@@ -23,8 +24,6 @@ message TPMCredentials {
       [deprecated = true];
   optional EncryptedData test_encrypted_endorsement_credential = 6
       [deprecated = true];
-  optional bytes ecc_endorsement_public_key = 7;
-  optional bytes ecc_endorsement_credential = 8;
   // Map of |endorsement_credential| encrypted with a public key associated with
   // Chrome OS Privacy CA, by CA.
   map<int32, EncryptedData> encrypted_endorsement_credentials = 9;
