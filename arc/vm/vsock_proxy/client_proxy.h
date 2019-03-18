@@ -14,20 +14,22 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 
+#include "arc/vm/vsock_proxy/proxy_base.h"
+
 namespace arc {
 
 class VSockProxy;
 
 // ClientProxy sets up the VSockProxy and handles initial socket negotiation.
-class ClientProxy {
+class ClientProxy : public ProxyBase {
  public:
   ClientProxy();
-  ~ClientProxy();
+  ~ClientProxy() override;
 
   // Sets up the ClientProxy. Specifically, wait for VSOCK gets ready,
   // creates a unix domain socket at /var/run/chrome/arc_bridge.sock,
   // then starts watching it.
-  void Initialize();
+  void Initialize() override;
 
  private:
   // Called when /var/run/chrome/arc_bridge.sock gets ready to read.

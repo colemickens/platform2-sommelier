@@ -2,25 +2,49 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/bind.h>
-#include <base/files/file_descriptor_watcher_posix.h>
-#include <base/message_loop/message_loop.h>
-#include <base/run_loop.h>
+#include <unistd.h>
+
+#include <memory>
+
+#include <base/logging.h>
+#include <base/macros.h>
 #include <brillo/syslog_logging.h>
 
+#include "arc/vm/vsock_proxy/proxy_service.h"
 #include "arc/vm/vsock_proxy/server_proxy.h"
+
+namespace {
+
+// Adaper to inject ServerProxy creation to ProxyService.
+class ServerProxyFactory : public arc::ProxyService::ProxyFactory {
+ public:
+  ServerProxyFactory() = default;
+  ~ServerProxyFactory() override = default;
+
+  std::unique_ptr<arc::ProxyBase> Create() override {
+    return std::make_unique<arc::ServerProxy>();
+  }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ServerProxyFactory);
+};
+
+}  // namespace
 
 int main() {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
                   brillo::kLogToStderrIfTty);
 
-  base::MessageLoopForIO message_loop;
-  base::FileDescriptorWatcher watcher(&message_loop);
+  arc::ProxyService service(std::make_unique<ServerProxyFactory>());
+  if (!service.Start()) {
+    LOG(ERROR) << "Failed to start ServerProxy.";
+    return 1;
+  }
+  LOG(INFO) << "ServerProxy has been started successfully.";
 
-  arc::ServerProxy proxy;
-  message_loop.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind([](arc::ServerProxy* proxy) { proxy->Initialize(); }, &proxy));
-  base::RunLoop().Run();
+  // Sleep forever.
+  // TODO(hidehiko): On main thread, Fuse handler will run.
+  while (1)
+    pause();
   return 0;
 }

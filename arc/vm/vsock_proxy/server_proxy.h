@@ -9,20 +9,22 @@
 
 #include <base/macros.h>
 
+#include "arc/vm/vsock_proxy/proxy_base.h"
+
 namespace arc {
 
 class VSockProxy;
 
 // ServerProxy sets up the VSockProxy and handles initial socket negotiation.
-class ServerProxy {
+class ServerProxy : public ProxyBase {
  public:
   ServerProxy();
-  ~ServerProxy();
+  ~ServerProxy() override;
 
   // Sets up the ServerProxy. Specifically, start listening VSOCK.
   // Then, connect to /run/chrome/arc_bridge.sock, when an initial connection
   // comes to the vsock.
-  void Initialize();
+  void Initialize() override;
 
  private:
   std::unique_ptr<VSockProxy> vsock_proxy_;

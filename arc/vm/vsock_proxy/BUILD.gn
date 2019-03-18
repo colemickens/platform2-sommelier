@@ -42,6 +42,7 @@ static_library("vsock_proxy_lib") {
     "file_descriptor_util.cc",
     "file_stream.cc",
     "pipe_stream.cc",
+    "proxy_service.cc",
     "socket_stream.cc",
     "vsock_proxy.cc",
     "vsock_stream.cc",
@@ -81,7 +82,6 @@ if (use.test) {
     ]
     sources = [
       "client_proxy.cc",
-      "client_proxy_service.cc",
     ]
   }
 
@@ -108,6 +108,7 @@ if (use.test) {
       "file_descriptor_util_test.cc",
       "file_stream_test.cc",
       "pipe_stream_test.cc",
+      "proxy_service_test.cc",
       "socket_stream_test.cc",
       "vsock_proxy_test.cc",
       "vsock_stream_test.cc",

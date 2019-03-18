@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc/vm/vsock_proxy/client_proxy_service.h"
+#include "arc/vm/vsock_proxy/proxy_service.h"
 
 #include <utility>
 
@@ -11,56 +11,57 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/thread.h>
 
-#include "arc/vm/vsock_proxy/client_proxy.h"
+#include "arc/vm/vsock_proxy/proxy_base.h"
 
 namespace arc {
 
-ClientProxyService::ClientProxyService() = default;
+ProxyService::ProxyService(std::unique_ptr<ProxyFactory> factory)
+    : factory_(std::move(factory)) {}
 
-ClientProxyService::~ClientProxyService() {
+ProxyService::~ProxyService() {
   // This is safe, although base::Unretained(this) is used in the method,
   // because stop() is blocked until the thread where the pointer is posted
   // is joined.
   Stop();
 }
 
-bool ClientProxyService::Start() {
-  LOG(INFO) << "Starting ClientProxyService...";
+bool ProxyService::Start() {
+  LOG(INFO) << "Starting ProxyService...";
   base::Thread::Options options;
   options.message_loop_type = base::MessageLoop::TYPE_IO;
-  auto thread = std::make_unique<base::Thread>("ClientProxy");
+  auto thread = std::make_unique<base::Thread>("ProxyService");
   if (!thread->StartWithOptions(options)) {
-    LOG(ERROR) << "Failed to start a ClientProxy thread.";
+    LOG(ERROR) << "Failed to start a ProxyService thread.";
     return false;
   }
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   thread->task_runner()->PostTask(
       FROM_HERE,
-      base::BindOnce(&ClientProxyService::Initialize, base::Unretained(this),
+      base::BindOnce(&ProxyService::Initialize, base::Unretained(this),
                      base::Unretained(&event)));
   event.Wait();
   thread_ = std::move(thread);
-  LOG(INFO) << "ClientProxy thread is ready";
+  LOG(INFO) << "ProxyService thread is ready";
   return true;
 }
 
-void ClientProxyService::Stop() {
-  LOG(INFO) << "Stopping ClientProxyService...";
+void ProxyService::Stop() {
+  LOG(INFO) << "Stopping ProxyService...";
   thread_->task_runner()->PostTask(
       FROM_HERE,
-      base::BindOnce(&ClientProxyService::ShutDown, base::Unretained(this)));
+      base::BindOnce(&ProxyService::ShutDown, base::Unretained(this)));
   thread_.reset();
-  LOG(INFO) << "ClientProxyService has been stopped.";
+  LOG(INFO) << "ProxyService has been stopped.";
 }
 
-void ClientProxyService::Initialize(base::WaitableEvent* event) {
-  proxy_ = std::make_unique<ClientProxy>();
+void ProxyService::Initialize(base::WaitableEvent* event) {
+  proxy_ = factory_->Create();
   proxy_->Initialize();
   event->Signal();
 }
 
-void ClientProxyService::ShutDown() {
+void ProxyService::ShutDown() {
   proxy_.reset();
 }
 
