@@ -59,7 +59,7 @@ crypto::ScopedRSA CreateRSAFromRawModulus(const uint8_t* modulus_buffer,
 
 // Convert TPMT_PUBLIC TPM public area |public_area| of RSA key to a OpenSSL RSA
 // key.
-crypto::ScopedRSA GetRSAPublicKeyFromTpmPublicArea(
+crypto::ScopedRSA GetRsaPublicKeyFromTpmPublicArea(
     const trunks::TPMT_PUBLIC& public_area) {
   crypto::ScopedRSA key = CreateRSAFromRawModulus(public_area.unique.rsa.buffer,
                                                   public_area.unique.rsa.size);
@@ -439,7 +439,7 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
     return false;
   }
   *public_key_der =
-      RsaPublicKeyToString(GetRSAPublicKeyFromTpmPublicArea(public_area));
+      RsaPublicKeyToString(GetRsaPublicKeyFromTpmPublicArea(public_area));
   if (public_key_der->empty()) {
     LOG(ERROR) << __func__ << ": Failed to convert public key.";
     return false;
@@ -550,7 +550,7 @@ bool TpmUtilityV2::GetEndorsementPublicKey(KeyType key_type,
     return false;
   }
   *public_key_der =
-      RsaPublicKeyToString(GetRSAPublicKeyFromTpmPublicArea(public_area));
+      RsaPublicKeyToString(GetRsaPublicKeyFromTpmPublicArea(public_area));
   if (public_key_der->empty()) {
     LOG(ERROR) << __func__ << ": Failed to convert EK public key.";
     return false;
@@ -668,7 +668,7 @@ bool TpmUtilityV2::CreateRestrictedKey(KeyType key_type,
     return false;
   }
   *public_key_der = RsaPublicKeyToString(
-      GetRSAPublicKeyFromTpmPublicArea(public_info.public_area));
+      GetRsaPublicKeyFromTpmPublicArea(public_info.public_area));
   if (public_key_der->empty()) {
     LOG(ERROR) << __func__ << ": Failed to convert public key to DER encoded";
     return false;
