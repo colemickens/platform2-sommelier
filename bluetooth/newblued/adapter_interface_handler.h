@@ -17,6 +17,7 @@
 
 #include "bluetooth/common/dbus_client.h"
 #include "bluetooth/common/exported_object_manager_wrapper.h"
+#include "bluetooth/newblued/device_interface_handler.h"
 #include "bluetooth/newblued/newblue.h"
 
 namespace bluetooth {
@@ -36,12 +37,16 @@ class AdapterInterfaceHandler {
   // The properties of this object will be ignored by btdispatch, but the object
   // still has to be exposed to be able to receive org.bluez.Adapter1 method
   // calls, e.g. StartDiscovery(), StopDiscovery().
-  void Init(Newblue::DeviceDiscoveredCallback device_discovered_callback);
+  void Init(Newblue::DeviceDiscoveredCallback device_discovered_callback,
+            DeviceInterfaceHandler* device_interface_handler);
 
  private:
   // D-Bus method handlers for adapter object.
   bool HandleStartDiscovery(brillo::ErrorPtr* error, dbus::Message* message);
   bool HandleStopDiscovery(brillo::ErrorPtr* error, dbus::Message* message);
+  bool HandleRemoveDevice(brillo::ErrorPtr* error,
+                          dbus::Message* message,
+                          const dbus::ObjectPath& device_path);
 
   bool UpdateDiscovery(int n_discovery_clients);
 
@@ -51,6 +56,8 @@ class AdapterInterfaceHandler {
   scoped_refptr<dbus::Bus> bus_;
 
   Newblue* newblue_;
+
+  DeviceInterfaceHandler* device_interface_handler_;
 
   ExportedObjectManagerWrapper* exported_object_manager_wrapper_;
 

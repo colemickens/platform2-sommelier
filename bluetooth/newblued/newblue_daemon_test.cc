@@ -133,6 +133,26 @@ class NewblueDaemonTest : public ::testing::Test {
         .WillOnce(Return(true));
   }
 
+  // Expects that the methods on org.bluez.Device1 interface are unexported.
+  void ExpectDeviceMethodsUnexported(
+      scoped_refptr<dbus::MockExportedObject> exported_object) {
+    EXPECT_CALL(
+        *exported_object,
+        UnexportMethodAndBlock(bluetooth_device::kBluetoothDeviceInterface,
+                               bluetooth_device::kPair))
+        .WillOnce(Return(true));
+    EXPECT_CALL(
+        *exported_object,
+        UnexportMethodAndBlock(bluetooth_device::kBluetoothDeviceInterface,
+                               bluetooth_device::kCancelPairing))
+        .WillOnce(Return(true));
+    EXPECT_CALL(
+        *exported_object,
+        UnexportMethodAndBlock(bluetooth_device::kBluetoothDeviceInterface,
+                               bluetooth_device::kConnect))
+        .WillOnce(Return(true));
+  }
+
   // Expects that the methods on org.bluez.AdvertisingManager1 interface are
   // exported.
   void ExpectAdvertisingManagerMethodsExported(
@@ -190,6 +210,13 @@ class NewblueDaemonTest : public ::testing::Test {
     ExpectPropertiesMethodsExportedSync(exported_dev_object);
     EXPECT_CALL(*bus_, GetExportedObject(device_object_path))
         .WillOnce(Return(exported_dev_object.get()));
+  }
+
+  void ExpectDeviceObjectUnexported(
+      const dbus::ObjectPath& device_object_path) {
+    scoped_refptr<dbus::MockExportedObject> exported_dev_object =
+        AddOrGetMockExportedObject(device_object_path);
+    ExpectDeviceMethodsUnexported(exported_dev_object);
   }
 
   scoped_refptr<dbus::MockExportedObject> SetupExportedRootObject() {
@@ -322,6 +349,15 @@ class NewblueDaemonTest : public ::testing::Test {
                                         bluetooth_adapter::kStopDiscovery)),
             Return(true)));
 
+    EXPECT_CALL(
+        *exported_adapter_object,
+        ExportMethodAndBlock(bluetooth_adapter::kBluetoothAdapterInterface,
+                             bluetooth_adapter::kRemoveDevice, _))
+        .WillOnce(DoAll(
+            SaveArg<2>(GetMethodHandler(adapter_method_handlers,
+                                        bluetooth_adapter::kRemoveDevice)),
+            Return(true)));
+
     EXPECT_CALL(*libnewblue_, HciIsUp()).WillOnce(Return(true));
     EXPECT_CALL(*libnewblue_, L2cInit()).WillOnce(Return(0));
     EXPECT_CALL(*libnewblue_, AttInit()).WillOnce(Return(true));
@@ -345,6 +381,16 @@ class NewblueDaemonTest : public ::testing::Test {
         .WillOnce(Invoke(&smKnownDevicesFree));
 
     newblue_daemon_->OnHciReadyForUp();
+  }
+
+  void ConstructRemoveDeviceMethodCall(
+      dbus::MethodCall* remove_device_method_call,
+      const std::string device_object_path) {
+    remove_device_method_call->SetPath(dbus::ObjectPath(kAdapterObjectPath));
+    remove_device_method_call->SetSender(kTestSender);
+    remove_device_method_call->SetSerial(kTestSerial);
+    dbus::MessageWriter writer(remove_device_method_call);
+    writer.AppendObjectPath(dbus::ObjectPath(device_object_path));
   }
 
   base::MessageLoop message_loop_;
@@ -423,15 +469,19 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
 
   dbus::ExportedObject::MethodCallCallback start_discovery_handler;
   dbus::ExportedObject::MethodCallCallback stop_discovery_handler;
+  dbus::ExportedObject::MethodCallCallback remove_device_handler;
   MethodHandlerMap adapter_method_handlers;
   adapter_method_handlers[bluetooth_adapter::kStartDiscovery] =
       &start_discovery_handler;
   adapter_method_handlers[bluetooth_adapter::kStopDiscovery] =
       &stop_discovery_handler;
+  adapter_method_handlers[bluetooth_adapter::kRemoveDevice] =
+      &remove_device_handler;
   TestAdapterBringUp(exported_adapter_object, adapter_method_handlers);
 
   ASSERT_FALSE(start_discovery_handler.is_null());
   ASSERT_FALSE(stop_discovery_handler.is_null());
+  ASSERT_FALSE(remove_device_handler.is_null());
 
   // StartDiscovery by the first client, it should return D-Bus success and
   // should trigger NewBlue StartDiscovery.
@@ -484,6 +534,30 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
                             /* eir_len*/ 0);
   // Trigger the queued inquiry_response_callback task.
   base::RunLoop().RunUntilIdle();
+
+  // RemoveDevice failed (unknown device address).
+  dbus::MethodCall remove_device_method_call(
+      bluetooth_adapter::kBluetoothAdapterInterface,
+      bluetooth_adapter::kRemoveDevice);
+  ConstructRemoveDeviceMethodCall(&remove_device_method_call,
+                                  "/org/bluez/hci0/dev_11_11_11_11_11_11");
+  std::unique_ptr<dbus::Response> remove_device_response;
+  remove_device_handler.Run(&remove_device_method_call,
+                            base::Bind(&SaveResponse, &remove_device_response));
+  EXPECT_EQ(bluetooth_adapter::kErrorFailed,
+            remove_device_response->GetErrorName());
+  // RemoveDevice successful.
+  dbus::MethodCall remove_device_method_call2(
+      bluetooth_adapter::kBluetoothAdapterInterface,
+      bluetooth_adapter::kRemoveDevice);
+  ConstructRemoveDeviceMethodCall(&remove_device_method_call2,
+                                  kTestDeviceObjectPath);
+  ExpectDeviceObjectUnexported(dbus::ObjectPath(kTestDeviceObjectPath));
+  std::unique_ptr<dbus::Response> remove_device_response2;
+  remove_device_handler.Run(
+      &remove_device_method_call2,
+      base::Bind(&SaveResponse, &remove_device_response2));
+  EXPECT_EQ("", remove_device_response2->GetErrorName());
 
   // StopDiscovery by the first client, it should return D-Bus success and
   // should not affect NewBlue discovery state since there is still another

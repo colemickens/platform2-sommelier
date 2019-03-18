@@ -108,7 +108,8 @@ void NewblueDaemon::OnHciReadyForUp() {
   }
   adapter_interface_handler_->Init(
       base::Bind(&DeviceInterfaceHandler::OnDeviceDiscovered,
-                 device_interface_handler_->GetWeakPtr()));
+                 device_interface_handler_->GetWeakPtr()),
+      device_interface_handler_.get());
   stack_sync_monitor_.RegisterBluezDownCallback(
       bus_.get(),
       base::Bind(&NewblueDaemon::OnBluezDown, weak_ptr_factory_.GetWeakPtr()));

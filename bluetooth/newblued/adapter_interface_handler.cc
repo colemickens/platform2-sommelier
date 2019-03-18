@@ -29,8 +29,10 @@ AdapterInterfaceHandler::AdapterInterfaceHandler(
       weak_ptr_factory_(this) {}
 
 void AdapterInterfaceHandler::Init(
-    Newblue::DeviceDiscoveredCallback device_discovered_callback) {
+    Newblue::DeviceDiscoveredCallback device_discovered_callback,
+    DeviceInterfaceHandler* device_interface_handler) {
   device_discovered_callback_ = device_discovered_callback;
+  device_interface_handler_ = device_interface_handler;
   dbus::ObjectPath adapter_object_path(kAdapterObjectPath);
   exported_object_manager_wrapper_->AddExportedInterface(
       adapter_object_path, bluetooth_adapter::kBluetoothAdapterInterface);
@@ -58,6 +60,9 @@ void AdapterInterfaceHandler::Init(
   adapter_interface->AddSimpleMethodHandlerWithErrorAndMessage(
       bluetooth_adapter::kStopDiscovery, base::Unretained(this),
       &AdapterInterfaceHandler::HandleStopDiscovery);
+  adapter_interface->AddSimpleMethodHandlerWithErrorAndMessage(
+      bluetooth_adapter::kRemoveDevice, base::Unretained(this),
+      &AdapterInterfaceHandler::HandleRemoveDevice);
 
   adapter_interface->ExportAndBlock();
 }
@@ -116,6 +121,25 @@ bool AdapterInterfaceHandler::HandleStopDiscovery(brillo::ErrorPtr* error,
   }
 
   discovery_clients_.erase(client_address);
+
+  return true;
+}
+
+bool AdapterInterfaceHandler::HandleRemoveDevice(
+    brillo::ErrorPtr* error,
+    dbus::Message* message,
+    const dbus::ObjectPath& device_path) {
+  VLOG(1) << __func__;
+
+  std::string device_address =
+      ConvertDeviceObjectPathToAddress(device_path.value());
+
+  if (!device_interface_handler_->RemoveDevice(device_address)) {
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         bluetooth_adapter::kErrorFailed,
+                         "Device does not exist");
+    return false;
+  }
 
   return true;
 }

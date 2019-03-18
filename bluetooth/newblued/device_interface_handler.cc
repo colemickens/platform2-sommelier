@@ -304,6 +304,23 @@ void DeviceInterfaceHandler::OnDeviceDiscovered(
   ExportOrUpdateDevice(device);
 }
 
+bool DeviceInterfaceHandler::RemoveDevice(const std::string& address) {
+  Device* device = FindDevice(address);
+  if (!device)
+    return false;
+
+  discovered_devices_.erase(address);
+
+  dbus::ObjectPath device_path(ConvertDeviceAddressToObjectPath(address));
+  exported_object_manager_wrapper_->RemoveExportedInterface(
+      device_path, bluetooth_device::kBluetoothDeviceInterface);
+
+  newblue_->CancelPair(address, device->is_random_address);
+  // TODO(sonnysasaka): Also disconnect any connection when connection is
+  // implemented.
+  return true;
+}
+
 Device* DeviceInterfaceHandler::AddOrGetDiscoveredDevice(
     const std::string& address, uint8_t address_type) {
   Device* device = FindDevice(address);
@@ -787,6 +804,10 @@ void DeviceInterfaceHandler::OnPairStateChanged(const std::string& address,
 
   VLOG(1) << "Pairing state changed to " << ConvertPairStateToString(pair_state)
           << " for device " << device->address;
+
+  // The device D-Bus object may have already been unexported.
+  if (!device)
+    return;
 
   std::string dbus_error;
 

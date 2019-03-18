@@ -107,6 +107,9 @@ class DeviceInterfaceHandler {
                           uint8_t reply_type,
                           const std::vector<uint8_t>& eir);
 
+  // Removes a device D-Bus object and forgets its pairing information.
+  bool RemoveDevice(const std::string& address);
+
  private:
   // Returns the in-memory discovered device based on its address, adding it if
   // does not already exist.
