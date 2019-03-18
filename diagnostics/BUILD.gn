@@ -8,6 +8,7 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":cros_healthd",
     ":diag",
     ":diagnostics_dpsl_demo_single_thread",
     ":telem",
@@ -17,6 +18,7 @@ group("all") {
   ]
   if (use.test) {
     deps += [
+      ":cros_healthd_test",
       ":libdiag_test",
       ":libgrpc_async_adapter_test",
       ":libtelem_test",
@@ -215,6 +217,18 @@ static_library("libtelem") {
   ]
 }
 
+# The cros_healthd daemon executable.
+pkg_config("cros_healthd_pkg_deps") {
+  pkg_deps = [ "libbrillo-${libbase_ver}" ]
+}
+
+executable("cros_healthd") {
+  configs += [ ":cros_healthd_pkg_deps" ]
+  sources = [
+    "cros_healthd/main.cc",
+  ]
+}
+
 # The diag tool executable.
 pkg_config("diag_pkg_deps") {
   pkg_deps = [
@@ -331,6 +345,23 @@ if (use.test) {
   }
 
   # Unit tests.
+  pkg_config("cros_healthd_test_pkg_deps") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+
+  executable("cros_healthd_test") {
+    configs += [
+      ":cros_healthd_test_pkg_deps",
+      "//common-mk:test",
+    ]
+    deps = [
+      "../common-mk/testrunner:testrunner",
+    ]
+  }
+
   pkg_config("libgrpc_async_adapter_test_pkg_deps") {
     pkg_deps = [
       "libchrome-${libbase_ver}",
