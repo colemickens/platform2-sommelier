@@ -138,6 +138,9 @@ remove_old_pattern_log_files() {
 
   # Remove old vmlog logs (written by metrics_daemon)
   remove_old_files /var/log/vmlog "vmlog.*"
+
+  # Remove old modemfwd helper logs
+  remove_old_files /var/log/modemfwd "helper_log.*"
 }
 
 usage() {
