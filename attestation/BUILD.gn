@@ -278,6 +278,8 @@ if (use.test) {
         "tpm_manager_test",
         "trunks_test",
       ]
+    } else {
+      sources += [ "common/tpm_utility_common_test.cc" ]
     }
     deps = [
       ":client_library",
