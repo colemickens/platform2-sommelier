@@ -100,14 +100,17 @@ TEST_F(SchedulerConfigurationHelperTest, ParseCPUs) {
   EXPECT_TRUE(utils.ParseCPUNumbers("0,3,4,7", &list));
   EXPECT_EQ(std::vector<std::string>({"0", "3", "4", "7"}), list);
 
-  // Test a one way range.
-  std::vector<std::string> one_way_range;
-  EXPECT_TRUE(utils.ParseCPUNumbers("0-", &one_way_range));
-  EXPECT_EQ(std::vector<std::string>({"0"}), one_way_range);
+  // Some devices have weird topologies.
+  std::vector<std::string> complex_range;
+  EXPECT_TRUE(utils.ParseCPUNumbers("0,2-3,6", &complex_range));
+  EXPECT_EQ(std::vector<std::string>({"0", "2", "3", "6"}), complex_range);
 
-  std::vector<std::string> one_way_range2;
-  EXPECT_TRUE(utils.ParseCPUNumbers("-9", &one_way_range2));
-  EXPECT_EQ(std::vector<std::string>({"9"}), one_way_range2);
+  std::vector<std::string> complex_range2;
+  EXPECT_TRUE(utils.ParseCPUNumbers("0,2-5,6-10,17-25,32", &complex_range2));
+  EXPECT_EQ(std::vector<std::string>({"0",  "2",  "3",  "4",  "5",  "6",  "7",
+                                      "8",  "9",  "10", "17", "18", "19", "20",
+                                      "21", "22", "23", "24", "25", "32"}),
+            complex_range2);
 
   // Invalid ranges.
   std::vector<std::string> invalid;
@@ -116,12 +119,10 @@ TEST_F(SchedulerConfigurationHelperTest, ParseCPUs) {
   EXPECT_FALSE(utils.ParseCPUNumbers("?", &invalid));
   EXPECT_FALSE(utils.ParseCPUNumbers("0-?", &invalid));
   EXPECT_FALSE(utils.ParseCPUNumbers("1,?", &invalid));
-  EXPECT_FALSE(utils.ParseCPUNumbers("1,", &invalid));
-  EXPECT_FALSE(utils.ParseCPUNumbers(",1", &invalid));
-  EXPECT_FALSE(utils.ParseCPUNumbers("0,1-3", &invalid));
-  EXPECT_FALSE(utils.ParseCPUNumbers("0-3,1-3", &invalid));
-  EXPECT_FALSE(utils.ParseCPUNumbers("0,2,1-3", &invalid));
-  EXPECT_FALSE(utils.ParseCPUNumbers("0-2,1", &invalid));
+  EXPECT_FALSE(utils.ParseCPUNumbers("0-", &invalid));
+  EXPECT_FALSE(utils.ParseCPUNumbers("-9", &invalid));
+  EXPECT_FALSE(utils.ParseCPUNumbers("1-1", &invalid));
+  EXPECT_FALSE(utils.ParseCPUNumbers("5-1", &invalid));
 }
 
 TEST_F(SchedulerConfigurationHelperTest, WriteFlag) {

@@ -49,47 +49,34 @@ bool SchedulerConfigurationUtils::ParseCPUNumbers(
   if (tokens.size() < 1)
     return false;
 
-  // It's a comma separated list in this case.
-  if (tokens.size() > 1) {
-    for (const auto& cpu_num : tokens) {
-      // Make sure these are numbers and not recursive ranges.
-      int unused;
-      if (!base::StringToInt(cpu_num, &unused)) {
-        LOG(ERROR) << "Invalid control file number: " << cpu_num;
-        return false;
-      }
-      result->push_back(cpu_num);
+  for (const auto& token : tokens) {
+    // If it's a number, push immediately to the list.
+    unsigned unused;
+    if (base::StringToUint(token, &unused)) {
+      result->push_back(token);
+      continue;
     }
-    return true;
-  }
 
-  // Check if it's a hyphen separated range.
-  std::vector<std::string> range_tokens = base::SplitString(
-      cpus, "-", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    // Otherwise it must be a hyphen separated range.
+    std::vector<std::string> range_tokens = base::SplitString(
+        token, "-", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
-  // If the size is still 1, it's a raw number.
-  if (range_tokens.size() == 1) {
-    int unused;
-    if (!base::StringToInt(range_tokens[0], &unused)) {
-      LOG(ERROR) << "Invalid control file number: " << range_tokens[0];
+    if (range_tokens.size() != 2) {
       return false;
     }
-    result->push_back(range_tokens[0]);
-    return true;
-  }
 
-  if (range_tokens.size() != 2)
-    return false;
+    unsigned cpu_start, cpu_end;
+    if (!base::StringToUint(range_tokens[0], &cpu_start) ||
+        !base::StringToUint(range_tokens[1], &cpu_end)) {
+      return false;
+    }
 
-  int cpu_start, cpu_end;
-  if (!base::StringToInt(range_tokens[0], &cpu_start) ||
-      !base::StringToInt(range_tokens[1], &cpu_end)) {
-    return false;
-  }
+    if (cpu_end <= cpu_start)
+      return false;
 
-  for (int i = cpu_start; i <= cpu_end; i++) {
-    std::string cpu_num = base::StringPrintf("%d", i);
-    result->push_back(cpu_num);
+    for (unsigned i = cpu_start; i <= cpu_end; i++) {
+      result->push_back(base::UintToString(i));
+    }
   }
 
   return true;
