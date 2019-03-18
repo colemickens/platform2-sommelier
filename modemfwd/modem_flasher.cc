@@ -22,21 +22,26 @@ ModemFlasher::ModemFlasher(
 
 base::Closure ModemFlasher::TryFlash(Modem* modem) {
   std::string equipment_id = modem->GetEquipmentId();
-  if (base::ContainsKey(blacklist_, equipment_id)) {
+  FlashState* flash_state = &modem_info_[equipment_id];
+  if (!flash_state->ShouldFlash()) {
     LOG(WARNING) << "Modem with equipment ID \"" << equipment_id
-                 << "\" is blacklisted; not flashing";
+                 << "\" failed to flash too many times; not flashing";
     return base::Closure();
   }
   std::string device_id = modem->GetDeviceId();
 
   FirmwareFileInfo file_info;
   // Check if we need to update the main firmware.
-  if (!base::ContainsKey(main_fw_checked_, equipment_id) &&
+  if (flash_state->ShouldFlashMainFirmware() &&
       firmware_directory_->FindMainFirmware(device_id, &file_info)) {
     DLOG(INFO) << "Found main firmware blob " << file_info.version
                << ", currently installed main firmware version: "
                << modem->GetMainFirmwareVersion();
-    if (file_info.version != modem->GetMainFirmwareVersion()) {
+    if (file_info.version == modem->GetMainFirmwareVersion()) {
+      // We don't need to check the main firmware again if there's nothing new.
+      // Pretend that we successfully flashed it.
+      flash_state->OnFlashedMainFirmware();
+    } else {
       FirmwareFile firmware_file;
       if (!firmware_file.PrepareFrom(file_info))
         return base::Closure();
@@ -47,21 +52,18 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
       journal_->MarkStartOfFlashingMainFirmware(device_id);
       if (modem->FlashMainFirmware(firmware_file.path_on_filesystem())) {
         // Refer to |firmware_file.path_for_logging()| in the log and journal.
-        main_fw_checked_.insert(equipment_id);
+        flash_state->OnFlashedMainFirmware();
         DLOG(INFO) << "Flashed " << firmware_file.path_for_logging().value()
                    << " to the modem";
         return base::Bind(&Journal::MarkEndOfFlashingMainFirmware,
                           base::Unretained(journal_.get()), device_id);
       } else {
-        blacklist_.insert(equipment_id);
+        flash_state->OnFlashFailed();
         journal_->MarkEndOfFlashingMainFirmware(device_id);
         return base::Closure();
       }
     }
   }
-
-  // We don't need to check the main firmware again if there's nothing new.
-  main_fw_checked_.insert(equipment_id);
 
   // If there's no SIM, we can stop here.
   std::string current_carrier = modem->GetCarrierId();
@@ -78,9 +80,7 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
     return base::Closure();
   }
 
-  auto it = last_carrier_fw_flashed_.find(equipment_id);
-  if (it != last_carrier_fw_flashed_.end() &&
-      it->second == file_info.firmware_path) {
+  if (!flash_state->ShouldFlashCarrierFirmware(file_info.firmware_path)) {
     DLOG(INFO) << "Already flashed carrier firmware for " << current_carrier;
     return base::Closure();
   }
@@ -110,15 +110,14 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
     journal_->MarkStartOfFlashingCarrierFirmware(device_id, current_carrier);
     if (modem->FlashCarrierFirmware(firmware_file.path_on_filesystem())) {
       // Refer to |firmware_file.path_for_logging()| in the log and journal.
-      last_carrier_fw_flashed_.insert(
-          std::make_pair(equipment_id, firmware_file.path_for_logging()));
+      flash_state->OnFlashedCarrierFirmware(firmware_file.path_for_logging());
       DLOG(INFO) << "Flashed " << firmware_file.path_for_logging().value()
                  << " to the modem";
       return base::Bind(&Journal::MarkEndOfFlashingCarrierFirmware,
                         base::Unretained(journal_.get()), device_id,
                         current_carrier);
     } else {
-      blacklist_.insert(equipment_id);
+      flash_state->OnFlashFailed();
       journal_->MarkEndOfFlashingCarrierFirmware(device_id, current_carrier);
       return base::Closure();
     }

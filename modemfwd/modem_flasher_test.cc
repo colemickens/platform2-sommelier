@@ -195,15 +195,20 @@ TEST_F(ModemFlasherTest, SwitchCarrierFirmwareForSimHotSwap) {
   modem_flasher_->TryFlash(modem.get());
 }
 
-TEST_F(ModemFlasherTest, BlacklistAfterMainFlashFailure) {
+TEST_F(ModemFlasherTest, BlockAfterMainFlashFailure) {
   base::FilePath new_firmware(kMainFirmware2Path);
   AddMainFirmwareFile(kDeviceId1, new_firmware, kMainFirmware2Version);
 
   auto modem = GetDefaultModem();
   EXPECT_CALL(*modem, GetDeviceId()).Times(AtLeast(1));
   EXPECT_CALL(*modem, GetMainFirmwareVersion()).Times(AtLeast(1));
-  EXPECT_CALL(*modem, FlashMainFirmware(new_firmware)).WillOnce(Return(false));
+  EXPECT_CALL(*modem, FlashMainFirmware(new_firmware))
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(*modem, FlashCarrierFirmware(_)).Times(0);
+  modem_flasher_->TryFlash(modem.get());
+
+  // ModemFlasher retries once on a failure, so fail twice.
+  modem = GetDefaultModem();
   modem_flasher_->TryFlash(modem.get());
 
   // Here the modem would reboot, but ModemFlasher should keep track of its
@@ -218,7 +223,7 @@ TEST_F(ModemFlasherTest, BlacklistAfterMainFlashFailure) {
   modem_flasher_->TryFlash(modem.get());
 }
 
-TEST_F(ModemFlasherTest, BlacklistAfterCarrierFlashFailure) {
+TEST_F(ModemFlasherTest, BlockAfterCarrierFlashFailure) {
   base::FilePath new_firmware(kCarrier1Firmware2Path);
   AddCarrierFirmwareFile(kDeviceId1, kCarrier1, new_firmware,
                          kCarrier1Firmware2Version);
@@ -228,7 +233,11 @@ TEST_F(ModemFlasherTest, BlacklistAfterCarrierFlashFailure) {
   SetCarrierFirmwareInfo(modem.get(), kCarrier1, kCarrier1Firmware1Version);
   EXPECT_CALL(*modem, FlashMainFirmware(_)).Times(0);
   EXPECT_CALL(*modem, FlashCarrierFirmware(new_firmware))
-      .WillOnce(Return(false));
+      .WillRepeatedly(Return(false));
+  modem_flasher_->TryFlash(modem.get());
+
+  // ModemFlasher retries once on a failure, so fail twice.
+  modem = GetDefaultModem();
   modem_flasher_->TryFlash(modem.get());
 
   modem = GetDefaultModem();
@@ -240,7 +249,7 @@ TEST_F(ModemFlasherTest, BlacklistAfterCarrierFlashFailure) {
   modem_flasher_->TryFlash(modem.get());
 }
 
-TEST_F(ModemFlasherTest, SuccessThenBlacklist) {
+TEST_F(ModemFlasherTest, SuccessThenBlock) {
   const base::FilePath new_main_firmware(kMainFirmware2Path);
   const base::FilePath new_carrier_firmware(kCarrier1Firmware2Path);
   AddMainFirmwareFile(kDeviceId1, new_main_firmware, kMainFirmware2Version);
@@ -263,10 +272,14 @@ TEST_F(ModemFlasherTest, SuccessThenBlacklist) {
   SetCarrierFirmwareInfo(modem.get(), kCarrier1, kCarrier1Firmware1Version);
   EXPECT_CALL(*modem, FlashMainFirmware(_)).Times(0);
   EXPECT_CALL(*modem, FlashCarrierFirmware(new_carrier_firmware))
-      .WillOnce(Return(false));
+      .WillRepeatedly(Return(false));
   modem_flasher_->TryFlash(modem.get());
 
-  // Check that we're still blacklisted even though we saw a successful flash
+  // ModemFlasher retries once on a failure, so fail twice.
+  modem = GetDefaultModem();
+  modem_flasher_->TryFlash(modem.get());
+
+  // Check that we're still blocked even though we saw a successful flash
   // earlier.
   modem = GetDefaultModem();
   EXPECT_CALL(*modem, GetDeviceId()).Times(0);
