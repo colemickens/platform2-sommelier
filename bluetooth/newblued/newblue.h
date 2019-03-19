@@ -114,10 +114,11 @@ class Newblue {
                           uint8_t reply_type,
                           const std::vector<uint8_t>& eir)>;
 
-  // dbus_error_code refers to namespace bluetooth_device
-  // chromeos/dbus/service_constants.h.
   using PairStateChangedCallback = base::Callback<void(
       const std::string& address, PairState pair_state, PairError pair_error)>;
+
+  using GattClientConnectCallback =
+      base::Callback<void(gatt_client_conn_t conn_id, uint8_t status)>;
 
   explicit Newblue(std::unique_ptr<LibNewblue> libnewblue);
 
@@ -166,6 +167,14 @@ class Newblue {
   // Cancels LE pairing.
   bool CancelPair(const std::string& device_address, bool is_random_address);
 
+  // Registers/Unregisters a callback for GATT connection state change
+  // notifications. We allow only one observer for connection callback.
+  bool RegisterGattClientConnectCallback(GattClientConnectCallback callback);
+  void UnregisterGattClientConnectCallback();
+  // Connects as a GATT client to a peer device.
+  gatt_client_conn_t GattClientConnect(const std::string& device_address,
+                                       bool is_random_address);
+
   // Retrieves the known devices from NewBlue's persist.
   std::vector<KnownDevice> GetKnownDevices();
 
@@ -202,6 +211,10 @@ class Newblue {
   // Called when pairing state changed events are received.
   void PairStateCallback(const smPairStateChange& change, uniq_t observer_id);
 
+  static void GattConnectCallbackThunk(void* user_data,
+                                       gatt_client_conn_t conn,
+                                       uint8_t status);
+
   static void PasskeyDisplayObserverCallbackThunk(
       void* data,
       const struct smPasskeyDisplay* passkey_display,
@@ -230,6 +243,8 @@ class Newblue {
   // pairing update can expect to be notified via callback provided in
   // RegisterAsPairObserver(). For now, Newblued is the only client.
   std::map<UniqueId, PairStateChangedCallback> pair_observers_;
+
+  GattClientConnectCallback gatt_client_connect_callback_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.

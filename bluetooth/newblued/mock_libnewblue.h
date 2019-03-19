@@ -22,6 +22,10 @@ class MockLibNewblue : public LibNewblue {
   // gatt.h
   MOCK_METHOD0(GattProfileInit, bool());
   MOCK_METHOD0(GattProfileDeinit, void());
+  MOCK_METHOD3(GattClientConnect,
+               gatt_client_conn_t(void* userData,
+                                  const struct bt_addr*,
+                                  gattCliConnectResultCbk));
 
   // gatt-builtin.h
   MOCK_METHOD0(GattBuiltinInit, bool());
@@ -54,6 +58,10 @@ class MockLibNewblue : public LibNewblue {
                uniq_t(void*, smPasskeyDisplayCbk));
   MOCK_METHOD0(SmGetKnownDevices, struct smKnownDevNode*());
   MOCK_METHOD1(SmKnownDevicesFree, void(struct smKnownDevNode*));
+
+  // btleHid.h
+  MOCK_METHOD2(BtleHidInit, void(BtleHidConnStateCbk, BtleHidReportRxCbk));
+  MOCK_METHOD1(BtleHidAttach, ble_hid_conn_t(gatt_client_conn_t));
 };
 
 }  // namespace bluetooth

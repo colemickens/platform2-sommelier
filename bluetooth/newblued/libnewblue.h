@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <newblue/att.h>
+#include <newblue/btleHid.h>
 #include <newblue/gatt.h>
 #include <newblue/gatt-builtin.h>
 #include <newblue/hci.h>
@@ -34,6 +35,11 @@ class LibNewblue {
   // gatt.h
   LIBNEWBLUE_METHOD0(GattProfileInit, gattProfileInit, bool());
   LIBNEWBLUE_METHOD0(GattProfileDeinit, gattProfileDeinit, void());
+  LIBNEWBLUE_METHOD3(GattClientConnect,
+                     gattClientConnect,
+                     gatt_client_conn_t(void* userData,
+                                        const struct bt_addr*,
+                                        gattCliConnectResultCbk));
 
   // gatt-builtin.h
   LIBNEWBLUE_METHOD0(GattBuiltinInit, gattBuiltinInit, bool());
@@ -114,6 +120,18 @@ class LibNewblue {
   LIBNEWBLUE_METHOD1(SmKnownDevicesFree,
                      smKnownDevicesFree,
                      void(struct smKnownDevNode*));
+
+  // btleHid.h
+  LIBNEWBLUE_METHOD2(BtleHidInit,
+                     btleHidInit,
+                     void(BtleHidConnStateCbk, BtleHidReportRxCbk));
+  LIBNEWBLUE_METHOD1(BtleHidAttach,
+                     btleHidAttach,
+                     ble_hid_conn_t(gatt_client_conn_t));
+  LIBNEWBLUE_METHOD1(BtleHidDetach,
+                     btleHidDetach,
+                     /* NOLINTNEXTLINE(readability/casting) */
+                     bool(ble_hid_conn_t));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(LibNewblue);

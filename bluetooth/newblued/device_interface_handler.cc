@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -38,6 +39,9 @@ constexpr uint16_t kDefaultAppearance = 0;
 constexpr uint16_t kDefaultManufacturerId = 0xFFFF;
 
 constexpr char kDeviceTypeLe[] = "LE";
+
+// TODO(mcchou): Move GATT assigned number and masks to a separate file.
+constexpr uint32_t kAppearanceMask = 0xffc0;
 
 // Updates device alias based on its name or address.
 void UpdateDeviceAlias(Device* device) {
@@ -98,11 +102,24 @@ std::string ConvertPairStateToString(PairState state) {
   }
 }
 
+std::string ConvertConnectStateToString(ConnectState state) {
+  switch (state) {
+    case ConnectState::CONNECTED:
+      return "Connected";
+    case ConnectState::DISCONNECTED:
+      return "Disconnected";
+    case ConnectState::ERROR:
+      return "Disconnected with error";
+    default:
+      return "Unknown";
+  }
+}
+
 // These value are defined at https://www.bluetooth.com/specifications/gatt/
 // viewer?attributeXmlFile=org.bluetooth.characteristic.gap.appearance.xml.
 // The translated strings come from BlueZ.
 std::string ConvertAppearanceToIcon(uint16_t appearance) {
-  switch ((appearance & 0xffc0) >> 6) {
+  switch ((appearance & kAppearanceMask) >> 6) {
     case 0x00:
       return "unknown";
     case 0x01:
@@ -231,6 +248,13 @@ std::map<uint16_t, std::vector<uint8_t>> MakeManufacturer(
   return manufacturer;
 }
 
+bool IsHid(uint16_t appearance) {
+  return true;
+  // TODO(mcchou): Check appearance after we memorize the value of properties.
+  // This check is preventing the reconnection of HID devices.
+  // return ((appearance & kAppearanceMask) >> 6) == 0x0f;
+}
+
 }  // namespace
 
 Device::Device() : Device("") {}
@@ -281,9 +305,14 @@ bool DeviceInterfaceHandler::Init() {
   pair_observer_id_ = newblue_->RegisterAsPairObserver(
       base::Bind(&DeviceInterfaceHandler::OnPairStateChanged,
                  weak_ptr_factory_.GetWeakPtr()));
-
   if (pair_observer_id_ == kInvalidUniqueId)
     return false;
+
+  if (!newblue_->RegisterGattClientConnectCallback(
+          base::Bind(&DeviceInterfaceHandler::OnGattClientConnectCallback,
+                     weak_ptr_factory_.GetWeakPtr()))) {
+    return false;
+  }
 
   return true;
 }
@@ -463,10 +492,164 @@ void DeviceInterfaceHandler::HandleConnect(
 
   VLOG(1) << "Handling Connect for device " << device_address;
 
-  // TODO(mcchou): Implement org.bluez.Device1.Connect.
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           bluetooth_device::kErrorFailed,
-                           "Not implemented yet");
+  if (base::ContainsKey(connection_sessions_, device_address)) {
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             bluetooth_device::kErrorInProgress,
+                             "Connection in progress");
+    return;
+  }
+
+  struct ConnectSession session;
+  session.connect_response = std::move(response);
+  connection_sessions_.emplace(device_address, std::move(session));
+
+  const Device* device = FindDevice(device_address);
+  if (!device) {
+    LOG(WARNING) << "device " << device_address << " not found";
+    ConnectReply(device_address, false, bluetooth_device::kErrorDoesNotExist);
+    return;
+  }
+
+  struct bt_addr address;
+  CHECK(ConvertToBtAddr(device->is_random_address, device_address, &address));
+
+  if (base::ContainsKey(connection_attempts_, device_address)) {
+    LOG(WARNING) << "Connection with device " << device_address
+                 << " in progress";
+    ConnectReply(device_address, false, bluetooth_device::kErrorInProgress);
+    return;
+  }
+
+  if (connections_.find(device_address) != connections_.end()) {
+    LOG(WARNING) << "Connection with device " << device_address
+                 << " already exists";
+    ConnectReply(device_address, false, bluetooth_device::kErrorAlreadyExists);
+    return;
+  }
+
+  gatt_client_conn_t conn_id =
+      newblue_->GattClientConnect(device->address, device->is_random_address);
+  if (!conn_id) {
+    LOG(WARNING) << "Failed GATT client connect";
+    ConnectReply(device_address, false, bluetooth_device::kErrorFailed);
+    return;
+  }
+
+  connection_attempts_.emplace(device_address, conn_id);
+}
+
+void DeviceInterfaceHandler::ConnectReply(const std::string& device_address,
+                                          bool success,
+                                          const std::string& dbus_error) {
+  auto iter = connection_sessions_.find(device_address);
+  if (iter == connection_sessions_.end() || !iter->second.connect_response) {
+    LOG(WARNING) << "Cannot find ongoing connection session or response for "
+                 << "device " << device_address;
+    return;
+  }
+
+  if (success) {
+    iter->second.connect_response->SendRawResponse(
+        iter->second.connect_response->CreateCustomResponse());
+  } else {
+    iter->second.connect_response->ReplyWithError(
+        FROM_HERE, brillo::errors::dbus::kDomain, dbus_error, "");
+  }
+  connection_sessions_.erase(iter);
+}
+
+void DeviceInterfaceHandler::OnGattClientConnectCallback(
+    gatt_client_conn_t conn_id, uint8_t status) {
+  Device* dev_to_notify = nullptr;
+  Device* dev_to_be_connected = nullptr;
+  std::map<std::string, gatt_client_conn_t>::iterator iter;
+  auto temp_connections = connections_;
+
+  // See if there is a match in ongoing connection attempts.
+  for (auto it = connection_attempts_.begin(); it != connection_attempts_.end();
+       ++it) {
+    if (it->second == conn_id) {
+      dev_to_be_connected = FindDevice(it->first);
+      dev_to_notify = dev_to_be_connected;
+      iter = it;
+    }
+  }
+
+  ConnectState state = static_cast<ConnectState>(status);
+  switch (state) {
+    case ConnectState::CONNECTED:
+      // Skip updating connection state if there is no device to associate with.
+      if (dev_to_be_connected == nullptr) {
+        LOG(WARNING) << "Cannot find the device corresponding to conn"
+                     << conn_id;
+        return;
+      }
+
+      VLOG(1) << "Connection " << conn_id << " added for device "
+              << dev_to_be_connected->address;
+
+      CHECK(iter != connection_attempts_.end());
+
+      struct Connection connection;
+      connection.conn_id = iter->second;
+      connection.hid_id = 0;
+
+      // Obtain a HID ID for a HID generic device.
+      if (IsHid(dev_to_be_connected->appearance.value()))
+        connection.hid_id = newblue_->libnewblue()->BtleHidAttach(conn_id);
+
+      // Track the new connection and close the attempt.
+      connections_.emplace(dev_to_be_connected->address, connection);
+      ConnectReply(dev_to_be_connected->address, true, "");
+      connection_attempts_.erase(iter);
+
+      dev_to_be_connected->connected.SetValue(true);
+      break;
+    case ConnectState::ERROR:  // Fall through.
+      VLOG(1) << "Unexpected GATT connection error";
+    case ConnectState::DISCONNECTED:
+      VLOG(1) << "GATT connection rejected/removed, connection ID " << conn_id
+              << " status = " << status;
+
+      // Close the connection attempt when there is a match.
+      if (dev_to_be_connected) {
+        CHECK(iter != connection_attempts_.end());
+
+        ConnectReply(dev_to_be_connected->address, false,
+                     bluetooth_device::kErrorFailed);
+        connection_attempts_.erase(iter);
+        break;
+      }
+
+      // If there is no match on connection attempt, check if the update is for
+      // the existing connection and update the connection state accordingly.
+      for (auto& connection : temp_connections) {
+        if (connection.second.conn_id == conn_id) {
+          Device* connected_dev = FindDevice(connection.first);
+          if (connected_dev == nullptr) {
+            LOG(WARNING) << "Ignoring disconnection with unknown device";
+            return;
+          }
+
+          if (IsHid(connected_dev->appearance.value()) &&
+              connection.second.hid_id) {
+            newblue_->libnewblue()->BtleHidDetach(connection.second.hid_id);
+          }
+
+          connections_.erase(connected_dev->address);
+          connected_dev->connected.SetValue(false);
+          dev_to_notify = connected_dev;
+        }
+      }
+      break;
+    default:
+      VLOG(1) << "Unexpected GATT connection result, conn " << conn_id
+              << " status = " << status;
+      return;
+  }
+
+  if (dev_to_notify)
+    OnConnectStateChanged(dev_to_notify->address, state);
 }
 
 Device* DeviceInterfaceHandler::FindDevice(const std::string& device_address) {
@@ -734,7 +917,7 @@ DeviceInterfaceHandler::DetermineSecurityRequirements(const Device& device) {
   // These value are defined at https://www.bluetooth.com/specifications/gatt/
   // viewer?attributeXmlFile=org.bluetooth.characteristic.gap.appearance.xml.
   // The translated strings come from BlueZ.
-  switch ((device.appearance.value() & 0xffc0) >> 6) {
+  switch ((device.appearance.value() & kAppearanceMask) >> 6) {
     case 0x01:  // phone
     case 0x02:  // computer
       security_requirement.bond = true;
@@ -921,6 +1104,23 @@ void DeviceInterfaceHandler::OnPairStateChanged(const std::string& address,
 
   ongoing_pairing_.cancel_pair_response.reset();
 
+  ExportOrUpdateDevice(device);
+}
+
+void DeviceInterfaceHandler::OnConnectStateChanged(const std::string& address,
+                                                   ConnectState connect_state) {
+  VLOG(1) << "Connection state changed to "
+          << ConvertConnectStateToString(connect_state) << " for device "
+          << address;
+
+  Device* device = FindDevice(address);
+  if (!device) {
+    LOG(WARNING) << "Connection state changed for an unknown device "
+                 << address;
+    return;
+  }
+
+  device->connected.SetValue(connect_state == ConnectState::CONNECTED);
   ExportOrUpdateDevice(device);
 }
 

@@ -39,8 +39,12 @@ constexpr int kTestSerial = 10;
 constexpr char kTestDeviceAddress[] = "06:05:04:03:02:01";
 constexpr char kTestDeviceObjectPath[] =
     "/org/bluez/hci0/dev_06_05_04_03_02_01";
+constexpr char kUnknownDeviceObjectPath[] =
+    "/org/bluez/hci0/dev_FF_FF_FF_FF_FF_FF";
 
 constexpr uniq_t kTestDiscoveryId = 7;
+
+constexpr gatt_client_conn_t kTestGattClientConnectionId = 3;
 
 void SaveResponse(std::unique_ptr<dbus::Response>* saved_response,
                   std::unique_ptr<dbus::Response> response) {
@@ -123,22 +127,29 @@ class NewblueDaemonTest : public ::testing::Test {
 
   // Expects that the methods on org.bluez.Device1 interface are exported.
   void ExpectDeviceMethodsExported(
-      scoped_refptr<dbus::MockExportedObject> exported_object) {
+      scoped_refptr<dbus::MockExportedObject> exported_object,
+      MethodHandlerMap method_handlers) {
     EXPECT_CALL(
         *exported_object,
         ExportMethodAndBlock(bluetooth_device::kBluetoothDeviceInterface,
                              bluetooth_device::kPair, _))
-        .WillOnce(Return(true));
+        .WillOnce(DoAll(SaveArg<2>(GetMethodHandler(method_handlers,
+                                                    bluetooth_device::kPair)),
+                        Return(true)));
     EXPECT_CALL(
         *exported_object,
         ExportMethodAndBlock(bluetooth_device::kBluetoothDeviceInterface,
                              bluetooth_device::kCancelPairing, _))
-        .WillOnce(Return(true));
+        .WillOnce(DoAll(SaveArg<2>(GetMethodHandler(
+                            method_handlers, bluetooth_device::kCancelPairing)),
+                        Return(true)));
     EXPECT_CALL(
         *exported_object,
         ExportMethodAndBlock(bluetooth_device::kBluetoothDeviceInterface,
                              bluetooth_device::kConnect, _))
-        .WillOnce(Return(true));
+        .WillOnce(DoAll(SaveArg<2>(GetMethodHandler(
+                            method_handlers, bluetooth_device::kConnect)),
+                        Return(true)));
   }
 
   // Expects that the methods on org.bluez.Device1 interface are unexported.
@@ -216,10 +227,11 @@ class NewblueDaemonTest : public ::testing::Test {
       mock_exported_objects_.erase(object_path);
   }
 
-  void ExpectDeviceObjectExported(const dbus::ObjectPath& device_object_path) {
+  void ExpectDeviceObjectExported(const dbus::ObjectPath& device_object_path,
+                                  MethodHandlerMap method_handlers) {
     scoped_refptr<dbus::MockExportedObject> exported_dev_object =
         AddOrGetMockExportedObject(device_object_path);
-    ExpectDeviceMethodsExported(exported_dev_object);
+    ExpectDeviceMethodsExported(exported_dev_object, method_handlers);
     ExpectPropertiesMethodsExported(exported_dev_object);
     EXPECT_CALL(*bus_, GetExportedObject(device_object_path))
         .WillOnce(Return(exported_dev_object.get()));
@@ -410,12 +422,13 @@ class NewblueDaemonTest : public ::testing::Test {
         .WillOnce(Return(true));
     EXPECT_CALL(*libnewblue_, SmRegisterPairStateObserver(_, _))
         .WillOnce(Return(true));
+    EXPECT_CALL(*libnewblue_, BtleHidInit(_, _)).Times(1);
 
     // At initialization, newblued should export the saved paired devices.
     ExpectDeviceObjectExported(
-        dbus::ObjectPath("/org/bluez/hci0/dev_01_AA_BB_CC_DD_EE"));
+        dbus::ObjectPath("/org/bluez/hci0/dev_01_AA_BB_CC_DD_EE"), {});
     ExpectDeviceObjectExported(
-        dbus::ObjectPath("/org/bluez/hci0/dev_03_AA_BB_CC_DD_EE"));
+        dbus::ObjectPath("/org/bluez/hci0/dev_03_AA_BB_CC_DD_EE"), {});
     struct smKnownDevNode* known_devices = StubGetKnownDevices();
     EXPECT_CALL(*libnewblue_, SmGetKnownDevices())
         .WillOnce(Return(known_devices));
@@ -439,6 +452,104 @@ class NewblueDaemonTest : public ::testing::Test {
     remove_device_method_call->SetSerial(kTestSerial);
     dbus::MessageWriter writer(remove_device_method_call);
     writer.AppendObjectPath(dbus::ObjectPath(device_object_path));
+  }
+
+  // Tests org.bluez.Adapter1.StartDiscovery
+  void TestStartDiscovery(
+      dbus::ExportedObject::MethodCallCallback start_discovery_handler,
+      hciDeviceDiscoveredLeCbk* inquiry_response_callback,
+      void** inquiry_response_callback_data) {
+    // StartDiscovery by the first client, it should return D-Bus success and
+    // should trigger NewBlue StartDiscovery.
+    dbus::MethodCall start_discovery_method_call(
+        bluetooth_adapter::kBluetoothAdapterInterface,
+        bluetooth_adapter::kStartDiscovery);
+    start_discovery_method_call.SetPath(dbus::ObjectPath(kAdapterObjectPath));
+    start_discovery_method_call.SetSender(kTestSender);
+    start_discovery_method_call.SetSerial(kTestSerial);
+    std::unique_ptr<dbus::Response> start_discovery_response;
+    Newblue::DeviceDiscoveredCallback on_device_discovered;
+    EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, /* active */ true,
+                                                 /* use_random_addr */ false))
+        .WillOnce(DoAll(SaveArg<0>(inquiry_response_callback),
+                        SaveArg<1>(inquiry_response_callback_data),
+                        Return(kTestDiscoveryId)));
+    start_discovery_handler.Run(
+        &start_discovery_method_call,
+        base::Bind(&SaveResponse, &start_discovery_response));
+    EXPECT_EQ("", start_discovery_response->GetErrorName());
+    ASSERT_NE(nullptr, *inquiry_response_callback);
+    ASSERT_NE(nullptr, *inquiry_response_callback_data);
+    // StartDiscovery again by the same client, it should return D-Bus error and
+    // should not affect NewBlue discovery state.
+    EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, _, _)).Times(0);
+    start_discovery_handler.Run(
+        &start_discovery_method_call,
+        base::Bind(&SaveResponse, &start_discovery_response));
+    EXPECT_EQ(bluetooth_adapter::kErrorInProgress,
+              start_discovery_response->GetErrorName());
+    // StartDiscovery by a different client, it should return D-Bus success and
+    // should not affect NewBlue discovery state since it has already been
+    // started.
+    start_discovery_method_call.SetSender(kTestSender2);
+    EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, _, _)).Times(0);
+    start_discovery_handler.Run(
+        &start_discovery_method_call,
+        base::Bind(&SaveResponse, &start_discovery_response));
+    EXPECT_EQ("", start_discovery_response->GetErrorName());
+  }
+
+  // Tests org.bluez.Device1.Connect()
+  void TestConnect(dbus::ExportedObject::MethodCallCallback connect_handler) {
+    dbus::MethodCall connect_method_call(
+        bluetooth_device::kBluetoothDeviceInterface,
+        bluetooth_device::kConnect);
+    connect_method_call.SetSender(kTestSender);
+    connect_method_call.SetSerial(kTestSerial);
+
+    // Unknown device path
+    std::unique_ptr<dbus::Response> failed_connect_response;
+    connect_method_call.SetPath(dbus::ObjectPath(kUnknownDeviceObjectPath));
+    EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _)).Times(0);
+    connect_handler.Run(&connect_method_call,
+                        base::Bind(&SaveResponse, &failed_connect_response));
+    base::RunLoop().RunUntilIdle();
+    EXPECT_EQ(bluetooth_device::kErrorDoesNotExist,
+              failed_connect_response->GetErrorName());
+
+    // GattClientConnect() fails.
+    connect_method_call.SetPath(dbus::ObjectPath(kTestDeviceObjectPath));
+    EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _)).WillOnce(Return(0));
+    connect_handler.Run(&connect_method_call,
+                        base::Bind(&SaveResponse, &failed_connect_response));
+    base::RunLoop().RunUntilIdle();
+    EXPECT_EQ(bluetooth_device::kErrorFailed,
+              failed_connect_response->GetErrorName());
+
+    // GattClientConnect() succeeds.
+    void* data;
+    gattCliConnectResultCbk gatt_client_connect_callback;
+    EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _))
+        .WillOnce(DoAll(SaveArg<0>(&data),
+                        SaveArg<2>(&gatt_client_connect_callback),
+                        Return(kTestGattClientConnectionId)));
+    std::unique_ptr<dbus::Response> success_connect_response;
+    connect_handler.Run(&connect_method_call,
+                        base::Bind(&SaveResponse, &success_connect_response));
+    base::RunLoop().RunUntilIdle();
+    ASSERT_FALSE(success_connect_response.get());
+    // Callback for a different connection id should be ignored.
+    gatt_client_connect_callback(data, kTestGattClientConnectionId + 10,
+                                 static_cast<uint8_t>(ConnectState::CONNECTED));
+    base::RunLoop().RunUntilIdle();
+    ASSERT_FALSE(success_connect_response.get());
+    // Callback for the pending id should update the connection status and send
+    // the D-Bus reply.
+    gatt_client_connect_callback(data, kTestGattClientConnectionId,
+                                 static_cast<uint8_t>(ConnectState::CONNECTED));
+    base::RunLoop().RunUntilIdle();
+    ASSERT_TRUE(success_connect_response.get());
+    EXPECT_EQ("", success_connect_response->GetErrorName());
   }
 
   base::MessageLoop message_loop_;
@@ -495,68 +606,30 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
   dbus::ExportedObject::MethodCallCallback start_discovery_handler;
   dbus::ExportedObject::MethodCallCallback stop_discovery_handler;
   dbus::ExportedObject::MethodCallCallback remove_device_handler;
-  MethodHandlerMap adapter_method_handlers;
-  adapter_method_handlers[bluetooth_adapter::kStartDiscovery] =
-      &start_discovery_handler;
-  adapter_method_handlers[bluetooth_adapter::kStopDiscovery] =
-      &stop_discovery_handler;
-  adapter_method_handlers[bluetooth_adapter::kRemoveDevice] =
-      &remove_device_handler;
+  MethodHandlerMap adapter_method_handlers = {
+      {bluetooth_adapter::kStartDiscovery, &start_discovery_handler},
+      {bluetooth_adapter::kStopDiscovery, &stop_discovery_handler},
+      {bluetooth_adapter::kRemoveDevice, &remove_device_handler},
+  };
   TestAdapterBringUp(exported_adapter_object_, adapter_method_handlers);
 
   ASSERT_FALSE(start_discovery_handler.is_null());
   ASSERT_FALSE(stop_discovery_handler.is_null());
   ASSERT_FALSE(remove_device_handler.is_null());
 
-  // StartDiscovery by the first client, it should return D-Bus success and
-  // should trigger NewBlue StartDiscovery.
-  dbus::MethodCall start_discovery_method_call(
-      bluetooth_adapter::kBluetoothAdapterInterface,
-      bluetooth_adapter::kStartDiscovery);
-  start_discovery_method_call.SetPath(dbus::ObjectPath(kAdapterObjectPath));
-  start_discovery_method_call.SetSender(kTestSender);
-  start_discovery_method_call.SetSerial(kTestSerial);
-  std::unique_ptr<dbus::Response> start_discovery_response;
-  Newblue::DeviceDiscoveredCallback on_device_discovered;
   hciDeviceDiscoveredLeCbk inquiry_response_callback;
   void* inquiry_response_callback_data;
-  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, /* active */ true,
-                                               /* use_random_addr */ false))
-      .WillOnce(DoAll(SaveArg<0>(&inquiry_response_callback),
-                      SaveArg<1>(&inquiry_response_callback_data),
-                      Return(kTestDiscoveryId)));
-  start_discovery_handler.Run(
-      &start_discovery_method_call,
-      base::Bind(&SaveResponse, &start_discovery_response));
-  EXPECT_EQ("", start_discovery_response->GetErrorName());
-  ASSERT_NE(nullptr, inquiry_response_callback);
-  ASSERT_NE(nullptr, inquiry_response_callback_data);
-  // StartDiscovery again by the same client, it should return D-Bus error and
-  // should not affect NewBlue discovery state.
-  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, _, _)).Times(0);
-  start_discovery_handler.Run(
-      &start_discovery_method_call,
-      base::Bind(&SaveResponse, &start_discovery_response));
-  EXPECT_EQ(bluetooth_adapter::kErrorInProgress,
-            start_discovery_response->GetErrorName());
-  // StartDiscovery by a different client, it should return D-Bus success and
-  // should not affect NewBlue discovery state since it has already been
-  // started.
-  start_discovery_method_call.SetSender(kTestSender2);
-  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, _, _)).Times(0);
-  start_discovery_handler.Run(
-      &start_discovery_method_call,
-      base::Bind(&SaveResponse, &start_discovery_response));
-  EXPECT_EQ("", start_discovery_response->GetErrorName());
+  TestStartDiscovery(start_discovery_handler, &inquiry_response_callback,
+                     &inquiry_response_callback_data);
 
   // Device discovered.
-  ExpectDeviceObjectExported(dbus::ObjectPath(kTestDeviceObjectPath));
+  ExpectDeviceObjectExported(dbus::ObjectPath(kTestDeviceObjectPath), {});
   struct bt_addr address;
   ConvertToBtAddr(false, kTestDeviceAddress, &address);
-  inquiry_response_callback(inquiry_response_callback_data, &address,
-                            /* rssi */ -101, HCI_ADV_TYPE_SCAN_RSP,
-                            /* eir */ {},
-                            /* eir_len*/ 0);
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address,
+                               /* rssi */ -101, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ {},
+                               /* eir_len*/ 0);
   // Trigger the queued inquiry_response_callback task.
   base::RunLoop().RunUntilIdle();
 
@@ -644,5 +717,41 @@ TEST_F(NewblueDaemonTest, IdleMode) {
   // before the mocked objects.
   newblue_daemon_->Shutdown();
 }
+
+TEST_F(NewblueDaemonTest, Connection) {
+  TestInit();
+
+  dbus::ExportedObject::MethodCallCallback start_discovery_handler;
+  dbus::ExportedObject::MethodCallCallback connect_handler;
+  MethodHandlerMap method_handlers = {
+      {bluetooth_adapter::kStartDiscovery, &start_discovery_handler},
+      {bluetooth_device::kConnect, &connect_handler},
+  };
+  TestAdapterBringUp(exported_adapter_object_, method_handlers);
+
+  hciDeviceDiscoveredLeCbk inquiry_response_callback;
+  void* inquiry_response_callback_data;
+  TestStartDiscovery(start_discovery_handler, &inquiry_response_callback,
+                     &inquiry_response_callback_data);
+
+  // Device discovered.
+  ExpectDeviceObjectExported(dbus::ObjectPath(kTestDeviceObjectPath),
+                             method_handlers);
+  struct bt_addr address;
+  ConvertToBtAddr(false, kTestDeviceAddress, &address);
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address,
+                               /* rssi */ -101, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ {},
+                               /* eir_len*/ 0);
+  // Trigger the queued inquiry_response_callback task.
+  base::RunLoop().RunUntilIdle();
+
+  TestConnect(connect_handler);
+
+  TestDeinit();
+}
+
+// TODO(mcchou): Add a test case where the connection is terminated by remote
+// device.
 
 }  // namespace bluetooth

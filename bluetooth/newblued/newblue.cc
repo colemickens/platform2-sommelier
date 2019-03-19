@@ -5,6 +5,7 @@
 #include "bluetooth/newblued/newblue.h"
 
 #include <newblue/sm.h>
+#include <newblue/uhid.h>
 
 #include <algorithm>
 #include <memory>
@@ -110,6 +111,8 @@ bool Newblue::BringUp() {
     return false;
   }
 
+  libnewblue_->BtleHidInit(hidConnStateCbk, hidReportRxCbk);
+
   return true;
 }
 
@@ -178,6 +181,28 @@ bool Newblue::CancelPair(const std::string& device_address,
 
   libnewblue_->SmUnpair(&address);
   return true;
+}
+
+bool Newblue::RegisterGattClientConnectCallback(
+    GattClientConnectCallback callback) {
+  if (!gatt_client_connect_callback_.is_null())
+    return false;
+
+  gatt_client_connect_callback_ = callback;
+  return true;
+}
+
+void Newblue::UnregisterGattClientConnectCallback() {
+  gatt_client_connect_callback_.Reset();
+}
+
+gatt_client_conn_t Newblue::GattClientConnect(const std::string& device_address,
+                                              bool is_random_address) {
+  struct bt_addr address;
+  CHECK(ConvertToBtAddr(is_random_address, device_address, &address));
+  gatt_client_conn_t conn_id = libnewblue_->GattClientConnect(
+      this, &address, &Newblue::GattConnectCallbackThunk);
+  return conn_id;
 }
 
 std::vector<KnownDevice> Newblue::GetKnownDevices() {
@@ -285,6 +310,15 @@ void Newblue::PairStateCallback(const smPairStateChange& change,
   // Notify |pair_observers|.
   for (const auto& observer : pair_observers_)
     observer.second.Run(address, state, error);
+}
+
+void Newblue::GattConnectCallbackThunk(void* data,
+                                       gatt_client_conn_t conn_id,
+                                       uint8_t status) {
+  Newblue* newblue = static_cast<Newblue*>(data);
+  newblue->PostTask(
+      FROM_HERE,
+      base::Bind(newblue->gatt_client_connect_callback_, conn_id, status));
 }
 
 void Newblue::PasskeyDisplayObserverCallbackThunk(

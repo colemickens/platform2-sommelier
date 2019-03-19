@@ -75,6 +75,13 @@ struct Device {
   DISALLOW_COPY_AND_ASSIGN(Device);
 };
 
+// These are based on the connection state defined in newblue/gatt.h.
+enum class ConnectState : uint8_t {
+  CONNECTED,
+  DISCONNECTED,
+  ERROR,
+};
+
 // Handles org.bluez.Device1 interface.
 class DeviceInterfaceHandler {
   // Represents a pairing session.
@@ -85,7 +92,24 @@ class DeviceInterfaceHandler {
         cancel_pair_response;
   };
 
+  // Represents a connection session.
+  struct ConnectSession {
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> connect_response;
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>>
+        disconnect_response;
+  };
+
+  // Structure representing a connection.
+  struct Connection {
+    gatt_client_conn_t conn_id;
+    ble_hid_conn_t hid_id;  // This can be invalid if not a HID device.
+  };
+
  public:
+  using ConnectCallback = base::Callback<void(const std::string& device_address,
+                                              bool success,
+                                              const std::string& dbus_error)>;
+
   // |newblue| and |exported_object_manager_wrapper| not owned, caller must make
   // sure it outlives this object.
   DeviceInterfaceHandler(
@@ -140,6 +164,14 @@ class DeviceInterfaceHandler {
   // DisconnectPorfile() - No op, but we may need dummy implementation later.
   // GetServiceRecords() - No op, but we may need dummy implementation later.
   // ExecuteWrite()
+
+  // Called when a connection request is fulfilled and we are ready to send a
+  // reply of the Connect() method.
+  void ConnectReply(const std::string& device_address,
+                    bool success,
+                    const std::string& dbus_error);
+  // Called on update of GATT client connection.
+  void OnGattClientConnectCallback(gatt_client_conn_t conn_id, uint8_t status);
 
   // Finds a device from |discovered_devices_| with the given |device_address|.
   // Returns nullptr if no such device is found.
@@ -213,6 +245,10 @@ class DeviceInterfaceHandler {
                           PairState pair_state,
                           PairError pair_error);
 
+  // Called when a connection state changed.
+  void OnConnectStateChanged(const std::string& address,
+                             ConnectState connect_state);
+
   scoped_refptr<dbus::Bus> bus_;
   Newblue* newblue_;
   ExportedObjectManagerWrapper* exported_object_manager_wrapper_;
@@ -227,6 +263,14 @@ class DeviceInterfaceHandler {
   // request. <device address, D-Bus method response to pairing, D-Bus
   // method response to cancel pairing>
   struct PairSession ongoing_pairing_;
+
+  // Contains pairs of <device address, connection session> to store the
+  // D-Bus method response(s) to the ongoing connection/disconnection requests.
+  std::map<std::string, struct ConnectSession> connection_sessions_;
+  // Contains pairs of <device address, connection info>.
+  std::map<std::string, struct Connection> connections_;
+  // Contains pairs of <device address, connection attempt>.
+  std::map<std::string, gatt_client_conn_t> connection_attempts_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.
