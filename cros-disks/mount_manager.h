@@ -73,7 +73,8 @@ class MountManager {
   virtual bool StartSession();
 
   // Stops a session. Returns true on success.
-  // This base class provides a default implementation that does nothing.
+  // This base class provides a default implementation that calls UnmountAll()
+  // to unmount all mounted paths managed by this mount manager.
   // A derived class can override this method to perform any necessary
   // operations when a session stops. This method is called in response
   // to a SessionStateChanged event from the Chromium OS session manager.
