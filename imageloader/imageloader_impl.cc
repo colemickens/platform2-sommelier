@@ -45,13 +45,6 @@ base::FilePath GetMountPoint(const base::FilePath& mount_base_path,
   return mount_base_path.Append(component_name).Append(component_version);
 }
 
-// |mount_base_path| is the subfolder where all images (dlc, components, etc.)
-// are mounted.
-base::FilePath GetMountPoint(const base::FilePath& mount_base_path,
-                             const std::string& id) {
-  return mount_base_path.Append(id);
-}
-
 bool AssertComponentDirPerms(const base::FilePath& path) {
   int mode;
   if (!GetPosixFilePermissions(path, &mode))
@@ -117,16 +110,15 @@ std::string ImageLoaderImpl::LoadComponent(const std::string& name,
 }
 
 std::string ImageLoaderImpl::LoadDlcImage(const std::string& id,
+                                          const std::string& package,
                                           const std::string& a_or_b,
                                           HelperProcessProxy* proxy) {
-  if (!IsIdValid(id)) {
+  if (!IsIdValid(id) || !IsIdValid(package)) {
     return kBadResult;
   }
-  base::FilePath mount_point(GetMountPoint(config_.mount_path, id));
 
-  Dlc dlc(id);
-  return dlc.Mount(proxy, a_or_b, mount_point) ? mount_point.value()
-                                               : kBadResult;
+  Dlc dlc(id, package, config_.mount_path);
+  return dlc.Mount(proxy, a_or_b) ? dlc.GetMountPoint().value() : kBadResult;
 }
 
 std::string ImageLoaderImpl::LoadComponentAtPath(
@@ -177,13 +169,14 @@ bool ImageLoaderImpl::Cleanup(const base::FilePath& path,
 }
 
 bool ImageLoaderImpl::UnloadDlcImage(const std::string& id,
+                                     const std::string& package,
                                      HelperProcessProxy* proxy) {
   if (!IsIdValid(id)) {
     return false;
   }
 
   return proxy->SendUnmountCommand(
-      GetMountPoint(config_.mount_path, id).value());
+      Dlc::GetMountPoint(config_.mount_path, id, package).value());
 }
 
 bool ImageLoaderImpl::RemoveComponentAtPath(

@@ -30,11 +30,19 @@ enum class AOrB { kDlcA, kDlcB, kUnknown };
 
 class Dlc {
  public:
-  explicit Dlc(const std::string& id);
-  // Mount the image at |mount_point|.
-  bool Mount(HelperProcessProxy* proxy,
-             const std::string& a_or_b,
-             const base::FilePath& mount_point);
+  explicit Dlc(const std::string& id,
+               const std::string& package,
+               const base::FilePath& mount_base);
+  // Mount the image.
+  bool Mount(HelperProcessProxy* proxy, const std::string& a_or_b);
+
+  // Returns the directory where the DLC will be mounted. look at |mount_base_|.
+  base::FilePath GetMountPoint();
+
+  // Static version of the above function.
+  static base::FilePath GetMountPoint(const base::FilePath& mount_base,
+                                      const std::string& id,
+                                      const std::string& package);
 
  private:
   FRIEND_TEST_ALL_PREFIXES(DlcTest, MountDlc);
@@ -44,10 +52,26 @@ class Dlc {
              const base::FilePath& image_path,
              const base::FilePath& manifest_path,
              const base::FilePath& table_path,
-             AOrB a_or_b,
              const base::FilePath& mount_point);
-  // id of the DLC module image.
+
+  // Get the path to the DLC manifest (imageloader.json)
+  base::FilePath GetManifestPath();
+
+  // Get the path to the table file.
+  base::FilePath GetTablePath();
+
+  // Get the path to the DLC image itself.
+  base::FilePath GetImagePath(const AOrB a_or_b);
+
+  // ID of the DLC module image.
   std::string id_;
+
+  // Package ID of the DLC module image.
+  std::string package_;
+
+  // The base directory where we need to mount the image. The DLC image will be
+  // mounted at |mount_base|/|id_|/|package_|/a_or_b.
+  base::FilePath mount_base_;
 
   DISALLOW_COPY_AND_ASSIGN(Dlc);
 };

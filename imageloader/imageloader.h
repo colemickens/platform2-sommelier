@@ -65,9 +65,10 @@ class ImageLoader : public brillo::DBusServiceDaemon,
                            const std::string& component_folder_abs_path,
                            std::string* out_mount_point) override;
 
-  // Load and mount a DLC image given the image id.
+  // Load and mount a DLC image given the image id and a package id.
   bool LoadDlcImage(brillo::ErrorPtr* err,
                     const std::string& id,
+                    const std::string& package,
                     const std::string& a_or_b,
                     std::string* out_mount_point) override;
 
@@ -87,9 +88,10 @@ class ImageLoader : public brillo::DBusServiceDaemon,
                         const std::string& name,
                         bool* out_success) override;
 
-  // Unmount the Dlc image mount point given Dlc |id|.
+  // Unmount the DLC image mount point given DLC |id| and |package|.
   bool UnloadDlcImage(brillo::ErrorPtr* err,
                       const std::string& id,
+                      const std::string& package,
                       bool* out_success) override;
 
   // Sandboxes the runtime environment, using minijail. This is publicly exposed

@@ -29,9 +29,9 @@ TEST(DlcTest, MountDlc) {
           SendMountCommand(testing::_, testing::_, testing::_, testing::_))
       .WillByDefault(testing::Return(true));
 
-  Dlc dlc("exampledlcid");
+  Dlc dlc("dummy-id", "dummy-package", base::FilePath());
   EXPECT_TRUE(dlc.Mount(proxy.get(), image_path, manifest_path, table_path,
-                        AOrB::kDlcA, base::FilePath()));
+                        base::FilePath()));
 }
 
 }  // namespace imageloader

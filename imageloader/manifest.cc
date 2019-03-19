@@ -30,6 +30,7 @@ constexpr char kTableHashField[] = "table-sha256-hash";
 // Optional manifest fields.
 constexpr char kFSType[] = "fs-type";
 constexpr char kId[] = "id";
+constexpr char kPackage[] = "package";
 constexpr char kName[] = "name";
 constexpr char kImageType[] = "image-type";
 constexpr char kPreallocatedSize[] = "pre-allocated-size";
@@ -154,6 +155,7 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
 
   // All of these fields are optional.
   manifest_dict->GetString(kId, &id_);
+  manifest_dict->GetString(kPackage, &package_);
   manifest_dict->GetString(kName, &name_);
   manifest_dict->GetString(kImageType, &image_type_);
   // TODO(http://crbug.com/904539 comment #11): This can overflow, should get

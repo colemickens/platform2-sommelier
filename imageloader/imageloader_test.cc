@@ -249,10 +249,13 @@ TEST_F(ImageLoaderTest, UnloadDlcImage) {
   ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
 
   const std::string dlc_id = "dlc_id";
+  const std::string dlc_package = "dlc_package";
   auto helper_mock = std::make_unique<MockHelperProcessProxy>();
-  EXPECT_CALL(*helper_mock,
-              SendUnmountCommand(
-                  scoped_mount_dir.GetPath().Append(dlc_id).value().c_str()))
+  EXPECT_CALL(*helper_mock, SendUnmountCommand(scoped_mount_dir.GetPath()
+                                                   .Append(dlc_id)
+                                                   .Append(dlc_package)
+                                                   .value()
+                                                   .c_str()))
       .Times(1);
   ON_CALL(*helper_mock, SendUnmountCommand(_))
       .WillByDefault(testing::Return(true));
@@ -261,7 +264,7 @@ TEST_F(ImageLoaderTest, UnloadDlcImage) {
                            scoped_mount_dir.GetPath().value().c_str());
   ImageLoaderImpl loader(std::move(config));
 
-  loader.UnloadDlcImage(dlc_id, helper_mock.get());
+  loader.UnloadDlcImage(dlc_id, dlc_package, helper_mock.get());
 }
 
 TEST_F(ImageLoaderTest, RemoveImageAtPathRemovable) {

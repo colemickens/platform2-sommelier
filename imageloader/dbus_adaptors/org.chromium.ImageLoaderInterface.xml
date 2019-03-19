@@ -93,7 +93,12 @@
     </tp:docstring>
     <arg name="id" type="s" direction="in">
       <tp:docstring>
-        The id of the DLC module image.
+        The ID of the DLC module.
+      </tp:docstring>
+    </arg>
+    <arg name="package" type="s" direction="in">
+      <tp:docstring>
+        The package ID of the DLC module.
       </tp:docstring>
     </arg>
     <arg name="a_or_b" type="s" direction="in">
@@ -163,6 +168,11 @@
     <arg name="id" type="s" direction="in">
       <tp:docstring>
         ID of the DLC.
+      </tp:docstring>
+    </arg>
+    <arg name="package" type="s" direction="in">
+      <tp:docstring>
+        Package ID of the DLC.
       </tp:docstring>
     </arg>
     <arg name="success" type="b" direction="out">

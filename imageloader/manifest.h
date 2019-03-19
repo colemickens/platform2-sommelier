@@ -31,6 +31,7 @@ class BRILLO_EXPORT Manifest {
   const std::string& version() const { return version_; }
   FileSystem fs_type() const { return fs_type_; }
   const std::string& id() const { return id_; }
+  const std::string& package() const { return package_; }
   const std::string& name() const { return name_; }
   const std::string& image_type() const { return image_type_; }
   int preallocated_size() const { return preallocated_size_; }
@@ -48,6 +49,7 @@ class BRILLO_EXPORT Manifest {
   std::string version_;
   FileSystem fs_type_;
   std::string id_;
+  std::string package_;
   std::string name_;
   std::string image_type_;
   int preallocated_size_;

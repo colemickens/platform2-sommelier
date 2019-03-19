@@ -24,27 +24,6 @@ constexpr char kSlotBName[] = "dlc_b";
 constexpr char kManifestFileName[] = "imageloader.json";
 constexpr char kTableFileName[] = "table";
 
-base::FilePath GetManifestPath(const std::string& id) {
-  return base::FilePath(kDlcManifestRootpath)
-      .Append(id)
-      .Append(kManifestFileName);
-}
-
-base::FilePath GetTablePath(const std::string& id) {
-  return base::FilePath(kDlcManifestRootpath).Append(id).Append(kTableFileName);
-}
-
-base::FilePath GetImagePath(const std::string& id, AOrB a_or_b) {
-  base::FilePath root = base::FilePath(kDlcImageRootpath).Append(id);
-  if (a_or_b == AOrB::kDlcA) {
-    return root.Append(kSlotAName).Append(kImageName);
-  } else if (a_or_b == AOrB::kDlcB) {
-    return root.Append(kSlotBName).Append(kImageName);
-  } else {
-    return base::FilePath();
-  }
-}
-
 AOrB GetImageAOrB(const std::string& a_or_b) {
   if (a_or_b == imageloader::kSlotNameA) {
     return AOrB::kDlcA;
@@ -57,11 +36,49 @@ AOrB GetImageAOrB(const std::string& a_or_b) {
 
 }  // namespace
 
-Dlc::Dlc(const std::string& id) : id_(id) {}
+Dlc::Dlc(const std::string& id,
+         const std::string& package,
+         const base::FilePath& mount_base)
+    : id_(id), package_(package), mount_base_(mount_base) {}
 
-bool Dlc::Mount(HelperProcessProxy* proxy,
-                const std::string& a_or_b_str,
-                const base::FilePath& mount_point) {
+base::FilePath Dlc::GetManifestPath() {
+  return base::FilePath(kDlcManifestRootpath)
+      .Append(id_)
+      .Append(package_)
+      .Append(kManifestFileName);
+}
+
+base::FilePath Dlc::GetTablePath() {
+  return base::FilePath(kDlcManifestRootpath)
+      .Append(id_)
+      .Append(package_)
+      .Append(kTableFileName);
+}
+
+base::FilePath Dlc::GetImagePath(const AOrB a_or_b) {
+  base::FilePath root =
+      base::FilePath(kDlcImageRootpath).Append(id_).Append(package_);
+  if (a_or_b == AOrB::kDlcA) {
+    return root.Append(kSlotAName).Append(kImageName);
+  } else if (a_or_b == AOrB::kDlcB) {
+    return root.Append(kSlotBName).Append(kImageName);
+  } else {
+    return base::FilePath();
+  }
+}
+
+// static
+base::FilePath Dlc::GetMountPoint(const base::FilePath& mount_base,
+                                  const std::string& id,
+                                  const std::string& package) {
+  return mount_base.Append(id).Append(package);
+}
+
+base::FilePath Dlc::GetMountPoint() {
+  return GetMountPoint(mount_base_, id_, package_);
+}
+
+bool Dlc::Mount(HelperProcessProxy* proxy, const std::string& a_or_b_str) {
   AOrB a_or_b = GetImageAOrB(a_or_b_str);
 
   if (a_or_b == AOrB::kUnknown) {
@@ -69,20 +86,19 @@ bool Dlc::Mount(HelperProcessProxy* proxy,
     return false;
   }
 
-  return Mount(proxy, GetImagePath(id_, a_or_b), GetManifestPath(id_),
-               GetTablePath(id_), a_or_b, mount_point);
+  return Mount(proxy, GetImagePath(a_or_b), GetManifestPath(), GetTablePath(),
+               GetMountPoint());
 }
 
 bool Dlc::Mount(HelperProcessProxy* proxy,
                 const base::FilePath& image_path,
                 const base::FilePath& manifest_path,
                 const base::FilePath& table_path,
-                AOrB a_or_b,
                 const base::FilePath& mount_point) {
   std::string manifest_raw;
   if (!base::ReadFileToStringWithMaxSize(manifest_path, &manifest_raw,
                                          kMaximumFilesize)) {
-    LOG(ERROR) << "Could not read manifest file." << manifest_path.value();
+    LOG(ERROR) << "Could not read manifest file: " << manifest_path.value();
     return false;
   }
   Manifest manifest;

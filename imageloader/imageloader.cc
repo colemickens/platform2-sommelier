@@ -135,10 +135,11 @@ bool ImageLoader::LoadComponentAtPath(brillo::ErrorPtr* err,
 
 bool ImageLoader::LoadDlcImage(brillo::ErrorPtr* err,
                                const std::string& id,
+                               const std::string& package,
                                const std::string& a_or_b,
                                std::string* out_mount_point) {
   *out_mount_point =
-      impl_.LoadDlcImage(id, a_or_b, helper_process_proxy_.get());
+      impl_.LoadDlcImage(id, package, a_or_b, helper_process_proxy_.get());
   PostponeShutdown();
   return true;
 }
@@ -174,8 +175,9 @@ bool ImageLoader::UnmountComponent(brillo::ErrorPtr* err,
 
 bool ImageLoader::UnloadDlcImage(brillo::ErrorPtr* err,
                                  const std::string& id,
+                                 const std::string& package,
                                  bool* out_success) {
-  *out_success = impl_.UnloadDlcImage(id, helper_process_proxy_.get());
+  *out_success = impl_.UnloadDlcImage(id, package, helper_process_proxy_.get());
   PostponeShutdown();
   return true;
 }
