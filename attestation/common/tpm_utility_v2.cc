@@ -25,6 +25,7 @@
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <openssl/rsa.h>
+#include <openssl/x509.h>
 
 #include "tpm_manager/common/tpm_manager_constants.h"
 #include "trunks/authorization_delegate.h"
@@ -44,6 +45,10 @@ const uint32_t kRSAEndorsementCertificateIndex = 0xC00000;
 const uint32_t kECCEndorsementCertificateIndex = 0xC00001;
 
 // TODO(crbug/916023): move these utility functions to shared library.
+inline const uint8_t* StringToByteBuffer(const char* str) {
+  return reinterpret_cast<const uint8_t*>(str);
+}
+
 inline std::string BytesToString(const std::vector<uint8_t>& bytes) {
   return std::string(bytes.begin(), bytes.end());
 }
@@ -51,6 +56,15 @@ inline std::string BytesToString(const std::vector<uint8_t>& bytes) {
 inline std::string BytesToString(
     const base::Optional<std::vector<uint8_t>>& maybe_bytes) {
   return BytesToString(maybe_bytes.value_or(std::vector<uint8_t>()));
+}
+
+BIGNUM* StringToBignum(const std::string& big_integer) {
+  if (big_integer.empty())
+    return nullptr;
+
+  BIGNUM* b = BN_bin2bn(StringToByteBuffer(big_integer.data()),
+                        big_integer.length(), nullptr);
+  return b;
 }
 
 crypto::ScopedRSA CreateRSAFromRawModulus(const uint8_t* modulus_buffer,
@@ -75,12 +89,65 @@ crypto::ScopedRSA CreateRSAFromRawModulus(const uint8_t* modulus_buffer,
 // key.
 crypto::ScopedRSA GetRsaPublicKeyFromTpmPublicArea(
     const trunks::TPMT_PUBLIC& public_area) {
+  if (public_area.type != trunks::TPM_ALG_RSA) {
+    return nullptr;
+  }
   crypto::ScopedRSA key = CreateRSAFromRawModulus(public_area.unique.rsa.buffer,
                                                   public_area.unique.rsa.size);
   if (key == nullptr) {
     LOG(ERROR) << __func__ << ": Failed to decode public key.";
     return nullptr;
   }
+  return key;
+}
+
+int TrunksCurveIDToNID(int trunks_curve_id) {
+  switch (trunks_curve_id) {
+    case trunks::TPM_ECC_NIST_P256:
+      return NID_X9_62_prime256v1;
+    default:
+      return NID_undef;
+  }
+}
+
+// Convert TPMT_PUBLIC TPM public area |public_area| of RSA key to a OpenSSL EC
+// key.
+crypto::ScopedEC_KEY GetEccPublicKeyFromTpmPublicArea(
+    const trunks::TPMT_PUBLIC& public_area) {
+  if (public_area.type != trunks::TPM_ALG_ECC) {
+    return nullptr;
+  }
+
+  int nid =
+      TrunksCurveIDToNID(public_area.parameters.ecc_detail.curve_id);
+  if (nid == NID_undef) {
+    LOG(ERROR) << __func__ << "Unknown trunks curve_id: " << std::hex
+               << std::showbase << public_area.parameters.ecc_detail.curve_id;
+    return nullptr;
+  }
+  crypto::ScopedEC_Key key(EC_KEY_new_by_curve_name(nid));
+
+  // Ensure that the curve is recorded in the key by reference to its ASN.1
+  // object ID rather than explicitly by value.
+  EC_KEY_set_asn1_flag(key.get(), OPENSSL_EC_NAMED_CURVE);
+
+  std::string xs = StringFrom_TPM2B_ECC_PARAMETER(public_area.unique.ecc.x);
+  std::string ys = StringFrom_TPM2B_ECC_PARAMETER(public_area.unique.ecc.y);
+
+  crypto::ScopedBIGNUM x(StringToBignum(xs));
+  crypto::ScopedBIGNUM y(StringToBignum(ys));
+
+  // EC_KEY_set_public_key_affine_coordinates will check the pointers are valid
+  if (!EC_KEY_set_public_key_affine_coordinates(key.get(), x.get(), y.get())) {
+    return nullptr;
+  }
+
+  if (!EC_KEY_check_key(key.get())) {
+    LOG(ERROR) << __func__
+               << ": Bad ECC key created from TPM public key object.";
+    return nullptr;
+  }
+
   return key;
 }
 
@@ -103,8 +170,13 @@ base::Optional<std::vector<uint8_t>> OpenSSLObjectToBytes(
   return std::vector<uint8_t>(openssl_buffer, openssl_buffer + size);
 }
 
+// TODO(menghuan): consider use EVP_PKEY and related APIs
 std::string RsaPublicKeyToString(const crypto::ScopedRSA& key) {
   return BytesToString(OpenSSLObjectToBytes(i2d_RSAPublicKey, key.get()));
+}
+
+std::string EccPublicKeyToString(const crypto::ScopedEC_KEY& key) {
+  return BytesToString(OpenSSLObjectToBytes(i2d_EC_PUBKEY, key.get()));
 }
 
 // An authorization delegate to manage multiple authorization sessions for a
@@ -556,6 +628,7 @@ bool TpmUtilityV2::GetEndorsementPublicKey(KeyType key_type,
     LOG(ERROR) << __func__ << ": EK not available.";
     return false;
   }
+
   trunks::TPMT_PUBLIC public_area;
   TPM_RC result = trunks_utility_->GetKeyPublicArea(key_handle, &public_area);
   if (result != TPM_RC_SUCCESS) {
@@ -563,10 +636,21 @@ bool TpmUtilityV2::GetEndorsementPublicKey(KeyType key_type,
                << trunks::GetErrorString(result);
     return false;
   }
-  *public_key_der =
-      RsaPublicKeyToString(GetRsaPublicKeyFromTpmPublicArea(public_area));
+
+  switch (key_type) {
+    case KEY_TYPE_RSA:
+      *public_key_der =
+          RsaPublicKeyToString(GetRsaPublicKeyFromTpmPublicArea(public_area));
+      break;
+    case KEY_TYPE_ECC:
+      *public_key_der =
+          EccPublicKeyToString(GetEccPublicKeyFromTpmPublicArea(public_area));
+      break;
+  }
+
   if (public_key_der->empty()) {
-    LOG(ERROR) << __func__ << ": Failed to convert EK public key.";
+    LOG(ERROR) << __func__
+               << ": Failed to convert EK public key to DER format.";
     return false;
   }
   return true;

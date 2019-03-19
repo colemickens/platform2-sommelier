@@ -96,7 +96,8 @@ class TpmUtility {
   virtual bool Unseal(const std::string& sealed_data, std::string* data) = 0;
 
   // Reads an endorsement public key from the TPM and provides it as a DER
-  // encoded PKCS #1 RSAPublicKey.
+  // encoded public key. PKCS #1 RSAPublicKey for RSA. RFC 5915 ECPublicKey for
+  // EC.
   virtual bool GetEndorsementPublicKey(KeyType key_type,
                                        std::string* public_key_der) = 0;
 

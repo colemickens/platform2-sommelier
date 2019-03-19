@@ -43,16 +43,6 @@ using ::trunks::TPM_RC_SUCCESS;
 
 const char kDefaultPassword[] = "password";
 
-const char kValidModulusHex[] =
-    "961037BC12D2A298BEBF06B2D5F8C9B64B832A2237F8CF27D5F96407A6041A4D"
-    "AD383CB5F88E625F412E8ACD5E9D69DF0F4FA81FCE7955829A38366CBBA5A2B1"
-    "CE3B48C14B59E9F094B51F0A39155874C8DE18A0C299EBF7A88114F806BE4F25"
-    "3C29A509B10E4B19E31675AFE3B2DA77077D94F43D8CE61C205781ED04D183B4"
-    "C349F61B1956C64B5398A3A98FAFF17D1B3D9120C832763EDFC8F4137F6EFBEF"
-    "46D8F6DE03BD00E49DEF987C10BDD5B6F8758B6A855C23C982DDA14D8F0F2B74"
-    "E6DEFA7EEE5A6FC717EB0FF103CB8049F693A2C8A5039EF1F5C025DC44BD8435"
-    "E8D8375DADE00E0C0F5C196E04B8483CC98B1D5B03DCD7E0048B2AB343FFC11F";
-
 std::string HexDecode(const std::string hex) {
   std::vector<uint8_t> output;
   CHECK(base::HexStringToBytes(hex, &output));
@@ -84,7 +74,7 @@ class TpmUtilityTest : public testing::Test {
         .WillByDefault(Invoke(this, &TpmUtilityTest::FakeReadSpace));
     // Setup a default public key.
     ON_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
-        .WillByDefault(DoAll(SetArgPointee<1>(GetValidPublicKey(nullptr)),
+        .WillByDefault(DoAll(SetArgPointee<1>(GetValidRsaPublicKey(nullptr)),
                              Return(TPM_RC_SUCCESS)));
     // Setup trunks factory with mocks.
     trunks_factory_for_test_.set_tpm(&mock_tpm_);
@@ -117,7 +107,18 @@ class TpmUtilityTest : public testing::Test {
     callback.Run(next_remove_dependency_reply_);
   }
 
-  trunks::TPMT_PUBLIC GetValidPublicKey(std::string* bytes_when_serialized) {
+  trunks::TPMT_PUBLIC GetValidRsaPublicKey(
+      std::string* serialized_public_area) {
+    constexpr char kValidModulusHex[] =
+        "961037BC12D2A298BEBF06B2D5F8C9B64B832A2237F8CF27D5F96407A6041A4D"
+        "AD383CB5F88E625F412E8ACD5E9D69DF0F4FA81FCE7955829A38366CBBA5A2B1"
+        "CE3B48C14B59E9F094B51F0A39155874C8DE18A0C299EBF7A88114F806BE4F25"
+        "3C29A509B10E4B19E31675AFE3B2DA77077D94F43D8CE61C205781ED04D183B4"
+        "C349F61B1956C64B5398A3A98FAFF17D1B3D9120C832763EDFC8F4137F6EFBEF"
+        "46D8F6DE03BD00E49DEF987C10BDD5B6F8758B6A855C23C982DDA14D8F0F2B74"
+        "E6DEFA7EEE5A6FC717EB0FF103CB8049F693A2C8A5039EF1F5C025DC44BD8435"
+        "E8D8375DADE00E0C0F5C196E04B8483CC98B1D5B03DCD7E0048B2AB343FFC11F";
+
     trunks::TPMT_PUBLIC public_area;
     memset(&public_area, 0, sizeof(public_area));
     public_area.type = trunks::TPM_ALG_RSA;
@@ -125,8 +126,42 @@ class TpmUtilityTest : public testing::Test {
     public_area.parameters.rsa_detail.key_bits = 2048;
     public_area.unique.rsa =
         trunks::Make_TPM2B_PUBLIC_KEY_RSA(HexDecode(kValidModulusHex));
-    if (bytes_when_serialized) {
-      Serialize_TPMT_PUBLIC(public_area, bytes_when_serialized);
+    if (serialized_public_area) {
+      Serialize_TPMT_PUBLIC(public_area, serialized_public_area);
+    }
+    return public_area;
+  }
+
+  trunks::TPMT_PUBLIC GetValidEccPublicKey(
+      std::string* serialized_public_area) {
+    constexpr char kValidECPointX[] =
+        "06845c8f3ac8b98d0e8163d0475ad4c8be1710c9f2d39965719e3684a7b3f40b";
+    constexpr char kValidECPointY[] =
+        "0400e219928d45093b3d7ff3cae43468e24684454f318b83b12304d1194a3286";
+
+    trunks::TPMT_PUBLIC public_area;
+    std::vector<uint8_t> point_tmp_buffer;
+
+    CHECK(base::HexStringToBytes(kValidECPointX, &point_tmp_buffer));
+    CHECK_EQ(point_tmp_buffer.size(), arraysize(kValidECPointX) / 2);
+    public_area.unique.ecc.x.size = point_tmp_buffer.size();
+    memcpy(public_area.unique.ecc.x.buffer, point_tmp_buffer.data(),
+           point_tmp_buffer.size());
+
+    point_tmp_buffer.clear();
+    CHECK(base::HexStringToBytes(kValidECPointY, &point_tmp_buffer));
+    CHECK_EQ(point_tmp_buffer.size(), arraysize(kValidECPointY) / 2);
+    public_area.unique.ecc.y.size = point_tmp_buffer.size();
+    memcpy(public_area.unique.ecc.y.buffer, point_tmp_buffer.data(),
+           point_tmp_buffer.size());
+
+    public_area.type = trunks::TPM_ALG_ECC;
+    public_area.parameters.ecc_detail.curve_id = trunks::TPM_ECC_NIST_P256;
+    public_area.parameters.ecc_detail.kdf.scheme = trunks::TPM_ALG_NULL;
+    public_area.parameters.ecc_detail.scheme.scheme = trunks::TPM_ALG_NULL;
+
+    if (serialized_public_area) {
+      Serialize_TPMT_PUBLIC(public_area, serialized_public_area);
     }
     return public_area;
   }
@@ -311,6 +346,9 @@ TEST_F(TpmUtilityTest, UnsealFail) {
 TEST_F(TpmUtilityTest, GetEndorsementPublicKey) {
   std::string key;
   EXPECT_TRUE(tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_RSA, &key));
+  ON_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
+      .WillByDefault(DoAll(SetArgPointee<1>(GetValidEccPublicKey(nullptr)),
+                           Return(TPM_RC_SUCCESS)));
   EXPECT_TRUE(tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_ECC, &key));
 }
 
@@ -401,7 +439,7 @@ TEST_F(TpmUtilityTest, CreateRestrictedKey) {
       .WillOnce(
           DoAll(SetArgPointee<2>("fake_key_blob"), Return(TPM_RC_SUCCESS)));
   std::string expected_public_key;
-  trunks::TPMT_PUBLIC public_area = GetValidPublicKey(&expected_public_key);
+  trunks::TPMT_PUBLIC public_area = GetValidRsaPublicKey(&expected_public_key);
   EXPECT_CALL(mock_blob_parser_, ParseKeyBlob("fake_key_blob", _, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<1>(trunks::Make_TPM2B_PUBLIC(public_area)),
