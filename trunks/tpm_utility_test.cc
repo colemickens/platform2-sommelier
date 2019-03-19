@@ -931,6 +931,48 @@ TEST_F(TpmUtilityTest, SignFail) {
                           &mock_authorization_delegate_, &signature));
 }
 
+TEST_F(TpmUtilityTest, SignInputLength) {
+  TPM_HANDLE key_handle;
+  constexpr int kLimitOfDigestSize = sizeof(TPMU_HA);
+  std::string digest(kLimitOfDigestSize, 'a');
+  std::string too_long_digest = digest + "a";
+
+  TPMT_SIGNATURE signature_out;
+  signature_out.signature.rsassa.sig.size = 0;
+  EXPECT_CALL(mock_tpm_, SignSync(key_handle, _, _, _, _, _,
+                                  &mock_authorization_delegate_))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<5>(signature_out), Return(TPM_RC_SUCCESS)));
+
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kSign;
+  public_area.public_area.auth_policy.size = 0;
+  public_area.public_area.unique.rsa.size = 0;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
+
+  std::string signature;
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.Sign(key_handle, TPM_ALG_RSASSA, TPM_ALG_SHA256, digest,
+                          false /* generate_hash */,
+                          &mock_authorization_delegate_, &signature));
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
+            utility_.Sign(key_handle, TPM_ALG_RSASSA, TPM_ALG_SHA256,
+                          too_long_digest, false /* generate_hash */,
+                          &mock_authorization_delegate_, &signature));
+
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.Sign(key_handle, TPM_ALG_RSASSA, TPM_ALG_SHA256, digest,
+                          true /* generate_hash */,
+                          &mock_authorization_delegate_, &signature));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.Sign(key_handle, TPM_ALG_RSASSA, TPM_ALG_SHA256,
+                          too_long_digest, true /* generate_hash */,
+                          &mock_authorization_delegate_, &signature));
+}
+
 TEST_F(TpmUtilityTest, SignBadWithRestrictedKey) {
   TPM_HANDLE key_handle;
   std::string password;

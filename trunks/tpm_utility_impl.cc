@@ -716,6 +716,14 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
   // Call TPM
   std::string digest =
       generate_hash ? HashString(plaintext, hash_alg) : plaintext;
+  if (digest.size() > sizeof(TPMU_HA)) {
+    LOG(ERROR)
+        << __func__
+        << ": digest is too long for TPM signing command. Input length: "
+        << digest.size() << ", the limit: " << sizeof(TPMU_HA);
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
   TPM2B_DIGEST tpm_digest = Make_TPM2B_DIGEST(digest);
   TPMT_SIGNATURE signature_out;
   TPMT_TK_HASHCHECK validation;
