@@ -1586,12 +1586,18 @@ bool AttestationService::GetSubjectPublicKeyInfo(
     KeyType key_type,
     const std::string& public_key,
     std::string* public_key_info) const {
-  // Only RSA is supported currently.
-  if (key_type != KEY_TYPE_RSA) {
+  if (key_type == KEY_TYPE_RSA) {
+    return crypto_utility_->GetRSASubjectPublicKeyInfo(public_key,
+                                                       public_key_info);
+  } else if (key_type == KEY_TYPE_ECC) {
+    // Do nothing, since we always store SubjectPublicKeyInfo in |public_key|
+    // field and will pass it this utility
+    *public_key_info = public_key;
+    return true;
+  } else {
+    LOG(ERROR) << __func__ << ": key_type " << key_type << " isn't supported.";
     return false;
   }
-  return crypto_utility_->GetRSASubjectPublicKeyInfo(public_key,
-                                                     public_key_info);
 }
 
 void AttestationService::PrepareForEnrollment() {

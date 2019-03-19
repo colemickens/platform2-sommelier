@@ -469,6 +469,9 @@ class AttestationService : public AttestationInterface {
 
   // Creates a X.509/DER SubjectPublicKeyInfo for the given |key_type| and
   // |public_key|. On success returns true and provides |public_key_info|.
+  // TODO(crbug/942487): After this migration, we won't need this utility
+  // anymore. For now, we store ECC public key as SubjectPublicKeyInfo format,
+  // which will be passed as |public_key|.
   bool GetSubjectPublicKeyInfo(KeyType key_type,
                                const std::string& public_key,
                                std::string* public_key_info) const;
