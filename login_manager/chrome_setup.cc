@@ -517,6 +517,9 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   builder->AddVmodulePattern("extension_downloader=2");
   builder->AddVmodulePattern("*/forced_extensions/installation_tracker*=2");
 
+  // TODO(https://crbug.com/943790): Remove after model development is complete.
+  builder->AddVmodulePattern("*/chromeos/power/auto_screen_brightness/*=1");
+
   if (builder->UseFlagIsSet("cheets"))
     builder->AddVmodulePattern("*arc/*=1");
 }
