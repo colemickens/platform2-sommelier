@@ -21,6 +21,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/optional.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <openssl/rsa.h>
@@ -42,18 +43,31 @@ const unsigned int kWellKnownExponent = 65537;
 const uint32_t kRSAEndorsementCertificateIndex = 0xC00000;
 const uint32_t kECCEndorsementCertificateIndex = 0xC00001;
 
+// TODO(crbug/916023): move these utility functions to shared library.
+inline std::string BytesToString(const std::vector<uint8_t>& bytes) {
+  return std::string(bytes.begin(), bytes.end());
+}
+
+inline std::string BytesToString(
+    const base::Optional<std::vector<uint8_t>>& maybe_bytes) {
+  return BytesToString(maybe_bytes.value_or(std::vector<uint8_t>()));
+}
+
 crypto::ScopedRSA CreateRSAFromRawModulus(const uint8_t* modulus_buffer,
                                           size_t modulus_size) {
   crypto::ScopedRSA rsa(RSA_new());
-  if (!rsa.get())
-    return crypto::ScopedRSA();
+  if (rsa == nullptr)
+    return nullptr;
+
   rsa->e = BN_new();
-  if (!rsa->e)
-    return crypto::ScopedRSA();
+  if (rsa->e == nullptr)
+    return nullptr;
   BN_set_word(rsa->e, kWellKnownExponent);
-  rsa->n = BN_bin2bn(modulus_buffer, modulus_size, NULL);
-  if (!rsa->n)
-    return crypto::ScopedRSA();
+
+  rsa->n = BN_bin2bn(modulus_buffer, modulus_size, nullptr);
+  if (rsa->n == nullptr)
+    return nullptr;
+
   return rsa;
 }
 
@@ -71,26 +85,26 @@ crypto::ScopedRSA GetRsaPublicKeyFromTpmPublicArea(
 }
 
 template <typename OpenSSLType>
-std::string OpenSSLObjectToString(
+base::Optional<std::vector<uint8_t>> OpenSSLObjectToBytes(
     int (*i2d_convert_function)(OpenSSLType*, unsigned char**),
     typename std::remove_const<OpenSSLType>::type* type) {
   if (type == nullptr) {
-    return nullptr;
+    return base::nullopt;
   }
 
   unsigned char* openssl_buffer = nullptr;
 
   int size = i2d_convert_function(type, &openssl_buffer);
   if (size < 0) {
-    return std::string();
+    return base::nullopt;
   }
 
   crypto::ScopedOpenSSLBytes scoped_buffer(openssl_buffer);
-  return std::string(reinterpret_cast<char*>(openssl_buffer), size);
+  return std::vector<uint8_t>(openssl_buffer, openssl_buffer + size);
 }
 
 std::string RsaPublicKeyToString(const crypto::ScopedRSA& key) {
-  return OpenSSLObjectToString(i2d_RSAPublicKey, key.get());
+  return BytesToString(OpenSSLObjectToBytes(i2d_RSAPublicKey, key.get()));
 }
 
 // An authorization delegate to manage multiple authorization sessions for a
