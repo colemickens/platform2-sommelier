@@ -132,6 +132,7 @@ const std::vector<Log> kCommandLogs {
   Log(kFile, "exynos_gem_objects", "/sys/kernel/debug/dri/0/exynos_gem_objects",
       SandboxedProcess::kDefaultUser, kDebugfsGroup),
   Log(kCommand, "font_info", "/usr/share/userfeedback/scripts/font_info"),
+  Log(kFile, "fwupd_state", "/var/lib/fwupd/state.json"),
   Log(kCommand, "sensor_info", "/usr/share/userfeedback/scripts/sensor_info"),
   Log(kFile, "hammerd", "/var/log/hammerd.log"),
   Log(kCommand, "hardware_class", "/usr/bin/crossystem hwid"),
