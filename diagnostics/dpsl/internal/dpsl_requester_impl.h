@@ -39,6 +39,14 @@ class DpslRequesterImpl final : public DpslRequester {
   void PerformWebRequest(
       std::unique_ptr<grpc_api::PerformWebRequestParameter> request,
       PerformWebRequestCallback callback) override;
+  void GetAvailableRoutines(
+      std::unique_ptr<grpc_api::GetAvailableRoutinesRequest> request,
+      GetAvailableRoutinesCallback callback) override;
+  void RunRoutine(std::unique_ptr<grpc_api::RunRoutineRequest> request,
+                  RunRoutineCallback callback) override;
+  void GetRoutineUpdate(
+      std::unique_ptr<grpc_api::GetRoutineUpdateRequest> request,
+      GetRoutineUpdateCallback callback) override;
 
  private:
   using AsyncGrpcWilcoDtcSupportdClient =

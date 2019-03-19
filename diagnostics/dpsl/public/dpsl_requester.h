@@ -78,6 +78,12 @@ class DPSL_EXPORT DpslRequester {
       std::unique_ptr<grpc_api::GetSysfsDataResponse> response)>;
   using PerformWebRequestCallback = std::function<void(
       std::unique_ptr<grpc_api::PerformWebRequestResponse> response)>;
+  using GetAvailableRoutinesCallback = std::function<void(
+      std::unique_ptr<grpc_api::GetAvailableRoutinesResponse> response)>;
+  using RunRoutineCallback = std::function<void(
+      std::unique_ptr<grpc_api::RunRoutineResponse> response)>;
+  using GetRoutineUpdateCallback = std::function<void(
+      std::unique_ptr<grpc_api::GetRoutineUpdateResponse> response)>;
 
   // Factory method that returns an instance of the real implementation of this
   // interface.
@@ -111,6 +117,14 @@ class DPSL_EXPORT DpslRequester {
   virtual void PerformWebRequest(
       std::unique_ptr<grpc_api::PerformWebRequestParameter> request,
       PerformWebRequestCallback callback) = 0;
+  virtual void GetAvailableRoutines(
+      std::unique_ptr<grpc_api::GetAvailableRoutinesRequest> request,
+      GetAvailableRoutinesCallback callback) = 0;
+  virtual void RunRoutine(std::unique_ptr<grpc_api::RunRoutineRequest> request,
+                          RunRoutineCallback callback) = 0;
+  virtual void GetRoutineUpdate(
+      std::unique_ptr<grpc_api::GetRoutineUpdateRequest> request,
+      GetRoutineUpdateCallback callback) = 0;
 };
 
 }  // namespace diagnostics

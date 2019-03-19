@@ -89,6 +89,30 @@ void DpslRequesterImpl::PerformWebRequest(
       std::move(request), std::move(callback));
 }
 
+void DpslRequesterImpl::GetAvailableRoutines(
+    std::unique_ptr<grpc_api::GetAvailableRoutinesRequest> request,
+    GetAvailableRoutinesCallback callback) {
+  ScheduleGrpcClientMethodCall(
+      FROM_HERE, &grpc_api::WilcoDtcSupportd::Stub::AsyncGetAvailableRoutines,
+      std::move(request), std::move(callback));
+}
+
+void DpslRequesterImpl::RunRoutine(
+    std::unique_ptr<grpc_api::RunRoutineRequest> request,
+    RunRoutineCallback callback) {
+  ScheduleGrpcClientMethodCall(
+      FROM_HERE, &grpc_api::WilcoDtcSupportd::Stub::AsyncRunRoutine,
+      std::move(request), std::move(callback));
+}
+
+void DpslRequesterImpl::GetRoutineUpdate(
+    std::unique_ptr<grpc_api::GetRoutineUpdateRequest> request,
+    GetRoutineUpdateCallback callback) {
+  ScheduleGrpcClientMethodCall(
+      FROM_HERE, &grpc_api::WilcoDtcSupportd::Stub::AsyncGetRoutineUpdate,
+      std::move(request), std::move(callback));
+}
+
 template <typename GrpcStubMethod, typename RequestType, typename ResponseType>
 void DpslRequesterImpl::ScheduleGrpcClientMethodCall(
     const tracked_objects::Location& location,
