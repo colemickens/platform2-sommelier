@@ -1634,8 +1634,6 @@ void ArcSetup::UnmountOnStop() {
       arc_paths_->shared_mount_directory.Append("demo_apps")));
   IGNORE_ERRORS(arc_mounter_->UmountIfExists(arc_paths_->adbd_mount_directory));
   IGNORE_ERRORS(
-      arc_mounter_->UmountIfExists(arc_paths_->media_mount_directory));
-  IGNORE_ERRORS(
       arc_mounter_->UmountIfExists(arc_paths_->media_myfiles_directory));
   IGNORE_ERRORS(arc_mounter_->UmountIfExists(
       arc_paths_->media_myfiles_default_directory));
@@ -1651,6 +1649,8 @@ void ArcSetup::UnmountOnStop() {
       arc_mounter_->UmountIfExists(arc_paths_->media_removable_read_directory));
   IGNORE_ERRORS(arc_mounter_->UmountIfExists(
       arc_paths_->media_removable_write_directory));
+  IGNORE_ERRORS(
+      arc_mounter_->UmountIfExists(arc_paths_->media_mount_directory));
   IGNORE_ERRORS(arc_mounter_->Umount(arc_paths_->sdcard_mount_directory));
   IGNORE_ERRORS(
       arc_mounter_->UmountIfExists(arc_paths_->shared_mount_directory));
