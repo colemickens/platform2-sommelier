@@ -348,6 +348,14 @@
 			]
 		},
 		{
+			"destination": "/vendor/usr/keychars",
+			"type": "bind",
+			"source": "/usr/share/chromeos-assets/kcm",
+			"options": [
+				"bind"
+			]
+		},
+		{
 			"destination": "/sys",
 			"type": "sysfs",
 			"source": "none",
