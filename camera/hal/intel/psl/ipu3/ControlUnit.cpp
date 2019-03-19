@@ -1011,9 +1011,11 @@ void ControlUnit::prepareStats(RequestCtrlState &reqState,
         facesState.faces = faces;
         int ret = mFaceEngine->getResult(&facesState);
         if (ret == OK && facesState.num_faces > 0) {
-            LOG2("@%s, face number:%d", __FUNCTION__, facesState.num_faces);
             params->faces = &facesState;
+        } else {
+            params->faces = nullptr;
         }
+        LOG2("@%s, face number:%d", __FUNCTION__, facesState.num_faces);
 
         CVFaceEngineAbstractResult fdResult;
         ret = mFaceEngine->getResult(&fdResult);

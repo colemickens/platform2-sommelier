@@ -16,13 +16,12 @@
 
 #define LOG_TAG "FaceEngineLibrary"
 
-#include "FaceEngineLibrary.h"
-
 #include <string.h>
 
-#include "LogHelper.h"
 #include "common/UtilityMacros.h"
-#include <ia_coordinate.h>
+#include "FaceEngineLibrary.h"
+#include "ia_coordinate.h"
+#include "LogHelper.h"
 
 namespace cros {
 namespace intel {

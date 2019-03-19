@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Intel Corporation
+ * Copyright (C) 2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,9 +20,10 @@
 #include <memory>
 #include <mutex>
 
-#include <cros-camera/camera_thread.h>
 #include "CameraBuffer.h"
+#include <cros-camera/camera_thread.h>
 #include "ia_face.h"
+#include "Intel3aCommon.h"
 #include "IntelFaceEngine.h"
 #include "pvl_types.h"
 #include "pvl_config.h"
@@ -63,7 +64,7 @@ public:
     int getResult(CVFaceEngineAbstractResult* result);
 
 private:
-    bool handleRun();
+    void handleRun(void);
 
     int mCameraId;
 

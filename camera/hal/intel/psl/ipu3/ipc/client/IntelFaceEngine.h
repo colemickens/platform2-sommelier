@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Intel Corporation.
+ * Copyright (C) 2019 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,13 @@
 #define INTEL_FACE_ENGINE_H_
 
 #include <vector>
+#include <queue>
 #include <ia_types.h>
 
 #include "Intel3aCommon.h"
 #include "IPCFaceEngine.h"
+
+#define MAX_STORE_FACE_DATA_BUF_NUM 3
 
 namespace cros {
 namespace intel {
@@ -32,17 +35,25 @@ public:
 
     bool init(unsigned int max_face_num, int maxWidth, int maxHeight, face_detection_mode fd_mode);
     void uninit();
-    bool prepareRun(const pvl_image& frame);
-    bool run(FaceEngineResult* results);
+    bool prepareRun(const pvl_image &frame);
+    bool run(FaceEngineResult *results);
 
 private:
+    ShmMemInfo *acquireRunBuf();
+    void returnRunBuf(ShmMemInfo *memRunBuf);
+
     IPCFaceEngine mIpc;
     Intel3aCommon mCommon;
 
     bool mInitialized;
 
     ShmMemInfo mMemInit;
-    ShmMemInfo mMemRun;
+    std::mutex mMemRunPoolLock;
+    std::queue<ShmMemInfo *> mMemRunPool;
+    ShmMemInfo mMemRunBufs[MAX_STORE_FACE_DATA_BUF_NUM];
+
+    std::mutex mMemRunningPoolLock;
+    std::queue<ShmMemInfo *> mMemRunningPool;
 
     std::vector<ShmMem> mMems;
 

@@ -17,15 +17,13 @@
 #ifndef FACE_ENGINE_LIBRARY_H_
 #define FACE_ENGINE_LIBRARY_H_
 
-#include <memory>
-#include <mutex>
-
 #include "base/macros.h"
-#include <utils/Errors.h>
-
 #include "IPCCommon.h"
 #include "IPCFaceEngine.h"
+#include <memory>
+#include <mutex>
 #include "Utils.h"
+#include <utils/Errors.h>
 
 namespace cros {
 namespace intel {

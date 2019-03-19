@@ -16,10 +16,10 @@
 
 #define LOG_TAG "FaceEngine"
 
-#include "PlatformData.h"
-#include "LogHelper.h"
-#include "Intel3aCoordinate.h"
 #include "FaceEngine.h"
+#include "Intel3aCoordinate.h"
+#include "LogHelper.h"
+#include "PlatformData.h"
 
 namespace cros {
 namespace intel {
@@ -62,13 +62,14 @@ void FaceEngine::run(const pvl_image& frame)
 
     mWidth = frame.width;
     mHeight = frame.height;
-    mFace.prepareRun(frame);
+    bool ret = mFace.prepareRun(frame);
+    CheckError(!ret, VOID_VALUE, "Failed to prepare to run face detection");
 
-    base::Callback<bool()> closure = base::Bind(&FaceEngine::handleRun, base::Unretained(this));
-    mCameraThread.PostTaskAsync<bool>(FROM_HERE, closure);
+    base::Callback<void()> closure = base::Bind(&FaceEngine::handleRun, base::Unretained(this));
+    mCameraThread.PostTaskAsync<void>(FROM_HERE, closure);
 }
 
-bool FaceEngine::handleRun()
+void FaceEngine::handleRun(void)
 {
     LOG1("@%s", __FUNCTION__);
     std::lock_guard<std::mutex> l(mLock);
@@ -76,8 +77,6 @@ bool FaceEngine::handleRun()
     nsecs_t startTime = systemTime();
     bool ret = mFace.run(&mResult);
     LOG2("@%s: ret:%d, it takes %" PRId64 "ms", __FUNCTION__, ret, (systemTime() - startTime) / 1000000);
-
-    return ret;
 }
 
 void FaceEngine::getMaxSupportedResolution(int* maxWidth, int* maxHeight) const
