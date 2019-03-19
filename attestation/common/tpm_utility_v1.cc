@@ -538,7 +538,7 @@ bool TpmUtilityV1::ConnectContextAsOwner(const std::string& owner_password,
                                          trousers::ScopedTssContext* context,
                                          TSS_HTPM* tpm) {
   *tpm = 0;
-  if (owner_password.size() == 0) {
+  if (owner_password.empty()) {
     LOG(ERROR) << __func__ << ": requires an owner password";
     return false;
   }
@@ -562,6 +562,11 @@ bool TpmUtilityV1::ConnectContextAsDelegate(const std::string& delegate_blob,
                                             const std::string& delegate_secret,
                                             ScopedTssContext* context,
                                             TSS_HTPM* tpm) {
+  if (delegate_blob.empty() || delegate_secret.empty()) {
+    LOG(ERROR) << __func__
+               << ": requires a delegate blob and a delegate secret.";
+    return false;
+  }
   *tpm = 0;
   if (!ConnectContextAsUser(context, tpm)) {
     return false;
