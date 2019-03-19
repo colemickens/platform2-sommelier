@@ -59,6 +59,14 @@ class NewblueDaemonTest : public ::testing::Test {
     EXPECT_CALL(*bus_, GetDBusTaskRunner())
         .WillRepeatedly(Return(message_loop_.task_runner().get()));
     EXPECT_CALL(*bus_, AssertOnOriginThread()).Times(AnyNumber());
+    EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());
+    EXPECT_CALL(*bus_, Connect()).WillRepeatedly(Return(true));
+    EXPECT_CALL(*bus_, SetUpAsyncOperations()).WillRepeatedly(Return(true));
+    EXPECT_CALL(*bus_, SendWithReplyAndBlock(_, _, _)).Times(AnyNumber());
+    EXPECT_CALL(*bus_, AddFilterFunction(_, _)).Times(AnyNumber());
+    EXPECT_CALL(*bus_, RemoveFilterFunction(_, _)).Times(AnyNumber());
+    EXPECT_CALL(*bus_, AddMatch(_, _)).Times(AnyNumber());
+    EXPECT_CALL(*bus_, RemoveMatch(_, _)).Times(AnyNumber());
     auto libnewblue = std::make_unique<MockLibNewblue>();
     libnewblue_ = libnewblue.get();
     auto newblue = std::make_unique<Newblue>(std::move(libnewblue));
@@ -97,7 +105,7 @@ class NewblueDaemonTest : public ::testing::Test {
 
   // Expects that the standard methods on org.freedesktop.DBus.Properties
   // interface are exported.
-  void ExpectPropertiesMethodsExportedSync(
+  void ExpectPropertiesMethodsExported(
       scoped_refptr<dbus::MockExportedObject> exported_object) {
     EXPECT_CALL(*exported_object,
                 ExportMethodAndBlock(dbus::kPropertiesInterface,
@@ -203,13 +211,19 @@ class NewblueDaemonTest : public ::testing::Test {
     return exported_object;
   }
 
+  void RemoveMockExportedObject(const dbus::ObjectPath& object_path) {
+    if (base::ContainsKey(mock_exported_objects_, object_path))
+      mock_exported_objects_.erase(object_path);
+  }
+
   void ExpectDeviceObjectExported(const dbus::ObjectPath& device_object_path) {
     scoped_refptr<dbus::MockExportedObject> exported_dev_object =
         AddOrGetMockExportedObject(device_object_path);
     ExpectDeviceMethodsExported(exported_dev_object);
-    ExpectPropertiesMethodsExportedSync(exported_dev_object);
+    ExpectPropertiesMethodsExported(exported_dev_object);
     EXPECT_CALL(*bus_, GetExportedObject(device_object_path))
         .WillOnce(Return(exported_dev_object.get()));
+    EXPECT_CALL(*exported_dev_object, SendSignal(_)).Times(AnyNumber());
   }
 
   void ExpectDeviceObjectUnexported(
@@ -217,6 +231,7 @@ class NewblueDaemonTest : public ::testing::Test {
     scoped_refptr<dbus::MockExportedObject> exported_dev_object =
         AddOrGetMockExportedObject(device_object_path);
     ExpectDeviceMethodsUnexported(exported_dev_object);
+    EXPECT_CALL(*exported_dev_object, Unregister()).Times(1);
   }
 
   scoped_refptr<dbus::MockExportedObject> SetupExportedRootObject() {
@@ -226,6 +241,7 @@ class NewblueDaemonTest : public ::testing::Test {
         new dbus::MockExportedObject(bus_.get(), root_path);
     EXPECT_CALL(*bus_, GetExportedObject(root_path))
         .WillRepeatedly(Return(exported_root_object.get()));
+    EXPECT_CALL(*exported_root_object, SendSignal(_)).Times(AnyNumber());
     return exported_root_object;
   }
 
@@ -258,6 +274,10 @@ class NewblueDaemonTest : public ::testing::Test {
                            bluez_object_manager::kBluezObjectManagerServiceName,
                            object_path))
         .WillRepeatedly(Return(bluez_object_proxy_.get()));
+    EXPECT_CALL(*bluez_object_proxy_, SetNameOwnerChangedCallback(_))
+        .Times(AnyNumber());
+    EXPECT_CALL(*bluez_object_proxy_, ConnectToSignal(_, _, _, _))
+        .Times(AnyNumber());
   }
 
   void SetupBluezObjectManager() {
@@ -319,12 +339,34 @@ class NewblueDaemonTest : public ::testing::Test {
     ExpectPropertiesMethodsExportedAsync(exported_root_object);
   }
 
-  void TestInit(scoped_refptr<dbus::MockExportedObject> exported_root_object) {
-    ExpectTestInit(exported_root_object);
+  void TestInit() {
+    exported_root_object_ = SetupExportedRootObject();
+    exported_agent_manager_object_ = SetupExportedAgentManagerObject();
+    exported_adapter_object_ = SetupExportedAdapterObject();
+    ExpectPropertiesMethodsExported(exported_adapter_object_);
+    ExpectAdvertisingManagerMethodsExported(exported_adapter_object_);
+    ExpectPropertiesMethodsExported(exported_agent_manager_object_);
+    ExpectAgentManagerMethodsExported(exported_agent_manager_object_);
+
+    ExpectTestInit(exported_root_object_);
 
     EXPECT_CALL(*libnewblue_, HciUp(_, _, _)).WillOnce(Return(true));
     EXPECT_TRUE(newblue_daemon_->Init(
         bus_, nullptr /* no need to access the delegator */));
+  }
+
+  void TestDeinit() {
+    EXPECT_CALL(*exported_root_object_, Unregister()).Times(1);
+    EXPECT_CALL(*exported_adapter_object_, Unregister()).Times(1);
+    EXPECT_CALL(*exported_agent_manager_object_, Unregister()).Times(1);
+    // Expect that all the exported objects are unregistered.
+    for (const auto it : mock_exported_objects_) {
+      scoped_refptr<dbus::MockExportedObject> mock_exported_object = it.second;
+      EXPECT_CALL(*mock_exported_object, Unregister()).Times(1);
+    }
+    // Shutdown now to make sure ExportedObjectManagerWrapper is destructed
+    // first before the mocked objects.
+    newblue_daemon_->Shutdown();
   }
 
   void TestAdapterBringUp(
@@ -380,6 +422,12 @@ class NewblueDaemonTest : public ::testing::Test {
     EXPECT_CALL(*libnewblue_, SmKnownDevicesFree(known_devices))
         .WillOnce(Invoke(&smKnownDevicesFree));
 
+    // Listens to BlueZ's Adapter1 interface for monitoring StackSyncQuitting.
+    EXPECT_CALL(
+        *bluez_object_manager_,
+        RegisterInterface(bluetooth_adapter::kBluetoothAdapterInterface, _))
+        .Times(1);
+
     newblue_daemon_->OnHciReadyForUp();
   }
 
@@ -397,10 +445,13 @@ class NewblueDaemonTest : public ::testing::Test {
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockObjectProxy> bluez_object_proxy_;
   scoped_refptr<dbus::MockObjectManager> bluez_object_manager_;
-  // Declare mock_exported_objects_ before newblue_daemon_ to make sure the
+  // Declare MockExportedObject's before newblue_daemon_ to make sure the
   // MockExportedObject-s are destroyed after newblue_daemon_.
   std::map<dbus::ObjectPath, scoped_refptr<dbus::MockExportedObject>>
       mock_exported_objects_;
+  scoped_refptr<dbus::MockExportedObject> exported_root_object_;
+  scoped_refptr<dbus::MockExportedObject> exported_adapter_object_;
+  scoped_refptr<dbus::MockExportedObject> exported_agent_manager_object_;
   std::unique_ptr<NewblueDaemon> newblue_daemon_;
   MockLibNewblue* libnewblue_;
   dbus::ExportedObject::MethodCallCallback dummy_method_handler_;
@@ -413,9 +464,9 @@ TEST_F(NewblueDaemonTest, InitFailed) {
       SetupExportedAgentManagerObject();
   scoped_refptr<dbus::MockExportedObject> exported_adapter_object =
       SetupExportedAdapterObject();
-  ExpectPropertiesMethodsExportedSync(exported_adapter_object);
+  ExpectPropertiesMethodsExported(exported_adapter_object);
   ExpectAdvertisingManagerMethodsExported(exported_adapter_object);
-  ExpectPropertiesMethodsExportedSync(exported_agent_manager_object);
+  ExpectPropertiesMethodsExported(exported_agent_manager_object);
   ExpectAgentManagerMethodsExported(exported_agent_manager_object);
 
   ExpectTestInit(exported_root_object);
@@ -430,42 +481,16 @@ TEST_F(NewblueDaemonTest, InitFailed) {
 }
 
 TEST_F(NewblueDaemonTest, InitSuccessAndBringUp) {
-  scoped_refptr<dbus::MockExportedObject> exported_root_object =
-      SetupExportedRootObject();
-  scoped_refptr<dbus::MockExportedObject> exported_agent_manager_object =
-      SetupExportedAgentManagerObject();
-  scoped_refptr<dbus::MockExportedObject> exported_adapter_object =
-      SetupExportedAdapterObject();
-  ExpectPropertiesMethodsExportedSync(exported_adapter_object);
-  ExpectAdvertisingManagerMethodsExported(exported_adapter_object);
-  ExpectPropertiesMethodsExportedSync(exported_agent_manager_object);
-  ExpectAgentManagerMethodsExported(exported_agent_manager_object);
-
-  TestInit(exported_root_object);
+  TestInit();
 
   MethodHandlerMap adapter_method_handlers;
-  TestAdapterBringUp(exported_adapter_object, adapter_method_handlers);
+  TestAdapterBringUp(exported_adapter_object_, adapter_method_handlers);
 
-  EXPECT_CALL(*exported_adapter_object, Unregister()).Times(1);
-  EXPECT_CALL(*exported_root_object, Unregister()).Times(1);
-  // Shutdown now to make sure ExportedObjectManagerWrapper is destructed first
-  // before the mocked objects.
-  newblue_daemon_->Shutdown();
+  TestDeinit();
 }
 
 TEST_F(NewblueDaemonTest, DiscoveryAPI) {
-  scoped_refptr<dbus::MockExportedObject> exported_root_object =
-      SetupExportedRootObject();
-  scoped_refptr<dbus::MockExportedObject> exported_agent_manager_object =
-      SetupExportedAgentManagerObject();
-  scoped_refptr<dbus::MockExportedObject> exported_adapter_object =
-      SetupExportedAdapterObject();
-  ExpectPropertiesMethodsExportedSync(exported_adapter_object);
-  ExpectAdvertisingManagerMethodsExported(exported_adapter_object);
-  ExpectPropertiesMethodsExportedSync(exported_agent_manager_object);
-  ExpectAgentManagerMethodsExported(exported_agent_manager_object);
-
-  TestInit(exported_root_object);
+  TestInit();
 
   dbus::ExportedObject::MethodCallCallback start_discovery_handler;
   dbus::ExportedObject::MethodCallCallback stop_discovery_handler;
@@ -477,7 +502,7 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
       &stop_discovery_handler;
   adapter_method_handlers[bluetooth_adapter::kRemoveDevice] =
       &remove_device_handler;
-  TestAdapterBringUp(exported_adapter_object, adapter_method_handlers);
+  TestAdapterBringUp(exported_adapter_object_, adapter_method_handlers);
 
   ASSERT_FALSE(start_discovery_handler.is_null());
   ASSERT_FALSE(stop_discovery_handler.is_null());
@@ -558,6 +583,7 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
       &remove_device_method_call2,
       base::Bind(&SaveResponse, &remove_device_response2));
   EXPECT_EQ("", remove_device_response2->GetErrorName());
+  RemoveMockExportedObject(dbus::ObjectPath(kTestDeviceObjectPath));
 
   // StopDiscovery by the first client, it should return D-Bus success and
   // should not affect NewBlue discovery state since there is still another
@@ -593,11 +619,7 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
       base::Bind(&SaveResponse, &stop_discovery_response));
   EXPECT_EQ("", stop_discovery_response->GetErrorName());
 
-  EXPECT_CALL(*exported_adapter_object, Unregister()).Times(1);
-  EXPECT_CALL(*exported_root_object, Unregister()).Times(1);
-  // Shutdown now to make sure ExportedObjectManagerWrapper is destructed first
-  // before the mocked objects.
-  newblue_daemon_->Shutdown();
+  TestDeinit();
 }
 
 TEST_F(NewblueDaemonTest, IdleMode) {

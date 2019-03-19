@@ -121,54 +121,53 @@ class Newblue {
 
   explicit Newblue(std::unique_ptr<LibNewblue> libnewblue);
 
-  virtual ~Newblue() = default;
+  ~Newblue() = default;
 
-  virtual LibNewblue* libnewblue() { return libnewblue_.get(); }
+  LibNewblue* libnewblue() { return libnewblue_.get(); }
 
   base::WeakPtr<Newblue> GetWeakPtr();
 
   // Initializes the LE stack (blocking call).
   // Returns true if initialization succeeds, false otherwise.
-  virtual bool Init();
+  bool Init();
 
   // Registers/Unregisters pairing agent which handles user interactions during
   // pairing process.
   // |pairing_agent| not owned, must outlive this object.
-  virtual void RegisterPairingAgent(PairingAgent* pairing_agent);
-  virtual void UnregisterPairingAgent();
+  void RegisterPairingAgent(PairingAgent* pairing_agent);
+  void UnregisterPairingAgent();
 
   // Listens to reset complete event from the chip. This is useful to detect
   // when NewBlue is ready to bring up the stack.
   // Returns true on success and false otherwise.
-  virtual bool ListenReadyForUp(base::Closure callback);
+  bool ListenReadyForUp(base::Closure callback);
 
   // Brings up the NewBlue stack. This should be called when the adapter has
   // just been turned on, detected when there is reset complete event from the
   // chip. ListenReadyForUp() should be used to detect this event.
   // Returns true if success, false otherwise.
-  virtual bool BringUp();
+  bool BringUp();
 
   // Starts LE scanning, |callback| will be called every time inquiry response
   // is received.
-  virtual bool StartDiscovery(DeviceDiscoveredCallback callback);
+  bool StartDiscovery(DeviceDiscoveredCallback callback);
   // Stops LE scanning.
-  virtual bool StopDiscovery();
+  bool StopDiscovery();
 
   // Registers as an observer of pairing states of devices.
-  virtual UniqueId RegisterAsPairObserver(PairStateChangedCallback callback);
+  UniqueId RegisterAsPairObserver(PairStateChangedCallback callback);
   // Unregisters as an observer of pairing states.
-  virtual void UnregisterAsPairObserver(UniqueId observer_id);
+  void UnregisterAsPairObserver(UniqueId observer_id);
 
   // Performs LE pairing.
-  virtual bool Pair(const std::string& device_address,
-                    bool is_random_address,
-                    smPairSecurityRequirements security_requirement);
+  bool Pair(const std::string& device_address,
+            bool is_random_address,
+            smPairSecurityRequirements security_requirement);
   // Cancels LE pairing.
-  virtual bool CancelPair(const std::string& device_address,
-                          bool is_random_address);
+  bool CancelPair(const std::string& device_address, bool is_random_address);
 
   // Retrieves the known devices from NewBlue's persist.
-  virtual std::vector<KnownDevice> GetKnownDevices();
+  std::vector<KnownDevice> GetKnownDevices();
 
  private:
   // Posts task to the thread which created this Newblue object.

@@ -159,6 +159,49 @@ void Newblue::UnregisterAsPairObserver(UniqueId observer_id) {
   pair_observers_.erase(observer_id);
 }
 
+bool Newblue::Pair(const std::string& device_address,
+                   bool is_random_address,
+                   smPairSecurityRequirements security_requirement) {
+  struct bt_addr address;
+  if (!ConvertToBtAddr(is_random_address, device_address, &address))
+    return false;
+
+  libnewblue_->SmPair(&address, &security_requirement);
+  return true;
+}
+
+bool Newblue::CancelPair(const std::string& device_address,
+                         bool is_random_address) {
+  struct bt_addr address;
+  if (!ConvertToBtAddr(is_random_address, device_address, &address))
+    return false;
+
+  libnewblue_->SmUnpair(&address);
+  return true;
+}
+
+std::vector<KnownDevice> Newblue::GetKnownDevices() {
+  struct smKnownDevNode* head = libnewblue_->SmGetKnownDevices();
+  struct smKnownDevNode* node = head;
+  std::vector<KnownDevice> devices;
+
+  while (node) {
+    KnownDevice device;
+    device.address = ConvertBtAddrToString(node->addr);
+    device.address_type = node->addr.type;
+    device.is_paired = node->isPaired;
+    if (node->name)
+      device.name = std::string(node->name);
+    devices.push_back(device);
+    node = node->next;
+  }
+
+  libnewblue_->SmKnownDevicesFree(head);
+  return devices;
+}
+
+/*** Private Methods ***/
+
 bool Newblue::PostTask(const tracked_objects::Location& from_here,
                        const base::Closure& task) {
   CHECK(origin_task_runner_.get());
@@ -215,47 +258,6 @@ void Newblue::DiscoveryCallback(const std::string& address,
   device_discovered_callback_.Run(address, address_type, rssi, reply_type, eir);
 }
 
-bool Newblue::Pair(const std::string& device_address,
-                   bool is_random_address,
-                   smPairSecurityRequirements security_requirement) {
-  struct bt_addr address;
-  if (!ConvertToBtAddr(is_random_address, device_address, &address))
-    return false;
-
-  libnewblue_->SmPair(&address, &security_requirement);
-  return true;
-}
-
-bool Newblue::CancelPair(const std::string& device_address,
-                         bool is_random_address) {
-  struct bt_addr address;
-  if (!ConvertToBtAddr(is_random_address, device_address, &address))
-    return false;
-
-  libnewblue_->SmUnpair(&address);
-  return true;
-}
-
-std::vector<KnownDevice> Newblue::GetKnownDevices() {
-  struct smKnownDevNode* head = libnewblue_->SmGetKnownDevices();
-  struct smKnownDevNode* node = head;
-  std::vector<KnownDevice> devices;
-
-  while (node) {
-    KnownDevice device;
-    device.address = ConvertBtAddrToString(node->addr);
-    device.address_type = node->addr.type;
-    device.is_paired = node->isPaired;
-    if (node->name)
-      device.name = std::string(node->name);
-    devices.push_back(device);
-    node = node->next;
-  }
-
-  libnewblue_->SmKnownDevicesFree(head);
-  return devices;
-}
-
 void Newblue::PairStateCallbackThunk(void* data,
                                      const void* pair_state_change,
                                      uniq_t observer_id) {
@@ -268,6 +270,21 @@ void Newblue::PairStateCallbackThunk(void* data,
   newblue->PostTask(
       FROM_HERE, base::Bind(&Newblue::PairStateCallback, newblue->GetWeakPtr(),
                             *change, observer_id));
+}
+
+void Newblue::PairStateCallback(const smPairStateChange& change,
+                                uniq_t observer_id) {
+  VLOG(1) << __func__;
+
+  CHECK_EQ(observer_id, pair_state_handle_);
+
+  std::string address = ConvertBtAddrToString(change.peerAddr);
+  PairState state = static_cast<PairState>(change.pairState);
+  PairError error = static_cast<PairError>(change.pairErr);
+
+  // Notify |pair_observers|.
+  for (const auto& observer : pair_observers_)
+    observer.second.Run(address, state, error);
 }
 
 void Newblue::PasskeyDisplayObserverCallbackThunk(
@@ -301,21 +318,6 @@ void Newblue::PasskeyDisplayObserverCallback(
   } else {
     VLOG(1) << "The passkey session expired with the device";
   }
-}
-
-void Newblue::PairStateCallback(const smPairStateChange& change,
-                                uniq_t observer_id) {
-  VLOG(1) << __func__;
-
-  CHECK_EQ(observer_id, pair_state_handle_);
-
-  std::string address = ConvertBtAddrToString(change.peerAddr);
-  PairState state = static_cast<PairState>(change.pairState);
-  PairError error = static_cast<PairError>(change.pairErr);
-
-  // Notify |pair_observers|.
-  for (const auto& observer : pair_observers_)
-    observer.second.Run(address, state, error);
 }
 
 }  // namespace bluetooth

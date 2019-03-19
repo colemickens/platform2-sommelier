@@ -217,11 +217,11 @@ class DeviceInterfaceHandler {
   Newblue* newblue_;
   ExportedObjectManagerWrapper* exported_object_manager_wrapper_;
 
-  UniqueId pair_observer_id_;
-
   // Keeps the discovered devices.
   // TODO(sonnysasaka): Clear old devices according to BlueZ mechanism.
   std::map<std::string, std::unique_ptr<Device>> discovered_devices_;
+
+  UniqueId pair_observer_id_;
 
   // Device object path and its response to the ongoing pairing/cancelpairing
   // request. <device address, D-Bus method response to pairing, D-Bus
