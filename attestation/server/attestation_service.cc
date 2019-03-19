@@ -1607,31 +1607,34 @@ void AttestationService::PrepareForEnrollment() {
   }
   base::TimeTicks start = base::TimeTicks::Now();
   LOG(INFO) << "Attestation: Preparing for enrollment...";
+
+  KeyType key_type = KEY_TYPE_RSA;
+
   // Gather information about the endorsement key.
-  std::string rsa_ek_public_key;
-  if (!tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_RSA,
-                                             &rsa_ek_public_key)) {
-    LOG(ERROR) << "Attestation: Failed to get RSA EK public key.";
+  std::string ek_public_key;
+  if (!tpm_utility_->GetEndorsementPublicKey(key_type, &ek_public_key)) {
+    LOG(ERROR) << __func__ << ": Failed to get EK public key with key_type "
+               << key_type;
     return;
   }
-  std::string rsa_ek_certificate;
-  if (!tpm_utility_->GetEndorsementCertificate(KEY_TYPE_RSA,
-                                               &rsa_ek_certificate)) {
-    LOG(ERROR) << "Attestation: Failed to get RSA EK certificate.";
+  std::string ek_certificate;
+  if (!tpm_utility_->GetEndorsementCertificate(key_type, &ek_certificate)) {
+    LOG(ERROR) << __func__ << ": Failed to get EK cert with key_type "
+               << key_type;
     return;
   }
 
   // Create a new AIK and PCR quotes for the first identity with default
   // identity features.
-  if (CreateIdentity(default_identity_features_, rsa_ek_public_key) < 0) {
+  if (CreateIdentity(default_identity_features_, ek_public_key) < 0) {
     return;
   }
 
   // Store all this in the attestation database.
   auto* database_pb = database_->GetMutableProtobuf();
   TPMCredentials* credentials_pb = database_pb->mutable_credentials();
-  credentials_pb->set_endorsement_public_key(rsa_ek_public_key);
-  credentials_pb->set_endorsement_credential(rsa_ek_certificate);
+  credentials_pb->set_endorsement_public_key(ek_public_key);
+  credentials_pb->set_endorsement_credential(ek_certificate);
 
   // Encrypt the endorsement credential for all the ACAs we know of.
   EncryptAllEndorsementCredentials();
