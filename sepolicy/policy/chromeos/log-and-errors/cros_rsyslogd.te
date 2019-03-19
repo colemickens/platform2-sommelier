@@ -1,4 +1,4 @@
-type cros_rsyslogd, chromeos_domain, cros_log_file_creator_domain, domain, mlstrustedobject;
+type cros_rsyslogd, chromeos_domain, cros_log_file_creator_domain, domain;
 
 from_minijail_static(cros_rsyslogd, cros_rsyslogd_exec);
 log_writer(cros_rsyslogd);

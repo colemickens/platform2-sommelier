@@ -153,6 +153,7 @@ type cros_syslog, file_type, cros_log_type;
 type cros_tlsdate_log, file_type, cros_log_type;
 type cros_var_log_chrome, file_type, cros_log_type;
 type cros_var_log_eventlog, file_type, cros_log_type;
+type cros_var_log_journal, file_type, cros_log_type;
 
 type cros_crash_spool, file_type;
 type cros_periodic_scheduler_cache_t, file_type;

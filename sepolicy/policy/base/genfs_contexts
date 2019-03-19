@@ -17,6 +17,8 @@ genfscon proc /sys/fs/protected_symlinks u:object_r:proc_security:s0
 genfscon proc /sys/fs/suid_dumpable u:object_r:proc_security:s0
 genfscon proc /sys/kernel/core_pattern u:object_r:usermodehelper:s0
 genfscon proc /sys/kernel/dmesg_restrict u:object_r:proc_security:s0
+genfscon proc /sys/kernel/domainname u:object_r:proc_hostname:s0
+genfscon proc /sys/kernel/hostname u:object_r:proc_hostname:s0
 genfscon proc /sys/kernel/hotplug u:object_r:usermodehelper:s0
 genfscon proc /sys/kernel/kptr_restrict u:object_r:proc_security:s0
 genfscon proc /sys/kernel/modprobe u:object_r:usermodehelper:s0

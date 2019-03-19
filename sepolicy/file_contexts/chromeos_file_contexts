@@ -117,19 +117,20 @@ include(sepolicy/file_contexts/coreutils)
 /var/lib/ureadahead(/.*)?       u:object_r:cros_var_lib_ureadahead:s0
 /var/lib/whitelist(/.*)?        u:object_r:cros_var_lib_whitelist:s0
 /var/log                        u:object_r:cros_var_log:s0
-/var/log/eventlog.txt           u:object_r:cros_var_log_eventlog:s0
 /var/log/arc.log                u:object_r:cros_arc_log:s0
+/var/log/asan(/.*)?             u:object_r:cros_var_log_asan:s0
 /var/log/authpolicy.log         u:object_r:cros_authpolicy_log:s0
 /var/log/boot.log               u:object_r:cros_boot_log:s0
 /var/log/chrome(/.*)?           u:object_r:cros_var_log_chrome:s0
+/var/log/eventlog.txt           u:object_r:cros_var_log_eventlog:s0
 /var/log/hammerd.log            u:object_r:cros_hammerd_log:s0
+/var/log/journal(/.*)?          u:object_r:cros_var_log_journal:s0
 /var/log/messages               u:object_r:cros_syslog:s0
+/var/log/mount_options.log      u:object_r:chromeos_startup_mount_options_log_file:s0
 /var/log/net.log                u:object_r:cros_net_log:s0
+/var/log/powerd.out             u:object_r:cros_powerd_log:s0
 /var/log/secure                 u:object_r:cros_secure_log:s0
 /var/log/tlsdate.log            u:object_r:cros_tlsdate_log:s0
-/var/log/powerd.out             u:object_r:cros_powerd_log:s0
-/var/log/asan(/.*)?             u:object_r:cros_var_log_asan:s0
-/var/log/mount_options.log      u:object_r:chromeos_startup_mount_options_log_file:s0
 /var/spool                      u:object_r:cros_var_spool:s0
 /var/spool/cron-lite(/.*)?      u:object_r:cros_periodic_scheduler_cache_t:s0
 /var/spool/crash_reporter(/.*)? u:object_r:cros_crash_spool:s0
@@ -173,6 +174,7 @@ has_arc(`
 include(sepolicy/file_contexts/sysfs_contexts)
 
 /dev/console                    u:object_r:console_device:s0
+/dev/kmsg                       u:object_r:kmsg_device:s0
 /dev/log                        u:object_r:logger_device:s0
 /dev/null                       u:object_r:null_device:s0
 /dev/ptmx                       u:object_r:ptmx_device:s0

@@ -1,17 +1,24 @@
-type cros_journald, chromeos_domain, domain, mlstrustedobject;
+type cros_journald, chromeos_domain, domain;
 
-permissive cros_journald;
-from_minijail_preload(cros_journald, cros_journald_exec);
+from_minijail_static(cros_journald, cros_journald_exec);
 log_writer(cros_journald);
 
+allow cros_journald cros_run_systemd:dir { search getattr };
+allow cros_journald is_arc_nyc(proc, {proc_cmdline proc_hostname}):file r_file_perms;
+
 filetrans_pattern(cros_journald, cros_run_journal, logger_device, sock_file, "dev-log");
+allow cros_journald logger_device:sock_file create_file_perms;
+allow cros_journald cros_run_journal:file create_file_perms;
+allow cros_journald cros_run_journal:dir create_dir_perms;
+allow cros_journald cros_run_journal:sock_file create_file_perms;
 
 allow cros_journald cros_run_journal:dir rw_dir_perms;
 
 allow cros_journald proc_kmsg:file rw_file_perms;
 
-allow cros_journald cros_var_log:dir rw_dir_perms;
-allow cros_journald cros_var_log:file rw_file_perms;
+filetrans_pattern(cros_journald, cros_var_log, cros_var_log_journal, dir, "journal");
+allow cros_journald cros_var_log_journal:file create_file_perms;
+allow cros_journald cros_var_log_journal:dir create_dir_perms;
 
 allow cros_journald kernel:system syslog_mod;
 allow cros_journald self:capability2 syslog;
@@ -19,3 +26,13 @@ allow cros_journald self:capability2 syslog;
 allow cros_journald domain:dir { getattr search };
 allow cros_journald domain:file { getattr open read };
 allow cros_journald domain:lnk_file { getattr read };
+
+allow cros_journald cros_rsyslogd:unix_dgram_socket sendto;
+
+allow cros_journald kernel:system syslog_read;
+
+allow cros_journald kmsg_device:chr_file { open read write };
+
+type cros_journald_pid_file, file_type, cros_tmpfile_type;
+filetrans_pattern(minijail, cros_run, cros_journald_pid_file, file, "systemd-journald.pid");
+
