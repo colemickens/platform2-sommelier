@@ -71,6 +71,13 @@ void enter_vfs_namespace() {
   if (minijail_bind(j.get(), "/run/ippusb", "/run/ippusb", 0))
     LOG(FATAL) << "minijail_bind(\"/run/ippusb\") failed";
 
+  // In case we start before avahi-daemon, make sure the path exists.
+  mkdir("/var/run/avahi-daemon", 0755);
+  // Mount /run/avahi-daemon in order to perform mdns name resolution.
+  if (minijail_bind(j.get(), "/run/avahi-daemon", "/run/avahi-daemon",
+                    0))
+    LOG(FATAL) << "minijail_bind(\"/run/avahi-daemon\") failed";
+
   // Since shill provides network resolution settings, bind mount it.
   // In case we start before shill, make sure the path exists.
   mkdir("/run/shill", 0755);
