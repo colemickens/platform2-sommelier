@@ -730,7 +730,9 @@ void AttestationService::GetEndorsementInfo(
 void AttestationService::GetEndorsementInfoTask(
     const GetEndorsementInfoRequest& request,
     const std::shared_ptr<GetEndorsementInfoReply>& result) {
-  if (request.key_type() != KEY_TYPE_RSA) {
+  const auto& key_type = request.key_type();
+
+  if (key_type != KEY_TYPE_RSA && key_type != KEY_TYPE_ECC) {
     result->set_status(STATUS_INVALID_PARAMETER);
     return;
   }
@@ -739,7 +741,7 @@ void AttestationService::GetEndorsementInfoTask(
       !database_pb.credentials().has_endorsement_public_key()) {
     // Try to read the public key directly.
     std::string public_key;
-    if (!tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_RSA, &public_key)) {
+    if (!tpm_utility_->GetEndorsementPublicKey(key_type, &public_key)) {
       result->set_status(STATUS_NOT_AVAILABLE);
       return;
     }
@@ -749,8 +751,7 @@ void AttestationService::GetEndorsementInfoTask(
   }
   std::string public_key_info;
   if (!GetSubjectPublicKeyInfo(
-          request.key_type(),
-          database_pb.credentials().endorsement_public_key(),
+          key_type, database_pb.credentials().endorsement_public_key(),
           &public_key_info)) {
     LOG(ERROR) << __func__ << ": Bad public key.";
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
