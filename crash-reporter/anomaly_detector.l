@@ -18,7 +18,7 @@
 
 %{
 
-#include "crash-reporter/anomaly_collector.h"
+#include "crash-reporter/anomaly_detector.h"
 
 #include <ctype.h>
 #include <err.h>
@@ -227,7 +227,7 @@ static KernelWarningType warn_type;    /* the type of kernel warning */
 
 const char *msg_path = "/var/log/messages";
 /* We'll reset this template everytime we use it. */
-char dump_path[] = "/tmp/anomaly_collector.------";
+char dump_path[] = "/tmp/anomaly_detector.------";
 
 static uint32_t StringHash(const char *string) {
   uint32_t hash = 0;

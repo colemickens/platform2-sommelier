@@ -7,7 +7,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
-    ":anomaly_collector",
+    ":anomaly_detector",
     ":crash_reporter",
     ":crash_sender",
     ":libcrash",
@@ -19,7 +19,7 @@ group("all") {
   }
   if (use.test) {
     deps += [
-      ":anomaly_collector_test",
+      ":anomaly_detector_test",
       ":crash_reporter_test",
     ]
   }
@@ -135,7 +135,7 @@ executable("list_proxies") {
   ]
 }
 
-pkg_config("anomaly_collector_config") {
+pkg_config("anomaly_detector_config") {
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
@@ -149,23 +149,23 @@ pkg_config("anomaly_collector_config") {
   ]
 }
 
-lex("anomaly_collector_lex") {
+lex("anomaly_detector_lex") {
   lexer_out_dir = "crash-reporter"
   sources = [
-    "anomaly_collector.l",
+    "anomaly_detector.l",
   ]
 
-  # -D_GNU_SOURCE is needed for asprintf in anomaly_collector.l
+  # -D_GNU_SOURCE is needed for asprintf in anomaly_detector.l
   defines = [ "_GNU_SOURCE" ]
 }
 
-executable("anomaly_collector") {
-  configs += [ ":anomaly_collector_config" ]
+executable("anomaly_detector") {
+  configs += [ ":anomaly_detector_config" ]
   deps = [
-    ":anomaly_collector_lex",
+    ":anomaly_detector_lex",
   ]
   sources = [
-    "anomaly_collector.cc",
+    "anomaly_detector.cc",
   ]
   libs = [
     "fl",
@@ -243,15 +243,15 @@ if (use.test) {
     }
   }
 
-  copy("anomaly_collector_test") {
+  copy("anomaly_detector_test") {
     sources = [
       "TEST_SELINUX",
       "TEST_SERVICE_FAILURE",
       "TEST_WARNING",
       "TEST_WARNING_OLD",
       "TEST_WARNING_OLD_ARM64",
-      "anomaly_collector_test.sh",
-      "anomaly_collector_test_reporter.sh",
+      "anomaly_detector_test.sh",
+      "anomaly_detector_test_reporter.sh",
       "crash_reporter_logs.conf",
     ]
     outputs = [

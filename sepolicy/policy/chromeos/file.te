@@ -14,7 +14,7 @@ type cros_dev_image_files, file_type;
 type cros_seccomp_policy_file, file_type;
 
 type cros_accelerator_logs_exec, exec_type, file_type;
-type cros_anomaly_collector_exec, exec_type, file_type;
+type cros_anomaly_detector_exec, exec_type, file_type;
 type cros_apk_cache_cleaner_jailed_exec, exec_type, file_type;
 type cros_arc_oemcrypto_exec, exec_type, file_type;
 type cros_arc_setup_exec, exec_type, file_type;

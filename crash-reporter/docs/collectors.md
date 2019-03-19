@@ -226,10 +226,10 @@ otherwise unceremoniously killed.
     Any output from them will automatically be attached to the crash report as
     a `.log` file.
 
-# Anomaly Collectors
+# Anomaly Detectors
 
-The [anomaly_collector] service is spawned early during boot via
-[anomaly-collector.conf].  It runs a lexer on the syslog stream, and tries to
+The [anomaly_detector] service is spawned early during boot via
+[anomaly-detector.conf].  It runs a lexer on the syslog stream, and tries to
 match a set of regexes. A match triggers a collection or a D-Bus signal,
 depending on the regex.
 
@@ -247,10 +247,10 @@ depending on the regex.
 
 See sections below for more details on each collector and signal.
 
-The anomaly collector runs one collector at a time, and waits for it to
+The anomaly detector runs one collector at a time, and waits for it to
 finish running fully before processing more syslog entries.
 
-The anomaly collector rescans `/var/log/messages` from the beginning at
+The anomaly detector rescans `/var/log/messages` from the beginning at
 reboot (or restart).  Thus the same anomaly may be reported more than once.
 
 As a special case, only the first instance of each kernel warning is collected
@@ -307,11 +307,11 @@ The program name is `arc-service-failure`.
 
 ## Out-Of-Memory kill signal (OOM kill)
 
-On detection of OOM-kill attempts in the kernel, [anomaly_collector] sends a
+On detection of OOM-kill attempts in the kernel, [anomaly_detector] sends a
 D-Bus signal on /org/chromium/AnomalyEventService.  This is currently used by
 [memd] to collect a number of memory-manager related stats and events.
 
-[anomaly_collector] does not try to confirm that the kill is successful.
+[anomaly_detector] does not try to confirm that the kill is successful.
 
 [ARC++]: ../../arc/
 [BERT]: https://www.uefi.org/sites/default/files/resources/ACPI%206_2_A_Sept29.pdf
@@ -323,8 +323,8 @@ D-Bus signal on /org/chromium/AnomalyEventService.  This is currently used by
 [SELinux]: https://en.wikipedia.org/wiki/Security-Enhanced_Linux
 [udev]: https://en.wikipedia.org/wiki/Udev
 
-[anomaly_collector]: ../anomaly_collector.cc
-[anomaly-collector.conf]: ../init/anomaly-collector.conf
+[anomaly_detector]: ../anomaly_detector.cc
+[anomaly-detector.conf]: ../init/anomaly-detector.conf
 [arc_collector]: ../arc_collector.cc
 [bert_collector]: ../bert_collector.cc
 [chrome_collector]: ../chrome_collector.cc

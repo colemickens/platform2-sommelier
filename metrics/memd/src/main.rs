@@ -1279,7 +1279,7 @@ enum SampleType {
     EnterLowMem,    // Entering low-memory state, from the kernel low-mem notifier.
     LeaveLowMem,    // Leaving low-memory state, from the kernel low-mem notifier.
     OomKillBrowser, // Chrome browser letting us know it detected OOM kill.
-    OomKillKernel,  // Anomaly collector letting us know it detected OOM kill.
+    OomKillKernel,  // Anomaly detector letting us know it detected OOM kill.
     Sleeper,        // Memd was not running for a long time.
     TabDiscard,     // Chrome browser letting us know about a tab discard.
     Timer,          // Event was produced after FAST_POLL_PERIOD_DURATION with no other events.

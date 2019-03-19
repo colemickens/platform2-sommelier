@@ -48,7 +48,7 @@ to gather up any previous crashes in the system.
 For example, if the system had rebooted due to a kernel panic, or some firmware
 (like the [EC]) had crashed.
 
-We background the [anomaly_collector] to monitor for system "anomalies" for
+We background the [anomaly_detector] to monitor for system "anomalies" for
 which a notification mechanism is not available.
 This daemon operates by monitoring syslog messages via [inotify].
 Depending on the anomaly, it generates crashes, UMA stats, and D-Bus signals.
@@ -96,7 +96,7 @@ That covers pretty much all the files in here.
 Here is a brief summary of each init script we provide.
 More details on each can be found in the sections below.
 
-* [anomaly-collector.conf]: Background daemon that monitors logs for anomalies.
+* [anomaly-detector.conf]: Background daemon that monitors logs for anomalies.
 * [crash-boot-collect.conf]: One-off collection at boot time.
 * [crash-reporter.conf]: One-off early boot initialization.
 * [crash-sender.conf]: Background daemon for uploading reports.
@@ -298,7 +298,7 @@ These paths are guaranteed to persist across boots.
     Used to keep track of how many reports have been uploaded (and when) so we
     can regulate our limits.
 
-*   `/var/log/messages`: [anomaly_collector] monitors this (read-only).
+*   `/var/log/messages`: [anomaly_detector] monitors this (read-only).
 *   `/var/log/chrome/Crash Reports/uploads.log`: [crash_sender] updates this
     after every crash it uploads.  See [Uploading Crashes] for more details.
 
@@ -431,8 +431,8 @@ Check out the their [docs][1] for more details (especially on minidumps).
 [Proxies]: #Proxies
 [Uploading Crashes]: #Uploading-Crashes
 
-[anomaly_collector]: ./anomaly_collector.cc
-[anomaly-collector.conf]: ./init/anomaly-collector.conf
+[anomaly_detector]: ./anomaly_detector.cc
+[anomaly-detector.conf]: ./init/anomaly-detector.conf
 [core_collector]: ./core-collector/
 [crash-boot-collect.conf]: ./init/crash-boot-collect.conf
 [crash_reporter]: ./crash_reporter.cc

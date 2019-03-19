@@ -22,7 +22,7 @@ and capabilities.
 Further splitting up these tools into discrete helpers/components will probably
 help with keeping clear lines for which tools need which privileges.
 
-[anomaly_collector] needs read access to `/var/log/messages` and write access
+[anomaly_detector] needs read access to `/var/log/messages` and write access
 to `/var/spool/crash/`.
 [crash_reporter_logs.conf] needs read access to `dmesg` and some sysfs PCI
 registers for the [kernel_warning_collector].
@@ -217,7 +217,7 @@ The larger class fix involved blocking symlinks entirely.
     Disallow following symlinks in the kernel on writable partitions (stateful).
 
 
-[anomaly_collector]: ../anomaly_collector.cc
+[anomaly_detector]: ../anomaly_detector.cc
 [crash_reporter]: ../crash_reporter.cc
 [crash_reporter_logs.conf]: ../crash_reporter_logs.conf
 [crash_sender]: ../crash_sender.cc

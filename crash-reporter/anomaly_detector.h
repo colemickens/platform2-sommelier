@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRASH_REPORTER_ANOMALY_COLLECTOR_H_
-#define CRASH_REPORTER_ANOMALY_COLLECTOR_H_
+#ifndef CRASH_REPORTER_ANOMALY_DETECTOR_H_
+#define CRASH_REPORTER_ANOMALY_DETECTOR_H_
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -32,4 +32,4 @@ extern void RunCrashReporter(int filter,
 }
 #endif
 
-#endif  // CRASH_REPORTER_ANOMALY_COLLECTOR_H_
+#endif  // CRASH_REPORTER_ANOMALY_DETECTOR_H_

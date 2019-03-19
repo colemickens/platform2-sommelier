@@ -29,8 +29,8 @@ case $1 in
     ;;
 esac
 
-# Send stdout & stderr to this log file.  This lets anomaly_collector_test.sh
-# check the runtime behavior of the collector being tested.
+# Send stdout & stderr to this log file.  This lets anomaly_detector_test.sh
+# check the runtime behavior of the detector being tested.
 exec 1>> anomaly-test-log
 exec 2>> anomaly-test-log
 

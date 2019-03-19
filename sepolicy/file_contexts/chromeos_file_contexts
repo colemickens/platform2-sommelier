@@ -1,3 +1,7 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 include(sepolicy/file_contexts/chromeos_unconfined)
 include(sepolicy/file_contexts/coreutils)
 
@@ -28,7 +32,7 @@ include(sepolicy/file_contexts/coreutils)
 /bin/kmod                       u:object_r:cros_modprobe_exec:s0
 /bin/sh                         u:object_r:sh_exec:s0
 
-/usr/bin/anomaly_collector      u:object_r:cros_anomaly_collector_exec:s0
+/usr/bin/anomaly_detector       u:object_r:cros_anomaly_detector_exec:s0
 /usr/bin/btdispatch             u:object_r:cros_btdispatch_exec:s0
 /usr/bin/chrt                   u:object_r:cros_chrt_exec:s0
 /usr/bin/cras                   u:object_r:cros_cras_exec:s0

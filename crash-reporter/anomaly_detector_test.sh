@@ -3,9 +3,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Test for anomaly_collector.  Run the anomaly collector in the background,
+# Test for anomaly_detector.  Run the anomaly detector in the background,
 # emulate the kernel by appending lines to the log file "messages", and observe
-# the log of the (fake) crash reporter each time is run by the anomaly collector
+# the log of the (fake) crash reporter each time is run by the anomaly detector
 # daemon.
 
 set -e
@@ -51,20 +51,20 @@ trap cleanup EXIT
 
 SRC="$(readlink -f "$(dirname "$0")")"
 PATH="${SRC}:${PATH}"
-echo "Testing: $(which anomaly_collector)"
+echo "Testing: $(which anomaly_detector)"
 
-OUT="$(mktemp -dt anomaly_collector_test_XXXXXXXXXX)"
+OUT="$(mktemp -dt anomaly_detector_test_XXXXXXXXXX)"
 cd "${OUT}"
 TESTLOG="${OUT}/anomaly-test-log"
 
-cp "${SRC}/anomaly_collector_test_reporter.sh" .
+cp "${SRC}/anomaly_detector_test_reporter.sh" .
 touch messages
 
-# Start the collector daemon.  With the --test option, the daemon reads input
+# Start the detector daemon.  With the --test option, the daemon reads input
 # from ./messages, writes the anomaly reports into files in the current working
-# directory, and invokes ./anomaly_collector_test_reporter.sh to report the
+# directory, and invokes ./anomaly_detector_test_reporter.sh to report the
 # anomalies.
-anomaly_collector --test &
+anomaly_detector --test &
 sleep 1
 
 # Emit a kernel warning to messages and check that it is collected.

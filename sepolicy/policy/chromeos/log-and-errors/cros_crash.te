@@ -14,8 +14,8 @@ allow cros_crash cros_syslog:file r_file_perms;
 allow cros_crash unlabeled:dir search;
 
 domain_auto_trans({chromeos_domain -cros_crash}, cros_crash_reporter_exec, cros_crash);
-allow cros_crash cros_anomaly_collector:fd use;
-# Kernel and cros_anomaly_collector are expected to run crash_reporter.
+allow cros_crash cros_anomaly_detector:fd use;
+# Kernel and cros_anomaly_detector are expected to run crash_reporter.
 # This audit allow is used to catch more unexpected usage.
 # -chromeos since we're pulling more processes out of chromeos, also it creates noises that crash_test.py
 # tries to run crash_reporter during the test.
@@ -24,7 +24,7 @@ chromeos_domain
 -kernel
 -cros_init
 -chromeos
--cros_anomaly_collector
+-cros_anomaly_detector
 -cros_crash
 -cros_udevd # Udevd is also expected to execute crash reporter.
 -cros_ssh_session
@@ -40,14 +40,14 @@ allow cros_crash cros_var_lib_crash_reporter:file create_file_perms;
 filetrans_pattern(cros_crash, cros_run, cros_run_crash_reporter, dir, "crash_reporter");
 
 type cros_crash_tmp_file, file_type;
-# anomaly_collector minijail made it potentially cros_minijail_minijail_tmp_file.
+# anomaly_detector minijail made it potentially cros_minijail_minijail_tmp_file.
 # cros_crash libminijail wants to create on top of it.
 filetrans_pattern(cros_crash, {cros_minijail_minijail_tmp_file tmpfs}, cros_crash_tmp_file, dir);
 
 r_dir_file(cros_crash, cros_var_lib_whitelist);
 r_dir_file(cros_crash, cros_passwd_file);
 
-r_dir_file(cros_crash, cros_anomaly_collector_tmp_file);
+r_dir_file(cros_crash, cros_anomaly_detector_tmp_file);
 
 r_dir_file(cros_crash, cros_run_containers);
 
@@ -72,7 +72,7 @@ minijail_mounts(
  cros_crash,
  ,
  {
-  cros_minijail_minijail_tmp_file # created by anomaly_collector minijail
+  cros_minijail_minijail_tmp_file # created by anomaly_detector minijail
   cros_crash_tmp_file
  }
 )

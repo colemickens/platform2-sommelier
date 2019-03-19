@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "crash-reporter/anomaly_collector.h"
+#include "crash-reporter/anomaly_detector.h"
 
 #include <pwd.h>
 #include <unistd.h>
@@ -43,7 +43,7 @@ scoped_refptr<dbus::Bus> SetUpDBus(void) {
   // Export a bus object so that other processes can register signal handlers
   // (this service only sends signals, no methods are exported).
   g_dbus_exported_object = dbus->GetExportedObject(
-      dbus::ObjectPath(anomaly_collector::kAnomalyEventServicePath));
+      dbus::ObjectPath(anomaly_detector::kAnomalyEventServicePath));
   CHECK(g_dbus_exported_object);
   return dbus;
 }
@@ -61,8 +61,8 @@ void RunCrashReporter(int filter, const char* flag, const char* input_path) {
 }
 
 void CDBusSendOomSignal(const int64_t oom_timestamp_ms) {
-  dbus::Signal signal(anomaly_collector::kAnomalyEventServiceInterface,
-                      anomaly_collector::kAnomalyEventSignalName);
+  dbus::Signal signal(anomaly_detector::kAnomalyEventServiceInterface,
+                      anomaly_detector::kAnomalyEventSignalName);
   dbus::MessageWriter writer(&signal);
   metrics_event::Event payload;
   payload.set_type(metrics_event::Event_Type_OOM_KILL_KERNEL);
@@ -82,14 +82,14 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(filter, false, "Input is stdin and output is stdout");
   DEFINE_bool(test, false, "Run self-tests");
 
-  brillo::FlagHelper::Init(argc, argv, "Crash Helper: Anomaly Collector");
-  brillo::OpenLog("anomaly_collector", true);
+  brillo::FlagHelper::Init(argc, argv, "Crash Helper: Anomaly Detector");
+  brillo::OpenLog("anomaly_detector", true);
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
   if (FLAGS_filter)
     crash_reporter_path = "/bin/cat";
   else if (FLAGS_test)
-    crash_reporter_path = "./anomaly_collector_test_reporter.sh";
+    crash_reporter_path = "./anomaly_detector_test_reporter.sh";
 
   scoped_refptr<dbus::Bus> dbus;
   if (!FLAGS_test)
