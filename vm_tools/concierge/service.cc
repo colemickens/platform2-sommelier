@@ -130,7 +130,7 @@ const std::map<string, string> kLxdEnv = {
 };
 
 constexpr uint64_t kMinimumDiskSize = 1ll * 1024 * 1024 * 1024;  // 1 GiB
-constexpr uint64_t kDiskSizeMask = ~511ll;  // Round to disk block size.
+constexpr uint64_t kDiskSizeMask = ~4095ll;  // Round to disk block size.
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
