@@ -31,7 +31,10 @@ EcHelper::EcHelper() : wake_angle_supported_(false), cached_wake_angle_(-1) {
     wake_angle_supported_ = true;
     VLOG(1) << "Accessing EC wake angle through 3.18+ sysfs node: "
             << wake_angle_sysfs_node_.value();
-  } else if (base::IsLink(k314IioLinkPath)) {  // Kernel 3.14
+    return;
+  }
+
+  if (base::IsLink(k314IioLinkPath)) {  // Kernel 3.14
     base::FilePath iio_dev_path;
     if (!base::ReadSymbolicLink(k314IioLinkPath, &iio_dev_path)) {
       LOG(ERROR) << "Cannot read link target of " << k314IioLinkPath.value();
@@ -40,17 +43,16 @@ EcHelper::EcHelper() : wake_angle_supported_(false), cached_wake_angle_(-1) {
     iio_dev_path = iio_dev_path.BaseName();
     wake_angle_sysfs_node_ =
         k314IioSysfsPath.Append(iio_dev_path).Append(k314AccelNodeName);
-    if (!base::PathExists(wake_angle_sysfs_node_)) {
-      LOG(ERROR) << "Cannot find EC wake angle node: "
-                 << wake_angle_sysfs_node_.value();
+    if (base::PathExists(wake_angle_sysfs_node_)) {
+      wake_angle_supported_ = true;
+      VLOG(1) << "Accessing EC wake angle through 3.14 sysfs node: "
+              << wake_angle_sysfs_node_.value();
       return;
     }
-    wake_angle_supported_ = true;
-    VLOG(1) << "Accessing EC wake angle through 3.14 sysfs node: "
-            << wake_angle_sysfs_node_.value();
-  } else {
-    VLOG(1) << "This device does not support EC wake angle control.";
+    // fallthrough.
   }
+
+  LOG(INFO) << "This device does not support EC wake angle control";
 }
 
 EcHelper::~EcHelper() {}
