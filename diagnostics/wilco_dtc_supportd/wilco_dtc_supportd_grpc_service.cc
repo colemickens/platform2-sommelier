@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <base/sys_info.h>
 
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
 
@@ -498,6 +499,22 @@ void WilcoDtcSupportdGrpcService::GetRoutineUpdate(
   delegate_->GetRoutineUpdateRequestToService(
       request->uuid(), request->command(), request->include_output(),
       base::Bind(&ForwardGetRoutineUpdateResponse, callback));
+}
+
+void WilcoDtcSupportdGrpcService::GetOsVersion(
+    std::unique_ptr<grpc_api::GetOsVersionRequest> request,
+    const GetOsVersionCallback& callback) {
+  DCHECK(request);
+
+  std::string version;
+  if (!base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_VERSION",
+                                         &version)) {
+    LOG(ERROR) << "Could not read the release version";
+  }
+
+  auto reply = std::make_unique<grpc_api::GetOsVersionResponse>();
+  reply->set_version(version);
+  callback.Run(std::move(reply));
 }
 
 void WilcoDtcSupportdGrpcService::AddFileDump(

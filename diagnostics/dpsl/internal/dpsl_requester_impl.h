@@ -47,6 +47,8 @@ class DpslRequesterImpl final : public DpslRequester {
   void GetRoutineUpdate(
       std::unique_ptr<grpc_api::GetRoutineUpdateRequest> request,
       GetRoutineUpdateCallback callback) override;
+  void GetOsVersion(std::unique_ptr<grpc_api::GetOsVersionRequest> request,
+                    GetOsVersionCallback callback) override;
 
  private:
   using AsyncGrpcWilcoDtcSupportdClient =

@@ -50,6 +50,9 @@ service WilcoDtcSupportd {
   // Retrieves the configuration data.
   rpc GetConfigurationData(GetConfigurationDataRequest)
       returns (GetConfigurationDataResponse) {}
+
+  // Retrieves the OS version.
+  rpc GetOsVersion(GetOsVersionRequest) returns (GetOsVersionResponse) {}
 }
 
 // Parameters for the SendMessageToUi RPC.
@@ -436,9 +439,22 @@ message GetRoutineUpdateResponse {
 // Parameters for the GetConfigurationData RPC. The message is currently empty.
 message GetConfigurationDataRequest {}
 
-// Return value for GetConfigurationData RPC.
+// Return value for the GetConfigurationData RPC.
 message GetConfigurationDataResponse {
   // Configuration data. The length does not exeed 1MB (1'000'000 bytes).
   // If there is no pre-loaded configuration data, the string is empty.
   string json_configuration_data = 1;
+}
+
+// Parameters for the GetOsVersion RPC.
+message GetOsVersionRequest {}
+
+// Return value for the GetOsVersion RPC.
+message GetOsVersionResponse {
+  // An OS version string in a format x.x.x, empty in case of any error.
+  //
+  // Example value:
+  // - for a dev/test build: 11932.0.2019_03_20_1100
+  // - for an official build: 11932.0.0
+  string version = 1;
 }

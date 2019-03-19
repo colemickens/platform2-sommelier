@@ -127,6 +127,8 @@ class WilcoDtcSupportdGrpcService final {
       base::Callback<void(std::unique_ptr<grpc_api::RunRoutineResponse>)>;
   using GetRoutineUpdateCallback =
       base::Callback<void(std::unique_ptr<grpc_api::GetRoutineUpdateResponse>)>;
+  using GetOsVersionCallback =
+      base::Callback<void(std::unique_ptr<grpc_api::GetOsVersionResponse>)>;
 
   explicit WilcoDtcSupportdGrpcService(Delegate* delegate);
   ~WilcoDtcSupportdGrpcService();
@@ -159,6 +161,8 @@ class WilcoDtcSupportdGrpcService final {
   void GetRoutineUpdate(
       std::unique_ptr<grpc_api::GetRoutineUpdateRequest> request,
       const GetRoutineUpdateCallback& callback);
+  void GetOsVersion(std::unique_ptr<grpc_api::GetOsVersionRequest> request,
+                    const GetOsVersionCallback& callback);
 
  private:
   // Constructs and, if successful, appends the dump of the specified file (with

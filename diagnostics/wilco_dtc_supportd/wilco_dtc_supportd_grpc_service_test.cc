@@ -14,6 +14,9 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_piece.h>
+#include "base/strings/stringprintf.h"
+#include "base/sys_info.h"
+#include "base/time/time.h"
 #include <gmock/gmock.h>
 #include <google/protobuf/repeated_field.h>
 #include <gtest/gtest.h>
@@ -344,6 +347,17 @@ class WilcoDtcSupportdGrpcServiceTest : public testing::Test {
                                 GrpcCallbackResponseSaver(response));
   }
 
+  void ExecuteGetOsVersion(std::string* version) {
+    auto request = std::make_unique<grpc_api::GetOsVersionRequest>();
+    std::unique_ptr<grpc_api::GetOsVersionResponse> response;
+    service()->GetOsVersion(std::move(request),
+                            GrpcCallbackResponseSaver(&response));
+
+    // Expect the method to return immediately.
+    ASSERT_TRUE(response);
+    *version = response->version();
+  }
+
   grpc_api::FileDump MakeFileDump(
       const base::FilePath& relative_file_path,
       const base::FilePath& canonical_relative_file_path,
@@ -480,6 +494,26 @@ TEST_F(WilcoDtcSupportdGrpcServiceTest, RunUrandomRoutineNoParameters) {
                     false /* is_valid_request */);
   EXPECT_EQ(response->uuid(), 0);
   EXPECT_EQ(response->status(), grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+}
+
+TEST_F(WilcoDtcSupportdGrpcServiceTest, GetOsVersionUnset) {
+  base::SysInfo::SetChromeOSVersionInfoForTest("", base::Time());
+  std::string version;
+  ExecuteGetOsVersion(&version);
+
+  EXPECT_TRUE(version.empty());
+}
+
+TEST_F(WilcoDtcSupportdGrpcServiceTest, GetOsVersion) {
+  constexpr char kLsbRelease[] = "CHROMEOS_RELEASE_VERSION=%s";
+  constexpr char kOsVersion[] = "11932.0.2019_03_20_1100";
+
+  base::SysInfo::SetChromeOSVersionInfoForTest(
+      base::StringPrintf(kLsbRelease, kOsVersion), base::Time());
+  std::string version;
+  ExecuteGetOsVersion(&version);
+
+  EXPECT_EQ(version, kOsVersion);
 }
 
 namespace {
