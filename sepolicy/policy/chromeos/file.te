@@ -226,4 +226,10 @@ filetrans_pattern_no_target_perm(chromeos_domain, cros_var, cros_var_empty, dir,
 filetrans_pattern_no_target_perm(chromeos_domain, cros_var, cros_var_log, dir, "log");
 filetrans_pattern_no_target_perm(chromeos_domain, cros_var, cros_var_spool, dir, "spool");
 
-allow chromeos_domain file_type:lnk_file { read getattr };
+# CTS!!
+# neverallow {     domain     -init     -vold     -vold_prepare_subdirs } vold_metadata_file:{ file lnk_file sock_file fifo_file } ~{ relabelto getattr };
+# neverallow {     domain     -init     -kernel     -vendor_init     -vold     -vold_prepare_subdirs } { vold_data_file vold_metadata_file }:{ file lnk_file sock_file fifo_file } *;
+# neverallow { domain -keystore } keystore_data_file:{ file lnk_file sock_file fifo_file } ~{ relabelto getattr };
+# neverallow {   domain   -shell      -installd } shell_data_file:lnk_file read;
+# should restrict to chromeos link file only.
+# allow chromeos_domain file_type:lnk_file { read getattr };
