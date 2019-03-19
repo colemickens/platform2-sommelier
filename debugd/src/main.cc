@@ -90,8 +90,6 @@ void enter_vfs_namespace() {
     LOG(FATAL) << "minijail_bind(\"/run/containers\") failed";
 
   // Mount /run/systemd/journal to be able to log to journald.
-  mkdir("/run/systemd", 0755);
-  mkdir("/run/systemd/journal", 0755);
   if (minijail_bind(j.get(), "/run/systemd/journal", "/run/systemd/journal", 0))
     LOG(FATAL) << "minijail_bind(\"/run/systemd/journal\") failed";
 
