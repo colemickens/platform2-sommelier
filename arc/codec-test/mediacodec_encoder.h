@@ -5,6 +5,16 @@
 #ifndef ARC_CODEC_TEST_MEDIACODEC_ENCODER_H_
 #define ARC_CODEC_TEST_MEDIACODEC_ENCODER_H_
 
+// In Android N branch, off_t is 32-bit. Therefore we cannot compile the binary
+// with _FILE_OFFSET_BITS=64. (crbug.com/945197)
+#if ANDROID_VERSION < 0x0900  // Android 9.0 (Pie)
+#if _FILE_OFFSET_BITS == 64
+#error "oops, file _FILE_OFFSET_BITS == 64"
+#elif defined(__USE_FILE_OFFSET64)
+#error "oops, __USE_FILE_OFFSET64 is defined"
+#endif  // _FILE_OFFSET_BITS == 64
+#endif  // ANDROID_VERSION < 0x0900
+
 #include <memory>
 #include <string>
 

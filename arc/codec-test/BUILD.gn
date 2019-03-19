@@ -54,6 +54,12 @@ executable("arcvideoencoder_test") {
     ":dep_libs",
   ]
 
+  # In Android N branch, off_t is 32-bit. Therefore we cannot compile the binary
+  # with _FILE_OFFSET_BITS=64. However, we already add the variable at
+  # //common-mk/compiler_defaults. Therefore we undefine the variable here.
+  # (crbug.com/945197)
+  cflags_cc = [ "-U_FILE_OFFSET_BITS" ]
+
   sources = [
     "arc_video_encoder_e2e_test.cc",
     "common.cc",
