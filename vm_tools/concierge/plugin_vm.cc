@@ -5,7 +5,10 @@
 #include "vm_tools/concierge/plugin_vm.h"
 
 #include <signal.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -85,7 +88,9 @@ std::unique_ptr<PluginVm> PluginVm::Create(
       new PluginVm(std::move(mac_addr), std::move(ipv4_addr), ipv4_netmask,
                    ipv4_gateway, std::move(seneschal_server_proxy),
                    std::move(root_dir), std::move(runtime_dir)));
-  if (!vm->Start(cpus, std::move(params), std::move(stateful_dir))) {
+
+  if (!vm->CreateUsbListeningSocket() ||
+      !vm->Start(cpus, std::move(params), std::move(stateful_dir))) {
     vm.reset();
   }
 
@@ -135,23 +140,289 @@ VmInterface::Info PluginVm::GetInfo() {
   return info;
 }
 
+// static
+base::ScopedFD PluginVm::CreateUnixSocket(const base::FilePath& path,
+                                          int type) {
+  base::ScopedFD fd(socket(AF_UNIX, type, 0));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "Failed to create AF_UNIX socket";
+    return base::ScopedFD();
+  }
+
+  struct sockaddr_un sa;
+
+  if (path.value().length() >= sizeof(sa.sun_path)) {
+    LOG(ERROR) << "Path is too long for a UNIX socket: " << path.value();
+    return base::ScopedFD();
+  }
+
+  memset(&sa, 0, sizeof(sa));
+  sa.sun_family = AF_UNIX;
+  // The memset above took care of NUL terminating, and we already verified
+  // the length before that.
+  memcpy(sa.sun_path, path.value().data(), path.value().length());
+
+  // Delete any old socket instances.
+  if (PathExists(path) && !DeleteFile(path, false)) {
+    PLOG(ERROR) << "failed to delete " << path.value();
+    return base::ScopedFD();
+  }
+
+  // Bind the socket.
+  if (bind(fd.get(), reinterpret_cast<const sockaddr*>(&sa), sizeof(sa)) < 0) {
+    PLOG(ERROR) << "failed to bind " << path.value();
+    return base::ScopedFD();
+  }
+
+  return fd;
+}
+
+bool PluginVm::CreateUsbListeningSocket() {
+  usb_listen_fd_ = CreateUnixSocket(runtime_dir_.GetPath().Append("usb.sock"),
+                                    SOCK_SEQPACKET);
+  if (!usb_listen_fd_.is_valid()) {
+    return false;
+  }
+
+  // Start listening for connections. We only expect one client at a time.
+  if (listen(usb_listen_fd_.get(), 1) < 0) {
+    PLOG(ERROR) << "Unable to listen for connections on USB socket";
+    return false;
+  }
+
+  if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
+          usb_listen_fd_.get(), true /*persistent*/,
+          base::MessageLoopForIO::WATCH_READ, &usb_fd_watcher_, this)) {
+    LOG(ERROR) << "Failed to watch USB listening socket";
+    return false;
+  }
+
+  return true;
+}
+
 bool PluginVm::AttachUsbDevice(uint8_t bus,
                                uint8_t addr,
                                uint16_t vid,
                                uint16_t pid,
                                int fd,
                                UsbControlResponse* response) {
-  return false;
+  base::ScopedFD dup_fd(dup(fd));
+  if (!dup_fd.is_valid()) {
+    PLOG(ERROR) << "Unable to duplicate incoming file descriptor";
+    return false;
+  }
+
+  if (usb_vm_fd_.is_valid() && usb_req_waiting_xmit_.empty()) {
+    usb_fd_watcher_.StopWatchingFileDescriptor();
+    if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
+            usb_vm_fd_.get(), true /*persistent*/,
+            base::MessageLoopForIO::WATCH_READ_WRITE, &usb_fd_watcher_, this)) {
+      LOG(ERROR) << "Failed to start watching USB VM socket";
+      return false;
+    }
+  }
+
+  UsbCtrlRequest req{};
+  req.type = ATTACH_DEVICE;
+  req.handle = ++usb_last_handle_;
+  req.DevInfo.bus = bus;
+  req.DevInfo.addr = addr;
+  req.DevInfo.vid = vid;
+  req.DevInfo.pid = pid;
+  usb_req_waiting_xmit_.emplace_back(std::move(req), std::move(dup_fd));
+
+  // TODO(dtor): report status only when plugin responds; requires changes to
+  // the VM interface API.
+  response->type = UsbControlResponseType::OK;
+  response->port = usb_last_handle_;
+  return true;
 }
 
 bool PluginVm::DetachUsbDevice(uint8_t port, UsbControlResponse* response) {
-  return false;
+  auto iter = std::find_if(
+      usb_devices_.begin(), usb_devices_.end(),
+      [port](const auto& info) { return std::get<2>(info) == port; });
+  if (iter == usb_devices_.end()) {
+    response->type = UsbControlResponseType::NO_SUCH_PORT;
+    return true;
+  }
+
+  if (usb_vm_fd_.is_valid() && usb_req_waiting_xmit_.empty()) {
+    usb_fd_watcher_.StopWatchingFileDescriptor();
+    if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
+            usb_vm_fd_.get(), true /*persistent*/,
+            base::MessageLoopForIO::WATCH_READ_WRITE, &usb_fd_watcher_, this)) {
+      LOG(ERROR) << "Failed to start watching USB VM socket";
+      return false;
+    }
+  }
+
+  UsbCtrlRequest req{};
+  req.type = DETACH_DEVICE;
+  req.handle = port;
+  usb_req_waiting_xmit_.emplace_back(req, base::ScopedFD());
+
+  // TODO(dtor): report status only when plugin responds; requires changes to
+  // the VM interface API.
+  response->type = UsbControlResponseType::OK;
+  response->port = port;
+  return true;
 }
 
 bool PluginVm::ListUsbDevice(std::vector<UsbDevice>* device) {
-  return false;
+  device->resize(usb_devices_.size());
+  std::transform(usb_devices_.begin(), usb_devices_.end(), device->begin(),
+                 [](const auto& info) {
+                   UsbDevice d{};
+                   std::tie(d.vid, d.pid, d.port) = info;
+                   return d;
+                 });
+  return true;
 }
 
+void PluginVm::HandleUsbControlResponse() {
+  UsbCtrlResponse resp;
+  int ret = HANDLE_EINTR(read(usb_vm_fd_.get(), &resp, sizeof(resp)));
+  if (ret < 0) {
+    // On any error besides EAGAIN disconnect the socket and wait for new
+    // connection.
+    if (errno != EAGAIN) {
+      usb_fd_watcher_.StopWatchingFileDescriptor();
+      usb_vm_fd_.reset();
+
+      if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
+              usb_listen_fd_.get(), true /*persistent*/,
+              base::MessageLoopForIO::WATCH_READ, &usb_fd_watcher_, this)) {
+        LOG(ERROR) << "Failed to restart watching USB listening socket";
+      }
+    }
+  } else if (ret != sizeof(resp)) {
+    LOG(ERROR) << "Partial read of " << ret
+               << " from USB VM socket, discarding";
+  } else {
+    auto req_iter = std::find_if(
+        usb_req_waiting_response_.begin(), usb_req_waiting_response_.end(),
+        [&resp](const auto& req) {
+          return resp.type == req.type && resp.handle == req.handle;
+        });
+    if (req_iter == usb_req_waiting_response_.end()) {
+      LOG(ERROR) << "Unexpected response (type " << resp.type << ", handle "
+                 << resp.handle << ")";
+      return;
+    }
+
+    if (resp.status != UsbCtrlResponse::Status::OK) {
+      LOG(ERROR) << "Request (type " << resp.type << ", handle " << resp.handle
+                 << ") failed: " << resp.status;
+    }
+
+    switch (req_iter->type) {
+      case ATTACH_DEVICE:
+        if (resp.status == UsbCtrlResponse::Status::OK) {
+          usb_devices_.emplace_back(req_iter->DevInfo.vid,
+                                    req_iter->DevInfo.pid, req_iter->handle);
+        }
+        break;
+      case DETACH_DEVICE: {
+        // We will attempt to clean up even if plugin signalled error as there
+        // is no way the device will continue be operational.
+        auto dev_iter = std::find_if(usb_devices_.begin(), usb_devices_.end(),
+                                     [&resp](const auto& info) {
+                                       return std::get<2>(info) == resp.handle;
+                                     });
+        if (dev_iter == usb_devices_.end()) {
+          LOG(ERROR) << "Received detach response for unknown handle "
+                     << resp.handle;
+        }
+      } break;
+      default:
+        NOTREACHED();
+    }
+
+    usb_req_waiting_response_.erase(req_iter);
+  }
+}
+
+void PluginVm::OnFileCanReadWithoutBlocking(int fd) {
+  if (fd == usb_listen_fd_.get()) {
+    int ret = HANDLE_EINTR(
+        accept4(fd, nullptr, nullptr, SOCK_CLOEXEC | SOCK_NONBLOCK));
+    if (ret < 0) {
+      PLOG(ERROR) << "Unable to accept connection on USB listening socket";
+      return;
+    }
+
+    // Start managing socket connected to the VM.
+    usb_vm_fd_.reset(ret);
+
+    // Switch watcher from listener FD to connected socket FD.
+    // We monitor both writes and reads to detect disconnects.
+    usb_fd_watcher_.StopWatchingFileDescriptor();
+    if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
+            usb_vm_fd_.get(), true /*persistent*/,
+            usb_req_waiting_xmit_.empty()
+                ? base::MessageLoopForIO::WATCH_READ
+                : base::MessageLoopForIO::WATCH_READ_WRITE,
+            &usb_fd_watcher_, this)) {
+      LOG(ERROR) << "Failed to start watching USB VM socket";
+      usb_vm_fd_.reset();
+    }
+  } else if (usb_vm_fd_.is_valid() && fd == usb_vm_fd_.get()) {
+    PluginVm::HandleUsbControlResponse();
+  } else {
+    NOTREACHED();
+  }
+}
+
+void PluginVm::OnFileCanWriteWithoutBlocking(int fd) {
+  DCHECK(usb_vm_fd_.is_valid());
+  DCHECK_EQ(usb_vm_fd_.get(), fd);
+
+  if (!usb_req_waiting_xmit_.empty()) {
+    UsbCtrlRequest req = usb_req_waiting_xmit_.front().first;
+    struct iovec io {};
+    io.iov_base = &req;
+    io.iov_len = sizeof(req);
+
+    struct msghdr msg {};
+    msg.msg_iov = &io;
+    msg.msg_iovlen = 1;
+
+    char buf[CMSG_SPACE(sizeof(int))];
+    base::ScopedFD fd(std::move(usb_req_waiting_xmit_.front().second));
+    if (fd.is_valid()) {
+      msg.msg_control = buf;
+      msg.msg_controllen = CMSG_LEN(sizeof(int));
+
+      struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+      cmsg->cmsg_len = CMSG_LEN(sizeof(int));
+      cmsg->cmsg_level = SOL_SOCKET;
+      cmsg->cmsg_type = SCM_RIGHTS;
+
+      *(reinterpret_cast<int*> CMSG_DATA(cmsg)) = fd.get();
+    }
+
+    int ret = HANDLE_EINTR(sendmsg(usb_vm_fd_.get(), &msg, MSG_EOR));
+    if (ret == sizeof(req)) {
+      usb_req_waiting_response_.emplace_back(req);
+      usb_req_waiting_xmit_.pop_front();
+    } else if (ret >= 0) {
+      PLOG(ERROR) << "Partial write of " << ret
+                  << " while sending USB request; will retry";
+    } else if (errno != EINTR) {
+      PLOG(ERROR) << "Failed to send USB request";
+    }
+  } else {
+    usb_fd_watcher_.StopWatchingFileDescriptor();
+    if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
+            usb_vm_fd_.get(), true /*persistent*/,
+            base::MessageLoopForIO::WATCH_READ, &usb_fd_watcher_, this)) {
+      LOG(ERROR) << "Failed to switch to watching USB VM socket for reads";
+    }
+  }
+}
+
+// static
 bool PluginVm::WriteResolvConf(const base::FilePath& parent_dir,
                                const std::vector<string>& nameservers,
                                const std::vector<string>& search_domains) {
@@ -227,7 +498,9 @@ PluginVm::PluginVm(arc_networkd::MacAddress mac_addr,
       ipv4_addr_(std::move(ipv4_addr)),
       netmask_(ipv4_netmask),
       gateway_(ipv4_gateway),
-      seneschal_server_proxy_(std::move(seneschal_server_proxy)) {
+      seneschal_server_proxy_(std::move(seneschal_server_proxy)),
+      usb_last_handle_(0),
+      usb_fd_watcher_(FROM_HERE) {
   CHECK(ipv4_addr_);
   CHECK(base::DirectoryExists(root_dir));
   CHECK(base::DirectoryExists(runtime_dir));
@@ -279,10 +552,10 @@ bool PluginVm::Start(uint32_t cpus,
       base::StringPrintf("%s:%s:true",
                          root_dir_.GetPath().Append("etc").value().c_str(),
                          "/etc"),
-      // This is the directory where the cicerone host socket lives. The plugin
-      // VM also creates the guest socket for cicerone in this same directory
-      // using the following <token>.sock as the name. The token resides in
-      // the VM runtime directory with name cicerone.token.
+      // This is the directory where the cicerone host socket lives. The
+      // plugin VM also creates the guest socket for cicerone in this same
+      // directory using the following <token>.sock as the name. The token
+      // resides in the VM runtime directory with name cicerone.token.
       base::StringPrintf("/run/vm_cicerone/client:%s:true",
                          base::FilePath(kRuntimeDir)
                              .Append("cicerone_socket")
@@ -321,8 +594,8 @@ bool PluginVm::Start(uint32_t cpus,
     process_.AddArg(std::move(param));
   }
 
-  // Change the process group before exec so that crosvm sending SIGKILL to the
-  // whole process group doesn't kill us as well.
+  // Change the process group before exec so that crosvm sending SIGKILL to
+  // the whole process group doesn't kill us as well.
   process_.SetPreExecCallback(base::Bind(&SetPgid));
 
   if (!process_.Start()) {

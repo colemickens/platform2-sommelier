@@ -7,24 +7,31 @@
 
 #include <stdint.h>
 
+#include <deque>
+#include <list>
 #include <memory>
 #include <string>
+#include <tuple>
+#include <utility>
 #include <vector>
 
 #include <arc/network/mac_address_generator.h>
 #include <arc/network/subnet.h>
 #include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
+#include <base/message_loop/message_loop.h>
 #include <brillo/process.h>
 
+#include "vm_tools/concierge/plugin_vm_usb.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/vm_interface.h"
 
 namespace vm_tools {
 namespace concierge {
 
-class PluginVm final : public VmInterface {
+class PluginVm final : public VmInterface, base::MessageLoopForIO::Watcher {
  public:
   static std::unique_ptr<PluginVm> Create(
       uint32_t cpus,
@@ -55,9 +62,15 @@ class PluginVm final : public VmInterface {
   bool SetResolvConfig(const std::vector<std::string>& nameservers,
                        const std::vector<std::string>& search_domains) override;
 
+  // base::MessageLoopForIO::Watcher overrides
+  void OnFileCanReadWithoutBlocking(int fd) override;
+  void OnFileCanWriteWithoutBlocking(int fd) override;
+
   static bool WriteResolvConf(const base::FilePath& parent_dir,
                               const std::vector<std::string>& nameservers,
                               const std::vector<std::string>& search_domains);
+
+  static base::ScopedFD CreateUnixSocket(const base::FilePath& path, int type);
 
   // The 9p server managed by seneschal that provides access to shared files for
   // this VM.  Returns 0 if there is no seneschal server associated with this
@@ -81,6 +94,8 @@ class PluginVm final : public VmInterface {
   bool Start(uint32_t cpus,
              std::vector<std::string> params,
              base::FilePath stateful_dir);
+  bool CreateUsbListeningSocket();
+  void HandleUsbControlResponse();
 
   // Allows to build skeleton of root file system for the plugin.
   // Individual directories, such as /etc, are mounted plugin jail.
@@ -101,6 +116,25 @@ class PluginVm final : public VmInterface {
 
   // Proxy to the server providing shared directory access for this VM.
   std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy_;
+
+  // List of USB devices attached to VM (vid, pid, handle)
+  using UsbDeviceInfo = std::tuple<uint16_t, uint16_t, uint32_t>;
+  std::list<UsbDeviceInfo> usb_devices_;
+
+  // Monotonically increasing handle (port) number for USB devices passed
+  // to the Plugin VM.
+  uint32_t usb_last_handle_;
+
+  // Outstanding control requests waiting to be transmitted to plugin.
+  std::deque<std::pair<UsbCtrlRequest, base::ScopedFD>> usb_req_waiting_xmit_;
+
+  // Outstanding control requests waiting response from plugin.
+  std::list<UsbCtrlRequest> usb_req_waiting_response_;
+
+  // File descriptors to pass USB devices over to plugin.
+  base::ScopedFD usb_listen_fd_;
+  base::ScopedFD usb_vm_fd_;
+  base::MessageLoopForIO::FileDescriptorWatcher usb_fd_watcher_;
 
   DISALLOW_COPY_AND_ASSIGN(PluginVm);
 };
