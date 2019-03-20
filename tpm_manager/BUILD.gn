@@ -211,6 +211,7 @@ if (use.test) {
       ":tpm_manager_testrunner_config",
     ]
     sources = [
+      "client/tpm_manager_utility_test.cc",
       "client/tpm_nvram_dbus_proxy_test.cc",
       "client/tpm_ownership_dbus_proxy_test.cc",
 
