@@ -2174,7 +2174,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionFailure) {
   EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseConnection,
                                         kPortalDetectionStatusFailure));
-  EXPECT_CALL(*service_, SetState(Service::kStatePortal));
+  EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
   EXPECT_CALL(metrics_,
               SendEnumToUMA("Network.Shill.Unknown.PortalResult",
                             Metrics::kPortalResultConnectionFailure,
@@ -2216,7 +2216,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccessAfterFailure) {
   EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseConnection,
                                         kPortalDetectionStatusFailure));
-  EXPECT_CALL(*service_, SetState(Service::kStatePortal));
+  EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
   EXPECT_CALL(metrics_,
               SendEnumToUMA("Network.Shill.Unknown.PortalResult",
                             Metrics::kPortalResultConnectionFailure,
@@ -2250,7 +2250,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccessAfterFailure) {
 TEST_F(DevicePortalDetectionTest, RequestPortalDetection) {
   EXPECT_CALL(*service_, state())
       .WillOnce(Return(Service::kStateOnline))
-      .WillRepeatedly(Return(Service::kStatePortal));
+      .WillRepeatedly(Return(Service::kStateNoConnectivity));
   EXPECT_FALSE(RequestPortalDetection());
 
   EXPECT_CALL(*connection_, IsDefault())
@@ -2311,7 +2311,7 @@ TEST_F(DevicePortalDetectionTest, RequestStartConnectivityTest) {
 
 TEST_F(DevicePortalDetectionTest, NotConnected) {
   EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(false));
-  SetServiceConnectedState(Service::kStatePortal);
+  SetServiceConnectedState(Service::kStateNoConnectivity);
   // We don't check for the portal detector to be reset here, because
   // it would have been reset as a part of disconnection.
 }
@@ -2326,8 +2326,8 @@ TEST_F(DevicePortalDetectionTest, NotPortal) {
 TEST_F(DevicePortalDetectionTest, NotDefault) {
   EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(true));
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
-  EXPECT_CALL(*service_, SetState(Service::kStatePortal));
-  SetServiceConnectedState(Service::kStatePortal);
+  EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
+  SetServiceConnectedState(Service::kStateNoConnectivity);
   ExpectPortalDetectorReset();
 }
 
@@ -2335,8 +2335,8 @@ TEST_F(DevicePortalDetectionTest, PortalIntervalIsZero) {
   EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(true));
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(true));
   device_->portal_check_interval_seconds_ = 0;
-  EXPECT_CALL(*service_, SetState(Service::kStatePortal));
-  SetServiceConnectedState(Service::kStatePortal);
+  EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
+  SetServiceConnectedState(Service::kStateNoConnectivity);
   ExpectPortalDetectorReset();
 }
 
@@ -2363,8 +2363,8 @@ TEST_F(DevicePortalDetectionTest, RestartPortalDetection) {
     EXPECT_CALL(*portal_detector_,
                 StartAfterDelay(props, portal_check_interval))
         .WillOnce(Return(true));
-    EXPECT_CALL(*service_, SetState(Service::kStatePortal));
-    SetServiceConnectedState(Service::kStatePortal);
+    EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
+    SetServiceConnectedState(Service::kStateNoConnectivity);
     portal_check_interval =
         std::min(portal_check_interval * 2,
                  PortalDetector::kMaxPortalCheckIntervalSeconds);
@@ -2396,7 +2396,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseDns,
                                         kPortalDetectionStatusFailure));
-  EXPECT_CALL(*service_, SetState(Service::kStatePortal));
+  EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
   EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
@@ -2413,7 +2413,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseDns,
                                         kPortalDetectionStatusTimeout));
-  EXPECT_CALL(*service_, SetState(Service::kStatePortal));
+  EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
   EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
@@ -2430,7 +2430,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseConnection,
                                         kPortalDetectionStatusFailure));
-  EXPECT_CALL(*service_, SetState(Service::kStatePortal));
+  EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
   EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(

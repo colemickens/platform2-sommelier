@@ -3542,7 +3542,7 @@ TEST_F(ManagerTest, RefreshConnectionState) {
 
   Mock::VerifyAndClearExpectations(manager_adaptor_);
   EXPECT_CALL(*mock_service, state())
-      .WillOnce(Return(Service::kStatePortal));
+      .WillOnce(Return(Service::kStateNoConnectivity));
   EXPECT_CALL(*mock_service, IsConnected())
       .WillOnce(Return(true));
   EXPECT_CALL(*manager_adaptor_,
@@ -3852,12 +3852,9 @@ TEST_F(ManagerTest, EnumerateServices) {
   }
 
   static const Service::ConnectState kWatchedStates[] = {
-      Service::kStateAssociating,
-      Service::kStateConfiguring,
-      Service::kStateConnected,
-      Service::kStatePortal,
-      Service::kStateOnline
-  };
+      Service::kStateAssociating, Service::kStateConfiguring,
+      Service::kStateConnected, Service::kStateNoConnectivity,
+      Service::kStateOnline};
   for (auto watched_state : kWatchedStates) {
     EXPECT_CALL(*mock_service, state()).WillRepeatedly(Return(watched_state));
     EXPECT_FALSE(EnumerateAvailableServices().empty());

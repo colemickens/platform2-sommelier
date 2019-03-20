@@ -2045,11 +2045,8 @@ void Metrics::InitializeCommonServiceMetrics(const Service& service) {
       Service::kStateConnected);
   histogram = GetFullMetricName(kMetricTimeToPortalMillisecondsSuffix,
                                 technology);
-  AddServiceStateTransitionTimer(
-      service,
-      histogram,
-      Service::kStateConnected,
-      Service::kStatePortal);
+  AddServiceStateTransitionTimer(service, histogram, Service::kStateConnected,
+                                 Service::kStateNoConnectivity);
   histogram = GetFullMetricName(kMetricTimeToOnlineMillisecondsSuffix,
                                 technology);
   AddServiceStateTransitionTimer(

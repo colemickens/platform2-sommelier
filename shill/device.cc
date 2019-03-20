@@ -1741,7 +1741,7 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
           PortalDetector::PhaseToString(result.phase),
           PortalDetector::StatusToString(result.status));
     }
-    SetServiceConnectedState(Service::kStatePortal);
+    SetServiceConnectedState(Service::kStateNoConnectivity);
 
     StartConnectionDiagnosticsAfterPortalDetection(result);
 

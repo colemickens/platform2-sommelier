@@ -1377,7 +1377,7 @@ TEST_F(OpenVPNDriverTest, OnDefaultServiceChanged) {
       new MockService(&control_, &dispatcher_, &metrics_, &manager_));
 
   EXPECT_CALL(*mock_service, state())
-      .WillOnce(Return(Service::kStatePortal));
+      .WillOnce(Return(Service::kStateNoConnectivity));
   EXPECT_CALL(*management_server_, Hold()).Times(0);
   EXPECT_CALL(*management_server_, ReleaseHold()).Times(0);
   driver_->OnDefaultServiceChanged(mock_service);

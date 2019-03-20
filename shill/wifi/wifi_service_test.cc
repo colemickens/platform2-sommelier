@@ -555,7 +555,7 @@ TEST_F(WiFiServiceTest, ConnectConditions) {
   wifi_service->Connect(&error, "in test");
   wifi_service->SetState(Service::kStateConnected);
   wifi_service->Connect(&error, "in test");
-  wifi_service->SetState(Service::kStatePortal);
+  wifi_service->SetState(Service::kStateNoConnectivity);
   wifi_service->Connect(&error, "in test");
   wifi_service->SetState(Service::kStateOnline);
   wifi_service->Connect(&error, "in test");

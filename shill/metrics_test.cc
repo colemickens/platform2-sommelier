@@ -174,7 +174,7 @@ TEST_F(MetricsTest, TimeToPortal) {
                                   Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
   metrics_.NotifyServiceStateChanged(*service_, Service::kStateConnected);
-  metrics_.NotifyServiceStateChanged(*service_, Service::kStatePortal);
+  metrics_.NotifyServiceStateChanged(*service_, Service::kStateNoConnectivity);
 }
 
 TEST_F(MetricsTest, TimeToOnline) {

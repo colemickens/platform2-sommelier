@@ -1414,7 +1414,7 @@ TEST_F(ServiceTest, RecheckPortal) {
   EXPECT_CALL(mock_manager_, RecheckPortalOnService(_)).Times(0);
   service_->OnPropertyChanged(kCheckPortalProperty);
 
-  service_->state_ = Service::kStatePortal;
+  service_->state_ = Service::kStateNoConnectivity;
   EXPECT_CALL(mock_manager_, RecheckPortalOnService(IsRefPtrTo(service_)))
       .Times(1);
   service_->OnPropertyChanged(kCheckPortalProperty);
@@ -1429,7 +1429,7 @@ TEST_F(ServiceTest, RecheckPortal) {
       .Times(1);
   service_->OnPropertyChanged(kCheckPortalProperty);
 
-  service_->state_ = Service::kStatePortal;
+  service_->state_ = Service::kStateNoConnectivity;
   EXPECT_CALL(mock_manager_, RecheckPortalOnService(_)).Times(0);
   service_->OnPropertyChanged(kEapKeyIdProperty);
 }
@@ -2226,7 +2226,8 @@ TEST_F(ServiceTest, Compare) {
   EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
 
   // Connected-but-portalled preferred over unconnected.
-  EXPECT_CALL(*service2, state()).WillRepeatedly(Return(Service::kStatePortal));
+  EXPECT_CALL(*service2, state())
+      .WillRepeatedly(Return(Service::kStateNoConnectivity));
   EXPECT_CALL(*service2, IsConnected()).WillRepeatedly(Return(true));
   EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
 

@@ -159,7 +159,7 @@ TEST_F(ThirdPartyVpnDriverTest, ReconnectionEvents) {
   EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(_))
       .Times(0);
   EXPECT_CALL(*mock_service, state())
-      .WillOnce(Return(Service::kStatePortal));
+      .WillOnce(Return(Service::kStateNoConnectivity));
   driver_->OnDefaultServiceStateChanged(mock_service);
 
   // Default physical service comes Online -> kLinkUp.

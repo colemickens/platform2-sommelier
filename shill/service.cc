@@ -364,7 +364,7 @@ bool Service::IsConnectingState(ConnectState state) {
 
 // static
 bool Service::IsPortalledState(ConnectState state) {
-  return state == kStatePortal;
+  return state == kStateNoConnectivity;
 }
 
 bool Service::IsConnected() const {
@@ -939,8 +939,8 @@ const char* Service::ConnectStateToString(const ConnectState& state) {
       return "Configuring";
     case kStateConnected:
       return "Connected";
-    case kStatePortal:
-      return "Portal";
+    case kStateNoConnectivity:
+      return "No connectivity";
     case kStateFailure:
       return "Failure";
     case kStateOnline:
@@ -1262,7 +1262,7 @@ string Service::GetStateString() const {
       return shill::kStateReady;
     case kStateFailure:
       return shill::kStateFailure;
-    case kStatePortal:
+    case kStateNoConnectivity:
       return shill::kStatePortal;
     case kStateOnline:
       return shill::kStateOnline;
