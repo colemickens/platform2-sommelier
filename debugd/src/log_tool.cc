@@ -341,10 +341,10 @@ const std::vector<Log> kFeedbackLogs {
 // must be sent back to the client via the file descriptor using
 // LogTool::GetBigFeedbackLogs().
 const std::vector<Log> kBigFeedbackLogs{
-  // ARC bugreport permissions are weird. Since we're just reading a file,
+  // ARC bugreport permissions are weird. Since we're just running cat,
   // this shouldn't cause any issues.
-  Log(kFile, "arc-bugreport", "/run/arc/bugreport/pipe", kRoot, kRoot,
-      10 * 1024 * 1024, LogTool::Encoding::kUtf8),
+  Log(kCommand, "arc-bugreport", "cat /run/arc/bugreport/pipe 2>/dev/null",
+      kRoot, kRoot, 10 * 1024 * 1024, LogTool::Encoding::kUtf8),
 };
 
 // List of log files that must directly be collected by Chrome. This is because
