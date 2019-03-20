@@ -21,6 +21,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 
@@ -56,7 +57,7 @@ class MockTpmNvram : public TpmNvram {
   MOCK_METHOD1(ListSpaces, NvramResult(std::vector<uint32_t>*));
   MOCK_METHOD6(GetSpaceInfo,
                NvramResult(uint32_t,
-                           size_t*,
+                           uint32_t*,
                            bool*,
                            bool*,
                            std::vector<NvramSpaceAttribute>*,
@@ -82,7 +83,7 @@ class MockTpmNvram : public TpmNvram {
                             const std::string& authorization_value);
   NvramResult FakeListSpaces(std::vector<uint32_t>* index_list);
   NvramResult FakeGetSpaceInfo(uint32_t index,
-                               size_t* size,
+                               uint32_t* size,
                                bool* is_read_locked,
                                bool* is_write_locked,
                                std::vector<NvramSpaceAttribute>* attributes,

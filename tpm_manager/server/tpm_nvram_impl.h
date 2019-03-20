@@ -22,6 +22,7 @@
 #include <stdint.h>
 
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <trousers/scoped_tss_type.h>
@@ -58,27 +59,42 @@ class TpmNvramImpl : public TpmNvram {
   NvramResult ListSpaces(std::vector<uint32_t>* index_list) override;
   NvramResult GetSpaceInfo(
       uint32_t index,
-      size_t* size,
+      uint32_t* size,
       bool* is_read_locked,
       bool* is_write_locked,
       std::vector<NvramSpaceAttribute>* attributes,
       NvramSpacePolicy* policy) override;
 
  private:
+  // If |data| is a nullptr, read-locks the NV index; otherwise, reads content
+  // from the |index| with |authorization_value| and stores the content into
+  // |data|.
+  NvramResult ReadSpaceInternal(uint32_t index,
+                                const std::string& authorization_value,
+                                std::string* data);
+
   // This method creates and initializes the nvram object associated with
   // |handle| at |index|. Returns true on success, else false.
   bool InitializeNvramHandle(uint32_t index,
                              trousers::ScopedTssNvStore* nv_handle,
                              TpmConnection* connection);
 
-  // This method injects a tpm policy with the owner password. Returns true
-  // on success.
-  bool SetOwnerPolicy(trousers::ScopedTssNvStore* nv_handle);
-
-  // Set a usage policy for the handle with the given authorization_value.
-  bool SetUsagePolicy(const std::string& authorization_value,
-                      trousers::ScopedTssNvStore* nv_handle,
-                      TpmConnection* connection);
+  // Initializes the nvram handle |nv_handle| at |index| with the TPM
+  // |connection|. If |need_auth_policy| is set, the method also initializes
+  // |policy_handle| with |authorization_value| and associates |policy_handle|
+  // with |nv_handle|.
+  //
+  // Note: the caller should make sure the lifetime of |policy_handle| is >= the
+  // lifetime of |nv_handle|.
+  //
+  // Returns whether the initialization is successful.
+  bool InitializeNvramHandleWithPolicy(
+      uint32_t index,
+      bool need_auth_policy,
+      const std::string& authorization_value,
+      trousers::ScopedTssNvStore* nv_handle,
+      trousers::ScopedTssPolicy* policy_handle,
+      TpmConnection* connection);
 
   // This method sets up the composite pcr provided by |pcr_handle| with the
   // value of PCR0 at locality 1. Returns true on success.

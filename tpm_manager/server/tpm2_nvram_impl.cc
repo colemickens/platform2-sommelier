@@ -472,7 +472,7 @@ NvramResult Tpm2NvramImpl::ListSpaces(std::vector<uint32_t>* index_list) {
 
 NvramResult Tpm2NvramImpl::GetSpaceInfo(
     uint32_t index,
-    size_t* size,
+    uint32_t* size,
     bool* is_read_locked,
     bool* is_write_locked,
     std::vector<NvramSpaceAttribute>* attributes,

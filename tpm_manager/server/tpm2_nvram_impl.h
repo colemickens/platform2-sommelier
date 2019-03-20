@@ -63,7 +63,7 @@ class Tpm2NvramImpl : public TpmNvram {
   NvramResult ListSpaces(std::vector<uint32_t>* index_list) override;
   NvramResult GetSpaceInfo(
       uint32_t index,
-      size_t* size,
+      uint32_t* size,
       bool* is_read_locked,
       bool* is_write_locked,
       std::vector<NvramSpaceAttribute>* attributes,

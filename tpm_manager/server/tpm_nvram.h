@@ -66,7 +66,7 @@ class TpmNvram {
   // and may be NULL. Returns true on success.
   virtual NvramResult GetSpaceInfo(
       uint32_t index,
-      size_t* size,
+      uint32_t* size,
       bool* is_read_locked,
       bool* is_write_locked,
       std::vector<NvramSpaceAttribute>* attributes,

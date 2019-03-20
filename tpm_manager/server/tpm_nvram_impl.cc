@@ -18,7 +18,10 @@
 
 #include <arpa/inet.h>
 
+#include <algorithm>
 #include <string>
+#include <unordered_set>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/stl_util.h>
@@ -136,6 +139,19 @@ NvramResult MapTpmError(TSS_RESULT tpm_error) {
   return NVRAM_RESULT_DEVICE_ERROR;
 }
 
+// Returns whether |attributes| contains at least one key of |keys|.
+bool HasAnyAttribute(
+    const std::unordered_set<NvramSpaceAttribute>& key_set,
+    const std::vector<NvramSpaceAttribute>& attributes) {
+  for (const auto attr : attributes) {
+    if (key_set.find(attr) != key_set.end()) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 }  // namespace
 
 TpmNvramImpl::TpmNvramImpl(LocalDataStore* local_data_store)
@@ -151,11 +167,25 @@ NvramResult TpmNvramImpl::DefineSpace(
   if (!GetOwnerPassword(&owner_password)) {
     return NVRAM_RESULT_OPERATION_DISABLED;
   }
+
   TpmConnection owner_connection(owner_password);
-  ScopedTssNvStore nv_handle(owner_connection.GetContext());
-  if (!InitializeNvramHandle(index, &nv_handle, &owner_connection)) {
+  TSS_HCONTEXT connection_context = owner_connection.GetContext();
+
+  ScopedTssNvStore nv_handle(connection_context);
+  trousers::ScopedTssPolicy policy_handle(connection_context);
+
+  static const std::unordered_set<NvramSpaceAttribute> auth_attributes(
+      {NVRAM_READ_AUTHORIZATION, NVRAM_WRITE_AUTHORIZATION});
+  bool need_auth_policy = HasAnyAttribute(auth_attributes, attributes);
+  if (!InitializeNvramHandleWithPolicy(index,
+                                       need_auth_policy,
+                                       authorization_value,
+                                       &nv_handle,
+                                       &policy_handle,
+                                       &owner_connection)) {
     return NVRAM_RESULT_DEVICE_ERROR;
   }
+
   TSS_RESULT result;
   result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_DATASIZE, 0, size);
   if (TPM_ERROR(result)) {
@@ -169,14 +199,10 @@ NvramResult TpmNvramImpl::DefineSpace(
     TPM_LOG(ERROR, result) << "Could not set permissions on NVRAM object";
     return NVRAM_RESULT_DEVICE_ERROR;
   }
-  // Set authorization.
-  if (!authorization_value.empty() &&
-      !SetUsagePolicy(authorization_value, &nv_handle, &owner_connection)) {
-    return NVRAM_RESULT_DEVICE_ERROR;
-  }
+
   // Bind to PCR0.
   TSS_HPCRS pcr_handle = 0;
-  ScopedTssPcrs scoped_pcr_handle(owner_connection.GetContext());
+  ScopedTssPcrs scoped_pcr_handle(connection_context);
   if (policy == NVRAM_POLICY_PCR0) {
     if (!SetCompositePcr0(&scoped_pcr_handle, &owner_connection)) {
       return NVRAM_RESULT_DEVICE_ERROR;
@@ -219,24 +245,23 @@ NvramResult TpmNvramImpl::WriteSpace(uint32_t index,
   if (result != NVRAM_RESULT_SUCCESS) {
     return result;
   }
-  ScopedTssNvStore nv_handle(tpm_connection_.GetContext());
-  if (!InitializeNvramHandle(index, &nv_handle, &tpm_connection_)) {
+
+  TSS_HCONTEXT connection_context = tpm_connection_.GetContext();
+  ScopedTssNvStore nv_handle(connection_context);
+  trousers::ScopedTssPolicy policy_handle(connection_context);
+
+  static const std::unordered_set<NvramSpaceAttribute> auth_attributes(
+      {NVRAM_OWNER_WRITE, NVRAM_WRITE_AUTHORIZATION});
+  bool need_auth_policy = HasAnyAttribute(auth_attributes, attributes);
+  if (!InitializeNvramHandleWithPolicy(index,
+                                       need_auth_policy,
+                                       authorization_value,
+                                       &nv_handle,
+                                       &policy_handle,
+                                       &tpm_connection_)) {
     return NVRAM_RESULT_DEVICE_ERROR;
   }
-  for (const auto& attribute : attributes) {
-    if (attribute == NVRAM_OWNER_WRITE) {
-      if (!SetOwnerPolicy(&nv_handle)) {
-        return NVRAM_RESULT_OPERATION_DISABLED;
-      }
-      break;
-    }
-    if (attribute == NVRAM_WRITE_AUTHORIZATION) {
-      if (!SetUsagePolicy(authorization_value, &nv_handle, &tpm_connection_)) {
-        return NVRAM_RESULT_DEVICE_ERROR;
-      }
-      break;
-    }
-  }
+
   TSS_RESULT tpm_result = Tspi_NV_WriteValue(
       nv_handle, 0 /* offset */, data.size(),
       reinterpret_cast<BYTE*>(const_cast<char*>(data.data())));
@@ -250,130 +275,47 @@ NvramResult TpmNvramImpl::WriteSpace(uint32_t index,
 NvramResult TpmNvramImpl::ReadSpace(uint32_t index,
                                     std::string* data,
                                     const std::string& authorization_value) {
-  CHECK(data);
-  size_t nvram_size;
-  std::vector<NvramSpaceAttribute> attributes;
-  NvramResult result =
-      GetSpaceInfo(index, &nvram_size, nullptr, nullptr, &attributes, nullptr);
-  if (result != NVRAM_RESULT_SUCCESS) {
-    return result;
+  if (!data) {
+    LOG(ERROR) << __func__ << ": data is uninitialized.";
+    return NVRAM_RESULT_INVALID_PARAMETER;
   }
-  ScopedTssNvStore nv_handle(tpm_connection_.GetContext());
-  if (!InitializeNvramHandle(index, &nv_handle, &tpm_connection_)) {
-    return NVRAM_RESULT_DEVICE_ERROR;
-  }
-  for (const auto& attribute : attributes) {
-    if (attribute == NVRAM_OWNER_READ) {
-      if (!SetOwnerPolicy(&nv_handle)) {
-        return NVRAM_RESULT_OPERATION_DISABLED;
-      }
-      break;
-    }
-    if (attribute == NVRAM_READ_AUTHORIZATION) {
-      if (!SetUsagePolicy(authorization_value, &nv_handle, &tpm_connection_)) {
-        return NVRAM_RESULT_DEVICE_ERROR;
-      }
-      break;
-    }
-  }
-  data->resize(nvram_size);
-  // The Tpm1.2 Specification defines the maximum read size of 128 bytes.
-  // Therefore we have to loop through the data returned.
-  const size_t kMaxDataSize = 128;
-  uint32_t offset = 0;
-  while (offset < nvram_size) {
-    uint32_t chunk_size = std::min(nvram_size - offset, kMaxDataSize);
-    ScopedTssMemory space_data(tpm_connection_.GetContext());
-    TSS_RESULT tpm_result =
-        Tspi_NV_ReadValue(nv_handle, offset, &chunk_size, space_data.ptr());
-    if (TPM_ERROR(tpm_result)) {
-      TPM_LOG(ERROR, tpm_result) << "Could not read from NVRAM space: "
-                                 << index;
-      data->clear();
-      return MapTpmError(tpm_result);
-    }
-    if (!space_data.value()) {
-      LOG(ERROR) << "No data read from NVRAM space: " << index;
-      data->clear();
-      return NVRAM_RESULT_DEVICE_ERROR;
-    }
-    CHECK_LE((offset + chunk_size), data->size());
-    data->replace(offset, chunk_size,
-                  reinterpret_cast<char*>(space_data.value()), chunk_size);
-    offset += chunk_size;
-  }
-  return NVRAM_RESULT_SUCCESS;
+
+  return ReadSpaceInternal(index, authorization_value, data);
 }
 
 NvramResult TpmNvramImpl::LockSpace(uint32_t index,
                                     bool lock_read,
                                     bool lock_write,
                                     const std::string& authorization_value) {
-  std::vector<NvramSpaceAttribute> attributes;
-  NvramResult result =
-      GetSpaceInfo(index, nullptr, nullptr, nullptr, &attributes, nullptr);
-  if (result != NVRAM_RESULT_SUCCESS) {
-    return result;
-  }
-  if (lock_read) {
-    ScopedTssNvStore nv_handle(tpm_connection_.GetContext());
-    if (!InitializeNvramHandle(index, &nv_handle, &tpm_connection_)) {
-      return NVRAM_RESULT_DEVICE_ERROR;
-    }
-    for (const auto& attribute : attributes) {
-      if (attribute == NVRAM_OWNER_READ) {
-        if (!SetOwnerPolicy(&nv_handle)) {
-          return NVRAM_RESULT_OPERATION_DISABLED;
-        }
-        break;
-      }
-      if (attribute == NVRAM_READ_AUTHORIZATION) {
-        if (!SetUsagePolicy(authorization_value, &nv_handle,
-                            &tpm_connection_)) {
-          return NVRAM_RESULT_DEVICE_ERROR;
-        }
-        break;
-      }
-    }
-    uint32_t size = 0;
-    ScopedTssMemory space_data(tpm_connection_.GetContext());
-    TSS_RESULT tpm_result =
-        Tspi_NV_ReadValue(nv_handle, 0, &size, space_data.ptr());
-    if (TPM_ERROR(tpm_result)) {
-      TPM_LOG(ERROR, tpm_result) << "Could not lock read for NVRAM space: "
-                                 << index;
-      return MapTpmError(tpm_result);
-    }
-  }
+  // Performing a writelock will unlock the readlock if the readlock existed.
+  // Thus, here we should do writelock first.
+
+  NvramResult result = NVRAM_RESULT_SUCCESS;
+
   if (lock_write) {
-    ScopedTssNvStore nv_handle(tpm_connection_.GetContext());
-    if (!InitializeNvramHandle(index, &nv_handle, &tpm_connection_)) {
-      return NVRAM_RESULT_DEVICE_ERROR;
-    }
-    for (const auto& attribute : attributes) {
-      if (attribute == NVRAM_OWNER_WRITE) {
-        if (!SetOwnerPolicy(&nv_handle)) {
-          return NVRAM_RESULT_OPERATION_DISABLED;
-        }
-        break;
-      }
-      if (attribute == NVRAM_WRITE_AUTHORIZATION) {
-        if (!SetUsagePolicy(authorization_value, &nv_handle,
-                            &tpm_connection_)) {
-          return NVRAM_RESULT_DEVICE_ERROR;
-        }
-        break;
-      }
-    }
-    BYTE not_used;
-    TSS_RESULT tpm_result = Tspi_NV_WriteValue(nv_handle, 0, 0, &not_used);
-    if (TPM_ERROR(tpm_result)) {
-      TPM_LOG(ERROR, tpm_result) << "Could not lock write for NVRAM space: "
-                                 << index;
-      return MapTpmError(tpm_result);
+    // Per TPM 1.2 specs, writing 0 bytes to an index write-locks the index if
+    // it has the NV permission WRITE_STCLEAR or WRITEDEFINE set.
+    result = WriteSpace(index, "", authorization_value);
+    if (result != NVRAM_RESULT_SUCCESS) {
+      LOG(ERROR) << __func__ << ": couldn't write-lock NVRAM space: " << index;
+      return result;
     }
   }
-  return NVRAM_RESULT_SUCCESS;
+
+  if (lock_read) {
+    // ReadSpaceInternal() will try to read 0 bytes from the space if the given
+    // buffer is nullptr.
+    //
+    // Per TPM 1.2 specs, reading 0 bytes from an index read-locks the index if
+    // it has the NV permission READ_STCLEAR set.
+    result = ReadSpaceInternal(index, authorization_value, nullptr);
+    if (result != NVRAM_RESULT_SUCCESS) {
+      LOG(ERROR) << __func__ << ": couldn't read-lock NVRAM space: " << index;
+      return result;
+    }
+  }
+
+  return result;
 }
 
 NvramResult TpmNvramImpl::ListSpaces(std::vector<uint32_t>* index_list) {
@@ -398,7 +340,7 @@ NvramResult TpmNvramImpl::ListSpaces(std::vector<uint32_t>* index_list) {
 
 NvramResult TpmNvramImpl::GetSpaceInfo(
     uint32_t index,
-    size_t* size,
+    uint32_t* size,
     bool* is_read_locked,
     bool* is_write_locked,
     std::vector<NvramSpaceAttribute>* attributes,
@@ -450,6 +392,70 @@ NvramResult TpmNvramImpl::GetSpaceInfo(
   return NVRAM_RESULT_SUCCESS;
 }
 
+NvramResult TpmNvramImpl::ReadSpaceInternal(
+    uint32_t index, const std::string& authorization_value, std::string* data) {
+  uint32_t nvram_size;
+  std::vector<NvramSpaceAttribute> attributes;
+  NvramResult result =
+      GetSpaceInfo(index, &nvram_size, nullptr, nullptr, &attributes, nullptr);
+  if (result != NVRAM_RESULT_SUCCESS) {
+    return result;
+  }
+
+  TSS_HCONTEXT connection_context = tpm_connection_.GetContext();
+  ScopedTssNvStore nv_handle(connection_context);
+  trousers::ScopedTssPolicy policy_handle(connection_context);
+
+  static const std::unordered_set<NvramSpaceAttribute> auth_attributes(
+      {NVRAM_OWNER_READ, NVRAM_READ_AUTHORIZATION});
+  bool need_auth_policy = HasAnyAttribute(auth_attributes, attributes);
+  if (!InitializeNvramHandleWithPolicy(index,
+                                       need_auth_policy,
+                                       authorization_value,
+                                       &nv_handle,
+                                       &policy_handle,
+                                       &tpm_connection_)) {
+    return NVRAM_RESULT_DEVICE_ERROR;
+  }
+
+  uint32_t chunk_size = 0;
+  ScopedTssMemory space_data(connection_context);
+  if (!data) {
+    // If data is nullptr, lock the space.
+    TSS_RESULT tpm_result =
+        Tspi_NV_ReadValue(nv_handle, 0, &chunk_size, space_data.ptr());
+
+    return TPM_ERROR(tpm_result) ?
+        MapTpmError(tpm_result) : NVRAM_RESULT_SUCCESS;
+  }
+
+  // The Tpm1.2 Specification defines the maximum read size of 128 bytes.
+  // Therefore we have to loop through the data returned.
+  constexpr uint32_t kMaxDataSize = 128;
+  data->clear();
+  data->reserve(nvram_size);
+  for (uint32_t offset = 0; offset < nvram_size; offset += chunk_size) {
+    chunk_size = std::min(nvram_size - offset, kMaxDataSize);
+    TSS_RESULT tpm_result =
+        Tspi_NV_ReadValue(nv_handle, offset, &chunk_size, space_data.ptr());
+    if (TPM_ERROR(tpm_result)) {
+      TPM_LOG(ERROR, tpm_result) << "Could not read from NVRAM space: "
+                                 << index;
+      data->clear();
+      return MapTpmError(tpm_result);
+    }
+    if (!space_data.value()) {
+      LOG(ERROR) << "No data read from NVRAM space: " << index;
+      data->clear();
+      return NVRAM_RESULT_DEVICE_ERROR;
+    }
+    CHECK_LE((offset + chunk_size), nvram_size);
+    data->append(reinterpret_cast<char*>(space_data.value()), chunk_size);
+  }
+
+  return NVRAM_RESULT_SUCCESS;
+}
+
 bool TpmNvramImpl::InitializeNvramHandle(uint32_t index,
                                          ScopedTssNvStore* nv_handle,
                                          TpmConnection* connection) {
@@ -468,39 +474,45 @@ bool TpmNvramImpl::InitializeNvramHandle(uint32_t index,
   return true;
 }
 
-bool TpmNvramImpl::SetOwnerPolicy(ScopedTssNvStore* nv_handle) {
-  std::string owner_password;
-  if (!GetOwnerPassword(&owner_password)) {
+bool TpmNvramImpl::InitializeNvramHandleWithPolicy(
+    uint32_t index,
+    bool need_auth_policy,
+    const std::string& authorization_value,
+    trousers::ScopedTssNvStore* nv_handle,
+    trousers::ScopedTssPolicy* policy_handle,
+    TpmConnection* connection) {
+  if (!InitializeNvramHandle(index, nv_handle, connection)) {
     return false;
   }
-  return SetUsagePolicy(owner_password, nv_handle, &tpm_connection_);
-}
 
-bool TpmNvramImpl::SetUsagePolicy(const std::string& authorization_value,
-                                  trousers::ScopedTssNvStore* nv_handle,
-                                  TpmConnection* connection) {
-  trousers::ScopedTssPolicy policy_handle(connection->GetContext());
+  if (!need_auth_policy) {
+    return true;
+  }
+
   TSS_RESULT result;
   result = Tspi_Context_CreateObject(connection->GetContext(),
                                      TSS_OBJECT_TYPE_POLICY, TSS_POLICY_USAGE,
-                                     policy_handle.ptr());
+                                     policy_handle->ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Context_CreateObject";
     return false;
   }
+
   result = Tspi_Policy_SetSecret(
-      policy_handle, TSS_SECRET_MODE_PLAIN, authorization_value.size(),
+      policy_handle->value(), TSS_SECRET_MODE_PLAIN, authorization_value.size(),
       reinterpret_cast<BYTE*>(const_cast<char*>(authorization_value.data())));
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_SetSecret";
     return false;
   }
+
   result =
-      Tspi_Policy_AssignToObject(policy_handle.value(), nv_handle->value());
+      Tspi_Policy_AssignToObject(policy_handle->value(), nv_handle->value());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Could not set NVRAM object policy.";
     return false;
   }
+
   return true;
 }
 

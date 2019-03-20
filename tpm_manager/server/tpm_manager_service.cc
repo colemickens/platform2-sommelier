@@ -479,7 +479,7 @@ void TpmManagerService::GetSpaceInfoTask(
     const std::shared_ptr<GetSpaceInfoReply>& reply) {
   VLOG(1) << __func__;
   std::vector<NvramSpaceAttribute> attributes;
-  size_t size = 0;
+  uint32_t size = 0;
   bool is_read_locked = false;
   bool is_write_locked = false;
   NvramSpacePolicy policy = NVRAM_POLICY_NONE;

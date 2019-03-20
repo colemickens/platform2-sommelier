@@ -704,7 +704,7 @@ TEST_F(Tpm2NvramTest, GetSpaceInfoSuccess) {
   SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize,
                      trunks::TPMA_NV_READLOCKED | trunks::TPMA_NV_WRITELOCKED,
                      NO_EXPECT_AUTH, POLICY_AUTH);
-  size_t size;
+  uint32_t size;
   bool is_read_locked;
   bool is_write_locked;
   std::vector<NvramSpaceAttribute> attributes;
@@ -726,7 +726,7 @@ TEST_F(Tpm2NvramTest, GetSpaceInfoSuccessAlt) {
                      trunks::TPMA_NV_AUTHREAD | trunks::TPMA_NV_AUTHWRITE |
                          trunks::TPMA_NV_PPREAD,
                      NO_EXPECT_AUTH, POLICY_AUTH);
-  size_t size;
+  uint32_t size;
   bool is_read_locked;
   bool is_write_locked;
   std::vector<NvramSpaceAttribute> attributes;
@@ -750,7 +750,7 @@ TEST_F(Tpm2NvramTest, GetSpaceInfoSuccessAlt) {
 TEST_F(Tpm2NvramTest, GetSpaceInfoFailure) {
   EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(kSomeNvramIndex, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  size_t size;
+  uint32_t size;
   bool is_read_locked;
   bool is_write_locked;
   std::vector<NvramSpaceAttribute> attributes;

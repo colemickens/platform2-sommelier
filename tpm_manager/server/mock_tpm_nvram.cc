@@ -16,6 +16,9 @@
 
 #include "tpm_manager/server/mock_tpm_nvram.h"
 
+#include <string>
+#include <vector>
+
 namespace tpm_manager {
 
 using testing::_;
@@ -141,7 +144,7 @@ NvramResult MockTpmNvram::FakeListSpaces(std::vector<uint32_t>* index_list) {
 
 NvramResult MockTpmNvram::FakeGetSpaceInfo(
     uint32_t index,
-    size_t* size,
+    uint32_t* size,
     bool* is_read_locked,
     bool* is_write_locked,
     std::vector<NvramSpaceAttribute>* attributes,
@@ -150,7 +153,7 @@ NvramResult MockTpmNvram::FakeGetSpaceInfo(
     return NVRAM_RESULT_SPACE_DOES_NOT_EXIST;
   }
   NvSpace& space = nvram_map_[index];
-  *size = space.data.size();
+  *size = static_cast<uint32_t>(space.data.size());
   *is_read_locked = space.read_locked;
   *is_write_locked = space.write_locked;
   *attributes = space.attributes;
