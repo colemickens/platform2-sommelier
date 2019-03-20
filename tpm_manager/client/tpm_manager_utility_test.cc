@@ -44,6 +44,9 @@ class TpmManagerUtilityTest : public Test {
         .WillByDefault(InvokeCallbackArgument<1>(ByRef(take_ownership_reply_)));
     ON_CALL(mock_tpm_owner_, GetTpmStatus(_, _))
         .WillByDefault(InvokeCallbackArgument<1>(ByRef(get_tpm_status_reply_)));
+    ON_CALL(mock_tpm_owner_, RemoveOwnerDependency(_, _))
+        .WillByDefault(
+            InvokeCallbackArgument<1>(ByRef(remove_owner_dependency_reply_)));
   }
   void SetUp() override { ASSERT_TRUE(tpm_manager_utility_.Initialize()); }
 
@@ -54,6 +57,7 @@ class TpmManagerUtilityTest : public Test {
   // fake replies from TpmManager
   tpm_manager::TakeOwnershipReply take_ownership_reply_;
   tpm_manager::GetTpmStatusReply get_tpm_status_reply_;
+  tpm_manager::RemoveOwnerDependencyReply remove_owner_dependency_reply_;
 };
 
 TEST_F(TpmManagerUtilityTest, TakeOwnership) {
@@ -110,6 +114,19 @@ TEST_F(TpmManagerUtilityTest, GetTpmStatusFail) {
   get_tpm_status_reply_.set_status(tpm_manager::STATUS_NOT_AVAILABLE);
   EXPECT_FALSE(
       tpm_manager_utility_.GetTpmStatus(&is_enabled, &is_owned, &local_data));
+}
+
+TEST_F(TpmManagerUtilityTest, RemoveOwnerDependency) {
+  remove_owner_dependency_reply_.set_status(tpm_manager::STATUS_SUCCESS);
+  EXPECT_TRUE(tpm_manager_utility_.RemoveOwnerDependency(""));
+}
+
+TEST_F(TpmManagerUtilityTest, RemoveOwnerDependencyFail) {
+  remove_owner_dependency_reply_.set_status(tpm_manager::STATUS_DEVICE_ERROR);
+  EXPECT_FALSE(tpm_manager_utility_.RemoveOwnerDependency(""));
+
+  remove_owner_dependency_reply_.set_status(tpm_manager::STATUS_NOT_AVAILABLE);
+  EXPECT_FALSE(tpm_manager_utility_.RemoveOwnerDependency(""));
 }
 
 }  // namespace tpm_manager
