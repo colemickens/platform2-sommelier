@@ -21,8 +21,13 @@ namespace brillo {
 class BRILLO_EXPORT KeyValueStore {
  public:
   // Creates an empty KeyValueStore.
-  KeyValueStore() = default;
-  virtual ~KeyValueStore() = default;
+  KeyValueStore();
+  virtual ~KeyValueStore();
+  // Copying is expensive; disallow accidental copies.
+  KeyValueStore(const KeyValueStore&) = delete;
+  KeyValueStore& operator=(const KeyValueStore&) = delete;
+  KeyValueStore(KeyValueStore&&);
+  KeyValueStore& operator=(KeyValueStore&&);
 
   // Loads the key=value pairs from the given |path|. Lines starting with '#'
   // and empty lines are ignored, and whitespace around keys is trimmed.
@@ -76,8 +81,6 @@ class BRILLO_EXPORT KeyValueStore {
  private:
   // The map storing all the key-value pairs.
   std::map<std::string, std::string> store_;
-
-  DISALLOW_COPY_AND_ASSIGN(KeyValueStore);
 };
 
 }  // namespace brillo

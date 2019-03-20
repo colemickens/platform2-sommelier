@@ -35,6 +35,11 @@ string TrimKey(const string& key) {
 
 }  // namespace
 
+KeyValueStore::KeyValueStore() = default;
+KeyValueStore::~KeyValueStore() = default;
+KeyValueStore::KeyValueStore(KeyValueStore&&) = default;
+KeyValueStore& KeyValueStore::operator=(KeyValueStore&&) = default;
+
 bool KeyValueStore::Load(const base::FilePath& path) {
   string file_data;
   if (!base::ReadFileToString(path, &file_data))

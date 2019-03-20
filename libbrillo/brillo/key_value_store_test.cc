@@ -6,6 +6,7 @@
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -36,6 +37,35 @@ class KeyValueStoreTest : public ::testing::Test {
 
   KeyValueStore store_;  // KeyValueStore under test.
 };
+
+TEST_F(KeyValueStoreTest, MoveConstructor) {
+  store_.SetBoolean("a_boolean", true);
+  store_.SetString("a_string", "a_value");
+
+  KeyValueStore moved_to(std::move(store_));
+  bool b_value = false;
+  EXPECT_TRUE(moved_to.GetBoolean("a_boolean", &b_value));
+  EXPECT_TRUE(b_value);
+
+  std::string s_value;
+  EXPECT_TRUE(moved_to.GetString("a_string", &s_value));
+  EXPECT_EQ(s_value, "a_value");
+}
+
+TEST_F(KeyValueStoreTest, MoveAssignmentOperator) {
+  store_.SetBoolean("a_boolean", true);
+  store_.SetString("a_string", "a_value");
+
+  KeyValueStore moved_to;
+  moved_to = std::move(store_);
+  bool b_value = false;
+  EXPECT_TRUE(moved_to.GetBoolean("a_boolean", &b_value));
+  EXPECT_TRUE(b_value);
+
+  std::string s_value;
+  EXPECT_TRUE(moved_to.GetString("a_string", &s_value));
+  EXPECT_EQ(s_value, "a_value");
+}
 
 TEST_F(KeyValueStoreTest, LoadAndSaveFromFile) {
   base::ScopedTempDir temp_dir_;
