@@ -112,15 +112,28 @@ class DlcServiceUtil {
 
   // Prints the information contained in the manifest of a DLC.
   static bool PrintDlcDetails(const std::string& dlc_id) {
+    base::FilePath manifest_root =
+        base::FilePath(imageloader::kDlcManifestRootpath);
+    // TODO(ahassani): This is a workaround. We need to get the list of packages
+    // in the GetInstalled() or a separate signal. But for now since we just
+    // have one package per DLC, this would work.
+    std::vector<std::string> packages =
+        dlcservice::utils::ScanDirectory(manifest_root);
+    auto package = packages[0];
+
     imageloader::Manifest manifest;
-    if (!dlcservice::utils::GetDlcManifest(
-            base::FilePath(imageloader::kDlcManifestRootpath), dlc_id,
-            &manifest)) {
+    // TODO(ahassani): We have imported the entire dlcservice library just to
+    // use this function. A better way to do this is to create a utility library
+    // that is shared between dlcservice_util and dlcservice and use the
+    // functions from there.
+    if (!dlcservice::utils::GetDlcManifest(manifest_root, dlc_id, package,
+                                           &manifest)) {
       LOG(ERROR) << "Failed to get DLC module manifest.";
       return false;
     }
     std::cout << "\tname: " << manifest.name() << std::endl;
     std::cout << "\tid: " << manifest.id() << std::endl;
+    std::cout << "\tpackage: " << manifest.package() << std::endl;
     std::cout << "\tversion: " << manifest.version() << std::endl;
     std::cout << "\tmanifest version: " << manifest.manifest_version()
               << std::endl;

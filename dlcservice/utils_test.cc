@@ -12,6 +12,7 @@ namespace dlcservice {
 namespace {
 constexpr char kDlcRootPath[] = "/tmp/dlc/";
 constexpr char kDlcId[] = "id";
+constexpr char kDlcPackage[] = "package";
 }  // namespace
 
 class UtilsTest : public testing::Test {};
@@ -22,27 +23,34 @@ TEST(UtilsTest, GetDlcModulePathTest) {
       "/tmp/dlc/id");
 }
 
+TEST(UtilsTest, GetDlcModulePackagePathTest) {
+  EXPECT_EQ(utils::GetDlcModulePackagePath(base::FilePath(kDlcRootPath), kDlcId,
+                                           kDlcPackage)
+                .value(),
+            "/tmp/dlc/id/package");
+}
+
 TEST(UtilsTest, GetDlcModuleImagePathBadSlotTest) {
   // IF current_slot is negative, THEN GetDlcModuleImagePath() returns an empty
   // path.
-  EXPECT_TRUE(
-      utils::GetDlcModuleImagePath(base::FilePath(kDlcRootPath), kDlcId, -1)
-          .value()
-          .empty());
+  EXPECT_TRUE(utils::GetDlcModuleImagePath(base::FilePath(kDlcRootPath), kDlcId,
+                                           kDlcPackage, -1)
+                  .value()
+                  .empty());
 }
 
 TEST(UtilsTest, GetDlcModuleImagePathA) {
-  EXPECT_EQ(
-      utils::GetDlcModuleImagePath(base::FilePath(kDlcRootPath), kDlcId, 0)
-          .value(),
-      "/tmp/dlc/id/dlc_a/dlc.img");
+  EXPECT_EQ(utils::GetDlcModuleImagePath(base::FilePath(kDlcRootPath), kDlcId,
+                                         kDlcPackage, 0)
+                .value(),
+            "/tmp/dlc/id/package/dlc_a/dlc.img");
 }
 
 TEST(UtilsTest, GetDlcModuleImagePathB) {
-  EXPECT_EQ(
-      utils::GetDlcModuleImagePath(base::FilePath(kDlcRootPath), kDlcId, 1)
-          .value(),
-      "/tmp/dlc/id/dlc_b/dlc.img");
+  EXPECT_EQ(utils::GetDlcModuleImagePath(base::FilePath(kDlcRootPath), kDlcId,
+                                         kDlcPackage, 1)
+                .value(),
+            "/tmp/dlc/id/package/dlc_b/dlc.img");
 }
 
 TEST(UtilsTest, GetDlcRootInModulePath) {

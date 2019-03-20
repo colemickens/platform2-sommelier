@@ -108,22 +108,27 @@ void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
     LOG(ERROR) << "Can not get current boot slot.";
     return;
   }
+  std::string current_slot_name =
+      current_slot == 0 ? imageloader::kSlotNameA : imageloader::kSlotNameB;
+
   // Load all installed DLC modules.
   for (const auto& dlc_module_id : dlc_module_ids) {
+    std::string package = ScanDlcModulePackage(dlc_module_id);
+
     auto dlc_module_content_path =
-        utils::GetDlcModulePath(content_dir_, dlc_module_id);
+        utils::GetDlcModulePackagePath(content_dir_, dlc_module_id, package);
     if (!base::PathExists(dlc_module_content_path))
       continue;
     // Mount the installed DLC image.
     std::string path;
-    image_loader_proxy_->LoadDlcImage(
-        dlc_module_id,
-        current_slot == 0 ? imageloader::kSlotNameA : imageloader::kSlotNameB,
-        &path, nullptr);
+    image_loader_proxy_->LoadDlcImage(dlc_module_id, package, current_slot_name,
+                                      &path, nullptr);
     if (path.empty()) {
-      LOG(ERROR) << "DLC image " << dlc_module_id << " is corrupted.";
+      LOG(ERROR) << "DLC image " << dlc_module_id << "/" << package
+                 << " is corrupted.";
     } else {
-      LOG(INFO) << "DLC image " << dlc_module_id << " is mounted at " << path;
+      LOG(INFO) << "DLC image " << dlc_module_id << "/" << package
+                << " is mounted at " << path;
     }
   }
 }
@@ -137,24 +142,40 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
   ScopedShutdown scoped_shutdown(shutdown_delegate_);
 
   // Initialize supported DLC module id list.
+  //
+  // TODO(ahassani): This is inefficient. We don't need to know about all DLCs
+  // in order to install one of them. We need to add a function that checks the
+  // existence of a DLC (in rootfs) given a DLC ID. Other solution is to read
+  // and keep a list of DLCs on the start up and just add a function to look up
+  // the DLC ID from there.
   std::vector<std::string> dlc_module_ids = ScanDlcModules();
   if (std::find(dlc_module_ids.begin(), dlc_module_ids.end(), id_in) ==
       dlc_module_ids.end()) {
     LogAndSetError(err, "The DLC ID provided is invalid.");
     return false;
   }
+  std::string package = ScanDlcModulePackage(id_in);
 
-  // TODO(xiaochu): may detect corrupted DLC modules and recover.
-  // https://crbug.com/903432
+  // Create the DLC ID directory with correct permissions.
   base::FilePath module_path = utils::GetDlcModulePath(content_dir_, id_in);
   if (base::PathExists(module_path)) {
     LogAndSetError(err, "The DLC module is installed.");
     return false;
   }
-
-  // Create module directory
   if (!CreateDirWithDlcPermissions(module_path)) {
-    LogAndSetError(err, "Failed to create DLC module directory");
+    LogAndSetError(err, "Failed to create DLC ID directory.");
+    return false;
+  }
+
+  // Create the DLC package directory with correct permissions.
+  base::FilePath module_package_path =
+      utils::GetDlcModulePackagePath(content_dir_, id_in, package);
+  if (base::PathExists(module_package_path)) {
+    LogAndSetError(err, "The DLC module is installed.");
+    return false;
+  }
+  if (!CreateDirWithDlcPermissions(module_package_path)) {
+    LogAndSetError(err, "Failed to create DLC Package directory.");
     return false;
   }
 
@@ -163,7 +184,8 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
   // this will likely fail for modules >= 2 GiB in size.
   // https://crbug.com/904539
   imageloader::Manifest manifest;
-  if (!dlcservice::utils::GetDlcManifest(manifest_dir_, id_in, &manifest)) {
+  if (!dlcservice::utils::GetDlcManifest(manifest_dir_, id_in, package,
+                                         &manifest)) {
     LogAndSetError(err, "Failed to get DLC module manifest.");
     return false;
   }
@@ -175,7 +197,7 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
 
   // Creates image A.
   base::FilePath image_a_path =
-      utils::GetDlcModuleImagePath(content_dir_, id_in, 0);
+      utils::GetDlcModuleImagePath(content_dir_, id_in, package, 0);
   if (!CreateImageFile(image_a_path, image_size)) {
     LogAndSetError(err, "Failed to create slot A DLC image file");
     return false;
@@ -183,7 +205,7 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
 
   // Creates image B.
   base::FilePath image_b_path =
-      utils::GetDlcModuleImagePath(content_dir_, id_in, 1);
+      utils::GetDlcModuleImagePath(content_dir_, id_in, package, 1);
   if (!CreateImageFile(image_b_path, image_size)) {
     LogAndSetError(err, "Failed to create slot B image file");
     return false;
@@ -230,12 +252,12 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
     LogAndSetError(err, "Can not get current boot slot.");
     return false;
   }
+  std::string current_slot_name =
+      current_slot == 0 ? imageloader::kSlotNameA : imageloader::kSlotNameB;
 
   std::string mount_point;
-  if (!image_loader_proxy_->LoadDlcImage(
-          id_in,
-          current_slot == 0 ? imageloader::kSlotNameA : imageloader::kSlotNameB,
-          &mount_point, nullptr)) {
+  if (!image_loader_proxy_->LoadDlcImage(id_in, package, current_slot_name,
+                                         &mount_point, nullptr)) {
     LogAndSetError(err, "Imageloader is not available.");
     return false;
   }
@@ -255,6 +277,12 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
   ScopedShutdown scoped_shutdown(shutdown_delegate_);
 
   // Initialize supported DLC module id list.
+  //
+  // TODO(ahassani): This is inefficient. We don't need to know about all DLCs
+  // in order to uninstall one of them. We need to add a function that checks
+  // the existence of a DLC (in rootfs) given a DLC ID. Other solution is to
+  // read and keep a list of DLCs on the start up and just add a function to
+  // look up the DLC ID from there.
   std::vector<std::string> dlc_module_ids = ScanDlcModules();
 
   if (std::find(dlc_module_ids.begin(), dlc_module_ids.end(), id_in) ==
@@ -262,18 +290,21 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
     LogAndSetError(err, "The DLC ID provided is invalid.");
     return false;
   }
+  std::string package = ScanDlcModulePackage(id_in);
 
   const base::FilePath dlc_module_content_path =
-      utils::GetDlcModulePath(content_dir_, id_in);
+      utils::GetDlcModulePackagePath(content_dir_, id_in, package);
   if (!base::PathExists(dlc_module_content_path) ||
-      !base::PathExists(utils::GetDlcModuleImagePath(content_dir_, id_in, 0)) ||
-      !base::PathExists(utils::GetDlcModuleImagePath(content_dir_, id_in, 1))) {
+      !base::PathExists(
+          utils::GetDlcModuleImagePath(content_dir_, id_in, package, 0)) ||
+      !base::PathExists(
+          utils::GetDlcModuleImagePath(content_dir_, id_in, package, 1))) {
     LogAndSetError(err, "The DLC module is not installed properly.");
     return false;
   }
   // Unmounts the DLC module image.
   bool success = false;
-  if (!image_loader_proxy_->UnloadDlcImage(id_in, &success, nullptr)) {
+  if (!image_loader_proxy_->UnloadDlcImage(id_in, package, &success, nullptr)) {
     LogAndSetError(err, "Imageloader is not available.");
     return false;
   }
@@ -290,7 +321,9 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
   }
 
   // Deletes the DLC module images.
-  if (!base::DeleteFile(dlc_module_content_path, true)) {
+  const base::FilePath dlc_module_path =
+      utils::GetDlcModulePath(content_dir_, id_in);
+  if (!base::DeleteFile(dlc_module_path, true)) {
     LogAndSetError(err, "DLC image folder could not be deleted.");
     return false;
   }
@@ -322,14 +355,11 @@ bool DlcServiceDBusAdaptor::GetInstalled(brillo::ErrorPtr* err,
 }
 
 std::vector<std::string> DlcServiceDBusAdaptor::ScanDlcModules() {
-  std::vector<std::string> dlc_module_ids;
-  base::FileEnumerator file_enumerator(manifest_dir_, false,
-                                       base::FileEnumerator::DIRECTORIES);
-  for (base::FilePath dir_path = file_enumerator.Next(); !dir_path.empty();
-       dir_path = file_enumerator.Next()) {
-    dlc_module_ids.emplace_back(dir_path.BaseName().value());
-  }
-  return dlc_module_ids;
+  return utils::ScanDirectory(manifest_dir_);
+}
+
+std::string DlcServiceDBusAdaptor::ScanDlcModulePackage(const std::string& id) {
+  return utils::ScanDirectory(manifest_dir_.Append(id))[0];
 }
 
 bool DlcServiceDBusAdaptor::WaitForUpdateEngineIdle() {

@@ -76,6 +76,12 @@ class DlcServiceDBusAdaptor
   // Scans manifest_dir_ for a list of supported DLC modules and returns them.
   std::vector<std::string> ScanDlcModules();
 
+  // Scans a specific DLC |id| to discover all its packages. Currently, we only
+  // support one package per DLC. If at some point in the future we decided to
+  // support multiple packages, then appropriate changes to this function is
+  // granted.
+  std::string ScanDlcModulePackage(const std::string& id);
+
   // Waits for Update Engine to be idle.
   bool WaitForUpdateEngineIdle();
 

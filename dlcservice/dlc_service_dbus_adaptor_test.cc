@@ -24,6 +24,7 @@ namespace {
 
 constexpr char kFirstDlc[] = "First-Dlc";
 constexpr char kSecondDlc[] = "Second-Dlc";
+constexpr char kPackage[] = "Package";
 
 constexpr char kManifestName[] = "imageloader.json";
 
@@ -63,24 +64,30 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
     base::CreateDirectory(content_path_);
 
     // Create DLC manifest sub-directories.
-    base::CreateDirectory(manifest_path_.Append(kFirstDlc));
-    base::CreateDirectory(manifest_path_.Append(kSecondDlc));
+    base::CreateDirectory(manifest_path_.Append(kFirstDlc).Append(kPackage));
+    base::CreateDirectory(manifest_path_.Append(kSecondDlc).Append(kPackage));
+
     base::FilePath testdata_dir =
         base::FilePath(getenv("SRC")).Append("testdata");
-    base::CopyFile(testdata_dir.Append(kFirstDlc).Append(kManifestName),
-                   manifest_path_.Append(kFirstDlc).Append(kManifestName));
-    base::CopyFile(testdata_dir.Append(kSecondDlc).Append(kManifestName),
-                   manifest_path_.Append(kSecondDlc).Append(kManifestName));
+    base::CopyFile(
+        testdata_dir.Append(kFirstDlc).Append(kPackage).Append(kManifestName),
+        manifest_path_.Append(kFirstDlc).Append(kPackage).Append(
+            kManifestName));
+    base::CopyFile(
+        testdata_dir.Append(kSecondDlc).Append(kPackage).Append(kManifestName),
+        manifest_path_.Append(kSecondDlc)
+            .Append(kPackage)
+            .Append(kManifestName));
 
     // Create DLC content sub-directories.
     base::FilePath image_a_path =
-        utils::GetDlcModuleImagePath(content_path_, kFirstDlc, 0);
+        utils::GetDlcModuleImagePath(content_path_, kFirstDlc, kPackage, 0);
     base::CreateDirectory(image_a_path.DirName());
     // Create empty image files.
     base::File image_a(image_a_path,
                        base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_READ);
     base::FilePath image_b_path =
-        utils::GetDlcModuleImagePath(content_path_, kFirstDlc, 1);
+        utils::GetDlcModuleImagePath(content_path_, kFirstDlc, kPackage, 1);
     base::CreateDirectory(image_b_path.DirName());
     base::File image_b(image_b_path,
                        base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_READ);
@@ -140,9 +147,10 @@ TEST_F(DlcServiceDBusAdaptorTest, GetInstalledTest) {
 
 TEST_F(DlcServiceDBusAdaptorTest, UninstallTest) {
   ON_CALL(*mock_image_loader_proxy_ptr_,
-          UnloadDlcImage(testing::_, testing::_, testing::_, testing::_))
+          UnloadDlcImage(testing::_, testing::_, testing::_, testing::_,
+                         testing::_))
       .WillByDefault(
-          DoAll(testing::SetArgPointee<1>(true), testing::Return(true)));
+          DoAll(testing::SetArgPointee<2>(true), testing::Return(true)));
   std::string update_status_idle = update_engine::kUpdateStatusIdle;
   ON_CALL(*mock_update_engine_proxy_ptr_,
           GetStatus(testing::_, testing::_, testing::_, testing::_, testing::_,
@@ -164,9 +172,10 @@ TEST_F(DlcServiceDBusAdaptorTest, UninstallFailureTest) {
 
 TEST_F(DlcServiceDBusAdaptorTest, UninstallUnmountFailureTest) {
   ON_CALL(*mock_image_loader_proxy_ptr_,
-          UnloadDlcImage(testing::_, testing::_, testing::_, testing::_))
+          UnloadDlcImage(testing::_, testing::_, testing::_, testing::_,
+                         testing::_))
       .WillByDefault(
-          DoAll(testing::SetArgPointee<1>(false), testing::Return(true)));
+          DoAll(testing::SetArgPointee<2>(false), testing::Return(true)));
 
   EXPECT_FALSE(dlc_service_dbus_adaptor_->Uninstall(nullptr, kFirstDlc));
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
@@ -175,11 +184,11 @@ TEST_F(DlcServiceDBusAdaptorTest, UninstallUnmountFailureTest) {
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
-  std::string mount_path_expected = "/run/imageloader/dlc-id";
-  ON_CALL(
-      *mock_image_loader_proxy_ptr_,
-      LoadDlcImage(testing::_, testing::_, testing::_, testing::_, testing::_))
-      .WillByDefault(DoAll(testing::SetArgPointee<2>(mount_path_expected),
+  std::string mount_path_expected = "/run/imageloader/dlc-id/package";
+  ON_CALL(*mock_image_loader_proxy_ptr_,
+          LoadDlcImage(testing::_, testing::_, testing::_, testing::_,
+                       testing::_, testing::_))
+      .WillByDefault(DoAll(testing::SetArgPointee<3>(mount_path_expected),
                            testing::Return(true)));
   ON_CALL(*mock_update_engine_proxy_ptr_,
           AttemptInstall(testing::_, testing::_, testing::_))
@@ -206,15 +215,15 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
   constexpr int expected_permissions = 0755;
   int permissions;
   base::FilePath module_path =
-      utils::GetDlcModulePath(content_path_, kSecondDlc);
+      utils::GetDlcModulePackagePath(content_path_, kSecondDlc, kPackage);
   base::GetPosixFilePermissions(module_path, &permissions);
   EXPECT_EQ(permissions, expected_permissions);
   base::FilePath image_a_path =
-      utils::GetDlcModuleImagePath(content_path_, kSecondDlc, 0);
+      utils::GetDlcModuleImagePath(content_path_, kSecondDlc, kPackage, 0);
   base::GetPosixFilePermissions(image_a_path.DirName(), &permissions);
   EXPECT_EQ(permissions, expected_permissions);
   base::FilePath image_b_path =
-      utils::GetDlcModuleImagePath(content_path_, kSecondDlc, 1);
+      utils::GetDlcModuleImagePath(content_path_, kSecondDlc, kPackage, 1);
   base::GetPosixFilePermissions(image_b_path.DirName(), &permissions);
   EXPECT_EQ(permissions, expected_permissions);
 

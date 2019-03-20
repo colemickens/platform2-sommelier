@@ -4,6 +4,9 @@
 
 #include "dlcservice/utils.h"
 
+#include <vector>
+
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
@@ -22,29 +25,38 @@ namespace dlcservice {
 namespace utils {
 
 base::FilePath GetDlcModulePath(const base::FilePath& dlc_module_root_path,
-                                const std::string& dlc_module_id) {
-  return dlc_module_root_path.Append(dlc_module_id);
+                                const std::string& id) {
+  return dlc_module_root_path.Append(id);
+}
+
+base::FilePath GetDlcModulePackagePath(
+    const base::FilePath& dlc_module_root_path,
+    const std::string& id,
+    const std::string& package) {
+  return GetDlcModulePath(dlc_module_root_path, id).Append(package);
 }
 
 base::FilePath GetDlcModuleImagePath(const base::FilePath& dlc_module_root_path,
-                                     const std::string& dlc_module_id,
+                                     const std::string& id,
+                                     const std::string& package,
                                      int current_slot) {
   if (current_slot < 0) {
     LOG(ERROR) << "current_slot is negative:" << current_slot;
     return base::FilePath();
   }
-  return GetDlcModulePath(dlc_module_root_path, dlc_module_id)
+  return GetDlcModulePackagePath(dlc_module_root_path, id, package)
       .Append(current_slot == 0 ? kDlcDirAName : kDlcDirBName)
       .Append(kDlcImageFileName);
 }
 
 // Extract details about a DLC module from its manifest file.
 bool GetDlcManifest(const base::FilePath& dlc_manifest_path,
-                    const std::string& dlc_module_id,
+                    const std::string& id,
+                    const std::string& package,
                     imageloader::Manifest* manifest_out) {
   std::string dlc_json_str;
   base::FilePath dlc_manifest_file =
-      dlc_manifest_path.Append(dlc_module_id).Append(kManifestName);
+      dlc_manifest_path.Append(id).Append(package).Append(kManifestName);
 
   if (!base::ReadFileToString(dlc_manifest_file, &dlc_json_str)) {
     LOG(ERROR) << "Failed to read DLC manifest file '"
@@ -62,6 +74,17 @@ bool GetDlcManifest(const base::FilePath& dlc_manifest_path,
 
 base::FilePath GetDlcRootInModulePath(const base::FilePath& dlc_mount_point) {
   return dlc_mount_point.Append(kRootDirectoryInsideDlcModule);
+}
+
+std::vector<std::string> ScanDirectory(const base::FilePath& dir) {
+  std::vector<std::string> result;
+  base::FileEnumerator file_enumerator(dir, false,
+                                       base::FileEnumerator::DIRECTORIES);
+  for (base::FilePath dir_path = file_enumerator.Next(); !dir_path.empty();
+       dir_path = file_enumerator.Next()) {
+    result.emplace_back(dir_path.BaseName().value());
+  }
+  return result;
 }
 
 }  // namespace utils
