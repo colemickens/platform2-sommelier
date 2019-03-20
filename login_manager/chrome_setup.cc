@@ -487,10 +487,6 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // https://crbug.com/784495
   builder->AddVmodulePattern("*chromeos/login/*=1");
 
-  // TODO(https://crbug.com/844537): Needed for investigating issues with
-  // disappearing device-wide certificates.
-  builder->AddVmodulePattern("nss_cert_database_chromeos=1");
-
   // TODO(https://crbug.com/907158): Needed for investigating issues with tablet
   // mode detection and internal input device event blocking logic.
   builder->AddVmodulePattern("*/ash/wm/tablet_mode/*=1");
