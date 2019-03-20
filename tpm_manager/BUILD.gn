@@ -67,6 +67,7 @@ static_library("proto_library") {
 shared_library("libtpm_manager") {
   configs += [ ":target_defaults" ]
   sources = [
+    "client/tpm_manager_utility.cc",
     "client/tpm_nvram_dbus_proxy.cc",
     "client/tpm_ownership_dbus_proxy.cc",
   ]
