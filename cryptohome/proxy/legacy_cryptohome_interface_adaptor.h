@@ -416,6 +416,19 @@ class LegacyCryptohomeInterfaceAdaptor
       override;
 
  private:
+  // Method used as callbacks once the call to the new interface returns
+
+  // This method forwards the error received from calling the new interface back
+  // to the old interface
+  template <typename... Types>
+  void ForwardError(
+      brillo::dbus_utils::DBusMethodResponse<Types...>* response_raw,
+      brillo::Error* err) {
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<Types...>> response(
+        response_raw);
+    response->ReplyWithError(err);
+  }
+
   brillo::dbus_utils::DBusObject dbus_object_;
 
   std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
