@@ -13,7 +13,6 @@ group("all") {
     ":diagnostics_dpsl_demo_single_thread",
     ":telem",
     ":urandom",
-    ":wilco_dtc",
     ":wilco_dtc_supportd",
   ]
   if (use.test) {
@@ -271,16 +270,6 @@ executable("wilco_dtc_supportd") {
 # The wilco_dtc daemon executable.
 pkg_config("wilco_dtc_pkg_deps") {
   pkg_deps = [ "libbrillo-${libbase_ver}" ]
-}
-
-executable("wilco_dtc") {
-  configs += [ ":wilco_dtc_pkg_deps" ]
-  deps = [
-    ":libgrpc_async_adapter",
-  ]
-  sources = [
-    "wilco_dtc/main.cc",
-  ]
 }
 
 # Executables for DPSL demos.
