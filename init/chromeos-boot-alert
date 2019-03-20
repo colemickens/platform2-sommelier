@@ -138,8 +138,6 @@ mode_enter_dev() {
   # Count-down
   tput clear >>"${TTY}"
   show_assets_message "enter_dev2"
-  # TODO(wad,wfrichar) Request a root password here.
-  # TODO(wad,reinauer) Inform the user of chromeos-firmwareupdate --mode=todev
 }
 
 # Prints message when leaving developer mode
