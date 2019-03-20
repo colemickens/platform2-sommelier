@@ -34,7 +34,10 @@
 #include "tpm_manager/client/tpm_ownership_dbus_proxy.h"
 #include "tpm_manager/common/print_tpm_manager_proto.h"
 #include "tpm_manager/common/tpm_manager.pb.h"
+
+#if USE_TPM2
 #include "trunks/tpm_generated.h"
+#endif
 
 namespace tpm_manager {
 
@@ -154,7 +157,11 @@ uint32_t StringToUint32(const std::string& s) {
 }
 
 uint32_t StringToNvramIndex(const std::string& s) {
+#if USE_TPM2
   return trunks::HR_HANDLE_MASK & StringToUint32(s);
+#else
+  return StringToUint32(s);
+#endif
 }
 
 std::string GetAuthValueFromPassword(const std::string& password) {
