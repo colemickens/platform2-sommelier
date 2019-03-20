@@ -434,15 +434,6 @@ void AddEnterpriseFlags(ChromiumCommandBuilder* builder) {
 
 // Adds patterns to the --vmodule flag.
 void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
-  // There has been a steady supply of bug reports about screen locking. These
-  // messages are useful for determining what happened within feedback reports.
-  // See crbug.com/452599.
-  builder->AddVmodulePattern("screen_locker=2");
-  builder->AddVmodulePattern("webui_screen_locker=2");
-  builder->AddVmodulePattern("lock_state_controller=2");
-  builder->AddVmodulePattern("webui_login_view=2");
-  builder->AddVmodulePattern("power_button_observer=2");
-
   // TODO(xiaochu): Remove after https://crbug.com/851151 is fixed.
   builder->AddVmodulePattern("component_updater_service=1");
   builder->AddVmodulePattern("update_engine=1");
@@ -459,10 +450,6 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // TODO(tnagel): Remove after switching to device_event_log:
   // http://crbug.com/636184
   builder->AddVmodulePattern("auto_enrollment_controller=1");
-
-  // TODO(jdufault): Remove after Views-based login has launched:
-  // https://crbug.com/784495
-  builder->AddVmodulePattern("*chromeos/login/*=1");
 
   // TODO(https://crbug.com/907158): Needed for investigating issues with tablet
   // mode detection and internal input device event blocking logic.
