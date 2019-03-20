@@ -9,3 +9,9 @@ ioctl: arg1 == 0x80184558 || arg1 == 0x401845d8
 open: 1
 openat: 1
 getpid: 1
+
+# Basic process functionality.
+restart_syscall: 1
+exit: 1
+exit_group: 1
+rt_sigreturn: 1
