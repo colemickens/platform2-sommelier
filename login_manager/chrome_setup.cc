@@ -44,6 +44,9 @@ const char kPowerButtonPositionPath[] = "/ui/power-button";
 const char kPowerButtonEdgeField[] = "edge";
 const char kPowerButtonPositionField[] = "position";
 
+const char kStylusCategoryPath[] = "/hardware-properties";
+const char kStylusCategoryField[] = "stylus-category";
+
 // These hashes are only being used temporarily till we can determine if a
 // device is a Chromebox for Meetings or not from the Install Time attributes.
 // TODO(rkc, pbos): Remove these and related code once crbug.com/706523 is
@@ -388,8 +391,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--aura-legacy-power-button");
   if (builder->UseFlagIsSet("touchview"))
     builder->AddArg("--enable-touchview");
-  if (builder->UseFlagIsSet("internal_stylus"))
-    builder->AddArg("--has-internal-stylus");
   if (builder->UseFlagIsSet("touchscreen_wakeup"))
     builder->AddArg("--touchscreen-usable-while-screen-off");
   if (builder->UseFlagIsSet("oobe_skip_to_login"))
@@ -424,6 +425,8 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   SetUpPowerButtonPositionFlag(builder, cros_config);
 
   SetUpRegulatoryLabelFlag(builder, cros_config);
+
+  SetUpInternalStylusFlag(builder, cros_config);
 }
 
 // Adds enterprise-related flags to the command line.
@@ -510,6 +513,17 @@ void SetUpWallpaperFlags(
 
   // Fall back to default.
   AddWallpaperFlags(builder, "default", "default", path_exists);
+}
+
+void SetUpInternalStylusFlag(ChromiumCommandBuilder* builder,
+                             brillo::CrosConfigInterface* cros_config) {
+  std::string stylus_category;
+  if (cros_config &&
+      cros_config->GetString(kStylusCategoryPath, kStylusCategoryField,
+                             &stylus_category) &&
+      stylus_category == "internal") {
+    builder->AddArg("--has-internal-stylus");
+  }
 }
 
 void SetUpPowerButtonPositionFlag(ChromiumCommandBuilder* builder,

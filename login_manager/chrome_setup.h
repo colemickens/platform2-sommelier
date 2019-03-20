@@ -84,6 +84,11 @@ void SetUpRegulatoryLabelFlag(chromeos::ui::ChromiumCommandBuilder* builder,
 void SetUpPowerButtonPositionFlag(chromeos::ui::ChromiumCommandBuilder* builder,
                                   brillo::CrosConfigInterface* cros_config);
 
+// Add "--has-internal-stylus" flag if the device has
+// an internal stylus.
+void SetUpInternalStylusFlag(chromeos::ui::ChromiumCommandBuilder* builder,
+                             brillo::CrosConfigInterface* cros_config);
+
 }  // namespace login_manager
 
 #endif  // LOGIN_MANAGER_CHROME_SETUP_H_
