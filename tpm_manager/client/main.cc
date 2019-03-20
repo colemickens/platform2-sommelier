@@ -90,6 +90,7 @@ Commands:
           READ_AUTHORIZATION: Require authorization to read.
           WRITE_EXTEND: Allow only extend operations, not direct writes.
           GLOBAL_LOCK: Engage write lock when the global lock is engaged.
+          PLATFORM_READ: Allow read with 'platform' authorization. Used by FWMP.
           PLATFORM_WRITE: Allow write only with 'platform' authorization. This
                           is similar to the TPM 1.2 'physical presence' notion.
           OWNER_WRITE: Allow write only with TPM owner authorization.
@@ -396,6 +397,10 @@ class ClientLoop : public ClientLoopBase {
     }
     if (attribute_str == "GLOBAL_LOCK") {
       *attribute = NVRAM_GLOBAL_LOCK;
+      return true;
+    }
+    if (attribute_str == "PLATFORM_READ") {
+      *attribute = NVRAM_PLATFORM_READ;
       return true;
     }
     if (attribute_str == "PLATFORM_WRITE") {

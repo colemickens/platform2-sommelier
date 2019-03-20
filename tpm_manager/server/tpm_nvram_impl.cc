@@ -56,6 +56,8 @@ void MapAttributesFromTpm(TPM_NV_PER_ATTRIBUTES tpm_flags,
     attributes->push_back(NVRAM_READ_AUTHORIZATION);
   if (tpm_flags & TPM_NV_PER_GLOBALLOCK)
     attributes->push_back(NVRAM_GLOBAL_LOCK);
+  if (tpm_flags & TPM_NV_PER_PPREAD)
+    attributes->push_back(NVRAM_PLATFORM_READ);
   if (tpm_flags & TPM_NV_PER_PPWRITE)
     attributes->push_back(NVRAM_PLATFORM_WRITE);
   if (tpm_flags & TPM_NV_PER_OWNERWRITE)
@@ -86,6 +88,9 @@ TPM_NV_PER_ATTRIBUTES MapAttributesToTpm(
         break;
       case NVRAM_GLOBAL_LOCK:
         tpm_flags |= TPM_NV_PER_GLOBALLOCK;
+        break;
+      case NVRAM_PLATFORM_READ:
+        tpm_flags |= TPM_NV_PER_PPREAD;
         break;
       case NVRAM_PLATFORM_WRITE:
         tpm_flags |= TPM_NV_PER_PPWRITE;
