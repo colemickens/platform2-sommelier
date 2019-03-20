@@ -776,10 +776,22 @@ TEST_F(TPM2UtilityTest, SignSuccessWithUnknownAlgorithm) {
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
       .WillOnce(DoAll(SetArgPointee<1>(public_data), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, trunks::TPM_ALG_RSASSA,
-                                      trunks::TPM_ALG_NULL, _, _, _, _))
+                                      trunks::TPM_ALG_NULL, input, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_TRUE(
       utility.Sign(key_handle, DigestAlgorithm::NoDigest, input, &output));
+
+  // For the digest algorithms which are not supported by TPM, we will prepend
+  // DigestInfo and use Sign with NULL scheme
+  const std::string kInputWithMd5DigestInfo =
+      GetDigestAlgorithmEncoding(DigestAlgorithm::MD5) + input;
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(public_data), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_,
+              Sign(key_handle, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_NULL,
+                   kInputWithMd5DigestInfo, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_TRUE(utility.Sign(key_handle, DigestAlgorithm::MD5, input, &output));
 }
 
 TEST_F(TPM2UtilityTest, GenerateECCKeySuccess) {
