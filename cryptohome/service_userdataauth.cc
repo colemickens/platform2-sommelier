@@ -102,11 +102,11 @@ void UserDataAuthAdaptor::MigrateKey(
   response->Return(reply);
 }
 
-void UserDataAuthAdaptor::MigrateToDircrypto(
+void UserDataAuthAdaptor::StartMigrateToDircrypto(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::MigrateToDircryptoReply>> response,
-    const user_data_auth::MigrateToDircryptoRequest& in_request) {
-  user_data_auth::MigrateToDircryptoReply reply;
+        user_data_auth::StartMigrateToDircryptoReply>> response,
+    const user_data_auth::StartMigrateToDircryptoRequest& in_request) {
+  user_data_auth::StartMigrateToDircryptoReply reply;
   response->Return(reply);
 }
 
