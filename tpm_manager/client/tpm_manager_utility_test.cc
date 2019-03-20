@@ -42,6 +42,8 @@ class TpmManagerUtilityTest : public Test {
     // can change the contained data dynamically in a test item.
     ON_CALL(mock_tpm_owner_, TakeOwnership(_, _))
         .WillByDefault(InvokeCallbackArgument<1>(ByRef(take_ownership_reply_)));
+    ON_CALL(mock_tpm_owner_, GetTpmStatus(_, _))
+        .WillByDefault(InvokeCallbackArgument<1>(ByRef(get_tpm_status_reply_)));
   }
   void SetUp() override { ASSERT_TRUE(tpm_manager_utility_.Initialize()); }
 
@@ -51,6 +53,7 @@ class TpmManagerUtilityTest : public Test {
 
   // fake replies from TpmManager
   tpm_manager::TakeOwnershipReply take_ownership_reply_;
+  tpm_manager::GetTpmStatusReply get_tpm_status_reply_;
 };
 
 TEST_F(TpmManagerUtilityTest, TakeOwnership) {
@@ -63,6 +66,50 @@ TEST_F(TpmManagerUtilityTest, TakeOwnershipFail) {
   EXPECT_FALSE(tpm_manager_utility_.TakeOwnership());
   take_ownership_reply_.set_status(tpm_manager::STATUS_NOT_AVAILABLE);
   EXPECT_FALSE(tpm_manager_utility_.TakeOwnership());
+}
+
+TEST_F(TpmManagerUtilityTest, GetTpmStatus) {
+  bool is_enabled = true;
+  bool is_owned = true;
+  tpm_manager::LocalData local_data;
+  get_tpm_status_reply_.set_status(tpm_manager::STATUS_SUCCESS);
+
+  get_tpm_status_reply_.set_enabled(false);
+  get_tpm_status_reply_.set_owned(false);
+  EXPECT_TRUE(
+      tpm_manager_utility_.GetTpmStatus(&is_enabled, &is_owned, &local_data));
+  EXPECT_EQ(is_enabled, get_tpm_status_reply_.enabled());
+  EXPECT_EQ(is_owned, get_tpm_status_reply_.owned());
+
+  get_tpm_status_reply_.set_enabled(true);
+  get_tpm_status_reply_.set_owned(true);
+  tpm_manager::LocalData expected_local_data;
+  expected_local_data.set_owner_password("owner_password");
+  expected_local_data.set_endorsement_password("endorsement_password");
+  expected_local_data.set_lockout_password("lockout_password");
+  expected_local_data.mutable_owner_delegate()->set_blob("blob");
+  expected_local_data.mutable_owner_delegate()->set_secret("secret");
+  get_tpm_status_reply_.mutable_local_data()->CopyFrom(expected_local_data);
+  EXPECT_TRUE(
+      tpm_manager_utility_.GetTpmStatus(&is_enabled, &is_owned, &local_data));
+  EXPECT_EQ(is_enabled, get_tpm_status_reply_.enabled());
+  EXPECT_EQ(is_owned, get_tpm_status_reply_.owned());
+  EXPECT_EQ(expected_local_data.SerializeAsString(),
+            local_data.SerializeAsString());
+}
+
+TEST_F(TpmManagerUtilityTest, GetTpmStatusFail) {
+  bool is_enabled{false};
+  bool is_owned{false};
+  tpm_manager::LocalData local_data;
+
+  get_tpm_status_reply_.set_status(tpm_manager::STATUS_DEVICE_ERROR);
+  EXPECT_FALSE(
+      tpm_manager_utility_.GetTpmStatus(&is_enabled, &is_owned, &local_data));
+
+  get_tpm_status_reply_.set_status(tpm_manager::STATUS_NOT_AVAILABLE);
+  EXPECT_FALSE(
+      tpm_manager_utility_.GetTpmStatus(&is_enabled, &is_owned, &local_data));
 }
 
 }  // namespace tpm_manager
