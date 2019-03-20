@@ -43,6 +43,7 @@ constexpr char kPluginBinName[] = "pvm";
 constexpr gid_t kPluginGidMap[] = {
     7,    // lp
     600,  // cras
+    603,  // arc-camera
 };
 
 // Name of the runtime directory inside the jail.
@@ -261,6 +262,7 @@ bool PluginVm::Start(uint32_t cpus,
 
   std::vector<string> bind_mounts = {
       "/dev/log:/dev/log:true",
+      "/run/camera/camera3.sock:/run/camera/camera3.sock:true",
       // TODO(b:117218264) replace with CUPS proxy socket when ready.
       "/run/cups/cups.sock:/run/cups/cups.sock:true",
       // TODO(b:127478233) replace with CRAS proxy socket when ready.
