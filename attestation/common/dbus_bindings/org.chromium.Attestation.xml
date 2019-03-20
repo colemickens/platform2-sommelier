@@ -114,6 +114,17 @@
       </arg>
     </method>
 
+    <method name="GetEnrollmentPreparations">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="attestation::GetEnrollmentPreparationsRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="attestation::GetEnrollmentPreparationsReply" />
+      </arg>
+    </method>
+
     <method name="GetStatus">
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
