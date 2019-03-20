@@ -470,10 +470,6 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   builder->AddVmodulePattern("component_updater_service=1");
   builder->AddVmodulePattern("update_engine=1");
 
-  // TODO(afakhry): Remove after Night Light has launched:
-  // https://crbug.com/841846
-  builder->AddVmodulePattern("*night_light*=1");
-
   // Turn on logging about external displays being connected and disconnected.
   // Different behavior is seen from different displays and these messages are
   // used to determine what happened within feedback reports.
