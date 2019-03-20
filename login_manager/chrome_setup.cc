@@ -491,10 +491,6 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // https://crbug.com/784495
   builder->AddVmodulePattern("*chromeos/login/*=1");
 
-  // TODO(xiaohuic): Remove after native assistant has launched:
-  // http://crbug.com/814097
-  builder->AddVmodulePattern("*/assistant/*=1");
-
   // TODO(https://crbug.com/844537): Needed for investigating issues with
   // disappearing device-wide certificates.
   builder->AddVmodulePattern("nss_cert_database_chromeos=1");
