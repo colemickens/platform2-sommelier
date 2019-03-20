@@ -9,8 +9,8 @@
     'libraries+': [
       # Don't worry about overlinking, ld.gold's --as-needed will
       # deal with that.
-      '>!@(gtest-config --libs)',
-      '>!@(gmock-config --libs)',
+      # gtest-config and gmock-config are not installed by gtest-1.8.1.
+      '-lgmock', '-lgtest', '-pthread', '-lpthread',
     ],
   },
 }

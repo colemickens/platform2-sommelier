@@ -151,8 +151,6 @@ if (use.test || use.fuzzer) {
   # error from happening when ASAN is enabled.
   # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
   config("test") {
-    ldflags = []
-
     # Don't worry about overlinking, ld.gold's --as-needed will
     # deal with that.
     # TODO(crbug.com/912432): Consider use {gtest,gmock}-config --ldflags.
@@ -162,17 +160,12 @@ if (use.test || use.fuzzer) {
     # -DNDEBUG, but the target built without, which causes a link error.
     # cf) BaseInitLoggingImpl definition in
     #     aosp/external/libchrome/base/logging.h
-    ldflags += exec_script("//common-mk/args_generator_wrapper.py",
-                           [
-                             "gtest-config",
-                             "--libs",
-                           ],
-                           "list lines")
-    ldflags += exec_script("//common-mk/args_generator_wrapper.py",
-                           [
-                             "gmock-config",
-                             "--libs",
-                           ],
-                           "list lines")
+    # gtest-config and gmock-config are not installed by gtest-1.8.1.
+    ldflags = [
+      "-lgmock",
+      "-lgtest",
+      "-pthread",
+      "-lpthread",
+    ]
   }
 }
