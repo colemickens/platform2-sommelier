@@ -232,6 +232,20 @@ size_t CameraBufferManager::GetPlaneSize(buffer_handle_t buffer, size_t plane) {
 }
 
 // static
+off_t CameraBufferManager::GetPlaneOffset(buffer_handle_t buffer,
+                                          size_t plane) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return -1;
+  }
+  if (plane >= GetNumPlanes(buffer)) {
+    LOGF(ERROR) << "Invalid plane: " << plane;
+    return -1;
+  }
+  return handle->offsets[plane];
+}
+
+// static
 uint32_t CameraBufferManager::GetWidth(buffer_handle_t buffer) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {

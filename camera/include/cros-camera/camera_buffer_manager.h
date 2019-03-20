@@ -259,6 +259,16 @@ class CROS_CAMERA_EXPORT CameraBufferManager {
   // Returns:
   //    The size of the specified plane; 0 on error.
   static size_t GetPlaneSize(buffer_handle_t buffer, size_t plane);
+
+  // Gets the offset of the specified plane.
+  //
+  // Args:
+  //    |buffer|: The buffer handle to query.
+  //    |plane|: The plane to query.
+  //
+  // Returns:
+  //    The offset of the specified plane; -1 on error.
+  static off_t GetPlaneOffset(buffer_handle_t buffer, size_t plane);
 };
 
 }  // namespace cros
