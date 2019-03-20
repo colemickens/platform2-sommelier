@@ -138,8 +138,9 @@ class CameraBufferManagerImpl final : public CameraBufferManager {
   friend class tests::CameraBufferManagerImplTest;
 
   // Revoles the HAL pixel format |hal_format| to the actual DRM format, based
-  // on the gralloc usage flags set in |usage|.
-  uint32_t ResolveFormat(uint32_t hal_format, uint32_t usage);
+  // on the gralloc usage flags set in |usage| and |gbm_flags|.
+  uint32_t ResolveFormat(uint32_t hal_format, uint32_t usage,
+                         uint32_t gbm_flags);
 
   int AllocateGrallocBuffer(size_t width,
                             size_t height,

@@ -536,7 +536,8 @@ int CameraBufferManagerImpl::Unlock(buffer_handle_t buffer) {
 }
 
 uint32_t CameraBufferManagerImpl::ResolveFormat(uint32_t hal_format,
-                                                uint32_t usage) {
+                                                uint32_t usage,
+                                                uint32_t gbm_flags) {
   if (usage & GRALLOC_USAGE_FORCE_I420) {
     if (hal_format != HAL_PIXEL_FORMAT_YCbCr_420_888) {
       LOGF(ERROR) << "GRALLOC_USAGE_FORCE_I420 is only valid with "
@@ -552,7 +553,6 @@ uint32_t CameraBufferManagerImpl::ResolveFormat(uint32_t hal_format,
     LOGF(ERROR) << "Unsupported HAL pixel format";
     return 0;
   }
-  uint32_t gbm_flags = GrallocUsageToGbmFlags(usage);
   for (uint32_t drm_format : kSupportedHalFormats[hal_format]) {
     if (gbm_device_is_format_supported(gbm_device_, drm_format, gbm_flags)) {
       return drm_format;
@@ -571,8 +571,12 @@ int CameraBufferManagerImpl::AllocateGrallocBuffer(size_t width,
                                                    uint32_t* out_stride) {
   base::AutoLock l(lock_);
 
-  uint32_t drm_format = ResolveFormat(format, usage);
   uint32_t gbm_flags = GrallocUsageToGbmFlags(usage);
+  uint32_t drm_format = ResolveFormat(format, usage, gbm_flags);
+  if (!drm_format && (usage & GRALLOC_USAGE_HW_COMPOSER)) {
+    gbm_flags &= ~GBM_BO_USE_SCANOUT;
+    drm_format = ResolveFormat(format, usage, gbm_flags);
+  }
   if (!drm_format) {
     return -EINVAL;
   }
