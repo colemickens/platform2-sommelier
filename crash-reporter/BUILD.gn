@@ -197,6 +197,7 @@ if (use.cheets) {
 if (use.test) {
   pkg_config("crash_reporter_test_config") {
     pkg_deps = [
+      "libchrome-test-${libbase_ver}",
       "libmetrics-${libbase_ver}",
       "libsession_manager-client-test",
     ]

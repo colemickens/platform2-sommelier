@@ -4,6 +4,7 @@
 
 #include "crash-reporter/crash_collector_test.h"
 
+#include <inttypes.h>
 #include <unistd.h>
 #include <utility>
 
@@ -11,6 +12,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/test/simple_test_clock.h>
 #include <brillo/syslog_logging.h>
 #include <gtest/gtest.h>
 
@@ -23,6 +25,8 @@ using brillo::FindLog;
 using ::testing::Return;
 
 namespace {
+
+constexpr int64_t kFakeNow = 123456789LL;
 
 bool IsMetrics() {
   ADD_FAILURE();
@@ -401,16 +405,23 @@ TEST_F(CrashCollectorTest, MetaData) {
   ASSERT_TRUE(test_util::CreateFile(payload_file, kPayload));
   collector_.AddCrashMetaData("foo", "bar");
   ASSERT_TRUE(NormalizeFilePath(payload_file, &payload_full_path));
+  std::unique_ptr<base::SimpleTestClock> test_clock =
+      std::make_unique<base::SimpleTestClock>();
+  test_clock->SetNow(base::Time::UnixEpoch() +
+                     base::TimeDelta::FromMilliseconds(kFakeNow));
+  collector_.set_test_clock(std::move(test_clock));
   collector_.WriteCrashMetaData(meta_file, "kernel", payload_file.value());
   EXPECT_TRUE(base::ReadFileToString(meta_file, &contents));
   std::string expected_meta = StringPrintf(
       "foo=bar\n"
+      "upload_var_reportTimeMillis=%" PRId64
+      "\n"
       "exec_name=kernel\n"
       "ver=6727.0.2015_01_26_0853\n"
       "payload=%s\n"
       "payload_size=3\n"
       "done=1\n",
-      payload_full_path.value().c_str());
+      kFakeNow, payload_full_path.value().c_str());
   EXPECT_EQ(expected_meta, contents);
 
   // Test target of symlink is not overwritten.

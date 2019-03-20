@@ -9,10 +9,12 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
+#include <base/time/clock.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <session_manager/dbus-proxies.h>
@@ -47,6 +49,11 @@ class CrashCollector {
   // For testing, set the log config file path instead of kDefaultLogConfig.
   void set_log_config_path(const std::string& path) {
     log_config_path_ = base::FilePath(path);
+  }
+
+  // For testing, set the clock to use to get the report timestamp.
+  void set_test_clock(std::unique_ptr<base::Clock> test_clock) {
+    test_clock_ = std::move(test_clock);
   }
 
   // Initialize the crash collector for detection of crashes, given a
@@ -229,6 +236,7 @@ class CrashCollector {
   base::FilePath crash_reporter_state_path_;
   base::FilePath log_config_path_;
   size_t max_log_size_;
+  std::unique_ptr<base::Clock> test_clock_;
 
   scoped_refptr<dbus::Bus> bus_;
 

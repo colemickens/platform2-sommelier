@@ -783,15 +783,19 @@ void CrashCollector::WriteCrashMetaData(const FilePath& meta_path,
   int64_t payload_size = -1;
   base::GetFileSize(FilePath(payload_path), &payload_size);
   const std::string version = GetVersion();
-  std::string meta_data = StringPrintf(
-      "%sexec_name=%s\n"
-      "ver=%s\n"
-      "payload=%s\n"
-      "payload_size=%" PRId64
-      "\n"
-      "done=1\n",
-      extra_metadata_.c_str(), exec_name.c_str(), version.c_str(),
-      payload_path.value().c_str(), payload_size);
+  base::Time now = test_clock_ ? test_clock_->Now() : base::Time::Now();
+  int64_t now_millis = (now - base::Time::UnixEpoch()).InMilliseconds();
+  std::string meta_data =
+      StringPrintf("%supload_var_reportTimeMillis=%" PRId64
+                   "\n"
+                   "exec_name=%s\n"
+                   "ver=%s\n"
+                   "payload=%s\n"
+                   "payload_size=%" PRId64
+                   "\n"
+                   "done=1\n",
+                   extra_metadata_.c_str(), now_millis, exec_name.c_str(),
+                   version.c_str(), payload_path.value().c_str(), payload_size);
   // We must use WriteNewFile instead of base::WriteFile as we
   // do not want to write with root access to a symlink that an attacker
   // might have created.
