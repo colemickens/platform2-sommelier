@@ -62,6 +62,10 @@ define(`cros_dbus_client', `
 typeattribute $1 cros_dbus_client_domain;
 ')
 
+define(`cros_tcsd_client', `
+typeattribute $1 cros_tcsd_client_domain;
+');
+
 define(`uma_writer', `
 typeattribute $1 cros_uma_events_writer_domain;
 ')

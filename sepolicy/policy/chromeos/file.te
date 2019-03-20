@@ -132,6 +132,7 @@ type cros_var_lib_oobe_config_restore, file_type;
 type cros_var_lib_power_manager, file_type;
 type cros_var_lib_preload_network_drivers, file_type;
 type cros_var_lib_shill, file_type;
+type cros_var_lib_tpm, file_type;
 type cros_var_lib_trim, file_type;
 type cros_var_lib_ui, file_type;
 type cros_var_lib_update_engine, file_type;
@@ -214,6 +215,7 @@ type sysfs_net, sysfs_type;
 
 type wayland_socket, file_type;
 type cros_system_bus_socket, file_type;
+type cros_tcsd_socket, file_type;
 
 # TODO(fqj): temporarily let un-decomposed chromeos domain to write file as tmpfs.
 type_transition {chromeos cros_arc_setup} cros_run:dir tmpfs;

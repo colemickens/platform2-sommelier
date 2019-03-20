@@ -6,6 +6,7 @@ allow cros_chapsd cros_init:fd use;
 log_writer(cros_chapsd);
 uma_writer(cros_chapsd);
 cros_dbus_client(cros_chapsd);
+cros_tcsd_client(cros_chapsd);
 
 allow cros_chapsd self:capability { setuid setgid };
 
@@ -19,9 +20,6 @@ allow cros_chapsd port:tcp_socket name_connect;
 
 allow cros_chapsd sysfs:file r_file_perms;
 
-allow cros_chapsd cros_run_tcsd:dir r_dir_perms;
-allow cros_chapsd cros_run_tcsd:sock_file write;
-allow cros_chapsd cros_tcsd:unix_stream_socket connectto;
 
 allow cros_chapsd cros_power_override_lock_file:dir rw_dir_perms;
 allow cros_chapsd cros_power_override_lock_file:file create_file_perms;

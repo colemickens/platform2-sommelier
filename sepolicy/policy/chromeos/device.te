@@ -6,6 +6,7 @@ type console_device, dev_type, cros_dev_type, cros_labeled_dev_type;
 type zero_device, dev_type, cros_dev_type, cros_labeled_dev_type;
 type logger_device, dev_type, cros_dev_type, cros_labeled_dev_type;
 type ptmx_device, dev_type, cros_dev_type, cros_labeled_dev_type;
+type tpm_device, dev_type, cros_dev_type, cros_labeled_dev_type;
 
 typeattribute null_device dev_type, cros_dev_type, cros_labeled_dev_type;
 
