@@ -12,14 +12,20 @@
     <annotation name="org.freedesktop.DBus.GLib.CSymbol"
                 value="cryptohome"/>
     <method name="IsMounted">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="is_mounted" direction="out" />
     </method>
     <method name="IsMountedForUser">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="s" name="username" direction="in" />
       <arg type="b" name="is_mounted" direction="out" />
       <arg type="b" name="is_ephemeral_mount" direction="out" />
     </method>
     <method name="ListKeysEx">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="account_id" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -41,6 +47,8 @@
       </arg>
     </method>
     <method name="CheckKeyEx">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="account_id" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -60,6 +68,8 @@
       </arg>
     </method>
     <method name="RemoveKeyEx">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="account_id" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -79,6 +89,8 @@
       </arg>
     </method>
     <method name="GetKeyDataEx">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="account_id" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -101,8 +113,9 @@
                     value="cryptohome::BaseReply" />
       </arg>
     </method>
-    <!-- This may be called asynchronously. -->
     <method name="MigrateKeyEx">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="account" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -121,8 +134,9 @@
                     value="cryptohome::BaseReply" />
       </arg>
     </method>
-    <!-- This may be called asynchronously. -->
     <method name="AddKeyEx">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="account_id" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -145,6 +159,8 @@
          but it updates the authorizing key exclusively.
     -->
     <method name="UpdateKeyEx">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="account_id" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -163,8 +179,9 @@
                     value="cryptohome::BaseReply" />
       </arg>
     </method>
-    <!-- This may be called asynchronously. -->
     <method name="RemoveEx">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="account" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -176,14 +193,19 @@
       </arg>
     </method>
     <method name="GetSystemSalt">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="ay" name="salt" direction="out" />
     </method>
     <method name="GetSanitizedUsername">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="sanitized" direction="out" />
     </method>
-    <!-- This may be called asynchronously. -->
     <method name="MountEx">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="account_id" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -202,8 +224,9 @@
                     value="cryptohome::BaseReply" />
       </arg>
     </method>
-    <!-- This may be called asynchronously. -->
     <method name="MountGuestEx">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -215,6 +238,8 @@
       </arg>
     </method>
     <method name="RenameCryptohome">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="cryptohome_id_from" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -230,6 +255,8 @@
       </arg>
     </method>
     <method name="GetAccountDiskUsage">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="account_id" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -241,6 +268,8 @@
       </arg>
     </method>
     <method name="UnmountEx">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -252,31 +281,51 @@
       </arg>
     </method>
     <method name="UpdateCurrentUserActivityTimestamp">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="i" name="time_shift_sec" direction="in" />
     </method>
     <method name="TpmIsReady">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="ready" direction="out" />
     </method>
     <method name="TpmIsEnabled">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="enabled" direction="out" />
     </method>
     <method name="TpmGetPassword">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="s" name="password" direction="out" />
     </method>
     <method name="TpmIsOwned">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="owned" direction="out" />
     </method>
     <method name="TpmIsBeingOwned">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="owning" direction="out" />
     </method>
     <method name="TpmCanAttemptOwnership">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
     </method>
     <method name="TpmClearStoredPassword">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
     </method>
     <method name="TpmIsAttestationPrepared">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="prepared" direction="out" />
     </method>
     <method name="TpmAttestationGetEnrollmentPreparationsEx">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -288,32 +337,46 @@
       </arg>
     </method>
     <method name="TpmVerifyAttestationData">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="is_cros_core" />
       <arg type="b" name="verified" direction="out" />
     </method>
     <method name="TpmVerifyEK">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="is_cros_core" />
       <arg type="b" name="verified" direction="out" />
     </method>
     <method name="TpmAttestationCreateEnrollRequest">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="i" name="pca_type" direction="in" />
       <arg type="ay" name="pca_request" direction="out" />
     </method>
     <method name="AsyncTpmAttestationCreateEnrollRequest">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="i" name="pca_type" direction="in" />
       <arg type="i" name="async_id" direction="out" />
     </method>
     <method name="TpmAttestationEnroll">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="i" name="pca_type" direction="in" />
       <arg type="ay" name="pca_response" direction="in" />
       <arg type="b" name="success" direction="out" />
     </method>
     <method name="AsyncTpmAttestationEnroll">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="i" name="pca_type" direction="in" />
       <arg type="ay" name="pca_response" direction="in" />
       <arg type="i" name="async_id" direction="out" />
     </method>
     <method name="TpmAttestationCreateCertRequest">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="i" name="pca_type" direction="in" />
       <arg type="i" name="certificate_profile" direction="in" />
       <arg type="s" name="username" direction="in" />
@@ -321,6 +384,8 @@
       <arg type="ay" name="pca_request" direction="out" />
     </method>
     <method name="AsyncTpmAttestationCreateCertRequest">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="i" name="pca_type" direction="in" />
       <arg type="i" name="certificate_profile" direction="in" />
       <arg type="s" name="username" direction="in" />
@@ -328,6 +393,8 @@
       <arg type="i" name="async_id" direction="out" />
     </method>
     <method name="TpmAttestationFinishCertRequest">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="ay" name="pca_response" direction="in" />
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="username" direction="in" />
@@ -336,6 +403,8 @@
       <arg type="b" name="success" direction="out" />
     </method>
     <method name="AsyncTpmAttestationFinishCertRequest">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="ay" name="pca_response" direction="in" />
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="username" direction="in" />
@@ -343,15 +412,21 @@
       <arg type="i" name="async_id" direction="out" />
     </method>
     <method name="TpmIsAttestationEnrolled">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="enrolled" direction="out" />
     </method>
     <method name="TpmAttestationDoesKeyExist">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="key_name" direction="in" />
       <arg type="b" name="exists" direction="out" />
     </method>
     <method name="TpmAttestationGetCertificate">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="key_name" direction="in" />
@@ -359,6 +434,8 @@
       <arg type="b" name="success" direction="out" />
     </method>
     <method name="TpmAttestationGetPublicKey">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="key_name" direction="in" />
@@ -366,17 +443,23 @@
       <arg type="b" name="success" direction="out" />
     </method>
     <method name="TpmAttestationGetEnrollmentId">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="ignore_cache" direction="in" />
       <arg type="ay" name="enrollment_id" direction="out" />
       <arg type="b" name="success" direction="out" />
     </method>
     <method name="TpmAttestationRegisterKey">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="key_name" direction="in" />
       <arg type="i" name="async_id" direction="out" />
     </method>
     <method name="TpmAttestationSignEnterpriseChallenge">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="key_name" direction="in" />
@@ -387,6 +470,8 @@
       <arg type="i" name="async_id" direction="out" />
     </method>
     <method name="TpmAttestationSignEnterpriseVaChallenge">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="i" name="va_type" direction="in" />
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="username" direction="in" />
@@ -398,6 +483,8 @@
       <arg type="i" name="async_id" direction="out" />
     </method>
     <method name="TpmAttestationSignSimpleChallenge">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="key_name" direction="in" />
@@ -405,6 +492,8 @@
       <arg type="i" name="async_id" direction="out" />
     </method>
     <method name="TpmAttestationGetKeyPayload">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="key_name" direction="in" />
@@ -412,6 +501,8 @@
       <arg type="b" name="success" direction="out" />
     </method>
     <method name="TpmAttestationSetKeyPayload">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="key_name" direction="in" />
@@ -419,21 +510,29 @@
       <arg type="b" name="success" direction="out" />
     </method>
     <method name="TpmAttestationDeleteKeys">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="key_prefix" direction="in" />
       <arg type="b" name="success" direction="out" />
     </method>
     <method name="TpmAttestationGetEK">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="s" name="ek_info" direction="out" />
       <arg type="b" name="success" direction="out" />
     </method>
     <method name="TpmAttestationResetIdentity">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="s" name="reset_token" direction="in" />
       <arg type="ay" name="reset_request" direction="out" />
       <arg type="b" name="success" direction="out" />
     </method>
     <method name="TpmGetVersionStructured">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="u" name="family" direction="out" />
       <arg type="t" name="spec_level" direction="out" />
       <arg type="u" name="manufacturer" direction="out" />
@@ -442,51 +541,77 @@
       <arg type="s" name="vendor_specific" direction="out" />
     </method>
     <method name="Pkcs11IsTpmTokenReady">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="ready" direction="out" />
     </method>
     <method name="Pkcs11GetTpmTokenInfo">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="s" name="label" direction="out" />
       <arg type="s" name="user_pin" direction="out" />
       <arg type="i" name="slot" direction="out" />
     </method>
     <method name="Pkcs11GetTpmTokenInfoForUser">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="label" direction="out" />
       <arg type="s" name="user_pin" direction="out" />
       <arg type="i" name="slot" direction="out" />
     </method>
     <method name="Pkcs11Terminate">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="s" name="username" direction="in" />
     </method>
     <method name="GetStatusString">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="s" name="status" direction="out" />
     </method>
     <method name="InstallAttributesGet">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="s" name="name" direction="in" />
       <arg type="ay" name="value" direction="out" />
       <arg type="b" name="successful" direction="out" />
     </method>
     <method name="InstallAttributesSet">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="s" name="name" direction="in" />
       <arg type="ay" name="value" direction="in" />
       <arg type="b" name="successful" direction="out" />
     </method>
     <method name="InstallAttributesCount">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="i" name="count" direction="out" />
     </method>
     <method name="InstallAttributesFinalize">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="successful" direction="out" />
     </method>
     <method name="InstallAttributesIsReady">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="is_ready" direction="out" />
     </method>
     <method name="InstallAttributesIsSecure">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="is_secure" direction="out" />
     </method>
     <method name="InstallAttributesIsInvalid">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="is_invalid" direction="out" />
     </method>
     <method name="InstallAttributesIsFirstInstall">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="is_first_install" direction="out" />
     </method>
     <!-- May be called asynchronously.  Both arguments are protobufs:
@@ -494,6 +619,8 @@
          reply: BaseReply with a SignBootLockboxReply extension on success
     -->
     <method name="SignBootLockbox">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -509,6 +636,8 @@
          reply: BaseReply
     -->
     <method name="VerifyBootLockbox">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -524,6 +653,8 @@
          reply: BaseReply
     -->
     <method name="FinalizeBootLockbox">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -539,6 +670,8 @@
          reply: BaseReply with a GetBootAttributeReply extension on success
     -->
     <method name="GetBootAttribute">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -554,6 +687,8 @@
          reply: BaseReply
     -->
     <method name="SetBootAttribute">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -569,6 +704,8 @@
          reply: BaseReply
     -->
     <method name="FlushAndSignBootAttributes">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -584,6 +721,8 @@
          reply: BaseReply with a GetLoginStatusReply extension on success
     -->
     <method name="GetLoginStatus">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -599,6 +738,8 @@
          reply: BaseReply with a GetTpmStatusReply extension on success
     -->
     <method name="GetTpmStatus">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -614,6 +755,8 @@
          reply: BaseReply with a GetEndorsementInfoReply extension on success
     -->
     <method name="GetEndorsementInfo">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -629,6 +772,8 @@
          reply: BaseReply
     -->
     <method name="InitializeCastKey">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -646,6 +791,8 @@
              extension on success
     -->
     <method name="GetFirmwareManagementParameters">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -661,6 +808,8 @@
          reply: BaseReply
     -->
     <method name="SetFirmwareManagementParameters">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -676,6 +825,8 @@
          reply: BaseReply
     -->
     <method name="RemoveFirmwareManagementParameters">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -694,6 +845,8 @@
          migrate_request: MigrateToDircryptoRequest
     -->
     <method name="MigrateToDircrypto">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="ay" name="account_id" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="cryptohome::AccountIdentifier" />
@@ -707,6 +860,8 @@
          dircrypto. Returns true if the migration has not started or incomplete.
     -->
     <method name="NeedsDircryptoMigration">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="ay" name="account_id" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="cryptohome::AccountIdentifier" />
@@ -714,6 +869,8 @@
       <arg type="b" name="needs_dircrypto_migration" direction="out" />
     </method>
     <method name="GetSupportedKeyPolicies">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -727,22 +884,30 @@
     <!-- Whether quota-based disk usage statistics is supported.
     -->
     <method name="IsQuotaSupported">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="b" name="quota_supported" direction="out" />
     </method>
     <!-- Get the current disk space usage for the given uid.
     -->
     <method name="GetCurrentSpaceForUid">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="u" name="uid" direction="in" />
       <arg type="x" name="cur_space" direction="out" />
     </method>
     <!-- Get the current disk space usage for the given uid.
     -->
     <method name="GetCurrentSpaceForGid">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg type="u" name="gid" direction="in" />
       <arg type="x" name="cur_space" direction="out" />
     </method>
 
     <method name="LockToSingleUserMountUntilReboot">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
