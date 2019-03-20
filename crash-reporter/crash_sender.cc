@@ -110,16 +110,22 @@ int RunChildMain(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  // Send system-wide crashes.
-  if (!sender.SendCrashes(paths::Get(paths::kSystemCrashDirectory)))
-    LOG(ERROR) << "Skipped: " << paths::kSystemCrashDirectory;
+  // Get all reports we might want to send, and then choose the more important
+  // report out of all the directories to send first.
+  std::vector<base::FilePath> crash_directories =
+      sender.GetUserCrashDirectories();
+  crash_directories.push_back(paths::Get(paths::kSystemCrashDirectory));
+  crash_directories.push_back(paths::Get(paths::kFallbackUserCrashDirectory));
 
-  // Send user-specific crashes in the fallback diriectory.
-  if (!sender.SendCrashes(paths::Get(paths::kFallbackUserCrashDirectory)))
-    LOG(ERROR) << "Skipped: " << paths::kFallbackUserCrashDirectory;
+  std::vector<util::MetaFile> reports_to_send;
 
-  // Send user-specific crashes.
-  sender.SendUserCrashes();
+  for (const auto& directory : crash_directories) {
+    util::RemoveOrphanedCrashFiles(directory);
+    sender.RemoveAndPickCrashFiles(directory, &reports_to_send);
+  }
+
+  util::SortReports(&reports_to_send);
+  sender.SendCrashes(reports_to_send);
 
   return EXIT_SUCCESS;
 }

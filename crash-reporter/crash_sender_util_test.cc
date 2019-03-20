@@ -29,6 +29,7 @@
 #include "crash-reporter/test_util.h"
 
 using testing::HasSubstr;
+using testing::UnorderedElementsAre;
 
 namespace util {
 namespace {
@@ -217,16 +218,27 @@ class CrashSenderUtilTest : public testing::Test {
     return true;
   }
 
-  // Sets the runtime condtions that affect behaviors of ChooseAction().
+  // Sets the runtime conditions that affect behaviors of ChooseAction().
   // Returns true on success.
   bool SetConditions(BuildType build_type,
                      SessionType session_type,
                      MetricsFlag metrics_flag) {
+    return SetConditions(build_type, session_type, metrics_flag,
+                         metrics_lib_.get());
+  }
+
+  // Version of SetConditions useful for tests that need to create a Sender.
+  // Sender owns the MetricsLibraryInterface pointer, so metrics_lib_ is
+  // usually nullptr in these tests.
+  static bool SetConditions(BuildType build_type,
+                            SessionType session_type,
+                            MetricsFlag metrics_flag,
+                            MetricsLibraryMock* metrics_lib) {
     if (!CreateLsbReleaseFile(build_type))
       return false;
 
-    metrics_lib_->set_guest_mode(session_type == kGuestMode);
-    metrics_lib_->set_metrics_enabled(metrics_flag == kMetricsEnabled);
+    metrics_lib->set_guest_mode(session_type == kGuestMode);
+    metrics_lib->set_metrics_enabled(metrics_flag == kMetricsEnabled);
 
     return true;
   }
@@ -508,7 +520,19 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
 }
 
 TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
-  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
+  auto mock =
+      std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
+  test_util::SetActiveSessions(mock.get(),
+                               {{"user1", "hash1"}, {"user2", "hash2"}});
+  MetricsLibraryMock* raw_metrics_lib = metrics_lib_.get();
+
+  Sender::Options options;
+  options.proxy = mock.release();
+  Sender sender(std::move(metrics_lib_), options);
+  ASSERT_TRUE(sender.Init());
+
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled,
+                            raw_metrics_lib));
 
   const base::FilePath crash_directory =
       paths::Get(paths::kSystemCrashDirectory);
@@ -516,7 +540,8 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
 
   std::vector<MetaFile> to_send;
-  RemoveAndPickCrashFiles(crash_directory, metrics_lib_.get(), &to_send);
+  sender.RemoveAndPickCrashFiles(crash_directory, &to_send);
+
   // Check what files were removed.
   EXPECT_TRUE(base::PathExists(good_meta_));
   EXPECT_TRUE(base::PathExists(good_log_));
@@ -536,32 +561,35 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
 
   // Sanity check that the valid crash info is returned.
   std::string value;
-  EXPECT_EQ(good_log_.value(), to_send[0].second->payload_file.value());
-  EXPECT_EQ("log", to_send[0].second->payload_kind);
-  EXPECT_TRUE(to_send[0].second->metadata.GetString("payload", &value));
+  EXPECT_EQ(good_log_.value(), to_send[0].second.payload_file.value());
+  EXPECT_EQ("log", to_send[0].second.payload_kind);
+  EXPECT_TRUE(to_send[0].second.metadata.GetString("payload", &value));
 
   // All crash files should be removed for an unofficial build.
   ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
-  ASSERT_TRUE(SetConditions(kUnofficialBuild, kSignInMode, kMetricsEnabled));
+  ASSERT_TRUE(SetConditions(kUnofficialBuild, kSignInMode, kMetricsEnabled,
+                            raw_metrics_lib));
   to_send.clear();
-  RemoveAndPickCrashFiles(crash_directory, metrics_lib_.get(), &to_send);
+  sender.RemoveAndPickCrashFiles(crash_directory, &to_send);
   EXPECT_TRUE(base::IsDirectoryEmpty(crash_directory));
   EXPECT_TRUE(to_send.empty());
 
   // All crash files should be removed if metrics are disabled.
   ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
-  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsDisabled));
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsDisabled,
+                            raw_metrics_lib));
   to_send.clear();
-  RemoveAndPickCrashFiles(crash_directory, metrics_lib_.get(), &to_send);
+  sender.RemoveAndPickCrashFiles(crash_directory, &to_send);
   EXPECT_TRUE(base::IsDirectoryEmpty(crash_directory));
   EXPECT_TRUE(to_send.empty());
 
   // Valid crash files should be kept in the guest mode, thus the directory
   // won't be empty.
   ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
-  ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsDisabled));
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsDisabled,
+                            raw_metrics_lib));
   to_send.clear();
-  RemoveAndPickCrashFiles(crash_directory, metrics_lib_.get(), &to_send);
+  sender.RemoveAndPickCrashFiles(crash_directory, &to_send);
   EXPECT_FALSE(base::IsDirectoryEmpty(crash_directory));
   // TODO(satorux): This will become zero, once we move the "skip in guest mode"
   // logic to C++.
@@ -572,10 +600,11 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   // devcore_meta_ should be included in to_send, if uploading of device
   // coredumps is allowed.
   ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
-  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled,
+                            raw_metrics_lib));
   CreateDeviceCoredumpUploadAllowedFile();
   to_send.clear();
-  RemoveAndPickCrashFiles(crash_directory, metrics_lib_.get(), &to_send);
+  sender.RemoveAndPickCrashFiles(crash_directory, &to_send);
   ASSERT_EQ(3, to_send.size());
   EXPECT_EQ(devcore_meta_.value(), to_send[2].first.value());
 }
@@ -799,12 +828,70 @@ TEST_F(CrashSenderUtilTest, GetValueOrUndefined) {
   EXPECT_EQ("undefined", GetValueOrUndefined(metadata, "nonexistent"));
 }
 
-TEST_F(CrashSenderUtilTest, Sender) {
-  // Set up the mock sesssion manager client.
+TEST_F(CrashSenderUtilTest, SortReports) {
+  // Crashes from oldest to youngest will be a, b, c.
+  CrashInfo crash_info_a;
+  EXPECT_TRUE(base::Time::FromString("15 Nov 2018 12:45:26 GMT",
+                                     &crash_info_a.last_modified));
+  crash_info_a.metadata.SetString("order", "1");
+  MetaFile file_a(base::FilePath("a"), std::move(crash_info_a));
+
+  CrashInfo crash_info_b;
+  EXPECT_TRUE(base::Time::FromString("7 Feb 2019 12:45:26 GMT",
+                                     &crash_info_b.last_modified));
+  crash_info_b.metadata.SetString("order", "2");
+  MetaFile file_b(base::FilePath("b"), std::move(crash_info_b));
+
+  CrashInfo crash_info_c;
+  EXPECT_TRUE(base::Time::FromString("7 Feb 2019 12:48:26 GMT",
+                                     &crash_info_c.last_modified));
+  crash_info_c.metadata.SetString("order", "3");
+  MetaFile file_c(base::FilePath("c"), std::move(crash_info_c));
+
+  // Add out of order
+  std::vector<MetaFile> crashes;
+  crashes.emplace_back(std::move(file_c));
+  crashes.emplace_back(std::move(file_b));
+  crashes.emplace_back(std::move(file_a));
+  SortReports(&crashes);
+
+  ASSERT_EQ(crashes.size(), 3);
+
+  EXPECT_EQ(crashes[0].first, base::FilePath("a"));
+  std::string order_string;
+  EXPECT_TRUE(crashes[0].second.metadata.GetString("order", &order_string));
+  EXPECT_EQ(order_string, "1");
+
+  EXPECT_EQ(crashes[1].first, base::FilePath("b"));
+  EXPECT_TRUE(crashes[1].second.metadata.GetString("order", &order_string));
+  EXPECT_EQ(order_string, "2");
+
+  EXPECT_EQ(crashes[2].first, base::FilePath("c"));
+  EXPECT_TRUE(crashes[2].second.metadata.GetString("order", &order_string));
+  EXPECT_EQ(order_string, "3");
+}
+
+TEST_F(CrashSenderUtilTest, GetUserCrashDirectories) {
   auto mock =
       std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
   test_util::SetActiveSessions(mock.get(),
                                {{"user1", "hash1"}, {"user2", "hash2"}});
+  Sender::Options options;
+  options.proxy = mock.release();
+  Sender sender(std::move(metrics_lib_), options);
+  ASSERT_TRUE(sender.Init());
+
+  EXPECT_THAT(sender.GetUserCrashDirectories(),
+              UnorderedElementsAre(paths::Get("/home/user/hash1/crash"),
+                                   paths::Get("/home/user/hash2/crash")));
+}
+
+TEST_F(CrashSenderUtilTest, SendCrashes) {
+  // Set up the mock session manager client.
+  auto mock =
+      std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
+  test_util::SetActiveSessions(mock.get(), {{"user", "hash"}});
+  std::vector<MetaFile> crashes_to_send;
 
   // Set up the output file for fake_crash_sender.sh.
   const base::FilePath output_file = test_dir_.Append("fake_crash_sender.out");
@@ -814,35 +901,58 @@ TEST_F(CrashSenderUtilTest, Sender) {
   // Create the system crash directory, and crash files in it.
   const base::FilePath system_dir = paths::Get(paths::kSystemCrashDirectory);
   ASSERT_TRUE(base::CreateDirectory(system_dir));
-  const base::FilePath system_meta = system_dir.Append("0.0.0.0.meta");
+  const base::FilePath system_meta_file = system_dir.Append("0.0.0.0.meta");
   const base::FilePath system_log = system_dir.Append("0.0.0.0.log");
-  ASSERT_TRUE(test_util::CreateFile(system_meta,
-                                    "payload=0.0.0.0.log\n"
-                                    "exec_name=exec_foo\n"
-                                    "done=1\n"));
+  const char system_meta[] =
+      "payload=0.0.0.0.log\n"
+      "exec_name=exec_foo\n"
+      "done=1\n";
+  ASSERT_TRUE(test_util::CreateFile(system_meta_file, system_meta));
   ASSERT_TRUE(test_util::CreateFile(system_log, ""));
+  CrashInfo system_info;
+  EXPECT_TRUE(system_info.metadata.LoadFromString(system_meta));
+  system_info.payload_file = system_log;
+  system_info.payload_kind = "log";
+  EXPECT_TRUE(base::Time::FromString("25 Apr 2018 1:23:44 GMT",
+                                     &system_info.last_modified));
+  crashes_to_send.emplace_back(system_meta_file, std::move(system_info));
 
   // Create a user crash directory, and crash files in it.
-  // The crash directory for "user1" is not present, thus should be skipped.
-  const base::FilePath user2_dir = paths::Get("/home/user/hash2/crash");
-  ASSERT_TRUE(base::CreateDirectory(user2_dir));
-  const base::FilePath user2_meta = user2_dir.Append("0.0.0.0.meta");
-  const base::FilePath user2_log = user2_dir.Append("0.0.0.0.log");
-  ASSERT_TRUE(test_util::CreateFile(user2_meta,
-                                    "payload=0.0.0.0.log\n"
-                                    "exec_name=exec_bar\n"
-                                    "done=1\n"));
-  ASSERT_TRUE(test_util::CreateFile(user2_log, ""));
+  const base::FilePath user_dir = paths::Get("/home/user/hash/crash");
+  ASSERT_TRUE(base::CreateDirectory(user_dir));
+  const base::FilePath user_meta_file = user_dir.Append("0.0.0.0.meta");
+  const base::FilePath user_log = user_dir.Append("0.0.0.0.log");
+  const char user_meta[] =
+      "payload=0.0.0.0.log\n"
+      "exec_name=exec_bar\n"
+      "done=1\n";
+  ASSERT_TRUE(test_util::CreateFile(user_meta_file, user_meta));
+  ASSERT_TRUE(test_util::CreateFile(user_log, ""));
+  CrashInfo user_info;
+  EXPECT_TRUE(user_info.metadata.LoadFromString(user_meta));
+  user_info.payload_file = user_log;
+  user_info.payload_kind = "log";
+  EXPECT_TRUE(base::Time::FromString("25 Apr 2018 1:24:01 GMT",
+                                     &user_info.last_modified));
+  crashes_to_send.emplace_back(user_meta_file, std::move(user_info));
 
-  // Create another user crash in "user2". This will be skipped since the max
+  // Create another user crash in "user". This will be skipped since the max
   // crash rate will be set to 2.
-  const base::FilePath user2_meta1 = user2_dir.Append("1.1.1.1.meta");
-  const base::FilePath user2_log1 = user2_dir.Append("1.1.1.1.log");
-  ASSERT_TRUE(test_util::CreateFile(user2_meta1,
-                                    "payload=1.1.1.1.log\n"
-                                    "exec_name=baz\n"
-                                    "done=1\n"));
-  ASSERT_TRUE(test_util::CreateFile(user2_log1, ""));
+  const base::FilePath user_meta_file2 = user_dir.Append("1.1.1.1.meta");
+  const base::FilePath user_log2 = user_dir.Append("1.1.1.1.log");
+  const char user_meta2[] =
+      "payload=1.1.1.1.log\n"
+      "exec_name=baz\n"
+      "done=1\n";
+  ASSERT_TRUE(test_util::CreateFile(user_meta_file2, user_meta2));
+  ASSERT_TRUE(test_util::CreateFile(user_log2, ""));
+  CrashInfo user_info2;
+  EXPECT_TRUE(user_info2.metadata.LoadFromString(user_meta2));
+  user_info2.payload_file = user_log2;
+  user_info2.payload_kind = "log";
+  EXPECT_TRUE(base::Time::FromString("25 Apr 2018 1:24:05 GMT",
+                                     &user_info2.last_modified));
+  crashes_to_send.emplace_back(user_meta_file2, std::move(user_info2));
 
   // Set up the conditions to emulate a device in guest mode.
   ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsEnabled));
@@ -860,8 +970,7 @@ TEST_F(CrashSenderUtilTest, Sender) {
   ASSERT_TRUE(sender.Init());
 
   // Send crashes.
-  EXPECT_TRUE(sender.SendCrashes(system_dir));
-  EXPECT_TRUE(sender.SendUserCrashes());
+  sender.SendCrashes(crashes_to_send);
 
   // The output file from fake_crash_sender.sh should not exist, since no crash
   // reports should be uploaded in guest mode.
@@ -870,8 +979,7 @@ TEST_F(CrashSenderUtilTest, Sender) {
 
   // Exit from guest mode, and send crashes again.
   raw_metrics_lib->set_guest_mode(false);
-  EXPECT_TRUE(sender.SendCrashes(system_dir));
-  EXPECT_TRUE(sender.SendUserCrashes());
+  sender.SendCrashes(crashes_to_send);
 
   // Check the output file from fake_crash_sender.sh.
   std::string contents;
@@ -887,47 +995,55 @@ TEST_F(CrashSenderUtilTest, Sender) {
   std::vector<std::string> row = rows[0];
   ASSERT_EQ(5, row.size());
   EXPECT_EQ(sender.temp_dir().value(), row[0]);
-  EXPECT_EQ(system_meta.value(), row[1]);
+  EXPECT_EQ(system_meta_file.value(), row[1]);
   EXPECT_EQ(system_log.value(), row[2]);
   EXPECT_EQ("log", row[3]);
   EXPECT_EQ("exec_foo", row[4]);
 
-  // The second run should be for the meta file in the "user2" directory.
+  // The second run should be for the meta file in the "user" directory.
   row = rows[1];
   ASSERT_EQ(5, row.size());
   EXPECT_EQ(sender.temp_dir().value(), row[0]);
-  EXPECT_EQ(user2_meta.value(), row[1]);
-  EXPECT_EQ(user2_log.value(), row[2]);
+  EXPECT_EQ(user_meta_file.value(), row[1]);
+  EXPECT_EQ(user_log.value(), row[2]);
   EXPECT_EQ("log", row[3]);
   EXPECT_EQ("exec_bar", row[4]);
 
   // The uploaded crash files should be removed now.
-  EXPECT_FALSE(base::PathExists(system_meta));
+  EXPECT_FALSE(base::PathExists(system_meta_file));
   EXPECT_FALSE(base::PathExists(system_log));
-  EXPECT_FALSE(base::PathExists(user2_meta));
-  EXPECT_FALSE(base::PathExists(user2_log));
+  EXPECT_FALSE(base::PathExists(user_meta_file));
+  EXPECT_FALSE(base::PathExists(user_log));
 
   // The followings should be kept since the crash report was not uploaded.
-  EXPECT_TRUE(base::PathExists(user2_meta1));
-  EXPECT_TRUE(base::PathExists(user2_log1));
+  EXPECT_TRUE(base::PathExists(user_meta_file2));
+  EXPECT_TRUE(base::PathExists(user_log2));
 }
 
-TEST_F(CrashSenderUtilTest, Sender_Fail) {
+TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
   // Set up the mock sesssion manager client.
   auto mock =
       std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
-  test_util::SetActiveSessions(mock.get(),
-                               {{"user1", "hash1"}, {"user2", "hash2"}});
+  test_util::SetActiveSessions(mock.get(), {{"user", "hash"}});
+  std::vector<MetaFile> crashes_to_send;
 
   // Create the system crash directory, and crash files in it.
   const base::FilePath system_dir = paths::Get(paths::kSystemCrashDirectory);
   ASSERT_TRUE(base::CreateDirectory(system_dir));
-  const base::FilePath system_meta = system_dir.Append("0.0.0.0.meta");
+  const base::FilePath system_meta_file = system_dir.Append("0.0.0.0.meta");
   const base::FilePath system_log = system_dir.Append("0.0.0.0.log");
-  ASSERT_TRUE(test_util::CreateFile(system_meta,
-                                    "payload=0.0.0.0.log\n"
-                                    "done=1\n"));
+  const char system_meta[] =
+      "payload=0.0.0.0.log\n"
+      "done=1\n";
+  ASSERT_TRUE(test_util::CreateFile(system_meta_file, system_meta));
   ASSERT_TRUE(test_util::CreateFile(system_log, ""));
+  CrashInfo system_info;
+  EXPECT_TRUE(system_info.metadata.LoadFromString(system_meta));
+  system_info.payload_file = system_log;
+  system_info.payload_kind = "log";
+  EXPECT_TRUE(base::Time::FromString("25 Apr 2018 1:23:44 GMT",
+                                     &system_info.last_modified));
+  crashes_to_send.emplace_back(system_meta_file, std::move(system_info));
 
   ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
 
@@ -944,11 +1060,10 @@ TEST_F(CrashSenderUtilTest, Sender_Fail) {
   Sender sender(std::move(metrics_lib_), options);
   ASSERT_TRUE(sender.Init());
 
-  // Send crashes.
-  EXPECT_FALSE(sender.SendCrashes(system_dir));
+  sender.SendCrashes(crashes_to_send);
 
   // The followings should be kept since the crash report was not uploaded.
-  EXPECT_TRUE(base::PathExists(system_meta));
+  EXPECT_TRUE(base::PathExists(system_meta_file));
   EXPECT_TRUE(base::PathExists(system_log));
 }
 

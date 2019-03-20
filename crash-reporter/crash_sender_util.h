@@ -12,6 +12,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/time/time.h>
 #include <brillo/key_value_store.h>
 #include <metrics/metrics_library.h>
 #include <session_manager/dbus-proxies.h>
@@ -45,6 +46,8 @@ struct CrashInfo {
   brillo::KeyValueStore metadata;
   base::FilePath payload_file;
   std::string payload_kind;
+  // Last modification time of the associated .meta file
+  base::Time last_modified;
 };
 
 // Details of a crash report. Contains more information than CrashInfo, as
@@ -57,7 +60,7 @@ struct CrashDetails {
 };
 
 // Represents a metadata file name, and its parsed metadata.
-typedef std::pair<base::FilePath, std::unique_ptr<CrashInfo>> MetaFile;
+typedef std::pair<base::FilePath, CrashInfo> MetaFile;
 
 // Actions returned by ChooseAction().
 enum Action {
@@ -123,13 +126,9 @@ Action ChooseAction(const base::FilePath& meta_file,
                     std::string* reason,
                     CrashInfo* info);
 
-// Removes invalid files in |crash_dir|, that are unknown, corrupted, or invalid
-// in other ways, and picks crash reports that should be sent to the server. The
-// meta files of the latter will be stored in |to_send|. See ChooseAction() for
-// |metrics_lib|.
-void RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
-                             MetricsLibraryInterface* metrics_lib,
-                             std::vector<MetaFile>* to_send);
+// Sort the vector of crash reports so that the report we want to send first
+// is at the front of the vector.
+void SortReports(std::vector<MetaFile>* reports);
 
 // Removes report files associated with the given meta file.
 // More specifically, if "foo.meta" is given, "foo.*" will be removed.
@@ -212,24 +211,23 @@ class Sender {
   // Initializes the sender object. Returns true on success.
   bool Init();
 
-  // Sends crashes in |crash_dir|, in multiple steps:
+  // Removes invalid files in |crash_dir|, that are unknown, corrupted, or
+  // invalid in other ways, and picks crash reports that should be sent to the
+  // server. The meta files of the latter will be stored in |to_send|.
+  void RemoveAndPickCrashFiles(const base::FilePath& directory,
+                               std::vector<MetaFile>* reports_to_send);
+
+  // Sends each crash in |crash_meta_files|, in multiple steps:
   //
-  // Before sending:
-  // - Removes crash files that are orphaned or invalid.
-  // - Removes all crash files if crash reporting is not enabled.
-  //
-  // While sending:
+  // For each meta file:
+  // - Sleeps to avoid overloading the network
   // - Checks if the device enters guest mode, and stops if entered.
-  // - TODO(satorux): The followings are done in the shell script.
   // - Enforces the rate limit per 24 hours.
   // - Removes crash files that are successfully uploaded.
-  //
-  // Returns true if no error occurred, or |crash_dir| does not exist.
-  bool SendCrashes(const base::FilePath& crash_dir);
+  void SendCrashes(const std::vector<MetaFile>& crash_meta_files);
 
-  // Sends the user-specific crashes. This function calls SendCrashes() for each
-  // user specific crash directory. Returns true if no error occurred.
-  bool SendUserCrashes();
+  // Get a list of all directories that might hold user-specific crashes.
+  std::vector<base::FilePath> GetUserCrashDirectories();
 
   // Returns the temporary directory used in the object. Valid after Init() is
   // completed successfully.

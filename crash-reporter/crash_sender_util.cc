@@ -274,15 +274,16 @@ Action ChooseAction(const base::FilePath& meta_file,
     return kRemove;
   }
 
-  if (!IsCompleteMetadata(info->metadata)) {
-    base::File::Info info;
-    if (!base::GetFileInfo(meta_file, &info)) {
-      // Should not happen since it succeeded to read the file.
-      *reason = "Failed to get file info";
-      return kIgnore;
-    }
+  base::File::Info file_info;
+  if (!base::GetFileInfo(meta_file, &file_info)) {
+    // Should not happen since it succeeded to read the file.
+    *reason = "Failed to get file info";
+    return kIgnore;
+  }
 
-    const base::TimeDelta delta = base::Time::Now() - info.last_modified;
+  info->last_modified = file_info.last_modified;
+  if (!IsCompleteMetadata(info->metadata)) {
+    const base::TimeDelta delta = base::Time::Now() - file_info.last_modified;
     if (delta.InHours() >= 24) {
       // TODO(satorux): logging_CrashSender.py expects the following string as
       // error message. Revise the autotest once the rewrite to C++ is complete.
@@ -302,31 +303,15 @@ Action ChooseAction(const base::FilePath& meta_file,
   return kSend;
 }
 
-void RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
-                             MetricsLibraryInterface* metrics_lib,
-                             std::vector<MetaFile>* to_send) {
-  std::vector<base::FilePath> meta_files = GetMetaFiles(crash_dir);
-
-  for (const auto& meta_file : meta_files) {
-    LOG(INFO) << "Checking metadata: " << meta_file.value();
-
-    std::string reason;
-    std::unique_ptr<CrashInfo> info = std::make_unique<CrashInfo>();
-    switch (ChooseAction(meta_file, metrics_lib, &reason, info.get())) {
-      case kRemove:
-        LOG(INFO) << "Removing: " << reason;
-        RemoveReportFiles(meta_file);
-        break;
-      case kIgnore:
-        LOG(INFO) << "Igonoring: " << reason;
-        break;
-      case kSend:
-        to_send->push_back(std::make_pair(meta_file, std::move(info)));
-        break;
-      default:
-        NOTREACHED();
-    }
-  }
+void SortReports(std::vector<MetaFile>* reports) {
+  std::sort(reports->begin(), reports->end(),
+            [](const MetaFile& m1, const MetaFile& m2) {
+              // Send older reports first to avoid starvation if there is a
+              // constant stream of crashes (that is, if thing A is producing
+              // crash reports constantly, and thing B produces one crash
+              // report, make sure thing B's crash report gets sent eventually.)
+              return m1.second.last_modified < m2.second.last_modified;
+            });
 }
 
 void RemoveReportFiles(const base::FilePath& meta_file) {
@@ -347,6 +332,12 @@ void RemoveReportFiles(const base::FilePath& meta_file) {
 }
 
 std::vector<base::FilePath> GetMetaFiles(const base::FilePath& crash_dir) {
+  std::vector<base::FilePath> meta_files;
+  if (!base::DirectoryExists(crash_dir)) {
+    // Directory not existing is not an error.
+    return meta_files;
+  }
+
   base::FileEnumerator iter(crash_dir, false /* recursive */,
                             base::FileEnumerator::FILES, "*.meta");
   std::vector<std::pair<base::Time, base::FilePath>> time_meta_pairs;
@@ -360,7 +351,6 @@ std::vector<base::FilePath> GetMetaFiles(const base::FilePath& crash_dir) {
   }
   std::sort(time_meta_pairs.begin(), time_meta_pairs.end());
 
-  std::vector<base::FilePath> meta_files;
   for (const auto& pair : time_meta_pairs)
     meta_files.push_back(pair.second);
   return meta_files;
@@ -524,21 +514,36 @@ bool Sender::Init() {
   return true;
 }
 
-bool Sender::SendCrashes(const base::FilePath& crash_dir) {
-  if (!base::DirectoryExists(crash_dir)) {
-    // Directory not existing is not an error.
-    return true;
+void Sender::RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
+                                     std::vector<MetaFile>* to_send) {
+  std::vector<base::FilePath> meta_files = GetMetaFiles(crash_dir);
+
+  for (const auto& meta_file : meta_files) {
+    LOG(INFO) << "Checking metadata: " << meta_file.value();
+
+    std::string reason;
+    CrashInfo info;
+    switch (ChooseAction(meta_file, metrics_lib_.get(), &reason, &info)) {
+      case kRemove:
+        LOG(INFO) << "Removing: " << reason;
+        RemoveReportFiles(meta_file);
+        break;
+      case kIgnore:
+        LOG(INFO) << "Ignoring: " << reason;
+        break;
+      case kSend:
+        to_send->push_back(std::make_pair(meta_file, std::move(info)));
+        break;
+      default:
+        NOTREACHED();
+    }
   }
+}
 
-  RemoveOrphanedCrashFiles(crash_dir);
-
-  std::vector<MetaFile> to_send;
-  RemoveAndPickCrashFiles(crash_dir, metrics_lib_.get(), &to_send);
-
-  bool success = true;
-  for (const auto& pair : to_send) {
+void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
+  for (const auto& pair : crash_meta_files) {
     const base::FilePath& meta_file = pair.first;
-    const CrashInfo& info = *pair.second;
+    const CrashInfo& info = pair.second;
     LOG(INFO) << "Evaluating crash report: " << meta_file.value();
 
     // This should be checked inside of the loop, since the device can enter
@@ -546,7 +551,7 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
     // max_spread_time_ between sends.
     if (metrics_lib_->IsGuestMode()) {
       LOG(INFO) << "Guest mode has been entered. Delaying crash sending";
-      return success;
+      return;
     }
 
     const base::FilePath timestamps_dir =
@@ -554,7 +559,7 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
     if (!IsBelowRate(timestamps_dir, max_crash_rate_)) {
       LOG(INFO) << "Cannot send more crashes. Sending " << meta_file.value()
                 << " would exceed the max rate: " << max_crash_rate_;
-      return success;
+      return;
     }
 
     base::TimeDelta sleep_time;
@@ -584,19 +589,16 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
     if (!RequestToSendCrash(details)) {
       LOG(WARNING) << "Failed to send " << meta_file.value()
                    << ", not removing; will retry later";
-      success = false;
       continue;
     }
     LOG(INFO) << "Successfully sent crash " << meta_file.value()
               << " and removing.";
     RemoveReportFiles(meta_file);
   }
-  return success;
 }
 
-bool Sender::SendUserCrashes() {
+std::vector<base::FilePath> Sender::GetUserCrashDirectories() {
   scoped_refptr<dbus::Bus> bus;
-  bool fully_successful = true;
 
   // Set up the session manager proxy if it's not given from the options.
   if (!proxy_) {
@@ -608,19 +610,12 @@ bool Sender::SendUserCrashes() {
   }
 
   std::vector<base::FilePath> directories;
-  if (util::GetUserCrashDirectories(proxy_.get(), &directories)) {
-    for (auto directory : directories) {
-      if (!SendCrashes(directory)) {
-        LOG(ERROR) << "Skipped " << directory.value();
-        fully_successful = false;
-      }
-    }
-  }
+  util::GetUserCrashDirectories(proxy_.get(), &directories);
 
   if (bus)
     bus->ShutdownAndBlock();
 
-  return fully_successful;
+  return directories;
 }
 
 bool Sender::RequestToSendCrash(const CrashDetails& details) {
