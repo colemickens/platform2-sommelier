@@ -16,10 +16,10 @@ overflow-checks = true
 [workspace]
 
 [dependencies]
-dbus = "=0.6.3"
-getopts = "=0.2.18"
-libc = "=0.2.44"
-protobuf = "=2.1.4"
+dbus = "0.6"
+getopts = "0.2"
+libc = "0.2.44"
+protobuf = "2.3"
 
 [build-dependencies]
-protoc-rust = "2.0"
+protoc-rust = "2.3"
