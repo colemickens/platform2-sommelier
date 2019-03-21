@@ -45,7 +45,7 @@ TEST_F(LogToolTest, AnonymizeLogMap) {
   static const char kKey1[] = "log-key1";
   static const char kKey2[] = "log-key2";
   static const char kMAC[] = "aa:bb:cc:dd:ee:ff";
-  static const char kAnonymousMAC[] = "aa:bb:cc:00:00:01";
+  static const char kAnonymousMAC[] = "[MAC OUI=aa:bb:cc IFACE=1]";
   log_map[kKey1] = kMAC;
   log_map[kKey2] = kMAC;
   AnonymizeLogMap(&log_map);

@@ -92,15 +92,12 @@ string AnonymizerTool::AnonymizeMACAddresses(const string& input) {
     string mac = oui + ":" + nic;
     string replacement_mac = mac_addresses_[mac];
     if (replacement_mac.empty()) {
-      // If not found, build up a replacement MAC address by generating a new
-      // NIC part.
+      // If not found, anonymize the MAC address by printing out the OUI as-is
+      // and then an anonymized integer for the NIC part.
       int mac_id = mac_addresses_.size() -
                    arraysize(kNonAnonymizedMacAddresses);
-      replacement_mac = base::StringPrintf("%s:%02x:%02x:%02x",
-                                           oui.c_str(),
-                                           (mac_id & 0x00ff0000) >> 16,
-                                           (mac_id & 0x0000ff00) >> 8,
-                                           (mac_id & 0x000000ff));
+      replacement_mac =
+          base::StringPrintf("[MAC OUI=%s IFACE=%d]", oui.c_str(), mac_id);
       mac_addresses_[mac] = replacement_mac;
     }
 
