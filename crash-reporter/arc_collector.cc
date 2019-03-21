@@ -246,7 +246,7 @@ std::string ArcCollector::GetVersionFromFingerprint(
   // '/R' is the version.
   auto begin = fingerprint.find(':');
   if (begin == std::string::npos)
-    return kUnknownVersion;
+    return kUnknownValue;
 
   // Make begin point to the start of the "version".
   begin++;
@@ -254,7 +254,7 @@ std::string ArcCollector::GetVersionFromFingerprint(
   // Version must have at least one digit.
   const auto end = fingerprint.find("/R", begin + 1);
   if (end == std::string::npos)
-    return kUnknownVersion;
+    return kUnknownValue;
 
   return fingerprint.substr(begin, end - begin);
 }
@@ -301,9 +301,9 @@ bool ArcCollector::ArcContext::ReadAuxvForProcess(pid_t pid,
   return base::ReadFileToStringWithMaxSize(auxv_path, contents, kMaxAuxvSize);
 }
 
-std::string ArcCollector::GetVersion() const {
+std::string ArcCollector::GetOsVersion() const {
   std::string version;
-  return GetChromeVersion(&version) ? version : kUnknownVersion;
+  return GetChromeVersion(&version) ? version : kUnknownValue;
 }
 
 bool ArcCollector::GetExecutableBaseNameFromPid(pid_t pid,
@@ -410,7 +410,7 @@ void ArcCollector::AddArcMetaData(const std::string& process,
   AddCrashMetaUploadData(kProductField, kArcProduct);
   AddCrashMetaUploadData(kProcessField, process);
   AddCrashMetaUploadData(kCrashTypeField, crash_type);
-  AddCrashMetaUploadData(kChromeOsVersionField, CrashCollector::GetVersion());
+  AddCrashMetaUploadData(kChromeOsVersionField, CrashCollector::GetOsVersion());
 
   std::string fingerprint, device, board, cpu_abi;
 

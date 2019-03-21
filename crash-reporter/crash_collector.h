@@ -102,8 +102,8 @@ class CrashCollector {
   FRIEND_TEST(ForkExecAndPipeTest, SegFaultHandling);
   FRIEND_TEST(ForkExecAndPipeTest, StderrCaptured);
 
-  // Default value if version cannot be determined.
-  static const char* const kUnknownVersion;
+  // Default value if OS version/description cannot be determined.
+  static const char* const kUnknownValue;
 
   // Set maximum enqueued crashes in a crash directory.
   static const int kMaxCrashDirectorySize;
@@ -210,8 +210,14 @@ class CrashCollector {
   // The file is not uploaded as an attachment, unlike AddCrashMetaUploadFile.
   void AddCrashMetaUploadText(const std::string& key, const std::string& path);
 
-  // Returns the version written to the metadata file.
-  virtual std::string GetVersion() const;
+  // Gets the corresponding value for |key| from the lsb-release file.
+  std::string GetLsbReleaseValue(const std::string& key) const;
+
+  // Returns the OS version written to the metadata file.
+  virtual std::string GetOsVersion() const;
+
+  // Returns the OS description written to the metadata file.
+  virtual std::string GetOsDescription() const;
 
   // Write a file of metadata about crash.
   void WriteCrashMetaData(const base::FilePath& meta_path,

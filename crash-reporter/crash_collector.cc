@@ -47,7 +47,10 @@ const char kUploadTextPrefix[] = "upload_text_";
 const char kUploadFilePrefix[] = "upload_file_";
 
 // Key of the lsb-release entry containing the OS version.
-const char kLsbVersionKey[] = "CHROMEOS_RELEASE_VERSION";
+const char kLsbOsVersionKey[] = "CHROMEOS_RELEASE_VERSION";
+
+// Key of the lsb-release entry containing the OS description.
+const char kLsbOsDescriptionKey[] = "CHROMEOS_RELEASE_DESCRIPTION";
 
 // Directory mode of the user crash spool directory.
 const mode_t kUserCrashPathMode = 0700;
@@ -75,7 +78,7 @@ constexpr size_t kMaxParentProcessLogs = 8;
 
 }  // namespace
 
-const char* const CrashCollector::kUnknownVersion = "unknown";
+const char* const CrashCollector::kUnknownValue = "unknown";
 
 // Maximum crash reports per crash spool directory.  Note that this is
 // a separate maximum from the maximum rate at which we upload these
@@ -756,19 +759,24 @@ void CrashCollector::AddCrashMetaUploadText(const std::string& key,
   }
 }
 
-std::string CrashCollector::GetVersion() const {
-  // TODO(bmgordon): Remove system_crash_path_ fallback here and in crash_sender
-  // around 2019-01-01.  By then, all machines should have upgraded to at least
-  // one build that writes cached files in crash_reporter_state_path_.
-  std::vector<base::FilePath> directories = {
-      crash_reporter_state_path_, system_crash_path_, lsb_release_.DirName()};
+std::string CrashCollector::GetLsbReleaseValue(const std::string& key) const {
+  std::vector<base::FilePath> directories = {crash_reporter_state_path_,
+                                             lsb_release_.DirName()};
 
-  std::string version;
-  if (util::GetCachedKeyValue(lsb_release_.BaseName(), kLsbVersionKey,
-                              directories, &version)) {
-    return version;
+  std::string value;
+  if (util::GetCachedKeyValue(lsb_release_.BaseName(), key, directories,
+                              &value)) {
+    return value;
   }
-  return kUnknownVersion;
+  return kUnknownValue;
+}
+
+std::string CrashCollector::GetOsVersion() const {
+  return GetLsbReleaseValue(kLsbOsVersionKey);
+}
+
+std::string CrashCollector::GetOsDescription() const {
+  return GetLsbReleaseValue(kLsbOsDescriptionKey);
 }
 
 void CrashCollector::WriteCrashMetaData(const FilePath& meta_path,
@@ -782,20 +790,23 @@ void CrashCollector::WriteCrashMetaData(const FilePath& meta_path,
 
   int64_t payload_size = -1;
   base::GetFileSize(FilePath(payload_path), &payload_size);
-  const std::string version = GetVersion();
+  const std::string version = GetOsVersion();
+  const std::string description = GetOsDescription();
   base::Time now = test_clock_ ? test_clock_->Now() : base::Time::Now();
   int64_t now_millis = (now - base::Time::UnixEpoch()).InMilliseconds();
   std::string meta_data =
       StringPrintf("%supload_var_reportTimeMillis=%" PRId64
                    "\n"
+                   "upload_var_lsb-release=%s\n"
                    "exec_name=%s\n"
                    "ver=%s\n"
                    "payload=%s\n"
                    "payload_size=%" PRId64
                    "\n"
                    "done=1\n",
-                   extra_metadata_.c_str(), now_millis, exec_name.c_str(),
-                   version.c_str(), payload_path.value().c_str(), payload_size);
+                   extra_metadata_.c_str(), now_millis, description.c_str(),
+                   exec_name.c_str(), version.c_str(),
+                   payload_path.value().c_str(), payload_size);
   // We must use WriteNewFile instead of base::WriteFile as we
   // do not want to write with root access to a symlink that an attacker
   // might have created.

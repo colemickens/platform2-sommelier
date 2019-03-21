@@ -164,23 +164,17 @@ TEST_F(CrashCommonUtilTest, GetCachedKeyValueDefault) {
   EXPECT_FALSE(
       GetCachedKeyValueDefault(base::FilePath("test.txt"), "FOO", &value));
 
-  // kEtcDirectory is the third candidate directory.
+  // kEtcDirectory is the second candidate directory.
   ASSERT_TRUE(test_util::CreateFile(
-      paths::GetAt(paths::kEtcDirectory, "test.txt"), "FOO=3\n"));
-  EXPECT_TRUE(
-      GetCachedKeyValueDefault(base::FilePath("test.txt"), "FOO", &value));
-  EXPECT_EQ("3", value);
-
-  // kSystemCrashDirectory is the second candidate directory.
-  ASSERT_TRUE(test_util::CreateFile(
-      paths::GetAt(paths::kSystemCrashDirectory, "test.txt"), "FOO=2\n"));
+      paths::GetAt(paths::kEtcDirectory, "test.txt"), "FOO=2\n"));
   EXPECT_TRUE(
       GetCachedKeyValueDefault(base::FilePath("test.txt"), "FOO", &value));
   EXPECT_EQ("2", value);
 
   // kCrashReporterStateDirectory is the first candidate directory.
   ASSERT_TRUE(test_util::CreateFile(
-      paths::GetAt(paths::kSystemCrashDirectory, "test.txt"), "FOO=1\n"));
+      paths::GetAt(paths::kCrashReporterStateDirectory, "test.txt"),
+      "FOO=1\n"));
   EXPECT_TRUE(
       GetCachedKeyValueDefault(base::FilePath("test.txt"), "FOO", &value));
   EXPECT_EQ("1", value);

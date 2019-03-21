@@ -53,9 +53,6 @@ TMP_DIR=""
 # Chrome's crash report log file.
 CHROME_CRASH_LOG="/var/log/chrome/Crash Reports/uploads.log"
 
-# Directory where system crashes and version info files are saved.
-CRASH_SPOOL="/var/spool/crash"
-
 lecho() {
   logger -t "${TAG}" "$@"
 }
@@ -186,11 +183,8 @@ get_file_path() {
 get_cached_key_value() {
   local file="$1" key="$2"
 
-  # TODO(bmgordon): Remove $CRASH_SPOOL around 2019-01-01.  By then, all
-  # machines should have upgraded to at least one build that writes cached files
-  # into $CRASH_LIB_STATE_DIR.
   local d
-  for d in "${CRASH_LIB_STATE_DIR}" "${CRASH_SPOOL}" "/etc"; do
+  for d in "${CRASH_LIB_STATE_DIR}" "/etc"; do
     local value=$(get_key_value "${d}/${file}" "${key}")
     if [ "${value}" != "undefined" ]; then
       echo "${value}"

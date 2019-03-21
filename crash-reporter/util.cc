@@ -95,10 +95,6 @@ bool GetCachedKeyValueDefault(const base::FilePath& base_name,
                               std::string* value) {
   const std::vector<base::FilePath> kDirectories = {
       paths::Get(paths::kCrashReporterStateDirectory),
-      // TODO(bmgordon): Remove this fallback here and in
-      // crash_sender around 2019-01-01. See also
-      // CrashCollector::GetVersion().
-      paths::Get(paths::kSystemCrashDirectory),
       paths::Get(paths::kEtcDirectory),
   };
   return GetCachedKeyValue(base_name, key, kDirectories, value);

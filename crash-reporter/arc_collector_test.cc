@@ -430,24 +430,24 @@ TEST_F(ArcContextTest, GetAndroidVersion) {
       {"9", ":9/R"},
 
       // failed ones
-      {CrashCollector::kUnknownVersion,
+      {CrashCollector::kUnknownValue,
        "google/celes/celes_cheets:1.1/"
        "65-10278.0.0/4524556:user/release-keys"},
-      {CrashCollector::kUnknownVersion,
+      {CrashCollector::kUnknownValue,
        "google/celes/celes_cheets:1.1/"
        "65-10278.0.0/4524556:user/7.1.1"},
-      {CrashCollector::kUnknownVersion,
+      {CrashCollector::kUnknownValue,
        "google/celes/celes_cheets:/"
        "R65-10278.0.0/4524556:user/7.1.1"},
-      {CrashCollector::kUnknownVersion,
+      {CrashCollector::kUnknownValue,
        "google/celes/celes_cheets:/"
        "65-10278.0.0/4524556:user/7.1.1"},
-      {CrashCollector::kUnknownVersion, ":/"},
-      {CrashCollector::kUnknownVersion, ":/R"},
-      {CrashCollector::kUnknownVersion, "/R:"},
-      {CrashCollector::kUnknownVersion, ""},
-      {CrashCollector::kUnknownVersion, ":"},
-      {CrashCollector::kUnknownVersion, "/R"},
+      {CrashCollector::kUnknownValue, ":/"},
+      {CrashCollector::kUnknownValue, ":/R"},
+      {CrashCollector::kUnknownValue, "/R:"},
+      {CrashCollector::kUnknownValue, ""},
+      {CrashCollector::kUnknownValue, ":"},
+      {CrashCollector::kUnknownValue, "/R"},
   };
 
   for (const auto& item : tests) {

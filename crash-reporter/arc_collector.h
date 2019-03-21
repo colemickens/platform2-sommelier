@@ -81,7 +81,7 @@ class ArcCollector : public UserCollectorBase {
   };
 
   // CrashCollector overrides.
-  std::string GetVersion() const override;
+  std::string GetOsVersion() const override;
   bool GetExecutableBaseNameFromPid(pid_t pid, std::string* base_name) override;
 
   // UserCollectorBase overrides.

@@ -399,7 +399,8 @@ TEST_F(CrashCollectorTest, MetaData) {
   const char kLsbContents[] =
       "CHROMEOS_RELEASE_BOARD=lumpy\n"
       "CHROMEOS_RELEASE_VERSION=6727.0.2015_01_26_0853\n"
-      "CHROMEOS_RELEASE_NAME=Chromium OS\n";
+      "CHROMEOS_RELEASE_NAME=Chromium OS\n"
+      "CHROMEOS_RELEASE_DESCRIPTION=6727.0.2015_01_26_0853 (Test Build - foo)";
   ASSERT_TRUE(test_util::CreateFile(lsb_release, kLsbContents));
   const char kPayload[] = "foo";
   ASSERT_TRUE(test_util::CreateFile(payload_file, kPayload));
@@ -416,6 +417,7 @@ TEST_F(CrashCollectorTest, MetaData) {
       "foo=bar\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
+      "upload_var_lsb-release=6727.0.2015_01_26_0853 (Test Build - foo)\n"
       "exec_name=kernel\n"
       "ver=6727.0.2015_01_26_0853\n"
       "payload=%s\n"
