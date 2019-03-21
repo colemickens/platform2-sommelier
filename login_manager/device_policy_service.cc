@@ -343,16 +343,14 @@ std::vector<std::string> DevicePolicyService::GetStartUpFlags() {
     }
   }
 
-  // Respect DeviceLoginScreenIsolateOrigins for the sign-in screen.
+  // IsolateOrigins policy is applied at runtime by chrome. It is no longer
+  // needed to be passed as a command line switch. Just check
+  // DeviceLoginScreenIsolateOrigins for disabled case.
   if (policy.has_device_login_screen_isolate_origins()) {
     const em::DeviceLoginScreenIsolateOriginsProto& proto =
         policy.device_login_screen_isolate_origins();
-    if (proto.has_isolate_origins()) {
-      if (!proto.isolate_origins().empty())
-        policy_args.push_back("--isolate-origins=" + proto.isolate_origins());
-      else
-        disable_site_isolation = true;
-    }
+    if (proto.has_isolate_origins() && proto.isolate_origins().empty())
+      disable_site_isolation = true;
   }
 
   if (disable_site_isolation)

@@ -1082,19 +1082,16 @@ TEST_F(DevicePolicyServiceTest, StartUpFlagsIsolateOrigins) {
   // No start-up flags
   EXPECT_EQ(0, service_->GetStartUpFlags().size());
 
-  // Only --isolate-origins
+  // IsolateOrigins policy is applied at runtime inside chrome and no need to
+  // be injected via a switch.
   settings.mutable_device_login_screen_isolate_origins()->set_isolate_origins(
       "https://example.com,https://example2.com");
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
   SetExpectationsAndStorePolicy(MakeChromePolicyNamespace(), store_,
                                 policy_proto_);
-  EXPECT_THAT(
-      service_->GetStartUpFlags(),
-      ElementsAre("--policy-switches-begin",
-                  "--isolate-origins=https://example.com,https://example2.com",
-                  "--policy-switches-end"));
+  EXPECT_THAT(service_->GetStartUpFlags(), testing::IsEmpty());
 
-  // --isolate-origins and policy-set arbitrary flags
+  // With policy-set arbitrary flags
   settings.mutable_start_up_flags()->add_flags("--a");
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
   SetExpectationsAndStorePolicy(MakeChromePolicyNamespace(), store_,
@@ -1102,7 +1099,6 @@ TEST_F(DevicePolicyServiceTest, StartUpFlagsIsolateOrigins) {
   EXPECT_THAT(
       service_->GetStartUpFlags(),
       ElementsAre("--policy-switches-begin", "--a",
-                  "--isolate-origins=https://example.com,https://example2.com",
                   "--policy-switches-end"));
 }
 
@@ -1122,7 +1118,7 @@ TEST_F(DevicePolicyServiceTest, StartUpFlagsIsolateOriginsDisabled) {
                           "--disable-site-isolation-for-policy",
                           "--policy-switches-end"));
 
-  // --isolate-origins and policy-set arbitrary flags
+  // IsolateOrigins policy disabled with policy-set arbitrary flags
   settings.mutable_start_up_flags()->add_flags("--a");
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
   SetExpectationsAndStorePolicy(MakeChromePolicyNamespace(), store_,
