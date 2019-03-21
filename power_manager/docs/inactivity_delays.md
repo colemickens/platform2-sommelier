@@ -43,6 +43,16 @@ be locked ten seconds after the screen is turned off due to inactivity (in
 addition to being locked immediately before the system suspends when the lid is
 closed).
 
+As of M71, an ML model has been enabled to run in Chrome to predict whether a
+screen dim should be deferred. When powerd is about to dim the screen in
+response to user inactivity, the model will predict whether the user is likely
+to reactivate the device after dimming. If reactivation seems likely, Chrome
+will tell powerd to defer dimming. To reduce the risk of incorrect predictions
+keeping the system awake indefinitely, dimming will only be deferred once until
+the user begins interacting with the system again. When the model is enabled,
+powerd's delay-doubling behavior for "presentation mode" or user activity is
+disabled.
+
 The above delays and actions can be configured by Chrome and are sent to the
 power manager as `PowerManagementPolicy` protocol buffers via D-Bus. Chrome's
 settings are controlled by [enterprise policies] and by the [chrome.power
