@@ -274,8 +274,7 @@ const std::vector<Log> kCommandLogs {
       "/opt/google/touch/scripts/atmel_tools.sh tp d", kRoot, kRoot),
   Log(kFile, "stateful_trim_state", "/var/lib/trim/stateful_trim_state"),
   Log(kFile, "stateful_trim_data", "/var/lib/trim/stateful_trim_data"),
-  Log(kCommand, "ui_log",
-      "/usr/share/userfeedback/scripts/get_log /var/log/ui/ui.LATEST"),
+  Log(kFile, "ui_log", "/var/log/ui/ui.LATEST"),
   Log(kCommand, "uname", "/bin/uname -a"),
   Log(kCommand, "update_engine.log",
       "cat $(ls -1tr /var/log/update_engine | tail -5 | sed"
