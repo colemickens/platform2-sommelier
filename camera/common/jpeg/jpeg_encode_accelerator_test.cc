@@ -38,10 +38,8 @@ const char* kDownloadTestImageURI2 =
     "lake_4160x3120.yuv";
 
 // Default test image file.
-const base::FilePath::CharType* kDefaultJpegFilename1 =
-    FILE_PATH_LITERAL("bali_640x360_P420.yuv:640x360");
-const base::FilePath::CharType* kDefaultJpegFilename2 =
-    FILE_PATH_LITERAL("lake_4160x3120.yuv:4160x3120");
+const char kDefaultJpegFilename1[] = "bali_640x360_P420.yuv:640x360";
+const char kDefaultJpegFilename2[] = "lake_4160x3120.yuv:4160x3120";
 // Threshold for mean absolute difference of hardware and software encode.
 // Absolute difference is to calculate the difference between each pixel in two
 // images. This is used for measuring of the similarity of two images.
@@ -81,11 +79,11 @@ class JpegEncodeAcceleratorTest : public ::testing::Test {
   void SetUp() {}
   void TearDown() {}
 
-  void ParseInputFileString(const base::FilePath::CharType* yuv_filename,
+  void ParseInputFileString(const char* yuv_filename,
                             int* width,
                             int* height,
                             base::FilePath* yuv_file);
-  void LoadFrame(const base::FilePath::CharType* yuv_filename, Frame* frame);
+  void LoadFrame(const char* yuv_filename, Frame* frame);
   void PrepareMemory(Frame* frame);
   bool GetSoftwareEncodeResult(Frame* frame);
   bool CompareHwAndSwResults(Frame* frame);
@@ -109,34 +107,32 @@ class JpegEncodeAcceleratorTest : public ::testing::Test {
 
 class JpegEncodeTestEnvironment : public ::testing::Environment {
  public:
-  explicit JpegEncodeTestEnvironment(
-      const base::FilePath::CharType* yuv_filename1,
-      const base::FilePath::CharType* yuv_filename2,
-      bool save_to_file) {
+  explicit JpegEncodeTestEnvironment(const char* yuv_filename1,
+                                     const char* yuv_filename2,
+                                     bool save_to_file) {
     yuv_filename1_ = yuv_filename1 ? yuv_filename1 : kDefaultJpegFilename1;
     yuv_filename2_ = yuv_filename2 ? yuv_filename2 : kDefaultJpegFilename2;
     save_to_file_ = save_to_file;
   }
 
-  const base::FilePath::CharType* yuv_filename1_;
-  const base::FilePath::CharType* yuv_filename2_;
+  const char* yuv_filename1_;
+  const char* yuv_filename2_;
   bool save_to_file_;
 };
 
-void JpegEncodeAcceleratorTest::ParseInputFileString(
-    const base::FilePath::CharType* yuv_filename,
-    int* width,
-    int* height,
-    base::FilePath* yuv_file) {
-  std::vector<base::FilePath::StringType> filename_and_size =
-      base::SplitString(yuv_filename, base::FilePath::StringType(1, ':'),
+void JpegEncodeAcceleratorTest::ParseInputFileString(const char* yuv_filename,
+                                                     int* width,
+                                                     int* height,
+                                                     base::FilePath* yuv_file) {
+  std::vector<std::string> filename_and_size =
+      base::SplitString(yuv_filename, std::string(1, ':'),
                         base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   ASSERT_EQ(2, filename_and_size.size());
-  base::FilePath::StringType filename(filename_and_size[0]);
+  std::string filename(filename_and_size[0]);
 
-  std::vector<base::FilePath::StringType> image_resolution = base::SplitString(
-      filename_and_size[1], base::FilePath::StringType(1, 'x'),
-      base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  std::vector<std::string> image_resolution =
+      base::SplitString(filename_and_size[1], std::string(1, 'x'),
+                        base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   ASSERT_EQ(2u, image_resolution.size());
   ASSERT_TRUE(base::StringToInt(image_resolution[0], width));
   ASSERT_TRUE(base::StringToInt(image_resolution[1], height));
@@ -144,8 +140,8 @@ void JpegEncodeAcceleratorTest::ParseInputFileString(
   *yuv_file = base::FilePath(filename);
 }
 
-void JpegEncodeAcceleratorTest::LoadFrame(
-    const base::FilePath::CharType* yuv_filename, Frame* frame) {
+void JpegEncodeAcceleratorTest::LoadFrame(const char* yuv_filename,
+                                          Frame* frame) {
   ParseInputFileString(yuv_filename, &frame->width, &frame->height,
                        &frame->yuv_file);
   base::FilePath yuv_filepath = frame->yuv_file;
@@ -350,8 +346,8 @@ int main(int argc, char** argv) {
   const base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
   DCHECK(cmd_line);
 
-  const base::FilePath::CharType* yuv_filename1 = nullptr;
-  const base::FilePath::CharType* yuv_filename2 = nullptr;
+  const char* yuv_filename1 = nullptr;
+  const char* yuv_filename2 = nullptr;
   bool save_to_file = false;
   base::CommandLine::SwitchMap switches = cmd_line->GetSwitches();
   for (base::CommandLine::SwitchMap::const_iterator it = switches.begin();

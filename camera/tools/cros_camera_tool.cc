@@ -72,7 +72,7 @@ class CameraTool {
   base::FilePath FindSubdevSysfsByDevId(int major, int minor) {
     base::FileEnumerator dev_enum(base::FilePath(kSysfsV4lClassRoot), false,
                                   base::FileEnumerator::DIRECTORIES,
-                                  FILE_PATH_LITERAL("v4l-subdev*"));
+                                  "v4l-subdev*");
     for (base::FilePath name = dev_enum.Next(); !name.empty();
          name = dev_enum.Next()) {
       base::FilePath dev_path = name.Append("dev");
@@ -119,8 +119,7 @@ class CameraTool {
 
   void AddV4l2Cameras(void) {
     base::FileEnumerator dev_enum(base::FilePath("/dev"), false,
-                                  base::FileEnumerator::FILES,
-                                  FILE_PATH_LITERAL("media*"));
+                                  base::FileEnumerator::FILES, "media*");
     for (base::FilePath name = dev_enum.Next(); !name.empty();
          name = dev_enum.Next()) {
       int fd = open(name.value().c_str(), O_RDWR);

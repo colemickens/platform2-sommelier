@@ -32,10 +32,8 @@ const char* kDownloadTestImageURI2 =
     "field-1280x720.jpg";
 
 // Default test image file.
-const base::FilePath::CharType* kDefaultJpegFilename1 =
-    FILE_PATH_LITERAL("peach_pi-1280x720.jpg");
-const base::FilePath::CharType* kDefaultJpegFilename2 =
-    FILE_PATH_LITERAL("field-1280x720.jpg");
+const char kDefaultJpegFilename1[] = "peach_pi-1280x720.jpg";
+const char kDefaultJpegFilename2[] = "field-1280x720.jpg";
 // Threshold for mean absolute difference of hardware and software decode.
 // Absolute difference is to calculate the difference between each pixel in two
 // images. This is used for measuring of the similarity of two images.
@@ -74,7 +72,7 @@ class JpegDecodeAcceleratorTest : public ::testing::Test {
 
   void TearDown() {}
 
-  void LoadFrame(const base::FilePath::CharType* jpeg_filename, Frame* frame);
+  void LoadFrame(const char* jpeg_filename, Frame* frame);
   void PrepareMemory(Frame* frame);
   bool GetSoftwareDecodeResult(Frame* frame);
   double GetMeanAbsoluteDifference(Frame* frame);
@@ -99,19 +97,18 @@ class JpegDecodeAcceleratorTest : public ::testing::Test {
 
 class JpegDecodeTestEnvironment : public ::testing::Environment {
  public:
-  explicit JpegDecodeTestEnvironment(
-      const base::FilePath::CharType* jpeg_filename1,
-      const base::FilePath::CharType* jpeg_filename2) {
+  explicit JpegDecodeTestEnvironment(const char* jpeg_filename1,
+                                     const char* jpeg_filename2) {
     jpeg_filename1_ = jpeg_filename1 ? jpeg_filename1 : kDefaultJpegFilename1;
     jpeg_filename2_ = jpeg_filename2 ? jpeg_filename2 : kDefaultJpegFilename2;
   }
 
-  const base::FilePath::CharType* jpeg_filename1_;
-  const base::FilePath::CharType* jpeg_filename2_;
+  const char* jpeg_filename1_;
+  const char* jpeg_filename2_;
 };
 
-void JpegDecodeAcceleratorTest::LoadFrame(
-    const base::FilePath::CharType* jpeg_filename, Frame* frame) {
+void JpegDecodeAcceleratorTest::LoadFrame(const char* jpeg_filename,
+                                          Frame* frame) {
   base::FilePath jpeg_filepath = base::FilePath(jpeg_filename);
 
   if (!PathExists(jpeg_filepath)) {
@@ -418,8 +415,8 @@ int main(int argc, char** argv) {
   const base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
   DCHECK(cmd_line);
 
-  const base::FilePath::CharType* jpeg_filename1 = nullptr;
-  const base::FilePath::CharType* jpeg_filename2 = nullptr;
+  const char* jpeg_filename1 = nullptr;
+  const char* jpeg_filename2 = nullptr;
   base::CommandLine::SwitchMap switches = cmd_line->GetSwitches();
   for (base::CommandLine::SwitchMap::const_iterator it = switches.begin();
        it != switches.end(); ++it) {
