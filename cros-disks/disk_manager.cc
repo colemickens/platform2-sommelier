@@ -16,6 +16,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
@@ -291,7 +292,10 @@ bool DiskManager::GetDeviceEvents(DeviceEventList* events) {
 
   LOG(INFO) << "Got Device";
   LOG(INFO) << "   Syspath: " << udev_device_get_syspath(dev);
-  LOG(INFO) << "   Node: " << udev_device_get_devnode(dev);
+  // Some device events (i.e. USB drive removal) result in devnode being NULL,
+  // which ostream::operator<<(char*) can't handle. Wrapping the output in a
+  // base::StringPiece() lets the LOG handle NULL without crashing.
+  LOG(INFO) << "   Node: " << base::StringPiece(udev_device_get_devnode(dev));
   LOG(INFO) << "   Subsystem: " << udev_device_get_subsystem(dev);
   LOG(INFO) << "   Devtype: " << udev_device_get_devtype(dev);
   LOG(INFO) << "   Action: " << udev_device_get_action(dev);
