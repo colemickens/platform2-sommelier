@@ -245,6 +245,19 @@ void PortalDetector::HttpRequestSuccessCallback(
     http_result_ = std::make_unique<Result>(Phase::kContent, Status::kSuccess);
   } else if (status_code == brillo::http::status_code::Redirect) {
     http_result_ = std::make_unique<Result>(Phase::kContent, Status::kRedirect);
+    string redirect_url_string =
+        response->GetHeader(brillo::http::response_header::kLocation);
+    if (redirect_url_string.empty()) {
+      LOG(ERROR) << "No Location field in redirect header.";
+    } else {
+      HttpUrl redirect_url;
+      if (!redirect_url.ParseFromString(redirect_url_string)) {
+        LOG(ERROR) << "Unable to parse redirect URL: " << redirect_url_string;
+        http_result_->status = Status::kFailure;
+      } else {
+        http_result_->redirect_url_string = redirect_url_string;
+      }
+    }
   } else {
     http_result_ = std::make_unique<Result>(Phase::kContent, Status::kFailure);
   }
@@ -357,6 +370,7 @@ const string PortalDetector::StatusToString(Status status) {
       return kPortalDetectionStatusSuccess;
     case Status::kTimeout:
       return kPortalDetectionStatusTimeout;
+    case Status::kRedirect:
     case Status::kFailure:
     default:
       return kPortalDetectionStatusFailure;

@@ -731,6 +731,8 @@ Metrics::PortalResult Metrics::PortalDetectionResultToEnum(
         retval = kPortalResultSuccess;
       else if (portal_result.status == PortalDetector::Status::kFailure)
         retval = kPortalResultContentFailure;
+      else if (portal_result.status == PortalDetector::Status::kRedirect)
+        retval = kPortalResultContentRedirect;
       else if (portal_result.status == PortalDetector::Status::kTimeout)
         retval = kPortalResultContentTimeout;
       else

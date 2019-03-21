@@ -165,6 +165,7 @@ class Metrics {
     kPortalResultContentFailure = 7,
     kPortalResultContentTimeout = 8,
     kPortalResultUnknown = 9,
+    kPortalResultContentRedirect = 10,
 
     kPortalResultMax
   };

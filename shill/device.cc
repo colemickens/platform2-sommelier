@@ -1741,7 +1741,13 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
           PortalDetector::PhaseToString(result.phase),
           PortalDetector::StatusToString(result.status));
     }
-    SetServiceConnectedState(Service::kStateNoConnectivity);
+
+    if (result.status == PortalDetector::Status::kRedirect) {
+      CHECK(!result.redirect_url_string.empty());
+      SetServiceConnectedState(Service::kStateRedirectFound);
+    } else {
+      SetServiceConnectedState(Service::kStateNoConnectivity);
+    }
 
     StartConnectionDiagnosticsAfterPortalDetection(result);
 

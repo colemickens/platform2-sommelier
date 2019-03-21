@@ -96,6 +96,9 @@ class PortalDetector {
     // Total number of connectivity trials attempted.
     // This includes failure, timeout and successful attempts.
     int num_attempts;
+
+    // Non-empty redirect URL if status is kRedirect.
+    std::string redirect_url_string;
   };
 
   static const char kDefaultHttpUrl[];

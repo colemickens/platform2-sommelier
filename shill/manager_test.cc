@@ -3852,9 +3852,9 @@ TEST_F(ManagerTest, EnumerateServices) {
   }
 
   static const Service::ConnectState kWatchedStates[] = {
-      Service::kStateAssociating, Service::kStateConfiguring,
-      Service::kStateConnected, Service::kStateNoConnectivity,
-      Service::kStateOnline};
+      Service::kStateAssociating,   Service::kStateConfiguring,
+      Service::kStateConnected,     Service::kStateNoConnectivity,
+      Service::kStateRedirectFound, Service::kStateOnline};
   for (auto watched_state : kWatchedStates) {
     EXPECT_CALL(*mock_service, state()).WillRepeatedly(Return(watched_state));
     EXPECT_FALSE(EnumerateAvailableServices().empty());

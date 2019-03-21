@@ -54,7 +54,8 @@ const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};
 }  // namespace
 
 MATCHER_P(IsResult, result, "") {
-  return (result.phase == arg.phase && result.status == arg.status);
+  return (result.phase == arg.phase && result.status == arg.status &&
+          result.redirect_url_string == arg.redirect_url_string);
 }
 
 
@@ -159,6 +160,9 @@ class PortalDetectorTest : public Test {
   MockEventDispatcher& dispatcher() { return dispatcher_; }
   CallbackTarget& callback_target() { return callback_target_; }
   MockMetrics& metrics() { return metrics_; }
+  brillo::http::MockConnection* brillo_connection() {
+    return brillo_connection_.get();
+  }
 
   void ExpectReset() {
     EXPECT_FALSE(portal_detector_->attempt_count_);
@@ -409,6 +413,27 @@ TEST_F(PortalDetectorTest, RequestFail) {
   EXPECT_CALL(*https_request(), Stop()).Times(1);
   EXPECT_CALL(metrics(), NotifyPortalDetectionMultiProbeResult(_, _));
   ExpectRequestSuccessWithStatus(123, true);
+}
+
+TEST_F(PortalDetectorTest, RequestRedirect) {
+  StartAttempt();
+
+  PortalDetector::Result redirect_result = PortalDetector::Result(
+      PortalDetector::Phase::kContent, PortalDetector::Status::kRedirect);
+  redirect_result.redirect_url_string = kHttpUrl;
+  EXPECT_CALL(callback_target(), ResultCallback(IsResult(redirect_result)))
+      .Times(0);
+  EXPECT_CALL(*http_request(), Stop()).Times(0);
+  EXPECT_CALL(*https_request(), Stop()).Times(0);
+  ExpectRequestSuccessWithStatus(123, false);
+
+  EXPECT_CALL(callback_target(), ResultCallback(IsResult(redirect_result)));
+  EXPECT_CALL(*http_request(), Stop()).Times(1);
+  EXPECT_CALL(*https_request(), Stop()).Times(1);
+  EXPECT_CALL(*brillo_connection(), GetResponseHeader("Location"))
+      .WillOnce(Return(kHttpUrl));
+  EXPECT_CALL(metrics(), NotifyPortalDetectionMultiProbeResult(_, _));
+  ExpectRequestSuccessWithStatus(302, true);
 }
 
 struct ResultMapping {
