@@ -33,7 +33,8 @@ const struct {
 } kDiagnosticRoutineSwitches[] = {
     {"battery", diagnostics::grpc_api::ROUTINE_BATTERY},
     {"battery_sysfs", diagnostics::grpc_api::ROUTINE_BATTERY_SYSFS},
-    {"urandom", diagnostics::grpc_api::ROUTINE_URANDOM}};
+    {"urandom", diagnostics::grpc_api::ROUTINE_URANDOM},
+    {"smartctl-check", diagnostics::grpc_api::ROUTINE_SMARTCTL_CHECK}};
 
 const struct {
   const char* readable_status;
@@ -131,7 +132,7 @@ bool RunRoutineWithRequest(
 
     if (!response ||
         response->status() != diagnostics::grpc_api::ROUTINE_STATUS_REMOVED) {
-      std::cout << "Failed to removed routine." << std::endl;
+      std::cout << "Failed to remove routine." << std::endl;
       return false;
     }
   }
@@ -175,6 +176,12 @@ bool ActionRunUrandomRoutine(int length_seconds) {
   diagnostics::grpc_api::RunRoutineRequest request;
   request.set_routine(diagnostics::grpc_api::ROUTINE_URANDOM);
   request.mutable_urandom_params()->set_length_seconds(length_seconds);
+  return RunRoutineWithRequest(request);
+}
+
+bool ActionRunSmartctlCheckRoutine() {
+  diagnostics::grpc_api::RunRoutineRequest request;
+  request.set_routine(diagnostics::grpc_api::ROUTINE_SMARTCTL_CHECK);
   return RunRoutineWithRequest(request);
 }
 
@@ -238,6 +245,9 @@ int main(int argc, char** argv) {
         break;
       case diagnostics::grpc_api::ROUTINE_URANDOM:
         routine_result = ActionRunUrandomRoutine(FLAGS_length_seconds);
+        break;
+      case diagnostics::grpc_api::ROUTINE_SMARTCTL_CHECK:
+        routine_result = ActionRunSmartctlCheckRoutine();
         break;
       default:
         std::cout << "Unsupported routine: " << FLAGS_routine << std::endl;

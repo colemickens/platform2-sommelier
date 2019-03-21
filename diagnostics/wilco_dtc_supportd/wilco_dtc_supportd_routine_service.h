@@ -64,7 +64,7 @@ class WilcoDtcSupportdRoutineService final {
   int next_uuid_ = 1;
   std::vector<grpc_api::DiagnosticRoutine> available_routines_{
       grpc_api::ROUTINE_BATTERY, grpc_api::ROUTINE_BATTERY_SYSFS,
-      grpc_api::ROUTINE_URANDOM};
+      grpc_api::ROUTINE_SMARTCTL_CHECK, grpc_api::ROUTINE_URANDOM};
 
   DISALLOW_COPY_AND_ASSIGN(WilcoDtcSupportdRoutineService);
 };

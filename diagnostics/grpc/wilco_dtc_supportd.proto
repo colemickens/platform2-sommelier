@@ -321,6 +321,7 @@ enum DiagnosticRoutine {
   ROUTINE_BATTERY_SYSFS = 2;
   ROUTINE_BAD_BLOCKS = 3;
   ROUTINE_URANDOM = 4;
+  ROUTINE_SMARTCTL_CHECK = 5;
 }
 
 // Enumeration of each of the possible statuses for a diagnostics routine.
@@ -361,8 +362,9 @@ message RunRoutineRequest {
 
   oneof parameters {
     BatteryRoutineParameters battery_params = 2;
-    UrandomRoutineParameters urandom_params = 3;
-    BatterySysfsRoutineParameters battery_sysfs_params = 4;
+    BatterySysfsRoutineParameters battery_sysfs_params = 3;
+    UrandomRoutineParameters urandom_params = 4;
+    SmartctlCheckRoutineParameters smartctl_check_params = 5;
   }
 }
 
@@ -391,6 +393,9 @@ message UrandomRoutineParameters {
   // will pass. This parameter needs to be set and strictly greater than zero.
   int32 length_seconds = 1;
 }
+
+// Parameters for the smartctl_check diagnostics routine.
+message SmartctlCheckRoutineParameters {}
 
 // Return value of the RunRoutine RPC.
 message RunRoutineResponse {

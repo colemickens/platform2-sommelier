@@ -491,6 +491,15 @@ void WilcoDtcSupportdGrpcService::RunRoutine(
         return;
       }
       break;
+    case grpc_api::ROUTINE_SMARTCTL_CHECK:
+      if (!request->has_smartctl_check_params()) {
+        LOG(ERROR) << "RunRoutineRequest with routine type SMARTCTL_CHECK "
+                      "has no smartctl_check parameters.";
+        ForwardRunRoutineResponse(callback, 0 /* uuid */,
+                                  grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+        return;
+      }
+      break;
     default:
       LOG(ERROR) << "RunRoutineRequest routine type invalid or unset.";
       ForwardRunRoutineResponse(callback, 0 /* uuid */,

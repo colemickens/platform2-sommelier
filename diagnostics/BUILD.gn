@@ -11,6 +11,7 @@ group("all") {
     ":cros_healthd",
     ":diag",
     ":diagnostics_dpsl_demo_single_thread",
+    ":smartctl-check",
     ":telem",
     ":urandom",
     ":wilco_dtc_supportd",
@@ -94,6 +95,8 @@ static_library("libdiag_routine") {
     "routines/battery/battery.cc",
     "routines/battery_sysfs/battery_sysfs.cc",
     "routines/diag_process_adapter_impl.cc",
+    "routines/smartctl_check/smartctl_check.cc",
+    "routines/subproc_routine.cc",
     "routines/urandom/urandom.cc",
   ]
 }
@@ -252,6 +255,23 @@ executable("urandom") {
   configs += [ ":urandom_pkg_deps" ]
   sources = [
     "routines/urandom/main.cc",
+  ]
+}
+
+# The smartctl-check tool executable.
+pkg_config("smartctl-check_pkg_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libdebugd-client",
+  ]
+}
+
+executable("smartctl-check") {
+  configs += [ ":smartctl-check_pkg_deps" ]
+  sources = [
+    "routines/smartctl_check/main.cc",
+    "routines/smartctl_check/smartctl_check_utils.cc",
   ]
 }
 
@@ -466,6 +486,10 @@ if (use.test) {
     sources = [
       "routines/battery/battery_test.cc",
       "routines/battery_sysfs/battery_sysfs_test.cc",
+      "routines/smartctl_check/smartctl_check_test.cc",
+      "routines/smartctl_check/smartctl_check_utils.cc",
+      "routines/smartctl_check/smartctl_check_utils_test.cc",
+      "routines/subproc_routine_test.cc",
       "routines/urandom/urandom_test.cc",
       "wilco_dtc_supportd/file_test_utils.cc",
     ]

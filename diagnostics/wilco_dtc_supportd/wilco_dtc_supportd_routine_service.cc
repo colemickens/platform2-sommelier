@@ -43,8 +43,10 @@ void WilcoDtcSupportdRoutineService::RunRoutine(
 
   new_routine->Start();
   int uuid = next_uuid_;
+  DCHECK(active_routines_.find(uuid) == active_routines_.end());
   active_routines_[uuid] = std::move(new_routine);
-  next_uuid_++;
+  ++next_uuid_;
+
   callback.Run(uuid, active_routines_[uuid]->GetStatus());
 }
 

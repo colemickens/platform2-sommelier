@@ -8,6 +8,7 @@
 
 #include "diagnostics/routines/battery/battery.h"
 #include "diagnostics/routines/battery_sysfs/battery_sysfs.h"
+#include "diagnostics/routines/smartctl_check/smartctl_check.h"
 #include "diagnostics/routines/urandom/urandom.h"
 
 namespace diagnostics {
@@ -20,16 +21,23 @@ WilcoDtcSupportdRoutineFactoryImpl::~WilcoDtcSupportdRoutineFactoryImpl() =
 std::unique_ptr<DiagnosticRoutine>
 WilcoDtcSupportdRoutineFactoryImpl::CreateRoutine(
     const grpc_api::RunRoutineRequest& request) {
-  switch (request.parameters_case()) {
-    case grpc_api::RunRoutineRequest::kBatteryParams:
+  switch (request.routine()) {
+    case grpc_api::ROUTINE_BATTERY:
+      DCHECK_EQ(request.parameters_case(),
+                grpc_api::RunRoutineRequest::kBatteryParams);
       return std::make_unique<BatteryRoutine>(request.battery_params());
-    case grpc_api::RunRoutineRequest::kBatterySysfsParams:
+    case grpc_api::ROUTINE_BATTERY_SYSFS:
       return std::make_unique<BatterySysfsRoutine>(
           request.battery_sysfs_params());
-    case grpc_api::RunRoutineRequest::kUrandomParams:
+    case grpc_api::ROUTINE_URANDOM:
+      DCHECK_EQ(request.parameters_case(),
+                grpc_api::RunRoutineRequest::kUrandomParams);
       return std::make_unique<UrandomRoutine>(request.urandom_params());
-    case grpc_api::RunRoutineRequest::PARAMETERS_NOT_SET:
-      LOG(ERROR) << "RunRoutineRequest parameters not set or unrecognized.";
+    case grpc_api::ROUTINE_SMARTCTL_CHECK:
+      return std::make_unique<SmartctlCheckRoutine>(
+          request.smartctl_check_params());
+    default:
+      LOG(ERROR) << "RunRoutineRequest routine not set or unrecognized.";
       return nullptr;
   }
 }
