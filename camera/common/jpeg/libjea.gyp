@@ -5,6 +5,7 @@
   'target_defaults': {
     'variables': {
       'deps': [
+        'cros-camera-android-headers',
         'libcamera_common',
         'libmojo-<(libbase_ver)',
       ],

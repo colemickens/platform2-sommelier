@@ -45,7 +45,7 @@ std::unique_ptr<JpegEncodeAccelerator> JpegEncodeAccelerator::CreateInstance() {
 }
 
 JpegEncodeAcceleratorImpl::JpegEncodeAcceleratorImpl()
-    : ipc_thread_("JeaIpcThread"), buffer_id_(0) {
+    : ipc_thread_("JeaIpcThread"), task_id_(0) {
   VLOGF_ENTER();
 
   mojo_channel_manager_ = CameraMojoChannelManager::CreateInstance();
@@ -136,19 +136,18 @@ int JpegEncodeAcceleratorImpl::EncodeSync(int input_fd,
                                           int output_fd,
                                           uint32_t output_buffer_size,
                                           uint32_t* output_data_size) {
-  int32_t buffer_id = buffer_id_;
+  int32_t task_id = task_id_;
   // Mask against 30 bits, to avoid (undefined) wraparound on signed integer.
-  buffer_id_ = (buffer_id_ + 1) & 0x3FFFFFFF;
+  task_id_ = (task_id_ + 1) & 0x3FFFFFFF;
 
   auto future = Future<int>::Create(cancellation_relay_.get());
   auto callback = base::Bind(&JpegEncodeAcceleratorImpl::EncodeSyncCallback,
                              base::Unretained(this), GetFutureCallback(future),
-                             output_data_size);
-
+                             output_data_size, task_id);
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&JpegEncodeAcceleratorImpl::EncodeOnIpcThread,
-                 base::Unretained(this), buffer_id, input_fd, input_buffer,
+      base::Bind(&JpegEncodeAcceleratorImpl::EncodeOnIpcThreadLegacy,
+                 base::Unretained(this), task_id, input_fd, input_buffer,
                  input_buffer_size, coded_size_width, coded_size_height,
                  exif_buffer, exif_buffer_size, output_fd, output_buffer_size,
                  std::move(callback)));
@@ -165,8 +164,45 @@ int JpegEncodeAcceleratorImpl::EncodeSync(int input_fd,
   return future->Get();
 }
 
-void JpegEncodeAcceleratorImpl::EncodeOnIpcThread(
-    int32_t buffer_id,
+int JpegEncodeAcceleratorImpl::EncodeSync(
+    uint32_t input_format,
+    const std::vector<JpegCompressor::DmaBufPlane>& input_planes,
+    const std::vector<JpegCompressor::DmaBufPlane>& output_planes,
+    const uint8_t* exif_buffer,
+    uint32_t exif_buffer_size,
+    int coded_size_width,
+    int coded_size_height,
+    uint32_t* output_data_size) {
+  int32_t task_id = task_id_;
+  // Mask against 30 bits, to avoid (undefined) wraparound on signed integer.
+  task_id_ = (task_id_ + 1) & 0x3FFFFFFF;
+
+  auto future = Future<int>::Create(cancellation_relay_.get());
+  auto callback = base::Bind(&JpegEncodeAcceleratorImpl::EncodeSyncCallback,
+                             base::Unretained(this), GetFutureCallback(future),
+                             output_data_size, task_id);
+
+  ipc_thread_.task_runner()->PostTask(
+      FROM_HERE, base::Bind(&JpegEncodeAcceleratorImpl::EncodeOnIpcThread,
+                            base::Unretained(this), task_id, input_format,
+                            std::move(input_planes), std::move(output_planes),
+                            exif_buffer, exif_buffer_size, coded_size_width,
+                            coded_size_height, std::move(callback)));
+
+  if (!future->Wait()) {
+    if (!jea_ptr_.is_bound()) {
+      LOGF(WARNING) << "There may be an mojo channel error.";
+      return TRY_START_AGAIN;
+    }
+    LOGF(WARNING) << "There is no encode response from JEA mojo channel.";
+    return NO_ENCODE_RESPONSE;
+  }
+  VLOGF_EXIT();
+  return future->Get();
+}
+
+void JpegEncodeAcceleratorImpl::EncodeOnIpcThreadLegacy(
+    int32_t task_id,
     int input_fd,
     const uint8_t* input_buffer,
     uint32_t input_buffer_size,
@@ -178,11 +214,11 @@ void JpegEncodeAcceleratorImpl::EncodeOnIpcThread(
     uint32_t output_buffer_size,
     EncodeWithFDCallback callback) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  DCHECK_EQ(input_shm_map_.count(buffer_id), 0);
-  DCHECK_EQ(exif_shm_map_.count(buffer_id), 0);
+  DCHECK_EQ(input_shm_map_.count(task_id), 0);
+  DCHECK_EQ(exif_shm_map_.count(task_id), 0);
 
   if (!jea_ptr_.is_bound()) {
-    callback.Run(buffer_id, 0, TRY_START_AGAIN);
+    callback.Run(0, TRY_START_AGAIN);
   }
 
   std::unique_ptr<base::SharedMemory> input_shm =
@@ -190,7 +226,7 @@ void JpegEncodeAcceleratorImpl::EncodeOnIpcThread(
   if (!input_shm->CreateAndMapAnonymous(input_buffer_size)) {
     LOGF(WARNING) << "CreateAndMapAnonymous for input failed, size="
                   << input_buffer_size;
-    callback.Run(buffer_id, 0, SHARED_MEMORY_FAIL);
+    callback.Run(0, SHARED_MEMORY_FAIL);
     return;
   }
   // Copy content from input buffer or file descriptor to shared memory.
@@ -202,7 +238,7 @@ void JpegEncodeAcceleratorImpl::EncodeOnIpcThread(
 
     if (mmap_buf == MAP_FAILED) {
       LOGF(WARNING) << "MMAP for input_fd:" << input_fd << " Failed.";
-      callback.Run(buffer_id, 0, MMAP_FAIL);
+      callback.Run(0, MMAP_FAIL);
       return;
     }
 
@@ -218,7 +254,7 @@ void JpegEncodeAcceleratorImpl::EncodeOnIpcThread(
   if (!exif_shm->CreateAndMapAnonymous(exif_shm_size)) {
     LOGF(WARNING) << "CreateAndMapAnonymous for exif failed, size="
                   << exif_shm_size;
-    callback.Run(buffer_id, 0, SHARED_MEMORY_FAIL);
+    callback.Run(0, SHARED_MEMORY_FAIL);
     return;
   }
   if (exif_buffer_size) {
@@ -233,10 +269,10 @@ void JpegEncodeAcceleratorImpl::EncodeOnIpcThread(
   mojo::ScopedHandle exif_handle = WrapPlatformHandle(dup_exif_fd);
   mojo::ScopedHandle output_handle = WrapPlatformHandle(dup_output_fd);
 
-  input_shm_map_[buffer_id] = std::move(input_shm);
-  exif_shm_map_[buffer_id] = std::move(exif_shm);
+  input_shm_map_[task_id] = std::move(input_shm);
+  exif_shm_map_[task_id] = std::move(exif_shm);
 
-  jea_ptr_->EncodeWithFD(buffer_id, std::move(input_handle), input_buffer_size,
+  jea_ptr_->EncodeWithFD(task_id, std::move(input_handle), input_buffer_size,
                          coded_size_width, coded_size_height,
                          std::move(exif_handle), exif_buffer_size,
                          std::move(output_handle), output_buffer_size,
@@ -244,10 +280,72 @@ void JpegEncodeAcceleratorImpl::EncodeOnIpcThread(
                                     base::Unretained(this), callback));
 }
 
+void JpegEncodeAcceleratorImpl::EncodeOnIpcThread(
+    int32_t task_id,
+    uint32_t input_format,
+    const std::vector<JpegCompressor::DmaBufPlane>& input_planes,
+    const std::vector<JpegCompressor::DmaBufPlane>& output_planes,
+    const uint8_t* exif_buffer,
+    uint32_t exif_buffer_size,
+    int coded_size_width,
+    int coded_size_height,
+    EncodeWithDmaBufCallback callback) {
+  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK_EQ(exif_shm_map_.count(task_id), 0);
+
+  if (!jea_ptr_.is_bound()) {
+    callback.Run(0, TRY_START_AGAIN);
+  }
+
+  // Create SharedMemory for Exif buffer and copy data into it.
+  std::unique_ptr<base::SharedMemory> exif_shm =
+      base::WrapUnique(new base::SharedMemory);
+  // Create a dummy |exif_shm| even if |exif_buffer_size| is 0.
+  uint32_t exif_shm_size = std::max(exif_buffer_size, 1u);
+  if (!exif_shm->CreateAndMapAnonymous(exif_shm_size)) {
+    LOGF(WARNING) << "CreateAndMapAnonymous for exif failed, size="
+                  << exif_shm_size;
+    callback.Run(0, SHARED_MEMORY_FAIL);
+    return;
+  }
+  if (exif_buffer_size) {
+    memcpy(exif_shm->memory(), exif_buffer, exif_buffer_size);
+  }
+
+  int dup_exif_fd = dup(exif_shm->handle().fd);
+  mojo::ScopedHandle exif_handle = WrapPlatformHandle(dup_exif_fd);
+
+  auto WrapToMojoPlanes =
+      [](const std::vector<JpegCompressor::DmaBufPlane>& planes) {
+        std::vector<cros::mojom::DmaBufPlanePtr> mojo_planes;
+        for (auto plane : planes) {
+          auto mojo_plane = cros::mojom::DmaBufPlane::New();
+          mojo_plane->fd_handle = WrapPlatformHandle(dup(plane.fd));
+          mojo_plane->stride = plane.stride;
+          mojo_plane->offset = plane.offset;
+          mojo_plane->size = plane.size;
+          mojo_planes.push_back(std::move(mojo_plane));
+        }
+        return mojo_planes;
+      };
+
+  std::vector<cros::mojom::DmaBufPlanePtr> mojo_input_planes =
+      WrapToMojoPlanes(input_planes);
+  std::vector<cros::mojom::DmaBufPlanePtr> mojo_output_planes =
+      WrapToMojoPlanes(output_planes);
+
+  jea_ptr_->EncodeWithDmaBuf(
+      task_id, input_format, std::move(mojo_input_planes),
+      std::move(mojo_output_planes), std::move(exif_handle), exif_buffer_size,
+      coded_size_width, coded_size_height,
+      base::Bind(&JpegEncodeAcceleratorImpl::OnEncodeAck,
+                 base::Unretained(this), callback, task_id));
+}
+
 void JpegEncodeAcceleratorImpl::EncodeSyncCallback(
     base::Callback<void(int)> callback,
     uint32_t* output_data_size,
-    int32_t buffer_id,
+    int32_t task_id,
     uint32_t output_size,
     int status) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
@@ -256,15 +354,15 @@ void JpegEncodeAcceleratorImpl::EncodeSyncCallback(
 }
 
 void JpegEncodeAcceleratorImpl::OnEncodeAck(EncodeWithFDCallback callback,
-                                            int32_t buffer_id,
+                                            int32_t task_id,
                                             uint32_t output_size,
                                             mojom::EncodeStatus status) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  DCHECK_EQ(input_shm_map_.count(buffer_id), 1u);
-  DCHECK_EQ(exif_shm_map_.count(buffer_id), 1u);
-  input_shm_map_.erase(buffer_id);
-  exif_shm_map_.erase(buffer_id);
-  callback.Run(buffer_id, output_size, static_cast<int>(status));
+  DCHECK_EQ(input_shm_map_.count(task_id), 1u);
+  DCHECK_EQ(exif_shm_map_.count(task_id), 1u);
+  input_shm_map_.erase(task_id);
+  exif_shm_map_.erase(task_id);
+  callback.Run(output_size, static_cast<int>(status));
 }
 
 }  // namespace cros

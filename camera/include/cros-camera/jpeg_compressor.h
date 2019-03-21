@@ -9,6 +9,7 @@
 
 #include <memory>
 
+#include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/export.h"
 
 namespace cros {
@@ -23,6 +24,13 @@ class CROS_CAMERA_EXPORT JpegCompressor {
     kSwOnly,
     // HW encode only; does not fall back to SW encode.
     kHwOnly
+  };
+
+  struct DmaBufPlane {
+    int fd;
+    int32_t stride;
+    uint32_t offset;
+    uint32_t size;
   };
 
   static std::unique_ptr<JpegCompressor> GetInstance();
@@ -49,6 +57,50 @@ class CROS_CAMERA_EXPORT JpegCompressor {
                              void* out_buffer,
                              uint32_t* out_data_size,
                              Mode mode = Mode::kDefault) = 0;
+
+  // Compresses YUV image to JPEG format via buffer handles.
+  // |quality| is the resulted jpeg image quality. It ranges from 1
+  // (poorest quality) to 100 (highest quality).
+  // |app1_buffer| is the buffer of APP1 segment (exif) which will be added to
+  // the compressed image.
+  // For hardware encoding, it encodes |input| to |output| through DMA-buf. If
+  // it fallbacks to software encoding, it maps the |input_handle| and
+  // |output_handle| to user space. The actually encoded size will be written
+  // into |out_data_size| if image encoded successfully. Returns false if errors
+  // occur during compression. |mode| controls the HW/SW encode selection
+  // strategy.
+  virtual bool CompressImageFromHandle(
+      buffer_handle_t input,
+      buffer_handle_t output,
+      int width,
+      int height,
+      int quality,
+      const void* app1_ptr,
+      uint32_t app1_size,
+      uint32_t* out_data_size,
+      JpegCompressor::Mode mode = JpegCompressor::Mode::kDefault) = 0;
+
+  // Compresses YUV image to JPEG format via buffer handles.
+  // |quality| is the resulted jpeg image quality. It ranges from 1
+  // (poorest quality) to 100 (highest quality).
+  // |app1_buffer| is the buffer of APP1 segment (exif) which will be added to
+  // the compressed image.
+  // It is only used for software encoding, which encodes |input| to |output|.
+  // The format of input is provided in |input_format| and the size of the
+  // output buffer is in |output_buffer_size|.
+  // The actually encoded size will be written into |out_data_size| if image
+  // encoded successfully. Returns false if errors
+  // occur during compression.
+  virtual bool CompressImageFromMemory(void* input,
+                                       uint32_t input_format,
+                                       void* output,
+                                       int output_buffer_size,
+                                       int width,
+                                       int height,
+                                       int quality,
+                                       const void* app1_ptr,
+                                       uint32_t app1_size,
+                                       uint32_t* out_data_size) = 0;
 
   // Compresses YU12 image to JPEG format. |quality| is the resulted jpeg
   // image quality. It ranges from 1 (poorest quality) to 100 (highest quality).

@@ -9,13 +9,17 @@
 
 #include <stdint.h>
 #include <memory>
+#include <vector>
 
 #include <base/bind.h>
+#include "cros-camera/jpeg_compressor.h"
 
 namespace cros {
 
 using EncodeWithFDCallback =
-    base::Callback<void(int buffer_id, uint32_t output_size, int error)>;
+    base::Callback<void(uint32_t output_size, int error)>;
+using EncodeWithDmaBufCallback =
+    base::Callback<void(uint32_t output_size, int error)>;
 
 // Encapsulates a converter from YU12 to JPEG format. This class is not
 // thread-safe.
@@ -106,6 +110,40 @@ class JpegEncodeAccelerator {
                          int output_fd,
                          uint32_t output_buffer_size,
                          uint32_t* output_data_size) = 0;
+
+  // Encodes the given buffer that contains one YUV image.
+  // The image is encoded from a DMA-buf that represents by its plane
+  // information |input_planes| to a DMA-buf that represents by |output_planes|.
+  // And the input format is given by |input_format|. The resolution of image
+  // is |coded_size_width| and |coded_size_height|.
+  // |exif_buffer| with |exif_buffer_size| will be inserted
+  // into the encoded JPEG image.
+  // Encoded JPEG actual image size will be put in |output_data_size|.
+  //
+  // Args:
+  //    |input_format|: The fourcc value of the input format.
+  //    |input_planes|: The planes information of input DMA-buf.
+  //    |output_planes|: The planes information of output DMA-buf.
+  //    |exif_buffer|: Exif buffer that will be inserted into the encoded image.
+  //    |exif_buffer_size|: Size of the Exif buffer.
+  //    |coded_size_width|: Width of I420 image.
+  //    |coded_size_height|: Height of I420 image.
+  //    |output_data_size|: Actual size of the encoded image. Will be filled by
+  //    the method.
+  //
+  // Returns:
+  //    Returns |status| to notify the encode status.
+  //    If the return code is TRY_START_AGAIN, user can call Start() again and
+  //    use this API.
+  virtual int EncodeSync(
+      uint32_t input_format,
+      const std::vector<JpegCompressor::DmaBufPlane>& input_planes,
+      const std::vector<JpegCompressor::DmaBufPlane>& output_planes,
+      const uint8_t* exif_buffer,
+      uint32_t exif_buffer_size,
+      int coded_size_width,
+      int coded_size_height,
+      uint32_t* output_data_size) = 0;
 };
 
 }  // namespace cros

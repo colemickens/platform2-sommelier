@@ -32,6 +32,7 @@ class JpegCompressorImpl : public JpegCompressor {
   JpegCompressorImpl();
   ~JpegCompressorImpl() override;
 
+  // To be deprecated.
   bool CompressImage(
       const void* image,
       int width,
@@ -44,6 +45,29 @@ class JpegCompressorImpl : public JpegCompressor {
       uint32_t* out_data_size,
       JpegCompressor::Mode mode = JpegCompressor::Mode::kDefault) override;
 
+  bool CompressImageFromHandle(
+      buffer_handle_t input,
+      buffer_handle_t output,
+      int width,
+      int height,
+      int quality,
+      const void* app1_ptr,
+      uint32_t app1_size,
+      uint32_t* out_data_size,
+      JpegCompressor::Mode mode = JpegCompressor::Mode::kDefault) override;
+
+  bool CompressImageFromMemory(void* input,
+                               uint32_t input_format,
+                               void* output,
+                               int output_buffer_size,
+                               int width,
+                               int height,
+                               int quality,
+                               const void* app1_ptr,
+                               uint32_t app1_size,
+                               uint32_t* out_data_size) override;
+
+  // To be deprecated.
   bool GenerateThumbnail(const void* image,
                          int image_width,
                          int image_height,
@@ -63,26 +87,46 @@ class JpegCompressorImpl : public JpegCompressor {
   static void OutputErrorMessage(j_common_ptr cinfo);
 
   // Returns false if errors occur during HW encode.
-  bool EncodeHw(const uint8_t* input_buffer,
-                uint32_t input_buffer_size,
-                int width,
-                int height,
-                const uint8_t* app1_buffer,
-                uint32_t app1_size,
-                uint32_t out_buffer_size,
-                void* out_buffer,
-                uint32_t* out_data_size);
+  bool EncodeHwLegacy(const uint8_t* input_buffer,
+                      uint32_t input_buffer_size,
+                      int width,
+                      int height,
+                      const uint8_t* app1_buffer,
+                      uint32_t app1_size,
+                      uint32_t out_buffer_size,
+                      void* out_buffer,
+                      uint32_t* out_data_size);
 
   // Returns false if errors occur.
-  bool Encode(const void* inYuv,
-              int width,
-              int height,
-              int jpegQuality,
-              const void* app1_buffer,
-              unsigned int app1_size,
-              uint32_t out_buffer_size,
-              void* out_buffer,
-              uint32_t* out_data_size);
+  bool EncodeLegacy(const void* inYuv,
+                    int width,
+                    int height,
+                    int jpegQuality,
+                    const void* app1_buffer,
+                    unsigned int app1_size,
+                    uint32_t out_buffer_size,
+                    void* out_buffer,
+                    uint32_t* out_data_size);
+
+  bool EncodeHw(buffer_handle_t input_handle,
+                buffer_handle_t output_handle,
+                int width,
+                int height,
+                const void* app1_ptr,
+                uint32_t app1_size,
+                uint32_t* out_data_size);
+
+  bool EncodeSw(void* input_ptr,
+                uint32_t input_format,
+                void* output_ptr,
+                int output_buffer_size,
+                int width,
+                int height,
+                int jpeg_quality,
+                const void* app1_ptr,
+                unsigned int app1_size,
+                uint32_t* out_data_size);
+
   void SetJpegDestination(jpeg_compress_struct* cinfo);
   void SetJpegCompressStruct(int width,
                              int height,

@@ -7,14 +7,17 @@
 #include "common/jpeg_compressor_impl.h"
 
 #include <memory>
+#include <utility>
 
 #include <errno.h>
 #include <libyuv.h>
+#include <linux/videodev2.h>
 #include <time.h>
 
 #include <base/memory/ptr_util.h>
 #include <base/memory/shared_memory.h>
 #include <base/timer/elapsed_timer.h>
+#include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/common.h"
 #include "cros-camera/jpeg_encode_accelerator.h"
 
@@ -67,9 +70,10 @@ bool JpegCompressorImpl::CompressImage(const void* image,
     if (mode != JpegCompressor::Mode::kSwOnly) {
       // Try HW encode.
       uint32_t input_data_size = static_cast<uint32_t>(width * height * 3 / 2);
-      if (EncodeHw(static_cast<const uint8_t*>(image), input_data_size, width,
-                   height, static_cast<const uint8_t*>(app1_buffer), app1_size,
-                   out_buffer_size, out_buffer, out_data_size)) {
+      if (EncodeHwLegacy(static_cast<const uint8_t*>(image), input_data_size,
+                         width, height,
+                         static_cast<const uint8_t*>(app1_buffer), app1_size,
+                         out_buffer_size, out_buffer, out_data_size)) {
         return "hardware";
       }
       if (mode != JpegCompressor::Mode::kHwOnly) {
@@ -79,8 +83,8 @@ bool JpegCompressorImpl::CompressImage(const void* image,
 
     if (mode != JpegCompressor::Mode::kHwOnly) {
       // Try SW encode.
-      if (Encode(image, width, height, quality, app1_buffer, app1_size,
-                 out_buffer_size, out_buffer, out_data_size)) {
+      if (EncodeLegacy(image, width, height, quality, app1_buffer, app1_size,
+                       out_buffer_size, out_buffer, out_data_size)) {
         return "software";
       }
     }
@@ -99,6 +103,117 @@ bool JpegCompressorImpl::CompressImage(const void* image,
              << (width * height * 12) / 8 << "[" << width << "x" << height
              << "] -> " << *out_data_size << " bytes";
   return true;
+}
+
+bool JpegCompressorImpl::CompressImageFromHandle(buffer_handle_t input,
+                                                 buffer_handle_t output,
+                                                 int width,
+                                                 int height,
+                                                 int quality,
+                                                 const void* app1_ptr,
+                                                 uint32_t app1_size,
+                                                 uint32_t* out_data_size,
+                                                 JpegCompressor::Mode mode) {
+  if (width % 8 != 0 || height % 2 != 0) {
+    LOGF(ERROR) << "Input image size can not be handled: " << width << "x"
+                << height;
+    return false;
+  }
+
+  if (out_data_size == nullptr) {
+    LOGF(ERROR) << "Output size should not be nullptr";
+    return false;
+  }
+
+  cros::CameraBufferManager* buffer_manager =
+      cros::CameraBufferManager::GetInstance();
+  auto method_used = [&]() -> const char* {
+    if (mode != JpegCompressor::Mode::kSwOnly) {
+      // Try HW encode.
+      if (EncodeHw(input, output, width, height, app1_ptr, app1_size,
+                   out_data_size)) {
+        return "hardware";
+      }
+      if (mode != JpegCompressor::Mode::kHwOnly) {
+        LOGF(WARNING) << "Tried HW encode but failed. Fall back to SW encode";
+      }
+    }
+
+    if (mode != JpegCompressor::Mode::kHwOnly) {
+      struct android_ycbcr mapped_input;
+      void* input_ptr;
+      void* output_ptr;
+      auto status =
+          buffer_manager->LockYCbCr(input, 0, 0, 0, 0, 0, &mapped_input);
+      if (status != 0) {
+        LOGF(INFO) << "Failed to lock input buffer handle for sw encode.";
+        return nullptr;
+      }
+      input_ptr = static_cast<uint8_t*>(mapped_input.y);
+      status = buffer_manager->Lock(output, 0, 0, 0, 0, 0, &output_ptr);
+      if (status != 0) {
+        LOGF(INFO) << "Failed to lock output buffer handle for sw encode.";
+        return nullptr;
+      }
+
+      auto input_format = buffer_manager->GetV4L2PixelFormat(input);
+      auto output_buffer_size = buffer_manager->GetPlaneSize(output, 0);
+      // Try SW encode.
+      if (EncodeSw(input_ptr, input_format, output_ptr, output_buffer_size,
+                   width, height, quality, app1_ptr, app1_size,
+                   out_data_size)) {
+        return "software";
+      }
+    }
+
+    return nullptr;
+  }();
+
+  if (method_used == nullptr) {
+    // TODO(shik): Map mode from enum to string for better readability.
+    LOGF(ERROR) << "Failed to compress image with mode = "
+                << static_cast<int>(mode);
+    return false;
+  }
+
+  LOGF(INFO) << "Compressed JPEG with " << method_used << ": "
+             << (width * height * 12) / 8 << "[" << width << "x" << height
+             << "] -> " << *out_data_size << " bytes";
+  return true;
+}
+
+bool JpegCompressorImpl::CompressImageFromMemory(void* input,
+                                                 uint32_t input_format,
+                                                 void* output,
+                                                 int output_buffer_size,
+                                                 int width,
+                                                 int height,
+                                                 int quality,
+                                                 const void* app1_ptr,
+                                                 uint32_t app1_size,
+                                                 uint32_t* out_data_size) {
+  if (width % 8 != 0 || height % 2 != 0) {
+    LOGF(ERROR) << "Input image size can not be handled: " << width << "x"
+                << height;
+    return false;
+  }
+
+  if (out_data_size == nullptr) {
+    LOGF(ERROR) << "Output size should not be nullptr";
+    return false;
+  }
+
+  auto isSuccess =
+      EncodeSw(input, input_format, output, output_buffer_size, width, height,
+               quality, app1_ptr, app1_size, out_data_size);
+  if (isSuccess) {
+    LOGF(INFO) << "Compressed JPEG with software : "
+               << (width * height * 12) / 8 << "[" << width << "x" << height
+               << "] -> " << *out_data_size << " bytes";
+  } else {
+    LOGF(ERROR) << "Failed to compress image with memory.";
+  }
+  return isSuccess;
 }
 
 bool JpegCompressorImpl::GenerateThumbnail(const void* image,
@@ -190,17 +305,16 @@ void JpegCompressorImpl::OutputErrorMessage(j_common_ptr cinfo) {
   LOGF(ERROR) << buffer;
 }
 
-bool JpegCompressorImpl::EncodeHw(const uint8_t* input_buffer,
-                                  uint32_t input_buffer_size,
-                                  int width,
-                                  int height,
-                                  const uint8_t* app1_buffer,
-                                  uint32_t app1_buffer_size,
-                                  uint32_t out_buffer_size,
-                                  void* out_buffer,
-                                  uint32_t* out_data_size) {
+bool JpegCompressorImpl::EncodeHwLegacy(const uint8_t* input_buffer,
+                                        uint32_t input_buffer_size,
+                                        int width,
+                                        int height,
+                                        const uint8_t* app1_buffer,
+                                        uint32_t app1_buffer_size,
+                                        uint32_t out_buffer_size,
+                                        void* out_buffer,
+                                        uint32_t* out_data_size) {
   base::ElapsedTimer timer;
-
   if (!hw_encoder_) {
     hw_encoder_ = cros::JpegEncodeAccelerator::CreateInstance();
     hw_encoder_started_ = hw_encoder_->Start();
@@ -255,17 +369,16 @@ bool JpegCompressorImpl::EncodeHw(const uint8_t* input_buffer,
   return false;
 }
 
-bool JpegCompressorImpl::Encode(const void* inYuv,
-                                int width,
-                                int height,
-                                int jpeg_quality,
-                                const void* app1_buffer,
-                                unsigned int app1_size,
-                                uint32_t out_buffer_size,
-                                void* out_buffer,
-                                uint32_t* out_data_size) {
+bool JpegCompressorImpl::EncodeLegacy(const void* inYuv,
+                                      int width,
+                                      int height,
+                                      int jpeg_quality,
+                                      const void* app1_buffer,
+                                      unsigned int app1_size,
+                                      uint32_t out_buffer_size,
+                                      void* out_buffer,
+                                      uint32_t* out_data_size) {
   base::ElapsedTimer timer;
-
   out_buffer_ptr_ = static_cast<JOCTET*>(out_buffer);
   out_buffer_size_ = out_buffer_size;
 
@@ -298,6 +411,188 @@ bool JpegCompressorImpl::Encode(const void* inYuv,
   }
 
   if (is_encode_success_) {
+    camera_metrics_->SendJpegProcessLatency(JpegProcessType::kEncode,
+                                            JpegProcessMethod::kSoftware,
+                                            timer.Elapsed());
+    camera_metrics_->SendJpegResolution(
+        JpegProcessType::kEncode, JpegProcessMethod::kSoftware, width, height);
+  }
+  return is_encode_success_;
+}
+
+bool JpegCompressorImpl::EncodeHw(buffer_handle_t input_handle,
+                                  buffer_handle_t output_handle,
+                                  int width,
+                                  int height,
+                                  const void* app1_ptr,
+                                  uint32_t app1_size,
+                                  uint32_t* out_data_size) {
+  base::ElapsedTimer timer;
+  if (input_handle == nullptr || output_handle == nullptr) {
+    if (input_handle == nullptr) {
+      LOG(INFO) << "Input handle is nullptr.";
+    }
+    if (output_handle == nullptr) {
+      LOG(INFO) << "Output handle is nullptr.";
+    }
+    return false;
+  }
+
+  uint32_t input_format =
+      cros::CameraBufferManager::GetV4L2PixelFormat(input_handle);
+  // TODO(wtlee): Handles other formats.
+  DCHECK(input_format == V4L2_PIX_FMT_NV12);
+
+  std::vector<JpegCompressor::DmaBufPlane> input_planes;
+  uint32_t input_num_planes =
+      cros::CameraBufferManager::GetNumPlanes(input_handle);
+  if (input_num_planes == 0) {
+    LOG(INFO) << "Input buffer handle is invalid.";
+    return false;
+  } else {
+    for (int i = 0; i < input_num_planes; i++) {
+      JpegCompressor::DmaBufPlane plane;
+      plane.fd = input_handle->data[i];
+      plane.stride = cros::CameraBufferManager::GetPlaneStride(input_handle, i);
+      plane.offset = cros::CameraBufferManager::GetPlaneOffset(input_handle, i);
+      plane.size = cros::CameraBufferManager::GetPlaneSize(input_handle, i);
+      input_planes.push_back(std::move(plane));
+    }
+  }
+
+  std::vector<JpegCompressor::DmaBufPlane> output_planes;
+  uint32_t output_num_planes =
+      cros::CameraBufferManager::GetNumPlanes(output_handle);
+  if (output_num_planes == 0) {
+    LOG(INFO) << "Output buffer handle is invalid.";
+    return false;
+  } else {
+    for (int i = 0; i < output_num_planes; i++) {
+      JpegCompressor::DmaBufPlane plane;
+      plane.fd = output_handle->data[i];
+      plane.stride =
+          cros::CameraBufferManager::GetPlaneStride(output_handle, i);
+      plane.offset =
+          cros::CameraBufferManager::GetPlaneOffset(output_handle, i);
+      plane.size = cros::CameraBufferManager::GetPlaneSize(output_handle, i);
+      output_planes.push_back(std::move(plane));
+    }
+  }
+
+  if (!hw_encoder_) {
+    hw_encoder_ = cros::JpegEncodeAccelerator::CreateInstance();
+    hw_encoder_started_ = hw_encoder_->Start();
+  }
+
+  if (!hw_encoder_ || !hw_encoder_started_) {
+    LOG(INFO) << "Hw encoder is not started";
+    return false;
+  }
+
+  int status = hw_encoder_->EncodeSync(input_format, std::move(input_planes),
+                                       std::move(output_planes),
+                                       static_cast<const uint8_t*>(app1_ptr),
+                                       app1_size, width, height, out_data_size);
+  if (status == cros::JpegEncodeAccelerator::TRY_START_AGAIN) {
+    // There might be some mojo errors. We will give a second try.
+    LOG(WARNING) << "EncodeSync() returns TRY_START_AGAIN.";
+    hw_encoder_started_ = hw_encoder_->Start();
+    if (hw_encoder_started_) {
+      status = hw_encoder_->EncodeSync(input_format, std::move(input_planes),
+                                       std::move(output_planes),
+                                       static_cast<const uint8_t*>(app1_ptr),
+                                       app1_size, width, height, out_data_size);
+    } else {
+      LOGF(ERROR) << "JPEG encode accelerator can't be started.";
+    }
+  }
+  if (status == cros::JpegEncodeAccelerator::ENCODE_OK) {
+    camera_metrics_->SendJpegProcessLatency(JpegProcessType::kEncode,
+                                            JpegProcessMethod::kHardware,
+                                            timer.Elapsed());
+    camera_metrics_->SendJpegResolution(
+        JpegProcessType::kEncode, JpegProcessMethod::kHardware, width, height);
+    return true;
+  } else {
+    LOGF(ERROR) << "HW encode failed with " << status;
+  }
+  return false;
+}
+
+bool JpegCompressorImpl::EncodeSw(void* input_ptr,
+                                  uint32_t input_format,
+                                  void* output_ptr,
+                                  int output_buffer_size,
+                                  int width,
+                                  int height,
+                                  int jpeg_quality,
+                                  const void* app1_buffer,
+                                  unsigned int app1_size,
+                                  uint32_t* out_data_size) {
+  base::ElapsedTimer timer;
+  if (input_ptr == nullptr) {
+    LOGF(INFO) << "Input ptr is null.";
+    return false;
+  }
+  if (output_ptr == nullptr) {
+    LOGF(INFO) << "Output ptr is null.";
+    return false;
+  }
+
+  // TODO(wtlee): Handles other formats.
+  DCHECK(input_format == V4L2_PIX_FMT_NV12);
+
+  size_t y_plane_size = width * height;
+
+  std::vector<uint8_t> i420_buffer;
+  i420_buffer.resize(y_plane_size * 3 / 2);
+  uint8_t* i420_y_plane = i420_buffer.data();
+  uint8_t* i420_u_plane = i420_y_plane + y_plane_size;
+  uint8_t* i420_v_plane = i420_u_plane + y_plane_size / 4;
+
+  int result = libyuv::NV12ToI420(
+      static_cast<uint8_t*>(input_ptr), width,
+      static_cast<uint8_t*>(input_ptr) + y_plane_size, width, i420_y_plane,
+      width, i420_u_plane, width / 2, i420_v_plane, width / 2, width, height);
+  if (result != 0) {
+    LOGF(INFO) << "Failed to convert image format when do SW encoding.";
+    return false;
+  }
+
+  out_buffer_ptr_ = static_cast<JOCTET*>(output_ptr);
+  out_buffer_size_ = output_buffer_size;
+
+  jpeg_compress_struct cinfo;
+  jpeg_error_mgr jerr;
+
+  cinfo.err = jpeg_std_error(&jerr);
+  // Override output_message() to print error log with ALOGE().
+  cinfo.err->output_message = &OutputErrorMessage;
+  jpeg_create_compress(&cinfo);
+  SetJpegDestination(&cinfo);
+
+  SetJpegCompressStruct(width, height, jpeg_quality, &cinfo);
+
+  if (app1_buffer != nullptr && app1_size > 0) {
+    cinfo.write_Adobe_marker = false;
+    cinfo.write_JFIF_header = false;
+  }
+
+  jpeg_start_compress(&cinfo, TRUE);
+
+  if (app1_buffer != nullptr && app1_size > 0) {
+    jpeg_write_marker(&cinfo, JPEG_APP0 + 1,
+                      static_cast<const JOCTET*>(app1_buffer), app1_size);
+  }
+
+  if (!Compress(&cinfo, static_cast<const uint8_t*>(i420_y_plane))) {
+    is_encode_success_ = false;
+  }
+  jpeg_finish_compress(&cinfo);
+  jpeg_destroy_compress(&cinfo);
+
+  if (is_encode_success_) {
+    *out_data_size = out_data_size_;
     camera_metrics_->SendJpegProcessLatency(JpegProcessType::kEncode,
                                             JpegProcessMethod::kSoftware,
                                             timer.Elapsed());

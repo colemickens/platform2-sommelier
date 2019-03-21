@@ -5,6 +5,8 @@
   'target_defaults': {
     'variables': {
       'deps': [
+        'cros-camera-android-headers',
+        'libcbm',
         'libyuv',
       ],
     },
