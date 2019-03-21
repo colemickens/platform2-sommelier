@@ -956,6 +956,15 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
   }
 }
 
+void Service::DoResetTPMContext(cryptohome::Mount* mount) {
+  if (mount) {
+    Crypto* crypto = mount->crypto();
+    if (crypto) {
+      crypto->EnsureTpm(true);
+    }
+  }
+}
+
 void Service::OwnershipCallback(bool status, bool took_ownership) {
   if (took_ownership) {
     ReportTimerStop(kTpmTakeOwnershipTimer);
@@ -965,11 +974,10 @@ void Service::OwnershipCallback(bool status, bool took_ownership) {
     {
       base::AutoLock _lock(mounts_lock_);
       for (const auto& mount_pair : mounts_) {
-        scoped_refptr<MountTaskResetTpmContext> mount_task =
-            new MountTaskResetTpmContext(NULL, mount_pair.second.get(),
-                                         NextSequence());
-        PostTask(FROM_HERE,
-                 base::Bind(&MountTaskResetTpmContext::Run, mount_task.get()));
+        mount_thread_.task_runner()->PostTask(
+            FROM_HERE,
+            base::Bind(&Service::DoResetTPMContext, base::Unretained(this),
+                       base::RetainedRef(mount_pair.second)));
       }
     }
   }

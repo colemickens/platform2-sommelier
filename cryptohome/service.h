@@ -194,6 +194,9 @@ class Service : public brillo::dbus::AbstractDbusService,
   // CryptohomeEventSourceSink
   virtual void NotifyEvent(CryptohomeEventBase* event);
 
+  // Performs the work of resetting the TPM context.
+  virtual void DoResetTPMContext(Mount* mount);
+
   // TpmInit::OwnershipCallback
   virtual void OwnershipCallback(bool status, bool took_ownership);
 

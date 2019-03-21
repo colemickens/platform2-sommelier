@@ -56,14 +56,4 @@ void MountTask::Signal() {
   }
 }
 
-void MountTaskResetTpmContext::Run() {
-  if (mount_) {
-    Crypto* crypto = mount_->crypto();
-    if (crypto) {
-      crypto->EnsureTpm(true);
-    }
-  }
-  MountTask::Notify();
-}
-
 }  // namespace cryptohome

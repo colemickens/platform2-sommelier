@@ -287,21 +287,6 @@ class MountTask : public base::RefCountedThreadSafe<MountTask> {
   DISALLOW_COPY_AND_ASSIGN(MountTask);
 };
 
-// Implements asychronous reset of the TPM context
-class MountTaskResetTpmContext : public MountTask {
- public:
-  MountTaskResetTpmContext(MountTaskObserver* observer,
-                           Mount* mount,
-                           int sequence_id)
-      : MountTask(observer, mount, sequence_id) {}
-  virtual ~MountTaskResetTpmContext() { }
-
-  virtual void Run();
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(MountTaskResetTpmContext);
-};
-
 }  // namespace cryptohome
 
 #endif  // CRYPTOHOME_MOUNT_TASK_H_
