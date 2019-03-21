@@ -74,11 +74,7 @@ class SandboxedProcess : public Process {
   bool Start() override;
 
   // Waits for the process to finish and returns its exit status.
-  int Wait();
-
-  // Starts and waits for the process to finish. Returns the same exit status
-  // as Wait() does.
-  int Run();
+  int Wait() override;
 
  private:
   minijail* jail_;

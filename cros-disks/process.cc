@@ -54,4 +54,11 @@ bool Process::BuildArgumentsArray() {
   return true;
 }
 
+int Process::Run() {
+  if (Start()) {
+    return Wait();
+  }
+  return -1;
+}
+
 }  // namespace cros_disks

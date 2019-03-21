@@ -31,7 +31,16 @@ class Process {
   // it to terminate. Returns true on success.
   virtual bool Start() = 0;
 
+  // Waits for the process to finish and returns its exit status.
+  virtual int Wait() = 0;
+
+  // Starts and waits for the process to finish. Returns the same exit status
+  // as Wait() does.
+  int Run();
+
   pid_t pid() const { return pid_; }
+
+  const std::vector<std::string>& arguments() const { return arguments_; }
 
  protected:
   Process();

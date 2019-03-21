@@ -109,11 +109,4 @@ int SandboxedProcess::Wait() {
   return minijail_wait(jail_);
 }
 
-int SandboxedProcess::Run() {
-  if (Start()) {
-    return Wait();
-  }
-  return -1;
-}
-
 }  // namespace cros_disks
