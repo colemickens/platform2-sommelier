@@ -32,7 +32,7 @@ bool KernelWarningCollector::LoadKernelWarning(std::string* content,
                                                std::string* signature) {
   FilePath kernel_warning_path(warning_report_path_.c_str());
   if (!base::ReadFileToString(kernel_warning_path, content)) {
-    LOG(ERROR) << "Could not open " << kernel_warning_path.value();
+    PLOG(ERROR) << "Could not open " << kernel_warning_path.value();
     return false;
   }
   // The signature is in the first line.

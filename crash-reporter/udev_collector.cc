@@ -24,7 +24,6 @@ using base::FilePath;
 namespace {
 
 const char kCollectUdevSignature[] = "crash_reporter-udev-collection";
-const char kGzipPath[] = "/bin/gzip";
 const char kUdevExecName[] = "udev";
 const char kUdevSignatureKey[] = "sig";
 const char kUdevSubsystemDevCoredump[] = "devcoredump";
@@ -111,14 +110,11 @@ bool UdevCollector::ProcessUdevCrashLogs(const FilePath& crash_directory,
   }
 
   // Compress the output using gzip.
-  brillo::ProcessImpl gzip_process;
-  gzip_process.AddArg(kGzipPath);
-  gzip_process.AddArg(crash_path.value());
-  int process_result = gzip_process.Run();
-  FilePath crash_path_zipped = FilePath(crash_path.value() + ".gz");
+  FilePath crash_path_zipped = GzipFile(crash_path);
+
   // If the zip file was not created, use the uncompressed file.
-  if (process_result != 0 || !base::PathExists(crash_path_zipped))
-    LOG(ERROR) << "Could not create zip file " << crash_path_zipped.value();
+  if (crash_path_zipped.empty())
+    LOG(ERROR) << "Could not create zip file for: " << crash_path.value();
   else
     crash_path = crash_path_zipped;
 
@@ -172,8 +168,8 @@ bool UdevCollector::AppendDevCoredump(const FilePath& crash_directory,
 
   // Collect coredump data.
   if (!base::CopyFile(coredump_path, core_path)) {
-    LOG(ERROR) << "Failed to copy device coredumpm file from "
-               << coredump_path.value() << " to " << core_path.value();
+    PLOG(ERROR) << "Failed to copy device coredumpm file from "
+                << coredump_path.value() << " to " << core_path.value();
     return false;
   }
 
@@ -192,8 +188,8 @@ bool UdevCollector::AppendDevCoredump(const FilePath& crash_directory,
 
 bool UdevCollector::ClearDevCoredump(const FilePath& coredump_path) {
   if (!base::WriteFile(coredump_path, "0", 1)) {
-    LOG(ERROR) << "Failed to delete the coredump data file "
-               << coredump_path.value();
+    PLOG(ERROR) << "Failed to delete the coredump data file "
+                << coredump_path.value();
     return false;
   }
   return true;
@@ -217,7 +213,7 @@ std::string UdevCollector::ExtractFailingDeviceDriverName(
 
   std::string uevent_content;
   if (!base::ReadFileToString(failing_uevent_path, &uevent_content)) {
-    LOG(ERROR) << "Failed to read uevent file " << failing_uevent_path.value();
+    PLOG(ERROR) << "Failed to read uevent file " << failing_uevent_path.value();
     return "";
   }
 

@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <brillo/process.h>
 #include <session_manager/dbus-proxies.h>
 
 namespace util {
@@ -48,6 +49,16 @@ bool GetCachedKeyValueDefault(const base::FilePath& base_name,
 bool GetUserCrashDirectories(
     org::chromium::SessionManagerInterfaceProxyInterface* session_manager_proxy,
     std::vector<base::FilePath>* directories);
+
+// Runs |process| and redirects |fd| to |output|. Returns the exit code, or -1
+// if the process failed to start.
+int RunAndCaptureOutput(brillo::ProcessImpl* process,
+                        int fd,
+                        std::string* output);
+
+// Breaks up |error| using std::getline and then does a LOG(ERROR) of each
+// individual line.
+void LogMultilineError(const std::string& error);
 
 }  // namespace util
 

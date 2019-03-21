@@ -25,7 +25,7 @@ ServiceFailureCollector::~ServiceFailureCollector() {}
 bool ServiceFailureCollector::LoadServiceFailure(std::string* signature) {
   FilePath failure_report_path(failure_report_path_);
   if (!base::ReadFileToString(failure_report_path, signature)) {
-    LOG(ERROR) << "Could not open " << failure_report_path_;
+    PLOG(ERROR) << "Could not open " << failure_report_path_;
     return false;
   }
   // The report is a single line with the signature. Chop off the first newline

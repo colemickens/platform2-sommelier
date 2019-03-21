@@ -432,7 +432,7 @@ void UserCollectorBase::EnqueueCollectionErrorLog(pid_t pid,
   // not want to write with root access to a symlink that an attacker
   // might have created.
   if (WriteNewFile(log_path, error_log.data(), error_log.length()) < 0) {
-    LOG(ERROR) << "Error writing new file " << log_path.value();
+    PLOG(ERROR) << "Error writing new file " << log_path.value();
     return;
   }
   WriteCrashMetaData(meta_path, exec, log_path.value());

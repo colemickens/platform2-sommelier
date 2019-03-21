@@ -9,6 +9,7 @@
 #include <map>
 
 #include <base/files/file_util.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/cryptohome.h>
 #include <brillo/key_value_store.h>
@@ -16,6 +17,12 @@
 #include "crash-reporter/paths.h"
 
 namespace util {
+
+namespace {
+
+constexpr size_t kBufferSize = 4096;
+
+}  // namespace
 
 bool IsCrashTestInProgress() {
   return base::PathExists(paths::GetAt(paths::kSystemRunStateDirectory,
@@ -124,6 +131,39 @@ bool GetUserCrashDirectories(
   }
 
   return true;
+}
+
+int RunAndCaptureOutput(brillo::ProcessImpl* process,
+                        int fd,
+                        std::string* output) {
+  process->RedirectUsingPipe(fd, false);
+  if (process->Start()) {
+    const int out = process->GetPipe(fd);
+    char buffer[kBufferSize];
+    output->clear();
+
+    while (true) {
+      const ssize_t count = HANDLE_EINTR(read(out, buffer, kBufferSize));
+      if (count < 0) {
+        process->Wait();
+        break;
+      }
+
+      if (count == 0)
+        return process->Wait();
+
+      output->append(buffer, count);
+    }
+  }
+
+  return -1;
+}
+
+void LogMultilineError(const std::string& error) {
+  std::vector<base::StringPiece> lines = base::SplitStringPiece(
+      error, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (auto line : lines)
+    LOG(ERROR) << line;
 }
 
 }  // namespace util

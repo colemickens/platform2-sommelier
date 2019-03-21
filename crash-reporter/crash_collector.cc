@@ -155,6 +155,7 @@ bool CrashCollector::CreateDirectoryWithSettings(const FilePath& dir,
     dirfd =
         openat(parentfd, final_dir_str, O_DIRECTORY | O_NOFOLLOW | O_RDONLY);
     if (dirfd < 0) {
+      PLOG(ERROR) << "Unable to open crash directory: " << dir.value();
       close(parentfd);
       return false;
     }
@@ -514,7 +515,7 @@ bool CrashCollector::GetUptimeAtProcessStart(pid_t pid,
 
   uint64_t ticks;
   if (!ParseProcessTicksFromStat(stat, &ticks)) {
-    LOG(ERROR) << "Failed to parse process status.";
+    LOG(ERROR) << "Failed to parse process status: " << stat;
     return false;
   }
 
@@ -555,6 +556,8 @@ bool CrashCollector::CheckHasCapacity(const FilePath& crash_directory,
                                       const std::string display_path) {
   DIR* dir = opendir(crash_directory.value().c_str());
   if (!dir) {
+    PLOG(ERROR) << "Unable to open directory to check capacity: "
+                << crash_directory.value();
     return false;
   }
   struct dirent* ent;
@@ -611,7 +614,7 @@ bool CrashCollector::GetLogContents(const FilePath& config_path,
 
   FilePath raw_output_file;
   if (!base::CreateTemporaryFile(&raw_output_file)) {
-    LOG(WARNING) << "Failed to create temporary file for raw log output.";
+    PLOG(WARNING) << "Failed to create temporary file for raw log output.";
     return false;
   }
 
@@ -657,8 +660,8 @@ bool CrashCollector::GetLogContents(const FilePath& config_path,
   // might have created.
   if (WriteNewFile(output_file, log_contents.data(), log_contents.size()) !=
       static_cast<int>(log_contents.length())) {
-    LOG(WARNING) << "Error writing sanitized log to "
-                 << output_file.value().c_str();
+    PLOG(WARNING) << "Error writing sanitized log to "
+                  << output_file.value().c_str();
     return false;
   }
 
@@ -719,7 +722,7 @@ bool CrashCollector::GetProcessTree(pid_t pid,
 
   if (WriteNewFile(output_file, log.data(), log.size()) !=
       static_cast<int>(log.size())) {
-    LOG(WARNING) << "Error writing sanitized log to " << output_file.value();
+    PLOG(WARNING) << "Error writing sanitized log to " << output_file.value();
     return false;
   }
 
@@ -838,9 +841,15 @@ FilePath CrashCollector::GzipFile(const FilePath& path) {
   brillo::ProcessImpl proc;
   proc.AddArg(kGzipPath);
   proc.AddArg(path.value());
-  const int res = proc.Run();
+  std::string error;
+  const int res = util::RunAndCaptureOutput(&proc, STDERR_FILENO, &error);
+  if (res < 0) {
+    PLOG(ERROR) << "Failed to execute gzip";
+    return FilePath();
+  }
   if (res != 0) {
     LOG(ERROR) << "Failed to gzip " << path.value();
+    util::LogMultilineError(error);
     return FilePath();
   }
   return path.AddExtension(".gz");

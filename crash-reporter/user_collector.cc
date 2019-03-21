@@ -131,7 +131,7 @@ bool UserCollector::CopyOffProcFiles(pid_t pid, const FilePath& container_dir) {
   for (std::string proc_file : kProcFiles) {
     if (!base::CopyFile(process_path.Append(proc_file),
                         container_dir.Append(proc_file))) {
-      LOG(ERROR) << "Could not copy " << proc_file << " file";
+      PLOG(ERROR) << "Could not copy " << proc_file << " file";
       return false;
     }
   }
@@ -143,7 +143,7 @@ bool UserCollector::ValidateProcFiles(const FilePath& container_dir) const {
   // process being reaped by the kernel before finishing a core dump.
   int64_t file_size = 0;
   if (!base::GetFileSize(container_dir.Append("maps"), &file_size)) {
-    LOG(ERROR) << "Could not get the size of maps file";
+    PLOG(ERROR) << "Could not get the size of maps file";
     return false;
   }
   if (file_size == 0) {

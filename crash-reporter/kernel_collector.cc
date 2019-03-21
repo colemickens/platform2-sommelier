@@ -125,7 +125,7 @@ bool KernelCollector::ReadRecordToString(std::string* contents,
   FilePath record_path = GetDumpRecordPath(
       kDumpRecordDmesgName, kDumpDriverRamoopsName, current_record);
   if (!base::ReadFileToString(record_path, &record)) {
-    LOG(ERROR) << "Unable to open " << record_path.value();
+    PLOG(ERROR) << "Unable to open " << record_path.value();
     return false;
   }
 
@@ -286,7 +286,7 @@ bool KernelCollector::LastRebootWasWatchdog() {
 
   std::string eventlog;
   if (!base::ReadFileToString(eventlog_path_, &eventlog)) {
-    LOG(ERROR) << "Unable to open " << eventlog_path_.value();
+    PLOG(ERROR) << "Unable to open " << eventlog_path_.value();
     return false;
   }
 
@@ -318,7 +318,7 @@ bool KernelCollector::LoadConsoleRamoops(std::string* contents) {
   }
 
   if (!base::ReadFileToString(record_path, contents)) {
-    LOG(ERROR) << "Unable to open " << record_path.value();
+    PLOG(ERROR) << "Unable to open " << record_path.value();
     return false;
   }
 

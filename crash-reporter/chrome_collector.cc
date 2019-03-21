@@ -89,9 +89,9 @@ bool GetDriErrorState(const FilePath& error_state_path,
                                 decoded_error_state.length());
   if (written < 0 ||
       static_cast<size_t>(written) != decoded_error_state.length()) {
-    LOG(ERROR) << "Could not write file " << error_state_path.value()
-               << " Written: " << written
-               << " Len: " << decoded_error_state.length();
+    PLOG(ERROR) << "Could not write file " << error_state_path.value()
+                << " Written: " << written
+                << " Len: " << decoded_error_state.length();
     base::DeleteFile(error_state_path, false);
     return false;
   }
@@ -134,7 +134,7 @@ bool ChromeCollector::HandleCrash(const FilePath& file_path,
 
   std::string data;
   if (!base::ReadFileToString(file_path, &data)) {
-    LOG(ERROR) << "Can't read crash log: " << file_path.value();
+    PLOG(ERROR) << "Can't read crash log: " << file_path.value();
     return false;
   }
 

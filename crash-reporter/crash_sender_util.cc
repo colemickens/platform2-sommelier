@@ -203,7 +203,7 @@ void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir) {
     // Check how old the file is.
     base::File::Info info;
     if (!base::GetFileInfo(file, &info)) {
-      LOG(WARNING) << "Failed to get file info: " << file.value();
+      PLOG(WARNING) << "Failed to get file info: " << file.value();
       continue;
     }
     base::TimeDelta delta = base::Time::Now() - info.last_modified;

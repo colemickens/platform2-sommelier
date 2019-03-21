@@ -117,10 +117,6 @@ bool GetArcProperties(std::string* version,
                       std::string* board,
                       std::string* cpu_abi);
 
-// Runs |process| and redirects |fd| to |output|. Returns the exit code, or -1
-// if the process failed to start.
-int RunAndCaptureOutput(ProcessImpl* process, int fd, std::string* output);
-
 std::string FormatDuration(uint64_t seconds);
 
 }  // namespace
@@ -168,7 +164,7 @@ bool ArcCollector::HandleJavaCrash(const std::string& crash_type,
 
   std::stringstream stream;
   if (!ReadCrashLogFromStdin(&stream)) {
-    LOG(ERROR) << "Failed to read crash log";
+    PLOG(ERROR) << "Failed to read crash log";
     return false;
   }
 
@@ -270,8 +266,10 @@ bool ArcCollector::ArcContext::GetPidNamespace(pid_t pid,
   // The /proc/[pid]/ns/pid file is a special symlink that resolves to a string
   // containing the inode number of the PID namespace, e.g. "pid:[4026531838]".
   FilePath target;
-  if (!base::ReadSymbolicLink(path, &target))
+  if (!base::ReadSymbolicLink(path, &target)) {
+    PLOG(ERROR) << "Failed reading symbolic link: " << path.value();
     return false;
+  }
 
   *ns = target.value();
   return true;
@@ -372,10 +370,11 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
   core_collector.AddArg(root.value());
 
   std::string error;
-  int exit_code = RunAndCaptureOutput(&core_collector, STDERR_FILENO, &error);
+  int exit_code =
+      util::RunAndCaptureOutput(&core_collector, STDERR_FILENO, &error);
 
   if (exit_code < 0) {
-    LOG(ERROR) << "Failed to start " << collector_path;
+    PLOG(ERROR) << "Failed to start " << collector_path;
     return kErrorSystemIssue;
   }
 
@@ -386,11 +385,7 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
     return kErrorNone;
   }
 
-  std::istringstream in(error);
-  std::string line;
-
-  while (std::getline(in, line))
-    LOG(ERROR) << line;
+  util::LogMultilineError(error);
 
   LOG(ERROR) << collector_path << " failed with exit code " << exit_code;
   switch (exit_code) {
@@ -659,7 +654,7 @@ bool GetChromeVersion(std::string* version) {
   chrome.AddArg(kChromePath);
   chrome.AddArg("--product-version");
 
-  int exit_code = RunAndCaptureOutput(&chrome, STDOUT_FILENO, version);
+  int exit_code = util::RunAndCaptureOutput(&chrome, STDOUT_FILENO, version);
   if (exit_code != EX_OK || version->empty()) {
     LOG(ERROR) << "Failed to get Chrome version";
     return false;
@@ -700,30 +695,6 @@ bool GetArcProperties(std::string* fingerprint,
 
   LOG(ERROR) << "Failed to get ARC properties";
   return false;
-}
-
-int RunAndCaptureOutput(ProcessImpl* process, int fd, std::string* output) {
-  process->RedirectUsingPipe(fd, false);
-  if (process->Start()) {
-    const int out = process->GetPipe(fd);
-    char buffer[kBufferSize];
-    output->clear();
-
-    while (true) {
-      const ssize_t count = HANDLE_EINTR(read(out, buffer, kBufferSize));
-      if (count < 0) {
-        process->Wait();
-        break;
-      }
-
-      if (count == 0)
-        return process->Wait();
-
-      output->append(buffer, count);
-    }
-  }
-
-  return -1;
 }
 
 std::string FormatDuration(uint64_t seconds) {
