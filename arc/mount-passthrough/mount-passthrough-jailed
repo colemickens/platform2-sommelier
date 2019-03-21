@@ -41,8 +41,10 @@ main() {
   # Enter a new network namespace.
   set -- "$@" -e
 
-  # Enter a new PID namespace and run the process as init (pid=1).
-  set -- "$@" -p -I
+  # Fork into a new PID namespace and exit immediately in parent.
+  # Leave the forked minijail running as init (PID=1) in the PID namespace
+  # as parent of the target process.
+  set -- "$@" -p -i
 
   # Enter a new IPC namespace.
   set -- "$@" -l
