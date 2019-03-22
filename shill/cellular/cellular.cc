@@ -346,13 +346,7 @@ void Cellular::Stop(Error* error,
     DisableIPv6();
 
     for (const auto& address : GetAddresses()) {
-      if (address.family() != IPAddress::kFamilyIPv6 &&
-          address.family() != IPAddress::kFamilyIPv4) {
-        LOG(ERROR) << "Interface has address of unexpected family: "
-                   << address.family();
-      }
-      rtnl_handler()->RemoveInterfaceAddress(interface_index(),
-                                             address);
+      rtnl_handler()->RemoveInterfaceAddress(interface_index(), address);
       socket_destroyer_->DestroySockets(IPPROTO_TCP, address);
       BlackholeAddress(address, kAddressBlackholeLifetime);
     }
@@ -618,10 +612,8 @@ std::vector<IPAddress> Cellular::GetAddresses() const {
     LOG(WARNING) << "Could not get addresses for modem";
   std::vector<IPAddress> addresses;
   for (const auto& data : address_data) {
-    if (data.address.family() != IPAddress::kFamilyIPv6 &&
-        data.address.family() != IPAddress::kFamilyIPv4)
-      continue;
-    addresses.push_back(data.address);
+    if (data.address.IsValid())
+      addresses.push_back(data.address);
   }
   return addresses;
 }

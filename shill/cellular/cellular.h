@@ -227,8 +227,6 @@ class Cellular : public Device,
   void OnModemStateChanged(ModemState new_state);
   void OnScanReply(const Stringmaps& found_networks, const Error& error);
 
-  std::vector<IPAddress> GetAddresses() const;
-
   // accessor to read the allow roaming property
   bool allow_roaming_property() const { return allow_roaming_; }
   // Is the underlying device in the process of activating?
@@ -479,6 +477,8 @@ class Cellular : public Device,
   void OnPPPConnected(const std::map<std::string, std::string>& params);
 
   void UpdateScanning();
+
+  std::vector<IPAddress> GetAddresses() const;
 
   void GetLocationCallback(const std::string& gpp_lac_ci_string,
                            const Error& error);
