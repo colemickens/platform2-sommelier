@@ -10,9 +10,10 @@ directories so that applications can have temporary runtime storage.
 
 ## Launching processes
 
-New processes are spawned by sending `maitred` a `LaunchProcess` rpc.  This rpc
-takes a `LaunchProcessRequest` message as its argument, which can be found in
-the [guest.proto](../proto/guest.proto) file.
+New processes can either be spawned by sending `maitred` a `LaunchProcess` rpc
+or by placing `.textproto` files in `/etc/maitred`. Both methods use the
+`LaunchProcessRequest` message, which can be found in
+the [vm_guest.proto](../proto/vm_guest.proto) file.
 
 `maitred` will then follow the lifetime of this process until it exits or is
 killed by a signal.  If the `LaunchProcessRequest` message indicated that the
@@ -20,6 +21,15 @@ process should be respawned, then `maitred` will launch a new instance of that
 process.  However, processes that respawn more than 10 times in 30 seconds will
 be stopped.  These processes can only be restarted by sending another
 `LaunchProcess` rpc.
+
+Processes in the `/etc/maitred` folder will be alphabetically sorted and
+started. Process files follow the naming convention
+`##-processname.textproto` where `##` defines the starting order. e.g
+`00-setup-process.textproto` will start before `10-main-process.textproto`.
+Make sure to use a two digits prefix, or you might run into unexpected behavior.
+e.g. `100-process.textproto` will start before `90-setup-process.textproto`.
+If a first process must start before a second, the first process will have to
+have the `wait_for_exit` flag set in the `LaunchProcessRequest` message.
 
 ### Process Privileges
 

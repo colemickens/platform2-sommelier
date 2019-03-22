@@ -155,9 +155,17 @@ int main(int argc, char** argv) {
     // Check for startup applications in the maitred init folder.
     base::FileEnumerator file_enum(base::FilePath(kMaitredInitPath), true,
                                    base::FileEnumerator::FILES);
-
+    std::vector<base::FilePath> files;
     for (base::FilePath file = file_enum.Next(); !file.empty();
          file = file_enum.Next()) {
+      files.push_back(file);
+    }
+
+    // Sort the files so that they are started in alphabetical order.
+    // See docs/init.md for more details.
+    std::sort(files.begin(), files.end());
+
+    for (const auto& file : files) {
       std::string contents;
       if (!base::ReadFileToString(file, &contents)) {
         LOG(ERROR) << "Unable to read file " << file.value();
@@ -176,7 +184,6 @@ int main(int argc, char** argv) {
       }
 
       std::vector<std::string> argv(req.argv().begin(), req.argv().end());
-      std::string process_name = argv[0];
       std::map<string, string> env;
       for (const auto& pair : req.env()) {
         env[pair.first] = pair.second;
@@ -185,27 +192,27 @@ int main(int argc, char** argv) {
       vm_tools::maitred::Init::ProcessLaunchInfo launch_info;
       if (!init->Spawn(std::move(argv), std::move(env), req.respawn(),
                        req.use_console(), req.wait_for_exit(), &launch_info)) {
-        LOG(ERROR) << "Unable to spawn process: " << process_name;
+        LOG(ERROR) << "Unable to spawn job: " << file.BaseName().value();
         continue;
       }
 
       switch (launch_info.status) {
         case vm_tools::maitred::Init::ProcessStatus::LAUNCHED:
-          LOG(INFO) << "Successfully launched process: " << process_name;
+          LOG(INFO) << "Successfully launched job: " << file.BaseName().value();
           break;
         case vm_tools::maitred::Init::ProcessStatus::EXITED:
-          LOG(INFO) << "Process " << process_name << " exited with status "
-                    << launch_info.code;
+          LOG(INFO) << "Job " << file.BaseName().value()
+                    << " exited with status " << launch_info.code;
           break;
         case vm_tools::maitred::Init::ProcessStatus::SIGNALED:
-          LOG(INFO) << "Process " << process_name << " killed by signal "
+          LOG(INFO) << "Job " << file.BaseName().value() << " killed by signal "
                     << launch_info.code;
           break;
         case vm_tools::maitred::Init::ProcessStatus::FAILED:
-          LOG(ERROR) << "Failed to launch process: " << process_name;
+          LOG(ERROR) << "Failed to launch job: " << file.BaseName().value();
           break;
         case vm_tools::maitred::Init::ProcessStatus::UNKNOWN:
-          LOG(WARNING) << "Unknown process status" << process_name;
+          LOG(WARNING) << "Unknown job status: " << file.BaseName().value();
           break;
       }
     }
