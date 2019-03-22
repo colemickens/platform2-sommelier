@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <memory>
 
+#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -72,6 +73,36 @@ bool VPNProvider::GetServiceParametersFromArgs(const KeyValueStore& args,
   *name_ptr = args.LookupString(kNameProperty, "");
 
   return true;
+}
+
+void VPNProvider::AddAllowedInterface(const std::string& interface_name) {
+  if (base::ContainsValue(allowed_iifs_, interface_name))
+    return;
+
+  // Add to the list of interfaces whitelisted via |SetDefaultRoutingPolicy|
+  // when connecting.
+  allowed_iifs_.push_back(interface_name);
+
+  // Update the routing table if there's an active VPN connection.
+  for (auto& service : services_) {
+    if (service->IsConnected()) {
+      service->connection()->AddInputInterfaceToRoutingTable(interface_name);
+    }
+  }
+}
+
+void VPNProvider::RemoveAllowedInterface(const std::string& interface_name) {
+  if (!base::ContainsValue(allowed_iifs_, interface_name))
+    return;
+
+  base::Erase(allowed_iifs_, interface_name);
+  // Update the routing table if there's an active VPN connection.
+  for (auto& service : services_) {
+    if (service->IsConnected()) {
+      service->connection()->RemoveInputInterfaceFromRoutingTable(
+          interface_name);
+    }
+  }
 }
 
 // static

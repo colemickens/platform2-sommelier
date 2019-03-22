@@ -165,7 +165,9 @@ class DeviceInfoTest : public Test {
 
   unique_ptr<RTNLMessage> BuildLinkMessage(RTNLMessage::Mode mode);
   unique_ptr<RTNLMessage> BuildLinkMessageWithInterfaceName(
-      RTNLMessage::Mode mode, const string& interface_name);
+      RTNLMessage::Mode mode,
+      const string& interface_name,
+      int interface_index = kTestDeviceIndex);
   unique_ptr<RTNLMessage> BuildAddressMessage(RTNLMessage::Mode mode,
                                               const IPAddress& address,
                                               unsigned char flags,
@@ -208,10 +210,10 @@ const int DeviceInfoTest::kReceiveByteCount = 1234;
 const int DeviceInfoTest::kTransmitByteCount = 5678;
 
 unique_ptr<RTNLMessage> DeviceInfoTest::BuildLinkMessageWithInterfaceName(
-    RTNLMessage::Mode mode, const string& interface_name) {
+    RTNLMessage::Mode mode, const string& interface_name, int interface_index) {
   auto message =
       std::make_unique<RTNLMessage>(RTNLMessage::kTypeLink, mode, 0, 0, 0,
-                                    kTestDeviceIndex, IPAddress::kFamilyIPv4);
+                                    interface_index, IPAddress::kFamilyIPv4);
   message->SetAttribute(static_cast<uint16_t>(IFLA_IFNAME),
                         ByteString(interface_name, true));
   ByteString test_address(kTestMACAddress, sizeof(kTestMACAddress));
@@ -1351,8 +1353,7 @@ TEST_F(DeviceInfoTest, IPv6DnsServerAddressesChanged) {
 class DeviceInfoTechnologyTest : public DeviceInfoTest {
  public:
   DeviceInfoTechnologyTest()
-      : DeviceInfoTest(),
-        test_device_name_(kTestDeviceName) {}
+      : DeviceInfoTest(), test_device_name_(kTestDeviceName) {}
   virtual ~DeviceInfoTechnologyTest() {}
 
   void SetUp() override {
@@ -1424,14 +1425,6 @@ TEST_F(DeviceInfoTechnologyTest, IgnoredArcMultinetBridgeDevice) {
   // A new uevent file is needed since the device name has changed.
   CreateInfoFile("uevent", "xxx");
   // A device with a "arc_" prefix should be ignored.
-  EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
-}
-
-TEST_F(DeviceInfoTechnologyTest, IgnoredVm) {
-  test_device_name_ = "vmtap0";
-  // A new uevent file is needed since the device name has changed.
-  CreateInfoFile("uevent", "xxx");
-  // A device with a "vm" prefix should be ignored.
   EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
 }
 
@@ -1750,6 +1743,70 @@ TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
                        HasSubstr("Device already created for interface")));
   TriggerOnWiFiInterfaceInfoReceived(message);
 }
+
+class DeviceInfoWithMockedGetUserId : public DeviceInfo {
+ public:
+  DeviceInfoWithMockedGetUserId(ControlInterface* control_interface,
+                                EventDispatcher* dispatcher,
+                                Metrics* metrics,
+                                Manager* manager)
+      : DeviceInfo(control_interface, dispatcher, metrics, manager) {}
+  MOCK_METHOD2(GetUserId, bool(const std::string& user_name, uid_t* uid));
+};
+
+class DeviceInfoMockedGetUserId : public DeviceInfoTechnologyTest {
+ public:
+  DeviceInfoMockedGetUserId()
+      : DeviceInfoTechnologyTest(),
+        test_device_info_(
+            &control_interface_, &dispatcher_, &metrics_, &manager_) {}
+
+  void SetUp() override {
+    DeviceInfoTechnologyTest::SetUp();
+    test_device_info_.rtnl_handler_ = &rtnl_handler_;
+    test_device_info_.routing_table_ = &routing_table_;
+    manager_.set_mock_device_info(&test_device_info_);
+  }
+
+ protected:
+  static const int kVmTapTestDeviceIndex;
+  static const char kVmTapTestDeviceName[];
+  static const uid_t kCrosvmUid;
+
+  DeviceInfoWithMockedGetUserId test_device_info_;
+};
+
+const int DeviceInfoMockedGetUserId::kVmTapTestDeviceIndex = 234567;
+const char DeviceInfoMockedGetUserId::kVmTapTestDeviceName[] = "vmtap0";
+const uid_t DeviceInfoMockedGetUserId::kCrosvmUid = 299;
+
+TEST_F(DeviceInfoMockedGetUserId, AddRemoveAllowedInterface) {
+  MockVPNProvider* vpn_provider = new StrictMock<MockVPNProvider>;
+  SetVPNProvider(vpn_provider);
+  SetDeviceName(kVmTapTestDeviceName);
+  test_device_info_.device_info_root_ = device_info_root_;
+  CreateInfoFile("owner", base::IntToString(kCrosvmUid));
+
+  EXPECT_CALL(test_device_info_, GetUserId("crosvm", _))
+      .WillOnce(DoAll(SetArgPointee<1>(kCrosvmUid), Return(true)));
+
+  EXPECT_EQ(0, vpn_provider->allowed_iifs().size());
+  unique_ptr<RTNLMessage> message_add = BuildLinkMessageWithInterfaceName(
+      RTNLMessage::kModeAdd, kVmTapTestDeviceName, kVmTapTestDeviceIndex);
+  test_device_info_.LinkMsgHandler(*message_add);
+  // Test that the new interface belonging to a virtual machine is whitelisted
+  // in the VPN provider.
+  EXPECT_EQ(1, vpn_provider->allowed_iifs().size());
+
+  unique_ptr<RTNLMessage> message_remove = BuildLinkMessageWithInterfaceName(
+      RTNLMessage::kModeDelete, kVmTapTestDeviceName, kVmTapTestDeviceIndex);
+  test_device_info_.LinkMsgHandler(*message_remove);
+  // Test that the whitelisted interface was removed from the VPN provider
+  // list of allowed interfaces when rtnetlink signaled that the interface is
+  // down.
+  EXPECT_EQ(0, vpn_provider->allowed_iifs().size());
+}
+
 #endif  // DISABLE_WIFI
 
 }  // namespace shill

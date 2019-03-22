@@ -137,8 +137,13 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // Sets the system hostname to |hostname|.
   virtual bool SetHostname(const std::string& hostname) const;
 
+  // Gets the real user ID of the given |user_name| and returns it via |uid|.
+  // Returns true on success.
+  virtual bool GetUserId(const std::string& user_name, uid_t* uid);
+
  private:
   friend class DeviceInfoDelayedCreationTest;
+  friend class DeviceInfoMockedGetUserId;
   friend class DeviceInfoTechnologyTest;
   friend class DeviceInfoTest;
   FRIEND_TEST(CellularTest, StartLinked);
@@ -150,6 +155,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   FRIEND_TEST(DeviceInfoTest, RequestLinkStatistics);
   FRIEND_TEST(DeviceInfoTest, StartStop);
   FRIEND_TEST(DeviceInfoTest, IPv6DnsServerAddressesChanged);  // For infos_.
+  FRIEND_TEST(DeviceInfoMockedGetUserId,
+              AddRemoveAllowedInterface);  // For rtnl_handler_, routing_table_.
 
   struct Info {
     Info()
@@ -283,6 +290,9 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   std::unique_ptr<Sockets> sockets_;
 
   Time* time_;
+
+  // Returns whether a device with name |interface_name| is guest.
+  bool IsGuestDevice(const std::string& interface_name);
 
   DISALLOW_COPY_AND_ASSIGN(DeviceInfo);
 };

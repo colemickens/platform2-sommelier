@@ -33,6 +33,9 @@ class Technology {
     kPPP,
     kPPPoE,
     kArc,
+    // Virtual tap devices used by guest OS and clients getting Internet via
+    // Chrome OS host kernel.
+    kGuestInterface,
     kUnknown,
   };
 

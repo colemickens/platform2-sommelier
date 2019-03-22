@@ -78,6 +78,13 @@ class VPNProvider : public ProviderInterface {
 
   VirtualDeviceRefPtr arc_device() const { return arc_device_; }
 
+  // Adds |interface_name| to the list of whitelisted networking interfaces
+  // |allowed_iifs_| that route traffic through VPNs.
+  void AddAllowedInterface(const std::string& interface_name);
+  // Removes |interface_name| from the list of whitelisted networking interfaces
+  // |allowed_iifs_| that route traffic through VPNs.
+  void RemoveAllowedInterface(const std::string& interface_name);
+
  private:
   friend class ArcVpnDriverTest;
   friend class L2TPIPSecDriverTest;
@@ -89,6 +96,7 @@ class VPNProvider : public ProviderInterface {
   FRIEND_TEST(VPNProviderTest, CreateArcService);
   FRIEND_TEST(VPNProviderTest, OnDeviceInfoAvailable);
   FRIEND_TEST(VPNProviderTest, RemoveService);
+  FRIEND_TEST(VPNServiceTest, AddRemoveVMInterface);
   FRIEND_TEST(VPNServiceTest, Unload);
 
   // Create a service of type |type| and storage identifier |storage_id|
@@ -138,6 +146,8 @@ class VPNProvider : public ProviderInterface {
   Metrics* metrics_;
   Manager* manager_;
   std::vector<VPNServiceRefPtr> services_;
+  // List of whitelisted networking interfaces that route traffic through VPNs
+  // via policy-based routing rules.
   std::vector<std::string> allowed_iifs_;
 
   VirtualDeviceRefPtr arc_device_;

@@ -29,6 +29,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/userdb_utils.h>
+#include <chromeos/constants/vm_tools.h>
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
@@ -112,6 +114,9 @@ constexpr char kInterfaceDevice[] = "device";
 // Sysfs path to the driver of a device via its interface name.
 constexpr char kInterfaceDriver[] = "device/driver";
 
+// Sysfs path to the file that is used to determine the owner of the interface.
+constexpr char kInterfaceOwner[] = "owner";
+
 // Sysfs path to the file that is used to determine if this is tun device.
 constexpr char kInterfaceTunFlags[] = "tun_flags";
 
@@ -128,8 +133,7 @@ const char* const kIgnoredDeviceNamePrefixes[] = {
     // for now.
     "arc_",
     "rmnet_ipa",
-    "veth",
-    "vm"
+    "veth"
 };
 
 // Modem drivers that we support.
@@ -167,8 +171,7 @@ DeviceInfo::DeviceInfo(ControlInterface* control_interface,
       netlink_manager_(NetlinkManager::GetInstance()),
 #endif  // DISABLE_WIFI
       sockets_(new Sockets()),
-      time_(Time::GetInstance()) {
-}
+      time_(Time::GetInstance()) {}
 
 DeviceInfo::~DeviceInfo() {}
 
@@ -317,6 +320,12 @@ int DeviceInfo::GetDeviceArpType(const string& iface_name) {
 Technology::Identifier DeviceInfo::GetDeviceTechnology(
     const string& iface_name) {
   int arp_type = GetDeviceArpType(iface_name);
+
+  if (IsGuestDevice(iface_name)) {
+    SLOG(this, 2) << StringPrintf("%s: device is a guest device",
+                                  iface_name.c_str());
+    return Technology::kGuestInterface;
+  }
 
   string contents;
   if (!GetDeviceInfoContents(iface_name, kInterfaceUevent, &contents)) {
@@ -623,6 +632,10 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string& link_name,
                 << " at index " << interface_index;
       DelayDeviceCreation(interface_index);
       return nullptr;
+    case Technology::kGuestInterface:
+      // Traffic that comes from guest devices should be routed through VPNs.
+      manager_->vpn_provider()->AddAllowedInterface(link_name);
+      return nullptr;
     default:
       // We will not manage this device in shill.  Do not create a device
       // object or do anything to change its state.  We create a stub object
@@ -733,7 +746,8 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
       SLOG(this, 2) << "link index " << dev_index << " address " << address;
     } else if (technology != Technology::kTunnel &&
                technology != Technology::kPPP &&
-               technology != Technology::kNoDeviceSymlink) {
+               technology != Technology::kNoDeviceSymlink &&
+               technology != Technology::kGuestInterface) {
       LOG(ERROR) << "Add Link message for link '" << link_name
                  << "' does not have IFLA_ADDRESS!";
       return;
@@ -759,6 +773,16 @@ void DeviceInfo::DelLinkMsgHandler(const RTNLMessage& msg) {
                                       msg.interface_index(),
                                       msg.link_status().flags,
                                       msg.link_status().change);
+
+  string link_name;
+  if (!GetLinkNameFromMessage(msg, &link_name)) {
+    LOG(ERROR) << "Del Link message does not contain a link name!";
+    return;
+  }
+  // Remove the interface from the list of interfaces that should route
+  // traffic through VPNs.
+  manager_->vpn_provider()->RemoveAllowedInterface(link_name);
+
   RemoveInfo(msg.interface_index());
 }
 
@@ -1368,4 +1392,30 @@ bool DeviceInfo::SetHostname(const std::string& hostname) const {
   return true;
 }
 
+// Verifies if a device is guest by checking if the owner of the device
+// identified by |interface_name| has the same UID as the user that runs the
+// Crostini VMs.
+bool DeviceInfo::IsGuestDevice(const std::string& interface_name) {
+  std::string owner;
+  if (!GetDeviceInfoContents(interface_name, kInterfaceOwner, &owner)) {
+    return false;
+  }
+  uint32_t owner_id;
+  base::TrimWhitespaceASCII(owner, base::TRIM_ALL, &owner);
+  if (!base::StringToUint(owner, &owner_id)) {
+    return false;
+  }
+
+  uid_t crosvm_user_uid;
+  if (!GetUserId(vm_tools::kCrosVmUser, &crosvm_user_uid)) {
+    LOG(WARNING) << "unable to get uid for " << vm_tools::kCrosVmUser;
+    return false;
+  }
+
+  return owner_id == crosvm_user_uid;
+}
+
+bool DeviceInfo::GetUserId(const std::string& user_name, uid_t* uid) {
+  return brillo::userdb::GetUserInfo(user_name, uid, nullptr);
+}
 }  // namespace shill

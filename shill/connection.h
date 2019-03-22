@@ -95,6 +95,15 @@ class Connection : public base::RefCounted<Connection> {
     return lower_binder_.connection();
   }
 
+  // Adds |interface_name| to the whitelisted input interfaces that are
+  // allowed to use the connection and updates the routing table.
+  virtual void AddInputInterfaceToRoutingTable(
+      const std::string& interface_name);
+  // Removes |interface_name| from the whitelisted input interfaces and
+  // updates the routing table.
+  virtual void RemoveInputInterfaceFromRoutingTable(
+      const std::string& interface_name);
+
   // The interface metric is a positive integer used by the kernel to
   // determine which interface to use for outbound packets if there are
   // multiple overlapping routes.  The lowest metric wins; the connection

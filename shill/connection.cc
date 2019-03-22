@@ -419,6 +419,26 @@ void Connection::UpdateRoutingPolicy() {
   }
 }
 
+void Connection::AddInputInterfaceToRoutingTable(
+    const std::string& interface_name) {
+  if (base::ContainsValue(allowed_iifs_, interface_name))
+    return;  // interface already whitelisted
+
+  allowed_iifs_.push_back(interface_name);
+  UpdateRoutingPolicy();
+  routing_table_->FlushCache();
+}
+
+void Connection::RemoveInputInterfaceFromRoutingTable(
+    const std::string& interface_name) {
+  if (!base::ContainsValue(allowed_iifs_, interface_name))
+    return;  // interface already removed
+
+  base::Erase(allowed_iifs_, interface_name);
+  UpdateRoutingPolicy();
+  routing_table_->FlushCache();
+}
+
 bool Connection::IsDefault() {
   return metric_ == kDefaultMetric;
 }
