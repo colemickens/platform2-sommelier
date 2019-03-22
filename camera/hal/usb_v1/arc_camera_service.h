@@ -21,11 +21,14 @@ namespace arc {
 
 class ArcCameraServiceImpl : public ArcCameraService {
  public:
-  ArcCameraServiceImpl(int socket_fd, base::Closure quit_cb);
+  explicit ArcCameraServiceImpl(base::Closure quit_cb);
   ~ArcCameraServiceImpl();
 
-  // Create a mojo connection to container.
-  bool Start();
+  // Create a mojo connection to container with a socket FD.
+  bool StartWithSocketFD(base::ScopedFD socket_fd);
+
+  // Create a mojo connection to container with a token and a FD.
+  bool StartWithTokenAndFD(const std::string& token, base::ScopedFD fd);
 
  private:
   void OnChannelClosed(const std::string& error_msg);
@@ -48,8 +51,6 @@ class ArcCameraServiceImpl : public ArcCameraService {
       const GetDeviceSupportedFormatsCallback& callback) override;
   void GetCameraDeviceInfos(
       const GetCameraDeviceInfosCallback& callback) override;
-
-  base::ScopedFD socket_fd_;
 
   // Quit callback to exit daemon.
   base::Closure quit_cb_;

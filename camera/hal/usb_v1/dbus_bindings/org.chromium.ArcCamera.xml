@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node name="/org/chromium/ArcCamera"
+      xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.ArcCamera">
+    <method name="StartService">
+      <tp:docstring>
+        Starts a new service process.
+      </tp:docstring>
+      <arg name="fd" type="h" direction="in">
+        <tp:docstring>
+          Mojo invitation socket FD.
+        </tp:docstring>
+      </arg>
+      <arg name="token" type="s" direction="in">
+        <tp:docstring>
+          Mojo invitation token.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+  </interface>
+</node>

@@ -27,9 +27,8 @@
 
 namespace arc {
 
-ArcCameraServiceImpl::ArcCameraServiceImpl(int socket_fd, base::Closure quit_cb)
-    : socket_fd_(socket_fd),
-      quit_cb_(quit_cb),
+ArcCameraServiceImpl::ArcCameraServiceImpl(base::Closure quit_cb)
+    : quit_cb_(quit_cb),
       binding_(this),
       camera_device_(new V4L2CameraDevice()),
       ipc_thread_("Mojo IPC thread") {
@@ -50,13 +49,13 @@ ArcCameraServiceImpl::~ArcCameraServiceImpl() {
   ipc_thread_.Stop();
 }
 
-bool ArcCameraServiceImpl::Start() {
-  if (!socket_fd_.is_valid()) {
-    LOG(ERROR) << "Invalid socket fd: " << socket_fd_.get();
+bool ArcCameraServiceImpl::StartWithSocketFD(base::ScopedFD socket_fd) {
+  if (!socket_fd.is_valid()) {
+    LOG(ERROR) << "Invalid socket fd: " << socket_fd.get();
     return false;
   }
   mojo::edk::ScopedPlatformHandle handle(
-      mojo::edk::PlatformHandle(socket_fd_.release()));
+      mojo::edk::PlatformHandle(socket_fd.release()));
 
   // Make socket blocking.
   int flags = HANDLE_EINTR(fcntl(handle.get().handle, F_GETFL));
@@ -117,6 +116,23 @@ bool ArcCameraServiceImpl::Start() {
 
   // This thread that calls Bind() will receive IPC functions.
   binding_.Bind(std::move(message_pipe));
+  binding_.set_connection_error_handler(
+      base::Bind(&ArcCameraServiceImpl::OnChannelClosed, base::Unretained(this),
+                 "Triggered from binding"));
+  return true;
+}
+
+bool ArcCameraServiceImpl::StartWithTokenAndFD(const std::string& token,
+                                               base::ScopedFD fd) {
+  if (!fd.is_valid()) {
+    LOG(ERROR) << "Invalid fd: " << fd.get();
+    return false;
+  }
+  mojo::edk::SetParentPipeHandle(
+      mojo::edk::ScopedPlatformHandle(mojo::edk::PlatformHandle(fd.release())));
+
+  // This thread that calls Bind() will receive IPC functions.
+  binding_.Bind(mojo::edk::CreateChildMessagePipe(token));
   binding_.set_connection_error_handler(
       base::Bind(&ArcCameraServiceImpl::OnChannelClosed, base::Unretained(this),
                  "Triggered from binding"));
