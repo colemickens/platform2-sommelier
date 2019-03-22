@@ -136,6 +136,7 @@ constexpr char kSharedMountDirectory[] = "/run/arc/shared_mounts";
 constexpr char kSysfsCpu[] = "/sys/devices/system/cpu";
 constexpr char kSysfsTracing[] = "/sys/kernel/debug/tracing";
 constexpr char kSystemLibArmDirectoryRelative[] = "system/lib/arm";
+constexpr char kSystemLibArm64DirectoryRelative[] = "system/lib64/arm64";
 constexpr char kSystemImage[] = "/opt/google/containers/android/system.raw.img";
 constexpr char kUsbDevicesDirectory[] = "/dev/bus/usb";
 constexpr char kZygotePreloadDoneFile[] = ".preload_done";
@@ -540,6 +541,8 @@ struct ArcPaths {
   const base::FilePath sysfs_tracing{kSysfsTracing};
   const base::FilePath system_lib_arm_directory_relative{
       kSystemLibArmDirectoryRelative};
+  const base::FilePath system_lib64_arm64_directory_relative{
+      kSystemLibArm64DirectoryRelative};
   const base::FilePath usb_devices_directory{kUsbDevicesDirectory};
 
   const base::FilePath restorecon_whitelist_sync{kRestoreconWhitelistSync};
@@ -643,7 +646,7 @@ void ArcSetup::WaitForRtLimitsJob() {
 }
 
 ArcBinaryTranslationType ArcSetup::IdentifyBinaryTranslationType() {
-  bool is_houdini_available = kUseHoudini;
+  bool is_houdini_available = kUseHoudini || kUseHoudini64;
   bool is_ndk_translation_available = kUseNdkTranslation;
 
   if (!base::PathExists(arc_paths_->android_rootfs_directory.Append(
@@ -1979,6 +1982,13 @@ void ArcSetup::BindMountInContainerNamespaceOnPreChroot(
     EXIT_IF(!arc_mounter_->BindMount(
         rootfs.Append("vendor/lib/arm"),
         rootfs.Append(arc_paths_->system_lib_arm_directory_relative)));
+
+    if (kUseHoudini64) {
+      // Bind mount arm64 directory for houdini64.
+      EXIT_IF(!arc_mounter_->BindMount(
+          rootfs.Append("vendor/lib64/arm64"),
+          rootfs.Append(arc_paths_->system_lib64_arm64_directory_relative)));
+    }
   }
 }
 

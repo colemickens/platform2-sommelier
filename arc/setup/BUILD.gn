@@ -52,6 +52,9 @@ static_library("libarc_setup") {
   if (defined(use.houdini) && use.houdini) {
     defines += [ "USE_HOUDINI=1" ]
   }
+  if (defined(use.houdini64) && use.houdini64) {
+    defines += [ "USE_HOUDINI64=1" ]
+  }
   if (defined(use.ndk_translation) && use.ndk_translation) {
     defines += [ "USE_NDK_TRANSLATION=1" ]
   }

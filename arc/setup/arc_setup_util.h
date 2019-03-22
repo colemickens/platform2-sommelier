@@ -34,9 +34,14 @@ class CrosConfigInterface;
 
 namespace arc {
 
-#if defined(USE_HOUDINI)
+#if defined(USE_HOUDINI64)
+constexpr bool kUseHoudini64 = true;
+constexpr bool kUseHoudini = true;
+#elif defined(USE_HOUDINI)
+constexpr bool kUseHoudini64 = false;
 constexpr bool kUseHoudini = true;
 #else
+constexpr bool kUseHoudini64 = false;
 constexpr bool kUseHoudini = false;
 #endif  // USE_HOUDINI
 
