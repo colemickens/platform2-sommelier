@@ -27,6 +27,9 @@ pkg_config("target_defaults") {
     "libusbguard",
     "protobuf",
   ]
+
+  # Needed to catch rule parsing errors reported by libusbguard.
+  cflags_cc = [ "-fexceptions" ]
 }
 
 proto_library("usb_bouncer_protos") {

@@ -191,7 +191,13 @@ bool IncludeRuleAtLockscreen(const std::string& rule) {
 
   const usbguard::Rule filter_rule = usbguard::Rule::fromString(
       "block with-interface one-of { 05:*:* 06:*:* 07:*:* 08:*:* }");
-  usbguard::Rule parsed_rule = usbguard::Rule::fromString(rule);
+  usbguard::Rule parsed_rule;
+  try {
+    parsed_rule = usbguard::Rule::fromString(rule);
+  } catch (std::exception ex) {
+    // RuleParseException isn't exported by libusbguard.
+    return false;
+  }
 
   if (!parsed_rule) {
     return false;
