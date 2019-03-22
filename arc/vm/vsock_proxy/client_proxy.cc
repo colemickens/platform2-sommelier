@@ -74,8 +74,8 @@ ClientProxy::~ClientProxy() = default;
 void ClientProxy::Initialize() {
   // For the details of connection procedure, please find the comment in
   // ServerProxy::Initialize().
-  vsock_proxy_ =
-      std::make_unique<VSockProxy>(VSockProxy::Type::CLIENT, ConnectVSock());
+  vsock_proxy_ = std::make_unique<VSockProxy>(VSockProxy::Type::CLIENT, nullptr,
+                                              ConnectVSock());
 
   arc_bridge_socket_ = CreateUnixDomainSocket(base::FilePath(kGuestSocketPath));
   LOG(INFO) << "Start observing " << kGuestSocketPath;

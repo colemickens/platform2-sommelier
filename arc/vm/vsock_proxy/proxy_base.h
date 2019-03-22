@@ -7,6 +7,8 @@
 
 namespace arc {
 
+class VSockProxy;
+
 // Interface of ServerProxy and ClientProxy.
 class ProxyBase {
  public:
@@ -15,6 +17,9 @@ class ProxyBase {
   // Initializes the instance. For details, please find comments for the
   // individual implementation.
   virtual void Initialize() = 0;
+
+  // Returns VSockProxy instance.
+  virtual VSockProxy* GetVSockProxy() = 0;
 };
 
 }  // namespace arc

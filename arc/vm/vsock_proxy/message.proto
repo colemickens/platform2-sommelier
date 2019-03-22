@@ -56,6 +56,10 @@ message FileDescriptor {
   }
   Type type = 1;
   int64 handle = 2;
+
+  // Size of the corresponding file. Available only if the type is
+  // REGULAR_FILE.
+  uint64 file_size = 3;
 }
 
 // Notify the data is available on a stream (pipe or socket) corresponding to

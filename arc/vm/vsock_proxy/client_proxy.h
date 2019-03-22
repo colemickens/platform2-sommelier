@@ -26,6 +26,9 @@ class ClientProxy : public ProxyBase {
   ClientProxy();
   ~ClientProxy() override;
 
+  // ProxyBase overrides:
+  VSockProxy* GetVSockProxy() override { return vsock_proxy_.get(); }
+
   // Sets up the ClientProxy. Specifically, wait for VSOCK gets ready,
   // creates a unix domain socket at /var/run/chrome/arc_bridge.sock,
   // then starts watching it.

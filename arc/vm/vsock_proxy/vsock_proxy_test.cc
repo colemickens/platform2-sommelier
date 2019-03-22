@@ -41,9 +41,9 @@ class VSockProxyTest : public testing::Test {
     // Use socket pair instead of VSOCK for testing.
     auto vsock_pair = CreateSocketPair();
     ASSERT_TRUE(vsock_pair.has_value());
-    server_ = std::make_unique<VSockProxy>(VSockProxy::Type::SERVER,
+    server_ = std::make_unique<VSockProxy>(VSockProxy::Type::SERVER, nullptr,
                                            std::move(vsock_pair->first));
-    client_ = std::make_unique<VSockProxy>(VSockProxy::Type::CLIENT,
+    client_ = std::make_unique<VSockProxy>(VSockProxy::Type::CLIENT, nullptr,
                                            std::move(vsock_pair->second));
 
     // Register initial socket pairs.

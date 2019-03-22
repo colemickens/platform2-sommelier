@@ -55,6 +55,12 @@ void ProxyService::Stop() {
   LOG(INFO) << "ProxyService has been stopped.";
 }
 
+scoped_refptr<base::TaskRunner> ProxyService::GetTaskRunner() {
+  if (!thread_)
+    return {};
+  return thread_->task_runner();
+}
+
 void ProxyService::Initialize(base::WaitableEvent* event) {
   proxy_ = factory_->Create();
   proxy_->Initialize();

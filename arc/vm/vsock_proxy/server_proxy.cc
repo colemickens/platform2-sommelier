@@ -59,7 +59,8 @@ base::ScopedFD CreateVSock() {
 
 }  // namespace
 
-ServerProxy::ServerProxy() = default;
+ServerProxy::ServerProxy(ProxyFileSystem* proxy_file_system)
+    : proxy_file_system_(proxy_file_system) {}
 
 ServerProxy::~ServerProxy() = default;
 
@@ -84,8 +85,8 @@ void ServerProxy::Initialize() {
   auto accepted = AcceptSocket(vsock.get());
   vsock.reset();
   LOG(INFO) << "Initial socket connection comes";
-  vsock_proxy_ = std::make_unique<VSockProxy>(VSockProxy::Type::SERVER,
-                                              std::move(accepted));
+  vsock_proxy_ = std::make_unique<VSockProxy>(
+      VSockProxy::Type::SERVER, proxy_file_system_, std::move(accepted));
   LOG(INFO) << "ServerProxy has started to work.";
 }
 

@@ -40,8 +40,11 @@ std::unique_ptr<StreamBase> CreateStream(
 
 }  // namespace
 
-VSockProxy::VSockProxy(Type type, base::ScopedFD vsock)
+VSockProxy::VSockProxy(Type type,
+                       ProxyFileSystem* proxy_file_system,
+                       base::ScopedFD vsock)
     : type_(type),
+      proxy_file_system_(proxy_file_system),
       vsock_(std::move(vsock)),
       next_handle_(type == Type::SERVER ? 1 : -1),
       next_cookie_(type == Type::SERVER ? 1 : -1) {
@@ -73,9 +76,12 @@ int64_t VSockProxy::RegisterFileDescriptor(
   }
 
   auto stream = CreateStream(std::move(fd), fd_type, this);
-  auto controller = base::FileDescriptorWatcher::WatchReadable(
-      raw_fd, base::BindRepeating(&VSockProxy::OnLocalFileDesciptorReadReady,
-                                  weak_factory_.GetWeakPtr(), raw_fd));
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> controller;
+  if (fd_type != arc_proxy::FileDescriptor::REGULAR_FILE) {
+    controller = base::FileDescriptorWatcher::WatchReadable(
+        raw_fd, base::BindRepeating(&VSockProxy::OnLocalFileDesciptorReadReady,
+                                    weak_factory_.GetWeakPtr(), raw_fd));
+  }
   fd_map_.emplace(raw_fd, FileDescriptorInfo{handle, std::move(stream),
                                              std::move(controller)});
   handle_map_.emplace(handle, raw_fd);
@@ -144,6 +150,17 @@ void VSockProxy::Pread(int64_t handle,
     return;
   }
   pending_pread_.emplace(cookie, std::move(callback));
+}
+
+void VSockProxy::Close(int64_t handle) {
+  arc_proxy::VSockMessage message;
+  message.mutable_close()->set_handle(handle);
+  if (!vsock_.Write(message)) {
+    // Failed to write a message to VSock. Delete everything.
+    handle_map_.clear();
+    fd_map_.clear();
+    vsock_controller_.reset();
+  }
 }
 
 void VSockProxy::OnVSockReadReady() {

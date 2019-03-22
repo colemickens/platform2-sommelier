@@ -13,13 +13,17 @@
 
 namespace arc {
 
+class ProxyFileSystem;
 class VSockProxy;
 
 // ServerProxy sets up the VSockProxy and handles initial socket negotiation.
 class ServerProxy : public ProxyBase {
  public:
-  ServerProxy();
+  explicit ServerProxy(ProxyFileSystem* proxy_file_system);
   ~ServerProxy() override;
+
+  // ProxyBase overrides:
+  VSockProxy* GetVSockProxy() override { return vsock_proxy_.get(); }
 
   // Sets up the ServerProxy. Specifically, start listening VSOCK.
   // Then, connect to /run/chrome/arc_bridge.sock, when an initial connection
@@ -27,6 +31,7 @@ class ServerProxy : public ProxyBase {
   void Initialize() override;
 
  private:
+  ProxyFileSystem* const proxy_file_system_;
   std::unique_ptr<VSockProxy> vsock_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(ServerProxy);

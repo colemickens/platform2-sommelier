@@ -2,49 +2,55 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <unistd.h>
+#include <brillo/syslog_logging.h>
 
 #include <memory>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include <brillo/syslog_logging.h>
 
+#include "arc/vm/vsock_proxy/proxy_base.h"
+#include "arc/vm/vsock_proxy/proxy_file_system.h"
 #include "arc/vm/vsock_proxy/proxy_service.h"
 #include "arc/vm/vsock_proxy/server_proxy.h"
+#include "arc/vm/vsock_proxy/server_proxy_file_system.h"
 
+namespace arc {
 namespace {
 
 // Adaper to inject ServerProxy creation to ProxyService.
-class ServerProxyFactory : public arc::ProxyService::ProxyFactory {
+class ServerProxyFactory : public ProxyService::ProxyFactory {
  public:
-  ServerProxyFactory() = default;
+  explicit ServerProxyFactory(ProxyFileSystem* file_system)
+      : file_system_(file_system) {}
   ~ServerProxyFactory() override = default;
 
-  std::unique_ptr<arc::ProxyBase> Create() override {
-    return std::make_unique<arc::ServerProxy>();
+  std::unique_ptr<ProxyBase> Create() override {
+    return std::make_unique<ServerProxy>(file_system_);
   }
 
  private:
+  ProxyFileSystem* const file_system_;
+
   DISALLOW_COPY_AND_ASSIGN(ServerProxyFactory);
 };
 
 }  // namespace
+}  // namespace arc
 
-int main() {
+int main(int argc, char** argv) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
                   brillo::kLogToStderrIfTty);
 
-  arc::ProxyService service(std::make_unique<ServerProxyFactory>());
-  if (!service.Start()) {
-    LOG(ERROR) << "Failed to start ServerProxy.";
+  if (argc < 2) {
+    LOG(ERROR) << "Mount path is not specified.";
     return 1;
   }
-  LOG(INFO) << "ServerProxy has been started successfully.";
 
-  // Sleep forever.
-  // TODO(hidehiko): On main thread, Fuse handler will run.
-  while (1)
-    pause();
-  return 0;
+  // ProxyService for ServerProxy will be started after FUSE initialization is
+  // done. See also ServerProxyFileSystem::Init().
+  arc::ServerProxyFileSystem file_system{base::FilePath(argv[1])};
+  return file_system.Run(
+      std::make_unique<arc::ServerProxyFactory>(&file_system));
 }

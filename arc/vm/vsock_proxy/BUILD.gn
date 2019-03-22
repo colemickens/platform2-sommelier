@@ -35,6 +35,8 @@ proto_library("message") {
 
 static_library("vsock_proxy_lib") {
   configs += [ ":target_defaults" ]
+  pkg_deps = [ "fuse" ]
+  defines = [ "FUSE_USE_VERSION=26" ]
   deps = [
     ":message",
   ]
@@ -43,29 +45,20 @@ static_library("vsock_proxy_lib") {
     "file_stream.cc",
     "pipe_stream.cc",
     "proxy_service.cc",
+    "server_proxy.cc",
+    "server_proxy_file_system.cc",
     "socket_stream.cc",
     "vsock_proxy.cc",
     "vsock_stream.cc",
   ]
 }
 
-static_library("server_proxy_lib") {
+executable("server_proxy") {
   configs += [ ":target_defaults" ]
   deps = [
     ":vsock_proxy_lib",
   ]
-  sources = [
-    "server_proxy.cc",
-  ]
-}
 
-executable("server_proxy") {
-  configs += [ ":target_defaults" ]
-  deps = [
-    ":server_proxy_lib",
-  ]
-
-  # TODO(b/121188898): Consider sharing the code with client implementation.
   sources = [
     "server_proxy_main.cc",
   ]
@@ -85,30 +78,28 @@ if (use.test) {
     ]
   }
 
-  pkg_config("test_config") {
-    pkg_deps = [
-      "libbrillo-test-${libbase_ver}",
-      "libchrome-test-${libbase_ver}",
-    ]
-  }
-
   executable("vsock_proxy_test") {
     configs += [
       "//common-mk:test",
       ":target_defaults",
-      ":test_config",
     ]
+
+    pkg_deps = [
+      "libbrillo-test-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+
     deps = [
       ":vsock_proxy_lib",
       "//common-mk/testrunner",
     ]
 
-    # TODO(b/121198129): Add more testing coverage.
     sources = [
       "file_descriptor_util_test.cc",
       "file_stream_test.cc",
       "pipe_stream_test.cc",
       "proxy_service_test.cc",
+      "server_proxy_file_system_test.cc",
       "socket_stream_test.cc",
       "vsock_proxy_test.cc",
       "vsock_stream_test.cc",

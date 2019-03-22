@@ -18,14 +18,16 @@
 
 #include "arc/vm/vsock_proxy/file_descriptor_util.h"
 #include "arc/vm/vsock_proxy/message.pb.h"
+#include "arc/vm/vsock_proxy/proxy_file_system.h"
 #include "arc/vm/vsock_proxy/vsock_proxy.h"
 
 namespace arc {
 
 SocketStream::SocketStream(base::ScopedFD socket_fd, VSockProxy* proxy)
     : socket_fd_(std::move(socket_fd)), proxy_(proxy) {
-  // TODO(hidehiko): Re-enable DCHECK on production.
-  // Currently nullptr for proxy is allowed for unit testing purpose.
+  // TODO(hidehiko): Re-enable DCHECK on production when file descriptor
+  // registration part is extracted. Currently nullptr for proxy is allowed
+  // for unit testing purpose.
   // DCHECK(proxy);
 }
 
@@ -48,8 +50,12 @@ bool SocketStream::Read(arc_proxy::VSockMessage* message) {
   }
 
   // Validate file descriptor type before registering to VSockProxy.
-  std::vector<arc_proxy::FileDescriptor::Type> fd_types;
-  fd_types.reserve(fds.size());
+  struct FileDescriptorAttr {
+    arc_proxy::FileDescriptor::Type type;
+    uint64_t size;
+  };
+  std::vector<FileDescriptorAttr> fd_attrs;
+  fd_attrs.reserve(fds.size());
   for (const auto& fd : fds) {
     struct stat st;
     if (fstat(fd.get(), &st) == -1) {
@@ -65,36 +71,47 @@ bool SocketStream::Read(arc_proxy::VSockMessage* message) {
       }
       switch (flags & O_ACCMODE) {
         case O_RDONLY:
-          fd_types.push_back(arc_proxy::FileDescriptor::FIFO_READ);
+          fd_attrs.emplace_back(
+              FileDescriptorAttr{arc_proxy::FileDescriptor::FIFO_READ, 0});
           break;
         case O_WRONLY:
-          fd_types.push_back(arc_proxy::FileDescriptor::FIFO_WRITE);
+          fd_attrs.emplace_back(
+              FileDescriptorAttr{arc_proxy::FileDescriptor::FIFO_WRITE, 0});
           break;
         default:
-          PLOG(ERROR) << "Unsupported access mode: " << (flags & O_ACCMODE);
+          LOG(ERROR) << "Unsupported access mode: " << (flags & O_ACCMODE);
           return false;
       }
       continue;
     }
     if (S_ISSOCK(st.st_mode)) {
-      fd_types.push_back(arc_proxy::FileDescriptor::SOCKET);
+      fd_attrs.emplace_back(
+          FileDescriptorAttr{arc_proxy::FileDescriptor::SOCKET, 0});
+      continue;
+    }
+    if (S_ISREG(st.st_mode)) {
+      fd_attrs.emplace_back(
+          FileDescriptorAttr{arc_proxy::FileDescriptor::REGULAR_FILE,
+                             static_cast<uint64_t>(st.st_size)});
       continue;
     }
 
     LOG(ERROR) << "Unsupported FD type: " << st.st_mode;
     return false;
   }
-  DCHECK_EQ(fds.size(), fd_types.size());
+  DCHECK_EQ(fds.size(), fd_attrs.size());
 
   // Build returning message.
   auto* data = message->mutable_data();
   data->set_blob(buf, size);
   for (size_t i = 0; i < fds.size(); ++i) {
     int64_t handle = proxy_->RegisterFileDescriptor(
-        std::move(fds[i]), fd_types[i], 0 /* generate handle */);
+        std::move(fds[i]), fd_attrs[i].type, 0 /* generate handle */);
     auto* transferred_fd = data->add_transferred_fd();
     transferred_fd->set_handle(handle);
-    transferred_fd->set_type(fd_types[i]);
+    transferred_fd->set_type(fd_attrs[i].type);
+    if (fd_attrs[i].type == arc_proxy::FileDescriptor::REGULAR_FILE)
+      transferred_fd->set_file_size(fd_attrs[i].size);
   }
   return true;
 }
@@ -128,13 +145,28 @@ bool SocketStream::Write(arc_proxy::Data* data) {
         std::tie(local_fd, remote_fd) = std::move(*created);
         break;
       }
+      case arc_proxy::FileDescriptor::REGULAR_FILE: {
+        auto* proxy_file_system = proxy_->proxy_file_system();
+        if (!proxy_file_system)
+          return false;
+        // Create a file descriptor which is handled by |proxy_file_system|.
+        remote_fd = proxy_file_system->RegisterHandle(
+            transferred_fd.handle(), transferred_fd.file_size());
+        if (!remote_fd.is_valid())
+          return false;
+        break;
+      }
       default:
         LOG(ERROR) << "Unsupported FD type: " << transferred_fd.type();
         return false;
     }
 
-    proxy_->RegisterFileDescriptor(std::move(local_fd), transferred_fd.type(),
-                                   transferred_fd.handle());
+    // |local_fd| is set iff the descriptor's read readiness needs to be
+    // watched, so register it.
+    if (local_fd.is_valid()) {
+      proxy_->RegisterFileDescriptor(std::move(local_fd), transferred_fd.type(),
+                                     transferred_fd.handle());
+    }
     transferred_fds.emplace_back(std::move(remote_fd));
   }
 

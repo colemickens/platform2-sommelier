@@ -26,6 +26,7 @@ class FilePath;
 namespace arc {
 
 class StreamBase;
+class ProxyFileSystem;
 
 // Proxies between local file descriptors and given VSOCK socket by Message
 // protocol.
@@ -38,8 +39,12 @@ class VSockProxy {
     CLIENT = 2,
   };
 
-  VSockProxy(Type type, base::ScopedFD vsock);
+  VSockProxy(Type type,
+             ProxyFileSystem* proxy_file_system,
+             base::ScopedFD vsock);
   ~VSockProxy();
+
+  ProxyFileSystem* proxy_file_system() { return proxy_file_system_; }
 
   // Registers the |fd| whose type is |fd_type| to watch.
   // Internally, this creates Stream object to read/write Message protocol
@@ -71,6 +76,9 @@ class VSockProxy {
              uint64_t offset,
              PreadCallback callback);
 
+  // Sends an event to close the given |handle| to the other side.
+  void Close(int64_t handle);
+
  private:
   // Callback called when VSOCK gets ready to read.
   // Reads Message from VSOCK file descriptor, and dispatches it to the
@@ -94,6 +102,7 @@ class VSockProxy {
   void OnLocalFileDesciptorReadReady(int fd);
 
   const Type type_;
+  ProxyFileSystem* const proxy_file_system_;
 
   VSockStream vsock_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> vsock_controller_;
