@@ -52,6 +52,7 @@ bool ExpireEntryHelper(EntryMap* entries, const std::string& key) {
 EntryManagerTestUtil::EntryManagerTestUtil() {
   CHECK(scoped_temp_dir_.CreateUniqueTempDir());
   temp_dir_ = scoped_temp_dir_.GetPath();
+  LOG(INFO) << "USING test root: " << temp_dir_.value();
   CHECK(base::SetPosixFilePermissions(temp_dir_, 0755));
 
   base::FilePath temp_etc_usbguard =
@@ -133,11 +134,13 @@ base::FilePath EntryManagerTestUtil::CreateTestDir(const std::string& dir,
                                                    bool force_empty) {
   base::FilePath result = temp_dir_.Append(dir);
   if (force_empty) {
+    LOG(INFO) << "DELETING: " << result.value();
     if (!base::DeleteFile(result, true)) {
       LOG(FATAL) << "Unable to clear directory \"" << result.value() << "\"!";
     }
   }
   base::File::Error error;
+  LOG(INFO) << "CREATING: " << result.value();
   if (!base::CreateDirectoryAndGetError(result, &error)) {
     LOG(FATAL) << "Unable to create temp directory \"" << result.value()
                << "\"!";
