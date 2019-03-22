@@ -104,6 +104,7 @@ type cros_init_lockbox_cache_script, exec_type, file_type, cros_init_scripts_fil
 type cros_init_powerd_pre_start_script, exec_type, file_type, cros_init_scripts_file_type;
 type cros_init_shell_scripts, exec_type, file_type, cros_init_scripts_file_type;
 type cros_init_shill_shell_script, exec_type, file_type, cros_init_scripts_file_type;
+type cros_init_sshd_pre_shell_script, exec_type, file_type, cros_init_scripts_file_type;
 type cros_init_start_bluetoothd_shell_script, exec_type, file_type, cros_init_scripts_file_type;
 type cros_init_start_bluetoothlog_shell_script, exec_type, file_type, cros_init_scripts_file_type;
 type cros_init_ui_pre_start_shell_script, exec_type, file_type, cros_init_scripts_file_type;

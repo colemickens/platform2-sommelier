@@ -80,6 +80,7 @@ include(sepolicy/file_contexts/coreutils)
 
 /usr/bin/start_bluetoothd.sh    u:object_r:cros_init_start_bluetoothd_shell_script:s0
 /usr/bin/start_bluetoothlog.sh  u:object_r:cros_init_start_bluetoothlog_shell_script:s0
+/usr/share/chromeos-ssh-config/sshd-pre u:object_r:cros_init_sshd_pre_shell_script:s0
 /usr/share/cros(/.*)?           u:object_r:cros_usr_dirs:s0
 /usr/share/cros/init(/.*)?      u:object_r:cros_init_shell_scripts:s0
 /usr/share/cros/init/activate_date.sh u:object_r:cros_init_activate_date_script:s0
