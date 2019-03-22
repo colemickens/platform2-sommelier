@@ -35,6 +35,7 @@ getrlimit: 1
 getsockname: 1
 getsockopt: 1
 gettid: 1
+gettimeofday: 1
 getuid: 1
 # ioctl: arg1 == TCGETS || arg1 == TCSETSF ||
 #        arg1 == FIONREAD || arg1 == FIONBIO ||
