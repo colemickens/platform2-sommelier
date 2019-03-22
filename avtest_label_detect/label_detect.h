@@ -20,6 +20,9 @@ extern void detect_label_by_board_name(void);
 /* util.c */
 extern int do_ioctl(int fd, int request, void* arg);
 extern bool is_any_device(const char* pattern, bool (*func)(int fd));
+extern bool is_any_device_with_path(const char* pattern,
+                                    bool (*func)(const char *dev_path,
+                                                 int fd));
 extern void convert_fourcc_to_str(uint32_t fourcc, char* str);
 
 /* util_v4l2 */
@@ -41,7 +44,11 @@ bool get_vaapi_max_resolution(
 #endif
 
 /* detectors */
-extern bool detect_webcam(void);
+extern bool detect_builtin_usb_camera(void);
+extern bool detect_builtin_mipi_camera(void);
+extern bool detect_vivid_camera(void);
+extern bool detect_builtin_camera(void);
+extern bool detect_builtin_or_vivid_camera(void);
 extern bool detect_video_acc_h264(void);
 extern bool detect_video_acc_vp8(void);
 extern bool detect_video_acc_vp9(void);

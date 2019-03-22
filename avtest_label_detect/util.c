@@ -47,6 +47,35 @@ bool is_any_device(const char* pattern, bool (*func)(int fd)) {
   return found;
 }
 
+/* Loops files matching a pattern to find any device satisfied predicate
+ * func() that requires the device's path.
+ */
+bool is_any_device_with_path(const char* pattern,
+                             bool (*func)(const char* path, int fd)) {
+  int i;
+  glob_t g;
+  bool found = false;
+
+  memset(&g, 0, sizeof(g));
+  glob(pattern, 0, NULL, &g);
+  for (i = 0; i < g.gl_pathc; i++) {
+    TRACE("found device file %s\n", g.gl_pathv[i]);
+    int fd = open(g.gl_pathv[i], O_RDWR);
+    if (fd == -1) {
+      TRACE("failed to open device\n");
+      continue;
+    }
+    if (func(g.gl_pathv[i], fd)) {
+      found = true;
+      close(fd);
+      break;
+    }
+    close(fd);
+  }
+  globfree(&g);
+  return found;
+}
+
 /* Converts FourCC 32 bits integer to printable string. */
 void convert_fourcc_to_str(uint32_t fourcc, char* str) {
   str[0] = fourcc & 0xff;
