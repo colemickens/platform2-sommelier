@@ -41,8 +41,12 @@ public:
     status_t configure(camera3_stream_t* outStream,
                        int inputW, int inputH, int inputFmt = V4L2_PIX_FMT_NV12);
     bool needPostProcess() const {return (mProcessType != PROCESS_NONE);}
+
+    // Crops the source frame |srcBuf| to make it has same aspect ratio as reference frame |refBuf|
+    // and outputs the result as |dstBuf|.
     status_t cropFrameToSameAspectRatio(std::shared_ptr<CameraBuffer>& srcBuf,
-                                        std::shared_ptr<CameraBuffer>& dstBuf);
+                                        std::shared_ptr<CameraBuffer>& refBuf,
+                                        std::shared_ptr<CameraBuffer>* dstBuf);
     status_t scaleFrame(std::shared_ptr<CameraBuffer>& srcBuf,
                         std::shared_ptr<CameraBuffer>& dstBuf);
     status_t processFrame(std::shared_ptr<CameraBuffer>& input,
@@ -52,10 +56,13 @@ public:
                           bool needReprocess);
 
 private:
+    status_t lockBuffer(const std::shared_ptr<CameraBuffer>& buffer) const;
+    std::shared_ptr<CameraBuffer> requestBuffer(int cameraId, int width, int height);
+    void releaseBuffers();
     int getRotationDegrees(camera3_stream_t* stream) const;
     status_t convertJpeg(std::shared_ptr<CameraBuffer> input,
                          std::shared_ptr<CameraBuffer> output,
-                         Camera3Request *request);
+                         Camera3Request* request);
 
 private:
     int mCameraId;

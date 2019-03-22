@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,26 +17,46 @@
 #ifndef _CAMERA3_HAL_JPEG_MAKER_H_
 #define _CAMERA3_HAL_JPEG_MAKER_H_
 
+#include "Camera3Request.h"
+#include "EXIFMaker.h"
+#include "EXIFMetaData.h"
 #include "ImgEncoder.h"
-#include "JpegMakerCore.h"
 
 namespace cros {
 namespace intel {
-
 /**
  * \class JpegMaker
- * A wrapper based on JpegMakerCore for handling legacy Android IPU platforms
- * before IPU5.
+ * Does the EXIF header creation and appending to the provided jpeg buffer
+ *
  */
-class JpegMaker : public JpegMakerCore {
+class JpegMaker {
 public: /* Methods */
     explicit JpegMaker(int cameraid);
     virtual ~JpegMaker();
-    status_t setupExifWithMetaData(ImgEncoder::EncodePackage & package,
-        ExifMetaData& metaData,
-        const Camera3Request& request);
-    status_t makeJpeg(ImgEncoder::EncodePackage & package, std::shared_ptr<CameraBuffer> dest = nullptr);
+    status_t setupExifWithMetaData(int output_width, int output_height, ExifMetaData* metaData,
+                                   const Camera3Request& request);
+    status_t getExif(ImgEncoder::EncodePackage& thumbnailPackage, uint8_t* exifPtr,
+                     uint32_t* exifSize);
+
+private: /* Methods */
+    // prevent copy constructor and assignment operator
+    JpegMaker(const JpegMaker& other);
+    JpegMaker& operator=(const JpegMaker& other);
+
+    void processExifSettings(const android::CameraMetadata* settings, ExifMetaData* metaData);
+    void processJpegSettings(const android::CameraMetadata* settings,
+                             bool shouldSwapWidthHeight, ExifMetaData* metaData);
+    void processGpsSettings(const android::CameraMetadata* settings, ExifMetaData* metaData);
+    void processAwbSettings(const android::CameraMetadata* settings, ExifMetaData* metaData);
+    void processScalerCropSettings(const android::CameraMetadata* settings, ExifMetaData* metaData);
+    void processEvCompensationSettings(const android::CameraMetadata* settings,
+                                       ExifMetaData* metaData);
+
+private:  /* Members */
+    std::unique_ptr<EXIFMaker> mExifMaker;
+    int        mCameraId;
 };
+
 } /* namespace intel */
 } /* namespace cros */
 #endif  // _CAMERA3_HAL_JPEG_MAKER_H_

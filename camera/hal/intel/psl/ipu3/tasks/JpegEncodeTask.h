@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2018 Intel Corporation.
+ * Copyright (C) 2014-2019 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,8 +38,6 @@ class JpegEncodeTask {
 public:
     explicit JpegEncodeTask(int cameraId);
     virtual ~JpegEncodeTask();
-
-    virtual status_t init();
 
     virtual status_t handleMessageNewJpegInput(ITaskEventListener::PUTaskEvent &msg);
     virtual status_t handleMessageSettings(ProcUnitSettings &procSettings);
@@ -84,8 +82,11 @@ private:
     };
 
 private:
-    std::shared_ptr<ImgEncoder> mImgEncoder;
-    JpegMaker      *mJpegMaker;
+    std::shared_ptr<CameraBuffer> mThumbnailInput;
+    std::shared_ptr<CameraBuffer> mThumbnailOutput;
+    std::unique_ptr<ImgEncoder> mImgEncoder;
+    std::unique_ptr<unsigned char[]> mExifData;
+    std::unique_ptr<JpegMaker> mJpegMaker;
     int mCameraId;
     std::map<int, ExifDataCache> mExifCacheStorage; // key: Req ID
 };

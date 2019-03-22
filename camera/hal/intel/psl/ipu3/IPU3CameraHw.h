@@ -30,18 +30,6 @@ class CaptureUnit;
 class ImguUnit;
 class FaceEngine;
 
-/**
- * \enum
- * This enum is used as index when acquiring the partial result metadata buffer
- * In theory there should be one metadata partial result per thread context
- * that writes result
- * in IPU3 ControlUnit and Capture Unit update metadata result and return it
- */
-enum PartialResultEnum {
-    CONTROL_UNIT_PARTIAL_RESULT = 0,
-    PARTIAL_RESULT_COUNT /* keep last to use as counter */
-};
-
 class IPU3CameraHw: public ICameraHw {
  public:
     explicit IPU3CameraHw(int cameraId);

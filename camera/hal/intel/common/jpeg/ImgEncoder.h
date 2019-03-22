@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,95 +18,47 @@
 #define _CAMERA3_HAL_IMG_ENCODER_H_
 
 #include <list>
+
 #include "CameraBuffer.h"
-#include "ImgEncoderCore.h"
+#include "cros-camera/jpeg_compressor.h"
+#include "ImgEncoder.h"
+
 
 namespace cros {
 namespace intel {
 
 /**
  * \class ImgEncoder
- * This class is an wrapper of ImgEncoderCore for fitting CameraBuffer
- * input and serving to the old generation IPU PSLs.
+ * This class does JPEG encoding for input image to output image defined in the EncodePackage. This
+ * class selects between hardware and software encoding and provides the output in Jpeg format in
+ * the EncodePackage.
  */
-class ImgEncoder : public ImgEncoderCore,
-                   public ImgEncoderCore::IImgEncoderCoreCallback {
+class ImgEncoder {
 public:  /* types */
     struct EncodePackage {
-        EncodePackage() :
-                main(nullptr),
-                thumb(nullptr),
-                jpegOut(nullptr),
-                jpegSize(0),
-                encodedData(nullptr),
-                encodedDataSize(0),
-                thumbOut(nullptr),
-                thumbSize(0),
-                settings(nullptr),
-                jpegDQTAddr(nullptr),
-                padExif(false),
-                encodeAll(true) {}
+        EncodePackage():
+            quality(0),
+            encodedDataSize(0),
+            exifData(nullptr),
+            exifDataSize(0) {}
 
-        std::shared_ptr<CameraBuffer> main;        // for input
-        std::shared_ptr<CameraBuffer> thumb;       // for input, can be nullptr
-        std::shared_ptr<CameraBuffer> jpegOut;     // for final JPEG output
-        int              jpegSize;    // Jpeg output size
-        std::shared_ptr<CameraBuffer> encodedData;    // encoder output for main image
-        int              encodedDataSize;// main image encoded data size
-        std::shared_ptr<CameraBuffer> thumbOut;    // for thumbnail output
-        int              thumbSize;   // Thumb ouptut size
-        const android::CameraMetadata    *settings;    // settings from request
-        unsigned char    *jpegDQTAddr; // pointer to DQT marker inside jpeg, for in-place exif creation
-        bool             padExif;     // Boolean to control if padding is preferred over copying during in-place exif creation
-        bool             encodeAll;   // Boolean to control if both thumbnail and main image shall be encoded. False means just thumbnail.
-    };
-
-    class IImgEncoderCallback {
-    public:
-        virtual status_t jpegDone(EncodePackage & package, std::shared_ptr<ExifMetaData> metaData, status_t status) = 0;
-
-    protected: /* No instantiation */
-        IImgEncoderCallback() {}
-        virtual ~IImgEncoderCallback() {}
+        std::shared_ptr<CameraBuffer> input;
+        std::shared_ptr<CameraBuffer> output;
+        int quality;
+        uint32_t encodedDataSize;
+        uint8_t* exifData;
+        uint32_t exifDataSize;
     };
 
 public: /* Methods */
     explicit ImgEncoder(int cameraid);
     virtual ~ImgEncoder();
 
-    status_t encodeSync(EncodePackage & package, ExifMetaData& metaData);
-
-    static void convertEncodePackage(EncodePackage& src, ImgEncoderCore::EncodePackage& dst);
-private:  /* Methods */
-    /**
-     * Inherit from IImgEncoderCoreCallback for Async callback
-     */
-    status_t jpegDone(ImgEncoderCore::EncodePackage& package,
-            std::shared_ptr<ExifMetaData> metaData, status_t status);
-
-    /**
-     * The conversion between CameraBuffer and CommonBuffer based EncodePackages
-     */
-    static std::shared_ptr<CommonBuffer> createCommonBuffer(std::shared_ptr<CameraBuffer> cBuffer);
-
-    /**
-     * For client that are using this old interface, The better way is to
-     * allocate needed output CameraBuffers here and pass the pointer to
-     * ImgEncoderCore to avoid extra memory allocation and memory copy
-     */
-    void allocateOutputCameraBuffers(EncodePackage &package, ExifMetaData& metaData);
-
-private:  /* types */
-    struct AsyncEventData {
-        EncodePackage        pkg;
-        IImgEncoderCallback *callback;
-    };
+    bool encodeSync(EncodePackage& package);
 
 private:  /* Members */
-    int mCameraId;
-    std::shared_ptr<CameraBuffer> mThumbOutBuf;
-    std::shared_ptr<CameraBuffer> mJpegDataBuf;
-    std::list<AsyncEventData> mEventFifo;
+    std::mutex mEncodeLock; /* protect JPEG encoding progress */
+    std::unique_ptr<cros::JpegCompressor> mJpegCompressor;
 };
 
 } /* namespace intel */

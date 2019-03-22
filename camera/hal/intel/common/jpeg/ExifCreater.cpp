@@ -1,7 +1,7 @@
 /*
  * Copyright Samsung Electronics Co.,LTD.
  * Copyright (C) 2010 The Android Open Source Project
- * Copyright (C) 2011-2018 Intel Corporation
+ * Copyright (C) 2011-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -168,7 +168,6 @@ exif_status ExifCreater::makeExif (void *exifOut,
     bool makernoteToApp2 = PlatformData::supportExtendedMakernote();
 
     // 2 Exif Identifier Code & TIFF Header
-    pCur += 4;  // Skip 4 Byte for APP1 marker and length
     unsigned char ExifIdentifierCode[6] = { 0x45, 0x78, 0x69, 0x66, 0x00, 0x00 };
     STDCOPY(pCur, ExifIdentifierCode, 6);
     pCur += 6;
@@ -436,16 +435,8 @@ exif_status ExifCreater::makeExif (void *exifOut,
         tmp = 0;
         STDCOPY(pNextIfdOffset, (int8_t *) &tmp, OFFSET_SIZE);  // NEXT IFD offset skipped on 0th IFD
     }
-
-    // fill APP1 maker
-    unsigned char App1Marker[2] = { 0xff, 0xe1 };
-    STDCOPY(pApp1Start, App1Marker, 2);
-    pApp1Start += 2;
-
     // calc and fill the APP1 segment total size, 2 is length; 6 is ExifIdentifierCode
     *size = 2 + 6 + LongerTagOffset;
-
-    writeMarkerSizeToBuf(pApp1Start, *size);
 
     unsigned app2StartOffset = *size;
     *size += 2; // APP1 marker size

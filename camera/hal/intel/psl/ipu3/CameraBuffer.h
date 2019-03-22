@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2018 Intel Corporation
+ * Copyright (C) 2013-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,7 +82,8 @@ public:
     status_t unlock();
 
     bool isLocked() const {return mLocked;}
-    buffer_handle_t * getBufferHandle() {return &mHandle;}
+    buffer_handle_t getBufferHandle() {return mHandle;}
+    buffer_handle_t* getBufferHandlePtr() {return &mHandle;}
     status_t waitOnAcquireFence();
 
     void dumpImage(const int type, const char *name);
@@ -98,6 +99,7 @@ public:
     status_t getFence(camera3_stream_buffer* buf);
     int dmaBufFd() {return mType == BUF_TYPE_HANDLE ? mHandle->data[0] : mDmaBufFd;}
     int status() {return mUserBuffer.status;}
+    BufferType type() {return mType;}
 
 private:
     DISALLOW_COPY_AND_ASSIGN(CameraBuffer);
@@ -137,6 +139,7 @@ std::shared_ptr<CameraBuffer>
 allocateHeapBuffer(int w, int h, int s, int v4l2Fmt, int cameraId, int dataSizeOverride = 0);
 std::shared_ptr<CameraBuffer>
 allocateHandleBuffer(int w, int h, int gfxFmt, int usage, int cameraId);
+int freeHandleBuffer(std::shared_ptr<CameraBuffer> buffer);
 };
 
 } /* namespace intel */

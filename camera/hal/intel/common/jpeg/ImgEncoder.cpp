@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +16,17 @@
 
 #define LOG_TAG "ImgEncoder"
 
+#include <mutex>
 #include "ImgEncoder.h"
+#include <linux/videodev2.h>
 #include "LogHelper.h"
+#include "Utils.h"
 
 namespace cros {
 namespace intel {
 
 ImgEncoder::ImgEncoder(int cameraid) :
-    mCameraId(cameraid),
-    mThumbOutBuf(nullptr),
-    mJpegDataBuf(nullptr)
+    mJpegCompressor(cros::JpegCompressor::GetInstance())
 {
     LOG1("@%s", __FUNCTION__);
 }
@@ -35,169 +36,52 @@ ImgEncoder::~ImgEncoder()
     LOG1("@%s", __FUNCTION__);
 }
 
-std::shared_ptr<CommonBuffer> ImgEncoder::createCommonBuffer(std::shared_ptr<CameraBuffer> cBuffer)
-{
-    std::shared_ptr<CommonBuffer> jBuffer = nullptr;
-    if (cBuffer.get()) {
-        BufferProps props;
-        props.width  = cBuffer->width();
-        props.height = cBuffer->height();
-        props.stride = cBuffer->stride();
-        props.format = cBuffer->v4l2Fmt();
-        props.type   = BMT_HEAP;
-
-        jBuffer = std::make_shared<CommonBuffer>(props, cBuffer->data());
-    }
-
-    return jBuffer;
-}
-
-/**
- * convertEncodePackage
- *
- * method for converting CameraBuffer based EncodePackage to CommonBuffer
- * based EncodePackage.
- */
-void ImgEncoder::convertEncodePackage(EncodePackage& src, ImgEncoderCore::EncodePackage& dst)
-{
-    dst.main        = createCommonBuffer(src.main);
-    dst.thumb       = createCommonBuffer(src.thumb);
-    dst.jpegOut     = createCommonBuffer(src.jpegOut);
-    dst.jpegSize    = src.jpegSize;
-    dst.encodedData = createCommonBuffer(src.encodedData);
-    dst.encodedDataSize = src.encodedDataSize;
-    dst.thumbOut    = createCommonBuffer(src.thumbOut);
-    dst.thumbSize   = src.thumbSize;
-    dst.settings    = src.settings;
-    dst.jpegDQTAddr = src.jpegDQTAddr;
-    dst.padExif     = src.padExif;
-    dst.encodeAll   = src.encodeAll;
-}
-
-void ImgEncoder::allocateOutputCameraBuffers(EncodePackage &pkg, ExifMetaData& metaData)
-{
-    int thumbwidth = metaData.mJpegSetting.thumbWidth;
-    int thumbheight = metaData.mJpegSetting.thumbHeight;
-
-    // Allocate buffer for main image jpeg output if in first time or resolution changed
-    if (pkg.encodeAll && (mJpegDataBuf.get() == nullptr ||
-                COMPARE_RESOLUTION(mJpegDataBuf, pkg.jpegOut))) {
-
-        if (mJpegDataBuf.get() != nullptr)
-            mJpegDataBuf.reset();
-
-        LOG1("Allocating jpeg data buffer with %dx%d, stride:%d", pkg.jpegOut->width(),
-                pkg.jpegOut->height(), pkg.jpegOut->stride());
-        mJpegDataBuf = MemoryUtils::allocateHeapBuffer(pkg.jpegOut->width(),
-                pkg.jpegOut->height(), pkg.jpegOut->stride(),
-                pkg.jpegOut->v4l2Fmt(), mCameraId);
-    }
-    pkg.encodedData = mJpegDataBuf;
-
-    // Allocate buffer for thumbnail output
-    if (thumbwidth != 0) {
-        if (!pkg.thumb.get()) {
-            if (!pkg.main.get()) {
-                LOGE("No source for thumb");
-                return;
-            }
-            pkg.thumb = pkg.main;
-        }
-
-        if (mThumbOutBuf.get() && (mThumbOutBuf->width() != thumbwidth ||
-                    mThumbOutBuf->height() != thumbheight))
-            mThumbOutBuf.reset();
-
-        if (!mThumbOutBuf.get()) {
-            LOG1("Allocating thumb data buffer with %dx%d", thumbwidth, thumbheight);
-            // Use thumbwidth as stride for the heap buffer
-            mThumbOutBuf = MemoryUtils::allocateHeapBuffer(thumbwidth, thumbheight,
-                    thumbwidth, pkg.thumb->v4l2Fmt(), mCameraId);
-        }
-    }
-    pkg.thumbOut = mThumbOutBuf;
-}
-
 /**
  * encodeSync
  *
- * Convert CameraBuffer to CommonBuffer
- * Call ImgEncoderCore to finish the job
+ * Do HW / SW JPEG encoding for the main buffer
+ * Do SW JPEG encoding for the thumbnail buffer
+ *
+ * \param package [IN] Information that should be encoded
  */
-status_t ImgEncoder::encodeSync(EncodePackage& package, ExifMetaData& metaData)
+bool ImgEncoder::encodeSync(EncodePackage& package)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
-    status_t status = NO_ERROR;
-    ImgEncoderCore::EncodePackage corePackage;
-    // allocate needed camera buffers for output
-    allocateOutputCameraBuffers(package, metaData);
 
-    // do the conversion
-    convertEncodePackage(package, corePackage);
+    bool sameSize = package.input->width() == package.output->width() &&
+                    package.input->height() == package.output->height();
+    bool sameSizeButRotate = package.input->width() == package.output->height() &&
+                             package.input->height() == package.output->width();
+    CheckError(!sameSize && !sameSizeButRotate,
+               0, "@%s, ImgEncoder::encodeSync failed: input size != output size, %d, %d, %d, %d",
+               __FUNCTION__, package.input->width(), package.input->height(),
+               package.output->width(), package.output->height());
 
-    status = ImgEncoderCore::encodeSync(corePackage, metaData);
-    if (status) {
-        LOGE("Error %d happened in ImgEncoderCore", status);
-        return status;
-    }
+    std::lock_guard<std::mutex> l(mEncodeLock);
+    auto srcBuf = package.input;
+    auto dstBuf = package.output;
+    nsecs_t startTime = systemTime();
 
-    // On success, fetch the result
-    if (corePackage.encodedDataSize) {
-        package.encodedDataSize = corePackage.encodedDataSize;
+    bool ret;
+    if (srcBuf->type() == CameraBuffer::BufferType::BUF_TYPE_HANDLE &&
+        dstBuf->type() == CameraBuffer::BufferType::BUF_TYPE_HANDLE) {
+        ret = mJpegCompressor->CompressImageFromHandle(
+            srcBuf->getBufferHandle(), dstBuf->getBufferHandle(), srcBuf->width(), srcBuf->height(),
+            package.quality, package.exifData, package.exifDataSize, &package.encodedDataSize);
+    } else if (srcBuf->type() == CameraBuffer::BufferType::BUF_TYPE_MALLOC &&
+               dstBuf->type() == CameraBuffer::BufferType::BUF_TYPE_MALLOC) {
+        ret = mJpegCompressor->CompressImageFromMemory(
+            srcBuf->data(), V4L2_PIX_FMT_NV12, dstBuf->data(), dstBuf->size(), srcBuf->width(),
+            srcBuf->height(), package.quality, package.exifData, package.exifDataSize,
+            &package.encodedDataSize);
     } else {
-        LOGW("ImgEncoderCore out main jpeg size 0");
-        package.encodedData = nullptr;
-        package.encodedDataSize = 0;
+      LOGE("%s: encode input type and output type does not match", __FUNCTION__);
+      return false;
     }
-
-    if (corePackage.thumbSize) {
-        package.thumbSize = corePackage.thumbSize;
-    } else {
-        LOGW("ImgEncoderCore out thumb size 0");
-        package.thumbOut = nullptr;
-        package.thumbSize = 0;
-    }
-
-    return status;
-}
-
-/**
- * jpegDone
- *
- * Async Jpeg encode request callback
- */
-status_t ImgEncoder::jpegDone(ImgEncoderCore::EncodePackage& package,
-            std::shared_ptr<ExifMetaData> metaData, status_t status)
-{
-    // find the CameraBuffer based package
-    if (mEventFifo.empty()) {
-        LOGE("JpegDone while event queue is empty");
-        return OK;
-    }
-
-    AsyncEventData eventData = mEventFifo.front();
-    mEventFifo.pop_front();
-
-    if (package.encodedDataSize) {
-        eventData.pkg.encodedDataSize = package.encodedDataSize;
-    } else {
-        LOGW("ImgEncoderCore out main jpeg size 0");
-        eventData.pkg.encodedData = nullptr;
-        eventData.pkg.encodedDataSize = 0;
-    }
-
-    if (package.encodedDataSize) {
-        eventData.pkg.thumbSize = package.thumbSize;
-    } else {
-        LOGW("ImgEncoderCore out thumb size 0");
-        eventData.pkg.thumbOut = nullptr;
-        eventData.pkg.thumbSize = 0;
-    }
-    if (status)
-        LOGE("Async Jpeg encode done with error:%d", status);
-
-    eventData.callback->jpegDone(eventData.pkg, metaData, status);
-    return OK;
+    LOGE("%s: encoding ret:%d, %dx%d need %" PRId64 "ms, jpeg size %u, quality %d)", __FUNCTION__,
+         ret, dstBuf->width(), dstBuf->height(), (systemTime() - startTime) / 1000000,
+         package.encodedDataSize, package.quality);
+    return ret && package.encodedDataSize > 0;
 }
 
 } /* namespace intel */

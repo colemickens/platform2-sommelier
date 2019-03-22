@@ -407,6 +407,12 @@ allocateHandleBuffer(int w, int h, int gfxFmt, int usage, int cameraId)
     return buffer;
 }
 
+int freeHandleBuffer(std::shared_ptr<CameraBuffer> buffer)
+{
+    cros::CameraBufferManager* bufManager = cros::CameraBufferManager::GetInstance();
+    return bufManager->Free(buffer->getBufferHandle());
+}
+
 } // namespace MemoryUtils
 
 } /* namespace intel */

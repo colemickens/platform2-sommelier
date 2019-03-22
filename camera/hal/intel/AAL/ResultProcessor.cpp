@@ -428,7 +428,7 @@ void ResultProcessor::returnPendingBuffers(RequestState_t* reqState)
         if (buf.stream) {
             LOG2("<Request %d> width:%d, height:%d, fmt:%d", reqState->reqId, buf.stream->width, buf.stream->height, buf.stream->format);
         }
-        buf.buffer = pendingBuf->getBufferHandle();
+        buf.buffer = pendingBuf->getBufferHandlePtr();
         pendingBuf->getFence(&buf);
         result.result = nullptr;
         if (request->isInputBuffer(pendingBuf)) {

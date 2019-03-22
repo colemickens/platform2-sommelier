@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2017 Intel Corporation
+ * Copyright (C) 2012-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -248,14 +248,8 @@ void EXIFMaker::pictureTaken(ExifMetaData& exifmetadata)
             break;
         }
     }
-
-    int rotation = exifmetadata.mJpegSetting.orientation;
     // Since hal will correct rotation for image, no need to assign orientation
     exifAttributes.orientation = EXIF_ORIENTATION_UNDEFINED;
-    // However, we need to swap the width and height if the orientation is 90 / 270
-    if (90 == rotation || 270 == rotation) {
-        std::swap(exifAttributes.width, exifAttributes.height);
-    }
 
     exifAttributes.zoom_ratio.num = exifmetadata.mZoomRatio;
     exifAttributes.zoom_ratio.den = 100;
@@ -681,15 +675,15 @@ bool EXIFMaker::isThumbnailSet() const {
     return encoder.isThumbDataSet();
 }
 
-size_t EXIFMaker::makeExif(unsigned char **data)
+size_t EXIFMaker::makeExif(unsigned char *data)
 {
     LOG1("@%s", __FUNCTION__);
-    if (*data == nullptr) {
+    if (data == nullptr) {
         LOGE("nullptr pointer passed for EXIF. Cannot generate EXIF!");
         return 0;
     }
-    if (encoder.makeExif(*data, &exifAttributes, &exifSize) == EXIF_SUCCESS) {
-        LOG1("Generated EXIF (@%p) of size: %zu", *data, exifSize);
+    if (encoder.makeExif(data, &exifAttributes, &exifSize) == EXIF_SUCCESS) {
+        LOG1("Generated EXIF (@%p) of size: %zu", data, exifSize);
         return exifSize;
     }
     return 0;

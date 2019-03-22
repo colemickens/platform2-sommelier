@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2017 Intel Corporation
+ * Copyright (C) 2012-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ public:
     void enableFlash(bool enable, int8_t aeMode, int8_t flashMode);
     void setThumbnail(unsigned char *data, size_t size, int width, int height);
     bool isThumbnailSet() const;
-    size_t makeExif(unsigned char **data);
+    size_t makeExif(unsigned char *data);
     size_t makeExifInPlace(unsigned char *bufferStartAddr,
                            unsigned char *dqtAddress,
                            size_t jpegSize,

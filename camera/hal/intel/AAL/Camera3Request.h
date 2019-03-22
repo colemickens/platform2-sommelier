@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation
+ * Copyright (C) 2014-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,17 @@ namespace intel {
  */
 #define MAX_NUMBER_OUTPUT_STREAMS 8
 
+/**
+ * \enum
+ * This enum is used as index when acquiring the partial result metadata buffer
+ * In theory there should be one metadata partial result per thread context
+ * that writes result
+ * in IPU3 ControlUnit and Capture Unit update metadata result and return it
+ */
+enum PartialResultEnum {
+    CONTROL_UNIT_PARTIAL_RESULT = 0,
+    PARTIAL_RESULT_COUNT /* keep last to use as counter */
+};
 
 /**
  * \class IRequestCallback

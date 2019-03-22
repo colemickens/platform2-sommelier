@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2018 Intel Corporation.
+ * Copyright (C) 2014-2019 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,20 @@
 
 #define LOG_TAG "JpegEncode_Task"
 
+#include "Camera3Request.h"
+#include "CameraStream.h"
+#include "ImageScalerCore.h"
 #include "JpegEncodeTask.h"
 #include "LogHelper.h"
-#include "ProcUnitSettings.h"
-#include "CameraStream.h"
 #include "PlatformData.h"
-#include "IPU3CameraHw.h" // PartialResultEnum
+#include "ProcUnitSettings.h"
 
 namespace cros {
 namespace intel {
 
 JpegEncodeTask::JpegEncodeTask(int cameraId):
-    mImgEncoder(nullptr),
-    mJpegMaker(nullptr),
+    mImgEncoder(new ImgEncoder(cameraId)),
+    mJpegMaker(new JpegMaker(cameraId)),
     mCameraId(cameraId)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
@@ -38,29 +39,8 @@ JpegEncodeTask::~JpegEncodeTask()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
-    if (mJpegMaker != nullptr) {
-        delete mJpegMaker;
-        mJpegMaker = nullptr;
-    }
-
     if (!mExifCacheStorage.empty())
         LOGE("EXIF cache should be empty at destruction - BUG?");
-}
-
-status_t
-JpegEncodeTask::init()
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
-    status_t status = NO_ERROR;
-
-    mImgEncoder = std::make_shared<ImgEncoder>(mCameraId);
-    mImgEncoder->init();
-
-    mJpegMaker = new JpegMaker(mCameraId);
-
-    status = mJpegMaker->init();
-
-    return status;
 }
 
 status_t JpegEncodeTask::handleMessageSettings(ProcUnitSettings &procSettings)
@@ -232,14 +212,9 @@ JpegEncodeTask::handleMessageNewJpegInput(ITaskEventListener::PUTaskEvent &msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = NO_ERROR;
+    bool isEncoded;
 
     LOG1("begin jpeg encoder");
-    ImgEncoder::EncodePackage package;
-
-    package.jpegOut = msg.buffer;
-    package.main = msg.jpegInputbuffer;
-    package.thumb = nullptr;
-    package.settings = msg.request->getSettings();
 
     ExifMetaData exifData;
 
@@ -250,8 +225,7 @@ JpegEncodeTask::handleMessageNewJpegInput(ITaskEventListener::PUTaskEvent &msg)
     // data not found from vec.
 
     int reqId = msg.request->getId();
-    std::map<int, ExifDataCache>::iterator it =
-                                  mExifCacheStorage.find(reqId);
+    std::map<int, ExifDataCache>::iterator it = mExifCacheStorage.find(reqId);
     if (it != mExifCacheStorage.end())
         exifCache = it->second;
     else
@@ -275,18 +249,82 @@ JpegEncodeTask::handleMessageNewJpegInput(ITaskEventListener::PUTaskEvent &msg)
     }
 
     handleJpegSettings(exifData, exifCache);
+    status = mJpegMaker->setupExifWithMetaData(msg.buffer->width(), msg.buffer->height(), &exifData,
+                                               *msg.request);
 
-    status = mJpegMaker->setupExifWithMetaData(package, exifData, *msg.request);
-    // Do sw or HW encoding. Also create Thumb buffer if needed
-    status = mImgEncoder->encodeSync(package, exifData);
-    if (package.thumbOut == nullptr) {
-        LOGE("%s: No thumb in EXIF", __FUNCTION__);
+    bool shouldContainThumbnail = exifCache.jpegSettings.thumbWidth > 0 &&
+                                  exifCache.jpegSettings.thumbHeight > 0;
+
+    ImgEncoder::EncodePackage thumbnailEncodePackage;
+    thumbnailEncodePackage.quality = exifCache.jpegSettings.jpegThumbnailQuality;
+    thumbnailEncodePackage.exifData = nullptr;
+    thumbnailEncodePackage.exifDataSize = 0;
+
+    if (shouldContainThumbnail) {
+        // Encode for Thumbnail.
+        if (mThumbnailInput == nullptr
+            || mThumbnailInput->width() != exifCache.jpegSettings.thumbWidth
+            || mThumbnailInput->height() != exifCache.jpegSettings.thumbHeight
+            || mThumbnailInput->v4l2Fmt() != msg.jpegInputbuffer->v4l2Fmt()) {
+            mThumbnailInput = MemoryUtils::allocateHeapBuffer(
+                exifCache.jpegSettings.thumbWidth, exifCache.jpegSettings.thumbHeight,
+                exifCache.jpegSettings.thumbWidth, msg.jpegInputbuffer->v4l2Fmt(),
+                mCameraId);
+        }
+        ImageScalerCore::scaleFrame(msg.jpegInputbuffer, mThumbnailInput);
+
+        if (mThumbnailOutput == nullptr
+            || mThumbnailOutput->width() != exifCache.jpegSettings.thumbWidth
+            || mThumbnailOutput->height() != exifCache.jpegSettings.thumbHeight
+            || mThumbnailOutput->v4l2Fmt() != msg.buffer->v4l2Fmt()) {
+            mThumbnailOutput = MemoryUtils::allocateHeapBuffer(
+                exifCache.jpegSettings.thumbWidth, exifCache.jpegSettings.thumbHeight,
+                exifCache.jpegSettings.thumbWidth, msg.buffer->v4l2Fmt(), mCameraId,
+                exifCache.jpegSettings.thumbWidth * exifCache.jpegSettings.thumbHeight * 3 / 2);
+        }
+
+        thumbnailEncodePackage.input = mThumbnailInput;
+        thumbnailEncodePackage.output = mThumbnailOutput;
+        do {
+            isEncoded = mImgEncoder->encodeSync(thumbnailEncodePackage);
+            thumbnailEncodePackage.quality -= 5;
+        } while (thumbnailEncodePackage.encodedDataSize > 0 &&
+                 thumbnailEncodePackage.quality > 0 &&
+                 thumbnailEncodePackage.encodedDataSize > THUMBNAIL_SIZE_LIMITATION);
+        if (!isEncoded || thumbnailEncodePackage.encodedDataSize == 0) {
+            // Since it is non-fatal, we can still proceed without thumbnail.
+            LOG(ERROR) << "Failed to generate thumbnail";
+        }
     }
-    // Create a full JPEG image with exif data
-    status = mJpegMaker->makeJpeg(package, package.jpegOut);
-    if (status != NO_ERROR) {
-        LOGE("%s: Make Jpeg Failed !", __FUNCTION__);
+
+    // Generate Exif with thumbnail.
+    if (mExifData == nullptr) {
+        mExifData = std::make_unique<unsigned char[]>(EXIF_SIZE_LIMITATION);
     }
+    uint8_t* finalExifDataPtr = static_cast<uint8_t*>(mExifData.get());
+    uint32_t finalExifDataSize;
+    status = mJpegMaker->getExif(thumbnailEncodePackage, finalExifDataPtr, &finalExifDataSize);
+    CheckError(status != 0, status, "@%s, Failed to get Exif", __FUNCTION__);
+
+    // Encode for final output.
+    ImgEncoder::EncodePackage finalEncodePackage;
+    finalEncodePackage.input = msg.jpegInputbuffer;
+    finalEncodePackage.output = msg.buffer;
+    finalEncodePackage.quality = exifCache.jpegSettings.jpegQuality;
+    finalEncodePackage.exifData = finalExifDataPtr;
+    finalEncodePackage.exifDataSize = finalExifDataSize;
+    isEncoded = mImgEncoder->encodeSync(finalEncodePackage);
+    CheckError(!isEncoded, UNKNOWN_ERROR, "@%s, Failed to encode main image", __FUNCTION__);
+
+    // Write jpeg size to the end of the buffer.
+    finalEncodePackage.output->lock();
+    uint8_t* resultPtr =
+        static_cast<uint8_t*>(finalEncodePackage.output->data()) +
+        finalEncodePackage.output->size() - sizeof(struct camera3_jpeg_blob);
+    auto* blob = reinterpret_cast<struct camera3_jpeg_blob*>(resultPtr);
+    blob->jpeg_blob_id = CAMERA3_JPEG_BLOB_ID;
+    blob->jpeg_size = finalEncodePackage.encodedDataSize;
+    finalEncodePackage.output->unlock();
 
     if (!mExifCacheStorage.empty()) {
         // Done with the cached EXIF item for this request. Discard.
