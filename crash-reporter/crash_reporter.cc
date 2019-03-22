@@ -21,6 +21,7 @@
 #include "crash-reporter/arc_service_failure_collector.h"
 #include "crash-reporter/bert_collector.h"
 #include "crash-reporter/chrome_collector.h"
+#include "crash-reporter/early_crash_meta_collector.h"
 #include "crash-reporter/ec_collector.h"
 #include "crash-reporter/kernel_collector.h"
 #include "crash-reporter/kernel_warning_collector.h"
@@ -68,7 +69,8 @@ int Initialize(UserCollector* user_collector,
 int BootCollect(KernelCollector* kernel_collector,
                 ECCollector* ec_collector,
                 BERTCollector* bert_collector,
-                UncleanShutdownCollector* unclean_shutdown_collector) {
+                UncleanShutdownCollector* unclean_shutdown_collector,
+                EarlyCrashMetaCollector* early_crash_meta_collector) {
   bool was_kernel_crash = false;
   bool was_unclean_shutdown = false;
 
@@ -104,6 +106,9 @@ int BootCollect(KernelCollector* kernel_collector,
   // collecting so that boot-time collected crashes will be associated with the
   // previous boot.
   unclean_shutdown_collector->SaveVersionData();
+
+  // Collect early boot crashes.
+  early_crash_meta_collector->Collect();
 
   return 0;
 }
@@ -323,6 +328,9 @@ int main(int argc, char* argv[]) {
   // Now that we've processed the command line, sandbox ourselves.
   EnterSandbox(FLAGS_init || FLAGS_clean_shutdown, FLAGS_log_to_stderr);
 
+  EarlyCrashMetaCollector early_crash_meta_collector;
+  early_crash_meta_collector.Initialize(IsFeedbackAllowed);
+
   KernelCollector kernel_collector;
   kernel_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
   ECCollector ec_collector;
@@ -372,8 +380,9 @@ int main(int argc, char* argv[]) {
   }
 
   if (FLAGS_boot_collect) {
-    return BootCollect(&kernel_collector, &ec_collector,
-                       &bert_collector, &unclean_shutdown_collector);
+    return BootCollect(&kernel_collector, &ec_collector, &bert_collector,
+                       &unclean_shutdown_collector,
+                       &early_crash_meta_collector);
   }
 
   if (FLAGS_clean_shutdown) {

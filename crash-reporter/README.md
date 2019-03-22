@@ -55,6 +55,9 @@ Then during boot, but not in the critical path, we run [crash-boot-collect.conf]
 to gather up any previous crashes in the system.
 For example, if the system had rebooted due to a kernel panic, or some firmware
 (like the [EC]) had crashed.
+This also includes crashes that occurred during early boot before persistent
+storage was available: such crashes are stored into `/run/crash_reporter/crash`
+and collected into `/var/spool/crash` once boot completes.
 
 We background the [anomaly_detector] to monitor for system "anomalies" for
 which a notification mechanism is not available.
