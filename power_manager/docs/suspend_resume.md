@@ -82,6 +82,19 @@ is low enough to suggest that the battery will be drained entirely while in S3,
 resulting in a system that can't be used until it's recharged, powerd shuts down
 the system. Otherwise, it re-suspends immediately.
 
+## Enable console during suspend
+
+Enabling console messages during suspend can help in debugging kernel panics
+during suspend. By default console is enabled during system suspends to S3. But
+if S0iX is enabled, console is disabled by default as console activity on the
+UART can prevent system from suspending. To enable console temporarily for
+debugging S0iX, perform the following steps
+
+```sh
+# echo 1 > /var/lib/power_manager/enable_console_during_suspend
+# restart powerd
+```
+
 ## Firmware Updates
 
 powerd will avoid suspending (or shutting down) if it believes that the firmware

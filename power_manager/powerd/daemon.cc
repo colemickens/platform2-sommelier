@@ -56,6 +56,7 @@
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/sar_watcher_interface.h"
+#include "power_manager/powerd/system/suspend_configurator.h"
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/proto_bindings/idle.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
@@ -300,6 +301,7 @@ void Daemon::Init() {
   metrics_sender_ = delegate_->CreateMetricsSender();
   udev_ = delegate_->CreateUdev();
   input_watcher_ = delegate_->CreateInputWatcher(prefs_.get(), udev_.get());
+  suspend_configurator_ = delegate_->CreateSuspendConfigurator(prefs_.get());
 
   const TabletMode tablet_mode = input_watcher_->GetTabletMode();
   if (tablet_mode == TabletMode::ON)
@@ -641,8 +643,10 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   if (suspend_to_idle_)
     args += " --suspend_to_idle";
 
+  suspend_configurator_->PrepareForSuspend();
   const int exit_code = RunSetuidHelper("suspend", args, true);
   LOG(INFO) << "powerd_suspend returned " << exit_code;
+  suspend_configurator_->UndoPrepareForSuspend();
 
   if (log_suspend_with_mosys_eventlog_)
     RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa8", false);

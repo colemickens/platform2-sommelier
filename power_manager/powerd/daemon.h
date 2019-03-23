@@ -73,6 +73,7 @@ class LockfileCheckerInterface;
 class PeripheralBatteryWatcher;
 class PowerSupplyInterface;
 class SarWatcherInterface;
+class SuspendConfiguratorInterface;
 class UdevInterface;
 }  // namespace system
 
@@ -284,6 +285,7 @@ class Daemon : public policy::InputEventHandler::Delegate,
   std::unique_ptr<policy::Suspender> suspender_;
   std::unique_ptr<policy::WifiController> wifi_controller_;
   std::unique_ptr<policy::CellularController> cellular_controller_;
+  std::unique_ptr<system::SuspendConfiguratorInterface> suspend_configurator_;
 
   std::unique_ptr<metrics::MetricsCollector> metrics_collector_;
 

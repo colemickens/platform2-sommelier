@@ -230,6 +230,9 @@ extern const char kSetCellularTransmitPowerForProximityPref[];
 // modem.
 extern const char kSetCellularTransmitPowerDprGpioPref[];
 
+// If true, enables console during suspend.
+extern const char kEnableConsoleDuringSuspendPref[];
+
 // Miscellaneous constants.
 
 // Name of the cros_fp fingerprint sensor input device.

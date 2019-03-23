@@ -41,6 +41,7 @@
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/power_supply_stub.h"
 #include "power_manager/powerd/system/sar_watcher_stub.h"
+#include "power_manager/powerd/system/suspend_configurator_stub.h"
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
 #include "power_manager/proto_bindings/switch_states.pb.h"
@@ -76,6 +77,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
         passed_metrics_sender_(new MetricsSenderStub()),
         passed_charge_controller_helper_(
             new system::ChargeControllerHelperStub()),
+        passed_suspend_configurator_(new system::SuspendConfiguratorStub()),
         prefs_(passed_prefs_.get()),
         dbus_wrapper_(passed_dbus_wrapper_.get()),
         udev_(passed_udev_.get()),
@@ -280,6 +282,11 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   CreateChargeControllerHelper() override {
     return std::move(passed_charge_controller_helper_);
   }
+  std::unique_ptr<system::SuspendConfiguratorInterface>
+  CreateSuspendConfigurator(PrefsInterface* prefs) override {
+    EXPECT_EQ(prefs_, prefs);
+    return std::move(passed_suspend_configurator_);
+  }
 
   pid_t GetPid() override { return pid_; }
   void Launch(const std::string& command) override {
@@ -344,6 +351,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<MetricsSenderStub> passed_metrics_sender_;
   std::unique_ptr<system::ChargeControllerHelperInterface>
       passed_charge_controller_helper_;
+  std::unique_ptr<system::SuspendConfiguratorInterface>
+      passed_suspend_configurator_;
 
   // Pointers to objects originally stored in |passed_*| members. These allow
   // continued access by tests even after the corresponding Create* method has

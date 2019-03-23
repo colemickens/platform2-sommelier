@@ -107,6 +107,7 @@ static_library("libsystem") {
     "powerd/system/power_supply.cc",
     "powerd/system/rolling_average.cc",
     "powerd/system/sar_watcher.cc",
+    "powerd/system/suspend_configurator.cc",
     "powerd/system/tagged_device.cc",
     "powerd/system/udev.cc",
     "powerd/system/wakeup_device.cc",
@@ -397,6 +398,7 @@ if (use.test) {
       "powerd/system/power_supply_test.cc",
       "powerd/system/rolling_average_test.cc",
       "powerd/system/sar_watcher_test.cc",
+      "powerd/system/suspend_configurator_test.cc",
       "powerd/system/tagged_device_test.cc",
       "powerd/system/wakeup_device_test.cc",
     ]

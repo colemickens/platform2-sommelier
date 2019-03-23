@@ -52,6 +52,7 @@
 #include "power_manager/powerd/system/pluggable_internal_backlight.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/sar_watcher.h"
+#include "power_manager/powerd/system/suspend_configurator.h"
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/powerd/system/wakeup_device.h"
 
@@ -234,6 +235,13 @@ class DaemonDelegateImpl : public DaemonDelegate {
   std::unique_ptr<system::ChargeControllerHelperInterface>
   CreateChargeControllerHelper() override {
     return std::make_unique<system::ChargeControllerHelper>();
+  }
+
+  std::unique_ptr<system::SuspendConfiguratorInterface>
+  CreateSuspendConfigurator(PrefsInterface* prefs) override {
+    auto suspend_configurator = std::make_unique<system::SuspendConfigurator>();
+    suspend_configurator->Init(prefs);
+    return suspend_configurator;
   }
 
   pid_t GetPid() override { return getpid(); }

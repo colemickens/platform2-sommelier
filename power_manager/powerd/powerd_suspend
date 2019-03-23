@@ -96,21 +96,6 @@ log_suspend_stats() {
   rm "${tempfile}"
 }
 
-enable_debug() {
-  # Enable debug info.
-  if [ -e /sys/module/printk/parameters/console_suspend ]; then
-    if [ "${FLAGS_suspend_to_idle}" -eq 0 ]; then
-      # Developers can change this to 'N' if they want to temporarily not
-      # disable the console while using S0ix. Note that this comes with the
-      # risk of failure to enter S0ix due to console activity on the UART.
-      log_msg "Suspending console since S0ix can fail if console not suspended"
-      printf 'Y' > /sys/module/printk/parameters/console_suspend
-    else
-      printf 'N' > /sys/module/printk/parameters/console_suspend
-    fi
-  fi
-}
-
 # Blaze modems need to be powered off (MODEM_EN low) when suspending and
 # powered back on (MODEM_EN high) when resuming.
 
@@ -343,8 +328,6 @@ if is_kip && has_huawei_modem; then
   log_msg "Kip with Huawei modem"
   kip_with_huawei_modem=1
 fi
-
-enable_debug
 
 result="${RESULT_FAILURE}"
 
