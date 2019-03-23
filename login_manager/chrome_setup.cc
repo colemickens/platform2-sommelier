@@ -308,29 +308,6 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   }
 }
 
-// Creates crash-handling-related directories and adds related arguments.
-void InitCrashHandling(ChromiumCommandBuilder* builder) {
-  const base::FilePath user_dir = GetUserDir(builder);
-  const uid_t uid = builder->uid();
-  const gid_t gid = builder->gid();
-
-  // Force Chrome minidumps that are sent to the crash server to also be written
-  // locally. Chrome creates these files in
-  // ~/.config/google-chrome/Crash Reports/.
-  const base::FilePath stateful_etc("/mnt/stateful_partition/etc");
-  if (base::PathExists(stateful_etc.Append("enable_chromium_minidumps"))) {
-    builder->AddEnvVar("CHROME_HEADLESS", "1");
-    const base::FilePath reports_dir(
-        user_dir.Append(".config/google-chrome/Crash Reports"));
-    if (!base::PathExists(reports_dir)) {
-      base::FilePath minidump_dir("/var/minidumps");
-      EnsureDirectoryExists(minidump_dir, uid, gid, 0700);
-      EnsureDirectoryExists(reports_dir.DirName(), uid, gid, 0700);
-      base::CreateSymbolicLink(minidump_dir, reports_dir);
-    }
-  }
-}
-
 // Adds system-related flags to the command line.
 void AddSystemFlags(ChromiumCommandBuilder* builder) {
   const base::FilePath data_dir = GetDataDir(builder);
@@ -602,7 +579,6 @@ void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
   // app_shell, content_shell, etc.) rather than just to Chrome belong in the
   // ChromiumCommandBuilder class instead.
   CreateDirectories(&builder);
-  InitCrashHandling(&builder);
   AddSystemFlags(&builder);
   AddUiFlags(&builder, cros_config);
   AddArcFlags(&builder, &disallowed_prefixes);
