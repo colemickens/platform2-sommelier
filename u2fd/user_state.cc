@@ -21,8 +21,8 @@ namespace u2f {
 namespace {
 
 constexpr const char kSessionStateStarted[] = "started";
-constexpr const char kUserSecretPath[] = "/home/user/%s/.u2f/secret";
-constexpr const char kCounterPath[] = "/home/user/%s/.u2f/counter";
+constexpr const char kUserSecretPath[] = "/run/daemon-store/u2f/%s/secret";
+constexpr const char kCounterPath[] = "/run/daemon-store/u2f/%s/counter";
 constexpr const int kUserSecretSizeBytes = 32;
 
 void OnSignalConnected(const std::string& interface,
