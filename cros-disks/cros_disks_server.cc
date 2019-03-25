@@ -193,6 +193,7 @@ bool CrosDisksServer::GetDeviceProperties(
   temp_properties[kDeviceIsOnRemovableDevice] = disk.is_on_removable_device;
   temp_properties[kDeviceIsVirtual] = disk.is_virtual;
   temp_properties[kNativePath] = disk.native_path;
+  temp_properties[kStorageDevicePath] = disk.storage_device_path;
   temp_properties[kDeviceFile] = disk.device_file;
   temp_properties[kIdUuid] = disk.uuid;
   temp_properties[kIdLabel] = disk.label;

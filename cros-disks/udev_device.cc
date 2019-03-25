@@ -51,6 +51,9 @@ const char kPropertyPresentationHide[] = "UDISKS_PRESENTATION_HIDE";
 const char kPropertyRotationRate[] = "ID_ATA_ROTATION_RATE_RPM";
 const char kPropertySerial[] = "ID_SERIAL";
 const char kSubsystemUsb[] = "usb";
+const char kSubsystemMmc[] = "mmc";
+const char kSubsystemNvme[] = "nvme";
+const char kSubsystemScsi[] = "scsi";
 const char kVirtualDevicePathPrefix[] = "/sys/devices/virtual/";
 const char kLoopDevicePathPrefix[] = "/sys/devices/virtual/block/loop";
 const char kUSBDeviceInfoFile[] = "/usr/share/cros-disks/usb-device-info";
@@ -388,6 +391,18 @@ std::string UdevDevice::NativePath() const {
   return sys_path ? sys_path : "";
 }
 
+std::string UdevDevice::StorageDevicePath() const {
+  for (udev_device* dev = dev_; dev; dev = udev_device_get_parent(dev)) {
+    const char* subsystem = udev_device_get_subsystem(dev);
+    if (subsystem && (strcmp(subsystem, kSubsystemMmc) == 0 ||
+                      strcmp(subsystem, kSubsystemNvme) == 0 ||
+                      strcmp(subsystem, kSubsystemScsi) == 0)) {
+      return udev_device_get_syspath(dev);
+    }
+  }
+  return "";
+}
+
 std::vector<std::string> UdevDevice::GetMountPaths() const {
   const char* device_path = udev_device_get_devnode(dev_);
   if (device_path) {
@@ -420,6 +435,7 @@ Disk UdevDevice::ToDisk() {
   disk.media_type = GetDeviceMediaType();
   disk.filesystem_type = GetPropertyFromBlkId(kPropertyBlkIdFilesystemType);
   disk.native_path = NativePath();
+  disk.storage_device_path = StorageDevicePath();
 
   // Drive model and filesystem label may not be UTF-8 encoded, so we
   // need to ensure that they are either set to a valid UTF-8 string or

@@ -56,6 +56,7 @@ struct Disk {
   std::vector<std::string> mount_paths;
   std::string native_path;
   std::string device_file;
+  std::string storage_device_path;
   std::string filesystem_type;
   std::string uuid;
   std::string label;

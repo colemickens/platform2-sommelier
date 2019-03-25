@@ -99,6 +99,9 @@ class UdevDevice {
   // Gets the native sysfs path of the device.
   std::string NativePath() const;
 
+  // Gets the path of the storage device this device is a part of, if any.
+  std::string StorageDevicePath() const;
+
   // Gets the mount paths for the device.
   std::vector<std::string> GetMountPaths() const;
 
