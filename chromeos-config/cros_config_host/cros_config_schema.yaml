@@ -211,6 +211,13 @@ properties:
                   - power-button-top-left
                   - keyboard-top-right
                   - keyboard-bottom-right
+                fingerprint-sensor-type:
+                  description: Type of FP sensor. Currently describes whether FP
+                    is overlapped on the power button or not.
+                  type: string
+                  enum:
+                    - stand-alone
+                    - on-power-button
               additionalProperties: false
             firmware:
               type: object

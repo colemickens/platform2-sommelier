@@ -364,6 +364,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | board | string |  | False |  | False | Specifies the fingerprint board in use. |
+| fingerprint-sensor-type | string |  | False |  | False | Type of FP sensor. Currently describes whether FP is overlapped on the power button or not. |
 | sensor-location | string |  | False |  | False | Specifies the location of the fingerprint sensor. |
 
 ### firmware
