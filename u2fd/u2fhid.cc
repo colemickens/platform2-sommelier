@@ -214,6 +214,7 @@ U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
                const TpmAttestCallback& attest_fn,
                const TpmG2fCertCallback& g2f_cert_fn,
                const IgnoreButtonCallback& ignore_fn,
+               const WinkCallback& wink_fn,
                std::unique_ptr<UserState> user_state)
     : hid_(std::move(hid)),
       g2f_mode_(g2f_mode),
@@ -224,6 +225,7 @@ U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
       tpm_attest_(attest_fn),
       tpm_g2f_cert_(g2f_cert_fn),
       ignore_button_(ignore_fn),
+      wink_(wink_fn),
       free_cid_(1),
       locked_cid_(0),
       user_state_(std::move(user_state)),
@@ -417,6 +419,7 @@ int U2fHid::CmdLock(std::string* resp) {
 
 int U2fHid::CmdWink(std::string* resp) {
   LOG(INFO) << "WINK!";
+  wink_.Run();
   return 0;
 }
 

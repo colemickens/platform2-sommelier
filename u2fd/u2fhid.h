@@ -91,6 +91,8 @@ class U2fHid {
   // it as physical presence for U2F.
   using IgnoreButtonCallback = base::Callback<bool(
       int64_t in_timeout_internal, brillo::ErrorPtr* error, int timeout)>;
+  // Callback to notify the UI that the wink command has been sent.
+  using WinkCallback = base::Callback<void()>;
 
   // TODO(louiscollard): Pass TpmVendorCommandProxy rather than individual
   // callbacks.
@@ -104,6 +106,7 @@ class U2fHid {
          const TpmAttestCallback& attest_fn,
          const TpmG2fCertCallback& g2f_cert_fn,
          const IgnoreButtonCallback& ignore_button_func,
+         const WinkCallback& wink_fn,
          std::unique_ptr<UserState> user_state);
   ~U2fHid();
   bool Init();
@@ -210,6 +213,7 @@ class U2fHid {
   TpmAttestCallback tpm_attest_;
   TpmG2fCertCallback tpm_g2f_cert_;
   IgnoreButtonCallback ignore_button_;
+  WinkCallback wink_;
   uint32_t free_cid_;
   uint32_t locked_cid_;
   base::OneShotTimer lock_timeout_;

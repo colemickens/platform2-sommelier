@@ -9,13 +9,18 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/time/time.h>
 #include <brillo/daemons/daemon.h>
+#include <brillo/dbus/dbus_object.h>
+#include <brillo/dbus/dbus_signal.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <dbus/bus.h>
+#include <dbus/u2f/dbus-constants.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 #include <sysexits.h>
+#include <u2f/proto_bindings/interface.pb.h>
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "power_manager-client/power_manager/dbus-proxies.h"
@@ -31,6 +36,7 @@
 namespace {
 
 constexpr char kDeviceName[] = "Integrated U2F";
+constexpr int kWinkSignalMinIntervalMs = 1000;
 
 namespace em = enterprise_management;
 
@@ -133,6 +139,7 @@ class U2fDaemon : public brillo::Daemon {
       LOG(ERROR) << "Cannot connect to D-Bus.";
       return EX_IOERR;
     }
+    SetupU2fDBusInterface();
     pm_proxy_ = std::make_unique<org::chromium::PowerManagerProxy>(bus_.get());
 
     u2fhid_ = std::make_unique<u2f::U2fHid>(
@@ -152,9 +159,36 @@ class U2fDaemon : public brillo::Daemon {
         base::Bind(
             &org::chromium::PowerManagerProxy::IgnoreNextPowerButtonPress,
             base::Unretained(pm_proxy_.get())),
+        base::Bind(&U2fDaemon::SendWinkSignal, base::Unretained(this)),
         std::make_unique<u2f::UserState>(bus_));
 
     return u2fhid_->Init() ? EX_OK : EX_PROTOCOL;
+  }
+
+  void SetupU2fDBusInterface() {
+    dbus_object_.reset(new brillo::dbus_utils::DBusObject(
+        nullptr, bus_, dbus::ObjectPath(u2f::kU2FServicePath)));
+
+    auto u2f_interface = dbus_object_->AddOrGetInterface(u2f::kU2FInterface);
+
+    wink_signal_ = u2f_interface->RegisterSignal<u2f::UserNotification>(
+        u2f::kU2FUserNotificationSignal);
+
+    dbus_object_->RegisterAndBlock();
+  }
+
+  void SendWinkSignal() {
+    static base::TimeTicks last_sent;
+    base::TimeDelta elapsed = base::TimeTicks::Now() - last_sent;
+
+    if (elapsed.InMilliseconds() > kWinkSignalMinIntervalMs) {
+      u2f::UserNotification notification;
+      notification.set_event_type(u2f::UserNotification::TOUCH_NEEDED);
+
+      wink_signal_.lock()->Send(notification);
+
+      last_sent = base::TimeTicks::Now();
+    }
   }
 
   U2fMode u2f_mode_;
@@ -164,6 +198,9 @@ class U2fDaemon : public brillo::Daemon {
   u2f::TpmVendorCommandProxy tpm_proxy_;
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::chromium::PowerManagerProxy> pm_proxy_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+  std::weak_ptr<brillo::dbus_utils::DBusSignal<u2f::UserNotification>>
+      wink_signal_;
   std::unique_ptr<u2f::U2fHid> u2fhid_;
 
   DISALLOW_COPY_AND_ASSIGN(U2fDaemon);
