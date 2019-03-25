@@ -48,6 +48,8 @@ class GenericBattery : public ProbeFunction {
     return instance;
   }
 
+  std::string GetFunctionName() const override { return function_name; }
+
   DataType Eval() const override;
 
  private:

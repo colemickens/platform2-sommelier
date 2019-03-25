@@ -5,17 +5,17 @@
 #include <vector>
 
 #include <base/values.h>
-#include <base/files/scoped_temp_dir.h>
-#include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/json/json_writer.h>
-#include <brillo/process.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/bus.h>
+#include <dbus/message.h>
+#include <dbus/object_proxy.h>
 
 #include "runtime_probe/probe_function.h"
 
 namespace runtime_probe {
 
-typedef typename ProbeFunction::DataType DataType;
+using DataType = typename ProbeFunction::DataType;
 
 std::unique_ptr<ProbeFunction> ProbeFunction::FromDictionaryValue(
     const base::DictionaryValue& dict_value) {
@@ -59,27 +59,58 @@ std::unique_ptr<ProbeFunction> ProbeFunction::FromDictionaryValue(
   return ret_value;
 }
 
+constexpr auto kDebugdRunProbeHelperMethodName = "EvaluateProbeFunction";
+constexpr auto kDebugdRunProbeHelperDefaultTimeoutMs = 10 * 1000;  // in ms
+
 bool ProbeFunction::InvokeHelper(std::string* result) const {
   std::string tmp_json_string;
   base::JSONWriter::Write(*raw_value_, &tmp_json_string);
 
-  // TODO(itspeter): instead of fork, fold the logic to debugd (with proper
-  // minijail / seccomp sandbox) and consume the return value of a string.
-  std::unique_ptr<brillo::Process> process(new brillo::ProcessImpl());
-  process->AddArg("/usr/bin/runtime_probe_helper");
-  process->AddArg(tmp_json_string);
-  base::ScopedTempDir temp_dir;
-  CHECK(temp_dir.CreateUniqueTempDir());
-  const std::string output_file =
-      temp_dir.GetPath().Append("helper_out").value();
-  process->RedirectOutput(output_file);
-  int status = process->Run();
-  if (status) {
-    VLOG(1) << "Helper returns non-zero value (" << status << ") when "
-            << "processing statement " << tmp_json_string;
+  dbus::Bus::Options ops;
+  ops.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(ops)));
+
+  if (!bus->Connect()) {
+    LOG(ERROR) << "Failed to connect to system D-Bus service.";
     return false;
   }
-  base::ReadFileToString(base::FilePath(output_file), result);
+
+  dbus::ObjectProxy* object_proxy = bus->GetObjectProxy(
+      debugd::kDebugdServiceName, dbus::ObjectPath(debugd::kDebugdServicePath));
+
+  dbus::MethodCall method_call(debugd::kDebugdInterface,
+                               kDebugdRunProbeHelperMethodName);
+  dbus::MessageWriter writer(&method_call);
+
+  writer.AppendString(GetFunctionName());
+  writer.AppendString(tmp_json_string);
+
+  std::unique_ptr<dbus::Response> response = object_proxy->CallMethodAndBlock(
+      &method_call, kDebugdRunProbeHelperDefaultTimeoutMs);
+  if (!response) {
+    LOG(ERROR) << "Failed to issue D-Bus call to method "
+               << kDebugdRunProbeHelperMethodName
+               << " of debugd D-Bus interface.";
+    return false;
+  }
+
+  dbus::MessageReader reader(response.get());
+  if (!reader.PopString(result)) {
+    LOG(ERROR) << "Failed to read probe_result from debugd.";
+    return false;
+  }
+
+  int32_t exit_code = -1;
+  if (!reader.PopInt32(&exit_code)) {
+    LOG(ERROR) << "Failed to read exit_code from debugd.";
+    return false;
+  }
+
+  if (exit_code) {
+    VLOG(1) << "Helper returns non-zero value (" << exit_code << ") when "
+            << "processing statement " << result;
+    return false;
+  }
 
   VLOG(1) << "EvalInHelper returns " << *result;
   return true;

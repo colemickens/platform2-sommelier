@@ -53,6 +53,7 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
   packet_capture_tool_ = std::make_unique<PacketCaptureTool>();
   perf_tool_ = std::make_unique<PerfTool>();
   ping_tool_ = std::make_unique<PingTool>();
+  probe_tool_ = std::make_unique<ProbeTool>();
   route_tool_ = std::make_unique<RouteTool>();
   shill_scripts_tool_ = std::make_unique<ShillScriptsTool>();
   storage_tool_ = std::make_unique<StorageTool>();
@@ -520,6 +521,14 @@ bool DebugdDBusAdaptor::SetSchedulerConfiguration(brillo::ErrorPtr* error,
                                                   bool* result) {
   *result = scheduler_configuration_tool_->SetPolicy(policy, error);
   return *result;
+}
+
+bool DebugdDBusAdaptor::EvaluateProbeFunction(
+    brillo::ErrorPtr* error, const std::string& sandbox_info,
+    const std::string& probe_statement, std::string* probe_result,
+    int32_t* exit_code) {
+  return probe_tool_->EvaluateProbeFunction(
+          error, sandbox_info, probe_statement, probe_result, exit_code);
 }
 
 }  // namespace debugd

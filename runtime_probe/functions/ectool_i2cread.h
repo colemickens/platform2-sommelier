@@ -29,6 +29,8 @@ class EctoolI2Cread : public ProbeFunction {
  public:
   static constexpr auto function_name = "ectool_i2cread";
 
+  std::string GetFunctionName() const override { return function_name; }
+
   // Define a parser for this function.
   //
   // @args dict_value: a JSON dictionary to parse arguments from.

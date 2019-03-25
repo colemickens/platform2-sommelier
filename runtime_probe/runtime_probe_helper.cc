@@ -20,8 +20,12 @@ enum ExitStatus {
 
 int main(int argc, char* argv[]) {
   brillo::InitLog(brillo::kLogToSyslog);
+  for (int i = 0; i < argc; ++i) {
+    DLOG(INFO) << "Got arguments, index " << i << " = " << argv[i];
+  }
+
   if (argc != 2) {
-    LOG(ERROR) << "Runtime probe helper consumes a single probe statement";
+    LOG(ERROR) << "Helper only consumes a single probe statement";
     return kFailedToParseProbeStatementFromArg;
   }
 

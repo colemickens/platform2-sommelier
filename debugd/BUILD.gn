@@ -44,6 +44,7 @@ pkg_config("target_defaults") {
     "liblzma",
     "libminijail",
     "libpcrecpp",
+    "vboot_host",
   ]
 }
 
@@ -94,6 +95,7 @@ static_library("libdebugd") {
     "src/packet_capture_tool.cc",
     "src/perf_tool.cc",
     "src/ping_tool.cc",
+    "src/probe_tool.cc",
     "src/process_with_id.cc",
     "src/process_with_output.cc",
     "src/route_tool.cc",

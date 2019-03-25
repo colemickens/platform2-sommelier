@@ -37,6 +37,7 @@
 #include "debugd/src/packet_capture_tool.h"
 #include "debugd/src/perf_tool.h"
 #include "debugd/src/ping_tool.h"
+#include "debugd/src/probe_tool.h"
 #include "debugd/src/restricted_tool_wrapper.h"
 #include "debugd/src/route_tool.h"
 #include "debugd/src/scheduler_configuration_tool.h"
@@ -71,8 +72,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
                  const std::string& dest,
                  const brillo::VariantDictionary& options,
                  std::string* handle) override;
-  bool PingStop(brillo::ErrorPtr* error,
-                const std::string& handle) override;
+  bool PingStop(brillo::ErrorPtr* error, const std::string& handle) override;
   std::string TracePathStart(const base::ScopedFD& outfd,
                              const std::string& destination,
                              const brillo::VariantDictionary& options) override;
@@ -96,8 +96,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
                        const base::ScopedFD& stdout_fd,
                        uint64_t* session_id) override;
   bool StopPerf(brillo::ErrorPtr* error, uint64_t session_id) override;
-  void DumpDebugLogs(bool is_compressed,
-                     const base::ScopedFD& fd) override;
+  void DumpDebugLogs(bool is_compressed, const base::ScopedFD& fd) override;
   void SetDebugMode(const std::string& subsystem) override;
   std::string GetLog(const std::string& name) override;
   std::map<std::string, std::string> GetAllLogs() override;
@@ -184,11 +183,16 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
                                    const std::string& image_file,
                                    const std::string& ro_db_dir,
                                    std::string* handle) override;
-  bool UpdateAndVerifyFWOnUsbStop(
-      brillo::ErrorPtr* error, const std::string& handle) override;
+  bool UpdateAndVerifyFWOnUsbStop(brillo::ErrorPtr* error,
+                                  const std::string& handle) override;
   bool SetSchedulerConfiguration(brillo::ErrorPtr* error,
                                  const std::string& policy,
                                  bool* out) override;
+  bool EvaluateProbeFunction(brillo::ErrorPtr* error,
+                             const std::string& sandbox_info,
+                             const std::string& probe_statement,
+                             std::string* probe_result,
+                             int32_t* exit_code) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
@@ -226,6 +230,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<SimpleServiceTool> vm_concierge_tool_;
   std::unique_ptr<SimpleServiceTool> vm_plugin_dispatcher_tool_;
   std::unique_ptr<WifiPowerTool> wifi_power_tool_;
+  std::unique_ptr<ProbeTool> probe_tool_;
 };
 
 }  // namespace debugd

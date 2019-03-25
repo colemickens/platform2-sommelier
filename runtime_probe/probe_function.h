@@ -76,6 +76,8 @@ class ProbeFunction {
     return retval;
   }
 
+  virtual std::string GetFunctionName() const { return {}; }
+
   // Evaluates this entire probe function.
   //
   // Output will be a list of base::DictionaryValue.
