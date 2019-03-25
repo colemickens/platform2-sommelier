@@ -1,13 +1,5 @@
 type cros_tcsd, chromeos_domain, domain;
 
-# TODO(crbug.com/943965): dac_override should eliminated.
-# dac_override is used by
-#  tcsd to read /etc/tcsd.conf owned by tss:tss with 0600
-#  tcsd running as root before setuid to create sock_file into /run/tcsd owned by tss:tss with 0755.
-arc_cts_fails_release(`
-allow cros_tcsd self:capability dac_override;
-', (cros_tcsd))
-
 domain_auto_trans(cros_init, cros_tcsd_exec, cros_tcsd);
 
 uma_writer(cros_tcsd);
@@ -25,7 +17,7 @@ allow cros_tcsd cros_tcsd_socket:sock_file create_file_perms;
 
 allow cros_tcsd tpm_device:chr_file rw_file_perms;
 
-allow cros_tcsd self:capability { chown setuid };
+allow cros_tcsd self:capability { chown setuid setgid };
 
 filetrans_pattern(chromeos_domain, cros_var_lib, cros_var_lib_tpm, dir, "tpm")
 
