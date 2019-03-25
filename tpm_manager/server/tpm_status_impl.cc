@@ -74,7 +74,7 @@ bool TpmStatusImpl::GetDictionaryAttackInfo(int* counter,
                                             int* threshold,
                                             bool* lockout,
                                             int* seconds_remaining) {
-  std::string capability_data;
+  std::vector<uint8_t> capability_data;
   if (!GetCapability(TSS_TPMCAP_DA_LOGIC, TPM_ET_KEYHANDLE, &capability_data,
                      nullptr) ||
       capability_data.size() < kMinimumDaInfoSize) {
@@ -84,8 +84,7 @@ bool TpmStatusImpl::GetDictionaryAttackInfo(int* counter,
   if (static_cast<uint16_t>(capability_data[1]) == TPM_TAG_DA_INFO) {
     TPM_DA_INFO da_info;
     uint64_t offset = 0;
-    std::vector<BYTE> bytes(capability_data.begin(), capability_data.end());
-    Trspi_UnloadBlob_DA_INFO(&offset, bytes.data(), &da_info);
+    Trspi_UnloadBlob_DA_INFO(&offset, capability_data.data(), &da_info);
     if (counter) {
       *counter = da_info.currentCount;
     }
@@ -108,7 +107,7 @@ bool TpmStatusImpl::GetVersionInfo(uint32_t* family,
                                    uint32_t* tpm_model,
                                    uint64_t* firmware_version,
                                    std::vector<uint8_t>* vendor_specific) {
-  std::string capability_data;
+  std::vector<uint8_t> capability_data;
   if (!GetCapability(TSS_TPMCAP_VERSION_VAL, 0, &capability_data, nullptr) ||
       capability_data.size() < kMinimumVersionInfoSize ||
       static_cast<uint16_t>(capability_data[1]) != TPM_TAG_CAP_VERSION_INFO) {
@@ -118,8 +117,8 @@ bool TpmStatusImpl::GetVersionInfo(uint32_t* family,
 
   TPM_CAP_VERSION_INFO tpm_version;
   uint64_t offset = 0;
-  std::vector<BYTE> bytes(capability_data.begin(), capability_data.end());
-  Trspi_UnloadBlob_CAP_VERSION_INFO(&offset, bytes.data(), &tpm_version);
+  Trspi_UnloadBlob_CAP_VERSION_INFO(
+      &offset, capability_data.data(), &tpm_version);
   if (family) {
     *family = 0x312e3200;
   }
@@ -179,7 +178,7 @@ bool TpmStatusImpl::TestTpmWithDefaultOwnerPassword() {
 
 void TpmStatusImpl::RefreshOwnedEnabledInfo() {
   TSS_RESULT result;
-  std::string capability_data;
+  std::vector<uint8_t> capability_data;
   if (!GetCapability(TSS_TPMCAP_PROPERTY, TSS_TPMCAP_PROP_OWNER,
                      &capability_data, &result)) {
     if (ERROR_CODE(result) == TPM_E_DISABLED) {
@@ -201,7 +200,7 @@ void TpmStatusImpl::RefreshOwnedEnabledInfo() {
 
 bool TpmStatusImpl::GetCapability(uint32_t capability,
                                   uint32_t sub_capability,
-                                  std::string* data,
+                                  std::vector<uint8_t>* data,
                                   TSS_RESULT* tpm_result) {
   CHECK(data);
   TSS_HTPM tpm_handle = tpm_connection_.GetTpm();

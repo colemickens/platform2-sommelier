@@ -20,7 +20,6 @@
 #include "tpm_manager/server/tpm_status.h"
 
 #include <memory>
-#include <string>
 #include <vector>
 
 #include <base/macros.h>
@@ -69,7 +68,7 @@ class TpmStatusImpl : public TpmStatus {
   // provided, it is set to the result of the |Tspi_TPM_GetCapability| call.
   bool GetCapability(uint32_t capability,
                      uint32_t sub_capability,
-                     std::string* data,
+                     std::vector<uint8_t>* data,
                      TSS_RESULT* tpm_result);
 
   TpmConnection tpm_connection_;
