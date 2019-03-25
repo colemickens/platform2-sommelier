@@ -27,9 +27,9 @@ allow chromeos_startup { is_arc_nyc(proc, proc_dirty proc_page_cluster proc_pani
 # filetrans_pattern_no_target_perm(chromeos_startup, device, cros_shm, dir, "shm");
 
 # Misc files
-type chromeos_startup_tmp_file, file_type;
-type chromeos_startup_mount_options_log_file, file_type;
-type cros_var_log_asan, file_type;
+type chromeos_startup_tmp_file, file_type, cros_file_type, cros_tmpfile_type;
+type chromeos_startup_mount_options_log_file, file_type, cros_file_type, cros_var_file_type;
+type cros_var_log_asan, file_type, cros_file_type, cros_var_file_type;
 filetrans_pattern(chromeos_startup, cros_run, chromeos_startup_tmp_file, file);
 filetrans_pattern(chromeos_startup, cros_var_log, chromeos_startup_mount_options_log_file, file, "mount_options.log");
 filetrans_pattern(chromeos_startup, cros_var_log, cros_var_log_asan, dir, "asan");

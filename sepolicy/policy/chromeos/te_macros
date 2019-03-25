@@ -70,5 +70,26 @@ define(`uma_writer', `
 typeattribute $1 cros_uma_events_writer_domain;
 ')
 
+# tmp_file(domain, file|dir, file name, directory other than tmpfs);
+define(`tmp_file', `
+type $1_tmp_file, file_type, cros_tmpfile_type, cros_file_type;
+filetrans_pattern($1, {tmpfs $4}, $1_tmp_file, $2, $3);
+');
+
+# pid_file(domain, where, file name, file type of created pid file);
+# if file type of created pid file is not specified, it will be
+# <domain>_pid_file by default.
+define(`pid_file', `
+ifelse($4, `', `
+define(`___pid_file_type', `$1_pid_file');
+', `
+define(`___pid_file_type', `$4');
+');
+type ___pid_file_type, file_type, cros_tmpfile_type, cros_file_type;
+filetrans_pattern($1, $2, ___pid_file_type, file, $3);
+allow $1 ___pid_file_type:file create_file_perms;
+undefine(`___pid_file_type');
+');
+
 # minijail-related macros
 include(sepolicy/policy/chromeos/minijail_te_macros)

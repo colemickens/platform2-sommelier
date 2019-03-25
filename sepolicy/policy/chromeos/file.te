@@ -1,188 +1,194 @@
 # TODO(fqj): go over files of cros_system_file, and to label exec only and rename with _exec suffix.
-type cros_system_file, exec_type, file_type, cros_system_file_type;
-type cros_usr_dirs, file_type, cros_system_file_type;
-type cros_conf_file, file_type, cros_system_file_type;
+type cros_system_file, exec_type, file_type, cros_system_file_type, cros_file_type;
+type cros_usr_dirs, file_type, cros_system_file_type, cros_file_type;
+type cros_conf_file, file_type, cros_system_file_type, cros_file_type;
 allow chromeos_domain cros_system_file_type:dir search;
 
-type cros_kernel_modules_ko_file, file_type;
-type cros_kernel_modules_file, file_type;
+type cros_kernel_modules_ko_file, file_type, cros_file_type, cros_system_file_type;
+type cros_kernel_modules_file, file_type, cros_file_type, cros_system_file_type;
 
-type chromeos_startup_script_exec, exec_type, file_type;
+type chromeos_startup_script_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 
-type cros_dev_image_files, file_type;
+type cros_dev_image_files, file_type, cros_file_type, cros_uncategorized_file_type;
 
-type cros_seccomp_policy_file, file_type;
+type cros_seccomp_policy_file, file_type, cros_file_type, cros_system_file_type;
 
-type cros_accelerator_logs_exec, exec_type, file_type;
-type cros_anomaly_detector_exec, exec_type, file_type;
-type cros_apk_cache_cleaner_jailed_exec, exec_type, file_type;
-type cros_arc_oemcrypto_exec, exec_type, file_type;
-type cros_arc_setup_exec, exec_type, file_type;
-type cros_avahi_daemon_exec, exec_type, file_type;
-type cros_bluetoothd_exec, exec_type, file_type;
-type cros_bootstat_exec, exec_type, file_type;
-type cros_btdispatch_exec, exec_type, file_type;
-type cros_camera_algo_exec, exec_type, file_type;
-type cros_camera_service_exec, exec_type, file_type;
-type cros_chapsd_exec, exec_type, file_type;
-type cros_chromeos_cleanup_logs_exec, exec_type, file_type;
-type cros_chromeos_trim_exec, exec_type, file_type;
-type cros_chrt_exec, exec_type, file_type;
-type cros_conntrackd_exec, exec_type, file_type;
-type cros_cras_exec, exec_type, file_type;
-type cros_crash_reporter_exec, exec_type, file_type;
-type cros_crash_sender_exec, exec_type, file_type;
-type cros_cryptohomed_exec, exec_type, file_type;
-type cros_dbus_daemon_exec, exec_type, file_type;
-type cros_dbus_uuidgen_exec, exec_type, file_type;
-type cros_debugd_exec, exec_type, file_type;
-type cros_dhcpcd_exec, exec_type, file_type;
-type cros_disks_exec, exec_type, file_type;
-type cros_jetstream_update_stats_exec, exec_type, file_type;
-type cros_journald_exec, exec_type, file_type;
-type cros_logger_exec, exec_type, file_type;
-type cros_machine_id_regen_exec, exec_type, file_type;
-type cros_memd_exec, exec_type, file_type;
-type cros_metrics_client_exec, exec_type, file_type;
-type cros_metrics_daemon_exec, exec_type, file_type;
-type cros_midis_exec, exec_type, file_type;
-type cros_minijail_exec, exec_type, file_type;
-type cros_modem_manager_exec, exec_type, file_type;
-type cros_modprobe_exec, exec_type, file_type;
-type cros_mtpd_exec, exec_type, file_type;
-type cros_newblued_exec, exec_type, file_type;
-type cros_periodic_scheduler_exec, exec_type, file_type;
-type cros_permission_broker_exec, exec_type, file_type;
-type cros_powerd_exec, exec_type, file_type;
-type cros_restorecon_exec, exec_type, file_type;
-type cros_rsyslogd_exec, exec_type, file_type;
-type cros_session_manager_exec, exec_type, file_type;
-type cros_shill_exec, exec_type, file_type;
-type cros_sshd_exec, exec_type, file_type;
-type cros_sslh_exec, exec_type, file_type;
-type cros_tcsd_exec, exec_type, file_type;
-type cros_tlsdated_exec, exec_type, file_type;
-type cros_udevd_exec, exec_type, file_type;
-type cros_update_engine_exec, exec_type, file_type;
-type cros_userfeedback_file, exec_type, file_type;
-type cros_wpa_supplicant_exec, exec_type, file_type;
+type cros_accelerator_logs_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_anomaly_detector_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_apk_cache_cleaner_jailed_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_arc_oemcrypto_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_arc_setup_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_avahi_daemon_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_bluetoothd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_bootstat_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_btdispatch_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_camera_algo_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_camera_service_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_chapsd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_chromeos_cleanup_logs_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_chromeos_trim_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_chrt_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_conntrackd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_cras_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_crash_reporter_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_crash_sender_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_cryptohomed_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_dbus_daemon_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_dbus_uuidgen_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_debugd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_dhcpcd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_disks_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_jetstream_update_stats_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_journald_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_logger_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_machine_id_regen_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_memd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_metrics_client_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_metrics_daemon_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_midis_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_minijail_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_modem_manager_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_modprobe_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_mtpd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_newblued_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_periodic_scheduler_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_permission_broker_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_powerd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_restorecon_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_rsyslogd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_session_manager_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_shill_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_sshd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_sslh_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_tcsd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_tlsdated_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_udevd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_update_engine_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_userfeedback_file, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_wpa_supplicant_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 
-type cros_home, file_type;
-type cros_home_user, file_type;
-type cros_home_root, file_type;
-type cros_home_chronos, file_type;
-type cros_home_shadow, file_type;
-type cros_home_shadow_uid, file_type;
-type cros_home_shadow_low_entropy_creds, file_type;
-type cros_home_shadow_uid_user, file_type;
-type cros_home_shadow_uid_root, file_type;
-type cros_home_shadow_uid_root_android, file_type;
-type cros_home_shadow_uid_root_android_cache, file_type;
-type cros_home_shadow_uid_root_authpolicyd, file_type;
-type cros_home_shadow_uid_root_chaps, file_type;
-type cros_home_shadow_uid_root_session_manager, file_type;
-type cros_home_shadow_uid_root_shill, file_type;
-type cros_home_shadow_uid_root_shill_logs, file_type;
-type cros_home_shadow_uid_root_usb_bouncer, file_type;
+type cros_home, file_type, cros_file_type, cros_home_file_type;
+type cros_home_user, file_type, cros_file_type, cros_home_file_type;
+type cros_home_root, file_type, cros_file_type, cros_home_file_type;
+type cros_home_chronos, file_type, cros_file_type, cros_home_file_type;
+type cros_home_shadow, file_type, cros_file_type, cros_home_file_type;
+type cros_home_shadow_uid, file_type, cros_file_type, cros_home_file_type;
+type cros_home_shadow_low_entropy_creds, file_type, cros_file_type, cros_home_file_type;
+type cros_home_shadow_uid_user, file_type, cros_file_type, cros_home_file_type;
+type cros_home_shadow_uid_root, file_type, cros_file_type, cros_home_file_type;
+type cros_home_shadow_uid_root_android, file_type, cros_file_type, cros_home_file_type;
+type cros_home_shadow_uid_root_android_cache, file_type, cros_file_type, cros_home_file_type;
+type cros_home_shadow_uid_root_authpolicyd, file_type, cros_file_type, cros_home_file_type;
+type cros_home_shadow_uid_root_chaps, file_type, cros_file_type, cros_home_file_type;
+type cros_home_shadow_uid_root_session_manager, file_type, cros_file_type, cros_home_file_type;
+type cros_home_shadow_uid_root_shill, file_type, cros_file_type, cros_home_file_type;
+type cros_home_shadow_uid_root_shill_logs, file_type, cros_file_type, cros_home_file_type;
+type cros_home_shadow_uid_root_usb_bouncer, file_type, cros_file_type, cros_home_file_type;
+
 type system_data_file, file_type; # this is Android file label.
 allow domain cros_home:dir r_dir_perms;
 
-type cros_coreutils_exec, exec_type, file_type;
+type cros_coreutils_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 
-type frecon_exec, exec_type, file_type;
-type sh_exec, exec_type, file_type;
-type upstart_socket_bridge_exec, exec_type, file_type;
+type frecon_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type sh_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type upstart_socket_bridge_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 
-type chrome_browser_exec, exec_type, file_type;
+type chrome_browser_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 
-type cros_unconfined_exec, exec_type, file_type;
+type cros_unconfined_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 
-type cros_init_activate_date_script, exec_type, file_type, cros_init_scripts_file_type;
-type cros_init_chapsd_shell_script, exec_type, file_type, cros_init_scripts_file_type;
-type cros_init_crx_import_script, exec_type, file_type, cros_init_scripts_file_type;
-type cros_init_lockbox_cache_script, exec_type, file_type, cros_init_scripts_file_type;
-type cros_init_powerd_pre_start_script, exec_type, file_type, cros_init_scripts_file_type;
-type cros_init_shell_scripts, exec_type, file_type, cros_init_scripts_file_type;
-type cros_init_shill_shell_script, exec_type, file_type, cros_init_scripts_file_type;
-type cros_init_sshd_pre_shell_script, exec_type, file_type, cros_init_scripts_file_type;
-type cros_init_start_bluetoothd_shell_script, exec_type, file_type, cros_init_scripts_file_type;
-type cros_init_start_bluetoothlog_shell_script, exec_type, file_type, cros_init_scripts_file_type;
-type cros_init_ui_pre_start_shell_script, exec_type, file_type, cros_init_scripts_file_type;
-type cros_init_ui_respawn_shell_script, exec_type, file_type, cros_init_scripts_file_type;
+type cros_init_activate_date_script, exec_type, file_type, cros_init_scripts_file_type, cros_file_type, cros_system_file_type;
+type cros_init_chapsd_shell_script, exec_type, file_type, cros_init_scripts_file_type, cros_file_type, cros_system_file_type;
+type cros_init_crx_import_script, exec_type, file_type, cros_init_scripts_file_type, cros_file_type, cros_system_file_type;
+type cros_init_lockbox_cache_script, exec_type, file_type, cros_init_scripts_file_type, cros_file_type, cros_system_file_type;
+type cros_init_powerd_pre_start_script, exec_type, file_type, cros_init_scripts_file_type, cros_file_type, cros_system_file_type;
+type cros_init_shell_scripts, exec_type, file_type, cros_init_scripts_file_type, cros_file_type, cros_system_file_type;
+type cros_init_shill_shell_script, exec_type, file_type, cros_init_scripts_file_type, cros_file_type, cros_system_file_type;
+type cros_init_sshd_pre_shell_script, exec_type, file_type, cros_init_scripts_file_type, cros_file_type, cros_system_file_type;
+type cros_init_start_bluetoothd_shell_script, exec_type, file_type, cros_init_scripts_file_type, cros_file_type, cros_system_file_type;
+type cros_init_start_bluetoothlog_shell_script, exec_type, file_type, cros_init_scripts_file_type, cros_file_type, cros_system_file_type;
+type cros_init_ui_pre_start_shell_script, exec_type, file_type, cros_init_scripts_file_type, cros_file_type, cros_system_file_type;
+type cros_init_ui_respawn_shell_script, exec_type, file_type, cros_init_scripts_file_type, cros_file_type, cros_system_file_type;
 
-type cros_ionice_exec, exec_type, file_type;
+type cros_ionice_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 
-type cros_selinux_config_file, file_type;
+type cros_selinux_config_file, file_type, cros_file_type, cros_system_file_type;
 
-type cros_var, file_type;
-type cros_var_cache, file_type;
-type cros_var_log, file_type;
-type cros_var_lib, file_type;
-type cros_var_spool, file_type;
-type cros_var_empty, file_type;
+type cros_var, file_type, cros_file_type, cros_var_file_type;
+type cros_var_cache, file_type, cros_file_type, cros_var_file_type;
+type cros_var_log, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib, file_type, cros_file_type, cros_var_file_type;
+type cros_var_spool, file_type, cros_file_type, cros_var_file_type;
+type cros_var_empty, file_type, cros_file_type, cros_var_file_type;
 
-type cros_var_cache_shill, file_type;
+# /var/cache
+type cros_var_cache_shill, file_type, cros_file_type, cros_var_file_type;
 
-type cros_var_lib_bluetooth, file_type;
-type cros_var_lib_chaps, file_type;
-type cros_var_lib_crash_reporter, file_type;
-type cros_var_lib_dbus, file_type;
-type cros_var_lib_imageloader, file_type;
-type cros_var_lib_oemcrypto, file_type;
-type cros_var_lib_oobe_config_restore, file_type;
-type cros_var_lib_power_manager, file_type;
-type cros_var_lib_preload_network_drivers, file_type;
-type cros_var_lib_shill, file_type;
-type cros_var_lib_tpm, file_type;
-type cros_var_lib_trim, file_type;
-type cros_var_lib_ui, file_type;
-type cros_var_lib_update_engine, file_type;
-type cros_var_lib_ureadahead, file_type;
-type cros_var_lib_whitelist, file_type;
+# var/lib
+type cros_var_lib_bluetooth, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_chaps, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_crash_reporter, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_dbus, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_imageloader, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_oemcrypto, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_oobe_config_restore, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_power_manager, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_preload_network_drivers, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_shill, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_tpm, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_trim, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_ui, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_update_engine, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_ureadahead, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_whitelist, file_type, cros_file_type, cros_var_file_type;
 
-type cros_arc_log, file_type, cros_log_type;
-type cros_authpolicy_log, file_type, cros_log_type;
-type cros_boot_log, file_type, cros_log_type;
-type cros_hammerd_log, file_type, cros_log_type;
-type cros_metrics_file, file_type;
-type cros_metrics_uma_events_file, file_type;
-type cros_net_log, file_type, cros_log_type;
-type cros_powerd_log, file_type;
-type cros_secure_log, file_type, cros_log_type;
-type cros_syslog, file_type, cros_log_type;
-type cros_tlsdate_log, file_type, cros_log_type;
-type cros_var_log_chrome, file_type, cros_log_type;
-type cros_var_log_eventlog, file_type, cros_log_type;
-type cros_var_log_journal, file_type, cros_log_type;
+# /var/log
+type cros_arc_log, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_authpolicy_log, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_boot_log, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_hammerd_log, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_metrics_file, file_type, cros_file_type, cros_var_file_type;
+type cros_metrics_uma_events_file, file_type, cros_file_type, cros_var_file_type;
+type cros_net_log, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_powerd_log, file_type, cros_file_type, cros_var_file_type;
+type cros_secure_log, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_syslog, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_tlsdate_log, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_var_log_chrome, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_var_log_eventlog, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_var_log_journal, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 
-type cros_crash_spool, file_type;
-type cros_periodic_scheduler_cache_t, file_type;
-type cros_var_spool_power_manager, file_type;
+# /var/spool
+type cros_crash_spool, file_type, cros_file_type, cros_var_file_type;
+type cros_periodic_scheduler_cache_t, file_type, cros_file_type, cros_var_file_type;
+type cros_var_spool_power_manager, file_type, cros_file_type, cros_var_file_type;
 
-type camera_socket, file_type; # compatible to existing Android names.
-type cras_socket, file_type; # compatible to existing Android names.
-type cros_run, file_type;
-type cros_run_avahi_daemon, file_type;
-type cros_run_containers, file_type;
-type cros_run_crash_reporter, file_type;
-type cros_run_dbus, file_type;
-type cros_run_frecon, file_type;
-type cros_run_ipsec, file_type;
-type cros_run_journal, file_type;
-type cros_run_lock, file_type;
-type cros_run_power_manager, file_type;
-type cros_run_session_manager, file_type;
-type cros_run_shill, file_type;
-type cros_run_systemd, file_type;
-type cros_run_tcsd, file_type;
-type cros_run_udev, file_type;
+type arc_dir, file_type, cros_file_type, cros_run_file_type; # compatible to pre-work label names for /run/chrome.
+type camera_socket, file_type, cros_file_type, cros_run_file_type; # compatible to existing Android names.
+type cras_socket, file_type, cros_file_type, cros_run_file_type; # compatible to existing Android names.
+type cros_run, file_type, cros_file_type, cros_run_file_type;
+type cros_run_avahi_daemon, file_type, cros_file_type, cros_run_file_type;
+type cros_run_containers, file_type, cros_file_type, cros_run_file_type;
+type cros_run_crash_reporter, file_type, cros_file_type, cros_run_file_type;
+type cros_run_dbus, file_type, cros_file_type, cros_run_file_type;
+type cros_run_frecon, file_type, cros_file_type, cros_run_file_type;
+type cros_run_ipsec, file_type, cros_file_type, cros_run_file_type;
+type cros_run_journal, file_type, cros_file_type, cros_run_file_type;
+type cros_run_lock, file_type, cros_file_type, cros_run_file_type;
+type cros_run_power_manager, file_type, cros_file_type, cros_run_file_type;
+type cros_run_session_manager, file_type, cros_file_type, cros_run_file_type;
+type cros_run_shill, file_type, cros_file_type, cros_run_file_type;
+type cros_run_systemd, file_type, cros_file_type, cros_run_file_type;
+type cros_run_tcsd, file_type, cros_file_type, cros_run_file_type;
+type cros_run_udev, file_type, cros_file_type, cros_run_file_type;
 
-type cros_conntrackd_lock_file, file_type;
-type cros_power_override_lock_file, file_type;
+type cros_conntrackd_lock_file, file_type, cros_file_type, cros_tmpfile_type;
+type cros_power_override_lock_file, file_type, cros_file_type, cros_tmpfile_type;
 
-type cros_passwd_file, file_type;
-type cros_shadow_file, file_type;
-type cros_tz_data_file, file_type;
+type cros_passwd_file, file_type, cros_file_type, cros_uncategorized_file_type;
+type cros_shadow_file, file_type, cros_file_type, cros_uncategorized_file_type;
+type cros_tz_data_file, file_type, cros_file_type, cros_var_file_type; # It's cros_var_file_type because it can modified by user settings.
 
 r_dir_file(chromeos_domain, cros_tz_data_file)
 
@@ -215,9 +221,9 @@ neverallow fs_type file_type:filesystem associate;
 type sysfs_class_devcoredump, sysfs_type;
 type sysfs_net, sysfs_type;
 
-type wayland_socket, file_type;
-type cros_system_bus_socket, file_type;
-type cros_tcsd_socket, file_type;
+type wayland_socket, file_type, cros_file_type, cros_run_file_type;
+type cros_system_bus_socket, file_type, cros_file_type, cros_run_file_type;
+type cros_tcsd_socket, file_type, cros_file_type, cros_run_file_type;
 
 # TODO(fqj): temporarily let un-decomposed chromeos domain to write file as tmpfs.
 type_transition {chromeos cros_arc_setup} cros_run:dir tmpfs;
@@ -238,3 +244,6 @@ filetrans_pattern_no_target_perm(chromeos_domain, cros_var, cros_var_spool, dir,
 # neverallow {   domain   -shell      -installd } shell_data_file:lnk_file read;
 # should restrict to chromeos link file only.
 # allow chromeos_domain file_type:lnk_file { read getattr };
+
+
+neverallow domain cros_system_file_type:file { unlink append write };

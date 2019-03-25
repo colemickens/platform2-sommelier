@@ -48,8 +48,7 @@ allow cros_shill self:udp_socket bind;
 allow cros_shill self:netlink_route_socket getattr;
 allowxperm cros_shill self:udp_socket ioctl { SIOCETHTOOL SIOCGIWESSID };
 
-type cros_shill_tmp_file, file_type, cros_tmpfile_type;
-filetrans_pattern(cros_shill, tmpfs, cros_shill_tmp_file, file);
+tmp_file(cros_shill, file);
 
 log_writer(cros_shill);
 uma_writer(cros_shill);

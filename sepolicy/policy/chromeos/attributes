@@ -4,3 +4,9 @@ attribute cros_uma_events_writer_domain;
 attribute cros_bootstat_domain;
 attribute cros_metrics_client_domain;
 attribute cros_tcsd_client_domain;
+
+attribute cros_file_type;
+attribute cros_home_file_type;
+attribute cros_var_file_type;
+attribute cros_run_file_type;
+attribute cros_uncategorized_file_type;

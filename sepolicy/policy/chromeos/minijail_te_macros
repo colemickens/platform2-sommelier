@@ -54,7 +54,7 @@ allow $1 self:capability sys_resource;
 
 # Auto-label tmpfile managed by minijail domains (static-only)
 define(`minijail_static_uses_tmpfile', `
-type cros_minijail_$2_tmp_file, file_type;
+type cros_minijail_$2_tmp_file, file_type, cros_file_type, cros_tmpfile_type;
 filetrans_pattern($1, tmpfs, cros_minijail_$2_tmp_file, dir);
 filetrans_pattern($1, tmpfs, cros_minijail_$2_tmp_file, file);
 ')

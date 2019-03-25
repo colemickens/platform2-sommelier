@@ -4,7 +4,7 @@ type cros_init_scripts, chromeos_domain, domain, cros_log_file_creator_domain, m
 permissive cros_init;
 permissive cros_init_scripts;
 
-type chromeos_init_exec, exec_type, file_type;
+type chromeos_init_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 
 allow kernel cros_init:process share;
 allow cros_init kernel:fd use;

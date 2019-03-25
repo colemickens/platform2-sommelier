@@ -6,8 +6,8 @@ uma_writer(cros_anomaly_detector)
 
 allow cros_anomaly_detector cros_syslog:file r_file_perms;
 
-type cros_anomaly_detector_tmp_file, file_type, cros_tmpfile_type;
-filetrans_pattern(cros_anomaly_detector, {tmpfs cros_minijail_minijail_tmp_file}, cros_anomaly_detector_tmp_file, file);
+tmp_file(cros_anomaly_detector, file, , cros_minijail_minijail_tmp_file);
+
 allow cros_anomaly_detector cros_anomaly_detector_tmp_file:file create_file_perms;
 
 # minijail mounts it.

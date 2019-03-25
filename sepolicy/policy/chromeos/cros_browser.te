@@ -12,8 +12,7 @@ filetrans_pattern({cros_session_manager cros_browser}, cros_run, arc_dir, dir, "
 filetrans_pattern(cros_browser, arc_dir, wayland_socket, sock_file, "wayland-0");
 filetrans_pattern(cros_browser, cros_var_log, cros_var_log_chrome, dir, "chrome");
 
-type cros_browser_tmp_file, file_type, cros_tmpfile_type;
-filetrans_pattern(cros_browser, tmpfs, cros_browser_tmp_file, dir);
+tmp_file(cros_browser, dir);
 
 is_arc_nyc(
 `

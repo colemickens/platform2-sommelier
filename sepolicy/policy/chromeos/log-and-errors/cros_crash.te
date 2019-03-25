@@ -39,10 +39,9 @@ filetrans_pattern(cros_crash, cros_var_lib, cros_var_lib_crash_reporter, dir, "c
 allow cros_crash cros_var_lib_crash_reporter:file create_file_perms;
 filetrans_pattern(cros_crash, cros_run, cros_run_crash_reporter, dir, "crash_reporter");
 
-type cros_crash_tmp_file, file_type;
 # anomaly_detector minijail made it potentially cros_minijail_minijail_tmp_file.
 # cros_crash libminijail wants to create on top of it.
-filetrans_pattern(cros_crash, {cros_minijail_minijail_tmp_file tmpfs}, cros_crash_tmp_file, dir);
+tmp_file(cros_crash, dir, , cros_minijail_minijail_tmp_file);
 
 r_dir_file(cros_crash, cros_var_lib_whitelist);
 r_dir_file(cros_crash, cros_passwd_file);

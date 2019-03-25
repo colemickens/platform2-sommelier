@@ -13,5 +13,4 @@ cros_netlink(cros_sshd, netlink_route_socket);
 
 allow cros_sshd devpts:chr_file rw_file_perms;
 
-type cros_sshd_pid, file_type, cros_tmpfile_type;
-filetrans_pattern(cros_sshd, cros_run, cros_sshd_pid, file, "sshd.pid");
+pid_file(cros_sshd, cros_run, "sshd.pid");

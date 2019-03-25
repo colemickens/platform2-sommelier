@@ -33,6 +33,4 @@ allow cros_journald kernel:system syslog_read;
 
 allow cros_journald kmsg_device:chr_file { open read write };
 
-type cros_journald_pid_file, file_type, cros_tmpfile_type;
-filetrans_pattern(minijail, cros_run, cros_journald_pid_file, file, "systemd-journald.pid");
-
+pid_file(minijail, cros_run, "systemd-journald.pid", cros_journald_pid_file);
