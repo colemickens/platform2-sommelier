@@ -25,6 +25,7 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/command_line.h>
+#include <base/files/file_util.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -38,6 +39,7 @@
 #include <brillo/secure_blob.h>
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
+#include <chromeos/constants/cryptohome.h>
 #include <dbus/bus.h>
 #include <dbus/dbus.h>
 
@@ -2880,6 +2882,8 @@ void Service::DoGetTpmStatus(const brillo::SecureBlob& request,
       extension->owned() &&
       install_attrs_->status() == InstallAttributes::Status::kValid);
   extension->set_boot_lockbox_finalized(boot_lockbox_->IsFinalized());
+  extension->set_is_locked_to_single_user(
+      base::PathExists(base::FilePath(kLockedToSingleUserFile)));
   AttestationGetTpmStatus(extension);
   SendReply(context, reply);
 }
