@@ -259,7 +259,7 @@ class CameraClient {
     std::vector<std::unique_ptr<V4L2FrameBuffer>> input_buffers_;
 
     // Used to convert to different output formats.
-    CachedFrame input_frame_;
+    CachedFrame cached_frame_;
 
     // Handle metadata events and store states. CameraClient takes the
     // ownership.

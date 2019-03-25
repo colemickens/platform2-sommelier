@@ -10,6 +10,8 @@
 
 #include <camera/camera_metadata.h>
 
+#include "cros-camera/jpeg_compressor.h"
+#include "cros-camera/jpeg_decode_accelerator.h"
 #include "hal/usb/image_processor.h"
 
 namespace cros {
@@ -20,42 +22,24 @@ namespace cros {
 class CachedFrame {
  public:
   CachedFrame();
-  ~CachedFrame();
-
-  // SetSource() doesn't take ownership of |frame|. The caller can only release
-  // |frame| after calling UnsetSource(). SetSource() immediately converts
-  // incoming frame into YU12. Return non-zero values if it encounters errors.
-  // If |rotate_degree| is 90 or 270, |frame| will be cropped, rotated by the
-  // specified amount and scaled.
-  // This function will return an error if |rotate_degree| is not 0, 90, or
-  // 270.
-  int SetSource(const FrameBuffer* frame, int rotate_degree, bool test_pattern);
-  void UnsetSource();
-
-  uint8_t* GetSourceBuffer() const;
-  size_t GetSourceDataSize() const;
-  uint32_t GetSourceFourCC() const;
-  uint8_t* GetCachedBuffer() const;
-  uint32_t GetCachedFourCC() const;
-
-  int GetWidth() const;
-  int GetHeight() const;
 
   // Caller should fill everything except |data_size| and |fd| of |out_frame|.
   // The function will do crop of the center image by |crop_width| and
   // |crop_height| first, and then do format conversion and scale to fit
   // |out_frame| requirement.
-  // If |video_hack| is true, it outputs YU12 when |hal_pixel_format| is YV12
-  // (swapping U/V planes). Caller should fill |fourcc|, |data|, and
-  // Return non-zero error code on failure; return 0 on success.
   int Convert(const android::CameraMetadata& metadata,
               int crop_width,
               int crop_height,
-              FrameBuffer* out_frame,
-              bool video_hack = false);
+              int rotate_degree,
+              const FrameBuffer& in_frame,
+              FrameBuffer* out_frame);
 
  private:
-  int ConvertToYU12(bool test_pattern);
+  int ConvertToYU12(const FrameBuffer& in_frame, FrameBuffer* out_frame);
+
+  int ConvertToJpeg(const android::CameraMetadata& metadata,
+                    const FrameBuffer& in_frame,
+                    FrameBuffer* out_frame);
 
   // When we have a landscape mounted camera and the current camera activity is
   // portrait, the frames shown in the activity would be stretched. Therefore,
@@ -66,9 +50,6 @@ class CachedFrame {
   // needs to rotate clockwise by |rotate_degree|.
   int CropRotateScale(int rotate_degree);
 
-  // CachedFrame does not take the ownership of |source_frame_|.
-  const FrameBuffer* source_frame_;
-
   // Temporary buffer for cropped, rotated and scaled results.
   std::unique_ptr<SharedFrameBuffer> temp_frame_;
   std::unique_ptr<SharedFrameBuffer> temp_frame2_;
@@ -78,6 +59,19 @@ class CachedFrame {
 
   // ImageProcessor instance.
   std::unique_ptr<ImageProcessor> image_processor_;
+
+  // JPEG decoder accelerator (JDA) instance
+  std::unique_ptr<JpegDecodeAccelerator> jda_;
+
+  // JPEG compressor instance
+  std::unique_ptr<JpegCompressor> jpeg_compressor_;
+
+  // Indicate if JDA started successfully
+  bool jda_available_;
+
+  // Flags to disable SW encode/decode fallback when HW encode/decode failed
+  bool force_jpeg_hw_encode_;
+  bool force_jpeg_hw_decode_;
 };
 
 }  // namespace cros

@@ -938,7 +938,13 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
   crop_width = (crop_width + 1) & (~1);
   crop_height = (crop_height + 1) & (~1);
 
-  ret = input_frame_.Convert(metadata, crop_width, crop_height, &output_frame);
+  const FrameBuffer* input_frame =
+      test_pattern_->IsTestPatternEnabled()
+          ? test_pattern_->GetTestPattern()
+          : input_buffers_[current_v4l2_buffer_id_].get();
+  ret = cached_frame_.Convert(metadata, crop_width, crop_height,
+                              crop_rotate_scale_degrees_, *input_frame,
+                              &output_frame);
   if (ret) {
     return -EINVAL;
   }
@@ -1103,31 +1109,11 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
     return -EINVAL;
   }
 
-  if (!test_pattern_->IsTestPatternEnabled()) {
-    ret = input_frame_.SetSource(input_buffers_[buffer_id].get(),
-                                 crop_rotate_scale_degrees_, false);
-    if (ret) {
-      LOGFID(ERROR, device_id_)
-          << "Set image source failed for input buffer id: " << buffer_id;
-      EnqueueV4L2Buffer();
-      // Try again when captured frame is not a valid MJPEG.
-      return -EAGAIN;
-    }
-  } else {
-    ret = input_frame_.SetSource(test_pattern_->GetTestPattern(),
-                                 crop_rotate_scale_degrees_, true);
-    if (ret) {
-      LOGFID(ERROR, device_id_) << "Set image source failed for test pattern";
-      EnqueueV4L2Buffer();
-      return ret;
-    }
-  }
   return 0;
 }
 
 int CameraClient::RequestHandler::EnqueueV4L2Buffer() {
   DCHECK(task_runner_->BelongsToCurrentThread());
-  input_frame_.UnsetSource();
   int ret = device_->ReuseFrameBuffer(current_v4l2_buffer_id_);
   if (ret) {
     LOGFID(ERROR, device_id_)

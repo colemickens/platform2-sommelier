@@ -17,8 +17,6 @@
 #include <base/memory/ptr_util.h>
 #include <camera/camera_metadata.h>
 
-#include "cros-camera/jpeg_compressor.h"
-#include "cros-camera/jpeg_decode_accelerator.h"
 #include "hal/usb/frame_buffer.h"
 
 namespace cros {
@@ -27,9 +25,6 @@ namespace cros {
 // The stride of Y, U, and V planes should a multiple of 16 pixels.
 class ImageProcessor {
  public:
-  ImageProcessor();
-  ~ImageProcessor();
-
   // Calculate the output buffer size when converting to the specified pixel
   // format according to fourcc, width, height, and stride of |frame|.
   // Return 0 on error.
@@ -65,25 +60,7 @@ class ImageProcessor {
   int Crop(const FrameBuffer& in_frame, FrameBuffer* out_frame);
 
  private:
-  bool ConvertToJpeg(const android::CameraMetadata& metadata,
-                     const FrameBuffer& in_frame,
-                     FrameBuffer* out_frame);
-
-  void InsertJpegBlob(FrameBuffer* out_frame, uint32_t jpeg_data_size);
-
   int MJPGToI420(const FrameBuffer& in_frame, FrameBuffer* out_frame);
-
-  // Used for jpeg decode accelerator.
-  std::unique_ptr<JpegDecodeAccelerator> jda_;
-  // Indicate if we can use the jpeg decoder accelerator or not.
-  bool jda_available_;
-
-  std::unique_ptr<JpegCompressor> jpeg_compressor_;
-
-  // Set in hardware test for disable fallback to SW encode/decode when HW
-  // encode/decode failed.
-  bool force_jpeg_hw_encode_;
-  bool force_jpeg_hw_decode_;
 };
 
 }  // namespace cros

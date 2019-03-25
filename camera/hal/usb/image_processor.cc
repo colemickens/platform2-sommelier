@@ -8,16 +8,10 @@
 #include <errno.h>
 #include <libyuv.h>
 #include <time.h>
-#include <vector>
 
 #include <base/memory/ptr_util.h>
 
-#include <hardware/camera3.h>
-
-#include "common/utils/camera_config.h"
 #include "cros-camera/common.h"
-#include "cros-camera/constants.h"
-#include "cros-camera/exif_utils.h"
 #include "hal/usb/common_types.h"
 
 namespace cros {
@@ -63,31 +57,6 @@ namespace cros {
  *                                 -> YV12 (apps)
  *                                 -> NM12 / YV12 (video encoder)
  */
-
-static bool SetExifTags(const android::CameraMetadata& metadata,
-                        const FrameBuffer& in_frame,
-                        ExifUtils* utils);
-
-// How precise the float-to-rational conversion for EXIF tags would be.
-static const int kRationalPrecision = 10000;
-
-ImageProcessor::ImageProcessor()
-    : jpeg_compressor_(JpegCompressor::GetInstance()) {
-  force_jpeg_hw_encode_ =
-      CameraConfig(constants::kCrosCameraTestConfigPathString)
-          .GetBoolean(constants::kCrosForceJpegHardwareEncodeOption, false);
-  force_jpeg_hw_decode_ =
-      CameraConfig(constants::kCrosCameraTestConfigPathString)
-          .GetBoolean(constants::kCrosForceJpegHardwareDecodeOption, false);
-  LOGF(INFO) << "Force JPEG Hardware encode: " << force_jpeg_hw_encode_;
-  LOGF(INFO) << "Force JPEG Hardware decode: " << force_jpeg_hw_decode_;
-
-  jda_ = JpegDecodeAccelerator::CreateInstance();
-  jda_available_ = jda_->Start();
-  LOGF(INFO) << "JDA Available: " << jda_available_;
-}
-
-ImageProcessor::~ImageProcessor() {}
 
 size_t ImageProcessor::GetConvertedSize(const FrameBuffer& frame) {
   if ((frame.GetWidth() % 2) || (frame.GetHeight() % 2)) {
@@ -227,11 +196,6 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
                                in_frame.GetWidth(), in_frame.GetHeight());
         LOGF_IF(ERROR, res) << "I420ToABGR() returns " << res;
         return res ? -EINVAL : 0;
-      }
-      case V4L2_PIX_FMT_JPEG: {
-        bool res = ConvertToJpeg(metadata, in_frame, out_frame);
-        LOGF_IF(ERROR, !res) << "ConvertToJpeg() failed";
-        return res ? 0 : -EINVAL;
       }
       default:
         LOGF(ERROR) << "Destination pixel format "
@@ -393,29 +357,6 @@ int ImageProcessor::Crop(const FrameBuffer& in_frame, FrameBuffer* out_frame) {
 
 int ImageProcessor::MJPGToI420(const FrameBuffer& in_frame,
                                FrameBuffer* out_frame) {
-  if (jda_available_) {
-    int input_fd = in_frame.GetFd();
-    int output_fd = out_frame->GetFd();
-    if (input_fd > 0 && output_fd > 0) {
-      JpegDecodeAccelerator::Error error = jda_->DecodeSync(
-          input_fd, in_frame.GetDataSize(), in_frame.GetWidth(),
-          in_frame.GetHeight(), output_fd, out_frame->GetBufferSize());
-      if (error == JpegDecodeAccelerator::Error::NO_ERRORS)
-        return 0;
-      if (error == JpegDecodeAccelerator::Error::TRY_START_AGAIN) {
-        LOGF(WARNING)
-            << "Restart JDA, possibly due to Mojo communication error";
-        // If we can't Start JDA successfully, we just consider that we have no
-        // JDA.
-        jda_available_ = jda_->Start();
-      }
-      LOGF(WARNING) << "JDA Fail: " << static_cast<int>(error);
-      // Don't fallback in test mode. So we can know the JDA is not working.
-      if (force_jpeg_hw_decode_)
-        return -EINVAL;
-    }
-  }
-
   int res = libyuv::MJPGToI420(in_frame.GetData(), in_frame.GetDataSize(),
                                out_frame->GetData(FrameBuffer::YPLANE),
                                out_frame->GetStride(FrameBuffer::YPLANE),
@@ -426,248 +367,7 @@ int ImageProcessor::MJPGToI420(const FrameBuffer& in_frame,
                                in_frame.GetWidth(), in_frame.GetHeight(),
                                out_frame->GetWidth(), out_frame->GetHeight());
   LOGF_IF(ERROR, res) << "libyuv::MJPEGToI420() returns " << res;
-
   return res;
-}
-
-bool ImageProcessor::ConvertToJpeg(const android::CameraMetadata& metadata,
-                                   const FrameBuffer& in_frame,
-                                   FrameBuffer* out_frame) {
-  ExifUtils utils;
-  if (!utils.Initialize()) {
-    LOGF(ERROR) << "ExifUtils initialization failed.";
-    return false;
-  }
-
-  if (!SetExifTags(metadata, in_frame, &utils)) {
-    LOGF(ERROR) << "Setting Exif tags failed.";
-    return false;
-  }
-
-  int jpeg_quality, thumbnail_jpeg_quality;
-  camera_metadata_ro_entry entry = metadata.find(ANDROID_JPEG_QUALITY);
-  if (entry.count) {
-    jpeg_quality = entry.data.u8[0];
-  } else {
-    LOGF(ERROR) << "Cannot find jpeg quality in metadata.";
-    return false;
-  }
-  if (metadata.exists(ANDROID_JPEG_THUMBNAIL_QUALITY)) {
-    entry = metadata.find(ANDROID_JPEG_THUMBNAIL_QUALITY);
-    thumbnail_jpeg_quality = entry.data.u8[0];
-  } else {
-    thumbnail_jpeg_quality = jpeg_quality;
-  }
-
-  // Generate thumbnail
-  std::vector<uint8_t> thumbnail;
-  if (metadata.exists(ANDROID_JPEG_THUMBNAIL_SIZE)) {
-    entry = metadata.find(ANDROID_JPEG_THUMBNAIL_SIZE);
-    if (entry.count < 2) {
-      LOGF(ERROR) << "Thumbnail size in metadata is not complete.";
-      return false;
-    }
-    int thumbnail_width = entry.data.i32[0];
-    int thumbnail_height = entry.data.i32[1];
-    if (thumbnail_width == 0 && thumbnail_height == 0) {
-      LOGF(INFO) << "Thumbnail size = (0, 0), nothing will be generated";
-    } else {
-      uint32_t thumbnail_data_size = 0;
-      thumbnail.resize(thumbnail_width * thumbnail_height * 1.5);
-      if (jpeg_compressor_->GenerateThumbnail(
-              in_frame.GetData(), in_frame.GetWidth(), in_frame.GetHeight(),
-              thumbnail_width, thumbnail_height, thumbnail_jpeg_quality,
-              thumbnail.size(), thumbnail.data(), &thumbnail_data_size)) {
-        thumbnail.resize(thumbnail_data_size);
-      } else {
-        LOGF(WARNING) << "Generate JPEG thumbnail failed";
-        thumbnail.clear();
-      }
-    }
-  }
-
-  // TODO(shik): Regenerate if thumbnail is too large.
-  if (!utils.GenerateApp1(thumbnail.data(), thumbnail.size())) {
-    LOGF(ERROR) << "Generating APP1 segment failed.";
-    return false;
-  }
-
-  uint32_t jpeg_data_size = 0;
-  if (!jpeg_compressor_->CompressImage(
-          in_frame.GetData(), in_frame.GetWidth(), in_frame.GetHeight(),
-          jpeg_quality, utils.GetApp1Buffer(), utils.GetApp1Length(),
-          out_frame->GetBufferSize(), out_frame->GetData(), &jpeg_data_size,
-          force_jpeg_hw_encode_ ? JpegCompressor::Mode::kHwOnly
-                                : JpegCompressor::Mode::kDefault)) {
-    LOGF(ERROR) << "JPEG image compression failed";
-    return false;
-  }
-  InsertJpegBlob(out_frame, jpeg_data_size);
-  return true;
-}
-
-void ImageProcessor::InsertJpegBlob(FrameBuffer* out_frame,
-                                    uint32_t jpeg_data_size) {
-  camera3_jpeg_blob_t blob;
-  blob.jpeg_blob_id = CAMERA3_JPEG_BLOB_ID;
-  blob.jpeg_size = jpeg_data_size;
-  memcpy(out_frame->GetData() + out_frame->GetBufferSize() - sizeof(blob),
-         &blob, sizeof(blob));
-}
-
-static bool SetExifTags(const android::CameraMetadata& metadata,
-                        const FrameBuffer& in_frame,
-                        ExifUtils* utils) {
-  if (!utils->SetImageWidth(in_frame.GetWidth()) ||
-      !utils->SetImageLength(in_frame.GetHeight())) {
-    LOGF(ERROR) << "Setting image resolution failed.";
-    return false;
-  }
-
-  struct timespec tp;
-  struct tm time_info;
-  bool time_available = clock_gettime(CLOCK_REALTIME, &tp) != -1;
-  tzset();
-  localtime_r(&tp.tv_sec, &time_info);
-  if (!utils->SetDateTime(time_info)) {
-    LOGF(ERROR) << "Setting data time failed.";
-    return false;
-  }
-
-  if (metadata.exists(ANDROID_LENS_FOCAL_LENGTH)) {
-    camera_metadata_ro_entry entry = metadata.find(ANDROID_LENS_FOCAL_LENGTH);
-    float focal_length = entry.data.f[0];
-    if (!utils->SetFocalLength(
-            static_cast<uint32_t>(focal_length * kRationalPrecision),
-            kRationalPrecision)) {
-      LOGF(ERROR) << "Setting focal length failed.";
-      return false;
-    }
-  } else {
-    if (metadata.exists(ANDROID_LENS_FACING)) {
-      camera_metadata_ro_entry entry = metadata.find(ANDROID_LENS_FACING);
-      if (entry.data.u8[0] != ANDROID_LENS_FACING_EXTERNAL) {
-        LOGF(ERROR)
-            << "Cannot find focal length in metadata from a built-in camera.";
-        return false;
-      }
-    } else {
-      LOGF(WARNING) << "Cannot find focal length in metadata.";
-    }
-  }
-
-  if (metadata.exists(ANDROID_JPEG_GPS_COORDINATES)) {
-    camera_metadata_ro_entry entry =
-        metadata.find(ANDROID_JPEG_GPS_COORDINATES);
-    if (entry.count < 3) {
-      LOGF(ERROR) << "Gps coordinates in metadata is not complete.";
-      return false;
-    }
-    if (!utils->SetGpsLatitude(entry.data.d[0])) {
-      LOGF(ERROR) << "Setting gps latitude failed.";
-      return false;
-    }
-    if (!utils->SetGpsLongitude(entry.data.d[1])) {
-      LOGF(ERROR) << "Setting gps longitude failed.";
-      return false;
-    }
-    if (!utils->SetGpsAltitude(entry.data.d[2])) {
-      LOGF(ERROR) << "Setting gps altitude failed.";
-      return false;
-    }
-  }
-
-  if (metadata.exists(ANDROID_JPEG_GPS_PROCESSING_METHOD)) {
-    camera_metadata_ro_entry entry =
-        metadata.find(ANDROID_JPEG_GPS_PROCESSING_METHOD);
-    std::string method_str(reinterpret_cast<const char*>(entry.data.u8));
-    if (!utils->SetGpsProcessingMethod(method_str)) {
-      LOGF(ERROR) << "Setting gps processing method failed.";
-      return false;
-    }
-  }
-
-  if (time_available && metadata.exists(ANDROID_JPEG_GPS_TIMESTAMP)) {
-    camera_metadata_ro_entry entry = metadata.find(ANDROID_JPEG_GPS_TIMESTAMP);
-    time_t timestamp = static_cast<time_t>(entry.data.i64[0]);
-    if (gmtime_r(&timestamp, &time_info)) {
-      if (!utils->SetGpsTimestamp(time_info)) {
-        LOGF(ERROR) << "Setting gps timestamp failed.";
-        return false;
-      }
-    } else {
-      LOGF(ERROR) << "Time tranformation failed.";
-      return false;
-    }
-  }
-
-  if (metadata.exists(ANDROID_JPEG_ORIENTATION)) {
-    camera_metadata_ro_entry entry = metadata.find(ANDROID_JPEG_ORIENTATION);
-    if (!utils->SetOrientation(entry.data.i32[0])) {
-      LOGF(ERROR) << "Setting orientation failed.";
-      return false;
-    }
-  }
-
-  // TODO(henryhsu): Query device to know exposure time.
-  // Currently set frame duration as default.
-  if (!utils->SetExposureTime(1, 30)) {
-    LOGF(ERROR) << "Setting exposure time failed.";
-    return false;
-  }
-
-  if (metadata.exists(ANDROID_LENS_APERTURE)) {
-    const int kAperturePrecision = 10000;
-    camera_metadata_ro_entry entry = metadata.find(ANDROID_LENS_APERTURE);
-    if (!utils->SetFNumber(entry.data.f[0] * kAperturePrecision,
-                           kAperturePrecision)) {
-      LOGF(ERROR) << "Setting F number failed.";
-      return false;
-    }
-  }
-
-  if (metadata.exists(ANDROID_FLASH_INFO_AVAILABLE)) {
-    camera_metadata_ro_entry entry =
-        metadata.find(ANDROID_FLASH_INFO_AVAILABLE);
-    if (entry.data.u8[0] == ANDROID_FLASH_INFO_AVAILABLE_FALSE) {
-      const uint32_t kNoFlashFunction = 0x20;
-      if (!utils->SetFlash(kNoFlashFunction)) {
-        LOGF(ERROR) << "Setting flash failed.";
-        return false;
-      }
-    } else {
-      LOGF(ERROR) << "Unsupported flash info: " << entry.data.u8[0];
-      return false;
-    }
-  }
-
-  if (metadata.exists(ANDROID_CONTROL_AWB_MODE)) {
-    camera_metadata_ro_entry entry = metadata.find(ANDROID_CONTROL_AWB_MODE);
-    if (entry.data.u8[0] == ANDROID_CONTROL_AWB_MODE_AUTO) {
-      const uint16_t kAutoWhiteBalance = 0;
-      if (!utils->SetWhiteBalance(kAutoWhiteBalance)) {
-        LOGF(ERROR) << "Setting white balance failed.";
-        return false;
-      }
-    } else {
-      LOGF(ERROR) << "Unsupported awb mode: " << entry.data.u8[0];
-      return false;
-    }
-  }
-
-  if (time_available) {
-    char str[4];
-    if (snprintf(str, sizeof(str), "%03ld", tp.tv_nsec / 1000000) < 0) {
-      LOGF(ERROR) << "Subsec is invalid: " << tp.tv_nsec;
-      return false;
-    }
-    if (!utils->SetSubsecTime(std::string(str))) {
-      LOGF(ERROR) << "Setting subsec time failed.";
-      return false;
-    }
-  }
-
-  return true;
 }
 
 }  // namespace cros
