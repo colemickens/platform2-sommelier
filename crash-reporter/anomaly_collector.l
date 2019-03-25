@@ -343,11 +343,16 @@ static int ReportServiceFailure(const char *service_name, const int exit_status)
   /* Include exit status in the "stable signature" for crash reports. */
   fprintf(yyout, "%08x-exit%d-%s\n", hash, exit_status, service_name);
 
+  char* arg = NULL;
   if (strncmp("arc-", service_name, 4) == 0) {
-    AnomalyEnd("--arc_service_failure");
+    AppendToString(&arg, "--arc_service_failure=");
   } else {
-    AnomalyEnd("--service_failure");
+    AppendToString(&arg, "--service_failure=");
   }
+  if (service_name != NULL)
+    AppendToString(&arg, service_name);
+  AnomalyEnd(arg);
+  free(arg);
   return 1;
 }
 
@@ -379,9 +384,10 @@ static int ReportSELinuxViolation(void) {
   if (selinux_audit_name != NULL)
     AppendAlphabetToString(&selinux_violation_sig, selinux_audit_name);
 
-  if (selinux_violation_sig)
+  if (selinux_violation_sig) {
     fprintf(yyout, "%08x-selinux-%s\n", hash, selinux_violation_sig);
-  else
+    free(selinux_violation_sig);
+  } else
     fprintf(yyout, "%08x-selinux-unknown\n", hash);
 
   if (selinux_audit_comm != NULL)

@@ -22,9 +22,14 @@ class ServiceFailureCollector : public CrashCollector {
   // Collects service failure.
   bool Collect();
 
+  void SetServiceName(const std::string& service_name) {
+    service_name_ = service_name;
+  }
+
  protected:
   std::string failure_report_path_;
   std::string exec_name_;
+  std::string service_name_;
 
  private:
   friend class ServiceFailureCollectorTest;

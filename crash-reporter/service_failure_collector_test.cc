@@ -68,8 +68,13 @@ TEST_F(ServiceFailureCollectorTest, CollectOKMain) {
   ASSERT_TRUE(test_util::CreateFile(
       test_path_,
       "crash-crash main process (2563) terminated with status 2\n"));
+  collector_.SetServiceName("crash-crash");
   EXPECT_TRUE(collector_.Collect());
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory_, "service_failure_crash_crash.*.meta", NULL));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory_, "service_failure_crash_crash.*.log", NULL));
 }
 
 TEST_F(ServiceFailureCollectorTest, CollectOKPreStart) {
@@ -77,8 +82,13 @@ TEST_F(ServiceFailureCollectorTest, CollectOKPreStart) {
   ASSERT_TRUE(test_util::CreateFile(
       test_path_,
       "crash-crash pre-start process (2563) terminated with status 2\n"));
+  collector_.SetServiceName("crash-crash");
   EXPECT_TRUE(collector_.Collect());
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory_, "service_failure_crash_crash.*.meta", NULL));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory_, "service_failure_crash_crash.*.log", NULL));
 }
 
 TEST_F(ServiceFailureCollectorTest, FailureReportDoesNotExist) {

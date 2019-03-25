@@ -18,10 +18,10 @@ case $1 in
   --kernel_suspend_warning)
     flag="suspend-warning"
     ;;
-  --arc_service_failure)
+  --arc_service_failure=*)
     flag="arc-service-failure"
     ;;
-  --service_failure) ;;
+  --service_failure=*) ;;
   --selinux_violation) ;;
   *)
     echo "$0: unknown flag: $1" >&2

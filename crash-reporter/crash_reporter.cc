@@ -199,9 +199,11 @@ int HandleKernelWarning(KernelWarningCollector* kernel_warning_collector,
   return 0;
 }
 
-int HandleServiceFailure(ServiceFailureCollector* service_failure_collector) {
+int HandleServiceFailure(ServiceFailureCollector* service_failure_collector,
+                         const std::string& service_name) {
   // Accumulate logs to help in diagnosing failures during collection.
   brillo::LogToString(true);
+  service_failure_collector->SetServiceName(service_name);
   bool handled = service_failure_collector->Collect();
   brillo::LogToString(false);
   if (!handled)
@@ -299,9 +301,9 @@ int main(int argc, char* argv[]) {
               "Report collected kernel wifi warning");
   DEFINE_bool(kernel_suspend_warning, false,
               "Report collected kernel suspend warning");
-  DEFINE_bool(arc_service_failure, false,
-              "Report collected ARC service failure");
-  DEFINE_bool(service_failure, false, "Report collected service failure");
+  DEFINE_string(arc_service_failure, "",
+                "The specific ARC service name that failed");
+  DEFINE_string(service_failure, "", "The specific service name that failed");
   DEFINE_bool(selinux_violation, false, "Report collected SELinux violation");
   DEFINE_string(chrome, "", "Chrome crash dump file");
   DEFINE_string(pid, "", "PID of crashing process");
@@ -411,12 +413,14 @@ int main(int argc, char* argv[]) {
                                KernelWarningCollector::WarningType::kSuspend);
   }
 
-  if (FLAGS_arc_service_failure) {
-    return HandleServiceFailure(&arc_service_failure_collector);
+  if (!FLAGS_arc_service_failure.empty()) {
+    return HandleServiceFailure(&arc_service_failure_collector,
+                                FLAGS_arc_service_failure);
   }
 
-  if (FLAGS_service_failure) {
-    return HandleServiceFailure(&service_failure_collector);
+  if (!FLAGS_service_failure.empty()) {
+    return HandleServiceFailure(&service_failure_collector,
+                                FLAGS_service_failure);
   }
 
   if (FLAGS_selinux_violation) {

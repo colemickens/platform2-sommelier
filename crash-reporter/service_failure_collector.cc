@@ -65,7 +65,8 @@ bool ServiceFailureCollector::Collect() {
     return true;
   }
 
-  std::string dump_basename = FormatDumpBasename(exec_name_, time(nullptr), 0);
+  std::string dump_basename =
+      FormatDumpBasename(exec_name_ + "-" + service_name_, time(nullptr), 0);
   FilePath log_path = GetCrashPath(crash_directory, dump_basename, "log");
   FilePath meta_path = GetCrashPath(crash_directory, dump_basename, "meta");
 
@@ -73,7 +74,8 @@ bool ServiceFailureCollector::Collect() {
 
   bool result = GetLogContents(log_config_path_, exec_name_, log_path);
   if (result) {
-    WriteCrashMetaData(meta_path, exec_name_, log_path.value());
+    WriteCrashMetaData(meta_path, exec_name_ + "-" + service_name_,
+                       log_path.value());
   }
 
   return true;
