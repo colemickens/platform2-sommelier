@@ -229,34 +229,42 @@ impl Server {
         }
 
         let rmsg = match request.msg {
-            Tmessage::Version(ref version) => self.version(version),
-            Tmessage::Flush(ref flush) => self.flush(flush),
-            Tmessage::Walk(ref walk) => self.walk(walk),
-            Tmessage::Read(ref read) => self.read(read),
-            Tmessage::Write(ref write) => self.write(write),
-            Tmessage::Clunk(ref clunk) => self.clunk(clunk),
-            Tmessage::Remove(ref remove) => self.remove(remove),
-            Tmessage::Attach(ref attach) => self.attach(attach),
-            Tmessage::Auth(ref auth) => self.auth(auth),
-            Tmessage::Statfs(ref statfs) => self.statfs(statfs),
-            Tmessage::Lopen(ref lopen) => self.lopen(lopen),
-            Tmessage::Lcreate(ref lcreate) => self.lcreate(lcreate),
-            Tmessage::Symlink(ref symlink) => self.symlink(symlink),
-            Tmessage::Mknod(ref mknod) => self.mknod(mknod),
-            Tmessage::Rename(ref rename) => self.rename(rename),
-            Tmessage::Readlink(ref readlink) => self.readlink(readlink),
-            Tmessage::GetAttr(ref get_attr) => self.get_attr(get_attr),
-            Tmessage::SetAttr(ref set_attr) => self.set_attr(set_attr),
-            Tmessage::XattrWalk(ref xattr_walk) => self.xattr_walk(xattr_walk),
-            Tmessage::XattrCreate(ref xattr_create) => self.xattr_create(xattr_create),
-            Tmessage::Readdir(ref readdir) => self.readdir(readdir),
-            Tmessage::Fsync(ref fsync) => self.fsync(fsync),
-            Tmessage::Lock(ref lock) => self.lock(lock),
-            Tmessage::GetLock(ref get_lock) => self.get_lock(get_lock),
-            Tmessage::Link(ref link) => self.link(link),
-            Tmessage::Mkdir(ref mkdir) => self.mkdir(mkdir),
-            Tmessage::RenameAt(ref rename_at) => self.rename_at(rename_at),
-            Tmessage::UnlinkAt(ref unlink_at) => self.unlink_at(unlink_at),
+            Tmessage::Version(ref version) => self.version(version).map(Rmessage::Version),
+            Tmessage::Flush(ref flush) => self.flush(flush).and(Ok(Rmessage::Flush)),
+            Tmessage::Walk(ref walk) => self.walk(walk).map(Rmessage::Walk),
+            Tmessage::Read(ref read) => self.read(read).map(Rmessage::Read),
+            Tmessage::Write(ref write) => self.write(write).map(Rmessage::Write),
+            Tmessage::Clunk(ref clunk) => self.clunk(clunk).and(Ok(Rmessage::Clunk)),
+            Tmessage::Remove(ref remove) => self.remove(remove).and(Ok(Rmessage::Remove)),
+            Tmessage::Attach(ref attach) => self.attach(attach).map(Rmessage::Attach),
+            Tmessage::Auth(ref auth) => self.auth(auth).map(Rmessage::Auth),
+            Tmessage::Statfs(ref statfs) => self.statfs(statfs).map(Rmessage::Statfs),
+            Tmessage::Lopen(ref lopen) => self.lopen(lopen).map(Rmessage::Lopen),
+            Tmessage::Lcreate(ref lcreate) => self.lcreate(lcreate).map(Rmessage::Lcreate),
+            Tmessage::Symlink(ref symlink) => self.symlink(symlink).map(Rmessage::Symlink),
+            Tmessage::Mknod(ref mknod) => self.mknod(mknod).map(Rmessage::Mknod),
+            Tmessage::Rename(ref rename) => self.rename(rename).and(Ok(Rmessage::Rename)),
+            Tmessage::Readlink(ref readlink) => self.readlink(readlink).map(Rmessage::Readlink),
+            Tmessage::GetAttr(ref get_attr) => self.get_attr(get_attr).map(Rmessage::GetAttr),
+            Tmessage::SetAttr(ref set_attr) => self.set_attr(set_attr).and(Ok(Rmessage::SetAttr)),
+            Tmessage::XattrWalk(ref xattr_walk) => {
+                self.xattr_walk(xattr_walk).map(Rmessage::XattrWalk)
+            }
+            Tmessage::XattrCreate(ref xattr_create) => self
+                .xattr_create(xattr_create)
+                .and(Ok(Rmessage::XattrCreate)),
+            Tmessage::Readdir(ref readdir) => self.readdir(readdir).map(Rmessage::Readdir),
+            Tmessage::Fsync(ref fsync) => self.fsync(fsync).and(Ok(Rmessage::Fsync)),
+            Tmessage::Lock(ref lock) => self.lock(lock).map(Rmessage::Lock),
+            Tmessage::GetLock(ref get_lock) => self.get_lock(get_lock).map(Rmessage::GetLock),
+            Tmessage::Link(ref link) => self.link(link).and(Ok(Rmessage::Link)),
+            Tmessage::Mkdir(ref mkdir) => self.mkdir(mkdir).map(Rmessage::Mkdir),
+            Tmessage::RenameAt(ref rename_at) => {
+                self.rename_at(rename_at).and(Ok(Rmessage::RenameAt))
+            }
+            Tmessage::UnlinkAt(ref unlink_at) => {
+                self.unlink_at(unlink_at).and(Ok(Rmessage::UnlinkAt))
+            }
         };
 
         // Errors while handling requests are never fatal.
@@ -273,13 +281,13 @@ impl Server {
         writer.flush()
     }
 
-    fn auth(&mut self, _auth: &Tauth) -> io::Result<Rmessage> {
+    fn auth(&mut self, _auth: &Tauth) -> io::Result<Rauth> {
         // Returning an error for the auth message means that the server does not require
         // authentication.
         Err(io::Error::from_raw_os_error(libc::EOPNOTSUPP))
     }
 
-    fn attach(&mut self, attach: &Tattach) -> io::Result<Rmessage> {
+    fn attach(&mut self, attach: &Tattach) -> io::Result<Rattach> {
         // TODO: Check attach parameters
         match self.fids.entry(attach.fid) {
             btree_map::Entry::Vacant(entry) => {
@@ -293,13 +301,13 @@ impl Server {
                     qid: metadata_to_qid(&fid.metadata),
                 };
                 entry.insert(fid);
-                Ok(Rmessage::Attach(response))
+                Ok(response)
             }
             btree_map::Entry::Occupied(_) => Err(io::Error::from_raw_os_error(libc::EBADF)),
         }
     }
 
-    fn version(&mut self, version: &Tversion) -> io::Result<Rmessage> {
+    fn version(&mut self, version: &Tversion) -> io::Result<Rversion> {
         if version.msize < MIN_MESSAGE_SIZE {
             return Err(io::Error::from_raw_os_error(libc::EINVAL));
         }
@@ -308,19 +316,19 @@ impl Server {
         self.fids.clear();
         self.msize = min(MAX_MESSAGE_SIZE, version.msize);
 
-        Ok(Rmessage::Version(Rversion {
+        Ok(Rversion {
             msize: self.msize,
             version: if version.version == "9P2000.L" {
                 String::from("9P2000.L")
             } else {
                 String::from("unknown")
             },
-        }))
+        })
     }
 
-    fn flush(&mut self, _flush: &Tflush) -> io::Result<Rmessage> {
+    fn flush(&mut self, _flush: &Tflush) -> io::Result<()> {
         // TODO: Since everything is synchronous we can't actually flush requests.
-        Ok(Rmessage::Flush)
+        Ok(())
     }
 
     fn do_walk(
@@ -338,7 +346,7 @@ impl Server {
         Ok(buf)
     }
 
-    fn walk(&mut self, walk: &Twalk) -> io::Result<Rmessage> {
+    fn walk(&mut self, walk: &Twalk) -> io::Result<Rwalk> {
         // `newfid` must not currently be in use unless it is the same as `fid`.
         if walk.fid != walk.newfid && self.fids.contains_key(&walk.newfid) {
             return Err(io::Error::from_raw_os_error(libc::EBADF));
@@ -383,12 +391,12 @@ impl Server {
             }
         }
 
-        Ok(Rmessage::Walk(Rwalk {
+        Ok(Rwalk {
             wqids: mds.iter().map(metadata_to_qid).collect(),
-        }))
+        })
     }
 
-    fn read(&mut self, read: &Tread) -> io::Result<Rmessage> {
+    fn read(&mut self, read: &Tread) -> io::Result<Rread> {
         // Thankfully, `read` cannot be used to read directories in 9P2000.L.
         let file = self
             .fids
@@ -412,10 +420,10 @@ impl Server {
         let count = file.read_at(&mut buf, read.offset)?;
         buf.resize(count, 0);
 
-        Ok(Rmessage::Read(Rread { data: buf }))
+        Ok(Rread { data: buf })
     }
 
-    fn write(&mut self, write: &Twrite) -> io::Result<Rmessage> {
+    fn write(&mut self, write: &Twrite) -> io::Result<Rwrite> {
         let file = self
             .fids
             .get_mut(&write.fid)
@@ -423,22 +431,22 @@ impl Server {
             .ok_or_else(|| io::Error::from_raw_os_error(libc::EBADF))?;
 
         let count = file.write_at(&write.data, write.offset)?;
-        Ok(Rmessage::Write(Rwrite {
+        Ok(Rwrite {
             count: count as u32,
-        }))
+        })
     }
 
-    fn clunk(&mut self, clunk: &Tclunk) -> io::Result<Rmessage> {
+    fn clunk(&mut self, clunk: &Tclunk) -> io::Result<()> {
         match self.fids.entry(clunk.fid) {
             btree_map::Entry::Vacant(_) => Err(io::Error::from_raw_os_error(libc::EBADF)),
             btree_map::Entry::Occupied(entry) => {
                 entry.remove();
-                Ok(Rmessage::Clunk)
+                Ok(())
             }
         }
     }
 
-    fn remove(&mut self, remove: &Tremove) -> io::Result<Rmessage> {
+    fn remove(&mut self, remove: &Tremove) -> io::Result<()> {
         match self.fids.entry(remove.fid) {
             btree_map::Entry::Vacant(_) => Err(io::Error::from_raw_os_error(libc::EBADF)),
             btree_map::Entry::Occupied(o) => {
@@ -450,12 +458,12 @@ impl Server {
                     fs::remove_file(&fid.path)?;
                 }
 
-                Ok(Rmessage::Remove)
+                Ok(())
             }
         }
     }
 
-    fn statfs(&mut self, statfs: &Tstatfs) -> io::Result<Rmessage> {
+    fn statfs(&mut self, statfs: &Tstatfs) -> io::Result<Rstatfs> {
         let fid = self
             .fids
             .get(&statfs.fid)
@@ -476,7 +484,7 @@ impl Server {
             return Err(io::Error::last_os_error());
         }
 
-        Ok(Rmessage::Statfs(Rstatfs {
+        Ok(Rstatfs {
             ty: out.f_type as u32,
             bsize: out.f_bsize as u32,
             blocks: out.f_blocks,
@@ -486,10 +494,10 @@ impl Server {
             ffree: out.f_ffree,
             fsid: 0, // No way to get the fields of a libc::fsid_t
             namelen: out.f_namelen as u32,
-        }))
+        })
     }
 
-    fn lopen(&mut self, lopen: &Tlopen) -> io::Result<Rmessage> {
+    fn lopen(&mut self, lopen: &Tlopen) -> io::Result<Rlopen> {
         let fid = self
             .fids
             .get_mut(&lopen.fid)
@@ -515,13 +523,13 @@ impl Server {
         fid.metadata = file.metadata()?;
         fid.file = Some(file);
 
-        Ok(Rmessage::Lopen(Rlopen {
+        Ok(Rlopen {
             qid: metadata_to_qid(&fid.metadata),
             iounit: 0,
-        }))
+        })
     }
 
-    fn lcreate(&mut self, lcreate: &Tlcreate) -> io::Result<Rmessage> {
+    fn lcreate(&mut self, lcreate: &Tlcreate) -> io::Result<Rlcreate> {
         let fid = self
             .fids
             .get_mut(&lcreate.fid)
@@ -556,23 +564,23 @@ impl Server {
         fid.file = Some(file);
         fid.path = path.into_boxed_path();
 
-        Ok(Rmessage::Lcreate(Rlcreate {
+        Ok(Rlcreate {
             qid: metadata_to_qid(&fid.metadata),
             iounit: 0,
-        }))
+        })
     }
 
-    fn symlink(&mut self, _symlink: &Tsymlink) -> io::Result<Rmessage> {
+    fn symlink(&mut self, _symlink: &Tsymlink) -> io::Result<Rsymlink> {
         // symlinks are not allowed.
         Err(io::Error::from_raw_os_error(libc::EACCES))
     }
 
-    fn mknod(&mut self, _mknod: &Tmknod) -> io::Result<Rmessage> {
+    fn mknod(&mut self, _mknod: &Tmknod) -> io::Result<Rmknod> {
         // No nodes either.
         Err(io::Error::from_raw_os_error(libc::EACCES))
     }
 
-    fn rename(&mut self, rename: &Trename) -> io::Result<Rmessage> {
+    fn rename(&mut self, rename: &Trename) -> io::Result<()> {
         let newname = Path::new(&rename.name);
         let buf = self
             .fids
@@ -591,15 +599,15 @@ impl Server {
         // TODO: figure out if the client expects |fid.path| to point to
         // the renamed path.
         fid.path = newpath.into_boxed_path();
-        Ok(Rmessage::Rename)
+        Ok(())
     }
 
-    fn readlink(&mut self, _readlink: &Treadlink) -> io::Result<Rmessage> {
+    fn readlink(&mut self, _readlink: &Treadlink) -> io::Result<Rreadlink> {
         // symlinks are not allowed
         Err(io::Error::from_raw_os_error(libc::EACCES))
     }
 
-    fn get_attr(&mut self, get_attr: &Tgetattr) -> io::Result<Rmessage> {
+    fn get_attr(&mut self, get_attr: &Tgetattr) -> io::Result<Rgetattr> {
         let fid = self
             .fids
             .get_mut(&get_attr.fid)
@@ -608,7 +616,7 @@ impl Server {
         // Refresh the metadata since we were explicitly asked for it.
         fid.metadata = fs::metadata(&fid.path)?;
 
-        Ok(Rmessage::GetAttr(Rgetattr {
+        Ok(Rgetattr {
             valid: P9_GETATTR_BASIC,
             qid: metadata_to_qid(&fid.metadata),
             mode: fid.metadata.st_mode(),
@@ -629,10 +637,10 @@ impl Server {
             btime_nsec: 0,
             gen: 0,
             data_version: 0,
-        }))
+        })
     }
 
-    fn set_attr(&mut self, set_attr: &Tsetattr) -> io::Result<Rmessage> {
+    fn set_attr(&mut self, set_attr: &Tsetattr) -> io::Result<()> {
         let blocked_ops = P9_SETATTR_MODE | P9_SETATTR_UID | P9_SETATTR_GID;
         if set_attr.valid & blocked_ops != 0 {
             return Err(io::Error::from_raw_os_error(libc::EPERM));
@@ -696,18 +704,18 @@ impl Server {
             }
         }
 
-        Ok(Rmessage::SetAttr)
+        Ok(())
     }
 
-    fn xattr_walk(&mut self, _xattr_walk: &Txattrwalk) -> io::Result<Rmessage> {
+    fn xattr_walk(&mut self, _xattr_walk: &Txattrwalk) -> io::Result<Rxattrwalk> {
         Err(io::Error::from_raw_os_error(libc::EOPNOTSUPP))
     }
 
-    fn xattr_create(&mut self, _xattr_create: &Txattrcreate) -> io::Result<Rmessage> {
+    fn xattr_create(&mut self, _xattr_create: &Txattrcreate) -> io::Result<()> {
         Err(io::Error::from_raw_os_error(libc::EOPNOTSUPP))
     }
 
-    fn readdir(&mut self, readdir: &Treaddir) -> io::Result<Rmessage> {
+    fn readdir(&mut self, readdir: &Treaddir) -> io::Result<Rreaddir> {
         let fid = self
             .fids
             .get_mut(&readdir.fid)
@@ -802,12 +810,12 @@ impl Server {
             entries.next().unwrap().encode(&mut cursor)?;
         }
 
-        Ok(Rmessage::Readdir(Rreaddir {
+        Ok(Rreaddir {
             data: Data(cursor.into_inner()),
-        }))
+        })
     }
 
-    fn fsync(&mut self, fsync: &Tfsync) -> io::Result<Rmessage> {
+    fn fsync(&mut self, fsync: &Tfsync) -> io::Result<()> {
         let file = self
             .fids
             .get(&fsync.fid)
@@ -819,19 +827,19 @@ impl Server {
         } else {
             file.sync_data()?;
         }
-        Ok(Rmessage::Fsync)
+        Ok(())
     }
 
-    fn lock(&mut self, _lock: &Tlock) -> io::Result<Rmessage> {
+    fn lock(&mut self, _lock: &Tlock) -> io::Result<Rlock> {
         // File locking is not supported.
         Err(io::Error::from_raw_os_error(libc::EOPNOTSUPP))
     }
-    fn get_lock(&mut self, _get_lock: &Tgetlock) -> io::Result<Rmessage> {
+    fn get_lock(&mut self, _get_lock: &Tgetlock) -> io::Result<Rgetlock> {
         // File locking is not supported.
         Err(io::Error::from_raw_os_error(libc::EOPNOTSUPP))
     }
 
-    fn link(&mut self, link: &Tlink) -> io::Result<Rmessage> {
+    fn link(&mut self, link: &Tlink) -> io::Result<()> {
         let newname = Path::new(&link.name);
         let buf = self
             .fids
@@ -847,10 +855,10 @@ impl Server {
             .ok_or_else(|| io::Error::from_raw_os_error(libc::EBADF))?;
 
         fs::hard_link(path, &newpath)?;
-        Ok(Rmessage::Link)
+        Ok(())
     }
 
-    fn mkdir(&mut self, mkdir: &Tmkdir) -> io::Result<Rmessage> {
+    fn mkdir(&mut self, mkdir: &Tmkdir) -> io::Result<Rmkdir> {
         let fid = self
             .fids
             .get(&mkdir.dfid)
@@ -864,12 +872,12 @@ impl Server {
             .mode(mkdir.mode & 0o755)
             .create(&newpath)?;
 
-        Ok(Rmessage::Mkdir(Rmkdir {
+        Ok(Rmkdir {
             qid: metadata_to_qid(&fs::metadata(&newpath)?),
-        }))
+        })
     }
 
-    fn rename_at(&mut self, rename_at: &Trenameat) -> io::Result<Rmessage> {
+    fn rename_at(&mut self, rename_at: &Trenameat) -> io::Result<()> {
         let oldname = Path::new(&rename_at.oldname);
         let oldbuf = self
             .fids
@@ -887,10 +895,10 @@ impl Server {
         let newpath = join_path(newbuf, newname, &*self.root)?;
 
         fs::rename(&oldpath, &newpath)?;
-        Ok(Rmessage::RenameAt)
+        Ok(())
     }
 
-    fn unlink_at(&mut self, unlink_at: &Tunlinkat) -> io::Result<Rmessage> {
+    fn unlink_at(&mut self, unlink_at: &Tunlinkat) -> io::Result<()> {
         let name = Path::new(&unlink_at.name);
         let buf = self
             .fids
@@ -910,7 +918,7 @@ impl Server {
             fs::remove_file(&path)?;
         }
 
-        Ok(Rmessage::UnlinkAt)
+        Ok(())
     }
 }
 
