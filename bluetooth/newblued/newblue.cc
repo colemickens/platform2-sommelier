@@ -183,6 +183,13 @@ bool Newblue::CancelPair(const std::string& device_address,
   return true;
 }
 
+bool Newblue::StartEncryption(const std::string& device_address,
+                              bool is_random_address) {
+  struct bt_addr address;
+  CHECK(ConvertToBtAddr(is_random_address, device_address, &address));
+  return libnewblue_->SmStartEncryption(&address);
+}
+
 bool Newblue::RegisterGattClientConnectCallback(
     GattClientConnectCallback callback) {
   if (!gatt_client_connect_callback_.is_null())

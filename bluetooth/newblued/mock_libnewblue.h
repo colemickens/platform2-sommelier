@@ -54,6 +54,7 @@ class MockLibNewblue : public LibNewblue {
                void(const struct bt_addr*,
                     const struct smPairSecurityRequirements*));
   MOCK_METHOD1(SmUnpair, void(const struct bt_addr*));
+  MOCK_METHOD1(SmStartEncryption, bool(const struct bt_addr*));
   MOCK_METHOD2(SmRegisterPasskeyDisplayObserver,
                uniq_t(void*, smPasskeyDisplayCbk));
   MOCK_METHOD0(SmGetKnownDevices, struct smKnownDevNode*());

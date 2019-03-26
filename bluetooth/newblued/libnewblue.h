@@ -111,6 +111,10 @@ class LibNewblue {
                      void(const struct bt_addr*,
                           const struct smPairSecurityRequirements*));
   LIBNEWBLUE_METHOD1(SmUnpair, smUnpair, void(const struct bt_addr*));
+  LIBNEWBLUE_METHOD1(SmStartEncryption,
+                     smStartEncryption,
+                     /* NOLINTNEXTLINE(readability/casting) */
+                     bool(const struct bt_addr*));
   LIBNEWBLUE_METHOD2(SmRegisterPasskeyDisplayObserver,
                      smRegisterPasskeyDisplayObserver,
                      uniq_t(void*, smPasskeyDisplayCbk));

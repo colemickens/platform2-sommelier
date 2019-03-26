@@ -547,6 +547,7 @@ class NewblueDaemonTest : public ::testing::Test {
     // the D-Bus reply.
     gatt_client_connect_callback(data, kTestGattClientConnectionId,
                                  static_cast<uint8_t>(ConnectState::CONNECTED));
+    EXPECT_CALL(*libnewblue_, SmStartEncryption(_)).Times(1);
     base::RunLoop().RunUntilIdle();
     ASSERT_TRUE(success_connect_response.get());
     EXPECT_EQ("", success_connect_response->GetErrorName());

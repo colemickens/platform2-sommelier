@@ -596,6 +596,10 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
       connection.conn_id = iter->second;
       connection.hid_id = 0;
 
+      // Once GATT is connected, start the link encryption if we can.
+      newblue_->StartEncryption(dev_to_be_connected->address,
+                                dev_to_be_connected->is_random_address);
+
       // Obtain a HID ID for a HID generic device.
       if (IsHid(dev_to_be_connected->appearance.value()))
         connection.hid_id = newblue_->libnewblue()->BtleHidAttach(conn_id);

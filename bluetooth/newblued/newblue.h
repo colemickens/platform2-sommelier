@@ -166,6 +166,9 @@ class Newblue {
             smPairSecurityRequirements security_requirement);
   // Cancels LE pairing.
   bool CancelPair(const std::string& device_address, bool is_random_address);
+  // Starts encryption based on past pairing information.
+  bool StartEncryption(const std::string& device_address,
+                       bool is_random_address);
 
   // Registers/Unregisters a callback for GATT connection state change
   // notifications. We allow only one observer for connection callback.
