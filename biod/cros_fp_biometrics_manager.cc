@@ -514,9 +514,11 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
     if (!RequestMatchFingerUp())
       OnSessionFailed();
 
+    biod_metrics_->SendIgnoreMatchEventOnPowerButtonPress(true);
     return;
   }
 
+  biod_metrics_->SendIgnoreMatchEventOnPowerButtonPress(false);
   ScanResult result;
   int match_result = EC_MKBP_FP_ERRCODE(event);
 

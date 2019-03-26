@@ -25,6 +25,8 @@ constexpr char kFpNoMatchDurationMatcher[] =
     "Fingerprint.Unlock.NoMatch.Duration.Matcher";
 constexpr char kFpNoMatchDurationOverall[] =
     "Fingerprint.Unlock.NoMatch.Duration.Overall";
+constexpr char kFpMatchIgnoredDueToPowerButtonPress[] =
+    "Fingerprint.Unlock.MatchIgnoredDueToPowerButtonPress";
 
 }  // namespace metrics
 
@@ -57,6 +59,11 @@ bool BiodMetrics::SendFpLatencyStats(bool matched,
                                overall_ms, 100, 1000, 50) &&
        rc;
   return rc;
+}
+
+bool BiodMetrics::SendIgnoreMatchEventOnPowerButtonPress(bool is_ignored) {
+  return metrics_lib_->SendBoolToUMA(
+      metrics::kFpMatchIgnoredDueToPowerButtonPress, is_ignored);
 }
 
 void BiodMetrics::SetMetricsLibraryForTesting(

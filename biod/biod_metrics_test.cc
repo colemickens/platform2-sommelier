@@ -105,5 +105,14 @@ TEST_F(BiodMetricsTest, SendFpLatencyStatsValues) {
   biod_metrics_.SendFpLatencyStats(false, capture, matcher, overall);
 }
 
+TEST_F(BiodMetricsTest, SendIgnoreMatchEventOnPowerButtonPress) {
+  EXPECT_CALL(*GetMetricsLibraryMock(), SendBoolToUMA(_, true)).Times(1);
+  biod_metrics_.SendIgnoreMatchEventOnPowerButtonPress(true);
+  testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
+  EXPECT_CALL(*GetMetricsLibraryMock(), SendBoolToUMA(_, false)).Times(1);
+  biod_metrics_.SendIgnoreMatchEventOnPowerButtonPress(false);
+  testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
+}
+
 }  // namespace
 }  // namespace biod

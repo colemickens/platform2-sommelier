@@ -42,6 +42,9 @@ class BiodMetrics {
                           int match_ms,
                           int overall_ms);
 
+  // Is fingerprint ignored due to parallel power button press?
+  bool SendIgnoreMatchEventOnPowerButtonPress(bool is_ignored);
+
   void SetMetricsLibraryForTesting(
       std::unique_ptr<MetricsLibraryInterface> metrics_lib);
 
