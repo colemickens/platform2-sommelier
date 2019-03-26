@@ -451,7 +451,12 @@ TEST_F(TpmInitTest, IsTpmReadyWithOwnedFile) {
 
   SetIsTpmOwned(true);
   SetIsTpmBeingOwned(false);
+  EXPECT_CALL(tpm_, DoesUseTpmManager()).WillOnce(Return(false));
   EXPECT_TRUE(tpm_init_.IsTpmReady());
+  EXPECT_CALL(tpm_, DoesUseTpmManager()).WillOnce(Return(true));
+  EXPECT_TRUE(tpm_init_.IsTpmReady());
+
+  EXPECT_CALL(tpm_, DoesUseTpmManager()).Times(0);
 
   SetIsTpmOwned(false);
   EXPECT_FALSE(tpm_init_.IsTpmReady());
@@ -465,7 +470,12 @@ TEST_F(TpmInitTest, IsTpmReadyNoOwnedFile) {
   FileDelete(kTpmOwnedFile, false);
   SetIsTpmOwned(true);
   SetIsTpmBeingOwned(false);
+
+  EXPECT_CALL(tpm_, DoesUseTpmManager()).WillOnce(Return(false));
   EXPECT_FALSE(tpm_init_.IsTpmReady());
+
+  EXPECT_CALL(tpm_, DoesUseTpmManager()).WillOnce(Return(true));
+  EXPECT_TRUE(tpm_init_.IsTpmReady());
 }
 
 }  // namespace cryptohome

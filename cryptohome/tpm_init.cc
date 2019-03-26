@@ -109,10 +109,14 @@ bool TpmInit::AsyncTakeOwnership() {
 
 bool TpmInit::IsTpmReady() {
   // The TPM is "ready" if it is enabled, owned, and not being owned.
-  return (tpm_init_task_->get_tpm()->IsEnabled() &&
-          tpm_init_task_->get_tpm()->IsOwned() &&
-          !tpm_init_task_->get_tpm()->IsBeingOwned() &&
-          tpm_persistent_state_.IsReady());
+  Tpm* tpm = tpm_init_task_->get_tpm();
+  if (!tpm->IsEnabled() || !tpm->IsOwned() || tpm->IsBeingOwned()) {
+    return false;
+  }
+  // When |tpm| implementation uses tpm manager, readiness flag in
+  // |TpmPersistentState| is meaningless since the tpm manager also take care of
+  // all the follow-up actions after taking ownership.
+  return tpm->DoesUseTpmManager() || tpm_persistent_state_.IsReady();
 }
 
 bool TpmInit::IsTpmEnabled() {
