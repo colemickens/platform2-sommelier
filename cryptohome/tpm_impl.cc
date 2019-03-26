@@ -191,12 +191,13 @@ TSS_HCONTEXT TpmImpl::ConnectContext() {
 bool TpmImpl::ConnectContextAsOwner(TSS_HCONTEXT* context, TSS_HTPM* tpm) {
   *context = 0;
   *tpm = 0;
-  if (owner_password_.size() == 0) {
+  SecureBlob owner_password;
+  if (!GetOwnerPassword(&owner_password)) {
     LOG(ERROR) << "ConnectContextAsOwner requires an owner password";
     return false;
   }
 
-  if (!is_owned_ || is_being_owned_) {
+  if (!IsOwned() || IsBeingOwned()) {
     LOG(ERROR) << "ConnectContextAsOwner: TPM is unowned or still being owned";
     return false;
   }
@@ -206,7 +207,7 @@ bool TpmImpl::ConnectContextAsOwner(TSS_HCONTEXT* context, TSS_HTPM* tpm) {
     return false;
   }
 
-  if (!GetTpmWithAuth(*context, owner_password_, tpm)) {
+  if (!GetTpmWithAuth(*context, owner_password, tpm)) {
     LOG(ERROR) << "ConnectContextAsOwner: failed to authorize as the owner";
     Tspi_Context_Close(*context);
     *context = 0;
@@ -239,7 +240,7 @@ bool TpmImpl::ConnectContextAsDelegate(const Blob& delegate_blob,
                                        TSS_HTPM* tpm_handle) {
   *context = 0;
   *tpm_handle = 0;
-  if (!is_owned_ || is_being_owned_) {
+  if (!IsOwned() || IsBeingOwned()) {
     LOG(ERROR) << "ConnectContextAsDelegate: TPM is unowned.";
     return false;
   }
@@ -1698,7 +1699,7 @@ Tpm::TpmRetryAction TpmImpl::GetEndorsementPublicKey(
   // Connect to the TPM as the owner if owned, user otherwise.
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
-  if (is_owned_) {
+  if (IsOwned()) {
     if (!ConnectContextAsOwner(context_handle.ptr(), &tpm_handle)) {
       LOG(ERROR) << "GetEndorsementPublicKey: Could not connect to the TPM.";
       return Tpm::kTpmRetryFailNoRetry;
@@ -1721,7 +1722,7 @@ Tpm::TpmRetryAction TpmImpl::GetEndorsementPublicKeyInternal(
   // Get a handle to the EK public key.
   ScopedTssKey ek_public_key_object(*context_handle);
   TSS_RESULT result = Tspi_TPM_GetPubEndorsementKey(
-      *tpm_handle, is_owned_, NULL, ek_public_key_object.ptr());
+      *tpm_handle, IsOwned(), NULL, ek_public_key_object.ptr());
   if (TPM_ERROR(result)) {
     return ResultToRetryActionWithMessage(result,
         "GetEndorsementPublicKeyInternal: Failed to get public key.");
@@ -1763,6 +1764,8 @@ bool TpmImpl::GetEndorsementCredential(SecureBlob* credential) {
     LOG(ERROR) << "GetEndorsementCredential: Could not create policy.";
     return false;
   }
+  // owner_password_ doesn't get set up if |TpmNewImpl| is used; however this
+  // function has no caller in the mentioned case.
   result = Tspi_Policy_SetSecret(policy_handle, TSS_SECRET_MODE_PLAIN,
                                  owner_password_.size(),
                                  static_cast<BYTE*>(owner_password_.data()));
