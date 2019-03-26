@@ -106,7 +106,7 @@ class JpegDecodeAcceleratorImpl : public JpegDecodeAccelerator {
   // Pointer to local proxy of remote JpegDecodeAccelerator interface
   // implementation.
   // All the Mojo communication to |jda_ptr_| happens on |ipc_thread_|.
-  mojom::JpegDecodeAcceleratorPtr jda_ptr_;
+  mojom::MjpegDecodeAcceleratorPtr jda_ptr_;
 
   // Thread for IPC chores.
   base::Thread ipc_thread_;

@@ -4,8 +4,24 @@
 
 module cros.mojom;
 
-import "mojo/jda/geometry.mojom";
+// The Mojo interfaces defined here should be sync'd with upstream Chromium:
+// https://cs.chromium.org/chromium/src/media/mojo/interfaces/mjpeg_decode_accelerator.mojom
+
 import "mojo/jda/time.mojom";
+
+// Keep in sync with
+// https://cs.chromium.org/chromium/src/media/base/subsample_entry.h
+struct SubsampleEntry {
+  uint32 clear_bytes;
+  uint32 cypher_bytes;
+};
+
+// Keep in sync with
+// https://cs.chromium.org/chromium/src/ui/gfx/geometry/mojo/geometry.mojom
+struct Size {
+  int32 width;
+  int32 height;
+};
 
 // Decode errors. (see
 // https://cs.chromium.org/chromium/src/media/video/jpeg_decode_accelerator.h)
@@ -16,11 +32,6 @@ enum DecodeError {
   PARSE_JPEG_FAILED,
   UNSUPPORTED_JPEG,
   PLATFORM_FAILURE,
-};
-
-struct SubsampleEntry {
-  uint32 clear_bytes;
-  uint32 cypher_bytes;
 };
 
 // This defines a mojo transport format for media::BitstreamBuffer (see
@@ -36,9 +47,9 @@ struct BitstreamBuffer {
   array<SubsampleEntry> subsamples;
 };
 
-// GPU process interface exposed to the browser for decoding JPEG images.
-interface JpegDecodeAccelerator {
-  // Initializes the JPEG decoder. Should be called once per decoder
+// GPU process interface exposed to the browser for decoding MJPEG streams.
+interface MjpegDecodeAccelerator {
+  // Initializes the MJPEG decoder. Should be called once per decoder
   // construction and before using Decode(). This call returns true if
   // initialization is successful.
   Initialize() => (bool success);

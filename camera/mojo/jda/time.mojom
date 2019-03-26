@@ -4,6 +4,9 @@
 
 module cros.mojom;
 
+// Keep in sync with
+// https://cs.chromium.org/chromium/src/mojo/public/mojom/base/time.mojom
+
 [Native]
 struct Time;
 

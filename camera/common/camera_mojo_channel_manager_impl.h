@@ -21,11 +21,11 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   CameraMojoChannelManagerImpl();
   ~CameraMojoChannelManagerImpl() final;
 
-  // Creates a new JpegDecodeAccelerator.
+  // Creates a new MjpegDecodeAccelerator.
   // This API uses CameraHalDispatcher to pass |request| to another process to
   // create Mojo channel.
-  void CreateJpegDecodeAccelerator(
-      mojom::JpegDecodeAcceleratorRequest request) final;
+  void CreateMjpegDecodeAccelerator(
+      mojom::MjpegDecodeAcceleratorRequest request) final;
 
   // Creates a new JpegEncodeAccelerator.
   // This API uses CameraHalDispatcher to pass |request| to another process to
@@ -45,8 +45,8 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   // It should be called for any public API that needs |dispatcher_|.
   void EnsureDispatcherConnectedOnIpcThread();
 
-  void CreateJpegDecodeAcceleratorOnIpcThread(
-      mojom::JpegDecodeAcceleratorRequest request);
+  void CreateMjpegDecodeAcceleratorOnIpcThread(
+      mojom::MjpegDecodeAcceleratorRequest request);
 
   void CreateJpegEncodeAcceleratorOnIpcThread(
       mojom::JpegEncodeAcceleratorRequest request);
