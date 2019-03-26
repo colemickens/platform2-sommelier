@@ -44,6 +44,30 @@ record id and label.
 
 ### CrosFpBiometric
 
+CrosFpBiometric (fingerprint MCU) runs the firmware for image capture, matching
+and enrollment. Biod (`cros_fp_biometrics_manager.cc`) interacts with the MCU
+by doing system calls on `/dev/cros_fp`.
+
+#### Authentication
+
+On receiving an Authentication request, biod makes a ioctl call to put the MCU
+in FP_MODE_MATCH. It then listens for MBKP events from the MCU. On receiving
+the event, based on the result, biod either reports success or failure to the
+D-bus client (typically Chrome).
+
+Things get little complicated on devices with fingerprint overlapped on
+power button. On these devices, we need to be careful not to interpret user's
+interaction with power button as an intent to authenticate via fingerprint. To
+avoid such scenarios, we ignore fingerprint matches if we have seen a power
+button event in last few milliseconds. To achieve this, biod keeps track of
+power button events (`power_button_filter.cc`) by listening to d-bus events
+advertised by powerd (`power_manager.cc`). The sequence diagram below gives a
+sequence of events on devices with fingerprint overlapped on power button.
+
+![sequence diagram on devices with fp on power button](images/authentication.png)
+
+#### Enrollment
+
 TODO
 
 ## CHROME
