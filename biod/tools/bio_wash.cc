@@ -14,6 +14,7 @@
 #include <base/process/process.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
+#include <dbus/bus.h>
 
 #include "biod/cros_fp_biometrics_manager.h"
 
@@ -26,9 +27,14 @@ constexpr char kHelpMessage[] = "bio_wash resets the SBP.";
 int DoBioWash(const bool factory_init = false) {
   base::MessageLoopForIO message_loop;
   std::vector<std::unique_ptr<biod::BiometricsManager>> managers;
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  // It's o.k to not connect to the bus as we don't really care about D-Bus
+  // events for BioWash.
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
   // Add all the possible BiometricsManagers available.
   std::unique_ptr<biod::BiometricsManager> cros_fp_bio =
-      biod::CrosFpBiometricsManager::Create();
+      biod::CrosFpBiometricsManager::Create(bus);
   if (cros_fp_bio) {
     managers.emplace_back(std::move(cros_fp_bio));
   }

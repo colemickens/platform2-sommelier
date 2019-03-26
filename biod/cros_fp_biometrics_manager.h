@@ -13,9 +13,11 @@
 #include <vector>
 
 #include <base/values.h>
+#include <dbus/bus.h>
 
 #include "biod/biod_storage.h"
 #include "biod/cros_fp_device.h"
+#include "biod/power_button_filter_interface.h"
 
 namespace biod {
 
@@ -23,7 +25,8 @@ class BiodMetrics;
 
 class CrosFpBiometricsManager : public BiometricsManager {
  public:
-  static std::unique_ptr<BiometricsManager> Create();
+  static std::unique_ptr<BiometricsManager> Create(
+      const scoped_refptr<dbus::Bus>& bus);
 
   // BiometricsManager overrides:
   ~CrosFpBiometricsManager() override;
@@ -90,7 +93,8 @@ class CrosFpBiometricsManager : public BiometricsManager {
     mutable std::string local_label_;
   };
 
-  CrosFpBiometricsManager();
+  explicit CrosFpBiometricsManager(
+      std::unique_ptr<PowerButtonFilterInterface> power_button_filter);
   bool Init();
 
   void OnEnrollScanDone(ScanResult result,
@@ -141,6 +145,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
   base::WeakPtrFactory<CrosFpBiometricsManager> weak_factory_;
 
   std::unique_ptr<BiodMetrics> biod_metrics_;
+  std::unique_ptr<PowerButtonFilterInterface> power_button_filter_;
   BiodStorage biod_storage_;
 
   DISALLOW_COPY_AND_ASSIGN(CrosFpBiometricsManager);

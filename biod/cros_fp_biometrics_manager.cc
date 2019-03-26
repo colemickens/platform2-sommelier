@@ -21,6 +21,7 @@
 #include <metrics/metrics_library.h>
 
 #include "biod/biod_metrics.h"
+#include "biod/power_button_filter.h"
 
 namespace {
 
@@ -129,9 +130,10 @@ bool CrosFpBiometricsManager::Record::Remove() {
   return biometrics_manager_->biod_storage_.ReadRecordsForSingleUser(user_id);
 }
 
-std::unique_ptr<BiometricsManager> CrosFpBiometricsManager::Create() {
+std::unique_ptr<BiometricsManager> CrosFpBiometricsManager::Create(
+    const scoped_refptr<dbus::Bus>& bus) {
   std::unique_ptr<CrosFpBiometricsManager> biometrics_manager(
-      new CrosFpBiometricsManager);
+      new CrosFpBiometricsManager(PowerButtonFilter::Create(bus)));
   if (!biometrics_manager->Init())
     return nullptr;
 
@@ -305,10 +307,12 @@ void CrosFpBiometricsManager::KillMcuSession() {
   OnTaskComplete();
 }
 
-CrosFpBiometricsManager::CrosFpBiometricsManager()
+CrosFpBiometricsManager::CrosFpBiometricsManager(
+    std::unique_ptr<PowerButtonFilterInterface> power_button_filter)
     : session_weak_factory_(this),
       weak_factory_(this),
       biod_metrics_(std::make_unique<BiodMetrics>()),
+      power_button_filter_(std::move(power_button_filter)),
       biod_storage_(kCrosFpBiometricsManagerName,
                     base::Bind(&CrosFpBiometricsManager::LoadRecord,
                                base::Unretained(this))) {}
@@ -486,6 +490,30 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
   if (!(event & EC_MKBP_FP_MATCH)) {
     LOG(WARNING) << "Unexpected MKBP event: 0x" << std::hex << event;
     // Continue waiting for the proper event, do not abort session.
+    return;
+  }
+
+  // The user intention might be to press the power button. If so, ignore the
+  // current match.
+  if (power_button_filter_->ShouldFilterFingerprintMatch()) {
+    LOG(INFO)
+        << "Power button event seen along with fp match. Ignoring fp match.";
+
+    // Try to match the next touch once the user lifts the finger as the client
+    // is still waiting for an auth. Wait for finger up event here is to prevent
+    // the following scenario.
+    // 1. Display is on. Now user presses power button with an enrolled finger.
+    // 3. Display goes off. biod starts auth session.
+    // 4. Fp match happens and is filtered by biod. biod immediately restarts
+    //    a new auth session (if we do not wait for finger up).
+    // 5. fp sensor immediately sends a match event before user gets a chance to
+    //    lift the finger.
+    // 6. biod sees a match again and this time notifies chrome without
+    //    filtering it as it has filtered one already.
+
+    if (!RequestMatchFingerUp())
+      OnSessionFailed();
+
     return;
   }
 
