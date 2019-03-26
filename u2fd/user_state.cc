@@ -142,7 +142,7 @@ void UserState::CreateUserSecret(const base::FilePath& path) {
     return;
   }
 
-  if (!brillo::WriteBlobToFileAtomic(path, *user_secret_, 600)) {
+  if (!brillo::WriteBlobToFileAtomic(path, *user_secret_, 0600)) {
     LOG(INFO) << "Failed to persist new user secret to disk.";
     user_secret_.reset();
     // TODO(louiscollard): Delete file if present? Validate when loading?
@@ -177,7 +177,7 @@ bool UserState::PersistCounter() {
 
   return brillo::WriteToFileAtomic(path,
                                    reinterpret_cast<const char*>(counter_ptr),
-                                   sizeof(*counter_ptr), 600);
+                                   sizeof(*counter_ptr), 0600);
 }
 
 }  // namespace u2f
