@@ -225,6 +225,8 @@ class Tpm2Impl : public Tpm {
 
   void HandleOwnershipTakenSignal() override;
 
+  bool DoesUseTpmManager() override;
+
  private:
   // This method given a Tpm generated public area, returns the DER encoded
   // public key.

@@ -1684,4 +1684,8 @@ bool Tpm2Impl::GetDelegate(brillo::Blob* /*blob*/,
   return true;
 }
 
+bool Tpm2Impl::DoesUseTpmManager() {
+  return true;
+}
+
 }  // namespace cryptohome

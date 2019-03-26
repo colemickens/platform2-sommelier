@@ -3351,4 +3351,8 @@ bool TpmImpl::GetDelegate(brillo::Blob*, brillo::Blob*, bool*) {
   return false;
 }
 
+bool TpmImpl::DoesUseTpmManager() {
+  return false;
+}
+
 }  // namespace cryptohome

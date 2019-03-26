@@ -102,4 +102,8 @@ bool TpmNewImpl::GetDelegate(brillo::Blob* blob,
   return !blob->empty() && !secret->empty();
 }
 
+bool TpmNewImpl::DoesUseTpmManager() {
+  return true;
+}
+
 }  // namespace cryptohome

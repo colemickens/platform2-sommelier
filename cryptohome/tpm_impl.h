@@ -174,6 +174,7 @@ class TpmImpl : public Tpm {
                    brillo::Blob* secret,
                    bool* has_reset_lock_permissions) override;
   void HandleOwnershipTakenSignal() override;
+  bool DoesUseTpmManager() override;
 
   bool CreatePolicyWithRandomPassword(TSS_HCONTEXT context_handle,
                                       TSS_FLAG policy_type,

@@ -33,6 +33,7 @@ class TpmNewImpl : public TpmImpl {
   bool GetDelegate(brillo::Blob* blob,
                    brillo::Blob* secret,
                    bool* has_reset_lock_permissions) override;
+  bool DoesUseTpmManager() override;
 
  private:
   // Initializes |tpm_manager_utility_|; returns |true| iff successful.

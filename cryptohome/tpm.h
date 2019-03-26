@@ -771,6 +771,11 @@ class Tpm {
                            brillo::Blob* secret,
                            bool* has_reset_lock_permissions) = 0;
 
+  // Returns |true| if any function is implemented utiltizing the
+  // |tpm_manager::LocalData| coming from |tpm_managerd|, and optionally nvram
+  // related functions could also use |tpm_managerd|.
+  virtual bool DoesUseTpmManager() = 0;
+
  private:
   static Tpm* singleton_;
   static base::Lock singleton_lock_;
