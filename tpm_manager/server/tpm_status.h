@@ -55,10 +55,10 @@ class TpmStatus {
   virtual TpmOwnershipStatus CheckAndNotifyIfTpmOwned() = 0;
 
   // Reports the current state of the TPM dictionary attack logic.
-  virtual bool GetDictionaryAttackInfo(int* counter,
-                                       int* threshold,
+  virtual bool GetDictionaryAttackInfo(uint32_t* counter,
+                                       uint32_t* threshold,
                                        bool* lockout,
-                                       int* seconds_remaining) = 0;
+                                       uint32_t* seconds_remaining) = 0;
 
   // Get TPM hardware and software version information.
   virtual bool GetVersionInfo(uint32_t* family,

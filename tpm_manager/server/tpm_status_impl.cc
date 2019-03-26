@@ -16,6 +16,7 @@
 
 #include "tpm_manager/server/tpm_status_impl.h"
 
+#include <algorithm>
 #include <vector>
 
 #include <base/logging.h>
@@ -23,12 +24,26 @@
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha)
 
-namespace tpm_manager {
+namespace {
 
 // Minimum size of TPM_DA_INFO struct.
-const size_t kMinimumDaInfoSize = 21;
+constexpr size_t kMinimumDaInfoSize = 21;
+
 // Minimum size of TPM_CAP_VERSION_INFO struct.
-const size_t kMinimumVersionInfoSize = 17;
+constexpr size_t kMinimumVersionInfoSize = 17;
+
+// The TPM manufacturer code of Infineon.
+constexpr uint32_t kInfineonManufacturerCode = 0x49465800;
+
+// The Infineon-specific DA info sub-capability flag.
+constexpr uint32_t kInfineonMfrSubCapability = 0x00000802;
+
+// The offset of DA counter in the Infineon-specific DA info data.
+constexpr size_t kInfineonDACounterOffset = 9;
+
+}  // namespace
+
+namespace tpm_manager {
 
 TpmStatusImpl::TpmStatusImpl(
     const OwnershipTakenCallBack& ownership_taken_callback)
@@ -70,15 +85,15 @@ TpmStatus::TpmOwnershipStatus TpmStatusImpl::CheckAndNotifyIfTpmOwned() {
   return ownership_status_;
 }
 
-bool TpmStatusImpl::GetDictionaryAttackInfo(int* counter,
-                                            int* threshold,
+bool TpmStatusImpl::GetDictionaryAttackInfo(uint32_t* counter,
+                                            uint32_t* threshold,
                                             bool* lockout,
-                                            int* seconds_remaining) {
+                                            uint32_t* seconds_remaining) {
   std::vector<uint8_t> capability_data;
   if (!GetCapability(TSS_TPMCAP_DA_LOGIC, TPM_ET_KEYHANDLE, &capability_data,
                      nullptr) ||
       capability_data.size() < kMinimumDaInfoSize) {
-    LOG(ERROR) << "Error getting tpm capability data.";
+    LOG(ERROR) << "Error getting tpm capability data for DA info.";
     return false;
   }
   if (static_cast<uint16_t>(capability_data[1]) == TPM_TAG_DA_INFO) {
@@ -97,6 +112,47 @@ bool TpmStatusImpl::GetDictionaryAttackInfo(int* counter,
     if (seconds_remaining) {
       *seconds_remaining = da_info.actionDependValue;
     }
+  }
+
+  // For Infineon, pulls the counter out of vendor-specific data and checks if
+  // it matches the value in DA_INFO.
+
+  if (!GetCapability(TSS_TPMCAP_PROPERTY, TSS_TPMCAP_PROP_MANUFACTURER,
+                     &capability_data, nullptr) ||
+                     capability_data.size() != sizeof(uint32_t)) {
+    LOG(WARNING) << "Failed to query TSS_TPMCAP_PROP_MANUFACTURER. "
+                    "Using the DA info from TSS_TPMCAP_DA_LOGIC.";
+    return true;
+  }
+
+  uint32_t manufacturer;
+  uint64_t offset = 0;
+  Trspi_UnloadBlob_UINT32(&offset, &manufacturer, capability_data.data());
+  if (manufacturer != kInfineonManufacturerCode) {
+    return true;
+  }
+
+  if (!GetCapability(TSS_TPMCAP_MFR,
+                     kInfineonMfrSubCapability,
+                     &capability_data,
+                     nullptr)) {
+    LOG(WARNING) << "Failed to query Infineon MFR capability. "
+                    "Using the DA info from TSS_TPMCAP_DA_LOGIC.";
+    return true;
+  }
+
+  if (capability_data.size() <= kInfineonDACounterOffset) {
+    LOG(WARNING) << "Couldn't read DA counter from Infineon's MFR "
+                    "capability. Using the DA info from TSS_TPMCAP_DA_LOGIC.";
+    return true;
+  }
+
+  uint32_t vendor_da_counter =
+      static_cast<uint32_t>(capability_data[kInfineonDACounterOffset]);
+  if (*counter != vendor_da_counter) {
+    LOG(WARNING) << "DA counter mismatch for Infineon: " << *counter
+                 << " vs. " << vendor_da_counter << ". Using the larger one.";
+    *counter = std::max(*counter, vendor_da_counter);
   }
   return true;
 }

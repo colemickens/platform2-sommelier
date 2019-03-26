@@ -63,10 +63,10 @@ TpmStatus::TpmOwnershipStatus Tpm2StatusImpl::CheckAndNotifyIfTpmOwned() {
   return ownership_status_;
 }
 
-bool Tpm2StatusImpl::GetDictionaryAttackInfo(int* counter,
-                                             int* threshold,
+bool Tpm2StatusImpl::GetDictionaryAttackInfo(uint32_t* counter,
+                                             uint32_t* threshold,
                                              bool* lockout,
-                                             int* seconds_remaining) {
+                                             uint32_t* seconds_remaining) {
   if (!Refresh()) {
     return false;
   }

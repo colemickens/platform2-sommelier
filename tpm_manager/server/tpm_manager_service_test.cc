@@ -308,8 +308,8 @@ TEST_F(TpmManagerServiceTest, GetTpmStatusNoTpm) {
 
 TEST_F(TpmManagerServiceTest, GetDictionaryAttackInfo) {
   EXPECT_CALL(mock_tpm_status_, GetDictionaryAttackInfo(_, _, _, _))
-      .WillOnce(Invoke([](int* counter, int* threshold, bool* lockout,
-                          int* seconds_remaining) {
+      .WillOnce(Invoke([](uint32_t* counter, uint32_t* threshold, bool* lockout,
+                          uint32_t* seconds_remaining) {
         *counter = 5;
         *threshold = 6;
         *lockout = true;

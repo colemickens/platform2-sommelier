@@ -22,10 +22,10 @@ using testing::_;
 
 namespace tpm_manager {
 
-bool GetDefaultDictionaryAttackInfo(int* counter,
-                                    int* threshold,
+bool GetDefaultDictionaryAttackInfo(uint32_t* counter,
+                                    uint32_t* threshold,
                                     bool* lockout,
-                                    int* seconds_remaining) {
+                                    uint32_t* seconds_remaining) {
   *counter = 0;
   *threshold = 10;
   *lockout = false;

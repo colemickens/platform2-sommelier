@@ -115,19 +115,19 @@ TEST_F(Tpm2StatusTest, IsPreOwned) {
 TEST_F(Tpm2StatusTest, GetDictionaryAttackInfoInitializeFailure) {
   EXPECT_CALL(mock_tpm_state_, Initialize())
       .WillRepeatedly(Return(TPM_RC_FAILURE));
-  int count;
-  int threshold;
+  uint32_t count;
+  uint32_t threshold;
   bool lockout;
-  int seconds_remaining;
+  uint32_t seconds_remaining;
   EXPECT_FALSE(tpm_status_->GetDictionaryAttackInfo(
       &count, &threshold, &lockout, &seconds_remaining));
 }
 
 TEST_F(Tpm2StatusTest, GetDictionaryAttackInfoForwarding) {
-  int lockout_count = 3;
-  int lockout_threshold = 16;
+  uint32_t lockout_count = 3;
+  uint32_t lockout_threshold = 16;
   bool is_locked = true;
-  int lockout_interval = 3600;
+  uint32_t lockout_interval = 3600;
   EXPECT_CALL(mock_tpm_state_, GetLockoutCounter())
       .WillRepeatedly(Return(lockout_count));
   EXPECT_CALL(mock_tpm_state_, GetLockoutThreshold())
@@ -135,10 +135,10 @@ TEST_F(Tpm2StatusTest, GetDictionaryAttackInfoForwarding) {
   EXPECT_CALL(mock_tpm_state_, IsInLockout()).WillRepeatedly(Return(is_locked));
   EXPECT_CALL(mock_tpm_state_, GetLockoutInterval())
       .WillRepeatedly(Return(lockout_interval));
-  int count;
-  int threshold;
+  uint32_t count;
+  uint32_t threshold;
   bool lockout;
-  int seconds_remaining;
+  uint32_t seconds_remaining;
   EXPECT_TRUE(tpm_status_->GetDictionaryAttackInfo(&count, &threshold, &lockout,
                                                    &seconds_remaining));
   EXPECT_EQ(count, lockout_count);
@@ -150,10 +150,10 @@ TEST_F(Tpm2StatusTest, GetDictionaryAttackInfoForwarding) {
 TEST_F(Tpm2StatusTest, GetDictionaryAttackInfoAlwaysRefresh) {
   EXPECT_CALL(mock_tpm_state_, Initialize())
       .WillRepeatedly(Return(TPM_RC_SUCCESS));
-  int count;
-  int threshold;
+  uint32_t count;
+  uint32_t threshold;
   bool lockout;
-  int seconds_remaining;
+  uint32_t seconds_remaining;
   EXPECT_TRUE(tpm_status_->GetDictionaryAttackInfo(&count, &threshold, &lockout,
                                                    &seconds_remaining));
 }

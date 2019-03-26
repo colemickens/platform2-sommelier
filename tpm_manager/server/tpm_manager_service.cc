@@ -216,10 +216,10 @@ void TpmManagerService::GetDictionaryAttackInfoTask(
     return;
   }
 
-  int counter;
-  int threshold;
+  uint32_t counter;
+  uint32_t threshold;
   bool lockout;
-  int lockout_time_remaining;
+  uint32_t lockout_time_remaining;
   if (!tpm_status_->GetDictionaryAttackInfo(&counter, &threshold, &lockout,
                                             &lockout_time_remaining)) {
     LOG(ERROR) << __func__ << ": failed to get DA info";
