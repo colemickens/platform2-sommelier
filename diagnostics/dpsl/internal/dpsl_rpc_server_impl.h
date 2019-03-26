@@ -38,6 +38,8 @@ class DpslRpcServerImpl final : public DpslRpcServer {
       std::unique_ptr<grpc_api::HandleMessageFromUiResponse>)>;
   using HandleEcNotificationCallback = base::Callback<void(
       std::unique_ptr<grpc_api::HandleEcNotificationResponse>)>;
+  using HandleConfigurationDataChangedCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::HandleConfigurationDataChangedResponse>)>;
 
   // Methods corresponding to the "WilcoDtc" gRPC interface (each of these
   // methods just calls the corresponding method of |rpc_handler_|):
@@ -47,6 +49,9 @@ class DpslRpcServerImpl final : public DpslRpcServer {
   void HandleEcNotification(
       std::unique_ptr<grpc_api::HandleEcNotificationRequest> request,
       const HandleEcNotificationCallback& callback);
+  void HandleConfigurationDataChanged(
+      std::unique_ptr<grpc_api::HandleConfigurationDataChangedRequest> request,
+      const HandleConfigurationDataChangedCallback& callback);
 
   // The method corresponding to the HandleMessageFromUi method of the
   // "WilcoDtc" gRPC interface and returning back a nullptr response.

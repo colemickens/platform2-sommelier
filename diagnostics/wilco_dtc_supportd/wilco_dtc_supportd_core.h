@@ -153,6 +153,7 @@ class WilcoDtcSupportdCore final
   void SendGrpcUiMessageToWilcoDtc(
       base::StringPiece json_message,
       const SendGrpcUiMessageToWilcoDtcCallback& callback) override;
+  void NotifyConfigurationDataChangedToWilcoDtc() override;
 
   // chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactory overrides:
   void GetService(MojomDiagnosticsdServiceRequest service,

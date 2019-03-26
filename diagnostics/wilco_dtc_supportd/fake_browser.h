@@ -72,6 +72,15 @@ class FakeBrowser final {
       const std::string& json_message,
       const base::Callback<void(mojo::ScopedHandle)>& callback);
 
+  // Call the |NotifyConfigurationDataChanged| Mojo method on wilco_dtc_supportd
+  // daemon, which will call the corresponding gRPC method on wilco_dtc.
+  //
+  // It simulates the notification sent from the browser to wilco_dtc.
+  //
+  // Must be called only after a successful invocation of
+  // BootstrapMojoConnection().
+  void NotifyConfigurationDataChanged();
+
  private:
   // Calls |bootstrap_mojo_connection_dbus_method_| with a fake file descriptor.
   // Returns whether the method call succeeded (it's expected to happen

@@ -40,6 +40,7 @@
 #include <mojo/public/cpp/bindings/binding.h>
 #include <mojo/public/cpp/bindings/interface_ptr.h>
 
+#include "diagnostics/wilco_dtc_supportd/bind_utils.h"
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
 #include "diagnostics/wilco_dtc_supportd/fake_browser.h"
 #include "diagnostics/wilco_dtc_supportd/fake_wilco_dtc.h"
@@ -558,6 +559,21 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest,
   run_loop_fake_browser.Run();
   EXPECT_EQ(json_message, fake_ui_message_receiver_wilco_dtc()
                               ->handle_message_from_ui_actual_json_message());
+}
+
+// Test that wilco_dtc will be notified about configuration changes from
+// browser.
+TEST_F(BootstrappedWilcoDtcSupportdCoreTest, NotifyConfigurationDataChanged) {
+  base::RunLoop run_loop;
+  const base::Closure barrier_closure =
+      BarrierClosure(2, run_loop.QuitClosure());
+
+  fake_ui_message_receiver_wilco_dtc()->set_configuration_data_changed_callback(
+      barrier_closure);
+  fake_wilco_dtc()->set_configuration_data_changed_callback(barrier_closure);
+
+  fake_browser()->NotifyConfigurationDataChanged();
+  run_loop.Run();
 }
 
 // Test that the GetProcData() method exposed by the daemon's gRPC server

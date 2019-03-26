@@ -32,8 +32,8 @@ service WilcoDtc {
   // configuration data.
   // NOTE: calling the GetConfigurationData on every startup is highly
   // recommended to retrieve the up-to-date configuration data.
-  rpc ConfigurationDataChanged(ConfigurationDataChangedRequest)
-      returns (ConfigurationDataChangedResponse) {}
+  rpc HandleConfigurationDataChanged(HandleConfigurationDataChangedRequest)
+      returns (HandleConfigurationDataChangedResponse) {}
 }
 
 // Parameters for the HandleMessageFromUi RPC.
@@ -92,8 +92,8 @@ message HandlePowerNotificationRequest {
 // Return value of the HandlePowerNotification RPC.
 message HandlePowerNotificationResponse {}
 
-// Parameters for the ConfigurationDataChanged RPC.
-message ConfigurationDataChangedRequest {}
+// Parameters for the HandleConfigurationDataChanged RPC.
+message HandleConfigurationDataChangedRequest {}
 
-// Return value of the ConfigurationDataChanged RPC.
-message ConfigurationDataChangedResponse {}
+// Return value of the HandleConfigurationDataChanged RPC.
+message HandleConfigurationDataChangedResponse {}

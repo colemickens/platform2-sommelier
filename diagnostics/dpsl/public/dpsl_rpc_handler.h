@@ -60,6 +60,9 @@ class DpslRpcHandler {
       std::unique_ptr<grpc_api::HandleEcNotificationResponse> response)>;
   using HandlePowerNotificationCallback = std::function<void(
       std::unique_ptr<grpc_api::HandlePowerNotificationResponse> response)>;
+  using HandleConfigurationDataChangedCallback = std::function<void(
+      std::unique_ptr<grpc_api::HandleConfigurationDataChangedResponse>
+          response)>;
 
   virtual ~DpslRpcHandler() = default;
 
@@ -79,6 +82,9 @@ class DpslRpcHandler {
   virtual void HandlePowerNotification(
       std::unique_ptr<grpc_api::HandlePowerNotificationRequest> request,
       HandlePowerNotificationCallback callback) = 0;
+  virtual void HandleConfigurationDataChanged(
+      std::unique_ptr<grpc_api::HandleConfigurationDataChangedRequest> request,
+      HandleConfigurationDataChangedCallback callback) = 0;
 };
 
 }  // namespace diagnostics

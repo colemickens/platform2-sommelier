@@ -42,6 +42,8 @@ class FakeWilcoDtc final {
       std::unique_ptr<grpc_api::PerformWebRequestResponse>)>;
   using GetConfigurationDataCallback = base::Callback<void(
       std::unique_ptr<grpc_api::GetConfigurationDataResponse>)>;
+  using HandleConfigurationDataChangedCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::HandleConfigurationDataChangedResponse>)>;
 
   using HandleEcNotificationRequestCallback =
       base::RepeatingCallback<void(int32_t, const std::string&)>;
@@ -82,6 +84,9 @@ class FakeWilcoDtc final {
   const base::Optional<std::string>&
   handle_message_from_ui_actual_json_message() const;
 
+  // Setups callback for the next |HandleConfigurationDataChanged| gRPC call.
+  void set_configuration_data_changed_callback(base::RepeatingClosure callback);
+
  private:
   using AsyncGrpcWilcoDtcServer =
       AsyncGrpcServer<grpc_api::WilcoDtc::AsyncService>;
@@ -102,6 +107,12 @@ class FakeWilcoDtc final {
       std::unique_ptr<grpc_api::HandleEcNotificationRequest> request,
       const HandleEcNotificationCallback& callback);
 
+  // Receives gRPC request and invokes the given |callback| with gRPC response.
+  // Calls the callback |configuration_data_changed_callback_| after all.
+  void HandleConfigurationDataChanged(
+      std::unique_ptr<grpc_api::HandleConfigurationDataChangedRequest> request,
+      const HandleConfigurationDataChangedCallback& callback);
+
   AsyncGrpcWilcoDtcServer grpc_server_;
   AsyncGrpcWilcoDtcSupportdClient wilco_dtc_supportd_grp_client_;
 
@@ -111,6 +122,8 @@ class FakeWilcoDtc final {
 
   base::Optional<HandleEcNotificationRequestCallback>
       handle_ec_event_request_callback_;
+
+  base::Optional<base::RepeatingClosure> configuration_data_changed_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeWilcoDtc);
 };

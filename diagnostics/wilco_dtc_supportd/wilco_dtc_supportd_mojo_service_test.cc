@@ -60,6 +60,7 @@ class MockWilcoDtcSupportdMojoServiceDelegate
   MOCK_METHOD2(SendGrpcUiMessageToWilcoDtc,
                void(base::StringPiece json_message,
                     const SendGrpcUiMessageToWilcoDtcCallback& callback));
+  MOCK_METHOD0(NotifyConfigurationDataChangedToWilcoDtc, void());
 };
 
 // Tests for the WilcoDtcSupportdMojoService class.
@@ -93,6 +94,10 @@ class WilcoDtcSupportdMojoServiceTest : public testing::Test {
     service_->SendUiMessageToDiagnosticsProcessor(
         std::move(handle),
         base::Bind(&EmptySendUiMessageToDiagnosticsProcessorCallback));
+  }
+
+  void NotifyConfigurationDataChanged() {
+    service_->NotifyConfigurationDataChanged();
   }
 
   void PerformWebRequest(MojomDiagnosticsdWebRequestHttpMethod http_method,
@@ -181,6 +186,11 @@ TEST_F(WilcoDtcSupportdMojoServiceTest, GetConfigurationData) {
           })));
 
   ASSERT_NO_FATAL_FAILURE(GetConfigurationData(kFakeJsonConfigurationData));
+}
+
+TEST_F(WilcoDtcSupportdMojoServiceTest, NotifyConfigurationDataChanged) {
+  EXPECT_CALL(*delegate(), NotifyConfigurationDataChangedToWilcoDtc());
+  ASSERT_NO_FATAL_FAILURE(NotifyConfigurationDataChanged());
 }
 
 }  // namespace diagnostics

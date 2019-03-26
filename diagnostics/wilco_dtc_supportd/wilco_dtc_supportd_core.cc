@@ -319,7 +319,7 @@ void WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc(
         base::Bind([](std::unique_ptr<grpc_api::HandleEcNotificationResponse>
                           response) {
           if (!response) {
-            LOG(ERROR)
+            VLOG(1)
                 << "Failed to call HandleEcNotificationRequest gRPC method on "
                    "wilco_dtc: response message is nullptr";
             return;
@@ -385,9 +385,8 @@ void WilcoDtcSupportdCore::SendGrpcUiMessageToWilcoDtc(
           [](const SendGrpcUiMessageToWilcoDtcCallback& callback,
              std::unique_ptr<grpc_api::HandleMessageFromUiResponse> response) {
             if (!response) {
-              LOG(ERROR)
-                  << "Failed to call HandleMessageFromUiRequest gRPC method on "
-                     "wilco_dtc: response message is nullptr";
+              VLOG(1) << "Failed to call HandleMessageFromUiRequest gRPC method"
+                         " on wilco_dtc: response message is nullptr";
               callback.Run(std::string() /* response_json_message */);
               return;
             }
@@ -407,6 +406,27 @@ void WilcoDtcSupportdCore::SendGrpcUiMessageToWilcoDtc(
             callback.Run(response->response_json_message());
           },
           callback));
+}
+
+void WilcoDtcSupportdCore::NotifyConfigurationDataChangedToWilcoDtc() {
+  VLOG(1) << "WilcoDtcSupportdCore::NotifyConfigurationDataChanged";
+
+  grpc_api::HandleConfigurationDataChangedRequest request;
+  for (auto& client : wilco_dtc_grpc_clients_) {
+    client->CallRpc(
+        &grpc_api::WilcoDtc::Stub::AsyncHandleConfigurationDataChanged, request,
+        base::Bind(
+            [](std::unique_ptr<grpc_api::HandleConfigurationDataChangedResponse>
+                   response) {
+              if (!response) {
+                VLOG(1) << "Failed to call HandleConfigurationDataChanged gRPC "
+                           "method on wilco_dtc: response message is nullptr";
+                return;
+              }
+              VLOG(1) << "gRPC method HandleConfigurationDaraChanged was "
+                         "successfully called on wilco_dtc";
+            }));
+  }
 }
 
 }  // namespace diagnostics

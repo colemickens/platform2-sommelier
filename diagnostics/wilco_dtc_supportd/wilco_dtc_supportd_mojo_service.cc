@@ -99,6 +99,10 @@ void WilcoDtcSupportdMojoService::SendUiMessageToDiagnosticsProcessor(
       json_message_content, base::Bind(&ForwardMojoJsonResponse, callback));
 }
 
+void WilcoDtcSupportdMojoService::NotifyConfigurationDataChanged() {
+  delegate_->NotifyConfigurationDataChangedToWilcoDtc();
+}
+
 void WilcoDtcSupportdMojoService::PerformWebRequest(
     MojomDiagnosticsdWebRequestHttpMethod http_method,
     const std::string& url,

@@ -57,6 +57,10 @@ bool FakeBrowser::SendUiMessageToDiagnosticsProcessor(
   return true;
 }
 
+void FakeBrowser::NotifyConfigurationDataChanged() {
+  wilco_dtc_supportd_service_ptr_->NotifyConfigurationDataChanged();
+}
+
 bool FakeBrowser::CallBootstrapMojoConnectionDBusMethod(
     FakeMojoFdGenerator* fake_mojo_fd_generator) {
   // Prepare input data for the D-Bus call.

@@ -43,6 +43,10 @@ class DemoRpcHandler final : public diagnostics::DpslRpcHandler {
       std::unique_ptr<diagnostics::grpc_api::HandlePowerNotificationRequest>
           request,
       HandlePowerNotificationCallback callback) override;
+  void HandleConfigurationDataChanged(
+      std::unique_ptr<
+          diagnostics::grpc_api::HandleConfigurationDataChangedRequest> request,
+      HandleConfigurationDataChangedCallback callback) override;
 
  private:
   void FetchSystemUptime();
@@ -91,6 +95,17 @@ void DemoRpcHandler::HandlePowerNotification(
   // Note: every incoming RPC must be answered.
   callback(std::make_unique<
            diagnostics::grpc_api::HandlePowerNotificationResponse>());
+  FetchSystemUptime();
+}
+
+void DemoRpcHandler::HandleConfigurationDataChanged(
+    std::unique_ptr<
+        diagnostics::grpc_api::HandleConfigurationDataChangedRequest> request,
+    HandleConfigurationDataChangedCallback callback) {
+  std::cerr << "Received HandleConfigurationDataChanged request" << std::endl;
+  // Note: every incoming RPC must be answered.
+  callback(std::make_unique<
+           diagnostics::grpc_api::HandleConfigurationDataChangedResponse>());
   FetchSystemUptime();
 }
 

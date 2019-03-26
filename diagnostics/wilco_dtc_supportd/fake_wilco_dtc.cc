@@ -24,6 +24,10 @@ FakeWilcoDtc::FakeWilcoDtc(const std::string& grpc_server_uri,
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtc::AsyncService::RequestHandleEcNotification,
       base::Bind(&FakeWilcoDtc::HandleEcNotification, base::Unretained(this)));
+  grpc_server_.RegisterHandler(
+      &grpc_api::WilcoDtc::AsyncService::RequestHandleConfigurationDataChanged,
+      base::Bind(&FakeWilcoDtc::HandleConfigurationDataChanged,
+                 base::Unretained(this)));
   grpc_server_.Start();
 }
 
@@ -89,6 +93,11 @@ FakeWilcoDtc::handle_message_from_ui_actual_json_message() const {
   return handle_message_from_ui_actual_json_message_;
 }
 
+void FakeWilcoDtc::set_configuration_data_changed_callback(
+    base::RepeatingClosure callback) {
+  configuration_data_changed_callback_.emplace(std::move(callback));
+}
+
 void FakeWilcoDtc::HandleMessageFromUi(
     std::unique_ptr<grpc_api::HandleMessageFromUiRequest> request,
     const HandleMessageFromUiCallback& callback) {
@@ -115,6 +124,18 @@ void FakeWilcoDtc::HandleEcNotification(
 
   handle_ec_event_request_callback_->Run(request->type(), request->payload());
   handle_ec_event_request_callback_.reset();
+}
+
+void FakeWilcoDtc::HandleConfigurationDataChanged(
+    std::unique_ptr<grpc_api::HandleConfigurationDataChangedRequest> request,
+    const HandleConfigurationDataChangedCallback& callback) {
+  DCHECK(configuration_data_changed_callback_);
+
+  auto response =
+      std::make_unique<grpc_api::HandleConfigurationDataChangedResponse>();
+  callback.Run(std::move(response));
+
+  configuration_data_changed_callback_->Run();
 }
 
 }  // namespace diagnostics

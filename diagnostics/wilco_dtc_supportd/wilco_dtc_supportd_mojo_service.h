@@ -56,6 +56,14 @@ class WilcoDtcSupportdMojoService final
     virtual void SendGrpcUiMessageToWilcoDtc(
         base::StringPiece json_message,
         const SendGrpcUiMessageToWilcoDtcCallback& callback) = 0;
+
+    // Called when wilco_dtc_supportd daemon mojo function
+    // |NotifyConfigurationDataChanged| was called.
+    //
+    // Calls gRPC HandleConfigurationDataChanged method on wilco_dtc to notify
+    // that new JSON configuration data is available and can be retrieved by
+    // calling |GetConfigurationData|.
+    virtual void NotifyConfigurationDataChangedToWilcoDtc() = 0;
   };
 
   // |delegate| - Unowned pointer; must outlive this instance.
@@ -74,6 +82,7 @@ class WilcoDtcSupportdMojoService final
   void SendUiMessageToDiagnosticsProcessor(
       mojo::ScopedHandle json_message,
       const SendUiMessageToDiagnosticsProcessorCallback& callback) override;
+  void NotifyConfigurationDataChanged() override;
 
   // Calls to DiagnosticsdClient.
   void PerformWebRequest(MojomDiagnosticsdWebRequestHttpMethod http_method,
