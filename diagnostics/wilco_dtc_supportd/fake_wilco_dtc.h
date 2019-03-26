@@ -40,6 +40,8 @@ class FakeWilcoDtc final {
       std::unique_ptr<grpc_api::HandleEcNotificationResponse>)>;
   using PerformWebRequestResponseCallback = base::Callback<void(
       std::unique_ptr<grpc_api::PerformWebRequestResponse>)>;
+  using GetConfigurationDataCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::GetConfigurationDataResponse>)>;
 
   using HandleEcNotificationRequestCallback =
       base::RepeatingCallback<void(int32_t, const std::string&)>;
@@ -58,6 +60,9 @@ class FakeWilcoDtc final {
                      GetEcPropertyCallback callback);
   void PerformWebRequest(const grpc_api::PerformWebRequestParameter& parameter,
                          const PerformWebRequestResponseCallback& callback);
+  void GetConfigurationData(
+      const grpc_api::GetConfigurationDataRequest& request,
+      const GetConfigurationDataCallback& callback);
 
   // Setups callback for the next |HandleMessageFromUi| gRPC call.
   void set_handle_message_from_ui_callback(

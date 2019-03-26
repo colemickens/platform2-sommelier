@@ -36,6 +36,8 @@ class WilcoDtcSupportdMojoService final
       chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestStatus;
   using MojomPerformWebRequestCallback = base::Callback<void(
       MojomDiagnosticsdWebRequestStatus, int, base::StringPiece)>;
+  using MojomGetConfigurationDataCallback =
+      base::Callback<void(const std::string&)>;
 
   class Delegate {
    public:
@@ -79,6 +81,7 @@ class WilcoDtcSupportdMojoService final
                          const std::vector<std::string>& headers,
                          const std::string& request_body,
                          const MojomPerformWebRequestCallback& callback);
+  void GetConfigurationData(const MojomGetConfigurationDataCallback& callback);
 
  private:
   // Unowned. The delegate should outlive this instance.

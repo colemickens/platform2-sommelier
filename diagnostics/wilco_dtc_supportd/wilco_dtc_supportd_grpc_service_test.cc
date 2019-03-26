@@ -206,6 +206,8 @@ class MockWilcoDtcSupportdGrpcServiceDelegate
                     const grpc_api::GetRoutineUpdateRequest::Command command,
                     const bool include_output,
                     const GetRoutineUpdateRequestToServiceCallback& callback));
+  MOCK_METHOD1(GetConfigurationDataFromBrowser,
+               void(const GetConfigurationDataFromBrowserCallback& callback));
 };
 
 // Tests for the WilcoDtcSupportdGrpcService class.
@@ -370,6 +372,20 @@ class WilcoDtcSupportdGrpcServiceTest : public testing::Test {
     // Expect the method to return immediately.
     ASSERT_TRUE(response);
     *version = response->version();
+  }
+
+  void ExecuteGetConfigurationData(
+      const std::string& json_configuration_data,
+      std::unique_ptr<grpc_api::GetConfigurationDataResponse>* response) {
+    auto request = std::make_unique<grpc_api::GetConfigurationDataRequest>();
+    EXPECT_CALL(delegate_, GetConfigurationDataFromBrowser(_))
+        .WillOnce(WithArgs<0>(Invoke(
+            [json_configuration_data](
+                const base::Callback<void(const std::string&)>& callback) {
+              callback.Run(json_configuration_data);
+            })));
+    service()->GetConfigurationData(std::move(request),
+                                    GrpcCallbackResponseSaver(response));
   }
 
   grpc_api::FileDump MakeFileDump(
@@ -549,6 +565,22 @@ TEST_F(WilcoDtcSupportdGrpcServiceTest, GetOsVersion) {
   ExecuteGetOsVersion(&version);
 
   EXPECT_EQ(version, kOsVersion);
+}
+
+// Test that an empty string is a valid result.
+TEST_F(WilcoDtcSupportdGrpcServiceTest, GetConfigurationDataEmpty) {
+  std::unique_ptr<grpc_api::GetConfigurationDataResponse> response;
+  ExecuteGetConfigurationData("", &response);
+  EXPECT_EQ(response->json_configuration_data(), "");
+}
+
+TEST_F(WilcoDtcSupportdGrpcServiceTest, GetConfigurationData) {
+  // The JSON configuration data is passed through from the cloud to DTC binary
+  // and might not be in JSON format.
+  constexpr char kFakeJsonConfigurationData[] = "Fake JSON Configuration Data";
+  std::unique_ptr<grpc_api::GetConfigurationDataResponse> response;
+  ExecuteGetConfigurationData(kFakeJsonConfigurationData, &response);
+  EXPECT_EQ(response->json_configuration_data(), kFakeJsonConfigurationData);
 }
 
 namespace {

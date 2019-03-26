@@ -146,6 +146,8 @@ class WilcoDtcSupportdCore final
       grpc_api::GetRoutineUpdateRequest::Command command,
       bool include_output,
       const GetRoutineUpdateRequestToServiceCallback& callback) override;
+  void GetConfigurationDataFromBrowser(
+      const GetConfigurationDataFromBrowserCallback& callback) override;
 
   // WilcoDtcSupportdMojoService::Delegate overrides:
   void SendGrpcUiMessageToWilcoDtc(

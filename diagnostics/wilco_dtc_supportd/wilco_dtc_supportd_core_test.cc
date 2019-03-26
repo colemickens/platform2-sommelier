@@ -57,7 +57,6 @@ using testing::Mock;
 using testing::Return;
 using testing::SaveArg;
 using testing::StrictMock;
-using testing::WithArg;
 
 namespace diagnostics {
 
@@ -464,6 +463,10 @@ class BootstrappedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
         callback);
   }
 
+  MockMojomWilcoDtcSupportdClient* wilco_dtc_supportd_client() {
+    return fake_browser()->wilco_dtc_supportd_client();
+  }
+
  private:
   std::unique_ptr<FakeWilcoDtc> fake_ui_message_receiver_wilco_dtc_;
   std::unique_ptr<FakeWilcoDtc> fake_wilco_dtc_;
@@ -660,6 +663,33 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest,
   grpc_api::PerformWebRequestResponse expected_response;
   expected_response.set_status(grpc_api::PerformWebRequestResponse::STATUS_OK);
   expected_response.set_http_status(kHttpStatusOk);
+  EXPECT_THAT(*response, ProtobufEquals(expected_response))
+      << "Actual: {" << response->ShortDebugString() << "}";
+}
+
+// Test that GetConfigurationData() method exposed by the daemon's gRPC returns
+// a response from the browser.
+TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetConfigurationDataFromBrowser) {
+  constexpr char kFakeJsonConfigurationData[] =
+      "{\"fake-message\": \"Fake JSON configuration data\"}";
+  EXPECT_CALL(*wilco_dtc_supportd_client(), GetConfigurationData(_))
+      .WillOnce(
+          Invoke([kFakeJsonConfigurationData](
+                     const base::Callback<void(const std::string&)>& callback) {
+            callback.Run(kFakeJsonConfigurationData);
+          }));
+  std::unique_ptr<grpc_api::GetConfigurationDataResponse> response;
+  {
+    base::RunLoop run_loop;
+    grpc_api::GetConfigurationDataRequest request;
+    fake_wilco_dtc()->GetConfigurationData(
+        request, MakeAsyncResponseWriter(&response, &run_loop));
+    run_loop.Run();
+  }
+
+  ASSERT_TRUE(response);
+  grpc_api::GetConfigurationDataResponse expected_response;
+  expected_response.set_json_configuration_data(kFakeJsonConfigurationData);
   EXPECT_THAT(*response, ProtobufEquals(expected_response))
       << "Actual: {" << response->ShortDebugString() << "}";
 }

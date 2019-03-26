@@ -120,4 +120,9 @@ void WilcoDtcSupportdMojoService::PerformWebRequest(
                                  base::Bind(&ForwardMojoWebResponse, callback));
 }
 
+void WilcoDtcSupportdMojoService::GetConfigurationData(
+    const MojomGetConfigurationDataCallback& callback) {
+  DCHECK(client_ptr_);
+  client_ptr_->GetConfigurationData(callback);
+}
 }  // namespace diagnostics

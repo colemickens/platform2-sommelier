@@ -25,6 +25,8 @@ class MockMojomWilcoDtcSupportdClient
       chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestStatus;
   using MojoPerformWebRequestCallback = base::Callback<void(
       MojoDiagnosticsdWebRequestStatus, int, mojo::ScopedHandle)>;
+  using MojoGetConfigurationDataCallback =
+      base::Callback<void(const std::string&)>;
 
   void SendDiagnosticsProcessorMessageToUi(
       mojo::ScopedHandle json_message,
@@ -46,6 +48,8 @@ class MockMojomWilcoDtcSupportdClient
                     const std::string& url,
                     const std::vector<std::string>& headers,
                     const std::string& request_body));
+  MOCK_METHOD1(GetConfigurationData,
+               void(const MojoGetConfigurationDataCallback& callback));
 };
 
 }  // namespace diagnostics

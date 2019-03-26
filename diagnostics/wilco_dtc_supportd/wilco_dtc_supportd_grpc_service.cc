@@ -39,6 +39,8 @@ using GetAvailableRoutinesCallback =
 using RunRoutineCallback = WilcoDtcSupportdGrpcService::RunRoutineCallback;
 using GetRoutineUpdateCallback =
     WilcoDtcSupportdGrpcService::GetRoutineUpdateCallback;
+using GetConfigurationDataCallback =
+    WilcoDtcSupportdGrpcService::GetConfigurationDataCallback;
 
 // Https prefix expected to be a prefix of URL in PerformWebRequestParameter.
 constexpr char kHttpsPrefix[] = "https://";
@@ -168,6 +170,16 @@ void ForwardGetRoutineUpdateResponse(
   reply->set_user_message(user_message);
   reply->set_output(output);
   reply->set_status_message(status_message);
+  callback.Run(std::move(reply));
+}
+
+// Forwards and wraps the result of a GetConfigurationDataFromBrowser into gRPC
+// response.
+void ForwardGetConfigurationDataResponse(
+    const GetConfigurationDataCallback& callback,
+    const std::string& json_configuration_data) {
+  auto reply = std::make_unique<grpc_api::GetConfigurationDataResponse>();
+  reply->set_json_configuration_data(json_configuration_data);
   callback.Run(std::move(reply));
 }
 
@@ -521,6 +533,15 @@ void WilcoDtcSupportdGrpcService::GetOsVersion(
   auto reply = std::make_unique<grpc_api::GetOsVersionResponse>();
   reply->set_version(version);
   callback.Run(std::move(reply));
+}
+
+void WilcoDtcSupportdGrpcService::GetConfigurationData(
+    std::unique_ptr<grpc_api::GetConfigurationDataRequest> request,
+    const GetConfigurationDataCallback& callback) {
+  DCHECK(request);
+
+  delegate_->GetConfigurationDataFromBrowser(
+      base::Bind(&ForwardGetConfigurationDataResponse, callback));
 }
 
 void WilcoDtcSupportdGrpcService::AddFileDump(

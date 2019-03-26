@@ -137,6 +137,14 @@ void DpslRequesterImpl::GetOsVersion(
       std::move(request), std::move(callback));
 }
 
+void DpslRequesterImpl::GetConfigurationData(
+    std::unique_ptr<grpc_api::GetConfigurationDataRequest> request,
+    GetConfigurationDataCallback callback) {
+  ScheduleGrpcClientMethodCall(
+      FROM_HERE, &grpc_api::WilcoDtcSupportd::Stub::AsyncGetConfigurationData,
+      std::move(request), std::move(callback));
+}
+
 template <typename GrpcStubMethod, typename RequestType, typename ResponseType>
 void DpslRequesterImpl::ScheduleGrpcClientMethodCall(
     const tracked_objects::Location& location,

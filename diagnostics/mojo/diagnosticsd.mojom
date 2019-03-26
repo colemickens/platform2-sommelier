@@ -89,4 +89,8 @@ interface DiagnosticsdClient {
   // to the extension or the extension made no reply.
   SendDiagnosticsProcessorMessageToUi@1(handle json_message)
       => (handle? response_json_message);
+
+  // Retrieves a JSON-formatted configuration data. The length of
+  // |json_configuration_data| does not exceed 20'000 bytes.
+  GetConfigurationData@2() => (string json_configuration_data);
 };

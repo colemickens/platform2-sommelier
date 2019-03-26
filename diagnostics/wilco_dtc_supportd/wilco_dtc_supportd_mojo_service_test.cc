@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/callback.h>
 #include <base/message_loop/message_loop.h>
 #include <base/optional.h>
 #include <base/run_loop.h>
@@ -27,7 +28,9 @@
 #include "mojo/diagnosticsd.mojom.h"
 
 using testing::_;
+using testing::Invoke;
 using testing::StrictMock;
+using testing::WithArg;
 
 using MojomDiagnosticsdClient =
     chromeos::diagnosticsd::mojom::DiagnosticsdClient;
@@ -119,6 +122,18 @@ class WilcoDtcSupportdMojoServiceTest : public testing::Test {
     run_loop.Run();
   }
 
+  void GetConfigurationData(const std::string& expected_data) {
+    base::RunLoop run_loop;
+    service_->GetConfigurationData(base::Bind(
+        [](const base::Closure& quit_closure, const std::string& expected_data,
+           const std::string& json_configuration_data) {
+          EXPECT_EQ(expected_data, json_configuration_data);
+          quit_closure.Run();
+        },
+        run_loop.QuitClosure(), expected_data));
+    run_loop.Run();
+  }
+
  private:
   base::MessageLoop message_loop_;
   StrictMock<MockMojomWilcoDtcSupportdClient> mojo_client_;
@@ -154,6 +169,18 @@ TEST_F(WilcoDtcSupportdMojoServiceTest, DISABLED_PerformWebRequest) {
       PerformWebRequest(MojomDiagnosticsdWebRequestHttpMethod::kGet, kHttpsUrl,
                         std::vector<std::string>(), kFakeBody,
                         MojomDiagnosticsdWebRequestStatus::kOk, kHttpStatusOk));
+}
+
+TEST_F(WilcoDtcSupportdMojoServiceTest, GetConfigurationData) {
+  constexpr char kFakeJsonConfigurationData[] = "Fake JSON configuration data";
+  EXPECT_CALL(*mojo_client(), GetConfigurationData(_))
+      .WillOnce(WithArg<0>(
+          Invoke([kFakeJsonConfigurationData](
+                     const base::Callback<void(const std::string&)>& callback) {
+            callback.Run(kFakeJsonConfigurationData);
+          })));
+
+  ASSERT_NO_FATAL_FAILURE(GetConfigurationData(kFakeJsonConfigurationData));
 }
 
 }  // namespace diagnostics

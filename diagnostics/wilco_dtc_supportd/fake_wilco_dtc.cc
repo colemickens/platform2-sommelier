@@ -65,6 +65,14 @@ void FakeWilcoDtc::PerformWebRequest(
       callback);
 }
 
+void FakeWilcoDtc::GetConfigurationData(
+    const grpc_api::GetConfigurationDataRequest& request,
+    const GetConfigurationDataCallback& callback) {
+  wilco_dtc_supportd_grp_client_.CallRpc(
+      &grpc_api::WilcoDtcSupportd::Stub::AsyncGetConfigurationData, request,
+      callback);
+}
+
 void FakeWilcoDtc::set_handle_message_from_ui_callback(
     base::Closure handle_message_from_ui_callback) {
   handle_message_from_ui_callback_.emplace(

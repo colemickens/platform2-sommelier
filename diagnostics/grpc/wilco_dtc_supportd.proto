@@ -450,7 +450,7 @@ message GetConfigurationDataRequest {}
 
 // Return value for the GetConfigurationData RPC.
 message GetConfigurationDataResponse {
-  // Configuration data. The length does not exeed 1MB (1'000'000 bytes).
+  // Configuration data. The length does not exeed 20'000 bytes.
   // If there is no pre-loaded configuration data, the string is empty.
   string json_configuration_data = 1;
 }

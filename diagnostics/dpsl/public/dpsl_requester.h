@@ -88,6 +88,8 @@ class DpslRequester {
       std::unique_ptr<grpc_api::GetRoutineUpdateResponse> response)>;
   using GetOsVersionCallback = std::function<void(
       std::unique_ptr<grpc_api::GetOsVersionResponse> response)>;
+  using GetConfigurationDataCallback = std::function<void(
+      std::unique_ptr<grpc_api::GetConfigurationDataResponse> response)>;
 
   // Factory method that returns an instance of the real implementation of this
   // interface.
@@ -138,6 +140,9 @@ class DpslRequester {
   virtual void GetOsVersion(
       std::unique_ptr<grpc_api::GetOsVersionRequest> request,
       GetOsVersionCallback callback) = 0;
+  virtual void GetConfigurationData(
+      std::unique_ptr<grpc_api::GetConfigurationDataRequest> request,
+      GetConfigurationDataCallback callback) = 0;
 };
 
 }  // namespace diagnostics

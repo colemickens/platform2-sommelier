@@ -65,6 +65,8 @@ class WilcoDtcSupportdGrpcService final {
                             grpc_api::DiagnosticRoutineUserMessage user_message,
                             const std::string& output,
                             const std::string& status_message)>;
+    using GetConfigurationDataFromBrowserCallback =
+        base::Callback<void(const std::string& json_configuration_data)>;
 
     virtual ~Delegate() = default;
 
@@ -107,6 +109,14 @@ class WilcoDtcSupportdGrpcService final {
         grpc_api::GetRoutineUpdateRequest::Command command,
         bool include_output,
         const GetRoutineUpdateRequestToServiceCallback& callback) = 0;
+
+    // Called when gRPC |GetConfigurationData| was called.
+    //
+    // Calls wilco_dtc_supportd daemon mojo function
+    // |GetConfigurationDaraFromBrowser| method.
+    // The result of the call is returned via |callback|.
+    virtual void GetConfigurationDataFromBrowser(
+        const GetConfigurationDataFromBrowserCallback& callback) = 0;
   };
 
   using SendMessageToUiCallback =
@@ -129,6 +139,8 @@ class WilcoDtcSupportdGrpcService final {
       base::Callback<void(std::unique_ptr<grpc_api::GetRoutineUpdateResponse>)>;
   using GetOsVersionCallback =
       base::Callback<void(std::unique_ptr<grpc_api::GetOsVersionResponse>)>;
+  using GetConfigurationDataCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::GetConfigurationDataResponse>)>;
 
   explicit WilcoDtcSupportdGrpcService(Delegate* delegate);
   ~WilcoDtcSupportdGrpcService();
@@ -163,6 +175,9 @@ class WilcoDtcSupportdGrpcService final {
       const GetRoutineUpdateCallback& callback);
   void GetOsVersion(std::unique_ptr<grpc_api::GetOsVersionRequest> request,
                     const GetOsVersionCallback& callback);
+  void GetConfigurationData(
+      std::unique_ptr<grpc_api::GetConfigurationDataRequest> request,
+      const GetConfigurationDataCallback& callback);
 
  private:
   // Constructs and, if successful, appends the dump of the specified file (with

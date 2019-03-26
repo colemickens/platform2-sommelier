@@ -118,6 +118,10 @@ bool WilcoDtcSupportdCore::Start() {
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetOsVersion,
       base::Bind(&WilcoDtcSupportdGrpcService::GetOsVersion,
                  base::Unretained(&grpc_service_)));
+  grpc_server_.RegisterHandler(
+      &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetConfigurationData,
+      base::Bind(&WilcoDtcSupportdGrpcService::GetConfigurationData,
+                 base::Unretained(&grpc_service_)));
 
   // Start the gRPC server that listens for incoming gRPC requests.
   VLOG(1) << "Starting gRPC server";
@@ -341,6 +345,20 @@ void WilcoDtcSupportdCore::GetRoutineUpdateRequestToService(
     bool include_output,
     const GetRoutineUpdateRequestToServiceCallback& callback) {
   routine_service_.GetRoutineUpdate(uuid, command, include_output, callback);
+}
+
+void WilcoDtcSupportdCore::GetConfigurationDataFromBrowser(
+    const GetConfigurationDataFromBrowserCallback& callback) {
+  VLOG(1) << "WilcoDtcSupportdCore::GetConfigurationDataFromBrowser";
+
+  if (!mojo_service_) {
+    LOG(WARNING) << "GetConfigurationDataFromBrowser happens before Mojo "
+                 << "connection is established.";
+    callback.Run("" /* json_configuration_data */);
+    return;
+  }
+
+  mojo_service_->GetConfigurationData(callback);
 }
 
 void WilcoDtcSupportdCore::SendGrpcUiMessageToWilcoDtc(
