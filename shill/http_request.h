@@ -28,9 +28,10 @@ class EventDispatcher;
 class HttpUrl;
 class IPAddress;
 
-// The HttpRequest class implements facilities for performing
-// a simple "GET" request and returning the contents via a
-// callback.
+// The HttpRequest class implements facilities for performing a simple "GET"
+// request and returning the contents via a callback. By default, this class
+// will only be allowed to communicate with Google servers when secure (HTTPS)
+// communication is used.
 class HttpRequest {
  public:
   enum Result {
@@ -45,7 +46,12 @@ class HttpRequest {
     kResultSuccess
   };
 
-  HttpRequest(ConnectionRefPtr connection, EventDispatcher* dispatcher);
+  // |allow_non_google_https| determines whether or not secure (HTTPS)
+  // communication with a non-Google server is allowed. Note that this
+  // will not change any behavior for HTTP communication.
+  HttpRequest(ConnectionRefPtr connection,
+              EventDispatcher* dispatcher,
+              bool allow_non_google_https = false);
   virtual ~HttpRequest();
 
   // Start an http GET request to the URL |url|. If the request succeeds,

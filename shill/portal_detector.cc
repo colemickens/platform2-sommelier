@@ -126,7 +126,11 @@ bool PortalDetector::StartTrial(const Properties& props,
     CleanupTrial();
   } else {
     http_request_ = std::make_unique<HttpRequest>(connection_, dispatcher_);
-    https_request_ = std::make_unique<HttpRequest>(connection_, dispatcher_);
+    // For non-default URLs, allow for secure communication with both Google and
+    // non-Google servers.
+    bool allow_non_google_https = (https_url_string_ != kDefaultHttpsUrl);
+    https_request_ = std::make_unique<HttpRequest>(connection_, dispatcher_,
+                                                   allow_non_google_https);
   }
   StartTrialAfterDelay(start_delay_milliseconds);
   attempt_count_++;

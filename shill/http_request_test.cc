@@ -127,7 +127,7 @@ class HttpRequestTest : public Test {
     EXPECT_CALL(*connection_, dns_servers())
         .WillRepeatedly(ReturnRef(dns_servers_));
 
-    request_.reset(new HttpRequest(connection_, &dispatcher_));
+    request_.reset(new HttpRequest(connection_, &dispatcher_, true));
     // Passes ownership.
     request_->dns_client_.reset(dns_client_);
     request_->transport_ = transport_;

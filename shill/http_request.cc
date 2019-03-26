@@ -46,7 +46,8 @@ static string ObjectID(Connection* c) { return c->interface_name(); }
 const int HttpRequest::kRequestTimeoutSeconds = 10;
 
 HttpRequest::HttpRequest(ConnectionRefPtr connection,
-                         EventDispatcher* dispatcher)
+                         EventDispatcher* dispatcher,
+                         bool allow_non_google_https)
     : connection_(connection),
       weak_ptr_factory_(this),
       dns_client_callback_(
@@ -65,7 +66,12 @@ HttpRequest::HttpRequest(ConnectionRefPtr connection,
       transport_(brillo::http::Transport::CreateDefault()),
       request_id_(-1),
       server_port_(-1),
-      is_running_(false) {}
+      is_running_(false) {
+  if (allow_non_google_https) {
+    transport_->UseCustomCertificate(
+      brillo::http::Transport::Certificate::kNss);
+  }
+}
 
 HttpRequest::~HttpRequest() {
   Stop();
