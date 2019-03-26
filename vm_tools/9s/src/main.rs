@@ -166,7 +166,7 @@ fn handle_client<R: io::Read, W: io::Write>(
     mut reader: R,
     mut writer: W,
 ) -> io::Result<()> {
-    let mut server = p9::Server::new(&*root);
+    let mut server = p9::Server::new(PathBuf::from(&*root));
 
     loop {
         server.handle_message(&mut reader, &mut writer)?;

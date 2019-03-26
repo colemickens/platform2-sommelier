@@ -209,9 +209,9 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new<P: AsRef<Path>>(root: P) -> Server {
+    pub fn new<P: Into<Box<Path>>>(root: P) -> Server {
         Server {
-            root: root.as_ref().into(),
+            root: root.into(),
             msize: MAX_MESSAGE_SIZE,
             fids: BTreeMap::new(),
         }
