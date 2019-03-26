@@ -354,9 +354,17 @@ bool ServiceDistributed::AttestationGetDelegateCredentials(
     brillo::Blob* blob,
     brillo::Blob* secret,
     bool* has_reset_lock_permissions) {
-  // tpm_managerd handles resetting DA counter and doesn't require any
-  // secrets to be provided by cryptohomed.
-  *has_reset_lock_permissions = true;
+  if (!use_tpm_ || !tpm_) {
+    LOG(WARNING) << __func__
+                 << ": without TPM this function takes effect only to DA reset "
+                    "permission flag.";
+    *has_reset_lock_permissions = true;
+  } else {
+    if (!tpm_->GetDelegate(blob, secret, has_reset_lock_permissions)) {
+      LOG(ERROR) << __func__ << ": Couldn't get auth delegate.";
+      return false;
+    }
+  }
   return true;
 }
 
