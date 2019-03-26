@@ -58,3 +58,4 @@ symlink: 1
 umask: 1
 unlink: 1
 write: 1
+uname: 1

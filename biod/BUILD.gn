@@ -22,6 +22,9 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
+  if (use.fp_on_power_button) {
+    defines = [ "FP_ON_POWER_BUTTON" ]
+  }
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
@@ -48,6 +51,7 @@ static_library("libbiod") {
     "cros_fp_device.cc",
     "cros_fp_firmware.cc",
     "cros_fp_updater.cc",
+    "power_button_filter.cc",
     "power_manager_client.cc",
     "scoped_umask.cc",
     "uinput_device.cc",
