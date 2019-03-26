@@ -72,7 +72,6 @@ class PPPoEService : public EthernetService, public RPCTaskDelegate {
   void OnPPPDisconnected();
   void OnPPPDied(pid_t pid, int exit);
 
-  ControlInterface* control_interface_;
   PPPDeviceFactory* ppp_device_factory_;
   ProcessManager* process_manager_;
 

@@ -66,15 +66,13 @@ Ethernet::Ethernet(ControlInterface* control_interface,
              address,
              interface_index,
              Technology::kEthernet),
-      control_interface_(control_interface),
       link_up_(false),
 #if !defined(DISABLE_WIRED_8021X)
       is_eap_authenticated_(false),
       is_eap_detected_(false),
       eap_listener_(new EapListener(dispatcher, interface_index)),
-      supplicant_process_proxy_(
-          control_interface_->CreateSupplicantProcessProxy(
-              base::Closure(), base::Closure())),
+      supplicant_process_proxy_(control_interface->CreateSupplicantProcessProxy(
+          base::Closure(), base::Closure())),
 #endif  // DISABLE_WIRED_8021X
       sockets_(new Sockets()),
       weak_ptr_factory_(this) {
@@ -313,7 +311,7 @@ bool Ethernet::StartSupplicant() {
   }
 
   supplicant_interface_proxy_ =
-      control_interface_->CreateSupplicantInterfaceProxy(this, interface_path);
+      control_interface()->CreateSupplicantInterfaceProxy(this, interface_path);
   supplicant_interface_path_ = interface_path;
   return true;
 }
@@ -511,7 +509,7 @@ EthernetServiceRefPtr Ethernet::CreateEthernetService() {
 }
 
 EthernetServiceRefPtr Ethernet::CreatePPPoEService() {
-  return new PPPoEService(control_interface_,
+  return new PPPoEService(control_interface(),
                           dispatcher(),
                           metrics(),
                           manager(),

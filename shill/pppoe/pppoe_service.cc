@@ -44,7 +44,6 @@ PPPoEService::PPPoEService(ControlInterface* control_interface,
                       manager,
                       Technology::kPPPoE,
                       Properties(ethernet)),
-      control_interface_(control_interface),
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
       process_manager_(ProcessManager::GetInstance()),
       lcp_echo_interval_(kDefaultLCPEchoInterval),
@@ -108,7 +107,7 @@ void PPPoEService::Connect(Error* error, const char* reason) {
   options.use_ipv6 = true;
 
   pppd_ = PPPDaemon::Start(
-      control_interface_, process_manager_, weak_ptr_factory_.GetWeakPtr(),
+      control_interface(), process_manager_, weak_ptr_factory_.GetWeakPtr(),
       options, ethernet()->link_name(), callback, error);
   if (pppd_ == nullptr) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
@@ -230,7 +229,7 @@ void PPPoEService::OnPPPConnected(const map<string, string>& params) {
     ppp_device_->DropConnection();
   } else {
     ppp_device_ = ppp_device_factory_->CreatePPPDevice(
-        control_interface_, dispatcher(), metrics(), manager(), interface_name,
+        control_interface(), dispatcher(), metrics(), manager(), interface_name,
         interface_index);
     device_info->RegisterDevice(ppp_device_);
     ppp_device_->SetEnabled(true);

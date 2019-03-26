@@ -135,8 +135,6 @@ class Ethernet
 
   void SetupWakeOnLan();
 
-  ControlInterface* control_interface_;
-
   EthernetServiceRefPtr service_;
   bool link_up_;
 
