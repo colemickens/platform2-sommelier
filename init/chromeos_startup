@@ -370,6 +370,12 @@ force_clean_file_attrs() {
     return
   fi
 
+  # No physical stateful partition available, usually due to initramfs
+  # (recovery image, factory install shim or netboot).  Do not check.
+  if [ -z "${STATE_DEV}" ]; then
+    return
+  fi
+
   if ! file_attrs_cleaner_tool "${path}"; then
     chromeos-boot-alert self_repair
     clobber-log -- "Bad file attrs under ${path}"
