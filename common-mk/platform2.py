@@ -49,6 +49,7 @@ _IUSE = [
     'dlc',
     'fake_drivefs_launcher',
     'feedback',
+    'fp_on_power_button',
     'ftdi_tpm',
     'fuzzer',
     'hammerd_api',
