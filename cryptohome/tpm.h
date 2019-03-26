@@ -756,6 +756,21 @@ class Tpm {
   // from tpm_managerd.
   virtual void HandleOwnershipTakenSignal() = 0;
 
+  // Gets owner auth delegate. Returns |true| iff the operation succeeds. Once
+  // returning |true|, |blob| and |secret| are set to the blob and secret of
+  // owner auth delegate, respectively. |has_reset_lock_permissions| indicates
+  // whether the delegate has permissions to call |TPM_ResetLockValue|.
+  //
+  // For TPM2.0, the implementaion could be an exception, which is returning
+  // |true| without the output data. The definition of this interface would
+  // therefore be a little bit awkward because this interface should be private
+  // to TPM1.2. Yet, due to the current design of |ServiceDistributed| we need
+  // to expose this interface for now. Need to remove the all the delegate
+  // interace at once after proper refactoring.
+  virtual bool GetDelegate(brillo::Blob* blob,
+                           brillo::Blob* secret,
+                           bool* has_reset_lock_permissions) = 0;
+
  private:
   static Tpm* singleton_;
   static base::Lock singleton_lock_;

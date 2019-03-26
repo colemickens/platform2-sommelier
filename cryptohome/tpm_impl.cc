@@ -3343,4 +3343,9 @@ void TpmImpl::HandleOwnershipTakenSignal() {
   SetIsOwned(true);
 }
 
+bool TpmImpl::GetDelegate(brillo::Blob*, brillo::Blob*, bool*) {
+  DCHECK(false) << __func__ << ": Not implemented.";
+  return false;
+}
+
 }  // namespace cryptohome

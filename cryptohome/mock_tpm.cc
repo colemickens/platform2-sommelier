@@ -62,6 +62,7 @@ MockTpm::MockTpm() {
   ON_CALL(*this, SetUserType(_))
       .WillByDefault(Return(true));
   ON_CALL(*this, GetLECredentialBackend()).WillByDefault(Return(nullptr));
+  ON_CALL(*this, GetDelegate(_, _, _)).WillByDefault(Return(true));
 }
 
 MockTpm::~MockTpm() {}

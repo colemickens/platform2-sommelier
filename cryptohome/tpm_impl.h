@@ -170,7 +170,9 @@ class TpmImpl : public Tpm {
   bool SetUserType(Tpm::UserType type) override;
   LECredentialBackend* GetLECredentialBackend() override;
   SignatureSealingBackend* GetSignatureSealingBackend() override;
-
+  bool GetDelegate(brillo::Blob* blob,
+                   brillo::Blob* secret,
+                   bool* has_reset_lock_permissions) override;
   void HandleOwnershipTakenSignal() override;
 
   bool CreatePolicyWithRandomPassword(TSS_HCONTEXT context_handle,

@@ -1676,4 +1676,12 @@ SignatureSealingBackend* Tpm2Impl::GetSignatureSealingBackend() {
   return &signature_sealing_backend_;
 }
 
+bool Tpm2Impl::GetDelegate(brillo::Blob* /*blob*/,
+                           brillo::Blob* /*secret*/,
+                           bool* has_reset_lock_permissions) {
+  LOG(WARNING) << __func__ << ": No-ops to |blob| and |secret|.";
+  *has_reset_lock_permissions = true;
+  return true;
+}
+
 }  // namespace cryptohome

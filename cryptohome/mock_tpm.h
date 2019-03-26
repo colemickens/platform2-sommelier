@@ -158,6 +158,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD0(GetLECredentialBackend, LECredentialBackend*());
   MOCK_METHOD0(GetSignatureSealingBackend, SignatureSealingBackend*());
   MOCK_METHOD0(HandleOwnershipTakenSignal, void());
+  MOCK_METHOD3(GetDelegate, bool(brillo::Blob*, brillo::Blob*, bool*));
 
  private:
   TpmRetryAction XorDecrypt(TpmKeyHandle _key,

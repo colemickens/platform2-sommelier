@@ -82,4 +82,24 @@ void TpmNewImpl::SetIsOwned(bool) {
   LOG(WARNING) << __func__ << ": no-ops.";
 }
 
+bool TpmNewImpl::GetDelegate(brillo::Blob* blob,
+                             brillo::Blob* secret,
+                             bool* has_reset_lock_permissions) {
+  blob->clear();
+  secret->clear();
+  if (last_tpm_manager_data_.owner_delegate().blob().empty() ||
+      last_tpm_manager_data_.owner_delegate().secret().empty()) {
+    if (!CacheTpmManagerStatus()) {
+      LOG(ERROR) << __func__
+                 << ": Failed to update TPM status from tpm manager.";
+      return false;
+    }
+  }
+  const auto& owner_delegate = last_tpm_manager_data_.owner_delegate();
+  *blob = brillo::BlobFromString(owner_delegate.blob());
+  *secret = brillo::BlobFromString(owner_delegate.secret());
+  *has_reset_lock_permissions = owner_delegate.has_reset_lock_permissions();
+  return !blob->empty() && !secret->empty();
+}
+
 }  // namespace cryptohome

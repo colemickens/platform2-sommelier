@@ -204,6 +204,9 @@ class Tpm2Impl : public Tpm {
   bool SetUserType(Tpm::UserType type) override;
   LECredentialBackend* GetLECredentialBackend() override;
   SignatureSealingBackend* GetSignatureSealingBackend() override;
+  bool GetDelegate(brillo::Blob* blob,
+                   brillo::Blob* secret,
+                   bool* has_reset_lock_permissions) override;
 
   // Gets the trunks objects for the current thread, initializing new ones if
   // necessary. Returns true on success.
