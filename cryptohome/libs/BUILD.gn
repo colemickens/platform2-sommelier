@@ -195,6 +195,7 @@ static_library("libcrostpm") {
   ]
   libs = [
     "chaps",
+    "tpm_manager",
     "scrypt",
   ]
   all_dependent_configs = [ ":libcrostpm_dependent_config" ]
@@ -213,10 +214,7 @@ static_library("libcrostpm") {
       "../tpm2_impl.cc",
       "../tpm2_metrics.cc",
     ]
-    libs += [
-      "trunks",
-      "tpm_manager",
-    ]
+    libs += [ "trunks" ]
     deps += [ ":pinweaver-proto-external" ]
   }
 
@@ -276,6 +274,7 @@ static_library("libcryptohome") {
     "../mount_task.cc",
     "../obfuscated_username.cc",
     "../service.cc",
+    "../service_distributed.cc",
     "../service_monolithic.cc",
     "../service_userdataauth.cc",
     "../stateful_recovery.cc",
@@ -288,8 +287,10 @@ static_library("libcryptohome") {
   # The generated dbus headers use "register".
   cflags = [ "-Wno-deprecated-register" ]
   libs = [
+    "attestation",
     "chaps",
     "policy-${libbase_ver}",
+    "tpm_manager",
   ]
   all_dependent_configs = [ ":libcryptohome_dependent_config" ]
 
@@ -303,8 +304,6 @@ static_library("libcryptohome") {
   ]
 
   if (use.tpm2) {
-    sources += [ "../service_distributed.cc" ]
-    libs += [ "attestation" ]
     deps += [ ":libnvram-boot-lockbox-client" ]
   }
 }
