@@ -224,6 +224,7 @@ static_library("libcrostpm") {
       "../tpm1_static_utils.cc",
       "../tpm_impl.cc",
       "../tpm_metrics.cc",
+      "../tpm_new_impl.cc",
     ]
     libs += [ "tspi" ]
   }
