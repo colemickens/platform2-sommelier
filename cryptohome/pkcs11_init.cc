@@ -96,8 +96,7 @@ bool Pkcs11Init::GetTpmTokenSlotForPath(const FilePath& path,
 
 bool Pkcs11Init::IsUserTokenOK() {
   if (!platform_->FileExists(kTpmOwnedFile)) {
-    LOG(WARNING) << "TPM is not owned, token can not be valid.";
-    return false;
+    LOG(WARNING) << __func__ << ": TPM might not even be owned.";
   }
 
   CK_RV rv;
