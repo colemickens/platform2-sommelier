@@ -1,0 +1,71 @@
+// Copyright 2019 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// API exposed by the cros_healthd daemon. This API is normally consumed by the
+// browser and the telem and diag command-line tools.
+
+module chromeos.cros_healthd.mojom;
+
+import "cros_healthd_diagnostics.mojom";
+import "cros_healthd_telemetry.mojom";
+
+// Interface exposed by the cros_healthd daemon.
+interface CrosHealthdService {
+  // ------------------- Start of telemetry definitions -----------------------
+
+  // Retrieves telemetry data corresponding to |item|. The returned data will be
+  // null if |item| was invalid, or if there was an error retrieving the data.
+  GetTelemetryItem@0(TelemetryItemEnum item) => (TelemetryItemData? item_data);
+
+  // Retrieves telemetry data for every telemetry item in |group|. Any
+  // individual piece of data will be omitted from the response if there was an
+  // error retrieving data for that item.
+  GetTelemetryGroup@1(TelemetryGroupEnum group)
+      => (array<TelemetryItemWithValue> group_data);
+
+  // ------------------- End of telemetry definitions -------------------------
+
+  // ------------------- Start of diagnostics definitions ---------------------
+
+  // Returns an array of all diagnostic routines that the platform supports.
+  GetAvailableRoutines@2()
+      => (array<DiagnosticRoutineEnum> available_routines);
+
+  // Requests that a new diagnostic routine is created and started on the
+  // platform.
+  //
+  // The request:
+  // * |routine| - the diagnostic routine to create and start.
+  // * |params| - routine-specific parameters, which are passed to the new
+  //              routine.
+  //
+  // The response:
+  // * |uuid| - a unique identifier for the newly-created routine. A uuid of
+  //            kFailedToStartUuid means that the routine was unable to be
+  //            created.
+  // * |status| - current status of the newly-created routine. A status of
+  //              kFailedToStart means the routine was unable to be created.
+  RunRoutine@3(DiagnosticRoutineEnum routine, RoutineParameters params)
+      => (int32 uuid, DiagnosticRoutineStatusEnum status);
+
+  // Sends commands to an existing routine. Also returns status information for
+  // the routine.
+  //
+  // The request:
+  // * |uuid| - identifier which specifies which routine the command will be
+  //            sent to. This must be the same uuid that was returned from the
+  //            RunRoutine function call used to create the routine.
+  // * |command| - command to send the routine.
+  // * |include_output| - whether or not the response should include any output
+  //                      accumulated from the routine.
+  //
+  // The response:
+  // * |routine_update| - status information for the specified routine. See
+  //                      cros_healthd_diagnostics.mojom for the structure.
+  GetRoutineUpdate@4(int32 uuid, DiagnosticRoutineCommandEnum command,
+                     bool include_output)
+      => (RoutineUpdate routine_update);
+
+  // ------------------- End of diagnostics definitions -----------------------
+};

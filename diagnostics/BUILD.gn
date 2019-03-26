@@ -77,6 +77,9 @@ pkg_config("diagnostics_mojo_bindings_pkg_deps") {
 generate_mojom_bindings("diagnostics_mojo_bindings") {
   public_configs = [ ":diagnostics_mojo_bindings_pkg_deps" ]
   sources = [
+    "mojo/cros_healthd.mojom",
+    "mojo/cros_healthd_diagnostics.mojom",
+    "mojo/cros_healthd_telemetry.mojom",
     "mojo/diagnosticsd.mojom",
   ]
 }
