@@ -1,16 +1,16 @@
-/* Copyright 2018 The Chromium OS Authors. All rights reserved.
- * Use of this source code is governed by a BSD-style license that can be
- * found in the LICENSE file.
- */
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
 #ifndef RUNTIME_PROBE_PROBE_FUNCTION_H_
 #define RUNTIME_PROBE_PROBE_FUNCTION_H_
 
 #include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
-#include <unordered_map>
+#include <type_traits>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -24,46 +24,43 @@
 namespace runtime_probe {
 
 class ProbeFunction {
-  /*
-   * Formally, a probe function will be represented as following structure::
-   *   {
-   *     <function_name:string>: <args:ArgsType>
-   *   }
-   *
-   * where the top layer dictionary should have one and only one key.  For
-   * example::
-   *   {
-   *     "sysfs": {
-   *       "dir_path": "/sys/class/cool/device/dev*",
-   *       "keys": ["key_1", "key_2"],
-   *       "optional_keys": ["opt_key_1"]
-   *     }
-   *   }
-   *
-   * TODO(stimim): implement the following syntax.
-   *
-   * Alternative Syntax::
-   *   1. single string ("<function_name:string>"), this is equivalent to::
-   *      {
-   *        <function_name:string>: {}
-   *      }
-   *
-   *   2. single string ("<function_name:string>:<arg:string>"), this is
-   *      equivalent to::
-   *      {
-   *        <function_name:string>: {
-   *          "__only_required_argument": {
-   *            <arg:string>
-   *          }
-   *        }
-   *      }
-   */
+  // Formally, a probe function will be represented as following structure::
+  //   {
+  //     <function_name:string>: <args:ArgsType>
+  //   }
+  //
+  // where the top layer dictionary should have one and only one key.  For
+  // example::
+  //   {
+  //     "sysfs": {
+  //       "dir_path": "/sys/class/cool/device/dev*",
+  //       "keys": ["key_1", "key_2"],
+  //       "optional_keys": ["opt_key_1"]
+  //     }
+  //   }
+  //
+  // TODO(stimim): implement the following syntax.
+  //
+  // Alternative Syntax::
+  //   1. single string ("<function_name:string>"), this is equivalent to::
+  //      {
+  //        <function_name:string>: {}
+  //      }
+  //
+  //   2. single string ("<function_name:string>:<arg:string>"), this is
+  //      equivalent to::
+  //      {
+  //        <function_name:string>: {
+  //          "__only_required_argument": {
+  //            <arg:string>
+  //          }
+  //        }
+  //      }
 
  public:
-  typedef std::vector<base::DictionaryValue> DataType;
+  using DataType = std::vector<base::DictionaryValue>;
 
-  /* Convert |value| to ProbeFunction.  Returns nullptr on failure.
-   */
+  // Convert |value| to ProbeFunction.  Returns nullptr on failure.
   static std::unique_ptr<ProbeFunction> FromValue(const base::Value& value) {
     std::unique_ptr<ProbeFunction> retval;
 
@@ -79,32 +76,45 @@ class ProbeFunction {
     return retval;
   }
 
-  /* Evaluates this probe function.
-   *
-   * Output will be a list of base::DictionaryValue.
-   */
+  // Evaluates this entire probe function.
+  //
+  // Output will be a list of base::DictionaryValue.
   virtual DataType Eval() const = 0;
 
-  /* Function prototype of |FromDictionaryValue| that should be implemented by
-   * each derived class.  See `functions/sysfs.h` about how to implement this
-   * function.
-   */
-  typedef std::function<std::unique_ptr<ProbeFunction>(
-      const base::DictionaryValue&)>
-      FactoryFunctionType;
+  // Serializes this probe function and passes it to helper. The output of the
+  // helper will store in |result|.
+  //
+  // true if success on executing helper.
+  bool InvokeHelper(std::string* result) const;
 
-  /* Mapping from |function_name| to |FromDictionaryValue| of each derived
-   * classes.
-   */
-  static std::unordered_map<std::string_view, FactoryFunctionType>
-      REGISTERED_FUNCTIONS;
+  // Evaluates the helper part for this probe function. Helper part is
+  // designed for portion that need extended sandbox. ProbeFunction will
+  // be initialized with same json statement in the helper process, which
+  // invokes EvalInHelper() instead of Eval(). Since execution of
+  // EvalInHelper() implies a different sandbox, it is encouraged to keep work
+  // that doesn't need a privilege out of this function.
+  //
+  // Output will be an integer and the interpretation of the integer on
+  // purposely leaves to the caller because it might execute other binary
+  // in sandbox environment and we might want to preserve the exit code.
+  virtual int EvalInHelper(std::string* output) const;
+
+  // Function prototype of |FromDictionaryValue| that should be implemented by
+  // each derived class.  See `functions/sysfs.h` about how to implement this
+  // function.
+  using FactoryFunctionType = std::function<std::unique_ptr<ProbeFunction>(
+      const base::DictionaryValue&)>;
+
+  // Mapping from |function_name| to |FromDictionaryValue| of each derived
+  // classes.
+  static std::map<std::string_view, FactoryFunctionType> registered_functions_;
 
   template <class T>
   struct Register {
     Register() {
       static_assert(std::is_base_of<ProbeFunction, T>::value,
                     "Registered type must inherit ProbeFunction");
-      REGISTERED_FUNCTIONS[T::function_name] = T::FromDictionaryValue;
+      registered_functions_[T::function_name] = T::FromDictionaryValue;
     }
   };
 
@@ -116,20 +126,18 @@ class ProbeFunction {
  private:
   static std::unique_ptr<ProbeFunction> FromDictionaryValue(
       const base::DictionaryValue& dict_value);
+  std::unique_ptr<base::DictionaryValue> raw_value_;
 
-  /*
-   * Each probe function must define their own args type.
-   */
+  // Each probe function must define their own args type.
 };
 
 #ifdef _RUNTIME_PROBE_GENERATE_PROBE_FUNCTIONS
-/* _RUNTIME_PROBE_GENERATE_PROBE_FUNCTIONS should only be defined by
- * `all_functions.cc`.  So the following initialization will only have one
- * instance.
- */
+// _RUNTIME_PROBE_GENERATE_PROBE_FUNCTIONS should only be defined by
+// `all_functions.cc`.  So the following initialization will only have one
+// instance.
 
-std::unordered_map<std::string_view, ProbeFunction::FactoryFunctionType>
-    ProbeFunction::REGISTERED_FUNCTIONS{};
+std::map<std::string_view, ProbeFunction::FactoryFunctionType>
+    ProbeFunction::registered_functions_{};
 #define REGISTER_PROBE_FUNCTION(T) ProbeFunction::Register<T> T::register_
 
 #else

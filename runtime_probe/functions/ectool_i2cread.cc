@@ -19,30 +19,36 @@ namespace runtime_probe {
 
 EctoolI2Cread::DataType EctoolI2Cread::Eval() const {
   DataType result{};
-  constexpr auto kEctoolBinaryPath = "/usr/sbin/ectool";
-  constexpr auto kEctoolSubcommand = "i2cread";
   constexpr auto kRegexPattern =
       R"(^Read from I2C port [\d]+ at .* offset .* = (.+)$)";
+
+  std::string ectool_output;
+
+  if (!InvokeHelper(&ectool_output))
+    return result;
+
+  pcrecpp::RE re(kRegexPattern);
+  std::string reg_value;
+  if (re.PartialMatch(ectool_output, &reg_value)) {
+    base::DictionaryValue dict_value;
+    dict_value.SetString(key_, reg_value);
+    result.push_back(std::move(dict_value));
+  }
+  return result;
+}
+
+int EctoolI2Cread::EvalInHelper(std::string* output) const {
+  constexpr auto kEctoolBinaryPath = "/usr/sbin/ectool";
+  constexpr auto kEctoolSubcommand = "i2cread";
 
   std::vector<std::string> ectool_cmd_arg{
       kEctoolBinaryPath, kEctoolSubcommand, to_string(size_),
       to_string(port_),  to_string(addr_),  to_string(offset_)};
   std::string ectool_output;
 
-  if (!base::GetAppOutput(ectool_cmd_arg, &ectool_output)) {
-    LOG(ERROR) << "Failed to execute command \"ectool i2cread\"";
-  } else {
-    VLOG(2) << "ectool i2cread output:\n" << ectool_output;
-    pcrecpp::RE re(kRegexPattern);
-    std::string reg_value;
-    if (re.PartialMatch(ectool_output, &reg_value)) {
-      base::DictionaryValue dict_value;
-      dict_value.SetString(key_, reg_value);
-      result.push_back(std::move(dict_value));
-    }
-  }
-
-  return result;
+  if (base::GetAppOutput(ectool_cmd_arg, output))
+    return 0;
+  return -1;
 }
 
 }  // namespace runtime_probe
