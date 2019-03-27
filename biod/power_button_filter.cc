@@ -34,6 +34,19 @@ std::unique_ptr<PowerButtonFilterInterface> PowerButtonFilter::Create(
   return power_button_filter;
 }
 
+std::unique_ptr<PowerButtonFilterInterface>
+PowerButtonFilter::create_power_button_filter_for_test(
+    std::unique_ptr<PowerManagerClientInterface> power_manager_client,
+    std::unique_ptr<brillo::CrosConfigInterface> cros_config_prefs,
+    std::unique_ptr<base::TickClock> tick_clock) {
+  std::unique_ptr<PowerButtonFilter> power_button_filter(
+      new PowerButtonFilter());
+  power_button_filter->Init(std::move(power_manager_client),
+                            std::move(cros_config_prefs),
+                            std::move(tick_clock));
+  return power_button_filter;
+}
+
 bool PowerButtonFilter::ShouldFilterFingerprintMatch() {
   if (!fp_on_power_button_)
     return false;

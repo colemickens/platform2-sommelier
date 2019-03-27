@@ -58,6 +58,13 @@ static_library("libbiod") {
   ]
 }
 
+static_library("fake_libbiod") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "fake_power_manager_client.cc",
+  ]
+}
+
 executable("biod") {
   configs += [ ":target_defaults" ]
   sources = [
@@ -120,8 +127,11 @@ if (use.test) {
       "biod_storage_test.cc",
       "cros_fp_firmware_test.cc",
       "cros_fp_updater_test.cc",
+      "power_button_filter_test.cc",
+      "power_manager_client_test.cc",
     ]
     deps = [
+      ":fake_libbiod",
       ":libbiod",
       "//common-mk/testrunner",
     ]

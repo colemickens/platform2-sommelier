@@ -40,6 +40,11 @@ class PowerButtonFilter : public PowerButtonFilterInterface,
  public:
   static std::unique_ptr<PowerButtonFilterInterface> Create(
       const scoped_refptr<dbus::Bus>& bus);
+  static std::unique_ptr<PowerButtonFilterInterface>
+  create_power_button_filter_for_test(
+      std::unique_ptr<PowerManagerClientInterface> power_manager_client,
+      std::unique_ptr<brillo::CrosConfigInterface> cros_config_prefs,
+      std::unique_ptr<base::TickClock> tick_clock);
   ~PowerButtonFilter() override = default;
 
   void Init(std::unique_ptr<PowerManagerClientInterface> power_manager_client,
