@@ -774,7 +774,9 @@ TEST_F(TPM2UtilityTest, SignSuccessWithUnknownAlgorithm) {
   public_data.object_attributes = trunks::kSign;
   public_data.unique.rsa = GetValidRSAPublicKey();
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
-      .WillOnce(DoAll(SetArgPointee<1>(public_data), Return(TPM_RC_SUCCESS)));
+      .WillRepeatedly(
+          DoAll(SetArgPointee<1>(public_data), Return(TPM_RC_SUCCESS)));
+
   EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, trunks::TPM_ALG_RSASSA,
                                       trunks::TPM_ALG_NULL, input, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
@@ -785,13 +787,68 @@ TEST_F(TPM2UtilityTest, SignSuccessWithUnknownAlgorithm) {
   // DigestInfo and use Sign with NULL scheme
   const std::string kInputWithMd5DigestInfo =
       GetDigestAlgorithmEncoding(DigestAlgorithm::MD5) + input;
-  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
-      .WillOnce(DoAll(SetArgPointee<1>(public_data), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_,
               Sign(key_handle, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_NULL,
                    kInputWithMd5DigestInfo, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_TRUE(utility.Sign(key_handle, DigestAlgorithm::MD5, input, &output));
+}
+
+TEST_F(TPM2UtilityTest, SignSuccessWithPrependDigestForKnownAlgorithm) {
+  TPM2UtilityImpl utility(factory_.get());
+  int key_handle = 43;
+  std::string output;
+  trunks::TPMT_PUBLIC public_data;
+  public_data.type = trunks::TPM_ALG_RSA;
+  public_data.parameters.rsa_detail.exponent = 0x10001;
+  public_data.object_attributes = trunks::kSign;
+  public_data.unique.rsa = GetValidRSAPublicKey();
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<1>(public_data), Return(TPM_RC_SUCCESS)));
+
+  // For prepended DigestInfo data, we will strip the digest if the algorithm is
+  // supported by TPM
+  // Test all SHA1, SHA256, SHA384, SHA512
+  const std::string kDigestOfSHA1 = std::string(SHA1_DIGEST_SIZE, 'a');
+  const std::string kInputWithSHA1DigestInfo =
+      GetDigestAlgorithmEncoding(DigestAlgorithm::SHA1) + kDigestOfSHA1;
+  EXPECT_CALL(mock_tpm_utility_,
+              Sign(key_handle, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA1,
+                   kDigestOfSHA1, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_TRUE(utility.Sign(key_handle, DigestAlgorithm::NoDigest,
+                           kInputWithSHA1DigestInfo, &output));
+
+  const std::string kDigestOfSHA256 = std::string(SHA256_DIGEST_SIZE, 'b');
+  const std::string kInputWithSHA256DigestInfo =
+      GetDigestAlgorithmEncoding(DigestAlgorithm::SHA256) + kDigestOfSHA256;
+  EXPECT_CALL(mock_tpm_utility_,
+              Sign(key_handle, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA256,
+                   kDigestOfSHA256, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_TRUE(utility.Sign(key_handle, DigestAlgorithm::NoDigest,
+                           kInputWithSHA256DigestInfo, &output));
+
+  const std::string kDigestOfSHA384 = std::string(SHA384_DIGEST_SIZE, 'c');
+  const std::string kInputWithSHA384DigestInfo =
+      GetDigestAlgorithmEncoding(DigestAlgorithm::SHA384) + kDigestOfSHA384;
+  EXPECT_CALL(mock_tpm_utility_,
+              Sign(key_handle, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA384,
+                   kDigestOfSHA384, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_TRUE(utility.Sign(key_handle, DigestAlgorithm::NoDigest,
+                           kInputWithSHA384DigestInfo, &output));
+
+  const std::string kDigestOfSHA512 = std::string(SHA512_DIGEST_SIZE, 'd');
+  const std::string kInputWithSHA512DigestInfo =
+      GetDigestAlgorithmEncoding(DigestAlgorithm::SHA512) + kDigestOfSHA512;
+  EXPECT_CALL(mock_tpm_utility_,
+              Sign(key_handle, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA512,
+                   kDigestOfSHA512, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_TRUE(utility.Sign(key_handle, DigestAlgorithm::NoDigest,
+                           kInputWithSHA512DigestInfo, &output));
 }
 
 TEST_F(TPM2UtilityTest, GenerateECCKeySuccess) {

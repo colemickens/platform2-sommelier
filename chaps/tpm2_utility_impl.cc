@@ -15,6 +15,7 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
+#include <base/optional.h>
 #include <base/sha1.h>
 #include <base/stl_util.h>
 #include <crypto/scoped_openssl_types.h>
@@ -35,6 +36,7 @@ using trunks::kStorageRootKey;
 using trunks::TPM_RC;
 using trunks::TPM_RC_SUCCESS;
 using trunks::TrunksFactory;
+using ParsedDigestInfo = std::pair<trunks::TPM_ALG_ID, std::string>;
 
 namespace {
 
@@ -45,7 +47,24 @@ constexpr struct {
     {trunks::TPM_ECC_NIST_P256, NID_X9_62_prime256v1},
 };
 
-trunks::TPM_ALG_ID GetDigestAlgorithmToTrunksAlgId(
+// Supported digest algorithms in TPM 2.0.
+constexpr struct {
+  trunks::TPM_ALG_ID id;
+  int digest_length;  // in bytes
+  chaps::DigestAlgorithm alg;
+} kSupportedDigestAlgorithms[] = {
+    {trunks::TPM_ALG_SHA1, SHA1_DIGEST_SIZE, chaps::DigestAlgorithm::SHA1},
+    {trunks::TPM_ALG_SHA256, SHA256_DIGEST_SIZE,
+     chaps::DigestAlgorithm::SHA256},
+    {trunks::TPM_ALG_SHA384, SHA384_DIGEST_SIZE,
+     chaps::DigestAlgorithm::SHA384},
+    {trunks::TPM_ALG_SHA512, SHA512_DIGEST_SIZE,
+     chaps::DigestAlgorithm::SHA512},
+};
+
+// Return the TPM algorithm ID for |digest_alg|. Return TPM_ALG_NULL for not
+// supported algorithm by TPM 2.0.
+trunks::TPM_ALG_ID DigestAlgorithmToTrunksAlgId(
     chaps::DigestAlgorithm digest_alg) {
   switch (digest_alg) {
     case chaps::DigestAlgorithm::SHA1:
@@ -62,6 +81,22 @@ trunks::TPM_ALG_ID GetDigestAlgorithmToTrunksAlgId(
     case chaps::DigestAlgorithm::NoDigest:
       return trunks::TPM_ALG_NULL;
   }
+}
+
+// Check the |input| is <digest_info><digest> form. If so, return the matched
+// trunks algorithm ID and the digest.
+base::Optional<ParsedDigestInfo> ParseDigestInfo(const std::string& input) {
+  for (const auto& algorithm_info : kSupportedDigestAlgorithms) {
+    const std::string& digest_info =
+        GetDigestAlgorithmEncoding(algorithm_info.alg);
+
+    if (input.size() == digest_info.size() + algorithm_info.digest_length &&
+        input.compare(0, digest_info.size(), digest_info) == 0) {
+      return std::make_pair(algorithm_info.id,
+                            input.substr(digest_info.size()));
+    }
+  }
+  return base::nullopt;
 }
 
 uint32_t GetIntegerExponent(const std::string& public_exponent) {
@@ -704,7 +739,7 @@ bool TPM2UtilityImpl::Sign(int key_handle,
   }
 
   trunks::TPM_ALG_ID digest_alg_id =
-      GetDigestAlgorithmToTrunksAlgId(digest_algorithm);
+      DigestAlgorithmToTrunksAlgId(digest_algorithm);
   if (public_area.type == trunks::TPM_ALG_RSA) {
     // In PKCS1.5 of RSASSA, the signed data will be
     //    <DigestInfo encoding><input><padding>
@@ -714,11 +749,6 @@ bool TPM2UtilityImpl::Sign(int key_handle,
     // padding in software. Then, perform raw RSA on TPM by sending Decrypt
     // command with NULL scheme.
     // 2. Otherwise, send Sign command to the TPM.
-    // 2-1. If TPM supported the digest type, we will send raw input to TPM, and
-    //      TPM will do all the things internally.
-    // 2-2. If TPM doesn't support the digest type (ex. MD5), we need to prepend
-    //      DigestInfo and then call TPM Sign with NULL scheme to let TPM do the
-    //      signing and padding.
     //
     // This is done to work with TPMs that don't support all required hashing
     // algorithms, and for which the Decrypt attribute is set for signing keys.
@@ -735,10 +765,35 @@ bool TPM2UtilityImpl::Sign(int key_handle,
       // TODO(crbug/942716): remove this after the bug is fixed.
       LOG(INFO) << __func__ << ": TPM signed with digest_alg_id: " << std::hex
                 << std::showbase << digest_alg_id;
-      const std::string& data_to_sign =
-          digest_alg_id != trunks::TPM_ALG_NULL
-              ? input
-              : GetDigestAlgorithmEncoding(digest_algorithm) + input;
+
+      std::string data_to_sign;
+
+      if (digest_algorithm == DigestAlgorithm::NoDigest) {
+        // 2-1. For CKM_RSA_PKCS, digest type is NoDigest, but PKCS11 API caller
+        //      may pass the input with prepended DigestInfo. If it can be
+        //      recognized as TPM supported algorithm, strip off the prepended
+        //      DigestInfo and consider it as 2-3. If not, keep pass the raw
+        //      input.
+        base::Optional<ParsedDigestInfo> parsed = ParseDigestInfo(input);
+        if (parsed != base::nullopt) {
+          digest_alg_id = parsed.value().first;
+          data_to_sign = parsed.value().second;
+        } else {
+          digest_alg_id = trunks::TPM_ALG_NULL;
+          data_to_sign = input;
+        }
+      } else if (digest_alg_id == trunks::TPM_ALG_NULL) {
+        // 2-2. If TPM doesn't support the digest type (ex. MD5), we need to
+        //      prepend DigestInfo and then call TPM Sign with NULL scheme to
+        //      sign and pad.
+        data_to_sign = GetDigestAlgorithmEncoding(digest_algorithm) + input;
+      } else {
+        // 2-3. If TPM supported the digest type, we will send the digest
+        //      |input| to TPM. TPM will do both prepending DigestInfo and PKCS1
+        //      padding.
+        data_to_sign = input;
+      }
+
       result = trunks_tpm_utility_->Sign(
           key_handle, trunks::TPM_ALG_RSASSA, digest_alg_id, data_to_sign,
           false /* don't generate hash */, session_->GetDelegate(), signature);

@@ -223,9 +223,13 @@ class TPMUtility {
   // Generates a digital signature.
   //   key_handle - The key handle, as provided by LoadKey, WrapRSAKey or
   //                GenerateKey.
+  //   digest_algorithm - The digest algorithm type of |input|. For padding only
+  //                      scheme (ex. CKM_RSA_PKCS), use NoDigest.
   //   input - The raw data we want to sign. For RSASSA, the DER encoding of the
   //           DigestInfo value (see PKCS #1 v.2.1: 9.2) will be added
-  //           internally.
+  //           internally according to |digest_algorithm|.
+  //           For padding only scheme (ex. CKM_RSA_PKCS), the DigestInfo should
+  //           be added by PKCS#11 API caller.
   //   signature - Receives the generated signature. The signature length will
   //               always match the length of the RSA key modulus.
   // Returns true on success.
