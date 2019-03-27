@@ -199,30 +199,18 @@ class Service : public base::RefCounted<Service> {
   // State utility functions
   static bool IsConnectedState(ConnectState state);
   static bool IsConnectingState(ConnectState state);
+  static bool IsPortalledState(ConnectState state);
 
   virtual bool IsConnected() const;
   virtual bool IsConnecting() const;
-  virtual bool IsFailed() const {
-    // We sometimes lie about the failure state, to keep Chrome happy
-    // (see comment in WiFi::HandleDisconnect). Hence, we check both
-    // state and |failed_time_|.
-    return state() == kStateFailure || failed_time_ > 0;
-  }
-
-  virtual bool IsInFailState() const {
-    return state() == kStateFailure;
-  }
-
-  virtual bool IsOnline() const {
-    return state() == kStateOnline;
-  }
+  virtual bool IsPortalled() const;
+  virtual bool IsFailed() const;
+  virtual bool IsInFailState() const;
+  virtual bool IsOnline() const;
 
   // Returns true if the connection for |this| depends on service |b|.
   virtual bool IsDependentOn(const ServiceRefPtr& b) const;
 
-  virtual bool IsPortalled() const {
-    return state() == kStatePortal;
-  }
 
   // Return true if service is allowed to automatically switch to fallback
   // DNS server.

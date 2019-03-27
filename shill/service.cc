@@ -300,7 +300,7 @@ void Service::Connect(Error* /*error*/, const char* reason) {
   LOG(INFO) << "Connect to service " << unique_name() <<": " << reason;
   ClearExplicitlyDisconnected();
   // Clear any failure state from a previous connect attempt.
-  if (state() == kStateFailure)
+  if (IsInFailState())
     SetState(kStateIdle);
 }
 
@@ -352,8 +352,7 @@ bool Service::IsActive(Error* /*error*/) {
 
 // static
 bool Service::IsConnectedState(ConnectState state) {
-  return (state == kStateConnected ||
-          state == kStatePortal ||
+  return (state == kStateConnected || IsPortalledState(state) ||
           state == kStateOnline);
 }
 
@@ -363,12 +362,36 @@ bool Service::IsConnectingState(ConnectState state) {
           state == kStateConfiguring);
 }
 
+// static
+bool Service::IsPortalledState(ConnectState state) {
+  return state == kStatePortal;
+}
+
 bool Service::IsConnected() const {
   return IsConnectedState(state());
 }
 
 bool Service::IsConnecting() const {
   return IsConnectingState(state());
+}
+
+bool Service::IsPortalled() const {
+  return IsPortalledState(state());
+}
+
+bool Service::IsFailed() const {
+  // We sometimes lie about the failure state, to keep Chrome happy
+  // (see comment in WiFi::HandleDisconnect). Hence, we check both
+  // state and |failed_time_|.
+  return state() == kStateFailure || failed_time_ > 0;
+}
+
+bool Service::IsInFailState() const {
+  return state() == kStateFailure;
+}
+
+bool Service::IsOnline() const {
+  return state() == kStateOnline;
 }
 
 void Service::SetState(ConnectState state) {
@@ -1164,11 +1187,8 @@ void Service::OnPropertyChanged(const string& property) {
   }
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   SaveToProfile();
-  if ((property == kCheckPortalProperty ||
-       property == kProxyConfigProperty) &&
-      (state_ == kStateConnected ||
-       state_ == kStatePortal ||
-       state_ == kStateOnline)) {
+  if ((property == kCheckPortalProperty || property == kProxyConfigProperty) &&
+      IsConnected()) {
     manager_->RecheckPortalOnService(this);
   }
 }

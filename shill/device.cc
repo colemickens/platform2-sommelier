@@ -965,7 +965,7 @@ void Device::SetupConnection(const IPConfigRefPtr& ipconfig) {
     // from Connected->Online->Connected because that can affect the service
     // sort order.  In this case, perform portal detection "optimistically"
     // in the Online state, and transition from Online->Portal if it fails.
-    if (selected_service_->state() != Service::kStateOnline)
+    if (!selected_service_->IsOnline())
       SetServiceState(Service::kStateConnected);
     OnConnected();
     portal_attempts_to_online_ = 0;
@@ -1311,7 +1311,7 @@ bool Device::RequestPortalDetection() {
     return false;
   }
 
-  if (selected_service_->state() != Service::kStatePortal) {
+  if (!selected_service_->IsPortalled()) {
     SLOG(this, 2) << link_name()
                   << ": Service is not in portal state.  "
                   << "No need to start check.";
@@ -1686,7 +1686,7 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
     return;
   }
 
-  if (state == Service::kStatePortal && connection_->IsDefault() &&
+  if (Service::IsPortalledState(state) && connection_->IsDefault() &&
       portal_check_interval_seconds_ != 0) {
     CHECK(portal_detector_.get());
     PortalDetector::Properties props = manager_->GetPortalCheckProperties();
