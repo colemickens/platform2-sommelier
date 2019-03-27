@@ -88,12 +88,12 @@ class AudioClientTest : public testing::Test {
       dbus::ObjectProxy* proxy, dbus::MethodCall* method_call) {
     if (proxy != cras_proxy_) {
       ADD_FAILURE() << "Unhandled method call to proxy " << proxy;
-      return std::unique_ptr<dbus::Response>();
+      return nullptr;
     }
     if (method_call->GetInterface() != cras::kCrasControlInterface) {
       ADD_FAILURE() << "Unhandled method call to interface "
                     << method_call->GetInterface();
-      return std::unique_ptr<dbus::Response>();
+      return nullptr;
     }
 
     std::unique_ptr<dbus::Response> response =
@@ -110,7 +110,7 @@ class AudioClientTest : public testing::Test {
         ADD_FAILURE() << "Couldn't read " << cras::kSetSuspendAudio << " arg";
     } else {
       ADD_FAILURE() << "Unhandled method call to member " << member;
-      return std::unique_ptr<dbus::Response>();
+      return nullptr;
     }
     return response;
   }

@@ -984,7 +984,7 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestShutdownMethod(
             << ShutdownReasonToString(reason) << " (" << description << ")";
 
   ShutDown(ShutdownMode::POWER_OFF, reason);
-  return std::unique_ptr<dbus::Response>();
+  return nullptr;
 }
 
 std::unique_ptr<dbus::Response> Daemon::HandleRequestRestartMethod(
@@ -1017,7 +1017,7 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestRestartMethod(
             << ShutdownReasonToString(reason) << " (" << description << ")";
 
   ShutDown(ShutdownMode::REBOOT, reason);
-  return std::unique_ptr<dbus::Response>();
+  return nullptr;
 }
 
 std::unique_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
@@ -1037,7 +1037,7 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
             << " from " << method_call->GetSender();
   Suspend(SuspendImminent_Reason_OTHER, got_external_wakeup_count,
           external_wakeup_count);
-  return std::unique_ptr<dbus::Response>();
+  return nullptr;
 }
 
 std::unique_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(
@@ -1053,7 +1053,7 @@ std::unique_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(
   for (auto controller : all_backlight_controllers_)
     controller->HandleVideoActivity(fullscreen);
   state_controller_->HandleVideoActivity();
-  return std::unique_ptr<dbus::Response>();
+  return nullptr;
 }
 
 std::unique_ptr<dbus::Response> Daemon::HandleUserActivityMethod(
@@ -1070,7 +1070,7 @@ std::unique_ptr<dbus::Response> Daemon::HandleUserActivityMethod(
   state_controller_->HandleUserActivity();
   for (auto controller : all_backlight_controllers_)
     controller->HandleUserActivity(type);
-  return std::unique_ptr<dbus::Response>();
+  return nullptr;
 }
 
 std::unique_ptr<dbus::Response> Daemon::HandleWakeNotificationMethod(
@@ -1079,7 +1079,7 @@ std::unique_ptr<dbus::Response> Daemon::HandleWakeNotificationMethod(
   state_controller_->HandleWakeNotification();
   for (auto controller : all_backlight_controllers_)
     controller->HandleWakeNotification();
-  return std::unique_ptr<dbus::Response>();
+  return nullptr;
 }
 
 std::unique_ptr<dbus::Response> Daemon::HandleSetIsProjectingMethod(
@@ -1099,7 +1099,7 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetIsProjectingMethod(
   input_device_controller_->SetDisplayMode(mode);
   for (auto controller : all_backlight_controllers_)
     controller->HandleDisplayModeChange(mode);
-  return std::unique_ptr<dbus::Response>();
+  return nullptr;
 }
 
 std::unique_ptr<dbus::Response> Daemon::HandleSetPolicyMethod(
@@ -1121,7 +1121,7 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetPolicyMethod(
 
   for (auto controller : all_backlight_controllers_)
     controller->HandlePolicyChange(policy);
-  return std::unique_ptr<dbus::Response>();
+  return nullptr;
 }
 
 std::unique_ptr<dbus::Response> Daemon::HandleSetBacklightsForcedOffMethod(
@@ -1135,7 +1135,7 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetBacklightsForcedOffMethod(
             << " forcing backlights off";
   for (auto controller : all_backlight_controllers_)
     controller->SetForcedOff(force_off);
-  return std::unique_ptr<dbus::Response>();
+  return nullptr;
 }
 
 std::unique_ptr<dbus::Response> Daemon::HandleGetBacklightsForcedOffMethod(

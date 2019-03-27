@@ -327,7 +327,7 @@ class StateControllerTest : public testing::Test {
     ADD_FAILURE() << "Got unexpected D-Bus method call to "
                   << call->GetInterface() << "." << call->GetMember()
                   << " on proxy " << proxy;
-    return std::unique_ptr<dbus::Response>();
+    return nullptr;
   }
 
   // SignalType is passed to GetDBusSignals() to describe which types of signals

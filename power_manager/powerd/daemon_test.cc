@@ -236,7 +236,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   CreatePeripheralBatteryWatcher(
       system::DBusWrapperInterface* dbus_wrapper) override {
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
-    return std::unique_ptr<system::PeripheralBatteryWatcher>();
+    return nullptr;
   }
   std::unique_ptr<system::PowerSupplyInterface> CreatePowerSupply(
       const base::FilePath& power_supply_path,
