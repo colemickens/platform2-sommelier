@@ -8,8 +8,6 @@
 #include <functional>
 #include <memory>
 
-#include "diagnostics/dpsl/public/export.h"
-
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
@@ -51,7 +49,7 @@ class DpslThreadContext;
 // PRECONDITIONS:
 // 1. An instance of DpslThreadContext must exist on the current thread during
 //    the whole lifetime of this object.
-class DPSL_EXPORT DpslRequester {
+class DpslRequester {
  public:
   // Specifies predefined options for the URI which should be used for the
   // created gRPC client for making requests.

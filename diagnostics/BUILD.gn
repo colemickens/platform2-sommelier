@@ -45,10 +45,6 @@ proto_library("diagnostics_grpc_protos") {
     "${proto_in_dir}/wilco_dtc.proto",
     "${proto_in_dir}/wilco_dtc_supportd.proto",
   ]
-
-  # libdiagnostics_grpc_protos.a is used by a shared_library object, so we need
-  # to build it with '-fPIC' instead of '-fPIE'.
-  use_pic = true
 }
 
 # Library that adopts gRPC core async interface to a libchrome-friendly one.
@@ -68,11 +64,6 @@ static_library("libgrpc_async_adapter") {
     "grpc_async_adapter/grpc_completion_queue_dispatcher.cc",
     "grpc_async_adapter/rpc_state.cc",
   ]
-
-  # libgrpc_async_adapter.a is used by a shared_library object, so we need to
-  # build it with '-fPIC' instead of '-fPIE'.
-  configs -= [ "//common-mk:pie" ]
-  configs += [ "//common-mk:pic" ]
 }
 
 # Library with generated Mojo API definitions.
@@ -180,7 +171,7 @@ pkg_config("libdpsl_pkg_deps") {
   ]
 }
 
-shared_library("libdpsl") {
+static_library("libdpsl") {
   deps = [
     ":diagnostics_grpc_protos",
     ":libconstants",

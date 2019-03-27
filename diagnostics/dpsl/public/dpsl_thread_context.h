@@ -9,8 +9,6 @@
 #include <functional>
 #include <memory>
 
-#include "diagnostics/dpsl/public/export.h"
-
 namespace diagnostics {
 
 class DpslGlobalContext;
@@ -41,7 +39,7 @@ class DpslGlobalContext;
 // PRECONDITIONS:
 // 1. An instance of DpslGlobalContext must exist during the whole lifetime of
 //    this object.
-class DPSL_EXPORT DpslThreadContext {
+class DpslThreadContext {
  public:
   // Factory method that returns an instance of the real implementation of this
   // interface.
