@@ -1828,9 +1828,12 @@ int main(int argc, char **argv) {
       cryptohome::AttestationGetEnrollmentPreparationsReply* extension =
         reply.MutableExtension(
             cryptohome::AttestationGetEnrollmentPreparationsReply::reply);
-      printf("Attestation Prepared: %s\n",
-             (extension->enrollment_preparations().size() ? "true" : "false"));
       auto map = extension->enrollment_preparations();
+      bool prepared = false;
+      for (auto it = map.cbegin(), end = map.cend(); it != end; ++it) {
+        prepared |= it->second;
+      }
+      printf("Attestation Prepared: %s\n", prepared ? "true" : "false");
       for (auto it = map.cbegin(), end = map.cend(); it != end; ++it) {
         printf("    Prepared for %s: %s\n", GetPCAName(it->first).c_str(),
                (it->second ? "true" : "false"));
