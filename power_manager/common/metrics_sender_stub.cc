@@ -52,7 +52,7 @@ MetricsSenderStub::MetricsSenderStub() {
 }
 
 MetricsSenderStub::~MetricsSenderStub() {
-  MetricsSenderInterface::SetInstance(NULL);
+  MetricsSenderInterface::SetInstance(nullptr);
 }
 
 std::string MetricsSenderStub::GetMetric(size_t i) const {

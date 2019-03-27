@@ -76,7 +76,7 @@ void SendSuspendReady(scoped_refptr<dbus::ObjectProxy> powerd_proxy,
   request.set_delay_id(delay_id);
   request.set_suspend_id(suspend_id);
   CallMethod(powerd_proxy.get(), power_manager::kHandleSuspendReadinessMethod,
-             request, NULL);
+             request, nullptr);
 }
 
 // Handles the start of a suspend attempt. Posts a task to run

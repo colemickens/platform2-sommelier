@@ -175,7 +175,7 @@ StateController::TestApi::TestApi(StateController* controller)
     : controller_(controller) {}
 
 StateController::TestApi::~TestApi() {
-  controller_ = NULL;
+  controller_ = nullptr;
 }
 
 void StateController::TestApi::TriggerActionTimeout() {

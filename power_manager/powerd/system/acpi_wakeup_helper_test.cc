@@ -36,9 +36,11 @@ const char* const kFileContents[] = {
 class FakeAcpiWakeupFile : public AcpiWakeupFileInterface {
  public:
   FakeAcpiWakeupFile()
-      : contents_(NULL), expected_write_(NULL), contents_after_write_(NULL) {}
+      : contents_(nullptr),
+        expected_write_(nullptr),
+        contents_after_write_(nullptr) {}
 
-  bool Exists() override { return contents_ != NULL; }
+  bool Exists() override { return contents_ != nullptr; }
 
   bool Read(std::string* contents) override {
     if (!contents_)
@@ -53,15 +55,15 @@ class FakeAcpiWakeupFile : public AcpiWakeupFileInterface {
       return false;
     }
     contents_ = contents_after_write_;
-    expected_write_ = NULL;
-    contents_after_write_ = NULL;
+    expected_write_ = nullptr;
+    contents_after_write_ = nullptr;
     return true;
   }
 
   void set_contents(const char* contents) {
     contents_ = contents;
-    expected_write_ = NULL;
-    contents_after_write_ = NULL;
+    expected_write_ = nullptr;
+    contents_after_write_ = nullptr;
   }
 
   void ExpectWrite(const char* expected_write,

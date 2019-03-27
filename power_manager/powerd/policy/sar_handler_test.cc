@@ -88,7 +88,7 @@ TEST_F(SarHandlerTest, ProximityChange) {
   wifi_delegate_.GetActions();  //  consume the detection events
 
   sar_watcher_.SendEvent(1, UserProximity::FAR);
-  CHECK_EQ(JoinActions(NULL), wifi_delegate_.GetActions());
+  CHECK_EQ(JoinActions(nullptr), wifi_delegate_.GetActions());
 
   sar_watcher_.SendEvent(2, UserProximity::FAR);
   CHECK_EQ(JoinActions(kWifiChangeFar, nullptr), wifi_delegate_.GetActions());
@@ -96,7 +96,7 @@ TEST_F(SarHandlerTest, ProximityChange) {
   sar_watcher_.SendEvent(1, UserProximity::NEAR);
   CHECK_EQ(JoinActions(kWifiChangeNear, nullptr), wifi_delegate_.GetActions());
   sar_watcher_.SendEvent(2, UserProximity::NEAR);
-  CHECK_EQ(JoinActions(NULL), wifi_delegate_.GetActions());
+  CHECK_EQ(JoinActions(nullptr), wifi_delegate_.GetActions());
 }
 
 }  // namespace policy

@@ -68,7 +68,7 @@ class InternalBacklightControllerTest : public ::testing::Test {
 
     dbus_wrapper_ = std::make_unique<system::DBusWrapperStub>();
     controller_->Init(&backlight_, &prefs_,
-                      pass_light_sensor_ ? &light_sensor_ : NULL,
+                      pass_light_sensor_ ? &light_sensor_ : nullptr,
                       &display_power_setter_, dbus_wrapper_.get());
 
     if (report_initial_power_source_)

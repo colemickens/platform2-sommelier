@@ -41,7 +41,7 @@ void RunCommand(const char* command, const char* arg, ...) {
     arg = va_arg(list, char*);
   }
   va_end(list);
-  argv[num_args] = NULL;
+  argv[num_args] = nullptr;
 
   // initctl commands appear to fail if the real UID isn't set correctly.
   PCHECK(setuid(0) == 0) << "setuid() failed";
@@ -94,7 +94,7 @@ int main(int argc, char* argv[]) {
           isxdigit(FLAGS_mosys_eventlog_code[3]))
         << "Invalid event code";
     RunCommand("mosys", "eventlog", "add", FLAGS_mosys_eventlog_code.c_str(),
-               NULL);
+               nullptr);
   } else if (FLAGS_action == "reboot" || FLAGS_action == "shut_down") {
     std::string reason_arg;
     if (!FLAGS_shutdown_reason.empty()) {
@@ -108,10 +108,10 @@ int main(int argc, char* argv[]) {
     std::string runlevel_arg =
         std::string("RUNLEVEL=") + (FLAGS_action == "reboot" ? "6" : "0");
     RunCommand("initctl", "emit", "--no-wait", "runlevel", runlevel_arg.c_str(),
-               (reason_arg.empty() ? NULL : reason_arg.c_str()), NULL);
+               (reason_arg.empty() ? nullptr : reason_arg.c_str()), nullptr);
   } else if (FLAGS_action == "set_force_lid_open") {
     const char* state = FLAGS_force_lid_open ? "1" : "0";
-    RunCommand("ectool", "forcelidopen", state, NULL);
+    RunCommand("ectool", "forcelidopen", state, nullptr);
   } else if (FLAGS_action == "set_cellular_transmit_power") {
     std::string mode = FLAGS_cellular_transmit_power_low ? "--low" : "";
     std::string target =
@@ -121,7 +121,7 @@ int main(int argc, char* argv[]) {
   } else if (FLAGS_action == "set_wifi_transmit_power") {
     const char* tablet =
         FLAGS_wifi_transmit_power_tablet ? "--tablet" : "--notablet";
-    RunCommand("set_wifi_transmit_power", tablet, NULL);
+    RunCommand("set_wifi_transmit_power", tablet, nullptr);
   } else if (FLAGS_action == "suspend") {
     std::string duration_flag =
         "--suspend_duration=" + base::IntToString(FLAGS_suspend_duration);
@@ -134,7 +134,7 @@ int main(int argc, char* argv[]) {
           "--wakeup_count=" + base::Uint64ToString(FLAGS_suspend_wakeup_count);
     }
     RunCommand("powerd_suspend", duration_flag.c_str(), idle_flag.c_str(),
-               wakeup_flag.empty() ? NULL : wakeup_flag.c_str(), NULL);
+               wakeup_flag.empty() ? nullptr : wakeup_flag.c_str(), nullptr);
   } else {
     LOG(ERROR) << "Unknown action \"" << FLAGS_action << "\"";
     return 1;

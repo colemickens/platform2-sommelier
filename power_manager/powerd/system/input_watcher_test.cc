@@ -281,10 +281,11 @@ TEST_F(InputWatcherTest, PowerButton) {
   power_button->AppendEvent(EV_KEY, KEY_POWER, 3);
   power_button->AppendEvent(EV_KEY, KEY_POWER, 0);
   power_button->NotifyAboutEvents();
-  EXPECT_EQ(JoinActions(kPowerButtonDownAction, kPowerButtonUpAction,
-                        kPowerButtonDownAction, kPowerButtonRepeatAction,
-                        kPowerButtonRepeatAction, kPowerButtonUpAction, NULL),
-            observer_->GetActions());
+  EXPECT_EQ(
+      JoinActions(kPowerButtonDownAction, kPowerButtonUpAction,
+                  kPowerButtonDownAction, kPowerButtonRepeatAction,
+                  kPowerButtonRepeatAction, kPowerButtonUpAction, nullptr),
+      observer_->GetActions());
 
   // Check that an event from the ACPI button isn't reported.
   skipped_power_button->AppendEvent(EV_KEY, KEY_POWER, 1);
@@ -351,7 +352,7 @@ TEST_F(InputWatcherTest, LidSwitch) {
   lid_switch->AppendEvent(EV_SW, SW_LID, 1);
   lid_switch->NotifyAboutEvents();
   EXPECT_EQ(
-      JoinActions(kLidClosedAction, kLidOpenAction, kLidClosedAction, NULL),
+      JoinActions(kLidClosedAction, kLidOpenAction, kLidClosedAction, nullptr),
       observer_->GetActions());
 
   // There aren't any more events to send.
@@ -640,7 +641,7 @@ TEST_F(InputWatcherTest, IgnoreUnexpectedEvents) {
   tablet_mode_switch->AppendEvent(EV_SW, SW_TABLET_MODE, 1);
   tablet_mode_switch->NotifyAboutEvents();
   EXPECT_EQ(JoinActions(kHoverOnAction, kPowerButtonDownAction,
-                        kLidClosedAction, kTabletModeOnAction, NULL),
+                        kLidClosedAction, kTabletModeOnAction, nullptr),
             observer_->GetActions());
 }
 
@@ -666,7 +667,7 @@ TEST_F(InputWatcherTest, SingleDeviceForAllTypes) {
   device->AppendEvent(EV_SYN, SYN_REPORT, 0);
   device->NotifyAboutEvents();
   EXPECT_EQ(JoinActions(kPowerButtonDownAction, kLidClosedAction,
-                        kTabletModeOnAction, kHoverOnAction, NULL),
+                        kTabletModeOnAction, kHoverOnAction, nullptr),
             observer_->GetActions());
 }
 

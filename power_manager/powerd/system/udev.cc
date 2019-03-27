@@ -66,7 +66,7 @@ struct UdevDeviceDeleter {
 
 };  // namespace
 
-Udev::Udev() : udev_(NULL), udev_monitor_(NULL), watcher_(FROM_HERE) {}
+Udev::Udev() : udev_(nullptr), udev_monitor_(nullptr), watcher_(FROM_HERE) {}
 
 Udev::~Udev() {
   if (udev_monitor_)
@@ -176,7 +176,8 @@ bool Udev::GetSubsystemDevices(const std::string& subsystem,
 
   for (struct udev_list_entry* list_entry =
            udev_enumerate_get_list_entry(enumerate);
-       list_entry != NULL; list_entry = udev_list_entry_get_next(list_entry)) {
+       list_entry != nullptr;
+       list_entry = udev_list_entry_get_next(list_entry)) {
     const char* syspath = udev_list_entry_get_name(list_entry);
     struct udev_device* device = udev_device_new_from_syspath(udev_, syspath);
     if (!device) {
@@ -216,7 +217,7 @@ bool Udev::GetSysattr(const std::string& syspath,
   if (value_cstr)
     *value = value_cstr;
   udev_device_unref(device);
-  return value_cstr != NULL;
+  return value_cstr != nullptr;
 }
 
 bool Udev::SetSysattr(const std::string& syspath,
@@ -473,7 +474,7 @@ bool Udev::EnumerateTaggedDevices() {
 
   tagged_devices_.clear();
 
-  struct udev_list_entry* entry = NULL;
+  struct udev_list_entry* entry = nullptr;
   udev_list_entry_foreach(entry, udev_enumerate_get_list_entry(enumerate)) {
     const char* syspath = udev_list_entry_get_name(entry);
     struct udev_device* device = udev_device_new_from_syspath(udev_, syspath);

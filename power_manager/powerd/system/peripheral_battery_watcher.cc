@@ -54,7 +54,7 @@ const char PeripheralBatteryWatcher::kModelNameFile[] = "model_name";
 const char PeripheralBatteryWatcher::kCapacityFile[] = "capacity";
 
 PeripheralBatteryWatcher::PeripheralBatteryWatcher()
-    : dbus_wrapper_(NULL),
+    : dbus_wrapper_(nullptr),
       peripheral_battery_path_(kDefaultPeripheralBatteryPath),
       poll_interval_ms_(kDefaultPollIntervalMs) {}
 

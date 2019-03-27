@@ -153,7 +153,7 @@ class Daemon::StateControllerDelegate
     : public policy::StateController::Delegate {
  public:
   explicit StateControllerDelegate(Daemon* daemon) : daemon_(daemon) {}
-  ~StateControllerDelegate() override { daemon_ = NULL; }
+  ~StateControllerDelegate() override { daemon_ = nullptr; }
 
   // Overridden from policy::StateController::Delegate:
   bool IsUsbInputDeviceConnected() override {
@@ -566,7 +566,7 @@ bool Daemon::ReadSuspendWakeupCount(uint64_t* wakeup_count) {
 
 void Daemon::SetSuspendAnnounced(bool announced) {
   if (announced) {
-    if (base::WriteFile(suspend_announced_path_, NULL, 0) < 0)
+    if (base::WriteFile(suspend_announced_path_, nullptr, 0) < 0)
       PLOG(ERROR) << "Couldn't create " << suspend_announced_path_.value();
   } else {
     if (!base::DeleteFile(suspend_announced_path_, false))

@@ -51,13 +51,13 @@ const char DisplayWatcher::kDrmUdevSubsystem[] = "drm";
 const char DisplayWatcher::kDrmStatusFile[] = "status";
 const char DisplayWatcher::kDrmStatusConnected[] = "connected";
 
-DisplayWatcher::DisplayWatcher() : udev_(NULL) {}
+DisplayWatcher::DisplayWatcher() : udev_(nullptr) {}
 
 DisplayWatcher::~DisplayWatcher() {
   if (udev_) {
     udev_->RemoveSubsystemObserver(kI2CUdevSubsystem, this);
     udev_->RemoveSubsystemObserver(kDrmUdevSubsystem, this);
-    udev_ = NULL;
+    udev_ = nullptr;
   }
 }
 

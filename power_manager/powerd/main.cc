@@ -251,7 +251,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
     } else if (pid > 0) {
       // powerd cleans up after the originally-forked process, which exits
       // immediately after forking again.
-      if (waitpid(pid, NULL, 0) == -1)
+      if (waitpid(pid, nullptr, 0) == -1)
         PLOG(ERROR) << "waitpid() on PID " << pid << " failed";
     } else if (pid == -1) {
       PLOG(ERROR) << "fork() failed";

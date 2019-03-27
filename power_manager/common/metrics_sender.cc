@@ -14,7 +14,7 @@ namespace power_manager {
 namespace {
 
 // Singleton instance; weak pointer.
-MetricsSenderInterface* instance_ = NULL;
+MetricsSenderInterface* instance_ = nullptr;
 
 }  // namespace
 
@@ -37,7 +37,7 @@ MetricsSender::MetricsSender(
 }
 
 MetricsSender::~MetricsSender() {
-  MetricsSenderInterface::SetInstance(NULL);
+  MetricsSenderInterface::SetInstance(nullptr);
 }
 
 bool MetricsSender::SendMetric(

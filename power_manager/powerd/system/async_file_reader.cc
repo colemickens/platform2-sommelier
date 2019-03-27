@@ -31,7 +31,7 @@ const int kPollMs = 100;
 AsyncFileReader::AsyncFileReader()
     : read_in_progress_(false),
       fd_(-1),
-      aio_buffer_(NULL),
+      aio_buffer_(nullptr),
       initial_read_size_(kInitialFileReadSize) {}
 
 AsyncFileReader::~AsyncFileReader() {
@@ -101,7 +101,7 @@ void AsyncFileReader::UpdateState() {
       // Save the data that was read, and free the buffer.
       stored_data_.insert(stored_data_.end(), aio_buffer_, aio_buffer_ + size);
       delete[] aio_buffer_;
-      aio_buffer_ = NULL;
+      aio_buffer_ = nullptr;
 
       if (size == aio_control_.aio_nbytes) {
         // Read more data if the previous read didn't reach the end of file.
@@ -137,12 +137,12 @@ void AsyncFileReader::Reset() {
     LOG(INFO) << "aio_cancel() returned AIO_NOTCANCELED; waiting for "
               << "request to complete";
     const aiocb* aiocb_list = {&aio_control_};
-    if (aio_suspend(&aiocb_list, 1, NULL) == -1)
+    if (aio_suspend(&aiocb_list, 1, nullptr) == -1)
       PLOG(ERROR) << "aio_suspend() failed";
   }
 
   delete[] aio_buffer_;
-  aio_buffer_ = NULL;
+  aio_buffer_ = nullptr;
   stored_data_.clear();
   read_cb_.Reset();
   error_cb_.Reset();
@@ -161,7 +161,7 @@ bool AsyncFileReader::AsyncRead(int size, int offset) {
   if (aio_read(&aio_control_) == -1) {
     LOG(ERROR) << "Unable to access " << path_.value();
     delete[] aio_buffer_;
-    aio_buffer_ = NULL;
+    aio_buffer_ = nullptr;
     return false;
   }
 
