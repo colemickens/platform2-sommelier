@@ -87,7 +87,7 @@ class FakeAcpiWakeupFile : public AcpiWakeupFileInterface {
 class AcpiWakeupHelperTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    std::unique_ptr<FakeAcpiWakeupFile> file(new FakeAcpiWakeupFile());
+    auto file = std::make_unique<FakeAcpiWakeupFile>();
     file_ = file.get();
     helper_.set_file_for_testing(std::move(file));
   }

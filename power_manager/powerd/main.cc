@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <sys/sysinfo.h>
 #include <sys/wait.h>
@@ -67,7 +68,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
 
   // DaemonDelegate:
   std::unique_ptr<PrefsInterface> CreatePrefs() override {
-    auto prefs = base::WrapUnique(new Prefs());
+    auto prefs = std::make_unique<Prefs>();
     CHECK(prefs->Init(Prefs::GetDefaultStore(), Prefs::GetDefaultSources()));
     return prefs;
   }
@@ -79,28 +80,28 @@ class DaemonDelegateImpl : public DaemonDelegate {
   }
 
   std::unique_ptr<system::UdevInterface> CreateUdev() override {
-    auto udev = base::WrapUnique(new system::Udev());
+    auto udev = std::make_unique<system::Udev>();
     CHECK(udev->Init());
     return udev;
   }
 
   std::unique_ptr<system::AmbientLightSensorInterface>
   CreateAmbientLightSensor() override {
-    auto sensor = base::WrapUnique(new system::AmbientLightSensor());
+    auto sensor = std::make_unique<system::AmbientLightSensor>();
     sensor->Init(false /* read_immediately */);
     return sensor;
   }
 
   std::unique_ptr<system::DisplayWatcherInterface> CreateDisplayWatcher(
       system::UdevInterface* udev) override {
-    auto watcher = base::WrapUnique(new system::DisplayWatcher());
+    auto watcher = std::make_unique<system::DisplayWatcher>();
     watcher->Init(udev);
     return watcher;
   }
 
   std::unique_ptr<system::DisplayPowerSetterInterface> CreateDisplayPowerSetter(
       system::DBusWrapperInterface* dbus_wrapper) override {
-    auto setter = base::WrapUnique(new system::DisplayPowerSetter());
+    auto setter = std::make_unique<system::DisplayPowerSetter>();
     setter->Init(dbus_wrapper);
     return setter;
   }
@@ -117,7 +118,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
 
   std::unique_ptr<system::BacklightInterface> CreateInternalBacklight(
       const base::FilePath& base_path, const std::string& pattern) override {
-    auto backlight = base::WrapUnique(new system::InternalBacklight());
+    auto backlight = std::make_unique<system::InternalBacklight>();
     return backlight->Init(base_path, pattern)
                ? std::move(backlight)
                : std::unique_ptr<system::BacklightInterface>();
@@ -128,7 +129,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
       const std::string& udev_subsystem,
       const base::FilePath& base_path,
       const std::string& pattern) override {
-    auto backlight = base::WrapUnique(new system::PluggableInternalBacklight());
+    auto backlight = std::make_unique<system::PluggableInternalBacklight>();
     backlight->Init(udev, udev_subsystem, base_path, pattern);
     return backlight;
   }
@@ -161,7 +162,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
 
   std::unique_ptr<system::InputWatcherInterface> CreateInputWatcher(
       PrefsInterface* prefs, system::UdevInterface* udev) override {
-    auto watcher = base::WrapUnique(new system::InputWatcher());
+    auto watcher = std::make_unique<system::InputWatcher>();
     CHECK(watcher->Init(std::unique_ptr<system::EventDeviceFactoryInterface>(
                             new system::EventDeviceFactory),
                         std::make_unique<system::WakeupDeviceFactory>(udev),
@@ -171,17 +172,17 @@ class DaemonDelegateImpl : public DaemonDelegate {
 
   std::unique_ptr<system::AcpiWakeupHelperInterface> CreateAcpiWakeupHelper()
       override {
-    return base::WrapUnique(new system::AcpiWakeupHelper());
+    return std::make_unique<system::AcpiWakeupHelper>();
   }
 
   std::unique_ptr<system::EcHelperInterface> CreateEcHelper() override {
-    return base::WrapUnique(new system::EcHelper());
+    return std::make_unique<system::EcHelper>();
   }
 
   std::unique_ptr<system::PeripheralBatteryWatcher>
   CreatePeripheralBatteryWatcher(
       system::DBusWrapperInterface* dbus_wrapper) override {
-    auto watcher = base::WrapUnique(new system::PeripheralBatteryWatcher());
+    auto watcher = std::make_unique<system::PeripheralBatteryWatcher>();
     watcher->Init(dbus_wrapper);
     return watcher;
   }
@@ -191,14 +192,14 @@ class DaemonDelegateImpl : public DaemonDelegate {
       PrefsInterface* prefs,
       system::UdevInterface* udev,
       system::DBusWrapperInterface* dbus_wrapper) override {
-    auto supply = base::WrapUnique(new system::PowerSupply());
+    auto supply = std::make_unique<system::PowerSupply>();
     supply->Init(power_supply_path, prefs, udev, dbus_wrapper);
     return supply;
   }
 
   std::unique_ptr<system::SarWatcherInterface> CreateSarWatcher(
       PrefsInterface* prefs, system::UdevInterface* udev) override {
-    auto watcher = base::WrapUnique(new system::SarWatcher());
+    auto watcher = std::make_unique<system::SarWatcher>();
     watcher->Init(prefs, udev);
     return watcher;
   }
@@ -214,7 +215,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
 
   std::unique_ptr<system::AudioClientInterface> CreateAudioClient(
       system::DBusWrapperInterface* dbus_wrapper) override {
-    auto client = base::WrapUnique(new system::AudioClient());
+    auto client = std::make_unique<system::AudioClient>();
     client->Init(dbus_wrapper);
     return client;
   }
@@ -226,9 +227,9 @@ class DaemonDelegateImpl : public DaemonDelegate {
   }
 
   std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() override {
-    std::unique_ptr<MetricsLibrary> metrics_lib(new MetricsLibrary());
+    auto metrics_lib = std::make_unique<MetricsLibrary>();
     metrics_lib->Init();
-    return base::WrapUnique(new MetricsSender(std::move(metrics_lib)));
+    return std::make_unique<MetricsSender>(std::move(metrics_lib));
   }
 
   std::unique_ptr<system::ChargeControllerHelperInterface>
