@@ -31,10 +31,7 @@ class VirtualDeviceTest : public testing::Test {
  public:
   VirtualDeviceTest()
       : manager_(&control_, &dispatcher_, &metrics_),
-        device_(new VirtualDevice(&control_,
-                                  &dispatcher_,
-                                  &metrics_,
-                                  &manager_,
+        device_(new VirtualDevice(&manager_,
                                   kTestDeviceName,
                                   kTestInterfaceIndex,
                                   Technology::kVPN)) {}

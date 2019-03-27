@@ -31,10 +31,7 @@ static const char kPPPReasonDisconnect[] = "disconnect";
 
 class PPPDevice : public VirtualDevice {
  public:
-  PPPDevice(ControlInterface* control,
-            EventDispatcher* dispatcher,
-            Metrics* metrics,
-            Manager* manager,
+  PPPDevice(Manager* manager,
             const std::string& link_name,
             int interface_index);
   ~PPPDevice() override;

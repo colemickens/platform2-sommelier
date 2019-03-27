@@ -285,9 +285,8 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   void FakeUpConnectedPPP() {
     const char kInterfaceName[] = "fake-ppp-device";
     const int kInterfaceIndex = -1;
-    auto mock_ppp_device = make_scoped_refptr(
-        new MockPPPDevice(modem_info_.control_interface(), nullptr, nullptr,
-                          nullptr, kInterfaceName, kInterfaceIndex));
+    auto mock_ppp_device = make_scoped_refptr(new MockPPPDevice(
+        modem_info_.manager(), kInterfaceName, kInterfaceIndex));
     device_->ppp_device_ = mock_ppp_device;
     device_->state_ = Cellular::kStateConnected;
   }
@@ -1480,14 +1479,13 @@ TEST_P(CellularTest, Notify) {
   scoped_refptr<MockPPPDevice> ppp_device;
   map<string, string> ppp_config;
   ppp_device =
-      new MockPPPDevice(modem_info_.control_interface(), nullptr, nullptr,
-                        nullptr, kInterfaceName, kInterfaceIndex);
+      new MockPPPDevice(modem_info_.manager(), kInterfaceName, kInterfaceIndex);
   ppp_config[kPPPInterfaceName] = kInterfaceName;
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
       .WillOnce(Return(kInterfaceIndex));
   EXPECT_CALL(device_info_, RegisterDevice(_));
   EXPECT_CALL(*ppp_device_factory,
-              CreatePPPDevice(_, _, _, _, kInterfaceName, kInterfaceIndex))
+              CreatePPPDevice(_, kInterfaceName, kInterfaceIndex))
       .WillOnce(Return(ppp_device.get()));
   EXPECT_CALL(*ppp_device, SetEnabled(true));
   EXPECT_CALL(*ppp_device, SelectService(_));
@@ -1514,16 +1512,15 @@ TEST_P(CellularTest, Notify) {
   const int kInterfaceIndex2 = 2;
   scoped_refptr<MockPPPDevice> ppp_device2;
   map<string, string> ppp_config2;
-  ppp_device2 =
-      new MockPPPDevice(modem_info_.control_interface(), nullptr, nullptr,
-                        nullptr, kInterfaceName2, kInterfaceIndex2);
+  ppp_device2 = new MockPPPDevice(modem_info_.manager(), kInterfaceName2,
+                                  kInterfaceIndex2);
   ppp_config2[kPPPInterfaceName] = kInterfaceName2;
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName2))
       .WillOnce(Return(kInterfaceIndex2));
   EXPECT_CALL(device_info_,
               RegisterDevice(static_cast<DeviceRefPtr>(ppp_device2)));
   EXPECT_CALL(*ppp_device_factory,
-              CreatePPPDevice(_, _, _, _, kInterfaceName2, kInterfaceIndex2))
+              CreatePPPDevice(_, kInterfaceName2, kInterfaceIndex2))
       .WillOnce(Return(ppp_device2.get()));
   EXPECT_CALL(*ppp_device, SelectService(ServiceRefPtr(nullptr)));
   EXPECT_CALL(*ppp_device2, SetEnabled(true));
@@ -1691,8 +1688,7 @@ TEST_P(CellularTest, DropConnection) {
 
 TEST_P(CellularTest, DropConnectionPPP) {
   scoped_refptr<MockPPPDevice> ppp_device(
-      new MockPPPDevice(modem_info_.control_interface(),
-                        nullptr, nullptr, nullptr, "fake_ppp0", -1));
+      new MockPPPDevice(modem_info_.manager(), "fake_ppp0", -1));
   EXPECT_CALL(*ppp_device, DropConnection());
   device_->ppp_device_ = ppp_device;
   device_->DropConnection();
@@ -1716,8 +1712,7 @@ TEST_P(CellularTest, ChangeServiceState) {
 TEST_P(CellularTest, ChangeServiceStatePPP) {
   MockCellularService* service(SetMockService());
   scoped_refptr<MockPPPDevice> ppp_device(
-      new MockPPPDevice(modem_info_.control_interface(),
-                        nullptr, nullptr, nullptr, "fake_ppp0", -1));
+      new MockPPPDevice(modem_info_.manager(), "fake_ppp0", -1));
   EXPECT_CALL(*ppp_device, SetServiceState(_));
   EXPECT_CALL(*ppp_device, SetServiceFailure(_));
   EXPECT_CALL(*ppp_device, SetServiceFailureSilent(_));

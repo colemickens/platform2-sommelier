@@ -73,16 +73,12 @@ namespace shill {
 
 class TestDevice : public Device {
  public:
-  TestDevice(ControlInterface* control_interface,
-             EventDispatcher* dispatcher,
-             Metrics* metrics,
-             Manager* manager,
+  TestDevice(Manager* manager,
              const std::string& link_name,
              const std::string& address,
              int interface_index,
              Technology::Identifier technology)
-      : Device(control_interface, dispatcher, metrics, manager, link_name,
-               address, interface_index, technology) {
+      : Device(manager, link_name, address, interface_index, technology) {
     ON_CALL(*this, IsIPv6Allowed())
         .WillByDefault(Invoke(this, &TestDevice::DeviceIsIPv6Allowed));
     ON_CALL(*this, SetIPFlag(_, _, _))
@@ -158,10 +154,7 @@ class TestDevice : public Device {
 class DeviceTest : public PropertyStoreTest {
  public:
   DeviceTest()
-      : device_(new TestDevice(control_interface(),
-                               dispatcher(),
-                               nullptr,
-                               manager(),
+      : device_(new TestDevice(manager(),
                                kDeviceName,
                                kDeviceAddress,
                                kDeviceInterfaceIndex,
@@ -173,10 +166,7 @@ class DeviceTest : public PropertyStoreTest {
   }
   virtual ~DeviceTest() {}
 
-  void SetUp() override {
-    device_->metrics_ = &metrics_;
-    device_->rtnl_handler_ = &rtnl_handler_;
-  }
+  void SetUp() override { device_->rtnl_handler_ = &rtnl_handler_; }
 
  protected:
   static const char kDeviceName[];
@@ -280,7 +270,6 @@ class DeviceTest : public PropertyStoreTest {
   MockControl control_interface_;
   scoped_refptr<TestDevice> device_;
   MockDeviceInfo device_info_;
-  MockMetrics metrics_;
   MockTime time_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
 };
@@ -644,7 +633,7 @@ TEST_F(DeviceTest, LinkMonitorFailure) {
   // Initial link monitor failure.
   EXPECT_CALL(time_, GetSecondsBoottime(_)).WillOnce(
       DoAll(SetArgPointee<0>(current_time), Return(true)));
-  EXPECT_CALL(metrics_, NotifyUnreliableLinkSignalStrength(_, _)).Times(0);
+  EXPECT_CALL(*metrics(), NotifyUnreliableLinkSignalStrength(_, _)).Times(0);
   device_->OnLinkMonitorFailure();
   EXPECT_FALSE(service->unreliable());
 
@@ -652,7 +641,7 @@ TEST_F(DeviceTest, LinkMonitorFailure) {
   current_time += 180;
   EXPECT_CALL(time_, GetSecondsBoottime(_)).WillOnce(
       DoAll(SetArgPointee<0>(current_time), Return(true)));
-  EXPECT_CALL(metrics_, NotifyUnreliableLinkSignalStrength(_, _)).Times(1);
+  EXPECT_CALL(*metrics(), NotifyUnreliableLinkSignalStrength(_, _)).Times(1);
   device_->OnLinkMonitorFailure();
   EXPECT_TRUE(service->unreliable());
 
@@ -663,7 +652,7 @@ TEST_F(DeviceTest, LinkMonitorFailure) {
   SetReliableLinkCallback();
   EXPECT_CALL(time_, GetSecondsBoottime(_)).WillOnce(
       DoAll(SetArgPointee<0>(current_time), Return(true)));
-  EXPECT_CALL(metrics_, NotifyUnreliableLinkSignalStrength(_, _)).Times(1);
+  EXPECT_CALL(*metrics(), NotifyUnreliableLinkSignalStrength(_, _)).Times(1);
   device_->OnLinkMonitorFailure();
   EXPECT_TRUE(service->unreliable());
   EXPECT_TRUE(ReliableLinkCallbackIsCancelled());
@@ -674,7 +663,7 @@ TEST_F(DeviceTest, LinkMonitorFailure) {
   service->set_unreliable(false);
   EXPECT_CALL(time_, GetSecondsBoottime(_)).WillOnce(
       DoAll(SetArgPointee<0>(current_time), Return(true)));
-  EXPECT_CALL(metrics_, NotifyUnreliableLinkSignalStrength(_, _)).Times(0);
+  EXPECT_CALL(*metrics(), NotifyUnreliableLinkSignalStrength(_, _)).Times(0);
   device_->OnLinkMonitorFailure();
   EXPECT_FALSE(service->unreliable());
 }
@@ -810,11 +799,11 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
   device_->set_ipconfig(ipconfig);
   EXPECT_CALL(*service, IsOnline()).WillOnce(Return(false));
   EXPECT_CALL(*service, SetState(Service::kStateConnected));
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               NotifyNetworkConnectionIPType(
                   device_->technology(),
                   Metrics::kNetworkConnectionIPTypeIPv4));
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               NotifyIPv6ConnectivityStatus(device_->technology(), false));
   EXPECT_CALL(*service, IsConnected())
       .WillRepeatedly(Return(true));
@@ -846,11 +835,11 @@ TEST_F(DeviceTest, IPConfigUpdatedAlreadyOnline) {
   device_->set_ipconfig(ipconfig);
   EXPECT_CALL(*service, IsOnline()).WillOnce(Return(true));
   EXPECT_CALL(*service, SetState(Service::kStateConnected)).Times(0);
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               NotifyNetworkConnectionIPType(
                   device_->technology(),
                   Metrics::kNetworkConnectionIPTypeIPv4));
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               NotifyIPv6ConnectivityStatus(device_->technology(), false));
   EXPECT_CALL(*service, IsConnected())
       .WillRepeatedly(Return(true));
@@ -885,7 +874,7 @@ TEST_F(DeviceTest, OnIPConfigExpired) {
   const int kLeaseLength = 1234;
   ipconfig->properties_.lease_duration_seconds = kLeaseLength;
 
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               SendToUMA("Network.Shill.Unknown.ExpiredLeaseLengthSeconds2",
                         kLeaseLength,
                         Metrics::kMetricExpiredLeaseLengthSecondsMin,
@@ -1079,14 +1068,8 @@ TEST_F(DeviceTest, StopWithNetworkInterfaceDisabledAfterward) {
 }
 
 TEST_F(DeviceTest, StartProhibited) {
-  DeviceRefPtr device(new TestDevice(control_interface(),
-                                     dispatcher(),
-                                     nullptr,
-                                     manager(),
-                                     kDeviceName,
-                                     kDeviceAddress,
-                                     kDeviceInterfaceIndex,
-                                     Technology::kWifi));
+  DeviceRefPtr device(new TestDevice(manager(), kDeviceName, kDeviceAddress,
+                                     kDeviceInterfaceIndex, Technology::kWifi));
   {
     Error error;
     manager()->SetProhibitedTechnologies("wifi", &error);
@@ -1273,7 +1256,7 @@ TEST_F(DeviceTest, TrafficMonitor) {
   StopTrafficMonitor();
   Mock::VerifyAndClearExpectations(traffic_monitor);
 
-  EXPECT_CALL(metrics_, NotifyNetworkProblemDetected(_,
+  EXPECT_CALL(*metrics(), NotifyNetworkProblemDetected(_,
       Metrics::kNetworkProblemDNSFailure)).Times(1);
   NetworkProblemDetected(TrafficMonitor::kNetworkProblemDNSFailure);
 
@@ -1687,11 +1670,11 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   EXPECT_CALL(*connection, IsIPv6())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*connection, UpdateFromIPConfig(device_->ip6config_));
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               NotifyNetworkConnectionIPType(
                   device_->technology(),
                   Metrics::kNetworkConnectionIPTypeIPv6));
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               NotifyIPv6ConnectivityStatus(device_->technology(), true));
   EXPECT_CALL(*service, IsOnline()).WillOnce(Return(false));
   EXPECT_CALL(*service, SetState(Service::kStateConnected));
@@ -2177,11 +2160,11 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionFailure) {
               SetPortalDetectionFailure(kPortalDetectionPhaseConnection,
                                         kPortalDetectionStatusFailure));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               SendEnumToUMA("Network.Shill.Unknown.PortalResult",
                             Metrics::kPortalResultConnectionFailure,
                             Metrics::kPortalResultMax));
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               SendToUMA("Network.Shill.Unknown.PortalAttemptsToOnline",
                         _, _, _, _)).Times(0);
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
@@ -2196,17 +2179,17 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
   EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(true));
   EXPECT_CALL(*service_, SetPortalDetectionFailure(_, _)).Times(0);
   EXPECT_CALL(*service_, SetState(Service::kStateOnline));
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               SendEnumToUMA("Network.Shill.Unknown.PortalResult",
                             Metrics::kPortalResultSuccess,
                             Metrics::kPortalResultMax));
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               SendToUMA("Network.Shill.Unknown.PortalAttemptsToOnline",
                         kPortalAttempts,
                         Metrics::kMetricPortalAttemptsToOnlineMin,
                         Metrics::kMetricPortalAttemptsToOnlineMax,
                         Metrics::kMetricPortalAttemptsToOnlineNumBuckets));
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               SendToUMA("Network.Shill.Unknown.PortalAttempts",
                         _, _, _, _)).Times(0);
   PortalDetectorCallback(
@@ -2222,11 +2205,11 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccessAfterFailure) {
               SetPortalDetectionFailure(kPortalDetectionPhaseConnection,
                                         kPortalDetectionStatusFailure));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               SendEnumToUMA("Network.Shill.Unknown.PortalResult",
                             Metrics::kPortalResultConnectionFailure,
                             Metrics::kPortalResultMax));
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               SendToUMA("Network.Shill.Unknown.PortalAttemptsToOnline",
                         _, _, _, _)).Times(0);
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
@@ -2236,14 +2219,14 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccessAfterFailure) {
                              PortalDetector::Status::kFailure, kPortalAttempts),
       PortalDetector::Result(PortalDetector::Phase::kContent,
                              PortalDetector::Status::kFailure));
-  Mock::VerifyAndClearExpectations(&metrics_);
+  Mock::VerifyAndClearExpectations(metrics());
   EXPECT_CALL(*service_, SetPortalDetectionFailure(_, _)).Times(0);
   EXPECT_CALL(*service_, SetState(Service::kStateOnline));
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               SendEnumToUMA("Network.Shill.Unknown.PortalResult",
                             Metrics::kPortalResultSuccess,
                             Metrics::kPortalResultMax));
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               SendToUMA("Network.Shill.Unknown.PortalAttemptsToOnline",
                         kPortalAttempts * 2,
                         Metrics::kMetricPortalAttemptsToOnlineMin,
@@ -2517,13 +2500,13 @@ TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
   EXPECT_CALL(*connection_, UpdateDNSServers(_)).Times(0);
   EXPECT_CALL(*ipconfig, UpdateDNSServers(_)).Times(0);
   EXPECT_CALL(*device_, StartDNSTest(_, _, _)).Times(0);
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
       NotifyFallbackDNSTestResult(_, Metrics::kFallbackDNSTestResultFailure))
           .Times(1);
   InvokeFallbackDNSResultCallback(DnsServerTester::kStatusFailure);
   Mock::VerifyAndClearExpectations(connection_.get());
   Mock::VerifyAndClearExpectations(ipconfig.get());
-  Mock::VerifyAndClearExpectations(&metrics_);
+  Mock::VerifyAndClearExpectations(metrics());
 
   // Fallback DNS test succeed with auto fallback disabled.
   EXPECT_CALL(*service_, is_dns_auto_fallback_allowed())
@@ -2532,14 +2515,14 @@ TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
   EXPECT_CALL(*ipconfig, UpdateDNSServers(_)).Times(0);
   EXPECT_CALL(*service_, NotifyIPConfigChanges()).Times(0);
   EXPECT_CALL(*device_, StartDNSTest(_, _, _)).Times(0);
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
       NotifyFallbackDNSTestResult(_, Metrics::kFallbackDNSTestResultSuccess))
           .Times(1);
   InvokeFallbackDNSResultCallback(DnsServerTester::kStatusSuccess);
   Mock::VerifyAndClearExpectations(service_.get());
   Mock::VerifyAndClearExpectations(connection_.get());
   Mock::VerifyAndClearExpectations(ipconfig.get());
-  Mock::VerifyAndClearExpectations(&metrics_);
+  Mock::VerifyAndClearExpectations(metrics());
 
   // Fallback DNS test succeed with auto fallback enabled.
   EXPECT_CALL(*service_, is_dns_auto_fallback_allowed()).WillOnce(Return(true));
@@ -2571,14 +2554,14 @@ TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
   EXPECT_CALL(*connection_, UpdateDNSServers(_)).Times(1);
   EXPECT_CALL(*service_, NotifyIPConfigChanges()).Times(1);
   EXPECT_CALL(*device_, StartDNSTest(_, true, _)).Times(1);
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
       NotifyFallbackDNSTestResult(_, Metrics::kFallbackDNSTestResultSuccess))
           .Times(1);
   InvokeFallbackDNSResultCallback(DnsServerTester::kStatusSuccess);
   Mock::VerifyAndClearExpectations(service_.get());
   Mock::VerifyAndClearExpectations(connection_.get());
   Mock::VerifyAndClearExpectations(ipconfig.get());
-  Mock::VerifyAndClearExpectations(&metrics_);
+  Mock::VerifyAndClearExpectations(metrics());
 }
 
 TEST_F(DevicePortalDetectionTest, ConfigDNSResultCallback) {
@@ -2754,12 +2737,7 @@ TEST_F(DeviceByteCountTest, GetByteCounts) {
   // the byte counts reported by the interface.
   rx_byte_count_ = 123;
   tx_byte_count_ = 456;
-  DeviceRefPtr device(new TestDevice(control_interface(),
-                                     dispatcher(),
-                                     nullptr,
-                                     &manager_,
-                                     kDeviceName,
-                                     kDeviceAddress,
+  DeviceRefPtr device(new TestDevice(&manager_, kDeviceName, kDeviceAddress,
                                      kDeviceInterfaceIndex,
                                      Technology::kUnknown));
   EXPECT_TRUE(ExpectByteCounts(device, 0, 0));

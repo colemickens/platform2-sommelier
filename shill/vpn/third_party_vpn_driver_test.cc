@@ -40,8 +40,7 @@ class ThirdPartyVpnDriverTest : public testing::Test {
         adaptor_interface_(new ThirdPartyVpnMockAdaptor()),
         service_(new MockVPNService(&control_, &dispatcher_, &metrics_,
                                     &manager_, driver_)),
-        device_(new MockVirtualDevice(&control_, &dispatcher_, &metrics_,
-                                      &manager_, kInterfaceName,
+        device_(new MockVirtualDevice(&manager_, kInterfaceName,
                                       kInterfaceIndex, Technology::kVPN)) {
     driver_->io_handler_factory_ = &io_handler_factory_;
   }
@@ -338,9 +337,8 @@ TEST_F(ThirdPartyVpnDriverTest, SetParameters) {
                      "123123 for dns_servers is invalid;"
                      "43902374 for dns_servers is invalid;");
 
-  driver_->device_ =
-      new MockVirtualDevice(&control_, &dispatcher_, &metrics_, &manager_,
-                            kInterfaceName, kInterfaceIndex, Technology::kVPN);
+  driver_->device_ = new MockVirtualDevice(&manager_, kInterfaceName,
+                                           kInterfaceIndex, Technology::kVPN);
   error.clear();
   warning.clear();
   parameters["exclusion_list"] =

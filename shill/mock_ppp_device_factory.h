@@ -22,13 +22,10 @@ class MockPPPDeviceFactory : public PPPDeviceFactory {
   // This is a singleton. Use MockPPPDeviceFactory::GetInstance()->Foo().
   static MockPPPDeviceFactory* GetInstance();
 
-  MOCK_METHOD6(CreatePPPDevice,
-               PPPDevice* (ControlInterface* control,
-                           EventDispatcher* dispatcher,
-                           Metrics* metrics,
-                           Manager* manager,
-                           const std::string& link_name,
-                           int interface_index));
+  MOCK_METHOD3(CreatePPPDevice,
+               PPPDevice*(Manager* manager,
+                          const std::string& link_name,
+                          int interface_index));
 
  protected:
   MockPPPDeviceFactory();

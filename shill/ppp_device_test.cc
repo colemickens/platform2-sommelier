@@ -11,6 +11,7 @@
 
 #include "shill/metrics.h"
 #include "shill/mock_control.h"
+#include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_ppp_device.h"
 
@@ -31,8 +32,8 @@ TEST(PPPDeviceTest, GetInterfaceName) {
 TEST(PPPDeviceTest, ParseIPConfiguration) {
   MockControl control;
   MockMetrics metrics;
-  scoped_refptr<PPPDevice> device = new PPPDevice(&control, nullptr, &metrics,
-                                                  nullptr, "test0", 0);
+  MockManager manager(&control, nullptr, &metrics);
+  scoped_refptr<PPPDevice> device = new PPPDevice(&manager, "test0", 0);
 
   map<string, string> config;
   config[kPPPInternalIP4Address] = "4.5.6.7";

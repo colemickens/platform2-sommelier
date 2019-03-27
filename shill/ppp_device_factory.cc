@@ -16,15 +16,10 @@ PPPDeviceFactory* PPPDeviceFactory::GetInstance() {
   return instance.get();
 }
 
-PPPDevice* PPPDeviceFactory::CreatePPPDevice(
-    ControlInterface* control,
-    EventDispatcher* dispatcher,
-    Metrics* metrics,
-    Manager* manager,
-    const std::string& link_name,
-    int interface_index) {
-  return new PPPDevice(control, dispatcher, metrics, manager, link_name,
-                       interface_index);
+PPPDevice* PPPDeviceFactory::CreatePPPDevice(Manager* manager,
+                                             const std::string& link_name,
+                                             int interface_index) {
+  return new PPPDevice(manager, link_name, interface_index);
 }
 
 }  // namespace shill

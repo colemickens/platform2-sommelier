@@ -513,6 +513,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     return browser_traffic_uids_;
   }
 
+  ControlInterface* control_interface() const { return control_interface_; }
+  EventDispatcher* dispatcher() const { return dispatcher_; }
+  Metrics* metrics() const { return metrics_; }
+
  private:
   friend class ArcVpnDriverTest;
   friend class CellularTest;

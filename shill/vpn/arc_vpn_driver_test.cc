@@ -53,13 +53,8 @@ class ArcVpnDriverTest : public testing::Test {
   ArcVpnDriverTest()
       : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
         manager_(&control_, &dispatcher_, &metrics_),
-        device_(new MockVirtualDevice(&control_,
-                                      &dispatcher_,
-                                      &metrics_,
-                                      &manager_,
-                                      kInterfaceName,
-                                      kInterfaceIndex,
-                                      Technology::kVPN)),
+        device_(new MockVirtualDevice(
+            &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN)),
         store_(),
         driver_(new ArcVpnDriver(
             &control_, &dispatcher_, &metrics_, &manager_, &device_info_)),

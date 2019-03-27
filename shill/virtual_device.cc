@@ -21,15 +21,15 @@ namespace {
 const char kHardwareAddressEmpty[] = "";
 }  // namespace
 
-VirtualDevice::VirtualDevice(ControlInterface* control,
-                             EventDispatcher* dispatcher,
-                             Metrics* metrics,
-                             Manager* manager,
+VirtualDevice::VirtualDevice(Manager* manager,
                              const std::string& link_name,
                              int interface_index,
                              Technology::Identifier technology)
-    : Device(control, dispatcher, metrics, manager, link_name,
-             kHardwareAddressEmpty, interface_index, technology) {}
+    : Device(manager,
+             link_name,
+             kHardwareAddressEmpty,
+             interface_index,
+             technology) {}
 
 VirtualDevice::~VirtualDevice() = default;
 

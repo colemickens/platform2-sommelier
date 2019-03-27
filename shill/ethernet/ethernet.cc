@@ -51,28 +51,20 @@ static auto kModuleLogScope = ScopeLogger::kEthernet;
 static string ObjectID(Ethernet* e) { return e->GetRpcIdentifier(); }
 }
 
-Ethernet::Ethernet(ControlInterface* control_interface,
-                   EventDispatcher* dispatcher,
-                   Metrics* metrics,
-                   Manager* manager,
+Ethernet::Ethernet(Manager* manager,
                    const string& link_name,
                    const string& address,
                    int interface_index)
-    : Device(control_interface,
-             dispatcher,
-             metrics,
-             manager,
-             link_name,
-             address,
-             interface_index,
-             Technology::kEthernet),
+    : Device(
+          manager, link_name, address, interface_index, Technology::kEthernet),
       link_up_(false),
 #if !defined(DISABLE_WIRED_8021X)
       is_eap_authenticated_(false),
       is_eap_detected_(false),
       eap_listener_(new EapListener(interface_index)),
-      supplicant_process_proxy_(control_interface->CreateSupplicantProcessProxy(
-          base::Closure(), base::Closure())),
+      supplicant_process_proxy_(
+          control_interface()->CreateSupplicantProcessProxy(base::Closure(),
+                                                            base::Closure())),
 #endif  // DISABLE_WIRED_8021X
       sockets_(new Sockets()),
       weak_ptr_factory_(this) {

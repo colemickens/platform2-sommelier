@@ -16,6 +16,7 @@
 #include "shill/mock_device.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_ipconfig.h"
+#include "shill/mock_manager.h"
 #include "shill/mock_socket_info_reader.h"
 #include "shill/nice_mock_control.h"
 
@@ -48,13 +49,8 @@ class TrafficMonitorTest : public Test {
   static const uint64_t kTxQueueLength4;
 
   TrafficMonitorTest()
-      : device_(new MockDevice(&control_,
-                               &dispatcher_,
-                               nullptr,
-                               nullptr,
-                               "netdev0",
-                               "00:11:22:33:44:55",
-                               1)),
+      : manager_(&control_, &dispatcher_, nullptr),
+        device_(new MockDevice(&manager_, "netdev0", "00:11:22:33:44:55", 1)),
         ipconfig_(new MockIPConfig(&control_, "netdev0")),
         mock_socket_info_reader_(new MockSocketInfoReader),
         mock_connection_info_reader_(new MockConnectionInfoReader),
@@ -123,6 +119,7 @@ class TrafficMonitorTest : public Test {
 
   NiceMockControl control_;
   NiceMock<MockEventDispatcher> dispatcher_;
+  MockManager manager_;
   scoped_refptr<MockDevice> device_;
   scoped_refptr<MockIPConfig> ipconfig_;
   IPConfig::Properties ipconfig_properties_;

@@ -117,10 +117,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
  public:
   using FreqSet = std::set<uint32_t>;
 
-  WiFi(ControlInterface* control_interface,
-       EventDispatcher* dispatcher,
-       Metrics* metrics,
-       Manager* manager,
+  WiFi(Manager* manager,
        const std::string& link,
        const std::string& address,
        int interface_index,

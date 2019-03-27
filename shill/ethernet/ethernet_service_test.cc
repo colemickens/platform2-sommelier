@@ -28,13 +28,8 @@ class EthernetServiceTest : public PropertyStoreTest {
  public:
   EthernetServiceTest()
       : mock_manager_(control_interface(), dispatcher(), metrics()),
-        ethernet_(new NiceMock<MockEthernet>(control_interface(),
-                                             dispatcher(),
-                                             metrics(),
-                                             &mock_manager_,
-                                             "ethernet",
-                                             fake_mac,
-                                             0)),
+        ethernet_(new NiceMock<MockEthernet>(
+            &mock_manager_, "ethernet", fake_mac, 0)),
         service_(new EthernetService(
             control_interface(),
             dispatcher(),

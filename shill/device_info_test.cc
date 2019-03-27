@@ -283,9 +283,8 @@ TEST_F(DeviceInfoTest, StartStop) {
 }
 
 TEST_F(DeviceInfoTest, RegisterDevice) {
-  scoped_refptr<MockDevice> device0(new MockDevice(
-      &control_interface_, &dispatcher_, &metrics_, &manager_,
-      "null0", "addr0", kTestDeviceIndex));
+  scoped_refptr<MockDevice> device0(
+      new MockDevice(&manager_, "null0", "addr0", kTestDeviceIndex));
 
   EXPECT_CALL(*device0, Initialize());
   device_info_.RegisterDevice(device0);
@@ -330,9 +329,8 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
 
 TEST_F(DeviceInfoTest, DeviceRemovedEvent) {
   // Remove a Wifi device.
-  scoped_refptr<MockDevice> device0(new MockDevice(
-      &control_interface_, &dispatcher_, &metrics_, &manager_,
-      "null0", "addr0", kTestDeviceIndex));
+  scoped_refptr<MockDevice> device0(
+      new MockDevice(&manager_, "null0", "addr0", kTestDeviceIndex));
   device_info_.infos_[kTestDeviceIndex].device = device0;
   unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeDelete);
   EXPECT_CALL(*device0, technology()).WillRepeatedly(Return(Technology::kWifi));
@@ -342,9 +340,8 @@ TEST_F(DeviceInfoTest, DeviceRemovedEvent) {
   Mock::VerifyAndClearExpectations(device0.get());
 
   // Deregister a Cellular device.
-  scoped_refptr<MockDevice> device1(new MockDevice(
-      &control_interface_, &dispatcher_, &metrics_, &manager_,
-      "null0", "addr0", kTestDeviceIndex));
+  scoped_refptr<MockDevice> device1(
+      new MockDevice(&manager_, "null0", "addr0", kTestDeviceIndex));
   device_info_.infos_[kTestDeviceIndex].device = device1;
   EXPECT_CALL(*device1, technology()).
       WillRepeatedly(Return(Technology::kCellular));
@@ -378,9 +375,8 @@ TEST_F(DeviceInfoTest, GetUninitializedTechnologies) {
   EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 
-  scoped_refptr<MockDevice> device(new MockDevice(
-      &control_interface_, &dispatcher_, &metrics_, &manager_,
-      "null0", "addr0", 1));
+  scoped_refptr<MockDevice> device(
+      new MockDevice(&manager_, "null0", "addr0", 1));
   device_info_.infos_[1].device = device;
   technologies = device_info_.GetUninitializedTechnologies();
   expected_technologies.erase(Technology::NameFromIdentifier(
@@ -1146,9 +1142,8 @@ TEST_F(DeviceInfoTest, GetMACAddressOfPeer) {
 }
 
 TEST_F(DeviceInfoTest, IPv6AddressChanged) {
-  scoped_refptr<MockDevice> device(new MockDevice(
-      &control_interface_, &dispatcher_, &metrics_, &manager_,
-      "null0", "addr0", kTestDeviceIndex));
+  scoped_refptr<MockDevice> device(
+      new MockDevice(&manager_, "null0", "addr0", kTestDeviceIndex));
 
   // Device info entry does not exist.
   EXPECT_FALSE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, nullptr));
@@ -1237,9 +1232,8 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
 
 
 TEST_F(DeviceInfoTest, IPv6DnsServerAddressesChanged) {
-  scoped_refptr<MockDevice> device(new MockDevice(
-      &control_interface_, &dispatcher_, &metrics_, &manager_,
-      "null0", "addr0", kTestDeviceIndex));
+  scoped_refptr<MockDevice> device(
+      new MockDevice(&manager_, "null0", "addr0", kTestDeviceIndex));
   device_info_.time_ = &time_;
   vector<IPAddress> dns_server_addresses_out;
   uint32_t lifetime_out;

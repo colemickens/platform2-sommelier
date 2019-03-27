@@ -31,14 +31,10 @@ static auto kModuleLogScope = ScopeLogger::kPPP;
 static string ObjectID(PPPDevice* p) { return p->link_name(); }
 }
 
-PPPDevice::PPPDevice(ControlInterface* control,
-                     EventDispatcher* dispatcher,
-                     Metrics* metrics,
-                     Manager* manager,
+PPPDevice::PPPDevice(Manager* manager,
                      const string& link_name,
                      int interface_index)
-    : VirtualDevice(control, dispatcher, metrics, manager, link_name,
-                    interface_index, Technology::kPPP) {}
+    : VirtualDevice(manager, link_name, interface_index, Technology::kPPP) {}
 
 PPPDevice::~PPPDevice() = default;
 

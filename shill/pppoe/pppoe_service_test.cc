@@ -38,17 +38,8 @@ class PPPoEServiceTest : public testing::Test {
  public:
   PPPoEServiceTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
-        ethernet_(new MockEthernet(&control_interface_,
-                                   &dispatcher_,
-                                   &metrics_,
-                                   &manager_,
-                                   "ethernet",
-                                   "aabbccddeeff",
-                                   0)),
-        device_info_(&control_interface_,
-                     &dispatcher_,
-                     &metrics_,
-                     &manager_),
+        ethernet_(new MockEthernet(&manager_, "ethernet", "aabbccddeeff", 0)),
+        device_info_(&control_interface_, &dispatcher_, &metrics_, &manager_),
         service_(new PPPoEService(&control_interface_,
                                   &dispatcher_,
                                   &metrics_,
@@ -129,12 +120,10 @@ TEST_F(PPPoEServiceTest, OnPPPConnected) {
 
   static const char kLinkName[] = "ppp0";
   map<string, string> params = { {kPPPInterfaceName, kLinkName} };
-  MockPPPDevice* device = new MockPPPDevice(
-      &control_interface_, &dispatcher_, &metrics_, &manager_, kLinkName, 0);
+  MockPPPDevice* device = new MockPPPDevice(&manager_, kLinkName, 0);
 
   EXPECT_CALL(device_info_, GetIndex(StrEq(kLinkName))).WillOnce(Return(0));
-  EXPECT_CALL(*factory, CreatePPPDevice(_, _, _, _, _, _))
-      .WillOnce(Return(device));
+  EXPECT_CALL(*factory, CreatePPPDevice(_, _, _)).WillOnce(Return(device));
   EXPECT_CALL(device_info_, RegisterDevice(IsRefPtrTo(device)));
   EXPECT_CALL(*device, SetEnabled(true));
   EXPECT_CALL(*device, SelectService(_));
@@ -177,8 +166,7 @@ TEST_F(PPPoEServiceTest, Disconnect) {
       base::Bind(&PPPoEService::OnPPPDied, weak_ptr));
   service_->pppd_.reset(pppd);
 
-  MockPPPDevice* ppp_device = new MockPPPDevice(
-      &control_interface_, &dispatcher_, &metrics_, &manager_, "ppp0", 0);
+  MockPPPDevice* ppp_device = new MockPPPDevice(&manager_, "ppp0", 0);
   service_->ppp_device_ = ppp_device;
 
   EXPECT_CALL(*ppp_device, DropConnection());

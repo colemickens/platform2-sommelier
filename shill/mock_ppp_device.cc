@@ -6,14 +6,10 @@
 
 namespace shill {
 
-MockPPPDevice::MockPPPDevice(ControlInterface* control,
-                             EventDispatcher* dispatcher,
-                             Metrics* metrics,
-                             Manager* manager,
+MockPPPDevice::MockPPPDevice(Manager* manager,
                              const std::string& link_name,
                              int interface_index)
-    : PPPDevice(control, dispatcher, metrics, manager, link_name,
-                interface_index) {}
+    : PPPDevice(manager, link_name, interface_index) {}
 
 MockPPPDevice::~MockPPPDevice() = default;
 

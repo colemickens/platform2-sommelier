@@ -51,8 +51,7 @@ class L2TPIPSecDriverTest : public testing::Test,
                                     &process_manager_)),
         service_(new MockVPNService(&control_, &dispatcher_, &metrics_,
                                     &manager_, driver_)),
-        device_(new MockPPPDevice(&control_, &dispatcher_, &metrics_, &manager_,
-                                  kInterfaceName, kInterfaceIndex)),
+        device_(new MockPPPDevice(&manager_, kInterfaceName, kInterfaceIndex)),
         certificate_file_(new MockCertificateFile()),
         weak_ptr_factory_(this) {
     driver_->certificate_file_.reset(certificate_file_);  // Passes ownership.
@@ -684,7 +683,7 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
       .WillOnce(Return(kInterfaceIndex));
   EXPECT_CALL(*mock_ppp_device_factory,
-              CreatePPPDevice(_, _, _, _, kInterfaceName, kInterfaceIndex))
+              CreatePPPDevice(_, kInterfaceName, kInterfaceIndex))
       .WillOnce(Return(device_.get()));
 
   // Make sure that a notification of an intermediate state doesn't cause
@@ -716,8 +715,7 @@ TEST_F(L2TPIPSecDriverTest, NotifyWithExistingDevice) {
   SetDevice(device_);
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
       .WillOnce(Return(kInterfaceIndex));
-  EXPECT_CALL(*mock_ppp_device_factory,
-              CreatePPPDevice(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(*mock_ppp_device_factory, CreatePPPDevice(_, _, _)).Times(0);
   ExpectDeviceConnected(config);
   ExpectMetricsReported();
   InvokeNotify(kPPPReasonConnect, config);

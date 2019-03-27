@@ -450,15 +450,11 @@ const uint8_t kPassiveScanTriggerNlMsg[] = {
 class WiFiPropertyTest : public PropertyStoreTest {
  public:
   WiFiPropertyTest()
-      : device_(new WiFi(control_interface(),
-                         dispatcher(),
-                         &metrics_,
-                         manager(),
+      : device_(new WiFi(manager(),
                          "wifi",
                          "",
                          kInterfaceIndex,
-                         std::make_unique<MockWakeOnWiFi>())) {
-  }
+                         std::make_unique<MockWakeOnWiFi>())) {}
   virtual ~WiFiPropertyTest() {}
 
  protected:
@@ -551,13 +547,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
  public:
   explicit WiFiObjectTest(std::unique_ptr<EventDispatcher> dispatcher)
       : event_dispatcher_(std::move(dispatcher)),
-        manager_(&control_interface_, nullptr, &metrics_),
+        manager_(&control_interface_, event_dispatcher_.get(), &metrics_),
         device_info_(
             &control_interface_, event_dispatcher_.get(), &metrics_, &manager_),
-        wifi_(new WiFi(&control_interface_,
-                       event_dispatcher_.get(),
-                       &metrics_,
-                       &manager_,
+        wifi_(new WiFi(&manager_,
                        kDeviceName,
                        kDeviceAddress,
                        kInterfaceIndex,

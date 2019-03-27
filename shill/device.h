@@ -49,10 +49,7 @@ class TrafficMonitor;
 class Device : public base::RefCounted<Device> {
  public:
   // A constructor for the Device object
-  Device(ControlInterface* control_interface,
-         EventDispatcher* dispatcher,
-         Metrics* metrics,
-         Manager* manager,
+  Device(Manager* manager,
          const std::string& link_name,
          const std::string& address,
          int interface_index,
@@ -237,7 +234,7 @@ class Device : public base::RefCounted<Device> {
   RTNLHandler* rtnl_handler() { return rtnl_handler_; }
   bool running() const { return running_; }
 
-  EventDispatcher* dispatcher() const { return dispatcher_; }
+  EventDispatcher* dispatcher() const;
 
   // Load configuration for the device from |storage|.  This may include
   // instantiating non-visible services for which configuration has been
@@ -653,8 +650,8 @@ class Device : public base::RefCounted<Device> {
       const PortalDetector::Result& https_result);
 
   // Property getters reserved for subclasses
-  ControlInterface* control_interface() const { return control_interface_; }
-  Metrics* metrics() const { return metrics_; }
+  ControlInterface* control_interface() const;
+  Metrics* metrics() const;
   Manager* manager() const { return manager_; }
   const LinkMonitor* link_monitor() const { return link_monitor_.get(); }
   void set_link_monitor(LinkMonitor* link_monitor);
@@ -811,9 +808,6 @@ class Device : public base::RefCounted<Device> {
   const int interface_index_;
   bool running_;  // indicates whether the device is actually in operation
   const std::string link_name_;
-  ControlInterface* control_interface_;
-  EventDispatcher* dispatcher_;
-  Metrics* metrics_;
   Manager* manager_;
   IPConfigRefPtr ipconfig_;
   IPConfigRefPtr ip6config_;

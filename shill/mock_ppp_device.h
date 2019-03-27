@@ -16,10 +16,7 @@ namespace shill {
 
 class MockPPPDevice : public PPPDevice {
  public:
-  MockPPPDevice(ControlInterface* control,
-                EventDispatcher* dispatcher,
-                Metrics* metrics,
-                Manager* manager,
+  MockPPPDevice(Manager* manager,
                 const std::string& link_name,
                 int interface_index);
   ~MockPPPDevice() override;

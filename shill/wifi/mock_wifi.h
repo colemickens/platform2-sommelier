@@ -28,10 +28,7 @@ class MockWiFi : public WiFi {
   // MockWiFi takes ownership of the wake_on_wifi pointer passed to it.
   // This is not exposed in the constructor type because gmock doesn't
   // provide the ability to forward arguments that aren't const &...
-  MockWiFi(ControlInterface* control_interface,
-           EventDispatcher* dispatcher,
-           Metrics* metrics,
-           Manager* manager,
+  MockWiFi(Manager* manager,
            const std::string& link_name,
            const std::string& address,
            int interface_index,

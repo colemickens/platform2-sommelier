@@ -6,15 +6,11 @@
 
 namespace shill {
 
-MockVirtualDevice::MockVirtualDevice(ControlInterface* control,
-                                     EventDispatcher* dispatcher,
-                                     Metrics* metrics,
-                                     Manager* manager,
+MockVirtualDevice::MockVirtualDevice(Manager* manager,
                                      const std::string& link_name,
                                      int interface_index,
                                      Technology::Identifier technology)
-    : VirtualDevice(control, dispatcher, metrics, manager, link_name,
-                    interface_index, technology) {}
+    : VirtualDevice(manager, link_name, interface_index, technology) {}
 
 MockVirtualDevice::~MockVirtualDevice() = default;
 

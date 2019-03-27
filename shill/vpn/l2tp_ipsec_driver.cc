@@ -473,9 +473,8 @@ void L2TPIPSecDriver::Notify(
   }
 
   if (!device_) {
-    device_ = ppp_device_factory_->CreatePPPDevice(
-        control_, dispatcher(), metrics_, manager(), interface_name,
-        interface_index);
+    device_ = ppp_device_factory_->CreatePPPDevice(manager(), interface_name,
+                                                   interface_index);
   }
   device_->SetEnabled(true);
   device_->SelectService(service_);

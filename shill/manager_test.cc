@@ -142,34 +142,14 @@ class ManagerTest : public PropertyStoreTest {
   virtual ~ManagerTest() {}
 
   void SetUp() override {
-    mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
-                                                     dispatcher(),
-                                                     metrics(),
-                                                     manager(),
-                                                     "null0",
-                                                     "addr0",
-                                                     0));
-    mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
-                                                     dispatcher(),
-                                                     metrics(),
-                                                     manager(),
-                                                     "null1",
-                                                     "addr1",
-                                                     1));
-    mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
-                                                     dispatcher(),
-                                                     metrics(),
-                                                     manager(),
-                                                     "null2",
-                                                     "addr2",
-                                                     2));
-    mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
-                                                     dispatcher(),
-                                                     metrics(),
-                                                     manager(),
-                                                     "null3",
-                                                     "addr3",
-                                                     3));
+    mock_devices_.push_back(
+        new NiceMock<MockDevice>(manager(), "null0", "addr0", 0));
+    mock_devices_.push_back(
+        new NiceMock<MockDevice>(manager(), "null1", "addr1", 1));
+    mock_devices_.push_back(
+        new NiceMock<MockDevice>(manager(), "null2", "addr2", 2));
+    mock_devices_.push_back(
+        new NiceMock<MockDevice>(manager(), "null3", "addr3", 3));
   }
 
   void TearDown() override {
@@ -2779,13 +2759,8 @@ TEST_F(ManagerTest, ReportServicesOnSameNetwork) {
 }
 
 TEST_F(ManagerTest, AvailableTechnologies) {
-  mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
-                                                   dispatcher(),
-                                                   metrics(),
-                                                   manager(),
-                                                   "null4",
-                                                   "addr4",
-                                                   0));
+  mock_devices_.push_back(
+      new NiceMock<MockDevice>(manager(), "null4", "addr4", 0));
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
   manager()->RegisterDevice(mock_devices_[2]);
@@ -3973,43 +3948,19 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
   // Add devices
   // WiFi
   auto wifi_device = make_scoped_refptr(
-       new NiceMock<MockDevice>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager(),
-                                "null",
-                                "addr",
-                                0));
+      new NiceMock<MockDevice>(manager(), "null", "addr", 0));
   manager()->RegisterDevice(wifi_device);
   // Cell
   auto cell_device = make_scoped_refptr(
-      new NiceMock<MockDevice>(control_interface(),
-                               dispatcher(),
-                               metrics(),
-                               manager(),
-                               "null",
-                               "addr",
-                               1));
+      new NiceMock<MockDevice>(manager(), "null", "addr", 1));
   manager()->RegisterDevice(cell_device);
   // Ethernet
   auto eth_device = make_scoped_refptr(
-      new NiceMock<MockDevice>(control_interface(),
-                               dispatcher(),
-                               metrics(),
-                               manager(),
-                               "null",
-                               "addr",
-                               3));
+      new NiceMock<MockDevice>(manager(), "null", "addr", 3));
   manager()->RegisterDevice(eth_device);
   // VPN Device -- base device for a service that will not be connected
   auto vpn_device = make_scoped_refptr(
-      new NiceMock<MockDevice>(control_interface(),
-                               dispatcher(),
-                               metrics(),
-                               manager(),
-                               "null",
-                               "addr",
-                               4));
+      new NiceMock<MockDevice>(manager(), "null", "addr", 4));
   manager()->RegisterDevice(vpn_device);
 
   // Add service for multiple devices
@@ -4344,13 +4295,8 @@ TEST_F(ManagerTest, CustomSetterNoopChange) {
 TEST_F(ManagerTest, GeoLocation) {
   EXPECT_TRUE(manager()->GetNetworksForGeolocation().empty());
 
-  auto device = make_scoped_refptr(new NiceMock<MockDevice>(control_interface(),
-                                                            dispatcher(),
-                                                            metrics(),
-                                                            manager(),
-                                                            "device",
-                                                            "addr_1",
-                                                            0));
+  auto device = make_scoped_refptr(
+      new NiceMock<MockDevice>(manager(), "device", "addr_1", 0));
 
   // Manager should ignore gelocation info from technologies it does not know.
   EXPECT_CALL(*device, technology())
@@ -4372,13 +4318,7 @@ TEST_F(ManagerTest, GeoLocation) {
   EXPECT_TRUE(base::ContainsKey(location_infos, kGeoWifiAccessPointsProperty));
 
   auto cellular_device = make_scoped_refptr(
-      new NiceMock<MockDevice>(control_interface(),
-                               dispatcher(),
-                               metrics(),
-                               manager(),
-                               "modem",
-                               "addr_2",
-                               1));
+      new NiceMock<MockDevice>(manager(), "modem", "addr_2", 1));
 
   // Manager should inclusively add cellular info.
   EXPECT_CALL(*cellular_device, technology())
@@ -4397,24 +4337,12 @@ TEST_F(ManagerTest, GeoLocation_MultipleDevicesOneTechnology) {
   EXPECT_TRUE(manager()->GetNetworksForGeolocation().empty());
 
   auto device_1 = make_scoped_refptr(
-      new NiceMock<MockDevice>(control_interface(),
-                               dispatcher(),
-                               metrics(),
-                               manager(),
-                               "device_1",
-                               "addr_1",
-                               0));
+      new NiceMock<MockDevice>(manager(), "device_1", "addr_1", 0));
   GeolocationInfo info_1;
   info_1["location"] = "abc";
 
   auto device_2 = make_scoped_refptr(
-      new NiceMock<MockDevice>(control_interface(),
-                               dispatcher(),
-                               metrics(),
-                               manager(),
-                               "device_2",
-                               "addr_2",
-                               1));
+      new NiceMock<MockDevice>(manager(), "device_2", "addr_2", 1));
   GeolocationInfo info_2;
   info_2["location"] = "def";
 
@@ -4442,13 +4370,8 @@ TEST_F(ManagerTest, GeoLocation_MultipleDevicesOneTechnology) {
 TEST_F(ManagerTest, GeoLocation_DeregisterDevice) {
   EXPECT_TRUE(manager()->GetNetworksForGeolocation().empty());
 
-  auto device = make_scoped_refptr(new NiceMock<MockDevice>(control_interface(),
-                                                            dispatcher(),
-                                                            metrics(),
-                                                            manager(),
-                                                            "device",
-                                                            "addr_1",
-                                                            0));
+  auto device = make_scoped_refptr(
+      new NiceMock<MockDevice>(manager(), "device", "addr_1", 0));
   manager()->RegisterDevice(device);
 
   EXPECT_CALL(*device, technology()).WillRepeatedly(Return(Technology::kWifi));
@@ -4520,20 +4443,10 @@ TEST_F(ManagerTest, IsWifiIdle) {
 TEST_F(ManagerTest, DetectMultiHomedDevices) {
   vector<scoped_refptr<MockConnection>> mock_connections;
   vector<ConnectionRefPtr> device_connections;
-  mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
-                                                   dispatcher(),
-                                                   metrics(),
-                                                   manager(),
-                                                   "null4",
-                                                   "addr4",
-                                                   0));
-  mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
-                                                   dispatcher(),
-                                                   metrics(),
-                                                   manager(),
-                                                   "null5",
-                                                   "addr5",
-                                                   0));
+  mock_devices_.push_back(
+      new NiceMock<MockDevice>(manager(), "null4", "addr4", 0));
+  mock_devices_.push_back(
+      new NiceMock<MockDevice>(manager(), "null5", "addr5", 0));
   for (const auto& device : mock_devices_) {
     manager()->RegisterDevice(device);
     mock_connections.emplace_back(
@@ -4603,20 +4516,10 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   Mock::VerifyAndClearExpectations(mock_devices_[2].get());
 
   // Newly registered devices should be disabled.
-  mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
-                                                   dispatcher(),
-                                                   metrics(),
-                                                   manager(),
-                                                   "null4",
-                                                   "addr4",
-                                                   0));
-  mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
-                                                   dispatcher(),
-                                                   metrics(),
-                                                   manager(),
-                                                   "null5",
-                                                   "addr5",
-                                                   0));
+  mock_devices_.push_back(
+      new NiceMock<MockDevice>(manager(), "null4", "addr4", 0));
+  mock_devices_.push_back(
+      new NiceMock<MockDevice>(manager(), "null5", "addr5", 0));
   ON_CALL(*mock_devices_[3], technology())
       .WillByDefault(Return(Technology::kVPN));
   ON_CALL(*mock_devices_[4], technology())

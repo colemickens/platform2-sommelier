@@ -91,8 +91,7 @@ class OpenVPNDriverTest
         service_(new MockVPNService(&control_, &dispatcher_, &metrics_,
                                     &manager_, driver_)),
         device_(new MockVirtualDevice(
-            &control_, &dispatcher_, &metrics_, &manager_,
-            kInterfaceName, kInterfaceIndex, Technology::kVPN)),
+            &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN)),
         certificate_file_(new MockCertificateFile()),
         extra_certificates_file_(new MockCertificateFile()),
         management_server_(new NiceMock<MockOpenVPNManagementServer>()) {

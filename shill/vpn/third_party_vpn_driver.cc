@@ -499,8 +499,8 @@ bool ThirdPartyVpnDriver::ClaimInterface(const std::string& link_name,
   SLOG(this, 2) << "Claiming " << link_name << " for third party VPN tunnel";
 
   CHECK(!device_);
-  device_ = new VirtualDevice(control_, dispatcher(), metrics_, manager(),
-                              link_name, interface_index, Technology::kVPN);
+  device_ = new VirtualDevice(manager(), link_name, interface_index,
+                              Technology::kVPN);
   device_->SetEnabled(true);
 
   tun_fd_ = device_info_->OpenTunnelInterface(tunnel_interface_);

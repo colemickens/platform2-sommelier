@@ -123,10 +123,7 @@ const char Device::kStoragePowered[] = "Powered";
 const char Device::kStorageReceiveByteCount[] = "ReceiveByteCount";
 const char Device::kStorageTransmitByteCount[] = "TransmitByteCount";
 
-Device::Device(ControlInterface* control_interface,
-               EventDispatcher* dispatcher,
-               Metrics* metrics,
-               Manager* manager,
+Device::Device(Manager* manager,
                const string& link_name,
                const string& address,
                int interface_index,
@@ -138,12 +135,9 @@ Device::Device(ControlInterface* control_interface,
       interface_index_(interface_index),
       running_(false),
       link_name_(link_name),
-      control_interface_(control_interface),
-      dispatcher_(dispatcher),
-      metrics_(metrics),
       manager_(manager),
       weak_ptr_factory_(this),
-      adaptor_(control_interface->CreateDeviceAdaptor(this)),
+      adaptor_(manager->control_interface()->CreateDeviceAdaptor(this)),
       technology_(technology),
       portal_check_interval_seconds_(0),
       receive_byte_offset_(0),
@@ -151,7 +145,7 @@ Device::Device(ControlInterface* control_interface,
       dhcp_provider_(DHCPProvider::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
-      blackhole_addrs_(dispatcher),
+      blackhole_addrs_(manager->dispatcher()),
       time_(Time::GetInstance()),
       last_link_monitor_failed_time_(0),
       is_loose_routing_(false),
@@ -571,7 +565,7 @@ void Device::OnIPv6AddressChanged() {
   }
 
   if (!ip6config_) {
-    ip6config_ = new IPConfig(control_interface_, link_name_);
+    ip6config_ = new IPConfig(control_interface(), link_name_);
   } else if (properties.address == ip6config_->properties().address &&
              properties.subnet_prefix ==
                  ip6config_->properties().subnet_prefix) {
@@ -616,7 +610,7 @@ void Device::OnIPv6DnsServerAddressesChanged() {
   }
 
   if (!ip6config_) {
-    ip6config_ = new IPConfig(control_interface_, link_name_);
+    ip6config_ = new IPConfig(control_interface(), link_name_);
   }
 
   if (lifetime != ND_OPT_LIFETIME_INFINITY) {
@@ -645,9 +639,8 @@ void Device::StartIPv6DNSServerTimer(uint32_t lifetime_seconds) {
   int64_t delay = static_cast<int64_t>(lifetime_seconds) * 1000;
   ipv6_dns_server_expired_callback_.Reset(
       base::Bind(&Device::IPv6DNSServerExpired, base::Unretained(this)));
-  dispatcher_->PostDelayedTask(FROM_HERE,
-                               ipv6_dns_server_expired_callback_.callback(),
-                               delay);
+  dispatcher()->PostDelayedTask(
+      FROM_HERE, ipv6_dns_server_expired_callback_.callback(), delay);
 }
 
 void Device::StopIPv6DNSServerTimer() {
@@ -795,8 +788,8 @@ bool Device::AcquireIPConfigWithLeaseName(const string& lease_name) {
                                           weak_ptr_factory_.GetWeakPtr()));
   ipconfig_->RegisterExpireCallback(Bind(&Device::OnIPConfigExpired,
                                          weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostTask(FROM_HERE, Bind(&Device::ConfigureStaticIPTask,
-                             weak_ptr_factory_.GetWeakPtr()));
+  dispatcher()->PostTask(FROM_HERE, Bind(&Device::ConfigureStaticIPTask,
+                                         weak_ptr_factory_.GetWeakPtr()));
   if (!ipconfig_->RequestIP()) {
     return false;
   }
@@ -847,10 +840,11 @@ void Device::RefreshIPConfig() {
 void Device::AssignIPConfig(const IPConfig::Properties& properties) {
   DestroyIPConfig();
   EnableIPv6();
-  ipconfig_ = new IPConfig(control_interface_, link_name_);
+  ipconfig_ = new IPConfig(control_interface(), link_name_);
   ipconfig_->set_properties(properties);
-  dispatcher_->PostTask(FROM_HERE, Bind(&Device::OnIPConfigUpdated,
-                             weak_ptr_factory_.GetWeakPtr(), ipconfig_, true));
+  dispatcher()->PostTask(FROM_HERE,
+                         Bind(&Device::OnIPConfigUpdated,
+                              weak_ptr_factory_.GetWeakPtr(), ipconfig_, true));
 }
 
 void Device::DestroyIPConfigLease(const string& name) {
@@ -966,11 +960,11 @@ void Device::SetupConnection(const IPConfigRefPtr& ipconfig) {
   Metrics::NetworkConnectionIPType ip_type =
       connection_->IsIPv6() ? Metrics::kNetworkConnectionIPTypeIPv6
                             : Metrics::kNetworkConnectionIPTypeIPv4;
-  metrics_->NotifyNetworkConnectionIPType(technology_, ip_type);
+  metrics()->NotifyNetworkConnectionIPType(technology_, ip_type);
 
   // Report if device have IPv6 connectivity
   bool ipv6_connectivity = IPConfigCompleted(ip6config_);
-  metrics_->NotifyIPv6ConnectivityStatus(technology_, ipv6_connectivity);
+  metrics()->NotifyIPv6ConnectivityStatus(technology_, ipv6_connectivity);
 
   // SetConnection must occur after the UpdateFromIPConfig so the
   // service can use the values derived from the connection.
@@ -1136,8 +1130,8 @@ void Device::OnIPConfigRefreshed(const IPConfigRefPtr& ipconfig) {
   ipconfig->RestoreSavedIPParameters(
       selected_service_->mutable_static_ip_parameters());
 
-  dispatcher_->PostTask(FROM_HERE, Bind(&Device::ConfigureStaticIPTask,
-                             weak_ptr_factory_.GetWeakPtr()));
+  dispatcher()->PostTask(FROM_HERE, Bind(&Device::ConfigureStaticIPTask,
+                                         weak_ptr_factory_.GetWeakPtr()));
 }
 
 void Device::OnIPConfigFailure() {
@@ -1183,9 +1177,8 @@ void Device::OnConnected() {
     // failure is detected in the next 5 minutes.
     reliable_link_callback_.Reset(
         base::Bind(&Device::OnReliableLink, base::Unretained(this)));
-    dispatcher_->PostDelayedTask(FROM_HERE,
-        reliable_link_callback_.callback(),
-        kLinkUnreliableThresholdSeconds * 1000);
+    dispatcher()->PostDelayedTask(FROM_HERE, reliable_link_callback_.callback(),
+                                  kLinkUnreliableThresholdSeconds * 1000);
   }
 }
 
@@ -1203,7 +1196,7 @@ void Device::CreateConnection() {
                                  fixed_ip_params_,
                                  technology_,
                                  manager_->device_info(),
-                                 control_interface_);
+                                 control_interface());
   }
 }
 
@@ -1384,7 +1377,7 @@ bool Device::StartPortalDetection() {
   }
 
   portal_detector_.reset(new PortalDetector(
-      connection_, dispatcher_, metrics(),
+      connection_, dispatcher(), metrics(),
       Bind(&Device::PortalDetectorCallback, weak_ptr_factory_.GetWeakPtr())));
   PortalDetector::Properties props = manager_->GetPortalCheckProperties();
   if (!portal_detector_->StartAfterDelay(props, 0)) {
@@ -1414,8 +1407,8 @@ bool Device::StartConnectionDiagnosticsAfterPortalDetection(
     const PortalDetector::Result& https_result) {
   connection_diagnostics_.reset(
       new ConnectionDiagnostics(connection_,
-                                dispatcher_,
-                                metrics_,
+                                dispatcher(),
+                                metrics(),
                                 manager_->device_info(),
                                 Bind(&Device::ConnectionDiagnosticsCallback,
                                      weak_ptr_factory_.GetWeakPtr())));
@@ -1443,7 +1436,7 @@ bool Device::StartConnectivityTest() {
   LOG(INFO) << "Device " << link_name() << " starting connectivity test.";
 
   connection_tester_.reset(new PortalDetector(
-      connection_, dispatcher_, metrics(),
+      connection_, dispatcher(), metrics(),
       Bind(&Device::ConnectionTesterCallback, weak_ptr_factory_.GetWeakPtr())));
   connection_tester_->StartAfterDelay(PortalDetector::Properties(), 0);
   return true;
@@ -1475,7 +1468,7 @@ bool Device::StartLinkMonitor() {
   if (!link_monitor()) {
     set_link_monitor(
       new LinkMonitor(
-          connection_, dispatcher_, metrics(), manager_->device_info(),
+          connection_, dispatcher(), metrics(), manager_->device_info(),
           Bind(&Device::OnLinkMonitorFailure, weak_ptr_factory_.GetWeakPtr()),
           Bind(&Device::OnLinkMonitorGatewayChange,
                weak_ptr_factory_.GetWeakPtr())));
@@ -1497,8 +1490,8 @@ void Device::OnUnreliableLink() {
                 << ": Link is unreliable.";
   selected_service_->set_unreliable(true);
   reliable_link_callback_.Cancel();
-  metrics_->NotifyUnreliableLinkSignalStrength(
-      technology_, selected_service_->strength());
+  metrics()->NotifyUnreliableLinkSignalStrength(technology_,
+                                                selected_service_->strength());
 }
 
 void Device::OnReliableLink() {
@@ -1547,7 +1540,7 @@ bool Device::StartDNSTest(
   }
 
   dns_server_tester_.reset(new DnsServerTester(connection_,
-                                               dispatcher_,
+                                               dispatcher(),
                                                dns_servers,
                                                retry_until_success,
                                                callback));
@@ -1647,7 +1640,7 @@ void Device::StartTrafficMonitor() {
                 << ": Traffic Monitor starting.";
   if (!traffic_monitor_) {
     traffic_monitor_ = std::make_unique<TrafficMonitor>(
-        this, dispatcher_,
+        this, dispatcher(),
         Bind(&Device::OnEncounterNetworkProblem,
              weak_ptr_factory_.GetWeakPtr()));
   }
@@ -2056,6 +2049,18 @@ void Device::BringNetworkInterfaceDown() {
   // If |fixed_ip_params_| is true, we don't manipulate the interface state.
   if (!fixed_ip_params_)
     rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
+}
+
+ControlInterface* Device::control_interface() const {
+  return manager_->control_interface();
+}
+
+EventDispatcher* Device::dispatcher() const {
+  return manager_->dispatcher();
+}
+
+Metrics* Device::metrics() const {
+  return manager_->metrics();
 }
 
 }  // namespace shill

@@ -229,8 +229,7 @@ void PPPoEService::OnPPPConnected(const map<string, string>& params) {
     ppp_device_->DropConnection();
   } else {
     ppp_device_ = ppp_device_factory_->CreatePPPDevice(
-        control_interface(), dispatcher(), metrics(), manager(), interface_name,
-        interface_index);
+        manager(), interface_name, interface_index);
     device_info->RegisterDevice(ppp_device_);
     ppp_device_->SetEnabled(true);
   }

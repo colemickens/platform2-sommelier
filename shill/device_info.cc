@@ -533,14 +533,12 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string& link_name,
       break;
 #endif  // DISABLE_CELLULAR
     case Technology::kEthernet:
-      device = new Ethernet(control_interface_, dispatcher_, metrics_,
-                            manager_, link_name, address, interface_index);
+      device = new Ethernet(manager_, link_name, address, interface_index);
       device->EnableIPv6Privacy();
       break;
     case Technology::kVirtioEthernet:
-      device = new VirtioEthernet(control_interface_, dispatcher_, metrics_,
-                                  manager_, link_name, address,
-                                  interface_index);
+      device =
+          new VirtioEthernet(manager_, link_name, address, interface_index);
       device->EnableIPv6Privacy();
       break;
     case Technology::kWifi:
@@ -608,8 +606,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string& link_name,
       // We will not manage this device in shill.  Do not create a device
       // object or do anything to change its state.  We create a stub object
       // which is useful for testing.
-      return new DeviceStub(control_interface_, dispatcher_, metrics_,
-                            manager_, link_name, address, interface_index,
+      return new DeviceStub(manager_, link_name, address, interface_index,
                             technology);
   }
 
@@ -1338,13 +1335,7 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {
       metrics_,
       address,
       base::Bind(&Manager::RecordDarkResumeWakeReason, manager_->AsWeakPtr()));
-  DeviceRefPtr device = new WiFi(control_interface_,
-                                 dispatcher_,
-                                 metrics_,
-                                 manager_,
-                                 info->name,
-                                 address,
-                                 interface_index,
+  DeviceRefPtr device = new WiFi(manager_, info->name, address, interface_index,
                                  std::move(wake_on_wifi));
   device->EnableIPv6Privacy();
   RegisterDevice(device);

@@ -44,10 +44,7 @@ class Ethernet
     : public Device {
 #endif  // DISABLE_WIRED_8021X
  public:
-  Ethernet(ControlInterface* control_interface,
-           EventDispatcher* dispatcher,
-           Metrics* metrics,
-           Manager* manager,
+  Ethernet(Manager* manager,
            const std::string& link_name,
            const std::string& address,
            int interface_index);

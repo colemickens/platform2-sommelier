@@ -44,14 +44,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
  public:
   WiFiEndpointTest()
       : wifi_(new NiceMock<MockWiFi>(
-            control_interface(),
-            dispatcher(),
-            metrics(),
-            manager(),
-            "wifi",
-            kDeviceAddress,
-            0,
-            new MockWakeOnWiFi())) {}
+            manager(), "wifi", kDeviceAddress, 0, new MockWakeOnWiFi())) {}
   virtual ~WiFiEndpointTest() {}
 
  protected:

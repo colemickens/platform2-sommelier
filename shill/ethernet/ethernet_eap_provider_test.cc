@@ -70,13 +70,8 @@ TEST_F(EthernetEapProviderTest, CredentialChangeCallback) {
   EXPECT_CALL(*this, Callback1()).Times(0);
   provider_.OnCredentialsChanged();
 
-  scoped_refptr<MockEthernet> device0 = new MockEthernet(&control_,
-                                                         &dispatcher_,
-                                                         &metrics_,
-                                                         &manager_,
-                                                         "eth0",
-                                                         "addr0",
-                                                         0);
+  scoped_refptr<MockEthernet> device0 =
+      new MockEthernet(&manager_, "eth0", "addr0", 0);
   EthernetEapProvider::CredentialChangeCallback callback0 =
       base::Bind(&EthernetEapProviderTest::Callback0,
                  base::Unretained(this));
@@ -86,13 +81,8 @@ TEST_F(EthernetEapProviderTest, CredentialChangeCallback) {
   EXPECT_CALL(*this, Callback1()).Times(0);
   provider_.OnCredentialsChanged();
 
-  scoped_refptr<MockEthernet> device1 = new MockEthernet(&control_,
-                                                         &dispatcher_,
-                                                         &metrics_,
-                                                         &manager_,
-                                                         "eth1",
-                                                         "addr1",
-                                                         1);
+  scoped_refptr<MockEthernet> device1 =
+      new MockEthernet(&manager_, "eth1", "addr1", 1);
   EthernetEapProvider::CredentialChangeCallback callback1 =
       base::Bind(&EthernetEapProviderTest::Callback1,
                  base::Unretained(this));

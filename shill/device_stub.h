@@ -15,24 +15,15 @@
 
 namespace shill {
 
-class ControlInterface;
-class EventDispatcher;
-class Manager;
-class Metrics;
-
 // Non-functional Device subclass used for non-operable or blacklisted devices
 class DeviceStub : public Device {
  public:
-  DeviceStub(ControlInterface* control_interface,
-             EventDispatcher* dispatcher,
-             Metrics* metrics,
-             Manager* manager,
+  DeviceStub(Manager* manager,
              const std::string& link_name,
              const std::string& address,
              int interface_index,
              Technology::Identifier technology)
-      : Device(control_interface, dispatcher, metrics, manager, link_name,
-               address, interface_index, technology) {}
+      : Device(manager, link_name, address, interface_index, technology) {}
   void Start(Error* /*error*/,
              const EnabledStateChangedCallback& /*callback*/) override {}
   void Stop(Error* /*error*/,

@@ -15,10 +15,7 @@ namespace shill {
 
 class MockVirtualDevice : public VirtualDevice {
  public:
-  MockVirtualDevice(ControlInterface* control,
-                    EventDispatcher* dispatcher,
-                    Metrics* metrics,
-                    Manager* manager,
+  MockVirtualDevice(Manager* manager,
                     const std::string& link_name,
                     int interface_index,
                     Technology::Identifier technology);

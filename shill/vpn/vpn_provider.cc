@@ -188,12 +188,7 @@ bool VPNProvider::OnDeviceInfoAvailable(const string& link_name,
                                         int interface_index,
                                         Technology::Identifier technology) {
   if (technology == Technology::kArc) {
-    arc_device_ = new VirtualDevice(control_interface_,
-                                    dispatcher_,
-                                    metrics_,
-                                    manager_,
-                                    link_name,
-                                    interface_index,
+    arc_device_ = new VirtualDevice(manager_, link_name, interface_index,
                                     Technology::kArc);
     arc_device_->SetFixedIpParams(true);
     // Forward ARC->internet traffic over third-party VPN services.

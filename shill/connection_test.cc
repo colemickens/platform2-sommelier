@@ -19,6 +19,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
+#include "shill/mock_manager.h"
 #include "shill/mock_resolver.h"
 #include "shill/mock_routing_table.h"
 #include "shill/net/mock_rtnl_handler.h"
@@ -107,6 +108,7 @@ class ConnectionTest : public Test {
                                    Technology::kUnknown,
                                    device_info_.get(),
                                    &control_)),
+        manager_(&control_, nullptr, nullptr),
         ipconfig_(new IPConfig(&control_, kTestDeviceName0)),
         ip6config_(new IPConfig(&control_, kTestDeviceName0)),
         local_address_(IPAddress::kFamilyIPv4),
@@ -224,6 +226,7 @@ class ConnectionTest : public Test {
   std::unique_ptr<StrictMock<MockDeviceInfo>> device_info_;
   ConnectionRefPtr connection_;
   MockControl control_;
+  MockManager manager_;
   IPConfigRefPtr ipconfig_;
   IPConfigRefPtr ip6config_;
   IPConfig::Properties properties_;
@@ -284,13 +287,7 @@ TEST_F(ConnectionTest, AddConfig) {
       ipconfig_->properties().dns_servers,
       ipconfig_->properties().domain_search));
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
-      &control_,
-      nullptr,
-      nullptr,
-      nullptr,
-      kTestDeviceName0,
-      string(),
-      kTestDeviceInterfaceIndex0));
+      &manager_, kTestDeviceName0, string(), kTestDeviceInterfaceIndex0));
   EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex0))
       .WillOnce(Return(device));
   EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
@@ -372,9 +369,8 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
   UpdateProperties();
   connection->UpdateFromIPConfig(ipconfig_);
 
-  scoped_refptr<MockDevice> device1(
-      new MockDevice(&control_, nullptr, nullptr, nullptr, kTestDeviceName1,
-                     string(), kTestDeviceInterfaceIndex1));
+  scoped_refptr<MockDevice> device1(new MockDevice(
+      &manager_, kTestDeviceName1, string(), kTestDeviceInterfaceIndex1));
   scoped_refptr<MockConnection> mock_connection(
       new MockConnection(device_info_.get()));
   ConnectionRefPtr device_connection = mock_connection.get();
@@ -413,8 +409,7 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
               SetDNSFromLists(ipconfig_->properties().dns_servers,
                               ipconfig_->properties().domain_search));
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
-      &control_, nullptr, nullptr, nullptr, kTestDeviceName0, string(),
-      kTestDeviceInterfaceIndex0));
+      &manager_, kTestDeviceName0, string(), kTestDeviceInterfaceIndex0));
   EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex0))
       .WillOnce(Return(device));
   EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
@@ -542,13 +537,7 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   vector<string> empty_list;
   EXPECT_CALL(resolver_, SetDNSFromLists(empty_list, empty_list));
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
-      &control_,
-      nullptr,
-      nullptr,
-      nullptr,
-      kTestDeviceName0,
-      string(),
-      kTestDeviceInterfaceIndex0));
+      &manager_, kTestDeviceName0, string(), kTestDeviceInterfaceIndex0));
   EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex0))
       .WillOnce(Return(device));
   EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
@@ -704,13 +693,7 @@ TEST_F(ConnectionTest, UpdateDNSServers) {
 TEST_F(ConnectionTest, RouteRequest) {
   ConnectionRefPtr connection = GetNewConnection();
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
-      &control_,
-      nullptr,
-      nullptr,
-      nullptr,
-      kTestDeviceName0,
-      string(),
-      kTestDeviceInterfaceIndex0));
+      &manager_, kTestDeviceName0, string(), kTestDeviceInterfaceIndex0));
   EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex0))
       .WillRepeatedly(Return(device));
   EXPECT_CALL(*device, SetLooseRouting(true)).Times(1);

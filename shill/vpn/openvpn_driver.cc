@@ -370,8 +370,8 @@ bool OpenVPNDriver::ClaimInterface(const string& link_name,
   SLOG(this, 2) << "Claiming " << link_name << " for OpenVPN tunnel";
 
   CHECK(!device_);
-  device_ = new VirtualDevice(control_, dispatcher(), metrics_, manager(),
-                              link_name, interface_index, Technology::kVPN);
+  device_ = new VirtualDevice(manager(), link_name, interface_index,
+                              Technology::kVPN);
   device_->SetEnabled(true);
 
   rpc_task_.reset(new RPCTask(control_, this));

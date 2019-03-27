@@ -22,20 +22,11 @@ static auto kModuleLogScope = ScopeLogger::kEthernet;
 static string ObjectID(VirtioEthernet* v) { return v->GetRpcIdentifier(); }
 }
 
-VirtioEthernet::VirtioEthernet(ControlInterface* control_interface,
-                               EventDispatcher* dispatcher,
-                               Metrics* metrics,
-                               Manager* manager,
+VirtioEthernet::VirtioEthernet(Manager* manager,
                                const string& link_name,
                                const string& address,
                                int interface_index)
-    : Ethernet(control_interface,
-               dispatcher,
-               metrics,
-               manager,
-               link_name,
-               address,
-               interface_index) {
+    : Ethernet(manager, link_name, address, interface_index) {
   SLOG(this, 2) << "VirtioEthernet device " << link_name << " initialized.";
 }
 

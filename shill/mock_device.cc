@@ -17,21 +17,12 @@ class EventDispatcher;
 using ::testing::DefaultValue;
 using std::string;
 
-MockDevice::MockDevice(ControlInterface* control_interface,
-                       EventDispatcher* dispatcher,
-                       Metrics* metrics,
-                       Manager* manager,
+MockDevice::MockDevice(Manager* manager,
                        const string& link_name,
                        const string& address,
                        int interface_index)
-    : Device(control_interface,
-             dispatcher,
-             metrics,
-             manager,
-             link_name,
-             address,
-             interface_index,
-             Technology::kUnknown) {
+    : Device(
+          manager, link_name, address, interface_index, Technology::kUnknown) {
   DefaultValue<Technology::Identifier>::Set(Technology::kUnknown);
   ON_CALL(*this, connection())
       .WillByDefault(testing::ReturnRef(Device::connection()));

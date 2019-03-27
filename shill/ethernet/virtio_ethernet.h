@@ -13,10 +13,7 @@ namespace shill {
 
 class VirtioEthernet : public Ethernet {
  public:
-  VirtioEthernet(ControlInterface* control_interface,
-                 EventDispatcher* dispatcher,
-                 Metrics* metrics,
-                 Manager* manager,
+  VirtioEthernet(Manager* manager,
                  const std::string& link_name,
                  const std::string& address,
                  int interface_index);

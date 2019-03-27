@@ -115,22 +115,12 @@ bool IsPrintableAsciiChar(char c) {
 }
 }  // namespace
 
-WiFi::WiFi(ControlInterface* control_interface,
-           EventDispatcher* dispatcher,
-           Metrics* metrics,
-           Manager* manager,
+WiFi::WiFi(Manager* manager,
            const string& link,
            const string& address,
            int interface_index,
            std::unique_ptr<WakeOnWiFiInterface> wake_on_wifi)
-    : Device(control_interface,
-             dispatcher,
-             metrics,
-             manager,
-             link,
-             address,
-             interface_index,
-             Technology::kWifi),
+    : Device(manager, link, address, interface_index, Technology::kWifi),
       provider_(manager->wifi_provider()),
       time_(Time::GetInstance()),
       supplicant_connect_attempts_(0),
@@ -164,13 +154,14 @@ WiFi::WiFi(ControlInterface* control_interface,
       wake_on_wifi_(std::move(wake_on_wifi)),
       weak_ptr_factory_while_started_(this),
       weak_ptr_factory_(this) {
-  supplicant_process_proxy_ = control_interface->CreateSupplicantProcessProxy(
+  supplicant_process_proxy_ = control_interface()->CreateSupplicantProcessProxy(
       Bind(&WiFi::OnSupplicantAppear, weak_ptr_factory_.GetWeakPtr()),
       Bind(&WiFi::OnSupplicantVanish, weak_ptr_factory_.GetWeakPtr()));
   mac80211_monitor_.reset(
-      new Mac80211Monitor(dispatcher, link, kStuckQueueLengthThreshold,
-        base::Bind(&WiFi::RestartFastScanAttempts,
-          weak_ptr_factory_.GetWeakPtr()), metrics));
+      new Mac80211Monitor(dispatcher(), link, kStuckQueueLengthThreshold,
+                          base::Bind(&WiFi::RestartFastScanAttempts,
+                                     weak_ptr_factory_.GetWeakPtr()),
+                          metrics()));
 
   PropertyStore* store = this->mutable_store();
   store->RegisterDerivedString(kBgscanMethodProperty,

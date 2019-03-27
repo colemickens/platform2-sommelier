@@ -49,14 +49,7 @@ class DefaultProfileTest : public PropertyStoreTest {
                                     FilePath(storage_path()),
                                     DefaultProfile::kDefaultId,
                                     properties_)),
-        device_(new MockDevice(control_interface(),
-                               dispatcher(),
-                               metrics(),
-                               manager(),
-                               "null0",
-                               "addr0",
-                               0)) {
-  }
+        device_(new MockDevice(manager(), "null0", "addr0", 0)) {}
 
   virtual ~DefaultProfileTest() {}
 

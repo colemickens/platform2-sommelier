@@ -20,10 +20,7 @@ class EventDispatcher;
 
 class MockEthernet : public Ethernet {
  public:
-  MockEthernet(ControlInterface* control_interface,
-               EventDispatcher* dispatcher,
-               Metrics* metrics,
-               Manager* manager,
+  MockEthernet(Manager* manager,
                const std::string& link_name,
                const std::string& address,
                int interface_index);

@@ -22,10 +22,7 @@ namespace shill {
 // (PPP devices are represented via the PPPDevice subclass.)
 class VirtualDevice : public Device {
  public:
-  VirtualDevice(ControlInterface* control,
-                EventDispatcher* dispatcher,
-                Metrics* metrics,
-                Manager* manager,
+  VirtualDevice(Manager* manager,
                 const std::string& link_name,
                 int interface_index,
                 Technology::Identifier technology);

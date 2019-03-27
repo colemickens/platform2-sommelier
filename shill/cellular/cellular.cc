@@ -74,10 +74,7 @@ Cellular::Cellular(ModemInfo* modem_info,
                    Type type,
                    const string& service,
                    const string& path)
-    : Device(modem_info->control_interface(),
-             modem_info->dispatcher(),
-             modem_info->metrics(),
-             modem_info->manager(),
+    : Device(modem_info->manager(),
              link_name,
              address,
              interface_index,
@@ -1155,12 +1152,7 @@ void Cellular::OnPPPConnected(const map<string, string>& params) {
       ppp_device_->SelectService(nullptr);  // No longer drives |service_|.
     }
     ppp_device_ = ppp_device_factory_->CreatePPPDevice(
-        modem_info_->control_interface(),
-        modem_info_->dispatcher(),
-        modem_info_->metrics(),
-        modem_info_->manager(),
-        interface_name,
-        interface_index);
+        modem_info_->manager(), interface_name, interface_index);
     device_info->RegisterDevice(ppp_device_);
   }
 
