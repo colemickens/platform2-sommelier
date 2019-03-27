@@ -18,11 +18,8 @@
 namespace shill {
 
 class CertificateFile;
-class ControlInterface;
-class EventDispatcher;
 class Error;
 class Manager;
-class Metrics;
 class WiFiProvider;
 
 class WiFiService : public Service {
@@ -40,10 +37,7 @@ class WiFiService : public Service {
   static const char kStorageRoamThresholdSet[];
   static const char kStorageFTEnabled[];
 
-  WiFiService(ControlInterface* control_interface,
-              EventDispatcher* dispatcher,
-              Metrics* metrics,
-              Manager* manager,
+  WiFiService(Manager* manager,
               WiFiProvider* provider,
               const std::vector<uint8_t>& ssid,
               const std::string& mode,

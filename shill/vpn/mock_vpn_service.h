@@ -13,11 +13,7 @@ namespace shill {
 
 class MockVPNService : public VPNService {
  public:
-  MockVPNService(ControlInterface* control,
-                 EventDispatcher* dispatcher,
-                 Metrics* metrics,
-                 Manager* manager,
-                 VPNDriver* driver);
+  MockVPNService(Manager* manager, VPNDriver* driver);
   ~MockVPNService() override;
 
   MOCK_METHOD1(SetState, void(ConnectState state));

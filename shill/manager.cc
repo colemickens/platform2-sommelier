@@ -896,11 +896,7 @@ ServiceRefPtr Manager::CreateTemporaryServiceFromProfile(
   // created/provided by the Ethernet device), we will explicitly create
   // temporary Ethernet services for loading Ethernet entries.
   if (technology == Technology::kEthernet) {
-    service = new EthernetTemporaryService(control_interface_,
-                                           dispatcher_,
-                                           metrics_,
-                                           this,
-                                           entry_name);
+    service = new EthernetTemporaryService(this, entry_name);
   } else if (base::ContainsKey(providers_, technology)) {
     service =
         providers_[technology]->CreateTemporaryServiceFromProfile(

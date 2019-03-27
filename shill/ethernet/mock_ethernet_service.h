@@ -15,8 +15,7 @@ namespace shill {
 
 class MockEthernetService : public EthernetService {
  public:
-  MockEthernetService(ControlInterface* control_interface, Metrics* metrics,
-                      base::WeakPtr<Ethernet> ethernet);
+  MockEthernetService(Manager* manager, base::WeakPtr<Ethernet> ethernet);
   ~MockEthernetService() override;
 
   MOCK_METHOD2(AddEAPCertification, bool(const std::string& name,

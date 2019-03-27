@@ -10,18 +10,13 @@ class ControlInterface;
 class EventDispatcher;
 class Manager;
 
-MockWiFiService::MockWiFiService(ControlInterface* control_interface,
-                                 EventDispatcher* dispatcher,
-                                 Metrics* metrics,
-                                 Manager* manager,
+MockWiFiService::MockWiFiService(Manager* manager,
                                  WiFiProvider* provider,
                                  const std::vector<uint8_t>& ssid,
                                  const std::string& mode,
                                  const std::string& security,
                                  bool hidden_ssid)
-    : WiFiService(
-        control_interface, dispatcher, metrics, manager, provider, ssid, mode,
-        security, hidden_ssid) {
+    : WiFiService(manager, provider, ssid, mode, security, hidden_ssid) {
   ON_CALL(*this, GetSupplicantConfigurationParameters())
       .WillByDefault(testing::Return(KeyValueStore()));
 }

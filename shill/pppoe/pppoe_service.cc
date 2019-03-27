@@ -33,17 +33,8 @@ const int PPPoEService::kDefaultLCPEchoInterval = 30;
 const int PPPoEService::kDefaultLCPEchoFailure = 3;
 const int PPPoEService::kDefaultMaxAuthFailure = 3;
 
-PPPoEService::PPPoEService(ControlInterface* control_interface,
-                           EventDispatcher* dispatcher,
-                           Metrics* metrics,
-                           Manager* manager,
-                           base::WeakPtr<Ethernet> ethernet)
-    : EthernetService(control_interface,
-                      dispatcher,
-                      metrics,
-                      manager,
-                      Technology::kPPPoE,
-                      Properties(ethernet)),
+PPPoEService::PPPoEService(Manager* manager, base::WeakPtr<Ethernet> ethernet)
+    : EthernetService(manager, Technology::kPPPoE, Properties(ethernet)),
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
       process_manager_(ProcessManager::GetInstance()),
       lcp_echo_interval_(kDefaultLCPEchoInterval),

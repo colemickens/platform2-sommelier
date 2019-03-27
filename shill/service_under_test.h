@@ -27,10 +27,7 @@ class ServiceUnderTest : public Service {
   static const char kStringsProperty[];
   static const char kStorageId[];
 
-  ServiceUnderTest(ControlInterface* control_interface,
-                   EventDispatcher* dispatcher,
-                   Metrics* metrics,
-                   Manager* manager);
+  explicit ServiceUnderTest(Manager* manager);
   ~ServiceUnderTest() override;
 
   std::string GetRpcIdentifier() const override;

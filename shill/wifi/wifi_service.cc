@@ -62,17 +62,13 @@ const char WiFiService::kStorageFTEnabled[] = "WiFi.FTEnabled";
 
 bool WiFiService::logged_signal_warning = false;
 
-WiFiService::WiFiService(ControlInterface* control_interface,
-                         EventDispatcher* dispatcher,
-                         Metrics* metrics,
-                         Manager* manager,
+WiFiService::WiFiService(Manager* manager,
                          WiFiProvider* provider,
                          const vector<uint8_t>& ssid,
                          const string& mode,
                          const string& security,
                          bool hidden_ssid)
-    : Service(
-          control_interface, dispatcher, metrics, manager, Technology::kWifi),
+    : Service(manager, Technology::kWifi),
       need_passphrase_(false),
       security_(security),
       mode_(mode),

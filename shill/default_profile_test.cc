@@ -276,20 +276,12 @@ TEST_F(DefaultProfileTest, ConfigureService) {
   EXPECT_CALL(*storage, Flush())
       .WillOnce(Return(true));
 
-  scoped_refptr<MockService> unknown_service(new MockService(
-      control_interface(),
-      dispatcher(),
-      metrics(),
-      manager()));
+  scoped_refptr<MockService> unknown_service(new MockService(manager()));
   EXPECT_CALL(*unknown_service, technology())
       .WillOnce(Return(Technology::kUnknown));
   EXPECT_CALL(*unknown_service, Save(_)) .Times(0);
 
-  scoped_refptr<MockService> ethernet_service(new MockService(
-      control_interface(),
-      dispatcher(),
-      metrics(),
-      manager()));
+  scoped_refptr<MockService> ethernet_service(new MockService(manager()));
   EXPECT_CALL(*ethernet_service, technology())
       .WillOnce(Return(Technology::kEthernet));
   EXPECT_CALL(*ethernet_service, Save(storage.get()))

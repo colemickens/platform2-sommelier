@@ -431,10 +431,7 @@ class ManagerTest : public PropertyStoreTest {
   }
 
   MockServiceRefPtr MakeAutoConnectableService() {
-    MockServiceRefPtr service = new NiceMock<MockService>(control_interface(),
-                                                          dispatcher(),
-                                                          metrics(),
-                                                          manager());
+    MockServiceRefPtr service = new NiceMock<MockService>(manager());
     service->SetAutoConnect(true);
     service->SetConnectable(true);
     return service;
@@ -634,16 +631,8 @@ TEST_F(ManagerTest, ServiceRegistration) {
   ASSERT_NE(nullptr, profile);
   AdoptProfile(&manager, profile);
 
-  scoped_refptr<MockService> mock_service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                &manager));
-  scoped_refptr<MockService> mock_service2(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                &manager));
+  MockServiceRefPtr mock_service(new NiceMock<MockService>(&manager));
+  MockServiceRefPtr mock_service2(new NiceMock<MockService>(&manager));
 
   string service1_name(mock_service->unique_name());
   string service2_name(mock_service2->unique_name());
@@ -684,18 +673,12 @@ TEST_F(ManagerTest, RegisterKnownService) {
   ASSERT_NE(nullptr, profile);
   AdoptProfile(&manager, profile);
   {
-    ServiceRefPtr service1(new ServiceUnderTest(control_interface(),
-                                                dispatcher(),
-                                                metrics(),
-                                                &manager));
+    ServiceRefPtr service1(new ServiceUnderTest(&manager));
     ASSERT_TRUE(profile->AdoptService(service1));
     ASSERT_TRUE(profile->ContainsService(service1));
   }  // Force destruction of service1.
 
-  ServiceRefPtr service2(new ServiceUnderTest(control_interface(),
-                                              dispatcher(),
-                                              metrics(),
-                                              &manager));
+  ServiceRefPtr service2(new ServiceUnderTest(&manager));
   manager.RegisterService(service2);
   EXPECT_EQ(service2->profile(), profile);
 
@@ -714,18 +697,11 @@ TEST_F(ManagerTest, RegisterUnknownService) {
   ASSERT_NE(nullptr, profile);
   AdoptProfile(&manager, profile);
   {
-    ServiceRefPtr service1(new ServiceUnderTest(control_interface(),
-                                                dispatcher(),
-                                                metrics(),
-                                                &manager));
+    ServiceRefPtr service1(new ServiceUnderTest(&manager));
     ASSERT_TRUE(profile->AdoptService(service1));
     ASSERT_TRUE(profile->ContainsService(service1));
   }  // Force destruction of service1.
-  scoped_refptr<MockService> mock_service2(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                &manager));
+  MockServiceRefPtr mock_service2(new NiceMock<MockService>(&manager));
   EXPECT_CALL(*mock_service2, GetStorageIdentifier())
       .WillRepeatedly(Return(mock_service2->unique_name()));
   manager.RegisterService(mock_service2);
@@ -741,10 +717,7 @@ TEST_F(ManagerTest, DeregisterUnregisteredService) {
   // loses its last endpoint, and again when WiFi is Stop()-ed.)
   //
   // So test that doing so doesn't cause a crash.
-  MockServiceRefPtr service = new NiceMock<MockService>(control_interface(),
-                                                        dispatcher(),
-                                                        metrics(),
-                                                        manager());
+  MockServiceRefPtr service = new NiceMock<MockService>(manager());
   manager()->DeregisterService(service);
 }
 
@@ -811,10 +784,7 @@ TEST_F(ManagerTest, MoveService) {
                   run_path(),
                   storage_path(),
                   string());
-  scoped_refptr<MockService> s2(new MockService(control_interface(),
-                                                dispatcher(),
-                                                metrics(),
-                                                &manager));
+  MockServiceRefPtr s2(new MockService(&manager));
   // Inject an actual profile, backed by a fake StoreInterface
   {
     Profile::Identifier id("irrelevant");
@@ -866,10 +836,7 @@ TEST_F(ManagerTest, SetProfileForService) {
   EXPECT_CALL(*profile0, GetRpcIdentifier())
       .WillRepeatedly(Return(profile_name0));
   AdoptProfile(manager(), profile0);
-  scoped_refptr<MockService> service(new MockService(control_interface(),
-                                                     dispatcher(),
-                                                     metrics(),
-                                                     manager()));
+  MockServiceRefPtr service(new MockService(manager()));
   EXPECT_FALSE(manager()->HasService(service));
   {
     Error error;
@@ -1014,11 +981,7 @@ TEST_F(ManagerTest, PushPopProfile) {
   EXPECT_EQ(Error::kNotFound, TestPushProfile(&manager, kProfile2));
 
   // Create a new service, with a specific storage name.
-  scoped_refptr<MockService> service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                &manager));
+  MockServiceRefPtr service(new NiceMock<MockService>(&manager));
   const char kServiceName[] = "service_storage_name";
   EXPECT_CALL(*service, GetStorageIdentifier())
       .WillRepeatedly(Return(kServiceName));
@@ -1204,11 +1167,7 @@ TEST_F(ManagerTest, RemoveProfile) {
 }
 
 TEST_F(ManagerTest, RemoveService) {
-  MockServiceRefPtr mock_service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
 
   // Used in expectations which cannot accept a mock refptr.
   const ServiceRefPtr& service = mock_service;
@@ -1279,26 +1238,10 @@ TEST_F(ManagerTest, CreateDuplicateProfileWithMissingKeyfile) {
 }
 
 TEST_F(ManagerTest, HandleProfileEntryDeletion) {
-  MockServiceRefPtr s_not_in_profile(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-  MockServiceRefPtr s_not_in_group(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-  MockServiceRefPtr s_configure_fail(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-  MockServiceRefPtr s_configure_succeed(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr s_not_in_profile(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr s_not_in_group(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr s_configure_fail(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr s_configure_succeed(new NiceMock<MockService>(manager()));
 
   string entry_name("entry_name");
   EXPECT_CALL(*s_not_in_profile, GetStorageIdentifier()).Times(0);
@@ -1382,26 +1325,10 @@ TEST_F(ManagerTest, HandleProfileEntryDeletion) {
 }
 
 TEST_F(ManagerTest, HandleProfileEntryDeletionWithUnload) {
-  MockServiceRefPtr s_will_remove0(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-  MockServiceRefPtr s_will_remove1(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-  MockServiceRefPtr s_will_not_remove0(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-  MockServiceRefPtr s_will_not_remove1(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr s_will_remove0(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr s_will_remove1(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr s_will_not_remove0(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr s_will_not_remove1(new NiceMock<MockService>(manager()));
 
   EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr))
       .Times(4);  // Once for each registration.
@@ -1475,26 +1402,10 @@ TEST_F(ManagerTest, HandleProfileEntryDeletionWithUnload) {
 }
 
 TEST_F(ManagerTest, PopProfileWithUnload) {
-  MockServiceRefPtr s_will_remove0(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-  MockServiceRefPtr s_will_remove1(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-  MockServiceRefPtr s_will_not_remove0(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-  MockServiceRefPtr s_will_not_remove1(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr s_will_remove0(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr s_will_remove1(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr s_will_not_remove0(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr s_will_not_remove1(new NiceMock<MockService>(manager()));
 
   EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr))
       .Times(5);  // Once for each registration, and one after profile pop.
@@ -1679,10 +1590,7 @@ TEST_F(ManagerTest, GetServiceEthernet) {
 TEST_F(ManagerTest, GetServiceEthernetEap) {
   KeyValueStore args;
   Error e;
-  ServiceRefPtr service = new NiceMock<MockService>(control_interface(),
-                                                    dispatcher(),
-                                                    metrics(),
-                                                    manager());
+  ServiceRefPtr service = new NiceMock<MockService>(manager());
   args.SetString(kTypeProperty, kTypeEthernetEap);
   SetEapProviderService(service);
   EXPECT_EQ(service, manager()->GetService(args, &e));
@@ -1799,10 +1707,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithoutProfile) {
 
   const vector<uint8_t> ssid;
   scoped_refptr<MockWiFiService> service(
-      new NiceMock<MockWiFiService>(control_interface(),
-                                    dispatcher(),
-                                    metrics(),
-                                    manager(),
+      new NiceMock<MockWiFiService>(manager(),
                                     wifi_provider_,
                                     ssid,
                                     "",
@@ -1850,10 +1755,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
 
   const vector<uint8_t> ssid;
   scoped_refptr<MockWiFiService> service(
-      new NiceMock<MockWiFiService>(control_interface(),
-                                    dispatcher(),
-                                    metrics(),
-                                    manager(),
+      new NiceMock<MockWiFiService>(manager(),
                                     wifi_provider_,
                                     ssid,
                                     "",
@@ -1900,10 +1802,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithSameProfile) {
 
   const vector<uint8_t> ssid;
   scoped_refptr<MockWiFiService> service(
-      new NiceMock<MockWiFiService>(control_interface(),
-                                    dispatcher(),
-                                    metrics(),
-                                    manager(),
+      new NiceMock<MockWiFiService>(manager(),
                                     wifi_provider_,
                                     ssid,
                                     "",
@@ -1954,10 +1853,7 @@ TEST_F(ManagerTest, ConfigureUnregisteredServiceWithProfile) {
 
   const vector<uint8_t> ssid;
   scoped_refptr<MockWiFiService> service(
-      new NiceMock<MockWiFiService>(control_interface(),
-                                    dispatcher(),
-                                    metrics(),
-                                    manager(),
+      new NiceMock<MockWiFiService>(manager(),
                                     wifi_provider_,
                                     ssid,
                                     "",
@@ -2063,10 +1959,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileCreateNewService) {
   args.SetString(kTypeProperty, kTypeWifi);
 
   scoped_refptr<MockWiFiService> mock_service(
-      new NiceMock<MockWiFiService>(control_interface(),
-                                    dispatcher(),
-                                    metrics(),
-                                    manager(),
+      new NiceMock<MockWiFiService>(manager(),
                                     wifi_provider_,
                                     vector<uint8_t>(),
                                     kModeManaged,
@@ -2088,11 +1981,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileCreateNewService) {
 }
 
 TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
-  scoped_refptr<MockService> mock_service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
   const string kGUID = "a guid";
   mock_service->SetGuid(kGUID, nullptr);
   manager()->RegisterService(mock_service);
@@ -2146,10 +2035,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceAndProfile) {
       AddNamedMockProfileToManager(manager(), kProfileName));
 
   scoped_refptr<MockWiFiService> mock_service(
-      new NiceMock<MockWiFiService>(control_interface(),
-                                    dispatcher(),
-                                    metrics(),
-                                    manager(),
+      new NiceMock<MockWiFiService>(manager(),
                                     wifi_provider_,
                                     vector<uint8_t>(),
                                     kModeManaged,
@@ -2182,10 +2068,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceEphemeralProfile) {
       AddNamedMockProfileToManager(manager(), kProfileName));
 
   scoped_refptr<MockWiFiService> mock_service(
-      new NiceMock<MockWiFiService>(control_interface(),
-                                    dispatcher(),
-                                    metrics(),
-                                    manager(),
+      new NiceMock<MockWiFiService>(manager(),
                                     wifi_provider_,
                                     vector<uint8_t>(),
                                     kModeManaged,
@@ -2220,10 +2103,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServicePrecedingProfile) {
       AddNamedMockProfileToManager(manager(), kProfileName1));
 
   scoped_refptr<MockWiFiService> mock_service(
-      new NiceMock<MockWiFiService>(control_interface(),
-                                    dispatcher(),
-                                    metrics(),
-                                    manager(),
+      new NiceMock<MockWiFiService>(manager(),
                                     wifi_provider_,
                                     vector<uint8_t>(),
                                     kModeManaged,
@@ -2265,10 +2145,7 @@ TEST_F(ManagerTest,
       AddNamedMockProfileToManager(manager(), kProfileName1));
 
   scoped_refptr<MockWiFiService> matching_service(
-      new StrictMock<MockWiFiService>(control_interface(),
-                                      dispatcher(),
-                                      metrics(),
-                                      manager(),
+      new StrictMock<MockWiFiService>(manager(),
                                       wifi_provider_,
                                       vector<uint8_t>(),
                                       kModeManaged,
@@ -2282,10 +2159,7 @@ TEST_F(ManagerTest,
   // latter function can keep a DCHECK(service->HasOneRef() even in
   // unit tests.
   temp_mock_service_ =
-      new NiceMock<MockWiFiService>(control_interface(),
-                                    dispatcher(),
-                                    metrics(),
-                                    manager(),
+      new NiceMock<MockWiFiService>(manager(),
                                     wifi_provider_,
                                     vector<uint8_t>(),
                                     kModeManaged,
@@ -2328,16 +2202,8 @@ TEST_F(ManagerTest, FindMatchingService) {
     EXPECT_EQ(Error::kNotFound, error.type());
   }
 
-  scoped_refptr<MockService> mock_service0(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-  scoped_refptr<MockService> mock_service1(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
   manager()->RegisterService(mock_service0);
   manager()->RegisterService(mock_service1);
   EXPECT_CALL(*mock_service0, DoPropertiesMatch(_))
@@ -2394,8 +2260,7 @@ TEST_F(ManagerTest, TechnologyOrder) {
 
 TEST_F(ManagerTest, ConnectionStatusCheck) {
   // Setup mock service.
-  scoped_refptr<MockService> mock_service = new NiceMock<MockService>(
-      control_interface(), dispatcher(), metrics(), manager());
+  MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
   manager()->RegisterService(mock_service);
 
   // Device not connected.
@@ -2445,16 +2310,8 @@ TEST_F(ManagerTest, DevicePresenceStatusCheck) {
 }
 
 TEST_F(ManagerTest, SortServicesWithConnection) {
-  scoped_refptr<MockService> mock_service0(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-  scoped_refptr<MockService> mock_service1(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
 
   scoped_refptr<MockConnection> mock_connection0(
       new NiceMock<MockConnection>(device_info_.get()));
@@ -2612,9 +2469,7 @@ TEST_F(ManagerTest, UpdateDefaultServices) {
   EXPECT_EQ(0, manager()->default_service_callback_tag_);
   EXPECT_TRUE(manager()->default_service_callbacks_.empty());
 
-  scoped_refptr<MockService> mock_service(
-      new NiceMock<MockService>(
-          control_interface(), dispatcher(), metrics(), manager()));
+  MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
   ServiceRefPtr service = mock_service;
   ServiceRefPtr null_service = nullptr;
 
@@ -2664,8 +2519,7 @@ TEST_F(ManagerTest, UpdateDefaultServicesWithDefaultServiceCallbacksRemoved) {
   EXPECT_EQ(0, manager()->default_service_callback_tag_);
   EXPECT_TRUE(manager()->default_service_callbacks_.empty());
 
-  scoped_refptr<MockService> mock_service(new NiceMock<MockService>(
-      control_interface(), dispatcher(), metrics(), manager()));
+  MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
   ServiceRefPtr service = mock_service;
   ServiceRefPtr null_service = nullptr;
 
@@ -2699,12 +2553,8 @@ TEST_F(ManagerTest, UpdateDefaultServicesWithDefaultServiceCallbacksRemoved) {
 }
 
 TEST_F(ManagerTest, DefaultServiceStateChange) {
-  scoped_refptr<MockService> mock_service0(
-      new NiceMock<MockService>(
-          control_interface(), dispatcher(), metrics(), manager()));
-  scoped_refptr<MockService> mock_service1(
-      new NiceMock<MockService>(
-          control_interface(), dispatcher(), metrics(), manager()));
+  MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
 
   manager()->RegisterService(mock_service0);
   manager()->RegisterService(mock_service1);
@@ -2734,17 +2584,11 @@ TEST_F(ManagerTest, DefaultServiceStateChange) {
 TEST_F(ManagerTest, ReportServicesOnSameNetwork) {
   int connection_id1 = 100;
   int connection_id2 = 200;
-  scoped_refptr<MockService> mock_service1 =
-      new NiceMock<MockService>(control_interface(), dispatcher(),
-                                metrics(), manager());
+  MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
   mock_service1->set_connection_id(connection_id1);
-  scoped_refptr<MockService> mock_service2 =
-      new NiceMock<MockService>(control_interface(), dispatcher(),
-                                metrics(), manager());
+  MockServiceRefPtr mock_service2 = new NiceMock<MockService>(manager());
   mock_service2->set_connection_id(connection_id1);
-  scoped_refptr<MockService> mock_service3 =
-      new NiceMock<MockService>(control_interface(), dispatcher(),
-                                metrics(), manager());
+  MockServiceRefPtr mock_service3 = new NiceMock<MockService>(manager());
   mock_service3->set_connection_id(connection_id2);
 
   manager()->RegisterService(mock_service1);
@@ -2790,26 +2634,10 @@ TEST_F(ManagerTest, AvailableTechnologies) {
 }
 
 TEST_F(ManagerTest, ConnectedTechnologies) {
-  scoped_refptr<MockService> connected_service1(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-  scoped_refptr<MockService> connected_service2(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-  scoped_refptr<MockService> disconnected_service1(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-  scoped_refptr<MockService> disconnected_service2(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr connected_service1(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr connected_service2(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr disconnected_service1(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr disconnected_service2(new NiceMock<MockService>(manager()));
 
   ON_CALL(*connected_service1, IsConnected()).WillByDefault(Return(true));
   ON_CALL(*connected_service2, IsConnected()).WillByDefault(Return(true));
@@ -2851,16 +2679,8 @@ TEST_F(ManagerTest, ConnectedTechnologies) {
 }
 
 TEST_F(ManagerTest, DefaultTechnology) {
-  scoped_refptr<MockService> connected_service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-  scoped_refptr<MockService> disconnected_service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr connected_service(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr disconnected_service(new NiceMock<MockService>(manager()));
 
   // Connected. WiFi.
   ON_CALL(*connected_service, IsConnected()).WillByDefault(Return(true));
@@ -2892,11 +2712,7 @@ TEST_F(ManagerTest, Stop) {
       new NiceMock<MockProfile>(
           control_interface(), metrics(), manager(), ""));
   AdoptProfile(manager(), profile);
-  scoped_refptr<MockService> service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr service(new NiceMock<MockService>(manager()));
   manager()->RegisterService(service);
   manager()->RegisterDevice(mock_devices_[0]);
   SetPowerManager();
@@ -2914,11 +2730,7 @@ TEST_F(ManagerTest, Stop) {
 }
 
 TEST_F(ManagerTest, UpdateServiceConnected) {
-  scoped_refptr<MockService> mock_service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
   manager()->RegisterService(mock_service);
   EXPECT_FALSE(mock_service->retain_auto_connect());
   EXPECT_FALSE(mock_service->auto_connect());
@@ -2932,11 +2744,7 @@ TEST_F(ManagerTest, UpdateServiceConnectedPersistAutoConnect) {
   // This tests the case where the user connects to a service that is
   // currently associated with a profile.  We want to make sure that the
   // auto_connect flag is set and that the is saved to the current profile.
-  scoped_refptr<MockService> mock_service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
   manager()->RegisterService(mock_service);
   EXPECT_FALSE(mock_service->retain_auto_connect());
   EXPECT_FALSE(mock_service->auto_connect());
@@ -2958,11 +2766,7 @@ TEST_F(ManagerTest, UpdateServiceConnectedPersistAutoConnect) {
 
 TEST_F(ManagerTest, UpdateServiceLogging) {
   ScopedMockLog log;
-  MockServiceRefPtr mock_service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
   string updated_message = base::StringPrintf(
       "Service %s updated;", mock_service->unique_name().c_str());
 
@@ -3021,11 +2825,7 @@ TEST_F(ManagerTest, SaveSuccessfulService) {
       new StrictMock<MockProfile>(
           control_interface(), metrics(), manager(), ""));
   AdoptProfile(manager(), profile);
-  scoped_refptr<MockService> service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr service(new NiceMock<MockService>(manager()));
 
   // Re-cast this back to a ServiceRefPtr, so EXPECT arguments work correctly.
   ServiceRefPtr expect_service(service.get());
@@ -3080,14 +2880,8 @@ TEST_F(ManagerTest, EnumerateProfiles) {
 }
 
 TEST_F(ManagerTest, EnumerateServiceInnerDevices) {
-  MockServiceRefPtr service1 = new NiceMock<MockService>(control_interface(),
-                                                         dispatcher(),
-                                                         metrics(),
-                                                         manager());
-  MockServiceRefPtr service2 = new NiceMock<MockService>(control_interface(),
-                                                         dispatcher(),
-                                                         metrics(),
-                                                         manager());
+  MockServiceRefPtr service1(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr service2(new NiceMock<MockService>(manager()));
   const string kDeviceRpcID = "/rpc/";
   manager()->RegisterService(service1);
   manager()->RegisterService(service2);
@@ -3290,10 +3084,7 @@ TEST_F(ManagerTest, RecheckPortal) {
 }
 
 TEST_F(ManagerTest, RecheckPortalOnService) {
-  MockServiceRefPtr service = new NiceMock<MockService>(control_interface(),
-                                                        dispatcher(),
-                                                        metrics(),
-                                                        manager());
+  MockServiceRefPtr service = new NiceMock<MockService>(manager());
   EXPECT_CALL(*mock_devices_[0], IsConnectedToService(IsRefPtrTo(service)))
       .WillOnce(Return(false));
   EXPECT_CALL(*mock_devices_[1], IsConnectedToService(IsRefPtrTo(service)))
@@ -3314,12 +3105,7 @@ TEST_F(ManagerTest, GetDefaultService) {
   EXPECT_EQ(control_interface()->NullRPCIdentifier(),
             GetDefaultServiceRpcIdentifier());
 
-  scoped_refptr<MockService> mock_service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-
+  MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
   manager()->RegisterService(mock_service);
   EXPECT_EQ(nullptr, manager()->GetDefaultService());
   EXPECT_EQ(control_interface()->NullRPCIdentifier(),
@@ -3336,17 +3122,8 @@ TEST_F(ManagerTest, GetDefaultService) {
 }
 
 TEST_F(ManagerTest, GetServiceWithGUID) {
-  scoped_refptr<MockService> mock_service0(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-
-  scoped_refptr<MockService> mock_service1(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
 
   EXPECT_CALL(*mock_service0, Configure(_, _)).Times(0);
   EXPECT_CALL(*mock_service1, Configure(_, _)).Times(0);
@@ -3403,17 +3180,9 @@ TEST_F(ManagerTest, CalculateStateOffline) {
 
   EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(_))
       .Times(AnyNumber());
-  scoped_refptr<MockService> mock_service0(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
 
-  scoped_refptr<MockService> mock_service1(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
 
   EXPECT_CALL(*mock_service0, IsConnected()).WillRepeatedly(Return(false));
   EXPECT_CALL(*mock_service1, IsConnected()).WillRepeatedly(Return(false));
@@ -3431,17 +3200,9 @@ TEST_F(ManagerTest, CalculateStateOffline) {
 TEST_F(ManagerTest, CalculateStateOnline) {
   EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(_))
       .Times(AnyNumber());
-  scoped_refptr<MockService> mock_service0(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
 
-  scoped_refptr<MockService> mock_service1(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
 
   EXPECT_CALL(*mock_service0, IsConnected()).WillRepeatedly(Return(false));
   EXPECT_CALL(*mock_service1, IsConnected()).WillRepeatedly(Return(true));
@@ -3470,11 +3231,7 @@ TEST_F(ManagerTest, RefreshConnectionState) {
   Mock::VerifyAndClearExpectations(manager_adaptor_);
   Mock::VerifyAndClearExpectations(upstart_);
 
-  scoped_refptr<MockService> mock_service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
   EXPECT_CALL(*manager_adaptor_,
               EmitStringChanged(kConnectionStateProperty, _)).Times(0);
   EXPECT_CALL(*upstart_, NotifyDisconnected()).Times(0);
@@ -3731,11 +3488,7 @@ TEST_F(ManagerTest, PortalFallbackUrls) {
 TEST_F(ManagerTest, ServiceStateChangeEmitsServices) {
   // Test to make sure that every service state-change causes the
   // Manager to emit a new service list.
-  scoped_refptr<MockService> mock_service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
   EXPECT_CALL(*mock_service, state())
       .WillRepeatedly(Return(Service::kStateIdle));
 
@@ -3768,11 +3521,7 @@ TEST_F(ManagerTest, ServiceStateChangeEmitsServices) {
 }
 
 TEST_F(ManagerTest, EnumerateServices) {
-  scoped_refptr<MockService> mock_service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
   manager()->RegisterService(mock_service);
 
   EXPECT_CALL(*mock_service, state())
@@ -3814,11 +3563,7 @@ TEST_F(ManagerTest, EnumerateServices) {
 }
 
 TEST_F(ManagerTest, ConnectToBestServices) {
-  scoped_refptr<MockService> wifi_service0(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr wifi_service0(new NiceMock<MockService>(manager()));
   EXPECT_CALL(*wifi_service0, state())
       .WillRepeatedly(Return(Service::kStateIdle));
   EXPECT_CALL(*wifi_service0, IsConnected()).WillRepeatedly(Return(false));
@@ -3831,11 +3576,7 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   EXPECT_CALL(*wifi_service0, explicitly_disconnected())
       .WillRepeatedly(Return(false));
 
-  scoped_refptr<MockService> wifi_service1(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr wifi_service1(new NiceMock<MockService>(manager()));
   EXPECT_CALL(*wifi_service1, state())
       .WillRepeatedly(Return(Service::kStateIdle));
   EXPECT_CALL(*wifi_service1, IsVisible()).WillRepeatedly(Return(true));
@@ -3848,11 +3589,7 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   EXPECT_CALL(*wifi_service1, explicitly_disconnected())
       .WillRepeatedly(Return(false));
 
-  scoped_refptr<MockService> wifi_service2(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr wifi_service2(new NiceMock<MockService>(manager()));
   EXPECT_CALL(*wifi_service2, state())
       .WillRepeatedly(Return(Service::kStateConnected));
   EXPECT_CALL(*wifi_service2, IsConnected()).WillRepeatedly(Return(true));
@@ -3872,12 +3609,7 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   CompleteServiceSort();
   EXPECT_TRUE(ServiceOrderIs(wifi_service2, wifi_service0));
 
-  scoped_refptr<MockService> cellular_service0(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-
+  MockServiceRefPtr cellular_service0(new NiceMock<MockService>(manager()));
   EXPECT_CALL(*cellular_service0, state())
       .WillRepeatedly(Return(Service::kStateIdle));
   EXPECT_CALL(*cellular_service0, IsConnected()).WillRepeatedly(Return(false));
@@ -3890,12 +3622,7 @@ TEST_F(ManagerTest, ConnectToBestServices) {
       .WillRepeatedly(Return(true));
   manager()->RegisterService(cellular_service0);
 
-  scoped_refptr<MockService> cellular_service1(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-
+  MockServiceRefPtr cellular_service1(new NiceMock<MockService>(manager()));
   EXPECT_CALL(*cellular_service1, state())
       .WillRepeatedly(Return(Service::kStateConnected));
   EXPECT_CALL(*cellular_service1, IsConnected()).WillRepeatedly(Return(true));
@@ -3908,12 +3635,7 @@ TEST_F(ManagerTest, ConnectToBestServices) {
       .WillRepeatedly(Return(false));
   manager()->RegisterService(cellular_service1);
 
-  scoped_refptr<MockService> vpn_service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-
+  MockServiceRefPtr vpn_service(new NiceMock<MockService>(manager()));
   EXPECT_CALL(*vpn_service, state())
       .WillRepeatedly(Return(Service::kStateIdle));
   EXPECT_CALL(*vpn_service, IsConnected()).WillRepeatedly(Return(false));
@@ -3965,11 +3687,7 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
 
   // Add service for multiple devices
   // WiFi
-  MockServiceRefPtr wifi_service =
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager());
+  MockServiceRefPtr wifi_service = new NiceMock<MockService>(manager());
   manager()->RegisterService(wifi_service);
   EXPECT_CALL(*wifi_service, state())
       .WillRepeatedly(Return(Service::kStateConnected));
@@ -3980,11 +3698,7 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
       .WillRepeatedly(Return(true));
 
   // Cell
-  MockServiceRefPtr cell_service =
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager());
+  MockServiceRefPtr cell_service = new NiceMock<MockService>(manager());
   manager()->RegisterService(cell_service);
   EXPECT_CALL(*cell_service, state())
       .WillRepeatedly(Return(Service::kStateConnected));
@@ -3995,11 +3709,7 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
       .WillRepeatedly(Return(true));
 
   // Ethernet
-  MockServiceRefPtr eth_service =
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager());
+  MockServiceRefPtr eth_service = new NiceMock<MockService>(manager());
   manager()->RegisterService(eth_service);
   EXPECT_CALL(*eth_service, state())
       .WillRepeatedly(Return(Service::kStateConnected));
@@ -4011,11 +3721,7 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
 
   // VPN: Service exists but is not connected and will not trigger a
   // connectivity report.
-  MockServiceRefPtr vpn_service =
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager());
+  MockServiceRefPtr vpn_service = new NiceMock<MockService>(manager());
   manager()->RegisterService(vpn_service);
   EXPECT_CALL(*vpn_service, state())
       .WillRepeatedly(Return(Service::kStateIdle));
@@ -4071,11 +3777,7 @@ TEST_F(ManagerTest, GetLoadableProfileEntriesForService) {
   AdoptProfile(manager(), profile1);
   AdoptProfile(manager(), profile2);
 
-  scoped_refptr<MockService> service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr service(new NiceMock<MockService>(manager()));
 
   EXPECT_CALL(*profile0, GetConstStorage()).WillOnce(Return(&storage0));
   EXPECT_CALL(*profile1, GetConstStorage()).WillOnce(Return(&storage1));
@@ -4393,15 +4095,8 @@ TEST_F(ManagerTest, IsWifiIdle) {
   // No registered service.
   EXPECT_FALSE(manager()->IsWifiIdle());
 
-  scoped_refptr<MockService> wifi_service(new MockService(control_interface(),
-                                                          dispatcher(),
-                                                          metrics(),
-                                                          manager()));
-
-  scoped_refptr<MockService> cell_service(new MockService(control_interface(),
-                                                          dispatcher(),
-                                                          metrics(),
-                                                          manager()));
+  MockServiceRefPtr wifi_service(new MockService(manager()));
+  MockServiceRefPtr cell_service(new MockService(manager()));
 
   manager()->RegisterService(wifi_service);
   manager()->RegisterService(cell_service);
@@ -4910,16 +4605,8 @@ TEST_F(ManagerTest, ShouldBlackholeBrowserTraffic) {
   const string kOfflinePackage = "com.example.test.vpn2";
   const string kOtherPackage = "com.example.test.vpn3";
 
-  MockServiceRefPtr online_service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
-  MockServiceRefPtr offline_service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr online_service(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr offline_service(new NiceMock<MockService>(manager()));
 
   EXPECT_CALL(*online_service, IsOnline()).WillRepeatedly(Return(false));
   EXPECT_CALL(*online_service, IsAlwaysOnVpn(_)).WillRepeatedly(Return(false));
@@ -4964,10 +4651,7 @@ TEST_F(ManagerTest, RefreshIPConfig) {
   const string kOnlinePackage = "com.example.test.vpn1";
   const string kOtherPackage = "com.example.test.vpn2";
 
-  MockServiceRefPtr service(new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  MockServiceRefPtr service(new NiceMock<MockService>(manager()));
   EXPECT_CALL(*service, IsOnline()).WillRepeatedly(Return(false));
   EXPECT_CALL(*service, IsAlwaysOnVpn(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(*service, IsAlwaysOnVpn(kOnlinePackage))

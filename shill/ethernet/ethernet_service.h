@@ -11,16 +11,12 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/event_dispatcher.h"
 #include "shill/service.h"
 
 namespace shill {
 
-class ControlInterface;
 class Ethernet;
-class EventDispatcher;
 class Manager;
-class Metrics;
 
 class EthernetService : public Service {
  public:
@@ -36,11 +32,7 @@ class EthernetService : public Service {
     base::WeakPtr<Ethernet> ethernet_;
   };
 
-  EthernetService(ControlInterface* control_interface,
-                  EventDispatcher* dispatcher,
-                  Metrics* metrics,
-                  Manager* manager,
-                  const Properties& props);
+  EthernetService(Manager* manager, const Properties& props);
   ~EthernetService() override;
 
   // Inherited from Service.
@@ -71,10 +63,7 @@ class EthernetService : public Service {
   // intended for use by subclasses which want to override specific aspects of
   // EthernetService behavior, while still retaining their own technology
   // identifier.
-  EthernetService(ControlInterface* control_interface,
-                  EventDispatcher* dispatcher,
-                  Metrics* metrics,
-                  Manager* manager,
+  EthernetService(Manager* manager,
                   Technology::Identifier technology,
                   const Properties& props);
 

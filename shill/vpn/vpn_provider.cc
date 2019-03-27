@@ -294,8 +294,7 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string& type,
     return nullptr;
   }
 
-  VPNServiceRefPtr service = new VPNService(
-      control_interface_, dispatcher_, metrics_, manager_, driver.release());
+  VPNServiceRefPtr service = new VPNService(manager_, driver.release());
   service->set_storage_id(storage_id);
   service->InitDriverPropertyStore();
   if (!name.empty()) {

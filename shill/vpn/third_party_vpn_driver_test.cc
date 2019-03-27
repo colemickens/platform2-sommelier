@@ -38,8 +38,7 @@ class ThirdPartyVpnDriverTest : public testing::Test {
         driver_(new ThirdPartyVpnDriver(&control_, &dispatcher_, &metrics_,
                                         &manager_, &device_info_)),
         adaptor_interface_(new ThirdPartyVpnMockAdaptor()),
-        service_(new MockVPNService(&control_, &dispatcher_, &metrics_,
-                                    &manager_, driver_)),
+        service_(new MockVPNService(&manager_, driver_)),
         device_(new MockVirtualDevice(&manager_, kInterfaceName,
                                       kInterfaceIndex, Technology::kVPN)) {
     driver_->io_handler_factory_ = &io_handler_factory_;
@@ -138,8 +137,7 @@ TEST_F(ThirdPartyVpnDriverTest, ReconnectionEvents) {
   driver_->reconnect_supported_ = true;
 
   // Roam from one Online network to another -> kLinkChanged.
-  scoped_refptr<MockService> mock_service(
-      new NiceMock<MockService>(&control_, &dispatcher_, &metrics_, &manager_));
+  scoped_refptr<MockService> mock_service(new NiceMock<MockService>(&manager_));
   EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
                                        ThirdPartyVpnDriver::kLinkChanged)));
   EXPECT_CALL(*mock_service, state())

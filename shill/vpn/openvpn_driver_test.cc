@@ -88,8 +88,7 @@ class OpenVPNDriverTest
         manager_(&control_, &dispatcher_, &metrics_),
         driver_(new OpenVPNDriver(&control_, &dispatcher_, &metrics_, &manager_,
                                   &device_info_, &process_manager_)),
-        service_(new MockVPNService(&control_, &dispatcher_, &metrics_,
-                                    &manager_, driver_)),
+        service_(new MockVPNService(&manager_, driver_)),
         device_(new MockVirtualDevice(
             &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN)),
         certificate_file_(new MockCertificateFile()),
@@ -1368,8 +1367,7 @@ TEST_F(OpenVPNDriverTest, OnDefaultServiceChanged) {
 
   // Switch from no service -> Portal service.  VPN should stay on
   // hold.
-  scoped_refptr<MockService> mock_service(
-      new MockService(&control_, &dispatcher_, &metrics_, &manager_));
+  scoped_refptr<MockService> mock_service(new MockService(&manager_));
 
   EXPECT_CALL(*mock_service, state())
       .WillOnce(Return(Service::kStateNoConnectivity));
@@ -1387,8 +1385,7 @@ TEST_F(OpenVPNDriverTest, OnDefaultServiceChanged) {
 
   // Switch from Online service -> another Online service.  VPN should restart
   // immediately.
-  scoped_refptr<MockService> mock_service2(
-      new MockService(&control_, &dispatcher_, &metrics_, &manager_));
+  scoped_refptr<MockService> mock_service2(new MockService(&manager_));
 
   EXPECT_CALL(*mock_service2, state()).WillOnce(Return(Service::kStateOnline));
   EXPECT_CALL(*management_server_, Restart());

@@ -753,10 +753,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   }
   MockWiFiServiceRefPtr MakeMockServiceWithSSID(
       vector<uint8_t> ssid, const std::string& security) {
-    return new NiceMock<MockWiFiService>(&control_interface_,
-                                         event_dispatcher_.get(),
-                                         &metrics_,
-                                         &manager_,
+    return new NiceMock<MockWiFiService>(&manager_,
                                          &wifi_provider_,
                                          ssid,
                                          kModeManaged,

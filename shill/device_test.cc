@@ -359,11 +359,7 @@ TEST_F(DeviceTest, AcquireIPConfigWithSelectedService) {
   auto service_dhcp_properties = std::make_unique<DhcpProperties>();
   service_dhcp_properties->Load(&storage, service_storage_id);
 
-  scoped_refptr<MockService> service(
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
   SelectService(service);
 
   const string default_profile_storage_id = "default_profile_storage_id";
@@ -572,11 +568,7 @@ TEST_F(DeviceTest, Save) {
 TEST_F(DeviceTest, SelectedService) {
   EXPECT_EQ(nullptr, device_->selected_service_);
   device_->SetServiceState(Service::kStateAssociating);
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
+  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   EXPECT_EQ(device_->selected_service_, service);
 
@@ -603,11 +595,7 @@ TEST_F(DeviceTest, SelectedService) {
 TEST_F(DeviceTest, ResetConnection) {
   EXPECT_EQ(nullptr, device_->selected_service_);
   device_->SetServiceState(Service::kStateAssociating);
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
+  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   EXPECT_EQ(device_->selected_service_, service);
 
@@ -620,11 +608,7 @@ TEST_F(DeviceTest, ResetConnection) {
 }
 
 TEST_F(DeviceTest, LinkMonitorFailure) {
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
+  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   EXPECT_EQ(device_->selected_service(), service);
 
@@ -669,11 +653,7 @@ TEST_F(DeviceTest, LinkMonitorFailure) {
 }
 
 TEST_F(DeviceTest, LinkStatusResetOnSelectService) {
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
+  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   service->set_unreliable(true);
   SetReliableLinkCallback();
@@ -692,11 +672,7 @@ TEST_F(DeviceTest, LinkStatusResetOnSelectService) {
 TEST_F(DeviceTest, IPConfigUpdatedFailure) {
   scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
                                                           kDeviceName);
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
+  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP,
                                               _,
@@ -714,11 +690,7 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Config) {
   // IPv4 configuration failed, fallback to use IPv6 configuration.
   scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
                                                           kDeviceName);
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
+  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   scoped_refptr<MockConnection> connection(
       new StrictMock<MockConnection>(&device_info_));
@@ -747,11 +719,7 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Connection) {
 
   scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
                                                           kDeviceName);
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
+  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   scoped_refptr<MockConnection> connection(
       new StrictMock<MockConnection>(&device_info_));
@@ -770,11 +738,7 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Connection) {
 TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
   scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
                                                           kDeviceName);
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
+  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   service->static_ip_parameters_.args_.SetString(kAddressProperty, "1.1.1.1");
   service->static_ip_parameters_.args_.SetInt(kPrefixlenProperty, 16);
@@ -788,11 +752,7 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
+  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
                                                           kDeviceName);
@@ -824,11 +784,7 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
 TEST_F(DeviceTest, IPConfigUpdatedAlreadyOnline) {
   // The service is already Online and selected, so it should not transition
   // back to Connected.
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
+  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
                                                           kDeviceName);
@@ -1005,11 +961,7 @@ TEST_F(DeviceTest, Stop) {
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
   device_->ipconfig_ = new IPConfig(&control_interface_, kDeviceName);
-  scoped_refptr<MockService> service(
-      new NiceMock<MockService>(&control_interface_,
-                                dispatcher(),
-                                metrics(),
-                                manager()));
+  scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
   SelectService(service);
 
   EXPECT_CALL(*service, state()).
@@ -1029,8 +981,7 @@ TEST_F(DeviceTest, StopWithFixedIpParams) {
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
   device_->ipconfig_ = new IPConfig(&control_interface_, kDeviceName);
-  scoped_refptr<MockService> service(new NiceMock<MockService>(
-      &control_interface_, dispatcher(), metrics(), manager()));
+  scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
   SelectService(service);
 
   EXPECT_CALL(*service, state())
@@ -1049,8 +1000,7 @@ TEST_F(DeviceTest, StopWithNetworkInterfaceDisabledAfterward) {
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
   device_->ipconfig_ = new IPConfig(&control_interface_, kDeviceName);
-  scoped_refptr<MockService> service(new NiceMock<MockService>(
-      &control_interface_, dispatcher(), metrics(), manager()));
+  scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
   SelectService(service);
 
   EXPECT_CALL(*device_, ShouldBringNetworkInterfaceDownAfterDisabled())
@@ -1123,11 +1073,7 @@ TEST_F(DeviceTest, ResumeWithoutLinkMonitor) {
 }
 
 TEST_F(DeviceTest, ResumeWithUnreliableLink) {
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
+  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   service->set_unreliable(true);
   SetReliableLinkCallback();
@@ -1139,11 +1085,7 @@ TEST_F(DeviceTest, ResumeWithUnreliableLink) {
 }
 
 TEST_F(DeviceTest, OnConnected) {
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
+  scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
 
   // Link is reliable, no need to post delayed task to reset link status.
@@ -1163,11 +1105,7 @@ TEST_F(DeviceTest, LinkMonitor) {
   MockManager manager(control_interface(),
                       dispatcher(),
                       metrics());
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  &manager));
+  scoped_refptr<MockService> service(new StrictMock<MockService>(&manager));
   SelectService(service);
   SetConnection(connection.get());
   MockLinkMonitor* link_monitor = new StrictMock<MockLinkMonitor>();
@@ -1213,11 +1151,7 @@ TEST_F(DeviceTest, LinkMonitorCancelledOnSelectService) {
   MockManager manager(control_interface(),
                       dispatcher(),
                       metrics());
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  &manager));
+  scoped_refptr<MockService> service(new StrictMock<MockService>(&manager));
   SelectService(service);
   SetConnection(connection.get());
   MockLinkMonitor* link_monitor = new StrictMock<MockLinkMonitor>();
@@ -1238,11 +1172,7 @@ TEST_F(DeviceTest, TrafficMonitor) {
   MockManager manager(control_interface(),
                       dispatcher(),
                       metrics());
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  &manager));
+  scoped_refptr<MockService> service(new StrictMock<MockService>(&manager));
   SelectService(service);
   SetConnection(connection.get());
   MockTrafficMonitor* traffic_monitor =
@@ -1277,11 +1207,7 @@ TEST_F(DeviceTest, TrafficMonitorCancelledOnSelectService) {
   MockManager manager(control_interface(),
                       dispatcher(),
                       metrics());
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  &manager));
+  scoped_refptr<MockService> service(new StrictMock<MockService>(&manager));
   SelectService(service);
   SetConnection(connection.get());
   MockTrafficMonitor* traffic_monitor =
@@ -1623,11 +1549,7 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   EXPECT_CALL(manager, FilterPrependDNSServersByFamily(_))
       .WillRepeatedly(Return(vector<string>()));
   SetManager(&manager);
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  &manager));
+  scoped_refptr<MockService> service(new StrictMock<MockService>(&manager));
   SelectService(service);
   scoped_refptr<MockConnection> connection(
       new StrictMock<MockConnection>(&device_info_));
@@ -1814,10 +1736,7 @@ TEST_F(DeviceTest, PrependWithStaticConfiguration) {
 
   device_->set_ipconfig(ipconfig);
 
-  scoped_refptr<MockService> service = new MockService(control_interface(),
-                                                       dispatcher(),
-                                                       metrics(),
-                                                       &manager);
+  scoped_refptr<MockService> service(new MockService(&manager));
   EXPECT_CALL(*service, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(true));
   SelectService(service);
@@ -1979,10 +1898,7 @@ class DevicePortalDetectionTest : public DeviceTest {
         manager_(control_interface(),
                  dispatcher(),
                  metrics()),
-        service_(new StrictMock<MockService>(control_interface(),
-                                             dispatcher(),
-                                             metrics(),
-                                             &manager_)),
+        service_(new StrictMock<MockService>(&manager_)),
         portal_detector_(new StrictMock<MockPortalDetector>(connection_)) {}
     virtual ~DevicePortalDetectionTest() {}
   void SetUp() override {

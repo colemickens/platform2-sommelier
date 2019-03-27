@@ -314,15 +314,7 @@ class WiFiProviderTest : public testing::Test {
                                        const string& security,
                                        bool hidden_ssid) {
     MockWiFiServiceRefPtr service = new MockWiFiService(
-        &control_,
-        &dispatcher_,
-        &metrics_,
-        &manager_,
-        &provider_,
-        ssid,
-        mode,
-        security,
-        hidden_ssid);
+        &manager_, &provider_, ssid, mode, security, hidden_ssid);
     provider_.services_.push_back(service);
     return service;
   }

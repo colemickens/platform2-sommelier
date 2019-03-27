@@ -21,10 +21,7 @@ class VPNDriver;
 
 class VPNService : public Service {
  public:
-  VPNService(ControlInterface* control,
-             EventDispatcher* dispatcher,
-             Metrics* metrics,
-             Manager* manager,
+  VPNService(Manager* manager,
              VPNDriver* driver);  // Takes ownership of |driver|.
   ~VPNService() override;
 

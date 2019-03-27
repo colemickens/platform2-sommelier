@@ -39,12 +39,10 @@ class VPNServiceTest : public testing::Test {
   VPNServiceTest()
       : interface_name_("test-interface"),
         driver_(new MockVPNDriver()),
-        manager_(&control_, nullptr, nullptr),
+        manager_(&control_, nullptr, &metrics_),
         device_info_(&control_, nullptr, nullptr, nullptr),
         connection_(new NiceMock<MockConnection>(&device_info_)),
-        service_(new VPNService(&control_, nullptr, &metrics_, &manager_,
-                                driver_)) {
-  }
+        service_(new VPNService(&manager_, driver_)) {}
 
   virtual ~VPNServiceTest() {}
 
@@ -100,8 +98,7 @@ class VPNServiceTest : public testing::Test {
 
   ServiceRefPtr CreateUnderlyingService(
       ConnectionRefPtr underlying_connection) {
-    auto service = new MockService(
-      &control_, nullptr, &metrics_, &manager_);
+    auto service = new MockService(&manager_);
     service->set_mock_connection(underlying_connection);
     return service;
   }
@@ -110,8 +107,8 @@ class VPNServiceTest : public testing::Test {
   std::string ipconfig_rpc_identifier_;
   MockVPNDriver* driver_;  // Owned by |service_|.
   NiceMockControl control_;
-  MockManager manager_;
   MockMetrics metrics_;
+  MockManager manager_;
   MockDeviceInfo device_info_;
   scoped_refptr<NiceMock<MockConnection>> connection_;
   VPNServiceRefPtr service_;

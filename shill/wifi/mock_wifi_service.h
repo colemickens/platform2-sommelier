@@ -16,10 +16,7 @@ namespace shill {
 
 class MockWiFiService : public WiFiService {
  public:
-  MockWiFiService(ControlInterface* control_interface,
-                  EventDispatcher* dispatcher,
-                  Metrics* metrics,
-                  Manager* manager,
+  MockWiFiService(Manager* manager,
                   WiFiProvider* provider,
                   const std::vector<uint8_t>& ssid,
                   const std::string& mode,

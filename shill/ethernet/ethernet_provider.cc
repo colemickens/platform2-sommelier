@@ -61,22 +61,19 @@ ServiceRefPtr EthernetProvider::CreateTemporaryService(
     const KeyValueStore& args, Error* error) {
   SLOG(this, 2) << __func__;
   return new EthernetTemporaryService(
-      control_interface_, dispatcher_, metrics_, manager_,
-      EthernetService::kDefaultEthernetDeviceIdentifier);
+      manager_, EthernetService::kDefaultEthernetDeviceIdentifier);
 }
 
 ServiceRefPtr EthernetProvider::CreateTemporaryServiceFromProfile(
     const ProfileRefPtr& profile, const std::string& entry_name, Error* error) {
   SLOG(this, 2) << __func__;
-  return new EthernetTemporaryService(control_interface_, dispatcher_, metrics_,
-                                      manager_, entry_name);
+  return new EthernetTemporaryService(manager_, entry_name);
 }
 
 EthernetServiceRefPtr EthernetProvider::CreateService(
     base::WeakPtr<Ethernet> ethernet) {
   SLOG(this, 2) << __func__;
-  return new EthernetService(control_interface_, dispatcher_, metrics_,
-                             manager_, EthernetService::Properties(ethernet));
+  return new EthernetService(manager_, EthernetService::Properties(ethernet));
 }
 
 bool EthernetProvider::LoadGenericEthernetService() {
@@ -93,9 +90,8 @@ void EthernetProvider::Start() {
   if (!service_) {
     const ProfileRefPtr profile = manager_->ActiveProfile();
     service_ = new EthernetService(
-        control_interface_, dispatcher_, metrics_, manager_,
-        EthernetService::Properties(
-            EthernetService::kDefaultEthernetDeviceIdentifier));
+        manager_, EthernetService::Properties(
+                      EthernetService::kDefaultEthernetDeviceIdentifier));
     if (!profile->ConfigureService(service_)) {
       profile->AdoptService(service_);
     }

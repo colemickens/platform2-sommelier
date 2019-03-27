@@ -501,11 +501,7 @@ EthernetServiceRefPtr Ethernet::CreateEthernetService() {
 }
 
 EthernetServiceRefPtr Ethernet::CreatePPPoEService() {
-  return new PPPoEService(control_interface(),
-                          dispatcher(),
-                          metrics(),
-                          manager(),
-                          weak_ptr_factory_.GetWeakPtr());
+  return new PPPoEService(manager(), weak_ptr_factory_.GetWeakPtr());
 }
 
 }  // namespace shill

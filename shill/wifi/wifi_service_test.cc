@@ -123,10 +123,7 @@ class WiFiServiceTest : public PropertyStoreTest {
         frequency, signal_dbm);
   }
   WiFiServiceRefPtr MakeSimpleService(const string& security) {
-    return new WiFiService(control_interface(),
-                           dispatcher(),
-                           metrics(),
-                           manager(),
+    return new WiFiService(manager(),
                            &provider_,
                            simple_ssid_,
                            kModeManaged,
@@ -148,10 +145,7 @@ class WiFiServiceTest : public PropertyStoreTest {
     return service;
   }
   WiFiServiceRefPtr MakeServiceWithMockManager() {
-    return new WiFiService(control_interface(),
-                           dispatcher(),
-                           metrics(),
-                           &mock_manager_,
+    return new WiFiService(&mock_manager_,
                            &provider_,
                            simple_ssid_,
                            kModeManaged,
@@ -441,10 +435,7 @@ TEST_F(WiFiServiceTest, NonUTF8SSID) {
   vector<uint8_t> ssid;
 
   ssid.push_back(0xff);  // not a valid UTF-8 byte-sequence
-  WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
-                                                   dispatcher(),
-                                                   metrics(),
-                                                   manager(),
+  WiFiServiceRefPtr wifi_service = new WiFiService(manager(),
                                                    provider(),
                                                    ssid,
                                                    kModeManaged,

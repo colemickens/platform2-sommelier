@@ -48,10 +48,7 @@ class ProfileTest : public PropertyStoreTest {
   }
 
   scoped_refptr<MockService> CreateMockService() {
-    return new StrictMock<MockService>(control_interface(),
-                                       dispatcher(),
-                                       metrics(),
-                                       manager());
+    return new StrictMock<MockService>(manager());
   }
 
   bool ProfileInitStorage(const Profile::Identifier& id,
@@ -247,10 +244,7 @@ TEST_F(ProfileTest, ServiceManagement) {
 }
 
 TEST_F(ProfileTest, ServiceConfigure) {
-  ServiceRefPtr service1(new ServiceUnderTest(control_interface(),
-                                              dispatcher(),
-                                              metrics(),
-                                              manager()));
+  ServiceRefPtr service1(new ServiceUnderTest(manager()));
   // Change priority from default.
   service1->SetPriority(service1->priority() + 1, nullptr);
   ASSERT_TRUE(profile_->AdoptService(service1));
@@ -258,10 +252,7 @@ TEST_F(ProfileTest, ServiceConfigure) {
 
   // Create new service; ask Profile to merge it with a known, matching,
   // service; ensure that settings from |service1| wind up in |service2|.
-  ServiceRefPtr service2(new ServiceUnderTest(control_interface(),
-                                              dispatcher(),
-                                              metrics(),
-                                              manager()));
+  ServiceRefPtr service2(new ServiceUnderTest(manager()));
   int32_t orig_priority = service2->priority();
   ASSERT_TRUE(profile_->ConfigureService(service2));
   ASSERT_EQ(service1->priority(), service2->priority());

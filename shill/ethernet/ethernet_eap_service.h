@@ -18,10 +18,7 @@ namespace shill {
 // authentication.
 class EthernetEapService : public Service {
  public:
-  EthernetEapService(ControlInterface* control_interface,
-                     EventDispatcher* dispatcher,
-                     Metrics* metrics,
-                     Manager* manager);
+  explicit EthernetEapService(Manager* manager);
   ~EthernetEapService() override;
 
   // Inherited from Service.

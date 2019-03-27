@@ -64,9 +64,7 @@ bool GetNonEmptyField(const Stringmap& stringmap,
 
 CellularService::CellularService(ModemInfo* modem_info,
                                  const CellularRefPtr& device)
-    : Service(modem_info->control_interface(), modem_info->dispatcher(),
-              modem_info->metrics(), modem_info->manager(),
-              Technology::kCellular),
+    : Service(modem_info->manager(), Technology::kCellular),
       activation_type_(kActivationTypeUnknown),
       cellular_(device),
       is_auto_connecting_(false),

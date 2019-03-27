@@ -35,11 +35,7 @@ class StoreInterface;
 // created them.
 class PPPoEService : public EthernetService, public RPCTaskDelegate {
  public:
-  PPPoEService(ControlInterface* control_interface,
-               EventDispatcher* dispatcher,
-               Metrics* metrics,
-               Manager* manager,
-               base::WeakPtr<Ethernet> ethernet);
+  PPPoEService(Manager* manager, base::WeakPtr<Ethernet> ethernet);
   ~PPPoEService() override;
 
   // Inherited from EthernetService.

@@ -71,28 +71,19 @@ class MetricsTest : public Test {
                  &dispatcher_,
                  &metrics_),
 #if !defined(DISABLE_WIFI)
-        open_wifi_service_(new MockWiFiService(&control_interface_,
-                                               &dispatcher_,
-                                               &metrics_,
-                                               &manager_,
+        open_wifi_service_(new MockWiFiService(&manager_,
                                                manager_.wifi_provider(),
                                                ssid_,
                                                kModeManaged,
                                                kSecurityNone,
                                                false)),
-        wep_wifi_service_(new MockWiFiService(&control_interface_,
-                                              &dispatcher_,
-                                              &metrics_,
-                                              &manager_,
+        wep_wifi_service_(new MockWiFiService(&manager_,
                                               manager_.wifi_provider(),
                                               ssid_,
                                               kModeManaged,
                                               kSecurityWep,
                                               false)),
-        eap_wifi_service_(new MockWiFiService(&control_interface_,
-                                              &dispatcher_,
-                                              &metrics_,
-                                              &manager_,
+        eap_wifi_service_(new MockWiFiService(&manager_,
                                               manager_.wifi_provider(),
                                               ssid_,
                                               kModeManaged,
@@ -100,10 +91,7 @@ class MetricsTest : public Test {
                                               false)),
         eap_(new MockEapCredentials()),
 #endif  // DISABLE_WIFI
-        service_(new MockService(&control_interface_,
-                                 &dispatcher_,
-                                 &metrics_,
-                                 &manager_)) {}
+        service_(new MockService(&manager_)) {}
 
   virtual ~MetricsTest() {}
 
@@ -319,8 +307,7 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
   chromeos_metrics::TimerMock* mock_time_to_drop_timer =
       new chromeos_metrics::TimerMock;
   metrics_.set_time_to_drop_timer(mock_time_to_drop_timer);
-  scoped_refptr<MockService> wifi_service =
-      new MockService(&control_interface_, &dispatcher_, &metrics_, &manager_);
+  scoped_refptr<MockService> wifi_service = new MockService(&manager_);
   EXPECT_CALL(*service_, technology()).
       WillOnce(Return(Technology::kEthernet));
   EXPECT_CALL(*wifi_service, technology()).
@@ -1323,10 +1310,8 @@ TEST_F(MetricsTest, CumulativeCellWifiTest) {
                  cumulative_names));
 
   // Create two services, to be passed to NotifyDefaultServiceChange.
-  scoped_refptr<MockService> cell_service(
-      new MockService(&control_interface_, &dispatcher_, &metrics_, &manager_));
-  scoped_refptr<MockService> wifi_service(
-      new MockService(&control_interface_, &dispatcher_, &metrics_, &manager_));
+  scoped_refptr<MockService> cell_service(new MockService(&manager_));
+  scoped_refptr<MockService> wifi_service(new MockService(&manager_));
 
   // Register both cellular and wifi devices.
   metrics_.RegisterDevice(kCellIndex, Technology::kCellular);

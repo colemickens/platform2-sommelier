@@ -17,12 +17,8 @@ using std::string;
 
 namespace shill {
 
-EthernetEapService::EthernetEapService(ControlInterface* control_interface,
-                                       EventDispatcher* dispatcher,
-                                       Metrics* metrics,
-                                       Manager* manager)
-    : Service(control_interface, dispatcher, metrics, manager,
-              Technology::kEthernetEap) {
+EthernetEapService::EthernetEapService(Manager* manager)
+    : Service(manager, Technology::kEthernetEap) {
   SetEapCredentials(new EapCredentials());
   set_friendly_name("Ethernet EAP Parameters");
 }

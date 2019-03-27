@@ -20,10 +20,7 @@ class Metrics;
 // profile.
 class EthernetTemporaryService : public Service {
  public:
-  EthernetTemporaryService(ControlInterface* control_interface,
-                           EventDispatcher* dispatcher,
-                           Metrics* metrics,
-                           Manager* manager,
+  EthernetTemporaryService(Manager* manager,
                            const std::string& storage_identifier);
   ~EthernetTemporaryService() override;
 

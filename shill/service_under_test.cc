@@ -19,12 +19,8 @@ const char ServiceUnderTest::kRpcId[] = "/mock_device_rpc";
 const char ServiceUnderTest::kStringsProperty[] = "strings";
 const char ServiceUnderTest::kStorageId[] = "service";
 
-ServiceUnderTest::ServiceUnderTest(ControlInterface* control_interface,
-                                   EventDispatcher* dispatcher,
-                                   Metrics* metrics,
-                                   Manager* manager)
-    : Service(control_interface, dispatcher, metrics, manager,
-              Technology::kUnknown) {
+ServiceUnderTest::ServiceUnderTest(Manager* manager)
+    : Service(manager, Technology::kUnknown) {
   mutable_store()->RegisterStrings(kStringsProperty, &strings_);
   mutable_store()->RegisterDerivedKeyValueStore(
       kKeyValueStoreProperty,

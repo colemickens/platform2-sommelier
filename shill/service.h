@@ -149,11 +149,7 @@ class Service : public base::RefCounted<Service> {
   static const int kPriorityNone;
 
   // A constructor for the Service object
-  Service(ControlInterface* control_interface,
-          EventDispatcher* dispatcher,
-          Metrics* metrics,
-          Manager* manager,
-          Technology::Identifier technology);
+  Service(Manager* manager, Technology::Identifier technology);
 
   // AutoConnect MAY choose to ignore the connection request in some
   // cases. For example, if the corresponding Device only supports one
@@ -624,15 +620,15 @@ class Service : public base::RefCounted<Service> {
   void ClearAutoConnect(Error* error);
 
   // Property accessors reserved for subclasses
-  EventDispatcher* dispatcher() const { return dispatcher_; }
-  ControlInterface* control_interface() const { return control_interface_; }
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   const std::string& GetEAPKeyManagement() const;
   virtual void SetEAPKeyManagement(const std::string& key_management);
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
+  EventDispatcher* dispatcher() const;
+  ControlInterface* control_interface() const;
+  Metrics* metrics() const;
   Manager* manager() const { return manager_; }
-  Metrics* metrics() const { return metrics_; }
 
   // Save the service's auto_connect value, without affecting its auto_connect
   // property itself. (cf. EnableAndRetainAutoConnect)
@@ -842,8 +838,6 @@ class Service : public base::RefCounted<Service> {
   PropertyStore store_;
   std::set<std::string> parameters_ignored_for_configure_;
 
-  EventDispatcher* dispatcher_;
-  ControlInterface* control_interface_;
   unsigned int serial_number_;
   std::string unique_name_;  // MUST be unique amongst service instances
 
@@ -859,7 +853,6 @@ class Service : public base::RefCounted<Service> {
   std::unique_ptr<ServiceAdaptorInterface> adaptor_;
   ConnectionRefPtr connection_;
   StaticIPParameters static_ip_parameters_;
-  Metrics* metrics_;
   Manager* manager_;
 
   // The |serial_number_| for the next Service.

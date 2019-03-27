@@ -179,21 +179,21 @@ TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {
   EXPECT_CALL(*bad_driver, ClaimInterface(_, _))
       .Times(2)
       .WillRepeatedly(Return(false));
-  provider_.services_.push_back(new VPNService(&control_, nullptr, &metrics_,
-                                               nullptr, bad_driver.release()));
+  provider_.services_.push_back(
+      new VPNService(&manager_, bad_driver.release()));
 
   EXPECT_FALSE(provider_.OnDeviceInfoAvailable(
       kInterfaceName, kInterfaceIndex, Technology::kTunnel));
 
   auto good_driver = std::make_unique<MockVPNDriver>();
   EXPECT_CALL(*good_driver, ClaimInterface(_, _)).WillOnce(Return(true));
-  provider_.services_.push_back(new VPNService(&control_, nullptr, &metrics_,
-                                               nullptr, good_driver.release()));
+  provider_.services_.push_back(
+      new VPNService(&manager_, good_driver.release()));
 
   auto dup_driver = std::make_unique<MockVPNDriver>();
   EXPECT_CALL(*dup_driver, ClaimInterface(_, _)).Times(0);
-  provider_.services_.push_back(new VPNService(&control_, nullptr, &metrics_,
-                                               nullptr, dup_driver.release()));
+  provider_.services_.push_back(
+      new VPNService(&manager_, dup_driver.release()));
 
   EXPECT_TRUE(provider_.OnDeviceInfoAvailable(
       kInterfaceName, kInterfaceIndex, Technology::kTunnel));
@@ -213,11 +213,11 @@ TEST_F(VPNProviderTest, ArcDeviceFound) {
 
 TEST_F(VPNProviderTest, RemoveService) {
   scoped_refptr<MockVPNService> service0(
-      new MockVPNService(&control_, nullptr, &metrics_, nullptr, nullptr));
+      new MockVPNService(&manager_, nullptr));
   scoped_refptr<MockVPNService> service1(
-      new MockVPNService(&control_, nullptr, &metrics_, nullptr, nullptr));
+      new MockVPNService(&manager_, nullptr));
   scoped_refptr<MockVPNService> service2(
-      new MockVPNService(&control_, nullptr, &metrics_, nullptr, nullptr));
+      new MockVPNService(&manager_, nullptr));
 
   provider_.services_.push_back(service0.get());
   provider_.services_.push_back(service1.get());
@@ -399,11 +399,11 @@ TEST_F(VPNProviderTest, HasActiveService) {
   EXPECT_FALSE(provider_.HasActiveService());
 
   scoped_refptr<MockVPNService> service0(
-      new MockVPNService(&control_, nullptr, &metrics_, nullptr, nullptr));
+      new MockVPNService(&manager_, nullptr));
   scoped_refptr<MockVPNService> service1(
-      new MockVPNService(&control_, nullptr, &metrics_, nullptr, nullptr));
+      new MockVPNService(&manager_, nullptr));
   scoped_refptr<MockVPNService> service2(
-      new MockVPNService(&control_, nullptr, &metrics_, nullptr, nullptr));
+      new MockVPNService(&manager_, nullptr));
 
   AddService(service0);
   AddService(service1);

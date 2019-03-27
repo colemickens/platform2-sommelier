@@ -20,10 +20,7 @@ namespace shill {
 class MockService : public Service {
  public:
   // A constructor for the Service object
-  MockService(ControlInterface* control_interface,
-              EventDispatcher* dispatcher,
-              Metrics* metrics,
-              Manager* manager);
+  explicit MockService(Manager* manager);
   ~MockService() override;
 
   MOCK_METHOD0(AutoConnect, void());

@@ -43,26 +43,17 @@ ServiceRefPtr EthernetEapProvider::GetService(const KeyValueStore& args,
 ServiceRefPtr EthernetEapProvider::CreateTemporaryService(
     const KeyValueStore& args,
     Error* error) {
-  return new EthernetEapService(control_interface_,
-                                dispatcher_,
-                                metrics_,
-                                manager_);
+  return new EthernetEapService(manager_);
 }
 
 ServiceRefPtr EthernetEapProvider::CreateTemporaryServiceFromProfile(
     const ProfileRefPtr& profile, const std::string& entry_name, Error* error) {
-  return new EthernetEapService(control_interface_,
-                                dispatcher_,
-                                metrics_,
-                                manager_);
+  return new EthernetEapService(manager_);
 }
 
 void EthernetEapProvider::Start() {
   if (!service_) {
-    service_ = new EthernetEapService(control_interface_,
-                                      dispatcher_,
-                                      metrics_,
-                                      manager_);
+    service_ = new EthernetEapService(manager_);
   }
   manager_->RegisterService(service_);
 }

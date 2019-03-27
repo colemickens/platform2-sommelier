@@ -69,18 +69,14 @@ class EthernetTest : public testing::Test {
                                         kDeviceName)),
 #if !defined(DISABLE_WIRED_8021X)
         eap_listener_(new MockEapListener()),
-        mock_eap_service_(new MockService(&control_interface_,
-                                          &dispatcher_,
-                                          &metrics_,
-                                          &manager_)),
+        mock_eap_service_(new MockService(&manager_)),
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>()),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
 #endif  // DISABLE_WIRED_8021X
         mock_sockets_(new StrictMock<MockSockets>()),
         mock_service_(new MockEthernetService(
-            &control_interface_, &metrics_,
-            ethernet_->weak_ptr_factory_.GetWeakPtr())) {}
+            &manager_, ethernet_->weak_ptr_factory_.GetWeakPtr())) {}
   ~EthernetTest() override {}
 
   void SetUp() override {

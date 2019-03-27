@@ -71,14 +71,8 @@ class ServiceTest : public PropertyStoreTest {
  public:
   ServiceTest()
       : mock_manager_(control_interface(), dispatcher(), metrics()),
-        service_(new ServiceUnderTest(control_interface(),
-                                      dispatcher(),
-                                      metrics(),
-                                      &mock_manager_)),
-        service2_(new ServiceUnderTest(control_interface(),
-                                       dispatcher(),
-                                       metrics(),
-                                       &mock_manager_)),
+        service_(new ServiceUnderTest(&mock_manager_)),
+        service2_(new ServiceUnderTest(&mock_manager_)),
         storage_id_(ServiceUnderTest::kStorageId),
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
         eap_(new MockEapCredentials()),
@@ -221,10 +215,7 @@ class AllMockServiceTest : public testing::Test {
  public:
   AllMockServiceTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
-        service_(new ServiceUnderTest(&control_interface_,
-                                      &dispatcher_,
-                                      &metrics_,
-                                      &manager_)) { }
+        service_(new ServiceUnderTest(&manager_)) { }
   virtual ~AllMockServiceTest() {}
 
  protected:
@@ -402,13 +393,9 @@ TEST_F(ServiceTest, IsLoadableFrom) {
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 class ServiceWithOnEapCredentialsChangedOverride : public ServiceUnderTest {
  public:
-  ServiceWithOnEapCredentialsChangedOverride(
-      ControlInterface* control_interface,
-      EventDispatcher* dispatcher,
-      Metrics* metrics,
-      Manager* manager,
-      EapCredentials* eap)
-      : ServiceUnderTest(control_interface, dispatcher, metrics, manager) {
+  ServiceWithOnEapCredentialsChangedOverride(Manager* manager,
+                                             EapCredentials* eap)
+      : ServiceUnderTest(manager) {
     SetEapCredentials(eap);
   }
   void OnEapCredentialsChanged(Service::UpdateCredentialsReason) override {
@@ -421,17 +408,9 @@ TEST_F(ServiceTest, Load) {
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   MockEapCredentials* eap = new MockEapCredentials();  // Owned by |service|.
   scoped_refptr<ServiceWithOnEapCredentialsChangedOverride> service(
-      new ServiceWithOnEapCredentialsChangedOverride(control_interface(),
-                                                     dispatcher(),
-                                                     metrics(),
-                                                     &mock_manager_,
-                                                     eap));
+      new ServiceWithOnEapCredentialsChangedOverride(&mock_manager_, eap));
 #else
-  scoped_refptr<ServiceUnderTest> service(
-      new ServiceUnderTest(control_interface(),
-                           dispatcher(),
-                           metrics(),
-                           &mock_manager_));
+  scoped_refptr<ServiceUnderTest> service(new ServiceUnderTest(&mock_manager_));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   NiceMock<MockStore> storage;
@@ -1539,12 +1518,8 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 class ServiceWithMockOnEapCredentialsChanged : public ServiceUnderTest {
  public:
-  ServiceWithMockOnEapCredentialsChanged(ControlInterface* control_interface,
-                                         EventDispatcher* dispatcher,
-                                         Metrics* metrics,
-                                         Manager* manager)
-      : ServiceUnderTest(control_interface, dispatcher, metrics, manager),
-        is_8021x_(false) {}
+  explicit ServiceWithMockOnEapCredentialsChanged(Manager* manager)
+      : ServiceUnderTest(manager), is_8021x_(false) {}
   MOCK_METHOD1(OnEapCredentialsChanged, void(Service::UpdateCredentialsReason));
   virtual bool Is8021x() const { return is_8021x_; }
   void set_is_8021x(bool is_8021x) { is_8021x_ = is_8021x; }
@@ -1555,10 +1530,7 @@ class ServiceWithMockOnEapCredentialsChanged : public ServiceUnderTest {
 
 TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
   scoped_refptr<ServiceWithMockOnEapCredentialsChanged> service(
-      new ServiceWithMockOnEapCredentialsChanged(control_interface(),
-                                                 dispatcher(),
-                                                 metrics(),
-                                                 &mock_manager_));
+      new ServiceWithMockOnEapCredentialsChanged(&mock_manager_));
   static const char* const kEapCredentialProperties[] = {
       kEapAnonymousIdentityProperty,
       kEapCertIdProperty,
@@ -2021,20 +1993,14 @@ TEST_F(ServiceTest, GetTethering) {
 
 class ServiceWithMockOnPropertyChanged : public ServiceUnderTest {
  public:
-  ServiceWithMockOnPropertyChanged(ControlInterface* control_interface,
-                                   EventDispatcher* dispatcher,
-                                   Metrics* metrics,
-                                   Manager* manager)
-      : ServiceUnderTest(control_interface, dispatcher, metrics, manager) {}
+  explicit ServiceWithMockOnPropertyChanged(Manager* manager)
+      : ServiceUnderTest(manager) {}
   MOCK_METHOD1(OnPropertyChanged, void(const string& property));
 };
 
 TEST_F(ServiceTest, ConfigureServiceTriggersOnPropertyChanged) {
-  auto service(make_scoped_refptr(
-      new ServiceWithMockOnPropertyChanged(control_interface(),
-                                           dispatcher(),
-                                           metrics(),
-                                           &mock_manager_)));
+  auto service(
+      make_scoped_refptr(new ServiceWithMockOnPropertyChanged(&mock_manager_)));
   KeyValueStore args;
   args.SetString(kUIDataProperty, "terpsichorean ejectamenta");
   args.SetBool(kSaveCredentialsProperty, false);
@@ -2079,11 +2045,7 @@ TEST_F(ServiceTest, Compare) {
   // serial_number_.
   vector<scoped_refptr<MockService>> mock_services;
   for (size_t i = 0; i < 11; ++i) {
-    mock_services.push_back(
-        new NiceMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
+    mock_services.push_back(new NiceMock<MockService>(manager()));
   }
   scoped_refptr<MockService> service2 = mock_services[2];
   scoped_refptr<MockService> service10 = mock_services[10];
@@ -2202,14 +2164,13 @@ TEST_F(ServiceTest, Compare) {
 
 TEST_F(ServiceTest, ComparePreferEthernetOverWifi) {
   // Create mock ethernet service.
-  scoped_refptr<MockService> ethernet_service(new NiceMock<MockService>(
-      control_interface(), dispatcher(), metrics(), manager()));
+  scoped_refptr<MockService> ethernet_service(
+      new NiceMock<MockService>(manager()));
   EXPECT_CALL(*ethernet_service.get(), technology())
       .WillRepeatedly(Return(Technology::kEthernet));
 
   // Create mock wifi service.
-  scoped_refptr<MockService> wifi_service(new NiceMock<MockService>(
-      control_interface(), dispatcher(), metrics(), manager()));
+  scoped_refptr<MockService> wifi_service(new NiceMock<MockService>(manager()));
   EXPECT_CALL(*wifi_service.get(), technology())
       .WillRepeatedly(Return((Technology::kWifi)));
 

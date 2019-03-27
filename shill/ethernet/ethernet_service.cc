@@ -20,7 +20,6 @@
 #include "shill/eap_credentials.h"
 #include "shill/ethernet/ethernet.h"
 #include "shill/ethernet/ethernet_provider.h"
-#include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/profile.h"
 #include "shill/store_interface.h"
@@ -37,28 +36,15 @@ constexpr char kAutoConnNoCarrier[] = "no carrier";
 
 constexpr char EthernetService::kDefaultEthernetDeviceIdentifier[];
 
-EthernetService::EthernetService(ControlInterface* control_interface,
-                                 EventDispatcher* dispatcher,
-                                 Metrics* metrics,
-                                 Manager* manager,
-                                 const Properties& props)
-    : EthernetService(control_interface,
-                      dispatcher,
-                      metrics,
-                      manager,
-                      Technology::kEthernet,
-                      props) {
+EthernetService::EthernetService(Manager* manager, const Properties& props)
+    : EthernetService(manager, Technology::kEthernet, props) {
   SetUp();
 }
 
-EthernetService::EthernetService(ControlInterface* control_interface,
-                                 EventDispatcher* dispatcher,
-                                 Metrics* metrics,
-                                 Manager* manager,
+EthernetService::EthernetService(Manager* manager,
                                  Technology::Identifier technology,
                                  const Properties& props)
-    : Service(control_interface, dispatcher, metrics, manager, technology),
-      props_(props) {}
+    : Service(manager, technology), props_(props) {}
 
 EthernetService::~EthernetService() { }
 

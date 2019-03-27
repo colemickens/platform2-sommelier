@@ -33,13 +33,8 @@ static string ObjectID(const VPNService* s) { return s->GetRpcIdentifier(); }
 const char VPNService::kAutoConnNeverConnected[] = "never connected";
 const char VPNService::kAutoConnVPNAlreadyActive[] = "vpn already active";
 
-VPNService::VPNService(ControlInterface* control,
-                       EventDispatcher* dispatcher,
-                       Metrics* metrics,
-                       Manager* manager,
-                       VPNDriver* driver)
-    : Service(control, dispatcher, metrics, manager, Technology::kVPN),
-      driver_(driver) {
+VPNService::VPNService(Manager* manager, VPNDriver* driver)
+    : Service(manager, Technology::kVPN), driver_(driver) {
   SetConnectable(true);
   set_save_credentials(false);
   mutable_store()->RegisterDerivedString(

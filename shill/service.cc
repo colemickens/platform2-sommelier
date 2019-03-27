@@ -117,11 +117,7 @@ const int Service::kMaxMisconnectEventHistory = 20;
 // static
 unsigned int Service::next_serial_number_ = 0;
 
-Service::Service(ControlInterface* control_interface,
-                 EventDispatcher* dispatcher,
-                 Metrics* metrics,
-                 Manager* manager,
-                 Technology::Identifier technology)
+Service::Service(Manager* manager, Technology::Identifier technology)
     : weak_ptr_factory_(this),
       state_(kStateIdle),
       previous_state_(kStateIdle),
@@ -149,16 +145,12 @@ Service::Service(ControlInterface* control_interface,
       disconnects_(kMaxDisconnectEventHistory),
       misconnects_(kMaxMisconnectEventHistory),
       auto_connect_cooldown_milliseconds_(0),
-      store_(PropertyStore::PropertyChangeCallback(
-          base::Bind(&Service::OnPropertyChanged,
-                     weak_ptr_factory_.GetWeakPtr()))),
-      dispatcher_(dispatcher),
-      control_interface_(control_interface),
+      store_(PropertyStore::PropertyChangeCallback(base::Bind(
+          &Service::OnPropertyChanged, weak_ptr_factory_.GetWeakPtr()))),
       serial_number_(next_serial_number_++),
       unique_name_(base::UintToString(serial_number_)),
       friendly_name_(unique_name_),
-      adaptor_(control_interface->CreateServiceAdaptor(this)),
-      metrics_(metrics),
+      adaptor_(manager->control_interface()->CreateServiceAdaptor(this)),
       manager_(manager),
       connection_id_(0),
       is_dns_auto_fallback_allowed_(false),
@@ -257,7 +249,7 @@ Service::Service(ControlInterface* control_interface,
   store_.RegisterConstString(kPortalDetectionFailedStatusProperty,
                              &portal_detection_failure_status_);
 
-  metrics_->RegisterService(*this);
+  metrics()->RegisterService(*this);
 
   static_ip_parameters_.PlumbPropertyStore(&store_);
 
@@ -271,7 +263,7 @@ Service::Service(ControlInterface* control_interface,
 }
 
 Service::~Service() {
-  metrics_->DeregisterService(*this);
+  metrics()->DeregisterService(*this);
   LOG(INFO) << "Service " << unique_name_ << " destroyed.";
 }
 
@@ -431,7 +423,7 @@ void Service::SetState(ConnectState state) {
   }
   UpdateErrorProperty();
   manager_->NotifyServiceStateChanged(this);
-  metrics_->NotifyServiceStateChanged(*this, state);
+  metrics()->NotifyServiceStateChanged(*this, state);
   adaptor_->EmitStringChanged(kStateProperty, GetStateString());
 }
 
@@ -457,9 +449,9 @@ void Service::ThrottleFutureAutoConnects() {
               << auto_connect_cooldown_milliseconds_ << " milliseconds.";
     reenable_auto_connect_task_.Reset(Bind(&Service::ReEnableAutoConnectTask,
                                            weak_ptr_factory_.GetWeakPtr()));
-    dispatcher_->PostDelayedTask(FROM_HERE,
-                                 reenable_auto_connect_task_.callback(),
-                                 auto_connect_cooldown_milliseconds_);
+    dispatcher()->PostDelayedTask(FROM_HERE,
+                                  reenable_auto_connect_task_.callback(),
+                                  auto_connect_cooldown_milliseconds_);
   }
   auto_connect_cooldown_milliseconds_ =
       std::min(GetMaxAutoConnectCooldownTimeMilliseconds(),
@@ -1002,7 +994,7 @@ void Service::ReportUserInitiatedConnectionResult(ConnectState state) {
       break;
     case kStateFailure:
       result = Metrics::kUserInitiatedConnectionResultFailure;
-      metrics_->NotifyUserInitiatedConnectionFailureReason(
+      metrics()->NotifyUserInitiatedConnectionFailureReason(
           Metrics::kMetricWifiUserInitiatedConnectionFailureReason, failure_);
       break;
     case kStateIdle:
@@ -1015,7 +1007,7 @@ void Service::ReportUserInitiatedConnectionResult(ConnectState state) {
       return;
   }
 
-  metrics_->NotifyUserInitiatedConnectionResult(
+  metrics()->NotifyUserInitiatedConnectionResult(
       Metrics::kMetricWifiUserInitiatedConnectionResult, result);
 }
 
@@ -1208,7 +1200,7 @@ void Service::OnDefaultServiceStateChanged(const ServiceRefPtr& parent) {
 string Service::GetIPConfigRpcIdentifier(Error* error) const {
   if (!connection_) {
     error->Populate(Error::kNotFound);
-    return control_interface_->NullRPCIdentifier();
+    return control_interface()->NullRPCIdentifier();
   }
 
   string id = connection_->ipconfig_rpc_identifier();
@@ -1216,7 +1208,7 @@ string Service::GetIPConfigRpcIdentifier(Error* error) const {
   if (id.empty()) {
     // Do not return an empty IPConfig.
     error->Populate(Error::kNotFound);
-    return control_interface_->NullRPCIdentifier();
+    return control_interface()->NullRPCIdentifier();
   }
 
   return id;
@@ -1652,6 +1644,18 @@ void Service::ClearExplicitlyDisconnected() {
     explicitly_disconnected_ = false;
     manager_->UpdateService(this);
   }
+}
+
+ControlInterface* Service::control_interface() const {
+  return manager_->control_interface();
+}
+
+EventDispatcher* Service::dispatcher() const {
+  return manager_->dispatcher();
+}
+
+Metrics* Service::metrics() const {
+  return manager_->metrics();
 }
 
 }  // namespace shill

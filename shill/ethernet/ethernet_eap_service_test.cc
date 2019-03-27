@@ -25,10 +25,7 @@ class EthernetEapServiceTest : public testing::Test {
  public:
   EthernetEapServiceTest()
       : manager_(&control_, &dispatcher_, &metrics_),
-        service_(new EthernetEapService(&control_,
-                                        &dispatcher_,
-                                        &metrics_,
-                                        &manager_)) {}
+        service_(new EthernetEapService(&manager_)) {}
   virtual ~EthernetEapServiceTest() {}
 
  protected:

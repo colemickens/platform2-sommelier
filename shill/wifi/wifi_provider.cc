@@ -198,15 +198,7 @@ ServiceRefPtr WiFiProvider::CreateTemporaryService(
     return nullptr;
   }
 
-  return new WiFiService(control_interface_,
-                         dispatcher_,
-                         metrics_,
-                         manager_,
-                         this,
-                         ssid,
-                         mode,
-                         security,
-                         hidden_ssid);
+  return new WiFiService(manager_, this, ssid, mode, security, hidden_ssid);
 }
 
 ServiceRefPtr WiFiProvider::CreateTemporaryServiceFromProfile(
@@ -224,15 +216,7 @@ ServiceRefPtr WiFiProvider::CreateTemporaryServiceFromProfile(
                                        error)) {
     return nullptr;
   }
-  return new WiFiService(control_interface_,
-                         dispatcher_,
-                         metrics_,
-                         manager_,
-                         this,
-                         ssid,
-                         mode,
-                         security,
-                         hidden_ssid);
+  return new WiFiService(manager_, this, ssid, mode, security, hidden_ssid);
 }
 
 ServiceRefPtr WiFiProvider::GetService(
@@ -446,10 +430,7 @@ WiFiServiceRefPtr WiFiProvider::AddService(const vector<uint8_t>& ssid,
                                            const string& mode,
                                            const string& security,
                                            bool is_hidden) {
-  WiFiServiceRefPtr service = new WiFiService(control_interface_,
-                                              dispatcher_,
-                                              metrics_,
-                                              manager_,
+  WiFiServiceRefPtr service = new WiFiService(manager_,
                                               this,
                                               ssid,
                                               mode,
