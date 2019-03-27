@@ -12,7 +12,7 @@ use std::slice;
 
 use p9::fuzzing::tframe_decode;
 
-#[export_name="LLVMFuzzerTestOneInput"]
+#[export_name = "LLVMFuzzerTestOneInput"]
 pub fn test_one_input(data: *const u8, size: usize) -> i32 {
     // We cannot unwind past ffi boundaries.
     panic::catch_unwind(|| {
@@ -22,7 +22,9 @@ pub fn test_one_input(data: *const u8, size: usize) -> i32 {
         let bytes = unsafe { slice::from_raw_parts(data, size) };
 
         tframe_decode(bytes);
-    }).err().map(|_| process::abort());
+    })
+    .err()
+    .map(|_| process::abort());
 
     0
 }
