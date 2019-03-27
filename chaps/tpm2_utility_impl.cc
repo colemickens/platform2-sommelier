@@ -762,10 +762,6 @@ bool TPM2UtilityImpl::Sign(int key_handle,
           key_handle, trunks::TPM_ALG_NULL, trunks::TPM_ALG_NULL, padded_data,
           session_->GetDelegate(), signature);
     } else {
-      // TODO(crbug/942716): remove this after the bug is fixed.
-      LOG(INFO) << __func__ << ": TPM signed with digest_alg_id: " << std::hex
-                << std::showbase << digest_alg_id;
-
       std::string data_to_sign;
 
       if (digest_algorithm == DigestAlgorithm::NoDigest) {

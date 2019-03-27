@@ -1526,10 +1526,6 @@ bool SessionImpl::RSASign(OperationContext* context) {
     int tpm_key_handle = 0;
     if (!GetTPMKeyHandle(context->key_, &tpm_key_handle))
       return false;
-    // TODO(crbug/942716): remove this after the bug is fixed.
-    LOG(INFO) << __func__ << ": RSA Signing with mechanism " << std::hex
-              << std::showbase << context->mechanism_ << " with length "
-              << context->data_.size();
     if (!tpm_utility_->Sign(tpm_key_handle,
                             GetDigestAlgorithm(context->mechanism_),
                             context->data_, &signature))
