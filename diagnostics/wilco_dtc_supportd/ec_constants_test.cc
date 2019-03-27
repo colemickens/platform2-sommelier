@@ -16,9 +16,4 @@ TEST(EcConstantsTest, PropertiesPath) {
       base::FilePath("sys/bus/platform/devices/GOOG000C:00/properties/"));
 }
 
-TEST(EcConstantsTest, RawFilePath) {
-  EXPECT_EQ(base::FilePath(kEcDriverSysfsPath).Append(kEcRunCommandFilePath),
-            base::FilePath("sys/bus/platform/devices/GOOG000C:00/raw"));
-}
-
 }  // namespace diagnostics

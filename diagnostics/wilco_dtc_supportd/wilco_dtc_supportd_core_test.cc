@@ -583,26 +583,26 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetProcDataGrpcCall) {
       << ",\nExpected: " << expected_response.ShortDebugString();
 }
 
-// Test that the RunEcCommand() method exposed by the daemon's gRPC server
-// writes payload to sysfs file exposed by the EC driver and reads response
+// Test that the GetEcTelemetry() method exposed by the daemon's gRPC server
+// writes payload to devfs file exposed by the EC driver and reads response
 // using the same file.
-TEST_F(BootstrappedWilcoDtcSupportdCoreTest, RunEcCommandGrpcCall) {
+TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetEcTelemetryGrpcCall) {
   const base::FilePath file_path =
-      temp_dir_path().Append(kEcDriverSysfsPath).Append(kEcRunCommandFilePath);
+      temp_dir_path().Append(kEcGetTelemetryFilePath);
   const std::string kRequestPayload = "1";
   ASSERT_TRUE(WriteFileAndCreateParentDirs(file_path, ""));
 
-  grpc_api::RunEcCommandRequest request;
+  grpc_api::GetEcTelemetryRequest request;
   request.set_payload(kRequestPayload);
-  std::unique_ptr<grpc_api::RunEcCommandResponse> response;
+  std::unique_ptr<grpc_api::GetEcTelemetryResponse> response;
   base::RunLoop run_loop;
-  fake_wilco_dtc()->RunEcCommand(request,
-                                 MakeAsyncResponseWriter(&response, &run_loop));
+  fake_wilco_dtc()->GetEcTelemetry(
+      request, MakeAsyncResponseWriter(&response, &run_loop));
   run_loop.Run();
 
   ASSERT_TRUE(response);
-  grpc_api::RunEcCommandResponse expected_response;
-  expected_response.set_status(grpc_api::RunEcCommandResponse::STATUS_OK);
+  grpc_api::GetEcTelemetryResponse expected_response;
+  expected_response.set_status(grpc_api::GetEcTelemetryResponse::STATUS_OK);
   expected_response.set_payload(kRequestPayload);
   EXPECT_THAT(*response, ProtobufEquals(expected_response))
       << "Actual: {" << response->ShortDebugString() << "}";

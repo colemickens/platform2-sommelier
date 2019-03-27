@@ -96,9 +96,10 @@ base::Callback<void(std::unique_ptr<T>)> GrpcCallbackResponseSaver(
       base::Unretained(response));
 }
 
-std::unique_ptr<grpc_api::RunEcCommandResponse> MakeRunEcCommandResponse(
-    grpc_api::RunEcCommandResponse::Status status, const std::string& payload) {
-  auto response = std::make_unique<grpc_api::RunEcCommandResponse>();
+std::unique_ptr<grpc_api::GetEcTelemetryResponse> MakeGetEcTelemetryResponse(
+    grpc_api::GetEcTelemetryResponse::Status status,
+    const std::string& payload) {
+  auto response = std::make_unique<grpc_api::GetEcTelemetryResponse>();
   response->set_status(status);
   response->set_payload(payload);
   return response;
@@ -247,14 +248,14 @@ class WilcoDtcSupportdGrpcServiceTest : public testing::Test {
                        response->file_dump().end());
   }
 
-  void ExecuteRunEcCommand(
+  void ExecuteGetEcTelemetry(
       const std::string request_payload,
-      std::unique_ptr<grpc_api::RunEcCommandResponse>* response) {
-    auto request = std::make_unique<grpc_api::RunEcCommandRequest>();
+      std::unique_ptr<grpc_api::GetEcTelemetryResponse>* response) {
+    auto request = std::make_unique<grpc_api::GetEcTelemetryRequest>();
     request->set_payload(request_payload);
 
-    service()->RunEcCommand(std::move(request),
-                            GrpcCallbackResponseSaver(response));
+    service()->GetEcTelemetry(std::move(request),
+                              GrpcCallbackResponseSaver(response));
     ASSERT_TRUE(*response);
   }
 
@@ -432,14 +433,14 @@ TEST_F(WilcoDtcSupportdGrpcServiceTest, GetRoutineUpdateUnsetType) {
   EXPECT_EQ(response->status(), grpc_api::ROUTINE_STATUS_ERROR);
 }
 
-// Test that RunEcCommand() response contains expected |status| and |payload|
+// Test that GetEcTelemetry() response contains expected |status| and |payload|
 // field values.
-TEST_F(WilcoDtcSupportdGrpcServiceTest, RunEcCommandErrorAccessingDriver) {
-  std::unique_ptr<grpc_api::RunEcCommandResponse> response;
-  ExecuteRunEcCommand(FakeFileContents(), &response);
+TEST_F(WilcoDtcSupportdGrpcServiceTest, GetEcTelemetryErrorAccessingDriver) {
+  std::unique_ptr<grpc_api::GetEcTelemetryResponse> response;
+  ExecuteGetEcTelemetry(FakeFileContents(), &response);
   ASSERT_TRUE(response);
-  auto expected_response = MakeRunEcCommandResponse(
-      grpc_api::RunEcCommandResponse::STATUS_ERROR_ACCESSING_DRIVER, "");
+  auto expected_response = MakeGetEcTelemetryResponse(
+      grpc_api::GetEcTelemetryResponse::STATUS_ERROR_ACCESSING_DRIVER, "");
   EXPECT_THAT(*response, ProtobufEquals(*expected_response))
       << "Actual response: {" << response->ShortDebugString() << "}";
 }
@@ -815,22 +816,23 @@ INSTANTIATE_TEST_CASE_P(
 
 namespace {
 
-// Tests for the RunEcCommand() method of WilcoDtcSupportdGrpcServiceTest.
+// Tests for the GetEcTelemetry() method of WilcoDtcSupportdGrpcServiceTest.
 //
 // This is a parameterized test with the following parameters:
-// * |request_payload| - payload of the RunEcCommand() request;
-// * |expected_response_status| - expected RunEcCommand() response status;
-// * |expected_response_payload| - expected RunEcCommand() response payload.
-class RunEcCommandWilcoDtcSupportdGrpcServiceTest
+// * |request_payload| - payload of the GetEcTelemetry() request;
+// * |expected_response_status| - expected GetEcTelemetry() response status;
+// * |expected_response_payload| - expected GetEcTelemetry() response payload.
+class GetEcTelemetryWilcoDtcSupportdGrpcServiceTest
     : public WilcoDtcSupportdGrpcServiceTest,
-      public testing::WithParamInterface<std::tuple<
-          std::string /* request_payload */,
-          grpc_api::RunEcCommandResponse::Status /* expected_response_status */,
-          std::string /* expected_response_payload */>> {
+      public testing::WithParamInterface<
+          std::tuple<std::string /* request_payload */,
+                     grpc_api::GetEcTelemetryResponse::
+                         Status /* expected_response_status */,
+                     std::string /* expected_response_payload */>> {
  protected:
   std::string request_payload() const { return std::get<0>(GetParam()); }
 
-  grpc_api::RunEcCommandResponse::Status expected_response_status() const {
+  grpc_api::GetEcTelemetryResponse::Status expected_response_status() const {
     return std::get<1>(GetParam());
   }
 
@@ -838,23 +840,21 @@ class RunEcCommandWilcoDtcSupportdGrpcServiceTest
     return std::get<2>(GetParam());
   }
 
-  base::FilePath sysfs_raw_file() const {
-    return temp_dir_path()
-        .Append(kEcDriverSysfsPath)
-        .Append(kEcRunCommandFilePath);
+  base::FilePath devfs_telemetry_file() const {
+    return temp_dir_path().Append(kEcGetTelemetryFilePath);
   }
 };
 
 }  // namespace
 
-// Test that RunEcCommand() response contains expected |status| and |payload|
+// Test that GetEcTelemetry() response contains expected |status| and |payload|
 // field values.
-TEST_P(RunEcCommandWilcoDtcSupportdGrpcServiceTest, Base) {
-  EXPECT_TRUE(WriteFileAndCreateParentDirs(sysfs_raw_file(), ""));
-  std::unique_ptr<grpc_api::RunEcCommandResponse> response;
-  ExecuteRunEcCommand(request_payload(), &response);
+TEST_P(GetEcTelemetryWilcoDtcSupportdGrpcServiceTest, Base) {
+  EXPECT_TRUE(WriteFileAndCreateParentDirs(devfs_telemetry_file(), ""));
+  std::unique_ptr<grpc_api::GetEcTelemetryResponse> response;
+  ExecuteGetEcTelemetry(request_payload(), &response);
   ASSERT_TRUE(response);
-  auto expected_response = MakeRunEcCommandResponse(
+  auto expected_response = MakeGetEcTelemetryResponse(
       expected_response_status(), expected_response_payload());
   EXPECT_THAT(*response, ProtobufEquals(*expected_response))
       << "Actual response: {" << response->ShortDebugString() << "}";
@@ -862,20 +862,20 @@ TEST_P(RunEcCommandWilcoDtcSupportdGrpcServiceTest, Base) {
 
 INSTANTIATE_TEST_CASE_P(
     ,
-    RunEcCommandWilcoDtcSupportdGrpcServiceTest,
+    GetEcTelemetryWilcoDtcSupportdGrpcServiceTest,
     testing::Values(
         std::make_tuple(FakeFileContents(),
-                        grpc_api::RunEcCommandResponse::STATUS_OK,
+                        grpc_api::GetEcTelemetryResponse::STATUS_OK,
                         FakeFileContents()),
-        std::make_tuple(std::string("A", kEcRunCommandPayloadMaxSize),
-                        grpc_api::RunEcCommandResponse::STATUS_OK,
-                        std::string("A", kEcRunCommandPayloadMaxSize)),
+        std::make_tuple(std::string("A", kEcGetTelemetryPayloadMaxSize),
+                        grpc_api::GetEcTelemetryResponse::STATUS_OK,
+                        std::string("A", kEcGetTelemetryPayloadMaxSize)),
         std::make_tuple(
             "",
-            grpc_api::RunEcCommandResponse::STATUS_ERROR_INPUT_PAYLOAD_EMPTY,
+            grpc_api::GetEcTelemetryResponse::STATUS_ERROR_INPUT_PAYLOAD_EMPTY,
             ""),
-        std::make_tuple(std::string("A", kEcRunCommandPayloadMaxSize + 1),
-                        grpc_api::RunEcCommandResponse::
+        std::make_tuple(std::string("A", kEcGetTelemetryPayloadMaxSize + 1),
+                        grpc_api::GetEcTelemetryResponse::
                             STATUS_ERROR_INPUT_PAYLOAD_MAX_SIZE_EXCEEDED,
                         "")));
 

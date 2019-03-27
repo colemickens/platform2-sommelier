@@ -43,10 +43,12 @@ void FakeWilcoDtc::GetProcData(const grpc_api::GetProcDataRequest& request,
       &grpc_api::WilcoDtcSupportd::Stub::AsyncGetProcData, request, callback);
 }
 
-void FakeWilcoDtc::RunEcCommand(const grpc_api::RunEcCommandRequest& request,
-                                RunEcCommandCallback callback) {
+void FakeWilcoDtc::GetEcTelemetry(
+    const grpc_api::GetEcTelemetryRequest& request,
+    GetEcTelemetryCallback callback) {
   wilco_dtc_supportd_grp_client_.CallRpc(
-      &grpc_api::WilcoDtcSupportd::Stub::AsyncRunEcCommand, request, callback);
+      &grpc_api::WilcoDtcSupportd::Stub::AsyncGetEcTelemetry, request,
+      callback);
 }
 
 void FakeWilcoDtc::GetEcProperty(const grpc_api::GetEcPropertyRequest& request,

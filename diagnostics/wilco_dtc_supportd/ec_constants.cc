@@ -15,18 +15,11 @@ const char kEcDriverSysfsPath[] = "sys/bus/platform/devices/GOOG000C:00/";
 // |kEcDriverSysfsPath|.
 const char kEcDriverSysfsPropertiesPath[] = "properties/";
 
-// Max RunEcCommand request payload size.
-//
-// TODO(lamzin, crbug.com/904401): replace by real payload max size when EC
-// driver will be ready.
-const int64_t kEcRunCommandPayloadMaxSize = 32;
+// Max request payload size for EC telemetry command.
+const int64_t kEcGetTelemetryPayloadMaxSize = 32;
 
-// File for running EC command exposed by sysfs EC driver. Relative path to
-// |kEcDriverSysfsPath|.
-//
-// TODO(lamzin, crbug.com/904401): replace by real file path when EC driver
-// will be ready.
-const char kEcRunCommandFilePath[] = "raw";
+// Devfs node exposed by EC driver to EC telemetry data.
+const char kEcGetTelemetryFilePath[] = "dev/wilco_telem0";
 
 // EC event file path.
 const char kEcEventFilePath[] = "dev/wilco_event";

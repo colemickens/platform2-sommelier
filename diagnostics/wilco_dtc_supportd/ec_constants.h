@@ -13,9 +13,9 @@ extern const char kEcDriverSysfsPath[];
 
 extern const char kEcDriverSysfsPropertiesPath[];
 
-extern const int64_t kEcRunCommandPayloadMaxSize;
+extern const int64_t kEcGetTelemetryPayloadMaxSize;
 
-extern const char kEcRunCommandFilePath[];
+extern const char kEcGetTelemetryFilePath[];
 
 extern const char kEcEventFilePath[];
 

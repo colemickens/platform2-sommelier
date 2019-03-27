@@ -91,8 +91,8 @@ bool WilcoDtcSupportdCore::Start() {
       base::Bind(&WilcoDtcSupportdGrpcService::GetSysfsData,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
-      &grpc_api::WilcoDtcSupportd::AsyncService::RequestRunEcCommand,
-      base::Bind(&WilcoDtcSupportdGrpcService::RunEcCommand,
+      &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetEcTelemetry,
+      base::Bind(&WilcoDtcSupportdGrpcService::GetEcTelemetry,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetEcProperty,

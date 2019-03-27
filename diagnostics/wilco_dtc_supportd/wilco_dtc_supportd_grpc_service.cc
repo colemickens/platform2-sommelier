@@ -292,52 +292,53 @@ void WilcoDtcSupportdGrpcService::GetSysfsData(
   callback.Run(std::move(reply));
 }
 
-void WilcoDtcSupportdGrpcService::RunEcCommand(
-    std::unique_ptr<grpc_api::RunEcCommandRequest> request,
-    const RunEcCommandCallback& callback) {
+void WilcoDtcSupportdGrpcService::GetEcTelemetry(
+    std::unique_ptr<grpc_api::GetEcTelemetryRequest> request,
+    const GetEcTelemetryCallback& callback) {
   DCHECK(request);
-  auto reply = std::make_unique<grpc_api::RunEcCommandResponse>();
+  auto reply = std::make_unique<grpc_api::GetEcTelemetryResponse>();
   if (request->payload().empty()) {
-    LOG(ERROR) << "RunEcCommand gRPC request payload is empty";
+    LOG(ERROR) << "GetEcTelemetry gRPC request payload is empty";
     reply->set_status(
-        grpc_api::RunEcCommandResponse::STATUS_ERROR_INPUT_PAYLOAD_EMPTY);
+        grpc_api::GetEcTelemetryResponse::STATUS_ERROR_INPUT_PAYLOAD_EMPTY);
     callback.Run(std::move(reply));
     return;
   }
-  if (request->payload().length() > kEcRunCommandPayloadMaxSize) {
-    LOG(ERROR) << "RunEcCommand gRPC request payload size is exceeded: "
+  if (request->payload().length() > kEcGetTelemetryPayloadMaxSize) {
+    LOG(ERROR) << "GetEcTelemetry gRPC request payload size is exceeded: "
                << request->payload().length() << " vs "
-               << kEcRunCommandPayloadMaxSize << " allowed";
-    reply->set_status(grpc_api::RunEcCommandResponse::
+               << kEcGetTelemetryPayloadMaxSize << " allowed";
+    reply->set_status(grpc_api::GetEcTelemetryResponse::
                           STATUS_ERROR_INPUT_PAYLOAD_MAX_SIZE_EXCEEDED);
     callback.Run(std::move(reply));
     return;
   }
 
-  base::FilePath raw_file_path =
-      root_dir_.Append(kEcDriverSysfsPath).Append(kEcRunCommandFilePath);
+  base::FilePath telemetry_file_path =
+      root_dir_.Append(kEcGetTelemetryFilePath);
 
-  int write_result = base::WriteFile(raw_file_path, request->payload().c_str(),
-                                     request->payload().length());
+  int write_result =
+      base::WriteFile(telemetry_file_path, request->payload().c_str(),
+                      request->payload().length());
   if (write_result != request->payload().length()) {
-    VPLOG(2) << "RunEcCommand gRPC can not write request payload to the raw "
-             << "file: " << raw_file_path.value();
+    VPLOG(2) << "GetEcTelemetry gRPC can not write request payload to the "
+             << "telemetry node: " << telemetry_file_path.value();
     reply->set_status(
-        grpc_api::RunEcCommandResponse::STATUS_ERROR_ACCESSING_DRIVER);
+        grpc_api::GetEcTelemetryResponse::STATUS_ERROR_ACCESSING_DRIVER);
     callback.Run(std::move(reply));
     return;
   }
 
   // Reply payload must be empty in case of any failure.
   std::string file_content;
-  if (base::ReadFileToString(raw_file_path, &file_content)) {
-    reply->set_status(grpc_api::RunEcCommandResponse::STATUS_OK);
+  if (base::ReadFileToString(telemetry_file_path, &file_content)) {
+    reply->set_status(grpc_api::GetEcTelemetryResponse::STATUS_OK);
     reply->set_payload(std::move(file_content));
   } else {
-    VPLOG(2) << "RunEcCommand gRPC can not read EC command response from raw "
-             << "file: " << raw_file_path.value();
+    VPLOG(2) << "GetEcTelemetry gRPC can not read EC telemetry command "
+             << "response from telemetry node: " << telemetry_file_path.value();
     reply->set_status(
-        grpc_api::RunEcCommandResponse::STATUS_ERROR_ACCESSING_DRIVER);
+        grpc_api::GetEcTelemetryResponse::STATUS_ERROR_ACCESSING_DRIVER);
   }
   callback.Run(std::move(reply));
 }

@@ -115,8 +115,8 @@ class WilcoDtcSupportdGrpcService final {
       base::Callback<void(std::unique_ptr<grpc_api::GetProcDataResponse>)>;
   using GetSysfsDataCallback =
       base::Callback<void(std::unique_ptr<grpc_api::GetSysfsDataResponse>)>;
-  using RunEcCommandCallback =
-      base::Callback<void(std::unique_ptr<grpc_api::RunEcCommandResponse>)>;
+  using GetEcTelemetryCallback =
+      base::Callback<void(std::unique_ptr<grpc_api::GetEcTelemetryResponse>)>;
   using GetEcPropertyCallback =
       base::Callback<void(std::unique_ptr<grpc_api::GetEcPropertyResponse>)>;
   using PerformWebRequestResponseCallback = base::Callback<void(
@@ -146,8 +146,8 @@ class WilcoDtcSupportdGrpcService final {
                    const GetProcDataCallback& callback);
   void GetSysfsData(std::unique_ptr<grpc_api::GetSysfsDataRequest> request,
                     const GetSysfsDataCallback& callback);
-  void RunEcCommand(std::unique_ptr<grpc_api::RunEcCommandRequest> request,
-                    const RunEcCommandCallback& callback);
+  void GetEcTelemetry(std::unique_ptr<grpc_api::GetEcTelemetryRequest> request,
+                      const GetEcTelemetryCallback& callback);
   void GetEcProperty(std::unique_ptr<grpc_api::GetEcPropertyRequest> request,
                      const GetEcPropertyCallback& callback);
   void PerformWebRequest(

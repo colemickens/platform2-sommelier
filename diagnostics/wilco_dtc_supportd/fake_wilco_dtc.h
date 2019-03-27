@@ -30,8 +30,8 @@ class FakeWilcoDtc final {
  public:
   using GetProcDataCallback =
       base::Callback<void(std::unique_ptr<grpc_api::GetProcDataResponse>)>;
-  using RunEcCommandCallback =
-      base::Callback<void(std::unique_ptr<grpc_api::RunEcCommandResponse>)>;
+  using GetEcTelemetryCallback =
+      base::Callback<void(std::unique_ptr<grpc_api::GetEcTelemetryResponse>)>;
   using GetEcPropertyCallback =
       base::Callback<void(std::unique_ptr<grpc_api::GetEcPropertyResponse>)>;
   using HandleMessageFromUiCallback = base::Callback<void(
@@ -52,8 +52,8 @@ class FakeWilcoDtc final {
   // to perform actual gRPC requests as if the wilco_dtc daemon would do them:
   void GetProcData(const grpc_api::GetProcDataRequest& request,
                    GetProcDataCallback callback);
-  void RunEcCommand(const grpc_api::RunEcCommandRequest& request,
-                    RunEcCommandCallback callback);
+  void GetEcTelemetry(const grpc_api::GetEcTelemetryRequest& request,
+                      GetEcTelemetryCallback callback);
   void GetEcProperty(const grpc_api::GetEcPropertyRequest& request,
                      GetEcPropertyCallback callback);
   void PerformWebRequest(const grpc_api::PerformWebRequestParameter& parameter,
