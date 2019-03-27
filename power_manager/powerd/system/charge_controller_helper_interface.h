@@ -47,6 +47,9 @@ class ChargeControllerHelperInterface {
   //     - 20:00 is charge start time.
   virtual bool SetPeakShiftDayConfig(WeekDay week_day,
                                      const std::string& config) = 0;
+
+  // Enables or disables boot on AC.
+  virtual bool SetBootOnAcEnabled(bool enable) = 0;
 };
 
 }  // namespace system

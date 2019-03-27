@@ -86,14 +86,14 @@ class ChargeControllerTest : public ::testing::Test {
 
 TEST_F(ChargeControllerTest, PeakShiftNoPolicies) {
   controller_.HandlePolicyChange(policy_);
-  EXPECT_FALSE(helper_.enabled());
+  EXPECT_FALSE(helper_.peak_shift_enabled());
 }
 
 TEST_F(ChargeControllerTest, PeakShiftThresholdOnly) {
   constexpr int kThreshold = 50;
   policy_.set_peak_shift_battery_percent_threshold(kThreshold);
   controller_.HandlePolicyChange(policy_);
-  EXPECT_FALSE(helper_.enabled());
+  EXPECT_FALSE(helper_.peak_shift_enabled());
 }
 
 TEST_F(ChargeControllerTest, PeakShiftDayConfigsOnly) {
@@ -104,7 +104,7 @@ TEST_F(ChargeControllerTest, PeakShiftDayConfigsOnly) {
   MakePeakShiftDayConfig(kDay, kDayConfig,
                          policy_.add_peak_shift_day_configs());
   controller_.HandlePolicyChange(policy_);
-  EXPECT_FALSE(helper_.enabled());
+  EXPECT_FALSE(helper_.peak_shift_enabled());
 }
 
 TEST_F(ChargeControllerTest, PeakShiftThresholdAndDayConfigs) {
@@ -126,10 +126,10 @@ TEST_F(ChargeControllerTest, PeakShiftThresholdAndDayConfigs) {
 
   controller_.HandlePolicyChange(policy_);
 
-  EXPECT_TRUE(helper_.enabled());
-  EXPECT_EQ(helper_.threshold(), kThreshold);
-  EXPECT_EQ(helper_.day_config(kDay1), kDayConfig1);
-  EXPECT_EQ(helper_.day_config(kDay2), kDayConfig2);
+  EXPECT_TRUE(helper_.peak_shift_enabled());
+  EXPECT_EQ(helper_.peak_shift_threshold(), kThreshold);
+  EXPECT_EQ(helper_.peak_shift_day_config(kDay1), kDayConfig1);
+  EXPECT_EQ(helper_.peak_shift_day_config(kDay2), kDayConfig2);
 }
 
 TEST_F(ChargeControllerTest, PeakShiftTwiceWithNoChanges) {
@@ -150,19 +150,19 @@ TEST_F(ChargeControllerTest, PeakShiftTwiceWithNoChanges) {
                          policy_.add_peak_shift_day_configs());
 
   controller_.HandlePolicyChange(policy_);
-  EXPECT_TRUE(helper_.enabled());
-  EXPECT_EQ(helper_.threshold(), kThreshold);
-  EXPECT_EQ(helper_.day_config(kDay1), kDayConfig1);
-  EXPECT_EQ(helper_.day_config(kDay2), kDayConfig2);
+  EXPECT_TRUE(helper_.peak_shift_enabled());
+  EXPECT_EQ(helper_.peak_shift_threshold(), kThreshold);
+  EXPECT_EQ(helper_.peak_shift_day_config(kDay1), kDayConfig1);
+  EXPECT_EQ(helper_.peak_shift_day_config(kDay2), kDayConfig2);
 
   helper_.Reset();
 
   controller_.HandlePolicyChange(policy_);
-  EXPECT_FALSE(helper_.enabled());
-  EXPECT_EQ(helper_.threshold(),
+  EXPECT_FALSE(helper_.peak_shift_enabled());
+  EXPECT_EQ(helper_.peak_shift_threshold(),
             system::ChargeControllerHelperStub::kThresholdUnset);
-  EXPECT_EQ(helper_.day_config(kDay1), "");
-  EXPECT_EQ(helper_.day_config(kDay2), "");
+  EXPECT_EQ(helper_.peak_shift_day_config(kDay1), "");
+  EXPECT_EQ(helper_.peak_shift_day_config(kDay2), "");
 }
 
 TEST_F(ChargeControllerTest, PeakShiftTwiceWithChanges) {
@@ -183,10 +183,10 @@ TEST_F(ChargeControllerTest, PeakShiftTwiceWithChanges) {
                          policy_.add_peak_shift_day_configs());
 
   controller_.HandlePolicyChange(policy_);
-  EXPECT_TRUE(helper_.enabled());
-  EXPECT_EQ(helper_.threshold(), kThreshold1);
-  EXPECT_EQ(helper_.day_config(kDay1), kDayConfig1);
-  EXPECT_EQ(helper_.day_config(kDay2), kDayConfig2);
+  EXPECT_TRUE(helper_.peak_shift_enabled());
+  EXPECT_EQ(helper_.peak_shift_threshold(), kThreshold1);
+  EXPECT_EQ(helper_.peak_shift_day_config(kDay1), kDayConfig1);
+  EXPECT_EQ(helper_.peak_shift_day_config(kDay2), kDayConfig2);
 
   helper_.Reset();
 
@@ -194,10 +194,48 @@ TEST_F(ChargeControllerTest, PeakShiftTwiceWithChanges) {
   policy_.set_peak_shift_battery_percent_threshold(kThreshold2);
 
   controller_.HandlePolicyChange(policy_);
-  EXPECT_TRUE(helper_.enabled());
-  EXPECT_EQ(helper_.threshold(), kThreshold2);
-  EXPECT_EQ(helper_.day_config(kDay1), kDayConfig1);
-  EXPECT_EQ(helper_.day_config(kDay2), kDayConfig2);
+  EXPECT_TRUE(helper_.peak_shift_enabled());
+  EXPECT_EQ(helper_.peak_shift_threshold(), kThreshold2);
+  EXPECT_EQ(helper_.peak_shift_day_config(kDay1), kDayConfig1);
+  EXPECT_EQ(helper_.peak_shift_day_config(kDay2), kDayConfig2);
+}
+
+TEST_F(ChargeControllerTest, BootOnAcEnabled) {
+  policy_.set_boot_on_ac(true);
+  controller_.HandlePolicyChange(policy_);
+  EXPECT_TRUE(helper_.boot_on_ac_enabled());
+}
+
+TEST_F(ChargeControllerTest, BootOnAcDisabled) {
+  policy_.set_boot_on_ac(false);
+  controller_.HandlePolicyChange(policy_);
+  EXPECT_FALSE(helper_.boot_on_ac_enabled());
+}
+
+TEST_F(ChargeControllerTest, BootOnAcTwiceNoChanges) {
+  policy_.set_boot_on_ac(true);
+  controller_.HandlePolicyChange(policy_);
+  EXPECT_TRUE(helper_.boot_on_ac_enabled());
+
+  helper_.Reset();
+  controller_.HandlePolicyChange(policy_);
+  EXPECT_FALSE(helper_.boot_on_ac_enabled());
+}
+
+TEST_F(ChargeControllerTest, BootOnAcThriceChanges) {
+  policy_.set_boot_on_ac(true);
+  controller_.HandlePolicyChange(policy_);
+  EXPECT_TRUE(helper_.boot_on_ac_enabled());
+
+  helper_.Reset();
+
+  policy_.set_boot_on_ac(false);
+  controller_.HandlePolicyChange(policy_);
+  EXPECT_FALSE(helper_.boot_on_ac_enabled());
+
+  policy_.set_boot_on_ac(true);
+  controller_.HandlePolicyChange(policy_);
+  EXPECT_TRUE(helper_.boot_on_ac_enabled());
 }
 
 }  // namespace policy

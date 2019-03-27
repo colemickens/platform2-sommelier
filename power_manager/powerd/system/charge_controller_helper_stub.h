@@ -23,22 +23,27 @@ class ChargeControllerHelperStub : public ChargeControllerHelperInterface {
   ChargeControllerHelperStub();
   ~ChargeControllerHelperStub() override;
 
-  bool enabled() const;
-  int threshold() const;
-  std::string day_config(WeekDay day) const;
+  bool peak_shift_enabled() const;
+  int peak_shift_threshold() const;
+  std::string peak_shift_day_config(WeekDay day) const;
+
+  bool boot_on_ac_enabled() const;
 
   // ChargeControllerHelperInterface overrides:
   bool SetPeakShiftEnabled(bool enable) override;
   bool SetPeakShiftBatteryPercentThreshold(int threshold) override;
   bool SetPeakShiftDayConfig(WeekDay week_day,
                              const std::string& config) override;
+  bool SetBootOnAcEnabled(bool enable) override;
 
   void Reset();
 
  private:
-  bool enabled_ = false;
-  int threshold_ = kThresholdUnset;
-  std::map<WeekDay, std::string> day_configs_;
+  bool peak_shift_enabled_ = false;
+  int peak_shift_threshold_ = kThresholdUnset;
+  std::map<WeekDay, std::string> peak_shift_day_configs_;
+
+  bool boot_on_ac_enabled_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(ChargeControllerHelperStub);
 };

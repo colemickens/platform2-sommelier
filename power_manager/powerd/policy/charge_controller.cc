@@ -6,6 +6,7 @@
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "power_manager/powerd/system/charge_controller_helper_interface.h"
@@ -32,13 +33,12 @@ std::string GetPeakShiftDayConfigDebugString(
 }
 
 std::string GetPowerPolicyDebugString(const PowerManagementPolicy& policy) {
-  std::string str = "{";
+  std::string str;
   if (policy.has_peak_shift_battery_percent_threshold()) {
     str += "peak_shift_battery_percent_threshold=" +
            base::IntToString(policy.peak_shift_battery_percent_threshold()) +
            " ";
   }
-
   if (policy.peak_shift_day_configs_size()) {
     str += "peak_shift_day_configs=[";
     str += GetPeakShiftDayConfigDebugString(policy.peak_shift_day_configs(0));
@@ -46,9 +46,15 @@ std::string GetPowerPolicyDebugString(const PowerManagementPolicy& policy) {
       str += ", " +
              GetPeakShiftDayConfigDebugString(policy.peak_shift_day_configs(i));
     }
-    str += "]";
+    str += "] ";
   }
-  str += "}";
+
+  if (policy.has_boot_on_ac()) {
+    str += "boot_on_ac=";
+    str += policy.boot_on_ac() ? "true " : "false ";
+  }
+
+  base::TrimString(str, " ", &str);
   return str;
 }
 
@@ -80,6 +86,13 @@ void ChargeController::HandlePolicyChange(const PowerManagementPolicy& policy) {
 
 bool ChargeController::ApplyPolicyChange(const PowerManagementPolicy& policy) {
   DCHECK(helper_);
+
+  // Try to apply as many changes as possible.
+  return ApplyPeakShiftChange(policy) & ApplyBootOnAcChange(policy);
+}
+
+bool ChargeController::ApplyPeakShiftChange(
+    const PowerManagementPolicy& policy) {
   if (!policy.has_peak_shift_battery_percent_threshold() ||
       policy.peak_shift_day_configs_size() == 0) {
     return helper_->SetPeakShiftEnabled(false /* enable */);
@@ -99,6 +112,12 @@ bool ChargeController::ApplyPolicyChange(const PowerManagementPolicy& policy) {
   }
 
   return true;
+}
+
+bool ChargeController::ApplyBootOnAcChange(
+    const PowerManagementPolicy& policy) {
+  // Disable if |boot_on_ac| is unset.
+  return helper_->SetBootOnAcEnabled(policy.boot_on_ac() /* enable */);
 }
 
 bool ChargeController::SetPeakShiftDayConfig(
@@ -157,13 +176,8 @@ bool ChargeController::IsPolicyEqualToCache(
     return false;
   }
 
-  if (policy.has_peak_shift_battery_percent_threshold() ^
-      cached_policy_->has_peak_shift_battery_percent_threshold()) {
-    return false;
-  }
-  if (policy.has_peak_shift_battery_percent_threshold() &&
-      policy.peak_shift_battery_percent_threshold() !=
-          cached_policy_->peak_shift_battery_percent_threshold()) {
+  if (policy.peak_shift_battery_percent_threshold() !=
+      cached_policy_->peak_shift_battery_percent_threshold()) {
     return false;
   }
 
@@ -182,6 +196,9 @@ bool ChargeController::IsPolicyEqualToCache(
     }
   }
 
+  if (policy.boot_on_ac() != cached_policy_->boot_on_ac()) {
+    return false;
+  }
   return true;
 }
 

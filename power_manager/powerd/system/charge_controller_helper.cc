@@ -90,5 +90,11 @@ bool ChargeControllerHelper::SetPeakShiftDayConfig(WeekDay week_day,
       base::FilePath(kPeakShiftPropertyPath).Append(day_file), config);
 }
 
+bool ChargeControllerHelper::SetBootOnAcEnabled(bool enable) {
+  // EC driver does not support boot on ac yet: b/129409960.
+  NOTIMPLEMENTED();
+  return false;
+}
+
 }  // namespace system
 }  // namespace power_manager

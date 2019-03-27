@@ -37,6 +37,8 @@ class ChargeController {
 
  private:
   bool ApplyPolicyChange(const PowerManagementPolicy& policy);
+  bool ApplyPeakShiftChange(const PowerManagementPolicy& policy);
+  bool ApplyBootOnAcChange(const PowerManagementPolicy& policy);
 
   // Calls delegate's |SetPeakShiftDayConfig| function and returns the result
   // if |day_config| contains all needed fields, otherwise returns false.
