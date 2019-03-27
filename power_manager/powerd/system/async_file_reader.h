@@ -8,6 +8,7 @@
 #include <aio.h>
 #include <unistd.h>
 
+#include <memory>
 #include <string>
 
 #include <base/callback.h>
@@ -71,7 +72,7 @@ class AsyncFileReader {
   int fd_;
 
   // Buffer for AIO reads.
-  char* aio_buffer_;
+  std::unique_ptr<char[]> aio_buffer_;
 
   // Number of bytes to be read for the first chunk.  This is a variable instead
   // of a constant so unit tests can modify it.
