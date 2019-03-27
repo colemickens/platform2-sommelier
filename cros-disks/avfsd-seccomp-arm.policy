@@ -20,7 +20,7 @@ mkdir: 1
 rmdir: 1
 brk: 1
 # Allow ioctl(cmd==TCGETS) for isatty check in unrar code.
-ioctl: arg1 == 0x5401
+ioctl: arg1 == TCGETS
 umask: 1
 dup2: 1
 dup: 1
