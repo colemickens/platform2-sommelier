@@ -24,7 +24,8 @@ class MojoUtilsTest : public testing::Test {
 
 }  // namespace
 
-TEST_F(MojoUtilsTest, CreateMojoHandleAndRetrieveContent) {
+// TODO(crbug.com/946330): Disabled due to flakiness.
+TEST_F(MojoUtilsTest, DISABLED_CreateMojoHandleAndRetrieveContent) {
   const base::StringPiece content("{\"key\": \"value\"}");
 
   mojo::ScopedHandle handle = CreateReadOnlySharedMemoryMojoHandle(content);

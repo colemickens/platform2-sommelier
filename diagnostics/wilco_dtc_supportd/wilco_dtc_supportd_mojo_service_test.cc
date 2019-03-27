@@ -129,19 +129,23 @@ class WilcoDtcSupportdMojoServiceTest : public testing::Test {
 
 }  // namespace
 
-TEST_F(WilcoDtcSupportdMojoServiceTest, SendUiMessageToWilcoDtc) {
+// TODO(crbug.com/946330): Disabled due to flakiness.
+TEST_F(WilcoDtcSupportdMojoServiceTest, DISABLED_SendUiMessageToWilcoDtc) {
   base::StringPiece json_message("{\"message\": \"Hello world!\"}");
   EXPECT_CALL(*delegate(), SendGrpcUiMessageToWilcoDtc(json_message, _));
   ASSERT_NO_FATAL_FAILURE(SendJsonMessage(json_message));
 }
 
-TEST_F(WilcoDtcSupportdMojoServiceTest, SendUiMessageToWilcoDtcInvalidJSON) {
+// TODO(crbug.com/946330): Disabled due to flakiness.
+TEST_F(WilcoDtcSupportdMojoServiceTest,
+       DISABLED_SendUiMessageToWilcoDtcInvalidJSON) {
   base::StringPiece json_message("{'message': 'Hello world!'}");
   EXPECT_CALL(*delegate(), SendGrpcUiMessageToWilcoDtc(_, _)).Times(0);
   ASSERT_NO_FATAL_FAILURE(SendJsonMessage(json_message));
 }
 
-TEST_F(WilcoDtcSupportdMojoServiceTest, PerformWebRequest) {
+// TODO(crbug.com/946330): Disabled due to flakiness.
+TEST_F(WilcoDtcSupportdMojoServiceTest, DISABLED_PerformWebRequest) {
   EXPECT_CALL(
       *mojo_client(),
       PerformWebRequestImpl(MojomDiagnosticsdWebRequestHttpMethod::kGet,

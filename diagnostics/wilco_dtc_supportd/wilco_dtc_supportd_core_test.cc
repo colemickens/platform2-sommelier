@@ -473,7 +473,9 @@ class BootstrappedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
 
 // Test that the UI message receiver wilco_dtc will receive message from
 // browser.
-TEST_F(BootstrappedWilcoDtcSupportdCoreTest, SendGrpcUiMessageToWilcoDtc) {
+// TODO(crbug.com/946330): Disabled due to flakiness.
+TEST_F(BootstrappedWilcoDtcSupportdCoreTest,
+       DISABLED_SendGrpcUiMessageToWilcoDtc) {
   const std::string json_message = "{\"some_key\": \"some_value\"}";
   const std::string response_json_message = "{\"key\": \"value\"}";
 
@@ -503,8 +505,9 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, SendGrpcUiMessageToWilcoDtc) {
 
 // Test that the UI message receiver wilco_dtc will not receive message from
 // browser if JSON message is invalid.
+// TODO(crbug.com/946330): Disabled due to flakiness.
 TEST_F(BootstrappedWilcoDtcSupportdCoreTest,
-       SendGrpcUiMessageToWilcoDtcInvalidJSON) {
+       DISABLED_SendGrpcUiMessageToWilcoDtcInvalidJSON) {
   const std::string json_message = "{'some_key': 'some_value'}";
 
   base::RunLoop run_loop_fake_browser;
@@ -528,8 +531,9 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest,
 
 // Test that the UI message receiver wilco_dtc will receive message from
 // browser.
+// TODO(crbug.com/946330): Disabled due to flakiness.
 TEST_F(BootstrappedWilcoDtcSupportdCoreTest,
-       SendGrpcUiMessageToWilcoDtcInvalidResponseJSON) {
+       DISABLED_SendGrpcUiMessageToWilcoDtcInvalidResponseJSON) {
   const std::string json_message = "{\"some_key\": \"some_value\"}";
   const std::string response_json_message = "{'key': 'value'}";
 
@@ -633,7 +637,9 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetEcPropertyGrpcCall) {
 
 // Test that PerformWebRequest() method exposed by the daemon's gRPC returns a
 // Web request response from the browser.
-TEST_F(BootstrappedWilcoDtcSupportdCoreTest, PerformWebRequestToBrowser) {
+// TODO(crbug.com/946330): Disabled due to flakiness.
+TEST_F(BootstrappedWilcoDtcSupportdCoreTest,
+       DISABLED_PerformWebRequestToBrowser) {
   constexpr char kHttpsUrl[] = "https://www.google.com";
   constexpr int kHttpStatusOk = 200;
 
