@@ -39,6 +39,10 @@ class DpslRequesterImpl final : public DpslRequester {
   void PerformWebRequest(
       std::unique_ptr<grpc_api::PerformWebRequestParameter> request,
       PerformWebRequestCallback callback) override;
+  void GetEcTelemetry(std::unique_ptr<grpc_api::GetEcTelemetryRequest> request,
+                      GetEcTelemetryRequestCallback callback) override;
+  void GetEcProperty(std::unique_ptr<grpc_api::GetEcPropertyRequest> request,
+                     GetEcPropertyRequestCallback callback) override;
   void GetAvailableRoutines(
       std::unique_ptr<grpc_api::GetAvailableRoutinesRequest> request,
       GetAvailableRoutinesCallback callback) override;

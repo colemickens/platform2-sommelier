@@ -76,6 +76,10 @@ class DpslRequester {
       std::unique_ptr<grpc_api::GetSysfsDataResponse> response)>;
   using PerformWebRequestCallback = std::function<void(
       std::unique_ptr<grpc_api::PerformWebRequestResponse> response)>;
+  using GetEcTelemetryRequestCallback = std::function<void(
+      std::unique_ptr<grpc_api::GetEcTelemetryResponse> response)>;
+  using GetEcPropertyRequestCallback = std::function<void(
+      std::unique_ptr<grpc_api::GetEcPropertyResponse> response)>;
   using GetAvailableRoutinesCallback = std::function<void(
       std::unique_ptr<grpc_api::GetAvailableRoutinesResponse> response)>;
   using RunRoutineCallback = std::function<void(
@@ -117,6 +121,12 @@ class DpslRequester {
   virtual void PerformWebRequest(
       std::unique_ptr<grpc_api::PerformWebRequestParameter> request,
       PerformWebRequestCallback callback) = 0;
+  virtual void GetEcTelemetry(
+      std::unique_ptr<grpc_api::GetEcTelemetryRequest> request,
+      GetEcTelemetryRequestCallback callback) = 0;
+  virtual void GetEcProperty(
+      std::unique_ptr<grpc_api::GetEcPropertyRequest> request,
+      GetEcPropertyRequestCallback callback) = 0;
   virtual void GetAvailableRoutines(
       std::unique_ptr<grpc_api::GetAvailableRoutinesRequest> request,
       GetAvailableRoutinesCallback callback) = 0;

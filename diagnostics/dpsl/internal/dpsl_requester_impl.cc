@@ -89,6 +89,22 @@ void DpslRequesterImpl::PerformWebRequest(
       std::move(request), std::move(callback));
 }
 
+void DpslRequesterImpl::GetEcTelemetry(
+    std::unique_ptr<grpc_api::GetEcTelemetryRequest> request,
+    GetEcTelemetryRequestCallback callback) {
+  ScheduleGrpcClientMethodCall(
+      FROM_HERE, &grpc_api::WilcoDtcSupportd::Stub::AsyncGetEcTelemetry,
+      std::move(request), std::move(callback));
+}
+
+void DpslRequesterImpl::GetEcProperty(
+    std::unique_ptr<grpc_api::GetEcPropertyRequest> request,
+    GetEcPropertyRequestCallback callback) {
+  ScheduleGrpcClientMethodCall(
+      FROM_HERE, &grpc_api::WilcoDtcSupportd::Stub::AsyncGetEcProperty,
+      std::move(request), std::move(callback));
+}
+
 void DpslRequesterImpl::GetAvailableRoutines(
     std::unique_ptr<grpc_api::GetAvailableRoutinesRequest> request,
     GetAvailableRoutinesCallback callback) {
