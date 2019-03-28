@@ -34,9 +34,7 @@ class ImageProcessor {
   // fill |data|, |buffer_size|, |width|, and |height| of |out_frame|. The
   // function will fill |out_frame->data_size|. Return non-zero error code on
   // failure; return 0 on success.
-  int ConvertFormat(const android::CameraMetadata& metadata,
-                    const FrameBuffer& in_frame,
-                    FrameBuffer* out_frame);
+  int ConvertFormat(const FrameBuffer& in_frame, FrameBuffer* out_frame);
 
   // Scale image size according to |in_frame| and |out_frame|. Only support
   // V4L2_PIX_FMT_YUV420 format. Caller should fill |data|, |width|, |height|,
@@ -58,9 +56,6 @@ class ImageProcessor {
   // |height|, and |buffer_size| of |out_frame|. The function will fill
   // |data_size| and |fourcc| of |out_frame|.
   int Crop(const FrameBuffer& in_frame, FrameBuffer* out_frame);
-
- private:
-  int MJPGToI420(const FrameBuffer& in_frame, FrameBuffer* out_frame);
 };
 
 }  // namespace cros

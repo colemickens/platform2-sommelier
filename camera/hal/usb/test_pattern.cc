@@ -188,7 +188,6 @@ bool TestPattern::ConvertToYU12() {
   if (!ret) {
     size_t yuv_size = resolution_.width * resolution_.height * 1.5;
     pattern_image_yuv_.reset(new SharedFrameBuffer(yuv_size));
-    pattern_image_yuv_->SetDataSize(yuv_size);
 
     ret = libyuv::I420Scale(
         cropped_image_yuv->GetData(), cropped_width,
@@ -208,6 +207,7 @@ bool TestPattern::ConvertToYU12() {
       pattern_image_yuv_->SetFourcc(V4L2_PIX_FMT_YUV420);
       pattern_image_yuv_->SetWidth(resolution_.width);
       pattern_image_yuv_->SetHeight(resolution_.height);
+      pattern_image_yuv_->SetDataSize(yuv_size);
     }
   }
   return ret == 0;

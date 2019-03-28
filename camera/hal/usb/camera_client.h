@@ -205,10 +205,9 @@ class CameraClient {
     // Check whether we should enable constant frame rate according to metadata.
     bool ShouldEnableConstantFrameRate(const android::CameraMetadata& metadata);
 
-    // Convert |cache_frame_| to the |buffer| with corresponding format.
-    int WriteStreamBuffer(int stream_index,
-                          const android::CameraMetadata& metadata,
-                          const camera3_stream_buffer_t* buffer);
+    // Convert to |capture_result->output_buffers| with |cached_frame_|.
+    int WriteStreamBuffers(const android::CameraMetadata& metadata,
+                           camera3_capture_result_t* capture_result);
 
     // Some devices may output invalid image after stream on. Skip frames
     // after stream on.

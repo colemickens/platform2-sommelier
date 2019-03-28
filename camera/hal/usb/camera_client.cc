@@ -657,29 +657,19 @@ void CameraClient::RequestHandler::HandleRequest(
   do {
     VLOGFID(2, device_id_) << "before DequeueV4L2Buffer";
     ret = DequeueV4L2Buffer(pattern_mode);
+    if (!ret) {
+      if (metadata_handler_->PreHandleRequest(
+              capture_result.frame_number, stream_on_resolution_, metadata)) {
+        LOGFID(WARNING, device_id_)
+            << "Update metadata in PreHandleRequest failed";
+      }
+      ret = WriteStreamBuffers(*metadata, &capture_result);
+    }
   } while (ret == -EAGAIN);
 
   if (ret) {
     HandleAbortedRequest(&capture_result);
     return;
-  }
-
-  ret = metadata_handler_->PreHandleRequest(capture_result.frame_number,
-                                            stream_on_resolution_, metadata);
-  if (ret) {
-    LOGFID(WARNING, device_id_) << "Update metadata in PreHandleRequest failed";
-  }
-
-  // Handle each stream output buffer and convert it to corresponding format.
-  for (size_t i = 0; i < capture_result.num_output_buffers; i++) {
-    ret = WriteStreamBuffer(i, *metadata, &capture_result.output_buffers[i]);
-    if (ret) {
-      LOGFID(ERROR, device_id_)
-          << "Handle stream buffer failed for output buffer id: " << i;
-      camera3_stream_buffer_t* b = const_cast<camera3_stream_buffer_t*>(
-          capture_result.output_buffers + i);
-      b->status = CAMERA3_BUFFER_STATUS_ERROR;
-    }
   }
 
   // Return v4l2 buffer.
@@ -911,59 +901,49 @@ bool CameraClient::RequestHandler::ShouldEnableConstantFrameRate(
   return false;
 }
 
-int CameraClient::RequestHandler::WriteStreamBuffer(
-    int stream_index,
+int CameraClient::RequestHandler::WriteStreamBuffers(
     const android::CameraMetadata& metadata,
-    const camera3_stream_buffer_t* buffer) {
+    camera3_capture_result_t* capture_result) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
-  VLOGFID(1, device_id_) << "output buffer stream format: "
-                         << buffer->stream->format
-                         << ", buffer ptr: " << *buffer->buffer
-                         << ", width: " << buffer->stream->width
-                         << ", height: " << buffer->stream->height;
+  std::vector<std::unique_ptr<FrameBuffer>> output_frames;
+  for (size_t i = 0; i < capture_result->num_output_buffers; i++) {
+    const camera3_stream_buffer_t* buffer = &capture_result->output_buffers[i];
+    VLOGFID(1, device_id_) << "output buffer stream format: "
+                           << buffer->stream->format
+                           << ", buffer ptr: " << *buffer->buffer
+                           << ", width: " << buffer->stream->width
+                           << ", height: " << buffer->stream->height;
+    output_frames.push_back(std::make_unique<GrallocFrameBuffer>(
+        *buffer->buffer, buffer->stream->width, buffer->stream->height));
+  }
 
-  int ret = 0;
+  const FrameBuffer* input_frame =
+      test_pattern_->IsTestPatternEnabled()
+          ? test_pattern_->GetTestPattern()
+          : input_buffers_[current_v4l2_buffer_id_].get();
 
-  GrallocFrameBuffer output_frame(*buffer->buffer, buffer->stream->width,
-                                  buffer->stream->height);
-
-  ret = output_frame.Map();
+  std::vector<int> output_frame_status;
+  int ret =
+      cached_frame_.Convert(metadata, crop_rotate_scale_degrees_, *input_frame,
+                            output_frames, &output_frame_status);
   if (ret) {
-    return -EINVAL;
+    EnqueueV4L2Buffer();
+    return ret;
   }
 
-  // Crop the stream image to the same ratio as the current buffer image.
-  // We want to compare w1/h1 and w2/h2. To avoid floating point precision loss
-  // we compare w1*h2 and w2*h1 instead, with w1 and h1 being the width and
-  // height of the stream; w2 and h2 those of the buffer.
-  int buffer_aspect_ratio =
-      buffer->stream->width * stream_on_resolution_.height;
-  int stream_aspect_ratio =
-      stream_on_resolution_.width * buffer->stream->height;
-  int crop_width;
-  int crop_height;
-
-  // Same Ratio.
-  if (stream_aspect_ratio == buffer_aspect_ratio) {
-    crop_width = stream_on_resolution_.width;
-    crop_height = stream_on_resolution_.height;
-  } else if (stream_aspect_ratio > buffer_aspect_ratio) {
-    // Need to crop width.
-    crop_width = buffer_aspect_ratio / buffer->stream->height;
-    crop_height = stream_on_resolution_.height;
-  } else {
-    // Need to crop height.
-    crop_width = stream_on_resolution_.width;
-    crop_height = stream_aspect_ratio / buffer->stream->width;
+  for (size_t i = 0; i < capture_result->num_output_buffers; i++) {
+    camera3_stream_buffer_t* b = const_cast<camera3_stream_buffer_t*>(
+        capture_result->output_buffers + i);
+    if (output_frame_status[i]) {
+      LOGFID(ERROR, device_id_)
+          << "Handle stream buffer failed for output buffer id: " << i;
+      b->status = CAMERA3_BUFFER_STATUS_ERROR;
+    } else {
+      b->status = CAMERA3_BUFFER_STATUS_OK;
+    }
   }
-
-  // Make sure crop size is even.
-  crop_width = (crop_width + 1) & (~1);
-  crop_height = (crop_height + 1) & (~1);
-
-  return cached_frame_.Convert(metadata, crop_width, crop_height,
-                               &output_frame);
+  return 0;
 }
 
 void CameraClient::RequestHandler::SkipFramesAfterStreamOn(int num_frames) {
@@ -1121,17 +1101,6 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
   if (!test_pattern_->SetTestPatternMode(pattern_mode)) {
     EnqueueV4L2Buffer();
     return -EINVAL;
-  }
-
-  const FrameBuffer* input_frame = test_pattern_->IsTestPatternEnabled()
-                                       ? test_pattern_->GetTestPattern()
-                                       : input_buffers_[buffer_id].get();
-  ret = cached_frame_.SetSource(*input_frame, crop_rotate_scale_degrees_);
-  if (ret) {
-    LOGFID(ERROR, device_id_)
-        << "Set image source failed for input buffer id: " << buffer_id;
-    EnqueueV4L2Buffer();
-    return ret;
   }
 
   return 0;

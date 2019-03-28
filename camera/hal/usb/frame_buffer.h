@@ -54,6 +54,8 @@ class FrameBuffer {
   virtual int SetDataSize(size_t data_size);
   virtual int GetFd() const { return -1; }
 
+  virtual buffer_handle_t GetBufferHandle() const { return nullptr; }
+
  protected:
   std::vector<uint8_t*> data_;
   std::vector<size_t> stride_;
@@ -126,17 +128,21 @@ class V4L2FrameBuffer : public FrameBuffer {
   base::Lock lock_;
 };
 
-// GrallocFrameBuffer is used for the buffer from Android framework. Uses
-// CameraBufferManager to lock and unlock the buffer.
+// GrallocFrameBuffer uses CameraBufferManager to manage the buffer.
 class GrallocFrameBuffer : public FrameBuffer {
  public:
-  // Fill |width_| and |height_| according to the parameters.
+  // Wraps external buffer from upper framework. Fill |width_| and |height_|
+  // according to the parameters.
   GrallocFrameBuffer(buffer_handle_t buffer, uint32_t width, uint32_t height);
+  // Allocate the buffer internally.
+  GrallocFrameBuffer(uint32_t width, uint32_t height, uint32_t fourcc);
   ~GrallocFrameBuffer();
 
   // Fill |buffer_size_| and |data_|.
   int Map() override;
   int Unmap() override;
+
+  buffer_handle_t GetBufferHandle() const override { return buffer_; }
 
  private:
   // The currently used buffer for |buffer_mapper_| operations.
@@ -144,6 +150,9 @@ class GrallocFrameBuffer : public FrameBuffer {
 
   // Used to import gralloc buffer.
   CameraBufferManager* buffer_manager_;
+
+  // Whether the |buffer_| is allocated by this class.
+  bool is_buffer_owner_;
 
   bool is_mapped_;
 

@@ -9,6 +9,8 @@
 
 #include <utility>
 
+#include <hardware/gralloc.h>
+
 #include "cros-camera/common.h"
 #include "hal/usb/image_processor.h"
 
@@ -165,10 +167,9 @@ V4L2FrameBuffer::~V4L2FrameBuffer() {
 
 int V4L2FrameBuffer::Map() {
   base::AutoLock l(lock_);
-  if (is_mapped_) {
-    LOGF(ERROR) << "The buffer is already mapped";
-    return -EINVAL;
-  }
+  if (is_mapped_)
+    return 0;
+
   void* addr = mmap(NULL, buffer_size_, PROT_READ, MAP_SHARED, fd_.get(), 0);
   if (addr == MAP_FAILED) {
     PLOGF(ERROR) << "mmap() failed";
@@ -181,7 +182,10 @@ int V4L2FrameBuffer::Map() {
 
 int V4L2FrameBuffer::Unmap() {
   base::AutoLock l(lock_);
-  if (is_mapped_ && munmap(data_[0], buffer_size_)) {
+  if (!is_mapped_)
+    return 0;
+
+  if (munmap(data_[0], buffer_size_)) {
     PLOGF(ERROR) << "mummap() failed";
     return -EINVAL;
   }
@@ -194,6 +198,7 @@ GrallocFrameBuffer::GrallocFrameBuffer(buffer_handle_t buffer,
                                        uint32_t height)
     : buffer_(buffer),
       buffer_manager_(CameraBufferManager::GetInstance()),
+      is_buffer_owner_(false),
       is_mapped_(false) {
   int ret = buffer_manager_->Register(buffer_);
   if (ret) {
@@ -208,23 +213,62 @@ GrallocFrameBuffer::GrallocFrameBuffer(buffer_handle_t buffer,
   stride_.resize(num_planes_, 0);
 }
 
+GrallocFrameBuffer::GrallocFrameBuffer(uint32_t width,
+                                       uint32_t height,
+                                       uint32_t fourcc)
+    : buffer_(nullptr),
+      buffer_manager_(CameraBufferManager::GetInstance()),
+      is_buffer_owner_(true),
+      is_mapped_(false) {
+  if (fourcc != V4L2_PIX_FMT_NV12 && fourcc != V4L2_PIX_FMT_NV12M &&
+      fourcc != V4L2_PIX_FMT_YUV420 && fourcc != V4L2_PIX_FMT_YUV420M) {
+    LOGF(ERROR) << "Unsupported format: " << FormatToString(fourcc);
+    return;
+  }
+  uint32_t hal_format = HAL_PIXEL_FORMAT_YCbCr_420_888;
+  uint32_t hal_usage =
+      GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN;
+  if (fourcc == V4L2_PIX_FMT_YUV420 || fourcc == V4L2_PIX_FMT_YUV420M) {
+    hal_usage |= GRALLOC_USAGE_FORCE_I420;
+  }
+
+  uint32_t stride;
+  int ret = buffer_manager_->Allocate(width, height, hal_format, hal_usage,
+                                      GRALLOC, &buffer_, &stride);
+  if (ret) {
+    LOGF(ERROR) << "Failed to allocate buffer";
+    return;
+  }
+  width_ = buffer_manager_->GetWidth(buffer_);
+  height_ = buffer_manager_->GetHeight(buffer_);
+  fourcc_ = buffer_manager_->GetV4L2PixelFormat(buffer_);
+  num_planes_ = buffer_manager_->GetNumPlanes(buffer_);
+  data_.resize(num_planes_, nullptr);
+  stride_.resize(num_planes_, 0);
+}
+
 GrallocFrameBuffer::~GrallocFrameBuffer() {
   if (Unmap()) {
     LOGF(ERROR) << "Unmap failed";
   }
 
-  int ret = buffer_manager_->Deregister(buffer_);
-  if (ret) {
-    LOGF(ERROR) << "Failed to unregister buffer";
+  if (is_buffer_owner_) {
+    int ret = buffer_manager_->Free(buffer_);
+    if (ret) {
+      LOGF(ERROR) << "Failed to free buffer";
+    }
+  } else {
+    int ret = buffer_manager_->Deregister(buffer_);
+    if (ret) {
+      LOGF(ERROR) << "Failed to unregister buffer";
+    }
   }
 }
 
 int GrallocFrameBuffer::Map() {
   base::AutoLock l(lock_);
-  if (is_mapped_) {
-    LOGF(ERROR) << "The buffer is already mapped";
-    return -EINVAL;
-  }
+  if (is_mapped_)
+    return 0;
 
   buffer_size_ = 0;
   for (size_t i = 0; i < num_planes_; i++) {
@@ -291,7 +335,10 @@ int GrallocFrameBuffer::Map() {
 
 int GrallocFrameBuffer::Unmap() {
   base::AutoLock l(lock_);
-  if (is_mapped_ && buffer_manager_->Unlock(buffer_)) {
+  if (!is_mapped_)
+    return 0;
+
+  if (buffer_manager_->Unlock(buffer_)) {
     LOGF(ERROR) << "Failed to unmap buffer";
     return -EINVAL;
   }

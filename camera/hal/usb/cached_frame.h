@@ -7,6 +7,7 @@
 #define CAMERA_HAL_USB_CACHED_FRAME_H_
 
 #include <memory>
+#include <vector>
 
 #include <camera/camera_metadata.h>
 
@@ -24,32 +25,31 @@ class CachedFrame {
  public:
   CachedFrame();
 
-  // SetSource() converts incoming frame into |yu12_frame_|. Return -EAGAIN if
-  // |in_frame| is not a valid frame from camera, or other non-zero values if
-  // it encounters internal errors.
-  // If |rotate_degree| is 90 or 270, |frame| will be cropped, rotated by the
-  // specified amount and scaled.
-  // This function will return an error if |rotate_degree| is not 0, 90, or
-  // 270.
-  int SetSource(const FrameBuffer& in_frame, int rotate_degree);
-
-  // Caller should fill everything except |data_size| and |fd| of |out_frame|.
-  // The function will do crop of the center image by |crop_width| and
-  // |crop_height| first, and then do format conversion and scale to fit
-  // |out_frame| requirement.
+  // Convert |in_frame| into |out_frames| with |rotate_degree|, cropping,
+  // scaling, and format conversion. |rotate_degree| should be 0, 90, or 270.
+  // When it returns 0, the |out_frames_status| will have the same size as
+  // |out_frames| and record each output frame's conversion status.
+  //
+  // The |out_frames| don't need to be mapped before calling this function. They
+  // will be mapped at a proper time for hardware and software access.
   int Convert(const android::CameraMetadata& metadata,
-              int crop_width,
-              int crop_height,
-              FrameBuffer* out_frame);
+              int rotate_degree,
+              const FrameBuffer& in_frame,
+              const std::vector<std::unique_ptr<FrameBuffer>>& out_frames,
+              std::vector<int>* out_frame_status);
 
  private:
-  int ConvertToYU12(const FrameBuffer& in_frame);
+  int ConvertFromNV12(const android::CameraMetadata& metadata,
+                      const FrameBuffer& in_frame,
+                      FrameBuffer* out_frame);
 
-  int DecodeToYU12ByJDA(const FrameBuffer& in_frame);
+  int DecodeToNV12(const FrameBuffer& in_frame, FrameBuffer* out_frame);
 
-  int ConvertYU12ToJpeg(const android::CameraMetadata& metadata,
-                        const FrameBuffer& in_frame,
-                        FrameBuffer* out_frame);
+  int DecodeByJDA(const FrameBuffer& in_frame, FrameBuffer* out_frame);
+
+  int CompressNV12(const android::CameraMetadata& metadata,
+                   const FrameBuffer& in_frame,
+                   FrameBuffer* out_frame);
 
   // When we have a landscape mounted camera and the current camera activity is
   // portrait, the frames shown in the activity would be stretched. Therefore,
@@ -58,14 +58,15 @@ class CachedFrame {
   // CameraInfo.orientation. Instead, framework would fake the
   // CameraInfo.orientation. Framework would then tell HAL how much the frame
   // needs to rotate clockwise by |rotate_degree|.
-  int CropRotateScale(int rotate_degree);
+  int CropRotateScale(int rotate_degree, FrameBuffer* frame);
 
-  // Temporary buffer for cropped, rotated and scaled results.
-  std::unique_ptr<SharedFrameBuffer> temp_frame_;
-  std::unique_ptr<SharedFrameBuffer> temp_frame2_;
-
-  // Cache YU12 decoded results.
-  std::unique_ptr<SharedFrameBuffer> yu12_frame_;
+  // Cached temporary buffers for the capture pipeline. We use SHM buffer for
+  // I420 format since it can be resized, and Gralloc buffer for NV12 format
+  // since it will be fed to HW JDA/JEA.
+  std::unique_ptr<SharedFrameBuffer> temp_i420_frame_;
+  std::unique_ptr<SharedFrameBuffer> temp_i420_frame2_;
+  std::unique_ptr<GrallocFrameBuffer> temp_nv12_frame_;
+  std::unique_ptr<GrallocFrameBuffer> temp_nv12_frame2_;
 
   // ImageProcessor instance.
   std::unique_ptr<ImageProcessor> image_processor_;
