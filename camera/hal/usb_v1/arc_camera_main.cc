@@ -11,6 +11,7 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <brillo/daemons/daemon.h>
+#include <brillo/key_value_store.h>
 #include <brillo/syslog_logging.h>
 
 #include "hal/usb_v1/arc_camera_dbus_daemon.h"
@@ -43,8 +44,19 @@ int main(int argc, char* argv[]) {
     return daemon.Run();
   }
 
-  // TODO(hashimoto): Set this to true once Android-side gets ready.
-  constexpr bool shouldRunDBusDaemon = false;
+  // Run D-Bus daemon only for P.
+  // TODO(hashimoto): Always run D-Bus daemon to remove the old code.
+  brillo::KeyValueStore store;
+  if (!store.Load(base::FilePath("/etc/lsb-release"))) {
+    LOG(ERROR) << "Could not load lsb-release";
+    return 1;
+  }
+  constexpr char kAndroidSdkVersionP[] = "28";
+  std::string android_sdk_version;
+  const bool shouldRunDBusDaemon =
+      store.GetString("CHROMEOS_ARC_ANDROID_SDK_VERSION",
+                      &android_sdk_version) &&
+      android_sdk_version == kAndroidSdkVersionP;
   if (shouldRunDBusDaemon) {
     // ArcCameraDBusDaemon waits for connection from container forever.
     // Once it accepted a connection, it forks a child process and passes the
