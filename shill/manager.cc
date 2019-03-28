@@ -149,9 +149,8 @@ Manager::Manager(ControlInterface* control_interface,
       ethernet_provider_(
           new EthernetProvider(control_interface, dispatcher, metrics, this)),
 #if !defined(DISABLE_WIRED_8021X)
-      ethernet_eap_provider_(
-          new EthernetEapProvider(
-              control_interface, dispatcher, metrics, this)),
+      ethernet_eap_provider_(new EthernetEapProvider(
+          control_interface, dispatcher, metrics, this)),
 #endif  // DISABLE_WIRED_8021X
       vpn_provider_(
           new VPNProvider(control_interface, dispatcher, metrics, this)),
@@ -165,13 +164,12 @@ Manager::Manager(ControlInterface* control_interface,
       connect_profiles_to_rpc_(true),
       last_default_physical_service_(nullptr),
       last_default_physical_service_connected_(false),
-      ephemeral_profile_(
-          new EphemeralProfile(control_interface, metrics, this)),
+      ephemeral_profile_(new EphemeralProfile(this)),
       control_interface_(control_interface),
       metrics_(metrics),
       use_startup_portal_list_(false),
-      device_status_check_task_(Bind(&Manager::DeviceStatusCheckTask,
-                                     base::Unretained(this))),
+      device_status_check_task_(
+          Bind(&Manager::DeviceStatusCheckTask, base::Unretained(this))),
       termination_actions_(dispatcher),
       is_wake_on_lan_enabled_(true),
       ignore_unknown_ethernet_(false),
@@ -369,13 +367,8 @@ void Manager::InitializeProfiles() {
 
   // Ensure that we have storage for the default profile, and that
   // the persistent copy of the default profile is not corrupt.
-  scoped_refptr<DefaultProfile>
-      default_profile(new DefaultProfile(control_interface_,
-                                         metrics_,
-                                         this,
-                                         storage_path_,
-                                         DefaultProfile::kDefaultId,
-                                         props_));
+  scoped_refptr<DefaultProfile> default_profile(new DefaultProfile(
+      this, storage_path_, DefaultProfile::kDefaultId, props_));
   // The default profile may fail to initialize if it's corrupted.
   // If so, recreate the default profile.
   if (!default_profile->InitStorage(Profile::kCreateOrOpenExisting, nullptr))
@@ -425,19 +418,9 @@ void Manager::CreateProfile(const string& name, string* path, Error* error) {
 
   ProfileRefPtr profile;
   if (ident.user.empty()) {
-    profile = new DefaultProfile(control_interface_,
-                                 metrics_,
-                                 this,
-                                 storage_path_,
-                                 ident.identifier,
-                                 props_);
+    profile = new DefaultProfile(this, storage_path_, ident.identifier, props_);
   } else {
-    profile = new Profile(control_interface_,
-                          metrics_,
-                          this,
-                          ident,
-                          user_storage_path_,
-                          true);
+    profile = new Profile(this, ident, user_storage_path_, true);
   }
 
   if (!profile->InitStorage(Profile::kCreateNew, error)) {
@@ -486,13 +469,8 @@ void Manager::PushProfileInternal(
       return;
     }
 
-    scoped_refptr<DefaultProfile>
-        default_profile(new DefaultProfile(control_interface_,
-                                           metrics_,
-                                           this,
-                                           storage_path_,
-                                           ident.identifier,
-                                           props_));
+    scoped_refptr<DefaultProfile> default_profile(
+        new DefaultProfile(this, storage_path_, ident.identifier, props_));
     if (!default_profile->InitStorage(Profile::kOpenExisting, nullptr)) {
       LOG(ERROR) << "Failed to open default profile.";
       // Try to continue anyway, so that we can be useful in cases
@@ -503,12 +481,8 @@ void Manager::PushProfileInternal(
     LoadProperties(default_profile);
     profile = default_profile;
   } else {
-    profile = new Profile(control_interface_,
-                          metrics_,
-                          this,
-                          ident,
-                          user_storage_path_,
-                          connect_profiles_to_rpc_);
+    profile =
+        new Profile(this, ident, user_storage_path_, connect_profiles_to_rpc_);
     if (!profile->InitStorage(Profile::kOpenExisting, error)) {
       // |error| will have been populated by InitStorage().
       return;
@@ -683,21 +657,10 @@ void Manager::RemoveProfile(const string& name, Error* error) {
 
   ProfileRefPtr profile;
   if (ident.user.empty()) {
-    profile = new DefaultProfile(control_interface_,
-                                 metrics_,
-                                 this,
-                                 storage_path_,
-                                 ident.identifier,
-                                 props_);
+    profile = new DefaultProfile(this, storage_path_, ident.identifier, props_);
   } else {
-    profile = new Profile(control_interface_,
-                          metrics_,
-                          this,
-                          ident,
-                          user_storage_path_,
-                          false);
+    profile = new Profile(this, ident, user_storage_path_, false);
   }
-
 
   // |error| will have been populated if RemoveStorage fails.
   profile->RemoveStorage(error);

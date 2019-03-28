@@ -12,13 +12,11 @@
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/event_dispatcher.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
 
-class ControlInterface;
 class Error;
 class Manager;
 class Metrics;
@@ -52,9 +50,7 @@ class Profile : public base::RefCounted<Profile> {
   // startup.
   static const char kUserProfileListPathname[];
 
-  Profile(ControlInterface* control_interface,
-          Metrics* metrics,
-          Manager* manager,
+  Profile(Manager* manager,
           const Identifier& name,
           const base::FilePath& storage_directory,
           bool connect_to_rpc);
@@ -198,7 +194,7 @@ class Profile : public base::RefCounted<Profile> {
       const base::FilePath& storage_dir,
       const Identifier& profile_name);
 
-  Metrics* metrics() const { return metrics_; }
+  Metrics* metrics() const;
   Manager* manager() const { return manager_; }
   StoreInterface* storage() { return storage_.get(); }
 
@@ -227,7 +223,6 @@ class Profile : public base::RefCounted<Profile> {
 
   // Data members shared with subclasses via getter/setters above in the
   // protected: section
-  Metrics* metrics_;
   Manager* manager_;
   base::FilePath persistent_profile_path_;
 

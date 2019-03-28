@@ -31,7 +31,7 @@ class EthernetProviderTest : public testing::Test {
  public:
   EthernetProviderTest()
       : manager_(&control_, &dispatcher_, &metrics_),
-        profile_(new MockProfile(&control_, &metrics_, &manager_, "")),
+        profile_(new MockProfile(&manager_, "")),
         provider_(&control_, &dispatcher_, &metrics_, &manager_) {}
   virtual ~EthernetProviderTest() {}
 

@@ -43,9 +43,7 @@ namespace shill {
 class DefaultProfileTest : public PropertyStoreTest {
  public:
   DefaultProfileTest()
-      : profile_(new DefaultProfile(control_interface(),
-                                    metrics(),
-                                    manager(),
+      : profile_(new DefaultProfile(manager(),
                                     FilePath(storage_path()),
                                     DefaultProfile::kDefaultId,
                                     properties_)),

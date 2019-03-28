@@ -259,8 +259,7 @@ TEST_F(VPNProviderTest, CreateServicesFromProfile) {
   storage.SetString("vpn_complete", "Name", "name");
   storage.SetString("vpn_complete", "Provider.Host", "1.2.3.4");
 
-  scoped_refptr<MockProfile> profile(
-      new NiceMock<MockProfile>(&control_, &metrics_, &manager_, ""));
+  scoped_refptr<MockProfile> profile(new NiceMock<MockProfile>(&manager_, ""));
   EXPECT_CALL(*profile, GetConstStorage()).WillRepeatedly(Return(&storage));
 
   EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(nullptr));
@@ -345,8 +344,7 @@ TEST_F(VPNProviderTest, CreateTemporaryServiceFromProfile) {
   storage.SetString("vpn_complete", "Name", "name");
   storage.SetString("vpn_complete", "Provider.Host", "1.2.3.4");
 
-  scoped_refptr<MockProfile> profile(
-      new NiceMock<MockProfile>(&control_, &metrics_, &manager_, ""));
+  scoped_refptr<MockProfile> profile(new NiceMock<MockProfile>(&manager_, ""));
   EXPECT_CALL(*profile, GetConstStorage()).WillRepeatedly(Return(&storage));
   Error error;
 

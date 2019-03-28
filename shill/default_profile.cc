@@ -11,7 +11,6 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
-#include "shill/control_interface.h"
 #include "shill/link_monitor.h"
 #include "shill/manager.h"
 #include "shill/portal_detector.h"
@@ -52,15 +51,11 @@ const char DefaultProfile::kStorageOfflineMode[] = "OfflineMode";
 const char DefaultProfile::kStorageProhibitedTechnologies[] =
     "ProhibitedTechnologies";
 
-DefaultProfile::DefaultProfile(ControlInterface* control,
-                               Metrics* metrics,
-                               Manager* manager,
+DefaultProfile::DefaultProfile(Manager* manager,
                                const base::FilePath& storage_directory,
                                const std::string& profile_id,
                                const Manager::Properties& manager_props)
-    : Profile(
-          control, metrics, manager, Identifier(profile_id),
-          storage_directory, true),
+    : Profile(manager, Identifier(profile_id), storage_directory, true),
       profile_id_(profile_id),
       props_(manager_props),
       random_engine_(time(nullptr)) {

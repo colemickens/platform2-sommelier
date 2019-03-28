@@ -63,11 +63,8 @@ class WiFiProviderTest : public testing::Test {
   WiFiProviderTest()
       : manager_(&control_, &dispatcher_, &metrics_),
         provider_(&control_, &dispatcher_, &metrics_, &manager_),
-        default_profile_(
-            new NiceMock<MockProfile>(
-                &control_, &metrics_, &manager_, "default")),
-        user_profile_(
-            new NiceMock<MockProfile>(&control_, &metrics_, &manager_, "user")),
+        default_profile_(new NiceMock<MockProfile>(&manager_, "default")),
+        user_profile_(new NiceMock<MockProfile>(&manager_, "user")),
         storage_entry_index_(0) {
     provider_.time_ = &time_;
 

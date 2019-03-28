@@ -16,11 +16,8 @@ namespace shill {
 
 class MockProfile : public Profile {
  public:
-  MockProfile(ControlInterface* control, Metrics* metrics, Manager* manager);
-  MockProfile(ControlInterface* control,
-              Metrics* metrics,
-              Manager* manager,
-              const std::string& identifier);
+  explicit MockProfile(Manager* manager);
+  MockProfile(Manager* manager, const std::string& identifier);
   ~MockProfile() override;
 
   MOCK_METHOD1(AdoptService, bool(const ServiceRefPtr& service));

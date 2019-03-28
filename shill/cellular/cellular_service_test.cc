@@ -201,9 +201,7 @@ TEST_F(CellularServiceTest, SetUsageURL) {
 TEST_F(CellularServiceTest, SetApn) {
   static const char kApn[] = "TheAPN";
   static const char kUsername[] = "commander.data";
-  ProfileRefPtr profile(new NiceMock<MockProfile>(
-      modem_info_.control_interface(), modem_info_.metrics(),
-      modem_info_.manager()));
+  ProfileRefPtr profile(new NiceMock<MockProfile>(modem_info_.manager()));
   service_->set_profile(profile);
   Error error;
   Stringmap testapn;
@@ -226,9 +224,7 @@ TEST_F(CellularServiceTest, SetApn) {
 TEST_F(CellularServiceTest, ClearApn) {
   static const char kApn[] = "TheAPN";
   static const char kUsername[] = "commander.data";
-  ProfileRefPtr profile(new NiceMock<MockProfile>(
-      modem_info_.control_interface(), modem_info_.metrics(),
-      modem_info_.manager()));
+  ProfileRefPtr profile(new NiceMock<MockProfile>(modem_info_.manager()));
   service_->set_profile(profile);
   Error error;
   // Set up an APN to make sure that it later gets cleared.
@@ -258,9 +254,7 @@ TEST_F(CellularServiceTest, ClearApn) {
 TEST_F(CellularServiceTest, LastGoodApn) {
   static const char kApn[] = "TheAPN";
   static const char kUsername[] = "commander.data";
-  ProfileRefPtr profile(new NiceMock<MockProfile>(
-      modem_info_.control_interface(), modem_info_.metrics(),
-      modem_info_.manager()));
+  ProfileRefPtr profile(new NiceMock<MockProfile>(modem_info_.manager()));
   service_->set_profile(profile);
   Stringmap testapn;
   testapn[kApnProperty] = kApn;
@@ -556,7 +550,7 @@ TEST_F(CellularServiceTest, CustomSetterNoopChange) {
   static const char kUsername[] = "commander.data";
   Error error;
   Stringmap testapn;
-  ProfileRefPtr profile(new NiceMock<MockProfile>(nullptr, nullptr, nullptr));
+  ProfileRefPtr profile(new NiceMock<MockProfile>(nullptr));
   service_->set_profile(profile);
   testapn[kApnProperty] = kApn;
   testapn[kApnUsernameProperty] = kUsername;

@@ -36,10 +36,9 @@ namespace shill {
 
 class ProfileTest : public PropertyStoreTest {
  public:
-  ProfileTest() : mock_metrics_(new MockMetrics()) {
+  ProfileTest() {
     Profile::Identifier id("rather", "irrelevant");
-    profile_ = new Profile(
-        control_interface(), metrics(), manager(), id, FilePath(), false);
+    profile_ = new Profile(manager(), id, FilePath(), false);
 
     // Install a FakeStore by default. In tests that actually care
     // about the interaction between Profile and StoreInterface, we'll
@@ -59,8 +58,7 @@ class ProfileTest : public PropertyStoreTest {
     // it exercises a real StoreInterface implemenation.
     Error error;
     ProfileRefPtr profile(
-        new Profile(control_interface(), mock_metrics_.get(), manager(), id,
-                    FilePath(storage_path()), false));
+        new Profile(manager(), id, FilePath(storage_path()), false));
     bool ret = profile->InitStorage(storage_option, &error);
     EXPECT_EQ(error_type, error.type());
     if (ret && save) {
@@ -70,7 +68,6 @@ class ProfileTest : public PropertyStoreTest {
   }
 
  protected:
-  std::unique_ptr<MockMetrics> mock_metrics_;
   ProfileRefPtr profile_;
 };
 
@@ -186,12 +183,10 @@ TEST_F(ProfileTest, GetFriendlyName) {
   static const char kUser[] = "theUser";
   static const char kIdentifier[] = "theIdentifier";
   Profile::Identifier id(kIdentifier);
-  ProfileRefPtr profile(new Profile(
-      control_interface(), metrics(), manager(), id, FilePath(), false));
+  ProfileRefPtr profile(new Profile(manager(), id, FilePath(), false));
   EXPECT_EQ(kIdentifier, profile->GetFriendlyName());
   id.user = kUser;
-  profile = new Profile(
-      control_interface(), metrics(), manager(), id, FilePath(), false);
+  profile = new Profile(manager(), id, FilePath(), false);
   EXPECT_EQ(string(kUser) + "/" + kIdentifier, profile->GetFriendlyName());
 }
 
@@ -200,13 +195,10 @@ TEST_F(ProfileTest, GetStoragePath) {
   static const char kIdentifier[] = "someprofile";
   static const char kDirectory[] = "/a/place/for/";
   Profile::Identifier id(kIdentifier);
-  ProfileRefPtr profile(new Profile(
-      control_interface(), metrics(), manager(), id, FilePath(), false));
+  ProfileRefPtr profile(new Profile(manager(), id, FilePath(), false));
   EXPECT_TRUE(profile->persistent_profile_path_.empty());
   id.user = kUser;
-  profile = new Profile(
-      control_interface(), metrics(), manager(), id, FilePath(kDirectory),
-      false);
+  profile = new Profile(manager(), id, FilePath(kDirectory), false);
   EXPECT_EQ("/a/place/for/chronos/someprofile.profile",
             profile->persistent_profile_path_.value());
 }
@@ -347,24 +339,20 @@ TEST_F(ProfileTest, SaveUserProfileList) {
   const char kHash0[] = "hash0";
   id0.user_hash = kHash0;
   vector<ProfileRefPtr> profiles;
-  profiles.push_back(new Profile(
-      control_interface(), metrics(), manager(), id0, FilePath(), false));
+  profiles.push_back(new Profile(manager(), id0, FilePath(), false));
 
   const char kUser1[] = "user1";
   const char kIdentifier1[] = "id1";
   Profile::Identifier id1(kUser1, kIdentifier1);
   const char kHash1[] = "hash1";
   id1.user_hash = kHash1;
-  profiles.push_back(new Profile(
-      control_interface(), metrics(), manager(), id1, FilePath(), false));
-
+  profiles.push_back(new Profile(manager(), id1, FilePath(), false));
 
   const char kIdentifier2[] = "id2";
   Profile::Identifier id2("", kIdentifier2);
   const char kHash2[] = "hash2";
   id1.user_hash = kHash2;
-  profiles.push_back(new Profile(
-      control_interface(), metrics(), manager(), id2, FilePath(), false));
+  profiles.push_back(new Profile(manager(), id2, FilePath(), false));
 
   FilePath list_path(FilePath(storage_path()).Append("test.profile"));
   EXPECT_TRUE(Profile::SaveUserProfileList(list_path, profiles));
@@ -381,8 +369,7 @@ TEST_F(ProfileTest, MatchesIdentifier) {
   static const char kUser[] = "theUser";
   static const char kIdentifier[] = "theIdentifier";
   Profile::Identifier id(kUser, kIdentifier);
-  ProfileRefPtr profile(new Profile(
-      control_interface(), metrics(), manager(), id, FilePath(), false));
+  ProfileRefPtr profile(new Profile(manager(), id, FilePath(), false));
   EXPECT_TRUE(profile->MatchesIdentifier(id));
   EXPECT_FALSE(profile->MatchesIdentifier(Profile::Identifier(kUser, "")));
   EXPECT_FALSE(
@@ -436,13 +423,13 @@ TEST_F(ProfileTest, InitStorage) {
   EXPECT_EQ(data.size(), base::WriteFile(final_path, data.data(), data.size()));
 
   // Then test that we fail to open this file.
-  EXPECT_CALL(*mock_metrics_, NotifyCorruptedProfile());
+  EXPECT_CALL(*metrics(), NotifyCorruptedProfile());
   EXPECT_FALSE(ProfileInitStorage(id, Profile::kOpenExisting, false,
                                   Error::kInternalError));
-  Mock::VerifyAndClearExpectations(mock_metrics_.get());
+  Mock::VerifyAndClearExpectations(metrics());
 
   // But then on a second try the file no longer exists.
-  EXPECT_CALL(*mock_metrics_, NotifyCorruptedProfile()).Times(0);
+  EXPECT_CALL(*metrics(), NotifyCorruptedProfile()).Times(0);
   ASSERT_FALSE(ProfileInitStorage(id, Profile::kOpenExisting, false,
                                   Error::kNotFound));
 }

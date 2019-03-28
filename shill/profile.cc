@@ -20,6 +20,7 @@
 #include "shill/control_interface.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
+#include "shill/metrics.h"
 #include "shill/property_accessor.h"
 #include "shill/service.h"
 #include "shill/store_interface.h"
@@ -35,17 +36,13 @@ namespace shill {
 const char Profile::kUserProfileListPathname[] =
     RUNDIR "/loaded_profile_list";
 
-Profile::Profile(ControlInterface* control_interface,
-                 Metrics* metrics,
-                 Manager* manager,
+Profile::Profile(Manager* manager,
                  const Identifier& name,
                  const base::FilePath& storage_directory,
                  bool connect_to_rpc)
-    : metrics_(metrics),
-      manager_(manager),
-      name_(name) {
+    : manager_(manager), name_(name) {
   if (connect_to_rpc)
-    adaptor_ = control_interface->CreateProfileAdaptor(this);
+    adaptor_ = manager->control_interface()->CreateProfileAdaptor(this);
 
   // kCheckPortalListProperty: Registered in DefaultProfile
   store_.RegisterConstString(kNameProperty, &name_.identifier);
@@ -111,7 +108,7 @@ bool Profile::InitStorage(InitStorageOption storage_option, Error* error) {
       // this file.  Move this file out of the way so a future open attempt
       // will succeed, assuming the failure reason was the former.
       storage->MarkAsCorrupted();
-      metrics_->NotifyCorruptedProfile();
+      metrics()->NotifyCorruptedProfile();
     }
     return false;
   }
@@ -414,6 +411,10 @@ FilePath Profile::GetFinalStoragePath(
   // TODO(petkov): Validate the directory permissions, etc.
 
   return base_path;
+}
+
+Metrics* Profile::metrics() const {
+  return manager_->metrics();
 }
 
 }  // namespace shill

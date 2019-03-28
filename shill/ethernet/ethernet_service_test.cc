@@ -99,8 +99,7 @@ TEST_F(EthernetServiceTest, LoadAutoConnect) {
   // Make sure when we try to load an Ethernet service, it sets AutoConnect
   // to be true even if the property is not found.
   NiceMock<MockStore> mock_store;
-  scoped_refptr<MockProfile> mock_profile =
-      new MockProfile(control_interface(), metrics(), &mock_manager_, "");
+  scoped_refptr<MockProfile> mock_profile = new MockProfile(&mock_manager_, "");
   ProfileRefPtr profile = mock_profile.get();
   EXPECT_CALL(mock_store, ContainsGroup(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(mock_store, GetBool(_, _, _)).WillRepeatedly(Return(false));

@@ -147,8 +147,7 @@ void TestCustomSetterNoopChange(ServiceRefPtr service,
   // SetProfileRpcId
   {
     Error error;
-    scoped_refptr<MockProfile> profile(
-        new NiceMock<MockProfile>(nullptr, nullptr, nullptr));
+    scoped_refptr<MockProfile> profile(new NiceMock<MockProfile>(nullptr));
     service->set_profile(profile);
     EXPECT_FALSE(service->SetProfileRpcId(profile->GetRpcIdentifier(),
                                            &error));

@@ -184,8 +184,7 @@ class ManagerTest : public PropertyStoreTest {
     auto storage = std::make_unique<FakeStore>();
     if (!storage->Open())
       return nullptr;
-    Profile* profile(new Profile(
-        control_interface(), metrics(), manager, id, FilePath(), false));
+    Profile* profile(new Profile(manager, id, FilePath(), false));
     profile->SetStorageForTest(std::move(storage));
     return profile;  // Passes ownership of "profile".
   }
@@ -246,8 +245,7 @@ class ManagerTest : public PropertyStoreTest {
 
   scoped_refptr<MockProfile> AddNamedMockProfileToManager(
       Manager* manager, const string& name) {
-    scoped_refptr<MockProfile> profile(
-        new MockProfile(control_interface(), metrics(), manager, ""));
+    scoped_refptr<MockProfile> profile(new MockProfile(manager, ""));
     EXPECT_CALL(*profile, GetRpcIdentifier()).WillRepeatedly(Return(name));
     EXPECT_CALL(*profile, UpdateDevice(_)).WillRepeatedly(Return(false));
     AdoptProfile(manager, profile);
@@ -584,8 +582,7 @@ TEST_F(ManagerTest, DeviceRegistrationAndStart) {
 }
 
 TEST_F(ManagerTest, DeviceRegistrationWithProfile) {
-  MockProfile* profile =
-      new MockProfile(control_interface(), metrics(), manager(), "");
+  MockProfile* profile = new MockProfile(manager(), "");
   DeviceRefPtr device_ref(mock_devices_[0].get());
   AdoptProfile(manager(), profile);  // Passes ownership.
   EXPECT_CALL(*profile, ConfigureDevice(device_ref));
@@ -605,8 +602,7 @@ TEST_F(ManagerTest, DeviceDeregistration) {
   ASSERT_TRUE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
   ASSERT_TRUE(IsDeviceRegistered(mock_devices_[1], Technology::kWifi));
 
-  MockProfile* profile =
-      new MockProfile(control_interface(), metrics(), manager(), "");
+  MockProfile* profile = new MockProfile(manager(), "");
   AdoptProfile(manager(), profile);  // Passes ownership.
 
   EXPECT_CALL(*mock_devices_[0], SetEnabled(false));
@@ -788,8 +784,7 @@ TEST_F(ManagerTest, MoveService) {
   // Inject an actual profile, backed by a fake StoreInterface
   {
     Profile::Identifier id("irrelevant");
-    ProfileRefPtr profile(new Profile(
-        control_interface(), metrics(), &manager, id, FilePath(), false));
+    ProfileRefPtr profile(new Profile(&manager, id, FilePath(), false));
     auto storage = std::make_unique<MockStore>();
     EXPECT_CALL(*storage, ContainsGroup(s2->GetStorageIdentifier()))
         .WillRepeatedly(Return(true));
@@ -800,8 +795,7 @@ TEST_F(ManagerTest, MoveService) {
     AdoptProfile(&manager, profile);
   }
   // Create a profile that already has |s2| in it.
-  ProfileRefPtr profile(
-      new EphemeralProfile(control_interface(), metrics(), &manager));
+  ProfileRefPtr profile(new EphemeralProfile(&manager));
   EXPECT_TRUE(profile->AdoptService(s2));
 
   // Now, move the Service |s2| to another profile.
@@ -817,8 +811,7 @@ TEST_F(ManagerTest, MoveService) {
 }
 
 TEST_F(ManagerTest, LookupProfileByRpcIdentifier) {
-  scoped_refptr<MockProfile> mock_profile(
-      new MockProfile(control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> mock_profile(new MockProfile(manager(), ""));
   const string kProfileName("profile0");
   EXPECT_CALL(*mock_profile, GetRpcIdentifier())
       .WillRepeatedly(Return(kProfileName));
@@ -830,8 +823,7 @@ TEST_F(ManagerTest, LookupProfileByRpcIdentifier) {
 }
 
 TEST_F(ManagerTest, SetProfileForService) {
-  scoped_refptr<MockProfile> profile0(
-      new MockProfile(control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> profile0(new MockProfile(manager(), ""));
   string profile_name0("profile0");
   EXPECT_CALL(*profile0, GetRpcIdentifier())
       .WillRepeatedly(Return(profile_name0));
@@ -870,8 +862,7 @@ TEST_F(ManagerTest, SetProfileForService) {
     EXPECT_EQ("Service is already connected to this profile", error.message());
   }
 
-  scoped_refptr<MockProfile> profile1(
-      new MockProfile(control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> profile1(new MockProfile(manager(), ""));
   string profile_name1("profile1");
   EXPECT_CALL(*profile1, GetRpcIdentifier())
       .WillRepeatedly(Return(profile_name1));
@@ -1176,8 +1167,7 @@ TEST_F(ManagerTest, RemoveService) {
   EXPECT_EQ(GetEphemeralProfile(manager()), service->profile());
 
   scoped_refptr<MockProfile> profile(
-      new StrictMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+      new StrictMock<MockProfile>(manager(), ""));
   AdoptProfile(manager(), profile);
 
   // If service is ephemeral, it should be unloaded and left ephemeral.
@@ -1258,11 +1248,9 @@ TEST_F(ManagerTest, HandleProfileEntryDeletion) {
   manager()->RegisterService(s_configure_succeed);
 
   scoped_refptr<MockProfile> profile0(
-      new StrictMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+      new StrictMock<MockProfile>(manager(), ""));
   scoped_refptr<MockProfile> profile1(
-      new StrictMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+      new StrictMock<MockProfile>(manager(), ""));
 
   s_not_in_group->set_profile(profile1);
   s_configure_fail->set_profile(profile1);
@@ -1356,8 +1344,7 @@ TEST_F(ManagerTest, HandleProfileEntryDeletionWithUnload) {
   ASSERT_EQ(4, manager()->services_.size());
 
   scoped_refptr<MockProfile> profile(
-      new StrictMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+      new StrictMock<MockProfile>(manager(), ""));
 
   s_will_remove0->set_profile(profile);
   s_will_remove1->set_profile(profile);
@@ -1423,11 +1410,9 @@ TEST_F(ManagerTest, PopProfileWithUnload) {
   ASSERT_EQ(4, manager()->services_.size());
 
   scoped_refptr<MockProfile> profile0(
-      new StrictMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+      new StrictMock<MockProfile>(manager(), ""));
   scoped_refptr<MockProfile> profile1(
-      new StrictMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+      new StrictMock<MockProfile>(manager(), ""));
 
   s_will_remove0->set_profile(profile1);
   s_will_remove1->set_profile(profile1);
@@ -1616,8 +1601,7 @@ TEST_F(ManagerTest, GetServiceVPNUnknownType) {
   Error e;
   args.SetString(kTypeProperty, kTypeVPN);
   scoped_refptr<MockProfile> profile(
-      new StrictMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+      new StrictMock<MockProfile>(manager(), ""));
   AdoptProfile(manager(), profile);
   ServiceRefPtr service = manager()->GetService(args, &e);
   EXPECT_EQ(Error::kNotSupported, e.type());
@@ -1632,8 +1616,7 @@ TEST_F(ManagerTest, GetServiceVPN) {
   args.SetString(kProviderHostProperty, "10.8.0.1");
   args.SetString(kNameProperty, "vpn-name");
   scoped_refptr<MockProfile> profile(
-      new StrictMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+      new StrictMock<MockProfile>(manager(), ""));
   AdoptProfile(manager(), profile);
 
 #if defined(DISABLE_VPN)
@@ -1663,9 +1646,7 @@ TEST_F(ManagerTest, GetServiceVPN) {
 
 TEST_F(ManagerTest, ConfigureServiceWithInvalidProfile) {
   // Manager calls ActiveProfile() so we need at least one profile installed.
-  scoped_refptr<MockProfile> profile(
-      new NiceMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> profile(new NiceMock<MockProfile>(manager(), ""));
   AdoptProfile(manager(), profile);
 
   KeyValueStore args;
@@ -1678,9 +1659,7 @@ TEST_F(ManagerTest, ConfigureServiceWithInvalidProfile) {
 
 TEST_F(ManagerTest, ConfigureServiceWithGetServiceFailure) {
   // Manager calls ActiveProfile() so we need at least one profile installed.
-  scoped_refptr<MockProfile> profile(
-      new NiceMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> profile(new NiceMock<MockProfile>(manager(), ""));
   AdoptProfile(manager(), profile);
 
   KeyValueStore args;
@@ -1699,9 +1678,7 @@ TEST_F(ManagerTest, ConfigureServiceWithGetServiceFailure) {
 // active profile as a part of configuration if no profile was explicitly
 // specified.
 TEST_F(ManagerTest, ConfigureRegisteredServiceWithoutProfile) {
-  scoped_refptr<MockProfile> profile(
-      new NiceMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> profile(new NiceMock<MockProfile>(manager(), ""));
 
   AdoptProfile(manager(), profile);  // This is now the active profile.
 
@@ -1735,12 +1712,8 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithoutProfile) {
 // specify a profile, it should be moved from the profile it was previously
 // in to the specified profile if one was requested.
 TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
-  scoped_refptr<MockProfile> profile0(
-      new NiceMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
-  scoped_refptr<MockProfile> profile1(
-      new NiceMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> profile0(new NiceMock<MockProfile>(manager(), ""));
+  scoped_refptr<MockProfile> profile1(new NiceMock<MockProfile>(manager(), ""));
 
   const string kProfileName0 = "profile0";
   const string kProfileName1 = "profile1";
@@ -1789,9 +1762,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
 // profile, the Manager should not call LoadService or AdoptService again
 // on this service.
 TEST_F(ManagerTest, ConfigureRegisteredServiceWithSameProfile) {
-  scoped_refptr<MockProfile> profile0(
-      new NiceMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> profile0(new NiceMock<MockProfile>(manager(), ""));
 
   const string kProfileName0 = "profile0";
 
@@ -1833,12 +1804,8 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithSameProfile) {
 // An unregistered service should remain unregistered, but its contents should
 // be saved to the specified profile nonetheless.
 TEST_F(ManagerTest, ConfigureUnregisteredServiceWithProfile) {
-  scoped_refptr<MockProfile> profile0(
-      new NiceMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
-  scoped_refptr<MockProfile> profile1(
-      new NiceMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> profile0(new NiceMock<MockProfile>(manager(), ""));
+  scoped_refptr<MockProfile> profile1(new NiceMock<MockProfile>(manager(), ""));
 
   const string kProfileName0 = "profile0";
   const string kProfileName1 = "profile1";
@@ -2708,9 +2675,7 @@ TEST_F(ManagerTest, DefaultTechnology) {
 }
 
 TEST_F(ManagerTest, Stop) {
-  scoped_refptr<MockProfile> profile(
-      new NiceMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> profile(new NiceMock<MockProfile>(manager(), ""));
   AdoptProfile(manager(), profile);
   MockServiceRefPtr service(new NiceMock<MockService>(manager()));
   manager()->RegisterService(service);
@@ -2749,9 +2714,7 @@ TEST_F(ManagerTest, UpdateServiceConnectedPersistAutoConnect) {
   EXPECT_FALSE(mock_service->retain_auto_connect());
   EXPECT_FALSE(mock_service->auto_connect());
 
-  scoped_refptr<MockProfile> profile(
-      new MockProfile(
-          control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> profile(new MockProfile(manager(), ""));
 
   mock_service->set_profile(profile);
   EXPECT_CALL(*mock_service, IsConnected())
@@ -2822,8 +2785,7 @@ TEST_F(ManagerTest, UpdateServiceLogging) {
 
 TEST_F(ManagerTest, SaveSuccessfulService) {
   scoped_refptr<MockProfile> profile(
-      new StrictMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+      new StrictMock<MockProfile>(manager(), ""));
   AdoptProfile(manager(), profile);
   MockServiceRefPtr service(new NiceMock<MockService>(manager()));
 
@@ -2842,12 +2804,9 @@ TEST_F(ManagerTest, SaveSuccessfulService) {
 }
 
 TEST_F(ManagerTest, UpdateDevice) {
-  MockProfile* profile0 =
-      new MockProfile(control_interface(), metrics(), manager(), "");
-  MockProfile* profile1 =
-      new MockProfile(control_interface(), metrics(), manager(), "");
-  MockProfile* profile2 =
-      new MockProfile(control_interface(), metrics(), manager(), "");
+  MockProfile* profile0 = new MockProfile(manager(), "");
+  MockProfile* profile1 = new MockProfile(manager(), "");
+  MockProfile* profile2 = new MockProfile(manager(), "");
   AdoptProfile(manager(), profile0);  // Passes ownership.
   AdoptProfile(manager(), profile1);  // Passes ownership.
   AdoptProfile(manager(), profile2);  // Passes ownership.
@@ -2862,8 +2821,7 @@ TEST_F(ManagerTest, EnumerateProfiles) {
   vector<string> profile_paths;
   for (size_t i = 0; i < 10; i++) {
     scoped_refptr<MockProfile> profile(
-      new StrictMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+        new StrictMock<MockProfile>(manager(), ""));
     profile_paths.push_back(base::StringPrintf("/profile/%zd", i));
     EXPECT_CALL(*profile, GetRpcIdentifier())
         .WillOnce(Return(profile_paths.back()));
@@ -3736,12 +3694,8 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
 }
 
 TEST_F(ManagerTest, IsProfileBefore) {
-  scoped_refptr<MockProfile> profile0(
-      new NiceMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
-  scoped_refptr<MockProfile> profile1(
-      new NiceMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> profile0(new NiceMock<MockProfile>(manager(), ""));
+  scoped_refptr<MockProfile> profile1(new NiceMock<MockProfile>(manager(), ""));
 
   AdoptProfile(manager(), profile0);
   AdoptProfile(manager(), profile1);  // profile1 is after profile0.
@@ -3749,9 +3703,7 @@ TEST_F(ManagerTest, IsProfileBefore) {
   EXPECT_FALSE(manager()->IsProfileBefore(profile1, profile0));
 
   // A few abnormal cases, but it's good to track their behavior.
-  scoped_refptr<MockProfile> profile2(
-      new NiceMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> profile2(new NiceMock<MockProfile>(manager(), ""));
   EXPECT_TRUE(manager()->IsProfileBefore(profile0, profile2));
   EXPECT_TRUE(manager()->IsProfileBefore(profile1, profile2));
   EXPECT_FALSE(manager()->IsProfileBefore(profile2, profile0));
@@ -3763,15 +3715,9 @@ TEST_F(ManagerTest, GetLoadableProfileEntriesForService) {
   MockStore storage1;
   MockStore storage2;
 
-  scoped_refptr<MockProfile> profile0(
-      new NiceMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
-  scoped_refptr<MockProfile> profile1(
-      new NiceMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
-  scoped_refptr<MockProfile> profile2(
-      new NiceMock<MockProfile>(
-          control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> profile0(new NiceMock<MockProfile>(manager(), ""));
+  scoped_refptr<MockProfile> profile1(new NiceMock<MockProfile>(manager(), ""));
+  scoped_refptr<MockProfile> profile2(new NiceMock<MockProfile>(manager(), ""));
 
   AdoptProfile(manager(), profile0);
   AdoptProfile(manager(), profile1);

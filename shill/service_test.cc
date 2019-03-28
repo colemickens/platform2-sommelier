@@ -793,8 +793,7 @@ TEST_F(ServiceTest, State) {
   // If the Service has a Profile, the profile should be saved when
   // the service enters kStateConnected. (The case where the service
   // doesn't have a profile is tested above.)
-  MockProfileRefPtr mock_profile(
-      new MockProfile(control_interface(), metrics(), &mock_manager_));
+  MockProfileRefPtr mock_profile(new MockProfile(&mock_manager_));
   NiceMock<MockStore> storage;
   service_->set_profile(mock_profile);
   service_->has_ever_connected_ = false;
@@ -1318,8 +1317,7 @@ TEST_F(ServiceTest, IsRemembered) {
   EXPECT_CALL(mock_manager_, IsServiceEphemeral(_)).Times(0);
   EXPECT_FALSE(service_->IsRemembered());
 
-  scoped_refptr<MockProfile> profile(
-      new StrictMock<MockProfile>(control_interface(), metrics(), manager()));
+  scoped_refptr<MockProfile> profile(new StrictMock<MockProfile>(manager()));
   service_->set_profile(profile);
   EXPECT_CALL(mock_manager_, IsServiceEphemeral(IsRefPtrTo(service_)))
      .WillOnce(Return(true))
@@ -1329,8 +1327,7 @@ TEST_F(ServiceTest, IsRemembered) {
 }
 
 TEST_F(ServiceTest, OnPropertyChanged) {
-  scoped_refptr<MockProfile> profile(
-      new StrictMock<MockProfile>(control_interface(), metrics(), manager()));
+  scoped_refptr<MockProfile> profile(new StrictMock<MockProfile>(manager()));
   service_->set_profile(nullptr);
   // Expect no crash.
   service_->OnPropertyChanged("");
@@ -1914,8 +1911,7 @@ TEST_F(ServiceTest, SetAutoConnectFullUserUpdatePersists) {
   // If the user sets the kAutoConnectProperty explicitly, the preference must
   // be persisted, even if the property was not changed.
   Error error;
-  MockProfileRefPtr mock_profile(
-      new MockProfile(control_interface(), metrics(), &mock_manager_));
+  MockProfileRefPtr mock_profile(new MockProfile(&mock_manager_));
   NiceMock<MockStore> storage;
   service_->set_profile(mock_profile);
   service_->SetAutoConnect(true);
@@ -2063,10 +2059,8 @@ TEST_F(ServiceTest, Compare) {
   service2->has_ever_connected_ = true;
   EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
 
-  scoped_refptr<MockProfile> profile2(
-      new MockProfile(control_interface(), metrics(), manager(), ""));
-  scoped_refptr<MockProfile> profile10(
-      new MockProfile(control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> profile2(new MockProfile(manager(), ""));
+  scoped_refptr<MockProfile> profile10(new MockProfile(manager(), ""));
 
   service2->set_profile(profile2);
   service10->set_profile(profile10);

@@ -511,8 +511,7 @@ TEST_F(WiFiServiceTest, ConnectTaskRSN) {
 TEST_F(WiFiServiceTest, ConnectConditions) {
   Error error;
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityNone);
-  scoped_refptr<MockProfile> mock_profile(
-      new NiceMock<MockProfile>(control_interface(), metrics(), manager()));
+  scoped_refptr<MockProfile> mock_profile(new NiceMock<MockProfile>(manager()));
   wifi_service->set_profile(mock_profile);
   // With nothing else going on, the service should attempt to connect.
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
@@ -1033,8 +1032,7 @@ TEST_F(WiFiServiceTest, LoadPassphraseClearCredentials) {
   service->passphrase_ = kOldPassphrase;
   service->has_ever_connected_ = true;
 
-  scoped_refptr<MockProfile> mock_profile(
-      new NiceMock<MockProfile>(control_interface(), metrics(), manager()));
+  scoped_refptr<MockProfile> mock_profile(new NiceMock<MockProfile>(manager()));
   service->set_profile(mock_profile);
   // Detect if the service is going to attempt to update the stored profile.
   EXPECT_CALL(*mock_profile, GetConstStorage()).Times(0);
@@ -1983,8 +1981,7 @@ TEST_F(WiFiServiceTest, GetTethering) {
   EXPECT_EQ(kTetheringNotDetectedState, service->GetTethering(nullptr));
   Mock::VerifyAndClearExpectations(wifi().get());
 
-  scoped_refptr<MockProfile> mock_profile(
-      new NiceMock<MockProfile>(control_interface(), metrics(), manager()));
+  scoped_refptr<MockProfile> mock_profile(new NiceMock<MockProfile>(manager()));
   service->set_profile(mock_profile);
   service->SetState(Service::kStateConnected);
 

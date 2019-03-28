@@ -7,7 +7,6 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
-#include "shill/control_interface.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 
@@ -26,12 +25,8 @@ constexpr char kFriendlyName[] = "(ephemeral)";
 
 }  // namespace
 
-EphemeralProfile::EphemeralProfile(ControlInterface* control_interface,
-                                   Metrics* metrics,
-                                   Manager* manager)
-    : Profile(control_interface, metrics, manager, Identifier(),
-              base::FilePath(), false) {
-}
+EphemeralProfile::EphemeralProfile(Manager* manager)
+    : Profile(manager, Identifier(), base::FilePath(), false) {}
 
 EphemeralProfile::~EphemeralProfile() = default;
 

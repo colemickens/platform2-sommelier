@@ -27,9 +27,7 @@ class DefaultProfile : public Profile {
  public:
   static const char kDefaultId[];
 
-  DefaultProfile(ControlInterface* control,
-                 Metrics* metrics,
-                 Manager* manager,
+  DefaultProfile(Manager* manager,
                  const base::FilePath& storage_directory,
                  const std::string& profile_id,
                  const Manager::Properties& manager_props);

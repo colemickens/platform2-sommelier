@@ -326,8 +326,7 @@ TEST_F(VPNServiceTest, SetNameProperty) {
   string kOldId = service_->GetStorageIdentifier();
   Error error;
   const string kName = "New Name";
-  scoped_refptr<MockProfile> profile(
-      new MockProfile(&control_, &metrics_, &manager_));
+  scoped_refptr<MockProfile> profile(new MockProfile(&manager_));
   EXPECT_CALL(*profile, DeleteEntry(kOldId, _));
   EXPECT_CALL(*profile, UpdateService(_));
   service_->set_profile(profile);
@@ -342,8 +341,7 @@ TEST_F(VPNServiceTest, PropertyChanges) {
   TestAutoConnectPropertyChange(service_, GetAdaptor());
 
   const string kHost = "1.2.3.4";
-  scoped_refptr<MockProfile> profile(
-      new NiceMock<MockProfile>(&control_, &metrics_, &manager_));
+  scoped_refptr<MockProfile> profile(new NiceMock<MockProfile>(&manager_));
   service_->set_profile(profile);
   driver_->args()->SetString(kProviderHostProperty, kHost);
   TestNamePropertyChange(service_, GetAdaptor());
