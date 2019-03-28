@@ -33,15 +33,18 @@ class UserCollector : public UserCollectorBase {
                   bool core2md_failure,
                   bool directory_failure,
                   const std::string& filter_in,
-                  FilterOutFunction filter_out);
+                  FilterOutFunction filter_out,
+                  bool early);
 
   ~UserCollector() override;
 
   // Enable collection.
-  bool Enable() { return SetUpInternal(true); }
+  bool Enable(bool early) { return SetUpInternal(true /* enabled */, early); }
 
   // Disable collection.
-  bool Disable() { return SetUpInternal(false); }
+  bool Disable() {
+    return SetUpInternal(false /* enabled */, false /* early */);
+  }
 
   // Set (override the default) core file pattern.
   void set_core_pattern_file(const std::string& pattern) {
@@ -75,8 +78,8 @@ class UserCollector : public UserCollectorBase {
   FRIEND_TEST(UserCollectorTest, ValidateProcFiles);
   FRIEND_TEST(UserCollectorTest, ValidateCoreFile);
 
-  std::string GetPattern(bool enabled) const;
-  bool SetUpInternal(bool enabled);
+  std::string GetPattern(bool enabled, bool early) const;
+  bool SetUpInternal(bool enabled, bool early);
 
   bool CopyOffProcFiles(pid_t pid, const base::FilePath& container_dir);
 

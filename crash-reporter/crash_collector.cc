@@ -217,9 +217,17 @@ CrashCollector::~CrashCollector() {
 }
 
 void CrashCollector::Initialize(
-    CrashCollector::IsFeedbackAllowedFunction is_feedback_allowed_function) {
+    CrashCollector::IsFeedbackAllowedFunction is_feedback_allowed_function,
+    bool early) {
   CHECK(is_feedback_allowed_function);
   is_feedback_allowed_function_ = is_feedback_allowed_function;
+  // For early boot crash collectors, the consent file will not be accessible.
+  // Instead, collect the crashes into /run and check consent during boot
+  // collection.
+  if (early) {
+    is_feedback_allowed_function_ = []() { return true; };
+    system_crash_path_ = base::FilePath(paths::kSystemRunCrashDirectory);
+  }
 }
 
 void CrashCollector::SetUpDBus() {
@@ -942,22 +950,29 @@ unsigned CrashCollector::HashString(base::StringPiece input) {
   return hash;
 }
 
-bool CrashCollector::InitializeSystemCrashDirectories() {
-  if (!CreateDirectoryWithSettings(FilePath(paths::kSystemCrashDirectory),
-                                   kSystemCrashDirectoryMode, kRootUid,
-                                   kRootGroup, nullptr))
-    return false;
-
+bool CrashCollector::InitializeSystemCrashDirectories(bool early) {
   if (!CreateDirectoryWithSettings(FilePath(paths::kSystemRunStateDirectory),
                                    kSystemRunStateDirectoryMode, kRootUid,
                                    kRootGroup, nullptr))
     return false;
 
-  if (!CreateDirectoryWithSettings(
-          FilePath(paths::kCrashReporterStateDirectory),
-          kCrashReporterStateDirectoryMode, kRootUid, kRootGroup, nullptr))
-    return false;
+  if (early) {
+    if (!CreateDirectoryWithSettings(FilePath(paths::kSystemRunCrashDirectory),
+                                     kSystemRunStateDirectoryMode, kRootUid,
+                                     kRootGroup, nullptr))
+      return false;
 
+  } else {
+    if (!CreateDirectoryWithSettings(FilePath(paths::kSystemCrashDirectory),
+                                     kSystemCrashDirectoryMode, kRootUid,
+                                     kRootGroup, nullptr))
+      return false;
+
+    if (!CreateDirectoryWithSettings(
+            FilePath(paths::kCrashReporterStateDirectory),
+            kCrashReporterStateDirectoryMode, kRootUid, kRootGroup, nullptr))
+      return false;
+  }
   return true;
 }
 

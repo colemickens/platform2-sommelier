@@ -66,10 +66,10 @@ class CrashCollector {
 
   // Initialize the crash collector for detection of crashes, given a
   // metrics collection enabled oracle.
-  void Initialize(IsFeedbackAllowedFunction is_metrics_allowed);
+  void Initialize(IsFeedbackAllowedFunction is_metrics_allowed, bool early);
 
   // Initialize the system crash paths.
-  static bool InitializeSystemCrashDirectories();
+  static bool InitializeSystemCrashDirectories(bool early);
 
  protected:
   friend class CrashCollectorTest;

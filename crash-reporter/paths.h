@@ -13,6 +13,10 @@ namespace paths {
 // Directory where we keep various state flags.
 constexpr char kSystemRunStateDirectory[] = "/run/crash_reporter";
 
+// Subdirectory to store crashes that occur when persistent storage is not
+// available.
+constexpr char kSystemRunCrashDirectory[] = "/run/crash_reporter/crash";
+
 // Directory where crash_reporter stores files (ex. saved version info).
 constexpr char kCrashReporterStateDirectory[] = "/var/lib/crash_reporter";
 

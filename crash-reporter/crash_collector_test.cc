@@ -47,7 +47,7 @@ class CrashCollectorTest : public ::testing::Test {
   void SetUp() {
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(Return());
 
-    collector_.Initialize(IsMetrics);
+    collector_.Initialize(IsMetrics, false);
 
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
     test_dir_ = scoped_temp_dir_.GetPath();

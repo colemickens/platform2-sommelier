@@ -100,7 +100,7 @@ class UdevCollectorTest : public ::testing::Test {
 
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
 
-    collector_.Initialize(IsMetrics);
+    collector_.Initialize(IsMetrics, false);
 
     ASSERT_TRUE(temp_dir_generator_.CreateUniqueTempDir());
 

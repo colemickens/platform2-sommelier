@@ -24,6 +24,7 @@
 #include "crash-reporter/ec_collector.h"
 #include "crash-reporter/kernel_collector.h"
 #include "crash-reporter/kernel_warning_collector.h"
+#include "crash-reporter/paths.h"
 #include "crash-reporter/selinux_violation_collector.h"
 #include "crash-reporter/service_failure_collector.h"
 #include "crash-reporter/udev_collector.h"
@@ -47,19 +48,20 @@ bool TouchFile(const FilePath& file_path) {
   return base::WriteFile(file_path, "", 0) == 0;
 }
 
-int Initialize(UserCollector* user_collector, UdevCollector* udev_collector) {
+int Initialize(UserCollector* user_collector,
+               UdevCollector* udev_collector,
+               bool early) {
   // Set up all the common crash state directories first.  If we can't guarantee
   // these basic paths, just give up & don't turn on anything else.
-  if (!CrashCollector::InitializeSystemCrashDirectories())
+  if (!CrashCollector::InitializeSystemCrashDirectories(early))
     return 1;
 
   int ret = 0;
 
-  if (!user_collector->Enable())
+  if (!user_collector->Enable(early))
     ret = 1;
   if (!udev_collector->Enable())
     ret = 1;
-
   return ret;
 }
 
@@ -108,7 +110,8 @@ int BootCollect(KernelCollector* kernel_collector,
 
 int HandleUserCrash(UserCollector* user_collector,
                     const std::string& user,
-                    const bool crash_test) {
+                    const bool crash_test,
+                    const bool early) {
   // Handle a specific user space crash.
   CHECK(!user.empty()) << "--user= must be set";
 
@@ -276,6 +279,8 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(boot_collect, false, "Run per-boot crash collection tasks");
   DEFINE_bool(clean_shutdown, false, "Signal clean shutdown");
   DEFINE_bool(crash_test, false, "Crash test");
+  DEFINE_bool(early, false,
+              "Modifies crash-reporter to work during early boot");
   DEFINE_string(user, "", "User crash info (pid:signal:exec_name)");
   DEFINE_string(udev, "", "Udev event description (type:device:subsystem)");
   DEFINE_bool(kernel_warning, false, "Report collected kernel warning");
@@ -319,18 +324,19 @@ int main(int argc, char* argv[]) {
   EnterSandbox(FLAGS_init || FLAGS_clean_shutdown, FLAGS_log_to_stderr);
 
   KernelCollector kernel_collector;
-  kernel_collector.Initialize(IsFeedbackAllowed);
+  kernel_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
   ECCollector ec_collector;
-  ec_collector.Initialize(IsFeedbackAllowed);
+  ec_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
   BERTCollector bert_collector;
-  bert_collector.Initialize(IsFeedbackAllowed);
+  bert_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
   UserCollector user_collector;
   UserCollector::FilterOutFunction filter_out = [](pid_t) { return false; };
 #if USE_CHEETS
   ArcCollector arc_collector;
   arc_collector.Initialize(IsFeedbackAllowed,
                            true,  // generate_diagnostics
-                           FLAGS_directory_failure, FLAGS_filter_in);
+                           FLAGS_directory_failure, FLAGS_filter_in,
+                           false /* early */);
   // Filter out ARC processes.
   if (ArcCollector::IsArcRunning())
     filter_out = std::bind(&ArcCollector::IsArcProcess, &arc_collector,
@@ -339,28 +345,30 @@ int main(int argc, char* argv[]) {
   user_collector.Initialize(my_path.value(), IsFeedbackAllowed,
                             true,  // generate_diagnostics
                             FLAGS_core2md_failure, FLAGS_directory_failure,
-                            FLAGS_filter_in, std::move(filter_out));
+                            FLAGS_filter_in, std::move(filter_out),
+                            FLAGS_early);
   UncleanShutdownCollector unclean_shutdown_collector;
-  unclean_shutdown_collector.Initialize(IsFeedbackAllowed);
+  unclean_shutdown_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
+
   UdevCollector udev_collector;
-  udev_collector.Initialize(IsFeedbackAllowed);
+  udev_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
   ChromeCollector chrome_collector;
-  chrome_collector.Initialize(IsFeedbackAllowed);
+  chrome_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
 
   KernelWarningCollector kernel_warning_collector;
-  kernel_warning_collector.Initialize(IsFeedbackAllowed);
+  kernel_warning_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
 
   ArcServiceFailureCollector arc_service_failure_collector;
-  arc_service_failure_collector.Initialize(IsFeedbackAllowed);
+  arc_service_failure_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
 
   ServiceFailureCollector service_failure_collector;
-  service_failure_collector.Initialize(IsFeedbackAllowed);
+  service_failure_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
 
   SELinuxViolationCollector selinux_violation_collector;
-  selinux_violation_collector.Initialize(IsFeedbackAllowed);
+  selinux_violation_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
 
   if (FLAGS_init) {
-    return Initialize(&user_collector, &udev_collector);
+    return Initialize(&user_collector, &udev_collector, FLAGS_early);
   }
 
   if (FLAGS_boot_collect) {
@@ -422,8 +430,8 @@ int main(int argc, char* argv[]) {
                               FLAGS_arc_cpu_abi);
 #endif
 
-  int exit_code =
-      HandleUserCrash(&user_collector, FLAGS_user, FLAGS_crash_test);
+  int exit_code = HandleUserCrash(&user_collector, FLAGS_user, FLAGS_crash_test,
+                                  FLAGS_early);
 #if USE_CHEETS
   if (ArcCollector::IsArcRunning())
     exit_code |= HandleArcCrash(&arc_collector, FLAGS_user);

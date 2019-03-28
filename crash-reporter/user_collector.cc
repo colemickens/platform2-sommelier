@@ -58,10 +58,11 @@ void UserCollector::Initialize(
     bool core2md_failure,
     bool directory_failure,
     const std::string& filter_in,
-    FilterOutFunction filter_out) {
+    FilterOutFunction filter_out,
+    bool early) {
   UserCollectorBase::Initialize(is_feedback_allowed_function,
                                 generate_diagnostics, directory_failure,
-                                filter_in);
+                                filter_in, early);
   our_path_ = our_path;
   core2md_failure_ = core2md_failure;
   filter_out_ = std::move(filter_out);
@@ -73,19 +74,20 @@ UserCollector::~UserCollector() {}
 // Note that if you change the format of the enabled pattern, you'll probably
 // also need to change the UserCollectorBase::ParseCrashAttributes function, the
 // user_collector_test.cc unittest, and the logging_UserCrash.py autotest.
-std::string UserCollector::GetPattern(bool enabled) const {
+std::string UserCollector::GetPattern(bool enabled, bool early) const {
   if (enabled) {
     // Combine the crash attributes into one parameter to try to reduce the size
     // of the invocation line for crash_reporter because the kernel has a
     // fixed-sized (128 byte) buffer (AFTER parameter expansion)
     // Also, note that the kernel does not support quoted arguments.
-    return StringPrintf("|%s --user=%%P:%%s:%%u:%%g:%%e", our_path_.c_str());
+    return StringPrintf("|%s %s--user=%%P:%%s:%%u:%%g:%%e", our_path_.c_str(),
+                        early ? "--early --log_to_stderr " : "");
   } else {
     return "core";
   }
 }
 
-bool UserCollector::SetUpInternal(bool enabled) {
+bool UserCollector::SetUpInternal(bool enabled, bool early) {
   CHECK(initialized_);
   LOG(INFO) << (enabled ? "Enabling" : "Disabling") << " user crash handling";
 
@@ -95,7 +97,7 @@ bool UserCollector::SetUpInternal(bool enabled) {
     PLOG(ERROR) << "Unable to write " << core_pipe_limit_file_;
     return false;
   }
-  std::string pattern = GetPattern(enabled);
+  std::string pattern = GetPattern(enabled, early);
   if (base::WriteFile(FilePath(core_pattern_file_), pattern.c_str(),
                       pattern.length()) != static_cast<int>(pattern.length())) {
     PLOG(ERROR) << "Unable to write " << core_pattern_file_;

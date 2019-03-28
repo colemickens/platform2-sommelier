@@ -40,8 +40,16 @@ For headless systems, the consent setting can be managed via [metrics_client]'s
 
 ## Life Cycle
 
-During boot (as early as possible), we run [crash-reporter.conf] to initialize
-any system state and configure the kernel to pass crashes to us.
+Setting up the crash reporter early in the boot process is tricky:
+before the encrypted stateful mount is setup, crash reporter does not have
+access to persistent storage to store crashes in.
+We run [crash-reporter-early-init.conf] early in the boot process to configure
+the kernel to pass crashes to us with an "early" flag to use a tmpfs path
+instead of a persistent location for storing crash reports.
+
+After the encrypted stateful mount setup is complete, we run
+[crash-reporter.conf] which sets the crash path back to the persistent storage
+crash directory and initializes any system state that depends on it.
 
 Then during boot, but not in the critical path, we run [crash-boot-collect.conf]
 to gather up any previous crashes in the system.

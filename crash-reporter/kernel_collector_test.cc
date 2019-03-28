@@ -60,7 +60,7 @@ class KernelCollectorTest : public ::testing::Test {
 
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
 
-    collector_.Initialize(IsMetrics);
+    collector_.Initialize(IsMetrics, false);
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
     test_kcrash_ = scoped_temp_dir_.GetPath().Append("kcrash");
     ASSERT_TRUE(base::CreateDirectory(test_kcrash_));

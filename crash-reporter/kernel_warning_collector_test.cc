@@ -51,7 +51,7 @@ class KernelWarningCollectorTest : public ::testing::Test {
 
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
 
-    collector_.Initialize(IsMetrics);
+    collector_.Initialize(IsMetrics, false);
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
     test_path_ = scoped_temp_dir_.GetPath().Append(kTestFilename);
     collector_.warning_report_path_ = test_path_.value();

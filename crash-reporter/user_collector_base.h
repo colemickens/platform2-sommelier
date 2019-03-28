@@ -22,7 +22,8 @@ class UserCollectorBase : public CrashCollector {
   void Initialize(IsFeedbackAllowedFunction is_metrics_allowed,
                   bool generate_diagnostics,
                   bool directory_failure,
-                  const std::string& filter_in);
+                  const std::string& filter_in,
+                  bool early);
 
   // Handle a specific user crash.  Returns true on success.
   bool HandleCrash(const std::string& crash_attributes, const char* force_exec);

@@ -69,7 +69,7 @@ class BERTCollectorTest : public ::testing::Test {
 
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
 
-    collector_.Initialize(IsMetrics);
+    collector_.Initialize(IsMetrics, false);
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
     FilePath test_dir_ = scoped_temp_dir_.GetPath();
 

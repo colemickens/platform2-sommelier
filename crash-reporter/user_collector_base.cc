@@ -70,8 +70,9 @@ void UserCollectorBase::Initialize(
     IsFeedbackAllowedFunction is_feedback_allowed_function,
     bool generate_diagnostics,
     bool directory_failure,
-    const std::string& filter_in) {
-  CrashCollector::Initialize(is_feedback_allowed_function);
+    const std::string& filter_in,
+    bool early) {
+  CrashCollector::Initialize(is_feedback_allowed_function, early);
   initialized_ = true;
   generate_diagnostics_ = generate_diagnostics;
   directory_failure_ = directory_failure;
