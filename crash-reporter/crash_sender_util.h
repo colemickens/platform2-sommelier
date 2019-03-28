@@ -162,15 +162,12 @@ bool IsCompleteMetadata(const brillo::KeyValueStore& metadata);
 bool IsTimestampNewEnough(const base::FilePath& timestamp_file);
 
 // Returns true if sending a crash report now does not exceed |max_crash_rate|
-// per 24 hours.. Reports the current rate (# of reports sent in the past 24
-// hours) in |current_rate| regardless of the return value.
+// per 24 hours.
 //
 // This function checks/creates/removes timestamp files in |timestamps_dir| to
 // track how many attempts were made to send crash reports in that past 24
 // hours. Even if sending failed, it's counted as an attempt.
-bool IsBelowRate(const base::FilePath& timestamps_dir,
-                 int max_crash_rate,
-                 int* current_rate);
+bool IsBelowRate(const base::FilePath& timestamps_dir, int max_crash_rate);
 
 // Computes a sleep time needed before attempting to send a new crash report.
 // On success, returns true and stores the result in |sleep_time|. On error,

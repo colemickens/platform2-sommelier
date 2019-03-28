@@ -428,9 +428,7 @@ bool IsTimestampNewEnough(const base::FilePath& timestamp_file) {
   return threshold < info.last_modified;
 }
 
-bool IsBelowRate(const base::FilePath& timestamps_dir,
-                 int max_crash_rate,
-                 int* current_rate) {
+bool IsBelowRate(const base::FilePath& timestamps_dir, int max_crash_rate) {
   if (!base::CreateDirectory(timestamps_dir)) {
     PLOG(ERROR) << "Failed to create a timestamps directory: "
                 << timestamps_dir.value();
@@ -439,20 +437,20 @@ bool IsBelowRate(const base::FilePath& timestamps_dir,
 
   // Count the number of timestamp files, that were written in the past 24
   // hours. Remove files that are older.
-  *current_rate = 0;
+  int current_rate = 0;
   base::FileEnumerator iter(timestamps_dir, false /* recursive */,
                             base::FileEnumerator::FILES, "*");
   for (base::FilePath file = iter.Next(); !file.empty(); file = iter.Next()) {
     if (IsTimestampNewEnough(file)) {
-      ++(*current_rate);
+      ++current_rate;
     } else {
       if (!base::DeleteFile(file, false /* recursive */))
         PLOG(WARNING) << "Failed to remove " << file.value();
     }
   }
-  LOG(INFO) << "Current send rate: " << *current_rate << "sends/24hrs";
+  LOG(INFO) << "Current send rate: " << current_rate << "sends/24hrs";
 
-  if (*current_rate < max_crash_rate) {
+  if (current_rate < max_crash_rate) {
     // It's OK to send a new crash report now. Create a new timestamp to record
     // that a new attempt is made to send a crash report.
     base::FilePath temp_file;
@@ -551,10 +549,9 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
       return success;
     }
 
-    int rate = 0;
     const base::FilePath timestamps_dir =
         paths::Get(paths::kTimestampsDirectory);
-    if (!IsBelowRate(timestamps_dir, max_crash_rate_, &rate)) {
+    if (!IsBelowRate(timestamps_dir, max_crash_rate_)) {
       LOG(INFO) << "Cannot send more crashes. Sending " << meta_file.value()
                 << " would exceed the max rate: " << max_crash_rate_;
       return success;

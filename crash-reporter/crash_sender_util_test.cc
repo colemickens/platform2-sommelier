@@ -730,20 +730,13 @@ TEST_F(CrashSenderUtilTest, IsTimestampNewEnough) {
 
 TEST_F(CrashSenderUtilTest, IsBelowRate) {
   const int kMaxRate = 3;
-  int rate = 0;
 
-  EXPECT_TRUE(IsBelowRate(test_dir_, kMaxRate, &rate));
-  EXPECT_EQ(0, rate);
-
-  EXPECT_TRUE(IsBelowRate(test_dir_, kMaxRate, &rate));
-  EXPECT_EQ(1, rate);
-
-  EXPECT_TRUE(IsBelowRate(test_dir_, kMaxRate, &rate));
-  EXPECT_EQ(2, rate);
+  EXPECT_TRUE(IsBelowRate(test_dir_, kMaxRate));
+  EXPECT_TRUE(IsBelowRate(test_dir_, kMaxRate));
+  EXPECT_TRUE(IsBelowRate(test_dir_, kMaxRate));
 
   // Should not pass the rate limit.
-  EXPECT_FALSE(IsBelowRate(test_dir_, kMaxRate, &rate));
-  EXPECT_EQ(3, rate);
+  EXPECT_FALSE(IsBelowRate(test_dir_, kMaxRate));
 
   // Three files should be created for tracking timestamps.
   std::vector<base::FilePath> files = GetFileNamesIn(test_dir_);
@@ -755,8 +748,7 @@ TEST_F(CrashSenderUtilTest, IsBelowRate) {
   ASSERT_TRUE(TouchFileHelper(files[0], now - base::TimeDelta::FromHours(25)));
 
   // It should now pass the rate limit.
-  EXPECT_TRUE(IsBelowRate(test_dir_, kMaxRate, &rate));
-  EXPECT_EQ(2, rate);
+  EXPECT_TRUE(IsBelowRate(test_dir_, kMaxRate));
   // The old file should now be gone. However, it's possible that the file
   // that's just deleted with its random name is randomly picked again to create
   // the new timestamp file.
