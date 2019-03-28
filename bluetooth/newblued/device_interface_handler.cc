@@ -420,6 +420,10 @@ void DeviceInterfaceHandler::AddDeviceMethodHandlers(
       bluetooth_device::kConnect,
       base::Bind(&DeviceInterfaceHandler::HandleConnect,
                  base::Unretained(this)));
+  device_interface->AddMethodHandlerWithMessage(
+      bluetooth_device::kDisconnect,
+      base::Bind(&DeviceInterfaceHandler::HandleDisconnect,
+                 base::Unretained(this)));
 }
 
 void DeviceInterfaceHandler::HandlePair(
@@ -540,23 +544,70 @@ void DeviceInterfaceHandler::HandleConnect(
   connection_attempts_.emplace(device_address, conn_id);
 }
 
+void DeviceInterfaceHandler::HandleDisconnect(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    dbus::Message* message) {
+  CHECK(message);
+
+  std::string device_address =
+      ConvertDeviceObjectPathToAddress(message->GetPath().value());
+
+  VLOG(1) << "Handling Disconnect for device " << device_address;
+
+  if (base::ContainsKey(connection_sessions_, device_address)) {
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             bluetooth_device::kErrorInProgress,
+                             "Connection/disconnection in progress");
+    return;
+  }
+
+  if (!FindDevice(device_address)) {
+    LOG(WARNING) << "device " << device_address << " not found";
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             bluetooth_device::kErrorDoesNotExist,
+                             "Device does not exist");
+    return;
+  }
+
+  if (!base::ContainsKey(connections_, device_address)) {
+    LOG(WARNING) << "device " << device_address
+                 << " doesn't have an active connection";
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             bluetooth_device::kErrorNotConnected,
+                             "Device does not have an active connection");
+    return;
+  }
+
+  struct ConnectSession session;
+  session.disconnect_response = std::move(response);
+  connection_sessions_.emplace(device_address, std::move(session));
+
+  gattClientDisconnect(connections_[device_address].conn_id);
+}
+
 void DeviceInterfaceHandler::ConnectReply(const std::string& device_address,
                                           bool success,
                                           const std::string& dbus_error) {
   auto iter = connection_sessions_.find(device_address);
-  if (iter == connection_sessions_.end() || !iter->second.connect_response) {
+  if (iter == connection_sessions_.end() ||
+      !(iter->second.connect_response || iter->second.disconnect_response)) {
     LOG(WARNING) << "Cannot find ongoing connection session or response for "
                  << "device " << device_address;
     return;
   }
 
+  std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response =
+      iter->second.connect_response
+          ? std::move(iter->second.connect_response)
+          : std::move(iter->second.disconnect_response);
+
   if (success) {
-    iter->second.connect_response->SendRawResponse(
-        iter->second.connect_response->CreateCustomResponse());
+    response->SendRawResponse(response->CreateCustomResponse());
   } else {
-    iter->second.connect_response->ReplyWithError(
-        FROM_HERE, brillo::errors::dbus::kDomain, dbus_error, "");
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             dbus_error, "");
   }
+
   connection_sessions_.erase(iter);
 }
 
@@ -614,6 +665,7 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
     case ConnectState::ERROR:  // Fall through.
       VLOG(1) << "Unexpected GATT connection error";
     case ConnectState::DISCONNECTED:
+    case ConnectState::DISCONNECTED_BY_US:
       VLOG(1) << "GATT connection rejected/removed, connection ID " << conn_id
               << " status = " << status;
 
@@ -642,6 +694,7 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
             newblue_->libnewblue()->BtleHidDetach(connection.second.hid_id);
           }
 
+          ConnectReply(connected_dev->address, true, "");
           connections_.erase(connected_dev->address);
           connected_dev->connected.SetValue(false);
           dev_to_notify = connected_dev;

@@ -150,6 +150,14 @@ class NewblueDaemonTest : public ::testing::Test {
         .WillOnce(DoAll(SaveArg<2>(GetMethodHandler(
                             method_handlers, bluetooth_device::kConnect)),
                         Return(true)));
+
+    EXPECT_CALL(
+        *exported_object,
+        ExportMethodAndBlock(bluetooth_device::kBluetoothDeviceInterface,
+                             bluetooth_device::kDisconnect, _))
+        .WillOnce(DoAll(SaveArg<2>(GetMethodHandler(
+                            method_handlers, bluetooth_device::kDisconnect)),
+                        Return(true)));
   }
 
   // Expects that the methods on org.bluez.Device1 interface are unexported.
@@ -169,6 +177,11 @@ class NewblueDaemonTest : public ::testing::Test {
         *exported_object,
         UnexportMethodAndBlock(bluetooth_device::kBluetoothDeviceInterface,
                                bluetooth_device::kConnect))
+        .WillOnce(Return(true));
+    EXPECT_CALL(
+        *exported_object,
+        UnexportMethodAndBlock(bluetooth_device::kBluetoothDeviceInterface,
+                               bluetooth_device::kDisconnect))
         .WillOnce(Return(true));
   }
 
@@ -499,8 +512,10 @@ class NewblueDaemonTest : public ::testing::Test {
     EXPECT_EQ("", start_discovery_response->GetErrorName());
   }
 
-  // Tests org.bluez.Device1.Connect()
-  void TestConnect(dbus::ExportedObject::MethodCallCallback connect_handler) {
+  // Tests org.bluez.Device1.Connect() and org.bluez.Device1.Disconnect()
+  void TestConnectDisconnect(
+      dbus::ExportedObject::MethodCallCallback connect_handler,
+      dbus::ExportedObject::MethodCallCallback disconnect_handler) {
     dbus::MethodCall connect_method_call(
         bluetooth_device::kBluetoothDeviceInterface,
         bluetooth_device::kConnect);
@@ -551,6 +566,36 @@ class NewblueDaemonTest : public ::testing::Test {
     base::RunLoop().RunUntilIdle();
     ASSERT_TRUE(success_connect_response.get());
     EXPECT_EQ("", success_connect_response->GetErrorName());
+
+    // Disconnect
+    dbus::MethodCall disconnect_method_call(
+        bluetooth_device::kBluetoothDeviceInterface,
+        bluetooth_device::kDisconnect);
+    disconnect_method_call.SetSender(kTestSender);
+    disconnect_method_call.SetSerial(kTestSerial);
+
+    // Unknown device path
+    std::unique_ptr<dbus::Response> failed_disconnect_response;
+    disconnect_method_call.SetPath(dbus::ObjectPath(kUnknownDeviceObjectPath));
+    disconnect_handler.Run(
+        &disconnect_method_call,
+        base::Bind(&SaveResponse, &failed_disconnect_response));
+    base::RunLoop().RunUntilIdle();
+    EXPECT_EQ(bluetooth_device::kErrorDoesNotExist,
+              failed_disconnect_response->GetErrorName());
+
+    // Disconnect succeeds
+    std::unique_ptr<dbus::Response> success_disconnect_response;
+    disconnect_method_call.SetPath(dbus::ObjectPath(kTestDeviceObjectPath));
+    disconnect_handler.Run(
+        &disconnect_method_call,
+        base::Bind(&SaveResponse, &success_disconnect_response));
+    gatt_client_connect_callback(
+        data, kTestGattClientConnectionId,
+        static_cast<uint8_t>(ConnectState::DISCONNECTED_BY_US));
+    base::RunLoop().RunUntilIdle();
+    ASSERT_TRUE(success_disconnect_response.get());
+    EXPECT_EQ("", success_disconnect_response->GetErrorName());
   }
 
   base::MessageLoop message_loop_;
@@ -723,9 +768,11 @@ TEST_F(NewblueDaemonTest, Connection) {
 
   dbus::ExportedObject::MethodCallCallback start_discovery_handler;
   dbus::ExportedObject::MethodCallCallback connect_handler;
+  dbus::ExportedObject::MethodCallCallback disconnect_handler;
   MethodHandlerMap method_handlers = {
       {bluetooth_adapter::kStartDiscovery, &start_discovery_handler},
       {bluetooth_device::kConnect, &connect_handler},
+      {bluetooth_device::kDisconnect, &disconnect_handler},
   };
   TestAdapterBringUp(exported_adapter_object_, method_handlers);
 
@@ -746,7 +793,7 @@ TEST_F(NewblueDaemonTest, Connection) {
   // Trigger the queued inquiry_response_callback task.
   base::RunLoop().RunUntilIdle();
 
-  TestConnect(connect_handler);
+  TestConnectDisconnect(connect_handler, disconnect_handler);
 
   TestDeinit();
 }

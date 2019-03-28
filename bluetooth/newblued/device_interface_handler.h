@@ -80,6 +80,7 @@ enum class ConnectState : uint8_t {
   CONNECTED,
   DISCONNECTED,
   ERROR,
+  DISCONNECTED_BY_US,
 };
 
 // Handles org.bluez.Device1 interface.
@@ -157,16 +158,17 @@ class DeviceInterfaceHandler {
   void HandleConnect(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
       dbus::Message* message);
+  void HandleDisconnect(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      dbus::Message* message);
   // TODO(mcchou): Handle the rest of the D-Bus methods of the device interface.
-  // Connect()
-  // Disconnect()
   // ConnectProfile() - No op, but we may need dummy implementation later.
   // DisconnectPorfile() - No op, but we may need dummy implementation later.
   // GetServiceRecords() - No op, but we may need dummy implementation later.
   // ExecuteWrite()
 
-  // Called when a connection request is fulfilled and we are ready to send a
-  // reply of the Connect() method.
+  // Called when a connection/disconnection request is fulfilled and we are
+  // ready to send a reply of the Connect()/Disconnect() method.
   void ConnectReply(const std::string& device_address,
                     bool success,
                     const std::string& dbus_error);
