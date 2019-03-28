@@ -153,6 +153,9 @@ bool LoadOobeConfigRollback::AssembleConfig(const RollbackData& rollback_data,
   // Set whether the EULA as already accepted and can be skipped if the field is
   // present in |rollback_data|.
   dictionary.SetBoolean("eulaAutoAccept", rollback_data.eula_auto_accept());
+  // Tell Chrome that it still has to create some robot accounts that were
+  // destroyed during rollback.
+  dictionary.SetBoolean("enrollmentRestoreAfterRollback", true);
 
   return base::JSONWriter::Write(dictionary, config);
 }
