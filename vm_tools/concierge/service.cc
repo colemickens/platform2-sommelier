@@ -657,16 +657,6 @@ void Service::HandleChildExit() {
       break;
     }
 
-    // See if this is a process we launched.
-    VmMap::key_type key;
-    for (const auto& pair : vms_) {
-      VmInterface::Info info = pair.second->GetInfo();
-      if (pid == info.pid) {
-        key = pair.first;
-        break;
-      }
-    }
-
     if (WIFEXITED(status)) {
       if (WEXITSTATUS(status) != 0) {
         LOG(INFO) << "Process " << pid << " exited with status "
@@ -680,8 +670,26 @@ void Service::HandleChildExit() {
                    << pid;
     }
 
-    // Remove this process from the our set of VMs.
-    vms_.erase(std::move(key));
+    // See if this is a process we launched.
+    auto iter = std::find_if(vms_.begin(), vms_.end(), [=](auto& pair) {
+      VmInterface::Info info = pair.second->GetInfo();
+      return pid == info.pid;
+    });
+
+    if (iter != vms_.end()) {
+      // Notify cicerone that the VM has exited.
+      NotifyCiceroneOfVmStopped(iter->first.first, iter->first.second);
+
+      // If this is a termina VM, remove it from the list.
+      auto termina_vm = std::find(termina_vms_.begin(), termina_vms_.end(),
+                                  iter->second.get());
+      if (termina_vm != termina_vms_.end()) {
+        termina_vms_.erase(termina_vm);
+      }
+
+      // Now remove it from the vm list.
+      vms_.erase(iter);
+    }
   }
 }
 
