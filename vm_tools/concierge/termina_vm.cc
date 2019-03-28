@@ -370,10 +370,10 @@ void TerminaVm::RunCrosvmCommand(string command) {
   crosvm.AddArg(std::move(command));
   crosvm.AddArg(runtime_dir_.GetPath().Append(kCrosvmSocket).value());
 
-  // The child process will be reaped via the normal child exit handling
-  // mechanism in service.cc.
-  crosvm.Start();
-  crosvm.Release();
+  // This must be synchronous as we may do things after calling this function
+  // that depend on the crosvm command being completed (like suspending the
+  // device).
+  crosvm.Run();
 }
 
 bool TerminaVm::Mount(string source,
