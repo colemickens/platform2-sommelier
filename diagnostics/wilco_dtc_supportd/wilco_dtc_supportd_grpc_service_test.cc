@@ -24,6 +24,7 @@
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
 #include "diagnostics/wilco_dtc_supportd/file_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/protobuf_test_utils.h"
+#include "diagnostics/wilco_dtc_supportd/vpd_constants.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_grpc_service.h"
 
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
@@ -74,6 +75,7 @@ constexpr grpc_api::DiagnosticRoutineUserMessage kFakeUserMessage =
     grpc_api::ROUTINE_USER_MESSAGE_UNSET;
 constexpr char kFakeOutput[] = "Some output.";
 constexpr char kFakeStatusMessage[] = "Status message.";
+constexpr char kFakeSerialNumber[] = "fakeserialnumber";
 
 std::string FakeFileContents() {
   return std::string(std::begin(kFakeFileContentsChars),
@@ -388,6 +390,21 @@ class WilcoDtcSupportdGrpcServiceTest : public testing::Test {
                                     GrpcCallbackResponseSaver(response));
   }
 
+  void ExecuteGetVpdField(grpc_api::GetVpdFieldRequest::VpdField vpd_field,
+                          grpc_api::GetVpdFieldResponse::Status* status,
+                          std::string* vpd_field_value) {
+    auto request = std::make_unique<grpc_api::GetVpdFieldRequest>();
+    request->set_vpd_field(vpd_field);
+    std::unique_ptr<grpc_api::GetVpdFieldResponse> response;
+    service()->GetVpdField(std::move(request),
+                           GrpcCallbackResponseSaver(&response));
+
+    // Expect the method to return immediately.
+    ASSERT_TRUE(response);
+    *status = response->status();
+    *vpd_field_value = response->vpd_field_value();
+  }
+
   grpc_api::FileDump MakeFileDump(
       const base::FilePath& relative_file_path,
       const base::FilePath& canonical_relative_file_path,
@@ -581,6 +598,16 @@ TEST_F(WilcoDtcSupportdGrpcServiceTest, GetConfigurationData) {
   std::unique_ptr<grpc_api::GetConfigurationDataResponse> response;
   ExecuteGetConfigurationData(kFakeJsonConfigurationData, &response);
   EXPECT_EQ(response->json_configuration_data(), kFakeJsonConfigurationData);
+}
+
+TEST_F(WilcoDtcSupportdGrpcServiceTest, GetVpdFieldUnset) {
+  grpc_api::GetVpdFieldResponse::Status status;
+  std::string vpd_field_value;
+  ASSERT_NO_FATAL_FAILURE(ExecuteGetVpdField(
+      grpc_api::GetVpdFieldRequest::FIELD_UNSET, &status, &vpd_field_value));
+  EXPECT_EQ(status,
+            grpc_api::GetVpdFieldResponse::STATUS_ERROR_VPD_FIELD_UNKNOWN);
+  EXPECT_TRUE(vpd_field_value.empty());
 }
 
 namespace {
@@ -1223,5 +1250,81 @@ INSTANTIATE_TEST_CASE_P(,
                             grpc_api::GetRoutineUpdateRequest::RESUME,
                             grpc_api::GetRoutineUpdateRequest::CANCEL,
                             grpc_api::GetRoutineUpdateRequest::GET_STATUS));
+
+namespace {
+
+// Test for the GetVpdField() method of WilcoDtcSupportdGrpcService.
+//
+// This is a parametrized test with the following parameters:
+// * |vpd_field| - the requested VPD field.
+// * |file_path| - the corresponding file path.
+// * |file_contents| - the fake VPD field value.
+// * |expected_status| - the expected status.
+// * |expected_value| - the expected value.
+class GetVpdFieldWilcoDtcSupportdGrpcServiceTest
+    : public WilcoDtcSupportdGrpcServiceTest,
+      public testing::WithParamInterface<std::tuple<
+          grpc_api::GetVpdFieldRequest::VpdField /* vpd_field */,
+          std::string /* file_path */,
+          std::string /* file_contents */,
+          grpc_api::GetVpdFieldResponse::Status /* expected_status */,
+          std::string /* expected_value */>> {
+ protected:
+  grpc_api::GetVpdFieldRequest::VpdField vpd_field() const {
+    return std::get<0>(GetParam());
+  }
+  base::FilePath file_path() const {
+    return temp_dir_path().Append(std::get<1>(GetParam()));
+  }
+  std::string file_contents() const { return std::get<2>(GetParam()); }
+  grpc_api::GetVpdFieldResponse::Status expected_status() const {
+    return std::get<3>(GetParam());
+  }
+  std::string expected_value() const { return std::get<4>(GetParam()); }
+};
+
+}  // namespace
+
+// Test that GetVpdField() is read properly.
+TEST_P(GetVpdFieldWilcoDtcSupportdGrpcServiceTest, GetVpdField) {
+  if (!file_contents().empty())
+    EXPECT_TRUE(WriteFileAndCreateParentDirs(file_path(), file_contents()));
+  grpc_api::GetVpdFieldResponse::Status status;
+  std::string vpd_field_value;
+  ASSERT_NO_FATAL_FAILURE(
+      ExecuteGetVpdField(vpd_field(), &status, &vpd_field_value));
+
+  EXPECT_EQ(status, expected_status());
+  EXPECT_EQ(vpd_field_value, expected_value());
+}
+
+INSTANTIATE_TEST_CASE_P(
+    ,
+    GetVpdFieldWilcoDtcSupportdGrpcServiceTest,
+    testing::Values(
+        // Valid serial number test case.
+        std::make_tuple(grpc_api::GetVpdFieldRequest::FIELD_SERIAL_NUMBER,
+                        kVpdFieldSerialNumberFilePath,
+                        kFakeSerialNumber,
+                        grpc_api::GetVpdFieldResponse::STATUS_OK,
+                        kFakeSerialNumber),
+        // Valid serial number test case with whitespace characters.
+        std::make_tuple(grpc_api::GetVpdFieldRequest::FIELD_SERIAL_NUMBER,
+                        kVpdFieldSerialNumberFilePath,
+                        base::StringPrintf("%s\n\t", kFakeSerialNumber),
+                        grpc_api::GetVpdFieldResponse::STATUS_OK,
+                        kFakeSerialNumber),
+        // Empty serial number test case.
+        std::make_tuple(grpc_api::GetVpdFieldRequest::FIELD_SERIAL_NUMBER,
+                        kVpdFieldSerialNumberFilePath,
+                        "\t\n " /* file_contents */,
+                        grpc_api::GetVpdFieldResponse::STATUS_ERROR_INTERNAL,
+                        "" /* expected_value */),
+        // No file for serial number test case.
+        std::make_tuple(grpc_api::GetVpdFieldRequest::FIELD_SERIAL_NUMBER,
+                        "" /* file_path */,
+                        "" /* file_contents */,
+                        grpc_api::GetVpdFieldResponse::STATUS_ERROR_INTERNAL,
+                        "" /* expected_value */)));
 
 }  // namespace diagnostics

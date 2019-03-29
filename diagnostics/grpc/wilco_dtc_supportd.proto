@@ -53,6 +53,9 @@ service WilcoDtcSupportd {
 
   // Retrieves the OS version.
   rpc GetOsVersion(GetOsVersionRequest) returns (GetOsVersionResponse) {}
+
+  // Retrieves the VPD (Vital Product Data) field values.
+  rpc GetVpdField(GetVpdFieldRequest) returns (GetVpdFieldResponse) {}
 }
 
 // Parameters for the SendMessageToUi RPC.
@@ -466,4 +469,39 @@ message GetOsVersionResponse {
   // - for a dev/test build: 11932.0.2019_03_20_1100
   // - for an official build: 11932.0.0
   string version = 1;
+}
+
+// Parameters for the GetVpdField RPC.
+message GetVpdFieldRequest {
+  enum VpdField {
+    FIELD_UNSET = 0;
+    // The |vpd_field_value| for the serial number field should be a non-empty
+    // pure ASCII string (NOT UTF-8 or UTF-16).
+    FIELD_SERIAL_NUMBER = 1;
+  }
+
+  // Must be distinct from |FIELD_UNSET|.
+  VpdField vpd_field = 1;
+}
+
+// Return value for the GetVpdField RPC.
+message GetVpdFieldResponse {
+  // Status of the finished request.
+  enum Status {
+    STATUS_UNSET = 0;
+    // The request was successfully completed and |vpd_field_value| is set.
+    STATUS_OK = 1;
+    // Failed to identify the requested VPD field.
+    STATUS_ERROR_VPD_FIELD_UNKNOWN = 2;
+    // Failed with an internal error to get the requested VPD field or the VPD
+    // field is incorrectly formatted.
+    STATUS_ERROR_INTERNAL = 4;
+  }
+
+  // Is guaranteed to be distinct from |STATUS_UNSET|.
+  Status status = 1;
+
+  // VPD field value. Empty if the VPD field is unset and the |status| is
+  // distinct from |STATUS_OK|.
+  string vpd_field_value = 2;
 }

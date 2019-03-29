@@ -150,6 +150,7 @@ static_library("libwilco_dtc_supportd") {
     "wilco_dtc_supportd/ec_constants.cc",
     "wilco_dtc_supportd/json_utils.cc",
     "wilco_dtc_supportd/mojo_utils.cc",
+    "wilco_dtc_supportd/vpd_constants.cc",
     "wilco_dtc_supportd/wilco_dtc_supportd_core.cc",
     "wilco_dtc_supportd/wilco_dtc_supportd_core_delegate_impl.cc",
     "wilco_dtc_supportd/wilco_dtc_supportd_daemon.cc",

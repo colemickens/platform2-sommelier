@@ -141,6 +141,8 @@ class WilcoDtcSupportdGrpcService final {
       base::Callback<void(std::unique_ptr<grpc_api::GetOsVersionResponse>)>;
   using GetConfigurationDataCallback = base::Callback<void(
       std::unique_ptr<grpc_api::GetConfigurationDataResponse>)>;
+  using GetVpdFieldCallback =
+      base::Callback<void(std::unique_ptr<grpc_api::GetVpdFieldResponse>)>;
 
   explicit WilcoDtcSupportdGrpcService(Delegate* delegate);
   ~WilcoDtcSupportdGrpcService();
@@ -178,6 +180,8 @@ class WilcoDtcSupportdGrpcService final {
   void GetConfigurationData(
       std::unique_ptr<grpc_api::GetConfigurationDataRequest> request,
       const GetConfigurationDataCallback& callback);
+  void GetVpdField(std::unique_ptr<grpc_api::GetVpdFieldRequest> request,
+                   const GetVpdFieldCallback& callback);
 
  private:
   // Constructs and, if successful, appends the dump of the specified file (with

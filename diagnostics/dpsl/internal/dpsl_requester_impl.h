@@ -56,6 +56,8 @@ class DpslRequesterImpl final : public DpslRequester {
   void GetConfigurationData(
       std::unique_ptr<grpc_api::GetConfigurationDataRequest> request,
       GetConfigurationDataCallback callback) override;
+  void GetVpdField(std::unique_ptr<grpc_api::GetVpdFieldRequest> request,
+                   GetVpdFieldCallback callback) override;
 
  private:
   using AsyncGrpcWilcoDtcSupportdClient =

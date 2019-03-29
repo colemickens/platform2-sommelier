@@ -16,6 +16,7 @@
 #include <base/sys_info.h>
 
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
+#include "diagnostics/wilco_dtc_supportd/vpd_constants.h"
 
 namespace diagnostics {
 
@@ -542,6 +543,44 @@ void WilcoDtcSupportdGrpcService::GetConfigurationData(
 
   delegate_->GetConfigurationDataFromBrowser(
       base::Bind(&ForwardGetConfigurationDataResponse, callback));
+}
+
+void WilcoDtcSupportdGrpcService::GetVpdField(
+    std::unique_ptr<grpc_api::GetVpdFieldRequest> request,
+    const GetVpdFieldCallback& callback) {
+  DCHECK(request);
+
+  auto reply = std::make_unique<grpc_api::GetVpdFieldResponse>();
+  switch (request->vpd_field()) {
+    case grpc_api::GetVpdFieldRequest::FIELD_SERIAL_NUMBER: {
+      std::string vpd_field_value;
+      if (!base::ReadFileToString(
+              root_dir_.Append(kVpdFieldSerialNumberFilePath),
+              &vpd_field_value)) {
+        VLOG(2) << "Failed to read VPD field serial number";
+        reply->set_status(grpc_api::GetVpdFieldResponse::STATUS_ERROR_INTERNAL);
+        break;
+      }
+      base::TrimString(vpd_field_value, base::kWhitespaceASCII,
+                       &vpd_field_value);
+      if (vpd_field_value.empty() || !base::IsStringASCII(vpd_field_value)) {
+        VLOG(2) << "Serial number is not non-empty ASCII string";
+        reply->set_status(grpc_api::GetVpdFieldResponse::STATUS_ERROR_INTERNAL);
+        break;
+      }
+
+      reply->set_status(grpc_api::GetVpdFieldResponse::STATUS_OK);
+      reply->set_vpd_field_value(vpd_field_value);
+      break;
+    }
+    case grpc_api::GetVpdFieldRequest::FIELD_UNSET:
+    default:
+      VLOG(1) << "The VPD field is unspecified or invalid";
+      reply->set_status(
+          grpc_api::GetVpdFieldResponse::STATUS_ERROR_VPD_FIELD_UNKNOWN);
+      break;
+  }
+  callback.Run(std::move(reply));
 }
 
 void WilcoDtcSupportdGrpcService::AddFileDump(
