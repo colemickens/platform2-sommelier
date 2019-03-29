@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mount.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -65,6 +66,12 @@ bool Subprocess::ForkAndExec(const std::vector<std::string>& args,
 
   if (new_mount_namespace_) {
     minijail_namespace_vfs(j.get());
+    // Remount all shared mount points as slave to allow shared mount points
+    // from outside this namespace to propagate in. This is necessary for users
+    // to be able to access USB Drives/SD Cards. cros-disks runs in its own
+    // mount namespace and uses a shared mount point, /media, to make any
+    // devices it mounts available outside its mount namespace.
+    minijail_remount_mode(j.get(), MS_SLAVE);
   }
 
   // Block all signals before running the child so that we can avoid a race
