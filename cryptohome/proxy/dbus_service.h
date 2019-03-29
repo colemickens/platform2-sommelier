@@ -10,6 +10,8 @@
 
 #include <brillo/daemons/dbus_daemon.h>
 
+#include "cryptohome/proxy/dbus_proxy_service.h"
+
 namespace cryptohome {
 
 class CryptohomeProxyDaemon : public brillo::DBusDaemon {
@@ -19,10 +21,14 @@ class CryptohomeProxyDaemon : public brillo::DBusDaemon {
  protected:
   int OnInit() override {
     brillo::DBusDaemon::OnInit();
+    proxy_service_.reset(new CryptohomeProxyService(bus_));
+    proxy_service_->OnInit();
     return EX_OK;
   }
 
  private:
+  std::unique_ptr<CryptohomeProxyService> proxy_service_;
+
   DISALLOW_COPY_AND_ASSIGN(CryptohomeProxyDaemon);
 };
 

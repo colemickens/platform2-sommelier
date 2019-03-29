@@ -133,9 +133,12 @@ executable("cryptohome-proxy") {
   configs += [ "libs:target_defaults" ]
   sources = [
     "proxy/cryptohome_proxy.cc",
+    "proxy/dbus_proxy_service.cc",
+    "proxy/legacy_cryptohome_interface_adaptor.cc",
   ]
   deps = [
     "libs:cryptohome-proto-external",
+    "libs:cryptohome_adaptors",
     "libs:libcryptohome",
   ]
   pkg_deps = [
