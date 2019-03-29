@@ -22,14 +22,27 @@
 #include <base/macros.h>
 #include <trousers/scoped_tss_type.h>
 
+#include "tpm_manager/common/tpm_manager.pb.h"
+
 namespace tpm_manager {
 
 class TpmConnection {
  public:
-  TpmConnection() = default;
-  // Create a TPM connection and set an |authorization_value| for the TPM object
-  // (e.g. the TPM owner password).
-  explicit TpmConnection(const std::string& authorization_value);
+  enum ConnectionType {
+    kConnectWithoutAuth,
+    kConnectWithPassword,
+    kConnectWithDelegate,
+  };
+
+  // Creates a TPM connection as a normal user w/o any auth.
+  TpmConnection();
+
+  // Creates a TPM connection on behalf of the owner with |owner_password|.
+  explicit TpmConnection(const std::string& owner_password);
+
+  // Creates a TPM connection on behalf of the owner with the owner delegate.
+  explicit TpmConnection(const AuthDelegate& owner_delegate);
+
   ~TpmConnection() = default;
 
   // This method returns a handle to the current Tpm context.
@@ -45,7 +58,10 @@ class TpmConnection {
   bool ConnectContextIfNeeded();
 
   trousers::ScopedTssContext context_;
-  std::string authorization_value_;
+
+  const std::string owner_password_;
+  const AuthDelegate owner_delegate_;
+  const ConnectionType connection_type_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmConnection);
 };

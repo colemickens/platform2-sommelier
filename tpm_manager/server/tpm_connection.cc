@@ -16,6 +16,9 @@
 
 #include "tpm_manager/server/tpm_connection.h"
 
+#include <string>
+#include <vector>
+
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/threading/platform_thread.h>
@@ -34,8 +37,15 @@ const int kTpmConnectIntervalMs = 100;
 
 namespace tpm_manager {
 
-TpmConnection::TpmConnection(const std::string& authorization_value)
-    : authorization_value_(authorization_value) {}
+TpmConnection::TpmConnection(): connection_type_(kConnectWithoutAuth) {}
+
+TpmConnection::TpmConnection(const std::string& owner_password)
+    : owner_password_(owner_password),
+      connection_type_(kConnectWithPassword) {}
+
+TpmConnection::TpmConnection(const AuthDelegate& owner_delegate)
+    : owner_delegate_(owner_delegate),
+      connection_type_(kConnectWithDelegate) {}
 
 TSS_HCONTEXT TpmConnection::GetContext() {
   if (!ConnectContextIfNeeded()) {
@@ -85,8 +95,9 @@ bool TpmConnection::ConnectContextIfNeeded() {
     LOG(ERROR) << "Unexpected NULL context.";
     return false;
   }
-  // If we don't need to set an authorization value, we're done.
-  if (authorization_value_.empty()) {
+
+  // If we don't need authorization, we're done.
+  if (connection_type_ == kConnectWithoutAuth) {
     return true;
   }
 
@@ -97,6 +108,7 @@ bool TpmConnection::ConnectContextIfNeeded() {
     context_.reset();
     return false;
   }
+
   TSS_HPOLICY tpm_usage_policy;
   if (TPM_ERROR(result = Tspi_GetPolicyObject(tpm_handle, TSS_POLICY_USAGE,
                                               &tpm_usage_policy))) {
@@ -104,15 +116,36 @@ bool TpmConnection::ConnectContextIfNeeded() {
     context_.reset();
     return false;
   }
-  if (TPM_ERROR(result = Tspi_Policy_SetSecret(
-                    tpm_usage_policy, TSS_SECRET_MODE_PLAIN,
-                    authorization_value_.size(),
-                    reinterpret_cast<BYTE*>(
-                        const_cast<char*>(authorization_value_.data()))))) {
+
+  const std::string& secret = connection_type_ == kConnectWithPassword ?
+      owner_password_ : owner_delegate_.secret();
+  std::vector<BYTE> secret_data(secret.begin(), secret.end());
+  if (TPM_ERROR(result = Tspi_Policy_SetSecret(tpm_usage_policy,
+                                               TSS_SECRET_MODE_PLAIN,
+                                               secret_data.size(),
+                                               secret_data.data()))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_SetSecret";
     context_.reset();
     return false;
   }
+
+  if (connection_type_ == kConnectWithPassword) {
+    return true;
+  }
+
+  // For connection with owner delegate, we also need to set attribute data.
+  std::vector<BYTE> delegate_blob(owner_delegate_.blob().begin(),
+                                  owner_delegate_.blob().end());
+  if (TPM_ERROR(result = Tspi_SetAttribData(
+      tpm_usage_policy,
+      TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
+      TSS_TSPATTRIB_POLDEL_OWNERBLOB,
+      delegate_blob.size(),
+      delegate_blob.data()))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_SetAttribData";
+    return false;
+  }
+
   return true;
 }
 
