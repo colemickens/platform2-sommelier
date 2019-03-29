@@ -43,7 +43,6 @@ Profile::Profile(ControlInterface* control_interface,
                  bool connect_to_rpc)
     : metrics_(metrics),
       manager_(manager),
-      control_interface_(control_interface),
       name_(name) {
   if (connect_to_rpc)
     adaptor_ = control_interface->CreateProfileAdaptor(this);
