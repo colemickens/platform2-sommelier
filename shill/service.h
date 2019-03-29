@@ -115,14 +115,25 @@ class Service : public base::RefCounted<Service> {
     kFailureMax
   };
   enum ConnectState {
+    // Unknown state
     kStateUnknown,
+    // Service is not active
     kStateIdle,
+    // Associating with service
     kStateAssociating,
+    // IP provisioning
     kStateConfiguring,
+    // Successfully associated and IP provisioned
     kStateConnected,
+    // Connected but portal detection probes timed out
     kStateNoConnectivity,
+    // HTTP probe returned a 302 with a redirect URL
     kStateRedirectFound,
+    // HTTP probe returned without a 204 or redirect, or HTTPS probe failed
+    kStatePortalSuspected,
+    // Failed to connect
     kStateFailure,
+    // Connected to the Internet
     kStateOnline
   };
   enum CryptoAlgorithm {
