@@ -16,6 +16,7 @@
 
 #include "tpm_manager/server/tpm_initializer_impl.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -23,6 +24,7 @@
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <trousers/scoped_tss_type.h>
+#include <trousers/tss.h>
 
 #include "tpm_manager/common/tpm_manager_constants.h"
 #include "tpm_manager/server/local_data_store.h"
@@ -106,6 +108,7 @@ bool TpmInitializerImpl::InitializeTpm() {
     return false;
   }
 
+  reset_da_lock_auth_failed_ = false;
   return true;
 }
 
@@ -114,8 +117,61 @@ void TpmInitializerImpl::VerifiedBootHelper() {
 }
 
 bool TpmInitializerImpl::ResetDictionaryAttackLock() {
-  LOG(WARNING) << __func__ << ": Not implemented.";
-  return false;
+  if (reset_da_lock_auth_failed_) {
+    // An auth error was encountered in a previous attempt, and there was no
+    // auth update after the attempt. Skips the request to avoid further
+    // increasing the counter.
+    LOG(ERROR) << __func__ << ": skipped the request to avoid repeating a "
+                              "previous auth error.";
+    return false;
+  }
+
+  if (tpm_status_->CheckAndNotifyIfTpmOwned() != TpmStatus::kTpmOwned) {
+    LOG(ERROR) << __func__ << ": TPM is not initialized yet.";
+    return false;
+  }
+
+  std::string owner_password;
+  AuthDelegate owner_delegate;
+  if (!ReadOwnerAuthFromLocalData(&owner_password, &owner_delegate)) {
+    LOG(ERROR) << __func__ << ": failed to get owner auth.";
+    return false;
+  }
+
+  std::unique_ptr<TpmConnection> connection;
+  if (!owner_delegate.blob().empty() &&
+      !owner_delegate.secret().empty() &&
+      owner_delegate.has_reset_lock_permissions()) {
+    connection = std::make_unique<TpmConnection>(owner_delegate);
+  } else if (!owner_password.empty()) {
+    connection = std::make_unique<TpmConnection>(owner_password);
+  } else {
+    LOG(ERROR) << __func__ << ": available owner auth not found.";
+    return false;
+  }
+
+  TSS_RESULT result;
+  TSS_HTPM tpm_handle;
+  if (TPM_ERROR(result = Tspi_Context_GetTpmObject(connection->GetContext(),
+                                                   &tpm_handle))) {
+    TPM_LOG(ERROR, result) << "Error getting a TPM handle.";
+    return false;
+  }
+
+  if (TPM_ERROR(result = Tspi_TPM_SetStatus(
+      tpm_handle, TSS_TPMSTATUS_RESETLOCK, true /* value will be ignored */))) {
+    TPM_LOG(ERROR, result) << __func__ << ": failed to reset DA lock.";
+
+    if (ERROR_LAYER(result) == TSS_LAYER_TPM &&
+        ERROR_CODE(result) == TPM_E_AUTHFAIL) {
+      reset_da_lock_auth_failed_ = true;
+    }
+
+    return false;
+  }
+
+  LOG(INFO) << __func__ << ": dictionary attack counter has been reset.";
+  return true;
 }
 
 bool TpmInitializerImpl::InitializeEndorsementKey(TpmConnection* connection) {
@@ -270,18 +326,22 @@ bool TpmInitializerImpl::ChangeOwnerPassword(
   return true;
 }
 
-bool TpmInitializerImpl::ReadOwnerPasswordFromLocalData(
-    std::string* owner_password) {
+bool TpmInitializerImpl::ReadOwnerAuthFromLocalData(
+    std::string* owner_password, AuthDelegate* owner_delegate) {
   LocalData local_data;
   if (!local_data_store_->Read(&local_data)) {
-    LOG(ERROR) << __func__ << ": Cannot read local data to get owner password.";
+    LOG(ERROR) << __func__ << ": couldn't read local data.";
     return false;
   }
-  if (local_data.owner_password().empty()) {
-    LOG(ERROR) << __func__ << ": empty owner password in local data store.";
-    return false;
+
+  if (owner_password) {
+    *owner_password = local_data.owner_password();
   }
-  *owner_password = local_data.owner_password();
+
+  if (owner_delegate) {
+    *owner_delegate = local_data.owner_delegate();
+  }
+
   return true;
 }
 
@@ -318,8 +378,9 @@ bool TpmInitializerImpl::CreateAuthDelegate(
   // read the owner password.
   // TODO(cylai): provide a clean way to retrieve owner password for this class.
   std::string owner_password;
-  if (!ReadOwnerPasswordFromLocalData(&owner_password)) {
-    LOG(ERROR) << __func__ << "Cannot get owner password";
+  if (!ReadOwnerAuthFromLocalData(&owner_password, nullptr) ||
+      owner_password.empty()) {
+    LOG(ERROR) << __func__ << ": couldn't get owner password.";
     return false;
   }
 

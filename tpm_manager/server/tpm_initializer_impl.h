@@ -24,6 +24,7 @@
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha)
 
+#include "tpm_manager/common/tpm_manager.pb.h"
 #include "tpm_manager/server/dbus_service.h"
 #include "tpm_manager/server/openssl_crypto_util_impl.h"
 #include "tpm_manager/server/tpm_connection.h"
@@ -85,7 +86,14 @@ class TpmInitializerImpl : public TpmInitializer {
   bool ChangeOwnerPassword(TpmConnection* connection,
                            const std::string& owner_password);
 
-  bool ReadOwnerPasswordFromLocalData(std::string* owner_password);
+  // Reads owner password and delegate from local data and stores them in
+  // |owner_password| and |owner_delegate| respectively. For each input arg, if
+  // it's nullptr, it will be ignored and neither written nor considered as an
+  // error.
+  //
+  // Returns whether the read was successful.
+  bool ReadOwnerAuthFromLocalData(std::string* owner_password,
+                                  AuthDelegate* owner_delegate);
 
   // create delegate with the default label and store the result in |delegate|.
   bool CreateDelegateWithDefaultLabel(AuthDelegate* delegate);
@@ -124,6 +132,10 @@ class TpmInitializerImpl : public TpmInitializer {
   OpensslCryptoUtilImpl openssl_util_;
   LocalDataStore* local_data_store_;
   TpmStatus* tpm_status_;
+
+  // If set, an auth error was encountered in a previous attempt of resetting DA
+  // lock, and there was no auth update after the attempt.
+  bool reset_da_lock_auth_failed_ = false;
 
   // Callback function called after TPM ownership is taken.
   const OwnershipTakenCallBack& ownership_taken_callback_;
