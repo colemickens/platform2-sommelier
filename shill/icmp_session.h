@@ -68,7 +68,8 @@ class IcmpSession {
   // callbacks. Does nothing if a ICMP session is not started.
   virtual void Stop();
 
-  bool IsStarted() { return icmp_->IsStarted(); }
+  // Returns true if this ICMP session has started, or false otherwise.
+  bool IsStarted() const;
 
   // Utility function that returns false iff |result| indicates that no echo
   // replies were received to any ICMP echo request that was sent during the

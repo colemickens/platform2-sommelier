@@ -92,6 +92,10 @@ void IcmpSession::Stop() {
   icmp_->Stop();
 }
 
+bool IcmpSession::IsStarted() const {
+  return icmp_->IsStarted();
+}
+
 // static
 bool IcmpSession::AnyRepliesReceived(const IcmpSessionResult& result) {
   for (const base::TimeDelta& latency : result) {
