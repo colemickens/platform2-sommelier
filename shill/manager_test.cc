@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/adaptor_interfaces.h"
+#include "shill/device_claimer.h"
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
 #include "shill/ethernet/mock_ethernet_provider.h"
@@ -30,7 +31,6 @@
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
-#include "shill/mock_device_claimer.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
@@ -331,10 +331,6 @@ class ManagerTest : public PropertyStoreTest {
   }
 #endif  // DISABLE_WIFI
 
-  void SetDeviceClaimer(DeviceClaimer* device_claimer) {
-    manager()->device_claimer_.reset(device_claimer);
-  }
-
   void VerifyPassiveMode() {
     EXPECT_NE(nullptr, manager()->device_claimer_.get());
     EXPECT_TRUE(manager()->device_claimer_->default_claimer());
@@ -528,31 +524,22 @@ TEST_F(ManagerTest, PassiveModeDeviceRegistration) {
   manager()->SetPassiveMode();
   VerifyPassiveMode();
 
-  // Setup mock device claimer.
-  MockDeviceClaimer* device_claimer = new MockDeviceClaimer("");
-  SetDeviceClaimer(device_claimer);
-  EXPECT_CALL(*device_claimer, default_claimer()).WillRepeatedly(Return(true));
-
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*mock_devices_[1], technology())
-      .WillByDefault(Return(Technology::kWifi));
 
   // Device not released, should not be registered.
-  EXPECT_CALL(*device_claimer, IsDeviceReleased(mock_devices_[0]->link_name()))
-      .WillOnce(Return(false));
-  EXPECT_CALL(*device_claimer, Claim(mock_devices_[0]->link_name(), _))
-      .Times(1);
   manager()->RegisterDevice(mock_devices_[0]);
   EXPECT_FALSE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
 
   // Device is released, should be registered.
-  EXPECT_CALL(*device_claimer, IsDeviceReleased(mock_devices_[1]->link_name()))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*device_claimer, Claim(mock_devices_[1]->link_name(), _))
-      .Times(0);
-  manager()->RegisterDevice(mock_devices_[1]);
-  EXPECT_TRUE(IsDeviceRegistered(mock_devices_[1], Technology::kWifi));
+  bool claimer_removed;
+  Error error;
+  manager()->ReleaseDevice("", mock_devices_[0]->link_name(), &claimer_removed,
+                           &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_FALSE(claimer_removed);
+  manager()->RegisterDevice(mock_devices_[0]);
+  EXPECT_TRUE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
 }
 
 TEST_F(ManagerTest, DeviceRegistration) {
@@ -4811,10 +4798,6 @@ TEST_F(ManagerTest, ClaimDeviceWithClaimer) {
   const char kClaimer2Name[] = "test_claimer2";
   const char kDeviceName[] = "test_device";
 
-  // Setup device claimer.
-  MockDeviceClaimer* device_claimer = new MockDeviceClaimer(kClaimer1Name);
-  SetDeviceClaimer(device_claimer);
-
   // Claim device with empty string name.
   const char kEmptyDeviceNameError[] = "Empty device name";
   Error error;
@@ -4823,27 +4806,19 @@ TEST_F(ManagerTest, ClaimDeviceWithClaimer) {
 
   // Device claim succeed.
   error.Reset();
-  EXPECT_CALL(*device_claimer, Claim(kDeviceName, _)).WillOnce(Return(true));
   manager()->ClaimDevice(kClaimer1Name, kDeviceName, &error);
-  EXPECT_EQ(Error::kSuccess, error.type());
-  Mock::VerifyAndClearExpectations(device_claimer);
+  EXPECT_TRUE(error.IsSuccess());
 
   // Claimer mismatch, current implementation only allows one claimer at a time.
   const char kInvalidClaimerError[] =
       "Invalid claimer name test_claimer2. Claimer test_claimer1 already exist";
   error.Reset();
-  EXPECT_CALL(*device_claimer, Claim(_, _)).Times(0);
   manager()->ClaimDevice(kClaimer2Name, kDeviceName, &error);
+  EXPECT_TRUE(error.IsFailure());
   EXPECT_EQ(string(kInvalidClaimerError), error.message());
 }
 
 TEST_F(ManagerTest, ClaimRegisteredDevice) {
-  const char kClaimerName[] = "test_claimer";
-
-  // Setup device claimer.
-  MockDeviceClaimer* device_claimer = new MockDeviceClaimer(kClaimerName);
-  SetDeviceClaimer(device_claimer);
-
   // Register a device to manager.
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kWifi));
@@ -4853,76 +4828,77 @@ TEST_F(ManagerTest, ClaimRegisteredDevice) {
 
   // Claim the registered device.
   Error error;
-  EXPECT_CALL(*device_claimer, Claim(mock_devices_[0]->link_name(), _))
-      .WillOnce(Return(true));
-  manager()->ClaimDevice(kClaimerName, mock_devices_[0]->link_name(), &error);
-  EXPECT_EQ(Error::kSuccess, error.type());
-  Mock::VerifyAndClearExpectations(device_claimer);
+  manager()->ClaimDevice("claimer1", mock_devices_[0]->link_name(), &error);
+  EXPECT_TRUE(error.IsSuccess());
 
   // Expect device to not be registered anymore.
   EXPECT_FALSE(IsDeviceRegistered(mock_devices_[0], Technology::kWifi));
 }
 
-TEST_F(ManagerTest, ReleaseDevice) {
-  const char kClaimerName[] = "test_claimer";
-  const char kWrongClaimerName[] = "test_claimer1";
-  const char kDeviceName[] = "test_device";
-
-  // Release device without claimer.
-  const char kNoClaimerError[] = "Device claimer doesn't exist";
-  Error error;
+TEST_F(ManagerTest, ReleaseDeviceWithoutClaimer) {
   bool claimer_removed;
-  manager()->ReleaseDevice(kClaimerName, kDeviceName, &claimer_removed, &error);
-  EXPECT_EQ(string(kNoClaimerError), error.message());
+  Error error;
+  manager()->ReleaseDevice("claimer1", "device1", &claimer_removed, &error);
   EXPECT_FALSE(claimer_removed);
+  EXPECT_THAT(
+      error, ErrorIs(Error::kInvalidArguments, "Device claimer doesn't exist"));
+}
 
-  // Setup device claimer.
-  MockDeviceClaimer* device_claimer = new MockDeviceClaimer(kClaimerName);
-  SetDeviceClaimer(device_claimer);
+TEST_F(ManagerTest, ReleaseDeviceFromWrongClaimer) {
+  const char kDeviceName[] = "device1";
 
-  // Release device from wrong claimer.
-  const char kClaimerMismatchError[] =
-      "Invalid claimer name test_claimer1. Claimer test_claimer already exist";
-  error.Reset();
-  manager()->ReleaseDevice(kWrongClaimerName, kDeviceName, &claimer_removed,
-                           &error);
-  EXPECT_EQ(string(kClaimerMismatchError), error.message());
-  EXPECT_FALSE(claimer_removed);
-
-  // Release one of multiple device from a non-default claimer.
-  error.Reset();
-  EXPECT_CALL(*device_claimer, Release(kDeviceName, &error))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*device_claimer, default_claimer()).WillOnce(Return(false));
-  EXPECT_CALL(*device_claimer, DevicesClaimed()).WillOnce(Return(true));
-  manager()->ReleaseDevice(kClaimerName, kDeviceName, &claimer_removed, &error);
-  Mock::VerifyAndClearExpectations(device_claimer);
+  Error error;
+  manager()->ClaimDevice("claimer1", kDeviceName, &error);
   EXPECT_TRUE(error.IsSuccess());
+
+  bool claimer_removed;
+  manager()->ReleaseDevice("claimer2", kDeviceName, &claimer_removed, &error);
   EXPECT_FALSE(claimer_removed);
+  EXPECT_THAT(
+      error,
+      ErrorIs(Error::kInvalidArguments,
+              "Invalid claimer name claimer2. Claimer claimer1 already exist"));
+}
+
+TEST_F(ManagerTest, ReleaseDeviceFromDefaultClaimer) {
+  const char kDeviceName[] = "device1";
+
+  manager()->SetPassiveMode();
+  VerifyPassiveMode();
+
+  Error error;
+  manager()->ClaimDevice("", kDeviceName, &error);
+  EXPECT_TRUE(error.IsSuccess());
 
   // Release a device with default claimer. Claimer should not be resetted.
-  error.Reset();
-  EXPECT_CALL(*device_claimer, Release(kDeviceName, &error))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*device_claimer, default_claimer()).WillOnce(Return(true));
-  EXPECT_CALL(*device_claimer, DevicesClaimed()).Times(0);
-  manager()->ReleaseDevice(kClaimerName, kDeviceName, &claimer_removed, &error);
-  Mock::VerifyAndClearExpectations(device_claimer);
-  EXPECT_TRUE(error.IsSuccess());
+  bool claimer_removed;
+  manager()->ReleaseDevice("", kDeviceName, &claimer_removed, &error);
   EXPECT_FALSE(claimer_removed);
-  EXPECT_NE(nullptr, manager()->device_claimer_.get());
+  EXPECT_TRUE(error.IsSuccess());
+}
+
+TEST_F(ManagerTest, ReleaseDeviceFromNonDefaultClaimer) {
+  const char kClaimerName[] = "claimer1";
+  const char kDevice1Name[] = "device1";
+  const char kDevice2Name[] = "device2";
+
+  Error error;
+  manager()->ClaimDevice(kClaimerName, kDevice1Name, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  manager()->ClaimDevice(kClaimerName, kDevice2Name, &error);
+  EXPECT_TRUE(error.IsSuccess());
+
+  bool claimer_removed;
+  manager()->ReleaseDevice(kClaimerName, kDevice1Name, &claimer_removed,
+                           &error);
+  EXPECT_FALSE(claimer_removed);
+  EXPECT_TRUE(error.IsSuccess());
 
   // Release last device with non-default claimer. Claimer should be resetted.
-  error.Reset();
-  EXPECT_CALL(*device_claimer, Release(kDeviceName, &error))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*device_claimer, default_claimer()).WillOnce(Return(false));
-  EXPECT_CALL(*device_claimer, DevicesClaimed()).WillOnce(Return(false));
-  manager()->ReleaseDevice(kClaimerName, kDeviceName, &claimer_removed, &error);
-  Mock::VerifyAndClearExpectations(device_claimer);
-  EXPECT_TRUE(error.IsSuccess());
+  manager()->ReleaseDevice(kClaimerName, kDevice2Name, &claimer_removed,
+                           &error);
   EXPECT_TRUE(claimer_removed);
-  EXPECT_EQ(nullptr, manager()->device_claimer_.get());
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(ManagerTest, GetEnabledDeviceWithTechnology) {
