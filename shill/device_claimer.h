@@ -12,7 +12,6 @@
 #include <base/callback.h>
 
 #include "shill/error.h"
-#include "shill/rpc_service_watcher_interface.h"
 
 namespace shill {
 
@@ -47,8 +46,6 @@ class DeviceClaimer {
   }
 
  private:
-  // Watcher for monitoring the remote RPC service of the claimer.
-  std::unique_ptr<RPCServiceWatcherInterface> service_watcher_;
   // The name of devices that have been claimed by this claimer.
   std::set<std::string> claimed_device_names_;
   // The name of devices that have been released by this claimer.
