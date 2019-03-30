@@ -55,8 +55,11 @@ Tapping the power button a second time after the screen has been turned off
 turns the screen back on.
 
 If the power button is held for a half second or longer before being released,
-the screen remains on and a power menu with `Sign out` and `Power off` options
-is displayed. The power button may be tapped again to dismiss the menu.
+the screen remains on and a power menu with `Power off`, `Sign out`,
+`Lock screen` and `Feedback` options is displayed. The power button may be
+tapped again to dismiss the menu. Note that the options shown might differ based
+on the user session state. For example, if the device is already locked, options
+will not include `Lock screen`.
 
 If the user holds the power button for an additional 650 milliseconds while the
 menu is displayed, a cancellable pre-shutdown animation begins in which the
@@ -89,8 +92,8 @@ behavior even when a folio or other external keyboard is attached.
 ### Legacy ACPI Power Buttons (Chromebox and Chromebase)
 
 On devices that don't report power button releases properly, tapping the power
-button locks the screen if a user is signed in and shuts down otherwise. If the
-screen is already locked, tapping the power button shuts the system down.
+button displays the power menu described above. Tapping the power button again
+while the menu is displayed shuts the system down.
 
 ### Universal Behavior
 
