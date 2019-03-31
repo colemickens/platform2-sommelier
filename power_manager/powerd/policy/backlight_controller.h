@@ -57,6 +57,8 @@ class BacklightController {
   // Handles the power button being pressed.
   virtual void HandlePowerButtonPress() = 0;
 
+  virtual void HandleLidStateChange(LidState state) = 0;
+
   // Handles user activity.  Note that screen dimming and undimming in
   // response to user inactivity/activity are controlled via
   // SetDimmingForInactivity(); this method should only be used for e.g.
@@ -100,10 +102,6 @@ class BacklightController {
 
   // Sets whether the backlight should be prepared for imminent shutdown.
   virtual void SetShuttingDown(bool shutting_down) = 0;
-
-  // Sets whether the system is in "docked mode" (external display
-  // connected while lid closed).
-  virtual void SetDocked(bool docked) = 0;
 
   // Forces the backlight off.
   virtual void SetForcedOff(bool forced_off) = 0;

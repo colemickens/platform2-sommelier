@@ -43,8 +43,6 @@ const char kSuspendIdle[] = "suspend_idle";
 const char kSuspendLidClosed[] = "suspend_lid";
 const char kStopSession[] = "logout";
 const char kShutDown[] = "shut_down";
-const char kDocked[] = "docked";
-const char kUndocked[] = "undocked";
 const char kReportUserActivityMetrics[] = "metrics";
 
 // String returned by TestDelegate::GetActions() if no actions were
@@ -94,9 +92,6 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
   }
   void StopSession() override { AppendAction(kStopSession); }
   void ShutDown() override { AppendAction(kShutDown); }
-  void UpdatePanelForDockedMode(bool docked) override {
-    AppendAction(docked ? kDocked : kUndocked);
-  }
   void ReportUserActivityMetrics() override {
     if (record_metrics_actions_)
       AppendAction(kReportUserActivityMetrics);
@@ -1590,24 +1585,23 @@ TEST_F(StateControllerTest, WakeLocksWithWakeNotification) {
 TEST_F(StateControllerTest, DockedMode) {
   Init();
 
-  // Connect an external display and close the lid.  The internal panel
-  // should be turned off, but the system shouldn't suspend.
+  // Connect an external display and close the lid. The system shouldn't
+  // suspend.
   controller_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   controller_.HandleLidStateChange(LidState::CLOSED);
-  EXPECT_EQ(kDocked, delegate_.GetActions());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
 
-  // Open the lid and check that the internal panels turns back on.
+  // Open the lid and check that nothing happens.
   controller_.HandleLidStateChange(LidState::OPEN);
-  EXPECT_EQ(kUndocked, delegate_.GetActions());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
 
   // Close the lid again and check that the system suspends immediately
   // after the external display is unplugged.
   controller_.HandleLidStateChange(LidState::CLOSED);
-  EXPECT_EQ(kDocked, delegate_.GetActions());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
   controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
-  EXPECT_EQ(JoinActions(kUndocked, kSuspendLidClosed, nullptr),
-            delegate_.GetActions());
+  EXPECT_EQ(kSuspendLidClosed, delegate_.GetActions());
 }
 
 // Tests that the system recognizes external display connect on resuming with
@@ -1626,11 +1620,10 @@ TEST_F(StateControllerTest, ResumeOnExternalDisplayWithLidClosed) {
   controller_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
   // Timer that blocks idle or lid closed action should not be running anymore.
   EXPECT_FALSE(test_api_.TriggerWaitForExternalDisplayTimeout());
-  // We should see only docked action and not suspend action.
-  EXPECT_EQ(kDocked, delegate_.GetActions());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
   // Open the lid and check that the internal panels turns back on.
   controller_.HandleLidStateChange(LidState::OPEN);
-  EXPECT_EQ(kUndocked, delegate_.GetActions());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
 }
 
 // Tests that PowerManagementPolicy's
@@ -1765,7 +1758,7 @@ TEST_F(StateControllerTest, EnterDockedModeAtStartup) {
   initial_lid_state_ = LidState::CLOSED;
   initial_display_mode_ = DisplayMode::PRESENTATION;
   Init();
-  EXPECT_EQ(kDocked, delegate_.GetActions());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
   EXPECT_FALSE(test_api_.TriggerInitialStateTimeout());
 }
 
@@ -1845,7 +1838,7 @@ TEST_F(StateControllerTest, IgnoreUserActivityWhileLidClosed) {
 
   // User activity while docked should turn the screen back on and undim it.
   controller_.HandleLidStateChange(LidState::CLOSED);
-  EXPECT_EQ(kDocked, delegate_.GetActions());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
   controller_.HandleUserActivity();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, nullptr),
             delegate_.GetActions());
@@ -1885,7 +1878,7 @@ TEST_F(StateControllerTest, IgnoreWakeNotificationWhileLidClosed) {
   // A wake notification while docked should turn the screen back on and undim
   // it.
   controller_.HandleLidStateChange(LidState::CLOSED);
-  EXPECT_EQ(kDocked, delegate_.GetActions());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
   controller_.HandleWakeNotification();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, nullptr),
             delegate_.GetActions());

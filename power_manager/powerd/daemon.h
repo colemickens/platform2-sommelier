@@ -250,7 +250,6 @@ class Daemon : public policy::InputEventHandler::Delegate,
   void SetBacklightsDimmedForInactivity(bool dimmed);
   void SetBacklightsOffForInactivity(bool off);
   void SetBacklightsSuspended(bool suspended);
-  void SetBacklightsDocked(bool docked);
 
   DaemonDelegate* delegate_;  // weak
 

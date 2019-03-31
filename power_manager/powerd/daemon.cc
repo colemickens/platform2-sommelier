@@ -233,10 +233,6 @@ class Daemon::StateControllerDelegate
                       ShutdownReason::STATE_TRANSITION);
   }
 
-  void UpdatePanelForDockedMode(bool docked) override {
-    daemon_->SetBacklightsDocked(docked);
-  }
-
   void ReportUserActivityMetrics() override {
     daemon_->metrics_collector_->GenerateUserActivityMetrics();
   }
@@ -345,7 +341,7 @@ void Daemon::Init() {
         display_backlight_controller_ =
             delegate_->CreateInternalBacklightController(
                 display_backlight_.get(), prefs_.get(), light_sensor_.get(),
-                display_power_setter_.get(), dbus_wrapper_.get());
+                display_power_setter_.get(), dbus_wrapper_.get(), lid_state);
       }
     }
     if (display_backlight_controller_)
@@ -359,7 +355,7 @@ void Daemon::Init() {
           delegate_->CreateKeyboardBacklightController(
               keyboard_backlight_.get(), prefs_.get(), light_sensor_.get(),
               dbus_wrapper_.get(), display_backlight_controller_.get(),
-              tablet_mode);
+              lid_state, tablet_mode);
       all_backlight_controllers_.push_back(
           keyboard_backlight_controller_.get());
     }
@@ -488,6 +484,8 @@ void Daemon::HandleLidClosed() {
   // to Chrome which can take longer than a second.
   input_device_controller_->SetLidState(LidState::CLOSED);
   state_controller_->HandleLidStateChange(LidState::CLOSED);
+  for (auto controller : all_backlight_controllers_)
+    controller->HandleLidStateChange(LidState::CLOSED);
 }
 
 void Daemon::HandleLidOpened() {
@@ -495,6 +493,8 @@ void Daemon::HandleLidOpened() {
   suspender_->HandleLidOpened();
   state_controller_->HandleLidStateChange(LidState::OPEN);
   input_device_controller_->SetLidState(LidState::OPEN);
+  for (auto controller : all_backlight_controllers_)
+    controller->HandleLidStateChange(LidState::OPEN);
 }
 
 void Daemon::HandlePowerButtonEvent(ButtonState state) {
@@ -689,8 +689,13 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
 
 void Daemon::UndoPrepareToSuspend(bool success, int num_suspend_attempts) {
   LidState lid_state = input_watcher_->QueryLidState();
-  // Do this first so we have the correct settings (including for the
-  // backlight).
+
+  // Update the lid state first so that resume does not turn the internal
+  // backlight on if the lid is still closed on resume.
+  for (auto controller : all_backlight_controllers_)
+    controller->HandleLidStateChange(lid_state);
+
+  // Let State controller know about resume with the latest lid state.
   state_controller_->HandleResume(lid_state);
 
   // Resume the backlight right after announcing resume. This might be where we
@@ -1281,11 +1286,6 @@ void Daemon::SetBacklightsOffForInactivity(bool off) {
 void Daemon::SetBacklightsSuspended(bool suspended) {
   for (auto controller : all_backlight_controllers_)
     controller->SetSuspended(suspended);
-}
-
-void Daemon::SetBacklightsDocked(bool docked) {
-  for (auto controller : all_backlight_controllers_)
-    controller->SetDocked(docked);
 }
 
 }  // namespace power_manager

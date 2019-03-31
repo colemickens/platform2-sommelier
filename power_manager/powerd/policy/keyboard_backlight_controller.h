@@ -74,6 +74,7 @@ class KeyboardBacklightController : public BacklightController,
             system::AmbientLightSensorInterface* sensor,
             system::DBusWrapperInterface* dbus_wrapper,
             BacklightController* display_backlight_controller,
+            LidState initial_lid_state,
             TabletMode initial_tablet_mode);
 
   // BacklightController implementation:
@@ -83,6 +84,7 @@ class KeyboardBacklightController : public BacklightController,
   void HandleDisplayModeChange(DisplayMode mode) override;
   void HandleSessionStateChange(SessionState state) override;
   void HandlePowerButtonPress() override;
+  void HandleLidStateChange(LidState state) override;
   void HandleUserActivity(UserActivityType type) override;
   void HandleVideoActivity(bool is_fullscreen) override;
   void HandleWakeNotification() override;
@@ -94,7 +96,6 @@ class KeyboardBacklightController : public BacklightController,
   void SetOffForInactivity(bool off) override;
   void SetSuspended(bool suspended) override;
   void SetShuttingDown(bool shutting_down) override;
-  void SetDocked(bool docked) override;
   void SetForcedOff(bool forced_off) override;
   bool GetForcedOff() override;
   bool GetBrightnessPercent(double* percent) override;
@@ -175,13 +176,13 @@ class KeyboardBacklightController : public BacklightController,
   bool turn_on_for_user_activity_ = false;
 
   SessionState session_state_ = SessionState::STOPPED;
+  LidState lid_state_ = LidState::NOT_PRESENT;
   TabletMode tablet_mode_ = TabletMode::UNSUPPORTED;
 
   bool dimmed_for_inactivity_ = false;
   bool off_for_inactivity_ = false;
   bool suspended_ = false;
   bool shutting_down_ = false;
-  bool docked_ = false;
   bool forced_off_ = false;
   bool hovering_ = false;
 

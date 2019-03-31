@@ -1149,14 +1149,6 @@ void StateController::UpdateState() {
   }
   resend_idle_warning_ = false;
 
-  bool docked = in_docked_mode();
-  if (docked != turned_panel_off_for_docked_mode_) {
-    LOG(INFO) << "Turning panel " << (docked ? "off" : "on") << " after "
-              << (docked ? "entering" : "leaving") << " docked mode";
-    delegate_->UpdatePanelForDockedMode(docked);
-    turned_panel_off_for_docked_mode_ = docked;
-  }
-
   Action idle_action_to_perform = Action::DO_NOTHING;
   if (idle_duration >= delays_.idle) {
     if (!idle_action_performed_) {

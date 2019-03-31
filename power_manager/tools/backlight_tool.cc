@@ -35,6 +35,7 @@
 #include "power_manager/powerd/system/udev_stub.h"
 
 using power_manager::BatteryPercentageConverter;
+using power_manager::LidState;
 using power_manager::PowerSource;
 using power_manager::Prefs;
 using power_manager::TabletMode;
@@ -82,15 +83,17 @@ class Converter {
 
     if (keyboard) {
       auto controller = std::make_unique<KeyboardBacklightController>();
-      controller->Init(
-          &backlight_, &prefs_, light_sensor_.get(), &dbus_wrapper_,
-          nullptr /* display_backlight_controller */, TabletMode::UNSUPPORTED);
+      controller->Init(&backlight_, &prefs_, light_sensor_.get(),
+                       &dbus_wrapper_,
+                       nullptr /* display_backlight_controller */,
+                       LidState::NOT_PRESENT, TabletMode::UNSUPPORTED);
       controller->HandleHoverStateChange(true /* hovering */);
       controller_ = std::move(controller);
     } else {
       auto controller = std::make_unique<InternalBacklightController>();
       controller->Init(&backlight_, &prefs_, light_sensor_.get(),
-                       &display_power_setter_, &dbus_wrapper_);
+                       &display_power_setter_, &dbus_wrapper_,
+                       LidState::NOT_PRESENT);
       controller_ = std::move(controller);
     }
 

@@ -34,6 +34,9 @@ class BacklightControllerStub : public policy::BacklightController {
     return session_state_changes_;
   }
   int power_button_presses() const { return power_button_presses_; }
+  const std::vector<LidState>& lid_state_changes() const {
+    return lid_state_changes_;
+  }
   const std::vector<UserActivityType>& user_activity_reports() const {
     return user_activity_reports_;
   }
@@ -55,7 +58,6 @@ class BacklightControllerStub : public policy::BacklightController {
   bool off() const { return off_; }
   bool suspended() const { return suspended_; }
   bool shutting_down() const { return shutting_down_; }
-  bool docked() const { return docked_; }
   bool forced_off() const { return forced_off_; }
 
   void set_percent(double percent) { percent_ = percent; }
@@ -75,6 +77,7 @@ class BacklightControllerStub : public policy::BacklightController {
   void HandleDisplayModeChange(DisplayMode mode) override;
   void HandleSessionStateChange(SessionState state) override;
   void HandlePowerButtonPress() override;
+  void HandleLidStateChange(LidState state) override;
   void HandleUserActivity(UserActivityType type) override;
   void HandleVideoActivity(bool is_fullscreen) override;
   void HandleWakeNotification() override;
@@ -86,7 +89,6 @@ class BacklightControllerStub : public policy::BacklightController {
   void SetOffForInactivity(bool off) override;
   void SetSuspended(bool suspended) override;
   void SetShuttingDown(bool shutting_down) override;
-  void SetDocked(bool docked) override;
   void SetForcedOff(bool forced_off) override;
   bool GetForcedOff() override;
   bool GetBrightnessPercent(double* percent) override;
@@ -107,6 +109,7 @@ class BacklightControllerStub : public policy::BacklightController {
   std::vector<DisplayMode> display_mode_changes_;
   std::vector<SessionState> session_state_changes_;
   int power_button_presses_ = 0;
+  std::vector<LidState> lid_state_changes_;
   std::vector<UserActivityType> user_activity_reports_;
   std::vector<bool> video_activity_reports_;
   std::vector<bool> hover_state_changes_;
@@ -119,7 +122,6 @@ class BacklightControllerStub : public policy::BacklightController {
   bool off_ = false;
   bool suspended_ = false;
   bool shutting_down_ = false;
-  bool docked_ = false;
   bool forced_off_ = false;
 
   // Counts to be returned by GetNum*Adjustments().

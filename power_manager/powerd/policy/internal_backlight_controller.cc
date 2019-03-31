@@ -148,11 +148,13 @@ void InternalBacklightController::Init(
     PrefsInterface* prefs,
     system::AmbientLightSensorInterface* sensor,
     system::DisplayPowerSetterInterface* display_power_setter,
-    system::DBusWrapperInterface* dbus_wrapper) {
+    system::DBusWrapperInterface* dbus_wrapper,
+    LidState initial_lid_state) {
   backlight_ = backlight;
   prefs_ = prefs;
   display_power_setter_ = display_power_setter;
   dbus_wrapper_ = dbus_wrapper;
+  lid_state_ = initial_lid_state;
 
   max_level_ = backlight_->GetMaxBrightnessLevel();
   current_level_ = backlight_->GetCurrentBrightnessLevel();
@@ -303,6 +305,11 @@ void InternalBacklightController::HandlePowerButtonPress() {
   EnsureUserBrightnessIsNonzero(BacklightBrightnessChange_Cause_USER_ACTIVITY);
 }
 
+void InternalBacklightController::HandleLidStateChange(LidState state) {
+  lid_state_ = state;
+  UpdateState(BacklightBrightnessChange_Cause_OTHER);
+}
+
 void InternalBacklightController::HandleUserActivity(UserActivityType type) {
   // Don't increase the brightness automatically when the user hits a brightness
   // key: if they hit brightness-up, HandleIncreaseBrightnessRequest() will be
@@ -407,15 +414,6 @@ void InternalBacklightController::SetShuttingDown(bool shutting_down) {
   else
     LOG(WARNING) << "Exiting shutting-down state";
   shutting_down_ = shutting_down;
-  UpdateState(BacklightBrightnessChange_Cause_OTHER);
-}
-
-void InternalBacklightController::SetDocked(bool docked) {
-  if (docked_ == docked)
-    return;
-
-  VLOG(1) << (docked ? "Entering" : "Leaving") << " docked mode";
-  docked_ = docked;
   UpdateState(BacklightBrightnessChange_Cause_OTHER);
 }
 
@@ -681,8 +679,9 @@ void InternalBacklightController::UpdateState(
     brightness_transition = Transition::FAST;
     display_power = chromeos::DISPLAY_POWER_ALL_OFF;
     display_delay = TransitionToTimeDelta(brightness_transition);
-  } else if (docked_) {
+  } else if (lid_state_ == LidState::CLOSED) {
     brightness_percent = 0.0;
+    // Leave external displays on for docked mode.
     display_power = chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON;
   } else {
     brightness_percent =

@@ -62,6 +62,10 @@ void BacklightControllerStub::HandlePowerButtonPress() {
   power_button_presses_++;
 }
 
+void BacklightControllerStub::HandleLidStateChange(LidState state) {
+  lid_state_changes_.push_back(state);
+}
+
 void BacklightControllerStub::HandleUserActivity(UserActivityType type) {
   user_activity_reports_.push_back(type);
 }
@@ -105,10 +109,6 @@ void BacklightControllerStub::SetSuspended(bool suspended) {
 
 void BacklightControllerStub::SetShuttingDown(bool shutting_down) {
   shutting_down_ = shutting_down;
-}
-
-void BacklightControllerStub::SetDocked(bool docked) {
-  docked_ = docked;
 }
 
 void BacklightControllerStub::SetForcedOff(bool forced_off) {

@@ -141,9 +141,11 @@ class DaemonDelegateImpl : public DaemonDelegate {
       PrefsInterface* prefs,
       system::AmbientLightSensorInterface* sensor,
       system::DisplayPowerSetterInterface* power_setter,
-      system::DBusWrapperInterface* dbus_wrapper) override {
+      system::DBusWrapperInterface* dbus_wrapper,
+      LidState initial_lid_state) override {
     auto controller = std::make_unique<policy::InternalBacklightController>();
-    controller->Init(backlight, prefs, sensor, power_setter, dbus_wrapper);
+    controller->Init(backlight, prefs, sensor, power_setter, dbus_wrapper,
+                     initial_lid_state);
     return controller;
   }
 
@@ -154,10 +156,12 @@ class DaemonDelegateImpl : public DaemonDelegate {
       system::AmbientLightSensorInterface* sensor,
       system::DBusWrapperInterface* dbus_wrapper,
       policy::BacklightController* display_backlight_controller,
+      LidState initial_lid_state,
       TabletMode initial_tablet_mode) override {
     auto controller = std::make_unique<policy::KeyboardBacklightController>();
     controller->Init(backlight, prefs, sensor, dbus_wrapper,
-                     display_backlight_controller, initial_tablet_mode);
+                     display_backlight_controller, initial_lid_state,
+                     initial_tablet_mode);
     return controller;
   }
 

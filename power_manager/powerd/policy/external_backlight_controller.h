@@ -49,6 +49,7 @@ class ExternalBacklightController : public BacklightController,
   void HandleDisplayModeChange(DisplayMode mode) override;
   void HandleSessionStateChange(SessionState state) override;
   void HandlePowerButtonPress() override;
+  void HandleLidStateChange(LidState state) override;
   void HandleUserActivity(UserActivityType type) override;
   void HandleVideoActivity(bool is_fullscreen) override;
   void HandleWakeNotification() override;
@@ -60,7 +61,6 @@ class ExternalBacklightController : public BacklightController,
   void SetOffForInactivity(bool off) override;
   void SetSuspended(bool suspended) override;
   void SetShuttingDown(bool shutting_down) override;
-  void SetDocked(bool docked) override;
   void SetForcedOff(bool forced_off) override;
   bool GetForcedOff() override;
   bool GetBrightnessPercent(double* percent) override;

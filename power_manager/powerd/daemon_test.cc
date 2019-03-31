@@ -196,12 +196,14 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       PrefsInterface* prefs,
       system::AmbientLightSensorInterface* sensor,
       system::DisplayPowerSetterInterface* power_setter,
-      system::DBusWrapperInterface* dbus_wrapper) override {
+      system::DBusWrapperInterface* dbus_wrapper,
+      LidState initial_lid_state) override {
     EXPECT_EQ(internal_backlight_, backlight);
     EXPECT_EQ(prefs_, prefs);
     EXPECT_TRUE(!sensor || sensor == ambient_light_sensor_);
     EXPECT_EQ(display_power_setter_, power_setter);
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
+    EXPECT_EQ(input_watcher_->QueryLidState(), initial_lid_state);
     return std::move(passed_internal_backlight_controller_);
   }
   std::unique_ptr<policy::BacklightController>
@@ -211,12 +213,14 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       system::AmbientLightSensorInterface* sensor,
       system::DBusWrapperInterface* dbus_wrapper,
       policy::BacklightController* display_backlight_controller,
+      LidState initial_lid_state,
       TabletMode initial_tablet_mode) override {
     EXPECT_EQ(keyboard_backlight_, backlight);
     EXPECT_EQ(prefs_, prefs);
     EXPECT_TRUE(!sensor || sensor == ambient_light_sensor_);
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     EXPECT_EQ(internal_backlight_controller_, display_backlight_controller);
+    EXPECT_EQ(input_watcher_->QueryLidState(), initial_lid_state);
     EXPECT_EQ(input_watcher_->GetTabletMode(), initial_tablet_mode);
     return std::move(passed_keyboard_backlight_controller_);
   }
@@ -422,6 +426,16 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
   ASSERT_EQ(2, keyboard_backlight_controller_->hover_state_changes().size());
   EXPECT_TRUE(keyboard_backlight_controller_->hover_state_changes()[0]);
   EXPECT_FALSE(keyboard_backlight_controller_->hover_state_changes()[1]);
+
+  // Lid events.
+  input_watcher_->set_lid_state(LidState::CLOSED);
+  input_watcher_->NotifyObserversAboutLidState();
+  ASSERT_EQ(1, internal_backlight_controller_->lid_state_changes().size());
+  EXPECT_EQ(LidState::CLOSED,
+            internal_backlight_controller_->lid_state_changes()[0]);
+  ASSERT_EQ(1, keyboard_backlight_controller_->lid_state_changes().size());
+  EXPECT_EQ(LidState::CLOSED,
+            keyboard_backlight_controller_->lid_state_changes()[0]);
 
   // Tablet mode changes.
   input_watcher_->set_tablet_mode(TabletMode::ON);

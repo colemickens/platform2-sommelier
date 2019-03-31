@@ -69,9 +69,10 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
     prefs_.SetInt64(kKeyboardBacklightKeepOnDuringVideoMsPref,
                     keep_on_during_video_ms_pref_);
 
-    controller_.Init(
-        &backlight_, &prefs_, pass_light_sensor_ ? &light_sensor_ : nullptr,
-        &dbus_wrapper_, &display_backlight_controller_, initial_tablet_mode_);
+    controller_.Init(&backlight_, &prefs_,
+                     pass_light_sensor_ ? &light_sensor_ : nullptr,
+                     &dbus_wrapper_, &display_backlight_controller_,
+                     initial_lid_state_, initial_tablet_mode_);
   }
 
  protected:
@@ -132,7 +133,8 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
   // Initial lux level reported by |light_sensor_|.
   int initial_als_lux_;
 
-  // Initial tablet mode passed to |controller_|.
+  // Initial  lid state and tablet mode passed to |controller_|.
+  LidState initial_lid_state_ = LidState::NOT_PRESENT;
   TabletMode initial_tablet_mode_;
 
   // Values for various preferences.  These can be changed by tests before
@@ -484,9 +486,12 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenShuttingDown) {
   EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
 }
 
-TEST_F(KeyboardBacklightControllerTest, TurnOffWhenDocked) {
+TEST_F(KeyboardBacklightControllerTest, TurnOffWhenLidClosed) {
+  initial_lid_state_ = LidState::OPEN;
   Init();
-  controller_.SetDocked(true);
+  ASSERT_EQ(initial_backlight_level_, backlight_.current_level());
+
+  controller_.HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
 

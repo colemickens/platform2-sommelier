@@ -90,6 +90,8 @@ void ExternalBacklightController::HandleSessionStateChange(SessionState state) {
 
 void ExternalBacklightController::HandlePowerButtonPress() {}
 
+void ExternalBacklightController::HandleLidStateChange(LidState state) {}
+
 void ExternalBacklightController::HandleVideoActivity(bool is_fullscreen) {}
 
 void ExternalBacklightController::HandleHoverStateChange(bool hovering) {}
@@ -144,8 +146,6 @@ void ExternalBacklightController::SetShuttingDown(bool shutting_down) {
 bool ExternalBacklightController::GetBrightnessPercent(double* percent) {
   return false;
 }
-
-void ExternalBacklightController::SetDocked(bool docked) {}
 
 void ExternalBacklightController::SetForcedOff(bool forced_off) {
   if (forced_off_ == forced_off)

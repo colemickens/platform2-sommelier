@@ -76,7 +76,8 @@ class InternalBacklightController : public BacklightController,
             PrefsInterface* prefs,
             system::AmbientLightSensorInterface* sensor,
             system::DisplayPowerSetterInterface* display_power_setter,
-            system::DBusWrapperInterface* dbus_wrapper);
+            system::DBusWrapperInterface* dbus_wrapper,
+            LidState initial_lid_state);
 
   // BacklightController implementation:
   void AddObserver(BacklightControllerObserver* observer) override;
@@ -85,6 +86,7 @@ class InternalBacklightController : public BacklightController,
   void HandleDisplayModeChange(DisplayMode mode) override;
   void HandleSessionStateChange(SessionState state) override;
   void HandlePowerButtonPress() override;
+  void HandleLidStateChange(LidState state) override;
   void HandleUserActivity(UserActivityType type) override;
   void HandleVideoActivity(bool is_fullscreen) override;
   void HandleWakeNotification() override;
@@ -96,7 +98,6 @@ class InternalBacklightController : public BacklightController,
   void SetOffForInactivity(bool off) override;
   void SetSuspended(bool suspended) override;
   void SetShuttingDown(bool shutting_down) override;
-  void SetDocked(bool docked) override;
   void SetForcedOff(bool forced_off) override;
   bool GetForcedOff() override;
   bool GetBrightnessPercent(double* percent) override;
@@ -171,11 +172,11 @@ class InternalBacklightController : public BacklightController,
   // Information describing the current state of the system.
   PowerSource power_source_ = PowerSource::BATTERY;
   DisplayMode display_mode_ = DisplayMode::NORMAL;
+  LidState lid_state_ = LidState::NOT_PRESENT;
   bool dimmed_for_inactivity_ = false;
   bool off_for_inactivity_ = false;
   bool suspended_ = false;
   bool shutting_down_ = false;
-  bool docked_ = false;
   bool forced_off_ = false;
 
   // Time at which Init() was called.

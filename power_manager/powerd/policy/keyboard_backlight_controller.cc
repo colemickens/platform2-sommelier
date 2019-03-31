@@ -94,11 +94,13 @@ void KeyboardBacklightController::Init(
     system::AmbientLightSensorInterface* sensor,
     system::DBusWrapperInterface* dbus_wrapper,
     BacklightController* display_backlight_controller,
+    LidState initial_lid_state,
     TabletMode initial_tablet_mode) {
   backlight_ = backlight;
   backlight_->AddObserver(this);
 
   prefs_ = prefs;
+  lid_state_ = initial_lid_state;
   tablet_mode_ = initial_tablet_mode;
 
   dbus_wrapper_ = dbus_wrapper;
@@ -203,6 +205,16 @@ void KeyboardBacklightController::HandleSessionStateChange(SessionState state) {
 
 void KeyboardBacklightController::HandlePowerButtonPress() {}
 
+void KeyboardBacklightController::HandleLidStateChange(LidState state) {
+  if (state == lid_state_)
+    return;
+
+  lid_state_ = state;
+  UpdateState(
+      lid_state_ == LidState::CLOSED ? Transition::INSTANT : Transition::FAST,
+      BacklightBrightnessChange_Cause_OTHER);
+}
+
 void KeyboardBacklightController::HandleUserActivity(UserActivityType type) {
   last_user_activity_time_ = clock_->GetCurrentTime();
   UpdateTurnOffTimer();
@@ -296,13 +308,6 @@ void KeyboardBacklightController::SetShuttingDown(bool shutting_down) {
   if (shutting_down == shutting_down_)
     return;
   shutting_down_ = shutting_down;
-  UpdateState(Transition::INSTANT, BacklightBrightnessChange_Cause_OTHER);
-}
-
-void KeyboardBacklightController::SetDocked(bool docked) {
-  if (docked == docked_)
-    return;
-  docked_ = docked;
   UpdateState(Transition::INSTANT, BacklightBrightnessChange_Cause_OTHER);
 }
 
@@ -496,8 +501,8 @@ void KeyboardBacklightController::HandleGetBrightnessRequest(
 bool KeyboardBacklightController::UpdateState(
     Transition transition, BacklightBrightnessChange_Cause cause) {
   // Force the backlight off immediately in several special cases.
-  if (forced_off_ || shutting_down_ || docked_ || suspended_ ||
-      tablet_mode_ == TabletMode::ON)
+  if (forced_off_ || shutting_down_ || suspended_ ||
+      lid_state_ == LidState::CLOSED || tablet_mode_ == TabletMode::ON)
     return ApplyBrightnessPercent(0.0, transition, cause);
 
   // If the user has asked for a specific brightness level, use it unless the

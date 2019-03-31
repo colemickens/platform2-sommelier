@@ -67,9 +67,9 @@ class InternalBacklightControllerTest : public ::testing::Test {
       controller_->clock()->set_current_time_for_testing(init_time_);
 
     dbus_wrapper_ = std::make_unique<system::DBusWrapperStub>();
-    controller_->Init(&backlight_, &prefs_,
-                      pass_light_sensor_ ? &light_sensor_ : nullptr,
-                      &display_power_setter_, dbus_wrapper_.get());
+    controller_->Init(
+        &backlight_, &prefs_, pass_light_sensor_ ? &light_sensor_ : nullptr,
+        &display_power_setter_, dbus_wrapper_.get(), LidState::OPEN);
 
     if (report_initial_power_source_)
       controller_->HandlePowerSourceChange(power_source);
@@ -726,7 +726,7 @@ TEST_F(InternalBacklightControllerTest, DockedMode) {
   const int64_t initial_level = backlight_.current_level();
   ASSERT_GT(initial_level, 0);
 
-  controller_->SetDocked(true);
+  controller_->HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
             display_power_setter_.state());
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
@@ -754,7 +754,7 @@ TEST_F(InternalBacklightControllerTest, DockedMode) {
 
   // After exiting docked mode, the internal display should be turned back on
   // and the backlight should be at the dimmed level.
-  controller_->SetDocked(false);
+  controller_->HandleLidStateChange(LidState::OPEN);
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
   EXPECT_GT(backlight_.current_level(), 0);
@@ -800,7 +800,7 @@ TEST_F(InternalBacklightControllerTest,
   // Send a docked-mode request before the first ambient light reading.
   report_initial_als_reading_ = false;
   Init(PowerSource::AC);
-  controller_->SetDocked(true);
+  controller_->HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
 
   // Check that the system goes into docked mode after an ambient light
@@ -928,7 +928,7 @@ TEST_F(InternalBacklightControllerTest, SetPowerOnDisplayServiceStart) {
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
 
   // Enter docked mode.
-  controller_->SetDocked(true);
+  controller_->HandleLidStateChange(LidState::CLOSED);
   ASSERT_EQ(chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
             display_power_setter_.state());
 
