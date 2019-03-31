@@ -374,7 +374,8 @@ void InternalBacklightController::SetDimmedForInactivity(bool dimmed) {
   VLOG(1) << (dimmed ? "Dimming" : "No longer dimming") << " for inactivity";
   dimmed_for_inactivity_ = dimmed;
   UpdateState(dimmed ? BacklightBrightnessChange_Cause_USER_INACTIVITY
-                     : BacklightBrightnessChange_Cause_USER_ACTIVITY);
+                     : BacklightBrightnessChange_Cause_USER_ACTIVITY,
+              dimmed ? Transition::FAST : Transition::INSTANT);
 }
 
 void InternalBacklightController::SetOffForInactivity(bool off) {
@@ -485,25 +486,27 @@ void InternalBacklightController::SetBrightnessPercentForAmbientLight(
   ambient_light_brightness_percent_ = brightness_percent;
   got_ambient_light_brightness_percent_ = true;
 
-  if (use_ambient_light_) {
-    if (!already_set_initial_state_) {
-      // UpdateState() defers doing anything until the first ambient light
-      // reading has been received, so it may need to be called at this point.
-      UpdateState(BacklightBrightnessChange_Cause_OTHER);
-    } else {
-      // This method also handles changes that were triggered by external power
-      // being connected or disconnected.
-      const bool ambient_light_changed =
-          cause == AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT;
-      Transition transition =
-          ambient_light_changed ? Transition::SLOW : Transition::FAST;
-      if (UpdateUndimmedBrightness(
-              transition, AmbientLightHandler::ToProtobufCause(cause)) &&
-          ambient_light_changed) {
-        als_adjustment_count_++;
-      }
-    }
-  }
+  if (!use_ambient_light_)
+    return;
+
+  // If powerd hasn't started controlling the backlight yet, don't blame ambient
+  // light for any brightness change that UpdateState() may end up making.
+  const BacklightBrightnessChange_Cause backlight_cause =
+      already_set_initial_state_ ? AmbientLightHandler::ToProtobufCause(cause)
+                                 : BacklightBrightnessChange_Cause_OTHER;
+
+  // This method is also called for power source changes while
+  // AmbientLightHandler is controlling the brightness. Perform a fast
+  // transition in that case.
+  const bool ambient_light_changed =
+      backlight_cause == BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED;
+  const Transition transition =
+      ambient_light_changed ? Transition::SLOW : Transition::FAST;
+
+  const int64_t old_level = current_level_;
+  UpdateState(backlight_cause, transition);
+  if (ambient_light_changed && current_level_ != old_level)
+    als_adjustment_count_++;
 }
 
 double InternalBacklightController::SnapBrightnessPercentToNearestStep(
@@ -624,7 +627,7 @@ void InternalBacklightController::EnsureUserBrightnessIsNonzero(
   }
 }
 
-bool InternalBacklightController::SetExplicitBrightnessPercent(
+void InternalBacklightController::SetExplicitBrightnessPercent(
     double ac_percent,
     double battery_percent,
     Transition transition,
@@ -635,11 +638,11 @@ bool InternalBacklightController::SetExplicitBrightnessPercent(
   battery_explicit_brightness_percent_ =
       battery_percent <= kEpsilon ? 0.0
                                   : ClampPercentToVisibleRange(battery_percent);
-  return UpdateUndimmedBrightness(transition, cause);
+  UpdateState(cause, transition);
 }
 
 void InternalBacklightController::UpdateState(
-    BacklightBrightnessChange_Cause cause) {
+    BacklightBrightnessChange_Cause cause, Transition adjust_transition) {
   // Give up on the ambient light sensor if it's not supplying readings.
   if (use_ambient_light_ && !got_ambient_light_brightness_percent_ &&
       clock_->GetCurrentTime() - init_time_ >=
@@ -657,11 +660,13 @@ void InternalBacklightController::UpdateState(
       (use_ambient_light_ && !got_ambient_light_brightness_percent_))
     return;
 
+  // First, figure out the backlight brightness and display power state that we
+  // should be using right now.
   double brightness_percent = 100.0;
   Transition brightness_transition = Transition::INSTANT;
 
   chromeos::DisplayPowerState display_power = chromeos::DISPLAY_POWER_ALL_ON;
-  Transition display_transition = Transition::INSTANT;
+  base::TimeDelta display_delay;
   bool set_display_power = true;
 
   if (shutting_down_ || forced_off_) {
@@ -675,7 +680,7 @@ void InternalBacklightController::UpdateState(
     brightness_percent = 0.0;
     brightness_transition = Transition::FAST;
     display_power = chromeos::DISPLAY_POWER_ALL_OFF;
-    display_transition = Transition::FAST;
+    display_delay = TransitionToTimeDelta(brightness_transition);
   } else if (docked_) {
     brightness_percent = 0.0;
     display_power = chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON;
@@ -688,20 +693,23 @@ void InternalBacklightController::UpdateState(
         current_level_ == 0;
     brightness_transition =
         turning_on ? Transition::INSTANT
-                   : (already_set_initial_state_ ? Transition::FAST
+                   : (already_set_initial_state_ ? adjust_transition
                                                  : Transition::SLOW);
 
-    // Keep the external display(s) on if the brightness was explicitly set to
-    // 0.
-    display_power = (brightness_percent <= kEpsilon)
-                        ? chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON
-                        : chromeos::DISPLAY_POWER_ALL_ON;
+    if (brightness_percent <= kEpsilon) {
+      // Keep external display(s) on if the brightness was explicitly set to 0.
+      display_power = chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON;
+      display_delay = TransitionToTimeDelta(brightness_transition) +
+                      turn_off_screen_timeout_;
+    }
   }
 
-  if (set_display_power) {
+  // Now apply the state that we decided on.
+  if (set_display_power && display_power != display_power_state_) {
     // For instant transitions, this call blocks until Chrome confirms that it
     // has made the change.
-    SetDisplayPower(display_power, TransitionToTimeDelta(display_transition));
+    display_power_setter_->SetDisplayPower(display_power, display_delay);
+    display_power_state_ = display_power;
   }
 
   // Apply the brightness after toggling the display power. If we do it the
@@ -710,76 +718,32 @@ void InternalBacklightController::UpdateState(
   // resulting in this request being dropped and the brightness being set to its
   // previous value instead. See chrome-os-partner:31186 and :35662 for more
   // details.
-  ApplyBrightnessPercent(brightness_percent, brightness_transition, cause);
+  const int64_t new_level = PercentToLevel(brightness_percent);
+  if (new_level != current_level_ || backlight_->TransitionInProgress()) {
+    // Force an instant transition if we're moving into or out of the
+    // below-min-visible (i.e. off-but-nonzero) range.
+    bool starting_below_min_visible_level = current_level_ < min_visible_level_;
+    bool ending_below_min_visible_level = new_level < min_visible_level_;
+    if (instant_transitions_below_min_level_ &&
+        starting_below_min_visible_level != ending_below_min_visible_level)
+      brightness_transition = Transition::INSTANT;
+
+    base::TimeDelta interval = TransitionToTimeDelta(brightness_transition);
+    LOG(INFO) << "Setting brightness to " << new_level << " ("
+              << brightness_percent << "%) over " << interval.InMilliseconds()
+              << " ms";
+    if (!backlight_->SetBrightnessLevel(new_level, interval)) {
+      LOG(WARNING) << "Could not set brightness";
+    } else {
+      current_level_ = new_level;
+      EmitBrightnessChangedSignal(dbus_wrapper_, kScreenBrightnessChangedSignal,
+                                  brightness_percent, cause);
+      for (BacklightControllerObserver& observer : observers_)
+        observer.OnBrightnessChange(brightness_percent, cause, this);
+    }
+  }
 
   already_set_initial_state_ = true;
-}
-
-bool InternalBacklightController::UpdateUndimmedBrightness(
-    Transition transition, BacklightBrightnessChange_Cause cause) {
-  const double percent = GetUndimmedBrightnessPercent();
-
-  // Don't apply the change if we're in a state that overrides the new level.
-  if (shutting_down_ || forced_off_ || suspended_ || docked_ ||
-      off_for_inactivity_ || dimmed_for_inactivity_)
-    return false;
-
-  if (!ApplyBrightnessPercent(percent, transition, cause))
-    return false;
-
-  if (percent <= kEpsilon) {
-    // Keep the external display(s) on if the brightness was explicitly set to
-    // 0.
-    SetDisplayPower(
-        chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
-        docked_ ? base::TimeDelta()
-                : TransitionToTimeDelta(transition) + turn_off_screen_timeout_);
-  } else {
-    SetDisplayPower(chromeos::DISPLAY_POWER_ALL_ON, base::TimeDelta());
-  }
-  return true;
-}
-
-bool InternalBacklightController::ApplyBrightnessPercent(
-    double percent,
-    Transition transition,
-    BacklightBrightnessChange_Cause cause) {
-  int64_t level = PercentToLevel(percent);
-  if (level == current_level_ && !backlight_->TransitionInProgress())
-    return false;
-
-  // Force an instant transition if needed while moving within the
-  // not-visible range.
-  bool starting_below_min_visible_level = current_level_ < min_visible_level_;
-  bool ending_below_min_visible_level = level < min_visible_level_;
-  if (instant_transitions_below_min_level_ &&
-      starting_below_min_visible_level != ending_below_min_visible_level)
-    transition = Transition::INSTANT;
-
-  base::TimeDelta interval = TransitionToTimeDelta(transition);
-  LOG(INFO) << "Setting brightness to " << level << " (" << percent
-            << "%) over " << interval.InMilliseconds() << " ms";
-  if (!backlight_->SetBrightnessLevel(level, interval)) {
-    LOG(WARNING) << "Could not set brightness";
-    return false;
-  }
-
-  current_level_ = level;
-  EmitBrightnessChangedSignal(dbus_wrapper_, kScreenBrightnessChangedSignal,
-                              percent, cause);
-
-  for (BacklightControllerObserver& observer : observers_)
-    observer.OnBrightnessChange(percent, cause, this);
-  return true;
-}
-
-void InternalBacklightController::SetDisplayPower(
-    chromeos::DisplayPowerState state, base::TimeDelta delay) {
-  if (state == display_power_state_)
-    return;
-
-  display_power_setter_->SetDisplayPower(state, delay);
-  display_power_state_ = state;
 }
 
 }  // namespace policy

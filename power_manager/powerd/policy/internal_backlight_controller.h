@@ -137,38 +137,24 @@ class InternalBacklightController : public BacklightController,
   // brightness was set to zero via a policy.
   void EnsureUserBrightnessIsNonzero(BacklightBrightnessChange_Cause cause);
 
-  // Method that disables ambient light adjustments, updates the
-  // |*_explicit_brightness_percent_| members, and updates the backlight's
-  // brightness if needed. Returns true if the backlight's brightness was
-  // changed.
-  bool SetExplicitBrightnessPercent(double ac_percent,
+  // Disables ambient light adjustments, updates the
+  // |*_explicit_brightness_percent_| members, and calls UpdateState().
+  void SetExplicitBrightnessPercent(double ac_percent,
                                     double battery_percent,
                                     Transition transition,
                                     BacklightBrightnessChange_Cause cause);
 
-  // Updates the current brightness after assessing the current state
-  // (based on |power_source_|, |dimmed_for_inactivity_|, etc.).  Should be
-  // called whenever the state changes.
-  void UpdateState(BacklightBrightnessChange_Cause cause);
-
-  // If the display is currently in the undimmed state, calls
-  // ApplyBrightnessPercent() to update the backlight brightness.  Returns
-  // true if the brightness was changed.
-  bool UpdateUndimmedBrightness(Transition transition,
-                                BacklightBrightnessChange_Cause cause);
-
-  // Sets |backlight_|'s brightness to |percent| over |transition|.  If the
-  // brightness changed, notifies |observers_| that the change was due to
-  // |cause| and returns true.
-  bool ApplyBrightnessPercent(double percent,
-                              Transition transition,
-                              BacklightBrightnessChange_Cause cause);
-
-  // Updates displays to |state| after |delay| if |state| doesn't match
-  // |display_power_state_|.  If another change has already been scheduled,
-  // it will be aborted.
-  void SetDisplayPower(chromeos::DisplayPowerState state,
-                       base::TimeDelta delay);
+  // Updates the system's backlight brightness and display power after examining
+  // the current state (as described by |power_source_|,
+  // |dimmed_for_inactivity_|, |*_brightness_percent_|, etc.). Also updates
+  // |current_level_| and |display_power_state_| and notifies |observers_| about
+  // the change. This should be called whenever any member variables comprising
+  // the state are updated.
+  //
+  // |adjust_transition| is used when making a normal brightness change (i.e.
+  // without changing the display power) but can be omitted otherwise.
+  void UpdateState(BacklightBrightnessChange_Cause cause,
+                   Transition adjust_transition = Transition::FAST);
 
   // Not owned by this class.
   system::BacklightInterface* backlight_ = nullptr;

@@ -498,8 +498,7 @@ TEST_F(InternalBacklightControllerTest, TestDimming) {
   // After leaving the dimmed state, the updated ALS level should be used.
   controller_->SetDimmedForInactivity(false);
   EXPECT_EQ(PercentToLevel(75.0), backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
 
   // User requests shouldn't change the brightness while dimmed either.
   controller_->SetDimmedForInactivity(true);
@@ -514,8 +513,7 @@ TEST_F(InternalBacklightControllerTest, TestDimming) {
   // After leaving the dimmed state, the updated user level should be used.
   controller_->SetDimmedForInactivity(false);
   EXPECT_EQ(PercentToLevel(kNewUserOffset), backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
 
   // If the brightness is already below the dimmed level, it shouldn't be
   // changed when dimming is requested.
