@@ -140,6 +140,7 @@ executable("cryptohome-proxy") {
     "libs:cryptohome-proto-external",
     "libs:cryptohome_adaptors",
     "libs:libcryptohome",
+    "libs:userdataauth-client-headers",
   ]
   pkg_deps = [
     "dbus-1",

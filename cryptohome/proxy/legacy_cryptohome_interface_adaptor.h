@@ -12,8 +12,10 @@
 #include <dbus/cryptohome/dbus-constants.h>
 
 #include "rpc.pb.h"  // NOLINT(build/include)
+#include "UserDataAuth.pb.h"  // NOLINT(build/include)
 #include "dbus_adaptors/org.chromium.CryptohomeInterface.h"  // NOLINT(build/include_alpha)
-// The dbus_adaptors include must happen after the protobuf include
+#include "user_data_auth/dbus-proxies.h"
+// The dbus_adaptor and proxy include must happen after the protobuf include
 
 namespace cryptohome {
 
@@ -23,7 +25,8 @@ class LegacyCryptohomeInterfaceAdaptor
  public:
   explicit LegacyCryptohomeInterfaceAdaptor(scoped_refptr<dbus::Bus> bus)
       : org::chromium::CryptohomeInterfaceAdaptor(this),
-        dbus_object_(nullptr, bus, dbus::ObjectPath(kCryptohomeServicePath)) {}
+        dbus_object_(nullptr, bus, dbus::ObjectPath(kCryptohomeServicePath)),
+        user_data_auth_(new org::chromium::UserDataAuthInterfaceProxy(bus)) {}
 
   void RegisterAsync(
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
@@ -412,6 +415,8 @@ class LegacyCryptohomeInterfaceAdaptor
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
 
+  std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
+      user_data_auth_;
   DISALLOW_COPY_AND_ASSIGN(LegacyCryptohomeInterfaceAdaptor);
 };
 
