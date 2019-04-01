@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+# -*- coding: utf-8 -*-
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -221,7 +222,7 @@ def GetParser(description):
   # Parser: get-touch-firmware-files
   subparsers.add_parser(
       'get-touch-firmware-files',
-      help='Lists groups of touch firmware files in sequence: first line is ' +
+      help='Lists groups of touch firmware files in sequence: first line is '
       'firmware file, second line is symlink name for /lib/firmware')
   subparsers.add_parser(
       'get-firmware-uris',
@@ -230,18 +231,18 @@ def GetParser(description):
   # Parser: get-arc-files
   subparsers.add_parser(
       'get-arc-files',
-      help='Lists pairs of arc++ files in sequence: first line is ' +
+      help='Lists pairs of arc++ files in sequence: first line is '
       'the relative source file file, second line is the full install pathname')
   # Parser: get-audio-files
   subparsers.add_parser(
       'get-audio-files',
-      help='Lists pairs of audio files in sequence: first line is ' +
+      help='Lists pairs of audio files in sequence: first line is '
       'the source file, second line is the full install pathname')
   # Parser: get-bluetooth-files
   subparsers.add_parser(
       'get-bluetooth-files',
-      help='Lists pairs of bluetooth files in sequence: first line is ' +
-           'the source file, second line is the full install pathname')
+      help='Lists pairs of bluetooth files in sequence: first line is '
+      'the source file, second line is the full install pathname')
   # Parser: get-firmware-build-targets
   build_target_parser = subparsers.add_parser(
       'get-firmware-build-targets',
@@ -253,7 +254,7 @@ def GetParser(description):
   # Parser: get-thermal-files
   subparsers.add_parser(
       'get-thermal-files',
-      help='Lists pairs of thermal files in sequence: first line is ' +
+      help='Lists pairs of thermal files in sequence: first line is '
       'the relative source file file, second line is the full install pathname')
   # Parser: file-tree
   file_tree_parser = subparsers.add_parser(
@@ -273,11 +274,11 @@ def GetParser(description):
   # Parser: get-firmware-build-combinations
   build_combination_parser = subparsers.add_parser(
       'get-firmware-build-combinations',
-      help='Lists firmware build combinations for the given types, for all ' +
+      help='Lists firmware build combinations for the given types, for all '
       'models.')
   build_combination_parser.add_argument(
       'components',
-      help='Comma-separated list of firmware components to get combinations ' +
+      help='Comma-separated list of firmware components to get combinations '
       'for.')
   # Parser: get-wallpaper-files
   subparsers.add_parser(

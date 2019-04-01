@@ -1,7 +1,9 @@
 #!/usr/bin/env python2
+# -*- coding: utf-8 -*-
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+# pylint: disable=class-missing-docstring
 
 """The unit test suite for the libcros_config_host.py library"""
 
@@ -51,11 +53,10 @@ def capture_sys_output():
     sys.stdout, sys.stderr = old_out, old_err
 
 def _FormatNamedTuplesDict(value):
-   result = copy.deepcopy(value)
-   for key, value in result.iteritems():
-     result[key] = value._asdict()
-
-   return json.dumps(result, indent=2)
+  result = copy.deepcopy(value)
+  for key, value in result.iteritems():
+    result[key] = value._asdict()
+  return json.dumps(result, indent=2)
 
 
 class CrosConfigHostTest(unittest.TestCase):

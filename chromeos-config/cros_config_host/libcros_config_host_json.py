@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -122,8 +123,10 @@ class CrosConfigJson(CrosConfigBaseImpl):
   """
 
   def __init__(self, infile, model_filter_regex=None):
-    """
+    """Constructor for JSON specific implementation of CrosConfig
+
     Args:
+      infile: File-like object with JSON configuration
       model_filter_regex: Only returns configs that match the filter.
     """
     self._json = json.loads(

@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+# -*- coding: utf-8 -*-
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -8,7 +9,6 @@
 from __future__ import print_function
 
 import os
-import re
 import subprocess
 import unittest
 
@@ -21,7 +21,7 @@ class CrosConfigHostTest(unittest.TestCase):
   def setUp(self):
     self.conf_file = os.path.join(os.path.dirname(__file__), YAML_FILE)
 
-  """Common tests shared between the YAML and FDT implementations."""
+  # Common tests shared between the YAML and FDT implementations.
   def CheckManyLinesWithoutSpaces(self, output, lines=3):
     # Expect there to be a few lines
     self.assertGreater(len(output.split()), lines)

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -15,18 +16,18 @@ from cros_config_schema import GetValidSchemaProperties
 # the YAML based impl.  These properties are accounted for in other API level
 # diffs, but they changed between the schemas and therefore can't be diffed.
 INCOMPATIBLE_PROPERTIES = {
-  '/' : [
-    'brand-code',         # Moved due to Whitelabel/Product changes.
-    'name',               # Only in YAML
-  ],
-  '/firmware' : [
-    'key-id',             # Moved to firmware-signing in YAML,
-    'name',               # Doesn't exist in DT impl
-  ],
-  '/firmware-signing' : [
-    'key-id',             # Moved from firmware in DT
-    'signature-id',       # Only in YAML
-  ],
+    '/' : [
+        'brand-code',         # Moved due to Whitelabel/Product changes.
+        'name',               # Only in YAML
+    ],
+    '/firmware' : [
+        'key-id',             # Moved to firmware-signing in YAML,
+        'name',               # Doesn't exist in DT impl
+    ],
+    '/firmware-signing' : [
+        'key-id',             # Moved from firmware in DT
+        'signature-id',       # Only in YAML
+    ],
 }
 
 # Represents a single touch firmware file which needs to be installed:
@@ -502,7 +503,7 @@ class CrosConfigBaseImpl(object):
     is the only feature currently implemented which uses this tree.
 
     Returns:
-        PathComponent object containing the root component
+      PathComponent object containing the root component
     """
     paths = set()
     for item in self.GetAudioFiles():
