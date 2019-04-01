@@ -51,6 +51,8 @@ class DBusSignal : public DBusSignalBase {
   ~DBusSignal() override = default;
 
   // DBusSignal<...>::Send(...) dispatches the signal with the given arguments.
+  // Note: This function can be called from any thread/task runner, as it'll
+  // eventually post the actual signal sending to the DBus thread.
   bool Send(const Args&... args) const {
     ::dbus::Signal signal(interface_name_, signal_name_);
     ::dbus::MessageWriter signal_writer(&signal);
