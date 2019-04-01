@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
@@ -36,6 +37,152 @@ const char kFuseDeviceFile[] = "/dev/fuse";
 const MountOptions::Flags kRequiredFuseMountFlags =
     MS_NODEV | MS_NOEXEC | MS_NOSUID;
 
+MountErrorType ConfigureCommonSandbox(SandboxedProcess* sandbox,
+                                      const Platform* platform,
+                                      bool network_ns,
+                                      const base::FilePath& seccomp,
+                                      bool unprivileged) {
+  // TODO(crbug.com/866377): Run FUSE fully deprivileged.
+  // Currently SYS_ADMIN is needed to perform mount()/umount() calls from
+  // libfuse.
+  uint64_t capabilities = unprivileged ? 0 : CAP_TO_MASK(CAP_SYS_ADMIN);
+  sandbox->SetCapabilities(capabilities);
+  sandbox->SetNoNewPrivileges();
+
+  // The FUSE mount program is put under a new mount namespace, so mounts
+  // inside that namespace don't normally propagate out except when a mount is
+  // created under /media, which is marked as a shared mount (by
+  // chromeos_startup). This prevents the FUSE mount program from remounting an
+  // existing mount point outside /media.
+  //
+  // TODO(benchan): It's fragile to assume chromeos_startup makes /media a
+  // shared mount. cros-disks should verify that and make /media a shared mount
+  // when necessary.
+  sandbox->NewMountNamespace();
+
+  // Prevent minjail from turning /media private again.
+  //
+  // TODO(benchan): Revisit this once minijail provides a finer control over
+  // what should be remounted private and what can remain shared (b:62056108).
+  sandbox->SkipRemountPrivate();
+
+  // TODO(benchan): Re-enable cgroup namespace when either Chrome OS
+  // kernel 3.8 supports it or no more supported devices use kernel
+  // 3.8.
+  // mount_process.NewCgroupNamespace();
+
+  sandbox->NewIpcNamespace();
+
+  if (network_ns) {
+    sandbox->NewNetworkNamespace();
+  }
+
+  if (!seccomp.empty()) {
+    if (!platform->PathExists(seccomp.value())) {
+      LOG(ERROR) << "Seccomp policy '" << seccomp.value() << "' is missing";
+      return MountErrorType::MOUNT_ERROR_INTERNAL;
+    }
+    sandbox->LoadSeccompFilterPolicy(seccomp.value());
+  }
+
+  // Prepare mounts for pivot_root.
+  if (!sandbox->SetUpMinimalMounts()) {
+    LOG(ERROR) << "Can't set up minijail mounts";
+    return MountErrorType::MOUNT_ERROR_INTERNAL;
+  }
+
+  if (!unprivileged) {
+    // Bind the FUSE device file.
+    if (!sandbox->BindMount(kFuseDeviceFile, kFuseDeviceFile, true, false)) {
+      LOG(ERROR) << "Unable to bind FUSE device file";
+      return MountErrorType::MOUNT_ERROR_INTERNAL;
+    }
+
+    // Mounts are exposed to the rest of the system through this shared mount.
+    if (!sandbox->BindMount("/media", "/media", true, false)) {
+      LOG(ERROR) << "Can't bind /media";
+      return MountErrorType::MOUNT_ERROR_INTERNAL;
+    }
+  }
+
+  // Data dirs if any are mounted inside /run/fuse.
+  if (!sandbox->Mount("tmpfs", "/run", "tmpfs", "mode=0755,size=10M")) {
+    LOG(ERROR) << "Can't mount /run";
+    return MountErrorType::MOUNT_ERROR_INTERNAL;
+  }
+  if (!sandbox->BindMount("/run/fuse", "/run/fuse", false, false)) {
+    LOG(ERROR) << "Can't bind /run/fuse";
+    return MountErrorType::MOUNT_ERROR_INTERNAL;
+  }
+
+  if (!network_ns) {
+    // Network DNS configs are in /run/shill.
+    if (!sandbox->BindMount("/run/shill", "/run/shill", false, false)) {
+      LOG(ERROR) << "Can't bind /run/shill";
+      return MountErrorType::MOUNT_ERROR_INTERNAL;
+    }
+    // Hardcoded hosts are mounted into /etc/hosts.d when Crostini is enabled.
+    if (platform->PathExists("/etc/hosts.d") &&
+        !sandbox->BindMount("/etc/hosts.d", "/etc/hosts.d", false, false)) {
+      LOG(ERROR) << "Can't bind /etc/hosts.d";
+      return MountErrorType::MOUNT_ERROR_INTERNAL;
+    }
+  }
+  if (!sandbox->EnterPivotRoot()) {
+    LOG(ERROR) << "Can't pivot root";
+    return MountErrorType::MOUNT_ERROR_INTERNAL;
+  }
+
+  return MountErrorType::MOUNT_ERROR_NONE;
+}
+
+bool MountFuseDevice(const Platform* platform,
+                     const std::string& source,
+                     const base::FilePath& target,
+                     const base::File& fuse_file,
+                     uid_t mount_user_id,
+                     gid_t mount_group_id,
+                     const MountOptions& options) {
+  // Mount options for FUSE:
+  // fd - File descriptor for /dev/fuse.
+  // user_id/group_id - user/group for file access control. Essentially
+  //     bypassed due to allow_other, but still required to be set.
+  // allow_other - Allows users other than user_id/group_id to access files
+  //     on the file system. By default, FUSE prevents any process other than
+  //     ones running under user_id/group_id to access files, regardless of
+  //     the file's permissions.
+  // default_permissions - Enforce permission checking.
+  // rootmode - Mode bits for the root inode.
+  std::string fuse_mount_options = base::StringPrintf(
+      "fd=%d,user_id=%u,group_id=%u,allow_other,default_permissions,"
+      "rootmode=%o",
+      fuse_file.GetPlatformFile(), mount_user_id, mount_group_id, S_IFDIR);
+
+  // "nosymfollow" is a special mount option that's passed to the Chromium LSM
+  // and not forwarded to the FUSE driver. If it's set, add it as a mount
+  // option.
+  if (options.HasOption(MountOptions::kOptionNoSymFollow)) {
+    fuse_mount_options.append(",");
+    fuse_mount_options.append(MountOptions::kOptionNoSymFollow);
+  }
+
+  std::string fuse_type = "fuse";
+  struct stat statbuf = {0};
+  if (stat(source.c_str(), &statbuf) == 0 && S_ISBLK(statbuf.st_mode)) {
+    LOG(INFO) << "Source file " << source << " is a block device.";
+    // TODO(crbug.com/931500): Determine and set blksize mount option. Default
+    // is 512, which works everywhere, but is not necessarily optimal. Any
+    // power-of-2 in the range [512, PAGE_SIZE] will work, but the optimal size
+    // is the block/cluster size of the file system.
+    fuse_type = "fuseblk";
+  }
+
+  auto flags = options.ToMountFlagsAndData().first;
+
+  return platform->Mount(source, target.value(), fuse_type,
+                         flags | kRequiredFuseMountFlags, fuse_mount_options);
+}
+
 }  // namespace
 
 FUSEMounter::FUSEMounter(const string& source_path,
@@ -61,52 +208,55 @@ FUSEMounter::FUSEMounter(const string& source_path,
       unprivileged_mount_(unprivileged_mount) {}
 
 MountErrorType FUSEMounter::MountImpl() {
-  if (!platform_->PathExists(mount_program_path_)) {
-    LOG(ERROR) << "Failed to find the FUSE mount program";
-    return MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND;
+  auto mount_process = CreateSandboxedProcess();
+  auto status = ConfigureCommonSandbox(
+      mount_process.get(), platform_, !permit_network_access_,
+      base::FilePath(seccomp_policy_), unprivileged_mount_);
+  if (status != MountErrorType::MOUNT_ERROR_NONE) {
+    return status;
   }
 
   uid_t mount_user_id;
   gid_t mount_group_id;
   if (!platform_->GetUserAndGroupId(mount_user_, &mount_user_id,
                                     &mount_group_id)) {
-    return MOUNT_ERROR_INTERNAL;
+    LOG(ERROR) << "Can't resolve user '" << mount_user_ << "'";
+    return MountErrorType::MOUNT_ERROR_INTERNAL;
   }
   if (!mount_group_.empty() &&
       !platform_->GetGroupId(mount_group_, &mount_group_id)) {
     return MOUNT_ERROR_INTERNAL;
   }
 
-  // To perform a non-privileged mount via the FUSE mount program, change the
-  // group of the source and target path to the group of the non-privileged
-  // user, but keep the user of the source and target path unchanged. Also set
-  // appropriate group permissions on the source and target path.
-  if (!platform_->SetOwnership(target_path(), getuid(), mount_group_id) ||
-      !platform_->SetPermissions(target_path(), kTargetPathPermissions)) {
-    return MOUNT_ERROR_INTERNAL;
-  }
+  mount_process->SetUserId(mount_user_id);
+  mount_process->SetGroupId(mount_group_id);
 
-  // Source might be an URI. Only try to re-own source if it looks like
-  // an existing path.
-  if (platform_->PathExists(source_path())) {
-    if (!platform_->SetOwnership(source_path(), getuid(), mount_group_id) ||
-        !platform_->SetPermissions(source_path(), kSourcePathPermissions)) {
-      return MOUNT_ERROR_INTERNAL;
-    }
+  if (!platform_->PathExists(mount_program_path_)) {
+    LOG(ERROR) << "Mount program '" << mount_program_path_ << "' not found.";
+    return MountErrorType::MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND;
   }
+  mount_process->AddArgument(mount_program_path_);
 
   base::ScopedClosureRunner fuse_failure_unmounter;
   base::File fuse_file;
   if (unprivileged_mount_) {
     LOG(INFO) << "Using deprivileged FUSE with fd passing.";
 
-    fuse_file = OpenFuseDeviceFile();
+    fuse_file = base::File(
+        base::FilePath(kFuseDeviceFile),
+        base::File::FLAG_OPEN | base::File::FLAG_READ | base::File::FLAG_WRITE);
     if (!fuse_file.IsValid()) {
-      return MOUNT_ERROR_INTERNAL;
+      LOG(ERROR) << "Unable to open FUSE device file. Error: "
+                 << fuse_file.error_details() << " "
+                 << base::File::ErrorToString(fuse_file.error_details());
+      return MountErrorType::MOUNT_ERROR_INTERNAL;
     }
 
-    if (!MountFuseDevice(fuse_file, mount_user_id, mount_group_id)) {
-      return MOUNT_ERROR_INTERNAL;
+    if (!MountFuseDevice(platform_, source_path(),
+                         base::FilePath(target_path()), fuse_file,
+                         mount_user_id, mount_group_id, mount_options())) {
+      LOG(ERROR) << "Can't perform unprivileged FUSE mount";
+      return MountErrorType::MOUNT_ERROR_INTERNAL;
     }
 
     // Unmount the FUSE filesystem if any later part fails.
@@ -118,141 +268,71 @@ MountErrorType FUSEMounter::MountImpl() {
           }
         },
         platform_, target_path()));
+  } else {
+    // To perform a non-root mount via the FUSE mount program, change the
+    // group of the source and target path to the group of the non-privileged
+    // user, but keep the user of the source and target path unchanged. Also set
+    // appropriate group permissions on the source and target path.
+    if (!platform_->SetOwnership(target_path(), getuid(), mount_group_id) ||
+        !platform_->SetPermissions(target_path(), kTargetPathPermissions)) {
+      LOG(ERROR) << "Can't set up permissions on the mount point";
+      return MountErrorType::MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+    }
   }
 
-  SandboxedProcess mount_process;
-  mount_process.SetUserId(mount_user_id);
-  mount_process.SetGroupId(mount_group_id);
-  mount_process.SetNoNewPrivileges();
-  // TODO(crbug.com/866377): Run FUSE fully deprivileged.
-  // Currently SYS_ADMIN is needed to perform mount()/umount() calls from
-  // libfuse.
-  uint64_t capabilities = 0;
-  if (!unprivileged_mount_) {
-    capabilities |= CAP_TO_MASK(CAP_SYS_ADMIN);
-  }
-  mount_process.SetCapabilities(capabilities);
-
-  // The FUSE mount program is put under a new mount namespace, so mounts
-  // inside that namespace don't normally propagate out except when a mount is
-  // created under /media, which is marked as a shared mount (by
-  // chromeos_startup). This prevents the FUSE mount program from remounting an
-  // existing mount point outside /media.
-  //
-  // TODO(benchan): It's fragile to assume chromeos_startup makes /media a
-  // shared mount. cros-disks should verify that and make /media a shared mount
-  // when necessary.
-  mount_process.NewMountNamespace();
-  if (!mount_process.SetUpMinimalMounts()) {
-    LOG(ERROR) << "Can't set up minijail mounts";
-    return MOUNT_ERROR_INTERNAL;
+  // Source might be an URI. Only try to re-own source if it looks like
+  // an existing path.
+  if (!source_path().empty() && platform_->PathExists(source_path())) {
+    if (!platform_->SetOwnership(source_path(), getuid(), mount_group_id) ||
+        !platform_->SetPermissions(source_path(), kSourcePathPermissions)) {
+      LOG(ERROR) << "Can't set up permissions on the source";
+      return MountErrorType::MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+    }
   }
 
   // If a block device is being mounted, bind mount it into the sandbox.
   if (base::StartsWith(source_path(), "/dev/", base::CompareCase::SENSITIVE)) {
-    if (!mount_process.BindMount(source_path(), source_path(), true, false)) {
+    if (!mount_process->BindMount(source_path(), source_path(), true, false)) {
       LOG(ERROR) << "Unable to bind mount device " << source_path();
-      return MOUNT_ERROR_INTERNAL;
+      return MountErrorType::MOUNT_ERROR_INVALID_ARGUMENT;
     }
   }
 
-  // Data dirs if any are mounted inside /run/fuse.
-  if (!mount_process.Mount("tmpfs", "/run", "tmpfs", "mode=0755,size=10M")) {
-    LOG(ERROR) << "Can't mount /run";
-    return MOUNT_ERROR_INTERNAL;
-  }
-  if (!mount_process.BindMount("/run/fuse", "/run/fuse", false, false)) {
-    LOG(ERROR) << "Can't bind /run/fuse";
-    return MOUNT_ERROR_INTERNAL;
-  }
-  if (!mount_process.Mount("tmpfs", "/home", "tmpfs", "mode=0755,size=10M")) {
+  // TODO(crbug.com/933018): Remove when DriveFS helper is refactored.
+  if (!mount_process->Mount("tmpfs", "/home", "tmpfs", "mode=0755,size=10M")) {
     LOG(ERROR) << "Can't mount /home";
-    return MOUNT_ERROR_INTERNAL;
-  }
-
-  if (!unprivileged_mount_) {
-    // Bind the FUSE device file.
-    if (!mount_process.BindMount(kFuseDeviceFile, kFuseDeviceFile, true,
-                                 false)) {
-      LOG(ERROR) << "Unable to bind mount FUSE device file";
-      return MOUNT_ERROR_INTERNAL;
-    }
-
-    // Mounts are exposed to the rest of the system through this shared mount.
-    if (!mount_process.BindMount("/media", "/media", true, false)) {
-      LOG(ERROR) << "Can't bind mount /media";
-      return MOUNT_ERROR_INTERNAL;
-    }
+    return MountErrorType::MOUNT_ERROR_INTERNAL;
   }
 
   // This is for additional data dirs.
   for (const auto& path : accessible_paths_) {
-    if (!mount_process.BindMount(path.path, path.path, path.writable,
-                                 path.recursive)) {
+    if (!mount_process->BindMount(path.path, path.path, path.writable,
+                                  path.recursive)) {
       LOG(ERROR) << "Can't bind " << path.path;
-      return MOUNT_ERROR_INVALID_ARGUMENT;
+      return MountErrorType::MOUNT_ERROR_INVALID_ARGUMENT;
     }
   }
 
-  // Prevent minjail from turning /media private again.
-  //
-  // TODO(benchan): Revisit this once minijail provides a finer control over
-  // what should be remounted private and what can remain shared (b:62056108).
-  mount_process.SkipRemountPrivate();
-
-  if (!mount_process.EnterPivotRoot()) {
-    LOG(ERROR) << "Can't pivot root";
-    return MOUNT_ERROR_INTERNAL;
-  }
-
-  // TODO(benchan): Re-enable cgroup namespace when either Chrome OS
-  // kernel 3.8 supports it or no more supported devices use kernel
-  // 3.8.
-  // mount_process.NewCgroupNamespace();
-
-  mount_process.NewIpcNamespace();
-  if (!permit_network_access_) {
-    mount_process.NewNetworkNamespace();
-  } else {
-    // Network DNS configs are in /run/shill.
-    if (!mount_process.BindMount("/run/shill", "/run/shill", false, false)) {
-      LOG(ERROR) << "Can't bind /run/shill";
-      return MOUNT_ERROR_INTERNAL;
-    }
-    // Hardcoded hosts are mounted into /etc/hosts.d when Crostini is enabled.
-    if (platform_->PathExists("/etc/hosts.d") &&
-        !mount_process.BindMount("/etc/hosts.d", "/etc/hosts.d", false,
-                                 false)) {
-      LOG(ERROR) << "Can't bind /etc/hosts.d";
-      return MOUNT_ERROR_INTERNAL;
-    }
-  }
-
-  mount_process.AddArgument(mount_program_path_);
   string options_string = mount_options().ToString();
   if (!options_string.empty()) {
-    mount_process.AddArgument("-o");
-    mount_process.AddArgument(options_string);
+    mount_process->AddArgument("-o");
+    mount_process->AddArgument(options_string);
   }
   if (!source_path().empty()) {
-    mount_process.AddArgument(source_path());
+    mount_process->AddArgument(source_path());
   }
   if (unprivileged_mount_) {
-    mount_process.AddArgument(
+    mount_process->AddArgument(
         base::StringPrintf("/dev/fd/%d", fuse_file.GetPlatformFile()));
   } else {
-    mount_process.AddArgument(target_path());
+    mount_process->AddArgument(target_path());
   }
 
-  if (!seccomp_policy_.empty()) {
-    mount_process.LoadSeccompFilterPolicy(seccomp_policy_);
-  }
-
-  int return_code = mount_process.Run();
+  int return_code = mount_process->Run();
   if (return_code != 0) {
     LOG(WARNING) << "FUSE mount program failed with a return code "
                  << return_code;
-    return MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
+    return MountErrorType::MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
   }
   // The |fuse_failure_unmounter| closure runner is used to unmount the FUSE
   // filesystem (for unprivileged mounts) if any part of starting the FUSE
@@ -260,62 +340,11 @@ MountErrorType FUSEMounter::MountImpl() {
   // so release the closure runner to prevent the FUSE mount point from being
   // unmounted.
   ignore_result(fuse_failure_unmounter.Release());
-  return MOUNT_ERROR_NONE;
+  return MountErrorType::MOUNT_ERROR_NONE;
 }
 
-base::File FUSEMounter::OpenFuseDeviceFile() const {
-  base::File fuse_file(
-      base::FilePath(kFuseDeviceFile),
-      base::File::FLAG_OPEN | base::File::FLAG_READ | base::File::FLAG_WRITE);
-  if (!fuse_file.IsValid()) {
-    LOG(ERROR) << "Unable to open FUSE device file. Error: "
-               << fuse_file.error_details() << " "
-               << base::File::ErrorToString(fuse_file.error_details());
-  }
-  return fuse_file;
-}
-
-bool FUSEMounter::MountFuseDevice(const base::File& fuse_file,
-                                  uid_t mount_user_id,
-                                  gid_t mount_group_id) const {
-  // Mount options for FUSE:
-  // fd - File descriptor for /dev/fuse.
-  // user_id/group_id - user/group for file access control. Essentially
-  //     bypassed due to allow_other, but still required to be set.
-  // allow_other - Allows users other than user_id/group_id to access files
-  //     on the file system. By default, FUSE prevents any process other than
-  //     ones running under user_id/group_id to access files, regardless of
-  //     the file's permissions.
-  // default_permissions - Enforce permission checking.
-  // rootmode - Mode bits for the root inode.
-  std::string fuse_mount_options = base::StringPrintf(
-      "fd=%d,user_id=%u,group_id=%u,allow_other,default_permissions,"
-      "rootmode=%o",
-      fuse_file.GetPlatformFile(), mount_user_id, mount_group_id, S_IFDIR);
-
-  // "nosymfollow" is a special mount option that's passed to the Chromium LSM
-  // and not forwarded to the FUSE driver. If it's set, add it as a mount
-  // option.
-  if (mount_options().HasOption(MountOptions::kOptionNoSymFollow)) {
-    fuse_mount_options.append(",");
-    fuse_mount_options.append(MountOptions::kOptionNoSymFollow);
-  }
-
-  std::string fuse_type = "fuse";
-  struct stat statbuf = {0};
-  if (stat(source_path().c_str(), &statbuf) == 0 && S_ISBLK(statbuf.st_mode)) {
-    LOG(INFO) << "Source file " << source_path() << " is a block device.";
-    // TODO(crbug.com/931500): Determine and set blksize mount option. Default
-    // is 512, which works everywhere, but is not necessarily optimal. Any
-    // power-of-2 in the range [512, PAGE_SIZE] will work, but the optimal size
-    // is the block/cluster size of the file system.
-    fuse_type = "fuseblk";
-  }
-
-  return platform_->Mount(
-      source_path(), target_path(), fuse_type,
-      mount_options().ToMountFlagsAndData().first | kRequiredFuseMountFlags,
-      fuse_mount_options);
+std::unique_ptr<SandboxedProcess> FUSEMounter::CreateSandboxedProcess() const {
+  return std::make_unique<SandboxedProcess>();
 }
 
 }  // namespace cros_disks

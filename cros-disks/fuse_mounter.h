@@ -7,6 +7,7 @@
 
 #include <sys/types.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -17,6 +18,7 @@
 namespace cros_disks {
 
 class Platform;
+class SandboxedProcess;
 
 // A class for mounting a device file using a FUSE mount program.
 class FUSEMounter : public Mounter {
@@ -43,6 +45,9 @@ class FUSEMounter : public Mounter {
  protected:
   // Mounts a device file using the FUSE mount program at |mount_program_path_|.
   MountErrorType MountImpl() override;
+
+  // Protected for mocking out in testing.
+  virtual std::unique_ptr<SandboxedProcess> CreateSandboxedProcess() const;
 
   // An object that provides platform service.
   const Platform* const platform_;
@@ -72,13 +77,7 @@ class FUSEMounter : public Mounter {
   const bool unprivileged_mount_;
 
  private:
-  // Returns an opened FUSE device file.
-  base::File OpenFuseDeviceFile() const;
-
-  // Mount a FUSE device for unprivileged FUSE mounts.
-  bool MountFuseDevice(const base::File& fuse_file,
-                       uid_t mount_user_id,
-                       gid_t mount_group_id) const;
+  DISALLOW_COPY_AND_ASSIGN(FUSEMounter);
 };
 
 }  // namespace cros_disks

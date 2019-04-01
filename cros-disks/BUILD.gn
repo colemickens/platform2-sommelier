@@ -130,6 +130,7 @@ if (use.test) {
       "format_manager_test.cc",
       "fuse_helper_test.cc",
       "fuse_mount_manager_test.cc",
+      "fuse_mounter_test.cc",
       "metrics_test.cc",
       "mount_info_test.cc",
       "mount_manager_test.cc",
