@@ -156,8 +156,8 @@ TEST_F(DrivefsHelperTest, CreateMounter) {
   ASSERT_TRUE(mounter);
 
   EXPECT_EQ("drivefs", mounter->filesystem_type());
-  EXPECT_TRUE(mounter->source_path().empty());
-  EXPECT_EQ("/media/fuse/drivefs/id", mounter->target_path());
+  EXPECT_TRUE(mounter->source().empty());
+  EXPECT_EQ("/media/fuse/drivefs/id", mounter->target_path().value());
   auto options_string = mounter->mount_options().ToString();
   EXPECT_THAT(options_string, HasSubstr("datadir=/foo/bar"));
   EXPECT_THAT(options_string, HasSubstr("identity=id"));
@@ -180,8 +180,8 @@ TEST_F(DrivefsHelperTest, CreateMounter_CreateDataDir) {
   ASSERT_TRUE(mounter);
 
   EXPECT_EQ("drivefs", mounter->filesystem_type());
-  EXPECT_TRUE(mounter->source_path().empty());
-  EXPECT_EQ("/media/fuse/drivefs/id", mounter->target_path());
+  EXPECT_TRUE(mounter->source().empty());
+  EXPECT_EQ("/media/fuse/drivefs/id", mounter->target_path().value());
   auto options_string = mounter->mount_options().ToString();
   EXPECT_THAT(options_string, HasSubstr("datadir=/foo/bar"));
   EXPECT_THAT(options_string, HasSubstr("identity=id"));

@@ -399,7 +399,7 @@ void DiskManager::RegisterFilesystem(const Filesystem& filesystem) {
   filesystems_.emplace(filesystem.type, filesystem);
 }
 
-unique_ptr<Mounter> DiskManager::CreateMounter(
+unique_ptr<MounterCompat> DiskManager::CreateMounter(
     const Disk& disk,
     const Filesystem& filesystem,
     const string& target_path,
@@ -524,7 +524,7 @@ MountErrorType DiskManager::DoMount(const string& source_path,
     return MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
   }
 
-  unique_ptr<Mounter> mounter(
+  unique_ptr<MounterCompat> mounter(
       CreateMounter(disk, *filesystem, mount_path, options));
   CHECK(mounter) << "Failed to create a mounter";
 

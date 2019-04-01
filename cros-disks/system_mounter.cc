@@ -26,13 +26,16 @@ SystemMounter::SystemMounter(const string& source_path,
                              const string& filesystem_type,
                              const MountOptions& mount_options,
                              const Platform* platform)
-    : Mounter(source_path, target_path, filesystem_type, mount_options),
+    : MounterCompat(filesystem_type,
+                    source_path,
+                    base::FilePath(target_path),
+                    mount_options),
       platform_(platform) {}
 
-MountErrorType SystemMounter::MountImpl() {
+MountErrorType SystemMounter::MountImpl() const {
   pair<MountOptions::Flags, string> flags_and_data =
       mount_options().ToMountFlagsAndData();
-  if (!platform_->Mount(source_path(), target_path(), filesystem_type(),
+  if (!platform_->Mount(source(), target_path().value(), filesystem_type(),
                         flags_and_data.first, flags_and_data.second)) {
     switch (errno) {
       case ENODEV:

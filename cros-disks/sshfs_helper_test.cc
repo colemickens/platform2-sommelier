@@ -103,8 +103,8 @@ class SshfsHelperTest : public ::testing::Test {
 TEST_F(SshfsHelperTest, CreateMounter_SimpleOptions) {
   auto mounter = helper_.CreateMounter(kWorkingDir, kSomeSource, kMountDir, {});
   EXPECT_EQ("sshfs", mounter->filesystem_type());
-  EXPECT_EQ("src", mounter->source_path());
-  EXPECT_EQ("/mnt", mounter->target_path());
+  EXPECT_EQ("src", mounter->source());
+  EXPECT_EQ("/mnt", mounter->target_path().value());
   string opts = mounter->mount_options().ToString();
   EXPECT_THAT(opts, HasSubstr("BatchMode=yes"));
   EXPECT_THAT(opts, HasSubstr("PasswordAuthentication=no"));

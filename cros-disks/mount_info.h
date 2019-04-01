@@ -13,8 +13,6 @@
 
 namespace cros_disks {
 
-struct MountPoint;
-
 // A class for querying information about mount points.
 class MountInfo {
  public:
@@ -43,12 +41,14 @@ class MountInfo {
   bool RetrieveFromCurrentProcess();
 
  private:
+  struct MountPointData;
+
   // Converts a 3-character octal string into a decimal integer.
   // Returns -1 if the conversion fails.
   int ConvertOctalStringToInt(const std::string& octal) const;
 
   // A list of mount points gathered by the last call to RetrieveMountInfo().
-  std::vector<MountPoint> mount_points_;
+  std::vector<MountPointData> mount_points_;
 
   FRIEND_TEST(MountInfoTest, ConvertOctalStringToInt);
 

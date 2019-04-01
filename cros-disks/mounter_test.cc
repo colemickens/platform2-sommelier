@@ -5,76 +5,126 @@
 #include "cros-disks/mounter.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "cros-disks/mount_options.h"
+#include "cros-disks/mount_point.h"
+#include "cros-disks/platform.h"
 
-using std::string;
-using std::vector;
+using testing::_;
 using testing::Return;
 
 namespace cros_disks {
 
-// A mock mounter class for testing the mounter base class.
-class MounterUnderTest : public Mounter {
+namespace {
+
+const char kPath[] = "/mnt/foo/bar";
+
+class MounterForTest : public Mounter {
  public:
-  MounterUnderTest(const string& source_path,
-                   const string& target_path,
-                   const string& filesystem_type,
-                   const MountOptions& mount_options)
-      : Mounter(source_path, target_path, filesystem_type, mount_options) {}
+  MounterForTest() : Mounter("fs_type") {}
 
-  // Mocks mount implementation.
-  MOCK_METHOD0(MountImpl, MountErrorType());
-};
+  MOCK_CONST_METHOD2(MountImpl,
+                     MountErrorType(const std::string& source,
+                                    const base::FilePath& target_path));
+  MOCK_CONST_METHOD1(UnmountImpl, MountErrorType(const base::FilePath& path));
+  MOCK_CONST_METHOD3(CanMount,
+                     bool(const std::string& source,
+                          const std::vector<std::string>& options,
+                          base::FilePath* suggested_dir_name));
 
-class MounterTest : public ::testing::Test {
- protected:
-  void SetUp() override {
-    source_path_ = "/dev/sdb1";
-    target_path_ = "/media/disk";
-    filesystem_type_ = "vfat";
+  std::unique_ptr<MountPoint> Mount(const std::string& source,
+                                    const base::FilePath& target_path,
+                                    std::vector<std::string> options,
+                                    MountErrorType* error) const override {
+    *error = MountImpl(source, target_path);
+    if (*error == MountErrorType::MOUNT_ERROR_NONE) {
+      return std::make_unique<MountPoint>(
+          target_path, std::make_unique<MockUnmounter>(this));
+    }
+    return nullptr;
   }
 
-  string filesystem_type_;
-  string source_path_;
-  string target_path_;
-  MountOptions mount_options_;
-  vector<string> options_;
+ private:
+  class MockUnmounter : public Unmounter {
+   public:
+    explicit MockUnmounter(const MounterForTest* mounter) : mounter_(mounter) {}
+
+    MountErrorType Unmount(const MountPoint& mountpoint) override {
+      return mounter_->UnmountImpl(mountpoint.path());
+    }
+
+   private:
+    const MounterForTest* const mounter_;
+  };
 };
 
-TEST_F(MounterTest, MountReadOnlySucceeded) {
-  mount_options_.Initialize(options_, false, "", "");
-  MounterUnderTest mounter(source_path_, target_path_, filesystem_type_,
-                           mount_options_);
+class MounterCompatForTest : public MounterCompat {
+ public:
+  MounterCompatForTest(const std::string& filesystem_type,
+                       const std::string& source,
+                       const base::FilePath& target_path,
+                       const MountOptions& mount_options)
+      : MounterCompat(filesystem_type, source, target_path, mount_options) {}
 
-  EXPECT_CALL(mounter, MountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
-  EXPECT_TRUE(mounter.mount_options().IsReadOnlyOptionSet());
-  EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
+  MOCK_CONST_METHOD0(MountImpl, MountErrorType());
+};
+
+}  // namespace
+
+TEST(MounterTest, Basics) {
+  MounterForTest mounter;
+  EXPECT_CALL(mounter, MountImpl("src", base::FilePath(kPath)))
+      .WillOnce(Return(MountErrorType::MOUNT_ERROR_NONE));
+
+  MountErrorType error = MountErrorType::MOUNT_ERROR_NONE;
+  auto mount = mounter.Mount("src", base::FilePath(kPath), {}, &error);
+  EXPECT_TRUE(mount);
+  EXPECT_EQ(MountErrorType::MOUNT_ERROR_NONE, error);
+
+  EXPECT_CALL(mounter, UnmountImpl(base::FilePath(kPath)))
+      .WillOnce(Return(MountErrorType::MOUNT_ERROR_INVALID_ARCHIVE))
+      .WillOnce(Return(MountErrorType::MOUNT_ERROR_NONE));
+  EXPECT_EQ(MountErrorType::MOUNT_ERROR_INVALID_ARCHIVE, mount->Unmount());
 }
 
-TEST_F(MounterTest, MountReadWriteSucceeded) {
-  options_.push_back("rw");
-  mount_options_.Initialize(options_, false, "", "");
-  MounterUnderTest mounter(source_path_, target_path_, filesystem_type_,
-                           mount_options_);
+TEST(MounterTest, Leaking) {
+  MounterForTest mounter;
+  EXPECT_CALL(mounter, MountImpl("src", base::FilePath(kPath)))
+      .WillOnce(Return(MountErrorType::MOUNT_ERROR_NONE));
 
-  EXPECT_CALL(mounter, MountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
-  EXPECT_FALSE(mounter.mount_options().IsReadOnlyOptionSet());
-  EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
+  MountErrorType error = MountErrorType::MOUNT_ERROR_NONE;
+  auto mount = mounter.Mount("src", base::FilePath(kPath), {}, &error);
+  EXPECT_TRUE(mount);
+  EXPECT_EQ(MountErrorType::MOUNT_ERROR_NONE, error);
+
+  EXPECT_CALL(mounter, UnmountImpl(_)).Times(0);
+  mount->Release();
 }
 
-TEST_F(MounterTest, MountFailed) {
-  mount_options_.Initialize(options_, false, "", "");
-  MounterUnderTest mounter(source_path_, target_path_, filesystem_type_,
-                           mount_options_);
+TEST(MounterCompatTest, Properties) {
+  MounterCompatForTest mounter("fstype", "foo", base::FilePath("/mnt"), {});
+  EXPECT_EQ("fstype", mounter.filesystem_type());
+  EXPECT_EQ("foo", mounter.source());
+  EXPECT_EQ("/mnt", mounter.target_path().value());
+}
 
+TEST(MounterCompatTest, MountSuccess) {
+  MounterCompatForTest mounter("fstype", "foo", base::FilePath("/mnt"), {});
   EXPECT_CALL(mounter, MountImpl())
-      .WillOnce(Return(MOUNT_ERROR_INTERNAL));
-  EXPECT_EQ(MOUNT_ERROR_INTERNAL, mounter.Mount());
+      .WillOnce(Return(MountErrorType::MOUNT_ERROR_NONE));
+  EXPECT_EQ(MountErrorType::MOUNT_ERROR_NONE, mounter.Mount());
+}
+
+TEST(MounterCompatTest, MountFail) {
+  MounterCompatForTest mounter("fstype", "foo", base::FilePath("/mnt"), {});
+  EXPECT_CALL(mounter, MountImpl())
+      .WillOnce(Return(MountErrorType::MOUNT_ERROR_UNKNOWN));
+  EXPECT_EQ(MountErrorType::MOUNT_ERROR_UNKNOWN, mounter.Mount());
 }
 
 }  // namespace cros_disks

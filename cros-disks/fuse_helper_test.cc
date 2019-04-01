@@ -66,8 +66,8 @@ TEST_F(FUSEHelperTest, PrepareMountOptions) {
   auto mounter =
       helper_.CreateMounter(kWorkingDir, kSomeUri, kMountDir, options);
   EXPECT_EQ(kFUSEType, mounter->filesystem_type());
-  EXPECT_EQ(kSomeUri.path(), mounter->source_path());
-  EXPECT_EQ(kMountDir.value(), mounter->target_path());
+  EXPECT_EQ(kSomeUri.path(), mounter->source());
+  EXPECT_EQ(kMountDir.value(), mounter->target_path().value());
   string opts = mounter->mount_options().ToString();
   EXPECT_THAT(opts, testing::StartsWith("bind,dirsync,"));
   EXPECT_THAT(opts, testing::Not(testing::HasSubstr("uid=")));

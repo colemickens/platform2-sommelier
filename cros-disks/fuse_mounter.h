@@ -21,7 +21,7 @@ class Platform;
 class SandboxedProcess;
 
 // A class for mounting a device file using a FUSE mount program.
-class FUSEMounter : public Mounter {
+class FUSEMounter : public MounterCompat {
  public:
   struct BindPath {
     std::string path;
@@ -44,7 +44,7 @@ class FUSEMounter : public Mounter {
 
  protected:
   // Mounts a device file using the FUSE mount program at |mount_program_path_|.
-  MountErrorType MountImpl() override;
+  MountErrorType MountImpl() const override;
 
   // Protected for mocking out in testing.
   virtual std::unique_ptr<SandboxedProcess> CreateSandboxedProcess() const;

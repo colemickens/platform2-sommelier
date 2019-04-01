@@ -4,39 +4,63 @@
 
 #include "cros-disks/mounter.h"
 
+#include <sys/mount.h>
+
+#include <utility>
+
 #include <base/logging.h>
 
-using std::string;
+#include "cros-disks/mount_options.h"
+#include "cros-disks/mount_point.h"
+#include "cros-disks/platform.h"
 
 namespace cros_disks {
 
-Mounter::Mounter(const string& source_path,
-                 const string& target_path,
-                 const string& filesystem_type,
-                 const MountOptions& mount_options)
-    : filesystem_type_(filesystem_type),
-      source_path_(source_path),
+MounterCompat::MounterCompat(const std::string& filesystem_type,
+                             const std::string& source,
+                             const base::FilePath& target_path,
+                             const MountOptions& mount_options)
+    : Mounter(filesystem_type),
+      source_(source),
       target_path_(target_path),
-      mount_options_(mount_options) {
-  CHECK(!target_path_.empty()) << "Invalid target path";
-  // |filesystem_type| can be empty if it is auto-detected or in case of
-  // a bind mount.
-  // |source_path| can be empty if it's implied for the particular filesystem.
-}
+      mount_options_(mount_options) {}
 
-MountErrorType Mounter::Mount() {
-  MountErrorType error = MountImpl();
+MounterCompat::~MounterCompat() {}
 
-  if (error == MOUNT_ERROR_NONE) {
-    LOG(INFO) << "Mounted '" << source_path_ << "' to '" << target_path_
-              << "' as filesystem '" << filesystem_type_ << "' with options '"
+MountErrorType MounterCompat::Mount() {
+  MountErrorType error = MOUNT_ERROR_NONE;
+  mountpoint_ = Mount({}, {}, {}, &error);
+  if (mountpoint_) {
+    LOG(INFO) << "Mounted '" << source_ << "' to '" << target_path_.value()
+              << "' as filesystem '" << filesystem_type() << "' with options '"
               << mount_options_.ToString() << "'";
   } else {
-    LOG(ERROR) << "Failed to mount '" << source_path_ << "' to '"
-               << target_path_ << "' as filesystem '" << filesystem_type_
-               << "' with options '" << mount_options_.ToString() << "'";
+    LOG(ERROR) << "Failed to mount '" << source_ << "' to '"
+               << target_path_.value() << "' as filesystem '"
+               << filesystem_type() << "' with options '"
+               << mount_options_.ToString() << "'";
   }
   return error;
+}
+
+std::unique_ptr<MountPoint> MounterCompat::Mount(
+    const std::string& source,
+    const base::FilePath& target_path,
+    std::vector<std::string> options,
+    MountErrorType* error) const {
+  *error = MountImpl();
+  if (*error == MOUNT_ERROR_NONE) {
+    // Makes mountpoint that won't unmount for compatibility with old behavior.
+    return std::make_unique<MountPoint>(target_path_, nullptr);
+  }
+  return nullptr;
+}
+
+bool MounterCompat::CanMount(const std::string& source,
+                             const std::vector<std::string>& options,
+                             base::FilePath* suggested_dir_name) const {
+  *suggested_dir_name = base::FilePath("dir");
+  return true;
 }
 
 }  // namespace cros_disks

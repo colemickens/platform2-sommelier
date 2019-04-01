@@ -95,7 +95,7 @@ class MockMounter : public FUSEMounter {
                     "",
                     {},
                     false) {}
-  MOCK_METHOD0(MountImpl, MountErrorType());
+  MOCK_CONST_METHOD0(MountImpl, MountErrorType());
 };
 
 }  // namespace

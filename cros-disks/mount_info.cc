@@ -24,7 +24,7 @@ bool IsOctalDigit(char digit) {
 namespace cros_disks {
 
 // A data structure for holding information of a mount point.
-struct MountPoint {
+struct MountInfo::MountPointData {
   string source_path;
   string mount_path;
   string filesystem_type;
@@ -92,7 +92,7 @@ bool MountInfo::RetrieveFromFile(const string& path) {
                                               base::SPLIT_WANT_ALL);
     size_t num_tokens = tokens.size();
     if (num_tokens >= 10 && tokens[num_tokens - 4] == "-") {
-      MountPoint mount_point;
+      MountPointData mount_point;
       mount_point.source_path = DecodePath(tokens[num_tokens - 2]);
       mount_point.mount_path = DecodePath(tokens[4]);
       mount_point.filesystem_type = tokens[num_tokens - 3];

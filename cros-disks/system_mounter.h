@@ -16,7 +16,7 @@ namespace cros_disks {
 class Platform;
 
 // A class for mounting a device file using the system mount() call.
-class SystemMounter : public Mounter {
+class SystemMounter : public MounterCompat {
  public:
   // A unique type identifier of this derived mounter class.
   static const char kMounterType[];
@@ -29,7 +29,7 @@ class SystemMounter : public Mounter {
 
  protected:
   // Mounts a device file using the system mount() call.
-  MountErrorType MountImpl() override;
+  MountErrorType MountImpl() const override;
 
  private:
   const Platform* const platform_;

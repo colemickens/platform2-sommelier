@@ -197,7 +197,10 @@ FUSEMounter::FUSEMounter(const string& source_path,
                          bool permit_network_access,
                          bool unprivileged_mount,
                          const std::string& mount_group)
-    : Mounter(source_path, target_path, filesystem_type, mount_options),
+    : MounterCompat(filesystem_type,
+                    source_path,
+                    base::FilePath(target_path),
+                    mount_options),
       platform_(platform),
       mount_program_path_(mount_program_path),
       mount_user_(mount_user),
@@ -207,7 +210,7 @@ FUSEMounter::FUSEMounter(const string& source_path,
       permit_network_access_(permit_network_access),
       unprivileged_mount_(unprivileged_mount) {}
 
-MountErrorType FUSEMounter::MountImpl() {
+MountErrorType FUSEMounter::MountImpl() const {
   auto mount_process = CreateSandboxedProcess();
   auto status = ConfigureCommonSandbox(
       mount_process.get(), platform_, !permit_network_access_,
@@ -252,9 +255,9 @@ MountErrorType FUSEMounter::MountImpl() {
       return MountErrorType::MOUNT_ERROR_INTERNAL;
     }
 
-    if (!MountFuseDevice(platform_, source_path(),
-                         base::FilePath(target_path()), fuse_file,
-                         mount_user_id, mount_group_id, mount_options())) {
+    if (!MountFuseDevice(platform_, source(), base::FilePath(target_path()),
+                         fuse_file, mount_user_id, mount_group_id,
+                         mount_options())) {
       LOG(ERROR) << "Can't perform unprivileged FUSE mount";
       return MountErrorType::MOUNT_ERROR_INTERNAL;
     }
@@ -267,14 +270,16 @@ MountErrorType FUSEMounter::MountImpl() {
                        << " on deprivileged fuse mount failure.";
           }
         },
-        platform_, target_path()));
+        platform_, target_path().value()));
   } else {
     // To perform a non-root mount via the FUSE mount program, change the
     // group of the source and target path to the group of the non-privileged
     // user, but keep the user of the source and target path unchanged. Also set
     // appropriate group permissions on the source and target path.
-    if (!platform_->SetOwnership(target_path(), getuid(), mount_group_id) ||
-        !platform_->SetPermissions(target_path(), kTargetPathPermissions)) {
+    if (!platform_->SetOwnership(target_path().value(), getuid(),
+                                 mount_group_id) ||
+        !platform_->SetPermissions(target_path().value(),
+                                   kTargetPathPermissions)) {
       LOG(ERROR) << "Can't set up permissions on the mount point";
       return MountErrorType::MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
     }
@@ -282,18 +287,18 @@ MountErrorType FUSEMounter::MountImpl() {
 
   // Source might be an URI. Only try to re-own source if it looks like
   // an existing path.
-  if (!source_path().empty() && platform_->PathExists(source_path())) {
-    if (!platform_->SetOwnership(source_path(), getuid(), mount_group_id) ||
-        !platform_->SetPermissions(source_path(), kSourcePathPermissions)) {
+  if (!source().empty() && platform_->PathExists(source())) {
+    if (!platform_->SetOwnership(source(), getuid(), mount_group_id) ||
+        !platform_->SetPermissions(source(), kSourcePathPermissions)) {
       LOG(ERROR) << "Can't set up permissions on the source";
       return MountErrorType::MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
     }
   }
 
   // If a block device is being mounted, bind mount it into the sandbox.
-  if (base::StartsWith(source_path(), "/dev/", base::CompareCase::SENSITIVE)) {
-    if (!mount_process->BindMount(source_path(), source_path(), true, false)) {
-      LOG(ERROR) << "Unable to bind mount device " << source_path();
+  if (base::StartsWith(source(), "/dev/", base::CompareCase::SENSITIVE)) {
+    if (!mount_process->BindMount(source(), source(), true, false)) {
+      LOG(ERROR) << "Unable to bind mount device " << source();
       return MountErrorType::MOUNT_ERROR_INVALID_ARGUMENT;
     }
   }
@@ -318,14 +323,14 @@ MountErrorType FUSEMounter::MountImpl() {
     mount_process->AddArgument("-o");
     mount_process->AddArgument(options_string);
   }
-  if (!source_path().empty()) {
-    mount_process->AddArgument(source_path());
+  if (!source().empty()) {
+    mount_process->AddArgument(source());
   }
   if (unprivileged_mount_) {
     mount_process->AddArgument(
         base::StringPrintf("/dev/fd/%d", fuse_file.GetPlatformFile()));
   } else {
-    mount_process->AddArgument(target_path());
+    mount_process->AddArgument(target_path().value());
   }
 
   int return_code = mount_process->Run();

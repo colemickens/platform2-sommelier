@@ -26,7 +26,7 @@
 namespace cros_disks {
 
 class DeviceEjector;
-class Mounter;
+class MounterCompat;
 class Platform;
 
 struct Filesystem;
@@ -110,7 +110,7 @@ class DiskManager : public MountManager, public DeviceEventSourceInterface {
 
  private:
   // Creates an appropriate mounter object for a given filesystem.
-  std::unique_ptr<Mounter> CreateMounter(
+  std::unique_ptr<MounterCompat> CreateMounter(
       const Disk& disk,
       const Filesystem& filesystem,
       const std::string& target_path,
