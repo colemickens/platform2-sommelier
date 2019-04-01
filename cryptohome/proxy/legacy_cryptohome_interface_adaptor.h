@@ -442,6 +442,9 @@ class LegacyCryptohomeInterfaceAdaptor
 
  private:
   // Method used as callbacks once the call to the new interface returns
+  void TpmIsAttestationPreparedOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<bool>> response_raw,
+      const attestation::GetEnrollmentPreparationsReply& reply);
 
   // This method forwards the error received from calling the new interface back
   // to the old interface

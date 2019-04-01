@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
+
 #include "cryptohome/proxy/legacy_cryptohome_interface_adaptor.h"
 
 namespace cryptohome {
@@ -263,10 +265,32 @@ void LegacyCryptohomeInterfaceAdaptor::TpmClearStoredPassword(
 
 void LegacyCryptohomeInterfaceAdaptor::TpmIsAttestationPrepared(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  attestation::GetEnrollmentPreparationsRequest request;
+
+  std::shared_ptr<SharedDBusMethodResponse<bool>> response_shared(
+      new SharedDBusMethodResponse<bool>(std::move(response)));
+
+  attestation_proxy_->GetEnrollmentPreparationsAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::TpmIsAttestationPreparedOnSuccess,
+          base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::TpmIsAttestationPreparedOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+    const attestation::GetEnrollmentPreparationsReply& reply) {
+  bool prepared = false;
+  for (const auto& preparation : reply.enrollment_preparations()) {
+    if (preparation.second) {
+      prepared = true;
+      break;
+    }
+  }
+
+  response->Return(prepared);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::
