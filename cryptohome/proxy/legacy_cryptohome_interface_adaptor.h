@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <attestation/proto_bindings/interface.pb.h>
@@ -20,6 +21,30 @@
 // The dbus_adaptor and proxy include must happen after the protobuf include
 
 namespace cryptohome {
+
+// This class is for holding a DBusMethodResponse in a std::shared_ptr, so that
+// we can bind it to two separate callback.
+template <typename... Types>
+class SharedDBusMethodResponse {
+ public:
+  explicit SharedDBusMethodResponse (
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<Types...>>
+          response)
+      : response_(std::move(response)) {}
+
+  void ReplyWithError(const brillo::Error* error) {
+    CHECK(response_) << "ReplyWithError() called after response has been sent";
+    response_.release()->ReplyWithError(error);
+  }
+
+  void Return(const Types&... return_values) {
+    CHECK(response_) << "Return() called after response has been sent";
+    response_.release()->Return(return_values...);
+  }
+
+ private:
+  std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<Types...>> response_;
+};
 
 class LegacyCryptohomeInterfaceAdaptor
     : public org::chromium::CryptohomeInterfaceInterface,
@@ -422,10 +447,8 @@ class LegacyCryptohomeInterfaceAdaptor
   // to the old interface
   template <typename... Types>
   void ForwardError(
-      brillo::dbus_utils::DBusMethodResponse<Types...>* response_raw,
+      std::shared_ptr<SharedDBusMethodResponse<Types...>> response,
       brillo::Error* err) {
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<Types...>> response(
-        response_raw);
     response->ReplyWithError(err);
   }
 
