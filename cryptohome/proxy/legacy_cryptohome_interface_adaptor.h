@@ -13,6 +13,7 @@
 #include <attestation/proto_bindings/interface.pb.h>
 #include <attestation-client/attestation/dbus-proxies.h>
 #include <base/atomic_sequence_num.h>
+#include <base/optional.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
 #include "rpc.pb.h"  // NOLINT(build/include)
@@ -28,7 +29,7 @@ namespace cryptohome {
 template <typename... Types>
 class SharedDBusMethodResponse {
  public:
-  explicit SharedDBusMethodResponse (
+  explicit SharedDBusMethodResponse(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<Types...>>
           response)
       : response_(std::move(response)) {}
@@ -518,6 +519,13 @@ class LegacyCryptohomeInterfaceAdaptor
 
     return async_id;
   }
+
+  // A helper function which maps an integer to a valid CertificateProfile.
+  static attestation::CertificateProfile IntegerToCertificateProfile(
+      int profile_value);
+
+  // A helper function which maps an integer to a valid ACAType.
+  static base::Optional<attestation::ACAType> IntegerToACAType(int type);
 
   brillo::dbus_utils::DBusObject dbus_object_;
 

@@ -382,9 +382,30 @@ void LegacyCryptohomeInterfaceAdaptor::AsyncTpmAttestationCreateCertRequest(
     const std::string& in_username,
     const std::string& in_request_origin) {
   // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  attestation::CreateCertificateRequestRequest request;
+
+  base::Optional<attestation::ACAType> aca_type;
+  aca_type = IntegerToACAType(in_pca_type);
+  if (!aca_type.has_value()) {
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_NOT_SUPPORTED,
+                             "Requested ACA type is not supported");
+    return;
+  }
+
+  request.set_aca_type(aca_type.value());
+  request.set_certificate_profile(
+      IntegerToCertificateProfile(in_certificate_profile));
+  request.set_username(in_username);
+  request.set_request_origin(in_request_origin);
+  int async_id = HandleAsync<attestation::CreateCertificateRequestRequest,
+                             attestation::CreateCertificateRequestReply>(
+      &attestation::CreateCertificateRequestReply::pca_request, request,
+      base::BindOnce(&org::chromium::AttestationProxyInterface::
+                         CreateCertificateRequestAsync,
+                     base::Unretained(attestation_proxy_.get())));
+  response->Return(async_id);
+  return;
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmAttestationFinishCertRequest(
@@ -895,6 +916,26 @@ void LegacyCryptohomeInterfaceAdaptor::LockToSingleUserMountUntilReboot(
   response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
                            DBUS_ERROR_NOT_SUPPORTED,
                            "Method unimplemented yet");
+}
+
+// A helper function which maps an integer to a valid CertificateProfile.
+attestation::CertificateProfile
+LegacyCryptohomeInterfaceAdaptor::IntegerToCertificateProfile(
+    int profile_value) {
+  // The protobuf compiler generates the _IsValid function.
+  if (!attestation::CertificateProfile_IsValid(profile_value)) {
+    return attestation::CertificateProfile::ENTERPRISE_USER_CERTIFICATE;
+  }
+  return static_cast<attestation::CertificateProfile>(profile_value);
+}
+
+// A helper function which maps an integer to a valid ACAType.
+base::Optional<attestation::ACAType>
+LegacyCryptohomeInterfaceAdaptor::IntegerToACAType(int type) {
+  if (!attestation::ACAType_IsValid(type)) {
+    return base::nullopt;
+  }
+  return static_cast<attestation::ACAType>(type);
 }
 
 }  // namespace cryptohome
