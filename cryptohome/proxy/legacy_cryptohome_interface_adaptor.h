@@ -12,6 +12,7 @@
 
 #include <attestation/proto_bindings/interface.pb.h>
 #include <attestation-client/attestation/dbus-proxies.h>
+#include <base/atomic_sequence_num.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
 #include "rpc.pb.h"  // NOLINT(build/include)
@@ -455,11 +456,77 @@ class LegacyCryptohomeInterfaceAdaptor
     response->ReplyWithError(err);
   }
 
+  // Returns the next sequence ID for Async methods
+  int NextSequence() {
+    // AtomicSequenceNumber is zero-based, so increment so that the sequence
+    // ids are one-based.
+    return sequence_holder_.GetNext() + 1;
+  }
+
+  // This serves as the on_failure callback after calling the actual method
+  // in attestationd
+  template <typename ReplyProtoType>
+  void AsyncForwardError(const std::string& (ReplyProtoType::*func)() const,
+                         int async_id,
+                         brillo::Error* err) {
+    // Error is ignored because there is no mechanism to forward the dbus
+    // error through signal, and the current implementation in
+    // service_distributed class handles the error by sending
+    // STATUS_NOT_AVAILABLE instead, so we follow this behaviour.
+    ReplyProtoType reply;
+    reply.set_status(attestation::AttestationStatus::STATUS_NOT_AVAILABLE);
+    AsyncReplyWithData(func, async_id, reply);
+  }
+
+  // This serves as the on_success callback after calling the actual method
+  // in attestationd
+  template <typename ReplyProtoType>
+  void AsyncReplyWithData(const std::string& (ReplyProtoType::*func)() const,
+                          int async_id,
+                          const ReplyProtoType& reply) {
+    std::string data_string = (reply.*func)();
+    std::vector<uint8_t> data(data_string.begin(), data_string.end());
+    bool return_status =
+        reply.status() == attestation::AttestationStatus::STATUS_SUCCESS;
+    SendAsyncCallStatusWithDataSignal(async_id, return_status, data);
+  }
+
+  // This is a function that handles an async request received on the legacy
+  // cryptohome interface. The code that calls this function resides in
+  // the actual method handler, and it only needs to assemble the request
+  // proto and pass it to this function, and this function will take care
+  // of the rest.
+  template <typename RequestProtoType, typename ReplyProtoType>
+  int HandleAsync(const std::string& (ReplyProtoType::*func)() const,
+                  RequestProtoType request,
+                  base::OnceCallback<
+                      void(const RequestProtoType&,
+                           const base::Callback<void(const ReplyProtoType&)>&,
+                           const base::Callback<void(brillo::Error*)>&,
+                           int)> target_method) {
+    int async_id = NextSequence();
+
+    base::Callback<void(const ReplyProtoType&)> on_success = base::Bind(
+        &LegacyCryptohomeInterfaceAdaptor::AsyncReplyWithData<ReplyProtoType>,
+        base::Unretained(this), func, async_id);
+    base::Callback<void(brillo::Error*)> on_failure = base::Bind(
+        &LegacyCryptohomeInterfaceAdaptor::AsyncForwardError<ReplyProtoType>,
+        base::Unretained(this), func, async_id);
+    std::move(target_method)
+        .Run(request, on_success, on_failure,
+             dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+
+    return async_id;
+  }
+
   brillo::dbus_utils::DBusObject dbus_object_;
 
   std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
       user_data_auth_;
   std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
+
+  // An atomic incrementing sequence for setting asynchronous call ids.
+  base::AtomicSequenceNumber sequence_holder_;
 
   DISALLOW_COPY_AND_ASSIGN(LegacyCryptohomeInterfaceAdaptor);
 };
