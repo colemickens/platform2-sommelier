@@ -321,14 +321,6 @@ void U2fHid::IgnorePowerButton() {
 void U2fHid::MaybeIgnorePowerButton(const std::string& payload) {
   bool ignore = false;
 
-  // The previous code assumes that U2F_REGISTER requests always require
-  // physical presence, and this is the behavior described in the spec. However,
-  // cr50 only requires physical presence for U2F_REGISTER (in both old and new
-  // implementations) if the P1 value has the first bit set. Whether this bit is
-  // set or not is not described in the spec.
-  // TODO(louiscollard): Check if the above behavior is correct and update if
-  // not.
-
   // All U2F_REGISTER requests require physical presence.
   // U2F_AUTHENTICATE requests may require physical presence.
   base::Optional<U2fCommandAdpu> adpu =
@@ -339,7 +331,7 @@ void U2fHid::MaybeIgnorePowerButton(const std::string& payload) {
     } else if (adpu->Ins() == U2fIns::kU2fAuthenticate) {
       base::Optional<U2fAuthenticateRequestAdpu> auth_adpu =
           U2fAuthenticateRequestAdpu::FromCommandAdpu(*adpu);
-      ignore = auth_adpu.has_value() && auth_adpu->IsAuthenticateCheckOnly();
+      ignore = auth_adpu.has_value() && !auth_adpu->IsAuthenticateCheckOnly();
     }
   }
 

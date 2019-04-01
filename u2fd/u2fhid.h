@@ -148,8 +148,8 @@ class U2fHid {
   void IgnorePowerButton();
 
   // Parses the ISO7816-4:2005 U2F APDU contained in |payload| to guess
-  // if it contains a user physical presence request and mask the power button
-  // actions if it does.
+  // if it contains a user physical presence request and if so, temporarily
+  // disable the power button's normal behavior (eg. turning the screen off).
   void MaybeIgnorePowerButton(const std::string& payload);
 
   // Executes the action requested by the command contained in the current
