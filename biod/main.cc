@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
   const base::FilePath log_file =
       base::FilePath(FLAGS_log_dir)
           .Append(base::StringPrintf("biod.%s",
-                                     GetTimeAsString(::time(NULL)).c_str()));
+                                     GetTimeAsString(::time(nullptr)).c_str()));
   UpdateLogSymlinks(base::FilePath(FLAGS_log_dir).Append("biod.LATEST"),
                     base::FilePath(FLAGS_log_dir).Append("biod.PREVIOUS"),
                     log_file);

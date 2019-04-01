@@ -290,8 +290,8 @@ bool BiometricsManagerWrapper::StartEnrollSession(
   }
   enroll_session_ = std::move(enroll_session);
 
-  enroll_session_dbus_object_.reset(
-      new DBusObject(NULL, dbus_object_.GetBus(), enroll_session_object_path_));
+  enroll_session_dbus_object_.reset(new DBusObject(
+      nullptr, dbus_object_.GetBus(), enroll_session_object_path_));
   DBusInterface* enroll_session_interface =
       enroll_session_dbus_object_->AddOrGetInterface(kEnrollSessionInterface);
   enroll_session_interface->AddSimpleMethodHandlerWithError(
@@ -339,8 +339,8 @@ bool BiometricsManagerWrapper::StartAuthSession(brillo::ErrorPtr* error,
   }
   auth_session_ = std::move(auth_session);
 
-  auth_session_dbus_object_.reset(
-      new DBusObject(NULL, dbus_object_.GetBus(), auth_session_object_path_));
+  auth_session_dbus_object_.reset(new DBusObject(nullptr, dbus_object_.GetBus(),
+                                                 auth_session_object_path_));
   DBusInterface* auth_session_interface =
       auth_session_dbus_object_->AddOrGetInterface(kAuthSessionInterface);
   auth_session_interface->AddSimpleMethodHandlerWithError(
