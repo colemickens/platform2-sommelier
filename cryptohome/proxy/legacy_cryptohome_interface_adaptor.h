@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include <attestation/proto_bindings/interface.pb.h>
+#include <attestation-client/attestation/dbus-proxies.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
 #include "rpc.pb.h"  // NOLINT(build/include)
@@ -26,7 +28,8 @@ class LegacyCryptohomeInterfaceAdaptor
   explicit LegacyCryptohomeInterfaceAdaptor(scoped_refptr<dbus::Bus> bus)
       : org::chromium::CryptohomeInterfaceAdaptor(this),
         dbus_object_(nullptr, bus, dbus::ObjectPath(kCryptohomeServicePath)),
-        user_data_auth_(new org::chromium::UserDataAuthInterfaceProxy(bus)) {}
+        user_data_auth_(new org::chromium::UserDataAuthInterfaceProxy(bus)),
+        attestation_proxy_(new org::chromium::AttestationProxy(bus)) {}
 
   void RegisterAsync(
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
@@ -417,6 +420,8 @@ class LegacyCryptohomeInterfaceAdaptor
 
   std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
       user_data_auth_;
+  std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
+
   DISALLOW_COPY_AND_ASSIGN(LegacyCryptohomeInterfaceAdaptor);
 };
 
