@@ -27,14 +27,8 @@ DEFINE_string  ignore_wakeup_source "none" "Wakeup source to ignore" i
 DEFINE_string  record_dmesg_dir "" "dir to record dmesgs for failed iterations"
 DEFINE_string  post_resume_command "" "Command to run after each resume"
 
-# Minimum value for --suspend_min when --memory_check is true.
-readonly MEMORY_TEST_SUSPEND_MIN_DELAY=10
-
 # Location of disable_dark_resume preference file.
 readonly DISABLE_DARK_RESUME=/var/lib/power_manager/disable_dark_resume
-
-# Scheduling priority of memory_suspend_test
-readonly MEMORY_TEST_PRIORITY=-8
 
 # Location of the temporary preference file. Set by disable_dark_resume.
 MUTABLE_PREF_FILE=
@@ -160,20 +154,9 @@ if [ ${FLAGS_backup_rtc} -eq ${FLAGS_TRUE} ] &&
 fi
 
 if [ ${FLAGS_memory_check} -eq ${FLAGS_TRUE} ]; then
-  # Increase priority to make it less likely that memory_suspend_test takes
-  # so long to free memory that the wake alarm fires prematurely.
   # Default size is set to 0, which tells memory_suspend_test to allocate as
   # much memory as possible.
-  memory_test_cmd="memory_suspend_test --size=${FLAGS_memory_check_size}"
-  suspend_cmd="nice -n ${MEMORY_TEST_PRIORITY} ${memory_test_cmd}"
-
-  # Writing to memory can take a while. Make it less likely that the
-  # wake alarm will fire before the system has suspended.
-  if [ ${FLAGS_suspend_min} -lt ${MEMORY_TEST_SUSPEND_MIN_DELAY} ]; then
-    orig_diff=$(( FLAGS_suspend_max - FLAGS_suspend_min ))
-    FLAGS_suspend_min=${MEMORY_TEST_SUSPEND_MIN_DELAY}
-    FLAGS_suspend_max=$(( FLAGS_suspend_min + orig_diff ))
-  fi
+  suspend_cmd="memory_suspend_test --size=${FLAGS_memory_check_size}"
 else
   suspend_cmd="powerd_dbus_suspend --delay=0"
 fi
