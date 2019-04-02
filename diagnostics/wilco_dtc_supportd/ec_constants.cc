@@ -22,7 +22,7 @@ const int64_t kEcGetTelemetryPayloadMaxSize = 32;
 const char kEcGetTelemetryFilePath[] = "dev/wilco_telem0";
 
 // EC event file path.
-const char kEcEventFilePath[] = "dev/wilco_event";
+const char kEcEventFilePath[] = "dev/wilco_event0";
 
 // The driver is expected to populate the |kEcEventFilePath| file, therefore
 // this constant holds the specific flag for use with poll().
