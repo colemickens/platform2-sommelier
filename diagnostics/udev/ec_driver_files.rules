@@ -1,0 +1,14 @@
+# Granting a read access to /dev/wilco_event0 to the wilco_dtc group for
+# purpose of allowing wilco diagnostics and telemetry controller to subscribe
+# to EC events.
+SUBSYSTEM=="wilco_event", ACTION=="add", OWNER:="root", GROUP:="wilco_dtc", \
+    MODE:="0640"
+
+# Granting a read and write access to /dev/telem0 to the wilco_dtc group for
+# purposes of allowing wilco diagnostics and telemetry controller to extract EC
+# telemetry data.
+# Write access is needed to write opaque data to EC driver which will send this
+# data to EC and then EC response will be available for read on the same EC
+# driver node.
+SUBSYSTEM=="wilco_telem", ACTION=="add", OWNER:="root", GROUP:="wilco_dtc", \
+    MODE:="0660"
