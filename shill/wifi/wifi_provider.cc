@@ -76,14 +76,8 @@ const char WiFiProvider::kStorageId[] = "provider_of_wifi";
 const char WiFiProvider::kStorageFrequencies[] = "Frequencies";
 const time_t WiFiProvider::kWeeksToKeepFrequencyCounts = 3;
 
-WiFiProvider::WiFiProvider(ControlInterface* control_interface,
-                           EventDispatcher* dispatcher,
-                           Metrics* metrics,
-                           Manager* manager)
-    : control_interface_(control_interface),
-      dispatcher_(dispatcher),
-      metrics_(metrics),
-      manager_(manager),
+WiFiProvider::WiFiProvider(Manager* manager)
+    : manager_(manager),
       running_(false),
       total_frequency_connections_(-1L),
       time_(Time::GetInstance()),
@@ -357,9 +351,9 @@ void WiFiProvider::LoadAndFixupServiceEntries(Profile* profile) {
         is_default_profile ?
             Metrics::kMetricServiceFixupDefaultProfile :
             Metrics::kMetricServiceFixupUserProfile;
-    metrics_->SendEnumToUMA(
-        metrics_->GetFullMetricName(Metrics::kMetricServiceFixupEntriesSuffix,
-                                    Technology::kWifi),
+    metrics()->SendEnumToUMA(
+        metrics()->GetFullMetricName(Metrics::kMetricServiceFixupEntriesSuffix,
+                                     Technology::kWifi),
         profile_type,
         Metrics::kMetricServiceFixupMax);
   }
@@ -477,7 +471,7 @@ void WiFiProvider::ForgetService(const WiFiServiceRefPtr& service) {
 }
 
 void WiFiProvider::ReportRememberedNetworkCount() {
-  metrics_->SendToUMA(
+  metrics()->SendToUMA(
       Metrics::kMetricRememberedWiFiNetworkCount,
       std::count_if(
           services_.begin(), services_.end(),
@@ -490,7 +484,7 @@ void WiFiProvider::ReportRememberedNetworkCount() {
 void WiFiProvider::ReportServiceSourceMetrics() {
   for (const auto& security_mode :
     {kSecurityNone, kSecurityWep, kSecurityPsk, kSecurity8021x}) {
-    metrics_->SendToUMA(
+    metrics()->SendToUMA(
         base::StringPrintf(
             Metrics::
             kMetricRememberedSystemWiFiNetworkCountBySecurityModeFormat,
@@ -504,7 +498,7 @@ void WiFiProvider::ReportServiceSourceMetrics() {
         Metrics::kMetricRememberedWiFiNetworkCountMin,
         Metrics::kMetricRememberedWiFiNetworkCountMax,
         Metrics::kMetricRememberedWiFiNetworkCountNumBuckets);
-    metrics_->SendToUMA(
+    metrics()->SendToUMA(
         base::StringPrintf(
             Metrics::
             kMetricRememberedUserWiFiNetworkCountBySecurityModeFormat,
@@ -755,7 +749,7 @@ void WiFiProvider::IncrementConnectCount(uint16_t frequency_mhz) {
   }
 
   manager_->UpdateWiFiProvider();
-  metrics_->SendToUMA(
+  metrics()->SendToUMA(
       Metrics::kMetricFrequenciesConnectedEver,
       connect_count_by_frequency_.size(),
       Metrics::kMetricFrequenciesConnectedMin,
@@ -776,7 +770,7 @@ void WiFiProvider::ReportAutoConnectableServices() {
   int num_services = NumAutoConnectableServices();
   // Only report stats when there are wifi services available.
   if (num_services) {
-    metrics_->NotifyWifiAutoConnectableServices(num_services);
+    metrics()->NotifyWifiAutoConnectableServices(num_services);
   }
 }
 
@@ -804,6 +798,10 @@ vector<ByteString> WiFiProvider::GetSsidsConfiguredForAutoConnect() {
     }
   }
   return results;
+}
+
+Metrics* WiFiProvider::metrics() const {
+  return manager_->metrics();
 }
 
 }  // namespace shill

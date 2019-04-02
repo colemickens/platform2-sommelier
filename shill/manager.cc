@@ -146,17 +146,13 @@ Manager::Manager(ControlInterface* control_interface,
 #if !defined(DISABLE_CELLULAR)
       modem_info_(control_interface, dispatcher, metrics, this),
 #endif  // DISABLE_CELLULAR
-      ethernet_provider_(
-          new EthernetProvider(control_interface, dispatcher, metrics, this)),
+      ethernet_provider_(new EthernetProvider(this)),
 #if !defined(DISABLE_WIRED_8021X)
-      ethernet_eap_provider_(new EthernetEapProvider(
-          control_interface, dispatcher, metrics, this)),
+      ethernet_eap_provider_(new EthernetEapProvider(this)),
 #endif  // DISABLE_WIRED_8021X
-      vpn_provider_(
-          new VPNProvider(control_interface, dispatcher, metrics, this)),
+      vpn_provider_(new VPNProvider(this)),
 #if !defined(DISABLE_WIFI)
-      wifi_provider_(
-          new WiFiProvider(control_interface, dispatcher, metrics, this)),
+      wifi_provider_(new WiFiProvider(this)),
 #endif  // DISABLE_WIFI
       throttler_(new Throttler(dispatcher, this)),
       resolver_(Resolver::GetInstance()),

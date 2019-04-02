@@ -6,8 +6,7 @@
 
 namespace shill {
 
-MockEthernetProvider::MockEthernetProvider()
-    : EthernetProvider(nullptr, nullptr, nullptr, nullptr) {}
+MockEthernetProvider::MockEthernetProvider() : EthernetProvider(nullptr) {}
 
 MockEthernetProvider::~MockEthernetProvider() = default;
 

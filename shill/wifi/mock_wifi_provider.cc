@@ -10,8 +10,7 @@ using testing::Return;
 
 namespace shill {
 
-MockWiFiProvider::MockWiFiProvider()
-    : WiFiProvider(nullptr, nullptr, nullptr, nullptr) {
+MockWiFiProvider::MockWiFiProvider() : WiFiProvider(nullptr) {
   ON_CALL(*this, GetHiddenSSIDList()).WillByDefault(Return(ByteArrays()));
 }
 

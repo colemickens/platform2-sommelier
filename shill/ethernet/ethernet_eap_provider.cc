@@ -11,14 +11,8 @@
 
 namespace shill {
 
-EthernetEapProvider::EthernetEapProvider(ControlInterface* control_interface,
-                                         EventDispatcher* dispatcher,
-                                         Metrics* metrics,
-                                         Manager* manager)
-    : control_interface_(control_interface),
-      dispatcher_(dispatcher),
-      metrics_(metrics),
-      manager_(manager) {}
+EthernetEapProvider::EthernetEapProvider(Manager* manager)
+    : manager_(manager) {}
 
 EthernetEapProvider::~EthernetEapProvider() = default;
 

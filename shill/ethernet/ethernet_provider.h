@@ -15,20 +15,14 @@
 
 namespace shill {
 
-class ControlInterface;
 class Error;
 class Ethernet;
-class EventDispatcher;
 class KeyValueStore;
 class Manager;
-class Metrics;
 
 class EthernetProvider : public ProviderInterface {
  public:
-  EthernetProvider(ControlInterface* control_interface,
-                   EventDispatcher* dispatcher,
-                   Metrics* metrics,
-                   Manager* manager);
+  explicit EthernetProvider(Manager* manager);
   ~EthernetProvider() override;
 
   // Called by Manager as a part of the Provider interface.
@@ -56,9 +50,6 @@ class EthernetProvider : public ProviderInterface {
   // Representative service
   ServiceRefPtr service_;
 
-  ControlInterface* control_interface_;
-  EventDispatcher* dispatcher_;
-  Metrics* metrics_;
   Manager* manager_;
 
   DISALLOW_COPY_AND_ASSIGN(EthernetProvider);

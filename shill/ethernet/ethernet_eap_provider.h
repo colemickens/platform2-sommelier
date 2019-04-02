@@ -15,22 +15,16 @@
 
 namespace shill {
 
-class ControlInterface;
 class Error;
 class Ethernet;
-class EventDispatcher;
 class KeyValueStore;
 class Manager;
-class Metrics;
 
 class EthernetEapProvider : public ProviderInterface {
  public:
   using CredentialChangeCallback = base::Callback<void()>;
 
-  EthernetEapProvider(ControlInterface* control_interface,
-                      EventDispatcher* dispatcher,
-                      Metrics* metrics,
-                      Manager* manager);
+  explicit EthernetEapProvider(Manager* manager);
   ~EthernetEapProvider() override;
 
   // Called by Manager as a part of the Provider interface.
@@ -81,9 +75,6 @@ class EthernetEapProvider : public ProviderInterface {
   // have changed.
   CallbackMap callback_map_;
 
-  ControlInterface* control_interface_;
-  EventDispatcher* dispatcher_;
-  Metrics* metrics_;
   Manager* manager_;
 };
 

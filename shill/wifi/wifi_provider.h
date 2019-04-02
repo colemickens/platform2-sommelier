@@ -23,7 +23,6 @@ namespace shill {
 class ByteString;
 class ControlInterface;
 class Error;
-class EventDispatcher;
 class KeyValueStore;
 class Manager;
 class Metrics;
@@ -52,10 +51,7 @@ class WiFiProvider : public ProviderInterface {
   };
   using FrequencyCountList = std::deque<FrequencyCount>;
 
-  WiFiProvider(ControlInterface* control_interface,
-               EventDispatcher* dispatcher,
-               Metrics* metrics,
-               Manager* manager);
+  explicit WiFiProvider(Manager* manager);
   ~WiFiProvider() override;
 
   // Called by Manager as a part of the Provider interface.  The attributes
@@ -220,9 +216,8 @@ class WiFiProvider : public ProviderInterface {
                                        const ConnectFrequencyMap& numbers,
                                        std::vector<std::string>* strings);
 
-  ControlInterface* control_interface_;
-  EventDispatcher* dispatcher_;
-  Metrics* metrics_;
+  Metrics* metrics() const;
+
   Manager* manager_;
 
   std::vector<WiFiServiceRefPtr> services_;

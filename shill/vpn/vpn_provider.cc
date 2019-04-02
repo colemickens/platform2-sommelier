@@ -32,14 +32,7 @@ static auto kModuleLogScope = ScopeLogger::kVPN;
 static string ObjectID(const VPNProvider* v) { return "(vpn_provider)"; }
 }
 
-VPNProvider::VPNProvider(ControlInterface* control_interface,
-                         EventDispatcher* dispatcher,
-                         Metrics* metrics,
-                         Manager* manager)
-    : control_interface_(control_interface),
-      dispatcher_(dispatcher),
-      metrics_(metrics),
-      manager_(manager) {}
+VPNProvider::VPNProvider(Manager* manager) : manager_(manager) {}
 
 VPNProvider::~VPNProvider() = default;
 

@@ -23,14 +23,7 @@ static string ObjectID(EthernetProvider* e) {
 }
 }  // namespace Logging
 
-EthernetProvider::EthernetProvider(ControlInterface* control_interface,
-                                   EventDispatcher* dispatcher,
-                                   Metrics* metrics,
-                                   Manager* manager)
-    : control_interface_(control_interface),
-      dispatcher_(dispatcher),
-      metrics_(metrics),
-      manager_(manager) {}
+EthernetProvider::EthernetProvider(Manager* manager) : manager_(manager) {}
 
 EthernetProvider::~EthernetProvider() = default;
 

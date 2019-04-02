@@ -6,8 +6,7 @@
 
 namespace shill {
 
-MockVPNProvider::MockVPNProvider()
-    : VPNProvider(nullptr, nullptr, nullptr, nullptr) {}
+MockVPNProvider::MockVPNProvider() : VPNProvider(nullptr) {}
 
 MockVPNProvider::~MockVPNProvider() = default;
 
