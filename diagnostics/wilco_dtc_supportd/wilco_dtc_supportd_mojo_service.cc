@@ -107,12 +107,32 @@ void WilcoDtcSupportdMojoService::PerformWebRequest(
     const MojomPerformWebRequestCallback& callback) {
   DCHECK(client_ptr_);
   mojo::ScopedHandle url_handle = CreateReadOnlySharedMemoryMojoHandle(url);
+  if (!url_handle.is_valid()) {
+    LOG(ERROR) << "Failed to create a mojo handle.";
+    callback.Run(MojomDiagnosticsdWebRequestStatus::kNetworkError, 0,
+                 base::StringPiece());
+    return;
+  }
+
   std::vector<mojo::ScopedHandle> header_handles;
   for (const auto& header : headers) {
     header_handles.push_back(CreateReadOnlySharedMemoryMojoHandle(header));
+    if (!header_handles.back().is_valid()) {
+      LOG(ERROR) << "Failed to create a mojo handle.";
+      callback.Run(MojomDiagnosticsdWebRequestStatus::kNetworkError, 0,
+                   base::StringPiece());
+      return;
+    }
   }
   mojo::ScopedHandle request_body_handle =
       CreateReadOnlySharedMemoryMojoHandle(request_body);
+  // Invalid handle for an empty |request_body| does not cause an error.
+  if (!request_body.empty() && !request_body_handle.is_valid()) {
+    LOG(ERROR) << "Failed to create a mojo handle.";
+    callback.Run(MojomDiagnosticsdWebRequestStatus::kNetworkError, 0,
+                 base::StringPiece());
+    return;
+  }
 
   client_ptr_->PerformWebRequest(http_method, std::move(url_handle),
                                  std::move(header_handles),
