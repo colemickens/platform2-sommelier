@@ -240,6 +240,14 @@ class ValidateConfigSchemaTests(cros_test_lib.TestCase):
       self.assertIn('Referenced template variable', err.__str__())
       self.assertIn('cras-config-dir', err.__str__())
 
+  def testSkuIdOutOfBound(self):
+    config = BASIC_CONFIG.replace('$sku-id: 0', '$sku-id: 0x80000000')
+    with self.assertRaises(jsonschema.ValidationError) as ctx:
+      libcros_schema.ValidateConfigSchema(
+          self._schema, cros_config_schema.TransformConfig(config))
+    self.assertIn("'sku-id': %i" % 0x80000000, str(ctx.exception))
+    self.assertIn('is not valid', str(ctx.exception))
+
 
 class ValidateConfigTests(cros_test_lib.TestCase):
 

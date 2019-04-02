@@ -83,7 +83,6 @@ def PopulateTypeDef(
         'This type allows additional properties not governed by the schema. '
         'See the type description for details on these additional properties.|')
 
-
   for attr_group_name, attrs in attrs_by_group.iteritems():
     for attr in attrs:
       attr_name = attr
@@ -116,6 +115,11 @@ def PopulateTypeDef(
           attr_type = 'array - [%s](#%s)' % (attr_name, attr_name)
         else:
           attr_type = 'array - %s' % type_attrs['items']['type']
+      elif type_attrs['type'] == 'integer':
+        if 'minimum' in type_attrs:
+          description += ' Minimum value: %s.' % hex(type_attrs['minimum'])
+        if 'maximum' in type_attrs:
+          description += ' Maximum value: %s.' % hex(type_attrs['maximum'])
 
       output_tuple = (attr_name,
                       attr_type,
