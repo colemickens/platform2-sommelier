@@ -27,8 +27,9 @@ int main(int argc, char* argv[]) {
   InitLog();
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
-  oobe_config::Metrics metrics;
+  LOG(INFO) << "Starting rollback_prepare_save";
 
+  oobe_config::Metrics metrics;
   const bool should_save = oobe_config::OobeConfig().ShouldSaveRollbackData();
   const bool force = cl->HasSwitch(kForce);
   if (should_save || force) {
@@ -48,5 +49,6 @@ int main(int argc, char* argv[]) {
   }
 
   // No data was saved because there is no rollback.
+  LOG(INFO) << "Exiting no rollback";
   return 1;
 }

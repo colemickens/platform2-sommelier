@@ -33,6 +33,7 @@ int main(int argc, char* argv[]) {
   oobe_config::Metrics metrics;
 
   base::CommandLine::Init(argc, argv);
+  LOG(INFO) << "Starting oobe_config_save";
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   bool save_result;
   if (cl->HasSwitch(kTestUnencrypted)) {
@@ -48,6 +49,7 @@ int main(int argc, char* argv[]) {
     return 0;
   }
 
+  LOG(INFO) << "Exiting oobe_config_save";
   metrics.RecordSaveResult(oobe_config::Metrics::RollbackSaveResult::kSuccess);
   return 0;
 }
