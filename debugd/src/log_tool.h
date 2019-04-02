@@ -90,7 +90,7 @@ class LogTool {
   // of |source_encoding| determines whether it will use Unicode U+FFFD
   // REPLACEMENT CHARACTER or base64-encode the whole string in case there are
   // invalid characters.
-  static std::string EnsureUTF8String(const std::string& value,
+  static std::string EnsureUTF8String(std::string value,
                                       Encoding source_encoding);
 
  private:

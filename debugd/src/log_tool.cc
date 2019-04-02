@@ -76,103 +76,100 @@ const std::vector<Log> kCommandLogs {
   // We need to enter init's mount namespace because it has /home/chronos
   // mounted which is where the consent knob lives.  We don't have that mount
   // in our own mount namespace (by design).  https://crbug.com/884249
-  Log(kCommand, "CLIENT_ID",
-      "/usr/bin/nsenter -t1 -m /usr/bin/metrics_client -i", kRoot,
-      kDebugfsGroup),
-  Log(kCommand, "LOGDATE", "/bin/date"),
-  Log(kFile, "atrus_logs", "/var/log/atrus.log"),
-  Log(kFile, "authpolicy", "/var/log/authpolicy.log"),
-  Log(kCommand, "bootstat_summary", "/usr/bin/bootstat_summary"),
-  Log(kFile, "bio_crypto_init.log",
-      "/var/log/bio_crypto_init/bio_crypto_init.log"),
-  Log(kFile, "biod.LATEST", "/var/log/biod/biod.LATEST"),
-  Log(kFile, "biod.PREVIOUS", "/var/log/biod/biod.PREVIOUS"),
-  Log(kFile, "bios_info", "/var/log/bios_info.txt"),
-  Log(kCommand, "bios_log",
-      "cat /sys/firmware/log "
-      "/proc/device-tree/chosen/ap-console-buffer 2>/dev/null"),
-  Log(kFile, "bios_times", "/var/log/bios_times.txt"),
-  Log(kCommand, "board-specific",
-      "/usr/share/userfeedback/scripts/get_board_specific_info"),
-  Log(kFile, "buddyinfo", "/proc/buddyinfo"),
-  Log(kCommand, "cbi_info", "/usr/share/userfeedback/scripts/cbi_info", kRoot,
-      kRoot),
-  Log(kFile, "cheets_log", "/var/log/arc.log"),
-  Log(kFile, "clobber.log", "/var/log/clobber.log"),
-  Log(kFile, "clobber-state.log", "/var/log/clobber-state.log"),
-  Log(kFile, "chrome_system_log", "/var/log/chrome/chrome"),
-  Log(kFile, "chrome_system_log.PREVIOUS", "/var/log/chrome/chrome.PREVIOUS"),
+  {kCommand, "CLIENT_ID", "/usr/bin/nsenter -t1 -m /usr/bin/metrics_client -i",
+    kRoot, kDebugfsGroup},
+  {kCommand, "LOGDATE", "/bin/date"},
+  {kFile, "atrus_logs", "/var/log/atrus.log"},
+  {kFile, "authpolicy", "/var/log/authpolicy.log"},
+  {kCommand, "bootstat_summary", "/usr/bin/bootstat_summary"},
+  {kFile, "bio_crypto_init.log",
+    "/var/log/bio_crypto_init/bio_crypto_init.log"},
+  {kFile, "biod.LATEST", "/var/log/biod/biod.LATEST"},
+  {kFile, "biod.PREVIOUS", "/var/log/biod/biod.PREVIOUS"},
+  {kFile, "bios_info", "/var/log/bios_info.txt"},
+  {kCommand, "bios_log", "cat /sys/firmware/log "
+    "/proc/device-tree/chosen/ap-console-buffer 2>/dev/null"},
+  {kFile, "bios_times", "/var/log/bios_times.txt"},
+  {kCommand, "board-specific",
+    "/usr/share/userfeedback/scripts/get_board_specific_info"},
+  {kFile, "buddyinfo", "/proc/buddyinfo"},
+  {kCommand, "cbi_info", "/usr/share/userfeedback/scripts/cbi_info", kRoot,
+    kRoot},
+  {kFile, "cheets_log", "/var/log/arc.log"},
+  {kFile, "clobber.log", "/var/log/clobber.log"},
+  {kFile, "clobber-state.log", "/var/log/clobber-state.log"},
+  {kFile, "chrome_system_log", "/var/log/chrome/chrome"},
+  {kFile, "chrome_system_log.PREVIOUS", "/var/log/chrome/chrome.PREVIOUS"},
   // There might be more than one record, so grab them all.
   // Plus, for <linux-3.19, it's named "console-ramoops", but for newer
   // versions, it's named "console-ramoops-#".
-  Log(kCommand, "console-ramoops",
-      "cat /sys/fs/pstore/console-ramoops* 2>/dev/null"),
-  Log(kFile, "cpuinfo", "/proc/cpuinfo"),
-  Log(kFile, "cr50_version", "/var/cache/cr50-version"),
-  Log(kFile, "cros_ec.log", "/var/log/cros_ec.log"),
-  Log(kFile, "cros_ec.previous", "/var/log/cros_ec.previous"),
-  Log(kFile, "cros_ec_panicinfo", "/sys/kernel/debug/cros_ec/panicinfo",
-      SandboxedProcess::kDefaultUser, kDebugfsGroup),
-  Log(kFile, "cros_ec_pdinfo", "/sys/kernel/debug/cros_ec/pdinfo",
-      SandboxedProcess::kDefaultUser, kDebugfsGroup),
-  Log(kFile, "cros_fp.previous", "/var/log/cros_fp.previous"),
-  Log(kFile, "cros_fp.log", "/var/log/cros_fp.log"),
-  Log(kCommand, "dmesg", "/bin/dmesg"),
-  Log(kFile, "ec_info", "/var/log/ec_info.txt"),
+  {kCommand, "console-ramoops",
+    "cat /sys/fs/pstore/console-ramoops* 2>/dev/null"},
+  {kFile, "cpuinfo", "/proc/cpuinfo"},
+  {kFile, "cr50_version", "/var/cache/cr50-version"},
+  {kFile, "cros_ec.log", "/var/log/cros_ec.log"},
+  {kFile, "cros_ec.previous", "/var/log/cros_ec.previous"},
+  {kFile, "cros_ec_panicinfo", "/sys/kernel/debug/cros_ec/panicinfo",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  {kFile, "cros_ec_pdinfo", "/sys/kernel/debug/cros_ec/pdinfo",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  {kFile, "cros_fp.previous", "/var/log/cros_fp.previous"},
+  {kFile, "cros_fp.log", "/var/log/cros_fp.log"},
+  {kCommand, "dmesg", "/bin/dmesg"},
+  {kFile, "ec_info", "/var/log/ec_info.txt"},
   // The sed command replaces the EDID serial number (4 bytes at position 12)
   // with zeroes. See https://en.wikipedia.org/wiki/EDID#EDID_1.4_data_format.
-  Log(kCommand, "edid-decode",
-      "for f in /sys/class/drm/card0-*/edid; do "
-        "echo \"----------- ${f}\"; "
-        "sed -E 's/^(.{11}).{4}/\\1\\x0\\x0\\x0\\x0/' \"${f}\" | "
-        // edid-decode's stderr output is redundant, so silence it.
-        "edid-decode 2>/dev/null; "
-      "done"),
-  Log(kFile, "eventlog", "/var/log/eventlog.txt"),
-  Log(kFile, "exynos_gem_objects", "/sys/kernel/debug/dri/0/exynos_gem_objects",
-      SandboxedProcess::kDefaultUser, kDebugfsGroup),
-  Log(kCommand, "font_info", "/usr/share/userfeedback/scripts/font_info"),
-  Log(kFile, "fwupd_state", "/var/lib/fwupd/state.json"),
-  Log(kCommand, "sensor_info", "/usr/share/userfeedback/scripts/sensor_info"),
-  Log(kFile, "hammerd", "/var/log/hammerd.log"),
-  Log(kCommand, "hardware_class", "/usr/bin/crossystem hwid"),
-  Log(kCommand, "hostname", "/bin/hostname"),
-  Log(kFile, "i915_gem_gtt", "/sys/kernel/debug/dri/0/i915_gem_gtt",
-      SandboxedProcess::kDefaultUser, kDebugfsGroup),
-  Log(kFile, "i915_gem_objects", "/sys/kernel/debug/dri/0/i915_gem_objects",
-      SandboxedProcess::kDefaultUser, kDebugfsGroup),
-  Log(kFile, "i915_gem_objects", "/sys/kernel/debug/dri/0/i915_gem_objects",
-      SandboxedProcess::kDefaultUser, kDebugfsGroup),
-  Log(kCommand, "i915_error_state",
-      "/usr/bin/xz -c /sys/kernel/debug/dri/0/i915_error_state 2>/dev/null",
-      SandboxedProcess::kDefaultUser, kDebugfsGroup, Log::kDefaultMaxBytes,
-      LogTool::Encoding::kBinary),
-  Log(kCommand, "ifconfig", "/bin/ifconfig -a"),
-  Log(kFile, "input_devices", "/proc/bus/input/devices"),
+  {kCommand, "edid-decode",
+    "for f in /sys/class/drm/card0-*/edid; do "
+      "echo \"----------- ${f}\"; "
+      "sed -E 's/^(.{11}).{4}/\\1\\x0\\x0\\x0\\x0/' \"${f}\" | "
+      // edid-decode's stderr output is redundant, so silence it.
+      "edid-decode 2>/dev/null; "
+    "done"},
+  {kFile, "eventlog", "/var/log/eventlog.txt"},
+  {kFile, "exynos_gem_objects", "/sys/kernel/debug/dri/0/exynos_gem_objects",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  {kCommand, "font_info", "/usr/share/userfeedback/scripts/font_info"},
+  {kFile, "fwupd_state", "/var/lib/fwupd/state.json"},
+  {kCommand, "sensor_info", "/usr/share/userfeedback/scripts/sensor_info"},
+  {kFile, "hammerd", "/var/log/hammerd.log"},
+  {kCommand, "hardware_class", "/usr/bin/crossystem hwid"},
+  {kCommand, "hostname", "/bin/hostname"},
+  {kFile, "i915_gem_gtt", "/sys/kernel/debug/dri/0/i915_gem_gtt",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  {kFile, "i915_gem_objects", "/sys/kernel/debug/dri/0/i915_gem_objects",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  {kFile, "i915_gem_objects", "/sys/kernel/debug/dri/0/i915_gem_objects",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  {kCommand, "i915_error_state",
+    "/usr/bin/xz -c /sys/kernel/debug/dri/0/i915_error_state 2>/dev/null",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup, Log::kDefaultMaxBytes,
+    LogTool::Encoding::kBinary},
+  {kCommand, "ifconfig", "/bin/ifconfig -a"},
+  {kFile, "input_devices", "/proc/bus/input/devices"},
   // Information about the wiphy device, such as current channel.
-  Log(kCommand, "iw_dev", "/usr/sbin/iw dev"),
+  {kCommand, "iw_dev", "/usr/sbin/iw dev"},
   // Hardware capabilities of the wiphy device.
-  Log(kCommand, "iw_list", "/usr/sbin/iw list"),
+  {kCommand, "iw_list", "/usr/sbin/iw list"},
 #if USE_IWLWIFI_DUMP
-  Log(kCommand, "iwlmvm_module_params", CMD_KERNEL_MODULE_PARAMS(iwlmvm)),
-  Log(kCommand, "iwlwifi_module_params", CMD_KERNEL_MODULE_PARAMS(iwlwifi)),
+  {kCommand, "iwlmvm_module_params", CMD_KERNEL_MODULE_PARAMS(iwlmvm)},
+  {kCommand, "iwlwifi_module_params", CMD_KERNEL_MODULE_PARAMS(iwlwifi)},
 #endif  // USE_IWLWIFI_DUMP
-  Log(kCommand, "kernel-crashes",
-      "cat /var/spool/crash/kernel.*.kcrash 2>/dev/null"),
-  Log(kCommand, "logcat", "/usr/sbin/android-sh -c '/system/bin/logcat -d'",
-      kRoot, kRoot, Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8),
-  Log(kCommand, "lsmod", "lsmod"),
-  Log(kCommand, "lspci", "/usr/sbin/lspci"),
-  Log(kCommand, "lsusb", "lsusb && lsusb -t"),
-  Log(kFile, "mali_memory", "/sys/class/misc/mali0/device/memory"),
-  Log(kFile, "memd.parameters", "/var/log/memd/memd.parameters"),
-  Log(kCommand, "memd clips", "cat /var/log/memd/memd.clip* 2>/dev/null"),
-  Log(kFile, "meminfo", "/proc/meminfo"),
-  Log(kCommand, "memory_spd_info",
-      // mosys may use 'i2c-dev', which may not be loaded yet.
-      "modprobe i2c-dev 2>/dev/null && "
-      "mosys -l memory spd print all 2>/dev/null",
-      kRoot, kDebugfsGroup),
+  {kCommand, "kernel-crashes",
+    "cat /var/spool/crash/kernel.*.kcrash 2>/dev/null"},
+  {kCommand, "logcat", "/usr/sbin/android-sh -c '/system/bin/logcat -d'",
+    kRoot, kRoot, Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
+  {kCommand, "lsmod", "lsmod"},
+  {kCommand, "lspci", "/usr/sbin/lspci"},
+  {kCommand, "lsusb", "lsusb && lsusb -t"},
+  {kFile, "mali_memory", "/sys/class/misc/mali0/device/memory"},
+  {kFile, "memd.parameters", "/var/log/memd/memd.parameters"},
+  {kCommand, "memd clips", "cat /var/log/memd/memd.clip* 2>/dev/null"},
+  {kFile, "meminfo", "/proc/meminfo"},
+  {kCommand, "memory_spd_info",
+    // mosys may use 'i2c-dev', which may not be loaded yet.
+    "modprobe i2c-dev 2>/dev/null && mosys -l memory spd print all 2>/dev/null",
+    kRoot, kDebugfsGroup},
   // The sed command finds the EDID blob (starting the line after "value:") and
   // replaces the serial number with all zeroes.
   //
@@ -190,127 +187,121 @@ const std::vector<Log> kCommandLogs {
   //
   // TODO(crbug.com/731133): Remove the sed command once modetest itself can
   // remove serial numbers.
-  Log(kCommand, "modetest",
-      "(modetest; modetest -M evdi; modetest -M udl) | "
-      "sed -E '/EDID/ {:a;n;/value:/!ba;n;"
-      "s/(00f{12}00)([0-9a-f]{8})([0-9a-f]{8})/\\1\\200000000/}'",
-      kRoot, kRoot),
-  Log(kFile, "mount-encrypted", "/var/log/mount-encrypted.log"),
-  Log(kFile, "mountinfo", "/proc/1/mountinfo"),
-  Log(kCommand, "netlog",
-      "/usr/share/userfeedback/scripts/getmsgs /var/log/net.log"),
+  {kCommand, "modetest",
+    "(modetest; modetest -M evdi; modetest -M udl) | "
+    "sed -E '/EDID/ {:a;n;/value:/!ba;n;"
+    "s/(00f{12}00)([0-9a-f]{8})([0-9a-f]{8})/\\1\\200000000/}'",
+    kRoot, kRoot},
+  {kFile, "mount-encrypted", "/var/log/mount-encrypted.log"},
+  {kFile, "mountinfo", "/proc/1/mountinfo"},
+  {kCommand, "netlog",
+    "/usr/share/userfeedback/scripts/getmsgs /var/log/net.log"},
   // --processes requires root.
-  Log(kCommand, "netstat",
-      "/sbin/ss --all --query inet --numeric --processes", kRoot, kRoot),
-  Log(kFile, "nvmap_iovmm", "/sys/kernel/debug/nvmap/iovmm/allocations",
-      SandboxedProcess::kDefaultUser, kDebugfsGroup),
-  Log(kCommand, "oemdata", "/usr/share/cros/oemdata.sh", kRoot, kRoot),
-  Log(kFile, "pagetypeinfo", "/proc/pagetypeinfo"),
-  Log(kCommand, "platform_info",
-      // mosys may use 'i2c-dev', which may not be loaded yet.
-      "modprobe i2c-dev 2>/dev/null && "
-      "for param in "
-        "vendor "
-        "name "
-        "version "
-        "family "
-        "model "
+  {kCommand, "netstat",
+    "/sbin/ss --all --query inet --numeric --processes", kRoot, kRoot},
+  {kFile, "nvmap_iovmm", "/sys/kernel/debug/nvmap/iovmm/allocations",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  {kCommand, "oemdata", "/usr/share/cros/oemdata.sh", kRoot, kRoot},
+  {kFile, "pagetypeinfo", "/proc/pagetypeinfo"},
+  {kCommand, "platform_info",
+    // mosys may use 'i2c-dev', which may not be loaded yet.
+    "modprobe i2c-dev 2>/dev/null && "
+    "for param in "
+      "vendor "
+      "name "
+      "version "
+      "family "
+      "model "
 
-        "sku "
-        "customization "
-      "; do "
-        "mosys -l platform \"${param}\" 2>/dev/null; "
-      "done",
-      kRoot, kDebugfsGroup),
-  Log(kCommand, "power_supply_info", "/usr/bin/power_supply_info"),
-  Log(kCommand, "power_supply_sysfs",
-      "/usr/bin/print_sysfs_power_supply_data"),
-  Log(kFile, "powerd.LATEST", "/var/log/power_manager/powerd.LATEST"),
-  Log(kFile, "powerd.PREVIOUS", "/var/log/power_manager/powerd.PREVIOUS"),
-  Log(kFile, "powerd.out", "/var/log/powerd.out"),
-  Log(kFile, "powerwash_count", "/var/log/powerwash_count"),
+      "sku "
+      "customization "
+    "; do "
+      "mosys -l platform \"${param}\" 2>/dev/null; "
+    "done",
+    kRoot, kDebugfsGroup},
+  {kCommand, "power_supply_info", "/usr/bin/power_supply_info"},
+  {kCommand, "power_supply_sysfs", "/usr/bin/print_sysfs_power_supply_data"},
+  {kFile, "powerd.LATEST", "/var/log/power_manager/powerd.LATEST"},
+  {kFile, "powerd.PREVIOUS", "/var/log/power_manager/powerd.PREVIOUS"},
+  {kFile, "powerd.out", "/var/log/powerd.out"},
+  {kFile, "powerwash_count", "/var/log/powerwash_count"},
   // Changed from 'ps ux' to 'ps aux' since we're running as debugd,
   // not chronos.
-  Log(kCommand, "ps", "/bin/ps aux"),
+  {kCommand, "ps", "/bin/ps aux"},
   // /proc/slabinfo is owned by root and has 0400 permission.
-  Log(kFile, "slabinfo", "/proc/slabinfo", kRoot, kRoot),
-  Log(kFile, "storage_info", "/var/log/storage_info.txt"),
-  Log(kCommand, "swap_info",
-      "/usr/share/cros/init/swap.sh status 2>/dev/null",
-      SandboxedProcess::kDefaultUser, kDebugfsGroup),
-  Log(kCommand, "syslog",
-      "/usr/share/userfeedback/scripts/getmsgs /var/log/messages"),
-  Log(kCommand, "system_log_stats",
-      "echo 'BLOCK_SIZE=1024'; "
-      "find /var/log/ -type f -exec du --block-size=1024 {} + | sort -n -r",
-      kRoot, kRoot),
-  Log(kCommand, "threads",
-      "/bin/ps -T axo pid,ppid,spid,pcpu,ni,stat,time,comm"),
-  Log(kFile, "tlsdate", "/var/log/tlsdate.log"),
-  Log(kCommand, "top thread", "/usr/bin/top -Hb -n 1 | head -n 40"),
-  Log(kCommand, "top memory", "/usr/bin/top -o \"+%MEM\" -bn 1 | head -n 57"),
-  Log(kCommand, "touch_fw_version",
-      "grep -E"
-      " -e 'synaptics: Touchpad model'"
-      " -e 'chromeos-[a-z]*-touch-[a-z]*-update'"
-      " /var/log/messages | tail -n 20"),
-  Log(kCommand, "tpm-firmware-updater",
-      "/usr/share/userfeedback/scripts/getmsgs "
-      "/var/log/tpm-firmware-updater.log"),
+  {kFile, "slabinfo", "/proc/slabinfo", kRoot, kRoot},
+  {kFile, "storage_info", "/var/log/storage_info.txt"},
+  {kCommand, "swap_info", "/usr/share/cros/init/swap.sh status 2>/dev/null",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  {kCommand, "syslog",
+    "/usr/share/userfeedback/scripts/getmsgs /var/log/messages"},
+  {kCommand, "system_log_stats",
+    "echo 'BLOCK_SIZE=1024'; "
+    "find /var/log/ -type f -exec du --block-size=1024 {} + | sort -n -r",
+    kRoot, kRoot},
+  {kCommand, "threads", "/bin/ps -T axo pid,ppid,spid,pcpu,ni,stat,time,comm"},
+  {kFile, "tlsdate", "/var/log/tlsdate.log"},
+  {kCommand, "top thread", "/usr/bin/top -Hb -n 1 | head -n 40"},
+  {kCommand, "top memory", "/usr/bin/top -o \"+%MEM\" -bn 1 | head -n 57"},
+  {kCommand, "touch_fw_version",
+    "grep -E"
+    " -e 'synaptics: Touchpad model'"
+    " -e 'chromeos-[a-z]*-touch-[a-z]*-update'"
+    " /var/log/messages | tail -n 20"},
+  {kCommand, "tpm-firmware-updater", "/usr/share/userfeedback/scripts/getmsgs "
+    "/var/log/tpm-firmware-updater.log"},
   // TODO(jorgelo,mnissler): Don't run this as root.
   // On TPM 1.2 devices this will likely require adding a new user to the 'tss'
   // group.
   // On TPM 2.0 devices 'get_version_info' uses D-Bus and therefore can run as
   // any user.
-  Log(kCommand, "tpm_version", "/usr/sbin/tpm-manager get_version_info", kRoot,
-      kRoot),
-  Log(kCommand, "atmel_ts_refs",
-      "/opt/google/touch/scripts/atmel_tools.sh ts r", kRoot, kRoot),
-  Log(kCommand, "atmel_tp_refs",
-      "/opt/google/touch/scripts/atmel_tools.sh tp r", kRoot, kRoot),
-  Log(kCommand, "atmel_ts_deltas",
-      "/opt/google/touch/scripts/atmel_tools.sh ts d", kRoot, kRoot),
-  Log(kCommand, "atmel_tp_deltas",
-      "/opt/google/touch/scripts/atmel_tools.sh tp d", kRoot, kRoot),
-  Log(kFile, "stateful_trim_state", "/var/lib/trim/stateful_trim_state"),
-  Log(kFile, "stateful_trim_data", "/var/lib/trim/stateful_trim_data"),
-  Log(kFile, "ui_log", "/var/log/ui/ui.LATEST"),
-  Log(kCommand, "uname", "/bin/uname -a"),
-  Log(kCommand, "update_engine.log",
-      "cat $(ls -1tr /var/log/update_engine | tail -5 | sed"
-      " s.^./var/log/update_engine/.)"),
-  Log(kCommand, "uptime", "/usr/bin/cut -d' ' -f1 /proc/uptime"),
-  Log(kFile, "verified boot", "/var/log/debug_vboot_noisy.log"),
-  Log(kFile, "vmlog.1.LATEST", "/var/log/vmlog/vmlog.1.LATEST"),
-  Log(kFile, "vmlog.1.PREVIOUS", "/var/log/vmlog/vmlog.1.PREVIOUS"),
-  Log(kFile, "vmlog.LATEST", "/var/log/vmlog/vmlog.LATEST"),
-  Log(kFile, "vmlog.PREVIOUS", "/var/log/vmlog/vmlog.PREVIOUS"),
-  Log(kFile, "vmstat", "/proc/vmstat"),
-  Log(kFile, "vpd_2.0", "/var/log/vpd_2.0.txt"),
-  Log(kCommand, "wifi_status",
-      "/usr/bin/network_diag --wifi-internal --no-log"),
-  Log(kFile, "zram compressed data size", "/sys/block/zram0/compr_data_size"),
-  Log(kFile, "zram original data size", "/sys/block/zram0/orig_data_size"),
-  Log(kFile, "zram total memory used", "/sys/block/zram0/mem_used_total"),
-  Log(kFile, "zram total reads", "/sys/block/zram0/num_reads"),
-  Log(kFile, "zram total writes", "/sys/block/zram0/num_writes"),
-  Log(kCommand, "zram new stats names",
-      "echo orig_size compr_size used_total limit used_max zero_pages "
-      "migrated"),
-  Log(kFile, "zram new stats values", "/sys/block/zram0/mm_stat"),
-  Log(kFile, "cros_tp version", "/sys/class/chromeos/cros_tp/version"),
-  Log(kCommand, "cros_tp console", "/usr/sbin/ectool --name=cros_tp console",
-      kRoot, kRoot),
-  Log(kCommand, "cros_tp frame", "/usr/sbin/ectool --name=cros_tp tpframeget",
-      kRoot, kRoot),
-  Log(kCommand, "crostini", "/usr/bin/cicerone_client --get_info"),
+  {kCommand, "tpm_version", "/usr/sbin/tpm-manager get_version_info", kRoot,
+    kRoot},
+  {kCommand, "atmel_ts_refs",
+    "/opt/google/touch/scripts/atmel_tools.sh ts r", kRoot, kRoot},
+  {kCommand, "atmel_tp_refs",
+    "/opt/google/touch/scripts/atmel_tools.sh tp r", kRoot, kRoot},
+  {kCommand, "atmel_ts_deltas",
+    "/opt/google/touch/scripts/atmel_tools.sh ts d", kRoot, kRoot},
+  {kCommand, "atmel_tp_deltas",
+    "/opt/google/touch/scripts/atmel_tools.sh tp d", kRoot, kRoot},
+  {kFile, "stateful_trim_state", "/var/lib/trim/stateful_trim_state"},
+  {kFile, "stateful_trim_data", "/var/lib/trim/stateful_trim_data"},
+  {kFile, "ui_log", "/var/log/ui/ui.LATEST"},
+  {kCommand, "uname", "/bin/uname -a"},
+  {kCommand, "update_engine.log",
+    "cat $(ls -1tr /var/log/update_engine | tail -5 | sed"
+    " s.^./var/log/update_engine/.)"},
+  {kCommand, "uptime", "/usr/bin/cut -d' ' -f1 /proc/uptime"},
+  {kFile, "verified boot", "/var/log/debug_vboot_noisy.log"},
+  {kFile, "vmlog.1.LATEST", "/var/log/vmlog/vmlog.1.LATEST"},
+  {kFile, "vmlog.1.PREVIOUS", "/var/log/vmlog/vmlog.1.PREVIOUS"},
+  {kFile, "vmlog.LATEST", "/var/log/vmlog/vmlog.LATEST"},
+  {kFile, "vmlog.PREVIOUS", "/var/log/vmlog/vmlog.PREVIOUS"},
+  {kFile, "vmstat", "/proc/vmstat"},
+  {kFile, "vpd_2.0", "/var/log/vpd_2.0.txt"},
+  {kCommand, "wifi_status", "/usr/bin/network_diag --wifi-internal --no-log"},
+  {kFile, "zram compressed data size", "/sys/block/zram0/compr_data_size"},
+  {kFile, "zram original data size", "/sys/block/zram0/orig_data_size"},
+  {kFile, "zram total memory used", "/sys/block/zram0/mem_used_total"},
+  {kFile, "zram total reads", "/sys/block/zram0/num_reads"},
+  {kFile, "zram total writes", "/sys/block/zram0/num_writes"},
+  {kCommand, "zram new stats names",
+    "echo orig_size compr_size used_total limit used_max zero_pages migrated"},
+  {kFile, "zram new stats values", "/sys/block/zram0/mm_stat"},
+  {kFile, "cros_tp version", "/sys/class/chromeos/cros_tp/version"},
+  {kCommand, "cros_tp console", "/usr/sbin/ectool --name=cros_tp console",
+    kRoot, kRoot},
+  {kCommand, "cros_tp frame", "/usr/sbin/ectool --name=cros_tp tpframeget",
+    kRoot, kRoot},
+  {kCommand, "crostini", "/usr/bin/cicerone_client --get_info"},
   // Stuff pulled out of the original list. These need access to the running X
   // session, which we'd rather not give to debugd, or return info specific to
   // the current session (in the setsid(2) sense), which is not useful for
   // debugd
-  // Log(kCommand, "env", "set"),
-  // Log(kCommand, "setxkbmap", "/usr/bin/setxkbmap -print -query"),
-  // Log(kCommand, "xrandr", "/usr/bin/xrandr --verbose)
+  // {kCommand, "env", "set"},
+  // {kCommand, "setxkbmap", "/usr/bin/setxkbmap -print -query"},
+  // {kCommand, "xrandr", "/usr/bin/xrandr --verbose}
 };
 
 // netstat and logcat should appear in chrome://system but not in feedback
@@ -320,20 +311,20 @@ const std::vector<string> kCommandLogsExclude = {"netstat", "logcat"};
 
 const std::vector<Log> kExtraLogs {
 #if USE_CELLULAR
-  Log(kCommand, "mm-status", "/usr/bin/modem status"),
+  {kCommand, "mm-status", "/usr/bin/modem status"},
 #endif  // USE_CELLULAR
-  Log(kCommand, "network-devices", "/usr/bin/connectivity show devices"),
-  Log(kCommand, "network-services", "/usr/bin/connectivity show services"),
+  {kCommand, "network-devices", "/usr/bin/connectivity show devices"},
+  {kCommand, "network-services", "/usr/bin/connectivity show services"},
 };
 
 const std::vector<Log> kFeedbackLogs {
 #if USE_CELLULAR
-  Log(kCommand, "mm-status", "/usr/bin/modem status-feedback"),
+  {kCommand, "mm-status", "/usr/bin/modem status-feedback"},
 #endif  // USE_CELLULAR
-  Log(kCommand, "network-devices",
-      "/usr/bin/connectivity show-feedback devices"),
-  Log(kCommand, "network-services",
-          "/usr/bin/connectivity show-feedback services"),
+  {kCommand, "network-devices",
+      "/usr/bin/connectivity show-feedback devices"},
+  {kCommand, "network-services",
+      "/usr/bin/connectivity show-feedback services"},
 };
 
 // List of log files needed to be part of the feedback report that are huge and
@@ -342,8 +333,8 @@ const std::vector<Log> kFeedbackLogs {
 const std::vector<Log> kBigFeedbackLogs{
   // ARC bugreport permissions are weird. Since we're just running cat,
   // this shouldn't cause any issues.
-  Log(kCommand, "arc-bugreport", "cat /run/arc/bugreport/pipe 2>/dev/null",
-      kRoot, kRoot, 10 * 1024 * 1024, LogTool::Encoding::kUtf8),
+  {kCommand, "arc-bugreport", "cat /run/arc/bugreport/pipe 2>/dev/null",
+    kRoot, kRoot, 10 * 1024 * 1024, LogTool::Encoding::kUtf8},
 };
 
 // List of log files that must directly be collected by Chrome. This is because
@@ -351,10 +342,10 @@ const std::vector<Log> kBigFeedbackLogs{
 // cryptohome mounts.
 using UserLog = std::pair<std::string, std::string>;
 const std::vector<UserLog> kUserLogs = {
-  UserLog("chrome_user_log", "log/chrome"),
-  UserLog("libassistant_user_log", "log/libassistant.log"),
-  UserLog("login-times", "login-times"),
-  UserLog("logout-times", "logout-times"),
+  {"chrome_user_log", "log/chrome"},
+  {"libassistant_user_log", "log/libassistant.log"},
+  {"login-times", "login-times"},
+  {"logout-times", "logout-times"},
 };
 
 // Fills |dictionary| with the anonymized contents of the logs in |logs|.
@@ -475,7 +466,8 @@ void GetPerfData(LogTool::LogMap* map) {
                             perf_data_xz.size());
   (*map)["perf-data"] =
       std::string(kPerfDataDescription) +
-      LogTool::EnsureUTF8String(perf_data_str, LogTool::Encoding::kBinary);
+      LogTool::EnsureUTF8String(std::move(perf_data_str),
+                                LogTool::Encoding::kBinary);
 }
 
 }  // namespace
@@ -536,7 +528,7 @@ std::string Log::GetCommandLogData() const {
   p.GetOutput(&output);
   if (output.empty())
     return "<empty>";
-  return LogTool::EnsureUTF8String(output, encoding_);
+  return LogTool::EnsureUTF8String(std::move(output), encoding_);
 }
 
 std::string Log::GetFileLogData() const {
@@ -605,7 +597,7 @@ std::string Log::GetFileLogData() const {
   if (setegid(old_egid))
     PLOG(ERROR) << "Failed to restore effective group id to " << old_egid;
 
-  return LogTool::EnsureUTF8String(contents, encoding_);
+  return LogTool::EnsureUTF8String(std::move(contents), encoding_);
 }
 
 void Log::DisableMinijailForTest() {
@@ -717,7 +709,7 @@ LogTool::LogMap LogTool::GetUserLogFiles() {
 }
 
 // static
-string LogTool::EnsureUTF8String(const string& value,
+string LogTool::EnsureUTF8String(string value,
                                  LogTool::Encoding source_encoding) {
   if (source_encoding == LogTool::Encoding::kAutodetect) {
     if (base::IsStringUTF8(value))
@@ -741,11 +733,10 @@ string LogTool::EnsureUTF8String(const string& value,
       base::WriteUnicodeCharacter(code_point, &output);
     }
     return output;
-  } else {
-    string encoded_value;
-    base::Base64Encode(value, &encoded_value);
-    return "<base64>: " + encoded_value;
   }
+
+  base::Base64Encode(value, &value);
+  return "<base64>: " + value;
 }
 
 void LogTool::AnonymizeLogMap(LogMap* log_map) {
