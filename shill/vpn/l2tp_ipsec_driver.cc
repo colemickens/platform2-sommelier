@@ -106,15 +106,10 @@ const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
   { kL2tpIpsecLcpEchoDisabledProperty, 0 },
 };
 
-L2TPIPSecDriver::L2TPIPSecDriver(ControlInterface* control,
-                                 EventDispatcher* dispatcher,
-                                 Metrics* metrics,
-                                 Manager* manager,
+L2TPIPSecDriver::L2TPIPSecDriver(Manager* manager,
                                  DeviceInfo* device_info,
                                  ProcessManager* process_manager)
-    : VPNDriver(dispatcher, manager, kProperties, arraysize(kProperties)),
-      control_(control),
-      metrics_(metrics),
+    : VPNDriver(manager, kProperties, arraysize(kProperties)),
       device_info_(device_info),
       process_manager_(process_manager),
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
@@ -214,7 +209,7 @@ void L2TPIPSecDriver::DeleteTemporaryFiles() {
 bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error* error) {
   SLOG(this, 2) << __func__;
   auto external_task_local =
-      std::make_unique<ExternalTask>(control_,
+      std::make_unique<ExternalTask>(control_interface(),
                                      process_manager_,
                                      weak_ptr_factory_.GetWeakPtr(),
                                      Bind(&L2TPIPSecDriver::OnL2TPIPSecVPNDied,
@@ -516,7 +511,7 @@ KeyValueStore L2TPIPSecDriver::GetProvider(Error* error) {
 }
 
 void L2TPIPSecDriver::ReportConnectionMetrics() {
-  metrics_->SendEnumToUMA(
+  metrics()->SendEnumToUMA(
       Metrics::kMetricVpnDriver,
       Metrics::kVpnDriverL2tpIpsec,
       Metrics::kMetricVpnDriverMax);
@@ -526,21 +521,21 @@ void L2TPIPSecDriver::ReportConnectionMetrics() {
   bool has_remote_authentication = false;
   if (args()->ContainsStrings(kL2tpIpsecCaCertPemProperty) &&
       !args()->GetStrings(kL2tpIpsecCaCertPemProperty).empty()) {
-    metrics_->SendEnumToUMA(
+    metrics()->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
         Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecCertificate,
         Metrics::kMetricVpnRemoteAuthenticationTypeMax);
     has_remote_authentication = true;
   }
   if (args()->LookupString(kL2tpIpsecPskProperty, "") != "") {
-    metrics_->SendEnumToUMA(
+    metrics()->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
         Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk,
         Metrics::kMetricVpnRemoteAuthenticationTypeMax);
     has_remote_authentication = true;
   }
   if (!has_remote_authentication) {
-    metrics_->SendEnumToUMA(
+    metrics()->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
         Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecDefault,
         Metrics::kMetricVpnRemoteAuthenticationTypeMax);
@@ -549,21 +544,21 @@ void L2TPIPSecDriver::ReportConnectionMetrics() {
   bool has_user_authentication = false;
   if (args()->LookupString(kL2tpIpsecClientCertIdProperty,
                            "") != "") {
-    metrics_->SendEnumToUMA(
+    metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeL2tpIpsecCertificate,
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
   if (args()->LookupString(kL2tpIpsecPasswordProperty, "") != "") {
-    metrics_->SendEnumToUMA(
+    metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
   if (!has_user_authentication) {
-    metrics_->SendEnumToUMA(
+    metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeL2tpIpsecNone,
         Metrics::kMetricVpnUserAuthenticationTypeMax);

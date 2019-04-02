@@ -56,8 +56,7 @@ class ArcVpnDriverTest : public testing::Test {
         device_(new MockVirtualDevice(
             &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN)),
         store_(),
-        driver_(new ArcVpnDriver(
-            &control_, &dispatcher_, &metrics_, &manager_, &device_info_)),
+        driver_(new ArcVpnDriver(&manager_, &device_info_)),
         service_(new MockVPNService(&manager_, driver_)) {}
 
   virtual ~ArcVpnDriverTest() {}

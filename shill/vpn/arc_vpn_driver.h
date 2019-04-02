@@ -10,12 +10,9 @@
 #include <base/callback.h>
 #include <gtest/gtest_prod.h>
 
-#include "shill/control_interface.h"
 #include "shill/device_info.h"
 #include "shill/error.h"
 #include "shill/ipconfig.h"
-#include "shill/manager.h"
-#include "shill/metrics.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 #include "shill/virtual_device.h"
@@ -25,11 +22,7 @@ namespace shill {
 
 class ArcVpnDriver : public VPNDriver {
  public:
-  ArcVpnDriver(ControlInterface* control,
-               EventDispatcher* dispatcher,
-               Metrics* metrics,
-               Manager* manager,
-               DeviceInfo* device_info);
+  ArcVpnDriver(Manager* manager, DeviceInfo* device_info);
   ~ArcVpnDriver() override;
 
   // Implementation of VPNDriver
@@ -48,9 +41,6 @@ class ArcVpnDriver : public VPNDriver {
 
   static const Property kProperties[];
 
-  ControlInterface* control_;
-  EventDispatcher* dispatcher_;
-  Metrics* metrics_;
   DeviceInfo* device_info_;
 
   VPNServiceRefPtr service_;

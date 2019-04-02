@@ -70,13 +70,9 @@ const VPNDriver::Property ThirdPartyVpnDriver::kProperties[] = {
 
 ThirdPartyVpnDriver* ThirdPartyVpnDriver::active_client_ = nullptr;
 
-ThirdPartyVpnDriver::ThirdPartyVpnDriver(ControlInterface* control,
-                                         EventDispatcher* dispatcher,
-                                         Metrics* metrics, Manager* manager,
+ThirdPartyVpnDriver::ThirdPartyVpnDriver(Manager* manager,
                                          DeviceInfo* device_info)
-    : VPNDriver(dispatcher, manager, kProperties, arraysize(kProperties)),
-      control_(control),
-      metrics_(metrics),
+    : VPNDriver(manager, kProperties, arraysize(kProperties)),
       device_info_(device_info),
       tun_fd_(-1),
       ip_properties_set_(false),
@@ -109,7 +105,7 @@ bool ThirdPartyVpnDriver::Load(StoreInterface* storage,
   if (adaptor_interface_ == nullptr) {
     storage->GetString(storage_id, kObjectPathSuffixProperty,
                        &object_path_suffix_);
-    adaptor_interface_ = control_->CreateThirdPartyVpnAdaptor(this);
+    adaptor_interface_ = control_interface()->CreateThirdPartyVpnAdaptor(this);
   }
   return return_value;
 }
@@ -132,7 +128,7 @@ bool ThirdPartyVpnDriver::SetExtensionId(const std::string& value,
                                          Error* error) {
   if (adaptor_interface_ == nullptr) {
     object_path_suffix_ = value;
-    adaptor_interface_ = control_->CreateThirdPartyVpnAdaptor(this);
+    adaptor_interface_ = control_interface()->CreateThirdPartyVpnAdaptor(this);
     return true;
   }
   error->Populate(Error::kAlreadyExists, "Extension ID is set");
@@ -402,10 +398,9 @@ void ThirdPartyVpnDriver::SetParameters(
 
     if (!ip_properties_set_) {
       ip_properties_set_ = true;
-      metrics_->SendEnumToUMA(
-          Metrics::kMetricVpnDriver,
-          Metrics::kVpnDriverThirdParty,
-          Metrics::kMetricVpnDriverMax);
+      metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver,
+                               Metrics::kVpnDriverThirdParty,
+                               Metrics::kMetricVpnDriverMax);
     }
   }
 }

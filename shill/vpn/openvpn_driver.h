@@ -23,10 +23,8 @@
 namespace shill {
 
 class CertificateFile;
-class ControlInterface;
 class DeviceInfo;
 class Error;
-class Metrics;
 class OpenVPNManagementServer;
 class ProcessManager;
 
@@ -39,10 +37,7 @@ class OpenVPNDriver : public VPNDriver,
     kReconnectReasonTLSError,
   };
 
-  OpenVPNDriver(ControlInterface* control,
-                EventDispatcher* dispatcher,
-                Metrics* metrics,
-                Manager* manager,
+  OpenVPNDriver(Manager* manager,
                 DeviceInfo* device_info,
                 ProcessManager* process_manager);
   ~OpenVPNDriver() override;
@@ -245,8 +240,6 @@ class OpenVPNDriver : public VPNDriver,
 
   void ReportConnectionMetrics();
 
-  ControlInterface* control_;
-  Metrics* metrics_;
   DeviceInfo* device_info_;
   ProcessManager* process_manager_;
   Sockets sockets_;

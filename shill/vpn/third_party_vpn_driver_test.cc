@@ -35,12 +35,11 @@ class ThirdPartyVpnDriverTest : public testing::Test {
   ThirdPartyVpnDriverTest()
       : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
         manager_(&control_, &dispatcher_, &metrics_),
-        driver_(new ThirdPartyVpnDriver(&control_, &dispatcher_, &metrics_,
-                                        &manager_, &device_info_)),
+        driver_(new ThirdPartyVpnDriver(&manager_, &device_info_)),
         adaptor_interface_(new ThirdPartyVpnMockAdaptor()),
         service_(new MockVPNService(&manager_, driver_)),
-        device_(new MockVirtualDevice(&manager_, kInterfaceName,
-                                      kInterfaceIndex, Technology::kVPN)) {
+        device_(new MockVirtualDevice(
+            &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN)) {
     driver_->io_handler_factory_ = &io_handler_factory_;
   }
 

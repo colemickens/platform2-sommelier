@@ -19,9 +19,11 @@
 
 namespace shill {
 
+class ControlInterface;
 class Error;
 class EventDispatcher;
 class Manager;
+class Metrics;
 class PropertyStore;
 class StoreInterface;
 
@@ -71,12 +73,13 @@ class VPNDriver {
 
   static const int kDefaultConnectTimeoutSeconds;
 
-  VPNDriver(EventDispatcher* dispatcher,
-            Manager* manager,
+  VPNDriver(Manager* manager,
             const Property* properties,
             size_t property_count);
 
-  EventDispatcher* dispatcher() const { return dispatcher_; }
+  ControlInterface* control_interface() const;
+  EventDispatcher* dispatcher() const;
+  Metrics* metrics() const;
   Manager* manager() const { return manager_; }
 
   virtual KeyValueStore GetProvider(Error* error);
@@ -111,7 +114,6 @@ class VPNDriver {
       const size_t& index, const std::vector<std::string>& value, Error* error);
 
   base::WeakPtrFactory<VPNDriver> weak_ptr_factory_;
-  EventDispatcher* dispatcher_;
   Manager* manager_;
   const Property* const properties_;
   const size_t property_count_;

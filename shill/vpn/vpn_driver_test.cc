@@ -51,7 +51,7 @@ const char kStorageID[] = "vpn_service_id";
 
 class VPNDriverUnderTest : public VPNDriver {
  public:
-  VPNDriverUnderTest(EventDispatcher* dispatcher, Manager* manager);
+  explicit VPNDriverUnderTest(Manager* manager);
   virtual ~VPNDriverUnderTest() {}
 
   // Inherited from VPNDriver.
@@ -81,22 +81,19 @@ const VPNDriverUnderTest::Property VPNDriverUnderTest::kProperties[] = {
   { kProviderTypeProperty, 0 },
 };
 
-VPNDriverUnderTest::VPNDriverUnderTest(
-    EventDispatcher* dispatcher, Manager* manager)
-    : VPNDriver(dispatcher, manager, kProperties, arraysize(kProperties)) {}
+VPNDriverUnderTest::VPNDriverUnderTest(Manager* manager)
+    : VPNDriver(manager, kProperties, arraysize(kProperties)) {}
 
 class VPNDriverTest : public Test {
  public:
   VPNDriverTest()
       : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
         manager_(&control_, &dispatcher_, &metrics_),
-        driver_(&dispatcher_, &manager_) {}
+        driver_(&manager_) {}
 
   virtual ~VPNDriverTest() {}
 
  protected:
-  EventDispatcher* dispatcher() { return driver_.dispatcher_; }
-
   const base::CancelableClosure& connect_timeout_callback() const {
     return driver_.connect_timeout_callback_;
   }
@@ -396,7 +393,6 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
 }
 
 TEST_F(VPNDriverTest, ConnectTimeout) {
-  EXPECT_EQ(&dispatcher_, dispatcher());
   EXPECT_TRUE(connect_timeout_callback().IsCancelled());
   EXPECT_FALSE(IsConnectTimeoutStarted());
   StartConnectTimeout(0);

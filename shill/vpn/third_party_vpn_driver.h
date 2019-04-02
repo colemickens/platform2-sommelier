@@ -22,12 +22,10 @@
 
 namespace shill {
 
-class ControlInterface;
 class DeviceInfo;
 class Error;
 class FileIO;
 class IOHandlerFactory;
-class Metrics;
 class ThirdPartyVpnAdaptorInterface;
 
 class ThirdPartyVpnDriver : public VPNDriver {
@@ -43,9 +41,7 @@ class ThirdPartyVpnDriver : public VPNDriver {
     kResume
   };
 
-  ThirdPartyVpnDriver(ControlInterface* control, EventDispatcher* dispatcher,
-                      Metrics* metrics, Manager* manager,
-                      DeviceInfo* device_info);
+  ThirdPartyVpnDriver(Manager* manager, DeviceInfo* device_info);
   ~ThirdPartyVpnDriver() override;
 
   // UpdateConnectionState is called by DBus adaptor when
@@ -196,8 +192,6 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // communicate with the VPN client over DBUS.
   static ThirdPartyVpnDriver* active_client_;
 
-  ControlInterface* control_;
-  Metrics* metrics_;
   DeviceInfo* device_info_;
 
   // ThirdPartyVpnAdaptorInterface manages the DBus communication and provides

@@ -86,8 +86,7 @@ class OpenVPNDriverTest
   OpenVPNDriverTest()
       : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
         manager_(&control_, &dispatcher_, &metrics_),
-        driver_(new OpenVPNDriver(&control_, &dispatcher_, &metrics_, &manager_,
-                                  &device_info_, &process_manager_)),
+        driver_(new OpenVPNDriver(&manager_, &device_info_, &process_manager_)),
         service_(new MockVPNService(&manager_, driver_)),
         device_(new MockVirtualDevice(
             &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN)),

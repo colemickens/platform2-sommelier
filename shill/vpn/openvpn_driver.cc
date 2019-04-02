@@ -152,15 +152,10 @@ const char OpenVPNDriver::kDefaultOpenVPNConfigurationDirectory[] =
 const int OpenVPNDriver::kReconnectOfflineTimeoutSeconds = 2 * 60;
 const int OpenVPNDriver::kReconnectTLSErrorTimeoutSeconds = 20;
 
-OpenVPNDriver::OpenVPNDriver(ControlInterface* control,
-                             EventDispatcher* dispatcher,
-                             Metrics* metrics,
-                             Manager* manager,
+OpenVPNDriver::OpenVPNDriver(Manager* manager,
                              DeviceInfo* device_info,
                              ProcessManager* process_manager)
-    : VPNDriver(dispatcher, manager, kProperties, arraysize(kProperties)),
-      control_(control),
-      metrics_(metrics),
+    : VPNDriver(manager, kProperties, arraysize(kProperties)),
       device_info_(device_info),
       process_manager_(process_manager),
       management_server_(new OpenVPNManagementServer(this)),
@@ -374,7 +369,7 @@ bool OpenVPNDriver::ClaimInterface(const string& link_name,
                               Technology::kVPN);
   device_->SetEnabled(true);
 
-  rpc_task_.reset(new RPCTask(control_, this));
+  rpc_task_.reset(new RPCTask(control_interface(), this));
   if (SpawnOpenVPN()) {
     default_service_callback_tag_ =
         manager()->RegisterDefaultServiceCallback(
@@ -1143,19 +1138,19 @@ void OpenVPNDriver::OnDefaultServiceStateChanged(
 }
 
 void OpenVPNDriver::ReportConnectionMetrics() {
-  metrics_->SendEnumToUMA(
+  metrics()->SendEnumToUMA(
       Metrics::kMetricVpnDriver,
       Metrics::kVpnDriverOpenVpn,
       Metrics::kMetricVpnDriverMax);
 
   if (args()->ContainsStrings(kOpenVPNCaCertPemProperty) &&
       !args()->GetStrings(kOpenVPNCaCertPemProperty).empty()) {
-    metrics_->SendEnumToUMA(
+    metrics()->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
         Metrics::kVpnRemoteAuthenticationTypeOpenVpnCertificate,
         Metrics::kMetricVpnRemoteAuthenticationTypeMax);
   } else {
-    metrics_->SendEnumToUMA(
+    metrics()->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
         Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
         Metrics::kMetricVpnRemoteAuthenticationTypeMax);
@@ -1163,14 +1158,14 @@ void OpenVPNDriver::ReportConnectionMetrics() {
 
   bool has_user_authentication = false;
   if (args()->LookupString(kOpenVPNTokenProperty, "") != "") {
-    metrics_->SendEnumToUMA(
+    metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnUsernameToken,
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
   if (args()->LookupString(kOpenVPNOTPProperty, "") != "") {
-    metrics_->SendEnumToUMA(
+    metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp,
         Metrics::kMetricVpnUserAuthenticationTypeMax);
@@ -1178,21 +1173,21 @@ void OpenVPNDriver::ReportConnectionMetrics() {
   }
   if (args()->LookupString(kOpenVPNAuthUserPassProperty, "") != "" ||
       args()->LookupString(kOpenVPNUserProperty, "") != "")  {
-    metrics_->SendEnumToUMA(
+    metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword,
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
   if (args()->LookupString(kOpenVPNClientCertIdProperty, "") != "") {
-    metrics_->SendEnumToUMA(
+    metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
   if (!has_user_authentication) {
-    metrics_->SendEnumToUMA(
+    metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnNone,
         Metrics::kMetricVpnUserAuthenticationTypeMax);

@@ -32,12 +32,10 @@ static string ObjectID(VPNDriver* v) { return "(vpn_driver)"; }
 // static
 const int VPNDriver::kDefaultConnectTimeoutSeconds = 60;
 
-VPNDriver::VPNDriver(EventDispatcher* dispatcher,
-                     Manager* manager,
+VPNDriver::VPNDriver(Manager* manager,
                      const Property* properties,
                      size_t property_count)
     : weak_ptr_factory_(this),
-      dispatcher_(dispatcher),
       manager_(manager),
       properties_(properties),
       property_count_(property_count),
@@ -264,8 +262,8 @@ void VPNDriver::StartConnectTimeout(int timeout_seconds) {
   connect_timeout_seconds_ = timeout_seconds;
   connect_timeout_callback_.Reset(
       Bind(&VPNDriver::OnConnectTimeout, weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(FROM_HERE,
-      connect_timeout_callback_.callback(), timeout_seconds * 1000);
+  dispatcher()->PostDelayedTask(FROM_HERE, connect_timeout_callback_.callback(),
+                                timeout_seconds * 1000);
 }
 
 void VPNDriver::StopConnectTimeout() {
@@ -296,6 +294,18 @@ void VPNDriver::OnDefaultServiceStateChanged(const ServiceRefPtr& service) {
 
 string VPNDriver::GetHost() const {
   return args_.LookupString(kProviderHostProperty, "");
+}
+
+ControlInterface* VPNDriver::control_interface() const {
+  return manager_->control_interface();
+}
+
+EventDispatcher* VPNDriver::dispatcher() const {
+  return manager_->dispatcher();
+}
+
+Metrics* VPNDriver::metrics() const {
+  return manager_->metrics();
 }
 
 }  // namespace shill

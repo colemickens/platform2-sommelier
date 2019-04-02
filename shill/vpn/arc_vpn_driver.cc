@@ -14,6 +14,8 @@
 
 #include "shill/connection.h"
 #include "shill/logging.h"
+#include "shill/manager.h"
+#include "shill/metrics.h"
 #include "shill/static_ip_parameters.h"
 #include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
@@ -44,15 +46,8 @@ const VPNDriver::Property ArcVpnDriver::kProperties[] = {
     {kProviderTypeProperty, 0},
     {kArcVpnTunnelChromeProperty, 0}};
 
-ArcVpnDriver::ArcVpnDriver(ControlInterface* control,
-                           EventDispatcher* dispatcher,
-                           Metrics* metrics,
-                           Manager* manager,
-                           DeviceInfo* device_info)
-    : VPNDriver(dispatcher, manager, kProperties, arraysize(kProperties)),
-      control_(control),
-      dispatcher_(dispatcher),
-      metrics_(metrics),
+ArcVpnDriver::ArcVpnDriver(Manager* manager, DeviceInfo* device_info)
+    : VPNDriver(manager, kProperties, arraysize(kProperties)),
       device_info_(device_info) {}
 
 ArcVpnDriver::~ArcVpnDriver() {
@@ -124,9 +119,8 @@ void ArcVpnDriver::Connect(const VPNServiceRefPtr& service, Error* error) {
 
   service_->SetState(Service::kStateOnline);
 
-  metrics_->SendEnumToUMA(Metrics::kMetricVpnDriver,
-                          Metrics::kVpnDriverArc,
-                          Metrics::kMetricVpnDriverMax);
+  metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver, Metrics::kVpnDriverArc,
+                           Metrics::kMetricVpnDriverMax);
 }
 
 bool ArcVpnDriver::ClaimInterface(const std::string& link_name,

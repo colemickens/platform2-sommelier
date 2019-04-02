@@ -23,20 +23,15 @@
 namespace shill {
 
 class CertificateFile;
-class ControlInterface;
 class DeviceInfo;
 class ExternalTask;
-class Metrics;
 class PPPDeviceFactory;
 class ProcessManager;
 
 class L2TPIPSecDriver : public VPNDriver,
                         public RPCTaskDelegate {
  public:
-  L2TPIPSecDriver(ControlInterface* control,
-                  EventDispatcher* dispatcher,
-                  Metrics* metrics,
-                  Manager* manager,
+  L2TPIPSecDriver(Manager* manager,
                   DeviceInfo* device_info,
                   ProcessManager* process_manager);
   ~L2TPIPSecDriver() override;
@@ -134,8 +129,6 @@ class L2TPIPSecDriver : public VPNDriver,
 
   void ReportConnectionMetrics();
 
-  ControlInterface* control_;
-  Metrics* metrics_;
   DeviceInfo* device_info_;
   ProcessManager* process_manager_;
   PPPDeviceFactory* ppp_device_factory_;
