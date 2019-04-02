@@ -333,11 +333,14 @@ int ImgEncoderCore::doSwEncode(std::shared_ptr<CommonBuffer> srcBuf,
     uint32_t outSize = 0;
     nsecs_t startTime = systemTime();
     void* pDst = static_cast<unsigned char*>(destBuf->data()) + destOffset;
+    // The quality HW JPEG encoder image is not good, so use SW encoder instead.
+    // (b/129519949).
     bool ret = mJpegCompressor->CompressImage(tempBuf,
                                              width, height, quality,
                                              nullptr, 0,
                                              destBuf->size(), pDst,
-                                             &outSize);
+                                             &outSize,
+                                             cros::JpegCompressor::Mode::kSwOnly);
     LOG1("%s: encoding ret:%d, %dx%d need %" PRId64 "ms, jpeg size %u, quality %d)",
          __FUNCTION__, ret, destBuf->width(), destBuf->height(),
          (systemTime() - startTime) / 1000000, outSize, quality);
