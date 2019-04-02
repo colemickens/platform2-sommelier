@@ -172,8 +172,12 @@ bool OobeConfig::EncryptedRollbackSave() const {
             << serialized_rollback_data.size();
   std::string encrypted;
   brillo::SecureBlob blob(serialized_rollback_data);
-  crypto_->Encrypt(blob, &encrypted);
+  if (!crypto_->Encrypt(blob, &encrypted)) {
+    LOG(ERROR) << "Failed to encrypt rollback data";
+    return false;
+  }
 
+  LOG(INFO) << "Writing encrypted rollback data";
   if (!WriteFile(kUnencryptedStatefulRollbackDataPath, encrypted)) {
     return false;
   }
