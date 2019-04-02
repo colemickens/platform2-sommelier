@@ -154,15 +154,4 @@ bool DrivefsHelper::SetupDirectoryForFUSEAccess(
   return true;
 }
 
-bool DrivefsHelper::BindMount(const base::FilePath& source,
-                              const base::FilePath& target) const {
-  std::vector<std::string> options = {MountOptions::kOptionBind,
-                                      MountOptions::kOptionReadWrite};
-  MountOptions mount_options;
-  mount_options.Initialize(options, false, "", "");
-  return SystemMounter(source.value(), target.value(), "", mount_options,
-                       platform())
-             .Mount() == MOUNT_ERROR_NONE;
-}
-
 }  // namespace cros_disks

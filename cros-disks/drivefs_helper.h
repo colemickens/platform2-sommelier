@@ -58,9 +58,6 @@ class DrivefsHelper : public FUSEHelper {
   base::FilePath GetValidatedDataDir(
       const std::vector<std::string>& options) const;
 
-  bool BindMount(const base::FilePath& source,
-                 const base::FilePath& target) const;
-
   DISALLOW_COPY_AND_ASSIGN(DrivefsHelper);
 };
 
