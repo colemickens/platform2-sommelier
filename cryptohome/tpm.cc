@@ -4,11 +4,11 @@
 
 #include "cryptohome/tpm.h"
 
-#include <string>
-
+#include <base/command_line.h>
+#include <base/strings/stringprintf.h>
 #include <inttypes.h>
 
-#include <base/strings/stringprintf.h>
+#include <string>
 
 #include "cryptohome/cryptolib.h"
 
@@ -16,7 +16,27 @@
 #include "cryptohome/tpm2_impl.h"
 #else
 #include "cryptohome/tpm_impl.h"
+#include "cryptohome/tpm_new_impl.h"
 #endif
+
+namespace {
+
+// In TPM1.2 case, this function should returns |true| iff
+// |Service::CreateDefault| returns an instance of |ServiceDistributed| so the
+// we can make use of |tpm_managerd| in that case.
+#if !USE_TPM2
+
+// The following constant is copied from |service.cc|.
+const char kAttestationMode[] = "attestation_mode";
+
+bool DoesUseMonolithicMode() {
+  base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
+  return !cmd_line->HasSwitch(kAttestationMode) ||
+         cmd_line->GetSwitchValueASCII(kAttestationMode) != "dbus";
+}
+#endif
+
+}  // namespace
 
 namespace cryptohome {
 
@@ -84,7 +104,7 @@ Tpm* Tpm::GetSingleton() {
 #if USE_TPM2
     singleton_ = new Tpm2Impl();
 #else
-    singleton_ = new TpmImpl();
+    singleton_ = DoesUseMonolithicMode() ? new TpmImpl() : new TpmNewImpl();
 #endif
   }
   singleton_lock_.Release();

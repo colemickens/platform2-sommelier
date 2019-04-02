@@ -5,22 +5,7 @@
 #include "cryptohome/service.h"
 #if USE_TPM2
 #include "cryptohome/bootlockbox/boot_lockbox_client.h"
-#include "cryptohome/service_distributed.h"
 #endif  // USE_TPM2
-#include "cryptohome/service_monolithic.h"
-
-#include <inttypes.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-
-#include <algorithm>
-#include <map>
-#include <memory>
-#include <set>
-#include <string>
-#include <utility>
-#include <vector>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -40,6 +25,18 @@
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
 #include <chromeos/constants/cryptohome.h>
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+
+#include <algorithm>
+#include <map>
+#include <memory>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "cryptohome/bootlockbox/boot_attributes.h"
 #include "cryptohome/bootlockbox/boot_lockbox.h"
@@ -58,11 +55,12 @@
 #include "cryptohome/mount.h"
 #include "cryptohome/obfuscated_username.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/service_distributed.h"
+#include "cryptohome/service_monolithic.h"
 #include "cryptohome/stateful_recovery.h"
 #include "cryptohome/tpm.h"
-
-#include "key.pb.h"  // NOLINT(build/include)
-#include "rpc.pb.h"  // NOLINT(build/include)
+#include "key.pb.h"           // NOLINT(build/include)
+#include "rpc.pb.h"           // NOLINT(build/include)
 #include "vault_keyset.pb.h"  // NOLINT(build/include)
 
 using base::FilePath;
@@ -139,9 +137,12 @@ const char kDircryptoMigrationProgressEventType[] =
 // The default entropy source to seed with random data from the TPM on startup.
 const FilePath kDefaultEntropySource("/dev/urandom");
 
+const char kAttestationMode[] = "attestation_mode";
+
 #if USE_TPM2
 const bool kUseInternalAttestationModeByDefault = false;
-const char kAttestationMode[] = "attestation_mode";
+#else
+const bool kUseInternalAttestationModeByDefault = true;
 #endif
 
 const char kAutoInitializeTpmSwitch[] = "auto_initialize_tpm";
@@ -287,7 +288,6 @@ void Service::StopTasks() {
 }
 
 Service* Service::CreateDefault(const std::string& abe_data) {
-#if USE_TPM2
   bool use_monolithic = kUseInternalAttestationModeByDefault;
   base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
 
@@ -302,9 +302,6 @@ Service* Service::CreateDefault(const std::string& abe_data) {
     return new ServiceMonolithic(abe_data);
   else
     return new ServiceDistributed();
-#else
-  return new ServiceMonolithic(abe_data);
-#endif
 }
 
 static bool PrefixPresent(const std::vector<FilePath>& prefixes,
