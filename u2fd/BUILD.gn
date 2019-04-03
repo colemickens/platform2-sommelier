@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
@@ -52,7 +53,16 @@ executable("u2fd") {
   ]
   libs = [ "policy-${libbase_ver}" ]
   deps = [
+    ":user_state_proto",
     "//common-mk/external_dependencies:policy-protos",
+  ]
+}
+
+proto_library("user_state_proto") {
+  proto_in_dir = "."
+  proto_out_dir = "include/u2fd"
+  sources = [
+    "user_state.proto",
   ]
 }
 

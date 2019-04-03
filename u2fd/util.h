@@ -12,6 +12,7 @@
 #include <base/optional.h>
 #include <base/logging.h>
 #include <crypto/scoped_openssl_types.h>
+#include <openssl/sha.h>
 
 namespace u2f {
 namespace util {
@@ -60,7 +61,17 @@ base::Optional<std::vector<uint8_t>> SignatureToDerBytes(const uint8_t* r,
                                                          const uint8_t* s);
 
 // Returns the SHA-256 of the specified data.
-std::vector<uint8_t> Sha256(const std::vector<uint8_t>& data);
+template <typename Blob>
+std::vector<uint8_t> Sha256(const Blob& data) {
+  std::vector<uint8_t> hash(SHA256_DIGEST_LENGTH);
+  SHA256_CTX sha_context;
+
+  SHA256_Init(&sha_context);
+  SHA256_Update(&sha_context, &data.front(), data.size());
+  SHA256_Final(&hash.front(), &sha_context);
+
+  return hash;
+}
 
 // Creates a new EC key to use for U2F attestation.
 crypto::ScopedEC_KEY CreateAttestationKey();

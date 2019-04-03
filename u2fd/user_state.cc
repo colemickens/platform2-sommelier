@@ -14,6 +14,7 @@
 #include <dbus/login_manager/dbus-constants.h>
 #include <openssl/rand.h>
 
+#include "u2fd/user_state.pb.h"
 #include "u2fd/util.h"
 
 namespace u2f {
@@ -21,8 +22,8 @@ namespace u2f {
 namespace {
 
 constexpr const char kSessionStateStarted[] = "started";
-constexpr const char kUserSecretPath[] = "/run/daemon-store/u2f/%s/secret";
-constexpr const char kCounterPath[] = "/run/daemon-store/u2f/%s/counter";
+constexpr const char kUserSecretPath[] = "/run/daemon-store/u2f/%s/secret_db";
+constexpr const char kCounterPath[] = "/run/daemon-store/u2f/%s/counter_db";
 constexpr const int kUserSecretSizeBytes = 32;
 
 void OnSignalConnected(const std::string& interface,
@@ -122,11 +123,55 @@ void UserState::LoadOrCreateUserSecret() {
   }
 }
 
+namespace {
+
+// Wraps the specified proto in a message that includes a hash for integrity
+// checking.
+template <typename Proto, typename Blob>
+bool WrapUserData(const Proto& user_data, Blob* out) {
+  brillo::SecureBlob user_data_bytes(user_data.ByteSizeLong());
+  if (!user_data.SerializeToArray(user_data_bytes.data(),
+                                  user_data_bytes.size())) {
+    return false;
+  }
+
+  std::vector<uint8_t> hash = util::Sha256(user_data_bytes);
+
+  // TODO(louiscollard): Securely delete proto.
+  UserDataContainer container;
+  container.set_data(user_data_bytes.data(), user_data_bytes.size());
+  container.set_sha256(hash.data(), hash.size());
+
+  out->resize(container.ByteSizeLong());
+  return container.SerializeToArray(out->data(), out->size());
+}
+
+template <typename Proto>
+bool UnwrapUserData(const std::string& container, Proto* out) {
+  UserDataContainer container_pb;
+  if (!container_pb.ParseFromString(container)) {
+    LOG(ERROR) << "Failed to parse user data container";
+    return false;
+  }
+
+  std::vector<uint8_t> hash;
+  util::AppendToVector(container_pb.sha256(), &hash);
+
+  std::vector<uint8_t> hash_verify = util::Sha256(container_pb.data());
+
+  return hash == hash_verify && out->ParseFromString(container_pb.data());
+}
+
+}  // namespace
+
 void UserState::LoadUserSecret(const base::FilePath& path) {
+  // TODO(louiscollard): Securely delete these.
   std::string secret_str;
-  if (base::ReadFileToString(path, &secret_str) ||
-      secret_str.size() != kUserSecretSizeBytes) {
-    user_secret_ = brillo::SecureBlob(secret_str);
+  UserSecret secret_pb;
+
+  if (base::ReadFileToString(path, &secret_str) &&
+      UnwrapUserData<UserSecret>(secret_str, &secret_pb)) {
+    user_secret_ = brillo::SecureBlob(secret_pb.secret());
   } else {
     LOG(ERROR) << "Failed to load user secret from: " << path.value();
     user_secret_.reset();
@@ -142,10 +187,15 @@ void UserState::CreateUserSecret(const base::FilePath& path) {
     return;
   }
 
-  if (!brillo::WriteBlobToFileAtomic(path, *user_secret_, 0600)) {
+  // TODO(louiscollard): Securely delete proto.
+  UserSecret secret_proto;
+  secret_proto.set_secret(user_secret_->data(), user_secret_->size());
+
+  brillo::SecureBlob secret_proto_wrapped;
+  if (!WrapUserData(secret_proto, &secret_proto_wrapped) ||
+      !brillo::WriteBlobToFileAtomic(path, secret_proto_wrapped, 0600)) {
     LOG(INFO) << "Failed to persist new user secret to disk.";
     user_secret_.reset();
-    // TODO(louiscollard): Delete file if present? Validate when loading?
   }
 }
 
@@ -160,10 +210,10 @@ void UserState::LoadCounter() {
   }
 
   std::string counter;
+  U2fCounter counter_pb;
   if (base::ReadFileToString(path, &counter) &&
-      counter.size() == sizeof(uint32_t)) {
-    // TODO(louiscollard): This, but less gross.
-    counter_ = *reinterpret_cast<const uint32_t*>(counter.data());
+      UnwrapUserData<U2fCounter>(counter, &counter_pb)) {
+    counter_ = counter_pb.counter();
   } else {
     LOG(ERROR) << "Failed to load counter from: " << path.value();
     counter_.reset();
@@ -173,11 +223,14 @@ void UserState::LoadCounter() {
 bool UserState::PersistCounter() {
   base::FilePath path(
       base::StringPrintf(kCounterPath, sanitized_user_->c_str()));
-  const uint32_t* counter_ptr = &(*counter_);
 
-  return brillo::WriteToFileAtomic(path,
-                                   reinterpret_cast<const char*>(counter_ptr),
-                                   sizeof(*counter_ptr), 0600);
+  U2fCounter counter_pb;
+  counter_pb.set_counter(*counter_);
+
+  std::vector<uint8_t> counter_wrapped;
+
+  return WrapUserData(counter_pb, &counter_wrapped) &&
+         brillo::WriteBlobToFileAtomic(path, counter_wrapped, 0600);
 }
 
 }  // namespace u2f

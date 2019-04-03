@@ -59,17 +59,6 @@ base::Optional<std::vector<uint8_t>> SignatureToDerBytes(const uint8_t* r,
   return signature;
 }
 
-std::vector<uint8_t> Sha256(const std::vector<uint8_t>& data) {
-  std::vector<uint8_t> hash(SHA256_DIGEST_LENGTH);
-  SHA256_CTX sha_context;
-
-  SHA256_Init(&sha_context);
-  SHA256_Update(&sha_context, &data.front(), data.size());
-  SHA256_Final(&hash.front(), &sha_context);
-
-  return hash;
-}
-
 crypto::ScopedEC_KEY CreateAttestationKey() {
   crypto::ScopedEC_KEY key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
   EC_KEY_set_asn1_flag(key.get(), OPENSSL_EC_NAMED_CURVE);
