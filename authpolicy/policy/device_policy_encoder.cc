@@ -188,13 +188,13 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
   EncodeBoolean(key::kDeviceAllowBluetooth, [policy](bool value) {
     policy->mutable_allow_bluetooth()->set_allow_bluetooth(value);
   });
-  EncodeStringList(key::kDeviceLoginScreenAppInstallList,
+  EncodeStringList(key::kDeviceLoginScreenExtensions,
                    [policy](const std::vector<std::string>& values) {
                      auto list =
-                         policy->mutable_device_login_screen_app_install_list();
-                     list->clear_device_login_screen_app_install_list();
+                         policy->mutable_device_login_screen_extensions();
+                     list->clear_device_login_screen_extensions();
                      for (const std::string& value : values)
-                       list->add_device_login_screen_app_install_list(value);
+                       list->add_device_login_screen_extensions(value);
                    });
   EncodeString(key::kDeviceLoginScreenDomainAutoComplete,
                [policy](const std::string& value) {
@@ -326,6 +326,11 @@ void DevicePolicyEncoder::EncodeAutoUpdatePolicies(
       key::kDeviceUpdateStagingSchedule, [policy](const std::string& value) {
         policy->mutable_auto_update_settings()->set_staging_schedule(value);
       });
+  EncodeString(key::kDeviceQuickFixBuildToken, [policy](
+                                                   const std::string& value) {
+    policy->mutable_auto_update_settings()->set_device_quick_fix_build_token(
+        value);
+  });
 }
 
 void DevicePolicyEncoder::EncodeAccessibilityPolicies(
@@ -609,6 +614,34 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     policy->mutable_device_wilco_dtc_allowed()->set_device_wilco_dtc_allowed(
         value);
   });
+
+  EncodeBoolean(key::kDeviceBootOnAcEnabled, [policy](bool value) {
+    policy->mutable_device_boot_on_ac()->set_enabled(value);
+  });
+
+  EncodeInteger(
+      key::kDevicePowerPeakShiftBatteryThreshold, [policy](int value) {
+        policy->mutable_device_power_peak_shift()->set_battery_threshold(value);
+      });
+
+  EncodeBoolean(key::kDevicePowerPeakShiftEnabled, [policy](bool value) {
+    policy->mutable_device_power_peak_shift()->set_enabled(value);
+  });
+
+  EncodeString(
+      key::kDevicePowerPeakShiftDayConfig, [policy](const std::string& value) {
+        policy->mutable_device_power_peak_shift()->set_day_configs(value);
+      });
+
+  EncodeBoolean(key::kDeviceWiFiAllowed, [policy](bool value) {
+    policy->mutable_device_wifi_allowed()->set_device_wifi_allowed(value);
+  });
+
+  EncodeString(key::kDeviceWilcoDtcConfiguration,
+               [policy](const std::string& value) {
+                 policy->mutable_device_wilco_dtc_configuration()
+                     ->set_device_wilco_dtc_configuration(value);
+               });
 }
 
 void DevicePolicyEncoder::EncodeBoolean(

@@ -106,9 +106,9 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeBoolean(&policy, key::kDeviceAllowBluetooth, kBool);
   EXPECT_EQ(kBool, policy.allow_bluetooth().allow_bluetooth());
 
-  EncodeStringList(&policy, key::kDeviceLoginScreenAppInstallList, kStringList);
-  EXPECT_EQ(kStringList, ToVector(policy.device_login_screen_app_install_list()
-                                      .device_login_screen_app_install_list()));
+  EncodeStringList(&policy, key::kDeviceLoginScreenExtensions, kStringList);
+  EXPECT_EQ(kStringList, ToVector(policy.device_login_screen_extensions()
+                                      .device_login_screen_extensions()));
 
   EncodeString(&policy, key::kDeviceLoginScreenDomainAutoComplete, kString);
   EXPECT_EQ(kString, policy.login_screen_domain_auto_complete()
@@ -175,6 +175,10 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
 
   EncodeString(&policy, key::kDeviceTargetVersionPrefix, kString);
   EXPECT_EQ(kString, policy.auto_update_settings().target_version_prefix());
+
+  EncodeString(&policy, key::kDeviceQuickFixBuildToken, kString);
+  EXPECT_EQ(kString,
+            policy.auto_update_settings().device_quick_fix_build_token());
 
   // The encoder of this policy converts ints to RollbackToTargetVersion enums.
   EncodeInteger(&policy, key::kDeviceRollbackToTargetVersion,
@@ -400,6 +404,24 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeBoolean(&policy, key::kDeviceWilcoDtcAllowed, kBool);
   EXPECT_EQ(kBool,
             policy.device_wilco_dtc_allowed().device_wilco_dtc_allowed());
+
+  EncodeBoolean(&policy, key::kDeviceBootOnAcEnabled, kBool);
+  EXPECT_EQ(kBool, policy.device_boot_on_ac().enabled());
+
+  EncodeInteger(&policy, key::kDevicePowerPeakShiftBatteryThreshold, kInt);
+  EXPECT_EQ(kInt, policy.device_power_peak_shift().battery_threshold());
+  EncodeBoolean(&policy, key::kDevicePowerPeakShiftEnabled, kBool);
+  EXPECT_EQ(kBool, policy.device_power_peak_shift().enabled());
+  EncodeString(&policy, key::kDevicePowerPeakShiftDayConfig, kString);
+  EXPECT_EQ(kString, policy.device_power_peak_shift().day_configs());
+
+  EncodeBoolean(&policy, key::kDeviceWiFiAllowed, kBool);
+  EXPECT_EQ(kBool, policy.device_wifi_allowed().device_wifi_allowed());
+
+  EncodeString(&policy, key::kDeviceWilcoDtcConfiguration, kString);
+  EXPECT_EQ(
+      kString,
+      policy.device_wilco_dtc_configuration().device_wilco_dtc_configuration());
 
   // The encoder of this policy converts ints to
   // DeviceUserPolicyLoopbackProcessingModeProto::Mode enums.
