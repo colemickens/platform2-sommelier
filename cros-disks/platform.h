@@ -12,6 +12,7 @@
 #include <string>
 
 #include <base/macros.h>
+#include <chromeos/dbus/service_constants.h>
 
 namespace cros_disks {
 
@@ -119,16 +120,16 @@ class Platform {
   // Sets the permissions of |path| to |mode|. Returns true on success.
   virtual bool SetPermissions(const std::string& path, mode_t mode) const;
 
-  // Unmounts |path| with |flags|. Returns true on success.
-  virtual bool Unmount(const std::string& path, int flags) const;
+  // Unmounts |path| with |flags|.
+  virtual MountErrorType Unmount(const std::string& path, int flags) const;
 
   // Mounts the |source| filesystem of type |filesystem_type| at |target| with
-  // |options| and |data|. Returns true on success; otherwise sets errno.
-  virtual bool Mount(const std::string& source,
-                     const std::string& target,
-                     const std::string& filesystem_type,
-                     unsigned long options,  // NOLINT(runtime/int)
-                     const std::string& data) const;
+  // |options| and |data|.
+  virtual MountErrorType Mount(const std::string& source,
+                               const std::string& target,
+                               const std::string& filesystem_type,
+                               uint64_t options,
+                               const std::string& data) const;
 
   gid_t mount_group_id() const { return mount_group_id_; }
 

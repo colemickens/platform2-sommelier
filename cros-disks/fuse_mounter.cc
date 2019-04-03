@@ -180,7 +180,8 @@ bool MountFuseDevice(const Platform* platform,
   auto flags = options.ToMountFlagsAndData().first;
 
   return platform->Mount(source, target.value(), fuse_type,
-                         flags | kRequiredFuseMountFlags, fuse_mount_options);
+                         flags | kRequiredFuseMountFlags, fuse_mount_options) ==
+         MountErrorType::MOUNT_ERROR_NONE;
 }
 
 }  // namespace

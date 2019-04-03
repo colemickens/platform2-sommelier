@@ -55,12 +55,6 @@ class MockPlatform : public Platform {
   MOCK_CONST_METHOD3(GetUserAndGroupId,
                      bool(const std::string&, uid_t* user_id, gid_t* group_id));
   MOCK_CONST_METHOD2(GetGroupId, bool(const std::string&, gid_t* group_id));
-  MOCK_CONST_METHOD5(Mount,
-                     bool(const std::string&,
-                          const std::string&,
-                          const std::string&,
-                          MountOptions::Flags,
-                          const std::string&));
   MOCK_CONST_METHOD1(PathExists, bool(const std::string& path));
   MOCK_CONST_METHOD1(DirectoryExists, bool(const std::string& path));
   MOCK_CONST_METHOD1(IsDirectoryEmpty, bool(const std::string& path));

@@ -202,30 +202,58 @@ bool Platform::SetPermissions(const string& path, mode_t mode) const {
   return true;
 }
 
-bool Platform::Unmount(const string& path, int flags) const {
+MountErrorType Platform::Unmount(const string& path, int flags) const {
+  error_t error = 0;
   if (umount2(path.c_str(), flags) != 0) {
+    error = errno;
     PLOG(ERROR) << "Failed to unmount '" << path << "' with flags " << flags;
-    return false;
+  } else {
+    LOG(INFO) << "Unmount '" << path << "' with flags " << flags;
   }
-  LOG(INFO) << "Unmount '" << path << "' with flags " << flags;
-  return true;
+  switch (error) {
+    case 0:
+      return MountErrorType::MOUNT_ERROR_NONE;
+    case ENOENT:
+      return MountErrorType::MOUNT_ERROR_PATH_NOT_MOUNTED;
+    case EPERM:
+      return MountErrorType::MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+    case EBUSY:
+      return MountErrorType::MOUNT_ERROR_PATH_ALREADY_MOUNTED;
+    default:
+      return MountErrorType::MOUNT_ERROR_UNKNOWN;
+  }
 }
 
-bool Platform::Mount(const string& source_path,
-                     const string& target_path,
-                     const string& filesystem_type,
-                     unsigned long options,  // NOLINT(runtime/int)
-                     const std::string& data) const {
+MountErrorType Platform::Mount(const string& source_path,
+                               const string& target_path,
+                               const string& filesystem_type,
+                               uint64_t options,
+                               const std::string& data) const {
+  error_t error = 0;
   if (mount(source_path.c_str(), target_path.c_str(), filesystem_type.c_str(),
             options, data.c_str()) != 0) {
+    error = errno;
     PLOG(ERROR) << "Failed to mount '" << source_path << "' '" << target_path
                 << "' '" << filesystem_type << "' " << options << " '" << data
                 << "'";
-    return false;
+  } else {
+    LOG(INFO) << "Mount '" << source_path << "' '" << target_path << "' '"
+              << filesystem_type << "' " << options << " '" << data << "'";
   }
-  LOG(INFO) << "Mount '" << source_path << "' '" << target_path << "' '"
-            << filesystem_type << "' " << options << " '" << data << "'";
-  return true;
+  switch (error) {
+    case 0:
+      return MountErrorType::MOUNT_ERROR_NONE;
+    case ENODEV:
+      return MountErrorType::MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
+    case ENOENT:
+    case ENOTBLK:
+    case ENOTDIR:
+      return MountErrorType::MOUNT_ERROR_INVALID_PATH;
+    case EPERM:
+      return MountErrorType::MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+    default:
+      return MountErrorType::MOUNT_ERROR_UNKNOWN;
+  }
 }
 
 }  // namespace cros_disks

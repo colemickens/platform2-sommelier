@@ -57,7 +57,7 @@ class MockPlatform : public Platform {
  public:
   MockPlatform() = default;
 
-  MOCK_CONST_METHOD2(Unmount, bool(const string& path, int flags));
+  MOCK_CONST_METHOD2(Unmount, MountErrorType(const string& path, int flags));
   MOCK_CONST_METHOD1(DirectoryExists, bool(const string& path));
   MOCK_CONST_METHOD1(CreateDirectory, bool(const string& path));
   MOCK_CONST_METHOD2(SetPermissions, bool(const string& path, mode_t mode));
@@ -107,7 +107,8 @@ class FUSEMountManagerTest : public ::testing::Test {
         foo_(new MockHelper("foo", &platform_)),
         bar_(new MockHelper("bar", &platform_)),
         baz_(new MockHelper("baz", &platform_)) {
-    ON_CALL(platform_, Unmount(_, 0)).WillByDefault(Return(false));
+    ON_CALL(platform_, Unmount(_, 0))
+        .WillByDefault(Return(MOUNT_ERROR_INVALID_ARGUMENT));
     ON_CALL(platform_, DirectoryExists(_)).WillByDefault(Return(true));
   }
 
@@ -174,10 +175,11 @@ TEST_F(FUSEMountManagerTest, SuggestMountPath) {
 // Verify that DoUnmount delegates unmount directly to platform.
 TEST_F(FUSEMountManagerTest, DoUnmount) {
   EXPECT_CALL(platform_, Unmount(kSomeSource.value(), 0))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_, Unmount("foobar", 0)).WillOnce(Return(false));
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform_, Unmount("foobar", 0))
+      .WillOnce(Return(MOUNT_ERROR_PATH_ALREADY_MOUNTED));
   EXPECT_CALL(platform_, Unmount(kSomeSource.value(), MNT_DETACH))
-      .WillOnce(Return(true));
+      .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_EQ(MOUNT_ERROR_NONE, manager_.DoUnmount(kSomeSource.value(), {}));
   EXPECT_NE(MOUNT_ERROR_NONE, manager_.DoUnmount("foobar", {}));
   EXPECT_EQ(MOUNT_ERROR_NONE,

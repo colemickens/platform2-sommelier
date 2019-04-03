@@ -110,10 +110,7 @@ MountErrorType FUSEMountManager::DoUnmount(const string& path,
     return MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS;
   }
 
-  if (platform()->Unmount(path, unmount_flags)) {
-    return MOUNT_ERROR_NONE;
-  }
-  return MOUNT_ERROR_UNKNOWN;
+  return platform()->Unmount(path, unmount_flags);
 }
 
 bool FUSEMountManager::CanMount(const string& source) const {

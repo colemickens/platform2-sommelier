@@ -53,12 +53,12 @@ class MockFUSEPlatform : public Platform {
                      bool(const std::string&, uid_t* user_id, gid_t* group_id));
   MOCK_CONST_METHOD2(GetGroupId, bool(const std::string&, gid_t* group_id));
   MOCK_CONST_METHOD5(Mount,
-                     bool(const std::string&,
-                          const std::string&,
-                          const std::string&,
-                          MountOptions::Flags,
-                          const std::string&));
-  MOCK_CONST_METHOD2(Unmount, bool(const std::string&, int flags));
+                     MountErrorType(const std::string&,
+                                    const std::string&,
+                                    const std::string&,
+                                    uint64_t flags,
+                                    const std::string&));
+  MOCK_CONST_METHOD2(Unmount, MountErrorType(const std::string&, int flags));
   MOCK_CONST_METHOD1(PathExists, bool(const std::string& path));
   MOCK_CONST_METHOD3(SetOwnership,
                      bool(const std::string& path,
@@ -177,7 +177,7 @@ TEST(FUSEMounterTest, Sandboxing_Unprivileged) {
 
   // Expectations for sandbox setup.
   EXPECT_CALL(platform, Mount(kSomeSource, kMountDir, _, _, _))
-      .WillOnce(Return(true));
+      .WillOnce(Return(MOUNT_ERROR_NONE));
 
   EXPECT_CALL(platform, PathExists(kMountProgram)).WillOnce(Return(true));
   EXPECT_CALL(platform, PathExists(kSomeSource)).WillOnce(Return(true));

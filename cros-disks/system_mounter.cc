@@ -33,24 +33,9 @@ SystemMounter::SystemMounter(const string& source_path,
       platform_(platform) {}
 
 MountErrorType SystemMounter::MountImpl() const {
-  pair<MountOptions::Flags, string> flags_and_data =
-      mount_options().ToMountFlagsAndData();
-  if (!platform_->Mount(source(), target_path().value(), filesystem_type(),
-                        flags_and_data.first, flags_and_data.second)) {
-    switch (errno) {
-      case ENODEV:
-        return MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
-      case ENOENT:
-      case ENOTBLK:
-      case ENOTDIR:
-        return MOUNT_ERROR_INVALID_PATH;
-      case EPERM:
-        return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
-      default:
-        return MOUNT_ERROR_INTERNAL;
-    }
-  }
-  return MOUNT_ERROR_NONE;
+  auto flags_and_data = mount_options().ToMountFlagsAndData();
+  return platform_->Mount(source(), target_path().value(), filesystem_type(),
+                          flags_and_data.first, flags_and_data.second);
 }
 
 }  // namespace cros_disks
