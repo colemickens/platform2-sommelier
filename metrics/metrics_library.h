@@ -98,6 +98,9 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // proportional to the number of buckets. Therefore, it is strongly
   // recommended to keep this number low (e.g., 50 is normal, while
   // 100 is high).
+  //
+  // The new metric must be documented in
+  // //tools/metrics/histograms/histograms.xml in the Chromium repository.
   bool SendToUMA(const std::string& name,
                  int sample,
                  int min,
@@ -119,6 +122,9 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // histogram is proportional to the number of buckets. Therefore, it
   // is strongly recommended to keep this number low (e.g., 50 is
   // normal, while 100 is high).
+  //
+  // The new metric must be documented in
+  // //tools/metrics/histograms/histograms.xml in the Chromium repository.
   bool SendEnumToUMA(const std::string& name, int sample, int max) override;
 
   // Specialization of SendEnumToUMA for boolean values.
@@ -132,14 +138,13 @@ class MetricsLibrary : public MetricsLibraryInterface {
 
   // Sends a user action to Chrome for transport to UMA and returns true on
   // success. This method results in the equivalent of an asynchronous
-  // non-blocking RPC to UserMetrics::RecordAction.  The new metric must be
-  // added to chrome/tools/extract_actions.py in the Chromium repository, which
-  // should then be run to generate a hash for the new action.
-  //
-  // Until http://crosbug.com/11125 is fixed, the metric must also be added to
-  // chrome/browser/chromeos/external_metrics.cc.
+  // non-blocking RPC to UserMetrics::RecordAction.
   //
   // |action| is the user-generated event (e.g., "MuteKeyPressed").
+  //
+  // The new metric must be added to AddChromeOSActions() in
+  // //tools/metrics/actions/extract_actions.py in the Chromium repository,
+  // which should then be run to generate a hash for the new action.
   bool SendUserActionToUMA(const std::string& action) override;
 
   // Sends a signal to UMA that a crash of the given |crash_kind|
