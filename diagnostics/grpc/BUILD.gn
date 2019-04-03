@@ -1,0 +1,25 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/proto_library.gni")
+import("//common-mk/pkg_config.gni")
+
+# Library with generated gRPC API definitions.
+pkg_config("diagnostics_grpc_protos_exported_pkg_deps") {
+  pkg_deps = [
+    "grpc++",
+    "protobuf",
+  ]
+}
+
+proto_library("diagnostics_grpc_protos") {
+  proto_in_dir = "."
+  proto_out_dir = "include"
+  gen_grpc = true
+  all_dependent_configs = [ ":diagnostics_grpc_protos_exported_pkg_deps" ]
+  sources = [
+    "wilco_dtc.proto",
+    "wilco_dtc_supportd.proto",
+  ]
+}

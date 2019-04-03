@@ -1,0 +1,47 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":diagnostics_dpsl_demo_vm",
+  ]
+}
+
+# Library that provides the DPSL (diagnostics processor support library)
+# interface.
+pkg_config("libdpsl_pkg_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+static_library("libdpsl") {
+  deps = [
+    "//diagnostics/constants:libconstants",
+    "//diagnostics/grpc:diagnostics_grpc_protos",
+    "//diagnostics/grpc_async_adapter:libgrpc_async_adapter",
+  ]
+  configs += [ ":libdpsl_pkg_deps" ]
+  sources = [
+    "internal/dpsl_global_context_impl.cc",
+    "internal/dpsl_requester_impl.cc",
+    "internal/dpsl_rpc_server_impl.cc",
+    "internal/dpsl_thread_context_impl.cc",
+  ]
+}
+
+# Executables for DPSL demos.
+executable("diagnostics_dpsl_demo_vm") {
+  deps = [
+    ":libdpsl",
+    "//diagnostics/grpc:diagnostics_grpc_protos",
+  ]
+  sources = [
+    "demo_single_thread/main.cc",
+  ]
+}

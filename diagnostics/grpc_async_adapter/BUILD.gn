@@ -1,0 +1,74 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+# Library that adopts gRPC core async interface to a libchrome-friendly one.
+pkg_config("libgrpc_async_adapter_exported_pkg_deps") {
+  pkg_deps = [
+    "grpc++",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+static_library("libgrpc_async_adapter") {
+  all_dependent_configs = [ ":libgrpc_async_adapter_exported_pkg_deps" ]
+  libs = [ "gpr" ]
+  sources = [
+    "async_grpc_client.cc",
+    "async_grpc_server.cc",
+    "grpc_completion_queue_dispatcher.cc",
+    "rpc_state.cc",
+  ]
+}
+
+if (use.test) {
+  proto_library("libgrpc_async_adapter_test_rpcs_protolib") {
+    proto_in_dir = "."
+    proto_out_dir = "include"
+    sources = [
+      "test_rpcs.proto",
+    ]
+    gen_grpc = true
+  }
+
+  pkg_config("libgrpc_async_adapter_test_rpcs_pkg_deps") {
+    pkg_deps = [
+      "grpc++",
+      "protobuf",
+    ]
+  }
+  static_library("libgrpc_async_adapter_test_rpcs") {
+    all_dependent_configs = [ ":libgrpc_async_adapter_test_rpcs_pkg_deps" ]
+    deps = [
+      ":libgrpc_async_adapter_test_rpcs_protolib",
+    ]
+  }
+
+  pkg_config("libgrpc_async_adapter_test_pkg_deps") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+
+  executable("libgrpc_async_adapter_test") {
+    configs += [
+      "//common-mk:test",
+      ":libgrpc_async_adapter_test_pkg_deps",
+    ]
+    deps = [
+      ":libgrpc_async_adapter",
+      ":libgrpc_async_adapter_test_rpcs",
+      "//common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "async_grpc_client_server_test.cc",
+      "async_grpc_server_test.cc",
+      "grpc_completion_queue_dispatcher_test.cc",
+    ]
+    libs = [ "gpr" ]
+  }
+}

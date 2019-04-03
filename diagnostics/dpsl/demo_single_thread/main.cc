@@ -5,8 +5,9 @@
 // Demo for a wilco_dtc program built using the DPSL library to be run inside
 // a VM.
 //
-// The demo functionality: waits for a message from UI, and, when receiving one,
-// fetches system uptime (/proc/uptime) and sends it back to the UI.
+// The demo functionality: sends a request to fetch system uptime (/proc/uptime)
+// and sends the information to the UI. The gRPC server will listen for EC
+// notifications, power events, and messages from the UI.
 //
 // The core logic in the demo is single-threaded and asynchronous.
 
@@ -48,8 +49,9 @@ class DemoRpcHandler final : public diagnostics::DpslRpcHandler {
           diagnostics::grpc_api::HandleConfigurationDataChangedRequest> request,
       HandleConfigurationDataChangedCallback callback) override;
 
- private:
   void FetchSystemUptime();
+
+ private:
   void OnSystemUptimeFetched(
       std::unique_ptr<diagnostics::grpc_api::GetProcDataResponse> response);
   void SendUptimeMessageToUi(const std::string& system_uptime);
@@ -123,20 +125,23 @@ void DemoRpcHandler::OnSystemUptimeFetched(
   if (response && response->file_dump_size()) {
     system_uptime = response->file_dump(0).contents();
     std::replace(system_uptime.begin(), system_uptime.end(), '\n', ' ');
+    std::cerr << "Fetched system uptime: " << system_uptime << std::endl;
+    SendUptimeMessageToUi(system_uptime);
+  } else {
+    std::cerr << "Unable to fetch system uptime";
   }
-  std::cerr << "Fetched system uptime: " << system_uptime << std::endl;
-  SendUptimeMessageToUi(system_uptime);
 }
 
 void DemoRpcHandler::SendUptimeMessageToUi(const std::string& system_uptime) {
   auto request =
       std::make_unique<diagnostics::grpc_api::SendMessageToUiRequest>();
   request->set_json_message("{\"uptime\": \"" + system_uptime + "\"}");
+  std::cerr << "Sending uptime to UI..." << std::endl;
   requester_->SendMessageToUi(
       std::move(request),
       [](std::unique_ptr<diagnostics::grpc_api::SendMessageToUiResponse>
              response) {
-        std::cerr << "Sent 'uptime' SendMessageToUi" << std::endl;
+        std::cerr << "Sent 'uptime' SendMessageToUi: " << std::endl;
       });
 }
 
@@ -156,6 +161,9 @@ int main() {
   auto rpc_server = diagnostics::DpslRpcServer::Create(
       thread_context.get(), &demo_rpc_handler,
       diagnostics::DpslRpcServer::GrpcServerUri::kVmVsock);
+
+  std::cerr << "Attempting to fetch host system uptime..." << std::endl;
+  demo_rpc_handler.FetchSystemUptime();
   // This blocks (forever in this program, since it never calls
   // QuitEventLoop()).
   thread_context->RunEventLoop();

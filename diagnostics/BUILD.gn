@@ -4,13 +4,11 @@
 
 import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
-import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
     ":cros_healthd",
     ":diag",
-    ":diagnostics_dpsl_demo_single_thread",
     ":smartctl-check",
     ":telem",
     ":urandom",
@@ -20,50 +18,12 @@ group("all") {
     deps += [
       ":cros_healthd_test",
       ":libdiag_test",
-      ":libgrpc_async_adapter_test",
       ":libtelem_test",
       ":routine_test",
       ":wilco_dtc_supportd_test",
+      "//diagnostics/grpc_async_adapter:libgrpc_async_adapter_test",
     ]
   }
-}
-
-# Library with generated gRPC API definitions.
-pkg_config("diagnostics_grpc_protos_exported_pkg_deps") {
-  pkg_deps = [
-    "grpc++",
-    "protobuf",
-  ]
-}
-
-proto_library("diagnostics_grpc_protos") {
-  proto_in_dir = "grpc"
-  proto_out_dir = "include"
-  gen_grpc = true
-  all_dependent_configs = [ ":diagnostics_grpc_protos_exported_pkg_deps" ]
-  sources = [
-    "${proto_in_dir}/wilco_dtc.proto",
-    "${proto_in_dir}/wilco_dtc_supportd.proto",
-  ]
-}
-
-# Library that adopts gRPC core async interface to a libchrome-friendly one.
-pkg_config("libgrpc_async_adapter_exported_pkg_deps") {
-  pkg_deps = [
-    "grpc++",
-    "libchrome-${libbase_ver}",
-  ]
-}
-
-static_library("libgrpc_async_adapter") {
-  all_dependent_configs = [ ":libgrpc_async_adapter_exported_pkg_deps" ]
-  libs = [ "gpr" ]
-  sources = [
-    "grpc_async_adapter/async_grpc_client.cc",
-    "grpc_async_adapter/async_grpc_server.cc",
-    "grpc_async_adapter/grpc_completion_queue_dispatcher.cc",
-    "grpc_async_adapter/rpc_state.cc",
-  ]
 }
 
 # Library with generated Mojo API definitions.
@@ -91,7 +51,7 @@ pkg_config("libdiag_routine_pkg_deps") {
 
 static_library("libdiag_routine") {
   deps = [
-    ":diagnostics_grpc_protos",
+    "//diagnostics/grpc:diagnostics_grpc_protos",
   ]
   all_dependent_configs = [ ":libdiag_routine_pkg_deps" ]
   sources = [
@@ -114,22 +74,15 @@ pkg_config("libdiag_pkg_deps") {
 
 static_library("libdiag") {
   deps = [
-    ":diagnostics_grpc_protos",
-    ":libconstants",
-    ":libgrpc_async_adapter",
+    "//diagnostics/constants:libconstants",
+    "//diagnostics/grpc:diagnostics_grpc_protos",
+    "//diagnostics/grpc_async_adapter:libgrpc_async_adapter",
   ]
   all_dependent_configs = [ ":libdiag_pkg_deps" ]
   sources = [
     "diag/diag_async_grpc_client_adapter_impl.cc",
     "diag/diag_routine_requester.cc",
   ]
-}
-
-static_library("libconstants") {
-  sources = [
-    "constants/grpc_constants.cc",
-  ]
-  pkg_deps = [ "libchrome-${libbase_ver}" ]
 }
 
 # Library that provides core functionality for the wilco_dtc_supportd daemon.
@@ -145,11 +98,11 @@ pkg_config("libwilco_dtc_supportd_pkg_deps") {
 
 static_library("libwilco_dtc_supportd") {
   deps = [
-    ":diagnostics_grpc_protos",
     ":diagnostics_mojo_bindings",
-    ":libconstants",
     ":libdiag_routine",
-    ":libgrpc_async_adapter",
+    "//diagnostics/constants:libconstants",
+    "//diagnostics/grpc:diagnostics_grpc_protos",
+    "//diagnostics/grpc_async_adapter:libgrpc_async_adapter",
   ]
   all_dependent_configs = [ ":libwilco_dtc_supportd_pkg_deps" ]
   sources = [
@@ -169,30 +122,6 @@ static_library("libwilco_dtc_supportd") {
   ]
 }
 
-# Library that provides the DPSL (diagnostics processor support library)
-# interface.
-pkg_config("libdpsl_pkg_deps") {
-  pkg_deps = [
-    "libbrillo-${libbase_ver}",
-    "libchrome-${libbase_ver}",
-  ]
-}
-
-static_library("libdpsl") {
-  deps = [
-    ":diagnostics_grpc_protos",
-    ":libconstants",
-    ":libgrpc_async_adapter",
-  ]
-  configs += [ ":libdpsl_pkg_deps" ]
-  sources = [
-    "dpsl/internal/dpsl_global_context_impl.cc",
-    "dpsl/internal/dpsl_requester_impl.cc",
-    "dpsl/internal/dpsl_rpc_server_impl.cc",
-    "dpsl/internal/dpsl_thread_context_impl.cc",
-  ]
-}
-
 # Library that provides core functionality for the telemetry tool.
 pkg_config("libtelem_pkg_deps") {
   pkg_deps = [
@@ -204,9 +133,9 @@ pkg_config("libtelem_pkg_deps") {
 
 static_library("libtelem") {
   deps = [
-    ":diagnostics_grpc_protos",
-    ":libconstants",
-    ":libgrpc_async_adapter",
+    "//diagnostics/constants:libconstants",
+    "//diagnostics/grpc:diagnostics_grpc_protos",
+    "//diagnostics/grpc_async_adapter:libgrpc_async_adapter",
   ]
   all_dependent_configs = [ ":libtelem_pkg_deps" ]
   sources = [
@@ -292,22 +221,6 @@ executable("wilco_dtc_supportd") {
   ]
 }
 
-# The wilco_dtc daemon executable.
-pkg_config("wilco_dtc_pkg_deps") {
-  pkg_deps = [ "libbrillo-${libbase_ver}" ]
-}
-
-# Executables for DPSL demos.
-executable("diagnostics_dpsl_demo_single_thread") {
-  deps = [
-    ":diagnostics_grpc_protos",
-    ":libdpsl",
-  ]
-  sources = [
-    "dpsl/demo_single_thread/main.cc",
-  ]
-}
-
 # The telemetry tool executable.
 pkg_config("telem_pkg_deps") {
   pkg_deps = [
@@ -328,27 +241,6 @@ executable("telem") {
 
 if (use.test) {
   # Libraries for unit tests.
-  proto_library("libgrpc_async_adapter_test_rpcs_protolib") {
-    proto_in_dir = "grpc_async_adapter"
-    proto_out_dir = "include"
-    sources = [
-      "grpc_async_adapter/test_rpcs.proto",
-    ]
-    gen_grpc = true
-  }
-
-  pkg_config("libgrpc_async_adapter_test_rpcs_pkg_deps") {
-    pkg_deps = [
-      "grpc++",
-      "protobuf",
-    ]
-  }
-  static_library("libgrpc_async_adapter_test_rpcs") {
-    all_dependent_configs = [ ":libgrpc_async_adapter_test_rpcs_pkg_deps" ]
-    deps = [
-      ":libgrpc_async_adapter_test_rpcs_protolib",
-    ]
-  }
 
   # Unit tests.
   pkg_config("cros_healthd_test_pkg_deps") {
@@ -366,31 +258,6 @@ if (use.test) {
     deps = [
       "../common-mk/testrunner:testrunner",
     ]
-  }
-
-  pkg_config("libgrpc_async_adapter_test_pkg_deps") {
-    pkg_deps = [
-      "libchrome-${libbase_ver}",
-      "libchrome-test-${libbase_ver}",
-    ]
-  }
-
-  executable("libgrpc_async_adapter_test") {
-    configs += [
-      "//common-mk:test",
-      ":libgrpc_async_adapter_test_pkg_deps",
-    ]
-    deps = [
-      ":libgrpc_async_adapter",
-      ":libgrpc_async_adapter_test_rpcs",
-      "../common-mk/testrunner:testrunner",
-    ]
-    sources = [
-      "grpc_async_adapter/async_grpc_client_server_test.cc",
-      "grpc_async_adapter/async_grpc_server_test.cc",
-      "grpc_async_adapter/grpc_completion_queue_dispatcher_test.cc",
-    ]
-    libs = [ "gpr" ]
   }
 
   pkg_config("wilco_dtc_supportd_test_pkg_deps") {
