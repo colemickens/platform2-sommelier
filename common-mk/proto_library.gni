@@ -23,8 +23,6 @@
 #       Deps applied to the generated library.
 #   gen_python (optional)
 #       If true, generates Python binding.
-#   gen_go_grpc (optional)
-#       If true, generates Go GRPC.
 #   gen_grpc (optional)
 #       If true, generates C++ GRPC.
 #   gen_grpc_gmock (optional)
@@ -48,7 +46,6 @@ template("proto_library") {
                              "proto_in_dir",
                              "proto_out_dir",
                              "gen_python",
-                             "gen_go_grpc",
                              "gen_grpc",
                              "gen_grpc_gmock",
                              "gen_cpp_mode",
@@ -74,9 +71,6 @@ template("proto_library") {
 
     if (!defined(gen_python)) {
       gen_python = false
-    }
-    if (!defined(gen_go_grpc)) {
-      gen_go_grpc = false
     }
     if (!defined(gen_grpc)) {
       gen_grpc = false
@@ -129,11 +123,7 @@ template("proto_library") {
         "${cc_dir}/{{source_name_part}}.pb.h",
       ]
     }
-    if (gen_go_grpc) {
-      args += [ "--go_out=plugins=grpc:${go_dir}" ]
-      outputs += [ "${go_dir}/{{source_name_part}}.pb.go" ]
-    }
-    if (!gen_grpc && !gen_go_grpc && !gen_python) {
+    if (!gen_grpc && !gen_python) {
       args += [ "--cpp_out=${gen_cpp_mode}${cc_dir}" ]
       outputs += [
         "${cc_dir}/{{source_name_part}}.pb.cc",
@@ -187,6 +177,8 @@ template("proto_library") {
 #       Output directory. Relative to gen directory.
 #   sources
 #       The proto file paths.
+#   gen_grpc (optional)
+#       If true, generates Go GRPC.
 template("goproto_library") {
   action(target_name) {
     forward_variables_from(invoker,
@@ -203,6 +195,11 @@ template("goproto_library") {
 
     # Build protoc command line to run.
     script = "//common-mk/file_generator_wrapper.py"
+    if (defined(invoker.gen_grpc) && invoker.gen_grpc) {
+      go_out_prefix = "plugins=grpc:"
+    } else {
+      go_out_prefix = ""
+    }
     args = [
       "protoc",
       "--proto_path",
@@ -210,7 +207,7 @@ template("goproto_library") {
       "--proto_path",
       "${sysroot}/usr/share/proto",
       "--go_out",
-      "${root_gen_dir}/${proto_out_dir}",
+      "${go_out_prefix}${root_gen_dir}/${proto_out_dir}",
     ]
     foreach(source, sources) {
       args += [ rebase_path(source) ]
