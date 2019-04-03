@@ -64,5 +64,5 @@ tests. Make sure the device under test (DUT) can be connected adb.
         (2) Run the test binary
         ```
         $ adb shell "cd /data/local/tmp; \
-                     ./arcvideodecoder_test_<abi> --test_stream_data=test-25fps.h264:320:240:250:258:::1"
+                     ./arcvideodecoder_test_<abi> --test_video_data=test-25fps.h264:320:240:250:258:::1"
         ```

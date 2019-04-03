@@ -17,7 +17,7 @@
 
 namespace android {
 
-// Environment to store test stream data for all test cases.
+// Environment to store test video data for all test cases.
 class ArcVideoDecoderTestEnvironment;
 
 namespace {
@@ -28,11 +28,11 @@ class ArcVideoDecoderTestEnvironment : public testing::Environment {
  public:
   explicit ArcVideoDecoderTestEnvironment(const std::string& data,
                                           const std::string& output_frames_path)
-      : test_stream_data_(data), output_frames_path_(output_frames_path) {}
+      : test_video_data_(data), output_frames_path_(output_frames_path) {}
 
-  void SetUp() override { ParseTestStreamData(); }
+  void SetUp() override { ParseTestVideoData(); }
 
-  // The syntax of test stream is:
+  // The syntax of test video data is:
   // "input_file_path:width:height:num_frames:num_fragments:min_fps_render:
   //  min_fps_no_render:video_codec_profile[:output_file_path]"
   // - |input_file_path| is compressed video stream in H264 Annex B (NAL) format
@@ -46,11 +46,11 @@ class ArcVideoDecoderTestEnvironment : public testing::Environment {
   //   (The former is unused because no rendering case here.)
   //   (The latter is Optional.)
   // - |video_codec_profile| is the VideoCodecProfile set during Initialization.
-  void ParseTestStreamData() {
-    std::vector<std::string> fields = SplitString(test_stream_data_, ':');
+  void ParseTestVideoData() {
+    std::vector<std::string> fields = SplitString(test_video_data_, ':');
     ASSERT_EQ(fields.size(), 8U)
-        << "The number of fields of test_stream_data is not 8: "
-        << test_stream_data_;
+        << "The number of fields of test_video_data is not 8: "
+        << test_video_data_;
 
     input_file_path_ = fields[0];
     int width = std::stoi(fields[1]);
@@ -82,7 +82,7 @@ class ArcVideoDecoderTestEnvironment : public testing::Environment {
   VideoCodecProfile video_codec_profile() const { return video_codec_profile_; }
 
  protected:
-  std::string test_stream_data_;
+  std::string test_video_data_;
   std::string output_frames_path_;
 
   std::string input_file_path_;
@@ -218,11 +218,11 @@ TEST_F(ArcVideoDecoderE2ETest, TestFPS) {
 
 bool GetOption(int argc,
                char** argv,
-               std::string* test_stream_data,
+               std::string* test_video_data,
                std::string* output_frames_path) {
   const char* const optstring = "to:";
   static const struct option opts[] = {
-      {"test_stream_data", required_argument, nullptr, 't'},
+      {"test_video_data", required_argument, nullptr, 't'},
       {"output_frames_path", required_argument, nullptr, 'o'},
       {nullptr, 0, nullptr, 0},
   };
@@ -231,7 +231,7 @@ bool GetOption(int argc,
   while ((opt = getopt_long(argc, argv, optstring, opts, nullptr)) != -1) {
     switch (opt) {
       case 't':
-        *test_stream_data = optarg;
+        *test_video_data = optarg;
         break;
       case 'o':
         *output_frames_path = optarg;
@@ -243,22 +243,22 @@ bool GetOption(int argc,
     }
   }
 
-  if (test_stream_data->empty()) {
-    printf("[ERR] Please assign test stream data by --test_stream_data\n");
+  if (test_video_data->empty()) {
+    printf("[ERR] Please assign test video data by --test_video_data\n");
     return false;
   }
   return true;
 }
 
 int main(int argc, char** argv) {
-  std::string test_stream_data;
+  std::string test_video_data;
   std::string output_frames_path;
-  if (!GetOption(argc, argv, &test_stream_data, &output_frames_path))
+  if (!GetOption(argc, argv, &test_video_data, &output_frames_path))
     return EXIT_FAILURE;
 
   android::g_env = reinterpret_cast<android::ArcVideoDecoderTestEnvironment*>(
       testing::AddGlobalTestEnvironment(
-          new android::ArcVideoDecoderTestEnvironment(test_stream_data,
+          new android::ArcVideoDecoderTestEnvironment(test_video_data,
                                                       output_frames_path)));
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
