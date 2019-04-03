@@ -82,7 +82,6 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, GetProcessTree);
   FRIEND_TEST(CrashCollectorTest, GetUptime);
   FRIEND_TEST(CrashCollectorTest, Initialize);
-  FRIEND_TEST(CrashCollectorTest, IsUserSpecificDirectoryEnabled);
   FRIEND_TEST(CrashCollectorTest, MetaData);
   FRIEND_TEST(CrashCollectorTest, ParseProcessTicksFromStat);
   FRIEND_TEST(CrashCollectorTest, Sanitize);
@@ -226,8 +225,6 @@ class CrashCollector {
 
   // Returns true if chrome crashes should be handled.
   bool ShouldHandleChromeCrashes();
-  // Returns true if user crash directory may be used.
-  bool IsUserSpecificDirectoryEnabled();
 
   // Gzip-compresses |path|, removes the original file, and returns the path of
   // the new file. On failure, the original file is left alone and an empty path

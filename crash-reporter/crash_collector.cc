@@ -390,10 +390,15 @@ bool CrashCollector::GetUserCrashDirectories(
 }
 
 FilePath CrashCollector::GetUserCrashDirectory() {
+  FilePath user_directory = FilePath(paths::kFallbackUserCrashDirectory);
+  // When testing, store crashes in the fallback crash directory; otherwise,
+  // the test framework can't get to them after logging the user out.
+  if (ShouldHandleChromeCrashes()) {
+    return user_directory;
+  }
   // In this multiprofile world, there is no one-specific user dir anymore.
   // Ask the session manager for the active ones, then just run with the
   // first result we get back.
-  FilePath user_directory = FilePath(paths::kFallbackUserCrashDirectory);
   std::vector<FilePath> directories;
   if (!GetUserCrashDirectories(&directories) || directories.empty()) {
     LOG(ERROR) << "Could not get user crash directories, using default.";
@@ -410,14 +415,10 @@ FilePath CrashCollector::GetCrashDirectoryInfo(uid_t process_euid,
                                                mode_t* mode,
                                                uid_t* directory_owner,
                                                gid_t* directory_group) {
-  // TODO(mkrebs): This can go away once Chrome crashes are handled
-  // normally (see crosbug.com/5872).
-  // Check if the user crash directory should be used.  If we are
-  // collecting chrome crashes during autotesting, we want to put them in
-  // the system crash directory so they are outside the cryptohome -- in
-  // case we are being run during logout (see crosbug.com/18637).
-  if ((process_euid == default_user_id && IsUserSpecificDirectoryEnabled()) ||
-      force_user_crash_dir_) {
+  // User crashes should go into the cryptohome, since they may contain PII.
+  // For system crashes, there may not be a cryptohome mounted, so we use the
+  // system crash path.
+  if (process_euid == default_user_id || force_user_crash_dir_) {
     *mode = kUserCrashPathMode;
     *directory_owner = default_user_id;
     *directory_group = default_user_group;
@@ -831,10 +832,6 @@ bool CrashCollector::ShouldHandleChromeCrashes() {
   }
   // We default to ignoring chrome crashes.
   return false;
-}
-
-bool CrashCollector::IsUserSpecificDirectoryEnabled() {
-  return !ShouldHandleChromeCrashes();
 }
 
 FilePath CrashCollector::GzipFile(const FilePath& path) {

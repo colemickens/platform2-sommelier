@@ -243,8 +243,6 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
   test_util::SetActiveSessions(mock, {{"user", "hashcakes"}});
   collector_.session_manager_proxy_.reset(mock);
 
-  EXPECT_EQ(collector_.IsUserSpecificDirectoryEnabled(), true);
-
   path = collector_.GetCrashDirectoryInfo(kChronosUid, kChronosUid, kChronosGid,
                                           &directory_mode, &directory_owner,
                                           &directory_group);
