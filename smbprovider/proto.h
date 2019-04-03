@@ -20,14 +20,8 @@ using ProtoBlob = std::vector<uint8_t>;
 
 // Serializes |proto| to the byte array |proto_blob|. Returns ERROR_OK on
 // success and ERROR_FAILED on failure.
-template <typename ProtoType>
-ErrorType SerializeProtoToBlob(const ProtoType& proto, ProtoBlob* proto_blob) {
-  DCHECK(proto_blob);
-  proto_blob->resize(proto.ByteSizeLong());
-  return proto.SerializeToArray(proto_blob->data(), proto.ByteSizeLong())
-             ? ERROR_OK
-             : ERROR_FAILED;
-}
+ErrorType SerializeProtoToBlob(const google::protobuf::MessageLite& proto,
+                               ProtoBlob* proto_blob);
 
 // Helper method to check whether a Proto has valid fields.
 bool IsValidOptions(const MountOptionsProto& options);

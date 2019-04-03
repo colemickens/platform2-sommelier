@@ -11,6 +11,15 @@
 
 namespace smbprovider {
 
+ErrorType SerializeProtoToBlob(const google::protobuf::MessageLite& proto,
+                               ProtoBlob* proto_blob) {
+  DCHECK(proto_blob);
+  proto_blob->resize(proto.ByteSizeLong());
+  return proto.SerializeToArray(proto_blob->data(), proto.ByteSizeLong())
+             ? ERROR_OK
+             : ERROR_FAILED;
+}
+
 bool IsValidOptions(const MountOptionsProto& options) {
   return options.has_path() && options.has_workgroup() &&
          options.has_username() && options.has_mount_config() &&
