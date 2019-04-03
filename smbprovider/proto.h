@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/logging.h>
-
 #include "smbprovider/mount_config.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 

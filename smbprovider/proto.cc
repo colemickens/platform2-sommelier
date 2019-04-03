@@ -4,6 +4,7 @@
 
 #include "smbprovider/proto.h"
 
+#include <base/logging.h>
 #include <dbus/smbprovider/dbus-constants.h>
 
 #include "smbprovider/constants.h"
@@ -15,9 +16,13 @@ ErrorType SerializeProtoToBlob(const google::protobuf::MessageLite& proto,
                                ProtoBlob* proto_blob) {
   DCHECK(proto_blob);
   proto_blob->resize(proto.ByteSizeLong());
-  return proto.SerializeToArray(proto_blob->data(), proto.ByteSizeLong())
-             ? ERROR_OK
-             : ERROR_FAILED;
+  bool success =
+      proto.SerializeToArray(proto_blob->data(), proto.ByteSizeLong());
+  if (!success) {
+    LOG(ERROR) << "Unable to serialise proto " << proto.GetTypeName()
+               << " size " << proto.GetCachedSize();
+  }
+  return success ? ERROR_OK : ERROR_FAILED;
 }
 
 bool IsValidOptions(const MountOptionsProto& options) {

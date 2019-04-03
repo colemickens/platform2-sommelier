@@ -5,8 +5,10 @@
 #include "smbprovider/smbprovider_helper.h"
 
 #include <errno.h>
+#include <string.h>
 
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/strings/string_piece.h>
 #include <libsmbclient.h>
 
@@ -81,6 +83,8 @@ ErrorType GetErrorFromErrno(int32_t error_code) {
       error = ERROR_SMB1_UNSUPPORTED;
       break;
     default:
+      LOG(WARNING) << "Unknown error code: " << error_code << " "
+                   << strerror(error_code);
       error = ERROR_FAILED;
       break;
   }
