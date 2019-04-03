@@ -659,7 +659,8 @@ class SessionManagerImplTest : public ::testing::Test,
                     SessionManagerImpl::kStartArcInstanceImpulse,
                     ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                                 "NATIVE_BRIDGE_EXPERIMENT=0",
-                                "ARC_FILE_PICKER_EXPERIMENT=0"),
+                                "ARC_FILE_PICKER_EXPERIMENT=0",
+                                "ARC_CUSTOM_TABS_EXPERIMENT=0"),
                     InitDaemonController::TriggerMode::ASYNC))
         .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -2033,7 +2034,8 @@ TEST_F(SessionManagerImplTest, StartArcMiniContainer) {
                   SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=0",
-                              "ARC_FILE_PICKER_EXPERIMENT=0"),
+                              "ARC_FILE_PICKER_EXPERIMENT=0",
+                              "ARC_CUSTOM_TABS_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -2083,7 +2085,8 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
                   SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=0",
-                              "ARC_FILE_PICKER_EXPERIMENT=0"),
+                              "ARC_FILE_PICKER_EXPERIMENT=0",
+                              "ARC_CUSTOM_TABS_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -2180,7 +2183,8 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
                   SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=0",
-                              "ARC_FILE_PICKER_EXPERIMENT=0"),
+                              "ARC_FILE_PICKER_EXPERIMENT=0",
+                              "ARC_CUSTOM_TABS_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -2247,7 +2251,8 @@ TEST_P(SessionManagerPlayStoreAutoUpdateTest, PlayStoreAutoUpdate) {
 
   std::vector<std::string> expectations{
       "CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-      "NATIVE_BRIDGE_EXPERIMENT=0", "ARC_FILE_PICKER_EXPERIMENT=0"};
+      "NATIVE_BRIDGE_EXPERIMENT=0", "ARC_FILE_PICKER_EXPERIMENT=0",
+      "ARC_CUSTOM_TABS_EXPERIMENT=0"};
 
   switch (GetParam()) {
     case StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_DEFAULT:
@@ -2293,7 +2298,8 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
                   SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=0",
-                              "ARC_FILE_PICKER_EXPERIMENT=0"),
+                              "ARC_FILE_PICKER_EXPERIMENT=0",
+                              "ARC_CUSTOM_TABS_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -2351,7 +2357,8 @@ TEST_F(SessionManagerImplTest,
                   SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=0",
-                              "ARC_FILE_PICKER_EXPERIMENT=0"),
+                              "ARC_FILE_PICKER_EXPERIMENT=0",
+                              "ARC_CUSTOM_TABS_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -2400,7 +2407,8 @@ TEST_F(SessionManagerImplTest, ArcNativeBridgeExperiment) {
                   SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=1",
-                              "ARC_FILE_PICKER_EXPERIMENT=0"),
+                              "ARC_FILE_PICKER_EXPERIMENT=0",
+                              "ARC_CUSTOM_TABS_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -2420,13 +2428,35 @@ TEST_F(SessionManagerImplTest, ArcFilePickerExperiment) {
                   SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=0",
-                              "ARC_FILE_PICKER_EXPERIMENT=1"),
+                              "ARC_FILE_PICKER_EXPERIMENT=1",
+                              "ARC_CUSTOM_TABS_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   brillo::ErrorPtr error;
   StartArcMiniContainerRequest request;
   request.set_arc_file_picker_experiment(true);
+  // Use for login screen mode for minimalistic test.
+  std::string container_instance_id;
+  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request),
+                                           &container_instance_id));
+  EXPECT_FALSE(error.get());
+}
+
+TEST_F(SessionManagerImplTest, ArcCustomTabsExperiment) {
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kStartArcInstanceImpulse,
+                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                              "NATIVE_BRIDGE_EXPERIMENT=0",
+                              "ARC_FILE_PICKER_EXPERIMENT=0",
+                              "ARC_CUSTOM_TABS_EXPERIMENT=1"),
+                  InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+
+  brillo::ErrorPtr error;
+  StartArcMiniContainerRequest request;
+  request.set_arc_custom_tabs_experiment(true);
   // Use for login screen mode for minimalistic test.
   std::string container_instance_id;
   EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request),
@@ -2441,7 +2471,8 @@ TEST_F(SessionManagerImplTest, ArcLcdDensity) {
           SessionManagerImpl::kStartArcInstanceImpulse,
           ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                       "NATIVE_BRIDGE_EXPERIMENT=0",
-                      "ARC_FILE_PICKER_EXPERIMENT=0", "ARC_LCD_DENSITY=240"),
+                      "ARC_FILE_PICKER_EXPERIMENT=0",
+                      "ARC_CUSTOM_TABS_EXPERIMENT=0", "ARC_LCD_DENSITY=240"),
           InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -2497,7 +2528,8 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
                   SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=1", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=0",
-                              "ARC_FILE_PICKER_EXPERIMENT=0"),
+                              "ARC_FILE_PICKER_EXPERIMENT=0",
+                              "ARC_CUSTOM_TABS_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -2559,7 +2591,8 @@ TEST_F(SessionManagerImplTest, LocaleAndPreferredLanguages) {
                   SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                               "NATIVE_BRIDGE_EXPERIMENT=0",
-                              "ARC_FILE_PICKER_EXPERIMENT=0"),
+                              "ARC_FILE_PICKER_EXPERIMENT=0",
+                              "ARC_CUSTOM_TABS_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 

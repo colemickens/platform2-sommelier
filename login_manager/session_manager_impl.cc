@@ -1114,7 +1114,9 @@ bool SessionManagerImpl::StartArcMiniContainer(
       base::StringPrintf("NATIVE_BRIDGE_EXPERIMENT=%d",
                          request.native_bridge_experiment()),
       base::StringPrintf("ARC_FILE_PICKER_EXPERIMENT=%d",
-                         request.arc_file_picker_experiment())};
+                         request.arc_file_picker_experiment()),
+      base::StringPrintf("ARC_CUSTOM_TABS_EXPERIMENT=%d",
+                         request.arc_custom_tabs_experiment())};
   if (request.lcd_density() > 0) {
     env_vars.push_back(
         base::StringPrintf("ARC_LCD_DENSITY=%d", request.lcd_density()));
