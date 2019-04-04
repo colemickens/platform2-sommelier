@@ -199,6 +199,10 @@ void DebugdDBusAdaptor::GetBigFeedbackLogs(const base::ScopedFD& fd) {
   log_tool_->GetBigFeedbackLogs(fd);
 }
 
+void DebugdDBusAdaptor::GetJournalLog(bool scrub, const base::ScopedFD& fd) {
+  log_tool_->GetJournalLog(scrub, fd);
+}
+
 std::map<std::string, std::string> DebugdDBusAdaptor::GetUserLogFiles() {
   return log_tool_->GetUserLogFiles();
 }

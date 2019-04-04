@@ -54,19 +54,19 @@ TEST_F(LogToolTest, AnonymizeLogMap) {
   EXPECT_EQ(kAnonymousMAC, log_map[kKey2]);
 }
 
-TEST_F(LogToolTest, EnsureUTF8String) {
+TEST_F(LogToolTest, EncodeString) {
   // U+1F600 GRINNING FACE
   constexpr const char kGrinningFaceUTF8[] = "\xF0\x9F\x98\x80";
   constexpr const char kGrinningFaceBase64[] = "<base64>: 8J+YgA==";
   EXPECT_EQ(kGrinningFaceUTF8,
-            LogTool::EnsureUTF8String(kGrinningFaceUTF8,
-                                      LogTool::Encoding::kAutodetect));
+            LogTool::EncodeString(kGrinningFaceUTF8,
+                                  LogTool::Encoding::kAutodetect));
   EXPECT_EQ(
       kGrinningFaceUTF8,
-      LogTool::EnsureUTF8String(kGrinningFaceUTF8, LogTool::Encoding::kUtf8));
+      LogTool::EncodeString(kGrinningFaceUTF8, LogTool::Encoding::kUtf8));
   EXPECT_EQ(
       kGrinningFaceBase64,
-      LogTool::EnsureUTF8String(kGrinningFaceUTF8, LogTool::Encoding::kBinary));
+      LogTool::EncodeString(kGrinningFaceUTF8, LogTool::Encoding::kBase64));
 
   // .xz Stream Header Magic Bytes
   constexpr const char kXzStreamHeaderMagicBytes[] = "\xFD\x37\x7A\x58\x5A\x00";
@@ -75,14 +75,18 @@ TEST_F(LogToolTest, EnsureUTF8String) {
       "7zXZ";
   constexpr const char kXzStreamHeaderMagicBase64[] = "<base64>: /Td6WFo=";
   EXPECT_EQ(kXzStreamHeaderMagicBase64,
-            LogTool::EnsureUTF8String(kXzStreamHeaderMagicBytes,
-                                      LogTool::Encoding::kAutodetect));
+            LogTool::EncodeString(kXzStreamHeaderMagicBytes,
+                                  LogTool::Encoding::kAutodetect));
   EXPECT_EQ(kXzStreamHeaderMagicUTF8,
-            LogTool::EnsureUTF8String(kXzStreamHeaderMagicBytes,
-                                      LogTool::Encoding::kUtf8));
+            LogTool::EncodeString(kXzStreamHeaderMagicBytes,
+                                  LogTool::Encoding::kUtf8));
   EXPECT_EQ(kXzStreamHeaderMagicBase64,
-            LogTool::EnsureUTF8String(kXzStreamHeaderMagicBytes,
-                                      LogTool::Encoding::kBinary));
+            LogTool::EncodeString(kXzStreamHeaderMagicBytes,
+                                  LogTool::Encoding::kBase64));
+
+  EXPECT_EQ(kXzStreamHeaderMagicBytes,
+            LogTool::EncodeString(kXzStreamHeaderMagicBytes,
+                                  LogTool::Encoding::kBinary));
 }
 
 class LogTest : public testing::Test {
@@ -117,36 +121,36 @@ TEST_F(LogTest, GetFileLogData) {
   ASSERT_TRUE(WriteFile(file_one, "test_one_contents"));
   const LogTool::Log log_one(LogTool::Log::kFile, "test_log_one",
                              file_one.value(), user_name_, group_name_);
-  EXPECT_EQ(log_one.GetFileLogData(), "test_one_contents");
+  EXPECT_EQ(log_one.GetLogData(), "test_one_contents");
 
   base::FilePath file_two = temp.GetPath().Append("test/file_two");
   ASSERT_TRUE(WriteFile(file_two, ""));
   const LogTool::Log log_two(LogTool::Log::kFile, "test_log_two",
                              file_two.value(), user_name_, group_name_);
-  EXPECT_EQ(log_two.GetFileLogData(), "<empty>");
+  EXPECT_EQ(log_two.GetLogData(), "<empty>");
 
   base::FilePath file_three = temp.GetPath().Append("test/file_three");
   ASSERT_TRUE(WriteFile(file_three, "long input value"));
   const LogTool::Log log_three(LogTool::Log::kFile, "test_log_three",
                                file_three.value(), user_name_, group_name_, 5);
-  EXPECT_EQ(log_three.GetFileLogData(), "value");
+  EXPECT_EQ(log_three.GetLogData(), "value");
 }
 
 TEST_F(LogTest, GetCommandLogData) {
   LogTool::Log log_one(LogTool::Log::kCommand, "test_log_one", "printf ''",
                        user_name_, group_name_);
   log_one.DisableMinijailForTest();
-  EXPECT_EQ(log_one.GetCommandLogData(), "<empty>");
+  EXPECT_EQ(log_one.GetLogData(), "<empty>");
 
   LogTool::Log log_two(LogTool::Log::kCommand, "test_log_two",
                        "printf 'test_output'", user_name_, group_name_);
   log_two.DisableMinijailForTest();
-  EXPECT_EQ(log_two.GetCommandLogData(), "test_output");
+  EXPECT_EQ(log_two.GetLogData(), "test_output");
 
   LogTool::Log log_three(LogTool::Log::kCommand, "test_log_three",
                          "echo a,b,c | cut -d, -f2", user_name_,
                          group_name_);
   log_three.DisableMinijailForTest();
-  EXPECT_EQ(log_three.GetCommandLogData(), "b\n");
+  EXPECT_EQ(log_three.GetLogData(), "b\n");
 }
 }  // namespace debugd

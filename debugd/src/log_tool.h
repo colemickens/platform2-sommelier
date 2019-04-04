@@ -32,7 +32,10 @@ class LogTool {
     kUtf8,
 
     // base64-encodes the output.
-    kBinary
+    kBase64,
+
+    // Doesn't apply an encoding. Copies the data as is.
+    kBinary,
   };
 
   class Log {
@@ -84,14 +87,13 @@ class LogTool {
   LogMap GetAllDebugLogs();
   LogMap GetFeedbackLogs();
   void GetBigFeedbackLogs(const base::ScopedFD& fd);
+  void GetJournalLog(bool scrub, const base::ScopedFD& fd);
+
+  // Returns a representation of |value| with the specified encoding.
+  static std::string EncodeString(std::string value,
+                                  Encoding source_encoding);
   LogMap GetUserLogFiles();
 
-  // Returns a representation of |value| that is valid UTF-8 encoded. The value
-  // of |source_encoding| determines whether it will use Unicode U+FFFD
-  // REPLACEMENT CHARACTER or base64-encode the whole string in case there are
-  // invalid characters.
-  static std::string EnsureUTF8String(std::string value,
-                                      Encoding source_encoding);
 
  private:
   friend class LogToolTest;

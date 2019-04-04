@@ -144,7 +144,7 @@ const std::vector<Log> kCommandLogs {
   {kCommand, "i915_error_state",
     "/usr/bin/xz -c /sys/kernel/debug/dri/0/i915_error_state 2>/dev/null",
     SandboxedProcess::kDefaultUser, kDebugfsGroup, Log::kDefaultMaxBytes,
-    LogTool::Encoding::kBinary},
+    LogTool::Encoding::kBase64},
   {kCommand, "ifconfig", "/bin/ifconfig -a"},
   {kFile, "input_devices", "/proc/bus/input/devices"},
   // Information about the wiphy device, such as current channel.
@@ -464,8 +464,8 @@ void GetPerfData(LogTool::LogMap* map) {
                             perf_data_xz.size());
   (*map)["perf-data"] =
       std::string(kPerfDataDescription) +
-      LogTool::EnsureUTF8String(std::move(perf_data_str),
-                                LogTool::Encoding::kBinary);
+      LogTool::EncodeString(std::move(perf_data_str),
+                                LogTool::Encoding::kBase64);
 }
 
 }  // namespace
@@ -495,14 +495,22 @@ std::string Log::GetLogData() const {
   // be constructed statically. Switching to heap allocated subclasses of Log
   // makes the code that declares all of the log entries much more verbose
   // and harder to understand.
+  std::string output;
   switch (type_) {
     case kCommand:
-      return GetCommandLogData();
+      output = GetCommandLogData();
+      break;
     case kFile:
-      return GetFileLogData();
+      output = GetFileLogData();
+      break;
     default:
       return "<unknown log type>";
   }
+
+  if (output.empty())
+    return "<empty>";
+
+  return LogTool::EncodeString(std::move(output), encoding_);
 }
 
 // TODO(ellyjones): sandbox. crosbug.com/35122
@@ -524,9 +532,7 @@ std::string Log::GetCommandLogData() const {
     return "<not available>";
   std::string output;
   p.GetOutput(&output);
-  if (output.empty())
-    return "<empty>";
-  return LogTool::EnsureUTF8String(std::move(output), encoding_);
+  return output;
 }
 
 std::string Log::GetFileLogData() const {
@@ -585,9 +591,6 @@ std::string Log::GetFileLogData() const {
     }
   }
 
-  if (contents.empty())
-    contents = "<empty>";
-
   // Make sure we restore our old euid/egid before returning.
   if (seteuid(old_euid))
     PLOG(ERROR) << "Failed to restore effective user id to " << old_euid;
@@ -595,7 +598,7 @@ std::string Log::GetFileLogData() const {
   if (setegid(old_egid))
     PLOG(ERROR) << "Failed to restore effective group id to " << old_egid;
 
-  return LogTool::EnsureUTF8String(std::move(contents), encoding_);
+  return contents;
 }
 
 void Log::DisableMinijailForTest() {
@@ -699,6 +702,14 @@ void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd) {
   SerializeLogsAsJSON(dictionary, fd);
 }
 
+void LogTool::GetJournalLog(bool scrub, const base::ScopedFD& fd) {
+  Log journal(kCommand, "journal.export", "journalctl -n 10000 -o export",
+              "syslog", "syslog", 10 * 1024 * 1024, LogTool::Encoding::kBinary);
+  std::string output = scrub ? anonymizer_.Anonymize(journal.GetLogData())
+                             : journal.GetLogData();
+  base::WriteFileDescriptor(fd.get(), output.data(), output.size());
+}
+
 LogTool::LogMap LogTool::GetUserLogFiles() {
   LogMap result;
   for (const UserLog& ul : kUserLogs)
@@ -707,12 +718,15 @@ LogTool::LogMap LogTool::GetUserLogFiles() {
 }
 
 // static
-string LogTool::EnsureUTF8String(string value,
-                                 LogTool::Encoding source_encoding) {
+string LogTool::EncodeString(string value,
+                             LogTool::Encoding source_encoding) {
+  if (source_encoding == LogTool::Encoding::kBinary)
+    return value;
+
   if (source_encoding == LogTool::Encoding::kAutodetect) {
     if (base::IsStringUTF8(value))
       return value;
-    source_encoding = LogTool::Encoding::kBinary;
+    source_encoding = LogTool::Encoding::kBase64;
   }
 
   if (source_encoding == LogTool::Encoding::kUtf8) {

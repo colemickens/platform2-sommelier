@@ -338,6 +338,23 @@
       <arg name="user_log_files" type="a{ss}" direction="out" />
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="GetJournalLog">
+      <tp:docstring>
+        Fills the journal log in export format for feedback reports in the
+        file whose file descriptor is given.
+      </tp:docstring>
+      <arg name="scrub" type="b" direction="in">
+        <tp:docstring>
+          Whether to anonymize the log data.
+        </tp:docstring>
+      </arg>
+      <arg name="outfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to emit the logs to.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
     <method name="GetExample">
       <tp:docstring>
         Example method. See /doc/hacking.md.
