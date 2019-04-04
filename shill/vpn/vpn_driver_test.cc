@@ -97,9 +97,6 @@ class VPNDriverTest : public Test {
 
  protected:
   EventDispatcher* dispatcher() { return driver_.dispatcher_; }
-  void set_dispatcher(EventDispatcher* dispatcher) {
-    driver_.dispatcher_ = dispatcher;
-  }
 
   const base::CancelableClosure& connect_timeout_callback() const {
     return driver_.connect_timeout_callback_;
@@ -404,10 +401,11 @@ TEST_F(VPNDriverTest, ConnectTimeout) {
   EXPECT_TRUE(connect_timeout_callback().IsCancelled());
   EXPECT_FALSE(IsConnectTimeoutStarted());
   StartConnectTimeout(0);
+  EXPECT_EQ(0, connect_timeout_seconds());
   EXPECT_FALSE(connect_timeout_callback().IsCancelled());
   EXPECT_TRUE(IsConnectTimeoutStarted());
-  set_dispatcher(nullptr);
-  StartConnectTimeout(0);  // Expect no crash.
+  StartConnectTimeout(10);  // This should take no effect.
+  EXPECT_EQ(0, connect_timeout_seconds());
   dispatcher_.DispatchPendingEvents();
   EXPECT_TRUE(connect_timeout_callback().IsCancelled());
   EXPECT_FALSE(IsConnectTimeoutStarted());
