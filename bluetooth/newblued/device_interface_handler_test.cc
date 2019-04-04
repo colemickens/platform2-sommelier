@@ -16,6 +16,8 @@ using ::testing::UnorderedElementsAre;
 
 namespace bluetooth {
 
+constexpr char kNewblueNameSuffix[] = " \xF0\x9F\x90\xBE";
+
 TEST(DeviceInterfaceHandlerTest, UpdateEirNormal) {
   Device device;
   uint8_t eir[] = {
@@ -61,7 +63,7 @@ TEST(DeviceInterfaceHandlerTest, UpdateEirNormal) {
   EXPECT_THAT(device.service_uuids.value(),
               UnorderedElementsAre(battery_service_uuid16,
                                    blood_pressure_uuid32, uuid128));
-  EXPECT_EQ("foo", device.name.value());
+  EXPECT_EQ(std::string("foo") + kNewblueNameSuffix, device.name.value());
   EXPECT_EQ(-57, device.tx_power.value());
   EXPECT_EQ(0x00030201, device.eir_class.value());
   EXPECT_THAT(device.service_data.value(),
@@ -90,7 +92,7 @@ TEST(DeviceInterfaceHandlerTest, UpdateEirNormal) {
   EXPECT_FALSE(device.flags.value().empty());
   EXPECT_THAT(device.service_uuids.value(),
               UnorderedElementsAre(bond_management_service_uuid32));
-  EXPECT_EQ("foo", device.name.value());
+  EXPECT_EQ(std::string("foo") + kNewblueNameSuffix, device.name.value());
   EXPECT_EQ(-57, device.tx_power.value());
   EXPECT_EQ(0x00030201, device.eir_class.value());
   EXPECT_THAT(device.service_data.value(),
@@ -135,7 +137,7 @@ TEST(DeviceInterfaceHandlerTest, UpdateEirAbnormal) {
   EXPECT_THAT(
       device.service_uuids.value(),
       UnorderedElementsAre(battery_service_uuid16, blood_pressure_uuid16));
-  EXPECT_EQ("  a", device.name.value());
+  EXPECT_EQ(std::string("  a") + kNewblueNameSuffix, device.name.value());
   EXPECT_EQ(-128, device.tx_power.value());
   EXPECT_EQ(0x1F00, device.eir_class.value());
   EXPECT_TRUE(device.service_data.value().empty());

@@ -20,6 +20,12 @@ namespace bluetooth {
 
 namespace {
 
+// Appended at the end of LE device names. This is a UX mark to indicate to user
+// that this device originates from NewBlue stack. This will be removed once
+// NewBlue is stable and enabled by default.
+// TODO(sonnysasaka): Remove this when NewBlue is enabled by default.
+constexpr char kNewblueNameSuffix[] = " \xF0\x9F\x90\xBE";
+
 // The default values of Flags, TX Power, EIR Class, Appearance and
 // Manufacturer ID come from the assigned numbers and Supplement to the
 // Bluetooth Core Specification defined by Bluetooth SIG. These default values
@@ -266,7 +272,7 @@ bool DeviceInterfaceHandler::Init() {
     Device* device = AddOrGetDiscoveredDevice(known_device.address,
                                               known_device.address_type);
     device->paired.SetValue(true);
-    device->name.SetValue(known_device.name);
+    device->name.SetValue(known_device.name + kNewblueNameSuffix);
     UpdateDeviceAlias(device);
     ExportOrUpdateDevice(device);
   }
@@ -593,7 +599,7 @@ void DeviceInterfaceHandler::UpdateEir(Device* device,
             std::min(data_len, static_cast<uint8_t>(HCI_DEV_NAME_LEN));
         strncpy(c_name, reinterpret_cast<const char*>(data), name_len);
         c_name[name_len] = '\0';
-        device->name.SetValue(AsciiString(c_name));
+        device->name.SetValue(AsciiString(c_name) + kNewblueNameSuffix);
       } break;
 
       case EirType::TX_POWER:
