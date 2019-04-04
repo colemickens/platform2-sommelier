@@ -37,6 +37,8 @@ main() {
   local delay="$1"
   local timeout="$2"
   local name="$3"
+  # spool_file is touched each time we run the task. This is how we keep track
+  # of the last run time.
   local spool_file="${SPOOL_DIR}/${name}"
   shift 3
 
@@ -47,11 +49,11 @@ main() {
   check_and_fix_spool_paths
 
   while true; do
+    [ ! -e "${spool_file}" ] && touch "${spool_file}"
+
     # Allow the sleep to be killed manually without terminating the handler.
     # Send stderr to /dev/null to suppress the shell's "Terminated" message.
     sleep $(( CHECK_DELAY + KILL_DELAY )) 2>/dev/null || true
-
-    [ ! -e "${spool_file}" ] && touch "${spool_file}"
 
     local last_rotation="$(stat -c "%Y" "${spool_file}" 2>/dev/null || echo 0)"
     local now="$(date +%s)"
