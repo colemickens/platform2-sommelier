@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_METRICS_COLLECTOR_H_
 #define POWER_MANAGER_POWERD_METRICS_COLLECTOR_H_
 
+#include <stdint.h>
+
 #include <string>
 #include <vector>
 
@@ -39,10 +41,29 @@ namespace metrics {
 // send metrics directly.
 class MetricsCollector {
  public:
+  // Path to S0ix residency counter for big-core CPU. This counter indicates the
+  // time spent by the cpus in S0ix (in microseconds).
+  static constexpr char kBigCoreS0ixResidencyPath[] =
+      "/sys/kernel/debug/pmc_core/slp_s0_residency_usec";
+  // Path to S0ix residency counter for small-core CPU. This counter indicates
+  // the time spent by the cpus in S0ix (in microseconds).
+  static constexpr char kSmallCoreS0ixResidencyPath[] =
+      "/sys/kernel/debug/telemetry/s0ix_residency_usec";
+  // Expected overhead time to enter/exit S0ix after suspending. This is just an
+  // approximation to prevent aggressive warnings.
+  static constexpr base::TimeDelta KS0ixOverheadTime =
+      base::TimeDelta::FromSeconds(15);
+
   // Returns a copy of |enum_name| with a suffix describing |power_source|
   // appended to it. Public so it can be called by tests.
   static std::string AppendPowerSourceToEnumName(const std::string& enum_name,
                                                  PowerSource power_source);
+
+  // Calculates the S0ix residency percentage that should be reported
+  // as part of UMA metrics by MetricsCollector.
+  static int GetExpectedS0ixResidencyPercent(
+      const base::TimeDelta& suspend_time,
+      const base::TimeDelta& actual_residency);
 
   MetricsCollector();
   ~MetricsCollector();
@@ -98,6 +119,12 @@ class MetricsCollector {
   // a power button event.
   void SendPowerButtonAcknowledgmentDelayMetric(base::TimeDelta delay);
 
+  // Sets a prefix path which is used as file system root when testing.
+  // Setting to an empty path removes the prefix.
+  void set_prefix_path_for_testing(const base::FilePath& file) {
+    prefix_path_for_testing_ = file;
+  }
+
  private:
   friend class MetricsCollectorTest;
   FRIEND_TEST(MetricsCollectorTest, BacklightLevel);
@@ -129,6 +156,25 @@ class MetricsCollector {
   // Generates number of sessions per charge UMA metric sample if the current
   // stored value is greater then 0.
   void GenerateNumOfSessionsPerChargeMetric();
+
+  // On devices that suspend to idle (S0ix), the power rail that supplies power
+  // to the CPU is left on. Ideally CPUs enter the lowest power state (S0ix)
+  // during suspend. But a malfunctioning driver/peripheral can keep the CPUs
+  // busy, draining the battery. This function parses the counter that keeps
+  // track of number of usecs the cpu spends in the lowest power state before
+  // and after suspend. It then generates UMA metrics for percentage of suspend
+  // time the system spends in the lowest power state.
+
+  // This function parses the counter that keeps track of number of usecs the
+  // CPU spends in the lowest power state. When |pre_suspend| is true, it
+  // records the residency in |s0ix_residency_usecs_before_suspend_|. When it's
+  // false, it reports the S0ix residency rate (%) in comparision to suspend
+  // time.
+  void TrackS0ixResidency(bool pre_suspend);
+
+  // Returns new FilePath after prepending |prefix_path_for_testing_| to
+  // given file path.
+  base::FilePath GetPrefixedFilePath(const base::FilePath& file_path) const;
 
   PrefsInterface* prefs_ = nullptr;
   policy::BacklightController* display_backlight_controller_ = nullptr;
@@ -172,11 +218,25 @@ class MetricsCollector {
   double battery_energy_before_suspend_ = 0.0;
   bool on_line_power_before_suspend_ = false;
   base::TimeTicks time_before_suspend_;
+  uint64_t s0ix_residency_usecs_before_suspend_ = 0;
+  bool pre_suspend_s0ix_read_successful_ = false;
 
   // Set by HandleResume() to indicate that
   // GenerateBatteryDischargeRateWhileSuspendedMetric() should send a
   // sample when it is next called.
   bool report_battery_discharge_rate_while_suspended_ = false;
+
+  // Path to S0ix residency file on current device.
+  base::FilePath s0ix_residency_path_;
+  // Max residency that |s0ix_residency_path_| can report. On big-core
+  // platforms the default value is set to 100*UINT32_MAX in the Init().
+  base::TimeDelta max_s0ix_residency_ = base::TimeDelta::Max();
+
+  // True if suspend to idle (S0ix) is enabled.
+  bool suspend_to_idle_ = false;
+
+  // If non-empty, contains a temp dir that will be prepended to paths.
+  base::FilePath prefix_path_for_testing_;
 
   DISALLOW_COPY_AND_ASSIGN(MetricsCollector);
 };

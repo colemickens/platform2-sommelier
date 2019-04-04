@@ -119,5 +119,7 @@ const char kDarkResumeWakeDurationMsName[] = "Power.DarkResumeWakeDurationMs";
 const int kDarkResumeWakeDurationMsMin = 0;
 const int kDarkResumeWakeDurationMsMax = 10 * 60 * 1000;
 
+const char kS0ixResidencyRateName[] = "Power.S0ixResidencyRate";  // %
+
 }  // namespace metrics
 }  // namespace power_manager

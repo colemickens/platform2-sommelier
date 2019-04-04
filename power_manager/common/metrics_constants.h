@@ -111,6 +111,8 @@ extern const char kDarkResumeWakeDurationMsName[];
 extern const int kDarkResumeWakeDurationMsMin;
 extern const int kDarkResumeWakeDurationMsMax;
 
+extern const char kS0ixResidencyRateName[];
+
 // Values for kBatteryInfoSampleName.
 enum class BatteryInfoSampleResult {
   READ,

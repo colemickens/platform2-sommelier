@@ -32,6 +32,10 @@ bool ReadInt64File(const base::FilePath& path, int64_t* value_out);
 // newline. Logs an error and returns false on failure.
 bool WriteInt64File(const base::FilePath& path, int64_t value);
 
+// Reads a base-10 uint64 value from |path| to |value|, ignoring trailing
+// whitespace. Logs an error and returns false on failure.
+bool ReadUint64File(const base::FilePath& path, uint64_t* value_out);
+
 // Joins |paths| using |separator|.
 std::string JoinPaths(const std::vector<base::FilePath>& paths,
                       const std::string& separator);

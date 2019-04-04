@@ -82,6 +82,24 @@ bool WriteInt64File(const base::FilePath& path, int64_t value) {
   return true;
 }
 
+bool ReadUint64File(const base::FilePath& path, uint64_t* value_out) {
+  DCHECK(value_out);
+
+  std::string str;
+  if (!base::ReadFileToString(path, &str)) {
+    PLOG(ERROR) << "Unable to read from " << path.value();
+    return false;
+  }
+
+  base::TrimWhitespaceASCII(str, base::TRIM_TRAILING, &str);
+  if (!base::StringToUint64(str, value_out)) {
+    LOG(ERROR) << "Unable to parse \"" << str << "\" from " << path.value();
+    return false;
+  }
+
+  return true;
+}
+
 std::string JoinPaths(const std::vector<base::FilePath>& paths,
                       const std::string& separator) {
   std::string str;

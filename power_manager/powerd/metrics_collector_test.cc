@@ -14,7 +14,10 @@
 #include <vector>
 
 #include <base/format_macros.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/timer/timer.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
@@ -49,6 +52,8 @@ class MetricsCollectorTest : public Test {
         base::TimeTicks::FromInternalValue(1000));
     collector_.clock_.set_current_boot_time_for_testing(
         base::TimeTicks::FromInternalValue(2000));
+    CHECK(temp_root_dir_.CreateUniqueTempDir());
+    collector_.set_prefix_path_for_testing(temp_root_dir_.GetPath());
 
     power_status_.battery_percentage = 100.0;
     power_status_.battery_is_present = true;
@@ -160,6 +165,11 @@ class MetricsCollectorTest : public Test {
                  kDefaultBuckets);
   }
 
+  // Returns |orig| rooted within the temporary root dir created for testing.
+  base::FilePath GetPath(const base::FilePath& orig) const {
+    return temp_root_dir_.GetPath().Append(orig.value().substr(1));
+  }
+
   FakePrefs prefs_;
   policy::BacklightControllerStub display_backlight_controller_;
   policy::BacklightControllerStub keyboard_backlight_controller_;
@@ -175,6 +185,8 @@ class MetricsCollectorTest : public Test {
   // should insert the metrics that they're testing into this set and then call
   // Ignore*Metrics() (and call it again whenever expectations are cleared).
   std::set<std::string> metrics_to_test_;
+
+  base::ScopedTempDir temp_root_dir_;
 };
 
 TEST_F(MetricsCollectorTest, BacklightLevel) {
@@ -721,6 +733,149 @@ TEST_F(MetricsCollectorTest, ConnectedChargingPorts) {
                    static_cast<int>(ConnectedChargingPorts::TOO_MANY_PORTS),
                    static_cast<int>(ConnectedChargingPorts::MAX));
   collector_.HandlePowerStatusUpdate(power_status_);
+}
+
+// Base class for S0ix residency rate related tests.
+class S0ixResidencyMetricsTest : public MetricsCollectorTest {
+ public:
+  S0ixResidencyMetricsTest() = default;
+
+ protected:
+  enum class ResidencyFileType {
+    BIG_CORE,
+    SMALL_CORE,
+    NONE,
+  };
+
+  // Creates file of type |residency_file_type| (if needed) root within
+  // |temp_root_dir_|. Also sets |kSuspendToIdlePref| pref to
+  // |suspend_to_idle| and initializes |collector_|.
+  void Init(ResidencyFileType residency_file_type,
+            bool suspend_to_idle = true) {
+    if (suspend_to_idle)
+      prefs_.SetInt64(kSuspendToIdlePref, 1);
+
+    if (residency_file_type == ResidencyFileType::BIG_CORE) {
+      residency_path_ =
+          GetPath(base::FilePath(MetricsCollector::kBigCoreS0ixResidencyPath));
+    } else if (residency_file_type == ResidencyFileType::SMALL_CORE) {
+      residency_path_ = GetPath(
+          base::FilePath(MetricsCollector::kSmallCoreS0ixResidencyPath));
+    }
+
+    if (!residency_path_.empty()) {
+      // Create all required parent directories.
+      CHECK(base::CreateDirectory(residency_path_.DirName()));
+      // Create empty file.
+      CHECK_EQ(base::WriteFile(residency_path_, "", 0), 0);
+    }
+
+    MetricsCollectorTest::Init();
+  }
+
+  // Does suspend and resume. Also writes residency to |residency_path_| (if not
+  // empty) before and after suspend.
+  void SuspendAndResume() {
+    if (!residency_path_.empty())
+      WriteResidency(residency_before_suspend_);
+
+    collector_.PrepareForSuspend();
+    AdvanceTime(suspend_duration_);
+    // Adds expectations to ignore |kSuspendAttemptsBeforeSuccessName| metric
+    // sent by HandleResume().
+    IgnoreMetric(kSuspendAttemptsBeforeSuccessName);
+
+    if (!residency_path_.empty())
+      WriteResidency(residency_before_resume_);
+
+    collector_.HandleResume(1);
+  }
+
+  // Expect |kS0ixResidencyRateName| enum metric will be generated.
+  void ExpectResidencyRateMetricCall() {
+    int expected_s0ix_percentage =
+        MetricsCollector::GetExpectedS0ixResidencyPercent(
+            suspend_duration_,
+            residency_before_resume_ - residency_before_suspend_);
+    ExpectEnumMetric(kS0ixResidencyRateName, expected_s0ix_percentage,
+                     kMaxPercent);
+  }
+
+  // Writes |residency| to |residency_path_|.
+  void WriteResidency(const base::TimeDelta& residency) {
+    std::string buf = base::Uint64ToString(llabs(residency.InMicroseconds()));
+    ASSERT_EQ(base::WriteFile(residency_path_, buf.data(), buf.size()),
+              buf.size());
+  }
+
+  base::FilePath residency_path_;
+  base::TimeDelta residency_before_suspend_ = base::TimeDelta::FromMinutes(50);
+  base::TimeDelta residency_before_resume_ = base::TimeDelta::FromMinutes(100);
+  base::TimeDelta suspend_duration_ = base::TimeDelta::FromHours(1);
+};
+
+// Test S0ix UMA metrics are not reported when residency files do not exist.
+TEST_F(S0ixResidencyMetricsTest, S0ixResidencyMetricsNoResidencyFiles) {
+  suspend_duration_ = base::TimeDelta::FromHours(1);
+  Init(ResidencyFileType::NONE);
+  SuspendAndResume();
+  // |metrics_lib_| is strict mock. Unexpected method call will fail this test.
+  Mock::VerifyAndClearExpectations(metrics_lib_);
+}
+
+// Test S0ix UMA metrics are reported when |kSmallCoreS0ixResidencyPath| exist.
+TEST_F(S0ixResidencyMetricsTest, SmallCorePathExist) {
+  Init(ResidencyFileType::SMALL_CORE);
+  ExpectResidencyRateMetricCall();
+  SuspendAndResume();
+  Mock::VerifyAndClearExpectations(metrics_lib_);
+}
+
+// Test S0ix UMA metrics are reported when |kBigCoreS0ixResidencyPath| exist.
+TEST_F(S0ixResidencyMetricsTest, BigCorePathExist) {
+  Init(ResidencyFileType::BIG_CORE);
+  ExpectResidencyRateMetricCall();
+  SuspendAndResume();
+  Mock::VerifyAndClearExpectations(metrics_lib_);
+}
+
+// Test S0ix UMA metrics are not reported when suspend to idle is not enabled.
+TEST_F(S0ixResidencyMetricsTest, S0ixResidencyMetricsS0ixNotEnabled) {
+  Init(ResidencyFileType::SMALL_CORE, false /*suspend_to_idle*/);
+  SuspendAndResume();
+  // |metrics_lib_| is strict mock. Unexpected method call will fail this test.
+  Mock::VerifyAndClearExpectations(metrics_lib_);
+}
+
+// Test metrics are not reported when device suspends less than
+// |KS0ixOverheadTime|.
+TEST_F(S0ixResidencyMetricsTest, ShortSuspend) {
+  suspend_duration_ =
+      MetricsCollector::KS0ixOverheadTime - base::TimeDelta::FromSeconds(1);
+  Init(ResidencyFileType::SMALL_CORE);
+  SuspendAndResume();
+  // |metrics_lib_| is strict mock. Unexpected method call will fail this test.
+  Mock::VerifyAndClearExpectations(metrics_lib_);
+}
+
+// Test metrics are not reported when the residency counter overflows.
+TEST_F(S0ixResidencyMetricsTest, ResidencyCounterOverflow) {
+  residency_before_resume_ =
+      residency_before_suspend_ - base::TimeDelta::FromMinutes(1);
+  Init(ResidencyFileType::SMALL_CORE);
+  SuspendAndResume();
+  // |metrics_lib_| is strict mock. Unexpected method call will fail this test.
+  Mock::VerifyAndClearExpectations(metrics_lib_);
+}
+
+// Test metrics are not reported when suspend time is more than max residency.
+TEST_F(S0ixResidencyMetricsTest, SuspendTimeMoreThanMaxResidency) {
+  suspend_duration_ =
+      base::TimeDelta::FromMicroseconds(100 * (int64_t)UINT32_MAX + 1);
+  Init(ResidencyFileType::BIG_CORE);
+  SuspendAndResume();
+  // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
+  Mock::VerifyAndClearExpectations(metrics_lib_);
 }
 
 }  // namespace metrics

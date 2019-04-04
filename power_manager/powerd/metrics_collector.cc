@@ -9,7 +9,10 @@
 #include <algorithm>
 #include <cmath>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/metrics_sender.h"
@@ -62,10 +65,25 @@ ConnectedChargingPorts GetConnectedChargingPorts(const PowerStatus& status) {
 }  // namespace
 
 // static
+constexpr char MetricsCollector::kBigCoreS0ixResidencyPath[];
+constexpr char MetricsCollector::kSmallCoreS0ixResidencyPath[];
+constexpr base::TimeDelta MetricsCollector::KS0ixOverheadTime;
+
 std::string MetricsCollector::AppendPowerSourceToEnumName(
     const std::string& enum_name, PowerSource power_source) {
   return enum_name +
          (power_source == PowerSource::AC ? kAcSuffix : kBatterySuffix);
+}
+
+// static
+int MetricsCollector::GetExpectedS0ixResidencyPercent(
+    const base::TimeDelta& suspend_time,
+    const base::TimeDelta& actual_residency) {
+  base::TimeDelta expected_residency =
+      suspend_time - MetricsCollector::KS0ixOverheadTime;
+  int s0ix_residency_percent =
+      static_cast<int>(round((actual_residency * 100.0) / expected_residency));
+  return std::min(100, s0ix_residency_percent);
 }
 
 MetricsCollector::MetricsCollector() = default;
@@ -86,6 +104,35 @@ void MetricsCollector::Init(
     generate_backlight_metrics_timer_.Start(
         FROM_HERE, base::TimeDelta::FromMilliseconds(kBacklightLevelIntervalMs),
         this, &MetricsCollector::GenerateBacklightLevelMetrics);
+  }
+
+  bool pref_val = false;
+  suspend_to_idle_ = prefs_->GetBool(kSuspendToIdlePref, &pref_val) && pref_val;
+
+  if (suspend_to_idle_) {
+    // S0ix residency related configuration.
+    if (base::PathExists(
+            GetPrefixedFilePath(base::FilePath(kBigCoreS0ixResidencyPath)))) {
+      s0ix_residency_path_ =
+          GetPrefixedFilePath(base::FilePath(kBigCoreS0ixResidencyPath));
+    } else if (base::PathExists(GetPrefixedFilePath(
+                   base::FilePath(kSmallCoreS0ixResidencyPath)))) {
+      s0ix_residency_path_ =
+          GetPrefixedFilePath(base::FilePath(kSmallCoreS0ixResidencyPath));
+    }
+
+    // For devices with |kBigCoreS0ixResidencyPath|, the default range is little
+    // complicated. |kBigCoreS0ixResidencyPath| reports the time spent in S0ix
+    // by reading SLP_S0_RES (32 bit) register. This register increments once
+    // for every 100 micro seconds spent in S0ix. The value read from this 32
+    // bit register is first casted to u64 and then multiplied by 100 to get
+    // micro second granularity. Thus the range of |kBigCoreS0ixResidencyPath|
+    // is 100 * UINT32_MAX.
+    if (s0ix_residency_path_ ==
+        GetPrefixedFilePath(base::FilePath(kBigCoreS0ixResidencyPath))) {
+      max_s0ix_residency_ =
+          base::TimeDelta::FromMicroseconds(100 * (uint64_t)UINT32_MAX);
+    }
   }
 }
 
@@ -235,6 +282,8 @@ void MetricsCollector::PrepareForSuspend() {
   battery_energy_before_suspend_ = last_power_status_.battery_energy;
   on_line_power_before_suspend_ = last_power_status_.line_power_on;
   time_before_suspend_ = clock_.GetCurrentBootTime();
+  if (suspend_to_idle_)
+    TrackS0ixResidency(true);
 }
 
 void MetricsCollector::HandleResume(int num_suspend_attempts) {
@@ -243,6 +292,8 @@ void MetricsCollector::HandleResume(int num_suspend_attempts) {
   // Report the discharge rate in response to the next
   // OnPowerStatusUpdate() call.
   report_battery_discharge_rate_while_suspended_ = true;
+  if (suspend_to_idle_)
+    TrackS0ixResidency(false);
 }
 
 void MetricsCollector::HandleCanceledSuspendRequest(int num_suspend_attempts) {
@@ -452,6 +503,84 @@ void MetricsCollector::GenerateNumOfSessionsPerChargeMetric() {
   prefs_->SetInt64(kNumSessionsOnCurrentChargePref, 0);
   SendMetric(kNumOfSessionsPerChargeName, sample, kNumOfSessionsPerChargeMin,
              kNumOfSessionsPerChargeMax, kDefaultBuckets);
+}
+
+void MetricsCollector::TrackS0ixResidency(bool pre_suspend) {
+  // This method should be invoked only when suspend to idle is enabled.
+  DCHECK(suspend_to_idle_);
+
+  // If S0ix residency read before suspend was not successful, we have no way
+  // to track the residency during suspend.
+  if (!pre_suspend && !pre_suspend_s0ix_read_successful_)
+    return;
+
+  // If we cannot find any residency related files, nothing to track.
+  if (s0ix_residency_path_.empty())
+    return;
+
+  uint64_t residency_usecs = 0;
+  const bool success =
+      util::ReadUint64File(s0ix_residency_path_, &residency_usecs);
+
+  if (pre_suspend)
+    pre_suspend_s0ix_read_successful_ = success;
+
+  if (!success) {
+    PLOG(WARNING) << "Failed to read residency from "
+                  << s0ix_residency_path_.value();
+    return;
+  }
+
+  if (pre_suspend) {
+    s0ix_residency_usecs_before_suspend_ = residency_usecs;
+    return;
+  }
+
+  // We reach here only on post-suspend.
+
+  // If the counter overflowed during suspend, then residency delta is not
+  // useful anymore.
+  if (residency_usecs < s0ix_residency_usecs_before_suspend_)
+    return;
+
+  const base::TimeDelta time_in_suspend =
+      clock_.GetCurrentBootTime() - time_before_suspend_;
+
+  // If we spent more time in suspend than the max residency that
+  // |s0ix_residency_path_| can report, then the residency counter is
+  // not reliable anymore.
+  if (time_in_suspend > max_s0ix_residency_)
+    return;
+
+  // If the device woke from suspend before |KS0ixOverheadTime|, then the
+  // CPUs might not have entered S0ix. Let us not complain nor generate UMA
+  // metrics.
+  if (time_in_suspend <= KS0ixOverheadTime)
+    return;
+
+  const base::TimeDelta s0ix_residency_time = base::TimeDelta::FromMicroseconds(
+      residency_usecs - s0ix_residency_usecs_before_suspend_);
+
+  int s0ix_residency_percent =
+      GetExpectedS0ixResidencyPercent(time_in_suspend, s0ix_residency_time);
+  // If we spent less than 90% of time in S0ix, log a warning. This can help
+  // debugging feedback reports that complain about low battery life.
+  if (s0ix_residency_percent < 90) {
+    LOG(WARNING) << "Device spent around " << time_in_suspend.InSeconds()
+                 << " secs in suspend, but only "
+                 << s0ix_residency_time.InSeconds() << " secs in S0ix";
+  }
+
+  // Enum to avoid exponential histogram's varyingly-sized buckets.
+  SendEnumMetric(kS0ixResidencyRateName, s0ix_residency_percent, kMaxPercent);
+}
+
+base::FilePath MetricsCollector::GetPrefixedFilePath(
+    const base::FilePath& file_path) const {
+  if (prefix_path_for_testing_.empty())
+    return file_path;
+  DCHECK(file_path.IsAbsolute());
+  return prefix_path_for_testing_.Append(file_path.value().substr(1));
 }
 
 }  // namespace metrics
