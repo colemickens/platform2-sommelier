@@ -1,0 +1,276 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("host") {
+  deps = [
+    ":cicerone_client",
+    ":concierge_client",
+    ":maitred_client",
+    ":seneschal",
+    ":seneschal_client",
+    ":vm_cicerone",
+    ":vm_concierge",
+    ":vmlog_forwarder",
+    ":vsh",
+  ]
+  if (use.test) {
+    deps += [
+      ":cicerone_test",
+      ":concierge_test",
+      ":syslog_forwarder_test",
+    ]
+  }
+}
+
+pkg_config("host_target_defaults_pkgs") {
+  pkg_deps = [
+    "libarcnetwork-util",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+config("host_target_defaults") {
+  configs = [ ":host_target_defaults_pkgs" ]
+  defines = [ "USE_CROSVM_WL_DMABUF=${use.crosvm_wl_dmabuf}" ]
+}
+
+executable("maitred_client") {
+  sources = [
+    "../maitred/client.cc",
+  ]
+  configs += [ ":host_target_defaults" ]
+  libs = [ "gpr" ]
+  deps = [
+    "//vm_tools:vm-rpcs",
+  ]
+}
+
+static_library("libforwarder") {
+  sources = [
+    "../syslog/forwarder.cc",
+    "../syslog/scrubber.cc",
+  ]
+  configs += [ ":host_target_defaults" ]
+  deps = [
+    "//vm_tools:vm-rpcs",
+  ]
+}
+
+executable("vmlog_forwarder") {
+  sources = [
+    "../syslog/host_server.cc",
+  ]
+  configs += [ ":host_target_defaults" ]
+  deps = [
+    ":libforwarder",
+    "//vm_tools:vm-rpcs",
+  ]
+}
+
+executable("vsh") {
+  sources = [
+    "../vsh/scoped_termios.cc",
+    "../vsh/vsh.cc",
+    "../vsh/vsh_client.cc",
+  ]
+  configs += [ ":host_target_defaults" ]
+  pkg_deps = [ "system_api" ]
+  deps = [
+    "//vm_tools:libvsh",
+    "//vm_tools:vsh-protos",
+  ]
+}
+
+static_library("libconcierge") {
+  sources = [
+    "../concierge/disk_image.cc",
+    "../concierge/plugin_vm.cc",
+    "../concierge/power_manager_client.cc",
+    "../concierge/seneschal_server_proxy.cc",
+    "../concierge/service.cc",
+    "../concierge/shill_client.cc",
+    "../concierge/ssh_keys.cc",
+    "../concierge/startup_listener_impl.cc",
+    "../concierge/tap_device_builder.cc",
+    "../concierge/termina_vm.cc",
+    "../concierge/vmplugin_dispatcher_interface.cc",
+    "../concierge/vsock_cid_pool.cc",
+  ]
+  configs += [ ":host_target_defaults" ]
+  libs = [ "gpr" ]
+  all_dependent_pkg_deps = [
+    "libarchive",
+    "libqcow_utils",
+    "libshill-client",
+    "system_api",
+  ]
+  deps = [
+    "//vm_tools:container-rpcs",
+    "//vm_tools:vm-rpcs",
+  ]
+}
+
+executable("vm_concierge") {
+  sources = [
+    "../concierge/main.cc",
+  ]
+  configs += [ ":host_target_defaults" ]
+  deps = [
+    ":libconcierge",
+  ]
+}
+
+executable("concierge_client") {
+  sources = [
+    "../concierge/client.cc",
+  ]
+  configs += [ ":host_target_defaults" ]
+  pkg_deps = [
+    "libqcow_utils",
+    "protobuf",
+    "system_api",
+  ]
+}
+
+static_library("libcicerone") {
+  sources = [
+    "../cicerone/container.cc",
+    "../cicerone/container_listener_impl.cc",
+    "../cicerone/service.cc",
+    "../cicerone/tremplin_listener_impl.cc",
+    "../cicerone/tzif_parser.cc",
+    "../cicerone/virtual_machine.cc",
+  ]
+  configs += [ ":host_target_defaults" ]
+  libs = [ "gpr" ]
+  all_dependent_pkg_deps = [ "system_api" ]
+  deps = [
+    "//vm_tools:container-rpcs",
+    "//vm_tools:tremplin-rpcs",
+  ]
+}
+
+executable("vm_cicerone") {
+  sources = [
+    "../cicerone/main.cc",
+  ]
+  configs += [ ":host_target_defaults" ]
+  deps = [
+    ":libcicerone",
+  ]
+}
+
+executable("cicerone_client") {
+  sources = [
+    "../cicerone/client.cc",
+  ]
+  configs += [ ":host_target_defaults" ]
+  pkg_deps = [
+    "protobuf",
+    "system_api",
+  ]
+}
+
+static_library("libseneschal") {
+  sources = [
+    "../seneschal/service.cc",
+  ]
+  configs += [ ":host_target_defaults" ]
+  all_dependent_pkg_deps = [
+    "libminijail",
+    "protobuf",
+    "system_api",
+  ]
+}
+
+executable("seneschal") {
+  sources = [
+    "../seneschal/main.cc",
+  ]
+  configs += [ ":host_target_defaults" ]
+  deps = [
+    ":libseneschal",
+  ]
+}
+
+executable("seneschal_client") {
+  sources = [
+    "../seneschal/client.cc",
+  ]
+  configs += [ ":host_target_defaults" ]
+  pkg_deps = [
+    "protobuf",
+    "system_api",
+  ]
+}
+
+if (use.test || use.fuzzer) {
+  static_library("service_testing_helper_lib") {
+    sources = [
+      "../cicerone/dbus_message_testing_helper.cc",
+      "../cicerone/dbus_message_testing_helper.h",
+      "../cicerone/mock_tremplin_stub.h",
+      "../cicerone/service_testing_helper.cc",
+      "../cicerone/service_testing_helper.h",
+    ]
+    configs += [ ":host_target_defaults" ]
+    all_dependent_pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+    deps = [
+      ":libcicerone",
+    ]
+  }
+}
+
+if (use.test) {
+  executable("syslog_forwarder_test") {
+    sources = [
+      "../syslog/forwarder_test.cc",
+      "../syslog/scrubber_test.cc",
+    ]
+    configs += [
+      ":host_target_defaults",
+      "//common-mk:test",
+    ]
+    deps = [
+      ":libforwarder",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
+
+  executable("cicerone_test") {
+    sources = [
+      "../cicerone/container_listener_impl_test.cc",
+      "../cicerone/tzif_parser_test.cc",
+      "../cicerone/virtual_machine_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":host_target_defaults",
+    ]
+    deps = [
+      ":libcicerone",
+      ":service_testing_helper_lib",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
+
+  executable("concierge_test") {
+    sources = [
+      "../concierge/power_manager_client_test.cc",
+      "../concierge/termina_vm_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":host_target_defaults",
+    ]
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+    deps = [
+      ":libconcierge",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
+}

@@ -1,3 +1,5 @@
+# Caution!: GYP to GN migration is happening. If you update this file, please
+# update vm_tools/sommelier/wayland-protocol.gni too accordingly.
 {
   'variables': {
     'wayland_dir': '<(SHARED_INTERMEDIATE_DIR)/<(wayland_out_dir)',

@@ -1,0 +1,167 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = []
+  if (use.kvm_host || use.fuzzer) {
+    deps += [ "//vm_tools/host" ]
+  }
+  if (!use.kvm_host) {
+    deps += [
+      "//vm_tools/guest",
+      "//vm_tools/sommelier:all",
+    ]
+  }
+  if (use.fuzzer) {
+    deps += [ ":cicerone_container_listener_fuzzer" ]
+  }
+}
+
+proto_library("common-protos_proto") {
+  proto_in_dir = "proto"
+  sources = [
+    "${proto_in_dir}/common.proto",
+  ]
+  proto_out_dir = "include"
+}
+
+static_library("common-protos") {
+  all_dependent_pkg_deps = [ "protobuf" ]
+  deps = [
+    ":common-protos_proto",
+  ]
+}
+
+proto_library("container-rpcs_proto") {
+  proto_in_dir = "proto"
+  sources = [
+    "${proto_in_dir}/container_guest.proto",
+    "${proto_in_dir}/container_host.proto",
+  ]
+  proto_out_dir = "include"
+  gen_grpc = true
+  deps = [
+    ":common-protos",
+  ]
+}
+
+static_library("container-rpcs") {
+  all_dependent_pkg_deps = [
+    "grpc++",
+    "protobuf",
+  ]
+  deps = [
+    ":container-rpcs_proto",
+  ]
+}
+
+proto_library("tremplin-rpcs_proto") {
+  proto_in_dir = "proto"
+  sources = [
+    "${proto_in_dir}/tremplin.proto",
+  ]
+  proto_out_dir = "include"
+  gen_grpc = true
+  if (use.test || use.fuzzer) {
+    gen_grpc_gmock = true
+  }
+}
+
+static_library("tremplin-rpcs") {
+  all_dependent_pkg_deps = [
+    "grpc++",
+    "protobuf",
+  ]
+  deps = [
+    ":tremplin-rpcs_proto",
+  ]
+}
+
+goproto_library("tremplin-gorpcs") {
+  gen_grpc = true
+  proto_in_dir = "proto"
+  sources = [
+    "${proto_in_dir}/tremplin.proto",
+  ]
+  proto_out_dir = "go/src/chromiumos/vm_tools/tremplin_proto"
+}
+
+proto_library("vm-rpcs_proto") {
+  proto_in_dir = "proto"
+  sources = [
+    "${proto_in_dir}/vm_guest.proto",
+    "${proto_in_dir}/vm_host.proto",
+  ]
+  proto_out_dir = "include"
+  gen_grpc = true
+}
+
+static_library("vm-rpcs") {
+  all_dependent_pkg_deps = [
+    "grpc++",
+    "protobuf",
+  ]
+  deps = [
+    ":common-protos",
+    ":vm-rpcs_proto",
+  ]
+}
+
+proto_library("vsh-protos_proto") {
+  proto_in_dir = "proto"
+  sources = [
+    "${proto_in_dir}/vsh.proto",
+  ]
+  proto_out_dir = "include"
+}
+
+static_library("vsh-protos") {
+  all_dependent_pkg_deps = [ "protobuf" ]
+  deps = [
+    ":vsh-protos_proto",
+  ]
+}
+
+static_library("libvsh") {
+  sources = [
+    "vsh/utils.cc",
+  ]
+  pkg_deps = [ "libchrome-${libbase_ver}" ]
+}
+
+if (use.fuzzer) {
+  proto_library("fuzzer-protos") {
+    proto_in_dir = "proto"
+    sources = [
+      "${proto_in_dir}/fuzzer.proto",
+    ]
+    proto_out_dir = "include"
+    gen_grpc = true
+    deps = [
+      ":container-rpcs",
+      ":tremplin-rpcs",
+    ]
+  }
+  executable("cicerone_container_listener_fuzzer") {
+    sources = [
+      "cicerone/container_listener_impl_fuzzer.cc",
+    ]
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      "//common-mk:test",
+    ]
+    pkg_deps = [
+      "libchrome-test-${libbase_ver}",  # For FuzzedDataProvider
+      "libprotobuf-mutator",
+    ]
+    deps = [
+      ":fuzzer-protos",
+      "//vm_tools/host:libcicerone",
+      "//vm_tools/host:service_testing_helper_lib",
+    ]
+  }
+}

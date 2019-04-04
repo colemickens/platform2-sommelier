@@ -1,0 +1,299 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("../sommelier/wayland_protocol.gni")
+
+group("guest") {
+  deps = [
+    ":garcon",
+    ":maitred",
+    ":notificationd",
+    ":virtwl_guest_proxy",
+    ":vm_syslog",
+    ":vshd",
+    "//vm_tools:tremplin-gorpcs",
+  ]
+  if (use.test) {
+    deps += [
+      ":garcon_app_search_test",
+      ":garcon_desktop_file_test",
+      ":garcon_icon_finder_test",
+      ":garcon_icon_index_file_test",
+      ":garcon_mime_types_parser_test",
+      ":maitred_service_test",
+      ":maitred_syslog_test",
+      ":notificationd_test",
+    ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [ "libchrome-${libbase_ver}" ]
+}
+
+static_library("libmaitred") {
+  sources = [
+    "../maitred/init.cc",
+    "../maitred/service_impl.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    "//vm_tools:vm-rpcs",
+  ]
+}
+
+static_library("libgarcon") {
+  sources = [
+    "../garcon/app_search.cc",
+    "../garcon/desktop_file.cc",
+    "../garcon/host_notifier.cc",
+    "../garcon/icon_finder.cc",
+    "../garcon/icon_index_file.cc",
+    "../garcon/ini_parse_util.cc",
+    "../garcon/mime_types_parser.cc",
+    "../garcon/package_kit_proxy.cc",
+    "../garcon/service_impl.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    "//vm_tools:container-rpcs",
+  ]
+}
+
+static_library("libsyslog") {
+  sources = [
+    "../syslog/collector.cc",
+    "../syslog/parser.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  all_dependent_pkg_deps = [ "libminijail" ]
+  deps = [
+    "//vm_tools:vm-rpcs",
+  ]
+}
+
+executable("maitred") {
+  sources = [
+    "../maitred/main.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":libmaitred",
+  ]
+}
+
+executable("garcon") {
+  sources = [
+    "../garcon/main.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":libgarcon",
+  ]
+}
+
+executable("vm_syslog") {
+  sources = [
+    "../syslog/main.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":libsyslog",
+  ]
+}
+
+executable("virtwl_guest_proxy") {
+  sources = [
+    "../virtwl_guest_proxy/main.c",
+  ]
+  configs += [ ":target_defaults" ]
+  ldflags = [ "-pthread" ]
+}
+
+executable("vshd") {
+  sources = [
+    "../vsh/vsh_forwarder.cc",
+    "../vsh/vshd.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  pkg_deps = [ "libbrillo-${libbase_ver}" ]
+  deps = [
+    "//vm_tools:libvsh",
+    "//vm_tools:vsh-protos",
+  ]
+}
+
+wayland_protocol_library("notification-protocol") {
+  sources = [
+    "../notificationd/protocol/notification-shell-unstable-v1.xml",
+  ]
+  configs = [ ":target_defaults" ]
+  out_dir = "include"
+}
+
+static_library("libnotificationd") {
+  sources = [
+    "../notificationd/dbus_service.cc",
+    "../notificationd/notification_daemon.cc",
+    "../notificationd/notification_shell_client.cc",
+  ]
+  include_dirs = [ ".." ]
+  defines = [ "WL_HIDE_DEPRECATED" ]
+  public_pkg_deps = [
+    "wayland-client",
+    "wayland-server",
+  ]
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo-${libbase_ver}",
+  ]
+  deps = [
+    ":notification-protocol",
+  ]
+}
+
+executable("notificationd") {
+  sources = [
+    "../notificationd/notificationd.cc",
+  ]
+  include_dirs = [ ".." ]
+  public_pkg_deps = [
+    "wayland-client",
+    "wayland-server",
+  ]
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo-${libbase_ver}",
+  ]
+  deps = [
+    ":libnotificationd",
+    ":notification-protocol",
+  ]
+}
+
+if (use.test) {
+  executable("maitred_service_test") {
+    sources = [
+      "../maitred/service_impl_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libmaitred",
+      "../../common-mk/testrunner:testrunner",
+    ]
+  }
+
+  executable("maitred_syslog_test") {
+    sources = [
+      "../syslog/collector_test.cc",
+      "../syslog/parser_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libsyslog",
+      "../../common-mk/testrunner:testrunner",
+    ]
+  }
+
+  executable("garcon_desktop_file_test") {
+    sources = [
+      "../garcon/desktop_file_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libgarcon",
+      "../../common-mk/testrunner:testrunner",
+    ]
+  }
+
+  executable("garcon_icon_index_file_test") {
+    sources = [
+      "../garcon/icon_index_file_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libgarcon",
+      "../../common-mk/testrunner:testrunner",
+    ]
+  }
+
+  executable("garcon_icon_finder_test") {
+    sources = [
+      "../garcon/icon_finder_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libgarcon",
+      "../../common-mk/testrunner:testrunner",
+    ]
+  }
+
+  executable("garcon_mime_types_parser_test") {
+    sources = [
+      "../garcon/mime_types_parser_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libgarcon",
+      "../../common-mk/testrunner:testrunner",
+    ]
+  }
+
+  executable("notificationd_test") {
+    sources = [
+      "../notificationd/dbus_service_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    public_pkg_deps = [
+      "wayland-client",
+      "wayland-server",
+    ]
+    pkg_deps = [
+      "dbus-1",
+      "libbrillo-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+    deps = [
+      ":libnotificationd",
+      ":notification-protocol",
+      "../../common-mk/testrunner:testrunner",
+    ]
+  }
+
+  executable("garcon_app_search_test") {
+    sources = [
+      "../garcon/app_search_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libgarcon",
+      "../../common-mk/testrunner:testrunner",
+    ]
+  }
+}
