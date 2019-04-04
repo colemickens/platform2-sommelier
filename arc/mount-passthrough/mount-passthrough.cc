@@ -9,7 +9,6 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/flag_helper.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
