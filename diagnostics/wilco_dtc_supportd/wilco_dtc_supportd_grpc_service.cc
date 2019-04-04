@@ -478,10 +478,6 @@ void WilcoDtcSupportdGrpcService::RunRoutine(
         return;
       }
       break;
-    case grpc_api::ROUTINE_BAD_BLOCKS:
-      // TODO(pmoy@chromium.org): Add check once the BAD_BLOCKS parameters have
-      // been defined.
-      NOTIMPLEMENTED();
     case grpc_api::ROUTINE_URANDOM:
       if (!request->has_urandom_params()) {
         LOG(ERROR) << "RunRoutineRequest with routine type URANDOM has no "

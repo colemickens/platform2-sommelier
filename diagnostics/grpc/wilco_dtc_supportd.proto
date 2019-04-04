@@ -323,9 +323,8 @@ enum DiagnosticRoutine {
   ROUTINE_UNSET = 0;
   ROUTINE_BATTERY = 1;
   ROUTINE_BATTERY_SYSFS = 2;
-  ROUTINE_BAD_BLOCKS = 3;
-  ROUTINE_URANDOM = 4;
-  ROUTINE_SMARTCTL_CHECK = 5;
+  ROUTINE_URANDOM = 3;
+  ROUTINE_SMARTCTL_CHECK = 4;
 }
 
 // Enumeration of each of the possible statuses for a diagnostics routine.

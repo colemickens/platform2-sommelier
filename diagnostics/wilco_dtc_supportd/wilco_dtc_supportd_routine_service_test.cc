@@ -24,7 +24,7 @@ constexpr char kInvalidRoutineOutput[] = "Specified routine does not exist.";
 
 constexpr grpc_api::DiagnosticRoutine kAvailableRoutines[] = {
     grpc_api::ROUTINE_BATTERY, grpc_api::ROUTINE_BATTERY_SYSFS,
-    grpc_api::ROUTINE_BAD_BLOCKS, grpc_api::ROUTINE_URANDOM};
+    grpc_api::ROUTINE_SMARTCTL_CHECK, grpc_api::ROUTINE_URANDOM};
 
 void CopyAvailableRoutines(
     base::Closure callback,

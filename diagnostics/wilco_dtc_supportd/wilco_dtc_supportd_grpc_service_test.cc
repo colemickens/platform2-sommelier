@@ -66,7 +66,7 @@ const DelegateWebRequestHttpMethod kDelegateWebRequestHttpMethodPut =
 
 constexpr grpc_api::DiagnosticRoutine kFakeAvailableRoutines[] = {
     grpc_api::ROUTINE_BATTERY, grpc_api::ROUTINE_BATTERY_SYSFS,
-    grpc_api::ROUTINE_BAD_BLOCKS, grpc_api::ROUTINE_URANDOM};
+    grpc_api::ROUTINE_SMARTCTL_CHECK, grpc_api::ROUTINE_URANDOM};
 constexpr int kFakeUuid = 13;
 constexpr grpc_api::DiagnosticRoutineStatus kFakeStatus =
     grpc_api::ROUTINE_STATUS_RUNNING;
