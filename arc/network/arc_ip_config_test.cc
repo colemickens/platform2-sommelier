@@ -351,6 +351,21 @@ TEST_F(ArcIpConfigTest, VerifyContainerReadySendsEnableOnlyOnce) {
   });
 }
 
+TEST_F(ArcIpConfigTest, VerifyContainerReadyResendsIfReset) {
+  auto cfg = LegacyAndroidConfig();
+  runner_->Capture(true);
+  cfg->EnableInbound("eth0");
+  cfg->ContainerReady(true);
+  cfg->ContainerReady(false);
+  cfg->EnableInbound("eth0");
+  cfg->ContainerReady(true);
+  runner_->VerifyRuns({
+      "/sbin/iptables -t nat -A try_arc -i eth0 -j dnat_arc -w",
+      "/sbin/iptables -t nat -F try_arc -w",
+      "/sbin/iptables -t nat -A try_arc -i eth0 -j dnat_arc -w",
+  });
+}
+
 TEST_F(ArcIpConfigTest, VerifyContainerReadySendsNothingByDefault) {
   auto cfg = LegacyAndroidConfig();
   runner_->Capture(true);

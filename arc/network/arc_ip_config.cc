@@ -176,8 +176,9 @@ bool ArcIpConfig::Init(pid_t con_netns) {
   const std::string peer = "peer_" + ifname_;
 
   if (!con_netns_) {
-    LOG(INFO) << "Uninitializing " << con_netns_ << " " << ifname_ << " "
-              << config_.br_ifname() << " " << config_.arc_ifname();
+    LOG(INFO) << "Uninitializing " << ifname_ << " " << config_.br_ifname()
+              << " " << config_.arc_ifname();
+    ContainerReady(false);
     return true;
   }
 
@@ -212,8 +213,12 @@ bool ArcIpConfig::Init(pid_t con_netns) {
 }
 
 void ArcIpConfig::ContainerReady(bool ready) {
-  if (!if_up_ && ready)
+  if (!if_up_ && ready) {
     LOG(INFO) << config_.arc_ifname() << " is now up.";
+  } else if (if_up_ && !ready) {
+    LOG(INFO) << config_.arc_ifname() << " is now down.";
+    DisableInbound();
+  }
   if_up_ = ready;
   if (if_up_ && !pending_inbound_ifname_.empty()) {
     std::string ifname = std::move(pending_inbound_ifname_);
