@@ -387,20 +387,19 @@ void DeviceInterfaceHandler::ExportOrUpdateDevice(Device* device) {
 
     AddDeviceMethodHandlers(device_interface);
 
-    // The "Adapter" property of this device object has to be set before
-    // ExportAndBlock() below. This is to make sure that as soon as a client
-    // realizes that this object is exported, it can immediately check this
-    // property value. This at least satisfies Chrome's behavior which checks
-    // whether this device belongs to the adapter it's interested in.
     device_interface
         ->EnsureExportedPropertyRegistered<dbus::ObjectPath>(
             bluetooth_device::kAdapterProperty)
         ->SetValue(dbus::ObjectPath(kAdapterObjectPath));
-
-    device_interface->ExportAndBlock();
   }
 
   UpdateDeviceProperties(device_interface, *device, is_new_device);
+
+  // The property updates above have to be done before ExportAndBlock() to make
+  // sure that client receives the newly added object complete with its
+  // populated properties.
+  if (is_new_device)
+    device_interface->ExportAndBlock();
 }
 
 void DeviceInterfaceHandler::AddDeviceMethodHandlers(
