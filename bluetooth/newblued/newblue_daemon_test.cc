@@ -633,7 +633,7 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
   // Trigger the queued inquiry_response_callback task.
   base::RunLoop().RunUntilIdle();
 
-  // RemoveDevice failed (unknown device address).
+  // RemoveDevice for unknown device address should do no-op and succeed.
   dbus::MethodCall remove_device_method_call(
       bluetooth_adapter::kBluetoothAdapterInterface,
       bluetooth_adapter::kRemoveDevice);
@@ -642,8 +642,7 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
   std::unique_ptr<dbus::Response> remove_device_response;
   remove_device_handler.Run(&remove_device_method_call,
                             base::Bind(&SaveResponse, &remove_device_response));
-  EXPECT_EQ(bluetooth_adapter::kErrorFailed,
-            remove_device_response->GetErrorName());
+  EXPECT_EQ("", remove_device_response->GetErrorName());
   // RemoveDevice successful.
   dbus::MethodCall remove_device_method_call2(
       bluetooth_adapter::kBluetoothAdapterInterface,

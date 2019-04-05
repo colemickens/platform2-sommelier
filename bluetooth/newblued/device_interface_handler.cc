@@ -341,8 +341,11 @@ void DeviceInterfaceHandler::OnDeviceDiscovered(
 
 bool DeviceInterfaceHandler::RemoveDevice(const std::string& address) {
   Device* device = FindDevice(address);
+  // If the device does not exist, assume the operation has succeeded. This is
+  // because the dispatcher may forward RemoveDevice to both BlueZ and NewBlue
+  // without knowing who owns the device.
   if (!device)
-    return false;
+    return true;
 
   newblue_->CancelPair(address, device->is_random_address);
   discovered_devices_.erase(address);
