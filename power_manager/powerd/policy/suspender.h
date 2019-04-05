@@ -204,8 +204,9 @@ class Suspender : public SuspendDelayObserver {
             PrefsInterface* prefs);
 
   // Starts the suspend process. Note that suspending happens
-  // asynchronously.
-  void RequestSuspend(SuspendImminent::Reason reason);
+  // asynchronously. The system will automatically resume after |duration| if it
+  // is non-zero.
+  void RequestSuspend(SuspendImminent::Reason reason, base::TimeDelta duration);
 
   // Like RequestSuspend(), but aborts the suspend attempt immediately if
   // the current wakeup count reported by the kernel exceeds

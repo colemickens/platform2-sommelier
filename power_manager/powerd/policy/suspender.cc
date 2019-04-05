@@ -88,10 +88,12 @@ void Suspender::Init(Delegate* delegate,
   }
 }
 
-void Suspender::RequestSuspend(SuspendImminent::Reason reason) {
+void Suspender::RequestSuspend(SuspendImminent::Reason reason,
+                               base::TimeDelta duration) {
   suspend_request_reason_ = reason;
   suspend_request_supplied_wakeup_count_ = false;
   suspend_request_wakeup_count_ = 0;
+  suspend_duration_ = duration;
   HandleEvent(Event::SUSPEND_REQUESTED);
 }
 

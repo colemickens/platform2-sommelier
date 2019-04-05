@@ -1250,7 +1250,7 @@ void Daemon::Suspend(SuspendImminent::Reason reason,
                                                       external_wakeup_count,
                                                       duration);
   } else {
-    suspender_->RequestSuspend(reason);
+    suspender_->RequestSuspend(reason, duration);
   }
 }
 
