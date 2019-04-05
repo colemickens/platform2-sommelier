@@ -30,6 +30,10 @@ using std::string;
 namespace pb = google::protobuf;
 
 namespace {
+
+// Timeout in seconds for each gRPC call.
+constexpr int kDefaultTimeoutSeconds = 10;
+
 bool ParseFileToProto(base::FilePath path, pb::Message* msg) {
   if (!base::PathExists(path)) {
     LOG(ERROR) << path.value() << " does not exist";
@@ -57,6 +61,9 @@ bool ConfigureNetwork(vm_tools::Maitred::Stub* stub, base::FilePath path) {
 
   // Make the RPC.
   grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
   vm_tools::EmptyMessage empty;
 
   grpc::Status status = stub->ConfigureNetwork(&ctx, request, &empty);
@@ -74,6 +81,9 @@ void Shutdown(vm_tools::Maitred::Stub* stub) {
   LOG(INFO) << "Shutting down VM";
 
   grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
   vm_tools::EmptyMessage empty;
 
   grpc::Status status = stub->Shutdown(&ctx, empty, &empty);
@@ -96,6 +106,9 @@ bool LaunchProcess(vm_tools::Maitred::Stub* stub, base::FilePath path) {
 
   // Make the RPC.
   grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
   vm_tools::LaunchProcessResponse response;
 
   grpc::Status status = stub->LaunchProcess(&ctx, request, &response);
@@ -142,6 +155,9 @@ bool Mount(vm_tools::Maitred::Stub* stub, base::FilePath path) {
 
   // Make the RPC.
   grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
   vm_tools::MountResponse response;
 
   grpc::Status status = stub->Mount(&ctx, request, &response);
@@ -173,6 +189,9 @@ bool Mount9P(vm_tools::Maitred::Stub* stub, base::FilePath path) {
 
   // Make the RPC.
   grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
   vm_tools::MountResponse response;
 
   grpc::Status status = stub->Mount9P(&ctx, request, &response);
@@ -202,6 +221,9 @@ bool SetTime(vm_tools::Maitred::Stub* stub, uint64_t time) {
 
   // Make the RPC.
   grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
   vm_tools::EmptyMessage response;
 
   grpc::Status status = stub->SetTime(&ctx, request, &response);

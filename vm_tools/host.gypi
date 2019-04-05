@@ -19,6 +19,11 @@
       'sources': [
         'maitred/client.cc',
       ],
+      'link_settings': {
+        'libraries': [
+          '-lgpr',
+        ],
+      },
     },
     {
       'target_name': 'libforwarder',
