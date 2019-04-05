@@ -1,0 +1,12 @@
+[package]
+name = "trace_events"
+version = "0.1.0"
+authors = ["The Chromium OS Authors"]
+include = ["*.rs", "Cargo.toml"]
+edition = "2018"
+
+[lib]
+
+[dependencies]
+libc = "0.2.44"
+trace_events_macros = { path = "../trace_events_macros"}

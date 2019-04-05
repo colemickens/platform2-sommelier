@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "trace_events",
+    "trace_events_macros",
+    "test_suite",
+]
