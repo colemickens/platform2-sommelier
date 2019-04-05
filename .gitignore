@@ -56,3 +56,6 @@ tags_sorted_by_file
 
 # Cargo build directories.
 target/
+
+# VSCode source dirs
+.vscode/
