@@ -40,7 +40,7 @@ class AsyncGrpcServerBase {
   using RpcStateFactory = base::Callback<std::unique_ptr<RpcStateBase>()>;
 
   AsyncGrpcServerBase(scoped_refptr<base::SequencedTaskRunner> task_runner,
-                      const std::string& server_uri);
+                      const std::vector<std::string>& server_uris);
   virtual ~AsyncGrpcServerBase();
 
   // Starts this server. When this returns failure, no further methods are
@@ -104,8 +104,8 @@ class AsyncGrpcServerBase {
   // The TaskRunner used for |dispatcher_|.
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
 
-  // The address this server listens on.
-  const std::string server_uri_;
+  // The addresses this server listens on.
+  const std::vector<std::string> server_uris_;
 
   // The gRPC |Server| instance.
   std::unique_ptr<grpc::Server> server_;
@@ -163,11 +163,11 @@ class AsyncGrpcServer final : public internal::AsyncGrpcServerBase {
   template <typename RequestType, typename ResponseType>
   using RpcState = internal::RpcState<RequestType, ResponseType>;
 
-  // Creates a server which exposes |service| on |server_uri|. It will post
-  // tasks for processing incoming RPCs on |task_runner|.
+  // Creates a server which exposes |service| on each URI in |server_uris|.
+  // It will post tasks for processing incoming RPCs on |task_runner|.
   AsyncGrpcServer(scoped_refptr<base::SequencedTaskRunner> task_runner,
-                  const std::string& server_uri)
-      : internal::AsyncGrpcServerBase(task_runner, server_uri),
+                  const std::vector<std::string>& server_uris)
+      : internal::AsyncGrpcServerBase(task_runner, server_uris),
         service_(std::make_unique<AsyncService>()) {}
   ~AsyncGrpcServer() = default;
 

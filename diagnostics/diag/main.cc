@@ -72,7 +72,7 @@ std::string GetSwitchFromRoutine(
 bool RunRoutineWithRequest(
     const diagnostics::grpc_api::RunRoutineRequest& request) {
   diagnostics::DiagRoutineRequester routine_requester;
-  routine_requester.Connect(diagnostics::kWilcoDtcSupportdGrpcUri);
+  routine_requester.Connect(diagnostics::kWilcoDtcSupportdGrpcDomainSocketUri);
 
   auto routine_info = routine_requester.RunRoutine(request);
 
@@ -141,7 +141,7 @@ bool RunRoutineWithRequest(
 
 bool ActionGetRoutines() {
   diagnostics::DiagRoutineRequester routine_requester;
-  routine_requester.Connect(diagnostics::kWilcoDtcSupportdGrpcUri);
+  routine_requester.Connect(diagnostics::kWilcoDtcSupportdGrpcDomainSocketUri);
 
   auto reply = routine_requester.GetAvailableRoutines();
   for (auto routine : reply) {

@@ -66,7 +66,7 @@ class WilcoDtcSupportdCore final
     virtual void BeginDaemonShutdown() = 0;
   };
 
-  // |grpc_service_uri| is the URI on which the gRPC interface exposed by the
+  // |grpc_service_uris| are the URIs on which the gRPC interface exposed by the
   // wilco_dtc_supportd daemon will be listening.
   // |ui_message_receiver_wilco_dtc_grpc_uri| is the URI which is
   // used for making requests to the gRPC interface exposed by the
@@ -78,7 +78,7 @@ class WilcoDtcSupportdCore final
   // daemons. Should not contain the URI equal to
   // |ui_message_receiver_wilco_dtc_grpc_uri|.
   WilcoDtcSupportdCore(
-      const std::string& grpc_service_uri,
+      const std::vector<std::string>& grpc_service_uris,
       const std::string& ui_message_receiver_wilco_dtc_grpc_uri,
       const std::vector<std::string>& wilco_dtc_grpc_uris,
       Delegate* delegate);
@@ -164,8 +164,8 @@ class WilcoDtcSupportdCore final
 
   // gRPC-related members:
 
-  // gRPC URI on which the |grpc_server_| is listening for incoming requests.
-  const std::string grpc_service_uri_;
+  // gRPC URIs on which the |grpc_server_| is listening for incoming requests.
+  const std::vector<std::string> grpc_service_uris_;
   // gRPC URI which is used by
   // |ui_message_receiver_wilco_dtc_grpc_client_| for sending UI
   // messages and EC notifications over the gRPC interface.

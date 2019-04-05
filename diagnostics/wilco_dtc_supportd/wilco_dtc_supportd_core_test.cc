@@ -131,7 +131,8 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
         kWilcoDtcGrpcUriTemplate, temp_dir_.GetPath().value().c_str());
 
     core_ = std::make_unique<WilcoDtcSupportdCore>(
-        wilco_dtc_supportd_grpc_uri_, ui_message_receiver_wilco_dtc_grpc_uri_,
+        std::vector<std::string>{wilco_dtc_supportd_grpc_uri_},
+        ui_message_receiver_wilco_dtc_grpc_uri_,
         std::vector<std::string>{wilco_dtc_grpc_uri_}, &core_delegate_);
     core_->set_root_dir_for_testing(temp_dir_.GetPath());
 

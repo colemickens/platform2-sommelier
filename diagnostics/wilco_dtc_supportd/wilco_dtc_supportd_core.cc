@@ -12,6 +12,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/optional.h>
+#include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <dbus/diagnosticsd/dbus-constants.h>
 #include <dbus/object_path.h>
@@ -60,16 +61,16 @@ WilcoDtcSupportdCore::WebRequestStatus ConvertStatusFromMojom(
 }  // namespace
 
 WilcoDtcSupportdCore::WilcoDtcSupportdCore(
-    const std::string& grpc_service_uri,
+    const std::vector<std::string>& grpc_service_uris,
     const std::string& ui_message_receiver_wilco_dtc_grpc_uri,
     const std::vector<std::string>& wilco_dtc_grpc_uris,
     Delegate* delegate)
     : delegate_(delegate),
-      grpc_service_uri_(grpc_service_uri),
+      grpc_service_uris_(grpc_service_uris),
       ui_message_receiver_wilco_dtc_grpc_uri_(
           ui_message_receiver_wilco_dtc_grpc_uri),
       wilco_dtc_grpc_uris_(wilco_dtc_grpc_uris),
-      grpc_server_(base::ThreadTaskRunnerHandle::Get(), grpc_service_uri_) {
+      grpc_server_(base::ThreadTaskRunnerHandle::Get(), grpc_service_uris_) {
   DCHECK(delegate);
 }
 
@@ -126,12 +127,13 @@ bool WilcoDtcSupportdCore::Start() {
   // Start the gRPC server that listens for incoming gRPC requests.
   VLOG(1) << "Starting gRPC server";
   if (!grpc_server_.Start()) {
-    LOG(ERROR) << "Failed to start the gRPC server listening on "
-               << grpc_service_uri_;
+    LOG(ERROR) << "Failed to start the gRPC server listening on: "
+               << base::JoinString(grpc_service_uris_, ", ");
     return false;
   }
+
   VLOG(0) << "Successfully started gRPC server listening on "
-          << grpc_service_uri_;
+          << base::JoinString(grpc_service_uris_, ",");
 
   // Start the gRPC clients that talk to the wilco_dtc daemon.
   for (const auto& uri : wilco_dtc_grpc_uris_) {

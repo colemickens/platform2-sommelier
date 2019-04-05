@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <queue>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -176,7 +177,8 @@ class AsyncGrpcClientServerTest : public ::testing::Test {
     // Create and start the AsyncGrpcServer.
     server_ = std::make_unique<
         AsyncGrpcServer<test_rpcs::ExampleService::AsyncService>>(
-        message_loop_.task_runner(), GetDomainSocketAddress());
+        message_loop_.task_runner(),
+        std::vector<std::string>{GetDomainSocketAddress()});
     server_->RegisterHandler(
         &test_rpcs::ExampleService::AsyncService::RequestEmptyRpc,
         pending_empty_rpcs_.GetRpcHandlerCallback());

@@ -123,6 +123,7 @@ static_library("libconstants") {
   sources = [
     "constants/grpc_constants.cc",
   ]
+  pkg_deps = [ "libchrome-${libbase_ver}" ]
 }
 
 # Library that provides core functionality for the wilco_dtc_supportd daemon.

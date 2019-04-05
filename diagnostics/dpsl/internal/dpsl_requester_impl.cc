@@ -26,7 +26,9 @@ std::string GetWilcoDtcSupportdGrpcUri(
     DpslRequester::GrpcClientUri grpc_client_uri) {
   switch (grpc_client_uri) {
     case DpslRequester::GrpcClientUri::kLocalDomainSocket:
-      return kWilcoDtcSupportdGrpcUri;
+      return kWilcoDtcSupportdGrpcDomainSocketUri;
+    case DpslRequester::GrpcClientUri::kVmVsock:
+      return GetWilcoDtcSupportdGrpcGuestVsockUri();
   }
   NOTREACHED() << "Unexpected GrpcClientUri: "
                << static_cast<int>(grpc_client_uri);

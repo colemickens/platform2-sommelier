@@ -25,10 +25,10 @@ namespace {
 
 std::string GetWilcoDtcGrpcUri(DpslRpcServer::GrpcServerUri grpc_server_uri) {
   switch (grpc_server_uri) {
-    case DpslRpcServer::GrpcServerUri::kLocalDomainSocket:
-      return kWilcoDtcGrpcUri;
-    case DpslRpcServer::GrpcServerUri::kUiMessageReceiverDomainSocket:
-      return kUiMessageReceiverWilcoDtcGrpcUri;
+    case DpslRpcServer::GrpcServerUri::kVmVsock:
+      return GetWilcoDtcGrpcGuestVsockUri();
+    case DpslRpcServer::GrpcServerUri::kUiMessageReceiverVmVsock:
+      return GetUiMessageReceiverWilcoDtcGrpcGuestVsockUri();
   }
   NOTREACHED() << "Unexpected GrpcServerUri: "
                << static_cast<int>(grpc_server_uri);
@@ -42,14 +42,14 @@ DpslRpcServerImpl::DpslRpcServerImpl(DpslRpcHandler* rpc_handler,
                                      const std::string& grpc_server_uri_string)
     : rpc_handler_(rpc_handler),
       async_grpc_server_(base::ThreadTaskRunnerHandle::Get(),
-                         grpc_server_uri_string) {
+                         {grpc_server_uri_string}) {
   DCHECK(rpc_handler_);
   auto handle_message_from_ui_handler =
       &DpslRpcServerImpl::HandleMessageFromUiStub;
   switch (grpc_server_uri) {
-    case GrpcServerUri::kLocalDomainSocket:
+    case GrpcServerUri::kVmVsock:
       break;
-    case GrpcServerUri::kUiMessageReceiverDomainSocket:
+    case GrpcServerUri::kUiMessageReceiverVmVsock:
       handle_message_from_ui_handler = &DpslRpcServerImpl::HandleMessageFromUi;
       break;
   }

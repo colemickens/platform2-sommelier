@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Demo for a wilco_dtc program built using the DPSL library.
+// Demo for a wilco_dtc program built using the DPSL library to be run inside
+// a VM.
 //
 // The demo functionality: waits for a message from UI, and, when receiving one,
 // fetches system uptime (/proc/uptime) and sends it back to the UI.
@@ -55,7 +56,7 @@ class DemoRpcHandler final : public diagnostics::DpslRpcHandler {
 DemoRpcHandler::DemoRpcHandler(diagnostics::DpslThreadContext* thread_context)
     : requester_(diagnostics::DpslRequester::Create(
           thread_context,
-          diagnostics::DpslRequester::GrpcClientUri::kLocalDomainSocket)) {}
+          diagnostics::DpslRequester::GrpcClientUri::kVmVsock)) {}
 
 DemoRpcHandler::~DemoRpcHandler() = default;
 
@@ -139,7 +140,7 @@ int main() {
   DemoRpcHandler demo_rpc_handler(thread_context.get());
   auto rpc_server = diagnostics::DpslRpcServer::Create(
       thread_context.get(), &demo_rpc_handler,
-      diagnostics::DpslRpcServer::GrpcServerUri::kLocalDomainSocket);
+      diagnostics::DpslRpcServer::GrpcServerUri::kVmVsock);
   // This blocks (forever in this program, since it never calls
   // QuitEventLoop()).
   thread_context->RunEventLoop();

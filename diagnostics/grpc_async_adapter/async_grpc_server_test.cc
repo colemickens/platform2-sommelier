@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
@@ -46,7 +47,8 @@ class AsyncGrpcServerTest : public ::testing::Test {
     DCHECK(!server_);
     server_ = std::make_unique<
         AsyncGrpcServer<test_rpcs::ExampleService::AsyncService>>(
-        base::ThreadTaskRunnerHandle::Get(), service_uri);
+        base::ThreadTaskRunnerHandle::Get(),
+        std::vector<std::string>{service_uri});
   }
 
   void DestroyServer() {

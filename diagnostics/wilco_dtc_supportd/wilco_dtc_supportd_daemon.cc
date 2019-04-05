@@ -20,9 +20,10 @@ namespace diagnostics {
 
 WilcoDtcSupportdDaemon::WilcoDtcSupportdDaemon()
     : DBusServiceDaemon(kDiagnosticsdServiceName /* service_name */),
-      wilco_dtc_supportd_core_(kWilcoDtcSupportdGrpcUri,
-                               kUiMessageReceiverWilcoDtcGrpcUri,
-                               {kWilcoDtcGrpcUri},
+      wilco_dtc_supportd_core_({GetWilcoDtcSupportdGrpcHostVsockUri(),
+                                kWilcoDtcSupportdGrpcDomainSocketUri},
+                               GetUiMessageReceiverWilcoDtcGrpcHostVsockUri(),
+                               {GetWilcoDtcGrpcHostVsockUri()},
                                &wilco_dtc_supportd_core_delegate_impl_) {}
 
 WilcoDtcSupportdDaemon::~WilcoDtcSupportdDaemon() = default;

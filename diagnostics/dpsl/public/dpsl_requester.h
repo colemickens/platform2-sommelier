@@ -59,6 +59,10 @@ class DpslRequester {
     // Only one client with this URI may run at a time; breaking this
     // requirement will lead to unspecified behavior.
     kLocalDomainSocket = 0,
+
+    // A vsock URI for communicating across the VM boundary. This option is
+    // available only when running INSIDE a VM.
+    kVmVsock = 1,
   };
 
   // Request-specific callback types. These callbacks are called by DPSL when a

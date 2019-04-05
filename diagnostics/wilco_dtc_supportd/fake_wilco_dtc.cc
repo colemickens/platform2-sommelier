@@ -15,7 +15,7 @@ namespace diagnostics {
 
 FakeWilcoDtc::FakeWilcoDtc(const std::string& grpc_server_uri,
                            const std::string& wilco_dtc_supportd_grpc_uri)
-    : grpc_server_(base::ThreadTaskRunnerHandle::Get(), grpc_server_uri),
+    : grpc_server_(base::ThreadTaskRunnerHandle::Get(), {grpc_server_uri}),
       wilco_dtc_supportd_grp_client_(base::ThreadTaskRunnerHandle::Get(),
                                      wilco_dtc_supportd_grpc_uri) {
   grpc_server_.RegisterHandler(

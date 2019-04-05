@@ -11,8 +11,10 @@ namespace internal {
 
 AsyncGrpcServerBase::AsyncGrpcServerBase(
     scoped_refptr<base::SequencedTaskRunner> task_runner,
-    const std::string& server_uri)
-    : task_runner_(task_runner), server_uri_(server_uri) {}
+    const std::vector<std::string>& server_uris)
+    : task_runner_(task_runner), server_uris_(server_uris) {
+  DCHECK(!server_uris_.empty());
+}
 
 AsyncGrpcServerBase::~AsyncGrpcServerBase() = default;
 
@@ -21,7 +23,11 @@ bool AsyncGrpcServerBase::Start() {
   state_ = State::kStarted;
 
   grpc::ServerBuilder builder;
-  builder.AddListeningPort(server_uri_, grpc::InsecureServerCredentials());
+
+  for (const auto& uri : server_uris_) {
+    builder.AddListeningPort(uri, grpc::InsecureServerCredentials());
+  }
+
   builder.RegisterService(service());
   completion_queue_ = builder.AddCompletionQueue();
   server_ = builder.BuildAndStart();

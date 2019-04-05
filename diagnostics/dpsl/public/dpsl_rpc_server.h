@@ -30,20 +30,17 @@ class DpslThreadContext;
 class DpslRpcServer {
  public:
   // Specifies predefined options for the URI on which the started gRPC server
-  // should be listening.
+  // should be listening. Only one server with each URI may run at a time;
+  // breaking this requirement will lead to unspecified behavior.
   enum class GrpcServerUri {
-    // A Unix domain socket at the predefined constant path. This option is
-    // available only when running OUTSIDE a VM.
-    // Only one server with this URI may run at a time; breaking this
-    // requirement will lead to unspecified behavior.
-    kLocalDomainSocket = 0,
-    // A Unix domain socket at the predefined constant path. This option is
-    // available only when running OUTSIDE a VM. A server is eligible to
+    // A vsock URI for communicating across the VM boundary. This option is
+    // available only when running INSIDE a VM.
+    kVmVsock = 0,
+    // A vsock URI for communicating across the VM boundary. This option is
+    // available only when running INSIDE a VM. A server is eligible to
     // receive EC notifications and messages from UI extension (hosted by
     // browser). No other server is eligible to receive UI messages.
-    // Only one server with this URI may run at a time; breaking this
-    // requirement will lead to unspecified behavior.
-    kUiMessageReceiverDomainSocket = 1,
+    kUiMessageReceiverVmVsock = 1,
   };
 
   // Factory method that returns an instance of the real implementation of this

@@ -154,7 +154,7 @@ int main(int argc, char** argv) {
 
   diagnostics::TelemConnection telem_connection;
 
-  telem_connection.Connect(diagnostics::kWilcoDtcSupportdGrpcUri);
+  telem_connection.Connect(diagnostics::kWilcoDtcSupportdGrpcDomainSocketUri);
 
   // Make sure at least one item or group is specified.
   if (FLAGS_item == "" && FLAGS_group == "") {
