@@ -56,6 +56,10 @@ service WilcoDtcSupportd {
 
   // Retrieves the VPD (Vital Product Data) field values.
   rpc GetVpdField(GetVpdFieldRequest) returns (GetVpdFieldResponse) {}
+
+  // Retrieves the bluetooth data.
+  rpc GetBluetoothData(GetBluetoothDataRequest)
+      returns (GetBluetoothDataResponse) {}
 }
 
 // Parameters for the SendMessageToUi RPC.
@@ -509,4 +513,35 @@ message GetVpdFieldResponse {
   // VPD field value. Empty if the VPD field is unset and the |status| is
   // distinct from |STATUS_OK|.
   string vpd_field_value = 2;
+}
+
+// Parameters for the GetBluetoothData RPC.
+message GetBluetoothDataRequest {}
+
+// Return value for the GetBluetoothData RPC.
+message GetBluetoothDataResponse {
+  // Telemetry data of the bluetooth device installed in the system.
+  message BluetoothData {
+    // Non-empty bluetooth device name (e.g. hci0).
+    string device_name = 1;
+    // Non-empty bluetooth device MAC address.
+    string device_mac_address = 2;
+
+    enum CarrierStatus {
+      STATUS_UNSET = 0;
+      STATUS_UP = 1;
+      STATUS_DOWN = 2;
+    }
+
+    // STATUS_UP/STATUS_DOWN carrier status of the device. Must be distinct from
+    // |STATUS_UNSET|.
+    CarrierStatus carrier_status = 3;
+    // Number of RX (received) bytes.
+    int32 rx_bytes = 4;
+    // Number of TX (transmitted) bytes.
+    int32 tx_bytes = 5;
+  }
+
+  // The data for all bluetooth devices installed in the system.
+  repeated BluetoothData devices = 1;
 }

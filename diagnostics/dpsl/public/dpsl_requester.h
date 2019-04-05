@@ -96,6 +96,8 @@ class DpslRequester {
       std::unique_ptr<grpc_api::GetConfigurationDataResponse> response)>;
   using GetVpdFieldCallback = std::function<void(
       std::unique_ptr<grpc_api::GetVpdFieldResponse> response)>;
+  using GetBluetoothDataCallback = std::function<void(
+      std::unique_ptr<grpc_api::GetBluetoothDataResponse> response)>;
 
   // Factory method that returns an instance of the real implementation of this
   // interface.
@@ -152,6 +154,9 @@ class DpslRequester {
   virtual void GetVpdField(
       std::unique_ptr<grpc_api::GetVpdFieldRequest> request,
       GetVpdFieldCallback callback) = 0;
+  virtual void GetBluetoothData(
+      std::unique_ptr<grpc_api::GetBluetoothDataRequest> request,
+      GetBluetoothDataCallback callback) = 0;
 };
 
 }  // namespace diagnostics

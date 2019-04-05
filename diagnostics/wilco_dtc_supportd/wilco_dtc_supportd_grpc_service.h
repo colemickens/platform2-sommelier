@@ -143,6 +143,8 @@ class WilcoDtcSupportdGrpcService final {
       std::unique_ptr<grpc_api::GetConfigurationDataResponse>)>;
   using GetVpdFieldCallback =
       base::Callback<void(std::unique_ptr<grpc_api::GetVpdFieldResponse>)>;
+  using GetBluetoothDataCallback =
+      base::Callback<void(std::unique_ptr<grpc_api::GetBluetoothDataResponse>)>;
 
   explicit WilcoDtcSupportdGrpcService(Delegate* delegate);
   ~WilcoDtcSupportdGrpcService();
@@ -182,6 +184,9 @@ class WilcoDtcSupportdGrpcService final {
       const GetConfigurationDataCallback& callback);
   void GetVpdField(std::unique_ptr<grpc_api::GetVpdFieldRequest> request,
                    const GetVpdFieldCallback& callback);
+  void GetBluetoothData(
+      std::unique_ptr<grpc_api::GetBluetoothDataRequest> request,
+      const GetBluetoothDataCallback& callback);
 
  private:
   // Constructs and, if successful, appends the dump of the specified file (with

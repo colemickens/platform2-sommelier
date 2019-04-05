@@ -592,6 +592,12 @@ void WilcoDtcSupportdGrpcService::GetVpdField(
   callback.Run(std::move(reply));
 }
 
+void WilcoDtcSupportdGrpcService::GetBluetoothData(
+    std::unique_ptr<grpc_api::GetBluetoothDataRequest> request,
+    const GetBluetoothDataCallback& callback) {
+  NOTIMPLEMENTED();
+}
+
 void WilcoDtcSupportdGrpcService::AddFileDump(
     const base::FilePath& relative_file_path,
     google::protobuf::RepeatedPtrField<grpc_api::FileDump>* file_dumps) {

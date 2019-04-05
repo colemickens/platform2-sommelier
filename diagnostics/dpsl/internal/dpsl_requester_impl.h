@@ -58,6 +58,9 @@ class DpslRequesterImpl final : public DpslRequester {
       GetConfigurationDataCallback callback) override;
   void GetVpdField(std::unique_ptr<grpc_api::GetVpdFieldRequest> request,
                    GetVpdFieldCallback callback) override;
+  void GetBluetoothData(
+      std::unique_ptr<grpc_api::GetBluetoothDataRequest> request,
+      GetBluetoothDataCallback callback) override;
 
  private:
   using AsyncGrpcWilcoDtcSupportdClient =
