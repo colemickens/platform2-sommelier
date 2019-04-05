@@ -28,6 +28,7 @@ DeviceEjector::~DeviceEjector() {}
 bool DeviceEjector::Eject(const std::string& device_path) {
   CHECK(!device_path.empty()) << "Invalid device path";
 
+  LOG(INFO) << "Eject device '" << device_path << "'";
   if (base::ContainsKey(eject_process_, device_path)) {
     LOG(WARNING) << "Device '" << device_path << "' is already being ejected";
     return false;
@@ -50,6 +51,7 @@ bool DeviceEjector::Eject(const std::string& device_path) {
                    weak_ptr_factory_.GetWeakPtr(), device_path));
   } else {
     eject_process_.erase(device_path);
+    LOG(WARNING) << "Failed to eject media from device '" << device_path << "'";
   }
   return started;
 }

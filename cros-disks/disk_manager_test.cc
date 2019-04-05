@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include "cros-disks/device_ejector.h"
+#include "cros-disks/disk_monitor.h"
 #include "cros-disks/disk.h"
 #include "cros-disks/exfat_mounter.h"
 #include "cros-disks/filesystem.h"
@@ -41,24 +42,35 @@ const char kMountRootDirectory[] = "/media/removable";
 
 namespace cros_disks {
 
-// A mock device ejector class for testing the disk manager class.
 class MockDeviceEjector : public DeviceEjector {
  public:
   MockDeviceEjector() : DeviceEjector(nullptr) {}
 
-  MOCK_METHOD1(Eject, bool(const string& device_path));
+  MOCK_METHOD1(Eject, bool(const std::string& device_path));
+};
+
+class MockDiskMonitor : public DiskMonitor {
+ public:
+  MockDiskMonitor() = default;
+
+  bool Initialize() override { return true; }
+
+  MOCK_CONST_METHOD0(EnumerateDisks, std::vector<Disk>());
+  MOCK_CONST_METHOD2(GetDiskByDevicePath,
+                     bool(const base::FilePath& device_path, Disk* disk));
 };
 
 class DiskManagerTest : public ::testing::Test {
  public:
   DiskManagerTest()
-      : manager_(kMountRootDirectory, &platform_, &metrics_, &device_ejector_) {
-  }
+      : manager_(
+            kMountRootDirectory, &platform_, &metrics_, &monitor_, &ejector_) {}
 
  protected:
   Metrics metrics_;
   Platform platform_;
-  MockDeviceEjector device_ejector_;
+  MockDeviceEjector ejector_;
+  MockDiskMonitor monitor_;
   DiskManager manager_;
 };
 
@@ -138,32 +150,6 @@ TEST_F(DiskManagerTest, CreateExt4SystemMounter) {
   EXPECT_EQ(disk.device_file, mounter->source());
   EXPECT_EQ(target_path, mounter->target_path().value());
   EXPECT_EQ("rw,nodev,noexec,nosuid", mounter->mount_options().ToString());
-}
-
-TEST_F(DiskManagerTest, EnumerateDisks) {
-  vector<Disk> disks = manager_.EnumerateDisks();
-}
-
-TEST_F(DiskManagerTest, GetDiskByDevicePath) {
-  vector<Disk> disks = manager_.EnumerateDisks();
-  if (disks.empty()) {
-    LOG(WARNING) << "No disks found to test.";
-  }
-
-  for (const auto& found_disk : disks) {
-    string device_path = found_disk.device_file;
-    LOG(INFO) << "Using device_path: " << device_path << "\n";
-
-    Disk disk;
-    EXPECT_TRUE(manager_.GetDiskByDevicePath(device_path, &disk));
-    EXPECT_EQ(device_path, disk.device_file);
-  }
-}
-
-TEST_F(DiskManagerTest, GetDiskByNonexistentDevicePath) {
-  Disk disk;
-  string device_path = "/dev/nonexistent-path";
-  EXPECT_FALSE(manager_.GetDiskByDevicePath(device_path, &disk));
 }
 
 TEST_F(DiskManagerTest, GetFilesystem) {
@@ -301,9 +287,10 @@ TEST_F(DiskManagerTest, ScheduleEjectOnUnmount) {
 
 TEST_F(DiskManagerTest, EjectDeviceOfMountPath) {
   string mount_path = "/media/removable/disk";
-  string device_file = "/dev/sr0";
-  manager_.devices_to_eject_on_unmount_[mount_path] = device_file;
-  EXPECT_CALL(device_ejector_, Eject(_)).WillOnce(Return(true));
+  Disk disk;
+  disk.device_file = "/dev/sr0";
+  manager_.devices_to_eject_on_unmount_[mount_path] = disk;
+  EXPECT_CALL(ejector_, Eject("/dev/sr0")).WillOnce(Return(true));
   EXPECT_TRUE(manager_.EjectDeviceOfMountPath(mount_path));
   EXPECT_FALSE(
       base::ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
@@ -311,9 +298,10 @@ TEST_F(DiskManagerTest, EjectDeviceOfMountPath) {
 
 TEST_F(DiskManagerTest, EjectDeviceOfMountPathWhenEjectFailed) {
   string mount_path = "/media/removable/disk";
-  string device_file = "/dev/sr0";
-  manager_.devices_to_eject_on_unmount_[mount_path] = device_file;
-  EXPECT_CALL(device_ejector_, Eject(_)).WillOnce(Return(false));
+  Disk disk;
+  disk.device_file = "/dev/sr0";
+  manager_.devices_to_eject_on_unmount_[mount_path] = disk;
+  EXPECT_CALL(ejector_, Eject(_)).WillOnce(Return(false));
   EXPECT_FALSE(manager_.EjectDeviceOfMountPath(mount_path));
   EXPECT_FALSE(
       base::ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
@@ -321,17 +309,18 @@ TEST_F(DiskManagerTest, EjectDeviceOfMountPathWhenEjectFailed) {
 
 TEST_F(DiskManagerTest, EjectDeviceOfMountPathWhenExplicitlyDisabled) {
   string mount_path = "/media/removable/disk";
-  string device_file = "/dev/sr0";
-  manager_.devices_to_eject_on_unmount_[mount_path] = device_file;
+  Disk disk;
+  disk.device_file = "/dev/sr0";
+  manager_.devices_to_eject_on_unmount_[mount_path] = disk;
   manager_.eject_device_on_unmount_ = false;
-  EXPECT_CALL(device_ejector_, Eject(_)).Times(0);
+  EXPECT_CALL(ejector_, Eject(_)).Times(0);
   EXPECT_FALSE(manager_.EjectDeviceOfMountPath(mount_path));
   EXPECT_FALSE(
       base::ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
 }
 
 TEST_F(DiskManagerTest, EjectDeviceOfMountPathWhenMountPathExcluded) {
-  EXPECT_CALL(device_ejector_, Eject(_)).Times(0);
+  EXPECT_CALL(ejector_, Eject(_)).Times(0);
   EXPECT_FALSE(manager_.EjectDeviceOfMountPath("/media/removable/disk"));
 }
 

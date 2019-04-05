@@ -27,8 +27,12 @@ Daemon::Daemon(bool has_session_manager)
       has_session_manager_(has_session_manager),
       device_ejector_(&process_reaper_),
       archive_manager_(kArchiveMountRootDirectory, &platform_, &metrics_),
-      disk_manager_(
-          kDiskMountRootDirectory, &platform_, &metrics_, &device_ejector_),
+      disk_monitor_(),
+      disk_manager_(kDiskMountRootDirectory,
+                    &platform_,
+                    &metrics_,
+                    &disk_monitor_,
+                    &device_ejector_),
       format_manager_(&process_reaper_),
       rename_manager_(&platform_, &process_reaper_),
       fuse_manager_(kFUSEMountRootDirectory,
@@ -53,7 +57,7 @@ Daemon::~Daemon() {
 void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   server_ = std::make_unique<CrosDisksServer>(
-      bus_, &platform_, &disk_manager_, &format_manager_, &rename_manager_);
+      bus_, &platform_, &disk_monitor_, &format_manager_, &rename_manager_);
 
   // Register mount managers with the commonly used ones come first.
   server_->RegisterMountManager(&disk_manager_);
@@ -61,7 +65,7 @@ void Daemon::RegisterDBusObjectsAsync(
   server_->RegisterMountManager(&fuse_manager_);
 
   event_moderator_ = std::make_unique<DeviceEventModerator>(
-      server_.get(), &disk_manager_, has_session_manager_);
+      server_.get(), &disk_monitor_, has_session_manager_);
 
   if (has_session_manager_) {
     session_manager_proxy_ = std::make_unique<SessionManagerProxy>(bus_);
@@ -70,7 +74,7 @@ void Daemon::RegisterDBusObjectsAsync(
   }
 
   device_event_task_id_ = brillo::MessageLoop::current()->WatchFileDescriptor(
-      FROM_HERE, disk_manager_.udev_monitor_fd(),
+      FROM_HERE, disk_monitor_.udev_monitor_fd(),
       brillo::MessageLoop::kWatchRead, true,
       base::Bind(&Daemon::OnDeviceEvents, base::Unretained(this)));
 

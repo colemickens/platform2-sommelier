@@ -16,6 +16,7 @@
 #include "cros-disks/device_ejector.h"
 #include "cros-disks/device_event_moderator.h"
 #include "cros-disks/disk_manager.h"
+#include "cros-disks/disk_monitor.h"
 #include "cros-disks/format_manager.h"
 #include "cros-disks/fuse_mount_manager.h"
 #include "cros-disks/metrics.h"
@@ -46,6 +47,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   brillo::ProcessReaper process_reaper_;
   DeviceEjector device_ejector_;
   ArchiveManager archive_manager_;
+  DiskMonitor disk_monitor_;
   DiskManager disk_manager_;
   FormatManager format_manager_;
   RenameManager rename_manager_;

@@ -25,9 +25,8 @@
 
 namespace cros_disks {
 
-class DiskManager;
+class DiskMonitor;
 class FormatManager;
-class FUSEMountManager;
 class MountManager;
 class Platform;
 class RenameManager;
@@ -43,7 +42,7 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
  public:
   CrosDisksServer(scoped_refptr<dbus::Bus> bus,
                   Platform* platform,
-                  DiskManager* disk_manager,
+                  DiskMonitor* disk_monitor,
                   FormatManager* format_manager,
                   RenameManager* rename_manager);
   ~CrosDisksServer() override = default;
@@ -133,7 +132,7 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
 
   brillo::dbus_utils::DBusObject dbus_object_;
   Platform* platform_;
-  DiskManager* disk_manager_;
+  DiskMonitor* disk_monitor_;
   FormatManager* format_manager_;
   RenameManager* rename_manager_;
   std::vector<MountManager*> mount_managers_;

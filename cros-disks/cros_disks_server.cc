@@ -13,6 +13,7 @@
 #include "cros-disks/device_event.h"
 #include "cros-disks/disk.h"
 #include "cros-disks/disk_manager.h"
+#include "cros-disks/disk_monitor.h"
 #include "cros-disks/format_manager.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/rename_manager.h"
@@ -24,17 +25,17 @@ namespace cros_disks {
 
 CrosDisksServer::CrosDisksServer(scoped_refptr<dbus::Bus> bus,
                                  Platform* platform,
-                                 DiskManager* disk_manager,
+                                 DiskMonitor* disk_monitor,
                                  FormatManager* format_manager,
                                  RenameManager* rename_manager)
     : org::chromium::CrosDisksAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kCrosDisksServicePath)),
       platform_(platform),
-      disk_manager_(disk_manager),
+      disk_monitor_(disk_monitor),
       format_manager_(format_manager),
       rename_manager_(rename_manager) {
   CHECK(platform_) << "Invalid platform object";
-  CHECK(disk_manager_) << "Invalid disk manager object";
+  CHECK(disk_monitor_) << "Invalid disk monitor object";
   CHECK(format_manager_) << "Invalid format manager object";
   CHECK(rename_manager_) << "Invalid rename manager object";
 
@@ -58,7 +59,7 @@ void CrosDisksServer::Format(const string& path,
                              const vector<string>& options) {
   FormatErrorType error_type = FORMAT_ERROR_NONE;
   Disk disk;
-  if (!disk_manager_->GetDiskByDevicePath(path, &disk)) {
+  if (!disk_monitor_->GetDiskByDevicePath(base::FilePath(path), &disk)) {
     error_type = FORMAT_ERROR_INVALID_DEVICE_PATH;
   } else if (disk.is_on_boot_device) {
     error_type = FORMAT_ERROR_DEVICE_NOT_ALLOWED;
@@ -77,7 +78,7 @@ void CrosDisksServer::Format(const string& path,
 void CrosDisksServer::Rename(const string& path, const string& volume_name) {
   RenameErrorType error_type = RENAME_ERROR_NONE;
   Disk disk;
-  if (!disk_manager_->GetDiskByDevicePath(path, &disk)) {
+  if (!disk_monitor_->GetDiskByDevicePath(base::FilePath(path), &disk)) {
     error_type = RENAME_ERROR_INVALID_DEVICE_PATH;
   } else if (disk.is_on_boot_device || disk.is_read_only) {
     error_type = RENAME_ERROR_DEVICE_NOT_ALLOWED;
@@ -145,7 +146,7 @@ void CrosDisksServer::UnmountAll() {
 }
 
 vector<string> CrosDisksServer::EnumerateDevices() {
-  vector<Disk> disks = disk_manager_->EnumerateDisks();
+  vector<Disk> disks = disk_monitor_->EnumerateDisks();
   vector<string> devices;
   devices.reserve(disks.size());
   for (const auto& disk : disks) {
@@ -174,7 +175,7 @@ bool CrosDisksServer::GetDeviceProperties(
     const string& device_path,
     brillo::VariantDictionary* properties) {
   Disk disk;
-  if (!disk_manager_->GetDiskByDevicePath(device_path, &disk)) {
+  if (!disk_monitor_->GetDiskByDevicePath(base::FilePath(device_path), &disk)) {
     string message = "Could not get the properties of device " + device_path;
     LOG(ERROR) << message;
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,

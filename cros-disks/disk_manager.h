@@ -17,39 +17,28 @@
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>
 
-#include "cros-disks/device_ejector.h"
-#include "cros-disks/device_event.h"
-#include "cros-disks/device_event_source_interface.h"
 #include "cros-disks/disk.h"
 #include "cros-disks/mount_manager.h"
 
 namespace cros_disks {
 
 class DeviceEjector;
+class DiskMonitor;
 class MounterCompat;
 class Platform;
 
 struct Filesystem;
 
-// The DiskManager is responsible for reading device state from udev.
-// Said changes could be the result of a udev notification or a synchronous
-// call to enumerate the relevant storage devices attached to the system.
-//
-// Sample Usage:
-//
-// Platform platform;
-// DiskManager manager("/media/removable", &platform);
-// manager.Initialize();
-// manager.EnumerateDisks();
-// select(manager.udev_monitor_fd())...
+// The DiskManager is responsible for mounting removable media.
 //
 // This class is designed to run within a single-threaded GMainLoop application
 // and should not be considered thread safe.
-class DiskManager : public MountManager, public DeviceEventSourceInterface {
+class DiskManager : public MountManager {
  public:
   DiskManager(const std::string& mount_root,
               Platform* platform,
               Metrics* metrics,
+              DiskMonitor* disk_monitor,
               DeviceEjector* device_ejector);
   ~DiskManager() override;
 
@@ -68,26 +57,12 @@ class DiskManager : public MountManager, public DeviceEventSourceInterface {
   // Unmounts all mounted paths.
   bool UnmountAll() override;
 
-  // Lists the current block devices attached to the system.
-  std::vector<Disk> EnumerateDisks() const;
-
-  // Implements the DeviceEventSourceInterface interface to read the changes
-  // from udev and converts the changes into device events. Returns false on
-  // error or if not device event is available. Must be called to clear the fd.
-  bool GetDeviceEvents(DeviceEventList* events) override;
-
-  // Gets a Disk object that corresponds to a given device file.
-  bool GetDiskByDevicePath(const std::string& device_path, Disk* disk) const;
-
   // Registers a set of default filesystems to the disk manager.
   void RegisterDefaultFilesystems();
 
   // Registers a filesystem to the disk manager.
   // Subsequent registrations of the same filesystem type are ignored.
   void RegisterFilesystem(const Filesystem& filesystem);
-
-  // A file descriptor that can be select()ed or poll()ed for system changes.
-  int udev_monitor_fd() const { return udev_monitor_fd_; }
 
  protected:
   // Mounts |source_path| to |mount_path| as |filesystem_type| with |options|.
@@ -120,29 +95,6 @@ class DiskManager : public MountManager, public DeviceEventSourceInterface {
   // Otherwise, it returns NULL. This pointer is owned by the DiskManager.
   const Filesystem* GetFilesystem(const std::string& filesystem_type) const;
 
-  // An EnumerateBlockDevices callback that emulates a block device event
-  // defined by |action| on |device|. Always returns true to continue
-  // enumeration in EnumerateBlockDevices.
-  bool EmulateBlockDeviceEvent(const char* action, udev_device* device);
-
-  // Enumerates the block devices on the system and invokes |callback| for each
-  // device found during the enumeration. The ownership of |udev_device| is not
-  // transferred to |callback|. The enumeration stops if |callback| returns
-  // false.
-  void EnumerateBlockDevices(
-      const base::Callback<bool(udev_device* dev)>& callback) const;
-
-  // Determines one or more device/disk events from a udev block device change.
-  void ProcessBlockDeviceEvents(udev_device* device,
-                                const char* action,
-                                DeviceEventList* events);
-
-  // Determines one or more device/disk events from a udev MMC or SCSI device
-  // change.
-  void ProcessMmcOrScsiDeviceEvents(udev_device* device,
-                                    const char* action,
-                                    DeviceEventList* events);
-
   // If |disk| should be ejected on unmount, add |mount_path| and the device
   // file of |disk| to |devices_to_eject_on_unmount_| and returns true. Returns
   // false otherwise.
@@ -154,31 +106,15 @@ class DiskManager : public MountManager, public DeviceEventSourceInterface {
   // false.
   bool EjectDeviceOfMountPath(const std::string& mount_path);
 
-  // Device ejector for ejecting media from optical devices.
-  DeviceEjector* device_ejector_;
-
-  // The root udev object.
-  mutable udev* udev_;
-
-  // Provides access to udev changes as they occur.
-  udev_monitor* udev_monitor_;
-
-  // A file descriptor that indicates changes to the system.
-  int udev_monitor_fd_;
+  DiskMonitor* const disk_monitor_;
+  DeviceEjector* const device_ejector_;
 
   // Set to true if devices should be ejected upon unmount.
   bool eject_device_on_unmount_;
 
-  // A set of device sysfs paths detected by the udev monitor.
-  std::set<std::string> devices_detected_;
-
-  // A mapping from a mount path to the corresponding device file that should
+  // A mapping from a mount path to the corresponding device that should
   // be ejected on unmount.
-  std::map<std::string, std::string> devices_to_eject_on_unmount_;
-
-  // A mapping from a sysfs path of a disk, detected by the udev monitor,
-  // to a set of sysfs paths of the immediate children of the disk.
-  std::map<std::string, std::set<std::string>> disks_detected_;
+  std::map<std::string, Disk> devices_to_eject_on_unmount_;
 
   // A set of supported filesystems indexed by filesystem type.
   std::map<std::string, Filesystem> filesystems_;
