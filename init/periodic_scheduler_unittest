@@ -31,7 +31,7 @@ test_init() {
 wake_sched_up() {
   local pid=$1 pstree sleep_pid
 
-  pstree=$(TERM=linux LC_ALL=C pstree -p -A $$)
+  pstree=$(TERM=linux LC_ALL=C pstree -p -A ${pid})
   sleep_pid=$(echo "${pstree}" |
               sed -n -r '/sleep\(/s:.*\(([0-9]*)\).*:\1:p')
   if [[ -z ${sleep_pid} ]]; then
