@@ -1,0 +1,21 @@
+[package]
+name = "json_tracer"
+version = "0.1.0"
+authors = ["The Chromium OS Authors"]
+include = ["*.rs", "Cargo.toml"]
+edition = "2018"
+
+[lib]
+path = "json_tracer.rs"
+
+[dependencies]
+libc = "0.2.44"
+trace_events = { path = "../trace_events" }
+
+[dev-dependencies]
+criterion = "0.2"
+serde_json = "*"
+
+[[bench]]
+name = "json_bench"
+harness = false
