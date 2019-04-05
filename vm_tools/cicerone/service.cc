@@ -463,13 +463,17 @@ void Service::LxdContainerCreated(const uint32_t cid,
                                   bool* result,
                                   base::WaitableEvent* event) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  CHECK(!container_name.empty());
   CHECK(result);
   CHECK(event);
   *result = false;
   VirtualMachine* vm;
   std::string vm_name;
   std::string owner_id;
+  if (container_name.empty()) {
+    LOG(ERROR) << "container_name must be provided";
+    event->Signal();
+    return;
+  }
   if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
@@ -510,13 +514,17 @@ void Service::LxdContainerDownloading(const uint32_t cid,
                                       bool* result,
                                       base::WaitableEvent* event) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  CHECK(!container_name.empty());
   CHECK(result);
   CHECK(event);
   *result = false;
   VirtualMachine* vm;
   std::string vm_name;
   std::string owner_id;
+  if (container_name.empty()) {
+    LOG(ERROR) << "container_name must be provided";
+    event->Signal();
+    return;
+  }
   if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
@@ -542,13 +550,17 @@ void Service::LxdContainerDeleted(
     bool* result,
     base::WaitableEvent* event) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  CHECK(!container_name.empty());
   CHECK(result);
   CHECK(event);
   *result = false;
   VirtualMachine* vm;
   std::string vm_name;
   std::string owner_id;
+  if (container_name.empty()) {
+    LOG(ERROR) << "container_name must be provided";
+    event->Signal();
+    return;
+  }
   if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
@@ -587,13 +599,17 @@ void Service::LxdContainerStarting(const uint32_t cid,
                                    bool* result,
                                    base::WaitableEvent* event) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  CHECK(!container_name.empty());
   CHECK(result);
   CHECK(event);
   *result = false;
   VirtualMachine* vm;
   std::string vm_name;
   std::string owner_id;
+  if (container_name.empty()) {
+    LOG(ERROR) << "container_name must be provided";
+    event->Signal();
+    return;
+  }
   if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
@@ -731,8 +747,6 @@ void Service::ContainerShutdown(std::string container_name,
                                 bool* result,
                                 base::WaitableEvent* event) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  CHECK(!container_name.empty() || !container_token.empty())
-      << "One of container_name or container_token must be provided";
   CHECK(result);
   CHECK(event);
   *result = false;
@@ -740,6 +754,11 @@ void Service::ContainerShutdown(std::string container_name,
   std::string owner_id;
   std::string vm_name;
 
+  if (container_name.empty() && container_token.empty()) {
+    LOG(ERROR) << "One of container_name or container_token must be provided";
+    event->Signal();
+    return;
+  }
   if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;

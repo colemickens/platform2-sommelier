@@ -32,6 +32,7 @@ using ::testing::SetArgPointee;
 using ::vm_tools::cicerone::ContainerListenerImpl;
 using ::vm_tools::cicerone::Service;
 using ::vm_tools::cicerone::ServiceTestingHelper;
+using ::vm_tools::cicerone::TremplinListenerImpl;
 
 // Stuff to create & do once the first time the fuzzer runs.
 struct SetupOnce {
@@ -144,9 +145,9 @@ DEFINE_PROTO_FUZZER(
     ContainerListenerImpl* container_listener =
         test_framework.get_service().GetContainerListenerImpl();
     container_listener->OverridePeerAddressForTesting(action.peer_address());
-    test_framework.get_service()
-        .GetTremplinListenerImpl()
-        ->OverridePeerAddressForTesting(action.peer_address());
+    TremplinListenerImpl* tremplin_listener =
+        test_framework.get_service().GetTremplinListenerImpl();
+    tremplin_listener->OverridePeerAddressForTesting(action.peer_address());
 
     SetUpMockObjectProxy(
         action, &test_framework.get_mock_vm_applications_service_proxy());
@@ -163,6 +164,7 @@ DEFINE_PROTO_FUZZER(
 
     grpc::ServerContext context;
     vm_tools::EmptyMessage response;
+    vm_tools::tremplin::EmptyMessage tremplin_response;
 
     switch (action.input_case()) {
       case vm_tools::container::ContainerListenerFuzzerSingleAction::
@@ -211,6 +213,51 @@ DEFINE_PROTO_FUZZER(
           kUpdateMimeTypesRequest:
         container_listener->UpdateMimeTypes(
             &context, &action.update_mime_types_request(), &response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kTremplinStartupInfo:
+        tremplin_listener->TremplinReady(
+            &context, &action.tremplin_startup_info(), &tremplin_response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kContainerCreationProgress:
+        tremplin_listener->UpdateCreateStatus(
+            &context, &action.container_creation_progress(),
+            &tremplin_response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kContainerDeletionProgress:
+        tremplin_listener->UpdateDeletionStatus(
+            &context, &action.container_deletion_progress(),
+            &tremplin_response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kContainerStartProgress:
+        tremplin_listener->UpdateStartStatus(
+            &context, &action.container_start_progress(), &tremplin_response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kContainerExportProgress:
+        tremplin_listener->UpdateExportStatus(
+            &context, &action.container_export_progress(), &tremplin_response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kContainerImportProgress:
+        tremplin_listener->UpdateImportStatus(
+            &context, &action.container_import_progress(), &tremplin_response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kTremplinContainerShutdownInfo:
+        tremplin_listener->ContainerShutdown(
+            &context, &action.tremplin_container_shutdown_info(),
+            &tremplin_response);
         break;
 
       case vm_tools::container::ContainerListenerFuzzerSingleAction::

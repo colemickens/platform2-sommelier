@@ -10,12 +10,14 @@ import "tremplin.proto";
 // A proto representation of a grpc::Status
 
 // A special message that contains all the possible inputs to the
-// ContainerListener service plus some controls over the call results.
+// ContainerListener and TremplinListener services plus some controls over the
+// call results.
 //
 // This is used for fuzz testing; we get some fuzzed examples of this message
 // and then call the correct rpc handler based on which of the oneof is set.
 message ContainerListenerFuzzerSingleAction {
   oneof input {
+    // Calls to the ContainerListener service.
     ContainerStartupInfo container_startup_info = 1;
     ContainerShutdownInfo container_shutdown_info = 2;
     UpdateApplicationListRequest update_application_list_request = 3;
@@ -24,6 +26,18 @@ message ContainerListenerFuzzerSingleAction {
     UninstallPackageProgressInfo uninstall_package_progress_info = 6;
     OpenTerminalRequest open_terminal_request = 7;
     UpdateMimeTypesRequest update_mime_types_request = 8;
+
+    // Calls to the TremplinListener service.
+    vm_tools.tremplin.TremplinStartupInfo tremplin_startup_info = 100;
+    vm_tools.tremplin.ContainerCreationProgress container_creation_progress =
+        101;
+    vm_tools.tremplin.ContainerDeletionProgress container_deletion_progress =
+        102;
+    vm_tools.tremplin.ContainerStartProgress container_start_progress = 103;
+    vm_tools.tremplin.ContainerExportProgress container_export_progress = 104;
+    vm_tools.tremplin.ContainerImportProgress container_import_progress = 105;
+    vm_tools.tremplin.ContainerShutdownInfo tremplin_container_shutdown_info =
+        106;
   }
 
   // Claim all gRPC messages come from this address (overrides
