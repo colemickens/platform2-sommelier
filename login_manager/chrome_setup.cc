@@ -330,6 +330,10 @@ void AddSystemFlags(ChromiumCommandBuilder* builder) {
   // On developer systems, set a flag to let the browser know.
   if (builder->is_developer_end_user())
     builder->AddArg("--system-developer-mode");
+
+  // If wilco DTC is available on a device, set a flag to let the browser know.
+  if (builder->UseFlagIsSet("wilco"))
+    builder->AddFeatureEnableOverride("WilcoDtc");
 }
 
 // Adds UI-related flags to the command line.
