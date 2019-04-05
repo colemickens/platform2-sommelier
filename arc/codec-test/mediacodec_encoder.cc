@@ -91,6 +91,10 @@ MediaCodecEncoder::~MediaCodecEncoder() {
   }
 }
 
+void MediaCodecEncoder::SetEncodeInputBufferCb(const EncodeInputBufferCb& cb) {
+  encode_input_buffer_cb_ = cb;
+}
+
 void MediaCodecEncoder::SetOutputBufferReadyCb(const OutputBufferReadyCb& cb) {
   output_buffer_ready_cb_ = cb;
 }
@@ -133,14 +137,18 @@ bool MediaCodecEncoder::Start() {
 }
 
 bool MediaCodecEncoder::Encode() {
+  const int64_t input_period = run_at_fps_ ? (1000000 / framerate_) : 0;
+  const int64_t start_time = GetNowUs();
+
   bool input_done = false;
   bool output_done = false;
-  int64_t last_enqueue_input_time = GetNowUs();
+  int64_t last_enqueue_input_time = start_time;
   int64_t send_eos_time;
   while (!output_done) {
     // Feed input stream to the encoder.
     ssize_t index;
-    if (!input_done) {
+    if (!input_done &&
+        (GetNowUs() - start_time >= input_frame_index_ * input_period)) {
       index = AMediaCodec_dequeueInputBuffer(codec_, kTimeoutUs);
       if (index == AMEDIACODEC_INFO_TRY_AGAIN_LATER) {
         if (GetNowUs() - last_enqueue_input_time > kBufferPeriodTimeoutUs) {
@@ -148,6 +156,7 @@ bool MediaCodecEncoder::Encode() {
           return false;
         }
       } else if (index >= 0) {
+        ALOGV("input buffer index: %zu", index);
         if (input_frame_index_ == num_encoded_frames_) {
           if (!FeedEOSInputBuffer(index))
             return false;
@@ -166,13 +175,13 @@ bool MediaCodecEncoder::Encode() {
     // Retreive the encoded output buffer.
     AMediaCodecBufferInfo info;
     index = AMediaCodec_dequeueOutputBuffer(codec_, &info, kTimeoutUs);
-    ALOGV("output buffer index: %zu", index);
     if (index == AMEDIACODEC_INFO_TRY_AGAIN_LATER) {
       if (input_done && GetNowUs() - send_eos_time > kBufferPeriodTimeoutUs) {
         ALOGE("Timeout to receive EOS output buffer.");
         return false;
       }
     } else if (index >= 0) {
+      ALOGV("output buffer index: %zu", index);
       if (info.flags & AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM)
         output_done = true;
       if (!ReceiveOutputBuffer(index, info))
@@ -192,6 +201,10 @@ void MediaCodecEncoder::set_num_encoded_frames(size_t num_encoded_frames) {
 
 size_t MediaCodecEncoder::num_encoded_frames() const {
   return num_encoded_frames_;
+}
+
+void MediaCodecEncoder::set_run_at_fps(bool run_at_fps) {
+  run_at_fps_ = run_at_fps;
 }
 
 bool MediaCodecEncoder::FeedInputBuffer(size_t index) {
@@ -217,6 +230,9 @@ bool MediaCodecEncoder::FeedInputBuffer(size_t index) {
   if (input_frame_index_ % kNumTotalFrames == 0) {
     input_file_->Rewind();
   }
+
+  if (encode_input_buffer_cb_)
+    encode_input_buffer_cb_(time_us);
 
   media_status_t status = AMediaCodec_queueInputBuffer(
       codec_, index, 0 /* offset */, kBufferSize, time_us, 0 /* flag */);
@@ -250,9 +266,8 @@ bool MediaCodecEncoder::ReceiveOutputBuffer(size_t index,
     return false;
   }
 
-  if (output_buffer_ready_cb_) {
-    output_buffer_ready_cb_(buf, info.size);
-  }
+  if (output_buffer_ready_cb_)
+    output_buffer_ready_cb_(buf, info);
 
   media_status_t status =
       AMediaCodec_releaseOutputBuffer(codec_, index, false /* render */);

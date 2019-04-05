@@ -6,10 +6,13 @@
 #define LOG_TAG "ArcVideoEncoderE2ETest"
 
 #include <getopt.h>
+#include <inttypes.h>
 
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <functional>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -41,6 +44,12 @@ const double kBitrateTolerance = 0.1;
 // The minimum number of encoded frames. If the frame number of the input stream
 // is less than this value, then we circularly encode the input stream.
 constexpr size_t kMinNumEncodedFrames = 300;
+// The percentiles to measure for encode latency.
+constexpr int kLoggedLatencyPercentiles[] = {50, 75, 95};
+
+#if ANDROID_VERSION < 0x0900  // Android 9.0 (Pie)
+constexpr int AMEDIACODEC_BUFFER_FLAG_CODEC_CONFIG = 2;
+#endif
 
 ArcVideoEncoderTestEnvironment* g_env;
 }  // namespace
@@ -164,17 +173,19 @@ class ArcVideoEncoderTestEnvironment : public testing::Environment {
 class ArcVideoEncoderE2ETest : public testing::Test {
  public:
   // Callback functions of getting output buffers from encoder.
-  void WriteOutputBufferToFile(const uint8_t* data, size_t size) {
+  void WriteOutputBufferToFile(const uint8_t* data,
+                               const AMediaCodecBufferInfo& info) {
     if (output_file_.is_open()) {
-      output_file_.write(reinterpret_cast<const char*>(data), size);
+      output_file_.write(reinterpret_cast<const char*>(data), info.size);
       if (output_file_.fail()) {
         printf("[ERR] Failed to write encoded buffer into file.\n");
       }
     }
   }
 
-  void AccumulateOutputBufferSize(const uint8_t* /* data */, size_t size) {
-    total_output_buffer_size_ += size;
+  void AccumulateOutputBufferSize(const uint8_t* /* data */,
+                                  const AMediaCodecBufferInfo& info) {
+    total_output_buffer_size_ += info.size;
   }
 
  protected:
@@ -224,6 +235,45 @@ class ArcVideoEncoderE2ETest : public testing::Test {
   size_t total_output_buffer_size_;
 };
 
+class LatencyRecorder {
+ public:
+  void OnEncodeInputBuffer(uint64_t time_us) {
+    auto res = start_times_.insert(std::make_pair(time_us, GetNowUs()));
+    ASSERT_TRUE(res.second);
+  }
+
+  void OnOutputBufferReady(const uint8_t* /* data */,
+                           const AMediaCodecBufferInfo& info) {
+    // Ignore the CSD buffer and the empty EOS buffer.
+    if (!(info.flags & AMEDIACODEC_BUFFER_FLAG_CODEC_CONFIG) && info.size != 0)
+      end_times_[info.presentationTimeUs] = GetNowUs();
+  }
+
+  void PrintResult() const {
+    std::vector<int64_t> latency_times;
+    for (auto const& start_kv : start_times_) {
+      auto end_it = end_times_.find(start_kv.first);
+      ASSERT_TRUE(end_it != end_times_.end());
+      latency_times.push_back(end_it->second - start_kv.second);
+    }
+    std::sort(latency_times.begin(), latency_times.end());
+
+    for (int percentile : kLoggedLatencyPercentiles) {
+      size_t index = static_cast<size_t>(
+                         std::ceil(0.01f * percentile * latency_times.size())) -
+                     1;
+      printf("Encode latency for the %dth percentile: %" PRId64 " us\n",
+             percentile, latency_times[index]);
+    }
+  }
+
+ private:
+  // Measured time of enqueueing input buffers and dequeueing output buffers.
+  // The key is the timestamp of the frame.
+  std::map<uint64_t, int64_t> start_times_;
+  std::map<uint64_t, int64_t> end_times_;
+};
+
 TEST_F(ArcVideoEncoderE2ETest, TestSimpleEncode) {
   // Write the output buffers to file.
   if (CreateOutputFile()) {
@@ -263,6 +313,20 @@ TEST_F(ArcVideoEncoderE2ETest, PerfFPS) {
   double measured_fps =
       1000000.0 * encoder_->num_encoded_frames() / (end_time - start_time);
   printf("Measured encoder FPS: %.4f\n", measured_fps);
+}
+
+TEST_F(ArcVideoEncoderE2ETest, PerfLatency) {
+  LatencyRecorder recorder;
+  encoder_->SetEncodeInputBufferCb(std::bind(
+      &LatencyRecorder::OnEncodeInputBuffer, &recorder, std::placeholders::_1));
+  encoder_->SetOutputBufferReadyCb(
+      std::bind(&LatencyRecorder::OnOutputBufferReady, &recorder,
+                std::placeholders::_1, std::placeholders::_2));
+  encoder_->set_run_at_fps(true);
+
+  EXPECT_TRUE(encoder_->Encode());
+
+  recorder.PrintResult();
 }
 
 }  // namespace android

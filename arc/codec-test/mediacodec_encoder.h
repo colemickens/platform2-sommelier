@@ -33,9 +33,11 @@ class MediaCodecEncoder {
   MediaCodecEncoder() = delete;
   ~MediaCodecEncoder();
 
+  using EncodeInputBufferCb = std::function<void(uint64_t /* time_us */)>;
   // The callback function that is called when output buffer is ready.
-  using OutputBufferReadyCb =
-      std::function<void(const uint8_t* /* data */, size_t /* buffer_size */)>;
+  using OutputBufferReadyCb = std::function<void(
+      const uint8_t* /* data */, const AMediaCodecBufferInfo& /* info */)>;
+  void SetEncodeInputBufferCb(const EncodeInputBufferCb& cb);
   void SetOutputBufferReadyCb(const OutputBufferReadyCb& cb);
 
   // Encoder manipulation methods.
@@ -58,6 +60,8 @@ class MediaCodecEncoder {
   // Setter and getter method of |num_encoded_frames_|;
   void set_num_encoded_frames(size_t num_encoded_frames);
   size_t num_encoded_frames() const;
+  // Setter method of |run_at_fps_|.
+  void set_run_at_fps(bool run_at_fps);
 
  private:
   MediaCodecEncoder(AMediaCodec* codec,
@@ -98,7 +102,13 @@ class MediaCodecEncoder {
   int bitrate_ = 192000;
   // The target output framerate.
   int framerate_ = 30;
-  // The callback function which is called when a output buffer is ready.
+  // Encode the data at the |framerate_|.
+  bool run_at_fps_ = false;
+
+  // The callback function which is called right before queueing one input
+  // buffer.
+  EncodeInputBufferCb encode_input_buffer_cb_;
+  // The callback function which is called when an output buffer is ready.
   OutputBufferReadyCb output_buffer_ready_cb_;
 
   // The frame index that indicates which frame is sent to the encoder at
