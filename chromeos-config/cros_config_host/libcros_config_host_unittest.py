@@ -71,7 +71,8 @@ class CrosConfigHostTest(unittest.TestCase):
     config = CrosConfig(self.filepath)
     another = config.GetConfig('another')
     self.assertEqual(another.GetProperty('/', 'wallpaper'), 'default')
-    self.assertFalse(another.GetProperty('/', 'missing'))
+    with self.assertRaises(Exception):
+      another.GetProperty('/', 'missing')
 
   def testModels(self):
     config = CrosConfig(self.filepath)

@@ -16,6 +16,7 @@ import copy
 import json
 
 from cros_config_schema import TransformConfig
+from cros_config_schema import GetValidSchemaProperties
 from libcros_config_host_base import BaseFile, CrosConfigBaseImpl, DeviceConfig
 from libcros_config_host_base import FirmwareInfo, TouchFile
 
@@ -30,6 +31,7 @@ class DeviceConfigJson(DeviceConfig):
   """
 
   def __init__(self, config):
+    self._schema_properties = GetValidSchemaProperties()
     self._config = config
     self.firmware_info = OrderedDict()
 
@@ -47,6 +49,9 @@ class DeviceConfigJson(DeviceConfig):
     return result
 
   def GetProperty(self, path, name):
+    schema_props = self._schema_properties.get(path, None)
+    if not schema_props or not name in schema_props:
+      raise Exception('Property not present in schema: %s:%s' % (path, name))
     props = self.GetProperties(path)
     if props and name in props:
       return str(props[name])
