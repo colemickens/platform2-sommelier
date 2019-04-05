@@ -59,7 +59,6 @@ copies.
 | [glib-bridge](./glib-bridge/) | library for libchrome-glib message loop interoperation |
 | [gobi-cromo-plugin](./gobi-cromo-plugin/) | plugin for supporting gobi3k modems with cromo |
 | [goldfishd](./goldfishd/) | Android Emulator Daemon |
-| [graphics_tests](./graphics_tests/) | Compiled executables used by Tast graphics tests |
 | [hammerd](./hammerd/) | Firmware updater utility for hammer hardware |
 | [hermes](./hermes/) | Chrome OS LPA implementation for eSIM hardware support |
 | [image-burner](./image-burner/) | Daemon for writing disk images (e.g. recovery) to USB sticks & SD cards |
@@ -100,7 +99,6 @@ copies.
 | [salsa](./salsa/) | Touchpad experimentation framework |
 | [screenshot](./screenshot/) | Tiny command to take a screenshot |
 | [secure_erase_file](./secure_erase_file/) | Helper tools for securely erasing files from storage (e.g. keys and PII data) |
-| [security_tests](./security_tests/) | Compiled executables used by Tast security tests |
 | [sepolicy](./sepolicy/) | SELinux policy for Chrome OS |
 | [shill](./shill/) | Chrome OS Connection Manager |
 | [smbprovider](./smbprovider/) | Daemon for connecting Samba / Windows networking shares to the Files.app |
