@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <cstdlib>
 #include <map>
 #include <memory>
 #include <set>
@@ -19,6 +20,7 @@
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -894,14 +896,18 @@ void WiFi::DisconnectReasonChanged(const int32_t new_disconnect_reason) {
     SLOG(this, 3) << "WiFi clearing DisconnectReason for " << link_name();
   } else {
     std::string update;
+    std::string new_disconnect_description = "Success";
+
     if (supplicant_disconnect_reason_ != kDefaultDisconnectReason) {
       update = StringPrintf(" from %d", supplicant_disconnect_reason_);
     }
-    std::string new_disconnect_description = IEEE_80211::ReasonToString(
-        static_cast<IEEE_80211::WiFiReasonCode>(new_disconnect_reason));
-    if (!new_disconnect_reason) {
-      new_disconnect_description = "Success";
+    if (new_disconnect_reason != 0) {
+      uint16_t sanitized_reason = base::saturated_cast<uint16_t>(
+              abs(new_disconnect_reason));
+      new_disconnect_description = IEEE_80211::ReasonToString(
+              static_cast<IEEE_80211::WiFiReasonCode>(sanitized_reason));
     }
+
     LOG(INFO) << StringPrintf(
         "WiFi %s supplicant updated DisconnectReason%s to %d (%s)",
         link_name().c_str(), update.c_str(), new_disconnect_reason,
