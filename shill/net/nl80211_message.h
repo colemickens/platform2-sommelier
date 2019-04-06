@@ -469,6 +469,16 @@ class SHILL_EXPORT UnprotDisassociateMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(UnprotDisassociateMessage);
 };
 
+class SHILL_EXPORT WiphyRegChangeMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  WiphyRegChangeMessage() : Nl80211Message(kCommand, kCommandString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(WiphyRegChangeMessage);
+};
 
 class SHILL_EXPORT GetInterfaceMessage : public Nl80211Message {
  public:

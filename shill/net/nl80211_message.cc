@@ -340,6 +340,10 @@ const uint8_t UnprotDisassociateMessage::kCommand =
 const char UnprotDisassociateMessage::kCommandString[] =
     "NL80211_CMD_UNPROT_DISASSOCIATE";
 
+const uint8_t WiphyRegChangeMessage::kCommand = NL80211_CMD_WIPHY_REG_CHANGE;
+const char WiphyRegChangeMessage::kCommandString[] =
+    "NL80211_CMD_WIPHY_REG_CHANGE";
+
 GetInterfaceMessage::GetInterfaceMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
@@ -468,6 +472,8 @@ std::unique_ptr<NetlinkMessage> Nl80211Message::CreateMessage(
       return std::make_unique<UnprotDeauthenticateMessage>();
     case UnprotDisassociateMessage::kCommand:
       return std::make_unique<UnprotDisassociateMessage>();
+    case WiphyRegChangeMessage::kCommand:
+      return std::make_unique<WiphyRegChangeMessage>();
     case GetSurveyMessage::kCommand:
       return std::make_unique<GetSurveyMessage>();
     case SurveyResultsMessage::kCommand:
