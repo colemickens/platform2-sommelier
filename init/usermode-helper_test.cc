@@ -81,3 +81,12 @@ TEST(ValidateProgramArgs, RequestKey) {
                                     "<uid>", "<gid>", "<keyring>", "<keyring>",
                                     "<keyring>", "toomany"}));
 }
+
+TEST(ValidateProgramArgs, BridgeStp) {
+  EXPECT_TRUE(ValidateProgramArgs({"/sbin/bridge-stp", "br-lan", "start"}));
+  EXPECT_TRUE(ValidateProgramArgs({"/sbin/bridge-stp", "br-lan", "stop"}));
+  EXPECT_FALSE(ValidateProgramArgs({"/sbin/bridge-stp", "br-lan"}));
+  EXPECT_FALSE(
+      ValidateProgramArgs({"/sbin/bridge-stp", "br-lan", "start", "toomany"}));
+  EXPECT_FALSE(ValidateProgramArgs({"/sbin/bridge-stp", "start", "br-lan"}));
+}

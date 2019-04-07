@@ -100,6 +100,20 @@ bool ValidateRequestKey(int argc, const char* argv[]) {
   return true;
 }
 
+bool ValidateBridgeStp(int argc, const char* argv[]) {
+  if (argc != 3) {
+    LOG(ERROR) << "bridge-stp: argc must be 3";
+    return false;
+  }
+
+  if (strcmp(argv[2], "start") != 0 && strcmp(argv[2], "stop") != 0) {
+    LOG(ERROR) << "bridge-stp: argv[2] must be start or stop";
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace
 
 // Whether the arguments to the program are permitted.
@@ -116,6 +130,8 @@ bool ValidateProgramArgs(int argc, const char* argv[]) {
     return ValidateReboot(argc, argv);
   else if (prog == "/sbin/request-key")
     return ValidateRequestKey(argc, argv);
+  else if (prog == "/sbin/bridge-stp")
+    return ValidateBridgeStp(argc, argv);
 
   LOG(ERROR) << "program not permitted: " << argv[0];
   return false;

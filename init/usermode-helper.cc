@@ -59,5 +59,12 @@ int main(int argc, const char* argv[]) {
   //
   // So we stick with execv for now.
   execv(argv[0], const_cast<char**>(argv));
+  if (errno == ENOENT) {
+    // If the exec failed because the program doesn't exist, we've already
+    // checked that the invocation was OK above, so just exit silently here.
+    // We use 127 to semi-mimic POSIX shell behavior which exits 127 when a
+    // program is not found.
+    return 127;
+  }
   PLOG(FATAL) << "execing program failed: " << argv[0];
 }
