@@ -62,7 +62,7 @@ void ChallengeCredentialsHelper::Decrypt(
   key_challenge_service_ = std::move(key_challenge_service);
   operation_ = std::make_unique<ChallengeCredentialsDecryptOperation>(
       key_challenge_service_.get(), tpm_, delegate_blob_, delegate_secret_,
-      account_id, key_data, keyset_challenge_info, nullptr /* salt_signature */,
+      account_id, key_data, keyset_challenge_info,
       base::Bind(&ChallengeCredentialsHelper::OnDecryptCompleted,
                  base::Unretained(this), callback));
   operation_->Start();

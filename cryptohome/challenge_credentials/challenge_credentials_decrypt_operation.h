@@ -47,8 +47,6 @@ class ChallengeCredentialsDecryptOperation final
   // created instance.
   // |key_data| must have the |KEY_TYPE_CHALLENGE_RESPONSE| type.
   // |keyset_challenge_info| contains the encrypted representation of secrets.
-  // |salt_signature| is an optional parameter which, when set, should contain a
-  // signature of the salt.
   // The result is reported via |completion_callback|.
   ChallengeCredentialsDecryptOperation(
       KeyChallengeService* key_challenge_service,
@@ -58,7 +56,6 @@ class ChallengeCredentialsDecryptOperation final
       const std::string& account_id,
       const KeyData& key_data,
       const KeysetSignatureChallengeInfo& keyset_challenge_info,
-      std::unique_ptr<brillo::Blob> salt_signature,
       const CompletionCallback& completion_callback);
 
   ~ChallengeCredentialsDecryptOperation() override;

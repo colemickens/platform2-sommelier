@@ -45,7 +45,6 @@ ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
     const std::string& account_id,
     const KeyData& key_data,
     const KeysetSignatureChallengeInfo& keyset_challenge_info,
-    std::unique_ptr<brillo::Blob> salt_signature,
     const CompletionCallback& completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
       tpm_(tpm),
@@ -54,7 +53,6 @@ ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
       account_id_(account_id),
       key_data_(key_data),
       keyset_challenge_info_(keyset_challenge_info),
-      salt_signature_(std::move(salt_signature)),
       completion_callback_(completion_callback),
       signature_sealing_backend_(tpm_->GetSignatureSealingBackend()) {
   DCHECK_EQ(key_data.type(), KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
@@ -111,8 +109,10 @@ bool ChallengeCredentialsDecryptOperation::StartProcessing() {
     LOG(ERROR) << "Wrong public key";
     return false;
   }
-  if (!salt_signature_ && !StartProcessingSalt())
+  if (!StartProcessingSalt())
     return false;
+  // TODO(crbug.com/842791): This is buggy: |this| may be already deleted by
+  // that point, in case when the salt's challenge request failed synchronously.
   return StartProcessingSealedSecret();
 }
 

@@ -81,24 +81,18 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
   }
 
   // Create an instance of ChallengeCredentialsDecryptOperation to be tested.
-  // When |pass_salt_signature| is true, it additionally passes the signature of
-  // salt as it were precomputed before.
   void CreateOperation(
       const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
       ChallengeSignatureAlgorithm salt_challenge_algorithm,
-      const Blob& salt,
-      bool pass_salt_signature) {
+      const Blob& salt) {
     DCHECK(!operation_);
-    std::unique_ptr<Blob> salt_signature;
-    if (pass_salt_signature)
-      salt_signature = std::make_unique<Blob>(kSaltSignature);
     const KeyData key_data = MakeKeyData(kPublicKeySpkiDer, key_algorithms);
     const KeysetSignatureChallengeInfo keyset_challenge_info =
         MakeFakeKeysetChallengeInfo(kPublicKeySpkiDer, salt,
                                     salt_challenge_algorithm);
     operation_ = std::make_unique<ChallengeCredentialsDecryptOperation>(
         &challenge_service_, &tpm_, kDelegateBlob, kDelegateSecret, kUserEmail,
-        key_data, keyset_challenge_info, std::move(salt_signature),
+        key_data, keyset_challenge_info,
         MakeChallengeCredentialsDecryptResultWriter(&operation_result_));
   }
 
@@ -294,8 +288,7 @@ class ChallengeCredentialsDecryptOperationNoOperationConstructedBasicTest
 TEST_F(ChallengeCredentialsDecryptOperationNoOperationConstructedBasicTest,
        EmptySaltFailure) {
   CreateOperation({kAlgorithm} /* key_algorithms */,
-                  kAlgorithm /* salt_challenge_algorithm */, Blob() /* salt */,
-                  false /* pass_salt_signature */);
+                  kAlgorithm /* salt_challenge_algorithm */, Blob() /* salt */);
   StartOperation();
   VerifyFailedResult();
 }
@@ -307,8 +300,7 @@ TEST_F(ChallengeCredentialsDecryptOperationNoOperationConstructedBasicTest,
   Blob salt = kSalt;
   salt[ChallengeCredentialsOperation::GetSaltConstantPrefix().size() - 1] ^= 1;
   CreateOperation({kAlgorithm} /* key_algorithms */,
-                  kAlgorithm /* salt_challenge_algorithm */, salt,
-                  false /* pass_salt_signature */);
+                  kAlgorithm /* salt_challenge_algorithm */, salt);
   StartOperation();
   VerifyFailedResult();
 }
@@ -320,24 +312,22 @@ TEST_F(ChallengeCredentialsDecryptOperationNoOperationConstructedBasicTest,
   CreateOperation(
       {kAlgorithm} /* key_algorithms */,
       kAlgorithm /* salt_challenge_algorithm */,
-      ChallengeCredentialsOperation::GetSaltConstantPrefix() /* salt */,
-      false /* pass_salt_signature */);
+      ChallengeCredentialsOperation::GetSaltConstantPrefix() /* salt */);
   StartOperation();
   VerifyFailedResult();
 }
 
 namespace {
 
-// Basic tests that use a single algorithm, have the sealing backend available
-// and don't skip signing of salt.
+// Basic tests that use a single algorithm and have the sealing backend
+// available.
 class ChallengeCredentialsDecryptOperationBasicTest
     : public ChallengeCredentialsDecryptOperationSingleAlgorithmTestBase {
  protected:
   ChallengeCredentialsDecryptOperationBasicTest() {
     PrepareSignatureSealingBackend(true /* enabled */);
     CreateOperation({kAlgorithm} /* key_algorithms */,
-                    kAlgorithm /* salt_challenge_algorithm */, kSalt,
-                    false /* pass_salt_signature */);
+                    kAlgorithm /* salt_challenge_algorithm */, kSalt);
   }
 };
 
@@ -534,39 +524,6 @@ TEST_F(ChallengeCredentialsDecryptOperationBasicTest, AbortAfterUnsealing) {
 
 namespace {
 
-// Tests that have the salt signature already passed to the tested operation as
-// an input parameter.
-class ChallengeCredentialsDecryptOperationSaltSkippingTest
-    : public ChallengeCredentialsDecryptOperationSingleAlgorithmTestBase {
- protected:
-  ChallengeCredentialsDecryptOperationSaltSkippingTest() {
-    PrepareSignatureSealingBackend(true /* enabled */);
-    CreateOperation({kAlgorithm} /* key_algorithms */,
-                    kAlgorithm /* salt_challenge_algorithm */, kSalt,
-                    true /* pass_salt_signature */);
-  }
-};
-
-// Test success of the operation when the salt signature is passed as a
-// parameter.
-TEST_F(ChallengeCredentialsDecryptOperationSaltSkippingTest, Success) {
-  ExpectUnsealingChallenge(kAlgorithm /* unsealing_algorithm */);
-  MakeUnsealingMocker({kAlgorithm} /* key_algorithms */,
-                      kAlgorithm /* unsealing_algorithm */)
-      ->SetUpSuccessfulMock();
-
-  StartOperation();
-  EXPECT_TRUE(is_unsealing_challenge_requested());
-  EXPECT_FALSE(has_result());
-
-  SimulateUnsealingChallengeResponse();
-  VerifySuccessfulResult();
-}
-
-}  // namespace
-
-namespace {
-
 // Tests with simulation of SignatureSealingBackend absence.
 class ChallengeCredentialsDecryptOperationNoBackendTest
     : public ChallengeCredentialsDecryptOperationSingleAlgorithmTestBase {
@@ -574,8 +531,7 @@ class ChallengeCredentialsDecryptOperationNoBackendTest
   ChallengeCredentialsDecryptOperationNoBackendTest() {
     PrepareSignatureSealingBackend(false /* enabled */);
     CreateOperation({kAlgorithm} /* key_algorithms */,
-                    kAlgorithm /* salt_challenge_algorithm */, kSalt,
-                    false /* pass_salt_signature */);
+                    kAlgorithm /* salt_challenge_algorithm */, kSalt);
   }
 };
 
@@ -606,8 +562,7 @@ class ChallengeCredentialsDecryptOperationAlgorithmsTest
   ChallengeCredentialsDecryptOperationAlgorithmsTest() {
     PrepareSignatureSealingBackend(true /* enabled */);
     CreateOperation(GetParam().key_algorithms,
-                    GetParam().salt_challenge_algorithm, kSalt,
-                    false /* pass_salt_signature */);
+                    GetParam().salt_challenge_algorithm, kSalt);
   }
 };
 
