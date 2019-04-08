@@ -18,6 +18,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <limits>
+
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
@@ -303,16 +305,22 @@ void RTNLHandler::ParseRTNL(InputData* data) {
             }
             struct nlmsgerr* err =
                 reinterpret_cast<nlmsgerr*>(NLMSG_DATA(hdr));
-            int error_number = -err->error;
-            std::ostringstream message;
-            message << "sequence " << hdr->nlmsg_seq << " received error "
-                    << error_number << " ("
-                    << strerror(error_number) << ")";
-            if (!base::ContainsKey(GetAndClearErrorMask(hdr->nlmsg_seq),
-                                   error_number)) {
-              LOG(ERROR) << message.str();
+            if (err->error >= 0 ||
+                err->error == std::numeric_limits<int>::min()) {
+              LOG(ERROR) << "sequence " << hdr->nlmsg_seq
+                         << " received unexpected error code " << err->error;
             } else {
-              SLOG(this, 3) << message.str();
+              int error_number = -err->error;
+              std::ostringstream message;
+              message << "sequence " << hdr->nlmsg_seq << " received error "
+                << error_number << " ("
+                << strerror(error_number) << ")";
+              if (!base::ContainsKey(GetAndClearErrorMask(hdr->nlmsg_seq),
+                    error_number)) {
+                LOG(ERROR) << message.str();
+              } else {
+                SLOG(this, 3) << message.str();
+              }
             }
             break;
           }
