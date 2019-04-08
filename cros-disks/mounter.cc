@@ -16,6 +16,16 @@
 
 namespace cros_disks {
 
+MounterCompat::MounterCompat(std::unique_ptr<Mounter> mounter,
+                             const std::string& source,
+                             const base::FilePath& target_path,
+                             const MountOptions& mount_options)
+    : Mounter(mounter->filesystem_type()),
+      mounter_(std::move(mounter)),
+      source_(source),
+      target_path_(target_path),
+      mount_options_(mount_options) {}
+
 MounterCompat::MounterCompat(const std::string& filesystem_type,
                              const std::string& source,
                              const base::FilePath& target_path,
@@ -61,6 +71,21 @@ bool MounterCompat::CanMount(const std::string& source,
                              base::FilePath* suggested_dir_name) const {
   *suggested_dir_name = base::FilePath("dir");
   return true;
+}
+
+MountErrorType MounterCompat::MountImpl() const {
+  MountErrorType error = MOUNT_ERROR_NONE;
+  // This default implementation implies using a new passed mounter to perform
+  // the mounting. For legacy signature mounter is null, but this method is
+  // overriden and this code is never called.
+  CHECK(mounter_) << "Method must be overriden if mounter is not set";
+  auto mountpoint = mounter_->Mount(source(), target_path(),
+                                    mount_options().options(), &error);
+  if (mountpoint) {
+    // Leak the mountpoint.
+    mountpoint->Release();
+  }
+  return error;
 }
 
 }  // namespace cros_disks

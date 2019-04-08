@@ -175,10 +175,10 @@ unique_ptr<MounterCompat> DiskManager::CreateMounter(
     mount_options.SetReadOnlyOption();
   }
 
-  if (filesystem.mounter_type == SystemMounter::kMounterType)
-    return std::make_unique<SystemMounter>(disk.device_file, target_path,
-                                           filesystem.mount_type, mount_options,
-                                           platform());
+  if (filesystem.mounter_type.empty())
+    return std::make_unique<MounterCompat>(
+        std::make_unique<SystemMounter>(filesystem.mount_type, platform()),
+        disk.device_file, base::FilePath(target_path), mount_options);
 
   if (filesystem.mounter_type == ExFATMounter::kMounterType)
     return std::make_unique<ExFATMounter>(disk.device_file, target_path,

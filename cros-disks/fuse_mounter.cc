@@ -136,13 +136,13 @@ MountErrorType ConfigureCommonSandbox(SandboxedProcess* sandbox,
   return MountErrorType::MOUNT_ERROR_NONE;
 }
 
-bool MountFuseDevice(const Platform* platform,
-                     const std::string& source,
-                     const base::FilePath& target,
-                     const base::File& fuse_file,
-                     uid_t mount_user_id,
-                     gid_t mount_group_id,
-                     const MountOptions& options) {
+MountErrorType MountFuseDevice(const Platform* platform,
+                               const std::string& source,
+                               const base::FilePath& target,
+                               const base::File& fuse_file,
+                               uid_t mount_user_id,
+                               gid_t mount_group_id,
+                               const MountOptions& options) {
   // Mount options for FUSE:
   // fd - File descriptor for /dev/fuse.
   // user_id/group_id - user/group for file access control. Essentially
@@ -180,8 +180,7 @@ bool MountFuseDevice(const Platform* platform,
   auto flags = options.ToMountFlagsAndData().first;
 
   return platform->Mount(source, target.value(), fuse_type,
-                         flags | kRequiredFuseMountFlags, fuse_mount_options) ==
-         MountErrorType::MOUNT_ERROR_NONE;
+                         flags | kRequiredFuseMountFlags, fuse_mount_options);
 }
 
 }  // namespace
@@ -213,11 +212,11 @@ FUSEMounter::FUSEMounter(const string& source_path,
 
 MountErrorType FUSEMounter::MountImpl() const {
   auto mount_process = CreateSandboxedProcess();
-  auto status = ConfigureCommonSandbox(
+  MountErrorType error = ConfigureCommonSandbox(
       mount_process.get(), platform_, !permit_network_access_,
       base::FilePath(seccomp_policy_), unprivileged_mount_);
-  if (status != MountErrorType::MOUNT_ERROR_NONE) {
-    return status;
+  if (error != MountErrorType::MOUNT_ERROR_NONE) {
+    return error;
   }
 
   uid_t mount_user_id;
@@ -256,11 +255,12 @@ MountErrorType FUSEMounter::MountImpl() const {
       return MountErrorType::MOUNT_ERROR_INTERNAL;
     }
 
-    if (!MountFuseDevice(platform_, source(), base::FilePath(target_path()),
-                         fuse_file, mount_user_id, mount_group_id,
-                         mount_options())) {
+    error = MountFuseDevice(platform_, source(), base::FilePath(target_path()),
+                            fuse_file, mount_user_id, mount_group_id,
+                            mount_options());
+    if (error != MountErrorType::MOUNT_ERROR_NONE) {
       LOG(ERROR) << "Can't perform unprivileged FUSE mount";
-      return MountErrorType::MOUNT_ERROR_INTERNAL;
+      return error;
     }
 
     // Unmount the FUSE filesystem if any later part fails.

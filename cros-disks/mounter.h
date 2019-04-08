@@ -64,6 +64,10 @@ class Mounter {
 // TODO(crbug.com/933018): Remove when done.
 class MounterCompat : public Mounter {
  public:
+  MounterCompat(std::unique_ptr<Mounter> mounter,
+                const std::string& source,
+                const base::FilePath& target_path,
+                const MountOptions& mount_options);
   MounterCompat(const std::string& filesystem_type,
                 const std::string& source,
                 const base::FilePath& target_path,
@@ -77,9 +81,7 @@ class MounterCompat : public Mounter {
   const MountOptions& mount_options() const { return mount_options_; }
 
  protected:
-  // This pure virtual method is implemented by a derived class to mount
-  // a filesystem.
-  virtual MountErrorType MountImpl() const = 0;
+  virtual MountErrorType MountImpl() const;
 
   std::unique_ptr<MountPoint> Mount(const std::string& source,
                                     const base::FilePath& target_path,
@@ -92,6 +94,7 @@ class MounterCompat : public Mounter {
                 base::FilePath* suggested_dir_name) const override;
 
  private:
+  const std::unique_ptr<Mounter> mounter_;
   const std::string source_;
   const base::FilePath target_path_;
   const MountOptions mount_options_;

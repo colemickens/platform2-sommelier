@@ -153,7 +153,8 @@ MountErrorType ArchiveManager::DoMount(const string& source_path,
   MountOptions mount_options;
   mount_options.WhitelistOption(MountOptions::kOptionNoSymFollow);
   mount_options.Initialize(extended_options, false, "", "");
-  SystemMounter mounter(avfs_path, mount_path, "", mount_options, platform());
+  MounterCompat mounter(std::make_unique<SystemMounter>("", platform()),
+                        avfs_path, base::FilePath(mount_path), mount_options);
 
   MountErrorType error_type = mounter.Mount();
   if (error_type == MOUNT_ERROR_NONE) {

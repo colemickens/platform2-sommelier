@@ -5,31 +5,52 @@
 #ifndef CROS_DISKS_SYSTEM_MOUNTER_H_
 #define CROS_DISKS_SYSTEM_MOUNTER_H_
 
+#include <memory>
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 
+#include "cros-disks/mount_point.h"
 #include "cros-disks/mounter.h"
 
 namespace cros_disks {
 
 class Platform;
 
-// A class for mounting a device file using the system mount() call.
-class SystemMounter : public MounterCompat {
+// A class that uses umount() syscall for unmounting.
+class SystemUnmounter : public Unmounter {
  public:
-  // A unique type identifier of this derived mounter class.
-  static const char kMounterType[];
+  enum class UnmountType { kNormal, kLazy, kLazyFallback };
+  SystemUnmounter(const Platform* platform, UnmountType unmount_type);
+  ~SystemUnmounter() override;
 
-  SystemMounter(const std::string& source_path,
-                const std::string& target_path,
-                const std::string& filesystem_type,
-                const MountOptions& mount_options,
-                const Platform* platform);
+  MountErrorType Unmount(const MountPoint& mountpoint) override;
 
- protected:
+ private:
+  const Platform* const platform_;
+  const UnmountType unmount_type_;
+
+  DISALLOW_COPY_AND_ASSIGN(SystemUnmounter);
+};
+
+// A class for mounting a device file using the system mount() call.
+class SystemMounter : public Mounter {
+ public:
+  SystemMounter(const std::string& filesystem_type, const Platform* platform);
+  ~SystemMounter() override;
+
   // Mounts a device file using the system mount() call.
-  MountErrorType MountImpl() const override;
+  std::unique_ptr<MountPoint> Mount(const std::string& source,
+                                    const base::FilePath& target_path,
+                                    std::vector<std::string> options,
+                                    MountErrorType* error) const override;
+
+  // As there is no way to figure out beforehand if that would work, always
+  // returns true, so this mounter is a "catch-all".
+  bool CanMount(const std::string& source,
+                const std::vector<std::string>& options,
+                base::FilePath* suggested_dir_name) const override;
 
  private:
   const Platform* const platform_;

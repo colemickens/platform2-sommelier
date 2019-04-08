@@ -72,6 +72,8 @@ class MountOptions {
   // Returns true if |option| has been set.
   bool HasOption(const std::string& option) const;
 
+  const std::vector<std::string>& options() const { return options_; }
+
  private:
   // Whitelisted mount options.
   std::vector<std::string> whitelist_exact_;

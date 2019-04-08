@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 
 #include "cros-disks/mount_options.h"
+#include "cros-disks/mount_point.h"
 #include "cros-disks/platform.h"
 
 using std::string;
@@ -19,41 +20,58 @@ using std::string;
 namespace cros_disks {
 
 TEST(SystemMounterTest, RunAsRootMount) {
+  Platform platform;
+  SystemMounter mounter("tmpfs", &platform);
+
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  Platform platform;
-  SystemMounter mounter("/dev/null", temp_dir.GetPath().value(), "tmpfs",
-                        MountOptions(), &platform);
-  EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
-  umount2(temp_dir.GetPath().value().c_str(), MNT_FORCE);
+
+  MountErrorType error = MountErrorType::MOUNT_ERROR_NONE;
+  auto mountpoint = mounter.Mount("/dev/null", temp_dir.GetPath(), {}, &error);
+  EXPECT_TRUE(mountpoint);
+  EXPECT_EQ(MountErrorType::MOUNT_ERROR_NONE, error);
+  error = mountpoint->Unmount();
+  EXPECT_EQ(MountErrorType::MOUNT_ERROR_NONE, error);
 }
 
 TEST(SystemMounterTest, RunAsRootMountWithNonexistentSourcePath) {
+  Platform platform;
+  SystemMounter mounter("ext2", &platform);
+
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
   // To test mounting a nonexistent source path, use ext2 as the
   // filesystem type instead of tmpfs since tmpfs does not care
   // about source path.
-  Platform platform;
-  SystemMounter mounter("/nonexistent", temp_dir.GetPath().value(), "ext2",
-                        MountOptions(), &platform);
-  EXPECT_EQ(MOUNT_ERROR_INVALID_PATH, mounter.Mount());
+  MountErrorType error = MountErrorType::MOUNT_ERROR_NONE;
+  auto mountpoint =
+      mounter.Mount("/nonexistent", temp_dir.GetPath(), {}, &error);
+  EXPECT_FALSE(mountpoint);
+  EXPECT_EQ(MountErrorType::MOUNT_ERROR_INVALID_PATH, error);
 }
 
 TEST(SystemMounterTest, RunAsRootMountWithNonexistentTargetPath) {
   Platform platform;
-  SystemMounter mounter("/dev/null", "/nonexistent", "tmpfs", MountOptions(),
-                        &platform);
-  EXPECT_EQ(MOUNT_ERROR_INVALID_PATH, mounter.Mount());
+  SystemMounter mounter("tmpfs", &platform);
+
+  MountErrorType error = MountErrorType::MOUNT_ERROR_NONE;
+  auto mountpoint =
+      mounter.Mount("/dev/null", base::FilePath("/nonexistent"), {}, &error);
+  EXPECT_FALSE(mountpoint);
+  EXPECT_EQ(MountErrorType::MOUNT_ERROR_INVALID_PATH, error);
 }
 
 TEST(SystemMounterTest, RunAsRootMountWithNonexistentFilesystemType) {
+  Platform platform;
+  SystemMounter mounter("nonexistentfs", &platform);
+
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  Platform platform;
-  SystemMounter mounter("/dev/null", temp_dir.GetPath().value(),
-                        "nonexistentfs", MountOptions(), &platform);
-  EXPECT_EQ(MOUNT_ERROR_UNSUPPORTED_FILESYSTEM, mounter.Mount());
+  MountErrorType error = MountErrorType::MOUNT_ERROR_NONE;
+  auto mountpoint = mounter.Mount("/dev/null", temp_dir.GetPath(), {}, &error);
+  EXPECT_FALSE(mountpoint);
+  EXPECT_EQ(MountErrorType::MOUNT_ERROR_UNSUPPORTED_FILESYSTEM, error);
 }
 
 }  // namespace cros_disks

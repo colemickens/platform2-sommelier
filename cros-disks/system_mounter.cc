@@ -12,30 +12,77 @@
 
 #include <base/logging.h>
 
+#include "cros-disks/mount_options.h"
+#include "cros-disks/mount_point.h"
 #include "cros-disks/platform.h"
-
-using std::pair;
-using std::string;
 
 namespace cros_disks {
 
-const char SystemMounter::kMounterType[] = "";
+namespace {
 
-SystemMounter::SystemMounter(const string& source_path,
-                             const string& target_path,
-                             const string& filesystem_type,
-                             const MountOptions& mount_options,
+MountErrorType UnmountImpl(const Platform* platform,
+                           const base::FilePath& path,
+                           bool lazy) {
+  CHECK(!path.empty());
+  const int flags = lazy ? MNT_DETACH : 0;
+  return platform->Unmount(path.value(), flags);
+}
+
+}  // namespace
+
+SystemUnmounter::SystemUnmounter(const Platform* platform,
+                                 UnmountType unmount_type)
+    : platform_(platform), unmount_type_(unmount_type) {}
+
+SystemUnmounter::~SystemUnmounter() = default;
+
+MountErrorType SystemUnmounter::Unmount(const MountPoint& mountpoint) {
+  MountErrorType error = UnmountImpl(platform_, mountpoint.path(),
+                                     unmount_type_ == UnmountType::kLazy);
+  if (error == MountErrorType::MOUNT_ERROR_PATH_ALREADY_MOUNTED &&
+      unmount_type_ == UnmountType::kLazyFallback) {
+    LOG(WARNING) << "Device is busy, trying lazy unmount on "
+                 << mountpoint.path().value();
+    error = UnmountImpl(platform_, mountpoint.path(), true);
+  }
+  return error;
+}
+
+SystemMounter::SystemMounter(const std::string& filesystem_type,
                              const Platform* platform)
-    : MounterCompat(filesystem_type,
-                    source_path,
-                    base::FilePath(target_path),
-                    mount_options),
-      platform_(platform) {}
+    : Mounter(filesystem_type), platform_(platform) {}
 
-MountErrorType SystemMounter::MountImpl() const {
-  auto flags_and_data = mount_options().ToMountFlagsAndData();
-  return platform_->Mount(source(), target_path().value(), filesystem_type(),
-                          flags_and_data.first, flags_and_data.second);
+SystemMounter::~SystemMounter() = default;
+
+std::unique_ptr<MountPoint> SystemMounter::Mount(
+    const std::string& source,
+    const base::FilePath& target_path,
+    std::vector<std::string> options,
+    MountErrorType* error) const {
+  MountOptions mount_options;
+  mount_options.Initialize(options, false, "", "");
+  auto flags_and_data = mount_options.ToMountFlagsAndData();
+
+  *error = platform_->Mount(source, target_path.value(), filesystem_type(),
+                            flags_and_data.first, flags_and_data.second);
+  if (*error != MountErrorType::MOUNT_ERROR_NONE) {
+    return nullptr;
+  }
+
+  return std::make_unique<MountPoint>(
+      target_path, std::make_unique<SystemUnmounter>(
+                       platform_, SystemUnmounter::UnmountType::kLazyFallback));
+}
+
+bool SystemMounter::CanMount(const std::string& source,
+                             const std::vector<std::string>& options,
+                             base::FilePath* suggested_dir_name) const {
+  if (source.empty()) {
+    *suggested_dir_name = base::FilePath("disk");
+  } else {
+    *suggested_dir_name = base::FilePath(source).BaseName();
+  }
+  return true;
 }
 
 }  // namespace cros_disks
