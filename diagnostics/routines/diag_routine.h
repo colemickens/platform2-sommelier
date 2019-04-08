@@ -21,10 +21,8 @@ class DiagnosticRoutine {
   // Starts the diagnostic routine. This function should only be called a
   // single time per instance of DiagnosticRoutine.
   virtual void Start() = 0;
-  // Pauses the diagnostic routine, which will be inactive until resumed.
-  virtual void Pause() = 0;
-  // This function should only be called to resume a routine which had
-  // previously been paused.
+  // This function should only be called to resume interactive routines that are
+  // currently in the ROUTINE_STATUS_WAITING state.
   virtual void Resume() = 0;
   // Cancels an active diagnostics routine. Information (status, output, user
   // message) of a cancelled routine can still be accessed, but the routine

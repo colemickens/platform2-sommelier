@@ -1265,7 +1265,6 @@ INSTANTIATE_TEST_CASE_P(,
                         GetRoutineUpdateRequestWilcoDtcSupportdGrpcServiceTest,
                         testing::Values(
                             // Test each possible command value.
-                            grpc_api::GetRoutineUpdateRequest::PAUSE,
                             grpc_api::GetRoutineUpdateRequest::RESUME,
                             grpc_api::GetRoutineUpdateRequest::CANCEL,
                             grpc_api::GetRoutineUpdateRequest::GET_STATUS));

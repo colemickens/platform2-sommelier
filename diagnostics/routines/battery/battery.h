@@ -35,7 +35,6 @@ class BatteryRoutine final : public DiagnosticRoutine {
   // DiagnosticRoutine overrides:
   ~BatteryRoutine() override;
   void Start() override;
-  void Pause() override;
   void Resume() override;
   void Cancel() override;
   void PopulateStatusUpdate(grpc_api::GetRoutineUpdateResponse* response,

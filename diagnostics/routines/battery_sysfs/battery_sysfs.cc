@@ -16,8 +16,8 @@ namespace diagnostics {
 namespace {
 
 int CalculateProgressPercent(grpc_api::DiagnosticRoutineStatus status) {
-  // Since the battery_sysfs routine cannot be paused or cancelled, the
-  // progress percent can only be 0 or 100.
+  // Since the battery_sysfs routine cannot be cancelled, the progress percent
+  // can only be 0 or 100.
   if (status == grpc_api::ROUTINE_STATUS_PASSED ||
       status == grpc_api::ROUTINE_STATUS_FAILED)
     return 100;
@@ -100,7 +100,6 @@ void BatterySysfsRoutine::Start() {
 }
 
 // The battery_sysfs routine can only be started.
-void BatterySysfsRoutine::Pause() {}
 void BatterySysfsRoutine::Resume() {}
 void BatterySysfsRoutine::Cancel() {}
 

@@ -359,11 +359,9 @@ if (use.test) {
       "common/file_test_utils.cc",
       "routines/battery/battery_test.cc",
       "routines/battery_sysfs/battery_sysfs_test.cc",
-      "routines/smartctl_check/smartctl_check_test.cc",
       "routines/smartctl_check/smartctl_check_utils.cc",
       "routines/smartctl_check/smartctl_check_utils_test.cc",
       "routines/subproc_routine_test.cc",
-      "routines/urandom/urandom_test.cc",
     ]
   }
 }

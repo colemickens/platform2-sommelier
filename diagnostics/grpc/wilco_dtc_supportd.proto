@@ -433,12 +433,11 @@ message GetRoutineUpdateRequest {
 
   enum Command {
     COMMAND_UNSET = 0;
-    PAUSE = 1;
-    RESUME = 2;
-    CANCEL = 3;  // Cancelled routines must still be removed before the routine
+    RESUME = 1;
+    CANCEL = 2;  // Cancelled routines must still be removed before the routine
                  // is destroyed.
-    GET_STATUS = 4;
-    REMOVE = 5;  // All routines which started successfully must be removed,
+    GET_STATUS = 3;
+    REMOVE = 4;  // All routines which started successfully must be removed,
                  // otherwise they will persist on the system. This makes sure
                  // the routine is terminated before removing it.
   }

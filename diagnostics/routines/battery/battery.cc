@@ -22,8 +22,8 @@ constexpr int kDefaultHighmAh = 10000;
 constexpr int kuAhTomAhDivisor = 1000;
 
 int CalculateProgressPercent(grpc_api::DiagnosticRoutineStatus status) {
-  // Since the battery test cannot be paused or cancelled, the progress
-  // percent can only be 0 or 100.
+  // Since the battery test cannot be cancelled, the progress percent can only
+  // be 0 or 100.
   if (status == grpc_api::ROUTINE_STATUS_PASSED ||
       status == grpc_api::ROUTINE_STATUS_FAILED)
     return 100;
@@ -61,7 +61,6 @@ void BatteryRoutine::Start() {
 }
 
 // The battery test can only be started.
-void BatteryRoutine::Pause() {}
 void BatteryRoutine::Resume() {}
 void BatteryRoutine::Cancel() {}
 

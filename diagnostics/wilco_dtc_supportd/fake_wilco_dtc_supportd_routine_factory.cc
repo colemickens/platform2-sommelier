@@ -13,7 +13,6 @@ class FakeDiagnosticRoutine final : public DiagnosticRoutine {
   // DiagnosticRoutine overrides:
   ~FakeDiagnosticRoutine() override;
   void Start() override;
-  void Pause() override;
   void Resume() override;
   void Cancel() override;
   void PopulateStatusUpdate(grpc_api::GetRoutineUpdateResponse* response,
@@ -43,10 +42,6 @@ FakeDiagnosticRoutine::~FakeDiagnosticRoutine() = default;
 
 void FakeDiagnosticRoutine::Start() {
   status_ = grpc_api::ROUTINE_STATUS_RUNNING;
-}
-
-void FakeDiagnosticRoutine::Pause() {
-  status_ = grpc_api::ROUTINE_STATUS_WAITING;
 }
 
 void FakeDiagnosticRoutine::Resume() {

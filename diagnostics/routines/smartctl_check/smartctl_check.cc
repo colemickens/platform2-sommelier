@@ -11,23 +11,21 @@
 #include <base/command_line.h>
 
 #include "diagnostics/routines/diag_process_adapter_impl.h"
+#include "diagnostics/routines/subproc_routine.h"
 
 namespace diagnostics {
 
-SmartctlCheckRoutine::SmartctlCheckRoutine(
-    const grpc_api::SmartctlCheckRoutineParameters& parameters)
-    : SmartctlCheckRoutine(parameters,
-                           std::make_unique<DiagProcessAdapterImpl>()) {}
+namespace {
 
-SmartctlCheckRoutine::SmartctlCheckRoutine(
-    const grpc_api::SmartctlCheckRoutineParameters& parameters,
-    std::unique_ptr<DiagProcessAdapter> process_adapter)
-    : SubprocRoutine(std::move(process_adapter)), parameters_(parameters) {}
+constexpr char kSmartctlCheckExecutableInstallLocation[] =
+    "/usr/libexec/diagnostics/smartctl-check";
+}
 
-SmartctlCheckRoutine::~SmartctlCheckRoutine() = default;
-
-base::CommandLine SmartctlCheckRoutine::GetCommandLine() const {
-  return base::CommandLine({kSmartctlCheckExecutableInstallLocation});
+std::unique_ptr<DiagnosticRoutine> CreateSmartctlCheckRoutine(
+    const grpc_api::SmartctlCheckRoutineParameters& parameters) {
+  return std::make_unique<SubprocRoutine>(
+      base::CommandLine({kSmartctlCheckExecutableInstallLocation}),
+      0 /*predicted_duration_in_seconds*/);
 }
 
 }  // namespace diagnostics

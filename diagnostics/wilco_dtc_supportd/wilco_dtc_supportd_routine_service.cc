@@ -67,9 +67,6 @@ void WilcoDtcSupportdRoutineService::GetRoutineUpdate(
   auto* routine = itr->second.get();
   grpc_api::GetRoutineUpdateResponse response;
   switch (command) {
-    case grpc_api::GetRoutineUpdateRequest::PAUSE:
-      routine->Pause();
-      break;
     case grpc_api::GetRoutineUpdateRequest::RESUME:
       routine->Resume();
       break;

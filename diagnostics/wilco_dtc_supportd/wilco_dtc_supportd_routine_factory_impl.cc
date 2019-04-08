@@ -32,10 +32,9 @@ WilcoDtcSupportdRoutineFactoryImpl::CreateRoutine(
     case grpc_api::ROUTINE_URANDOM:
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kUrandomParams);
-      return std::make_unique<UrandomRoutine>(request.urandom_params());
+      return CreateUrandomRoutine(request.urandom_params());
     case grpc_api::ROUTINE_SMARTCTL_CHECK:
-      return std::make_unique<SmartctlCheckRoutine>(
-          request.smartctl_check_params());
+      return CreateSmartctlCheckRoutine(request.smartctl_check_params());
     default:
       LOG(ERROR) << "RunRoutineRequest routine not set or unrecognized.";
       return nullptr;

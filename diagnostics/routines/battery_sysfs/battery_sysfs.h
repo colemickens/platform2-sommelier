@@ -49,7 +49,6 @@ class BatterySysfsRoutine final : public DiagnosticRoutine {
   // DiagnosticRoutine overrides:
   ~BatterySysfsRoutine() override;
   void Start() override;
-  void Pause() override;
   void Resume() override;
   void Cancel() override;
   void PopulateStatusUpdate(grpc_api::GetRoutineUpdateResponse* response,

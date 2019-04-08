@@ -16,138 +16,269 @@
 
 namespace diagnostics {
 
+constexpr char kSubprocRoutineReadyMessage[] = "Routine is ready.";
 constexpr char kSubprocRoutineProcessRunningMessage[] =
     "Test is still running.";
+constexpr char kSubprocRoutineProcessKillingMessage[] =
+    "Canceled test. Waiting for cleanup...";
 constexpr char kSubprocRoutineSucceededMessage[] = "Test passed.";
 constexpr char kSubprocRoutineFailedMessage[] = "Test failed.";
 constexpr char kSubprocRoutineFailedToLaunchProcessMessage[] =
     "Could not launch the process.";
-constexpr char kSubprocRoutineProcessCrashedOrKilledMessage[] =
-    "The process crashed or was killed.";
-constexpr char kSubprocRoutineFailedToPauseMessage[] =
-    "Failed to pause the routine.";
-constexpr char kSubprocRoutineFailedToCancelMessage[] =
-    "Failed to cancel the routine.";
+constexpr char kSubprocRoutineCanceled[] = "The test was canceled.";
+constexpr char kSubprocRoutineErrorMessage[] =
+    "The test crashed or was killed.";
 constexpr char kSubprocRoutineFailedToStopMessage[] =
     "Failed to stop the routine.";
+constexpr char kSubprocRoutineInvalidParametersMessage[] =
+    "The test could not be run due to invalid parameters.";
 
-constexpr int kSubprocRoutineFakeProgressPercent = 0;
+constexpr int kSubprocRoutineFakeProgressPercentUnknown = 33;
+constexpr int kSubprocRoutineFakeProgressPercentKilling = 99;
 
-SubprocRoutine::SubprocRoutine()
-    : SubprocRoutine(std::make_unique<DiagProcessAdapterImpl>()) {}
+grpc_api::DiagnosticRoutineStatus
+GetDiagnosticRoutineStatusFromSubprocRoutineStatus(
+    SubprocRoutine::SubprocStatus subproc_status) {
+  switch (subproc_status) {
+    case SubprocRoutine::kSubprocStatusReady:
+      return grpc_api::ROUTINE_STATUS_READY;
+    case SubprocRoutine::kSubprocStatusLaunchFailed:
+      return grpc_api::ROUTINE_STATUS_FAILED_TO_START;
+    case SubprocRoutine::kSubprocStatusRunning:
+      return grpc_api::ROUTINE_STATUS_RUNNING;
+    case SubprocRoutine::kSubprocStatusKilling:
+      // TODO(wbbradley): https://crbug.com/953299
+      return grpc_api::ROUTINE_STATUS_RUNNING;
+    case SubprocRoutine::kSubprocStatusCompleteSuccess:
+      return grpc_api::ROUTINE_STATUS_PASSED;
+    case SubprocRoutine::kSubprocStatusCompleteFailure:
+      return grpc_api::ROUTINE_STATUS_FAILED;
+    case SubprocRoutine::kSubprocStatusError:
+      return grpc_api::ROUTINE_STATUS_ERROR;
+    case SubprocRoutine::kSubprocStatusCanceled:
+      return grpc_api::ROUTINE_STATUS_CANCELLED;
+  }
+}
+
+std::string GetStatusMessageFromSubprocRoutineStatus(
+    SubprocRoutine::SubprocStatus subproc_status) {
+  switch (subproc_status) {
+    case SubprocRoutine::kSubprocStatusReady:
+      return kSubprocRoutineReadyMessage;
+    case SubprocRoutine::kSubprocStatusLaunchFailed:
+      return kSubprocRoutineFailedToLaunchProcessMessage;
+    case SubprocRoutine::kSubprocStatusRunning:
+      return kSubprocRoutineProcessRunningMessage;
+    case SubprocRoutine::kSubprocStatusKilling:
+      return kSubprocRoutineProcessKillingMessage;
+    case SubprocRoutine::kSubprocStatusCompleteSuccess:
+      return kSubprocRoutineSucceededMessage;
+    case SubprocRoutine::kSubprocStatusCompleteFailure:
+      return kSubprocRoutineFailedMessage;
+    case SubprocRoutine::kSubprocStatusError:
+      return kSubprocRoutineErrorMessage;
+    case SubprocRoutine::kSubprocStatusCanceled:
+      return kSubprocRoutineCanceled;
+  }
+}
+
+SubprocRoutine::SubprocRoutine(const base::CommandLine& command_line,
+                               int predicted_duration_in_seconds)
+    : SubprocRoutine(std::make_unique<DiagProcessAdapterImpl>(),
+                     std::make_unique<base::DefaultTickClock>(),
+                     command_line,
+                     predicted_duration_in_seconds) {}
 
 SubprocRoutine::SubprocRoutine(
-    std::unique_ptr<DiagProcessAdapter> process_adapter)
-    : status_(grpc_api::ROUTINE_STATUS_READY),
-      process_adapter_(std::move(process_adapter)) {}
+    std::unique_ptr<DiagProcessAdapter> process_adapter,
+    std::unique_ptr<base::TickClock> tick_clock,
+    const base::CommandLine& command_line,
+    int predicted_duration_in_seconds)
+    : subproc_status_(kSubprocStatusReady),
+      process_adapter_(std::move(process_adapter)),
+      tick_clock_(std::move(tick_clock)),
+      command_line_(command_line),
+      predicted_duration_in_seconds_(predicted_duration_in_seconds) {}
 
 SubprocRoutine::~SubprocRoutine() {
   // If the routine is still running, make sure to stop it so we aren't left
   // with a zombie process.
-  if (status_ == grpc_api::ROUTINE_STATUS_RUNNING)
-    KillProcess(kSubprocRoutineFailedToStopMessage);
+  KillProcess(true /*from_dtor*/);
 }
 
 void SubprocRoutine::Start() {
-  DCHECK_EQ(status_, grpc_api::ROUTINE_STATUS_READY);
-  StartProcess();
-}
+  DCHECK_EQ(subproc_status_, kSubprocStatusReady);
+  DCHECK_EQ(handle_, base::kNullProcessHandle);
 
-void SubprocRoutine::Pause() {
-  // Kill the current process, but record the completion percentage.
-  DCHECK_EQ(status_, grpc_api::ROUTINE_STATUS_RUNNING);
-  if (KillProcess(kSubprocRoutineFailedToPauseMessage))
-    status_ = grpc_api::ROUTINE_STATUS_READY;
+  if (predicted_duration_in_seconds_ < 0) {
+    subproc_status_ = kSubprocStatusLaunchFailed;
+    LOG(ERROR) << kSubprocRoutineInvalidParametersMessage;
+    return;
+  }
+
+  StartProcess();
 }
 
 void SubprocRoutine::Resume() {
-  // Call the subproc_routine program again, with a new calculated timeout based
-  // on the completion percentage and current time.
-  DCHECK_EQ(status_, grpc_api::ROUTINE_STATUS_READY);
-  StartProcess();
+  // Resume functionality is intended to be used by interactive routines.
+  // Subprocess routines are non-interactive.
+  LOG(ERROR) << "SubprocRoutine::Resume : subprocess diagnostic routines "
+                "cannot be resumed";
 }
 
 void SubprocRoutine::Cancel() {
-  // Kill the process and record the completion percentage.
-  DCHECK_EQ(status_, grpc_api::ROUTINE_STATUS_RUNNING);
-  if (KillProcess(kSubprocRoutineFailedToCancelMessage))
-    status_ = grpc_api::ROUTINE_STATUS_CANCELLED;
+  KillProcess(false /*from_dtor*/);
 }
 
 void SubprocRoutine::PopulateStatusUpdate(
     grpc_api::GetRoutineUpdateResponse* response, bool include_output) {
   // Because the subproc_routine routine is non-interactive, we will never
   // include a user message.
-  if (status_ == grpc_api::ROUTINE_STATUS_RUNNING)
-    CheckProcessStatus();
+  CheckProcessStatus();
 
-  response->set_status(status_);
-  response->set_progress_percent(kSubprocRoutineFakeProgressPercent);
-  response->set_status_message(status_message_);
+  response->set_status(
+      GetDiagnosticRoutineStatusFromSubprocRoutineStatus(subproc_status_));
+  response->set_progress_percent(CalculateProgressPercent());
+  response->set_status_message(
+      GetStatusMessageFromSubprocRoutineStatus(subproc_status_));
 }
 
 grpc_api::DiagnosticRoutineStatus SubprocRoutine::GetStatus() {
-  return status_;
+  CheckProcessStatus();
+  return GetDiagnosticRoutineStatusFromSubprocRoutineStatus(subproc_status_);
 }
 
 void SubprocRoutine::StartProcess() {
-  status_ = grpc_api::ROUTINE_STATUS_RUNNING;
-  base::CommandLine command_line = GetCommandLine();
-  VLOG(1) << "Starting command " << base::JoinString(command_line.argv(), " ");
+  if (subproc_status_ == kSubprocStatusReady) {
+    subproc_status_ = kSubprocStatusRunning;
+    // Don't bother joining the command_line_ if we aren't in verbose mode.
+    if (VLOG_IS_ON(1)) {
+      VLOG(1) << "Starting command "
+              << base::JoinString(command_line_.argv(), " ");
+    }
 
-  if (!process_adapter_->StartProcess(command_line.argv(), &handle_)) {
-    status_ = grpc_api::ROUTINE_STATUS_ERROR;
-    status_message_ = kSubprocRoutineFailedToLaunchProcessMessage;
-    LOG(ERROR) << kSubprocRoutineFailedToLaunchProcessMessage;
+    if (!process_adapter_->StartProcess(command_line_.argv(), &handle_)) {
+      subproc_status_ = kSubprocStatusLaunchFailed;
+      LOG(ERROR) << kSubprocRoutineFailedToLaunchProcessMessage;
+    }
+    // Keep track of when we began the routine, in case we need to predict
+    // progress.
+    start_ticks_ = tick_clock_->NowTicks();
+  } else {
+    LOG(ERROR) << "An attempt was made to start a SubprocRoutine, but it is "
+                  "not ready.";
   }
 }
 
-bool SubprocRoutine::KillProcess(const std::string& failure_message) {
-  // If the process has already exited, there's no need to kill it.
+void SubprocRoutine::KillProcess(bool from_dtor) {
   CheckProcessStatus();
 
-  if (handle_ != base::kNullProcessHandle &&
-      !process_adapter_->KillProcess(handle_)) {
-    // Reset the ProcessHandle, so we can't accidentally kill another process
-    // which has reused our old PID.
-    handle_ = base::kNullProcessHandle;
-    status_ = grpc_api::ROUTINE_STATUS_ERROR;
-    status_message_ = failure_message;
-    LOG(ERROR) << "Failed to kill process.";
-    return false;
+  switch (subproc_status_) {
+    case kSubprocStatusRunning:
+      DCHECK(handle_ != base::kNullProcessHandle);
+      if (from_dtor) {
+        // We will not be able to keep track of this child process.
+        LOG(ERROR) << "Killing process " << handle_
+                   << " from diagnostics::SubprocRoutine destructor, cannot "
+                      "guarantee process will die.";
+      }
+      subproc_status_ = kSubprocStatusKilling;
+      process_adapter_->KillProcess(handle_);
+      break;
+    case kSubprocStatusKilling:
+      // The process is already being killed. Do nothing.
+      DCHECK(handle_ != base::kNullProcessHandle);
+      break;
+    case kSubprocStatusCanceled:
+    case kSubprocStatusCompleteFailure:
+    case kSubprocStatusCompleteSuccess:
+    case kSubprocStatusError:
+    case kSubprocStatusLaunchFailed:
+    case kSubprocStatusReady:
+      // If the process has already exited, is exiting, or never started,
+      // there's no need to kill it.
+      DCHECK(handle_ == base::kNullProcessHandle);
+      break;
   }
+}
 
-  return true;
+void SubprocRoutine::CheckActiveProcessStatus() {
+  DCHECK(handle_ != base::kNullProcessHandle);
+  switch (process_adapter_->GetStatus(handle_)) {
+    case base::TERMINATION_STATUS_STILL_RUNNING:
+      DCHECK(subproc_status_ == kSubprocStatusKilling ||
+             subproc_status_ == kSubprocStatusRunning);
+      break;
+    case base::TERMINATION_STATUS_NORMAL_TERMINATION:
+      // The process is gone.
+      handle_ = base::kNullProcessHandle;
+      subproc_status_ = kSubprocStatusCompleteSuccess;
+      break;
+    case base::TERMINATION_STATUS_ABNORMAL_TERMINATION:
+      // The process is gone.
+      handle_ = base::kNullProcessHandle;
+
+      subproc_status_ = (subproc_status_ == kSubprocStatusKilling)
+                            ? kSubprocStatusCanceled
+                            : kSubprocStatusCompleteFailure;
+      break;
+    case base::TERMINATION_STATUS_LAUNCH_FAILED:
+      // The process never really was.
+      handle_ = base::kNullProcessHandle;
+
+      subproc_status_ = kSubprocStatusLaunchFailed;
+      break;
+    default:
+      // The process is mysteriously just missing.
+      handle_ = base::kNullProcessHandle;
+
+      subproc_status_ = (subproc_status_ == kSubprocStatusKilling)
+                            ? kSubprocStatusCanceled
+                            : kSubprocStatusError;
+      break;
+  }
 }
 
 void SubprocRoutine::CheckProcessStatus() {
-  if (handle_ == base::kNullProcessHandle)
-    return;
+  switch (subproc_status_) {
+    case kSubprocStatusCanceled:
+    case kSubprocStatusCompleteFailure:
+    case kSubprocStatusCompleteSuccess:
+    case kSubprocStatusError:
+    case kSubprocStatusLaunchFailed:
+    case kSubprocStatusReady:
+      DCHECK(handle_ == base::kNullProcessHandle);
+      break;
+    case kSubprocStatusKilling:
+    case kSubprocStatusRunning:
+      CheckActiveProcessStatus();
+      break;
+  }
+}
 
-  switch (process_adapter_->GetStatus(handle_)) {
-    case base::TERMINATION_STATUS_STILL_RUNNING:
-      status_message_ = kSubprocRoutineProcessRunningMessage;
-      break;
-    case base::TERMINATION_STATUS_NORMAL_TERMINATION:
-      handle_ = base::kNullProcessHandle;
-      status_ = grpc_api::ROUTINE_STATUS_PASSED;
-      status_message_ = kSubprocRoutineSucceededMessage;
-      break;
-    case base::TERMINATION_STATUS_ABNORMAL_TERMINATION:
-      handle_ = base::kNullProcessHandle;
-      status_ = grpc_api::ROUTINE_STATUS_FAILED;
-      status_message_ = kSubprocRoutineFailedMessage;
-      break;
-    case base::TERMINATION_STATUS_LAUNCH_FAILED:
-      handle_ = base::kNullProcessHandle;
-      status_ = grpc_api::ROUTINE_STATUS_ERROR;
-      status_message_ = kSubprocRoutineFailedToLaunchProcessMessage;
-      break;
-    default:
-      handle_ = base::kNullProcessHandle;
-      status_ = grpc_api::ROUTINE_STATUS_ERROR;
-      status_message_ = kSubprocRoutineProcessCrashedOrKilledMessage;
-      break;
+int SubprocRoutine::CalculateProgressPercent() const {
+  switch (subproc_status_) {
+    case kSubprocStatusCanceled:
+    case kSubprocStatusError:
+    case kSubprocStatusLaunchFailed:
+    case kSubprocStatusReady:
+      return 0;
+    case kSubprocStatusCompleteSuccess:
+    case kSubprocStatusCompleteFailure:
+      return 100;
+    case kSubprocStatusKilling:
+      return kSubprocRoutineFakeProgressPercentKilling;
+    case kSubprocStatusRunning:
+      if (predicted_duration_in_seconds_ <= 0) {
+        /* when we don't know the progress, we fake at a low percentage */
+        return kSubprocRoutineFakeProgressPercentUnknown;
+      }
+
+      return std::min(
+          100, std::max(0, static_cast<int>(
+                               100 * (tick_clock_->NowTicks() - start_ticks_) /
+                               base::TimeDelta::FromSeconds(
+                                   predicted_duration_in_seconds_))));
   }
 }
 
