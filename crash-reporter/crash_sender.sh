@@ -27,9 +27,6 @@ HWCLASS_PATH="/sys/devices/platform/chromeos_acpi/HWID"
 # Path to file that indicates this is a developer image.
 LEAVE_CORE_FILE="/root/.leave_core"
 
-# Path to list_proxies.
-LIST_PROXIES="/usr/bin/list_proxies"
-
 # Path to metrics_client.
 METRICS_CLIENT="/usr/bin/metrics_client"
 
@@ -249,6 +246,7 @@ send_crash() {
   local report_payload="$2"
   local kind="$3"
   local exec_name="$4"
+  local proxy="$5"
 
   local url="${REPORT_UPLOAD_PROD_URL}"
   local chromeos_version="$(get_key_value "${meta_path}" "ver")"
@@ -390,24 +388,6 @@ send_crash() {
     return 0
   fi
 
-  # Read in the first proxy, if any, for a given URL.  NOTE: The
-  # double-quotes are necessary due to a bug in dash with the "local"
-  # builtin command and values that have spaces in them (see
-  # "https://bugs.launchpad.net/ubuntu/+source/dash/+bug/139097").
-  if [ -f "${LIST_PROXIES}" ]; then
-    local proxy ret
-    proxy=$("${LIST_PROXIES}" "${url}")
-    ret=$?
-    if [ ${ret} -ne 0 ]; then
-      proxy=''
-      lecho -psyslog.warn \
-        "Listing proxies failed with exit code ${ret}"
-    else
-      proxy=$(echo "${proxy}" | head -1)
-    fi
-  fi
-  # if a direct connection should be used, unset the proxy variable.
-  [ "${proxy}" = "direct://" ] && proxy=
   local report_id="${TMP_DIR}/report_id"
   local curl_stderr="${TMP_DIR}/curl_stderr"
 
@@ -461,7 +441,7 @@ send_crash() {
 }
 
 main () {
-  if [ $# -ne 5 ]; then
+  if [ $# -ne 6 ]; then
     lecho "Wrong number of command line flags: $*"
     exit 1
   fi

@@ -442,7 +442,6 @@ Check out the their [docs][1] for more details (especially on minidumps).
 [crash-sender.conf]: ./init/crash-sender.conf
 [init/]: ./init/
 [kernel_warning_collector]: ../kernel_warning_collector.cc
-[list_proxies]: ./list_proxies.cc
 [udev rules]: ./99-crash-reporter.rules
 [udev_collector]: ./udev_collector.cc
 [unclean_shutdown_collector]: ../unclean_shutdown_collector.cc

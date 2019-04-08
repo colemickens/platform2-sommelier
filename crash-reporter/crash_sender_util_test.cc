@@ -39,6 +39,9 @@ enum BuildType { kOfficialBuild, kUnofficialBuild };
 enum SessionType { kSignInMode, kGuestMode };
 enum MetricsFlag { kMetricsEnabled, kMetricsDisabled };
 
+constexpr char kFakeProxyServer[] = "http://example.com";
+constexpr char kNoProxyServer[] = "direct://";
+
 // Prases the output file from fake_crash_sender.sh to a vector of items per
 // line. Example:
 //
@@ -528,6 +531,7 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
 
   Sender::Options options;
   options.proxy = mock.release();
+  options.proxy_servers.emplace_back(kNoProxyServer);
   Sender sender(std::move(metrics_lib_), options);
   ASSERT_TRUE(sender.Init());
 
@@ -878,6 +882,7 @@ TEST_F(CrashSenderUtilTest, GetUserCrashDirectories) {
                                {{"user1", "hash1"}, {"user2", "hash2"}});
   Sender::Options options;
   options.proxy = mock.release();
+  options.proxy_servers.emplace_back(kNoProxyServer);
   Sender sender(std::move(metrics_lib_), options);
   ASSERT_TRUE(sender.Init());
 
@@ -966,6 +971,7 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   options.proxy = mock.release();
   options.max_crash_rate = 2;
   options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
+  options.proxy_servers.emplace_back(kFakeProxyServer);
   Sender sender(std::move(metrics_lib_), options);
   ASSERT_TRUE(sender.Init());
 
@@ -993,21 +999,23 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
 
   // The first run should be for the meta file in the system directory.
   std::vector<std::string> row = rows[0];
-  ASSERT_EQ(5, row.size());
+  ASSERT_EQ(6, row.size());
   EXPECT_EQ(sender.temp_dir().value(), row[0]);
   EXPECT_EQ(system_meta_file.value(), row[1]);
   EXPECT_EQ(system_log.value(), row[2]);
   EXPECT_EQ("log", row[3]);
   EXPECT_EQ("exec_foo", row[4]);
+  EXPECT_EQ(kFakeProxyServer, row[5]);
 
   // The second run should be for the meta file in the "user" directory.
   row = rows[1];
-  ASSERT_EQ(5, row.size());
+  ASSERT_EQ(6, row.size());
   EXPECT_EQ(sender.temp_dir().value(), row[0]);
   EXPECT_EQ(user_meta_file.value(), row[1]);
   EXPECT_EQ(user_log.value(), row[2]);
   EXPECT_EQ("log", row[3]);
   EXPECT_EQ("exec_bar", row[4]);
+  EXPECT_EQ(kFakeProxyServer, row[5]);
 
   // The uploaded crash files should be removed now.
   EXPECT_FALSE(base::PathExists(system_meta_file));
@@ -1015,7 +1023,7 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   EXPECT_FALSE(base::PathExists(user_meta_file));
   EXPECT_FALSE(base::PathExists(user_log));
 
-  // The followings should be kept since the crash report was not uploaded.
+  // The following should be kept since the crash report was not uploaded.
   EXPECT_TRUE(base::PathExists(user_meta_file2));
   EXPECT_TRUE(base::PathExists(user_log2));
 }
@@ -1057,6 +1065,7 @@ TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
   options.proxy = mock.release();
   options.max_crash_rate = 2;
   options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
+  options.proxy_servers.emplace_back(kNoProxyServer);
   Sender sender(std::move(metrics_lib_), options);
   ASSERT_TRUE(sender.Init());
 

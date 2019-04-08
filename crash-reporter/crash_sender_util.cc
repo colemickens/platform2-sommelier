@@ -24,6 +24,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
+#include <brillo/http/http_proxy.h>
 
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/paths.h"
@@ -32,6 +33,9 @@
 namespace util {
 
 namespace {
+
+// URL to send official build crash reports to.
+constexpr char kReportUploadProdUrl[] = "https://clients2.google.com/cr/report";
 
 // getenv() wrapper that returns an empty string, if the environment variable is
 // not defined.
@@ -498,6 +502,7 @@ Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
     : metrics_lib_(std::move(metrics_lib)),
       shell_script_(options.shell_script),
       proxy_(options.proxy),
+      proxy_servers_(options.proxy_servers),
       max_crash_rate_(options.max_crash_rate),
       max_spread_time_(options.max_spread_time),
       sleep_function_(options.sleep_function) {}
@@ -541,6 +546,16 @@ void Sender::RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
 }
 
 void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
+  if (crash_meta_files.empty())
+    return;
+
+  // Determine the proxy server if it's not given from the options.
+  if (proxy_servers_.empty()) {
+    EnsureDBusIsReady();
+    brillo::http::GetChromeProxyServers(bus_, kReportUploadProdUrl,
+                                        &proxy_servers_);
+  }
+
   for (const auto& pair : crash_meta_files) {
     const base::FilePath& meta_file = pair.first;
     const CrashInfo& info = pair.second;
@@ -598,22 +613,14 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
 }
 
 std::vector<base::FilePath> Sender::GetUserCrashDirectories() {
-  scoped_refptr<dbus::Bus> bus;
-
   // Set up the session manager proxy if it's not given from the options.
   if (!proxy_) {
-    dbus::Bus::Options options;
-    options.bus_type = dbus::Bus::SYSTEM;
-    scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
-    CHECK(bus->Connect());
-    proxy_.reset(new org::chromium::SessionManagerInterfaceProxy(bus));
+    EnsureDBusIsReady();
+    proxy_.reset(new org::chromium::SessionManagerInterfaceProxy(bus_));
   }
 
   std::vector<base::FilePath> directories;
   util::GetUserCrashDirectories(proxy_.get(), &directories);
-
-  if (bus)
-    bus->ShutdownAndBlock();
 
   return directories;
 }
@@ -629,12 +636,18 @@ bool Sender::RequestToSendCrash(const CrashDetails& details) {
         const_cast<char*>(details.payload_file.value().c_str());
     char* payload_kind = const_cast<char*>(details.payload_kind.c_str());
     char* exec_name = const_cast<char*>(details.exec_name.c_str());
+    std::string proxy_str;
+    if (!proxy_servers_.empty() && proxy_servers_[0] != "direct://") {
+      proxy_str = proxy_servers_[0];
+    }
+    char* proxy_server = const_cast<char*>(proxy_str.c_str());
     char* shell_argv[] = {shell_script_path,
                           temp_dir_path,
                           meta_file,     // $1 in send_crash
                           payload_file,  // $2 in send_crash
                           payload_kind,  // $3 in send_crash
                           exec_name,     // $4 in send_crash
+                          proxy_server,  // $5 in send_crash
                           nullptr};
 
     setenv("IS_CHROMELESS_TTY", USE_CHROMELESS_TTY ? "true" : "false",
@@ -660,6 +673,15 @@ bool Sender::RequestToSendCrash(const CrashDetails& details) {
   }
 
   return true;
+}
+
+void Sender::EnsureDBusIsReady() {
+  if (!bus_) {
+    dbus::Bus::Options options;
+    options.bus_type = dbus::Bus::SYSTEM;
+    bus_ = new dbus::Bus(options);
+    CHECK(bus_->Connect());
+  }
 }
 
 }  // namespace util

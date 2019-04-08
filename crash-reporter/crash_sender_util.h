@@ -203,6 +203,9 @@ class Sender {
 
     // Alternate sleep function for unit testing.
     base::Callback<void(base::TimeDelta)> sleep_function;
+
+    // Forced list of proxy servers for testing.
+    std::vector<std::string> proxy_servers;
   };
 
   Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
@@ -238,13 +241,18 @@ class Sender {
   // crash details.
   bool RequestToSendCrash(const CrashDetails& details);
 
+  // Makes sure we have the DBus object initialized and connected.
+  void EnsureDBusIsReady();
+
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
   const base::FilePath shell_script_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface> proxy_;
+  std::vector<std::string> proxy_servers_;
   base::ScopedTempDir scoped_temp_dir_;
   const int max_crash_rate_;
   const base::TimeDelta max_spread_time_;
   base::Callback<void(base::TimeDelta)> sleep_function_;
+  scoped_refptr<dbus::Bus> bus_;
 
   DISALLOW_COPY_AND_ASSIGN(Sender);
 };

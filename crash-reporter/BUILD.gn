@@ -12,7 +12,6 @@ group("all") {
     ":crash_sender",
     ":libcrash",
     ":libcrash_reporter",
-    ":list_proxies",
   ]
   if (use.cheets) {
     deps += [ ":core_collector" ]
@@ -117,21 +116,6 @@ executable("crash_sender") {
   defines = [ "USE_CHROMELESS_TTY=${use.chromeless_tty}" ]
   deps = [
     ":libcrash",
-  ]
-}
-
-pkg_config("list_proxies_config") {
-  pkg_deps = [
-    "dbus-1",
-    "libbrillo-${libbase_ver}",
-    "libchrome-${libbase_ver}",
-  ]
-}
-
-executable("list_proxies") {
-  configs += [ ":list_proxies_config" ]
-  sources = [
-    "list_proxies.cc",
   ]
 }
 
