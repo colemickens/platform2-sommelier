@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// #define LOG_NDEBUG 0
-#define LOG_TAG "ArcVideoEncoderE2ETest"
-
 #include <getopt.h>
 #include <inttypes.h>
 
@@ -54,10 +51,17 @@ constexpr int AMEDIACODEC_BUFFER_FLAG_CODEC_CONFIG = 2;
 ArcVideoEncoderTestEnvironment* g_env;
 }  // namespace
 
+// Store the arguments passed from command line.
+struct CmdlineArgs {
+  std::string test_stream_data;
+  bool run_at_fps = false;
+  size_t num_encoded_frames = 0;
+};
+
 class ArcVideoEncoderTestEnvironment : public testing::Environment {
  public:
-  explicit ArcVideoEncoderTestEnvironment(const std::string& data)
-      : test_stream_data_(data) {}
+  explicit ArcVideoEncoderTestEnvironment(const CmdlineArgs& args)
+      : args_(args) {}
 
   void SetUp() override {
     ParseTestStreamData();
@@ -84,13 +88,13 @@ class ArcVideoEncoderTestEnvironment : public testing::Environment {
   // - |pixelFormat| is the VideoPixelFormat of |input_file_path|.
   //   NOTE: Only PIXEL_FORMAT_I420 is supported. Now we just ignore this value.
   void ParseTestStreamData() {
-    std::vector<std::string> fields = SplitString(test_stream_data_, ':');
+    std::vector<std::string> fields = SplitString(args_.test_stream_data, ':');
     ALOG_ASSERT(fields.size() >= 3U,
                 "The fields of test_stream_data is not enough: %s",
-                test_stream_data_.c_str());
+                args_.test_stream_data.c_str());
     ALOG_ASSERT(fields.size() <= 10U,
                 "The fields of test_stream_data is too much: %s",
-                test_stream_data_.c_str());
+                args_.test_stream_data.c_str());
 
     input_file_path_ = fields[0];
     int width = std::stoi(fields[1]);
@@ -157,8 +161,11 @@ class ArcVideoEncoderTestEnvironment : public testing::Environment {
     return requested_subsequent_framerate_;
   }
 
+  bool run_at_fps() const { return args_.run_at_fps; }
+  size_t num_encoded_frames() const { return args_.num_encoded_frames; }
+
  private:
-  std::string test_stream_data_;
+  const CmdlineArgs args_;
 
   Size visible_size_;
   std::string input_file_path_;
@@ -281,6 +288,9 @@ TEST_F(ArcVideoEncoderE2ETest, TestSimpleEncode) {
         std::bind(&ArcVideoEncoderE2ETest::WriteOutputBufferToFile, this,
                   std::placeholders::_1, std::placeholders::_2));
   }
+  encoder_->set_run_at_fps(g_env->run_at_fps());
+  if (g_env->num_encoded_frames())
+    encoder_->set_num_encoded_frames(g_env->num_encoded_frames());
 
   EXPECT_TRUE(encoder_->Encode());
 }
@@ -331,10 +341,12 @@ TEST_F(ArcVideoEncoderE2ETest, PerfLatency) {
 
 }  // namespace android
 
-bool GetOption(int argc, char** argv, std::string* test_stream_data) {
-  const char* const optstring = "to:";
+bool GetOption(int argc, char** argv, android::CmdlineArgs* args) {
+  const char* const optstring = "t:rn:";
   static const struct option opts[] = {
       {"test_stream_data", required_argument, nullptr, 't'},
+      {"run_at_fps", no_argument, nullptr, 'r'},
+      {"num_encoded_frames", required_argument, nullptr, 'n'},
       {nullptr, 0, nullptr, 0},
   };
 
@@ -342,7 +354,13 @@ bool GetOption(int argc, char** argv, std::string* test_stream_data) {
   while ((opt = getopt_long(argc, argv, optstring, opts, nullptr)) != -1) {
     switch (opt) {
       case 't':
-        *test_stream_data = optarg;
+        args->test_stream_data = optarg;
+        break;
+      case 'r':
+        args->run_at_fps = true;
+        break;
+      case 'n':
+        args->num_encoded_frames = static_cast<size_t>(atoi(optarg));
         break;
       default:
         printf("[WARN] Unknown option: getopt_long() returned code 0x%x.\n",
@@ -351,7 +369,7 @@ bool GetOption(int argc, char** argv, std::string* test_stream_data) {
     }
   }
 
-  if (test_stream_data->empty()) {
+  if (args->test_stream_data.empty()) {
     printf("[ERR] Please assign test stream data by --test_stream_data\n");
     return false;
   }
@@ -359,13 +377,13 @@ bool GetOption(int argc, char** argv, std::string* test_stream_data) {
 }
 
 int main(int argc, char** argv) {
-  std::string test_stream_data;
-  if (!GetOption(argc, argv, &test_stream_data))
+  android::CmdlineArgs args;
+  if (!GetOption(argc, argv, &args))
     return EXIT_FAILURE;
 
   android::g_env = reinterpret_cast<android::ArcVideoEncoderTestEnvironment*>(
       testing::AddGlobalTestEnvironment(
-          new android::ArcVideoEncoderTestEnvironment(test_stream_data)));
+          new android::ArcVideoEncoderTestEnvironment(args)));
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
