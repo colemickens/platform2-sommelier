@@ -47,8 +47,8 @@ class MetricsCollectorTest : public Test {
             std::unique_ptr<MetricsLibraryInterface>(metrics_lib_)) {
     collector_.clock_.set_current_time_for_testing(
         base::TimeTicks::FromInternalValue(1000));
-    collector_.clock_.set_current_wall_time_for_testing(
-        base::Time::FromInternalValue(2000));
+    collector_.clock_.set_current_boot_time_for_testing(
+        base::TimeTicks::FromInternalValue(2000));
 
     power_status_.battery_percentage = 100.0;
     power_status_.battery_is_present = true;
@@ -67,8 +67,8 @@ class MetricsCollectorTest : public Test {
   void AdvanceTime(base::TimeDelta interval) {
     collector_.clock_.set_current_time_for_testing(
         collector_.clock_.GetCurrentTime() + interval);
-    collector_.clock_.set_current_wall_time_for_testing(
-        collector_.clock_.GetCurrentWallTime() + interval);
+    collector_.clock_.set_current_boot_time_for_testing(
+        collector_.clock_.GetCurrentBootTime() + interval);
   }
 
   // Adds expectations to ignore all metrics sent by HandleSessionStateChange()
@@ -612,7 +612,8 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
 
 TEST_F(MetricsCollectorTest, PowerSupplyMaxVoltageAndPower) {
   metrics_to_test_ = {
-      kPowerSupplyMaxVoltageName, kPowerSupplyMaxPowerName,
+      kPowerSupplyMaxVoltageName,
+      kPowerSupplyMaxPowerName,
   };
   IgnoreHandlePowerStatusUpdateMetrics();
   power_status_.line_power_on = false;

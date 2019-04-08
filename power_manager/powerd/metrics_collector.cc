@@ -234,7 +234,7 @@ void MetricsCollector::HandleShutdown(ShutdownReason reason) {
 void MetricsCollector::PrepareForSuspend() {
   battery_energy_before_suspend_ = last_power_status_.battery_energy;
   on_line_power_before_suspend_ = last_power_status_.line_power_on;
-  time_before_suspend_ = clock_.GetCurrentWallTime();
+  time_before_suspend_ = clock_.GetCurrentBootTime();
 }
 
 void MetricsCollector::HandleResume(int num_suspend_attempts) {
@@ -414,7 +414,7 @@ void MetricsCollector::GenerateBatteryDischargeRateWhileSuspendedMetric() {
     return;
 
   base::TimeDelta elapsed_time =
-      clock_.GetCurrentWallTime() - time_before_suspend_;
+      clock_.GetCurrentBootTime() - time_before_suspend_;
   if (elapsed_time.InSeconds() <
       kBatteryDischargeRateWhileSuspendedMinSuspendSec)
     return;

@@ -166,12 +166,12 @@ class MetricsCollector {
   base::TimeTicks screen_off_timestamp_;
 
   // Information recorded by PrepareForSuspend() just before the system
-  // suspends.  |time_before_suspend_| is intentionally base::Time rather
-  // than base::TimeTicks because the latter doesn't increase while the
-  // system is suspended.
+  // suspends. |time_before_suspend_| is initialized using CLOCK_BOOTTIME,
+  // which is identical to CLOCK_MONOTONIC, but includes any time spent in
+  // suspend.
   double battery_energy_before_suspend_ = 0.0;
   bool on_line_power_before_suspend_ = false;
-  base::Time time_before_suspend_;
+  base::TimeTicks time_before_suspend_;
 
   // Set by HandleResume() to indicate that
   // GenerateBatteryDischargeRateWhileSuspendedMetric() should send a
