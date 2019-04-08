@@ -22,9 +22,9 @@
 
 namespace cryptohome {
 
+class Credentials;
 class KeyChallengeService;
 class Tpm;
-class UsernamePasskey;
 
 // This operation decrypts the credentials for the given user and the referenced
 // cryptographic key. This operation involves making challenge request(s)
@@ -41,7 +41,7 @@ class ChallengeCredentialsDecryptOperation final
   // If the operation succeeds, |username_passkey| will contain the decrypted
   // credentials that can be used for decryption of the user's vault keyset.
   using CompletionCallback =
-      base::Callback<void(std::unique_ptr<UsernamePasskey> username_passkey)>;
+      base::Callback<void(std::unique_ptr<Credentials> username_passkey)>;
 
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.

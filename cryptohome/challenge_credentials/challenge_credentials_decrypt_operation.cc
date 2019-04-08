@@ -12,8 +12,8 @@
 #include <base/logging.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
+#include "cryptohome/credentials.h"
 #include "cryptohome/tpm.h"
-#include "cryptohome/username_passkey.h"
 
 #include "signature_sealed_data.pb.h"  // NOLINT(build/include)
 
@@ -207,7 +207,7 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
 void ChallengeCredentialsDecryptOperation::ProceedIfChallengesDone() {
   if (!salt_signature_ || !unsealed_secret_)
     return;
-  auto username_passkey = std::make_unique<UsernamePasskey>(
+  auto username_passkey = std::make_unique<Credentials>(
       account_id_.c_str(),
       ConstructPasskey(*unsealed_secret_, *salt_signature_));
   username_passkey->set_key_data(key_data_);

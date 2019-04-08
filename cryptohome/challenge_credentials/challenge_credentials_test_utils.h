@@ -18,19 +18,19 @@
 
 namespace cryptohome {
 
-class UsernamePasskey;
+class Credentials;
 
 // Structures that hold results returned from ChallengeCredentialsHelper
 // operations:
 
 // for ChallengeCredentialsHelper::GenerateNew():
 struct ChallengeCredentialsGenerateNewResult {
-  std::unique_ptr<UsernamePasskey> username_passkey;
+  std::unique_ptr<Credentials> username_passkey;
 };
 
 // for ChallengeCredentialsHelper::Decrypt():
 struct ChallengeCredentialsDecryptResult {
-  std::unique_ptr<UsernamePasskey> username_passkey;
+  std::unique_ptr<Credentials> username_passkey;
 };
 
 // Functions that make callbacks for ChallengeCredentialsHelper that store the

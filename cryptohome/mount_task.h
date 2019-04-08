@@ -34,10 +34,10 @@
 #include <brillo/process.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/credentials.h"
 #include "cryptohome/cryptohome_event_source.h"
 #include "cryptohome/mount.h"
 #include "cryptohome/pkcs11_init.h"
-#include "cryptohome/username_passkey.h"
 
 namespace cryptohome {
 
@@ -191,7 +191,7 @@ class MountTask : public base::RefCountedThreadSafe<MountTask> {
  public:
   MountTask(MountTaskObserver* observer,
             Mount* mount,
-            const UsernamePasskey& credentials,
+            const Credentials& credentials,
             int sequence_id);
   MountTask(MountTaskObserver* observer,
             Mount* mount,
@@ -230,7 +230,7 @@ class MountTask : public base::RefCountedThreadSafe<MountTask> {
     result_->set_mount(mount_);
   }
 
-  void set_credentials(const UsernamePasskey& credentials) {
+  void set_credentials(const Credentials& credentials) {
     credentials_.Assign(credentials);
   }
 
@@ -258,7 +258,7 @@ class MountTask : public base::RefCountedThreadSafe<MountTask> {
   scoped_refptr<Mount> mount_;
 
   // The Credentials associated with this task
-  UsernamePasskey credentials_;
+  Credentials credentials_;
 
   // The asychronous call id for this task
   int sequence_id_;

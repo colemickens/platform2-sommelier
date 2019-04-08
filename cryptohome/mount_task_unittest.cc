@@ -61,7 +61,6 @@ class MountTaskTest : public ::testing::Test {
   MockHomeDirs homedirs_;
   MountTaskResult result_;
   base::TimeDelta wait_time_;
-  UsernamePasskey empty_credentials_;
 
   // An atomic incrementing sequence for setting asynchronous call ids.
   base::AtomicSequenceNumber sequence_holder_;

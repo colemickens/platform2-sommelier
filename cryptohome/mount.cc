@@ -43,7 +43,6 @@
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm.h"
-#include "cryptohome/username_passkey.h"
 #include "cryptohome/vault_keyset.h"
 
 #include "vault_keyset.pb.h"  // NOLINT(build/include)

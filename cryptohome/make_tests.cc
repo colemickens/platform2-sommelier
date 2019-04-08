@@ -33,7 +33,6 @@
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mount.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
-#include "cryptohome/username_passkey.h"
 #include "cryptohome/vault_keyset.h"
 
 using base::FilePath;
@@ -230,7 +229,7 @@ void TestUser::GenerateCredentials(bool force_ecryptfs) {
   cryptohome::Crypto::PasswordToPasskey(password,
                                         sec_salt,
                                         &passkey);
-  UsernamePasskey up(username, passkey);
+  Credentials up(username, passkey);
   if (use_key_data) {
     if (is_le_credential)
         key_data.set_label("PIN");

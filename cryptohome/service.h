@@ -53,9 +53,9 @@ struct Cryptohome;
 class BootAttributes;
 class BootLockbox;
 class ChallengeCredentialsHelper;
+class Credentials;
 // Wrapper for all timers used by the cryptohome daemon.
 class TimerCollection;
-class UsernamePasskey;
 
 extern const int64_t kNotifyDiskSpaceThreshold;
 
@@ -327,7 +327,7 @@ class Service : public brillo::dbus::AbstractDbusService,
 
   void DoUpdateTimestamp(scoped_refptr<Mount> mount);
   void DoMount(scoped_refptr<cryptohome::Mount> mount,
-               const UsernamePasskey& credentials,
+               const Credentials& credentials,
                const Mount::MountArgs& mount_args,
                base::WaitableEvent* event,
                MountError* return_code,
@@ -898,7 +898,7 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
       std::unique_ptr<MountRequest> request,
       const Mount::MountArgs& mount_args,
       DBusGMethodInvocation* context,
-      std::unique_ptr<UsernamePasskey> username_passkey);
+      std::unique_ptr<Credentials> username_passkey);
 
   // Called on Mount thread. This method completes the MountEx request, given
   // the built Credentials object. It assumes that the input parameters went

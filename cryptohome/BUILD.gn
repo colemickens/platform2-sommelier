@@ -345,6 +345,7 @@ if (use.test) {
       "bootlockbox/boot_lockbox_unittest.cc",
       "challenge_credentials/challenge_credentials_helper_unittest.cc",
       "challenge_credentials/challenge_credentials_test_utils.cc",
+      "credentials_unittest.cc",
       "crypto_unittest.cc",
       "cryptohome_event_source_unittest.cc",
       "cryptolib_unittest.cc",
@@ -390,7 +391,6 @@ if (use.test) {
       "tpm_persistent_state_unittest.cc",
       "user_oldest_activity_timestamp_cache_unittest.cc",
       "user_session_unittest.cc",
-      "username_passkey_unittest.cc",
       "vault_keyset_unittest.cc",
     ]
     libs = [

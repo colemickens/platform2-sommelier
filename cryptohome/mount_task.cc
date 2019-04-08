@@ -13,7 +13,7 @@ const char* kPkcs11InitResultEventType = "Pkcs11InitResult";
 
 MountTask::MountTask(MountTaskObserver* observer,
                      Mount* mount,
-                     const UsernamePasskey& credentials,
+                     const Credentials& credentials,
                      int sequence_id)
     : mount_(mount),
       credentials_(),

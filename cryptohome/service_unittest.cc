@@ -31,6 +31,7 @@
 
 #include "cryptohome/bootlockbox/mock_boot_attributes.h"
 #include "cryptohome/bootlockbox/mock_boot_lockbox.h"
+#include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/glib_transition.h"
 #include "cryptohome/interface.h"
@@ -48,7 +49,6 @@
 #include "cryptohome/mock_tpm_init.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
-#include "cryptohome/username_passkey.h"
 
 using base::FilePath;
 using base::PlatformThread;

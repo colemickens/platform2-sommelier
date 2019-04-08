@@ -30,7 +30,6 @@
 #include "cryptohome/obfuscated_username.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
-#include "cryptohome/username_passkey.h"
 #include "cryptohome/vault_keyset.h"
 
 #include "key.pb.h"  // NOLINT(build/include)
@@ -1440,7 +1439,7 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
                        scoped_refptr<Mount> user_mount) {
   SecureBlob newkey;
   newcreds.GetPasskey(&newkey);
-  UsernamePasskey oldcreds(newcreds.username().c_str(), oldkey);
+  Credentials oldcreds(newcreds.username().c_str(), oldkey);
   std::string obfuscated = newcreds.GetObfuscatedUsername(system_salt_);
   if (!user_mount) {
     user_mount = mount_factory_->New();

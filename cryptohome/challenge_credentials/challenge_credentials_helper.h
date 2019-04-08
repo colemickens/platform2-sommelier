@@ -24,9 +24,9 @@
 namespace cryptohome {
 
 class ChallengeCredentialsOperation;
+class Credentials;
 class KeyChallengeService;
 class Tpm;
-class UsernamePasskey;
 
 // This class provides generation of credentials for challenge-protected vault
 // keysets, and verification of key validity for such keysets.
@@ -53,16 +53,16 @@ class ChallengeCredentialsHelper final {
   // keyset, with the challenge_credentials_keyset_info() field containing the
   // data to be stored in the created vault keyset.
   // If the operation fails, the argument will be null.
-  using GenerateNewCallback = base::Callback<void(
-      std::unique_ptr<UsernamePasskey> /* username_passkey */)>;
+  using GenerateNewCallback =
+      base::Callback<void(std::unique_ptr<Credentials> /* username_passkey */)>;
 
   // This callback reports result of a Decrypt() call.
   //
   // If the operation succeeds, |username_passkey| will contain the built
   // credentials that should be used for decrypting the user's vault keyset.
   // If the operation fails, the argument will be null.
-  using DecryptCallback = base::Callback<void(
-      std::unique_ptr<UsernamePasskey> /* username_passkey */)>;
+  using DecryptCallback =
+      base::Callback<void(std::unique_ptr<Credentials> /* username_passkey */)>;
 
   // This callback reports result of a VerifyKey() call.
   //
@@ -145,15 +145,14 @@ class ChallengeCredentialsHelper final {
   // Wrapper for the completion callback of GenerateNew(). Cleans up resources
   // associated with the operation and forwards results to the original
   // callback.
-  void OnGenerateNewCompleted(
-      const GenerateNewCallback& original_callback,
-      std::unique_ptr<UsernamePasskey> username_passkey);
+  void OnGenerateNewCompleted(const GenerateNewCallback& original_callback,
+                              std::unique_ptr<Credentials> username_passkey);
 
   // Wrapper for the completion callback of Decrypt(). Cleans up resources
   // associated with the operation and forwards results to the original
   // callback.
   void OnDecryptCompleted(const DecryptCallback& original_callback,
-                          std::unique_ptr<UsernamePasskey> username_passkey);
+                          std::unique_ptr<Credentials> username_passkey);
 
   // Non-owned.
   Tpm* const tpm_;

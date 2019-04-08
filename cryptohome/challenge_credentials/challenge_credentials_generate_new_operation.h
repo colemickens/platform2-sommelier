@@ -23,9 +23,9 @@
 
 namespace cryptohome {
 
+class Credentials;
 class KeyChallengeService;
 class Tpm;
-class UsernamePasskey;
 
 // This operation generates new credentials for the given user and the
 // referenced cryptographic key. This operation involves making challenge
@@ -44,7 +44,7 @@ class ChallengeCredentialsGenerateNewOperation final
   // with the challenge_credentials_keyset_info() field containing the data to
   // be stored in the created vault keyset.
   using CompletionCallback =
-      base::Callback<void(std::unique_ptr<UsernamePasskey> username_passkey)>;
+      base::Callback<void(std::unique_ptr<Credentials> username_passkey)>;
 
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.

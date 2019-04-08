@@ -12,10 +12,10 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_decrypt_operation.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_generate_new_operation.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
+#include "cryptohome/credentials.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/signature_sealing_backend.h"
 #include "cryptohome/tpm.h"
-#include "cryptohome/username_passkey.h"
 
 using brillo::Blob;
 
@@ -110,7 +110,7 @@ void ChallengeCredentialsHelper::CancelRunningOperation() {
 
 void ChallengeCredentialsHelper::OnGenerateNewCompleted(
     const GenerateNewCallback& original_callback,
-    std::unique_ptr<UsernamePasskey> username_passkey) {
+    std::unique_ptr<Credentials> username_passkey) {
   DCHECK(thread_checker_.CalledOnValidThread());
   CancelRunningOperation();
   original_callback.Run(std::move(username_passkey));
@@ -118,7 +118,7 @@ void ChallengeCredentialsHelper::OnGenerateNewCompleted(
 
 void ChallengeCredentialsHelper::OnDecryptCompleted(
     const DecryptCallback& original_callback,
-    std::unique_ptr<UsernamePasskey> username_passkey) {
+    std::unique_ptr<Credentials> username_passkey) {
   DCHECK(thread_checker_.CalledOnValidThread());
   CancelRunningOperation();
   original_callback.Run(std::move(username_passkey));

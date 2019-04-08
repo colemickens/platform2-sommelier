@@ -262,6 +262,7 @@ static_library("libcryptohome") {
     "../challenge_credentials/challenge_credentials_helper.cc",
     "../challenge_credentials/challenge_credentials_operation.cc",
     "../chaps_client_factory.cc",
+    "../credentials.cc",
     "../cryptohome_event_source.cc",
     "../dbus_transition.cc",
     "../dircrypto_data_migrator/atomic_flag.cc",
@@ -282,7 +283,6 @@ static_library("libcryptohome") {
     "../stateful_recovery.cc",
     "../user_oldest_activity_timestamp_cache.cc",
     "../user_session.cc",
-    "../username_passkey.cc",
     "../vault_keyset_factory.cc",
   ]
 

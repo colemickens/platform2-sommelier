@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 #include <policy/mock_device_policy.h>
 
+#include "cryptohome/credentials.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/make_tests.h"
 #include "cryptohome/mock_crypto.h"
@@ -28,7 +29,6 @@
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/mock_vault_keyset_factory.h"
 #include "cryptohome/mount.h"
-#include "cryptohome/username_passkey.h"
 
 #include "signed_secret.pb.h"  // NOLINT(build/include)
 
@@ -1471,7 +1471,7 @@ TEST_P(HomeDirsTest, GoodDecryptTest) {
   SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(test_helper_.users[1].password,
                                         system_salt, &passkey);
-  UsernamePasskey up(test_helper_.users[1].username, passkey);
+  Credentials up(test_helper_.users[1].username, passkey);
 
   ASSERT_TRUE(homedirs_.AreCredentialsValid(up));
 }
@@ -1490,7 +1490,7 @@ TEST_P(HomeDirsTest, BadDecryptTest) {
       .WillRepeatedly(Return(false));
   SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey("bogus", system_salt, &passkey);
-  UsernamePasskey up(test_helper_.users[4].username, passkey);
+  Credentials up(test_helper_.users[4].username, passkey);
 
   ASSERT_FALSE(homedirs_.AreCredentialsValid(up));
 }
@@ -1605,7 +1605,7 @@ class KeysetManagementTest : public HomeDirsTest {
     SecureBlob passkey;
     cryptohome::Crypto::PasswordToPasskey(test_helper_.users[1].password,
                                           system_salt_, &passkey);
-    up_.reset(new UsernamePasskey(test_helper_.users[1].username, passkey));
+    up_.reset(new Credentials(test_helper_.users[1].username, passkey));
 
     // Since most of the tests were written without reset_seed in mind,
     // it is tedious to add expectations to every test, for the situation
@@ -1625,7 +1625,7 @@ class KeysetManagementTest : public HomeDirsTest {
   MockVaultKeyset* active_vks_[MAX_VKS];
   std::vector<FilePath> keyset_paths_;
   std::vector<brillo::SecureBlob> keys_;
-  std::unique_ptr<UsernamePasskey> up_;
+  std::unique_ptr<Credentials> up_;
   SecureBlob system_salt_;
   SerializedVaultKeyset serialized_;
 };
@@ -2025,7 +2025,7 @@ TEST_P(KeysetManagementTest, UpdateKeysetBadSecret) {
   serialized_.mutable_key_data()->set_label("current label");
 
   SecureBlob bad_pass("not it");
-  up_.reset(new UsernamePasskey(test_helper_.users[1].username, bad_pass));
+  up_.reset(new Credentials(test_helper_.users[1].username, bad_pass));
   EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
             homedirs_.UpdateKeyset(*up_,
                                    const_cast<const Key *>(&new_key),
@@ -2114,7 +2114,7 @@ TEST_P(KeysetManagementTest, AddKeysetInvalidCreds) {
   EXPECT_CALL(platform_, DeleteFile(_, _))
     .Times(0);
   // Try to authenticate with an unknown key.
-  UsernamePasskey bad_p(test_helper_.users[1].username, newkey);
+  Credentials bad_p(test_helper_.users[1].username, newkey);
   ASSERT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
             homedirs_.AddKeyset(bad_p, newkey, NULL, false, &index));
   EXPECT_EQ(index, -1);

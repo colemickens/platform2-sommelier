@@ -11,7 +11,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome/username_passkey.h"
+#include "cryptohome/credentials.h"
 
 using brillo::Blob;
 using brillo::SecureBlob;
@@ -24,7 +24,7 @@ MakeChallengeCredentialsGenerateNewResultWriter(
   DCHECK(!*result);
   return base::Bind(
       [](std::unique_ptr<ChallengeCredentialsGenerateNewResult>* result,
-         std::unique_ptr<UsernamePasskey> username_passkey) {
+         std::unique_ptr<Credentials> username_passkey) {
         ASSERT_FALSE(*result);
         *result = std::make_unique<ChallengeCredentialsGenerateNewResult>();
         (*result)->username_passkey = std::move(username_passkey);
@@ -38,7 +38,7 @@ MakeChallengeCredentialsDecryptResultWriter(
   DCHECK(!*result);
   return base::Bind(
       [](std::unique_ptr<ChallengeCredentialsDecryptResult>* result,
-         std::unique_ptr<UsernamePasskey> username_passkey) {
+         std::unique_ptr<Credentials> username_passkey) {
         ASSERT_FALSE(*result);
         *result = std::make_unique<ChallengeCredentialsDecryptResult>();
         (*result)->username_passkey = std::move(username_passkey);

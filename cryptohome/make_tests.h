@@ -14,12 +14,12 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 
+#include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/homedirs.h"
 #include "cryptohome/make_tests.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/username_passkey.h"
 #include "cryptohome/vault_keyset.h"
 
 #include "vault_keyset.pb.h"  // NOLINT(build/include)

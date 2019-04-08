@@ -10,9 +10,9 @@
 #include <gtest/gtest.h>
 #include <string>
 
+#include "cryptohome/credentials.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/username_passkey.h"
 
 using brillo::SecureBlob;
 
@@ -37,14 +37,14 @@ class UserSessionTest : public ::testing::Test {
 };
 
 TEST_F(UserSessionTest, InitTest) {
-  UsernamePasskey up("username", SecureBlob("password"));
+  Credentials up("username", SecureBlob("password"));
   UserSession session;
   session.Init(salt);
   EXPECT_TRUE(session.SetUser(up));
 }
 
 TEST_F(UserSessionTest, CheckUserTest) {
-  UsernamePasskey up("username", SecureBlob("password"));
+  Credentials up("username", SecureBlob("password"));
   UserSession session;
   session.Init(salt);
   EXPECT_TRUE(session.SetUser(up));
@@ -52,8 +52,8 @@ TEST_F(UserSessionTest, CheckUserTest) {
 }
 
 TEST_F(UserSessionTest, ReInitTest) {
-  UsernamePasskey up("username", SecureBlob("password"));
-  UsernamePasskey up_new("username2", SecureBlob("password2"));
+  Credentials up("username", SecureBlob("password"));
+  Credentials up_new("username2", SecureBlob("password2"));
   UserSession session;
   session.Init(salt);
   EXPECT_TRUE(session.SetUser(up));
@@ -63,7 +63,7 @@ TEST_F(UserSessionTest, ReInitTest) {
 }
 
 TEST_F(UserSessionTest, ResetTest) {
-  UsernamePasskey up("username", SecureBlob("password"));
+  Credentials up("username", SecureBlob("password"));
   UserSession session;
   session.Init(salt);
   EXPECT_TRUE(session.SetUser(up));
@@ -72,7 +72,7 @@ TEST_F(UserSessionTest, ResetTest) {
 }
 
 TEST_F(UserSessionTest, VerifyTest) {
-  UsernamePasskey up("username", SecureBlob("password"));
+  Credentials up("username", SecureBlob("password"));
   UserSession session;
   session.Init(salt);
   EXPECT_TRUE(session.SetUser(up));

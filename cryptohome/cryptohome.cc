@@ -39,7 +39,6 @@
 #include "cryptohome/obfuscated_username.h"
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/username_passkey.h"
 
 #include "attestation.pb.h"  // NOLINT(build/include)
 #include "bindings/cryptohome.dbusclient.h"

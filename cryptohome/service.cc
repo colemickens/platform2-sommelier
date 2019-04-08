@@ -46,6 +46,7 @@
 #include "cryptohome/bootlockbox/boot_attributes.h"
 #include "cryptohome/bootlockbox/boot_lockbox.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
+#include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_event_source.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -62,7 +63,6 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/stateful_recovery.h"
 #include "cryptohome/tpm.h"
-#include "cryptohome/username_passkey.h"
 
 #include "key.pb.h"  // NOLINT(build/include)
 #include "rpc.pb.h"  // NOLINT(build/include)
@@ -1037,9 +1037,9 @@ void Service::DoCheckKeyEx(AccountIdentifier* identifier,
     return;
   }
 
-  UsernamePasskey credentials(GetAccountId(*identifier).c_str(),
-                              SecureBlob(authorization->key().secret().begin(),
-                                         authorization->key().secret().end()));
+  Credentials credentials(GetAccountId(*identifier).c_str(),
+                          SecureBlob(authorization->key().secret().begin(),
+                                     authorization->key().secret().end()));
   credentials.set_key_data(authorization->key().data());
 
   BaseReply reply;
@@ -1127,9 +1127,9 @@ void Service::DoRemoveKeyEx(AccountIdentifier* identifier,
   }
 
   BaseReply reply;
-  UsernamePasskey credentials(GetAccountId(*identifier).c_str(),
-                              SecureBlob(authorization->key().secret().begin(),
-                                         authorization->key().secret().end()));
+  Credentials credentials(GetAccountId(*identifier).c_str(),
+                          SecureBlob(authorization->key().secret().begin(),
+                                     authorization->key().secret().end()));
   credentials.set_key_data(authorization->key().data());
 
   if (!homedirs_->Exists(credentials.GetObfuscatedUsername(system_salt_))) {
@@ -1333,8 +1333,8 @@ void Service::DoMigrateKeyEx(AccountIdentifier* account,
     return;
   }
 
-  UsernamePasskey credentials(account->account_id().c_str(),
-                              SecureBlob(migrate_request->secret()));
+  Credentials credentials(account->account_id().c_str(),
+                          SecureBlob(migrate_request->secret()));
 
   scoped_refptr<cryptohome::Mount> mount =
       GetMountForUser(GetAccountId(*account));
@@ -1420,9 +1420,9 @@ void Service::DoAddKeyEx(AccountIdentifier* identifier,
     return;
   }
 
-  UsernamePasskey credentials(GetAccountId(*identifier).c_str(),
-                              SecureBlob(authorization->key().secret().begin(),
-                                         authorization->key().secret().end()));
+  Credentials credentials(GetAccountId(*identifier).c_str(),
+                          SecureBlob(authorization->key().secret().begin(),
+                                     authorization->key().secret().end()));
   credentials.set_key_data(authorization->key().data());
 
   if (!homedirs_->Exists(credentials.GetObfuscatedUsername(system_salt_))) {
@@ -1508,9 +1508,9 @@ void Service::DoUpdateKeyEx(AccountIdentifier* identifier,
     return;
   }
 
-  UsernamePasskey credentials(GetAccountId(*identifier).c_str(),
-                              SecureBlob(authorization->key().secret().begin(),
-                                         authorization->key().secret().end()));
+  Credentials credentials(GetAccountId(*identifier).c_str(),
+                          SecureBlob(authorization->key().secret().begin(),
+                                     authorization->key().secret().end()));
   credentials.set_key_data(authorization->key().data());
 
   if (!homedirs_->Exists(credentials.GetObfuscatedUsername(system_salt_))) {
@@ -1684,7 +1684,7 @@ gboolean Service::GetSystemSalt(GArray **OUT_salt, GError **error) {
 gboolean Service::GetSanitizedUsername(gchar *username,
                                        gchar **OUT_sanitized,
                                        GError **error) {
-  // UsernamePasskey::GetObfuscatedUsername() returns an uppercase hex encoding,
+  // Credentials::GetObfuscatedUsername() returns an uppercase hex encoding,
   // while SanitizeUserName() returns a lowercase hex encoding. They should
   // return the same value, but login_manager is already relying on
   // SanitizeUserName() and that's the value that chrome should see.
@@ -1734,7 +1734,7 @@ void Service::DoUpdateTimestamp(scoped_refptr<cryptohome::Mount> mount) {
 }
 
 void Service::DoMount(scoped_refptr<cryptohome::Mount> mount,
-                      const UsernamePasskey& credentials,
+                      const Credentials& credentials,
                       const Mount::MountArgs& mount_args,
                       base::WaitableEvent* event,
                       MountError* return_code,
@@ -1766,7 +1766,7 @@ gboolean Service::Mount(const gchar *userid,
     // This could run on every interaction to catch any unused mounts.
     CleanUpStaleMounts(false);
 
-  UsernamePasskey credentials(userid, SecureBlob(key, key + strlen(key)));
+  Credentials credentials(userid, SecureBlob(key, key + strlen(key)));
 
   scoped_refptr<cryptohome::Mount> guest_mount = GetMountForUser(guest_user_);
   bool guest_mounted = guest_mount.get() && guest_mount->IsMounted();
@@ -2010,7 +2010,7 @@ void Service::DoMountEx(std::unique_ptr<AccountIdentifier> identifier,
     return;
   }
 
-  auto username_passkey = std::make_unique<UsernamePasskey>(
+  auto username_passkey = std::make_unique<Credentials>(
       account_id.c_str(), SecureBlob(authorization->key().secret().begin(),
                                      authorization->key().secret().end()));
   // Everything else can be the default.
@@ -2127,7 +2127,7 @@ void Service::OnChallengeResponseMountCredentialsObtained(
     std::unique_ptr<MountRequest> request,
     const Mount::MountArgs& mount_args,
     DBusGMethodInvocation* context,
-    std::unique_ptr<UsernamePasskey> username_passkey) {
+    std::unique_ptr<Credentials> username_passkey) {
   DCHECK_EQ(authorization->key().data().type(),
             KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
   if (!username_passkey) {

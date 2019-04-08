@@ -19,13 +19,13 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_test_utils.h"
+#include "cryptohome/credentials.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mock_key_challenge_service.h"
 #include "cryptohome/mock_signature_sealing_backend.h"
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/signature_sealing_backend.h"
 #include "cryptohome/signature_sealing_backend_test_utils.h"
-#include "cryptohome/username_passkey.h"
 
 #include "key.pb.h"                    // NOLINT(build/include)
 #include "rpc.pb.h"                    // NOLINT(build/include)
@@ -154,7 +154,7 @@ class ChallengeCredentialsHelperTestBase : public testing::Test {
     challenge_credentials_helper_.Decrypt(
         kUserEmail, key_data, keyset_challenge_info,
         std::move(mock_key_challenge_service),
-        base::Bind([](std::unique_ptr<UsernamePasskey>) {}));
+        base::Bind([](std::unique_ptr<Credentials>) {}));
   }
 
   // Assert that the given GenerateNew() operation result is a valid success
@@ -285,8 +285,7 @@ class ChallengeCredentialsHelperTestBase : public testing::Test {
   const Blob kDelegateSecret{{2, 2, 2}};
   // Fake user e-mail. It's supplied to the ChallengeCredentialsHelper operation
   // methods. Then it's verified to be passed alongside challenge requests made
-  // via KeyChallengeService, and to be present in the resulting
-  // UsernamePasskey.
+  // via KeyChallengeService, and to be present in the resulting Credentials.
   const std::string kUserEmail = "foo@example.com";
   // Fake Subject Public Key Information of the challenged cryptographic key.
   // It's supplied to the ChallengeCredentialsHelper operation methods as a
@@ -317,8 +316,8 @@ class ChallengeCredentialsHelperTestBase : public testing::Test {
   // Fake signature of |kSalt| using the |salt_challenge_algorithm_| algorithm.
   // It's injected as a fake response to the salt challenge request made via
   // KeyChallengeService. Then it's implicitly verified to be used for the
-  // generation of the passkey in the resulting UsernamePasskey - see the
-  // |kPasskey| constant.
+  // generation of the passkey in the resulting Credentials - see the |kPasskey|
+  // constant.
   const Blob kSaltSignature{{5, 5, 5}};
   // Fake challenge value for unsealing the secret. It's injected as a fake
   // value returned from SignatureSealingBackend::UnsealingSession. Then it's
@@ -336,10 +335,10 @@ class ChallengeCredentialsHelperTestBase : public testing::Test {
   // method. When testing the Decrypt() operation, it's injected as a fake
   // result of the Unseal() method of SignatureSealingBackend::UnsealingSession.
   // Also this constant is implicitly verified to be used for the generation of
-  // the passkey in the resulting UsernamePasskey - see the |kPasskey| constant.
+  // the passkey in the resulting Credentials - see the |kPasskey| constant.
   const Blob kTpmProtectedSecret{{8, 8, 8}};
 
-  // The expected passkey of the resulting UsernamePasskey returned from the
+  // The expected passkey of the resulting Credentials returned from the
   // ChallengeCredentialsHelper operations. Its value is derived from the
   // injected fake data.
   const Blob kPasskey =

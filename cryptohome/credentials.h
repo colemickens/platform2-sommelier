@@ -2,14 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Credentials is the interface for objects that wrap up a set
-// of credentials with which we can authenticate or mount.
-
 #ifndef CRYPTOHOME_CREDENTIALS_H_
 #define CRYPTOHOME_CREDENTIALS_H_
 
 #include <string>
 
+#include <base/macros.h>
 #include <brillo/secure_blob.h>
 
 #include "key.pb.h"  // NOLINT(build/include)
@@ -17,38 +15,58 @@
 
 namespace cryptohome {
 
-class Credentials {
+// This class wraps a username/passkey pair that can be used to authenticate the
+// user.
+class Credentials final {
  public:
-  Credentials() {}
-  virtual ~Credentials() {}
+  Credentials();
+  Credentials(const char* username, const brillo::SecureBlob& passkey);
+  ~Credentials();
+
+  void Assign(const Credentials& rhs);
 
   // Returns the full user name as a std::string
-  //
-  // Parameters
-  //
-  virtual std::string username() const = 0;
+  std::string username() const { return username_; }
 
   // Returns the obfuscated username, used as the name of the directory
   // containing the user's stateful data (and maybe used for other reasons
   // at some point.)
-  virtual std::string GetObfuscatedUsername(
-      const brillo::SecureBlob &system_salt) const = 0;
+  std::string GetObfuscatedUsername(
+      const brillo::SecureBlob& system_salt) const;
 
   // Returns the user's passkey
   //
   // Parameters
-  //  passkey - A SecureBlob containing the passkey
+  //  passkey - A SecureBlob where the passkey should be written to.
   //
-  virtual void GetPasskey(brillo::SecureBlob* passkey) const = 0;
+  void GetPasskey(brillo::SecureBlob* passkey) const;
 
-  // Returns the associated KeyData for the passkey, if defined.
-  virtual const KeyData& key_data() const = 0;
+  // Getter and setter for the associated KeyData.
+  void set_key_data(const KeyData& data) { key_data_ = data; }
+  const KeyData& key_data() const { return key_data_; }
 
-  // Returns the associated SerializedVaultKeyset_SignatureChallengeInfo for the
-  // passkey, if defined. Used only for freshly generated challenge-protected
-  // credentials (see ChallengeCredentialsHelper::GenerateNew()).
-  virtual const SerializedVaultKeyset_SignatureChallengeInfo&
-  challenge_credentials_keyset_info() const = 0;
+  // Getter and setter for the associated
+  // SerializedVaultKeyset::SignatureChallengeInfo.
+  // Used only for freshly generated challenge-protected credentials (see
+  // ChallengeCredentialsHelper::GenerateNew()).
+  void set_challenge_credentials_keyset_info(
+      const SerializedVaultKeyset_SignatureChallengeInfo&
+          challenge_credentials_keyset_info) {
+    challenge_credentials_keyset_info_ = challenge_credentials_keyset_info;
+  }
+  const SerializedVaultKeyset_SignatureChallengeInfo&
+  challenge_credentials_keyset_info() const {
+    return challenge_credentials_keyset_info_;
+  }
+
+ private:
+  std::string username_;
+  KeyData key_data_;
+  SerializedVaultKeyset_SignatureChallengeInfo
+      challenge_credentials_keyset_info_;
+  brillo::SecureBlob passkey_;
+
+  DISALLOW_COPY_AND_ASSIGN(Credentials);
 };
 
 }  // namespace cryptohome

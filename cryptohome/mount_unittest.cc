@@ -30,6 +30,7 @@
 #include <policy/mock_device_policy.h>
 
 #include "cryptohome/bootlockbox/mock_boot_lockbox.h"
+#include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptolib.h"
@@ -46,7 +47,6 @@
 #include "cryptohome/mock_user_session.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
-#include "cryptohome/username_passkey.h"
 #include "cryptohome/vault_keyset.h"
 
 
@@ -316,9 +316,8 @@ class MountTest
 
     InsertTestUsers(&kDefaultUsers[kPinUserIndex], 1);
     pin_user_ = &helper_.users[0];
-    pin_up_ = std::make_unique<UsernamePasskey>(
-        pin_user_->username,
-        SecureBlob(HexDecode(kHexVaultKey)));
+    pin_up_ = std::make_unique<Credentials>(
+        pin_user_->username, SecureBlob(HexDecode(kHexVaultKey)));
     KeyData pin_label;
     pin_label.set_label("PIN");
     pin_up_->set_key_data(pin_label);
@@ -566,7 +565,7 @@ class MountTest
   FakeLECredentialBackend le_cred_backend_;
   cryptohome::MockLECredentialManager* le_cred_manager_;
   TestUser* pin_user_;
-  std::unique_ptr<UsernamePasskey> pin_up_;
+  std::unique_ptr<Credentials> pin_up_;
   MockChapsClientFactory chaps_client_factory_;
   std::unique_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
   scoped_refptr<Mount> mount_;
@@ -586,7 +585,7 @@ TEST_P(MountTest, BadInitTest) {
   SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[0].password,
                                         helper_.system_salt, &passkey);
-  UsernamePasskey up(kDefaultUsers[0].username, passkey);
+  Credentials up(kDefaultUsers[0].username, passkey);
 
   // Shadow root creation should fail.
   EXPECT_CALL(platform_, DirectoryExists(FilePath("/dev/null")))
@@ -620,7 +619,7 @@ TEST_P(MountTest, CurrentCredentialsTest) {
   SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[3].password,
                                         helper_.system_salt, &passkey);
-  UsernamePasskey up(kDefaultUsers[3].username, passkey);
+  Credentials up(kDefaultUsers[3].username, passkey);
 
   EXPECT_TRUE(DoMountInit());
 
@@ -642,7 +641,7 @@ TEST_P(MountTest, BadDecryptTest) {
   // properly denies access with a bad passkey.
   SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey("bogus", helper_.system_salt, &passkey);
-  UsernamePasskey up(kDefaultUsers[4].username, passkey);
+  Credentials up(kDefaultUsers[4].username, passkey);
 
   EXPECT_TRUE(DoMountInit());
   ASSERT_FALSE(mount_->AreValid(up));
@@ -663,7 +662,7 @@ TEST_P(MountTest, MountCryptohomeNoPrivileges) {
   user->key_data.mutable_privileges()->set_mount(false);
   // Regenerate the serialized vault keyset.
   user->GenerateCredentials(ShouldTestEcryptfs());
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
   // Let the legacy key iteration work here.
 
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_, shared_gid_,
@@ -706,7 +705,7 @@ TEST_P(MountTest, MountCryptohomeHasPrivileges) {
   user->key_data.mutable_privileges()->set_mount(true);
   // Regenerate the serialized vault keyset.
   user->GenerateCredentials(ShouldTestEcryptfs());
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
   // Let the legacy key iteration work here.
 
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_, shared_gid_,
@@ -1040,7 +1039,7 @@ TEST_P(MountTest, CreateCryptohomeTest) {
   homedirs.set_shadow_root(kImageDir);
 
   TestUser *user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   EXPECT_TRUE(DoMountInit());
   EXPECT_TRUE(homedirs.Init(&platform_, mount_->crypto(),
@@ -1111,7 +1110,7 @@ TEST_P(MountTest, GoodReDecryptTest) {
   crypto_.set_use_tpm(true);
 
   TestUser *user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   EXPECT_CALL(tpm_init_, HasCryptohomeKey())
     .WillOnce(Return(false))
@@ -1240,7 +1239,7 @@ TEST_P(MountTest, TpmWrappedToPcrBoundMigrationTest) {
   crypto_.set_use_tpm(true);
 
   TestUser *user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   EXPECT_CALL(tpm_init_, HasCryptohomeKey())
     .WillRepeatedly(Return(true));
@@ -1335,7 +1334,7 @@ TEST_P(MountTest, MountCryptohome) {
   EXPECT_TRUE(DoMountInit());
 
   TestUser *user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_, shared_gid_,
                         kDaemonGid, ShouldTestEcryptfs());
@@ -1364,7 +1363,7 @@ TEST_P(MountTest, MountCryptohomeChapsKey) {
 
   InsertTestUsers(&kDefaultUsers[0], 1);
   TestUser* user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   user->InjectKeyset(&platform_, true);
   VaultKeyset vault_keyset;
@@ -1411,7 +1410,7 @@ TEST_P(MountTest, MountCryptohomeNoChapsKey) {
 
   InsertTestUsers(&kDefaultUsers[0], 1);
   TestUser* user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   user->InjectKeyset(&platform_, true);
   VaultKeyset vault_keyset;
@@ -1569,7 +1568,7 @@ TEST_P(MountTest, MountCryptohomeNoChange) {
 
   InsertTestUsers(&kDefaultUsers[11], 1);
   TestUser* user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   user->InjectKeyset(&platform_, true);
   VaultKeyset vault_keyset;
@@ -1616,7 +1615,7 @@ TEST_P(MountTest, MountCryptohomeNoCreate) {
   // Test user at index 12 hasn't been created
   InsertTestUsers(&kDefaultUsers[12], 1);
   TestUser* user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   // Doesn't exist.
   EXPECT_CALL(platform_, DirectoryExists(user->vault_path))
@@ -1688,7 +1687,7 @@ TEST_P(MountTest, UserActivityTimestampUpdated) {
 
   InsertTestUsers(&kDefaultUsers[9], 1);
   TestUser* user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   EXPECT_CALL(platform_,
       CreateDirectory(
@@ -1786,7 +1785,7 @@ TEST_P(MountTest, LockboxGetsFinalized) {
   mount_->set_boot_lockbox(&lockbox);
   ASSERT_TRUE(DoMountInit());
   EXPECT_CALL(lockbox, FinalizeBoot()).Times(2).WillRepeatedly(Return(true));
-  UsernamePasskey up("username", SecureBlob("password"));
+  Credentials up("username", SecureBlob("password"));
   Mount::MountArgs args = GetDefaultMountArgs();
   MountError error = MOUNT_ERROR_NONE;
   EXPECT_EQ(premount_callback_counter_, 0);
@@ -1826,7 +1825,7 @@ TEST_P(MountTest, TwoWayKeysetMigrationTest) {
 
   InsertTestUsers(&kDefaultUsers[7], 1);
   TestUser *user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
   user->InjectKeyset(&platform_, true);
   // We now have Scrypt-wrapped key injected
 
@@ -1960,7 +1959,7 @@ TEST_P(MountTest, BothFlagsMigrationTest) {
 
   InsertTestUsers(&kDefaultUsers[7], 1);
   TestUser *user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
   user->InjectKeyset(&platform_, true);
   // We now have Scrypt-wrapped key injected
 
@@ -2048,7 +2047,7 @@ TEST_P(MountTest, CreateTrackedSubdirectories) {
   EXPECT_TRUE(DoMountInit());
   InsertTestUsers(&kDefaultUsers[0], 1);
   TestUser *user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   FilePath dest_dir;
   if (ShouldTestEcryptfs()) {
@@ -2088,7 +2087,7 @@ TEST_P(MountTest, CreateTrackedSubdirectoriesReplaceExistingDir) {
   EXPECT_TRUE(DoMountInit());
   InsertTestUsers(&kDefaultUsers[0], 1);
   TestUser *user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   FilePath dest_dir;
   if (ShouldTestEcryptfs()) {
@@ -2146,7 +2145,7 @@ TEST_P(MountTest, MountCryptohomePreviousMigrationIncomplete) {
   InsertTestUsers(&kDefaultUsers[10], 1);
   TestUser* user = &helper_.users[0];
   user->InjectKeyset(&platform_, true);
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   // Not legacy
   EXPECT_CALL(platform_, FileExists(user->image_path))
@@ -2180,7 +2179,7 @@ TEST_P(MountTest, MountCryptohomeToMigrateFromEcryptfs) {
   EXPECT_TRUE(DoMountInit());
 
   TestUser *user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   user->InjectKeyset(&platform_, ShouldTestEcryptfs());
 
@@ -2242,7 +2241,7 @@ TEST_P(MountTest, MountCryptohomeShadowOnly) {
   EXPECT_TRUE(DoMountInit());
 
   TestUser* user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   user->InjectKeyset(&platform_, true);
 
@@ -2297,7 +2296,7 @@ TEST_P(MountTest, MountCryptohomeForceDircrypto) {
       .WillRepeatedly(Return(true));
   }
 
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   MountError error = MOUNT_ERROR_NONE;
   Mount::MountArgs mount_args = GetDefaultMountArgs();
@@ -2553,7 +2552,7 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
   set_policy(false, "", true);
 
   TestUser *user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   EXPECT_CALL(platform_, FileExists(_))
     .WillRepeatedly(Return(true));
@@ -2619,7 +2618,7 @@ TEST_P(EphemeralNoUserSystemTest, MountSetUserTypeFailTest) {
   set_policy(false, "", true);
 
   TestUser *user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   EXPECT_CALL(platform_, FileExists(_))
     .WillRepeatedly(Return(true));
@@ -2724,7 +2723,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
   mount_args.create_if_missing = true;
   mount_args.is_ephemeral = true;
   MountError error;
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 
   // Implicit unmount triggers setting user type to non-owner.
@@ -2745,7 +2744,7 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountIsEphemeralTest) {
   mount_args.create_if_missing = true;
   mount_args.is_ephemeral = true;
   MountError error;
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
   ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
   ASSERT_EQ(MOUNT_ERROR_FATAL, error);
 }
@@ -2773,7 +2772,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountIsEphemeralTest) {
   mount_args.create_if_missing = true;
   mount_args.is_ephemeral = true;
   MountError error;
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 
   EXPECT_CALL(platform_, Unmount(user->ephemeral_mount_path,  _, _))
@@ -2828,7 +2827,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountStatVFSFailure) {
   mount_args.create_if_missing = true;
   mount_args.is_ephemeral = true;
   MountError error;
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
   ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
@@ -2853,7 +2852,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountCreateSparseDirFailure) {
   mount_args.create_if_missing = true;
   mount_args.is_ephemeral = true;
   MountError error;
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
   ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
@@ -2884,7 +2883,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountCreateSparseFailure) {
   mount_args.create_if_missing = true;
   mount_args.is_ephemeral = true;
   MountError error;
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
   ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
@@ -2923,7 +2922,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountAttachLoopFailure) {
   mount_args.create_if_missing = true;
   mount_args.is_ephemeral = true;
   MountError error;
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
   ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
@@ -2959,7 +2958,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountFormatFailure) {
   mount_args.create_if_missing = true;
   mount_args.is_ephemeral = true;
   MountError error;
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
   ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
@@ -3003,7 +3002,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureUserMountFailure) {
   mount_args.create_if_missing = true;
   mount_args.is_ephemeral = true;
   MountError error;
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
   ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
@@ -3030,7 +3029,7 @@ TEST_P(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
   TestUser* owner = &helper_.users[3];
   TestUser* user = &helper_.users[0];
   set_policy(true, owner->username, true);
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   // Always removes non-owner cryptohomes.
   std::vector<FilePath> owner_only;
@@ -3097,7 +3096,7 @@ TEST_P(EphemeralOwnerOnlySystemTest, NonOwnerMountIsEphemeralTest) {
   TestUser* owner = &helper_.users[3];
   TestUser* user = &helper_.users[0];
   set_policy(true, owner->username, false);
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   // Always removes non-owner cryptohomes.
   std::vector<FilePath> owner_only;
@@ -3131,7 +3130,7 @@ TEST_P(EphemeralOwnerOnlySystemTest, OwnerMountIsEphemeralTest) {
   // a mount request for the owner with the |ensure_ephemeral| flag set fails.
   TestUser* owner = &helper_.users[3];
   set_policy(true, owner->username, false);
-  UsernamePasskey up(owner->username, owner->passkey);
+  Credentials up(owner->username, owner->passkey);
 
   EXPECT_CALL(platform_, Mount(_, _, _, kDefaultMountFlags, _)).Times(0);
   EXPECT_CALL(tpm_, SetUserType(_)).Times(0);
@@ -3204,7 +3203,7 @@ TEST_P(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
   mount_args.create_if_missing = true;
   MountError error;
   user->InjectKeyset(&platform_, true);
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 
   EXPECT_CALL(platform_, Unmount(_, _, _))
@@ -3247,7 +3246,7 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
   set_policy(false, "", true);
   mount_->set_enterprise_owned(true);
   TestUser* user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   std::vector<int> expect_deletion;
   expect_deletion.push_back(0);
@@ -3364,7 +3363,7 @@ TEST_P(EphemeralExistingUserSystemTest, MountRemoveTest) {
   TestUser* owner = &helper_.users[3];
   set_policy(true, owner->username, true);
   TestUser* user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   std::vector<int> expect_deletion;
   expect_deletion.push_back(0);  // Mounting user shouldn't use be persistent.
@@ -3556,7 +3555,7 @@ TEST_P(EphemeralExistingUserSystemTest, NonOwnerMountIsEphemeralTest) {
   TestUser* owner = &helper_.users[3];
   set_policy(true, owner->username, false);
   TestUser* user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   PrepareHomedirs(true, NULL, NULL);
 
@@ -3633,7 +3632,7 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountIsEphemeralTest) {
   mount_->set_enterprise_owned(true);
 
   TestUser* user = &helper_.users[0];
-  UsernamePasskey up(user->username, user->passkey);
+  Credentials up(user->username, user->passkey);
 
   // Mounting user vault won't be deleted, but tmpfs mount should still be
   // used.
