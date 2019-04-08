@@ -2,18 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Tests for the ChallengeCredentialsDecryptOperation class.
+// Tests for the ChallengeCredentialsHelper class.
 
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome/challenge_credentials/challenge_credentials_decrypt_operation.h"
+#include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_test_utils.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mock_key_challenge_service.h"
@@ -26,10 +27,13 @@
 #include "key.pb.h"                    // NOLINT(build/include)
 #include "rpc.pb.h"                    // NOLINT(build/include)
 #include "signature_sealed_data.pb.h"  // NOLINT(build/include)
+#include "vault_keyset.pb.h"           // NOLINT(build/include)
 
 using brillo::Blob;
 using brillo::BlobToString;
 using brillo::CombineBlobs;
+using testing::_;
+using testing::AnyNumber;
 using testing::Return;
 using testing::StrictMock;
 using testing::Values;
@@ -37,7 +41,7 @@ using testing::Values;
 namespace cryptohome {
 
 using KeysetSignatureChallengeInfo =
-    ChallengeCredentialsDecryptOperation::KeysetSignatureChallengeInfo;
+    SerializedVaultKeyset::SignatureChallengeInfo;
 
 namespace {
 
@@ -70,9 +74,12 @@ KeysetSignatureChallengeInfo MakeFakeKeysetChallengeInfo(
 }
 
 // Base fixture class that provides some common constants, helpers and mocks for
-// testing a single instance of ChallengeCredentialsDecryptOperation.
-class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
+// testing ChallengeCredentialsHelper.
+class ChallengeCredentialsHelperTestBase : public testing::Test {
  protected:
+  ChallengeCredentialsHelperTestBase()
+      : challenge_credentials_helper_(&tpm_, kDelegateBlob, kDelegateSecret) {}
+
   void PrepareSignatureSealingBackend(bool enabled) {
     SignatureSealingBackend* const return_value =
         enabled ? &sealing_backend_ : nullptr;
@@ -80,42 +87,63 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
         .WillRepeatedly(Return(return_value));
   }
 
-  // Create an instance of ChallengeCredentialsDecryptOperation to be tested.
-  void CreateOperation(
+  // Starts the asynchronous Decrypt() operation.  The result, once the
+  // operation completes, will be stored in |decrypt_result|.
+  void CallDecrypt(
       const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
       ChallengeSignatureAlgorithm salt_challenge_algorithm,
-      const Blob& salt) {
-    DCHECK(!operation_);
+      const Blob& salt,
+      std::unique_ptr<ChallengeCredentialsDecryptResult>* decrypt_result) {
+    DCHECK(challenge_service_);
     const KeyData key_data = MakeKeyData(kPublicKeySpkiDer, key_algorithms);
     const KeysetSignatureChallengeInfo keyset_challenge_info =
         MakeFakeKeysetChallengeInfo(kPublicKeySpkiDer, salt,
                                     salt_challenge_algorithm);
-    operation_ = std::make_unique<ChallengeCredentialsDecryptOperation>(
-        &challenge_service_, &tpm_, kDelegateBlob, kDelegateSecret, kUserEmail,
-        key_data, keyset_challenge_info,
-        MakeChallengeCredentialsDecryptResultWriter(&operation_result_));
+    challenge_credentials_helper_.Decrypt(
+        kUserEmail, key_data, keyset_challenge_info,
+        std::move(challenge_service_),
+        MakeChallengeCredentialsDecryptResultWriter(decrypt_result));
   }
 
-  void StartOperation() { operation_->Start(); }
+  // Starts the Decrypt() operation without observing the challenge requests it
+  // makes or its result. Intended to be used for testing the corner case of
+  // starting an operation before the previous one is completed.
+  void StartSurplusOperation() {
+    // Use different parameters here, to avoid clashing with mocks set up for
+    // the normal operation.
+    constexpr ChallengeSignatureAlgorithm kLocalAlgorithm =
+        CHALLENGE_RSASSA_PKCS1_V1_5_SHA256;
+    const Blob kLocalPublicKeySpkiDer =
+        CombineBlobs({kPublicKeySpkiDer, Blob(1)});
 
-  void AbortOperation() { operation_->Abort(); }
+    auto unsealing_mocker =
+        MakeUnsealingMocker({kLocalAlgorithm} /* key_algorithms */,
+                            kLocalAlgorithm /* unsealing_algorithm */);
+    unsealing_mocker->set_public_key_spki_der(kLocalPublicKeySpkiDer);
+    unsealing_mocker->SetUpUnsealingNotCalledMock();
 
-  // Whether the tested operation completed with some result.
-  bool has_result() const { return static_cast<bool>(operation_result_); }
+    auto mock_key_challenge_service =
+        std::make_unique<MockKeyChallengeService>();
+    EXPECT_CALL(*mock_key_challenge_service, ChallengeKey(_, _, _))
+        .Times(AnyNumber());
+    const KeyData key_data = MakeKeyData(
+        kLocalPublicKeySpkiDer, {kLocalAlgorithm} /* key_algorithms */);
+    const KeysetSignatureChallengeInfo keyset_challenge_info =
+        MakeFakeKeysetChallengeInfo(
+            kLocalPublicKeySpkiDer, kSalt,
+            kLocalAlgorithm /* salt_challenge_algorithm */);
+    challenge_credentials_helper_.Decrypt(
+        kUserEmail, key_data, keyset_challenge_info,
+        std::move(mock_key_challenge_service),
+        base::Bind([](std::unique_ptr<UsernamePasskey>) {}));
+  }
 
-  // Assert that the tested operation completed with a valid success result.
-  void VerifySuccessfulResult() const {
-    ASSERT_TRUE(operation_result_);
+  // Assert that the given decrypt operation result is a valid success result.
+  void VerifySuccessfulDecryptResult(
+      const ChallengeCredentialsDecryptResult& decrypt_result) const {
     VerifySuccessfulChallengeCredentialsDecryptResult(
-      *operation_result_,
-      kUserEmail,
-      brillo::SecureBlob(kPasskey.begin(), kPasskey.end()));
-  }
-
-  // Assert that the tested operation completed with a failure result.
-  void VerifyFailedResult() const {
-    ASSERT_TRUE(operation_result_);
-    VerifyFailedChallengeCredentialsDecryptResult(*operation_result_);
+        decrypt_result, kUserEmail,
+        brillo::SecureBlob(kPasskey.begin(), kPasskey.end()));
   }
 
   // Returns a helper object that aids mocking of the secret unsealing
@@ -191,30 +219,33 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
 
  protected:
   // Constants which are passed as fake data inputs to the
-  // ChallengeCredentialsDecryptOperation operation:
+  // ChallengeCredentialsHelper methods:
 
-  // Fake TPM delegate. It's supplied to the operation constructor. Then it's
-  // verified to be passed into SignatureSealingBackend methods.
+  // Fake TPM delegate. It's supplied to the ChallengeCredentialsHelper
+  // constructor. Then it's verified to be passed into SignatureSealingBackend
+  // methods.
   const Blob kDelegateBlob{{1, 1, 1}};
   const Blob kDelegateSecret{{2, 2, 2}};
-  // Fake user e-mail. It's supplied to the operation constructor. Then it's
-  // verified to be passed alongside challenge requests made via
-  // KeyChallengeService, and to be present in the resulting UsernamePasskey.
+  // Fake user e-mail. It's supplied to the ChallengeCredentialsHelper operation
+  // methods. Then it's verified to be passed alongside challenge requests made
+  // via KeyChallengeService, and to be present in the resulting
+  // UsernamePasskey.
   const std::string kUserEmail = "foo@example.com";
   // Fake Subject Public Key Information of the challenged cryptographic key.
-  // It's supplied to the operation as a field of both |key_data| and
-  // |keyset_challenge_info| parameters. Then it's verified to be passed into
-  // SignatureSealingBackend methods and to be used for challenge requests made
-  // via KeyChallengeService.
+  // It's supplied to the ChallengeCredentialsHelper operation methods as a
+  // field of both |key_data| and |keyset_challenge_info| parameters. Then it's
+  // verified to be passed into SignatureSealingBackend methods and to be used
+  // for challenge requests made via KeyChallengeService.
   const Blob kPublicKeySpkiDer{{3, 3, 3}};
-  // Fake salt value. It's supplied to the operation as a field of the
-  // |keyset_challenge_info| parameter. Then it's verified to be used as the
-  // challenge value for one of requests made via KeyChallengeService.
+  // Fake salt value. It's supplied to the ChallengeCredentialsHelper operation
+  // methods as a field of the |keyset_challenge_info| parameter. Then it's
+  // verified to be used as the challenge value for one of requests made via
+  // KeyChallengeService.
   const Blob kSalt = CombineBlobs(
       {ChallengeCredentialsOperation::GetSaltConstantPrefix(), Blob{4, 4, 4}});
 
   // Constants which are injected as fake data into intermediate steps of the
-  // tested operation:
+  // ChallengeCredentialsHelper operations:
 
   // Fake signature of |kSalt| using the |salt_challenge_algorithm_| algorithm.
   // It's injected as a fake response to the salt challenge request made via
@@ -238,30 +269,30 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
   const Blob kUnsealedSecret{{8, 8, 8}};
 
   // The expected passkey of the resulting UsernamePasskey returned from the
-  // tested operation. Its value is derived from the injected fake data.
+  // ChallengeCredentialsHelper operations. Its value is derived from the
+  // injected fake data.
   const Blob kPasskey =
       CombineBlobs({kUnsealedSecret, CryptoLib::Sha256(kSaltSignature)});
 
  private:
   // Mock objects:
 
-  StrictMock<MockTpm> tpm_;
   StrictMock<MockSignatureSealingBackend> sealing_backend_;
-  StrictMock<MockKeyChallengeService> challenge_service_;
+  StrictMock<MockTpm> tpm_;
+  std::unique_ptr<StrictMock<MockKeyChallengeService>> challenge_service_ =
+      std::make_unique<StrictMock<MockKeyChallengeService>>();
   KeyChallengeServiceMockController salt_challenge_mock_controller_{
-      &challenge_service_};
+      challenge_service_.get()};
   KeyChallengeServiceMockController unsealing_challenge_mock_controller_{
-      &challenge_service_};
+      challenge_service_.get()};
 
-  // Result returned from the tested operation, or null if nothing yet.
-  std::unique_ptr<ChallengeCredentialsDecryptResult> operation_result_;
-  // The tested operation.
-  std::unique_ptr<ChallengeCredentialsDecryptOperation> operation_;
+  // The tested instance.
+  ChallengeCredentialsHelper challenge_credentials_helper_;
 };
 
 // Base fixture class that uses a single algorithm for simplicity.
-class ChallengeCredentialsDecryptOperationSingleAlgorithmTestBase
-    : public ChallengeCredentialsDecryptOperationTestBase {
+class ChallengeCredentialsHelperSingleAlgorithmTestBase
+    : public ChallengeCredentialsHelperTestBase {
  protected:
   // The single algorithm to be used in this test.
   static constexpr ChallengeSignatureAlgorithm kAlgorithm =
@@ -270,284 +301,300 @@ class ChallengeCredentialsDecryptOperationSingleAlgorithmTestBase
 
 // Base fixture class that uses a single algorithm and have the sealing backend
 // available.
-class ChallengeCredentialsDecryptOperationNoOperationConstructedBasicTest
-    : public ChallengeCredentialsDecryptOperationSingleAlgorithmTestBase {
+class ChallengeCredentialsHelperBasicTest
+    : public ChallengeCredentialsHelperSingleAlgorithmTestBase {
  protected:
   // The single algorithm to be used in this test.
   static constexpr ChallengeSignatureAlgorithm kAlgorithm =
       CHALLENGE_RSASSA_PKCS1_V1_5_SHA256;
 
-  ChallengeCredentialsDecryptOperationNoOperationConstructedBasicTest() {
+  ChallengeCredentialsHelperBasicTest() {
     PrepareSignatureSealingBackend(true /* enabled */);
   }
 };
 
 }  // namespace
 
-// Test failure of the operation due to the input salt being empty.
-TEST_F(ChallengeCredentialsDecryptOperationNoOperationConstructedBasicTest,
-       EmptySaltFailure) {
-  CreateOperation({kAlgorithm} /* key_algorithms */,
-                  kAlgorithm /* salt_challenge_algorithm */, Blob() /* salt */);
-  StartOperation();
-  VerifyFailedResult();
+// Test failure of the Decrypt() operation due to the input salt being empty.
+TEST_F(ChallengeCredentialsHelperBasicTest, DecryptFailureInSaltCheckEmpty) {
+  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  CallDecrypt({kAlgorithm} /* key_algorithms */,
+              kAlgorithm /* salt_challenge_algorithm */, Blob() /* salt */,
+              &decrypt_result);
+  ASSERT_TRUE(decrypt_result);
+  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
 }
 
-// Test failure of the operation due to the input salt not starting with the
-// expected constant prefix.
-TEST_F(ChallengeCredentialsDecryptOperationNoOperationConstructedBasicTest,
-       BadSaltNotPrefixedFailure) {
+// Test failure of the Decrypt() operation due to the input salt not starting
+// with the expected constant prefix.
+TEST_F(ChallengeCredentialsHelperBasicTest,
+       DecryptFailureInSaltCheckNotPrefixed) {
   Blob salt = kSalt;
   salt[ChallengeCredentialsOperation::GetSaltConstantPrefix().size() - 1] ^= 1;
-  CreateOperation({kAlgorithm} /* key_algorithms */,
-                  kAlgorithm /* salt_challenge_algorithm */, salt);
-  StartOperation();
-  VerifyFailedResult();
+  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  CallDecrypt({kAlgorithm} /* key_algorithms */,
+              kAlgorithm /* salt_challenge_algorithm */, salt, &decrypt_result);
+  ASSERT_TRUE(decrypt_result);
+  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
 }
 
-// Test failure of the operation due to the input salt containing nothing
-// besides the expected constant prefix.
-TEST_F(ChallengeCredentialsDecryptOperationNoOperationConstructedBasicTest,
-       BadSaltNothingBesidesPrefixFailure) {
-  CreateOperation(
-      {kAlgorithm} /* key_algorithms */,
-      kAlgorithm /* salt_challenge_algorithm */,
-      ChallengeCredentialsOperation::GetSaltConstantPrefix() /* salt */);
-  StartOperation();
-  VerifyFailedResult();
+// Test failure of the Decrypt() operation due to the input salt containing
+// nothing besides the expected constant prefix.
+TEST_F(ChallengeCredentialsHelperBasicTest,
+       DecryptFailureInSaltCheckNothingBesidesPrefix) {
+  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  CallDecrypt({kAlgorithm} /* key_algorithms */,
+              kAlgorithm /* salt_challenge_algorithm */,
+              ChallengeCredentialsOperation::GetSaltConstantPrefix() /* salt */,
+              &decrypt_result);
+  ASSERT_TRUE(decrypt_result);
+  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
 }
 
-namespace {
-
-// Basic tests that use a single algorithm and have the sealing backend
-// available.
-class ChallengeCredentialsDecryptOperationBasicTest
-    : public ChallengeCredentialsDecryptOperationSingleAlgorithmTestBase {
- protected:
-  ChallengeCredentialsDecryptOperationBasicTest() {
-    PrepareSignatureSealingBackend(true /* enabled */);
-    CreateOperation({kAlgorithm} /* key_algorithms */,
-                    kAlgorithm /* salt_challenge_algorithm */, kSalt);
-  }
-};
-
-}  // namespace
-
-// Test success of the operation in scenario when the salt challenge response
-// comes before the unsealing challenge response.
-TEST_F(ChallengeCredentialsDecryptOperationBasicTest,
-       SuccessSaltThenUnsealing) {
+// Test success of the Decrypt() operation in scenario when the salt challenge
+// response comes before the unsealing challenge response.
+TEST_F(ChallengeCredentialsHelperBasicTest, DecryptSuccessSaltThenUnsealing) {
   ExpectSaltChallenge(kAlgorithm /* salt_challenge_algorithm */);
   ExpectUnsealingChallenge(kAlgorithm /* unsealing_algorithm */);
   MakeUnsealingMocker({kAlgorithm} /* key_algorithms */,
                       kAlgorithm /* unsealing_algorithm */)
       ->SetUpSuccessfulMock();
 
-  StartOperation();
+  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  CallDecrypt({kAlgorithm} /* key_algorithms */,
+              kAlgorithm /* salt_challenge_algorithm */, kSalt,
+              &decrypt_result);
   EXPECT_TRUE(is_salt_challenge_requested());
   EXPECT_TRUE(is_unsealing_challenge_requested());
 
   SimulateSaltChallengeResponse();
-  EXPECT_FALSE(has_result());
+  EXPECT_FALSE(decrypt_result);
 
   SimulateUnsealingChallengeResponse();
-  VerifySuccessfulResult();
+  ASSERT_TRUE(decrypt_result);
+  VerifySuccessfulDecryptResult(*decrypt_result);
 }
 
-// Test success of the operation in scenario when the unsealing challenge
-// response comes before the salt challenge response.
-TEST_F(ChallengeCredentialsDecryptOperationBasicTest,
-       SuccessUnsealingThenSalt) {
+// Test success of the Decrypt() operation in scenario when the unsealing
+// challenge response comes before the salt challenge response.
+TEST_F(ChallengeCredentialsHelperBasicTest, DecryptSuccessUnsealingThenSalt) {
   ExpectSaltChallenge(kAlgorithm /* salt_challenge_algorithm */);
   ExpectUnsealingChallenge(kAlgorithm /* unsealing_algorithm */);
   MakeUnsealingMocker({kAlgorithm} /* key_algorithms */,
                       kAlgorithm /* unsealing_algorithm */)
       ->SetUpSuccessfulMock();
 
-  StartOperation();
+  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  CallDecrypt({kAlgorithm} /* key_algorithms */,
+              kAlgorithm /* salt_challenge_algorithm */, kSalt,
+              &decrypt_result);
   EXPECT_TRUE(is_salt_challenge_requested());
   EXPECT_TRUE(is_unsealing_challenge_requested());
 
   SimulateUnsealingChallengeResponse();
-  EXPECT_FALSE(has_result());
+  EXPECT_FALSE(decrypt_result);
 
   SimulateSaltChallengeResponse();
-  VerifySuccessfulResult();
+  ASSERT_TRUE(decrypt_result);
+  VerifySuccessfulDecryptResult(*decrypt_result);
 }
 
-// Test failure of the operation due to failure of unsealing session creation.
-TEST_F(ChallengeCredentialsDecryptOperationBasicTest,
-       UnsealingSessionCreationFailure) {
-  EXPECT_FALSE(has_result());
-
+// Test failure of the Decrypt() operation due to failure of unsealing session
+// creation.
+TEST_F(ChallengeCredentialsHelperBasicTest,
+       DecryptFailureInUnsealingSessionCreation) {
   ExpectSaltChallenge(kAlgorithm /* salt_challenge_algorithm */);
   MakeUnsealingMocker({kAlgorithm} /* key_algorithms */,
                       kAlgorithm /* unsealing_algorithm */)
       ->SetUpCreationFailingMock(true /* mock_repeatedly */);
 
-  StartOperation();
+  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  CallDecrypt({kAlgorithm} /* key_algorithms */,
+              kAlgorithm /* salt_challenge_algorithm */, kSalt,
+              &decrypt_result);
   EXPECT_TRUE(is_salt_challenge_requested());
-  VerifyFailedResult();
+  ASSERT_TRUE(decrypt_result);
+  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
 
   // Responding to the salt challenge shouldn't have any effect.
   SimulateSaltChallengeResponse();
 }
 
-// Test failure of the operation due to failure of unsealing.
-TEST_F(ChallengeCredentialsDecryptOperationBasicTest, UnsealingFailure) {
+// Test failure of the Decrypt() operation due to failure of unsealing.
+TEST_F(ChallengeCredentialsHelperBasicTest, DecryptFailureInUnsealing) {
   ExpectSaltChallenge(kAlgorithm /* salt_challenge_algorithm */);
   ExpectUnsealingChallenge(kAlgorithm /* unsealing_algorithm */);
   MakeUnsealingMocker({kAlgorithm} /* key_algorithms */,
                       kAlgorithm /* unsealing_algorithm */)
       ->SetUpUsealingFailingMock();
 
-  StartOperation();
+  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  CallDecrypt({kAlgorithm} /* key_algorithms */,
+              kAlgorithm /* salt_challenge_algorithm */, kSalt,
+              &decrypt_result);
   EXPECT_TRUE(is_salt_challenge_requested());
   EXPECT_TRUE(is_unsealing_challenge_requested());
-  EXPECT_FALSE(has_result());
+  EXPECT_FALSE(decrypt_result);
 
   SimulateUnsealingChallengeResponse();
-  VerifyFailedResult();
+  ASSERT_TRUE(decrypt_result);
+  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
 
   // Responding to the salt challenge shouldn't have any effect.
   SimulateSaltChallengeResponse();
 }
 
-// Test failure of the operation due to failure of salt challenge request.
-TEST_F(ChallengeCredentialsDecryptOperationBasicTest, SaltChallengeFailure) {
+// Test failure of the Decrypt() operation due to failure of salt challenge
+// request.
+TEST_F(ChallengeCredentialsHelperBasicTest, DecryptFailureInSaltChallenge) {
   ExpectSaltChallenge(kAlgorithm /* salt_challenge_algorithm */);
   ExpectUnsealingChallenge(kAlgorithm /* unsealing_algorithm */);
   MakeUnsealingMocker({kAlgorithm} /* key_algorithms */,
                       kAlgorithm /* unsealing_algorithm */)
       ->SetUpUnsealingNotCalledMock();
 
-  StartOperation();
+  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  CallDecrypt({kAlgorithm} /* key_algorithms */,
+              kAlgorithm /* salt_challenge_algorithm */, kSalt,
+              &decrypt_result);
   EXPECT_TRUE(is_salt_challenge_requested());
   EXPECT_TRUE(is_unsealing_challenge_requested());
-  EXPECT_FALSE(has_result());
+  EXPECT_FALSE(decrypt_result);
 
   SimulateSaltChallengeFailure();
-  VerifyFailedResult();
+  ASSERT_TRUE(decrypt_result);
+  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
 
   // Responding to the unsealing challenge shouldn't have any effect.
   SimulateUnsealingChallengeResponse();
 }
 
-// Test failure of the operation due to failure of unsealing challenge request.
-TEST_F(ChallengeCredentialsDecryptOperationBasicTest,
-       UnsealingChallengeFailure) {
+// Test failure of the Decrypt() operation due to failure of unsealing challenge
+// request.
+TEST_F(ChallengeCredentialsHelperBasicTest,
+       DecryptFailureInUnsealingChallenge) {
   ExpectSaltChallenge(kAlgorithm /* salt_challenge_algorithm */);
   ExpectUnsealingChallenge(kAlgorithm /* unsealing_algorithm */);
   MakeUnsealingMocker({kAlgorithm} /* key_algorithms */,
                       kAlgorithm /* unsealing_algorithm */)
       ->SetUpUnsealingNotCalledMock();
 
-  StartOperation();
+  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  CallDecrypt({kAlgorithm} /* key_algorithms */,
+              kAlgorithm /* salt_challenge_algorithm */, kSalt,
+              &decrypt_result);
   EXPECT_TRUE(is_salt_challenge_requested());
   EXPECT_TRUE(is_unsealing_challenge_requested());
-  EXPECT_FALSE(has_result());
+  EXPECT_FALSE(decrypt_result);
 
   SimulateUnsealingChallengeFailure();
-  VerifyFailedResult();
+  ASSERT_TRUE(decrypt_result);
+  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
 
   // Responding to the salt challenge shouldn't have any effect.
   SimulateSaltChallengeResponse();
 }
 
-// Test failure of the operation due to its abortion before any of the
+// Test failure of the Decrypt() operation due to its abortion before any of the
 // challenges is completed.
-TEST_F(ChallengeCredentialsDecryptOperationBasicTest, AbortBeforeChallenges) {
+TEST_F(ChallengeCredentialsHelperBasicTest, DecryptAbortionBeforeChallenges) {
   ExpectSaltChallenge(kAlgorithm /* salt_challenge_algorithm */);
   ExpectUnsealingChallenge(kAlgorithm /* unsealing_algorithm */);
   MakeUnsealingMocker({kAlgorithm} /* key_algorithms */,
                       kAlgorithm /* unsealing_algorithm */)
       ->SetUpUnsealingNotCalledMock();
 
-  StartOperation();
+  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  CallDecrypt({kAlgorithm} /* key_algorithms */,
+              kAlgorithm /* salt_challenge_algorithm */, kSalt,
+              &decrypt_result);
   EXPECT_TRUE(is_salt_challenge_requested());
   EXPECT_TRUE(is_unsealing_challenge_requested());
-  EXPECT_FALSE(has_result());
+  EXPECT_FALSE(decrypt_result);
 
-  AbortOperation();
-  VerifyFailedResult();
-
-  // Responding to the challenges shouldn't have any effect.
-  SimulateSaltChallengeResponse();
-  SimulateUnsealingChallengeResponse();
+  // Abort the first operation by starting a new one.
+  StartSurplusOperation();
+  ASSERT_TRUE(decrypt_result);
+  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
 }
 
-// Test failure of the operation due to its abortion after the salt challenge
-// completes.
-TEST_F(ChallengeCredentialsDecryptOperationBasicTest, AbortAfterSaltChallenge) {
+// Test failure of the Decrypt() operation due to its abortion after the salt
+// challenge completes.
+TEST_F(ChallengeCredentialsHelperBasicTest, DecryptAbortionAfterSaltChallenge) {
   ExpectSaltChallenge(kAlgorithm /* salt_challenge_algorithm */);
   ExpectUnsealingChallenge(kAlgorithm /* unsealing_algorithm */);
   MakeUnsealingMocker({kAlgorithm} /* key_algorithms */,
                       kAlgorithm /* unsealing_algorithm */)
       ->SetUpUnsealingNotCalledMock();
 
-  StartOperation();
+  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  CallDecrypt({kAlgorithm} /* key_algorithms */,
+              kAlgorithm /* salt_challenge_algorithm */, kSalt,
+              &decrypt_result);
   EXPECT_TRUE(is_salt_challenge_requested());
   EXPECT_TRUE(is_unsealing_challenge_requested());
 
   SimulateSaltChallengeResponse();
-  EXPECT_FALSE(has_result());
+  EXPECT_FALSE(decrypt_result);
 
-  AbortOperation();
-  VerifyFailedResult();
-
-  // Responding to the unsealing challenge shouldn't have any effect.
-  SimulateUnsealingChallengeResponse();
+  // Abort the first operation by starting a new one.
+  StartSurplusOperation();
+  ASSERT_TRUE(decrypt_result);
+  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
 }
 
-// Test failure of the operation due to its abortion after the unsealing
-// completes.
-TEST_F(ChallengeCredentialsDecryptOperationBasicTest, AbortAfterUnsealing) {
+// Test failure of the Decrypt() operation due to its abortion after the
+// unsealing completes.
+TEST_F(ChallengeCredentialsHelperBasicTest, DecryptAbortionAfterUnsealing) {
   ExpectSaltChallenge(kAlgorithm /* salt_challenge_algorithm */);
   ExpectUnsealingChallenge(kAlgorithm /* unsealing_algorithm */);
   MakeUnsealingMocker({kAlgorithm} /* key_algorithms */,
                       kAlgorithm /* unsealing_algorithm */)
       ->SetUpSuccessfulMock();
 
-  StartOperation();
+  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  CallDecrypt({kAlgorithm} /* key_algorithms */,
+              kAlgorithm /* salt_challenge_algorithm */, kSalt,
+              &decrypt_result);
   EXPECT_TRUE(is_salt_challenge_requested());
   EXPECT_TRUE(is_unsealing_challenge_requested());
 
   SimulateUnsealingChallengeResponse();
-  EXPECT_FALSE(has_result());
+  EXPECT_FALSE(decrypt_result);
 
-  AbortOperation();
-  VerifyFailedResult();
-
-  // Responding to the salt challenge shouldn't have any effect.
-  SimulateSaltChallengeResponse();
+  // Abort the first operation by starting a new one.
+  StartSurplusOperation();
+  ASSERT_TRUE(decrypt_result);
+  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
 }
 
 namespace {
 
 // Tests with simulation of SignatureSealingBackend absence.
-class ChallengeCredentialsDecryptOperationNoBackendTest
-    : public ChallengeCredentialsDecryptOperationSingleAlgorithmTestBase {
+class ChallengeCredentialsHelperNoBackendTest
+    : public ChallengeCredentialsHelperSingleAlgorithmTestBase {
  protected:
-  ChallengeCredentialsDecryptOperationNoBackendTest() {
+  ChallengeCredentialsHelperNoBackendTest() {
     PrepareSignatureSealingBackend(false /* enabled */);
-    CreateOperation({kAlgorithm} /* key_algorithms */,
-                    kAlgorithm /* salt_challenge_algorithm */, kSalt);
   }
 };
 
 }  // namespace
 
-// Test failure of the operation due to the absence of the sealing backend.
-TEST_F(ChallengeCredentialsDecryptOperationNoBackendTest, Failure) {
-  EXPECT_FALSE(has_result());
-
-  StartOperation();
-  VerifyFailedResult();
+// Test failure of the Decrypt() operation due to the absence of the sealing
+// backend.
+TEST_F(ChallengeCredentialsHelperNoBackendTest, DecryptFailure) {
+  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  CallDecrypt({kAlgorithm} /* key_algorithms */,
+              kAlgorithm /* salt_challenge_algorithm */, kSalt,
+              &decrypt_result);
+  ASSERT_TRUE(decrypt_result);
+  VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
 }
 
 namespace {
 
-// Test parameters for ChallengeCredentialsDecryptOperationAlgorithmsTest.
+// Test parameters for ChallengeCredentialsHelperAlgorithmsTest.
 struct AlgorithmsTestParam {
   std::vector<ChallengeSignatureAlgorithm> key_algorithms;
   ChallengeSignatureAlgorithm salt_challenge_algorithm;
@@ -555,42 +602,44 @@ struct AlgorithmsTestParam {
 };
 
 // Tests various combinations of multiple algorithms.
-class ChallengeCredentialsDecryptOperationAlgorithmsTest
-    : public ChallengeCredentialsDecryptOperationTestBase,
+class ChallengeCredentialsHelperAlgorithmsTest
+    : public ChallengeCredentialsHelperTestBase,
       public testing::WithParamInterface<AlgorithmsTestParam> {
  protected:
-  ChallengeCredentialsDecryptOperationAlgorithmsTest() {
+  ChallengeCredentialsHelperAlgorithmsTest() {
     PrepareSignatureSealingBackend(true /* enabled */);
-    CreateOperation(GetParam().key_algorithms,
-                    GetParam().salt_challenge_algorithm, kSalt);
   }
 };
 
 }  // namespace
 
-// Test success of the operation with the specified combination of algorithms.
-TEST_P(ChallengeCredentialsDecryptOperationAlgorithmsTest, Success) {
+// Test success of the Decrypt() operation with the specified combination of
+// algorithms.
+TEST_P(ChallengeCredentialsHelperAlgorithmsTest, DecryptSuccess) {
   ExpectSaltChallenge(GetParam().salt_challenge_algorithm);
   ExpectUnsealingChallenge(GetParam().unsealing_algorithm);
   MakeUnsealingMocker(GetParam().key_algorithms, GetParam().unsealing_algorithm)
       ->SetUpSuccessfulMock();
 
-  StartOperation();
+  std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
+  CallDecrypt(GetParam().key_algorithms, GetParam().salt_challenge_algorithm,
+              kSalt, &decrypt_result);
   EXPECT_TRUE(is_salt_challenge_requested());
   EXPECT_TRUE(is_unsealing_challenge_requested());
 
   SimulateSaltChallengeResponse();
-  EXPECT_FALSE(has_result());
+  EXPECT_FALSE(decrypt_result);
 
   SimulateUnsealingChallengeResponse();
-  VerifySuccessfulResult();
+  ASSERT_TRUE(decrypt_result);
+  VerifySuccessfulDecryptResult(*decrypt_result);
 }
 
 // Test that SHA-1 algorithms are the least preferred and chosen only if there's
 // no other option.
 INSTANTIATE_TEST_CASE_P(
     LowPriorityOfSha1,
-    ChallengeCredentialsDecryptOperationAlgorithmsTest,
+    ChallengeCredentialsHelperAlgorithmsTest,
     Values(
         AlgorithmsTestParam{
             {CHALLENGE_RSASSA_PKCS1_V1_5_SHA1,
@@ -605,7 +654,7 @@ INSTANTIATE_TEST_CASE_P(
 // Test prioritization of algorithms according to their order in the input.
 INSTANTIATE_TEST_CASE_P(
     InputPrioritization,
-    ChallengeCredentialsDecryptOperationAlgorithmsTest,
+    ChallengeCredentialsHelperAlgorithmsTest,
     Values(
         AlgorithmsTestParam{
             {CHALLENGE_RSASSA_PKCS1_V1_5_SHA256,

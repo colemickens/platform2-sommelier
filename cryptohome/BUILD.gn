@@ -343,7 +343,7 @@ if (use.test) {
       "attestation_unittest.cc",
       "boot_attributes_unittest.cc",
       "bootlockbox/boot_lockbox_unittest.cc",
-      "challenge_credentials/challenge_credentials_decrypt_operation_unittest.cc",
+      "challenge_credentials/challenge_credentials_helper_unittest.cc",
       "challenge_credentials/challenge_credentials_test_utils.cc",
       "crypto_unittest.cc",
       "cryptohome_event_source_unittest.cc",
