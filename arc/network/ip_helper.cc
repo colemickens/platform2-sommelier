@@ -226,8 +226,7 @@ void IpHelper::OnFileCanReadWithoutBlocking(int fd) {
   // Exit whenever read fails or fd is closed.
   if (len <= 0) {
     PLOG(WARNING) << "Read failed: exiting";
-    // The other side closed the connection.
-    // control_watcher_.StopWatchingFileDescriptor();
+    control_watcher_.StopWatchingFileDescriptor();
     Quit();
     return;
   }
