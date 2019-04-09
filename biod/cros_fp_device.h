@@ -82,6 +82,7 @@ class CrosFpDevice : public MessageLoopForIO::Watcher {
   bool Init();
 
   bool EcDevInit();
+  ssize_t ReadVersion(char* buffer, size_t size);
   bool EcProtoInfo(ssize_t* max_read, ssize_t* max_write);
   bool EcReboot(ec_current_image to_image);
   // Run the EC command to generate new entropy in the underlying MCU.
@@ -137,15 +138,34 @@ class EcCommand {
   void SetReqSize(uint32_t outsize) { data_.cmd.outsize = outsize; }
   void SetReq(const O& req) { data_.req = req; }
 
-  bool Run(int ec_fd) {
-    data_.cmd.result = 0xff;
-    int result = ioctl(ec_fd, CROS_EC_DEV_IOCXCMD_V2, &data_);
-    if (result < 0) {
-      PLOG(ERROR) << "FPMCU ioctl failed, command: " << data_.cmd.command;
-      return false;
+  // Optionally retry the command when the underlying ioctl
+  // returns ETIMEDOUT.
+  // The caller must be careful to only retry EC state-less
+  // commands, that can be rerun without consequence.
+  bool Run(int ec_fd, int num_attempts = 1) {
+    CHECK_GT(num_attempts, 0);
+    for (int retry = 0; retry < num_attempts; retry++) {
+      data_.cmd.result = 0xff;
+      // We rely on the ioctl preserving data_.req when the command fails.
+      // This is important for subsequent retries using the same data_.req.
+      int result = ioctl(ec_fd, CROS_EC_DEV_IOCXCMD_V2, &data_);
+      if (result >= 0) {
+        LOG_IF(INFO, retry > 0) << "FPMCU ioctl command " << data_.cmd.command
+                                << " succeeded on attempt " << retry + 1 << "/"
+                                << num_attempts << ".";
+        return (static_cast<uint32_t>(result) == data_.cmd.insize);
+      }
+      if (errno != ETIMEDOUT) {
+        PLOG(ERROR) << "FPMCU ioctl command " << data_.cmd.command
+                    << " failed on attempt " << retry + 1 << "/" << num_attempts
+                    << ", retry is not allowed for error";
+        return false;
+      }
+      PLOG(ERROR) << "FPMCU ioctl command " << data_.cmd.command
+                  << " failed on attempt " << retry + 1 << "/" << num_attempts;
     }
 
-    return (static_cast<uint32_t>(result) == data_.cmd.insize);
+    return false;
   }
 
   I* Resp() { return &data_.resp; }

@@ -16,6 +16,10 @@ namespace {
 
 // Upper bound of the host command packet transfer size.
 constexpr int kMaxPacketSize = 544;
+// Although very rare, we have seen device commands fail due
+// to ETIMEDOUT. For this reason, we attempt certain critical
+// device IO operation twice.
+constexpr int kMaxIoAttempts = 2;
 
 std::string FourCC(const uint32_t a) {
   return base::StringPrintf(
@@ -46,7 +50,9 @@ bool CrosFpDevice::EcProtoInfo(ssize_t* max_read, ssize_t* max_write) {
   /* read max request / response size from the MCU for protocol v3+ */
   EcCommand<EmptyParam, struct ec_response_get_protocol_info> cmd(
       EC_CMD_GET_PROTOCOL_INFO);
-  if (!cmd.Run(cros_fd_.get()))
+  // We retry this command because it is known to occasionally fail
+  // with ETIMEDOUT on first attempt.
+  if (!cmd.Run(cros_fd_.get(), kMaxIoAttempts))
     return false;
 
   *max_read =
@@ -57,12 +63,39 @@ bool CrosFpDevice::EcProtoInfo(ssize_t* max_read, ssize_t* max_write) {
   return true;
 }
 
+ssize_t CrosFpDevice::ReadVersion(char* buffer, size_t size) {
+  ssize_t ret;
+  for (int retry = 0; retry < kMaxIoAttempts; retry++) {
+    ret = read(cros_fd_.get(), buffer, size);
+    if (ret >= 0) {
+      LOG_IF(INFO, retry > 0)
+          << "FPMCU read cros_fp device succeeded on attempt " << retry + 1
+          << "/" << kMaxIoAttempts << ".";
+      return ret;
+    }
+    if (errno != ETIMEDOUT) {
+      PLOG(ERROR) << "FPMCU failed to read cros_fp device on attempt "
+                  << retry + 1 << "/" << kMaxIoAttempts
+                  << ", retry is not allowed for error";
+      return ret;
+    }
+    PLOG(ERROR) << "FPMCU failed to read cros_fp device on attempt "
+                << retry + 1 << "/" << kMaxIoAttempts;
+  }
+
+  return ret;
+}
+
 bool CrosFpDevice::EcDevInit() {
+  // This is a special read (before events are enabled) that can fail due
+  // to ETIMEDOUT. This is because the first read with events disabled
+  // triggers a get_version request to the FPMCU, which can timeout.
+  // TODO(b/131438292): Remove the hardcoded size for the version buffer.
   char version[80];
-  int ret = read(cros_fd_.get(), version, sizeof(version) - 1);
+  ssize_t ret = ReadVersion(version, sizeof(version) - 1);
   if (ret <= 0) {
-    int err = ret ? errno : 0;
-    LOG(ERROR) << "Failed to read cros_fp device: " << err;
+    LOG(ERROR) << "Failed to read cros_fp device version, read returned " << ret
+               << ".";
     return false;
   }
   version[ret] = '\0';
@@ -74,6 +107,7 @@ bool CrosFpDevice::EcDevInit() {
     LOG(ERROR) << "Invalid device version";
     return false;
   }
+
   if (!EcProtoInfo(&max_read_size_, &max_write_size_)) {
     LOG(ERROR) << "Failed to get cros_fp protocol info.";
     return false;
