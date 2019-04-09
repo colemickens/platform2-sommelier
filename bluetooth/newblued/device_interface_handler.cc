@@ -315,13 +315,13 @@ bool DeviceInterfaceHandler::RemoveDevice(const std::string& address) {
   if (!device)
     return false;
 
+  newblue_->CancelPair(address, device->is_random_address);
   discovered_devices_.erase(address);
 
   dbus::ObjectPath device_path(ConvertDeviceAddressToObjectPath(address));
   exported_object_manager_wrapper_->RemoveExportedInterface(
       device_path, bluetooth_device::kBluetoothDeviceInterface);
 
-  newblue_->CancelPair(address, device->is_random_address);
   // TODO(sonnysasaka): Also disconnect any connection when connection is
   // implemented.
   return true;
