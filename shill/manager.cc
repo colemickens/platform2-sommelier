@@ -2529,6 +2529,17 @@ ServiceRefPtr Manager::FindMatchingService(const KeyValueStore& args,
   return nullptr;
 }
 
+ServiceRefPtr Manager::GetPrimaryPhysicalService() {
+  // Note that |services_| is kept sorted in order of highest priority to
+  // lowest.
+  for (const auto& service : services_) {
+    if (Technology::IsPrimaryConnectivityTechnology(service->technology())) {
+      return service;
+    }
+  }
+  return nullptr;
+}
+
 ServiceRefPtr Manager::GetFirstEthernetService() {
   for (const auto& service : services_) {
     if (service->technology() == Technology::kEthernet) {

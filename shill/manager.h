@@ -178,7 +178,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
       Error* error);
   ServiceRefPtr FindMatchingService(const KeyValueStore& args, Error* error);
 
-  // Returns the first service of type |Technology::kEthernet| found in
+  // Return the highest priority service of a physical technology type (i.e. not
+  // VPN, ARC, etc), or nullptr if no such service is found.
+  virtual ServiceRefPtr GetPrimaryPhysicalService();
+  // Return the first service of type |Technology::kEthernet| found in
   // |services_|, or nullptr if no such service is found.
   ServiceRefPtr GetFirstEthernetService();
 
