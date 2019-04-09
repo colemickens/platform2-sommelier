@@ -75,7 +75,7 @@ bool CrosFpDevice::EcDevInit() {
     return false;
   }
   if (!EcProtoInfo(&max_read_size_, &max_write_size_)) {
-    LOG(ERROR) << "Fail to get cros_fp protocol info " << ret;
+    LOG(ERROR) << "Failed to get cros_fp protocol info.";
     return false;
   }
 
