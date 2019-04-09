@@ -730,23 +730,6 @@ class Service : public base::RefCounted<Service> {
   static const size_t kEAPMaxCertificationElements;
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
-  static const char kServiceSortAutoConnect[];
-  static const char kServiceSortConnectable[];
-  static const char kServiceSortHasEverConnected[];
-  static const char kServiceSortManagedCredentials[];
-  static const char kServiceSortIsConnected[];
-  static const char kServiceSortDependency[];
-  static const char kServiceSortIsConnecting[];
-  static const char kServiceSortIsFailed[];
-  static const char kServiceSortIsOnline[];
-  static const char kServiceSortIsPortalled[];
-  static const char kServiceSortPriority[];
-  static const char kServiceSortSecurity[];
-  static const char kServiceSortProfileOrder[];
-  static const char kServiceSortEtc[];
-  static const char kServiceSortSerialNumber[];
-  static const char kServiceSortTechnology[];
-
   static const uint64_t kMinAutoConnectCooldownTimeMilliseconds;
   static const uint64_t kAutoConnectCooldownBackoffFactor;
 

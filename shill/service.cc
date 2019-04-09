@@ -41,6 +41,25 @@ using std::vector;
 
 namespace shill {
 
+namespace {
+const char kServiceSortAutoConnect[] = "AutoConnect";
+const char kServiceSortConnectable[] = "Connectable";
+const char kServiceSortDependency[] = "Dependency";
+const char kServiceSortHasEverConnected[] = "HasEverConnected";
+const char kServiceSortManagedCredentials[] = "ManagedCredentials";
+const char kServiceSortIsConnected[] = "IsConnected";
+const char kServiceSortIsConnecting[] = "IsConnecting";
+const char kServiceSortIsFailed[] = "IsFailed";
+const char kServiceSortIsOnline[] = "IsOnline";
+const char kServiceSortIsPortalled[] = "IsPortal";
+const char kServiceSortPriority[] = "Priority";
+const char kServiceSortSecurity[] = "Security";
+const char kServiceSortProfileOrder[] = "ProfileOrder";
+const char kServiceSortEtc[] = "Etc";
+const char kServiceSortSerialNumber[] = "SerialNumber";
+const char kServiceSortTechnology[] = "Technology";
+}  // namespace
+
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kService;
 static string ObjectID(const Service* s) { return s->GetRpcIdentifier(); }
@@ -67,23 +86,6 @@ const char Service::kCheckPortalTrue[] = "true";
 const char Service::kErrorDetailsNone[] = "";
 
 const int Service::kPriorityNone = 0;
-
-const char Service::kServiceSortAutoConnect[] = "AutoConnect";
-const char Service::kServiceSortConnectable[] = "Connectable";
-const char Service::kServiceSortDependency[] = "Dependency";
-const char Service::kServiceSortHasEverConnected[] = "HasEverConnected";
-const char Service::kServiceSortManagedCredentials[] = "ManagedCredentials";
-const char Service::kServiceSortIsConnected[] = "IsConnected";
-const char Service::kServiceSortIsConnecting[] = "IsConnecting";
-const char Service::kServiceSortIsFailed[] = "IsFailed";
-const char Service::kServiceSortIsOnline[] = "IsOnline";
-const char Service::kServiceSortIsPortalled[] = "IsPortal";
-const char Service::kServiceSortPriority[] = "Priority";
-const char Service::kServiceSortSecurity[] = "Security";
-const char Service::kServiceSortProfileOrder[] = "ProfileOrder";
-const char Service::kServiceSortEtc[] = "Etc";
-const char Service::kServiceSortSerialNumber[] = "SerialNumber";
-const char Service::kServiceSortTechnology[] = "Technology";
 
 const char Service::kStorageAutoConnect[] = "AutoConnect";
 const char Service::kStorageCheckPortal[] = "CheckPortal";
