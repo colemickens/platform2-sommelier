@@ -238,7 +238,13 @@ int main(int argc, char* argv[]) {
     return EX_OK;
   }
 
-  U2fDaemon daemon(mode, FLAGS_user_keys, FLAGS_vendor_id, FLAGS_product_id);
+  // User keys should always be enabled when a U2F policy is set, and may
+  // additionally be enabled on the command line.
+  // User keys may not be disabled if a policy is defined, as non-user keys
+  // are legacy and should not be used beyond the initial beta launch.
+  bool user_keys = (ReadU2fPolicy() != U2fMode::kUnset) || FLAGS_user_keys;
+
+  U2fDaemon daemon(mode, user_keys, FLAGS_vendor_id, FLAGS_product_id);
   int rc = daemon.Run();
 
   return rc == EX_UNAVAILABLE ? EX_OK : rc;
