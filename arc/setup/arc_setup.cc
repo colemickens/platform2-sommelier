@@ -1606,10 +1606,10 @@ AndroidSdkVersion ArcSetup::SdkVersionFromString(
         return AndroidSdkVersion::ANDROID_N_MR1;
       case 28: {
         // TODO(yusukes): Remove the hack once master-arc-dev starts using >28.
-        const std::string version_release_str =
-            GetSystemBuildProperyOrDie("ro.build.version.release");
-        LOG(INFO) << "Release version string: " << version_release_str;
-        return version_release_str == "Q" ? AndroidSdkVersion::ANDROID_Q
+        const std::string version_codename_str =
+            GetSystemBuildProperyOrDie("ro.build.version.codename");
+        LOG(INFO) << "Codename string: " << version_codename_str;
+        return version_codename_str == "Q" ? AndroidSdkVersion::ANDROID_Q
                                           : AndroidSdkVersion::ANDROID_P;
       }
     }
