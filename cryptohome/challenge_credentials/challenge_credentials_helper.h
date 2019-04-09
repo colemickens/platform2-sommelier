@@ -48,21 +48,21 @@ class ChallengeCredentialsHelper final {
 
   // This callback reports result of a GenerateNew() call.
   //
-  // If the operation succeeds, |username_passkey| will contain the freshly
-  // generated credentials that should be used for encrypting the new vault
-  // keyset, with the challenge_credentials_keyset_info() field containing the
-  // data to be stored in the created vault keyset.
+  // If the operation succeeds, |credentials| will contain the freshly generated
+  // credentials that should be used for encrypting the new vault keyset, with
+  // the challenge_credentials_keyset_info() field containing the data to be
+  // stored in the created vault keyset.
   // If the operation fails, the argument will be null.
   using GenerateNewCallback =
-      base::Callback<void(std::unique_ptr<Credentials> /* username_passkey */)>;
+      base::Callback<void(std::unique_ptr<Credentials> /* credentials */)>;
 
   // This callback reports result of a Decrypt() call.
   //
-  // If the operation succeeds, |username_passkey| will contain the built
-  // credentials that should be used for decrypting the user's vault keyset.
+  // If the operation succeeds, |credentials| will contain the built credentials
+  // that should be used for decrypting the user's vault keyset.
   // If the operation fails, the argument will be null.
   using DecryptCallback =
-      base::Callback<void(std::unique_ptr<Credentials> /* username_passkey */)>;
+      base::Callback<void(std::unique_ptr<Credentials> /* credentials */)>;
 
   // This callback reports result of a VerifyKey() call.
   //
@@ -146,13 +146,13 @@ class ChallengeCredentialsHelper final {
   // associated with the operation and forwards results to the original
   // callback.
   void OnGenerateNewCompleted(const GenerateNewCallback& original_callback,
-                              std::unique_ptr<Credentials> username_passkey);
+                              std::unique_ptr<Credentials> credentials);
 
   // Wrapper for the completion callback of Decrypt(). Cleans up resources
   // associated with the operation and forwards results to the original
   // callback.
   void OnDecryptCompleted(const DecryptCallback& original_callback,
-                          std::unique_ptr<Credentials> username_passkey);
+                          std::unique_ptr<Credentials> credentials);
 
   // Non-owned.
   Tpm* const tpm_;

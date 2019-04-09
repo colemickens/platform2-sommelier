@@ -35,26 +35,26 @@ class CredentialsTest : public ::testing::Test {
 TEST(CredentialsTest, UsernameTest) {
   char username[80];
   snprintf(username, sizeof(username), "%s%s", kFakeUser, "@gmail.com");
-  Credentials up(username, SecureBlob(kFakePasskey));
-  std::string full_username = up.username();
+  Credentials credentials(username, SecureBlob(kFakePasskey));
+  std::string full_username = credentials.username();
   EXPECT_EQ(0, strcmp(username, full_username.c_str()));
 }
 
 TEST(CredentialsTest, GetObfuscatedUsernameTest) {
-  Credentials up(kFakeUser, SecureBlob(kFakePasskey));
+  Credentials credentials(kFakeUser, SecureBlob(kFakePasskey));
 
   brillo::SecureBlob fake_salt;
   EXPECT_TRUE(
       brillo::SecureBlob::HexStringToSecureBlob(kFakeSystemSalt, &fake_salt));
 
   EXPECT_EQ("bb0ae3fcd181eefb861b4f0ee147a316e51d9f04",
-            up.GetObfuscatedUsername(fake_salt));
+            credentials.GetObfuscatedUsername(fake_salt));
 }
 
 TEST(CredentialsTest, GetPasskeyTest) {
-  Credentials up(kFakeUser, SecureBlob(kFakePasskey));
+  Credentials credentials(kFakeUser, SecureBlob(kFakePasskey));
   SecureBlob passkey;
-  up.GetPasskey(&passkey);
+  credentials.GetPasskey(&passkey);
   EXPECT_EQ(strlen(kFakePasskey), passkey.size());
   EXPECT_EQ(0, memcmp(kFakePasskey, passkey.data(), passkey.size()));
 }

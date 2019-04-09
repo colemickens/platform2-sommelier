@@ -37,46 +37,46 @@ class UserSessionTest : public ::testing::Test {
 };
 
 TEST_F(UserSessionTest, InitTest) {
-  Credentials up("username", SecureBlob("password"));
+  Credentials credentials("username", SecureBlob("password"));
   UserSession session;
   session.Init(salt);
-  EXPECT_TRUE(session.SetUser(up));
+  EXPECT_TRUE(session.SetUser(credentials));
 }
 
 TEST_F(UserSessionTest, CheckUserTest) {
-  Credentials up("username", SecureBlob("password"));
+  Credentials credentials("username", SecureBlob("password"));
   UserSession session;
   session.Init(salt);
-  EXPECT_TRUE(session.SetUser(up));
-  EXPECT_TRUE(session.CheckUser(up));
+  EXPECT_TRUE(session.SetUser(credentials));
+  EXPECT_TRUE(session.CheckUser(credentials));
 }
 
 TEST_F(UserSessionTest, ReInitTest) {
-  Credentials up("username", SecureBlob("password"));
-  Credentials up_new("username2", SecureBlob("password2"));
+  Credentials credentials("username", SecureBlob("password"));
+  Credentials credentials_new("username2", SecureBlob("password2"));
   UserSession session;
   session.Init(salt);
-  EXPECT_TRUE(session.SetUser(up));
-  EXPECT_TRUE(session.SetUser(up_new));
-  EXPECT_FALSE(session.CheckUser(up));
-  EXPECT_TRUE(session.CheckUser(up_new));
+  EXPECT_TRUE(session.SetUser(credentials));
+  EXPECT_TRUE(session.SetUser(credentials_new));
+  EXPECT_FALSE(session.CheckUser(credentials));
+  EXPECT_TRUE(session.CheckUser(credentials_new));
 }
 
 TEST_F(UserSessionTest, ResetTest) {
-  Credentials up("username", SecureBlob("password"));
+  Credentials credentials("username", SecureBlob("password"));
   UserSession session;
   session.Init(salt);
-  EXPECT_TRUE(session.SetUser(up));
+  EXPECT_TRUE(session.SetUser(credentials));
   session.Reset();
-  EXPECT_FALSE(session.CheckUser(up));
+  EXPECT_FALSE(session.CheckUser(credentials));
 }
 
 TEST_F(UserSessionTest, VerifyTest) {
-  Credentials up("username", SecureBlob("password"));
+  Credentials credentials("username", SecureBlob("password"));
   UserSession session;
   session.Init(salt);
-  EXPECT_TRUE(session.SetUser(up));
-  EXPECT_TRUE(session.Verify(up));
+  EXPECT_TRUE(session.SetUser(credentials));
+  EXPECT_TRUE(session.Verify(credentials));
 }
 
 }  // namespace cryptohome

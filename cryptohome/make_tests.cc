@@ -229,11 +229,11 @@ void TestUser::GenerateCredentials(bool force_ecryptfs) {
   cryptohome::Crypto::PasswordToPasskey(password,
                                         sec_salt,
                                         &passkey);
-  Credentials up(username, passkey);
+  Credentials local_credentials(username, passkey);
   if (use_key_data) {
     if (is_le_credential)
         key_data.set_label("PIN");
-    up.set_key_data(key_data);
+    local_credentials.set_key_data(key_data);
   }
   bool created;
   // NOTE! This code gives us generated credentials for credentials tests NOT
@@ -273,7 +273,7 @@ void TestUser::GenerateCredentials(bool force_ecryptfs) {
     .WillOnce(DoAll(SaveArg<1>(&credentials), Return(true)));
   Mount::MountArgs mount_args;
   mount_args.create_as_ecryptfs = force_ecryptfs;
-  mount->EnsureCryptohome(up, mount_args, &created);
+  mount->EnsureCryptohome(local_credentials, mount_args, &created);
   DCHECK(created && credentials.size());
 }
 

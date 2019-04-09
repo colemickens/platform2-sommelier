@@ -25,12 +25,12 @@ class Credentials;
 
 // for ChallengeCredentialsHelper::GenerateNew():
 struct ChallengeCredentialsGenerateNewResult {
-  std::unique_ptr<Credentials> username_passkey;
+  std::unique_ptr<Credentials> credentials;
 };
 
 // for ChallengeCredentialsHelper::Decrypt():
 struct ChallengeCredentialsDecryptResult {
-  std::unique_ptr<Credentials> username_passkey;
+  std::unique_ptr<Credentials> credentials;
 };
 
 // Functions that make callbacks for ChallengeCredentialsHelper that store the

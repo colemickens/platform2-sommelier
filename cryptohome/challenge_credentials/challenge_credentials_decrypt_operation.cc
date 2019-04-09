@@ -81,7 +81,7 @@ void ChallengeCredentialsDecryptOperation::Abort() {
   // cancellation is not supported by the challenges IPC API currently, neither
   // it is supported by the API for smart card drivers in Chrome OS.
   weak_ptr_factory_.InvalidateWeakPtrs();
-  Complete(&completion_callback_, nullptr /* username_passkey */);
+  Complete(&completion_callback_, nullptr /* credentials */);
   // |this| can be already destroyed at this point.
 }
 
@@ -207,11 +207,11 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
 void ChallengeCredentialsDecryptOperation::ProceedIfChallengesDone() {
   if (!salt_signature_ || !unsealed_secret_)
     return;
-  auto username_passkey = std::make_unique<Credentials>(
+  auto credentials = std::make_unique<Credentials>(
       account_id_.c_str(),
       ConstructPasskey(*unsealed_secret_, *salt_signature_));
-  username_passkey->set_key_data(key_data_);
-  Complete(&completion_callback_, std::move(username_passkey));
+  credentials->set_key_data(key_data_);
+  Complete(&completion_callback_, std::move(credentials));
   // |this| can be already destroyed at this point.
 }
 

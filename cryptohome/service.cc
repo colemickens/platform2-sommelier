@@ -2010,15 +2010,15 @@ void Service::DoMountEx(std::unique_ptr<AccountIdentifier> identifier,
     return;
   }
 
-  auto username_passkey = std::make_unique<Credentials>(
+  auto credentials = std::make_unique<Credentials>(
       account_id.c_str(), SecureBlob(authorization->key().secret().begin(),
                                      authorization->key().secret().end()));
   // Everything else can be the default.
-  username_passkey->set_key_data(authorization->key().data());
+  credentials->set_key_data(authorization->key().data());
 
-  ContinueMountExWithCredentials(
-      std::move(identifier), std::move(authorization), std::move(request),
-      std::move(username_passkey), mount_args, context);
+  ContinueMountExWithCredentials(std::move(identifier),
+                                 std::move(authorization), std::move(request),
+                                 std::move(credentials), mount_args, context);
 }
 
 void Service::DoChallengeResponseMountEx(
@@ -2127,10 +2127,10 @@ void Service::OnChallengeResponseMountCredentialsObtained(
     std::unique_ptr<MountRequest> request,
     const Mount::MountArgs& mount_args,
     DBusGMethodInvocation* context,
-    std::unique_ptr<Credentials> username_passkey) {
+    std::unique_ptr<Credentials> credentials) {
   DCHECK_EQ(authorization->key().data().type(),
             KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
-  if (!username_passkey) {
+  if (!credentials) {
     LOG(ERROR) << "Could not mount due to failure to obtain challenge-response "
                   "credentials";
     BaseReply reply;
@@ -2139,11 +2139,11 @@ void Service::OnChallengeResponseMountCredentialsObtained(
     SendReply(context, reply);
     return;
   }
-  DCHECK_EQ(username_passkey->key_data().type(),
+  DCHECK_EQ(credentials->key_data().type(),
             KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
-  ContinueMountExWithCredentials(
-      std::move(identifier), std::move(authorization), std::move(request),
-      std::move(username_passkey), mount_args, context);
+  ContinueMountExWithCredentials(std::move(identifier),
+                                 std::move(authorization), std::move(request),
+                                 std::move(credentials), mount_args, context);
 }
 
 void Service::ContinueMountExWithCredentials(

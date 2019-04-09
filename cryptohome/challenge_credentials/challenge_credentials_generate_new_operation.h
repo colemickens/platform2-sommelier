@@ -39,12 +39,12 @@ class ChallengeCredentialsGenerateNewOperation final
   using KeysetSignatureChallengeInfo =
       SerializedVaultKeyset_SignatureChallengeInfo;
 
-  // If the operation succeeds, |username_passkey| will contain the generated
+  // If the operation succeeds, |credentials| will contain the generated
   // credentials that can be used for encryption of the user's vault keyset,
   // with the challenge_credentials_keyset_info() field containing the data to
   // be stored in the created vault keyset.
   using CompletionCallback =
-      base::Callback<void(std::unique_ptr<Credentials> username_passkey)>;
+      base::Callback<void(std::unique_ptr<Credentials> credentials)>;
 
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.

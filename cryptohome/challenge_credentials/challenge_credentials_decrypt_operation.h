@@ -38,10 +38,10 @@ class ChallengeCredentialsDecryptOperation final
   using KeysetSignatureChallengeInfo =
       SerializedVaultKeyset_SignatureChallengeInfo;
 
-  // If the operation succeeds, |username_passkey| will contain the decrypted
+  // If the operation succeeds, |credentials| will contain the decrypted
   // credentials that can be used for decryption of the user's vault keyset.
   using CompletionCallback =
-      base::Callback<void(std::unique_ptr<Credentials> username_passkey)>;
+      base::Callback<void(std::unique_ptr<Credentials> credentials)>;
 
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.

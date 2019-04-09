@@ -898,7 +898,7 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
       std::unique_ptr<MountRequest> request,
       const Mount::MountArgs& mount_args,
       DBusGMethodInvocation* context,
-      std::unique_ptr<Credentials> username_passkey);
+      std::unique_ptr<Credentials> credentials);
 
   // Called on Mount thread. This method completes the MountEx request, given
   // the built Credentials object. It assumes that the input parameters went

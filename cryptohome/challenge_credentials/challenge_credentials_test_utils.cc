@@ -24,10 +24,10 @@ MakeChallengeCredentialsGenerateNewResultWriter(
   DCHECK(!*result);
   return base::Bind(
       [](std::unique_ptr<ChallengeCredentialsGenerateNewResult>* result,
-         std::unique_ptr<Credentials> username_passkey) {
+         std::unique_ptr<Credentials> credentials) {
         ASSERT_FALSE(*result);
         *result = std::make_unique<ChallengeCredentialsGenerateNewResult>();
-        (*result)->username_passkey = std::move(username_passkey);
+        (*result)->credentials = std::move(credentials);
       },
       base::Unretained(result));
 }
@@ -38,10 +38,10 @@ MakeChallengeCredentialsDecryptResultWriter(
   DCHECK(!*result);
   return base::Bind(
       [](std::unique_ptr<ChallengeCredentialsDecryptResult>* result,
-         std::unique_ptr<Credentials> username_passkey) {
+         std::unique_ptr<Credentials> credentials) {
         ASSERT_FALSE(*result);
         *result = std::make_unique<ChallengeCredentialsDecryptResult>();
-        (*result)->username_passkey = std::move(username_passkey);
+        (*result)->credentials = std::move(credentials);
       },
       base::Unretained(result));
 }
@@ -50,36 +50,36 @@ void VerifySuccessfulChallengeCredentialsGenerateNewResult(
     const ChallengeCredentialsGenerateNewResult& result,
     const std::string& expected_username,
     const SecureBlob& expected_passkey) {
-  ASSERT_TRUE(result.username_passkey);
-  EXPECT_EQ(expected_username, result.username_passkey->username());
+  ASSERT_TRUE(result.credentials);
+  EXPECT_EQ(expected_username, result.credentials->username());
   SecureBlob passkey;
-  result.username_passkey->GetPasskey(&passkey);
+  result.credentials->GetPasskey(&passkey);
   EXPECT_EQ(expected_passkey, passkey);
   EXPECT_EQ(KeyData::KEY_TYPE_CHALLENGE_RESPONSE,
-            result.username_passkey->key_data().type());
+            result.credentials->key_data().type());
 }
 
 void VerifySuccessfulChallengeCredentialsDecryptResult(
     const ChallengeCredentialsDecryptResult& result,
     const std::string& expected_username,
     const SecureBlob& expected_passkey) {
-  ASSERT_TRUE(result.username_passkey);
-  EXPECT_EQ(expected_username, result.username_passkey->username());
+  ASSERT_TRUE(result.credentials);
+  EXPECT_EQ(expected_username, result.credentials->username());
   SecureBlob passkey;
-  result.username_passkey->GetPasskey(&passkey);
+  result.credentials->GetPasskey(&passkey);
   EXPECT_EQ(expected_passkey, passkey);
   EXPECT_EQ(KeyData::KEY_TYPE_CHALLENGE_RESPONSE,
-            result.username_passkey->key_data().type());
+            result.credentials->key_data().type());
 }
 
 void VerifyFailedChallengeCredentialsGenerateNewResult(
     const ChallengeCredentialsGenerateNewResult& result) {
-  EXPECT_FALSE(result.username_passkey);
+  EXPECT_FALSE(result.credentials);
 }
 
 void VerifyFailedChallengeCredentialsDecryptResult(
     const ChallengeCredentialsDecryptResult& result) {
-  EXPECT_FALSE(result.username_passkey);
+  EXPECT_FALSE(result.credentials);
 }
 
 }  // namespace cryptohome

@@ -1471,9 +1471,9 @@ TEST_P(HomeDirsTest, GoodDecryptTest) {
   SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(test_helper_.users[1].password,
                                         system_salt, &passkey);
-  Credentials up(test_helper_.users[1].username, passkey);
+  Credentials credentials(test_helper_.users[1].username, passkey);
 
-  ASSERT_TRUE(homedirs_.AreCredentialsValid(up));
+  ASSERT_TRUE(homedirs_.AreCredentialsValid(credentials));
 }
 
 TEST_P(HomeDirsTest, BadDecryptTest) {
@@ -1490,9 +1490,9 @@ TEST_P(HomeDirsTest, BadDecryptTest) {
       .WillRepeatedly(Return(false));
   SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey("bogus", system_salt, &passkey);
-  Credentials up(test_helper_.users[4].username, passkey);
+  Credentials credentials(test_helper_.users[4].username, passkey);
 
-  ASSERT_FALSE(homedirs_.AreCredentialsValid(up));
+  ASSERT_FALSE(homedirs_.AreCredentialsValid(credentials));
 }
 
 #define MAX_VKS 5
@@ -1605,7 +1605,8 @@ class KeysetManagementTest : public HomeDirsTest {
     SecureBlob passkey;
     cryptohome::Crypto::PasswordToPasskey(test_helper_.users[1].password,
                                           system_salt_, &passkey);
-    up_.reset(new Credentials(test_helper_.users[1].username, passkey));
+    credentials_.reset(
+        new Credentials(test_helper_.users[1].username, passkey));
 
     // Since most of the tests were written without reset_seed in mind,
     // it is tedious to add expectations to every test, for the situation
@@ -1625,7 +1626,7 @@ class KeysetManagementTest : public HomeDirsTest {
   MockVaultKeyset* active_vks_[MAX_VKS];
   std::vector<FilePath> keyset_paths_;
   std::vector<brillo::SecureBlob> keys_;
-  std::unique_ptr<Credentials> up_;
+  std::unique_ptr<Credentials> credentials_;
   SecureBlob system_salt_;
   SerializedVaultKeyset serialized_;
 };
@@ -1641,7 +1642,7 @@ TEST_P(KeysetManagementTest, AddKeysetSuccess) {
   SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
   int index = -1;
-  // The injected keyset in the fixture handles the up_ validation.
+  // The injected keyset in the fixture handles the |credentials_| validation.
   EXPECT_CALL(platform_,
       OpenFile(
         Property(&FilePath::value, EndsWith("master.0")),
@@ -1661,7 +1662,7 @@ TEST_P(KeysetManagementTest, AddKeysetSuccess) {
     .Times(0);
 
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            homedirs_.AddKeyset(*up_, newkey, NULL, false, &index));
+            homedirs_.AddKeyset(*credentials_, newkey, NULL, false, &index));
   EXPECT_EQ(index, 1);
 }
 
@@ -1702,8 +1703,9 @@ TEST_P(KeysetManagementTest, AddKeysetClobber) {
     .Times(1);
 
   int index = -1;
-  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            homedirs_.AddKeyset(*up_, newkey, &key_data, true, &index));
+  EXPECT_EQ(
+      CRYPTOHOME_ERROR_NOT_SET,
+      homedirs_.AddKeyset(*credentials_, newkey, &key_data, true, &index));
   EXPECT_EQ(index, 0);
 }
 
@@ -1717,7 +1719,7 @@ TEST_P(KeysetManagementTest, AddKeysetNoClobber) {
   serialized_.mutable_key_data()->set_label("current label");
   KeyData key_data;
   key_data.set_label("current label");
-  // The injected keyset in the fixture handles the up_ validation.
+  // The injected keyset in the fixture handles the |credentials_| validation.
   EXPECT_CALL(platform_,
       OpenFile(
         Property(&FilePath::value, EndsWith("master.0")),
@@ -1729,8 +1731,9 @@ TEST_P(KeysetManagementTest, AddKeysetNoClobber) {
         StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
 
-  EXPECT_EQ(CRYPTOHOME_ERROR_KEY_LABEL_EXISTS,
-            homedirs_.AddKeyset(*up_, newkey, &key_data, false, &index));
+  EXPECT_EQ(
+      CRYPTOHOME_ERROR_KEY_LABEL_EXISTS,
+      homedirs_.AddKeyset(*credentials_, newkey, &key_data, false, &index));
   EXPECT_EQ(index, -1);
 }
 
@@ -1744,7 +1747,7 @@ TEST_P(KeysetManagementTest, UpdateKeysetSuccess) {
   Key new_key;
   new_key.set_secret("why not");
   new_key.mutable_data()->set_label("new label");
-  // The injected keyset in the fixture handles the up_ validation.
+  // The injected keyset in the fixture handles the |credentials_| validation.
   serialized_.mutable_key_data()->set_label("current label");
   FilePath vk_path("/some/path/master.0");
   EXPECT_CALL(*active_vk_, source_file())
@@ -1755,9 +1758,8 @@ TEST_P(KeysetManagementTest, UpdateKeysetSuccess) {
     .WillOnce(Return(true));
 
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            homedirs_.UpdateKeyset(*up_,
-                                   const_cast<const Key *>(&new_key),
-                                   ""));
+            homedirs_.UpdateKeyset(*credentials_,
+                                   const_cast<const Key*>(&new_key), ""));
   EXPECT_EQ(serialized_.key_data().label(), new_key.data().label());
 }
 
@@ -1770,7 +1772,7 @@ TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedNoSignature) {
   new_key.set_secret("why not");
   new_key.mutable_data()->set_label("new label");
   new_key.mutable_data()->set_revision(1);
-  // The injected keyset in the fixture handles the up_ validation.
+  // The injected keyset in the fixture handles the |credentials_| validation.
   KeyData* key_data = serialized_.mutable_key_data();
   key_data->set_label("current label");
   // Allow the default override on the revision.
@@ -1784,9 +1786,8 @@ TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedNoSignature) {
   auth_secret->set_symmetric_key(kSomeHMACKey);
 
   EXPECT_EQ(CRYPTOHOME_ERROR_UPDATE_SIGNATURE_INVALID,
-            homedirs_.UpdateKeyset(*up_,
-                                   const_cast<const Key *>(&new_key),
-                                   ""));
+            homedirs_.UpdateKeyset(*credentials_,
+                                   const_cast<const Key*>(&new_key), ""));
   EXPECT_NE(serialized_.key_data().label(), new_key.data().label());
 }
 
@@ -1801,7 +1802,7 @@ TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedSuccess) {
   new_key.mutable_data()->set_label("new label");
   // Allow updating over an undefined revision.
   new_key.mutable_data()->set_revision(0);
-  // The injected keyset in the fixture handles the up_ validation.
+  // The injected keyset in the fixture handles the |credentials_| validation.
   KeyData* key_data = serialized_.mutable_key_data();
   key_data->set_label("current label");
   key_data->mutable_privileges()->set_update(false);
@@ -1830,10 +1831,10 @@ TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedSuccess) {
   brillo::SecureBlob hmac_key(auth_secret->symmetric_key());
   brillo::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
   SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, hmac_data);
-  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            homedirs_.UpdateKeyset(*up_,
-                                   const_cast<const Key *>(&new_key),
-                                   hmac.to_string()));
+  EXPECT_EQ(
+      CRYPTOHOME_ERROR_NOT_SET,
+      homedirs_.UpdateKeyset(*credentials_, const_cast<const Key*>(&new_key),
+                             hmac.to_string()));
   EXPECT_EQ(serialized_.key_data().revision(), new_key.data().revision());
 }
 
@@ -1859,7 +1860,7 @@ TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedCompatVector) {
   new_key.mutable_data()->set_label("new label");
   // The compat revision to test is '1'.
   new_key.mutable_data()->set_revision(1);
-  // The injected keyset in the fixture handles the up_ validation.
+  // The injected keyset in the fixture handles the |credentials_| validation.
   KeyData* key_data = serialized_.mutable_key_data();
   key_data->set_label("current label");
   key_data->set_revision(0);
@@ -1893,9 +1894,8 @@ TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedCompatVector) {
   std::string signature;
   ASSERT_TRUE(brillo::data_encoding::Base64Decode(kB64Signature, &signature));
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            homedirs_.UpdateKeyset(*up_,
-                                   const_cast<const Key *>(&new_key),
-                                   signature));
+            homedirs_.UpdateKeyset(
+                *credentials_, const_cast<const Key*>(&new_key), signature));
   EXPECT_EQ(new_key.data().revision(), serialized_.key_data().revision());
 }
 
@@ -1908,7 +1908,7 @@ TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedNoEqualReplay) {
   new_key.set_secret("why not");
   new_key.mutable_data()->set_label("new label");
   new_key.mutable_data()->set_revision(100);
-  // The injected keyset in the fixture handles the up_ validation.
+  // The injected keyset in the fixture handles the |credentials_| validation.
   KeyData* key_data = serialized_.mutable_key_data();
   key_data->set_revision(100);
   key_data->set_label("current label");
@@ -1929,10 +1929,10 @@ TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedNoEqualReplay) {
   brillo::SecureBlob hmac_key(auth_secret->symmetric_key());
   brillo::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
   SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, hmac_data);
-  EXPECT_EQ(CRYPTOHOME_ERROR_UPDATE_SIGNATURE_INVALID,
-            homedirs_.UpdateKeyset(*up_,
-                                   const_cast<const Key *>(&new_key),
-                                   hmac.to_string()));
+  EXPECT_EQ(
+      CRYPTOHOME_ERROR_UPDATE_SIGNATURE_INVALID,
+      homedirs_.UpdateKeyset(*credentials_, const_cast<const Key*>(&new_key),
+                             hmac.to_string()));
   EXPECT_NE(serialized_.key_data().label(), new_key.data().label());
 }
 
@@ -1946,7 +1946,7 @@ TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedNoLessReplay) {
   new_key.set_secret("why not");
   new_key.mutable_data()->set_label("new label");
   new_key.mutable_data()->set_revision(0);
-  // The injected keyset in the fixture handles the up_ validation.
+  // The injected keyset in the fixture handles the |credentials_| validation.
   KeyData* key_data = serialized_.mutable_key_data();
   key_data->set_revision(1);
   key_data->set_label("current label");
@@ -1968,10 +1968,10 @@ TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedNoLessReplay) {
   brillo::SecureBlob hmac_key(auth_secret->symmetric_key());
   brillo::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
   SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, hmac_data);
-  EXPECT_EQ(CRYPTOHOME_ERROR_UPDATE_SIGNATURE_INVALID,
-            homedirs_.UpdateKeyset(*up_,
-                                   const_cast<const Key *>(&new_key),
-                                   hmac.to_string()));
+  EXPECT_EQ(
+      CRYPTOHOME_ERROR_UPDATE_SIGNATURE_INVALID,
+      homedirs_.UpdateKeyset(*credentials_, const_cast<const Key*>(&new_key),
+                             hmac.to_string()));
   EXPECT_NE(serialized_.key_data().label(), new_key.data().label());
 }
 
@@ -1984,7 +1984,7 @@ TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedBadSignature) {
   new_key.set_secret("why not");
   new_key.mutable_data()->set_label("new label");
   new_key.mutable_data()->set_revision(0);
-  // The injected keyset in the fixture handles the up_ validation.
+  // The injected keyset in the fixture handles the |credentials_| validation.
   KeyData* key_data = serialized_.mutable_key_data();
   key_data->set_label("current label");
   key_data->mutable_privileges()->set_update(false);
@@ -2005,10 +2005,10 @@ TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedBadSignature) {
   brillo::SecureBlob hmac_key(auth_secret->symmetric_key());
   brillo::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
   SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, hmac_data);
-  EXPECT_EQ(CRYPTOHOME_ERROR_UPDATE_SIGNATURE_INVALID,
-            homedirs_.UpdateKeyset(*up_,
-                                   const_cast<const Key *>(&new_key),
-                                   hmac.to_string()));
+  EXPECT_EQ(
+      CRYPTOHOME_ERROR_UPDATE_SIGNATURE_INVALID,
+      homedirs_.UpdateKeyset(*credentials_, const_cast<const Key*>(&new_key),
+                             hmac.to_string()));
   EXPECT_NE(serialized_.key_data().label(), new_key.data().label());
 }
 
@@ -2021,15 +2021,14 @@ TEST_P(KeysetManagementTest, UpdateKeysetBadSecret) {
   Key new_key;
   new_key.set_secret("why not");
   new_key.mutable_data()->set_label("new label");
-  // The injected keyset in the fixture handles the up_ validation.
+  // The injected keyset in the fixture handles the |credentials_| validation.
   serialized_.mutable_key_data()->set_label("current label");
 
   SecureBlob bad_pass("not it");
-  up_.reset(new Credentials(test_helper_.users[1].username, bad_pass));
+  credentials_.reset(new Credentials(test_helper_.users[1].username, bad_pass));
   EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
-            homedirs_.UpdateKeyset(*up_,
-                                   const_cast<const Key *>(&new_key),
-                                   ""));
+            homedirs_.UpdateKeyset(*credentials_,
+                                   const_cast<const Key*>(&new_key), ""));
   EXPECT_NE(serialized_.key_data().label(), new_key.data().label());
 }
 
@@ -2038,12 +2037,10 @@ TEST_P(KeysetManagementTest, UpdateKeysetNotFoundWithLabel) {
 
   KeyData some_label;
   some_label.set_label("key that doesn't exist");
-  up_->set_key_data(some_label);
+  credentials_->set_key_data(some_label);
   const Key new_key;
   EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND,
-            homedirs_.UpdateKeyset(*up_,
-                                   &new_key,
-                                   ""));
+            homedirs_.UpdateKeyset(*credentials_, &new_key, ""));
 }
 
 TEST_P(KeysetManagementTest, RemoveKeysetSuccess) {
@@ -2065,7 +2062,7 @@ TEST_P(KeysetManagementTest, RemoveKeysetSuccess) {
   serialized_.mutable_key_data()->mutable_privileges()->set_remove(true);
   serialized_.mutable_key_data()->set_label("remove me");
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            homedirs_.RemoveKeyset(*up_, remove_key.data()));
+            homedirs_.RemoveKeyset(*credentials_, remove_key.data()));
 }
 
 TEST_P(KeysetManagementTest, RemoveKeysetNotFound) {
@@ -2077,7 +2074,7 @@ TEST_P(KeysetManagementTest, RemoveKeysetNotFound) {
   serialized_.mutable_key_data()->mutable_privileges()->set_remove(true);
   serialized_.mutable_key_data()->set_label("the only key in town");
   EXPECT_EQ(CRYPTOHOME_ERROR_KEY_NOT_FOUND,
-            homedirs_.RemoveKeyset(*up_, remove_key.data()));
+            homedirs_.RemoveKeyset(*credentials_, remove_key.data()));
 }
 
 TEST_P(KeysetManagementTest, GetVaultKeysetLabelsOneLabeled) {
@@ -2086,7 +2083,7 @@ TEST_P(KeysetManagementTest, GetVaultKeysetLabelsOneLabeled) {
   serialized_.mutable_key_data()->set_label("a labeled key");
   std::vector<std::string> labels;
   EXPECT_TRUE(homedirs_.GetVaultKeysetLabels(
-      up_->GetObfuscatedUsername(system_salt_), &labels));
+      credentials_->GetObfuscatedUsername(system_salt_), &labels));
   ASSERT_NE(0, labels.size());
   EXPECT_EQ(serialized_.key_data().label(),
             labels[0]);
@@ -2098,7 +2095,7 @@ TEST_P(KeysetManagementTest, GetVaultKeysetLabelsOneLegacyLabeled) {
   serialized_.clear_key_data();
   std::vector<std::string> labels;
   EXPECT_TRUE(homedirs_.GetVaultKeysetLabels(
-      up_->GetObfuscatedUsername(system_salt_), &labels));
+      credentials_->GetObfuscatedUsername(system_salt_), &labels));
   ASSERT_NE(0, labels.size());
   EXPECT_EQ(StringPrintf("%s%d", kKeyLegacyPrefix, 0),
             labels[0]);
@@ -2114,9 +2111,9 @@ TEST_P(KeysetManagementTest, AddKeysetInvalidCreds) {
   EXPECT_CALL(platform_, DeleteFile(_, _))
     .Times(0);
   // Try to authenticate with an unknown key.
-  Credentials bad_p(test_helper_.users[1].username, newkey);
+  Credentials bad_credentials(test_helper_.users[1].username, newkey);
   ASSERT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
-            homedirs_.AddKeyset(bad_p, newkey, NULL, false, &index));
+            homedirs_.AddKeyset(bad_credentials, newkey, NULL, false, &index));
   EXPECT_EQ(index, -1);
 }
 
@@ -2124,7 +2121,7 @@ TEST_P(KeysetManagementTest, AddKeysetInvalidPrivileges) {
   // Check for key use that lacks valid add privileges
   KeysetSetUp();
 
-  // The injected keyset in the fixture handles the up_ validation.
+  // The injected keyset in the fixture handles the |credentials_| validation.
   SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
 
@@ -2132,7 +2129,7 @@ TEST_P(KeysetManagementTest, AddKeysetInvalidPrivileges) {
   int index = -1;
   // Tery to authenticate with a key that cannot add keys.
   ASSERT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED,
-            homedirs_.AddKeyset(*up_, newkey, NULL, false, &index));
+            homedirs_.AddKeyset(*credentials_, newkey, NULL, false, &index));
   EXPECT_EQ(index, -1);
 }
 
@@ -2145,7 +2142,7 @@ TEST_P(KeysetManagementTest, AddKeyset0Available) {
   test_helper_.users[1].keyset_path = new_keyset;
   KeysetSetUp();
 
-  // The injected keyset in the fixture handles the up_ validation.
+  // The injected keyset in the fixture handles the |credentials_| validation.
   SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
 
@@ -2165,14 +2162,14 @@ TEST_P(KeysetManagementTest, AddKeyset0Available) {
   int index = -1;
   // Try to authenticate with an unknown key.
   ASSERT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            homedirs_.AddKeyset(*up_, newkey, NULL, false, &index));
+            homedirs_.AddKeyset(*credentials_, newkey, NULL, false, &index));
   EXPECT_EQ(index, 0);
 }
 
 TEST_P(KeysetManagementTest, AddKeyset10Available) {
   KeysetSetUp();
 
-  // The injected keyset in the fixture handles the up_ validation.
+  // The injected keyset in the fixture handles the |credentials_| validation.
   SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
 
@@ -2198,14 +2195,14 @@ TEST_P(KeysetManagementTest, AddKeyset10Available) {
 
   int index = -1;
   ASSERT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            homedirs_.AddKeyset(*up_, newkey, NULL, false, &index));
+            homedirs_.AddKeyset(*credentials_, newkey, NULL, false, &index));
   EXPECT_EQ(index, 10);
 }
 
 TEST_P(KeysetManagementTest, AddKeysetNoFreeIndices) {
   KeysetSetUp();
 
-  // The injected keyset in the fixture handles the up_ validation.
+  // The injected keyset in the fixture handles the |credentials_| validation.
   SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
 
@@ -2219,7 +2216,7 @@ TEST_P(KeysetManagementTest, AddKeysetNoFreeIndices) {
 
   int index = -1;
   ASSERT_EQ(CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED,
-            homedirs_.AddKeyset(*up_, newkey, NULL, false, &index));
+            homedirs_.AddKeyset(*credentials_, newkey, NULL, false, &index));
   EXPECT_EQ(index, -1);
 }
 
@@ -2229,7 +2226,7 @@ TEST_P(KeysetManagementTest, AddKeysetEncryptFail) {
   SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
   int index = -1;
-  // The injected keyset in the fixture handles the up_ validation.
+  // The injected keyset in the fixture handles the |credentials_| validation.
   EXPECT_CALL(platform_,
       OpenFile(
         Property(&FilePath::value, EndsWith("master.0")),
@@ -2245,7 +2242,7 @@ TEST_P(KeysetManagementTest, AddKeysetEncryptFail) {
         false))
     .WillOnce(Return(true));
   ASSERT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-            homedirs_.AddKeyset(*up_, newkey, NULL, false, &index));
+            homedirs_.AddKeyset(*credentials_, newkey, NULL, false, &index));
   EXPECT_EQ(index, -1);
 }
 
@@ -2255,7 +2252,7 @@ TEST_P(KeysetManagementTest, AddKeysetSaveFail) {
   SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
   int index = -1;
-  // The injected keyset in the fixture handles the up_ validation.
+  // The injected keyset in the fixture handles the |credentials_| validation.
   EXPECT_CALL(platform_,
       OpenFile(
         Property(&FilePath::value, EndsWith("master.0")), StrEq("wx")))
@@ -2272,7 +2269,7 @@ TEST_P(KeysetManagementTest, AddKeysetSaveFail) {
         Property(&FilePath::value, EndsWith("master.0")), false))
     .WillOnce(Return(true));
   ASSERT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-            homedirs_.AddKeyset(*up_, newkey, NULL, false, &index));
+            homedirs_.AddKeyset(*credentials_, newkey, NULL, false, &index));
   EXPECT_EQ(index, -1);
 }
 
@@ -2284,7 +2281,7 @@ TEST_P(KeysetManagementTest, AddKeysetNoResetSeedSuccess) {
 
   SecureBlob oldkey;
   SecureBlob newkey;
-  up_->GetPasskey(&oldkey);
+  credentials_->GetPasskey(&oldkey);
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
   int index = -1;
 
@@ -2296,7 +2293,7 @@ TEST_P(KeysetManagementTest, AddKeysetNoResetSeedSuccess) {
       .WillOnce(Return(true));
   EXPECT_CALL(*active_vk_, source_file()).WillOnce(ReturnRef(orig_file));
 
-  // The injected keyset in the fixture handles the up_ validation.
+  // The injected keyset in the fixture handles the |credentials_| validation.
   EXPECT_CALL(platform_,
               OpenFile(Property(&FilePath::value, EndsWith(old_file_name)),
                        StrEq("wx")))
@@ -2312,7 +2309,7 @@ TEST_P(KeysetManagementTest, AddKeysetNoResetSeedSuccess) {
   EXPECT_CALL(platform_, DeleteFile(_, _)).Times(0);
 
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            homedirs_.AddKeyset(*up_, newkey, NULL, false, &index));
+            homedirs_.AddKeyset(*credentials_, newkey, NULL, false, &index));
   EXPECT_EQ(index, 1);
 }
 

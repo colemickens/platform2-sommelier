@@ -110,18 +110,18 @@ void ChallengeCredentialsHelper::CancelRunningOperation() {
 
 void ChallengeCredentialsHelper::OnGenerateNewCompleted(
     const GenerateNewCallback& original_callback,
-    std::unique_ptr<Credentials> username_passkey) {
+    std::unique_ptr<Credentials> credentials) {
   DCHECK(thread_checker_.CalledOnValidThread());
   CancelRunningOperation();
-  original_callback.Run(std::move(username_passkey));
+  original_callback.Run(std::move(credentials));
 }
 
 void ChallengeCredentialsHelper::OnDecryptCompleted(
     const DecryptCallback& original_callback,
-    std::unique_ptr<Credentials> username_passkey) {
+    std::unique_ptr<Credentials> credentials) {
   DCHECK(thread_checker_.CalledOnValidThread());
   CancelRunningOperation();
-  original_callback.Run(std::move(username_passkey));
+  original_callback.Run(std::move(credentials));
 }
 
 }  // namespace cryptohome
