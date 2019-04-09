@@ -9,6 +9,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <limits>
+
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -104,6 +106,9 @@ int RunChildMain(int argc, char* argv[]) {
   auto metrics_lib = std::make_unique<MetricsLibrary>();
   util::Sender::Options options;
   options.max_spread_time = flags.max_spread_time;
+  if (flags.ignore_rate_limits) {
+    options.max_crash_rate = std::numeric_limits<int>::max();
+  }
   util::Sender sender(std::move(metrics_lib), options);
   if (!sender.Init()) {
     LOG(ERROR) << "Failed to initialize util::Sender";

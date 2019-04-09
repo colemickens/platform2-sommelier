@@ -39,6 +39,7 @@ struct EnvPair {
 // Parsed command line flags.
 struct CommandLineFlags {
   base::TimeDelta max_spread_time;
+  bool ignore_rate_limits = false;
 };
 
 // Crash information obtained in ChooseAction().

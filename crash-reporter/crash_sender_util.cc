@@ -130,6 +130,10 @@ void ParseCommandLine(int argc,
   DEFINE_bool(h, false, "Show this help and exit");
   DEFINE_int32(max_spread_time, kMaxSpreadTimeInSeconds,
                "Max time in secs to sleep before sending (0 to send now)");
+  std::string ignore_rate_limits_description = base::StringPrintf(
+      "Ignore normal limit of %d crash uploads per day", kMaxCrashRate);
+  DEFINE_bool(ignore_rate_limits, false,
+              ignore_rate_limits_description.c_str());
   brillo::FlagHelper::Init(new_argv.size() - 1, new_argv.data(),
                            "Chromium OS Crash Sender");
   // TODO(satorux): Remove this once -e option is gone.
@@ -142,6 +146,7 @@ void ParseCommandLine(int argc,
     exit(EXIT_FAILURE);
   }
   flags->max_spread_time = base::TimeDelta::FromSeconds(FLAGS_max_spread_time);
+  flags->ignore_rate_limits = FLAGS_ignore_rate_limits;
 
   // Set the predefined environment variables.
   for (const auto& it : env_vars)
