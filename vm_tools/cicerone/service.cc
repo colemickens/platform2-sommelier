@@ -90,8 +90,10 @@ const uint16_t kStaticForwardPorts[] = {
     8008,  // HTTP alternative port
     8080,  // HTTP alternative port
     8085,  // Cloud SDK
+    8787,  // RStudio
     8888,  // ipython/jupyter
     9005,  // Firebase login
+    9100,  // Flutter
 };
 
 // Path to the unix domain socket Concierge listens on for connections
