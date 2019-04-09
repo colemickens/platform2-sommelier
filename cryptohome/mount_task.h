@@ -231,7 +231,7 @@ class MountTask : public base::RefCountedThreadSafe<MountTask> {
   }
 
   void set_credentials(const Credentials& credentials) {
-    credentials_.Assign(credentials);
+    credentials_ = credentials;
   }
 
   // Gets the MountTaskResult for this task

@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
 #include <brillo/secure_blob.h>
 
 #include "key.pb.h"  // NOLINT(build/include)
@@ -21,9 +20,10 @@ class Credentials final {
  public:
   Credentials();
   Credentials(const char* username, const brillo::SecureBlob& passkey);
+  Credentials(const Credentials& rhs);
   ~Credentials();
 
-  void Assign(const Credentials& rhs);
+  Credentials& operator=(const Credentials& rhs);
 
   // Returns the full user name as a std::string
   std::string username() const { return username_; }
@@ -65,8 +65,6 @@ class Credentials final {
   SerializedVaultKeyset_SignatureChallengeInfo
       challenge_credentials_keyset_info_;
   brillo::SecureBlob passkey_;
-
-  DISALLOW_COPY_AND_ASSIGN(Credentials);
 };
 
 }  // namespace cryptohome

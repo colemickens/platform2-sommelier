@@ -17,16 +17,11 @@ Credentials::Credentials() = default;
 Credentials::Credentials(const char* username, const SecureBlob& passkey)
     : username_(username, strlen(username)), passkey_(passkey) {}
 
+Credentials::Credentials(const Credentials& rhs) = default;
+
 Credentials::~Credentials() = default;
 
-void Credentials::Assign(const Credentials& rhs) {
-  username_.assign(rhs.username());
-  key_data_ = rhs.key_data();
-  SecureBlob passkey;
-  rhs.GetPasskey(&passkey);
-  passkey_.swap(passkey);
-  challenge_credentials_keyset_info_ = rhs.challenge_credentials_keyset_info_;
-}
+Credentials& Credentials::operator=(const Credentials& rhs) = default;
 
 std::string Credentials::GetObfuscatedUsername(
     const SecureBlob& system_salt) const {

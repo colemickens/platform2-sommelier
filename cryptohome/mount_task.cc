@@ -16,20 +16,18 @@ MountTask::MountTask(MountTaskObserver* observer,
                      const Credentials& credentials,
                      int sequence_id)
     : mount_(mount),
-      credentials_(),
+      credentials_(credentials),
       sequence_id_(sequence_id),
       cancel_flag_(false),
       observer_(observer),
       default_result_(new MountTaskResult),
       result_(default_result_.get()),
       complete_event_(NULL) {
-  credentials_.Assign(credentials);
   result_->set_sequence_id(sequence_id_);
 }
 
 MountTask::MountTask(MountTaskObserver* observer, Mount* mount, int sequence_id)
     : mount_(mount),
-      credentials_(),
       sequence_id_(sequence_id),
       cancel_flag_(false),
       observer_(observer),
