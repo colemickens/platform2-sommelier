@@ -541,6 +541,7 @@ int U2fHid::ProcessU2fRegister(U2fRegisterRequestAdpu request,
   std::vector<uint8_t> key_handle;
 
   IgnorePowerButton();
+  wink_.Run();
 
   if (DoU2fGenerate(request.GetAppId(), &pub_key, &key_handle) !=
       kVendorCmdRcSuccess) {
@@ -605,6 +606,7 @@ int U2fHid::ProcessU2fAuthenticate(U2fAuthenticateRequestAdpu request,
   }
 
   IgnorePowerButton();
+  wink_.Run();
 
   // This will increment the counter even if this request ends up failing due to
   // lack of presence of an invalid keyhandle.
