@@ -90,10 +90,6 @@ class Connection : public base::RefCounted<Connection> {
   // address+gateway have been configured.
   virtual void UpdateGatewayMetric(const IPConfigRefPtr& config);
 
-  // Return the connection used by the lower binder.
-  virtual ConnectionRefPtr GetLowerConnection() const {
-    return lower_binder_.connection();
-  }
 
   // Adds |interface_name| to the whitelisted input interfaces that are
   // allowed to use the connection and updates the routing table.
@@ -150,13 +146,6 @@ class Connection : public base::RefCounted<Connection> {
   virtual void RequestRouting();
   virtual void ReleaseRouting();
 
-  // Request a host route through this connection.
-  virtual bool RequestHostRoute(const IPAddress& destination);
-
-  // Request a host route through this connection for a list of IPs in CIDR
-  // notation (|excluded_ips_cidr_|).
-  virtual bool PinPendingRoutes(int interface_index, RoutingTableEntry entry);
-
   // Return the subnet name for this connection.
   virtual std::string GetSubnetName() const;
 
@@ -166,10 +155,6 @@ class Connection : public base::RefCounted<Connection> {
   virtual const std::string& tethering() const { return tethering_; }
   void set_tethering(const std::string& tethering) { tethering_ = tethering; }
 
-  // Return the lowest connection on which this connection depends. In case of
-  // error, a nullptr is returned.
-  virtual ConnectionRefPtr GetCarrierConnection();
-
   // Return true if this is an IPv6 connection.
   virtual bool IsIPv6();
 
@@ -177,7 +162,6 @@ class Connection : public base::RefCounted<Connection> {
   friend class base::RefCounted<Connection>;
 
   virtual ~Connection();
-  virtual bool CreateGatewayRoute();
 
  private:
   friend class ConnectionTest;
@@ -188,10 +172,7 @@ class Connection : public base::RefCounted<Connection> {
   FRIEND_TEST(ConnectionTest, BlackholeIPv6);
   FRIEND_TEST(ConnectionTest, Destructor);
   FRIEND_TEST(ConnectionTest, FixGatewayReachability);
-  FRIEND_TEST(ConnectionTest, GetCarrierConnection);
   FRIEND_TEST(ConnectionTest, InitState);
-  FRIEND_TEST(ConnectionTest, OnRouteQueryResponse);
-  FRIEND_TEST(ConnectionTest, RequestHostRoute);
   FRIEND_TEST(ConnectionTest, SetMTU);
   FRIEND_TEST(ConnectionTest, UpdateDNSServers);
   FRIEND_TEST(VPNServiceTest, OnConnectionDisconnected);
@@ -202,20 +183,14 @@ class Connection : public base::RefCounted<Connection> {
                               IPAddress* peer,
                               IPAddress* gateway,
                               const IPAddress& trusted_ip);
-  bool PinHostRoute(const IPAddress& trusted_ip, const IPAddress& gateway);
   bool SetupExcludedRoutes(const IPConfig::Properties& properties,
                            const IPAddress& gateway,
                            IPAddress* trusted_ip);
   void SetMTU(int32_t mtu);
 
-  void OnRouteQueryResponse(int interface_index,
-                            const RoutingTableEntry& entry);
-
   void AttachBinder(Binder* binder);
   void DetachBinder(Binder* binder);
   void NotifyBindersOnDisconnect();
-
-  void OnLowerDisconnect();
 
   // Send our DNS configuration to the resolver.
   void PushDNSConfig();
@@ -259,11 +234,7 @@ class Connection : public base::RefCounted<Connection> {
   // and is read by services that are bound through this connection.
   std::string tethering_;
 
-  // A binder to a lower Connection that this Connection depends on, if any.
-  Binder lower_binder_;
-
-  // Binders to clients -- usually to upper connections or related services and
-  // devices.
+  // Binders to clients -- usually to related services and devices.
   std::deque<Binder*> binders_;
 
   // Store cached copies of singletons for speed/ease of testing

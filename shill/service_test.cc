@@ -1350,43 +1350,6 @@ TEST_F(ServiceTest, IsRemembered) {
   EXPECT_TRUE(service_->IsRemembered());
 }
 
-TEST_F(ServiceTest, IsDependentOn) {
-  EXPECT_FALSE(service_->IsDependentOn(nullptr));
-
-  auto mock_device_info = std::make_unique<NiceMock<MockDeviceInfo>>(
-      control_interface(), dispatcher(), metrics(), &mock_manager_);
-  scoped_refptr<MockConnection> mock_connection0(
-      new NiceMock<MockConnection>(mock_device_info.get()));
-  scoped_refptr<MockConnection> mock_connection1(
-      new NiceMock<MockConnection>(mock_device_info.get()));
-
-  service_->connection_ = mock_connection0;
-  EXPECT_CALL(*mock_connection0, GetLowerConnection())
-      .WillRepeatedly(Return(mock_connection1));
-  EXPECT_CALL(*mock_connection1, GetLowerConnection())
-      .WillRepeatedly(Return(ConnectionRefPtr()));
-  EXPECT_FALSE(service_->IsDependentOn(nullptr));
-
-  scoped_refptr<ServiceUnderTest> service1 =
-      new ServiceUnderTest(control_interface(),
-                           dispatcher(),
-                           metrics(),
-                           &mock_manager_);
-  EXPECT_FALSE(service_->IsDependentOn(service1));
-
-  service1->connection_ = mock_connection0;
-  EXPECT_FALSE(service_->IsDependentOn(service1));
-
-  service1->connection_ = mock_connection1;
-  EXPECT_TRUE(service_->IsDependentOn(service1));
-
-  service_->connection_ = mock_connection1;
-  service1->connection_ = nullptr;
-  EXPECT_FALSE(service_->IsDependentOn(service1));
-
-  service_->connection_ = nullptr;
-}
-
 TEST_F(ServiceTest, OnPropertyChanged) {
   scoped_refptr<MockProfile> profile(
       new StrictMock<MockProfile>(control_interface(), metrics(), manager()));
@@ -2193,16 +2156,6 @@ TEST_F(ServiceTest, Compare) {
       .WillRepeatedly(Return((Technology::kWifi)));
 
   technology_order_for_sorting_ = {Technology::kEthernet, Technology::kWifi};
-  EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
-
-  // Test is-dependent-on.
-  EXPECT_CALL(*service10, IsDependentOn(IsRefPtrTo(service2.get())))
-      .WillOnce(Return(true));
-  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
-
-  // It doesn't make sense to have is-dependent-on ranking comparison in any of
-  // the remaining subtests below.  Reset to the default.
-  EXPECT_CALL(*service10, IsDependentOn(_)).WillRepeatedly(Return(false));
   EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
 
   // Connectable.

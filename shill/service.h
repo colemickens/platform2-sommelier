@@ -219,10 +219,6 @@ class Service : public base::RefCounted<Service> {
   virtual bool IsInFailState() const;
   virtual bool IsOnline() const;
 
-  // Returns true if the connection for |this| depends on service |b|.
-  virtual bool IsDependentOn(const ServiceRefPtr& b) const;
-
-
   // Return true if service is allowed to automatically switch to fallback
   // DNS server.
   virtual bool is_dns_auto_fallback_allowed() const {
@@ -686,7 +682,6 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, GetProperties);
   FRIEND_TEST(ServiceTest, GetTethering);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
-  FRIEND_TEST(ServiceTest, IsDependentOn);
   FRIEND_TEST(ServiceTest, Load);
   FRIEND_TEST(ServiceTest, LoadAutoConnect);
   FRIEND_TEST(ServiceTest, PortalDetectionFailure);

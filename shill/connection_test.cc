@@ -69,10 +69,6 @@ MATCHER(IsDefaultAddress, "") {
   return match_address.IsDefault();
 }
 
-MATCHER(IsNonNullCallback, "") {
-  return !arg.is_null();
-}
-
 MATCHER_P(IsValidRoutingTableEntry, dst, "") {
   return dst.Equals(arg.dst);
 }
@@ -159,12 +155,6 @@ class ConnectionTest : public Test {
 
   void UpdateIPv6Properties() {
     ip6config_->UpdateProperties(ipv6_properties_, true);
-  }
-
-  bool PinHostRoute(ConnectionRefPtr connection,
-                    const IPAddress trusted_ip,
-                    const IPAddress gateway) {
-    return connection->PinHostRoute(trusted_ip, gateway);
   }
 
   const IPAddress& GetLocalAddress(ConnectionRefPtr connection) {
@@ -293,18 +283,6 @@ TEST_F(ConnectionTest, AddConfig) {
   EXPECT_TRUE(gateway_address_.Equals(GetGatewayAddress(connection_)));
   EXPECT_TRUE(GetHasBroadcastDomain(connection_));
   EXPECT_FALSE(connection_->IsIPv6());
-
-  EXPECT_CALL(routing_table_,
-              CreateLinkRoute(kTestDeviceInterfaceIndex0,
-                              IsIPAddress(local_address_, kPrefix0),
-                              IsIPAddress(gateway_address_, 0),
-                              RT_TABLE_MAIN))
-      .WillOnce(Return(true))
-      .WillOnce(Return(false));
-  EXPECT_TRUE(connection_->CreateGatewayRoute());
-  EXPECT_FALSE(connection_->CreateGatewayRoute());
-  connection_->has_broadcast_domain_ = false;
-  EXPECT_FALSE(connection_->CreateGatewayRoute());
 
   AddRoutingPolicyExpectations(kTestDeviceInterfaceIndex0, GetDefaultMetric());
   EXPECT_CALL(routing_table_, SetDefaultMetric(kTestDeviceInterfaceIndex0,
@@ -768,25 +746,6 @@ TEST_F(ConnectionTest, Destructor) {
   connection = nullptr;
 }
 
-TEST_F(ConnectionTest, RequestHostRoute) {
-  ConnectionRefPtr connection = GetNewConnection();
-  IPAddress address(IPAddress::kFamilyIPv4);
-  ASSERT_TRUE(address.SetAddressFromString(kIPAddress0));
-  size_t prefix_len = 16;
-  address.set_prefix(prefix_len);
-  EXPECT_CALL(routing_table_,
-              RequestRouteToHost(IsIPAddress(address, prefix_len),
-                                 -1,
-                                 kTestDeviceInterfaceIndex0,
-                                 IsNonNullCallback(),
-                                 RT_TABLE_MAIN))
-      .WillOnce(Return(true));
-  EXPECT_TRUE(connection->RequestHostRoute(address));
-
-  // The destructor will remove the routes and addresses.
-  AddDestructorExpectations();
-}
-
 TEST_F(ConnectionTest, BlackholeIPv6) {
   const unsigned char table_id = 9;
   properties_.blackhole_ipv6 = true;
@@ -809,47 +768,6 @@ TEST_F(ConnectionTest, BlackholeIPv6) {
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
                                              IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipconfig_);
-}
-
-TEST_F(ConnectionTest, PinHostRoute) {
-  ConnectionRefPtr connection = GetNewConnection();
-
-  IPAddress gateway(IPAddress::kFamilyIPv4);
-  IPAddress trusted_ip(IPAddress::kFamilyIPv4);
-
-  // Should fail because neither IP address is set.
-  EXPECT_FALSE(PinHostRoute(connection, trusted_ip, gateway));
-
-  static const char kGateway[] = "10.242.2.13";
-  ASSERT_TRUE(gateway.SetAddressFromString(kGateway));
-
-  // Should fail because trusted IP is not set.
-  EXPECT_FALSE(PinHostRoute(connection, trusted_ip, gateway));
-
-  static const char kTrustedIP[] = "10.0.1.1/8";
-  ASSERT_TRUE(trusted_ip.SetAddressAndPrefixFromString(kTrustedIP));
-
-  // Should pass without calling RequestRouteToHost since if the gateway
-  // is not set, there is no work to be done.
-  EXPECT_CALL(routing_table_, RequestRouteToHost(_, _, _, _, _)).Times(0);
-  EXPECT_TRUE(PinHostRoute(connection, trusted_ip,
-                           IPAddress(gateway.family())));
-  Mock::VerifyAndClearExpectations(&routing_table_);
-
-  EXPECT_CALL(routing_table_,
-              RequestRouteToHost(IsIPAddress(trusted_ip, trusted_ip.prefix()),
-                                 -1, kTestDeviceInterfaceIndex0, _,
-                                 RT_TABLE_MAIN)).WillOnce(Return(false));
-  EXPECT_FALSE(PinHostRoute(connection, trusted_ip, gateway));
-
-  EXPECT_CALL(routing_table_,
-              RequestRouteToHost(IsIPAddress(trusted_ip, trusted_ip.prefix()),
-                                 -1, kTestDeviceInterfaceIndex0, _,
-                                 RT_TABLE_MAIN)).WillOnce(Return(true));
-  EXPECT_TRUE(PinHostRoute(connection, trusted_ip, gateway));
-
-  // The destructor will remove the routes and addresses.
-  AddDestructorExpectations();
 }
 
 TEST_F(ConnectionTest, FixGatewayReachability) {
@@ -983,98 +901,30 @@ TEST_F(ConnectionTest, Binders) {
 }
 
 TEST_F(ConnectionTest, Binder) {
-  // No connection should be bound initially.
-  Connection::Binder* binder = &connection_->lower_binder_;
-  EXPECT_EQ(connection_->interface_name(), binder->name_);
-  EXPECT_FALSE(binder->client_disconnect_callback_.is_null());
-  EXPECT_FALSE(binder->IsBound());
+  DisconnectCallbackTarget target0;
+  Connection::Binder binder("empty_test", target0.callback());
+  EXPECT_FALSE(binder.client_disconnect_callback_.is_null());
+  EXPECT_FALSE(binder.IsBound());
 
   ConnectionRefPtr connection1 = GetNewConnection();
   EXPECT_TRUE(connection1->binders_.empty());
 
   // Bind lower |connection1| and check if it's bound.
-  binder->Attach(connection1);
-  EXPECT_TRUE(binder->IsBound());
-  EXPECT_EQ(connection1.get(), binder->connection().get());
+  binder.Attach(connection1);
+  EXPECT_TRUE(binder.IsBound());
+  EXPECT_EQ(connection1.get(), binder.connection().get());
   ASSERT_FALSE(connection1->binders_.empty());
-  EXPECT_TRUE(binder == connection1->binders_.at(0));
+  EXPECT_TRUE(&binder == connection1->binders_.at(0));
 
   // Unbind lower |connection1| and check if it's unbound.
-  binder->Attach(nullptr);
-  EXPECT_FALSE(binder->IsBound());
+  binder.Attach(nullptr);
+  EXPECT_FALSE(binder.IsBound());
   EXPECT_TRUE(connection1->binders_.empty());
 
-  ConnectionRefPtr connection2 = GetNewConnection();
-
-  // Bind lower |connection1| to upper |connection2| and destroy the upper
-  // |connection2|. Make sure lower |connection1| is unbound (i.e., the
-  // disconnect callback is deregistered).
-  connection2->lower_binder_.Attach(connection1);
-  EXPECT_FALSE(connection1->binders_.empty());
-  AddDestructorExpectations();
-  connection2 = nullptr;
-  EXPECT_TRUE(connection1->binders_.empty());
-
-  // Bind lower |connection1| to upper |connection_| and destroy lower
-  // |connection1|. Make sure lower |connection1| is unbound from upper
-  // |connection_| and upper |connection_|'s registered disconnect callbacks are
-  // run.
-  binder->Attach(connection1);
-  DisconnectCallbackTarget target;
-  Connection::Binder test_binder("from_test", target.callback());
-  test_binder.Attach(connection_);
-  EXPECT_CALL(target, CallTarget()).Times(1);
-  ASSERT_FALSE(connection_->binders_.empty());
   AddDestructorExpectations();
   connection1 = nullptr;
-  EXPECT_FALSE(binder->IsBound());
-  EXPECT_FALSE(test_binder.IsBound());
-  EXPECT_TRUE(connection_->binders_.empty());
+  EXPECT_FALSE(binder.IsBound());
 
-  {
-    // Binding a connection to itself should be safe.
-    ConnectionRefPtr connection = GetNewConnection();
-
-    connection->lower_binder_.Attach(connection);
-
-    EXPECT_FALSE(connection->binders_.empty());
-
-    DisconnectCallbackTarget target;
-    Connection::Binder binder("test", target.callback());
-    binder.Attach(connection);
-
-    AddDestructorExpectations();
-    EXPECT_CALL(target, CallTarget()).Times(1);
-    connection = nullptr;
-  }
-  {
-    // Circular binding of multiple connections should be safe.
-    ConnectionRefPtr connection_a = GetNewConnection();
-    ConnectionRefPtr connection_b = GetNewConnection();
-
-    connection_a->lower_binder_.Attach(connection_b);
-    connection_b->lower_binder_.Attach(connection_a);
-
-    EXPECT_FALSE(connection_a->binders_.empty());
-    EXPECT_FALSE(connection_b->binders_.empty());
-
-    DisconnectCallbackTarget target_a;
-    DisconnectCallbackTarget target_b;
-    Connection::Binder binder_a("test_a", target_a.callback());
-    Connection::Binder binder_b("test_b", target_b.callback());
-    binder_a.Attach(connection_a);
-    binder_b.Attach(connection_b);
-
-    AddDestructorExpectations();
-    EXPECT_CALL(target_a, CallTarget()).Times(1);
-    EXPECT_CALL(target_b, CallTarget()).Times(1);
-    connection_b = nullptr;
-
-    EXPECT_TRUE(connection_a->binders_.empty());
-
-    AddDestructorExpectations();
-    connection_a = nullptr;
-  }
   {
     // Test the weak pointer to the bound Connection. This is not a case that
     // should occur but the weak pointer should handle it gracefully.
@@ -1093,109 +943,6 @@ TEST_F(ConnectionTest, Binder) {
     EXPECT_FALSE(binder.connection());
     binder.Attach(nullptr);
   }
-}
-
-TEST_F(ConnectionTest, OnRouteQueryResponse) {
-  Connection::Binder* binder = &connection_->lower_binder_;
-  ConnectionRefPtr connection = GetNewConnection();
-  scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
-      &control_,
-      nullptr,
-      nullptr,
-      nullptr,
-      kTestDeviceName1,
-      string(),
-      kTestDeviceInterfaceIndex1));
-
-  // Make sure we unbind the old lower connection even if we can't lookup the
-  // lower connection device.
-  binder->Attach(connection);
-  scoped_refptr<MockDevice> null_device;
-  EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex1))
-      .WillOnce(Return(null_device));
-  connection_->OnRouteQueryResponse(
-      kTestDeviceInterfaceIndex1, RoutingTableEntry());
-  EXPECT_FALSE(binder->IsBound());
-
-  // Check for graceful handling of a connection loop.
-  EXPECT_CALL(*device, connection())
-      .WillRepeatedly(testing::ReturnRef(connection_));
-  EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex1))
-      .WillOnce(Return(device));
-  connection_->OnRouteQueryResponse(
-      kTestDeviceInterfaceIndex1, RoutingTableEntry());
-  EXPECT_FALSE(binder->IsBound());
-
-  // Check for graceful handling of a device with no connection.
-  ConnectionRefPtr device_connection;
-  EXPECT_CALL(*device, connection())
-      .WillRepeatedly(testing::ReturnRef(device_connection));
-  EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex1))
-      .WillOnce(Return(device));
-  connection_->OnRouteQueryResponse(
-      kTestDeviceInterfaceIndex1, RoutingTableEntry());
-  EXPECT_FALSE(binder->IsBound());
-
-  // Create a mock connection that will be used for binding.
-  scoped_refptr<MockConnection> mock_connection(
-      new StrictMock<MockConnection>(device_info_.get()));
-  EXPECT_CALL(*device_info_,
-              FlushAddresses(mock_connection->interface_index()));
-  const string kInterfaceName(kTestDeviceName0);
-  EXPECT_CALL(*mock_connection, interface_name())
-      .WillRepeatedly(ReturnRef(kInterfaceName));
-  device_connection = mock_connection.get();
-  EXPECT_CALL(*device, connection())
-      .WillRepeatedly(testing::ReturnRef(device_connection));
-  EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex1))
-      .WillOnce(Return(device));
-
-  // Check that the binding process completes, causing its upper
-  // connection to create a gateway route.
-  EXPECT_CALL(*mock_connection, CreateGatewayRoute())
-      .WillOnce(Return(true));
-
-  // Ensure that the Device is notified of the change to the connection.
-  EXPECT_CALL(*device, OnConnectionUpdated()).Times(1);
-  connection_->OnRouteQueryResponse(
-      kTestDeviceInterfaceIndex1, RoutingTableEntry());
-
-  // Check that the upper connection is bound to the lower connection.
-  EXPECT_TRUE(binder->IsBound());
-  EXPECT_EQ(mock_connection.get(), binder->connection().get());
-
-  AddDestructorExpectations();
-  connection = nullptr;
-}
-
-TEST_F(ConnectionTest, GetCarrierConnection) {
-  EXPECT_EQ(connection_.get(), connection_->GetCarrierConnection().get());
-
-  ConnectionRefPtr connection1 = GetNewConnection();
-  ConnectionRefPtr connection2 = GetNewConnection();
-  ConnectionRefPtr connection3 = GetNewConnection();
-
-  connection_->lower_binder_.Attach(connection1);
-  EXPECT_EQ(connection1.get(), connection_->GetCarrierConnection().get());
-
-  connection1->lower_binder_.Attach(connection2);
-  EXPECT_EQ(connection2.get(), connection_->GetCarrierConnection().get());
-
-  connection2->lower_binder_.Attach(connection3);
-  EXPECT_EQ(connection3.get(), connection_->GetCarrierConnection().get());
-
-  // Create a cycle back to |connection1|.
-  connection3->lower_binder_.Attach(connection1);
-  EXPECT_EQ(nullptr, connection_->GetCarrierConnection().get());
-
-  AddDestructorExpectations();
-  connection3 = nullptr;
-
-  AddDestructorExpectations();
-  connection2 = nullptr;
-
-  AddDestructorExpectations();
-  connection1 = nullptr;
 }
 
 TEST_F(ConnectionTest, GetSubnetName) {

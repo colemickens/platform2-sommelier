@@ -44,7 +44,6 @@ namespace shill {
 namespace {
 const char kServiceSortAutoConnect[] = "AutoConnect";
 const char kServiceSortConnectable[] = "Connectable";
-const char kServiceSortDependency[] = "Dependency";
 const char kServiceSortHasEverConnected[] = "HasEverConnected";
 const char kServiceSortManagedCredentials[] = "ManagedCredentials";
 const char kServiceSortIsConnected[] = "IsConnected";
@@ -771,13 +770,6 @@ bool Service::IsRemembered() const {
   return profile_ && !manager_->IsServiceEphemeral(this);
 }
 
-bool Service::IsDependentOn(const ServiceRefPtr& b) const {
-  if (!connection_ || !b || !b->connection()) {
-    return false;
-  }
-  return connection_->GetLowerConnection() == b->connection();
-}
-
 void Service::EnableAndRetainAutoConnect() {
   if (retain_auto_connect_) {
     // We do not want to clobber the value of auto_connect_ (it may
@@ -1085,11 +1077,6 @@ bool Service::Compare(Manager* manager,
 
   if (DecideBetween(a->connectable(), b->connectable(), &ret)) {
     *reason = kServiceSortConnectable;
-    return ret;
-  }
-
-  if (DecideBetween(a->IsDependentOn(b), b->IsDependentOn(a), &ret)) {
-    *reason = kServiceSortDependency;
     return ret;
   }
 

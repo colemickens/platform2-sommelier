@@ -40,7 +40,6 @@ class MockService : public Service {
                                                const std::string& status));
   MOCK_CONST_METHOD0(IsConnected, bool());
   MOCK_CONST_METHOD0(IsConnecting, bool());
-  MOCK_CONST_METHOD1(IsDependentOn, bool(const ServiceRefPtr& b));
   MOCK_CONST_METHOD0(IsFailed, bool());
   MOCK_CONST_METHOD0(IsOnline, bool());
   MOCK_CONST_METHOD0(IsVisible, bool());

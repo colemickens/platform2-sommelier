@@ -100,11 +100,6 @@ Connection::Connection(int interface_index,
       blackhole_table_id_(RT_TABLE_UNSPEC),
       local_(IPAddress::kFamilyUnknown),
       gateway_(IPAddress::kFamilyUnknown),
-      lower_binder_(
-          interface_name_,
-          // Connection owns a single instance of |lower_binder_| so it's safe
-          // to use an Unretained callback.
-          Bind(&Connection::OnLowerDisconnect, Unretained(this))),
       device_info_(device_info),
       resolver_(Resolver::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
@@ -138,57 +133,29 @@ bool Connection::SetupExcludedRoutes(const IPConfig::Properties& properties,
                                      IPAddress* trusted_ip) {
   excluded_ips_cidr_ = properties.exclusion_list;
 
-  if (per_device_routing_) {
-    // If this connection has its own dedicated routing table, exclusion
-    // is as simple as adding an RTN_THROW entry for each item on the list.
-    // Traffic that matches the RTN_THROW entry will cause the kernel to
-    // stop traversing our routing table and try the next rule in the list.
-    IPAddress empty_ip(properties.address_family);
-    RoutingTableEntry entry(empty_ip,
-                            empty_ip,
-                            empty_ip,
-                            0,
-                            RT_SCOPE_LINK,
-                            false,
-                            table_id_,
-                            RTN_THROW,
-                            RoutingTableEntry::kDefaultTag);
-    for (const auto& excluded_ip : excluded_ips_cidr_) {
-      if (!entry.dst.SetAddressAndPrefixFromString(excluded_ip) ||
-          !entry.dst.IsValid() ||
-          !routing_table_->AddRoute(interface_index_, entry)) {
-        LOG(ERROR) << "Unable to setup route for " << excluded_ip << ".";
-        return false;
-      }
-    }
-    return true;
-  }
+  // TODO(crbug.com/941597) Remove this CHECK when per device routing is used
+  // for all devices.
+  CHECK(excluded_ips_cidr_.empty() || per_device_routing_);
 
-  // Otherwise, query the main routing table to find our default gateway
-  // and then pin the excluded routes to that IP/device.
-  if (!excluded_ips_cidr_.empty()) {
-    const std::string first_excluded_ip = excluded_ips_cidr_[0];
-    excluded_ips_cidr_.erase(excluded_ips_cidr_.begin());
-    // A VPN connection can currently be bound to exactly one lower connection
-    // such as eth0 or wan0. The excluded IPs are pinned to the gateway of
-    // that connection. Setting up the routing table this way ensures that when
-    // the lower connection goes offline, the associated entries in the routing
-    // table are removed. On the flip side, when there are multiple connections
-    // such as eth0 and wan0 and some IPs can be reached quickly over one
-    // connection and the others over a different connection, all routes are
-    // still pinned to a connection.
-    //
-    // The optimal connection to reach the first excluded IP is found below.
-    // When this is found the route for the remaining excluded IPs are pinned in
-    // the method PinPendingRoutes below.
-    trusted_ip->set_family(gateway.family());
-    if (!trusted_ip->SetAddressAndPrefixFromString(first_excluded_ip)) {
-      LOG(ERROR) << "Trusted IP address "
-                 << first_excluded_ip << " is invalid";
-      return false;
-    }
-    if (!PinHostRoute(*trusted_ip, gateway)) {
-      LOG(ERROR) << "Unable to pin host route to " << first_excluded_ip;
+  // If this connection has its own dedicated routing table, exclusion
+  // is as simple as adding an RTN_THROW entry for each item on the list.
+  // Traffic that matches the RTN_THROW entry will cause the kernel to
+  // stop traversing our routing table and try the next rule in the list.
+  IPAddress empty_ip(properties.address_family);
+  RoutingTableEntry entry(empty_ip,
+                          empty_ip,
+                          empty_ip,
+                          0,
+                          RT_SCOPE_LINK,
+                          false,
+                          table_id_,
+                          RTN_THROW,
+                          RoutingTableEntry::kDefaultTag);
+  for (const auto& excluded_ip : excluded_ips_cidr_) {
+    if (!entry.dst.SetAddressAndPrefixFromString(excluded_ip) ||
+        !entry.dst.IsValid() ||
+        !routing_table_->AddRoute(interface_index_, entry)) {
+      LOG(ERROR) << "Unable to setup route for " << excluded_ip << ".";
       return false;
     }
   }
@@ -522,41 +489,6 @@ void Connection::ReleaseRouting() {
   }
 }
 
-bool Connection::RequestHostRoute(const IPAddress& address) {
-  // Do not set interface_index_ since this may not be the default route through
-  // which this destination can be found.  However, we should tag the created
-  // route with our interface index so we can clean this route up when this
-  // connection closes.  Also, add route query callback to determine the lower
-  // connection and bind to it.
-  if (!routing_table_->RequestRouteToHost(
-          address,
-          -1,
-          interface_index_,
-          Bind(&Connection::OnRouteQueryResponse,
-               weak_ptr_factory_.GetWeakPtr()),
-          table_id_)) {
-    LOG(ERROR) << "Could not request route to " << address.ToString();
-    return false;
-  }
-
-  return true;
-}
-
-bool Connection::PinPendingRoutes(int interface_index,
-                                  RoutingTableEntry entry) {
-  // The variable entry is locally modified, hence is passed by value in the
-  // second argument above.
-  for (const auto& excluded_ip : excluded_ips_cidr_) {
-    if (!entry.dst.SetAddressAndPrefixFromString(excluded_ip) ||
-        !entry.dst.IsValid() ||
-        !routing_table_->AddRoute(interface_index, entry)) {
-      LOG(ERROR) << "Unable to setup route for " << excluded_ip << ".";
-    }
-  }
-
-  return true;
-}
-
 string Connection::GetSubnetName() const {
   if (!local().IsValid()) {
     return "";
@@ -696,25 +628,6 @@ bool Connection::FixGatewayReachability(const IPAddress& local,
   return true;
 }
 
-bool Connection::PinHostRoute(const IPAddress& trusted_ip,
-                              const IPAddress& gateway) {
-  SLOG(this, 2) << __func__;
-  if (!trusted_ip.IsValid()) {
-    LOG(ERROR) << "No trusted IP -- unable to pin host route.";
-    return false;
-  }
-
-  if (!gateway.IsValid()) {
-    // Although we cannot pin a host route, we are also not going to create
-    // a gateway route that will interfere with our primary connection, so
-    // it is okay to return success here.
-    LOG(WARNING) << "No gateway -- unable to pin host route.";
-    return true;
-  }
-
-  return RequestHostRoute(trusted_ip);
-}
-
 void Connection::SetMTU(int32_t mtu) {
   SLOG(this, 2) << __func__ << " " << mtu;
   // Make sure the MTU value is valid.
@@ -732,69 +645,10 @@ void Connection::SetMTU(int32_t mtu) {
   rtnl_handler_->SetInterfaceMTU(interface_index_, mtu);
 }
 
-void Connection::OnRouteQueryResponse(int interface_index,
-                                      const RoutingTableEntry& entry) {
-  SLOG(this, 2) << __func__ << "(" << interface_index << ", "
-                << entry.tag << ")" << " @ " << interface_name_;
-  lower_binder_.Attach(nullptr);
-  DeviceRefPtr device = device_info_->GetDevice(interface_index);
-  if (!device) {
-    LOG(ERROR) << "Unable to lookup device for index " << interface_index;
-    return;
-  }
-  ConnectionRefPtr connection = device->connection();
-  if (!connection) {
-    LOG(ERROR) << "Device " << interface_index << " has no connection.";
-    return;
-  }
-  if (connection == this) {
-    LOG(ERROR) << "Avoiding a connection bind loop for " << interface_name();
-    return;
-  }
-  lower_binder_.Attach(connection);
-  connection->CreateGatewayRoute();
-  device->OnConnectionUpdated();
-  PinPendingRoutes(interface_index, entry);
-}
-
-bool Connection::CreateGatewayRoute() {
-  // Ensure that the gateway for the lower connection remains reachable,
-  // since we may create routes that conflict with it.
-  if (!has_broadcast_domain_) {
-    return false;
-  }
-
-  // If there is no gateway, don't try to create a route to it.
-  if (!gateway_.IsValid()) {
-    return false;
-  }
-
-  // It is not worth keeping track of this route, since it is benign,
-  // and only pins persistent state that was already true of the connection.
-  // If DHCP parameters change later (without the connection having been
-  // destroyed and recreated), the binding processes will likely terminate
-  // and restart, causing a new link route to be created.
-  return routing_table_->CreateLinkRoute(interface_index_, local_, gateway_,
-                                         table_id_);
-}
-
-void Connection::OnLowerDisconnect() {
-  SLOG(this, 2) << __func__ << " @ " << interface_name_;
-  // Ensures that |this| instance doesn't get destroyed in the middle of
-  // notifying the binders. This method needs to be separate from
-  // NotifyBindersOnDisconnect because the latter may be invoked by Connection's
-  // destructor when |this| instance's reference count is already 0.
-  ConnectionRefPtr connection(this);
-  connection->NotifyBindersOnDisconnect();
-}
-
 void Connection::NotifyBindersOnDisconnect() {
   // Note that this method may be invoked by the destructor.
   SLOG(this, 2) << __func__ << " @ " << interface_name_;
 
-  // Unbinds the lower connection before notifying the binders. This ensures
-  // correct behavior in case of circular binding.
-  lower_binder_.Attach(nullptr);
   while (!binders_.empty()) {
     // Pop the binder first and then notify it to ensure that each binder is
     // notified only once.
@@ -819,26 +673,6 @@ void Connection::DetachBinder(Binder* binder) {
       return;
     }
   }
-}
-
-ConnectionRefPtr Connection::GetCarrierConnection() {
-  SLOG(this, 2) << __func__ << " @ " << interface_name_;
-  set<Connection*> visited;
-  ConnectionRefPtr carrier = this;
-  while (carrier->GetLowerConnection()) {
-    if (base::ContainsKey(visited, carrier.get())) {
-      LOG(ERROR) << "Circular connection chain starting at: "
-                 << carrier->interface_name();
-      // If a loop is detected return a NULL value to signal that the carrier
-      // connection is unknown.
-      return nullptr;
-    }
-    visited.insert(carrier.get());
-    carrier = carrier->GetLowerConnection();
-  }
-  SLOG(this, 2) << "Carrier connection: " << carrier->interface_name()
-                << " @ " << interface_name_;
-  return carrier;
 }
 
 bool Connection::IsIPv6() {
