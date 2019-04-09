@@ -86,10 +86,9 @@ macro_rules! impl_backend {
 
             $(
                 #[test]
-                #[should_panic]
                 fn $fn_nm() {
                     let mut backend = DummyUnimplementedBackend::new();
-                    backend.$fn_nm( $( <$arg_ty as Default>::default(), )* ).unwrap();
+                    backend.$fn_nm( $( <$arg_ty as Default>::default(), )* ).expect_err("dummy method succeeded");
                 }
             )+
         }
