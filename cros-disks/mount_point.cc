@@ -4,6 +4,8 @@
 
 #include "cros-disks/mount_point.h"
 
+#include <utility>
+
 #include "cros-disks/mounter.h"
 
 namespace cros_disks {

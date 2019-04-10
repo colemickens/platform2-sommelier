@@ -4,6 +4,8 @@
 
 #include "cros-disks/mount_point.h"
 
+#include <utility>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
