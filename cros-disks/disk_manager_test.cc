@@ -18,8 +18,8 @@
 #include <gtest/gtest.h>
 
 #include "cros-disks/device_ejector.h"
-#include "cros-disks/disk_monitor.h"
 #include "cros-disks/disk.h"
+#include "cros-disks/disk_monitor.h"
 #include "cros-disks/exfat_mounter.h"
 #include "cros-disks/filesystem.h"
 #include "cros-disks/metrics.h"
