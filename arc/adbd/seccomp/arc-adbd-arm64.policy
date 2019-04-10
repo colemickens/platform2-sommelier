@@ -1,0 +1,61 @@
+# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This file lists out the seccomp policy for allowed syscalls on arc-adbd.
+
+rt_sigaction: 1
+openat: 1
+# mmap should only be allowed in READ mode.
+mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+close: 1
+read: 1
+fstat: 1
+# mprotect should only be allowed in READ mode.
+mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+write: 1
+getdents64: 1
+mkdir: 1
+munmap: 1
+brk: 1
+gettimeofday: 1
+rt_sigprocmask: 1
+faccessat: 1
+lseek: 1
+rename: 1
+# mknod should only be used to create FIFOs.
+mknod: arg1 in 0x11ff
+exit_group: 1
+unlink: 1
+# Mount should only be called with MS_BIND or MS_NOSUID|MS_NODEV|MS_NOEXEC.
+mount: arg3 == 0x1000 || arg3 == 0xe
+fchown: 1
+restart_syscall: 1
+exit: 1
+rt_sigreturn: 1
+set_tid_address: 1
+symlink: 1
+tgkill: 1
+sendto: 1
+
+# For modprobe(8)
+clone: 1
+execve: 1
+wait4: 1
+set_robust_list: 1
+dup: 1
+getrlimit: 1
+prctl: arg0 == 0x26
+uname: 1
+newfstatat: 1
+fcntl: 1
+prlimit64: 1
+finit_module: 1
+
+# For brillo::kLogToStderrIfTty. isatty(0) calls ioctl(0, TCGETS, *).
+ioctl: arg0 == 0 && arg1 == TCGETS
+getpid: 1
+
+# For syslog /dev/log
+socket: arg0 == AF_UNIX
+connect: 1
