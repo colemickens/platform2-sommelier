@@ -14,6 +14,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_test_utils.h"
 #include "cryptohome/cryptolib.h"
@@ -242,7 +243,7 @@ class ChallengeCredentialsHelperTestBase : public testing::Test {
   // verified to be used as the challenge value for one of requests made via
   // KeyChallengeService.
   const Blob kSalt = CombineBlobs(
-      {ChallengeCredentialsOperation::GetSaltConstantPrefix(), Blob{4, 4, 4}});
+      {GetChallengeCredentialsSaltConstantPrefix(), Blob{4, 4, 4}});
 
   // Constants which are injected as fake data into intermediate steps of the
   // ChallengeCredentialsHelper operations:
@@ -330,7 +331,7 @@ TEST_F(ChallengeCredentialsHelperBasicTest, DecryptFailureInSaltCheckEmpty) {
 TEST_F(ChallengeCredentialsHelperBasicTest,
        DecryptFailureInSaltCheckNotPrefixed) {
   Blob salt = kSalt;
-  salt[ChallengeCredentialsOperation::GetSaltConstantPrefix().size() - 1] ^= 1;
+  salt[GetChallengeCredentialsSaltConstantPrefix().size() - 1] ^= 1;
   std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
   CallDecrypt({kAlgorithm} /* key_algorithms */,
               kAlgorithm /* salt_challenge_algorithm */, salt, &decrypt_result);
@@ -345,7 +346,7 @@ TEST_F(ChallengeCredentialsHelperBasicTest,
   std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
   CallDecrypt({kAlgorithm} /* key_algorithms */,
               kAlgorithm /* salt_challenge_algorithm */,
-              ChallengeCredentialsOperation::GetSaltConstantPrefix() /* salt */,
+              GetChallengeCredentialsSaltConstantPrefix() /* salt */,
               &decrypt_result);
   ASSERT_TRUE(decrypt_result);
   VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);

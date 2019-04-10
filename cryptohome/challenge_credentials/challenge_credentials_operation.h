@@ -27,13 +27,6 @@ class KeyChallengeService;
 // Methods of this class and its subclasses must be called on the same thread.
 class ChallengeCredentialsOperation {
  public:
-  // Returns the constant sequence of bytes that should be used as a prefix for
-  // the salt for challenge-protected credentials. This is used for domain
-  // segregation purposes: i.e., to prevent signatures of these salt values from
-  // being even theoretically useful for compromising some other protocol that
-  // uses the same cryptographic key (e.g., TLS).
-  static const brillo::Blob& GetSaltConstantPrefix();
-
   // This callback reports results of a MakeSignatureChallenge() call.
   //
   // If the challenge succeeded, then |signature| will contain the signature of

@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <base/optional.h>
 
+#include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/username_passkey.h"
@@ -25,12 +26,6 @@ using brillo::SecureBlob;
 namespace cryptohome {
 
 namespace {
-
-// Number of random bytes that the generated salt will contain. Note that the
-// resulting salt size will be equal to the sum of this constant and the length
-// of the constant returned by
-// ChallengeCredentialsOperation::GetSaltConstantPrefix().
-constexpr int kSaltRandomByteCount = 20;
 
 std::vector<ChallengeSignatureAlgorithm> GetSealingAlgorithms(
     const ChallengePublicKeyInfo& public_key_info) {
@@ -142,14 +137,16 @@ bool ChallengeCredentialsGenerateNewOperation::StartProcessing() {
 
 bool ChallengeCredentialsGenerateNewOperation::GenerateSalt() {
   Blob salt_random_bytes;
-  if (!tpm_->GetRandomDataBlob(kSaltRandomByteCount, &salt_random_bytes)) {
+  if (!tpm_->GetRandomDataBlob(kChallengeCredentialsSaltRandomByteCount,
+                               &salt_random_bytes)) {
     LOG(ERROR) << "Failed to generate random bytes for the salt";
     return false;
   }
-  DCHECK_EQ(kSaltRandomByteCount, salt_random_bytes.size());
+  DCHECK_EQ(kChallengeCredentialsSaltRandomByteCount, salt_random_bytes.size());
   // IMPORTANT: Make sure the salt is prefixed with a constant. See the comment
-  // on ChallengeCredentialsOperation::GetSaltConstantPrefix() for details.
-  salt_ = CombineBlobs({GetSaltConstantPrefix(), salt_random_bytes});
+  // on GetChallengeCredentialsSaltConstantPrefix() for details.
+  salt_ = CombineBlobs(
+      {GetChallengeCredentialsSaltConstantPrefix(), salt_random_bytes});
   return true;
 }
 

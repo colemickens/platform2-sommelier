@@ -11,6 +11,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 
+#include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/username_passkey.h"
 
@@ -122,10 +123,11 @@ bool ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
   }
   const Blob salt = BlobFromString(keyset_challenge_info_.salt());
   // IMPORTANT: Verify that the salt is correctly prefixed. See the comment on
-  // ChallengeCredentialsOperation::GetSaltConstantPrefix() for details. Note
-  // also that, as an extra validation, we require the salt to contain at least
-  // one extra byte after the prefix.
-  const Blob& salt_constant_prefix = GetSaltConstantPrefix();
+  // GetChallengeCredentialsSaltConstantPrefix() for details. Note also that, as
+  // an extra validation, we require the salt to contain at least one extra byte
+  // after the prefix.
+  const Blob& salt_constant_prefix =
+      GetChallengeCredentialsSaltConstantPrefix();
   if (salt.size() <= salt_constant_prefix.size() ||
       !std::equal(salt_constant_prefix.begin(), salt_constant_prefix.end(),
                   salt.begin())) {
