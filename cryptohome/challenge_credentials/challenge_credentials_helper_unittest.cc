@@ -4,6 +4,8 @@
 
 // Tests for the ChallengeCredentialsHelper class.
 
+#include <cstdint>
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -33,9 +35,12 @@
 using brillo::Blob;
 using brillo::BlobToString;
 using brillo::CombineBlobs;
+using brillo::SecureBlob;
 using testing::_;
 using testing::AnyNumber;
+using testing::DoAll;
 using testing::Return;
+using testing::SetArgPointee;
 using testing::StrictMock;
 using testing::Values;
 
@@ -86,6 +91,19 @@ class ChallengeCredentialsHelperTestBase : public testing::Test {
         enabled ? &sealing_backend_ : nullptr;
     EXPECT_CALL(tpm_, GetSignatureSealingBackend())
         .WillRepeatedly(Return(return_value));
+  }
+
+  // Starts the asynchronous GenerateNew() operation.  The result, once the
+  // operation completes, will be stored in |generate_new_result|.
+  void CallGenerateNew(
+      const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
+      std::unique_ptr<ChallengeCredentialsGenerateNewResult>*
+          generate_new_result) {
+    DCHECK(challenge_service_);
+    const KeyData key_data = MakeKeyData(kPublicKeySpkiDer, key_algorithms);
+    challenge_credentials_helper_.GenerateNew(
+        kUserEmail, key_data, kPcrRestrictions, std::move(challenge_service_),
+        MakeChallengeCredentialsGenerateNewResultWriter(generate_new_result));
   }
 
   // Starts the asynchronous Decrypt() operation.  The result, once the
@@ -139,12 +157,36 @@ class ChallengeCredentialsHelperTestBase : public testing::Test {
         base::Bind([](std::unique_ptr<UsernamePasskey>) {}));
   }
 
-  // Assert that the given decrypt operation result is a valid success result.
+  // Assert that the given GenerateNew() operation result is a valid success
+  // result.
+  void VerifySuccessfulGenerateNewResult(
+      const ChallengeCredentialsGenerateNewResult& generate_new_result) const {
+    VerifySuccessfulChallengeCredentialsGenerateNewResult(
+        generate_new_result, kUserEmail,
+        SecureBlob(kPasskey.begin(), kPasskey.end()));
+  }
+
+  // Assert that the given Decrypt() operation result is a valid success result.
   void VerifySuccessfulDecryptResult(
       const ChallengeCredentialsDecryptResult& decrypt_result) const {
     VerifySuccessfulChallengeCredentialsDecryptResult(
         decrypt_result, kUserEmail,
-        brillo::SecureBlob(kPasskey.begin(), kPasskey.end()));
+        SecureBlob(kPasskey.begin(), kPasskey.end()));
+  }
+
+  // Returns a helper object that aids mocking of the sealed secret creation
+  // functionality (SignatureSealingBackend::CreateSealedSecret()).
+  std::unique_ptr<SignatureSealedCreationMocker> MakeSealedCreationMocker(
+      const std::vector<ChallengeSignatureAlgorithm>& key_algorithms) {
+    auto mocker =
+        std::make_unique<SignatureSealedCreationMocker>(&sealing_backend_);
+    mocker->set_public_key_spki_der(kPublicKeySpkiDer);
+    mocker->set_key_algorithms(key_algorithms);
+    mocker->set_pcr_restrictions(kPcrRestrictions);
+    mocker->set_delegate_blob(kDelegateBlob);
+    mocker->set_delegate_secret(kDelegateSecret);
+    mocker->set_secret_value(kTpmProtectedSecret);
+    return mocker;
   }
 
   // Returns a helper object that aids mocking of the secret unsealing
@@ -161,7 +203,7 @@ class ChallengeCredentialsHelperTestBase : public testing::Test {
     mocker->set_chosen_algorithm(unsealing_algorithm);
     mocker->set_challenge_value(kUnsealingChallengeValue);
     mocker->set_challenge_signature(kUnsealingChallengeSignature);
-    mocker->set_secret_value(kUnsealedSecret);
+    mocker->set_secret_value(kTpmProtectedSecret);
     return mocker;
   }
 
@@ -218,6 +260,20 @@ class ChallengeCredentialsHelperTestBase : public testing::Test {
     unsealing_challenge_mock_controller_.SimulateFailureResponse();
   }
 
+  // Sets up a mock for the successful salt generation.
+  void SetSuccessfulSaltGenerationMock() {
+    EXPECT_CALL(tpm_,
+                GetRandomDataBlob(kChallengeCredentialsSaltRandomByteCount, _))
+        .WillOnce(DoAll(SetArgPointee<1>(kSaltRandomPart), Return(true)));
+  }
+
+  // Sets up a mock for the failure during salt generation.
+  void SetFailingSaltGenerationMock() {
+    EXPECT_CALL(tpm_,
+                GetRandomDataBlob(kChallengeCredentialsSaltRandomByteCount, _))
+        .WillOnce(Return(false));
+  }
+
  protected:
   // Constants which are passed as fake data inputs to the
   // ChallengeCredentialsHelper methods:
@@ -238,12 +294,22 @@ class ChallengeCredentialsHelperTestBase : public testing::Test {
   // verified to be passed into SignatureSealingBackend methods and to be used
   // for challenge requests made via KeyChallengeService.
   const Blob kPublicKeySpkiDer{{3, 3, 3}};
+  // Fake random part of the salt. When testing the GenerateNew() operation,
+  // it's injected as a fake result of the TPM GetRandomDataBlob(). It's also
+  // used as part of the |kSalt| constant in a few other places.
+  const Blob kSaltRandomPart = Blob(20, 4);
   // Fake salt value. It's supplied to the ChallengeCredentialsHelper operation
   // methods as a field of the |keyset_challenge_info| parameter. Then it's
   // verified to be used as the challenge value for one of requests made via
   // KeyChallengeService.
   const Blob kSalt = CombineBlobs(
-      {GetChallengeCredentialsSaltConstantPrefix(), Blob{4, 4, 4}});
+      {GetChallengeCredentialsSaltConstantPrefix(), kSaltRandomPart});
+  // Fake PCR restrictions: a list of maps from PCR indexes to PCR values. It's
+  // supplied to the GenerateNew() operation. Then it's verified to be passed
+  // into the SignatureSealingBackend::CreateSealedSecret() method.
+  const std::vector<std::map<uint32_t, Blob>> kPcrRestrictions{
+      std::map<uint32_t, Blob>{{0, {9, 9, 9}}, {10, {11, 11, 11}}},
+      std::map<uint32_t, Blob>{{0, {9, 9, 9}}, {10, {12, 12, 12}}}};
 
   // Constants which are injected as fake data into intermediate steps of the
   // ChallengeCredentialsHelper operations:
@@ -265,15 +331,19 @@ class ChallengeCredentialsHelperTestBase : public testing::Test {
   // verified to be passed to the Unseal() method of
   // SignatureSealingBackend::UnsealingSession.
   const Blob kUnsealingChallengeSignature{{7, 7, 7}};
-  // Fake unsealed secret. It's injected as a fake result of the Unseal() method
-  // of SignatureSealingBackend::UnsealingSession.
-  const Blob kUnsealedSecret{{8, 8, 8}};
+  // Fake TPM-protected secret. When testing the GenerateNew() operation, it's
+  // injected as a fake result of SignatureSealingBackend::CreateSealedSecret()
+  // method. When testing the Decrypt() operation, it's injected as a fake
+  // result of the Unseal() method of SignatureSealingBackend::UnsealingSession.
+  // Also this constant is implicitly verified to be used for the generation of
+  // the passkey in the resulting UsernamePasskey - see the |kPasskey| constant.
+  const Blob kTpmProtectedSecret{{8, 8, 8}};
 
   // The expected passkey of the resulting UsernamePasskey returned from the
   // ChallengeCredentialsHelper operations. Its value is derived from the
   // injected fake data.
   const Blob kPasskey =
-      CombineBlobs({kUnsealedSecret, CryptoLib::Sha256(kSaltSignature)});
+      CombineBlobs({kTpmProtectedSecret, CryptoLib::Sha256(kSaltSignature)});
 
  private:
   // Mock objects:
@@ -315,6 +385,68 @@ class ChallengeCredentialsHelperBasicTest
 };
 
 }  // namespace
+
+// Test success of the GenerateNew() operation.
+TEST_F(ChallengeCredentialsHelperBasicTest, GenerateNewSuccess) {
+  SetSuccessfulSaltGenerationMock();
+  ExpectSaltChallenge(kAlgorithm /* salt_challenge_algorithm */);
+  MakeSealedCreationMocker({kAlgorithm} /* key_algorithms */)
+      ->SetUpSuccessfulMock();
+
+  std::unique_ptr<ChallengeCredentialsGenerateNewResult> generate_new_result;
+  CallGenerateNew({kAlgorithm} /* key_algorithms */, &generate_new_result);
+  EXPECT_FALSE(generate_new_result);
+  EXPECT_TRUE(is_salt_challenge_requested());
+
+  SimulateSaltChallengeResponse();
+  ASSERT_TRUE(generate_new_result);
+  VerifySuccessfulGenerateNewResult(*generate_new_result);
+}
+
+// Test failure of the GenerateNew() operation due to failure in salt
+// generation.
+TEST_F(ChallengeCredentialsHelperBasicTest,
+       GenerateNewFailureInSaltGeneration) {
+  SetFailingSaltGenerationMock();
+
+  std::unique_ptr<ChallengeCredentialsGenerateNewResult> generate_new_result;
+  CallGenerateNew({kAlgorithm} /* key_algorithms */, &generate_new_result);
+  ASSERT_TRUE(generate_new_result);
+  VerifyFailedChallengeCredentialsGenerateNewResult(*generate_new_result);
+}
+
+// Test failure of the GenerateNew() operation due to failure of salt challenge
+// request.
+TEST_F(ChallengeCredentialsHelperBasicTest, GenerateNewFailureInSaltChallenge) {
+  SetSuccessfulSaltGenerationMock();
+  ExpectSaltChallenge(kAlgorithm /* salt_challenge_algorithm */);
+  MakeSealedCreationMocker({kAlgorithm} /* key_algorithms */)
+      ->SetUpSuccessfulMock();
+
+  std::unique_ptr<ChallengeCredentialsGenerateNewResult> generate_new_result;
+  CallGenerateNew({kAlgorithm} /* key_algorithms */, &generate_new_result);
+  EXPECT_FALSE(generate_new_result);
+  EXPECT_TRUE(is_salt_challenge_requested());
+
+  SimulateSaltChallengeFailure();
+  ASSERT_TRUE(generate_new_result);
+  VerifyFailedChallengeCredentialsGenerateNewResult(*generate_new_result);
+}
+
+// Test failure of the GenerateNew() operation due to failure of sealed secret
+// creation.
+TEST_F(ChallengeCredentialsHelperBasicTest,
+       GenerateNewFailureInSealedCreation) {
+  SetSuccessfulSaltGenerationMock();
+  ExpectSaltChallenge(kAlgorithm /* salt_challenge_algorithm */);
+  MakeSealedCreationMocker({kAlgorithm} /* key_algorithms */)
+      ->SetUpFailingMock();
+
+  std::unique_ptr<ChallengeCredentialsGenerateNewResult> generate_new_result;
+  CallGenerateNew({kAlgorithm} /* key_algorithms */, &generate_new_result);
+  ASSERT_TRUE(generate_new_result);
+  VerifyFailedChallengeCredentialsGenerateNewResult(*generate_new_result);
+}
 
 // Test failure of the Decrypt() operation due to the input salt being empty.
 TEST_F(ChallengeCredentialsHelperBasicTest, DecryptFailureInSaltCheckEmpty) {

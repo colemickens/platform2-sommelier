@@ -18,7 +18,21 @@ using brillo::SecureBlob;
 
 namespace cryptohome {
 
-ChallengeCredentialsDecryptOperation::CompletionCallback
+ChallengeCredentialsHelper::GenerateNewCallback
+MakeChallengeCredentialsGenerateNewResultWriter(
+    std::unique_ptr<ChallengeCredentialsGenerateNewResult>* result) {
+  DCHECK(!*result);
+  return base::Bind(
+      [](std::unique_ptr<ChallengeCredentialsGenerateNewResult>* result,
+         std::unique_ptr<UsernamePasskey> username_passkey) {
+        ASSERT_FALSE(*result);
+        *result = std::make_unique<ChallengeCredentialsGenerateNewResult>();
+        (*result)->username_passkey = std::move(username_passkey);
+      },
+      base::Unretained(result));
+}
+
+ChallengeCredentialsHelper::DecryptCallback
 MakeChallengeCredentialsDecryptResultWriter(
     std::unique_ptr<ChallengeCredentialsDecryptResult>* result) {
   DCHECK(!*result);
@@ -32,6 +46,19 @@ MakeChallengeCredentialsDecryptResultWriter(
       base::Unretained(result));
 }
 
+void VerifySuccessfulChallengeCredentialsGenerateNewResult(
+    const ChallengeCredentialsGenerateNewResult& result,
+    const std::string& expected_username,
+    const SecureBlob& expected_passkey) {
+  ASSERT_TRUE(result.username_passkey);
+  EXPECT_EQ(expected_username, result.username_passkey->username());
+  SecureBlob passkey;
+  result.username_passkey->GetPasskey(&passkey);
+  EXPECT_EQ(expected_passkey, passkey);
+  EXPECT_EQ(KeyData::KEY_TYPE_CHALLENGE_RESPONSE,
+            result.username_passkey->key_data().type());
+}
+
 void VerifySuccessfulChallengeCredentialsDecryptResult(
     const ChallengeCredentialsDecryptResult& result,
     const std::string& expected_username,
@@ -43,6 +70,11 @@ void VerifySuccessfulChallengeCredentialsDecryptResult(
   EXPECT_EQ(expected_passkey, passkey);
   EXPECT_EQ(KeyData::KEY_TYPE_CHALLENGE_RESPONSE,
             result.username_passkey->key_data().type());
+}
+
+void VerifyFailedChallengeCredentialsGenerateNewResult(
+    const ChallengeCredentialsGenerateNewResult& result) {
+  EXPECT_FALSE(result.username_passkey);
 }
 
 void VerifyFailedChallengeCredentialsDecryptResult(
