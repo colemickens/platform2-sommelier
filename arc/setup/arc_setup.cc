@@ -1438,8 +1438,11 @@ void ArcSetup::SetUpGraphicsSysfsContext() {
 
   for (auto dev = drm_directory.Next(); !dev.empty();
        dev = drm_directory.Next()) {
-    auto device = dev.Append("device");
-
+    auto device = Realpath(dev.Append("device"));
+    // If it's virtio gpu, actually the PCI device
+    // directory should be the parent directory.
+    if (device.BaseName().value().find("virtio") == 0)
+      device = device.DirName();
     for (const auto& attr : attrs) {
       auto attr_path = device.Append(attr);
       if (base::PathExists(attr_path))
