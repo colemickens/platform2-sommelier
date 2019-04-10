@@ -1,0 +1,23 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-proxies.gni")
+
+# tpm_manager client library generated headers. Used by other tools to
+# interact with tpm_manager.
+generate_dbus_proxies("libtpm_manager-client-headers") {
+  dbus_service_config = "../common/dbus_bindings/dbus-service-config.json"
+  proxy_output_file = "include/tpm_manager/dbus-proxies.h"
+  mock_output_file = "include/tpm_manager/dbus-proxy-mocks.h"
+  proxy_path_in_mocks = "tpm_manager/dbus-proxies.h"
+  sources = [
+    "../common/dbus_bindings/org.chromium.TpmManager.xml",
+  ]
+}
+
+group("all") {
+  deps = [
+    ":libtpm_manager-client-headers",
+  ]
+}
