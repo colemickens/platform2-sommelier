@@ -96,6 +96,7 @@ copies.
 | [runtime_probe](./runtime_probe/) | Runtime probe tool for ChromeOS |
 | [salsa](./salsa/) | Touchpad experimentation framework |
 | [screenshot](./screenshot/) | Tiny command to take a screenshot |
+| [sealed_storage](./sealed_storage/) | Library for sealing data to device identity and state |
 | [secure_erase_file](./secure_erase_file/) | Helper tools for securely erasing files from storage (e.g. keys and PII data) |
 | [sepolicy](./sepolicy/) | SELinux policy for Chrome OS |
 | [shill](./shill/) | Chrome OS Connection Manager |
