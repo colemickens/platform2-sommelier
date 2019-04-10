@@ -663,6 +663,7 @@ class Metrics {
   static const char kMetricTimeToJoinMillisecondsSuffix[];
   static const char kMetricTimeToOnlineMillisecondsSuffix[];
   static const char kMetricTimeToPortalMillisecondsSuffix[];
+  static const char kMetricTimeToRedirectFoundMillisecondsSuffix[];
   static const char kMetricTimeToScanMillisecondsSuffix[];
   static const int kMetricTimeToScanMillisecondsMax;
   static const int kMetricTimeToScanMillisecondsMin;

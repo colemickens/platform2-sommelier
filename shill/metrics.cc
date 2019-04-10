@@ -158,6 +158,8 @@ const char Metrics::kMetricTimeToConfigMillisecondsSuffix[] = "TimeToConfig";
 const char Metrics::kMetricTimeToJoinMillisecondsSuffix[] = "TimeToJoin";
 const char Metrics::kMetricTimeToOnlineMillisecondsSuffix[] = "TimeToOnline";
 const char Metrics::kMetricTimeToPortalMillisecondsSuffix[] = "TimeToPortal";
+const char Metrics::kMetricTimeToRedirectFoundMillisecondsSuffix[] =
+    "TimeToRedirectFound";
 
 const char Metrics::kMetricTimeToScanMillisecondsSuffix[] = "TimeToScan";
 const int Metrics::kMetricTimeToScanMillisecondsMax = 180 * 1000;  // 3 minutes
@@ -2049,6 +2051,10 @@ void Metrics::InitializeCommonServiceMetrics(const Service& service) {
                                 technology);
   AddServiceStateTransitionTimer(service, histogram, Service::kStateConnected,
                                  Service::kStateNoConnectivity);
+  histogram = GetFullMetricName(kMetricTimeToRedirectFoundMillisecondsSuffix,
+                                technology);
+  AddServiceStateTransitionTimer(service, histogram, Service::kStateConnected,
+                                 Service::kStateRedirectFound);
   histogram = GetFullMetricName(kMetricTimeToOnlineMillisecondsSuffix,
                                 technology);
   AddServiceStateTransitionTimer(
