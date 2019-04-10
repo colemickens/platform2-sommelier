@@ -51,6 +51,11 @@ const char kGoodInterfaceFileContents[] = R"literal_string(
     <property name="Capabilities" type="a{sv}" access="read"/>
     <signal name="BSSRemoved">
       <arg name="BSS" type="o"/>
+      <arg name="BSSDetail" type="ay">
+        <annotation
+          name="org.chromium.DBus.Argument.ProtobufClass"
+          value="YetAnotherProto" />
+      </arg>
     </signal>
   </interface>
   <interface name="DummyInterface" />
@@ -74,6 +79,8 @@ const char kReplyArgument[] = "reply";
 const char kReplyArgumentProto[] = "PassMeProtosReply";
 const char kBssRemovedSignal[] = "BSSRemoved";
 const char kBssArgument[] = "BSS";
+const char kBssDetailArgument[] = "BSSDetail";
+const char kBssDetailArgumentProto[] = "YetAnotherProto";
 const char kObjectType[] = "o";
 const char kCapabilitiesProperty[] = "Capabilities";
 const char kReadAccess[] = "read";
@@ -156,11 +163,16 @@ TEST_F(XmlInterfaceParserTest, GoodInputFile) {
 
   // <signal name="BSSRemoved">
   EXPECT_EQ(kBssRemovedSignal, interface.signals[0].name);
-  EXPECT_EQ(1u, interface.signals[0].arguments.size());
+  EXPECT_EQ(2u, interface.signals[0].arguments.size());
 
   // <arg name="BSS" type="o"/>
   EXPECT_EQ(kBssArgument, interface.signals[0].arguments[0].name);
   EXPECT_EQ(kObjectType, interface.signals[0].arguments[0].type);
+
+  // <arg name="BSSDetail" type="ay">
+  EXPECT_EQ(kBssDetailArgument, interface.signals[0].arguments[1].name);
+  EXPECT_EQ(string(kProtobufType) + string(kBssDetailArgumentProto),
+            interface.signals[0].arguments[1].type);
 
   // <property name="Capabilities" type="s" access="read"/>
   EXPECT_EQ(kCapabilitiesProperty, interface.properties[0].name);

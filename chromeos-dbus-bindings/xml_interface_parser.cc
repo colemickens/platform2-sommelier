@@ -245,8 +245,10 @@ void XmlInterfaceParser::AddMethodArgument(const XmlAttributeMap& attributes) {
 }
 
 void XmlInterfaceParser::AddSignalArgument(const XmlAttributeMap& attributes) {
-  interfaces_.back().signals.back().arguments.push_back(
-      ParseArgument(attributes, element_path_));
+  vector<Interface::Argument>* argument_list =
+      &interfaces_.back().signals.back().arguments;
+  argument_list->push_back(ParseArgument(attributes, element_path_));
+  last_arg_ = &argument_list->back();
 }
 
 void XmlInterfaceParser::OnCloseElement(const string& element_name) {
