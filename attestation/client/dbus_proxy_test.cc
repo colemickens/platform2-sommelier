@@ -148,7 +148,6 @@ TEST_F(DBusProxyTest, GetEndorsementInfo) {
     dbus::MessageReader reader(method_call);
     GetEndorsementInfoRequest request_proto;
     EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
-    EXPECT_EQ(KEY_TYPE_ECC, request_proto.key_type());
     // Create reply protobuf.
     auto response = dbus::Response::CreateEmpty();
     dbus::MessageWriter writer(response.get());
@@ -172,7 +171,6 @@ TEST_F(DBusProxyTest, GetEndorsementInfo) {
     EXPECT_EQ("certificate", reply.ek_certificate());
   };
   GetEndorsementInfoRequest request;
-  request.set_key_type(KEY_TYPE_ECC);
   proxy_.GetEndorsementInfo(request, base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }

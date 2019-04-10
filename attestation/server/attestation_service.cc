@@ -737,7 +737,7 @@ void AttestationService::GetEndorsementInfo(
 void AttestationService::GetEndorsementInfoTask(
     const GetEndorsementInfoRequest& request,
     const std::shared_ptr<GetEndorsementInfoReply>& result) {
-  const auto& key_type = request.key_type();
+  const auto& key_type = GetEndorsementKeyType();
 
   if (key_type != KEY_TYPE_RSA && key_type != KEY_TYPE_ECC) {
     result->set_status(STATUS_INVALID_PARAMETER);
@@ -1939,7 +1939,8 @@ bool AttestationService::ActivateAttestationKeyInternal(
         identity_data.identity_key().identity_key_blob();
     std::string credential;
     if (!tpm_utility_->ActivateIdentityForTpm2(
-            KEY_TYPE_RSA, identity_data.identity_key().identity_key_blob(),
+            GetEndorsementKeyType(),
+            identity_data.identity_key().identity_key_blob(),
             encrypted_certificate.encrypted_seed(),
             encrypted_certificate.credential_mac(),
             encrypted_certificate.wrapped_certificate().wrapped_key(),
@@ -2328,7 +2329,7 @@ void AttestationService::VerifyTask(
     return;
   }
   std::string ek_public_key_info;
-  if (!GetSubjectPublicKeyInfo(KEY_TYPE_RSA, ek_public_key,
+  if (!GetSubjectPublicKeyInfo(GetEndorsementKeyType(), ek_public_key,
                                &ek_public_key_info)) {
     LOG(ERROR) << __func__ << ": Failed to get EK public key info.";
     return;

@@ -170,12 +170,10 @@ TEST_F(DBusServiceTest, GetKeyInfo) {
 
 TEST_F(DBusServiceTest, GetEndorsementInfo) {
   GetEndorsementInfoRequest request;
-  request.set_key_type(KEY_TYPE_ECC);
   EXPECT_CALL(mock_service_, GetEndorsementInfo(_, _))
       .WillOnce(Invoke(
           [](const GetEndorsementInfoRequest& request,
              const AttestationInterface::GetEndorsementInfoCallback& callback) {
-            EXPECT_EQ(KEY_TYPE_ECC, request.key_type());
             GetEndorsementInfoReply reply;
             reply.set_status(STATUS_SUCCESS);
             reply.set_ek_public_key("public_key");

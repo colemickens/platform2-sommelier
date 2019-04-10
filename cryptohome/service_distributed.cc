@@ -986,7 +986,6 @@ gboolean ServiceDistributed::TpmAttestationGetEK(gchar** OUT_ek_info,
                                                  GError** error) {
   VLOG(1) << __func__;
   attestation::GetEndorsementInfoRequest request;
-  request.set_key_type(attestation::KeyType::KEY_TYPE_RSA);
   attestation::GetEndorsementInfoReply reply;
   auto method = base::Bind(&AttestationInterface::GetEndorsementInfo,
                            base::Unretained(attestation_interface_), request);
@@ -1041,7 +1040,6 @@ void ServiceDistributed::DoGetEndorsementInfo(
   }
 
   attestation::GetEndorsementInfoRequest request;
-  request.set_key_type(attestation::KeyType::KEY_TYPE_RSA);
   auto callback =
       base::Bind(&ServiceDistributed::ProcessGetEndorsementInfoReply,
                  GetWeakPtr(), context);

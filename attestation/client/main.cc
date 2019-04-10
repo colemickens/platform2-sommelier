@@ -581,7 +581,6 @@ class ClientLoop : public ClientLoopBase {
 
   void CallGetEndorsementInfo() {
     GetEndorsementInfoRequest request;
-    request.set_key_type(KEY_TYPE_RSA);
     attestation_->GetEndorsementInfo(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<GetEndorsementInfoReply>,
@@ -624,7 +623,6 @@ class ClientLoop : public ClientLoopBase {
 
   void EncryptForActivate(const std::string& input) {
     GetEndorsementInfoRequest request;
-    request.set_key_type(KEY_TYPE_RSA);
     attestation_->GetEndorsementInfo(
         request, base::Bind(&ClientLoop::EncryptForActivate2,
                             weak_factory_.GetWeakPtr(), input));

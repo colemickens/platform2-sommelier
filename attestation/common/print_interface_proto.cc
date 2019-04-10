@@ -303,14 +303,6 @@ std::string GetProtoDebugStringWithIndent(
   std::string output =
       base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
 
-  if (value.has_key_type()) {
-    output += indent + "  key_type: ";
-    base::StringAppendF(
-        &output, "%s",
-        GetProtoDebugStringWithIndent(value.key_type(), indent_size + 2)
-            .c_str());
-    output += "\n";
-  }
   output += indent + "}\n";
   return output;
 }

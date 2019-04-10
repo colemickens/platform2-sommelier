@@ -520,7 +520,6 @@ TEST_F(AttestationServiceBaseTest, GetEndorsementInfoNoInfo) {
     quit_closure.Run();
   };
   GetEndorsementInfoRequest request;
-  request.set_key_type(KEY_TYPE_RSA);
   service_->GetEndorsementInfo(request, base::Bind(callback, QuitClosure()));
   Run();
 }
@@ -537,7 +536,6 @@ TEST_F(AttestationServiceBaseTest, GetEndorsementInfoNoCert) {
     quit_closure.Run();
   };
   GetEndorsementInfoRequest request;
-  request.set_key_type(KEY_TYPE_RSA);
   service_->GetEndorsementInfo(request, base::Bind(callback, QuitClosure()));
   Run();
 }
@@ -673,7 +671,6 @@ TEST_F(AttestationServiceBaseTest, GetEndorsementInfoSuccess) {
     quit_closure.Run();
   };
   GetEndorsementInfoRequest request;
-  request.set_key_type(KEY_TYPE_RSA);
   service_->GetEndorsementInfo(request, base::Bind(callback, QuitClosure()));
   Run();
 }
