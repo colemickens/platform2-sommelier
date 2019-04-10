@@ -897,10 +897,11 @@ bool TpmUtilityV2::ReadPCR(uint32_t pcr_index, std::string* pcr_value) const {
 
 bool TpmUtilityV2::GetNVDataSize(uint32_t nv_index, uint16_t* nv_size) const {
   trunks::TPMS_NV_PUBLIC public_data;
-  if (trunks_utility_->GetNVSpacePublicArea(nv_index & ~ trunks::HR_NV_INDEX,
+  if (trunks_utility_->GetNVSpacePublicArea(nv_index & ~trunks::HR_NV_INDEX,
                                             &public_data) != TPM_RC_SUCCESS) {
-      LOG(ERROR) << __func__ << ": Failed to get NV space public area for"
-                 " index " << std::hex << nv_index << ".";
+    LOG(ERROR) << __func__
+               << ": Failed to get NV space public area for index "
+               << std::hex << nv_index << ".";
     return false;
   }
   *nv_size = public_data.data_size;

@@ -1179,8 +1179,9 @@ bool AttestationService::CreateEnrollRequestInternal(ACAType aca_type,
       }
       if (!EncryptDataForAttestationCA(aca_type, serialized_quote,
           request_pb.mutable_encrypted_rsa_endorsement_quote())) {
-        LOG(ERROR) << "Attestation: Failed to encrypt RSA pub EK certificate for "
-                     << GetACAName(aca_type) << ".";
+        LOG(ERROR)
+            << "Attestation: Failed to encrypt RSA pub EK certificate for "
+            << GetACAName(aca_type) << ".";
         return false;
       }
     }
