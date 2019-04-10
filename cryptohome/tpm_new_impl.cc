@@ -25,13 +25,25 @@ bool TpmNewImpl::CacheTpmManagerStatus() {
 }
 
 bool TpmNewImpl::IsEnabled() {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
+  if (!is_enabled_) {
+    if (!CacheTpmManagerStatus()) {
+      LOG(ERROR) << __func__
+                 << ": Failed to update TPM status from tpm manager.";
+      return false;
+    }
+  }
+  return is_enabled_;
 }
 
 bool TpmNewImpl::IsOwned() {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
+  if (!is_owned_) {
+    if (!CacheTpmManagerStatus()) {
+      LOG(ERROR) << __func__
+                 << ": Failed to update TPM status from tpm manager.";
+      return false;
+    }
+  }
+  return is_owned_;
 }
 
 bool TpmNewImpl::TakeOwnership(int, const brillo::SecureBlob&) {
