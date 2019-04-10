@@ -15,11 +15,9 @@ package attestation;
 // credentials must be cleared once the attestation server has certified the
 // AIK.
 message TPMCredentials {
-  reserved 7, 8;
+  reserved 3, 4, 7, 8;
   optional bytes endorsement_public_key = 1;
   optional bytes endorsement_credential = 2;
-  optional bytes platform_credential = 3;
-  optional bytes conformance_credential = 4;
   optional EncryptedData default_encrypted_endorsement_credential = 5
       [deprecated = true];
   optional EncryptedData test_encrypted_endorsement_credential = 6
