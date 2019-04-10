@@ -35,11 +35,13 @@ include(sepolicy/file_contexts/coreutils)
 /usr/bin/anomaly_detector       u:object_r:cros_anomaly_detector_exec:s0
 /usr/bin/btdispatch             u:object_r:cros_btdispatch_exec:s0
 /usr/bin/chrt                   u:object_r:cros_chrt_exec:s0
+/usr/bin/core_collector[0-9]*   u:object_r:cros_core_collector_exec:s0
 /usr/bin/cras                   u:object_r:cros_cras_exec:s0
+/usr/bin/cros-disks             u:object_r:cros_disks_exec:s0
 /usr/bin/cros_camera_algo       u:object_r:cros_camera_algo_exec:s0
 /usr/bin/cros_camera_service    u:object_r:cros_camera_service_exec:s0
-/usr/bin/cros-disks             u:object_r:cros_disks_exec:s0
 /usr/bin/dbus-daemon            u:object_r:cros_dbus_daemon_exec:s0
+/usr/bin/dbus-send              u:object_r:cros_dbus_send_exec:s0
 /usr/bin/dbus-uuidgen           u:object_r:cros_dbus_uuidgen_exec:s0
 /usr/bin/ionice                 u:object_r:cros_ionice_exec:s0
 /usr/bin/logger                 u:object_r:cros_logger_exec:s0
@@ -205,7 +207,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /home/root(/[0-9a-z]{40})?       u:object_r:cros_home_root:s0
 /home/user(/[0-9a-z]{40})?       u:object_r:cros_home_user:s0
 /home/chronos(/(?!(u-[0-9a-z]{40}|user)).*)?   u:object_r:cros_home_chronos:s0
-#/home/chronos/crash              u:object_r:cros_home_chronos_crash:s0
+/home/chronos/crash              u:object_r:cros_home_chronos_crash:s0
 /home/chronos/user               u:object_r:cros_home_chronos:s0
 /home/chronos/u-[0-9a-z]{40}     u:object_r:cros_home_chronos:s0
 /home/.shadow                    u:object_r:cros_home_shadow:s0

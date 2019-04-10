@@ -6,7 +6,7 @@ cros_net(cros_browser);
 cros_udp_listen(cros_browser);
 cros_tcp_connect(cros_browser);
 
-domain_auto_trans(chromeos_domain, chrome_browser_exec, cros_browser);
+domain_auto_trans({chromeos_domain -cros_crash}, chrome_browser_exec, cros_browser);
 
 allow cros_browser domain:dir { getattr search };
 allow cros_browser domain:file { getattr open read };
@@ -15,7 +15,7 @@ allow cros_browser domain:lnk_file { read getattr };
 filetrans_pattern({cros_session_manager cros_browser}, cros_run, arc_dir, dir, "chrome");
 filetrans_pattern(cros_browser, arc_dir, wayland_socket, sock_file, "wayland-0");
 filetrans_pattern(cros_browser, cros_var_log, cros_var_log_chrome, dir, "chrome");
-#filetrans_pattern(cros_browser, cros_home_chronos, cros_home_chronos_crash, dir, "crash");
+filetrans_pattern(cros_browser, cros_home_chronos, cros_home_chronos_crash, dir, "crash");
 
 tmp_file(cros_browser, dir);
 
@@ -38,5 +38,5 @@ arc_cts_fails_release(
 `allow cros_browser self:capability sys_ptrace;'
 , (cros_browser))
 
-allow cros_browser { cros_home_shadow_uid_user cros_home_chronos }:{file lnk_file} create_file_perms;
-allow cros_browser { cros_home_shadow_uid_user cros_home_chronos }:dir create_dir_perms;
+allow cros_browser { cros_home_shadow_uid_user cros_home_chronos cros_home_chronos_crash }:{file lnk_file} create_file_perms;
+allow cros_browser { cros_home_shadow_uid_user cros_home_chronos cros_home_chronos_crash }:dir create_dir_perms;
