@@ -1697,18 +1697,25 @@ void AttestationService::PrepareForEnrollment() {
                << key_type;
     return;
   }
+  LOG(INFO) << "GetEndorsementPublicKey done. (from start: "
+            << (base::TimeTicks::Now() - start).InMilliseconds() << "ms.)";
+
   std::string ek_certificate;
   if (!tpm_utility_->GetEndorsementCertificate(key_type, &ek_certificate)) {
     LOG(ERROR) << __func__ << ": Failed to get EK cert with key_type "
                << key_type;
     return;
   }
+  LOG(INFO) << "GetEndorsementCertificate done. (from start: "
+            << (base::TimeTicks::Now() - start).InMilliseconds() << "ms.)";
 
   // Create a new AIK and PCR quotes for the first identity with default
   // identity features.
   if (CreateIdentity(default_identity_features_) < 0) {
     return;
   }
+  LOG(INFO) << "CreateIdentity done. (from start: "
+            << (base::TimeTicks::Now() - start).InMilliseconds() << "ms.)";
 
   // Store all this in the attestation database.
   auto* database_pb = database_->GetMutableProtobuf();
@@ -1728,9 +1735,10 @@ void AttestationService::PrepareForEnrollment() {
   // Ignore errors when removing dependency. If failed this time, will be
   // re-attempted on next boot.
   tpm_utility_->RemoveOwnerDependency();
+
   base::TimeDelta delta = (base::TimeTicks::Now() - start);
   LOG(INFO) << "Attestation: Prepared successfully (" << delta.InMilliseconds()
-            << "ms).";
+            << "ms) with EK key_type " << key_type;
 }
 
 int AttestationService::CreateIdentity(int identity_features) {
@@ -1802,6 +1810,9 @@ int AttestationService::CreateIdentity(int identity_features) {
     }
   }
 
+  // Certify the RSA EK cert only when we are using non-RSA EK. In this case, we
+  // don't provide the RSA EK cert which originally is used for calculating the
+  // Enrollment ID.
   if ((identity_features & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) &&
       GetEndorsementKeyType() != KEY_TYPE_RSA) {
     if (!InsertCertifiedNvramData(RSA_PUB_EK_CERT, "RSA Public EK Certificate",
