@@ -103,4 +103,4 @@ class DiskMonitor : public DeviceEventSourceInterface {
 
 }  // namespace cros_disks
 
-#endif  // CROS_DISKS_DISK_MANAGER_H_
+#endif  // CROS_DISKS_DISK_MONITOR_H_
