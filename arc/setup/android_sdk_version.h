@@ -5,6 +5,8 @@
 #ifndef ARC_SETUP_ANDROID_SDK_VERSION_H_
 #define ARC_SETUP_ANDROID_SDK_VERSION_H_
 
+#include <climits>
+
 namespace arc {
 
 enum class AndroidSdkVersion {
@@ -12,9 +14,7 @@ enum class AndroidSdkVersion {
   ANDROID_M = 23,
   ANDROID_N_MR1 = 25,
   ANDROID_P = 28,
-  // TODO(yusukes): Assign an arbitrary number greater than 28 for now. Change
-  // this to the actual number once it's ready.
-  ANDROID_Q = ANDROID_P + 1,
+  ANDROID_MASTER = INT_MAX,
 };
 
 }  // namespace arc

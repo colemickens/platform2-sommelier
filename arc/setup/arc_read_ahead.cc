@@ -72,7 +72,7 @@ FilesToReadMap GetFileList(const base::FilePath& scan_root,
         usage.emplace(file_name, 0);
       break;
     case AndroidSdkVersion::ANDROID_P:
-    case AndroidSdkVersion::ANDROID_Q:
+    case AndroidSdkVersion::ANDROID_MASTER:
       for (auto* file_name : kImportantFilesP)
         usage.emplace(file_name, 0);
       break;

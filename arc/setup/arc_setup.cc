@@ -757,7 +757,7 @@ bool ArcSetup::SetUpPackagesCache() {
   std::string new_content;
   EXIT_IF(!base::ReadFileToString(source_cache, &content));
   SetFingerprintsForPackagesCache(
-      content, GetSystemBuildProperyOrDie(kFingerprintProp), &new_content);
+      content, GetSystemBuildPropertyOrDie(kFingerprintProp), &new_content);
 
   EXIT_IF(!base::WriteFile(packages_cache, new_content.c_str(),
                            new_content.length()));
@@ -1062,7 +1062,7 @@ bool ArcSetup::GenerateHostSideCodeInternal(
   }
 
   const uint64_t offset_seed = GetArtCompilationOffsetSeed(
-      GetSystemBuildProperyOrDie(kFingerprintProp), salt);
+      GetSystemBuildPropertyOrDie(kFingerprintProp), salt);
   if (!art_container->PatchImage(offset_seed)) {
     LOG(ERROR) << "Failed to relocate boot images";
     return false;
@@ -1536,7 +1536,7 @@ void ArcSetup::SetUpDefaultApps() {
   // Last folder is mapped using symbolic link to /var/cache/arc_default_apps.
 
   constexpr char kProductBoardProp[] = "ro.product.board";
-  const std::string board = GetSystemBuildProperyOrDie(kProductBoardProp);
+  const std::string board = GetSystemBuildPropertyOrDie(kProductBoardProp);
 
   const base::FilePath default_apps_root =
       base::FilePath(kDefaultAppsDirectory);
@@ -1597,6 +1597,12 @@ void ArcSetup::CleanUpBinFmtMiscSetUp() {
 
 AndroidSdkVersion ArcSetup::SdkVersionFromString(
     const std::string& version_str) {
+  const std::string version_codename_str =
+      GetSystemBuildPropertyOrDie("ro.build.version.codename");
+  if (version_codename_str != "REL") {
+    LOG(INFO) << "Not a release version; classifying as Android Master.";
+    return AndroidSdkVersion::ANDROID_MASTER;
+  }
   int version;
   if (base::StringToInt(version_str, &version)) {
     switch (version) {
@@ -1605,12 +1611,7 @@ AndroidSdkVersion ArcSetup::SdkVersionFromString(
       case 25:
         return AndroidSdkVersion::ANDROID_N_MR1;
       case 28: {
-        // TODO(yusukes): Remove the hack once master-arc-dev starts using >28.
-        const std::string version_codename_str =
-            GetSystemBuildProperyOrDie("ro.build.version.codename");
-        LOG(INFO) << "Codename string: " << version_codename_str;
-        return version_codename_str == "Q" ? AndroidSdkVersion::ANDROID_Q
-                                          : AndroidSdkVersion::ANDROID_P;
+        return AndroidSdkVersion::ANDROID_P;
       }
     }
   }
@@ -1621,7 +1622,7 @@ AndroidSdkVersion ArcSetup::SdkVersionFromString(
 
 AndroidSdkVersion ArcSetup::GetSdkVersion() {
   const std::string version_str =
-      GetSystemBuildProperyOrDie("ro.build.version.sdk");
+      GetSystemBuildPropertyOrDie("ro.build.version.sdk");
   LOG(INFO) << "SDK version string: " << version_str;
 
   const AndroidSdkVersion version = SdkVersionFromString(version_str);
@@ -1694,7 +1695,7 @@ void ArcSetup::RemoveAndroidKmsgFifo() {
 void ArcSetup::GetBootTypeAndDataSdkVersion(
     ArcBootType* out_boot_type, AndroidSdkVersion* out_data_sdk_version) {
   const std::string system_fingerprint =
-      GetSystemBuildProperyOrDie(kFingerprintProp);
+      GetSystemBuildPropertyOrDie(kFingerprintProp);
 
   // Note: The XML file name has to match com.android.server.pm.Settings's
   // mSettingsFilename. This will be very unlikely to change, but we still need
@@ -2278,7 +2279,7 @@ void ArcSetup::OnUpdateRestoreconLast() {
           arc_paths_->android_mutable_source.Append("cache"));
       break;
     case AndroidSdkVersion::ANDROID_P:
-    case AndroidSdkVersion::ANDROID_Q:
+    case AndroidSdkVersion::ANDROID_MASTER:
       // The order of files to read is important. Do not reorder.
       context_files.push_back(
           arc_paths_->android_rootfs_directory.Append("plat_file_contexts"));
@@ -2297,7 +2298,7 @@ void ArcSetup::OnUpdateRestoreconLast() {
   }
 }
 
-std::string ArcSetup::GetSystemBuildProperyOrDie(const std::string& name) {
+std::string ArcSetup::GetSystemBuildPropertyOrDie(const std::string& name) {
   if (system_properties_.empty()) {
     const base::FilePath build_prop =
         arc_paths_->android_generated_properties_directory.Append("build.prop");

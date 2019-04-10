@@ -377,7 +377,7 @@ class ArcSetup {
   void OnUpdateRestoreconLast();
 
   // Returns system build property.
-  std::string GetSystemBuildProperyOrDie(const std::string& name);
+  std::string GetSystemBuildPropertyOrDie(const std::string& name);
 
   const Mode mode_;
   const Config config_;
