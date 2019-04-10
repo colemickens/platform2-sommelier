@@ -1681,7 +1681,7 @@ void AttestationService::PrepareForEnrollment() {
 
   // Create a new AIK and PCR quotes for the first identity with default
   // identity features.
-  if (CreateIdentity(default_identity_features_, ek_public_key) < 0) {
+  if (CreateIdentity(default_identity_features_) < 0) {
     return;
   }
 
@@ -1708,19 +1708,6 @@ void AttestationService::PrepareForEnrollment() {
 }
 
 int AttestationService::CreateIdentity(int identity_features) {
-  if (!IsPreparedForEnrollment()) {
-    return -1;
-  }
-  std::string rsa_ek_public_key;
-  if (!tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_RSA,
-                                             &rsa_ek_public_key)) {
-    return -1;
-  }
-  return CreateIdentity(identity_features, rsa_ek_public_key);
-}
-
-int AttestationService::CreateIdentity(
-    int identity_features, const std::string& rsa_ek_public_key_der) {
   // The identity we're creating will have the next index in identities.
   auto* database_pb = database_->GetMutableProtobuf();
   const int identity = database_pb->identities().size();

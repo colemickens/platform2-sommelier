@@ -503,11 +503,6 @@ class AttestationService : public AttestationInterface {
   // created.
   int CreateIdentity(int identity_features);
 
-  // Creates a new identity and returns its index, or -1 if it could not be
-  // created.
-  int CreateIdentity(int identity_features,
-                     const std::string& rsa_ek_public_key);
-
   // Certify NVRAM data and insert it into the given |identity|. Returns false
   // if data cannot be inserted, or if |must_be_present| is true and the data
   // cannot be certified.
