@@ -47,8 +47,15 @@ bool TpmNewImpl::IsOwned() {
 }
 
 bool TpmNewImpl::TakeOwnership(int, const brillo::SecureBlob&) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": Failed to initialize |TpmMangerUtility|.";
+    return false;
+  }
+  if (IsOwned()) {
+    LOG(INFO) << __func__ << ": TPM is already owned.";
+    return true;
+  }
+  return tpm_manager_utility_.TakeOwnership();
 }
 
 void TpmNewImpl::SetOwnerPassword(const brillo::SecureBlob&) {
