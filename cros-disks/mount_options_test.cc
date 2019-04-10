@@ -12,10 +12,6 @@
 #include <base/macros.h>
 #include <gtest/gtest.h>
 
-using std::pair;
-using std::string;
-using std::vector;
-
 namespace cros_disks {
 
 class MountOptionsTest : public ::testing::Test {
@@ -28,7 +24,7 @@ TEST_F(MountOptionsTest, IsReadOnlyOptionSet) {
   EXPECT_TRUE(mount_options_.IsReadOnlyOptionSet());
 
   // options: ro
-  vector<string> options = {"ro"};
+  std::vector<std::string> options = {"ro"};
   mount_options_.Initialize(options, false, "", "");
   EXPECT_TRUE(mount_options_.IsReadOnlyOptionSet());
 
@@ -39,15 +35,15 @@ TEST_F(MountOptionsTest, IsReadOnlyOptionSet) {
 }
 
 TEST_F(MountOptionsTest, SetReadOnlyOption) {
-  string expected_string_default = "ro";
-  string expected_string_initialize = "ro,nodev,noexec,nosuid";
+  std::string expected_string_default = "ro";
+  std::string expected_string_initialize = "ro,nodev,noexec,nosuid";
 
   // default construction
   mount_options_.SetReadOnlyOption();
   EXPECT_EQ(expected_string_default, mount_options_.ToString());
 
   // options: ro
-  vector<string> options = {"ro"};
+  std::vector<std::string> options = {"ro"};
   mount_options_.Initialize(options, false, "", "");
   mount_options_.SetReadOnlyOption();
   EXPECT_EQ(expected_string_initialize, mount_options_.ToString());
@@ -60,8 +56,8 @@ TEST_F(MountOptionsTest, SetReadOnlyOption) {
 }
 
 TEST_F(MountOptionsTest, ToString) {
-  vector<string> options;
-  string expected_string;
+  std::vector<std::string> options;
+  std::string expected_string;
 
   // default construction
   expected_string = "ro";
@@ -170,11 +166,11 @@ TEST_F(MountOptionsTest, ToString) {
 }
 
 TEST_F(MountOptionsTest, ToMountFlagsAndData) {
-  vector<string> options;
+  std::vector<std::string> options;
   MountOptions::Flags expected_flags;
   MountOptions::Flags security_flags = MS_NODEV | MS_NOEXEC | MS_NOSUID;
-  string expected_data;
-  pair<MountOptions::Flags, string> flags_and_data;
+  std::string expected_data;
+  std::pair<MountOptions::Flags, std::string> flags_and_data;
 
   // default construction
   expected_flags = MS_RDONLY;

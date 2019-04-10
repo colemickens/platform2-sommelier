@@ -6,9 +6,6 @@
 
 #include <base/logging.h>
 
-using std::map;
-using std::string;
-
 namespace {
 
 const char kArchiveTypeMetricName[] = "CrosDisks.ArchiveType";
@@ -48,8 +45,9 @@ void Metrics::InitializeFilesystemTypeMap() {
   filesystem_type_map_[""] = kFilesystemUnknown;
 }
 
-Metrics::ArchiveType Metrics::GetArchiveType(const string& archive_type) const {
-  map<string, ArchiveType>::const_iterator map_iter =
+Metrics::ArchiveType Metrics::GetArchiveType(
+    const std::string& archive_type) const {
+  std::map<std::string, ArchiveType>::const_iterator map_iter =
       archive_type_map_.find(archive_type);
   if (map_iter != archive_type_map_.end())
     return map_iter->second;
@@ -57,22 +55,22 @@ Metrics::ArchiveType Metrics::GetArchiveType(const string& archive_type) const {
 }
 
 Metrics::FilesystemType Metrics::GetFilesystemType(
-    const string& filesystem_type) const {
-  map<string, FilesystemType>::const_iterator map_iter =
+    const std::string& filesystem_type) const {
+  std::map<std::string, FilesystemType>::const_iterator map_iter =
       filesystem_type_map_.find(filesystem_type);
   if (map_iter != filesystem_type_map_.end())
     return map_iter->second;
   return kFilesystemOther;
 }
 
-void Metrics::RecordArchiveType(const string& archive_type) {
+void Metrics::RecordArchiveType(const std::string& archive_type) {
   if (!metrics_library_.SendEnumToUMA(kArchiveTypeMetricName,
                                       GetArchiveType(archive_type),
                                       kArchiveMaxValue))
     LOG(WARNING) << "Failed to send archive type sample to UMA";
 }
 
-void Metrics::RecordFilesystemType(const string& filesystem_type) {
+void Metrics::RecordFilesystemType(const std::string& filesystem_type) {
   if (!metrics_library_.SendEnumToUMA(kFilesystemTypeMetricName,
                                       GetFilesystemType(filesystem_type),
                                       kFilesystemMaxValue))

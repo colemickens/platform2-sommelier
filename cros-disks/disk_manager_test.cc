@@ -27,10 +27,6 @@
 #include "cros-disks/ntfs_mounter.h"
 #include "cros-disks/platform.h"
 
-using std::map;
-using std::string;
-using std::unique_ptr;
-using std::vector;
 using testing::Return;
 using testing::_;
 
@@ -81,8 +77,8 @@ TEST_F(DiskManagerTest, CreateExFATMounter) {
   Filesystem filesystem("exfat");
   filesystem.mounter_type = ExFATMounter::kMounterType;
 
-  string target_path = "/media/disk";
-  vector<string> options = {"rw", "nodev", "noexec", "nosuid"};
+  std::string target_path = "/media/disk";
+  std::vector<std::string> options = {"rw", "nodev", "noexec", "nosuid"};
 
   auto mounter = manager_.CreateMounter(disk, filesystem, target_path, options);
   EXPECT_NE(nullptr, mounter.get());
@@ -99,8 +95,8 @@ TEST_F(DiskManagerTest, CreateNTFSMounter) {
   Filesystem filesystem("ntfs");
   filesystem.mounter_type = NTFSMounter::kMounterType;
 
-  string target_path = "/media/disk";
-  vector<string> options = {"rw", "nodev", "noexec", "nosuid"};
+  std::string target_path = "/media/disk";
+  std::vector<std::string> options = {"rw", "nodev", "noexec", "nosuid"};
 
   auto mounter = manager_.CreateMounter(disk, filesystem, target_path, options);
   EXPECT_NE(nullptr, mounter.get());
@@ -117,8 +113,8 @@ TEST_F(DiskManagerTest, CreateVFATSystemMounter) {
   Filesystem filesystem("vfat");
   filesystem.extra_mount_options = {"utf8", "shortname=mixed"};
 
-  string target_path = "/media/disk";
-  vector<string> options = {"rw", "nodev", "noexec", "nosuid"};
+  std::string target_path = "/media/disk";
+  std::vector<std::string> options = {"rw", "nodev", "noexec", "nosuid"};
 
   // Override the time zone to make this test deterministic.
   // This test uses AWST (Perth, Australia), which is UTC+8, as the test time
@@ -139,9 +135,10 @@ TEST_F(DiskManagerTest, CreateExt4SystemMounter) {
   Disk disk;
   disk.device_file = "/dev/sda1";
 
-  string target_path = "/media/disk";
+  std::string target_path = "/media/disk";
   // "mand" is not a whitelisted option, so it should be skipped.
-  vector<string> options = {"rw", "nodev", "noexec", "nosuid", "mand"};
+  std::vector<std::string> options = {"rw", "nodev", "noexec", "nosuid",
+                                      "mand"};
 
   Filesystem filesystem("ext4");
   auto mounter = manager_.CreateMounter(disk, filesystem, target_path, options);
@@ -162,7 +159,7 @@ TEST_F(DiskManagerTest, GetFilesystem) {
 }
 
 TEST_F(DiskManagerTest, RegisterFilesystem) {
-  const map<string, Filesystem>& filesystems = manager_.filesystems_;
+  const std::map<std::string, Filesystem>& filesystems = manager_.filesystems_;
   EXPECT_EQ(0, filesystems.size());
   EXPECT_TRUE(filesystems.find("nonexistent") == filesystems.end());
 
@@ -248,10 +245,10 @@ TEST_F(DiskManagerTest, CanUnmount) {
 }
 
 TEST_F(DiskManagerTest, DoMountDiskWithNonexistentSourcePath) {
-  string filesystem_type = "ext3";
-  string source_path = "/dev/nonexistent-path";
-  string mount_path = "/tmp/cros-disks-test";
-  vector<string> options;
+  std::string filesystem_type = "ext3";
+  std::string source_path = "/dev/nonexistent-path";
+  std::string mount_path = "/tmp/cros-disks-test";
+  std::vector<std::string> options;
   MountOptions applied_options;
   EXPECT_EQ(MOUNT_ERROR_INVALID_DEVICE_PATH,
             manager_.DoMount(source_path, filesystem_type, options, mount_path,
@@ -259,14 +256,14 @@ TEST_F(DiskManagerTest, DoMountDiskWithNonexistentSourcePath) {
 }
 
 TEST_F(DiskManagerTest, DoUnmountDiskWithInvalidUnmountOptions) {
-  string source_path = "/dev/nonexistent-path";
-  vector<string> options = {"invalid-unmount-option"};
+  std::string source_path = "/dev/nonexistent-path";
+  std::vector<std::string> options = {"invalid-unmount-option"};
   EXPECT_EQ(MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS,
             manager_.DoUnmount(source_path, options));
 }
 
 TEST_F(DiskManagerTest, ScheduleEjectOnUnmount) {
-  string mount_path = "/media/removable/disk";
+  std::string mount_path = "/media/removable/disk";
   Disk disk;
   disk.device_file = "/dev/sr0";
   EXPECT_FALSE(manager_.ScheduleEjectOnUnmount(mount_path, disk));
@@ -286,7 +283,7 @@ TEST_F(DiskManagerTest, ScheduleEjectOnUnmount) {
 }
 
 TEST_F(DiskManagerTest, EjectDeviceOfMountPath) {
-  string mount_path = "/media/removable/disk";
+  std::string mount_path = "/media/removable/disk";
   Disk disk;
   disk.device_file = "/dev/sr0";
   manager_.devices_to_eject_on_unmount_[mount_path] = disk;
@@ -297,7 +294,7 @@ TEST_F(DiskManagerTest, EjectDeviceOfMountPath) {
 }
 
 TEST_F(DiskManagerTest, EjectDeviceOfMountPathWhenEjectFailed) {
-  string mount_path = "/media/removable/disk";
+  std::string mount_path = "/media/removable/disk";
   Disk disk;
   disk.device_file = "/dev/sr0";
   manager_.devices_to_eject_on_unmount_[mount_path] = disk;
@@ -308,7 +305,7 @@ TEST_F(DiskManagerTest, EjectDeviceOfMountPathWhenEjectFailed) {
 }
 
 TEST_F(DiskManagerTest, EjectDeviceOfMountPathWhenExplicitlyDisabled) {
-  string mount_path = "/media/removable/disk";
+  std::string mount_path = "/media/removable/disk";
   Disk disk;
   disk.device_file = "/dev/sr0";
   manager_.devices_to_eject_on_unmount_[mount_path] = disk;

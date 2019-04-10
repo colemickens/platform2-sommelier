@@ -9,9 +9,6 @@
 #include "cros-disks/metrics.h"
 #include "cros-disks/platform.h"
 
-using std::string;
-using std::vector;
-
 namespace {
 
 const char kMountRootDirectory[] = "/media/archive";
@@ -157,10 +154,10 @@ TEST_F(ArchiveManagerTest, CanUnmount) {
 }
 
 TEST_F(ArchiveManagerTest, DoMountFailedWithUnsupportedExtension) {
-  string filesystem_type;
-  string source_path = "/media/archive/test.zip/doc.zip";
-  string mount_path = "/media/archive/doc.zip";
-  vector<string> options;
+  std::string filesystem_type;
+  std::string source_path = "/media/archive/test.zip/doc.zip";
+  std::string mount_path = "/media/archive/doc.zip";
+  std::vector<std::string> options;
   MountOptions applied_options;
 
   manager_.avfs_started_ = true;
@@ -170,7 +167,8 @@ TEST_F(ArchiveManagerTest, DoMountFailedWithUnsupportedExtension) {
 }
 
 TEST_F(ArchiveManagerTest, SuggestMountPath) {
-  string expected_mount_path = string(kMountRootDirectory) + "/doc.zip";
+  std::string expected_mount_path =
+      std::string(kMountRootDirectory) + "/doc.zip";
   EXPECT_EQ(expected_mount_path,
             manager_.SuggestMountPath("/home/chronos/user/Downloads/doc.zip"));
   EXPECT_EQ(expected_mount_path,

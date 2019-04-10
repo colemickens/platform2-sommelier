@@ -18,8 +18,6 @@
 #include "cros-disks/platform.h"
 #include "cros-disks/uri.h"
 
-using std::string;
-using std::vector;
 using testing::DoAll;
 using testing::Eq;
 using testing::HasSubstr;
@@ -47,7 +45,7 @@ class MockPlatform : public Platform {
  public:
   MockPlatform() = default;
 
-  bool GetUserAndGroupId(const string& user,
+  bool GetUserAndGroupId(const std::string& user,
                          uid_t* user_id,
                          gid_t* group_id) const override {
     if (user == "fuse-sshfs") {
@@ -67,7 +65,7 @@ class MockPlatform : public Platform {
     return false;
   }
 
-  bool GetGroupId(const string& group, gid_t* group_id) const override {
+  bool GetGroupId(const std::string& group, gid_t* group_id) const override {
     if (group == FUSEHelper::kFilesGroup) {
       if (group_id)
         *group_id = kFilesAccessGID;
@@ -77,10 +75,13 @@ class MockPlatform : public Platform {
   }
 
   MOCK_CONST_METHOD3(SetOwnership,
-                     bool(const string& path, uid_t user_id, gid_t group_id));
-  MOCK_CONST_METHOD2(SetPermissions, bool(const string& path, mode_t mode));
+                     bool(const std::string& path,
+                          uid_t user_id,
+                          gid_t group_id));
+  MOCK_CONST_METHOD2(SetPermissions,
+                     bool(const std::string& path, mode_t mode));
   MOCK_CONST_METHOD3(WriteFile,
-                     int(const string& path, const char* data, int size));
+                     int(const std::string& path, const char* data, int size));
 };
 
 }  // namespace
@@ -105,7 +106,7 @@ TEST_F(SshfsHelperTest, CreateMounter_SimpleOptions) {
   EXPECT_EQ("sshfs", mounter->filesystem_type());
   EXPECT_EQ("src", mounter->source());
   EXPECT_EQ("/mnt", mounter->target_path().value());
-  string opts = mounter->mount_options().ToString();
+  std::string opts = mounter->mount_options().ToString();
   EXPECT_THAT(opts, HasSubstr("BatchMode=yes"));
   EXPECT_THAT(opts, HasSubstr("PasswordAuthentication=no"));
   EXPECT_THAT(opts, HasSubstr("KbdInteractiveAuthentication=no"));
@@ -139,7 +140,7 @@ TEST_F(SshfsHelperTest, CreateMounter_WriteFiles) {
       {"IdentityBase64=c29tZSBrZXk=", "UserKnownHostsBase64=c29tZSBob3N0",
        "IdentityFile=/foo/bar", "UserKnownHostsFile=/foo/baz",
        "HostName=localhost", "Port=2222"});
-  string opts = mounter->mount_options().ToString();
+  std::string opts = mounter->mount_options().ToString();
   EXPECT_THAT(opts, HasSubstr("IdentityFile=/wkdir/id"));
   EXPECT_THAT(opts, HasSubstr("UserKnownHostsFile=/wkdir/known_hosts"));
   EXPECT_THAT(opts, HasSubstr("HostName=localhost"));

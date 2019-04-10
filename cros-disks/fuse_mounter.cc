@@ -24,8 +24,6 @@
 #include "cros-disks/platform.h"
 #include "cros-disks/sandboxed_process.h"
 
-using std::string;
-
 namespace cros_disks {
 
 namespace {
@@ -185,13 +183,13 @@ MountErrorType MountFuseDevice(const Platform* platform,
 
 }  // namespace
 
-FUSEMounter::FUSEMounter(const string& source_path,
-                         const string& target_path,
-                         const string& filesystem_type,
+FUSEMounter::FUSEMounter(const std::string& source_path,
+                         const std::string& target_path,
+                         const std::string& filesystem_type,
                          const MountOptions& mount_options,
                          const Platform* platform,
-                         const string& mount_program_path,
-                         const string& mount_user,
+                         const std::string& mount_program_path,
+                         const std::string& mount_user,
                          const std::string& seccomp_policy,
                          const std::vector<BindPath>& accessible_paths,
                          bool permit_network_access,
@@ -319,7 +317,7 @@ MountErrorType FUSEMounter::MountImpl() const {
     }
   }
 
-  string options_string = mount_options().ToString();
+  std::string options_string = mount_options().ToString();
   if (!options_string.empty()) {
     mount_process->AddArgument("-o");
     mount_process->AddArgument(options_string);

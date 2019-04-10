@@ -21,10 +21,6 @@
 #include "cros-disks/platform.h"
 #include "cros-disks/uri.h"
 
-using base::FilePath;
-using std::set;
-using std::string;
-using std::vector;
 using testing::ByMove;
 using testing::DoAll;
 using testing::Eq;
@@ -36,7 +32,7 @@ using testing::_;
 
 namespace base {
 
-void PrintTo(const FilePath& fp, std::ostream* os) {
+void PrintTo(const base::FilePath& fp, std::ostream* os) {
   *os << fp.value();
 }
 
@@ -57,29 +53,33 @@ class MockPlatform : public Platform {
  public:
   MockPlatform() = default;
 
-  MOCK_CONST_METHOD2(Unmount, MountErrorType(const string& path, int flags));
-  MOCK_CONST_METHOD1(DirectoryExists, bool(const string& path));
-  MOCK_CONST_METHOD1(CreateDirectory, bool(const string& path));
-  MOCK_CONST_METHOD2(SetPermissions, bool(const string& path, mode_t mode));
+  MOCK_CONST_METHOD2(Unmount,
+                     MountErrorType(const std::string& path, int flags));
+  MOCK_CONST_METHOD1(DirectoryExists, bool(const std::string& path));
+  MOCK_CONST_METHOD1(CreateDirectory, bool(const std::string& path));
+  MOCK_CONST_METHOD2(SetPermissions,
+                     bool(const std::string& path, mode_t mode));
   MOCK_CONST_METHOD3(CreateTemporaryDirInDir,
-                     bool(const string& dir,
-                          const string& prefix,
-                          string* path));
+                     bool(const std::string& dir,
+                          const std::string& prefix,
+                          std::string* path));
 };
 
 // Mock implementation of FUSEHelper.
 class MockHelper : public FUSEHelper {
  public:
-  MockHelper(const string& tag, const Platform* platform)
-      : FUSEHelper(tag, platform, FilePath("/sbin/" + tag), "fuse-" + tag) {}
+  MockHelper(const std::string& tag, const Platform* platform)
+      : FUSEHelper(
+            tag, platform, base::FilePath("/sbin/" + tag), "fuse-" + tag) {}
 
   MOCK_CONST_METHOD1(CanMount, bool(const Uri& src));
-  MOCK_CONST_METHOD1(GetTargetSuffix, string(const Uri& src));
-  MOCK_CONST_METHOD4(CreateMounter,
-                     std::unique_ptr<FUSEMounter>(const FilePath& dir,
-                                                  const Uri& source,
-                                                  const FilePath& target,
-                                                  const vector<string>& opts));
+  MOCK_CONST_METHOD1(GetTargetSuffix, std::string(const Uri& src));
+  MOCK_CONST_METHOD4(
+      CreateMounter,
+      std::unique_ptr<FUSEMounter>(const base::FilePath& dir,
+                                   const Uri& source,
+                                   const base::FilePath& target,
+                                   const std::vector<std::string>& opts));
 };
 
 class MockMounter : public FUSEMounter {
@@ -117,7 +117,7 @@ class FUSEMountManagerTest : public ::testing::Test {
     manager_.RegisterHelper(std::move(helper));
   }
 
-  MountErrorType DoMount(const string& type, const string& src) {
+  MountErrorType DoMount(const std::string& type, const std::string& src) {
     MountOptions mount_options;
     return manager_.DoMount(src, type, {}, kSomeMountpoint, &mount_options);
   }
@@ -219,8 +219,8 @@ TEST_F(FUSEMountManagerTest, DoMount_BySource) {
   MockMounter* mounter = new MockMounter(&platform_);
   EXPECT_CALL(*mounter, MountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
   std::unique_ptr<FUSEMounter> ptr(mounter);
-  EXPECT_CALL(*bar_, CreateMounter(FilePath("/blah"), kSomeSource,
-                                   FilePath(kSomeMountpoint), _))
+  EXPECT_CALL(*bar_, CreateMounter(base::FilePath("/blah"), kSomeSource,
+                                   base::FilePath(kSomeMountpoint), _))
       .WillOnce(Return(ByMove(std::move(ptr))));
   EXPECT_CALL(*baz_, CreateMounter(_, _, _, _)).Times(0);
   RegisterHelper(std::move(foo_));

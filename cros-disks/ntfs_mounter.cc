@@ -6,8 +6,6 @@
 
 #include "cros-disks/platform.h"
 
-using std::string;
-
 namespace {
 
 // Expected location of the ntfs-3g executable.
@@ -21,9 +19,9 @@ namespace cros_disks {
 
 const char NTFSMounter::kMounterType[] = "ntfs";
 
-NTFSMounter::NTFSMounter(const string& source_path,
-                         const string& target_path,
-                         const string& filesystem_type,
+NTFSMounter::NTFSMounter(const std::string& source_path,
+                         const std::string& target_path,
+                         const std::string& filesystem_type,
                          const MountOptions& mount_options,
                          const Platform* platform)
     : FUSEMounter(source_path,

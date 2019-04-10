@@ -22,13 +22,10 @@
 #include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
 
-using std::set;
-using std::string;
-using std::vector;
+using testing::_;
 using testing::ElementsAre;
 using testing::Invoke;
 using testing::Return;
-using testing::_;
 
 namespace {
 
@@ -48,16 +45,20 @@ class MockPlatform : public Platform {
  public:
   MockPlatform() = default;
 
-  MOCK_CONST_METHOD1(CreateDirectory, bool(const string& path));
-  MOCK_CONST_METHOD1(CreateOrReuseEmptyDirectory, bool(const string& path));
+  MOCK_CONST_METHOD1(CreateDirectory, bool(const std::string& path));
+  MOCK_CONST_METHOD1(CreateOrReuseEmptyDirectory,
+                     bool(const std::string& path));
   MOCK_CONST_METHOD3(CreateOrReuseEmptyDirectoryWithFallback,
-                     bool(string* path,
+                     bool(std::string* path,
                           unsigned max_suffix_to_retry,
-                          const set<string>& reserved_paths));
-  MOCK_CONST_METHOD1(RemoveEmptyDirectory, bool(const string& path));
+                          const std::set<std::string>& reserved_paths));
+  MOCK_CONST_METHOD1(RemoveEmptyDirectory, bool(const std::string& path));
   MOCK_CONST_METHOD3(SetOwnership,
-                     bool(const string& path, uid_t user_id, gid_t group_id));
-  MOCK_CONST_METHOD2(SetPermissions, bool(const string& path, mode_t mode));
+                     bool(const std::string& path,
+                          uid_t user_id,
+                          gid_t group_id));
+  MOCK_CONST_METHOD2(SetPermissions,
+                     bool(const std::string& path, mode_t mode));
 };
 
 // A mock mount manager class for testing the mount manager base class.
@@ -66,20 +67,21 @@ class MountManagerUnderTest : public MountManager {
   MountManagerUnderTest(Platform* platform, Metrics* metrics)
       : MountManager(kMountRootDirectory, platform, metrics) {}
 
-  MOCK_CONST_METHOD1(CanMount, bool(const string& source_path));
+  MOCK_CONST_METHOD1(CanMount, bool(const std::string& source_path));
   MOCK_CONST_METHOD0(GetMountSourceType, MountSourceType());
   MOCK_METHOD5(DoMount,
-               MountErrorType(const string& source_path,
-                              const string& filesystem_type,
-                              const vector<string>& options,
-                              const string& mount_path,
+               MountErrorType(const std::string& source_path,
+                              const std::string& filesystem_type,
+                              const std::vector<std::string>& options,
+                              const std::string& mount_path,
                               MountOptions* applied_options));
   MOCK_METHOD2(DoUnmount,
-               MountErrorType(const string& path,
-                              const vector<string>& options));
+               MountErrorType(const std::string& path,
+                              const std::vector<std::string>& options));
   MOCK_CONST_METHOD1(ShouldReserveMountPathOnError,
                      bool(MountErrorType error_type));
-  MOCK_CONST_METHOD1(SuggestMountPath, string(const string& source_path));
+  MOCK_CONST_METHOD1(SuggestMountPath,
+                     std::string(const std::string& source_path));
 };
 
 class MountManagerTest : public ::testing::Test {
@@ -90,10 +92,10 @@ class MountManagerTest : public ::testing::Test {
   Metrics metrics_;
   MockPlatform platform_;
   MountManagerUnderTest manager_;
-  string filesystem_type_;
-  string mount_path_;
-  string source_path_;
-  vector<string> options_;
+  std::string filesystem_type_;
+  std::string mount_path_;
+  std::string source_path_;
+  std::vector<std::string> options_;
 };
 
 // Mock action to emulate DoMount with fallback to read-only mode.
@@ -223,7 +225,7 @@ TEST_F(MountManagerTest, MountFailedWithInvalidMountPath) {
 // without a given mount path and the suggested mount path is invalid.
 TEST_F(MountManagerTest, MountFailedWithInvalidSuggestedMountPath) {
   source_path_ = kTestSourcePath;
-  string suggested_mount_path = kInvalidMountPath;
+  std::string suggested_mount_path = kInvalidMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -248,7 +250,7 @@ TEST_F(MountManagerTest, MountFailedWithInvalidSuggestedMountPath) {
 // with an mount label that yields an invalid mount path.
 TEST_F(MountManagerTest, MountFailedWithInvalidMountLabel) {
   source_path_ = kTestSourcePath;
-  string suggested_mount_path = kTestSourcePath;
+  std::string suggested_mount_path = kTestSourcePath;
   options_.push_back("mountlabel=../custom_label");
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
@@ -319,7 +321,7 @@ TEST_F(MountManagerTest, MountFailedInCreateDirectoryDueToReservedMountPath) {
 // create a mount directory after a number of trials.
 TEST_F(MountManagerTest, MountFailedInCreateOrReuseEmptyDirectoryWithFallback) {
   source_path_ = kTestSourcePath;
-  string suggested_mount_path = kTestMountPath;
+  std::string suggested_mount_path = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -491,7 +493,7 @@ TEST_F(MountManagerTest, MountSuccededWithReadOnlyFallback) {
 // mounts a source path with no mount path specified.
 TEST_F(MountManagerTest, MountSucceededWithEmptyMountPath) {
   source_path_ = kTestSourcePath;
-  string suggested_mount_path = kTestMountPath;
+  std::string suggested_mount_path = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -522,10 +524,11 @@ TEST_F(MountManagerTest, MountSucceededWithEmptyMountPath) {
 // mounts a source path with a given mount label in options.
 TEST_F(MountManagerTest, MountSucceededWithGivenMountLabel) {
   source_path_ = kTestSourcePath;
-  string suggested_mount_path = kTestMountPath;
-  string final_mount_path = string(kMountRootDirectory) + "/custom_label";
+  std::string suggested_mount_path = kTestMountPath;
+  std::string final_mount_path =
+      std::string(kMountRootDirectory) + "/custom_label";
   options_.push_back("mountlabel=custom_label");
-  vector<string> updated_options;
+  std::vector<std::string> updated_options;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -556,7 +559,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountLabel) {
 // mounted source path properly.
 TEST_F(MountManagerTest, MountWithAlreadyMountedSourcePath) {
   source_path_ = kTestSourcePath;
-  string suggested_mount_path = kTestMountPath;
+  std::string suggested_mount_path = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -645,7 +648,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPathInReservedCase) {
 // type of error. No specific mount path is given in this case.
 TEST_F(MountManagerTest, MountSucceededWithEmptyMountPathInReservedCase) {
   source_path_ = kTestSourcePath;
-  string suggested_mount_path = kTestMountPath;
+  std::string suggested_mount_path = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -682,7 +685,7 @@ TEST_F(MountManagerTest, MountSucceededWithEmptyMountPathInReservedCase) {
 // again.
 TEST_F(MountManagerTest, MountSucceededWithAlreadyReservedMountPath) {
   source_path_ = kTestSourcePath;
-  string suggested_mount_path = kTestMountPath;
+  std::string suggested_mount_path = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -760,7 +763,7 @@ TEST_F(MountManagerTest, MountFailedWithGivenMountPathInReservedCase) {
 // a type of error that is not enabled for reservation.
 TEST_F(MountManagerTest, MountFailedWithEmptyMountPathInReservedCase) {
   source_path_ = kTestSourcePath;
-  string suggested_mount_path = kTestMountPath;
+  std::string suggested_mount_path = kTestMountPath;
 
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -957,10 +960,10 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPathInReservedCase) {
 
 // Verifies that MountManager::AddOrUpdateMountStateCache() works as expected.
 TEST_F(MountManagerTest, AddOrUpdateMountStateCache) {
-  string result;
+  std::string result;
   source_path_ = kTestSourcePath;
   mount_path_ = kTestMountPath;
-  string mount_path_2 = "target2";
+  std::string mount_path_2 = "target2";
   bool is_read_only = true;
 
   manager_.AddOrUpdateMountStateCache(source_path_, mount_path_, is_read_only);
@@ -982,7 +985,7 @@ TEST_F(MountManagerTest, AddOrUpdateMountStateCache) {
 
 // Verifies that MountManager::GetSourcePathFromCache() works as expected.
 TEST_F(MountManagerTest, GetSourcePathFromCache) {
-  string result;
+  std::string result;
   source_path_ = kTestSourcePath;
   mount_path_ = kTestMountPath;
 
@@ -996,7 +999,7 @@ TEST_F(MountManagerTest, GetSourcePathFromCache) {
 
 // Verifies that MountManager::GetMountPathFromCache() works as expected.
 TEST_F(MountManagerTest, GetMountPathFromCache) {
-  string result;
+  std::string result;
   source_path_ = kTestSourcePath;
   mount_path_ = kTestMountPath;
 
@@ -1033,10 +1036,10 @@ TEST_F(MountManagerTest, RemoveMountPathFromCache) {
 
 // Verifies that MountManager::GetReservedMountPaths() works as expected.
 TEST_F(MountManagerTest, GetReservedMountPaths) {
-  set<string> reserved_paths;
-  set<string> expected_paths;
-  string path1 = "path1";
-  string path2 = "path2";
+  std::set<std::string> reserved_paths;
+  std::set<std::string> expected_paths;
+  std::string path1 = "path1";
+  std::string path2 = "path2";
 
   reserved_paths = manager_.GetReservedMountPaths();
   EXPECT_TRUE(expected_paths == reserved_paths);
@@ -1105,7 +1108,7 @@ TEST_F(MountManagerTest, GetMountEntries) {
       .WillRepeatedly(Return(MOUNT_SOURCE_REMOVABLE_DEVICE));
 
   // No mount entry is returned.
-  vector<MountEntry> mount_entries = manager_.GetMountEntries();
+  std::vector<MountEntry> mount_entries = manager_.GetMountEntries();
   EXPECT_TRUE(mount_entries.empty());
 
   // A normal mount entry is returned.
@@ -1130,8 +1133,9 @@ TEST_F(MountManagerTest, GetMountEntries) {
 // Verifies that MountManager::ExtractMountLabelFromOptions() extracts a mount
 // label from the given options and returns true.
 TEST_F(MountManagerTest, ExtractMountLabelFromOptions) {
-  vector<string> options = {"ro", "mountlabel=My USB Drive", "noexec"};
-  string mount_label;
+  std::vector<std::string> options = {"ro", "mountlabel=My USB Drive",
+                                      "noexec"};
+  std::string mount_label;
 
   EXPECT_TRUE(manager_.ExtractMountLabelFromOptions(&options, &mount_label));
   EXPECT_THAT(options, ElementsAre("ro", "noexec"));
@@ -1141,8 +1145,8 @@ TEST_F(MountManagerTest, ExtractMountLabelFromOptions) {
 // Verifies that MountManager::ExtractMountLabelFromOptions() returns false
 // when no mount label is found in the given options.
 TEST_F(MountManagerTest, ExtractMountLabelFromOptionsWithNoMountLabel) {
-  vector<string> options;
-  string mount_label;
+  std::vector<std::string> options;
+  std::string mount_label;
 
   EXPECT_FALSE(manager_.ExtractMountLabelFromOptions(&options, &mount_label));
   EXPECT_THAT(options, ElementsAre());
@@ -1162,9 +1166,9 @@ TEST_F(MountManagerTest, ExtractMountLabelFromOptionsWithNoMountLabel) {
 // Verifies that MountManager::ExtractMountLabelFromOptions() extracts the last
 // mount label from the given options with two mount labels.
 TEST_F(MountManagerTest, ExtractMountLabelFromOptionsWithTwoMountLabels) {
-  vector<string> options = {"ro", "mountlabel=My USB Drive", "noexec",
-                            "mountlabel=Another Label"};
-  string mount_label;
+  std::vector<std::string> options = {"ro", "mountlabel=My USB Drive", "noexec",
+                                      "mountlabel=Another Label"};
+  std::string mount_label;
 
   EXPECT_TRUE(manager_.ExtractMountLabelFromOptions(&options, &mount_label));
   EXPECT_THAT(options, ElementsAre("ro", "noexec"));
@@ -1266,7 +1270,7 @@ TEST_F(MountManagerTest, RemountSucceededWithGivenSourcePath) {
 
   options_.push_back(kMountOptionRemount);
   options_.push_back(kMountOptionReadOnly);
-  vector<string> expected_options = options_;
+  std::vector<std::string> expected_options = options_;
   EXPECT_CALL(manager_, DoMount(kTestSourcePath, filesystem_type_,
                                 expected_options, kTestMountPath, _))
       .WillOnce(Invoke(DoMountSuccess));

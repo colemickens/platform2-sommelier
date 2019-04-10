@@ -6,8 +6,6 @@
 
 #include <algorithm>
 
-using std::string;
-
 namespace {
 
 const char kUSBDriveName[] = "USB Drive";
@@ -35,9 +33,9 @@ Disk::Disk()
       device_capacity(0),
       bytes_remaining(0) {}
 
-string Disk::GetPresentationName() const {
+std::string Disk::GetPresentationName() const {
   if (!label.empty()) {
-    string name = label;
+    std::string name = label;
     std::replace(name.begin(), name.end(), '/', '_');
     return name;
   }

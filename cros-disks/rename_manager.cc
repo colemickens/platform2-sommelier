@@ -16,9 +16,6 @@
 #include "cros-disks/platform.h"
 #include "cros-disks/rename_manager_observer_interface.h"
 
-using base::FilePath;
-using std::string;
-
 namespace {
 
 struct RenameParameters {
@@ -61,10 +58,11 @@ RenameManager::RenameManager(Platform* platform,
 
 RenameManager::~RenameManager() {}
 
-RenameErrorType RenameManager::StartRenaming(const string& device_path,
-                                             const string& device_file,
-                                             const string& volume_name,
-                                             const string& filesystem_type) {
+RenameErrorType RenameManager::StartRenaming(
+    const std::string& device_path,
+    const std::string& device_file,
+    const std::string& volume_name,
+    const std::string& filesystem_type) {
   std::string source_path;
   if (!platform_->GetRealPath(device_path, &source_path) ||
       !CanRename(source_path)) {
@@ -80,7 +78,7 @@ RenameErrorType RenameManager::StartRenaming(const string& device_path,
 
   const RenameParameters* parameters = FindRenameParameters(filesystem_type);
   // Check if tool for renaming exists
-  if (!base::PathExists(FilePath(parameters->program_path))) {
+  if (!base::PathExists(base::FilePath(parameters->program_path))) {
     LOG(WARNING) << "Could not find a rename program for filesystem '"
                  << filesystem_type << "'";
     return RENAME_ERROR_RENAME_PROGRAM_NOT_FOUND;
@@ -138,7 +136,7 @@ RenameErrorType RenameManager::StartRenaming(const string& device_path,
   return RENAME_ERROR_NONE;
 }
 
-void RenameManager::OnRenameProcessTerminated(const string& device_path,
+void RenameManager::OnRenameProcessTerminated(const std::string& device_path,
                                               const siginfo_t& info) {
   rename_process_.erase(device_path);
   RenameErrorType error_type = RENAME_ERROR_UNKNOWN;

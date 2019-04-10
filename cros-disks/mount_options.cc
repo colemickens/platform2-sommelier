@@ -11,10 +11,6 @@
 #include <base/strings/string_util.h>
 #include <base/stl_util.h>
 
-using std::pair;
-using std::string;
-using std::vector;
-
 namespace cros_disks {
 
 const char MountOptions::kOptionBind[] = "bind";
@@ -45,20 +41,20 @@ MountOptions::MountOptions()
 
 MountOptions::~MountOptions() = default;
 
-void MountOptions::Initialize(const vector<string>& options,
+void MountOptions::Initialize(const std::vector<std::string>& options,
                               bool set_user_and_group_id,
-                              const string& default_user_id,
-                              const string& default_group_id) {
+                              const std::string& default_user_id,
+                              const std::string& default_group_id) {
   options_.clear();
   options_.reserve(options.size());
 
   bool option_read_only = false, option_read_write = false;
   bool option_remount = false;
-  string option_user_id, option_group_id;
+  std::string option_user_id, option_group_id;
 
   for (const auto& option : options) {
     // Skip early if |option| contains a comma.
-    if (option.find(",") != string::npos) {
+    if (option.find(",") != std::string::npos) {
       LOG(WARNING) << "Ignoring invalid mount option '" << option << "'.";
       continue;
     }
@@ -124,10 +120,10 @@ void MountOptions::Initialize(const vector<string>& options,
 }
 
 bool MountOptions::IsReadOnlyOptionSet() const {
-  for (vector<string>::const_reverse_iterator option_iterator =
+  for (std::vector<std::string>::const_reverse_iterator option_iterator =
            options_.rbegin();
        option_iterator != options_.rend(); ++option_iterator) {
-    const string& option = *option_iterator;
+    const std::string& option = *option_iterator;
     if (option == kOptionReadOnly)
       return true;
 
@@ -142,9 +138,10 @@ void MountOptions::SetReadOnlyOption() {
                kOptionReadOnly);
 }
 
-pair<MountOptions::Flags, string> MountOptions::ToMountFlagsAndData() const {
+std::pair<MountOptions::Flags, std::string> MountOptions::ToMountFlagsAndData()
+    const {
   Flags flags = MS_RDONLY;
-  vector<string> data;
+  std::vector<std::string> data;
   data.reserve(options_.size());
 
   for (const auto& option : options_) {
@@ -173,19 +170,19 @@ pair<MountOptions::Flags, string> MountOptions::ToMountFlagsAndData() const {
   return std::make_pair(flags, base::JoinString(data, ","));
 }
 
-string MountOptions::ToString() const {
+std::string MountOptions::ToString() const {
   return options_.empty() ? kOptionReadOnly : base::JoinString(options_, ",");
 }
 
-void MountOptions::WhitelistOption(const string& option) {
+void MountOptions::WhitelistOption(const std::string& option) {
   whitelist_exact_.push_back(option);
 }
 
-void MountOptions::WhitelistOptionPrefix(const string& prefix) {
+void MountOptions::WhitelistOptionPrefix(const std::string& prefix) {
   whitelist_prefix_.push_back(prefix);
 }
 
-void MountOptions::EnforceOption(const string& option) {
+void MountOptions::EnforceOption(const std::string& option) {
   enforced_options_.push_back(option);
 }
 

@@ -11,8 +11,6 @@
 
 #include "cros-disks/mount_options.h"
 
-using std::string;
-
 namespace cros_disks {
 
 SandboxedProcess::SandboxedProcess() : jail_(minijail_new()) {
@@ -23,7 +21,7 @@ SandboxedProcess::~SandboxedProcess() {
   minijail_destroy(jail_);
 }
 
-void SandboxedProcess::LoadSeccompFilterPolicy(const string& policy_file) {
+void SandboxedProcess::LoadSeccompFilterPolicy(const std::string& policy_file) {
   minijail_parse_seccomp_filters(jail_, policy_file.c_str());
   minijail_use_seccomp_filter(jail_);
 }

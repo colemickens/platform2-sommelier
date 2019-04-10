@@ -21,11 +21,6 @@
 #include "cros-disks/platform.h"
 #include "cros-disks/system_mounter.h"
 
-using base::FilePath;
-using std::map;
-using std::string;
-using std::vector;
-
 // TODO(benchan): Remove entire archive manager after deprecating the rar
 // support (see chromium:707327).
 
@@ -62,7 +57,7 @@ const char kAVFSSubdirOptionPrefix[] = "subdir=";
 
 namespace cros_disks {
 
-ArchiveManager::ArchiveManager(const string& mount_root,
+ArchiveManager::ArchiveManager(const std::string& mount_root,
                                Platform* platform,
                                Metrics* metrics)
     : MountManager(mount_root, platform, metrics), avfs_started_(false) {}
@@ -81,16 +76,16 @@ bool ArchiveManager::StopSession() {
   return StopAVFS();
 }
 
-bool ArchiveManager::CanMount(const string& source_path) const {
+bool ArchiveManager::CanMount(const std::string& source_path) const {
   // The following paths can be mounted:
   //     /home/chronos/u-<user-id>/Downloads/...<file>
   //     /home/chronos/u-<user-id>/MyFiles/...<file>
   //     /home/chronos/u-<user-id>/GCache/...<file>
   //     /media/<dir>/<dir>/...<file>
   //
-  FilePath file_path(source_path);
-  if (FilePath(kUserRootDirectory).IsParent(file_path)) {
-    vector<std::string> components;
+  base::FilePath file_path(source_path);
+  if (base::FilePath(kUserRootDirectory).IsParent(file_path)) {
+    std::vector<std::string> components;
     file_path.StripTrailingSeparators().GetComponents(&components);
     // The file path of an archive file under a user's Downloads or GCache
     // directory path is split into the following components:
@@ -107,8 +102,8 @@ bool ArchiveManager::CanMount(const string& source_path) const {
     }
   }
 
-  if (FilePath(kMediaDirectory).IsParent(file_path)) {
-    vector<std::string> components;
+  if (base::FilePath(kMediaDirectory).IsParent(file_path)) {
+    std::vector<std::string> components;
     file_path.StripTrailingSeparators().GetComponents(&components);
     // A mount directory is always created under /media/<sub type>/<mount dir>,
     // so the file path of an archive file under a mount directory is split
@@ -120,21 +115,21 @@ bool ArchiveManager::CanMount(const string& source_path) const {
   return false;
 }
 
-MountErrorType ArchiveManager::DoMount(const string& source_path,
-                                       const string& source_format,
-                                       const vector<string>& options,
-                                       const string& mount_path,
+MountErrorType ArchiveManager::DoMount(const std::string& source_path,
+                                       const std::string& source_format,
+                                       const std::vector<std::string>& options,
+                                       const std::string& mount_path,
                                        MountOptions* applied_options) {
   CHECK(!source_path.empty()) << "Invalid source path argument";
   CHECK(!mount_path.empty()) << "Invalid mount path argument";
 
-  string extension = GetFileExtension(source_format);
+  std::string extension = GetFileExtension(source_format);
   if (extension.empty())
     extension = GetFileExtension(source_path);
 
   metrics()->RecordArchiveType(extension);
 
-  string avfs_path = GetAVFSPath(source_path, extension);
+  std::string avfs_path = GetAVFSPath(source_path, extension);
   if (avfs_path.empty()) {
     LOG(ERROR) << "Path '" << source_path << "' is not a supported archive";
     return MOUNT_ERROR_UNSUPPORTED_ARCHIVE;
@@ -148,7 +143,7 @@ MountErrorType ArchiveManager::DoMount(const string& source_path,
 
   // Perform a bind mount from the archive path under the AVFS mount
   // to /media/archive/<archive name>.
-  vector<string> extended_options = options;
+  std::vector<std::string> extended_options = options;
   extended_options.push_back(MountOptions::kOptionBind);
   MountOptions mount_options;
   mount_options.WhitelistOption(MountOptions::kOptionNoSymFollow);
@@ -163,8 +158,8 @@ MountErrorType ArchiveManager::DoMount(const string& source_path,
   return error_type;
 }
 
-MountErrorType ArchiveManager::DoUnmount(const string& path,
-                                         const vector<string>& options) {
+MountErrorType ArchiveManager::DoUnmount(
+    const std::string& path, const std::vector<std::string>& options) {
   CHECK(!path.empty()) << "Invalid path argument";
 
   int unmount_flags;
@@ -182,10 +177,11 @@ MountErrorType ArchiveManager::DoUnmount(const string& path,
   return MOUNT_ERROR_UNKNOWN;
 }
 
-string ArchiveManager::SuggestMountPath(const string& source_path) const {
+std::string ArchiveManager::SuggestMountPath(
+    const std::string& source_path) const {
   // Use the archive name to name the mount directory.
-  FilePath base_name = FilePath(source_path).BaseName();
-  return FilePath(mount_root()).Append(base_name).value();
+  base::FilePath base_name = base::FilePath(source_path).BaseName();
+  return base::FilePath(mount_root()).Append(base_name).value();
 }
 
 void ArchiveManager::RegisterDefaultFileExtensions() {
@@ -198,14 +194,14 @@ void ArchiveManager::RegisterDefaultFileExtensions() {
   RegisterFileExtension("rar", "#urar");
 }
 
-void ArchiveManager::RegisterFileExtension(const string& extension,
-                                           const string& avfs_handler) {
+void ArchiveManager::RegisterFileExtension(const std::string& extension,
+                                           const std::string& avfs_handler) {
   extension_handlers_[extension] = avfs_handler;
 }
 
-string ArchiveManager::GetFileExtension(const string& path) const {
-  FilePath file_path(path);
-  string extension = file_path.Extension();
+std::string ArchiveManager::GetFileExtension(const std::string& path) const {
+  base::FilePath file_path(path);
+  std::string extension = file_path.Extension();
   if (!extension.empty()) {
     // Strip the leading dot and convert the extension to lower case.
     extension.erase(0, 1);
@@ -214,8 +210,8 @@ string ArchiveManager::GetFileExtension(const string& path) const {
   return extension;
 }
 
-string ArchiveManager::GetAVFSPath(const string& path,
-                                   const string& extension) const {
+std::string ArchiveManager::GetAVFSPath(const std::string& path,
+                                        const std::string& extension) const {
   // When mounting an archive within another mounted archive, we need to
   // resolve the virtual path of the inner archive to the "unfolded"
   // form within the AVFS mount, such as
@@ -237,19 +233,19 @@ string ArchiveManager::GetAVFSPath(const string& path,
   //      path "/run/avfsroot/media/layer2.zip#" within the AVFS mount.
   //      The following code should return the virtual path of |path| as
   //      "/run/avfsroot/media/layer2.zip#/test/doc/layer1.zip#".
-  map<string, string>::const_iterator handler_iterator =
+  std::map<std::string, std::string>::const_iterator handler_iterator =
       extension_handlers_.find(extension);
   if (handler_iterator == extension_handlers_.end())
-    return string();
+    return std::string();
 
-  FilePath file_path(path);
-  FilePath current_path = file_path.DirName();
-  FilePath parent_path = current_path.DirName();
+  base::FilePath file_path(path);
+  base::FilePath current_path = file_path.DirName();
+  base::FilePath parent_path = current_path.DirName();
   while (current_path != parent_path) {  // Search till the root
     VirtualPathMap::const_iterator path_iterator =
         virtual_paths_.find(current_path.value());
     if (path_iterator != virtual_paths_.end()) {
-      FilePath avfs_path(path_iterator->second);
+      base::FilePath avfs_path(path_iterator->second);
       // As current_path is a parent of file_path, AppendRelativePath()
       // should return true here.
       CHECK(current_path.AppendRelativePath(file_path, &avfs_path));
@@ -263,13 +259,13 @@ string ArchiveManager::GetAVFSPath(const string& path,
   // archive and thus construct the virtual path of the archive based on a
   // corresponding AVFS mount path.
   for (const auto& mapping : kAVFSPathMapping) {
-    FilePath base_path(mapping.base_path);
-    FilePath avfs_path(mapping.avfs_path);
+    base::FilePath base_path(mapping.base_path);
+    base::FilePath avfs_path(mapping.avfs_path);
     if (base_path.AppendRelativePath(file_path, &avfs_path)) {
       return avfs_path.value() + handler_iterator->second;
     }
   }
-  return string();
+  return std::string();
 }
 
 MountErrorType ArchiveManager::StartAVFS() {
@@ -283,7 +279,7 @@ MountErrorType ArchiveManager::StartAVFS() {
   uid_t avfs_user_id, dir_user_id;
   gid_t avfs_group_id, dir_group_id;
   mode_t dir_mode;
-  if (!base::PathExists(FilePath(kAVFSRootDirectory)) ||
+  if (!base::PathExists(base::FilePath(kAVFSRootDirectory)) ||
       !platform()->GetUserAndGroupId(kAVFSMountUser, &avfs_user_id,
                                      &avfs_group_id) ||
       !platform()->GetOwnership(kAVFSRootDirectory, &dir_user_id,
@@ -324,8 +320,8 @@ bool ArchiveManager::StopAVFS() {
   // Unmounts all mounted archives before unmounting AVFS mounts.
   bool all_unmounted = UnmountAll();
   for (const auto& mapping : kAVFSPathMapping) {
-    const string& path = mapping.avfs_path;
-    if (!base::PathExists(FilePath(path)))
+    const std::string& path = mapping.avfs_path;
+    if (!base::PathExists(base::FilePath(path)))
       continue;
 
     if (!platform()->Unmount(path, 0))
@@ -334,8 +330,8 @@ bool ArchiveManager::StopAVFS() {
   return all_unmounted;
 }
 
-MountErrorType ArchiveManager::MountAVFSPath(const string& base_path,
-                                             const string& avfs_path) const {
+MountErrorType ArchiveManager::MountAVFSPath(
+    const std::string& base_path, const std::string& avfs_path) const {
   MountInfo mount_info;
   if (!mount_info.RetrieveFromCurrentProcess())
     return MOUNT_ERROR_INTERNAL;
@@ -388,12 +384,12 @@ MountErrorType ArchiveManager::MountAVFSPath(const string& base_path,
   return MOUNT_ERROR_NONE;
 }
 
-void ArchiveManager::AddMountVirtualPath(const string& mount_path,
-                                         const string& virtual_path) {
+void ArchiveManager::AddMountVirtualPath(const std::string& mount_path,
+                                         const std::string& virtual_path) {
   virtual_paths_[mount_path] = virtual_path;
 }
 
-void ArchiveManager::RemoveMountVirtualPath(const string& mount_path) {
+void ArchiveManager::RemoveMountVirtualPath(const std::string& mount_path) {
   virtual_paths_.erase(mount_path);
 }
 

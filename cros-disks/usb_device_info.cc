@@ -12,11 +12,6 @@
 
 #include "cros-disks/file_reader.h"
 
-using base::FilePath;
-using std::map;
-using std::string;
-using std::vector;
-
 namespace cros_disks {
 
 // A data structure for holding information of a USB device.
@@ -29,33 +24,34 @@ USBDeviceInfo::USBDeviceInfo() {}
 USBDeviceInfo::~USBDeviceInfo() {}
 
 DeviceMediaType USBDeviceInfo::GetDeviceMediaType(
-    const string& vendor_id, const string& product_id) const {
+    const std::string& vendor_id, const std::string& product_id) const {
   CHECK(!vendor_id.empty()) << "Invalid vendor ID";
   CHECK(!product_id.empty()) << "Invalid product ID";
 
-  string id = vendor_id + ":" + product_id;
-  map<string, USBDeviceEntry>::const_iterator map_iterator = entries_.find(id);
+  std::string id = vendor_id + ":" + product_id;
+  std::map<std::string, USBDeviceEntry>::const_iterator map_iterator =
+      entries_.find(id);
   if (map_iterator != entries_.end())
     return map_iterator->second.media_type;
   return DEVICE_MEDIA_USB;
 }
 
-bool USBDeviceInfo::RetrieveFromFile(const string& path) {
+bool USBDeviceInfo::RetrieveFromFile(const std::string& path) {
   entries_.clear();
 
   FileReader reader;
-  if (!reader.Open(FilePath(path))) {
+  if (!reader.Open(base::FilePath(path))) {
     LOG(ERROR) << "Failed to retrieve USB device info from '" << path << "'";
     return false;
   }
 
-  string line;
+  std::string line;
   while (reader.ReadLine(&line)) {
     if (IsLineSkippable(line))
       continue;
 
-    vector<string> tokens = base::SplitString(line, " ", base::KEEP_WHITESPACE,
-                                              base::SPLIT_WANT_ALL);
+    std::vector<std::string> tokens = base::SplitString(
+        line, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
     if (tokens.size() >= 2) {
       USBDeviceEntry& entry = entries_[tokens[0]];
       entry.media_type = ConvertToDeviceMediaType(tokens[1]);
@@ -64,28 +60,28 @@ bool USBDeviceInfo::RetrieveFromFile(const string& path) {
   return true;
 }
 
-bool USBDeviceInfo::GetVendorAndProductName(const string& ids_file,
-                                            const string& vendor_id,
-                                            const string& product_id,
-                                            string* vendor_name,
-                                            string* product_name) {
+bool USBDeviceInfo::GetVendorAndProductName(const std::string& ids_file,
+                                            const std::string& vendor_id,
+                                            const std::string& product_id,
+                                            std::string* vendor_name,
+                                            std::string* product_name) {
   vendor_name->clear();
   product_name->clear();
 
   FileReader reader;
-  if (!reader.Open(FilePath(ids_file))) {
+  if (!reader.Open(base::FilePath(ids_file))) {
     LOG(ERROR) << "Failed to retrieve USB identifier database at '" << ids_file
                << "'";
     return false;
   }
 
   bool found_vendor = false;
-  string line;
+  std::string line;
   while (reader.ReadLine(&line)) {
     if (IsLineSkippable(line))
       continue;
 
-    string id, name;
+    std::string id, name;
     // If the target vendor ID is found, search for a matching product ID.
     if (found_vendor) {
       if (line[0] == '\t' && ExtractIdAndName(line.substr(1), &id, &name)) {
@@ -115,7 +111,7 @@ bool USBDeviceInfo::GetVendorAndProductName(const string& ids_file,
 }
 
 DeviceMediaType USBDeviceInfo::ConvertToDeviceMediaType(
-    const string& str) const {
+    const std::string& str) const {
   if (str == "sd") {
     return DEVICE_MEDIA_SD;
   } else if (str == "mobile") {
@@ -125,17 +121,17 @@ DeviceMediaType USBDeviceInfo::ConvertToDeviceMediaType(
   }
 }
 
-bool USBDeviceInfo::IsLineSkippable(const string& line) const {
-  string trimmed_line;
+bool USBDeviceInfo::IsLineSkippable(const std::string& line) const {
+  std::string trimmed_line;
   // Trim only ASCII whitespace for now.
   base::TrimWhitespaceASCII(line, base::TRIM_ALL, &trimmed_line);
   return trimmed_line.empty() ||
          base::StartsWith(trimmed_line, "#", base::CompareCase::SENSITIVE);
 }
 
-bool USBDeviceInfo::ExtractIdAndName(const string& line,
-                                     string* id,
-                                     string* name) const {
+bool USBDeviceInfo::ExtractIdAndName(const std::string& line,
+                                     std::string* id,
+                                     std::string* name) const {
   if ((line.length() > 6) && base::IsHexDigit(line[0]) &&
       base::IsHexDigit(line[1]) && base::IsHexDigit(line[2]) &&
       base::IsHexDigit(line[3]) && (line[4] == ' ') && (line[5] == ' ')) {

@@ -16,13 +16,9 @@
 #include "cros-disks/sshfs_helper.h"
 #include "cros-disks/uri.h"
 
-using base::FilePath;
-using std::string;
-using std::vector;
-
 namespace cros_disks {
 
-FUSEMountManager::FUSEMountManager(const string& mount_root,
+FUSEMountManager::FUSEMountManager(const std::string& mount_root,
                                    const std::string& working_dirs_root,
                                    Platform* platform,
                                    Metrics* metrics)
@@ -55,11 +51,12 @@ bool FUSEMountManager::Initialize() {
   return true;
 }
 
-MountErrorType FUSEMountManager::DoMount(const string& source,
-                                         const string& fuse_type,
-                                         const vector<string>& options,
-                                         const string& mount_path,
-                                         MountOptions* applied_options) {
+MountErrorType FUSEMountManager::DoMount(
+    const std::string& source,
+    const std::string& fuse_type,
+    const std::vector<std::string>& options,
+    const std::string& mount_path,
+    MountOptions* applied_options) {
   CHECK(!mount_path.empty()) << "Invalid mount path argument";
   CHECK(Uri::IsUri(source)) << "Source argument is not URI";
 
@@ -80,7 +77,7 @@ MountErrorType FUSEMountManager::DoMount(const string& source,
 
   // Make a temporary dir where the helper may keep stuff needed by the mounter
   // process.
-  string path;
+  std::string path;
   if (!platform()->CreateTemporaryDirInDir(working_dirs_root_, ".", &path) ||
       !platform()->SetPermissions(path, 0755)) {
     LOG(ERROR) << "Can't create working directory for FUSE module '"
@@ -88,8 +85,8 @@ MountErrorType FUSEMountManager::DoMount(const string& source,
     return MOUNT_ERROR_DIRECTORY_CREATION_FAILED;
   }
 
-  auto mounter = selected_helper->CreateMounter(FilePath(path), uri,
-                                                FilePath(mount_path), options);
+  auto mounter = selected_helper->CreateMounter(
+      base::FilePath(path), uri, base::FilePath(mount_path), options);
   if (!mounter) {
     LOG(ERROR) << "Invalid options for FUSE module '" << selected_helper->type()
                << "' and source '" << source << "'";
@@ -99,8 +96,8 @@ MountErrorType FUSEMountManager::DoMount(const string& source,
   return mounter->Mount();
 }
 
-MountErrorType FUSEMountManager::DoUnmount(const string& path,
-                                           const vector<string>& options) {
+MountErrorType FUSEMountManager::DoUnmount(
+    const std::string& path, const std::vector<std::string>& options) {
   // DoUnmount() is always called with |path| being the mount path.
   CHECK(!path.empty()) << "Invalid path argument";
 
@@ -113,7 +110,7 @@ MountErrorType FUSEMountManager::DoUnmount(const string& path,
   return platform()->Unmount(path, unmount_flags);
 }
 
-bool FUSEMountManager::CanMount(const string& source) const {
+bool FUSEMountManager::CanMount(const std::string& source) const {
   if (!Uri::IsUri(source)) {
     return false;
   }
@@ -125,19 +122,20 @@ bool FUSEMountManager::CanMount(const string& source) const {
   return false;
 }
 
-string FUSEMountManager::SuggestMountPath(const string& source) const {
+std::string FUSEMountManager::SuggestMountPath(
+    const std::string& source) const {
   if (!Uri::IsUri(source)) {
     return "";
   }
   Uri uri = Uri::Parse(source);
   for (const auto& helper : helpers_) {
     if (helper->CanMount(uri))
-      return FilePath(mount_root())
+      return base::FilePath(mount_root())
           .Append(helper->GetTargetSuffix(uri))
           .value();
   }
-  FilePath base_name = FilePath(source).BaseName();
-  return FilePath(mount_root()).Append(base_name).value();
+  base::FilePath base_name = base::FilePath(source).BaseName();
+  return base::FilePath(mount_root()).Append(base_name).value();
 }
 
 void FUSEMountManager::RegisterHelper(std::unique_ptr<FUSEHelper> helper) {

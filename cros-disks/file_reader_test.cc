@@ -12,16 +12,13 @@
 #include <base/strings/string_util.h>
 #include <gtest/gtest.h>
 
-using base::FilePath;
-using std::string;
-using std::vector;
-
 namespace cros_disks {
 
 class FileReaderTest : public ::testing::Test {
  public:
-  void VerifyReadLines(const FilePath& path, const vector<string>& lines) {
-    string line;
+  void VerifyReadLines(const base::FilePath& path,
+                       const std::vector<std::string>& lines) {
+    std::string line;
     EXPECT_FALSE(reader_.ReadLine(&line));
     EXPECT_TRUE(reader_.Open(path));
     for (const auto& expected_line : lines) {
@@ -38,32 +35,32 @@ class FileReaderTest : public ::testing::Test {
 };
 
 TEST_F(FileReaderTest, OpenNonExistentFile) {
-  EXPECT_FALSE(reader_.Open(FilePath("a_nonexistent_file")));
+  EXPECT_FALSE(reader_.Open(base::FilePath("a_nonexistent_file")));
 }
 
 TEST_F(FileReaderTest, OpenEmptyFile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  FilePath path;
+  base::FilePath path;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.GetPath(), &path));
 
   EXPECT_TRUE(reader_.Open(path));
-  string line;
+  std::string line;
   EXPECT_FALSE(reader_.ReadLine(&line));
   reader_.Close();
 }
 
 TEST_F(FileReaderTest, ReadLine) {
-  vector<string> lines;
+  std::vector<std::string> lines;
   lines.push_back("this is");
   lines.push_back("a");
   lines.push_back("");
   lines.push_back("test");
-  string content = base::JoinString(lines, "\n");
+  std::string content = base::JoinString(lines, "\n");
 
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  FilePath path;
+  base::FilePath path;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.GetPath(), &path));
 
   // Test a file not ending with a new-line character

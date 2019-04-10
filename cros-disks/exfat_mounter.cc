@@ -6,8 +6,6 @@
 
 #include "cros-disks/platform.h"
 
-using std::string;
-
 namespace {
 
 // Expected location of the exfat-fuse executable.
@@ -21,9 +19,9 @@ namespace cros_disks {
 
 const char ExFATMounter::kMounterType[] = "exfat";
 
-ExFATMounter::ExFATMounter(const string& source_path,
-                           const string& target_path,
-                           const string& filesystem_type,
+ExFATMounter::ExFATMounter(const std::string& source_path,
+                           const std::string& target_path,
+                           const std::string& filesystem_type,
                            const MountOptions& mount_options,
                            const Platform* platform)
     : FUSEMounter(source_path,

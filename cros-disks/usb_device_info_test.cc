@@ -7,9 +7,6 @@
 #include <base/files/file_util.h>
 #include <gtest/gtest.h>
 
-using base::FilePath;
-using std::string;
-
 namespace cros_disks {
 
 class USBDeviceInfoTest : public ::testing::Test {
@@ -52,23 +49,23 @@ class USBDeviceInfoTest : public ::testing::Test {
   }
 
   void TearDown() override {
-    ASSERT_TRUE(base::DeleteFile(FilePath(info_file_), false));
-    ASSERT_TRUE(base::DeleteFile(FilePath(ids_file_), false));
+    ASSERT_TRUE(base::DeleteFile(base::FilePath(info_file_), false));
+    ASSERT_TRUE(base::DeleteFile(base::FilePath(ids_file_), false));
   }
 
  protected:
-  string CreateTestDataFile(const string& content) const {
-    FilePath temp_file;
+  std::string CreateTestDataFile(const std::string& content) const {
+    base::FilePath temp_file;
     if (base::CreateTemporaryFile(&temp_file) &&
         (static_cast<size_t>(base::WriteFile(
              temp_file, content.c_str(), content.size())) == content.size())) {
       return temp_file.value();
     }
-    return string();
+    return std::string();
   }
 
-  string info_file_;
-  string ids_file_;
+  std::string info_file_;
+  std::string ids_file_;
   USBDeviceInfo info_;
 };
 
@@ -86,7 +83,7 @@ TEST_F(USBDeviceInfoTest, RetrieveFromFile) {
 }
 
 TEST_F(USBDeviceInfoTest, GetVendorAndProductName) {
-  string vendor_name, product_name;
+  std::string vendor_name, product_name;
 
   EXPECT_FALSE(info_.GetVendorAndProductName("nonexistent-path", "0123", "ab01",
                                              &vendor_name, &product_name));
@@ -123,7 +120,7 @@ TEST_F(USBDeviceInfoTest, ConvertToDeviceMediaType) {
 }
 
 TEST_F(USBDeviceInfoTest, ExtractIdAndName) {
-  string id, name;
+  std::string id, name;
   EXPECT_FALSE(info_.ExtractIdAndName("", &id, &name));
   EXPECT_FALSE(info_.ExtractIdAndName("0123  ", &id, &name));
   EXPECT_FALSE(info_.ExtractIdAndName("012  test device", &id, &name));

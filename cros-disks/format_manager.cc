@@ -13,14 +13,14 @@
 
 #include "cros-disks/format_manager_observer_interface.h"
 
-using base::FilePath;
-using std::string;
-
 namespace {
 
 // Expected locations of an external format program
 const char* const kFormatProgramPaths[] = {
-    "/usr/sbin/mkfs.", "/bin/mkfs.", "/sbin/mkfs.", "/usr/bin/mkfs.",
+    "/usr/sbin/mkfs.",
+    "/bin/mkfs.",
+    "/sbin/mkfs.",
+    "/usr/bin/mkfs.",
 };
 
 // Supported file systems
@@ -39,9 +39,9 @@ FormatManager::FormatManager(brillo::ProcessReaper* process_reaper)
 
 FormatManager::~FormatManager() {}
 
-FormatErrorType FormatManager::StartFormatting(const string& device_path,
-                                               const string& device_file,
-                                               const string& filesystem) {
+FormatErrorType FormatManager::StartFormatting(const std::string& device_path,
+                                               const std::string& device_file,
+                                               const std::string& filesystem) {
   // Check if the file system is supported for formatting
   if (!IsFilesystemSupported(filesystem)) {
     LOG(WARNING) << filesystem << " filesystem is not supported for formatting";
@@ -49,7 +49,7 @@ FormatErrorType FormatManager::StartFormatting(const string& device_path,
   }
 
   // Localize mkfs on disk
-  string format_program = GetFormatProgramPath(filesystem);
+  std::string format_program = GetFormatProgramPath(filesystem);
   if (format_program.empty()) {
     LOG(WARNING) << "Could not find a format program for filesystem '"
                  << filesystem << "'";
@@ -94,7 +94,7 @@ FormatErrorType FormatManager::StartFormatting(const string& device_path,
   return FORMAT_ERROR_NONE;
 }
 
-void FormatManager::OnFormatProcessTerminated(const string& device_path,
+void FormatManager::OnFormatProcessTerminated(const std::string& device_path,
                                               const siginfo_t& info) {
   format_process_.erase(device_path);
   FormatErrorType error_type = FORMAT_ERROR_UNKNOWN;
@@ -126,16 +126,17 @@ void FormatManager::OnFormatProcessTerminated(const string& device_path,
     observer_->OnFormatCompleted(device_path, error_type);
 }
 
-string FormatManager::GetFormatProgramPath(const string& filesystem) const {
+std::string FormatManager::GetFormatProgramPath(
+    const std::string& filesystem) const {
   for (const char* program_path : kFormatProgramPaths) {
-    string path = program_path + filesystem;
-    if (base::PathExists(FilePath(path)))
+    std::string path = program_path + filesystem;
+    if (base::PathExists(base::FilePath(path)))
       return path;
   }
-  return string();
+  return std::string();
 }
 
-bool FormatManager::IsFilesystemSupported(const string& filesystem) const {
+bool FormatManager::IsFilesystemSupported(const std::string& filesystem) const {
   for (const char* supported_filesystem : kSupportedFilesystems) {
     if (filesystem == supported_filesystem)
       return true;

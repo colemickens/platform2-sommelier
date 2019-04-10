@@ -20,9 +20,6 @@
 #include "cros-disks/mount_info.h"
 #include "cros-disks/usb_device_info.h"
 
-using std::string;
-using std::vector;
-
 namespace {
 
 const char kNullDeviceFile[] = "/dev/null";
@@ -84,7 +81,7 @@ UdevDevice::~UdevDevice() {
 }
 
 // static
-string UdevDevice::EnsureUTF8String(const string& str) {
+std::string UdevDevice::EnsureUTF8String(const std::string& str) {
   return base::IsStringUTF8(str) ? str : "";
 }
 
@@ -93,7 +90,7 @@ bool UdevDevice::IsValueBooleanTrue(const char* value) {
   return value && strcmp(value, "1") == 0;
 }
 
-string UdevDevice::GetAttribute(const char* key) const {
+std::string UdevDevice::GetAttribute(const char* key) const {
   const char* value = udev_device_get_sysattr_value(dev_, key);
   return (value) ? value : "";
 }
@@ -108,7 +105,7 @@ bool UdevDevice::HasAttribute(const char* key) const {
   return value != nullptr;
 }
 
-string UdevDevice::GetProperty(const char* key) const {
+std::string UdevDevice::GetProperty(const char* key) const {
   const char* value = udev_device_get_property_value(dev_, key);
   return (value) ? value : "";
 }
@@ -123,8 +120,8 @@ bool UdevDevice::HasProperty(const char* key) const {
   return value != nullptr;
 }
 
-string UdevDevice::GetPropertyFromBlkId(const char* key) {
-  string value;
+std::string UdevDevice::GetPropertyFromBlkId(const char* key) {
+  std::string value;
   const char* dev_file = udev_device_get_devnode(dev_);
   if (dev_file) {
     // No cache file is used as it should always query information from
@@ -150,7 +147,7 @@ void UdevDevice::GetSizeInfo(uint64_t* total_size,
 
   // If the device is mounted, obtain the total and remaining size in bytes
   // using statvfs.
-  vector<string> mount_paths = GetMountPaths();
+  std::vector<std::string> mount_paths = GetMountPaths();
   if (!mount_paths.empty()) {
     struct statvfs stat;
     if (statvfs(mount_paths[0].c_str(), &stat) == 0) {
@@ -209,7 +206,7 @@ DeviceMediaType UdevDevice::GetDeviceMediaType() const {
   if (IsOnSdDevice())
     return DEVICE_MEDIA_SD;
 
-  string vendor_id, product_id;
+  std::string vendor_id, product_id;
   if (GetVendorAndProductId(&vendor_id, &product_id)) {
     USBDeviceInfo info;
     info.RetrieveFromFile(kUSBDeviceInfoFile);
@@ -218,8 +215,8 @@ DeviceMediaType UdevDevice::GetDeviceMediaType() const {
   return DEVICE_MEDIA_UNKNOWN;
 }
 
-bool UdevDevice::GetVendorAndProductId(string* vendor_id,
-                                       string* product_id) const {
+bool UdevDevice::GetVendorAndProductId(std::string* vendor_id,
+                                       std::string* product_id) const {
   // Search up the parent device tree to obtain the vendor and product ID
   // of the first device with a device type "usb_device". Then look up the
   // media type based on the vendor and product ID from a USB device info file.
@@ -307,7 +304,7 @@ bool UdevDevice::IsHidden() {
     return true;
 
   // Hide special partitions based on partition type.
-  string partition_type = GetProperty(kPropertyPartitionEntryType);
+  std::string partition_type = GetProperty(kPropertyPartitionEntryType);
   if (!partition_type.empty()) {
     for (const char* partition_type_to_hide : kPartitionTypesToHide) {
       if (partition_type == partition_type_to_hide)
@@ -386,25 +383,26 @@ bool UdevDevice::IsLoopDevice() const {
   return false;
 }
 
-string UdevDevice::NativePath() const {
+std::string UdevDevice::NativePath() const {
   const char* sys_path = udev_device_get_syspath(dev_);
   return sys_path ? sys_path : "";
 }
 
-vector<string> UdevDevice::GetMountPaths() const {
+std::vector<std::string> UdevDevice::GetMountPaths() const {
   const char* device_path = udev_device_get_devnode(dev_);
   if (device_path) {
     return GetMountPaths(device_path);
   }
-  return vector<string>();
+  return std::vector<std::string>();
 }
 
-vector<string> UdevDevice::GetMountPaths(const string& device_path) {
+std::vector<std::string> UdevDevice::GetMountPaths(
+    const std::string& device_path) {
   MountInfo mount_info;
   if (mount_info.RetrieveFromCurrentProcess()) {
     return mount_info.GetMountPaths(device_path);
   }
-  return vector<string>();
+  return std::vector<std::string>();
 }
 
 Disk UdevDevice::ToDisk() {
@@ -438,7 +436,7 @@ Disk UdevDevice::ToDisk() {
   }
 
   // TODO(benchan): Add a proper unit test when fixing crbug.com/221380.
-  string uuid_hash = base::SHA1HashString(
+  std::string uuid_hash = base::SHA1HashString(
       disk.vendor_id + disk.product_id + GetProperty(kPropertySerial) +
       GetPropertyFromBlkId(kPropertyBlkIdFilesystemUUID));
   disk.uuid = base::HexEncode(uuid_hash.data(), uuid_hash.size());

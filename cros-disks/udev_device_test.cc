@@ -11,9 +11,6 @@
 #include <linux/limits.h>
 #include <rootdev/rootdev.h>
 
-using std::string;
-using std::vector;
-
 namespace {
 
 const char kLoopDevicePrefix[] = "/dev/loop";
@@ -31,7 +28,7 @@ class UdevDeviceTest : public ::testing::Test {
     if (!udev_)
       return;
 
-    string boot_device_path = GetBootDevicePath();
+    std::string boot_device_path = GetBootDevicePath();
 
     udev_enumerate* enumerate = udev_enumerate_new(udev_);
     udev_enumerate_add_match_subsystem(enumerate, "block");
@@ -57,7 +54,8 @@ class UdevDeviceTest : public ::testing::Test {
         // Check if the boot device is also mounted. If so, use it for tests
         // that expect a mounted device since the boot device is unlikely to
         // be unmounted during the tests.
-        vector<string> mount_paths = UdevDevice::GetMountPaths(device_file);
+        std::vector<std::string> mount_paths =
+            UdevDevice::GetMountPaths(device_file);
         if (!mounted_device_ && !mount_paths.empty()) {
           udev_device_ref(device);
           mounted_device_ = device;
@@ -117,11 +115,11 @@ class UdevDeviceTest : public ::testing::Test {
     }
   }
 
-  static string GetBootDevicePath() {
+  static std::string GetBootDevicePath() {
     char boot_device_path[PATH_MAX];
     if (rootdev(boot_device_path, sizeof(boot_device_path), true, true) == 0)
       return boot_device_path;
-    return string();
+    return std::string();
   }
 
   static udev* udev_;
@@ -343,7 +341,7 @@ TEST_F(UdevDeviceTest, GetSizeInfo) {
 TEST_F(UdevDeviceTest, GetMountPaths) {
   if (mounted_device_) {
     UdevDevice device(mounted_device_);
-    vector<string> mount_paths = device.GetMountPaths();
+    std::vector<std::string> mount_paths = device.GetMountPaths();
     EXPECT_FALSE(mount_paths.empty());
   }
 }

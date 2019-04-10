@@ -18,9 +18,6 @@
 #include "cros-disks/platform.h"
 #include "cros-disks/rename_manager.h"
 
-using std::string;
-using std::vector;
-
 namespace cros_disks {
 
 CrosDisksServer::CrosDisksServer(scoped_refptr<dbus::Bus> bus,
@@ -54,9 +51,9 @@ void CrosDisksServer::RegisterMountManager(MountManager* mount_manager) {
   mount_managers_.push_back(mount_manager);
 }
 
-void CrosDisksServer::Format(const string& path,
-                             const string& filesystem_type,
-                             const vector<string>& options) {
+void CrosDisksServer::Format(const std::string& path,
+                             const std::string& filesystem_type,
+                             const std::vector<std::string>& options) {
   FormatErrorType error_type = FORMAT_ERROR_NONE;
   Disk disk;
   if (!disk_monitor_->GetDiskByDevicePath(base::FilePath(path), &disk)) {
@@ -75,7 +72,8 @@ void CrosDisksServer::Format(const string& path,
   }
 }
 
-void CrosDisksServer::Rename(const string& path, const string& volume_name) {
+void CrosDisksServer::Rename(const std::string& path,
+                             const std::string& volume_name) {
   RenameErrorType error_type = RENAME_ERROR_NONE;
   Disk disk;
   if (!disk_monitor_->GetDiskByDevicePath(base::FilePath(path), &disk)) {
@@ -94,7 +92,8 @@ void CrosDisksServer::Rename(const string& path, const string& volume_name) {
   }
 }
 
-MountManager* CrosDisksServer::FindMounter(const string& source_path) const {
+MountManager* CrosDisksServer::FindMounter(
+    const std::string& source_path) const {
   for (const auto& manager : mount_managers_) {
     if (manager->CanMount(source_path)) {
       return manager;
@@ -103,12 +102,12 @@ MountManager* CrosDisksServer::FindMounter(const string& source_path) const {
   return nullptr;
 }
 
-void CrosDisksServer::Mount(const string& source,
-                            const string& filesystem_type,
-                            const vector<string>& options) {
+void CrosDisksServer::Mount(const std::string& source,
+                            const std::string& filesystem_type,
+                            const std::vector<std::string>& options) {
   MountErrorType error_type = MOUNT_ERROR_INVALID_PATH;
   MountSourceType source_type = MOUNT_SOURCE_INVALID;
-  string mount_path;
+  std::string mount_path;
 
   MountManager* mounter = FindMounter(source);
   if (mounter) {
@@ -122,8 +121,8 @@ void CrosDisksServer::Mount(const string& source,
   SendMountCompletedSignal(error_type, source, source_type, mount_path);
 }
 
-uint32_t CrosDisksServer::Unmount(const string& path,
-                                  const vector<string>& options) {
+uint32_t CrosDisksServer::Unmount(const std::string& path,
+                                  const std::vector<std::string>& options) {
   MountErrorType error_type = MOUNT_ERROR_INVALID_PATH;
   for (const auto& manager : mount_managers_) {
     if (manager->CanUnmount(path)) {
@@ -145,9 +144,9 @@ void CrosDisksServer::UnmountAll() {
   }
 }
 
-vector<string> CrosDisksServer::EnumerateDevices() {
-  vector<Disk> disks = disk_monitor_->EnumerateDisks();
-  vector<string> devices;
+std::vector<std::string> CrosDisksServer::EnumerateDevices() {
+  std::vector<Disk> disks = disk_monitor_->EnumerateDisks();
+  std::vector<std::string> devices;
   devices.reserve(disks.size());
   for (const auto& disk : disks) {
     devices.push_back(disk.native_path);
@@ -155,9 +154,9 @@ vector<string> CrosDisksServer::EnumerateDevices() {
   return devices;
 }
 
-vector<CrosDisksServer::DBusMountEntry>
+std::vector<CrosDisksServer::DBusMountEntry>
 CrosDisksServer::EnumerateMountEntries() {
-  vector<DBusMountEntry> dbus_mount_entries;
+  std::vector<DBusMountEntry> dbus_mount_entries;
   for (const auto& manager : mount_managers_) {
     for (const auto& mount_entry : manager->GetMountEntries()) {
       dbus_mount_entries.push_back(
@@ -172,11 +171,12 @@ CrosDisksServer::EnumerateMountEntries() {
 
 bool CrosDisksServer::GetDeviceProperties(
     brillo::ErrorPtr* error,
-    const string& device_path,
+    const std::string& device_path,
     brillo::VariantDictionary* properties) {
   Disk disk;
   if (!disk_monitor_->GetDiskByDevicePath(base::FilePath(device_path), &disk)) {
-    string message = "Could not get the properties of device " + device_path;
+    std::string message =
+        "Could not get the properties of device " + device_path;
     LOG(ERROR) << message;
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          kCrosDisksServiceError, message);
@@ -210,12 +210,12 @@ bool CrosDisksServer::GetDeviceProperties(
   return true;
 }
 
-void CrosDisksServer::OnFormatCompleted(const string& device_path,
+void CrosDisksServer::OnFormatCompleted(const std::string& device_path,
                                         FormatErrorType error_type) {
   SendFormatCompletedSignal(error_type, device_path);
 }
 
-void CrosDisksServer::OnRenameCompleted(const string& device_path,
+void CrosDisksServer::OnRenameCompleted(const std::string& device_path,
                                         RenameErrorType error_type) {
   SendRenameCompletedSignal(error_type, device_path);
 }

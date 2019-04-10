@@ -31,14 +31,9 @@
 #include "cros-disks/platform.h"
 #include "cros-disks/system_mounter.h"
 
-using std::map;
-using std::string;
-using std::unique_ptr;
-using std::vector;
-
 namespace cros_disks {
 
-DiskManager::DiskManager(const string& mount_root,
+DiskManager::DiskManager(const std::string& mount_root,
                          Platform* platform,
                          Metrics* metrics,
                          DiskMonitor* disk_monitor,
@@ -58,8 +53,8 @@ bool DiskManager::Initialize() {
 }
 
 const Filesystem* DiskManager::GetFilesystem(
-    const string& filesystem_type) const {
-  map<string, Filesystem>::const_iterator filesystem_iterator =
+    const std::string& filesystem_type) const {
+  std::map<std::string, Filesystem>::const_iterator filesystem_iterator =
       filesystems_.find(filesystem_type);
   if (filesystem_iterator == filesystems_.end())
     return nullptr;
@@ -122,13 +117,14 @@ void DiskManager::RegisterFilesystem(const Filesystem& filesystem) {
   filesystems_.emplace(filesystem.type, filesystem);
 }
 
-unique_ptr<MounterCompat> DiskManager::CreateMounter(
+std::unique_ptr<MounterCompat> DiskManager::CreateMounter(
     const Disk& disk,
     const Filesystem& filesystem,
-    const string& target_path,
-    const vector<string>& options) const {
-  const vector<string>& extra_options = filesystem.extra_mount_options;
-  vector<string> extended_options;
+    const std::string& target_path,
+    const std::vector<std::string>& options) const {
+  const std::vector<std::string>& extra_options =
+      filesystem.extra_mount_options;
+  std::vector<std::string> extended_options;
   extended_options.reserve(options.size() + extra_options.size());
   extended_options.assign(options.begin(), options.end());
   extended_options.insert(extended_options.end(), extra_options.begin(),
@@ -158,7 +154,7 @@ unique_ptr<MounterCompat> DiskManager::CreateMounter(
         base::StringPrintf("time_offset=%" PRId64, offset_minutes));
   }
 
-  string default_user_id, default_group_id;
+  std::string default_user_id, default_group_id;
   if (filesystem.accepts_user_and_group_id) {
     default_user_id = base::StringPrintf("%d", platform()->mount_user_id());
     default_group_id = base::StringPrintf("%d", platform()->mount_group_id());
@@ -194,7 +190,7 @@ unique_ptr<MounterCompat> DiskManager::CreateMounter(
   return nullptr;
 }
 
-bool DiskManager::CanMount(const string& source_path) const {
+bool DiskManager::CanMount(const std::string& source_path) const {
   // The following paths can be mounted:
   //     /sys/...
   //     /devices/...
@@ -205,10 +201,10 @@ bool DiskManager::CanMount(const string& source_path) const {
          base::StartsWith(source_path, "/dev/", base::CompareCase::SENSITIVE);
 }
 
-MountErrorType DiskManager::DoMount(const string& source_path,
-                                    const string& filesystem_type,
-                                    const vector<string>& options,
-                                    const string& mount_path,
+MountErrorType DiskManager::DoMount(const std::string& source_path,
+                                    const std::string& filesystem_type,
+                                    const std::vector<std::string>& options,
+                                    const std::string& mount_path,
                                     MountOptions* applied_options) {
   CHECK(!source_path.empty()) << "Invalid source path argument";
   CHECK(!mount_path.empty()) << "Invalid mount path argument";
@@ -230,7 +226,7 @@ MountErrorType DiskManager::DoMount(const string& source_path,
     return MOUNT_ERROR_INVALID_DEVICE_PATH;
   }
 
-  string device_filesystem_type =
+  std::string device_filesystem_type =
       filesystem_type.empty() ? disk.filesystem_type : filesystem_type;
   metrics()->RecordDeviceMediaType(disk.media_type);
   metrics()->RecordFilesystemType(device_filesystem_type);
@@ -247,7 +243,7 @@ MountErrorType DiskManager::DoMount(const string& source_path,
     return MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
   }
 
-  unique_ptr<MounterCompat> mounter(
+  std::unique_ptr<MounterCompat> mounter(
       CreateMounter(disk, *filesystem, mount_path, options));
   CHECK(mounter) << "Failed to create a mounter";
 
@@ -256,7 +252,7 @@ MountErrorType DiskManager::DoMount(const string& source_path,
     // Try to mount the filesystem read-only if mounting it read-write failed.
     if (!mounter->mount_options().IsReadOnlyOptionSet()) {
       LOG(INFO) << "Trying to mount '" << source_path << "' read-only";
-      vector<string> ro_options = options;
+      std::vector<std::string> ro_options = options;
       ro_options.push_back("ro");
       mounter = CreateMounter(disk, *filesystem, mount_path, ro_options);
       CHECK(mounter) << "Failed to create a 'ro' mounter";
@@ -272,8 +268,8 @@ MountErrorType DiskManager::DoMount(const string& source_path,
   return error_type;
 }
 
-MountErrorType DiskManager::DoUnmount(const string& path,
-                                      const vector<string>& options) {
+MountErrorType DiskManager::DoUnmount(const std::string& path,
+                                      const std::vector<std::string>& options) {
   CHECK(!path.empty()) << "Invalid path argument";
 
   int unmount_flags;
@@ -315,12 +311,13 @@ MountErrorType DiskManager::DoUnmount(const string& path,
   return MOUNT_ERROR_NONE;
 }
 
-string DiskManager::SuggestMountPath(const string& source_path) const {
+std::string DiskManager::SuggestMountPath(
+    const std::string& source_path) const {
   Disk disk;
   disk_monitor_->GetDiskByDevicePath(base::FilePath(source_path), &disk);
   // If GetDiskByDevicePath fails, disk.GetPresentationName() returns
   // the fallback presentation name.
-  return string(mount_root()) + "/" + disk.GetPresentationName();
+  return std::string(mount_root()) + "/" + disk.GetPresentationName();
 }
 
 bool DiskManager::ShouldReserveMountPathOnError(
@@ -329,7 +326,7 @@ bool DiskManager::ShouldReserveMountPathOnError(
          error_type == MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
 }
 
-bool DiskManager::ScheduleEjectOnUnmount(const string& mount_path,
+bool DiskManager::ScheduleEjectOnUnmount(const std::string& mount_path,
                                          const Disk& disk) {
   if (!disk.IsOpticalDisk())
     return false;
@@ -338,7 +335,7 @@ bool DiskManager::ScheduleEjectOnUnmount(const string& mount_path,
   return true;
 }
 
-bool DiskManager::EjectDeviceOfMountPath(const string& mount_path) {
+bool DiskManager::EjectDeviceOfMountPath(const std::string& mount_path) {
   auto it = devices_to_eject_on_unmount_.find(mount_path);
   if (it == devices_to_eject_on_unmount_.end())
     return false;

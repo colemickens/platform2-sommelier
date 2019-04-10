@@ -8,16 +8,12 @@
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
-using base::FilePath;
-using std::string;
-using std::vector;
-
 namespace cros_disks {
 
 class MountInfoTest : public ::testing::Test {
  public:
   void SetUp() override {
-    string content =
+    std::string content =
         "14 12 0:3 / /proc rw,noexec - proc none rw\n"
         "15 12 0:12 / /sys rw,noexec - sysfs none rw\n"
         "16 12 0:13 / /tmp rw,nodev - tmpfs /tmp rw\n"
@@ -26,7 +22,7 @@ class MountInfoTest : public ::testing::Test {
         "22 12 8:1 /home /home rw,nodev - ext3 /dev/sda1 rw\n"
         "30 26 11:0 / /media/Test\\0401 ro - vfat /dev/sdb1 ro\n";
 
-    FilePath mount_file;
+    base::FilePath mount_file;
     ASSERT_TRUE(base::CreateTemporaryFile(&mount_file));
     ASSERT_EQ(content.size(),
               base::WriteFile(mount_file, content.c_str(), content.size()));
@@ -34,11 +30,11 @@ class MountInfoTest : public ::testing::Test {
   }
 
   void TearDown() override {
-    ASSERT_TRUE(base::DeleteFile(FilePath(mount_file_), false));
+    ASSERT_TRUE(base::DeleteFile(base::FilePath(mount_file_), false));
   }
 
  protected:
-  string mount_file_;
+  std::string mount_file_;
   MountInfo manager_;
 };
 
@@ -52,7 +48,7 @@ TEST_F(MountInfoTest, ConvertOctalStringToInt) {
   EXPECT_EQ(-1, manager_.ConvertOctalStringToInt("008"));
 
   for (int decimal = 0; decimal < 256; ++decimal) {
-    string octal = base::StringPrintf("%03o", decimal);
+    std::string octal = base::StringPrintf("%03o", decimal);
     EXPECT_EQ(decimal, manager_.ConvertOctalStringToInt(octal));
   }
 }
@@ -70,7 +66,7 @@ TEST_F(MountInfoTest, DecodePath) {
 TEST_F(MountInfoTest, GetMountPaths) {
   EXPECT_TRUE(manager_.RetrieveFromFile(mount_file_));
 
-  vector<string> expected_paths = {"/var", "/home"};
+  std::vector<std::string> expected_paths = {"/var", "/home"};
   EXPECT_TRUE(expected_paths == manager_.GetMountPaths("/dev/sda1"));
 
   expected_paths = {"/media/Test 1"};

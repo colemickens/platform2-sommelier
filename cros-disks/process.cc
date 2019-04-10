@@ -4,8 +4,6 @@
 
 #include "cros-disks/process.h"
 
-using std::string;
-
 namespace cros_disks {
 
 // static
@@ -15,7 +13,7 @@ Process::Process() : pid_(kInvalidProcessId) {}
 
 Process::~Process() {}
 
-void Process::AddArgument(const string& argument) {
+void Process::AddArgument(const std::string& argument) {
   arguments_.push_back(argument);
 }
 

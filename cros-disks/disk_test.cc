@@ -6,8 +6,6 @@
 
 #include <gtest/gtest.h>
 
-using std::string;
-
 namespace cros_disks {
 
 class DiskTest : public ::testing::Test {

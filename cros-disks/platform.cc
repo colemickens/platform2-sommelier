@@ -19,20 +19,17 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
 
-using base::FilePath;
-using std::string;
-using std::unique_ptr;
-using std::vector;
-
 namespace cros_disks {
 
 Platform::Platform()
     : mount_group_id_(0), mount_user_id_(0), mount_user_("root") {}
 
-bool Platform::GetRealPath(const string& path, string* real_path) const {
+bool Platform::GetRealPath(const std::string& path,
+                           std::string* real_path) const {
   CHECK(real_path) << "Invalid real_path argument";
 
-  unique_ptr<char, base::FreeDeleter> result(realpath(path.c_str(), nullptr));
+  std::unique_ptr<char, base::FreeDeleter> result(
+      realpath(path.c_str(), nullptr));
   if (!result) {
     PLOG(ERROR) << "Failed to get real path of '" << path << "'";
     return false;
@@ -43,19 +40,19 @@ bool Platform::GetRealPath(const string& path, string* real_path) const {
 }
 
 bool Platform::PathExists(const std::string& path) const {
-  return base::PathExists(FilePath(path));
+  return base::PathExists(base::FilePath(path));
 }
 
 bool Platform::DirectoryExists(const std::string& path) const {
-  return base::DirectoryExists(FilePath(path));
+  return base::DirectoryExists(base::FilePath(path));
 }
 
 bool Platform::IsDirectoryEmpty(const std::string& dir) const {
-  return base::IsDirectoryEmpty(FilePath(dir));
+  return base::IsDirectoryEmpty(base::FilePath(dir));
 }
 
-bool Platform::CreateDirectory(const string& path) const {
-  if (!base::CreateDirectory(FilePath(path))) {
+bool Platform::CreateDirectory(const std::string& path) const {
+  if (!base::CreateDirectory(base::FilePath(path))) {
     LOG(ERROR) << "Failed to create directory '" << path << "'";
     return false;
   }
@@ -63,7 +60,7 @@ bool Platform::CreateDirectory(const string& path) const {
   return true;
 }
 
-bool Platform::CreateOrReuseEmptyDirectory(const string& path) const {
+bool Platform::CreateOrReuseEmptyDirectory(const std::string& path) const {
   CHECK(!path.empty()) << "Invalid path argument";
 
   // Reuse the target path if it already exists and is empty.
@@ -78,7 +75,7 @@ bool Platform::CreateOrReuseEmptyDirectory(const string& path) const {
 }
 
 bool Platform::CreateOrReuseEmptyDirectoryWithFallback(
-    string* path,
+    std::string* path,
     unsigned max_suffix_to_retry,
     const std::set<std::string>& reserved_paths) const {
   CHECK(path && !path->empty()) << "Invalid path argument";
@@ -88,7 +85,7 @@ bool Platform::CreateOrReuseEmptyDirectoryWithFallback(
     return true;
 
   for (unsigned suffix = 1; suffix <= max_suffix_to_retry; ++suffix) {
-    string fallback_path = GetDirectoryFallbackName(*path, suffix);
+    std::string fallback_path = GetDirectoryFallbackName(*path, suffix);
     if (!base::ContainsKey(reserved_paths, fallback_path) &&
         CreateOrReuseEmptyDirectory(fallback_path)) {
       *path = fallback_path;
@@ -101,8 +98,9 @@ bool Platform::CreateOrReuseEmptyDirectoryWithFallback(
 bool Platform::CreateTemporaryDirInDir(const std::string& dir,
                                        const std::string& prefix,
                                        std::string* path) const {
-  FilePath dest;
-  bool result = base::CreateTemporaryDirInDir(FilePath(dir), prefix, &dest);
+  base::FilePath dest;
+  bool result =
+      base::CreateTemporaryDirInDir(base::FilePath(dir), prefix, &dest);
   if (result && path)
     *path = dest.value();
   return result;
@@ -111,32 +109,33 @@ bool Platform::CreateTemporaryDirInDir(const std::string& dir,
 int Platform::WriteFile(const std::string& file,
                         const char* data,
                         int size) const {
-  return base::WriteFile(FilePath(file), data, size);
+  return base::WriteFile(base::FilePath(file), data, size);
 }
 
 int Platform::ReadFile(const std::string& file, char* data, int size) const {
-  return base::ReadFile(FilePath(file), data, size);
+  return base::ReadFile(base::FilePath(file), data, size);
 }
 
-string Platform::GetDirectoryFallbackName(const string& path,
-                                          unsigned suffix) const {
+std::string Platform::GetDirectoryFallbackName(const std::string& path,
+                                               unsigned suffix) const {
   if (!path.empty() && base::IsAsciiDigit(path[path.size() - 1]))
     return base::StringPrintf("%s (%u)", path.c_str(), suffix);
 
   return base::StringPrintf("%s %u", path.c_str(), suffix);
 }
 
-bool Platform::GetGroupId(const string& group_name, gid_t* group_id) const {
+bool Platform::GetGroupId(const std::string& group_name,
+                          gid_t* group_id) const {
   return brillo::userdb::GetGroupInfo(group_name, group_id);
 }
 
-bool Platform::GetUserAndGroupId(const string& user_name,
+bool Platform::GetUserAndGroupId(const std::string& user_name,
                                  uid_t* user_id,
                                  gid_t* group_id) const {
   return brillo::userdb::GetUserInfo(user_name, user_id, group_id);
 }
 
-bool Platform::GetOwnership(const string& path,
+bool Platform::GetOwnership(const std::string& path,
                             uid_t* user_id,
                             gid_t* group_id) const {
   struct stat path_status;
@@ -154,7 +153,7 @@ bool Platform::GetOwnership(const string& path,
   return true;
 }
 
-bool Platform::GetPermissions(const string& path, mode_t* mode) const {
+bool Platform::GetPermissions(const std::string& path, mode_t* mode) const {
   CHECK(mode) << "Invalid mode argument";
 
   struct stat path_status;
@@ -166,7 +165,7 @@ bool Platform::GetPermissions(const string& path, mode_t* mode) const {
   return true;
 }
 
-bool Platform::SetMountUser(const string& user_name) {
+bool Platform::SetMountUser(const std::string& user_name) {
   if (GetUserAndGroupId(user_name, &mount_user_id_, &mount_group_id_)) {
     mount_user_ = user_name;
     return true;
@@ -174,7 +173,7 @@ bool Platform::SetMountUser(const string& user_name) {
   return false;
 }
 
-bool Platform::RemoveEmptyDirectory(const string& path) const {
+bool Platform::RemoveEmptyDirectory(const std::string& path) const {
   if (rmdir(path.c_str()) != 0) {
     PLOG(WARNING) << "Failed to remove directory '" << path << "'";
     return false;
@@ -182,7 +181,7 @@ bool Platform::RemoveEmptyDirectory(const string& path) const {
   return true;
 }
 
-bool Platform::SetOwnership(const string& path,
+bool Platform::SetOwnership(const std::string& path,
                             uid_t user_id,
                             gid_t group_id) const {
   if (chown(path.c_str(), user_id, group_id)) {
@@ -193,7 +192,7 @@ bool Platform::SetOwnership(const string& path,
   return true;
 }
 
-bool Platform::SetPermissions(const string& path, mode_t mode) const {
+bool Platform::SetPermissions(const std::string& path, mode_t mode) const {
   if (chmod(path.c_str(), mode)) {
     PLOG(ERROR) << "Failed to set permissions of '" << path << "' to "
                 << base::StringPrintf("%04o", mode);
@@ -202,7 +201,7 @@ bool Platform::SetPermissions(const string& path, mode_t mode) const {
   return true;
 }
 
-MountErrorType Platform::Unmount(const string& path, int flags) const {
+MountErrorType Platform::Unmount(const std::string& path, int flags) const {
   error_t error = 0;
   if (umount2(path.c_str(), flags) != 0) {
     error = errno;
@@ -224,9 +223,9 @@ MountErrorType Platform::Unmount(const string& path, int flags) const {
   }
 }
 
-MountErrorType Platform::Mount(const string& source_path,
-                               const string& target_path,
-                               const string& filesystem_type,
+MountErrorType Platform::Mount(const std::string& source_path,
+                               const std::string& target_path,
+                               const std::string& filesystem_type,
                                uint64_t options,
                                const std::string& data) const {
   error_t error = 0;

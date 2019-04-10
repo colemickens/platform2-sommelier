@@ -6,21 +6,18 @@
 
 #include <base/files/file_util.h>
 
-using base::FilePath;
-using std::string;
-
 namespace cros_disks {
 
 void FileReader::Close() {
   file_.reset();
 }
 
-bool FileReader::Open(const FilePath& file_path) {
+bool FileReader::Open(const base::FilePath& file_path) {
   file_.reset(base::OpenFile(file_path, "rb"));
   return file_.get() != nullptr;
 }
 
-bool FileReader::ReadLine(string* line) {
+bool FileReader::ReadLine(std::string* line) {
   CHECK(line) << "Invalid argument";
 
   FILE* fp = file_.get();

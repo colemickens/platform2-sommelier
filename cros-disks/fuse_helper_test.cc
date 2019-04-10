@@ -17,10 +17,6 @@
 #include "cros-disks/platform.h"
 #include "cros-disks/uri.h"
 
-using base::FilePath;
-using std::string;
-using std::vector;
-
 namespace cros_disks {
 
 namespace {
@@ -29,15 +25,16 @@ const char kFUSEType[] = "fuse";
 const char kMountProgram[] = "dummy";
 const char kMountUser[] = "nobody";
 const Uri kSomeUri("fuse", "some/src/path");
-const FilePath kWorkingDir("/wkdir");
-const FilePath kMountDir("/mnt");
+const base::FilePath kWorkingDir("/wkdir");
+const base::FilePath kMountDir("/mnt");
 
 }  // namespace
 
 class FUSEHelperTest : public ::testing::Test {
  public:
   FUSEHelperTest()
-      : helper_(kFUSEType, &platform_, FilePath(kMountProgram), kMountUser) {}
+      : helper_(
+            kFUSEType, &platform_, base::FilePath(kMountProgram), kMountUser) {}
 
  protected:
   Platform platform_;
@@ -62,13 +59,13 @@ TEST_F(FUSEHelperTest, GetTargetSuffix) {
 
 // Verifies that generic implementation applies default rules to MountOptions.
 TEST_F(FUSEHelperTest, PrepareMountOptions) {
-  vector<string> options = {"bind", "foo=bar", "baz", "dirsync"};
+  std::vector<std::string> options = {"bind", "foo=bar", "baz", "dirsync"};
   auto mounter =
       helper_.CreateMounter(kWorkingDir, kSomeUri, kMountDir, options);
   EXPECT_EQ(kFUSEType, mounter->filesystem_type());
   EXPECT_EQ(kSomeUri.path(), mounter->source());
   EXPECT_EQ(kMountDir.value(), mounter->target_path().value());
-  string opts = mounter->mount_options().ToString();
+  std::string opts = mounter->mount_options().ToString();
   EXPECT_THAT(opts, testing::StartsWith("bind,dirsync,"));
   EXPECT_THAT(opts, testing::Not(testing::HasSubstr("uid=")));
 }

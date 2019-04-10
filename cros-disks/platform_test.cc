@@ -11,16 +11,12 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
-using base::FilePath;
-using std::set;
-using std::string;
-
 namespace cros_disks {
 
 class PlatformTest : public ::testing::Test {
  public:
   // Returns true if |path| is owned by |user_id| and |group_id|.
-  static bool CheckOwnership(const string& path,
+  static bool CheckOwnership(const std::string& path,
                              uid_t user_id,
                              gid_t group_id) {
     struct stat buffer;
@@ -30,7 +26,7 @@ class PlatformTest : public ::testing::Test {
   }
 
   // Returns true if |path| has its permissions set to |mode|.
-  static bool CheckPermissions(const string& path, mode_t mode) {
+  static bool CheckPermissions(const std::string& path, mode_t mode) {
     struct stat buffer;
     if (stat(path.c_str(), &buffer) != 0)
       return false;
@@ -44,17 +40,17 @@ class PlatformTest : public ::testing::Test {
 TEST_F(PlatformTest, GetRealPath) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  FilePath subdir_path;
+  base::FilePath subdir_path;
   ASSERT_TRUE(
       base::CreateTemporaryDirInDir(temp_dir.GetPath(), "test", &subdir_path));
-  FilePath file_path;
+  base::FilePath file_path;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(subdir_path, &file_path));
-  FilePath file_symlink = temp_dir.GetPath().Append("file_symlink");
+  base::FilePath file_symlink = temp_dir.GetPath().Append("file_symlink");
   ASSERT_TRUE(base::CreateSymbolicLink(file_path, file_symlink));
-  FilePath subdir_symlink = temp_dir.GetPath().Append("subdir_symlink");
+  base::FilePath subdir_symlink = temp_dir.GetPath().Append("subdir_symlink");
   ASSERT_TRUE(base::CreateSymbolicLink(subdir_path, subdir_symlink));
 
-  string real_path;
+  std::string real_path;
   EXPECT_FALSE(platform_.GetRealPath("", &real_path));
   EXPECT_FALSE(platform_.GetRealPath("/nonexistent", &real_path));
 
@@ -70,7 +66,7 @@ TEST_F(PlatformTest, GetRealPath) {
   EXPECT_TRUE(platform_.GetRealPath(subdir_symlink.value(), &real_path));
   EXPECT_EQ(subdir_path.value(), real_path);
 
-  FilePath relative_path = subdir_path.Append("..");
+  base::FilePath relative_path = subdir_path.Append("..");
   EXPECT_TRUE(platform_.GetRealPath(relative_path.value(), &real_path));
   EXPECT_EQ(temp_dir.GetPath().value(), real_path);
 
@@ -92,15 +88,15 @@ TEST_F(PlatformTest, CreateDirectory) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   // Nonexistent directory
-  FilePath new_dir = temp_dir.GetPath().Append("test");
-  string path = new_dir.value();
+  base::FilePath new_dir = temp_dir.GetPath().Append("test");
+  std::string path = new_dir.value();
   EXPECT_TRUE(platform_.CreateDirectory(path));
 
   // Existent but empty directory
   EXPECT_TRUE(platform_.CreateDirectory(path));
 
   // Existent and non-empty directory
-  FilePath temp_file;
+  base::FilePath temp_file;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(new_dir, &temp_file));
   EXPECT_TRUE(platform_.CreateDirectory(path));
 }
@@ -110,15 +106,15 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectory) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   // Nonexistent directory
-  FilePath new_dir = temp_dir.GetPath().Append("test");
-  string path = new_dir.value();
+  base::FilePath new_dir = temp_dir.GetPath().Append("test");
+  std::string path = new_dir.value();
   EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectory(path));
 
   // Existent but empty directory
   EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectory(path));
 
   // Existent and non-empty directory
-  FilePath temp_file;
+  base::FilePath temp_file;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(new_dir, &temp_file));
   EXPECT_FALSE(platform_.CreateOrReuseEmptyDirectory(path));
 }
@@ -126,11 +122,11 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectory) {
 TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallback) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  set<string> reserved_paths;
+  std::set<std::string> reserved_paths;
 
   // Nonexistent directory
-  FilePath new_dir = temp_dir.GetPath().Append("test1");
-  string path = new_dir.value();
+  base::FilePath new_dir = temp_dir.GetPath().Append("test1");
+  std::string path = new_dir.value();
   EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 10, reserved_paths));
   EXPECT_EQ(new_dir.value(), path);
@@ -142,14 +138,14 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallback) {
   EXPECT_EQ(new_dir.value(), path);
 
   // Existent and non-empty directory
-  FilePath temp_file;
+  base::FilePath temp_file;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(new_dir, &temp_file));
   path = new_dir.value();
   EXPECT_FALSE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 0, reserved_paths));
   EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 1, reserved_paths));
-  FilePath new_dir1 = temp_dir.GetPath().Append("test1 (1)");
+  base::FilePath new_dir1 = temp_dir.GetPath().Append("test1 (1)");
   EXPECT_EQ(new_dir1.value(), path);
 
   ASSERT_TRUE(base::CreateTemporaryFileInDir(new_dir1, &temp_file));
@@ -160,17 +156,17 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallback) {
       &path, 1, reserved_paths));
   EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 2, reserved_paths));
-  FilePath new_dir2 = temp_dir.GetPath().Append("test1 (2)");
+  base::FilePath new_dir2 = temp_dir.GetPath().Append("test1 (2)");
   EXPECT_EQ(new_dir2.value(), path);
 }
 
 TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallbackAndReservedPaths) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  set<string> reserved_paths;
+  std::set<std::string> reserved_paths;
 
-  FilePath new_dir = temp_dir.GetPath().Append("test");
-  string path = new_dir.value();
+  base::FilePath new_dir = temp_dir.GetPath().Append("test");
+  std::string path = new_dir.value();
   reserved_paths.insert(path);
   EXPECT_FALSE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 0, reserved_paths));
@@ -182,7 +178,7 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallbackAndReservedPaths) {
       &path, 2, reserved_paths));
   EXPECT_EQ(new_dir.value(), path);
 
-  FilePath expected_dir = temp_dir.GetPath().Append("test 3");
+  base::FilePath expected_dir = temp_dir.GetPath().Append("test 3");
   EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 3, reserved_paths));
   EXPECT_EQ(expected_dir.value(), path);
@@ -191,19 +187,19 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallbackAndReservedPaths) {
 TEST_F(PlatformTest, CreateTemporaryDirInDir) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  string dir = temp_dir.GetPath().value();
+  std::string dir = temp_dir.GetPath().value();
 
-  string path;
+  std::string path;
   EXPECT_TRUE(platform_.CreateTemporaryDirInDir(dir, "foo", &path));
-  EXPECT_TRUE(base::DirectoryExists(FilePath(path)));
-  EXPECT_EQ(dir, FilePath(path).DirName().value());
-  FilePath foo1 = FilePath(path).BaseName();
+  EXPECT_TRUE(base::DirectoryExists(base::FilePath(path)));
+  EXPECT_EQ(dir, base::FilePath(path).DirName().value());
+  base::FilePath foo1 = base::FilePath(path).BaseName();
   EXPECT_EQ("foo", foo1.value().substr(0, 3));
 
   EXPECT_TRUE(platform_.CreateTemporaryDirInDir(dir, "foo", &path));
-  EXPECT_TRUE(base::DirectoryExists(FilePath(path)));
-  EXPECT_EQ(dir, FilePath(path).DirName().value());
-  FilePath foo2 = FilePath(path).BaseName();
+  EXPECT_TRUE(base::DirectoryExists(base::FilePath(path)));
+  EXPECT_EQ(dir, base::FilePath(path).DirName().value());
+  base::FilePath foo2 = base::FilePath(path).BaseName();
   EXPECT_EQ("foo", foo2.value().substr(0, 3));
 
   EXPECT_NE(foo1.value(), foo2.value());
@@ -243,7 +239,7 @@ TEST_F(PlatformTest, GetUserAndGroupIdOfNonExistentUser) {
 TEST_F(PlatformTest, GetOwnershipOfDirectory) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  string path = temp_dir.GetPath().value();
+  std::string path = temp_dir.GetPath().value();
 
   uid_t user_id;
   gid_t group_id;
@@ -255,9 +251,9 @@ TEST_F(PlatformTest, GetOwnershipOfDirectory) {
 TEST_F(PlatformTest, GetOwnershipOfFile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  FilePath temp_file;
+  base::FilePath temp_file;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.GetPath(), &temp_file));
-  string path = temp_file.value();
+  std::string path = temp_file.value();
 
   uid_t user_id;
   gid_t group_id;
@@ -269,11 +265,11 @@ TEST_F(PlatformTest, GetOwnershipOfFile) {
 TEST_F(PlatformTest, GetOwnershipOfSymbolicLink) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  FilePath temp_file;
+  base::FilePath temp_file;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.GetPath(), &temp_file));
-  string file_path = temp_file.value();
-  string symlink_path = file_path + "-symlink";
-  FilePath temp_symlink(symlink_path);
+  std::string file_path = temp_file.value();
+  std::string symlink_path = file_path + "-symlink";
+  base::FilePath temp_symlink(symlink_path);
   ASSERT_TRUE(base::CreateSymbolicLink(temp_file, temp_symlink));
 
   uid_t user_id;
@@ -293,7 +289,7 @@ TEST_F(PlatformTest, GetOwnershipOfNonexistentPath) {
 TEST_F(PlatformTest, GetPermissionsOfDirectory) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  string path = temp_dir.GetPath().value();
+  std::string path = temp_dir.GetPath().value();
 
   mode_t mode = 0;
   EXPECT_TRUE(platform_.GetPermissions(path, &mode));
@@ -312,9 +308,9 @@ TEST_F(PlatformTest, GetPermissionsOfDirectory) {
 TEST_F(PlatformTest, GetPermissionsOfFile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  FilePath temp_file;
+  base::FilePath temp_file;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.GetPath(), &temp_file));
-  string path = temp_file.value();
+  std::string path = temp_file.value();
 
   mode_t mode = 0;
   EXPECT_TRUE(platform_.GetPermissions(path, &mode));
@@ -333,11 +329,11 @@ TEST_F(PlatformTest, GetPermissionsOfFile) {
 TEST_F(PlatformTest, GetPermissionsOfSymbolicLink) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  FilePath temp_file;
+  base::FilePath temp_file;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.GetPath(), &temp_file));
-  string file_path = temp_file.value();
-  string symlink_path = file_path + "-symlink";
-  FilePath temp_symlink(symlink_path);
+  std::string file_path = temp_file.value();
+  std::string symlink_path = file_path + "-symlink";
+  base::FilePath temp_symlink(symlink_path);
   ASSERT_TRUE(base::CreateSymbolicLink(temp_file, temp_symlink));
 
   mode_t mode = 0;
@@ -364,8 +360,8 @@ TEST_F(PlatformTest, RemoveEmptyDirectory) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   // Nonexistent directory
-  FilePath new_dir = temp_dir.GetPath().Append("test");
-  string path = new_dir.value();
+  base::FilePath new_dir = temp_dir.GetPath().Append("test");
+  std::string path = new_dir.value();
   EXPECT_FALSE(platform_.RemoveEmptyDirectory(path));
 
   // Existent but empty directory
@@ -374,7 +370,7 @@ TEST_F(PlatformTest, RemoveEmptyDirectory) {
 
   // Existent and non-empty directory
   EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectory(path));
-  FilePath temp_file;
+  base::FilePath temp_file;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(new_dir, &temp_file));
   EXPECT_FALSE(platform_.RemoveEmptyDirectory(path));
 }
@@ -389,7 +385,7 @@ TEST_F(PlatformTest, SetMountUserToRoot) {
 TEST_F(PlatformTest, SetMountUserToNonexistentUser) {
   uid_t user_id = platform_.mount_user_id();
   gid_t group_id = platform_.mount_group_id();
-  string user = platform_.mount_user();
+  std::string user = platform_.mount_user();
   EXPECT_FALSE(platform_.SetMountUser("nonexistent-user"));
   EXPECT_EQ(user_id, platform_.mount_user_id());
   EXPECT_EQ(group_id, platform_.mount_group_id());
@@ -403,7 +399,7 @@ TEST_F(PlatformTest, SetOwnershipOfNonExistentPath) {
 TEST_F(PlatformTest, SetOwnershipOfExistentPath) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  string path = temp_dir.GetPath().value();
+  std::string path = temp_dir.GetPath().value();
 
   EXPECT_TRUE(platform_.SetOwnership(path, getuid(), getgid()));
   EXPECT_TRUE(CheckOwnership(path, getuid(), getgid()));
@@ -416,7 +412,7 @@ TEST_F(PlatformTest, SetPermissionsOfNonExistentPath) {
 TEST_F(PlatformTest, SetPermissionsOfExistentPath) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  string path = temp_dir.GetPath().value();
+  std::string path = temp_dir.GetPath().value();
 
   mode_t mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
   EXPECT_TRUE(platform_.SetPermissions(path, mode));

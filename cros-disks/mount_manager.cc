@@ -22,12 +22,6 @@
 #include "cros-disks/platform.h"
 #include "cros-disks/uri.h"
 
-using base::FilePath;
-using std::pair;
-using std::set;
-using std::string;
-using std::vector;
-
 namespace {
 
 // Permissions to set on the mount root directory (u+rwx,og+rx).
@@ -51,7 +45,7 @@ const unsigned kMaxNumMountTrials = 100;
 
 namespace cros_disks {
 
-MountManager::MountManager(const string& mount_root,
+MountManager::MountManager(const std::string& mount_root,
                            Platform* platform,
                            Metrics* metrics)
     : mount_root_(mount_root), platform_(platform), metrics_(metrics) {
@@ -80,17 +74,17 @@ bool MountManager::StopSession() {
   return UnmountAll();
 }
 
-bool MountManager::CanUnmount(const string& path) const {
+bool MountManager::CanUnmount(const std::string& path) const {
   return CanMount(path) || IsPathImmediateChildOfParent(path, mount_root_);
 }
 
-MountErrorType MountManager::Mount(const string& source_path,
-                                   const string& filesystem_type,
-                                   const vector<string>& options,
-                                   string* mount_path) {
+MountErrorType MountManager::Mount(const std::string& source_path,
+                                   const std::string& filesystem_type,
+                                   const std::vector<std::string>& options,
+                                   std::string* mount_path) {
   // Source is not necessary a path, but if it is let's resolve it to
   // some real underlying object.
-  string real_path;
+  std::string real_path;
   if (Uri::IsUri(source_path) ||
       !platform_->GetRealPath(source_path, &real_path)) {
     real_path = source_path;
@@ -113,17 +107,17 @@ MountErrorType MountManager::Mount(const string& source_path,
   }
 }
 
-MountErrorType MountManager::Remount(const string& source_path,
-                                     const string& filesystem_type,
-                                     const vector<string>& options,
-                                     string* mount_path) {
+MountErrorType MountManager::Remount(const std::string& source_path,
+                                     const std::string& filesystem_type,
+                                     const std::vector<std::string>& options,
+                                     std::string* mount_path) {
   if (!GetMountPathFromCache(source_path, mount_path)) {
     LOG(WARNING) << "Path '" << source_path << "' is not mounted yet";
     return MOUNT_ERROR_PATH_NOT_MOUNTED;
   }
 
-  vector<string> updated_options = options;
-  string mount_label;
+  std::vector<std::string> updated_options = options;
+  std::string mount_label;
   ExtractMountLabelFromOptions(&updated_options, &mount_label);
 
   // Perform the underlying mount operation.
@@ -144,11 +138,12 @@ MountErrorType MountManager::Remount(const string& source_path,
   return error_type;
 }
 
-MountErrorType MountManager::MountNewSource(const string& source_path,
-                                            const string& filesystem_type,
-                                            const vector<string>& options,
-                                            string* mount_path) {
-  string actual_mount_path;
+MountErrorType MountManager::MountNewSource(
+    const std::string& source_path,
+    const std::string& filesystem_type,
+    const std::vector<std::string>& options,
+    std::string* mount_path) {
+  std::string actual_mount_path;
   if (GetMountPathFromCache(source_path, &actual_mount_path)) {
     LOG(WARNING) << "Path '" << source_path << "' is already mounted to '"
                  << actual_mount_path << "'";
@@ -162,8 +157,8 @@ MountErrorType MountManager::MountNewSource(const string& source_path,
     }
   }
 
-  vector<string> updated_options = options;
-  string mount_label;
+  std::vector<std::string> updated_options = options;
+  std::string mount_label;
   ExtractMountLabelFromOptions(&updated_options, &mount_label);
 
   // Create a directory and set up its ownership/permissions for mounting
@@ -174,8 +169,10 @@ MountErrorType MountManager::MountNewSource(const string& source_path,
     actual_mount_path = SuggestMountPath(source_path);
     if (!mount_label.empty()) {
       // Replace the basename(|actual_mount_path|) with |mount_label|.
-      actual_mount_path =
-          FilePath(actual_mount_path).DirName().Append(mount_label).value();
+      actual_mount_path = base::FilePath(actual_mount_path)
+                              .DirName()
+                              .Append(mount_label)
+                              .value();
     }
   } else {
     actual_mount_path = *mount_path;
@@ -237,15 +234,15 @@ MountErrorType MountManager::MountNewSource(const string& source_path,
   return error_type;
 }
 
-MountErrorType MountManager::Unmount(const string& path,
-                                     const vector<string>& options) {
+MountErrorType MountManager::Unmount(const std::string& path,
+                                     const std::vector<std::string>& options) {
   if (path.empty()) {
     LOG(ERROR) << "Failed to unmount an empty path";
     return MOUNT_ERROR_INVALID_ARGUMENT;
   }
 
   // Determine whether the path is a source path or a mount path.
-  string mount_path;
+  std::string mount_path;
   if (!GetMountPathFromCache(path, &mount_path)) {  // is a source path?
     if (!IsMountPathInCache(path)) {                // is a mount path?
       LOG(ERROR) << "Path '" << path << "' is not mounted";
@@ -276,7 +273,7 @@ MountErrorType MountManager::Unmount(const string& path,
 
 bool MountManager::UnmountAll() {
   bool all_umounted = true;
-  vector<string> options;
+  std::vector<std::string> options;
   // Make a copy of the mount path cache before iterating through it
   // as Unmount modifies the cache.
   MountStateMap mount_states_copy = mount_states_;
@@ -288,8 +285,8 @@ bool MountManager::UnmountAll() {
   return all_umounted;
 }
 
-void MountManager::AddOrUpdateMountStateCache(const string& source_path,
-                                              const string& mount_path,
+void MountManager::AddOrUpdateMountStateCache(const std::string& source_path,
+                                              const std::string& mount_path,
                                               bool is_read_only) {
   MountState mount_state;
   mount_state.mount_path = mount_path;
@@ -297,8 +294,8 @@ void MountManager::AddOrUpdateMountStateCache(const string& source_path,
   mount_states_[source_path] = mount_state;
 }
 
-bool MountManager::GetSourcePathFromCache(const string& mount_path,
-                                          string* source_path) const {
+bool MountManager::GetSourcePathFromCache(const std::string& mount_path,
+                                          std::string* source_path) const {
   CHECK(source_path) << "Invalid source path argument";
 
   for (const auto& path_pair : mount_states_) {
@@ -310,8 +307,8 @@ bool MountManager::GetSourcePathFromCache(const string& mount_path,
   return false;
 }
 
-bool MountManager::GetMountPathFromCache(const string& source_path,
-                                         string* mount_path) const {
+bool MountManager::GetMountPathFromCache(const std::string& source_path,
+                                         std::string* mount_path) const {
   CHECK(mount_path) << "Invalid mount path argument";
 
   MountState mount_state;
@@ -323,7 +320,7 @@ bool MountManager::GetMountPathFromCache(const string& source_path,
   return true;
 }
 
-bool MountManager::GetMountStateFromCache(const string& source_path,
+bool MountManager::GetMountStateFromCache(const std::string& source_path,
                                           MountState* mount_state) const {
   CHECK(mount_state) << "Invalid mount state argument";
 
@@ -335,7 +332,7 @@ bool MountManager::GetMountStateFromCache(const string& source_path,
   return true;
 }
 
-bool MountManager::IsMountPathInCache(const string& mount_path) const {
+bool MountManager::IsMountPathInCache(const std::string& mount_path) const {
   for (const auto& path_pair : mount_states_) {
     if (path_pair.second.mount_path == mount_path)
       return true;
@@ -343,7 +340,7 @@ bool MountManager::IsMountPathInCache(const string& mount_path) const {
   return false;
 }
 
-bool MountManager::RemoveMountPathFromCache(const string& mount_path) {
+bool MountManager::RemoveMountPathFromCache(const std::string& mount_path) {
   for (MountStateMap::iterator path_iterator = mount_states_.begin();
        path_iterator != mount_states_.end(); ++path_iterator) {
     if (path_iterator->second.mount_path == mount_path) {
@@ -354,12 +351,12 @@ bool MountManager::RemoveMountPathFromCache(const string& mount_path) {
   return false;
 }
 
-bool MountManager::IsMountPathReserved(const string& mount_path) const {
+bool MountManager::IsMountPathReserved(const std::string& mount_path) const {
   return base::ContainsKey(reserved_mount_paths_, mount_path);
 }
 
 MountErrorType MountManager::GetMountErrorOfReservedMountPath(
-    const string& mount_path) const {
+    const std::string& mount_path) const {
   ReservedMountPathMap::const_iterator path_iterator =
       reserved_mount_paths_.find(mount_path);
   if (path_iterator != reserved_mount_paths_.end()) {
@@ -368,29 +365,29 @@ MountErrorType MountManager::GetMountErrorOfReservedMountPath(
   return MOUNT_ERROR_NONE;
 }
 
-set<string> MountManager::GetReservedMountPaths() const {
-  set<string> reserved_paths;
+std::set<std::string> MountManager::GetReservedMountPaths() const {
+  std::set<std::string> reserved_paths;
   for (const auto& path_pair : reserved_mount_paths_) {
     reserved_paths.insert(path_pair.first);
   }
   return reserved_paths;
 }
 
-void MountManager::ReserveMountPath(const string& mount_path,
+void MountManager::ReserveMountPath(const std::string& mount_path,
                                     MountErrorType error_type) {
   reserved_mount_paths_.insert(std::make_pair(mount_path, error_type));
 }
 
-void MountManager::UnreserveMountPath(const string& mount_path) {
+void MountManager::UnreserveMountPath(const std::string& mount_path) {
   reserved_mount_paths_.erase(mount_path);
 }
 
-vector<MountEntry> MountManager::GetMountEntries() const {
-  vector<MountEntry> mount_entries;
+std::vector<MountEntry> MountManager::GetMountEntries() const {
+  std::vector<MountEntry> mount_entries;
   for (const auto& entry : mount_states_) {
-    const string& source_path = entry.first;
+    const std::string& source_path = entry.first;
     const MountState& mount_state = entry.second;
-    const string& mount_path = mount_state.mount_path;
+    const std::string& mount_path = mount_state.mount_path;
     bool is_read_only = mount_state.is_read_only;
     MountErrorType error_type = GetMountErrorOfReservedMountPath(mount_path);
     mount_entries.push_back(MountEntry(error_type, source_path,
@@ -401,13 +398,13 @@ vector<MountEntry> MountManager::GetMountEntries() const {
 }
 
 bool MountManager::ExtractMountLabelFromOptions(
-    vector<string>* options, std::string* mount_label) const {
+    std::vector<std::string>* options, std::string* mount_label) const {
   CHECK(options) << "Invalid mount options argument";
   CHECK(mount_label) << "Invalid mount label argument";
 
   mount_label->clear();
   bool found_mount_label = false;
-  vector<string>::iterator option_iterator = options->begin();
+  std::vector<std::string>::iterator option_iterator = options->begin();
   while (option_iterator != options->end()) {
     if (!base::StartsWith(*option_iterator, kMountOptionMountLabelPrefix,
                           base::CompareCase::INSENSITIVE_ASCII)) {
@@ -423,8 +420,8 @@ bool MountManager::ExtractMountLabelFromOptions(
   return found_mount_label;
 }
 
-bool MountManager::ExtractUnmountOptions(const vector<string>& options,
-                                         int* unmount_flags) const {
+bool MountManager::ExtractUnmountOptions(
+    const std::vector<std::string>& options, int* unmount_flags) const {
   CHECK(unmount_flags) << "Invalid unmount flags argument";
 
   *unmount_flags = 0;
@@ -444,16 +441,18 @@ bool MountManager::ShouldReserveMountPathOnError(
   return false;
 }
 
-bool MountManager::IsPathImmediateChildOfParent(const string& path,
-                                                const string& parent) const {
-  vector<std::string> path_components, parent_components;
-  FilePath(path).StripTrailingSeparators().GetComponents(&path_components);
-  FilePath(parent).StripTrailingSeparators().GetComponents(&parent_components);
+bool MountManager::IsPathImmediateChildOfParent(
+    const std::string& path, const std::string& parent) const {
+  std::vector<std::string> path_components, parent_components;
+  base::FilePath(path).StripTrailingSeparators().GetComponents(
+      &path_components);
+  base::FilePath(parent).StripTrailingSeparators().GetComponents(
+      &parent_components);
   if (path_components.size() != parent_components.size() + 1)
     return false;
 
-  if (path_components.back() == FilePath::kCurrentDirectory ||
-      path_components.back() == FilePath::kParentDirectory) {
+  if (path_components.back() == base::FilePath::kCurrentDirectory ||
+      path_components.back() == base::FilePath::kParentDirectory) {
     return false;
   }
 
