@@ -257,7 +257,7 @@ void OpenStandardFileDescriptors() {
 // - The top most /proc to pull details out of it.
 // - Read access to the crashing process's memory (regardless of user).
 // - Write access to the crash spool dir.
-void EnterSandbox(bool write_proc) {
+void EnterSandbox(bool write_proc, bool log_to_stderr) {
   // If we're not root, we won't be able to jail ourselves (well, we could if
   // we used user namespaces, but maybe later).  Need to double check handling
   // when called by chrome to process its crashes.
@@ -271,8 +271,8 @@ void EnterSandbox(bool write_proc) {
   minijail_namespace_vfs(j);
   minijail_mount_tmp(j);
   minijail_mount_dev(j);
-  // We use syslog heavily.
-  minijail_bind(j, "/dev/log", "/dev/log", 0);
+  if (!log_to_stderr)
+    minijail_bind(j, "/dev/log", "/dev/log", 0);
   minijail_no_new_privs(j);
   minijail_new_session_keyring(j);
 
@@ -301,6 +301,7 @@ int main(int argc, char* argv[]) {
               "Report collected kernel wifi warning");
   DEFINE_bool(kernel_suspend_warning, false,
               "Report collected kernel suspend warning");
+  DEFINE_bool(log_to_stderr, false, "Log to stderr instead of syslog.");
   DEFINE_string(arc_service_failure, "",
                 "The specific ARC service name that failed");
   DEFINE_string(service_failure, "", "The specific service name that failed");
@@ -323,11 +324,17 @@ int main(int argc, char* argv[]) {
   OpenStandardFileDescriptors();
   FilePath my_path = base::MakeAbsoluteFilePath(FilePath(argv[0]));
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Crash Reporter");
-  brillo::OpenLog(my_path.BaseName().value().c_str(), true);
-  brillo::InitLog(brillo::kLogToSyslog);
+
+  // In certain cases, /dev/log may not be available: log to stderr instead.
+  if (FLAGS_log_to_stderr) {
+    brillo::InitLog(brillo::kLogToStderr);
+  } else {
+    brillo::OpenLog(my_path.BaseName().value().c_str(), true);
+    brillo::InitLog(brillo::kLogToSyslog);
+  }
 
   // Now that we've processed the command line, sandbox ourselves.
-  EnterSandbox(FLAGS_init || FLAGS_clean_shutdown);
+  EnterSandbox(FLAGS_init || FLAGS_clean_shutdown, FLAGS_log_to_stderr);
 
   KernelCollector kernel_collector;
   kernel_collector.Initialize(IsFeedbackAllowed);
