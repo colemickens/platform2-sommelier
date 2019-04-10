@@ -7,8 +7,20 @@
 namespace cryptohome {
 
 bool TpmNewImpl::GetOwnerPassword(brillo::SecureBlob* owner_password) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
+  if (IsOwned()) {
+    *owner_password =
+        brillo::SecureBlob(last_tpm_manager_data_.owner_password());
+    if (owner_password->empty()) {
+      LOG(WARNING) << __func__
+                   << ": Trying to get owner password after it is cleared.";
+    }
+  } else {
+    LOG(ERROR)
+        << __func__
+        << ": Cannot get owner password until TPM is confirmed to be owned.";
+    owner_password->clear();
+  }
+  return !owner_password->empty();
 }
 
 bool TpmNewImpl::InitializeTpmManagerUtility() {
@@ -17,7 +29,7 @@ bool TpmNewImpl::InitializeTpmManagerUtility() {
 
 bool TpmNewImpl::CacheTpmManagerStatus() {
   if (!InitializeTpmManagerUtility()) {
-    LOG(ERROR) << __func__ << ": failed to initialize |TpmMangerUtility|.";
+    LOG(ERROR) << __func__ << ": Failed to initialize |TpmMangerUtility|.";
     return false;
   }
   return tpm_manager_utility_.GetTpmStatus(&is_enabled_, &is_owned_,
