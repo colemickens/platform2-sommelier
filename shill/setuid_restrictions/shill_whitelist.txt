@@ -8,9 +8,11 @@
 20104:202
 # shill spawns tc as 'nobody' user
 20104:65534
-# openvpn starts as 'shill' and drops to 'openvpn' without dropping
-# CAP_SETUID, so ensure 'openvpn' user's CAP_SETUID privs are locked down
+# We can't allow any of the target UIDs to switch to other UIDs, or
+# else a compromised shill could switch to one of them and then switch
+# to any UID on the system.
 217:217
-# strongSwan starts as 'shill' and drops to 'ipsec' without dropping
-# CAP_SETUID, so ensure 'ipsec' user's CAP_SETUID privs are locked down
 212:212
+224:224
+202:202
+65534:65534
