@@ -14,13 +14,24 @@ namespace {
 // Processes core dumps from the kernel when a crash is detected.
 // Controlled via /proc/sys/kernel/core_pattern.
 bool ValidateCrashReporter(int argc, const char* argv[]) {
-  if (argc != 2) {
-    LOG(ERROR) << "crash_reporter: argc must be 2";
+  if (argc != 2 && argc != 4) {
+    LOG(ERROR) << "crash_reporter: argc must be either 2 or 4";
     return false;
   }
 
-  if (!base::StartsWith(argv[1], "--user=", base::CompareCase::SENSITIVE)) {
-    LOG(ERROR) << "crash_reporter: first argument must be --user=";
+  // For early crash reporting, "--early --log_to_stderr" is prefixed to the
+  // crash reporter invocation.
+  if (argc == 4 &&
+      !base::StartsWith(argv[1], "--early", base::CompareCase::SENSITIVE) &&
+      !base::StartsWith(argv[2], "--log_to_stderr",
+                        base::CompareCase::SENSITIVE)) {
+    LOG(ERROR) << "crash_reporter: multiple arguments can only be used for "
+               << "early mode (\"--early --log_to_stderr\").";
+  }
+
+  if (!base::StartsWith(argv[argc - 1],
+                        "--user=", base::CompareCase::SENSITIVE)) {
+    LOG(ERROR) << "crash_reporter: last argument must be --user=";
     return false;
   }
 
