@@ -109,21 +109,29 @@ string VPNService::CreateStorageIdentifier(const KeyValueStore& args,
 }
 
 string VPNService::GetPhysicalTechnologyProperty(Error* error) {
-  ConnectionRefPtr conn = connection();
-  if (conn)
-    conn = conn->GetCarrierConnection();
-
-  if (!conn) {
+  ConnectionConstRefPtr underlying_connection = GetUnderlyingConnection();
+  if (!underlying_connection) {
     error->Populate(Error::kOperationFailed);
     return "";
   }
 
-  return Technology::NameFromIdentifier(conn->technology());
+  return Technology::NameFromIdentifier(underlying_connection->technology());
 }
 
 string VPNService::GetDeviceRpcId(Error* error) const {
   error->Populate(Error::kNotSupported);
   return "/";
+}
+
+ConnectionConstRefPtr VPNService::GetUnderlyingConnection() const {
+  // TODO(crbug.com/941597) Policy routing should be used to enforce that VPN
+  // traffic can only exit the interface it is supposed to. The VPN driver
+  // should also be informed of changes in underlying connection.
+  ServiceRefPtr underlying_service = manager()->GetPrimaryPhysicalService();
+  if (!underlying_service) {
+    return nullptr;
+  }
+  return underlying_service->connection();
 }
 
 bool VPNService::Load(StoreInterface* storage) {
@@ -200,13 +208,10 @@ bool VPNService::IsAutoConnectable(const char** reason) const {
 }
 
 string VPNService::GetTethering(Error* error) const {
-  ConnectionRefPtr conn = connection();
-  if (conn)
-    conn = conn->GetCarrierConnection();
-
+  ConnectionConstRefPtr underlying_connection = GetUnderlyingConnection();
   string tethering;
-  if (conn) {
-    tethering = conn->tethering();
+  if (underlying_connection) {
+    tethering = underlying_connection->tethering();
     if (!tethering.empty()) {
       return tethering;
     }

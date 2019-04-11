@@ -16,6 +16,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
+#include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/nice_mock_control.h"
 #include "shill/service_property_change_test.h"
@@ -24,6 +25,7 @@
 
 using std::string;
 using testing::_;
+using testing::ByMove;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
@@ -95,6 +97,14 @@ class VPNServiceTest : public testing::Test {
 
   ServiceMockAdaptor* GetAdaptor() {
     return static_cast<ServiceMockAdaptor*>(service_->adaptor());
+  }
+
+  ServiceRefPtr CreateUnderlyingService(
+      ConnectionRefPtr underlying_connection) {
+    auto service = new MockService(
+      &control_, nullptr, &metrics_, &manager_);
+    service->set_mock_connection(underlying_connection);
+    return service;
   }
 
   std::string interface_name_;
@@ -257,7 +267,7 @@ TEST_F(VPNServiceTest, SetConnection) {
 TEST_F(VPNServiceTest, OnConnectionDisconnected) {
   service_->SetConnection(connection_);
   EXPECT_CALL(*driver_, OnConnectionDisconnected()).Times(1);
-  connection_->OnLowerDisconnect();
+  connection_->NotifyBindersOnDisconnect();
 }
 
 TEST_F(VPNServiceTest, IsAutoConnectableOffline) {
@@ -351,14 +361,12 @@ TEST_F(VPNServiceTest, CustomSetterNoopChange) {
 }
 
 TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyFailsIfNoCarrier) {
-  scoped_refptr<Connection> null_connection;
-
   service_->SetConnection(connection_);
   EXPECT_EQ(connection_.get(), service_->connection().get());
 
-  // Simulate an error in the GetCarrierConnection() returning a NULL reference.
-  EXPECT_CALL(*connection_, GetCarrierConnection())
-      .WillOnce(Return(null_connection));
+  // Simulate an error by causing GetPrimaryPhysicalService() to return nullptr.
+  EXPECT_CALL(manager_, GetPrimaryPhysicalService())
+      .WillOnce(Return(nullptr));
 
   Error error;
   EXPECT_EQ("", service_->GetPhysicalTechnologyProperty(&error));
@@ -366,43 +374,40 @@ TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyFailsIfNoCarrier) {
 }
 
 TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi) {
-  scoped_refptr<NiceMock<MockConnection>> lower_connection_ =
-      new NiceMock<MockConnection>(&device_info_);
-
   EXPECT_CALL(*connection_, technology())
       .Times(0);
-  EXPECT_CALL(*connection_, GetCarrierConnection())
-      .WillOnce(Return(lower_connection_));
-
   service_->SetConnection(connection_);
   EXPECT_EQ(connection_.get(), service_->connection().get());
 
+  scoped_refptr<NiceMock<MockConnection>> lower_connection =
+    new NiceMock<MockConnection>(&device_info_);
+  EXPECT_CALL(manager_, GetPrimaryPhysicalService())
+      .WillOnce(Return(ByMove(CreateUnderlyingService(lower_connection))));
+
   // Set the type of the lower connection to "wifi" and expect that type to be
   // returned by GetPhysicalTechnologyProperty().
-  EXPECT_CALL(*lower_connection_, technology())
+  EXPECT_CALL(*lower_connection, technology())
       .WillOnce(Return(Technology::kWifi));
 
   Error error;
   EXPECT_EQ(kTypeWifi, service_->GetPhysicalTechnologyProperty(&error));
   EXPECT_TRUE(error.IsSuccess());
 
-  // Clear expectations now, so the Return(lower_connection_) action releases
-  // the reference to |lower_connection_| allowing it to be destroyed now.
+  // Clear expectations now, so the Return(lower_connection) action releases
+  // the reference to |lower_connection| allowing it to be destroyed now.
   Mock::VerifyAndClearExpectations(connection_.get());
-  // Destroying the |lower_connection_| at function exit will also call an extra
+  // Destroying the |lower_connection| at function exit will also call an extra
   // FlushAddresses on the |device_info_| object.
   EXPECT_CALL(device_info_, FlushAddresses(0));
 }
 
 TEST_F(VPNServiceTest, GetTethering) {
-  scoped_refptr<Connection> null_connection;
-
   service_->SetConnection(connection_);
   EXPECT_EQ(connection_.get(), service_->connection().get());
 
-  // Simulate an error in the GetCarrierConnection() returning a NULL reference.
-  EXPECT_CALL(*connection_, GetCarrierConnection())
-      .WillOnce(Return(null_connection));
+  // Simulate an error by causing GetPrimaryPhysicalService() to return nullptr.
+  EXPECT_CALL(manager_, GetPrimaryPhysicalService())
+      .WillOnce(Return(nullptr));
 
   {
     Error error;
@@ -410,33 +415,35 @@ TEST_F(VPNServiceTest, GetTethering) {
     EXPECT_EQ(Error::kOperationFailed, error.type());
   }
 
-  scoped_refptr<NiceMock<MockConnection>> lower_connection_ =
-      new NiceMock<MockConnection>(&device_info_);
+  scoped_refptr<NiceMock<MockConnection>> lower_connection =
+    new NiceMock<MockConnection>(&device_info_);
 
   EXPECT_CALL(*connection_, tethering()).Times(0);
-  EXPECT_CALL(*connection_, GetCarrierConnection())
-      .WillRepeatedly(Return(lower_connection_));
 
   const char kTethering[] = "moon unit";
-  EXPECT_CALL(*lower_connection_, tethering())
+  EXPECT_CALL(*lower_connection, tethering())
       .WillOnce(ReturnRefOfCopy(string(kTethering)))
       .WillOnce(ReturnRefOfCopy(string()));
 
   {
+    EXPECT_CALL(manager_, GetPrimaryPhysicalService())
+        .WillOnce(Return(ByMove(CreateUnderlyingService(lower_connection))));
     Error error;
     EXPECT_EQ(kTethering, service_->GetTethering(&error));
     EXPECT_TRUE(error.IsSuccess());
   }
   {
+    EXPECT_CALL(manager_, GetPrimaryPhysicalService())
+        .WillOnce(Return(ByMove(CreateUnderlyingService(lower_connection))));
     Error error;
     EXPECT_EQ("", service_->GetTethering(&error));
     EXPECT_EQ(Error::kNotSupported, error.type());
   }
 
-  // Clear expectations now, so the Return(lower_connection_) action releases
-  // the reference to |lower_connection_| allowing it to be destroyed now.
+  // Clear expectations now, so the Return(lower_connection) action releases
+  // the reference to |lower_connection| allowing it to be destroyed now.
   Mock::VerifyAndClearExpectations(connection_.get());
-  // Destroying the |lower_connection_| at function exit will also call an extra
+  // Destroying the |lower_connection| at function exit will also call an extra
   // FlushAddresses on the |device_info_| object.
   EXPECT_CALL(device_info_, FlushAddresses(0));
 }

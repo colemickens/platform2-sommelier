@@ -75,6 +75,8 @@ class VPNService : public Service {
 
   std::string GetDeviceRpcId(Error* error) const override;
 
+  ConnectionConstRefPtr GetUnderlyingConnection() const;
+
   std::string storage_id_;
   std::unique_ptr<VPNDriver> driver_;
   std::unique_ptr<Connection::Binder> connection_binder_;
