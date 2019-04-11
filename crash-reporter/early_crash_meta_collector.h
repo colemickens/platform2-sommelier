@@ -16,7 +16,8 @@ class EarlyCrashMetaCollector : public CrashCollector {
   EarlyCrashMetaCollector();
   ~EarlyCrashMetaCollector() override = default;
 
-  void Initialize(IsFeedbackAllowedFunction is_feedback_allowed_function);
+  void Initialize(IsFeedbackAllowedFunction is_feedback_allowed_function,
+                  bool preserve_across_clobber);
 
   // Collect early crashes collected into /run/crash_reporter/crash
   bool Collect();

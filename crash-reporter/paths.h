@@ -23,6 +23,10 @@ constexpr char kCrashReporterStateDirectory[] = "/var/lib/crash_reporter";
 // Directory where system crashes are saved.
 constexpr char kSystemCrashDirectory[] = "/var/spool/crash";
 
+// Directory to keep persist early crash failures.
+constexpr char kStatefulClobberCrashDirectory[] =
+    "/mnt/stateful_partition/unencrypted/preserve/crash";
+
 // Directory where system configuration files are located.
 constexpr char kEtcDirectory[] = "/etc";
 

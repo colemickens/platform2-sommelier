@@ -961,7 +961,6 @@ bool CrashCollector::InitializeSystemCrashDirectories(bool early) {
                                      kSystemRunStateDirectoryMode, kRootUid,
                                      kRootGroup, nullptr))
       return false;
-
   } else {
     if (!CreateDirectoryWithSettings(FilePath(paths::kSystemCrashDirectory),
                                      kSystemCrashDirectoryMode, kRootUid,

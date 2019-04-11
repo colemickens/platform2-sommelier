@@ -11,6 +11,7 @@
 
 #include <string>
 
+#include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 
 namespace {
@@ -34,11 +35,15 @@ class EarlyCrashMetaCollectorTest : public testing::Test {
 
  protected:
   void ExpectConsent() {
-    collector_.Initialize([]() { return true; });
+    collector_.Initialize([]() { return true; }, false);
   }
 
   void ExpectConsentNotFound() {
-    collector_.Initialize([]() { return false; });
+    collector_.Initialize([]() { return false; }, false);
+  }
+
+  void ExpectPreserveAcrossClobber() {
+    collector_.Initialize([]() { return true; }, true);
   }
 
   void ExpectCrashReportsParsed() {

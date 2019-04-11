@@ -6,6 +6,9 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <brillo/process.h>
+
+#include <string>
 
 #include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
@@ -16,7 +19,15 @@ EarlyCrashMetaCollector::EarlyCrashMetaCollector()
       source_directory_(base::FilePath(paths::kSystemRunCrashDirectory)) {}
 
 void EarlyCrashMetaCollector::Initialize(
-    IsFeedbackAllowedFunction is_feedback_allowed_function) {
+    IsFeedbackAllowedFunction is_feedback_allowed_function,
+    bool preserve_across_clobber) {
+  // For preserving crash reports across clobbers, the consent file may not be
+  // available. Instead, collect the crashes into the stateful preserved crash
+  // directory and let crash-sender decide how to deal with these reports.
+  if (preserve_across_clobber) {
+    system_crash_path_ = base::FilePath(paths::kStatefulClobberCrashDirectory);
+    is_feedback_allowed_function = []() { return true; };
+  }
   // Disable early mode.
   CrashCollector::Initialize(is_feedback_allowed_function, false /* early */);
 }

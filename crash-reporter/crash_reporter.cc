@@ -286,6 +286,8 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(crash_test, false, "Crash test");
   DEFINE_bool(early, false,
               "Modifies crash-reporter to work during early boot");
+  DEFINE_bool(preserve_across_clobber, false,
+              "Persist early user crash reports across clobbers.");
   DEFINE_string(user, "", "User crash info (pid:signal:exec_name)");
   DEFINE_string(udev, "", "Udev event description (type:device:subsystem)");
   DEFINE_bool(kernel_warning, false, "Report collected kernel warning");
@@ -329,7 +331,8 @@ int main(int argc, char* argv[]) {
   EnterSandbox(FLAGS_init || FLAGS_clean_shutdown, FLAGS_log_to_stderr);
 
   EarlyCrashMetaCollector early_crash_meta_collector;
-  early_crash_meta_collector.Initialize(IsFeedbackAllowed);
+  early_crash_meta_collector.Initialize(IsFeedbackAllowed,
+                                        FLAGS_preserve_across_clobber);
 
   KernelCollector kernel_collector;
   kernel_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
