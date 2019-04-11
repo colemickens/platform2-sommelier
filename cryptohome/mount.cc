@@ -219,7 +219,7 @@ bool Mount::Init(Platform* platform, Crypto* crypto,
 bool Mount::EnsureCryptohome(const Credentials& credentials,
                              const MountArgs& mount_args,
                              bool* created) {
-  // If the user has an old-style cryptohome, delete it
+  // If the user has an old-style cryptohome, delete it.
   FilePath old_image_path = GetUserDirectory(credentials).Append("image");
   if (platform_->FileExists(old_image_path)) {
     platform_->DeleteFile(GetUserDirectory(credentials), true);
@@ -411,7 +411,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
-  // Attempt to decrypt the vault keyset with the specified credentials
+  // Attempt to decrypt the vault keyset with the specified credentials.
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(platform_, crypto_);
   SerializedVaultKeyset serialized;
@@ -891,7 +891,7 @@ void Mount::UnmountAll() {
 }
 
 void Mount::ForceUnmount(const FilePath& src, const FilePath& dest) {
-  // Try an immediate unmount
+  // Try an immediate unmount.
   bool was_busy;
   if (!platform_->Unmount(dest, false, &was_busy)) {
     LOG(ERROR) << "Couldn't unmount vault immediately, was_busy = " << was_busy;
@@ -1104,14 +1104,14 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
 
 bool Mount::BindMyFilesDownloads(const base::FilePath& user_home) {
   if (!platform_->DirectoryExists(user_home)) {
-    LOG(ERROR) << "Failed to bind MyFiles/Downloads missing directory: "
+    LOG(ERROR) << "Failed to bind MyFiles/Downloads, missing directory: "
                << user_home.value();
     return false;
   }
 
   const FilePath downloads = user_home.Append(kDownloadsDir);
   if (!platform_->DirectoryExists(downloads)) {
-    LOG(INFO) << "Failed to bind MyFiles/Downloads missing directory: "
+    LOG(INFO) << "Failed to bind MyFiles/Downloads, missing directory: "
               << downloads.value();
     return false;
   }

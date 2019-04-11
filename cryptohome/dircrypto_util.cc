@@ -45,7 +45,7 @@ bool SetDirectoryKey(const base::FilePath& dir,
   base::ScopedFD fd(HANDLE_EINTR(open(dir.value().c_str(),
                                       O_RDONLY | O_DIRECTORY)));
   if (!fd.is_valid()) {
-    PLOG(ERROR) << "Ext4: Invalid directory" << dir.value();
+    PLOG(ERROR) << "Ext4: Invalid directory " << dir.value();
     return false;
   }
   ext4_encryption_policy policy = {};
@@ -66,7 +66,7 @@ KeyState GetDirectoryKeyState(const base::FilePath& dir) {
   base::ScopedFD fd(HANDLE_EINTR(open(dir.value().c_str(),
                                       O_RDONLY | O_DIRECTORY)));
   if (!fd.is_valid()) {
-    PLOG(ERROR) << "Ext4: Invalid directory" << dir.value();
+    PLOG(ERROR) << "Ext4: Invalid directory " << dir.value();
     return KeyState::UNKNOWN;
   }
   ext4_encryption_policy policy = {};
@@ -123,7 +123,7 @@ bool UnlinkKey(key_serial_t key) {
     return false;
   }
   if (keyctl_unlink(key, keyring) == -1) {
-    PLOG(ERROR) << "Failed to unlink the key.";
+    PLOG(ERROR) << "Failed to unlink the key";
     return false;
   }
   return true;
