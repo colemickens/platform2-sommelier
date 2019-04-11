@@ -17,6 +17,8 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <brillo/userdb_utils.h>
+#include <chromeos/constants/vm_tools.h>
 
 namespace vm_tools {
 namespace concierge {
@@ -114,6 +116,16 @@ base::ScopedFD BuildTapDevice(const arc_networkd::MacAddress& mac_addr,
               TUN_F_CSUM | TUN_F_UFO | TUN_F_TSO4 | TUN_F_TSO6) != 0) {
       PLOG(ERROR) << "Failed to set offload for vmtap interface";
       return base::ScopedFD();
+    }
+  }
+
+  // Set crosvm as interface owner.
+  uid_t owner_uid = -1;
+  if (!brillo::userdb::GetUserInfo(kCrosVmUser, &owner_uid, nullptr)) {
+    PLOG(ERROR) << "Unable to look up UID for " << kCrosVmUser;
+  } else {
+    if (ioctl(dev.get(), TUNSETOWNER, owner_uid) != 0) {
+      PLOG(ERROR) << "Failed to set owner for vmtap interface";
     }
   }
 
