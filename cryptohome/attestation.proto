@@ -15,6 +15,9 @@ package cryptohome;
 // credentials must be cleared once the attestation server has certified the
 // AIK.
 message TPMCredentials {
+  reserved 10;
+  reserved "endorsement_key_type";
+
   optional bytes endorsement_public_key = 1;
   optional bytes endorsement_credential = 2;
   optional bytes platform_credential = 3;

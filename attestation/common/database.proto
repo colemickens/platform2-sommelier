@@ -16,12 +16,21 @@ package attestation;
 // AIK.
 message TPMCredentials {
   reserved 3, 4, 7, 8;
+
+  // The key type of endorsement key stored in |endorsement_public_key| and
+  // |endorsement_credential|.
+  optional KeyType endorsement_key_type = 10 [default = KEY_TYPE_RSA];
+  // The DER encoded public key. RSAPublicKey for RSA endorsement key.
+  // SubjectPublicKeyInfo for ECC endorsement key.
   optional bytes endorsement_public_key = 1;
+  // The DER encoded X.509 certificate of endorsement key.
   optional bytes endorsement_credential = 2;
+
   optional EncryptedData default_encrypted_endorsement_credential = 5
       [deprecated = true];
   optional EncryptedData test_encrypted_endorsement_credential = 6
       [deprecated = true];
+
   // Map of |endorsement_credential| encrypted with a public key associated with
   // Chrome OS Privacy CA, by CA.
   map<int32, EncryptedData> encrypted_endorsement_credentials = 9;

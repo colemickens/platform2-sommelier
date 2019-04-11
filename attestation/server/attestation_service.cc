@@ -1688,6 +1688,7 @@ void AttestationService::PrepareForEnrollment() {
   // Store all this in the attestation database.
   auto* database_pb = database_->GetMutableProtobuf();
   TPMCredentials* credentials_pb = database_pb->mutable_credentials();
+  credentials_pb->set_endorsement_key_type(key_type);
   credentials_pb->set_endorsement_public_key(ek_public_key);
   credentials_pb->set_endorsement_credential(ek_certificate);
 
