@@ -643,6 +643,23 @@ TEST_F(AttestationServiceBaseTest, GetKeyInfoBadPublicKey) {
   Run();
 }
 
+TEST_F(AttestationServiceBaseTest, GetEndorsementKeyTypeForExistingKey) {
+  AttestationDatabase* database = mock_database_.GetMutableProtobuf();
+  // Default key type is KEY_TYPE_RSA.
+  database->mutable_credentials()->set_endorsement_public_key("public_key");
+  database->mutable_credentials()->set_endorsement_credential("certificate");
+  EXPECT_EQ(service_->GetEndorsementKeyType(), KEY_TYPE_RSA);
+
+  database->mutable_credentials()->set_endorsement_key_type(KEY_TYPE_ECC);
+  database->mutable_credentials()->set_endorsement_public_key("public_key");
+  database->mutable_credentials()->set_endorsement_credential("certificate");
+  EXPECT_EQ(service_->GetEndorsementKeyType(), KEY_TYPE_ECC);
+}
+
+TEST_F(AttestationServiceBaseTest, GetEndorsementKeyTypeForNewlyCreatedKey) {
+  EXPECT_EQ(service_->GetEndorsementKeyType(), KEY_TYPE_RSA);
+}
+
 TEST_F(AttestationServiceBaseTest, GetEndorsementInfoSuccess) {
   AttestationDatabase* database = mock_database_.GetMutableProtobuf();
   database->mutable_credentials()->set_endorsement_public_key("public_key");

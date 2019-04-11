@@ -2912,6 +2912,17 @@ std::string AttestationService::ComputeEnterpriseEnrollmentId() {
 }
 
 KeyType AttestationService::GetEndorsementKeyType() const {
+  // If some EK information already exists in the database, we need to keep the
+  // key type consistent.
+  const auto& database_pb = database_->GetProtobuf();
+  if (database_pb.credentials().has_endorsement_public_key() ||
+      database_pb.credentials().has_endorsement_credential()) {
+    // We use the default value of key_type for backward compatibility, no need
+    // to check if endorsement_key_type is set.
+    return database_pb.credentials().endorsement_key_type();
+  }
+
+  // We didn't generate any data yet. Use the suggested key type.
   // TODO(crbug.com/910519): Switch to KEY_TYPE_ECC when ready.
   return KEY_TYPE_RSA;
 }
