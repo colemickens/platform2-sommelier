@@ -1,13 +1,23 @@
-# Allow cros-disks to change UID to the following users.
-# avfs
+# Allow cros-disks to change UID to the following users. These users are
+# not allowed to switch to other users on the system, or else a
+# compromised cros-disks could switch to one of them and then switch to
+# any UID on the system.
+# avfs: 301
+# chronos (for DriveFS): 1000
+# fuse-exfat: 302
+# fuse-sshfs: 305
+# nobody: 65534
+# ntfs-3g: 300
 213:301
-# chronos (for DriveFS)
 213:1000
-# fuse-exfat
 213:302
-# fuse-sshfs
 213:305
-# nobody
 213:65534
-# ntfs-3g
 213:300
+# Prevent target UIDs from switching to other UIDs.
+301:301
+1000:1000
+302:302
+305:305
+65534:65534
+300:300
