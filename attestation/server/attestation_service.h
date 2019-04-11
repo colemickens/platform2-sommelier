@@ -26,6 +26,7 @@
 #include <string>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
+#include <base/optional.h>
 #include <base/callback.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
@@ -478,6 +479,14 @@ class AttestationService : public AttestationInterface {
   bool GetSubjectPublicKeyInfo(KeyType key_type,
                                const std::string& public_key,
                                std::string* public_key_info) const;
+
+  // Get endorsement public key. Get it from proto database if exists, otherwise
+  // get it from tpm_utility.
+  base::Optional<std::string> GetEndorsementPublicKey() const;
+
+  // Get endorsement certificate. Get it from proto database if exists,
+  // otherwise get it from tpm_utility.
+  base::Optional<std::string> GetEndorsementCertificate() const;
 
   // Prepares the attestation system for enrollment with an ACA.
   void PrepareForEnrollment();

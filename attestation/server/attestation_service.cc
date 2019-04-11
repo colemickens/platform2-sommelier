@@ -734,6 +734,40 @@ void AttestationService::GetEndorsementInfo(
   worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
 }
 
+base::Optional<std::string> AttestationService::GetEndorsementPublicKey()
+    const {
+  const auto& database_pb = database_->GetProtobuf();
+  if (database_pb.has_credentials() &&
+      database_pb.credentials().has_endorsement_public_key()) {
+    return database_pb.credentials().endorsement_public_key();
+  }
+
+  // Try to read the public key directly.
+  std::string public_key;
+  if (!tpm_utility_->GetEndorsementPublicKey(GetEndorsementKeyType(),
+                                             &public_key)) {
+    return base::nullopt;
+  }
+  return public_key;
+}
+
+base::Optional<std::string> AttestationService::GetEndorsementCertificate()
+    const {
+  const auto& database_pb = database_->GetProtobuf();
+  if (database_pb.has_credentials() &&
+      database_pb.credentials().has_endorsement_credential()) {
+    return database_pb.credentials().endorsement_credential();
+  }
+
+  // Try to read the certificate directly.
+  std::string certificate;
+  if (!tpm_utility_->GetEndorsementCertificate(GetEndorsementKeyType(),
+                                               &certificate)) {
+    return base::nullopt;
+  }
+  return certificate;
+}
+
 void AttestationService::GetEndorsementInfoTask(
     const GetEndorsementInfoRequest& request,
     const std::shared_ptr<GetEndorsementInfoReply>& result) {
@@ -743,47 +777,38 @@ void AttestationService::GetEndorsementInfoTask(
     result->set_status(STATUS_INVALID_PARAMETER);
     return;
   }
-  const auto& database_pb = database_->GetProtobuf();
-  if (!database_pb.has_credentials() ||
-      !database_pb.credentials().has_endorsement_public_key()) {
-    // Try to read the public key directly.
-    std::string public_key;
-    if (!tpm_utility_->GetEndorsementPublicKey(key_type, &public_key)) {
-      result->set_status(STATUS_NOT_AVAILABLE);
-      return;
-    }
-    // Update the in-memory database with the key.
-    database_->GetMutableProtobuf()->
-        mutable_credentials()->set_endorsement_public_key(public_key);
+
+  base::Optional<std::string> public_key = GetEndorsementPublicKey();
+  if (!public_key.has_value()) {
+    LOG(ERROR) << __func__ << ": Endorsement public key not available.";
+    result->set_status(STATUS_NOT_AVAILABLE);
+    return;
   }
+
+  base::Optional<std::string> certificate = GetEndorsementCertificate();
+  if (!certificate.has_value()) {
+    LOG(ERROR) << __func__ << ": Endorsement cert not available.";
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+
+  // TODO(crbug/942487): Remove GetSubjectPublicKeyInfo after migrating the RSA
+  // public key format.
   std::string public_key_info;
-  if (!GetSubjectPublicKeyInfo(
-          key_type, database_pb.credentials().endorsement_public_key(),
-          &public_key_info)) {
+  if (!GetSubjectPublicKeyInfo(key_type, public_key.value(),
+                               &public_key_info)) {
     LOG(ERROR) << __func__ << ": Bad public key.";
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
   }
+
   result->set_ek_public_key(public_key_info);
-  if (database_pb.credentials().has_endorsement_credential()) {
-    result->set_ek_certificate(
-        database_pb.credentials().endorsement_credential());
-  }
-  std::string ek_cert;
-  if (database_pb.credentials().has_endorsement_credential()) {
-    ek_cert = database_pb.credentials().endorsement_credential();
-  } else {
-    if (!tpm_utility_->GetEndorsementCertificate(KEY_TYPE_RSA, &ek_cert)) {
-      LOG(ERROR) << __func__ << ": Endorsement cert not available.";
-      result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
-      return;
-    }
-  }
-  std::string hash = crypto::SHA256HashString(ek_cert);
-  result->set_ek_info(base::StringPrintf(
-      "EK Certificate:\n%s\nHash:\n%s\n",
-      CreatePEMCertificate(ek_cert).c_str(),
-      base::HexEncode(hash.data(), hash.size()).c_str()));
+  result->set_ek_certificate(certificate.value());
+  std::string hash = crypto::SHA256HashString(certificate.value());
+  result->set_ek_info(
+      base::StringPrintf("EK Certificate:\n%s\nHash:\n%s\n",
+                         CreatePEMCertificate(certificate.value()).c_str(),
+                         base::HexEncode(hash.data(), hash.size()).c_str()));
 }
 
 void AttestationService::GetAttestationKeyInfo(
@@ -1851,18 +1876,12 @@ AttestationService::GetIdentityCertificateMap() const {
 
 bool AttestationService::EncryptAllEndorsementCredentials() {
   auto* database_pb = database_->GetMutableProtobuf();
-  std::string rsa_ek_certificate;
-  if (database_pb->has_credentials() &&
-      database_pb->credentials().has_endorsement_credential()) {
-    rsa_ek_certificate = database_pb->credentials().endorsement_credential();
-  } else {
-    // Try to read the endorsement certificate directly.
-    if (!tpm_utility_->GetEndorsementCertificate(KEY_TYPE_RSA,
-                                               &rsa_ek_certificate)) {
-      LOG(ERROR) << "Attestation: Failed to obtain endorsement public key.";
-      return false;
-    }
+  base::Optional<std::string> ek_certificate = GetEndorsementCertificate();
+  if (!ek_certificate.has_value()) {
+    LOG(ERROR) << "Attestation: Failed to obtain endorsement certificate.";
+    return false;
   }
+
   TPMCredentials* credentials_pb = database_pb->mutable_credentials();
   for (int aca = kDefaultACA; aca < kMaxACATypeInternal; ++aca) {
     if (credentials_pb->encrypted_endorsement_credentials().count(aca)) {
@@ -1871,8 +1890,10 @@ bool AttestationService::EncryptAllEndorsementCredentials() {
     ACAType aca_type = GetACAType(static_cast<ACATypeInternal>(aca));
     LOG(INFO) << "Attestation: Encrypting endorsement credential for "
               << GetACAName(aca_type) << ".";
-    if (!EncryptDataForAttestationCA(aca_type, rsa_ek_certificate,
-        &(*credentials_pb->mutable_encrypted_endorsement_credentials())[aca])) {
+    if (!EncryptDataForAttestationCA(
+            aca_type, ek_certificate.value(),
+            &(*credentials_pb
+                   ->mutable_encrypted_endorsement_credentials())[aca])) {
       LOG(ERROR) << "Attestation: Failed to encrypt EK certificate for "
                    << GetACAName(static_cast<ACAType>(aca)) << ".";
       return false;
@@ -2279,31 +2300,22 @@ bool AttestationService::VerifyActivateIdentity(
 void AttestationService::VerifyTask(
     const VerifyRequest& request,
     const std::shared_ptr<VerifyReply>& result) {
-  auto database_pb = database_->GetProtobuf();
-  const TPMCredentials& credentials = database_pb.credentials();
-  std::string ek_public_key;
-  std::string ek_cert;
   result->set_verified(false);
 
-  if (credentials.has_endorsement_credential()) {
-    ek_cert = credentials.endorsement_credential();
-  } else {
-    if (!tpm_utility_->GetEndorsementCertificate(KEY_TYPE_RSA, &ek_cert)) {
-      LOG(ERROR) << __func__ << ": Endorsement cert not available.";
-      return;
-    }
+  base::Optional<std::string> ek_public_key = GetEndorsementPublicKey();
+  if (!ek_public_key.has_value()) {
+    LOG(ERROR) << __func__ << ": Endorsement key not available.";
+    return;
   }
-  if (credentials.has_endorsement_public_key()) {
-    ek_public_key = credentials.endorsement_public_key();
-  } else {
-    if (!tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_RSA, &ek_public_key)) {
-      LOG(ERROR) << __func__ << ": Endorsement key not available.";
-      return;
-    }
+
+  base::Optional<std::string> ek_cert = GetEndorsementCertificate();
+  if (!ek_cert.has_value()) {
+    LOG(ERROR) << __func__ << ": Endorsement cert not available.";
+    return;
   }
 
   std::string issuer;
-  if (!crypto_utility_->GetCertificateIssuerName(ek_cert, &issuer)) {
+  if (!crypto_utility_->GetCertificateIssuerName(ek_cert.value(), &issuer)) {
     LOG(ERROR) << __func__ << ": Failed to get certificate issuer.";
     return;
   }
@@ -2312,7 +2324,7 @@ void AttestationService::VerifyTask(
     LOG(ERROR) << __func__ << ": Failed to get CA public key.";
     return;
   }
-  if (!crypto_utility_->VerifyCertificate(ek_cert, ca_public_key)) {
+  if (!crypto_utility_->VerifyCertificate(ek_cert.value(), ca_public_key)) {
     LOG(WARNING) << __func__ << ": Bad endorsement credential.";
     return;
   }
@@ -2323,13 +2335,13 @@ void AttestationService::VerifyTask(
   // Note2: GetCertificatePublicKey will return SubjectPublicKeyInfo.
   // TODO(crbug/942487): remove Note2 comments after migration
   std::string cert_public_key_info;
-  if (!crypto_utility_->GetCertificatePublicKey(ek_cert,
+  if (!crypto_utility_->GetCertificatePublicKey(ek_cert.value(),
                                                 &cert_public_key_info)) {
     LOG(ERROR) << __func__ << ": Failed to get certificate public key.";
     return;
   }
   std::string ek_public_key_info;
-  if (!GetSubjectPublicKeyInfo(GetEndorsementKeyType(), ek_public_key,
+  if (!GetSubjectPublicKeyInfo(GetEndorsementKeyType(), ek_public_key.value(),
                                &ek_public_key_info)) {
     LOG(ERROR) << __func__ << ": Failed to get EK public key info.";
     return;
@@ -2345,6 +2357,8 @@ void AttestationService::VerifyTask(
     result->set_verified(true);
     return;
   }
+
+  auto database_pb = database_->GetProtobuf();
   const auto& identity_data = database_pb.identities().Get(kFirstIdentity);
   std::string identity_public_key_info;
   if (!GetSubjectPublicKeyInfo(KEY_TYPE_RSA,

@@ -525,13 +525,13 @@ TEST_F(AttestationServiceBaseTest, GetEndorsementInfoNoInfo) {
 }
 
 TEST_F(AttestationServiceBaseTest, GetEndorsementInfoNoCert) {
-  AttestationDatabase* database = mock_database_.GetMutableProtobuf();
-  database->mutable_credentials()->set_endorsement_public_key("public_key");
+  EXPECT_CALL(mock_tpm_utility_, GetEndorsementCertificate(_, _))
+      .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
   auto callback = [](const base::Closure& quit_closure,
                      const GetEndorsementInfoReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
-    EXPECT_EQ("public_key", reply.ek_public_key());
+    EXPECT_EQ(STATUS_UNEXPECTED_DEVICE_ERROR, reply.status());
+    EXPECT_FALSE(reply.has_ek_public_key());
     EXPECT_FALSE(reply.has_ek_certificate());
     quit_closure.Run();
   };
