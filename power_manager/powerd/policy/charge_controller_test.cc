@@ -235,5 +235,43 @@ TEST_F(ChargeControllerTest, BootOnAcThriceChanges) {
   EXPECT_TRUE(helper_.boot_on_ac_enabled());
 }
 
+TEST_F(ChargeControllerTest, UsbPowerShareEnabled) {
+  policy_.set_usb_power_share(true);
+  controller_.HandlePolicyChange(policy_);
+  EXPECT_TRUE(helper_.usb_power_share_enabled());
+}
+
+TEST_F(ChargeControllerTest, UsbPowerShareDisabled) {
+  policy_.set_usb_power_share(false);
+  controller_.HandlePolicyChange(policy_);
+  EXPECT_FALSE(helper_.usb_power_share_enabled());
+}
+
+TEST_F(ChargeControllerTest, UsbPowerShareTwiceNoChanges) {
+  policy_.set_usb_power_share(true);
+  controller_.HandlePolicyChange(policy_);
+  EXPECT_TRUE(helper_.usb_power_share_enabled());
+
+  helper_.Reset();
+  controller_.HandlePolicyChange(policy_);
+  EXPECT_FALSE(helper_.usb_power_share_enabled());
+}
+
+TEST_F(ChargeControllerTest, UsbPowerShareThriceChanges) {
+  policy_.set_usb_power_share(true);
+  controller_.HandlePolicyChange(policy_);
+  EXPECT_TRUE(helper_.usb_power_share_enabled());
+
+  helper_.Reset();
+
+  policy_.set_usb_power_share(false);
+  controller_.HandlePolicyChange(policy_);
+  EXPECT_FALSE(helper_.usb_power_share_enabled());
+
+  policy_.set_usb_power_share(true);
+  controller_.HandlePolicyChange(policy_);
+  EXPECT_TRUE(helper_.usb_power_share_enabled());
+}
+
 }  // namespace policy
 }  // namespace power_manager

@@ -29,12 +29,15 @@ class ChargeControllerHelperStub : public ChargeControllerHelperInterface {
 
   bool boot_on_ac_enabled() const;
 
+  bool usb_power_share_enabled() const;
+
   // ChargeControllerHelperInterface overrides:
   bool SetPeakShiftEnabled(bool enable) override;
   bool SetPeakShiftBatteryPercentThreshold(int threshold) override;
   bool SetPeakShiftDayConfig(WeekDay week_day,
                              const std::string& config) override;
   bool SetBootOnAcEnabled(bool enable) override;
+  bool SetUsbPowerShareEnabled(bool enable) override;
 
   void Reset();
 
@@ -44,6 +47,8 @@ class ChargeControllerHelperStub : public ChargeControllerHelperInterface {
   std::map<WeekDay, std::string> peak_shift_day_configs_;
 
   bool boot_on_ac_enabled_ = false;
+
+  bool usb_power_share_enabled_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(ChargeControllerHelperStub);
 };

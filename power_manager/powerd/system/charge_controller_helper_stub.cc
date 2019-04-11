@@ -31,6 +31,10 @@ bool ChargeControllerHelperStub::boot_on_ac_enabled() const {
   return boot_on_ac_enabled_;
 }
 
+bool ChargeControllerHelperStub::usb_power_share_enabled() const {
+  return usb_power_share_enabled_;
+}
+
 bool ChargeControllerHelperStub::SetPeakShiftEnabled(bool enable) {
   peak_shift_enabled_ = enable;
   return true;
@@ -53,12 +57,19 @@ bool ChargeControllerHelperStub::SetBootOnAcEnabled(bool enable) {
   return true;
 }
 
+bool ChargeControllerHelperStub::SetUsbPowerShareEnabled(bool enable) {
+  usb_power_share_enabled_ = enable;
+  return true;
+}
+
 void ChargeControllerHelperStub::Reset() {
   peak_shift_enabled_ = false;
   peak_shift_threshold_ = -1;
   peak_shift_day_configs_.clear();
 
   boot_on_ac_enabled_ = false;
+
+  usb_power_share_enabled_ = false;
 }
 
 }  // namespace system

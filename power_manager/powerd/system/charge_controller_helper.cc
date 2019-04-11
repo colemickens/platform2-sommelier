@@ -14,9 +14,13 @@ namespace system {
 
 namespace {
 
-constexpr const char kPeakShiftPropertyPath[] =
-    "/sys/bus/platform/devices/GOOG000C:00/properties/peakshift";
+constexpr const char kEcDriverSysfsDirectory[] =
+    "/sys/bus/platform/devices/GOOG000C:00/";
 
+// Relative path to |kEcDriverSysfsDirectory|.
+constexpr const char kPeakShiftPropertyDirectory[] = "properties/peakshift/";
+
+// Next kPeakShift* are relative paths to |kPeakShiftPropertyDirectory|.
 constexpr const char kPeakShiftEnablePath[] = "enable";
 constexpr const char kPeakShiftThresholdPath[] = "peakshift_battery_threshold";
 
@@ -28,8 +32,11 @@ constexpr const char kPeakShiftFridayPath[] = "peakshift_friday";
 constexpr const char kPeakShiftSaturdayPath[] = "peakshift_saturday";
 constexpr const char kPeakShiftSundayPath[] = "peakshift_sunday";
 
-constexpr const char kBootOnAcEnablePath[] =
-    "/sys/bus/platform/devices/GOOG00C:00/boot_on_ac";
+// Relative path to |kEcDriverSysfsDirectory|.
+constexpr const char kBootOnAcEnablePath[] = "boot_on_ac";
+
+// Relative path to |kEcDriverSysfsDirectory|.
+constexpr const char kUsbPowerShareEnablePath[] = "usb_power_share";
 
 bool WriteDataToFile(const base::FilePath& filename, const std::string& data) {
   if (base::WriteFile(filename, data.c_str(), data.length()) != data.length()) {
@@ -46,21 +53,22 @@ ChargeControllerHelper::ChargeControllerHelper() = default;
 ChargeControllerHelper::~ChargeControllerHelper() = default;
 
 bool ChargeControllerHelper::SetPeakShiftEnabled(bool enable) {
-  return WriteDataToFile(
-      base::FilePath(kPeakShiftPropertyPath).Append(kPeakShiftEnablePath),
-      enable ? "1" : "0");
+  return WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
+                             .Append(kPeakShiftPropertyDirectory)
+                             .Append(kPeakShiftEnablePath),
+                         enable ? "1" : "0");
 }
 
 bool ChargeControllerHelper::SetPeakShiftBatteryPercentThreshold(
     int threshold) {
-  return WriteDataToFile(
-      base::FilePath(kPeakShiftPropertyPath).Append(kPeakShiftThresholdPath),
-      base::StringPrintf("%03d", threshold));
+  return WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
+                             .Append(kPeakShiftPropertyDirectory)
+                             .Append(kPeakShiftThresholdPath),
+                         base::StringPrintf("%03d", threshold));
 }
 
 bool ChargeControllerHelper::SetPeakShiftDayConfig(WeekDay week_day,
                                                    const std::string& config) {
-  base::FilePath filename(kPeakShiftPropertyPath);
   const char* day_file = nullptr;
   switch (week_day) {
     case WeekDay::MONDAY:
@@ -89,13 +97,22 @@ bool ChargeControllerHelper::SetPeakShiftDayConfig(WeekDay week_day,
     PLOG(WARNING) << "Unexpected week day value " << static_cast<int>(week_day);
     return false;
   }
-  return WriteDataToFile(
-      base::FilePath(kPeakShiftPropertyPath).Append(day_file), config);
+  return WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
+                             .Append(kPeakShiftPropertyDirectory)
+                             .Append(day_file),
+                         config);
 }
 
 bool ChargeControllerHelper::SetBootOnAcEnabled(bool enable) {
-  return WriteDataToFile(base::FilePath(kBootOnAcEnablePath),
-                         enable ? "1" : "0");
+  return WriteDataToFile(
+      base::FilePath(kEcDriverSysfsDirectory).Append(kBootOnAcEnablePath),
+      enable ? "1" : "0");
+}
+
+bool ChargeControllerHelper::SetUsbPowerShareEnabled(bool enable) {
+  return WriteDataToFile(
+      base::FilePath(kEcDriverSysfsDirectory).Append(kUsbPowerShareEnablePath),
+      enable ? "1" : "0");
 }
 
 }  // namespace system

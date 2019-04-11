@@ -26,6 +26,7 @@ class ChargeControllerHelper final : public ChargeControllerHelperInterface {
   bool SetPeakShiftDayConfig(WeekDay week_day,
                              const std::string& config) override;
   bool SetBootOnAcEnabled(bool enable) override;
+  bool SetUsbPowerShareEnabled(bool enable) override;
 
   DISALLOW_COPY_AND_ASSIGN(ChargeControllerHelper);
 };

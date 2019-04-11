@@ -54,6 +54,11 @@ std::string GetPowerPolicyDebugString(const PowerManagementPolicy& policy) {
     str += policy.boot_on_ac() ? "true " : "false ";
   }
 
+  if (policy.has_usb_power_share()) {
+    str += "usb_power_share=";
+    str += policy.usb_power_share() ? "true " : "false ";
+  }
+
   base::TrimString(str, " ", &str);
   return str;
 }
@@ -88,7 +93,8 @@ bool ChargeController::ApplyPolicyChange(const PowerManagementPolicy& policy) {
   DCHECK(helper_);
 
   // Try to apply as many changes as possible.
-  return ApplyPeakShiftChange(policy) & ApplyBootOnAcChange(policy);
+  return ApplyPeakShiftChange(policy) & ApplyBootOnAcChange(policy) &
+         ApplyUsbPowerShareChange(policy);
 }
 
 bool ChargeController::ApplyPeakShiftChange(
@@ -118,6 +124,13 @@ bool ChargeController::ApplyBootOnAcChange(
     const PowerManagementPolicy& policy) {
   // Disable if |boot_on_ac| is unset.
   return helper_->SetBootOnAcEnabled(policy.boot_on_ac() /* enable */);
+}
+
+bool ChargeController::ApplyUsbPowerShareChange(
+    const PowerManagementPolicy& policy) {
+  // Disable if |usb_power_share| is unset.
+  return helper_->SetUsbPowerShareEnabled(
+      policy.usb_power_share() /* enable */);
 }
 
 bool ChargeController::SetPeakShiftDayConfig(
@@ -197,6 +210,10 @@ bool ChargeController::IsPolicyEqualToCache(
   }
 
   if (policy.boot_on_ac() != cached_policy_->boot_on_ac()) {
+    return false;
+  }
+
+  if (policy.usb_power_share() != cached_policy_->usb_power_share()) {
     return false;
   }
   return true;

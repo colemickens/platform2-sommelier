@@ -50,6 +50,10 @@ class ChargeControllerHelperInterface {
 
   // Enables or disables boot on AC.
   virtual bool SetBootOnAcEnabled(bool enable) = 0;
+
+  // Enables or disables charging USB devices from specific ports while the
+  // system is suspended or shut down.
+  virtual bool SetUsbPowerShareEnabled(bool enable) = 0;
 };
 
 }  // namespace system
