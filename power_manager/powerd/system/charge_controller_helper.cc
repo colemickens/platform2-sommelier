@@ -28,6 +28,9 @@ constexpr const char kPeakShiftFridayPath[] = "peakshift_friday";
 constexpr const char kPeakShiftSaturdayPath[] = "peakshift_saturday";
 constexpr const char kPeakShiftSundayPath[] = "peakshift_sunday";
 
+constexpr const char kBootOnAcEnablePath[] =
+    "/sys/bus/platform/devices/GOOG00C:00/boot_on_ac";
+
 bool WriteDataToFile(const base::FilePath& filename, const std::string& data) {
   if (base::WriteFile(filename, data.c_str(), data.length()) != data.length()) {
     PLOG(ERROR) << "Unable to write \"" << data << "\" to " << filename.value();
@@ -91,9 +94,8 @@ bool ChargeControllerHelper::SetPeakShiftDayConfig(WeekDay week_day,
 }
 
 bool ChargeControllerHelper::SetBootOnAcEnabled(bool enable) {
-  // EC driver does not support boot on ac yet: b/129409960.
-  NOTIMPLEMENTED();
-  return false;
+  return WriteDataToFile(base::FilePath(kBootOnAcEnablePath),
+                         enable ? "1" : "0");
 }
 
 }  // namespace system
