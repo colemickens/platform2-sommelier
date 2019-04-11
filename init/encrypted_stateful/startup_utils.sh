@@ -13,5 +13,5 @@
 # mount-encrypted if it is missing. These mounts inherit nodev,noexec,nosuid
 # from the encrypted filesystem /mnt/stateful_partition/encrypted.
 mount_var_and_home_chronos() {
-  mount-encrypted "$@" >/tmp/mount-encrypted.log 2>&1
+  mount-encrypted "$@" >/run/mount-encrypted.log 2>&1
 }
