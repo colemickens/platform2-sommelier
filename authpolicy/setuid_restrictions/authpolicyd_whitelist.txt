@@ -1,2 +1,6 @@
 # authpolicyd sets its saved UID to the 'authpolicyd-exec' user
 254:607
+# We can't allow the 'authpolicyd-exec' user to switch to other UIDs, or
+# else a compromised authpolicyd could switch to 'authpolicyd-exec' and
+# then switch to any UID on the system.
+607:607
