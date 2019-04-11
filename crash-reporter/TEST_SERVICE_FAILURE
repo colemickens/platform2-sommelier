@@ -16,3 +16,6 @@
 2017-07-05T09:20:39.056995-07:00 INFO permission_broker[1296]:   DenyClaimedUsbDeviceRule: DENY
 2017-07-05T09:20:39.057056-07:00 INFO permission_broker[1296]: Verdict for /dev/bus/usb/002/002: DENY
 2017-07-05T09:20:39.057281-07:00 ERR permission_broker[1296]: OpenPath(...): Domain=permission_broker, Code=permission_denied, Message=Permission to open '/dev/bus/usb/002/002' denied
+2019-04-10T12:50:08.545039-07:00 NOTICE kernel: [61456.759561] init: pre-shutdown goal changed from stop to start
+2019-04-10T12:50:08.547048-07:00 NOTICE kernel: [61456.761497] init: oobe_config_save main process (17113) started
+2019-04-10T12:50:08.591587-07:00 NOTICE kernel: [61456.806244] init: arc-boot-continue stopped
