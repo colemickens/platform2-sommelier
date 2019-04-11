@@ -1828,28 +1828,24 @@ bool AttestationService::InsertCertifiedNvramData(
   std::string certified_value;
   std::string signature;
 
-  if (tpm_utility_->CertifyNV(nv_index,
-                              nv_size,
-                              identity_key_blob,
-                              &certified_value,
-                              &signature)) {
-    Quote pb;
-    pb.set_quote(signature);
-    pb.set_quoted_data(certified_value);
-
-    auto in_bid = nv_quote_map->insert(QuoteMap::value_type(quote_type, pb));
-    if (!in_bid.second) {
-      LOG(ERROR) << "Attestation: Failed to store " << quote_name
-                 << " quote for identity " << identity << ".";
-      return false;
-    }
-    return true;
-  } else {
+  if (!tpm_utility_->CertifyNV(nv_index, nv_size, identity_key_blob,
+                               &certified_value, &signature)) {
     LOG(WARNING) << "Attestation: Failed to certify " << quote_name
-                 << " NV data of size " << nv_size <<
-                 " at address " << std::hex << std::showbase << nv_index << ".";
+                 << " NV data of size " << nv_size << " at address " << std::hex
+                 << std::showbase << nv_index << ".";
     return !must_be_present;
   }
+  Quote pb;
+  pb.set_quote(signature);
+  pb.set_quoted_data(certified_value);
+
+  auto in_bid = nv_quote_map->insert(QuoteMap::value_type(quote_type, pb));
+  if (!in_bid.second) {
+    LOG(ERROR) << "Attestation: Failed to store " << quote_name
+               << " quote for identity " << identity << ".";
+    return false;
+  }
+  return true;
 }
 
 int AttestationService::GetIdentitiesCount() const {
