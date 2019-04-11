@@ -50,13 +50,17 @@ proto_library("proto_library_proto") {
 }
 
 static_library("proto_library") {
-  configs -= [ "//common-mk:use_thin_archive" ]
+  configs -= [
+    "//common-mk:use_thin_archive",
+    "//common-mk:pie",
+  ]
   configs += [
     ":target_defaults",
     "//common-mk:nouse_thin_archive",
 
     # TODO: Use brillo/brillo_export.h instead to export symbols.
     "//common-mk:visibility_default",
+    "//common-mk:pic",
   ]
   deps = [
     ":proto_library_proto",
