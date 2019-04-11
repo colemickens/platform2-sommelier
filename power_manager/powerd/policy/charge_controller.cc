@@ -136,25 +136,25 @@ bool ChargeController::SetPeakShiftDayConfig(
 
   system::ChargeControllerHelperInterface::WeekDay week_day;
   switch (day_config.day()) {
-    case PowerManagementPolicy::PeakShiftDayConfig::MONDAY:
+    case PowerManagementPolicy::MONDAY:
       week_day = system::ChargeControllerHelperInterface::WeekDay::MONDAY;
       break;
-    case PowerManagementPolicy::PeakShiftDayConfig::TUESDAY:
+    case PowerManagementPolicy::TUESDAY:
       week_day = system::ChargeControllerHelperInterface::WeekDay::TUESDAY;
       break;
-    case PowerManagementPolicy::PeakShiftDayConfig::WEDNESDAY:
+    case PowerManagementPolicy::WEDNESDAY:
       week_day = system::ChargeControllerHelperInterface::WeekDay::WEDNESDAY;
       break;
-    case PowerManagementPolicy::PeakShiftDayConfig::THURSDAY:
+    case PowerManagementPolicy::THURSDAY:
       week_day = system::ChargeControllerHelperInterface::WeekDay::THURSDAY;
       break;
-    case PowerManagementPolicy::PeakShiftDayConfig::FRIDAY:
+    case PowerManagementPolicy::FRIDAY:
       week_day = system::ChargeControllerHelperInterface::WeekDay::FRIDAY;
       break;
-    case PowerManagementPolicy::PeakShiftDayConfig::SATURDAY:
+    case PowerManagementPolicy::SATURDAY:
       week_day = system::ChargeControllerHelperInterface::WeekDay::SATURDAY;
       break;
-    case PowerManagementPolicy::PeakShiftDayConfig::SUNDAY:
+    case PowerManagementPolicy::SUNDAY:
       week_day = system::ChargeControllerHelperInterface::WeekDay::SUNDAY;
       break;
     default:

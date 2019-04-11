@@ -28,28 +28,25 @@ void MakePeakShiftDayConfig(
 
   switch (week_day) {
     case system::ChargeControllerHelperInterface::WeekDay::MONDAY:
-      config_proto->set_day(PowerManagementPolicy::PeakShiftDayConfig::MONDAY);
+      config_proto->set_day(PowerManagementPolicy::MONDAY);
       break;
     case system::ChargeControllerHelperInterface::WeekDay::TUESDAY:
-      config_proto->set_day(PowerManagementPolicy::PeakShiftDayConfig::TUESDAY);
+      config_proto->set_day(PowerManagementPolicy::TUESDAY);
       break;
     case system::ChargeControllerHelperInterface::WeekDay::WEDNESDAY:
-      config_proto->set_day(
-          PowerManagementPolicy::PeakShiftDayConfig::WEDNESDAY);
+      config_proto->set_day(PowerManagementPolicy::WEDNESDAY);
       break;
     case system::ChargeControllerHelperInterface::WeekDay::THURSDAY:
-      config_proto->set_day(
-          PowerManagementPolicy::PeakShiftDayConfig::THURSDAY);
+      config_proto->set_day(PowerManagementPolicy::THURSDAY);
       break;
     case system::ChargeControllerHelperInterface::WeekDay::FRIDAY:
-      config_proto->set_day(PowerManagementPolicy::PeakShiftDayConfig::FRIDAY);
+      config_proto->set_day(PowerManagementPolicy::FRIDAY);
       break;
     case system::ChargeControllerHelperInterface::WeekDay::SATURDAY:
-      config_proto->set_day(
-          PowerManagementPolicy::PeakShiftDayConfig::SATURDAY);
+      config_proto->set_day(PowerManagementPolicy::SATURDAY);
       break;
     case system::ChargeControllerHelperInterface::WeekDay::SUNDAY:
-      config_proto->set_day(PowerManagementPolicy::PeakShiftDayConfig::SUNDAY);
+      config_proto->set_day(PowerManagementPolicy::SUNDAY);
       break;
   }
 
