@@ -126,7 +126,10 @@ class DeviceInterfaceHandler {
   base::WeakPtr<DeviceInterfaceHandler> GetWeakPtr();
 
   // Called when an update of a device info is received.
-  void OnDeviceDiscovered(const std::string& address,
+  // |scanned_by_client| being true means that the scan result is due to scan
+  // requested by clients rather than a background scan.
+  void OnDeviceDiscovered(bool scanned_by_client,
+                          const std::string& address,
                           uint8_t address_type,
                           int8_t rssi,
                           uint8_t reply_type,

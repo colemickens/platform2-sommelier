@@ -322,6 +322,7 @@ base::WeakPtr<DeviceInterfaceHandler> DeviceInterfaceHandler::GetWeakPtr() {
 }
 
 void DeviceInterfaceHandler::OnDeviceDiscovered(
+    bool scanned_by_client,
     const std::string& address,
     uint8_t address_type,
     int8_t rssi,

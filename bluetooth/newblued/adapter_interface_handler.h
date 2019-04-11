@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
@@ -37,8 +38,7 @@ class AdapterInterfaceHandler {
   // The properties of this object will be ignored by btdispatch, but the object
   // still has to be exposed to be able to receive org.bluez.Adapter1 method
   // calls, e.g. StartDiscovery(), StopDiscovery().
-  void Init(Newblue::DeviceDiscoveredCallback device_discovered_callback,
-            DeviceInterfaceHandler* device_interface_handler);
+  void Init(DeviceInterfaceHandler* device_interface_handler);
 
  private:
   // D-Bus method handlers for adapter object.
@@ -49,6 +49,13 @@ class AdapterInterfaceHandler {
                           const dbus::ObjectPath& device_path);
 
   bool UpdateDiscovery(int n_discovery_clients);
+
+  // Called when an update of a device info is received.
+  void DeviceDiscoveryCallback(const std::string& address,
+                               uint8_t address_type,
+                               int8_t rssi,
+                               uint8_t reply_type,
+                               const std::vector<uint8_t>& eir);
 
   // Called when a client is disconnected from D-Bus.
   void OnClientUnavailable(const std::string& client_address);

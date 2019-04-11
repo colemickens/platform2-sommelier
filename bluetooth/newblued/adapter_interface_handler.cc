@@ -29,9 +29,7 @@ AdapterInterfaceHandler::AdapterInterfaceHandler(
       weak_ptr_factory_(this) {}
 
 void AdapterInterfaceHandler::Init(
-    Newblue::DeviceDiscoveredCallback device_discovered_callback,
     DeviceInterfaceHandler* device_interface_handler) {
-  device_discovered_callback_ = device_discovered_callback;
   device_interface_handler_ = device_interface_handler;
   dbus::ObjectPath adapter_object_path(kAdapterObjectPath);
   exported_object_manager_wrapper_->AddExportedInterface(
@@ -151,7 +149,9 @@ bool AdapterInterfaceHandler::UpdateDiscovery(int n_discovery_clients) {
     // There is at least one client requesting for discovery, and it's not
     // currently discovering.
     VLOG(1) << "Trying to start discovery";
-    if (!newblue_->StartDiscovery(device_discovered_callback_)) {
+    if (!newblue_->StartDiscovery(
+            base::Bind(&AdapterInterfaceHandler::DeviceDiscoveryCallback,
+                       weak_ptr_factory_.GetWeakPtr()))) {
       LOG(ERROR) << "Failed to start discovery";
       return false;
     }
@@ -170,6 +170,18 @@ bool AdapterInterfaceHandler::UpdateDiscovery(int n_discovery_clients) {
   }
 
   return true;
+}
+
+void AdapterInterfaceHandler::DeviceDiscoveryCallback(
+    const std::string& address,
+    uint8_t address_type,
+    int8_t rssi,
+    uint8_t reply_type,
+    const std::vector<uint8_t>& eir) {
+  bool has_active_discovery_client = discovery_clients_.size() > 0;
+  device_interface_handler_->OnDeviceDiscovered(has_active_discovery_client,
+                                                address, address_type, rssi,
+                                                reply_type, eir);
 }
 
 void AdapterInterfaceHandler::OnClientUnavailable(
