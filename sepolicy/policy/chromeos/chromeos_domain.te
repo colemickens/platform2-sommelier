@@ -64,6 +64,7 @@ filetrans_pattern(chromeos_domain, cros_var_lib, cros_var_lib_oobe_config_restor
 filetrans_pattern(chromeos_domain, cros_var_lib, cros_var_lib_trim, dir, "trim");
 filetrans_pattern(chromeos_domain, cros_var_lib, cros_var_lib_ureadahead, dir, "ureadahead");
 filetrans_pattern(chromeos_domain, cros_var_lib, cros_var_lib_ui, dir, "ui");
+filetrans_pattern(chromeos_domain, cros_var_cache, cros_var_cache_camera, dir, "camera");
 dev_only(`
 auditallow {chromeos_domain -cros_init -cros_init_scripts} {cros_var_lib_bluetooth cros_var_lib_oemcrypto cros_var_lib_oobe_config_restore cros_var_lib_trim cros_var_lib_ureadahead}:dir create;
 auditallow {chromeos_domain -cros_init_ui_respawn} cros_var_lib_ui:dir create;

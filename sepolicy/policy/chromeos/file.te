@@ -13,6 +13,9 @@ type cros_dev_image_files, file_type, cros_file_type, cros_uncategorized_file_ty
 
 type cros_seccomp_policy_file, file_type, cros_file_type, cros_system_file_type;
 
+type cros_arc_rootfs_mountpoint, file_type, cros_file_type, cros_system_file_type;
+type cros_arc_sdcard_mountpoint, file_type, cros_file_type, cros_system_file_type;
+
 type cros_accelerator_logs_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_anomaly_detector_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_apk_cache_cleaner_jailed_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -58,6 +61,7 @@ type cros_permission_broker_exec, exec_type, file_type, cros_file_type, cros_sys
 type cros_powerd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_restorecon_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_rsyslogd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_run_oci_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_session_manager_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_shill_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_sshd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -127,6 +131,7 @@ type cros_var_empty, file_type, cros_file_type, cros_var_file_type;
 
 # /var/cache
 type cros_var_cache_shill, file_type, cros_file_type, cros_var_file_type;
+type cros_var_cache_camera, file_type, cros_file_type, cros_var_file_type;
 
 # var/lib
 type cros_var_lib_bluetooth, file_type, cros_file_type, cros_var_file_type;
@@ -161,6 +166,7 @@ type cros_tlsdate_log, file_type, cros_log_type, cros_file_type, cros_var_file_t
 type cros_var_log_chrome, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_eventlog, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_journal, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_var_log_ui, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_vmlog, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 
 # /var/spool

@@ -5,6 +5,8 @@
 include(sepolicy/file_contexts/chromeos_unconfined)
 include(sepolicy/file_contexts/coreutils)
 
+include(sepolicy/file_contexts/sysfs_contexts)
+
 # Chrome OS file contexts.
 /([^/]+)?                       u:object_r:rootfs:s0
 /usr/[^/]+                      u:object_r:cros_usr_dirs:s0
@@ -53,6 +55,7 @@ include(sepolicy/file_contexts/coreutils)
 /usr/bin/periodic_scheduler     u:object_r:cros_periodic_scheduler_exec:s0
 /usr/bin/permission_broker      u:object_r:cros_permission_broker_exec:s0
 /usr/bin/powerd                 u:object_r:cros_powerd_exec:s0
+/usr/bin/run_oci                u:object_r:cros_run_oci_exec:s0
 /usr/bin/shill                  u:object_r:cros_shill_exec:s0
 /usr/bin/tlsdated               u:object_r:cros_tlsdated_exec:s0
 
@@ -101,6 +104,7 @@ include(sepolicy/file_contexts/coreutils)
 /var                            u:object_r:cros_var:s0
 /var/cache                      u:object_r:cros_var_cache:s0
 /var/cache/shill(/.*)?          u:object_r:cros_var_cache_shill:s0
+/var/cache/camera(/.*)?         u:object_r:cros_var_cache_camera:s0
 /var/empty                      u:object_r:cros_var_empty:s0
 /var/lib                        u:object_r:cros_var_lib:s0
 /var/lib/bluetooth(/.*)?        u:object_r:cros_var_lib_bluetooth:s0
@@ -137,29 +141,30 @@ include(sepolicy/file_contexts/coreutils)
 /var/log/powerd.out             u:object_r:cros_powerd_log:s0
 /var/log/secure                 u:object_r:cros_secure_log:s0
 /var/log/tlsdate.log            u:object_r:cros_tlsdate_log:s0
+/var/log/ui(/.*)?               u:object_r:cros_var_log_ui:s0
 /var/log/vmlog(/.*)?            u:object_r:cros_var_log_vmlog:s0
 /var/spool                      u:object_r:cros_var_spool:s0
 /var/spool/cron-lite(/.*)?      u:object_r:cros_periodic_scheduler_cache_t:s0
 /var/spool/crash_reporter(/.*)? u:object_r:cros_crash_spool:s0
 /var/spool/power_manager(/.*)?  u:object_r:cros_var_spool_power_manager:s0
 
-# /opt/google
+# /opt
+/opt(/.*)          u:object_r:cros_system_file:s0
 /opt/google/chrome/chrome       u:object_r:chrome_browser_exec:s0
-
-# /etc
-/etc(/.*)?                      u:object_r:cros_conf_file:s0
-
-# Intential blank lines to put all cros_etc labelled files above.
-/etc/group                      u:object_r:cros_passwd_file:s0
-/etc/passwd                     u:object_r:cros_passwd_file:s0
-/etc/shadow                     u:object_r:cros_shadow_file:s0
-/etc/selinux(/.*)?              u:object_r:cros_selinux_config_file:s0
-
+/opt/google/containers/android/rootfs/root u:object_r:cros_arc_rootfs_mountpoint:s0
+/opt/google/containers/arc-sdcard/mountpoints/container-root u:object_r:cros_arc_sdcard_mountpoint:s0
 # These files are mounted into the mini-container before real /data, /cache are
 # available.
 /opt/google/containers/android/rootfs/android-data/cache                   u:object_r:cache_file:s0
 /opt/google/containers/android/rootfs/android-data/data                    u:object_r:system_data_file:s0
 /opt/google/containers/android/rootfs/android-data/data/dalvik-cache(/.*)? u:object_r:dalvikcache_data_file:s0
+
+# /etc
+/etc(/.*)?                      u:object_r:cros_conf_file:s0
+/etc/group                      u:object_r:cros_passwd_file:s0
+/etc/passwd                     u:object_r:cros_passwd_file:s0
+/etc/shadow                     u:object_r:cros_shadow_file:s0
+/etc/selinux(/.*)?              u:object_r:cros_selinux_config_file:s0
 
 # All the following files are created dynamically and need to be labeled at
 # runtime.
@@ -178,7 +183,6 @@ has_arc(`
 
 
 
-include(sepolicy/file_contexts/sysfs_contexts)
 
 /dev                            u:object_r:device:s0
 /dev/console                    u:object_r:console_device:s0

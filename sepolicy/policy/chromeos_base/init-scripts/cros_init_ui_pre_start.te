@@ -4,4 +4,5 @@ permissive cros_init_ui_pre_start;
 
 domain_auto_trans(cros_init, cros_init_ui_pre_start_shell_script, cros_init_ui_pre_start);
 
-filetrans_pattern_no_target_perm(cros_init_ui_pre_start, cros_run, cros_run_containers, dir, "containers");
+filetrans_pattern(cros_init_ui_pre_start, cros_run, cros_run_containers, dir, "containers");
+filetrans_pattern(cros_init_ui_pre_start, cros_var_log, cros_var_log_ui, dir, "ui");

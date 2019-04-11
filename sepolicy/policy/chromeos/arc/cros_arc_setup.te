@@ -1,8 +1,15 @@
-type cros_arc_setup, cros_miscdomain, domain;
+type cros_arc_setup, chromeos_domain, cros_miscdomain, domain, mlstrustedsubject;
 
 permissive cros_arc_setup;
 
 domain_auto_trans({cros_init cros_init_scripts minijail cros_session_manager chromeos}, cros_arc_setup_exec, cros_arc_setup);
+domain_auto_trans(cros_session_manager, cros_run_oci_exec, cros_arc_setup);
+
+allow cros_arc_setup cros_init_scripts:fd use;
+allow cros_arc_setup cros_init:unix_stream_socket connectto;
+
+log_writer(cros_arc_setup);
+
 dev_only(
 auditallow {chromeos cros_session_manager} cros_arc_setup_exec:file execute;
 )
@@ -12,3 +19,15 @@ filetrans_pattern_no_target_perm(cros_arc_setup, cros_home_shadow_uid_root_andro
 filetrans_pattern_no_target_perm(cros_arc_setup, cros_home_shadow_uid_root_android, system_data_file, dir, "data");
 
 auditallow { domain -chromeos -kernel } cros_arc_setup:fd use;
+
+allow cros_arc_setup exec_type:file { open read getattr };
+
+allow cros_arc_setup { cros_arc_rootfs_mountpoint cros_arc_sdcard_mountpoint }:dir { getattr mounton };
+
+allow cros_arc_setup cros_var_file_type:dir search;
+allow cros_arc_setup cros_run_file_type:dir search;
+
+
+allow cros_arc_setup cros_var_cache_camera:dir create_dir_perms;
+allow cros_arc_setup cros_var_cache_camera:file create_file_perms;
+
