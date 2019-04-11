@@ -108,6 +108,17 @@ TEST(IncrementFileCounter, Nonexistent) {
   EXPECT_EQ(contents, "1\n");
 }
 
+TEST(IncrementFileCounter, NegativeNumber) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  base::FilePath counter = temp_dir.GetPath().Append("counter");
+  ASSERT_TRUE(WriteFile(counter, "-3\n"));
+  EXPECT_TRUE(ClobberState::IncrementFileCounter(counter));
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(counter, &contents));
+  EXPECT_EQ(contents, "1\n");
+}
+
 TEST(IncrementFileCounter, SmallNumber) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
@@ -135,6 +146,17 @@ TEST(IncrementFileCounter, NonNumber) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath counter = temp_dir.GetPath().Append("counter");
   ASSERT_TRUE(WriteFile(counter, "cruciverbalist"));
+  EXPECT_TRUE(ClobberState::IncrementFileCounter(counter));
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(counter, &contents));
+  EXPECT_EQ(contents, "1\n");
+}
+
+TEST(IncrementFileCounter, IntMax) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  base::FilePath counter = temp_dir.GetPath().Append("counter");
+  ASSERT_TRUE(WriteFile(counter, std::to_string(INT_MAX)));
   EXPECT_TRUE(ClobberState::IncrementFileCounter(counter));
   std::string contents;
   ASSERT_TRUE(base::ReadFileToString(counter, &contents));

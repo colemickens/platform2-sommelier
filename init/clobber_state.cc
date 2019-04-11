@@ -208,7 +208,7 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
 // static
 bool ClobberState::IncrementFileCounter(const base::FilePath& path) {
   int value;
-  if (!ReadFileToInt(path, &value)) {
+  if (!ReadFileToInt(path, &value) || value < 0 || value >= INT_MAX) {
     return base::WriteFile(path, "1\n", 2) == 2;
   }
 
