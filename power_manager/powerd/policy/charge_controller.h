@@ -40,11 +40,20 @@ class ChargeController {
   bool ApplyPeakShiftChange(const PowerManagementPolicy& policy);
   bool ApplyBootOnAcChange(const PowerManagementPolicy& policy);
   bool ApplyUsbPowerShareChange(const PowerManagementPolicy& policy);
+  bool ApplyAdvancedBatteryChargeModeChange(
+      const PowerManagementPolicy& policy);
 
   // Calls delegate's |SetPeakShiftDayConfig| function and returns the result
   // if |day_config| contains all needed fields, otherwise returns false.
   bool SetPeakShiftDayConfig(
       const PowerManagementPolicy::PeakShiftDayConfig& day_config);
+
+  // Calls delegate's |SetAdvancedBatteryChargeModeDayConfig| function and
+  // returns the result if |day_config| contains all needed fields, otherwise
+  // returns false.
+  bool SetAdvancedBatteryChargeModeDayConfig(
+      const PowerManagementPolicy::AdvancedBatteryChargeModeDayConfig&
+          day_config);
 
   // Checks that charging-related fields are equal between |policy| and
   // |cached_policy_|.

@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include "power_manager/proto_bindings/policy.pb.h"
+
 namespace power_manager {
 namespace system {
 
@@ -19,16 +21,6 @@ namespace system {
 // All methods return true on success and false on failure.
 class ChargeControllerHelperInterface {
  public:
-  enum class WeekDay {
-    MONDAY = 0,
-    TUESDAY,
-    WEDNESDAY,
-    THURSDAY,
-    FRIDAY,
-    SATURDAY,
-    SUNDAY,
-  };
-
   virtual ~ChargeControllerHelperInterface() = default;
 
   // Enables or disables peak shift.
@@ -45,7 +37,7 @@ class ChargeControllerHelperInterface {
   //     - 00:30 is start time,
   //     - 09:45 is end time,
   //     - 20:00 is charge start time.
-  virtual bool SetPeakShiftDayConfig(WeekDay week_day,
+  virtual bool SetPeakShiftDayConfig(PowerManagementPolicy::WeekDay week_day,
                                      const std::string& config) = 0;
 
   // Enables or disables boot on AC.
@@ -54,6 +46,18 @@ class ChargeControllerHelperInterface {
   // Enables or disables charging USB devices from specific ports while the
   // system is suspended or shut down.
   virtual bool SetUsbPowerShareEnabled(bool enable) = 0;
+
+  // Enables or disables advanced battery charge mode.
+  virtual bool SetAdvancedBatteryChargeModeEnabled(bool enable) = 0;
+
+  // Configures when advanced battery charge mode will be enabled on |week_day|.
+  // |config| contains space separated zero-leading hour and minute of
+  // charge start time and charge duration,
+  // i.e. "09 15 02 30" means:
+  //     - 09:15 is charge start time,
+  //     - 02:30 is charge duration.
+  virtual bool SetAdvancedBatteryChargeModeDayConfig(
+      PowerManagementPolicy::WeekDay week_day, const std::string& config) = 0;
 };
 
 }  // namespace system

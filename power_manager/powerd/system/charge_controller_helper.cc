@@ -67,29 +67,29 @@ bool ChargeControllerHelper::SetPeakShiftBatteryPercentThreshold(
                          base::StringPrintf("%03d", threshold));
 }
 
-bool ChargeControllerHelper::SetPeakShiftDayConfig(WeekDay week_day,
-                                                   const std::string& config) {
+bool ChargeControllerHelper::SetPeakShiftDayConfig(
+    PowerManagementPolicy::WeekDay week_day, const std::string& config) {
   const char* day_file = nullptr;
   switch (week_day) {
-    case WeekDay::MONDAY:
+    case PowerManagementPolicy::MONDAY:
       day_file = kPeakShiftMondayPath;
       break;
-    case WeekDay::TUESDAY:
+    case PowerManagementPolicy::TUESDAY:
       day_file = kPeakShiftTuesdayPath;
       break;
-    case WeekDay::WEDNESDAY:
+    case PowerManagementPolicy::WEDNESDAY:
       day_file = kPeakShiftWednesdayPath;
       break;
-    case WeekDay::THURSDAY:
+    case PowerManagementPolicy::THURSDAY:
       day_file = kPeakShiftThursdayPath;
       break;
-    case WeekDay::FRIDAY:
+    case PowerManagementPolicy::FRIDAY:
       day_file = kPeakShiftFridayPath;
       break;
-    case WeekDay::SATURDAY:
+    case PowerManagementPolicy::SATURDAY:
       day_file = kPeakShiftSaturdayPath;
       break;
-    case WeekDay::SUNDAY:
+    case PowerManagementPolicy::SUNDAY:
       day_file = kPeakShiftSundayPath;
       break;
   }
@@ -113,6 +113,17 @@ bool ChargeControllerHelper::SetUsbPowerShareEnabled(bool enable) {
   return WriteDataToFile(
       base::FilePath(kEcDriverSysfsDirectory).Append(kUsbPowerShareEnablePath),
       enable ? "1" : "0");
+}
+
+bool ChargeControllerHelper::SetAdvancedBatteryChargeModeEnabled(bool enable) {
+  NOTIMPLEMENTED();
+  return false;
+}
+
+bool ChargeControllerHelper::SetAdvancedBatteryChargeModeDayConfig(
+    PowerManagementPolicy::WeekDay week_day, const std::string& config) {
+  NOTIMPLEMENTED();
+  return false;
 }
 
 }  // namespace system

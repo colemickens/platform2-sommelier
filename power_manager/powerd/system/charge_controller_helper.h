@@ -23,10 +23,14 @@ class ChargeControllerHelper final : public ChargeControllerHelperInterface {
   // ChargeControllerHelperInterface overrides:
   bool SetPeakShiftEnabled(bool enable) override;
   bool SetPeakShiftBatteryPercentThreshold(int threshold) override;
-  bool SetPeakShiftDayConfig(WeekDay week_day,
+  bool SetPeakShiftDayConfig(PowerManagementPolicy::WeekDay week_day,
                              const std::string& config) override;
   bool SetBootOnAcEnabled(bool enable) override;
   bool SetUsbPowerShareEnabled(bool enable) override;
+  bool SetAdvancedBatteryChargeModeEnabled(bool enable) override;
+  bool SetAdvancedBatteryChargeModeDayConfig(
+      PowerManagementPolicy::WeekDay week_day,
+      const std::string& config) override;
 
   DISALLOW_COPY_AND_ASSIGN(ChargeControllerHelper);
 };

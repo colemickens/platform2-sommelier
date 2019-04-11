@@ -9,32 +9,6 @@ namespace system {
 
 constexpr int ChargeControllerHelperStub::kThresholdUnset = -1;
 
-ChargeControllerHelperStub::ChargeControllerHelperStub() = default;
-
-ChargeControllerHelperStub::~ChargeControllerHelperStub() = default;
-
-bool ChargeControllerHelperStub::peak_shift_enabled() const {
-  return peak_shift_enabled_;
-}
-
-int ChargeControllerHelperStub::peak_shift_threshold() const {
-  return peak_shift_threshold_;
-}
-
-std::string ChargeControllerHelperStub::peak_shift_day_config(
-    WeekDay day) const {
-  const auto& it = peak_shift_day_configs_.find(day);
-  return it != peak_shift_day_configs_.end() ? it->second : std::string();
-}
-
-bool ChargeControllerHelperStub::boot_on_ac_enabled() const {
-  return boot_on_ac_enabled_;
-}
-
-bool ChargeControllerHelperStub::usb_power_share_enabled() const {
-  return usb_power_share_enabled_;
-}
-
 bool ChargeControllerHelperStub::SetPeakShiftEnabled(bool enable) {
   peak_shift_enabled_ = enable;
   return true;
@@ -47,7 +21,7 @@ bool ChargeControllerHelperStub::SetPeakShiftBatteryPercentThreshold(
 }
 
 bool ChargeControllerHelperStub::SetPeakShiftDayConfig(
-    WeekDay week_day, const std::string& config) {
+    PowerManagementPolicy::WeekDay week_day, const std::string& config) {
   peak_shift_day_configs_[week_day] = config;
   return true;
 }
@@ -62,14 +36,29 @@ bool ChargeControllerHelperStub::SetUsbPowerShareEnabled(bool enable) {
   return true;
 }
 
+bool ChargeControllerHelperStub::SetAdvancedBatteryChargeModeEnabled(
+    bool enable) {
+  advanced_battery_charge_mode_enabled_ = enable;
+  return true;
+}
+
+bool ChargeControllerHelperStub::SetAdvancedBatteryChargeModeDayConfig(
+    PowerManagementPolicy::WeekDay week_day, const std::string& config) {
+  advanced_battery_charge_mode_day_configs_[week_day] = config;
+  return true;
+}
+
 void ChargeControllerHelperStub::Reset() {
   peak_shift_enabled_ = false;
-  peak_shift_threshold_ = -1;
+  peak_shift_threshold_ = kThresholdUnset;
   peak_shift_day_configs_.clear();
 
   boot_on_ac_enabled_ = false;
 
   usb_power_share_enabled_ = false;
+
+  advanced_battery_charge_mode_enabled_ = false;
+  advanced_battery_charge_mode_day_configs_.clear();
 }
 
 }  // namespace system
