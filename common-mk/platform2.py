@@ -74,6 +74,7 @@ _IUSE = [
     'wifi',
     'wimax',
     'wired_8021x',
+    'workaround_crbug_909793',
 ]
 
 

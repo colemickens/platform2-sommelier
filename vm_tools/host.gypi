@@ -9,6 +9,7 @@
     },
     'defines': [
       'USE_CROSVM_WL_DMABUF=<(USE_crosvm_wl_dmabuf)',
+      'USE_WORKAROUND_CRBUG_909793=<(USE_workaround_crbug_909793)',
     ],
   },
   'targets': [

@@ -203,6 +203,11 @@ bool TerminaVm::Start(base::FilePath kernel,
   if (USE_CROSVM_WL_DMABUF)
     args.emplace_back("--wayland-dmabuf");
 
+  if (USE_WORKAROUND_CRBUG_909793) {
+    args.emplace_back("--cpu-affinity");
+    args.emplace_back("0-1");
+  }
+
   if (enable_gpu_)
     args.emplace_back("--gpu");
 

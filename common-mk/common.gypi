@@ -72,6 +72,7 @@
     'USE_wifi%': 0,
     'USE_wimax%': 0,
     'USE_wired_8021x%': 0,
+    'USE_workaround_crbug_909793%': 0,
 
     'external_cflags%': '',
     'external_cxxflags%': '',
