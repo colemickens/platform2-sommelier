@@ -573,6 +573,8 @@ void CameraClient::RequestHandler::HandleRequest(
   capture_result.output_buffers = &(*output_stream_buffers)[0];
 
   if (flush_started_) {
+    VLOGFID(1, device_id_) << "Request Frame:" << capture_result.frame_number
+                           << " is aborted due to flush";
     AbortGrallocBufferSync(&capture_result);
     HandleAbortedRequest(&capture_result);
     return;
@@ -802,8 +804,6 @@ int CameraClient::RequestHandler::StreamOffImpl() {
 void CameraClient::RequestHandler::HandleAbortedRequest(
     camera3_capture_result_t* capture_result) {
   DCHECK(task_runner_->BelongsToCurrentThread());
-  VLOGFID(1, device_id_) << "Request Frame:" << capture_result->frame_number
-                         << " is aborted due to flush";
   for (size_t i = 0; i < capture_result->num_output_buffers; i++) {
     camera3_stream_buffer_t* b = const_cast<camera3_stream_buffer_t*>(
         capture_result->output_buffers + i);

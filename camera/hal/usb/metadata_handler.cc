@@ -711,8 +711,14 @@ int MetadataHandler::PostHandleRequest(int frame_number,
   // android.sensor
   UPDATE(ANDROID_SENSOR_TIMESTAMP, &timestamp, 1);
 
-  const int64_t rolling_shutter_skew = 0;
+  // Rolling shutter skew and exposure time values are fake due to ARCore
+  // test requirement.
+  // TODO(henryhsu): Read the two values from camera.
+  const int64_t rolling_shutter_skew = 33'300'000;  // 33.3ms
   UPDATE(ANDROID_SENSOR_ROLLING_SHUTTER_SKEW, &rolling_shutter_skew, 1);
+
+  const int64_t exposure_time = 16'600'000;  // 16.6ms
+  UPDATE(ANDROID_SENSOR_EXPOSURE_TIME, &exposure_time, 1);
 
   // android.statistics
   const uint8_t lens_shading_map_mode =
