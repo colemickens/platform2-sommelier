@@ -452,8 +452,9 @@ void DeviceInterfaceHandler::HandlePair(
   Device* device = FindDevice(device_address);
   if (!device || !newblue_->Pair(device->address, device->is_random_address,
                                  DetermineSecurityRequirements(*device))) {
-    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                             bluetooth_device::kErrorFailed, "Unknown device");
+    ongoing_pairing_.pair_response->ReplyWithError(
+        FROM_HERE, brillo::errors::dbus::kDomain,
+        bluetooth_device::kErrorFailed, "Unknown device");
 
     // Clear the existing pairing to allow the new pairing request.
     ongoing_pairing_.address.clear();
