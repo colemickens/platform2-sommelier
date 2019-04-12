@@ -70,9 +70,16 @@ std::string FindFirmwareFileStatusToString(FindFirmwareFileStatus status);
 
 // Checks for external firmware disable mechanism.
 bool UpdateDisallowed();
-bool DoUpdate(const CrosFpDeviceUpdateInterface& ec_dev,
-              const CrosFpBootUpdateCtrlInterface& boot_ctrl,
-              const CrosFpFirmware& fw);
+
+enum class UpdateStatus {
+  kUpdateNotNecessary,
+  kUpdateSucceeded,
+  kUpdateFailed,
+};
+
+UpdateStatus DoUpdate(const CrosFpDeviceUpdateInterface& ec_dev,
+                      const CrosFpBootUpdateCtrlInterface& boot_ctrl,
+                      const CrosFpFirmware& fw);
 
 }  // namespace updater
 

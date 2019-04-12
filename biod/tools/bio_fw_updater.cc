@@ -118,20 +118,22 @@ int main(int argc, char* argv[]) {
   }
   LogFPMCUVersion(ecver);
 
-  // Run update logic
-  if (!biod::updater::DoUpdate(ec_device, boot_ctrl, fw)) {
-    LOG(ERROR) << "Failed to update FPMCU firmware.";
-    LOG(ERROR) << "We are aborting update.";
-    return EXIT_FAILURE;
+  switch (biod::updater::DoUpdate(ec_device, boot_ctrl, fw)) {
+    case biod::updater::UpdateStatus::kUpdateFailed:
+      LOG(ERROR) << "Failed to update FPMCU firmware, aborting.";
+      return EXIT_FAILURE;
+    case biod::updater::UpdateStatus::kUpdateSucceeded:
+      if (!ec_device.GetVersion(&ecver)) {
+        LOG(ERROR) << "Failed to fetch final EC version, update failed.";
+        return EXIT_FAILURE;
+      }
+      LogFPMCUVersion(ecver);
+      LOG(INFO) << "The update was successful.";
+      break;
+    case biod::updater::UpdateStatus::kUpdateNotNecessary:
+      LOG(INFO) << "Update was not necessary.";
+      break;
   }
 
-  // Log the new FPMCU firmware version.
-  if (!ec_device.GetVersion(&ecver)) {
-    LOG(INFO) << "Failed to fetch final EC version, update failed.";
-    return EXIT_FAILURE;
-  }
-  LogFPMCUVersion(ecver);
-
-  LOG(INFO) << "The update was successful.";
   return EXIT_SUCCESS;
 }

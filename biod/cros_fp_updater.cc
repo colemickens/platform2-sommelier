@@ -256,9 +256,11 @@ bool UpdateDisallowed() {
   return base::PathExists(base::FilePath(kUpdateDisableFile));
 }
 
-bool DoUpdate(const CrosFpDeviceUpdateInterface& ec_dev,
-              const CrosFpBootUpdateCtrlInterface& boot_ctrl,
-              const CrosFpFirmware& fw) {
+UpdateStatus DoUpdate(const CrosFpDeviceUpdateInterface& ec_dev,
+                      const CrosFpBootUpdateCtrlInterface& boot_ctrl,
+                      const CrosFpFirmware& fw) {
+  bool attempted = false;
+
   // Grab the new firmware file's versions.
   CrosFpFirmware::ImageVersion fw_version = fw.GetVersion();
 
@@ -266,7 +268,7 @@ bool DoUpdate(const CrosFpDeviceUpdateInterface& ec_dev,
   CrosFpDevice::EcVersion ecver;
   if (!ec_dev.GetVersion(&ecver)) {
     LOG(INFO) << "Failed to fetch EC version, aborting.";
-    return false;
+    return UpdateStatus::kUpdateFailed;
   }
 
   // If write protection is not enabled, the RO firmware should
@@ -275,21 +277,20 @@ bool DoUpdate(const CrosFpDeviceUpdateInterface& ec_dev,
   bool flashprotect_enabled;
   if (!ec_dev.IsFlashProtectEnabled(&flashprotect_enabled)) {
     LOG(ERROR) << "Failed to fetch flash protect status, aborting.";
-    return false;
+    return UpdateStatus::kUpdateFailed;
   }
   if (!flashprotect_enabled) {
     LOG(INFO) << "Flashprotect is disabled.";
-
     if (ecver.ro_version != fw_version.ro_version) {
+      attempted = true;
       LOG(INFO) << "FPMCU RO firmware mismatch, updating.";
       if (!UpdateImage(ec_dev, boot_ctrl, fw, EC_IMAGE_RO)) {
         LOG(ERROR) << "Failed to update RO image, aborting.";
-        return false;
+        return UpdateStatus::kUpdateFailed;
       }
     } else {
       LOG(INFO) << "FPMCU RO firmware is up to date.";
     }
-
   } else {
     LOG(INFO) << "FPMCU RO firmware is protected: no update.";
   }
@@ -298,16 +299,18 @@ bool DoUpdate(const CrosFpDeviceUpdateInterface& ec_dev,
   // the firmware version available on the rootfs is different from the RW.
   if (ecver.current_image != EC_IMAGE_RW ||
       ecver.rw_version != fw_version.rw_version) {
+    attempted = true;
     LOG(INFO)
         << "FPMCU RW firmware mismatch or failed RW boot detected, updating.";
     if (!UpdateImage(ec_dev, boot_ctrl, fw, EC_IMAGE_RW)) {
       LOG(ERROR) << "Failed to update RW image, aborting.";
-      return false;
+      return UpdateStatus::kUpdateFailed;
     }
   } else {
     LOG(INFO) << "FPMCU RW firmware is up to date.";
   }
-  return true;
+  return attempted ? UpdateStatus::kUpdateSucceeded
+                   : UpdateStatus::kUpdateNotNecessary;
 }
 
 }  // namespace updater
