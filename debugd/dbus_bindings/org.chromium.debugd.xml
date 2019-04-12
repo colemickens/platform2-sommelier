@@ -285,13 +285,7 @@
       <arg name="logs" type="a{ss}" direction="out" />
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
-    <method name="GetFeedbackLogs">
-      <tp:docstring>
-        Returns system logs for feedback reports.
-      </tp:docstring>
-      <arg name="logs" type="a{ss}" direction="out" />
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
-    </method>
+    <!-- GetFeedbackLogs has been replaced by GetBigFeedbackLogs -->
     <method name="GetBigFeedbackLogs">
       <tp:docstring>
         Fills the system logs for feedback reports in the file whose file
@@ -303,15 +297,6 @@
           File descriptor to emit the logs to.
         </tp:docstring>
       </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
-    </method>
-    <method name="GetUserLogFiles">
-      <tp:docstring>
-        Returns list of User log file names that Chrome itself must collect.
-        These logfiles are relative to the user's profile path and must be
-        collected separately for each user.
-      </tp:docstring>
-      <arg name="user_log_files" type="a{ss}" direction="out" />
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="GetJournalLog">

@@ -671,20 +671,6 @@ LogTool::LogMap LogTool::GetAllDebugLogs() {
   return result;
 }
 
-LogTool::LogMap LogTool::GetFeedbackLogs() {
-  CreateConnectivityReport(true);
-  LogMap result;
-  GetLogsFrom(kCommandLogs, &result);
-  for (const auto& key : kCommandLogsExclude) {
-    result.erase(key);
-  }
-  GetLogsFrom(kFeedbackLogs, &result);
-  GetLsbReleaseInfo(&result);
-  GetOsReleaseInfo(&result);
-  AnonymizeLogMap(&result);
-  return result;
-}
-
 void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd) {
   CreateConnectivityReport(true);
   LogMap map;
@@ -708,13 +694,6 @@ void LogTool::GetJournalLog(bool scrub, const base::ScopedFD& fd) {
   std::string output = scrub ? anonymizer_.Anonymize(journal.GetLogData())
                              : journal.GetLogData();
   base::WriteFileDescriptor(fd.get(), output.data(), output.size());
-}
-
-LogTool::LogMap LogTool::GetUserLogFiles() {
-  LogMap result;
-  for (const UserLog& ul : kUserLogs)
-    result[ul.first] = ul.second;
-  return result;
 }
 
 // static

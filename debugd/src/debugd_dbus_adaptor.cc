@@ -181,20 +181,12 @@ std::map<std::string, std::string> DebugdDBusAdaptor::GetAllLogs() {
   return log_tool_->GetAllLogs();
 }
 
-std::map<std::string, std::string> DebugdDBusAdaptor::GetFeedbackLogs() {
-  return log_tool_->GetFeedbackLogs();
-}
-
 void DebugdDBusAdaptor::GetBigFeedbackLogs(const base::ScopedFD& fd) {
   log_tool_->GetBigFeedbackLogs(fd);
 }
 
 void DebugdDBusAdaptor::GetJournalLog(bool scrub, const base::ScopedFD& fd) {
   log_tool_->GetJournalLog(scrub, fd);
-}
-
-std::map<std::string, std::string> DebugdDBusAdaptor::GetUserLogFiles() {
-  return log_tool_->GetUserLogFiles();
 }
 
 std::string DebugdDBusAdaptor::GetExample() {

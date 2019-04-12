@@ -101,10 +101,8 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   void SetDebugMode(const std::string& subsystem) override;
   std::string GetLog(const std::string& name) override;
   std::map<std::string, std::string> GetAllLogs() override;
-  std::map<std::string, std::string> GetFeedbackLogs() override;
   void GetBigFeedbackLogs(const base::ScopedFD& fd) override;
   void GetJournalLog(bool scrub, const base::ScopedFD& fd) override;
-  std::map<std::string, std::string> GetUserLogFiles() override;
   std::string GetExample() override;
   int32_t CupsAddAutoConfiguredPrinter(const std::string& name,
                                        const std::string& uri) override;

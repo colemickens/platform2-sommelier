@@ -85,15 +85,12 @@ class LogTool {
   std::string GetLog(const std::string& name);
   LogMap GetAllLogs();
   LogMap GetAllDebugLogs();
-  LogMap GetFeedbackLogs();
   void GetBigFeedbackLogs(const base::ScopedFD& fd);
   void GetJournalLog(bool scrub, const base::ScopedFD& fd);
 
   // Returns a representation of |value| with the specified encoding.
   static std::string EncodeString(std::string value,
                                   Encoding source_encoding);
-  LogMap GetUserLogFiles();
-
 
  private:
   friend class LogToolTest;
