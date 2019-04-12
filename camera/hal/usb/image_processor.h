@@ -28,7 +28,7 @@ class ImageProcessor {
   // Calculate the output buffer size when converting to the specified pixel
   // format according to fourcc, width, height, and stride of |frame|.
   // Return 0 on error.
-  size_t GetConvertedSize(const FrameBuffer& frame);
+  static size_t GetConvertedSize(const FrameBuffer& frame);
 
   // Convert format from |in_frame.fourcc| to |out_frame->fourcc|. Caller should
   // fill |data|, |buffer_size|, |width|, and |height| of |out_frame|. The

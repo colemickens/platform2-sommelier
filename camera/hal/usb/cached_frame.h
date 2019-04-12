@@ -35,7 +35,7 @@ class CachedFrame {
               FrameBuffer* out_frame);
 
  private:
-  int ConvertToYU12(const FrameBuffer& in_frame, FrameBuffer* out_frame);
+  int ConvertToYU12(const FrameBuffer& in_frame);
 
   int ConvertToJpeg(const android::CameraMetadata& metadata,
                     const FrameBuffer& in_frame,

@@ -67,7 +67,7 @@ int CachedFrame::Convert(const android::CameraMetadata& metadata,
            << "x" << crop_height << ", rotate " << rotate_degree;
   int ret = 0;
 
-  ret = ConvertToYU12(in_frame, yu12_frame_.get());
+  ret = ConvertToYU12(in_frame);
   if (ret != 0) {
     return ret;
   }
@@ -117,20 +117,25 @@ int CachedFrame::Convert(const android::CameraMetadata& metadata,
                                          out_frame);
 }
 
-int CachedFrame::ConvertToYU12(const FrameBuffer& in_frame,
-                               FrameBuffer* out_frame) {
+int CachedFrame::ConvertToYU12(const FrameBuffer& in_frame) {
   yu12_frame_->SetFourcc(V4L2_PIX_FMT_YUV420);
   yu12_frame_->SetWidth(in_frame.GetWidth());
   yu12_frame_->SetHeight(in_frame.GetHeight());
 
+  size_t data_size = ImageProcessor::GetConvertedSize(*yu12_frame_);
+  if (data_size == 0 || yu12_frame_->SetDataSize(data_size)) {
+    LOGF(ERROR) << "Failed to calculate or set size of YU12 frame";
+    return -EINVAL;
+  }
+
   if (in_frame.GetFourcc() == V4L2_PIX_FMT_MJPEG && jda_available_) {
     // Try HW decoding with JDA
     int input_fd = in_frame.GetFd();
-    int output_fd = out_frame->GetFd();
-    if (input_fd > 0 && output_fd > 0) {
-      JpegDecodeAccelerator::Error error = jda_->DecodeSync(
-          input_fd, in_frame.GetDataSize(), in_frame.GetWidth(),
-          in_frame.GetHeight(), output_fd, out_frame->GetBufferSize());
+    if (input_fd > 0) {
+      JpegDecodeAccelerator::Error error =
+          jda_->DecodeSync(input_fd, in_frame.GetDataSize(),
+                           in_frame.GetWidth(), in_frame.GetHeight(),
+                           yu12_frame_->GetFd(), yu12_frame_->GetBufferSize());
       if (error == JpegDecodeAccelerator::Error::NO_ERRORS)
         return 0;
       if (error == JpegDecodeAccelerator::Error::TRY_START_AGAIN) {
