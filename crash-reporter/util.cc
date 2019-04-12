@@ -13,6 +13,7 @@
 #include <base/strings/string_util.h>
 #include <brillo/cryptohome.h>
 #include <brillo/key_value_store.h>
+#include <vboot/crossystem.h>
 
 #include "crash-reporter/paths.h"
 
@@ -21,6 +22,12 @@ namespace util {
 namespace {
 
 constexpr size_t kBufferSize = 4096;
+
+// Path to hardware class description.
+constexpr char kHwClassPath[] = "/sys/devices/platform/chromeos_acpi/HWID";
+
+constexpr char kDevSwBoot[] = "devsw_boot";
+constexpr char kDevMode[] = "dev";
 
 }  // namespace
 
@@ -57,8 +64,7 @@ bool IsTestImage() {
 }
 
 bool IsOfficialImage() {
-  const char* value = getenv("FORCE_OFFICIAL");
-  if (value && std::string(value) != "0")
+  if (IsForceOfficialSet())
     return true;
 
   std::string description;
@@ -68,6 +74,42 @@ bool IsOfficialImage() {
   }
 
   return description.find("Official") != std::string::npos;
+}
+
+bool IsForceOfficialSet() {
+  const char* value = getenv("FORCE_OFFICIAL");
+  return value && std::string(value) != "0";
+}
+
+std::string GetHardwareClass() {
+  std::string hw_class;
+  if (base::ReadFileToString(paths::Get(kHwClassPath), &hw_class))
+    return hw_class;
+  char hw_class_arr[VB_MAX_STRING_PROPERTY];
+  if (!VbGetSystemPropertyString("hwid", hw_class_arr, sizeof(hw_class_arr)))
+    return "undefined";
+  return hw_class_arr;
+}
+
+std::string GetBootModeString() {
+  const char* value = getenv("MOCK_DEVELOPER_MODE");
+  if (value && std::string(value) != "0")
+    return kDevMode;
+
+  // If we're testing crash reporter itself, we don't want to special-case
+  // for developer mode.
+  if (IsCrashTestInProgress())
+    return "";
+
+  int vb_value = VbGetSystemPropertyInt(kDevSwBoot);
+  if (vb_value < 0) {
+    LOG(ERROR) << "Error trying to determine boot mode";
+    return "missing-crossystem";
+  }
+  if (vb_value == 1)
+    return kDevMode;
+
+  return "";
 }
 
 bool GetCachedKeyValue(const base::FilePath& base_name,

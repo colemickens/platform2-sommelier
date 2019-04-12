@@ -29,6 +29,17 @@ bool IsTestImage();
 // Returns true if running on an official image.
 bool IsOfficialImage();
 
+// Returns true if the FORCE_OFFICIAL env var is set and non-zero.
+bool IsForceOfficialSet();
+
+// Gets a string describing the hardware class of the device. Returns
+// "undefined" if this cannot be determined.
+std::string GetHardwareClass();
+
+// Returns the boot mode which will either be "dev", "missing-crossystem" (if it
+// cannot be determined) or the empty string.
+std::string GetBootModeString();
+
 // Tries to find |key| in a key-value file named |base_name| in |directories| in
 // the specified order, and writes the value to |value|. This function returns
 // as soon as the key is found (i.e. if the key is found in the first directory,

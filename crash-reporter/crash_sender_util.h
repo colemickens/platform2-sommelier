@@ -12,8 +12,11 @@
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/optional.h>
 #include <base/time/time.h>
+#include <brillo/http/http_form_data.h>
 #include <brillo/key_value_store.h>
+#include <brillo/osrelease_reader.h>
 #include <metrics/metrics_library.h>
 #include <session_manager/dbus-proxies.h>
 
@@ -59,8 +62,8 @@ struct CrashDetails {
   base::FilePath meta_file;
   base::FilePath payload_file;
   std::string payload_kind;
-  std::string exec_name;
   std::string client_id;
+  const brillo::KeyValueStore& metadata;
 };
 
 // Represents a metadata file name, and its parsed metadata.
@@ -76,9 +79,9 @@ enum Action {
 // Predefined environment variables for controlling the behaviors of
 // crash_sender.
 //
-// TODO(satorux): Remove the environment variables once the shell script is
-// gone. The environment variables are handy in the shell script, but should not
-// be needed in the C++ version.
+// TODO(crbug.com/391887): Remove the environment variables once the shell
+// script is gone. The environment variables are handy in the shell script, but
+// should not be needed in the C++ version.
 constexpr EnvPair kEnvironmentVariables[] = {
     // Set this to 1 in the environment to allow uploading crash reports
     // for unofficial versions.
@@ -104,12 +107,15 @@ void ParseCommandLine(int argc,
 // Returns true if mock is enabled.
 bool IsMock();
 
+// Returns true if mock is enabled and we should succeed.
+bool IsMockSuccessful();
+
 // Returns true if the sending should be paused.
 bool ShouldPauseSending();
 
 // Checks if the dependencies used in the shell script exist. On error, returns
 // false, and saves the first path that was missing in |missing_path|.
-// TODO(satorux): Remove this once rewriting to C++ is complete.
+// TODO(crbug.com/391887): Remove this once rewriting to C++ is complete.
 bool CheckDependencies(base::FilePath* missing_path);
 
 // Gets the base part of a crash report file, such as name.01234.5678.9012 from
@@ -183,6 +189,7 @@ bool GetSleepTime(const base::FilePath& meta_file,
 // Returns the value for the key from the key-value store, or "undefined", if
 // the key is not found ("undefined" will be used in crash reports where the
 // values are missing).
+// TODO(crbug.com/391887): Change this to return a base::Optional<std::string>.
 std::string GetValueOrUndefined(const brillo::KeyValueStore& store,
                                 const std::string& key);
 
@@ -199,9 +206,6 @@ std::string GetClientId();
 class Sender {
  public:
   struct Options {
-    // The shell script used for sending crashes.
-    base::FilePath shell_script = base::FilePath("/sbin/crash_sender.sh");
-
     // Session manager client for locating the user-specific crash directories.
     org::chromium::SessionManagerInterfaceProxyInterface* proxy = nullptr;
 
@@ -220,7 +224,16 @@ class Sender {
     base::Callback<void(base::TimeDelta)> sleep_function;
 
     // Forced list of proxy servers for testing.
+    // TODO(crbug.com/391887): Remove this since we don't need to force this
+    // after the shell script is gone.
     std::vector<std::string> proxy_servers;
+
+    // Boundary to use in the form data.
+    std::string form_data_boundary;
+
+    // If true, we will ignore other checks when deciding if we should write to
+    // the Chrome uploads.log file.
+    bool always_write_uploads_log;
   };
 
   Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
@@ -247,28 +260,45 @@ class Sender {
   // Get a list of all directories that might hold user-specific crashes.
   std::vector<base::FilePath> GetUserCrashDirectories();
 
+  // Given the |details| for a crash, creates a brillo::http::FormData object
+  // which will have all of the fields for submission to the crash server
+  // populated. Returns a nullptr if there were critical errors in populating
+  // the data. This also logs out all of the details during the process. On
+  // success, |product_name_out| is also set to the product name (it's not
+  // possible to extract data from the returned FormData object in a
+  // non-destructive manner).
+  std::unique_ptr<brillo::http::FormData> CreateCrashFormData(
+      const CrashDetails& details, std::string* product_name_out);
+
   // Returns the temporary directory used in the object. Valid after Init() is
   // completed successfully.
   const base::FilePath& temp_dir() const { return scoped_temp_dir_.GetPath(); }
 
  private:
-  // Requests the shell script to send a crash report represented with the given
-  // crash details.
+  // Requests to send a crash report represented with the given crash details.
   bool RequestToSendCrash(const CrashDetails& details);
 
   // Makes sure we have the DBus object initialized and connected.
   void EnsureDBusIsReady();
 
+  // Looks through |keys| in the os-release data using brillo::OsReleaseReader.
+  // Keys are searched in order until a value is found. Returns the value in
+  // the Optional if found, otherwise the Optional is empty.
+  base::Optional<std::string> GetOsReleaseValue(
+      const std::vector<std::string>& keys);
+
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
-  const base::FilePath shell_script_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface> proxy_;
   std::vector<std::string> proxy_servers_;
+  std::string form_data_boundary_;
+  bool always_write_uploads_log_;
   base::ScopedTempDir scoped_temp_dir_;
   const int max_crash_rate_;
   const base::TimeDelta max_spread_time_;
   const base::TimeDelta hold_off_time_;
   base::Callback<void(base::TimeDelta)> sleep_function_;
   scoped_refptr<dbus::Bus> bus_;
+  std::unique_ptr<brillo::OsReleaseReader> os_release_reader_;
 
   DISALLOW_COPY_AND_ASSIGN(Sender);
 };

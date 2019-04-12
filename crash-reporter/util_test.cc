@@ -24,6 +24,8 @@ const char kLsbReleaseContents[] =
     "CHROMEOS_RELEASE_NAME=Chromium OS\n"
     "CHROMEOS_RELEASE_VERSION=10964.0.2018_08_13_1405\n";
 
+constexpr char kHwClassContents[] = "fake_hwclass";
+
 }  // namespace
 
 class CrashCommonUtilTest : public testing::Test {
@@ -94,13 +96,22 @@ TEST_F(CrashCommonUtilTest, IsTestImage) {
   EXPECT_FALSE(IsTestImage());
 }
 
+TEST_F(CrashCommonUtilTest, IsForceOfficialSet) {
+  EXPECT_FALSE(IsForceOfficialSet());
+
+  // Check if FORCE_OFFICIAL is handled correctly.
+  setenv("FORCE_OFFICIAL", "0", 1 /* overwrite */);
+  EXPECT_FALSE(IsForceOfficialSet());
+
+  setenv("FORCE_OFFICIAL", "1", 1 /* overwrite */);
+  EXPECT_TRUE(IsForceOfficialSet());
+  unsetenv("FORCE_OFFICIAL");
+}
+
 TEST_F(CrashCommonUtilTest, IsOfficialImage) {
   EXPECT_FALSE(IsOfficialImage());
 
   // Check if FORCE_OFFICIAL is handled correctly.
-  setenv("FORCE_OFFICIAL", "0", 1 /* overwrite */);
-  EXPECT_FALSE(IsOfficialImage());
-
   setenv("FORCE_OFFICIAL", "1", 1 /* overwrite */);
   EXPECT_TRUE(IsOfficialImage());
   unsetenv("FORCE_OFFICIAL");
@@ -115,6 +126,33 @@ TEST_F(CrashCommonUtilTest, IsOfficialImage) {
       paths::Get("/etc/lsb-release"),
       "CHROMEOS_RELEASE_DESCRIPTION=10964.0 (Official Build) canary-channel"));
   EXPECT_TRUE(IsOfficialImage());
+}
+
+TEST_F(CrashCommonUtilTest, GetHardwareClass) {
+  EXPECT_EQ("undefined", GetHardwareClass());
+
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::Get("/sys/devices/platform/chromeos_acpi/HWID"),
+      kHwClassContents));
+  EXPECT_EQ(kHwClassContents, GetHardwareClass());
+}
+
+TEST_F(CrashCommonUtilTest, GetBootModeString) {
+  EXPECT_EQ("missing-crossystem", GetBootModeString());
+
+  // Check if MOCK_DEVELOPER_MODE is handled correctly.
+  setenv("MOCK_DEVELOPER_MODE", "0", 1 /* overwrite */);
+  EXPECT_EQ("missing-crossystem", GetBootModeString());
+
+  setenv("MOCK_DEVELOPER_MODE", "1", 1 /* overwrite */);
+  EXPECT_EQ("dev", GetBootModeString());
+  unsetenv("MOCK_DEVELOPER_MODE");
+
+  ASSERT_TRUE(
+      test_util::CreateFile(paths::GetAt(paths::kSystemRunStateDirectory,
+                                         paths::kCrashTestInProgress),
+                            ""));
+  EXPECT_EQ("", GetBootModeString());
 }
 
 TEST_F(CrashCommonUtilTest, GetCachedKeyValue) {

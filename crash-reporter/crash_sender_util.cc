@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/environment.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/guid.h>
@@ -27,6 +28,8 @@
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <brillo/http/http_proxy.h>
+#include <brillo/http/http_transport.h>
+#include <brillo/http/http_utils.h>
 
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/paths.h"
@@ -38,6 +41,11 @@ namespace {
 
 // URL to send official build crash reports to.
 constexpr char kReportUploadProdUrl[] = "https://clients2.google.com/cr/report";
+constexpr char kUndefined[] = "undefined";
+constexpr char kChromeOsProduct[] = "ChromeOS";
+constexpr char kUploadVarPrefix[] = "upload_var_";
+constexpr char kUploadTextPrefix[] = "upload_text_";
+constexpr char kUploadFilePrefix[] = "upload_file_";
 
 // Length of the client ID. This is a standard GUID which has the dashes
 // removed.
@@ -174,11 +182,20 @@ bool IsMock() {
       paths::GetAt(paths::kSystemRunStateDirectory, paths::kMockCrashSending));
 }
 
+bool IsMockSuccessful() {
+  int64_t file_size;
+  return base::GetFileSize(paths::GetAt(paths::kSystemRunStateDirectory,
+                                        paths::kMockCrashSending),
+                           &file_size) &&
+         !file_size;
+}
+
 bool ShouldPauseSending() {
   return (base::PathExists(paths::Get(paths::kPauseCrashSending)) &&
           GetEnv("OVERRIDE_PAUSE_SENDING") == "0");
 }
 
+// TODO(crbug.com/391887): Remove this, it is no longer needed.
 bool CheckDependencies(base::FilePath* missing_path) {
   const char* const kDependencies[] = {
       paths::kRestrictedCertificatesDirectory,
@@ -512,7 +529,7 @@ std::string GetValueOrUndefined(const brillo::KeyValueStore& store,
                                 const std::string& key) {
   std::string value;
   if (!store.GetString(key, &value))
-    return "undefined";
+    return kUndefined;
   return value;
 }
 
@@ -550,9 +567,10 @@ std::string GetClientId() {
 Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
                const Sender::Options& options)
     : metrics_lib_(std::move(metrics_lib)),
-      shell_script_(options.shell_script),
       proxy_(options.proxy),
       proxy_servers_(options.proxy_servers),
+      form_data_boundary_(options.form_data_boundary),
+      always_write_uploads_log_(options.always_write_uploads_log),
       max_crash_rate_(options.max_crash_rate),
       max_spread_time_(options.max_spread_time),
       hold_off_time_(options.hold_off_time),
@@ -563,9 +581,6 @@ bool Sender::Init() {
     PLOG(ERROR) << "Failed to create a temporary directory";
     return false;
   }
-
-  if (sleep_function_.is_null())
-    sleep_function_ = base::Bind(&base::PlatformThread::Sleep);
 
   return true;
 }
@@ -638,8 +653,11 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
     }
 
     LOG(INFO) << "Scheduled to send in " << sleep_time.InSeconds() << "s";
-    if (!IsMock())
+    if (!IsMock()) {
+      base::PlatformThread::Sleep(sleep_time);
+    } else if (!sleep_function_.is_null()) {
       sleep_function_.Run(sleep_time);
+    }
 
     // User-specific crash reports become inaccessible if the user signs out
     // while sleeping, thus we need to check if the metadata is still
@@ -653,8 +671,8 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
         .meta_file = meta_file,
         .payload_file = info.payload_file,
         .payload_kind = info.payload_kind,
-        .exec_name = GetValueOrUndefined(info.metadata, "exec_name"),
         .client_id = client_id,
+        .metadata = info.metadata,
     };
     if (!RequestToSendCrash(details)) {
       LOG(WARNING) << "Failed to send " << meta_file.value()
@@ -680,55 +698,236 @@ std::vector<base::FilePath> Sender::GetUserCrashDirectories() {
   return directories;
 }
 
-bool Sender::RequestToSendCrash(const CrashDetails& details) {
-  const int child_pid = fork();
-  if (child_pid == 0) {
-    char* shell_script_path = const_cast<char*>(shell_script_.value().c_str());
-    char* temp_dir_path =
-        const_cast<char*>(scoped_temp_dir_.GetPath().value().c_str());
-    char* meta_file = const_cast<char*>(details.meta_file.value().c_str());
-    char* payload_file =
-        const_cast<char*>(details.payload_file.value().c_str());
-    char* payload_kind = const_cast<char*>(details.payload_kind.c_str());
-    char* exec_name = const_cast<char*>(details.exec_name.c_str());
-    std::string proxy_str;
-    if (!proxy_servers_.empty() && proxy_servers_[0] != "direct://") {
-      proxy_str = proxy_servers_[0];
-    }
-    char* proxy_server = const_cast<char*>(proxy_str.c_str());
-    char* client_id = const_cast<char*>(details.client_id.c_str());
-    char* shell_argv[] = {shell_script_path,
-                          temp_dir_path,
-                          meta_file,     // $1 in send_crash
-                          payload_file,  // $2 in send_crash
-                          payload_kind,  // $3 in send_crash
-                          exec_name,     // $4 in send_crash
-                          proxy_server,  // $5 in send_crash
-                          client_id,     // $6 in send_crash
-                          nullptr};
+// TODO(crbug.com/391887): Reorganize this method better and extract out some of
+// the evaluations to other methods for better testing and clarity.
+std::unique_ptr<brillo::http::FormData> Sender::CreateCrashFormData(
+    const CrashDetails& details, std::string* product_name_out) {
+  std::unique_ptr<brillo::http::FormData> form_data =
+      std::make_unique<brillo::http::FormData>(form_data_boundary_);
 
-    setenv("IS_CHROMELESS_TTY", USE_CHROMELESS_TTY ? "true" : "false",
-           1 /* overwrite */);
-    execve(shell_script_path, shell_argv, environ);
-    // execve() failed.
-    exit(EXIT_FAILURE);
-  } else {
-    int status = 0;
-    if (waitpid(child_pid, &status, 0) < 0) {
-      PLOG(ERROR) << "Failed to wait for the child process: " << child_pid;
-      return false;
+  std::string exec_name = GetValueOrUndefined(details.metadata, "exec_name");
+  form_data->AddTextField("exec_name", exec_name);
+
+  std::string board;
+  if (!GetCachedKeyValueDefault(base::FilePath(paths::kLsbRelease),
+                                "CHROMEOS_RELEASE_BOARD", &board)) {
+    board = kUndefined;
+  }
+  form_data->AddTextField("board", board);
+
+  std::string hwclass = util::GetHardwareClass();
+  form_data->AddTextField("hwclass", hwclass);
+
+  // When uploading Chrome reports we need to report the right product and
+  // version. If the meta file does not specify it we try to examine os-release
+  // content. If not available there product gets assigned default product name
+  // and version is derived from CHROMEOS_RELEASE_VERSION in /etc/lsb-release.
+  std::string product =
+      GetValueOrUndefined(details.metadata, "upload_var_prod");
+  if (product == kUndefined) {
+    product =
+        GetOsReleaseValue({"GOOGLE_CRASH_ID", "ID"}).value_or(kChromeOsProduct);
+  }
+  form_data->AddTextField("prod", product);
+
+  std::string chromeos_version = GetValueOrUndefined(details.metadata, "ver");
+  std::string version = GetValueOrUndefined(details.metadata, "upload_var_ver");
+  if (version == kUndefined) {
+    if (chromeos_version != kUndefined) {
+      version = chromeos_version;
+    } else {
+      version = GetOsReleaseValue(
+                    {"GOOGLE_CRASH_VERSION_ID", "BUILD_ID", "VERSION_ID"})
+                    .value_or(kUndefined);
     }
-    if (!WIFEXITED(status)) {
-      LOG(ERROR) << "Terminated abnormally: " << status;
-      return false;
-    }
-    int exit_code = WEXITSTATUS(status);
-    if (exit_code != 0) {
-      LOG(ERROR) << "Terminated with non-zero exit code: " << exit_code;
-      return false;
+  }
+  form_data->AddTextField("ver", version);
+
+  std::string sig = GetValueOrUndefined(details.metadata, "sig");
+  if (sig != kUndefined) {
+    form_data->AddTextField("sig", sig);
+    form_data->AddTextField("sig2", sig);
+  }
+  brillo::ErrorPtr file_error;
+  if (!form_data->AddFileField("upload_file_" + details.payload_kind,
+                               details.payload_file, {}, &file_error)) {
+    LOG(ERROR) << "Failed adding payload file as attachment: "
+               << file_error->GetMessage();
+    return nullptr;
+  }
+
+  // TODO(crbug.com/391887): Apply the changes from crrev.com/c/1581125 to
+  // remove this when we also update the testing to check this correctly too.
+  std::string log_value = GetValueOrUndefined(details.metadata, "log");
+  if (log_value != kUndefined) {
+    brillo::ErrorPtr error;
+    base::FilePath log_file = details.meta_file.DirName().Append(
+        base::FilePath(log_value).BaseName());
+    if (base::PathExists(log_file) &&
+        !form_data->AddFileField("log", log_file, {}, &error)) {
+      LOG(ERROR) << "Failed attaching log file " << log_file.value()
+                 << " of: " << error->GetMessage();
     }
   }
 
+  for (const auto& key : details.metadata.GetKeys()) {
+    if (!base::StartsWith(key, "upload_", base::CompareCase::SENSITIVE) ||
+        key == "upload_var_prod" || key == "upload_var_ver" ||
+        key == "upload_var_guid") {
+      continue;
+    }
+    std::string value;
+    details.metadata.GetString(key, &value);
+    brillo::ErrorPtr error;
+    if (base::StartsWith(key, kUploadVarPrefix, base::CompareCase::SENSITIVE)) {
+      form_data->AddTextField(key.substr(sizeof(kUploadVarPrefix) - 1), value);
+    } else if (base::StartsWith(key, kUploadTextPrefix,
+                                base::CompareCase::SENSITIVE)) {
+      std::string value_content;
+      if (base::ReadFileToString(base::FilePath(value), &value_content)) {
+        form_data->AddTextField(key.substr(sizeof(kUploadTextPrefix) - 1),
+                                value_content);
+      } else {
+        LOG(ERROR) << "Failed attaching file contents from " << value
+                   << " of: " << error->GetMessage();
+      }
+    } else if (base::StartsWith(key, kUploadFilePrefix,
+                                base::CompareCase::SENSITIVE)) {
+      base::FilePath value_file(value);
+      if (base::PathExists(value_file) &&
+          !form_data->AddFileField(key.substr(sizeof(kUploadFilePrefix) - 1),
+                                   value_file, {}, &error)) {
+        LOG(ERROR) << "Failed attaching file " << value
+                   << " of: " << error->GetMessage();
+      }
+    }
+  }
+
+  std::string image_type;
+  if (util::IsTestImage())
+    image_type = "test";
+  else if (util::IsDeveloperImage())
+    image_type = "dev";
+  else if (util::IsForceOfficialSet())
+    image_type = "force-official";
+  else if (IsMock() && !IsMockSuccessful())
+    image_type = "mock-fail";
+  if (!image_type.empty())
+    form_data->AddTextField("image_type", image_type);
+
+  std::string boot_mode = util::GetBootModeString();
+  if (!boot_mode.empty())
+    form_data->AddTextField("boot_mode", boot_mode);
+
+  std::string error_type = GetValueOrUndefined(details.metadata, "error_type");
+  if (error_type == kUndefined)
+    error_type = "";
+  if (!error_type.empty())
+    form_data->AddTextField("error_type", error_type);
+
+  LOG(INFO) << "Sending crash:";
+  if (product != kChromeOsProduct)
+    LOG(INFO) << "  Sending crash report on behalf of " << product;
+  LOG(INFO) << "  Metadata: " << details.meta_file.value() << " ("
+            << details.payload_kind << ")";
+  LOG(INFO) << "  Payload: " << details.payload_file.value();
+  LOG(INFO) << "  Version: " << version;
+  if (!image_type.empty())
+    LOG(INFO) << "  Image type: " << image_type;
+  if (!boot_mode.empty())
+    LOG(INFO) << "  Boot mode: " << boot_mode;
+  if (IsMock()) {
+    LOG(INFO) << "  Product: " << product;
+    LOG(INFO) << "  URL: " << kReportUploadProdUrl;
+    LOG(INFO) << "  Board: " << board;
+    LOG(INFO) << "  HWClass: " << hwclass;
+    if (log_value != kUndefined)
+      LOG(INFO) << "  log: @" << log_value;
+    if (sig != kUndefined)
+      LOG(INFO) << "  sig: " << sig;
+  }
+
+  LOG(INFO) << "  Exec name: " << exec_name;
+  if (!error_type.empty())
+    LOG(INFO) << "  Error type: " << error_type;
+
+  form_data->AddTextField("guid", details.client_id);
+
+  if (product_name_out)
+    *product_name_out = product;
+
+  return form_data;
+}
+
+bool Sender::RequestToSendCrash(const CrashDetails& details) {
+  std::string product_name;
+  std::unique_ptr<brillo::http::FormData> form_data =
+      CreateCrashFormData(details, &product_name);
+  std::string report_id;
+  if (!IsMock()) {
+    std::shared_ptr<brillo::http::Transport> transport;
+    if (proxy_servers_.empty() || proxy_servers_[0] == "direct://") {
+      transport = brillo::http::Transport::CreateDefault();
+    } else {
+      transport =
+          brillo::http::Transport::CreateDefaultWithProxy(proxy_servers_[0]);
+    }
+
+    brillo::ErrorPtr upload_error;
+    std::unique_ptr<brillo::http::Response> response =
+        brillo::http::PostFormDataAndBlock(
+            kReportUploadProdUrl, std::move(form_data), {} /* headers */,
+            transport, &upload_error);
+
+    if (!response) {
+      LOG(ERROR) << "Crash sending failed with error: "
+                 << upload_error->GetMessage();
+      return false;
+    }
+    if (!response->IsSuccessful()) {
+      LOG(ERROR) << "Crash sending failed with HTTP "
+                 << response->GetStatusCode() << ": "
+                 << response->GetStatusText();
+      return false;
+    }
+
+    report_id = response->ExtractDataAsString();
+  } else {
+    if (!IsMockSuccessful()) {
+      LOG(INFO) << "Mocking unsuccessful send";
+      return false;
+    }
+    LOG(INFO) << "Mocking successful send";
+
+    if (!always_write_uploads_log_)
+      return true;
+
+    report_id = GetValueOrUndefined(details.metadata, "fake_report_id");
+  }
+
+  int64_t timestamp = (base::Time::Now() - base::Time::UnixEpoch()).InSeconds();
+  if (product_name == "Chrome_ChromeOS")
+    product_name = "Chrome";
+  if (!util::IsOfficialImage()) {
+    base::ReplaceSubstringsAfterOffset(&product_name, 0, "Chrome", "Chromium");
+  }
+  if (always_write_uploads_log_ ||
+      (!USE_CHROMELESS_TTY &&
+       "true" != GetValueOrUndefined(details.metadata, "silent"))) {
+    base::File upload_logs_file(
+        paths::Get(paths::kChromeCrashLog),
+        base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_APPEND);
+    std::string upload_log_entry =
+        base::StringPrintf("%" PRId64 ",%s,%s\n", timestamp, report_id.c_str(),
+                           product_name.c_str());
+    if (!upload_logs_file.IsValid() ||
+        upload_logs_file.WriteAtCurrentPos(upload_log_entry.c_str(),
+                                           upload_log_entry.size()) !=
+            upload_log_entry.size()) {
+      PLOG(ERROR) << "Error writing to Chrome uploads.log file";
+    }
+  }
+  LOG(INFO) << "Crash report receipt ID " << report_id;
   return true;
 }
 
@@ -739,6 +938,20 @@ void Sender::EnsureDBusIsReady() {
     bus_ = new dbus::Bus(options);
     CHECK(bus_->Connect());
   }
+}
+
+base::Optional<std::string> Sender::GetOsReleaseValue(
+    const std::vector<std::string>& keys) {
+  if (!os_release_reader_) {
+    os_release_reader_ = std::make_unique<brillo::OsReleaseReader>();
+    os_release_reader_->Load();
+  }
+  std::string value;
+  for (const auto& key : keys) {
+    if (os_release_reader_->GetString(key, &value))
+      return base::Optional<std::string>(value);
+  }
+  return base::Optional<std::string>();
 }
 
 }  // namespace util

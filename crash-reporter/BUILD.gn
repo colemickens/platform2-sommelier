@@ -28,6 +28,7 @@ pkg_config("libcrash_config") {
   pkg_deps = [
     "libchrome-${libbase_ver}",
     "libsession_manager-client",
+    "vboot_host",
   ]
 }
 

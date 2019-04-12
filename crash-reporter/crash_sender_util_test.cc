@@ -39,29 +39,27 @@ enum BuildType { kOfficialBuild, kUnofficialBuild };
 enum SessionType { kSignInMode, kGuestMode };
 enum MetricsFlag { kMetricsEnabled, kMetricsDisabled };
 
-constexpr char kFakeProxyServer[] = "http://example.com";
 constexpr char kNoProxyServer[] = "direct://";
 
 constexpr char kFakeClientId[] = "00112233445566778899aabbccddeeff";
 
-// Prases the output file from fake_crash_sender.sh to a vector of items per
-// line. Example:
+// Parses the Chrome uploads.log file from Sender to a vector of items per line.
+// Example:
 //
-// foo1 foo2
-// bar1 bar2
+// foo1,foo2
+// bar1,bar2
 //
 // => [["foo1", "foo2"], ["bar1, "bar2"]]
 //
-std::vector<std::vector<std::string>> ParseFakeCrashSenderOutput(
+std::vector<std::vector<std::string>> ParseChromeUploadsLog(
     const std::string& contents) {
   std::vector<std::vector<std::string>> rows;
 
   std::vector<std::string> lines = base::SplitString(
       contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   for (const auto& line : lines) {
-    std::vector<std::string> items =
-        base::SplitString(line, base::kWhitespaceASCII, base::TRIM_WHITESPACE,
-                          base::SPLIT_WANT_NONEMPTY);
+    std::vector<std::string> items = base::SplitString(
+        line, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
     rows.push_back(items);
   }
 
@@ -118,6 +116,16 @@ std::vector<base::FilePath> GetFileNamesIn(const base::FilePath& directory) {
 void FakeSleep(std::vector<base::TimeDelta>* sleep_times,
                base::TimeDelta duration) {
   sleep_times->push_back(duration);
+}
+
+// Set the file flag which indicates we are mocking crash sending, either
+// successfully or as a a failure. This also creates the directory where
+// uploads.log is written to since Chrome would normally be doing that.
+bool SetMockCrashSending(bool success) {
+  return test_util::CreateFile(paths::GetAt(paths::kSystemRunStateDirectory,
+                                            paths::kMockCrashSending),
+                               success ? "" : "0") &&
+         base::CreateDirectory(paths::Get(paths::kChromeCrashLog).DirName());
 }
 
 class CrashSenderUtilTest : public testing::Test {
@@ -395,10 +403,12 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_CrashDirectory) {
 
 TEST_F(CrashSenderUtilTest, IsMock) {
   EXPECT_FALSE(IsMock());
-  ASSERT_TRUE(test_util::CreateFile(
-      paths::GetAt(paths::kSystemRunStateDirectory, paths::kMockCrashSending),
-      ""));
+  ASSERT_TRUE(SetMockCrashSending(false));
   EXPECT_TRUE(IsMock());
+  EXPECT_FALSE(IsMockSuccessful());
+  ASSERT_TRUE(SetMockCrashSending(true));
+  EXPECT_TRUE(IsMock());
+  EXPECT_TRUE(IsMockSuccessful());
 }
 
 TEST_F(CrashSenderUtilTest, ShouldPauseSending) {
@@ -963,17 +973,137 @@ TEST_F(CrashSenderUtilTest, GetUserCrashDirectories) {
                                    paths::Get("/home/user/hash2/crash")));
 }
 
+TEST_F(CrashSenderUtilTest, CreateCrashFormData) {
+  const base::FilePath system_dir = paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(base::CreateDirectory(system_dir));
+
+  const base::FilePath payload_file = system_dir.Append("0.0.0.0.payload");
+  const std::string payload_contents = "foobar_payload";
+  ASSERT_TRUE(test_util::CreateFile(payload_file, payload_contents));
+
+  const base::FilePath log_file = system_dir.Append("0.0.0.0.log");
+  const std::string log_contents = "foobar_log";
+  ASSERT_TRUE(test_util::CreateFile(log_file, log_contents));
+
+  const base::FilePath text_var_file = system_dir.Append("data.txt");
+  const std::string text_var_contents = "upload_text_contents";
+  ASSERT_TRUE(test_util::CreateFile(text_var_file, text_var_contents));
+
+  const base::FilePath file_var_file = system_dir.Append("data.bin");
+  const std::string file_var_contents = "upload_file_contents";
+  ASSERT_TRUE(test_util::CreateFile(file_var_file, file_var_contents));
+
+  brillo::KeyValueStore metadata;
+  metadata.SetString("exec_name", "fake_exec_name");
+  metadata.SetString("ver", "fake_chromeos_ver");
+  metadata.SetString("upload_var_prod", "fake_product");
+  metadata.SetString("upload_var_ver", "fake_version");
+  metadata.SetString("sig", "fake_sig");
+  metadata.SetString("log", log_file.BaseName().value());
+  metadata.SetString("upload_var_guid", "SHOULD_NOT_BE_USED");
+  metadata.SetString("upload_var_foovar", "bar");
+  metadata.SetString("upload_text_footext", text_var_file.value());
+  metadata.SetString("upload_file_foofile", file_var_file.value());
+  metadata.SetString("error_type", "fake_error");
+
+  CrashDetails details = {
+      .meta_file = base::FilePath(system_dir).Append("0.0.0.0.meta"),
+      .payload_file = payload_file,
+      .payload_kind = "fake_payload",
+      .client_id = kFakeClientId,
+      .metadata = metadata,
+  };
+
+  Sender::Options options;
+  options.form_data_boundary = "boundary";
+
+  Sender sender(nullptr, options);
+
+  std::unique_ptr<brillo::http::FormData> form_data =
+      sender.CreateCrashFormData(details, nullptr);
+
+  brillo::StreamPtr stream = form_data->ExtractDataStream();
+  std::vector<uint8_t> data(stream->GetSize());
+  ASSERT_TRUE(stream->ReadAllBlocking(data.data(), data.size(), nullptr));
+
+  const char expected_data[] =
+      "--boundary\r\n"
+      "Content-Disposition: form-data; name=\"exec_name\"\r\n"
+      "\r\n"
+      "fake_exec_name\r\n"
+      "--boundary\r\n"
+      "Content-Disposition: form-data; name=\"board\"\r\n"
+      "\r\n"
+      "undefined\r\n"
+      "--boundary\r\n"
+      "Content-Disposition: form-data; name=\"hwclass\"\r\n"
+      "\r\n"
+      "undefined\r\n"
+      "--boundary\r\n"
+      "Content-Disposition: form-data; name=\"prod\"\r\n"
+      "\r\n"
+      "fake_product\r\n"
+      "--boundary\r\n"
+      "Content-Disposition: form-data; name=\"ver\"\r\n"
+      "\r\n"
+      "fake_version\r\n"
+      "--boundary\r\n"
+      "Content-Disposition: form-data; name=\"sig\"\r\n"
+      "\r\n"
+      "fake_sig\r\n"
+      "--boundary\r\n"
+      "Content-Disposition: form-data; name=\"sig2\"\r\n"
+      "\r\n"
+      "fake_sig\r\n"
+      "--boundary\r\n"
+      "Content-Disposition: form-data; name=\"upload_file_fake_payload\"; "
+      "filename=\"0.0.0.0.payload\"\r\n"
+      "Content-Transfer-Encoding: binary\r\n"
+      "\r\n"
+      "foobar_payload\r\n"
+      "--boundary\r\n"
+      "Content-Disposition: form-data; name=\"log\"; "
+      "filename=\"0.0.0.0.log\"\r\n"
+      "Content-Transfer-Encoding: binary\r\n"
+      "\r\n"
+      "foobar_log\r\n"
+      "--boundary\r\n"
+      "Content-Disposition: form-data; name=\"foofile\"; "
+      "filename=\"data.bin\"\r\n"
+      "Content-Transfer-Encoding: binary\r\n"
+      "\r\n"
+      "upload_file_contents\r\n"
+      "--boundary\r\n"
+      "Content-Disposition: form-data; name=\"footext\"\r\n"
+      "\r\n"
+      "upload_text_contents\r\n"
+      "--boundary\r\n"
+      "Content-Disposition: form-data; name=\"foovar\"\r\n"
+      "\r\n"
+      "bar\r\n"
+      "--boundary\r\n"
+      "Content-Disposition: form-data; name=\"boot_mode\"\r\n"
+      "\r\n"
+      "missing-crossystem\r\n"
+      "--boundary\r\n"
+      "Content-Disposition: form-data; name=\"error_type\"\r\n"
+      "\r\n"
+      "fake_error\r\n"
+      "--boundary\r\n"
+      "Content-Disposition: form-data; name=\"guid\"\r\n"
+      "\r\n"
+      "00112233445566778899aabbccddeeff\r\n"
+      "--boundary--";
+
+  EXPECT_EQ(expected_data, std::string(data.begin(), data.end()));
+}
+
 TEST_F(CrashSenderUtilTest, SendCrashes) {
   // Set up the mock session manager client.
   auto mock =
       std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
   test_util::SetActiveSessions(mock.get(), {{"user", "hash"}});
   std::vector<MetaFile> crashes_to_send;
-
-  // Set up the output file for fake_crash_sender.sh.
-  const base::FilePath output_file = test_dir_.Append("fake_crash_sender.out");
-  setenv("FAKE_CRASH_SENDER_OUTPUT", output_file.value().c_str(),
-         1 /* overwrite */);
 
   // Establish the client ID.
   ASSERT_TRUE(CreateClientIdFile());
@@ -986,6 +1116,8 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   const char system_meta[] =
       "payload=0.0.0.0.log\n"
       "exec_name=exec_foo\n"
+      "fake_report_id=123\n"
+      "upload_var_prod=foo\n"
       "done=1\n";
   ASSERT_TRUE(test_util::CreateFile(system_meta_file, system_meta));
   ASSERT_TRUE(test_util::CreateFile(system_log, ""));
@@ -1005,6 +1137,8 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   const char user_meta[] =
       "payload=0.0.0.0.log\n"
       "exec_name=exec_bar\n"
+      "fake_report_id=456\n"
+      "upload_var_prod=bar\n"
       "done=1\n";
   ASSERT_TRUE(test_util::CreateFile(user_meta_file, user_meta));
   ASSERT_TRUE(test_util::CreateFile(user_log, ""));
@@ -1022,7 +1156,9 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   const base::FilePath user_log2 = user_dir.Append("1.1.1.1.log");
   const char user_meta2[] =
       "payload=1.1.1.1.log\n"
-      "exec_name=baz\n"
+      "exec_name=exec_baz\n"
+      "fake_report_id=789\n"
+      "upload_var_prod=baz\n"
       "done=1\n";
   ASSERT_TRUE(test_util::CreateFile(user_meta_file2, user_meta2));
   ASSERT_TRUE(test_util::CreateFile(user_log2, ""));
@@ -1039,60 +1175,54 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   // Keep the raw pointer, that's needed to exit from guest mode later.
   MetricsLibraryMock* raw_metrics_lib = metrics_lib_.get();
 
+  // Set up the crash sender so that it succeeds.
+  ASSERT_TRUE(SetMockCrashSending(true));
+
   // Set up the sender.
   std::vector<base::TimeDelta> sleep_times;
   Sender::Options options;
-  options.shell_script = base::FilePath("fake_crash_sender.sh");
   options.proxy = mock.release();
   options.max_crash_rate = 2;
   options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
-  options.proxy_servers.emplace_back(kFakeProxyServer);
+  options.proxy_servers.emplace_back(kNoProxyServer);
+  options.always_write_uploads_log = true;
   Sender sender(std::move(metrics_lib_), options);
   ASSERT_TRUE(sender.Init());
 
   // Send crashes.
   sender.SendCrashes(crashes_to_send);
 
-  // The output file from fake_crash_sender.sh should not exist, since no crash
-  // reports should be uploaded in guest mode.
-  EXPECT_FALSE(base::PathExists(output_file));
+  // The Chrome uploads.log file shouldn't exist because we had nothing to
+  // upload.
+  EXPECT_FALSE(base::PathExists(paths::Get(paths::kChromeCrashLog)));
   EXPECT_TRUE(sleep_times.empty());
 
   // Exit from guest mode, and send crashes again.
   raw_metrics_lib->set_guest_mode(false);
   sender.SendCrashes(crashes_to_send);
 
-  // Check the output file from fake_crash_sender.sh.
+  // Check the upload log from crash_sender.
   std::string contents;
-  ASSERT_TRUE(base::ReadFileToString(output_file, &contents));
-  std::vector<std::vector<std::string>> rows =
-      ParseFakeCrashSenderOutput(contents);
+  ASSERT_TRUE(
+      base::ReadFileToString(paths::Get(paths::kChromeCrashLog), &contents));
+  std::vector<std::vector<std::string>> rows = ParseChromeUploadsLog(contents);
   // Should only contain two results, since max_crash_rate is set to 2.
   // FakeSleep should be called twice for the two crash reports.
   ASSERT_EQ(2, rows.size());
   EXPECT_EQ(2, sleep_times.size());
 
+  // Each line of the uploads.log file is "timestamp,report_id,product".
   // The first run should be for the meta file in the system directory.
   std::vector<std::string> row = rows[0];
-  ASSERT_EQ(7, row.size());
-  EXPECT_EQ(sender.temp_dir().value(), row[0]);
-  EXPECT_EQ(system_meta_file.value(), row[1]);
-  EXPECT_EQ(system_log.value(), row[2]);
-  EXPECT_EQ("log", row[3]);
-  EXPECT_EQ("exec_foo", row[4]);
-  EXPECT_EQ(kFakeProxyServer, row[5]);
-  EXPECT_EQ(kFakeClientId, row[6]);
+  ASSERT_EQ(3, row.size());
+  EXPECT_EQ("123", row[1]);
+  EXPECT_EQ("foo", row[2]);
 
   // The second run should be for the meta file in the "user" directory.
   row = rows[1];
-  ASSERT_EQ(7, row.size());
-  EXPECT_EQ(sender.temp_dir().value(), row[0]);
-  EXPECT_EQ(user_meta_file.value(), row[1]);
-  EXPECT_EQ(user_log.value(), row[2]);
-  EXPECT_EQ("log", row[3]);
-  EXPECT_EQ("exec_bar", row[4]);
-  EXPECT_EQ(kFakeProxyServer, row[5]);
-  EXPECT_EQ(kFakeClientId, row[6]);
+  ASSERT_EQ(3, row.size());
+  EXPECT_EQ("456", row[1]);
+  EXPECT_EQ("bar", row[2]);
 
   // The uploaded crash files should be removed now.
   EXPECT_FALSE(base::PathExists(system_meta_file));
@@ -1132,17 +1262,17 @@ TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
 
   ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
 
-  // Set up the fake_crash_sender.sh so that it fails.
-  setenv("FAKE_CRASH_SENDER_SHOULD_FAIL", "true", 1 /* overwrite */);
+  // Set up the crash sender so that it fails.
+  ASSERT_TRUE(SetMockCrashSending(false));
 
   // Set up the sender.
   std::vector<base::TimeDelta> sleep_times;
   Sender::Options options;
-  options.shell_script = base::FilePath("fake_crash_sender.sh");
   options.proxy = mock.release();
   options.max_crash_rate = 2;
   options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
   options.proxy_servers.emplace_back(kNoProxyServer);
+  options.always_write_uploads_log = true;
   Sender sender(std::move(metrics_lib_), options);
   ASSERT_TRUE(sender.Init());
 
@@ -1151,6 +1281,10 @@ TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
   // The followings should be kept since the crash report was not uploaded.
   EXPECT_TRUE(base::PathExists(system_meta_file));
   EXPECT_TRUE(base::PathExists(system_log));
+
+  // The Chrome uploads.log file shouldn't exist because we had nothing to
+  // report.
+  EXPECT_FALSE(base::PathExists(paths::Get(paths::kChromeCrashLog)));
 }
 
 TEST_F(CrashSenderUtilTest, CreateClientId) {

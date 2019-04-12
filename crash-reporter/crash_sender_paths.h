@@ -30,6 +30,9 @@ constexpr char kTimestampsDirectory[] = "/var/lib/crash_sender";
 // Directory where crash_sender stores other state information (ex. client ID).
 constexpr char kCrashSenderStateDirectory[] = "/var/lib/crash_sender/state";
 
+// Chrome's crash report log file.
+constexpr char kChromeCrashLog[] = "/var/log/chrome/Crash Reports/uploads.log";
+
 }  // namespace paths
 
 #endif  // CRASH_REPORTER_CRASH_SENDER_PATHS_H_
