@@ -4,7 +4,6 @@
 
 use trace_events::{Argument, ArgumentValue, Label, Point, Scope, Tracer};
 
-use std::cell::Cell;
 use std::fmt::Write as FmtWrite;
 use std::fs::File;
 use std::io::Write;
@@ -12,9 +11,13 @@ use std::os::unix::io::AsRawFd;
 
 use libc::dup2;
 
-thread_local!(static LOCAL_RECORDS: Cell<String> = Cell::new(String::with_capacity(4096 * 4)));
+const NANOS_PER_MICRO: u64 = 1000;
 
-fn write_local_record<F: FnOnce(&mut String)>(
+// This will immediately write the record to the given file. The original implementation of this
+// function cached records in a thread local buffer, but this complicated the usage of this library
+// too significantly. There was no good time to flush the cache without using exotic OS alarm
+// primitives or manually putting code to flush in every thread of the client application.
+fn write_record<F: FnOnce(&mut String)>(
     ph: char,
     Label { name, category }: Label,
     Point {
@@ -26,96 +29,88 @@ fn write_local_record<F: FnOnce(&mut String)>(
     args: &[Argument],
     counters: &[(&str, u64)],
     extra_props: F,
-) -> (usize, usize) {
-    LOCAL_RECORDS.with(|cell| {
-        let mut s = cell.take();
-        s.push('{');
+    out_file: Option<&File>,
+) {
+    let mut f = match out_file {
+        Some(f) => f,
+        None => return,
+    };
+    let mut s = String::with_capacity(4096);
+    s.push('{');
 
-        {
-            s.push_str(r#""name":""#);
-            s.push_str(name);
-            s.push_str(r#"","#);
+    {
+        s.push_str(r#""name":""#);
+        s.push_str(name);
+        s.push_str(r#"","#);
 
-            s.push_str(r#""cat":""#);
-            s.push_str(category);
-            s.push_str(r#"","#);
+        s.push_str(r#""cat":""#);
+        s.push_str(category);
+        s.push_str(r#"","#);
 
-            s.push_str(r#""ph":""#);
-            s.push(ph);
-            s.push_str(r#"","#);
+        s.push_str(r#""ph":""#);
+        s.push(ph);
+        s.push_str(r#"","#);
 
-            s.push_str(r#""ts":"#);
-            let _ = write!(s, "{}", ts);
+        s.push_str(r#""ts":"#);
+        let _ = write!(s, "{}", ts / NANOS_PER_MICRO);
+        s.push_str(",");
+
+        if let Some(tts) = thread_ts {
+            s.push_str(r#""tts":"#);
+            let _ = write!(s, "{}", tts.get() / NANOS_PER_MICRO);
             s.push_str(",");
-
-            if let Some(tts) = thread_ts {
-                s.push_str(r#""tts":"#);
-                let _ = write!(s, "{}", tts);
-                s.push_str(",");
-            }
-
-            s.push_str(r#""pid":"#);
-            let _ = write!(s, "{}", pid);
-            s.push_str(",");
-
-            s.push_str(r#""tid":"#);
-            let _ = write!(s, "{}", tid);
-            s.push_str(",");
-
-            extra_props(&mut s);
-
-            s.push_str(r#""args":{"#);
-            {
-                for arg in args {
-                    s.push('"');
-                    s.push_str(arg.key);
-                    s.push_str(r#"":"#);
-                    match arg.value {
-                        ArgumentValue::Bool(b) => s.push_str(if b { "true" } else { "false" }),
-                        ArgumentValue::Sint(i) => {
-                            let _ = write!(s, "{}", i);
-                        }
-                        ArgumentValue::Uint(i) => {
-                            let _ = write!(s, "{}", i);
-                        }
-                        ArgumentValue::Float(f) => {
-                            let _ = write!(s, "{}", f);
-                        }
-                        ArgumentValue::String(v) => {
-                            let _ = write!(s, "{:?}", v);
-                        }
-                    }
-                    s.push(',');
-                }
-                for (key, value) in counters {
-                    s.push('"');
-                    s.push_str(key);
-                    s.push_str(r#"":"#);
-                    let _ = write!(s, "{}", value);
-                    s.push(',');
-                }
-                // Remove trailing comma
-                if !args.is_empty() || !counters.is_empty() {
-                    s.pop();
-                }
-            }
-            s.push_str("}");
         }
 
-        s.push_str("},\n");
-        let len_cap = (s.len(), s.capacity());
-        cell.set(s);
-        len_cap
-    })
-}
+        s.push_str(r#""pid":"#);
+        let _ = write!(s, "{}", pid);
+        s.push_str(",");
 
-fn flush_local_records<F: FnOnce(&str)>(f: F) {
-    LOCAL_RECORDS.with(|cell| {
-        let mut s = cell.take();
-        f(&s);
-        s.clear();
-        cell.set(s)
-    })
+        s.push_str(r#""tid":"#);
+        let _ = write!(s, "{}", tid);
+        s.push_str(",");
+
+        extra_props(&mut s);
+
+        s.push_str(r#""args":{"#);
+        {
+            for arg in args {
+                s.push('"');
+                s.push_str(arg.key);
+                s.push_str(r#"":"#);
+                match arg.value {
+                    ArgumentValue::Bool(b) => s.push_str(if b { "true" } else { "false" }),
+                    ArgumentValue::Sint(i) => {
+                        let _ = write!(s, "{}", i);
+                    }
+                    ArgumentValue::Uint(i) => {
+                        let _ = write!(s, "{}", i);
+                    }
+                    ArgumentValue::Float(f) => {
+                        let _ = write!(s, "{}", f);
+                    }
+                    ArgumentValue::String(v) => {
+                        let _ = write!(s, "{:?}", v);
+                    }
+                }
+                s.push(',');
+            }
+            for (key, value) in counters {
+                s.push('"');
+                s.push_str(key);
+                s.push_str(r#"":"#);
+                let _ = write!(s, "{}", value);
+                s.push(',');
+            }
+            // Remove trailing comma
+            if !args.is_empty() || !counters.is_empty() {
+                s.pop();
+            }
+        }
+        s.push_str("}");
+    }
+
+    s.push_str("},\n");
+    let _ = f.write(s.as_bytes());
 }
 
 /// A tracer that outputs to a file in the [Json Trace Event Format](https://docs.google.com/document/u/1/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/view).
@@ -135,7 +130,8 @@ impl JsonTracer {
     /// Sets the file that tracing output will be written to.
     ///
     /// The given file will immediately start being written to in order to output prefix data.
-    pub fn set_out_file(&mut self, out_file: File) {
+    pub fn set_out_file(&mut self, mut out_file: File) {
+        let _ = out_file.write(b"[\n");
         self.out_file = Some(out_file);
     }
 
@@ -154,44 +150,31 @@ impl JsonTracer {
             None => false,
         }
     }
-
-    /// Flushes thread-locally buffered output to the previously set output file. If a string
-    /// reference is provided, a copy of the flushed data will be appended to it. The `flushed`
-    /// parameter is most useful for unit testing.
-    pub fn flush(&self, flushed: Option<&mut String>) {
-        flush_local_records(|s| {
-            // There is no desire to propagate or report errors in tracing.
-            if let Some(mut f) = self.out_file.as_ref() {
-                let _ = f.write(&s.as_bytes());
-            }
-            if let Some(out) = flushed {
-                out.push_str(s);
-            }
-        });
-    }
-
-    fn maybe_flush(&self, (used, capacity): (usize, usize)) {
-        if used * 2 > capacity {
-            self.flush(None)
-        }
-    }
 }
 
 impl Tracer for JsonTracer {
     fn duration_begin(&self, label: Label, begin: Point, args: &[Argument]) {
-        self.maybe_flush(write_local_record('B', label, begin, args, &[], |_| {}));
+        write_record('B', label, begin, args, &[], |_| {}, self.out_file.as_ref());
     }
 
     fn duration_end(&self, label: Label, end: Point, args: &[Argument]) {
-        self.maybe_flush(write_local_record('E', label, end, args, &[], |_| {}));
+        write_record('E', label, end, args, &[], |_| {}, self.out_file.as_ref());
     }
 
     fn duration(&self, label: Label, begin: Point, duration: u64, args: &[Argument]) {
-        self.maybe_flush(write_local_record('X', label, begin, args, &[], |s| {
-            s.push_str(r#""duration":"#);
-            let _ = write!(s, "{}", duration);
-            s.push_str(r#","#);
-        }));
+        write_record(
+            'X',
+            label,
+            begin,
+            args,
+            &[],
+            |s| {
+                s.push_str(r#""dur":"#);
+                let _ = write!(s, "{}", duration / NANOS_PER_MICRO);
+                s.push_str(r#","#);
+            },
+            self.out_file.as_ref(),
+        );
     }
 
     fn instant(&self, label: Label, instant: Point, scope: Scope, args: &[Argument]) {
@@ -200,61 +183,112 @@ impl Tracer for JsonTracer {
             Scope::Process => 'p',
             Scope::Thread => 't',
         };
-        self.maybe_flush(write_local_record('i', label, instant, args, &[], |s| {
-            s.push_str(r#""scope":""#);
-            s.push(scope_ty);
-            s.push_str(r#"","#);
-        }));
+        write_record(
+            'i',
+            label,
+            instant,
+            args,
+            &[],
+            |s| {
+                s.push_str(r#""scope":""#);
+                s.push(scope_ty);
+                s.push_str(r#"","#);
+            },
+            self.out_file.as_ref(),
+        );
     }
 
     fn counter(&self, label: Label, instant: Point, counters: &[(&str, u64)]) {
-        self.maybe_flush(write_local_record(
+        write_record(
             'C',
             label,
             instant,
             &[],
             counters,
             |_| {},
-        ));
+            self.out_file.as_ref(),
+        );
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use libc::{c_char, syscall, SYS_memfd_create};
     use serde_json::{json, Value};
+    use std::fs::File;
+    use std::io::{Read, Seek, SeekFrom};
+    use std::os::unix::io::{FromRawFd, RawFd};
+
+    /// Creates a pair of memfds pointing to the same backing.
+    fn memfd_create_pair() -> (File, File) {
+        let f1 = unsafe {
+            let fd = syscall(
+                SYS_memfd_create,
+                b"/json_memfd\0".as_ptr() as *const c_char,
+                0,
+            );
+            assert!(fd >= 0, "failed to create memfd");
+            File::from_raw_fd(fd as RawFd)
+        };
+        let f2 = f1.try_clone().expect("failed to clone memfd");
+        (f1, f2)
+    }
+
+    /// Reads the contents of a file prior to its current cursor and terminates the trace for parsing.
+    fn read_out(mut f: &File) -> String {
+        let cursor = f
+            .seek(SeekFrom::Current(0))
+            .expect("failed to find file cursor");
+        let mut s = String::with_capacity(cursor as usize);
+        f.seek(SeekFrom::Start(0))
+            .expect("failed to seek file cursor to beginning");
+        f.read_to_string(&mut s)
+            .expect("failed to read file to string");
+        s.truncate(s.len() - 2);
+        s.push(']');
+        s
+    }
+
+    /// Creates a `JsonTracer` with its output set to a file, along with a duplication of that file
+    /// intended for reading later.
+    fn init_json_tracer() -> (JsonTracer, File) {
+        let (f1, f2) = memfd_create_pair();
+        let mut t = JsonTracer::new();
+        t.set_out_file(f1);
+        (t, f2)
+    }
 
     #[test]
     fn duration() {
-        let t = JsonTracer::new();
+        let (t, out_file) = init_json_tracer();
         let label = Label::new("test", "duration");
-        let begin = Point::from_timestamp(456);
-        let duration = 100;
+        let begin = Point::from_timestamp(45600);
+        let duration = 10000;
         t.duration(label, begin, duration, &[]);
-        let mut out = String::new();
-        t.flush(Some(&mut out));
+        let out = read_out(&out_file);
         println!("out = {}", out);
-        let out_val: Value = serde_json::from_str(out.trim().trim_matches(',')).unwrap();
+        let out_val: Value = serde_json::from_str(&out).unwrap();
         assert_eq!(
             out_val,
-            json!({
+            json!([{
                 "name": label.name,
                 "cat": label.category,
                 "ph": "X",
-                "ts": begin.ts,
-                "duration": duration,
+                "ts": begin.ts / NANOS_PER_MICRO,
+                "dur": duration / NANOS_PER_MICRO,
                 "pid": begin.pid,
                 "tid": begin.tid,
                 "args": {}
-            })
+            }])
         );
     }
 
     #[test]
     fn instant() {
-        let t = JsonTracer::new();
+        let (t, out_file) = init_json_tracer();
         let label = Label::new("test", "instant");
-        let point = Point::from_timestamp(456);
+        let point = Point::from_timestamp(45600);
         let scope = Scope::Global;
         t.instant(
             label,
@@ -268,17 +302,16 @@ mod tests {
                 Argument::new("special", "spicy"),
             ],
         );
-        let mut out = String::new();
-        t.flush(Some(&mut out));
+        let out = read_out(&out_file);
         println!("out = {}", out);
-        let out_val: Value = serde_json::from_str(out.trim().trim_matches(',')).unwrap();
+        let out_val: Value = serde_json::from_str(&out).unwrap();
         assert_eq!(
             out_val,
-            json!({
+            json!([{
                 "name": label.name,
                 "cat": label.category,
                 "ph": "i",
-                "ts": point.ts,
+                "ts": point.ts / NANOS_PER_MICRO,
                 "pid": point.pid,
                 "tid": point.tid,
                 "scope": "g",
@@ -289,34 +322,33 @@ mod tests {
                     "invalid": false,
                     "special": "spicy",
                 }
-            })
+            }])
         );
     }
 
     #[test]
     fn counter() {
-        let t = JsonTracer::new();
+        let (t, out_file) = init_json_tracer();
         let label = Label::new("test", "duration");
-        let instant = Point::from_timestamp(42);
+        let instant = Point::from_timestamp(420000);
         t.counter(label, instant, &[("blocks", 123), ("ducks", 456)]);
-        let mut out = String::new();
-        t.flush(Some(&mut out));
+        let out = read_out(&out_file);
         println!("out = {}", out);
-        let out_val: Value = serde_json::from_str(out.trim().trim_matches(',')).unwrap();
+        let out_val: Value = serde_json::from_str(&out).unwrap();
         assert_eq!(
             out_val,
-            json!({
+            json!([{
                 "name": label.name,
                 "cat": label.category,
                 "ph": "C",
-                "ts": instant.ts,
+                "ts": instant.ts / NANOS_PER_MICRO,
                 "pid": instant.pid,
                 "tid": instant.tid,
                 "args": {
                     "blocks": 123,
                     "ducks": 456,
                 }
-            })
+            }])
         );
     }
 }
