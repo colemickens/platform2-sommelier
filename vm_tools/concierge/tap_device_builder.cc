@@ -68,7 +68,9 @@ base::ScopedFD BuildTapDevice(const arc_networkd::MacAddress& mac_addr,
   // Create the socket for configuring the interface.
   base::ScopedFD sock(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
   if (!sock.is_valid()) {
-    PLOG(ERROR) << "Unable to create datagram socket";
+    PLOG(ERROR)
+        << "Unable to create datagram socket for configuring the interface "
+        << ifr.ifr_name;
     return base::ScopedFD();
   }
 
@@ -78,7 +80,8 @@ base::ScopedFD BuildTapDevice(const arc_networkd::MacAddress& mac_addr,
   addr->sin_family = AF_INET;
   addr->sin_addr.s_addr = static_cast<in_addr_t>(ipv4_addr);
   if (ioctl(sock.get(), SIOCSIFADDR, &ifr) != 0) {
-    PLOG(ERROR) << "Failed to set ip address for vmtap interface";
+    PLOG(ERROR) << "Failed to set ip address for vmtap interface "
+                << ifr.ifr_name;
     return base::ScopedFD();
   }
 
@@ -88,7 +91,7 @@ base::ScopedFD BuildTapDevice(const arc_networkd::MacAddress& mac_addr,
   netmask->sin_family = AF_INET;
   netmask->sin_addr.s_addr = static_cast<in_addr_t>(ipv4_netmask);
   if (ioctl(sock.get(), SIOCSIFNETMASK, &ifr) != 0) {
-    PLOG(ERROR) << "Failed to set netmask for vmtap interface";
+    PLOG(ERROR) << "Failed to set netmask for vmtap interface " << ifr.ifr_name;
     return base::ScopedFD();
   }
 
@@ -97,7 +100,8 @@ base::ScopedFD BuildTapDevice(const arc_networkd::MacAddress& mac_addr,
   hwaddr->sa_family = ARPHRD_ETHER;
   memcpy(&hwaddr->sa_data, &mac_addr, sizeof(mac_addr));
   if (ioctl(sock.get(), SIOCSIFHWADDR, &ifr) != 0) {
-    PLOG(ERROR) << "Failed to set mac address for vmtap interface";
+    PLOG(ERROR) << "Failed to set mac address for vmtap interface "
+                << ifr.ifr_name;
     return base::ScopedFD();
   }
 
@@ -106,7 +110,8 @@ base::ScopedFD BuildTapDevice(const arc_networkd::MacAddress& mac_addr,
   if (vnet_hdr) {
     // Set the vnet header size.
     if (ioctl(dev.get(), TUNSETVNETHDRSZ, &kVnetHeaderSize) != 0) {
-      PLOG(ERROR) << "Failed to set vnet header size for vmtap interface";
+      PLOG(ERROR) << "Failed to set vnet header size for vmtap interface "
+                  << ifr.ifr_name;
       return base::ScopedFD();
     }
 
@@ -114,7 +119,8 @@ base::ScopedFD BuildTapDevice(const arc_networkd::MacAddress& mac_addr,
     // by the net device in crosvm.
     if (ioctl(dev.get(), TUNSETOFFLOAD,
               TUN_F_CSUM | TUN_F_UFO | TUN_F_TSO4 | TUN_F_TSO6) != 0) {
-      PLOG(ERROR) << "Failed to set offload for vmtap interface";
+      PLOG(ERROR) << "Failed to set offload for vmtap interface "
+                  << ifr.ifr_name;
       return base::ScopedFD();
     }
   }
@@ -125,19 +131,19 @@ base::ScopedFD BuildTapDevice(const arc_networkd::MacAddress& mac_addr,
     PLOG(ERROR) << "Unable to look up UID for " << kCrosVmUser;
   } else {
     if (ioctl(dev.get(), TUNSETOWNER, owner_uid) != 0) {
-      PLOG(ERROR) << "Failed to set owner for vmtap interface";
+      PLOG(ERROR) << "Failed to set owner for vmtap interface " << ifr.ifr_name;
     }
   }
 
   // Finally, enable the device.
   if (ioctl(sock.get(), SIOCGIFFLAGS, &ifr) != 0) {
-    PLOG(ERROR) << "Failed to get flags for vmtap interface";
+    PLOG(ERROR) << "Failed to get flags for vmtap interface " << ifr.ifr_name;
     return base::ScopedFD();
   }
 
   ifr.ifr_flags = IFF_UP | IFF_RUNNING;
   if (ioctl(sock.get(), SIOCSIFFLAGS, &ifr) != 0) {
-    PLOG(ERROR) << "Failed to enable vmtap interface";
+    PLOG(ERROR) << "Failed to enable vmtap interface " << ifr.ifr_name;
     return base::ScopedFD();
   }
 
