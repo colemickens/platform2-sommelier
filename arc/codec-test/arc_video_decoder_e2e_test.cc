@@ -14,6 +14,7 @@
 
 #include "arc/codec-test/common.h"
 #include "arc/codec-test/mediacodec_decoder.h"
+#include "arc/codec-test/video_frame.h"
 
 namespace android {
 
@@ -73,6 +74,11 @@ class ArcVideoDecoderTestEnvironment : public testing::Environment {
               VideoCodecType::UNKNOWN);
   }
 
+  // Get the corresponding frame-wise golden MD5 file path.
+  std::string GoldenMD5FilePath() const {
+    return input_file_path_ + ".frames.md5";
+  }
+
   std::string output_frames_path() const { return output_frames_path_; }
 
   std::string input_file_path() const { return input_file_path_; }
@@ -92,24 +98,114 @@ class ArcVideoDecoderTestEnvironment : public testing::Environment {
   VideoCodecProfile video_codec_profile_;
 };
 
+// The struct to record output formats.
+struct OutputFormat {
+  Size coded_size;
+  Size visible_size;
+  int32_t color_format = 0;
+};
+
+// The helper class to validate video frame by MD5 and ouput to I420 raw stream
+// if needed.
+class VideoFrameValidator {
+ public:
+  VideoFrameValidator() = default;
+  ~VideoFrameValidator() { output_file_.close(); }
+
+  // Set |md5_golden_path| as the path of golden frame-wise MD5 file. Return
+  // false if the file is failed to read.
+  bool SetGoldenMD5File(const std::string& md5_golden_path) {
+    golden_md5_file_ =
+        std::unique_ptr<InputFileASCII>(new InputFileASCII(md5_golden_path));
+    return golden_md5_file_->IsValid();
+  }
+
+  // Set |output_frames_path| as the path for output raw I420 stream. Return
+  // false if the file is failed to open.
+  bool SetOutputFile(const std::string& output_frames_path) {
+    if (output_frames_path.empty())
+      return false;
+
+    output_file_.open(output_frames_path, std::ofstream::binary);
+    if (!output_file_.is_open()) {
+      printf("[ERR] Failed to open file: %s\n", output_frames_path.c_str());
+      return false;
+    }
+    printf("[LOG] Decode output to file: %s\n", output_frames_path.c_str());
+    write_to_file_ = true;
+    return true;
+  }
+
+  // Callback function of output buffer ready to validate frame data by
+  // VideoFrameValidator, write into file if needed.
+  void VerifyMD5(const uint8_t* data, size_t buffer_size, int output_index) {
+    std::string golden;
+    ASSERT_TRUE(golden_md5_file_ && golden_md5_file_->IsValid());
+    ASSERT_TRUE(golden_md5_file_->ReadLine(&golden))
+        << "Failed to read golden MD5 at frame#" << output_index;
+
+    std::unique_ptr<VideoFrame> video_frame = VideoFrame::Create(
+        data, buffer_size, output_format_.coded_size,
+        output_format_.visible_size, output_format_.color_format);
+    ASSERT_TRUE(video_frame)
+        << "Failed to create video frame on VerifyMD5 at frame#"
+        << output_index;
+
+    ASSERT_TRUE(video_frame->VerifyMD5(golden))
+        << "MD5 mismatched at frame#" << output_index;
+
+    // Update color_format.
+    output_format_.color_format = video_frame->color_format();
+  }
+
+  // Callback function of output buffer ready to validate frame data by
+  // VideoFrameValidator, write into file if needed.
+  void OutputToFile(const uint8_t* data, size_t buffer_size, int output_index) {
+    if (!write_to_file_)
+      return;
+
+    std::unique_ptr<VideoFrame> video_frame = VideoFrame::Create(
+        data, buffer_size, output_format_.coded_size,
+        output_format_.visible_size, output_format_.color_format);
+    ASSERT_TRUE(video_frame)
+        << "Failed to create video frame on OutputToFile at frame#"
+        << output_index;
+    if (!video_frame->WriteFrame(&output_file_)) {
+      printf("[ERR] Failed to write output buffer into file.\n");
+      // Stop writing frames to file once it is failed.
+      write_to_file_ = false;
+    }
+  }
+
+  // Callback function of output format changed to update output format.
+  void UpdateOutputFormat(const Size& coded_size,
+                          const Size& visible_size,
+                          int32_t color_format) {
+    output_format_.coded_size = coded_size;
+    output_format_.visible_size = visible_size;
+    output_format_.color_format = color_format;
+  }
+
+ private:
+  // The wrapper of input MD5 golden file.
+  std::unique_ptr<InputFileASCII> golden_md5_file_;
+  // The output file to write the decoded raw video.
+  std::ofstream output_file_;
+
+  // Only output video frame to file if True.
+  bool write_to_file_ = false;
+  // This records output format, color_format might be revised in flexible
+  // format case.
+  OutputFormat output_format_;
+};
+
 class ArcVideoDecoderE2ETest : public testing::Test {
  public:
   //  Callback function of output buffer ready to count frame.
-  void CountFrame(const uint8_t* /* data */, size_t /* buffer_size */) {
+  void CountFrame(const uint8_t* /* data */,
+                  size_t /* buffer_size */,
+                  int /* output_index */) {
     decoded_frames_++;
-  }
-
-  // Callback function of output buffer ready to write buffer into file, as well
-  // as count frame.
-  void WriteOutputToFile(const uint8_t* data, size_t buffer_size) {
-    CountFrame(data, buffer_size);
-
-    // TODO(johnylin): only write pixels in visible size to file and check
-    //                 frame-wise md5sum. b/112741393
-    output_file_.write(reinterpret_cast<const char*>(data), buffer_size);
-    if (output_file_.fail()) {
-      printf("[ERR] Failed to write output buffer into file.\n");
-    }
   }
 
   // Callback function of output format changed to verify output format.
@@ -125,7 +221,9 @@ class ArcVideoDecoderE2ETest : public testing::Test {
         "color_format: 0x%x\n",
         coded_size.width, coded_size.height, visible_size.width,
         visible_size.height, color_format);
-    visible_size_ = visible_size;
+    output_format_.coded_size = coded_size;
+    output_format_.visible_size = visible_size;
+    output_format_.color_format = color_format;
   }
 
  protected:
@@ -139,67 +237,60 @@ class ArcVideoDecoderE2ETest : public testing::Test {
 
     ASSERT_TRUE(decoder_->Configure());
     ASSERT_TRUE(decoder_->Start());
+
+    decoder_->AddOutputBufferReadyCb(std::bind(
+        &ArcVideoDecoderE2ETest::CountFrame, this, std::placeholders::_1,
+        std::placeholders::_2, std::placeholders::_3));
   }
 
   void TearDown() override {
     EXPECT_TRUE(decoder_->Stop());
 
-    EXPECT_EQ(g_env->visible_size().width, visible_size_.width);
-    EXPECT_EQ(g_env->visible_size().height, visible_size_.height);
+    EXPECT_EQ(g_env->visible_size().width, output_format_.visible_size.width);
+    EXPECT_EQ(g_env->visible_size().height, output_format_.visible_size.height);
     EXPECT_EQ(g_env->num_frames(), decoded_frames_);
 
-    output_file_.close();
     decoder_.reset();
-  }
-
-  bool CreateOutputFile() {
-    if (g_env->output_frames_path().empty())
-      return false;
-
-    output_file_.open(g_env->output_frames_path(), std::ofstream::binary);
-    if (!output_file_.is_open()) {
-      printf("[ERR] Failed to open file: %s\n",
-             g_env->output_frames_path().c_str());
-      return false;
-    }
-    printf("[LOG] Decode output to file: %s\n",
-           g_env->output_frames_path().c_str());
-    return true;
   }
 
   // The wrapper of the mediacodec decoder.
   std::unique_ptr<MediaCodecDecoder> decoder_;
 
-  // The output file to write the decoded raw video.
-  std::ofstream output_file_;
   // The counter of obtained decoded output frames.
   int decoded_frames_ = 0;
-  // This records visible size from output format change.
-  Size visible_size_;
+  // This records formats from output format change.
+  OutputFormat output_format_;
 };
 
 TEST_F(ArcVideoDecoderE2ETest, TestSimpleDecode) {
-  if (CreateOutputFile()) {
-    decoder_->SetOutputBufferReadyCb(
-        std::bind(&ArcVideoDecoderE2ETest::WriteOutputToFile, this,
-                  std::placeholders::_1, std::placeholders::_2));
-  } else {
-    decoder_->SetOutputBufferReadyCb(
-        std::bind(&ArcVideoDecoderE2ETest::CountFrame, this,
-                  std::placeholders::_1, std::placeholders::_2));
+  VideoFrameValidator video_frame_validator;
+
+  ASSERT_TRUE(
+      video_frame_validator.SetGoldenMD5File(g_env->GoldenMD5FilePath()))
+      << "Failed to open MD5 file: " << g_env->GoldenMD5FilePath();
+
+  decoder_->AddOutputBufferReadyCb(std::bind(
+      &VideoFrameValidator::VerifyMD5, &video_frame_validator,
+      std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+
+  if (video_frame_validator.SetOutputFile(g_env->output_frames_path())) {
+    decoder_->AddOutputBufferReadyCb(std::bind(
+        &VideoFrameValidator::OutputToFile, &video_frame_validator,
+        std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
   }
-  decoder_->SetOutputFormatChangedCb(std::bind(
+
+  decoder_->AddOutputFormatChangedCb(std::bind(
       &ArcVideoDecoderE2ETest::VerifyOutputFormat, this, std::placeholders::_1,
       std::placeholders::_2, std::placeholders::_3));
+  decoder_->AddOutputFormatChangedCb(std::bind(
+      &VideoFrameValidator::UpdateOutputFormat, &video_frame_validator,
+      std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
   EXPECT_TRUE(decoder_->Decode());
 }
 
 TEST_F(ArcVideoDecoderE2ETest, TestFPS) {
-  decoder_->SetOutputBufferReadyCb(
-      std::bind(&ArcVideoDecoderE2ETest::CountFrame, this,
-                std::placeholders::_1, std::placeholders::_2));
-  decoder_->SetOutputFormatChangedCb(std::bind(
+  decoder_->AddOutputFormatChangedCb(std::bind(
       &ArcVideoDecoderE2ETest::VerifyOutputFormat, this, std::placeholders::_1,
       std::placeholders::_2, std::placeholders::_3));
 
@@ -220,7 +311,7 @@ bool GetOption(int argc,
                char** argv,
                std::string* test_video_data,
                std::string* output_frames_path) {
-  const char* const optstring = "to:";
+  const char* const optstring = "t:o:";
   static const struct option opts[] = {
       {"test_video_data", required_argument, nullptr, 't'},
       {"output_frames_path", required_argument, nullptr, 'o'},

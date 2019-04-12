@@ -6,6 +6,7 @@
 #define ARC_CODEC_TEST_COMMON_H_
 
 #include <fstream>
+#include <ios>
 #include <string>
 #include <vector>
 
@@ -59,10 +60,10 @@ struct Size {
   int height;
 };
 
-// Wrapper of std::ifstream.
-class InputFileStream {
+class InputFile {
  public:
-  explicit InputFileStream(std::string file_path);
+  explicit InputFile(std::string file_path);
+  InputFile(std::string file_path, std::ios_base::openmode openmode);
 
   // Check if the file is valid.
   bool IsValid() const;
@@ -70,12 +71,28 @@ class InputFileStream {
   size_t GetLength();
   // Set position to the beginning of the file.
   void Rewind();
+
+ protected:
+  std::ifstream file_;
+};
+
+// Wrapper of std::ifstream for reading binary file.
+class InputFileStream : public InputFile {
+ public:
+  explicit InputFileStream(std::string file_path);
+
   // Read the given number of bytes to the buffer. Return the number of bytes
   // read or -1 on error.
   size_t Read(char* buffer, size_t size);
+};
 
- private:
-  std::ifstream file_;
+// Wrapper of std::ifstream for reading ASCII file.
+class InputFileASCII : public InputFile {
+ public:
+  explicit InputFileASCII(std::string file_path);
+
+  // Read one line from the file. Return false if EOF.
+  bool ReadLine(std::string* line);
 };
 
 // Helper function to get VideoCodecType from |profile|.

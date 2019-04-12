@@ -109,13 +109,13 @@ MediaCodecDecoder::~MediaCodecDecoder() {
   }
 }
 
-void MediaCodecDecoder::SetOutputBufferReadyCb(const OutputBufferReadyCb& cb) {
-  output_buffer_ready_cb_ = cb;
+void MediaCodecDecoder::AddOutputBufferReadyCb(const OutputBufferReadyCb& cb) {
+  output_buffer_ready_cbs_.push_back(cb);
 }
 
-void MediaCodecDecoder::SetOutputFormatChangedCb(
+void MediaCodecDecoder::AddOutputFormatChangedCb(
     const OutputFormatChangedCb& cb) {
-  output_format_changed_cb_ = cb;
+  output_format_changed_cbs_.push_back(cb);
 }
 
 void MediaCodecDecoder::Rewind() {
@@ -322,8 +322,9 @@ bool MediaCodecDecoder::ReceiveOutputBuffer(size_t index,
       index, info.size, info.presentationTimeUs, info.flags, received_outputs_);
 
   // Do not callback for dummy EOS output (info.size == 0)
-  if (output_buffer_ready_cb_ && info.size > 0) {
-    output_buffer_ready_cb_(buf, info.size);
+  if (info.size > 0) {
+    for (const auto& callback : output_buffer_ready_cbs_)
+      callback(buf, info.size, received_outputs_);
   }
 
   media_status_t status =
@@ -397,11 +398,10 @@ bool MediaCodecDecoder::GetOutputFormat() {
     slice_height = height;
   }
 
-  if (output_format_changed_cb_) {
-    output_format_changed_cb_(
-        Size(stride, slice_height),
-        Size(crop_right - crop_left + 1, crop_bottom - crop_top + 1),
-        color_format);
+  for (const auto& callback : output_format_changed_cbs_) {
+    callback(Size(stride, slice_height),
+             Size(crop_right - crop_left + 1, crop_bottom - crop_top + 1),
+             color_format);
   }
   return success;
 }

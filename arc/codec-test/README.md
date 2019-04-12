@@ -56,9 +56,10 @@ tests. Make sure the device under test (DUT) can be connected adb.
         ```
 
     Decoder E2E test:
-        (1) Push the test stream to DUT
+        (1) Push the test stream and frame-wise MD5 file to DUT
         ```
         $ adb push test-25fps.h264 /data/local/tmp/
+        $ adb push test-25fps.h264.frames.md5 /data/local/tmp/
         ```
 
         (2) Run the test binary

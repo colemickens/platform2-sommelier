@@ -12,15 +12,19 @@
 
 namespace android {
 
-InputFileStream::InputFileStream(std::string file_path) {
-  file_ = std::ifstream(file_path, std::ifstream::binary);
+InputFile::InputFile(std::string file_path) {
+  file_ = std::ifstream(file_path);
 }
 
-bool InputFileStream::IsValid() const {
+InputFile::InputFile(std::string file_path, std::ios_base::openmode openmode) {
+  file_ = std::ifstream(file_path, openmode);
+}
+
+bool InputFile::IsValid() const {
   return file_.is_open();
 }
 
-size_t InputFileStream::GetLength() {
+size_t InputFile::GetLength() {
   int current_pos = file_.tellg();
 
   file_.seekg(0, file_.end);
@@ -30,10 +34,13 @@ size_t InputFileStream::GetLength() {
   return ret;
 }
 
-void InputFileStream::Rewind() {
+void InputFile::Rewind() {
   file_.clear();
   file_.seekg(0);
 }
+
+InputFileStream::InputFileStream(std::string file_path)
+    : InputFile(file_path, std::ifstream::binary) {}
 
 size_t InputFileStream::Read(char* buffer, size_t size) {
   file_.read(buffer, size);
@@ -41,6 +48,19 @@ size_t InputFileStream::Read(char* buffer, size_t size) {
     return -1;
 
   return file_.gcount();
+}
+
+InputFileASCII::InputFileASCII(std::string file_path) : InputFile(file_path) {}
+
+bool InputFileASCII::ReadLine(std::string* line) {
+  std::string read_line;
+  while (std::getline(file_, read_line)) {
+    if (read_line.empty())  // be careful: an empty line might be read
+      continue;             //             even if none exist.
+    *line = read_line;
+    return true;
+  }
+  return false;  // no more lines
 }
 
 VideoCodecType VideoCodecProfileToType(VideoCodecProfile profile) {

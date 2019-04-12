@@ -8,6 +8,7 @@
 #include <memory>
 #include <queue>
 #include <string>
+#include <vector>
 
 #include <media/NdkMediaCodec.h>
 
@@ -29,16 +30,17 @@ class MediaCodecDecoder {
   ~MediaCodecDecoder();
 
   // The callback function that is called when output buffer is ready.
-  using OutputBufferReadyCb =
-      std::function<void(const uint8_t* /* data */, size_t /* buffer_size */)>;
-  void SetOutputBufferReadyCb(const OutputBufferReadyCb& cb);
+  using OutputBufferReadyCb = std::function<void(const uint8_t* /* data */,
+                                                 size_t /* buffer_size */,
+                                                 int /* output_index */)>;
+  void AddOutputBufferReadyCb(const OutputBufferReadyCb& cb);
 
   // The callback function that is called when output format is changed.
   using OutputFormatChangedCb =
       std::function<void(const Size& /* coded_size */,
                          const Size& /* visible_size */,
                          int32_t /* color_format */)>;
-  void SetOutputFormatChangedCb(const OutputFormatChangedCb& cb);
+  void AddOutputFormatChangedCb(const OutputFormatChangedCb& cb);
 
   // Decoder manipulation methods.
 
@@ -103,10 +105,12 @@ class MediaCodecDecoder {
   // The output video visible size.
   Size input_visible_size_;
 
-  // The callback function which is called when a output buffer is ready.
-  OutputBufferReadyCb output_buffer_ready_cb_;
-  // The callback function that is called when output format is changed.
-  OutputFormatChangedCb output_format_changed_cb_;
+  // The list of callback functions which are called in order when a output
+  // buffer is ready.
+  std::vector<OutputBufferReadyCb> output_buffer_ready_cbs_;
+  // The list of callback functions that are called in order when output format
+  // is changed.
+  std::vector<OutputFormatChangedCb> output_format_changed_cbs_;
 
   // The fragment index that indicates which frame is sent to the decoder at
   // next round.

@@ -84,6 +84,8 @@ executable("arcvideodecoder_test") {
     "arc_video_decoder_e2e_test.cc",
     "common.cc",
     "encoded_data_helper.cc",
+    "md5.cc",
     "mediacodec_decoder.cc",
+    "video_frame.cc",
   ]
 }
