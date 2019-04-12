@@ -155,8 +155,6 @@ const std::vector<Log> kCommandLogs {
 #endif  // USE_IWLWIFI_DUMP
   {kCommand, "kernel-crashes",
     "cat /var/spool/crash/kernel.*.kcrash 2>/dev/null"},
-  {kCommand, "logcat", "/usr/sbin/android-sh -c '/system/bin/logcat -d'",
-    kRoot, kRoot, Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
   {kCommand, "lsmod", "lsmod"},
   {kCommand, "lspci", "/usr/sbin/lspci"},
   {kCommand, "lsusb", "lsusb && lsusb -t"},
@@ -194,9 +192,6 @@ const std::vector<Log> kCommandLogs {
   {kFile, "mountinfo", "/proc/1/mountinfo"},
   {kCommand, "netlog",
     "/usr/share/userfeedback/scripts/getmsgs /var/log/net.log"},
-  // --processes requires root.
-  {kCommand, "netstat",
-    "/sbin/ss --all --query inet --numeric --processes", kRoot, kRoot},
   {kFile, "nvmap_iovmm", "/sys/kernel/debug/nvmap/iovmm/allocations",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   {kCommand, "oemdata", "/usr/share/cros/oemdata.sh", kRoot, kRoot},
@@ -302,8 +297,6 @@ const std::vector<Log> kCommandLogs {
 // netstat and logcat should appear in chrome://system but not in feedback
 // reports.  Open sockets may have privacy implications, and logcat is
 // already incorporated via arc-bugreport.
-const std::vector<string> kCommandLogsExclude = {"netstat", "logcat"};
-
 const std::vector<Log> kExtraLogs {
 #if USE_CELLULAR
   {kCommand, "mm-status", "/usr/bin/modem status"},
@@ -312,6 +305,11 @@ const std::vector<Log> kExtraLogs {
   {kCommand, "network-services", "/usr/bin/connectivity show services"},
   {kCommand, "wifi_status_show_macs",
     "/usr/bin/network_diag --wifi-internal --no-log --show-macs"},
+  // --processes requires root.
+  {kCommand, "netstat",
+    "/sbin/ss --all --query inet --numeric --processes", kRoot, kRoot},
+  {kCommand, "logcat", "/usr/sbin/android-sh -c '/system/bin/logcat -d'",
+    kRoot, kRoot, Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
 };
 
 const std::vector<Log> kFeedbackLogs {
@@ -677,9 +675,6 @@ void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd) {
   GetPerfData(&map);
   base::DictionaryValue dictionary;
   GetLogsInDictionary(kCommandLogs, &anonymizer_, &dictionary);
-  for (const auto& key : kCommandLogsExclude) {
-    dictionary.Remove(key, nullptr);
-  }
   GetLogsInDictionary(kFeedbackLogs, &anonymizer_, &dictionary);
   GetLogsInDictionary(kBigFeedbackLogs, &anonymizer_, &dictionary);
   GetLsbReleaseInfo(&map);
