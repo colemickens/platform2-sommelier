@@ -111,6 +111,8 @@ class DeviceInterfaceHandler {
                                               bool success,
                                               const std::string& dbus_error)>;
 
+  using ScanManagementCallback = base::Callback<void(bool enabled)>;
+
   // |newblue| and |exported_object_manager_wrapper| not owned, caller must make
   // sure it outlives this object.
   DeviceInterfaceHandler(
@@ -121,6 +123,9 @@ class DeviceInterfaceHandler {
 
   // Starts listening pair state events from Newblue.
   bool Init();
+
+  // Sets the callback to manage background scan.
+  void SetScanManagementCallback(ScanManagementCallback callback);
 
   // Returns weak pointer of this object.
   base::WeakPtr<DeviceInterfaceHandler> GetWeakPtr();
@@ -170,6 +175,11 @@ class DeviceInterfaceHandler {
   // GetServiceRecords() - No op, but we may need dummy implementation later.
   // ExecuteWrite()
 
+  // Initiates LE connection to a peer device. This is internal function called
+  // by the user facing D-Bus Connect() method and the non-user facing auto
+  // reconnection.
+  void ConnectInternal(const std::string& device_address);
+
   // Called when a connection/disconnection request is fulfilled and we are
   // ready to send a reply of the Connect()/Disconnect() method.
   void ConnectReply(const std::string& device_address,
@@ -177,6 +187,10 @@ class DeviceInterfaceHandler {
                     const std::string& dbus_error);
   // Called on update of GATT client connection.
   void OnGattClientConnectCallback(gatt_client_conn_t conn_id, uint8_t status);
+
+  void SetDeviceConnected(Device* device, bool is_connected);
+  void SetDevicePaired(Device* device, bool is_connected);
+  void UpdateBackgroundScan();
 
   // Finds a device from |discovered_devices_| with the given |device_address|.
   // Returns nullptr if no such device is found.
@@ -257,6 +271,8 @@ class DeviceInterfaceHandler {
   scoped_refptr<dbus::Bus> bus_;
   Newblue* newblue_;
   ExportedObjectManagerWrapper* exported_object_manager_wrapper_;
+
+  ScanManagementCallback scan_management_callback_;
 
   // Keeps the discovered devices.
   // TODO(sonnysasaka): Clear old devices according to BlueZ mechanism.

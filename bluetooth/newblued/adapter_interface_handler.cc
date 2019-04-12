@@ -31,6 +31,10 @@ AdapterInterfaceHandler::AdapterInterfaceHandler(
 void AdapterInterfaceHandler::Init(
     DeviceInterfaceHandler* device_interface_handler) {
   device_interface_handler_ = device_interface_handler;
+  device_interface_handler_->SetScanManagementCallback(
+      base::Bind(&AdapterInterfaceHandler::SetBackgroundScanEnable,
+                 weak_ptr_factory_.GetWeakPtr()));
+
   dbus::ObjectPath adapter_object_path(kAdapterObjectPath);
   exported_object_manager_wrapper_->AddExportedInterface(
       adapter_object_path, bluetooth_adapter::kBluetoothAdapterInterface);
@@ -144,10 +148,12 @@ bool AdapterInterfaceHandler::HandleRemoveDevice(
 
 bool AdapterInterfaceHandler::UpdateDiscovery(int n_discovery_clients) {
   VLOG(1) << "Updating discovery for would be " << n_discovery_clients
-          << " clients.";
-  if (n_discovery_clients > 0 && !is_discovering_) {
-    // There is at least one client requesting for discovery, and it's not
-    // currently discovering.
+          << " clients and background scan = " << is_background_scan_enabled_;
+  if ((n_discovery_clients > 0 || is_background_scan_enabled_) &&
+      !is_discovering_) {
+    // It's not currently discovering, should it start discovery?
+    // Yes if there is at least 1 client requesting it or background scan is
+    // enabled.
     VLOG(1) << "Trying to start discovery";
     if (!newblue_->StartDiscovery(
             base::Bind(&AdapterInterfaceHandler::DeviceDiscoveryCallback,
@@ -156,9 +162,11 @@ bool AdapterInterfaceHandler::UpdateDiscovery(int n_discovery_clients) {
       return false;
     }
     is_discovering_ = true;
-  } else if (n_discovery_clients == 0 && is_discovering_) {
-    // There is no client requesting for discovery, and it's currently
-    // discovering.
+  } else if (n_discovery_clients == 0 && !is_background_scan_enabled_ &&
+             is_discovering_) {
+    // It's currently discovering, should it stop discovery?
+    // Yes if there is no client requesting discovery and background scan is not
+    // enabled.
     VLOG(1) << "Trying to stop discovery";
     if (!newblue_->StopDiscovery()) {
       LOG(ERROR) << "Failed to stop discovery";
@@ -170,6 +178,14 @@ bool AdapterInterfaceHandler::UpdateDiscovery(int n_discovery_clients) {
   }
 
   return true;
+}
+
+void AdapterInterfaceHandler::SetBackgroundScanEnable(bool enabled) {
+  if (enabled == is_background_scan_enabled_)
+    return;
+
+  is_background_scan_enabled_ = enabled;
+  UpdateDiscovery(discovery_clients_.size());
 }
 
 void AdapterInterfaceHandler::DeviceDiscoveryCallback(

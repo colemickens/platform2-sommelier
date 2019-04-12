@@ -16,6 +16,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "bluetooth/common/util.h"
+#include "bluetooth/newblued/adapter_interface_handler.h"
 
 namespace bluetooth {
 
@@ -295,7 +296,7 @@ bool DeviceInterfaceHandler::Init() {
 
     Device* device = AddOrGetDiscoveredDevice(known_device.address,
                                               known_device.address_type);
-    device->paired.SetValue(true);
+    SetDevicePaired(device, true);
     device->name.SetValue(known_device.name + kNewblueNameSuffix);
     UpdateDeviceAlias(device);
     ExportOrUpdateDevice(device);
@@ -317,6 +318,13 @@ bool DeviceInterfaceHandler::Init() {
   return true;
 }
 
+void DeviceInterfaceHandler::SetScanManagementCallback(
+    ScanManagementCallback callback) {
+  CHECK(scan_management_callback_.is_null())
+      << "ScanManagementCallback already defined";
+  scan_management_callback_ = callback;
+}
+
 base::WeakPtr<DeviceInterfaceHandler> DeviceInterfaceHandler::GetWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
 }
@@ -328,7 +336,14 @@ void DeviceInterfaceHandler::OnDeviceDiscovered(
     int8_t rssi,
     uint8_t reply_type,
     const std::vector<uint8_t>& eir) {
-  Device* device = AddOrGetDiscoveredDevice(address, address_type);
+  Device* device = FindDevice(address);
+  if (device && device->paired.value())
+    ConnectInternal(address);
+
+  if (!scanned_by_client)
+    return;
+
+  device = AddOrGetDiscoveredDevice(address, address_type);
 
   device->rssi.SetValue(rssi);
 
@@ -350,6 +365,7 @@ bool DeviceInterfaceHandler::RemoveDevice(const std::string& address) {
 
   newblue_->CancelPair(address, device->is_random_address);
   discovered_devices_.erase(address);
+  UpdateBackgroundScan();
 
   dbus::ObjectPath device_path(ConvertDeviceAddressToObjectPath(address));
   exported_object_manager_wrapper_->RemoveExportedInterface(
@@ -511,39 +527,7 @@ void DeviceInterfaceHandler::HandleConnect(
   session.connect_response = std::move(response);
   connection_sessions_.emplace(device_address, std::move(session));
 
-  const Device* device = FindDevice(device_address);
-  if (!device) {
-    LOG(WARNING) << "device " << device_address << " not found";
-    ConnectReply(device_address, false, bluetooth_device::kErrorDoesNotExist);
-    return;
-  }
-
-  struct bt_addr address;
-  CHECK(ConvertToBtAddr(device->is_random_address, device_address, &address));
-
-  if (base::ContainsKey(connection_attempts_, device_address)) {
-    LOG(WARNING) << "Connection with device " << device_address
-                 << " in progress";
-    ConnectReply(device_address, false, bluetooth_device::kErrorInProgress);
-    return;
-  }
-
-  if (connections_.find(device_address) != connections_.end()) {
-    LOG(WARNING) << "Connection with device " << device_address
-                 << " already exists";
-    ConnectReply(device_address, false, bluetooth_device::kErrorAlreadyExists);
-    return;
-  }
-
-  gatt_client_conn_t conn_id =
-      newblue_->GattClientConnect(device->address, device->is_random_address);
-  if (!conn_id) {
-    LOG(WARNING) << "Failed GATT client connect";
-    ConnectReply(device_address, false, bluetooth_device::kErrorFailed);
-    return;
-  }
-
-  connection_attempts_.emplace(device_address, conn_id);
+  ConnectInternal(device_address);
 }
 
 void DeviceInterfaceHandler::HandleDisconnect(
@@ -585,6 +569,43 @@ void DeviceInterfaceHandler::HandleDisconnect(
   connection_sessions_.emplace(device_address, std::move(session));
 
   gattClientDisconnect(connections_[device_address].conn_id);
+}
+
+void DeviceInterfaceHandler::ConnectInternal(
+    const std::string& device_address) {
+  const Device* device = FindDevice(device_address);
+  if (!device) {
+    LOG(WARNING) << "device " << device_address << " not found";
+    ConnectReply(device_address, false, bluetooth_device::kErrorDoesNotExist);
+    return;
+  }
+
+  struct bt_addr address;
+  CHECK(ConvertToBtAddr(device->is_random_address, device_address, &address));
+
+  if (base::ContainsKey(connection_attempts_, device_address)) {
+    LOG(WARNING) << "Connection with device " << device_address
+                 << " in progress";
+    ConnectReply(device_address, false, bluetooth_device::kErrorInProgress);
+    return;
+  }
+
+  if (connections_.find(device_address) != connections_.end()) {
+    LOG(WARNING) << "Connection with device " << device_address
+                 << " already exists";
+    ConnectReply(device_address, false, bluetooth_device::kErrorAlreadyExists);
+    return;
+  }
+
+  gatt_client_conn_t conn_id =
+      newblue_->GattClientConnect(device->address, device->is_random_address);
+  if (!conn_id) {
+    LOG(WARNING) << "Failed GATT client connect";
+    ConnectReply(device_address, false, bluetooth_device::kErrorFailed);
+    return;
+  }
+
+  connection_attempts_.emplace(device_address, conn_id);
 }
 
 void DeviceInterfaceHandler::ConnectReply(const std::string& device_address,
@@ -662,7 +683,7 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
       ConnectReply(dev_to_be_connected->address, true, "");
       connection_attempts_.erase(iter);
 
-      dev_to_be_connected->connected.SetValue(true);
+      SetDeviceConnected(dev_to_be_connected, true);
       break;
     case ConnectState::ERROR:  // Fall through.
       VLOG(1) << "Unexpected GATT connection error";
@@ -698,7 +719,7 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
 
           ConnectReply(connected_dev->address, true, "");
           connections_.erase(connected_dev->address);
-          connected_dev->connected.SetValue(false);
+          SetDeviceConnected(connected_dev, false);
           dev_to_notify = connected_dev;
         }
       }
@@ -711,6 +732,34 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
 
   if (dev_to_notify)
     OnConnectStateChanged(dev_to_notify->address, state);
+}
+
+void DeviceInterfaceHandler::SetDeviceConnected(Device* device,
+                                                bool is_connected) {
+  if (device->connected.value() == is_connected)
+    return;
+
+  device->connected.SetValue(is_connected);
+  UpdateBackgroundScan();
+}
+
+void DeviceInterfaceHandler::SetDevicePaired(Device* device, bool is_paired) {
+  if (device->paired.value() == is_paired)
+    return;
+
+  device->paired.SetValue(is_paired);
+  UpdateBackgroundScan();
+}
+
+void DeviceInterfaceHandler::UpdateBackgroundScan() {
+  bool needs_background_scan = false;
+  for (const auto& kv : discovered_devices_) {
+    Device* dev = kv.second.get();
+    if (dev->paired.value() && !dev->connected.value()) {
+      needs_background_scan = true;
+    }
+  }
+  scan_management_callback_.Run(needs_background_scan);
 }
 
 Device* DeviceInterfaceHandler::FindDevice(const std::string& device_address) {
@@ -1063,20 +1112,20 @@ void DeviceInterfaceHandler::OnPairStateChanged(const std::string& address,
 
   switch (pair_state) {
     case PairState::CANCELED:
-      device->paired.SetValue(false);
+      SetDevicePaired(device, false);
       dbus_error = bluetooth_device::kErrorAuthenticationCanceled;
     case PairState::NOT_PAIRED:
-      device->paired.SetValue(false);
+      SetDevicePaired(device, false);
       break;
     case PairState::FAILED:
       // If a device is previously paired, security manager will throw a
       // SM_PAIR_ERR_ALREADY_PAIRED error which should not set the pairing state
       // to false.
-      device->paired.SetValue(pair_error == PairError::ALREADY_PAIRED);
+      SetDevicePaired(device, pair_error == PairError::ALREADY_PAIRED);
       dbus_error = ConvertSmPairErrorToDbusError(pair_error);
       break;
     case PairState::PAIRED:
-      device->paired.SetValue(true);
+      SetDevicePaired(device, true);
       break;
     case PairState::STARTED:
     default:
@@ -1181,7 +1230,7 @@ void DeviceInterfaceHandler::OnConnectStateChanged(const std::string& address,
     return;
   }
 
-  device->connected.SetValue(connect_state == ConnectState::CONNECTED);
+  SetDeviceConnected(device, connect_state == ConnectState::CONNECTED);
   ExportOrUpdateDevice(device);
 }
 

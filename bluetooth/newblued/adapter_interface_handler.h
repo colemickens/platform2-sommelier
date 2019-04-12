@@ -50,6 +50,10 @@ class AdapterInterfaceHandler {
 
   bool UpdateDiscovery(int n_discovery_clients);
 
+  // Changes the state of background scan. If true, background scan will be
+  // active even though there is no client requesting discovery.
+  void SetBackgroundScanEnable(bool enabled);
+
   // Called when an update of a device info is received.
   void DeviceDiscoveryCallback(const std::string& address,
                                uint8_t address_type,
@@ -73,6 +77,8 @@ class AdapterInterfaceHandler {
   // Clients which currently have active discovery mapped by its D-Bus address.
   // (D-Bus address -> DBusClient object).
   std::map<std::string, std::unique_ptr<DBusClient>> discovery_clients_;
+
+  bool is_background_scan_enabled_ = false;
 
   bool is_discovering_ = false;
 
