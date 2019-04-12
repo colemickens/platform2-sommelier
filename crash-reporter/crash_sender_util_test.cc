@@ -42,6 +42,8 @@ enum MetricsFlag { kMetricsEnabled, kMetricsDisabled };
 constexpr char kFakeProxyServer[] = "http://example.com";
 constexpr char kNoProxyServer[] = "direct://";
 
+constexpr char kFakeClientId[] = "00112233445566778899aabbccddeeff";
+
 // Prases the output file from fake_crash_sender.sh to a vector of items per
 // line. Example:
 //
@@ -93,6 +95,13 @@ bool CreateDeviceCoredumpUploadAllowedFile() {
       paths::GetAt(paths::kCrashReporterStateDirectory,
                    paths::kDeviceCoredumpUploadAllowed),
       "");
+}
+
+// Creates the client ID file and stores the fake client ID in it.
+bool CreateClientIdFile() {
+  return test_util::CreateFile(
+      paths::GetAt(paths::kCrashSenderStateDirectory, paths::kClientId),
+      kFakeClientId);
 }
 
 // Returns file names found in |directory|.
@@ -376,25 +385,10 @@ TEST_F(CrashSenderUtilTest, ShouldPauseSending) {
 TEST_F(CrashSenderUtilTest, CheckDependencies) {
   base::FilePath missing_path;
 
-  const int permissions = 0755;  // rwxr-xr-x
-  const base::FilePath kFind = paths::Get(paths::kFind);
-  const base::FilePath kMetricsClient = paths::Get(paths::kMetricsClient);
   const base::FilePath kRestrictedCertificatesDirectory =
       paths::Get(paths::kRestrictedCertificatesDirectory);
 
-  // kFind is the missing path.
-  EXPECT_FALSE(CheckDependencies(&missing_path));
-  EXPECT_EQ(kFind.value(), missing_path.value());
-
-  // Create kFind and try again.
-  ASSERT_TRUE(test_util::CreateFile(kFind, ""));
-  ASSERT_TRUE(base::SetPosixFilePermissions(kFind, permissions));
-  EXPECT_FALSE(CheckDependencies(&missing_path));
-  EXPECT_EQ(kMetricsClient.value(), missing_path.value());
-
-  // Create kMetricsClient and try again.
-  ASSERT_TRUE(test_util::CreateFile(kMetricsClient, ""));
-  ASSERT_TRUE(base::SetPosixFilePermissions(kMetricsClient, permissions));
+  // kRestrictedCertificatesDirectory is the missing path.
   EXPECT_FALSE(CheckDependencies(&missing_path));
   EXPECT_EQ(kRestrictedCertificatesDirectory.value(), missing_path.value());
 
@@ -920,6 +914,9 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   setenv("FAKE_CRASH_SENDER_OUTPUT", output_file.value().c_str(),
          1 /* overwrite */);
 
+  // Establish the client ID.
+  ASSERT_TRUE(CreateClientIdFile());
+
   // Create the system crash directory, and crash files in it.
   const base::FilePath system_dir = paths::Get(paths::kSystemCrashDirectory);
   ASSERT_TRUE(base::CreateDirectory(system_dir));
@@ -1016,23 +1013,25 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
 
   // The first run should be for the meta file in the system directory.
   std::vector<std::string> row = rows[0];
-  ASSERT_EQ(6, row.size());
+  ASSERT_EQ(7, row.size());
   EXPECT_EQ(sender.temp_dir().value(), row[0]);
   EXPECT_EQ(system_meta_file.value(), row[1]);
   EXPECT_EQ(system_log.value(), row[2]);
   EXPECT_EQ("log", row[3]);
   EXPECT_EQ("exec_foo", row[4]);
   EXPECT_EQ(kFakeProxyServer, row[5]);
+  EXPECT_EQ(kFakeClientId, row[6]);
 
   // The second run should be for the meta file in the "user" directory.
   row = rows[1];
-  ASSERT_EQ(6, row.size());
+  ASSERT_EQ(7, row.size());
   EXPECT_EQ(sender.temp_dir().value(), row[0]);
   EXPECT_EQ(user_meta_file.value(), row[1]);
   EXPECT_EQ(user_log.value(), row[2]);
   EXPECT_EQ("log", row[3]);
   EXPECT_EQ("exec_bar", row[4]);
   EXPECT_EQ(kFakeProxyServer, row[5]);
+  EXPECT_EQ(kFakeClientId, row[6]);
 
   // The uploaded crash files should be removed now.
   EXPECT_FALSE(base::PathExists(system_meta_file));
@@ -1091,6 +1090,18 @@ TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
   // The followings should be kept since the crash report was not uploaded.
   EXPECT_TRUE(base::PathExists(system_meta_file));
   EXPECT_TRUE(base::PathExists(system_log));
+}
+
+TEST_F(CrashSenderUtilTest, CreateClientId) {
+  std::string client_id = GetClientId();
+  EXPECT_EQ(client_id.length(), 32);
+  // Make sure it returns the same one multiple times.
+  EXPECT_EQ(client_id, GetClientId());
+}
+
+TEST_F(CrashSenderUtilTest, RetrieveClientId) {
+  CreateClientIdFile();
+  EXPECT_EQ(kFakeClientId, GetClientId());
 }
 
 }  // namespace util

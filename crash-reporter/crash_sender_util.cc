@@ -16,6 +16,7 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <base/guid.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -36,6 +37,10 @@ namespace {
 
 // URL to send official build crash reports to.
 constexpr char kReportUploadProdUrl[] = "https://clients2.google.com/cr/report";
+
+// Length of the client ID. This is a standard GUID which has the dashes
+// removed.
+constexpr size_t kClientIdLength = 32U;
 
 // getenv() wrapper that returns an empty string, if the environment variable is
 // not defined.
@@ -165,7 +170,6 @@ bool ShouldPauseSending() {
 
 bool CheckDependencies(base::FilePath* missing_path) {
   const char* const kDependencies[] = {
-      paths::kFind, paths::kMetricsClient,
       paths::kRestrictedCertificatesDirectory,
   };
 
@@ -502,6 +506,37 @@ std::string GetValueOrUndefined(const brillo::KeyValueStore& store,
   return value;
 }
 
+std::string GetClientId() {
+  std::string client_id;
+  base::FilePath client_id_dir = paths::Get(paths::kCrashSenderStateDirectory);
+  if (!base::CreateDirectory(client_id_dir)) {
+    PLOG(ERROR) << "Failed to create directory: " << client_id_dir.value();
+    return "";
+  }
+  base::FilePath client_id_file = client_id_dir.Append(paths::kClientId);
+  if (base::PathExists(client_id_file)) {
+    if (!base::ReadFileToString(client_id_file, &client_id)) {
+      PLOG(ERROR) << "Error reading client ID file: " << client_id_file.value();
+    } else if (client_id.length() != kClientIdLength) {
+      // Don't log what this is, otherwise we may need to scrub it.
+      LOG(ERROR) << "Client ID has wrong format, regenerate it";
+    } else {
+      return client_id;
+    }
+  }
+  client_id = base::GenerateGUID();
+  // Strip out the dashes, we don't want those.
+  base::RemoveChars(client_id, "-", &client_id);
+
+  if (base::WriteFile(client_id_file, client_id.c_str(), client_id.length()) !=
+      client_id.length()) {
+    PLOG(ERROR) << "Error writing out client ID to file: "
+                << client_id_file.value();
+  }
+
+  return client_id;
+}
+
 Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
                const Sender::Options& options)
     : metrics_lib_(std::move(metrics_lib)),
@@ -561,6 +596,8 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
                                         &proxy_servers_);
   }
 
+  std::string client_id = GetClientId();
+
   for (const auto& pair : crash_meta_files) {
     const base::FilePath& meta_file = pair.first;
     const CrashInfo& info = pair.second;
@@ -605,6 +642,7 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
         .payload_file = info.payload_file,
         .payload_kind = info.payload_kind,
         .exec_name = GetValueOrUndefined(info.metadata, "exec_name"),
+        .client_id = client_id,
     };
     if (!RequestToSendCrash(details)) {
       LOG(WARNING) << "Failed to send " << meta_file.value()
@@ -646,6 +684,7 @@ bool Sender::RequestToSendCrash(const CrashDetails& details) {
       proxy_str = proxy_servers_[0];
     }
     char* proxy_server = const_cast<char*>(proxy_str.c_str());
+    char* client_id = const_cast<char*>(details.client_id.c_str());
     char* shell_argv[] = {shell_script_path,
                           temp_dir_path,
                           meta_file,     // $1 in send_crash
@@ -653,6 +692,7 @@ bool Sender::RequestToSendCrash(const CrashDetails& details) {
                           payload_kind,  // $3 in send_crash
                           exec_name,     // $4 in send_crash
                           proxy_server,  // $5 in send_crash
+                          client_id,     // $6 in send_crash
                           nullptr};
 
     setenv("IS_CHROMELESS_TTY", USE_CHROMELESS_TTY ? "true" : "false",

@@ -18,17 +18,11 @@ CRASH_LIB_STATE_DIR="/var/lib/crash_reporter"
 # Path to file that indicates a crash test is currently running.
 CRASH_TEST_IN_PROGRESS_FILE="${CRASH_RUN_STATE_DIR}/crash-test-in-progress"
 
-# Path to find which is required for computing the crash rate.
-FIND="/usr/bin/find"
-
 # Path to hardware class description.
 HWCLASS_PATH="/sys/devices/platform/chromeos_acpi/HWID"
 
 # Path to file that indicates this is a developer image.
 LEAVE_CORE_FILE="/root/.leave_core"
-
-# Path to metrics_client.
-METRICS_CLIENT="/usr/bin/metrics_client"
 
 # File whose existence mocks crash sending.  If empty we pretend the
 # crash sending was successful, otherwise unsuccessful.
@@ -247,6 +241,7 @@ send_crash() {
   local kind="$3"
   local exec_name="$4"
   local proxy="$5"
+  local guid="$6"
 
   local url="${REPORT_UPLOAD_PROD_URL}"
   local chromeos_version="$(get_key_value "${meta_path}" "ver")"
@@ -288,6 +283,8 @@ send_crash() {
       # Product & version are handled separately.
       upload_var_prod) ;;
       upload_var_ver) ;;
+      # Don't let others override the guid we set.
+      upload_var_guid) ;;
       upload_var_*)
         set -- "$@" -F "${upload_prefix}${k#upload_var_}=${v}"
         ;;
@@ -342,14 +339,6 @@ send_crash() {
   elif is_developer_mode; then
     boot_mode="dev"
   fi
-
-  # Need to strip dashes ourselves as Chrome preserves it in the file
-  # nowadays.  This is also what the Chrome breakpad client does:
-  # src/components/crash/core/common/crash_keys.cc:SetMetricsClientIdFromGUID
-  # Note: We ignore errors from metrics_client here reading the id.  It was
-  # already sanity checked earlier via the consent check.  If it did fail,
-  # then we'll end up passing a blank guid below which isn't a big deal.
-  guid=$(${METRICS_CLIENT} -i | tr -d '-')
 
   local error_type="$(get_key_value "${meta_path}" "error_type")"
   [ "${error_type}" = "undefined" ] && error_type=
@@ -441,7 +430,7 @@ send_crash() {
 }
 
 main () {
-  if [ $# -ne 6 ]; then
+  if [ $# -ne 7 ]; then
     lecho "Wrong number of command line flags: $*"
     exit 1
   fi

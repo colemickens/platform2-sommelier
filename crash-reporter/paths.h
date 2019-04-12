@@ -16,10 +16,6 @@ constexpr char kSystemRunStateDirectory[] = "/run/crash_reporter";
 // Directory where crash_reporter stores files (ex. saved version info).
 constexpr char kCrashReporterStateDirectory[] = "/var/lib/crash_reporter";
 
-// Directory where crash_sender stores timestamp files, that indicate the
-// upload attempts in the past 24 hours.
-constexpr char kTimestampsDirectory[] = "/var/lib/crash_sender";
-
 // Directory where system crashes are saved.
 constexpr char kSystemCrashDirectory[] = "/var/spool/crash";
 
@@ -54,6 +50,9 @@ constexpr char kDeviceCoredumpUploadAllowed[] =
 
 // Base name of file that contains Chrome OS version info.
 constexpr char kLsbRelease[] = "lsb-release";
+
+// Basename of file in the state directory that has the client ID.
+constexpr char kClientId[] = "client_id";
 
 // Gets a FilePath from the given path. A prefix will be added if the prefix is
 // set with SetPrefixForTesting().

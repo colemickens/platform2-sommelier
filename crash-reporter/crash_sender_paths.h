@@ -23,13 +23,12 @@ constexpr char kPauseCrashSending[] = "/var/lib/crash_sender_paused";
 constexpr char kRestrictedCertificatesDirectory[] =
     "/usr/share/chromeos-ca-certificates";
 
-// Path to find which is required for computing the crash rate.
-// TODO(satorux): Remove this once the computation is rewritten in C++.
-constexpr char kFind[] = "/usr/bin/find";
+// Directory where crash_sender stores timestamp files, that indicate the
+// upload attempts in the past 24 hours.
+constexpr char kTimestampsDirectory[] = "/var/lib/crash_sender";
 
-// Path to metrics_client.
-// TODO(satorux): Remove this once metrics stuff is rewritten in C++.
-constexpr char kMetricsClient[] = "/usr/bin/metrics_client";
+// Directory where crash_sender stores other state information (ex. client ID).
+constexpr char kCrashSenderStateDirectory[] = "/var/lib/crash_sender/state";
 
 }  // namespace paths
 

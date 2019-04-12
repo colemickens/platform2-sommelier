@@ -58,6 +58,7 @@ struct CrashDetails {
   base::FilePath payload_file;
   std::string payload_kind;
   std::string exec_name;
+  std::string client_id;
 };
 
 // Represents a metadata file name, and its parsed metadata.
@@ -181,6 +182,11 @@ bool GetSleepTime(const base::FilePath& meta_file,
 // values are missing).
 std::string GetValueOrUndefined(const brillo::KeyValueStore& store,
                                 const std::string& key);
+
+// Gets the client ID if it exists, otherwise it generates it, saves it and
+// returns that new ID. If it is unable to create the directory for storage, the
+// empty string is returned.
+std::string GetClientId();
 
 // A helper class for sending crashes. The behaviors can be customized with
 // Options class for unit testing.

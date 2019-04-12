@@ -296,7 +296,12 @@ These paths are guaranteed to persist across boots.
     *This should be moved to `/run/crash_reporter/crash_sender_paused`.*
 *   `/var/lib/crash_sender/`: Non-volatile state that [crash_sender] maintains.
     Used to keep track of how many reports have been uploaded (and when) so we
-    can regulate our limits.
+    can regulate our limits. Do not add any additional files to this directory
+    or it will break timestamp calculations. Add additional state information
+    to the 'state' subdirectory instead. Currently we store a 'client_id' in
+    the 'state' subdirectory for maintaining a persistent device identifier for
+    coalescing crash reports by device. This ID should never be used for any
+    other purpose.
 
 *   `/var/log/messages`: [anomaly_detector] monitors this (read-only).
 *   `/var/log/chrome/Crash Reports/uploads.log`: [crash_sender] updates this
