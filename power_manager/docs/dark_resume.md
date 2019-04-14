@@ -77,18 +77,20 @@ On Chrome OS devices, powerd writes the current wakeup count into
 `pm_wakeup_event()` is called from IRQs, per-device `wakeup_count` increments
 only if the system is in a system-wide suspend/resume cycle.
 
-## Tests
+## Enabling Dark Resume on a new device
 
-The [power_WakeSources] Autotest can help testing if wake sources behave as
-expected when Dark Resume is enabled. Note that this test may not cover all
-the wake sources on a given devices. Please check the logs to see the wake
-sources that are covered and test other wake sources manually.
+Please follow these steps to enable Dark Resume on a new device.
+
+*   Raise a tracking [chromium bug].
+*   Make sure [power_WakeSources] Autotest test passes on the device.
+*   [power_WakeSources] might not test all the wake sources. Please make sure to
+    test missing wake sources manually.
 
 ## Debugging Dark Resume
 
 ### Enabling Dark Resume
 
-Perform the following steps to enable dark resume:
+Perform the following steps to enable Dark Resume:
 
 ```sh
 # echo 0 > /var/lib/power_manager/disable_dark_resume
@@ -97,7 +99,7 @@ Perform the following steps to enable dark resume:
 
 ### Disabling Dark Resume
 
-Perform the following steps to disable dark resume:
+Perform the following steps to disable Dark Resume:
 
 ```sh
 # echo 1 > /var/lib/power_manager/disable_dark_resume
@@ -117,7 +119,7 @@ Resume is disabled.
 If a wake from a particular wake source results in Dark Resume when it is not
 supposed to, these steps might help in debugging what went wrong.
 
-*   Check if the wake source is waking the device up when dark resume is
+*   Check if the wake source is waking the device up when Dark Resume is
     disabled. Otherwise Dark Resume logic might not be at fault.
     *    Disable Dark Resume.
     *    Suspend the device: `powerd_dbus_suspend`
@@ -236,4 +238,5 @@ Thus when adding a new device under EC that can wakeup the system
 [`HandleDarkSuspendReadiness`]: https://chromium.googlesource.com/chromiumos/platform2/+/master/power_manager/dbus_bindings/org.chromium.PowerManager.xml#145
 [input devices]: https://www.kernel.org/doc/Documentation/input/input.txt
 [monitoring this specific input device]: https://chromium.googlesource.com/chromiumos/platform2/+/master/power_manager/powerd/system/input_watcher.cc#479
-[power_WakeSources]: https://chromium.googlesource.com/chromiumos/third_party/autotest/+/master/server/site_tests/power_WakeSources/
+[power_WakeSources]: https://chromium.googlesource.com/chromiumos/third_party/autotest/+/master/server/site_tests/power_WakeSources/README.md
+[chromium bug]: https://bugs.chromium.org/p/chromium/issues/list
