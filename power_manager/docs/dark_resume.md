@@ -49,7 +49,9 @@ powerd transitions from Dark Resume to Full Resume in the following scenarios :
 *   If any of the [input devices that powerd polls] report an input event.
 *   If powerd receives a call to [`HandleUserActivity`] D-Bus method.
 
-powerd does the following as part of transitioning from Dark Resume to Full Resume :
+powerd does the following as part of transitioning from Dark Resume to Full
+Resume:
+
 *   Stops re-suspend process.
 *   Emits [`SuspendDone`] D-Bus signal.
 
@@ -77,10 +79,10 @@ only if the system is in a system-wide suspend/resume cycle.
 
 ## Tests
 
-[power_WakeSources] autotest can help testing if wake sources behave as expected when Dark Resume is enabled. Note that this test may not cover all
+The [power_WakeSources] Autotest can help testing if wake sources behave as
+expected when Dark Resume is enabled. Note that this test may not cover all
 the wake sources on a given devices. Please check the logs to see the wake
 sources that are covered and test other wake sources manually.
-
 
 ## Debugging Dark Resume
 
@@ -92,6 +94,7 @@ Perform the following steps to enable dark resume:
 # echo 0 > /var/lib/power_manager/disable_dark_resume
 # restart powerd
 ```
+
 ### Disabling Dark Resume
 
 Perform the following steps to disable dark resume:
@@ -109,17 +112,17 @@ Look for `Dark resume user space enabled` in
 You should see *"Dark resume user space disabled"* in the powerd logs if Dark
 Resume is disabled.
 
-### Debugging Dark Resume
+### Debugging Incorrect Dark Wakeups
 
 If a wake from a particular wake source results in Dark Resume when it is not
 supposed to, these steps might help in debugging what went wrong.
 
 *   Check if the wake source is waking the device up when dark resume is
     disabled. Otherwise Dark Resume logic might not be at fault.
-    *   Disable Dark Resume.
-    *   Suspend the device : `powerd_dbus_suspend`
-    *   Trigger a wake using the wake source under test.
-    *   Check if the system resumes.
+    *    Disable Dark Resume.
+    *    Suspend the device: `powerd_dbus_suspend`
+    *    Trigger a wake using the wake source under test.
+    *    Check if the system resumes.
 
 *   Check if the driver registers an input device to report events.
     `cat /proc/bus/input/devices` lists all the input devices and their
@@ -141,7 +144,7 @@ supposed to, these steps might help in debugging what went wrong.
     *   Resume the device.
     *   Check if the wakeup count has incremented.
 
-### Debugging Full wakes
+### Debugging Incorrect Full Wakeups
 
 If a wake from a particular wake source trigger a Full Resume when it is not
 supposed to, this might help in debugging what went wrong.
@@ -183,24 +186,28 @@ Thus when adding a new device under EC that can wakeup the system
 ### FAQS
 
 *   **Why does `/sys/power/wakeup_count` increase even when the system is not
-    in suspend/resume path ?**  
+    in suspend/resume path?**
+
     [`/sys/power/wakeup_count`] is a misnomer. Instead of printing the
     `wakeup_count`, the kernel currently prints [combined_event_count]. Thus
     you might see the wakeup count incrementing even when the system is not in
     the suspend resume path. Note that, [per-device wakeup count has been
     fixed] and reports properly.
 
-*   **Do we have support for USB devices ?**  
-    Yes. The patchset [adds the support for USB].
+*   **Do we have support for USB devices?**
 
-*   **Can we find the wake source from the logs ?**  
+    Yes. The patch set [adds the support for USB].
+
+*   **Can we find the wake source from the logs?**
+
     Currently powerd only tracks input events. So, if the wake source is one
     of the input devices, you should see a log similar to
     `Device /sys/devices/*/* had wakeup count * before suspend and * after
     resume`. If the wake source is not a input device, then you should see log
     saying `In Dark Resume`.
 
-*   **Can we see the summary of wakeup stats all devices somewhere ?**  
+*   **Can we see the summary of wakeup stats all devices somewhere?**
+
     Summary of all wakeup sources can be found at
     `/sys/kernel/debug/wakeup_sources`.
 
