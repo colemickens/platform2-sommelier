@@ -477,6 +477,11 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
 
   if (builder->UseFlagIsSet("cheets"))
     builder->AddVmodulePattern("*arc/*=1");
+
+  // TODO(sinhak): Remove after login issues have been resolved and Chrome OS
+  // Account Manager is stable. https://crbug.com/952570
+  builder->AddVmodulePattern("*/chromeos/components/account_manager/*=1");
+  builder->AddVmodulePattern("*/chrome/browser/chromeos/account_manager/*=1");
 }
 
 }  // namespace
