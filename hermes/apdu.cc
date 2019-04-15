@@ -4,6 +4,9 @@
 
 #include "hermes/apdu.h"
 
+#include <algorithm>
+#include <utility>
+
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
