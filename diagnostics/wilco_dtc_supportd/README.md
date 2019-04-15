@@ -31,7 +31,7 @@ This daemon uses three IPC mechanisms:
      |   // Mojo-related members:
      +-> `WilcoDtcSupportdMojoService`
      |       (handles incoming Mojo requests and sends outgoing ones)
-     +-> `mojo::Binding<mojom::DiagnosticsdService>`
+     +-> `mojo::Binding<mojom::WilcoDtcSupportdService>`
      |       (connects `WilcoDtcSupportdMojoService` with the actual Mojo pipe)
      |
      |   // D-Bus-related members:

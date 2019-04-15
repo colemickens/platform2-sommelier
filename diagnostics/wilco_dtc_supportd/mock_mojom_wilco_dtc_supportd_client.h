@@ -12,39 +12,38 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/system/buffer.h>
 
-#include "mojo/diagnosticsd.mojom.h"
+#include "mojo/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {
 
 class MockMojomWilcoDtcSupportdClient
-    : public chromeos::diagnosticsd::mojom::DiagnosticsdClient {
+    : public chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClient {
  public:
-  using MojoDiagnosticsdWebRequestHttpMethod =
-      chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestHttpMethod;
-  using MojoDiagnosticsdWebRequestStatus =
-      chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestStatus;
+  using MojoWilcoDtcSupportdWebRequestHttpMethod =
+      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestHttpMethod;
+  using MojoWilcoDtcSupportdWebRequestStatus =
+      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestStatus;
   using MojoPerformWebRequestCallback = base::Callback<void(
-      MojoDiagnosticsdWebRequestStatus, int, mojo::ScopedHandle)>;
+      MojoWilcoDtcSupportdWebRequestStatus, int, mojo::ScopedHandle)>;
   using MojoGetConfigurationDataCallback =
       base::Callback<void(const std::string&)>;
 
-  void SendDiagnosticsProcessorMessageToUi(
+  void SendWilcoDtcMessageToUi(
       mojo::ScopedHandle json_message,
-      const SendDiagnosticsProcessorMessageToUiCallback& callback) override;
+      const SendWilcoDtcMessageToUiCallback& callback) override;
 
   void PerformWebRequest(
-      MojoDiagnosticsdWebRequestHttpMethod http_method,
+      MojoWilcoDtcSupportdWebRequestHttpMethod http_method,
       mojo::ScopedHandle url,
       std::vector<mojo::ScopedHandle> headers,
       mojo::ScopedHandle request_body,
       const MojoPerformWebRequestCallback& callback) override;
 
-  MOCK_METHOD2(
-      SendDiagnosticsProcessorMessageToUiImpl,
-      void(mojo::ScopedHandle* json_message,
-           const SendDiagnosticsProcessorMessageToUiCallback& callback));
+  MOCK_METHOD2(SendWilcoDtcMessageToUiImpl,
+               void(mojo::ScopedHandle* json_message,
+                    const SendWilcoDtcMessageToUiCallback& callback));
   MOCK_METHOD4(PerformWebRequestImpl,
-               void(MojoDiagnosticsdWebRequestHttpMethod http_method,
+               void(MojoWilcoDtcSupportdWebRequestHttpMethod http_method,
                     const std::string& url,
                     const std::vector<std::string>& headers,
                     const std::string& request_body));
