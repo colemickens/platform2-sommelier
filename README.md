@@ -48,6 +48,7 @@ copies.
 | [crosdns](./crosdns/) | Hostname resolution service for Chrome OS |
 | [crosh](./crosh/) | The Chromium OS shell |
 | [cryptohome](./cryptohome/) | Daemon and tools for managing encrypted /home and /var directories |
+| [cups_proxy](./cups_proxy/) | Daemon for proxying CUPS printing request |
 | [debugd](./debugd/) | Centralized debug daemon for random tools |
 | [diagnostics](./diagnostics/) | Device telemetry and diagnostics daemons |
 | [disk_updater](./disk_updater/) | Utility for updating root disk firmware (e.g. SSDs and eMMC) |

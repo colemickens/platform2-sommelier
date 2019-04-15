@@ -1,0 +1,16 @@
+// Copyright 2019 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+module chromeos.printing.mojom;
+
+struct HttpHeader {
+  string key;
+  string value;
+};
+
+interface CupsProxier {
+  ProxyRequest@0(string method, string url, string version,
+                 array<HttpHeader> headers, array<uint8> body) =>
+                 (array<HttpHeader> headers, array<uint8> ipp_message);
+};

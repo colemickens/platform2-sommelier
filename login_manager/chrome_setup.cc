@@ -309,6 +309,20 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
     CHECK(EnsureDirectoryExists(base::FilePath("/var/cache/camera"), uid,
                                 arc_camera_gid, 0770));
   }
+
+  // On devices with CUPS proxy daemon, Chrome needs to create the directory so
+  // cups_proxy can host a unix domain named socket at
+  // /run/cups_proxy/cups_proxy.sock
+  if (base::PathExists(base::FilePath("/usr/bin/cups_proxy"))) {
+    uid_t cups_proxy_uid;
+    gid_t cups_proxy_gid;
+    CHECK(brillo::userdb::GetUserInfo("cups-proxy", &cups_proxy_uid,
+                                      &cups_proxy_gid));
+    // TODO(pihsun): Check if this permission is good. We need to add the
+    // client accessing this to cups_proxy group for this to work.
+    CHECK(EnsureDirectoryExists(base::FilePath("/run/cups_proxy"),
+                                cups_proxy_uid, cups_proxy_gid, 0770));
+  }
 }
 
 // Adds system-related flags to the command line.
