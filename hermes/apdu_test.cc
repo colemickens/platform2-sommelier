@@ -58,7 +58,7 @@ std::vector<uint8_t> ToVector(T&& first, Args&&... args) {
     EXPECT_NE(fragment, nullptr);                                       \
     EXPECT_THAT(std::vector<uint8_t>(fragment, fragment+fragment_len),  \
                 ElementsAreArray(ToVector(__VA_ARGS__)));               \
-  } while(0)
+  } while (0)
 
 ///////////////
 // Constants //

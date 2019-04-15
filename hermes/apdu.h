@@ -51,7 +51,6 @@ class CommandApdu {
               ApduInstruction instruction,
               bool is_extended_length = false,
               uint16_t le = 256);
-  DISALLOW_COPY_AND_ASSIGN(CommandApdu);
 
   CommandApdu(CommandApdu&&) = default;
   CommandApdu& operator=(CommandApdu&&) = default;
@@ -80,13 +79,14 @@ class CommandApdu {
   size_t current_index_;
   size_t max_data_size_;
   std::vector<uint8_t> data_;
+
+  DISALLOW_COPY_AND_ASSIGN(CommandApdu);
 };
 
 // Class representing a smart card response APDU.
 class ResponseApdu {
  public:
   ResponseApdu() = default;
-  DISALLOW_COPY_AND_ASSIGN(ResponseApdu);
 
   ResponseApdu(ResponseApdu&&) = default;
   ResponseApdu& operator=(ResponseApdu&&) = default;
@@ -117,6 +117,8 @@ class ResponseApdu {
 
  private:
   std::vector<uint8_t> data_;
+
+  DISALLOW_COPY_AND_ASSIGN(ResponseApdu);
 };
 
 }  // namespace hermes

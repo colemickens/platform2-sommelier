@@ -31,7 +31,7 @@ constexpr uint8_t kInvalidChannel = -1;
 namespace hermes {
 
 struct ApduTxInfo : public CardQrtr::TxInfo {
-  ApduTxInfo(CommandApdu apdu, CardQrtr::ResponseCallback cb = nullptr)
+  explicit ApduTxInfo(CommandApdu apdu, CardQrtr::ResponseCallback cb = nullptr)
       : apdu_(std::move(apdu)),
         callback_(cb) {}
   CommandApdu apdu_;
