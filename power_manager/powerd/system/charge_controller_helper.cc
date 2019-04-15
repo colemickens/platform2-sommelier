@@ -126,5 +126,17 @@ bool ChargeControllerHelper::SetAdvancedBatteryChargeModeDayConfig(
   return false;
 }
 
+bool ChargeControllerHelper::SetBatteryChargeMode(
+    PowerManagementPolicy::BatteryChargeMode::Mode mode) {
+  NOTIMPLEMENTED();
+  return false;
+}
+
+bool ChargeControllerHelper::SetBatteryChargeCustomThresholds(
+    int custom_charge_start, int custom_charge_stop) {
+  NOTIMPLEMENTED();
+  return false;
+}
+
 }  // namespace system
 }  // namespace power_manager

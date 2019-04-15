@@ -7,7 +7,13 @@
 namespace power_manager {
 namespace system {
 
-constexpr int ChargeControllerHelperStub::kThresholdUnset = -1;
+constexpr int ChargeControllerHelperStub::kPeakShiftThresholdUnset = -1;
+
+constexpr PowerManagementPolicy::BatteryChargeMode::Mode
+    ChargeControllerHelperStub::kBatteryChargeModeUnset =
+        static_cast<PowerManagementPolicy::BatteryChargeMode::Mode>(-1);
+
+constexpr int ChargeControllerHelperStub::kCustomChargeThresholdUnset = -1;
 
 bool ChargeControllerHelperStub::SetPeakShiftEnabled(bool enable) {
   peak_shift_enabled_ = enable;
@@ -48,9 +54,22 @@ bool ChargeControllerHelperStub::SetAdvancedBatteryChargeModeDayConfig(
   return true;
 }
 
+bool ChargeControllerHelperStub::SetBatteryChargeMode(
+    PowerManagementPolicy::BatteryChargeMode::Mode mode) {
+  battery_charge_mode_ = mode;
+  return true;
+}
+
+bool ChargeControllerHelperStub::SetBatteryChargeCustomThresholds(
+    int custom_charge_start, int custom_charge_stop) {
+  custom_charge_start_ = custom_charge_start;
+  custom_charge_stop_ = custom_charge_stop;
+  return true;
+}
+
 void ChargeControllerHelperStub::Reset() {
   peak_shift_enabled_ = false;
-  peak_shift_threshold_ = kThresholdUnset;
+  peak_shift_threshold_ = kPeakShiftThresholdUnset;
   peak_shift_day_configs_.clear();
 
   boot_on_ac_enabled_ = false;
@@ -59,6 +78,10 @@ void ChargeControllerHelperStub::Reset() {
 
   advanced_battery_charge_mode_enabled_ = false;
   advanced_battery_charge_mode_day_configs_.clear();
+
+  battery_charge_mode_ = kBatteryChargeModeUnset;
+  custom_charge_start_ = kCustomChargeThresholdUnset;
+  custom_charge_stop_ = kCustomChargeThresholdUnset;
 }
 
 }  // namespace system

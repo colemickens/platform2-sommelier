@@ -31,6 +31,10 @@ class ChargeControllerHelper final : public ChargeControllerHelperInterface {
   bool SetAdvancedBatteryChargeModeDayConfig(
       PowerManagementPolicy::WeekDay week_day,
       const std::string& config) override;
+  bool SetBatteryChargeMode(
+      PowerManagementPolicy::BatteryChargeMode::Mode mode) override;
+  bool SetBatteryChargeCustomThresholds(int custom_charge_start,
+                                        int custom_charge_stop) override;
 
   DISALLOW_COPY_AND_ASSIGN(ChargeControllerHelper);
 };

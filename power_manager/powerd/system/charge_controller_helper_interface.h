@@ -58,6 +58,17 @@ class ChargeControllerHelperInterface {
   //     - 02:30 is charge duration.
   virtual bool SetAdvancedBatteryChargeModeDayConfig(
       PowerManagementPolicy::WeekDay week_day, const std::string& config) = 0;
+
+  // Sets battery charge mode. When custom mode is selected then charge
+  // thresholds must be specified via |SetBatteryChargeCustomThresholds|.
+  virtual bool SetBatteryChargeMode(
+      PowerManagementPolicy::BatteryChargeMode::Mode mode) = 0;
+
+  // Configures charge thresholds for custom battery charge mode.
+  // Charging begins when battery level drops below |custom_charge_start|, and
+  // ceases when battery level is above |custom_charge_stop|.
+  virtual bool SetBatteryChargeCustomThresholds(int custom_charge_start,
+                                                int custom_charge_stop) = 0;
 };
 
 }  // namespace system

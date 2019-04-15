@@ -18,7 +18,11 @@ namespace system {
 // Stub implementation of ChargeControllerHelperInterface for use by tests.
 class ChargeControllerHelperStub : public ChargeControllerHelperInterface {
  public:
-  static const int kThresholdUnset;
+  static const int kPeakShiftThresholdUnset;
+
+  static const PowerManagementPolicy::BatteryChargeMode::Mode
+      kBatteryChargeModeUnset;
+  static const int kCustomChargeThresholdUnset;
 
   ChargeControllerHelperStub() = default;
   ~ChargeControllerHelperStub() override = default;
@@ -45,6 +49,12 @@ class ChargeControllerHelperStub : public ChargeControllerHelperInterface {
                : std::string();
   }
 
+  PowerManagementPolicy::BatteryChargeMode::Mode battery_charge_mode() {
+    return battery_charge_mode_;
+  }
+  int custom_charge_start() { return custom_charge_start_; }
+  int custom_charge_stop() { return custom_charge_stop_; }
+
   // ChargeControllerHelperInterface overrides:
   bool SetPeakShiftEnabled(bool enable) override;
   bool SetPeakShiftBatteryPercentThreshold(int threshold) override;
@@ -56,12 +66,16 @@ class ChargeControllerHelperStub : public ChargeControllerHelperInterface {
   bool SetAdvancedBatteryChargeModeDayConfig(
       PowerManagementPolicy::WeekDay week_day,
       const std::string& config) override;
+  bool SetBatteryChargeMode(
+      PowerManagementPolicy::BatteryChargeMode::Mode mode) override;
+  bool SetBatteryChargeCustomThresholds(int custom_charge_start,
+                                        int custom_charge_end) override;
 
   void Reset();
 
  private:
   bool peak_shift_enabled_ = false;
-  int peak_shift_threshold_ = kThresholdUnset;
+  int peak_shift_threshold_ = kPeakShiftThresholdUnset;
   std::map<PowerManagementPolicy::WeekDay, std::string> peak_shift_day_configs_;
 
   bool boot_on_ac_enabled_ = false;
@@ -71,6 +85,11 @@ class ChargeControllerHelperStub : public ChargeControllerHelperInterface {
   bool advanced_battery_charge_mode_enabled_ = false;
   std::map<PowerManagementPolicy::WeekDay, std::string>
       advanced_battery_charge_mode_day_configs_;
+
+  PowerManagementPolicy::BatteryChargeMode::Mode battery_charge_mode_ =
+      kBatteryChargeModeUnset;
+  int custom_charge_start_ = kCustomChargeThresholdUnset;
+  int custom_charge_stop_ = kCustomChargeThresholdUnset;
 
   DISALLOW_COPY_AND_ASSIGN(ChargeControllerHelperStub);
 };

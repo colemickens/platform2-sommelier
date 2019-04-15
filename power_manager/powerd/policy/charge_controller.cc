@@ -37,6 +37,23 @@ std::string GetWeekDayDebugString(
   return base::StringPrintf("invalid (%d)", proto_week_day);
 }
 
+std::string GetBatteryChargeModeDebugString(
+    PowerManagementPolicy::BatteryChargeMode::Mode battery_charge_mode) {
+  switch (battery_charge_mode) {
+    case PowerManagementPolicy::BatteryChargeMode::STANDARD:
+      return "standard";
+    case PowerManagementPolicy::BatteryChargeMode::EXPRESS_CHARGE:
+      return "express_charge";
+    case PowerManagementPolicy::BatteryChargeMode::PRIMARILY_AC_USE:
+      return "primarily_ac_use";
+    case PowerManagementPolicy::BatteryChargeMode::ADAPTIVE:
+      return "adaptive";
+    case PowerManagementPolicy::BatteryChargeMode::CUSTOM:
+      return "custom";
+  }
+  return base::StringPrintf("invalid (%d)", battery_charge_mode);
+}
+
 std::string GetPeakShiftDayConfigDebugString(
     const PowerManagementPolicy::PeakShiftDayConfig& day_config) {
   return base::StringPrintf(
@@ -98,6 +115,25 @@ std::string GetPowerPolicyDebugString(const PowerManagementPolicy& policy) {
     str += "] ";
   }
 
+  if (policy.has_battery_charge_mode()) {
+    if (policy.battery_charge_mode().has_mode()) {
+      str +=
+          "battery_charge_mode=" +
+          GetBatteryChargeModeDebugString(policy.battery_charge_mode().mode()) +
+          " ";
+    }
+    if (policy.battery_charge_mode().has_custom_charge_start()) {
+      str += base::StringPrintf(
+          "custom_charge_start=%d ",
+          policy.battery_charge_mode().custom_charge_start());
+    }
+    if (policy.battery_charge_mode().has_custom_charge_stop()) {
+      str +=
+          base::StringPrintf("custom_charge_stop=%d ",
+                             policy.battery_charge_mode().custom_charge_stop());
+    }
+  }
+
   base::TrimString(str, " ", &str);
   return str;
 }
@@ -134,7 +170,8 @@ bool ChargeController::ApplyPolicyChange(const PowerManagementPolicy& policy) {
   // Try to apply as many changes as possible.
   return ApplyPeakShiftChange(policy) & ApplyBootOnAcChange(policy) &
          ApplyUsbPowerShareChange(policy) &
-         ApplyAdvancedBatteryChargeModeChange(policy);
+         ApplyAdvancedBatteryChargeModeChange(policy) &
+         ApplyBatteryChargeModeChange(policy);
 }
 
 bool ChargeController::ApplyPeakShiftChange(
@@ -188,6 +225,35 @@ bool ChargeController::ApplyAdvancedBatteryChargeModeChange(
     }
   }
   return true;
+}
+
+bool ChargeController::ApplyBatteryChargeModeChange(
+    const PowerManagementPolicy& policy) {
+  // If AdvancedBatteryChargeMode is specified, it overrides BatteryChargeMode.
+  if (policy.advanced_battery_charge_mode_day_configs_size() != 0) {
+    return true;
+  }
+
+  // STANDARD charge mode if either |battery_charge_mode| or
+  // |battery_charge_mode().mode| is unset.
+  if (!helper_->SetBatteryChargeMode(policy.battery_charge_mode().mode())) {
+    return false;
+  }
+
+  if (policy.battery_charge_mode().mode() !=
+      PowerManagementPolicy::BatteryChargeMode::CUSTOM) {
+    return true;
+  }
+
+  if (!policy.battery_charge_mode().has_custom_charge_start() ||
+      !policy.battery_charge_mode().has_custom_charge_stop()) {
+    LOG(ERROR) << "Start charge or stop charge is unset for custom battery"
+               << " charge mode";
+    return false;
+  }
+  return helper_->SetBatteryChargeCustomThresholds(
+      policy.battery_charge_mode().custom_charge_start(),
+      policy.battery_charge_mode().custom_charge_stop());
 }
 
 bool ChargeController::SetPeakShiftDayConfig(
@@ -251,8 +317,10 @@ bool ChargeController::IsPolicyEqualToCache(
     return false;
   }
 
-  if (policy.peak_shift_battery_percent_threshold() !=
-      cached_policy_->peak_shift_battery_percent_threshold()) {
+  if (policy.has_peak_shift_battery_percent_threshold() !=
+          cached_policy_->has_peak_shift_battery_percent_threshold() ||
+      policy.peak_shift_battery_percent_threshold() !=
+          cached_policy_->peak_shift_battery_percent_threshold()) {
     return false;
   }
 
@@ -261,21 +329,19 @@ bool ChargeController::IsPolicyEqualToCache(
     return false;
   }
   for (int i = 0; i < policy.peak_shift_day_configs_size(); i++) {
-    std::string policy_day_config, cached_policy_day_config;
-    if (!policy.peak_shift_day_configs(i).SerializeToString(
-            &policy_day_config) ||
-        !cached_policy_->peak_shift_day_configs(i).SerializeToString(
-            &cached_policy_day_config) ||
-        policy_day_config != cached_policy_day_config) {
+    if (policy.peak_shift_day_configs(i).SerializeAsString() !=
+        cached_policy_->peak_shift_day_configs(i).SerializeAsString()) {
       return false;
     }
   }
 
-  if (policy.boot_on_ac() != cached_policy_->boot_on_ac()) {
+  if (policy.has_boot_on_ac() != cached_policy_->has_boot_on_ac() ||
+      policy.boot_on_ac() != cached_policy_->boot_on_ac()) {
     return false;
   }
 
-  if (policy.usb_power_share() != cached_policy_->usb_power_share()) {
+  if (policy.has_usb_power_share() != cached_policy_->has_usb_power_share() ||
+      policy.usb_power_share() != cached_policy_->usb_power_share()) {
     return false;
   }
 
@@ -285,14 +351,17 @@ bool ChargeController::IsPolicyEqualToCache(
   }
   for (int i = 0; i < policy.advanced_battery_charge_mode_day_configs_size();
        i++) {
-    std::string policy_day_config, cached_policy_day_config;
-    if (!policy.advanced_battery_charge_mode_day_configs(i).SerializeToString(
-            &policy_day_config) ||
-        !cached_policy_->advanced_battery_charge_mode_day_configs(i)
-             .SerializeToString(&cached_policy_day_config) ||
-        policy_day_config != cached_policy_day_config) {
+    if (policy.advanced_battery_charge_mode_day_configs(i)
+            .SerializeAsString() !=
+        cached_policy_->advanced_battery_charge_mode_day_configs(i)
+            .SerializeAsString()) {
       return false;
     }
+  }
+
+  if (policy.battery_charge_mode().SerializeAsString() !=
+      cached_policy_->battery_charge_mode().SerializeAsString()) {
+    return false;
   }
 
   return true;
