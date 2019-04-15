@@ -32,3 +32,12 @@ poll: 1
 sendmsg: 1
 recvmsg: 1
 openat: 1
+futex: 1
+# Filter arg2 to disallow GRND_RANDOM (2).
+getrandom: arg2 in 0xfffffffd
+brk: 1
+# Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
+mmap2: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+munmap: 1
+# Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
+mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd

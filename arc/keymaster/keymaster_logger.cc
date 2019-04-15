@@ -57,7 +57,6 @@ int KeymasterLogger::log_msg(LogLevel level,
       break;
     case ERROR_LVL:
     case SEVERE_LVL:
-    default:
       LOG(ERROR) << kLogTag << msg;
       break;
   }

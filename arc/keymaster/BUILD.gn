@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//common-mk/pkg_config.gni")
 import("//common-mk/mojom_bindings_generator.gni")
+import("//common-mk/pkg_config.gni")
 
 keymaster_src = "../../../aosp/system/keymaster"
 
@@ -11,16 +11,23 @@ group("all") {
   deps = [
     ":arc-keymasterd",
   ]
+  if (use.test) {
+    deps += [ ":arc-keymasterd_testrunner" ]
+  }
 }
 
 # Binary
 executable("arc-keymasterd") {
   sources = [
+    "conversion.cc",
     "daemon.cc",
+    "keymaster_server.cc",
     "main.cc",
   ]
   deps = [
     ":keymaster_mojo_bindings",
+    ":libarckeymaster_context",
+    ":libkeymaster",
   ]
   pkg_deps = [
     "libbrillo-${libbase_ver}",
@@ -125,4 +132,29 @@ shared_library("libkeymaster") {
     "${keymaster_src}/km_openssl/triple_des_operation.cpp",
     "${keymaster_src}/km_openssl/wrapped_key.cpp",
   ]
+}
+
+if (use.test) {
+  pkg_config("arc-keymasterd_testrunner_config") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+  executable("arc-keymasterd_testrunner") {
+    configs += [
+      "//common-mk:test",
+      ":arc-keymasterd_testrunner_config",
+    ]
+    deps = [
+      ":keymaster_mojo_bindings",
+      ":libarckeymaster_context",
+      ":libkeymaster",
+      "//common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "conversion.cc",
+      "conversion_test.cc",
+    ]
+  }
 }
