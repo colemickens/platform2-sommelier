@@ -60,17 +60,6 @@ static auto kModuleLogScope = ScopeLogger::kCellular;
 static string ObjectID(Cellular* c) { return c->GetRpcIdentifier(); }
 }
 
-namespace {
-// We want this value to be large enough such that FIN-WAIT-1 sockets will
-// timeout before the relevant address blackhole expires. Given the exponential
-// backoff of TCP retries, and the default of 8 FIN retries, we must wait at
-// least TCP_RTO_MIN * (2^10 - 1) =~ 204 seconds. Round up to the nearest
-// hundred for good measure.
-constexpr base::TimeDelta kAddressBlackholeLifetime =
-  base::TimeDelta::FromSeconds(300);
-}  // namespace
-
-
 // static
 const char Cellular::kAllowRoaming[] = "AllowRoaming";
 const int64_t Cellular::kDefaultScanningTimeoutMilliseconds = 60000;
@@ -348,7 +337,6 @@ void Cellular::Stop(Error* error,
     for (const auto& address : GetAddresses()) {
       rtnl_handler()->RemoveInterfaceAddress(interface_index(), address);
       socket_destroyer_->DestroySockets(IPPROTO_TCP, address);
-      BlackholeAddress(address, kAddressBlackholeLifetime);
     }
   }
 }
