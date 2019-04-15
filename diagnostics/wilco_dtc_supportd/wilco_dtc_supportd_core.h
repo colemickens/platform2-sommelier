@@ -28,7 +28,7 @@
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_mojo_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_routine_service.h"
 
-#include "mojo/diagnosticsd.mojom.h"
+#include "mojo/wilco_dtc_supportd.mojom.h"
 #include "wilco_dtc.grpc.pb.h"           // NOLINT(build/include)
 #include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include)
 
@@ -41,12 +41,13 @@ class WilcoDtcSupportdCore final
       public WilcoDtcSupportdEcEventService::Delegate,
       public WilcoDtcSupportdGrpcService::Delegate,
       public WilcoDtcSupportdMojoService::Delegate,
-      public chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactory {
+      public chromeos::wilco_dtc_supportd::mojom::
+          WilcoDtcSupportdServiceFactory {
  public:
   class Delegate {
    public:
-    using MojomDiagnosticsdServiceFactory =
-        chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactory;
+    using MojomWilcoDtcSupportdServiceFactory =
+        chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory;
 
     virtual ~Delegate() = default;
 
@@ -57,9 +58,9 @@ class WilcoDtcSupportdCore final
     // In production this method must be called no more than once during the
     // lifetime of the daemon, since Mojo EDK gives no guarantee to support
     // repeated initialization with different parent handles.
-    virtual std::unique_ptr<mojo::Binding<MojomDiagnosticsdServiceFactory>>
-    BindDiagnosticsdMojoServiceFactory(
-        MojomDiagnosticsdServiceFactory* mojo_service_factory,
+    virtual std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>
+    BindWilcoDtcSupportdMojoServiceFactory(
+        MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,
         base::ScopedFD mojo_pipe_fd) = 0;
 
     // Begins the graceful shutdown of the wilco_dtc_supportd daemon.
@@ -113,10 +114,10 @@ class WilcoDtcSupportdCore final
       brillo::dbus_utils::AsyncEventSequencer* sequencer);
 
  private:
-  using MojomDiagnosticsdClientPtr =
-      chromeos::diagnosticsd::mojom::DiagnosticsdClientPtr;
-  using MojomDiagnosticsdServiceRequest =
-      chromeos::diagnosticsd::mojom::DiagnosticsdServiceRequest;
+  using MojomWilcoDtcSupportdClientPtr =
+      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClientPtr;
+  using MojomWilcoDtcSupportdServiceRequest =
+      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceRequest;
 
   // WilcoDtcSupportdDBusService::Delegate overrides:
   bool StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
@@ -155,9 +156,10 @@ class WilcoDtcSupportdCore final
       const SendGrpcUiMessageToWilcoDtcCallback& callback) override;
   void NotifyConfigurationDataChangedToWilcoDtc() override;
 
-  // chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactory overrides:
-  void GetService(MojomDiagnosticsdServiceRequest service,
-                  MojomDiagnosticsdClientPtr client,
+  // chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory
+  // overrides:
+  void GetService(MojomWilcoDtcSupportdServiceRequest service,
+                  MojomWilcoDtcSupportdClientPtr client,
                   const GetServiceCallback& callback) override;
 
   // Unowned. The delegate should outlive this instance.
@@ -201,11 +203,11 @@ class WilcoDtcSupportdCore final
   // Mojo-related members:
 
   // Binding that connects this instance (which is an implementation of
-  // chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactory) with the message
-  // pipe set up on top of the received file descriptor.
+  // chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory) with
+  // the message pipe set up on top of the received file descriptor.
   //
   // Gets created after the BootstrapMojoConnection D-Bus method is called.
-  std::unique_ptr<mojo::Binding<DiagnosticsdServiceFactory>>
+  std::unique_ptr<mojo::Binding<WilcoDtcSupportdServiceFactory>>
       mojo_service_factory_binding_;
   // Implementation of the Mojo interface exposed by the wilco_dtc_supportd
   // daemon and a proxy that allows sending outgoing Mojo requests.

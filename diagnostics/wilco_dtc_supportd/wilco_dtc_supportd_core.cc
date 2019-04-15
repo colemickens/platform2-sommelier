@@ -14,7 +14,7 @@
 #include <base/optional.h>
 #include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
-#include <dbus/diagnosticsd/dbus-constants.h>
+#include <dbus/wilco_dtc_supportd/dbus-constants.h>
 #include <dbus/object_path.h>
 #include <mojo/public/cpp/system/message_pipe.h>
 
@@ -25,35 +25,35 @@ namespace diagnostics {
 
 namespace {
 
-using MojomDiagnosticsdWebRequestStatus =
-    chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestStatus;
-using MojomDiagnosticsdWebRequestHttpMethod =
-    chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestHttpMethod;
+using MojomWilcoDtcSupportdWebRequestStatus =
+    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestStatus;
+using MojomWilcoDtcSupportdWebRequestHttpMethod =
+    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestHttpMethod;
 
 // Converts HTTP method into an appropriate mojom one.
-MojomDiagnosticsdWebRequestHttpMethod ConvertWebRequestHttpMethodToMojom(
+MojomWilcoDtcSupportdWebRequestHttpMethod ConvertWebRequestHttpMethodToMojom(
     WilcoDtcSupportdCore::WebRequestHttpMethod http_method) {
   switch (http_method) {
     case WilcoDtcSupportdCore::WebRequestHttpMethod::kGet:
-      return MojomDiagnosticsdWebRequestHttpMethod::kGet;
+      return MojomWilcoDtcSupportdWebRequestHttpMethod::kGet;
     case WilcoDtcSupportdCore::WebRequestHttpMethod::kHead:
-      return MojomDiagnosticsdWebRequestHttpMethod::kHead;
+      return MojomWilcoDtcSupportdWebRequestHttpMethod::kHead;
     case WilcoDtcSupportdCore::WebRequestHttpMethod::kPost:
-      return MojomDiagnosticsdWebRequestHttpMethod::kPost;
+      return MojomWilcoDtcSupportdWebRequestHttpMethod::kPost;
     case WilcoDtcSupportdCore::WebRequestHttpMethod::kPut:
-      return MojomDiagnosticsdWebRequestHttpMethod::kPut;
+      return MojomWilcoDtcSupportdWebRequestHttpMethod::kPut;
   }
 }
 
 // Convert the result back from mojom status.
 WilcoDtcSupportdCore::WebRequestStatus ConvertStatusFromMojom(
-    MojomDiagnosticsdWebRequestStatus status) {
+    MojomWilcoDtcSupportdWebRequestStatus status) {
   switch (status) {
-    case MojomDiagnosticsdWebRequestStatus::kOk:
+    case MojomWilcoDtcSupportdWebRequestStatus::kOk:
       return WilcoDtcSupportdCore::WebRequestStatus::kOk;
-    case MojomDiagnosticsdWebRequestStatus::kNetworkError:
+    case MojomWilcoDtcSupportdWebRequestStatus::kNetworkError:
       return WilcoDtcSupportdCore::WebRequestStatus::kNetworkError;
-    case MojomDiagnosticsdWebRequestStatus::kHttpError:
+    case MojomWilcoDtcSupportdWebRequestStatus::kHttpError:
       return WilcoDtcSupportdCore::WebRequestStatus::kHttpError;
   }
 }
@@ -187,12 +187,12 @@ void WilcoDtcSupportdCore::RegisterDBusObjectsAsync(
   DCHECK(!dbus_object_);
   dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
       nullptr /* object_manager */, bus,
-      dbus::ObjectPath(kDiagnosticsdServicePath));
+      dbus::ObjectPath(kWilcoDtcSupportdServicePath));
   brillo::dbus_utils::DBusInterface* dbus_interface =
-      dbus_object_->AddOrGetInterface(kDiagnosticsdServiceInterface);
+      dbus_object_->AddOrGetInterface(kWilcoDtcSupportdServiceInterface);
   DCHECK(dbus_interface);
   dbus_interface->AddSimpleMethodHandlerWithError(
-      kDiagnosticsdBootstrapMojoConnectionMethod,
+      kWilcoDtcSupportdBootstrapMojoConnectionMethod,
       base::Unretained(&dbus_service_),
       &WilcoDtcSupportdDBusService::BootstrapMojoConnection);
   dbus_object_->RegisterAsync(sequencer->GetHandler(
@@ -224,8 +224,9 @@ bool WilcoDtcSupportdCore::StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
   }
 
   mojo_service_bind_attempted_ = true;
-  mojo_service_factory_binding_ = delegate_->BindDiagnosticsdMojoServiceFactory(
-      this /* mojo_service_factory */, std::move(mojo_pipe_fd));
+  mojo_service_factory_binding_ =
+      delegate_->BindWilcoDtcSupportdMojoServiceFactory(
+          this /* mojo_service_factory */, std::move(mojo_pipe_fd));
   if (!mojo_service_factory_binding_) {
     *error_message = "Failed to bootstrap Mojo";
     ShutDownDueToMojoError("Mojo bootstrap failed" /* debug_reason */);
@@ -238,9 +239,10 @@ bool WilcoDtcSupportdCore::StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
   return true;
 }
 
-void WilcoDtcSupportdCore::GetService(MojomDiagnosticsdServiceRequest service,
-                                      MojomDiagnosticsdClientPtr client,
-                                      const GetServiceCallback& callback) {
+void WilcoDtcSupportdCore::GetService(
+    MojomWilcoDtcSupportdServiceRequest service,
+    MojomWilcoDtcSupportdClientPtr client,
+    const GetServiceCallback& callback) {
   // Mojo guarantees that these parameters are nun-null (see
   // VALIDATION_ERROR_UNEXPECTED_INVALID_HANDLE).
   DCHECK(service.is_pending());
@@ -297,7 +299,7 @@ void WilcoDtcSupportdCore::PerformWebRequestToBrowser(
       request_body,
       base::Bind(
           [](const PerformWebRequestToBrowserCallback& callback,
-             MojomDiagnosticsdWebRequestStatus status, int http_status,
+             MojomWilcoDtcSupportdWebRequestStatus status, int http_status,
              base::StringPiece response_body) {
             callback.Run(ConvertStatusFromMojom(status), http_status,
                          response_body);

@@ -14,7 +14,7 @@
 
 #include "diagnostics/wilco_dtc_supportd/mock_mojom_wilco_dtc_supportd_client.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_test_utils.h"
-#include "mojo/diagnosticsd.mojom.h"
+#include "mojo/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {
 
@@ -24,26 +24,26 @@ class FakeBrowser final {
  public:
   using DBusMethodCallCallback = dbus::ExportedObject::MethodCallCallback;
 
-  using MojomDiagnosticsdClient =
-      chromeos::diagnosticsd::mojom::DiagnosticsdClient;
-  using MojomDiagnosticsdClientPtr =
-      chromeos::diagnosticsd::mojom::DiagnosticsdClientPtr;
-  using MojomDiagnosticsdServicePtr =
-      chromeos::diagnosticsd::mojom::DiagnosticsdServicePtr;
-  using MojomDiagnosticsdServiceFactoryPtr =
-      chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactoryPtr;
+  using MojomWilcoDtcSupportdClient =
+      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClient;
+  using MojomWilcoDtcSupportdClientPtr =
+      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClientPtr;
+  using MojomWilcoDtcSupportdServicePtr =
+      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServicePtr;
+  using MojomWilcoDtcSupportdServiceFactoryPtr =
+      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactoryPtr;
 
   // |wilco_dtc_supportd_service_factory_ptr| is a pointer to the tested
-  // DiagnosticsdServiceFactory instance.
+  // WilcoDtcSupportdServiceFactory instance.
   // |bootstrap_mojo_connection_dbus_method| is a fake substitute for the
   // BootstrapMojoConnection() D-Bus method.
-  FakeBrowser(MojomDiagnosticsdServiceFactoryPtr*
+  FakeBrowser(MojomWilcoDtcSupportdServiceFactoryPtr*
                   wilco_dtc_supportd_service_factory_ptr,
               DBusMethodCallCallback bootstrap_mojo_connection_dbus_method);
   ~FakeBrowser();
 
-  // Returns a mock DiagnosticsdClient instance, whose methods are invoked when
-  // FakeBrowser receives incoming Mojo calls from the tested code.
+  // Returns a mock WilcoDtcSupportdClient instance, whose methods are invoked
+  // when FakeBrowser receives incoming Mojo calls from the tested code.
   MockMojomWilcoDtcSupportdClient* wilco_dtc_supportd_client() {
     return &wilco_dtc_supportd_client_;
   }
@@ -57,7 +57,7 @@ class FakeBrowser final {
   // It's not allowed to call this method again after a successful completion.
   bool BootstrapMojoConnection(FakeMojoFdGenerator* fake_mojo_fd_generator);
 
-  // Call the |SendUiMessageToDiagnosticsProcessor| Mojo method
+  // Call the |SendUiMessageToWilcoDtc| Mojo method
   // on wilco_dtc_supportd daemon, which will call the |HandleMessageFromUi|
   // gRPC method on wilco_dtc.
   //
@@ -68,7 +68,7 @@ class FakeBrowser final {
   //
   // Must be called only after a successful invocation of
   // BootstrapMojoConnection().
-  bool SendUiMessageToDiagnosticsProcessor(
+  bool SendUiMessageToWilcoDtc(
       const std::string& json_message,
       const base::Callback<void(mojo::ScopedHandle)>& callback);
 
@@ -93,22 +93,23 @@ class FakeBrowser final {
   // registers |wilco_dtc_supportd_client_| to handle incoming Mojo requests.
   void CallGetServiceMojoMethod();
 
-  // Unowned. Points to the tested DiagnosticsdServiceFactory instance.
-  MojomDiagnosticsdServiceFactoryPtr* const
+  // Unowned. Points to the tested WilcoDtcSupportdServiceFactory instance.
+  MojomWilcoDtcSupportdServiceFactoryPtr* const
       wilco_dtc_supportd_service_factory_ptr_;
   // Fake substitute for the BootstrapMojoConnection() D-Bus method.
   DBusMethodCallCallback bootstrap_mojo_connection_dbus_method_;
 
-  // Mock DiagnosticsdClient instance. After an invocation of
+  // Mock WilcoDtcSupportdClient instance. After an invocation of
   // CallGetServiceMojoMethod() it becomes registered to receive incoming Mojo
   // requests from the tested code.
   MockMojomWilcoDtcSupportdClient wilco_dtc_supportd_client_;
   // Mojo binding that is associated with |wilco_dtc_supportd_client_|.
-  mojo::Binding<MojomDiagnosticsdClient> wilco_dtc_supportd_client_binding_;
+  mojo::Binding<MojomWilcoDtcSupportdClient> wilco_dtc_supportd_client_binding_;
 
-  // Mojo interface pointer to the DiagnosticsdService service exposed by the
-  // tested code. Gets initialized after a call to CallGetServiceMojoMethod().
-  MojomDiagnosticsdServicePtr wilco_dtc_supportd_service_ptr_;
+  // Mojo interface pointer to the WilcoDtcSupportdService service exposed by
+  // the tested code. Gets initialized after a call to
+  // CallGetServiceMojoMethod().
+  MojomWilcoDtcSupportdServicePtr wilco_dtc_supportd_service_ptr_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeBrowser);
 };

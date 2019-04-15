@@ -10,7 +10,7 @@
 #include <base/logging.h>
 #include <base/run_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
-#include <dbus/diagnosticsd/dbus-constants.h>
+#include <dbus/wilco_dtc_supportd/dbus-constants.h>
 #include <mojo/edk/embedder/embedder.h>
 
 #include "diagnostics/constants/grpc_constants.h"
@@ -19,7 +19,7 @@
 namespace diagnostics {
 
 WilcoDtcSupportdDaemon::WilcoDtcSupportdDaemon()
-    : DBusServiceDaemon(kDiagnosticsdServiceName /* service_name */),
+    : DBusServiceDaemon(kWilcoDtcSupportdServiceName /* service_name */),
       wilco_dtc_supportd_core_({GetWilcoDtcSupportdGrpcHostVsockUri(),
                                 kWilcoDtcSupportdGrpcDomainSocketUri},
                                GetUiMessageReceiverWilcoDtcGrpcHostVsockUri(),

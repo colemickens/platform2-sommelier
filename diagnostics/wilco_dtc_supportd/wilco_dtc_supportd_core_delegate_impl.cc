@@ -7,17 +7,17 @@
 #include <utility>
 
 #include <base/logging.h>
-#include <dbus/diagnosticsd/dbus-constants.h>
+#include <dbus/wilco_dtc_supportd/dbus-constants.h>
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/edk/embedder/platform_handle.h>
 #include <mojo/edk/embedder/scoped_platform_handle.h>
 
-#include "mojo/diagnosticsd.mojom.h"
+#include "mojo/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {
 
-using MojomDiagnosticsdServiceFactory =
-    chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactory;
+using MojomWilcoDtcSupportdServiceFactory =
+    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory;
 
 WilcoDtcSupportdCoreDelegateImpl::WilcoDtcSupportdCoreDelegateImpl(
     brillo::Daemon* daemon)
@@ -27,9 +27,9 @@ WilcoDtcSupportdCoreDelegateImpl::WilcoDtcSupportdCoreDelegateImpl(
 
 WilcoDtcSupportdCoreDelegateImpl::~WilcoDtcSupportdCoreDelegateImpl() = default;
 
-std::unique_ptr<mojo::Binding<MojomDiagnosticsdServiceFactory>>
-WilcoDtcSupportdCoreDelegateImpl::BindDiagnosticsdMojoServiceFactory(
-    MojomDiagnosticsdServiceFactory* mojo_service_factory,
+std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>
+WilcoDtcSupportdCoreDelegateImpl::BindWilcoDtcSupportdMojoServiceFactory(
+    MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,
     base::ScopedFD mojo_pipe_fd) {
   DCHECK(mojo_pipe_fd.is_valid());
 
@@ -38,13 +38,13 @@ WilcoDtcSupportdCoreDelegateImpl::BindDiagnosticsdMojoServiceFactory(
 
   mojo::ScopedMessagePipeHandle mojo_pipe_handle =
       mojo::edk::CreateChildMessagePipe(
-          kDiagnosticsdMojoConnectionChannelToken);
+          kWilcoDtcSupportdMojoConnectionChannelToken);
   if (!mojo_pipe_handle.is_valid()) {
     LOG(ERROR) << "Failed to create Mojo child message pipe";
     return nullptr;
   }
 
-  return std::make_unique<mojo::Binding<MojomDiagnosticsdServiceFactory>>(
+  return std::make_unique<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>(
       mojo_service_factory, std::move(mojo_pipe_handle));
 }
 

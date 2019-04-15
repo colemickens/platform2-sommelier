@@ -27,7 +27,7 @@
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/dbus/async_event_sequencer.h>
-#include <dbus/diagnosticsd/dbus-constants.h>
+#include <dbus/wilco_dtc_supportd/dbus-constants.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
@@ -49,7 +49,7 @@
 #include "diagnostics/wilco_dtc_supportd/mojo_utils.h"
 #include "diagnostics/wilco_dtc_supportd/protobuf_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core.h"
-#include "mojo/diagnosticsd.mojom.h"
+#include "mojo/wilco_dtc_supportd.mojom.h"
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 using testing::_;
@@ -69,10 +69,10 @@ const char kWilcoDtcGrpcUriTemplate[] = "unix:%s/test_wilco_dtc_socket";
 const char kUiMessageReceiverWilcoDtcGrpcUriTemplate[] =
     "unix:%s/test_ui_message_receiver_wilco_dtc_socket";
 
-using MojomDiagnosticsdService =
-    chromeos::diagnosticsd::mojom::DiagnosticsdService;
-using MojomDiagnosticsdServiceFactory =
-    chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactory;
+using MojomWilcoDtcSupportdService =
+    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService;
+using MojomWilcoDtcSupportdServiceFactory =
+    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory;
 
 namespace {
 
@@ -94,20 +94,20 @@ base::Callback<void(std::unique_ptr<ValueType>)> MakeAsyncResponseWriter(
 
 class MockWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
  public:
-  std::unique_ptr<mojo::Binding<MojomDiagnosticsdServiceFactory>>
-  BindDiagnosticsdMojoServiceFactory(
-      MojomDiagnosticsdServiceFactory* mojo_service_factory,
+  std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>
+  BindWilcoDtcSupportdMojoServiceFactory(
+      MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,
       base::ScopedFD mojo_pipe_fd) override {
     // Redirect to a separate mockable method to workaround GMock's issues with
     // move-only types.
-    return std::unique_ptr<mojo::Binding<MojomDiagnosticsdServiceFactory>>(
-        BindDiagnosticsdMojoServiceFactoryImpl(mojo_service_factory,
-                                               mojo_pipe_fd.get()));
+    return std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>(
+        BindWilcoDtcSupportdMojoServiceFactoryImpl(mojo_service_factory,
+                                                   mojo_pipe_fd.get()));
   }
 
-  MOCK_METHOD2(BindDiagnosticsdMojoServiceFactoryImpl,
-               mojo::Binding<MojomDiagnosticsdServiceFactory>*(
-                   MojomDiagnosticsdServiceFactory* mojo_service_factory,
+  MOCK_METHOD2(BindWilcoDtcSupportdMojoServiceFactoryImpl,
+               mojo::Binding<MojomWilcoDtcSupportdServiceFactory>*(
+                   MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,
                    int mojo_pipe_fd));
   MOCK_METHOD0(BeginDaemonShutdown, void());
 };
@@ -163,7 +163,7 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
 
   MockWilcoDtcSupportdCoreDelegate* core_delegate() { return &core_delegate_; }
 
-  mojo::InterfacePtr<MojomDiagnosticsdServiceFactory>*
+  mojo::InterfacePtr<MojomWilcoDtcSupportdServiceFactory>*
   mojo_service_factory_interface_ptr() {
     return &mojo_service_factory_interface_ptr_;
   }
@@ -173,28 +173,29 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
     return fake_browser_.get();
   }
 
-  // Set up mock for BindDiagnosticsdMojoServiceFactory() that simulates
+  // Set up mock for BindWilcoDtcSupportdMojoServiceFactory() that simulates
   // successful Mojo service binding to the given file descriptor. After the
   // mock gets triggered, |mojo_service_factory_interface_ptr_| become
   // initialized to point to the tested Mojo service.
-  void SetSuccessMockBindDiagnosticsdMojoService(
+  void SetSuccessMockBindWilcoDtcSupportdMojoService(
       FakeMojoFdGenerator* fake_mojo_fd_generator) {
-    EXPECT_CALL(core_delegate_, BindDiagnosticsdMojoServiceFactoryImpl(_, _))
-        .WillOnce(Invoke([fake_mojo_fd_generator, this](
-                             MojomDiagnosticsdServiceFactory*
-                                 mojo_service_factory,
-                             int mojo_pipe_fd) {
-          // Verify the file descriptor is a duplicate of an expected one.
-          EXPECT_TRUE(fake_mojo_fd_generator->IsDuplicateFd(mojo_pipe_fd));
-          // Initialize a Mojo binding that, instead of working through the
-          // given (fake) file descriptor, talks to the test endpoint
-          // |mojo_service_interface_ptr_|.
-          auto mojo_service_factory_binding =
-              std::make_unique<mojo::Binding<MojomDiagnosticsdServiceFactory>>(
+    EXPECT_CALL(core_delegate_,
+                BindWilcoDtcSupportdMojoServiceFactoryImpl(_, _))
+        .WillOnce(Invoke(
+            [fake_mojo_fd_generator, this](
+                MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,
+                int mojo_pipe_fd) {
+              // Verify the file descriptor is a duplicate of an expected one.
+              EXPECT_TRUE(fake_mojo_fd_generator->IsDuplicateFd(mojo_pipe_fd));
+              // Initialize a Mojo binding that, instead of working through the
+              // given (fake) file descriptor, talks to the test endpoint
+              // |mojo_service_interface_ptr_|.
+              auto mojo_service_factory_binding = std::make_unique<
+                  mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>(
                   mojo_service_factory, &mojo_service_factory_interface_ptr_);
-          DCHECK(mojo_service_factory_interface_ptr_);
-          return mojo_service_factory_binding.release();
-        }));
+              DCHECK(mojo_service_factory_interface_ptr_);
+              return mojo_service_factory_binding.release();
+            }));
   }
 
   void WriteEcEventToEcEventFile(
@@ -229,9 +230,9 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
 
   // Perform initialization of the D-Bus object exposed by the tested code.
   void SetUpDBus() {
-    const dbus::ObjectPath kDBusObjectPath(kDiagnosticsdServicePath);
+    const dbus::ObjectPath kDBusObjectPath(kWilcoDtcSupportdServicePath);
 
-    // Expect that the /org/chromium/Diagnosticsd object is exported.
+    // Expect that the /org/chromium/WilcoDtcSupportd object is exported.
     wilco_dtc_supportd_dbus_object_ = new StrictMock<dbus::MockExportedObject>(
         dbus_bus_.get(), kDBusObjectPath);
     EXPECT_CALL(*dbus_bus_, GetExportedObject(kDBusObjectPath))
@@ -249,11 +250,12 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
                 ExportMethod(dbus::kPropertiesInterface,
                              dbus::kPropertiesGetAll, _, _));
 
-    // Expect that methods on the org.chromium.DiagnosticsdInterface interface
-    // are exported.
-    EXPECT_CALL(*wilco_dtc_supportd_dbus_object_,
-                ExportMethod(kDiagnosticsdServiceInterface,
-                             kDiagnosticsdBootstrapMojoConnectionMethod, _, _))
+    // Expect that methods on the org.chromium.WilcoDtcSupportdInterface
+    // interface are exported.
+    EXPECT_CALL(
+        *wilco_dtc_supportd_dbus_object_,
+        ExportMethod(kWilcoDtcSupportdServiceInterface,
+                     kWilcoDtcSupportdBootstrapMojoConnectionMethod, _, _))
         .WillOnce(SaveArg<2 /* method_call_callback */>(
             &bootstrap_mojo_connection_dbus_method_));
 
@@ -314,7 +316,7 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
       wilco_dtc_supportd_dbus_object_;
 
   // Mojo interface to the service factory exposed by the tested code.
-  mojo::InterfacePtr<MojomDiagnosticsdServiceFactory>
+  mojo::InterfacePtr<MojomWilcoDtcSupportdServiceFactory>
       mojo_service_factory_interface_ptr_;
 
   // Write end of FIFO that emulates EC event file. EC event service
@@ -340,7 +342,7 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
 // BootstrapMojoConnection D-Bus method is called.
 TEST_F(WilcoDtcSupportdCoreTest, MojoBootstrapSuccess) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
-  SetSuccessMockBindDiagnosticsdMojoService(&fake_mojo_fd_generator);
+  SetSuccessMockBindWilcoDtcSupportdMojoService(&fake_mojo_fd_generator);
 
   EXPECT_TRUE(fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator));
 
@@ -348,10 +350,11 @@ TEST_F(WilcoDtcSupportdCoreTest, MojoBootstrapSuccess) {
 }
 
 // Test failure to bootstrap the Mojo service due to en error returned by
-// BindDiagnosticsdMojoService() delegate method.
+// BindWilcoDtcSupportdMojoService() delegate method.
 TEST_F(WilcoDtcSupportdCoreTest, MojoBootstrapErrorToBind) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
-  EXPECT_CALL(*core_delegate(), BindDiagnosticsdMojoServiceFactoryImpl(_, _))
+  EXPECT_CALL(*core_delegate(),
+              BindWilcoDtcSupportdMojoServiceFactoryImpl(_, _))
       .WillOnce(Return(nullptr));
   EXPECT_CALL(*core_delegate(), BeginDaemonShutdown());
 
@@ -365,7 +368,7 @@ TEST_F(WilcoDtcSupportdCoreTest, MojoBootstrapErrorToBind) {
 // the daemon shutdown.
 TEST_F(WilcoDtcSupportdCoreTest, MojoBootstrapErrorRepeated) {
   FakeMojoFdGenerator first_fake_mojo_fd_generator;
-  SetSuccessMockBindDiagnosticsdMojoService(&first_fake_mojo_fd_generator);
+  SetSuccessMockBindWilcoDtcSupportdMojoService(&first_fake_mojo_fd_generator);
 
   EXPECT_TRUE(
       fake_browser()->BootstrapMojoConnection(&first_fake_mojo_fd_generator));
@@ -384,7 +387,7 @@ TEST_F(WilcoDtcSupportdCoreTest, MojoBootstrapErrorRepeated) {
 // connection aborts.
 TEST_F(WilcoDtcSupportdCoreTest, MojoBootstrapSuccessThenAbort) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
-  SetSuccessMockBindDiagnosticsdMojoService(&fake_mojo_fd_generator);
+  SetSuccessMockBindWilcoDtcSupportdMojoService(&fake_mojo_fd_generator);
 
   EXPECT_TRUE(fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator));
 
@@ -409,7 +412,7 @@ class BootstrappedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
     ASSERT_NO_FATAL_FAILURE(WilcoDtcSupportdCoreTest::SetUp());
 
     FakeMojoFdGenerator fake_mojo_fd_generator;
-    SetSuccessMockBindDiagnosticsdMojoService(&fake_mojo_fd_generator);
+    SetSuccessMockBindWilcoDtcSupportdMojoService(&fake_mojo_fd_generator);
     ASSERT_TRUE(
         fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator));
     ASSERT_TRUE(*mojo_service_factory_interface_ptr());
@@ -499,8 +502,7 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest,
 
   auto callback = fake_browser_valid_handle_callback(
       run_loop_fake_browser.QuitClosure(), response_json_message);
-  EXPECT_TRUE(fake_browser()->SendUiMessageToDiagnosticsProcessor(json_message,
-                                                                  callback));
+  EXPECT_TRUE(fake_browser()->SendUiMessageToWilcoDtc(json_message, callback));
 
   run_loop_wilco_dtc.Run();
   run_loop_fake_browser.Run();
@@ -519,8 +521,7 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest,
 
   auto callback =
       fake_browser_invalid_handle_callback(run_loop_fake_browser.QuitClosure());
-  EXPECT_TRUE(fake_browser()->SendUiMessageToDiagnosticsProcessor(json_message,
-                                                                  callback));
+  EXPECT_TRUE(fake_browser()->SendUiMessageToWilcoDtc(json_message, callback));
 
   run_loop_fake_browser.Run();
   // There's no reliable way to wait till the wrong HandleMessageFromUi(), if
@@ -552,8 +553,7 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest,
 
   auto callback =
       fake_browser_invalid_handle_callback(run_loop_fake_browser.QuitClosure());
-  EXPECT_TRUE(fake_browser()->SendUiMessageToDiagnosticsProcessor(json_message,
-                                                                  callback));
+  EXPECT_TRUE(fake_browser()->SendUiMessageToWilcoDtc(json_message, callback));
 
   run_loop_wilco_dtc.Run();
   run_loop_fake_browser.Run();
