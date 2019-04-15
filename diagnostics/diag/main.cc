@@ -182,6 +182,7 @@ bool ActionRunUrandomRoutine(int length_seconds) {
 bool ActionRunSmartctlCheckRoutine() {
   diagnostics::grpc_api::RunRoutineRequest request;
   request.set_routine(diagnostics::grpc_api::ROUTINE_SMARTCTL_CHECK);
+  request.mutable_smartctl_check_params();
   return RunRoutineWithRequest(request);
 }
 
