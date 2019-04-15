@@ -33,21 +33,23 @@ get_timestamp() {
   echo "${timestamp}"
 }
 
-last_line=$(grep "${msg_pattern}" /var/log/messages | grep -- "${search_key}" | tail -n 1)
+last_line=$(grep -a "${msg_pattern}" /var/log/messages | \
+    grep -- "${search_key}" | tail -n 1)
 
 if [ -n "${last_line}" ]; then
   if ! allowed_timestamp=$(get_timestamp "${last_line}"); then
     die "coule not get timestamp from: ${last_line}"
   fi
   : $(( allowed_timestamp -= ${time_duration} ))
-  grep "${msg_pattern}" /var/log/messages | grep -- "${search_key}" | while read line; do
-    if ! timestamp=$(get_timestamp "${line}"); then
-      die "could not get timestamp from: ${line}"
-    fi
-    if [ ${timestamp} -gt ${allowed_timestamp} ]; then
-      echo "${line}"
-    fi
-  done
+  grep -a "${msg_pattern}" /var/log/messages | grep -- "${search_key}" |
+      while read line; do
+        if ! timestamp=$(get_timestamp "${line}"); then
+          die "could not get timestamp from: ${line}"
+        fi
+        if [ ${timestamp} -gt ${allowed_timestamp} ]; then
+          echo "${line}"
+        fi
+      done
 fi
 
 echo "END-OF-LOG"
