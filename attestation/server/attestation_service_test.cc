@@ -26,6 +26,9 @@
 #include <brillo/data_encoding.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#if USE_TPM2
+#include <trunks/tpm_utility.h>
+#endif
 
 #include "attestation/common/mock_crypto_utility.h"
 #include "attestation/common/mock_tpm_utility.h"
@@ -1747,14 +1750,24 @@ TEST_P(AttestationServiceTest, PrepareForEnrollment) {
 
 #if USE_TPM2
 
-TEST_P(AttestationServiceTest, PrepareForEnrollmentCannotQuoteNvram) {
-  // Start with an empty database.
-  mock_database_.GetMutableProtobuf()->Clear();
+TEST_P(AttestationServiceTest,
+       PrepareForEnrollmentCannotQuoteOptionalNvramForRsaEK) {
+  auto database_pb = mock_database_.GetMutableProtobuf();
+  // Start with an empty database to trigger PrepareForEnrollment.
+  database_pb->Clear();
+
+  // Setup the database to make GetEndorsementKeyType to return specific key
+  // type, but will still make IsPreparedForEnrollment return false.
+  database_pb->mutable_credentials()->set_endorsement_key_type(KEY_TYPE_RSA);
+  database_pb->mutable_credentials()->set_endorsement_public_key("pubkey");
+
   EXPECT_CALL(mock_tpm_utility_, CertifyNV(_, _, _, _, _))
       .WillRepeatedly(Return(false));
+
   // Schedule initialization again to make sure it runs after this point.
   CHECK(service_->Initialize());
   WaitUntilIdleForTesting();
+
   // One identity has been created.
   EXPECT_EQ(1, mock_database_.GetProtobuf().identities().size());
   const AttestationDatabase::Identity& identity_data =
@@ -1766,6 +1779,69 @@ TEST_P(AttestationServiceTest, PrepareForEnrollmentCannotQuoteNvram) {
   EXPECT_TRUE(identity_data.nvram_quotes().empty());
   EXPECT_EQ(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID,
             identity_data.features());
+}
+
+TEST_P(AttestationServiceTest,
+       PrepareForEnrollmentCannotQuoteOptionalNvramForEccEK) {
+  auto database_pb = mock_database_.GetMutableProtobuf();
+
+  // Start with an empty database to trigger PrepareForEnrollment.
+  database_pb->Clear();
+
+  // Setup the database to make GetEndorsementKeyType to return specific key
+  // type, but will still make IsPreparedForEnrollment return false.
+  database_pb->mutable_credentials()->set_endorsement_key_type(KEY_TYPE_ECC);
+  database_pb->mutable_credentials()->set_endorsement_public_key("pubkey");
+
+  // Assume the NV indexes doesn't exist, except RSA EK cert which is required
+  // when ECC EK is enabled.
+  EXPECT_CALL(mock_tpm_utility_, CertifyNV(_, _, _, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_tpm_utility_,
+              CertifyNV(trunks::kRsaEndorsementCertificateIndex, _, _, _, _))
+      .WillRepeatedly(Return(true));
+
+  // Schedule initialization again to make sure it runs after this point.
+  CHECK(service_->Initialize());
+  WaitUntilIdleForTesting();
+
+  // One identity has been created.
+  EXPECT_EQ(1, mock_database_.GetProtobuf().identities().size());
+  const AttestationDatabase::Identity& identity_data =
+      mock_database_.GetProtobuf().identities().Get(0);
+  EXPECT_TRUE(identity_data.has_identity_binding());
+  EXPECT_TRUE(identity_data.has_identity_key());
+  EXPECT_EQ(1, identity_data.pcr_quotes().count(0));
+  EXPECT_EQ(1, identity_data.pcr_quotes().count(1));
+  EXPECT_EQ(1, identity_data.nvram_quotes().size());
+  EXPECT_EQ(1, identity_data.nvram_quotes().count(RSA_PUB_EK_CERT));
+  EXPECT_EQ(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID,
+            identity_data.features());
+}
+
+TEST_P(AttestationServiceTest,
+       PrepareForEnrollmentCannotQuoteRsaEKCertForEccEK) {
+  auto database_pb = mock_database_.GetMutableProtobuf();
+
+  // Start with an empty database to trigger PrepareForEnrollment.
+  database_pb->Clear();
+
+  // Setup the database to make GetEndorsementKeyType to return specific key
+  // type, but will still make IsPreparedForEnrollment return false.
+  database_pb->mutable_credentials()->set_endorsement_key_type(KEY_TYPE_ECC);
+  database_pb->mutable_credentials()->set_endorsement_public_key("pubkey");
+
+  EXPECT_CALL(mock_tpm_utility_, CertifyNV(_, _, _, _, _))
+      .WillRepeatedly(Return(false));
+
+  // Schedule initialization again to make sure it runs after this point.
+  CHECK(service_->Initialize());
+  WaitUntilIdleForTesting();
+
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
 }
 
 #endif
