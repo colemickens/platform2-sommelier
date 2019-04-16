@@ -118,6 +118,19 @@ TEST_F(DeviceManagerTest, MakeDevice_LegacyAndroid) {
   EXPECT_TRUE(msg.find_ipv6_routes());
 }
 
+TEST_F(DeviceManagerTest, MakeVpnTunDevice) {
+  auto mgr = NewManager();
+  DeviceConfig msg;
+  mgr->MakeDevice("tun0")->FillProto(&msg);
+  EXPECT_EQ(msg.br_ifname(), "arc_tun0");
+  EXPECT_EQ(msg.arc_ifname(), "cros_tun0");
+  EXPECT_EQ(msg.br_ipv4(), "100.115.92.9");
+  EXPECT_EQ(msg.arc_ipv4(), "100.115.92.10");
+  EXPECT_FALSE(msg.mac_addr().empty());
+  EXPECT_FALSE(msg.fwd_multicast());
+  EXPECT_FALSE(msg.find_ipv6_routes());
+}
+
 TEST_F(DeviceManagerTest, MakeDevice_NoMoreSubnets) {
   auto mgr = NewManager("" /* no default arc device */);
   DeviceConfig msg;

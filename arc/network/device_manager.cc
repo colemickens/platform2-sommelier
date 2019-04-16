@@ -6,7 +6,13 @@
 
 #include <utility>
 
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+
+namespace {
+constexpr const char kVpnInterfaceHostPattern[] = "tun";
+constexpr const char kVpnInterfaceGuestPrefix[] = "cros_";
+}
 
 namespace arc_networkd {
 
@@ -90,6 +96,16 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
       host_ifname = base::StringPrintf("arc_%s", name.c_str());
     }
     guest_ifname = name;
+    // Android VPNs and native VPNs use the same "tun%d" name pattern for VPN
+    // tun interfaces. To distinguish between both and avoid name collisions
+    // native VPN interfaces are not exposed with their exact names inside the
+    // ARC network namespace. This additional naming convention is not known to
+    // Chrome and ARC has to fix names in ArcNetworkBridge.java when receiving
+    // NetworkConfiguration mojo objects from Chrome.
+    if (base::StartsWith(guest_ifname, kVpnInterfaceHostPattern,
+                         base::CompareCase::INSENSITIVE_ASCII)) {
+      guest_ifname = kVpnInterfaceGuestPrefix + guest_ifname;
+    }
     opts.find_ipv6_routes = false;
     opts.fwd_multicast = false;
   }
