@@ -80,7 +80,6 @@ type cros_home_shadow_low_entropy_creds, file_type, cros_file_type, cros_home_fi
 type cros_home_shadow_uid_user, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_root, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_root_android, file_type, cros_file_type, cros_home_file_type;
-type cros_home_shadow_uid_root_android_cache, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_root_authpolicyd, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_root_chaps, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_root_session_manager, file_type, cros_file_type, cros_home_file_type;
@@ -89,6 +88,7 @@ type cros_home_shadow_uid_root_shill_logs, file_type, cros_file_type, cros_home_
 type cros_home_shadow_uid_root_usb_bouncer, file_type, cros_file_type, cros_home_file_type;
 
 type system_data_file, file_type; # this is Android file label.
+type cache_file, file_type, cros_file_type, cros_home_file_type;
 allow domain cros_home:dir r_dir_perms;
 
 type cros_coreutils_exec, exec_type, file_type, cros_file_type, cros_system_file_type;

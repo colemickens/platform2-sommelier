@@ -220,7 +220,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /home/.shadow/[0-9a-z]{40}/mount/user/Downloads(/.*)? u:object_r:has_arc(media_rw_data_file, cros_downloads_file):s0
 /home/.shadow/[0-9a-z]{40}/mount/user/MyFiles(/.*)?   u:object_r:has_arc(media_rw_data_file, cros_downloads_file):s0
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data u:object_r:cros_home_shadow_uid_root_android:s0
-/home/.shadow/[0-9a-z]{40}/mount/root/android-data/cache(/.*)? u:object_r:cros_home_shadow_uid_root_android_cache:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/android-data/cache u:object_r:cache_file:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data/data u:object_r:system_data_file:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/authpolicyd(/.*)?   u:object_r:cros_home_shadow_uid_root_authpolicyd:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/chaps(/.*)?   u:object_r:cros_home_shadow_uid_root_chaps:s0
