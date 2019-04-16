@@ -43,14 +43,18 @@ bool MetricSample::IsValid() const {
     LOG(ERROR) << "No buckets for linear histogram \"" << name() << "\"";
     return false;
   }
-  if (type() == HISTOGRAM && bucket_count() > max() - min() + 2) {
-    // Too many buckets: this is also quietly ignored by Chrome.
-    // Note: a value x such that min <= x < max goes into a regular bucket.
-    // Values outside that range go in the overflow and underflow buckets.
-    LOG(ERROR) << "Too many buckets (" << bucket_count()
-               << ") for histogram \"" << name()
-               << "\", max for this range is " << max() - min() + 2;
-    return false;
+  if (type() == HISTOGRAM) {
+    // Avoid integer overflow by forcing 64-bit ops.
+    int64_t max64 = max();
+    if (bucket_count() > max64 - min() + 2) {
+      // Too many buckets: this is also quietly ignored by Chrome.
+      // Note: a value x such that min <= x < max goes into a regular bucket.
+      // Values outside that range go in the overflow and underflow buckets.
+      LOG(ERROR) << "Too many buckets (" << bucket_count()
+                 << ") for histogram \"" << name()
+                 << "\", max for this range is " << max64 - min() + 2;
+      return false;
+    }
   }
   return true;
 }
