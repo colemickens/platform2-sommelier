@@ -2914,8 +2914,7 @@ KeyType AttestationService::GetEndorsementKeyType() const {
   }
 
   // We didn't generate any data yet. Use the suggested key type.
-  // TODO(crbug.com/910519): Switch to KEY_TYPE_ECC when ready.
-  return KEY_TYPE_RSA;
+  return tpm_utility_->GetVersion() == TPM_2_0 ? KEY_TYPE_ECC : KEY_TYPE_RSA;
 }
 
 KeyType AttestationService::GetAttestaionIdentityKeyType() const {

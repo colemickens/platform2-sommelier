@@ -650,7 +650,15 @@ TEST_F(AttestationServiceBaseTest, GetEndorsementKeyTypeForExistingKey) {
   EXPECT_EQ(service_->GetEndorsementKeyType(), KEY_TYPE_ECC);
 }
 
-TEST_F(AttestationServiceBaseTest, GetEndorsementKeyTypeForNewlyCreatedKey) {
+TEST_F(AttestationServiceBaseTest,
+       GetEndorsementKeyTypeForNewlyCreatedKeyInTpm2) {
+  EXPECT_CALL(mock_tpm_utility_, GetVersion()).WillRepeatedly(Return(TPM_2_0));
+  EXPECT_EQ(service_->GetEndorsementKeyType(), KEY_TYPE_ECC);
+}
+
+TEST_F(AttestationServiceBaseTest,
+       GetEndorsementKeyTypeForNewlyCreatedKeyInTpm12) {
+  EXPECT_CALL(mock_tpm_utility_, GetVersion()).WillRepeatedly(Return(TPM_1_2));
   EXPECT_EQ(service_->GetEndorsementKeyType(), KEY_TYPE_RSA);
 }
 
@@ -1023,7 +1031,7 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeySuccess) {
   } else {
     EXPECT_CALL(
         mock_tpm_utility_,
-        ActivateIdentityForTpm2(KEY_TYPE_RSA, _, "seed", "mac", "wrapped", _))
+        ActivateIdentityForTpm2(KEY_TYPE_ECC, _, "seed", "mac", "wrapped", _))
         .WillOnce(DoAll(SetArgPointee<5>(cert_name), Return(true)));
   }
   // Set expectations on the outputs.
@@ -1063,7 +1071,7 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeySuccessNoSave) {
   } else {
     EXPECT_CALL(
         mock_tpm_utility_,
-        ActivateIdentityForTpm2(KEY_TYPE_RSA, _, "seed", "mac", "wrapped", _))
+        ActivateIdentityForTpm2(KEY_TYPE_ECC, _, "seed", "mac", "wrapped", _))
         .WillOnce(DoAll(SetArgPointee<5>(cert_name), Return(true)));
   }
   // Set expectations on the outputs.
@@ -1125,7 +1133,7 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeyActivateFailure) {
   } else {
     EXPECT_CALL(
         mock_tpm_utility_,
-        ActivateIdentityForTpm2(KEY_TYPE_RSA, _, "seed", "mac", "wrapped", _))
+        ActivateIdentityForTpm2(KEY_TYPE_ECC, _, "seed", "mac", "wrapped", _))
         .WillRepeatedly(Return(false));
   }
   // Set expectations on the outputs.
