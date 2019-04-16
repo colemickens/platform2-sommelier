@@ -187,6 +187,8 @@ type cros_run_systemd, file_type, cros_file_type, cros_run_file_type;
 type cros_run_tcsd, file_type, cros_file_type, cros_run_file_type;
 type cros_run_udev, file_type, cros_file_type, cros_run_file_type;
 
+type cros_avahi_socket, file_type, cros_file_type, cros_run_file_type;
+
 type cros_conntrackd_lock_file, file_type, cros_file_type, cros_tmpfile_type;
 type cros_power_override_lock_file, file_type, cros_file_type, cros_tmpfile_type;
 
