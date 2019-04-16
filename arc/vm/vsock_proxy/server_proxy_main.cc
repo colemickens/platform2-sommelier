@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/macros.h>
@@ -40,6 +41,8 @@ class ServerProxyFactory : public ProxyService::ProxyFactory {
 }  // namespace arc
 
 int main(int argc, char** argv) {
+  // Initialize CommandLine for VLOG before InitLog.
+  base::CommandLine::Init(argc, argv);
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
                   brillo::kLogToStderrIfTty);
 

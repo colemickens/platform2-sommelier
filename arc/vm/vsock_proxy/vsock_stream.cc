@@ -4,12 +4,14 @@
 
 #include "arc/vm/vsock_proxy/vsock_stream.h"
 
+#include <string>
 #include <utility>
 #include <vector>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/text_format.h>
 
 namespace arc {
 
@@ -25,9 +27,7 @@ bool VSockStream::Read(arc_proxy::VSockMessage* message) {
     PLOG(ERROR) << "Failed to read message size";
     return false;
   }
-  // TODO(hidehiko): This logging may be too noisy. Remove this when
-  // the system is enough stabilized.
-  LOG(INFO) << "Reading: " << size;
+
   std::vector<char> buf(size);
   if (!base::ReadFromFD(vsock_fd_.get(), buf.data(), buf.size())) {
     PLOG(ERROR) << "Failed to read a proto";
@@ -39,10 +39,22 @@ bool VSockStream::Read(arc_proxy::VSockMessage* message) {
     return false;
   }
 
+  if (VLOG_IS_ON(1)) {
+    std::string text;
+    google::protobuf::TextFormat::PrintToString(*message, &text);
+    LOG(INFO) << "Reading: " << text;
+  }
+
   return true;
 }
 
 bool VSockStream::Write(const arc_proxy::VSockMessage& message) {
+  if (VLOG_IS_ON(1)) {
+    std::string text;
+    google::protobuf::TextFormat::PrintToString(message, &text);
+    LOG(INFO) << "Writing: " << text;
+  }
+
   uint64_t size = message.ByteSize();
   if (!base::WriteFileDescriptor(
           vsock_fd_.get(), reinterpret_cast<char*>(&size), sizeof(size))) {
