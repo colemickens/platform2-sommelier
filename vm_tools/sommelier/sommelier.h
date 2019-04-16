@@ -38,6 +38,7 @@ struct sl_viewporter;
 struct sl_linux_dmabuf;
 struct sl_keyboard_extension;
 struct sl_text_input_manager;
+struct sl_relative_pointer_manager;
 struct sl_window;
 struct zaura_shell;
 struct zcr_keyboard_extension_v1;
@@ -101,6 +102,7 @@ struct sl_context {
   struct sl_linux_dmabuf* linux_dmabuf;
   struct sl_keyboard_extension* keyboard_extension;
   struct sl_text_input_manager* text_input_manager;
+  struct sl_relative_pointer_manager* relative_pointer_manager;
   struct wl_list outputs;
   struct wl_list seats;
   struct wl_event_source* display_event_source;
@@ -191,6 +193,22 @@ struct sl_seat {
   struct sl_global* host_global;
   uint32_t last_serial;
   struct wl_list link;
+};
+
+struct sl_host_pointer {
+  struct sl_seat* seat;
+  struct wl_resource* resource;
+  struct wl_pointer* proxy;
+  struct wl_resource* focus_resource;
+  struct wl_listener focus_resource_listener;
+  uint32_t focus_serial;
+};
+
+struct sl_relative_pointer_manager {
+  struct sl_context* ctx;
+  uint32_t id;
+  struct sl_global* host_global;
+  struct zwp_relative_pointer_manager_v1* internal;
 };
 
 struct sl_viewport {
@@ -468,6 +486,9 @@ void sl_output_send_host_output_state(struct sl_host_output* host);
 struct sl_global* sl_output_global_create(struct sl_output* output);
 
 struct sl_global* sl_seat_global_create(struct sl_seat* seat);
+
+struct sl_global* sl_relative_pointer_manager_global_create(
+    struct sl_context* ctx);
 
 struct sl_global* sl_data_device_manager_global_create(struct sl_context* ctx);
 

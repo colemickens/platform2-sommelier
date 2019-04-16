@@ -13,15 +13,6 @@
 
 #include "keyboard-extension-unstable-v1-client-protocol.h"
 
-struct sl_host_pointer {
-  struct sl_seat* seat;
-  struct wl_resource* resource;
-  struct wl_pointer* proxy;
-  struct wl_resource* focus_resource;
-  struct wl_listener focus_resource_listener;
-  uint32_t focus_serial;
-};
-
 struct sl_host_keyboard {
   struct sl_seat* seat;
   struct wl_resource* resource;

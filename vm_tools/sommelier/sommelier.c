@@ -30,6 +30,7 @@
 #include "drm-server-protocol.h"
 #include "keyboard-extension-unstable-v1-client-protocol.h"
 #include "linux-dmabuf-unstable-v1-client-protocol.h"
+#include "relative-pointer-unstable-v1-client-protocol.h"
 #include "text-input-unstable-v1-client-protocol.h"
 #include "viewporter-client-protocol.h"
 #include "xdg-shell-unstable-v6-client-protocol.h"
@@ -1073,6 +1074,18 @@ static void sl_registry_handler(void* data,
     seat->last_serial = 0;
     seat->host_global = sl_seat_global_create(seat);
     wl_list_insert(&ctx->seats, &seat->link);
+  } else if (strcmp(interface, "zwp_relative_pointer_manager_v1") == 0) {
+    struct sl_relative_pointer_manager* relative_pointer =
+        malloc(sizeof(struct sl_relative_pointer_manager));
+    assert(relative_pointer);
+    relative_pointer->ctx = ctx;
+    relative_pointer->id = id;
+    relative_pointer->internal = wl_registry_bind(
+        registry, id, &zwp_relative_pointer_manager_v1_interface, 1);
+    assert(!ctx->relative_pointer_manager);
+    ctx->relative_pointer_manager = relative_pointer;
+    relative_pointer->host_global =
+        sl_relative_pointer_manager_global_create(ctx);
   } else if (strcmp(interface, "wl_data_device_manager") == 0) {
     struct sl_data_device_manager* data_device_manager =
         malloc(sizeof(struct sl_data_device_manager));
@@ -1257,6 +1270,13 @@ static void sl_registry_remover(void* data,
     sl_global_destroy(ctx->text_input_manager->host_global);
     free(ctx->text_input_manager);
     ctx->text_input_manager = NULL;
+    return;
+  }
+  if (ctx->relative_pointer_manager &&
+      ctx->relative_pointer_manager->id == id) {
+    sl_global_destroy(ctx->relative_pointer_manager->host_global);
+    free(ctx->relative_pointer_manager);
+    ctx->relative_pointer_manager = NULL;
     return;
   }
   wl_list_for_each(output, &ctx->outputs, link) {
