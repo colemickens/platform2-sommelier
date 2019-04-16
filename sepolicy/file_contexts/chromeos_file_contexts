@@ -178,6 +178,7 @@ has_arc(`
 
 include(sepolicy/file_contexts/sysfs_contexts)
 
+/dev                            u:object_r:device:s0
 /dev/console                    u:object_r:console_device:s0
 /dev/kmsg                       u:object_r:kmsg_device:s0
 /dev/log                        u:object_r:logger_device:s0
