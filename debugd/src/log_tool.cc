@@ -225,9 +225,7 @@ const std::vector<Log> kCommandLogs {
   {kFile, "powerd.PREVIOUS", "/var/log/power_manager/powerd.PREVIOUS"},
   {kFile, "powerd.out", "/var/log/powerd.out"},
   {kFile, "powerwash_count", "/var/log/powerwash_count"},
-  // Changed from 'ps ux' to 'ps aux' since we're running as debugd,
-  // not chronos.
-  {kCommand, "ps", "/bin/ps aux"},
+  {kCommand, "ps", "/bin/ps auxZ"},
   // /proc/slabinfo is owned by root and has 0400 permission.
   {kFile, "slabinfo", "/proc/slabinfo", kRoot, kRoot},
   {kFile, "storage_info", "/var/log/storage_info.txt"},
