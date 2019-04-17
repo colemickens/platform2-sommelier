@@ -1936,7 +1936,9 @@ void Service::DoMountEx(std::unique_ptr<AccountIdentifier> identifier,
 
   // An AuthorizationRequest key without a label will test against
   // all VaultKeysets of a compatible key().data().type().
-  if (authorization->key().secret().empty()) {
+  if (authorization->key().secret().empty() &&
+      authorization->key().data().type() !=
+          KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
     SendInvalidArgsReply(context, "No key secret supplied");
     return;
   }
@@ -1965,8 +1967,9 @@ void Service::DoMountEx(std::unique_ptr<AccountIdentifier> identifier,
     } else {
       const Key key = request->create().keys(0);
       // TODO(wad) Ensure the labels are all unique.
-      if (key.secret().empty() || !key.has_data() ||
-          key.data().label().empty()) {
+      if (!key.has_data() || key.data().label().empty() ||
+          (key.secret().empty() &&
+           key.data().type() != KeyData::KEY_TYPE_CHALLENGE_RESPONSE)) {
         SendInvalidArgsReply(context,
                              "CreateRequest Keys are not fully specified");
         return;
