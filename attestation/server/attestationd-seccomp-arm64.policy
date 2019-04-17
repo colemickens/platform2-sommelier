@@ -71,6 +71,7 @@ setitimer: 1
 pwrite64: 1
 fdatasync: 1
 fsync: 1
+renameat: 1
 tgkill: 1
 set_tid_address: 1
 uname: 1
