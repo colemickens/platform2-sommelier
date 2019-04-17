@@ -1440,8 +1440,8 @@ TEST_P(MountTest, MountCryptohomeNoChapsKey) {
   EXPECT_CALL(platform_,
               WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillRepeatedly(DoAll(SaveArg<1>(&(user->credentials)), Return(true)));
-  ASSERT_TRUE(mount_->ReEncryptVaultKeyset(credentials, vault_keyset, key_index,
-                                           &serialized));
+  ASSERT_TRUE(mount_->ReEncryptVaultKeyset(credentials, key_index,
+                                           &vault_keyset, &serialized));
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(user->credentials),
                           Return(true)));
@@ -1906,7 +1906,7 @@ TEST_P(MountTest, TwoWayKeysetMigrationTest) {
       .WillOnce(DoAll(SetArgPointee<1>(migrated_keyset),
                       Return(true)));
     serialized.set_flags(flags & ~SerializedVaultKeyset::SCRYPT_WRAPPED);
-    EXPECT_TRUE(mount_->ReEncryptVaultKeyset(credentials, vault_keyset, 0,
+    EXPECT_TRUE(mount_->ReEncryptVaultKeyset(credentials, 0, &vault_keyset,
                                              &serialized));
   }
   // Now we have the TPM-wrapped keyset with correct flags

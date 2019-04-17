@@ -1178,14 +1178,14 @@ bool Crypto::EncryptChallengeCredential(
     const SecureBlob& key,
     const std::string& obfuscated_username,
     SerializedVaultKeyset* serialized) const {
-  DCHECK(serialized->flags() &
-         SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
+  serialized->set_flags(serialized->flags() |
+                        SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
   if (!EncryptScrypt(vault_keyset, key, serialized))
     return false;
-  DCHECK(serialized->flags() &
-         SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
   DCHECK(!(serialized->flags() & SerializedVaultKeyset::TPM_WRAPPED));
   DCHECK(serialized->flags() & SerializedVaultKeyset::SCRYPT_WRAPPED);
+  DCHECK(serialized->flags() &
+         SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
   return true;
 }
 

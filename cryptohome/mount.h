@@ -401,11 +401,11 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //
   // Parameters
   //   credentials - The Credentials for the user
-  //   vault_keyset - The VaultKeyset to save
+  //   vault_keyset (IN/OUT) - The VaultKeyset to save
   //   serialized (IN/OUT) - The SerializedVaultKeyset to add the encrypted
   //                         VaultKeyset to
   bool AddVaultKeyset(const Credentials& credentials,
-                      const VaultKeyset& vault_keyset,
+                      VaultKeyset* vault_keyset,
                       SerializedVaultKeyset* serialized) const;
 
   // Resaves the vault keyset, restoring on failure.  The vault_keyset supplied
@@ -414,11 +414,11 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //
   // Parameters
   //   credentials - The Credentials for the user
-  //   vault_keyset - The VaultKeyset to save
+  //   vault_keyset (IN/OUT) - The VaultKeyset to save
   //   serialized (IN/OUT) - The serialized container to be saved
   bool ReEncryptVaultKeyset(const Credentials& credentials,
-                            const VaultKeyset& vault_keyset,
                             int index,
+                            VaultKeyset* vault_keyset,
                             SerializedVaultKeyset* serialized) const;
 
   // Attempt to decrypt the keyset for the specified user.  The method both

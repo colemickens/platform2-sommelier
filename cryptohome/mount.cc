@@ -451,7 +451,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   if (!serialized.has_wrapped_chaps_key()) {
     is_pkcs11_passkey_migration_required_ = true;
     vault_keyset.CreateRandomChapsKey();
-    ReEncryptVaultKeyset(credentials, vault_keyset, index, &serialized);
+    ReEncryptVaultKeyset(credentials, index, &vault_keyset, &serialized);
   }
 
   SecureBlob local_chaps_key(vault_keyset.chaps_key().begin(),
@@ -969,7 +969,7 @@ bool Mount::CreateCryptohome(const Credentials& credentials) const {
   vault_keyset.Initialize(platform_, crypto_);
   vault_keyset.CreateRandom();
   SerializedVaultKeyset serialized;
-  if (!AddVaultKeyset(credentials, vault_keyset, &serialized)) {
+  if (!AddVaultKeyset(credentials, &vault_keyset, &serialized)) {
     platform_->SetMask(original_mask);
     LOG(ERROR) << "Failed to add vault keyset to new user";
     return false;
@@ -1334,7 +1334,7 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
     // protection is ideal, but not required.
     SerializedVaultKeyset new_serialized;
     new_serialized.CopyFrom(*serialized);
-    if (ReEncryptVaultKeyset(credentials, *vault_keyset, *index,
+    if (ReEncryptVaultKeyset(credentials, *index, vault_keyset,
                              &new_serialized)) {
       serialized->CopyFrom(new_serialized);
     }
@@ -1344,7 +1344,7 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
 }
 
 bool Mount::AddVaultKeyset(const Credentials& credentials,
-                           const VaultKeyset& vault_keyset,
+                           VaultKeyset* vault_keyset,
                            SerializedVaultKeyset* serialized) const {
   // We don't do passkey to wrapper conversion because it is salted during save
   SecureBlob passkey;
@@ -1354,15 +1354,16 @@ bool Mount::AddVaultKeyset(const Credentials& credentials,
       credentials.GetObfuscatedUsername(system_salt_);
 
   if (credentials.key_data().type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
-    serialized->set_flags(serialized->flags() |
-                          SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
+    vault_keyset->mutable_serialized()->set_flags(
+        vault_keyset->serialized().flags() |
+        SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
   }
 
   // Encrypt the vault keyset
   SecureBlob salt(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
   CryptoLib::GetSecureRandom(salt.data(), salt.size());
 
-  if (!crypto_->EncryptVaultKeyset(vault_keyset, passkey, salt,
+  if (!crypto_->EncryptVaultKeyset(*vault_keyset, passkey, salt,
                                    obfuscated_username, serialized)) {
     LOG(ERROR) << "Encrypting vault keyset failed";
     return false;
@@ -1372,8 +1373,8 @@ bool Mount::AddVaultKeyset(const Credentials& credentials,
 }
 
 bool Mount::ReEncryptVaultKeyset(const Credentials& credentials,
-                                 const VaultKeyset& vault_keyset,
                                  int key_index,
+                                 VaultKeyset* vault_keyset,
                                  SerializedVaultKeyset* serialized) const {
   std::string obfuscated_username =
     credentials.GetObfuscatedUsername(system_salt_);
