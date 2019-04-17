@@ -470,6 +470,10 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // TODO(https://crbug.com/943790): Remove after model development is complete.
   builder->AddVmodulePattern("*/chromeos/power/auto_screen_brightness/*=1");
 
+  // TODO(https://crbug.com/826982): Remove after App List + App Service
+  // integration roll out is complete.
+  builder->AddVmodulePattern("app_list_syncable_service=1");
+
   if (builder->UseFlagIsSet("cheets"))
     builder->AddVmodulePattern("*arc/*=1");
 
