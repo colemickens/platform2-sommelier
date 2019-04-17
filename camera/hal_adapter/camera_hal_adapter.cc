@@ -214,57 +214,66 @@ int32_t CameraHalAdapter::GetCameraInfo(int32_t camera_id,
     dump_camera_metadata(info.static_camera_characteristics, 2, 3);
   }
 
-  // Append vendor tags to request, result and characteristics keys
+  // Currently, all our vendor tag features are based on YUV reprocessing.
+  // Skip exporting vendor tag related keys into |metadata| by simply
+  // evaluate YUV reprocessing capability of each cameras.
+  // TODO(inker): Move evaluation into per vendor tag effeect class.
   android::CameraMetadata metadata(
       clone_camera_metadata(info.static_camera_characteristics));
-  std::vector<int32_t> vendor_tags;
-  for (const auto& it : vendor_tag_map_) {
-    vendor_tags.push_back(it.first);
-  }
-  std::vector<int32_t> key_tags(
-      {ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS,
-       ANDROID_REQUEST_AVAILABLE_RESULT_KEYS,
-       ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS});
-  for (const auto& it : key_tags) {
-    camera_metadata_ro_entry_t ro_entry;
-    if (find_camera_metadata_ro_entry(info.static_camera_characteristics, it,
-                                      &ro_entry) != 0) {
-      LOGF(ERROR) << "Failed to get " << get_camera_metadata_tag_name(it);
-      continue;
+  const auto cap_entry = metadata.find(ANDROID_REQUEST_AVAILABLE_CAPABILITIES);
+  if (std::find(cap_entry.data.u8, cap_entry.data.u8 + cap_entry.count,
+                ANDROID_REQUEST_AVAILABLE_CAPABILITIES_YUV_REPROCESSING) !=
+      cap_entry.data.u8 + cap_entry.count) {
+    // Append vendor tags to request, result and characteristics keys
+    std::vector<int32_t> vendor_tags;
+    for (const auto& it : vendor_tag_map_) {
+      vendor_tags.push_back(it.first);
     }
-    std::vector<int32_t> keys(ro_entry.data.i32,
-                              ro_entry.data.i32 + ro_entry.count);
-    keys.insert(keys.end(), vendor_tags.begin(), vendor_tags.end());
-    if (metadata.update(it, keys.data(), keys.size()) != 0) {
-      LOGF(ERROR) << "Failed to add vendor tags to "
-                  << get_camera_metadata_tag_name(it);
+    std::vector<int32_t> key_tags(
+        {ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS,
+         ANDROID_REQUEST_AVAILABLE_RESULT_KEYS,
+         ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS});
+    for (const auto& it : key_tags) {
+      camera_metadata_ro_entry_t ro_entry;
+      if (find_camera_metadata_ro_entry(info.static_camera_characteristics, it,
+                                        &ro_entry) != 0) {
+        LOGF(ERROR) << "Failed to get " << get_camera_metadata_tag_name(it);
+        continue;
+      }
+      std::vector<int32_t> keys(ro_entry.data.i32,
+                                ro_entry.data.i32 + ro_entry.count);
+      keys.insert(keys.end(), vendor_tags.begin(), vendor_tags.end());
+      if (metadata.update(it, keys.data(), keys.size()) != 0) {
+        LOGF(ERROR) << "Failed to add vendor tags to "
+                    << get_camera_metadata_tag_name(it);
+      }
     }
-  }
-  // Update vendor tag default values into camera characteristics
-  for (const auto& it : vendor_tag_map_) {
-    switch (it.second.type) {
-      case TYPE_BYTE:
-        metadata.update(it.first, &it.second.data.u8, 1);
-        break;
-      case TYPE_INT32:
-        metadata.update(it.first, &it.second.data.i32, 1);
-        break;
-      case TYPE_FLOAT:
-        metadata.update(it.first, &it.second.data.f, 1);
-        break;
-      case TYPE_INT64:
-        metadata.update(it.first, &it.second.data.i64, 1);
-        break;
-      case TYPE_DOUBLE:
-        metadata.update(it.first, &it.second.data.d, 1);
-        break;
-      case TYPE_RATIONAL:
-        metadata.update(it.first, &it.second.data.r, 1);
-        break;
-      default:
-        LOGF(ERROR) << "Invalid vendor tag type";
-        camera_info->reset();
-        return -EINVAL;
+    // Update vendor tag default values into camera characteristics
+    for (const auto& it : vendor_tag_map_) {
+      switch (it.second.type) {
+        case TYPE_BYTE:
+          metadata.update(it.first, &it.second.data.u8, 1);
+          break;
+        case TYPE_INT32:
+          metadata.update(it.first, &it.second.data.i32, 1);
+          break;
+        case TYPE_FLOAT:
+          metadata.update(it.first, &it.second.data.f, 1);
+          break;
+        case TYPE_INT64:
+          metadata.update(it.first, &it.second.data.i64, 1);
+          break;
+        case TYPE_DOUBLE:
+          metadata.update(it.first, &it.second.data.d, 1);
+          break;
+        case TYPE_RATIONAL:
+          metadata.update(it.first, &it.second.data.r, 1);
+          break;
+        default:
+          LOGF(ERROR) << "Invalid vendor tag type";
+          camera_info->reset();
+          return -EINVAL;
+      }
     }
   }
 
