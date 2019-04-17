@@ -99,8 +99,9 @@ if [ -r "${CLEANUP_PAUSED_FILE}" ]; then
   exit 1
 fi
 
-# Remove old biometrics daemon logs
+# Remove old biometrics daemon and firmware updater logs
 remove_old_files /var/log/biod "biod.*"
+remove_old_files /var/log/biod "bio_fw_updater.*"
 
 # Remove old chrome logs (not logged in)
 remove_old_files /var/log/chrome "chrome_*-*"
