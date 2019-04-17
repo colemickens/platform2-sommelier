@@ -96,6 +96,8 @@ class SessionManagerProcessTest : public ::testing::Test {
     EXPECT_CALL(*job, KillEverything(SIGKILL, _)).Times(AnyNumber());
     EXPECT_CALL(*session_manager_impl_, ShouldEndSession(_))
         .WillRepeatedly(Return(false));
+    // Return false once to allow the job to rerun. We then return true to stop
+    // the loop; otherwise, the test will keep restarting the job forever.
     EXPECT_CALL(*job, ShouldStop())
         .WillOnce(Return(false))
         .WillOnce(Return(true));
@@ -293,6 +295,9 @@ TEST_F(SessionManagerProcessTest, ChildExitFlagFileStop) {
 
   EXPECT_CALL(*job, KillEverything(SIGKILL, _)).Times(AnyNumber());
   EXPECT_CALL(*job, ShouldStop()).WillOnce(Return(false));
+  EXPECT_CALL(metrics_,
+              SendSessionExitType(LoginMetrics::SessionExitType::NORMAL_EXIT))
+      .Times(1);
   job->set_should_run(false);
 
   EXPECT_CALL(*session_manager_impl_, ShouldEndSession(_))
@@ -336,6 +341,9 @@ TEST_F(SessionManagerProcessTest, LockedExit) {
 
   EXPECT_CALL(*session_manager_impl_, ShouldEndSession(_))
       .WillOnce(Return(true));
+  EXPECT_CALL(metrics_,
+              SendSessionExitType(LoginMetrics::SessionExitType::NORMAL_EXIT))
+      .Times(1);
 
   SimpleRunManager();
 }
@@ -360,6 +368,10 @@ TEST_F(SessionManagerProcessTest, MustStopChild) {
   EXPECT_CALL(*job, ShouldStop()).WillOnce(Return(true));
   EXPECT_CALL(*session_manager_impl_, ShouldEndSession(_))
       .WillRepeatedly(Return(false));
+  // ShouldStop returning true indicates a login crash loop.
+  EXPECT_CALL(metrics_, SendSessionExitType(
+                            LoginMetrics::SessionExitType::LOGIN_CRASH_LOOP))
+      .Times(1);
 
   SimpleRunManager();
 }

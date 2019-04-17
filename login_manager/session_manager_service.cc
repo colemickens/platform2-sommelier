@@ -482,6 +482,13 @@ void SessionManagerService::AllowGracefulExitOrRunForever() {
 }
 
 void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
+  LoginMetrics::SessionExitType exit_type =
+      LoginMetrics::SessionExitType::NORMAL_EXIT;
+  if (code == CHILD_EXITING_TOO_FAST) {
+    exit_type = LoginMetrics::SessionExitType::LOGIN_CRASH_LOOP;
+  }
+  login_metrics_->SendSessionExitType(exit_type);
+
   shutting_down_ = true;
   exit_code_ = code;
   impl_->AnnounceSessionStoppingIfNeeded();

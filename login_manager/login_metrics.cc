@@ -29,6 +29,7 @@ const char kLoginConsumerAllowsNewUsersMetric[] =
 const char kLoginPolicyFilesMetric[] = "Login.PolicyFilesStatePerBoot";
 const char kLoginUserTypeMetric[] = "Login.UserType";
 const char kLoginStateKeyGenerationStatus[] = "Login.StateKeyGenerationStatus";
+const char kSessionExitTypeMetric[] = "Login.SessionExitType";
 const char kInvalidDevicePolicyFilesDetected[] =
     "Enterprise.InvalidDevicePolicyFiles";
 const int kMaxPolicyFilesValue = 64;
@@ -115,6 +116,12 @@ void LoginMetrics::SendNumberOfInvalidPolicyFiles(int invalid_files) {
   // invalid_files = 0 as that is the implicit underflow bucket.
   metrics_lib_.SendToUMA(kInvalidDevicePolicyFilesDetected, invalid_files, 1,
                          10, 10);
+}
+
+void LoginMetrics::SendSessionExitType(SessionExitType session_exit_type) {
+  metrics_lib_.SendEnumToUMA(kSessionExitTypeMetric,
+                             static_cast<int>(session_exit_type),
+                             static_cast<int>(SessionExitType::NUM_VALUES));
 }
 
 // static

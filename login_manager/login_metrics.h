@@ -17,6 +17,16 @@ class CumulativeUseTimeMetric;
 
 class LoginMetrics {
  public:
+  // Do we believe the session exited due to a login crash loop?
+  // These values are persisted to metrics server. Entries (other than
+  // NUM_VALUES) should not be renumbered and numeric values should never be
+  // reused. If you update this enum, also update Chrome's enums.xml.
+  enum class SessionExitType {
+    NORMAL_EXIT = 0,
+    LOGIN_CRASH_LOOP = 1,
+
+    NUM_VALUES  // Keep last
+  };
   enum AllowedUsersState { ANY_USER_ALLOWED = 0, ONLY_WHITELISTED_ALLOWED = 1 };
   enum PolicyFileState {
     GOOD = 0,
@@ -42,7 +52,6 @@ class LoginMetrics {
     STATE_KEY_STATUS_HMAC_SIGN_FAILURE = 5,
     STATE_KEY_STATUS_COUNT  // must be last.
   };
-
   // Holds the state of several policy-related files on disk.
   // We leave an extra bit for future state-space expansion.
   // Treat as, essentially, a base-4 number that we encode in decimal before
@@ -102,12 +111,15 @@ class LoginMetrics {
   // container is started.
   virtual void StartTrackingArcUseTime();
 
-  // Stops tracking culumative ARC usage time. Should be called when ARC
+  // Stops tracking cumulative ARC usage time. Should be called when ARC
   // container is stopped.
   virtual void StopTrackingArcUseTime();
 
   // Submits to UMA the number of invalid policy files detected.
   virtual void SendNumberOfInvalidPolicyFiles(int invalid_files);
+
+  // Submits to UMA whether or not the session exited due to a login crash loop.
+  virtual void SendSessionExitType(SessionExitType session_exit_type);
 
  private:
   friend class LoginMetricsTest;
