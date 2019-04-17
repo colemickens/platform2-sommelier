@@ -201,6 +201,10 @@ class Crypto {
   // Returns whether the provided label needs valid PCR criteria attached.
   bool NeedsPcrBinding(const uint64_t& label) const;
 
+  // Returns the map with expected PCR values for the user.
+  std::map<uint32_t, std::string> GetPcrMap(
+      const std::string& obfuscated_username, bool use_extended_pcr) const;
+
   // Sets whether or not to use the TPM (must be called before init, depends
   // on the presence of a functioning, initialized TPM).  The TPM is merely used
   // to add a layer of difficulty in a brute-force attack against the user's
@@ -342,11 +346,6 @@ class Crypto {
   // represents the bitmask of used PCR indexes and the expected digest.
   bool GetValidPCRValues(const std::string& obfuscated_username,
                          ValidPcrCriteria* valid_pcr_criteria) const;
-
-  // Returns the map with expected PCR values for the user.
-  std::map<uint32_t, std::string> GetPcrMap(
-      const std::string& obfuscated_username,
-      bool use_extended_pcr) const;
 
   // Returns the tpm_key data taken from |serialized|, specifically if the
   // keyset is PCR_BOUND and |is_pcr_extended| the data is taken from

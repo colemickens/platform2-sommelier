@@ -2120,9 +2120,11 @@ void Service::DoChallengeResponseMountEx(
       SendReply(context, reply);
       return;
     }
-    // TODO(crbug.com/842791): Fill PCR restrictions.
+    std::vector<std::map<uint32_t, Blob>> pcr_restrictions;
+    GetChallengeCredentialsPcrRestrictions(obfuscated_username,
+                                           &pcr_restrictions);
     challenge_credentials_helper_->GenerateNew(
-        account_id, key_data, {} /* pcr_restrictions */,
+        account_id, key_data, pcr_restrictions,
         std::move(key_challenge_service),
         base::Bind(&Service::OnChallengeResponseMountCredentialsObtained,
                    base::Unretained(this), base::Passed(std::move(identifier)),
@@ -2299,6 +2301,27 @@ void Service::ContinueMountExWithCredentials(
     // TODO(wad) This call will PostTask back to the same thread. It is safe,
     //           but it seems pointless.
     InitializePkcs11(user_mount.get());
+  }
+}
+
+void Service::GetChallengeCredentialsPcrRestrictions(
+    const std::string& obfuscated_username,
+    std::vector<std::map<uint32_t, Blob>>* pcr_restrictions) {
+  {
+    std::map<uint32_t, Blob> pcrs_1;
+    for (const auto& pcr : crypto_->GetPcrMap(obfuscated_username,
+                                              false /* use_extended_pcr */)) {
+      pcrs_1[pcr.first] = BlobFromString(pcr.second);
+    }
+    pcr_restrictions->push_back(pcrs_1);
+  }
+  {
+    std::map<uint32_t, Blob> pcrs_2;
+    for (const auto& pcr :
+         crypto_->GetPcrMap(obfuscated_username, true /* use_extended_pcr */)) {
+      pcrs_2[pcr.first] = BlobFromString(pcr.second);
+    }
+    pcr_restrictions->push_back(pcrs_2);
   }
 }
 

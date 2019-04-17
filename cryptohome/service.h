@@ -914,6 +914,12 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
       const Mount::MountArgs& mount_args,
       DBusGMethodInvocation* context);
 
+  // Builds the PCR restrictions to be applied to the challenge-protected vault
+  // keyset.
+  void GetChallengeCredentialsPcrRestrictions(
+      const std::string& obfuscated_username,
+      std::vector<std::map<uint32_t, brillo::Blob>>* pcr_restrictions);
+
   // Determines whether the mount request should be ephemeral. On error, returns
   // false and sets the error code in |error|. Otherwise, returns true and fills
   // the result in |is_ephemeral|.
