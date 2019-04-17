@@ -170,7 +170,7 @@ Since these are a large topic by themselves, we have a [Collectors] doc.
 
 Every collector produces a unique name of sorts which is then looked up in the
 [crash_reporter_logs.conf] file.
-For example, [user_collector] users the program's base file name, while
+For example, [user_collector] uses the program's base file name, while
 [udev_collector] constructs a more complicated format to make it easier to
 match unique events.
 
