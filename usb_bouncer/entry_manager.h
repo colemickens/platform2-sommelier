@@ -7,6 +7,8 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
+#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 
 #include <functional>
@@ -14,6 +16,7 @@
 #include <memory>
 #include <string>
 
+#include "usb_bouncer/rule_db_storage.h"
 #include "usb_bouncer/usb_bouncer.pb.h"
 
 namespace usb_bouncer {
@@ -93,11 +96,10 @@ class EntryManager {
   // Allows mocking this functionality for tests.
   DevpathToRuleCallback rule_from_devpath_;
 
-  base::FilePath global_db_path_;
-  std::unique_ptr<RuleDB> global_entries_;
+  RuleDBStorage global_db_;
+  RuleDBStorage user_db_;
 
-  base::FilePath user_db_path_;
-  std::unique_ptr<RuleDB> user_entries_;
+  DISALLOW_COPY_AND_ASSIGN(EntryManager);
 };
 
 }  // namespace usb_bouncer

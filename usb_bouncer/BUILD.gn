@@ -47,8 +47,8 @@ static_library("usb_bouncer_common") {
   ]
   sources = [
     "entry_manager.cc",
+    "rule_db_storage.cc",
     "util.cc",
-    "util.h",
   ]
 }
 

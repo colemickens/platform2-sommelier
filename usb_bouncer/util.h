@@ -6,6 +6,7 @@
 #define USB_BOUNCER_UTIL_H_
 
 #include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
 #include <base/time/time.h>
 #include <google/protobuf/repeated_field.h>
 #include <google/protobuf/timestamp.pb.h>
@@ -36,10 +37,7 @@ constexpr uid_t kRootUid = 0;
 std::string Hash(const std::string& content);
 std::string Hash(const google::protobuf::RepeatedPtrField<std::string>& rules);
 
-// Sets |db_path| to the path of the DB file (it may not exist) and returns a
-// RuleDB (creating one if necessary). On failure nullptr is returned.
-std::unique_ptr<RuleDB> GetDBFromPath(const base::FilePath& parent_dir,
-                                      base::FilePath* db_path);
+base::FilePath GetDBPath(const base::FilePath& parent_dir);
 
 // Invokes usbguard to get a rule corresponding to |devpath|. Note that
 // |devpath| isn't actually a valid path until you prepend "/sys". This matches
@@ -75,8 +73,11 @@ std::string StripLeadingPathSeparators(const std::string& path);
 // de-duplicated by string value ignoring any metadata like the time last used.
 std::unordered_set<std::string> UniqueRules(const EntryMap& entries);
 
-bool WriteProtoToPath(const base::FilePath& db_path,
-                      google::protobuf::MessageLite* rule_db);
+// Attempts to open the specified |path| with the proper permissions. If |lock|
+// is true, this call blocks until an exclusive lock can be obtained for |path|.
+// All runs of usb_bouncer are expected to be relatively fast (<250ms), so
+// blocking should be ok.
+base::ScopedFD OpenPath(const base::FilePath& path, bool lock);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Time related helper functions.

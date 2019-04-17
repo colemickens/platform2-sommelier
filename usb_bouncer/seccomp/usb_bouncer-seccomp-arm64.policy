@@ -1,6 +1,7 @@
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+_llseek: 1
 brk: 1
 clock_getres: 1
 clock_gettime: 1
@@ -10,7 +11,9 @@ exit: 1
 exit_group: 1
 fchmod: arg1 == 0600
 fcntl: 1
+flock: 1
 fstat: 1
+ftruncate: 1
 futex: 1
 getdents64: 1
 geteuid: 1
@@ -23,6 +26,7 @@ getuid: 1
 ioctl: arg1 == TCGETS
 newfstatat: 1
 openat: 1
+mkdirat: 1
 ppoll: 1
 read: 1
 recvmsg: 1

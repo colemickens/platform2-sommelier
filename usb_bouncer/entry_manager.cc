@@ -32,7 +32,7 @@ constexpr char kDevpathRoot[] = "sys/devices";
 
 EntryManager* EntryManager::GetInstance() {
   static EntryManager instance;
-  if (instance.global_db_path_.empty() || !instance.global_entries_) {
+  if (!instance.global_db_.Valid()) {
     LOG(ERROR) << "Failed to open global DB.";
     return nullptr;
   }
@@ -40,9 +40,9 @@ EntryManager* EntryManager::GetInstance() {
 }
 
 bool EntryManager::CreateDefaultGlobalDB() {
-  base::FilePath db_path;
-  return GetDBFromPath(base::FilePath("/").Append(kDefaultGlobalDir),
-                       &db_path) != nullptr;
+  base::FilePath db_path =
+      GetDBPath(base::FilePath("/").Append(kDefaultGlobalDir));
+  return OpenPath(db_path, false).is_valid();
 }
 
 EntryManager::EntryManager()
@@ -55,12 +55,15 @@ EntryManager::EntryManager(const std::string& root_dir,
                            DevpathToRuleCallback rule_from_devpath)
     : user_db_read_only_(user_db_read_only),
       root_dir_(root_dir),
-      rule_from_devpath_(rule_from_devpath) {
-  global_entries_ =
-      GetDBFromPath(root_dir_.Append(kDefaultGlobalDir), &global_db_path_);
-
+      rule_from_devpath_(rule_from_devpath),
+      global_db_(root_dir_.Append(kDefaultGlobalDir)) {
   if (!user_db_dir.empty()) {
-    user_entries_ = GetDBFromPath(user_db_dir, &user_db_path_);
+    user_db_ = RuleDBStorage(user_db_dir);
+    // In the case of the user_db being created from scratch replace it with the
+    // global db which represents the current state of the system.
+    if (user_db_.Get().entries_size() == 0) {
+      user_db_.Get() = global_db_.Get();
+    }
   }
 }
 
@@ -78,11 +81,11 @@ bool EntryManager::GarbageCollect() {
 std::string EntryManager::GenerateRules() const {
   // The currently connected devices are allow-listed without filtering.
   std::unordered_set<std::string> rules =
-      UniqueRules(global_entries_->entries());
+      UniqueRules(global_db_.Get().entries());
 
   // Include user specific allow-listing rules.
-  if (user_entries_) {
-    for (const auto& rule : UniqueRules(user_entries_->entries())) {
+  if (user_db_.Valid()) {
+    for (const auto& rule : UniqueRules(user_db_.Get().entries())) {
       if (IncludeRuleAtLockscreen(rule)) {
         rules.insert(rule);
       }
@@ -129,7 +132,7 @@ bool EntryManager::HandleUdev(UdevAction action, const std::string& devpath) {
   }
 
   std::string global_key = Hash(devpath);
-  EntryMap* global_map = global_entries_->mutable_entries();
+  EntryMap* global_map = global_db_.Get().mutable_entries();
 
   switch (action) {
     case UdevAction::kAdd: {
@@ -149,7 +152,7 @@ bool EntryManager::HandleUdev(UdevAction action, const std::string& devpath) {
 
       // Prepend any mode changes for the same device.
       GarbageCollectInternal(true /*global_only*/);
-      const EntryMap& trash = global_entries_->trash();
+      const EntryMap& trash = global_db_.Get().trash();
       auto itr = trash.find(global_key);
       if (itr != trash.end()) {
         for (const auto& previous_mode : itr->second.rules()) {
@@ -160,8 +163,8 @@ bool EntryManager::HandleUdev(UdevAction action, const std::string& devpath) {
       }
 
       *entry.mutable_rules()->Add() = rule;
-      if (user_entries_ && !user_db_read_only_) {
-        (*user_entries_->mutable_entries())[Hash(entry.rules())] = entry;
+      if (user_db_.Valid() && !user_db_read_only_) {
+        (*user_db_.Get().mutable_entries())[Hash(entry.rules())] = entry;
       }
       return PersistChanges();
     }
@@ -173,7 +176,7 @@ bool EntryManager::HandleUdev(UdevAction action, const std::string& devpath) {
       // that have been used some time by a user that should be trusted.
       auto itr = global_map->find(global_key);
       if (itr != global_map->end()) {
-        (*global_entries_->mutable_trash())[global_key].Swap(&itr->second);
+        (*global_db_.Get().mutable_trash())[global_key].Swap(&itr->second);
         global_map->erase(itr);
         return PersistChanges();
       }
@@ -185,14 +188,14 @@ bool EntryManager::HandleUdev(UdevAction action, const std::string& devpath) {
 }
 
 bool EntryManager::HandleUserLogin() {
-  if (!user_entries_) {
+  if (!user_db_.Valid()) {
     LOG(ERROR) << "Unable to access user db.";
     return false;
   }
 
-  EntryMap* user_entries = user_entries_->mutable_entries();
+  EntryMap* user_entries = user_db_.Get().mutable_entries();
 
-  for (const auto& entry : global_entries_->entries()) {
+  for (const auto& entry : global_db_.Get().entries()) {
     if (!entry.second.rules().empty()) {
       (*user_entries)[Hash(entry.second.rules())] = entry.second;
     }
@@ -202,12 +205,12 @@ bool EntryManager::HandleUserLogin() {
 
 size_t EntryManager::GarbageCollectInternal(bool global_only) {
   size_t num_removed = RemoveEntriesOlderThan(kModeSwitchThreshold,
-                                              global_entries_->mutable_trash());
+                                              global_db_.Get().mutable_trash());
 
   if (!global_only) {
-    if (user_entries_) {
+    if (user_db_.Valid()) {
       num_removed += RemoveEntriesOlderThan(kCleanupThreshold,
-                                            user_entries_->mutable_entries());
+                                            user_db_.Get().mutable_entries());
     } else {
       LOG(WARNING) << "Unable to access user db.";
     }
@@ -240,15 +243,13 @@ bool EntryManager::ValidateDevPath(const std::string& devpath) {
 
 bool EntryManager::PersistChanges() {
   bool success = true;
-  if (!WriteProtoToPath(global_db_path_, global_entries_.get())) {
+  if (!global_db_.Persist()) {
     LOG(ERROR) << "Failed to writeback global DB.";
     success = false;
   }
-  if (!user_db_path_.empty() && user_entries_) {
-    if (!WriteProtoToPath(user_db_path_, user_entries_.get())) {
-      LOG(ERROR) << "Failed to writeback user DB.";
-      success = false;
-    }
+  if (user_db_.Valid() && !user_db_.Persist()) {
+    LOG(ERROR) << "Failed to writeback user DB.";
+    success = false;
   }
   return success;
 }

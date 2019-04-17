@@ -73,9 +73,9 @@ EntryManager* EntryManagerTestUtil::Get() {
 
 void EntryManagerTestUtil::RefreshDB(bool include_user_db, bool new_db) {
   if (new_db && entry_manager_) {
-    if (!base::DeleteFile(entry_manager_->global_db_path_, true)) {
+    if (!base::DeleteFile(entry_manager_->global_db_.path(), true)) {
       LOG(FATAL) << "Unable to delete \""
-                 << entry_manager_->global_db_path_.value() << "\"!";
+                 << entry_manager_->global_db_.path().value() << "\"!";
     }
   }
   if (include_user_db) {
@@ -88,7 +88,7 @@ void EntryManagerTestUtil::RefreshDB(bool include_user_db, bool new_db) {
 }
 
 void EntryManagerTestUtil::ReplaceDB(const RuleDB& replacement) {
-  *entry_manager_->global_entries_ = replacement;
+  entry_manager_->global_db_.Get() = replacement;
 }
 
 void EntryManagerTestUtil::SetUserDBReadOnly(bool user_db_read_only) {
@@ -98,12 +98,12 @@ void EntryManagerTestUtil::SetUserDBReadOnly(bool user_db_read_only) {
 void EntryManagerTestUtil::ExpireEntry(bool expect_user,
                                        const std::string& devpath,
                                        const std::string& rule) {
-  CHECK(ExpireEntryHelper(entry_manager_->global_entries_->mutable_trash(),
+  CHECK(ExpireEntryHelper(entry_manager_->global_db_.Get().mutable_trash(),
                           Hash(devpath)));
 
   if (expect_user) {
-    CHECK(entry_manager_->user_entries_);
-    CHECK(ExpireEntryHelper(entry_manager_->user_entries_->mutable_entries(),
+    CHECK(entry_manager_->user_db_.Valid());
+    CHECK(ExpireEntryHelper(entry_manager_->user_db_.Get().mutable_entries(),
                             Hash(rule)));
   }
 }
@@ -114,19 +114,19 @@ size_t EntryManagerTestUtil::GarbageCollectInternal(bool global_only) {
 
 bool EntryManagerTestUtil::GlobalDBContainsEntry(const std::string& devpath,
                                                  const std::string& rule) {
-  return EntryMapContains(entry_manager_->global_entries_->entries(),
+  return EntryMapContains(entry_manager_->global_db_.Get().entries(),
                           Hash(devpath), rule);
 }
 
 bool EntryManagerTestUtil::GlobalTrashContainsEntry(const std::string& devpath,
                                                     const std::string& rule) {
-  return EntryMapContains(entry_manager_->global_entries_->trash(),
+  return EntryMapContains(entry_manager_->global_db_.Get().trash(),
                           Hash(devpath), rule);
 }
 
 bool EntryManagerTestUtil::UserDBContainsEntry(const std::string& rule) {
-  CHECK(entry_manager_->user_entries_);
-  return EntryMapContains(entry_manager_->user_entries_->entries(), Hash(rule),
+  CHECK(entry_manager_->user_db_.Valid());
+  return EntryMapContains(entry_manager_->user_db_.Get().entries(), Hash(rule),
                           rule);
 }
 
@@ -150,8 +150,11 @@ base::FilePath EntryManagerTestUtil::CreateTestDir(const std::string& dir,
 
 void EntryManagerTestUtil::RecreateEntryManager(
     const base::FilePath& userdb_dir) {
+  // Make sure old entry_manager_ is cleaned up before creating another to
+  // release the file lock.
+  entry_manager_.reset();
   // std::make_unique was not used because a private constructor was needed.
-  entry_manager_ = std::unique_ptr<EntryManager>(new EntryManager(
+  entry_manager_.reset(new EntryManager(
       temp_dir_.value(), userdb_dir, false /*user_db_read_only*/,
       [](const std::string& devpath) -> std::string {
         if (devpath.empty()) {
@@ -159,8 +162,7 @@ void EntryManagerTestUtil::RecreateEntryManager(
         }
         return kDefaultRule;
       }));
-  CHECK(!entry_manager_->global_db_path_.empty());
-  CHECK(entry_manager_->global_entries_);
+  CHECK(entry_manager_->global_db_.Valid());
 }
 
 }  // namespace usb_bouncer

@@ -12,10 +12,13 @@
 #include <brillo/cryptohome.h>
 #include <brillo/file_utils.h>
 #include <brillo/userdb_utils.h>
+#include <fcntl.h>
 #include <openssl/sha.h>
 #include <session_manager/dbus-proxies.h>
+#include <sys/file.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <cstring>
 #include <vector>
 
@@ -31,8 +34,7 @@ namespace usb_bouncer {
 
 namespace {
 
-constexpr int kDbPermissions =
-    base::FILE_PERMISSION_READ_BY_USER | base::FILE_PERMISSION_WRITE_BY_USER;
+constexpr int kDbPermissions = S_IRUSR | S_IWUSR;
 
 // Returns base64 encoded strings since proto strings must be valid UTF-8.
 std::string EncodeDigest(const std::vector<uint8_t>& digest) {
@@ -83,43 +85,6 @@ class UsbguardDeviceManagerHooksImpl : public usbguard::DeviceManagerHooks {
   usbguard::Rule lastRule_;
 };
 
-// As root this will create the necessary files with the required permissions,
-// without root it will try to create the files and verify the permissions are
-// correct.
-bool SetupPermissionsFor(const base::FilePath& path) {
-  uid_t proc_uid = getuid();
-  uid_t uid = proc_uid;
-  gid_t gid = getgid();
-
-  if (uid == kRootUid &&
-      !brillo::userdb::GetUserInfo(kUsbBouncerUser, &uid, &gid)) {
-    LOG(ERROR) << "Failed to get uid & gid for \"" << kUsbBouncerUser << "\"";
-    return false;
-  }
-  // TODO(chromium:896337) Address TOCTOU here.
-  if (!brillo::TouchFile(path, kDbPermissions, uid, gid)) {
-    LOG(ERROR) << "Failed to touch file \"" << path.value() << "\"";
-    return false;
-  }
-  if (proc_uid == kRootUid) {
-    base::FilePath parent_dir = path.DirName();
-    if (chown(parent_dir.value().c_str(), uid, gid) < 0) {
-      PLOG(ERROR) << "chown for \"" << parent_dir.value()
-                  << "\" failed because: " << std::strerror(errno);
-      return false;
-    }
-    if (chown(path.value().c_str(), uid, gid) < 0) {
-      PLOG(ERROR) << "chown for \"" << path.value()
-                  << "\" failed because: " << std::strerror(errno);
-      return false;
-    }
-  }
-  if (!base::VerifyPathControlledByUser(path, path, uid, {gid})) {
-    LOG(ERROR) << "Wrong permissions \"" << path.value() << "\"";
-  }
-  return true;
-}
-
 }  // namespace
 
 std::string Hash(const std::string& content) {
@@ -156,24 +121,8 @@ std::string Hash(const google::protobuf::RepeatedPtrField<std::string>& rules) {
   return EncodeDigest(digest);
 }
 
-std::unique_ptr<RuleDB> GetDBFromPath(const base::FilePath& parent_dir,
-                                      base::FilePath* db_path) {
-  *db_path = parent_dir.Append(kDefaultDbName);
-  // TODO(chromium:896337) Fix TOCTOU.
-  if (!SetupPermissionsFor(*db_path)) {
-    *db_path = base::FilePath("");
-    return nullptr;
-  }
-  std::string data;
-  if (!base::ReadFileToString(*db_path, &data) || data.empty()) {
-    return std::make_unique<RuleDB>();
-  }
-
-  auto result = std::make_unique<RuleDB>();
-  if (!result->ParseFromString(data)) {
-    LOG(ERROR) << "Error parsing db. Regenerating...";
-  }
-  return result;
+base::FilePath GetDBPath(const base::FilePath& parent_dir) {
+  return parent_dir.Append(kDefaultDbName);
 }
 
 std::string GetRuleFromDevPath(const std::string& devpath) {
@@ -265,15 +214,52 @@ std::unordered_set<std::string> UniqueRules(const EntryMap& entries) {
   return aggregated_rules;
 }
 
-bool WriteProtoToPath(const base::FilePath& db_path,
-                      google::protobuf::MessageLite* rule_db) {
-  std::string serialized = rule_db->SerializeAsString();
-  int result = base::WriteFile(db_path, serialized.data(), serialized.size());
-  if (result != serialized.size()) {
-    LOG(ERROR) << "Failed to write proto to file!";
-    return false;
+// Open the specified file. If necessary, create the parent directories and/or
+// the file. If run as root, the ownership of the created file is set to
+// kUsbBouncerUser.
+base::ScopedFD OpenPath(const base::FilePath& path, bool lock) {
+  uid_t proc_uid = getuid();
+  uid_t uid = proc_uid;
+  gid_t gid = getgid();
+  if (uid == kRootUid &&
+      !brillo::userdb::GetUserInfo(kUsbBouncerUser, &uid, &gid)) {
+    LOG(ERROR) << "Failed to get uid & gid for \"" << kUsbBouncerUser << "\"";
+    return base::ScopedFD();
   }
-  return true;
+
+  base::FilePath parent_dir = path.DirName();
+  base::ScopedFD parent_fd = brillo::MkdirRecursively(parent_dir, 0755);
+  if (!parent_fd.is_valid()) {
+    LOG(WARNING) << "Failed to create directory for \"" << path.value() << '"';
+    return base::ScopedFD();  // This is an invalid fd.
+  }
+
+  base::ScopedFD fd(brillo::OpenAtSafely(
+      parent_fd.get(), path.BaseName(), O_CREAT | O_RDWR, kDbPermissions));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "Error opening \"" << path.value() << '"';
+    return base::ScopedFD();
+  }
+
+  if (proc_uid == kRootUid) {
+    if (fchown(parent_fd.get(), uid, gid) < 0) {
+      PLOG(ERROR) << "chown for \"" << parent_dir.value() << "\" failed";
+      return base::ScopedFD();
+    }
+    if (fchown(fd.get(), uid, gid) < 0) {
+      PLOG(ERROR) << "chown for \"" << path.value() << "\" failed";
+      return base::ScopedFD();
+    }
+  }
+
+  if (lock) {
+    if (HANDLE_EINTR(flock(fd.get(), LOCK_EX)) < 0) {
+      PLOG(ERROR) << "failed to lock \"" << path.value() << '"';
+      return base::ScopedFD();
+    }
+  }
+
+  return fd;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
