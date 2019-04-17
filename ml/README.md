@@ -1,4 +1,4 @@
-# CrosML: Chrome OS Machine Learning Service
+# Chrome OS Machine Learning Service
 
 ## Summary
 
@@ -6,14 +6,16 @@ The Machine Learning (ML) Service provides a common runtime for evaluating
 machine learning models on device. The service wraps the TensorFlow Lite runtime
 and provides infrastructure for deployment of trained models. The TFLite runtime
 runs in a sandboxed process. Chromium communicates with ML Service via a Mojo
-Interface.
+interface.
 
 ## How to use ML Service
 
 You need to provide your trained models to ML Service by following [these
-instructions](docs/publish_model.md).
-You can then load and use your model from Chromium using the client library
-provided at [//chromeos/services/machine_learning/public/cpp/].
+instructions](docs/publish_model.md). You can then load and use your model from
+Chromium using the client library provided at
+[//chromeos/services/machine_learning/public/cpp/]. Optional: Later, if you find
+a need for it, you can [add your model to the ML Service internals
+page](docs/add_model_to_internals.md).
 
 Note: The sandboxed process hosting TFLite models is currently shared between
 all users of ML Service. If this isn't acceptable from a security perspective
