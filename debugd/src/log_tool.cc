@@ -147,6 +147,8 @@ const std::vector<Log> kCommandLogs {
   {kCommand, "sensor_info", "/usr/share/userfeedback/scripts/sensor_info"},
   {kFile, "hammerd", "/var/log/hammerd.log"},
   {kCommand, "hardware_class", "/usr/bin/crossystem hwid"},
+  {kCommand, "hardware_verification_report",
+    "/usr/bin/hardware_verifier --output_format=text"},
   {kCommand, "hostname", "/bin/hostname"},
   {kFile, "i915_gem_gtt", "/sys/kernel/debug/dri/0/i915_gem_gtt",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
