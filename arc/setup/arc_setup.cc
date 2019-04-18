@@ -1192,6 +1192,9 @@ void ArcSetup::CreateAndroidCmdlineFile(
   LOG(INFO) << "arc_file_picker is " << arc_file_picker;
   const int arc_custom_tabs = config_.GetIntOrDie("ARC_CUSTOM_TABS_EXPERIMENT");
   LOG(INFO) << "arc_custom_tabs is " << arc_custom_tabs;
+  const int arc_print_spooler =
+      config_.GetIntOrDie("ARC_PRINT_SPOOLER_EXPERIMENT");
+  LOG(INFO) << "arc_print_spooler is " << arc_print_spooler;
 
   std::string native_bridge;
   switch (IdentifyBinaryTranslationType()) {
@@ -1237,12 +1240,13 @@ void ArcSetup::CreateAndroidCmdlineFile(
       "androidboot.native_bridge=%s "
       "androidboot.arc_file_picker=%d "
       "androidboot.arc_custom_tabs=%d "
+      "androidboot.arc_print_spooler=%d "
       "androidboot.chromeos_channel=%s "
       "%s" /* Play Store auto-update mode */
       "androidboot.boottime_offset=%" PRId64 "\n" /* in nanoseconds */,
       is_dev_mode, !is_dev_mode, is_inside_vm, is_debuggable, arc_lcd_density,
       native_bridge.c_str(), arc_file_picker, arc_custom_tabs,
-      chromeos_channel.c_str(),
+      arc_print_spooler, chromeos_channel.c_str(),
       GetPlayStoreAutoUpdateParam(play_store_auto_update).c_str(),
       ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec);
 
