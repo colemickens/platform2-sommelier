@@ -64,4 +64,17 @@ do_mount_var_and_home_chronos() {
       mount_var_and_home_chronos
       ;;
   esac
+
+  # Disable some jobs by making them null files.  Check
+  # "${FACTORY_DIR}/init/common.d/inhibit_jobs/README.md" for more details.
+  if is_factory_test_mode; then
+    for job in "${FACTORY_DIR}/init/common.d/inhibit_jobs/"*; do
+      job_name="${job##*/}"
+      job_path="/etc/init/${job_name}.conf"
+      if [ -e "${job_path}" ]; then
+        mount --bind /dev/null "${job_path}"
+      fi
+    done
+    initctl reload-configuration
+  fi
 }
