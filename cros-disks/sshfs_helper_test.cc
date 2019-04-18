@@ -111,8 +111,6 @@ TEST_F(SshfsHelperTest, CreateMounter_SimpleOptions) {
   EXPECT_THAT(opts, HasSubstr("PasswordAuthentication=no"));
   EXPECT_THAT(opts, HasSubstr("KbdInteractiveAuthentication=no"));
   EXPECT_THAT(opts, HasSubstr("follow_symlinks"));
-  EXPECT_THAT(opts, HasSubstr("allow_other"));
-  EXPECT_THAT(opts, HasSubstr("default_permissions"));
   EXPECT_THAT(opts, HasSubstr("uid=700"));
   EXPECT_THAT(opts, HasSubstr("gid=1501"));
 }
