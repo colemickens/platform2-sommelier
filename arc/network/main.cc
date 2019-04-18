@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sys/socket.h>
 #include <unistd.h>
 
 #include <memory>
@@ -15,9 +16,11 @@
 #include <brillo/key_value_store.h>
 #include <brillo/syslog_logging.h>
 
+#include "arc/network/adb_proxy.h"
 #include "arc/network/helper_process.h"
 #include "arc/network/ip_helper.h"
 #include "arc/network/manager.h"
+#include "arc/network/socket.h"
 
 bool ShouldEnableMultinet() {
   static const char kLsbReleasePath[] = "/etc/lsb-release";
@@ -62,6 +65,8 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(
       ip_helper_fd, -1,
       "Control socket for starting an IpHelper subprocess. Used internally.");
+  // TODO(garrick): Enable along with corresponding sslh.conf change.
+  DEFINE_bool(adb_proxy, false, "Run ADB proxy");
   DEFINE_string(force_multinet, "",
                 "Override auto-detection and toggle multi-networking support.");
 
@@ -81,6 +86,13 @@ int main(int argc, char* argv[]) {
     return ip_helper.Run();
   }
 
+  if (FLAGS_adb_proxy > 0 && fork() == 0) {
+    LOG(INFO) << "Spawning adb proxy";
+    arc_networkd::AdbProxy adb_proxy;
+    return adb_proxy.Run();
+  }
+
+  LOG(INFO) << "Running manager";
   auto ip_helper = std::make_unique<arc_networkd::HelperProcess>();
   ip_helper->Start(argc, argv, "--ip_helper_fd");
 

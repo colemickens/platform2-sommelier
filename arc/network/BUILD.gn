@@ -51,6 +51,7 @@ shared_library("libarcnetwork-util") {
 static_library("libarcnetwork") {
   configs += [ ":target_defaults" ]
   sources = [
+    "adb_proxy.cc",
     "arc_ip_config.cc",
     "device.cc",
     "device_manager.cc",
@@ -68,6 +69,8 @@ static_library("libarcnetwork") {
     "router_finder.cc",
     "scoped_ns.cc",
     "shill_client.cc",
+    "socket.cc",
+    "socket_forwarder.cc",
   ]
   sources += util_sources
   deps = [
