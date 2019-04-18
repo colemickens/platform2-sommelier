@@ -65,6 +65,9 @@ DBusHandlerResult CatchAllForwarder::HandleMessageThunk(
 
 DBusHandlerResult CatchAllForwarder::HandleMessage(DBusConnection* connection,
                                                    DBusMessage* raw_message) {
+  if (dbus_message_get_type(raw_message) != DBUS_MESSAGE_TYPE_METHOD_CALL)
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
   dbus_message_ref(raw_message);
   std::unique_ptr<dbus::MethodCall> method_call(
       dbus::MethodCall::FromRawMessage(raw_message));
