@@ -6,7 +6,9 @@ import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
 group("all") {
-  deps = []
+  deps = [
+    ":hardware_verifier",
+  ]
   if (use.test) {
     deps += [ ":unittest_runner" ]
   }
@@ -49,6 +51,16 @@ static_library("libhardware_verifier") {
     "hw_verification_spec_getter_impl.cc",
     "probe_result_getter_impl.cc",
     "verifier_impl.cc",
+  ]
+}
+
+executable("hardware_verifier") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "main.cc",
+  ]
+  deps = [
+    ":libhardware_verifier",
   ]
 }
 
