@@ -139,8 +139,6 @@ const std::vector<Log> kCommandLogs {
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   {kFile, "i915_gem_objects", "/sys/kernel/debug/dri/0/i915_gem_objects",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
-  {kFile, "i915_gem_objects", "/sys/kernel/debug/dri/0/i915_gem_objects",
-    SandboxedProcess::kDefaultUser, kDebugfsGroup},
   {kCommand, "i915_error_state",
     "/usr/bin/xz -c /sys/kernel/debug/dri/0/i915_error_state 2>/dev/null",
     SandboxedProcess::kDefaultUser, kDebugfsGroup, Log::kDefaultMaxBytes,
