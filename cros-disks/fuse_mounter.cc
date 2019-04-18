@@ -136,6 +136,7 @@ MountErrorType ConfigureCommonSandbox(SandboxedProcess* sandbox,
 
 MountErrorType MountFuseDevice(const Platform* platform,
                                const std::string& source,
+                               const std::string& filesystem_type,
                                const base::FilePath& target,
                                const base::File& fuse_file,
                                uid_t mount_user_id,
@@ -174,10 +175,15 @@ MountErrorType MountFuseDevice(const Platform* platform,
     // is the block/cluster size of the file system.
     fuse_type = "fuseblk";
   }
+  if (!filesystem_type.empty()) {
+    fuse_type += ".";
+    fuse_type += filesystem_type;
+  }
 
   auto flags = options.ToMountFlagsAndData().first;
 
-  return platform->Mount(source, target.value(), fuse_type,
+  return platform->Mount(source.empty() ? filesystem_type : source,
+                         target.value(), fuse_type,
                          flags | kRequiredFuseMountFlags, fuse_mount_options);
 }
 
@@ -253,9 +259,9 @@ MountErrorType FUSEMounter::MountImpl() const {
       return MountErrorType::MOUNT_ERROR_INTERNAL;
     }
 
-    error = MountFuseDevice(platform_, source(), base::FilePath(target_path()),
-                            fuse_file, mount_user_id, mount_group_id,
-                            mount_options());
+    error = MountFuseDevice(platform_, source(), filesystem_type(),
+                            base::FilePath(target_path()), fuse_file,
+                            mount_user_id, mount_group_id, mount_options());
     if (error != MountErrorType::MOUNT_ERROR_NONE) {
       LOG(ERROR) << "Can't perform unprivileged FUSE mount";
       return error;
