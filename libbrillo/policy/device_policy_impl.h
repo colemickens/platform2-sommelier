@@ -84,6 +84,8 @@ class DevicePolicyImpl : public DevicePolicy {
       std::vector<WeeklyTimeInterval>* intervals_out) const override;
   bool GetDeviceUpdateStagingSchedule(
       std::vector<DayPercentagePair> *staging_schedule_out) const override;
+  bool GetDeviceQuickFixBuildToken(
+      std::string* device_quick_fix_build_token) const override;
 
   // Methods that can be used only for testing.
   void set_policy_data_for_testing(

@@ -107,6 +107,8 @@ class MockDevicePolicy : public DevicePolicy {
                      bool(std::vector<WeeklyTimeInterval>*));
   MOCK_CONST_METHOD1(GetDeviceUpdateStagingSchedule,
                      bool(std::vector<DayPercentagePair>*));
+  MOCK_CONST_METHOD1(GetDeviceQuickFixBuildToken,
+                     bool(std::string*));
   MOCK_METHOD0(VerifyPolicyFiles, bool(void));
   MOCK_METHOD0(VerifyPolicySignature, bool(void));
 };

@@ -675,6 +675,20 @@ bool DevicePolicyImpl::GetDisallowedTimeIntervals(
   return true;
 }
 
+bool DevicePolicyImpl::GetDeviceQuickFixBuildToken(
+    std::string* device_quick_fix_build_token) const {
+  if (!device_policy_.has_auto_update_settings())
+    return false;
+
+  const em::AutoUpdateSettingsProto& proto =
+      device_policy_.auto_update_settings();
+  if (!proto.has_device_quick_fix_build_token())
+    return false;
+
+  *device_quick_fix_build_token = proto.device_quick_fix_build_token();
+  return true;
+}
+
 bool DevicePolicyImpl::VerifyPolicyFile(const base::FilePath& policy_path) {
   if (!verify_root_ownership_) {
     return true;

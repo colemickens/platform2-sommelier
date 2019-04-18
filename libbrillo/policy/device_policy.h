@@ -228,6 +228,12 @@ class DevicePolicy {
   virtual bool GetDeviceUpdateStagingSchedule(
       std::vector<DayPercentagePair>* staging_schedule_out) const = 0;
 
+  // Writes the value of the DeviceQuickFixBuildToken to
+  // |device_quick_fix_build_token|.
+  // Returns true if it has been written, or false if the policy was not set.
+  virtual bool GetDeviceQuickFixBuildToken(
+      std::string* device_quick_fix_build_token) const = 0;
+
  private:
   // Verifies that the policy signature is correct.
   virtual bool VerifyPolicySignature() = 0;
