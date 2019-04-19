@@ -9,7 +9,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/cellular/mock_dbus_objectmanager_proxy.h"
-#include "shill/cellular/mock_modem_manager_proxy.h"
 #include "shill/cellular/modem_manager.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"

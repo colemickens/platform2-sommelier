@@ -35,7 +35,6 @@
 #include "shill/dbus/chromeos_modem_gobi_proxy.h"
 #include "shill/dbus/chromeos_modem_gsm_card_proxy.h"
 #include "shill/dbus/chromeos_modem_gsm_network_proxy.h"
-#include "shill/dbus/chromeos_modem_manager_proxy.h"
 #include "shill/dbus/chromeos_modem_proxy.h"
 #include "shill/dbus/chromeos_modem_simple_proxy.h"
 #endif  // DISABLE_CELLULAR
@@ -243,22 +242,6 @@ ChromeosDBusControl::CreateDBusObjectManagerProxy(
       service,
       service_appeared_callback,
       service_vanished_callback);
-}
-
-std::unique_ptr<ModemManagerProxyInterface>
-ChromeosDBusControl::CreateModemManagerProxy(
-    ModemManagerClassic* manager,
-    const string& path,
-    const string& service,
-    const base::Closure& service_appeared_callback,
-    const base::Closure& service_vanished_callback) {
-  return std::make_unique<ChromeosModemManagerProxy>(dispatcher_,
-                                                     proxy_bus_,
-                                                     manager,
-                                                     path,
-                                                     service,
-                                                     service_appeared_callback,
-                                                     service_vanished_callback);
 }
 
 std::unique_ptr<ModemProxyInterface> ChromeosDBusControl::CreateModemProxy(

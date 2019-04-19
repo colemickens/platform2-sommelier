@@ -65,8 +65,6 @@ class Modem {
   FRIEND_TEST(Modem1Test, CreateDeviceMM1);
   FRIEND_TEST(ModemManager1Test, Connect);
   FRIEND_TEST(ModemManager1Test, AddRemoveInterfaces);
-  FRIEND_TEST(ModemManagerClassicTest, Connect);
-  FRIEND_TEST(ModemManagerClassicTest, StartStop);
   FRIEND_TEST(ModemTest, CreateDeviceEarlyFailures);
   FRIEND_TEST(ModemTest, CreateDevicePPP);
   FRIEND_TEST(ModemTest, EarlyDeviceProperties);

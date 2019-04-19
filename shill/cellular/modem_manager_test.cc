@@ -14,7 +14,6 @@
 #include "shill/cellular/mock_dbus_objectmanager_proxy.h"
 #include "shill/cellular/mock_modem.h"
 #include "shill/cellular/mock_modem_info.h"
-#include "shill/cellular/mock_modem_manager_proxy.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
@@ -111,52 +110,6 @@ TEST_F(ModemManagerCoreTest, AddRemoveModem) {
   // Remove an already removed modem path.
   modem_manager_.RemoveModem(kModemPath);
   EXPECT_FALSE(modem_manager_.ModemExists(kModemPath));
-}
-
-class ModemManagerClassicMockInit : public ModemManagerClassic {
- public:
-  ModemManagerClassicMockInit(const string& service,
-                              const string& path,
-                              ModemInfo* modem_info_)
-      : ModemManagerClassic(service, path, modem_info_) {}
-
-  MOCK_METHOD1(InitModemClassic, void(ModemClassic*));
-};
-
-class ModemManagerClassicTest : public ModemManagerTest {
- public:
-  ModemManagerClassicTest() : modem_manager_(kService, kPath, &modem_info_) {}
-
- protected:
-  ModemManagerClassicMockInit modem_manager_;
-};
-
-TEST_F(ModemManagerClassicTest, StartStop) {
-  EXPECT_EQ(nullptr, modem_manager_.proxy_.get());
-
-  EXPECT_CALL(control_, CreateModemManagerProxy(_, kPath, kService, _, _))
-      .WillOnce(Return(ByMove(std::make_unique<MockModemManagerProxy>())));
-  modem_manager_.Start();
-  EXPECT_NE(nullptr, modem_manager_.proxy_.get());
-
-  modem_manager_.Stop();
-  EXPECT_EQ(nullptr, modem_manager_.proxy_.get());
-}
-
-TEST_F(ModemManagerClassicTest, Connect) {
-  auto proxy = std::make_unique<MockModemManagerProxy>();
-  EXPECT_CALL(*proxy, EnumerateDevices())
-      .WillOnce(Return(vector<string>(1, kModemPath)));
-
-  // Setup proxy.
-  modem_manager_.proxy_ = std::move(proxy);
-
-  EXPECT_CALL(modem_manager_,
-              InitModemClassic(
-                  Pointee(Field(&Modem::path_, StrEq(kModemPath)))));
-  modem_manager_.Connect();
-  EXPECT_EQ(1, modem_manager_.modems_.size());
-  ASSERT_TRUE(base::ContainsKey(modem_manager_.modems_, kModemPath));
 }
 
 class ModemManager1MockInit : public ModemManager1 {

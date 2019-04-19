@@ -39,8 +39,6 @@ class ModemCdmaProxyInterface;
 class ModemGsmCardProxyInterface;
 class ModemGsmNetworkProxyInterface;
 class ModemGobiProxyInterface;
-class ModemManagerClassic;
-class ModemManagerProxyInterface;
 class ModemProxyInterface;
 class ModemSimpleProxyInterface;
 class PowerManagerProxyDelegate;
@@ -138,13 +136,6 @@ class ControlInterface {
 
   virtual std::unique_ptr<DBusObjectManagerProxyInterface>
   CreateDBusObjectManagerProxy(
-      const std::string& path,
-      const std::string& service,
-      const base::Closure& service_appeared_callback,
-      const base::Closure& service_vanished_callback) = 0;
-
-  virtual std::unique_ptr<ModemManagerProxyInterface> CreateModemManagerProxy(
-      ModemManagerClassic* manager,
       const std::string& path,
       const std::string& service,
       const base::Closure& service_appeared_callback,

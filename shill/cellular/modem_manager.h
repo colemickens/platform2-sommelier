@@ -26,7 +26,6 @@ class DBusPropertiesProxyInterface;
 class Modem1;
 class Modem;
 class ModemClassic;
-class ModemManagerProxyInterface;
 
 // Handles a modem manager service and creates and destroys modem instances.
 class ModemManager {
@@ -72,13 +71,11 @@ class ModemManager {
 
  private:
   friend class ModemManagerCoreTest;
-  friend class ModemManagerClassicTest;
   friend class ModemManager1Test;
 
   FRIEND_TEST(ModemInfoTest, RegisterModemManager);
   FRIEND_TEST(ModemManager1Test, AddRemoveInterfaces);
   FRIEND_TEST(ModemManager1Test, Connect);
-  FRIEND_TEST(ModemManagerClassicTest, Connect);
   FRIEND_TEST(ModemManagerCoreTest, AddRemoveModem);
   FRIEND_TEST(ModemManagerCoreTest, ConnectDisconnect);
 
@@ -92,37 +89,6 @@ class ModemManager {
   ModemInfo* modem_info_;
 
   DISALLOW_COPY_AND_ASSIGN(ModemManager);
-};
-
-class ModemManagerClassic : public ModemManager {
- public:
-  ModemManagerClassic(const std::string& service,
-                      const std::string& path,
-                      ModemInfo* modem_info);
-  ~ModemManagerClassic() override;
-
-  void Start() override;
-  void Stop() override;
-
-  // Called by our dbus proxy
-  void OnDeviceAdded(const std::string& path);
-  void OnDeviceRemoved(const std::string& path);
-
- protected:
-  void Connect() override;
-  void Disconnect() override;
-
-  virtual void AddModemClassic(const std::string& path);
-  virtual void InitModemClassic(ModemClassic* modem);
-
- private:
-  std::unique_ptr<ModemManagerProxyInterface> proxy_;  // DBus service proxy
-  std::unique_ptr<DBusPropertiesProxyInterface> dbus_properties_proxy_;
-
-  FRIEND_TEST(ModemManagerClassicTest, Connect);
-  FRIEND_TEST(ModemManagerClassicTest, StartStop);
-
-  DISALLOW_COPY_AND_ASSIGN(ModemManagerClassic);
 };
 
 class ModemManager1 : public ModemManager {

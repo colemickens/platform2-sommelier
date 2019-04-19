@@ -29,7 +29,6 @@
 #include "shill/cellular/modem_gobi_proxy_interface.h"
 #include "shill/cellular/modem_gsm_card_proxy_interface.h"
 #include "shill/cellular/modem_gsm_network_proxy_interface.h"
-#include "shill/cellular/modem_manager_proxy_interface.h"
 #include "shill/cellular/modem_proxy_interface.h"
 #include "shill/cellular/modem_simple_proxy_interface.h"
 #include "shill/dbus_properties_proxy_interface.h"
@@ -116,13 +115,6 @@ class MockControl : public ControlInterface {
 
   MOCK_METHOD4(CreateDBusObjectManagerProxy,
                std::unique_ptr<DBusObjectManagerProxyInterface>(
-                   const std::string& path,
-                   const std::string& service,
-                   const base::Closure& service_appeared_callback,
-                   const base::Closure& service_vanished_callback));
-  MOCK_METHOD5(CreateModemManagerProxy,
-               std::unique_ptr<ModemManagerProxyInterface>(
-                   ModemManagerClassic* manager,
                    const std::string& path,
                    const std::string& service,
                    const base::Closure& service_appeared_callback,
