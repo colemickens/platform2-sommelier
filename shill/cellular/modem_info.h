@@ -7,7 +7,6 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -61,14 +60,7 @@ class ModemInfo {
       PendingActivationStore* pending_activation_store);
 
  private:
-  friend class ModemInfoTest;
-  FRIEND_TEST(ModemInfoTest, RegisterModemManager);
-  FRIEND_TEST(ModemInfoTest, StartStop);
-
-  // Registers and starts |manager|.
-  void RegisterModemManager(std::unique_ptr<ModemManager> manager);
-
-  std::vector<std::unique_ptr<ModemManager>> modem_managers_;
+  std::unique_ptr<ModemManager> modem_manager_;
   ControlInterface* control_interface_;
   EventDispatcher* dispatcher_;
   Metrics* metrics_;

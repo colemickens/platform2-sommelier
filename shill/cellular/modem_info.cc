@@ -34,34 +34,24 @@ ModemInfo::~ModemInfo() {
 void ModemInfo::Start() {
   pending_activation_store_.reset(new PendingActivationStore());
   pending_activation_store_->InitStorage(manager_->storage_path());
-
-  RegisterModemManager(std::make_unique<ModemManagerClassic>(
-      cromo::kCromoServiceName, cromo::kCromoServicePath, this));
-  RegisterModemManager(
-      std::make_unique<ModemManager1>(modemmanager::kModemManager1ServiceName,
-                                      modemmanager::kModemManager1ServicePath,
-                                      this));
+  modem_manager_ = std::make_unique<ModemManager1>(
+      modemmanager::kModemManager1ServiceName,
+      modemmanager::kModemManager1ServicePath, this);
+  modem_manager_->Start();
 }
 
 void ModemInfo::Stop() {
   pending_activation_store_.reset();
-  modem_managers_.clear();
+  modem_manager_ = nullptr;
 }
 
 void ModemInfo::OnDeviceInfoAvailable(const string& link_name) {
-  for (const auto& manager : modem_managers_) {
-    manager->OnDeviceInfoAvailable(link_name);
-  }
+  modem_manager_->OnDeviceInfoAvailable(link_name);
 }
 
 void ModemInfo::set_pending_activation_store(
     PendingActivationStore* pending_activation_store) {
   pending_activation_store_.reset(pending_activation_store);
-}
-
-void ModemInfo::RegisterModemManager(std::unique_ptr<ModemManager> manager) {
-  modem_managers_.push_back(std::move(manager));
-  modem_managers_.back()->Start();
 }
 
 }  // namespace shill
