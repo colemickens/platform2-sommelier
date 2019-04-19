@@ -95,6 +95,32 @@ class InputFileASCII : public InputFile {
   bool ReadLine(std::string* line);
 };
 
+// The helper class to calculate FPS.
+class FPSCalculator {
+ public:
+  // Record the time interval of output buffers. Return false if is invalid.
+  // This should be called per output buffer ready callback.
+  bool RecordFrameTimeDiff();
+
+  // Calucalate FPS value.
+  double CalculateFPS() const;
+
+ private:
+  static constexpr double kMovingAvgWindowUs = 1000000;
+  static constexpr double kRegardedPercentile = 95;
+
+  // Return the statistics for the moving average over a window over the
+  // cumulative sum. Basically, moves a window from: [0, window] to
+  // [sum - window, sum] over the cumulative sum, over ((sum - window)/average)
+  // steps, and returns the average value over each window.
+  // This method is used to average time-diff data over a window of a constant
+  // time.
+  std::vector<double> MovingAvgOverSum() const;
+
+  std::vector<double> frame_time_diffs_us_;
+  int64_t last_frame_time_us_ = 0;
+};
+
 // Helper function to get VideoCodecType from |profile|.
 VideoCodecType VideoCodecProfileToType(VideoCodecProfile profile);
 

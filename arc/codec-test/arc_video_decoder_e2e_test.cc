@@ -23,6 +23,7 @@ class ArcVideoDecoderTestEnvironment;
 
 namespace {
 ArcVideoDecoderTestEnvironment* g_env;
+
 }  // namespace
 
 class ArcVideoDecoderTestEnvironment : public testing::Environment {
@@ -241,6 +242,9 @@ class ArcVideoDecoderE2ETest : public testing::Test {
     decoder_->AddOutputBufferReadyCb(std::bind(
         &ArcVideoDecoderE2ETest::CountFrame, this, std::placeholders::_1,
         std::placeholders::_2, std::placeholders::_3));
+    decoder_->AddOutputFormatChangedCb(std::bind(
+        &ArcVideoDecoderE2ETest::VerifyOutputFormat, this,
+        std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
   }
 
   void TearDown() override {
@@ -280,9 +284,6 @@ TEST_F(ArcVideoDecoderE2ETest, TestSimpleDecode) {
   }
 
   decoder_->AddOutputFormatChangedCb(std::bind(
-      &ArcVideoDecoderE2ETest::VerifyOutputFormat, this, std::placeholders::_1,
-      std::placeholders::_2, std::placeholders::_3));
-  decoder_->AddOutputFormatChangedCb(std::bind(
       &VideoFrameValidator::UpdateOutputFormat, &video_frame_validator,
       std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
@@ -290,19 +291,20 @@ TEST_F(ArcVideoDecoderE2ETest, TestSimpleDecode) {
 }
 
 TEST_F(ArcVideoDecoderE2ETest, TestFPS) {
-  decoder_->AddOutputFormatChangedCb(std::bind(
-      &ArcVideoDecoderE2ETest::VerifyOutputFormat, this, std::placeholders::_1,
-      std::placeholders::_2, std::placeholders::_3));
+  FPSCalculator fps_calculator;
+  auto callback = [&fps_calculator](const uint8_t* /* data */,
+                                    size_t /* buffer_size */,
+                                    int /* output_index */) {
+    ASSERT_TRUE(fps_calculator.RecordFrameTimeDiff());
+  };
 
-  int64_t time_before_decode_us = GetNowUs();
+  decoder_->AddOutputBufferReadyCb(callback);
+
   EXPECT_TRUE(decoder_->Decode());
-  int64_t total_decode_time_us = GetNowUs() - time_before_decode_us;
 
-  double fps = decoded_frames_ * 1E6 / total_decode_time_us;
+  double fps = fps_calculator.CalculateFPS();
   printf("[LOG] Measured decoder FPS: %.4f\n", fps);
-  // TODO(johnylin): improve FPS calculation by CTS method and then enable the
-  //                 following check.
-  // EXPECT_GE(fps, static_cast<double>(g_env->min_fps_no_render()));
+  EXPECT_GE(fps, static_cast<double>(g_env->min_fps_no_render()));
 }
 
 }  // namespace android

@@ -316,12 +316,18 @@ TEST_F(ArcVideoEncoderE2ETest, TestBitrate) {
 }
 
 TEST_F(ArcVideoEncoderE2ETest, PerfFPS) {
-  int64_t start_time = GetNowUs();
-  EXPECT_TRUE(encoder_->Encode());
-  int64_t end_time = GetNowUs();
+  FPSCalculator fps_calculator;
+  auto callback = [&fps_calculator](const uint8_t* /* data */,
+                                    const AMediaCodecBufferInfo& /* info */) {
+    ASSERT_TRUE(fps_calculator.RecordFrameTimeDiff());
+  };
 
-  double measured_fps =
-      1000000.0 * encoder_->num_encoded_frames() / (end_time - start_time);
+  // Record frame time differences of the output buffers.
+  encoder_->SetOutputBufferReadyCb(callback);
+
+  EXPECT_TRUE(encoder_->Encode());
+
+  double measured_fps = fps_calculator.CalculateFPS();
   printf("Measured encoder FPS: %.4f\n", measured_fps);
 }
 
