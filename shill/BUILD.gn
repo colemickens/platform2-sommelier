@@ -404,7 +404,6 @@ static_library("libshill") {
       "cellular/mobile_operator_info_impl.cc",
       "cellular/modem.cc",
       "cellular/modem_1.cc",
-      "cellular/modem_classic.cc",
       "cellular/modem_info.cc",
       "cellular/modem_manager.cc",
       "cellular/modem_manager_1.cc",

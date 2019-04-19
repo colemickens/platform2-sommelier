@@ -116,25 +116,6 @@ class Modem {
   DISALLOW_COPY_AND_ASSIGN(Modem);
 };
 
-class ModemClassic : public Modem {
- public:
-  ModemClassic(const std::string& service,
-               const std::string& path,
-               ModemInfo* modem_info);
-  ~ModemClassic() override;
-
-  // Gathers information and passes it to CreateDeviceFromModemProperties.
-  void CreateDeviceClassic(const KeyValueStore& modem_properties);
-
- protected:
-  bool GetLinkName(const KeyValueStore& modem_properties,
-                   std::string* name) const override;
-  std::string GetModemInterface() const override;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(ModemClassic);
-};
-
 class Modem1 : public Modem {
  public:
   Modem1(const std::string& service,

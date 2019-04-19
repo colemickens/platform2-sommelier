@@ -25,7 +25,6 @@ class DBusObjectManagerProxyInterface;
 class DBusPropertiesProxyInterface;
 class Modem1;
 class Modem;
-class ModemClassic;
 
 // Handles a modem manager service and creates and destroys modem instances.
 class ModemManager {
