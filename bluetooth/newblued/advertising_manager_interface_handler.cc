@@ -118,7 +118,7 @@ bool AdvertisingManagerInterfaceHandler::HandleRegisterAdvertisement(
     brillo::VariantDictionary options) {
   if (base::ContainsKey(handles_, object_path)) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
-                         bluetooth_advertising_manager::kErrorFailed,
+                         bluetooth_advertising_manager::kErrorAlreadyExists,
                          "Advertisement already registered");
     return false;
   }
