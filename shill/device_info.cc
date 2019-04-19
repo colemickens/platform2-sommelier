@@ -32,6 +32,7 @@
 #include <brillo/userdb_utils.h>
 #include <chromeos/constants/vm_tools.h>
 
+#include "shill/connection.h"
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/device_stub.h"
@@ -1140,9 +1141,24 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage& msg) {
   }
 
   DeviceRefPtr device = GetDevice(interface_index);
-  if (device && address.family() == IPAddress::kFamilyIPv6 &&
+  if (!device)
+    return;
+
+  if (address.family() == IPAddress::kFamilyIPv6 &&
       status.scope == RT_SCOPE_UNIVERSE) {
     device->OnIPv6AddressChanged();
+  }
+
+  if (device->connection()) {
+    // Connection::UpdateRoutingPolicy uses DeviceInfo::GetAddresses to
+    // determine an interface's assigned addresses. Thus a modification to
+    // |address_list| should cause UpdateRoutingPolicy to retrigger.
+    //
+    // If in the future, IPConfig is modified to contain the entire IP
+    // configuration for a Connection (which it necessarily cannot currently do
+    // when an interface has both IPv4 and v6), then Connection will no longer
+    // need to rely on DeviceInfo and this can be removed.
+    device->connection()->UpdateRoutingPolicy();
   }
 }
 

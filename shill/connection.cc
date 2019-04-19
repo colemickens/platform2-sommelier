@@ -8,7 +8,7 @@
 #include <linux/rtnetlink.h>
 
 #include <limits>
-#include <set>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/stl_util.h>
@@ -21,12 +21,8 @@
 #include "shill/resolver.h"
 #include "shill/routing_table.h"
 
-using base::Bind;
-using base::Closure;
-using base::Unretained;
-using std::set;
-using std::string;
 using std::vector;
+using std::string;
 
 namespace shill {
 
@@ -37,7 +33,7 @@ static string ObjectID(Connection* c) {
     return "(connection)";
   return c->interface_name();
 }
-}
+}  // namespace Logging
 
 // static
 const uint32_t Connection::kDefaultMetric = 10;
@@ -51,7 +47,7 @@ const uint32_t Connection::kLowestPriorityMetric =
 const uint32_t Connection::kMetricIncrement = 10;
 
 Connection::Binder::Binder(const string& name,
-                           const Closure& disconnect_callback)
+                           const base::Closure& disconnect_callback)
     : name_(name),
       client_disconnect_callback_(disconnect_callback) {}
 
@@ -93,12 +89,12 @@ Connection::Connection(int interface_index,
     : weak_ptr_factory_(this),
       use_dns_(false),
       metric_(kLowestPriorityMetric),
+      is_primary_physical_(false),
       has_broadcast_domain_(false),
       routing_request_count_(0),
       interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
-      per_device_routing_(false),
       blackholed_addrs_(nullptr),
       fixed_ip_params_(fixed_ip_params),
       table_id_(RT_TABLE_MAIN),
@@ -134,13 +130,8 @@ Connection::~Connection() {
 }
 
 bool Connection::SetupExcludedRoutes(const IPConfig::Properties& properties,
-                                     const IPAddress& gateway,
-                                     IPAddress* trusted_ip) {
+                                     const IPAddress& gateway) {
   excluded_ips_cidr_ = properties.exclusion_list;
-
-  // TODO(crbug.com/941597) Remove this CHECK when per device routing is used
-  // for all devices.
-  CHECK(excluded_ips_cidr_.empty() || per_device_routing_);
 
   // If this connection has its own dedicated routing table, exclusion
   // is as simple as adding an RTN_THROW entry for each item on the list.
@@ -171,27 +162,13 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   SLOG(this, 2) << __func__ << " " << interface_name_;
 
   const IPConfig::Properties& properties = config->properties();
-  if (!properties.allowed_uids.empty() || !properties.allowed_iifs.empty() ||
-      properties.blackhole_ipv6) {
-    per_device_routing_ = true;
-    allowed_uids_ = properties.allowed_uids;
-    allowed_iifs_ = properties.allowed_iifs;
+  allowed_uids_ = properties.allowed_uids;
+  allowed_iifs_ = properties.allowed_iifs;
 
-    // For per-device routing, |table_id_| uses the interface index
-    // (as a simple way to assign a per-device ID) and the route priority
-    // uses |metric_| which is set by Manager's service sort.
-    routing_table_->FreeTableId(table_id_);
-    table_id_ = routing_table_->AllocTableId();
-    CHECK(table_id_);
-    routing_table_->SetPerDeviceTable(interface_index_, table_id_);
-  } else {
-    if (table_id_ != RT_TABLE_MAIN) {
-      // |table_id_| is RT_TABLE_MAIN by default. If it is anything other than
-      // that, we must have allocated a table id.
-      routing_table_->FreeTableId(table_id_);
-    }
-    table_id_ = RT_TABLE_MAIN;
-  }
+  routing_table_->FreeTableId(table_id_);
+  table_id_ = routing_table_->AllocTableId();
+  CHECK(table_id_);
+  routing_table_->SetPerDeviceTable(interface_index_, table_id_);
 
   IPAddress gateway(properties.address_family);
   if (!properties.gateway.empty() &&
@@ -228,12 +205,11 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
     return;
   }
 
-  IPAddress trusted_ip(IPAddress::kFamilyUnknown);
-  if (!SetupExcludedRoutes(properties, gateway, &trusted_ip)) {
+  if (!SetupExcludedRoutes(properties, gateway)) {
     return;
   }
 
-  if (!FixGatewayReachability(local, &peer, &gateway, trusted_ip)) {
+  if (!FixGatewayReachability(local, &peer, &gateway)) {
     LOG(WARNING) << "Expect limited network connectivity.";
   }
 
@@ -340,8 +316,6 @@ void Connection::UpdateGatewayMetric(const IPConfigRefPtr& config) {
 void Connection::UpdateRoutingPolicy() {
   routing_table_->FlushRules(interface_index_);
 
-  bool rule_created = false;
-
   uint32_t blackhole_offset = 0;
   if (blackhole_table_id_ != RT_TABLE_UNSPEC) {
     blackhole_offset = 1;
@@ -351,7 +325,6 @@ void Connection::UpdateRoutingPolicy() {
       routing_table_->AddRule(interface_index_, entry);
       entry.family = IPAddress::kFamilyIPv6;
       routing_table_->AddRule(interface_index_, entry);
-      rule_created = true;
     }
 
     if (blackholed_addrs_) {
@@ -365,7 +338,6 @@ void Connection::UpdateRoutingPolicy() {
                                                 entry);
           },
           base::Unretained(this)));
-      rule_created = rule_created || !blackholed_addrs_->IsEmpty();
     }
   }
 
@@ -375,7 +347,6 @@ void Connection::UpdateRoutingPolicy() {
     routing_table_->AddRule(interface_index_, entry);
     entry.family = IPAddress::kFamilyIPv6;
     routing_table_->AddRule(interface_index_, entry);
-    rule_created = true;
   }
 
   for (const auto& interface_name : allowed_iifs_) {
@@ -384,15 +355,61 @@ void Connection::UpdateRoutingPolicy() {
     routing_table_->AddRule(interface_index_, entry);
     entry.family = IPAddress::kFamilyIPv6;
     routing_table_->AddRule(interface_index_, entry);
-    rule_created = true;
   }
 
-  if (!rule_created) {
-    // No restrictions.
+  for (const auto& source_address : allowed_addrs_) {
     RoutingPolicyEntry entry(
-        IPAddress::kFamilyIPv4, metric_ + blackhole_offset, table_id_);
+      IPAddress::kFamilyIPv4, metric_ + blackhole_offset, table_id_);
+    entry.src = source_address;
+    entry.family = source_address.family();
+    routing_table_->AddRule(interface_index_, entry);
+  }
+
+  DeviceRefPtr device = device_info_->GetDevice(interface_index_);
+  if (device &&
+      Technology::IsPrimaryConnectivityTechnology(device->technology())) {
+    RoutingPolicyEntry entry(
+      IPAddress::kFamilyIPv4, metric_ + blackhole_offset, table_id_);
+    if (is_primary_physical_) {
+      // Main routing table contains kernel-added routes for source address
+      // selection. Sending traffic there before all other rules for physical
+      // interfaces (but after any VPN rules) ensures that physical interface
+      // rules are not inadvertently too aggressive.
+      entry.src = IPAddress(IPAddress::kFamilyIPv4);
+      entry.priority -= 1;
+      entry.table = RT_TABLE_MAIN;
+      routing_table_->AddRule(interface_index_, entry);
+      // Add a default routing rule to use the primary interface if there is
+      // nothing better.
+      entry.table = table_id_;
+      entry.priority = RoutingTable::kRulePriorityMain - 1;
+      routing_table_->AddRule(interface_index_, entry);
+      entry.family = IPAddress::kFamilyIPv6;
+      entry.src = IPAddress(IPAddress::kFamilyIPv6);
+      routing_table_->AddRule(interface_index_, entry);
+      entry.priority = metric_ + blackhole_offset;
+    }
+
+    // Otherwise, only select the per-device table if the outgoing packet's
+    // src address matches the interface's addresses or the input interface is
+    // this interface.
+    //
+    // TODO(crbug.com/941597) This may need to change when NDProxy allows guests
+    // to provision IPv6 addresses.
+    std::vector<DeviceInfo::AddressData> addr_data;
+    bool ok = device_info_->GetAddresses(interface_index_, &addr_data);
+    DCHECK(ok);
+    for (const auto& data : addr_data) {
+      entry.src = data.address;
+      entry.family = data.address.family();
+      routing_table_->AddRule(interface_index_, entry);
+    }
+    entry.family = IPAddress::kFamilyIPv4;
+    entry.src = IPAddress(entry.family);
+    entry.interface_name = interface_name_;
     routing_table_->AddRule(interface_index_, entry);
     entry.family = IPAddress::kFamilyIPv6;
+    entry.src = IPAddress(entry.family);
     routing_table_->AddRule(interface_index_, entry);
   }
 }
@@ -417,7 +434,7 @@ void Connection::RemoveInputInterfaceFromRoutingTable(
   routing_table_->FlushCache();
 }
 
-void Connection::SetMetric(uint32_t metric, bool /*is_primary_physical*/) {
+void Connection::SetMetric(uint32_t metric, bool is_primary_physical) {
   SLOG(this, 2) << __func__ << " " << interface_name_
                 << " (index " << interface_index_ << ")"
                 << metric_ << " -> " << metric;
@@ -425,10 +442,8 @@ void Connection::SetMetric(uint32_t metric, bool /*is_primary_physical*/) {
     return;
   }
 
-  if (!per_device_routing_) {
-    routing_table_->SetDefaultMetric(interface_index_, metric);
-  }
   metric_ = metric;
+  is_primary_physical_ = is_primary_physical;
   UpdateRoutingPolicy();
 
   PushDNSConfig();
@@ -509,18 +524,20 @@ string Connection::GetSubnetName() const {
                             local().prefix());
 }
 
+void Connection::set_allowed_addrs(std::vector<IPAddress> addresses) {
+  allowed_addrs_ = std::move(addresses);
+}
+
 bool Connection::FixGatewayReachability(const IPAddress& local,
                                         IPAddress* peer,
-                                        IPAddress* gateway,
-                                        const IPAddress& trusted_ip) {
+                                        IPAddress* gateway) {
   SLOG(nullptr, 2) << __func__
-      << " local " << local.ToString()
-      << ", peer " << peer->ToString()
-      << ", gateway " << gateway->ToString()
-      << ", trusted_ip " << trusted_ip.ToString();
+                   << " local " << local.ToString()
+                   << ", peer " << peer->ToString()
+                   << ", gateway " << gateway->ToString();
 
-  if (per_device_routing_ && peer->IsValid()) {
-    // If per-device routing tables are used for a PPP connection:
+  if (peer->IsValid()) {
+    // For a PPP connection:
     // 1) Never set a peer (point-to-point) address, because the kernel
     //    will create an implicit routing rule in RT_TABLE_MAIN rather
     //    than our preferred routing table.  If the peer IP is set to the
@@ -540,69 +557,6 @@ bool Connection::FixGatewayReachability(const IPAddress& local,
     return false;
   }
 
-  if (peer->IsValid()) {
-    if (!gateway->HasSameAddressAs(*peer)) {
-      LOG(WARNING) << "Gateway address "
-                   << gateway->ToString()
-                   << " does not match peer address "
-                   << peer->ToString();
-      return false;
-    }
-    if (gateway->HasSameAddressAs(trusted_ip)) {
-      // In order to send outgoing traffic in a point-to-point network,
-      // the gateway IP address isn't of significance.  As opposed to
-      // broadcast networks, we never ARP for the gateway IP address,
-      // but just send the IP packet addressed to the recipient.  As
-      // such, since using the external trusted IP address as the
-      // gateway or peer wreaks havoc on the routing rules, we choose
-      // not to supply a gateway address.  Here's an example:
-      //
-      //     Client    <->  Internet  <->  VPN Gateway  <->  Internal Network
-      //   192.168.1.2                      10.0.1.25         172.16.5.0/24
-      //
-      // In this example, a client connects to a VPN gateway on its
-      // public IP address 10.0.1.25.  It gets issued an IP address
-      // from the VPN internal pool.  For some VPN gateways, this
-      // results in a pushed-down PPP configuration which specifies:
-      //
-      //    Client local address:   172.16.5.13
-      //    Client peer address:    10.0.1.25
-      //    Client default gateway: 10.0.1.25
-      //
-      // If we take this literally, we need to resolve the fact that
-      // 10.0.1.25 is now listed as the default gateway and interface
-      // peer address for the point-to-point interface.  However, in
-      // order to route tunneled packets to the VPN gateway we must
-      // use the external route through the physical interface and
-      // not the tunnel, or else we end up in an infinite loop
-      // re-entering the tunnel trying to route towards the VPN server.
-      //
-      // We can do this by pinning a route, but we would need to wait
-      // for the pinning process to complete before assigning this
-      // address.  Currently this process is asynchronous and will
-      // complete only after returning to the event loop.  Additionally,
-      // since there's no metric associated with assigning an address
-      // to an interface, it's always possible that having the peer
-      // address of the interface might still trump a host route.
-      //
-      // To solve this problem, we reset the peer and gateway
-      // addresses.  Neither is required in order to perform the
-      // underlying routing task.  A gateway route can be specified
-      // without an IP endpoint on point-to-point links, and simply
-      // specify the outbound interface index.  Similarly, a peer
-      // IP address is not necessary either, and will be assigned
-      // the same IP address as the local IP.  This approach
-      // simplifies routing and doesn't change the desired
-      // functional behavior.
-      //
-      LOG(INFO) << "Removing gateway and peer addresses to preserve "
-                << "routability to trusted IP address.";
-      peer->SetAddressToDefault();
-      gateway->SetAddressToDefault();
-    }
-    return true;
-  }
-
   // The prefix check will usually fail on IPv6 because IPv6 gateways
   // typically use link-local addresses.
   if (local.CanReachAddress(*gateway) ||
@@ -614,6 +568,7 @@ bool Connection::FixGatewayReachability(const IPAddress& local,
                << gateway->ToString()
                << " is unreachable from local address/prefix "
                << local.ToString() << "/" << local.prefix();
+  LOG(WARNING) << "Mitigating this by creating a link route to the gateway.";
 
   IPAddress gateway_with_max_prefix(*gateway);
   gateway_with_max_prefix.set_prefix(
@@ -633,8 +588,6 @@ bool Connection::FixGatewayReachability(const IPAddress& local,
     LOG(ERROR) << "Unable to add link-scoped route to gateway.";
     return false;
   }
-
-  LOG(WARNING) << "Mitigating this by creating a link route to the gateway.";
 
   return true;
 }

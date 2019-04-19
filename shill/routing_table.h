@@ -36,6 +36,11 @@ class RoutingTable {
   using QueryCallback = base::Callback<void(int interface_index,
                                             const RoutingTableEntry& entry)>;
 
+  // Priority of the rule sending all traffic to the local routing table.
+  static const uint32_t kRulePriorityLocal;
+  // Priority of the rule sending all traffic to the main routing table.
+  static const uint32_t kRulePriorityMain;
+
   virtual ~RoutingTable();
 
   static RoutingTable* GetInstance();

@@ -54,11 +54,6 @@ namespace {
 base::LazyInstance<RoutingTable>::DestructorAtExit g_routing_table =
     LAZY_INSTANCE_INITIALIZER;
 
-// These don't have named constants in the system header files, but they
-// are documented in ip-rule(8) and hardcoded in net/ipv4/fib_rules.c.
-const uint32_t kRulePriorityLocal = 0;
-const uint32_t kRulePriorityMain = 32766;
-
 const char kRouteFlushPath4[] = "/proc/sys/net/ipv4/route/flush";
 const char kRouteFlushPath6[] = "/proc/sys/net/ipv6/route/flush";
 
@@ -117,6 +112,14 @@ bool ParseRoutingTableMessage(const RTNLMessage& message,
 }
 
 }  // namespace
+
+// These don't have named constants in the system header files, but they
+// are documented in ip-rule(8) and hardcoded in net/ipv4/fib_rules.c.
+
+// static
+const uint32_t RoutingTable::kRulePriorityLocal = 0;
+// static
+const uint32_t RoutingTable::kRulePriorityMain = 32766;
 
 RoutingTable::RoutingTable() : rtnl_handler_(RTNLHandler::GetInstance()) {
   SLOG(this, 2) << __func__;

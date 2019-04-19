@@ -110,7 +110,7 @@ class SHILL_EXPORT IPAddress {
   void set_prefix(unsigned int prefix) { prefix_ = prefix; }
   const unsigned char* GetConstData() const { return address_.GetConstData(); }
   size_t GetLength() const { return address_.GetLength(); }
-  bool IsDefault() const { return address_.IsZero(); }
+  bool IsDefault() const { return address_.IsZero() && !prefix_; }
   bool IsValid() const {
     return family_ != kFamilyUnknown &&
         GetLength() == GetAddressLength(family_);

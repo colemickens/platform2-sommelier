@@ -1756,6 +1756,14 @@ void Manager::SortServicesTask() {
   sort(services_.begin(), services_.end(),
        ServiceSorter(this, kCompareConnectivityState, technology_order_));
 
+  std::vector<IPAddress> vpn_addresses;
+  for (const auto& service : services_) {
+    if (service->technology() == Technology::kVPN &&
+        service->connection()) {
+      vpn_addresses.push_back(service->connection()->local());
+    }
+  }
+
   int metric = Connection::kDefaultMetric;
   bool found_dns = false;
   ServiceRefPtr old_logical;
@@ -1766,6 +1774,11 @@ void Manager::SortServicesTask() {
     ConnectionRefPtr conn = service->connection();
     if (!new_physical && service->technology() != Technology::kVPN) {
       new_physical = service;
+      // This is done so that non-Android VPNs will only use the primary
+      // physical connection. Android VPNs route traffic using interface
+      // mappings set up by arc-networkd.
+      if (conn)
+        conn->set_allowed_addrs(vpn_addresses);
     }
     if (conn) {
       if (!found_dns && !conn->dns_servers().empty()) {

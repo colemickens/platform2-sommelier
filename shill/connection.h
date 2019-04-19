@@ -150,6 +150,7 @@ class Connection : public base::RefCounted<Connection> {
   virtual const IPAddress& local() const { return local_; }
   virtual const IPAddress& gateway() const { return gateway_; }
   virtual Technology::Identifier technology() const { return technology_; }
+  void set_allowed_addrs(std::vector<IPAddress> addresses);
   virtual const std::string& tethering() const { return tethering_; }
   void set_tethering(const std::string& tethering) { tethering_ = tethering; }
 
@@ -163,27 +164,21 @@ class Connection : public base::RefCounted<Connection> {
 
  private:
   friend class ConnectionTest;
-  FRIEND_TEST(ConnectionTest, AddConfig);
-  FRIEND_TEST(ConnectionTest, AddConfigUserTrafficOnly);
   FRIEND_TEST(ConnectionTest, Binder);
   FRIEND_TEST(ConnectionTest, Binders);
-  FRIEND_TEST(ConnectionTest, BlackholeIPv6);
-  FRIEND_TEST(ConnectionTest, Destructor);
   FRIEND_TEST(ConnectionTest, FixGatewayReachability);
   FRIEND_TEST(ConnectionTest, InitState);
+  FRIEND_TEST(VPNServiceTest, OnConnectionDisconnected);
   FRIEND_TEST(ConnectionTest, SetMTU);
   FRIEND_TEST(ConnectionTest, UpdateDNSServers);
-  FRIEND_TEST(VPNServiceTest, OnConnectionDisconnected);
 
   // Work around misconfigured servers which provide a gateway address that
   // is unreachable with the provided netmask.
   bool FixGatewayReachability(const IPAddress& local,
                               IPAddress* peer,
-                              IPAddress* gateway,
-                              const IPAddress& trusted_ip);
+                              IPAddress* gateway);
   bool SetupExcludedRoutes(const IPConfig::Properties& properties,
-                           const IPAddress& gateway,
-                           IPAddress* trusted_ip);
+                           const IPAddress& gateway);
   void SetMTU(int32_t mtu);
 
   void AttachBinder(Binder* binder);
@@ -197,6 +192,7 @@ class Connection : public base::RefCounted<Connection> {
 
   bool use_dns_;
   uint32_t metric_;
+  bool is_primary_physical_;
   bool has_broadcast_domain_;
   int routing_request_count_;
   int interface_index_;
@@ -211,12 +207,14 @@ class Connection : public base::RefCounted<Connection> {
   // True if this device has its own dedicated routing table.  False if
   // this device uses the global routing table.
   bool per_device_routing_;
-  // If |allowed_uids_| and/or |allowed_iifs_| is set, IP policy rules will
-  // be created so that only traffic from the whitelisted UIDs and/or
-  // input interfaces can use this connection.  If neither is set,
-  // all system traffic can use this connection.
+  // If |allowed_uids_|, |allowed_iifs_|, and/or |allowed_addrs_| is set, IP
+  // policy rules will be created so that only traffic from the whitelisted
+  // UIDs, input interfaces, and/or source IP addresses can use this connection,
+  // with the exception of the interface's own IP addresses, which can always
+  // use a connection when it corresponds to a physical interface.
   std::vector<uint32_t> allowed_uids_;
   std::vector<std::string> allowed_iifs_;
+  std::vector<IPAddress> allowed_addrs_;
   std::vector<uint32_t> blackholed_uids_;
   TimeoutSet<IPAddress>* blackholed_addrs_;
 

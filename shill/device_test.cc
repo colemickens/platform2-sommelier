@@ -46,6 +46,7 @@
 #include "shill/net/ndisc.h"
 #include "shill/portal_detector.h"
 #include "shill/property_store_test.h"
+#include "shill/routing_table.h"
 #include "shill/static_ip_parameters.h"
 #include "shill/technology.h"
 #include "shill/testing.h"
@@ -166,7 +167,10 @@ class DeviceTest : public PropertyStoreTest {
   }
   virtual ~DeviceTest() {}
 
-  void SetUp() override { device_->rtnl_handler_ = &rtnl_handler_; }
+  void SetUp() override {
+    device_->rtnl_handler_ = &rtnl_handler_;
+    RoutingTable::GetInstance()->Start();
+  }
 
  protected:
   static const char kDeviceName[];
