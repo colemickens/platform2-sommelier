@@ -9,7 +9,6 @@
 #include <mm/mm-modem.h>
 
 #include "shill/cellular/cellular_capability.h"
-#include "shill/cellular/cellular_capability_cdma.h"
 #include "shill/cellular/mock_cellular.h"
 #include "shill/cellular/mock_mobile_operator_info.h"
 #include "shill/cellular/mock_modem_info.h"
@@ -46,7 +45,7 @@ class CellularServiceTest : public testing::Test {
                                  "usb0",
                                  kAddress,
                                  3,
-                                 Cellular::kTypeCdma,
+                                 Cellular::kTypeUniversalCdma,
                                  "",
                                  "")),
         service_(new CellularService(&modem_info_, device_)),
@@ -58,10 +57,6 @@ class CellularServiceTest : public testing::Test {
 
   void SetUp() override {
     adaptor_ = static_cast<ServiceMockAdaptor*>(service_->adaptor());
-  }
-
-  CellularCapabilityCdma* GetCapabilityCdma() {
-    return static_cast<CellularCapabilityCdma*>(device_->capability_.get());
   }
 
  protected:
@@ -304,28 +299,15 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
 
   device_->running_ = true;
 
-  // If we're waiting on a disconnect before an activation, don't auto-connect.
-  GetCapabilityCdma()->activation_starting_ = true;
+  // If we're in a process of activation, don't auto-connect.
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              GetActivationState(_, _))
+      .WillOnce(Return(PendingActivationStore::kStatePending));
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
   EXPECT_STREQ(CellularService::kAutoConnActivating, reason);
-
-  // If we're waiting on an activation, also don't auto-connect.
-  GetCapabilityCdma()->activation_starting_ = false;
-  GetCapabilityCdma()->activation_state_ =
-      MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
-  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
-  EXPECT_STREQ(CellularService::kAutoConnActivating, reason);
-  GetCapabilityCdma()->activation_state_ =
-      MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
-
-  // But other activation states are fine.
-  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
-  GetCapabilityCdma()->activation_state_ =
-      MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
-  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
-  GetCapabilityCdma()->activation_state_ =
-      MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED;
-  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              GetActivationState(_, _))
+      .WillRepeatedly(Return(PendingActivationStore::kStateActivated));
 
   // Auto-connect should be suppressed if we're out of credits.
   service_->NotifySubscriptionStateChanged(SubscriptionState::kOutOfCredits);
