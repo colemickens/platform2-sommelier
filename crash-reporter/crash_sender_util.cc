@@ -4,6 +4,7 @@
 
 #include "crash-reporter/crash_sender_util.h"
 
+#include <inttypes.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -135,10 +136,16 @@ void ParseCommandLine(int argc,
   DEFINE_bool(h, false, "Show this help and exit");
   DEFINE_int32(max_spread_time, kMaxSpreadTimeInSeconds,
                "Max time in secs to sleep before sending (0 to send now)");
-  std::string ignore_rate_limits_description = base::StringPrintf(
+  const std::string ignore_rate_limits_description = base::StringPrintf(
       "Ignore normal limit of %d crash uploads per day", kMaxCrashRate);
   DEFINE_bool(ignore_rate_limits, false,
               ignore_rate_limits_description.c_str());
+  const std::string ignore_hold_off_time_description = base::StringPrintf(
+      "Assume all crash reports are completely written to disk. Do not "
+      "wait %" PRId64 " seconds after meta file is written to start sending.",
+      kMaxHoldOffTime.InSeconds());
+  DEFINE_bool(ignore_hold_off_time, false,
+              ignore_hold_off_time_description.c_str());
   brillo::FlagHelper::Init(new_argv.size() - 1, new_argv.data(),
                            "Chromium OS Crash Sender");
   // TODO(satorux): Remove this once -e option is gone.
@@ -152,6 +159,7 @@ void ParseCommandLine(int argc,
   }
   flags->max_spread_time = base::TimeDelta::FromSeconds(FLAGS_max_spread_time);
   flags->ignore_rate_limits = FLAGS_ignore_rate_limits;
+  flags->ignore_hold_off_time = FLAGS_ignore_hold_off_time;
 
   // Set the predefined environment variables.
   for (const auto& it : env_vars)
@@ -469,6 +477,7 @@ bool IsBelowRate(const base::FilePath& timestamps_dir, int max_crash_rate) {
 
 bool GetSleepTime(const base::FilePath& meta_file,
                   const base::TimeDelta& max_spread_time,
+                  const base::TimeDelta& hold_off_time,
                   base::TimeDelta* sleep_time) {
   base::File::Info info;
   if (!base::GetFileInfo(meta_file, &info)) {
@@ -477,15 +486,13 @@ bool GetSleepTime(const base::FilePath& meta_file,
   }
 
   // The meta file should be written *after* all to-be-uploaded files that it
-  // references.  Nevertheless, as a safeguard, a hold-off time of
-  // kMaxHoldOffTimeInSeconds after writing the meta file is ensured.  Also,
-  // sending of crash reports is spread out randomly by up to |max_spread_time|.
-  // Thus, for the sleep call the greater of the two delays is used.
-  const base::TimeDelta max_holdoff_time =
-      base::TimeDelta::FromSeconds(kMaxHoldOffTimeInSeconds);
-  // Use max() to ensure that holdoff_time is not negative.
-  const base::TimeDelta holdoff_time =
-      std::max(info.last_modified + max_holdoff_time - base::Time::Now(),
+  // references.  Nevertheless, as a safeguard, a hold-off time after writing
+  // the meta file is ensured.  Also, sending of crash reports is spread out
+  // randomly by up to |max_spread_time|. Thus, for the sleep call the greater
+  // of the two delays is used. Use max() to ensure that holdoff_time is not
+  // negative.
+  const base::TimeDelta hold_off_time_remaining =
+      std::max(info.last_modified + hold_off_time - base::Time::Now(),
                base::TimeDelta());
 
   const int seconds = (max_spread_time.InSeconds() <= 0
@@ -493,7 +500,7 @@ bool GetSleepTime(const base::FilePath& meta_file,
                            : base::RandInt(0, max_spread_time.InSeconds()));
   const base::TimeDelta spread_time = base::TimeDelta::FromSeconds(seconds);
 
-  *sleep_time = std::max(spread_time, holdoff_time);
+  *sleep_time = std::max(spread_time, hold_off_time_remaining);
 
   return true;
 }
@@ -545,6 +552,7 @@ Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
       proxy_servers_(options.proxy_servers),
       max_crash_rate_(options.max_crash_rate),
       max_spread_time_(options.max_spread_time),
+      hold_off_time_(options.hold_off_time),
       sleep_function_(options.sleep_function) {}
 
 bool Sender::Init() {
@@ -620,7 +628,8 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
     }
 
     base::TimeDelta sleep_time;
-    if (!GetSleepTime(meta_file, max_spread_time_, &sleep_time)) {
+    if (!GetSleepTime(meta_file, max_spread_time_, hold_off_time_,
+                      &sleep_time)) {
       LOG(WARNING) << "Failed to compute sleep time for " << meta_file.value();
       continue;
     }

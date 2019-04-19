@@ -298,6 +298,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_NoFlags) {
   EXPECT_STREQ("0", getenv("FORCE_OFFICIAL"));
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
   EXPECT_FALSE(flags.ignore_rate_limits);
+  EXPECT_FALSE(flags.ignore_hold_off_time);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_HonorExistingValue) {
@@ -308,6 +309,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_HonorExistingValue) {
   EXPECT_STREQ("1", getenv("FORCE_OFFICIAL"));
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
   EXPECT_FALSE(flags.ignore_rate_limits);
+  EXPECT_FALSE(flags.ignore_hold_off_time);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_OverwriteDefaultValue) {
@@ -317,6 +319,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_OverwriteDefaultValue) {
   EXPECT_STREQ("1", getenv("FORCE_OFFICIAL"));
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
   EXPECT_FALSE(flags.ignore_rate_limits);
+  EXPECT_FALSE(flags.ignore_hold_off_time);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_OverwriteExistingValue) {
@@ -327,6 +330,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_OverwriteExistingValue) {
   EXPECT_STREQ("2", getenv("FORCE_OFFICIAL"));
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
   EXPECT_FALSE(flags.ignore_rate_limits);
+  EXPECT_FALSE(flags.ignore_hold_off_time);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_Usage) {
@@ -351,6 +355,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_ValidMaxSpreadTime) {
   ParseCommandLine(arraysize(argv), argv, &flags);
   EXPECT_EQ(base::TimeDelta::FromSeconds(0), flags.max_spread_time);
   EXPECT_FALSE(flags.ignore_rate_limits);
+  EXPECT_FALSE(flags.ignore_hold_off_time);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreRateLimits) {
@@ -359,6 +364,16 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreRateLimits) {
   ParseCommandLine(arraysize(argv), argv, &flags);
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
   EXPECT_TRUE(flags.ignore_rate_limits);
+  EXPECT_FALSE(flags.ignore_hold_off_time);
+}
+
+TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreHoldOffTIme) {
+  const char* argv[] = {"crash_sender", "--ignore_hold_off_time"};
+  CommandLineFlags flags;
+  ParseCommandLine(arraysize(argv), argv, &flags);
+  EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
+  EXPECT_FALSE(flags.ignore_rate_limits);
+  EXPECT_TRUE(flags.ignore_hold_off_time);
 }
 
 TEST_F(CrashSenderUtilTest, IsMock) {
@@ -810,30 +825,59 @@ TEST_F(CrashSenderUtilTest, GetSleepTime) {
 
   // This should fail since meta_file does not exist.
   base::TimeDelta sleep_time;
-  EXPECT_FALSE(GetSleepTime(meta_file, max_spread_time, &sleep_time));
+  EXPECT_FALSE(
+      GetSleepTime(meta_file, max_spread_time, kMaxHoldOffTime, &sleep_time));
 
   ASSERT_TRUE(test_util::CreateFile(meta_file, ""));
 
-  // sleep_time should be close enough to kMaxHoldOffTimeInSeconds since the
-  // meta file was just created, but 10% error is allowed just in case.
-  EXPECT_TRUE(GetSleepTime(meta_file, max_spread_time, &sleep_time));
-  EXPECT_NEAR(static_cast<double>(kMaxHoldOffTimeInSeconds),
-              sleep_time.InSecondsF(), kMaxHoldOffTimeInSeconds * 0.1);
+  // sleep_time should be close enough to kMaxHoldOffTime since the meta file
+  // was just created, but 10% error is allowed just in case.
+  EXPECT_TRUE(
+      GetSleepTime(meta_file, max_spread_time, kMaxHoldOffTime, &sleep_time));
+  EXPECT_NEAR(kMaxHoldOffTime.InSecondsF(), sleep_time.InSecondsF(),
+              kMaxHoldOffTime.InSecondsF() * 0.1);
+
+  // Zero hold-off time and zero sleep time should always give zero sleep time.
+  EXPECT_TRUE(GetSleepTime(meta_file, max_spread_time,
+                           base::TimeDelta::FromSeconds(0) /*hold_off_time*/,
+                           &sleep_time));
+  EXPECT_EQ(base::TimeDelta::FromSeconds(0), sleep_time);
+
+  // Even if file is new, a zero hold-off time means we choose a time between
+  // 0 and max_spread_time.
+  ASSERT_TRUE(TouchFileHelper(meta_file, base::Time::Now()));
+  EXPECT_TRUE(GetSleepTime(
+      meta_file, base::TimeDelta::FromSeconds(60) /*max_spread_time*/,
+      base::TimeDelta::FromSeconds(0) /*hold_off_time*/, &sleep_time));
+  EXPECT_LE(base::TimeDelta::FromSeconds(0), sleep_time);
+  EXPECT_GE(base::TimeDelta::FromSeconds(60), sleep_time);
 
   // Make the meta file old enough so hold-off time is not necessary.
   const base::Time now = base::Time::Now();
-  ASSERT_TRUE(TouchFileHelper(
-      meta_file, now - base::TimeDelta::FromSeconds(kMaxHoldOffTimeInSeconds)));
+  ASSERT_TRUE(TouchFileHelper(meta_file, now - kMaxHoldOffTime));
 
   // sleep_time should always be 0, since max_spread_time is set to 0.
-  EXPECT_TRUE(GetSleepTime(meta_file, max_spread_time, &sleep_time));
-  EXPECT_EQ(0, sleep_time.InSeconds());
+  EXPECT_TRUE(
+      GetSleepTime(meta_file, max_spread_time, kMaxHoldOffTime, &sleep_time));
+  EXPECT_EQ(base::TimeDelta::FromSeconds(0), sleep_time);
 
   // sleep_time should be in range [0, 10].
   max_spread_time = base::TimeDelta::FromSeconds(10);
-  EXPECT_TRUE(GetSleepTime(meta_file, max_spread_time, &sleep_time));
-  EXPECT_LE(0, sleep_time.InSeconds());
-  EXPECT_GE(10, sleep_time.InSeconds());
+  EXPECT_TRUE(
+      GetSleepTime(meta_file, max_spread_time, kMaxHoldOffTime, &sleep_time));
+  EXPECT_LE(base::TimeDelta::FromSeconds(0), sleep_time);
+  EXPECT_GE(base::TimeDelta::FromSeconds(10), sleep_time);
+
+  // If the meta file is current, the minimum sleep time should be
+  // kMaxHoldOffTime but the maximum is still max_spread_time.
+  max_spread_time = base::TimeDelta::FromSeconds(60);
+  ASSERT_TRUE(TouchFileHelper(meta_file, base::Time::Now()));
+  EXPECT_TRUE(
+      GetSleepTime(meta_file, max_spread_time, kMaxHoldOffTime, &sleep_time));
+  // 0.9 in case we got preempted for 3 seconds between the file touch and the
+  // GetSleepTime().
+  EXPECT_LE(kMaxHoldOffTime * 0.9, sleep_time);
+  EXPECT_GE(base::TimeDelta::FromSeconds(60), sleep_time);
 }
 
 TEST_F(CrashSenderUtilTest, GetValueOrUndefined) {

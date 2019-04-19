@@ -23,7 +23,7 @@ namespace util {
 constexpr int kMaxCrashRate = 32;
 
 // Maximum time to wait for ensuring a meta file is complete.
-constexpr int kMaxHoldOffTimeInSeconds = 30;
+constexpr base::TimeDelta kMaxHoldOffTime = base::TimeDelta::FromSeconds(30);
 
 // Maximum time to sleep before attempting to send a crash report. This value is
 // inclusive as an upper bound, thus 0 means a crash report can be sent
@@ -40,6 +40,7 @@ struct EnvPair {
 struct CommandLineFlags {
   base::TimeDelta max_spread_time;
   bool ignore_rate_limits = false;
+  bool ignore_hold_off_time = false;
 };
 
 // Crash information obtained in ChooseAction().
@@ -175,6 +176,7 @@ bool IsBelowRate(const base::FilePath& timestamps_dir, int max_crash_rate);
 // returns false.
 bool GetSleepTime(const base::FilePath& meta_file,
                   const base::TimeDelta& max_spread_time,
+                  const base::TimeDelta& hold_off_time,
                   base::TimeDelta* sleep_time);
 
 // Returns the value for the key from the key-value store, or "undefined", if
@@ -207,6 +209,11 @@ class Sender {
 
     // Maximum time to sleep before attempting to send.
     base::TimeDelta max_spread_time;
+
+    // Do not send the crash report until the meta file is at least this old.
+    // This avoids problems with crash reports being sent out while they are
+    // still being written.
+    base::TimeDelta hold_off_time = kMaxHoldOffTime;
 
     // Alternate sleep function for unit testing.
     base::Callback<void(base::TimeDelta)> sleep_function;
@@ -258,6 +265,7 @@ class Sender {
   base::ScopedTempDir scoped_temp_dir_;
   const int max_crash_rate_;
   const base::TimeDelta max_spread_time_;
+  const base::TimeDelta hold_off_time_;
   base::Callback<void(base::TimeDelta)> sleep_function_;
   scoped_refptr<dbus::Bus> bus_;
 

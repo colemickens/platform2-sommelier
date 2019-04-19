@@ -109,6 +109,9 @@ int RunChildMain(int argc, char* argv[]) {
   if (flags.ignore_rate_limits) {
     options.max_crash_rate = std::numeric_limits<int>::max();
   }
+  if (flags.ignore_hold_off_time) {
+    options.hold_off_time = base::TimeDelta::FromSeconds(0);
+  }
   util::Sender sender(std::move(metrics_lib), options);
   if (!sender.Init()) {
     LOG(ERROR) << "Failed to initialize util::Sender";
