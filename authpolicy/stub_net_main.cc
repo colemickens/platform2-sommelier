@@ -5,6 +5,7 @@
 // Stub implementation of Samba net. Does not talk to server, but simply returns
 // fixed responses to predefined input.
 
+#include <inttypes.h>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -175,8 +176,8 @@ msDS-SupportedEncryptionTypes: 0)!!!";
 
 // Password related fields in search response.
 const char kStubSearchPwdFormat[] = R"!!!(
-pwdLastSet: %lu
-userAccountControl: %u)!!!";
+pwdLastSet: %)!!!" PRIu64 R"!!!(
+userAccountControl: %)!!!" PRIu32;
 
 // Search that doesn't find anything.
 const char kStubBadSearch[] = "Got 0 replies";
