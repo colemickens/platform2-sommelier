@@ -20,9 +20,12 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/process/process.h>
+#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <brillo/daemons/daemon.h>
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
+#include <brillo/syslog_logging.h>
 #include <chromeos/ec/ec_commands.h>
 
 #include "biod/cros_fp_device.h"
@@ -102,25 +105,32 @@ bool DoProgramSeed(const brillo::SecureBlob& tpm_seed) {
 
 int main(int argc, char* argv[]) {
   // Set up logging settings.
-  DEFINE_string(log_dir, "/var/log/", "Directory where logs are written.");
+  DEFINE_string(log_dir, "/var/log/bio_crypto_init",
+                "Directory where logs are written.");
 
   brillo::FlagHelper::Init(argc, argv,
                            "bio_crypto_init, the Chromium OS binary to program "
                            "bio sensors with TPM secrets.");
 
-  const base::FilePath log_file =
-      base::FilePath(FLAGS_log_dir).Append(std::string("bio_crypto_init.log"));
+  const auto log_dir_path = base::FilePath(FLAGS_log_dir);
+  const auto log_file_path = log_dir_path.Append(base::StringPrintf(
+      "bio_crypto_init.%s",
+      brillo::GetTimeAsLogString(base::Time::Now()).c_str()));
+
+  brillo::UpdateLogSymlinks(log_dir_path.Append("bio_crypto_init.LATEST"),
+                            log_dir_path.Append("bio_crypto_init.PREVIOUS"),
+                            log_file_path);
 
   logging::LoggingSettings logging_settings;
   logging_settings.logging_dest = logging::LOG_TO_FILE;
-  logging_settings.log_file = log_file.value().c_str();
+  logging_settings.log_file = log_file_path.value().c_str();
   logging_settings.lock_log = logging::DONT_LOCK_LOG_FILE;
   logging_settings.delete_old = logging::DELETE_OLD_LOG_FILE;
+  logging::InitLogging(logging_settings);
   logging::SetLogItems(true,    // process ID
                        true,    // thread ID
                        true,    // timestamp
                        false);  // tickcount
-  logging::InitLogging(logging_settings);
 
   // We fork the process so that can we program the seed in the child, and
   // terminate it if it hangs.
