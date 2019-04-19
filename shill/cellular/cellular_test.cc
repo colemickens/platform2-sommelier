@@ -719,6 +719,7 @@ TEST_P(CellularTest, GetModemStateString) {
             Cellular::GetModemStateString(Cellular::kModemStateConnected));
 }
 
+#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 TEST_P(CellularTest, StartCdmaRegister) {
   if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCdma})) {
     return;
@@ -1002,6 +1003,7 @@ TEST_P(CellularTest, FriendlyServiceName) {
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
   device_->DestroyService();
 }
+#endif  // !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 
 TEST_P(CellularTest, HomeProviderServingOperator) {
   // Test that the the home provider information is correctly updated under
@@ -1125,6 +1127,7 @@ TEST_P(CellularTest, HomeProviderServingOperator) {
                     kServingOperatorCountry);
 }
 
+#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 TEST_P(CellularTest, StorageIdentifier) {
   if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCdma})) {
     return;
@@ -1463,6 +1466,7 @@ TEST_P(CellularTest, ModemStateChangeStaleConnected) {
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateDisabled, device_->state());
 }
+#endif  // !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 
 TEST_P(CellularTest, ModemStateChangeValidConnected) {
   device_->state_ = Cellular::kStateEnabled;
@@ -2187,6 +2191,7 @@ TEST_P(CellularTest, CustomSetterNoopChange) {
   EXPECT_TRUE(error.IsSuccess());
 }
 
+#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 TEST_P(CellularTest, ScanImmediateFailure) {
   if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeGsm})) {
     return;
@@ -2264,6 +2269,7 @@ TEST_P(CellularTest, ScanSuccess) {
   EXPECT_FALSE(device_->scanning_);
   EXPECT_EQ(kTestNetworksCellular, device_->found_networks());
 }
+#endif  // !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 
 TEST_P(CellularTest, EstablishLinkDHCP) {
   if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeUniversal})) {
@@ -2398,9 +2404,7 @@ TEST_P(CellularTest, GetGeolocationObjects) {
 
 INSTANTIATE_TEST_CASE_P(CellularTest,
                         CellularTest,
-                        testing::Values(Cellular::kTypeGsm,
-                                        Cellular::kTypeCdma,
-                                        Cellular::kTypeUniversal,
+                        testing::Values(Cellular::kTypeUniversal,
                                         Cellular::kTypeUniversalCdma));
 
 }  // namespace shill
