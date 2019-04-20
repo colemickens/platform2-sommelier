@@ -93,6 +93,8 @@ const std::vector<Log> kCommandLogs {
     "/var/log/bio_crypto_init/bio_crypto_init.log"},
   {kFile, "biod.LATEST", "/var/log/biod/biod.LATEST"},
   {kFile, "biod.PREVIOUS", "/var/log/biod/biod.PREVIOUS"},
+  {kFile, "bio_fw_updater.LATEST", "/var/log/biod/bio_fw_updater.LATEST"},
+  {kFile, "bio_fw_updater.PREVIOUS", "/var/log/biod/bio_fw_updater.PREVIOUS"},
   {kFile, "bios_info", "/var/log/bios_info.txt"},
   {kCommand, "bios_log", "cat /sys/firmware/log "
     "/proc/device-tree/chosen/ap-console-buffer 2>/dev/null"},
