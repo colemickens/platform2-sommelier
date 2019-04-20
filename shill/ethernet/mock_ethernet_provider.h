@@ -23,6 +23,9 @@ class MockEthernetProvider : public EthernetProvider {
   MOCK_METHOD1(CreateService, EthernetServiceRefPtr(base::WeakPtr<Ethernet>));
   MOCK_METHOD2(GetService,
                ServiceRefPtr(const KeyValueStore& args, Error* error));
+  MOCK_METHOD1(RegisterService, void(EthernetServiceRefPtr));
+  MOCK_METHOD1(DeregisterService, void(EthernetServiceRefPtr));
+  MOCK_METHOD0(RefreshGenericEthernetService, void());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockEthernetProvider);

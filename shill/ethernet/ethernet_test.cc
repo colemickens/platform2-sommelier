@@ -111,8 +111,8 @@ class EthernetTest : public testing::Test {
 #endif  // DISABLE_WIRED_8021X
     ethernet_->set_dhcp_provider(nullptr);
     ethernet_->sockets_.reset();
-    Mock::VerifyAndClearExpectations(&manager_);
     ethernet_->Stop(nullptr, EnabledStateChangedCallback());
+    Mock::VerifyAndClearExpectations(&manager_);
   }
 
  protected:
@@ -241,10 +241,10 @@ TEST_F(EthernetTest, Construct) {
 
 TEST_F(EthernetTest, StartStop) {
   Service* service = GetService().get();
-  EXPECT_CALL(manager_, RegisterService(Eq(service)));
+  EXPECT_CALL(ethernet_provider_, RegisterService(Eq(service)));
   StartEthernet();
 
-  EXPECT_CALL(manager_, DeregisterService(Eq(service)));
+  EXPECT_CALL(ethernet_provider_, DeregisterService(Eq(service))).Times(2);
   ethernet_->Stop(nullptr, EnabledStateChangedCallback());
 
   // Ethernet device retains its service.
@@ -320,6 +320,8 @@ TEST_F(EthernetTest, LinkEvent) {
 
   // Restore this expectation during shutdown.
   EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
+  EXPECT_CALL(manager_, ethernet_provider())
+      .WillRepeatedly(Return(&ethernet_provider_));
 }
 
 TEST_F(EthernetTest, ConnectToLinkDown) {
@@ -558,10 +560,10 @@ TEST_F(EthernetTest, TogglePPPoE) {
   EXPECT_CALL(*mock_service_, Disconnect(_, _));
 
   InSequence sequence;
-  EXPECT_CALL(manager_, DeregisterService(Eq(mock_service_)));
+  EXPECT_CALL(ethernet_provider_, DeregisterService(Eq(mock_service_)));
   EXPECT_CALL(manager_, RegisterService(TechnologyEq(Technology::kPPPoE)));
   EXPECT_CALL(manager_, DeregisterService(TechnologyEq(Technology::kPPPoE)));
-  EXPECT_CALL(manager_, RegisterService(_));
+  EXPECT_CALL(ethernet_provider_, RegisterService(_));
 
   const vector<pair<bool, Technology>> transitions = {
       {false, Technology::kEthernet},
@@ -575,6 +577,8 @@ TEST_F(EthernetTest, TogglePPPoE) {
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(GetService()->technology(), transition.second);
   }
+
+  EXPECT_CALL(ethernet_provider_, DeregisterService(_));
 }
 
 #else

@@ -6,6 +6,7 @@
 #define SHILL_ETHERNET_ETHERNET_SERVICE_H_
 
 #include <string>
+#include <utility>
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
@@ -44,14 +45,19 @@ class EthernetService : public Service {
   bool IsVisible() const override;
   bool IsAutoConnectable(const char** reason) const override;
 
-  // Override Load and Save from parent Service class.  We will call
-  // the parent method.
-  bool Load(StoreInterface* storage) override;
-  bool Save(StoreInterface* storage) override;
-
   // Called by the Ethernet device when link state has caused the service
   // visibility to change.
   virtual void OnVisibilityChanged();
+
+  bool HasEthernet() { return props_.ethernet_.get(); }
+  void SetEthernet(base::WeakPtr<Ethernet> ethernet) {
+    props_.ethernet_ = ethernet;
+  }
+  void ResetEthernet() { SetEthernet(nullptr); }
+  void SetStorageIdentifier(std::string storage_id) {
+    props_.storage_id_ = std::move(storage_id);
+  }
+  void ResetStorageIdentifier() { props_.storage_id_ = std::string(); }
 
  protected:
   // This constructor performs none of the initialization that the normal

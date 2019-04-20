@@ -88,6 +88,8 @@ class Ethernet
   friend class EthernetServiceTest;  // For weak_ptr_factory_.
   friend class PPPoEServiceTest;     // For weak_ptr_factory_.
 
+  FRIEND_TEST(EthernetProviderTest, MultipleServices);
+
   // Return a pointer to the EthernetProvider for Ethernet devices.
   EthernetProvider* GetProvider();
 
@@ -129,6 +131,9 @@ class Ethernet
   // Helpers for creating services with |this| as their device.
   EthernetServiceRefPtr CreateEthernetService();
   EthernetServiceRefPtr CreatePPPoEService();
+
+  void RegisterService(EthernetServiceRefPtr service);
+  void DeregisterService(EthernetServiceRefPtr service);
 
   void SetupWakeOnLan();
 

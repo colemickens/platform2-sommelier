@@ -82,10 +82,11 @@ RpcIdentifier EthernetService::GetDeviceRpcId(Error* error) const {
 }
 
 string EthernetService::GetStorageIdentifier() const {
-  return props_.ethernet_
-             ? base::StringPrintf("%s_%s", technology().GetName().c_str(),
-                                  props_.ethernet_->mac_address().c_str())
-             : props_.storage_id_;
+  if (!props_.ethernet_ || !props_.storage_id_.empty()) {
+    return props_.storage_id_;
+  }
+  return base::StringPrintf("%s_%s", technology().GetName().c_str(),
+                            props_.ethernet_->mac_address().c_str());
 }
 
 bool EthernetService::IsAutoConnectByDefault() const {
@@ -120,34 +121,6 @@ bool EthernetService::IsAutoConnectable(const char** reason) const {
     return false;
   }
   return true;
-}
-
-bool EthernetService::Load(StoreInterface* storage) {
-  if (!Service::Load(storage)) {
-    return false;
-  }
-
-  StoreInterface* store = manager()->ActiveProfile()->GetStorage();
-  mutable_static_ip_parameters()->Load(store, kDefaultEthernetDeviceIdentifier);
-  return true;
-}
-
-bool EthernetService::Save(StoreInterface* storage) {
-  if (!Service::Save(storage)) {
-    return false;
-  }
-
-  if (!IsRemembered()) {
-    return true;
-  }
-
-  StoreInterface* store = manager()->ActiveProfile()->GetStorage();
-  mutable_static_ip_parameters()->Save(store,
-                                       kDefaultEthernetDeviceIdentifier);
-  store->Flush();
-  // Now that the IP parameters are saved to the ethernet_any profile, load it
-  // into the in-memory ethernet_any service.
-  return manager()->ethernet_provider()->LoadGenericEthernetService();
 }
 
 void EthernetService::OnVisibilityChanged() {

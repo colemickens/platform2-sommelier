@@ -6,10 +6,12 @@
 #define SHILL_ETHERNET_ETHERNET_PROVIDER_H_
 
 #include <string>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/memory/weak_ptr.h>
 
+#include "shill/ethernet/ethernet_service.h"
 #include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
 
@@ -40,17 +42,27 @@ class EthernetProvider : public ProviderInterface {
 
   virtual EthernetServiceRefPtr CreateService(base::WeakPtr<Ethernet> ethernet);
   bool LoadGenericEthernetService();
+  virtual void RefreshGenericEthernetService();
+  virtual void RegisterService(EthernetServiceRefPtr service);
+  virtual void DeregisterService(EthernetServiceRefPtr service);
 
-  virtual const ServiceRefPtr& service() const { return service_; }
+  virtual const EthernetServiceRefPtr& service() const { return service_; }
 
  private:
   friend class EthernetProviderTest;
   friend class ManagerTest;
 
+  FRIEND_TEST(EthernetProviderTest, MultipleServices);
+
+  EthernetServiceRefPtr FindEthernetServiceForService(
+      ServiceRefPtr service) const;
+  void ReconnectToGenericEthernetService() const;
+
   // Representative service
-  ServiceRefPtr service_;
+  EthernetServiceRefPtr service_;
 
   Manager* manager_;
+  std::vector<EthernetServiceRefPtr> services_;
 
   DISALLOW_COPY_AND_ASSIGN(EthernetProvider);
 };

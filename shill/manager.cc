@@ -1822,6 +1822,8 @@ void Manager::SortServicesTask() {
   UpdateDefaultServices(new_logical, new_physical);
   RefreshConnectionState();
   DetectMultiHomedDevices();
+  if (ethernet_provider_)
+    ethernet_provider_->RefreshGenericEthernetService();
 
   AutoConnect();
 }

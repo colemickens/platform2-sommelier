@@ -129,6 +129,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   bool IsActiveProfile(const ProfileRefPtr& profile) const;
   bool MoveServiceToProfile(const ServiceRefPtr& to_move,
                             const ProfileRefPtr& destination);
+  virtual bool MatchProfileWithService(const ServiceRefPtr& service);
   ProfileRefPtr LookupProfileByRpcIdentifier(
     const RpcIdentifier& profile_rpcid);
 
@@ -183,7 +184,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual ServiceRefPtr GetPrimaryPhysicalService();
   // Return the first service of type |Technology::kEthernet| found in
   // |services_|, or nullptr if no such service is found.
-  ServiceRefPtr GetFirstEthernetService();
+  virtual ServiceRefPtr GetFirstEthernetService();
 
   // Retrieve geolocation data from the Manager.
   std::map<std::string, std::vector<GeolocationInfo>>
@@ -659,8 +660,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void DeviceStatusCheckTask();
   void ConnectionStatusCheck();
   void DevicePresenceStatusCheck();
-
-  bool MatchProfileWithService(const ServiceRefPtr& service);
 
   // Sets the profile of |service| to |profile|, without notifying its
   // previous profile.  Configures a |service| with |args|, then saves

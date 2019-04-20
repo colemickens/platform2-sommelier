@@ -103,8 +103,6 @@ TEST_F(EthernetServiceTest, LoadAutoConnect) {
   ProfileRefPtr profile = mock_profile.get();
   EXPECT_CALL(mock_store, ContainsGroup(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(mock_store, GetBool(_, _, _)).WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_manager_, ActiveProfile()).WillOnce(ReturnRef(profile));
-  EXPECT_CALL(*mock_profile, GetStorage()).WillOnce(Return(&mock_store));
   EXPECT_TRUE(service_->Load(&mock_store));
   EXPECT_TRUE(GetAutoConnect());
 }

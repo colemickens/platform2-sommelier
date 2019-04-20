@@ -99,7 +99,7 @@ void Ethernet::Start(Error* error,
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   LOG(INFO) << "Registering " << link_name() << " with manager.";
   if (!manager()->HasService(service_)) {
-    manager()->RegisterService(service_);
+    RegisterService(service_);
   }
   if (error)
     error->Reset();       // indicate immediate completion
@@ -107,7 +107,7 @@ void Ethernet::Start(Error* error,
 
 void Ethernet::Stop(Error* error,
                     const EnabledStateChangedCallback& /*callback*/) {
-  manager()->DeregisterService(service_);
+  DeregisterService(service_);
 #if !defined(DISABLE_WIRED_8021X)
   StopSupplicant();
 #endif  // DISABLE_WIRED_8021X
@@ -478,9 +478,9 @@ bool Ethernet::ConfigurePPPoEMode(const bool& enable, Error* error) {
 
   CHECK(service);
   service_->Disconnect(error, nullptr);
-  manager()->DeregisterService(service_);
+  DeregisterService(service_);
   service_ = service;
-  manager()->RegisterService(service_);
+  RegisterService(service_);
 
   return true;
 #endif  // DISABLE_PPPOE
@@ -503,6 +503,28 @@ EthernetServiceRefPtr Ethernet::CreateEthernetService() {
 
 EthernetServiceRefPtr Ethernet::CreatePPPoEService() {
   return new PPPoEService(manager(), weak_ptr_factory_.GetWeakPtr());
+}
+
+void Ethernet::RegisterService(EthernetServiceRefPtr service) {
+  if (!service) {
+    return;
+  }
+  if (service->technology() == Technology::kPPPoE) {
+    manager()->RegisterService(service);
+  } else {
+    GetProvider()->RegisterService(service);
+  }
+}
+
+void Ethernet::DeregisterService(EthernetServiceRefPtr service) {
+  if (!service) {
+    return;
+  }
+  if (service->technology() == Technology::kPPPoE) {
+    manager()->DeregisterService(service);
+  } else {
+    GetProvider()->DeregisterService(service);
+  }
 }
 
 }  // namespace shill

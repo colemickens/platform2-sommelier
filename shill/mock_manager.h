@@ -39,6 +39,7 @@ class MockManager : public Manager {
   MOCK_METHOD3(SetProfileForService, void(const ServiceRefPtr& to_set,
                                           const std::string& profile,
                                           Error* error));
+  MOCK_METHOD1(MatchProfileWithService, bool(const ServiceRefPtr& service));
   MOCK_METHOD1(RegisterDevice, void(const DeviceRefPtr& to_manage));
   MOCK_METHOD1(DeregisterDevice, void(const DeviceRefPtr& to_forget));
   MOCK_METHOD1(HasService, bool(const ServiceRefPtr& to_manage));
@@ -121,6 +122,7 @@ class MockManager : public Manager {
   MOCK_METHOD0(GetDeviceInterfaceNames, std::vector<std::string>());
   MOCK_CONST_METHOD0(GetFTEnabled, bool());
   MOCK_CONST_METHOD0(ActiveProfile, const ProfileRefPtr&());
+  MOCK_METHOD0(GetFirstEthernetService, ServiceRefPtr());
 
   // Getter and setter for a mocked device info instance.
   DeviceInfo* mock_device_info() { return mock_device_info_; }

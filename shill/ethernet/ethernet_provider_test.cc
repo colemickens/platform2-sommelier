@@ -21,6 +21,7 @@
 using testing::_;
 using testing::DoAll;
 using testing::Mock;
+using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
 using testing::SaveArg;
@@ -32,11 +33,17 @@ class EthernetProviderTest : public testing::Test {
   EthernetProviderTest()
       : manager_(&control_, &dispatcher_, &metrics_),
         profile_(new MockProfile(&manager_, "")),
-        provider_(&manager_) {}
+        provider_(&manager_),
+        eth0_(new NiceMock<MockEthernet>(&manager_, "ethernet", fake_mac0, 0)),
+        eth1_(new NiceMock<MockEthernet>(&manager_, "ethernet", fake_mac1, 0)) {
+  }
   ~EthernetProviderTest() override = default;
 
  protected:
   using MockProfileRefPtr = scoped_refptr<MockProfile>;
+
+  static const char fake_mac0[];
+  static const char fake_mac1[];
 
   MockControl control_;
   EventDispatcherForTest dispatcher_;
@@ -44,24 +51,23 @@ class EthernetProviderTest : public testing::Test {
   MockManager manager_;
   MockProfileRefPtr profile_;
   EthernetProvider provider_;
+  scoped_refptr<MockEthernet> eth0_;
+  scoped_refptr<MockEthernet> eth1_;
 };
+
+// static
+const char EthernetProviderTest::fake_mac0[] = "AaBBcCDDeeFF";
+const char EthernetProviderTest::fake_mac1[] = "FfEEDdccBbaA";
 
 TEST_F(EthernetProviderTest, Construct) {
   EXPECT_EQ(ServiceRefPtr(), provider_.service());
 }
 
 TEST_F(EthernetProviderTest, StartAndStop) {
-  ServiceRefPtr service;
-  ProfileRefPtr profile = profile_.get();
-  EXPECT_CALL(manager_, ActiveProfile()).WillOnce(ReturnRef(profile));
-  EXPECT_CALL(*profile_, ConfigureService(_))
-      .WillOnce(DoAll(SaveArg<0>(&service), Return(true)));
   provider_.Start();
+  ServiceRefPtr service = provider_.service();
   EXPECT_NE(ServiceRefPtr(), provider_.service());
-  EXPECT_EQ(service, provider_.service());
 
-  EXPECT_CALL(manager_, ActiveProfile()).WillOnce(ReturnRef(profile));
-  EXPECT_CALL(*profile_, UpdateService(_));
   provider_.Stop();
   EXPECT_EQ(service, provider_.service());
 
@@ -71,12 +77,8 @@ TEST_F(EthernetProviderTest, StartAndStop) {
 }
 
 TEST_F(EthernetProviderTest, ServiceConstructors) {
-  ServiceRefPtr service;
-  ProfileRefPtr profile = profile_.get();
-  EXPECT_CALL(manager_, ActiveProfile()).WillOnce(ReturnRef(profile));
-  EXPECT_CALL(*profile_, ConfigureService(_))
-      .WillOnce(DoAll(SaveArg<0>(&service), Return(true)));
   provider_.Start();
+  ServiceRefPtr service = provider_.service();
   KeyValueStore args;
   args.SetString(kTypeProperty, kTypeEthernet);
   {
@@ -102,20 +104,78 @@ TEST_F(EthernetProviderTest, ServiceConstructors) {
 }
 
 TEST_F(EthernetProviderTest, GenericServiceCreation) {
-  ServiceRefPtr service;
-  ProfileRefPtr profile = profile_.get();
-  EXPECT_CALL(manager_, ActiveProfile()).WillOnce(ReturnRef(profile));
-  EXPECT_CALL(*profile_, ConfigureService(_))
-      .WillOnce(DoAll(SaveArg<0>(&service), Return(true)));
   provider_.Start();
+  ServiceRefPtr service = provider_.service();
   EXPECT_NE(ServiceRefPtr(), provider_.service());
-  EXPECT_EQ(service, provider_.service());
-  EXPECT_EQ(service->GetStorageIdentifier(), "ethernet_any");
+  EXPECT_EQ(provider_.service()->GetStorageIdentifier(), "ethernet_any");
 
-  EXPECT_CALL(manager_, ActiveProfile()).WillOnce(ReturnRef(profile));
-  EXPECT_CALL(*profile_, UpdateService(_));
   provider_.Stop();
   EXPECT_EQ(service, provider_.service());
+}
+
+TEST_F(EthernetProviderTest, MultipleServices) {
+  provider_.Start();
+  EthernetServiceRefPtr ethernet_any_service = provider_.service();
+  EXPECT_NE(ServiceRefPtr(), provider_.service());
+  EXPECT_EQ(ethernet_any_service->GetStorageIdentifier(), "ethernet_any");
+  EXPECT_FALSE(ethernet_any_service->HasEthernet());
+
+  EthernetServiceRefPtr ethernet_service0 =
+      provider_.CreateService(eth0_->weak_ptr_factory_.GetWeakPtr());
+  ServiceRefPtr service0 = ethernet_service0;
+  EXPECT_TRUE(ethernet_any_service->HasEthernet());
+  EXPECT_EQ(ethernet_service0, ethernet_any_service);
+  EXPECT_EQ(ethernet_service0->GetStorageIdentifier(), "ethernet_any");
+  EXPECT_CALL(manager_, RegisterService(_)).Times(0);
+  EXPECT_CALL(manager_, GetFirstEthernetService())
+      .WillOnce(Return(ethernet_service0));
+  EXPECT_CALL(manager_, MatchProfileWithService(_)).Times(0);
+  provider_.RegisterService(ethernet_service0);
+  provider_.RefreshGenericEthernetService();
+  EXPECT_EQ(provider_.services_.size(), 1);
+  EXPECT_EQ(ethernet_service0, provider_.service());
+
+  EthernetServiceRefPtr ethernet_service1 =
+      provider_.CreateService(eth1_->weak_ptr_factory_.GetWeakPtr());
+  ServiceRefPtr service1 = ethernet_service1;
+  EXPECT_NE(ethernet_service0, ethernet_service1);
+  EXPECT_EQ(ethernet_service1->GetStorageIdentifier(), "ethernet_ffeeddccbbaa");
+  EXPECT_CALL(manager_, RegisterService(_)).Times(1);
+  EXPECT_CALL(manager_, GetFirstEthernetService())
+      .WillOnce(Return(ethernet_service1));
+  EXPECT_CALL(manager_, MatchProfileWithService(service0));
+  EXPECT_CALL(manager_, MatchProfileWithService(service1));
+  provider_.RegisterService(ethernet_service1);
+  provider_.RefreshGenericEthernetService();
+  EXPECT_EQ(provider_.services_.size(), 2);
+  EXPECT_EQ(ethernet_service1, provider_.service());
+  EXPECT_EQ(ethernet_service1->GetStorageIdentifier(), "ethernet_any");
+  EXPECT_EQ(ethernet_service0->GetStorageIdentifier(), "ethernet_aabbccddeeff");
+
+  EXPECT_CALL(manager_, GetFirstEthernetService())
+      .WillOnce(Return(ethernet_service0));
+  EXPECT_CALL(manager_, MatchProfileWithService(service0));
+  EXPECT_CALL(manager_, MatchProfileWithService(service1));
+  provider_.RefreshGenericEthernetService();
+  EXPECT_EQ(ethernet_service1->GetStorageIdentifier(), "ethernet_ffeeddccbbaa");
+  EXPECT_EQ(ethernet_service0->GetStorageIdentifier(), "ethernet_any");
+
+  EXPECT_CALL(manager_, DeregisterService(_)).Times(1);
+  EXPECT_CALL(manager_, GetFirstEthernetService())
+      .WillOnce(Return(ethernet_service1));
+  EXPECT_CALL(manager_, MatchProfileWithService(service1));
+  EXPECT_CALL(manager_, MatchProfileWithService(service0)).Times(0);
+  provider_.DeregisterService(ethernet_service0);
+  provider_.RefreshGenericEthernetService();
+  EXPECT_EQ(provider_.services_.size(), 1);
+  EXPECT_EQ(ethernet_service1, provider_.service());
+  EXPECT_EQ(ethernet_service1->GetStorageIdentifier(), "ethernet_any");
+
+  EXPECT_CALL(manager_, DeregisterService(_)).Times(1);
+  provider_.Stop();
+  EXPECT_EQ(provider_.services_.size(), 0);
+  EXPECT_EQ(ethernet_service1, provider_.service());
+  EXPECT_TRUE(ethernet_service1->HasEthernet());
 }
 
 }  // namespace shill
