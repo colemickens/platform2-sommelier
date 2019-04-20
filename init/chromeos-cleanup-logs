@@ -112,7 +112,9 @@ if [ -r "${CLEANUP_PAUSED_FILE}" ]; then
   exit 1
 fi
 
-# Remove old biometrics daemon and firmware updater logs
+# Remove old biometrics cypto init, daemon, and firmware
+# updater logs
+remove_old_files /var/log/bio_crypto_init "*"
 remove_old_files /var/log/biod "biod.*"
 remove_old_files /var/log/biod "bio_fw_updater.*"
 
