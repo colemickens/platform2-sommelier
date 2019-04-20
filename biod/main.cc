@@ -26,7 +26,7 @@
 int main(int argc, char* argv[]) {
   base::AtExitManager at_exit_manager;
 
-  DEFINE_string(log_dir, "/var/log/", "Directory where logs are written.");
+  DEFINE_string(log_dir, "/var/log/biod", "Directory where logs are written.");
 
   brillo::FlagHelper::Init(argc, argv,
                            "biod, the Chromium OS biometrics daemon.");
