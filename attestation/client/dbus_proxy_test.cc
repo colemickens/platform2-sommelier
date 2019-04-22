@@ -68,7 +68,7 @@ TEST_F(DBusProxyTest, CreateGoogleAttestedKey) {
     reply_proto.set_certificate_chain("certificate");
     reply_proto.set_server_error("server_error");
     writer.AppendProtoAsArrayOfBytes(reply_proto);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
@@ -116,7 +116,7 @@ TEST_F(DBusProxyTest, GetKeyInfo) {
     reply_proto.set_certify_info_signature("signature");
     reply_proto.set_certificate("certificate");
     writer.AppendProtoAsArrayOfBytes(reply_proto);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
@@ -157,7 +157,7 @@ TEST_F(DBusProxyTest, GetEndorsementInfo) {
     reply_proto.set_ek_public_key("public_key");
     reply_proto.set_ek_certificate("certificate");
     writer.AppendProtoAsArrayOfBytes(reply_proto);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
@@ -197,7 +197,7 @@ TEST_F(DBusProxyTest, GetAttestationKeyInfo) {
     reply_proto.mutable_pcr0_quote()->set_quote("pcr0");
     reply_proto.mutable_pcr1_quote()->set_quote("pcr1");
     writer.AppendProtoAsArrayOfBytes(reply_proto);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
@@ -241,7 +241,7 @@ TEST_F(DBusProxyTest, ActivateAttestationKey) {
     reply_proto.set_status(STATUS_SUCCESS);
     reply_proto.set_certificate("certificate");
     writer.AppendProtoAsArrayOfBytes(reply_proto);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
@@ -284,7 +284,7 @@ TEST_F(DBusProxyTest, CreateCertifiableKey) {
     reply_proto.set_certify_info("certify_info");
     reply_proto.set_certify_info_signature("signature");
     writer.AppendProtoAsArrayOfBytes(reply_proto);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
@@ -326,7 +326,7 @@ TEST_F(DBusProxyTest, Decrypt) {
     reply_proto.set_status(STATUS_SUCCESS);
     reply_proto.set_decrypted_data("data");
     writer.AppendProtoAsArrayOfBytes(reply_proto);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
@@ -364,7 +364,7 @@ TEST_F(DBusProxyTest, Sign) {
     reply_proto.set_status(STATUS_SUCCESS);
     reply_proto.set_signature("signature");
     writer.AppendProtoAsArrayOfBytes(reply_proto);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
@@ -400,7 +400,7 @@ TEST_F(DBusProxyTest, RegisterKeyWithChapsToken) {
     RegisterKeyWithChapsTokenReply reply_proto;
     reply_proto.set_status(STATUS_SUCCESS);
     writer.AppendProtoAsArrayOfBytes(reply_proto);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
