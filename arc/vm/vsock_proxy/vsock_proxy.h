@@ -56,10 +56,6 @@ class VSockProxy {
                                  arc_proxy::FileDescriptor::Type fd_type,
                                  int64_t handle);
 
-  // Unregisters the |fd|. Internally, this destroys the corresponding stream
-  // object.
-  void UnregisterFileDescriptor(int fd);
-
   // Requests to connect(2) to a unix domain socket at |path| in the other
   // side.
   // |callback| will be called with errno, and the connected handle iff
@@ -98,8 +94,9 @@ class VSockProxy {
   void OnPreadResponse(arc_proxy::PreadResponse* response);
 
   // Callback called when local file descriptor gets ready to read.
-  // Reads Message from |fd|, and forwards to VSOCK file descriptor.
-  void OnLocalFileDesciptorReadReady(int fd);
+  // Reads Message from the file descriptor corresponding to the |handle|,
+  // and forwards to VSOCK connection.
+  void OnLocalFileDesciptorReadReady(int64_t handle);
 
   const Type type_;
   ProxyFileSystem* const proxy_file_system_;
@@ -107,25 +104,20 @@ class VSockProxy {
   VSockStream vsock_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> vsock_controller_;
 
-  // Map from a raw file descriptor to corresponding info.
-  // Note that the file descriptor should be owned by the stream instance.
+  // Map from a |handle| (see message.proto for details) to a stream
+  // instance wrapping the file descriptor and its watcher.
   // Erasing the entry from this map should close the file descriptor
-  // automatically.
+  // automatically, because file descriptor is owned by stream.
   struct FileDescriptorInfo {
-    // 64-bit handle representation in Message proto.
-    int64_t handle;
-
     // Stream instane to read/write Message.
     std::unique_ptr<StreamBase> stream;
 
     // Controller of FileDescriptorWatcher. Destroying this will
     // stop watching.
+    // This can be null, if there's no need to watch the file descriptor.
     std::unique_ptr<base::FileDescriptorWatcher::Controller> controller;
   };
-  std::map<int, FileDescriptorInfo> fd_map_;
-
-  // Map from handle in the Message into a raw file descriptor.
-  std::map<int64_t, int> handle_map_;
+  std::map<int64_t, FileDescriptorInfo> fd_map_;
 
   // For handle and cookie generation rules, please find the comment in
   // message.proto.

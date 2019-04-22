@@ -80,25 +80,14 @@ int64_t VSockProxy::RegisterFileDescriptor(
   if (fd_type != arc_proxy::FileDescriptor::REGULAR_FILE) {
     controller = base::FileDescriptorWatcher::WatchReadable(
         raw_fd, base::BindRepeating(&VSockProxy::OnLocalFileDesciptorReadReady,
-                                    weak_factory_.GetWeakPtr(), raw_fd));
+                                    weak_factory_.GetWeakPtr(), handle));
   }
-  fd_map_.emplace(raw_fd, FileDescriptorInfo{handle, std::move(stream),
-                                             std::move(controller)});
-  handle_map_.emplace(handle, raw_fd);
+  fd_map_.emplace(handle,
+                  FileDescriptorInfo{std::move(stream), std::move(controller)});
 
   // TODO(hidehiko): Info looks too verbose. Reduce it when we are ready.
   LOG(INFO) << "New FD is created: raw_fd=" << raw_fd << ", handle=" << handle;
   return handle;
-}
-
-void VSockProxy::UnregisterFileDescriptor(int fd) {
-  auto iter = fd_map_.find(fd);
-  if (iter == fd_map_.end()) {
-    LOG(ERROR) << "Unregistering unknown fd: fd=" << fd;
-    return;
-  }
-  handle_map_.erase(iter->second.handle);
-  fd_map_.erase(iter);
 }
 
 void VSockProxy::Connect(const base::FilePath& path, ConnectCallback callback) {
@@ -115,7 +104,6 @@ void VSockProxy::Connect(const base::FilePath& path, ConnectCallback callback) {
   request->set_path(path.value());
   if (!vsock_.Write(message)) {
     // Failed to write a message to VSock. Delete everything.
-    handle_map_.clear();
     fd_map_.clear();
     vsock_controller_.reset();
     std::move(callback).Run(ECONNREFUSED, 0 /* invalid */);
@@ -143,7 +131,6 @@ void VSockProxy::Pread(int64_t handle,
   request->set_offset(offset);
   if (!vsock_.Write(message)) {
     // Failed to write a message to VSock. Delete everything.
-    handle_map_.clear();
     fd_map_.clear();
     vsock_controller_.reset();
     std::move(callback).Run(ECONNREFUSED, 0 /* invalid */);
@@ -157,7 +144,6 @@ void VSockProxy::Close(int64_t handle) {
   message.mutable_close()->set_handle(handle);
   if (!vsock_.Write(message)) {
     // Failed to write a message to VSock. Delete everything.
-    handle_map_.clear();
     fd_map_.clear();
     vsock_controller_.reset();
   }
@@ -168,7 +154,6 @@ void VSockProxy::OnVSockReadReady() {
   if (!vsock_.Read(&message)) {
     // TODO(hidehiko): Support VSOCK close case.
     // Failed to read a message from VSock. Delete everything.
-    handle_map_.clear();
     fd_map_.clear();
     vsock_controller_.reset();
     return;
@@ -203,40 +188,27 @@ void VSockProxy::OnVSockReadReady() {
 
 void VSockProxy::OnClose(arc_proxy::Close* close) {
   LOG(INFO) << "Closing: " << close->handle();
-  auto it = handle_map_.find(close->handle());
-  if (it == handle_map_.end()) {
+  auto it = fd_map_.find(close->handle());
+  if (it == fd_map_.end()) {
     LOG(ERROR) << "Couldn't find handle: handle=" << close->handle();
     return;
   }
-
-  int raw_fd = it->second;
-  handle_map_.erase(it);
-  if (fd_map_.erase(raw_fd) == 0) {
-    LOG(ERROR) << "Couldn't find fd in fd_map: handle=" << close->handle()
-               << ", fd=" << raw_fd;
-  }
+  fd_map_.erase(it);
 }
 
 void VSockProxy::OnData(arc_proxy::Data* data) {
-  auto it = handle_map_.find(data->handle());
-  if (it == handle_map_.end()) {
+  auto it = fd_map_.find(data->handle());
+  if (it == fd_map_.end()) {
     LOG(ERROR) << "Couldn't find handle: handle=" << data->handle();
-    return;
-  }
-
-  auto fd_it = fd_map_.find(it->second);
-  if (fd_it == fd_map_.end()) {
-    LOG(ERROR) << "Couldn't find fd: handle=" << data->handle()
-               << ", fd=" << it->second;
     return;
   }
 
   // TODO(b/123613033): Fix the error handling. Specifically, if the socket
   // buffer is full, EAGAIN will be returned. The case needs to be rescued
   // at least.
-  if (!fd_it->second.stream->Write(data)) {
+  if (!it->second.stream->Write(data)) {
     LOG(ERROR) << "Failed to write to a file descriptor: handle="
-               << data->handle() << ", fd=" << it->second;
+               << data->handle();
   }
 }
 
@@ -260,7 +232,6 @@ void VSockProxy::OnConnectRequest(arc_proxy::ConnectRequest* request) {
 
   if (!vsock_.Write(reply)) {
     // Failed to write a message to VSock. Delete everything.
-    handle_map_.clear();
     fd_map_.clear();
     vsock_controller_.reset();
   }
@@ -287,7 +258,6 @@ void VSockProxy::OnPreadRequest(arc_proxy::PreadRequest* request) {
 
   if (!vsock_.Write(reply)) {
     // Failed to write a message to VSock. Delete everything.
-    handle_map_.clear();
     fd_map_.clear();
     vsock_controller_.reset();
   }
@@ -295,23 +265,15 @@ void VSockProxy::OnPreadRequest(arc_proxy::PreadRequest* request) {
 
 void VSockProxy::OnPreadRequestInternal(arc_proxy::PreadRequest* request,
                                         arc_proxy::PreadResponse* response) {
-  auto it = handle_map_.find(request->handle());
-  if (it == handle_map_.end()) {
+  auto it = fd_map_.find(request->handle());
+  if (it == fd_map_.end()) {
     LOG(ERROR) << "Couldn't find handle: handle=" << request->handle();
     response->set_error_code(EBADF);
     return;
   }
 
-  auto fd_it = fd_map_.find(it->second);
-  if (fd_it == fd_map_.end()) {
-    LOG(ERROR) << "Couldn't find fd: handle=" << request->handle()
-               << " fd=" << it->second;
-    response->set_error_code(EBADF);
-    return;
-  }
-
-  if (!fd_it->second.stream->Pread(request->count(), request->offset(),
-                                   response)) {
+  if (!it->second.stream->Pread(request->count(), request->offset(),
+                                response)) {
     response->set_error_code(EINVAL);
     return;
   }
@@ -330,17 +292,16 @@ void VSockProxy::OnPreadResponse(arc_proxy::PreadResponse* response) {
                           std::move(*response->mutable_blob()));
 }
 
-void VSockProxy::OnLocalFileDesciptorReadReady(int fd) {
-  auto fd_it = fd_map_.find(fd);
-  if (fd_it == fd_map_.end()) {
-    LOG(ERROR) << "Unknown FD gets read ready: fd=" << fd;
+void VSockProxy::OnLocalFileDesciptorReadReady(int64_t handle) {
+  auto it = fd_map_.find(handle);
+  if (it == fd_map_.end()) {
+    LOG(ERROR) << "Unknown FD gets read ready: handle=" << handle;
     return;
   }
 
   arc_proxy::VSockMessage message;
-  if (!fd_it->second.stream->Read(&message)) {
-    LOG(ERROR) << "Failed to read from file descriptor. "
-               << "handle=" << fd_it->second.handle << ", fd=" << fd_it->first;
+  if (!it->second.stream->Read(&message)) {
+    LOG(ERROR) << "Failed to read from file descriptor. handle=" << handle;
     // Notify to the other side to close.
     message.Clear();
     message.mutable_close();
@@ -350,19 +311,16 @@ void VSockProxy::OnLocalFileDesciptorReadReady(int fd) {
     // In case of EOF on the other side of the |fd|, |fd| needs to be closed.
     // Otherwise it will be kept read-ready and this callback will be
     // repeatedly called.
-    LOG(INFO) << "Closing: handle=" << fd_it->second.handle
-              << ", fd=" << fd_it->first;
-    message.mutable_close()->set_handle(fd_it->second.handle);
+    LOG(INFO) << "Closing: handle=" << handle;
+    message.mutable_close()->set_handle(handle);
     // Close the corresponding fd, too.
-    handle_map_.erase(fd_it->second.handle);
-    fd_map_.erase(fd_it);
+    fd_map_.erase(it);
   } else {
     DCHECK(message.has_data());
-    message.mutable_data()->set_handle(fd_it->second.handle);
+    message.mutable_data()->set_handle(handle);
   }
   if (!vsock_.Write(message)) {
     // Failed to write a message to VSock. Delete everything.
-    handle_map_.clear();
     fd_map_.clear();
     vsock_controller_.reset();
   }
