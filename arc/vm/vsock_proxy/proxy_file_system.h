@@ -18,13 +18,13 @@ class ProxyFileSystem {
  public:
   virtual ~ProxyFileSystem() = default;
 
-  // Registers the given |handle| to the file system with the file size,
-  // then returns the file descriptor corresponding to the registered file.
+  // Registers the given |handle| to the file system, then returns the file
+  // descriptor corresponding to the registered file.
   // The operation for the returned file descriptor will behave as if it is
   // somehow done in the other side. E.g., read for the returned file
   // descriptor will behave as if the file descriptor for the |handle| in
   // the other side is read.
-  virtual base::ScopedFD RegisterHandle(int64_t handle, uint64_t size) = 0;
+  virtual base::ScopedFD RegisterHandle(int64_t handle) = 0;
 };
 
 }  // namespace arc

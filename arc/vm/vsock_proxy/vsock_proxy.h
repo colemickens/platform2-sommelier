@@ -75,6 +75,12 @@ class VSockProxy {
   // Sends an event to close the given |handle| to the other side.
   void Close(int64_t handle);
 
+  // Requests to call fstat(2) for the file in the other side represented by
+  // the |handle|.
+  // |callback| will be called with errno, and size if succeeded.
+  using FstatCallback = base::OnceCallback<void(int, int64_t)>;
+  void Fstat(int64_t handle, FstatCallback callback);
+
  private:
   // Callback called when VSOCK gets ready to read.
   // Reads Message from VSOCK file descriptor, and dispatches it to the
@@ -92,11 +98,18 @@ class VSockProxy {
   void OnPreadRequestInternal(arc_proxy::PreadRequest* request,
                               arc_proxy::PreadResponse* response);
   void OnPreadResponse(arc_proxy::PreadResponse* response);
+  void OnFstatRequest(arc_proxy::FstatRequest* request);
+  void OnFstatRequestInternal(arc_proxy::FstatRequest* request,
+                              arc_proxy::FstatResponse* response);
+  void OnFstatResponse(arc_proxy::FstatResponse* response);
 
   // Callback called when local file descriptor gets ready to read.
   // Reads Message from the file descriptor corresponding to the |handle|,
   // and forwards to VSOCK connection.
   void OnLocalFileDesciptorReadReady(int64_t handle);
+
+  // Returns a bland new cookie to start a sequence of operations.
+  int64_t GenerateCookie();
 
   const Type type_;
   ProxyFileSystem* const proxy_file_system_;
@@ -127,6 +140,7 @@ class VSockProxy {
   // Map from cookie to its pending callback.
   std::map<int64_t, ConnectCallback> pending_connect_;
   std::map<int64_t, PreadCallback> pending_pread_;
+  std::map<int64_t, FstatCallback> pending_fstat_;
 
   // WeakPtrFactory needs to be declared as the member of the class, so that
   // on destruction, any pending Callbacks bound to WeakPtr are cancelled

@@ -36,6 +36,9 @@ message VSockMessage {
     ConnectResponse connect_response = 4;
     PreadRequest pread_request = 5;
     PreadResponse pread_response = 6;
+    // Reserved 7,8 for pwrite support.
+    FstatRequest fstat_request = 9;
+    FstatResponse fstat_response = 10;
   }
 }
 
@@ -58,7 +61,8 @@ message FileDescriptor {
   int64 handle = 2;
 
   // Size of the corresponding file. Available only if the type is
-  // REGULAR_FILE.
+  // REGULAR_FILE. DEPRECATED.
+  // TODO(hidehiko): remove this later.
   uint64 file_size = 3;
 }
 
@@ -112,4 +116,27 @@ message PreadResponse {
 
   // Read data.
   bytes blob = 3;
+}
+
+// Request to fstat(2) a file.
+message FstatRequest {
+  int64 cookie = 1;
+
+  // Handle corresponding to the file descriptor to be fstat(2)ed.
+  // The type of the handle should be REGULAR_FILE, now.
+  int64 handle = 2;
+}
+
+// Response to the FstatRequest.
+message FstatResponse {
+  int64 cookie = 1;
+  int32 error_code = 2;
+
+  // The size of the file. To be compatible with off_t st_size
+  // (in struct stat), the type is int64, rather than uint64.
+  int64 size = 3;
+
+  // Note: at the moment, |size| is the only information needed to implement
+  // proxy, so in order to keep the message size as small as possible, no other
+  // fields are added. They can be, upon necessary.
 }

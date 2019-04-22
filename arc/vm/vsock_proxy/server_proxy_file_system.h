@@ -78,7 +78,7 @@ class ServerProxyFileSystem : public ProxyFileSystem {
   // ProxyFileSystem overrides.
   // Operations for the returned file descriptor will be directed to the
   // fuse operation implementation declared above.
-  base::ScopedFD RegisterHandle(int64_t handle, uint64_t size) override;
+  base::ScopedFD RegisterHandle(int64_t handle) override;
 
   // Runs an operation interacting with VSockProxy instance on the dedicated
   // thread. This is a blocking operation, so wait for the |callback|
@@ -87,6 +87,12 @@ class ServerProxyFileSystem : public ProxyFileSystem {
       base::OnceCallback<void(VSockProxy* proxy)> callback);
 
  private:
+  // Helper to operate GetAtt(). Called on the |task_runner_|.
+  void GetAttrInternal(base::WaitableEvent* event,
+                       int64_t handle,
+                       int* return_value,
+                       off_t* size);
+
   // Helper to operate Read(). Called on the |task_runner_|.
   void ReadInternal(base::WaitableEvent* event,
                     int64_t handle,
@@ -95,9 +101,13 @@ class ServerProxyFileSystem : public ProxyFileSystem {
                     off_t offset,
                     int* return_value);
 
-  // Returns the size of file corresponding to the |handle|, or nullopt if
-  // not found.
-  base::Optional<size_t> GetFileSize(int64_t handle);
+  // Returns the opened/not-opened-yet state of the given |handle|.
+  // If not registered, base::nullopt is returned.
+  enum class State {
+    NOT_OPENED,
+    OPENED,
+  };
+  base::Optional<State> GetState(int64_t handle);
 
   const base::FilePath mount_path_;
 
@@ -113,12 +123,12 @@ class ServerProxyFileSystem : public ProxyFileSystem {
   // Initialized with |proxy_service_|.
   scoped_refptr<base::TaskRunner> task_runner_;
 
-  // Map from |handle| to the size of the file represented by the |handle| in
-  // guest side. This needs to be guarded by |size_map_lock_| because
-  // fuse starts as many threads as needed so this can be accessed from
-  // multiple threads.
-  std::map<int64_t, uint64_t> size_map_;
-  base::Lock size_map_lock_;
+  // Registered |handle|s to its opened/not-yet-opened state.
+  // The access to |handle_map_| needs to be guarded by |handle_map_lock_|,
+  // because fuse starts as many threads as needed so this can be accessed
+  // from multiple threads.
+  std::map<int64_t, State> handle_map_;
+  base::Lock handle_map_lock_;
 
   base::ObserverList<Observer> observer_list_;
 

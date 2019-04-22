@@ -72,8 +72,22 @@ int FuseMain(const base::FilePath& mount_path,
              ServerProxyFileSystem* private_data) {
   const std::string path_str = mount_path.value();
   const char* fuse_argv[] = {
-      kFileSystemName, path_str.c_str(),
+      kFileSystemName,
+      path_str.c_str(),
       "-f",  // "-f" for foreground.
+
+      // Never cache attr/dentry since our backend storage is not exclusive to
+      // this process.
+      "-o",
+      "attr_timeout=0",
+      "-o",
+      "entry_timeout=0",
+      "-o",
+      "negative_timeout=0",
+      "-o",
+      "ac_attr_timeout=0",
+      "-o",
+      "direct_io",
   };
 
   constexpr struct fuse_operations operations = {
@@ -136,16 +150,49 @@ int ServerProxyFileSystem::GetAttr(const char* path, struct stat* stat) {
     return -ENOENT;
   }
 
-  auto size = GetFileSize(handle.value());
-  if (!size.has_value()) {
+  auto state = GetState(handle.value());
+  if (!state.has_value()) {
     LOG(ERROR) << "Handle not found: " << path;
     return -ENOENT;
   }
 
   stat->st_mode = S_IFREG;
   stat->st_nlink = 1;
-  stat->st_size = size.value();
-  return 0;
+  if (state.value() == State::NOT_OPENED) {
+    // If the file is not opened yet, this is called from kernel to open the
+    // file, which is initiated by the open(2) called in RegisterHandle()
+    // on |task_runner_|.
+    // Thus, we cannot make a blocking call to retrieve the size of the file,
+    // because it causes deadlock. Instead, we just fill '0', and return
+    // immediately.
+    stat->st_size = 0;
+    return 0;
+  }
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  int return_value = -EIO;
+  task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(&ServerProxyFileSystem::GetAttrInternal,
+                                base::Unretained(this), &event, handle.value(),
+                                &return_value, &stat->st_size));
+  event.Wait();
+  return return_value;
+}
+
+void ServerProxyFileSystem::GetAttrInternal(base::WaitableEvent* event,
+                                            int64_t handle,
+                                            int* return_value,
+                                            off_t* size) {
+  proxy_service_->proxy()->GetVSockProxy()->Fstat(
+      handle, base::BindOnce(
+                  [](base::WaitableEvent* event, int* return_value,
+                     off_t* out_size, int error_code, int64_t size) {
+                    *return_value = -error_code;
+                    if (error_code == 0)
+                      *out_size = static_cast<off_t>(size);
+                    event->Signal();
+                  },
+                  event, return_value, size));
 }
 
 int ServerProxyFileSystem::Open(const char* path, struct fuse_file_info* fi) {
@@ -155,9 +202,14 @@ int ServerProxyFileSystem::Open(const char* path, struct fuse_file_info* fi) {
     return -ENOENT;
   }
 
-  if (!GetFileSize(handle.value()).has_value()) {
-    LOG(ERROR) << "Handle not found: " << path;
-    return -ENOENT;
+  {
+    base::AutoLock lock(handle_map_lock_);
+    auto iter = handle_map_.find(handle.value());
+    if (iter == handle_map_.end()) {
+      LOG(ERROR) << "Handle not found: " << path;
+      return -ENOENT;
+    }
+    iter->second = State::OPENED;
   }
 
   return 0;
@@ -174,15 +226,10 @@ int ServerProxyFileSystem::Read(const char* path,
     return -ENOENT;
   }
 
-  auto file_size = GetFileSize(handle.value());
-  if (!file_size.has_value()) {
+  if (!GetState(handle.value()).has_value()) {
     LOG(ERROR) << "Handle not found: " << path;
     return -ENOENT;
   }
-
-  // Returns success, if offset eqauls to or exceeds the size.
-  if (file_size.value() <= off)
-    return 0;
 
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
@@ -226,8 +273,8 @@ int ServerProxyFileSystem::Release(const char* path,
   }
 
   {
-    base::AutoLock lock(size_map_lock_);
-    if (size_map_.erase(handle.value()) == 0) {
+    base::AutoLock lock(handle_map_lock_);
+    if (handle_map_.erase(handle.value()) == 0) {
       LOG(ERROR) << "Handle not found: " << path;
       return -ENOENT;
     }
@@ -272,15 +319,11 @@ void ServerProxyFileSystem::Init(struct fuse_conn_info* conn) {
     observer.OnInit();
 }
 
-base::ScopedFD ServerProxyFileSystem::RegisterHandle(int64_t handle,
-                                                     uint64_t size) {
+base::ScopedFD ServerProxyFileSystem::RegisterHandle(int64_t handle) {
   {
-    base::AutoLock lock(size_map_lock_);
-    auto result = size_map_.emplace(handle, size);
-    if (!result.second) {
-      LOG(ERROR) << "The handle was already registered: " << handle
-                 << ", old_size: " << result.first->second
-                 << ", new_size: " << size;
+    base::AutoLock lock(handle_map_lock_);
+    if (!handle_map_.emplace(handle, State::NOT_OPENED).second) {
+      LOG(ERROR) << "The handle was already registered: " << handle;
       return {};
     }
   }
@@ -307,12 +350,13 @@ void ServerProxyFileSystem::RunWithVSockProxyInSyncForTesting(
   event.Wait();
 }
 
-base::Optional<size_t> ServerProxyFileSystem::GetFileSize(int64_t handle) {
-  base::AutoLock lock_(size_map_lock_);
-  auto it = size_map_.find(handle);
-  if (it == size_map_.end())
+base::Optional<ServerProxyFileSystem::State> ServerProxyFileSystem::GetState(
+    int64_t handle) {
+  base::AutoLock lock_(handle_map_lock_);
+  auto iter = handle_map_.find(handle);
+  if (iter == handle_map_.end())
     return base::nullopt;
-  return it->second;
+  return iter->second;
 }
 
 }  // namespace arc

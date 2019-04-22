@@ -24,6 +24,7 @@ class FileStream : public StreamBase {
   bool Pread(uint64_t count,
              uint64_t offset,
              arc_proxy::PreadResponse* response) override;
+  bool Fstat(arc_proxy::FstatResponse* response) override;
 
  private:
   base::ScopedFD file_fd_;

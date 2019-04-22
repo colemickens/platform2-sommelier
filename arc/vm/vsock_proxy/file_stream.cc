@@ -5,6 +5,9 @@
 #include "arc/vm/vsock_proxy/file_stream.h"
 
 #include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <string>
 #include <utility>
@@ -42,6 +45,18 @@ bool FileStream::Pread(uint64_t count,
     buffer.resize(result);
     response->set_error_code(0);
     *response->mutable_blob() = std::move(buffer);
+  }
+  return true;
+}
+
+bool FileStream::Fstat(arc_proxy::FstatResponse* response) {
+  struct stat st;
+  int result = fstat(file_fd_.get(), &st);
+  if (result < 0) {
+    response->set_error_code(errno);
+  } else {
+    response->set_error_code(0);
+    response->set_size(st.st_size);
   }
   return true;
 }

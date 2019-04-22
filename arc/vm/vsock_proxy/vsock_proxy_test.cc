@@ -280,5 +280,63 @@ TEST_F(VSockProxyTest, Pread_UnknownHandle) {
   run_loop.Run();
 }
 
+TEST_F(VSockProxyTest, Fstat) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  const base::FilePath file_path = temp_dir.GetPath().Append("test.txt");
+  constexpr char kFileContent[] = "abcdefghijklmnopqrstuvwxyz";
+  // Trim trailing '\0'.
+  constexpr size_t kContentSize = sizeof(kFileContent) - 1;
+  ASSERT_EQ(kContentSize,
+            base::WriteFile(file_path, kFileContent, kContentSize));
+
+  base::ScopedFD fd(HANDLE_EINTR(open(file_path.value().c_str(), O_RDONLY)));
+  ASSERT_TRUE(fd.is_valid());
+  const int64_t handle = client()->RegisterFileDescriptor(
+      std::move(fd), arc_proxy::FileDescriptor::REGULAR_FILE, 0);
+
+  base::RunLoop run_loop;
+  server()->Fstat(
+      handle, base::BindOnce(
+                  [](base::RunLoop* run_loop, int error_code, int64_t size) {
+                    run_loop->Quit();
+                    EXPECT_EQ(0, error_code);
+                    EXPECT_EQ(26, size);
+                  },
+                  &run_loop));
+  run_loop.Run();
+}
+
+TEST_F(VSockProxyTest, Fstat_Unsupported) {
+  auto sockpair = CreateSocketPair();
+  ASSERT_TRUE(sockpair.has_value());
+  ASSERT_TRUE(sockpair->first.is_valid());
+  const int64_t handle = client()->RegisterFileDescriptor(
+      std::move(sockpair->first), arc_proxy::FileDescriptor::SOCKET, 0);
+
+  base::RunLoop run_loop;
+  server()->Fstat(
+      handle, base::BindOnce(
+                  [](base::RunLoop* run_loop, int error_code, int64_t size) {
+                    run_loop->Quit();
+                    EXPECT_EQ(EOPNOTSUPP, error_code);
+                  },
+                  &run_loop));
+  run_loop.Run();
+}
+
+TEST_F(VSockProxyTest, Fstat_UnknownHandle) {
+  constexpr int64_t kUnknownHandle = 100;
+  base::RunLoop run_loop;
+  server()->Fstat(kUnknownHandle, base::BindOnce(
+                                      [](base::RunLoop* run_loop,
+                                         int error_code, int64_t size) {
+                                        run_loop->Quit();
+                                        EXPECT_EQ(EBADF, error_code);
+                                      },
+                                      &run_loop));
+  run_loop.Run();
+}
+
 }  // namespace
 }  // namespace arc

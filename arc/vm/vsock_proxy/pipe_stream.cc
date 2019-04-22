@@ -52,4 +52,9 @@ bool PipeStream::Pread(uint64_t count,
   return false;
 }
 
+bool PipeStream::Fstat(arc_proxy::FstatResponse* response) {
+  LOG(ERROR) << "Fstat for pipe file descriptor is unsupported.";
+  return false;
+}
+
 }  // namespace arc

@@ -91,12 +91,7 @@ int64_t VSockProxy::RegisterFileDescriptor(
 }
 
 void VSockProxy::Connect(const base::FilePath& path, ConnectCallback callback) {
-  // TODO(hidehiko): Ensure cookie is unique in case of overflow.
-  const int64_t cookie = next_cookie_;
-  if (type_ == Type::SERVER)
-    ++next_cookie_;
-  else
-    --next_cookie_;
+  const int64_t cookie = GenerateCookie();
 
   arc_proxy::VSockMessage message;
   auto* request = message.mutable_connect_request();
@@ -116,12 +111,7 @@ void VSockProxy::Pread(int64_t handle,
                        uint64_t count,
                        uint64_t offset,
                        PreadCallback callback) {
-  // TODO(hidehiko): Ensure cookie is unique in case of overflow.
-  const int64_t cookie = next_cookie_;
-  if (type_ == Type::SERVER)
-    ++next_cookie_;
-  else
-    --next_cookie_;
+  const int64_t cookie = GenerateCookie();
 
   arc_proxy::VSockMessage message;
   auto* request = message.mutable_pread_request();
@@ -137,6 +127,23 @@ void VSockProxy::Pread(int64_t handle,
     return;
   }
   pending_pread_.emplace(cookie, std::move(callback));
+}
+
+void VSockProxy::Fstat(int64_t handle, FstatCallback callback) {
+  const int64_t cookie = GenerateCookie();
+
+  arc_proxy::VSockMessage message;
+  auto* request = message.mutable_fstat_request();
+  request->set_cookie(cookie);
+  request->set_handle(handle);
+  if (!vsock_.Write(message)) {
+    // Failed to write a message to VSock. Delete everything.
+    fd_map_.clear();
+    vsock_controller_.reset();
+    std::move(callback).Run(ECONNREFUSED, 0 /* invalid */);
+    return;
+  }
+  pending_fstat_.emplace(cookie, std::move(callback));
 }
 
 void VSockProxy::Close(int64_t handle) {
@@ -166,21 +173,24 @@ void VSockProxy::OnVSockReadReady() {
     case arc_proxy::VSockMessage::kData:
       OnData(message.mutable_data());
       return;
-    case arc_proxy::VSockMessage::kConnectRequest: {
+    case arc_proxy::VSockMessage::kConnectRequest:
       OnConnectRequest(message.mutable_connect_request());
       return;
-    }
     case arc_proxy::VSockMessage::kConnectResponse:
       OnConnectResponse(message.mutable_connect_response());
       return;
-    case arc_proxy::VSockMessage::kPreadRequest: {
+    case arc_proxy::VSockMessage::kPreadRequest:
       OnPreadRequest(message.mutable_pread_request());
       return;
-    }
-    case arc_proxy::VSockMessage::kPreadResponse: {
+    case arc_proxy::VSockMessage::kPreadResponse:
       OnPreadResponse(message.mutable_pread_response());
       return;
-    }
+    case arc_proxy::VSockMessage::kFstatRequest:
+      OnFstatRequest(message.mutable_fstat_request());
+      return;
+    case arc_proxy::VSockMessage::kFstatResponse:
+      OnFstatResponse(message.mutable_fstat_response());
+      return;
     default:
       LOG(ERROR) << "Unknown message type: " << message.command_case();
   }
@@ -292,6 +302,50 @@ void VSockProxy::OnPreadResponse(arc_proxy::PreadResponse* response) {
                           std::move(*response->mutable_blob()));
 }
 
+void VSockProxy::OnFstatRequest(arc_proxy::FstatRequest* request) {
+  arc_proxy::VSockMessage reply;
+  auto* response = reply.mutable_fstat_response();
+  response->set_cookie(request->cookie());
+
+  OnFstatRequestInternal(request, response);
+
+  if (!vsock_.Write(reply)) {
+    // Failed to write a message to VSock. Delete everything.
+    fd_map_.clear();
+    vsock_controller_.reset();
+  }
+}
+
+void VSockProxy::OnFstatRequestInternal(arc_proxy::FstatRequest* request,
+                                        arc_proxy::FstatResponse* response) {
+  auto it = fd_map_.find(request->handle());
+  if (it == fd_map_.end()) {
+    LOG(ERROR) << "Couldn't find handle: handle=" << request->handle();
+    response->set_error_code(EBADF);
+    return;
+  }
+
+  if (!it->second.stream->Fstat(response)) {
+    // According to man, it seems like stat family needs to be supported for
+    // all file descriptor types, so there's no good errno is defined to reject
+    // the request. Thus, use EOPNOTSUPP, meaning the fstat is not supported.
+    response->set_error_code(EOPNOTSUPP);
+    return;
+  }
+}
+
+void VSockProxy::OnFstatResponse(arc_proxy::FstatResponse* response) {
+  auto it = pending_fstat_.find(response->cookie());
+  if (it == pending_fstat_.end()) {
+    LOG(ERROR) << "Unexpected pread response: cookie=" << response->cookie();
+    return;
+  }
+
+  auto callback = std::move(it->second);
+  pending_fstat_.erase(it);
+  std::move(callback).Run(response->error_code(), response->size());
+}
+
 void VSockProxy::OnLocalFileDesciptorReadReady(int64_t handle) {
   auto it = fd_map_.find(handle);
   if (it == fd_map_.end()) {
@@ -324,6 +378,11 @@ void VSockProxy::OnLocalFileDesciptorReadReady(int64_t handle) {
     fd_map_.clear();
     vsock_controller_.reset();
   }
+}
+
+int64_t VSockProxy::GenerateCookie() {
+  // TODO(hidehiko): Ensure cookie is unique in case of overflow.
+  return type_ == Type::SERVER ? next_cookie_++ : next_cookie_--;
 }
 
 }  // namespace arc

@@ -150,8 +150,7 @@ bool SocketStream::Write(arc_proxy::Data* data) {
         if (!proxy_file_system)
           return false;
         // Create a file descriptor which is handled by |proxy_file_system|.
-        remote_fd = proxy_file_system->RegisterHandle(
-            transferred_fd.handle(), transferred_fd.file_size());
+        remote_fd = proxy_file_system->RegisterHandle(transferred_fd.handle());
         if (!remote_fd.is_valid())
           return false;
         break;
@@ -189,6 +188,11 @@ bool SocketStream::Pread(uint64_t count,
                          uint64_t offset,
                          arc_proxy::PreadResponse* response) {
   LOG(ERROR) << "Pread for socket file descriptor is unsupported.";
+  return false;
+}
+
+bool SocketStream::Fstat(arc_proxy::FstatResponse* response) {
+  LOG(ERROR) << "Fstat for socket file descriptor is unsupported.";
   return false;
 }
 

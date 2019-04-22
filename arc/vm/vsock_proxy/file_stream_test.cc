@@ -56,5 +56,32 @@ TEST(FileStreamTest, PreadError) {
   EXPECT_EQ(EBADF, response.error_code());
 }
 
+TEST(FileStreamTest, Fstat) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  const base::FilePath file_path = temp_dir.GetPath().Append("test_file.txt");
+  constexpr char kFileContent[] = "abcdefghijklmnopqrstuvwxyz";
+  // Trim trailing '\0'.
+  ASSERT_EQ(sizeof(kFileContent) - 1,
+            base::WriteFile(file_path, kFileContent, sizeof(kFileContent) - 1));
+
+  base::ScopedFD fd(HANDLE_EINTR(open(file_path.value().c_str(), O_RDONLY)));
+  ASSERT_TRUE(fd.is_valid());
+
+  FileStream stream(std::move(fd));
+  arc_proxy::FstatResponse response;
+  ASSERT_TRUE(stream.Fstat(&response));
+  EXPECT_EQ(0, response.error_code());
+  EXPECT_EQ(26, response.size());
+}
+
+TEST(FileStreamTest, FstatError) {
+  // Use -1 (invalid file descriptor) to let pread(2) return error in Pread().
+  FileStream stream{base::ScopedFD()};
+  arc_proxy::FstatResponse response;
+  ASSERT_TRUE(stream.Fstat(&response));
+  EXPECT_EQ(EBADF, response.error_code());
+}
+
 }  // namespace
 }  // namespace arc

@@ -9,6 +9,7 @@
 
 namespace arc_proxy {
 class Data;
+class FstatResponse;
 class PreadResponse;
 class VSockMessage;
 }  // namespace arc_proxy
@@ -37,6 +38,12 @@ class StreamBase {
   virtual bool Pread(uint64_t count,
                      uint64_t offset,
                      arc_proxy::PreadResponse* response) = 0;
+
+  // Fills the file descriptor's stat attribute to the |response|.
+  // Returns whether fstat(2) is supported or not.
+  // Internally, it is expected to call fstat(2). Even if fstat(2) fails,
+  // this method will still return true (because fstat is supported), then.
+  virtual bool Fstat(arc_proxy::FstatResponse* response) = 0;
 };
 
 }  // namespace arc
