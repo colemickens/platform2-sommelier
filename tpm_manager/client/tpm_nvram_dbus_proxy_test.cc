@@ -65,7 +65,7 @@ TEST_F(TpmNvramDBusProxyTest, DefineSpace) {
     DefineSpaceReply reply;
     reply.set_result(NVRAM_RESULT_SUCCESS);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
@@ -99,7 +99,7 @@ TEST_F(TpmNvramDBusProxyTest, DestroySpaceRequest) {
     DestroySpaceReply reply;
     reply.set_result(NVRAM_RESULT_SUCCESS);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
@@ -134,7 +134,7 @@ TEST_F(TpmNvramDBusProxyTest, WriteSpace) {
     WriteSpaceReply reply;
     reply.set_result(NVRAM_RESULT_SUCCESS);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
@@ -170,7 +170,7 @@ TEST_F(TpmNvramDBusProxyTest, ReadSpace) {
     reply.set_result(NVRAM_RESULT_SUCCESS);
     reply.set_data(nvram_data);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
@@ -206,7 +206,7 @@ TEST_F(TpmNvramDBusProxyTest, LockSpace) {
     LockSpaceReply reply;
     reply.set_result(NVRAM_RESULT_SUCCESS);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
@@ -240,7 +240,7 @@ TEST_F(TpmNvramDBusProxyTest, ListSpaces) {
       reply.add_index_list(index);
     }
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
@@ -282,7 +282,7 @@ TEST_F(TpmNvramDBusProxyTest, GetSpaceInfo) {
     reply.set_result(NVRAM_RESULT_SUCCESS);
     reply.set_size(nvram_size);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
