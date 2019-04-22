@@ -20,6 +20,8 @@
 #include <memory>
 #include <string>
 
+#include <attestation/proto_bindings/attestation_ca.pb.h>
+#include <attestation/proto_bindings/interface.pb.h>
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/files/file_util.h>
@@ -28,9 +30,7 @@
 #include <brillo/syslog_logging.h>
 
 #include "attestation/client/dbus_proxy.h"
-#include "attestation/common/attestation_ca.pb.h"
 #include "attestation/common/crypto_utility_impl.h"
-#include "attestation/common/interface.pb.h"
 #include "attestation/common/print_interface_proto.h"
 
 namespace attestation {

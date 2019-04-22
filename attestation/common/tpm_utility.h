@@ -21,8 +21,9 @@
 
 #include <string>
 
+#include <attestation/proto_bindings/interface.pb.h>
+
 #include "attestation/common/database.pb.h"
-#include "attestation/common/interface.pb.h"
 
 namespace attestation {
 

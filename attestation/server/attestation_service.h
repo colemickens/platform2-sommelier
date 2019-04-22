@@ -25,6 +25,7 @@
 #include <memory>
 #include <string>
 
+#include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <base/callback.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
@@ -33,7 +34,6 @@
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
 
-#include "attestation/common/attestation_ca.pb.h"
 #include "attestation/common/crypto_utility.h"
 #include "attestation/common/crypto_utility_impl.h"
 #include "attestation/common/tpm_utility_factory.h"

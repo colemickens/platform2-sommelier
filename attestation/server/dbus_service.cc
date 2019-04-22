@@ -24,7 +24,7 @@
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 
-#include "attestation/common/dbus_interface.h"
+#include "attestation-client/attestation/dbus-constants.h"
 
 using brillo::dbus_utils::DBusMethodResponse;
 

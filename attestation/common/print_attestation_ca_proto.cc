@@ -16,7 +16,8 @@
 
 // THIS CODE IS GENERATED.
 // Generated with command:
-// ./proto_print.py --subdir common attestation_ca.proto
+// ./proto_print.py --subdir common --proto-include attestation/proto_bindings
+// ../../system_api/dbus/attestation/attestation_ca.proto
 
 #include "attestation/common/print_attestation_ca_proto.h"
 

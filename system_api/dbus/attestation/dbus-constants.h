@@ -14,12 +14,11 @@
 // limitations under the License.
 //
 
-#ifndef ATTESTATION_COMMON_DBUS_INTERFACE_H_
-#define ATTESTATION_COMMON_DBUS_INTERFACE_H_
+#ifndef SYSTEM_API_DBUS_ATTESTATION_DBUS_CONSTANTS_H_
+#define SYSTEM_API_DBUS_ATTESTATION_DBUS_CONSTANTS_H_
 
 namespace attestation {
 
-// TODO(namnguyen): Move to brillo/system_api once we're ready.
 constexpr char kAttestationInterface[] = "org.chromium.Attestation";
 constexpr char kAttestationServicePath[] = "/org/chromium/Attestation";
 constexpr char kAttestationServiceName[] = "org.chromium.Attestation";
@@ -51,4 +50,4 @@ constexpr char kGetEnrollmentId[] = "GetEnrollmentId";
 
 }  // namespace attestation
 
-#endif  // ATTESTATION_COMMON_DBUS_INTERFACE_H_
+#endif  // SYSTEM_API_DBUS_ATTESTATION_DBUS_CONSTANTS_H_

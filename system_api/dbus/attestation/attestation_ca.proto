@@ -257,7 +257,8 @@ message AttestationResetRequest {
   //   MAC: HMAC-SHA-512 using the AES key.
   optional EncryptedData encrypted_identity_credential = 1;
 
-  // The one time token to make sure the reset process can be triggered only once.
+  // The one time token to make sure the reset process can be triggered only
+  // once.
   optional bytes token = 2;
 
   // The EK cert, in X.509 form, encrypted using the server's public key with

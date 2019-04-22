@@ -19,6 +19,13 @@ group("all") {
   }
 }
 
+config("local_proto_include") {
+  # This config is used when any build target used the local protobufs.
+  # The local protobuf used some other protos in system_api, so we'll need
+  # to fix the include path so that it builds correctly.
+  include_dirs = [ "${sysroot}/usr/include/attestation/proto_bindings/" ]
+}
+
 pkg_config("target_defaults") {
   pkg_deps = [
     # This is a list of pkg-config dependencies
@@ -37,11 +44,10 @@ proto_library("proto_library_proto") {
   use_pic = true
   proto_in_dir = "common"
   proto_out_dir = "include/attestation/common"
+  proto_lib_dirs = [ "${sysroot}/usr/include/chromeos/dbus/attestation/" ]
+  configs = [ ":local_proto_include" ]
   sources = [
-    "${proto_in_dir}/attestation_ca.proto",
     "${proto_in_dir}/database.proto",
-    "${proto_in_dir}/interface.proto",
-    "${proto_in_dir}/keystore.proto",
   ]
   standalone = true
 }
@@ -58,9 +64,6 @@ static_library("proto_library") {
     # TODO: Use brillo/brillo_export.h instead to export symbols.
     "//common-mk:visibility_default",
     ":target_defaults",
-  ]
-  deps = [
-    ":proto_library_proto",
   ]
   sources = [
     "common/print_attestation_ca_proto.cc",
@@ -95,6 +98,7 @@ static_library("common_library") {
   configs += [
     "//common-mk:nouse_thin_archive",
     ":target_defaults",
+    ":local_proto_include",
   ]
   deps = [
     ":proto_library",
@@ -147,11 +151,21 @@ shared_library("libattestation") {
     ":client_library",
     ":proto_library",
   ]
+  pkg_deps = [
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
+  ]
 }
 
 # A client command line utility.
 executable("attestation_client") {
-  configs += [ ":target_defaults" ]
+  configs += [
+    ":target_defaults",
+    ":local_proto_include",
+  ]
   sources = [
     "client/main.cc",
   ]
@@ -159,6 +173,13 @@ executable("attestation_client") {
     ":client_library",
     ":common_library",
     ":proto_library",
+  ]
+  pkg_deps = [
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
   ]
 }
 
@@ -178,9 +199,13 @@ static_library("server_library") {
     "server/pkcs11_key_store.cc",
   ]
   all_dependent_configs = [ ":server_library_config" ]
-  configs += [ ":target_defaults" ]
+  configs += [
+    ":target_defaults",
+    ":local_proto_include",
+  ]
   deps = [
     ":proto_library",
+    ":proto_library_proto",
   ]
 }
 
@@ -196,11 +221,19 @@ executable("attestationd") {
   configs += [
     ":attestationd_config",
     ":target_defaults",
+    ":local_proto_include",
   ]
   deps = [
     ":common_library",
     ":proto_library",
     ":server_library",
+  ]
+  pkg_deps = [
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
   ]
 }
 
@@ -216,6 +249,7 @@ if (use.test) {
       "//common-mk:test",
       ":attestation_testrunner_config",
       ":target_defaults",
+      ":local_proto_include",
     ]
     sources = [
       "attestation_testrunner.cc",
@@ -242,6 +276,13 @@ if (use.test) {
       ":common_library",
       ":proto_library",
       ":server_library",
+    ]
+    pkg_deps = [
+      # system_api depends on protobuf (or protobuf-lite). It must appear
+      # before protobuf here or the linker flags won't be in the right
+      # order.
+      "system_api",
+      "protobuf-lite",
     ]
   }
 }

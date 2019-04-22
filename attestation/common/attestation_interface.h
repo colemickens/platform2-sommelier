@@ -21,7 +21,7 @@
 
 #include <base/callback_forward.h>
 
-#include "attestation/common/interface.pb.h"
+#include <attestation/proto_bindings/interface.pb.h>
 
 namespace attestation {
 

@@ -1,3 +1,4 @@
+//
 // Copyright (C) 2015 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +16,7 @@
 
 #include <string>
 
+#include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/message_loop/message_loop.h>
@@ -27,7 +29,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "attestation/common/attestation_ca.pb.h"
 #include "attestation/common/mock_crypto_utility.h"
 #include "attestation/common/mock_tpm_utility.h"
 #include "attestation/server/attestation_service.h"

@@ -19,9 +19,8 @@
 
 #include <string>
 
+#include <attestation/proto_bindings/keystore.pb.h>
 #include <base/macros.h>
-
-#include "attestation/common/keystore.pb.h"
 
 namespace attestation {
 

@@ -20,6 +20,7 @@
 #include <climits>
 #include <string>
 
+#include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/sha1.h>
@@ -37,7 +38,6 @@ extern "C" {
 #include <vboot/crossystem.h>
 }
 
-#include "attestation/common/attestation_ca.pb.h"
 #include "attestation/common/database.pb.h"
 #include "attestation/common/tpm_utility_factory.h"
 #include "attestation/server/database_impl.h"

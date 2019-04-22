@@ -23,9 +23,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "attestation/common/dbus_interface.h"
 #include "attestation/common/mock_attestation_interface.h"
 #include "attestation/server/dbus_service.h"
+#include "attestation-client/attestation/dbus-constants.h"
 
 using testing::_;
 using testing::Invoke;

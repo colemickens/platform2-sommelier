@@ -16,14 +16,15 @@
 
 // THIS CODE IS GENERATED.
 // Generated with command:
-// ./proto_print.py --subdir common interface.proto
+// ./proto_print.py --subdir common --proto-include attestation/proto_bindings
+// ../../system_api/dbus/attestation/interface.proto
 
 #ifndef ATTESTATION_COMMON_PRINT_INTERFACE_PROTO_H_
 #define ATTESTATION_COMMON_PRINT_INTERFACE_PROTO_H_
 
 #include <string>
 
-#include "attestation/common/interface.pb.h"
+#include "attestation/proto_bindings/interface.pb.h"
 
 namespace attestation {
 

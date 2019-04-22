@@ -19,7 +19,7 @@
 
 #include <string>
 
-#include "attestation/common/attestation_ca.pb.h"
+#include <attestation/proto_bindings/attestation_ca.pb.h>
 
 namespace attestation {
 

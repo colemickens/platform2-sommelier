@@ -16,7 +16,8 @@
 
 // THIS CODE IS GENERATED.
 // Generated with command:
-// ./proto_print.py --subdir common keystore.proto
+// ./proto_print.py --subdir common --proto-include attestation/proto_bindings
+// ../../system_api/dbus/attestation/keystore.proto
 
 #include "attestation/common/print_keystore_proto.h"
 

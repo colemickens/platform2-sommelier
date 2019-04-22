@@ -244,6 +244,11 @@ executable("tpm-manager") {
     "libecryptfs",
     "libmetrics-${libbase_ver}",
     "openssl",
+
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
     "protobuf",
   ]
 
@@ -423,6 +428,11 @@ if (use.test) {
       "libecryptfs",
       "libmetrics-${libbase_ver}",
       "openssl",
+
+      # system_api depends on protobuf (or protobuf-lite). It must appear
+      # before protobuf here or the linker flags won't be in the right
+      # order.
+      "system_api",
       "protobuf",
       "vboot_host",
     ]
