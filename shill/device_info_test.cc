@@ -1439,21 +1439,6 @@ TEST_F(DeviceInfoTechnologyTest, Ethernet) {
   EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology());
 }
 
-TEST_F(DeviceInfoTechnologyTest, CellularGobi1) {
-  CreateInfoSymLink("device/driver", "blah/foo/gobi");
-  EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
-}
-
-TEST_F(DeviceInfoTechnologyTest, CellularGobi2) {
-  CreateInfoSymLink("device/driver", "../GobiNet");
-  EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
-}
-
-TEST_F(DeviceInfoTechnologyTest, QCUSB) {
-  CreateInfoSymLink("device/driver", "QCUSBNet2k");
-  EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
-}
-
 TEST_F(DeviceInfoTechnologyTest, CellularCdcMbim) {
   CreateInfoSymLink("device/driver", "cdc_mbim");
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());

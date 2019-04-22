@@ -135,9 +135,6 @@ const char* const kIgnoredDeviceNamePrefixes[] = {
 
 // Modem drivers that we support.
 const char* const kModemDrivers[] = {
-    "gobi",
-    "QCUSBNet2k",
-    "GobiNet",
     "cdc_mbim",
     "qmi_wwan"
 };
