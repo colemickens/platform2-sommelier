@@ -396,9 +396,6 @@ static_library("libshill") {
       "cellular/cellular.cc",
       "cellular/cellular_bearer.cc",
       "cellular/cellular_capability.cc",
-      "cellular/cellular_capability_cdma.cc",
-      "cellular/cellular_capability_classic.cc",
-      "cellular/cellular_capability_gsm.cc",
       "cellular/cellular_capability_universal.cc",
       "cellular/cellular_capability_universal_cdma.cc",
       "cellular/cellular_error.cc",
@@ -798,9 +795,6 @@ if (use.test) {
     if (use.cellular) {
       sources += [
         "cellular/cellular_bearer_test.cc",
-        "cellular/cellular_capability_cdma_test.cc",
-        "cellular/cellular_capability_classic_test.cc",
-        "cellular/cellular_capability_gsm_test.cc",
         "cellular/cellular_capability_universal_cdma_test.cc",
         "cellular/cellular_capability_universal_test.cc",
         "cellular/cellular_error_test.cc",

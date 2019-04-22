@@ -669,7 +669,6 @@ class Device : public base::RefCounted<Device> {
   bool TimeToNextDHCPLeaseRenewal(uint32_t* result);
 
  private:
-  friend class CellularCapabilityClassicTest;
   friend class CellularTest;
   friend class DeviceAdaptorInterface;
   friend class DeviceByteCountTest;

@@ -31,24 +31,14 @@ class ModemInfo;
 // *  CelllularCapabilityUniversal which handles all modems managed by
 //    a modem manager using the the org.chromium.ModemManager1 DBUS
 //    interface.
-// *  CellularCapabilityClassic which handles all modems managed by a
-//    modem manager using the older org.chromium.ModemManager DBUS
-//    interface.  This class is further subclassed to represent CDMA
-//    and GSM modems.
 //
 // Pictorially:
 //
 // CellularCapability
 //       |
 //       |-- CellularCapabilityUniversal
-//       |            |
-//       |            |-- CellularCapabilityUniversalCdma
-//       |
-//       |-- CellularCapabilityClassic
 //                    |
-//                    |-- CellularCapabilityGsm
-//                    |
-//                    |-- CellularCapabilityCdma
+//                    |-- CellularCapabilityUniversalCdma
 //
 // TODO(armansito): Currently, 3GPP logic is handled by
 // CellularCapabilityUniversal. Eventually CellularCapabilityUniversal will
@@ -283,8 +273,6 @@ class CellularCapability {
   static void OnUnsupportedOperation(const char* operation, Error* error);
 
  private:
-  friend class CellularCapabilityGsmTest;
-  friend class CellularCapabilityClassicTest;
   friend class CellularCapabilityUniversalTest;
   friend class CellularCapabilityUniversalCdmaTest;
   friend class CellularTest;

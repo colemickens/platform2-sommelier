@@ -176,7 +176,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kRootPath[];
 
   friend class CellularTest;
-  friend class CellularCapabilityClassicTest;
   friend class CellularCapabilityUniversalTest;
   friend class CellularCapabilityUniversalCdmaTest;
   FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest, PropertiesChanged);

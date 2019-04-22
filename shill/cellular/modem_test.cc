@@ -13,7 +13,6 @@
 #include <sys/ioctl.h>
 
 #include "shill/cellular/cellular.h"
-#include "shill/cellular/cellular_capability_gsm.h"
 #include "shill/cellular/mock_cellular.h"
 #include "shill/cellular/mock_modem.h"
 #include "shill/cellular/mock_modem_info.h"

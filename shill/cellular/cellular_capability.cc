@@ -10,8 +10,6 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/cellular/cellular.h"
-#include "shill/cellular/cellular_capability_cdma.h"
-#include "shill/cellular/cellular_capability_gsm.h"
 #include "shill/cellular/cellular_capability_universal.h"
 #include "shill/cellular/cellular_capability_universal_cdma.h"
 #include "shill/error.h"
@@ -46,12 +44,6 @@ const int CellularCapability::kTimeoutSetupLocation = 45000;
 std::unique_ptr<CellularCapability> CellularCapability::Create(
     Cellular::Type type, Cellular* cellular, ModemInfo* modem_info) {
   switch (type) {
-    case Cellular::kTypeGsm:
-      return std::make_unique<CellularCapabilityGsm>(cellular, modem_info);
-
-    case Cellular::kTypeCdma:
-      return std::make_unique<CellularCapabilityCdma>(cellular, modem_info);
-
     case Cellular::kTypeUniversal:
       return std::make_unique<CellularCapabilityUniversal>(cellular,
                                                            modem_info);

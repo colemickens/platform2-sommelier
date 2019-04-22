@@ -27,9 +27,6 @@ extern "C" {
 }
 
 #include "shill/cellular/cellular_bearer.h"
-#include "shill/cellular/cellular_capability_cdma.h"
-#include "shill/cellular/cellular_capability_classic.h"
-#include "shill/cellular/cellular_capability_gsm.h"
 #include "shill/cellular/cellular_capability_universal.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/mock_cellular_service.h"
@@ -468,7 +465,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   static const char kIMSI[];
   static const char kMSISDN[];
   static const char kTestMobileProviderDBPath[];
-  static const Stringmaps kTestNetworksGsm;
   static const Stringmaps kTestNetworksCellular;
   static const int kStrength;
 
@@ -568,19 +564,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     create_gsm_card_proxy_from_factory_ = true;
   }
 
-  CellularCapabilityClassic* GetCapabilityClassic() {
-    return static_cast<CellularCapabilityClassic*>(
-        device_->capability_.get());
-  }
-
-  CellularCapabilityCdma* GetCapabilityCdma() {
-    return static_cast<CellularCapabilityCdma*>(device_->capability_.get());
-  }
-
-  CellularCapabilityGsm* GetCapabilityGsm() {
-    return static_cast<CellularCapabilityGsm*>(device_->capability_.get());
-  }
-
   CellularCapabilityUniversal* GetCapabilityUniversal() {
     return static_cast<CellularCapabilityUniversal*>(
         device_->capability_.get());
@@ -644,11 +627,6 @@ const char CellularTest::kIMSI[] = "123456789012345";
 const char CellularTest::kMSISDN[] = "12345678901";
 const char CellularTest::kTestMobileProviderDBPath[] =
     "provider_db_unittest.bfd";
-const Stringmaps CellularTest::kTestNetworksGsm =
-    {{{CellularCapabilityGsm::kNetworkPropertyStatus, "1"},
-      {CellularCapabilityGsm::kNetworkPropertyID, "0000"},
-      {CellularCapabilityGsm::kNetworkPropertyLongName, "some_long_name"},
-      {CellularCapabilityGsm::kNetworkPropertyShortName, "short"}}};
 const Stringmaps CellularTest::kTestNetworksCellular =
     {{{kStatusProperty, "available"},
       {kNetworkIdProperty, "0000"},

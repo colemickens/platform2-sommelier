@@ -111,7 +111,6 @@ class CellularService : public Service {
   template <typename key_type, typename value_type>
   friend class ContainsCellularPropertiesMatcherP2;
 
-  FRIEND_TEST(CellularCapabilityClassicTest, TryApns);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdatePendingActivationState);
   FRIEND_TEST(CellularTest, Connect);

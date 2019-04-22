@@ -39,8 +39,6 @@ class Cellular : public Device,
                  public MobileOperatorInfo::Observer {
  public:
   enum Type {
-    kTypeGsm,
-    kTypeCdma,
     kTypeUniversal,  // ModemManager1
     kTypeUniversalCdma,
     kTypeInvalid,
@@ -324,20 +322,10 @@ class Cellular : public Device,
 
  private:
   friend class CellularTest;
-  friend class CellularCapabilityClassicTest;
-  friend class CellularCapabilityCdmaTest;
-  friend class CellularCapabilityGsmTest;
   friend class CellularCapabilityUniversalTest;
   friend class CellularCapabilityUniversalCdmaTest;
   friend class CellularServiceTest;
   friend class ModemTest;
-  FRIEND_TEST(CellularCapabilityCdmaTest, GetRegistrationState);
-  FRIEND_TEST(CellularCapabilityClassicTest, AllowRoaming);
-  FRIEND_TEST(CellularCapabilityClassicTest, EnableModemFail);
-  FRIEND_TEST(CellularCapabilityClassicTest, EnableModemSucceed);
-  FRIEND_TEST(CellularCapabilityClassicTest, FinishEnable);
-  FRIEND_TEST(CellularCapabilityClassicTest, GetModemInfo);
-  FRIEND_TEST(CellularCapabilityClassicTest, GetModemStatus);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Connect);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
