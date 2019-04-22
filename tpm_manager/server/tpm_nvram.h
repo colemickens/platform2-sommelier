@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 
-#include "tpm_manager/common/tpm_manager.pb.h"
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
 namespace tpm_manager {
 

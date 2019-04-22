@@ -15,15 +15,18 @@
 //
 
 // THIS CODE IS GENERATED.
+// Generated with command:
+// ../../attestation/common/proto_print.py --subdir common --proto-include
+// tpm_manager/proto_bindings
+// ../../system_api/dbus/tpm_manager/tpm_manager.proto
 
 #include "tpm_manager/common/print_tpm_manager_proto.h"
 
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <inttypes.h>
 
 #include <string>
-
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/stringprintf.h>
 
 namespace tpm_manager {
 

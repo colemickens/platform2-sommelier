@@ -18,8 +18,8 @@
 
 #include <base/bind.h>
 #include <brillo/dbus/dbus_method_invoker.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
-#include "tpm_manager/common/tpm_manager_constants.h"
 #include "tpm_manager/common/tpm_ownership_dbus_interface.h"
 
 namespace {

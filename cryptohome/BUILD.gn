@@ -72,6 +72,11 @@ executable("cryptohome") {
     "libecryptfs",
     "libmetrics-${libbase_ver}",
     "openssl",
+
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
     "protobuf",
     "vboot_host",
   ]
@@ -506,6 +511,12 @@ if (use.test) {
       "libchrome-${libbase_ver}",
       "libchrome-test-${libbase_ver}",
       "openssl",
+
+      # system_api depends on protobuf (or protobuf-lite). It must appear
+      # before protobuf here or the linker flags won't be in the right
+      # order.
+      "system_api",
+      "protobuf",
     ]
 
     if (use.tpm2) {
@@ -579,6 +590,11 @@ if (use.tpm2) {
       "libmetrics-${libbase_ver}",
       "libecryptfs",
       "openssl",
+
+      # system_api depends on protobuf (or protobuf-lite). It must appear
+      # before protobuf here or the linker flags won't be in the right
+      # order.
+      "system_api",
       "protobuf",
       "vboot_host",
     ]

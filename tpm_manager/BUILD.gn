@@ -37,18 +37,6 @@ config("target_defaults") {
   }
 }
 
-# A library for just the protobufs.
-proto_library("proto_library_proto") {
-  # Use -fPIC so this code can be linked into a shared library.
-  use_pic = true
-  proto_in_dir = "common"
-  proto_out_dir = "include/tpm_manager/common"
-  sources = [
-    "${proto_in_dir}/tpm_manager.proto",
-  ]
-  standalone = true
-}
-
 static_library("proto_library") {
   configs -= [
     "//common-mk:use_thin_archive",
@@ -62,12 +50,16 @@ static_library("proto_library") {
     "//common-mk:visibility_default",
     "//common-mk:pic",
   ]
-  deps = [
-    ":proto_library_proto",
-  ]
   proto_in_dir = "common"
   sources = [
     "${proto_in_dir}/print_tpm_manager_proto.cc",
+  ]
+  pkg_deps = [
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
   ]
 }
 
@@ -81,6 +73,13 @@ shared_library("libtpm_manager") {
   deps = [
     ":proto_library",
   ]
+  pkg_deps = [
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
+  ]
 }
 
 # A client command line utility.
@@ -92,6 +91,13 @@ executable("tpm_manager_client") {
   deps = [
     ":libtpm_manager",
     ":proto_library",
+  ]
+  pkg_deps = [
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
   ]
 }
 
@@ -131,6 +137,13 @@ static_library("server_library") {
   deps = [
     ":proto_library",
   ]
+  pkg_deps = [
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
+  ]
 }
 
 # The tpm_manager daemon.
@@ -150,6 +163,13 @@ executable("tpm_managerd") {
     ":proto_library",
     ":server_library",
   ]
+  pkg_deps = [
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
+  ]
 }
 
 # A library for externally useful tpm_manager_testtest code.
@@ -165,6 +185,13 @@ static_library("tpm_manager_test") {
   ]
   deps = [
     ":proto_library",
+  ]
+  pkg_deps = [
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
   ]
 }
 
@@ -208,6 +235,13 @@ if (use.test) {
       ":proto_library",
       ":server_library",
       ":tpm_manager_test",
+    ]
+    pkg_deps = [
+      # system_api depends on protobuf (or protobuf-lite). It must appear
+      # before protobuf here or the linker flags won't be in the right
+      # order.
+      "system_api",
+      "protobuf",
     ]
   }
 }

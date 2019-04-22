@@ -23,10 +23,10 @@
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
 
-#include "tpm_manager/common/tpm_manager_constants.h"
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/tpm_connection.h"
 #include "tpm_manager/server/tpm_status.h"

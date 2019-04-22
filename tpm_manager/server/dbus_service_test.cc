@@ -22,10 +22,10 @@
 #include <dbus/mock_exported_object.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
 #include "tpm_manager/common/mock_tpm_nvram_interface.h"
 #include "tpm_manager/common/mock_tpm_ownership_interface.h"
-#include "tpm_manager/common/tpm_manager_constants.h"
 #include "tpm_manager/common/tpm_nvram_dbus_interface.h"
 #include "tpm_manager/common/tpm_ownership_dbus_interface.h"
 #include "tpm_manager/server/dbus_service.h"

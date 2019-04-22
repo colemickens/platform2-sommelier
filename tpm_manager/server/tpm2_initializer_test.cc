@@ -21,10 +21,10 @@
 #include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 #include <trunks/mock_tpm_utility.h>
 #include <trunks/trunks_factory_for_test.h>
 
-#include "tpm_manager/common/tpm_manager_constants.h"
 #include "tpm_manager/server/dbus_service.h"
 #include "tpm_manager/server/mock_local_data_store.h"
 #include "tpm_manager/server/mock_openssl_crypto_util.h"

@@ -14,8 +14,8 @@
 // limitations under the License.
 //
 
-#ifndef TPM_MANAGER_COMMON_TPM_MANAGER_CONSTANTS_H_
-#define TPM_MANAGER_COMMON_TPM_MANAGER_CONSTANTS_H_
+#ifndef SYSTEM_API_DBUS_TPM_MANAGER_DBUS_CONSTANTS_H_
+#define SYSTEM_API_DBUS_TPM_MANAGER_DBUS_CONSTANTS_H_
 
 namespace tpm_manager {
 
@@ -24,8 +24,8 @@ constexpr char kTpmManagerServiceName[] = "org.chromium.TpmManager";
 constexpr char kTpmManagerServicePath[] = "/org/chromium/TpmManager";
 
 // Binder service constants.
-constexpr char kTpmNvramBinderName [] = "android.tpm_manager.ITpmNvram";
-constexpr char kTpmOwnershipBinderName [] = "android.tpm_manager.ITpmOwnership";
+constexpr char kTpmNvramBinderName[] = "android.tpm_manager.ITpmNvram";
+constexpr char kTpmOwnershipBinderName[] = "android.tpm_manager.ITpmOwnership";
 
 // Default dependencies on TPM owner privilege. The TPM owner password will not
 // be destroyed until all of these dependencies have been explicitly removed
@@ -39,4 +39,4 @@ constexpr const char* kInitialTpmOwnerDependencies[] = {
 
 }  // namespace tpm_manager
 
-#endif  // TPM_MANAGER_COMMON_TPM_MANAGER_CONSTANTS_H_
+#endif  // SYSTEM_API_DBUS_TPM_MANAGER_DBUS_CONSTANTS_H_

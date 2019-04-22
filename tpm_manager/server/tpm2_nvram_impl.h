@@ -24,9 +24,9 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <trunks/trunks_factory.h>
 
-#include "tpm_manager/common/tpm_manager.pb.h"
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/nv_index_authenticator.h"
 #include "tpm_manager/server/tpm_status.h"

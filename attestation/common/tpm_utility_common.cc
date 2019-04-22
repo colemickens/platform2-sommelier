@@ -12,10 +12,10 @@
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <openssl/rsa.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
 #include "tpm_manager/client/tpm_nvram_dbus_proxy.h"
 #include "tpm_manager/client/tpm_ownership_dbus_proxy.h"
-#include "tpm_manager/common/tpm_manager_constants.h"
 
 namespace {
 

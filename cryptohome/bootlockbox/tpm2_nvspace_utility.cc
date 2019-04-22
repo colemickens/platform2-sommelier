@@ -6,7 +6,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <tpm_manager/common/tpm_manager.pb.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <trunks/error_codes.h>
 #include <trunks/password_authorization_delegate.h>
 #include <trunks/tpm_constants.h>

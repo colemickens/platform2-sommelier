@@ -17,7 +17,7 @@
 #ifndef TPM_MANAGER_SERVER_LOCAL_DATA_STORE_H_
 #define TPM_MANAGER_SERVER_LOCAL_DATA_STORE_H_
 
-#include "tpm_manager/common/tpm_manager.pb.h"
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
 namespace tpm_manager {
 

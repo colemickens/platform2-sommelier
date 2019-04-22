@@ -24,8 +24,8 @@
 #include <brillo/dbus/async_event_sequencer.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
-#include "tpm_manager/common/tpm_manager_constants.h"
 #include "tpm_manager/common/tpm_nvram_dbus_interface.h"
 #include "tpm_manager/common/tpm_ownership_dbus_interface.h"
 

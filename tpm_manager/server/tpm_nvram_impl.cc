@@ -25,9 +25,9 @@
 
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <trousers/scoped_tss_type.h>
 
-#include "tpm_manager/common/tpm_manager.pb.h"
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/tpm_util.h"
 

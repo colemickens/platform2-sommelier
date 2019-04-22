@@ -20,7 +20,7 @@
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
-#include <tpm_manager/common/tpm_manager_constants.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 #include <trunks/authorization_delegate.h>
 #include <trunks/blob_parser.h>
 #include <trunks/error_codes.h>

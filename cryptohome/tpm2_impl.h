@@ -17,9 +17,9 @@
 #include <base/threading/thread.h>
 #include <tpm_manager/client/tpm_nvram_dbus_proxy.h>
 #include <tpm_manager/client/tpm_ownership_dbus_proxy.h>
-#include <tpm_manager/common/tpm_manager.pb.h>
 #include <tpm_manager/common/tpm_nvram_interface.h>
 #include <tpm_manager/common/tpm_ownership_interface.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <trunks/hmac_session.h>
 #include <trunks/tpm_generated.h>
 #include <trunks/tpm_state.h>

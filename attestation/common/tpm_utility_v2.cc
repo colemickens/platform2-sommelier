@@ -27,8 +27,8 @@
 #include <crypto/sha2.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
-#include "tpm_manager/common/tpm_manager_constants.h"
 #include "trunks/authorization_delegate.h"
 #include "trunks/error_codes.h"
 #include "trunks/tpm_generated.h"

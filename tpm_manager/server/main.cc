@@ -23,11 +23,11 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <brillo/syslog_logging.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 #if defined(USE_TPM2)
 #include <trunks/trunks_factory_impl.h>
 #endif
 
-#include "tpm_manager/common/tpm_manager_constants.h"
 #include "tpm_manager/server/dbus_service.h"
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/local_data_store_impl.h"

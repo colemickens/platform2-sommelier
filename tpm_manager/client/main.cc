@@ -29,11 +29,11 @@
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>
 #include <crypto/sha2.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
 #include "tpm_manager/client/tpm_nvram_dbus_proxy.h"
 #include "tpm_manager/client/tpm_ownership_dbus_proxy.h"
 #include "tpm_manager/common/print_tpm_manager_proto.h"
-#include "tpm_manager/common/tpm_manager.pb.h"
 
 #if USE_TPM2
 #include "trunks/tpm_generated.h"

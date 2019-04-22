@@ -30,7 +30,7 @@
 #include <openssl/x509.h>
 #include <tpm_manager/common/mock_tpm_nvram_interface.h>
 #include <tpm_manager/common/mock_tpm_ownership_interface.h>
-#include <tpm_manager/common/tpm_manager_constants.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 #include <trunks/mock_authorization_delegate.h>
 #include <trunks/mock_blob_parser.h>
 #include <trunks/mock_hmac_session.h>

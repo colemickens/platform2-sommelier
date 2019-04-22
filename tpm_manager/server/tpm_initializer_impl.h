@@ -21,10 +21,10 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha)
 
-#include "tpm_manager/common/tpm_manager.pb.h"
 #include "tpm_manager/server/dbus_service.h"
 #include "tpm_manager/server/openssl_crypto_util_impl.h"
 #include "tpm_manager/server/tpm_connection.h"

@@ -6,12 +6,12 @@
 
 #include <base/bind.h>
 #include <base/strings/string_number_conversions.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
 #include "attestation/client/dbus_proxy.h"
 #include "cryptohome/attestation.h"
 #include "cryptohome/cryptolib.h"
-#include "tpm_manager/common/tpm_manager.pb.h"
-#include "tpm_manager/common/tpm_manager_constants.h"
 #include "tpm_manager/common/tpm_ownership_dbus_interface.h"
 
 #include <utility>
