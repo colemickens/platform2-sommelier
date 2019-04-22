@@ -95,7 +95,7 @@ class CellularPropertyTest : public PropertyStoreTest {
                              "usb0",
                              "00:01:02:03:04:05",
                              3,
-                             Cellular::kTypeCdma,
+                             Cellular::kTypeUniversal,
                              "",
                              "")) {}
 
