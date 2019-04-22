@@ -88,24 +88,6 @@ class ChromeosDBusControl : public ControlInterface {
       const base::Closure& service_appeared_callback,
       const base::Closure& service_vanished_callback) override;
 
-  std::unique_ptr<ModemProxyInterface> CreateModemProxy(
-      const std::string& path, const std::string& service) override;
-
-  std::unique_ptr<ModemSimpleProxyInterface> CreateModemSimpleProxy(
-      const std::string& path, const std::string& service) override;
-
-  std::unique_ptr<ModemCdmaProxyInterface> CreateModemCdmaProxy(
-      const std::string& path, const std::string& service) override;
-
-  std::unique_ptr<ModemGsmCardProxyInterface> CreateModemGsmCardProxy(
-      const std::string& path, const std::string& service) override;
-
-  std::unique_ptr<ModemGsmNetworkProxyInterface> CreateModemGsmNetworkProxy(
-      const std::string& path, const std::string& service) override;
-
-  std::unique_ptr<ModemGobiProxyInterface> CreateModemGobiProxy(
-      const std::string& path, const std::string& service) override;
-
   // Proxies for ModemManager1 interfaces
   std::unique_ptr<mm1::ModemLocationProxyInterface> CreateMM1ModemLocationProxy(
       const std::string& path, const std::string& service) override;

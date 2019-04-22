@@ -35,12 +35,7 @@ extern "C" {
 #include "shill/cellular/mock_mm1_modem_proxy.h"
 #include "shill/cellular/mock_mm1_modem_simple_proxy.h"
 #include "shill/cellular/mock_mobile_operator_info.h"
-#include "shill/cellular/mock_modem_cdma_proxy.h"
-#include "shill/cellular/mock_modem_gsm_card_proxy.h"
-#include "shill/cellular/mock_modem_gsm_network_proxy.h"
 #include "shill/cellular/mock_modem_info.h"
-#include "shill/cellular/mock_modem_proxy.h"
-#include "shill/cellular/mock_modem_simple_proxy.h"
 #include "shill/dhcp/mock_dhcp_config.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/error.h"
@@ -145,7 +140,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
                      modem_info_.metrics(), modem_info_.manager()),
         dhcp_config_(new MockDHCPConfig(modem_info_.control_interface(),
                                         kTestDeviceName)),
-        create_gsm_card_proxy_from_factory_(false),
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr),
         device_(new Cellular(&modem_info_,
@@ -191,11 +185,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
 
   void PopulateProxies() {
     dbus_properties_proxy_.reset(new MockDBusPropertiesProxy());
-    proxy_.reset(new MockModemProxy());
-    simple_proxy_.reset(new MockModemSimpleProxy());
-    cdma_proxy_.reset(new MockModemCdmaProxy());
-    gsm_card_proxy_.reset(new MockModemGsmCardProxy());
-    gsm_network_proxy_.reset(new MockModemGsmNetworkProxy());
     mm1_modem_location_proxy_.reset(new mm1::MockModemLocationProxy());
     mm1_modem_3gpp_proxy_.reset(new mm1::MockModemModem3gppProxy());
     mm1_proxy_.reset(new mm1::MockModemProxy());
@@ -222,11 +211,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
       bool enable, Error* error, const ResultCallback& callback, int timeout) {
     callback.Run(Error(Error::kWrongState));
   }
-  void InvokeGetSignalQuality(Error* error,
-                              const SignalQualityCallback& callback,
-                              int timeout) {
-    callback.Run(kStrength, Error());
-  }
   void InvokeGetModemStatus(Error* error,
                             const KeyValueStoreCallback& callback,
                             int timeout) {
@@ -234,64 +218,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     props.SetString("carrier", kTestCarrier);
     props.SetString("unknown-property", "irrelevant-value");
     callback.Run(props, Error());
-  }
-  void InvokeGetModemInfo(Error* error, const ModemInfoCallback& callback,
-                            int timeout) {
-    static const char kManufacturer[] = "Company";
-    static const char kModelID[] = "Gobi 2000";
-    static const char kHWRev[] = "A00B1234";
-    callback.Run(kManufacturer, kModelID, kHWRev, Error());
-  }
-  void InvokeGetRegistrationState1X(Error* error,
-                                    const RegistrationStateCallback& callback,
-                                    int timeout) {
-    callback.Run(MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
-                 MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
-                 Error());
-  }
-  void InvokeGetIMEI(Error* error, const GsmIdentifierCallback& callback,
-                     int timeout) {
-    callback.Run(kIMEI, Error());
-  }
-  void InvokeGetIMSI(Error* error, const GsmIdentifierCallback& callback,
-                     int timeout) {
-    callback.Run(kIMSI, Error());
-  }
-  void InvokeGetMSISDN(Error* error, const GsmIdentifierCallback& callback,
-                       int timeout) {
-    callback.Run(kMSISDN, Error());
-  }
-  void InvokeGetSPN(Error* error, const GsmIdentifierCallback& callback,
-                    int timeout) {
-    callback.Run(kTestCarrierSPN, Error());
-  }
-  void InvokeGetRegistrationInfo(Error* error,
-                                 const RegistrationInfoCallback& callback,
-                                 int timeout) {
-    static const char kNetworkID[] = "22803";
-    callback.Run(MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING,
-                 kNetworkID, kTestCarrier, Error());
-  }
-  void InvokeRegister(const string& network_id,
-                      Error* error,
-                      const ResultCallback& callback,
-                      int timeout) {
-    callback.Run(Error());
-  }
-  void InvokeGetRegistrationState(Error* error,
-                                  const RegistrationStateCallback& callback,
-                                  int timeout) {
-    callback.Run(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED,
-                 MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
-                 Error());
-  }
-  void InvokeGetRegistrationStateUnregistered(
-      Error* error,
-      const RegistrationStateCallback& callback,
-      int timeout) {
-    callback.Run(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
-                 MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
-                 Error());
   }
   void InvokeConnect(KeyValueStore props, Error* error,
                      const ResultCallback& callback, int timeout) {
@@ -335,29 +261,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
                            const ResultCallback& callback,
                            int timeout) {
     callback.Run(Error());
-  }
-  void ExpectCdmaStartModem(string network_technology) {
-    if (!device_->IsUnderlyingDeviceEnabled())
-      EXPECT_CALL(*proxy_,
-                  Enable(true, _, _, CellularCapability::kTimeoutEnable))
-          .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
-    EXPECT_CALL(*simple_proxy_,
-                GetModemStatus(_, _, CellularCapability::kTimeoutDefault))
-        .WillOnce(Invoke(this, &CellularTest::InvokeGetModemStatus));
-    EXPECT_CALL(*proxy_,
-                GetModemInfo(_, _, CellularCapability::kTimeoutDefault))
-        .WillOnce(Invoke(this, &CellularTest::InvokeGetModemInfo));
-    if (network_technology == kNetworkTechnology1Xrtt)
-      EXPECT_CALL(*cdma_proxy_, GetRegistrationState(nullptr, _, _))
-          .WillOnce(Invoke(this, &CellularTest::InvokeGetRegistrationState1X));
-    else
-      EXPECT_CALL(*cdma_proxy_, GetRegistrationState(nullptr, _, _))
-          .WillOnce(Invoke(this, &CellularTest::InvokeGetRegistrationState));
-    EXPECT_CALL(*cdma_proxy_, GetSignalQuality(nullptr, _, _))
-        .Times(2)
-        .WillRepeatedly(Invoke(this, &CellularTest::InvokeGetSignalQuality));
-    EXPECT_CALL(*this, TestCallback(IsSuccess()));
-    EXPECT_CALL(*modem_info_.mock_manager(), RegisterService(_));
   }
 
   void ExpectDisconnectCapabilityUniversal() {
@@ -487,49 +390,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
       return std::move(test_->dbus_properties_proxy_);
     }
 
-    std::unique_ptr<ModemProxyInterface> CreateModemProxy(
-        const string& /*path*/,
-        const string& /*service*/) override {
-      CHECK(test_->proxy_);
-      return std::move(test_->proxy_);
-    }
-
-    std::unique_ptr<ModemSimpleProxyInterface> CreateModemSimpleProxy(
-        const string& /*path*/,
-        const string& /*service*/) override {
-      CHECK(test_->simple_proxy_);
-      return std::move(test_->simple_proxy_);
-    }
-
-    std::unique_ptr<ModemCdmaProxyInterface> CreateModemCdmaProxy(
-        const string& /*path*/,
-        const string& /*service*/) override {
-      CHECK(test_->cdma_proxy_);
-      return std::move(test_->cdma_proxy_);
-    }
-
-    std::unique_ptr<ModemGsmCardProxyInterface> CreateModemGsmCardProxy(
-        const string& /*path*/,
-        const string& /*service*/) override {
-      // TODO(benchan): This code conditionally returns a nullptr to avoid
-      // CellularCapabilityGsm::InitProperties (and thus
-      // CellularCapabilityGsm::GetIMSI) from being called during the
-      // construction. Remove this workaround after refactoring the tests.
-      CHECK(!test_->create_gsm_card_proxy_from_factory_ ||
-            test_->gsm_card_proxy_);
-      if (test_->create_gsm_card_proxy_from_factory_) {
-        return std::move(test_->gsm_card_proxy_);
-      }
-      return nullptr;
-    }
-
-    std::unique_ptr<ModemGsmNetworkProxyInterface> CreateModemGsmNetworkProxy(
-        const string& /*path*/,
-        const string& /*service*/) override {
-      CHECK(test_->gsm_network_proxy_);
-      return std::move(test_->gsm_network_proxy_);
-    }
-
     std::unique_ptr<mm1::ModemLocationProxyInterface>
     CreateMM1ModemLocationProxy(const std::string& path,
                                 const std::string& service) override {
@@ -601,11 +461,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
 
   bool create_gsm_card_proxy_from_factory_;
   unique_ptr<MockDBusPropertiesProxy> dbus_properties_proxy_;
-  unique_ptr<MockModemProxy> proxy_;
-  unique_ptr<MockModemSimpleProxy> simple_proxy_;
-  unique_ptr<MockModemCdmaProxy> cdma_proxy_;
-  unique_ptr<MockModemGsmCardProxy> gsm_card_proxy_;
-  unique_ptr<MockModemGsmNetworkProxy> gsm_network_proxy_;
   unique_ptr<mm1::MockModemModem3gppProxy> mm1_modem_3gpp_proxy_;
   unique_ptr<mm1::MockModemLocationProxy> mm1_modem_location_proxy_;
   unique_ptr<mm1::MockModemProxy> mm1_proxy_;

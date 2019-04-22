@@ -31,12 +31,6 @@
 #include "shill/dbus/chromeos_mm1_modem_proxy.h"
 #include "shill/dbus/chromeos_mm1_modem_simple_proxy.h"
 #include "shill/dbus/chromeos_mm1_sim_proxy.h"
-#include "shill/dbus/chromeos_modem_cdma_proxy.h"
-#include "shill/dbus/chromeos_modem_gobi_proxy.h"
-#include "shill/dbus/chromeos_modem_gsm_card_proxy.h"
-#include "shill/dbus/chromeos_modem_gsm_network_proxy.h"
-#include "shill/dbus/chromeos_modem_proxy.h"
-#include "shill/dbus/chromeos_modem_simple_proxy.h"
 #endif  // DISABLE_CELLULAR
 
 #if !defined(DISABLE_WIFI)
@@ -242,42 +236,6 @@ ChromeosDBusControl::CreateDBusObjectManagerProxy(
       service,
       service_appeared_callback,
       service_vanished_callback);
-}
-
-std::unique_ptr<ModemProxyInterface> ChromeosDBusControl::CreateModemProxy(
-    const string& path, const string& service) {
-  return std::make_unique<ChromeosModemProxy>(proxy_bus_, path, service);
-}
-
-std::unique_ptr<ModemSimpleProxyInterface>
-ChromeosDBusControl::CreateModemSimpleProxy(const string& path,
-                                            const string& service) {
-  return std::make_unique<ChromeosModemSimpleProxy>(proxy_bus_, path, service);
-}
-
-std::unique_ptr<ModemCdmaProxyInterface>
-ChromeosDBusControl::CreateModemCdmaProxy(const string& path,
-                                          const string& service) {
-  return std::make_unique<ChromeosModemCdmaProxy>(proxy_bus_, path, service);
-}
-
-std::unique_ptr<ModemGsmCardProxyInterface>
-ChromeosDBusControl::CreateModemGsmCardProxy(const string& path,
-                                             const string& service) {
-  return std::make_unique<ChromeosModemGsmCardProxy>(proxy_bus_, path, service);
-}
-
-std::unique_ptr<ModemGsmNetworkProxyInterface>
-ChromeosDBusControl::CreateModemGsmNetworkProxy(const string& path,
-                                                const string& service) {
-  return std::make_unique<ChromeosModemGsmNetworkProxy>(
-      proxy_bus_, path, service);
-}
-
-std::unique_ptr<ModemGobiProxyInterface>
-ChromeosDBusControl::CreateModemGobiProxy(const string& path,
-                                          const string& service) {
-  return std::make_unique<ChromeosModemGobiProxy>(proxy_bus_, path, service);
 }
 
 // Proxies for ModemManager1 interfaces

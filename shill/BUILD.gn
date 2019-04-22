@@ -239,7 +239,6 @@ generate_dbus_proxies("generate_cellular_proxies") {
     "${modemmanager_in_dir}/org.freedesktop.ModemManager1.Sim.xml",
     "dbus_bindings/dbus-objectmanager.dbus-xml",
     "dbus_bindings/dbus-properties.dbus-xml",
-    "dbus_bindings/modem-gobi.dbus-xml",
   ]
 }
 
@@ -419,12 +418,6 @@ static_library("libshill") {
       "dbus/chromeos_mm1_modem_proxy.cc",
       "dbus/chromeos_mm1_modem_simple_proxy.cc",
       "dbus/chromeos_mm1_sim_proxy.cc",
-      "dbus/chromeos_modem_cdma_proxy.cc",
-      "dbus/chromeos_modem_gobi_proxy.cc",
-      "dbus/chromeos_modem_gsm_card_proxy.cc",
-      "dbus/chromeos_modem_gsm_network_proxy.cc",
-      "dbus/chromeos_modem_proxy.cc",
-      "dbus/chromeos_modem_simple_proxy.cc",
       "protobuf_lite_streams.cc",
     ]
     deps += [ ":generate_cellular_proxies" ]
@@ -813,13 +806,7 @@ if (use.test) {
         "cellular/mock_mm1_sim_proxy.cc",
         "cellular/mock_mobile_operator_info.cc",
         "cellular/mock_modem.cc",
-        "cellular/mock_modem_cdma_proxy.cc",
-        "cellular/mock_modem_gobi_proxy.cc",
-        "cellular/mock_modem_gsm_card_proxy.cc",
-        "cellular/mock_modem_gsm_network_proxy.cc",
         "cellular/mock_modem_info.cc",
-        "cellular/mock_modem_proxy.cc",
-        "cellular/mock_modem_simple_proxy.cc",
         "cellular/modem_1_test.cc",
         "cellular/modem_info_test.cc",
         "cellular/modem_manager_test.cc",

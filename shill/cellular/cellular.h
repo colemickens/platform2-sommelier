@@ -17,7 +17,6 @@
 
 #include "shill/cellular/mobile_operator_info.h"
 #include "shill/cellular/modem_info.h"
-#include "shill/cellular/modem_proxy_interface.h"
 #include "shill/device.h"
 #include "shill/device_id.h"
 #include "shill/event_dispatcher.h"

@@ -35,12 +35,6 @@ class DBusPropertiesProxyInterface;
 class DHCPCDListenerInterface;
 class DHCPProvider;
 class DHCPProxyInterface;
-class ModemCdmaProxyInterface;
-class ModemGsmCardProxyInterface;
-class ModemGsmNetworkProxyInterface;
-class ModemGobiProxyInterface;
-class ModemProxyInterface;
-class ModemSimpleProxyInterface;
 class PowerManagerProxyDelegate;
 class PowerManagerProxyInterface;
 class UpstartProxyInterface;
@@ -140,26 +134,6 @@ class ControlInterface {
       const std::string& service,
       const base::Closure& service_appeared_callback,
       const base::Closure& service_vanished_callback) = 0;
-
-  virtual std::unique_ptr<ModemProxyInterface> CreateModemProxy(
-      const std::string& path, const std::string& service) = 0;
-
-  virtual std::unique_ptr<ModemSimpleProxyInterface> CreateModemSimpleProxy(
-      const std::string& path, const std::string& service) = 0;
-
-  virtual std::unique_ptr<ModemCdmaProxyInterface> CreateModemCdmaProxy(
-      const std::string& path,
-      const std::string& service) = 0;
-
-  virtual std::unique_ptr<ModemGsmCardProxyInterface> CreateModemGsmCardProxy(
-      const std::string& path, const std::string& service) = 0;
-
-  virtual std::unique_ptr<ModemGsmNetworkProxyInterface>
-  CreateModemGsmNetworkProxy(const std::string& path,
-                             const std::string& service) = 0;
-
-  virtual std::unique_ptr<ModemGobiProxyInterface> CreateModemGobiProxy(
-      const std::string& path, const std::string& service) = 0;
 
   // Proxies for ModemManager1 interfaces
   virtual std::unique_ptr<mm1::ModemLocationProxyInterface>

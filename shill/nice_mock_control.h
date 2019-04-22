@@ -25,12 +25,6 @@
 #include "shill/cellular/mm1_modem_proxy_interface.h"
 #include "shill/cellular/mm1_modem_simple_proxy_interface.h"
 #include "shill/cellular/mm1_sim_proxy_interface.h"
-#include "shill/cellular/modem_cdma_proxy_interface.h"
-#include "shill/cellular/modem_gobi_proxy_interface.h"
-#include "shill/cellular/modem_gsm_card_proxy_interface.h"
-#include "shill/cellular/modem_gsm_network_proxy_interface.h"
-#include "shill/cellular/modem_proxy_interface.h"
-#include "shill/cellular/modem_simple_proxy_interface.h"
 #include "shill/dbus_properties_proxy_interface.h"
 #endif  // DISABLE_CELLULAR
 
@@ -119,25 +113,6 @@ class NiceMockControl : public ControlInterface {
                    const std::string& service,
                    const base::Closure& service_appeared_callback,
                    const base::Closure& service_vanished_callback));
-  MOCK_METHOD2(CreateModemProxy,
-               std::unique_ptr<ModemProxyInterface>(
-                   const std::string& path, const std::string& service));
-  MOCK_METHOD2(CreateModemSimpleProxy,
-               std::unique_ptr<ModemSimpleProxyInterface>(
-                   const std::string& path, const std::string& service));
-
-  MOCK_METHOD2(CreateModemCdmaProxy,
-               std::unique_ptr<ModemCdmaProxyInterface>(
-                   const std::string& path, const std::string& service));
-  MOCK_METHOD2(CreateModemGsmCardProxy,
-               std::unique_ptr<ModemGsmCardProxyInterface>(
-                   const std::string& path, const std::string& service));
-  MOCK_METHOD2(CreateModemGsmNetworkProxy,
-               std::unique_ptr<ModemGsmNetworkProxyInterface>(
-                   const std::string& path, const std::string& service));
-  MOCK_METHOD2(CreateModemGobiProxy,
-               std::unique_ptr<ModemGobiProxyInterface>(
-                   const std::string& path, const std::string& service));
   MOCK_METHOD2(CreateMM1ModemLocationProxy,
                std::unique_ptr<mm1::ModemLocationProxyInterface>(
                    const std::string& path, const std::string& service));
