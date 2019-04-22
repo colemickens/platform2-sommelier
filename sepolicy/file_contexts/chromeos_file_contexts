@@ -10,6 +10,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 # Chrome OS file contexts.
 /([^/]+)?                       u:object_r:rootfs:s0
 /usr/[^/]+                      u:object_r:cros_usr_dirs:s0
+/usr/share(/.*)?                u:object_r:cros_usr_dirs:s0
 /usr/local/[^/]+                u:object_r:cros_dev_image_files:s0
 /sbin/init                      u:object_r:chromeos_init_exec:s0
 
@@ -188,12 +189,14 @@ has_arc(`
 
 /dev                            u:object_r:device:s0
 /dev/console                    u:object_r:console_device:s0
+/dev/input(/.*)?                u:object_r:input_device:s0
 /dev/kmsg                       u:object_r:kmsg_device:s0
 /dev/log                        u:object_r:logger_device:s0
 /dev/null                       u:object_r:null_device:s0
 /dev/ptmx                       u:object_r:ptmx_device:s0
 /dev/random                     u:object_r:random_device:s0
 /dev/shm(/.*)?                  u:object_r:cros_shm:s0
+/dev/snd(/.*)?                  u:object_r:audio_device:s0
 /dev/tpm[0-9]*                  u:object_r:tpm_device:s0
 /dev/urandom                    u:object_r:urandom_device:s0
 /dev/zero                       u:object_r:zero_device:s0

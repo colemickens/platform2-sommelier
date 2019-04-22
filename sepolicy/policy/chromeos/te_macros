@@ -77,6 +77,10 @@ define(`cros_tcsd_client', `
 typeattribute $1 cros_tcsd_client_domain;
 ');
 
+define(`cros_cras_client', `
+typeattribute $1 cros_cras_client_domain;
+');
+
 define(`uma_writer', `
 typeattribute $1 cros_uma_events_writer_domain;
 ')

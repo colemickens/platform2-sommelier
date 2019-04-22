@@ -253,7 +253,7 @@ filetrans_pattern_no_target_perm(chromeos_domain, cros_var, cros_var_spool, dir,
 
 neverallow domain cros_system_file_type:file { unlink append write };
 
-allow chromeos_domain cros_system_file_type:dir { read search getattr };
+allow chromeos_domain cros_system_file_type:dir { read search getattr open };
 allow chromeos_domain cros_system_file_type:file { read open getattr };
 allow chromeos_domain cros_system_file_type:lnk_file { read getattr };
 

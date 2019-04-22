@@ -5,6 +5,7 @@ permissive cros_browser;
 cros_net(cros_browser);
 cros_udp_listen(cros_browser);
 cros_tcp_connect(cros_browser);
+cros_cras_client(cros_browser);
 
 domain_auto_trans({chromeos_domain -cros_crash}, chrome_browser_exec, cros_browser);
 
