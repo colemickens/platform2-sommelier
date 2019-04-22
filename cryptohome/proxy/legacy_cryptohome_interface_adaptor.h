@@ -15,6 +15,8 @@
 #include <base/atomic_sequence_num.h>
 #include <base/optional.h>
 #include <dbus/cryptohome/dbus-constants.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "rpc.pb.h"  // NOLINT(build/include)
 #include "UserDataAuth.pb.h"  // NOLINT(build/include)
@@ -56,7 +58,9 @@ class LegacyCryptohomeInterfaceAdaptor
       : org::chromium::CryptohomeInterfaceAdaptor(this),
         dbus_object_(nullptr, bus, dbus::ObjectPath(kCryptohomeServicePath)),
         user_data_auth_(new org::chromium::UserDataAuthInterfaceProxy(bus)),
-        attestation_proxy_(new org::chromium::AttestationProxy(bus)) {}
+        attestation_proxy_(new org::chromium::AttestationProxy(bus)),
+        tpm_ownership_proxy_(new org::chromium::TpmOwnershipProxy(bus)),
+        tpm_nvram_proxy_(new org::chromium::TpmNvramProxy(bus)) {}
 
   void RegisterAsync(
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
@@ -532,6 +536,9 @@ class LegacyCryptohomeInterfaceAdaptor
   std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
       user_data_auth_;
   std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
+  std::unique_ptr<org::chromium::TpmOwnershipProxyInterface>
+      tpm_ownership_proxy_;
+  std::unique_ptr<org::chromium::TpmNvramProxyInterface> tpm_nvram_proxy_;
 
   // An atomic incrementing sequence for setting asynchronous call ids.
   base::AtomicSequenceNumber sequence_holder_;
