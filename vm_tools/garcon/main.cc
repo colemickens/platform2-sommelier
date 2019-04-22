@@ -241,8 +241,8 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  base::WaitableEvent event(false /*manual_reset*/,
-                            false /*initially_signaled*/);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
 
   // This needs to be created on the D-Bus thread.
   std::unique_ptr<vm_tools::garcon::PackageKitProxy> pk_proxy;

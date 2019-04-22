@@ -1217,14 +1217,16 @@ PackageKitProxy::PackageInfoTransactionData::PackageInfoTransactionData(
     const base::FilePath& file_path_in,
     std::shared_ptr<LinuxPackageInfo> pkg_info_in)
     : file_path(file_path_in),
-      event(false /*manual_reset*/, false /*initially_signaled*/),
+      event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+            base::WaitableEvent::InitialState::NOT_SIGNALED),
       pkg_info(pkg_info_in) {}
 
 PackageKitProxy::PackageInfoTransactionData::PackageInfoTransactionData(
     const std::string& package_id_in,
     std::shared_ptr<LinuxPackageInfo> pkg_info_in)
     : package_id(package_id_in),
-      event(false /*manual_reset*/, false /*initially_signaled*/),
+      event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+            base::WaitableEvent::InitialState::NOT_SIGNALED),
       pkg_info(pkg_info_in) {}
 
 // static
