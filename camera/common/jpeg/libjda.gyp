@@ -18,6 +18,7 @@
       ],
       'dependencies': [
         '../libcamera_ipc.gyp:libcamera_ipc',
+        '../libcamera_metrics.gyp:libcamera_metrics',
       ],
       'sources': [
         'jpeg_decode_accelerator_impl.cc',

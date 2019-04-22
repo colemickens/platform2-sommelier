@@ -20,6 +20,8 @@ extern "C" {
 #include <jpeglib.h>
 }
 
+#include "cros-camera/camera_metrics.h"
+
 namespace cros {
 
 class JpegEncodeAccelerator;
@@ -88,6 +90,9 @@ class JpegCompressorImpl : public JpegCompressor {
                              jpeg_compress_struct* cinfo);
   // Returns false if errors occur.
   bool Compress(jpeg_compress_struct* cinfo, const uint8_t* yuv);
+
+  // Metrics that used to record things like encoding latency.
+  std::unique_ptr<CameraMetrics> camera_metrics_;
 
   std::unique_ptr<cros::JpegEncodeAccelerator> hw_encoder_;
   bool hw_encoder_started_;

@@ -16,6 +16,7 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/logging.h>
+#include <base/timer/elapsed_timer.h>
 #include <drm_fourcc.h>
 #include <libyuv.h>
 #include <sync/sync.h>
@@ -53,7 +54,8 @@ CameraDeviceAdapter::CameraDeviceAdapter(camera3_device_t* camera_device,
       close_callback_(close_callback),
       device_closed_(false),
       camera_device_(camera_device),
-      static_info_(static_info) {
+      static_info_(static_info),
+      camera_metrics_(CameraMetrics::New()) {
   VLOGF_ENTER() << ":" << camera_device_;
   camera3_callback_ops_t::process_capture_result = ProcessCaptureResult;
   camera3_callback_ops_t::notify = Notify;
@@ -141,6 +143,8 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
     mojom::Camera3StreamConfigurationPtr* updated_config) {
   VLOGF_ENTER();
 
+  base::ElapsedTimer timer;
+
   base::AutoLock l(streams_lock_);
 
   internal::ScopedStreams new_streams;
@@ -165,6 +169,13 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
       stream->crop_rotate_scale_degrees =
           static_cast<camera3_stream_rotation_t>(
               s->crop_rotate_scale_info->crop_rotate_scale_degrees);
+    }
+
+    // Currently we are not interest in the resolution of input stream and
+    // bidirectional stream.
+    if (stream->stream_type == CAMERA3_STREAM_OUTPUT) {
+      camera_metrics_->SendConfigureStreamResolution(
+          stream->width, stream->height, stream->format);
     }
   }
   streams_.swap(new_streams);
@@ -199,6 +210,8 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
       (*updated_config)->streams.push_back(std::move(ptr));
     }
   }
+
+  camera_metrics_->SendConfigureStreamsLatency(timer.Elapsed());
 
   return result;
 }
@@ -422,6 +435,9 @@ void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
       static_cast<const CameraDeviceAdapter*>(ops));
   mojom::Camera3NotifyMsgPtr msg_ptr = self->PrepareNotifyMsg(msg);
   base::AutoLock l(self->callback_ops_delegate_lock_);
+  if (msg->type == CAMERA3_MSG_ERROR) {
+    self->camera_metrics_->SendError(msg->message.error.error_code);
+  }
   if (self->callback_ops_delegate_) {
     self->callback_ops_delegate_->Notify(std::move(msg_ptr));
   }

@@ -10,6 +10,7 @@
 
 #include <camera/camera_metadata.h>
 
+#include "cros-camera/camera_metrics.h"
 #include "cros-camera/jpeg_compressor.h"
 #include "cros-camera/jpeg_decode_accelerator.h"
 #include "hal/usb/image_processor.h"
@@ -74,6 +75,9 @@ class CachedFrame {
 
   // JPEG compressor instance
   std::unique_ptr<JpegCompressor> jpeg_compressor_;
+
+  // Metrics that used to record things like decoding latency.
+  std::unique_ptr<CameraMetrics> camera_metrics_;
 
   // Indicate if JDA started successfully
   bool jda_available_;

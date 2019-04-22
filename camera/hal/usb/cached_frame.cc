@@ -12,6 +12,7 @@
 
 #include <hardware/camera3.h>
 
+#include <base/timer/elapsed_timer.h>
 #include "common/utils/camera_config.h"
 #include "cros-camera/common.h"
 #include "cros-camera/exif_utils.h"
@@ -33,6 +34,7 @@ CachedFrame::CachedFrame()
       temp_frame2_(new SharedFrameBuffer(0)),
       yu12_frame_(new SharedFrameBuffer(0)),
       image_processor_(new ImageProcessor()),
+      camera_metrics_(CameraMetrics::New()),
       jda_available_(false),
       force_jpeg_hw_encode_(false),
       force_jpeg_hw_decode_(false) {
@@ -155,6 +157,7 @@ int CachedFrame::ConvertToYU12(const FrameBuffer& in_frame) {
     }
   }
 
+  base::ElapsedTimer timer;
   // SW conversion. If this fails, the input frame is likely invalid. Return
   // -EAGAIN so HAL can skip this frame.
   int ret = image_processor_->ConvertFormat(android::CameraMetadata(), in_frame,
@@ -164,6 +167,11 @@ int CachedFrame::ConvertToYU12(const FrameBuffer& in_frame) {
                 << " to YU12 failed: " << ret;
     return -EAGAIN;
   }
+  camera_metrics_->SendJpegProcessLatency(
+      JpegProcessType::kDecode, JpegProcessMethod::kSoftware, timer.Elapsed());
+  camera_metrics_->SendJpegResolution(
+      JpegProcessType::kDecode, JpegProcessMethod::kSoftware,
+      in_frame.GetWidth(), in_frame.GetHeight());
   return 0;
 }
 

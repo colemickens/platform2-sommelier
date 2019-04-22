@@ -14,6 +14,7 @@
 #include <base/memory/shared_memory.h>
 #include <base/threading/thread.h>
 
+#include "cros-camera/camera_metrics.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/future.h"
 #include "cros-camera/jpeg_decode_accelerator.h"
@@ -122,6 +123,9 @@ class JpegDecodeAcceleratorImpl : public JpegDecodeAccelerator {
   // We will send the handle of the shared memory to the remote process, so we
   // need to keep the lifecycle of the shared memory until we receive DecodeAck.
   InputShmMap input_shm_map_;
+
+  // Metrics that used to record things like decoding latency.
+  std::unique_ptr<CameraMetrics> camera_metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(JpegDecodeAcceleratorImpl);
 };

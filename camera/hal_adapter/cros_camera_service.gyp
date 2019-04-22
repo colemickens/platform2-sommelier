@@ -33,6 +33,9 @@
         '-ldl',
         '-lrt',
       ],
+      'dependencies': [
+        '../common/libcamera_metrics.gyp:libcamera_metrics',
+      ],
       'sources': [
         '../common/ipc_util.cc',
         '../common/utils/camera_config.cc',

@@ -15,6 +15,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/run_loop.h>
+#include <base/timer/elapsed_timer.h>
 #include <mojo/public/c/system/buffer.h>
 #include <mojo/public/cpp/system/buffer.h>
 
@@ -43,7 +44,9 @@ std::unique_ptr<JpegDecodeAccelerator> JpegDecodeAccelerator::CreateInstance() {
 }
 
 JpegDecodeAcceleratorImpl::JpegDecodeAcceleratorImpl()
-    : ipc_thread_("JdaIpcThread"), buffer_id_(0) {
+    : ipc_thread_("JdaIpcThread"),
+      buffer_id_(0),
+      camera_metrics_(CameraMetrics::New()) {
   VLOGF_ENTER();
 
   mojo_channel_manager_ = CameraMojoChannelManager::CreateInstance();
@@ -137,6 +140,8 @@ JpegDecodeAccelerator::Error JpegDecodeAcceleratorImpl::DecodeSync(
     uint32_t output_buffer_size) {
   auto future = cros::Future<int>::Create(cancellation_relay_.get());
 
+  base::ElapsedTimer timer;
+
   Decode(input_fd, input_buffer_size, coded_size_width, coded_size_height,
          output_fd, output_buffer_size,
          base::Bind(&JpegDecodeAcceleratorImpl::DecodeSyncCallback,
@@ -150,6 +155,12 @@ JpegDecodeAccelerator::Error JpegDecodeAcceleratorImpl::DecodeSync(
     LOGF(WARNING) << "There is no decode response from JDA mojo channel.";
     return Error::NO_DECODE_RESPONSE;
   }
+  camera_metrics_->SendJpegProcessLatency(
+      JpegProcessType::kDecode, JpegProcessMethod::kHardware, timer.Elapsed());
+  camera_metrics_->SendJpegResolution(JpegProcessType::kDecode,
+                                      JpegProcessMethod::kHardware,
+                                      coded_size_width, coded_size_height);
+
   VLOGF_EXIT();
   return static_cast<Error>(future->Get());
 }

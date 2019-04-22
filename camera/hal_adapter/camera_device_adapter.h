@@ -23,6 +23,7 @@
 #include <system/camera_metadata.h>
 
 #include "cros-camera/camera_buffer_manager.h"
+#include "cros-camera/camera_metrics.h"
 #include "hal_adapter/camera_metadata_inspector.h"
 #include "hal_adapter/common_types.h"
 #include "hal_adapter/cros_camera_mojo_utils.h"
@@ -233,6 +234,9 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // The metadata inspector to dump capture requests / results in realtime
   // for debugging if enabled.
   std::unique_ptr<CameraMetadataInspector> camera_metadata_inspector_;
+
+  // Metrics for camera service.
+  std::unique_ptr<CameraMetrics> camera_metrics_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(CameraDeviceAdapter);
 };

@@ -17,6 +17,7 @@
       ],
       'dependencies': [
         'jpeg/libjea.gyp:libjea',
+        'libcamera_metrics.gyp:libcamera_metrics',
       ],
       'direct_dependent_settings': {
         'libraries': [

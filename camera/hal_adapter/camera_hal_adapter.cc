@@ -17,10 +17,10 @@
 #include <base/bind_helpers.h>
 #include <base/logging.h>
 #include <base/threading/thread_task_runner_handle.h>
-#include <base/time/time.h>
 #include <camera/camera_metadata.h>
 #include <system/camera_metadata_hidden.h>
 
+#include "cros-camera/camera_metrics.h"
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
 #include "hal_adapter/camera_device_adapter.h"
@@ -49,7 +49,8 @@ CameraHalAdapter::CameraHalAdapter(std::vector<camera_module_t*> camera_modules)
       camera_module_callbacks_thread_("CameraModuleCallbacksThread"),
       module_id_(0),
       callbacks_id_(0),
-      vendor_tag_ops_id_(0) {
+      vendor_tag_ops_id_(0),
+      camera_metrics_(CameraMetrics::New()) {
   VLOGF_ENTER();
 }
 
@@ -115,6 +116,10 @@ int32_t CameraHalAdapter::OpenDevice(
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_CAMERA_SCOPED("camera_id", camera_id);
 
+  session_timer_map_.emplace(std::piecewise_construct,
+                             std::forward_as_tuple(camera_id),
+                             std::forward_as_tuple());
+
   camera_module_t* camera_module;
   int internal_camera_id;
   std::tie(camera_module, internal_camera_id) =
@@ -174,6 +179,9 @@ int32_t CameraHalAdapter::OpenDevice(
     return -ENODEV;
   }
   device_adapters_.at(camera_id)->Bind(std::move(device_ops_request));
+  camera_metrics_->SendOpenDeviceLatency(
+      session_timer_map_[camera_id].Elapsed());
+
   return 0;
 }
 
@@ -207,6 +215,8 @@ int32_t CameraHalAdapter::GetCameraInfo(int32_t camera_id,
     camera_info->reset();
     return ret;
   }
+
+  camera_metrics_->SendCameraFacing(info.facing);
 
   LOGF(INFO) << "camera_id = " << camera_id << ", facing = " << info.facing;
 
@@ -664,6 +674,9 @@ void CameraHalAdapter::CloseDevice(int32_t camera_id) {
     return;
   }
   device_adapters_.erase(camera_id);
+
+  camera_metrics_->SendSessionDuration(session_timer_map_[camera_id].Elapsed());
+  session_timer_map_.erase(camera_id);
 }
 
 void CameraHalAdapter::ResetModuleDelegateOnThread(uint32_t module_id) {

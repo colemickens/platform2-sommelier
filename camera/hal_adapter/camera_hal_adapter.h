@@ -18,7 +18,9 @@
 
 #include <base/single_thread_task_runner.h>
 #include <base/threading/thread.h>
+#include <base/timer/elapsed_timer.h>
 
+#include "cros-camera/camera_metrics.h"
 #include "cros-camera/future.h"
 #include "hal_adapter/reprocess_effect/reprocess_effect_manager.h"
 #include "mojo/camera3.mojom.h"
@@ -209,6 +211,12 @@ class CameraHalAdapter : public vendor_tag_ops_t {
 
   // The reprocess effect manager.
   ReprocessEffectManager reprocess_effect_manager_;
+
+  // The map of session start time.
+  std::map<int, base::ElapsedTimer> session_timer_map_;
+
+  // Metrics for camera service.
+  std::unique_ptr<CameraMetrics> camera_metrics_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(CameraHalAdapter);
 };

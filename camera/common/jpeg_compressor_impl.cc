@@ -10,9 +10,11 @@
 
 #include <errno.h>
 #include <libyuv.h>
+#include <time.h>
 
 #include <base/memory/ptr_util.h>
 #include <base/memory/shared_memory.h>
+#include <base/timer/elapsed_timer.h>
 #include "cros-camera/common.h"
 #include "cros-camera/jpeg_encode_accelerator.h"
 
@@ -31,7 +33,8 @@ std::unique_ptr<JpegCompressor> JpegCompressor::GetInstance() {
 }
 
 JpegCompressorImpl::JpegCompressorImpl()
-    : hw_encoder_(nullptr),
+    : camera_metrics_(CameraMetrics::New()),
+      hw_encoder_(nullptr),
       hw_encoder_started_(false),
       out_buffer_ptr_(nullptr),
       out_buffer_size_(0),
@@ -196,6 +199,8 @@ bool JpegCompressorImpl::EncodeHw(const uint8_t* input_buffer,
                                   uint32_t out_buffer_size,
                                   void* out_buffer,
                                   uint32_t* out_data_size) {
+  base::ElapsedTimer timer;
+
   if (!hw_encoder_) {
     hw_encoder_ = cros::JpegEncodeAccelerator::CreateInstance();
     hw_encoder_started_ = hw_encoder_->Start();
@@ -237,6 +242,11 @@ bool JpegCompressorImpl::EncodeHw(const uint8_t* input_buffer,
   if (status == cros::JpegEncodeAccelerator::ENCODE_OK) {
     memcpy(static_cast<unsigned char*>(out_buffer), output_shm->memory(),
            *out_data_size);
+    camera_metrics_->SendJpegProcessLatency(JpegProcessType::kEncode,
+                                            JpegProcessMethod::kHardware,
+                                            timer.Elapsed());
+    camera_metrics_->SendJpegResolution(
+        JpegProcessType::kEncode, JpegProcessMethod::kHardware, width, height);
     return true;
   } else {
     LOGF(ERROR) << "HW encode failed with " << status;
@@ -254,6 +264,8 @@ bool JpegCompressorImpl::Encode(const void* inYuv,
                                 uint32_t out_buffer_size,
                                 void* out_buffer,
                                 uint32_t* out_data_size) {
+  base::ElapsedTimer timer;
+
   out_buffer_ptr_ = static_cast<JOCTET*>(out_buffer);
   out_buffer_size_ = out_buffer_size;
 
@@ -283,6 +295,14 @@ bool JpegCompressorImpl::Encode(const void* inYuv,
 
   if (is_encode_success_) {
     *out_data_size = out_data_size_;
+  }
+
+  if (is_encode_success_) {
+    camera_metrics_->SendJpegProcessLatency(JpegProcessType::kEncode,
+                                            JpegProcessMethod::kSoftware,
+                                            timer.Elapsed());
+    camera_metrics_->SendJpegResolution(
+        JpegProcessType::kEncode, JpegProcessMethod::kSoftware, width, height);
   }
   return is_encode_success_;
 }
