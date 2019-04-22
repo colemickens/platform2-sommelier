@@ -166,6 +166,13 @@ if (use.test || use.fuzzer) {
       "-lgtest",
       "-pthread",
       "-lpthread",
+
+      # Allow unit tests of a shared library to link against the depended .so
+      # under the output directory, instead of the ones installed in the system
+      # dir. -rpath and -rpath-link has higher priority than the system library
+      # directory.
+      "-Wl,-rpath=\$ORIGIN/lib/",
+      "-Wl,-rpath-link=lib/",
     ]
   }
 }
