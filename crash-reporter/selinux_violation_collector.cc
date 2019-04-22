@@ -104,7 +104,7 @@ bool SELinuxViolationCollector::Collect() {
   AddCrashMetaData(kSignatureKey, violation_signature);
 
   for (const auto& metadata : extra_metadata)
-    AddCrashMetaData(metadata.first, metadata.second);
+    AddCrashMetaUploadData(metadata.first, metadata.second);
 
   WriteCrashMetaData(meta_path, kExecName, log_path.value());
 
