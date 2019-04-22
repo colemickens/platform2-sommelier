@@ -70,7 +70,7 @@ bool UsbManager::Initialize() {
 void UsbManager::SetDebugLevel(int level) {
   CHECK(context_);
 
-  libusb_set_debug(context_, level);
+  libusb_set_option(context_, LIBUSB_OPTION_LOG_LEVEL, level);
 }
 
 UsbDevice* UsbManager::GetDevice(uint8_t bus_number,
