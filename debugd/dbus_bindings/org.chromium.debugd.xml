@@ -577,6 +577,19 @@
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="UploadSingleCrash">
+      <tp:docstring>
+        Uploads a single crash report immediately. Crash report data is
+        contained in the message.
+      </tp:docstring>
+      <arg name="files" type="a(sh)" direction="in">
+        <tp:docstring>
+          Array of files to include in the crash report. String is the base
+          file name.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
     <method name="RemoveRootfsVerification">
       <tp:docstring>
         Removes rootfs verification. Requires a system reboot before it will

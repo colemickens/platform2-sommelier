@@ -279,6 +279,12 @@ void DebugdDBusAdaptor::UploadCrashes() {
   crash_sender_tool_->UploadCrashes();
 }
 
+bool DebugdDBusAdaptor::UploadSingleCrash(
+    brillo::ErrorPtr* error,
+    const std::vector<std::tuple<std::string, base::ScopedFD>>& in_files) {
+  return crash_sender_tool_->UploadSingleCrash(in_files, error);
+}
+
 bool DebugdDBusAdaptor::RemoveRootfsVerification(brillo::ErrorPtr* error) {
   auto tool = dev_features_tool_wrapper_->GetTool(error);
   return tool && tool->RemoveRootfsVerification(error);

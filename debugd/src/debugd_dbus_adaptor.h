@@ -11,6 +11,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include <brillo/dbus/exported_object_manager.h>
@@ -134,6 +135,10 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
                          const std::string& handle) override;
   bool LogKernelTaskStates(brillo::ErrorPtr* error) override;
   void UploadCrashes() override;
+  bool UploadSingleCrash(
+      brillo::ErrorPtr* error,
+      const std::vector<std::tuple<std::string, base::ScopedFD>>& in_files)
+      override;
   bool RemoveRootfsVerification(brillo::ErrorPtr* error) override;
   bool EnableBootFromUsb(brillo::ErrorPtr* error) override;
   bool EnableChromeRemoteDebugging(brillo::ErrorPtr* error) override;
