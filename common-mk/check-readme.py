@@ -114,7 +114,6 @@ def CheckSubdirs():
       'cros-disks',
       'cryptohome',
       'fitpicker',
-      'gobi-cromo-plugin',
       'image-burner',
       'init',
       'libchromeos-ui',
