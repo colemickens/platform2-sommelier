@@ -72,7 +72,6 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
       vm_tools::plugin_dispatcher::kVmPluginDispatcherServiceName,
       vm_tools::plugin_dispatcher::kVmPluginDispatcherServicePath);
   wifi_power_tool_ = std::make_unique<WifiPowerTool>();
-  wimax_status_tool_ = std::make_unique<WiMaxStatusTool>();
   session_manager_proxy_ = std::make_unique<SessionManagerProxy>(bus);
   scheduler_configuration_tool_ =
       std::make_unique<SchedulerConfigurationTool>();
@@ -138,10 +137,6 @@ std::vector<std::string> DebugdDBusAdaptor::GetRoutes(
 
 std::string DebugdDBusAdaptor::GetNetworkStatus() {
   return network_status_tool_->GetNetworkStatus();
-}
-
-std::string DebugdDBusAdaptor::GetWiMaxStatus() {
-  return wimax_status_tool_->GetWiMaxStatus();
 }
 
 bool DebugdDBusAdaptor::GetPerfOutput(

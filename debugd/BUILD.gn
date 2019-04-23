@@ -28,16 +28,12 @@ group("all") {
   if (use.test) {
     deps += [ ":debugd_testrunner" ]
   }
-  if (use.wimax) {
-    deps += [ ":wimax_status" ]
-  }
 }
 
 pkg_config("target_defaults") {
   defines = [
     "USE_IWLWIFI_DUMP=${use.iwlwifi_dump}",
     "USE_TPM=${use.tpm}",
-    "USE_WIMAX=${use.wimax}",
   ]
 
   pkg_deps = [
@@ -116,7 +112,6 @@ static_library("libdebugd") {
     "src/variant_utils.cc",
     "src/verify_ro_tool.cc",
     "src/wifi_power_tool.cc",
-    "src/wimax_status_tool.cc",
   ]
   deps = [
     ":debugd-adaptors",
@@ -256,18 +251,6 @@ executable("scheduler_configuration_helper") {
     "src/helpers/scheduler_configuration_helper.cc",
     "src/helpers/scheduler_configuration_utils.cc",
   ]
-}
-
-if (use.wimax) {
-  executable("wimax_status") {
-    configs += [ ":target_defaults" ]
-    sources = [
-      "src/helpers/wimax_status.cc",
-    ]
-    deps = [
-      ":debugd_dbus_utils",
-    ]
-  }
 }
 
 if (use.test) {

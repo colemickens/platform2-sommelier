@@ -156,18 +156,6 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
-    <method name="GetWiMaxStatus">
-      <tp:docstring>
-        Returns WiMAX information as a JSON string. See the design document for
-        a rationale.
-      </tp:docstring>
-      <arg name="status" type="s" direction="out">
-        <tp:docstring>
-          WiMAX information as a JSON string.
-        </tp:docstring>
-      </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
-    </method>
     <method name="GetPerfOutput">
       <tp:docstring>
         Runs system-wide perf profiling. The profile parameters are selected by

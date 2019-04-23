@@ -51,7 +51,6 @@
 #include "debugd/src/u2f_tool.h"
 #include "debugd/src/verify_ro_tool.h"
 #include "debugd/src/wifi_power_tool.h"
-#include "debugd/src/wimax_status_tool.h"
 
 namespace debugd {
 
@@ -85,7 +84,6 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::vector<std::string> GetRoutes(
       const brillo::VariantDictionary& options) override;
   std::string GetNetworkStatus() override;
-  std::string GetWiMaxStatus() override;
   bool GetPerfOutput(brillo::ErrorPtr* error,
                      uint32_t duration_sec,
                      const std::vector<std::string>& perf_args,
@@ -228,7 +226,6 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<SimpleServiceTool> vm_concierge_tool_;
   std::unique_ptr<SimpleServiceTool> vm_plugin_dispatcher_tool_;
   std::unique_ptr<WifiPowerTool> wifi_power_tool_;
-  std::unique_ptr<WiMaxStatusTool> wimax_status_tool_;
 };
 
 }  // namespace debugd
