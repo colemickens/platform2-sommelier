@@ -239,7 +239,7 @@ message PerformWebRequestResponse {
 // Parameters for the GetEcTelemetry RPC.
 message GetEcTelemetryRequest {
   // Opaque binary arguments for EC 0xF5 telemetry command.
-  // The maximum allowed size is 32 bytes. Should to be non-empty
+  // The maximum allowed size is 32 bytes. Should to be non-empty.
   bytes payload = 1;
 }
 
@@ -264,6 +264,7 @@ message GetEcTelemetryResponse {
 
   // Data blob with encoded EC telemetry command response. This field is set
   // when |status| is |STATUS_OK|.
+  // The maximum size is 32 bytes.
   bytes payload = 2;
 }
 

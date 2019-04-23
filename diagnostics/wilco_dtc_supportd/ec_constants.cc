@@ -15,7 +15,7 @@ const char kEcDriverSysfsPath[] = "sys/bus/platform/devices/GOOG000C:00/";
 // |kEcDriverSysfsPath|.
 const char kEcDriverSysfsPropertiesPath[] = "properties/";
 
-// Max request payload size for EC telemetry command.
+// Max request and response payload size for EC telemetry command.
 const int64_t kEcGetTelemetryPayloadMaxSize = 32;
 
 // Devfs node exposed by EC driver to EC telemetry data.

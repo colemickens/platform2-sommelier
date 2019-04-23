@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -330,9 +331,21 @@ void WilcoDtcSupportdGrpcService::GetEcTelemetry(
   base::FilePath telemetry_file_path =
       root_dir_.Append(kEcGetTelemetryFilePath);
 
-  int write_result =
-      base::WriteFile(telemetry_file_path, request->payload().c_str(),
-                      request->payload().length());
+  base::File telemetry_file(telemetry_file_path,
+                            base::File::Flags::FLAG_OPEN |
+                                base::File::Flags::FLAG_READ |
+                                base::File::Flags::FLAG_WRITE);
+  if (!telemetry_file.IsValid()) {
+    VPLOG(2) << "GetEcTelemetry gRPC can not open the "
+             << "telemetry node: " << telemetry_file_path.value();
+    reply->set_status(
+        grpc_api::GetEcTelemetryResponse::STATUS_ERROR_ACCESSING_DRIVER);
+    callback.Run(std::move(reply));
+    return;
+  }
+
+  int write_result = telemetry_file.Write(
+      0 /* offset */, request->payload().c_str(), request->payload().length());
   if (write_result != request->payload().length()) {
     VPLOG(2) << "GetEcTelemetry gRPC can not write request payload to the "
              << "telemetry node: " << telemetry_file_path.value();
@@ -343,10 +356,12 @@ void WilcoDtcSupportdGrpcService::GetEcTelemetry(
   }
 
   // Reply payload must be empty in case of any failure.
-  std::string file_content;
-  if (base::ReadFileToString(telemetry_file_path, &file_content)) {
+  char file_content[kEcGetTelemetryPayloadMaxSize];
+  int read_result = telemetry_file.Read(0 /* offset */, file_content,
+                                        kEcGetTelemetryPayloadMaxSize);
+  if (read_result > 0) {
     reply->set_status(grpc_api::GetEcTelemetryResponse::STATUS_OK);
-    reply->set_payload(std::move(file_content));
+    reply->set_payload(file_content, read_result);
   } else {
     VPLOG(2) << "GetEcTelemetry gRPC can not read EC telemetry command "
              << "response from telemetry node: " << telemetry_file_path.value();
