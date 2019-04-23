@@ -25,9 +25,6 @@ group("all") {
     ":network_status",
     ":scheduler_configuration_helper",
   ]
-  if (use.cellular) {
-    deps += [ ":modem_status" ]
-  }
   if (use.test) {
     deps += [ ":debugd_testrunner" ]
   }
@@ -38,7 +35,6 @@ group("all") {
 
 pkg_config("target_defaults") {
   defines = [
-    "USE_CELLULAR=${use.cellular}",
     "USE_IWLWIFI_DUMP=${use.iwlwifi_dump}",
     "USE_TPM=${use.tpm}",
     "USE_WIMAX=${use.wimax}",
@@ -96,7 +92,6 @@ static_library("libdebugd") {
     "src/icmp_tool.cc",
     "src/log_tool.cc",
     "src/memory_tool.cc",
-    "src/modem_status_tool.cc",
     "src/netif_tool.cc",
     "src/network_status_tool.cc",
     "src/oom_adj_tool.cc",
@@ -261,18 +256,6 @@ executable("scheduler_configuration_helper") {
     "src/helpers/scheduler_configuration_helper.cc",
     "src/helpers/scheduler_configuration_utils.cc",
   ]
-}
-
-if (use.cellular) {
-  executable("modem_status") {
-    configs += [ ":target_defaults" ]
-    sources = [
-      "src/helpers/modem_status.cc",
-    ]
-    deps = [
-      ":debugd_dbus_utils",
-    ]
-  }
 }
 
 if (use.wimax) {

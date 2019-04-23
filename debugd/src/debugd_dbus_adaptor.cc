@@ -48,7 +48,6 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
   icmp_tool_ = std::make_unique<ICMPTool>();
   log_tool_ = std::make_unique<LogTool>(bus);
   memory_tool_ = std::make_unique<MemtesterTool>();
-  modem_status_tool_ = std::make_unique<ModemStatusTool>();
   netif_tool_ = std::make_unique<NetifTool>();
   network_status_tool_ = std::make_unique<NetworkStatusTool>();
   oom_adj_tool_ = std::make_unique<OomAdjTool>();
@@ -135,10 +134,6 @@ std::string DebugdDBusAdaptor::SystraceStatus() {
 std::vector<std::string> DebugdDBusAdaptor::GetRoutes(
     const brillo::VariantDictionary& options) {
   return route_tool_->GetRoutes(options);
-}
-
-std::string DebugdDBusAdaptor::GetModemStatus() {
-  return modem_status_tool_->GetModemStatus();
 }
 
 std::string DebugdDBusAdaptor::GetNetworkStatus() {

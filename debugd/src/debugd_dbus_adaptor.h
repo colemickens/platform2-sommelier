@@ -31,7 +31,6 @@
 #include "debugd/src/icmp_tool.h"
 #include "debugd/src/log_tool.h"
 #include "debugd/src/memory_tool.h"
-#include "debugd/src/modem_status_tool.h"
 #include "debugd/src/netif_tool.h"
 #include "debugd/src/network_status_tool.h"
 #include "debugd/src/oom_adj_tool.h"
@@ -85,7 +84,6 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::string SystraceStatus() override;
   std::vector<std::string> GetRoutes(
       const brillo::VariantDictionary& options) override;
-  std::string GetModemStatus() override;
   std::string GetNetworkStatus() override;
   std::string GetWiMaxStatus() override;
   bool GetPerfOutput(brillo::ErrorPtr* error,
@@ -211,7 +209,6 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<ICMPTool> icmp_tool_;
   std::unique_ptr<LogTool> log_tool_;
   std::unique_ptr<MemtesterTool> memory_tool_;
-  std::unique_ptr<ModemStatusTool> modem_status_tool_;
   std::unique_ptr<NetifTool> netif_tool_;
   std::unique_ptr<NetworkStatusTool> network_status_tool_;
   std::unique_ptr<OomAdjTool> oom_adj_tool_;
