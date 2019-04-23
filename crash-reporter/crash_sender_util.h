@@ -39,6 +39,7 @@ struct EnvPair {
 // Parsed command line flags.
 struct CommandLineFlags {
   base::TimeDelta max_spread_time;
+  std::string crash_directory;
   bool ignore_rate_limits = false;
   bool ignore_hold_off_time = false;
 };

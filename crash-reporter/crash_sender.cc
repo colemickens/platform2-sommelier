@@ -120,10 +120,14 @@ int RunChildMain(int argc, char* argv[]) {
 
   // Get all reports we might want to send, and then choose the more important
   // report out of all the directories to send first.
-  std::vector<base::FilePath> crash_directories =
-      sender.GetUserCrashDirectories();
-  crash_directories.push_back(paths::Get(paths::kSystemCrashDirectory));
-  crash_directories.push_back(paths::Get(paths::kFallbackUserCrashDirectory));
+  std::vector<base::FilePath> crash_directories;
+  if (flags.crash_directory.empty()) {
+    crash_directories = sender.GetUserCrashDirectories();
+    crash_directories.push_back(paths::Get(paths::kSystemCrashDirectory));
+    crash_directories.push_back(paths::Get(paths::kFallbackUserCrashDirectory));
+  } else {
+    crash_directories.push_back(base::FilePath(flags.crash_directory));
+  }
 
   std::vector<util::MetaFile> reports_to_send;
 

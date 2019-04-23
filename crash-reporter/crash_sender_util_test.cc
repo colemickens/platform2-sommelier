@@ -297,6 +297,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_NoFlags) {
   // By default, the value is 0.
   EXPECT_STREQ("0", getenv("FORCE_OFFICIAL"));
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
+  EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_FALSE(flags.ignore_rate_limits);
   EXPECT_FALSE(flags.ignore_hold_off_time);
 }
@@ -308,6 +309,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_HonorExistingValue) {
   ParseCommandLine(arraysize(argv), argv, &flags);
   EXPECT_STREQ("1", getenv("FORCE_OFFICIAL"));
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
+  EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_FALSE(flags.ignore_rate_limits);
   EXPECT_FALSE(flags.ignore_hold_off_time);
 }
@@ -318,6 +320,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_OverwriteDefaultValue) {
   ParseCommandLine(arraysize(argv), argv, &flags);
   EXPECT_STREQ("1", getenv("FORCE_OFFICIAL"));
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
+  EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_FALSE(flags.ignore_rate_limits);
   EXPECT_FALSE(flags.ignore_hold_off_time);
 }
@@ -329,6 +332,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_OverwriteExistingValue) {
   ParseCommandLine(arraysize(argv), argv, &flags);
   EXPECT_STREQ("2", getenv("FORCE_OFFICIAL"));
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
+  EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_FALSE(flags.ignore_rate_limits);
   EXPECT_FALSE(flags.ignore_hold_off_time);
 }
@@ -354,6 +358,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_ValidMaxSpreadTime) {
   CommandLineFlags flags;
   ParseCommandLine(arraysize(argv), argv, &flags);
   EXPECT_EQ(base::TimeDelta::FromSeconds(0), flags.max_spread_time);
+  EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_FALSE(flags.ignore_rate_limits);
   EXPECT_FALSE(flags.ignore_hold_off_time);
 }
@@ -363,17 +368,29 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreRateLimits) {
   CommandLineFlags flags;
   ParseCommandLine(arraysize(argv), argv, &flags);
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
+  EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_TRUE(flags.ignore_rate_limits);
   EXPECT_FALSE(flags.ignore_hold_off_time);
 }
 
-TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreHoldOffTIme) {
+TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreHoldOffTime) {
   const char* argv[] = {"crash_sender", "--ignore_hold_off_time"};
   CommandLineFlags flags;
   ParseCommandLine(arraysize(argv), argv, &flags);
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
+  EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_FALSE(flags.ignore_rate_limits);
   EXPECT_TRUE(flags.ignore_hold_off_time);
+}
+
+TEST_F(CrashSenderUtilTest, ParseCommandLine_CrashDirectory) {
+  const char* argv[] = {"crash_sender", "--crash_directory=/tmp"};
+  CommandLineFlags flags;
+  ParseCommandLine(arraysize(argv), argv, &flags);
+  EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
+  EXPECT_EQ(flags.crash_directory, "/tmp");
+  EXPECT_FALSE(flags.ignore_rate_limits);
+  EXPECT_FALSE(flags.ignore_hold_off_time);
 }
 
 TEST_F(CrashSenderUtilTest, IsMock) {

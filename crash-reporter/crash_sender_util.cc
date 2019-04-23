@@ -136,6 +136,8 @@ void ParseCommandLine(int argc,
   DEFINE_bool(h, false, "Show this help and exit");
   DEFINE_int32(max_spread_time, kMaxSpreadTimeInSeconds,
                "Max time in secs to sleep before sending (0 to send now)");
+  DEFINE_string(crash_directory, "",
+                "If set, upload only crashes in this directory.");
   const std::string ignore_rate_limits_description = base::StringPrintf(
       "Ignore normal limit of %d crash uploads per day", kMaxCrashRate);
   DEFINE_bool(ignore_rate_limits, false,
@@ -158,6 +160,7 @@ void ParseCommandLine(int argc,
     exit(EXIT_FAILURE);
   }
   flags->max_spread_time = base::TimeDelta::FromSeconds(FLAGS_max_spread_time);
+  flags->crash_directory = FLAGS_crash_directory;
   flags->ignore_rate_limits = FLAGS_ignore_rate_limits;
   flags->ignore_hold_off_time = FLAGS_ignore_hold_off_time;
 
