@@ -60,7 +60,12 @@ std::unique_ptr<MountPoint> SystemMounter::Mount(
     std::vector<std::string> options,
     MountErrorType* error) const {
   MountOptions mount_options;
-  mount_options.Initialize(options, false, "", "");
+  // If the |options| vector contains uid/gid options, these need to be accepted
+  // by MountOptions::Initialize(). To do this, |set_user_and_group_id| must be
+  // true. However, if |options| doesn't have these options,
+  // MountOptions::Initialize() won't create these, because the
+  // |default_user_id| and |default_group_id arguments| are empty.
+  mount_options.Initialize(options, true /* set_user_and_group_id */, "", "");
   auto flags_and_data = mount_options.ToMountFlagsAndData();
 
   *error = platform_->Mount(source, target_path.value(), filesystem_type(),
