@@ -659,7 +659,6 @@ diag_ifall () {
     fail "No good interfaces found.  You are not connected to a network."
     get_status shill
     get_status wpa_supplicant
-    get_status cromo
     return 1
   fi
   diag_flimflam
