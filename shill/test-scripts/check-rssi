@@ -9,8 +9,7 @@ strength = {}
 for device in flim.GetObjectList("Device"):
     device_properties = device.GetProperties(utf8_strings = True)
     try:
-        if device_properties["Type"] not in ["wifi", "wimax",
-            "bluetooth", "cellular"]:
+        if device_properties["Type"] not in ["wifi", "bluetooth", "cellular"]:
             continue
     except Exception, e:
         continue

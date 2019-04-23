@@ -56,7 +56,6 @@ class FlimFlam(object):
     UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
     UNKNOWN_OBJECT = 'org.freedesktop.DBus.Error.UnknownObject'
 
-    DEVICE_WIMAX = 'wimax'
     DEVICE_CELLULAR = 'cellular'
 
     @staticmethod
@@ -144,9 +143,6 @@ class FlimFlam(object):
     def FindCellularDevice(self, timeout=DEFAULT_CELLULAR_TIMEOUT):
         return self._FindDevice(self.DEVICE_CELLULAR, timeout)
 
-    def FindWimaxDevice(self, timeout=30):
-        return self._FindDevice(self.DEVICE_WIMAX, timeout)
-
     def _FindService(self, device_type, timeout):
         """Return the first service object that matches the device type.
 
@@ -171,9 +167,6 @@ class FlimFlam(object):
 
     def FindCellularService(self, timeout=DEFAULT_CELLULAR_TIMEOUT):
         return self._FindService(self.DEVICE_CELLULAR, timeout)
-
-    def FindWimaxService(self, timeout=30):
-        return self._FindService(self.DEVICE_WIMAX, timeout)
 
     def GetService(self, params):
         path = self.manager.GetService(params)
