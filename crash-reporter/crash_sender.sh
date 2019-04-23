@@ -253,7 +253,6 @@ send_crash() {
   local send_payload_size="$(stat --printf=%s "${report_payload}" 2>/dev/null)"
   local product="$(get_key_value "${meta_path}" "upload_var_prod")"
   local version="$(get_key_value "${meta_path}" "upload_var_ver")"
-  local upload_prefix="$(get_key_value "${meta_path}" "upload_prefix")"
   local guid
 
   set -- \
@@ -271,10 +270,6 @@ send_crash() {
       -F "log=@${log}"
   fi
 
-  if [ "${upload_prefix}" = "undefined" ]; then
-    upload_prefix=""
-  fi
-
   # Grab any variable that begins with upload_.
   local v
   for k in $(get_keys "${meta_path}" "^upload_"); do
@@ -286,16 +281,16 @@ send_crash() {
       # Don't let others override the guid we set.
       upload_var_guid) ;;
       upload_var_*)
-        set -- "$@" -F "${upload_prefix}${k#upload_var_}=${v}"
+        set -- "$@" -F "${k#upload_var_}=${v}"
         ;;
       upload_text_*)
         if [ -r "${v}" ]; then
-          set -- "$@" -F "${upload_prefix}${k#upload_text_}=<${v}"
+          set -- "$@" -F "${k#upload_text_}=<${v}"
         fi
         ;;
       upload_file_*)
         if [ -r "${v}" ]; then
-          set -- "$@" -F "${upload_prefix}${k#upload_file_}=@${v}"
+          set -- "$@" -F "${k#upload_file_}=@${v}"
         fi
         ;;
     esac
