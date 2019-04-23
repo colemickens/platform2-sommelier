@@ -317,7 +317,7 @@ Methods
 			in priority ordering.
 
 			For example, the default ordering would be returned as:
-				"ethernet,bluetooth,wifi,wimax,cellular"
+				"ethernet,bluetooth,wifi,cellular"
 
 		void SetServiceOrder(string mask)
 
@@ -326,7 +326,7 @@ Methods
 			priority to lowest.
 
 			The list may contain the following services:
-				{ ethernet, wifi, wimax, bluetooth, cellular }
+				{ ethernet, wifi, bluetooth, cellular }
 			Technologies not included are assigned the lowest
 			priority.
 
@@ -454,7 +454,7 @@ Properties 	string ActiveProfile [readwrite]
 
 			The list of technologies for which captive portal
 			checking is enabled.  This is a comma-separated
-			string; e.g. "wifi,wimax,vpn".
+			string; e.g. "wifi,cellular,vpn".
 
 		array{string} ClaimedDevices [readonly]
 
@@ -541,7 +541,7 @@ Properties 	string ActiveProfile [readwrite]
 
 			The list of technologies for which auto-connect is
 			disabled.  This is a comma-separated string, e.g.
-			"cellular,wimax".
+			"cellular,wifi".
 
 		boolean OfflineMode [readwrite]
 
@@ -573,7 +573,7 @@ Properties 	string ActiveProfile [readwrite]
 
 			The list of technologies that should be disabled
 			and prohibited from being enabled.  This is a
-			comma-separated string, e.g.  "cellular,wimax".  All
+			comma-separated string, e.g.  "cellular,wifi".  All
 			devices that are one of these technology types will be
 			immediately disabled persistently, and when a new device
 			of this type appears, it will be disabled by default.

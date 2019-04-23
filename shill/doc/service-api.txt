@@ -1565,7 +1565,6 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			The service type; one of:
 			  "ethernet"    (802.3 wired Ethernet),
 			  "wifi"        (IEEE 802.11),
-			  "wimax"       (IEEE 802.16),
 			  "bluetooth"   (Bluetooth PAN),
 			  "cellular"    (3G Cellular),
 			  "vpn"         (Virtual Private Network), or
@@ -1583,7 +1582,7 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 
 		bool Visible [readonly]
 
-			WiMax and WiFi services list all services for which
+			WiFi services list all services for which
 			configuration exists in the manager's
 			ServiceCompleteList.  Those service types have this
 			property set to false if such a configured service

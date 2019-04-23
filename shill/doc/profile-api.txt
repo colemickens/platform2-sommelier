@@ -120,7 +120,7 @@ Properties	string CheckPortalList [readonly]
 
 			The list of technologies for which captive portal
 			checking is enabled. This is a comma-separated
-			string; e.g. "wifi,wimax,vpn". To alter this
+			string; e.g. "wifi,cellular,vpn". To alter this
 			setting set the Manager.CheckPortalList property.
 
 			This setting is recorded only in the

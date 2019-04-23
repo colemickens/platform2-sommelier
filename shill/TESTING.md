@@ -79,10 +79,8 @@ Here `${BOARD}` is a valid board name, like octopus, scarlet or x86-generic.
 ### Running unit tests for Chrome OS with the address sanitizer
 
 ```bash
-(chroot) USE="asan clang wimax" TEST_FILTER="shill::*" emerge-${BOARD} shill
+(chroot) USE="asan clang" TEST_FILTER="shill::*" emerge-${BOARD} shill
 ```
-
-This also turns on `wimax` and its tests, since this is disabled on most platforms.
 
 ### Running integration tests
 
