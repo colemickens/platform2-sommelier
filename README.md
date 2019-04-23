@@ -122,7 +122,6 @@ copies.
 | [vpn-manager](./vpn-manager/) ||
 | [webserver](./webserver/) | Small web server with D-Bus client backends |
 | [wifi-testbed](./wifi-testbed/) | Tools for creating a WiFi testbed image |
-| [wimax_manager](./wimax_manager/) ||
 
 # AOSP Project Directory
 

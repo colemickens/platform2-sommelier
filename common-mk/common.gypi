@@ -48,7 +48,6 @@
     'USE_feedback%': 0,
     'USE_ftdi_tpm%': 0,
     'USE_fuzzer%': 0,
-    'USE_gdmwimax%': 0,
     'USE_hammerd_api%': 0,
     'USE_iwlwifi_dump%': 0,
     'USE_kvm_host%': 0,
@@ -70,7 +69,6 @@
     'USE_vpn%': 0,
     'USE_wake_on_wifi%': 0,
     'USE_wifi%': 0,
-    'USE_wimax%': 0,
     'USE_wired_8021x%': 0,
     'USE_workaround_crbug_909793%': 0,
 

@@ -48,7 +48,6 @@ _IUSE = [
     'feedback',
     'ftdi_tpm',
     'fuzzer',
-    'gdmwimax',
     'hammerd_api',
     'iwlwifi_dump',
     'kvm_host',
@@ -74,7 +73,6 @@ _IUSE = [
     'vpn',
     'wake_on_wifi',
     'wifi',
-    'wimax',
     'wired_8021x',
     'workaround_crbug_909793',
 ]

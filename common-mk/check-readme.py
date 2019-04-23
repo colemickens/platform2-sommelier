@@ -130,7 +130,6 @@ def CheckSubdirs():
       'userfeedback',
       'userspace_touchpad',
       'vpn-manager',
-      'wimax_manager',
   )
 
   ret = 0
