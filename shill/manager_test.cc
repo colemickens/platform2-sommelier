@@ -2418,13 +2418,12 @@ TEST_F(ManagerTest, TechnologyOrder) {
   // lauch a service sorting task.
   SetRunning(false);
   Error error;
-  manager()->SetTechnologyOrder("vpn,ethernet,wifi,wimax,cellular", &error);
+  manager()->SetTechnologyOrder("vpn,ethernet,wifi,cellular", &error);
   ASSERT_TRUE(error.IsSuccess());
   EXPECT_FALSE(IsSortServicesTaskPending());
   EXPECT_THAT(GetTechnologyOrder(), ElementsAre(Technology::kVPN,
                                                 Technology::kEthernet,
                                                 Technology::kWifi,
-                                                Technology::kWiMax,
                                                 Technology::kCellular));
 
   SetRunning(true);
@@ -3923,41 +3922,41 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   CompleteServiceSort();
   EXPECT_TRUE(ServiceOrderIs(wifi_service2, wifi_service0));
 
-  scoped_refptr<MockService> cell_service(
+  scoped_refptr<MockService> cellular_service0(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
                                 metrics(),
                                 manager()));
 
-  EXPECT_CALL(*cell_service, state())
+  EXPECT_CALL(*cellular_service0, state())
       .WillRepeatedly(Return(Service::kStateIdle));
-  EXPECT_CALL(*cell_service, IsConnected()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*cell_service, IsVisible()).WillRepeatedly(Return(true));
-  cell_service->SetAutoConnect(true);
-  cell_service->SetConnectable(true);
-  EXPECT_CALL(*cell_service, technology())
+  EXPECT_CALL(*cellular_service0, IsConnected()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*cellular_service0, IsVisible()).WillRepeatedly(Return(true));
+  cellular_service0->SetAutoConnect(true);
+  cellular_service0->SetConnectable(true);
+  EXPECT_CALL(*cellular_service0, technology())
       .WillRepeatedly(Return(Technology::kCellular));
-  EXPECT_CALL(*cell_service, explicitly_disconnected())
+  EXPECT_CALL(*cellular_service0, explicitly_disconnected())
       .WillRepeatedly(Return(true));
-  manager()->RegisterService(cell_service);
+  manager()->RegisterService(cellular_service0);
 
-  scoped_refptr<MockService> wimax_service(
+  scoped_refptr<MockService> cellular_service1(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
                                 metrics(),
                                 manager()));
 
-  EXPECT_CALL(*wimax_service, state())
+  EXPECT_CALL(*cellular_service1, state())
       .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*wimax_service, IsConnected()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*wimax_service, IsVisible()).WillRepeatedly(Return(true));
-  wimax_service->SetAutoConnect(true);
-  wimax_service->SetConnectable(true);
-  EXPECT_CALL(*wimax_service, technology())
-      .WillRepeatedly(Return(Technology::kWiMax));
-  EXPECT_CALL(*wimax_service, explicitly_disconnected())
+  EXPECT_CALL(*cellular_service1, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*cellular_service1, IsVisible()).WillRepeatedly(Return(true));
+  cellular_service1->SetAutoConnect(true);
+  cellular_service1->SetConnectable(true);
+  EXPECT_CALL(*cellular_service1, technology())
+      .WillRepeatedly(Return(Technology::kCellular));
+  EXPECT_CALL(*cellular_service1, explicitly_disconnected())
       .WillRepeatedly(Return(false));
-  manager()->RegisterService(wimax_service);
+  manager()->RegisterService(cellular_service1);
 
   scoped_refptr<MockService> vpn_service(
       new NiceMock<MockService>(control_interface(),
@@ -3976,14 +3975,14 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   manager()->RegisterService(vpn_service);
 
   // The connected services should be at the top.
-  EXPECT_TRUE(ServiceOrderIs(wifi_service2, wimax_service));
+  EXPECT_TRUE(ServiceOrderIs(wifi_service2, cellular_service1));
 
   EXPECT_CALL(*wifi_service0, Connect(_, _)).Times(0);  // Not visible.
   EXPECT_CALL(*wifi_service1, Connect(_, _));
   EXPECT_CALL(*wifi_service2, Connect(_, _)).Times(0);  // Lower prio.
-  EXPECT_CALL(*cell_service, Connect(_, _))
+  EXPECT_CALL(*cellular_service0, Connect(_, _))
       .Times(0);  // Explicitly disconnected.
-  EXPECT_CALL(*wimax_service, Connect(_, _)).Times(0);  // Is connected.
+  EXPECT_CALL(*cellular_service1, Connect(_, _)).Times(0);  // Is connected.
   EXPECT_CALL(*vpn_service, Connect(_, _)).Times(0);    // Not autoconnect.
 
   manager()->ConnectToBestServices(nullptr);
@@ -3992,7 +3991,7 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   // After this operation, since the Connect calls above are mocked and
   // no actual state changes have occurred, we should expect that the
   // service sorting order will not have changed.
-  EXPECT_TRUE(ServiceOrderIs(wifi_service2, wimax_service));
+  EXPECT_TRUE(ServiceOrderIs(wifi_service2, cellular_service1));
 }
 
 TEST_F(ManagerTest, CreateConnectivityReport) {
@@ -4623,7 +4622,7 @@ TEST_F(ManagerTest, DetectMultiHomedDevices) {
 TEST_F(ManagerTest, IsTechnologyProhibited) {
   // Test initial state.
   EXPECT_EQ("", manager()->props_.prohibited_technologies);
-  EXPECT_FALSE(manager()->IsTechnologyProhibited(Technology::kWiMax));
+  EXPECT_FALSE(manager()->IsTechnologyProhibited(Technology::kCellular));
   EXPECT_FALSE(manager()->IsTechnologyProhibited(Technology::kVPN));
 
   Error smoke_error;
@@ -4634,7 +4633,7 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kVPN));
   ON_CALL(*mock_devices_[1], technology())
-      .WillByDefault(Return(Technology::kWiMax));
+      .WillByDefault(Return(Technology::kCellular));
   ON_CALL(*mock_devices_[2], technology())
       .WillByDefault(Return(Technology::kWifi));
 
@@ -4647,9 +4646,9 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   EXPECT_CALL(*mock_devices_[1], SetEnabledNonPersistent(false, _, _));
   EXPECT_CALL(*mock_devices_[2], SetEnabledNonPersistent(false, _, _)).Times(0);
   Error error;
-  manager()->SetProhibitedTechnologies("wimax,vpn", &error);
+  manager()->SetProhibitedTechnologies("cellular,vpn", &error);
   EXPECT_TRUE(manager()->IsTechnologyProhibited(Technology::kVPN));
-  EXPECT_TRUE(manager()->IsTechnologyProhibited(Technology::kWiMax));
+  EXPECT_TRUE(manager()->IsTechnologyProhibited(Technology::kCellular));
   EXPECT_FALSE(manager()->IsTechnologyProhibited(Technology::kWifi));
   Mock::VerifyAndClearExpectations(mock_devices_[0].get());
   Mock::VerifyAndClearExpectations(mock_devices_[1].get());
@@ -4673,7 +4672,7 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   ON_CALL(*mock_devices_[3], technology())
       .WillByDefault(Return(Technology::kVPN));
   ON_CALL(*mock_devices_[4], technology())
-      .WillByDefault(Return(Technology::kWiMax));
+      .WillByDefault(Return(Technology::kCellular));
   ON_CALL(*mock_devices_[5], technology())
       .WillByDefault(Return(Technology::kWifi));
 

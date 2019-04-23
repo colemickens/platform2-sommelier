@@ -381,10 +381,10 @@ TEST_F(DeviceInfoTest, GetUninitializedTechnologies) {
   EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 
-  device_info_.infos_[2].technology = Technology::kWiMax;
+  device_info_.infos_[2].technology = Technology::kWifi;
   technologies = device_info_.GetUninitializedTechnologies();
   expected_technologies.insert(Technology::NameFromIdentifier(
-      Technology::kWiMax));
+      Technology::kWifi));
   EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 

@@ -234,7 +234,7 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
               GetString(DefaultProfile::kStorageId,
                         DefaultProfile::kStorageIgnoredDNSSearchPaths, _))
       .WillOnce(DoAll(SetArgPointee<2>(ignored_paths), Return(true)));
-  const string link_monitor_technologies("ethernet,wimax");
+  const string link_monitor_technologies("ethernet,wifi");
   EXPECT_CALL(*storage,
               GetString(DefaultProfile::kStorageId,
                         DefaultProfile::kStorageLinkMonitorTechnologies, _))
@@ -246,7 +246,7 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
                         DefaultProfile::kStorageNoAutoConnectTechnologies, _))
       .WillOnce(
           DoAll(SetArgPointee<2>(no_auto_connect_technologies), Return(true)));
-  const string prohibited_technologies("vpn,wimax");
+  const string prohibited_technologies("vpn,wifi");
   EXPECT_CALL(*storage,
               GetString(DefaultProfile::kStorageId,
                         DefaultProfile::kStorageProhibitedTechnologies, _))

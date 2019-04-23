@@ -214,7 +214,7 @@ TEST_F(DaemonTaskTest, ApplySettings) {
   vector<string> kDHCPv6EnabledDevices{"eth2", "eth3"};
   settings.dhcpv6_enabled_devices = kDHCPv6EnabledDevices;
   settings.ignore_unknown_ethernet = false;
-  settings.portal_list = "wimax";
+  settings.portal_list = "cellular";
   settings.use_portal_list = true;
   settings.passive_mode = true;
   settings.prepend_dns_servers = "8.8.8.8,8.8.4.4";
@@ -224,7 +224,7 @@ TEST_F(DaemonTaskTest, ApplySettings) {
   EXPECT_CALL(*manager_, SetDHCPv6EnabledDevices(kDHCPv6EnabledDevices));
   EXPECT_CALL(*manager_, SetTechnologyOrder("wifi,ethernet", _));
   EXPECT_CALL(*manager_, SetIgnoreUnknownEthernet(false));
-  EXPECT_CALL(*manager_, SetStartupPortalList("wimax"));
+  EXPECT_CALL(*manager_, SetStartupPortalList("cellular"));
   EXPECT_CALL(*manager_, SetPassiveMode());
   EXPECT_CALL(*manager_, SetPrependDNSServers("8.8.8.8,8.8.4.4"));
   EXPECT_CALL(*manager_, SetMinimumMTU(256));

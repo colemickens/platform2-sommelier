@@ -248,7 +248,7 @@ MATCHER_P(ServiceWithStorageId, storage_id, "") {
 TEST_F(VPNProviderTest, CreateServicesFromProfile) {
   FakeStore storage;
   storage.SetString("no_type", "Name", "No Type Entry");
-  storage.SetString("no_vpn", "Type", "wimax");
+  storage.SetString("no_vpn", "Type", "cellular");
   storage.SetString("vpn_no_provider_type", "Type", "vpn");
   storage.SetString("vpn_no_name", "Type", "vpn");
   storage.SetString("vpn_no_name", "Provider.Type", "openvpn");
@@ -334,7 +334,7 @@ TEST_F(VPNProviderTest, CreateArcService) {
 
 TEST_F(VPNProviderTest, CreateTemporaryServiceFromProfile) {
   FakeStore storage;
-  storage.SetString("no_vpn", "Type", "wimax");
+  storage.SetString("no_vpn", "Type", "cellular");
   storage.SetString("vpn_no_provider_type", "Type", "vpn");
   storage.SetString("vpn_no_name", "Type", "vpn");
   storage.SetString("vpn_no_name", "Provider.Type", "openvpn");
