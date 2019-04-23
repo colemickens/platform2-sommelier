@@ -43,7 +43,6 @@ copies.
 | [common-mk](./common-mk/) | Common build & test logic for platform2 projects |
 | [container_utils](./container_utils/) | Support tools for containers (e.g. device-jail) |
 | [crash-reporter](./crash-reporter/) | The system crash handler & reporter |
-| [cromo](./cromo/) | modemmanager compatible D-Bus interface to support closed source modem drivers |
 | [cros-disks](./cros-disks/) | Daemon for mounting removable media (e.g. USB sticks and SD cards) |
 | [cros_component](./cros_component/) ||
 | [crosdns](./crosdns/) | Hostname resolution service for Chrome OS |

@@ -110,7 +110,6 @@ def CheckSubdirs():
       'avtest_label_detect',
       'buffet',
       'container_utils',
-      'cromo',
       'cros-disks',
       'cryptohome',
       'fitpicker',
