@@ -346,7 +346,11 @@ elif crossystem 'devsw_boot?0' && ! crossystem 'mainfw_type?recovery'; then
     # clobber as aggressively.  Fast will do the trick.
     chromeos-boot-alert leave_dev
     CLOBBER_ARGS='fast keepimg'
-    clobber-log -- "Leave developer mode"
+    if [ -O "${DEV_MODE_FILE}" ]; then
+      clobber-log -- "Leave developer mode, dev_mode file present"
+    else
+      clobber-log -- "Leave developer mode, no dev_mode file"
+    fi
   fi
 elif crossystem 'devsw_boot?1' && ! crossystem 'mainfw_type?recovery'; then
   if [ ! -O "${DEV_MODE_FILE}" ]; then
