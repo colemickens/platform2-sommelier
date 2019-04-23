@@ -32,9 +32,9 @@
 #include "shill/power_manager.h"
 #include "shill/profile.h"
 #include "shill/property_store.h"
+#include "shill/provider_interface.h"
 #include "shill/service.h"
 #include "shill/upstart/upstart.h"
-#include "shill/wimax/wimax_provider.h"
 
 namespace shill {
 
@@ -377,9 +377,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 #if !defined(DISABLE_WIFI)
   WiFiProvider* wifi_provider() const { return wifi_provider_.get(); }
 #endif  // DISABLE_WIFI
-#if !defined(DISABLE_WIMAX)
-  virtual WiMaxProvider* wimax_provider() { return wimax_provider_.get(); }
-#endif  // DISABLE_WIMAX
   PropertyStore* mutable_store() { return &store_; }
   virtual const PropertyStore& store() const { return store_; }
   virtual const base::FilePath& run_path() const { return run_path_; }
@@ -529,7 +526,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   friend class ServiceTest;
   friend class VPNServiceTest;
   friend class WiFiObjectTest;
-  friend class WiMaxProviderTest;
 
   FRIEND_TEST(CellularCapabilityUniversalMainTest, TerminationAction);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
@@ -762,9 +758,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 #if !defined(DISABLE_WIFI)
   std::unique_ptr<WiFiProvider> wifi_provider_;
 #endif  // DISABLE_WIFI
-#if !defined(DISABLE_WIMAX)
-  std::unique_ptr<WiMaxProvider> wimax_provider_;
-#endif  // DISABLE_WIMAX
 
   // Entity that calls kernel commands ('tc') to throttle network bandwidth.
   std::unique_ptr<Throttler> throttler_;

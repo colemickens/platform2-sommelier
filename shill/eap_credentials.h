@@ -59,11 +59,6 @@ class EapCredentials {
       CertificateFile* certificate_file,
       KeyValueStore* params) const;
 
-  // Populate the WiMax connection parameters |params| with the
-  // credentials in |this|.
-  virtual void PopulateWiMaxProperties(
-      KeyValueStore* params) const;
-
   // Save EAP properties to |storage| in group |id|.  If |save_credentials|
   // is true, passwords and identities that are a part of the credentials are
   // also saved.

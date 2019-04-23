@@ -21,7 +21,6 @@ class Technology {
     kEthernetEap,
     kWifi,
     kWiFiMonitor,
-    kWiMax,
     kCellular,
     kVPN,
     kTunnel,
@@ -65,7 +64,7 @@ class Technology {
       Error* error);
 
   // Returns true if |technology| is a primary connectivity technology, i.e.
-  // Ethernet, Cellular, WiFi, WiMAX, or PPPoE.
+  // Ethernet, Cellular, WiFi, or PPPoE.
   static bool IsPrimaryConnectivityTechnology(Identifier technology);
 };
 

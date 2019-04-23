@@ -50,12 +50,6 @@
 #include "shill/dbus/chromeos_supplicant_process_proxy.h"
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
-#if !defined(DISABLE_WIMAX)
-#include "shill/dbus/chromeos_wimax_device_proxy.h"
-#include "shill/dbus/chromeos_wimax_manager_proxy.h"
-#include "shill/dbus/chromeos_wimax_network_proxy.h"
-#endif  // DISABLE_WIMAX
-
 #include "shill/manager.h"
 
 using brillo::dbus_utils::AsyncEventSequencer;
@@ -343,27 +337,5 @@ std::unique_ptr<mm1::SimProxyInterface> ChromeosDBusControl::CreateMM1SimProxy(
   return std::make_unique<mm1::ChromeosSimProxy>(proxy_bus_, path, service);
 }
 #endif  // DISABLE_CELLULAR
-
-#if !defined(DISABLE_WIMAX)
-std::unique_ptr<WiMaxDeviceProxyInterface>
-ChromeosDBusControl::CreateWiMaxDeviceProxy(const string& path) {
-  return std::make_unique<ChromeosWiMaxDeviceProxy>(proxy_bus_, path);
-}
-
-std::unique_ptr<WiMaxManagerProxyInterface>
-ChromeosDBusControl::CreateWiMaxManagerProxy(
-    const base::Closure& service_appeared_callback,
-    const base::Closure& service_vanished_callback) {
-  return std::make_unique<ChromeosWiMaxManagerProxy>(dispatcher_,
-                                                     proxy_bus_,
-                                                     service_appeared_callback,
-                                                     service_vanished_callback);
-}
-
-std::unique_ptr<WiMaxNetworkProxyInterface>
-ChromeosDBusControl::CreateWiMaxNetworkProxy(const string& path) {
-  return std::make_unique<ChromeosWiMaxNetworkProxy>(proxy_bus_, path);
-}
-#endif  // DISABLE_WIMAX
 
 }  // namespace shill

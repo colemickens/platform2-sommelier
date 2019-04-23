@@ -45,12 +45,6 @@
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
-#if !defined(DISABLE_WIMAX)
-#include "shill/wimax/wimax_device_proxy_interface.h"
-#include "shill/wimax/wimax_manager_proxy_interface.h"
-#include "shill/wimax/wimax_network_proxy_interface.h"
-#endif  // DISABLE_WIMAX
-
 namespace shill {
 // An implementation of the Shill RPC-channel-interface-factory interface that
 // returns nice mocks.
@@ -171,19 +165,6 @@ class NiceMockControl : public ControlInterface {
                std::unique_ptr<mm1::SimProxyInterface>(
                    const std::string& path, const std::string& service));
 #endif  // DISABLE_CELLULAR
-
-#if !defined(DISABLE_WIMAX)
-  MOCK_METHOD1(
-      CreateWiMaxDeviceProxy,
-      std::unique_ptr<WiMaxDeviceProxyInterface>(const std::string& path));
-  MOCK_METHOD2(CreateWiMaxManagerProxy,
-               std::unique_ptr<WiMaxManagerProxyInterface>(
-                   const base::Closure& service_appeared_callback,
-                   const base::Closure& service_vanished_callback));
-  MOCK_METHOD1(
-      CreateWiMaxNetworkProxy,
-      std::unique_ptr<WiMaxNetworkProxyInterface>(const std::string& path));
-#endif  // DISABLE_WIMAX
 
  private:
   std::string null_identifier_;

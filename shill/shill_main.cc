@@ -104,7 +104,7 @@ const char kHelpMessage[] = "\n"
 
 const char kLoggerCommand[] = "/usr/bin/logger";
 const char kLoggerUser[] = "syslog";
-const char kDefaultTechnologyOrder[] = "vpn,ethernet,wifi,wimax,cellular";
+const char kDefaultTechnologyOrder[] = "vpn,ethernet,wifi,cellular";
 
 // Always logs to the syslog and logs to stderr if
 // we are running in the foreground.

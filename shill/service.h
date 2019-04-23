@@ -667,8 +667,6 @@ class Service : public base::RefCounted<Service> {
   friend class VPNProviderTest;
   friend class VPNServiceTest;
   friend class WiFiServiceTest;
-  friend class WiMaxProviderTest;
-  friend class WiMaxServiceTest;
   friend void TestCommonPropertyChanges(ServiceRefPtr, ServiceMockAdaptor*);
   friend void TestCustomSetterNoopChange(ServiceRefPtr, MockManager*);
   friend void TestNamePropertyChange(ServiceRefPtr, ServiceMockAdaptor*);
@@ -718,7 +716,6 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(WiFiServiceTest, LoadPassphraseClearCredentials);
   FRIEND_TEST(WiFiTimerTest, ReconnectTimer);
   FRIEND_TEST(WiFiMainTest, EAPEvent);  // For eap_.
-  FRIEND_TEST(WiMaxServiceTest, ChangeCredResetHasEverConnected);
   FRIEND_TEST(EthernetEapServiceTest, OnEapCredentialsChanged);
 
   static const char kAutoConnConnected[];

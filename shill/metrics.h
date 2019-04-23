@@ -497,7 +497,7 @@ class Metrics {
     kDeviceTechnologyTypeUnknown = 0,
     kDeviceTechnologyTypeEthernet = 1,
     kDeviceTechnologyTypeWifi = 2,
-    kDeviceTechnologyTypeWimax = 3,
+    // deprecated: kDeviceTechnologyTypeWimax = 3,
     kDeviceTechnologyTypeCellular = 4,
     kDeviceTechnologyTypeMax
   };

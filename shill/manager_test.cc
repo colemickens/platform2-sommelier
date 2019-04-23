@@ -46,7 +46,6 @@
 #include "shill/service_under_test.h"
 #include "shill/testing.h"
 #include "shill/upstart/mock_upstart.h"
-#include "shill/wimax/wimax_service.h"
 
 #if !defined(DISABLE_WIFI)
 #include "shill/wifi/mock_wifi_provider.h"
@@ -1138,7 +1137,6 @@ TEST_F(ManagerTest, PushPopProfile) {
   EXPECT_TRUE(manager.IsTechnologyAutoConnectDisabled(Technology::kCellular));
   EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kEthernet));
   EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kWifi));
-  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kWiMax));
 
   // Use InsertUserProfile() instead.  Although a machine profile is valid
   // in this state, it cannot be added via InsertUserProfile.
@@ -1153,7 +1151,6 @@ TEST_F(ManagerTest, PushPopProfile) {
   EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kCellular));
   EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kEthernet));
   EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kWifi));
-  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kWiMax));
 
   EXPECT_EQ(Error::kSuccess,
             TestInsertUserProfile(&manager, kProfile1, kUserHash1));
@@ -1161,7 +1158,6 @@ TEST_F(ManagerTest, PushPopProfile) {
   EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kCellular));
   EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kEthernet));
   EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kWifi));
-  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kWiMax));
 
   EXPECT_EQ(3, profiles.size());
   EXPECT_EQ(kUserHash0, profiles[1]->GetUserHash());
@@ -1777,31 +1773,6 @@ TEST_F(ManagerTest, GetServiceVPN) {
 
 #endif  // DISABLE_VPN
 }
-
-#if !defined(DISABLE_WIMAX)
-
-TEST_F(ManagerTest, GetServiceWiMaxNoNetworkId) {
-  KeyValueStore args;
-  Error e;
-  args.SetString(kTypeProperty, kTypeWimax);
-  ServiceRefPtr service = manager()->GetService(args, &e);
-  EXPECT_EQ(Error::kInvalidArguments, e.type());
-  EXPECT_EQ("Missing WiMAX network id.", e.message());
-  EXPECT_FALSE(service);
-}
-
-TEST_F(ManagerTest, GetServiceWiMax) {
-  KeyValueStore args;
-  Error e;
-  args.SetString(kTypeProperty, kTypeWimax);
-  args.SetString(WiMaxService::kNetworkIdProperty, "01234567");
-  args.SetString(kNameProperty, "WiMAX Network");
-  ServiceRefPtr service = manager()->GetService(args, &e);
-  EXPECT_TRUE(e.IsSuccess());
-  EXPECT_TRUE(service.get());
-}
-
-#endif  // DISABLE_WIMAX
 
 TEST_F(ManagerTest, ConfigureServiceWithInvalidProfile) {
   // Manager calls ActiveProfile() so we need at least one profile installed.
@@ -2477,25 +2448,20 @@ TEST_F(ManagerTest, DevicePresenceStatusCheck) {
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
   manager()->RegisterDevice(mock_devices_[2]);
-  manager()->RegisterDevice(mock_devices_[3]);
 
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
   ON_CALL(*mock_devices_[1], technology())
       .WillByDefault(Return(Technology::kWifi));
   ON_CALL(*mock_devices_[2], technology())
-      .WillByDefault(Return(Technology::kCellular));
-  ON_CALL(*mock_devices_[3], technology())
-      .WillByDefault(Return(Technology::kWifi));
+      .WillByDefault(Return(Technology::kEthernet));
 
   EXPECT_CALL(*metrics(),
       NotifyDevicePresenceStatus(Technology::kEthernet, true));
   EXPECT_CALL(*metrics(),
       NotifyDevicePresenceStatus(Technology::kWifi, true));
   EXPECT_CALL(*metrics(),
-      NotifyDevicePresenceStatus(Technology::kWiMax, false));
-  EXPECT_CALL(*metrics(),
-      NotifyDevicePresenceStatus(Technology::kCellular, true));
+      NotifyDevicePresenceStatus(Technology::kCellular, false));
   manager()->DevicePresenceStatusCheck();
 }
 
@@ -4016,16 +3982,6 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
                                "addr",
                                1));
   manager()->RegisterDevice(cell_device);
-  // WiMax
-  auto wimax_device = make_scoped_refptr(
-      new NiceMock<MockDevice>(control_interface(),
-                               dispatcher(),
-                               metrics(),
-                               manager(),
-                               "null",
-                               "addr",
-                               2));
-  manager()->RegisterDevice(wimax_device);
   // Ethernet
   auto eth_device = make_scoped_refptr(
       new NiceMock<MockDevice>(control_interface(),
@@ -4078,22 +4034,6 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
   EXPECT_CALL(*cell_device, IsConnectedToService(IsRefPtrTo(cell_service)))
       .WillRepeatedly(Return(true));
 
-  // WiMax
-  MockServiceRefPtr wimax_service =
-      new NiceMock<MockService>(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                manager());
-  manager()->RegisterService(wimax_service);
-  EXPECT_CALL(*wimax_service, state())
-      .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*wimax_service, IsConnected()).WillRepeatedly(Return(true));
-
-  EXPECT_CALL(*wimax_device, IsConnectedToService(_))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*wimax_device, IsConnectedToService(IsRefPtrTo(wimax_service)))
-      .WillRepeatedly(Return(true));
-
   // Ethernet
   MockServiceRefPtr eth_service =
       new NiceMock<MockService>(control_interface(),
@@ -4123,7 +4063,6 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
 
   EXPECT_CALL(*wifi_device, StartConnectivityTest()).WillOnce(Return(true));
   EXPECT_CALL(*cell_device, StartConnectivityTest()).WillOnce(Return(true));
-  EXPECT_CALL(*wimax_device, StartConnectivityTest()).WillOnce(Return(true));
   EXPECT_CALL(*eth_device, StartConnectivityTest()).WillOnce(Return(true));
   EXPECT_CALL(*vpn_device, StartConnectivityTest()).Times(0);
   manager()->CreateConnectivityReport(nullptr);

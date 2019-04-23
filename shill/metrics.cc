@@ -1845,9 +1845,6 @@ void Metrics::NotifyDeviceRemovedEvent(Technology::Identifier technology_id) {
     case Technology::kWifi:
       type = kDeviceTechnologyTypeWifi;
       break;
-    case Technology::kWiMax:
-      type = kDeviceTechnologyTypeWimax;
-      break;
     case Technology::kCellular:
       type = kDeviceTechnologyTypeCellular;
       break;

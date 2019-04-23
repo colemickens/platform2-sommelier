@@ -46,9 +46,6 @@ class ModemSimpleProxyInterface;
 class PowerManagerProxyDelegate;
 class PowerManagerProxyInterface;
 class UpstartProxyInterface;
-class WiMaxDeviceProxyInterface;
-class WiMaxManagerProxyInterface;
-class WiMaxNetworkProxyInterface;
 
 #if !defined(DISABLE_WIFI)
 class SupplicantBSSProxyInterface;
@@ -196,16 +193,6 @@ class ControlInterface {
   virtual std::unique_ptr<mm1::SimProxyInterface> CreateMM1SimProxy(
       const std::string& path, const std::string& service) = 0;
 #endif  // DISABLE_CELLULAR
-
-#if !defined(DISABLE_WIMAX)
-  virtual std::unique_ptr<WiMaxDeviceProxyInterface> CreateWiMaxDeviceProxy(
-      const std::string& path) = 0;
-  virtual std::unique_ptr<WiMaxManagerProxyInterface> CreateWiMaxManagerProxy(
-      const base::Closure& service_appeared_callback,
-      const base::Closure& service_vanished_callback) = 0;
-  virtual std::unique_ptr<WiMaxNetworkProxyInterface> CreateWiMaxNetworkProxy(
-      const std::string& path) = 0;
-#endif  // DISABLE_WIMAX
 };
 
 }  // namespace shill

@@ -41,8 +41,6 @@
 #include "shill/net/rtnl_message.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_provider.h"
-#include "shill/wimax/mock_wimax_provider.h"
-#include "shill/wimax/wimax.h"
 
 #if !defined(DISABLE_WIFI)
 #include "shill/net/mock_netlink_manager.h"
@@ -467,29 +465,6 @@ TEST_F(DeviceInfoTest, CreateDeviceCellular) {
 }
 
 #endif  // DISABLE_CELLULAR
-
-#if !defined(DISABLE_WIMAX)
-
-TEST_F(DeviceInfoTest, CreateDeviceWiMax) {
-  IPAddress address = CreateInterfaceAddress();
-
-  // A WiMax device should be offered to WiMaxProvider.
-  StrictMock<MockWiMaxProvider> wimax_provider;
-  EXPECT_CALL(manager_, wimax_provider()).WillOnce(Return(&wimax_provider));
-  EXPECT_CALL(wimax_provider, OnDeviceInfoAvailable(kTestDeviceName)).Times(1);
-  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
-  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
-                                                    IsIPAddress(address)));
-  device_info_.infos_[kTestDeviceIndex].mac_address =
-      ByteString(kTestMACAddress, sizeof(kTestMACAddress));
-  EXPECT_FALSE(CreateDevice(
-      kTestDeviceName, "address", kTestDeviceIndex, Technology::kWiMax));
-  // The MAC address is clear such that it is obtained via
-  // GetMACAddressFromKernel() instead.
-  EXPECT_TRUE(device_info_.infos_[kTestDeviceIndex].mac_address.IsEmpty());
-}
-
-#endif  // DISABLE_WIMAX
 
 TEST_F(DeviceInfoTest, CreateDeviceEthernet) {
   IPAddress address = CreateInterfaceAddress();
@@ -1462,11 +1437,6 @@ TEST_F(DeviceInfoTechnologyTest, Bridge) {
 TEST_F(DeviceInfoTechnologyTest, Ethernet) {
   CreateInfoSymLink("device/driver", "xxx");
   EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology());
-}
-
-TEST_F(DeviceInfoTechnologyTest, WiMax) {
-  CreateInfoSymLink("device/driver", "gdm_wimax");
-  EXPECT_EQ(Technology::kWiMax, GetDeviceTechnology());
 }
 
 TEST_F(DeviceInfoTechnologyTest, CellularGobi1) {

@@ -20,7 +20,6 @@ TEST(TechnologyTest, IdentifierFromName) {
   EXPECT_EQ(Technology::kEthernetEap,
             Technology::IdentifierFromName("etherneteap"));
   EXPECT_EQ(Technology::kWifi, Technology::IdentifierFromName("wifi"));
-  EXPECT_EQ(Technology::kWiMax, Technology::IdentifierFromName("wimax"));
   EXPECT_EQ(Technology::kCellular, Technology::IdentifierFromName("cellular"));
   EXPECT_EQ(Technology::kTunnel, Technology::IdentifierFromName("tunnel"));
   EXPECT_EQ(Technology::kLoopback, Technology::IdentifierFromName("loopback"));
@@ -36,7 +35,6 @@ TEST(TechnologyTest, NameFromIdentifier) {
   EXPECT_EQ("etherneteap",
             Technology::NameFromIdentifier(Technology::kEthernetEap));
   EXPECT_EQ("wifi", Technology::NameFromIdentifier(Technology::kWifi));
-  EXPECT_EQ("wimax", Technology::NameFromIdentifier(Technology::kWiMax));
   EXPECT_EQ("cellular", Technology::NameFromIdentifier(Technology::kCellular));
   EXPECT_EQ("tunnel", Technology::NameFromIdentifier(Technology::kTunnel));
   EXPECT_EQ("loopback", Technology::NameFromIdentifier(Technology::kLoopback));

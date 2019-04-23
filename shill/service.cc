@@ -183,8 +183,6 @@ Service::Service(ControlInterface* control_interface,
   // kCellularPPPUsernameProperty: Registered in CellularService
   // kCellularPPPPasswordProperty: Registered in CellularService
 
-  // kNetworkIdProperty: Registered in WiMaxService
-
   HelpRegisterDerivedString(kCheckPortalProperty,
                             &Service::GetCheckPortal,
                             &Service::SetCheckPortal);
@@ -214,7 +212,7 @@ Service::Service(ControlInterface* control_interface,
                             &Service::GetNameProperty,
                             &Service::SetNameProperty);
   // kPassphraseProperty: Registered in WiFiService
-  // kPassphraseRequiredProperty: Registered in WiFiService, WiMaxService
+  // kPassphraseRequiredProperty: Registered in WiFiService
   store_.RegisterConstString(kPreviousErrorProperty,
                              &previous_error_);
   store_.RegisterConstInt32(kPreviousErrorSerialNumberProperty,

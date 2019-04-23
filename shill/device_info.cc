@@ -93,9 +93,6 @@ constexpr char kDriverCdcEther[] = "cdc_ether";
 // kModemDrivers list because we need to do additional checking.
 constexpr char kDriverCdcNcm[] = "cdc_ncm";
 
-// Name of the GDM WiMAX driver.
-constexpr char kDriverGdmWiMax[] = "gdm_wimax";
-
 // Name of the virtio network driver.
 constexpr char kDriverVirtioNet[] = "virtio_net";
 
@@ -270,8 +267,7 @@ void DeviceInfo::DeregisterDevice(const DeviceRefPtr& device) {
 
   SLOG(this, 2) << __func__ << "(" << device->link_name() << ", "
                 << interface_index << ")";
-  CHECK((device->technology() == Technology::kCellular) ||
-        (device->technology() == Technology::kWiMax));
+  CHECK_EQ(device->technology(), Technology::kCellular);
 
   // Release reference to the device
   map<int, Info>::iterator iter = infos_.find(interface_index);
@@ -422,12 +418,6 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
     }
   }
 
-  if (driver_name == kDriverGdmWiMax) {
-    SLOG(this, 2) << StringPrintf("%s: device %s is a WiMAX device",
-                                  __func__, iface_name.c_str());
-    return Technology::kWiMax;
-  }
-
   // For cdc_ether / cdc_ncm devices, make sure it's a modem because this driver
   // can be used for other ethernet devices.
   if (driver_name == kDriverCdcEther || driver_name == kDriverCdcNcm) {
@@ -567,25 +557,6 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string& link_name,
       GetWiFiInterfaceInfo(interface_index);
       break;
 #endif  // DISABLE_WIFI
-    case Technology::kWiMax:
-#if defined(DISABLE_WIMAX)
-      LOG(WARNING) << "WiMax support is not implemented. Ignore WiMax link "
-                   << link_name << " at index " << interface_index << ".";
-      return nullptr;
-#else
-      // WiMax devices are managed by WiMaxProvider.
-      SLOG(this, 2) << "WiMax link " << link_name
-                    << " at index " << interface_index
-                    << " -- notifying WiMaxProvider.";
-      // The MAC address provided by RTNL may not be the final value as the
-      // WiMAX device may change the address after initialization. Clear it
-      // here, and it will be fetched from the kernel when
-      // WiMaxProvider::CreateDevice() is called after the WiMAX device DBus
-      // object is created by the WiMAX manager daemon.
-      infos_[interface_index].mac_address.Clear();
-      manager_->wimax_provider()->OnDeviceInfoAvailable(link_name);
-      break;
-#endif  // DISABLE_WIMAX
     case Technology::kArc:
       // shill doesn't touch the IP configuration for kArc devices.
       flush = false;
@@ -1115,7 +1086,7 @@ void DeviceInfo::RemoveInfo(int interface_index) {
   map<int, Info>::iterator iter = infos_.find(interface_index);
   if (iter != infos_.end()) {
     SLOG(this, 2) << "Removing info for device index: " << interface_index;
-    // Deregister the device if not deregistered yet. Cellular and WiMax devices
+    // Deregister the device if not deregistered yet. Cellular devices
     // are deregistered through a call to DeviceInfo::DeregisterDevice.
     if (iter->second.device.get()) {
       manager_->DeregisterDevice(iter->second.device);

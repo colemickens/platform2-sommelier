@@ -52,7 +52,6 @@ const char* const kScopeNames[] = {
   "tc",
   "vpn",
   "wifi",
-  "wimax",
 };
 
 static_assert(arraysize(kScopeNames) == ScopeLogger::kNumScopes,

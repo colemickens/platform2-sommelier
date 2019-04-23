@@ -31,7 +31,6 @@ class MockManager : public Manager {
 #if !defined(DISABLE_WIRED_8021X)
   MOCK_CONST_METHOD0(ethernet_eap_provider, EthernetEapProvider*());
 #endif  // DISABLE_WIRED_8021X
-  MOCK_METHOD0(wimax_provider, WiMaxProvider*());
   MOCK_METHOD0(mutable_store, PropertyStore*());
   MOCK_CONST_METHOD0(store, const PropertyStore&());
   MOCK_CONST_METHOD0(run_path, const base::FilePath&());

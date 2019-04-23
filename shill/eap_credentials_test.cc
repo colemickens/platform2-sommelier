@@ -453,38 +453,6 @@ TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesPEM) {
   }
 }
 
-TEST_F(EapCredentialsTest, PopulateWiMaxProperties) {
-  {
-    KeyValueStore parameters;
-    eap_.PopulateWiMaxProperties(&parameters);
-
-    EXPECT_FALSE(parameters.ContainsString(
-        wimax_manager::kEAPAnonymousIdentity));
-    EXPECT_FALSE(parameters.ContainsString(
-        wimax_manager::kEAPUserIdentity));
-    EXPECT_FALSE(parameters.ContainsString(
-        wimax_manager::kEAPUserPassword));
-  }
-
-  const string kAnonymousIdentity("TestAnonymousIdentity");
-  SetAnonymousIdentity(kAnonymousIdentity);
-  const string kIdentity("TestUserIdentity");
-  SetIdentity(kIdentity);
-  const string kPassword("TestPassword");
-  SetPassword(kPassword);
-
-  {
-    KeyValueStore parameters;
-    eap_.PopulateWiMaxProperties(&parameters);
-    EXPECT_EQ(kAnonymousIdentity, parameters.LookupString(
-        wimax_manager::kEAPAnonymousIdentity, ""));
-    EXPECT_EQ(kIdentity, parameters.LookupString(
-        wimax_manager::kEAPUserIdentity, ""));
-    EXPECT_EQ(kPassword, parameters.LookupString(
-        wimax_manager::kEAPUserPassword, ""));
-  }
-}
-
 TEST_F(EapCredentialsTest, Reset) {
   EXPECT_TRUE(IsReset());
   EXPECT_TRUE(GetKeyManagement().empty());

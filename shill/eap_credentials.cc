@@ -164,20 +164,6 @@ void EapCredentials::PopulateSupplicantProperties(
   }
 }
 
-// static
-void EapCredentials::PopulateWiMaxProperties(KeyValueStore* params) const {
-  if (!anonymous_identity_.empty()) {
-    params->SetString(wimax_manager::kEAPAnonymousIdentity,
-                      anonymous_identity_);
-  }
-  if (!identity_.empty()) {
-    params->SetString(wimax_manager::kEAPUserIdentity, identity_);
-  }
-  if (!password_.empty()) {
-    params->SetString(wimax_manager::kEAPUserPassword, password_);
-  }
-}
-
 void EapCredentials::InitPropertyStore(PropertyStore* store) {
   // Authentication properties.
   store->RegisterString(kEapAnonymousIdentityProperty, &anonymous_identity_);

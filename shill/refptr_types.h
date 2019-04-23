@@ -33,10 +33,6 @@ class WiFi;
 using WiFiConstRefPtr = scoped_refptr<const WiFi>;
 using WiFiRefPtr = scoped_refptr<WiFi>;
 
-class WiMax;
-using WiMaxConstRefPtr = scoped_refptr<const WiMax>;
-using WiMaxRefPtr = scoped_refptr<WiMax>;
-
 class WiFiEndpoint;
 using WiFiEndpointConstRefPtr = scoped_refptr<const WiFiEndpoint>;
 using WiFiEndpointRefPtr = scoped_refptr<WiFiEndpoint>;
@@ -60,10 +56,6 @@ using VPNServiceRefPtr = scoped_refptr<VPNService>;
 class WiFiService;
 using WiFiServiceConstRefPtr = scoped_refptr<const WiFiService>;
 using WiFiServiceRefPtr = scoped_refptr<WiFiService>;
-
-class WiMaxService;
-using WiMaxServiceConstRefPtr = scoped_refptr<const WiMaxService>;
-using WiMaxServiceRefPtr = scoped_refptr<WiMaxService>;
 
 class IPConfig;
 using IPConfigRefPtr = scoped_refptr<IPConfig>;

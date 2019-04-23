@@ -68,7 +68,6 @@ PropertyStoreTest::PropertyStoreTest()
       default_technology_order_{Technology::kVPN,
                                 Technology::kEthernet,
                                 Technology::kWifi,
-                                Technology::kWiMax,
                                 Technology::kCellular},
       manager_(control_interface(),
                dispatcher(),

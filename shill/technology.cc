@@ -38,8 +38,6 @@ Technology::Identifier Technology::IdentifierFromName(const string& name) {
     return kEthernetEap;
   } else if (name == kTypeWifi) {
     return kWifi;
-  } else if (name == kTypeWimax) {
-    return kWiMax;
   } else if (name == kTypeCellular) {
     return kCellular;
   } else if (name == kTypeVPN) {
@@ -65,8 +63,6 @@ string Technology::NameFromIdentifier(Technology::Identifier id) {
     return kTypeEthernetEap;
   } else if (id == kWifi) {
     return kTypeWifi;
-  } else if (id == kWiMax) {
-    return kTypeWimax;
   } else if (id == kCellular) {
     return kTypeCellular;
   } else if (id == kVPN) {
@@ -141,7 +137,6 @@ bool Technology::IsPrimaryConnectivityTechnology(Identifier technology) {
   return (technology == kCellular ||
           technology == kEthernet ||
           technology == kWifi ||
-          technology == kWiMax ||
           technology == kPPPoE);
 }
 

@@ -409,8 +409,6 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(ManagerTest, SetEnabledStateForTechnology);
   FRIEND_TEST(ManagerTest, GetEnabledDeviceByLinkName);
   FRIEND_TEST(WiFiMainTest, UseArpGateway);
-  FRIEND_TEST(WiMaxTest, ConnectTimeout);
-  FRIEND_TEST(WiMaxTest, UseNoArpGateway);
 
   virtual ~Device();
 

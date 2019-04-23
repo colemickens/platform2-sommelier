@@ -52,7 +52,6 @@
 #include "shill/throttler.h"
 #include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
-#include "shill/wimax/wimax_service.h"
 
 #if !defined(DISABLE_WIFI)
 #include "shill/wifi/wifi.h"
@@ -100,7 +99,6 @@ constexpr int kDeviceStatusCheckIntervalMilliseconds =
 const char* const kProbeTechnologies[] = {
     kTypeEthernet,
     kTypeWifi,
-    kTypeWimax,
     kTypeCellular,
 };
 
@@ -161,10 +159,6 @@ Manager::Manager(ControlInterface* control_interface,
       wifi_provider_(
           new WiFiProvider(control_interface, dispatcher, metrics, this)),
 #endif  // DISABLE_WIFI
-#if !defined(DISABLE_WIMAX)
-      wimax_provider_(
-          new WiMaxProvider(control_interface, dispatcher, metrics, this)),
-#endif  // DISABLE_WIMAX
       throttler_(new Throttler(dispatcher, this)),
       resolver_(Resolver::GetInstance()),
       running_(false),
@@ -2704,9 +2698,6 @@ void Manager::UpdateProviderMapping() {
 #if !defined(DISABLE_WIFI)
   providers_[Technology::kWifi] = wifi_provider_.get();
 #endif  // DISABLE_WIFI
-#if !defined(DISABLE_WIMAX)
-  providers_[Technology::kWiMax] = wimax_provider_.get();
-#endif  // DISABLE_WIMAX
 }
 
 std::vector<std::string> Manager::GetDeviceInterfaceNames() {

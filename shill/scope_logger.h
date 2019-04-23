@@ -56,7 +56,6 @@ class ScopeLogger {
     kTC,
     kVPN,
     kWiFi,
-    kWiMax,
     kNumScopes
   };
 

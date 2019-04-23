@@ -82,10 +82,6 @@ pkg_config("target_defaults") {
     defines += [ "DISABLE_WIFI" ]
   }
 
-  if (!use.wimax) {
-    defines += [ "DISABLE_WIMAX" ]
-  }
-
   if (!use.wired_8021x) {
     defines += [ "DISABLE_WIRED_8021X" ]
   }
@@ -212,9 +208,6 @@ pkg_config("libshill_all_dependent_config") {
     "libpower_manager-client",
     "protobuf-lite",
   ]
-  if (use.wimax) {
-    pkg_deps += [ "libwimax_manager-client" ]
-  }
 }
 
 if (use.cellular) {
@@ -472,17 +465,6 @@ static_library("libshill") {
       "supplicant/wpa_supplicant.cc",
     ]
     deps += [ ":generate_supplicant_proxies" ]
-  }
-
-  if (use.wimax) {
-    sources += [
-      "dbus/chromeos_wimax_device_proxy.cc",
-      "dbus/chromeos_wimax_manager_proxy.cc",
-      "dbus/chromeos_wimax_network_proxy.cc",
-      "wimax/wimax.cc",
-      "wimax/wimax_provider.cc",
-      "wimax/wimax_service.cc",
-    ]
   }
 
   if (use.wired_8021x) {
@@ -911,20 +893,6 @@ if (use.test) {
         "supplicant/mock_supplicant_process_proxy.cc",
         "supplicant/supplicant_eap_state_handler_test.cc",
         "supplicant/wpa_supplicant_test.cc",
-      ]
-    }
-
-    if (use.wimax) {
-      sources += [
-        "wimax/mock_wimax.cc",
-        "wimax/mock_wimax_device_proxy.cc",
-        "wimax/mock_wimax_manager_proxy.cc",
-        "wimax/mock_wimax_network_proxy.cc",
-        "wimax/mock_wimax_provider.cc",
-        "wimax/mock_wimax_service.cc",
-        "wimax/wimax_provider_test.cc",
-        "wimax/wimax_service_test.cc",
-        "wimax/wimax_test.cc",
       ]
     }
 

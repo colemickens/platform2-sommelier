@@ -67,8 +67,7 @@ TEST_F(ScopeLoggerTest, GetAllScopeNames) {
             "task+"
             "tc+"
             "vpn+"
-            "wifi+"
-            "wimax",
+            "wifi",
       logger_.GetAllScopeNames());
 }
 
