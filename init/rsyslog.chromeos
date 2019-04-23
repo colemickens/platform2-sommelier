@@ -37,7 +37,6 @@ if (($programname == 'shill') or \
     ($programname == 'openvpn-script') or \
     ($programname == 'l2tpipsec_vpn') or \
     ($programname == 'pppd') or \
-    ($programname == 'wimax-manager') or \
     ($programname == 'pseudomodem') or \
     ($programname == 'arc-networkd') or \
     ($programname == 'charon')) then -/var/log/net.log
@@ -54,7 +53,6 @@ if (($programname == 'shill') or \
     ($programname == 'openvpn-script') or \
     ($programname == 'l2tpipsec_vpn') or \
     ($programname == 'pppd') or \
-    ($programname == 'wimax-manager') or \
     ($programname == 'pseudomodem') or \
     ($programname == 'arc-networkd') or \
     ($programname == 'charon')) and $syslogseverity >= '4' then ~
