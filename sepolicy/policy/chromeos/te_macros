@@ -1,4 +1,10 @@
 # Basic macros
+define(`domain_auto_trans_nnp', `
+domain_auto_trans($1, $2, $3);
+allow $1 $3:process2 nnp_transition;
+');
+
+
 define(`rw_dir_file', `
 allow $1 $2:dir rw_dir_perms;
 allow $1 $2:file rw_file_perms;

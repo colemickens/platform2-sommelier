@@ -330,6 +330,16 @@ class process
 	getrlimit
 }
 
+#
+# Define the access vector for process2 objects.
+#
+
+class process2
+{
+	nnp_transition
+	nosuid_transition
+}
+
 
 #
 # Define the access vector interpretation for ipc-related objects

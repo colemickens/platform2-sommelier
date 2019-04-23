@@ -2,8 +2,8 @@ type cros_arc_setup, chromeos_domain, cros_miscdomain, domain, mlstrustedsubject
 
 permissive cros_arc_setup;
 
-domain_auto_trans({cros_init cros_init_scripts minijail cros_session_manager chromeos}, cros_arc_setup_exec, cros_arc_setup);
-domain_auto_trans(cros_session_manager, cros_run_oci_exec, cros_arc_setup);
+domain_auto_trans({cros_init cros_init_scripts minijail chromeos}, cros_arc_setup_exec, cros_arc_setup);
+domain_auto_trans_nnp(cros_session_manager, { cros_arc_setup_exec cros_run_oci_exec }, cros_arc_setup);
 
 allow cros_arc_setup cros_init_scripts:fd use;
 allow cros_arc_setup cros_init:unix_stream_socket connectto;
