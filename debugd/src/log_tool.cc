@@ -276,7 +276,6 @@ const std::vector<Log> kCommandLogs {
   {kFile, "vmlog.PREVIOUS", "/var/log/vmlog/vmlog.PREVIOUS"},
   {kFile, "vmstat", "/proc/vmstat"},
   {kFile, "vpd_2.0", "/var/log/vpd_2.0.txt"},
-  {kCommand, "wifi_status", "/usr/bin/network_diag --wifi-internal --no-log"},
   {kFile, "zram compressed data size", "/sys/block/zram0/compr_data_size"},
   {kFile, "zram original data size", "/sys/block/zram0/orig_data_size"},
   {kFile, "zram total memory used", "/sys/block/zram0/mem_used_total"},
@@ -311,6 +310,8 @@ const std::vector<Log> kExtraLogs {
 #endif  // USE_CELLULAR
   {kCommand, "network-devices", "/usr/bin/connectivity show devices"},
   {kCommand, "network-services", "/usr/bin/connectivity show services"},
+  {kCommand, "wifi_status_show_macs",
+    "/usr/bin/network_diag --wifi-internal --no-log --show-macs"},
 };
 
 const std::vector<Log> kFeedbackLogs {
@@ -321,6 +322,7 @@ const std::vector<Log> kFeedbackLogs {
       "/usr/bin/connectivity show-feedback devices"},
   {kCommand, "network-services",
       "/usr/bin/connectivity show-feedback services"},
+  {kCommand, "wifi_status", "/usr/bin/network_diag --wifi-internal --no-log"},
 };
 
 // List of log files needed to be part of the feedback report that are huge and

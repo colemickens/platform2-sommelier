@@ -510,8 +510,14 @@ diag_wifi () {
 
   # Call out to debugd (which in turn calls this script's diag_wifi_internal
   # function with the debugd privileges needed to read debugfs contents).
+  local log_name
+  if [ "${anonymize_macs}" = "yes" ]; then
+    log_name="wifi_status"
+  else
+    log_name="wifi_status_show_macs"
+  fi
   dbus-send --system --print-reply --fixed --dest=org.chromium.debugd \
-        /org/chromium/debugd org.chromium.debugd.GetLog "string:wifi_status"
+        /org/chromium/debugd org.chromium.debugd.GetLog "string:${log_name}"
 }
 
 diag_wifi_internal () {
