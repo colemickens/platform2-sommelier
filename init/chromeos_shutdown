@@ -68,7 +68,8 @@ fi
 
 # Signal that the clean shutdown point was reached (or at least as
 # close to that point as we can be before stateful is unmounted).
-crash_reporter --clean_shutdown
+# Log to stderr since syslog may not be available at this stage.
+crash_reporter --log_to_stderr --clean_shutdown
 
 # Flush buffers to disk to reflect this part of shutdown in the metrics.
 sync
