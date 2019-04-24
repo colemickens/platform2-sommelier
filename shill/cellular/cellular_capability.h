@@ -29,7 +29,7 @@ class ModemInfo;
 //
 // The CellularCapability is directly subclassed by:
 // *  CelllularCapabilityUniversal which handles all modems managed by
-//    a modem manager using the the org.chromium.ModemManager1 DBUS
+//    a modem manager using the the org.freedesktop.ModemManager1 DBUS
 //    interface.
 //
 // Pictorially:

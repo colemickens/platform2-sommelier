@@ -26,7 +26,7 @@ namespace shill {
 class Modem {
  public:
   // ||path| is the ModemManager.Modem DBus object path (e.g.,
-  // "/org/chromium/ModemManager/Gobi/0").
+  // "/org/freedesktop/ModemManager1/Modem/0").
   Modem(const std::string& service,
         const std::string& path,
         ModemInfo* modem_info);

@@ -472,8 +472,8 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
 
 const char CellularTest::kTestDeviceName[] = "usb0";
 const char CellularTest::kTestDeviceAddress[] = "000102030405";
-const char CellularTest::kDBusService[] = "org.chromium.ModemManager";
-const char CellularTest::kDBusPath[] = "/org/chromium/ModemManager/Gobi/0";
+const char CellularTest::kDBusService[] = "org.freedesktop.ModemManager1";
+const char CellularTest::kDBusPath[] = "/org/freedesktop/ModemManager1/Modem/0";
 const char CellularTest::kTestCarrier[] = "The Cellular Carrier";
 const char CellularTest::kTestCarrierSPN[] = "Home Provider";
 const char CellularTest::kMEID[] = "01234567EF8901";

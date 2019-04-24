@@ -53,9 +53,10 @@ class ModemManagerTest : public Test {
   MockModemInfo modem_info_;
 };
 
-const char ModemManagerTest::kService[] = "org.chromium.ModemManager";
-const char ModemManagerTest::kPath[] = "/org/chromium/ModemManager";
-const char ModemManagerTest::kModemPath[] = "/org/blah/Modem/blah/0";
+const char ModemManagerTest::kService[] = "org.freedesktop.ModemManager1";
+const char ModemManagerTest::kPath[] = "/org/freedesktop/ModemManager1";
+const char ModemManagerTest::kModemPath[] =
+    "/org/freedesktop/ModemManager1/Modem/0";
 
 class ModemManagerForTest : public ModemManager {
  public:

@@ -33,7 +33,7 @@ namespace shill {
 class ModemInfo;
 
 // CellularCapabilityUniversal handles modems using the
-// org.chromium.ModemManager1 DBUS interface.  This class is used for
+// org.freedesktop.ModemManager1 DBUS interface.  This class is used for
 // all types of modems, i.e. CDMA, GSM, and LTE modems.
 class CellularCapabilityUniversal : public CellularCapability {
  public:
