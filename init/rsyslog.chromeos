@@ -30,7 +30,6 @@ $IncludeConfig /etc/rsyslog.d/*.conf
 if (($programname == 'shill') or \
     ($programname == 'dhcpcd') or \
     ($programname == 'wpa_supplicant') or \
-    ($programname == 'cromo') or \
     ($programname == 'ModemManager') or \
     ($programname == 'mist') or \
     ($programname == 'nss-get-cert') or \
@@ -48,7 +47,6 @@ if (($programname == 'shill') or \
 if (($programname == 'shill') or \
     ($programname == 'dhcpcd') or \
     ($programname == 'wpa_supplicant') or \
-    ($programname == 'cromo') or \
     ($programname == 'ModemManager') or \
     ($programname == 'mist') or \
     ($programname == 'nss-get-cert') or \
