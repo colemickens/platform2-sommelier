@@ -423,6 +423,10 @@ class MountTest
       FilePath("/home/chronos/user"),
     };
 
+    EXPECT_CALL(
+        platform_,
+        IsDirectoryMounted(FilePath("/home/chronos/user/MyFiles/Downloads")))
+        .WillOnce(Return(false));
     for (auto const& home : user_dirs) {
       auto downloads_path = home.Append("Downloads");
       auto downloads_in_myfiles = home.Append("MyFiles").Append("Downloads");
@@ -473,6 +477,10 @@ class MountTest
         .WillRepeatedly(Return(true));
     EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
         .WillOnce(Return(false));  // first mount
+    EXPECT_CALL(
+        platform_,
+        IsDirectoryMounted(FilePath("/home/chronos/user/MyFiles/Downloads")))
+        .WillOnce(Return(false));
     EXPECT_CALL(platform_, Bind(_, _))
         .WillRepeatedly(Return(true));
 
@@ -2596,6 +2604,10 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, IsDirectoryMounted(user->vault_mount_path))
+      .WillOnce(Return(false));
+  EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
+      .WillOnce(Return(false));
   ExpectDownloadsBindMounts(*user);
   ExpectDaemonStoreMounts(*user, false /* is_ephemeral */);
 
@@ -3807,6 +3819,9 @@ TEST_P(EphemeralNoUserSystemTest, MountGuestUserDir) {
       Bind(Property(&FilePath::value, StartsWith("/home/chronos/user/")),
            Property(&FilePath::value, StartsWith("/home/chronos/user/"))))
       .WillOnce(Return(true));
+  EXPECT_CALL(platform_, IsDirectoryMounted(
+                             FilePath("/home/chronos/user/MyFiles/Downloads")))
+      .WillOnce(Return(false));  // first mount
   EXPECT_CALL(platform_,
               Bind(Property(&FilePath::value, StartsWith("/home/user/")),
                    Property(&FilePath::value, StartsWith("/home/user/"))))

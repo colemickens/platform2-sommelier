@@ -2080,14 +2080,22 @@ bool Mount::MountHomesAndDaemonStores(const std::string& username,
   // Mount Downloads to MyFiles/Downloads in:
   //  - /home/chronos/u-<user_hash>
   //  - /home/user/<user_hash>
-  //  - /home/chronos/user
   if (!(BindMyFilesDownloads(new_user_path) &&
         BindMyFilesDownloads(user_multi_home))) {
     return false;
   }
 
-  if (legacy_mount_ && !BindMyFilesDownloads(FilePath(kDefaultHomeDir)))
-    return false;
+  // Only bind mount /home/chronos/user/Downloads if it isn't mounted yet, in
+  // multi-profile login it skips.
+  if (legacy_mount_) {
+    auto downloads_folder =
+        FilePath(kDefaultHomeDir).Append(kMyFilesDir).Append(kDownloadsDir);
+    if (platform_->IsDirectoryMounted(downloads_folder)) {
+      LOG(INFO) << "Skipping binding to: " << downloads_folder.value();
+    } else if (!BindMyFilesDownloads(FilePath(kDefaultHomeDir))) {
+      return false;
+    }
+  }
 
   // Mount directories used by daemons to store per-user data.
   if (!MountDaemonStoreDirectories(root_home, obfuscated_username))
