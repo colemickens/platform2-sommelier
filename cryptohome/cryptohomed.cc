@@ -22,6 +22,7 @@
 
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/userdataauth.h"
 
 namespace env {
 static const char* kAttestationBasedEnrollmentDataFile = "ABE_DATA_FILE";

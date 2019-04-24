@@ -21,7 +21,7 @@ TODO(b/126307305): We'll need to add documentations of what each methods in this
 do.
 -->
 
-<node name="/org/chromium/Cryptohome"
+<node name="/org/chromium/UserDataAuth"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
 
 

@@ -6,10 +6,12 @@
 #define CRYPTOHOME_SERVICE_USERDATAAUTH_H_
 
 #include <memory>
+#include <string>
 
 #include <dbus/cryptohome/dbus-constants.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
+#include "cryptohome/userdataauth.h"
 #include "dbus_adaptors/org.chromium.UserDataAuth.h"
 
 namespace cryptohome {
@@ -17,9 +19,14 @@ class UserDataAuthAdaptor
     : public org::chromium::UserDataAuthInterfaceInterface,
       public org::chromium::UserDataAuthInterfaceAdaptor {
  public:
-  explicit UserDataAuthAdaptor(scoped_refptr<dbus::Bus> bus)
+  explicit UserDataAuthAdaptor(scoped_refptr<dbus::Bus> bus,
+                               UserDataAuth* service)
       : org::chromium::UserDataAuthInterfaceAdaptor(this),
-        dbus_object_(nullptr, bus, dbus::ObjectPath(kUserDataAuthServicePath)) {
+        dbus_object_(nullptr, bus, dbus::ObjectPath(kUserDataAuthServicePath)),
+        service_(service) {
+    // This is to silence the compiler's warning about unused fields. It will be
+    // removed once we start to use it.
+    (void)service_;
   }
 
   void RegisterAsync(
@@ -105,6 +112,10 @@ class UserDataAuthAdaptor
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
+
+  // This is the object that holds most of the states that this adaptor uses, it
+  // also contains most of the actual logics.
+  UserDataAuth* service_;
 
   DISALLOW_COPY_AND_ASSIGN(UserDataAuthAdaptor);
 };

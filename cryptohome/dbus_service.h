@@ -10,23 +10,31 @@
 #include <brillo/daemons/dbus_daemon.h>
 
 #include "cryptohome/service_userdataauth.h"
+#include "cryptohome/userdataauth.h"
 
 namespace cryptohome {
 
 class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
  public:
-  UserDataAuthDaemon() : DBusServiceDaemon(kUserDataAuthServiceName) {}
+  UserDataAuthDaemon()
+      : DBusServiceDaemon(kUserDataAuthServiceName),
+        service_(new cryptohome::UserDataAuth()) {
+    // Initialize the User Data Auth service
+    service_->Initialize();
+  }
 
  protected:
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
-    adaptor_.reset(new UserDataAuthAdaptor(bus_));
+    adaptor_.reset(new UserDataAuthAdaptor(bus_, service_.get()));
     adaptor_->RegisterAsync(
         sequencer->GetHandler("RegisterAsync() failed", true));
   }
 
  private:
   std::unique_ptr<UserDataAuthAdaptor> adaptor_;
+
+  std::unique_ptr<UserDataAuth> service_;
 
   DISALLOW_COPY_AND_ASSIGN(UserDataAuthDaemon);
 };
