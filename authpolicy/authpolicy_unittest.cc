@@ -2298,10 +2298,12 @@ TEST_F(AuthPolicyTest, BacksUpOnTgtAutoRenewal) {
   NotifySessionStarted();
 
   // Trigger TGT renewal and check if the backup file got re-written.
-  base::Time orig_backup_time = GetLastModified(backup_path_);
+  // Modify timestamps of the existing backup file to detect overwrite.
+  base::Time impossible_time = base::Time();
+  ASSERT_TRUE(base::TouchFile(backup_path_, impossible_time, impossible_time));
   EXPECT_EQ(ERROR_NONE, samba().RenewUserTgtForTesting());
-  base::Time new_backup_time = GetLastModified(backup_path_);
-  EXPECT_LT(orig_backup_time, new_backup_time);
+  base::Time backup_time = GetLastModified(backup_path_);
+  EXPECT_LT(impossible_time, backup_time);
 }
 
 // Restarting authpolicy reloads the backup data and user-specific calls work
