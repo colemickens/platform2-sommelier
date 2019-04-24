@@ -7,8 +7,6 @@
     <method name="Scan">
       <arg name="args" type="a{sv}" direction="in"/>
     </method>
-    <method name="ClearCachedCredentials">
-    </method>
     <method name="Disconnect">
     </method>
     <method name="AddNetwork">
