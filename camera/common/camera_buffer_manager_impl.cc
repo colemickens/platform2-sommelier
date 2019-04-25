@@ -296,6 +296,9 @@ int CameraBufferManagerImpl::Allocate(size_t width,
 
 int CameraBufferManagerImpl::Free(buffer_handle_t buffer) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return -EINVAL;
+  }
 
   if (handle->type == GRALLOC) {
     Deregister(buffer);

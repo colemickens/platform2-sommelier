@@ -1284,13 +1284,11 @@ TEST_P(Camera3InvalidBufferTest, NullBufferHandle) {
   RunInvalidBufferTest(&handle);
 }
 
-TEST_P(Camera3InvalidBufferTest, FreedBufferHandle) {
-  BufferHandleUniquePtr buffer = Camera3TestGralloc::GetInstance()->Allocate(
-      default_width_, default_height_, HAL_PIXEL_FORMAT_YCbCr_420_888,
-      GRALLOC_USAGE_SW_WRITE_OFTEN | GRALLOC_USAGE_HW_CAMERA_WRITE);
-  ASSERT_NE(nullptr, buffer);
-  buffer_handle_t handle = *buffer.get();
-  buffer.reset();
+TEST_P(Camera3InvalidBufferTest, InvalidBufferHandle) {
+  // Make an invalid buffer handle with a wrong magic number.
+  auto cbh = std::make_unique<camera_buffer_handle_t>();
+  cbh->magic = ~cbh->magic;
+  buffer_handle_t handle = reinterpret_cast<buffer_handle_t>(cbh.get());
   RunInvalidBufferTest(&handle);
 }
 
