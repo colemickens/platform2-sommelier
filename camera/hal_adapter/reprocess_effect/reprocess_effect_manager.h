@@ -13,13 +13,18 @@
 #include <utility>
 #include <vector>
 
+#include <system/camera_vendor_tags.h>
+
 #include "cros-camera/camera_buffer_manager.h"
 #include "hal_adapter/reprocess_effect/portrait_mode_effect.h"
 #include "hal_adapter/reprocess_effect/reprocess_effect.h"
 
 namespace cros {
 
-class ReprocessEffectManager {
+// TODO(shik): Change this to "com.google.reprocessEffect".
+const char kVendorGoogleSectionName[] = "com.google";
+
+class ReprocessEffectManager : public vendor_tag_ops_t {
  public:
   ReprocessEffectManager();
 
@@ -27,13 +32,11 @@ class ReprocessEffectManager {
 
   int32_t Initialize();
 
-  // Get all vendor tags.  It returns a map of tag names, types and default
-  // values with tag as the index.
-  int32_t GetAllVendorTags(
-      std::unordered_map<uint32_t, VendorTagInfo>* vendor_tag_map);
-
   // Check whether there are vendor tags for reprocessing effects
   bool HasReprocessEffectVendorTag(const camera_metadata_t& settings);
+
+  // Set the vendor tags for reprocessing effects in static metadata.
+  void UpdateStaticMetadata(android::CameraMetadata* metadata);
 
   // Handle the reprocessing request.  It returns -ENOENT error if no
   // corresponding vendor tag is found in |settings|.  On success, it stores
@@ -45,6 +48,13 @@ class ReprocessEffectManager {
                            uint32_t height,
                            android::CameraMetadata* result_metadata,
                            ScopedYUVBufferHandle* output_buffer);
+
+  // vendor_tag_ops_t implementations.
+  static int GetTagCount(const vendor_tag_ops_t* v);
+  static void GetAllTags(const vendor_tag_ops_t* v, uint32_t* tag_array);
+  static const char* GetSectionName(const vendor_tag_ops_t* v, uint32_t tag);
+  static const char* GetTagName(const vendor_tag_ops_t* v, uint32_t tag);
+  static int GetTagType(const vendor_tag_ops_t* v, uint32_t tag);
 
  private:
   struct VendorTagEffectInfo {
@@ -62,7 +72,7 @@ class ReprocessEffectManager {
   std::unordered_map<uint32_t, VendorTagEffectInfo> vendor_tag_effect_info_map_;
 
   // Next available vendor tag
-  uint32_t max_vendor_tag_;
+  uint32_t next_vendor_tag_;
 
   CameraBufferManager* buffer_manager_;
 

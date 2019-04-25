@@ -39,8 +39,6 @@ namespace {
 // |module_delegates_| and |callbacks_delegates_| maps.
 const uint32_t kIdAll = 0xFFFFFFFF;
 
-const char kVendorGoogleSectionName[] = "com.google";
-
 }  // namespace
 
 CameraHalAdapter::CameraHalAdapter(std::vector<camera_module_t*> camera_modules)
@@ -224,68 +222,9 @@ int32_t CameraHalAdapter::GetCameraInfo(int32_t camera_id,
     dump_camera_metadata(info.static_camera_characteristics, 2, 3);
   }
 
-  // Currently, all our vendor tag features are based on YUV reprocessing.
-  // Skip exporting vendor tag related keys into |metadata| by simply
-  // evaluate YUV reprocessing capability of each cameras.
-  // TODO(inker): Move evaluation into per vendor tag effeect class.
-  android::CameraMetadata metadata(
-      clone_camera_metadata(info.static_camera_characteristics));
-  const auto cap_entry = metadata.find(ANDROID_REQUEST_AVAILABLE_CAPABILITIES);
-  if (std::find(cap_entry.data.u8, cap_entry.data.u8 + cap_entry.count,
-                ANDROID_REQUEST_AVAILABLE_CAPABILITIES_YUV_REPROCESSING) !=
-      cap_entry.data.u8 + cap_entry.count) {
-    // Append vendor tags to request, result and characteristics keys
-    std::vector<int32_t> vendor_tags;
-    for (const auto& it : vendor_tag_map_) {
-      vendor_tags.push_back(it.first);
-    }
-    std::vector<int32_t> key_tags(
-        {ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS,
-         ANDROID_REQUEST_AVAILABLE_RESULT_KEYS,
-         ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS});
-    for (const auto& it : key_tags) {
-      camera_metadata_ro_entry_t ro_entry;
-      if (find_camera_metadata_ro_entry(info.static_camera_characteristics, it,
-                                        &ro_entry) != 0) {
-        LOGF(ERROR) << "Failed to get " << get_camera_metadata_tag_name(it);
-        continue;
-      }
-      std::vector<int32_t> keys(ro_entry.data.i32,
-                                ro_entry.data.i32 + ro_entry.count);
-      keys.insert(keys.end(), vendor_tags.begin(), vendor_tags.end());
-      if (metadata.update(it, keys.data(), keys.size()) != 0) {
-        LOGF(ERROR) << "Failed to add vendor tags to "
-                    << get_camera_metadata_tag_name(it);
-      }
-    }
-    // Update vendor tag default values into camera characteristics
-    for (const auto& it : vendor_tag_map_) {
-      switch (it.second.type) {
-        case TYPE_BYTE:
-          metadata.update(it.first, &it.second.data.u8, 1);
-          break;
-        case TYPE_INT32:
-          metadata.update(it.first, &it.second.data.i32, 1);
-          break;
-        case TYPE_FLOAT:
-          metadata.update(it.first, &it.second.data.f, 1);
-          break;
-        case TYPE_INT64:
-          metadata.update(it.first, &it.second.data.i64, 1);
-          break;
-        case TYPE_DOUBLE:
-          metadata.update(it.first, &it.second.data.d, 1);
-          break;
-        case TYPE_RATIONAL:
-          metadata.update(it.first, &it.second.data.r, 1);
-          break;
-        default:
-          LOGF(ERROR) << "Invalid vendor tag type";
-          camera_info->reset();
-          return -EINVAL;
-      }
-    }
-  }
+  android::CameraMetadata metadata =
+      clone_camera_metadata(info.static_camera_characteristics);
+  reprocess_effect_manager_.UpdateStaticMetadata(&metadata);
 
   mojom::CameraInfoPtr info_ptr = mojom::CameraInfo::New();
   info_ptr->facing = static_cast<mojom::CameraFacing>(info.facing);
@@ -378,7 +317,7 @@ void CameraHalAdapter::GetVendorTagOps(
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
 
   auto vendor_tag_ops_delegate = std::make_unique<VendorTagOpsDelegate>(
-      camera_module_thread_.task_runner(), this);
+      camera_module_thread_.task_runner(), &vendor_tag_manager_);
   uint32_t vendor_tag_ops_id = vendor_tag_ops_id_++;
   vendor_tag_ops_delegate->Bind(
       vendor_tag_ops_request.PassMessagePipe(),
@@ -563,6 +502,14 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
     }
     callbacks_auxs_.push_back(std::move(aux));
 
+    if (m->get_vendor_tag_ops) {
+      vendor_tag_ops ops = {};
+      m->get_vendor_tag_ops(&ops);
+      if (ops.get_tag_count != nullptr) {
+        vendor_tag_manager_.Add(&ops);
+      }
+    }
+
     for (int camera_id = 0; camera_id < n; camera_id++) {
       camera_info_t info;
       if (m->get_camera_info(camera_id, &info) != 0) {
@@ -608,17 +555,10 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
     callback.Run(false);
     return;
   }
-  if (reprocess_effect_manager_.GetAllVendorTags(&vendor_tag_map_) != 0) {
-    LOGF(ERROR) << "Failed to get reprocess effect manager vendor tags";
-    callback.Run(false);
-    return;
-  }
-  CameraHalAdapter::get_tag_count = CameraHalAdapter::GetTagCount;
-  CameraHalAdapter::get_all_tags = CameraHalAdapter::GetAllTags;
-  CameraHalAdapter::get_section_name = CameraHalAdapter::GetSectionName;
-  CameraHalAdapter::get_tag_name = CameraHalAdapter::GetTagName;
-  CameraHalAdapter::get_tag_type = CameraHalAdapter::GetTagType;
-  if (set_camera_metadata_vendor_ops(this) != 0) {
+
+  vendor_tag_manager_.Add(&reprocess_effect_manager_);
+
+  if (set_camera_metadata_vendor_ops(&vendor_tag_manager_) != 0) {
     LOGF(ERROR) << "Failed to set vendor ops to camera metadata";
   }
 
@@ -712,71 +652,6 @@ void CameraHalAdapter::ResetVendorTagOpsDelegateOnThread(
   } else {
     vendor_tag_ops_delegates_.erase(vendor_tag_ops_id);
   }
-}
-
-int CameraHalAdapter::GetTagCount(const vendor_tag_ops_t* v) {
-  VLOGF_ENTER();
-  if (!v) {
-    LOGF(ERROR) << "Invalid argument";
-    return -1;
-  }
-  auto d = static_cast<const CameraHalAdapter*>(v);
-  return d->vendor_tag_map_.size();
-}
-
-void CameraHalAdapter::GetAllTags(const vendor_tag_ops_t* v,
-                                  uint32_t* tag_array) {
-  VLOGF_ENTER();
-  if (!v || !tag_array) {
-    LOGF(ERROR) << "Invalid argument";
-    return;
-  }
-  auto d = static_cast<const CameraHalAdapter*>(v);
-  for (const auto& it : d->vendor_tag_map_) {
-    *tag_array = it.first;
-    tag_array++;
-  }
-}
-
-const char* CameraHalAdapter::GetSectionName(const vendor_tag_ops_t* v,
-                                             uint32_t tag) {
-  VLOGF_ENTER();
-  if (!v) {
-    LOGF(ERROR) << "Invalid argument";
-    return nullptr;
-  }
-  auto d = static_cast<const CameraHalAdapter*>(v);
-  if (d->vendor_tag_map_.find(tag) == d->vendor_tag_map_.end()) {
-    return nullptr;
-  }
-  return kVendorGoogleSectionName;
-}
-
-const char* CameraHalAdapter::GetTagName(const vendor_tag_ops_t* v,
-                                         uint32_t tag) {
-  VLOGF_ENTER();
-  if (!v) {
-    LOGF(ERROR) << "Invalid argument";
-    return nullptr;
-  }
-  auto d = static_cast<const CameraHalAdapter*>(v);
-  if (d->vendor_tag_map_.find(tag) == d->vendor_tag_map_.end()) {
-    return nullptr;
-  }
-  return d->vendor_tag_map_.at(tag).name;
-}
-
-int CameraHalAdapter::GetTagType(const vendor_tag_ops_t* v, uint32_t tag) {
-  VLOGF_ENTER();
-  if (!v) {
-    LOGF(ERROR) << "Invalid argument";
-    return -1;
-  }
-  auto d = static_cast<const CameraHalAdapter*>(v);
-  if (d->vendor_tag_map_.find(tag) == d->vendor_tag_map_.end()) {
-    return -1;
-  }
-  return d->vendor_tag_map_.at(tag).type;
 }
 
 }  // namespace cros

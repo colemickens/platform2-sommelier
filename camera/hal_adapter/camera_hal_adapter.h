@@ -20,6 +20,7 @@
 #include <base/threading/thread.h>
 #include <base/timer/elapsed_timer.h>
 
+#include "common/vendor_tag_manager.h"
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/future.h"
 #include "hal_adapter/reprocess_effect/reprocess_effect_manager.h"
@@ -43,7 +44,7 @@ struct CameraModuleCallbacksAux : camera_module_callbacks_t {
   CameraHalAdapter* adapter;
 };
 
-class CameraHalAdapter : public vendor_tag_ops_t {
+class CameraHalAdapter {
  public:
   explicit CameraHalAdapter(std::vector<camera_module_t*> camera_modules);
 
@@ -135,13 +136,6 @@ class CameraHalAdapter : public vendor_tag_ops_t {
   void ResetCallbacksDelegateOnThread(uint32_t callbacks_id);
   void ResetVendorTagOpsDelegateOnThread(uint32_t vendor_tag_ops_id);
 
-  // Vendor tag ops
-  static int GetTagCount(const vendor_tag_ops_t* v);
-  static void GetAllTags(const vendor_tag_ops_t* v, uint32_t* tag_array);
-  static const char* GetSectionName(const vendor_tag_ops_t* v, uint32_t tag);
-  static const char* GetTagName(const vendor_tag_ops_t* v, uint32_t tag);
-  static int GetTagType(const vendor_tag_ops_t* v, uint32_t tag);
-
   // The handles to the camera HALs dlopen()/dlsym()'d on process start.
   std::vector<camera_module_t*> camera_modules_;
 
@@ -206,8 +200,8 @@ class CameraHalAdapter : public vendor_tag_ops_t {
   // the same thread (i.e. the mojo IPC handler thread in |module_delegate_|).
   std::map<int32_t, std::unique_ptr<CameraDeviceAdapter>> device_adapters_;
 
-  // The map of vendor tag information with tag id as the key
-  std::unordered_map<uint32_t, VendorTagInfo> vendor_tag_map_;
+  // The vendor tag manager.
+  VendorTagManager vendor_tag_manager_;
 
   // The reprocess effect manager.
   ReprocessEffectManager reprocess_effect_manager_;
