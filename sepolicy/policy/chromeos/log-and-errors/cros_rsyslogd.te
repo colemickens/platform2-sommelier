@@ -1,5 +1,8 @@
 type cros_rsyslogd, chromeos_domain, cros_log_file_creator_domain, domain;
 
+# rsyslogd attempting to write net.log was denied, and denials audit messages are spamming syslog.
+permissive cros_rsyslogd;
+
 from_minijail_static(cros_rsyslogd, cros_rsyslogd_exec);
 log_writer(cros_rsyslogd);
 cros_net(cros_rsyslogd);
