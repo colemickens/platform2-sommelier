@@ -109,7 +109,7 @@ Commands:
   create_enroll_request [--attestation-server=default|test]
           [--output=<output_file>]
       Creates enroll request to CA and stores it to |output_file|.
-  finish_enroll --input=<input_file>
+  finish_enroll [--attestation-server=default|test] --input=<input_file>
       Finishes enrollment using the CA response from |input_file|.
   create_cert_request [--attestation-server=default|test]
         [--profile=<profile>] [--user=<user>] [--origin=<origin>]
@@ -366,7 +366,7 @@ class ClientLoop : public ClientLoopBase {
       }
       task = base::Bind(
           &ClientLoop::CallFinishEnroll, weak_factory_.GetWeakPtr(),
-          input);
+          aca_type, input);
     } else if (args.front() == kCreateCertRequestCommand) {
       ACAType aca_type;
       int status = GetCertificateAuthorityServerType(command_line, &aca_type);
@@ -785,8 +785,9 @@ class ClientLoop : public ClientLoopBase {
     PrintReplyAndQuit<CreateEnrollRequestReply>(reply);
   }
 
-  void CallFinishEnroll(const std::string& pca_response) {
+  void CallFinishEnroll(ACAType aca_type, const std::string& pca_response) {
     FinishEnrollRequest request;
+    request.set_aca_type(aca_type);
     request.set_pca_response(pca_response);
     attestation_->FinishEnroll(
         request, base::Bind(&ClientLoop::PrintReplyAndQuit<FinishEnrollReply>,
