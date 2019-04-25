@@ -103,6 +103,7 @@ const MAX_MESSAGE_SIZE: u32 = ::std::u16::MAX as u32;
 // 32-bit number chosen by the client. Most messages sent by clients include a fid on which to
 // operate. The fid in a Tattach message represents the root of the file system tree that the client
 // is allowed to access. A client can create more fids by walking the directory tree from that fid.
+#[derive(Debug)]
 struct Fid {
     path: Box<Path>,
     metadata: fs::Metadata,
@@ -502,6 +503,7 @@ impl Server {
             .fids
             .get_mut(&lopen.fid)
             .ok_or_else(|| io::Error::from_raw_os_error(libc::EBADF))?;
+
         // We always open files with O_CLOEXEC.
         let mut custom_flags: i32 = libc::O_CLOEXEC;
         for &(p9f, of) in &MAPPED_FLAGS {
@@ -549,13 +551,14 @@ impl Server {
             }
         }
 
+        // The file must not already exist, which is why we unconditionally set
+        // `create_new(true)`.  This is also why we don't set `truncate`.  If
+        // the file does not exist then it doesn't need to be truncated.
         let file = fs::OpenOptions::new()
-            .read(false)
-            .write(true)
-            .truncate((lcreate.flags & P9_TRUNC) != 0)
-            .create(true)
+            .read((lcreate.flags & P9_NOACCESS) == 0 || (lcreate.flags & P9_RDWR) != 0)
+            .write((lcreate.flags & P9_WRONLY) != 0 || (lcreate.flags & P9_RDWR) != 0)
             .append((lcreate.flags & P9_APPEND) != 0)
-            .create_new((lcreate.flags & P9_EXCL) != 0)
+            .create_new(true)
             .custom_flags(custom_flags)
             .mode(lcreate.mode & 0o755)
             .open(&path)?;
@@ -650,6 +653,7 @@ impl Server {
             .fids
             .get_mut(&set_attr.fid)
             .ok_or_else(|| io::Error::from_raw_os_error(libc::EBADF))?;
+
         let file = fs::OpenOptions::new().write(true).open(&fid.path)?;
 
         if set_attr.valid & P9_SETATTR_SIZE != 0 {
