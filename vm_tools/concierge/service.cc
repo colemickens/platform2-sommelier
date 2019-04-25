@@ -534,6 +534,7 @@ bool Service::Init() {
       {kAttachUsbDeviceMethod, &Service::AttachUsbDevice},
       {kDetachUsbDeviceMethod, &Service::DetachUsbDevice},
       {kListUsbDeviceMethod, &Service::ListUsbDevices},
+      {kGetDnsSettingsMethod, &Service::GetDnsSettings},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -2094,6 +2095,30 @@ std::unique_ptr<dbus::Response> Service::ListUsbDevices(
   return dbus_response;
 }
 
+void Service::ComposeDnsResponse(dbus::MessageWriter* writer) {
+  DnsSettings dns_settings;
+  for (const auto& server : nameservers_) {
+    dns_settings.add_nameservers(server);
+  }
+  for (const auto& domain : search_domains_) {
+    dns_settings.add_search_domains(domain);
+  }
+  writer->AppendProtoAsArrayOfBytes(dns_settings);
+}
+
+std::unique_ptr<dbus::Response> Service::GetDnsSettings(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received GetDnsSettings request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageWriter writer(dbus_response.get());
+  ComposeDnsResponse(&writer);
+  return dbus_response;
+}
+
 void Service::OnResolvConfigChanged(std::vector<string> nameservers,
                                     std::vector<string> search_domains) {
   nameservers_ = std::move(nameservers);
@@ -2109,6 +2134,13 @@ void Service::OnResolvConfigChanged(std::vector<string> nameservers,
   for (auto& vm_entry : vms_) {
     vm_entry.second->SetResolvConfig(nameservers_, search_domains_);
   }
+
+  // Broadcast DnsSettingsChanged signal so Plugin VM dispatcher is aware as
+  // well.
+  dbus::Signal signal(kVmConciergeInterface, kDnsSettingsChangedSignal);
+  dbus::MessageWriter writer(&signal);
+  ComposeDnsResponse(&writer);
+  exported_object_->SendSignal(&signal);
 }
 
 void Service::NotifyCiceroneOfVmStarted(const std::string& owner_id,

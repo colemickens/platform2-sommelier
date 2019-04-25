@@ -120,6 +120,11 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   std::unique_ptr<dbus::Response> ListUsbDevices(dbus::MethodCall* method_call);
 
+  std::unique_ptr<dbus::Response> GetDnsSettings(dbus::MethodCall* method_call);
+
+  // Writes DnsConfigResponse protobuf into DBus message.
+  void ComposeDnsResponse(dbus::MessageWriter* writer);
+
   // Handles DNS changes from shill.
   void OnResolvConfigChanged(std::vector<std::string> nameservers,
                              std::vector<std::string> search_domains);
