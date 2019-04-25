@@ -17,6 +17,9 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/syslog_logging.h>
 
+#include "common/utils/camera_config.h"
+#include "cros-camera/constants.h"
+
 constexpr char kDestinationDir[] =
     "/mnt/stateful_partition/encrypted/var/cache/camera";
 constexpr char kMediaProfileFileName[] = "media_profiles.xml";
@@ -137,6 +140,13 @@ bool GenerateCameraProfile(int num_cameras) {
   return true;
 }
 
+bool HasCameraFilter() {
+  cros::CameraConfig config(cros::constants::kCrosCameraTestConfigPathString);
+  return config.HasKey(cros::constants::kCrosEnableFrontCameraOption) ||
+         config.HasKey(cros::constants::kCrosEnableBackCameraOption) ||
+         config.HasKey(cros::constants::kCrosEnableExternalCameraOption);
+}
+
 int main(int argc, char* argv[]) {
   // Init CommandLine for InitLogging.
   base::CommandLine::Init(argc, argv);
@@ -148,6 +158,13 @@ int main(int argc, char* argv[]) {
     log_flags |= brillo::kLogToStderr;
   }
   brillo::InitLog(log_flags);
+
+  if (HasCameraFilter()) {
+    // If camera filter flag is presented, autotest toggling camera filter
+    // should be responsible for preparing media profile for ARC++.
+    LOG(INFO) << "Using camera filter, skip generating media profiles";
+    return 0;
+  }
 
   LOG(INFO) << "Starting to generate media profiles";
   int num_builtin_cameras = GetNumberOfBuiltinCameras();

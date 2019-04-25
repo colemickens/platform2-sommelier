@@ -23,6 +23,9 @@ class CameraConfig {
   CameraConfig(const CameraConfig&) = delete;
   CameraConfig& operator=(const CameraConfig&) = delete;
 
+  // Return true if key present in test config.
+  bool HasKey(const std::string& key) const;
+
   // Return value of |path| in config file. In case that path is not present in
   // test config or any error occurred, return default_value instead.
   bool GetBoolean(const std::string& path, bool default_value) const;

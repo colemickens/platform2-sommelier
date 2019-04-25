@@ -41,6 +41,10 @@ CameraConfig::CameraConfig(const std::string& config_path_string)
   config_ = std::move(dict);
 }
 
+bool CameraConfig::HasKey(const std::string& key) const {
+  return config_->HasKey(key);
+}
+
 bool CameraConfig::GetBoolean(const std::string& path,
                               bool default_value) const {
   bool value;
