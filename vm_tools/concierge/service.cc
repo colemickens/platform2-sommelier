@@ -132,6 +132,8 @@ const std::map<string, string> kLxdEnv = {
 constexpr uint64_t kMinimumDiskSize = 1ll * 1024 * 1024 * 1024;  // 1 GiB
 constexpr uint64_t kDiskSizeMask = ~4095ll;  // Round to disk block size.
 
+constexpr uint64_t kDefaultIoLimit = 1024 * 1024;  // 1 Mib
+
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
 // and sent.
@@ -286,6 +288,25 @@ bool GetDiskPathFromName(
     storage_path = base::FilePath(kCryptohomeUser)
                        .Append(cryptohome_id)
                        .Append(kDownloadsDir);
+
+  } else if (storage_location == STORAGE_CRYPTOHOME_PLUGINVM) {
+    base::FilePath pluginvm_dir =
+        base::FilePath(kCryptohomeRoot).Append(cryptohome_id).Append("pvm");
+    base::File::Error dir_error;
+    if (!base::DirectoryExists(pluginvm_dir)) {
+      if (!create_parent_dir) {
+        return false;
+      }
+
+      if (!base::CreateDirectoryAndGetError(pluginvm_dir, &dir_error)) {
+        LOG(ERROR) << "Failed to create plugin directory in /home/root: "
+                   << base::File::ErrorToString(dir_error);
+        return false;
+      }
+    }
+
+    *path_out = pluginvm_dir.Append(disk_name);
+    return true;
   } else {
     LOG(ERROR) << "Unknown storage location type";
     return false;
@@ -437,6 +458,14 @@ base::ScopedFD Create9PUnixSocket(const base::FilePath& path) {
   return fd;
 }
 
+void FormatDiskImageStatus(const DiskImageOperation* op,
+                           DiskImageStatusResponse* status) {
+  status->set_status(op->status());
+  status->set_command_uuid(op->uuid());
+  status->set_failure_reason(op->failure_reason());
+  status->set_progress(op->GetProgress());
+}
+
 }  // namespace
 
 std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
@@ -528,6 +557,8 @@ bool Service::Init() {
       {kCreateDiskImageMethod, &Service::CreateDiskImage},
       {kDestroyDiskImageMethod, &Service::DestroyDiskImage},
       {kExportDiskImageMethod, &Service::ExportDiskImage},
+      {kImportDiskImageMethod, &Service::ImportDiskImage},
+      {kDiskImageStatusMethod, &Service::CheckDiskImageStatus},
       {kListVmDisksMethod, &Service::ListVmDisks},
       {kGetContainerSshKeysMethod, &Service::GetContainerSshKeys},
       {kSyncVmTimesMethod, &Service::SyncVmTimes},
@@ -1798,6 +1829,159 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
 
   response.set_status(DISK_STATUS_CREATED);
   writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::ImportDiskImage(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received ImportDiskImage request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  ImportDiskImageResponse response;
+  response.set_status(DISK_STATUS_FAILED);
+
+  ImportDiskImageRequest request;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse ImportDiskImageRequest from message";
+    response.set_failure_reason("Unable to parse ImportDiskRequest");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (request.storage_location() != STORAGE_CRYPTOHOME_PLUGINVM) {
+    LOG(ERROR)
+        << "Locations other than STORAGE_CRYPTOHOME_PLUGINVM are not supported";
+    response.set_failure_reason("Unsupported location for image");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  base::FilePath disk_path;
+  if (!GetDiskPathFromName(request.disk_path(), request.cryptohome_id(),
+                           request.storage_location(),
+                           true, /* create_parent_dir */
+                           &disk_path)) {
+    response.set_failure_reason("Failed to delete vm image");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (base::PathExists(disk_path)) {
+    response.set_status(DISK_STATUS_EXISTS);
+    response.set_failure_reason("Disk image already exists");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Get the FD to fill with disk image data.
+  base::ScopedFD in_fd;
+  if (!reader.PopFileDescriptor(&in_fd)) {
+    LOG(ERROR) << "import: no fd found";
+    response.set_failure_reason("import: no fd found");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto op = PluginVmImportOperation::Create(std::move(in_fd), disk_path,
+                                            request.source_size());
+
+  response.set_status(op->status());
+  response.set_command_uuid(op->uuid());
+  response.set_failure_reason(op->failure_reason());
+
+  if (op->status() == DISK_STATUS_IN_PROGRESS) {
+    std::string uuid = op->uuid();
+    disk_image_ops_.emplace_back(std::move(op));
+    base::ThreadTaskRunnerHandle::Get()->PostTask(
+        FROM_HERE, base::Bind(&Service::RunDiskImageOperation,
+                              weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
+  }
+
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+void Service::RunDiskImageOperation(std::string uuid) {
+  auto iter = std::find_if(disk_image_ops_.begin(), disk_image_ops_.end(),
+                           [&uuid](auto& op) { return op->uuid() == uuid; });
+
+  if (iter == disk_image_ops_.end()) {
+    LOG(ERROR) << "RunDiskImageOperation called with unknown uuid";
+    return;
+  }
+
+  auto op = iter->get();
+  bool notify = op->Run(kDefaultIoLimit);
+  if (notify || op->status() != DISK_STATUS_IN_PROGRESS) {
+    LOG(INFO) << "Disk Image Operation: UUID=" << uuid
+              << " progress: " << op->GetProgress()
+              << " status: " << op->status();
+
+    // Send the D-Bus signal out updating progress of the operation.
+    DiskImageStatusResponse status;
+    FormatDiskImageStatus(op, &status);
+    dbus::Signal signal(kVmConciergeInterface, kDiskImageProgressSignal);
+    dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(status);
+    exported_object_->SendSignal(&signal);
+  }
+
+  if (op->status() == DISK_STATUS_IN_PROGRESS) {
+    // Reschedule ourselves so we can execute next chunk of work.
+    base::ThreadTaskRunnerHandle::Get()->PostTask(
+        FROM_HERE, base::Bind(&Service::RunDiskImageOperation,
+                              weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
+  }
+}
+
+std::unique_ptr<dbus::Response> Service::CheckDiskImageStatus(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received DiskImageStatus request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  DiskImageStatusResponse response;
+  response.set_status(DISK_STATUS_FAILED);
+
+  DiskImageStatusRequest request;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse DiskImageStatusRequest from message";
+    response.set_failure_reason("Unable to parse DiskImageStatusRequest");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Locate the pending command in the list.
+  auto iter = std::find_if(
+      disk_image_ops_.begin(), disk_image_ops_.end(),
+      [&request](auto& op) { return op->uuid() == request.command_uuid(); });
+
+  if (iter == disk_image_ops_.end()) {
+    LOG(ERROR) << "Unknown command uuid in DiskImageStatusRequest";
+    response.set_failure_reason("Unknown command uuid");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto op = iter->get();
+  FormatDiskImageStatus(op, &response);
+  writer.AppendProtoAsArrayOfBytes(response);
+
+  // Erase operation form the list if it is no longer in progress.
+  if (op->status() != DISK_STATUS_IN_PROGRESS) {
+    disk_image_ops_.erase(iter);
+  }
+
   return dbus_response;
 }
 

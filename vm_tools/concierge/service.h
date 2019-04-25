@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <list>
 #include <map>
 #include <memory>
 #include <string>
@@ -30,6 +31,7 @@
 #include <dbus/message.h>
 #include <grpcpp/grpcpp.h>
 
+#include "vm_tools/concierge/disk_image.h"
 #include "vm_tools/concierge/power_manager_client.h"
 #include "vm_tools/concierge/shill_client.h"
 #include "vm_tools/concierge/startup_listener_impl.h"
@@ -104,6 +106,17 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Handles a request to export a disk image.
   std::unique_ptr<dbus::Response> ExportDiskImage(
       dbus::MethodCall* method_call);
+
+  // Handles a request to import a disk image.
+  std::unique_ptr<dbus::Response> ImportDiskImage(
+      dbus::MethodCall* method_call);
+
+  // Handles a request to check status of a disk image operation.
+  std::unique_ptr<dbus::Response> CheckDiskImageStatus(
+      dbus::MethodCall* method_call);
+
+  // Run import/export disk image operation with given UUID.
+  void RunDiskImageOperation(std::string uuid);
 
   // Handles a request to list existing disk images.
   std::unique_ptr<dbus::Response> ListVmDisks(dbus::MethodCall* method_call);
@@ -232,6 +245,9 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Whether we should re-synchronize VM clocks on resume from sleep.
   const bool resync_vm_clocks_on_resume_;
+
+  // List of currently executing operations to import/export disk images.
+  std::list<std::unique_ptr<DiskImageOperation>> disk_image_ops_;
 
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 

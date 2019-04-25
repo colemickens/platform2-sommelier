@@ -71,6 +71,7 @@
       ],
       'variables': {
         'exported_deps': [
+          'libarchive',
           'libqcow_utils',
           'libshill-client',
           'system_api',
@@ -88,6 +89,7 @@
         ],
       },
       'sources': [
+        'concierge/disk_image.cc',
         'concierge/plugin_vm.cc',
         'concierge/power_manager_client.cc',
         'concierge/seneschal_server_proxy.cc',

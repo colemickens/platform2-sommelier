@@ -6,6 +6,9 @@
 #include <fcntl.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <iostream>
 #include <memory>
@@ -51,6 +54,7 @@ constexpr int64_t kMinimumDiskSize = 1ll * 1024 * 1024 * 1024;  // 1 GiB
 constexpr char kRemovableMediaRoot[] = "/media/removable";
 constexpr char kStorageCryptohomeRoot[] = "cryptohome-root";
 constexpr char kStorageCryptohomeDownloads[] = "cryptohome-downloads";
+constexpr char kStorageCryptohomePluginVm[] = "cryptohome-pluginvm";
 // File extension for qcow2 disk types.
 constexpr char kQcowImageExtension[] = ".qcow2";
 
@@ -611,6 +615,118 @@ int ExportDiskImage(dbus::ObjectProxy* proxy,
   return 0;
 }
 
+int ImportDiskImage(dbus::ObjectProxy* proxy,
+                    string cryptohome_id,
+                    string vm_name,
+                    string import_name,
+                    string storage_location,
+                    string removable_media) {
+  if (cryptohome_id.empty()) {
+    LOG(ERROR) << "Cryptohome id cannot be empty";
+    return -1;
+  }
+  if (vm_name.empty()) {
+    LOG(ERROR) << "Name cannot be empty";
+    return -1;
+  }
+  if (import_name.empty()) {
+    LOG(ERROR) << "Import name cannot be empty";
+    return -1;
+  }
+
+  base::FilePath import_disk_path;
+  if (!removable_media.empty()) {
+    import_disk_path = base::FilePath(kRemovableMediaRoot)
+                           .Append(removable_media)
+                           .Append(import_name);
+  } else {
+    import_disk_path = base::FilePath(kCryptohomeUser)
+                           .Append(cryptohome_id)
+                           .Append(kDownloadsDir)
+                           .Append(import_name);
+  }
+  if (import_disk_path.ReferencesParent()) {
+    LOG(ERROR) << "Invalid removable_vm_path";
+    return -1;
+  }
+  if (!base::PathExists(import_disk_path)) {
+    LOG(ERROR) << "Import disk image does not exist.";
+    return -1;
+  }
+
+  base::ScopedFD disk_fd(
+      HANDLE_EINTR(open(import_disk_path.value().c_str(), O_RDONLY)));
+  if (!disk_fd.is_valid()) {
+    LOG(ERROR) << "Failed opening import file "
+               << import_disk_path.MaybeAsASCII();
+    return -1;
+  }
+
+  vm_tools::concierge::ImportDiskImageRequest request;
+  request.set_cryptohome_id(std::move(cryptohome_id));
+  request.set_disk_path(std::move(vm_name));
+
+  if (storage_location == kStorageCryptohomeRoot) {
+    request.set_storage_location(vm_tools::concierge::STORAGE_CRYPTOHOME_ROOT);
+  } else if (storage_location == kStorageCryptohomeDownloads) {
+    request.set_storage_location(
+        vm_tools::concierge::STORAGE_CRYPTOHOME_DOWNLOADS);
+  } else if (storage_location == kStorageCryptohomePluginVm) {
+    request.set_storage_location(
+        vm_tools::concierge::STORAGE_CRYPTOHOME_PLUGINVM);
+  } else {
+    LOG(ERROR) << "'" << storage_location
+               << "' is not a valid storage location";
+    return -1;
+  }
+
+  struct stat st;
+  if (fstat(disk_fd.get(), &st) == 0) {
+    // stat's block size is always 512 bytes.
+    request.set_source_size(st.st_blocks * 512);
+  }
+
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kImportDiskImageMethod);
+  dbus::MessageWriter writer(&method_call);
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode ImportDiskImageRequest protobuf";
+    return -1;
+  }
+  writer.AppendFileDescriptor(disk_fd.get());
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::ImportDiskImageResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  switch (response.status()) {
+    case vm_tools::concierge::DISK_STATUS_CREATED:
+      break;
+
+    case vm_tools::concierge::DISK_STATUS_IN_PROGRESS:
+      LOG(INFO) << "Importing disk image from "
+                << import_disk_path.MaybeAsASCII();
+      break;
+
+    default:
+      LOG(ERROR) << "Failed to import disk image: "
+                 << response.failure_reason();
+      return -1;
+  }
+
+  return 0;
+}
+
 int ListDiskImages(dbus::ObjectProxy* proxy,
                    string cryptohome_id,
                    string storage_location) {
@@ -1044,6 +1160,7 @@ int main(int argc, char** argv) {
               "Create a disk image on removable media");
   DEFINE_bool(destroy_disk, false, "Destroy a disk image");
   DEFINE_bool(export_disk, false, "Export a disk image from a VM");
+  DEFINE_bool(import_disk, false, "Import a disk image for a VM");
   DEFINE_bool(list_disks, false, "List disk images");
   DEFINE_bool(start_termina_vm, false,
               "Start a termina VM with a default config");
@@ -1061,6 +1178,7 @@ int main(int argc, char** argv) {
   DEFINE_string(rootfs, "", "Path to the VM rootfs");
   DEFINE_string(name, "", "Name to assign to the VM");
   DEFINE_string(export_name, "", "Name to give the exported disk image");
+  DEFINE_string(import_name, "", "Name of the VM image to import");
   DEFINE_string(extra_disks, "",
                 "Additional disk images to be mounted inside the VM");
   DEFINE_string(container_name, "", "Name of the container within the VM");
@@ -1110,15 +1228,16 @@ int main(int argc, char** argv) {
   // clang-format off
   if (FLAGS_start + FLAGS_stop + FLAGS_stop_all + FLAGS_get_vm_info +
       FLAGS_create_disk + FLAGS_create_external_disk + FLAGS_start_termina_vm +
-      FLAGS_destroy_disk + FLAGS_export_disk + FLAGS_list_disks +
-      FLAGS_sync_time + FLAGS_attach_usb +
+      FLAGS_destroy_disk + FLAGS_export_disk + FLAGS_import_disk +
+      FLAGS_list_disks + FLAGS_sync_time + FLAGS_attach_usb +
       FLAGS_detach_usb + FLAGS_list_usb_devices + FLAGS_start_plugin_vm!= 1) {
     // clang-format on
-    LOG(ERROR) << "Exactly one of --start, --stop, --stop_all, --get_vm_info, "
-               << "--create_disk, --create_external_disk --destroy_disk, "
-               << "--export_disk --list_disks, --start_termina_vm, "
-               << "--sync_time, --attach_usb, --detach_usb, "
-               << "--start_plugin_vm, or --list_usb_devices must be provided";
+    LOG(ERROR)
+        << "Exactly one of --start, --stop, --stop_all, --get_vm_info, "
+        << "--create_disk, --create_external_disk --destroy_disk, "
+        << "--export_disk --import_disk --list_disks, --start_termina_vm, "
+        << "--sync_time, --attach_usb, --detach_usb, "
+        << "--start_plugin_vm, or --list_usb_devices must be provided";
     return -1;
   }
 
@@ -1149,6 +1268,11 @@ int main(int argc, char** argv) {
   } else if (FLAGS_export_disk) {
     return ExportDiskImage(proxy, std::move(FLAGS_cryptohome_id),
                            std::move(FLAGS_name), std::move(FLAGS_export_name),
+                           std::move(FLAGS_removable_media));
+  } else if (FLAGS_import_disk) {
+    return ImportDiskImage(proxy, std::move(FLAGS_cryptohome_id),
+                           std::move(FLAGS_name), std::move(FLAGS_import_name),
+                           std::move(FLAGS_storage_location),
                            std::move(FLAGS_removable_media));
   } else if (FLAGS_list_disks) {
     return ListDiskImages(proxy, std::move(FLAGS_cryptohome_id),
