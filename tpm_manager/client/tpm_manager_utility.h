@@ -30,6 +30,9 @@ class TPM_MANAGER_EXPORT TpmManagerUtility {
   // Initializes the worker thread and proxies of |tpm_manager| and returns
   // |true| if successful. Returns |false| if we cannot start
   // |tpm_manager_thread_| or tpm_manager's interfaces fail to initialize.
+  //
+  // Once returing |true|, the calls of this function afterwards return |true|
+  // without mutating any data member.
   bool Initialize();
 
   // Blocking call of |TpmOwnershipDBusProxy::TakeOwnership|. Returns |true| iff

@@ -196,4 +196,8 @@ TEST_F(TpmManagerUtilityTest, ResetDictionaryAttackLockFail) {
   EXPECT_FALSE(tpm_manager_utility_.ResetDictionaryAttackLock());
 }
 
+TEST_F(TpmManagerUtilityTest, ExtraInitializationCall) {
+  EXPECT_TRUE(tpm_manager_utility_.Initialize());
+}
+
 }  // namespace tpm_manager
