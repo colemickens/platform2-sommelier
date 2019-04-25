@@ -38,7 +38,9 @@ bool DiagProcessAdapterImpl::StartProcess(const std::vector<std::string>& args,
 
 bool DiagProcessAdapterImpl::KillProcess(const base::ProcessHandle& handle) {
   DCHECK_NE(handle, base::kNullProcessHandle);
-  return base::Process(handle).Terminate(EXIT_FAILURE, false);
+  base::Process(handle).Terminate(EXIT_FAILURE, false);
+  base::EnsureProcessTerminated(base::Process(handle));
+  return true;
 }
 
 }  // namespace diagnostics
