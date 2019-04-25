@@ -376,7 +376,7 @@ class Platform2Test(object):
     # Reap any processes that were reparented to us until the child exits.
     status = _ReapUntilProcessExits(child)
 
-    leaked_children = psutil.Process().get_children(recursive=True)
+    leaked_children = psutil.Process().children(recursive=True)
     if leaked_children:
       # It's possible the child forked and the forked processes are still
       # running.  Kill the forked processes.
