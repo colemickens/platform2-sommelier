@@ -1,5 +1,10 @@
 type cros_metrics_daemon, chromeos_domain, domain, mlstrustedobject;
 
+# TODO(crbug.com/954670, crbug.com/956270)
+# /etc/lsb-release is unlabeled (suspect post build_image release process recreating it)
+# /run files are not correctly handled in policy
+permissive cros_metrics_daemon;
+
 domain_auto_trans(cros_init_scripts, cros_metrics_daemon_exec, cros_metrics_daemon);
 allow cros_metrics_daemon cros_init_scripts:fd use;
 
