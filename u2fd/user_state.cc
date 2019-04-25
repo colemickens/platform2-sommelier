@@ -37,8 +37,8 @@ void OnSignalConnected(const std::string& interface,
 
 }  // namespace
 
-UserState::UserState(scoped_refptr<dbus::Bus> dbus)
-    : proxy_(dbus), weak_ptr_factory_(this) {
+UserState::UserState(scoped_refptr<dbus::Bus> dbus, uint32_t counter_min)
+    : proxy_(dbus), weak_ptr_factory_(this), counter_min_(counter_min) {
   proxy_.RegisterSessionStateChangedSignalHandler(
       base::Bind(&UserState::OnSessionStateChanged,
                  weak_ptr_factory_.GetWeakPtr()),
@@ -204,8 +204,9 @@ void UserState::LoadCounter() {
       base::StringPrintf(kCounterPath, sanitized_user_->c_str()));
 
   if (!base::PathExists(path)) {
-    LOG(INFO) << "U2F counter missing, initializing counter with value of 0.";
-    counter_ = 0;
+    counter_ = counter_min_;
+    LOG(INFO) << "U2F counter missing, initializing counter with value of "
+              << *counter_;
     return;
   }
 
@@ -213,7 +214,15 @@ void UserState::LoadCounter() {
   U2fCounter counter_pb;
   if (base::ReadFileToString(path, &counter) &&
       UnwrapUserData<U2fCounter>(counter, &counter_pb)) {
-    counter_ = counter_pb.counter();
+    uint32_t persistent_counter = counter_pb.counter();
+    if (persistent_counter < counter_min_) {
+      LOG(INFO) << "Overriding persisted counter value of "
+                << counter_pb.counter() << " with minimum value "
+                << counter_min_;
+      counter_ = counter_min_;
+    } else {
+      counter_ = persistent_counter;
+    }
   } else {
     LOG(ERROR) << "Failed to load counter from: " << path.value();
     counter_.reset();

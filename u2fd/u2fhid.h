@@ -100,6 +100,7 @@ class U2fHid {
          const std::string& vendor_sysinfo,
          const bool g2f_mode,
          const bool user_secrets,
+         const bool legacy_kh_fallback,
          const TpmAdpuCallback& adpu_fn,
          const TpmGenerateCallback& generate_fn,
          const TpmSignCallback& sign_fn,
@@ -207,6 +208,7 @@ class U2fHid {
   std::unique_ptr<HidInterface> hid_;
   const bool g2f_mode_;
   const bool user_secrets_;
+  const bool legacy_kh_fallback_;
   TpmAdpuCallback transmit_apdu_;
   TpmGenerateCallback tpm_generate_;
   TpmSignCallback tpm_sign_;

@@ -38,6 +38,24 @@ namespace {
 constexpr char kDeviceName[] = "Integrated U2F";
 constexpr int kWinkSignalMinIntervalMs = 1000;
 
+// The U2F counter stored in cr50 is stored in a format resistant to rollbacks,
+// and that guarantees monotonicity even in the presence of partial writes.
+// See //platform/ec/include/nvcounter.h
+//
+// The counter is stored across 2 pages of flash - a high page and a low page,
+// with each page containing 512 4-byte words. The counter increments using
+// 'strikes', with each strike occupying 4 bits. The high page can represent
+// numbers 0-2048, and the low page can represent numbers 0-4096.
+// The pages are interpreted as two digits of a base-4097 number, giving us
+// the maximum value below.
+// See //platform/ec/common/nvcounter.c for more details.
+constexpr uint32_t kMaxCr50U2fCounterValue = (2048 * 4097) + 4096;
+// If we are supporting legacy key handles, we initialize the counter such that
+// it is always larger than the maximum possible value cr50 could have returned,
+// and therefore guarantee that we provide a monotonically increasing counter
+// value for migrated key handles.
+constexpr uint32_t kLegacyKhCounterMin = kMaxCr50U2fCounterValue + 1;
+
 namespace em = enterprise_management;
 
 enum class U2fMode : uint8_t {
@@ -100,10 +118,12 @@ class U2fDaemon : public brillo::Daemon {
  public:
   U2fDaemon(U2fMode mode,
             bool user_keys,
+            bool legacy_kh_fallback,
             uint32_t vendor_id,
             uint32_t product_id)
       : u2f_mode_(mode),
         user_keys_(user_keys),
+        legacy_kh_fallback_(legacy_kh_fallback),
         vendor_id_(vendor_id),
         product_id_(product_id) {}
 
@@ -146,6 +166,7 @@ class U2fDaemon : public brillo::Daemon {
         std::make_unique<u2f::UHidDevice>(vendor_id_, product_id_, kDeviceName,
                                           "u2fd-tpm-cr50"),
         vendor_sysinfo, u2f_mode_ == U2fMode::kU2fExtended, user_keys_,
+        legacy_kh_fallback_,
         base::Bind(&u2f::TpmVendorCommandProxy::SendU2fApdu,
                    base::Unretained(&tpm_proxy_)),
         base::Bind(&u2f::TpmVendorCommandProxy::SendU2fGenerate,
@@ -160,7 +181,8 @@ class U2fDaemon : public brillo::Daemon {
             &org::chromium::PowerManagerProxy::IgnoreNextPowerButtonPress,
             base::Unretained(pm_proxy_.get())),
         base::Bind(&U2fDaemon::SendWinkSignal, base::Unretained(this)),
-        std::make_unique<u2f::UserState>(bus_));
+        std::make_unique<u2f::UserState>(
+            bus_, legacy_kh_fallback_ ? kLegacyKhCounterMin : 0));
 
     return u2fhid_->Init() ? EX_OK : EX_PROTOCOL;
   }
@@ -193,6 +215,7 @@ class U2fDaemon : public brillo::Daemon {
 
   U2fMode u2f_mode_;
   bool user_keys_;
+  bool legacy_kh_fallback_;
   uint32_t vendor_id_;
   uint32_t product_id_;
   u2f::TpmVendorCommandProxy tpm_proxy_;
@@ -218,6 +241,9 @@ int main(int argc, char* argv[]) {
                "Vendor ID for the HID device");
   DEFINE_bool(verbose, false, "verbose logging");
   DEFINE_bool(user_keys, false, "Whether to use user-specific keys");
+  DEFINE_bool(legacy_kh_fallback, false,
+              "Whether to allow auth with legacy keys when user-specific keys "
+              "are enabled");
 
   brillo::FlagHelper::Init(argc, argv, "u2fd, U2FHID emulation daemon.");
 
@@ -244,7 +270,8 @@ int main(int argc, char* argv[]) {
   // are legacy and should not be used beyond the initial beta launch.
   bool user_keys = (ReadU2fPolicy() != U2fMode::kUnset) || FLAGS_user_keys;
 
-  U2fDaemon daemon(mode, user_keys, FLAGS_vendor_id, FLAGS_product_id);
+  U2fDaemon daemon(mode, user_keys, FLAGS_legacy_kh_fallback, FLAGS_vendor_id,
+                   FLAGS_product_id);
   int rc = daemon.Run();
 
   return rc == EX_UNAVAILABLE ? EX_OK : rc;

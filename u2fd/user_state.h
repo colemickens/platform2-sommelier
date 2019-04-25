@@ -20,7 +20,9 @@ namespace u2f {
 // thread-safe.
 class UserState {
  public:
-  explicit UserState(scoped_refptr<dbus::Bus> dbus);
+  // Constructs a new UserState object using the specified dbus object.
+  // The counter values returned by this object will be >= counter_min.
+  explicit UserState(scoped_refptr<dbus::Bus> dbus, uint32_t counter_min);
 
   // Get*() methods return base::nullopt if user state is currently
   // unavailable.
@@ -69,6 +71,8 @@ class UserState {
 
   org::chromium::SessionManagerInterfaceProxy proxy_;
   base::WeakPtrFactory<UserState> weak_ptr_factory_;
+
+  const uint32_t counter_min_;
 };
 
 }  // namespace u2f

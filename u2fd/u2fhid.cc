@@ -208,6 +208,7 @@ U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
                const std::string& vendor_sysinfo,
                const bool g2f_mode,
                const bool user_secrets,
+               const bool legacy_kh_fallback,
                const TpmAdpuCallback& adpu_fn,
                const TpmGenerateCallback& generate_fn,
                const TpmSignCallback& sign_fn,
@@ -219,6 +220,7 @@ U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
     : hid_(std::move(hid)),
       g2f_mode_(g2f_mode),
       user_secrets_(user_secrets),
+      legacy_kh_fallback_(legacy_kh_fallback),
       transmit_apdu_(adpu_fn),
       tpm_generate_(generate_fn),
       tpm_sign_(sign_fn),
@@ -686,6 +688,8 @@ int U2fHid::DoU2fSign(const std::vector<uint8_t>& app_id,
   U2F_SIGN_REQ sign_req = {
       .flags = U2F_AUTH_ENFORCE  // Require user presence, consume.
   };
+  if (legacy_kh_fallback_)
+    sign_req.flags |= SIGN_LEGACY_KH;
   util::VectorToObject(app_id, sign_req.appId);
   util::VectorToObject(*user_secret, sign_req.userSecret);
   util::VectorToObject(key_handle, sign_req.keyHandle);
