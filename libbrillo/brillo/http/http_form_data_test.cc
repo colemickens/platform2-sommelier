@@ -95,7 +95,7 @@ TEST(HttpFormData, MultiPartFormField) {
                                       nullptr));
   const char expected_header[] =
       "Content-Disposition: form-data; name=\"foo\"\r\n"
-      "Content-Type: multipart/form-data; boundary=\"Delimiter\"\r\n"
+      "Content-Type: multipart/form-data; boundary=Delimiter\r\n"
       "\r\n";
   EXPECT_EQ(expected_header, form_field.GetContentHeader());
   const char expected_data[] =
@@ -159,7 +159,7 @@ TEST(HttpFormData, FormData) {
   FormData form_data{"boundary1"};
   form_data.AddTextField("name", "John Doe");
   std::unique_ptr<MultiPartFormField> files{
-      new MultiPartFormField{"files", "", "boundary2"}};
+      new MultiPartFormField{"files", "", "boundary 2"}};
   EXPECT_TRUE(files->AddFileField(
       "", filename1, content_disposition::kFile, mime::text::kPlain, nullptr));
   EXPECT_TRUE(files->AddFileField("",
@@ -168,7 +168,7 @@ TEST(HttpFormData, FormData) {
                                   mime::application::kOctet_stream,
                                   nullptr));
   form_data.AddCustomField(std::move(files));
-  EXPECT_EQ("multipart/form-data; boundary=\"boundary1\"",
+  EXPECT_EQ("multipart/form-data; boundary=boundary1",
             form_data.GetContentType());
 
   StreamPtr stream = form_data.ExtractDataStream();
@@ -181,21 +181,21 @@ TEST(HttpFormData, FormData) {
       "John Doe\r\n"
       "--boundary1\r\n"
       "Content-Disposition: form-data; name=\"files\"\r\n"
-      "Content-Type: multipart/mixed; boundary=\"boundary2\"\r\n"
+      "Content-Type: multipart/mixed; boundary=\"boundary 2\"\r\n"
       "\r\n"
-      "--boundary2\r\n"
+      "--boundary 2\r\n"
       "Content-Disposition: file; filename=\"sample.txt\"\r\n"
       "Content-Type: text/plain\r\n"
       "Content-Transfer-Encoding: binary\r\n"
       "\r\n"
       "text line1\ntext line2\n\r\n"
-      "--boundary2\r\n"
+      "--boundary 2\r\n"
       "Content-Disposition: file; filename=\"test.bin\"\r\n"
       "Content-Type: application/octet-stream\r\n"
       "Content-Transfer-Encoding: binary\r\n"
       "\r\n"
       "\x01\x02\x03\x04\x05\r\n"
-      "--boundary2--\r\n"
+      "--boundary 2--\r\n"
       "--boundary1--";
   EXPECT_EQ(expected_data, (std::string{data.begin(), data.end()}));
 }

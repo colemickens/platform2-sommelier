@@ -10,6 +10,7 @@
 #include <base/format_macros.h>
 #include <base/rand_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_util.h>
 
 #include <brillo/errors/error_codes.h>
 #include <brillo/http/http_transport.h>
@@ -142,8 +143,18 @@ bool MultiPartFormField::ExtractDataStreams(std::vector<StreamPtr>* streams) {
 }
 
 std::string MultiPartFormField::GetContentType() const {
+  // Quote the boundary only if it has non-alphanumeric chars in it.
+  // https://www.w3.org/Protocols/rfc1341/7_2_Multipart.html
+  bool use_quotes = false;
+  for (auto ch : boundary_) {
+    if (!base::IsAsciiAlpha(ch) && !base::IsAsciiDigit(ch)) {
+      use_quotes = true;
+      break;
+    }
+  }
   return base::StringPrintf(
-      "%s; boundary=\"%s\"", content_type_.c_str(), boundary_.c_str());
+      use_quotes ? "%s; boundary=\"%s\"" : "%s; boundary=%s",
+      content_type_.c_str(), boundary_.c_str());
 }
 
 void MultiPartFormField::AddCustomField(std::unique_ptr<FormField> field) {
