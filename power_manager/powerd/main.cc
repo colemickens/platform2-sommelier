@@ -38,7 +38,6 @@
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/audio_client.h"
-#include "power_manager/powerd/system/charge_controller_helper.h"
 #include "power_manager/powerd/system/dark_resume.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
@@ -55,6 +54,7 @@
 #include "power_manager/powerd/system/suspend_configurator.h"
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/powerd/system/wakeup_device.h"
+#include "power_manager/powerd/system/wilco_charge_controller_helper.h"
 
 #ifndef VCSID
 #define VCSID "<not set>"
@@ -234,7 +234,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
 
   std::unique_ptr<system::ChargeControllerHelperInterface>
   CreateChargeControllerHelper() override {
-    return std::make_unique<system::ChargeControllerHelper>();
+    return std::make_unique<system::WilcoChargeControllerHelper>();
   }
 
   std::unique_ptr<system::SuspendConfiguratorInterface>

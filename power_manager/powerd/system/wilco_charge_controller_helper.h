@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_SYSTEM_CHARGE_CONTROLLER_HELPER_H_
-#define POWER_MANAGER_POWERD_SYSTEM_CHARGE_CONTROLLER_HELPER_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_WILCO_CHARGE_CONTROLLER_HELPER_H_
+#define POWER_MANAGER_POWERD_SYSTEM_WILCO_CHARGE_CONTROLLER_HELPER_H_
 
 #include <string>
 
@@ -15,10 +15,11 @@ namespace power_manager {
 namespace system {
 
 // Real implementation of ChargeControllerHelperInterface.
-class ChargeControllerHelper final : public ChargeControllerHelperInterface {
+class WilcoChargeControllerHelper final
+    : public ChargeControllerHelperInterface {
  public:
-  ChargeControllerHelper();
-  ~ChargeControllerHelper() override;
+  WilcoChargeControllerHelper();
+  ~WilcoChargeControllerHelper() override;
 
   // ChargeControllerHelperInterface overrides:
   bool SetPeakShiftEnabled(bool enable) override;
@@ -36,10 +37,10 @@ class ChargeControllerHelper final : public ChargeControllerHelperInterface {
   bool SetBatteryChargeCustomThresholds(int custom_charge_start,
                                         int custom_charge_stop) override;
 
-  DISALLOW_COPY_AND_ASSIGN(ChargeControllerHelper);
+  DISALLOW_COPY_AND_ASSIGN(WilcoChargeControllerHelper);
 };
 
 }  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_SYSTEM_CHARGE_CONTROLLER_HELPER_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_WILCO_CHARGE_CONTROLLER_HELPER_H_

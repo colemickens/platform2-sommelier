@@ -43,7 +43,6 @@
 #include "power_manager/powerd/system/arc_timer_manager.h"
 #include "power_manager/powerd/system/audio_client_interface.h"
 #include "power_manager/powerd/system/backlight_interface.h"
-#include "power_manager/powerd/system/charge_controller_helper.h"
 #include "power_manager/powerd/system/charge_controller_helper_interface.h"
 #include "power_manager/powerd/system/dark_resume_interface.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
@@ -58,6 +57,7 @@
 #include "power_manager/powerd/system/sar_watcher_interface.h"
 #include "power_manager/powerd/system/suspend_configurator.h"
 #include "power_manager/powerd/system/udev.h"
+#include "power_manager/powerd/system/wilco_charge_controller_helper.h"
 #include "power_manager/proto_bindings/idle.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/system/charge_controller_helper.h"
+#include "power_manager/powerd/system/wilco_charge_controller_helper.h"
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -38,6 +38,20 @@ constexpr const char kBootOnAcEnablePath[] = "boot_on_ac";
 // Relative path to |kEcDriverSysfsDirectory|.
 constexpr const char kUsbPowerShareEnablePath[] = "usb_power_share";
 
+constexpr const char kPowerSupplyDirectory[] =
+    "/sys/class/power_supply/wilco-charger/";
+
+// Relative path to |kPowerSupplyDirectory|.
+constexpr const char kBatteryChargeModePath[] = "charge_type";
+
+// Relative path to |kPowerSupplyDirectory|.
+constexpr const char kBatteryChargeCustomChargeStartPath[] =
+    "charge_control_start_threshold";
+
+// Relative path to |kPowerSupplyDirectory|.
+constexpr const char kBatteryChargeCustomChargeStopPath[] =
+    "charge_control_end_threshold";
+
 bool WriteDataToFile(const base::FilePath& filename, const std::string& data) {
   if (base::WriteFile(filename, data.c_str(), data.length()) != data.length()) {
     PLOG(ERROR) << "Unable to write \"" << data << "\" to " << filename.value();
@@ -48,18 +62,18 @@ bool WriteDataToFile(const base::FilePath& filename, const std::string& data) {
 
 }  // namespace
 
-ChargeControllerHelper::ChargeControllerHelper() = default;
+WilcoChargeControllerHelper::WilcoChargeControllerHelper() = default;
 
-ChargeControllerHelper::~ChargeControllerHelper() = default;
+WilcoChargeControllerHelper::~WilcoChargeControllerHelper() = default;
 
-bool ChargeControllerHelper::SetPeakShiftEnabled(bool enable) {
+bool WilcoChargeControllerHelper::SetPeakShiftEnabled(bool enable) {
   return WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
                              .Append(kPeakShiftPropertyDirectory)
                              .Append(kPeakShiftEnablePath),
                          enable ? "1" : "0");
 }
 
-bool ChargeControllerHelper::SetPeakShiftBatteryPercentThreshold(
+bool WilcoChargeControllerHelper::SetPeakShiftBatteryPercentThreshold(
     int threshold) {
   return WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
                              .Append(kPeakShiftPropertyDirectory)
@@ -67,7 +81,7 @@ bool ChargeControllerHelper::SetPeakShiftBatteryPercentThreshold(
                          base::StringPrintf("%03d", threshold));
 }
 
-bool ChargeControllerHelper::SetPeakShiftDayConfig(
+bool WilcoChargeControllerHelper::SetPeakShiftDayConfig(
     PowerManagementPolicy::WeekDay week_day, const std::string& config) {
   const char* day_file = nullptr;
   switch (week_day) {
@@ -103,39 +117,67 @@ bool ChargeControllerHelper::SetPeakShiftDayConfig(
                          config);
 }
 
-bool ChargeControllerHelper::SetBootOnAcEnabled(bool enable) {
+bool WilcoChargeControllerHelper::SetBootOnAcEnabled(bool enable) {
   return WriteDataToFile(
       base::FilePath(kEcDriverSysfsDirectory).Append(kBootOnAcEnablePath),
       enable ? "1" : "0");
 }
 
-bool ChargeControllerHelper::SetUsbPowerShareEnabled(bool enable) {
+bool WilcoChargeControllerHelper::SetUsbPowerShareEnabled(bool enable) {
   return WriteDataToFile(
       base::FilePath(kEcDriverSysfsDirectory).Append(kUsbPowerShareEnablePath),
       enable ? "1" : "0");
 }
 
-bool ChargeControllerHelper::SetAdvancedBatteryChargeModeEnabled(bool enable) {
+bool WilcoChargeControllerHelper::SetAdvancedBatteryChargeModeEnabled(
+    bool enable) {
   NOTIMPLEMENTED();
   return false;
 }
 
-bool ChargeControllerHelper::SetAdvancedBatteryChargeModeDayConfig(
+bool WilcoChargeControllerHelper::SetAdvancedBatteryChargeModeDayConfig(
     PowerManagementPolicy::WeekDay week_day, const std::string& config) {
   NOTIMPLEMENTED();
   return false;
 }
 
-bool ChargeControllerHelper::SetBatteryChargeMode(
+bool WilcoChargeControllerHelper::SetBatteryChargeMode(
     PowerManagementPolicy::BatteryChargeMode::Mode mode) {
-  NOTIMPLEMENTED();
-  return false;
+  std::string charge_type;
+  switch (mode) {
+    case PowerManagementPolicy::BatteryChargeMode::STANDARD:
+      charge_type = "Standard";
+      break;
+    case PowerManagementPolicy::BatteryChargeMode::EXPRESS_CHARGE:
+      charge_type = "Fast";
+      break;
+    case PowerManagementPolicy::BatteryChargeMode::PRIMARILY_AC_USE:
+      charge_type = "Trickle";
+      break;
+    case PowerManagementPolicy::BatteryChargeMode::ADAPTIVE:
+      charge_type = "Adaptive";
+      break;
+    case PowerManagementPolicy::BatteryChargeMode::CUSTOM:
+      charge_type = "Custom";
+      break;
+  }
+  if (charge_type.empty()) {
+    LOG(WARNING) << "Invalid battery charge mode " << mode;
+    return false;
+  }
+  return WriteDataToFile(
+      base::FilePath(kPowerSupplyDirectory).Append(kBatteryChargeModePath),
+      charge_type);
 }
 
-bool ChargeControllerHelper::SetBatteryChargeCustomThresholds(
+bool WilcoChargeControllerHelper::SetBatteryChargeCustomThresholds(
     int custom_charge_start, int custom_charge_stop) {
-  NOTIMPLEMENTED();
-  return false;
+  return WriteDataToFile(base::FilePath(kPowerSupplyDirectory)
+                             .Append(kBatteryChargeCustomChargeStartPath),
+                         base::StringPrintf("%d", custom_charge_start)) &&
+         WriteDataToFile(base::FilePath(kPowerSupplyDirectory)
+                             .Append(kBatteryChargeCustomChargeStopPath),
+                         base::StringPrintf("%d", custom_charge_stop));
 }
 
 }  // namespace system

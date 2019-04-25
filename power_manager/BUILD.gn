@@ -90,7 +90,6 @@ static_library("libsystem") {
     "powerd/system/arc_timer_manager.cc",
     "powerd/system/async_file_reader.cc",
     "powerd/system/audio_client.cc",
-    "powerd/system/charge_controller_helper.cc",
     "powerd/system/dark_resume.cc",
     "powerd/system/dbus_wrapper.cc",
     "powerd/system/display/display_info.cc",
@@ -111,6 +110,7 @@ static_library("libsystem") {
     "powerd/system/tagged_device.cc",
     "powerd/system/udev.cc",
     "powerd/system/wakeup_device.cc",
+    "powerd/system/wilco_charge_controller_helper.cc",
   ]
   libs = [ "rt" ]
 }
