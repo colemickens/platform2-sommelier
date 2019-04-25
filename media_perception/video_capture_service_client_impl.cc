@@ -41,6 +41,7 @@ void VideoCaptureServiceClientImpl::GetDevices(
 
 void VideoCaptureServiceClientImpl::OpenDevice(
     const std::string& device_id,
+    bool force_reopen_with_settings,
     const SerializedVideoStreamParams& capture_format,
     const OpenDeviceCallback& callback) {
   VideoStreamParams format = Serialized<VideoStreamParams>(
@@ -81,7 +82,7 @@ void VideoCaptureServiceClientImpl::OpenDevice(
   device_id_to_receiver_map_.insert(
       std::make_pair(device_id, receiver_impl));
   mojo_connector_->OpenDevice(
-      device_id, receiver_impl, format,
+      device_id, force_reopen_with_settings, receiver_impl, format,
       std::bind(&VideoCaptureServiceClientImpl::OnOpenDeviceCallback,
                 this, callback, std::placeholders::_1,
                 std::placeholders::_2, std::placeholders::_3));

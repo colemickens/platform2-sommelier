@@ -62,8 +62,12 @@ class VideoCaptureServiceClient {
   // Sets a device to be opened by the Video Capture Service with the exact
   // device_id specified. OpenDeviceCallback provides information on the success
   // or failure of the request.
+  // |force_reopen_with_settings| enables a client to command the VCS to reopen
+  // a video device with the requested settings. This should be used sparingly
+  // as it can disrupt the video experience for frontend facing applications.
   virtual void OpenDevice(
       const std::string& device_id,
+      bool force_reopen_with_settings,
       const SerializedVideoStreamParams& capture_format,
       const OpenDeviceCallback& callback) = 0;
 

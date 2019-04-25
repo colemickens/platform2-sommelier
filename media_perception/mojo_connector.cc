@@ -218,18 +218,20 @@ void MojoConnector::OnDeviceInfosReceived(
 
 void MojoConnector::OpenDevice(
     const std::string& device_id,
+    bool force_reopen_with_settings,
     std::shared_ptr<ReceiverImpl> receiver_impl,
     const VideoStreamParams& capture_format,
     const VideoCaptureServiceClient::OpenDeviceCallback& callback) {
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE, base::Bind(&MojoConnector::OpenDeviceOnIpcThread,
                             base::Unretained(this),
-                            device_id, receiver_impl,
-                            capture_format, callback));
+                            device_id, force_reopen_with_settings,
+                            receiver_impl, capture_format, callback));
 }
 
 void MojoConnector::OpenDeviceOnIpcThread(
     const std::string& device_id,
+    bool force_reopen_with_settings,
     std::shared_ptr<ReceiverImpl> receiver_impl,
     const VideoStreamParams& capture_format,
     const VideoCaptureServiceClient::OpenDeviceCallback& callback) {
@@ -284,7 +286,7 @@ void MojoConnector::OpenDeviceOnIpcThread(
   device_it->second.video_source->CreatePushSubscription(
       receiver_impl->CreateInterfacePtr(),
       std::move(requested_settings),
-      /* force_reopen_with_new_settings */ false,
+      force_reopen_with_settings,
       mojo::MakeRequest(&device_it->second.push_video_stream_subscription),
       base::Bind(&MojoConnector::OnCreatePushSubscriptionCallback,
                  base::Unretained(this), device_id, callback));
