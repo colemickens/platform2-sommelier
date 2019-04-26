@@ -106,4 +106,16 @@ bool TpmNewImpl::DoesUseTpmManager() {
   return true;
 }
 
+bool TpmNewImpl::GetDictionaryAttackInfo(int* counter,
+                                         int* threshold,
+                                         bool* lockout,
+                                         int* seconds_remaining) {
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": failed to initialize |TpmMangerUtility|.";
+    return false;
+  }
+  return tpm_manager_utility_.GetDictionaryAttackInfo(
+      counter, threshold, lockout, seconds_remaining);
+}
+
 }  // namespace cryptohome

@@ -34,6 +34,10 @@ class TpmNewImpl : public TpmImpl {
                    brillo::Blob* secret,
                    bool* has_reset_lock_permissions) override;
   bool DoesUseTpmManager() override;
+  bool GetDictionaryAttackInfo(int* counter,
+                               int* threshold,
+                               bool* lockout,
+                               int* seconds_remaining) override;
 
  private:
   // Initializes |tpm_manager_utility_|; returns |true| iff successful.
