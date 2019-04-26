@@ -8,7 +8,6 @@
 #include <utility>
 
 #include <base/stl_util.h>
-#include <mm/mm-modem.h>
 
 #include "shill/cellular/modem.h"
 #include "shill/control_interface.h"

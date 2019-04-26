@@ -16,10 +16,6 @@
 #include "shill/logging.h"
 #include "shill/pending_activation_store.h"
 
-#ifdef MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN
-#error "Do not include mm-modem.h"
-#endif
-
 using base::UintToString;
 
 using std::string;

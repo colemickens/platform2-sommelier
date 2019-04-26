@@ -6,7 +6,6 @@
 
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
-#include <mm/mm-modem.h>
 
 #include "shill/cellular/cellular_capability.h"
 #include "shill/cellular/mock_cellular.h"

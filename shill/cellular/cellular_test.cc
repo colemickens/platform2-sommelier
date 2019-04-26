@@ -53,10 +53,6 @@ extern "C" {
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
-// mm/mm-modem.h must be included after cellular_capability_universal.h
-// in order to allow MM_MODEM_CDMA_* to be defined properly.
-#include <mm/mm-modem.h>
-
 using base::Bind;
 using base::Unretained;
 using std::map;

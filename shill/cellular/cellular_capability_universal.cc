@@ -32,10 +32,6 @@
 #include "shill/pending_activation_store.h"
 #include "shill/property_accessor.h"
 
-#ifdef MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN
-#error "Do not include mm-modem.h"
-#endif
-
 using base::Bind;
 using base::Closure;
 using std::string;
