@@ -10,9 +10,21 @@
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
-namespace arc_networkd {
-
 namespace {
+
+// Returns true if the connection state corresponds to a network with full or
+// partial connectivity where layer 3 has been provisioned. This includes all
+// portal states (Portal, RedirectFound, PortalSuspected), the validated state
+// (Online), and intermediary states where portal detection has not started or
+// not been conclusive yet (Ready, NoConnectivity).
+bool IsConnectedState(const std::string& connection_state) {
+  return connection_state == shill::kStateOnline ||
+      connection_state == shill::kStateReady ||
+      connection_state == shill::kStatePortal ||
+      connection_state == shill::kStateNoConnectivity ||
+      connection_state == shill::kStateRedirectFound ||
+      connection_state == shill::kStatePortalSuspected;
+}
 
 std::set<std::string> GetDevices(const brillo::Any& property_value) {
   std::set<std::string> devices;
@@ -26,6 +38,8 @@ std::set<std::string> GetDevices(const brillo::Any& property_value) {
 }
 
 }  // namespace
+
+namespace arc_networkd {
 
 ShillClient::ShillClient(scoped_refptr<dbus::Bus> bus) : bus_(bus) {
   manager_proxy_.reset(new org::chromium::flimflam::ManagerProxy(bus_));
@@ -85,8 +99,8 @@ bool ShillClient::GetDefaultInterface(std::string* name) {
     return false;
   }
   std::string state = it->second.TryGet<std::string>();
-  if (state != shill::kStateOnline) {
-    // Found our default service but it is still connecting.
+  if (!IsConnectedState(state)) {
+    LOG(INFO) << "Ignoring non-connected service in state " << state;
     name->clear();
     return true;
   }
