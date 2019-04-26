@@ -48,9 +48,18 @@ class TPM_MANAGER_EXPORT TpmManagerUtility {
   // operation succeeds. |dependency| is the idenitier of the dependency.
   bool RemoveOwnerDependency(const std::string& dependency);
 
-  // Blocking call of |TpmOwnershipDBusProxy::ReadSpace|. Returns |true| iff the
-  // operation succeeds. This call sends a request to read the content of the
-  // nvram at |index| and stores the output data in |output|. If
+  // Blocking call of |TpmOwnershipDBusProxy::GetDictionaryAttackInfo|. Returns
+  // |true| iff the operation succeeds. Once returning |true|, |counter|,
+  // |threshold|, |lockout| and |seconds_remaining| will set to the respective
+  // values of received |GetDictionaryAttackInfoReply|.
+  bool GetDictionaryAttackInfo(int* counter,
+                               int* threshold,
+                               bool* lockout,
+                               int* seconds_remaining);
+
+  // Blocking call of |TpmOwnershipDBusProxy::ReadSpace|. Returns |true| iff
+  // the operation succeeds. This call sends a request to read the content of
+  // the nvram at |index| and stores the output data in |output|. If
   // |use_owner_auth| is set, the request tells the service to use owner
   // authorization. Note: currently the arbitrary auth value is not supported
   // since we got no use case for now.

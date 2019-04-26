@@ -125,6 +125,30 @@ void TpmManagerUtility::ShutdownTask() {
   default_tpm_nvram_.reset(nullptr);
 }
 
+bool TpmManagerUtility::GetDictionaryAttackInfo(int* counter,
+                                                int* threshold,
+                                                bool* lockout,
+                                                int* seconds_remaining) {
+  tpm_manager::GetDictionaryAttackInfoReply reply;
+  tpm_manager::GetDictionaryAttackInfoRequest request;
+  SendTpmManagerRequestAndWait(
+      base::Bind(&tpm_manager::TpmOwnershipInterface::GetDictionaryAttackInfo,
+                 base::Unretained(tpm_owner_), request),
+      &reply);
+  if (reply.status() != tpm_manager::STATUS_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": Failed to retreive the dictionary attack information.";
+    return false;
+  }
+
+  *counter = reply.dictionary_attack_counter();
+  *threshold = reply.dictionary_attack_threshold();
+  *lockout = reply.dictionary_attack_lockout_in_effect();
+  *seconds_remaining = reply.dictionary_attack_lockout_seconds_remaining();
+
+  return true;
+}
+
 bool TpmManagerUtility::ReadSpace(uint32_t index,
                                   bool use_owner_auth,
                                   std::string* output) {

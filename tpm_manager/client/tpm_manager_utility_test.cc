@@ -47,6 +47,9 @@ class TpmManagerUtilityTest : public Test {
     ON_CALL(mock_tpm_owner_, RemoveOwnerDependency(_, _))
         .WillByDefault(
             InvokeCallbackArgument<1>(ByRef(remove_owner_dependency_reply_)));
+    ON_CALL(mock_tpm_owner_, GetDictionaryAttackInfo(_, _))
+        .WillByDefault(InvokeCallbackArgument<1>(
+            ByRef(get_dictionary_attack_info_reply_)));
   }
   void SetUp() override { ASSERT_TRUE(tpm_manager_utility_.Initialize()); }
 
@@ -58,6 +61,7 @@ class TpmManagerUtilityTest : public Test {
   tpm_manager::TakeOwnershipReply take_ownership_reply_;
   tpm_manager::GetTpmStatusReply get_tpm_status_reply_;
   tpm_manager::RemoveOwnerDependencyReply remove_owner_dependency_reply_;
+  tpm_manager::GetDictionaryAttackInfoReply get_dictionary_attack_info_reply_;
 };
 
 TEST_F(TpmManagerUtilityTest, TakeOwnership) {
@@ -127,6 +131,49 @@ TEST_F(TpmManagerUtilityTest, RemoveOwnerDependencyFail) {
 
   remove_owner_dependency_reply_.set_status(tpm_manager::STATUS_NOT_AVAILABLE);
   EXPECT_FALSE(tpm_manager_utility_.RemoveOwnerDependency(""));
+}
+
+TEST_F(TpmManagerUtilityTest, GetDictionaryAttackInfo) {
+  int counter = 0;
+  int threshold = 0;
+  bool lockout = false;
+  int seconds_remaining = 0;
+  get_dictionary_attack_info_reply_.set_status(tpm_manager::STATUS_SUCCESS);
+  get_dictionary_attack_info_reply_.set_dictionary_attack_counter(123);
+  get_dictionary_attack_info_reply_.set_dictionary_attack_threshold(456);
+  get_dictionary_attack_info_reply_.set_dictionary_attack_lockout_in_effect(
+      true);
+  get_dictionary_attack_info_reply_
+      .set_dictionary_attack_lockout_seconds_remaining(789);
+  EXPECT_TRUE(tpm_manager_utility_.GetDictionaryAttackInfo(
+      &counter, &threshold, &lockout, &seconds_remaining));
+  EXPECT_EQ(counter,
+            get_dictionary_attack_info_reply_.dictionary_attack_counter());
+  EXPECT_EQ(threshold,
+            get_dictionary_attack_info_reply_.dictionary_attack_threshold());
+  EXPECT_EQ(
+      lockout,
+      get_dictionary_attack_info_reply_.dictionary_attack_lockout_in_effect());
+  EXPECT_EQ(seconds_remaining,
+            get_dictionary_attack_info_reply_
+                .dictionary_attack_lockout_seconds_remaining());
+}
+
+TEST_F(TpmManagerUtilityTest, GetDictionaryAttackInfoFail) {
+  int counter = 0;
+  int threshold = 0;
+  bool lockout = false;
+  int seconds_remaining = 0;
+
+  get_dictionary_attack_info_reply_.set_status(
+      tpm_manager::STATUS_DEVICE_ERROR);
+  EXPECT_FALSE(tpm_manager_utility_.GetDictionaryAttackInfo(
+      &counter, &threshold, &lockout, &seconds_remaining));
+
+  get_dictionary_attack_info_reply_.set_status(
+      tpm_manager::STATUS_NOT_AVAILABLE);
+  EXPECT_FALSE(tpm_manager_utility_.GetDictionaryAttackInfo(
+      &counter, &threshold, &lockout, &seconds_remaining));
 }
 
 }  // namespace tpm_manager
