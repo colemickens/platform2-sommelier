@@ -29,6 +29,9 @@
 #include <brillo/cryptohome.h>
 #include <brillo/data_encoding.h>
 #include <crypto/sha2.h>
+#if USE_TPM2
+#include <trunks/tpm_utility.h>
+#endif
 extern "C" {
 #if USE_TPM2
 #include <trunks/cr50_headers/virtual_nvmem.h>
@@ -377,10 +380,6 @@ namespace attestation {
 constexpr int kLastPcrToQuote = 1;
 
 #if USE_TPM2
-
-// The index in NVRAM space where the RSA EK certificate is stored.
-// TODO(crbug.com/910519): Define this in a common header file.
-constexpr uint32_t kRSAEndorsementCertificateIndex = 0x1C00000;
 
 // Description of virtual NVRAM indices used for attestation.
 const struct {
@@ -1686,7 +1685,7 @@ int AttestationService::CreateIdentity(int identity_features) {
   if ((identity_features & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) &&
       GetEndorsementKeyType() != KEY_TYPE_RSA) {
     if (!InsertCertifiedNvramData(RSA_PUB_EK_CERT, "RSA Public EK Certificate",
-                                  kRSAEndorsementCertificateIndex, 0,
+                                  trunks::kRsaEndorsementCertificateIndex, 0,
                                   true /* must_be_present */,
                                   &new_identity_pb)) {
       return -1;

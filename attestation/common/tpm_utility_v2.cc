@@ -42,8 +42,6 @@ using trunks::TPM_RC;
 using trunks::TPM_RC_SUCCESS;
 
 const unsigned int kWellKnownExponent = 65537;
-const uint32_t kRSAEndorsementCertificateIndex = 0xC00000;
-const uint32_t kECCEndorsementCertificateIndex = 0xC00001;
 
 // TODO(crbug/916023): move these utility functions to shared library.
 inline const uint8_t* StringToByteBuffer(const char* str) {
@@ -661,8 +659,10 @@ bool TpmUtilityV2::GetEndorsementPublicKey(KeyType key_type,
 
 bool TpmUtilityV2::GetEndorsementCertificate(KeyType key_type,
                                              std::string* certificate) {
-  uint32_t index = (key_type == KEY_TYPE_RSA) ? kRSAEndorsementCertificateIndex
-                                              : kECCEndorsementCertificateIndex;
+  // TODO(crbug/956855): Use the real index instead of non-real ones.
+  uint32_t index = (key_type == KEY_TYPE_RSA)
+                       ? trunks::kRsaEndorsementCertificateNonRealIndex
+                       : trunks::kEccEndorsementCertificateNonRealIndex;
   tpm_manager::ReadSpaceRequest request;
   request.set_index(index);
   tpm_manager::ReadSpaceReply response;

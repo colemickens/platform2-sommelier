@@ -46,6 +46,18 @@ const TPMI_DH_PERSISTENT kRSAEndorsementKey = PERSISTENT_FIRST + 3;
 // VENDOR_RC_ERR | VENDOR_RC_NO_SUCH_COMMAND
 const int TPM_RC_NO_SUCH_COMMAND = 0x57f;
 
+// Real NVRAM index for endoresement certificate. It is the real index which
+// sent to TPM.
+constexpr uint32_t kRsaEndorsementCertificateIndex = 0x1C00000;
+constexpr uint32_t kEccEndorsementCertificateIndex = 0x1C00001;
+
+// The non-real NVRAM index is only used and accepted by tpm_utility API.
+// TODO(crbug/956855): remove these indexes.
+constexpr uint32_t kRsaEndorsementCertificateNonRealIndex =
+    kRsaEndorsementCertificateIndex & 0xFFFFFF;
+constexpr uint32_t kEccEndorsementCertificateNonRealIndex =
+    kEccEndorsementCertificateIndex & 0xFFFFFF;
+
 // An interface which provides convenient methods for common TPM operations.
 class TRUNKS_EXPORT TpmUtility {
  public:

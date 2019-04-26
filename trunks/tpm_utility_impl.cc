@@ -67,9 +67,6 @@ const std::string kEKTemplateAuthPolicy(
   "\x83\x71\x97\x67\x44\x84\xB3\xF8\x1A\x90\xCC\x8D\x46\xA5\xD7\x24"
   "\xFD\x52\xD7\x6E\x06\x52\x0B\x64\xF2\xA1\xDA\x1B\x33\x14\x69\xAA");
 
-// The index in NVRAM space where RSA EK certificate is stored.
-const uint32_t kRSAEndorsementCertificateIndex = 0xC00000;
-
 // Returns a serialized representation of the unmodified handle. This is useful
 // for predefined handle values, like TPM_RH_OWNER. For details on what types of
 // handles use this name formula see Table 3 in the TPM 2.0 Library Spec Part 1
@@ -1919,7 +1916,7 @@ TPM_RC TpmUtilityImpl::DeclareTpmFirmwareStable() {
 
 TPM_RC TpmUtilityImpl::GetPublicRSAEndorsementKeyModulus(
     std::string* ekm) {
-  uint32_t index = kRSAEndorsementCertificateIndex;
+  uint32_t index = kRsaEndorsementCertificateNonRealIndex;
   trunks::TPMS_NV_PUBLIC nvram_public;
   TPM_RC result = GetNVSpacePublicArea(index, &nvram_public);
   if (result != TPM_RC_SUCCESS) {
