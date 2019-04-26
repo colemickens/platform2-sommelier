@@ -147,7 +147,7 @@ void ChromeosDBusObjectManagerProxy::OnGetManagedObjectsFailure(
     const ManagedObjectsCallback& callback,
     brillo::Error* dbus_error) {
   Error error;
-  CellularError::FromChromeosDBusError(dbus_error, &error);
+  CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
   callback.Run(ObjectsWithProperties(), error);
 }
 

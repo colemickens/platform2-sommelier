@@ -10,18 +10,6 @@
 namespace shill {
 namespace {
 
-const char kErrorIncorrectPasswordMM[] =
-    "org.freedesktop.ModemManager.Modem.Gsm.IncorrectPassword";
-
-const char kErrorSimPinRequiredMM[] =
-    "org.freedesktop.ModemManager.Modem.Gsm.SimPinRequired";
-
-const char kErrorSimPukRequiredMM[] =
-    "org.freedesktop.ModemManager.Modem.Gsm.SimPukRequired";
-
-const char kErrorGprsNotSubscribedMM[] =
-    "org.freedesktop.ModemManager.Modem.Gsm.GprsNotSubscribed";
-
 const char kErrorIncorrectPasswordMM1[] =
     "org.freedesktop.ModemManager1.Error.MobileEquipment.IncorrectPassword";
 
@@ -48,33 +36,6 @@ struct TestParam {
   Error::Type error_type;
 };
 
-class CellularErrorTest : public testing::TestWithParam<TestParam> {};
-
-TEST_P(CellularErrorTest, FromDBusError) {
-  TestParam param = GetParam();
-
-  brillo::ErrorPtr dbus_error =
-      brillo::Error::Create(FROM_HERE,
-                            brillo::errors::dbus::kDomain,
-                            param.dbus_error,
-                            kErrorMessage);
-  Error shill_error;
-  CellularError::FromChromeosDBusError(dbus_error.get(), &shill_error);
-  EXPECT_EQ(param.error_type, shill_error.type());
-}
-
-INSTANTIATE_TEST_CASE_P(
-    CellularErrorTest,
-    CellularErrorTest,
-    testing::Values(
-        TestParam(kErrorIncorrectPasswordMM, Error::kIncorrectPin),
-        TestParam(kErrorSimPinRequiredMM, Error::kPinRequired),
-        TestParam(kErrorSimPukRequiredMM, Error::kPinBlocked),
-        TestParam(kErrorGprsNotSubscribedMM, Error::kInvalidApn),
-        TestParam(kErrorIncorrectPasswordMM1, Error::kOperationFailed),
-        TestParam("Some random error name.", Error::kOperationFailed)));
-
-
 class CellularErrorMM1Test : public testing::TestWithParam<TestParam> {};
 
 TEST_P(CellularErrorMM1Test, FromDBusError) {
@@ -99,7 +60,6 @@ INSTANTIATE_TEST_CASE_P(
         TestParam(kErrorSimPukMM1, Error::kPinBlocked),
         TestParam(kErrorGprsNotSubscribedMM1, Error::kInvalidApn),
         TestParam(kErrorWrongStateMM1, Error::kWrongState),
-        TestParam(kErrorIncorrectPasswordMM, Error::kOperationFailed),
         TestParam("Some random error name.", Error::kOperationFailed)));
 
 }  // namespace
