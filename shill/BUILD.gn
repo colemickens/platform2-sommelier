@@ -225,12 +225,6 @@ generate_dbus_proxies("generate_cellular_proxies") {
   modemmanager_in_dir = "${sysroot}/usr/share/dbus-1/interfaces/"
   proxy_output_file = "include/cellular/dbus-proxies.h"
   sources = [
-    "${modemmanager_in_dir}/org.freedesktop.ModemManager.Modem.Cdma.xml",
-    "${modemmanager_in_dir}/org.freedesktop.ModemManager.Modem.Gsm.Card.xml",
-    "${modemmanager_in_dir}/org.freedesktop.ModemManager.Modem.Gsm.Network.xml",
-    "${modemmanager_in_dir}/org.freedesktop.ModemManager.Modem.Simple.xml",
-    "${modemmanager_in_dir}/org.freedesktop.ModemManager.Modem.xml",
-    "${modemmanager_in_dir}/org.freedesktop.ModemManager.xml",
     "${modemmanager_in_dir}/org.freedesktop.ModemManager1.Modem.Location.xml",
     "${modemmanager_in_dir}/org.freedesktop.ModemManager1.Modem.Modem3gpp.xml",
     "${modemmanager_in_dir}/org.freedesktop.ModemManager1.Modem.ModemCdma.xml",
