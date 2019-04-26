@@ -1792,9 +1792,17 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     return dbus_response;
   }
 
+  if (request.storage_location() != STORAGE_CRYPTOHOME_ROOT) {
+    LOG(ERROR)
+        << "Locations other than STORAGE_CRYPTOHOME_ROOT are not supported";
+    response.set_failure_reason("Unsupported location for image");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
   base::FilePath disk_path;
   if (!GetDiskPathFromName(request.disk_path(), request.cryptohome_id(),
-                           STORAGE_CRYPTOHOME_ROOT,
+                           request.storage_location(),
                            false, /* create_parent_dir */
                            &disk_path)) {
     response.set_failure_reason("Failed to delete vm image");

@@ -40,6 +40,7 @@
 #include <vm_concierge/proto_bindings/service.pb.h>
 
 using std::string;
+using vm_tools::concierge::StorageLocation;
 
 namespace {
 
@@ -84,6 +85,19 @@ void IPv4AddressToString(uint32_t addr, string* address) {
   }
 
   *address = buf;
+}
+
+bool StringToStorageLocation(const string& str, StorageLocation* location) {
+  if (str == kStorageCryptohomeRoot) {
+    *location = vm_tools::concierge::STORAGE_CRYPTOHOME_ROOT;
+  } else if (str == kStorageCryptohomeDownloads) {
+    *location = vm_tools::concierge::STORAGE_CRYPTOHOME_DOWNLOADS;
+  } else if (str == kStorageCryptohomePluginVm) {
+    *location = vm_tools::concierge::STORAGE_CRYPTOHOME_PLUGINVM;
+  } else {
+    return false;
+  }
+  return true;
 }
 
 int LogVmStatus(const string& vm_name,
@@ -393,7 +407,7 @@ int CreateDiskImage(dbus::ObjectProxy* proxy,
                     string disk_path,
                     uint64_t disk_size,
                     string image_type,
-                    string storage_location,
+                    StorageLocation storage_location,
                     string* result_path) {
   if (cryptohome_id.empty()) {
     LOG(ERROR) << "Cryptohome id cannot be empty";
@@ -425,16 +439,7 @@ int CreateDiskImage(dbus::ObjectProxy* proxy,
     return -1;
   }
 
-  if (storage_location == kStorageCryptohomeRoot) {
-    request.set_storage_location(vm_tools::concierge::STORAGE_CRYPTOHOME_ROOT);
-  } else if (storage_location == kStorageCryptohomeDownloads) {
-    request.set_storage_location(
-        vm_tools::concierge::STORAGE_CRYPTOHOME_DOWNLOADS);
-  } else {
-    LOG(ERROR) << "'" << storage_location
-               << "' is not a valid storage location";
-    return -1;
-  }
+  request.set_storage_location(storage_location);
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode CreateDiskImageRequest protobuf";
@@ -473,7 +478,7 @@ int CreateDiskImage(dbus::ObjectProxy* proxy,
 int DestroyDiskImage(dbus::ObjectProxy* proxy,
                      string cryptohome_id,
                      string name,
-                     string storage_location) {
+                     StorageLocation storage_location) {
   if (cryptohome_id.empty()) {
     LOG(ERROR) << "Cryptohome id cannot be empty";
     return -1;
@@ -491,17 +496,7 @@ int DestroyDiskImage(dbus::ObjectProxy* proxy,
   vm_tools::concierge::DestroyDiskImageRequest request;
   request.set_cryptohome_id(std::move(cryptohome_id));
   request.set_disk_path(std::move(name));
-
-  if (storage_location == kStorageCryptohomeRoot) {
-    request.set_storage_location(vm_tools::concierge::STORAGE_CRYPTOHOME_ROOT);
-  } else if (storage_location == kStorageCryptohomeDownloads) {
-    request.set_storage_location(
-        vm_tools::concierge::STORAGE_CRYPTOHOME_DOWNLOADS);
-  } else {
-    LOG(ERROR) << "'" << storage_location
-               << "' is not a valid storage location";
-    return -1;
-  }
+  request.set_storage_location(storage_location);
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode DestroyDiskImageRequest protobuf";
@@ -535,6 +530,7 @@ int ExportDiskImage(dbus::ObjectProxy* proxy,
                     string cryptohome_id,
                     string vm_name,
                     string export_name,
+                    StorageLocation storage_location,
                     string removable_media) {
   if (cryptohome_id.empty()) {
     LOG(ERROR) << "Cryptohome id cannot be empty";
@@ -586,6 +582,7 @@ int ExportDiskImage(dbus::ObjectProxy* proxy,
   vm_tools::concierge::ExportDiskImageRequest request;
   request.set_cryptohome_id(std::move(cryptohome_id));
   request.set_disk_path(std::move(vm_name));
+  request.set_storage_location(storage_location);
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode ExportDiskImageRequest protobuf";
@@ -619,7 +616,7 @@ int ImportDiskImage(dbus::ObjectProxy* proxy,
                     string cryptohome_id,
                     string vm_name,
                     string import_name,
-                    string storage_location,
+                    StorageLocation storage_location,
                     string removable_media) {
   if (cryptohome_id.empty()) {
     LOG(ERROR) << "Cryptohome id cannot be empty";
@@ -665,20 +662,7 @@ int ImportDiskImage(dbus::ObjectProxy* proxy,
   vm_tools::concierge::ImportDiskImageRequest request;
   request.set_cryptohome_id(std::move(cryptohome_id));
   request.set_disk_path(std::move(vm_name));
-
-  if (storage_location == kStorageCryptohomeRoot) {
-    request.set_storage_location(vm_tools::concierge::STORAGE_CRYPTOHOME_ROOT);
-  } else if (storage_location == kStorageCryptohomeDownloads) {
-    request.set_storage_location(
-        vm_tools::concierge::STORAGE_CRYPTOHOME_DOWNLOADS);
-  } else if (storage_location == kStorageCryptohomePluginVm) {
-    request.set_storage_location(
-        vm_tools::concierge::STORAGE_CRYPTOHOME_PLUGINVM);
-  } else {
-    LOG(ERROR) << "'" << storage_location
-               << "' is not a valid storage location";
-    return -1;
-  }
+  request.set_storage_location(storage_location);
 
   struct stat st;
   if (fstat(disk_fd.get(), &st) == 0) {
@@ -729,7 +713,7 @@ int ImportDiskImage(dbus::ObjectProxy* proxy,
 
 int ListDiskImages(dbus::ObjectProxy* proxy,
                    string cryptohome_id,
-                   string storage_location) {
+                   StorageLocation storage_location) {
   if (cryptohome_id.empty()) {
     LOG(ERROR) << "Cryptohome id cannot be empty";
     return -1;
@@ -741,17 +725,7 @@ int ListDiskImages(dbus::ObjectProxy* proxy,
 
   vm_tools::concierge::ListVmDisksRequest request;
   request.set_cryptohome_id(std::move(cryptohome_id));
-
-  if (storage_location == kStorageCryptohomeRoot) {
-    request.set_storage_location(vm_tools::concierge::STORAGE_CRYPTOHOME_ROOT);
-  } else if (storage_location == kStorageCryptohomeDownloads) {
-    request.set_storage_location(
-        vm_tools::concierge::STORAGE_CRYPTOHOME_DOWNLOADS);
-  } else {
-    LOG(ERROR) << "'" << storage_location
-               << "' is not a valid storage location";
-    return -1;
-  }
+  request.set_storage_location(storage_location);
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode ListVmDisksRequest protobuf";
@@ -834,7 +808,8 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
 
     string disk_path;
     if (CreateDiskImage(proxy, cryptohome_id, name, disk_size, image_type,
-                        kStorageCryptohomeRoot, &disk_path) != 0) {
+                        vm_tools::concierge::STORAGE_CRYPTOHOME_ROOT,
+                        &disk_path) != 0) {
       return -1;
     }
 
@@ -1241,6 +1216,13 @@ int main(int argc, char** argv) {
     return -1;
   }
 
+  StorageLocation storage_location;
+  if (!StringToStorageLocation(FLAGS_storage_location, &storage_location)) {
+    LOG(ERROR) << "'" << FLAGS_storage_location
+               << "' is not a valid storage location";
+    return -1;
+  }
+
   if (FLAGS_start) {
     return StartVm(proxy, std::move(FLAGS_cryptohome_id), std::move(FLAGS_name),
                    std::move(FLAGS_kernel), std::move(FLAGS_rootfs),
@@ -1255,28 +1237,26 @@ int main(int argc, char** argv) {
   } else if (FLAGS_create_disk) {
     return CreateDiskImage(proxy, std::move(FLAGS_cryptohome_id),
                            std::move(FLAGS_disk_path), FLAGS_disk_size,
-                           std::move(FLAGS_image_type),
-                           std::move(FLAGS_storage_location), nullptr);
+                           std::move(FLAGS_image_type), storage_location,
+                           nullptr);
   } else if (FLAGS_create_external_disk) {
     return CreateExternalDiskImage(std::move(FLAGS_removable_media),
                                    std::move(FLAGS_name),
                                    std::move(FLAGS_disk_size));
   } else if (FLAGS_destroy_disk) {
     return DestroyDiskImage(proxy, std::move(FLAGS_cryptohome_id),
-                            std::move(FLAGS_name),
-                            std::move(FLAGS_storage_location));
+                            std::move(FLAGS_name), storage_location);
   } else if (FLAGS_export_disk) {
     return ExportDiskImage(proxy, std::move(FLAGS_cryptohome_id),
                            std::move(FLAGS_name), std::move(FLAGS_export_name),
-                           std::move(FLAGS_removable_media));
+                           storage_location, std::move(FLAGS_removable_media));
   } else if (FLAGS_import_disk) {
     return ImportDiskImage(proxy, std::move(FLAGS_cryptohome_id),
                            std::move(FLAGS_name), std::move(FLAGS_import_name),
-                           std::move(FLAGS_storage_location),
-                           std::move(FLAGS_removable_media));
+                           storage_location, std::move(FLAGS_removable_media));
   } else if (FLAGS_list_disks) {
     return ListDiskImages(proxy, std::move(FLAGS_cryptohome_id),
-                          std::move(FLAGS_storage_location));
+                          storage_location);
   } else if (FLAGS_start_termina_vm) {
     return StartTerminaVm(
         proxy, std::move(FLAGS_name), std::move(FLAGS_cryptohome_id),
