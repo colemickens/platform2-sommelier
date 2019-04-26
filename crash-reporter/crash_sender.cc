@@ -4,18 +4,19 @@
 
 #include <stdlib.h>
 #include <sys/capability.h>
-#include <sys/file.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #include <limits>
+#include <memory>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/time/default_clock.h>
 #include <brillo/syslog_logging.h>
 #include <libminijail.h>
 #include <metrics/metrics_library.h>
@@ -27,18 +28,6 @@
 #include "crash-reporter/util.h"
 
 namespace {
-
-// Records that the crash sending is done.
-void RecordCrashDone() {
-  if (util::IsMock()) {
-    // For testing purposes, emit a message to log so that we
-    // know when the test has received all the messages from this run.
-    // The string is referenced in
-    // third_party/autotest/files/client/cros/crash/crash_test.py
-    LOG(INFO) << "crash_sender done. (mock)";
-  }
-}
-
 // Sets up the minijail sandbox.
 //
 // crash_sender currently needs to run as root:
@@ -63,26 +52,8 @@ void SetUpSandbox(struct minijail* jail) {
   minijail_forward_signals(jail);
 }
 
-// Locks on the file, or exits if locking fails.
-void LockOrExit(const base::File& lock_file) {
-  if (flock(lock_file.GetPlatformFile(), LOCK_EX | LOCK_NB) != 0) {
-    if (errno == EWOULDBLOCK) {
-      LOG(INFO) << "Already running; quitting.";
-    } else {
-      PLOG(ERROR) << "Failed to acquire a lock.";
-    }
-    RecordCrashDone();
-    exit(EXIT_FAILURE);
-  }
-}
-
 // Runs the main function for the child process.
 int RunChildMain(int argc, char* argv[]) {
-  // Ensure only one instance of crash_sender runs at the same time.
-  base::File lock_file(paths::Get(paths::kLockFile),
-                       base::File::FLAG_OPEN_ALWAYS);
-  LockOrExit(lock_file);
-
   util::CommandLineFlags flags;
   util::ParseCommandLine(argc, argv, &flags);
 
@@ -111,7 +82,8 @@ int RunChildMain(int argc, char* argv[]) {
     options.hold_off_time = base::TimeDelta::FromSeconds(0);
   }
   options.allow_dev_sending = flags.allow_dev_sending;
-  util::Sender sender(std::move(metrics_lib), options);
+  util::Sender sender(std::move(metrics_lib),
+                      std::make_unique<base::DefaultClock>(), options);
   if (!sender.Init()) {
     LOG(ERROR) << "Failed to initialize util::Sender";
     return EXIT_FAILURE;
@@ -130,10 +102,12 @@ int RunChildMain(int argc, char* argv[]) {
 
   std::vector<util::MetaFile> reports_to_send;
 
+  base::File lock_file(sender.AcquireLockFileOrDie());
   for (const auto& directory : crash_directories) {
     util::RemoveOrphanedCrashFiles(directory);
     sender.RemoveAndPickCrashFiles(directory, &reports_to_send);
   }
+  lock_file.Close();
 
   util::SortReports(&reports_to_send);
   sender.SendCrashes(reports_to_send);
@@ -146,7 +120,7 @@ int RunChildMain(int argc, char* argv[]) {
 // that's a unique tmpfs provided by minijail, that'll automatically go away
 // when the child process is terminated.
 void CleanUp() {
-  RecordCrashDone();
+  util::RecordCrashDone();
 }
 
 }  // namespace

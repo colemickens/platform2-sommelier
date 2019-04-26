@@ -189,6 +189,34 @@ if (use.test) {
     ]
   }
 
+  pkg_config("test_helper_config") {
+    pkg_deps = [
+      "libbrillo-${libbase_ver}",
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+
+  executable("lock_file_tester") {
+    configs += [
+      "//common-mk:test",
+      ":test_helper_config",
+    ]
+    sources = [
+      "lock_file_tester.cc",
+    ]
+  }
+
+  executable("hold_lock_file") {
+    configs += [
+      "//common-mk:test",
+      ":test_helper_config",
+    ]
+    sources = [
+      "hold_lock_file.cc",
+    ]
+  }
+
   executable("crash_reporter_test") {
     configs += [
       "//common-mk:test",
@@ -219,8 +247,10 @@ if (use.test) {
     ]
     defines = [ "USE_CHROMELESS_TTY=${use.chromeless_tty}" ]
     deps = [
+      ":hold_lock_file",
       ":libcrash",
       ":libcrash_reporter",
+      ":lock_file_tester",
     ]
 
     if (use.cheets) {

@@ -6,6 +6,7 @@
 
 #include <inttypes.h>
 #include <stdlib.h>
+#include <sys/file.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -182,6 +183,16 @@ void ParseCommandLine(int argc,
   // Set the predefined environment variables.
   for (const auto& it : env_vars)
     setenv(it.first.c_str(), it.second.c_str(), 1 /* overwrite */);
+}
+
+void RecordCrashDone() {
+  if (IsMock()) {
+    // For testing purposes, emit a message to log so that we
+    // know when the test has received all the messages from this run.
+    // The string is referenced in
+    // third_party/autotest/files/client/cros/crash/crash_test.py
+    LOG(INFO) << "crash_sender done. (mock)";
+  }
 }
 
 bool IsMock() {
@@ -557,6 +568,7 @@ std::string GetClientId() {
 }
 
 Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
+               std::unique_ptr<base::Clock> clock,
                const Sender::Options& options)
     : metrics_lib_(std::move(metrics_lib)),
       proxy_(options.proxy),
@@ -566,7 +578,8 @@ Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
       max_spread_time_(options.max_spread_time),
       hold_off_time_(options.hold_off_time),
       sleep_function_(options.sleep_function),
-      allow_dev_sending_(options.allow_dev_sending) {}
+      allow_dev_sending_(options.allow_dev_sending),
+      clock_(std::move(clock)) {}
 
 bool Sender::Init() {
   if (!scoped_temp_dir_.CreateUniqueTempDir()) {
@@ -575,6 +588,45 @@ bool Sender::Init() {
   }
 
   return true;
+}
+
+base::File Sender::AcquireLockFileOrDie() {
+  base::FilePath lock_file_path = paths::Get(paths::kLockFile);
+  base::File lock_file(lock_file_path, base::File::FLAG_OPEN_ALWAYS |
+                                           base::File::FLAG_READ |
+                                           base::File::FLAG_WRITE);
+  if (!lock_file.IsValid()) {
+    LOG(FATAL) << "Error opening " << lock_file_path.value() << ": "
+               << base::File::ErrorToString(lock_file.error_details());
+  }
+
+  const base::TimeDelta kWaitForLockFile = base::TimeDelta::FromMinutes(5);
+  base::Time stop_time = clock_->Now() + kWaitForLockFile;
+  while (clock_->Now() < stop_time) {
+    if (lock_file.Lock() == base::File::FILE_OK) {
+      return lock_file;
+    }
+    const base::TimeDelta kSleepTime = base::TimeDelta::FromSeconds(10);
+    if (sleep_function_.is_null()) {
+      base::PlatformThread::Sleep(kSleepTime);
+    } else {
+      sleep_function_.Run(kSleepTime);
+    }
+  }
+
+  // Last try. Exit if this one doesn't succeed.
+  auto result = lock_file.Lock();
+  if (result != base::File::FILE_OK) {
+    // Note: If another process is holding the lock, this will just say
+    // something unhelpful like "FILE_ERROR_FAILED"; File::Lock doesn't have a
+    // separate return code corresponding to EWOULDBLOCK.
+    LOG(ERROR) << "Failed to acquire a lock: "
+               << base::File::ErrorToString(result);
+    RecordCrashDone();
+    exit(EXIT_FAILURE);
+  }
+
+  return lock_file;
 }
 
 void Sender::RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
@@ -610,6 +662,7 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
 
   std::string client_id = GetClientId();
 
+  base::File lock(AcquireLockFileOrDie());
   for (const auto& pair : crash_meta_files) {
     const base::FilePath& meta_file = pair.first;
     const CrashInfo& info = pair.second;
@@ -639,11 +692,13 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
     }
 
     LOG(INFO) << "Scheduled to send in " << sleep_time.InSeconds() << "s";
+    lock.Close();  // Don't hold lock during sleep.
     if (!IsMock()) {
       base::PlatformThread::Sleep(sleep_time);
     } else if (!sleep_function_.is_null()) {
       sleep_function_.Run(sleep_time);
     }
+    lock = AcquireLockFileOrDie();
 
     // User-specific crash reports become inaccessible if the user signs out
     // while sleeping, thus we need to check if the metadata is still

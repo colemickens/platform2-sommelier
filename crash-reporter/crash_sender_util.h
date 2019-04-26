@@ -10,9 +10,11 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/optional.h>
+#include <base/time/clock.h>
 #include <base/time/time.h>
 #include <brillo/http/http_form_data.h>
 #include <brillo/key_value_store.h>
@@ -98,6 +100,9 @@ constexpr EnvPair kEnvironmentVariables[] = {
 void ParseCommandLine(int argc,
                       const char* const* argv,
                       CommandLineFlags* flags);
+
+// Records that the crash sending is done.
+void RecordCrashDone();
 
 // Returns true if mock is enabled.
 bool IsMock();
@@ -226,10 +231,17 @@ class Sender {
   };
 
   Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
+         std::unique_ptr<base::Clock> clock,
          const Options& options);
 
   // Initializes the sender object. Returns true on success.
   bool Init();
+
+  // Lock the lock file so no other instance of crash_sender can access the
+  // disk files. Dies if lock file cannot be acquired after a delay.
+  //
+  // Returns the File object holding the lock.
+  base::File AcquireLockFileOrDie();
 
   // Removes invalid files in |crash_dir|, that are unknown, corrupted, or
   // invalid in other ways, and picks crash reports that should be sent to the
@@ -287,6 +299,7 @@ class Sender {
   const base::TimeDelta hold_off_time_;
   base::Callback<void(base::TimeDelta)> sleep_function_;
   bool allow_dev_sending_;
+  std::unique_ptr<base::Clock> clock_;
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<brillo::OsReleaseReader> os_release_reader_;
 

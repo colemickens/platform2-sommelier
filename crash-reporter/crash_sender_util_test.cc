@@ -4,13 +4,17 @@
 
 #include "crash-reporter/crash_sender_util.h"
 
+#include <fcntl.h>
 #include <stdlib.h>
+#include <unistd.h>
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <base/command_line.h>
+#include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -20,6 +24,7 @@
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <brillo/key_value_store.h>
+#include <brillo/process.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
@@ -28,8 +33,12 @@
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 
-using testing::HasSubstr;
-using testing::UnorderedElementsAre;
+using ::testing::ExitedWithCode;
+using ::testing::HasSubstr;
+using ::testing::Invoke;
+using ::testing::IsEmpty;
+using ::testing::Return;
+using ::testing::UnorderedElementsAre;
 
 namespace util {
 namespace {
@@ -40,6 +49,34 @@ enum SessionType { kSignInMode, kGuestMode };
 enum MetricsFlag { kMetricsEnabled, kMetricsDisabled };
 
 constexpr char kFakeClientId[] = "00112233445566778899aabbccddeeff";
+
+// Simple mock for Clock. We can't use SimpleTestClock in some places because
+// we need Now to return different values on different calls, and we don't have
+// a hook to gain control in between the Now() calls.
+class MockClock : public base::Clock {
+ public:
+  ~MockClock() override {}
+  MOCK_METHOD0(Now, base::Time());
+};
+
+// A Clock that advances 10 seconds on each call. It will not fail the test
+// regardless of how many times it is or isn't called. Having an advancing clock
+// is useful because if AcquireLockFileOrDie can't get the lock, the unit
+// test will eventually fail instead of going into an infinite loop.
+class AdvancingClock : public base::Clock {
+ public:
+  AdvancingClock() {
+    CHECK(base::Time::FromUTCString("2019-04-20 13:53", &time_));
+  }
+
+  base::Time Now() override {
+    time_ += base::TimeDelta::FromSeconds(10);
+    return time_;
+  }
+
+ private:
+  base::Time time_;
+};
 
 // Parses the Chrome uploads.log file from Sender to a vector of items per line.
 // Example:
@@ -129,10 +166,21 @@ bool SetMockCrashSending(bool success) {
 class CrashSenderUtilTest : public testing::Test {
  private:
   void SetUp() override {
+    // Grab executable path before TearDown() can reset base::CommandLine.
+    if (build_directory_ == nullptr) {
+      base::FilePath my_executable_path =
+          base::CommandLine::ForCurrentProcess()->GetProgram();
+      build_directory_ = new base::FilePath(my_executable_path.DirName());
+    }
     metrics_lib_ = std::make_unique<MetricsLibraryMock>();
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     test_dir_ = temp_dir_.GetPath();
     paths::SetPrefixForTesting(test_dir_);
+
+    // Make sure the directory for the lock file exists.
+    const base::FilePath lock_file_path = paths::Get(paths::kLockFile);
+    const base::FilePath lock_file_directory = lock_file_path.DirName();
+    ASSERT_TRUE(base::CreateDirectory(lock_file_directory));
   }
 
   void TearDown() override {
@@ -151,6 +199,82 @@ class CrashSenderUtilTest : public testing::Test {
   }
 
  protected:
+  // Checks to see if a file is locked by AcquireLockFileOrDie().
+  bool IsFileLocked(const base::FilePath& file_name) {
+    // AcquireLockFileOrDie creates the file when it runs, so count the file
+    // not existing as "not locked".
+    if (!base::PathExists(file_name)) {
+      return false;
+    }
+
+    // There's no portable & reliable way for a process to test its own file
+    // locks, so we have to spawn another process (which won't inherit the
+    // locks) to do the testing.
+    CHECK(build_directory_);
+    base::FilePath lock_file_tester =
+        build_directory_->Append("lock_file_tester");
+    std::string command = lock_file_tester.value() + " " + file_name.value();
+    int test_result = system(command.c_str());
+    if (WIFEXITED(test_result)) {
+      if (WEXITSTATUS(test_result) == 0) {
+        return true;
+      }
+      if (WEXITSTATUS(test_result) == 1) {
+        return false;
+      }
+      LOG(FATAL) << "lock_file_tester failed with exit code "
+                 << WEXITSTATUS(test_result);
+    }
+    LOG(FATAL)
+        << "lock_file_tester failed before exiting; complete wait status "
+        << test_result;
+    return false;
+  }
+
+  // Lock the indicated file |file_name| using base::File::Lock() so that
+  // AcquireLockFileOrDie() will fail to acquire it. File will be created if
+  // it doesn't exist. Returns when the file is actually locked. Since locks are
+  // per-process, in order to prevent this process from locking the file, we
+  // have to spawn a separate process to hold the lock; the process holding the
+  // lock is returned. It can be killed to release the lock.
+  std::unique_ptr<brillo::Process> LockFile(const base::FilePath& file_name) {
+    auto lock_process = std::make_unique<brillo::ProcessImpl>();
+    CHECK(build_directory_);
+    base::FilePath lock_file_holder =
+        build_directory_->Append("hold_lock_file");
+    lock_process->AddArg(lock_file_holder.value());
+    lock_process->AddArg(file_name.value());
+    CHECK(lock_process->Start());
+
+    // Wait for the file to actually be locked. Don't wait forever in case the
+    // subprocess fails in some way.
+    base::Time stop_time = base::Time::Now() + base::TimeDelta::FromMinutes(1);
+    bool success = false;
+    while (!success && base::Time::Now() < stop_time) {
+      base::File lock_file(file_name, base::File::FLAG_OPEN |
+                                          base::File::FLAG_READ |
+                                          base::File::FLAG_WRITE);
+      if (lock_file.IsValid()) {
+        struct flock lock;
+        lock.l_type = F_WRLCK;
+        lock.l_whence = SEEK_SET;
+        lock.l_start = 0;
+        lock.l_len = 0;
+        if (fcntl(lock_file.GetPlatformFile(), F_GETLK, &lock) == 0 &&
+            lock.l_type == F_WRLCK) {
+          success = true;
+        }
+      }
+
+      if (!success) {
+        base::PlatformThread::Sleep(base::TimeDelta::FromSeconds(5));
+      }
+    }
+
+    CHECK(success) << "Subprocess did not lock " << file_name.value();
+    return lock_process;
+  }
+
   // Creates test crash files in |crash_directory|. Returns true on success.
   bool CreateTestCrashFiles(const base::FilePath& crash_directory) {
     // These should be kept, since the payload is a known kind and exists.
@@ -261,6 +385,10 @@ class CrashSenderUtilTest : public testing::Test {
     return true;
   }
 
+  // Directory that the test executable lives in. We reset CommandLine during
+  // TearDown, so we must grab this information early.
+  static base::FilePath* build_directory_;
+
   std::unique_ptr<MetricsLibraryMock> metrics_lib_;
   base::ScopedTempDir temp_dir_;
   base::FilePath test_dir_;
@@ -280,16 +408,19 @@ class CrashSenderUtilTest : public testing::Test {
   base::FilePath new_incomplete_meta_;
 };
 
+base::FilePath* CrashSenderUtilTest::build_directory_ = nullptr;
+using CrashSenderUtilDeathTest = CrashSenderUtilTest;
+
 }  // namespace
 
-TEST_F(CrashSenderUtilTest, ParseCommandLine_MalformedValue) {
+TEST_F(CrashSenderUtilDeathTest, ParseCommandLine_MalformedValue) {
   const char* argv[] = {"crash_sender", "-e", "WHATEVER"};
   CommandLineFlags flags;
   EXPECT_DEATH(ParseCommandLine(arraysize(argv), argv, &flags),
                "Malformed value for -e: WHATEVER");
 }
 
-TEST_F(CrashSenderUtilTest, ParseCommandLine_UnknownVariable) {
+TEST_F(CrashSenderUtilDeathTest, ParseCommandLine_UnknownVariable) {
   const char* argv[] = {"crash_sender", "-e", "FOO=123"};
   CommandLineFlags flags;
   EXPECT_DEATH(ParseCommandLine(arraysize(argv), argv, &flags),
@@ -341,20 +472,20 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_OverwriteExistingValue) {
   EXPECT_FALSE(flags.ignore_hold_off_time);
 }
 
-TEST_F(CrashSenderUtilTest, ParseCommandLine_Usage) {
+TEST_F(CrashSenderUtilDeathTest, ParseCommandLine_Usage) {
   const char* argv[] = {"crash_sender", "-h"};
   // The third parameter is empty because EXPECT_EXIT does not capture stdout
   // where the usage message is written to.
   CommandLineFlags flags;
   EXPECT_EXIT(ParseCommandLine(arraysize(argv), argv, &flags),
-              testing::ExitedWithCode(EXIT_SUCCESS), "");
+              ExitedWithCode(EXIT_SUCCESS), "");
 }
 
-TEST_F(CrashSenderUtilTest, ParseCommandLine_InvalidMaxSpreadTime) {
+TEST_F(CrashSenderUtilDeathTest, ParseCommandLine_InvalidMaxSpreadTime) {
   const char* argv[] = {"crash_sender", "--max_spread_time=-1"};
   CommandLineFlags flags;
   EXPECT_EXIT(ParseCommandLine(arraysize(argv), argv, &flags),
-              testing::ExitedWithCode(EXIT_FAILURE), "Invalid");
+              ExitedWithCode(EXIT_FAILURE), "Invalid");
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_ValidMaxSpreadTime) {
@@ -584,7 +715,8 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
 
   Sender::Options options;
   options.proxy = mock.release();
-  Sender sender(std::move(metrics_lib_), options);
+  Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),
+                options);
   ASSERT_TRUE(sender.Init());
 
   ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled,
@@ -956,7 +1088,8 @@ TEST_F(CrashSenderUtilTest, GetUserCrashDirectories) {
                                {{"user1", "hash1"}, {"user2", "hash2"}});
   Sender::Options options;
   options.proxy = mock.release();
-  Sender sender(std::move(metrics_lib_), options);
+  Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),
+                options);
   ASSERT_TRUE(sender.Init());
 
   EXPECT_THAT(sender.GetUserCrashDirectories(),
@@ -1008,7 +1141,7 @@ TEST_F(CrashSenderUtilTest, CreateCrashFormData) {
   Sender::Options options;
   options.form_data_boundary = "boundary";
 
-  Sender sender(nullptr, options);
+  Sender sender(nullptr, std::make_unique<AdvancingClock>(), options);
 
   std::unique_ptr<brillo::http::FormData> form_data =
       sender.CreateCrashFormData(details, nullptr);
@@ -1176,7 +1309,8 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   options.max_crash_rate = 2;
   options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
-  Sender sender(std::move(metrics_lib_), options);
+  Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),
+                options);
   ASSERT_TRUE(sender.Init());
 
   // Send crashes.
@@ -1226,7 +1360,7 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
 }
 
 TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
-  // Set up the mock sesssion manager client.
+  // Set up the mock session manager client.
   auto mock =
       std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
   test_util::SetActiveSessions(mock.get(), {{"user", "hash"}});
@@ -1262,7 +1396,8 @@ TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
   options.max_crash_rate = 2;
   options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
-  Sender sender(std::move(metrics_lib_), options);
+  Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),
+                options);
   ASSERT_TRUE(sender.Init());
 
   sender.SendCrashes(crashes_to_send);
@@ -1274,6 +1409,103 @@ TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
   // The Chrome uploads.log file shouldn't exist because we had nothing to
   // report.
   EXPECT_FALSE(base::PathExists(paths::Get(paths::kChromeCrashLog)));
+}
+
+TEST_F(CrashSenderUtilTest, LockFile) {
+  auto clock = std::make_unique<MockClock>();
+  base::Time start_time;
+  ASSERT_TRUE(base::Time::FromUTCString("2019-04-20 13:53", &start_time));
+  // Called twice -- once to get start time, once to see if we're already
+  // past the start time + 5 minutes
+  EXPECT_CALL(*clock, Now()).Times(2).WillRepeatedly(Return(start_time));
+  std::vector<base::TimeDelta> sleep_times;
+  Sender::Options options;
+  options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
+  Sender sender(std::move(metrics_lib_), std::move(clock), options);
+  ASSERT_TRUE(sender.Init());
+
+  EXPECT_FALSE(IsFileLocked(paths::Get(paths::kLockFile)));
+  base::File lock(sender.AcquireLockFileOrDie());
+  EXPECT_TRUE(IsFileLocked(paths::Get(paths::kLockFile)));
+  // Should not have slept acquiring lock since the file was unlocked.
+  EXPECT_THAT(sleep_times, IsEmpty());
+}
+
+TEST_F(CrashSenderUtilTest, LockFileTriesAgainIfFirstAttemptFails) {
+  base::FilePath lock_file_path = paths::Get(paths::kLockFile);
+  auto lock_process = LockFile(lock_file_path);
+
+  auto clock = std::make_unique<MockClock>();
+  base::Time start_time;
+  ASSERT_TRUE(base::Time::FromUTCString("2019-04-20 13:53", &start_time));
+
+  // Make AcquireLockFileOrDie sleep several times, and then unlock the file.
+  EXPECT_CALL(*clock, Now())
+      .WillOnce(Return(start_time))
+      .WillOnce(Return(start_time))
+      .WillOnce(Return(start_time + base::TimeDelta::FromMinutes(1)))
+      .WillOnce(Return(start_time + base::TimeDelta::FromMinutes(2)))
+      .WillOnce(Return(start_time + base::TimeDelta::FromMinutes(3)))
+      .WillOnce(Invoke([&lock_process, start_time]() {
+        lock_process->Kill(SIGKILL, 10);
+        lock_process->Wait();
+        return start_time + base::TimeDelta::FromMinutes(4);
+      }));
+  std::vector<base::TimeDelta> sleep_times;
+  Sender::Options options;
+  options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
+  Sender sender(std::move(metrics_lib_), std::move(clock), options);
+  ASSERT_TRUE(sender.Init());
+
+  base::File lock(sender.AcquireLockFileOrDie());
+  EXPECT_TRUE(IsFileLocked(lock_file_path));
+  EXPECT_EQ(sleep_times.size(), 4);
+}
+
+TEST_F(CrashSenderUtilTest, LockFileTriesOneLastTimeAfterTimeout) {
+  base::FilePath lock_file_path = paths::Get(paths::kLockFile);
+  auto lock_process = LockFile(lock_file_path);
+
+  auto clock = std::make_unique<MockClock>();
+  base::Time start_time;
+  ASSERT_TRUE(base::Time::FromUTCString("2019-04-20 13:53", &start_time));
+
+  // Make AcquireLockFileOrDie sleep enough that the loop exits, then unlock the
+  // file.
+  EXPECT_CALL(*clock, Now())
+      .WillOnce(Return(start_time))
+      .WillOnce(Return(start_time))
+      .WillOnce(Return(start_time + base::TimeDelta::FromMinutes(1)))
+      .WillOnce(Return(start_time + base::TimeDelta::FromMinutes(2)))
+      .WillOnce(Return(start_time + base::TimeDelta::FromMinutes(3)))
+      .WillOnce(Return(start_time + base::TimeDelta::FromMinutes(4)))
+      .WillOnce(Invoke([&lock_process, start_time]() {
+        lock_process->Kill(SIGKILL, 10);
+        lock_process->Wait();
+        return start_time + base::TimeDelta::FromMinutes(6);
+      }));
+  std::vector<base::TimeDelta> sleep_times;
+  Sender::Options options;
+  options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
+  Sender sender(std::move(metrics_lib_), std::move(clock), options);
+  ASSERT_TRUE(sender.Init());
+
+  base::File lock(sender.AcquireLockFileOrDie());
+  EXPECT_TRUE(IsFileLocked(lock_file_path));
+  EXPECT_EQ(sleep_times.size(), 5);
+}
+
+TEST_F(CrashSenderUtilDeathTest, LockFileDiesIfFileIsLocked) {
+  base::FilePath lock_file_path = paths::Get(paths::kLockFile);
+  auto lock_process = LockFile(lock_file_path);
+  std::vector<base::TimeDelta> sleep_times;
+  Sender::Options options;
+  options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
+  Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),
+                options);
+  ASSERT_TRUE(sender.Init());
+  EXPECT_EXIT(sender.AcquireLockFileOrDie(), ExitedWithCode(EXIT_FAILURE),
+              "Failed to acquire a lock");
 }
 
 TEST_F(CrashSenderUtilTest, CreateClientId) {
