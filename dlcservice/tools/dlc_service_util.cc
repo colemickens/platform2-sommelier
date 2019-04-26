@@ -194,7 +194,7 @@ int main(int argc, const char** argv) {
       return EX_SOFTWARE;
     }
     if (!client.Install(dlc_id_list, FLAGS_omaha_url, &error)) {
-      LOG(ERROR) << "Failed to install DLC modules.";
+      LOG(ERROR) << "Failed to install DLC modules (via D-Bus proxy).";
       return error;
     }
   } else if (FLAGS_uninstall) {
