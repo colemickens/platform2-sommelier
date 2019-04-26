@@ -12,8 +12,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/routines/battery_sysfs/battery_sysfs.h"
-#include "diagnostics/wilco_dtc_supportd/file_test_utils.h"
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {

@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/logging.h>
+#include <base/files/file_path.h>
 #include <base/message_loop/message_loop.h>
 #include <base/optional.h>
 #include <base/time/time.h>
@@ -16,7 +17,7 @@
 #include <brillo/flag_helper.h>
 
 #include "diagnostics/constants/grpc_constants.h"
-#include "diagnostics/telem/telem_connection.h"
+#include "diagnostics/telem/telemetry.h"
 #include "diagnostics/telem/telemetry_group_enum.h"
 #include "diagnostics/telem/telemetry_item_enum.h"
 
@@ -42,7 +43,6 @@ struct {
     {"idle_time_total", diagnostics::TelemetryItemEnum::kTotalIdleTimeUserHz},
     {"idle_time_per_cpu",
      diagnostics::TelemetryItemEnum::kIdleTimePerCPUUserHz},
-    {"button", diagnostics::TelemetryItemEnum::kAcpiButton},
     {"netstat", diagnostics::TelemetryItemEnum::kNetStat},
     {"netdev", diagnostics::TelemetryItemEnum::kNetDev}};
 
@@ -152,9 +152,7 @@ int main(int argc, char** argv) {
 
   base::MessageLoopForIO message_loop;
 
-  diagnostics::TelemConnection telem_connection;
-
-  telem_connection.Connect(diagnostics::kWilcoDtcSupportdGrpcDomainSocketUri);
+  diagnostics::Telemetry telemetry;
 
   // Make sure at least one item or group is specified.
   if (FLAGS_item == "" && FLAGS_group == "") {
@@ -170,8 +168,8 @@ int main(int argc, char** argv) {
 
     // Retrieve and display the telemetry item.
     const base::Optional<base::Value> telem_item =
-        telem_connection.GetItem(telemetry_switch_to_item.at(FLAGS_item),
-                                 base::TimeDelta::FromSeconds(0));
+        telemetry.GetItem(telemetry_switch_to_item.at(FLAGS_item),
+                          base::TimeDelta::FromSeconds(0));
     if (!DisplayOptionalTelemetryItem(FLAGS_item, telem_item))
       return EXIT_FAILURE;
   }
@@ -183,11 +181,11 @@ int main(int argc, char** argv) {
     }
 
     // Retrieve and display the telemetry group.
-    const std::vector<std::pair<diagnostics::TelemetryItemEnum,
-                                const base::Optional<base::Value>>>
+    const std::vector<
+        std::pair<diagnostics::TelemetryItemEnum, base::Optional<base::Value>>>
         telem_items =
-            telem_connection.GetGroup(telemetry_switch_to_group.at(FLAGS_group),
-                                      base::TimeDelta::FromSeconds(0));
+            telemetry.GetGroup(telemetry_switch_to_group.at(FLAGS_group),
+                               base::TimeDelta::FromSeconds(0));
     for (auto item_pair : telem_items) {
       if (!DisplayOptionalTelemetryItem(
               telemetry_item_to_switch.at(item_pair.first), item_pair.second))

@@ -16,8 +16,6 @@
 
 namespace diagnostics {
 
-// TODO(wbbradley): Consolidate strings used by SubprocRoutine and
-// UrandomRoutine. See https://crbug.com/948202
 constexpr char kSubprocRoutineProcessRunningMessage[] =
     "Test is still running.";
 constexpr char kSubprocRoutineSucceededMessage[] = "Test passed.";

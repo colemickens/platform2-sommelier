@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,8 +19,19 @@
 
 namespace diagnostics {
 
+// CacheWriter provides an interface to enable decoupling of side-effects
+// related to caching, from extraction of data from system files.
+class CacheWriter {
+ public:
+  virtual ~CacheWriter();
+
+  // Sets telemetry data for |item|.
+  virtual void SetParsedData(TelemetryItemEnum item,
+                             base::Optional<base::Value> data) = 0;
+};
+
 // Provides caching functionality for libtelem.
-class TelemCache final {
+class TelemCache final : public CacheWriter {
  public:
   TelemCache();
 
@@ -41,12 +52,13 @@ class TelemCache final {
   // base::nullopt if the requested item does not exist in the cache.
   const base::Optional<base::Value> GetParsedData(TelemetryItemEnum item);
 
-  // Sets telemetry data for |item|, which can be retrieved later
-  // via GetParsedData(|item|).
-  void SetParsedData(TelemetryItemEnum item, base::Optional<base::Value> data);
-
   // Invalidates every item in the cache.
   void Invalidate();
+
+  // CacheWriter overloads:
+  // Cached data can be retrieved later via // GetParsedData(|item|).
+  void SetParsedData(TelemetryItemEnum item,
+                     base::Optional<base::Value> data) override;
 
  private:
   // Internal representation of the data corresponding to

@@ -21,8 +21,8 @@
 #include <google/protobuf/repeated_field.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
-#include "diagnostics/wilco_dtc_supportd/file_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/protobuf_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/vpd_constants.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_grpc_service.h"

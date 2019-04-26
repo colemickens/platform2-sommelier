@@ -139,9 +139,9 @@ static_library("libtelem") {
   ]
   all_dependent_configs = [ ":libtelem_pkg_deps" ]
   sources = [
-    "telem/async_grpc_client_adapter_impl.cc",
     "telem/telem_cache.cc",
-    "telem/telem_connection.cc",
+    "telem/telem_parsers.cc",
+    "telem/telemetry.cc",
   ]
 }
 
@@ -277,11 +277,11 @@ if (use.test) {
       "../common-mk/testrunner:testrunner",
     ]
     sources = [
+      "common/file_test_utils.cc",
       "wilco_dtc_supportd/ec_constants_test.cc",
       "wilco_dtc_supportd/fake_browser.cc",
       "wilco_dtc_supportd/fake_wilco_dtc.cc",
       "wilco_dtc_supportd/fake_wilco_dtc_supportd_routine_factory.cc",
-      "wilco_dtc_supportd/file_test_utils.cc",
       "wilco_dtc_supportd/mock_mojom_wilco_dtc_supportd_client.cc",
       "wilco_dtc_supportd/mojo_test_utils.cc",
       "wilco_dtc_supportd/mojo_utils_test.cc",
@@ -332,8 +332,10 @@ if (use.test) {
       "../common-mk/testrunner:testrunner",
     ]
     sources = [
+      "common/file_test_utils.cc",
       "telem/telem_cache_test.cc",
-      "telem/telem_connection_test.cc",
+      "telem/telem_parsers_test.cc",
+      "telem/telemetry_test.cc",
     ]
   }
 
@@ -354,6 +356,7 @@ if (use.test) {
       "../common-mk/testrunner:testrunner",
     ]
     sources = [
+      "common/file_test_utils.cc",
       "routines/battery/battery_test.cc",
       "routines/battery_sysfs/battery_sysfs_test.cc",
       "routines/smartctl_check/smartctl_check_test.cc",
@@ -361,7 +364,6 @@ if (use.test) {
       "routines/smartctl_check/smartctl_check_utils_test.cc",
       "routines/subproc_routine_test.cc",
       "routines/urandom/urandom_test.cc",
-      "wilco_dtc_supportd/file_test_utils.cc",
     ]
   }
 }

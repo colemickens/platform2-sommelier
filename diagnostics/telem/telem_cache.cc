@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,6 +7,8 @@
 #include <utility>
 
 namespace diagnostics {
+
+CacheWriter::~CacheWriter() = default;
 
 TelemCache::TelemCache() {
   default_tick_clock_ = std::make_unique<base::DefaultTickClock>();

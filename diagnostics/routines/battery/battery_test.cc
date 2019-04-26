@@ -10,8 +10,8 @@
 #include <base/macros.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/routines/battery/battery.h"
-#include "diagnostics/wilco_dtc_supportd/file_test_utils.h"
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
