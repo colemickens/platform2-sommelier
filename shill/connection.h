@@ -64,15 +64,14 @@ class Connection : public base::RefCounted<Connection> {
     DISALLOW_COPY_AND_ASSIGN(Binder);
   };
 
-  // The routing metric used for the default service, either physical or VPN.
+  // The routing metric used for the default service, whether physical or VPN.
   static const uint32_t kDefaultMetric;
-  // A unique metric used temporarily for the soon-to-be default service during
-  // transitions, which ensures that the old default service and the new
-  // default service each have a unique metric.
-  static const uint32_t kNewDefaultMetric;
-  // All other services use a metric that starts at |kNonDefaultMetricBase|
-  // and counts up.
-  static const uint32_t kNonDefaultMetricBase;
+  // The lowest piority metric value that is still valid.
+  static const uint32_t kLowestPriorityMetric;
+  // Space between the metrics of services. The Nth highest priority service
+  // (starting from N=0) will have a metric of
+  // |kDefaultMetric| + N*|kMetricIncrement|.
+  static const uint32_t kMetricIncrement;
 
   Connection(int interface_index,
              const std::string& interface_name,
@@ -109,10 +108,10 @@ class Connection : public base::RefCounted<Connection> {
   // this connection will use |metric|, updates the systemwide DNS
   // configuration if necessary, and triggers captive portal detection
   // if the connection has transitioned from non-default to default.
-  virtual void SetMetric(uint32_t metric);
+  virtual void SetMetric(uint32_t metric, bool is_primary_physical);
 
   // Returns true if this connection is currently the systemwide default.
-  virtual bool IsDefault();
+  virtual bool IsDefault() const;
 
   // Determines whether this connection controls the system DNS settings.
   // This should only be true for one connection at a time.

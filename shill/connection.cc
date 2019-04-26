@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <linux/rtnetlink.h>
 
+#include <limits>
 #include <set>
 
 #include <base/bind.h>
@@ -39,11 +40,15 @@ static string ObjectID(Connection* c) {
 }
 
 // static
-const uint32_t Connection::kDefaultMetric = 1;
+const uint32_t Connection::kDefaultMetric = 10;
 // static
-const uint32_t Connection::kNewDefaultMetric = 2;
+//
+// UINT_MAX is also a valid priority metric, but we reserve this as a sentinel
+// value, as in RoutingTable::GetDefaultRouteInternal.
+const uint32_t Connection::kLowestPriorityMetric =
+  std::numeric_limits<uint32_t>::max() - 1;
 // static
-const uint32_t Connection::kNonDefaultMetricBase = 10;
+const uint32_t Connection::kMetricIncrement = 10;
 
 Connection::Binder::Binder(const string& name,
                            const Closure& disconnect_callback)
@@ -87,7 +92,7 @@ Connection::Connection(int interface_index,
                        ControlInterface* control_interface)
     : weak_ptr_factory_(this),
       use_dns_(false),
-      metric_(kNonDefaultMetricBase),
+      metric_(kLowestPriorityMetric),
       has_broadcast_domain_(false),
       routing_request_count_(0),
       interface_index_(interface_index),
@@ -267,11 +272,11 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
     CHECK(blackhole_table_id_);
     routing_table_->CreateBlackholeRoute(interface_index_,
                                          IPAddress::kFamilyIPv4,
-                                         kDefaultMetric,
+                                         0,
                                          blackhole_table_id_);
     routing_table_->CreateBlackholeRoute(interface_index_,
                                          IPAddress::kFamilyIPv6,
-                                         kDefaultMetric,
+                                         0,
                                          blackhole_table_id_);
   }
 
@@ -284,7 +289,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   if (properties.blackhole_ipv6) {
     routing_table_->CreateBlackholeRoute(interface_index_,
                                          IPAddress::kFamilyIPv6,
-                                         kDefaultMetric,
+                                         0,
                                          table_id_);
   }
 
@@ -406,11 +411,7 @@ void Connection::RemoveInputInterfaceFromRoutingTable(
   routing_table_->FlushCache();
 }
 
-bool Connection::IsDefault() {
-  return metric_ == kDefaultMetric;
-}
-
-void Connection::SetMetric(uint32_t metric) {
+void Connection::SetMetric(uint32_t metric, bool /*is_primary_physical*/) {
   SLOG(this, 2) << __func__ << " " << interface_name_
                 << " (index " << interface_index_ << ")"
                 << metric_ << " -> " << metric;
@@ -432,6 +433,10 @@ void Connection::SetMetric(uint32_t metric) {
     }
   }
   routing_table_->FlushCache();
+}
+
+bool Connection::IsDefault() const {
+  return metric_ == kDefaultMetric;
 }
 
 void Connection::SetUseDNS(bool enable) {

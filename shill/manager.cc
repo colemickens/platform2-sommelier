@@ -1811,7 +1811,7 @@ void Manager::SortServicesTask() {
   sort(services_.begin(), services_.end(),
        ServiceSorter(this, kCompareConnectivityState, technology_order_));
 
-  int metric = Connection::kNonDefaultMetricBase;
+  int metric = Connection::kDefaultMetric;
   bool found_dns = false;
   ServiceRefPtr old_logical;
   int old_logical_metric;
@@ -1819,9 +1819,10 @@ void Manager::SortServicesTask() {
   ServiceRefPtr new_physical;
   for (const auto& service : services_) {
     ConnectionRefPtr conn = service->connection();
+    if (!new_physical && service->technology() != Technology::kVPN) {
+      new_physical = service;
+    }
     if (conn) {
-      int new_metric;
-
       if (!found_dns && !conn->dns_servers().empty()) {
         found_dns = true;
         conn->SetUseDNS(true);
@@ -1829,29 +1830,24 @@ void Manager::SortServicesTask() {
         conn->SetUseDNS(false);
       }
 
-      if (!new_logical) {
-        new_logical = service;
-        new_metric = Connection::kNewDefaultMetric;
-      } else {
-        new_metric = metric++;
-      }
+      new_logical = new_logical ? new_logical : service;
 
+      metric += Connection::kMetricIncrement;
       if (conn->IsDefault()) {
         old_logical = service;
-        old_logical_metric = new_metric;
+        old_logical_metric = metric;
       } else {
-        conn->SetMetric(new_metric);
+        conn->SetMetric(metric, new_physical == service);
       }
     }
-
-    if (!new_physical && service->technology() != Technology::kVPN)
-      new_physical = service;
   }
 
   if (old_logical && old_logical != new_logical)
-    old_logical->connection()->SetMetric(old_logical_metric);
+    old_logical->connection()->SetMetric(old_logical_metric,
+                                         old_logical == new_physical);
   if (new_logical)
-    new_logical->connection()->SetMetric(Connection::kDefaultMetric);
+    new_logical->connection()->SetMetric(Connection::kDefaultMetric,
+                                         new_logical == new_physical);
 
   Error error;
   adaptor_->EmitRpcIdentifierArrayChanged(kServiceCompleteListProperty,

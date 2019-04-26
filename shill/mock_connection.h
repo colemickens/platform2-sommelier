@@ -21,8 +21,8 @@ class MockConnection : public Connection {
   ~MockConnection() override;
 
   MOCK_METHOD1(UpdateFromIPConfig, void(const IPConfigRefPtr& config));
-  MOCK_METHOD0(IsDefault, bool());
-  MOCK_METHOD1(SetMetric, void(uint32_t metric));
+  MOCK_CONST_METHOD0(IsDefault, bool());
+  MOCK_METHOD2(SetMetric, void(uint32_t metric, bool is_primary_physical));
   MOCK_METHOD1(SetUseDNS, void(bool enable));
   MOCK_CONST_METHOD0(ipconfig_rpc_identifier, const std::string&());
   MOCK_METHOD0(RequestRouting, void());
