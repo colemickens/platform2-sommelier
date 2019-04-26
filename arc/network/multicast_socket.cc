@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "arc/network/arc_ip_config.h"
 #include "arc/network/multicast_socket.h"
 
 #include <arpa/inet.h>
@@ -29,7 +30,8 @@ bool MulticastSocket::Bind(const std::string& ifname,
 
   base::ScopedFD fd(socket(AF_INET, SOCK_DGRAM, 0));
   if (!fd.is_valid()) {
-    PLOG(ERROR) << "socket() failed";
+    PLOG(ERROR) << "socket() failed for multicast forwarder on "
+        << ifname << " for " << mcast_addr << ":" << port;
     return false;
   }
 
@@ -41,7 +43,8 @@ bool MulticastSocket::Bind(const std::string& ifname,
   memset(&ifr, 0, sizeof(ifr));
   strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
   if (ioctl(fd.get(), SIOCGIFADDR, &ifr) < 0) {
-    PLOG(ERROR) << "SIOCGIFADDR failed";
+    PLOG(ERROR) << "SIOCGIFADDR failed for multicast forwarder on "
+        << ifname << " for " << mcast_addr << ":" << port;
     return false;
   }
 
@@ -50,7 +53,8 @@ bool MulticastSocket::Bind(const std::string& ifname,
   interface_ip_ = if_addr->sin_addr;
 
   if (setsockopt(fd.get(), SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr))) {
-    PLOG(ERROR) << "setsockopt(SOL_SOCKET) faile";
+    PLOG(ERROR) << "setsockopt(SOL_SOCKET) failed for multicast forwarder on "
+        << ifname << " for " << mcast_addr << ":" << port;
     return false;
   }
 
@@ -66,27 +70,34 @@ bool MulticastSocket::Bind(const std::string& ifname,
     // FIXME: RX needs to be limited to the given interface.
     int on = 1;
     if (setsockopt(fd.get(), SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
-      PLOG(ERROR) << "setsockopt(SO_BROADCAST) failed";
+      PLOG(ERROR)
+          << "setsockopt(SO_BROADCAST) failed for multicast forwarder on "
+          << ifname << " for " << mcast_addr << ":" << port;
       return false;
     }
     bind_addr.sin_addr.s_addr = INADDR_BROADCAST;
   } else {
     if (setsockopt(fd.get(), IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq,
                    sizeof(mreq)) < 0) {
-      PLOG(ERROR) << "can't add multicast membership";
+      PLOG(ERROR)
+          << "can't add multicast membership for multicast forwarder on "
+          << ifname << " for " << mcast_addr << ":" << port;
       return false;
     }
   }
 
   int off = 0;
   if (setsockopt(fd.get(), IPPROTO_IP, IP_MULTICAST_LOOP, &off, sizeof(off))) {
-    PLOG(ERROR) << "setsockopt(IP_MULTICAST_LOOP) failed";
+    PLOG(ERROR)
+        << "setsockopt(IP_MULTICAST_LOOP) failed for multicast forwarder on "
+        << ifname << " for " << mcast_addr << ":" << port;
     return false;
   }
 
   int on = 1;
   if (setsockopt(fd.get(), SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-    PLOG(ERROR) << "setsockopt(SO_REUSEADDR) failed";
+    PLOG(ERROR) << "setsockopt(SO_REUSEADDR) failed for multicast forwarder on "
+        << ifname << " for " << mcast_addr << ":" << port;
     return false;
   }
 
@@ -95,7 +106,8 @@ bool MulticastSocket::Bind(const std::string& ifname,
 
   if (bind(fd.get(), (const struct sockaddr*)&bind_addr, sizeof(bind_addr)) <
       0) {
-    PLOG(ERROR) << "bind(" << port << ") failed";
+    PLOG(ERROR) << "bind(" << port << ") failed for multicast forwarder on "
+        << ifname << " for " << mcast_addr << ":" << port;
     return false;
   }
 
@@ -117,25 +129,6 @@ bool MulticastSocket::SendTo(const void* data,
   }
   last_used_ = time(NULL);
   return true;
-}
-
-// static
-ssize_t MulticastSocket::RecvFromFd(int fd,
-                                    void* data,
-                                    size_t len,
-                                    struct sockaddr_in* addr) {
-  socklen_t addrlen = sizeof(*addr);
-  ssize_t bytes = recvfrom(fd, data, len, 0,
-                           reinterpret_cast<struct sockaddr*>(addr), &addrlen);
-  if (bytes < 0) {
-    PLOG(WARNING) << "recvfrom failed";
-    return -1;
-  }
-  if (addrlen != sizeof(*addr)) {
-    LOG(WARNING) << "recvfrom failed: unexpected src addr length " << addrlen;
-    return -1;
-  }
-  return bytes;
 }
 
 }  // namespace arc_networkd

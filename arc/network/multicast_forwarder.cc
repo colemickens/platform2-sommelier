@@ -74,10 +74,19 @@ bool MulticastForwarder::Start(const std::string& int_ifname,
 void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
   char data[kBufSize];
   struct sockaddr_in fromaddr;
+  socklen_t addrlen = sizeof(fromaddr);
 
-  ssize_t bytes = MulticastSocket::RecvFromFd(fd, data, kBufSize, &fromaddr);
-  if (bytes < 0)
+  ssize_t bytes = recvfrom(fd, data, kBufSize, 0,
+                           reinterpret_cast<struct sockaddr*>(&fromaddr),
+                           &addrlen);
+  if (bytes < 0) {
+    PLOG(WARNING) << "recvfrom failed";
     return;
+  }
+  if (addrlen != sizeof(fromaddr)) {
+    LOG(WARNING) << "recvfrom failed: unexpected src addr length " << addrlen;
+    return;
+  }
 
   unsigned short port = ntohs(fromaddr.sin_port);
 
@@ -101,10 +110,14 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
 
   // Forward stateless traffic.
   if (allow_stateless_ && port == port_) {
+    // Forward egress multicast traffic from the guest to the physical network.
+    // This requires translating any IPv4 address specific to the guest and not
+    // visible to the physical network.
     if (fd == int_socket_->fd()) {
       TranslateMdnsIp(data, bytes);
       lan_socket_->SendTo(data, bytes, dst);
       return;
+    // Otherwise forward ingress multicast traffic towards the guest.
     } else if (fd == lan_socket_->fd()) {
       int_socket_->SendTo(data, bytes, dst);
       return;

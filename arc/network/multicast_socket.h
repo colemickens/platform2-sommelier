@@ -33,11 +33,6 @@ class MulticastSocket {
             MessageLoopForIO::Watcher* parent);
   bool SendTo(const void* data, size_t len, const struct sockaddr_in& addr);
 
-  static ssize_t RecvFromFd(int fd,
-                            void* data,
-                            size_t len,
-                            struct sockaddr_in* addr);
-
   int fd() const { return fd_.get(); }
   time_t last_used() const { return last_used_; }
   const struct in_addr interface_ip() const { return interface_ip_; }
