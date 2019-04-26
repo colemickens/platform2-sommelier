@@ -82,7 +82,7 @@ AdvertisingManagerInterfaceHandler::AdvertisingManagerInterfaceHandler(
     LibNewblue* libnewblue,
     scoped_refptr<dbus::Bus> bus,
     ExportedObjectManagerWrapper* exported_object_manager_wrapper)
-    : libnewblue_(std::move(libnewblue)),
+    : libnewblue_(libnewblue),
       bus_(bus),
       exported_object_manager_wrapper_(exported_object_manager_wrapper) {}
 

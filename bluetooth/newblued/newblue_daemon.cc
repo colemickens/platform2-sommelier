@@ -66,7 +66,6 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus,
   advertising_manager_interface_handler_ =
       std::make_unique<AdvertisingManagerInterfaceHandler>(
           newblue_->libnewblue(), bus_, exported_object_manager_wrapper_.get());
-  advertising_manager_interface_handler_->Init();
   agent_manager_interface_handler_ =
       std::make_unique<AgentManagerInterfaceHandler>(
           bus_, exported_object_manager_wrapper_.get());
@@ -111,6 +110,8 @@ void NewblueDaemon::OnHciReadyForUp() {
       bus_.get(),
       base::Bind(&NewblueDaemon::OnBluezDown, weak_ptr_factory_.GetWeakPtr()));
   LOG(INFO) << "NewBlue is up";
+
+  advertising_manager_interface_handler_->Init();
 
   if (!device_interface_handler_->Init()) {
     LOG(ERROR) << "Failed to initialize device interface";

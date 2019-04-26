@@ -698,10 +698,6 @@ TEST_F(NewblueDaemonTest, InitFailed) {
       SetupExportedRootObject();
   scoped_refptr<dbus::MockExportedObject> exported_agent_manager_object =
       SetupExportedAgentManagerObject();
-  scoped_refptr<dbus::MockExportedObject> exported_adapter_object =
-      SetupExportedAdapterObject();
-  ExpectPropertiesMethodsExported(exported_adapter_object);
-  ExpectAdvertisingManagerMethodsExported(exported_adapter_object);
   ExpectPropertiesMethodsExported(exported_agent_manager_object);
   ExpectAgentManagerMethodsExported(exported_agent_manager_object);
 
