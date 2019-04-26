@@ -391,7 +391,7 @@ static_library("libshill") {
       "cellular/cellular_capability.cc",
       "cellular/cellular_capability_universal.cc",
       "cellular/cellular_capability_universal_cdma.cc",
-      "cellular/cellular_error_mm1.cc",
+      "cellular/cellular_error.cc",
       "cellular/cellular_pco.cc",
       "cellular/cellular_service.cc",
       "cellular/mobile_operator_info.cc",
