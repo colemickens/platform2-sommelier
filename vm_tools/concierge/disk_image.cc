@@ -4,6 +4,7 @@
 
 #include <archive.h>
 #include <archive_entry.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <memory>
@@ -15,6 +16,12 @@
 #include <base/strings/stringprintf.h>
 
 #include "vm_tools/concierge/disk_image.h"
+
+namespace {
+
+constexpr gid_t kPluginVmGid = 20128;
+
+}  // namespace
 
 namespace vm_tools {
 namespace concierge {
@@ -82,6 +89,17 @@ bool PluginVmImportOperation::PrepareOutput(const base::FilePath& disk_path) {
 
   CHECK(output_dir_.Set(disk_path));
 
+  if (chown(output_dir_.GetPath().value().c_str(), -1, kPluginVmGid) < 0) {
+    set_failure_reason("failed to change group of the destination directory");
+    return false;
+  }
+
+  if (chmod(output_dir_.GetPath().value().c_str(), 0770) < 0) {
+    set_failure_reason(
+        "failed to change permissions of the destination directory");
+    return false;
+  }
+
   out_ = ArchiveWriter(archive_write_disk_new());
   if (!out_) {
     set_failure_reason("libarchive: failed to create writer");
@@ -89,8 +107,8 @@ bool PluginVmImportOperation::PrepareOutput(const base::FilePath& disk_path) {
   }
 
   int ret = archive_write_disk_set_options(
-      out_.get(),
-      ARCHIVE_EXTRACT_SECURE_SYMLINKS | ARCHIVE_EXTRACT_SECURE_NODOTDOT);
+      out_.get(), ARCHIVE_EXTRACT_SECURE_SYMLINKS |
+                      ARCHIVE_EXTRACT_SECURE_NODOTDOT | ARCHIVE_EXTRACT_OWNER);
   if (ret != ARCHIVE_OK) {
     set_failure_reason("libarchive: failed to initialize filter");
     return false;
@@ -165,6 +183,19 @@ bool PluginVmImportOperation::CopyImage(uint64_t io_limit) {
 
       auto dest_path = output_dir_.GetPath().Append(path);
       archive_entry_set_pathname(entry, dest_path.value().c_str());
+
+      archive_entry_set_uid(entry, getuid());
+      archive_entry_set_gid(entry, kPluginVmGid);
+
+      mode_t mode = archive_entry_filetype(entry);
+      switch (mode) {
+        case AE_IFREG:
+          archive_entry_set_perm(entry, 0660);
+          break;
+        case AE_IFDIR:
+          archive_entry_set_perm(entry, 0770);
+          break;
+      }
 
       ret = archive_write_header(out_.get(), entry);
       if (ret != ARCHIVE_OK) {
