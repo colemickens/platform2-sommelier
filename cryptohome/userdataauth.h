@@ -27,6 +27,46 @@ class UserDataAuth {
 
   bool Initialize();
 
+  // ================= Threading Utilities ==================
+
+  // Returns true if we are currently running on the origin thread
+  bool IsOnOriginThread() {
+    return base::PlatformThread::CurrentId() == origin_thread_id_;
+  }
+
+  // Returns true if we are currently running on the mount thread
+  bool IsOnMountThread() {
+    // GetThreadId blocks if the thread is not started yet.
+    return mount_thread_.IsRunning() &&
+           (base::PlatformThread::CurrentId() == mount_thread_.GetThreadId());
+  }
+
+  // DCHECK if we are running on the origin thread. Will have no effect
+  // in production.
+  void AssertOnOriginThread() { DCHECK(IsOnOriginThread()); }
+
+  // DCHECK if we are running on the mount thread. Will have no effect
+  // in production.
+  void AssertOnMountThread() { DCHECK(IsOnMountThread()); }
+
+  // Post Task to origin thread. For the caller, from_here is usually FROM_HERE
+  // macro, while task is a callback function to be posted. Will return true if
+  // the task may be run sometime in the future, false if it will definitely not
+  // run.
+  bool PostTaskToOriginThread(const tracked_objects::Location& from_here,
+                              base::OnceClosure task) {
+    return origin_task_runner_->PostTask(from_here, std::move(task));
+  }
+
+  // Post Task to mount thread. For the caller, from_here is usually FROM_HERE
+  // macro, while task is a callback function to be posted. Will return true if
+  // the task may be run sometime in the future, false if it will definitely not
+  // run.
+  bool PostTaskToMountThread(const tracked_objects::Location& from_here,
+                             base::OnceClosure task) {
+    return mount_thread_.task_runner()->PostTask(from_here, std::move(task));
+  }
+
  private:
   // Note: In Service class (the class that this class is refactored from),
   // there is a use_tpm_ member variable, but it is almost unused and always set
