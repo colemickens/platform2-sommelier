@@ -4,13 +4,14 @@
 
 #include "shill/cellular/modem.h"
 
+#include <ModemManager/ModemManager.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <mm/mm-modem.h>
-#include <net/if.h>
-#include <sys/ioctl.h>
 
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/mock_cellular.h"
@@ -96,7 +97,7 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   static const uint32_t kSentinelValue = 17;
 
   InterfaceToProperties properties;
-  properties[MM_MODEM_INTERFACE].SetUint(kSentinel, kSentinelValue);
+  properties[MM_DBUS_INTERFACE_MODEM].SetUint(kSentinel, kSentinelValue);
 
   EXPECT_CALL(*modem_, GetLinkName(_, _)).WillRepeatedly(DoAll(
       SetArgPointee<1>(string(kLinkName)),
@@ -109,7 +110,7 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   EXPECT_CALL(device_info_, GetMACAddress(kTestInterfaceIndex, _)).
       WillOnce(Return(false));
   EXPECT_CALL(*modem_, GetModemInterface()).
-      WillRepeatedly(Return(MM_MODEM_INTERFACE));
+      WillRepeatedly(Return(MM_DBUS_INTERFACE_MODEM));
   modem_->CreateDeviceFromModemProperties(properties);
   EXPECT_FALSE(modem_->device_.get());
 
@@ -162,13 +163,13 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
 
   EXPECT_CALL(*modem_, ConstructCellular(_, _, _)).Times(0);
   EXPECT_CALL(*modem_, GetModemInterface()).
-      WillRepeatedly(Return(MM_MODEM_INTERFACE));
+      WillRepeatedly(Return(MM_DBUS_INTERFACE_MODEM));
 
   // No modem interface properties:  no device created
   modem_->CreateDeviceFromModemProperties(properties);
   EXPECT_FALSE(modem_->device_.get());
 
-  properties[MM_MODEM_INTERFACE] = KeyValueStore();
+  properties[MM_DBUS_INTERFACE_MODEM] = KeyValueStore();
 
   // Link name, but no ifindex: no device created
   EXPECT_CALL(*modem_, GetLinkName(_, _)).WillOnce(DoAll(
@@ -198,7 +199,7 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
 
 TEST_F(ModemTest, CreateDevicePPP) {
   InterfaceToProperties properties;
-  properties[MM_MODEM_INTERFACE] = KeyValueStore();
+  properties[MM_DBUS_INTERFACE_MODEM] = KeyValueStore();
 
   string dev_name(
       base::StringPrintf(Modem::kFakeDevNameFormat, Modem::fake_dev_serial_));
@@ -214,7 +215,7 @@ TEST_F(ModemTest, CreateDevicePPP) {
       kPath);
 
   EXPECT_CALL(*modem_, GetModemInterface()).
-      WillRepeatedly(Return(MM_MODEM_INTERFACE));
+      WillRepeatedly(Return(MM_DBUS_INTERFACE_MODEM));
   // No link name: assumed to be a PPP dongle.
   EXPECT_CALL(*modem_, GetLinkName(_, _)).WillOnce(Return(false));
   EXPECT_CALL(*modem_,
