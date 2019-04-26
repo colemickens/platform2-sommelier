@@ -6,6 +6,10 @@
 sysfs_config_file=/sys/devices/virtual/misc/hci_le/le_splitter_enabled
 newblue_config_file=/var/lib/bluetooth/newblue
 
+# Set the group of sysfs config file to "bluetooth" to allow bluetoothd to read
+# the status of the splitter.
+chown :bluetooth "${sysfs_config_file}"
+
 # Make sure the bluetooth module is loaded, otherwise the sysfs splitter config
 # file won't exist.
 modprobe bluetooth
