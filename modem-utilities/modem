@@ -242,37 +242,6 @@ set_logging() {
   esac
 }
 
-MADISON_CONFIG_GROUP_LOCATION=/var/lib/cromo/madison-config-group
-
-set_madison_config() {
-  local group="$*"
-
-  if [ -z "${group}" ]; then
-    echo "No config group specified."
-    echo "Usage: modem set-madison-config <config-group-name>"
-    return
-  fi
-
-  if [ ! -w "${MADISON_CONFIG_GROUP_LOCATION}" ]; then
-    echo "${MADISON_CONFIG_GROUP_LOCATION} is not a writable file."
-    echo "Please reboot (or restart cromo) and try again.";
-    return
-  fi
-
-  if [ "$(readlink -f ${MADISON_CONFIG_GROUP_LOCATION})" != \
-       "${MADISON_CONFIG_GROUP_LOCATION}" ]; then
-    echo "${MADISON_CONFIG_GROUP_LOCATION} points somewhere strange."
-    echo "Please reboot (or restart cromo) and try again."
-    return
-  fi
-
-  echo "Setting madison config group to ${group}."
-
-  echo "${group}" > "${MADISON_CONFIG_GROUP_LOCATION}"
-
-  echo "Please reboot (or restart cromo) to use the new config group."
-}
-
 usage() {
   echo "Usage: $(basename $0) <command> [args...]"
   echo "  activate [-modem <modem>] [<carrier>]        Activate modem"
@@ -280,7 +249,6 @@ usage() {
   echo "  factory-reset [-modem <modem>] [<spc>]       Factory-reset the modem"
   echo "  reset [-modem <modem>]                       Reset the modem"
   echo "  set-logging (debug|info|warn|error)          Set logging level"
-  echo "  set-madison-config <config-group-name>       Set Madison config group"
   echo "  status                                       Display modem status"
   echo "  ussd [-modem <modem>] status                " \
     "Show status of ongoing USSD session"
@@ -308,9 +276,6 @@ case "${cmd}" in
     ;;
   set-logging)
     set_logging "$@"
-    ;;
-  set-madison-config)
-    set_madison_config "$@"
     ;;
   status)
     status "$@"
