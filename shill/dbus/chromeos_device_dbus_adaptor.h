@@ -86,8 +86,6 @@ class ChromeosDeviceDBusAdaptor
   bool ResetByteCounters(brillo::ErrorPtr* error) override;
   bool RequestRoam(brillo::ErrorPtr* error,
                    const std::string& addr) override;
-  void SetCarrier(DBusMethodResponsePtr<> response,
-                  const std::string& carrierr) override;
   bool AddWakeOnPacketConnection(brillo::ErrorPtr* error,
                                  const std::string& ip_endpoint) override;
   bool AddWakeOnPacketOfTypes(

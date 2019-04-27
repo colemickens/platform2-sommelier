@@ -195,8 +195,6 @@ class Cellular : public Device,
                  const std::string& new_pin,
                  Error* error, const ResultCallback& callback) override;
   void Reset(Error* error, const ResultCallback& callback) override;
-  void SetCarrier(const std::string& carrier,
-                  Error* error, const ResultCallback& callback) override;
   bool IsIPv6Allowed() const override;
   void DropConnection() override;
   void SetServiceState(Service::ConnectState state) override;

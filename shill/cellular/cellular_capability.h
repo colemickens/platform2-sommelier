@@ -131,13 +131,6 @@ class CellularCapability {
   // Network service and registration
   // -------------------------------------------------------------------------
 
-  // Configures the modem to support the |carrier|.
-  //
-  // The default implementation fails by returning kNotSupported via |error|.
-  virtual void SetCarrier(const std::string& carrier,
-                          Error* error,
-                          const ResultCallback& callback);
-
   // Asks the modem to scan for networks.
   //
   // The default implementation fails by returning kNotSupported via |error|.

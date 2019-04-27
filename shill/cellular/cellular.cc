@@ -441,12 +441,6 @@ void Cellular::Reset(Error* error, const ResultCallback& callback) {
   capability_->Reset(error, callback);
 }
 
-void Cellular::SetCarrier(const string& carrier,
-                          Error* error, const ResultCallback& callback) {
-  SLOG(this, 2) << __func__ << "(" << carrier << ")";
-  capability_->SetCarrier(carrier, error, callback);
-}
-
 bool Cellular::IsIPv6Allowed() const {
   // A cellular device is disabled before the system goes into suspend mode.
   // However, outstanding TCP sockets may not be nuked when the associated

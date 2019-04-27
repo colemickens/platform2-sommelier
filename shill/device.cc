@@ -263,13 +263,6 @@ void Device::Reset(Error* error, const ResultCallback& /*callback*/) {
                         "Device doesn't support Reset.");
 }
 
-void Device::SetCarrier(const string& /*carrier*/,
-                        Error* error, const ResultCallback& /*callback*/) {
-  SLOG(this, 2) << __func__;
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                        "Device doesn't support SetCarrier.");
-}
-
 bool Device::IsIPv6Allowed() const {
   return true;
 }

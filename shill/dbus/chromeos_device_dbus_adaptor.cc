@@ -237,16 +237,6 @@ bool ChromeosDeviceDBusAdaptor::ResetByteCounters(brillo::ErrorPtr* error) {
   return true;
 }
 
-void ChromeosDeviceDBusAdaptor::SetCarrier(DBusMethodResponsePtr<> response,
-                                           const string& carrier) {
-  SLOG(this, 2) << __func__ << ": " << carrier;
-
-  Error e(Error::kOperationInitiated);
-  ResultCallback callback = GetMethodReplyCallback(std::move(response));
-  device_->SetCarrier(carrier, &e, callback);
-  ReturnResultOrDefer(callback, e);
-}
-
 bool ChromeosDeviceDBusAdaptor::RequestRoam(brillo::ErrorPtr* error,
                                             const std::string& addr) {
   SLOG(this, 2) << __func__ << ": " << addr;
