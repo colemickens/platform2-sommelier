@@ -13,4 +13,4 @@ mod server;
 #[cfg(fuzzing)]
 pub mod fuzzing;
 
-pub use server::*;
+pub use server::Server;
