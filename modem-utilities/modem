@@ -241,35 +241,6 @@ ussd() {
   esac
 }
 
-set_carrier() {
-  local modem
-
-  $(arg_or_default modem $(default_modem))
-  [ -z "${modem}" ] && error_exit "No modem found."
-
-  if is_mm1_modem "${modem}"; then
-    error_exit "Setting carrier is not supported on this modem."
-  fi
-
-  if [ $# -eq 0 ]; then
-    echo "Missing argument: carrier"
-    usage
-  fi
-  local carrier="$*"
-
-  echo "Setting carrier to ${carrier}.  This could take up to two minutes."
-  echo "Using modem ${modem}"
-
-  dbus-send                                         \
-    --reply-timeout=120000                          \
-    --system                                        \
-    --print-reply                                   \
-    --dest="${MM}"                                  \
-    "${modem}"                                      \
-    org.chromium.ModemManager.Modem.Gobi.SetCarrier \
-    "string:${carrier}"
-}
-
 set_logging() {
   local level="$1"
   local manager
@@ -329,8 +300,6 @@ usage() {
   echo "  connect [-modem <modem>] [phone number]      Connect modem"
   echo "  factory-reset [-modem <modem>] [<spc>]       Factory-reset the modem"
   echo "  reset [-modem <modem>]                       Reset the modem"
-  echo "  set-carrier [-modem <modem>] <carrier-name> " \
-    "Set modem carrier firmware"
   echo "  set-logging (debug|info|warn|error)          Set logging level"
   echo "  set-madison-config <config-group-name>       Set Madison config group"
   echo "  status                                       Display modem status"
@@ -360,9 +329,6 @@ case "${cmd}" in
     ;;
   reset)
     reset "$@"
-    ;;
-  set-carrier)
-    set_carrier "$@"
     ;;
   set-logging)
     set_logging "$@"
