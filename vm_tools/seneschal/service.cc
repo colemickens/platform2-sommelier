@@ -65,18 +65,6 @@ constexpr gid_t kChronosAccessGid = 1001;
 // The uid used for authenticating with DBus.
 constexpr uid_t kDbusAuthUid = 20115;
 
-// The crosvm uid and gid.
-constexpr uid_t kCrosvmUid = 299;
-constexpr gid_t kCrosvmGid = 299;
-
-// Gids on the 9P server side that should be mapped to crosvm on the
-// client side so that crosvm can access the shared data.
-constexpr gid_t k9pMappedGids[] = {
-    kChronosGid,
-    kChronosAccessGid,
-    kAndroidEverybodyGid,
-};
-
 // How long we should wait for a server process to exit.
 constexpr base::TimeDelta kServerExitTimeout = base::TimeDelta::FromSeconds(2);
 
@@ -506,15 +494,6 @@ std::unique_ptr<dbus::Response> Service::StartServer(
       }
 
       args.emplace_back(base::StringPrintf("unix-fd:%d", listen_fd.get()));
-
-      args.emplace_back("--uid_map");
-      args.emplace_back(base::StringPrintf("%u:%u", kChronosUid, kCrosvmUid));
-
-      for (auto gid : k9pMappedGids) {
-        args.emplace_back("--gid_map");
-        args.emplace_back(base::StringPrintf("%u:%u", gid, kCrosvmGid));
-      }
-
       valid_address = true;
       break;
     }
