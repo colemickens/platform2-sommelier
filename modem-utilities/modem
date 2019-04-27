@@ -88,26 +88,6 @@ wait_for_activation_change() {
   echo "${status}"
 }
 
-activate_manual() {
-  $(arg_or_default modem $(default_modem))
-  [ -z "${modem}" ] && error_exit "No modem found."
-  local args=$(echo "$@" | sed -e 's/ /,/g')
-
-  if is_mm1_modem "${modem}"; then
-    error_exit "Manual activation is not supported on this modem."
-  fi
-
-  args=$(require "${args}" min)
-  args=$(require "${args}" mdn)
-  args=$(require "${args}" spc)
-  args=$(require "${args}" system_id)
-  local oldstate=$(mm_modem_activation_state "${modem}")
-  dbus_call "${MM}" "${modem}" "${MM_IMODEM_CDMA}.ActivateManualDebug" \
-    "dict:string:string:${args}"
-  local mdn=$(echo "${args}" | sed -e s'/.*mdn,\([^,]*\).*/\1/g')
-  wait_for_activation_change "${modem}" "${oldstate}" 40 "${mdn}"
-}
-
 activate() {
   $(arg_or_default modem $(default_modem))
   [ -z "${modem}" ] && error_exit "No modem found."
@@ -296,7 +276,6 @@ set_madison_config() {
 usage() {
   echo "Usage: $(basename $0) <command> [args...]"
   echo "  activate [-modem <modem>] [<carrier>]        Activate modem"
-  echo "  activate-manual [-modem <modem>] [args...]   Activate modem manually"
   echo "  connect [-modem <modem>] [phone number]      Connect modem"
   echo "  factory-reset [-modem <modem>] [<spc>]       Factory-reset the modem"
   echo "  reset [-modem <modem>]                       Reset the modem"
@@ -317,9 +296,6 @@ $(needarg cmd)
 case "${cmd}" in
   activate)
     activate "$@"
-    ;;
-  activate-manual)
-    activate_manual "$@"
     ;;
   connect)
     connect "$@"
