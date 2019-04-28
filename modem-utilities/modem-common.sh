@@ -17,11 +17,6 @@ MM_IMODEM_GSM_CARD=${MM_IMODEM_GSM}.Card
 MM_IMODEM_GSM_NETWORK=${MM_IMODEM_GSM}.Network
 MM_IMODEM_CDMA=${MM_IMODEM}.Cdma
 
-mm_modems() {
-  dbus_call "${MM}" "${MM_OBJECT}" "${MM_IMANAGER}.EnumerateDevices" \
-    2>/dev/null | awk '{ print $2 }'
-}
-
 is_mm_modem() {
   local modem="$1"
   test $(expr match "${modem}" "${MM_OBJECT}/") -gt 0
@@ -95,9 +90,7 @@ all_modem_status() {
 }
 
 default_modem() {
-  local modem=$(mm_modems | head -1)
-  [ -z "${modem}" ] && modem=$(mm1_modems | head -1)
-  echo "${modem}"
+  mm1_modems | head -1
 }
 
 # Returns all modem managers that are currently running.
