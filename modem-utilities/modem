@@ -49,14 +49,8 @@ connect() {
   # Work around braindead quoting again...
   local args=$(echo "$@")
 
-  if is_mm1_modem "${modem}"; then
-    [ -n "${args}" ] && args="number=${args}"
-    mmcli -m "${modem}" --simple-connect="${args}"
-    return
-  fi
-
-  [ -z "${args}" ] && args='ignored'
-  dbus_call "${MM}" "${modem}" "${MM_IMODEM}.Connect" "string:${args}"
+  [ -n "${args}" ] && args="number=${args}"
+  mmcli -m "${modem}" --simple-connect="${args}"
 }
 
 factory_reset() {
