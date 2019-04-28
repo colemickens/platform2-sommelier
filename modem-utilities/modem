@@ -124,9 +124,7 @@ set_logging() {
 
   case "${level}" in
     debug|info|warn|error)
-      for manager in $(modem_managers); do
-        set_modem_manager_logging "${manager}" "${level}"
-      done
+      set_modem_manager_logging "${level}"
       ;;
     *)
       error_exit "'${level}' is not a valid logging level."
