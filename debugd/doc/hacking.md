@@ -3,7 +3,7 @@
 [iface]: ../dbus_bindings/org.chromium.debugd.xml
 [impl]: implementation.md
 [design]: design.md
-[makefile]: ../debugd.gyp
+[makefile]: ../debugd.gn
 
 If you're reading this doc, you hopefully want to add a new feature to debugd
 (or fix a bug). You should have a look at [the implementation doc][impl] and
@@ -25,7 +25,7 @@ so, you're going to want to hack the tool that returns the existing data; if
 not, you're going to need to add a new tool.
 
 2. If you're adding a new tool, append it to `targets` in
-[`/debugd.gyp`][makefile]. Tools follow the general pattern of having a header
+[`/debugd.gn`][makefile]. Tools follow the general pattern of having a header
 called `/src/foo_tool.h` and an implementation file called `/src/foo_tool.cc`.
 
 3. If you're doing anything at all complicated, add a helper (see
