@@ -67,12 +67,7 @@ reset() {
   $(arg_or_default modem $(default_modem))
   [ -z "${modem}" ] && error_exit "No modem found."
 
-  if is_mm1_modem "${modem}"; then
-    mmcli -m "${modem}" --reset
-  else
-    dbus_call "${MM}" "${modem}" org.chromium.ModemManager.Modem.Gobi.SoftReset
-  fi
-
+  mmcli -m "${modem}" --reset
   wait_for_modem_reset "${modem}" 40
 }
 
