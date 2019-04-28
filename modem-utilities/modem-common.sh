@@ -100,12 +100,6 @@ mm_modem_status() {
     2>/dev/null | awk "/\/${property}/ { print \$2 }"
 }
 
-mm_modem_activation_state() {
-  local modem="$1"
-
-  mm_modem_status "${modem}" activation_state
-}
-
 mm_modems() {
   dbus_call "${MM}" "${MM_OBJECT}" "${MM_IMANAGER}.EnumerateDevices" \
     2>/dev/null | awk '{ print $2 }'
