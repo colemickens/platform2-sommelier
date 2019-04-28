@@ -58,34 +58,9 @@ factory_reset() {
   [ -z "${modem}" ] && error_exit "No modem found."
   $(arg_or_prompt spc 000000)
 
-  if is_mm1_modem "${modem}"; then
-    # TODO(benchan): Evaluate if a warning should be given when factory
-    # resetting under certain modem configurations.
-    mmcli -m "${modem}" --factory-reset="${spc}"
-    return
-  fi
-
-  technology=$(mm_modem_status "${modem}" technology)
-  if [ "${technology}" = "CDMA" ]; then
-    cat <<-EOF
-
-    WARNING: Unless you have been instructed to do so by a cellular service
-    provider customer service representative, factory resetting your modem will
-    prevent you from re-connecting to your cellular service.
-
-    If you have been instructed to issue the 'modem factory-reset' command,
-    please make sure to issue the 'modem activate' command afterwards to
-    re-activate your modem.  Do not use the graphic user interface to do so.
-
-EOF
-    $(arg_or_prompt continue n)
-    if [ "${continue}" != "y" -a "${continue}" != "Y" ]; then
-      echo "Factory reset cancelled."
-      return
-    fi
-  fi
-  dbus_call "${MM}" "${modem}" "${MM_IMODEM}.FactoryReset" "string:${spc}"
-  wait_for_modem_reset "${modem}" 40
+  # TODO(benchan): Evaluate if a warning should be given when factory
+  # resetting under certain modem configurations.
+  mmcli -m "${modem}" --factory-reset="${spc}"
 }
 
 reset() {
