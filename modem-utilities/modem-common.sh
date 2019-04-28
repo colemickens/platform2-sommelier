@@ -17,89 +17,6 @@ MM_IMODEM_GSM_CARD=${MM_IMODEM_GSM}.Card
 MM_IMODEM_GSM_NETWORK=${MM_IMODEM_GSM}.Network
 MM_IMODEM_CDMA=${MM_IMODEM}.Cdma
 
-mm_modem_gsm_properties() {
-  local modem="$1"
-  local imei=$(dbus_call "${MM}" "${modem}" "${MM_IMODEM_GSM_CARD}.GetImei")
-  local imsi=$(dbus_call "${MM}" "${modem}" "${MM_IMODEM_GSM_CARD}.GetImsi")
-  local band=$(dbus_call "${MM}" "${modem}" "${MM_IMODEM_GSM_NETWORK}.GetBand")
-  local signal_quality=$(dbus_call "${MM}" "${modem}" \
-    "${MM_IMODEM_GSM_NETWORK}.GetSignalQuality")
-
-  echo "GSM:"
-  echo "  Card:"
-  echo "    IMEI: ${imei}"
-  echo "    IMSI: ${imsi}"
-  dbus_properties "${MM}" "${modem}" "${MM_IMODEM_GSM_CARD}" \
-    | format_dbus_dict | indent 2
-
-  echo "  Network:"
-  echo "    Band: ${band}"
-  echo "    Registration:"
-  dbus_call "${MM}" "${modem}" "${MM_IMODEM_GSM_NETWORK}.GetRegistrationInfo" \
-    | unpack_tuple Status OperatorCode OperatorName | indent 3
-  echo "    SignalQuality: ${signal_quality}"
-  dbus_properties "${MM}" "${modem}" "${MM_IMODEM_GSM_NETWORK}" \
-    | format_dbus_dict | indent 2
-}
-
-mm_modem_cdma_properties() {
-  local modem="$1"
-  local esn=$(dbus_call "${MM}" "${modem}" "${MM_IMODEM_CDMA}.GetEsn")
-  local signal_quality=$(dbus_call "${MM}" "${modem}" \
-    "${MM_IMODEM_CDMA}.GetSignalQuality")
-  local cdma1x_reg_state=$(dbus_call "${MM}" "${modem}" \
-    "${MM_IMODEM_CDMA}.GetRegistrationState" | head -1)
-  local evdo_reg_state=$(dbus_call "${MM}" "${modem}" \
-    "${MM_IMODEM_CDMA}.GetRegistrationState" | tail -1)
-
-  echo "CDMA:"
-  echo "  ESN: ${esn}"
-  echo "  Registration:"
-  echo "    CDMA-1x: ${cdma1x_reg_state}"
-  echo "    EVDO: ${evdo_reg_state}"
-  echo "  ServingSystem:"
-  dbus_call "${MM}" "${modem}" "${MM_IMODEM_CDMA}.GetServingSystem" \
-    | unpack_tuple BandClass Band ID | indent 2
-  echo "  SignalQuality: ${signal_quality}"
-}
-
-mm_modem_properties() {
-  local modem="$1"
-  local modem_type=$(dbus_property "${MM}" "${modem}" "${MM_IMODEM}" Type)
-
-  echo
-  echo "Modem ${modem}:"
-  echo "  GetStatus:"
-  dbus_call "${MM}" "${modem}" "${MM_IMODEM_SIMPLE}.GetStatus" \
-    | format_dbus_dict | indent 2
-  echo "  GetInfo:"
-  dbus_call "${MM}" "${modem}" "${MM_IMODEM}.GetInfo" \
-    | unpack_tuple Manufacturer Modem Version | indent 2
-  echo "  Properties:"
-  dbus_properties "${MM}" "${modem}" "${MM_IMODEM}" \
-    | format_dbus_dict | indent 2
-
-  case "${modem_type}" in
-    1)  # GSM
-      mm_modem_gsm_properties "${modem}" | indent
-      ;;
-    2)  # CDMA
-      mm_modem_cdma_properties "${modem}" | indent
-      ;;
-    *)
-      error 'Modem type unknown; no further information available.'
-      ;;
-  esac
-}
-
-mm_modem_status() {
-  local modem="$1"
-  local property="$2"
-
-  dbus_call "${MM}" "${modem}" "${MM_IMODEM_SIMPLE}.GetStatus" \
-    2>/dev/null | awk "/\/${property}/ { print \$2 }"
-}
-
 mm_modems() {
   dbus_call "${MM}" "${MM_OBJECT}" "${MM_IMANAGER}.EnumerateDevices" \
     2>/dev/null | awk '{ print $2 }'
@@ -172,9 +89,6 @@ mask_modem_properties() {
 }
 
 all_modem_status() {
-  for modem in $(mm_modems); do
-    mm_modem_properties "${modem}"
-  done
   for modem in $(mm1_modems); do
     mm1_modem_properties "${modem}"
   done
