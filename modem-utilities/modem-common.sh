@@ -5,24 +5,6 @@
 # Common utilities for gathering information about modems.
 
 #
-# For modems managed by org.chromium.ModemManager
-#
-MM=org.chromium.ModemManager
-MM_OBJECT=/org/chromium/ModemManager
-MM_IMANAGER=org.freedesktop.ModemManager
-MM_IMODEM=${MM_IMANAGER}.Modem
-MM_IMODEM_SIMPLE=${MM_IMODEM}.Simple
-MM_IMODEM_GSM=${MM_IMODEM}.Gsm
-MM_IMODEM_GSM_CARD=${MM_IMODEM_GSM}.Card
-MM_IMODEM_GSM_NETWORK=${MM_IMODEM_GSM}.Network
-MM_IMODEM_CDMA=${MM_IMODEM}.Cdma
-
-is_mm_modem() {
-  local modem="$1"
-  test $(expr match "${modem}" "${MM_OBJECT}/") -gt 0
-}
-
-#
 # For modems managed by org.freedesktop.ModemManager1
 #
 MM1=org.freedesktop.ModemManager1
@@ -69,11 +51,6 @@ mm1_modems() {
     | awk '/\/org\/freedesktop\/ModemManager1\/Modem\// { print $1 }'
 }
 
-is_mm1_modem() {
-  local modem="$1"
-  test $(expr match "${modem}" "${MM1_OBJECT}/") -gt 0
-}
-
 #
 # Common stuff
 #
@@ -91,12 +68,6 @@ all_modem_status() {
 
 default_modem() {
   mm1_modems | head -1
-}
-
-# Returns all modem managers that are currently running.
-modem_managers() {
-  dbus_call org.freedesktop.DBus /org/freedesktop/DBus \
-      org.freedesktop.DBus.ListNames | awk '/ModemManager/ { print $2 }'
 }
 
 # Sets the log level of the specified modem manager.
