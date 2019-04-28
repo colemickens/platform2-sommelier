@@ -87,10 +87,6 @@ ussd() {
   $(arg_or_default modem $(default_modem))
   [ -z "${modem}" ] && error_exit "No modem found."
 
-  if ! is_mm1_modem "${modem}"; then
-    error_exit "USSD is not supported on this modem."
-  fi
-
   if [ -z "${operation}" ]; then
     echo "Valid USSD operations are: status, initiate, respond, cancel"
     return
