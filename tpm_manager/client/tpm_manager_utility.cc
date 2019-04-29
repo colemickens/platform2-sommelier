@@ -149,6 +149,20 @@ bool TpmManagerUtility::GetDictionaryAttackInfo(int* counter,
   return true;
 }
 
+bool TpmManagerUtility::ResetDictionaryAttackLock() {
+  tpm_manager::ResetDictionaryAttackLockReply reply;
+  tpm_manager::ResetDictionaryAttackLockRequest request;
+  SendTpmManagerRequestAndWait(
+      base::Bind(&tpm_manager::TpmOwnershipInterface::ResetDictionaryAttackLock,
+                 base::Unretained(tpm_owner_), request),
+      &reply);
+  if (reply.status() != tpm_manager::STATUS_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to reset DA lock.";
+    return false;
+  }
+  return true;
+}
+
 bool TpmManagerUtility::ReadSpace(uint32_t index,
                                   bool use_owner_auth,
                                   std::string* output) {

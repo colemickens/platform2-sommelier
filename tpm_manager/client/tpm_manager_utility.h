@@ -57,6 +57,10 @@ class TPM_MANAGER_EXPORT TpmManagerUtility {
                                bool* lockout,
                                int* seconds_remaining);
 
+  // Blocking call of |TpmOwnershipDBusProxy::GetDictionaryAttackInfo|. Returns
+  // |true| iff the operation succeeds.
+  bool ResetDictionaryAttackLock();
+
   // Blocking call of |TpmOwnershipDBusProxy::ReadSpace|. Returns |true| iff
   // the operation succeeds. This call sends a request to read the content of
   // the nvram at |index| and stores the output data in |output|. If

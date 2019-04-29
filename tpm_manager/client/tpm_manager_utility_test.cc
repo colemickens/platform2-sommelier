@@ -50,6 +50,9 @@ class TpmManagerUtilityTest : public Test {
     ON_CALL(mock_tpm_owner_, GetDictionaryAttackInfo(_, _))
         .WillByDefault(InvokeCallbackArgument<1>(
             ByRef(get_dictionary_attack_info_reply_)));
+    ON_CALL(mock_tpm_owner_, ResetDictionaryAttackLock(_, _))
+        .WillByDefault(InvokeCallbackArgument<1>(
+            ByRef(reset_dictionary_attack_lock_reply_)));
   }
   void SetUp() override { ASSERT_TRUE(tpm_manager_utility_.Initialize()); }
 
@@ -62,6 +65,8 @@ class TpmManagerUtilityTest : public Test {
   tpm_manager::GetTpmStatusReply get_tpm_status_reply_;
   tpm_manager::RemoveOwnerDependencyReply remove_owner_dependency_reply_;
   tpm_manager::GetDictionaryAttackInfoReply get_dictionary_attack_info_reply_;
+  tpm_manager::ResetDictionaryAttackLockReply
+      reset_dictionary_attack_lock_reply_;
 };
 
 TEST_F(TpmManagerUtilityTest, TakeOwnership) {
@@ -174,6 +179,21 @@ TEST_F(TpmManagerUtilityTest, GetDictionaryAttackInfoFail) {
       tpm_manager::STATUS_NOT_AVAILABLE);
   EXPECT_FALSE(tpm_manager_utility_.GetDictionaryAttackInfo(
       &counter, &threshold, &lockout, &seconds_remaining));
+}
+
+TEST_F(TpmManagerUtilityTest, ResetDictionaryAttackLock) {
+  reset_dictionary_attack_lock_reply_.set_status(tpm_manager::STATUS_SUCCESS);
+  EXPECT_TRUE(tpm_manager_utility_.ResetDictionaryAttackLock());
+}
+
+TEST_F(TpmManagerUtilityTest, ResetDictionaryAttackLockFail) {
+  reset_dictionary_attack_lock_reply_.set_status(
+      tpm_manager::STATUS_DEVICE_ERROR);
+  EXPECT_FALSE(tpm_manager_utility_.ResetDictionaryAttackLock());
+
+  reset_dictionary_attack_lock_reply_.set_status(
+      tpm_manager::STATUS_NOT_AVAILABLE);
+  EXPECT_FALSE(tpm_manager_utility_.ResetDictionaryAttackLock());
 }
 
 }  // namespace tpm_manager
