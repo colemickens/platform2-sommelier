@@ -118,4 +118,13 @@ bool TpmNewImpl::GetDictionaryAttackInfo(int* counter,
       counter, threshold, lockout, seconds_remaining);
 }
 
+bool TpmNewImpl::ResetDictionaryAttackMitigation(const brillo::Blob&,
+                                                 const brillo::Blob&) {
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": failed to initialize |TpmMangerUtility|.";
+    return false;
+  }
+  return tpm_manager_utility_.ResetDictionaryAttackLock();
+}
+
 }  // namespace cryptohome

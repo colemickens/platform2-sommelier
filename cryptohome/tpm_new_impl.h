@@ -38,6 +38,9 @@ class TpmNewImpl : public TpmImpl {
                                int* threshold,
                                bool* lockout,
                                int* seconds_remaining) override;
+  bool ResetDictionaryAttackMitigation(
+      const brillo::Blob& delegate_blob,
+      const brillo::Blob& delegate_secret) override;
 
  private:
   // Initializes |tpm_manager_utility_|; returns |true| iff successful.
