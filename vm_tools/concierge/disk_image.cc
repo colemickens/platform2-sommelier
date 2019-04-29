@@ -27,8 +27,229 @@ namespace vm_tools {
 namespace concierge {
 
 DiskImageOperation::DiskImageOperation()
-    : uuid_(base::GenerateGUID()), status_(DISK_STATUS_FAILED) {
+    : uuid_(base::GenerateGUID()),
+      status_(DISK_STATUS_FAILED),
+      source_size_(0),
+      processed_size_(0) {
   CHECK(base::IsValidGUID(uuid_));
+}
+
+void DiskImageOperation::Run(uint64_t io_limit) {
+  if (ExecuteIo(io_limit)) {
+    Finalize();
+  }
+}
+
+int DiskImageOperation::GetProgress() const {
+  if (status() == DISK_STATUS_IN_PROGRESS) {
+    if (source_size_ == 0)
+      return 0;  // We do not know any better.
+
+    return processed_size_ * 100 / source_size_;
+  }
+
+  // Any other status indicates completed operation (successfully or not)
+  // so return 100%.
+  return 100;
+}
+
+std::unique_ptr<PluginVmExportOperation> PluginVmExportOperation::Create(
+    const base::FilePath disk_path, base::ScopedFD fd) {
+  auto op = base::WrapUnique(
+      new PluginVmExportOperation(std::move(disk_path), std::move(fd)));
+
+  if (op->PrepareInput() && op->PrepareOutput()) {
+    op->set_status(DISK_STATUS_IN_PROGRESS);
+  }
+
+  return op;
+}
+
+PluginVmExportOperation::PluginVmExportOperation(const base::FilePath disk_path,
+                                                 base::ScopedFD out_fd)
+    : src_image_path_(std::move(disk_path)),
+      out_fd_(std::move(out_fd)),
+      copying_data_(false) {
+  set_source_size(ComputeDirectorySize(src_image_path_));
+}
+
+bool PluginVmExportOperation::PrepareInput() {
+  in_ = ArchiveReader(archive_read_disk_new());
+  if (!in_) {
+    set_failure_reason("libarchive: failed to create reader");
+    return false;
+  }
+
+  // Do not cross mount points.
+  archive_read_disk_set_behavior(in_.get(),
+                                 ARCHIVE_READDISK_NO_TRAVERSE_MOUNTS);
+  // Do not traverse symlinks.
+  archive_read_disk_set_symlink_physical(in_.get());
+
+  int ret = archive_read_disk_open(in_.get(), src_image_path_.value().c_str());
+  if (ret != ARCHIVE_OK) {
+    set_failure_reason("failed to open source directory as an archive");
+    return false;
+  }
+
+  return true;
+}
+
+bool PluginVmExportOperation::PrepareOutput() {
+  out_ = ArchiveWriter(archive_write_new());
+  if (!out_) {
+    set_failure_reason("libarchive: failed to create writer");
+    return false;
+  }
+
+  int ret = archive_write_set_format_zip(out_.get());
+  if (ret != ARCHIVE_OK) {
+    set_failure_reason(
+        base::StringPrintf("libarchive: failed to initialize zip format: %s",
+                           archive_error_string(out_.get())));
+    return false;
+  }
+
+  ret = archive_write_open_fd(out_.get(), out_fd_.get());
+  if (ret != ARCHIVE_OK) {
+    set_failure_reason("failed to open output archive");
+    return false;
+  }
+
+  return true;
+}
+
+void PluginVmExportOperation::MarkFailed(const char* msg, struct archive* a) {
+  set_status(DISK_STATUS_FAILED);
+
+  if (a) {
+    set_failure_reason(
+        base::StringPrintf("%s: %s", msg, archive_error_string(a)));
+  } else {
+    set_failure_reason(msg);
+  }
+
+  LOG(ERROR) << "PluginVm export failed: " << failure_reason();
+
+  // Release resources.
+  out_.reset();
+  out_fd_.reset();
+  in_.reset();
+}
+
+bool PluginVmExportOperation::ExecuteIo(uint64_t io_limit) {
+  do {
+    if (!copying_data_) {
+      struct archive_entry* entry;
+      int ret = archive_read_next_header(in_.get(), &entry);
+      if (ret == ARCHIVE_EOF) {
+        // Successfully copied entire archive.
+        return true;
+      }
+
+      if (ret < ARCHIVE_OK) {
+        MarkFailed("failed to read header", in_.get());
+        break;
+      }
+
+      // Signal our intent to descend into directory (noop if current entry
+      // is not a directory).
+      archive_read_disk_descend(in_.get());
+
+      const char* c_path = archive_entry_pathname(entry);
+      if (!c_path || c_path[0] == '\0') {
+        MarkFailed("archive entry read from disk has empty file name", NULL);
+        break;
+      }
+
+      base::FilePath path(c_path);
+      if (path == src_image_path_) {
+        // Skip the image directory entry itself, as we will be storing
+        // and restoring relative paths.
+        continue;
+      }
+
+      // Strip the leading directory data as we want relative path.
+      base::FilePath dest_path;
+      if (!src_image_path_.AppendRelativePath(path, &dest_path)) {
+        MarkFailed("failed to transform archive entry name", NULL);
+        break;
+      }
+      archive_entry_set_pathname(entry, dest_path.value().c_str());
+
+      ret = archive_write_header(out_.get(), entry);
+      if (ret != ARCHIVE_OK) {
+        MarkFailed("failed to write header", out_.get());
+        break;
+      }
+
+      copying_data_ = archive_entry_size(entry) > 0;
+    }
+
+    if (copying_data_) {
+      uint64_t bytes_read = CopyEntry(io_limit);
+      io_limit -= std::min(bytes_read, io_limit);
+      AccumulateProcessedSize(bytes_read);
+    }
+
+    if (!copying_data_) {
+      int ret = archive_write_finish_entry(out_.get());
+      if (ret != ARCHIVE_OK) {
+        MarkFailed("failed to finish entry", out_.get());
+        break;
+      }
+    }
+  } while (io_limit > 0);
+
+  // More copying is to be done (or there was a failure).
+  return false;
+}
+
+uint64_t PluginVmExportOperation::CopyEntry(uint64_t io_limit) {
+  uint64_t bytes_read = 0;
+
+  do {
+    uint8_t buf[16384];
+    int count = archive_read_data(in_.get(), buf, sizeof(buf));
+    if (count == 0) {
+      // No more data
+      copying_data_ = false;
+      break;
+    }
+
+    if (count < 0) {
+      MarkFailed("failed to read data block", in_.get());
+      break;
+    }
+
+    bytes_read += count;
+
+    int ret = archive_write_data(out_.get(), buf, count);
+    if (ret < ARCHIVE_OK) {
+      MarkFailed("failed to write data block", out_.get());
+      break;
+    }
+  } while (bytes_read < io_limit);
+
+  return bytes_read;
+}
+
+void PluginVmExportOperation::Finalize() {
+  archive_read_close(in_.get());
+  // Free the input archive.
+  in_.reset();
+
+  int ret = archive_write_close(out_.get());
+  if (ret != ARCHIVE_OK) {
+    MarkFailed("libarchive: failed to close writer", out_.get());
+    return;
+  }
+  // Free the output archive structures.
+  out_.reset();
+  // Close the file descriptor.
+  out_fd_.reset();
+
+  set_status(DISK_STATUS_CREATED);
 }
 
 std::unique_ptr<PluginVmImportOperation> PluginVmImportOperation::Create(
@@ -45,11 +266,9 @@ std::unique_ptr<PluginVmImportOperation> PluginVmImportOperation::Create(
 
 PluginVmImportOperation::PluginVmImportOperation(base::ScopedFD in_fd,
                                                  uint64_t source_size)
-    : in_fd_(std::move(in_fd)),
-      source_size_(source_size),
-      processed_size_(0),
-      last_report_level_(0),
-      copying_data_(false) {}
+    : in_fd_(std::move(in_fd)), copying_data_(false) {
+  set_source_size(source_size);
+}
 
 bool PluginVmImportOperation::PrepareInput() {
   in_ = ArchiveReader(archive_read_new());
@@ -117,19 +336,6 @@ bool PluginVmImportOperation::PrepareOutput(const base::FilePath& disk_path) {
   return true;
 }
 
-int PluginVmImportOperation::GetProgress() const {
-  if (status() == DISK_STATUS_IN_PROGRESS) {
-    if (source_size_ == 0)
-      return 0;  // We do not know any better.
-
-    return processed_size_ * 100 / source_size_;
-  }
-
-  // Any other status indicates completed operation (successfully or not)
-  // so return 100%.
-  return 100;
-}
-
 void PluginVmImportOperation::MarkFailed(const char* msg, struct archive* a) {
   set_status(DISK_STATUS_FAILED);
 
@@ -152,7 +358,7 @@ void PluginVmImportOperation::MarkFailed(const char* msg, struct archive* a) {
   in_fd_.reset();
 }
 
-bool PluginVmImportOperation::CopyImage(uint64_t io_limit) {
+bool PluginVmImportOperation::ExecuteIo(uint64_t io_limit) {
   do {
     if (!copying_data_) {
       struct archive_entry* entry;
@@ -209,7 +415,7 @@ bool PluginVmImportOperation::CopyImage(uint64_t io_limit) {
     if (copying_data_) {
       uint64_t bytes_read = CopyEntry(io_limit);
       io_limit -= std::min(bytes_read, io_limit);
-      processed_size_ += bytes_read;
+      AccumulateProcessedSize(bytes_read);
     }
 
     if (!copying_data_) {
@@ -225,6 +431,10 @@ bool PluginVmImportOperation::CopyImage(uint64_t io_limit) {
   return false;
 }
 
+// Note that this is extremely similar to PluginVmExportOperation::CopyEntry()
+// implementation. The difference is the disk writer supports
+// archive_write_data_block() API that handles sparse files, whereas generic
+// writer does not, so we have to use separate implementations.
 uint64_t PluginVmImportOperation::CopyEntry(uint64_t io_limit) {
   uint64_t bytes_read_begin = archive_filter_bytes(in_.get(), -1);
   uint64_t bytes_read = 0;
@@ -256,7 +466,7 @@ uint64_t PluginVmImportOperation::CopyEntry(uint64_t io_limit) {
   return bytes_read;
 }
 
-void PluginVmImportOperation::FinalizeCopy() {
+void PluginVmImportOperation::Finalize() {
   archive_read_close(in_.get());
   // Free the input archive.
   in_.reset();
@@ -268,28 +478,12 @@ void PluginVmImportOperation::FinalizeCopy() {
     MarkFailed("libarchive: failed to close writer", out_.get());
     return;
   }
+  // Free the output archive structures.
   out_.reset();
   // Commit to keeping the output directory.
   output_dir_.Take();
 
   set_status(DISK_STATUS_CREATED);
-}
-
-bool PluginVmImportOperation::Run(uint64_t io_limit) {
-  if (CopyImage(io_limit)) {
-    FinalizeCopy();
-    return true;
-  }
-
-  // Signal that clients can be notified if we advanced more than 5% since last
-  // notification.
-  int current_progress = GetProgress();
-  if (current_progress - last_report_level_ >= 5) {
-    last_report_level_ = current_progress;
-    return true;
-  }
-
-  return false;
 }
 
 }  // namespace concierge

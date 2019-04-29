@@ -26,24 +26,32 @@ class DiskImageOperation {
   virtual ~DiskImageOperation() = default;
 
   // Execute next chunk of the disk operation, handling up to |io_limit| bytes.
-  // Returns true if enough progress has been made so that caller can notify
-  // clients of the progress being made.
-  virtual bool Run(uint64_t io_limit) = 0;
+  void Run(uint64_t io_limit);
 
   // Report operation progress, in 0..100 range.
-  virtual int GetProgress() const = 0;
+  int GetProgress() const;
 
   const std::string& uuid() const { return uuid_; }
   DiskImageStatus status() const { return status_; }
   const std::string& failure_reason() const { return failure_reason_; }
+  int64_t processed_size() const { return processed_size_; }
 
  protected:
   DiskImageOperation();
+
+  // Executes up to |io_limit| bytes of disk operation.
+  virtual bool ExecuteIo(uint64_t io_limit) = 0;
+
+  // Called after all IO is done to commit the result.
+  virtual void Finalize() = 0;
+
+  void AccumulateProcessedSize(uint64_t size) { processed_size_ += size; }
 
   void set_status(DiskImageStatus status) { status_ = status; }
   void set_failure_reason(const std::string& reason) {
     failure_reason_ = reason;
   }
+  void set_source_size(uint64_t source_size) { source_size_ = source_size; }
 
  private:
   // UUID assigned to the operation.
@@ -54,6 +62,12 @@ class DiskImageOperation {
 
   // Failure reason, if any, to be communicated to the callers.
   std::string failure_reason_;
+
+  // Size of the source of disk operation (bytes).
+  uint64_t source_size_;
+
+  // Number of bytes consumed from the source.
+  uint64_t processed_size_;
 
   DISALLOW_COPY_AND_ASSIGN(DiskImageOperation);
 };
@@ -68,6 +82,48 @@ struct ArchiveWriteDeleter {
 };
 using ArchiveWriter = std::unique_ptr<struct archive, ArchiveWriteDeleter>;
 
+class PluginVmExportOperation : public DiskImageOperation {
+ public:
+  static std::unique_ptr<PluginVmExportOperation> Create(
+      const base::FilePath disk_path, base::ScopedFD out_fd);
+
+ protected:
+  bool ExecuteIo(uint64_t io_limit) override;
+  void Finalize() override;
+
+ private:
+  PluginVmExportOperation(const base::FilePath disk_path,
+                          base::ScopedFD out_fd);
+
+  bool PrepareInput();
+  bool PrepareOutput();
+
+  void MarkFailed(const char* msg, struct archive* a);
+
+  // Copies up to |io_limit| bytes of one file of the image.
+  // Returns number of bytes read.
+  uint64_t CopyEntry(uint64_t io_limit);
+
+  // Path to the directory containing source image.
+  const base::FilePath src_image_path_;
+
+  // File descriptor to write the compressed image to.
+  base::ScopedFD out_fd_;
+
+  // We are in a middle of copying an archive entry. Copying of one archive
+  // entry may span several Run() invocations, depending on the size of the
+  // entry.
+  bool copying_data_;
+
+  // Source directory "archive".
+  ArchiveReader in_;
+
+  // Output archive backed by the file descriptor.
+  ArchiveWriter out_;
+
+  DISALLOW_COPY_AND_ASSIGN(PluginVmExportOperation);
+};
+
 class PluginVmImportOperation : public DiskImageOperation {
  public:
   static std::unique_ptr<PluginVmImportOperation> Create(
@@ -75,8 +131,9 @@ class PluginVmImportOperation : public DiskImageOperation {
       const base::FilePath& disk_path,
       uint64_t source_size);
 
-  bool Run(uint64_t io_limit) override;
-  int GetProgress() const override;
+ protected:
+  bool ExecuteIo(uint64_t io_limit) override;
+  void Finalize() override;
 
  private:
   PluginVmImportOperation(base::ScopedFD in_fd, uint64_t source_size);
@@ -86,28 +143,12 @@ class PluginVmImportOperation : public DiskImageOperation {
 
   void MarkFailed(const char* msg, struct archive* a);
 
-  // Copies up to |io_limit| bytes of VM image.
-  bool CopyImage(uint64_t io_limit);
-
   // Copies up to |io_limit| bytes of one archive entry of the image.
   // Returns number of bytes read.
   uint64_t CopyEntry(uint64_t io_limit);
 
-  // Called after copying all archive entries to commit imported image.
-  void FinalizeCopy();
-
   // File descriptor from which to fetch the source image.
   base::ScopedFD in_fd_;
-
-  // Size of the source image (compressed) as reported by the caller.
-  uint64_t source_size_;
-
-  // Number of bytes (compressed) fetched from the file descriptor so far.
-  uint64_t processed_size_;
-
-  // Progress level of the last time we told caller that its clients should
-  // be notified of progress being made.
-  int last_report_level_;
 
   // We are in a middle of copying an archive entry. Copying of one archive
   // entry may span several Run() invocations, depending on the size of the

@@ -58,6 +58,8 @@ constexpr char kStorageCryptohomeDownloads[] = "cryptohome-downloads";
 constexpr char kStorageCryptohomePluginVm[] = "cryptohome-pluginvm";
 // File extension for qcow2 disk types.
 constexpr char kQcowImageExtension[] = ".qcow2";
+// File extension for compressed Plugin VM images.
+constexpr char kPluginVmImageExtension[] = ".zip";
 
 // Cryptohome user base path.
 constexpr char kCryptohomeUser[] = "/home/user";
@@ -549,16 +551,25 @@ int ExportDiskImage(dbus::ObjectProxy* proxy,
                                vm_tools::concierge::kExportDiskImageMethod);
   dbus::MessageWriter writer(&method_call);
 
-  base::FilePath export_disk_path;
+  base::FilePath export_disk_dir;
   if (!removable_media.empty()) {
-    export_disk_path = base::FilePath(kRemovableMediaRoot)
-                           .Append(removable_media)
-                           .Append(export_name + kQcowImageExtension);
+    export_disk_dir =
+        base::FilePath(kRemovableMediaRoot).Append(removable_media);
   } else {
-    export_disk_path = base::FilePath(kCryptohomeUser)
-                           .Append(cryptohome_id)
-                           .Append(kDownloadsDir)
-                           .Append(export_name + kQcowImageExtension);
+    export_disk_dir = base::FilePath(kCryptohomeUser)
+                          .Append(cryptohome_id)
+                          .Append(kDownloadsDir);
+  }
+  base::FilePath export_disk_path;
+  switch (storage_location) {
+    case vm_tools::concierge::STORAGE_CRYPTOHOME_PLUGINVM:
+      export_disk_path =
+          export_disk_dir.Append(export_name + kPluginVmImageExtension);
+      break;
+    default:
+      export_disk_path =
+          export_disk_dir.Append(export_name + kQcowImageExtension);
+      break;
   }
   if (export_disk_path.ReferencesParent()) {
     LOG(ERROR) << "Invalid removable_vm_path";
@@ -576,8 +587,6 @@ int ExportDiskImage(dbus::ObjectProxy* proxy,
                << export_disk_path.MaybeAsASCII();
     return -1;
   }
-
-  LOG(INFO) << "Exporting disk image to " << export_disk_path.MaybeAsASCII();
 
   vm_tools::concierge::ExportDiskImageRequest request;
   request.set_cryptohome_id(std::move(cryptohome_id));
@@ -604,9 +613,19 @@ int ExportDiskImage(dbus::ObjectProxy* proxy,
     return -1;
   }
 
-  if (response.status() != vm_tools::concierge::DISK_STATUS_CREATED) {
-    LOG(ERROR) << "Failed to export disk image: " << response.failure_reason();
-    return -1;
+  switch (response.status()) {
+    case vm_tools::concierge::DISK_STATUS_CREATED:
+      break;
+
+    case vm_tools::concierge::DISK_STATUS_IN_PROGRESS:
+      LOG(INFO) << "Exporting disk image to "
+                << export_disk_path.MaybeAsASCII();
+      break;
+
+    default:
+      LOG(ERROR) << "Failed to import disk image: "
+                 << response.failure_reason();
+      return -1;
   }
 
   return 0;

@@ -139,6 +139,10 @@ constexpr uint64_t kDiskSizeMask = ~4095ll;  // Round to disk block size.
 
 constexpr uint64_t kDefaultIoLimit = 1024 * 1024;  // 1 Mib
 
+// How often we should broadcast state of a disk operation (import or export).
+constexpr base::TimeDelta kDiskOpReportInterval =
+    base::TimeDelta::FromSeconds(15);
+
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
 // and sent.
@@ -1792,14 +1796,6 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     return dbus_response;
   }
 
-  if (request.storage_location() != STORAGE_CRYPTOHOME_ROOT) {
-    LOG(ERROR)
-        << "Locations other than STORAGE_CRYPTOHOME_ROOT are not supported";
-    response.set_failure_reason("Unsupported location for image");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
   base::FilePath disk_path;
   if (!GetDiskPathFromName(request.disk_path(), request.cryptohome_id(),
                            request.storage_location(),
@@ -1809,19 +1805,9 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
-
   if (!base::PathExists(disk_path)) {
     response.set_status(DISK_STATUS_DOES_NOT_EXIST);
     response.set_failure_reason("Export image doesn't exist");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  base::ScopedFD disk_fd(HANDLE_EINTR(
-      open(disk_path.value().c_str(), O_RDWR | O_NOFOLLOW | O_CLOEXEC)));
-  if (!disk_fd.is_valid()) {
-    LOG(ERROR) << "Failed opening VM disk for export";
-    response.set_failure_reason("Failed opening VM disk for export");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -1835,14 +1821,51 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     return dbus_response;
   }
 
-  int convert_res = convert_to_qcow2(disk_fd.get(), storage_fd.get());
-  if (convert_res < 0) {
-    response.set_failure_reason("convert_to_qcow2 failed");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+  switch (request.storage_location()) {
+    case STORAGE_CRYPTOHOME_ROOT: {
+      base::ScopedFD disk_fd(HANDLE_EINTR(
+          open(disk_path.value().c_str(), O_RDWR | O_NOFOLLOW | O_CLOEXEC)));
+      if (!disk_fd.is_valid()) {
+        LOG(ERROR) << "Failed opening VM disk for export";
+        response.set_failure_reason("Failed opening VM disk for export");
+        break;
+      }
+
+      int convert_res = convert_to_qcow2(disk_fd.get(), storage_fd.get());
+      if (convert_res < 0) {
+        response.set_failure_reason("convert_to_qcow2 failed");
+        break;
+      }
+
+      response.set_status(DISK_STATUS_CREATED);
+      break;
+    }
+
+    case STORAGE_CRYPTOHOME_PLUGINVM: {
+      auto op =
+          PluginVmExportOperation::Create(disk_path, std::move(storage_fd));
+
+      response.set_status(op->status());
+      response.set_command_uuid(op->uuid());
+      response.set_failure_reason(op->failure_reason());
+
+      if (op->status() == DISK_STATUS_IN_PROGRESS) {
+        std::string uuid = op->uuid();
+        disk_image_ops_.emplace_back(std::move(op), base::TimeTicks::Now());
+        base::ThreadTaskRunnerHandle::Get()->PostTask(
+            FROM_HERE,
+            base::Bind(&Service::RunDiskImageOperation,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
+      }
+      break;
+    }
+
+    default:
+      LOG(ERROR) << "Unsupported location for source image";
+      response.set_failure_reason("Unsupported location for image");
+      break;
   }
 
-  response.set_status(DISK_STATUS_CREATED);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
@@ -1912,7 +1935,7 @@ std::unique_ptr<dbus::Response> Service::ImportDiskImage(
 
   if (op->status() == DISK_STATUS_IN_PROGRESS) {
     std::string uuid = op->uuid();
-    disk_image_ops_.emplace_back(std::move(op));
+    disk_image_ops_.emplace_back(std::move(op), base::TimeTicks::Now());
     base::ThreadTaskRunnerHandle::Get()->PostTask(
         FROM_HERE, base::Bind(&Service::RunDiskImageOperation,
                               weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
@@ -1923,17 +1946,19 @@ std::unique_ptr<dbus::Response> Service::ImportDiskImage(
 }
 
 void Service::RunDiskImageOperation(std::string uuid) {
-  auto iter = std::find_if(disk_image_ops_.begin(), disk_image_ops_.end(),
-                           [&uuid](auto& op) { return op->uuid() == uuid; });
+  auto iter =
+      std::find_if(disk_image_ops_.begin(), disk_image_ops_.end(),
+                   [&uuid](auto& op) { return op.first->uuid() == uuid; });
 
   if (iter == disk_image_ops_.end()) {
     LOG(ERROR) << "RunDiskImageOperation called with unknown uuid";
     return;
   }
 
-  auto op = iter->get();
-  bool notify = op->Run(kDefaultIoLimit);
-  if (notify || op->status() != DISK_STATUS_IN_PROGRESS) {
+  auto op = iter->first.get();
+  op->Run(kDefaultIoLimit);
+  if (base::TimeTicks::Now() - iter->second > kDiskOpReportInterval ||
+      op->status() != DISK_STATUS_IN_PROGRESS) {
     LOG(INFO) << "Disk Image Operation: UUID=" << uuid
               << " progress: " << op->GetProgress()
               << " status: " << op->status();
@@ -1944,6 +1969,9 @@ void Service::RunDiskImageOperation(std::string uuid) {
     dbus::Signal signal(kVmConciergeInterface, kDiskImageProgressSignal);
     dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(status);
     exported_object_->SendSignal(&signal);
+
+    // Note the time we sent out the notification.
+    iter->second = base::TimeTicks::Now();
   }
 
   if (op->status() == DISK_STATUS_IN_PROGRESS) {
@@ -1977,9 +2005,10 @@ std::unique_ptr<dbus::Response> Service::CheckDiskImageStatus(
   }
 
   // Locate the pending command in the list.
-  auto iter = std::find_if(
-      disk_image_ops_.begin(), disk_image_ops_.end(),
-      [&request](auto& op) { return op->uuid() == request.command_uuid(); });
+  auto iter = std::find_if(disk_image_ops_.begin(), disk_image_ops_.end(),
+                           [&request](auto& op) {
+                             return op.first->uuid() == request.command_uuid();
+                           });
 
   if (iter == disk_image_ops_.end()) {
     LOG(ERROR) << "Unknown command uuid in DiskImageStatusRequest";
@@ -1988,7 +2017,7 @@ std::unique_ptr<dbus::Response> Service::CheckDiskImageStatus(
     return dbus_response;
   }
 
-  auto op = iter->get();
+  auto op = iter->first.get();
   FormatDiskImageStatus(op, &response);
   writer.AppendProtoAsArrayOfBytes(response);
 

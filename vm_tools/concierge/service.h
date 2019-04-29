@@ -247,7 +247,9 @@ class Service final : public base::MessageLoopForIO::Watcher {
   const bool resync_vm_clocks_on_resume_;
 
   // List of currently executing operations to import/export disk images.
-  std::list<std::unique_ptr<DiskImageOperation>> disk_image_ops_;
+  using DiskOpInfo =
+      std::pair<std::unique_ptr<DiskImageOperation>, base::TimeTicks>;
+  std::list<DiskOpInfo> disk_image_ops_;
 
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 
