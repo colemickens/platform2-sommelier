@@ -172,11 +172,13 @@ base::Optional<std::vector<uint8_t>> OpenSSLObjectToBytes(
 }
 
 // TODO(menghuan): consider use EVP_PKEY and related APIs
-std::string RsaPublicKeyToString(const crypto::ScopedRSA& key) {
+// Return RSAPublicKey DER encoded string
+std::string RSAPublicKeyToString(const crypto::ScopedRSA& key) {
   return BytesToString(OpenSSLObjectToBytes(i2d_RSAPublicKey, key.get()));
 }
 
-std::string EccPublicKeyToString(const crypto::ScopedEC_KEY& key) {
+// Return SubjectPublicKeyInfo DER encoded string for ECC key.
+std::string EccSubjectPublicKeyInfoToString(const crypto::ScopedEC_KEY& key) {
   return BytesToString(OpenSSLObjectToBytes(i2d_EC_PUBKEY, key.get()));
 }
 
@@ -526,7 +528,7 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
     return false;
   }
   *public_key_der =
-      RsaPublicKeyToString(GetRsaPublicKeyFromTpmPublicArea(public_area));
+      RSAPublicKeyToString(GetRsaPublicKeyFromTpmPublicArea(public_area));
   if (public_key_der->empty()) {
     LOG(ERROR) << __func__ << ": Failed to convert public key.";
     return false;
@@ -641,11 +643,11 @@ bool TpmUtilityV2::GetEndorsementPublicKey(KeyType key_type,
   switch (key_type) {
     case KEY_TYPE_RSA:
       *public_key_der =
-          RsaPublicKeyToString(GetRsaPublicKeyFromTpmPublicArea(public_area));
+          RSAPublicKeyToString(GetRsaPublicKeyFromTpmPublicArea(public_area));
       break;
     case KEY_TYPE_ECC:
-      *public_key_der =
-          EccPublicKeyToString(GetEccPublicKeyFromTpmPublicArea(public_area));
+      *public_key_der = EccSubjectPublicKeyInfoToString(
+          GetEccPublicKeyFromTpmPublicArea(public_area));
       break;
   }
 
@@ -766,7 +768,7 @@ bool TpmUtilityV2::CreateRestrictedKey(KeyType key_type,
                << trunks::GetErrorString(result);
     return false;
   }
-  *public_key_der = RsaPublicKeyToString(
+  *public_key_der = RSAPublicKeyToString(
       GetRsaPublicKeyFromTpmPublicArea(public_info.public_area));
   if (public_key_der->empty()) {
     LOG(ERROR) << __func__ << ": Failed to convert public key to DER encoded";
