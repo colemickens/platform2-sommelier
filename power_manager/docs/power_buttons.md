@@ -34,9 +34,7 @@ switch to laptop mode when a keyboard is attached.
 ### Chromeboxes and Chromebases
 
 Chromeboxes, Chromebases, and related devices that lack integrated keyboards
-typically feature legacy ACPI-style power buttons. Power button release events
-are not reported properly to powerd, so the system instead takes action
-immediately when the power button is pressed.
+typically feature [legacy ACPI-style power buttons](#Legacy-ACPI-Power-Buttons).
 
 ### Chromebits
 
@@ -89,7 +87,7 @@ behavior even when a folio or other external keyboard is attached.
 
 [session_manager]: https://chromium.googlesource.com/chromiumos/platform2/+/master/login_manager/
 
-### Legacy ACPI Power Buttons (Chromebox and Chromebase)
+### Legacy ACPI Power Buttons
 
 On devices that don't report power button releases properly, tapping the power
 button displays the power menu described above. Tapping the power button again
