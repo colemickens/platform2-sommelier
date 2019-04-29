@@ -14,15 +14,13 @@ Turn on extra network state checking to make sure the default gateway
 is reachable.
 "
 
-. /usr/share/misc/shflags
-
 FLIMFLAM=org.chromium.flimflam
 IMANAGER=$FLIMFLAM.Manager
 
 usage() {
   echo "$*"
   echo
-  flags_help
+  echo "${FLAGS_HELP}"
   exit 1
 }
 
@@ -50,17 +48,14 @@ display_arpgw () {
   exit 0
 }
 
-FLAGS "$@" || exit 1
-eval set -- "${FLAGS_ARGV}"
-
 if [ $# -lt 1 ]; then
     display_arpgw
 fi
 
-set_arpgw=$1
+set_arpgw="$1"
 
-if [ $set_arpgw != false -a $set_arpgw != true ] ; then
+if [ "${set_arpgw}" != false -a "${set_arpgw}" != true ] ; then
     usage "Argument must be 'true' or 'false'"
 fi
 
-dbus / $IMANAGER.SetProperty string:"ArpGateway" variant:boolean:$set_arpgw
+dbus / $IMANAGER.SetProperty string:"ArpGateway" variant:boolean:"${set_arpgw}"
