@@ -27,6 +27,8 @@ class AnonymizerTool {
 
   std::string AnonymizeMACAddresses(const std::string& input);
   std::string AnonymizeCustomPatterns(const std::string& input);
+  std::string AnonymizeAndroidAppStoragePaths(const std::string& input);
+
   static std::string AnonymizeCustomPattern(
       const std::string& input,
       const std::string& pattern,

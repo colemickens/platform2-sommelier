@@ -79,6 +79,13 @@ const std::vector<Log> kCommandLogs {
   {kCommand, "CLIENT_ID", "/usr/bin/nsenter -t1 -m /usr/bin/metrics_client -i",
     kRoot, kDebugfsGroup},
   {kCommand, "LOGDATE", "/bin/date"},
+  // We need to enter init's mount namespace to access /home/root. Also, we use
+  // neither ARC container's mount namespace (with android-sh) nor
+  // /opt/google/containers/android/rootfs/android-data/ so that we can get
+  // results even when the container is down.
+  {kCommand, "android_app_storage", "/usr/bin/nsenter -t1 -m "
+   "/bin/sh -c \"/usr/bin/du -h /home/root/*/android-data/data/\"",
+   kRoot, kDebugfsGroup},
   {kFile, "atrus_logs", "/var/log/atrus.log"},
   {kFile, "authpolicy", "/var/log/authpolicy.log"},
   {kCommand, "bootstat_summary", "/usr/bin/bootstat_summary"},

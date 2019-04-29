@@ -6,6 +6,7 @@
 
 #include <pcrecpp.h>
 
+#include <base/files/file_path.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -61,6 +62,7 @@ AnonymizerTool::AnonymizerTool()
 string AnonymizerTool::Anonymize(const string& input) {
   string anonymized = AnonymizeMACAddresses(input);
   anonymized = AnonymizeCustomPatterns(anonymized);
+  anonymized = AnonymizeAndroidAppStoragePaths(anonymized);
   return anonymized;
 }
 
@@ -116,6 +118,57 @@ string AnonymizerTool::AnonymizeCustomPatterns(const string& input) {
                                         &custom_patterns_[i]);
   }
   return anonymized;
+}
+
+string AnonymizerTool::AnonymizeAndroidAppStoragePaths(const string& input) {
+  // This is for anonymizing 'android_app_storage' output. When the path starts
+  // either /home/root/<hash>/data/data/<package_name>/ or
+  // /home/root/<hash>/data/user_de/<number>/<package_name>/, this function will
+  // anonymize path components following <package_name>/.
+  pcrecpp::RE path_re("(.*?)("
+                      "\\t/home/root/[\\da-f]+/android-data/data/"
+                      "(data|user_de/\\d+)/[^/\\n]+)("
+                      "/[^\\n]+)",
+                     pcrecpp::RE_Options()
+                     .set_multiline(true)
+                     .set_dotall(true));
+
+  string result;
+  result.reserve(input.size());
+
+  // Keep consuming, building up a result string as we go.
+  pcrecpp::StringPiece text(input);
+  string pre_path, path_prefix, ignored, app_specific;
+  while (path_re.Consume(
+             &text, &pre_path, &path_prefix, &ignored, &app_specific)) {
+    // We can record these parts as-is.
+    result += pre_path;
+    result += path_prefix;
+
+    // |app_specific| has to be anonymized. First, convert it into components,
+    // and then anonymize each component as follows:
+    // - If the component has a non-ASCII character, change it to '*'.
+    // - Otherwise, remove all the characters in the component but the first
+    //   one.
+    // - If the original component has 2 or more bytes, add '_'.
+    const base::FilePath path(app_specific);
+    std::vector<string> components;
+    path.GetComponents(&components);
+    DCHECK(!components.empty());
+
+    auto it = components.begin() + 1;  // ignore the leading slash
+    for (; it != components.end(); ++it) {
+      const auto& component = *it;
+      DCHECK(!component.empty());
+      result += '/';
+      result += (base::IsStringASCII(component) ? component[0] : '*');
+      if (component.length() > 1)
+        result += '_';
+    }
+  }
+
+  result.append(text.data(), text.size());
+  return result;
 }
 
 // static

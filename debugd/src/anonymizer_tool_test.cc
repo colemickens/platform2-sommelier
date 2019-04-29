@@ -21,6 +21,10 @@ class AnonymizerToolTest : public testing::Test {
     return anonymizer_.AnonymizeCustomPatterns(input);
   }
 
+  string AnonymizeAndroidAppStoragePaths(const string& input) {
+    return anonymizer_.AnonymizeAndroidAppStoragePaths(input);
+  }
+
   static string AnonymizeCustomPattern(
       const string& input, const string& pattern, map<string, string>* space) {
     return AnonymizerTool::AnonymizeCustomPattern(input, pattern, space);
@@ -109,6 +113,53 @@ TEST_F(AnonymizerToolTest, AnonymizeCustomPattern) {
 
   space.clear();
   EXPECT_EQ("x1z", AnonymizeCustomPattern("xyz", "()(y+)()", &space));
+}
+
+TEST_F(AnonymizerToolTest, AnonymizeAndroidAppStoragePaths) {
+  EXPECT_EQ("", AnonymizeAndroidAppStoragePaths(""));
+  EXPECT_EQ("foo\nbar\n", AnonymizeAndroidAppStoragePaths("foo\nbar\n"));
+
+  constexpr char kDuOutput[] =
+      "112K\t/home/root/deadbeef1234/android-data/data/system_de\n"
+      // /data/data will be modified by the anonymizer.
+      "8.0K\t/home/root/deadbeef1234/android-data/data/data/pack.age1/a\n"
+      "8.0K\t/home/root/deadbeef1234/android-data/data/data/pack.age1/bc\n"
+      "24K\t/home/root/deadbeef1234/android-data/data/data/pack.age1\n"
+      "8.0K\t/home/root/deadbeef1234/android-data/data/data/pa.ckage2/de\n"
+      "8.0K\t/home/root/deadbeef1234/android-data/data/data/pa.ckage2/de/"
+      "\xe3\x81\x82\n"
+      "8.1K\t/home/root/deadbeef1234/android-data/data/data/pa.ckage2/de/"
+      "\xe3\x81\x82\xe3\x81\x83\n"
+      "8.0K\t/home/root/deadbeef1234/android-data/data/data/pa.ckage2/ef\n"
+      "24K\t/home/root/deadbeef1234/android-data/data/data/pa.ckage2\n"
+      // /data/app won't.
+      "8.0K\t/home/root/deadbeef1234/android-data/data/app/pack.age1/a\n"
+      "8.0K\t/home/root/deadbeef1234/android-data/data/app/pack.age1/bc\n"
+      "24K\t/home/root/deadbeef1234/android-data/data/app/pack.age1\n"
+      // /data/user_de will.
+      "8.0K\t/home/root/deadbeef1234/android-data/data/user_de/0/pack.age1/a\n"
+      "8.0K\t/home/root/deadbeef1234/android-data/data/user_de/0/pack.age1/bc\n"
+      "24K\t/home/root/deadbeef1234/android-data/data/user_de/0/pack.age1\n"
+      "78M\t/home/root/deadbeef1234/android-data/data/data\n";
+  constexpr char kDuOutputRedacted[] =
+      "112K\t/home/root/deadbeef1234/android-data/data/system_de\n"
+      "8.0K\t/home/root/deadbeef1234/android-data/data/data/pack.age1/a\n"
+      "8.0K\t/home/root/deadbeef1234/android-data/data/data/pack.age1/b_\n"
+      "24K\t/home/root/deadbeef1234/android-data/data/data/pack.age1\n"
+      "8.0K\t/home/root/deadbeef1234/android-data/data/data/pa.ckage2/d_\n"
+      // The non-ASCII directory names will become '*_'.
+      "8.0K\t/home/root/deadbeef1234/android-data/data/data/pa.ckage2/d_/*_\n"
+      "8.1K\t/home/root/deadbeef1234/android-data/data/data/pa.ckage2/d_/*_\n"
+      "8.0K\t/home/root/deadbeef1234/android-data/data/data/pa.ckage2/e_\n"
+      "24K\t/home/root/deadbeef1234/android-data/data/data/pa.ckage2\n"
+      "8.0K\t/home/root/deadbeef1234/android-data/data/app/pack.age1/a\n"
+      "8.0K\t/home/root/deadbeef1234/android-data/data/app/pack.age1/bc\n"
+      "24K\t/home/root/deadbeef1234/android-data/data/app/pack.age1\n"
+      "8.0K\t/home/root/deadbeef1234/android-data/data/user_de/0/pack.age1/a\n"
+      "8.0K\t/home/root/deadbeef1234/android-data/data/user_de/0/pack.age1/b_\n"
+      "24K\t/home/root/deadbeef1234/android-data/data/user_de/0/pack.age1\n"
+      "78M\t/home/root/deadbeef1234/android-data/data/data\n";
+  EXPECT_EQ(kDuOutputRedacted, AnonymizeAndroidAppStoragePaths(kDuOutput));
 }
 
 }  // namespace debugd
