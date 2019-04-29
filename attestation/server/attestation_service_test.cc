@@ -640,12 +640,14 @@ TEST_F(AttestationServiceBaseTest, GetKeyInfoBadPublicKey) {
 TEST_F(AttestationServiceBaseTest, GetEndorsementKeyTypeForExistingKey) {
   AttestationDatabase* database = mock_database_.GetMutableProtobuf();
   // Default key type is KEY_TYPE_RSA.
-  database->mutable_credentials()->set_endorsement_public_key("public_key");
+  database->mutable_credentials()
+      ->set_endorsement_public_key_subjectpublickeyinfo("public_key");
   database->mutable_credentials()->set_endorsement_credential("certificate");
   EXPECT_EQ(service_->GetEndorsementKeyType(), KEY_TYPE_RSA);
 
   database->mutable_credentials()->set_endorsement_key_type(KEY_TYPE_ECC);
-  database->mutable_credentials()->set_endorsement_public_key("public_key");
+  database->mutable_credentials()
+      ->set_endorsement_public_key_subjectpublickeyinfo("public_key");
   database->mutable_credentials()->set_endorsement_credential("certificate");
   EXPECT_EQ(service_->GetEndorsementKeyType(), KEY_TYPE_ECC);
 }
@@ -661,7 +663,8 @@ TEST_F(AttestationServiceBaseTest, GetAttestaionIdentityKeyType) {
 
 TEST_F(AttestationServiceBaseTest, GetEndorsementInfoSuccess) {
   AttestationDatabase* database = mock_database_.GetMutableProtobuf();
-  database->mutable_credentials()->set_endorsement_public_key("public_key");
+  database->mutable_credentials()
+      ->set_endorsement_public_key_subjectpublickeyinfo("public_key");
   database->mutable_credentials()->set_endorsement_credential("certificate");
   // Set expectations on the outputs.
   auto callback = [](const base::Closure& quit_closure,
@@ -1757,7 +1760,8 @@ TEST_P(AttestationServiceTest,
   // Setup the database to make GetEndorsementKeyType to return specific key
   // type, but will still make IsPreparedForEnrollment return false.
   database_pb->mutable_credentials()->set_endorsement_key_type(KEY_TYPE_RSA);
-  database_pb->mutable_credentials()->set_endorsement_public_key("pubkey");
+  database_pb->mutable_credentials()
+      ->set_endorsement_public_key_subjectpublickeyinfo("pubkey");
 
   EXPECT_CALL(mock_tpm_utility_, CertifyNV(_, _, _, _, _))
       .WillRepeatedly(Return(false));
@@ -1789,7 +1793,8 @@ TEST_P(AttestationServiceTest,
   // Setup the database to make GetEndorsementKeyType to return specific key
   // type, but will still make IsPreparedForEnrollment return false.
   database_pb->mutable_credentials()->set_endorsement_key_type(KEY_TYPE_ECC);
-  database_pb->mutable_credentials()->set_endorsement_public_key("pubkey");
+  database_pb->mutable_credentials()
+      ->set_endorsement_public_key_subjectpublickeyinfo("pubkey");
 
   // Assume the NV indexes doesn't exist, except RSA EK cert which is required
   // when ECC EK is enabled.
@@ -1827,7 +1832,8 @@ TEST_P(AttestationServiceTest,
   // Setup the database to make GetEndorsementKeyType to return specific key
   // type, but will still make IsPreparedForEnrollment return false.
   database_pb->mutable_credentials()->set_endorsement_key_type(KEY_TYPE_ECC);
-  database_pb->mutable_credentials()->set_endorsement_public_key("pubkey");
+  database_pb->mutable_credentials()
+      ->set_endorsement_public_key_subjectpublickeyinfo("pubkey");
 
   EXPECT_CALL(mock_tpm_utility_, CertifyNV(_, _, _, _, _))
       .WillRepeatedly(Return(false));

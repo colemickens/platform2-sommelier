@@ -175,6 +175,11 @@ std::string RSAPublicKeyToString(const crypto::ScopedRSA& key) {
   return BytesToString(OpenSSLObjectToBytes(i2d_RSAPublicKey, key.get()));
 }
 
+// Return SubjectPublicKeyInfo DER encoded string for RSA key.
+std::string RsaSubjectPublicKeyInfoToString(const crypto::ScopedRSA& key) {
+  return BytesToString(OpenSSLObjectToBytes(i2d_RSA_PUBKEY, key.get()));
+}
+
 // Return SubjectPublicKeyInfo DER encoded string for ECC key.
 std::string EccSubjectPublicKeyInfoToString(const crypto::ScopedEC_KEY& key) {
   return BytesToString(OpenSSLObjectToBytes(i2d_EC_PUBKEY, key.get()));
@@ -674,8 +679,8 @@ bool TpmUtilityV2::GetEndorsementPublicKey(KeyType key_type,
 
   switch (key_type) {
     case KEY_TYPE_RSA:
-      *public_key_der =
-          RSAPublicKeyToString(GetRsaPublicKeyFromTpmPublicArea(public_area));
+      *public_key_der = RsaSubjectPublicKeyInfoToString(
+          GetRsaPublicKeyFromTpmPublicArea(public_area));
       break;
     case KEY_TYPE_ECC:
       *public_key_der = EccSubjectPublicKeyInfoToString(

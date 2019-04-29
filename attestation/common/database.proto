@@ -20,12 +20,13 @@ message TPMCredentials {
   // The key type of endorsement key stored in |endorsement_public_key| and
   // |endorsement_credential|.
   optional KeyType endorsement_key_type = 10 [default = KEY_TYPE_RSA];
-  // The DER encoded public key. RSAPublicKey for RSA endorsement key.
-  // SubjectPublicKeyInfo for ECC endorsement key.
-  optional bytes endorsement_public_key = 1;
+  // The DER encoded SubjectPublicKeyInfo for endorsement key.
+  optional bytes endorsement_public_key_subjectpublickeyinfo = 11;
   // The DER encoded X.509 certificate of endorsement key.
   optional bytes endorsement_credential = 2;
 
+  // The DER encoded RSAPublicKey for RSA endorsement key.
+  optional bytes legacy_endorsement_public_key = 1 [deprecated = true];
   optional EncryptedData default_encrypted_endorsement_credential = 5
       [deprecated = true];
   optional EncryptedData test_encrypted_endorsement_credential = 6

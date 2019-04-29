@@ -508,6 +508,27 @@ bool AttestationService::MigrateAttestationDatabase() {
     LOG(INFO) << "Attestation: Migrated attestation database.";
   }
 
+  // Migrate Rsa PublicKey Format to SubjectPublicKeyInfo
+  if (database_pb->credentials().has_legacy_endorsement_public_key()) {
+    std::string public_key_info;
+    if (GetSubjectPublicKeyInfo(
+            database_pb->credentials().endorsement_key_type(),
+            database_pb->credentials().legacy_endorsement_public_key(),
+            &public_key_info)) {
+      database_pb->mutable_credentials()
+          ->set_endorsement_public_key_subjectpublickeyinfo(public_key_info);
+    } else {
+      // If the format conversion fails, that means the EK public key is broken
+      // somehow, which should not happen. If it does, that means EK data
+      // becomes invalid. Clean up all EK metadata to resolve this problem.
+      LOG(ERROR) << __func__ << ": Migrate public format fail.";
+      database_pb->mutable_credentials()->clear_endorsement_key_type();
+      database_pb->mutable_credentials()->clear_endorsement_credential();
+    }
+    database_pb->mutable_credentials()->clear_legacy_endorsement_public_key();
+    migrated |= true;
+  }
+
   return migrated;
 }
 
@@ -651,8 +672,10 @@ base::Optional<std::string> AttestationService::GetEndorsementPublicKey()
     const {
   const auto& database_pb = database_->GetProtobuf();
   if (database_pb.has_credentials() &&
-      database_pb.credentials().has_endorsement_public_key()) {
-    return database_pb.credentials().endorsement_public_key();
+      database_pb.credentials()
+          .has_endorsement_public_key_subjectpublickeyinfo()) {
+    return database_pb.credentials()
+        .endorsement_public_key_subjectpublickeyinfo();
   }
 
   // Try to read the public key directly.
@@ -705,17 +728,7 @@ void AttestationService::GetEndorsementInfoTask(
     return;
   }
 
-  // TODO(crbug/942487): Remove GetSubjectPublicKeyInfo after migrating the RSA
-  // public key format.
-  std::string public_key_info;
-  if (!GetSubjectPublicKeyInfo(key_type, public_key.value(),
-                               &public_key_info)) {
-    LOG(ERROR) << __func__ << ": Bad public key.";
-    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
-    return;
-  }
-
-  result->set_ek_public_key(public_key_info);
+  result->set_ek_public_key(public_key.value());
   result->set_ek_certificate(certificate.value());
   std::string hash = crypto::SHA256HashString(certificate.value());
   result->set_ek_info(
@@ -1592,7 +1605,8 @@ void AttestationService::PrepareForEnrollment() {
   auto* database_pb = database_->GetMutableProtobuf();
   TPMCredentials* credentials_pb = database_pb->mutable_credentials();
   credentials_pb->set_endorsement_key_type(key_type);
-  credentials_pb->set_endorsement_public_key(ek_public_key);
+  credentials_pb->set_endorsement_public_key_subjectpublickeyinfo(
+      ek_public_key);
   credentials_pb->set_endorsement_credential(ek_certificate);
 
   // Encrypt the endorsement credential for all the ACAs we know of.
@@ -2222,13 +2236,7 @@ void AttestationService::VerifyTask(
     LOG(ERROR) << __func__ << ": Failed to get certificate public key.";
     return;
   }
-  std::string ek_public_key_info;
-  if (!GetSubjectPublicKeyInfo(GetEndorsementKeyType(), ek_public_key.value(),
-                               &ek_public_key_info)) {
-    LOG(ERROR) << __func__ << ": Failed to get EK public key info.";
-    return;
-  }
-  if (cert_public_key_info != ek_public_key_info) {
+  if (cert_public_key_info != ek_public_key.value()) {
     LOG(ERROR) << __func__ << ": Bad certificate public key.";
     return;
   }
@@ -2271,7 +2279,7 @@ void AttestationService::VerifyTask(
     return;
   }
   if (!VerifyActivateIdentity(
-          ek_public_key_info,
+          ek_public_key.value(),
           identity_data.identity_binding().identity_public_key_tpm_format())) {
     LOG(ERROR) << __func__ << ": Failed to verify identity activation.";
     return;
@@ -2813,7 +2821,8 @@ KeyType AttestationService::GetEndorsementKeyType() const {
   // If some EK information already exists in the database, we need to keep the
   // key type consistent.
   const auto& database_pb = database_->GetProtobuf();
-  if (database_pb.credentials().has_endorsement_public_key() ||
+  if (database_pb.credentials()
+          .has_endorsement_public_key_subjectpublickeyinfo() ||
       database_pb.credentials().has_endorsement_credential()) {
     // We use the default value of key_type for backward compatibility, no need
     // to check if endorsement_key_type is set.
