@@ -23,6 +23,15 @@ class CachedFrame {
  public:
   CachedFrame();
 
+  // SetSource() converts incoming frame into |yu12_frame_|. Return -EAGAIN if
+  // |in_frame| is not a valid frame from camera, or other non-zero values if
+  // it encounters internal errors.
+  // If |rotate_degree| is 90 or 270, |frame| will be cropped, rotated by the
+  // specified amount and scaled.
+  // This function will return an error if |rotate_degree| is not 0, 90, or
+  // 270.
+  int SetSource(const FrameBuffer& in_frame, int rotate_degree);
+
   // Caller should fill everything except |data_size| and |fd| of |out_frame|.
   // The function will do crop of the center image by |crop_width| and
   // |crop_height| first, and then do format conversion and scale to fit
@@ -30,16 +39,16 @@ class CachedFrame {
   int Convert(const android::CameraMetadata& metadata,
               int crop_width,
               int crop_height,
-              int rotate_degree,
-              const FrameBuffer& in_frame,
               FrameBuffer* out_frame);
 
  private:
   int ConvertToYU12(const FrameBuffer& in_frame);
 
-  int ConvertToJpeg(const android::CameraMetadata& metadata,
-                    const FrameBuffer& in_frame,
-                    FrameBuffer* out_frame);
+  int DecodeToYU12ByJDA(const FrameBuffer& in_frame);
+
+  int ConvertYU12ToJpeg(const android::CameraMetadata& metadata,
+                        const FrameBuffer& in_frame,
+                        FrameBuffer* out_frame);
 
   // When we have a landscape mounted camera and the current camera activity is
   // portrait, the frames shown in the activity would be stretched. Therefore,

@@ -938,18 +938,8 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
   crop_width = (crop_width + 1) & (~1);
   crop_height = (crop_height + 1) & (~1);
 
-  const FrameBuffer* input_frame =
-      test_pattern_->IsTestPatternEnabled()
-          ? test_pattern_->GetTestPattern()
-          : input_buffers_[current_v4l2_buffer_id_].get();
-  ret = cached_frame_.Convert(metadata, crop_width, crop_height,
-                              crop_rotate_scale_degrees_, *input_frame,
-                              &output_frame);
-  if (ret) {
-    return -EINVAL;
-  }
-
-  return 0;
+  return cached_frame_.Convert(metadata, crop_width, crop_height,
+                               &output_frame);
 }
 
 void CameraClient::RequestHandler::SkipFramesAfterStreamOn(int num_frames) {
@@ -1107,6 +1097,17 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
   if (!test_pattern_->SetTestPatternMode(pattern_mode)) {
     EnqueueV4L2Buffer();
     return -EINVAL;
+  }
+
+  const FrameBuffer* input_frame = test_pattern_->IsTestPatternEnabled()
+                                       ? test_pattern_->GetTestPattern()
+                                       : input_buffers_[buffer_id].get();
+  ret = cached_frame_.SetSource(*input_frame, crop_rotate_scale_degrees_);
+  if (ret) {
+    LOGFID(ERROR, device_id_)
+        << "Set image source failed for input buffer id: " << buffer_id;
+    EnqueueV4L2Buffer();
+    return ret;
   }
 
   return 0;

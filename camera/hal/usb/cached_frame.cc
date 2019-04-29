@@ -53,32 +53,47 @@ CachedFrame::CachedFrame()
   LOGF(INFO) << "Force JPEG hardware decode: " << force_jpeg_hw_decode_;
 }
 
-int CachedFrame::Convert(const android::CameraMetadata& metadata,
-                         int crop_width,
-                         int crop_height,
-                         int rotate_degree,
-                         const FrameBuffer& in_frame,
-                         FrameBuffer* out_frame) {
-  VLOGF(2) << "Convert image: input " << in_frame.GetWidth() << "x"
-           << in_frame.GetHeight() << " "
-           << FormatToString(in_frame.GetFourcc()) << ", output "
-           << out_frame->GetWidth() << "x" << out_frame->GetHeight() << " "
-           << FormatToString(out_frame->GetFourcc()) << ", crop " << crop_width
-           << "x" << crop_height << ", rotate " << rotate_degree;
-  int ret = 0;
+int CachedFrame::SetSource(const FrameBuffer& in_frame, int rotate_degree) {
+  if (in_frame.GetHeight() % 2 != 0 || in_frame.GetWidth() % 2 != 0) {
+    LOGF(ERROR) << "Source image has odd dimension: " << in_frame.GetWidth()
+                << "x" << in_frame.GetHeight();
+    return -EINVAL;
+  }
 
-  ret = ConvertToYU12(in_frame);
+  VLOGF(2) << "Source image: " << in_frame.GetWidth() << "x"
+           << in_frame.GetHeight() << " "
+           << FormatToString(in_frame.GetFourcc()) << ", rotate "
+           << rotate_degree;
+
+  int ret = ConvertToYU12(in_frame);
   if (ret != 0) {
     return ret;
   }
-
   if (rotate_degree > 0) {
     ret = CropRotateScale(rotate_degree);
     if (ret != 0) {
       return ret;
     }
   }
+  return 0;
+}
 
+int CachedFrame::Convert(const android::CameraMetadata& metadata,
+                         int crop_width,
+                         int crop_height,
+                         FrameBuffer* out_frame) {
+  if (!yu12_frame_) {
+    LOGF(ERROR) << "No source image available";
+    return -EINVAL;
+  }
+
+  VLOGF(2) << "Convert " << yu12_frame_->GetWidth() << "x"
+           << yu12_frame_->GetHeight() << " YU12 to output "
+           << out_frame->GetWidth() << "x" << out_frame->GetHeight() << " "
+           << FormatToString(out_frame->GetFourcc()) << ", crop " << crop_width
+           << "x" << crop_height;
+
+  int ret = 0;
   FrameBuffer* final_yu12_frame = yu12_frame_.get();
 
   // Crop if needed
@@ -109,7 +124,7 @@ int CachedFrame::Convert(const android::CameraMetadata& metadata,
 
   // Use JPEG compressor to output JPEG
   if (out_frame->GetFourcc() == V4L2_PIX_FMT_JPEG) {
-    return ConvertToJpeg(metadata, *final_yu12_frame, out_frame);
+    return ConvertYU12ToJpeg(metadata, *final_yu12_frame, out_frame);
   }
 
   // Output other formats
@@ -128,46 +143,64 @@ int CachedFrame::ConvertToYU12(const FrameBuffer& in_frame) {
     return -EINVAL;
   }
 
-  if (in_frame.GetFourcc() == V4L2_PIX_FMT_MJPEG && jda_available_) {
-    // Try HW decoding with JDA
-    int input_fd = in_frame.GetFd();
-    if (input_fd > 0) {
-      JpegDecodeAccelerator::Error error =
-          jda_->DecodeSync(input_fd, in_frame.GetDataSize(),
-                           in_frame.GetWidth(), in_frame.GetHeight(),
-                           yu12_frame_->GetFd(), yu12_frame_->GetBufferSize());
-      if (error == JpegDecodeAccelerator::Error::NO_ERRORS)
-        return 0;
-      if (error == JpegDecodeAccelerator::Error::TRY_START_AGAIN) {
-        LOGF(WARNING)
-            << "Restart JDA, possibly due to Mojo communication error";
-        // Try restart JDA and fallback to SW decoding.
-        jda_available_ = jda_->Start();
-      }
-      LOGF(WARNING) << "JDA Fail: " << static_cast<int>(error);
-      // Don't fallback SW decoding so we can know JDA is not working.
-      if (force_jpeg_hw_decode_)
-        return -EINVAL;
+  if (in_frame.GetFourcc() == V4L2_PIX_FMT_MJPEG) {
+    // Try HW decoding.
+    int ret = DecodeToYU12ByJDA(in_frame);
+    if (ret == 0 || ret == -EAGAIN) {
+      return ret;
+    }
+    // JDA error, fallback to SW decoding if not forcing HW decoding.
+    if (force_jpeg_hw_decode_) {
+      return -EINVAL;
     }
   }
 
+  // SW conversion. If this fails, the input frame is likely invalid. Return
+  // -EAGAIN so HAL can skip this frame.
   int ret = image_processor_->ConvertFormat(android::CameraMetadata(), in_frame,
                                             yu12_frame_.get());
   if (ret) {
     LOGF(ERROR) << "Convert from " << FormatToString(in_frame.GetFourcc())
-                << " to YU12 failed.";
-    return ret;
+                << " to YU12 failed: " << ret;
+    return -EAGAIN;
   }
   return 0;
 }
 
-int CachedFrame::CropRotateScale(int rotate_degree) {
-  if (yu12_frame_->GetHeight() % 2 != 0 || yu12_frame_->GetWidth() % 2 != 0) {
-    LOGF(ERROR) << "yu12_frame_ has odd dimension: " << yu12_frame_->GetWidth()
-                << "x" << yu12_frame_->GetHeight();
+int CachedFrame::DecodeToYU12ByJDA(const FrameBuffer& in_frame) {
+  if (!jda_available_) {
     return -EINVAL;
   }
 
+  DCHECK(in_frame.GetFourcc() == V4L2_PIX_FMT_MJPEG);
+  DCHECK(yu12_frame_->GetFourcc() == V4L2_PIX_FMT_YUV420);
+  DCHECK(yu12_frame_->GetWidth() == in_frame.GetWidth() &&
+         yu12_frame_->GetHeight() == in_frame.GetHeight());
+
+  JpegDecodeAccelerator::Error error = jda_->DecodeSync(
+      in_frame.GetFd(), in_frame.GetDataSize(), in_frame.GetWidth(),
+      in_frame.GetHeight(), yu12_frame_->GetFd(), yu12_frame_->GetBufferSize());
+  switch (error) {
+    case JpegDecodeAccelerator::Error::NO_ERRORS:
+      return 0;
+    case JpegDecodeAccelerator::Error::PARSE_JPEG_FAILED:
+    case JpegDecodeAccelerator::Error::UNSUPPORTED_JPEG:
+      // Camera device may temporarily output invalid MJPEG stream. HAL should
+      // skip this frame and get the next frame.
+      return -EAGAIN;
+    case JpegDecodeAccelerator::Error::TRY_START_AGAIN:
+      // Possibly Mojo communication error. Try restart JDA and return error
+      // this time.
+      jda_available_ = jda_->Start();
+      LOGF(WARNING) << "Restart JDA: " << jda_available_;
+      return -EINVAL;
+    default:
+      // Other JDA errors.
+      return -EINVAL;
+  }
+}
+
+int CachedFrame::CropRotateScale(int rotate_degree) {
   if (yu12_frame_->GetHeight() > yu12_frame_->GetWidth()) {
     LOGF(ERROR) << "yu12_frame_ is tall frame already: "
                 << yu12_frame_->GetWidth() << "x" << yu12_frame_->GetHeight();
@@ -220,9 +253,9 @@ int CachedFrame::CropRotateScale(int rotate_degree) {
   return ret;
 }
 
-int CachedFrame::ConvertToJpeg(const android::CameraMetadata& metadata,
-                               const FrameBuffer& in_frame,
-                               FrameBuffer* out_frame) {
+int CachedFrame::ConvertYU12ToJpeg(const android::CameraMetadata& metadata,
+                                   const FrameBuffer& in_frame,
+                                   FrameBuffer* out_frame) {
   ExifUtils utils;
   if (!utils.Initialize()) {
     LOGF(ERROR) << "ExifUtils initialization failed.";
