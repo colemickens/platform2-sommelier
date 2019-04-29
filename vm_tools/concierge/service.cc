@@ -92,6 +92,9 @@ constexpr base::TimeDelta kVmStartupTimeout = base::TimeDelta::FromSeconds(30);
 // crosvm directory name.
 constexpr char kCrosvmDir[] = "crosvm";
 
+// Plugin VM directory name.
+constexpr char kPluginVmDir[] = "pvm";
+
 // Cryptohome root base path.
 constexpr char kCryptohomeRoot[] = "/home/root";
 
@@ -108,10 +111,12 @@ constexpr char kRawImageExtension[] = ".img";
 constexpr char kQcowImageExtension[] = ".qcow2";
 
 // Valid file extensions for disk images
-constexpr const char* kDiskImagePatterns[] = {
-    "*.img",
-    "*.qcow2",
-};
+constexpr const char* kDiskImageExtensions[] = {kRawImageExtension,
+                                                kQcowImageExtension, nullptr};
+
+// Valid file extensions for Plugin VM images
+constexpr const char* kPluginVmImageExtensions[] = {"",  // No extension
+                                                    nullptr};
 
 // Default name to use for a container.
 constexpr char kDefaultContainerName[] = "penguin";
@@ -290,8 +295,9 @@ bool GetDiskPathFromName(
                        .Append(kDownloadsDir);
 
   } else if (storage_location == STORAGE_CRYPTOHOME_PLUGINVM) {
-    base::FilePath pluginvm_dir =
-        base::FilePath(kCryptohomeRoot).Append(cryptohome_id).Append("pvm");
+    base::FilePath pluginvm_dir = base::FilePath(kCryptohomeRoot)
+                                      .Append(cryptohome_id)
+                                      .Append(kPluginVmDir);
     base::File::Error dir_error;
     if (!base::DirectoryExists(pluginvm_dir)) {
       if (!create_parent_dir) {
@@ -370,9 +376,10 @@ bool GetPluginDirectory(const base::FilePath& prefix,
 bool GetPluginStatefulDirectory(const string& vm_id,
                                 const string& cryptohome_id,
                                 base::FilePath* path_out) {
-  return GetPluginDirectory(
-      base::FilePath(kCryptohomeRoot).Append(cryptohome_id).Append("pvm"),
-      vm_id, path_out);
+  return GetPluginDirectory(base::FilePath(kCryptohomeRoot)
+                                .Append(cryptohome_id)
+                                .Append(kPluginVmDir),
+                            vm_id, path_out);
 }
 
 bool GetPluginRuntimeDirectory(const string& vm_id,
@@ -2008,15 +2015,36 @@ std::unique_ptr<dbus::Response> Service::ListVmDisks(
   response.set_success(true);
 
   base::FilePath image_dir;
-  if (request.storage_location() == STORAGE_CRYPTOHOME_ROOT) {
-    image_dir = base::FilePath(kCryptohomeRoot)
-                    .Append(request.cryptohome_id())
-                    .Append(kCrosvmDir);
-  } else if (request.storage_location() == STORAGE_CRYPTOHOME_DOWNLOADS) {
-    image_dir = base::FilePath(kCryptohomeUser)
-                    .Append(request.cryptohome_id())
-                    .Append(kDownloadsDir);
+  base::FileEnumerator::FileType file_type = base::FileEnumerator::FILES;
+  const char* const* allowed_ext = kDiskImageExtensions;
+  switch (request.storage_location()) {
+    case STORAGE_CRYPTOHOME_ROOT:
+      image_dir = base::FilePath(kCryptohomeRoot)
+                      .Append(request.cryptohome_id())
+                      .Append(kCrosvmDir);
+      break;
+
+    case STORAGE_CRYPTOHOME_DOWNLOADS:
+      image_dir = base::FilePath(kCryptohomeUser)
+                      .Append(request.cryptohome_id())
+                      .Append(kDownloadsDir);
+      break;
+
+    case STORAGE_CRYPTOHOME_PLUGINVM:
+      image_dir = base::FilePath(kCryptohomeRoot)
+                      .Append(request.cryptohome_id())
+                      .Append(kPluginVmDir);
+      file_type = base::FileEnumerator::DIRECTORIES;
+      allowed_ext = kPluginVmImageExtensions;
+      break;
+
+    default:
+      response.set_success(false);
+      response.set_failure_reason("Unsupported storage location for images");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
   }
+
   if (!base::DirectoryExists(image_dir)) {
     // No directory means no VMs, return the empty response.
     writer.AppendProtoAsArrayOfBytes(response);
@@ -2024,31 +2052,41 @@ std::unique_ptr<dbus::Response> Service::ListVmDisks(
   }
 
   uint64_t total_size = 0;
-  // Returns disk images in the given storage area.
-  for (const auto& pattern : kDiskImagePatterns) {
-    base::FileEnumerator dir_enum(image_dir, false, base::FileEnumerator::FILES,
-                                  pattern);
-
-    for (base::FilePath path = dir_enum.Next(); !path.empty();
-         path = dir_enum.Next()) {
-      base::FilePath bare_name = path.BaseName().RemoveExtension();
-      if (bare_name.empty()) {
-        continue;
-      }
-      std::string image_name;
-      if (!base::Base64UrlDecode(bare_name.value(),
-                                 base::Base64UrlDecodePolicy::IGNORE_PADDING,
-                                 &image_name)) {
-        continue;
-      }
-      std::string* name = response.add_images();
-      *name = std::move(image_name);
-      struct stat st;
-      if (stat(path.value().c_str(), &st) == 0) {
-        total_size += st.st_blocks * 512;
+  base::FileEnumerator dir_enum(image_dir, false, file_type);
+  for (base::FilePath path = dir_enum.Next(); !path.empty();
+       path = dir_enum.Next()) {
+    string extension = path.BaseName().Extension();
+    bool allowed = false;
+    for (auto p = allowed_ext; *p; p++) {
+      if (extension == *p) {
+        allowed = true;
+        break;
       }
     }
+    if (!allowed) {
+      continue;
+    }
+
+    base::FilePath bare_name = path.BaseName().RemoveExtension();
+    if (bare_name.empty()) {
+      continue;
+    }
+    std::string image_name;
+    if (!base::Base64UrlDecode(bare_name.value(),
+                               base::Base64UrlDecodePolicy::IGNORE_PADDING,
+                               &image_name)) {
+      continue;
+    }
+    std::string* name = response.add_images();
+    *name = std::move(image_name);
+
+    if (dir_enum.GetInfo().IsDirectory()) {
+      total_size += ComputeDirectorySize(path);
+    } else {
+      total_size += dir_enum.GetInfo().GetSize();
+    }
   }
+
   response.set_total_size(total_size);
 
   writer.AppendProtoAsArrayOfBytes(response);
