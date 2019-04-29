@@ -18,19 +18,16 @@ constexpr const char kEcDriverSysfsDirectory[] =
     "/sys/bus/platform/devices/GOOG000C:00/";
 
 // Relative path to |kEcDriverSysfsDirectory|.
-constexpr const char kPeakShiftPropertyDirectory[] = "properties/peakshift/";
+constexpr const char kChargeScheduleDirectory[] = "wilco-charge-schedule/";
 
-// Next kPeakShift* are relative paths to |kPeakShiftPropertyDirectory|.
-constexpr const char kPeakShiftEnablePath[] = "enable";
-constexpr const char kPeakShiftThresholdPath[] = "peakshift_battery_threshold";
+// kPeakShift* are relative paths to |kChargeScheduleDirectory|.
+constexpr const char kPeakShiftEnablePath[] = "peak_shift_enable";
+constexpr const char kPeakShiftThresholdPath[] = "peak_shift_battery_threshold";
+constexpr const char kPeakShiftSchedulePath[] = "peak_shift_";
 
-constexpr const char kPeakShiftMondayPath[] = "peakshift_monday";
-constexpr const char kPeakShiftTuesdayPath[] = "peakshift_tuesday";
-constexpr const char kPeakShiftWednesdayPath[] = "peakshift_wednesday";
-constexpr const char kPeakShiftThursdayPath[] = "peakshift_thursday";
-constexpr const char kPeakShiftFridayPath[] = "peakshift_friday";
-constexpr const char kPeakShiftSaturdayPath[] = "peakshift_saturday";
-constexpr const char kPeakShiftSundayPath[] = "peakshift_sunday";
+// kAdvancedCharging* are relative paths to |kChargeScheduleDirectory|.
+constexpr const char kAdvancedChargingEnablePath[] = "advanced_charging_enable";
+constexpr const char kAdvancedChargingSchedulePath[] = "advanced_charging_";
 
 // Relative path to |kEcDriverSysfsDirectory|.
 constexpr const char kBootOnAcEnablePath[] = "boot_on_ac";
@@ -52,6 +49,38 @@ constexpr const char kBatteryChargeCustomChargeStartPath[] =
 constexpr const char kBatteryChargeCustomChargeStopPath[] =
     "charge_control_end_threshold";
 
+// Strings returned by this function are dictated by the kernel driver and
+// can't be changed.
+bool WeekDayToString(PowerManagementPolicy::WeekDay week_day,
+                     std::string* week_day_out) {
+  DCHECK(week_day_out);
+  switch (week_day) {
+    case PowerManagementPolicy::MONDAY:
+      *week_day_out = "monday";
+      return true;
+    case PowerManagementPolicy::TUESDAY:
+      *week_day_out = "tuesday";
+      return true;
+    case PowerManagementPolicy::WEDNESDAY:
+      *week_day_out = "wednesday";
+      return true;
+    case PowerManagementPolicy::THURSDAY:
+      *week_day_out = "thursday";
+      return true;
+    case PowerManagementPolicy::FRIDAY:
+      *week_day_out = "friday";
+      return true;
+    case PowerManagementPolicy::SATURDAY:
+      *week_day_out = "saturday";
+      return true;
+    case PowerManagementPolicy::SUNDAY:
+      *week_day_out = "sunday";
+      return true;
+  }
+  LOG(WARNING) << "Unexpected week day value " << static_cast<int>(week_day);
+  return false;
+}
+
 bool WriteDataToFile(const base::FilePath& filename, const std::string& data) {
   if (base::WriteFile(filename, data.c_str(), data.length()) != data.length()) {
     PLOG(ERROR) << "Unable to write \"" << data << "\" to " << filename.value();
@@ -68,7 +97,7 @@ WilcoChargeControllerHelper::~WilcoChargeControllerHelper() = default;
 
 bool WilcoChargeControllerHelper::SetPeakShiftEnabled(bool enable) {
   return WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
-                             .Append(kPeakShiftPropertyDirectory)
+                             .Append(kChargeScheduleDirectory)
                              .Append(kPeakShiftEnablePath),
                          enable ? "1" : "0");
 }
@@ -76,45 +105,20 @@ bool WilcoChargeControllerHelper::SetPeakShiftEnabled(bool enable) {
 bool WilcoChargeControllerHelper::SetPeakShiftBatteryPercentThreshold(
     int threshold) {
   return WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
-                             .Append(kPeakShiftPropertyDirectory)
+                             .Append(kChargeScheduleDirectory)
                              .Append(kPeakShiftThresholdPath),
-                         base::StringPrintf("%03d", threshold));
+                         base::StringPrintf("%d", threshold));
 }
 
 bool WilcoChargeControllerHelper::SetPeakShiftDayConfig(
     PowerManagementPolicy::WeekDay week_day, const std::string& config) {
-  const char* day_file = nullptr;
-  switch (week_day) {
-    case PowerManagementPolicy::MONDAY:
-      day_file = kPeakShiftMondayPath;
-      break;
-    case PowerManagementPolicy::TUESDAY:
-      day_file = kPeakShiftTuesdayPath;
-      break;
-    case PowerManagementPolicy::WEDNESDAY:
-      day_file = kPeakShiftWednesdayPath;
-      break;
-    case PowerManagementPolicy::THURSDAY:
-      day_file = kPeakShiftThursdayPath;
-      break;
-    case PowerManagementPolicy::FRIDAY:
-      day_file = kPeakShiftFridayPath;
-      break;
-    case PowerManagementPolicy::SATURDAY:
-      day_file = kPeakShiftSaturdayPath;
-      break;
-    case PowerManagementPolicy::SUNDAY:
-      day_file = kPeakShiftSundayPath;
-      break;
-  }
-  if (!day_file) {
-    PLOG(WARNING) << "Unexpected week day value " << static_cast<int>(week_day);
-    return false;
-  }
-  return WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
-                             .Append(kPeakShiftPropertyDirectory)
-                             .Append(day_file),
-                         config);
+  std::string week_day_str;
+  return WeekDayToString(week_day, &week_day_str) &&
+         WriteDataToFile(
+             base::FilePath(kEcDriverSysfsDirectory)
+                 .Append(kChargeScheduleDirectory)
+                 .Append(std::string(kPeakShiftSchedulePath) + week_day_str),
+             config);
 }
 
 bool WilcoChargeControllerHelper::SetBootOnAcEnabled(bool enable) {
@@ -131,14 +135,23 @@ bool WilcoChargeControllerHelper::SetUsbPowerShareEnabled(bool enable) {
 
 bool WilcoChargeControllerHelper::SetAdvancedBatteryChargeModeEnabled(
     bool enable) {
-  NOTIMPLEMENTED();
+  return WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
+                             .Append(kChargeScheduleDirectory)
+                             .Append(kAdvancedChargingEnablePath),
+                         enable ? "1" : "0");
   return false;
 }
 
 bool WilcoChargeControllerHelper::SetAdvancedBatteryChargeModeDayConfig(
     PowerManagementPolicy::WeekDay week_day, const std::string& config) {
-  NOTIMPLEMENTED();
-  return false;
+  std::string week_day_str;
+  return WeekDayToString(week_day, &week_day_str) &&
+         WriteDataToFile(
+             base::FilePath(kEcDriverSysfsDirectory)
+                 .Append(kChargeScheduleDirectory)
+                 .Append(std::string(kAdvancedChargingSchedulePath) +
+                         week_day_str),
+             config);
 }
 
 bool WilcoChargeControllerHelper::SetBatteryChargeMode(

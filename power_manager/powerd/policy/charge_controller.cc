@@ -271,7 +271,7 @@ bool ChargeController::SetPeakShiftDayConfig(
   }
 
   std::string day_config_str = base::StringPrintf(
-      "%02d %02d %02d %02d %02d %02d", day_config.start_time().hour(),
+      "%02d:%02d %02d:%02d %02d:%02d", day_config.start_time().hour(),
       day_config.start_time().minute(), day_config.end_time().hour(),
       day_config.end_time().minute(), day_config.charge_start_time().hour(),
       day_config.charge_start_time().minute());
@@ -304,7 +304,7 @@ bool ChargeController::SetAdvancedBatteryChargeModeDayConfig(
   // Policy uses charge end time, but EC driver uses charge duration.
   int duration_minutes = end_time_minutes - start_time_minutes;
   std::string day_config_str = base::StringPrintf(
-      "%02d %02d %02d %02d", day_config.charge_start_time().hour(),
+      "%02d:%02d %02d:%02d", day_config.charge_start_time().hour(),
       day_config.charge_start_time().minute(), duration_minutes / 60,
       duration_minutes % 60);
   return helper_->SetAdvancedBatteryChargeModeDayConfig(day_config.day(),

@@ -22,79 +22,41 @@ namespace policy {
 
 namespace {
 
+// Holds hours and minutes.
+using TestDayConfig = std::vector<std::pair<int, int>>;
+
+// |configs| must contain three hour/minute pairs: the start time, the end time
+// and the charge start time.
 void MakePeakShiftDayConfig(
     PowerManagementPolicy::WeekDay week_day,
-    const std::string& config_str,
+    const TestDayConfig& configs,
     PowerManagementPolicy::PeakShiftDayConfig* config_proto) {
   DCHECK(config_proto);
+  ASSERT_EQ(configs.size(), 3);
 
   config_proto->set_day(week_day);
-
-  std::vector<std::string> split = base::SplitString(
-      config_str, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  ASSERT_EQ(split.size(), 6);
-
-  int value;
-  ASSERT_TRUE(base::StringToInt(split[0], &value));
-  config_proto->mutable_start_time()->set_hour(value);
-  ASSERT_TRUE(base::StringToInt(split[1], &value));
-  config_proto->mutable_start_time()->set_minute(value);
-  ASSERT_TRUE(base::StringToInt(split[2], &value));
-  config_proto->mutable_end_time()->set_hour(value);
-  ASSERT_TRUE(base::StringToInt(split[3], &value));
-  config_proto->mutable_end_time()->set_minute(value);
-  ASSERT_TRUE(base::StringToInt(split[4], &value));
-  config_proto->mutable_charge_start_time()->set_hour(value);
-  ASSERT_TRUE(base::StringToInt(split[5], &value));
-  config_proto->mutable_charge_start_time()->set_minute(value);
+  config_proto->mutable_start_time()->set_hour(configs[0].first);
+  config_proto->mutable_start_time()->set_minute(configs[0].second);
+  config_proto->mutable_end_time()->set_hour(configs[1].first);
+  config_proto->mutable_end_time()->set_minute(configs[1].second);
+  config_proto->mutable_charge_start_time()->set_hour(configs[2].first);
+  config_proto->mutable_charge_start_time()->set_minute(configs[2].second);
 }
 
+// |configs| must contain two hour/minute pairs: the charge start time and the
+// charge end time.
 void MakeAdvancedBatteryChargeModeDayConfig(
     PowerManagementPolicy::WeekDay week_day,
-    const std::string& config_str,
+    const TestDayConfig& configs,
     PowerManagementPolicy::AdvancedBatteryChargeModeDayConfig* config_proto) {
   DCHECK(config_proto);
+  ASSERT_EQ(configs.size(), 2);
 
   config_proto->set_day(week_day);
-
-  std::vector<std::string> split = base::SplitString(
-      config_str, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  ASSERT_EQ(split.size(), 4);
-
-  int value;
-  ASSERT_TRUE(base::StringToInt(split[0], &value));
-  config_proto->mutable_charge_start_time()->set_hour(value);
-  ASSERT_TRUE(base::StringToInt(split[1], &value));
-  config_proto->mutable_charge_start_time()->set_minute(value);
-  ASSERT_TRUE(base::StringToInt(split[2], &value));
-  config_proto->mutable_charge_end_time()->set_hour(value);
-  ASSERT_TRUE(base::StringToInt(split[3], &value));
-  config_proto->mutable_charge_end_time()->set_minute(value);
-}
-
-// Converts string with encoded start time and end time to equivalent string
-// with encoded start time and duration.
-// "02 00 10 15" which encodes time interval from 02:00 to 10:15 will be
-// converted to "02 00 08 15" because interval duration is 08:15.
-void ConvertStartEndToStartDuration(const std::string& start_end,
-                                    std::string* start_duration_out) {
-  DCHECK(start_duration_out);
-
-  std::vector<std::string> split = base::SplitString(
-      start_end, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  ASSERT_EQ(split.size(), 4);
-
-  int start_hour, start_minute, end_hour, end_minute;
-  ASSERT_TRUE(base::StringToInt(split[0], &start_hour));
-  ASSERT_TRUE(base::StringToInt(split[1], &start_minute));
-  ASSERT_TRUE(base::StringToInt(split[2], &end_hour));
-  ASSERT_TRUE(base::StringToInt(split[3], &end_minute));
-
-  int duration_minute =
-      (end_hour * 60 + end_minute) - (start_hour * 60 + start_minute);
-  *start_duration_out =
-      base::StringPrintf("%02d %02d %02d %02d", start_hour, start_minute,
-                         duration_minute / 60, duration_minute % 60);
+  config_proto->mutable_charge_start_time()->set_hour(configs[0].first);
+  config_proto->mutable_charge_start_time()->set_minute(configs[0].second);
+  config_proto->mutable_charge_end_time()->set_hour(configs[1].first);
+  config_proto->mutable_charge_end_time()->set_minute(configs[1].second);
 }
 
 class ChargeControllerTest : public ::testing::Test {
@@ -103,10 +65,9 @@ class ChargeControllerTest : public ::testing::Test {
 
  protected:
   // Sets PeakShift policy in PowerManagementPolicy proto.
-  void SetPeakShift(
-      int threshold,
-      const std::vector<std::pair<PowerManagementPolicy::WeekDay, std::string>>&
-          day_configs) {
+  void SetPeakShift(int threshold,
+                    const std::map<PowerManagementPolicy::WeekDay,
+                                   TestDayConfig>& day_configs) {
     policy_.set_peak_shift_battery_percent_threshold(threshold);
     policy_.mutable_peak_shift_day_configs()->Clear();
     for (const auto& item : day_configs) {
@@ -116,11 +77,10 @@ class ChargeControllerTest : public ::testing::Test {
   }
 
   // Checks that PeakShift policy was applied as expected.
-  bool CheckPeakShift(
-      bool enable,
-      int threshold,
-      const std::vector<std::pair<PowerManagementPolicy::WeekDay, std::string>>&
-          day_configs) {
+  bool CheckPeakShift(bool enable,
+                      int threshold,
+                      const std::map<PowerManagementPolicy::WeekDay,
+                                     std::string>& day_configs) {
     for (const auto& item : day_configs) {
       EXPECT_EQ(helper_.peak_shift_day_config(item.first), item.second);
       if (helper_.peak_shift_day_config(item.first) != item.second) {
@@ -135,7 +95,7 @@ class ChargeControllerTest : public ::testing::Test {
 
   // Sets AdvancedBatteryChargeMode policy in PowerManagementPolicy proto.
   void SetAdvancedBatteryChargeMode(
-      const std::vector<std::pair<PowerManagementPolicy::WeekDay, std::string>>&
+      const std::map<PowerManagementPolicy::WeekDay, TestDayConfig>&
           day_configs) {
     policy_.mutable_advanced_battery_charge_mode_day_configs()->Clear();
     for (const auto& item : day_configs) {
@@ -148,17 +108,13 @@ class ChargeControllerTest : public ::testing::Test {
   // Checks that AdvancedBatteryChargeMode policy was applied as expected.
   bool CheckAdvancedBatteryChargeMode(
       bool enable,
-      const std::vector<std::pair<PowerManagementPolicy::WeekDay, std::string>>&
+      const std::map<PowerManagementPolicy::WeekDay, std::string>&
           day_configs) {
     for (const auto& item : day_configs) {
-      std::string start_duration;
-      if (item.second.length()) {
-        ConvertStartEndToStartDuration(item.second, &start_duration);
-      }
       EXPECT_EQ(helper_.advanced_battery_charge_mode_day_config(item.first),
-                start_duration);
+                item.second);
       if (helper_.advanced_battery_charge_mode_day_config(item.first) !=
-          start_duration) {
+          item.second) {
         return false;
       }
     }
@@ -213,7 +169,7 @@ TEST_F(ChargeControllerTest, PeakShiftThresholdOnly) {
 
 TEST_F(ChargeControllerTest, PeakShiftDayConfigsOnly) {
   constexpr PowerManagementPolicy::WeekDay kDay = PowerManagementPolicy::MONDAY;
-  constexpr char kDayConfig[] = "00 30 09 45 20 00";
+  const TestDayConfig kDayConfig{{0, 30}, {9, 45}, {20, 0}};
 
   MakePeakShiftDayConfig(kDay, kDayConfig,
                          policy_.add_peak_shift_day_configs());
@@ -230,18 +186,23 @@ TEST_F(ChargeControllerTest, PeakShift) {
   constexpr PowerManagementPolicy::WeekDay kDay2 =
       PowerManagementPolicy::FRIDAY;
 
-  constexpr char kDayConfig1[] = "00 30 09 45 20 00";
-  constexpr char kDayConfig2[] = "09 15 10 00 23 15";
+  const TestDayConfig kDayConfig1{{0, 30}, {9, 45}, {20, 0}};
+  constexpr char kExpectedDayConfig1[] = "00:30 09:45 20:00";
+
+  const TestDayConfig kDayConfig2{{9, 15}, {10, 0}, {23, 15}};
+  constexpr char kExpectedDayConfig2[] = "09:15 10:00 23:15";
 
   SetPeakShift(kThreshold1, {{kDay1, kDayConfig1}, {kDay2, kDayConfig2}});
   controller_.HandlePolicyChange(policy_);
-  EXPECT_TRUE(CheckPeakShift(true, kThreshold1,
-                             {{kDay1, kDayConfig1}, {kDay2, kDayConfig2}}));
+  EXPECT_TRUE(CheckPeakShift(
+      true, kThreshold1,
+      {{kDay1, kExpectedDayConfig1}, {kDay2, kExpectedDayConfig2}}));
 
   SetPeakShift(kThreshold2, {{kDay1, kDayConfig2}, {kDay2, kDayConfig1}});
   controller_.HandlePolicyChange(policy_);
-  EXPECT_TRUE(CheckPeakShift(true, kThreshold2,
-                             {{kDay1, kDayConfig2}, {kDay2, kDayConfig1}}));
+  EXPECT_TRUE(CheckPeakShift(
+      true, kThreshold2,
+      {{kDay1, kExpectedDayConfig2}, {kDay2, kExpectedDayConfig1}}));
 
   helper_.Reset();
 
@@ -292,20 +253,25 @@ TEST_F(ChargeControllerTest, AdvancedBatteryChargeMode) {
   constexpr PowerManagementPolicy::WeekDay kDay2 =
       PowerManagementPolicy::SUNDAY;
 
-  constexpr char kDayConfigStartEnd1[] = "02 45 08 30";
-  constexpr char kDayConfigStartEnd2[] = "03 30 16 00";
+  const TestDayConfig kDayConfigStartEnd1{{2, 45}, {8, 30}};
+  constexpr char kExpectedDayConfigStartDuration1[] = "02:45 05:45";
+
+  const TestDayConfig kDayConfigStartEnd2{{3, 30}, {16, 0}};
+  constexpr char kExpectedDayConfigStartDuration2[] = "03:30 12:30";
 
   SetAdvancedBatteryChargeMode(
       {{kDay1, kDayConfigStartEnd1}, {kDay2, kDayConfigStartEnd2}});
   controller_.HandlePolicyChange(policy_);
   EXPECT_TRUE(CheckAdvancedBatteryChargeMode(
-      true, {{kDay1, kDayConfigStartEnd1}, {kDay2, kDayConfigStartEnd2}}));
+      true, {{kDay1, kExpectedDayConfigStartDuration1},
+             {kDay2, kExpectedDayConfigStartDuration2}}));
 
   SetAdvancedBatteryChargeMode(
       {{kDay1, kDayConfigStartEnd2}, {kDay2, kDayConfigStartEnd1}});
   controller_.HandlePolicyChange(policy_);
   EXPECT_TRUE(CheckAdvancedBatteryChargeMode(
-      true, {{kDay1, kDayConfigStartEnd2}, {kDay2, kDayConfigStartEnd1}}));
+      true, {{kDay1, kExpectedDayConfigStartDuration2},
+             {kDay2, kExpectedDayConfigStartDuration1}}));
 
   helper_.Reset();
 
@@ -359,8 +325,11 @@ TEST_F(ChargeControllerTest,
   constexpr PowerManagementPolicy::WeekDay kDay2 =
       PowerManagementPolicy::SUNDAY;
 
-  constexpr char kDayConfigStartEnd1[] = "08 15 10 45";
-  constexpr char kDayConfigStartEnd2[] = "04 00 06 15";
+  const TestDayConfig kDayConfigStartEnd1{{8, 15}, {10, 45}};
+  constexpr char kExpectedDayConfigStartDuration1[] = "08:15 02:30";
+
+  const TestDayConfig kDayConfigStartEnd2{{4, 0}, {6, 15}};
+  constexpr char kExpectedDayConfigStartDuration2[] = "04:00 02:15";
 
   policy_.mutable_battery_charge_mode()->set_mode(kMode);
   SetAdvancedBatteryChargeMode(
@@ -371,7 +340,8 @@ TEST_F(ChargeControllerTest,
   EXPECT_EQ(helper_.battery_charge_mode(),
             system::ChargeControllerHelperStub::kBatteryChargeModeUnset);
   EXPECT_TRUE(CheckAdvancedBatteryChargeMode(
-      true, {{kDay1, kDayConfigStartEnd1}, {kDay2, kDayConfigStartEnd2}}));
+      true, {{kDay1, kExpectedDayConfigStartDuration1},
+             {kDay2, kExpectedDayConfigStartDuration2}}));
 }
 
 }  // namespace policy
