@@ -1249,7 +1249,6 @@ void Cellular::RegisterProperties() {
   store->RegisterConstStringmaps(kCellularApnListProperty, &apn_list_);
   store->RegisterConstString(kIccidProperty, &sim_identifier_);
 
-  store->RegisterConstStrings(kSupportedCarriersProperty, &supported_carriers_);
   store->RegisterConstUint16(kPRLVersionProperty, &prl_version_);
 
   // TODO(pprabhu): Decide whether these need their own custom setters.
@@ -1527,14 +1526,6 @@ void Cellular::set_sim_identifier(const string& sim_identifier) {
 
   sim_identifier_ = sim_identifier;
   adaptor()->EmitStringChanged(kIccidProperty, sim_identifier_);
-}
-
-void Cellular::set_supported_carriers(const Strings& supported_carriers) {
-  // There is no canonical form of a Strings value.
-  // So don't check for redundant updates.
-  supported_carriers_ = supported_carriers;
-  adaptor()->EmitStringsChanged(kSupportedCarriersProperty,
-                                supported_carriers_);
 }
 
 void Cellular::set_prl_version(uint16_t prl_version) {

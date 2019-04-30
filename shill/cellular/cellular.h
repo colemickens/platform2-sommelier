@@ -278,7 +278,6 @@ class Cellular : public Device,
   const Stringmaps& apn_list() const { return apn_list_; }
   const std::string& sim_identifier() const { return sim_identifier_; }
 
-  const Strings& supported_carriers() const { return supported_carriers_; }
   uint16_t prl_version() const { return prl_version_; }
 
   // setters
@@ -308,7 +307,6 @@ class Cellular : public Device,
   void set_apn_list(const Stringmaps& apn_list);
   void set_sim_identifier(const std::string& sim_identifier);
 
-  void set_supported_carriers(const Strings& supported_carriers);
   void set_prl_version(uint16_t prl_version);
 
   // Takes ownership.
@@ -530,8 +528,6 @@ class Cellular : public Device,
   // CDMA only properties.
   uint16_t prl_version_;
 
-  // This property is specific to Gobi modems.
-  Strings supported_carriers_;
   // End of DBus properties.
   // ///////////////////////////////////////////////////////////////////////////
 

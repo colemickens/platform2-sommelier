@@ -395,12 +395,6 @@ Properties	string Address [readonly]
 			(Cellular only) For GSM or LTE modems, indicates
 			whether a SIM card is present or not.
 
-		array{string} Cellular.SupportedCarriers [readonly]
-
-			(Cellular only) A list of supported carriers. Each
-			carrier can be used as an argument to the SetCarrier
-			method.
-
 		array{dict} Cellular.FoundNetworks [readonly] [GSM only]
 
 			(Cellular only) The result of the most recent
