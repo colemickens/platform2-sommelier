@@ -11,6 +11,7 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":libtpm_manager",
+    ":local_data_migration",
     ":tpm_manager_client",
     ":tpm_manager_test",
     ":tpm_managerd",
@@ -184,6 +185,24 @@ executable("tpm_managerd") {
     # order.
     "system_api",
     "protobuf",
+  ]
+}
+
+config("local_data_migration_config") {
+  libs = [ "tpmcrypto" ]
+}
+
+# Local data migrator.
+executable("local_data_migration") {
+  configs += [
+    ":local_data_migration_config",
+    ":target_defaults",
+  ]
+  sources = [
+    "server/local_data_migration_main.cc",
+  ]
+  deps = [
+    ":server_library",
   ]
 }
 
