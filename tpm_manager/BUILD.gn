@@ -25,6 +25,7 @@ pkg_config("target_default_deps") {
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "libtpmcrypto",
     "openssl",
     "protobuf-lite",
   ]
@@ -126,6 +127,7 @@ static_library("server_library") {
   configs += [ ":target_defaults" ]
   sources = [
     "server/dbus_service.cc",
+    "server/local_data_migration.cc",
     "server/local_data_store_impl.cc",
     "server/openssl_crypto_util_impl.cc",
     "server/tpm_manager_service.cc",
@@ -228,6 +230,7 @@ if (use.test) {
       "client/tpm_ownership_dbus_proxy_test.cc",
 
       # "server/dbus_service_test.cc",
+      "server/local_data_migration_test.cc",
       "server/mock_local_data_store.cc",
       "server/mock_openssl_crypto_util.cc",
       "server/mock_tpm_initializer.cc",
