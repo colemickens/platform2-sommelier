@@ -14,20 +14,45 @@ namespace cryptohome {
 
 void LegacyCryptohomeInterfaceAdaptor::IsMounted(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
+
+  user_data_auth::IsMountedRequest request;
+  userdataauth_proxy_->IsMountedAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::IsMountedOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::IsMountedOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+    const user_data_auth::IsMountedReply& reply) {
+  response->Return(reply.is_mounted());
 }
 
 void LegacyCryptohomeInterfaceAdaptor::IsMountedForUser(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool, bool>>
         response,
     const std::string& in_username) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared = std::make_shared<SharedDBusMethodResponse<bool, bool>>(
+      std::move(response));
+
+  user_data_auth::IsMountedRequest request;
+  request.set_username(in_username);
+  userdataauth_proxy_->IsMountedAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::IsMountedForUserOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool, bool>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::IsMountedForUserOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<bool, bool>> response,
+    const user_data_auth::IsMountedReply& reply) {
+  response->Return(reply.is_mounted(), reply.is_ephemeral_mount());
 }
 
 void LegacyCryptohomeInterfaceAdaptor::ListKeysEx(

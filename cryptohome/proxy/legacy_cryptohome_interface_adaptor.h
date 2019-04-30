@@ -60,7 +60,9 @@ class LegacyCryptohomeInterfaceAdaptor
         user_data_auth_(new org::chromium::UserDataAuthInterfaceProxy(bus)),
         attestation_proxy_(new org::chromium::AttestationProxy(bus)),
         tpm_ownership_proxy_(new org::chromium::TpmOwnershipProxy(bus)),
-        tpm_nvram_proxy_(new org::chromium::TpmNvramProxy(bus)) {}
+        tpm_nvram_proxy_(new org::chromium::TpmNvramProxy(bus)),
+        userdataauth_proxy_(
+            new org::chromium::UserDataAuthInterfaceProxy(bus)) {}
 
   void RegisterAsync(
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
@@ -448,6 +450,12 @@ class LegacyCryptohomeInterfaceAdaptor
 
  private:
   // Method used as callbacks once the call to the new interface returns
+  void IsMountedOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+      const user_data_auth::IsMountedReply& reply);
+  void IsMountedForUserOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<bool, bool>> response,
+      const user_data_auth::IsMountedReply& reply);
   void TpmIsAttestationPreparedOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool>> response_raw,
       const attestation::GetEnrollmentPreparationsReply& reply);
@@ -539,6 +547,8 @@ class LegacyCryptohomeInterfaceAdaptor
   std::unique_ptr<org::chromium::TpmOwnershipProxyInterface>
       tpm_ownership_proxy_;
   std::unique_ptr<org::chromium::TpmNvramProxyInterface> tpm_nvram_proxy_;
+  std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
+      userdataauth_proxy_;
 
   // An atomic incrementing sequence for setting asynchronous call ids.
   base::AtomicSequenceNumber sequence_holder_;
