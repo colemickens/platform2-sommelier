@@ -592,7 +592,7 @@ void Attestation::PrepareForEnrollment() {
       TpmPersistentState::TpmOwnerDependency::kAttestation);
   base::TimeDelta delta = (base::TimeTicks::Now() - start);
   LOG(INFO) << "Attestation: Prepared successfully (" << delta.InMilliseconds()
-            << " ms).";
+            << "ms).";
 }
 
 int Attestation::CreateIdentity(int identity_features) {
