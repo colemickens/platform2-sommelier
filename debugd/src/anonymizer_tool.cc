@@ -107,7 +107,8 @@ string AnonymizerTool::AnonymizeMACAddresses(const string& input) {
     result += replacement_mac;
   }
 
-  return result + text.as_string();
+  result.append(text.data(), text.size());
+  return result;
 }
 
 string AnonymizerTool::AnonymizeCustomPatterns(const string& input) {
@@ -201,7 +202,7 @@ string AnonymizerTool::AnonymizeCustomPattern(
     result += replacement_id;
     result += post_matched_id;
   }
-  result += text.as_string();
+  result.append(text.data(), text.size());
   return result;
 }
 
