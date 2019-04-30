@@ -253,11 +253,11 @@ void PluginVmExportOperation::Finalize() {
 }
 
 std::unique_ptr<PluginVmImportOperation> PluginVmImportOperation::Create(
-    base::ScopedFD fd, const base::FilePath& disk_path, uint64_t source_size) {
-  auto op =
-      base::WrapUnique(new PluginVmImportOperation(std::move(fd), source_size));
+    base::ScopedFD fd, const base::FilePath disk_path, uint64_t source_size) {
+  auto op = base::WrapUnique(new PluginVmImportOperation(
+      std::move(fd), source_size, std::move(disk_path)));
 
-  if (op->PrepareInput() && op->PrepareOutput(disk_path)) {
+  if (op->PrepareInput() && op->PrepareOutput()) {
     op->set_status(DISK_STATUS_IN_PROGRESS);
   }
 
@@ -265,8 +265,11 @@ std::unique_ptr<PluginVmImportOperation> PluginVmImportOperation::Create(
 }
 
 PluginVmImportOperation::PluginVmImportOperation(base::ScopedFD in_fd,
-                                                 uint64_t source_size)
-    : in_fd_(std::move(in_fd)), copying_data_(false) {
+                                                 uint64_t source_size,
+                                                 const base::FilePath disk_path)
+    : dest_image_path_(std::move(disk_path)),
+      in_fd_(std::move(in_fd)),
+      copying_data_(false) {
   set_source_size(source_size);
 }
 
@@ -298,7 +301,11 @@ bool PluginVmImportOperation::PrepareInput() {
   return true;
 }
 
-bool PluginVmImportOperation::PrepareOutput(const base::FilePath& disk_path) {
+bool PluginVmImportOperation::PrepareOutput() {
+  // We are not using CreateUniqueTempDirUnderPath() because we want
+  // to be able to identify images that are being imported, and that
+  // requires directory name to not be random.
+  base::FilePath disk_path(dest_image_path_.AddExtension(".tmp"));
   base::File::Error dir_error;
   if (!base::CreateDirectoryAndGetError(disk_path, &dir_error)) {
     set_failure_reason(std::string("failed to create output directory: ") +
@@ -307,17 +314,6 @@ bool PluginVmImportOperation::PrepareOutput(const base::FilePath& disk_path) {
   }
 
   CHECK(output_dir_.Set(disk_path));
-
-  if (chown(output_dir_.GetPath().value().c_str(), -1, kPluginVmGid) < 0) {
-    set_failure_reason("failed to change group of the destination directory");
-    return false;
-  }
-
-  if (chmod(output_dir_.GetPath().value().c_str(), 0770) < 0) {
-    set_failure_reason(
-        "failed to change permissions of the destination directory");
-    return false;
-  }
 
   out_ = ArchiveWriter(archive_write_disk_new());
   if (!out_) {
@@ -480,7 +476,24 @@ void PluginVmImportOperation::Finalize() {
   }
   // Free the output archive structures.
   out_.reset();
-  // Commit to keeping the output directory.
+  // Make sure resulting image is accessible by the dispatcher process.
+  if (chown(output_dir_.GetPath().value().c_str(), -1, kPluginVmGid) < 0) {
+    MarkFailed("failed to change group of the destination directory", NULL);
+    return;
+  }
+  if (chmod(output_dir_.GetPath().value().c_str(), 0770) < 0) {
+    MarkFailed("failed to change permissions of the destination directory",
+               NULL);
+    return;
+  }
+  // Drop the ".tmp" suffix from the directory so that we recognize
+  // it as a valid Plugin VM image.
+  if (!base::Move(output_dir_.GetPath(), dest_image_path_)) {
+    MarkFailed("Unable to rename resulting image directory", NULL);
+    return;
+  }
+  // Tell it not to try cleaning up as we are committed to using the
+  // image.
   output_dir_.Take();
 
   set_status(DISK_STATUS_CREATED);

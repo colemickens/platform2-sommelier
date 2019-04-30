@@ -128,7 +128,7 @@ class PluginVmImportOperation : public DiskImageOperation {
  public:
   static std::unique_ptr<PluginVmImportOperation> Create(
       base::ScopedFD in_fd,
-      const base::FilePath& disk_path,
+      const base::FilePath disk_path,
       uint64_t source_size);
 
  protected:
@@ -136,16 +136,21 @@ class PluginVmImportOperation : public DiskImageOperation {
   void Finalize() override;
 
  private:
-  PluginVmImportOperation(base::ScopedFD in_fd, uint64_t source_size);
+  PluginVmImportOperation(base::ScopedFD in_fd,
+                          uint64_t source_size,
+                          const base::FilePath disk_path);
 
   bool PrepareInput();
-  bool PrepareOutput(const base::FilePath& disk_path);
+  bool PrepareOutput();
 
   void MarkFailed(const char* msg, struct archive* a);
 
   // Copies up to |io_limit| bytes of one archive entry of the image.
   // Returns number of bytes read.
   uint64_t CopyEntry(uint64_t io_limit);
+
+  // Path to the directory that will contain the imported image.
+  const base::FilePath dest_image_path_;
 
   // File descriptor from which to fetch the source image.
   base::ScopedFD in_fd_;
