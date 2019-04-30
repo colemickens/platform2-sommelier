@@ -10,6 +10,7 @@
 #include <sys/types.h>
 
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include <base/files/file.h>
@@ -32,6 +33,14 @@ constexpr char kTestImageRWIDLabel[] = "RW_FWID";
 constexpr char kTestImageFileName[] = "nocturne_fp_v2.2.110-b936c0a3c.bin";
 constexpr char kTestImageROVersion[] = "nocturne_fp_v2.2.64-58cf5974e";
 constexpr char kTestImageRWVersion[] = "nocturne_fp_v2.2.110-b936c0a3c";
+
+const std::vector<biod::CrosFpFirmware::Status> kCrosFpFirmwareStatuses = {
+    biod::CrosFpFirmware::Status::kUninitialized,
+    biod::CrosFpFirmware::Status::kOk,
+    biod::CrosFpFirmware::Status::kNotFound,
+    biod::CrosFpFirmware::Status::kOpenError,
+    biod::CrosFpFirmware::Status::kBadFmap,
+};
 
 class Fmap {
  public:
@@ -88,7 +97,12 @@ class CrosFpFirmwareTest : public ::testing::Test {
 
   bool CreateFakeImage(const base::FilePath& abspath,
                        const std::string& ro_version,
-                       const std::string& rw_version) {
+                       const std::string& rw_version,
+                       uint32_t fmap_report_size = kTestImageSize,
+                       bool fmap_ro_include = true,
+                       bool fmap_rw_include = true,
+                       uint32_t ver_area_offset = 0,
+                       uint32_t ver_area_size = FMAP_STRLEN) {
     if (!GetTestTempDir().IsParent(abspath)) {
       LOG(ERROR) << "Asked to PlaceFakeImage outside test environment.";
       return false;
@@ -127,19 +141,23 @@ class CrosFpFirmwareTest : public ::testing::Test {
     }
 
     Fmap fmap;
-    if (!fmap.Create(kTestImageBaseAddr, kTestImageSize, kTestImageFwName)) {
+    if (!fmap.Create(kTestImageBaseAddr, fmap_report_size, kTestImageFwName)) {
       LOG(ERROR) << "Failed to allocate fmap struct";
       return false;
     }
-    if (!fmap.AppendArea(0 * FMAP_STRLEN, FMAP_STRLEN, kTestImageROIDLabel,
-                         FMAP_AREA_RO)) {
-      LOG(ERROR) << "Failed to append " << kTestImageROIDLabel << " FW area.";
-      return false;
+    if (fmap_ro_include) {
+      if (!fmap.AppendArea(ver_area_offset + (0 * FMAP_STRLEN), ver_area_size,
+                           kTestImageROIDLabel, FMAP_AREA_RO)) {
+        LOG(ERROR) << "Failed to append " << kTestImageROIDLabel << " FW area.";
+        return false;
+      }
     }
-    if (!fmap.AppendArea(1 * FMAP_STRLEN, FMAP_STRLEN, kTestImageRWIDLabel,
-                         FMAP_AREA_RO)) {
-      LOG(ERROR) << "Failed to append " << kTestImageRWIDLabel << " FW area.";
-      return false;
+    if (fmap_rw_include) {
+      if (!fmap.AppendArea(ver_area_offset + (1 * FMAP_STRLEN), ver_area_size,
+                           kTestImageRWIDLabel, FMAP_AREA_RO)) {
+        LOG(ERROR) << "Failed to append " << kTestImageRWIDLabel << " FW area.";
+        return false;
+      }
     }
     if (!fmap.IsValid()) {
       LOG(ERROR) << "Fmap data or size are invalid.";
@@ -150,6 +168,7 @@ class CrosFpFirmwareTest : public ::testing::Test {
       return false;
     }
 
+    // we must grow the file to match or be larger than FMAP reported size
     if (!file.SetLength(kTestImageSize)) {
       LOG(ERROR) << "Failed to elongate fake image to typical size.";
       return false;
@@ -164,28 +183,40 @@ class CrosFpFirmwareTest : public ::testing::Test {
     biod::CrosFpFirmware fw(image_path);
 
     EXPECT_STREQ(fw.GetPath().value().c_str(), image_path.value().c_str());
-    EXPECT_FALSE(fw.IsValid());
     EXPECT_EQ(fw.GetStatus(), expect_status);
+    EXPECT_FALSE(fw.IsValid());
+    EXPECT_STREQ(fw.GetStatusString().c_str(),
+                 CrosFpFirmware::StatusToString(expect_status).c_str());
     biod::CrosFpFirmware::ImageVersion fwver = fw.GetVersion();
-    EXPECT_STREQ(fwver.ro_version.c_str(), "");
-    EXPECT_STREQ(fwver.rw_version.c_str(), "");
     LOG(INFO) << "Passed";
   }
 
   void TestExpectSuccess(const base::FilePath& image_path,
                          const std::string& expect_ro_version,
                          const std::string& expect_rw_version) {
-    auto expect_status = biod::CrosFpFirmware::Status::kOk;
-
     biod::CrosFpFirmware fw(image_path);
 
     EXPECT_STREQ(fw.GetPath().value().c_str(), image_path.value().c_str());
+    EXPECT_EQ(fw.GetStatus(), biod::CrosFpFirmware::Status::kOk)
+        << "The returned status is not the Ok status.";
     EXPECT_TRUE(fw.IsValid());
-    EXPECT_EQ(fw.GetStatus(), expect_status);
+    EXPECT_STREQ(
+        fw.GetStatusString().c_str(),
+        CrosFpFirmware::StatusToString(biod::CrosFpFirmware::Status::kOk)
+            .c_str())
+        << "The status string returned did not match that of the Ok status.";
     biod::CrosFpFirmware::ImageVersion fwver = fw.GetVersion();
-    EXPECT_STREQ(fwver.ro_version.c_str(), expect_ro_version.c_str());
-    EXPECT_STREQ(fwver.rw_version.c_str(), expect_rw_version.c_str());
+    EXPECT_STREQ(fwver.ro_version.c_str(), expect_ro_version.c_str())
+        << "The decoded RO version string did not match.";
+    EXPECT_STREQ(fwver.rw_version.c_str(), expect_rw_version.c_str())
+        << "The decoded RW version string did not match.";
     LOG(INFO) << "Passed";
+  }
+
+  // this proxy function allows us to keep the core CrosFpFirmware class
+  // clean from lots of friend declarations for each unit test fixture
+  static std::string TestStatusToString(CrosFpFirmware::Status status) {
+    return CrosFpFirmware::StatusToString(status);
   }
 
   base::ScopedTempDir temp_dir_;
@@ -195,80 +226,219 @@ class CrosFpFirmwareTest : public ::testing::Test {
   ~CrosFpFirmwareTest() override = default;
 
  private:
+  FRIEND_TEST(CrosFpFirmwareTest, UniqueErrorMessages);
   DISALLOW_COPY_AND_ASSIGN(CrosFpFirmwareTest);
 };
 
-// Invalid path - Blank - Fail
 TEST_F(CrosFpFirmwareTest, InvalidPathBlank) {
-  TestExpectFailure(base::FilePath(""),
-                    biod::CrosFpFirmware::Status::kNotFound);
+  TestExpectFailure(
+      // Given an empty firmware file path,
+      base::FilePath(""),
+      // expect to receive a firmware file not found error.
+      biod::CrosFpFirmware::Status::kNotFound);
 }
 
-// Invalid path - Odd chars - Fail
 TEST_F(CrosFpFirmwareTest, InavlidPathOddChars) {
-  TestExpectFailure(base::FilePath("--"),
-                    biod::CrosFpFirmware::Status::kNotFound);
+  TestExpectFailure(
+      // Given a firmware file path "--",
+      base::FilePath("--"),
+      // expect to receive a firmware file not found error.
+      biod::CrosFpFirmware::Status::kNotFound);
 }
 
-// Invalid path - Given a directory - Fail
 TEST_F(CrosFpFirmwareTest, GivenDirectory) {
-  TestExpectFailure(GetTestTempDir(), biod::CrosFpFirmware::Status::kNotFound);
+  TestExpectFailure(
+      // Given a directory as the firmware file path,
+      GetTestTempDir(),
+      // expect to receive a firmware file not found error.
+      biod::CrosFpFirmware::Status::kNotFound);
 }
 
-// File size is 0 - mmap should fail - Fail
 TEST_F(CrosFpFirmwareTest, GivenEmptyFile) {
+  // Given an empty file (of size 0),
   const auto image_path = GetTestTempDir().Append("empty.txt");
   base::File file(image_path,
                   base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
   file.Close();
   EXPECT_TRUE(base::PathExists(image_path));
+
+  // expect to receive an open file error (from mmap).
   TestExpectFailure(image_path, biod::CrosFpFirmware::Status::kOpenError);
 }
 
-// File does not contain an FMAP - Fail
 TEST_F(CrosFpFirmwareTest, NoFMAP) {
+  // Given a file that does not contain an FMAP,
   const auto image_path = GetTestTempDir().Append("nofmap.txt");
   base::File file(image_path,
                   base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
   EXPECT_GE(file.WriteAtCurrentPos("a", 1), 1);
   file.Close();
   EXPECT_TRUE(base::PathExists(image_path));
+
+  // expect to receive a bad-fmap error.
   TestExpectFailure(image_path, biod::CrosFpFirmware::Status::kBadFmap);
 }
 
-// FMAP reports size larger than file size - Fail
 TEST_F(CrosFpFirmwareTest, FMAPReportsLargerSizeThanFileSize) {
-  const auto image_path = GetTestTempDir().Append("fmapreportlargesize.bin");
-  base::File file(image_path,
-                  base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
-  Fmap fmap;
-  EXPECT_TRUE(fmap.Create(0, kTestImageSize + 1, "FAKE"));
-  const char* fdata = fmap.GetData();
-  int fsize = fmap.GetDataLength();
-  EXPECT_TRUE(fdata != nullptr);
-  EXPECT_GE(fsize, 0);
-  EXPECT_GT(file.WriteAtCurrentPos(fdata, fsize), 0);
-  EXPECT_TRUE(file.SetLength(kTestImageSize));
-  file.Close();
+  // Given a firmware file
+  base::FilePath image_path = GetTestTempDir().Append(kTestImageFileName);
+  EXPECT_TRUE(CreateFakeImage(image_path, kTestImageROVersion,
+                              kTestImageRWVersion,
+                              // whose FMAP reports an overall size larger
+                              // than the actual file's size,
+                              kTestImageSize + 1));
 
-  EXPECT_TRUE(base::PathExists(image_path));
+  // expect to receive a bad-fmap error.
   TestExpectFailure(image_path, biod::CrosFpFirmware::Status::kBadFmap);
 }
 
-// Good image file - Succeed
-TEST_F(CrosFpFirmwareTest, GoodImageFile) {
+TEST_F(CrosFpFirmwareTest, FMAPReportsZeroSize) {
+  // Given a firmware file
+  base::FilePath image_path = GetTestTempDir().Append(kTestImageFileName);
+  EXPECT_TRUE(CreateFakeImage(image_path, kTestImageROVersion,
+                              kTestImageRWVersion,
+                              // whose FMAP reports an overall size of 0,
+                              0));
+
+  // expect to receive a bad-fmap error.
+  TestExpectFailure(image_path, biod::CrosFpFirmware::Status::kBadFmap);
+}
+
+TEST_F(CrosFpFirmwareTest, GoodImageFile_DefaultVerAndFileName) {
+  // Given a firmware file with a proper FMAP,
   base::FilePath image_path = GetTestTempDir().Append(kTestImageFileName);
   EXPECT_TRUE(
       CreateFakeImage(image_path, kTestImageROVersion, kTestImageRWVersion));
 
+  // expect properly decoded version strings.
   TestExpectSuccess(image_path, kTestImageROVersion, kTestImageRWVersion);
 }
 
-// TODO(hesling): Write tests for image files that had malformed and possibly
-// dangerous FMAP info
-// * Test various phony FMAP signatures
-// * Version area size 0
-// * Version size reported too large
-// * Test many firmware file names
+TEST_F(CrosFpFirmwareTest, GoodImageFile_UnknownVerAndFileName) {
+  // Given a firmware file with a proper FMAP with a different
+  // version string and file name,
+  const char image_file_path[] = "unknown_fp_v123.123.123-123456789.bin";
+  const char image_ro_version[] = "unknown_fp_v12.34.567-abc123456";
+  const char image_rw_version[] = "unknown_fp_v765.43.21-abc123456";
+  base::FilePath image_path = GetTestTempDir().Append(image_file_path);
+  EXPECT_TRUE(CreateFakeImage(image_path, image_ro_version, image_rw_version));
+
+  // expect properly decoded version strings.
+  TestExpectSuccess(image_path, image_ro_version, image_rw_version);
+}
+
+TEST_F(CrosFpFirmwareTest, GoodImageFile_BlankVerAndMinimalFileName) {
+  // Given a firmware file with a proper FMAP with blank version
+  // strings and a minimal file name,
+  const char image_file_path[] = "0_fp_0.bin";
+  const char image_ro_version[] = "";
+  const char image_rw_version[] = "";
+  base::FilePath image_path = GetTestTempDir().Append(image_file_path);
+  EXPECT_TRUE(CreateFakeImage(image_path, image_ro_version, image_rw_version));
+
+  // expect properly decoded (empty) version strings.
+  TestExpectSuccess(image_path, image_ro_version, image_rw_version);
+}
+
+TEST_F(CrosFpFirmwareTest, FMAPMissingROArea) {
+  // Given a firmware file
+  base::FilePath image_path = GetTestTempDir().Append(kTestImageFileName);
+  EXPECT_TRUE(CreateFakeImage(image_path, kTestImageROVersion,
+                              kTestImageRWVersion, kTestImageSize,
+                              // whose FMAP is missing an RO version area,
+                              false, true));
+
+  // expect to receive a bad-fmap error.
+  TestExpectFailure(image_path, biod::CrosFpFirmware::Status::kBadFmap);
+}
+
+TEST_F(CrosFpFirmwareTest, FMAPMissingRWArea) {
+  // Given a firmware file
+  base::FilePath image_path = GetTestTempDir().Append(kTestImageFileName);
+  EXPECT_TRUE(CreateFakeImage(image_path, kTestImageROVersion,
+                              kTestImageRWVersion, kTestImageSize,
+                              // whose FMAP is missing an RW version area,
+                              true, false));
+
+  // expect to receive a bad-fmap error.
+  TestExpectFailure(image_path, biod::CrosFpFirmware::Status::kBadFmap);
+}
+
+TEST_F(CrosFpFirmwareTest, FMAPMissingRORWArea) {
+  // Given a firmware file
+  base::FilePath image_path = GetTestTempDir().Append(kTestImageFileName);
+  EXPECT_TRUE(CreateFakeImage(image_path, kTestImageROVersion,
+                              kTestImageRWVersion, kTestImageSize,
+                              // whose FMAP is missing an RO and RW
+                              // version area,
+                              false, false));
+
+  // expect to receive a bad-fmap error.
+  TestExpectFailure(image_path, biod::CrosFpFirmware::Status::kBadFmap);
+}
+
+TEST_F(CrosFpFirmwareTest, FMAPVersionAreaOffsetPastFileLimit) {
+  // Given a firmware file
+  base::FilePath image_path = GetTestTempDir().Append(kTestImageFileName);
+  EXPECT_TRUE(CreateFakeImage(image_path, kTestImageROVersion,
+                              kTestImageRWVersion, kTestImageSize, true, true,
+                              // whose FMAP version areas report offsets
+                              // pointing outside the actual file,
+                              kTestImageSize));
+
+  // expect to receive a bad-fmap error.
+  TestExpectFailure(image_path, biod::CrosFpFirmware::Status::kBadFmap);
+}
+
+TEST_F(CrosFpFirmwareTest, FMAPVersionAreaSizeLargerThanFile) {
+  // Given a firmware file
+  base::FilePath image_path = GetTestTempDir().Append(kTestImageFileName);
+  EXPECT_TRUE(CreateFakeImage(image_path, kTestImageROVersion,
+                              kTestImageRWVersion, kTestImageSize, true, true,
+                              0,
+                              // whose FMAP version areas report sizes
+                              // which are larger than the actual file,
+                              kTestImageSize + 1));
+
+  // expect to receive a bad-fmap error.
+  TestExpectFailure(image_path, biod::CrosFpFirmware::Status::kBadFmap);
+}
+
+TEST_F(CrosFpFirmwareTest, FMAPVersionAreaSizeIsZero) {
+  // Given a firmware file
+  base::FilePath image_path = GetTestTempDir().Append(kTestImageFileName);
+  EXPECT_TRUE(CreateFakeImage(image_path, kTestImageROVersion,
+                              kTestImageRWVersion, kTestImageSize, true, true,
+                              0,
+                              // whose FMAP version areas report sizes of 0,
+                              0));
+
+  // expect properly decoded blank version strings.
+  TestExpectSuccess(image_path, "", "");
+}
+
+TEST_F(CrosFpFirmwareTest, NonblankStatusMessages) {
+  // Given a CrosFpFirmware status
+  for (auto status : kCrosFpFirmwareStatuses) {
+    // when we ask for the human readable string
+    std::string msg = TestStatusToString(status);
+    // expect it to not be "".
+    EXPECT_FALSE(msg.empty()) << "Status " << static_cast<int>(status)
+                              << " converts to a blank status string.";
+  }
+}
+
+TEST_F(CrosFpFirmwareTest, UniqueStatusMessages) {
+  // Given a set of all CrosFpFirmware status messages
+  std::unordered_set<std::string> status_msgs;
+  for (auto status : kCrosFpFirmwareStatuses) {
+    status_msgs.insert(TestStatusToString(status));
+  }
+
+  // expect the set to contain the same number of unique messages
+  // as there are original statuses.
+  EXPECT_EQ(status_msgs.size(), kCrosFpFirmwareStatuses.size())
+      << "There are one or more non-unique status messages.";
+}
 
 }  // namespace biod

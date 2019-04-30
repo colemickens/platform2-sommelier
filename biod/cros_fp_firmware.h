@@ -35,6 +35,8 @@ class CrosFpFirmware {
   const ImageVersion& GetVersion() const;
 
  private:
+  friend class CrosFpFirmwareTest;
+
   void DecodeVersionFromFile();
 
   static std::string StatusToString(Status status);
