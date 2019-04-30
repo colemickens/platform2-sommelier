@@ -27,12 +27,19 @@ fn main() {
     let concierge_dir = proto_root.join("dbus/vm_concierge");
     let cicerone_dir = proto_root.join("dbus/vm_cicerone");
     let seneschal_dir = proto_root.join("dbus/seneschal");
+    let vmplugin_dispatcher_dir = proto_root.join("dbus/vm_plugin_dispatcher");
     let input_files = [
         concierge_dir.join("service.proto"),
         cicerone_dir.join("cicerone_service.proto"),
         seneschal_dir.join("seneschal_service.proto"),
+        vmplugin_dispatcher_dir.join("vm_plugin_dispatcher.proto"),
     ];
-    let include_dirs = [concierge_dir, cicerone_dir, seneschal_dir];
+    let include_dirs = [
+        concierge_dir,
+        cicerone_dir,
+        seneschal_dir,
+        vmplugin_dispatcher_dir,
+    ];
 
     protoc_rust::run(protoc_rust::Args {
         out_dir: out_dir.as_os_str().to_str().unwrap(),
