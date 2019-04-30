@@ -52,7 +52,7 @@ struct GlibBridge : public base::MessageLoopForIO::Watcher {
 
   // libchrome message loop bits.
   base::MessageLoopForIO* message_loop_;
-  std::vector<std::unique_ptr<base::MessageLoopForIO::FileDescriptorWatcher>>
+  std::map<int, std::unique_ptr<base::MessageLoopForIO::FileDescriptorWatcher>>
       watchers_;
   base::CancelableClosure timeout_closure_;
 

@@ -46,6 +46,9 @@ GlibBridge::GlibBridge(base::MessageLoopForIO* message_loop)
 }
 
 void GlibBridge::PrepareIteration() {
+  if (state_ != State::kPreparingIteration)
+    return;
+
   GMainContextLock _l(glib_context_);
 
   g_main_context_prepare(glib_context_, &max_priority_);
@@ -61,13 +64,21 @@ void GlibBridge::PrepareIteration() {
   DVLOG(1) << "Preparing iteration with timeout " << timeout_ms << " ms, "
            << num_fds << " event FDs";
 
-  for (int i = 0; i < num_fds; i++) {
+  for (int i = 0; i < num_fds; i++)
     fd_map_[poll_fds_[i].fd].push_back(&poll_fds_[i]);
-    watchers_.emplace_back(
-        new base::MessageLoopForIO::FileDescriptorWatcher(FROM_HERE));
-    message_loop_->WatchFileDescriptor(poll_fds_[i].fd, true,
-                                       ConvertGPollFlags(poll_fds_[i].events),
-                                       watchers_.back().get(), this);
+
+  // Collect information about which poll flags we need for each fd.
+  std::map<int, int> poll_flags;
+  for (const GPollFD& poll_fd : poll_fds_)
+    poll_flags[poll_fd.fd] |= poll_fd.events;
+
+  for (const auto& fd_flags : poll_flags) {
+    watchers_[fd_flags.first] =
+        std::make_unique<base::MessageLoopForIO::FileDescriptorWatcher>(
+            FROM_HERE);
+    message_loop_->WatchFileDescriptor(fd_flags.first, true,
+                                       ConvertGPollFlags(fd_flags.second),
+                                       watchers_[fd_flags.first].get(), this);
   }
 
   state_ = State::kWaitingForEvents;
@@ -83,7 +94,9 @@ void GlibBridge::PrepareIteration() {
 
 void GlibBridge::OnEvent(int fd, int flag) {
   for (GPollFD* poll_fd : fd_map_[fd])
-    poll_fd->revents |= flag;
+    poll_fd->revents |= flag & poll_fd->events;
+
+  watchers_[fd]->StopWatchingFileDescriptor();
 
   if (state_ != State::kWaitingForEvents)
     return;
@@ -110,6 +123,7 @@ void GlibBridge::Dispatch() {
   message_loop_->task_runner()->PostTask(
       FROM_HERE, base::Bind(&GlibBridge::PrepareIteration,
                             weak_ptr_factory_.GetWeakPtr()));
+  state_ = State::kPreparingIteration;
 }
 
 void GlibBridge::OnFileCanWriteWithoutBlocking(int fd) {
