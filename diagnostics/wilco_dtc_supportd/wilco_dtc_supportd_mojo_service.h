@@ -15,28 +15,27 @@
 #include <mojo/public/cpp/bindings/binding.h>
 #include <mojo/public/cpp/system/buffer.h>
 
-#include "mojo/wilco_dtc_supportd.mojom.h"
+#include "mojo/diagnosticsd.mojom.h"
 
 namespace diagnostics {
 
-// Implements the "WilcoDtcSupportdService" Mojo interface exposed by the
-// wilco_dtc_supportd daemon (see the API definition at
-// mojo/wilco_dtc_supportd.mojom)
+// Implements the "DiagnosticsdService" Mojo interface exposed by the
+// wilco_dtc_supportd daemon (see the API definition at mojo/diagnosticsd.mojom)
 class WilcoDtcSupportdMojoService final
-    : public chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService {
+    : public chromeos::diagnosticsd::mojom::DiagnosticsdService {
  public:
-  using MojomWilcoDtcSupportdClientPtr =
-      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClientPtr;
-  using MojomWilcoDtcSupportdService =
-      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService;
-  using MojomWilcoDtcSupportdServiceRequest =
-      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceRequest;
-  using MojomWilcoDtcSupportdWebRequestHttpMethod =
-      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestHttpMethod;
-  using MojomWilcoDtcSupportdWebRequestStatus =
-      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestStatus;
+  using MojomDiagnosticsdClientPtr =
+      chromeos::diagnosticsd::mojom::DiagnosticsdClientPtr;
+  using MojomDiagnosticsdService =
+      chromeos::diagnosticsd::mojom::DiagnosticsdService;
+  using MojomDiagnosticsdServiceRequest =
+      chromeos::diagnosticsd::mojom::DiagnosticsdServiceRequest;
+  using MojomDiagnosticsdWebRequestHttpMethod =
+      chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestHttpMethod;
+  using MojomDiagnosticsdWebRequestStatus =
+      chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestStatus;
   using MojomPerformWebRequestCallback = base::Callback<void(
-      MojomWilcoDtcSupportdWebRequestStatus, int, base::StringPiece)>;
+      MojomDiagnosticsdWebRequestStatus, int, base::StringPiece)>;
   using MojomGetConfigurationDataCallback =
       base::Callback<void(const std::string&)>;
 
@@ -48,7 +47,7 @@ class WilcoDtcSupportdMojoService final
     virtual ~Delegate() = default;
 
     // Called when wilco_dtc_supportd daemon mojo function
-    // |SendUiMessageToWilcoDtc| was called.
+    // |SendUiMessageToDiagnosticsProcessor| was called.
     //
     // Calls gRPC HandleMessageFromUiRequest method on wilco_dtc and puts
     // |json_message| to the gRPC |HandleMessageFromUiRequest| request message.
@@ -71,22 +70,22 @@ class WilcoDtcSupportdMojoService final
   // |self_interface_request| - Mojo interface request that will be fulfilled
   // by this instance. In production, this interface request is created by the
   // browser process, and allows the browser to call our methods.
-  // |client_ptr| - Mojo interface to the WilcoDtcSupportdServiceClient
-  // endpoint. In production, it allows this instance to call browser's methods.
+  // |client_ptr| - Mojo interface to the DiagnosticsdServiceClient endpoint. In
+  // production, it allows this instance to call browser's methods.
   WilcoDtcSupportdMojoService(
       Delegate* delegate,
-      MojomWilcoDtcSupportdServiceRequest self_interface_request,
-      MojomWilcoDtcSupportdClientPtr client_ptr);
+      MojomDiagnosticsdServiceRequest self_interface_request,
+      MojomDiagnosticsdClientPtr client_ptr);
   ~WilcoDtcSupportdMojoService() override;
 
-  // chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService overrides:
-  void SendUiMessageToWilcoDtc(
+  // chromeos::diagnosticsd::mojom::DiagnosticsdService overrides:
+  void SendUiMessageToDiagnosticsProcessor(
       mojo::ScopedHandle json_message,
-      const SendUiMessageToWilcoDtcCallback& callback) override;
+      const SendUiMessageToDiagnosticsProcessorCallback& callback) override;
   void NotifyConfigurationDataChanged() override;
 
-  // Calls to WilcoDtcSupportdClient.
-  void PerformWebRequest(MojomWilcoDtcSupportdWebRequestHttpMethod http_method,
+  // Calls to DiagnosticsdClient.
+  void PerformWebRequest(MojomDiagnosticsdWebRequestHttpMethod http_method,
                          const std::string& url,
                          const std::vector<std::string>& headers,
                          const std::string& request_body,
@@ -99,12 +98,12 @@ class WilcoDtcSupportdMojoService final
 
   // Mojo binding that connects |this| with the message pipe, allowing the
   // remote end to call our methods.
-  const mojo::Binding<MojomWilcoDtcSupportdService> self_binding_;
+  const mojo::Binding<MojomDiagnosticsdService> self_binding_;
 
-  // Mojo interface to the WilcoDtcSupportdServiceClient endpoint.
+  // Mojo interface to the DiagnosticsdServiceClient endpoint.
   //
   // In production this interface is implemented in the Chrome browser process.
-  MojomWilcoDtcSupportdClientPtr client_ptr_;
+  MojomDiagnosticsdClientPtr client_ptr_;
 
   DISALLOW_COPY_AND_ASSIGN(WilcoDtcSupportdMojoService);
 };

@@ -25,23 +25,23 @@
 #include "diagnostics/wilco_dtc_supportd/mojo_utils.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_mojo_service.h"
 
-#include "mojo/wilco_dtc_supportd.mojom.h"
+#include "mojo/diagnosticsd.mojom.h"
 
 using testing::_;
 using testing::Invoke;
 using testing::StrictMock;
 using testing::WithArg;
 
-using MojomWilcoDtcSupportdClient =
-    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClient;
-using MojomWilcoDtcSupportdClientPtr =
-    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClientPtr;
-using MojomWilcoDtcSupportdServiceRequest =
-    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceRequest;
-using MojomWilcoDtcSupportdWebRequestStatus =
-    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestStatus;
-using MojomWilcoDtcSupportdWebRequestHttpMethod =
-    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestHttpMethod;
+using MojomDiagnosticsdClient =
+    chromeos::diagnosticsd::mojom::DiagnosticsdClient;
+using MojomDiagnosticsdClientPtr =
+    chromeos::diagnosticsd::mojom::DiagnosticsdClientPtr;
+using MojomDiagnosticsdServiceRequest =
+    chromeos::diagnosticsd::mojom::DiagnosticsdServiceRequest;
+using MojomDiagnosticsdWebRequestStatus =
+    chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestStatus;
+using MojomDiagnosticsdWebRequestHttpMethod =
+    chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestHttpMethod;
 
 namespace diagnostics {
 
@@ -51,7 +51,7 @@ constexpr char kHttpsUrl[] = "https://www.google.com";
 constexpr int kHttpStatusOk = 200;
 constexpr char kFakeBody[] = "fake response/request body";
 
-void EmptySendUiMessageToWilcoDtcCallback(
+void EmptySendUiMessageToDiagnosticsProcessorCallback(
     mojo::ScopedHandle response_json_message) {}
 
 class MockWilcoDtcSupportdMojoServiceDelegate
@@ -70,15 +70,15 @@ class WilcoDtcSupportdMojoServiceTest : public testing::Test {
     mojo::edk::Init();
     // Obtain Mojo interface pointer that talks to |mojo_client_| - the
     // connection between them will be maintained by |mojo_client_binding_|.
-    MojomWilcoDtcSupportdClientPtr mojo_client_interface_ptr;
+    MojomDiagnosticsdClientPtr mojo_client_interface_ptr;
     mojo_client_binding_ =
-        std::make_unique<mojo::Binding<MojomWilcoDtcSupportdClient>>(
+        std::make_unique<mojo::Binding<MojomDiagnosticsdClient>>(
             &mojo_client_, &mojo_client_interface_ptr);
     DCHECK(mojo_client_interface_ptr);
 
     service_ = std::make_unique<WilcoDtcSupportdMojoService>(
         &delegate_,
-        MojomWilcoDtcSupportdServiceRequest() /* self_interface_request */,
+        MojomDiagnosticsdServiceRequest() /* self_interface_request */,
         std::move(mojo_client_interface_ptr));
   }
 
@@ -91,19 +91,20 @@ class WilcoDtcSupportdMojoServiceTest : public testing::Test {
     mojo::ScopedHandle handle =
         CreateReadOnlySharedMemoryMojoHandle(json_message);
     ASSERT_TRUE(handle.is_valid());
-    service_->SendUiMessageToWilcoDtc(
-        std::move(handle), base::Bind(&EmptySendUiMessageToWilcoDtcCallback));
+    service_->SendUiMessageToDiagnosticsProcessor(
+        std::move(handle),
+        base::Bind(&EmptySendUiMessageToDiagnosticsProcessorCallback));
   }
 
   void NotifyConfigurationDataChanged() {
     service_->NotifyConfigurationDataChanged();
   }
 
-  void PerformWebRequest(MojomWilcoDtcSupportdWebRequestHttpMethod http_method,
+  void PerformWebRequest(MojomDiagnosticsdWebRequestHttpMethod http_method,
                          const std::string& url,
                          const std::vector<std::string>& headers,
                          const std::string& request_body,
-                         MojomWilcoDtcSupportdWebRequestStatus expected_status,
+                         MojomDiagnosticsdWebRequestStatus expected_status,
                          int expected_http_status) {
     base::RunLoop run_loop;
     // According to the implementation of MockMojomWilcoDtcSupportdClient
@@ -112,9 +113,9 @@ class WilcoDtcSupportdMojoServiceTest : public testing::Test {
         http_method, url, headers, request_body,
         base::Bind(
             [](const base::Closure& quit_closure,
-               MojomWilcoDtcSupportdWebRequestStatus expected_status,
+               MojomDiagnosticsdWebRequestStatus expected_status,
                int expected_http_status, std::string expected_response_body,
-               MojomWilcoDtcSupportdWebRequestStatus status, int http_status,
+               MojomDiagnosticsdWebRequestStatus status, int http_status,
                base::StringPiece response_body) {
               EXPECT_EQ(expected_status, status);
               EXPECT_EQ(expected_http_status, http_status);
@@ -141,8 +142,7 @@ class WilcoDtcSupportdMojoServiceTest : public testing::Test {
  private:
   base::MessageLoop message_loop_;
   StrictMock<MockMojomWilcoDtcSupportdClient> mojo_client_;
-  std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdClient>>
-      mojo_client_binding_;
+  std::unique_ptr<mojo::Binding<MojomDiagnosticsdClient>> mojo_client_binding_;
   StrictMock<MockWilcoDtcSupportdMojoServiceDelegate> delegate_;
   std::unique_ptr<WilcoDtcSupportdMojoService> service_;
 };
@@ -168,12 +168,12 @@ TEST_F(WilcoDtcSupportdMojoServiceTest,
 TEST_F(WilcoDtcSupportdMojoServiceTest, DISABLED_PerformWebRequest) {
   EXPECT_CALL(
       *mojo_client(),
-      PerformWebRequestImpl(MojomWilcoDtcSupportdWebRequestHttpMethod::kGet,
+      PerformWebRequestImpl(MojomDiagnosticsdWebRequestHttpMethod::kGet,
                             kHttpsUrl, std::vector<std::string>(), kFakeBody));
-  ASSERT_NO_FATAL_FAILURE(PerformWebRequest(
-      MojomWilcoDtcSupportdWebRequestHttpMethod::kGet, kHttpsUrl,
-      std::vector<std::string>(), kFakeBody,
-      MojomWilcoDtcSupportdWebRequestStatus::kOk, kHttpStatusOk));
+  ASSERT_NO_FATAL_FAILURE(
+      PerformWebRequest(MojomDiagnosticsdWebRequestHttpMethod::kGet, kHttpsUrl,
+                        std::vector<std::string>(), kFakeBody,
+                        MojomDiagnosticsdWebRequestStatus::kOk, kHttpStatusOk));
 }
 
 TEST_F(WilcoDtcSupportdMojoServiceTest, GetConfigurationData) {

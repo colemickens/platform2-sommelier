@@ -11,16 +11,16 @@
 
 namespace diagnostics {
 
-void MockMojomWilcoDtcSupportdClient::SendWilcoDtcMessageToUi(
+void MockMojomWilcoDtcSupportdClient::SendDiagnosticsProcessorMessageToUi(
     mojo::ScopedHandle json_message,
-    const SendWilcoDtcMessageToUiCallback& callback) {
+    const SendDiagnosticsProcessorMessageToUiCallback& callback) {
   // Redirect to a separate mockable method to workaround GMock's issues with
   // move-only parameters.
-  SendWilcoDtcMessageToUiImpl(&json_message, callback);
+  SendDiagnosticsProcessorMessageToUiImpl(&json_message, callback);
 }
 
 void MockMojomWilcoDtcSupportdClient::PerformWebRequest(
-    MojoWilcoDtcSupportdWebRequestHttpMethod http_method,
+    MojoDiagnosticsdWebRequestHttpMethod http_method,
     mojo::ScopedHandle url,
     std::vector<mojo::ScopedHandle> headers,
     mojo::ScopedHandle request_body,
@@ -39,7 +39,7 @@ void MockMojomWilcoDtcSupportdClient::PerformWebRequest(
   PerformWebRequestImpl(http_method, url_content, header_contents,
                         request_body_content);
   // The callback must be called.
-  callback.Run(MojoWilcoDtcSupportdWebRequestStatus::kOk, 200 /* HTTP status */,
+  callback.Run(MojoDiagnosticsdWebRequestStatus::kOk, 200 /* HTTP status */,
                CreateReadOnlySharedMemoryMojoHandle(request_body_content));
 }
 

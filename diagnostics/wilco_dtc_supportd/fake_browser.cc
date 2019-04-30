@@ -10,7 +10,7 @@
 #include <base/bind.h>
 #include <base/strings/string_piece.h>
 #include <dbus/message.h>
-#include <dbus/wilco_dtc_supportd/dbus-constants.h>
+#include <dbus/diagnosticsd/dbus-constants.h>
 #include <mojo/public/cpp/bindings/interface_request.h>
 #include <mojo/public/cpp/system/buffer.h>
 
@@ -18,12 +18,11 @@
 
 namespace diagnostics {
 
-using MojomWilcoDtcSupportdService =
-    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService;
+using MojomDiagnosticsdService =
+    chromeos::diagnosticsd::mojom::DiagnosticsdService;
 
 FakeBrowser::FakeBrowser(
-    MojomWilcoDtcSupportdServiceFactoryPtr*
-        wilco_dtc_supportd_service_factory_ptr,
+    MojomDiagnosticsdServiceFactoryPtr* wilco_dtc_supportd_service_factory_ptr,
     DBusMethodCallCallback bootstrap_mojo_connection_dbus_method)
     : wilco_dtc_supportd_service_factory_ptr_(
           wilco_dtc_supportd_service_factory_ptr),
@@ -45,7 +44,7 @@ bool FakeBrowser::BootstrapMojoConnection(
   return true;
 }
 
-bool FakeBrowser::SendUiMessageToWilcoDtc(
+bool FakeBrowser::SendUiMessageToDiagnosticsProcessor(
     const std::string& json_message,
     const base::Callback<void(mojo::ScopedHandle)>& callback) {
   mojo::ScopedHandle handle =
@@ -53,8 +52,8 @@ bool FakeBrowser::SendUiMessageToWilcoDtc(
   if (!handle.is_valid()) {
     return false;
   }
-  wilco_dtc_supportd_service_ptr_->SendUiMessageToWilcoDtc(std::move(handle),
-                                                           callback);
+  wilco_dtc_supportd_service_ptr_->SendUiMessageToDiagnosticsProcessor(
+      std::move(handle), callback);
   return true;
 }
 
@@ -66,8 +65,8 @@ bool FakeBrowser::CallBootstrapMojoConnectionDBusMethod(
     FakeMojoFdGenerator* fake_mojo_fd_generator) {
   // Prepare input data for the D-Bus call.
   const int kFakeMethodCallSerial = 1;
-  dbus::MethodCall method_call(kWilcoDtcSupportdServiceInterface,
-                               kWilcoDtcSupportdBootstrapMojoConnectionMethod);
+  dbus::MethodCall method_call(kDiagnosticsdServiceInterface,
+                               kDiagnosticsdBootstrapMojoConnectionMethod);
   method_call.SetSerial(kFakeMethodCallSerial);
   dbus::MessageWriter message_writer(&method_call);
   message_writer.AppendFileDescriptor(fake_mojo_fd_generator->MakeFd().get());
@@ -97,7 +96,7 @@ void FakeBrowser::CallGetServiceMojoMethod() {
   // requests made by the tested service. Note that despite that GetService() is
   // an asynchronous call, it's actually allowed to use
   // |wilco_dtc_supportd_service_ptr_| straight away, before the call completes.
-  MojomWilcoDtcSupportdClientPtr wilco_dtc_supportd_client_proxy;
+  MojomDiagnosticsdClientPtr wilco_dtc_supportd_client_proxy;
   wilco_dtc_supportd_client_binding_.Bind(
       mojo::MakeRequest(&wilco_dtc_supportd_client_proxy));
   (*wilco_dtc_supportd_service_factory_ptr_)

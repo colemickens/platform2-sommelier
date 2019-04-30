@@ -15,9 +15,9 @@
 
 namespace diagnostics {
 
-// Implements the "org.chromium.WilcoDtcSupportdInterface" D-Bus interface
-// exposed by the wilco_dtc_supportd daemon (see constants for the API methods
-// at src/platform/system_api/dbus/wilco_dtc_supportd/dbus-constants.h).
+// Implements the "org.chromium.DiagnosticsdInterface" D-Bus interface exposed
+// by the wilco_dtc_supportd daemon (see constants for the API methods at
+// src/platform/system_api/dbus/diagnosticsd/dbus-constants.h).
 class WilcoDtcSupportdDBusService final {
  public:
   class Delegate {
@@ -40,8 +40,7 @@ class WilcoDtcSupportdDBusService final {
   explicit WilcoDtcSupportdDBusService(Delegate* delegate);
   ~WilcoDtcSupportdDBusService();
 
-  // Implementation of the "org.chromium.WilcoDtcSupportdInterface" D-Bus
-  // interface:
+  // Implementation of the "org.chromium.DiagnosticsdInterface" D-Bus interface:
   bool BootstrapMojoConnection(brillo::ErrorPtr* error,
                                const base::ScopedFD& mojo_fd);
 

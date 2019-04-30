@@ -16,7 +16,7 @@
 namespace diagnostics {
 
 using SendUiMessageToWilcoDtcCallback =
-    WilcoDtcSupportdMojoService::SendUiMessageToWilcoDtcCallback;
+    WilcoDtcSupportdMojoService::SendUiMessageToDiagnosticsProcessorCallback;
 
 namespace {
 
@@ -36,7 +36,7 @@ void ForwardMojoJsonResponse(
 
 void ForwardMojoWebResponse(
     const WilcoDtcSupportdMojoService::MojomPerformWebRequestCallback& callback,
-    WilcoDtcSupportdMojoService::MojomWilcoDtcSupportdWebRequestStatus status,
+    WilcoDtcSupportdMojoService::MojomDiagnosticsdWebRequestStatus status,
     int http_status,
     mojo::ScopedHandle response_body_handle) {
   if (!response_body_handle.is_valid()) {
@@ -48,7 +48,7 @@ void ForwardMojoWebResponse(
   if (!shared_memory) {
     LOG(ERROR) << "Failed to read data from mojo handle";
     callback.Run(WilcoDtcSupportdMojoService::
-                     MojomWilcoDtcSupportdWebRequestStatus::kNetworkError,
+                     MojomDiagnosticsdWebRequestStatus::kNetworkError,
                  0, base::StringPiece());
     return;
   }
@@ -62,8 +62,8 @@ void ForwardMojoWebResponse(
 
 WilcoDtcSupportdMojoService::WilcoDtcSupportdMojoService(
     Delegate* delegate,
-    MojomWilcoDtcSupportdServiceRequest self_interface_request,
-    MojomWilcoDtcSupportdClientPtr client_ptr)
+    MojomDiagnosticsdServiceRequest self_interface_request,
+    MojomDiagnosticsdClientPtr client_ptr)
     : delegate_(delegate),
       self_binding_(this /* impl */, std::move(self_interface_request)),
       client_ptr_(std::move(client_ptr)) {
@@ -74,9 +74,9 @@ WilcoDtcSupportdMojoService::WilcoDtcSupportdMojoService(
 
 WilcoDtcSupportdMojoService::~WilcoDtcSupportdMojoService() = default;
 
-void WilcoDtcSupportdMojoService::SendUiMessageToWilcoDtc(
+void WilcoDtcSupportdMojoService::SendUiMessageToDiagnosticsProcessor(
     mojo::ScopedHandle json_message,
-    const SendUiMessageToWilcoDtcCallback& callback) {
+    const SendUiMessageToDiagnosticsProcessorCallback& callback) {
   std::unique_ptr<base::SharedMemory> shared_memory =
       GetReadOnlySharedMemoryFromMojoHandle(std::move(json_message));
   if (!shared_memory) {
@@ -104,7 +104,7 @@ void WilcoDtcSupportdMojoService::NotifyConfigurationDataChanged() {
 }
 
 void WilcoDtcSupportdMojoService::PerformWebRequest(
-    MojomWilcoDtcSupportdWebRequestHttpMethod http_method,
+    MojomDiagnosticsdWebRequestHttpMethod http_method,
     const std::string& url,
     const std::vector<std::string>& headers,
     const std::string& request_body,
@@ -113,7 +113,7 @@ void WilcoDtcSupportdMojoService::PerformWebRequest(
   mojo::ScopedHandle url_handle = CreateReadOnlySharedMemoryMojoHandle(url);
   if (!url_handle.is_valid()) {
     LOG(ERROR) << "Failed to create a mojo handle.";
-    callback.Run(MojomWilcoDtcSupportdWebRequestStatus::kNetworkError, 0,
+    callback.Run(MojomDiagnosticsdWebRequestStatus::kNetworkError, 0,
                  base::StringPiece());
     return;
   }
@@ -123,7 +123,7 @@ void WilcoDtcSupportdMojoService::PerformWebRequest(
     header_handles.push_back(CreateReadOnlySharedMemoryMojoHandle(header));
     if (!header_handles.back().is_valid()) {
       LOG(ERROR) << "Failed to create a mojo handle.";
-      callback.Run(MojomWilcoDtcSupportdWebRequestStatus::kNetworkError, 0,
+      callback.Run(MojomDiagnosticsdWebRequestStatus::kNetworkError, 0,
                    base::StringPiece());
       return;
     }
@@ -133,7 +133,7 @@ void WilcoDtcSupportdMojoService::PerformWebRequest(
   // Invalid handle for an empty |request_body| does not cause an error.
   if (!request_body.empty() && !request_body_handle.is_valid()) {
     LOG(ERROR) << "Failed to create a mojo handle.";
-    callback.Run(MojomWilcoDtcSupportdWebRequestStatus::kNetworkError, 0,
+    callback.Run(MojomDiagnosticsdWebRequestStatus::kNetworkError, 0,
                  base::StringPiece());
     return;
   }
