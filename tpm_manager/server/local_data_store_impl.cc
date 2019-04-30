@@ -31,9 +31,15 @@ namespace tpm_manager {
 const char kTpmLocalDataFile[] = "/var/lib/tpm_manager/local_tpm_data";
 const mode_t kLocalDataPermissions = 0600;
 
+LocalDataStoreImpl::LocalDataStoreImpl()
+    : LocalDataStoreImpl(kTpmLocalDataFile) {}
+
+LocalDataStoreImpl::LocalDataStoreImpl(const std::string& local_data_path)
+    : local_data_path_(local_data_path) {}
+
 bool LocalDataStoreImpl::Read(LocalData* data) {
   CHECK(data);
-  FilePath path(kTpmLocalDataFile);
+  FilePath path(local_data_path_);
   if (!base::PathExists(path)) {
     data->Clear();
     return true;
@@ -61,7 +67,7 @@ bool LocalDataStoreImpl::Write(const LocalData& data) {
     LOG(ERROR) << "Error serializing file to string.";
     return false;
   }
-  FilePath path(kTpmLocalDataFile);
+  FilePath path(local_data_path_);
   if (!base::CreateDirectory(path.DirName())) {
     LOG(ERROR) << "Cannot create directory: " << path.DirName().value();
     return false;

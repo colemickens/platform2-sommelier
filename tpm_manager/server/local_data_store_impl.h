@@ -27,7 +27,11 @@ namespace tpm_manager {
 
 class LocalDataStoreImpl : public LocalDataStore {
  public:
-  LocalDataStoreImpl() = default;
+  LocalDataStoreImpl();
+
+  // A constructor that takes the parameter of the path of the local data.
+  explicit LocalDataStoreImpl(const std::string& local_data_path);
+
   ~LocalDataStoreImpl() override = default;
 
   // LocalDataStore methods.
@@ -35,6 +39,8 @@ class LocalDataStoreImpl : public LocalDataStore {
   bool Write(const LocalData& data) override;
 
  private:
+  const std::string local_data_path_;
+
   DISALLOW_COPY_AND_ASSIGN(LocalDataStoreImpl);
 };
 
