@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
+
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <brillo/syslog_logging.h>
 #include <libtpmcrypto/tpm.h>
-
-#include <string>
-
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 #include "tpm_manager/proto_bindings/tpm_manager.pb.h"
 #include "tpm_manager/server/local_data_migration.h"
 #include "tpm_manager/server/local_data_store_impl.h"
@@ -97,6 +97,11 @@ int main(int argc, char* argv[]) {
                                              &local_data, &has_migrated)) {
     LOG(ERROR) << "Failed to migrate owner password.";
     return 1;
+  }
+  if (has_migrated) {
+    for (auto value : tpm_manager::kInitialTpmOwnerDependencies) {
+      local_data.add_owner_dependency(value);
+    }
   }
   is_local_data_updated |= has_migrated;
 
