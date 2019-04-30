@@ -37,6 +37,17 @@ config("target_defaults") {
   }
 }
 
+# A protobuf library of legacy local data.
+proto_library("legacy_local_data_proto") {
+  # Use -fPIC so this code can be linked into a shared library.
+  use_pic = true
+  proto_in_dir = "server"
+  proto_out_dir = "include/tpm_manager/server"
+  sources = [
+    "${proto_in_dir}/legacy_local_data.proto",
+  ]
+}
+
 static_library("proto_library") {
   configs -= [
     "//common-mk:use_thin_archive",
@@ -136,6 +147,7 @@ static_library("server_library") {
     all_dependent_configs = [ ":server_library_tpm1_config" ]
   }
   deps = [
+    ":legacy_local_data_proto",
     ":proto_library",
   ]
   pkg_deps = [
