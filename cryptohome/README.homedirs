@@ -80,7 +80,7 @@ Typical Mount Flow
    a. The cryptohome is located at /home/.shadow/<salted hash of user name>,
       where the encrypted hash is a SHA1 hash of the system salt concatenated
       to the user name.
-   b. The crypthohome vault (the directory that is mounted via ecryptfs) is
+   b. The cryptohome vault (the directory that is mounted via ecryptfs) is
       created at /home/.shadow/<s_h_o_u>/vault
    c. The vault keyset is stored at /home/.shadow/<s_h_o_u>/master.0
       i. The vault keyset stores an encrypted blob containing the ecryptfs file
