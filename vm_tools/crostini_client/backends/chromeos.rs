@@ -21,6 +21,8 @@ use lsb_release::{LsbRelease, ReleaseChannel};
 use proto::system_api::cicerone_service::{self, *};
 use proto::system_api::seneschal_service::*;
 use proto::system_api::service::*;
+use proto::system_api::vm_plugin_dispatcher;
+use proto::system_api::vm_plugin_dispatcher::VmErrorCode;
 
 const IMAGE_TYPE_QCOW2: &str = "qcow2";
 const QCOW_IMAGE_EXTENSION: &str = ".qcow2";
@@ -68,8 +70,14 @@ const SYNC_VM_TIMES_METHOD: &str = "SyncVmTimes";
 const ATTACH_USB_DEVICE_METHOD: &str = "AttachUsbDevice";
 const DETACH_USB_DEVICE_METHOD: &str = "DetachUsbDevice";
 const LIST_USB_DEVICE_METHOD: &str = "ListUsbDevices";
-const START_PLUGIN_VM_METHOD: &str = "StartPluginVm";
 const CONTAINER_STARTUP_FAILED_SIGNAL: &str = "ContainerStartupFailed";
+
+// vm_plugin_dispatcher dbus-constants.h
+const VM_PLUGIN_DISPATCHER_INTERFACE: &str = "org.chromium.VmPluginDispatcher";
+const VM_PLUGIN_DISPATCHER_SERVICE_PATH: &str = "/org/chromium/VmPluginDispatcher";
+const VM_PLUGIN_DISPATCHER_SERVICE_NAME: &str = "org.chromium.VmPluginDispatcher";
+const START_PLUGIN_VM_METHOD: &str = "StartVm";
+const SHOW_PLUGIN_VM_METHOD: &str = "ShowVm";
 
 // cicerone dbus-constants.h
 const VM_CICERONE_INTERFACE: &str = "org.chromium.VmCicerone";
@@ -125,8 +133,10 @@ enum ChromeOSError {
     BadChromeFeatureStatus,
     BadConciergeStatus,
     BadDiskImageStatus(DiskImageStatus, String),
+    BadPluginVmStatus(VmErrorCode),
     BadVmStatus(VmStatus, String),
     BadVmPluginDispatcherStatus,
+    CrostiniVmDisabled,
     EnableGpuOnStable,
     ExportPathExists,
     FailedAttachUsb(String),
@@ -147,6 +157,8 @@ enum ChromeOSError {
     FailedStopVm { vm_name: String, reason: String },
     InvalidExportPath,
     NoVmTechnologyEnabled,
+    NotAvailableForPluginVm,
+    PluginVmDisabled,
     RetrieveActiveSessions,
     TpmOnStable,
 }
@@ -161,8 +173,10 @@ impl fmt::Display for ChromeOSError {
             BadDiskImageStatus(s, reason) => {
                 write!(f, "bad disk image status: `{:?}`: {}", s, reason)
             }
+            BadPluginVmStatus(s) => write!(f, "bad plugin VM status: `{:?}`", s),
             BadVmStatus(s, reason) => write!(f, "bad VM status: `{:?}`: {}", s, reason),
             BadVmPluginDispatcherStatus => write!(f, "failed to start Plugin VM dispatcher"),
+            CrostiniVmDisabled => write!(f, "Crostini VMs are currently disabled"),
             EnableGpuOnStable => write!(f, "gpu support is disabled on the stable channel"),
             ExportPathExists => write!(f, "disk export path already exists"),
             FailedAttachUsb(reason) => write!(f, "failed to attach usb device to vm: {}", reason),
@@ -206,7 +220,9 @@ impl fmt::Display for ChromeOSError {
                 write!(f, "failed to stop vm `{}`: {}", vm_name, reason)
             }
             InvalidExportPath => write!(f, "disk export path is invalid"),
-            NoVmTechnologyEnabled => write!(f, "Neither Crostini nor Plugin VMs are enabled"),
+            NoVmTechnologyEnabled => write!(f, "neither Crostini nor Plugin VMs are enabled"),
+            NotAvailableForPluginVm => write!(f, "this command is not available for Plugin VM"),
+            PluginVmDisabled => write!(f, "Plugin VMs are currently disabled"),
             RetrieveActiveSessions => write!(f, "failed to retrieve active sessions"),
             TpmOnStable => write!(f, "TPM device is not available on stable channel"),
         }
@@ -232,13 +248,19 @@ fn dbus_message_to_proto<T: ProtoMessage>(message: &Message) -> Result<T, Box<Er
 /// privilege. Uses a combination of D-Bus, protobufs, and shell protocols.
 pub struct ChromeOS {
     connection: Connection,
+    crostini_enabled: Option<bool>,
+    plugin_vm_enabled: Option<bool>,
 }
 
 impl ChromeOS {
     /// Initiates a D-Bus connection and returns an initialized backend.
     pub fn new() -> Result<ChromeOS, Box<Error>> {
         let connection = Connection::get_private(BusType::System)?;
-        Ok(ChromeOS { connection })
+        Ok(ChromeOS {
+            connection: connection,
+            crostini_enabled: None,
+            plugin_vm_enabled: None,
+        })
     }
 }
 
@@ -336,11 +358,27 @@ impl ChromeOS {
     }
 
     fn is_crostini_enabled(&mut self, user_id_hash: &str) -> Result<bool, Box<Error>> {
-        self.is_chrome_feature_enabled(user_id_hash, IS_CROSTINI_ENABLED)
+        let enabled = match self.crostini_enabled {
+            Some(value) => value,
+            None => {
+                let value = self.is_chrome_feature_enabled(user_id_hash, IS_CROSTINI_ENABLED)?;
+                self.crostini_enabled = Some(value);
+                value
+            }
+        };
+        Ok(enabled)
     }
 
     fn is_plugin_vm_enabled(&mut self, user_id_hash: &str) -> Result<bool, Box<Error>> {
-        self.is_chrome_feature_enabled(user_id_hash, IS_PLUGIN_VM_ENABLED)
+        let enabled = match self.plugin_vm_enabled {
+            Some(value) => value,
+            None => {
+                let value = self.is_chrome_feature_enabled(user_id_hash, IS_PLUGIN_VM_ENABLED)?;
+                self.plugin_vm_enabled = Some(value);
+                value
+            }
+        };
+        Ok(enabled)
     }
 
     /// Request debugd to start vm_concierge.
@@ -517,10 +555,18 @@ impl ChromeOS {
     fn list_disk_images(
         &mut self,
         user_id_hash: &str,
-    ) -> Result<(Vec<(String, u64)>, u64), Box<Error>> {
+        target_location: Option<StorageLocation>,
+        target_name: Option<&str>,
+    ) -> Result<(Vec<VmDiskInfo>, u64), Box<Error>> {
         let mut request = ListVmDisksRequest::new();
         request.cryptohome_id = user_id_hash.to_owned();
-        request.all_locations = true;
+        match target_location {
+            Some(location) => request.storage_location = location,
+            None => request.all_locations = true,
+        };
+        if let Some(vm_name) = target_name {
+            request.vm_name = vm_name.to_string();
+        }
 
         let response: ListVmDisksResponse = self.sync_protobus(
             Message::new_method_call(
@@ -533,15 +579,20 @@ impl ChromeOS {
         )?;
 
         if response.success {
-            let images: Vec<(String, u64)> = response
-                .images
-                .into_iter()
-                .map(|e| (e.name, e.size))
-                .collect();
-            Ok((images, response.total_size))
+            Ok((response.images.into(), response.total_size))
         } else {
             Err(FailedListDiskImages(response.failure_reason).into())
         }
+    }
+
+    /// Checks if VM with given name/disk is Plugin VM.
+    fn is_plugin_vm(&mut self, vm_name: &str, user_id_hash: &str) -> Result<bool, Box<Error>> {
+        let (images, _) = self.list_disk_images(
+            user_id_hash,
+            Some(StorageLocation::STORAGE_CRYPTOHOME_PLUGINVM),
+            Some(vm_name),
+        )?;
+        Ok(images.len() != 0)
     }
 
     /// Request that concierge start a vm with the given disk image.
@@ -582,6 +633,50 @@ impl ChromeOS {
         match response.status {
             VmStatus::VM_STATUS_RUNNING | VmStatus::VM_STATUS_STARTING => Ok(()),
             _ => Err(BadVmStatus(response.status, response.failure_reason).into()),
+        }
+    }
+
+    /// Request that dispatcher start given Plugin VM.
+    fn start_plugin_vm(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {
+        let mut request = vm_plugin_dispatcher::StartVmRequest::new();
+        request.owner_id = user_id_hash.to_owned();
+        request.vm_name_uuid = vm_name.to_owned();
+
+        let response: vm_plugin_dispatcher::StartVmResponse = self.sync_protobus(
+            Message::new_method_call(
+                VM_PLUGIN_DISPATCHER_SERVICE_NAME,
+                VM_PLUGIN_DISPATCHER_SERVICE_PATH,
+                VM_PLUGIN_DISPATCHER_INTERFACE,
+                START_PLUGIN_VM_METHOD,
+            )?,
+            &request,
+        )?;
+
+        match response.error {
+            VmErrorCode::VM_SUCCESS => Ok(()),
+            _ => Err(BadPluginVmStatus(response.error).into()),
+        }
+    }
+
+    /// Request that dispatcher starts application responsible for rendering Plugin VM window.
+    fn show_plugin_vm(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {
+        let mut request = vm_plugin_dispatcher::ShowVmRequest::new();
+        request.owner_id = user_id_hash.to_owned();
+        request.vm_name_uuid = vm_name.to_owned();
+
+        let response: vm_plugin_dispatcher::ShowVmResponse = self.sync_protobus(
+            Message::new_method_call(
+                VM_PLUGIN_DISPATCHER_SERVICE_NAME,
+                VM_PLUGIN_DISPATCHER_SERVICE_PATH,
+                VM_PLUGIN_DISPATCHER_INTERFACE,
+                SHOW_PLUGIN_VM_METHOD,
+            )?,
+            &request,
+        )?;
+
+        match response.error {
+            VmErrorCode::VM_SUCCESS => Ok(()),
+            _ => Err(BadPluginVmStatus(response.error).into()),
         }
     }
 
@@ -945,16 +1040,28 @@ impl Backend for ChromeOS {
         user_id_hash: &str,
         features: VmFeatures,
     ) -> Result<(), Box<Error>> {
-        let is_stable_channel = is_stable_channel();
-        if features.gpu && is_stable_channel {
-            return Err(EnableGpuOnStable.into());
-        }
-        if features.software_tpm && is_stable_channel {
-            return Err(TpmOnStable.into());
-        }
         self.start_vm_infrastructure(user_id_hash)?;
-        let disk_image_path = self.create_disk_image(name, user_id_hash)?;
-        self.start_vm_with_disk(name, user_id_hash, features, disk_image_path)
+        if self.is_plugin_vm(name, user_id_hash)? {
+            if !self.is_plugin_vm_enabled(user_id_hash)? {
+                return Err(PluginVmDisabled.into());
+            }
+            self.start_plugin_vm(name, user_id_hash)
+        } else {
+            if !self.is_crostini_enabled(user_id_hash)? {
+                return Err(CrostiniVmDisabled.into());
+            }
+
+            let is_stable_channel = is_stable_channel();
+            if features.gpu && is_stable_channel {
+                return Err(EnableGpuOnStable.into());
+            }
+            if features.software_tpm && is_stable_channel {
+                return Err(TpmOnStable.into());
+            }
+
+            let disk_image_path = self.create_disk_image(name, user_id_hash)?;
+            self.start_vm_with_disk(name, user_id_hash, features, disk_image_path)
+        }
     }
 
     fn vm_stop(&mut self, name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {
@@ -991,17 +1098,21 @@ impl Backend for ChromeOS {
     }
 
     fn vsh_exec(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {
-        Command::new("vsh")
-            .arg(format!("--vm_name={}", vm_name))
-            .arg(format!("--owner_id={}", user_id_hash))
-            .args(&[
-                "--",
-                "LXD_DIR=/mnt/stateful/lxd",
-                "LXD_CONF=/mnt/stateful/lxd_conf",
-            ])
-            .status()?;
-
-        Ok(())
+        self.start_vm_infrastructure(user_id_hash)?;
+        if self.is_plugin_vm(vm_name, user_id_hash)? {
+            self.show_plugin_vm(vm_name, user_id_hash)
+        } else {
+            Command::new("vsh")
+                .arg(format!("--vm_name={}", vm_name))
+                .arg(format!("--owner_id={}", user_id_hash))
+                .args(&[
+                    "--",
+                    "LXD_DIR=/mnt/stateful/lxd",
+                    "LXD_CONF=/mnt/stateful/lxd_conf",
+                ])
+                .status()?;
+            Ok(())
+        }
     }
 
     fn vsh_exec_container(
@@ -1031,7 +1142,9 @@ impl Backend for ChromeOS {
 
     fn disk_list(&mut self, user_id_hash: &str) -> Result<(Vec<(String, u64)>, u64), Box<Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
-        self.list_disk_images(user_id_hash)
+        let (images, total_size) = self.list_disk_images(user_id_hash, None, None)?;
+        let out_images: Vec<(String, u64)> = images.into_iter().map(|e| (e.name, e.size)).collect();
+        Ok((out_images, total_size))
     }
 
     fn container_create(
@@ -1043,6 +1156,10 @@ impl Backend for ChromeOS {
         image_alias: &str,
     ) -> Result<(), Box<Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
+        if self.is_plugin_vm(vm_name, user_id_hash)? {
+            return Err(NotAvailableForPluginVm.into());
+        }
+
         self.create_container(
             vm_name,
             user_id_hash,
@@ -1059,6 +1176,10 @@ impl Backend for ChromeOS {
         container_name: &str,
     ) -> Result<(), Box<Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
+        if self.is_plugin_vm(vm_name, user_id_hash)? {
+            return Err(NotAvailableForPluginVm.into());
+        }
+
         self.start_container(vm_name, user_id_hash, container_name)
     }
 
@@ -1070,6 +1191,10 @@ impl Backend for ChromeOS {
         username: &str,
     ) -> Result<(), Box<Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
+        if self.is_plugin_vm(vm_name, user_id_hash)? {
+            return Err(NotAvailableForPluginVm.into());
+        }
+
         self.setup_container_user(vm_name, user_id_hash, container_name, username)
     }
 
