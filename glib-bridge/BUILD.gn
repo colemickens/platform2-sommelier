@@ -16,6 +16,7 @@ group("all") {
 static_library("libglib_bridge") {
   sources = [
     "glib_bridge.cc",
+    "glib_logger.cc",
   ]
   pkg_deps = [
     "glib-2.0",
@@ -35,6 +36,8 @@ if (use.test) {
     ]
     sources = [
       "glib_bridge_test.cc",
+      "glib_structured_logger_test.cc",
+      "glib_unstructured_logger_test.cc",
     ]
     deps = [
       ":libglib_bridge",
