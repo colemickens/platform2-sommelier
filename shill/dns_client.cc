@@ -21,6 +21,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 
 #include "shill/logging.h"
 #include "shill/net/shill_time.h"
@@ -131,16 +132,7 @@ bool DnsClient::Start(const string& hostname, Error* error) {
     //
     // Alternatively, we can use ares_set_servers instead, where we would
     // explicitly construct a link list of ares_addr_node.
-    string server_addresses;
-    bool first = true;
-    for (const auto& ip : dns_servers_) {
-      if (!first) {
-        server_addresses += ",";
-      } else {
-        first = false;
-      }
-      server_addresses += ip;
-    }
+    string server_addresses = base::JoinString(dns_servers_, ",");
     status = ares_->SetServersCsv(resolver_state_->channel,
                                   server_addresses.c_str());
     if (status != ARES_SUCCESS) {
