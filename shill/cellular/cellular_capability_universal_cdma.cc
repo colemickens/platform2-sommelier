@@ -62,16 +62,6 @@ void CellularCapabilityUniversalCdma::ReleaseProxies() {
   CellularCapabilityUniversal::ReleaseProxies();
 }
 
-void CellularCapabilityUniversalCdma::Activate(const string& carrier,
-                                               Error* error,
-                                               const ResultCallback& callback) {
-  // Currently activation over the cellular network is not supported using
-  // ModemManager-next. Service activation is currently carried through over
-  // non-cellular networks and only the final step of the OTA activation
-  // procedure ("automatic activation") is performed by this class.
-  OnUnsupportedOperation(__func__, error);
-}
-
 void CellularCapabilityUniversalCdma::CompleteActivation(Error* error) {
   SLOG(this, 2) << __func__;
   if (cellular()->state() < Cellular::kStateEnabled) {

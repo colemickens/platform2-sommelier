@@ -74,6 +74,10 @@ void CellularCapability::OnUnsupportedOperation(const char* operation,
 void CellularCapability::Activate(const string& carrier,
                                   Error* error,
                                   const ResultCallback& callback) {
+  // Currently activation over the cellular network is not supported using
+  // ModemManager. Service activation is currently carried through over
+  // non-cellular networks and only the final step of the OTA activation
+  // procedure ("automatic activation") is performed.
   OnUnsupportedOperation(__func__, error);
 }
 

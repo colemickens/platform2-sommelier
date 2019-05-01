@@ -34,9 +34,6 @@ class CellularCapabilityUniversalCdma : public CellularCapabilityUniversal {
   bool AreProxiesInitialized() const override;
   bool IsServiceActivationRequired() const override;
   bool IsActivating() const override;
-  void Activate(const std::string& carrier,
-                Error* error,
-                const ResultCallback& callback) override;
   void CompleteActivation(Error* error) override;
   bool IsRegistered() const override;
   void SetUnregistered(bool searching) override;
