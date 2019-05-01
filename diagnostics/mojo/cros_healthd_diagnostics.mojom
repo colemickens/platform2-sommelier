@@ -5,6 +5,9 @@
 // Definitions for the diagnostics API exposed by the cros_healthd daemon. This
 // API is normally consumed by the browser and the diag command-line tool.
 
+// NOTE: This mojom should be kept in sync with the copy in Chromium's repo in
+// src/chrome/services/cros_healthd/public/mojom/cros_healthd_diagnostics.mojom.
+
 module chromeos.cros_healthd.mojom;
 
 // Special uuid that will be returned if a routine was unable to be created.

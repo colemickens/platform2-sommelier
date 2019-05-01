@@ -64,6 +64,27 @@ static_library("libdiag_routine") {
   ]
 }
 
+# Library that provides core functionality for the cros_healthd daemon.
+pkg_config("libcros_healthd_pkg_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libmojo-${libbase_ver}",
+  ]
+}
+
+static_library("libcros_healthd") {
+  deps = [
+    ":diagnostics_mojo_bindings",
+  ]
+  all_dependent_configs = [ ":libcros_healthd_pkg_deps" ]
+  sources = [
+    "cros_healthd/cros_healthd_mojo_service.cc",
+    "cros_healthd/cros_healthd_routine_service_impl.cc",
+    "cros_healthd/cros_healthd_telemetry_service_impl.cc",
+  ]
+}
+
 # Library that provides core functionality for the diag tool.
 pkg_config("libdiag_pkg_deps") {
   pkg_deps = [
@@ -151,7 +172,9 @@ pkg_config("cros_healthd_pkg_deps") {
 }
 
 executable("cros_healthd") {
-  configs += [ ":cros_healthd_pkg_deps" ]
+  deps = [
+    ":libcros_healthd",
+  ]
   sources = [
     "cros_healthd/main.cc",
   ]
@@ -256,7 +279,11 @@ if (use.test) {
       "//common-mk:test",
     ]
     deps = [
+      ":libcros_healthd",
       "../common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "cros_healthd/cros_healthd_mojo_service_test.cc",
     ]
   }
 

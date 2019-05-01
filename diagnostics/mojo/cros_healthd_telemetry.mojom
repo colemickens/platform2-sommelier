@@ -5,6 +5,9 @@
 // Definitions for the telemetry API exposed by the cros_healthd daemon. This
 // API is normally consumed by the browser and the telem command-line tool.
 
+// NOTE: This mojom should be kept in sync with the copy in Chromium's repo in
+// src/chrome/services/cros_healthd/public/mojom/cros_healthd_telemetry.mojom.
+
 module chromeos.cros_healthd.mojom;
 
 // Enumeration of each of the retrievable telemetry items.
