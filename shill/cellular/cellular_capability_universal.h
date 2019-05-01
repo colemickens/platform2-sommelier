@@ -83,7 +83,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnServiceCreated() override;
   std::string GetNetworkTechnologyString() const override;
   std::string GetRoamingStateString() const override;
-  void GetSignalQuality() override;
   void SetupConnectProperties(KeyValueStore* properties) override;
   void Connect(const KeyValueStore& properties,
                Error* error,

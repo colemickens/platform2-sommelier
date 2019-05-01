@@ -1125,13 +1125,6 @@ string CellularCapabilityUniversal::GetRoamingStateString() const {
   return kRoamingStateUnknown;
 }
 
-// TODO(armansito): Remove this method once cromo is deprecated.
-void CellularCapabilityUniversal::GetSignalQuality() {
-  // ModemManager always returns the cached value, so there is no need to
-  // trigger an update here. The true value is updated through a property
-  // change signal.
-}
-
 string CellularCapabilityUniversal::GetTypeString() const {
   return AccessTechnologyToTechnologyFamily(access_technologies_);
 }

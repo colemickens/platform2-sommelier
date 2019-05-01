@@ -672,7 +672,6 @@ void Cellular::HandleNewRegistrationState() {
     metrics()->NotifyDeviceScanFinished(interface_index());
     CreateService();
   }
-  capability_->GetSignalQuality();
   if (state_ == kStateRegistered && modem_state_ == kModemStateConnected)
     OnConnected();
   service_->SetNetworkTechnology(capability_->GetNetworkTechnologyString());
