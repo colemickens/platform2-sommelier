@@ -26,8 +26,6 @@ using testing::Test;
 
 namespace shill {
 
-class NetlinkSocketTest;
-
 const int kFakeFd = 99;
 
 class NetlinkSocketTest : public Test {
