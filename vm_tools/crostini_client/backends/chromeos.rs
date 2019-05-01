@@ -25,7 +25,6 @@ use proto::system_api::vm_plugin_dispatcher;
 use proto::system_api::vm_plugin_dispatcher::VmErrorCode;
 
 const IMAGE_TYPE_QCOW2: &str = "qcow2";
-const QCOW_IMAGE_EXTENSION: &str = ".qcow2";
 const REMOVABLE_MEDIA_ROOT: &str = "/media/removable";
 const CRYPTOHOME_USER: &str = "/home/user";
 const CRYPTOHOME_ROOT: &str = "/home";
@@ -499,15 +498,14 @@ impl ChromeOS {
         export_name: &str,
         removable_media: Option<&str>,
     ) -> Result<Option<String>, Box<Error>> {
-        let file_name = format!("{}{}", export_name, QCOW_IMAGE_EXTENSION);
         let export_path = match removable_media {
             Some(media_path) => Path::new(REMOVABLE_MEDIA_ROOT)
                 .join(media_path)
-                .join(file_name),
+                .join(export_name),
             None => Path::new(CRYPTOHOME_USER)
                 .join(user_id_hash)
                 .join(DOWNLOADS_DIR)
-                .join(file_name),
+                .join(export_name),
         };
 
         if export_path.components().any(|c| c == Component::ParentDir) {
