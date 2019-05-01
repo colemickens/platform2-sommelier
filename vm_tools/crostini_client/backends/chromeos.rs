@@ -63,6 +63,8 @@ const GET_VM_INFO_METHOD: &str = "GetVmInfo";
 const CREATE_DISK_IMAGE_METHOD: &str = "CreateDiskImage";
 const DESTROY_DISK_IMAGE_METHOD: &str = "DestroyDiskImage";
 const EXPORT_DISK_IMAGE_METHOD: &str = "ExportDiskImage";
+const IMPORT_DISK_IMAGE_METHOD: &str = "ImportDiskImage";
+const DISK_IMAGE_STATUS_METHOD: &str = "DiskImageStatus";
 const LIST_VM_DISKS_METHOD: &str = "ListVmDisks";
 const START_CONTAINER_METHOD: &str = "StartContainer";
 const GET_CONTAINER_SSH_KEYS_METHOD: &str = "GetContainerSshKeys";
@@ -139,6 +141,7 @@ enum ChromeOSError {
     CrostiniVmDisabled,
     EnableGpuOnStable,
     ExportPathExists,
+    ImportPathDoesNotExist,
     FailedAttachUsb(String),
     FailedComponentUpdater(String),
     FailedCreateContainer(CreateLxdContainerResponse_Status, String),
@@ -179,6 +182,7 @@ impl fmt::Display for ChromeOSError {
             CrostiniVmDisabled => write!(f, "Crostini VMs are currently disabled"),
             EnableGpuOnStable => write!(f, "gpu support is disabled on the stable channel"),
             ExportPathExists => write!(f, "disk export path already exists"),
+            ImportPathDoesNotExist => write!(f, "disk import path does not exist"),
             FailedAttachUsb(reason) => write!(f, "failed to attach usb device to vm: {}", reason),
             FailedDetachUsb(reason) => write!(f, "failed to detach usb device from vm: {}", reason),
             FailedComponentUpdater(name) => {
@@ -547,6 +551,98 @@ impl ChromeOS {
         let response: ExportDiskImageResponse = dbus_message_to_proto(&message)?;
         match response.status {
             DiskImageStatus::DISK_STATUS_CREATED => Ok(()),
+            _ => Err(BadDiskImageStatus(response.status, response.failure_reason).into()),
+        }
+    }
+
+    /// Request that concierge import a VM's disk image.
+    fn import_disk_image(
+        &mut self,
+        vm_name: &str,
+        user_id_hash: &str,
+        plugin_vm: bool,
+        import_name: &str,
+        removable_media: Option<&str>,
+    ) -> Result<Option<String>, Box<Error>> {
+        let import_path = match removable_media {
+            Some(media_path) => Path::new(REMOVABLE_MEDIA_ROOT)
+                .join(media_path)
+                .join(import_name),
+            None => Path::new(CRYPTOHOME_USER)
+                .join(user_id_hash)
+                .join(DOWNLOADS_DIR)
+                .join(import_name),
+        };
+
+        if import_path.components().any(|c| c == Component::ParentDir) {
+            return Err(InvalidExportPath.into());
+        }
+
+        if !import_path.exists() {
+            return Err(ImportPathDoesNotExist.into());
+        }
+
+        let import_file = OpenOptions::new().read(true).open(import_path)?;
+        let file_size = import_file.metadata()?.len();
+        let import_fd = OwnedFd::new(import_file.into_raw_fd());
+
+        let mut request = ImportDiskImageRequest::new();
+        request.disk_path = vm_name.to_owned();
+        request.cryptohome_id = user_id_hash.to_owned();
+        request.storage_location = if plugin_vm {
+            if !self.is_plugin_vm_enabled(user_id_hash)? {
+                return Err(PluginVmDisabled.into());
+            }
+            StorageLocation::STORAGE_CRYPTOHOME_PLUGINVM
+        } else {
+            if !self.is_crostini_enabled(user_id_hash)? {
+                return Err(CrostiniVmDisabled.into());
+            }
+            StorageLocation::STORAGE_CRYPTOHOME_ROOT
+        };
+        request.source_size = file_size;
+
+        // We can't use sync_protobus because we need to append the file descriptor out of band from
+        // the protobuf message.
+        let method = Message::new_method_call(
+            VM_CONCIERGE_SERVICE_NAME,
+            VM_CONCIERGE_SERVICE_PATH,
+            VM_CONCIERGE_INTERFACE,
+            IMPORT_DISK_IMAGE_METHOD,
+        )?
+        .append1(request.write_to_bytes()?)
+        .append1(import_fd);
+
+        let message = self
+            .connection
+            .send_with_reply_and_block(method, DEFAULT_TIMEOUT_MS)?;
+
+        let response: ImportDiskImageResponse = dbus_message_to_proto(&message)?;
+        match response.status {
+            DiskImageStatus::DISK_STATUS_CREATED => Ok(None),
+            DiskImageStatus::DISK_STATUS_IN_PROGRESS => Ok(Some(response.command_uuid)),
+            _ => Err(BadDiskImageStatus(response.status, response.failure_reason).into()),
+        }
+    }
+
+    /// Request concierge to provide status of a disk operation (import or export) with given UUID.
+    fn check_disk_operation(&mut self, uuid: &str) -> Result<(bool, u32), Box<Error>> {
+        let mut request = DiskImageStatusRequest::new();
+        request.command_uuid = uuid.to_owned();
+
+        let response: DiskImageStatusResponse = self.sync_protobus(
+            Message::new_method_call(
+                VM_CONCIERGE_SERVICE_NAME,
+                VM_CONCIERGE_SERVICE_PATH,
+                VM_CONCIERGE_INTERFACE,
+                DISK_IMAGE_STATUS_METHOD,
+            )?,
+            &request,
+        )?;
+
+        match response.status {
+            DiskImageStatus::DISK_STATUS_CREATED => Ok((true, response.progress)),
+            DiskImageStatus::DISK_STATUS_IN_PROGRESS => Ok((false, response.progress)),
             _ => Err(BadDiskImageStatus(response.status, response.failure_reason).into()),
         }
     }
@@ -1080,6 +1176,18 @@ impl Backend for ChromeOS {
         self.export_disk_image(name, user_id_hash, file_name, removable_media)
     }
 
+    fn vm_import(
+        &mut self,
+        name: &str,
+        user_id_hash: &str,
+        plugin_vm: bool,
+        file_name: &str,
+        removable_media: Option<&str>,
+    ) -> Result<Option<String>, Box<Error>> {
+        self.start_vm_infrastructure(user_id_hash)?;
+        self.import_disk_image(name, user_id_hash, plugin_vm, file_name, removable_media)
+    }
+
     fn vm_share_path(
         &mut self,
         name: &str,
@@ -1145,6 +1253,15 @@ impl Backend for ChromeOS {
         let (images, total_size) = self.list_disk_images(user_id_hash, None, None)?;
         let out_images: Vec<(String, u64)> = images.into_iter().map(|e| (e.name, e.size)).collect();
         Ok((out_images, total_size))
+    }
+
+    fn disk_op_status(
+        &mut self,
+        uuid: &str,
+        user_id_hash: &str,
+    ) -> Result<(bool, u32), Box<Error>> {
+        self.start_vm_infrastructure(user_id_hash)?;
+        self.check_disk_operation(uuid)
     }
 
     fn container_create(

@@ -19,6 +19,7 @@ enum VmcError {
     ExpectedU8Bus,
     ExpectedU8Device,
     ExpectedU8Port,
+    ExpectedUUID,
     ExpectedVmAndContainer,
     ExpectedVmAndFileName,
     ExpectedVmAndPath,
@@ -64,6 +65,7 @@ impl fmt::Display for VmcError {
             ExpectedU8Bus => write!(f, "expected <bus> to fit into an 8-bit integer"),
             ExpectedU8Device => write!(f, "expected <device> to fit into an 8-bit integer"),
             ExpectedU8Port => write!(f, "expected <port> to fit into an 8-bit integer"),
+            ExpectedUUID => write!(f, "expected <command UUID>"),
             ExpectedVmPort => write!(f, "expected <vm name> <port>"),
             InvalidEmail => write!(f, "the active session has an invalid email address"),
             MissingActiveSession => write!(
@@ -195,6 +197,55 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         try_command!(self
             .backend
             .vm_export(vm_name, user_id_hash, file_name, removable_media));
+        Ok(())
+    }
+
+    fn import(&mut self) -> VmcResult {
+        let plugin_vm = self.args.len() > 0 && self.args[0] == "-p";
+        if plugin_vm {
+            // Discard the first argument (-p).
+            self.args = &self.args[1..];
+        }
+        let (vm_name, file_name, removable_media) = match self.args.len() {
+            2 => (self.args[0], self.args[1], None),
+            3 => (self.args[0], self.args[1], Some(self.args[2])),
+            _ => return Err(ExpectedVmAndFileName.into()),
+        };
+
+        let user_id_hash = self
+            .environ
+            .get("CROS_USER_ID_HASH")
+            .ok_or(ExpectedCrosUserIdHash)?;
+
+        if let Some(uuid) = try_command!(self.backend.vm_import(
+            vm_name,
+            user_id_hash,
+            plugin_vm,
+            file_name,
+            removable_media
+        )) {
+            println!("Import in progress: {}", uuid);
+        }
+        Ok(())
+    }
+
+    fn disk_op_status(&mut self) -> VmcResult {
+        if self.args.len() != 1 {
+            return Err(ExpectedUUID.into());
+        }
+
+        let uuid = self.args[0];
+        let user_id_hash = self
+            .environ
+            .get("CROS_USER_ID_HASH")
+            .ok_or(ExpectedCrosUserIdHash)?;
+
+        let (done, progress) = try_command!(self.backend.disk_op_status(uuid, user_id_hash));
+        if done {
+            println!("Operation completed successfully");
+        } else {
+            println!("Operation in progress: {}% done", progress);
+        }
         Ok(())
     }
 
@@ -363,7 +414,9 @@ const USAGE: &str = r#"
    [ start [--enable-gpu] <name> |
      stop <name> |
      destroy <name> |
+     disk-op-status <command UUID> |
      export <vm name> <file name> [removable storage name] |
+     import [-p] <vm name> <file name> [removable storage name] |
      list |
      share <vm name> <path> |
      container <vm name> <container name> [ <image server> <image alias> ]  |
@@ -415,6 +468,8 @@ impl Frontend for Vmc {
             "stop" => command.stop(),
             "destroy" => command.destroy(),
             "export" => command.export(),
+            "import" => command.import(),
+            "disk-op-status" => command.disk_op_status(),
             "list" => command.list(),
             "share" => command.share(),
             "container" => command.container(),
@@ -441,8 +496,20 @@ mod tests {
             &["vmc", "start", "termina", "--enable-gpu", "--software-tpm"],
             &["vmc", "stop", "termina"],
             &["vmc", "destroy", "termina"],
+            &["vmc", "disk-op-status", "12345"],
             &["vmc", "export", "termina", "file name"],
             &["vmc", "export", "termina", "file name", "removable media"],
+            &["vmc", "import", "termina", "file name"],
+            &["vmc", "import", "termina", "file name", "removable media"],
+            &["vmc", "import", "-p", "termina", "file name"],
+            &[
+                "vmc",
+                "import",
+                "-p",
+                "termina",
+                "file name",
+                "removable media",
+            ],
             &["vmc", "list"],
             &["vmc", "share", "termina", "my-folder"],
             &["vmc", "usb-attach", "termina", "1:2"],
@@ -461,8 +528,14 @@ mod tests {
             &["vmc", "stop", "termina", "extra args"],
             &["vmc", "destroy"],
             &["vmc", "destroy", "termina", "extra args"],
+            &["vmc", "disk-op-status"],
+            &["vmc", "destroy", "12345", "extra args"],
             &["vmc", "export", "termina"],
             &["vmc", "export", "termina", "too", "many", "args"],
+            &["vmc", "import", "termina"],
+            &["vmc", "import", "termina", "too", "many", "args"],
+            &["vmc", "import", "-p", "termina"],
+            &["vmc", "import", "-p", "termina", "too", "many", "args"],
             &["vmc", "list", "extra args"],
             &["vmc", "share"],
             &["vmc", "share", "too", "many", "args"],

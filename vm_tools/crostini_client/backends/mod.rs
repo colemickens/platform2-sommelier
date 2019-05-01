@@ -171,6 +171,16 @@ impl_backend! {
             file_name: &str,
             removable_media: Option<&str>,
         ) -> Result<(), Box<Error>>;
+        /// Imports a disk image `file_name` as a VM `name` owned by `user_id_hash`. The file may
+        /// optionally reside on external drive `removable_media`.
+        fn vm_import(
+            &mut self,
+            name: &str,
+            user_id_hash: &str,
+            plugin_vm: bool,
+            file_name: &str,
+            removable_media: Option<&str>,
+        ) -> Result<Option<String>, Box<Error>>;
         /// Share a `path` with VM `name` owned by `user_id_hash` and return the path inside the VM
         /// that it was mounted.
         fn vm_share_path(
@@ -197,7 +207,16 @@ impl_backend! {
         /// Destroys the disk of `vm_name` for the given `user_id_hash`.
         fn disk_destroy(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<Error>>;
         /// Gets a list of all VM disks for `user_id_hash` and their total size.
-        fn disk_list(&mut self, user_id_hash: &str) -> Result<(Vec<(String, u64)>, u64), Box<Error>>;
+        fn disk_list(
+            &mut self,
+            user_id_hash: &str,
+        ) -> Result<(Vec<(String, u64)>, u64), Box<Error>>;
+        /// Checks status of executing disk operation (import, export).
+        fn disk_op_status(
+            &mut self,
+            uuid: &str,
+            user_id_hash: &str,
+        ) -> Result<(bool, u32), Box<Error>>;
 
         // Container
 
