@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <base/optional.h>
 
 #include "diagnostics/diag/diag_async_grpc_client_adapter.h"
 #include "diagnostics/diag/diag_async_grpc_client_adapter_impl.h"
@@ -34,8 +35,10 @@ class DiagRoutineRequester final {
   // DiagRoutineRequester object.
   void Connect(const std::string& target_uri);
 
-  // Returns a list of routines that the platform is capable of running.
-  std::vector<grpc_api::DiagnosticRoutine> GetAvailableRoutines();
+  // Returns an optional list of routines that the platform is capable of
+  // running, or a base::nullopt if GetAvailableRoutines fails.
+  base::Optional<std::vector<grpc_api::DiagnosticRoutine>>
+  GetAvailableRoutines();
 
   // Request that a diagnostic routine be run on the platform.
   std::unique_ptr<grpc_api::RunRoutineResponse> RunRoutine(

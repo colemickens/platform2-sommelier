@@ -184,7 +184,7 @@ TEST_F(DiagRoutineRequesterTest, EmptyGetAvailableTestsResponse) {
   SetNullptrAvailableRoutinesResponse();
 
   auto response = routine_requester()->GetAvailableRoutines();
-  EXPECT_EQ(response.size(), 0);
+  EXPECT_EQ(response, base::nullopt);
 }
 
 // Test that we handle an empty RunRoutine response.
@@ -210,7 +210,8 @@ TEST_F(DiagRoutineRequesterTest, GetAvailableRoutines) {
   SetAvailableRoutinesResponse();
 
   auto response = routine_requester()->GetAvailableRoutines();
-  EXPECT_THAT(response, ElementsAreArray(kFakeAvailableRoutines));
+  EXPECT_NE(response, base::nullopt);
+  EXPECT_THAT(response.value(), ElementsAreArray(kFakeAvailableRoutines));
 }
 
 // Test that we can run the battery routine.

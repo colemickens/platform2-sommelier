@@ -145,7 +145,11 @@ bool ActionGetRoutines() {
   routine_requester.Connect(diagnostics::kWilcoDtcSupportdGrpcDomainSocketUri);
 
   auto reply = routine_requester.GetAvailableRoutines();
-  for (auto routine : reply) {
+
+  if (!reply)
+    return false;
+
+  for (auto routine : reply.value()) {
     std::cout << "Available routine: " << GetSwitchFromRoutine(routine)
               << std::endl;
   }

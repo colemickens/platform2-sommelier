@@ -46,7 +46,7 @@ void DiagRoutineRequester::Connect(const std::string& target_uri) {
   client_impl_->Connect(target_uri);
 }
 
-std::vector<grpc_api::DiagnosticRoutine>
+base::Optional<std::vector<grpc_api::DiagnosticRoutine>>
 DiagRoutineRequester::GetAvailableRoutines() {
   grpc_api::GetAvailableRoutinesRequest request;
   std::unique_ptr<grpc_api::GetAvailableRoutinesResponse> response;
@@ -61,7 +61,7 @@ DiagRoutineRequester::GetAvailableRoutines() {
 
   if (!response) {
     LOG(ERROR) << "No GetAvailableRoutinesResponse received.";
-    return std::vector<grpc_api::DiagnosticRoutine>();
+    return base::nullopt;
   }
 
   std::vector<grpc_api::DiagnosticRoutine> available_routines;
