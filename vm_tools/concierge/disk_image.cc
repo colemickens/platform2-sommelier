@@ -317,6 +317,11 @@ bool PluginVmImportOperation::PrepareOutput() {
   // to be able to identify images that are being imported, and that
   // requires directory name to not be random.
   base::FilePath disk_path(dest_image_path_.AddExtension(".tmp"));
+  if (base::PathExists(disk_path)) {
+    set_failure_reason("VM with this name is already being imported");
+    return false;
+  }
+
   base::File::Error dir_error;
   if (!base::CreateDirectoryAndGetError(disk_path, &dir_error)) {
     set_failure_reason(std::string("failed to create output directory: ") +

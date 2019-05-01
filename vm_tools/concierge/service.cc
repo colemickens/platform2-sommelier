@@ -359,6 +359,41 @@ bool GetDiskPathFromName(
   return true;
 }
 
+bool CheckVmExists(const std::string& vm_name,
+                   const std::string& cryptohome_id,
+                   base::FilePath* out_path = nullptr,
+                   StorageLocation* storage_location = nullptr) {
+  for (int l = StorageLocation_MIN; l <= StorageLocation_MAX; l++) {
+    StorageLocation location = static_cast<StorageLocation>(l);
+    base::FilePath disk_path;
+    if (GetDiskPathFromName(vm_name, cryptohome_id, location,
+                            false, /* create_parent_dir */
+                            &disk_path) &&
+        base::PathExists(disk_path)) {
+      if (out_path) {
+        *out_path = disk_path;
+      }
+      if (storage_location) {
+        *storage_location = location;
+      }
+      return true;
+    }
+  }
+
+  return false;
+}
+
+uint64_t CalculateDesiredDiskSize(uint64_t current_usage) {
+  // If no disk size was specified, use 90% of free space.
+  // Free space is calculated as if the disk image did not consume any space.
+  uint64_t free_space =
+      base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/home"));
+  free_space += current_usage;
+  uint64_t disk_size = ((free_space * 9) / 10) & kDiskSizeMask;
+
+  return std::max(disk_size, kMinimumDiskSize);
+}
+
 bool GetPluginDirectory(const base::FilePath& prefix,
                         const string& extension,
                         const string& vm_id,
@@ -1589,50 +1624,45 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
   }
 
   base::FilePath disk_path;
-  if (!GetDiskPathFromName(request.disk_path(), request.cryptohome_id(),
-                           request.storage_location(),
-                           true, /* create_parent_dir */
-                           &disk_path, request.image_type())) {
-    response.set_status(DISK_STATUS_FAILED);
-    response.set_failure_reason("Failed to create vm image");
-    writer.AppendProtoAsArrayOfBytes(response);
+  StorageLocation disk_location;
+  if (CheckVmExists(request.disk_path(), request.cryptohome_id(), &disk_path,
+                    &disk_location)) {
+    if (disk_location != request.storage_location()) {
+      response.set_status(DISK_STATUS_FAILED);
+      response.set_failure_reason(
+          "VM/disk with same name already exists in another storage location");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
 
-    return dbus_response;
-  }
+    if (disk_location != STORAGE_CRYPTOHOME_PLUGINVM) {
+      // We do not support extending Plugin VM images.
+      response.set_status(DISK_STATUS_FAILED);
+      response.set_failure_reason("Plugin VM with such name already exists");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
 
-  bool disk_exists = false;
-  uint64_t current_size = 0;
-  uint64_t current_usage = 0;
+    struct stat st;
+    if (stat(disk_path.value().c_str(), &st) < 0) {
+      PLOG(ERROR) << "stat() of existing VM image failed for "
+                  << disk_path.value();
+      response.set_status(DISK_STATUS_FAILED);
+      response.set_failure_reason(
+          "internal error: image exists but stat() failed");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
 
-  struct stat st;
-  if (stat(disk_path.value().c_str(), &st) == 0) {
-    disk_exists = true;
-    current_size = st.st_size;
-    current_usage = st.st_blocks * 512ull;
-  }
-
-  uint64_t disk_size;
-  if (request.disk_size()) {
-    disk_size = request.disk_size();
-  } else {
-    // If no disk size was specified, use 90% of free space.
-    // Free space is calculated as if the disk image did not consume any space.
-    uint64_t free_space =
-        base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/home"));
-    free_space += current_usage;
-    disk_size = ((free_space * 9) / 10) & kDiskSizeMask;
-
-    if (disk_size < kMinimumDiskSize)
-      disk_size = kMinimumDiskSize;
-  }
-
-  if (disk_exists) {
+    uint64_t current_size = st.st_size;
+    uint64_t current_usage = st.st_blocks * 512ull;
     LOG(INFO) << "Found existing disk at " << disk_path.value()
               << " with current size " << current_size << " and usage "
               << current_usage;
 
     // Automatically extend existing disk images if disk_size was not specified.
     if (request.disk_size() == 0) {
+      uint64_t disk_size = CalculateDesiredDiskSize(current_usage);
       if (disk_size > current_size) {
         LOG(INFO) << "Expanding disk image from " << current_size << " to "
                   << disk_size;
@@ -1651,9 +1681,22 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     response.set_status(DISK_STATUS_EXISTS);
     response.set_disk_path(disk_path.value());
     writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (!GetDiskPathFromName(request.disk_path(), request.cryptohome_id(),
+                           request.storage_location(),
+                           true, /* create_parent_dir */
+                           &disk_path, request.image_type())) {
+    response.set_status(DISK_STATUS_FAILED);
+    response.set_failure_reason("Failed to create vm image");
+    writer.AppendProtoAsArrayOfBytes(response);
 
     return dbus_response;
   }
+
+  uint64_t disk_size =
+      request.disk_size() ? request.disk_size() : CalculateDesiredDiskSize(0);
 
   if (request.image_type() == DISK_IMAGE_RAW ||
       request.image_type() == DISK_IMAGE_AUTO) {
@@ -1961,6 +2004,13 @@ std::unique_ptr<dbus::Response> Service::ImportDiskImage(
     return dbus_response;
   }
 
+  if (CheckVmExists(request.disk_path(), request.cryptohome_id())) {
+    response.set_status(DISK_STATUS_EXISTS);
+    response.set_failure_reason("VM/disk with such name already exists");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
   if (request.storage_location() != STORAGE_CRYPTOHOME_PLUGINVM) {
     LOG(ERROR)
         << "Locations other than STORAGE_CRYPTOHOME_PLUGINVM are not supported";
@@ -1974,14 +2024,7 @@ std::unique_ptr<dbus::Response> Service::ImportDiskImage(
                            request.storage_location(),
                            true, /* create_parent_dir */
                            &disk_path)) {
-    response.set_failure_reason("Failed to delete vm image");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (base::PathExists(disk_path)) {
-    response.set_status(DISK_STATUS_EXISTS);
-    response.set_failure_reason("Disk image already exists");
+    response.set_failure_reason("Failed to set up vm image name");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
