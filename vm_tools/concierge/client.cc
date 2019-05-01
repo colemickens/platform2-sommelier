@@ -771,7 +771,8 @@ int ListDiskImages(dbus::ObjectProxy* proxy,
   }
 
   for (const auto& image : response.images()) {
-    std::cout << image << std::endl;
+    std::cout << "Name: " << image.name() << " Size: " << image.size()
+              << std::endl;
   }
   std::cout << "Total Size (bytes): " << response.total_size() << std::endl;
   return 0;

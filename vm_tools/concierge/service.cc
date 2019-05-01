@@ -447,6 +447,90 @@ void FormatDiskImageStatus(const DiskImageOperation* op,
   status->set_progress(op->GetProgress());
 }
 
+bool ListVmDisksInLocation(const string& cryptohome_id,
+                           StorageLocation location,
+                           const string& lookup_name,
+                           ListVmDisksResponse* response) {
+  base::FilePath image_dir;
+  base::FileEnumerator::FileType file_type = base::FileEnumerator::FILES;
+  const char* const* allowed_ext = kDiskImageExtensions;
+  switch (location) {
+    case STORAGE_CRYPTOHOME_ROOT:
+      image_dir = base::FilePath(kCryptohomeRoot)
+                      .Append(cryptohome_id)
+                      .Append(kCrosvmDir);
+      break;
+
+    case STORAGE_CRYPTOHOME_DOWNLOADS:
+      image_dir = base::FilePath(kCryptohomeUser)
+                      .Append(cryptohome_id)
+                      .Append(kDownloadsDir);
+      break;
+
+    case STORAGE_CRYPTOHOME_PLUGINVM:
+      image_dir = base::FilePath(kCryptohomeRoot)
+                      .Append(cryptohome_id)
+                      .Append(kPluginVmDir);
+      file_type = base::FileEnumerator::DIRECTORIES;
+      allowed_ext = kPluginVmImageExtensions;
+      break;
+
+    default:
+      response->set_success(false);
+      response->set_failure_reason("Unsupported storage location for images");
+      return false;
+  }
+
+  if (!base::DirectoryExists(image_dir)) {
+    // No directory means no VMs, return the empty response.
+    return true;
+  }
+
+  uint64_t total_size = 0;
+  base::FileEnumerator dir_enum(image_dir, false, file_type);
+  for (base::FilePath path = dir_enum.Next(); !path.empty();
+       path = dir_enum.Next()) {
+    string extension = path.BaseName().Extension();
+    bool allowed = false;
+    for (auto p = allowed_ext; *p; p++) {
+      if (extension == *p) {
+        allowed = true;
+        break;
+      }
+    }
+    if (!allowed) {
+      continue;
+    }
+
+    base::FilePath bare_name = path.BaseName().RemoveExtension();
+    if (bare_name.empty()) {
+      continue;
+    }
+    std::string image_name;
+    if (!base::Base64UrlDecode(bare_name.value(),
+                               base::Base64UrlDecodePolicy::IGNORE_PADDING,
+                               &image_name)) {
+      continue;
+    }
+    if (!lookup_name.empty() && lookup_name != image_name) {
+      continue;
+    }
+
+    uint64_t size = dir_enum.GetInfo().IsDirectory()
+                        ? ComputeDirectorySize(path)
+                        : dir_enum.GetInfo().GetSize();
+    total_size += size;
+
+    VmDiskInfo* image = response->add_images();
+    image->set_name(std::move(image_name));
+    image->set_storage_location(location);
+    image->set_size(size);
+  }
+
+  response->set_total_size(response->total_size() + total_size);
+  return true;
+}
+
 }  // namespace
 
 std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
@@ -2095,81 +2179,18 @@ std::unique_ptr<dbus::Response> Service::ListVmDisks(
   }
 
   response.set_success(true);
+  response.set_total_size(0);
 
-  base::FilePath image_dir;
-  base::FileEnumerator::FileType file_type = base::FileEnumerator::FILES;
-  const char* const* allowed_ext = kDiskImageExtensions;
-  switch (request.storage_location()) {
-    case STORAGE_CRYPTOHOME_ROOT:
-      image_dir = base::FilePath(kCryptohomeRoot)
-                      .Append(request.cryptohome_id())
-                      .Append(kCrosvmDir);
-      break;
-
-    case STORAGE_CRYPTOHOME_DOWNLOADS:
-      image_dir = base::FilePath(kCryptohomeUser)
-                      .Append(request.cryptohome_id())
-                      .Append(kDownloadsDir);
-      break;
-
-    case STORAGE_CRYPTOHOME_PLUGINVM:
-      image_dir = base::FilePath(kCryptohomeRoot)
-                      .Append(request.cryptohome_id())
-                      .Append(kPluginVmDir);
-      file_type = base::FileEnumerator::DIRECTORIES;
-      allowed_ext = kPluginVmImageExtensions;
-      break;
-
-    default:
-      response.set_success(false);
-      response.set_failure_reason("Unsupported storage location for images");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
-  }
-
-  if (!base::DirectoryExists(image_dir)) {
-    // No directory means no VMs, return the empty response.
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  uint64_t total_size = 0;
-  base::FileEnumerator dir_enum(image_dir, false, file_type);
-  for (base::FilePath path = dir_enum.Next(); !path.empty();
-       path = dir_enum.Next()) {
-    string extension = path.BaseName().Extension();
-    bool allowed = false;
-    for (auto p = allowed_ext; *p; p++) {
-      if (extension == *p) {
-        allowed = true;
+  for (int location = StorageLocation_MIN; location <= StorageLocation_MAX;
+       location++) {
+    if (request.all_locations() || location == request.storage_location()) {
+      if (!ListVmDisksInLocation(request.cryptohome_id(),
+                                 static_cast<StorageLocation>(location),
+                                 request.vm_name(), &response)) {
         break;
       }
     }
-    if (!allowed) {
-      continue;
-    }
-
-    base::FilePath bare_name = path.BaseName().RemoveExtension();
-    if (bare_name.empty()) {
-      continue;
-    }
-    std::string image_name;
-    if (!base::Base64UrlDecode(bare_name.value(),
-                               base::Base64UrlDecodePolicy::IGNORE_PADDING,
-                               &image_name)) {
-      continue;
-    }
-    std::string* name = response.add_images();
-    *name = std::move(image_name);
-
-    if (dir_enum.GetInfo().IsDirectory()) {
-      total_size += ComputeDirectorySize(path);
-    } else {
-      total_size += dir_enum.GetInfo().GetSize();
-    }
   }
-
-  response.set_total_size(total_size);
 
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
