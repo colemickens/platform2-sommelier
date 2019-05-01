@@ -22,11 +22,7 @@ class DebugModeTool {
   virtual void SetDebugMode(const std::string& subsystem);
 
  private:
-  void GetAllModemManagers(std::vector<std::string>* managers);
-  void SetModemManagerLogging(const std::string& service_name,
-                              const std::string& service_path,
-                              const std::string& level);
-  void SetAllModemManagersLogging(const std::string& level);
+  void SetModemManagerLogging(const std::string& level);
 
   scoped_refptr<dbus::Bus> bus_;
 
