@@ -353,7 +353,6 @@ impl ChromeOS {
         let mut request = DestroyDiskImageRequest::new();
         request.disk_path = vm_name.to_owned();
         request.cryptohome_id = user_id_hash.to_owned();
-        request.storage_location = StorageLocation::STORAGE_CRYPTOHOME_ROOT;
 
         let response: DestroyDiskImageResponse = self.sync_protobus(
             Message::new_method_call(
@@ -414,7 +413,6 @@ impl ChromeOS {
         let mut request = ExportDiskImageRequest::new();
         request.disk_path = vm_name.to_owned();
         request.cryptohome_id = user_id_hash.to_owned();
-        request.storage_location = StorageLocation::STORAGE_CRYPTOHOME_ROOT;
 
         // We can't use sync_protobus because we need to append the file descriptor out of band from
         // the protobuf message.
