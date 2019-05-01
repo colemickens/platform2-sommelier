@@ -497,7 +497,9 @@ void PluginVmImportOperation::Finalize() {
     MarkFailed("failed to change group of the destination directory", NULL);
     return;
   }
-  if (chmod(output_dir_.GetPath().value().c_str(), 0770) < 0) {
+  // We are setting setgid bit on the directory to make sure any new files
+  // created by the plugin will be created with "pluginvm" group ownership.
+  if (chmod(output_dir_.GetPath().value().c_str(), 02770) < 0) {
     MarkFailed("failed to change permissions of the destination directory",
                NULL);
     return;
