@@ -439,10 +439,13 @@ impl ChromeOS {
     }
 
     /// Request a list of disk images from concierge.
-    fn list_disk_images(&mut self, user_id_hash: &str) -> Result<(Vec<String>, u64), Box<Error>> {
+    fn list_disk_images(
+        &mut self,
+        user_id_hash: &str,
+    ) -> Result<(Vec<(String, u64)>, u64), Box<Error>> {
         let mut request = ListVmDisksRequest::new();
         request.cryptohome_id = user_id_hash.to_owned();
-        request.storage_location = StorageLocation::STORAGE_CRYPTOHOME_ROOT;
+        request.all_locations = true;
 
         let response: ListVmDisksResponse = self.sync_protobus(
             Message::new_method_call(
@@ -455,7 +458,12 @@ impl ChromeOS {
         )?;
 
         if response.success {
-            Ok((response.images.into(), response.total_size))
+            let images: Vec<(String, u64)> = response
+                .images
+                .into_iter()
+                .map(|e| (e.name, e.size))
+                .collect();
+            Ok((images, response.total_size))
         } else {
             Err(FailedListDiskImages(response.failure_reason).into())
         }
@@ -946,7 +954,7 @@ impl Backend for ChromeOS {
         self.destroy_disk_image(vm_name, user_id_hash)
     }
 
-    fn disk_list(&mut self, user_id_hash: &str) -> Result<(Vec<String>, u64), Box<Error>> {
+    fn disk_list(&mut self, user_id_hash: &str) -> Result<(Vec<(String, u64)>, u64), Box<Error>> {
         self.start_concierge()?;
         self.list_disk_images(user_id_hash)
     }

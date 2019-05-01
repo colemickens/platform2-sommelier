@@ -197,7 +197,7 @@ impl_backend! {
         /// Destroys the disk of `vm_name` for the given `user_id_hash`.
         fn disk_destroy(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<Error>>;
         /// Gets a list of all VM disks for `user_id_hash` and their total size.
-        fn disk_list(&mut self, user_id_hash: &str) -> Result<(Vec<String>, u64), Box<Error>>;
+        fn disk_list(&mut self, user_id_hash: &str) -> Result<(Vec<(String, u64)>, u64), Box<Error>>;
 
         // Container
 
