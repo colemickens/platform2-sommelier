@@ -61,7 +61,8 @@ const char kBatteryRemainingWhenChargeStartsName[] =
 const char kBatteryRemainingAtEndOfSessionName[] =
     "Power.BatteryRemainingAtEndOfSession";  // %
 const char kBatteryRemainingAtStartOfSessionName[] =
-    "Power.BatteryRemainingAtStartOfSession";  // %
+    "Power.BatteryRemainingAtStartOfSession";                               // %
+const char kBatteryRemainingAtBootName[] = "Power.BatteryRemainingAtBoot";  // %
 
 const char kNumberOfAlsAdjustmentsPerSessionName[] =
     "Power.NumberOfAlsAdjustmentsPerSession";

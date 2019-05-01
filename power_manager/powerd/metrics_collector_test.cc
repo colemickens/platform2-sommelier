@@ -64,7 +64,8 @@ class MetricsCollectorTest : public Test {
   // Initializes |collector_|.
   void Init() {
     collector_.Init(&prefs_, &display_backlight_controller_,
-                    &keyboard_backlight_controller_, power_status_);
+                    &keyboard_backlight_controller_, power_status_,
+                    first_run_after_boot_);
   }
 
   // Advances both the monotonically-increasing time and wall time by
@@ -174,6 +175,7 @@ class MetricsCollectorTest : public Test {
   policy::BacklightControllerStub display_backlight_controller_;
   policy::BacklightControllerStub keyboard_backlight_controller_;
   system::PowerStatus power_status_;
+  bool first_run_after_boot_ = false;
 
   // StrictMock turns all unexpected calls into hard failures.
   StrictMock<MetricsLibraryMock>* metrics_lib_;  // Weak pointer.
@@ -733,6 +735,23 @@ TEST_F(MetricsCollectorTest, ConnectedChargingPorts) {
                    static_cast<int>(ConnectedChargingPorts::TOO_MANY_PORTS),
                    static_cast<int>(ConnectedChargingPorts::MAX));
   collector_.HandlePowerStatusUpdate(power_status_);
+}
+
+TEST_F(MetricsCollectorTest, TestBatteryMetricsAtBootOnBattery) {
+  ExpectEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
+                       kBatteryRemainingAtBootName, PowerSource::BATTERY),
+                   power_status_.battery_percentage, kMaxPercent);
+  first_run_after_boot_ = true;
+  Init();
+}
+
+TEST_F(MetricsCollectorTest, TestBatteryMetricsAtBootOnAC) {
+  power_status_.line_power_on = true;
+  ExpectEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
+                       kBatteryRemainingAtBootName, PowerSource::AC),
+                   power_status_.battery_percentage, kMaxPercent);
+  first_run_after_boot_ = true;
+  Init();
 }
 
 // Base class for S0ix residency rate related tests.

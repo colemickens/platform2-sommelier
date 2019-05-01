@@ -73,7 +73,8 @@ class MetricsCollector {
   void Init(PrefsInterface* prefs,
             policy::BacklightController* display_backlight_controller,
             policy::BacklightController* keyboard_backlight_controller,
-            const system::PowerStatus& power_status);
+            const system::PowerStatus& power_status,
+            bool first_run_after_boot);
 
   // Records changes to system state.
   void HandleScreenDimmedChange(bool dimmed,

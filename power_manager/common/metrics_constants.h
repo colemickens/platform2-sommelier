@@ -60,6 +60,7 @@ extern const int kBatteryDischargeRateWhileSuspendedMinSuspendSec;
 extern const char kBatteryRemainingWhenChargeStartsName[];
 extern const char kBatteryRemainingAtEndOfSessionName[];
 extern const char kBatteryRemainingAtStartOfSessionName[];
+extern const char kBatteryRemainingAtBootName[];
 
 extern const char kNumberOfAlsAdjustmentsPerSessionName[];
 extern const int kNumberOfAlsAdjustmentsPerSessionMin;

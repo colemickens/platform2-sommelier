@@ -378,7 +378,8 @@ void Daemon::Init() {
   const system::PowerStatus power_status = power_supply_->GetPowerStatus();
 
   metrics_collector_->Init(prefs_.get(), display_backlight_controller_.get(),
-                           keyboard_backlight_controller_.get(), power_status);
+                           keyboard_backlight_controller_.get(), power_status,
+                           first_run_after_boot_);
 
   dark_resume_ = delegate_->CreateDarkResume(power_supply_.get(), prefs_.get(),
                                              input_watcher_.get());

@@ -94,11 +94,20 @@ void MetricsCollector::Init(
     PrefsInterface* prefs,
     policy::BacklightController* display_backlight_controller,
     policy::BacklightController* keyboard_backlight_controller,
-    const PowerStatus& power_status) {
+    const PowerStatus& power_status,
+    bool first_run_after_boot) {
   prefs_ = prefs;
   display_backlight_controller_ = display_backlight_controller;
   keyboard_backlight_controller_ = keyboard_backlight_controller;
   last_power_status_ = power_status;
+
+  if (first_run_after_boot) {
+    // Enum to avoid exponential histogram's varyingly-sized buckets.
+    SendEnumMetricWithPowerSource(
+        kBatteryRemainingAtBootName,
+        static_cast<int>(round(last_power_status_.battery_percentage)),
+        kMaxPercent);
+  }
 
   if (display_backlight_controller_ || keyboard_backlight_controller_) {
     generate_backlight_metrics_timer_.Start(
