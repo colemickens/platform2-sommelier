@@ -19,6 +19,7 @@ from cros_config_schema import TransformConfig
 from cros_config_schema import GetValidSchemaProperties
 from libcros_config_host_base import BaseFile, CrosConfigBaseImpl, DeviceConfig
 from libcros_config_host_base import FirmwareInfo, TouchFile
+from libcros_config_host_base import FirmwareImage
 
 UNIBOARD_JSON_INSTALL_PATH = 'usr/share/chromeos-config/config.json'
 
@@ -217,3 +218,39 @@ class CrosConfigJson(CrosConfigBaseImpl):
 
   def GetDeviceConfigs(self):
     return self._configs
+
+  def GetFirmwareConfigs(self):
+    result = dict()
+    firmware_info_values = self.GetFirmwareInfo().values()
+    for value in firmware_info_values:
+      fw_images = []
+      ap_build_target = value.bios_build_target
+      ec_build_target = value.ec_build_target
+      if value.main_image_uri:
+        fw_images.append(
+            FirmwareImage(
+                type='ap',
+                build_target=ap_build_target,
+                image_uri=value.main_image_uri))
+      if value.main_rw_image_uri:
+        fw_images.append(
+            FirmwareImage(
+                type='rw',
+                build_target=ap_build_target,
+                image_uri=value.main_rw_image_uri))
+      if value.ec_image_uri:
+        fw_images.append(
+            FirmwareImage(
+                type='ec',
+                build_target=ec_build_target,
+                image_uri=value.ec_image_uri))
+      if value.pd_image_uri:
+        fw_images.append(
+            FirmwareImage(
+                type='pd',
+                build_target=ec_build_target,
+                image_uri=value.pd_image_uri))
+
+      result[value.shared_model] = fw_images
+
+    return result

@@ -55,6 +55,14 @@ FirmwareInfo = namedtuple('FirmwareInfo', [
     'pd_image_uri', 'sig_id', 'brand_code'
 ])
 
+# Represents the firmware image for a model:
+#   type: one of ‘ap’, ‘ec’, ‘pd’, ‘rw’.
+#   build_target: The build target for given firmware image.
+#   image_uri: The BCS image URI.
+FirmwareImage = namedtuple('FirmwareImage',
+                           ['type', 'build_target', 'image_uri'])
+
+
 class PathComponent(object):
   """A component in a directory/file tree
 
@@ -227,6 +235,14 @@ class DeviceConfig(object):
 
     Returns:
       Returns the FirmwareInfo instance.
+    """
+    pass
+
+  def GetFirmwareConfigs(self):
+    """Gets unique firmware configs for a given device.
+
+    Returns:
+      Dictionary of FirmwareImage objects grouped by config name.
     """
     pass
 

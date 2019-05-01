@@ -20,7 +20,7 @@ import unittest
 
 from libcros_config_host import CrosConfig
 from libcros_config_host_base import BaseFile, TouchFile, FirmwareInfo
-
+from libcros_config_host_base import FirmwareImage
 
 YAML_FILE = '../libcros_config/test.yaml'
 MODELS = sorted(['some', 'another', 'whitelabel'])
@@ -59,6 +59,14 @@ def _FormatNamedTuplesDict(value):
   return json.dumps(result, indent=2)
 
 
+def _FormatListNamedTuplesDict(value):
+  result = copy.deepcopy(value)
+  for key, values in result.iteritems():
+    result[key] = [value._asdict() for value in values]
+
+  return json.dumps(result, indent=2)
+
+
 class CrosConfigHostTest(unittest.TestCase):
   def setUp(self):
     self.filepath = os.path.join(os.path.dirname(__file__), YAML_FILE)
@@ -66,6 +74,11 @@ class CrosConfigHostTest(unittest.TestCase):
   def _assertEqualsNamedTuplesDict(self, expected, result):
     self.assertEqual(
         _FormatNamedTuplesDict(expected), _FormatNamedTuplesDict(result))
+
+  def _assertEqualsListNamedTuplesDict(self, expected, result):
+    self.assertEqual(
+        _FormatListNamedTuplesDict(expected),
+        _FormatListNamedTuplesDict(result))
 
   def testGetProperty(self):
     config = CrosConfig(self.filepath)
@@ -343,6 +356,42 @@ class CrosConfigHostTest(unittest.TestCase):
                        brand_code='WLBB'))])
     result = CrosConfig(self.filepath).GetFirmwareInfo()
     self._assertEqualsNamedTuplesDict(result, expected)
+
+  def testFirmwareConfigs(self):
+    """Test access to firmware configs."""
+    expected = {
+        'some': [
+            FirmwareImage(
+                type='ap',
+                build_target='some',
+                image_uri='bcs://Some.1111.11.1.tbz2'),
+            FirmwareImage(
+                type='rw',
+                build_target='some',
+                image_uri='bcs://Some_RW.1111.11.1.tbz2'),
+            FirmwareImage(
+                type='ec',
+                build_target='some',
+                image_uri='bcs://Some_EC.1111.11.1.tbz2')
+        ],
+        'another': [
+            FirmwareImage(
+                type='ap',
+                build_target='another',
+                image_uri='bcs://Another.1111.11.1.tbz2'),
+            FirmwareImage(
+                type='rw',
+                build_target='another',
+                image_uri='bcs://Another_RW.1111.11.1.tbz2'),
+            FirmwareImage(
+                type='ec',
+                build_target='another',
+                image_uri='bcs://Another_EC.1111.11.1.tbz2')
+        ]
+    }
+
+    result = CrosConfig(self.filepath).GetFirmwareConfigs()
+    self._assertEqualsListNamedTuplesDict(result, expected)
 
 
 if __name__ == '__main__':
