@@ -189,6 +189,14 @@ impl_backend! {
             user_id_hash: &str,
             path: &str,
         ) -> Result<String, Box<Error>>;
+        /// Share a `path` with VM `name` owned by `user_id_hash` and return the path inside the VM
+        /// that it was mounted.
+        fn vm_unshare_path(
+            &mut self,
+            name: &str,
+            user_id_hash: &str,
+            path: &str,
+        ) -> Result<(), Box<Error>>;
 
         // Vsh
 

@@ -116,6 +116,7 @@ const SENESCHAL_SERVICE_NAME: &str = "org.chromium.Seneschal";
 const START_SERVER_METHOD: &str = "StartServer";
 const STOP_SERVER_METHOD: &str = "StopServer";
 const SHARE_PATH_METHOD: &str = "SharePath";
+const UNSHARE_PATH_METHOD: &str = "UnsharePath";
 
 // permission_broker dbus-constants.h
 const PERMISSION_BROKER_INTERFACE: &str = "org.chromium.PermissionBroker";
@@ -879,6 +880,34 @@ impl ChromeOS {
         }
     }
 
+    // Request the given `path` be no longer shared with the vm associated with given seneshal
+    // instance.
+    fn unshare_path_with_vm(
+        &mut self,
+        seneschal_handle: u32,
+        path: &str,
+    ) -> Result<(), Box<Error>> {
+        let mut request = UnsharePathRequest::new();
+        request.handle = seneschal_handle;
+        request.path = format!("MyFiles/{}", path);
+
+        let response: SharePathResponse = self.sync_protobus(
+            Message::new_method_call(
+                SENESCHAL_SERVICE_NAME,
+                SENESCHAL_SERVICE_PATH,
+                SENESCHAL_INTERFACE,
+                UNSHARE_PATH_METHOD,
+            )?,
+            &request,
+        )?;
+
+        if response.success {
+            Ok(())
+        } else {
+            Err(FailedSharePath(response.failure_reason).into())
+        }
+    }
+
     fn create_container(
         &mut self,
         vm_name: &str,
@@ -1225,6 +1254,21 @@ impl Backend for ChromeOS {
         let seneschal_handle = vm_info.seneschal_server_handle as u32;
         let vm_path = self.share_path_with_vm(seneschal_handle, user_id_hash, path)?;
         Ok(format!("{}/{}", MNT_SHARED_ROOT, vm_path))
+    }
+
+    fn vm_unshare_path(
+        &mut self,
+        name: &str,
+        user_id_hash: &str,
+        path: &str,
+    ) -> Result<(), Box<Error>> {
+        self.start_vm_infrastructure(user_id_hash)?;
+        let vm_info = self.get_vm_info(name, user_id_hash)?;
+        // The VmInfo uses a u64 as the handle, but SharePathRequest uses a u32 for the handle.
+        if vm_info.seneschal_server_handle > u64::from(u32::max_value()) {
+            return Err(FailedGetVmInfo.into());
+        }
+        self.unshare_path_with_vm(vm_info.seneschal_server_handle as u32, path)
     }
 
     fn vsh_exec(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {

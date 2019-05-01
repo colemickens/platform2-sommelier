@@ -304,6 +304,22 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         Ok(())
     }
 
+    fn unshare(&mut self) -> VmcResult {
+        if self.args.len() != 2 {
+            return Err(ExpectedVmAndPath.into());
+        }
+
+        let user_id_hash = self
+            .environ
+            .get("CROS_USER_ID_HASH")
+            .ok_or(ExpectedCrosUserIdHash)?;
+
+        let vm_name = self.args[0];
+        let path = self.args[1];
+        try_command!(self.backend.vm_unshare_path(vm_name, user_id_hash, path));
+        Ok(())
+    }
+
     fn container(&mut self) -> VmcResult {
         let (vm_name, container_name, image_server, image_alias) = match self.args.len() {
             2 => (
@@ -439,6 +455,7 @@ const USAGE: &str = r#"
      import [-p] <vm name> <file name> [removable storage name] |
      list |
      share <vm name> <path> |
+     unshare <vm name> <path> |
      container <vm name> <container name> [ <image server> <image alias> ]  |
      usb-attach <vm name> <bus>:<device> |
      usb-detach <vm name> <port> |
@@ -492,6 +509,7 @@ impl Frontend for Vmc {
             "disk-op-status" => command.disk_op_status(),
             "list" => command.list(),
             "share" => command.share(),
+            "unshare" => command.unshare(),
             "container" => command.container(),
             "usb-attach" => command.usb_attach(),
             "usb-detach" => command.usb_detach(),
@@ -532,6 +550,7 @@ mod tests {
             ],
             &["vmc", "list"],
             &["vmc", "share", "termina", "my-folder"],
+            &["vmc", "unshare", "termina", "my-folder"],
             &["vmc", "usb-attach", "termina", "1:2"],
             &["vmc", "usb-detach", "termina", "5"],
             &["vmc", "usb-detach", "termina", "5"],
@@ -559,6 +578,8 @@ mod tests {
             &["vmc", "list", "extra args"],
             &["vmc", "share"],
             &["vmc", "share", "too", "many", "args"],
+            &["vmc", "unshare"],
+            &["vmc", "unshare", "too", "many", "args"],
             &["vmc", "usb-attach"],
             &["vmc", "usb-attach", "termina"],
             &["vmc", "usb-attach", "termina", "whatever"],
