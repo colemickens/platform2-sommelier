@@ -4,6 +4,7 @@
 
 use std::error::Error;
 use std::fmt;
+use std::io::{stdout, Write};
 
 use getopts::Options;
 
@@ -182,6 +183,19 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         }
     }
 
+    fn wait_disk_op_completion(&mut self, uuid: &str, user_id_hash: &str) -> VmcResult {
+        loop {
+            let (done, progress) = try_command!(self.backend.wait_disk_op(&uuid, user_id_hash));
+            if done {
+                println!("\rOperation completed successfully");
+                return Ok(());
+            }
+
+            print!("\rOperation in progress: {}% done", progress);
+            stdout().flush()?;
+        }
+    }
+
     fn export(&mut self) -> VmcResult {
         let (vm_name, file_name, removable_media) = match self.args.len() {
             2 => (self.args[0], self.args[1], None),
@@ -200,6 +214,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
                 .vm_export(vm_name, user_id_hash, file_name, removable_media))
         {
             println!("Export in progress: {}", uuid);
+            self.wait_disk_op_completion(&uuid, user_id_hash)?;
         }
         Ok(())
     }
@@ -229,6 +244,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             removable_media
         )) {
             println!("Import in progress: {}", uuid);
+            self.wait_disk_op_completion(&uuid, user_id_hash)?;
         }
         Ok(())
     }

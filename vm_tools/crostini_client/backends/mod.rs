@@ -217,6 +217,12 @@ impl_backend! {
             uuid: &str,
             user_id_hash: &str,
         ) -> Result<(bool, u32), Box<Error>>;
+        /// Waits for the status of executing disk operation (import, export) to update.
+        fn wait_disk_op(
+            &mut self,
+            uuid: &str,
+            user_id_hash: &str,
+        ) -> Result<(bool, u32), Box<Error>>;
 
         // Container
 

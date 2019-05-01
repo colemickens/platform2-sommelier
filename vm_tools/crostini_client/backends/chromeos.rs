@@ -73,6 +73,7 @@ const ATTACH_USB_DEVICE_METHOD: &str = "AttachUsbDevice";
 const DETACH_USB_DEVICE_METHOD: &str = "DetachUsbDevice";
 const LIST_USB_DEVICE_METHOD: &str = "ListUsbDevices";
 const CONTAINER_STARTUP_FAILED_SIGNAL: &str = "ContainerStartupFailed";
+const DISK_IMAGE_PROGRESS_SIGNAL: &str = "DiskImageProgress";
 
 // vm_plugin_dispatcher dbus-constants.h
 const VM_PLUGIN_DISPATCHER_INTERFACE: &str = "org.chromium.VmPluginDispatcher";
@@ -626,6 +627,17 @@ impl ChromeOS {
         }
     }
 
+    fn parse_disk_op_status(
+        &mut self,
+        response: DiskImageStatusResponse,
+    ) -> Result<(bool, u32), Box<Error>> {
+        match response.status {
+            DiskImageStatus::DISK_STATUS_CREATED => Ok((true, response.progress)),
+            DiskImageStatus::DISK_STATUS_IN_PROGRESS => Ok((false, response.progress)),
+            _ => Err(BadDiskImageStatus(response.status, response.failure_reason).into()),
+        }
+    }
+
     /// Request concierge to provide status of a disk operation (import or export) with given UUID.
     fn check_disk_operation(&mut self, uuid: &str) -> Result<(bool, u32), Box<Error>> {
         let mut request = DiskImageStatusRequest::new();
@@ -641,10 +653,21 @@ impl ChromeOS {
             &request,
         )?;
 
-        match response.status {
-            DiskImageStatus::DISK_STATUS_CREATED => Ok((true, response.progress)),
-            DiskImageStatus::DISK_STATUS_IN_PROGRESS => Ok((false, response.progress)),
-            _ => Err(BadDiskImageStatus(response.status, response.failure_reason).into()),
+        self.parse_disk_op_status(response)
+    }
+
+    /// Wait for updated status of a disk operation (import or export) with given UUID.
+    fn wait_disk_operation(&mut self, uuid: &str) -> Result<(bool, u32), Box<Error>> {
+        loop {
+            let response: DiskImageStatusResponse = self.protobus_wait_for_signal_timeout(
+                VM_CONCIERGE_INTERFACE,
+                DISK_IMAGE_PROGRESS_SIGNAL,
+                DEFAULT_TIMEOUT_MS,
+            )?;
+
+            if response.command_uuid == uuid {
+                return self.parse_disk_op_status(response);
+            }
         }
     }
 
@@ -1263,6 +1286,11 @@ impl Backend for ChromeOS {
     ) -> Result<(bool, u32), Box<Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         self.check_disk_operation(uuid)
+    }
+
+    fn wait_disk_op(&mut self, uuid: &str, user_id_hash: &str) -> Result<(bool, u32), Box<Error>> {
+        self.start_vm_infrastructure(user_id_hash)?;
+        self.wait_disk_operation(uuid)
     }
 
     fn container_create(
