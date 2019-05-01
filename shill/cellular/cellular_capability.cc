@@ -71,8 +71,6 @@ void CellularCapability::OnUnsupportedOperation(const char* operation,
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported, message);
 }
 
-void CellularCapability::DisconnectCleanup() {}
-
 void CellularCapability::Activate(const string& carrier,
                                   Error* error,
                                   const ResultCallback& callback) {

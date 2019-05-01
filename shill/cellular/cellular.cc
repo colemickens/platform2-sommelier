@@ -1032,7 +1032,6 @@ bool Cellular::DisconnectCleanup() {
     DestroyIPConfig();
     succeeded = true;
   }
-  capability_->DisconnectCleanup();
   return succeeded;
 }
 

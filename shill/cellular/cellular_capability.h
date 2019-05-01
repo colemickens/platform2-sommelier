@@ -209,11 +209,6 @@ class CellularCapability {
   // Disconnects the modem from a network.
   virtual void Disconnect(Error* error, const ResultCallback& callback) = 0;
 
-  // Called when a disconnect operation completes, successful or not.
-  //
-  // The default implementation does nothing.
-  virtual void DisconnectCleanup();
-
   // Returns a pointer to the current active bearer object or nullptr if no
   // active bearer exists. The returned bearer object is managed by this
   // capability object. This implementation returns nullptr by default.
