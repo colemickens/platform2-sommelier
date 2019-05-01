@@ -720,6 +720,24 @@ TEST_F(DaemonTest, DontResetForceLidOpenWhenNotUsingLid) {
   EXPECT_EQ(0, async_commands_.size());
 }
 
+TEST_F(DaemonTest, FirstRunAfterBootWhenTrue) {
+  const base::FilePath already_ran_path =
+      run_dir_.GetPath().Append(Daemon::kAlreadyRanFileName);
+  Init();
+  EXPECT_TRUE(daemon_->first_run_after_boot_for_testing());
+  EXPECT_TRUE(base::PathExists(already_ran_path));
+}
+
+TEST_F(DaemonTest, FirstRunAfterBootWhenFalse) {
+  const base::FilePath already_ran_path =
+      run_dir_.GetPath().Append(Daemon::kAlreadyRanFileName);
+
+  ASSERT_EQ(base::WriteFile(already_ran_path, nullptr, 0), 0);
+  Init();
+  EXPECT_FALSE(daemon_->first_run_after_boot_for_testing());
+  EXPECT_TRUE(base::PathExists(already_ran_path));
+}
+
 TEST_F(DaemonTest, FactoryMode) {
   prefs_->SetInt64(kFactoryModePref, 1);
   prefs_->SetInt64(kUseLidPref, 1);

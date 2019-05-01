@@ -126,8 +126,8 @@ const int kLogUserActivityStoppedDelaySec = 20;
 const int64_t kLogHoveringStoppedDelaySec = 20;
 
 // Passes |method_call| to |handler| and passes the response to
-// |response_sender|. If |handler| returns NULL, an empty response is created
-// and sent.
+// |response_sender|. If |handler| returns NULL, an empty response is
+// created and sent.
 void HandleSynchronousDBusMethodCall(
     base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)> handler,
     dbus::MethodCall* method_call,
@@ -146,6 +146,9 @@ std::unique_ptr<dbus::Response> CreateInvalidArgsError(
 }
 
 }  // namespace
+
+// static
+constexpr char Daemon::kAlreadyRanFileName[];
 
 // Performs actions requested by |state_controller_|.  The reason that
 // this is a nested class of Daemon rather than just being implemented as
@@ -263,6 +266,7 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       oobe_completed_path_(kDefaultOobeCompletedPath),
       suspended_state_path_(kDefaultSuspendedStatePath),
       suspend_announced_path_(run_dir.Append(kSuspendAnnouncedFile)),
+      already_ran_path_(run_dir.Append(Daemon::kAlreadyRanFileName)),
       video_activity_logger_(new PeriodicActivityLogger(
           "Video activity",
           base::TimeDelta::FromSeconds(kLogVideoActivityStoppedDelaySec),
@@ -291,6 +295,13 @@ Daemon::~Daemon() {
 }
 
 void Daemon::Init() {
+  // Check if this is the first run of powerd after boot.
+  first_run_after_boot_ = !base::PathExists(already_ran_path_);
+  if (first_run_after_boot_) {
+    if (base::WriteFile(already_ran_path_, "", 0) != 0)
+      PLOG(ERROR) << "Couldn't create " << already_ran_path_.value();
+  }
+
   prefs_ = delegate_->CreatePrefs();
   InitDBus();
 
@@ -630,8 +641,8 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   std::vector<std::string> args;
   if (wakeup_count_valid) {
     args.push_back("--suspend_wakeup_count_valid");
-    args.push_back(base::StringPrintf("--suspend_wakeup_count=%" PRIu64,
-                                      wakeup_count));
+    args.push_back(
+        base::StringPrintf("--suspend_wakeup_count=%" PRIu64, wakeup_count));
   }
 
   if (duration != base::TimeDelta()) {
@@ -643,8 +654,8 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     args.push_back("--suspend_to_idle");
 
   suspend_configurator_->PrepareForSuspend();
-  const int exit_code = RunSetuidHelper("suspend", base::JoinString(args, " "),
-                                        true);
+  const int exit_code =
+      RunSetuidHelper("suspend", base::JoinString(args, " "), true);
   LOG(INFO) << "powerd_suspend returned " << exit_code;
   suspend_configurator_->UndoPrepareForSuspend();
 
@@ -1246,9 +1257,8 @@ void Daemon::Suspend(SuspendImminent::Reason reason,
   }
 
   if (use_external_wakeup_count) {
-    suspender_->RequestSuspendWithExternalWakeupCount(reason,
-                                                      external_wakeup_count,
-                                                      duration);
+    suspender_->RequestSuspendWithExternalWakeupCount(
+        reason, external_wakeup_count, duration);
   } else {
     suspender_->RequestSuspend(reason, duration);
   }

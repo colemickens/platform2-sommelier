@@ -88,6 +88,11 @@ class Daemon : public policy::InputEventHandler::Delegate,
                public system::DBusWrapperInterface::Observer,
                public system::PowerSupplyObserver {
  public:
+  // File used to identify the first instantiation of powerd after a boot.
+  // Presence of this file indicates that this is not the first run of powerd
+  // after boot.
+  static constexpr char kAlreadyRanFileName[] = "already_ran";
+
   Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir);
   ~Daemon() override;
 
@@ -100,6 +105,8 @@ class Daemon : public policy::InputEventHandler::Delegate,
   void set_suspended_state_path_for_testing(const base::FilePath& path) {
     suspended_state_path_ = path;
   }
+
+  bool first_run_after_boot_for_testing() { return first_run_after_boot_; }
 
   void Init();
 
@@ -346,6 +353,11 @@ class Daemon : public policy::InputEventHandler::Delegate,
   // mid-suspend-attempt and didn't announce that the attempt finished.
   base::FilePath suspend_announced_path_;
 
+  // Path to file under /run that's inspected and then touched at startup.
+  // If the file doesn't already exist, then |first_run_after_boot_| is
+  // set to true.
+  base::FilePath already_ran_path_;
+
   // Last session state that we have been informed of. Initialized as stopped.
   SessionState session_state_ = SessionState::STOPPED;
 
@@ -359,6 +371,9 @@ class Daemon : public policy::InputEventHandler::Delegate,
 
   // True if the system should suspend to idle.
   bool suspend_to_idle_ = false;
+
+  // True if this is the first instantiation of powerd after boot.
+  bool first_run_after_boot_ = false;
 
   // Used to log video, user, and audio activity and hovering.
   std::unique_ptr<PeriodicActivityLogger> video_activity_logger_;
