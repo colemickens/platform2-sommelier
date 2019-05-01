@@ -171,7 +171,7 @@ static bool are_attribs_supported(
   bool result = false;
   VAConfigAttrib* attribs =
       malloc(sizeof(VAConfigAttrib) * num_required_attribs);
-  memcpy(attribs, required_attribs, sizeof(attribs));
+  memcpy(attribs, required_attribs, sizeof(*attribs) * num_required_attribs);
   for (int i = 0; i < num_required_attribs; i++) {
     attribs[i].value = 0;
   }
