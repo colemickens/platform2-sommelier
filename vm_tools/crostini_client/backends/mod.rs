@@ -170,7 +170,7 @@ impl_backend! {
             user_id_hash: &str,
             file_name: &str,
             removable_media: Option<&str>,
-        ) -> Result<(), Box<Error>>;
+        ) -> Result<Option<String>, Box<Error>>;
         /// Imports a disk image `file_name` as a VM `name` owned by `user_id_hash`. The file may
         /// optionally reside on external drive `removable_media`.
         fn vm_import(

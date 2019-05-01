@@ -194,9 +194,13 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             .get("CROS_USER_ID_HASH")
             .ok_or(ExpectedCrosUserIdHash)?;
 
-        try_command!(self
-            .backend
-            .vm_export(vm_name, user_id_hash, file_name, removable_media));
+        if let Some(uuid) =
+            try_command!(self
+                .backend
+                .vm_export(vm_name, user_id_hash, file_name, removable_media))
+        {
+            println!("Export in progress: {}", uuid);
+        }
         Ok(())
     }
 

@@ -497,7 +497,7 @@ impl ChromeOS {
         user_id_hash: &str,
         export_name: &str,
         removable_media: Option<&str>,
-    ) -> Result<(), Box<Error>> {
+    ) -> Result<Option<String>, Box<Error>> {
         let file_name = format!("{}{}", export_name, QCOW_IMAGE_EXTENSION);
         let export_path = match removable_media {
             Some(media_path) => Path::new(REMOVABLE_MEDIA_ROOT)
@@ -550,7 +550,8 @@ impl ChromeOS {
 
         let response: ExportDiskImageResponse = dbus_message_to_proto(&message)?;
         match response.status {
-            DiskImageStatus::DISK_STATUS_CREATED => Ok(()),
+            DiskImageStatus::DISK_STATUS_CREATED => Ok(None),
+            DiskImageStatus::DISK_STATUS_IN_PROGRESS => Ok(Some(response.command_uuid)),
             _ => Err(BadDiskImageStatus(response.status, response.failure_reason).into()),
         }
     }
@@ -1171,7 +1172,7 @@ impl Backend for ChromeOS {
         user_id_hash: &str,
         file_name: &str,
         removable_media: Option<&str>,
-    ) -> Result<(), Box<Error>> {
+    ) -> Result<Option<String>, Box<Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         self.export_disk_image(name, user_id_hash, file_name, removable_media)
     }
