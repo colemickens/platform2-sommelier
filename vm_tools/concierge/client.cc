@@ -56,10 +56,6 @@ constexpr char kRemovableMediaRoot[] = "/media/removable";
 constexpr char kStorageCryptohomeRoot[] = "cryptohome-root";
 constexpr char kStorageCryptohomeDownloads[] = "cryptohome-downloads";
 constexpr char kStorageCryptohomePluginVm[] = "cryptohome-pluginvm";
-// File extension for qcow2 disk types.
-constexpr char kQcowImageExtension[] = ".qcow2";
-// File extension for compressed Plugin VM images.
-constexpr char kPluginVmImageExtension[] = ".zip";
 
 // Cryptohome user base path.
 constexpr char kCryptohomeUser[] = "/home/user";
@@ -479,8 +475,7 @@ int CreateDiskImage(dbus::ObjectProxy* proxy,
 
 int DestroyDiskImage(dbus::ObjectProxy* proxy,
                      string cryptohome_id,
-                     string name,
-                     StorageLocation storage_location) {
+                     string name) {
   if (cryptohome_id.empty()) {
     LOG(ERROR) << "Cryptohome id cannot be empty";
     return -1;
@@ -498,7 +493,6 @@ int DestroyDiskImage(dbus::ObjectProxy* proxy,
   vm_tools::concierge::DestroyDiskImageRequest request;
   request.set_cryptohome_id(std::move(cryptohome_id));
   request.set_disk_path(std::move(name));
-  request.set_storage_location(storage_location);
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode DestroyDiskImageRequest protobuf";
@@ -532,7 +526,6 @@ int ExportDiskImage(dbus::ObjectProxy* proxy,
                     string cryptohome_id,
                     string vm_name,
                     string export_name,
-                    StorageLocation storage_location,
                     string removable_media) {
   if (cryptohome_id.empty()) {
     LOG(ERROR) << "Cryptohome id cannot be empty";
@@ -551,28 +544,19 @@ int ExportDiskImage(dbus::ObjectProxy* proxy,
                                vm_tools::concierge::kExportDiskImageMethod);
   dbus::MessageWriter writer(&method_call);
 
-  base::FilePath export_disk_dir;
-  if (!removable_media.empty()) {
-    export_disk_dir =
-        base::FilePath(kRemovableMediaRoot).Append(removable_media);
-  } else {
-    export_disk_dir = base::FilePath(kCryptohomeUser)
-                          .Append(cryptohome_id)
-                          .Append(kDownloadsDir);
-  }
   base::FilePath export_disk_path;
-  switch (storage_location) {
-    case vm_tools::concierge::STORAGE_CRYPTOHOME_PLUGINVM:
-      export_disk_path =
-          export_disk_dir.Append(export_name + kPluginVmImageExtension);
-      break;
-    default:
-      export_disk_path =
-          export_disk_dir.Append(export_name + kQcowImageExtension);
-      break;
+  if (!removable_media.empty()) {
+    export_disk_path = base::FilePath(kRemovableMediaRoot)
+                           .Append(removable_media)
+                           .Append(export_name);
+  } else {
+    export_disk_path = base::FilePath(kCryptohomeUser)
+                           .Append(cryptohome_id)
+                           .Append(kDownloadsDir)
+                           .Append(export_name);
   }
   if (export_disk_path.ReferencesParent()) {
-    LOG(ERROR) << "Invalid removable_vm_path";
+    LOG(ERROR) << "Invalid export image path";
     return -1;
   }
   if (base::PathExists(export_disk_path)) {
@@ -591,7 +575,6 @@ int ExportDiskImage(dbus::ObjectProxy* proxy,
   vm_tools::concierge::ExportDiskImageRequest request;
   request.set_cryptohome_id(std::move(cryptohome_id));
   request.set_disk_path(std::move(vm_name));
-  request.set_storage_location(storage_location);
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode ExportDiskImageRequest protobuf";
@@ -1265,11 +1248,11 @@ int main(int argc, char** argv) {
                                    std::move(FLAGS_disk_size));
   } else if (FLAGS_destroy_disk) {
     return DestroyDiskImage(proxy, std::move(FLAGS_cryptohome_id),
-                            std::move(FLAGS_name), storage_location);
+                            std::move(FLAGS_name));
   } else if (FLAGS_export_disk) {
     return ExportDiskImage(proxy, std::move(FLAGS_cryptohome_id),
                            std::move(FLAGS_name), std::move(FLAGS_export_name),
-                           storage_location, std::move(FLAGS_removable_media));
+                           std::move(FLAGS_removable_media));
   } else if (FLAGS_import_disk) {
     return ImportDiskImage(proxy, std::move(FLAGS_cryptohome_id),
                            std::move(FLAGS_name), std::move(FLAGS_import_name),

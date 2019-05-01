@@ -1823,14 +1823,12 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
   }
 
   base::FilePath disk_path;
-  if (!GetDiskPathFromName(request.disk_path(), request.cryptohome_id(),
-                           request.storage_location(),
-                           true, /* create_parent_dir */
-                           &disk_path)) {
-    response.set_status(DISK_STATUS_FAILED);
-    response.set_failure_reason("Failed to delete vm image");
+  StorageLocation location;
+  if (!CheckVmExists(request.disk_path(), request.cryptohome_id(), &disk_path,
+                     &location)) {
+    response.set_status(DISK_STATUS_DOES_NOT_EXIST);
+    response.set_failure_reason("No such image");
     writer.AppendProtoAsArrayOfBytes(response);
-
     return dbus_response;
   }
 
@@ -1841,14 +1839,7 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
                << request.disk_path();
   }
 
-  if (!base::PathExists(disk_path)) {
-    response.set_status(DISK_STATUS_DOES_NOT_EXIST);
-    writer.AppendProtoAsArrayOfBytes(response);
-
-    return dbus_response;
-  }
-
-  if (request.storage_location() == STORAGE_CRYPTOHOME_PLUGINVM) {
+  if (location == STORAGE_CRYPTOHOME_PLUGINVM) {
     // Plugin VMs need to be unregistered before we can delete them.
     VmId vm_id(request.cryptohome_id(), request.disk_path());
     bool registered;
@@ -1870,9 +1861,8 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
     }
   }
 
-  if (!base::DeleteFile(disk_path,
-                        request.storage_location() ==
-                            STORAGE_CRYPTOHOME_PLUGINVM /* recursive */)) {
+  if (!base::DeleteFile(
+          disk_path, location == STORAGE_CRYPTOHOME_PLUGINVM /* recursive */)) {
     response.set_status(DISK_STATUS_FAILED);
     response.set_failure_reason("Disk removal failed");
     writer.AppendProtoAsArrayOfBytes(response);
@@ -1909,15 +1899,9 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
   }
 
   base::FilePath disk_path;
-  if (!GetDiskPathFromName(request.disk_path(), request.cryptohome_id(),
-                           request.storage_location(),
-                           false, /* create_parent_dir */
-                           &disk_path)) {
-    response.set_failure_reason("Failed to delete vm image");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-  if (!base::PathExists(disk_path)) {
+  StorageLocation location;
+  if (!CheckVmExists(request.disk_path(), request.cryptohome_id(), &disk_path,
+                     &location)) {
     response.set_status(DISK_STATUS_DOES_NOT_EXIST);
     response.set_failure_reason("Export image doesn't exist");
     writer.AppendProtoAsArrayOfBytes(response);
@@ -1933,7 +1917,7 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     return dbus_response;
   }
 
-  switch (request.storage_location()) {
+  switch (location) {
     case STORAGE_CRYPTOHOME_ROOT: {
       base::ScopedFD disk_fd(HANDLE_EINTR(
           open(disk_path.value().c_str(), O_RDWR | O_NOFOLLOW | O_CLOEXEC)));
