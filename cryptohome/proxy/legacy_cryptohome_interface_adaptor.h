@@ -461,6 +461,9 @@ class LegacyCryptohomeInterfaceAdaptor
   void IsMountedForUserOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool, bool>> response,
       const user_data_auth::IsMountedReply& reply);
+  void ListKeysExOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+      const user_data_auth::ListKeysReply& reply);
   void MountExOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
       const user_data_auth::MountReply& reply);
