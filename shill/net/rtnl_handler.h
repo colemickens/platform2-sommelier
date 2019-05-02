@@ -5,6 +5,7 @@
 #ifndef SHILL_NET_RTNL_HANDLER_H_
 #define SHILL_NET_RTNL_HANDLER_H_
 
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -115,6 +116,9 @@ class SHILL_EXPORT RTNLHandler {
   // Sends a formatted RTNL message using SendMessageWithErrorMask
   // using an error mask inferred from the mode and type of |message|.
   virtual bool SendMessage(RTNLMessage* message);
+  // Sends an RTNL message. If the message is successfully sent, and |seq| is
+  // not null, then it will be set to the message's assigned sequence number.
+  virtual bool SendMessage(std::unique_ptr<RTNLMessage> message, uint32_t* seq);
 
  protected:
   RTNLHandler();
@@ -134,6 +138,9 @@ class SHILL_EXPORT RTNLHandler {
 
   // Size of the window for receiving error sequences out-of-order.
   static const int kErrorWindowSize;
+  // Size of the window for maintaining RTNLMessages in |stored_requests_| that
+  // haven't yet gotten a response.
+  static const int kStoredRequestWindowSize;
 
   // This stops the event-monitoring function of the RTNL handler -- it is
   // private since it will never happen in normal running, but is useful for
@@ -168,6 +175,18 @@ class SHILL_EXPORT RTNLHandler {
   // or no error mask was assigned, an empty ErrorMask is returned.
   ErrorMask GetAndClearErrorMask(uint32_t sequence);
 
+  // This method assumes that |request| is a more recent request than all
+  // previous requests passed here (i.e. that this method is called in order).
+  //
+  // Storing a request when there is already a request stored with the same
+  // sequence number will result in the stored request being updated by the new
+  // request.
+  void StoreRequest(std::unique_ptr<RTNLMessage> request);
+  // Removes a stored request from |stored_requests_| and returns it. Returns
+  // nullptr if there is no request stored with that sequence.
+  std::unique_ptr<RTNLMessage> PopStoredRequest(uint32_t seq);
+  uint32_t CalculateStoredRequestWindowSize();
+
   std::unique_ptr<Sockets> sockets_;
   bool in_request_;
 
@@ -175,6 +194,10 @@ class SHILL_EXPORT RTNLHandler {
   uint32_t request_flags_;
   uint32_t request_sequence_;
   uint32_t last_dump_sequence_;
+  // Sequence of the oldest request stored in |stored_requests_|.
+  uint32_t oldest_request_sequence_;
+  // Mapping of sequence number to corresponding RTNLMessage.
+  std::map<uint32_t, std::unique_ptr<RTNLMessage>> stored_requests_;
 
   std::vector<RTNLListener*> listeners_;
   std::unique_ptr<IOHandler> rtnl_handler_;

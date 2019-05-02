@@ -37,6 +37,7 @@ class MockRTNLHandler : public RTNLHandler {
   MOCK_METHOD1(GetInterfaceIndex, int(const std::string& interface_name));
   MOCK_METHOD2(SendMessageWithErrorMask, bool(RTNLMessage* message,
                                               const ErrorMask& error_mask));
+  using RTNLHandler::SendMessage;
   MOCK_METHOD1(SendMessage, bool(RTNLMessage* message));
 
  private:

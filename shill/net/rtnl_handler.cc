@@ -19,6 +19,7 @@
 #include <unistd.h>
 
 #include <limits>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/logging.h>
@@ -55,6 +56,7 @@ const uint32_t RTNLHandler::kRequestRdnss = 16;
 const uint32_t RTNLHandler::kRequestNeighbor = 32;
 const uint32_t RTNLHandler::kRequestBridgeNeighbor = 64;
 const int RTNLHandler::kErrorWindowSize = 16;
+const int RTNLHandler::kStoredRequestWindowSize = 32;
 
 namespace {
 base::LazyInstance<RTNLHandler>::DestructorAtExit g_rtnl_handler =
@@ -283,6 +285,11 @@ void RTNLHandler::ParseRTNL(InputData* data) {
                        hdr->nlmsg_len);
     SLOG(this, 5) << "RTNL received payload length " << payload.GetLength()
                   << ": \"" << payload.HexEncode() << "\"";
+
+    // Swapping out of |stored_requests_| here ensures that the RTNLMessage will
+    // be destructed regardless of the control flow below.
+    std::unique_ptr<RTNLMessage> request_msg = PopStoredRequest(hdr->nlmsg_seq);
+
     if (!msg.Decode(payload)) {
       SLOG(this, 5) << __func__ << ": rtnl packet type " << hdr->nlmsg_type
                     << " length " << hdr->nlmsg_len << " sequence "
@@ -303,24 +310,31 @@ void RTNLHandler::ParseRTNL(InputData* data) {
                             << hdr->nlmsg_len;
               break;
             }
-            struct nlmsgerr* err =
-                reinterpret_cast<nlmsgerr*>(NLMSG_DATA(hdr));
-            if (err->error >= 0 ||
-                err->error == std::numeric_limits<int>::min()) {
-              LOG(ERROR) << "sequence " << hdr->nlmsg_seq
-                         << " received unexpected error code " << err->error;
+
+            int error_number =
+              -(reinterpret_cast<nlmsgerr*>(NLMSG_DATA(hdr))->error);
+            std::string request_str;
+            if (request_msg)
+              request_str = " (" + request_msg->ToString() + ")";
+            bool invalid_error = (error_number < 0 ||
+               error_number == std::numeric_limits<int>::min());
+
+            std::string error_msg;
+            if (invalid_error) {
+              error_msg = base::StringPrintf(
+                "sequence %d%s received invalid error %d",
+                hdr->nlmsg_seq, request_str.c_str(), error_number);
             } else {
-              int error_number = -err->error;
-              std::ostringstream message;
-              message << "sequence " << hdr->nlmsg_seq << " received error "
-                << error_number << " ("
-                << strerror(error_number) << ")";
-              if (!base::ContainsKey(GetAndClearErrorMask(hdr->nlmsg_seq),
-                    error_number)) {
-                LOG(ERROR) << message.str();
-              } else {
-                SLOG(this, 3) << message.str();
-              }
+              error_msg = base::StringPrintf(
+                "sequence %d%s received error %d (%s)",
+                hdr->nlmsg_seq, request_str.c_str(),
+                error_number, strerror(error_number));
+            }
+            if (!base::ContainsKey(GetAndClearErrorMask(hdr->nlmsg_seq),
+                                   error_number)) {
+              LOG(ERROR) << error_msg;
+            } else {
+              SLOG(this, 3) << error_msg;
             }
             break;
           }
@@ -497,6 +511,21 @@ bool RTNLHandler::SendMessage(RTNLMessage* message) {
   return SendMessageWithErrorMask(message, error_mask);
 }
 
+bool RTNLHandler::SendMessage(std::unique_ptr<RTNLMessage> message,
+                              uint32_t* msg_seq) {
+  if (!SendMessage(message.get()))
+    return false;
+
+  if (msg_seq)
+    *msg_seq = message->seq();
+  StoreRequest(std::move(message));
+  return true;
+}
+
+void RTNLHandler::OnReadError(const string& error_msg) {
+  LOG(FATAL) << "RTNL Socket read returns error: " << error_msg;
+}
+
 bool RTNLHandler::IsSequenceInErrorMaskWindow(uint32_t sequence) {
   return (request_sequence_ - sequence) < kErrorWindowSize;
 }
@@ -515,9 +544,64 @@ RTNLHandler::ErrorMask RTNLHandler::GetAndClearErrorMask(uint32_t sequence) {
   return error_mask;
 }
 
-void RTNLHandler::OnReadError(const string& error_msg) {
-  LOG(FATAL) << "RTNL Socket read returns error: "
-             << error_msg;
+void RTNLHandler::StoreRequest(std::unique_ptr<RTNLMessage> request) {
+  auto seq = request->seq();
+
+  if (stored_requests_.empty()) {
+    oldest_request_sequence_ = seq;
+  }
+
+  // Note that this will update an existing stored request of the same sequence
+  // number, removing the original RTNLMessage.
+  stored_requests_[seq] = std::move(request);
+  while (CalculateStoredRequestWindowSize() > kStoredRequestWindowSize) {
+    SLOG(this, 1) << "Removing stored RTNLMessage of sequence "
+                  << oldest_request_sequence_ << " (" << request->ToString()
+                  << ") without receiving a response for this sequence";
+    auto request = PopStoredRequest(oldest_request_sequence_);
+  }
+}
+
+std::unique_ptr<RTNLMessage> RTNLHandler::PopStoredRequest(uint32_t seq) {
+  auto seq_request = stored_requests_.find(seq);
+  if (seq_request == stored_requests_.end()) {
+    return nullptr;
+  }
+
+  std::unique_ptr<RTNLMessage> res;
+  res.swap(seq_request->second);
+  if (seq == oldest_request_sequence_) {
+    auto next_oldest_seq_request = std::next(seq_request);
+    // Seq overflow could have occurred between the oldest and second oldest
+    // stored requests.
+    if (next_oldest_seq_request == stored_requests_.end()) {
+      next_oldest_seq_request = stored_requests_.begin();
+    }
+    // Note that this condition means |oldest_request_sequence_| will not be
+    // changed when the last stored request is popped. This does not pose any
+    // correctness issues.
+    if (next_oldest_seq_request != seq_request) {
+      oldest_request_sequence_ = next_oldest_seq_request->first;
+    }
+  }
+  stored_requests_.erase(seq_request);
+  return res;
+}
+
+uint32_t RTNLHandler::CalculateStoredRequestWindowSize() {
+  if (stored_requests_.size() <= 1) {
+    return stored_requests_.size();
+  }
+
+  auto seq_request = stored_requests_.begin();
+  if (seq_request->first != oldest_request_sequence_) {
+    // If we overflowed, the sequence of the newest request is the
+    // greatest sequence less than |oldest_request_sequence_|.
+    seq_request = std::prev(stored_requests_.find(oldest_request_sequence_));
+  } else {
+    seq_request = std::prev(stored_requests_.end());
+  }
+  return seq_request->first - oldest_request_sequence_ + 1;
 }
 
 }  // namespace shill

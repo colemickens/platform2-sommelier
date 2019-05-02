@@ -4,7 +4,9 @@
 
 #include "shill/net/rtnl_handler.h"
 
+#include <limits>
 #include <string>
+#include <utility>
 
 #include <gtest/gtest.h>
 #include <net/if.h>
@@ -97,7 +99,27 @@ class RTNLHandlerTest : public Test {
   }
 
   int GetErrorWindowSize() {
-    return  RTNLHandler::kErrorWindowSize;
+    return RTNLHandler::kErrorWindowSize;
+  }
+
+  void StoreRequest(std::unique_ptr<RTNLMessage> request) {
+    RTNLHandler::GetInstance()->StoreRequest(std::move(request));
+  }
+
+  std::unique_ptr<RTNLMessage> PopStoredRequest(uint32_t seq) {
+    return RTNLHandler::GetInstance()->PopStoredRequest(seq);
+  }
+
+  uint32_t CalculateStoredRequestWindowSize() {
+    return RTNLHandler::GetInstance()->CalculateStoredRequestWindowSize();
+  }
+
+  uint32_t stored_request_window_size() {
+    return RTNLHandler::GetInstance()->kStoredRequestWindowSize;
+  }
+
+  uint32_t oldest_request_sequence() {
+    return RTNLHandler::GetInstance()->oldest_request_sequence_;
   }
 
   MOCK_METHOD1(HandlerCallback, void(const RTNLMessage&));
@@ -331,6 +353,178 @@ TEST_F(RTNLHandlerTest, MaskedError) {
   ReturnError(kSequenceNumber, 3);
 
   StopRTNLHandler();
+}
+
+TEST_F(RTNLHandlerTest, BasicStoreRequest) {
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 0);
+
+  const uint32_t kSequenceNumber1 = 123;
+  auto request = std::make_unique<RTNLMessage>();
+  request->set_seq(kSequenceNumber1);
+  StoreRequest(std::move(request));
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 1);
+  EXPECT_EQ(oldest_request_sequence(), kSequenceNumber1);
+
+  const uint32_t kSequenceNumber2 = 124;
+  request = std::make_unique<RTNLMessage>();
+  request->set_seq(kSequenceNumber2);
+  StoreRequest(std::move(request));
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 2);
+  EXPECT_EQ(oldest_request_sequence(), kSequenceNumber1);
+
+  const uint32_t kSequenceNumber3 =
+    kSequenceNumber1 + stored_request_window_size() - 1;
+  request = std::make_unique<RTNLMessage>();
+  request->set_seq(kSequenceNumber3);
+  StoreRequest(std::move(request));
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), stored_request_window_size());
+  EXPECT_EQ(oldest_request_sequence(), kSequenceNumber1);
+
+  EXPECT_NE(PopStoredRequest(kSequenceNumber1), nullptr);
+  EXPECT_EQ(PopStoredRequest(kSequenceNumber1), nullptr);
+  EXPECT_EQ(CalculateStoredRequestWindowSize(),
+            stored_request_window_size() - 1);
+  EXPECT_EQ(oldest_request_sequence(), kSequenceNumber2);
+
+  EXPECT_NE(PopStoredRequest(kSequenceNumber2), nullptr);
+  EXPECT_EQ(PopStoredRequest(kSequenceNumber2), nullptr);
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 1);
+  EXPECT_EQ(oldest_request_sequence(), kSequenceNumber3);
+
+  EXPECT_NE(PopStoredRequest(kSequenceNumber3), nullptr);
+  EXPECT_EQ(PopStoredRequest(kSequenceNumber3), nullptr);
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 0);
+}
+
+TEST_F(RTNLHandlerTest, StoreRequestLargerThanWindow) {
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 0);
+
+  const uint32_t kSequenceNumber1 = 123;
+  auto request = std::make_unique<RTNLMessage>();
+  request->set_seq(kSequenceNumber1);
+  StoreRequest(std::move(request));
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 1);
+  EXPECT_EQ(oldest_request_sequence(), kSequenceNumber1);
+
+  const uint32_t kSequenceNumber2 = 124;
+  request = std::make_unique<RTNLMessage>();
+  request->set_seq(kSequenceNumber2);
+  StoreRequest(std::move(request));
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 2);
+  EXPECT_EQ(oldest_request_sequence(), kSequenceNumber1);
+
+  const uint32_t kSequenceNumber3 =
+    kSequenceNumber1 + stored_request_window_size();
+  request = std::make_unique<RTNLMessage>();
+  request->set_seq(kSequenceNumber3);
+  StoreRequest(std::move(request));
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), stored_request_window_size());
+  EXPECT_EQ(oldest_request_sequence(), kSequenceNumber2);
+
+  const uint32_t kSequenceNumber4 =
+    kSequenceNumber2 + stored_request_window_size();
+  request = std::make_unique<RTNLMessage>();
+  request->set_seq(kSequenceNumber4);
+  StoreRequest(std::move(request));
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 2);
+  EXPECT_EQ(oldest_request_sequence(), kSequenceNumber3);
+
+  EXPECT_EQ(PopStoredRequest(kSequenceNumber1), nullptr);
+  EXPECT_EQ(PopStoredRequest(kSequenceNumber2), nullptr);
+
+  EXPECT_NE(PopStoredRequest(kSequenceNumber3), nullptr);
+  EXPECT_EQ(PopStoredRequest(kSequenceNumber3), nullptr);
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 1);
+
+  EXPECT_NE(PopStoredRequest(kSequenceNumber4), nullptr);
+  EXPECT_EQ(PopStoredRequest(kSequenceNumber4), nullptr);
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 0);
+}
+
+TEST_F(RTNLHandlerTest, OverflowStoreRequest) {
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 0);
+
+  const uint32_t kSequenceNumber1 = std::numeric_limits<uint32_t>::max();
+  auto request = std::make_unique<RTNLMessage>();
+  request->set_seq(kSequenceNumber1);
+  StoreRequest(std::move(request));
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 1);
+  EXPECT_EQ(oldest_request_sequence(), kSequenceNumber1);
+
+  const uint32_t kSequenceNumber2 = kSequenceNumber1 + 1;
+  request = std::make_unique<RTNLMessage>();
+  request->set_seq(kSequenceNumber2);
+  StoreRequest(std::move(request));
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 2);
+  EXPECT_EQ(oldest_request_sequence(), kSequenceNumber1);
+
+  const uint32_t kSequenceNumber3 =
+    kSequenceNumber1 + stored_request_window_size() - 1;
+  request = std::make_unique<RTNLMessage>();
+  request->set_seq(kSequenceNumber3);
+  StoreRequest(std::move(request));
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), stored_request_window_size());
+  EXPECT_EQ(oldest_request_sequence(), kSequenceNumber1);
+
+  EXPECT_NE(PopStoredRequest(kSequenceNumber1), nullptr);
+  EXPECT_EQ(PopStoredRequest(kSequenceNumber1), nullptr);
+  EXPECT_EQ(CalculateStoredRequestWindowSize(),
+            stored_request_window_size() - 1);
+  EXPECT_EQ(oldest_request_sequence(), kSequenceNumber2);
+
+  EXPECT_NE(PopStoredRequest(kSequenceNumber2), nullptr);
+  EXPECT_EQ(PopStoredRequest(kSequenceNumber2), nullptr);
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 1);
+  EXPECT_EQ(oldest_request_sequence(), kSequenceNumber3);
+
+  EXPECT_NE(PopStoredRequest(kSequenceNumber3), nullptr);
+  EXPECT_EQ(PopStoredRequest(kSequenceNumber3), nullptr);
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 0);
+}
+
+TEST_F(RTNLHandlerTest, OverflowStoreRequestLargerThanWindow) {
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 0);
+
+  const uint32_t kSequenceNumber1 = std::numeric_limits<uint32_t>::max();
+  auto request = std::make_unique<RTNLMessage>();
+  request->set_seq(kSequenceNumber1);
+  StoreRequest(std::move(request));
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 1);
+  EXPECT_EQ(oldest_request_sequence(), kSequenceNumber1);
+
+  const uint32_t kSequenceNumber2 = kSequenceNumber1 + 1;
+  request = std::make_unique<RTNLMessage>();
+  request->set_seq(kSequenceNumber2);
+  StoreRequest(std::move(request));
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 2);
+  EXPECT_EQ(oldest_request_sequence(), kSequenceNumber1);
+
+  const uint32_t kSequenceNumber3 =
+    kSequenceNumber1 + stored_request_window_size();
+  request = std::make_unique<RTNLMessage>();
+  request->set_seq(kSequenceNumber3);
+  StoreRequest(std::move(request));
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), stored_request_window_size());
+  EXPECT_EQ(oldest_request_sequence(), kSequenceNumber2);
+
+  const uint32_t kSequenceNumber4 =
+    kSequenceNumber2 + stored_request_window_size();
+  request = std::make_unique<RTNLMessage>();
+  request->set_seq(kSequenceNumber4);
+  StoreRequest(std::move(request));
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 2);
+  EXPECT_EQ(oldest_request_sequence(), kSequenceNumber3);
+
+  EXPECT_EQ(PopStoredRequest(kSequenceNumber1), nullptr);
+  EXPECT_EQ(PopStoredRequest(kSequenceNumber2), nullptr);
+
+  EXPECT_NE(PopStoredRequest(kSequenceNumber3), nullptr);
+  EXPECT_EQ(PopStoredRequest(kSequenceNumber3), nullptr);
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 1);
+
+  EXPECT_NE(PopStoredRequest(kSequenceNumber4), nullptr);
+  EXPECT_EQ(PopStoredRequest(kSequenceNumber4), nullptr);
+  EXPECT_EQ(CalculateStoredRequestWindowSize(), 0);
 }
 
 }  // namespace shill
