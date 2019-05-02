@@ -74,6 +74,23 @@ append_log() {
   echo "$(log_prefix) $@" >>"$dest_path"
 }
 
+append_logfile() {
+  # Add MAX_KEEP_LOG_LINES from file into log.
+  local dest_path="$(find_log_path)"
+  local source_path="$1"
+
+  if [ ! -f "${source_path}" ]; then
+    echo "File not found: ${source_path}"
+    return
+  fi
+
+  echo "-- $(basename ${source_path}) --" >> "${dest_path}"
+  tail -n ${MAX_KEEP_LOG_LINES} "${source_path}" >> "${dest_path}"
+  echo "-- end of logfile --" >> "${dest_path}"
+
+  echo "$(log_prefix) (append_logfile): $@" >>"$dest_path"
+}
+
 repair_log() {
   # Report detail messages for the status of stateful partition.
   local dest_path="$TMP_LOG_PATH"
@@ -125,6 +142,10 @@ case "$1" in
   --repair )
     shift
     repair_log "$@"
+    ;;
+  --append_logfile )
+    shift
+    append_logfile "$@"
     ;;
   -- )
     shift
