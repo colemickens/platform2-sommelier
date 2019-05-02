@@ -26,7 +26,6 @@
 
 #include <iomanip>
 #include <limits>
-#include <map>
 #include <memory>
 #include <string>
 
@@ -43,7 +42,6 @@
 
 using base::Bind;
 using base::StringAppendF;
-using std::map;
 using std::string;
 
 namespace shill {

@@ -10,7 +10,6 @@
 
 #include <base/bind.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/http/http_utils.h>
 
@@ -25,7 +24,6 @@
 
 using base::Bind;
 using base::Callback;
-using base::StringPrintf;
 using base::StringToInt;
 using std::string;
 

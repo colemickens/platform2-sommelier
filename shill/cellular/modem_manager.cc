@@ -16,7 +16,6 @@
 #include "shill/manager.h"
 
 using std::string;
-using std::vector;
 
 namespace shill {
 

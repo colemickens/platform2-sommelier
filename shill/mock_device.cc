@@ -14,7 +14,6 @@ namespace shill {
 class ControlInterface;
 class EventDispatcher;
 
-using ::testing::_;
 using ::testing::DefaultValue;
 using std::string;
 

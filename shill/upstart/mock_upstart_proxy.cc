@@ -4,10 +4,6 @@
 
 #include "shill/upstart/mock_upstart_proxy.h"
 
-#include "shill/testing.h"
-
-using testing::_;
-
 namespace shill {
 
 MockUpstartProxy::MockUpstartProxy() {}
