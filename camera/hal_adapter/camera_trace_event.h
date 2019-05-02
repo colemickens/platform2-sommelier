@@ -36,6 +36,7 @@
 #include <sstream>
 #include <string>
 
+#include <base/compiler_specific.h>
 #include <base/files/file.h>
 #include <base/strings/string_piece.h>
 #include <base/synchronization/lock.h>
@@ -65,7 +66,7 @@ class EventTracer {
   void Counter(base::StringPiece name, int value);
 
  private:
-  void TracePrintf(_Printf_format_string_ const char* format, ...);
+  void TracePrintf(const char* format, ...) PRINTF_FORMAT(2, 3);
 
   bool tracing_enabled_ = false;
   std::set<pid_t> begun_tid_;

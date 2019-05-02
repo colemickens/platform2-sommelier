@@ -122,7 +122,7 @@ void EventTracer::Counter(base::StringPiece name, int value) {
               name.data(), value);
 }
 
-void EventTracer::TracePrintf(_Printf_format_string_ const char* format, ...) {
+void EventTracer::TracePrintf(const char* format, ...) {
   va_list args;
   va_start(args, format);
   if (trace_file_.IsValid()) {
