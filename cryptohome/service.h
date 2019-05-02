@@ -395,6 +395,11 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual void DoGetSupportedKeyPolicies(const std::string& request,
                                          DBusGMethodInvocation* context);
 
+  // Remote Server Unlock related methods
+  virtual void DoGetRsuDeviceId(DBusGMethodInvocation* context);
+  virtual gboolean GetRsuDeviceId(const GArray* request,
+                                  DBusGMethodInvocation* context);
+
   // Attestation functionality is implemented in descendant classes
 
   // Attestation-related hooks.

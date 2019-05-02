@@ -168,6 +168,7 @@ class TpmImpl : public Tpm {
   bool GetVersionInfo(TpmVersionInfo* version_info) override;
   bool GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) override;
   bool SetUserType(Tpm::UserType type) override;
+  bool GetRsuDeviceId(std::string* device_id) override;
   LECredentialBackend* GetLECredentialBackend() override;
   SignatureSealingBackend* GetSignatureSealingBackend() override;
   bool GetDelegate(brillo::Blob* blob,

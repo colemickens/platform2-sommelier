@@ -1666,6 +1666,14 @@ bool Tpm2Impl::SetUserType(Tpm::UserType type) {
   return true;
 }
 
+bool Tpm2Impl::GetRsuDeviceId(std::string* device_id) {
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
+  return trunks->tpm_utility->GetRsuDeviceId(device_id) == TPM_RC_SUCCESS;
+}
+
 LECredentialBackend* Tpm2Impl::GetLECredentialBackend() {
 #if USE_PINWEAVER
   return &le_credential_backend_;

@@ -140,6 +140,7 @@ namespace switches {
                                    "get_enrollment_id",
                                    "get_supported_key_policies",
                                    "lock_to_single_user_mount_until_reboot",
+                                   "get_rsu_device_id",
                                    NULL};
   enum ActionEnum {
     ACTION_MOUNT_EX,
@@ -201,6 +202,7 @@ namespace switches {
     ACTION_GET_ENROLLMENT_ID,
     ACTION_GET_SUPPORTED_KEY_POLICIES,
     ACTION_LOCK_TO_SINGLE_USER_MOUNT_UNTIL_REBOOT,
+    ACTION_GET_RSU_DEVICE_ID,
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
@@ -2681,6 +2683,19 @@ int main(int argc, char **argv) {
     }
     ParseBaseReply(out_reply, &reply, true /* print_reply */);
     printf("Login disabled.\n");
+  } else if (!strcmp(switches::kActions[switches::ACTION_GET_RSU_DEVICE_ID],
+                     action.c_str())) {
+    cryptohome::GetRsuDeviceIdRequest request;
+    cryptohome::BaseReply reply;
+    if (!MakeProtoDBusCall("GetRsuDeviceId", DBUS_METHOD(get_rsu_device_id),
+                           DBUS_METHOD(get_rsu_device_id_async), cl, &proxy,
+                           request, &reply, true /* print_reply */)) {
+      return 1;
+    }
+    if (!reply.HasExtension(cryptohome::GetRsuDeviceIdReply::reply)) {
+      printf("GetRsuDeviceIdReply missing.\n");
+      return 1;
+    }
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)

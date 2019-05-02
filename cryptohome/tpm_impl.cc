@@ -3333,6 +3333,11 @@ bool TpmImpl::SetUserType(Tpm::UserType type) {
   return true;
 }
 
+bool TpmImpl::GetRsuDeviceId(std::string* device_id) {
+  // Not supported for TPM 1.2.
+  return false;
+}
+
 LECredentialBackend* TpmImpl::GetLECredentialBackend() {
   // Not implemented in TPM 1.2.
   return nullptr;

@@ -437,6 +437,10 @@ gboolean cryptohome_lock_to_single_user_mount_until_reboot(
     GArray* request,
     DBusGMethodInvocation* resp);
 
+gboolean cryptohome_get_rsu_device_id(Cryptohome* self,
+                                      GArray* request,
+                                      DBusGMethodInvocation* error);
+
 }  // namespace gobject
 }  // namespace cryptohome
 #endif  // CRYPTOHOME_INTERFACE_H_

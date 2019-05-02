@@ -464,6 +464,10 @@ class LegacyCryptohomeInterfaceAdaptor
           cryptohome::BaseReply>> response,
       const cryptohome::LockToSingleUserMountUntilRebootRequest& in_request)
       override;
+  void GetRsuDeviceId(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          cryptohome::BaseReply>> response,
+      const cryptohome::GetRsuDeviceIdRequest& in_request) override;
 
  private:
   // Method used as callbacks once the call to the new interface returns

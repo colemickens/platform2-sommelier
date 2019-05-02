@@ -155,6 +155,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD1(GetVersionInfo, bool(TpmVersionInfo*));
   MOCK_METHOD1(GetIFXFieldUpgradeInfo, bool(IFXFieldUpgradeInfo*));
   MOCK_METHOD1(SetUserType, bool(Tpm::UserType));
+  MOCK_METHOD1(GetRsuDeviceId, bool(std::string*));
   MOCK_METHOD0(GetLECredentialBackend, LECredentialBackend*());
   MOCK_METHOD0(GetSignatureSealingBackend, SignatureSealingBackend*());
   MOCK_METHOD0(HandleOwnershipTakenSignal, void());

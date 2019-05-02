@@ -1142,4 +1142,14 @@ LegacyCryptohomeInterfaceAdaptor::IntegerToACAType(int type) {
   return static_cast<attestation::ACAType>(type);
 }
 
+void LegacyCryptohomeInterfaceAdaptor::GetRsuDeviceId(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
+    const cryptohome::GetRsuDeviceIdRequest& in_request) {
+  // Not implemented yet
+  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                           DBUS_ERROR_NOT_SUPPORTED,
+                           "Method unimplemented yet");
+}
+
 }  // namespace cryptohome

@@ -61,6 +61,8 @@ MockTpm::MockTpm() {
       .WillByDefault(Invoke(this, &MockTpm::FakeReadPCR));
   ON_CALL(*this, SetUserType(_))
       .WillByDefault(Return(true));
+  ON_CALL(*this, GetRsuDeviceId(_))
+      .WillByDefault(Return(true));
   ON_CALL(*this, GetLECredentialBackend()).WillByDefault(Return(nullptr));
   ON_CALL(*this, GetDelegate(_, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, DoesUseTpmManager()).WillByDefault(Return(true));

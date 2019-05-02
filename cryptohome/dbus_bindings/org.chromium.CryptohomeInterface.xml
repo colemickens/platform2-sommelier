@@ -918,6 +918,19 @@
                     value="cryptohome::BaseReply" />
       </arg>
     </method>
+    <!-- Get the lookup key required for Remote Server unlock.
+         Returns protobuf which is GetRsuDeviceIdReply. -->
+    <method name="GetRsuDeviceId">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::GetRsuDeviceIdRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+          value="cryptohome::BaseReply" />
+      </arg>
+    </method>
 
     <!-- Signals:
            TpmInitStatus: Emitted when TPM initialization status changes.

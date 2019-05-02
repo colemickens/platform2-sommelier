@@ -3488,6 +3488,30 @@ gboolean Service::LockToSingleUserMountUntilReboot(
   return TRUE;
 }
 
+void Service::DoGetRsuDeviceId(DBusGMethodInvocation* context) {
+  std::string device_id;
+  bool success = tpm_->GetRsuDeviceId(&device_id);
+  // This happens when device requests RSU lookup key too frequently.
+  if (!success) {
+    SendFailureReply(context, "Unable to retrieve lookup key!");
+    return;
+  }
+
+  BaseReply reply;
+  reply.MutableExtension(GetRsuDeviceIdReply::reply)
+      ->set_rsu_device_id(device_id);
+
+  SendReply(context, reply);
+}
+
+gboolean Service::GetRsuDeviceId(const GArray* request,
+                                 DBusGMethodInvocation* context) {
+  PostTask(FROM_HERE,
+           base::Bind(&Service::DoGetRsuDeviceId, base::Unretained(this),
+                      base::Unretained(context)));
+  return TRUE;
+}
+
 void Service::DoLockToSingleUserMountUntilReboot(
     const std::string& obfuscated_username,
     DBusGMethodInvocation* context) {

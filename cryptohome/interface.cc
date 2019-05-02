@@ -749,6 +749,12 @@ gboolean cryptohome_lock_to_single_user_mount_until_reboot(
   CRYPTOHOME_WRAP_METHOD(LockToSingleUserMountUntilReboot, request);
 }
 
+gboolean cryptohome_get_rsu_device_id(Cryptohome* self,
+                                      GArray* request,
+                                      DBusGMethodInvocation* error) {
+  CRYPTOHOME_WRAP_METHOD(GetRsuDeviceId, request);
+}
+
 #undef CRYPTOHOME_WRAP_METHOD
 
 }  // namespace gobject

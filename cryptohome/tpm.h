@@ -739,6 +739,9 @@ class Tpm {
   // lock things down at login.
   virtual bool SetUserType(Tpm::UserType type) = 0;
 
+  // Obtains RSU device id from TPM for the Remote Server Unlock process.
+  virtual bool GetRsuDeviceId(std::string* device_id) = 0;
+
   // Get a pointer to the LECredentialBackend object, which is used to call the
   // relevant TPM commands necessary to implement Low Entropy (LE) credential
   // protection.
