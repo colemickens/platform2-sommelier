@@ -175,10 +175,50 @@ void LegacyCryptohomeInterfaceAdaptor::MountEx(
     const cryptohome::AccountIdentifier& in_account_id,
     const cryptohome::AuthorizationRequest& in_authorization_request,
     const cryptohome::MountRequest& in_mount_request) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>>
+      response_shared =
+          std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
+              std::move(response));
+
+  user_data_auth::MountRequest request;
+  *request.mutable_account() = in_account_id;
+  request.mutable_authorization()->CopyFrom(in_authorization_request);
+  request.set_require_ephemeral(in_mount_request.require_ephemeral());
+  request.mutable_create()->mutable_keys()->CopyFrom(
+      in_mount_request.create().keys());
+  request.mutable_create()->set_copy_authorization_key(
+      in_mount_request.create().copy_authorization_key());
+  request.mutable_create()->set_force_ecryptfs(
+      in_mount_request.create().force_ecryptfs());
+  request.set_force_dircrypto_if_available(
+      in_mount_request.force_dircrypto_if_available());
+  request.set_to_migrate_from_ecryptfs(
+      in_mount_request.to_migrate_from_ecryptfs());
+  request.set_public_mount(in_mount_request.public_mount());
+  request.set_hidden_mount(in_mount_request.hidden_mount());
+  request.set_guest_mount(false);
+  // There's another MountGuestEx to handle guest mount. This method only
+  // deal with non-guest mount so guest_mount is false here.
+
+  userdataauth_proxy_->MountAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::MountExOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::MountExOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+    const user_data_auth::MountReply& reply) {
+  cryptohome::BaseReply result;
+  result.set_error(static_cast<cryptohome::CryptohomeErrorCode>(reply.error()));
+  MountReply* result_extension =
+      result.MutableExtension(cryptohome::MountReply::reply);
+  result_extension->set_recreated(reply.recreated());
+  result_extension->set_sanitized_username(reply.sanitized_username());
+  response->Return(result);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::MountGuestEx(

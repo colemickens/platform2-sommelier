@@ -450,12 +450,20 @@ class LegacyCryptohomeInterfaceAdaptor
 
  private:
   // Method used as callbacks once the call to the new interface returns
+  // Note that OnSuccess in the method names below refers to a successful DBus
+  // call, which may or may not be the same as the action being performed by the
+  // underlying API is successful. Some of our APIs opt to reflect failure to
+  // perform the action that the the API is supposed to do through protobuf
+  // fields (such as using CryptohomeErrorCode).
   void IsMountedOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool>> response,
       const user_data_auth::IsMountedReply& reply);
   void IsMountedForUserOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool, bool>> response,
       const user_data_auth::IsMountedReply& reply);
+  void MountExOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+      const user_data_auth::MountReply& reply);
   void TpmIsAttestationPreparedOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool>> response_raw,
       const attestation::GetEnrollmentPreparationsReply& reply);
