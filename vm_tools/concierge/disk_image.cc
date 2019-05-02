@@ -200,7 +200,7 @@ bool PluginVmExportOperation::ExecuteIo(uint64_t io_limit) {
         break;
       }
     }
-  } while (io_limit > 0);
+  } while (status() == DISK_STATUS_IN_PROGRESS && io_limit > 0);
 
   // More copying is to be done (or there was a failure).
   return false;
@@ -357,7 +357,7 @@ void PluginVmImportOperation::MarkFailed(const char* msg, struct archive* a) {
 
   // Release resources.
   out_.reset();
-  if (!output_dir_.Delete()) {
+  if (output_dir_.IsValid() && !output_dir_.Delete()) {
     LOG(WARNING) << "Failed to delete output directory on error";
   }
 
@@ -432,7 +432,7 @@ bool PluginVmImportOperation::ExecuteIo(uint64_t io_limit) {
         break;
       }
     }
-  } while (io_limit > 0);
+  } while (status() == DISK_STATUS_IN_PROGRESS && io_limit > 0);
 
   // More copying is to be done (or there was a failure).
   return false;
