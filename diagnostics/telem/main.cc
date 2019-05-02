@@ -2,16 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <stdlib.h>
+#include <cstdlib>
 #include <iostream>
 #include <map>
 #include <memory>
+#include <sstream>
 #include <string>
 
-#include <base/logging.h>
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <base/optional.h>
+#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <base/values.h>
 #include <brillo/flag_helper.h>
@@ -114,12 +116,37 @@ bool DisplayOptionalTelemetryItem(
     const std::string& item_name,
     const base::Optional<base::Value>& telem_item) {
   if (!telem_item) {
-    LOG(ERROR) << "No telemetry item received.";
+    LOG(ERROR) << "No telemetry data found for " << item_name << ".";
     return false;
   }
 
   std::cout << item_name << ": ";
   return DisplayTelemetryItem(telem_item.value());
+}
+
+// Create a stringified list of the item names for use in help.
+std::string GetItemsAsString() {
+  std::stringstream ss;
+  ss << "[";
+  const char* sep = "";
+  for (auto telemetry_item_switch : kTelemetryItemSwitches) {
+    ss << sep << telemetry_item_switch.switch_name;
+    sep = ", ";
+  }
+  ss << "]";
+  return ss.str();
+}
+
+std::string GetGroupsAsString() {
+  std::stringstream ss;
+  ss << "[";
+  const char* sep = "";
+  for (auto telemetry_group_switch : kTelemetryGroupSwitches) {
+    ss << sep << telemetry_group_switch.switch_name;
+    sep = ", ";
+  }
+  ss << "]";
+  return ss.str();
 }
 
 }  // namespace
@@ -129,8 +156,12 @@ bool DisplayOptionalTelemetryItem(
 // Test driver for libtelem. Only supports requesting individual telemetry
 // items. This program does not exercise the caching functionality of libtelem.
 int main(int argc, char** argv) {
-  DEFINE_string(item, "", "Telemetry item to retrieve.");
-  DEFINE_string(group, "", "Group of telemetry items to retrieve.");
+  std::string item_help = base::StringPrintf("Telemetry item to display. %s",
+                                             GetItemsAsString().c_str());
+  std::string group_help = base::StringPrintf(
+      "Group of telemetry items to display. %s", GetGroupsAsString().c_str());
+  DEFINE_string(item, "", item_help.c_str());
+  DEFINE_string(group, "", group_help.c_str());
   brillo::FlagHelper::Init(argc, argv, "telem - Device telemetry tool.");
 
   std::map<std::string, diagnostics::TelemetryItemEnum>
