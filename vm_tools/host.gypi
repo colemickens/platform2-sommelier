@@ -99,6 +99,7 @@
         'concierge/startup_listener_impl.cc',
         'concierge/tap_device_builder.cc',
         'concierge/termina_vm.cc',
+        'concierge/vmplugin_dispatcher_interface.cc',
         'concierge/vsock_cid_pool.cc',
       ],
     },

@@ -15,6 +15,7 @@
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <dbus/exported_object.h>
+#include <dbus/object_proxy.h>
 
 #include <vm_concierge/proto_bindings/service.pb.h>
 
@@ -129,7 +130,9 @@ class PluginVmImportOperation : public DiskImageOperation {
   static std::unique_ptr<PluginVmImportOperation> Create(
       base::ScopedFD in_fd,
       const base::FilePath disk_path,
-      uint64_t source_size);
+      uint64_t source_size,
+      const std::string owner_id,
+      dbus::ObjectProxy* vmplugin_service_proxy);
 
  protected:
   bool ExecuteIo(uint64_t io_limit) override;
@@ -138,7 +141,9 @@ class PluginVmImportOperation : public DiskImageOperation {
  private:
   PluginVmImportOperation(base::ScopedFD in_fd,
                           uint64_t source_size,
-                          const base::FilePath disk_path);
+                          const base::FilePath disk_path,
+                          const std::string owner_id,
+                          dbus::ObjectProxy* vmplugin_service_proxy);
 
   bool PrepareInput();
   bool PrepareOutput();
@@ -151,6 +156,13 @@ class PluginVmImportOperation : public DiskImageOperation {
 
   // Path to the directory that will contain the imported image.
   const base::FilePath dest_image_path_;
+
+  // Owner of the VM. Used when registering imported image with the
+  // dispatcher.
+  const std::string owner_id_;
+
+  // Proxy to the dispatcher service.  Not owned.
+  dbus::ObjectProxy* vmplugin_service_proxy_;
 
   // File descriptor from which to fetch the source image.
   base::ScopedFD in_fd_;

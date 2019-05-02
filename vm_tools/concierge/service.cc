@@ -60,6 +60,7 @@
 #include "vm_tools/concierge/plugin_vm.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/ssh_keys.h"
+#include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
 using std::string;
 
@@ -634,6 +635,14 @@ bool Service::Init() {
   if (!seneschal_service_proxy_) {
     LOG(ERROR) << "Unable to get dbus proxy for "
                << vm_tools::seneschal::kSeneschalServiceName;
+    return false;
+  }
+
+  // Get the D-Bus proxy for communicating with Plugin VM dispatcher.
+  vmplugin_service_proxy_ = GetVmpluginServiceProxy(bus_);
+  if (!vmplugin_service_proxy_) {
+    LOG(ERROR) << "Unable to get dbus proxy for "
+               << vm_tools::plugin_dispatcher::kVmPluginDispatcherServiceName;
     return false;
   }
 
@@ -1929,8 +1938,9 @@ std::unique_ptr<dbus::Response> Service::ImportDiskImage(
     return dbus_response;
   }
 
-  auto op = PluginVmImportOperation::Create(std::move(in_fd), disk_path,
-                                            request.source_size());
+  auto op = PluginVmImportOperation::Create(
+      std::move(in_fd), disk_path, request.source_size(),
+      request.cryptohome_id(), vmplugin_service_proxy_);
 
   response.set_status(op->status());
   response.set_command_uuid(op->uuid());
