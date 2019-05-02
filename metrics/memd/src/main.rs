@@ -209,12 +209,18 @@ fn modulo(e: isize, n: usize) -> usize {
 }
 
 // Reads a string from the file named by |path|, representing a u32, and
-// returns the value the strings it represents.
+// returns the value the strings it represents. If there are multiple ints
+// in the file, then it returns the first one.
 fn read_int(path: &Path) -> Result<u32> {
     let mut file = File::open(path)?;
     let mut content = String::new();
     file.read_to_string(&mut content)?;
-    Ok(content.trim().parse::<u32>()?)
+    Ok(content.trim()
+       .split_whitespace()
+       .into_iter()
+       .next()
+       .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "empty file"))?
+       .parse::<u32>()?)
 }
 
 // The Timer trait allows us to mock time for testing.

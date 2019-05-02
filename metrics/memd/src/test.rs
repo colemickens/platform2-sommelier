@@ -748,7 +748,7 @@ pub fn setup_test_environment(paths: &Paths) {
         .expect("cannot initialize available");
     print_to_path!(&paths.runnables, "0.16 0.18 0.22 4/981 8504")
         .expect("cannot initialize runnables");
-    print_to_path!(&paths.low_mem_margin, "{}", LOW_MEM_MARGIN)
+    print_to_path!(&paths.low_mem_margin, "{} {}", LOW_MEM_MARGIN, LOW_MEM_MARGIN * 2)
         .expect("cannot initialize low_mem_margin");
 
     print_to_path!(sys_vm.join("min_filelist_kbytes"), "100000\n")
