@@ -698,7 +698,7 @@ void Service::HandleChildExit() {
 
     if (iter != vms_.end()) {
       // Notify cicerone that the VM has exited.
-      NotifyCiceroneOfVmStopped(iter->first.first, iter->first.second);
+      NotifyCiceroneOfVmStopped(iter->first);
 
       // If this is a termina VM, remove it from the list.
       auto termina_vm = std::find(termina_vms_.begin(), termina_vms_.end(),
@@ -1010,7 +1010,8 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   }
 
   // Notify cicerone that we have started a VM.
-  NotifyCiceroneOfVmStarted(request.owner_id(), request.name(), vm->cid(), "");
+  VmId vm_id(request.owner_id(), request.name());
+  NotifyCiceroneOfVmStarted(vm_id, vm->cid(), "");
 
   string failure_reason;
   if (request.start_termina() && !StartTermina(vm.get(), &failure_reason)) {
@@ -1031,7 +1032,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   vm_info->set_seneschal_server_handle(seneschal_server_handle);
   writer.AppendProtoAsArrayOfBytes(response);
 
-  vms_[std::make_pair(request.owner_id(), request.name())] = std::move(vm);
+  vms_[vm_id] = std::move(vm);
   return dbus_response;
 }
 
@@ -1265,10 +1266,10 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
   response.set_success(true);
   writer.AppendProtoAsArrayOfBytes(response);
 
-  NotifyCiceroneOfVmStarted(request.owner_id(), request.name(), 0 /* cid */,
-                            std::move(vm_token));
+  VmId vm_id(request.owner_id(), request.name());
+  NotifyCiceroneOfVmStarted(vm_id, 0 /* cid */, std::move(vm_token));
 
-  vms_[std::make_pair(request.owner_id(), request.name())] = std::move(vm);
+  vms_[vm_id] = std::move(vm);
   return dbus_response;
 }
 
@@ -1311,7 +1312,7 @@ std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
   }
 
   // Notify cicerone that we have stopped a VM.
-  NotifyCiceroneOfVmStopped(request.owner_id(), request.name());
+  NotifyCiceroneOfVmStopped(iter->first);
 
   // If this is a termina VM, remove it from the list.
   auto termina_vm =
@@ -1334,7 +1335,7 @@ std::unique_ptr<dbus::Response> Service::StopAllVms(
   // Spawn a thread for each VM to shut it down.
   for (auto& iter : vms_) {
     // Notify cicerone that we have stopped a VM.
-    NotifyCiceroneOfVmStopped(iter.first.first, iter.first.second);
+    NotifyCiceroneOfVmStopped(iter.first);
 
     // Resetting the unique_ptr will call the destructor for that VM, which
     // will shut it down.
@@ -1708,7 +1709,7 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
     }
 
     // Notify cicerone that we have stopped a VM.
-    NotifyCiceroneOfVmStopped(request.cryptohome_id(), request.disk_path());
+    NotifyCiceroneOfVmStopped(iter->first);
     vms_.erase(iter);
   }
 
@@ -2440,8 +2441,7 @@ void Service::OnResolvConfigChanged(std::vector<string> nameservers,
   exported_object_->SendSignal(&signal);
 }
 
-void Service::NotifyCiceroneOfVmStarted(const std::string& owner_id,
-                                        const std::string& vm_name,
+void Service::NotifyCiceroneOfVmStarted(const VmId& vm_id,
                                         uint32_t cid,
                                         std::string vm_token) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
@@ -2449,8 +2449,8 @@ void Service::NotifyCiceroneOfVmStarted(const std::string& owner_id,
                                vm_tools::cicerone::kNotifyVmStartedMethod);
   dbus::MessageWriter writer(&method_call);
   vm_tools::cicerone::NotifyVmStartedRequest request;
-  request.set_owner_id(owner_id);
-  request.set_vm_name(vm_name);
+  request.set_owner_id(vm_id.owner_id());
+  request.set_vm_name(vm_id.name());
   request.set_cid(cid);
   request.set_vm_token(std::move(vm_token));
   writer.AppendProtoAsArrayOfBytes(request);
@@ -2462,15 +2462,14 @@ void Service::NotifyCiceroneOfVmStarted(const std::string& owner_id,
   }
 }
 
-void Service::NotifyCiceroneOfVmStopped(const std::string& owner_id,
-                                        const std::string& vm_name) {
+void Service::NotifyCiceroneOfVmStopped(const VmId& vm_id) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
                                vm_tools::cicerone::kNotifyVmStoppedMethod);
   dbus::MessageWriter writer(&method_call);
   vm_tools::cicerone::NotifyVmStoppedRequest request;
-  request.set_owner_id(owner_id);
-  request.set_vm_name(vm_name);
+  request.set_owner_id(vm_id.owner_id());
+  request.set_vm_name(vm_id.name());
   writer.AppendProtoAsArrayOfBytes(request);
   std::unique_ptr<dbus::Response> dbus_response =
       cicerone_service_proxy_->CallMethodAndBlock(
@@ -2480,8 +2479,7 @@ void Service::NotifyCiceroneOfVmStopped(const std::string& owner_id,
   }
 }
 
-std::string Service::GetContainerToken(const std::string& owner_id,
-                                       const std::string& vm_name,
+std::string Service::GetContainerToken(const VmId& vm_id,
                                        const std::string& container_name) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
@@ -2489,8 +2487,8 @@ std::string Service::GetContainerToken(const std::string& owner_id,
   dbus::MessageWriter writer(&method_call);
   vm_tools::cicerone::ContainerTokenRequest request;
   vm_tools::cicerone::ContainerTokenResponse response;
-  request.set_owner_id(owner_id);
-  request.set_vm_name(vm_name);
+  request.set_owner_id(vm_id.owner_id());
+  request.set_vm_name(vm_id.name());
   request.set_container_name(container_name);
   writer.AppendProtoAsArrayOfBytes(request);
   std::unique_ptr<dbus::Response> dbus_response =
@@ -2590,12 +2588,12 @@ void Service::HandleSuspendDone() {
   }
 }
 
-Service::VmMap::iterator Service::FindVm(std::string owner_id,
-                                         std::string vm_name) {
-  auto it = vms_.find(std::make_pair(owner_id, vm_name));
+Service::VmMap::iterator Service::FindVm(const std::string& owner_id,
+                                         const std::string& vm_name) {
+  auto it = vms_.find(VmId(owner_id, vm_name));
   // TODO(nverne): remove this fallback when Chrome is correctly seting owner_id
   if (it == vms_.end()) {
-    return vms_.find(std::make_pair("", vm_name));
+    return vms_.find(VmId("", vm_name));
   }
   return it;
 }

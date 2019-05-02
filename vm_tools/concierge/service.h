@@ -31,6 +31,7 @@
 #include <dbus/message.h>
 #include <grpcpp/grpcpp.h>
 
+#include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/disk_image.h"
 #include "vm_tools/concierge/power_manager_client.h"
 #include "vm_tools/concierge/shill_client.h"
@@ -151,14 +152,11 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Helpers for notifying cicerone of VM started/stopped events and generating
   // container tokens.
-  void NotifyCiceroneOfVmStarted(const std::string& owner_id,
-                                 const std::string& vm_name,
+  void NotifyCiceroneOfVmStarted(const VmId& vm_id,
                                  uint32_t vsock_cid,
                                  std::string vm_token);
-  void NotifyCiceroneOfVmStopped(const std::string& owner_id,
-                                 const std::string& vm_name);
-  std::string GetContainerToken(const std::string& owner_id,
-                                const std::string& vm_name,
+  void NotifyCiceroneOfVmStopped(const VmId& vm_id);
+  std::string GetContainerToken(const VmId& vm_id,
                                 const std::string& container_name);
 
   void OnTremplinStartedSignal(dbus::Signal* signal);
@@ -172,12 +170,12 @@ class Service final : public base::MessageLoopForIO::Watcher {
   void HandleSuspendImminent();
   void HandleSuspendDone();
 
-  using VmMap = std::map<std::pair<std::string, std::string>,
-                         std::unique_ptr<VmInterface>>;
+  using VmMap = std::map<VmId, std::unique_ptr<VmInterface>>;
 
   // Returns an iterator to vm with key (|owner_id|, |vm_name|). If no such
   // element exists, tries the former with |owner_id| equal to empty string.
-  VmMap::iterator FindVm(std::string owner_id, std::string vm_name);
+  VmMap::iterator FindVm(const std::string& owner_id,
+                         const std::string& vm_name);
 
   // Resource allocators for VMs.
   arc_networkd::MacAddressGenerator mac_address_generator_;
@@ -206,7 +204,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
   std::unique_ptr<arc_networkd::Subnet> plugin_subnet_;
   std::unique_ptr<arc_networkd::SubnetAddress> plugin_gateway_;
 
-  // Active VMs keyed by (owner_id, vm_name).
+  // Active VMs keyed by VmId which is (owner_id, vm_name).
   VmMap vms_;
 
   // Active termina VMs.  Must come after |vms_| so that we don't end up with
