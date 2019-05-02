@@ -419,7 +419,6 @@ TEST_F(CrashCollectorTest, MetaData) {
       "exec_name=kernel\n"
       "ver=6727.0.2015_01_26_0853\n"
       "payload=%s\n"
-      "payload_size=3\n"
       "done=1\n",
       kFakeNow, payload_full_path.value().c_str());
   EXPECT_EQ(expected_meta, contents);
