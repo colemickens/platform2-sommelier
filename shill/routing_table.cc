@@ -20,6 +20,7 @@
 
 #include <limits>
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
@@ -484,16 +485,14 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
       entry.src.ToString().c_str(), entry.src.prefix(),
       interface_index, mode, flags);
 
-  RTNLMessage message(
-      RTNLMessage::kTypeRoute,
-      mode,
-      NLM_F_REQUEST | flags,
-      0,
-      0,
-      0,
-      entry.dst.family());
-
-  message.set_route_status(RTNLMessage::RouteStatus(
+  auto message = std::make_unique<RTNLMessage>(RTNLMessage::kTypeRoute,
+                                               mode,
+                                               NLM_F_REQUEST | flags,
+                                               0,
+                                               0,
+                                               0,
+                                               entry.dst.family());
+  message->set_route_status(RTNLMessage::RouteStatus(
       entry.dst.prefix(),
       entry.src.prefix(),
       entry.table,
@@ -503,26 +502,26 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
       0));
 
   if (entry.type != RTN_BLACKHOLE) {
-    message.SetAttribute(RTA_DST, entry.dst.address());
+    message->SetAttribute(RTA_DST, entry.dst.address());
   }
   if (!entry.src.IsDefault()) {
-    message.SetAttribute(RTA_SRC, entry.src.address());
+    message->SetAttribute(RTA_SRC, entry.src.address());
   }
   if (!entry.gateway.IsDefault()) {
-    message.SetAttribute(RTA_GATEWAY, entry.gateway.address());
+    message->SetAttribute(RTA_GATEWAY, entry.gateway.address());
   }
-  message.SetAttribute(RTA_PRIORITY,
+  message->SetAttribute(RTA_PRIORITY,
                        ByteString::CreateFromCPUUInt32(entry.metric));
 
   if (entry.type == RTN_UNICAST) {
     // Note that RouteMsgHandler will ignore anything without RTA_OIF,
     // because that is how it looks up the |tables_| vector.  But
     // FlushRoutes() and FlushRoutesWithTag() do not care.
-    message.SetAttribute(RTA_OIF,
+    message->SetAttribute(RTA_OIF,
                          ByteString::CreateFromCPUUInt32(interface_index));
   }
 
-  return rtnl_handler_->SendMessage(&message);
+  return rtnl_handler_->SendMessage(std::move(message), nullptr);
 }
 
 // Somewhat surprisingly, the kernel allows you to create multiple routes
@@ -572,32 +571,31 @@ bool RoutingTable::RequestRouteToHost(const IPAddress& address,
   // Make sure we don't get a cached response that is no longer valid.
   FlushCache();
 
-  RTNLMessage message(
-      RTNLMessage::kTypeRoute,
-      RTNLMessage::kModeQuery,
-      NLM_F_REQUEST,
-      0,
-      0,
-      interface_index,
-      address.family());
-
+  auto message = std::make_unique<RTNLMessage>(RTNLMessage::kTypeRoute,
+                                               RTNLMessage::kModeQuery,
+                                               NLM_F_REQUEST,
+                                               0,
+                                               0,
+                                               interface_index,
+                                               address.family());
   RTNLMessage::RouteStatus status;
   status.dst_prefix = address.prefix();
-  message.set_route_status(status);
-  message.SetAttribute(RTA_DST, address.address());
+  message->set_route_status(status);
+  message->SetAttribute(RTA_DST, address.address());
 
   if (interface_index != -1) {
-    message.SetAttribute(RTA_OIF,
+    message->SetAttribute(RTA_OIF,
                          ByteString::CreateFromCPUUInt32(interface_index));
   }
 
-  if (!rtnl_handler_->SendMessage(&message)) {
+  uint32_t seq;
+  if (!rtnl_handler_->SendMessage(std::move(message), &seq)) {
     return false;
   }
 
   // Save the sequence number of the request so we can create a route for
   // this host when we get a reply.
-  route_queries_.push_back(Query(message.seq(), tag, callback, table_id));
+  route_queries_.push_back(Query(seq, tag, callback, table_id));
 
   return true;
 }
@@ -665,15 +663,14 @@ bool RoutingTable::ApplyRule(uint32_t interface_index,
       IPAddress::GetAddressFamilyName(entry.family).c_str(),
       entry.priority);
 
-  RTNLMessage message(RTNLMessage::kTypeRule,
-                      mode,
-                      NLM_F_REQUEST | flags,
-                      0,
-                      0,
-                      0,
-                      entry.family);
-
-  message.set_route_status(
+  auto message = std::make_unique<RTNLMessage>(RTNLMessage::kTypeRule,
+                                               mode,
+                                               NLM_F_REQUEST | flags,
+                                               0,
+                                               0,
+                                               0,
+                                               entry.family);
+  message->set_route_status(
       RTNLMessage::RouteStatus(entry.dst.prefix(),
                                entry.src.prefix(),
                                entry.table,
@@ -682,34 +679,34 @@ bool RoutingTable::ApplyRule(uint32_t interface_index,
                                RTN_UNICAST,
                                entry.invert_rule ? FIB_RULE_INVERT : 0));
 
-  message.SetAttribute(FRA_PRIORITY,
+  message->SetAttribute(FRA_PRIORITY,
                        ByteString::CreateFromCPUUInt32(entry.priority));
   if (entry.has_fwmark) {
-    message.SetAttribute(FRA_FWMARK,
+    message->SetAttribute(FRA_FWMARK,
                          ByteString::CreateFromCPUUInt32(entry.fwmark_value));
-    message.SetAttribute(FRA_FWMASK,
+    message->SetAttribute(FRA_FWMASK,
                          ByteString::CreateFromCPUUInt32(entry.fwmark_mask));
   }
   if (entry.has_uidrange) {
     struct fib_rule_uid_range r = {
         .start = entry.uidrange_start, .end = entry.uidrange_end,
     };
-    message.SetAttribute(
+    message->SetAttribute(
         FRA_UID_RANGE,
         ByteString(reinterpret_cast<const unsigned char*>(&r), sizeof(r)));
   }
   if (!entry.interface_name.empty()) {
-    message.SetAttribute(FRA_IFNAME,
+    message->SetAttribute(FRA_IFNAME,
                          ByteString(entry.interface_name, true));
   }
   if (!entry.dst.IsDefault()) {
-    message.SetAttribute(FRA_DST, entry.dst.address());
+    message->SetAttribute(FRA_DST, entry.dst.address());
   }
   if (!entry.src.IsDefault()) {
-    message.SetAttribute(FRA_SRC, entry.src.address());
+    message->SetAttribute(FRA_SRC, entry.src.address());
   }
 
-  return rtnl_handler_->SendMessage(&message);
+  return rtnl_handler_->SendMessage(std::move(message), nullptr);
 }
 
 bool RoutingTable::ParseRoutingPolicyMessage(const RTNLMessage& message,
