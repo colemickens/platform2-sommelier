@@ -16,3 +16,12 @@ KERNEL=="wilco-charger", \
         $sys$devpath/charge_type \
         $sys$devpath/charge_control_start_threshold \
         $sys$devpath/charge_control_end_threshold"
+
+KERNEL=="wilco-charge-schedule", \
+    SUBSYSTEM=="platform", \
+    RUN+="/bin/sh -c \"/bin/chown power:power \
+        $sys$devpath/advanced_charging_* \
+        $sys$devpath/peak_shift_*\"", \
+    RUN+="/bin/sh -c \"/bin/chmod ug+w \
+        $sys$devpath/advanced_charging_* \
+        $sys$devpath/peak_shift_*\""
