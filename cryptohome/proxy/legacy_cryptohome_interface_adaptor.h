@@ -540,6 +540,19 @@ class LegacyCryptohomeInterfaceAdaptor
     return async_id;
   }
 
+  // This method is used when the handler for a successful DBus call to the new
+  // API only needs to forward the error code in the new API's proto to a
+  // BaseReply type on the legacy API.
+  template <typename ReplyProtoType>
+  static void ForwardBaseReplyErrorCode(
+      std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+      const ReplyProtoType& reply) {
+    cryptohome::BaseReply base_reply;
+    base_reply.set_error(
+        static_cast<cryptohome::CryptohomeErrorCode>(reply.error()));
+    response->Return(base_reply);
+  }
+
   // A helper function which maps an integer to a valid CertificateProfile.
   static attestation::CertificateProfile IntegerToCertificateProfile(
       int profile_value);
