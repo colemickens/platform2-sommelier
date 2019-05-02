@@ -33,7 +33,6 @@ namespace shill {
 
 class ControlInterface;
 class DhcpProperties;
-class DiagnosticsReporter;
 class Error;
 class EventDispatcher;
 class KeyValueStore;
@@ -870,7 +869,6 @@ class Service : public base::RefCounted<Service> {
   Metrics* metrics_;
   Manager* manager_;
   Time* time_;
-  DiagnosticsReporter* diagnostics_reporter_;
 
   // The |serial_number_| for the next Service.
   static unsigned int next_serial_number_;
