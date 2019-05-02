@@ -730,20 +730,6 @@ std::unique_ptr<brillo::http::FormData> Sender::CreateCrashFormData(
     return nullptr;
   }
 
-  // TODO(crbug.com/391887): Apply the changes from crrev.com/c/1581125 to
-  // remove this when we also update the testing to check this correctly too.
-  std::string log_value;
-  if (details.metadata.GetString("log", &log_value)) {
-    brillo::ErrorPtr error;
-    base::FilePath log_file = details.meta_file.DirName().Append(
-        base::FilePath(log_value).BaseName());
-    if (base::PathExists(log_file) &&
-        !form_data->AddFileField("log", log_file, {}, &error)) {
-      LOG(ERROR) << "Failed attaching log file " << log_file.value()
-                 << " of: " << error->GetMessage();
-    }
-  }
-
   for (const auto& key : details.metadata.GetKeys()) {
     if (!base::StartsWith(key, "upload_", base::CompareCase::SENSITIVE) ||
         key == "upload_var_prod" || key == "upload_var_ver" ||
@@ -805,8 +791,6 @@ std::unique_ptr<brillo::http::FormData> Sender::CreateCrashFormData(
     LOG(INFO) << "  URL: " << kReportUploadProdUrl;
     LOG(INFO) << "  Board: " << board;
     LOG(INFO) << "  HWClass: " << hwclass;
-    if (!log_value.empty())
-      LOG(INFO) << "  log: @" << log_value;
     if (!sig.empty())
       LOG(INFO) << "  sig: " << sig;
   }

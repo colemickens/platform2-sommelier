@@ -284,7 +284,7 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
     FilePath full_path = log_path;
     if (!NormalizeFilePath(log_path, &full_path))
       full_path = log_path;
-    AddCrashMetaData("log", full_path.value());
+    AddCrashMetaUploadFile("log", full_path.value());
   }
 
   if (GetProcessTree(pid, proc_log_path)) {

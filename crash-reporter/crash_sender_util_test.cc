@@ -988,10 +988,10 @@ TEST_F(CrashSenderUtilTest, CreateCrashFormData) {
   metadata.SetString("upload_var_prod", "fake_product");
   metadata.SetString("upload_var_ver", "fake_version");
   metadata.SetString("sig", "fake_sig");
-  metadata.SetString("log", log_file.BaseName().value());
   metadata.SetString("upload_var_guid", "SHOULD_NOT_BE_USED");
   metadata.SetString("upload_var_foovar", "bar");
   metadata.SetString("upload_text_footext", text_var_file.value());
+  metadata.SetString("upload_file_log", log_file.value());
   metadata.SetString("upload_file_foofile", file_var_file.value());
   metadata.SetString("error_type", "fake_error");
 
@@ -1051,17 +1051,17 @@ TEST_F(CrashSenderUtilTest, CreateCrashFormData) {
       "\r\n"
       "foobar_payload\r\n"
       "--boundary\r\n"
-      "Content-Disposition: form-data; name=\"log\"; "
-      "filename=\"0.0.0.0.log\"\r\n"
-      "Content-Transfer-Encoding: binary\r\n"
-      "\r\n"
-      "foobar_log\r\n"
-      "--boundary\r\n"
       "Content-Disposition: form-data; name=\"foofile\"; "
       "filename=\"data.bin\"\r\n"
       "Content-Transfer-Encoding: binary\r\n"
       "\r\n"
       "upload_file_contents\r\n"
+      "--boundary\r\n"
+      "Content-Disposition: form-data; name=\"log\"; "
+      "filename=\"0.0.0.0.log\"\r\n"
+      "Content-Transfer-Encoding: binary\r\n"
+      "\r\n"
+      "foobar_log\r\n"
       "--boundary\r\n"
       "Content-Disposition: form-data; name=\"footext\"\r\n"
       "\r\n"
