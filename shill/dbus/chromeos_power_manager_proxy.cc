@@ -53,7 +53,8 @@ ChromeosPowerManagerProxy::ChromeosPowerManagerProxy(
       dispatcher_(dispatcher),
       delegate_(delegate),
       service_appeared_callback_(service_appeared_callback),
-      service_vanished_callback_(service_vanished_callback) {
+      service_vanished_callback_(service_vanished_callback),
+      service_available_(false) {
   // Register signal handlers.
   proxy_->RegisterSuspendImminentSignalHandler(
       base::Bind(&ChromeosPowerManagerProxy::SuspendImminent,

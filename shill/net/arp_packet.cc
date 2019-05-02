@@ -25,7 +25,8 @@ ArpPacket::ArpPacket()
 ArpPacket::ArpPacket(
     const IPAddress& local_ip, const IPAddress& remote_ip,
     const ByteString& local_mac, const ByteString& remote_mac)
-    : local_ip_address_(local_ip),
+    : operation_(0),
+      local_ip_address_(local_ip),
       remote_ip_address_(remote_ip),
       local_mac_address_(local_mac),
       remote_mac_address_(remote_mac) {}

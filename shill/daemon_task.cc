@@ -35,7 +35,16 @@ static string ObjectID(DaemonTask* d) { return "(chromeos_daemon)"; }
 }
 
 DaemonTask::DaemonTask(const Settings& settings, Config* config)
-    : settings_(settings), config_(config) {}
+    : settings_(settings),
+      config_(config),
+      rtnl_handler_(nullptr),
+      routing_table_(nullptr),
+      dhcp_provider_(nullptr),
+#if !defined(DISABLE_WIFI)
+      netlink_manager_(nullptr),
+#endif  // DISABLE_WIFI
+      process_manager_(nullptr) {
+}
 
 DaemonTask::~DaemonTask() {}
 

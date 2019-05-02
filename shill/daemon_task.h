@@ -109,11 +109,11 @@ class DaemonTask {
   RTNLHandler* rtnl_handler_;
   RoutingTable* routing_table_;
   DHCPProvider* dhcp_provider_;
-  ProcessManager* process_manager_;
 #if !defined(DISABLE_WIFI)
   NetlinkManager* netlink_manager_;
   std::unique_ptr<Callback80211Metrics> callback80211_metrics_;
 #endif  // DISABLE_WIFI
+  ProcessManager* process_manager_;
   std::unique_ptr<Manager> manager_;
   base::Closure termination_completed_callback_;
 

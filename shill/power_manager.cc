@@ -40,7 +40,8 @@ PowerManager::PowerManager(EventDispatcher* dispatcher,
       suspend_done_deferred_(false),
       in_dark_resume_(false),
       current_suspend_id_(0),
-      current_dark_suspend_id_(0) {}
+      current_dark_suspend_id_(0),
+      suspend_duration_us_(0) {}
 
 PowerManager::~PowerManager() {}
 
