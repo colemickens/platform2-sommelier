@@ -94,6 +94,8 @@ ENV_PASSTHRU_REGEX_LIST = map(re.compile, [
     r'QEMU_',
     # Used to select profiling output location for gcov.
     r'GCOV_',
+    # Used to select profiling output location for llvm instrumented binaries.
+    r'^LLVM_PROFILE_FILE$',
     # Used by unit tests to access test binaries.
     r'^OUT$',
     # Used by unit tests to access source data files.
