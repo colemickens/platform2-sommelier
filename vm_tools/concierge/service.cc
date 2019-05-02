@@ -700,13 +700,6 @@ void Service::HandleChildExit() {
       // Notify cicerone that the VM has exited.
       NotifyCiceroneOfVmStopped(iter->first);
 
-      // If this is a termina VM, remove it from the list.
-      auto termina_vm = std::find(termina_vms_.begin(), termina_vms_.end(),
-                                  iter->second.get());
-      if (termina_vm != termina_vms_.end()) {
-        termina_vms_.erase(termina_vm);
-      }
-
       // Now remove it from the vm list.
       vms_.erase(iter);
     }
@@ -1314,12 +1307,6 @@ std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
   // Notify cicerone that we have stopped a VM.
   NotifyCiceroneOfVmStopped(iter->first);
 
-  // If this is a termina VM, remove it from the list.
-  auto termina_vm =
-      std::find(termina_vms_.begin(), termina_vms_.end(), iter->second.get());
-  if (termina_vm != termina_vms_.end()) {
-    termina_vms_.erase(termina_vm);
-  }
   vms_.erase(iter);
   response.set_success(true);
   writer.AppendProtoAsArrayOfBytes(response);
@@ -1342,7 +1329,6 @@ std::unique_ptr<dbus::Response> Service::StopAllVms(
     iter.second.reset();
   }
 
-  termina_vms_.clear();
   vms_.clear();
 
   return nullptr;
@@ -1401,22 +1387,13 @@ std::unique_ptr<dbus::Response> Service::SyncVmTimes(
 
   dbus::MessageWriter writer(dbus_response.get());
 
-  SyncVmTimesResponse response = SyncVmTimesInternal();
-
-  writer.AppendProtoAsArrayOfBytes(response);
-
-  return dbus_response;
-}
-
-SyncVmTimesResponse Service::SyncVmTimesInternal() {
   SyncVmTimesResponse response;
-
   int failures = 0;
   int requests = 0;
-  for (TerminaVm* termina_vm : termina_vms_) {
+  for (auto& vm_entry : vms_) {
     requests++;
     string failure_reason;
-    if (!termina_vm->SetTime(&failure_reason)) {
+    if (!vm_entry.second->SetTime(&failure_reason)) {
       failures++;
       response.add_failure_reason(std::move(failure_reason));
     }
@@ -1424,15 +1401,14 @@ SyncVmTimesResponse Service::SyncVmTimesInternal() {
   response.set_requests(requests);
   response.set_failures(failures);
 
-  return response;
+  writer.AppendProtoAsArrayOfBytes(response);
+
+  return dbus_response;
 }
 
 bool Service::StartTermina(TerminaVm* vm, string* failure_reason) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Starting lxd";
-
-  // Keep track of this VM as a termina VM.
-  termina_vms_.push_back(vm);
 
   // Allocate the subnet for lxd's bridge to use.
   std::unique_ptr<arc_networkd::Subnet> container_subnet =
@@ -2527,11 +2503,7 @@ void Service::OnTremplinStartedSignal(dbus::Signal* signal) {
             << tremplin_started_signal.owner_id()
             << ", vm: " << tremplin_started_signal.vm_name();
 
-  // Tremplin only runs in termina VMs.
-  auto termina_vm =
-      std::find(termina_vms_.begin(), termina_vms_.end(), iter->second.get());
-  DCHECK(termina_vm != termina_vms_.end());
-  (*termina_vm)->SetTremplinStarted();
+  iter->second->SetTremplinStarted();
 }
 
 void Service::OnSignalConnected(const std::string& interface_name,
@@ -2567,16 +2539,18 @@ void Service::HandleSuspendDone() {
 
   // Now that all VMs have been woken up, resync the VM clocks if necessary.
   if (resync_vm_clocks_on_resume_) {
-    SyncVmTimesResponse response = SyncVmTimesInternal();
-    if (response.failures() != 0) {
-      LOG(ERROR) << "Failed to set " << response.failures() << " out of "
-                 << response.requests() << " VM clocks:";
-      for (const string& error : response.failure_reason()) {
-        LOG(ERROR) << error;
+    int successes = 0;
+    for (auto& vm_entry : vms_) {
+      string failure_reason;
+      if (vm_entry.second->SetTime(&failure_reason)) {
+        successes++;
+      } else {
+        LOG(ERROR) << "Failed to set VM clock in " << vm_entry.first.owner_id()
+                   << "/" << vm_entry.first.name() << ": " << failure_reason;
       }
-    } else {
-      LOG(INFO) << "Successfully set " << response.requests() << " VM clocks.";
     }
+
+    LOG(INFO) << "Successfully set " << successes << " VM clocks.";
   }
 
   if (update_resolv_config_on_resume_) {

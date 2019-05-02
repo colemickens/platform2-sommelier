@@ -20,6 +20,7 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
 #include <brillo/process.h>
@@ -61,6 +62,8 @@ class PluginVm final : public VmInterface, base::MessageLoopForIO::Watcher {
   void HandleSuspendDone() override {}
   bool SetResolvConfig(const std::vector<std::string>& nameservers,
                        const std::vector<std::string>& search_domains) override;
+  bool SetTime(std::string* failure_reason) override { return true; }
+  void SetTremplinStarted() override { NOTREACHED(); }
 
   // base::MessageLoopForIO::Watcher overrides
   void OnFileCanReadWithoutBlocking(int fd) override;

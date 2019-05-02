@@ -44,8 +44,6 @@ namespace vm_tools {
 
 namespace concierge {
 
-class SyncVmTimesResponse;
-
 // VM Launcher Service responsible for responding to DBus method calls for
 // starting, stopping, and otherwise managing VMs.
 class Service final : public base::MessageLoopForIO::Watcher {
@@ -92,9 +90,6 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Handles a request to update all VMs' times to the current host time.
   std::unique_ptr<dbus::Response> SyncVmTimes(dbus::MethodCall* method_call);
-
-  // Business logic for SyncVmTimes that can be called without dbus.
-  SyncVmTimesResponse SyncVmTimesInternal();
 
   // Handles a request to create a disk image.
   std::unique_ptr<dbus::Response> CreateDiskImage(
@@ -206,10 +201,6 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Active VMs keyed by VmId which is (owner_id, vm_name).
   VmMap vms_;
-
-  // Active termina VMs.  Must come after |vms_| so that we don't end up with
-  // dangling pointers.
-  std::vector<TerminaVm*> termina_vms_;
 
   // The shill D-Bus client.
   std::unique_ptr<ShillClient> shill_client_;

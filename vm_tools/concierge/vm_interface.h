@@ -81,6 +81,12 @@ class VmInterface {
   virtual bool SetResolvConfig(
       const std::vector<std::string>& nameservers,
       const std::vector<std::string>& search_domains) = 0;
+
+  // Set the guest time to the current time as given by gettimeofday.
+  virtual bool SetTime(std::string* failure_reason) = 0;
+
+  // Notes that TremplinStartedSignal has been received for the VM.
+  virtual void SetTremplinStarted() = 0;
 };
 
 }  // namespace concierge

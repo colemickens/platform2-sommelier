@@ -91,7 +91,7 @@ class TerminaVm final : public VmInterface {
                        const std::vector<std::string>& search_domains) override;
 
   // Set the guest time to the current time as given by gettimeofday.
-  bool SetTime(std::string* failure_reason);
+  bool SetTime(std::string* failure_reason) override;
 
   // Sets the container subnet for this VM to |subnet|. This subnet is intended
   // to be provided to a container runtime as a DHCP pool.
@@ -139,7 +139,6 @@ class TerminaVm final : public VmInterface {
 
   // Whether a TremplinStartedSignal has been received for the VM.
   bool IsTremplinStarted() const { return is_tremplin_started_; }
-  void SetTremplinStarted() { is_tremplin_started_ = true; }
 
   // VmInterface overrides.
   // Shuts down the VM.  First attempts a clean shutdown of the VM by sending
@@ -160,6 +159,7 @@ class TerminaVm final : public VmInterface {
   bool ListUsbDevice(std::vector<UsbDevice>* devices) override;
   void HandleSuspendImminent() override;
   void HandleSuspendDone() override;
+  void SetTremplinStarted() override { is_tremplin_started_ = true; }
 
   static std::unique_ptr<TerminaVm> CreateForTesting(
       arc_networkd::MacAddress mac_addr,
