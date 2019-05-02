@@ -360,13 +360,14 @@ bool GetDiskPathFromName(
 }
 
 bool GetPluginDirectory(const base::FilePath& prefix,
+                        const string& extension,
                         const string& vm_id,
                         base::FilePath* path_out) {
   string dirname;
   base::Base64UrlEncode(vm_id, base::Base64UrlEncodePolicy::INCLUDE_PADDING,
                         &dirname);
 
-  base::FilePath path = prefix.Append(dirname);
+  base::FilePath path = prefix.Append(dirname).AddExtension(extension);
   if (!base::DirectoryExists(path)) {
     base::File::Error dir_error;
     if (!base::CreateDirectoryAndGetError(path, &dir_error)) {
@@ -386,13 +387,13 @@ bool GetPluginStatefulDirectory(const string& vm_id,
   return GetPluginDirectory(base::FilePath(kCryptohomeRoot)
                                 .Append(cryptohome_id)
                                 .Append(kPluginVmDir),
-                            vm_id, path_out);
+                            "pvm", vm_id, path_out);
 }
 
 bool GetPluginRuntimeDirectory(const string& vm_id,
                                base::ScopedTempDir* runtime_dir_out) {
   base::FilePath path;
-  if (GetPluginDirectory(base::FilePath("/run/pvm"), vm_id, &path)) {
+  if (GetPluginDirectory(base::FilePath("/run/pvm"), "", vm_id, &path)) {
     // Take ownership of directory
     CHECK(runtime_dir_out->Set(path));
     return true;
@@ -428,7 +429,8 @@ bool CreatePluginRootHierarchy(const base::FilePath& root_path) {
 
 bool GetPlugin9PSocketPath(const string& vm_id, base::FilePath* path_out) {
   base::FilePath runtime_dir;
-  if (!GetPluginDirectory(base::FilePath("/run/pvm"), vm_id, &runtime_dir)) {
+  if (!GetPluginDirectory(base::FilePath("/run/pvm"), "", vm_id,
+                          &runtime_dir)) {
     LOG(ERROR) << "Unable to get runtime directory for 9P socket";
     return false;
   }
