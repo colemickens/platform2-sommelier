@@ -10,10 +10,49 @@
 #include <sys/socket.h>
 
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/net/ndisc.h"
 
 namespace shill {
+
+namespace {
+const char* TypeToString(RTNLMessage::Type type) {
+  switch (type) {
+    case RTNLMessage::kTypeLink:
+      return "Link";
+    case RTNLMessage::kTypeAddress:
+      return "Address";
+    case RTNLMessage::kTypeRoute:
+      return "Route";
+    case RTNLMessage::kTypeRule:
+      return "Rule";
+    case RTNLMessage::kTypeRdnss:
+      return "Rdnss";
+    case RTNLMessage::kTypeDnssl:
+      return "Dnssl";
+    case RTNLMessage::kTypeNeighbor:
+      return "Neighbor";
+    default:
+      return "UnknownType";
+  }
+}
+
+const char* ModeToString(RTNLMessage::Mode mode) {
+  switch (mode) {
+    case RTNLMessage::kModeGet:
+      return "Get";
+    case RTNLMessage::kModeAdd:
+      return "Add";
+    case RTNLMessage::kModeDelete:
+      return "Delete";
+    case RTNLMessage::kModeQuery:
+      return "Query";
+    default:
+      return "UnknownMode";
+  }
+}
+}  // namespace
 
 struct RTNLHeader {
   RTNLHeader() {
@@ -28,6 +67,33 @@ struct RTNLHeader {
     struct ndmsg ndm;
   };
 };
+
+std::string RTNLMessage::LinkStatus::ToString() const {
+  return base::StringPrintf("LinkStatus type %d flags %X change %X",
+                            type, flags, change);
+}
+
+std::string RTNLMessage::AddressStatus::ToString() const {
+  return base::StringPrintf("AddressStatus prefix_len %d flags %X scope %d",
+                            prefix_len, flags, scope);
+}
+
+std::string RTNLMessage::RouteStatus::ToString() const {
+  return base::StringPrintf("RouteStatus dst_prefix %d src_prefix %d table %d"
+                            " protocol %d scope %d type %d flags %X",
+                            dst_prefix, src_prefix, table,
+                            protocol, scope, type,
+                            flags);
+}
+
+std::string RTNLMessage::NeighborStatus::ToString() const {
+  return base::StringPrintf("NeighborStatus state %d flags %X type %d",
+                            state, flags, type);
+}
+
+std::string RTNLMessage::RdnssOption::ToString() const {
+  return base::StringPrintf("RdnssOption lifetime %d", lifetime);
+}
 
 RTNLMessage::RTNLMessage()
     : type_(kTypeUnknown),
@@ -552,6 +618,34 @@ void RTNLMessage::Reset() {
   neighbor_status_ = NeighborStatus();
   rdnss_option_ = RdnssOption();
   attributes_.clear();
+}
+
+std::string RTNLMessage::ToString() const {
+  std::string str = base::StringPrintf("%s %s: ",
+                                       ModeToString(mode()),
+                                       TypeToString(type()));
+  switch (type()) {
+    case RTNLMessage::kTypeLink:
+      str += link_status_.ToString();
+      break;
+    case RTNLMessage::kTypeAddress:
+      str += address_status_.ToString();
+      break;
+    case RTNLMessage::kTypeRoute:
+    case RTNLMessage::kTypeRule:
+      str += route_status_.ToString();
+      break;
+    case RTNLMessage::kTypeRdnss:
+    case RTNLMessage::kTypeDnssl:
+      str += rdnss_option_.ToString();
+      break;
+    case RTNLMessage::kTypeNeighbor:
+      str += neighbor_status_.ToString();
+      break;
+    default:
+      break;
+  }
+  return str;
 }
 
 }  // namespace shill

@@ -5,6 +5,7 @@
 #ifndef SHILL_NET_RTNL_MESSAGE_H_
 #define SHILL_NET_RTNL_MESSAGE_H_
 
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -53,6 +54,7 @@ class SHILL_EXPORT RTNLMessage {
         : type(in_type),
           flags(in_flags),
           change(in_change) {}
+    std::string ToString() const;
     unsigned int type;
     unsigned int flags;
     unsigned int change;
@@ -69,6 +71,7 @@ class SHILL_EXPORT RTNLMessage {
         : prefix_len(prefix_len_in),
           flags(flags_in),
           scope(scope_in) {}
+    std::string ToString() const;
     unsigned char prefix_len;
     unsigned char flags;
     unsigned char scope;
@@ -97,6 +100,7 @@ class SHILL_EXPORT RTNLMessage {
           scope(scope_in),
           type(type_in),
           flags(flags_in) {}
+    std::string ToString() const;
     unsigned char dst_prefix;
     unsigned char src_prefix;
     unsigned char table;
@@ -117,6 +121,7 @@ class SHILL_EXPORT RTNLMessage {
         : state(state_in),
           flags(flags_in),
           type(type_in) {}
+    std::string ToString() const;
     uint16_t state;
     uint8_t flags;
     uint8_t type;
@@ -129,6 +134,7 @@ class SHILL_EXPORT RTNLMessage {
                 std::vector<IPAddress> addresses_in)
         : lifetime(lifetime_in),
           addresses(addresses_in) {}
+    std::string ToString() const;
     uint32_t lifetime;
     std::vector<IPAddress> addresses;
   };
@@ -160,6 +166,8 @@ class SHILL_EXPORT RTNLMessage {
   uint32_t pid() const { return pid_; }
   int32_t interface_index() const { return interface_index_; }
   IPAddress::Family family() const { return family_; }
+
+  std::string ToString() const;
 
   const LinkStatus& link_status() const { return link_status_; }
   void set_link_status(const LinkStatus& link_status) {
