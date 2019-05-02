@@ -45,10 +45,21 @@ constexpr char kPowerWashCountPath[] = "unencrypted/preserve/powerwash_count";
 constexpr char kClobberLogPath[] = "/tmp/clobber-state.log";
 constexpr char kBioWashPath[] = "/usr/bin/bio_wash";
 constexpr char kPreservedFilesTarPath[] = "/tmp/preserve.tar";
+constexpr char kPreservedCrashPath[] = "unencrypted/preserve/crash";
 
 constexpr char kUbiRootDisk[] = "/dev/mtd0";
 constexpr char kUbiDevicePrefix[] = "/dev/ubi";
 constexpr char kUbiDeviceStatefulFormat[] = "/dev/ubi%d_0";
+
+// Early boot dmesg log path.
+const char* const kDmesgLogPath = "/run/dmesg.log";
+// Early crash log collection paths.
+const char* const kEarlyBootLogPaths[] = {
+    // mount-encrypted: logs for setting up the encrypted stateful partition.
+    "/run/mount-encrypted.log",
+    // Fetch dmesg and log into /run.
+    kDmesgLogPath,
+};
 
 // |strip_partition| attempts to remove the partition number from the result.
 base::FilePath GetRootDevice(bool strip_partition) {
@@ -172,6 +183,52 @@ void AppendFileToLog(const base::FilePath& file) {
   }
 }
 
+void LogContentsIntoClobber(const base::FilePath& log_file) {
+  brillo::ProcessImpl clobber_log;
+  clobber_log.AddArg("/sbin/clobber-log");
+  clobber_log.AddArg("--append_logfile");
+  clobber_log.AddArg(log_file.value().c_str());
+  clobber_log.Run();
+}
+
+void DumpDmesg() {
+  brillo::ProcessImpl dmesg;
+  dmesg.AddArg("/bin/dmesg");
+  dmesg.RedirectOutput(std::string(kDmesgLogPath));
+  dmesg.Run();
+}
+
+void ReplayLogsIntoClobber() {
+  DumpDmesg();
+  // Collect well-known log paths.
+  for (auto path : kEarlyBootLogPaths)
+    LogContentsIntoClobber(base::FilePath(path));
+}
+
+// Attempt to save logs from the boot when the clobber happened into the
+// stateful partition.
+void PreserveClobberCrashReports() {
+  // Check for the creation of the preserve crash directory.
+  base::FilePath preserved_crash_directory =
+      base::FilePath(kStatefulPath).AppendASCII(kPreservedCrashPath);
+
+  if (!base::PathExists(preserved_crash_directory)) {
+    LOG(INFO) << "Creating preserved crash directory.";
+    base::CreateDirectory(preserved_crash_directory);
+  }
+
+  brillo::ProcessImpl crash_reporter_early_collect;
+  crash_reporter_early_collect.AddArg("/sbin/crash_reporter");
+  crash_reporter_early_collect.AddArg("--early");
+  crash_reporter_early_collect.AddArg("--log_to_stderr");
+  crash_reporter_early_collect.AddArg("--preserve_across_clobber");
+  crash_reporter_early_collect.AddArg("--boot_collect");
+  if (!crash_reporter_early_collect.Run())
+    LOG(WARNING) << "Unable to collect logs and crashes from current run.";
+
+  return;
+}
+
 }  // namespace
 
 // static
@@ -199,6 +256,8 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
       args.safe_wipe = true;
     } else if (arg == "rollback") {
       args.rollback_wipe = true;
+    } else if (arg == "preserve_clobber_logs") {
+      args.preserve_clobber_crash_logs = true;
     }
   }
 
@@ -850,6 +909,21 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
     }
   }
 
+  // Attempt to save the files in "unencrypted/preserve/crash". This is useful
+  // when the stateful partition can be mounted but we cannot mount the
+  // encrypted stateful mount.
+  base::FilePath preserve_crash_directory(
+      stateful_.Append(kPreservedCrashPath));
+  if (base::PathExists(preserve_crash_directory)) {
+    base::FileEnumerator enumerator(preserve_crash_directory, false,
+                                    base::FileEnumerator::FileType::FILES);
+    for (auto name = enumerator.Next(); !name.empty();
+         name = enumerator.Next()) {
+      preserved_files.push_back(
+          preserve_crash_directory.Append(name.BaseName()));
+    }
+  }
+
   return preserved_files;
 }
 
@@ -1052,6 +1126,12 @@ int ClobberState::Run() {
   AppendFileToLog(temp_file);
   if (ret != 0) {
     LOG(WARNING) << "Restoring clobber.log failed with code " << ret;
+  }
+
+  // Attempt to get crashes into the preserved crash directory.
+  if (args_.preserve_clobber_crash_logs) {
+    ReplayLogsIntoClobber();
+    PreserveClobberCrashReports();
   }
 
   // Destroy less sensitive data.

@@ -29,6 +29,8 @@ class ClobberState {
     bool safe_wipe = false;
     // Preserve rollback data, attestation DB, and don't clear TPM
     bool rollback_wipe = false;
+    // Preserve crash and logs from the clobber run.
+    bool preserve_clobber_crash_logs = false;
   };
 
   // The index of each partition within the gpt partition table.
