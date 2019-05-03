@@ -632,8 +632,9 @@ class ConnectionDiagnosticsTest : public Test {
       EXPECT_CALL(dispatcher_, PostTask(_, _));
     }
     connection_diagnostics_.StartAfterPortalDetectionInternal(
-        PortalDetector::Result(
-            PortalDetector::Result(trial_phase, trial_status)));
+        PortalDetector::Result(trial_phase, trial_status),
+        PortalDetector::Result(PortalDetector::Phase::kContent,
+                               PortalDetector::Status::kSuccess));
   }
 
   // |expected_issue| only used if |is_success| is false.

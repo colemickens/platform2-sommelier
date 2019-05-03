@@ -202,7 +202,8 @@ class ConnectionDiagnostics {
   // performs further diagnostics based on the |result| from a completed portal
   // detection attempt.
   bool StartAfterPortalDetection(const std::string& url_string,
-                                 const PortalDetector::Result& result);
+                                 const PortalDetector::Result& http_result,
+                                 const PortalDetector::Result& https_result);
 
   void Stop();
 
@@ -233,7 +234,9 @@ class ConnectionDiagnostics {
   // |result_callback_| to report the results of the diagnostics.
   void ReportResultAndStop(const std::string &issue);
 
-  void StartAfterPortalDetectionInternal(const PortalDetector::Result& result);
+  void StartAfterPortalDetectionInternal(
+      const PortalDetector::Result& http_result,
+      const PortalDetector::Result& https_result);
 
   // Attempts to resolve the IP address of |target_url_| using |dns_servers|.
   void ResolveTargetServerIPAddress(

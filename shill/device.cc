@@ -92,6 +92,29 @@ constexpr size_t kHardwareAddressLength = 6;
 // (network) as unreliable.
 constexpr int kLinkUnreliableThresholdSeconds = 60 * 60;
 
+Service::ConnectState CalculatePortalStateFromProbeResults(
+    const PortalDetector::Result& http_result,
+    const PortalDetector::Result& https_result) {
+  if (http_result.phase != PortalDetector::Phase::kContent) {
+    return Service::kStateNoConnectivity;
+  }
+
+  if (http_result.status == PortalDetector::Status::kSuccess &&
+      https_result.status == PortalDetector::Status::kSuccess) {
+    return Service::kStateOnline;
+  } else if (http_result.status == PortalDetector::Status::kRedirect) {
+    CHECK(!http_result.redirect_url_string.empty());
+    return Service::kStateRedirectFound;
+  } else if ((http_result.status == PortalDetector::Status::kSuccess &&
+              https_result.status != PortalDetector::Status::kSuccess) ||
+             http_result.status == PortalDetector::Status::kFailure ||
+             (http_result.status == PortalDetector::Status::kTimeout &&
+              https_result.status == PortalDetector::Status::kSuccess)) {
+    return Service::kStatePortalSuspected;
+  }
+  return Service::kStateNoConnectivity;
+}
+
 }  // namespace
 
 const char Device::kIPFlagDisableIPv6[] = "disable_ipv6";
@@ -869,12 +892,16 @@ void Device::HelpRegisterConstDerivedUint64(
           new CustomAccessor<Device, uint64_t>(this, get, nullptr)));
 }
 
-void Device::ConnectionTesterCallback(const PortalDetector::Result& result) {
+void Device::ConnectionTesterCallback(
+    const PortalDetector::Result& http_result,
+    const PortalDetector::Result& https_result) {
   LOG(INFO) << StringPrintf(
-      "ConnectionTester completed with phase==%s, "
-      "status==%s",
-      PortalDetector::PhaseToString(result.phase).c_str(),
-      PortalDetector::StatusToString(result.status).c_str());
+      "ConnectionTester completed with HTTP probe phase==%s, "
+      "status==%s and HTTPS probe phase==%s, status==%s",
+      PortalDetector::PhaseToString(http_result.phase).c_str(),
+      PortalDetector::StatusToString(http_result.status).c_str(),
+      PortalDetector::PhaseToString(https_result.phase).c_str(),
+      PortalDetector::StatusToString(https_result.status).c_str());
   LOG(INFO) << "Device " << link_name() << ": Completed Connectivity Test";
   return;
 }
@@ -1383,7 +1410,8 @@ void Device::StopPortalDetection() {
 }
 
 bool Device::StartConnectionDiagnosticsAfterPortalDetection(
-    const PortalDetector::Result& result) {
+    const PortalDetector::Result& http_result,
+    const PortalDetector::Result& https_result) {
   connection_diagnostics_.reset(
       new ConnectionDiagnostics(connection_,
                                 dispatcher_,
@@ -1392,7 +1420,7 @@ bool Device::StartConnectionDiagnosticsAfterPortalDetection(
                                 Bind(&Device::ConnectionDiagnosticsCallback,
                                      weak_ptr_factory_.GetWeakPtr())));
   if (!connection_diagnostics_->StartAfterPortalDetection(
-          manager_->GetPortalCheckHttpUrl(), result)) {
+          manager_->GetPortalCheckHttpUrl(), http_result, https_result)) {
     LOG(ERROR) << "Device " << link_name()
                << ": Connection diagnostics failed to start: likely bad URL: "
                << manager_->GetPortalCheckHttpUrl();
@@ -1705,42 +1733,40 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
   SetServiceState(state);
 }
 
-void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
+void Device::PortalDetectorCallback(
+    const PortalDetector::Result& http_result,
+    const PortalDetector::Result& https_result) {
   SLOG(this, 2) << "Device " << link_name() << ": Received status: "
-                << PortalDetector::StatusToString(result.status);
+                << PortalDetector::StatusToString(http_result.status);
 
-  int portal_status = Metrics::PortalDetectionResultToEnum(result);
+  int portal_status = Metrics::PortalDetectionResultToEnum(http_result);
   metrics()->SendEnumToUMA(
       metrics()->GetFullMetricName(Metrics::kMetricPortalResultSuffix,
                                    technology()),
       portal_status,
       Metrics::kPortalResultMax);
 
-  if (result.status == PortalDetector::Status::kSuccess) {
-    SetServiceConnectedState(Service::kStateOnline);
+  Service::ConnectState state =
+      CalculatePortalStateFromProbeResults(http_result, https_result);
+  if (state == Service::kStateOnline) {
+    SetServiceConnectedState(state);
 
     metrics()->SendToUMA(
         metrics()->GetFullMetricName(
             Metrics::kMetricPortalAttemptsToOnlineSuffix, technology()),
-        result.num_attempts, Metrics::kMetricPortalAttemptsToOnlineMin,
+        http_result.num_attempts, Metrics::kMetricPortalAttemptsToOnlineMin,
         Metrics::kMetricPortalAttemptsToOnlineMax,
         Metrics::kMetricPortalAttemptsToOnlineNumBuckets);
   } else {
     // Set failure phase and status.
     if (selected_service_) {
       selected_service_->SetPortalDetectionFailure(
-          PortalDetector::PhaseToString(result.phase),
-          PortalDetector::StatusToString(result.status));
+          PortalDetector::PhaseToString(http_result.phase),
+          PortalDetector::StatusToString(http_result.status));
     }
+    SetServiceConnectedState(state);
 
-    if (result.status == PortalDetector::Status::kRedirect) {
-      CHECK(!result.redirect_url_string.empty());
-      SetServiceConnectedState(Service::kStateRedirectFound);
-    } else {
-      SetServiceConnectedState(Service::kStateNoConnectivity);
-    }
-
-    StartConnectionDiagnosticsAfterPortalDetection(result);
+    StartConnectionDiagnosticsAfterPortalDetection(http_result, https_result);
 
     // TODO(zqiu): Only support fallback DNS server for IPv4 for now.
     if (connection_->IsIPv6()) {

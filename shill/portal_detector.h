@@ -112,7 +112,9 @@ class PortalDetector {
       ConnectionRefPtr connection,
       EventDispatcher* dispatcher,
       Metrics* metrics,
-      const base::Callback<void(const PortalDetector::Result&)>& callback);
+      const base::Callback<void(const PortalDetector::Result& http_result,
+                                const PortalDetector::Result& https_result)>&
+          callback);
   virtual ~PortalDetector();
 
   // Static method used to map a portal detection phase to a string.  This
@@ -181,9 +183,9 @@ class PortalDetector {
   // to keep attempts spaced by the right duration in the event of a retry.
   void UpdateAttemptTime(int delay_seconds);
 
-  // Called after each trial to return |result| after attempting to determine
-  // connectivity status.
-  void CompleteAttempt(Result result);
+  // Called after each trial to return |http_result| and |https_result| after
+  // attempting to determine connectivity status.
+  void CompleteAttempt(Result http_result, Result https_result);
 
   // Start a trial with the supplied delay in ms.
   void StartTrialAfterDelay(int start_delay_milliseconds);
@@ -219,7 +221,7 @@ class PortalDetector {
   void HttpsRequestErrorCallback(HttpRequest::Result result);
 
   // Internal method used to clean up state and call CompleteAttempt.
-  void CompleteTrial(Result result);
+  void CompleteTrial(Result http_result, Result https_result);
 
   // Internal method used to cancel the timeout timer and stop an active
   // HttpRequest.
@@ -238,7 +240,7 @@ class PortalDetector {
   EventDispatcher* dispatcher_;
   Metrics* metrics_;
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_;
-  base::Callback<void(const Result&)> portal_result_callback_;
+  base::Callback<void(const Result&, const Result&)> portal_result_callback_;
   Time* time_;
   int trial_timeout_seconds_;
   std::unique_ptr<HttpRequest> http_request_;

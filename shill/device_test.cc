@@ -125,8 +125,9 @@ class TestDevice : public Device {
       const bool retry_until_success,
       const base::Callback<void(const DnsServerTester::Status)>& callback));
 
-  MOCK_METHOD1(StartConnectionDiagnosticsAfterPortalDetection,
-               bool(const PortalDetector::Result& result));
+  MOCK_METHOD2(StartConnectionDiagnosticsAfterPortalDetection,
+               bool(const PortalDetector::Result& http_result,
+                    const PortalDetector::Result& https_result));
 
   virtual bool DeviceIsIPv6Allowed() const {
     return Device::IsIPv6Allowed();
@@ -2015,8 +2016,9 @@ class DevicePortalDetectionTest : public DeviceTest {
   bool StartPortalDetection() { return device_->StartPortalDetection(); }
   void StopPortalDetection() { device_->StopPortalDetection(); }
 
-  void PortalDetectorCallback(const PortalDetector::Result& result) {
-    device_->PortalDetectorCallback(result);
+  void PortalDetectorCallback(const PortalDetector::Result& http_result,
+                              const PortalDetector::Result& https_result) {
+    device_->PortalDetectorCallback(http_result, https_result);
   }
   bool RequestPortalDetection() {
     return device_->RequestPortalDetection();
@@ -2165,9 +2167,11 @@ MATCHER_P(IsPortalDetectorResult, result, "") {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionFailure) {
-  PortalDetector::Result result(PortalDetector::Phase::kConnection,
-                                PortalDetector::Status::kFailure,
-                                kPortalAttempts);
+  PortalDetector::Result http_result(PortalDetector::Phase::kConnection,
+                                     PortalDetector::Status::kFailure,
+                                     kPortalAttempts);
+  PortalDetector::Result https_result(PortalDetector::Phase::kContent,
+                                      PortalDetector::Status::kSuccess);
   EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(true));
   EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseConnection,
@@ -2183,8 +2187,9 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionFailure) {
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
   EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
-                            IsPortalDetectorResult(result)));
-  PortalDetectorCallback(result);
+                            IsPortalDetectorResult(http_result),
+                            IsPortalDetectorResult(https_result)));
+  PortalDetectorCallback(http_result, https_result);
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
@@ -2204,9 +2209,11 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
   EXPECT_CALL(metrics_,
               SendToUMA("Network.Shill.Unknown.PortalAttempts",
                         _, _, _, _)).Times(0);
-  PortalDetectorCallback(PortalDetector::Result(
-      PortalDetector::Phase::kContent, PortalDetector::Status::kSuccess,
-      kPortalAttempts));
+  PortalDetectorCallback(
+      PortalDetector::Result(PortalDetector::Phase::kContent,
+                             PortalDetector::Status::kSuccess, kPortalAttempts),
+      PortalDetector::Result(PortalDetector::Phase::kContent,
+                             PortalDetector::Status::kSuccess));
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionSuccessAfterFailure) {
@@ -2224,9 +2231,11 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccessAfterFailure) {
                         _, _, _, _)).Times(0);
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
   EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
-  PortalDetectorCallback(PortalDetector::Result(
-      PortalDetector::Phase::kConnection, PortalDetector::Status::kFailure,
-      kPortalAttempts));
+  PortalDetectorCallback(
+      PortalDetector::Result(PortalDetector::Phase::kConnection,
+                             PortalDetector::Status::kFailure, kPortalAttempts),
+      PortalDetector::Result(PortalDetector::Phase::kContent,
+                             PortalDetector::Status::kFailure));
   Mock::VerifyAndClearExpectations(&metrics_);
   EXPECT_CALL(*service_, SetPortalDetectionFailure(_, _)).Times(0);
   EXPECT_CALL(*service_, SetState(Service::kStateOnline));
@@ -2240,9 +2249,12 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccessAfterFailure) {
                         Metrics::kMetricPortalAttemptsToOnlineMin,
                         Metrics::kMetricPortalAttemptsToOnlineMax,
                         Metrics::kMetricPortalAttemptsToOnlineNumBuckets));
-  PortalDetectorCallback(PortalDetector::Result(
-      PortalDetector::Phase::kContent, PortalDetector::Status::kSuccess,
-      kPortalAttempts * 2));
+  PortalDetectorCallback(
+      PortalDetector::Result(PortalDetector::Phase::kContent,
+                             PortalDetector::Status::kSuccess,
+                             kPortalAttempts * 2),
+      PortalDetector::Result(PortalDetector::Phase::kContent,
+                             PortalDetector::Status::kSuccess));
 }
 
 TEST_F(DevicePortalDetectionTest, RequestPortalDetection) {
@@ -2390,6 +2402,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   PortalDetector::Result result_dns_failure(PortalDetector::Phase::kDNS,
                                             PortalDetector::Status::kFailure,
                                             kPortalAttempts);
+  PortalDetector::Result https_result(PortalDetector::Phase::kContent,
+                                      PortalDetector::Status::kFailure);
   EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(true));
   EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseDns,
@@ -2398,9 +2412,10 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
   EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
-                            IsPortalDetectorResult(result_dns_failure)));
+                            IsPortalDetectorResult(result_dns_failure),
+                            IsPortalDetectorResult(https_result)));
   EXPECT_CALL(*device_, StartDNSTest(fallback_dns_servers, false, _)).Times(1);
-  PortalDetectorCallback(result_dns_failure);
+  PortalDetectorCallback(result_dns_failure, https_result);
   Mock::VerifyAndClearExpectations(device_.get());
 
   // DNS Timeout, start DNS test for fallback DNS servers.
@@ -2415,9 +2430,10 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
   EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
-                            IsPortalDetectorResult(result_dns_timeout)));
+                            IsPortalDetectorResult(result_dns_timeout),
+                            IsPortalDetectorResult(https_result)));
   EXPECT_CALL(*device_, StartDNSTest(fallback_dns_servers, false, _)).Times(1);
-  PortalDetectorCallback(result_dns_timeout);
+  PortalDetectorCallback(result_dns_timeout, https_result);
   Mock::VerifyAndClearExpectations(device_.get());
 
   // Other Failure, DNS server tester not started.
@@ -2432,9 +2448,10 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
   EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
-                            IsPortalDetectorResult(result_connection_failure)));
+                            IsPortalDetectorResult(result_connection_failure),
+                            IsPortalDetectorResult(https_result)));
   EXPECT_CALL(*device_, StartDNSTest(_, _, _)).Times(0);
-  PortalDetectorCallback(result_connection_failure);
+  PortalDetectorCallback(result_connection_failure, https_result);
   Mock::VerifyAndClearExpectations(device_.get());
 }
 
@@ -2448,17 +2465,46 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
   // DNS Failure, start DNS test for fallback DNS servers.
   PortalDetector::Result result_redirect(PortalDetector::Phase::kContent,
                                          PortalDetector::Status::kRedirect);
+  PortalDetector::Result https_result(PortalDetector::Phase::kContent,
+                                      PortalDetector::Status::kSuccess);
   result_redirect.redirect_url_string = PortalDetector::kDefaultHttpUrl;
   EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(true));
   EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseContent,
-                                        kPortalDetectionStatusFailure));
+                                        kPortalDetectionStatusRedirect));
   EXPECT_CALL(*service_, SetState(Service::kStateRedirectFound));
   EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
   EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
-                            IsPortalDetectorResult(result_redirect)));
-  PortalDetectorCallback(result_redirect);
+                            IsPortalDetectorResult(result_redirect),
+                            IsPortalDetectorResult(https_result)));
+  PortalDetectorCallback(result_redirect, https_result);
+  Mock::VerifyAndClearExpectations(device_.get());
+}
+
+TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
+  static const char* const kGoogleDNSServers[] = {"8.8.8.8", "8.8.4.4"};
+  vector<string> fallback_dns_servers(kGoogleDNSServers, kGoogleDNSServers + 2);
+  const string kInterfaceName("int0");
+  EXPECT_CALL(*connection_, interface_name())
+      .WillRepeatedly(ReturnRef(kInterfaceName));
+
+  // DNS Failure, start DNS test for fallback DNS servers.
+  PortalDetector::Result http_result(PortalDetector::Phase::kContent,
+                                     PortalDetector::Status::kSuccess);
+  PortalDetector::Result https_result(PortalDetector::Phase::kContent,
+                                      PortalDetector::Status::kFailure);
+  EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*service_,
+              SetPortalDetectionFailure(kPortalDetectionPhaseContent,
+                                        kPortalDetectionStatusSuccess));
+  EXPECT_CALL(*service_, SetState(Service::kStatePortalSuspected));
+  EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
+  EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
+  EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
+                            IsPortalDetectorResult(http_result),
+                            IsPortalDetectorResult(https_result)));
+  PortalDetectorCallback(http_result, https_result);
   Mock::VerifyAndClearExpectations(device_.get());
 }
 

@@ -75,7 +75,8 @@ PortalDetector::PortalDetector(
     ConnectionRefPtr connection,
     EventDispatcher* dispatcher,
     Metrics* metrics,
-    const Callback<void(const PortalDetector::Result&)>& callback)
+    const Callback<void(const PortalDetector::Result&,
+                        const PortalDetector::Result&)>& callback)
     : attempt_count_(0),
       attempt_start_time_((struct timeval){0}),
       connection_(connection),
@@ -158,7 +159,9 @@ void PortalDetector::StartTrialTask() {
       RandomizeURL(http_url_string_), http_request_success_callback,
       http_request_error_callback);
   if (http_result != HttpRequest::kResultInProgress) {
-    CompleteTrial(PortalDetector::GetPortalResultForRequestResult(http_result));
+    // Return successful HTTPS probe by default.
+    CompleteTrial(PortalDetector::GetPortalResultForRequestResult(http_result),
+                  Result(Phase::kContent, Status::kFailure));
     return;
   }
 
@@ -173,13 +176,14 @@ void PortalDetector::StartTrialTask() {
       https_request_->Start(https_url_string_, https_request_success_callback,
                             https_request_error_callback);
   if (https_result != HttpRequest::kResultInProgress) {
-    Result trial_result = GetPortalResultForRequestResult(https_result);
+    https_result_ =
+        std::make_unique<Result>(GetPortalResultForRequestResult(https_result));
     LOG(ERROR) << connection_->interface_name()
                << StringPrintf(
                       " HTTPS probe start failed phase==%s, status==%s, "
                       "attempt count==%d",
-                      PhaseToString(trial_result.phase).c_str(),
-                      StatusToString(trial_result.status).c_str(),
+                      PhaseToString(https_result_->phase).c_str(),
+                      StatusToString(https_result_->status).c_str(),
                       attempt_count_);
   }
   is_active_ = true;
@@ -194,12 +198,15 @@ bool PortalDetector::IsActive() {
   return is_active_;
 }
 
-void PortalDetector::CompleteTrial(Result result) {
+void PortalDetector::CompleteTrial(Result http_result, Result https_result) {
   SLOG(connection_.get(), 3) << StringPrintf(
-      "Trial completed with phase==%s, status==%s, attempt count==%d",
-      PhaseToString(result.phase).c_str(),
-      StatusToString(result.status).c_str(), attempt_count_);
-  CompleteAttempt(result);
+      "Trial completed. HTTP probe finished with phase==%s, status==%s, HTTPS "
+      "probe finished with phase==%s, status==%s, attempt count==%d.",
+      PhaseToString(http_result.phase).c_str(),
+      StatusToString(http_result.status).c_str(),
+      PhaseToString(https_result.phase).c_str(),
+      StatusToString(https_result.status).c_str(), attempt_count_);
+  CompleteAttempt(http_result, https_result);
 }
 
 void PortalDetector::CleanupTrial() {
@@ -218,7 +225,8 @@ void PortalDetector::CleanupTrial() {
 void PortalDetector::TimeoutTrialTask() {
   LOG(ERROR) << connection_->interface_name()
              << " Trial request timed out, attempt count==" << attempt_count_;
-  CompleteTrial(Result(Phase::kUnknown, Status::kTimeout));
+  CompleteTrial(Result(Phase::kUnknown, Status::kTimeout),
+                Result(Phase::kUnknown, Status::kTimeout));
 }
 
 void PortalDetector::Stop() {
@@ -237,7 +245,7 @@ void PortalDetector::CompleteRequest() {
   if (https_result_ && http_result_) {
     metrics_->NotifyPortalDetectionMultiProbeResult(*http_result_,
                                                     *https_result_);
-    CompleteTrial(*http_result_.get());
+    CompleteTrial(*http_result_.get(), *https_result_.get());
   }
 }
 
@@ -309,18 +317,18 @@ bool PortalDetector::IsInProgress() {
   return is_active_;
 }
 
-void PortalDetector::CompleteAttempt(PortalDetector::Result trial_result) {
+void PortalDetector::CompleteAttempt(Result http_result, Result https_result) {
   LOG(INFO) << connection_->interface_name()
             << StringPrintf(
                    " Portal detection completed attempt %d with "
                    "phase==%s, status==%s",
                    attempt_count_,
-                   PortalDetector::PhaseToString(trial_result.phase).c_str(),
-                   PortalDetector::StatusToString(trial_result.status).c_str());
+                   PortalDetector::PhaseToString(http_result.phase).c_str(),
+                   PortalDetector::StatusToString(http_result.status).c_str());
 
-  trial_result.num_attempts = attempt_count_;
+  http_result.num_attempts = attempt_count_;
   CleanupTrial();
-  portal_result_callback_.Run(trial_result);
+  portal_result_callback_.Run(http_result, https_result);
 }
 
 void PortalDetector::UpdateAttemptTime(int delay_seconds) {
@@ -375,6 +383,7 @@ const string PortalDetector::StatusToString(Status status) {
     case Status::kTimeout:
       return kPortalDetectionStatusTimeout;
     case Status::kRedirect:
+      return kPortalDetectionStatusRedirect;
     case Status::kFailure:
     default:
       return kPortalDetectionStatusFailure;

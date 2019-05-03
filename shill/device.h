@@ -548,7 +548,9 @@ class Device : public base::RefCounted<Device> {
   // Called by the Portal Detector whenever a trial completes.  Device
   // subclasses that choose unique mappings from portal results to connected
   // states can override this method in order to do so.
-  virtual void PortalDetectorCallback(const PortalDetector::Result& result);
+  virtual void PortalDetectorCallback(
+      const PortalDetector::Result& http_result,
+      const PortalDetector::Result& https_result);
 
   // Initiate portal detection, if enabled for this device type.
   bool StartPortalDetection();
@@ -559,7 +561,8 @@ class Device : public base::RefCounted<Device> {
   // Initiate connection diagnostics with the |result| from a completed portal
   // detection attempt.
   virtual bool StartConnectionDiagnosticsAfterPortalDetection(
-      const PortalDetector::Result& result);
+      const PortalDetector::Result& http_result,
+      const PortalDetector::Result& https_result);
 
   // Stop connection diagnostics if it is running.
   void StopConnectionDiagnostics();
@@ -646,7 +649,9 @@ class Device : public base::RefCounted<Device> {
       uint64_t(Device::*get)(Error*));
 
   // Called by the ConnectionTester whenever a connectivity test completes.
-  virtual void ConnectionTesterCallback(const PortalDetector::Result& result);
+  virtual void ConnectionTesterCallback(
+      const PortalDetector::Result& http_result,
+      const PortalDetector::Result& https_result);
 
   // Property getters reserved for subclasses
   ControlInterface* control_interface() const { return control_interface_; }
