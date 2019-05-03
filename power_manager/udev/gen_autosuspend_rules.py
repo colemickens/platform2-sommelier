@@ -121,40 +121,8 @@ USB_IDS += [
 
 # WWAN (3G/LTE)
 USB_IDS += [
-  # Samsung (Y3300) (alex, lumpy)
-  "04e8:6872",
-  # Samsung (Y3400) (alex, lumpy)
-  "04e8:6906",
-  # Qualcomm (Gobi 2000) (zgb)
-  "05c6:9214",
-  # Qualcomm (Gobi 2000) (zgb)
-  "05c6:9215",
-  # Qualcomm (Gobi 2000) (alex)
-  "05c6:9244",
-  # Qualcomm (Gobi 2000) (alex)
-  "05c6:9245",
-  # GCT (WiMax) (daisy)
-  "1076:7e0*",
-  # GCT (WiMax) (daisy)
-  "1076:7f0*",
-  # Sierra (Gobi 3000 MC8355) (stout)
-  "1199:9012",
-  # Sierra (Gobi 3000 MC8355) (stout)
-  "1199:9013",
   # Huawei (ME936) (kip, nyan_blaze)
   "12d1:15bb",
-  # Novatel (Gobi 3000) (link)
-  "1410:9010",
-  # Novatel (Gobi 2000) (mario)
-  "1410:a010",
-  # Novatel (Gobi 2000) (mario)
-  "1410:a014",
-  # Novatel (Gobi 3000) (alex, lumpy)
-  "1410:a020",
-  # Novatel (Gobi 3000 E396) (alex, lumpy, daisy)
-  "1410:a021",
-  # Novatel (Gobi 3000 E396U) (daisy)
-  "1410:a023",
   # Altair (LTE) (spring)
   "216f:0047",
   # Fibocom (L850-GL)
