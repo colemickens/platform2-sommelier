@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::io::{Cursor, Result};
+use std::io::Cursor;
 
 use crate::protocol::{Tframe, WireFormat};
 
 pub fn tframe_decode(bytes: &[u8]) {
     let mut cursor = Cursor::new(bytes);
 
-    let _out: Result<Tframe> = WireFormat::decode(&mut cursor);
+    while let Ok(_) = Tframe::decode(&mut cursor) {}
 }
