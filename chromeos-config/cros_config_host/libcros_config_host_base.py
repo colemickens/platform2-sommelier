@@ -239,7 +239,7 @@ class DeviceConfig(object):
     pass
 
   def GetFirmwareConfigs(self):
-    """Gets unique firmware configs for a given device.
+    """Gets unique firmware configs for all devices.
 
     Returns:
       Dictionary of FirmwareImage objects grouped by config name.
