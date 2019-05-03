@@ -20,7 +20,7 @@ import unittest
 
 from libcros_config_host import CrosConfig
 from libcros_config_host_base import BaseFile, TouchFile, FirmwareInfo
-from libcros_config_host_base import FirmwareImage
+from libcros_config_host_base import FirmwareImage, DeviceSignerInfo
 
 YAML_FILE = '../libcros_config/test.yaml'
 MODELS = sorted(['some', 'another', 'whitelabel'])
@@ -404,6 +404,27 @@ class CrosConfigHostTest(unittest.TestCase):
     }
 
     result = CrosConfig(self.filepath).GetFirmwareConfigsByDevice()
+    self.assertEquals(result, expected)
+
+  def testSignerInfoByDevice(self):
+    """Test access to device signer info."""
+    expected = {
+        'whitelabel-whitelabel2':
+            DeviceSignerInfo(
+                key_id='WHITELABEL2', sig_id='whitelabel-whitelabel2'),
+        'whitelabel-whitelabel1':
+            DeviceSignerInfo(
+                key_id='WHITELABEL1', sig_id='whitelabel-whitelabel1'),
+        'some':
+            DeviceSignerInfo(key_id='SOME', sig_id='some'),
+        'whitelabel':
+            DeviceSignerInfo(
+                key_id='WHITELABEL1', sig_id='sig-id-in-customization-id'),
+        'another':
+            DeviceSignerInfo(key_id='ANOTHER', sig_id='another')
+    }
+
+    result = CrosConfig(self.filepath).GetDeviceSignerInfo()
     self.assertEquals(result, expected)
 
 

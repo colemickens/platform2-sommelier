@@ -62,6 +62,11 @@ FirmwareInfo = namedtuple('FirmwareInfo', [
 FirmwareImage = namedtuple('FirmwareImage',
                            ['type', 'build_target', 'image_uri'])
 
+# Represents the signer data for a device.
+#   key_id: The key ID of the device.
+#   sig_id: Teh signature ID of the device.
+DeviceSignerInfo = namedtuple('DeviceSignerInfo', ['key_id', 'sig_id'])
+
 
 class PathComponent(object):
   """A component in a directory/file tree
@@ -251,6 +256,14 @@ class DeviceConfig(object):
 
     Returns:
       Dictionary of firmware config names grouped by device.
+    """
+    pass
+
+  def GetDeviceSignerInfo(self):
+    """Gets firmware signer info for all devices.
+
+    Returns:
+      Dictionary of DeviceSignerInfo grouped by device.
     """
     pass
 

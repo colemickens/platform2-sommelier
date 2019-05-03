@@ -19,7 +19,7 @@ from cros_config_schema import TransformConfig
 from cros_config_schema import GetValidSchemaProperties
 from libcros_config_host_base import BaseFile, CrosConfigBaseImpl, DeviceConfig
 from libcros_config_host_base import FirmwareInfo, TouchFile
-from libcros_config_host_base import FirmwareImage
+from libcros_config_host_base import FirmwareImage, DeviceSignerInfo
 
 UNIBOARD_JSON_INSTALL_PATH = 'usr/share/chromeos-config/config.json'
 
@@ -258,3 +258,11 @@ class CrosConfigJson(CrosConfigBaseImpl):
   def GetFirmwareConfigsByDevice(self):
     fw_info = self.GetFirmwareInfo().values()
     return {value.model: value.shared_model or value.model for value in fw_info}
+
+  def GetDeviceSignerInfo(self):
+    fw_info = self.GetFirmwareInfo().values()
+    return {
+        value.model: DeviceSignerInfo(key_id=value.key_id, sig_id=value.sig_id)
+        for value in fw_info
+        if value.key_id
+    }
