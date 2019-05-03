@@ -850,7 +850,7 @@ class Device : public base::RefCounted<Device> {
   RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;
 
-  std::unique_ptr<TimeoutSet<IPAddress>> blackhole_addrs_;
+  TimeoutSet<IPAddress> blackhole_addrs_;
 
   // Time when link monitor last failed.
   Time* time_;
