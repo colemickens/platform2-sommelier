@@ -653,7 +653,7 @@ class SessionManagerImplTest : public ::testing::Test,
   }
 
 #if USE_CHEETS
-  std::string SetUpArcMiniContainer() {
+  void SetUpArcMiniContainer() {
     EXPECT_CALL(*init_controller_,
                 TriggerImpulseInternal(
                     SessionManagerImpl::kStartArcInstanceImpulse,
@@ -666,12 +666,9 @@ class SessionManagerImplTest : public ::testing::Test,
         .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
     brillo::ErrorPtr error;
-    std::string container_instance_id;
     EXPECT_TRUE(impl_->StartArcMiniContainer(
-        &error, SerializeAsBlob(StartArcMiniContainerRequest()),
-        &container_instance_id));
+        &error, SerializeAsBlob(StartArcMiniContainerRequest())));
     VerifyAndClearExpectations();
-    return container_instance_id;
   }
 #endif
 
@@ -2042,12 +2039,9 @@ TEST_F(SessionManagerImplTest, StartArcMiniContainer) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   brillo::ErrorPtr error;
-  std::string container_instance_id;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest()),
-      &container_instance_id));
+      &error, SerializeAsBlob(StartArcMiniContainerRequest())));
   EXPECT_FALSE(error.get());
-  EXPECT_FALSE(container_instance_id.empty());
   EXPECT_TRUE(android_container_.running());
 
   // StartArcInstance() does not update start time for login screen.
@@ -2066,8 +2060,7 @@ TEST_F(SessionManagerImplTest, StartArcMiniContainer) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*exported_object(),
               SendSignal(SignalEq(login_manager::kArcInstanceStopped,
-                                  ArcContainerStopReason::USER_REQUEST,
-                                  container_instance_id)))
+                                  ArcContainerStopReason::USER_REQUEST)))
       .Times(1);
   {
     brillo::ErrorPtr error;
@@ -2094,11 +2087,8 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   brillo::ErrorPtr error;
-  std::string container_instance_id;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest()),
-      &container_instance_id));
-  EXPECT_FALSE(container_instance_id.empty());
+      &error, SerializeAsBlob(StartArcMiniContainerRequest())));
 
   // Then, upgrade it to a fully functional one.
   {
@@ -2139,8 +2129,7 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
   // The ID for the container for login screen is passed to the dbus call.
   EXPECT_CALL(*exported_object(),
               SendSignal(SignalEq(login_manager::kArcInstanceStopped,
-                                  ArcContainerStopReason::USER_REQUEST,
-                                  container_instance_id)))
+                                  ArcContainerStopReason::USER_REQUEST)))
       .Times(1);
 
   {
@@ -2193,11 +2182,8 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   brillo::ErrorPtr error;
-  std::string container_instance_id;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest()),
-      &container_instance_id));
-  EXPECT_FALSE(container_instance_id.empty());
+      &error, SerializeAsBlob(StartArcMiniContainerRequest())));
 
   bool skip_packages_cache_setup = false;
   bool copy_cache_setup = false;
@@ -2279,10 +2265,7 @@ TEST_P(SessionManagerPlayStoreAutoUpdateTest, PlayStoreAutoUpdate) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   brillo::ErrorPtr error;
-  std::string container_instance_id;
-  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request),
-                                           &container_instance_id));
-  EXPECT_FALSE(container_instance_id.empty());
+  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -2309,11 +2292,8 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   brillo::ErrorPtr error;
-  std::string container_instance_id;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest()),
-      &container_instance_id));
-  EXPECT_FALSE(container_instance_id.empty());
+      &error, SerializeAsBlob(StartArcMiniContainerRequest())));
 
   // Then, upgrade it to a fully functional one.
   {
@@ -2369,11 +2349,8 @@ TEST_F(SessionManagerImplTest,
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   brillo::ErrorPtr error;
-  std::string container_instance_id;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest()),
-      &container_instance_id));
-  EXPECT_FALSE(container_instance_id.empty());
+      &error, SerializeAsBlob(StartArcMiniContainerRequest())));
 
   // Then, upgrade it to a fully functional one.
   {
@@ -2423,9 +2400,7 @@ TEST_F(SessionManagerImplTest, ArcNativeBridgeExperiment) {
   StartArcMiniContainerRequest request;
   request.set_native_bridge_experiment(true);
   // Use for login screen mode for minimalistic test.
-  std::string container_instance_id;
-  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request),
-                                           &container_instance_id));
+  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
   EXPECT_FALSE(error.get());
 }
 
@@ -2445,9 +2420,7 @@ TEST_F(SessionManagerImplTest, ArcFilePickerExperiment) {
   StartArcMiniContainerRequest request;
   request.set_arc_file_picker_experiment(true);
   // Use for login screen mode for minimalistic test.
-  std::string container_instance_id;
-  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request),
-                                           &container_instance_id));
+  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
   EXPECT_FALSE(error.get());
 }
 
@@ -2467,9 +2440,7 @@ TEST_F(SessionManagerImplTest, ArcCustomTabsExperiment) {
   StartArcMiniContainerRequest request;
   request.set_arc_custom_tabs_experiment(true);
   // Use for login screen mode for minimalistic test.
-  std::string container_instance_id;
-  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request),
-                                           &container_instance_id));
+  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
   EXPECT_FALSE(error.get());
 }
 
@@ -2489,9 +2460,7 @@ TEST_F(SessionManagerImplTest, ArcPrintSpoolerExperiment) {
   StartArcMiniContainerRequest request;
   request.set_arc_print_spooler_experiment(true);
   // Use for login screen mode for minimalistic test.
-  std::string container_instance_id;
-  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request),
-                                           &container_instance_id));
+  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
   EXPECT_FALSE(error.get());
 }
 
@@ -2512,9 +2481,7 @@ TEST_F(SessionManagerImplTest, ArcLcdDensity) {
   StartArcMiniContainerRequest request;
   request.set_lcd_density(240);
   // Use for login screen mode for minimalistic test.
-  std::string container_instance_id;
-  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request),
-                                           &container_instance_id));
+  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
   EXPECT_FALSE(error.get());
 }
 
@@ -2530,7 +2497,7 @@ TEST_F(SessionManagerImplTest, ArcNoSession) {
 
 TEST_F(SessionManagerImplTest, ArcLowDisk) {
   ExpectAndRunStartSession(kSaneEmail);
-  std::string container_instance_id = SetUpArcMiniContainer();
+  SetUpArcMiniContainer();
   // Emulate no free disk space.
   ON_CALL(utils_, AmountOfFreeDiskSpace(_)).WillByDefault(Return(0));
 
@@ -2538,8 +2505,7 @@ TEST_F(SessionManagerImplTest, ArcLowDisk) {
 
   EXPECT_CALL(*exported_object(),
               SendSignal(SignalEq(login_manager::kArcInstanceStopped,
-                                  ArcContainerStopReason::LOW_DISK_SPACE,
-                                  container_instance_id)))
+                                  ArcContainerStopReason::LOW_DISK_SPACE)))
       .Times(1);
 
   UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
@@ -2579,14 +2545,11 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
                   InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
-  std::string container_instance_id;
   {
     brillo::ErrorPtr error;
     EXPECT_TRUE(impl_->StartArcMiniContainer(
-        &error, SerializeAsBlob(StartArcMiniContainerRequest()),
-        &container_instance_id));
+        &error, SerializeAsBlob(StartArcMiniContainerRequest())));
     EXPECT_FALSE(error.get());
-    EXPECT_FALSE(container_instance_id.empty());
   }
 
   {
@@ -2599,8 +2562,7 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
 
   EXPECT_CALL(*exported_object(),
               SendSignal(SignalEq(login_manager::kArcInstanceStopped,
-                                  ArcContainerStopReason::CRASH,
-                                  container_instance_id)))
+                                  ArcContainerStopReason::CRASH)))
       .Times(1);
 
   android_container_.SimulateCrash();
@@ -2631,11 +2593,8 @@ TEST_F(SessionManagerImplTest, LocaleAndPreferredLanguages) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   brillo::ErrorPtr error;
-  std::string container_instance_id;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest()),
-      &container_instance_id));
-  EXPECT_FALSE(container_instance_id.empty());
+      &error, SerializeAsBlob(StartArcMiniContainerRequest())));
 
   // Then, upgrade it to a fully functional one.
   {
@@ -2671,13 +2630,10 @@ TEST_F(SessionManagerImplTest, ArcUnavailable) {
   ExpectAndRunStartSession(kSaneEmail);
 
   brillo::ErrorPtr error;
-  std::string container_instance_id;
   EXPECT_FALSE(impl_->StartArcMiniContainer(
-      &error, SerializeAsBlob(StartArcMiniContainerRequest()),
-      &container_instance_id));
+      &error, SerializeAsBlob(StartArcMiniContainerRequest())));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
-  EXPECT_TRUE(container_instance_id.empty());
 }
 #endif
 

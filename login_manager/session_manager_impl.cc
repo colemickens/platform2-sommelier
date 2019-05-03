@@ -128,7 +128,6 @@ const char kDeviceLocalAccountStateDir[] = "/var/lib/device_local_accounts";
 // Path and the amount for the check.
 constexpr char kArcDiskCheckPath[] = "/home";
 constexpr int64_t kArcCriticalDiskFreeBytes = 64 << 20;  // 64MB
-constexpr size_t kArcContainerInstanceIdLength = 16;
 
 // To set the CPU limits of the Android container.
 // These settings are documented in the kernel source under
@@ -1112,9 +1111,7 @@ bool SessionManagerImpl::InitMachineInfo(brillo::ErrorPtr* error,
 }
 
 bool SessionManagerImpl::StartArcMiniContainer(
-    brillo::ErrorPtr* error,
-    const std::vector<uint8_t>& in_request,
-    std::string* out_container_instance_id) {
+    brillo::ErrorPtr* error, const std::vector<uint8_t>& in_request) {
 #if USE_CHEETS
   StartArcMiniContainerRequest request;
   if (!request.ParseFromArray(in_request.data(), in_request.size())) {
@@ -1152,12 +1149,10 @@ bool SessionManagerImpl::StartArcMiniContainer(
                    << request.play_store_auto_update() << ".";
   }
 
-  std::string container_instance_id = StartArcContainer(env_vars, error);
-  if (container_instance_id.empty()) {
+  if (!StartArcContainer(env_vars, error)) {
     DCHECK(*error);
     return false;
   }
-  *out_container_instance_id = std::move(container_instance_id);
   return true;
 #else
   *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
@@ -1556,15 +1551,10 @@ void SessionManagerImpl::RestartDevice(const std::string& reason) {
 }
 
 #if USE_CHEETS
-std::string SessionManagerImpl::StartArcContainer(
+bool SessionManagerImpl::StartArcContainer(
     const std::vector<std::string>& env_vars, brillo::ErrorPtr* error_out) {
   init_controller_->TriggerImpulse(kStartArcInstanceImpulse, env_vars,
                                    InitDaemonController::TriggerMode::ASYNC);
-
-  // Container instance id needs to be valid ASCII/UTF-8, so encode as base64.
-  std::string container_instance_id =
-      base::RandBytesAsString(kArcContainerInstanceIdLength);
-  base::Base64Encode(container_instance_id, &container_instance_id);
 
   // Pass in the same environment variables that were passed to arc-setup
   // (through init, above) into the container invocation as environment values.
@@ -1572,22 +1562,21 @@ std::string SessionManagerImpl::StartArcContainer(
   // propagate some information (such as the CHROMEOS_USER) to the hooks so it
   // can set itself up.
   if (!android_container_->StartContainer(
-          env_vars,
-          base::Bind(&SessionManagerImpl::OnAndroidContainerStopped,
-                     weak_ptr_factory_.GetWeakPtr(), container_instance_id))) {
+          env_vars, base::Bind(&SessionManagerImpl::OnAndroidContainerStopped,
+                               weak_ptr_factory_.GetWeakPtr()))) {
     // Failed to start container. Thus, trigger stop-arc-instance impulse
     // manually for cleanup.
     init_controller_->TriggerImpulse(kStopArcInstanceImpulse, {},
                                      InitDaemonController::TriggerMode::SYNC);
     *error_out = CREATE_ERROR_AND_LOG(dbus_error::kContainerStartupFail,
                                       "Starting Android container failed.");
-    return std::string();
+    return false;
   }
 
   pid_t pid = 0;
   android_container_->GetContainerPID(&pid);
   LOG(INFO) << "Started Android container with PID " << pid;
-  return container_instance_id;
+  return true;
 }
 
 std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
@@ -1657,7 +1646,6 @@ bool SessionManagerImpl::StopArcInstanceInternal(
 }
 
 void SessionManagerImpl::OnAndroidContainerStopped(
-    const std::string& container_instance_id,
     pid_t pid,
     ArcContainerStopReason reason) {
   if (reason == ArcContainerStopReason::CRASH) {
@@ -1673,8 +1661,7 @@ void SessionManagerImpl::OnAndroidContainerStopped(
     LOG(ERROR) << "Emitting stop-arc-instance impulse failed.";
   }
 
-  adaptor_.SendArcInstanceStoppedSignal(static_cast<uint32_t>(reason),
-                                        container_instance_id);
+  adaptor_.SendArcInstanceStoppedSignal(static_cast<uint32_t>(reason));
 }
 #endif  // USE_CHEETS
 

@@ -244,8 +244,7 @@ class SessionManagerImpl
   bool InitMachineInfo(brillo::ErrorPtr* error,
                        const std::string& in_data) override;
   bool StartArcMiniContainer(brillo::ErrorPtr* error,
-                             const std::vector<uint8_t>& in_request,
-                             std::string* out_container_instance_id) override;
+                             const std::vector<uint8_t>& in_request) override;
   bool UpgradeArcContainer(brillo::ErrorPtr* error,
                            const std::vector<uint8_t>& in_request) override;
   bool StopArcInstance(brillo::ErrorPtr* error) override;
@@ -347,13 +346,11 @@ class SessionManagerImpl
   void RestartDevice(const std::string& reason);
 
 #if USE_CHEETS
-  // Starts the Android container for ARC. If the container has started,
-  // container_instance_id will be returned. Otherwise, an empty string
-  // is returned and brillo::Error instance is set to |error_out|.
-  // After this succeeds, in case of ARC stop, OnAndroidContainerStopped()
-  // is called with the returned container_instance_id.
-  std::string StartArcContainer(const std::vector<std::string>& env_vars,
-                                brillo::ErrorPtr* error_out);
+  // Starts the Android container for ARC. If an error occurs, brillo::Error
+  // instance is set to |error_out|.  After this succeeds, in case of ARC stop,
+  // OnAndroidContainerStopped() is called.
+  bool StartArcContainer(const std::vector<std::string>& env_vars,
+                         brillo::ErrorPtr* error_out);
 
   // Creates environment variables passed to upstart for container upgrade.
   std::vector<std::string> CreateUpgradeArcEnvVars(
@@ -368,9 +365,7 @@ class SessionManagerImpl
   bool StopArcInstanceInternal(ArcContainerStopReason reason);
 
   // Called when the Android container is stopped.
-  void OnAndroidContainerStopped(const std::string& container_instance_id,
-                                 pid_t pid,
-                                 ArcContainerStopReason reason);
+  void OnAndroidContainerStopped(pid_t pid, ArcContainerStopReason reason);
 #endif
 
   bool session_started_ = false;

@@ -472,9 +472,6 @@
         StartArcMiniContainer:
         @request: Serialized StartArcMiniContainerRequest proto message
                   containing ARC startup options.
-        @container_instance_id: Output parameter containing an opaque identifier
-                  for the container instance. The ArcInstanceStopped signal will
-                  contain the same identifier.
 
         Starts an ARC mini-container that contains no user information. This
         mainly exists so that we can do some of the container initialization
@@ -484,7 +481,6 @@
     -->
     <method name="StartArcMiniContainer">
       <arg type="ay" name="request" direction="in" />
-      <arg type="s" name="container_instance_id" direction="out" />
     </method>
 
     <!--
@@ -518,14 +514,12 @@
     <!--
         ArcInstanceStopped:
         @reason: The value of ArcContainerStopReason.
-        @container_instance_id: opaque identifier of the stopped container.
 
         Sent when ARC instance is stopped. Maybe clean shutdown, upgrade
         failure, or crash.
     -->
     <signal name="ArcInstanceStopped">
       <arg type="u" name="reason" />
-      <arg type="s" name="container_instance_id" />
     </signal>
 
     <!--
