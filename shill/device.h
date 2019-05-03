@@ -864,7 +864,6 @@ class Device : public base::RefCounted<Device> {
   base::CancelableClosure reliable_link_callback_;
 
   std::unique_ptr<PortalDetector> connection_tester_;
-  base::Callback<void()> connection_tester_callback_;
 
   // Track whether packets from non-optimal routes will be accepted by this
   // device.  This is referred to as "loose mode" (see RFC3704).
