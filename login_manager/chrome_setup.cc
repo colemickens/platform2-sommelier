@@ -462,11 +462,6 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // investigating issues with non-autolaunching public session.
   builder->AddVmodulePattern("existing_user_controller=2");
 
-  // TODO(afakhry): Remove after investigation of dropped feedback reports is
-  // complete: https://crbug.com/909096.
-  builder->AddVmodulePattern("*/feedback_private/*=1");
-  builder->AddVmodulePattern("*/feedback_uploader*=1");
-
   // TODO(burunduk): Remove after investigation of not-installed forced
   // extensions in https://crbug.com/904600 and https://crbug.com/917700.
   builder->AddVmodulePattern("extension_downloader=2");
