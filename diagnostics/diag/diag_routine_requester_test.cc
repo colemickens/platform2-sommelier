@@ -210,7 +210,7 @@ TEST_F(DiagRoutineRequesterTest, GetAvailableRoutines) {
   SetAvailableRoutinesResponse();
 
   auto response = routine_requester()->GetAvailableRoutines();
-  EXPECT_NE(response, base::nullopt);
+  ASSERT_NE(response, base::nullopt);
   EXPECT_THAT(response.value(), ElementsAreArray(kFakeAvailableRoutines));
 }
 
