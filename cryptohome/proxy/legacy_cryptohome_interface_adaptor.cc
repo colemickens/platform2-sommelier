@@ -179,10 +179,22 @@ void LegacyCryptohomeInterfaceAdaptor::MigrateKeyEx(
     const cryptohome::AccountIdentifier& in_account,
     const cryptohome::AuthorizationRequest& in_authorization_request,
     const cryptohome::MigrateKeyRequest& in_migrate_request) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
+          std::move(response));
+
+  user_data_auth::MigrateKeyRequest request;
+  request.mutable_account_id()->CopyFrom(in_account);
+  request.mutable_authorization_request()->CopyFrom(in_authorization_request);
+  request.set_secret(in_migrate_request.secret());
+  userdataauth_proxy_->MigrateKeyAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
+                     user_data_auth::MigrateKeyReply>,
+                 response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response_shared));
 }
 
 void LegacyCryptohomeInterfaceAdaptor::AddKeyEx(
