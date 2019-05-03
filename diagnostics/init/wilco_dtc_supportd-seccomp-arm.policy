@@ -28,6 +28,7 @@ exit: 1
 exit_group: 1
 fcntl64: 1
 fstat64: 1
+ftruncate: 1
 futex: 1
 getdents64: 1
 getegid32: 1
