@@ -246,6 +246,14 @@ class DeviceConfig(object):
     """
     pass
 
+  def GetFirmwareConfigsByDevice(self):
+    """Gets firmware config name for all devices.
+
+    Returns:
+      Dictionary of firmware config names grouped by device.
+    """
+    pass
+
   def GetWallpaperFiles(self):
     """Get a set of wallpaper files used for this model"""
     pass

@@ -393,6 +393,19 @@ class CrosConfigHostTest(unittest.TestCase):
     result = CrosConfig(self.filepath).GetFirmwareConfigs()
     self._assertEqualsListNamedTuplesDict(result, expected)
 
+  def testFirmwareConfigsByDevice(self):
+    """Test access to firmware config names."""
+    expected = {
+        'some': 'some',
+        'another': 'another',
+        'whitelabel': 'some',
+        'whitelabel-whitelabel1': 'some',
+        'whitelabel-whitelabel2': 'some',
+    }
+
+    result = CrosConfig(self.filepath).GetFirmwareConfigsByDevice()
+    self.assertEquals(result, expected)
+
 
 if __name__ == '__main__':
   unittest.main()

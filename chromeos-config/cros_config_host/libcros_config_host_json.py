@@ -254,3 +254,7 @@ class CrosConfigJson(CrosConfigBaseImpl):
       result[value.shared_model] = fw_images
 
     return result
+
+  def GetFirmwareConfigsByDevice(self):
+    fw_info = self.GetFirmwareInfo().values()
+    return {value.model: value.shared_model or value.model for value in fw_info}
