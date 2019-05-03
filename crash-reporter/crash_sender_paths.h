@@ -18,11 +18,6 @@ constexpr char kLockFile[] = "/run/lock/crash_sender";
 // Must be stateful to enable testing kernel crashes.
 constexpr char kPauseCrashSending[] = "/var/lib/crash_sender_paused";
 
-// Directory of restricted certificates which includes certificate for
-// URL to send official build crash reports to.
-constexpr char kRestrictedCertificatesDirectory[] =
-    "/usr/share/chromeos-ca-certificates";
-
 // Directory where crash_sender stores timestamp files, that indicate the
 // upload attempts in the past 24 hours.
 constexpr char kTimestampsDirectory[] = "/var/lib/crash_sender";

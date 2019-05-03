@@ -39,8 +39,6 @@ enum BuildType { kOfficialBuild, kUnofficialBuild };
 enum SessionType { kSignInMode, kGuestMode };
 enum MetricsFlag { kMetricsEnabled, kMetricsDisabled };
 
-constexpr char kNoProxyServer[] = "direct://";
-
 constexpr char kFakeClientId[] = "00112233445566778899aabbccddeeff";
 
 // Parses the Chrome uploads.log file from Sender to a vector of items per line.
@@ -424,19 +422,19 @@ TEST_F(CrashSenderUtilTest, ShouldPauseSending) {
   EXPECT_FALSE(ShouldPauseSending());
 }
 
-TEST_F(CrashSenderUtilTest, CheckDependencies) {
-  base::FilePath missing_path;
-
-  const base::FilePath kRestrictedCertificatesDirectory =
-      paths::Get(paths::kRestrictedCertificatesDirectory);
-
-  // kRestrictedCertificatesDirectory is the missing path.
-  EXPECT_FALSE(CheckDependencies(&missing_path));
-  EXPECT_EQ(kRestrictedCertificatesDirectory.value(), missing_path.value());
-
-  // Create kRestrictedCertificatesDirectory and try again.
-  ASSERT_TRUE(base::CreateDirectory(kRestrictedCertificatesDirectory));
-  EXPECT_TRUE(CheckDependencies(&missing_path));
+TEST_F(CrashSenderUtilTest, GetImageType) {
+  EXPECT_EQ("", GetImageType());
+  ASSERT_TRUE(SetMockCrashSending(false));
+  EXPECT_EQ("mock-fail", GetImageType());
+  setenv("FORCE_OFFICIAL", "1", 1 /* overwrite */);
+  EXPECT_EQ("force-official", GetImageType());
+  unsetenv("FORCE_OFFICIAL");
+  ASSERT_TRUE(test_util::CreateFile(paths::Get(paths::kLeaveCoreFile), ""));
+  EXPECT_EQ("dev", GetImageType());
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::GetAt(paths::kEtcDirectory, paths::kLsbRelease),
+      "CHROMEOS_RELEASE_TRACK=testimage-channel"));
+  EXPECT_EQ("test", GetImageType());
 }
 
 TEST_F(CrashSenderUtilTest, GetBasePartOfCrashFile) {
@@ -584,7 +582,6 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
 
   Sender::Options options;
   options.proxy = mock.release();
-  options.proxy_servers.emplace_back(kNoProxyServer);
   Sender sender(std::move(metrics_lib_), options);
   ASSERT_TRUE(sender.Init());
 
@@ -907,13 +904,6 @@ TEST_F(CrashSenderUtilTest, GetSleepTime) {
   EXPECT_GE(base::TimeDelta::FromSeconds(60), sleep_time);
 }
 
-TEST_F(CrashSenderUtilTest, GetValueOrUndefined) {
-  brillo::KeyValueStore metadata;
-  metadata.LoadFromString("key=value\n");
-  EXPECT_EQ("value", GetValueOrUndefined(metadata, "key"));
-  EXPECT_EQ("undefined", GetValueOrUndefined(metadata, "nonexistent"));
-}
-
 TEST_F(CrashSenderUtilTest, SortReports) {
   // Crashes from oldest to youngest will be a, b, c.
   CrashInfo crash_info_a;
@@ -964,7 +954,6 @@ TEST_F(CrashSenderUtilTest, GetUserCrashDirectories) {
                                {{"user1", "hash1"}, {"user2", "hash2"}});
   Sender::Options options;
   options.proxy = mock.release();
-  options.proxy_servers.emplace_back(kNoProxyServer);
   Sender sender(std::move(metrics_lib_), options);
   ASSERT_TRUE(sender.Init());
 
@@ -1184,7 +1173,6 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   options.proxy = mock.release();
   options.max_crash_rate = 2;
   options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
-  options.proxy_servers.emplace_back(kNoProxyServer);
   options.always_write_uploads_log = true;
   Sender sender(std::move(metrics_lib_), options);
   ASSERT_TRUE(sender.Init());
@@ -1271,7 +1259,6 @@ TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
   options.proxy = mock.release();
   options.max_crash_rate = 2;
   options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
-  options.proxy_servers.emplace_back(kNoProxyServer);
   options.always_write_uploads_log = true;
   Sender sender(std::move(metrics_lib_), options);
   ASSERT_TRUE(sender.Init());

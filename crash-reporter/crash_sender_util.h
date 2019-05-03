@@ -113,10 +113,9 @@ bool IsMockSuccessful();
 // Returns true if the sending should be paused.
 bool ShouldPauseSending();
 
-// Checks if the dependencies used in the shell script exist. On error, returns
-// false, and saves the first path that was missing in |missing_path|.
-// TODO(crbug.com/391887): Remove this once rewriting to C++ is complete.
-bool CheckDependencies(base::FilePath* missing_path);
+// Returns the string that describes the type of image. Returns an empty string
+// if we shouldn't specify the image type.
+std::string GetImageType();
 
 // Gets the base part of a crash report file, such as name.01234.5678.9012 from
 // name.01234.5678.9012.meta or name.01234.5678.9012.log.tar.xz.  We make sure
@@ -186,13 +185,6 @@ bool GetSleepTime(const base::FilePath& meta_file,
                   const base::TimeDelta& hold_off_time,
                   base::TimeDelta* sleep_time);
 
-// Returns the value for the key from the key-value store, or "undefined", if
-// the key is not found ("undefined" will be used in crash reports where the
-// values are missing).
-// TODO(crbug.com/391887): Change this to return a base::Optional<std::string>.
-std::string GetValueOrUndefined(const brillo::KeyValueStore& store,
-                                const std::string& key);
-
 // Gets the client ID if it exists, otherwise it generates it, saves it and
 // returns that new ID. If it is unable to create the directory for storage, the
 // empty string is returned.
@@ -222,11 +214,6 @@ class Sender {
 
     // Alternate sleep function for unit testing.
     base::Callback<void(base::TimeDelta)> sleep_function;
-
-    // Forced list of proxy servers for testing.
-    // TODO(crbug.com/391887): Remove this since we don't need to force this
-    // after the shell script is gone.
-    std::vector<std::string> proxy_servers;
 
     // Boundary to use in the form data.
     std::string form_data_boundary;

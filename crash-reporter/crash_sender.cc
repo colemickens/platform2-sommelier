@@ -96,13 +96,6 @@ int RunChildMain(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  base::FilePath missing_path;
-  if (!util::CheckDependencies(&missing_path)) {
-    LOG(ERROR) << "Crash sending disabled: " << missing_path.value()
-               << " not found.";
-    return EXIT_FAILURE;
-  }
-
   auto metrics_lib = std::make_unique<MetricsLibrary>();
   util::Sender::Options options;
   options.max_spread_time = flags.max_spread_time;
