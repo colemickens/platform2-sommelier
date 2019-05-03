@@ -700,7 +700,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   uint16_t roam_threshold_db_;
   uint16_t scan_interval_seconds_;
 
-  std::string scan_configuration_;
   NetlinkManager* netlink_manager_;
   std::set<uint16_t> all_scan_frequencies_;
 
