@@ -289,8 +289,6 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   void OnSignalQualityChanged(uint32_t quality);
 
-  void OnSupportedCapabilitesChanged(
-      const std::vector<uint32_t>& supported_capabilities);
   void OnModemCurrentCapabilitiesChanged(uint32_t current_capabilities);
   void OnMdnChanged(const std::string& mdn);
   void OnModemRevisionChanged(const std::string& revision);
@@ -298,8 +296,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnModemDevicePathChanged(const std::string& path);
   void OnModemStateChanged(Cellular::ModemState state);
   void OnAccessTechnologiesChanged(uint32_t access_technologies);
-  void OnSupportedModesChanged(const std::vector<ModemModes>& supported_modes);
-  void OnCurrentModesChanged(const ModemModes& current_modes);
   void OnBearersChanged(const RpcIdentifiers& bearers);
   void OnLockRetriesChanged(const LockRetryData& lock_retries);
   void OnLockTypeChanged(MMModemLock unlock_required);
@@ -380,11 +376,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   MMModem3gppRegistrationState registration_state_;
 
   // Bits based on MMModemCapabilities
-  std::vector<uint32_t> supported_capabilities_;  // Technologies supported
   uint32_t current_capabilities_;  // Technologies supported without a reload
   uint32_t access_technologies_;   // Bits based on MMModemAccessTechnology
-  std::vector<ModemModes> supported_modes_;
-  ModemModes current_modes_;
 
   Stringmap serving_operator_;
   std::string spn_;

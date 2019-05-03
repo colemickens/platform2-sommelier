@@ -1161,17 +1161,10 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   if (properties.ContainsRpcIdentifier(MM_MODEM_PROPERTY_SIM))
     OnSimPathChanged(properties.GetRpcIdentifier(MM_MODEM_PROPERTY_SIM));
 
-  if (properties.ContainsUint32s(MM_MODEM_PROPERTY_SUPPORTEDCAPABILITIES)) {
-    OnSupportedCapabilitesChanged(
-        properties.GetUint32s(MM_MODEM_PROPERTY_SUPPORTEDCAPABILITIES));
-  }
-
   if (properties.ContainsUint(MM_MODEM_PROPERTY_CURRENTCAPABILITIES)) {
     OnModemCurrentCapabilitiesChanged(
         properties.GetUint(MM_MODEM_PROPERTY_CURRENTCAPABILITIES));
   }
-  // not needed: MM_MODEM_PROPERTY_MAXBEARERS
-  // not needed: MM_MODEM_PROPERTY_MAXACTIVEBEARERS
   if (properties.ContainsString(MM_MODEM_PROPERTY_MANUFACTURER)) {
     cellular()->set_manufacturer(
         properties.GetString(MM_MODEM_PROPERTY_MANUFACTURER));
@@ -1192,8 +1185,6 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   if (properties.ContainsString(MM_MODEM_PROPERTY_DEVICE)) {
     OnModemDevicePathChanged(properties.GetString(MM_MODEM_PROPERTY_DEVICE));
   }
-  // not needed: MM_MODEM_PROPERTY_DEVICEIDENTIFIER
-  // not needed: MM_MODEM_PROPERTY_DRIVER
   if (properties.ContainsString(MM_MODEM_PROPERTY_EQUIPMENTIDENTIFIER)) {
     cellular()->set_equipment_id(
         properties.GetString(MM_MODEM_PROPERTY_EQUIPMENTIDENTIFIER));
@@ -1237,29 +1228,6 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
       mdn = numbers[0];
     OnMdnChanged(mdn);
   }
-
-  if (properties.Contains(MM_MODEM_PROPERTY_SUPPORTEDMODES)) {
-    SupportedModes mm_supported_modes =
-        properties.Get(MM_MODEM_PROPERTY_SUPPORTEDMODES).Get<SupportedModes>();
-    vector<ModemModes> supported_modes;
-    for (const auto& modes : mm_supported_modes) {
-      supported_modes.push_back(
-          ModemModes(std::get<0>(modes),
-                     static_cast<MMModemMode>(std::get<1>(modes))));
-    }
-    OnSupportedModesChanged(supported_modes);
-  }
-
-  if (properties.Contains(MM_MODEM_PROPERTY_CURRENTMODES)) {
-    ModesData current_modes =
-        properties.Get(MM_MODEM_PROPERTY_CURRENTMODES).Get<ModesData>();
-    OnCurrentModesChanged(
-        ModemModes(std::get<0>(current_modes),
-                   static_cast<MMModemMode>(std::get<1>(current_modes))));
-  }
-
-  // au: MM_MODEM_PROPERTY_SUPPORTEDBANDS,
-  // au: MM_MODEM_PROPERTY_BANDS
 }
 
 void CellularCapabilityUniversal::OnPropertiesChanged(
@@ -1325,11 +1293,6 @@ void CellularCapabilityUniversal::OnSimPathChanged(
     KeyValueStore properties(properties_proxy->GetAll(MM_DBUS_INTERFACE_SIM));
     OnSimPropertiesChanged(properties, vector<string>());
   }
-}
-
-void CellularCapabilityUniversal::OnSupportedCapabilitesChanged(
-    const vector<uint32_t>& supported_capabilities) {
-  supported_capabilities_ = supported_capabilities;
 }
 
 void CellularCapabilityUniversal::OnModemCurrentCapabilitiesChanged(
@@ -1404,16 +1367,6 @@ void CellularCapabilityUniversal::OnAccessTechnologiesChanged(
       cellular()->service()->SetNetworkTechnology(GetNetworkTechnologyString());
     }
   }
-}
-
-void CellularCapabilityUniversal::OnSupportedModesChanged(
-    const vector<ModemModes>& supported_modes) {
-  supported_modes_ = supported_modes;
-}
-
-void CellularCapabilityUniversal::OnCurrentModesChanged(
-    const ModemModes& current_modes) {
-  current_modes_ = current_modes;
 }
 
 void CellularCapabilityUniversal::OnBearersChanged(
