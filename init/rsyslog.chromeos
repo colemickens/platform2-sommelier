@@ -57,6 +57,19 @@ if (($programname == 'shill') or \
     ($programname == 'arc-networkd') or \
     ($programname == 'charon')) and $syslogseverity >= '4' then ~
 
+# Keep Upstart logs in /var/log/upstart.log
+# Since these go through the kernel ring buffer, the $programname is 'kernel'.
+# We can match against messages from init with:
+# re_match($msg, "\\[ *[0-9]+\\.[0-9]+\\] init: .*")
+# but we'll use a simpler string comparison to avoid the performance penalty of
+# running a regex on every kernel message.
+if $programname == 'kernel' and ($msg contains "] init: ") \
+    then -/var/log/upstart.log
+
+# Log important (EMERG..ERR) Upstart stuff in /var/log/messages too.
+if $programname == 'kernel' and ($msg contains "] init: ") and \
+    $syslogseverity >= '4' then ~
+
 # Keep tlsdate stuff in /var/log/tlsdate.log
 if ($programname startswith 'tlsdate') then -/var/log/tlsdate.log
 & ~  # Don't log tlsdate messages anywhere else.

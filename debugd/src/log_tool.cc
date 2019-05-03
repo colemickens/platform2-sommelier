@@ -270,6 +270,7 @@ const std::vector<Log> kCommandLogs {
   {kCommand, "update_engine.log",
     "cat $(ls -1tr /var/log/update_engine | tail -5 | sed"
     " s.^./var/log/update_engine/.)"},
+  {kFile, "upstart", "/var/log/upstart.log"},
   {kCommand, "uptime", "/usr/bin/cut -d' ' -f1 /proc/uptime"},
   {kFile, "verified boot", "/var/log/debug_vboot_noisy.log"},
   {kFile, "vmlog.1.LATEST", "/var/log/vmlog/vmlog.1.LATEST"},
