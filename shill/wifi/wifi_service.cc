@@ -102,7 +102,6 @@ WiFiService::WiFiService(ControlInterface* control_interface,
   HelpRegisterConstDerivedString(kSecurityClassProperty,
                                  &WiFiService::GetSecurityClass);
 
-  store->RegisterConstString(kWifiAuthMode, &auth_mode_);
   store->RegisterBool(kWifiHiddenSsid, &hidden_ssid_);
   store->RegisterConstUint16(kWifiFrequency, &frequency_);
   store->RegisterConstUint16s(kWifiFrequencyListProperty, &frequency_list_);

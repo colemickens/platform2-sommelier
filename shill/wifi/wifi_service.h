@@ -336,7 +336,6 @@ class WiFiService : public Service {
   // TODO(cmasone): see if the below can be pulled from the endpoint associated
   // with this service instead.
   const std::string mode_;
-  std::string auth_mode_;
   bool hidden_ssid_;
   bool ft_enabled_;
   uint16_t frequency_;

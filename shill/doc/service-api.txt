@@ -1590,17 +1590,6 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			(including all other service types) this property
 			is always true.
 
-		string WiFi.AuthMode [readonly]
-
-			(WiFi only) If the service state is
-			"configuration" or "ready", then this property
-			will be present and contains the negotiated
-			authentication method.
-
-			There are too many possible values to enumerate here.
-			The complete set depends on the capabilities of the
-			associated WiFi supplicant.
-
 		string WiFi.BSSID [readonly]
 
 			(WiFi only) The BSSID of the associated AP.
