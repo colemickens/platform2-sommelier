@@ -270,9 +270,11 @@ MountErrorType FUSEMounter::MountImpl() const {
     // Unmount the FUSE filesystem if any later part fails.
     fuse_failure_unmounter.ReplaceClosure(base::Bind(
         [](const Platform* platform, const std::string& target_path) {
-          if (!platform->Unmount(target_path, 0)) {
+          MountErrorType unmount_error = platform->Unmount(target_path, 0);
+          if (unmount_error != MountErrorType::MOUNT_ERROR_NONE) {
             LOG(ERROR) << "Failed to unmount " << target_path
-                       << " on deprivileged fuse mount failure.";
+                       << " on deprivileged fuse mount failure, error code: "
+                       << unmount_error;
           }
         },
         platform_, target_path().value()));
