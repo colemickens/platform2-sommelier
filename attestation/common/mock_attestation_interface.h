@@ -31,9 +31,6 @@ class MockAttestationInterface : public AttestationInterface {
   virtual ~MockAttestationInterface() = default;
 
   MOCK_METHOD0(Initialize, bool());
-  MOCK_METHOD2(CreateGoogleAttestedKey,
-               void(const CreateGoogleAttestedKeyRequest&,
-                    const CreateGoogleAttestedKeyCallback&));
   MOCK_METHOD2(GetKeyInfo,
                void(const GetKeyInfoRequest&, const GetKeyInfoCallback&));
   MOCK_METHOD2(GetEndorsementInfo,

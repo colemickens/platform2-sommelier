@@ -28,8 +28,6 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
 #include <brillo/data_encoding.h>
-#include <brillo/http/http_utils.h>
-#include <brillo/mime_utils.h>
 #include <crypto/sha2.h>
 extern "C" {
 #if USE_TPM2
@@ -45,7 +43,7 @@ extern "C" {
 namespace {
 
 // Google Attestation Certificate Authority (ACA) production instance.
-const char kDefaultACAWebOrigin[] = "https://chromeos-ca.gstatic.com";
+// https://chromeos-ca.gstatic.com
 const char kDefaultACAPublicKey[] =
     "A2976637E113CC457013F4334312A416395B08D4B2A9724FC9BAD65D0290F39C"
     "866D1163C2CD6474A24A55403C968CF78FA153C338179407FE568C6E550949B1"
@@ -58,7 +56,7 @@ const char kDefaultACAPublicKey[] =
 const char kDefaultACAPublicKeyID[] = "\x00\xc7\x0e\x50\xb1";
 
 // Google Attestation Certificate Authority (ACA) test instance.
-const char kTestACAWebOrigin[] = "https://asbestos-qa.corp.google.com";
+// https://asbestos-qa.corp.google.com
 const char kTestACAPublicKey[] =
     "A1D50D088994000492B5F3ED8A9C5FC8772706219F4C063B2F6A8C6B74D3AD6B"
     "212A53D01DABB34A6261288540D420D3BA59ED279D859DE6227A7AB6BD88FADD"
@@ -597,90 +595,6 @@ void AttestationService::ShutdownTask() {
   default_crypto_utility_.reset(nullptr);
   tpm_utility_ = nullptr;
   default_tpm_utility_.reset(nullptr);
-}
-
-void AttestationService::CreateGoogleAttestedKey(
-    const CreateGoogleAttestedKeyRequest& request,
-    const CreateGoogleAttestedKeyCallback& callback) {
-  auto result = std::make_shared<CreateGoogleAttestedKeyReply>();
-  base::Closure task =
-      base::Bind(&AttestationService::CreateGoogleAttestedKeyTask,
-                 base::Unretained(this), request, result);
-  base::Closure reply = base::Bind(
-      &AttestationService::TaskRelayCallback<CreateGoogleAttestedKeyReply>,
-      GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
-}
-
-void AttestationService::CreateGoogleAttestedKeyTask(
-    const CreateGoogleAttestedKeyRequest& request,
-    const std::shared_ptr<CreateGoogleAttestedKeyReply>& result) {
-  LOG(INFO) << "Creating attested key: " << request.key_label();
-  if (!IsPreparedForEnrollment()) {
-    LOG(ERROR) << "Attestation: TPM is not ready.";
-    result->set_status(STATUS_NOT_READY);
-    return;
-  }
-  if (!IsEnrolledWithACA(request.aca_type())) {
-    std::string enroll_request;
-    if (!CreateEnrollRequestInternal(request.aca_type(), &enroll_request)) {
-      result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
-      return;
-    }
-    std::string enroll_reply;
-    if (!SendACARequestAndBlock(request.aca_type(), kEnroll, enroll_request,
-                                &enroll_reply)) {
-      result->set_status(STATUS_CA_NOT_AVAILABLE);
-      return;
-    }
-    std::string server_error;
-    if (!FinishEnrollInternal(request.aca_type(), enroll_reply,
-                              &server_error)) {
-      if (server_error.empty()) {
-        result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
-        return;
-      }
-      result->set_status(STATUS_REQUEST_DENIED_BY_CA);
-      result->set_server_error(server_error);
-      return;
-    }
-  }
-  CertifiedKey key;
-  if (!CreateKey(request.username(), request.key_label(), request.key_type(),
-                 request.key_usage(), &key)) {
-    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
-    return;
-  }
-  std::string certificate_request;
-  std::string message_id;
-  if (!CreateCertificateRequestInternal(request.aca_type(),
-                                        request.username(), key,
-                                        request.certificate_profile(),
-                                        request.origin(),
-                                        &certificate_request, &message_id)) {
-    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
-    return;
-  }
-  std::string certificate_reply;
-  if (!SendACARequestAndBlock(request.aca_type(), kGetCertificate,
-                              certificate_request, &certificate_reply)) {
-    result->set_status(STATUS_CA_NOT_AVAILABLE);
-    return;
-  }
-  std::string certificate_chain;
-  std::string server_error;
-  if (!FinishCertificateRequestInternal(certificate_reply, request.username(),
-                                        request.key_label(), message_id, &key,
-                                        &certificate_chain, &server_error)) {
-    if (server_error.empty()) {
-      result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
-      return;
-    }
-    result->set_status(STATUS_REQUEST_DENIED_BY_CA);
-    result->set_server_error(server_error);
-    return;
-  }
-  result->set_certificate_chain(certificate_chain);
 }
 
 void AttestationService::GetKeyInfo(const GetKeyInfoRequest& request,
@@ -1380,27 +1294,6 @@ bool AttestationService::PopulateAndStoreCertifiedKey(
   return true;
 }
 
-bool AttestationService::SendACARequestAndBlock(ACAType aca_type,
-                                                ACARequestType request_type,
-                                                const std::string& request,
-                                                std::string* reply) {
-  std::shared_ptr<brillo::http::Transport> transport = http_transport_;
-  if (!transport) {
-    transport = brillo::http::Transport::CreateDefault();
-  }
-  std::unique_ptr<brillo::http::Response> response = PostBinaryAndBlock(
-      GetACAURL(aca_type, request_type), request.data(), request.size(),
-      brillo::mime::application::kOctet_stream, {},  // headers
-      transport,
-      nullptr);  // error
-  if (!response || !response->IsSuccessful()) {
-    LOG(ERROR) << "HTTP request to Attestation CA failed.";
-    return false;
-  }
-  *reply = response->ExtractDataAsString();
-  return true;
-}
-
 bool AttestationService::FindKeyByLabel(const std::string& username,
                                         const std::string& key_label,
                                         CertifiedKey* key) {
@@ -1630,29 +1523,6 @@ int AttestationService::ChooseTemporalIndex(const std::string& user,
   new_record->set_temporal_index(least_used_index);
   database_->SaveChanges();
   return least_used_index;
-}
-
-std::string AttestationService::GetACAWebOrigin(ACAType aca_type) const {
-  if (aca_type == TEST_ACA) {
-    return kTestACAWebOrigin;
-  }
-  return kDefaultACAWebOrigin;
-}
-
-std::string AttestationService::GetACAURL(ACAType aca_type,
-                                          ACARequestType request_type) const {
-  std::string url = GetACAWebOrigin(aca_type);
-  switch (request_type) {
-    case kEnroll:
-      url += "/enroll";
-      break;
-    case kGetCertificate:
-      url += "/sign";
-      break;
-    default:
-      NOTREACHED();
-  }
-  return url;
 }
 
 bool AttestationService::GetSubjectPublicKeyInfo(

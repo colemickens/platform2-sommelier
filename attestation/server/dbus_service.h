@@ -48,12 +48,6 @@ class DBusService {
  private:
   friend class DBusServiceTest;
 
-  // Handles a CreateGoogleAttestedKey D-Bus call.
-  void HandleCreateGoogleAttestedKey(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          const CreateGoogleAttestedKeyReply&>> response,
-      const CreateGoogleAttestedKeyRequest& request);
-
   // Handles a GetKeyInfo D-Bus call.
   void HandleGetKeyInfo(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                             const GetKeyInfoReply&>> response,

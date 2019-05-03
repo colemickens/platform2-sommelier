@@ -14,18 +14,6 @@
 <node name="/org/chromium/Attestation"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.Attestation">
-    <method name="CreateGoogleAttestedKey">
-      <!-- Note that this method is slated for removal, see b/124498580 -->
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="attestation::CreateGoogleAttestedKeyRequest" />
-      </arg>
-      <arg name="reply" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="attestation::CreateGoogleAttestedKeyReply" />
-      </arg>
-    </method>
-
     <method name="GetKeyInfo">
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"

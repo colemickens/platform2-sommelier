@@ -37,14 +37,6 @@ class AttestationInterface {
   // success.
   virtual bool Initialize() = 0;
 
-  // Processes a CreateGoogleAttestedKeyRequest and responds with a
-  // CreateGoogleAttestedKeyReply.
-  using CreateGoogleAttestedKeyCallback =
-      base::Callback<void(const CreateGoogleAttestedKeyReply&)>;
-  virtual void CreateGoogleAttestedKey(
-      const CreateGoogleAttestedKeyRequest& request,
-      const CreateGoogleAttestedKeyCallback& callback) = 0;
-
   // Processes a GetKeyInfoRequest and responds with a GetKeyInfoReply.
   using GetKeyInfoCallback = base::Callback<void(const GetKeyInfoReply&)>;
   virtual void GetKeyInfo(const GetKeyInfoRequest& request,

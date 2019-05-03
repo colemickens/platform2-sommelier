@@ -35,7 +35,6 @@
 
 namespace attestation {
 
-const char kCreateAndCertifyCommand[] = "create_and_certify";
 const char kCreateCommand[] = "create";
 const char kInfoCommand[] = "info";
 const char kSetKeyPayloadCommand[] = "set_key_payload";
@@ -60,9 +59,6 @@ const char kGetEnrollmentId[] = "get_enrollment_id";
 const char kUsage[] = R"(
 Usage: attestation_client <command> [<args>]
 Commands:
-  create_and_certify [--user=<email>] [--label=<keylabel>]
-      Creates a key and requests certification by the Google Attestation CA.
-      This is the default command.
   create [--user=<email>] [--label=<keylabel>] [--usage=sign|decrypt]
       Creates a certifiable key.
   set_key_payload [--user=<email>] --label=<keylabel> --input=<input_file>
@@ -175,20 +171,8 @@ class ClientLoop : public ClientLoopBase {
     base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
     const auto& args = command_line->GetArgs();
     if (command_line->HasSwitch("help") || command_line->HasSwitch("h") ||
-        (!args.empty() && args.front() == "help")) {
+        args.empty() || (!args.empty() && args.front() == "help")) {
       return EX_USAGE;
-    }
-    if (args.empty() || args.front() == kCreateAndCertifyCommand) {
-      ACAType aca_type;
-      int status = GetCertificateAuthorityServerType(command_line, &aca_type);
-      if (status != EX_OK) {
-        return status;
-      }
-      task = base::Bind(&ClientLoop::CallCreateGoogleAttestedKey,
-                        weak_factory_.GetWeakPtr(),
-                        aca_type,
-                        command_line->GetSwitchValueASCII("label"),
-                        command_line->GetSwitchValueASCII("user"));
     } else if (args.front() == kCreateCommand) {
       std::string usage_str = command_line->GetSwitchValueASCII("usage");
       KeyUsage usage;
@@ -523,22 +507,6 @@ class ClientLoop : public ClientLoopBase {
       LOG(ERROR) << "Failed to write file: " << filename.value();
       QuitWithExitCode(EX_IOERR);
     }
-  }
-
-  void CallCreateGoogleAttestedKey(ACAType aca_type,
-                                   const std::string& label,
-                                   const std::string& username) {
-    CreateGoogleAttestedKeyRequest request;
-    request.set_aca_type(aca_type);
-    request.set_key_label(label);
-    request.set_key_type(KEY_TYPE_RSA);
-    request.set_key_usage(KEY_USAGE_SIGN);
-    request.set_certificate_profile(ENTERPRISE_MACHINE_CERTIFICATE);
-    request.set_username(username);
-    attestation_->CreateGoogleAttestedKey(
-        request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<CreateGoogleAttestedKeyReply>,
-                   weak_factory_.GetWeakPtr()));
   }
 
   void CallGetStatus(bool extended_status) {

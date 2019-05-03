@@ -24,8 +24,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/data_encoding.h>
-#include <brillo/http/http_transport_fake.h>
-#include <brillo/mime_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -35,8 +33,6 @@
 #include "attestation/server/mock_database.h"
 #include "attestation/server/mock_key_store.h"
 
-using brillo::http::fake::ServerRequest;
-using brillo::http::fake::ServerResponse;
 using testing::_;
 using testing::DoAll;
 using testing::NiceMock;
@@ -205,8 +201,6 @@ class AttestationServiceBaseTest : public testing::Test {
         ->mutable_credentials()
         ->mutable_encrypted_endorsement_credentials())[TEST_ACA]
         .set_wrapping_key_id("test");
-    fake_http_transport_ = std::make_shared<brillo::http::fake::Transport>();
-    service_->set_http_transport(fake_http_transport_);
     CHECK(service_->Initialize());
     // Run out initialize task(s) to avoid any race conditions with tests that
     // need to change the default setup.
@@ -328,7 +322,6 @@ class AttestationServiceBaseTest : public testing::Test {
   NiceMock<MockTpmUtility> mock_tpm_utility_;
   std::unique_ptr<AttestationService> service_;
   const int identity_ = AttestationService::kFirstIdentity;
-  std::shared_ptr<brillo::http::fake::Transport> fake_http_transport_;
 
  private:
   base::MessageLoop message_loop_;
@@ -869,146 +862,9 @@ class AttestationServiceTest
 
   void SetUp() override {
     AttestationServiceBaseTest::SetUp();
-    // Setup a fake Attestation CA for success by default.
-    SetUpFakeCAEnroll(kSuccess);
-    SetUpFakeCASign(kSuccess);
   }
 
  protected:
-  enum FakeCAState {
-    kSuccess,         // Valid successful response.
-    kCommandFailure,  // Valid error response.
-    kHttpFailure,     // Responds with an HTTP error.
-    kBadMessageID,    // Valid successful response but a message ID mismatch.
-  };
-
-  void SetUpFakeCAEnroll(FakeCAState state) {
-    fake_http_transport_->AddHandler(
-        service_->GetACAURL(aca_type_, AttestationService::kEnroll),
-        brillo::http::request_type::kPost,
-        base::Bind(&AttestationServiceTest::FakeCAEnroll,
-                   base::Unretained(this), state));
-  }
-
-  void SetUpFakeCASign(FakeCAState state) {
-    fake_http_transport_->AddHandler(
-        service_->GetACAURL(aca_type_, AttestationService::kGetCertificate),
-        brillo::http::request_type::kPost,
-        base::Bind(&AttestationServiceTest::FakeCASign,
-                   base::Unretained(this), state));
-  }
-
-  void FakeCAEnroll(FakeCAState state,
-                    const ServerRequest& request,
-                    ServerResponse* response) {
-    AttestationEnrollmentRequest request_pb;
-    EXPECT_TRUE(request_pb.ParseFromString(request.GetDataAsString()));
-    if (state == kHttpFailure) {
-      response->ReplyText(brillo::http::status_code::NotFound, std::string(),
-                          brillo::mime::application::kOctet_stream);
-      return;
-    }
-    std::string response_str;
-    if (state == kCommandFailure) {
-      response_str = CreateCAEnrollResponse(false);
-    } else if (state == kSuccess) {
-      response_str = CreateCAEnrollResponse(true);
-    } else {
-      NOTREACHED();
-    }
-    response->ReplyText(brillo::http::status_code::Ok, response_str,
-                        brillo::mime::application::kOctet_stream);
-  }
-
-  void FakeCASign(FakeCAState state,
-                  const ServerRequest& request,
-                  ServerResponse* response) {
-    AttestationCertificateRequest request_pb;
-    EXPECT_TRUE(request_pb.ParseFromString(request.GetDataAsString()));
-    if (state == kHttpFailure) {
-      response->ReplyText(brillo::http::status_code::NotFound, std::string(),
-                          brillo::mime::application::kOctet_stream);
-      return;
-    }
-    std::string response_str;
-    if (state == kCommandFailure) {
-      response_str = CreateCACertResponse(false, "");
-    } else if (state == kSuccess) {
-      response_str = CreateCACertResponse(true, request_pb.message_id());
-    } else if (state == kBadMessageID) {
-      response_str = CreateCACertResponse(true, "");
-    }
-    response->ReplyText(brillo::http::status_code::Ok, response_str,
-                        brillo::mime::application::kOctet_stream);
-  }
-
-  void CreateGoogleAttestedKeyCallback(
-      AttestationStatus expected_status,
-      const std::string& expected_error,
-      const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_EQ(expected_status, reply.status());
-    if (expected_status == STATUS_SUCCESS) {
-      EXPECT_EQ(GetFakeCertificateChain(), reply.certificate_chain());
-      EXPECT_FALSE(reply.has_server_error());
-    } else {
-      EXPECT_FALSE(reply.has_certificate_chain());
-      EXPECT_EQ(expected_error, reply.server_error());
-    }
-    Quit();
-  }
-
-  void CreateGoogleAttestedKeyClientErrorCallback(
-      const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_NE(STATUS_SUCCESS, reply.status());
-    EXPECT_FALSE(reply.has_certificate_chain());
-    EXPECT_FALSE(reply.has_server_error());
-    Quit();
-  }
-
-  void CreateGoogleAttestedKeySuccess(
-      const CreateGoogleAttestedKeyRequest& request) {
-    SetUpIdentity(identity_);
-    SetUpIdentityCertificate(identity_, aca_type_);
-    service_->CreateGoogleAttestedKey(
-        GetCreateRequest(),
-        base::Bind(&AttestationServiceTest::CreateGoogleAttestedKeyCallback,
-                   base::Unretained(this), STATUS_SUCCESS, ""));
-    Run();
-  }
-
-  void CreateGoogleAttestedKeyFailure(
-      const CreateGoogleAttestedKeyRequest& request,
-      AttestationStatus expected_status,
-      const std::string& expected_error) {
-    service_->CreateGoogleAttestedKey(
-        GetCreateRequest(),
-        base::Bind(&AttestationServiceTest::CreateGoogleAttestedKeyCallback,
-                   base::Unretained(this), expected_status, expected_error));
-    Run();
-  }
-
-  void CreateGoogleAttestedKeyClientError(
-      const CreateGoogleAttestedKeyRequest& request) {
-    service_->CreateGoogleAttestedKey(
-        GetCreateRequest(),
-        base::Bind(
-            &AttestationServiceTest::CreateGoogleAttestedKeyClientErrorCallback,
-            base::Unretained(this)));
-    Run();
-  }
-
-  CreateGoogleAttestedKeyRequest GetCreateRequest() {
-    CreateGoogleAttestedKeyRequest request;
-    request.set_aca_type(aca_type_);
-    request.set_key_label("label");
-    request.set_key_type(KEY_TYPE_RSA);
-    request.set_key_usage(KEY_USAGE_SIGN);
-    request.set_certificate_profile(ENTERPRISE_MACHINE_CERTIFICATE);
-    request.set_username("user");
-    request.set_origin("origin");
-    return request;
-  }
-
   std::string CreateCAEnrollResponse(bool success) {
     AttestationEnrollmentResponse response_pb;
     if (success) {
@@ -1986,157 +1842,6 @@ TEST_P(AttestationServiceTest, ComputeEnterpriseEnrollmentId) {
       "635c4526dfa583362273e2987944007b09131cfa0f4e5874e7a76d55d333e3cc",
       base::ToLowerASCII(
           base::HexEncode(enrollment_id.data(), enrollment_id.size())));
-}
-
-TEST_P(AttestationServiceTest, CreateGoogleAttestedKeyWithEnrollHttpError) {
-  SetUpIdentity(identity_);
-  SetUpFakeCAEnroll(kHttpFailure);
-  CreateGoogleAttestedKeyFailure(GetCreateRequest(),
-                                 STATUS_CA_NOT_AVAILABLE, "");
-}
-
-TEST_P(AttestationServiceTest, CreateGoogleAttestedKeyWithSignHttpError) {
-  SetUpIdentity(identity_);
-  SetUpIdentityCertificate(identity_, aca_type_);
-  SetUpFakeCASign(kHttpFailure);
-  CreateGoogleAttestedKeyFailure(GetCreateRequest(),
-                                 STATUS_CA_NOT_AVAILABLE, "");
-}
-
-TEST_P(AttestationServiceTest, CreateGoogleAttestedKeyWithCAEnrollFailure) {
-  SetUpIdentity(identity_);
-  SetUpFakeCAEnroll(kCommandFailure);
-  CreateGoogleAttestedKeyFailure(GetCreateRequest(),
-                                 STATUS_REQUEST_DENIED_BY_CA,
-                                 "fake_enroll_error");
-}
-
-TEST_P(AttestationServiceTest, CreateGoogleAttestedKeyWithCASignFailure) {
-  SetUpIdentityCertificate(identity_, aca_type_);
-  SetUpFakeCASign(kCommandFailure);
-  CreateGoogleAttestedKeyFailure(GetCreateRequest(),
-                                 STATUS_REQUEST_DENIED_BY_CA,
-                                 "fake_sign_error");
-}
-
-TEST_P(AttestationServiceTest, CreateGoogleAttestedKeyWithBadCAMessageID) {
-  SetUpIdentity(identity_);
-  SetUpIdentityCertificate(identity_, aca_type_);
-  SetUpFakeCASign(kBadMessageID);
-  CreateGoogleAttestedKeyClientError(GetCreateRequest());
-}
-
-TEST_P(AttestationServiceTest, CreateGoogleAttestedKeySuccess) {
-  CreateGoogleAttestedKeySuccess(GetCreateRequest());
-}
-
-TEST_P(AttestationServiceTest, CreateGoogleAttestedKeySuccessNoUser) {
-  CreateGoogleAttestedKeyRequest request = GetCreateRequest();
-  request.clear_username();
-  CreateGoogleAttestedKeySuccess(request);
-}
-
-TEST_P(AttestationServiceTest, CreateGoogleAttestedKeyWithNoEKCertificate) {
-  // Remove the default credential setup.
-  mock_database_.GetMutableProtobuf()->clear_credentials();
-  CreateGoogleAttestedKeyClientError(GetCreateRequest());
-}
-
-TEST_P(AttestationServiceTest, CreateGoogleAttestedKeyWithRNGFailure) {
-  EXPECT_CALL(mock_crypto_utility_, GetRandom(_, _))
-      .WillRepeatedly(Return(false));
-  SetUpIdentity(identity_);
-  SetUpIdentityCertificate(identity_, aca_type_);
-  CreateGoogleAttestedKeyClientError(GetCreateRequest());
-}
-
-TEST_P(AttestationServiceTest, CreateGoogleAttestedKeyWithRNGFailure2) {
-  // This flow consumes at least two nonces.
-  EXPECT_CALL(mock_crypto_utility_, GetRandom(_, _))
-      .WillOnce(Return(true))
-      .WillRepeatedly(Return(false));
-  SetUpIdentity(identity_);
-  SetUpIdentityCertificate(identity_, aca_type_);
-  CreateGoogleAttestedKeyClientError(GetCreateRequest());
-}
-
-TEST_P(AttestationServiceTest, CreateGoogleAttestedKeyWithDBFailure) {
-  EXPECT_CALL(mock_database_, SaveChanges()).WillRepeatedly(Return(false));
-  SetUpIdentity(identity_);
-  CreateGoogleAttestedKeyClientError(GetCreateRequest());
-}
-
-TEST_P(AttestationServiceTest, CreateGoogleAttestedKeyWithDBFailureNoUser) {
-  SetUpIdentity(identity_);
-  EXPECT_CALL(mock_database_, SaveChanges()).WillRepeatedly(Return(false));
-  CreateGoogleAttestedKeyRequest request = GetCreateRequest();
-  request.clear_username();
-  CreateGoogleAttestedKeyClientError(request);
-}
-
-TEST_P(AttestationServiceTest, CreateGoogleAttestedKeyWithKeyWriteFailure) {
-  SetUpIdentity(identity_);
-  SetUpIdentityCertificate(identity_, aca_type_);
-  EXPECT_CALL(mock_key_store_, Write(_, _, _)).WillRepeatedly(Return(false));
-  CreateGoogleAttestedKeyClientError(GetCreateRequest());
-}
-
-TEST_P(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmNotReady) {
-  EXPECT_CALL(mock_tpm_utility_, IsTpmReady()).WillRepeatedly(Return(false));
-  CreateGoogleAttestedKeyClientError(GetCreateRequest());
-}
-
-TEST_P(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmActivateFailure) {
-  EXPECT_CALL(mock_tpm_utility_, ActivateIdentity(_, _, _, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_utility_, ActivateIdentityForTpm2(_, _, _, _, _, _))
-      .WillRepeatedly(Return(false));
-  SetUpIdentity(identity_);
-  CreateGoogleAttestedKeyClientError(GetCreateRequest());
-}
-
-TEST_P(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmCreateFailure) {
-  EXPECT_CALL(mock_tpm_utility_, CreateCertifiedKey(_, _, _, _, _, _, _, _, _))
-      .WillRepeatedly(Return(false));
-  SetUpIdentity(identity_);
-  SetUpIdentityCertificate(identity_, aca_type_);
-  CreateGoogleAttestedKeyClientError(GetCreateRequest());
-}
-
-TEST_P(AttestationServiceTest, CreateGoogleAttestedKeyAndCancel) {
-  SetUpIdentity(identity_);
-  SetUpIdentityCertificate(identity_, aca_type_);
-  // Set expectations on the outputs.
-  int callback_count = 0;
-  auto callback = [](int* callback_count,
-                     const CreateGoogleAttestedKeyReply& reply) {
-    (*callback_count)++;
-  };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(),
-                                    base::Bind(callback, &callback_count));
-  // Bring down the service, which should cancel any callbacks.
-  service_.reset();
-  EXPECT_EQ(0, callback_count);
-}
-
-TEST_P(AttestationServiceTest, CreateGoogleAttestedKeyAndCancel2) {
-  SetUpIdentity(identity_);
-  SetUpIdentityCertificate(identity_, aca_type_);
-  // Set expectations on the outputs.
-  int callback_count = 0;
-  auto callback = [](int* callback_count,
-                     const CreateGoogleAttestedKeyReply& reply) {
-    (*callback_count)++;
-  };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(),
-                                    base::Bind(callback, &callback_count));
-  // Give threads a chance to run.
-  base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(10));
-  // Bring down the service, which should cancel any callbacks.
-  service_.reset();
-  // Pump the loop to make sure no callbacks were posted.
-  RunUntilIdle();
-  EXPECT_EQ(0, callback_count);
 }
 
 TEST_P(AttestationServiceTest, CreateCertificateRequestSuccess) {

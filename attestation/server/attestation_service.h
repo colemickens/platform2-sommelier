@@ -57,7 +57,7 @@ namespace attestation {
 //   std::unique_ptr<AttestationInterface> attestation =
 //       new AttestationService();
 //   CHECK(attestation->Initialize(nullptr));
-//   attestation->CreateGoogleAttestedKey(...);
+//   attestation->GetEndorsementInfo(...);
 //
 // THREADING NOTES:
 // This class runs a worker thread and delegates all calls to it. This keeps the
@@ -88,9 +88,6 @@ class AttestationService : public AttestationInterface {
   void GetEnrollmentPreparations(
       const GetEnrollmentPreparationsRequest& request,
       const GetEnrollmentPreparationsCallback& callback) override;
-  void CreateGoogleAttestedKey(
-      const CreateGoogleAttestedKeyRequest& request,
-      const CreateGoogleAttestedKeyCallback& callback) override;
   void GetKeyInfo(const GetKeyInfoRequest& request,
                   const GetKeyInfoCallback& callback) override;
   void GetEndorsementInfo(const GetEndorsementInfoRequest& request,
@@ -240,12 +237,6 @@ class AttestationService : public AttestationInterface {
   void GetEnrollmentPreparationsTask(
       const GetEnrollmentPreparationsRequest& request,
       const std::shared_ptr<GetEnrollmentPreparationsReply>& result);
-
-  // A blocking implementation of CreateGoogleAttestedKey appropriate to run on
-  // the worker thread.
-  void CreateGoogleAttestedKeyTask(
-      const CreateGoogleAttestedKeyRequest& request,
-      const std::shared_ptr<CreateGoogleAttestedKeyReply>& result);
 
   // A blocking implementation of GetKeyInfo.
   void GetKeyInfoTask(const GetKeyInfoRequest& request,
@@ -409,13 +400,6 @@ class AttestationService : public AttestationInterface {
     CertifiedKey* key,
     std::string* certificate_chain);
 
-  // Sends a |request_type| |request| to the |aca_type| Google Attestation CA
-  // and waits for the |reply|. Returns true on success.
-  bool SendACARequestAndBlock(ACAType aca_type,
-                              ACARequestType request_type,
-                              const std::string& request,
-                              std::string* reply);
-
   // Creates, certifies, and saves a new |key| for |username| with the given
   // |key_label|, |key_type|, and |key_usage|. Returns true on success.
   bool CreateKey(const std::string& username,
@@ -464,12 +448,6 @@ class AttestationService : public AttestationInterface {
   // the |origin| of the certificate request.  The strategy is to find an index
   // which has not already been used by another user for the same origin.
   int ChooseTemporalIndex(const std::string& user, const std::string& origin);
-
-  // Returns te Web origin for the |aca_type| Google Attestation CA.
-  std::string GetACAWebOrigin(ACAType aca_type) const;
-
-  // Creates a |aca_type| Google Attestation CA URL for the |request_type|.
-  std::string GetACAURL(ACAType aca_type, ACARequestType request_type) const;
 
   // Creates a X.509/DER SubjectPublicKeyInfo for the given |key_type| and
   // |public_key|. On success returns true and provides |public_key_info|.

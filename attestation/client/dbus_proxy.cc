@@ -48,21 +48,6 @@ bool DBusProxy::Initialize() {
   return (object_proxy_ != nullptr);
 }
 
-void DBusProxy::CreateGoogleAttestedKey(
-    const CreateGoogleAttestedKeyRequest& request,
-    const CreateGoogleAttestedKeyCallback& callback) {
-  auto on_error = [](const CreateGoogleAttestedKeyCallback& callback,
-                     brillo::Error* error) {
-    CreateGoogleAttestedKeyReply reply;
-    reply.set_status(STATUS_NOT_AVAILABLE);
-    callback.Run(reply);
-  };
-  brillo::dbus_utils::CallMethodWithTimeout(
-      kDBusTimeoutMS, object_proxy_, attestation::kAttestationInterface,
-      attestation::kCreateGoogleAttestedKey, callback,
-      base::Bind(on_error, callback), request);
-}
-
 void DBusProxy::GetKeyInfo(const GetKeyInfoRequest& request,
                            const GetKeyInfoCallback& callback) {
   auto on_error = [](const GetKeyInfoCallback& callback,

@@ -35,14 +35,6 @@ std::string GetProtoDebugStringWithIndent(ACAType value, int indent_size);
 std::string GetProtoDebugString(ACAType value);
 std::string GetProtoDebugStringWithIndent(VAType value, int indent_size);
 std::string GetProtoDebugString(VAType value);
-std::string GetProtoDebugStringWithIndent(
-    const CreateGoogleAttestedKeyRequest& value,
-    int indent_size);
-std::string GetProtoDebugString(const CreateGoogleAttestedKeyRequest& value);
-std::string GetProtoDebugStringWithIndent(
-    const CreateGoogleAttestedKeyReply& value,
-    int indent_size);
-std::string GetProtoDebugString(const CreateGoogleAttestedKeyReply& value);
 std::string GetProtoDebugStringWithIndent(const GetKeyInfoRequest& value,
                                           int indent_size);
 std::string GetProtoDebugString(const GetKeyInfoRequest& value);

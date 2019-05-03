@@ -31,7 +31,7 @@ namespace attestation {
 // Usage:
 //   std::unique_ptr<AttestationInterface> attestation = new DBusProxy();
 //   attestation->Initialize();
-//   attestation->CreateGoogleAttestedKey(...);
+//   attestation->GetEndorsementInfo(...);
 class DBusProxy : public AttestationInterface {
  public:
   DBusProxy();
@@ -39,9 +39,6 @@ class DBusProxy : public AttestationInterface {
 
   // AttestationInterface methods.
   bool Initialize() override;
-  void CreateGoogleAttestedKey(
-      const CreateGoogleAttestedKeyRequest& request,
-      const CreateGoogleAttestedKeyCallback& callback) override;
   void GetKeyInfo(const GetKeyInfoRequest& request,
                   const GetKeyInfoCallback& callback) override;
   void GetEndorsementInfo(const GetEndorsementInfoRequest& request,

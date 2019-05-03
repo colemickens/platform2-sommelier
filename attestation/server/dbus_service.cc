@@ -39,9 +39,6 @@ void DBusService::Register(const CompletionAction& callback) {
   brillo::dbus_utils::DBusInterface* dbus_interface =
       dbus_object_.AddOrGetInterface(kAttestationInterface);
 
-  dbus_interface->AddMethodHandler(kCreateGoogleAttestedKey,
-                                   base::Unretained(this),
-                                   &DBusService::HandleCreateGoogleAttestedKey);
   dbus_interface->AddMethodHandler(kGetKeyInfo, base::Unretained(this),
                                    &DBusService::HandleGetKeyInfo);
   dbus_interface->AddMethodHandler(kGetEndorsementInfo, base::Unretained(this),
@@ -106,25 +103,6 @@ void DBusService::Register(const CompletionAction& callback) {
       &DBusService::HandleGetEnrollmentId);
 
   dbus_object_.RegisterAsync(callback);
-}
-
-void DBusService::HandleCreateGoogleAttestedKey(
-    std::unique_ptr<DBusMethodResponse<const CreateGoogleAttestedKeyReply&>>
-        response,
-    const CreateGoogleAttestedKeyRequest& request) {
-  VLOG(1) << __func__;
-  // Convert |response| to a shared_ptr so |service_| can safely copy the
-  // callback.
-  using SharedResponsePointer =
-      std::shared_ptr<DBusMethodResponse<const CreateGoogleAttestedKeyReply&>>;
-  // A callback that fills the reply protobuf and sends it.
-  auto callback = [](const SharedResponsePointer& response,
-                     const CreateGoogleAttestedKeyReply& reply) {
-    response->Return(reply);
-  };
-  service_->CreateGoogleAttestedKey(
-      request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleGetKeyInfo(
