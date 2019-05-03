@@ -470,6 +470,10 @@ if (use.test) {
       ]
       deps += [ ":cert_provision-static" ]
     }
+
+    if (use.cryptohome_userdataauth_interface) {
+      sources += [ "userdataauth_unittest.cc" ]
+    }
   }
 
   executable("mount_encrypted_unittests") {

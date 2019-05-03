@@ -25,20 +25,27 @@ class UserDataAuth {
   UserDataAuth();
   ~UserDataAuth();
 
+  // Note that this function must be called from the thread that created this
+  // object, so that |origin_task_runner_| is initialized correctly.
   bool Initialize();
 
   // ================= Threading Utilities ==================
 
   // Returns true if we are currently running on the origin thread
   bool IsOnOriginThread() {
-    return base::PlatformThread::CurrentId() == origin_thread_id_;
+    // Note that this function should not rely on |origin_task_runner_| because
+    // it may be unavailable when this function is first called by
+    // UserDataAuth::Initialize()
+    return disable_threading_ ||
+           base::PlatformThread::CurrentId() == origin_thread_id_;
   }
 
   // Returns true if we are currently running on the mount thread
   bool IsOnMountThread() {
     // GetThreadId blocks if the thread is not started yet.
-    return mount_thread_.IsRunning() &&
-           (base::PlatformThread::CurrentId() == mount_thread_.GetThreadId());
+    return disable_threading_ ||
+           (mount_thread_.IsRunning() &&
+            (base::PlatformThread::CurrentId() == mount_thread_.GetThreadId()));
   }
 
   // DCHECK if we are running on the origin thread. Will have no effect
@@ -54,17 +61,46 @@ class UserDataAuth {
   // the task may be run sometime in the future, false if it will definitely not
   // run.
   bool PostTaskToOriginThread(const tracked_objects::Location& from_here,
-                              base::OnceClosure task) {
-    return origin_task_runner_->PostTask(from_here, std::move(task));
-  }
+                              base::OnceClosure task);
 
   // Post Task to mount thread. For the caller, from_here is usually FROM_HERE
   // macro, while task is a callback function to be posted. Will return true if
   // the task may be run sometime in the future, false if it will definitely not
   // run.
   bool PostTaskToMountThread(const tracked_objects::Location& from_here,
-                             base::OnceClosure task) {
-    return mount_thread_.task_runner()->PostTask(from_here, std::move(task));
+                             base::OnceClosure task);
+
+  // ================= Testing Utilities ==================
+  // Note that all functions below in this section should only be used for unit
+  // testing purpose only.
+
+  // Override |crypto_| for testing purpose
+  void set_crypto(cryptohome::Crypto* crypto) { crypto_ = crypto; }
+
+  // Override |homedirs_| for testing purpose
+  void set_homedirs(cryptohome::HomeDirs* homedirs) { homedirs_ = homedirs; }
+
+  // Override |tpm_| for testing purpose
+  void set_tpm(Tpm* tpm) { tpm_ = tpm; }
+
+  // Override |tpm_init_| for testing purpose
+  void set_tpm_init(TpmInit* tpm_init) { tpm_init_ = tpm_init; }
+
+  // Override |platform_| for testing purpose
+  void set_platform(cryptohome::Platform* platform) { platform_ = platform; }
+
+  // Associate a particular mount object |mount| with the username |username|
+  // for testing purpose
+  void set_mount_for_user(const std::string& username,
+                          cryptohome::Mount* mount) {
+    mounts_[username] = mount;
+  }
+
+  // Set |disable_threading_|, so that we can disable threading in this class
+  // for testing purpose. See comment of |disable_threading_| for more
+  // information.
+  void set_disable_threading(bool disable_threading) {
+    disable_threading_ = disable_threading;
   }
 
  private:
@@ -89,6 +125,13 @@ class UserDataAuth {
 
   // The thread for performing long running, or mount related operations
   base::Thread mount_thread_;
+
+  // This variable is used only for unit testing purpose. If set to true, it'll
+  // disable the the threading mechanism in this class so that testing doesn't
+  // fail. When threading is disabled, posting to origin or mount thread will
+  // execute immediately, and all checks for whether we are on mount or origin
+  // thread will result in true.
+  bool disable_threading_;
 
   // =============== Basic Utilities Related Variables ===============
   // The system salt that is used for obfuscating the username
