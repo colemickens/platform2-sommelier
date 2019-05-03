@@ -868,7 +868,6 @@ class Service : public base::RefCounted<Service> {
   StaticIPParameters static_ip_parameters_;
   Metrics* metrics_;
   Manager* manager_;
-  Time* time_;
 
   // The |serial_number_| for the next Service.
   static unsigned int next_serial_number_;

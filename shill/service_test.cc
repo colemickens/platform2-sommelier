@@ -87,7 +87,6 @@ class ServiceTest : public PropertyStoreTest {
     ON_CALL(control_, CreatePowerManagerProxy(_, _, _))
         .WillByDefault(ReturnNull());
 
-    service_->time_ = &time_;
     service_->disconnects_.time_ = &time_;
     service_->misconnects_.time_ = &time_;
     DefaultValue<Timestamp>::Set(Timestamp());
