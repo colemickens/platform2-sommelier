@@ -32,8 +32,11 @@ bool DecodeVersionFromArea(const base::MemoryMappedFile& image,
     LOG(ERROR) << "Failed to find FMAP area " << area_name << ".";
     return false;
   }
-  if ((area->offset + area->size) > image.length()) {
-    LOG(ERROR) << "FMAP area " << area_name << " is too large.";
+  if ((area->offset + area->size) > fmap->size) {
+    LOG(ERROR) << "FMAP area " << area_name << " has offset " << area->offset
+               << " with size " << area->size
+               << ", which spans outside the firmware image, of size "
+               << fmap->size << ".";
     return false;
   }
 
