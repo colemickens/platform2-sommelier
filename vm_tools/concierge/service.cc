@@ -574,6 +574,7 @@ bool Service::Init() {
       {kExportDiskImageMethod, &Service::ExportDiskImage},
       {kImportDiskImageMethod, &Service::ImportDiskImage},
       {kDiskImageStatusMethod, &Service::CheckDiskImageStatus},
+      {kCancelDiskImageMethod, &Service::CancelDiskImageOperation},
       {kListVmDisksMethod, &Service::ListVmDisks},
       {kGetContainerSshKeysMethod, &Service::GetContainerSshKeys},
       {kSyncVmTimesMethod, &Service::SyncVmTimes},
@@ -1863,7 +1864,7 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
 
       if (op->status() == DISK_STATUS_IN_PROGRESS) {
         std::string uuid = op->uuid();
-        disk_image_ops_.emplace_back(std::move(op), base::TimeTicks::Now());
+        disk_image_ops_.emplace_back(DiskOpInfo(std::move(op)));
         base::ThreadTaskRunnerHandle::Get()->PostTask(
             FROM_HERE,
             base::Bind(&Service::RunDiskImageOperation,
@@ -1948,7 +1949,7 @@ std::unique_ptr<dbus::Response> Service::ImportDiskImage(
 
   if (op->status() == DISK_STATUS_IN_PROGRESS) {
     std::string uuid = op->uuid();
-    disk_image_ops_.emplace_back(std::move(op), base::TimeTicks::Now());
+    disk_image_ops_.emplace_back(DiskOpInfo(std::move(op)));
     base::ThreadTaskRunnerHandle::Get()->PostTask(
         FROM_HERE, base::Bind(&Service::RunDiskImageOperation,
                               weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
@@ -1961,16 +1962,23 @@ std::unique_ptr<dbus::Response> Service::ImportDiskImage(
 void Service::RunDiskImageOperation(std::string uuid) {
   auto iter =
       std::find_if(disk_image_ops_.begin(), disk_image_ops_.end(),
-                   [&uuid](auto& op) { return op.first->uuid() == uuid; });
+                   [&uuid](auto& info) { return info.op->uuid() == uuid; });
 
   if (iter == disk_image_ops_.end()) {
     LOG(ERROR) << "RunDiskImageOperation called with unknown uuid";
     return;
   }
 
-  auto op = iter->first.get();
+  if (iter->canceled) {
+    // Operation was cancelled. Now that our posted task is running we can
+    // remove it from the list and not reschedule ourselves.
+    disk_image_ops_.erase(iter);
+    return;
+  }
+
+  auto op = iter->op.get();
   op->Run(kDefaultIoLimit);
-  if (base::TimeTicks::Now() - iter->second > kDiskOpReportInterval ||
+  if (base::TimeTicks::Now() - iter->last_report_time > kDiskOpReportInterval ||
       op->status() != DISK_STATUS_IN_PROGRESS) {
     LOG(INFO) << "Disk Image Operation: UUID=" << uuid
               << " progress: " << op->GetProgress()
@@ -1984,7 +1992,7 @@ void Service::RunDiskImageOperation(std::string uuid) {
     exported_object_->SendSignal(&signal);
 
     // Note the time we sent out the notification.
-    iter->second = base::TimeTicks::Now();
+    iter->last_report_time = base::TimeTicks::Now();
   }
 
   if (op->status() == DISK_STATUS_IN_PROGRESS) {
@@ -2019,18 +2027,18 @@ std::unique_ptr<dbus::Response> Service::CheckDiskImageStatus(
 
   // Locate the pending command in the list.
   auto iter = std::find_if(disk_image_ops_.begin(), disk_image_ops_.end(),
-                           [&request](auto& op) {
-                             return op.first->uuid() == request.command_uuid();
+                           [&request](auto& info) {
+                             return info.op->uuid() == request.command_uuid();
                            });
 
-  if (iter == disk_image_ops_.end()) {
+  if (iter == disk_image_ops_.end() || iter->canceled) {
     LOG(ERROR) << "Unknown command uuid in DiskImageStatusRequest";
     response.set_failure_reason("Unknown command uuid");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
 
-  auto op = iter->first.get();
+  auto op = iter->op.get();
   FormatDiskImageStatus(op, &response);
   writer.AppendProtoAsArrayOfBytes(response);
 
@@ -2039,6 +2047,58 @@ std::unique_ptr<dbus::Response> Service::CheckDiskImageStatus(
     disk_image_ops_.erase(iter);
   }
 
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::CancelDiskImageOperation(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received CancelDiskImage request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  CancelDiskImageResponse response;
+  response.set_success(false);
+
+  CancelDiskImageRequest request;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse CancelDiskImageRequest from message";
+    response.set_failure_reason("Unable to parse CancelDiskImageRequest");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Locate the pending command in the list.
+  auto iter = std::find_if(disk_image_ops_.begin(), disk_image_ops_.end(),
+                           [&request](auto& info) {
+                             return info.op->uuid() == request.command_uuid();
+                           });
+
+  if (iter == disk_image_ops_.end()) {
+    LOG(ERROR) << "Unknown command uuid in CancelDiskImageRequest";
+    response.set_failure_reason("Unknown command uuid");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto op = iter->op.get();
+  if (op->status() != DISK_STATUS_IN_PROGRESS) {
+    response.set_failure_reason("Command is no longer in progress");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Mark the operation as canceled. We can't erase it from the list right
+  // away as there is a task posted for it. The task will erase this operation
+  // when it gets to run.
+  iter->canceled = true;
+
+  response.set_success(true);
+  writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
 

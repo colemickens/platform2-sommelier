@@ -115,6 +115,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
   std::unique_ptr<dbus::Response> CheckDiskImageStatus(
       dbus::MethodCall* method_call);
 
+  // Handles a request to cancel a disk image operation.
+  std::unique_ptr<dbus::Response> CancelDiskImageOperation(
+      dbus::MethodCall* method_call);
+
   // Run import/export disk image operation with given UUID.
   void RunDiskImageOperation(std::string uuid);
 
@@ -248,8 +252,16 @@ class Service final : public base::MessageLoopForIO::Watcher {
   const bool resync_vm_clocks_on_resume_;
 
   // List of currently executing operations to import/export disk images.
-  using DiskOpInfo =
-      std::pair<std::unique_ptr<DiskImageOperation>, base::TimeTicks>;
+  struct DiskOpInfo {
+    std::unique_ptr<DiskImageOperation> op;
+    bool canceled;
+    base::TimeTicks last_report_time;
+
+    explicit DiskOpInfo(std::unique_ptr<DiskImageOperation> disk_op)
+        : op(std::move(disk_op)),
+          canceled(false),
+          last_report_time(base::TimeTicks::Now()) {}
+  };
   std::list<DiskOpInfo> disk_image_ops_;
 
   base::WeakPtrFactory<Service> weak_ptr_factory_;
