@@ -818,9 +818,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Actions to take when shill is terminating.
   HookTable termination_actions_;
 
-  // Is a suspend delay currently registered with the power manager?
-  bool suspend_delay_registered_;
-
   // Whether Wake on LAN should be enabled for all Ethernet devices.
   bool is_wake_on_lan_enabled_;
 
