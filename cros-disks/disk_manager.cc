@@ -4,6 +4,7 @@
 
 #include "cros-disks/disk_manager.h"
 
+#include <errno.h>
 #include <inttypes.h>
 #include <libudev.h>
 #include <string.h>

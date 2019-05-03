@@ -4,6 +4,7 @@
 
 #include "cros-disks/platform.h"
 
+#include <errno.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <unistd.h>
