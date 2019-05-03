@@ -107,15 +107,18 @@ constexpr char kDownloadsDir[] = "Downloads";
 // File extension for raw disk types
 constexpr char kRawImageExtension[] = ".img";
 
-// File extenstion for qcow2 disk types
+// File extension for qcow2 disk types
 constexpr char kQcowImageExtension[] = ".qcow2";
+
+// File extension for Plugin VMs disk types
+constexpr char kPluginVmImageExtension[] = ".pvm";
 
 // Valid file extensions for disk images
 constexpr const char* kDiskImageExtensions[] = {kRawImageExtension,
                                                 kQcowImageExtension, nullptr};
 
 // Valid file extensions for Plugin VM images
-constexpr const char* kPluginVmImageExtensions[] = {"",  // No extension
+constexpr const char* kPluginVmImageExtensions[] = {kPluginVmImageExtension,
                                                     nullptr};
 
 // Default name to use for a container.
@@ -315,7 +318,7 @@ bool GetDiskPathFromName(
       }
     }
 
-    *path_out = pluginvm_dir.Append(disk_name);
+    *path_out = pluginvm_dir.Append(disk_name + kPluginVmImageExtension);
     return true;
   } else {
     LOG(ERROR) << "Unknown storage location type";
