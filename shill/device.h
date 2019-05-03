@@ -834,10 +834,6 @@ class Device : public base::RefCounted<Device> {
   // that are not working.
   std::vector<std::string> config_dns_servers_;
   Technology::Identifier technology_;
-  // The number of portal detection attempts from Connected to Online state.
-  // This includes all failure/timeout attempts and the final successful
-  // attempt.
-  int portal_attempts_to_online_;
 
   int portal_check_interval_seconds_;
 

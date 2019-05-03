@@ -122,7 +122,6 @@ Device::Device(ControlInterface* control_interface,
       weak_ptr_factory_(this),
       adaptor_(control_interface->CreateDeviceAdaptor(this)),
       technology_(technology),
-      portal_attempts_to_online_(0),
       portal_check_interval_seconds_(0),
       receive_byte_offset_(0),
       transmit_byte_offset_(0),
@@ -961,7 +960,6 @@ void Device::SetupConnection(const IPConfigRefPtr& ipconfig) {
     if (!selected_service_->IsOnline())
       SetServiceState(Service::kStateConnected);
     OnConnected();
-    portal_attempts_to_online_ = 0;
 
     // Subtle: Start portal detection after transitioning the service
     // to the Connected state because this call may immediately transition
