@@ -21,9 +21,6 @@ class DarkResumeStub : public DarkResumeInterface {
   ~DarkResumeStub() override;
 
   void set_action(Action action) { action_ = action; }
-  void set_suspend_duration(const base::TimeDelta& duration) {
-    suspend_duration_ = duration;
-  }
   void set_in_dark_resume(bool in_dark_resume) {
     in_dark_resume_ = in_dark_resume;
   }
@@ -32,8 +29,7 @@ class DarkResumeStub : public DarkResumeInterface {
   // DarkResumeInterface implementation:
   void PrepareForSuspendRequest() override;
   void UndoPrepareForSuspendRequest() override;
-  void GetActionForSuspendAttempt(Action* action,
-                                  base::TimeDelta* suspend_duration) override;
+  Action GetActionForSuspendAttempt() override;
   void HandleSuccessfulResume() override;
   bool InDarkResume() override;
   bool IsEnabled() override;
@@ -42,7 +38,6 @@ class DarkResumeStub : public DarkResumeInterface {
  private:
   // Values to return.
   Action action_;
-  base::TimeDelta suspend_duration_;
   bool in_dark_resume_;
   bool enabled_;
 

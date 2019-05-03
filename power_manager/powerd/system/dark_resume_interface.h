@@ -32,15 +32,11 @@ class DarkResumeInterface {
   virtual void PrepareForSuspendRequest() = 0;
   virtual void UndoPrepareForSuspendRequest() = 0;
 
-  // Updates state in anticipation of the system suspending, returning the
-  // action that should be performed. If SUSPEND is returned, |suspend_duration|
-  // contains the duration for which the system should be suspended or an empty
-  // base::TimeDelta() if the caller should not try to set up a wake alarm. This
-  // may occur if the system should suspend indefinitely, or if DarkResume was
-  // successful in setting a wake alarm for some point in the future.
-  // This may be called more than once per suspend request.
-  virtual void GetActionForSuspendAttempt(
-      Action* action, base::TimeDelta* suspend_duration) = 0;
+  // Returns the action that should actually be performed in response to an
+  // decision to attempt to suspend or resuspend the device. We will typically
+  // suspend in this case, but we may sometimes choose to perform other actions
+  // (e.g. shutting down if the device has been suspended for a long time).
+  virtual Action GetActionForSuspendAttempt() = 0;
 
   // Reads the system state to see if it's in a dark resume.
   virtual void HandleSuccessfulResume() = 0;

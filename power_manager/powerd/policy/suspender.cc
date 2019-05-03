@@ -98,7 +98,8 @@ void Suspender::RequestSuspend(SuspendImminent::Reason reason,
 }
 
 void Suspender::RequestSuspendWithExternalWakeupCount(
-    SuspendImminent::Reason reason, uint64_t wakeup_count,
+    SuspendImminent::Reason reason,
+    uint64_t wakeup_count,
     base::TimeDelta duration) {
   suspend_request_reason_ = reason;
   suspend_request_supplied_wakeup_count_ = true;
@@ -488,12 +489,8 @@ void Suspender::FinishRequest(bool success) {
 }
 
 Suspender::State Suspender::Suspend() {
-  system::DarkResumeInterface::Action action;
-  base::TimeDelta duration;
-  dark_resume_->GetActionForSuspendAttempt(&action, &duration);
-
-  if (suspend_duration_ != base::TimeDelta())
-    duration = std::max(duration, suspend_duration_);
+  system::DarkResumeInterface::Action action =
+      dark_resume_->GetActionForSuspendAttempt();
 
   switch (action) {
     case system::DarkResumeInterface::Action::SHUT_DOWN:
@@ -502,8 +499,10 @@ Suspender::State Suspender::Suspend() {
       delegate_->ShutDownForDarkResume();
       return State::SHUTTING_DOWN;
     case system::DarkResumeInterface::Action::SUSPEND:
-      if (duration != base::TimeDelta())
-        LOG(INFO) << "Suspending for " << duration.InSeconds() << " seconds";
+      if (suspend_duration_ != base::TimeDelta()) {
+        LOG(INFO) << "Suspending for " << suspend_duration_.InSeconds()
+                  << " seconds";
+      }
       break;
   }
 
@@ -519,8 +518,8 @@ Suspender::State Suspender::Suspend() {
   }
 
   current_num_attempts_++;
-  const Delegate::SuspendResult result =
-      delegate_->DoSuspend(wakeup_count_, wakeup_count_valid_, duration);
+  const Delegate::SuspendResult result = delegate_->DoSuspend(
+      wakeup_count_, wakeup_count_valid_, suspend_duration_);
 
   if (result == Delegate::SuspendResult::SUCCESS) {
     // Reset this immediately right after a successful suspend, leave it

@@ -359,7 +359,8 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   const uint64_t kOrigWakeupCount = 46;
   delegate_.set_wakeup_count(kOrigWakeupCount);
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::FAILURE);
-  suspender_.RequestSuspend(SuspendImminent_Reason_LID_CLOSED, base::TimeDelta());
+  suspender_.RequestSuspend(SuspendImminent_Reason_LID_CLOSED,
+                            base::TimeDelta());
   const int suspend_id = test_api_.suspend_id();
   EXPECT_EQ(suspend_id, GetSuspendImminentId(0));
   EXPECT_EQ(SuspendImminent_Reason_LID_CLOSED, GetSuspendImminentReason(0));
@@ -387,9 +388,8 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   // (http://crbug.com/384610). Also check that an external wakeup count passed
   // in the request gets ignored for the eventual retry.
   const uint64_t kExternalWakeupCount = 32542;
-  suspender_.RequestSuspendWithExternalWakeupCount(SuspendImminent_Reason_IDLE,
-                                                   kExternalWakeupCount,
-                                                   base::TimeDelta());
+  suspender_.RequestSuspendWithExternalWakeupCount(
+      SuspendImminent_Reason_IDLE, kExternalWakeupCount, base::TimeDelta());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
 
@@ -599,9 +599,8 @@ TEST_F(SuspenderTest, ExternalWakeupCount) {
   // Pass a wakeup count less than the one that the delegate returns.
   const uint64_t kWakeupCount = 452;
   delegate_.set_wakeup_count(kWakeupCount);
-  suspender_.RequestSuspendWithExternalWakeupCount(SuspendImminent_Reason_OTHER,
-                                                   kWakeupCount - 1,
-                                                   base::TimeDelta());
+  suspender_.RequestSuspendWithExternalWakeupCount(
+      SuspendImminent_Reason_OTHER, kWakeupCount - 1, base::TimeDelta());
   EXPECT_EQ(kPrepare, delegate_.GetActions());
 
   // Make the delegate report that powerd_suspend reported a wakeup count
@@ -619,9 +618,8 @@ TEST_F(SuspenderTest, ExternalWakeupCount) {
   // Send another suspend request with the current wakeup count. Report failure
   // and check that the suspend attempt is retried using the external wakeup
   // count.
-  suspender_.RequestSuspendWithExternalWakeupCount(SuspendImminent_Reason_OTHER,
-                                                   kWakeupCount,
-                                                   base::TimeDelta());
+  suspender_.RequestSuspendWithExternalWakeupCount(
+      SuspendImminent_Reason_OTHER, kWakeupCount, base::TimeDelta());
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::FAILURE);
   AnnounceReadyForSuspend(test_api_.suspend_id());
@@ -647,10 +645,9 @@ TEST_F(SuspenderTest, EventReceivedWhileHandlingEvent) {
   suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta());
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_EQ(test_api_.suspend_id(), GetSuspendImminentId(0));
-  delegate_.set_completion_callback(base::Bind(&Suspender::RequestSuspend,
-                                               base::Unretained(&suspender_),
-                                               SuspendImminent_Reason_OTHER,
-                                               base::TimeDelta()));
+  delegate_.set_completion_callback(
+      base::Bind(&Suspender::RequestSuspend, base::Unretained(&suspender_),
+                 SuspendImminent_Reason_OTHER, base::TimeDelta()));
 
   // Check that the SuspendDone signal from the first request contains the first
   // request's ID, and that a second request was started immediately.
@@ -708,12 +705,8 @@ TEST_F(SuspenderTest, DarkResume) {
   const int kSuspendId = test_api_.suspend_id();
   EXPECT_EQ(kSuspendId, GetSuspendImminentId(0));
 
-  // Instruct |dark_resume_| to request a ten-second suspend and report that the
-  // system did a dark resume.
-  const int64_t kSuspendSec = 10;
   dark_resume_.set_action(system::DarkResumeInterface::Action::SUSPEND);
   dark_resume_.set_in_dark_resume(true);
-  dark_resume_.set_suspend_duration(base::TimeDelta::FromSeconds(kSuspendSec));
   dbus_wrapper_.ClearSentSignals();
   AnnounceReadyForSuspend(kSuspendId);
 
@@ -722,15 +715,13 @@ TEST_F(SuspenderTest, DarkResume) {
   EXPECT_EQ(kSuspend, delegate_.GetActions());
   EXPECT_EQ(kWakeupCount, delegate_.suspend_wakeup_count());
   EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
-  EXPECT_EQ(kSuspendSec, delegate_.suspend_duration().InSeconds());
 
-  // The system should resuspend for another ten seconds, but without using the
-  // wakeup count this time. Make it do a normal resume.
+  // The system should resuspend but without using the wakeup count this time.
+  // Make it do a normal resume.
   dark_resume_.set_in_dark_resume(false);
   AnnounceReadyForDarkSuspend(kDarkSuspendId);
   EXPECT_EQ(JoinActions(kSuspend, kUnprepare, nullptr), delegate_.GetActions());
   EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
-  EXPECT_EQ(kSuspendSec, delegate_.suspend_duration().InSeconds());
   EXPECT_EQ(kSuspendId, GetSuspendDoneId(1));
 }
 
@@ -751,13 +742,10 @@ TEST_F(SuspenderTest, DarkResumeRetry) {
   suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta());
   EXPECT_EQ(kPrepare, delegate_.GetActions());
 
-  // Suspend for ten seconds.
-  const int64_t kSuspendSec = 10;
   const uint64_t kDarkWakeupCount = 71;
   delegate_.set_wakeup_count(kDarkWakeupCount);
   dark_resume_.set_action(system::DarkResumeInterface::Action::SUSPEND);
   dark_resume_.set_in_dark_resume(true);
-  dark_resume_.set_suspend_duration(base::TimeDelta::FromSeconds(kSuspendSec));
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kSuspend, delegate_.GetActions());
   EXPECT_EQ(kOrigWakeupCount, delegate_.suspend_wakeup_count());
@@ -798,7 +786,6 @@ TEST_F(SuspenderTest, DarkResumeRetry) {
     SCOPED_TRACE(base::StringPrintf("Attempt #%d", i));
     EXPECT_EQ(kSuspend, delegate_.GetActions());
     EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
-    EXPECT_EQ(kSuspendSec, delegate_.suspend_duration().InSeconds());
     EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
   }
 
@@ -809,10 +796,7 @@ TEST_F(SuspenderTest, DarkResumeRetry) {
 TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
   Init();
 
-  // Suspend for 10 seconds.
-  const int64_t kSuspendSec = 10;
   dark_resume_.set_action(system::DarkResumeInterface::Action::SUSPEND);
-  dark_resume_.set_suspend_duration(base::TimeDelta::FromSeconds(kSuspendSec));
 
   // Simulate being in dark resume after each suspend attempt.
   delegate_.set_suspend_callback(base::Bind(
@@ -905,10 +889,7 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
 TEST_F(SuspenderTest, RerunDarkSuspendDelaysForCanceledSuspend) {
   Init();
 
-  // Suspend for 10 seconds.
-  const int kSuspendSec = 10;
   dark_resume_.set_action(system::DarkResumeInterface::Action::SUSPEND);
-  dark_resume_.set_suspend_duration(base::TimeDelta::FromSeconds(kSuspendSec));
 
   // Simulate being in dark resume after each suspend attempt.
   delegate_.set_suspend_callback(base::Bind(
@@ -1067,7 +1048,6 @@ TEST_F(SuspenderTest, ReportInitialSuspendAttempts) {
   // Suspend successfully once and do a dark resume.
   dark_resume_.set_action(system::DarkResumeInterface::Action::SUSPEND);
   dark_resume_.set_in_dark_resume(true);
-  dark_resume_.set_suspend_duration(base::TimeDelta::FromSeconds(10));
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 
@@ -1098,8 +1078,7 @@ TEST_F(SuspenderTest, SuspendWakeupTimeout) {
   delegate_.set_wakeup_count(kWakeupCount);
   const base::TimeDelta kDuration = base::TimeDelta::FromSeconds(5);
   suspender_.RequestSuspendWithExternalWakeupCount(SuspendImminent_Reason_OTHER,
-                                                   kWakeupCount,
-                                                   kDuration);
+                                                   kWakeupCount, kDuration);
   const int suspend_id = test_api_.suspend_id();
   EXPECT_EQ(suspend_id, GetSuspendImminentId(0));
   EXPECT_EQ(SuspendImminent_Reason_OTHER, GetSuspendImminentReason(0));
@@ -1168,8 +1147,7 @@ TEST_F(SuspenderTest, SuspendWakeupTimoutRetryOnFailure) {
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::FAILURE);
   const base::TimeDelta kDuration = base::TimeDelta::FromSeconds(7);
   suspender_.RequestSuspendWithExternalWakeupCount(SuspendImminent_Reason_OTHER,
-                                                   kWakeupCount,
-                                                   kDuration);
+                                                   kWakeupCount, kDuration);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_TRUE(delegate_.suspend_announced());
 

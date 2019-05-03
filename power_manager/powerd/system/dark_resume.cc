@@ -39,12 +39,8 @@ void DarkResume::UndoPrepareForSuspendRequest() {
   in_dark_resume_ = false;
 }
 
-void DarkResume::GetActionForSuspendAttempt(Action* action,
-                                            base::TimeDelta* suspend_duration) {
-  DCHECK(action);
-  DCHECK(suspend_duration);
-  *action = Action::SUSPEND;
-  *suspend_duration = base::TimeDelta();
+DarkResumeInterface::Action DarkResume::GetActionForSuspendAttempt() {
+  return DarkResumeInterface::Action::SUSPEND;
 }
 
 void DarkResume::HandleSuccessfulResume() {
