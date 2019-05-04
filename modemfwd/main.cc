@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
   }
 
   if (FLAGS_firmware_directory.empty()) {
-    LOG(INFO) << "Running modemfwd with firmware component...";
+    LOG(INFO) << "Running modemfwd with firmware DLC (not yet supported)...";
     modemfwd::Daemon d(FLAGS_journal_file, FLAGS_helper_directory);
     return d.Run();
   } else {

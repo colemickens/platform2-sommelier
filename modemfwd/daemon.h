@@ -13,7 +13,6 @@
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
 
-#include "modemfwd/component.h"
 #include "modemfwd/journal.h"
 #include "modemfwd/modem.h"
 #include "modemfwd/modem_flasher.h"
@@ -23,8 +22,7 @@ namespace modemfwd {
 
 class Daemon : public brillo::DBusDaemon {
  public:
-  // Constructor for Daemon which loads the cellular component to get
-  // firmware.
+  // Constructor for Daemon which loads the cellular DLC to get firmware.
   Daemon(const std::string& journal_file, const std::string& helper_directory);
   // Constructor for Daemon which loads from already set-up
   // directories.
@@ -39,10 +37,6 @@ class Daemon : public brillo::DBusDaemon {
   int OnEventLoopStarted() override;
 
  private:
-  // If the component fails to load at start-up, we can still try again later
-  // when the component updater service has checked for more components.
-  void RetryComponent();
-
   // Once we have a path for the firmware directory we can set up the
   // journal and flasher.
   int CompleteInitialization();
@@ -53,13 +47,9 @@ class Daemon : public brillo::DBusDaemon {
   void OnModemAppeared(
       std::unique_ptr<org::chromium::flimflam::DeviceProxy> modem);
 
-  std::unique_ptr<Component> component_;
-
   base::FilePath journal_file_path_;
   base::FilePath helper_dir_path_;
   base::FilePath firmware_dir_path_;
-
-  int component_reload_retries_;
 
   std::unique_ptr<ModemHelperDirectory> helper_directory_;
 
