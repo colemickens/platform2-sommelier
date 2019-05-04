@@ -192,7 +192,10 @@ int main(int argc, char** argv) {
 
   for (int i = 0; i < ndev; ++i) {
     char* ev_dev;
-    asprintf(&ev_dev, "%s/%s", kDevInputEvent, input_devs[i]->d_name);
+    if (asprintf(&ev_dev, "%s/%s", kDevInputEvent, input_devs[i]->d_name) ==
+        -1) {
+      err(EXIT_FAILURE, "asprintf failed");
+    }
 
     int fd = open(ev_dev, O_RDONLY | O_CLOEXEC);
     free(ev_dev);
