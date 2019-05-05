@@ -87,7 +87,12 @@ SectionInfo::SectionInfo(SectionName name,
     LOG(ERROR) << "The version name is larger than the reserved size. "
                << "Discard the extra part.";
   }
-  snprintf(version, sizeof(version), version_str);
+
+  // Note that strncpy will always write a trailing '\0' *unless*
+  // strlen(version_str) >= sizeof(version). Hence, we unconditionally
+  // guarantee that the last byte of `version` is always '\0'.
+  strncpy(version, version_str, sizeof(version));
+  version[sizeof(version)-1] = '\0';
 }
 
 bool operator==(const SectionInfo& lhs, const SectionInfo& rhs) {
