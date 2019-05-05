@@ -175,7 +175,7 @@ bool UHidDevice::CreateDev(uint32_t interface_version,
                 sizeof(ev.u.create2.name));
   snprintf(reinterpret_cast<char*>(ev.u.create2.phys),
            sizeof(ev.u.create2.phys),
-           "%s-%04hX:%04hX",
+           "%s-%04X:%04X",
            phys_.c_str(),
            ev.u.create2.vendor,
            ev.u.create2.product);
