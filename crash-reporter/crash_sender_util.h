@@ -86,9 +86,6 @@ constexpr EnvPair kEnvironmentVariables[] = {
     // Set this to 1 in the environment to allow uploading crash reports
     // for unofficial versions.
     {"FORCE_OFFICIAL", "0"},
-    // Set this to 1 in the environment to pretend to have booted in developer
-    // mode.  This is used by autotests.
-    {"MOCK_DEVELOPER_MODE", "0"},
     // Ignore PAUSE_CRASH_SENDING file if set.
     {"OVERRIDE_PAUSE_SENDING", "0"},
 };

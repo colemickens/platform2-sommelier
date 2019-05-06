@@ -140,14 +140,6 @@ TEST_F(CrashCommonUtilTest, GetHardwareClass) {
 TEST_F(CrashCommonUtilTest, GetBootModeString) {
   EXPECT_EQ("missing-crossystem", GetBootModeString());
 
-  // Check if MOCK_DEVELOPER_MODE is handled correctly.
-  setenv("MOCK_DEVELOPER_MODE", "0", 1 /* overwrite */);
-  EXPECT_EQ("missing-crossystem", GetBootModeString());
-
-  setenv("MOCK_DEVELOPER_MODE", "1", 1 /* overwrite */);
-  EXPECT_EQ("dev", GetBootModeString());
-  unsetenv("MOCK_DEVELOPER_MODE");
-
   ASSERT_TRUE(
       test_util::CreateFile(paths::GetAt(paths::kSystemRunStateDirectory,
                                          paths::kCrashTestInProgress),

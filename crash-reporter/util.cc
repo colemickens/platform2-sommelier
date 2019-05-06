@@ -92,10 +92,6 @@ std::string GetHardwareClass() {
 }
 
 std::string GetBootModeString() {
-  const char* value = getenv("MOCK_DEVELOPER_MODE");
-  if (value && std::string(value) != "0")
-    return kDevMode;
-
   // If we're testing crash reporter itself, we don't want to special-case
   // for developer mode.
   if (IsCrashTestInProgress())
