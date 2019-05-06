@@ -127,8 +127,6 @@ void DebugModeTool::SetDebugMode(const std::string& subsystem) {
     flimflam_tags = "service+wifi+inet+device+manager";
     supplicant_level = "msgdump";
     wifi_debug = true;
-  } else if (subsystem == "wimax") {
-    flimflam_tags = "service+wimax+device+manager";
   } else if (subsystem == "cellular") {
     flimflam_tags = "service+cellular+modem+device+manager";
     modemmanager_level = "debug";
