@@ -6,7 +6,7 @@
 
 # Set the APN to be used when making connections on a cellular service.
 
-PROGRAM=$(basename $0)
+PROGRAM="$(basename "$0")"
 FLAGS_HELP="Usage:
   ${PROGRAM}
   ${PROGRAM} [-n <network_id>] [-u <username] [-p <password] <apn>
@@ -60,16 +60,17 @@ get_apn_info() {
 
 display_apn() {
   local service="$1"
-  local apn="$(get_apn_info ${service} ${LAST_GOOD_APN_PROPERTY})"
+  local apn
 
+  apn="$(get_apn_info "${service}" "${LAST_GOOD_APN_PROPERTY}")"
   if [ -n "${apn}" ]; then
-    echo "Last good APN: " ${apn}
+    echo "Last good APN: ${apn}"
     exit 0
   fi
 
-  apn="$(get_apn_info ${service} ${APN_PROPERTY})"
+  apn="$(get_apn_info "${service}" "${APN_PROPERTY}")"
   if [ -n "${apn}" ]; then
-    echo "User specified APN: " ${apn}
+    echo "User specified APN: ${apn}"
     exit 0
   fi
 
@@ -122,7 +123,7 @@ get_first_cellular_service() {
   local service_type
 
   for service in $(get_services); do
-    service_type="$(get_service_property ${service} Type)"
+    service_type="$(get_service_property "${service}" Type)"
     if [ "${service_type}" = "cellular" ]; then
       echo "${service}"
       break
@@ -154,7 +155,7 @@ fi
 
 network_id="${FLAGS_network_id}"
 if [ -z "${FLAGS_network_id}" ]; then
-  network_id="$(get_cellular_service_network_id ${service})"
+  network_id="$(get_cellular_service_network_id "${service}")"
   if [ -z "${network_id}" ]; then
     echo "Cannot determine network ID. Use the -n flag to specify it."
     exit 1

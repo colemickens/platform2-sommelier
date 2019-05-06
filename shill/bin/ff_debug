@@ -10,7 +10,7 @@ FLIMFLAM="org.chromium.flimflam"
 MANAGER="${FLIMFLAM}.Manager"
 SEND_FF_CMD="dbus-send --system --dest=${FLIMFLAM} --print-reply / $MANAGER"
 
-FF_TAGLIST=`${SEND_FF_CMD}.ListDebugTags | sed -e '/string/!d; s/[[:space:]]\+/ /g' | cut -d "\"" -f 2 | tr "+" " "`
+FF_TAGLIST="$(${SEND_FF_CMD}.ListDebugTags | sed -e '/string/!d; s/[[:space:]]\+/ /g' | cut -d "\"" -f 2 | tr "+" " ")"
 
 usage(){
   echo "
@@ -71,10 +71,11 @@ set_ff_debug_level() {
   ${SEND_FF_CMD}.SetDebugLevel int32:"$1" > /dev/null 2>&1
 }
 
-starting_ff_tags=`get_ff_debug_tags`
+starting_ff_tags="$(get_ff_debug_tags)"
 
 get_or_set_debug_level() {
-  local ff_debug_level=`get_ff_debug_level`
+  local ff_debug_level
+  ff_debug_level="$(get_ff_debug_level)"
   if [ -z "$ff_debug_level" ]; then
     # flimflam does not implement GetDebugLevel / SetDebugLevel, simply return
     return
@@ -83,7 +84,7 @@ get_or_set_debug_level() {
   if [ $# -gt 0 ]; then
     echo "Old flimflam debug level: $ff_debug_level"
     set_ff_debug_level "$1"
-    ff_debug_level=`get_ff_debug_level`
+    ff_debug_level="$(get_ff_debug_level)"
   fi
   echo "Current flimflam debug level: $ff_debug_level"
 }
@@ -101,7 +102,7 @@ if [ $# -gt 0 ]; then
       exit 0
       ;;
     --list*)
-      echo "Valid Tags: [`echo $FF_TAGLIST | sed 's/ /, /g'`]"
+      echo "Valid Tags: [$(echo "${FF_TAGLIST}" | sed 's/ /, /g')]"
       exit 0
       ;;
     --help|--*)
@@ -117,4 +118,4 @@ if [ $# -gt 0 ]; then
 
   echo "Old flimflam tags: [$starting_ff_tags]"
 fi
-echo "Current flimflam tags: [`get_ff_debug_tags`]"
+echo "Current flimflam tags: [$(get_ff_debug_tags)]"

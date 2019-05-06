@@ -7,7 +7,7 @@
 # Set the PPP username and password to be used when making connections on
 # a cellular service.
 
-PROGRAM=$(basename $0)
+PROGRAM="$(basename "$0")"
 FLAGS_HELP="Usage:
 
 Show the existing PPP username for the cellular connection.
@@ -58,10 +58,11 @@ get_property() {
 
 display_username() {
   local service="$1"
-  local username="$(get_property ${ISERVICE} ${service} ${USERNAME_PROPERTY})"
+  local username
 
+  username="$(get_property "${ISERVICE}" "${service}" "${USERNAME_PROPERTY}")"
   if [ -n "${username}" ]; then
-    echo "PPP username: " ${username}
+    echo "PPP username: ${username}"
     exit 0
   fi
 
@@ -110,8 +111,8 @@ get_default_profile() {
   local profile_name
 
   for profile in $(get_profiles); do
-    profile_name="$(get_property ${IPROFILE} ${profile} Name)"
-    if [ ${profile_name} = ${DEFAULT_PROFILE_NAME} ]; then
+    profile_name="$(get_property "${IPROFILE}" "${profile}" Name)"
+    if [ "${profile_name}" = ${DEFAULT_PROFILE_NAME} ]; then
       echo "${profile}"
       break
     fi
@@ -123,7 +124,7 @@ get_first_cellular_service() {
   local service_type
 
   for service in $(get_services); do
-    service_type="$(get_property ${ISERVICE} ${service} Type)"
+    service_type="$(get_property "${ISERVICE}" "${service}" Type)"
     if [ "${service_type}" = "cellular" ]; then
       echo "${service}"
       break
@@ -146,8 +147,8 @@ move_service_to_profile() {
   dbus "${service}" "${ISERVICE}.SetProperty" \
     "string:${PROFILE_PROPERTY}" "variant:string:${profile}"
 
-  local new_profile=$(
-    get_property "${ISERVICE}" "${service}" "${PROFILE_PROPERTY}")
+  local new_profile
+  new_profile="$(get_property "${ISERVICE}" "${service}" "${PROFILE_PROPERTY}")"
   if [ "${new_profile}" != "${profile}" ]; then
     return 1
   else

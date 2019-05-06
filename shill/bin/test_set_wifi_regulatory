@@ -23,7 +23,7 @@ assert_regdomain_is() {
   g_vpd_data="$(cat)"
   g_country_code=""
 
-  . $(dirname $0)/set_wifi_regulatory
+  . "$(dirname "$0")"/set_wifi_regulatory
   assert_equal "${g_country_code}" "${expected_code}"
 }
 
