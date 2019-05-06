@@ -6,8 +6,8 @@
 
 namespace shill {
 
-MockPPPDeviceFactory::MockPPPDeviceFactory() {}
-MockPPPDeviceFactory::~MockPPPDeviceFactory() {}
+MockPPPDeviceFactory::MockPPPDeviceFactory() = default;
+MockPPPDeviceFactory::~MockPPPDeviceFactory() = default;
 
 MockPPPDeviceFactory* MockPPPDeviceFactory::GetInstance() {
   static base::NoDestructor<MockPPPDeviceFactory> instance;

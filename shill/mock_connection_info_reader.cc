@@ -6,8 +6,8 @@
 
 namespace shill {
 
-MockConnectionInfoReader::MockConnectionInfoReader() {}
+MockConnectionInfoReader::MockConnectionInfoReader() = default;
 
-MockConnectionInfoReader::~MockConnectionInfoReader() {}
+MockConnectionInfoReader::~MockConnectionInfoReader() = default;
 
 }  // namespace shill

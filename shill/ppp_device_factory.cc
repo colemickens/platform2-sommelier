@@ -10,8 +10,8 @@ using std::string;
 
 namespace shill {
 
-PPPDeviceFactory::PPPDeviceFactory() {}
-PPPDeviceFactory::~PPPDeviceFactory() {}
+PPPDeviceFactory::PPPDeviceFactory() = default;
+PPPDeviceFactory::~PPPDeviceFactory() = default;
 
 PPPDeviceFactory* PPPDeviceFactory::GetInstance() {
   static base::NoDestructor<PPPDeviceFactory> instance;

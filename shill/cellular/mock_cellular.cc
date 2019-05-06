@@ -23,6 +23,6 @@ MockCellular::MockCellular(ModemInfo* modem_info,
     : Cellular(modem_info, link_name, address, interface_index, type,
                service, path) {}
 
-MockCellular::~MockCellular() {}
+MockCellular::~MockCellular() = default;
 
 }  // namespace shill

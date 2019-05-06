@@ -34,7 +34,7 @@ ChromeosModemProxy::ChromeosModemProxy(const scoped_refptr<dbus::Bus>& bus,
                  weak_factory_.GetWeakPtr()));
 }
 
-ChromeosModemProxy::~ChromeosModemProxy() {}
+ChromeosModemProxy::~ChromeosModemProxy() = default;
 
 void ChromeosModemProxy::Enable(bool enable,
                                 Error* error,

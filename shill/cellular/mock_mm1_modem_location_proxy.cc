@@ -18,7 +18,7 @@ MockModemLocationProxy::MockModemLocationProxy() {
       .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
 }
 
-MockModemLocationProxy::~MockModemLocationProxy() {}
+MockModemLocationProxy::~MockModemLocationProxy() = default;
 
 }  // namespace mm1
 }  // namespace shill

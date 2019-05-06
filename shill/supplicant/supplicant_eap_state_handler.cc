@@ -14,7 +14,7 @@ using std::string;
 SupplicantEAPStateHandler::SupplicantEAPStateHandler()
     : is_eap_in_progress_(false) {}
 
-SupplicantEAPStateHandler::~SupplicantEAPStateHandler() {}
+SupplicantEAPStateHandler::~SupplicantEAPStateHandler() = default;
 
 bool SupplicantEAPStateHandler::ParseStatus(const string& status,
                                             const string& parameter,

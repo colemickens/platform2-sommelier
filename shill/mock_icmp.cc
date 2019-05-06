@@ -8,6 +8,6 @@ namespace shill {
 
 MockIcmp::MockIcmp() : Icmp() {}
 
-MockIcmp::~MockIcmp() {}
+MockIcmp::~MockIcmp() = default;
 
 }  // namespace shill

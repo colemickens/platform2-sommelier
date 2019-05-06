@@ -39,9 +39,9 @@ const char kUnrepliedTag[] = "[UNREPLIED]";
 
 }  // namespace
 
-ConnectionInfoReader::ConnectionInfoReader() {}
+ConnectionInfoReader::ConnectionInfoReader() = default;
 
-ConnectionInfoReader::~ConnectionInfoReader() {}
+ConnectionInfoReader::~ConnectionInfoReader() = default;
 
 FilePath ConnectionInfoReader::GetConnectionInfoFilePath() const {
   return FilePath(kConnectionInfoFilePath);

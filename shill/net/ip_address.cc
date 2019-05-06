@@ -81,7 +81,7 @@ IPAddress::IPAddress(const sockaddr* address_struct, size_t size)
   }
 }
 
-IPAddress::~IPAddress() {}
+IPAddress::~IPAddress() = default;
 
 // static
 size_t IPAddress::GetAddressLength(Family family) {

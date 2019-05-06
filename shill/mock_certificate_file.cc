@@ -8,6 +8,6 @@ namespace shill {
 
 MockCertificateFile::MockCertificateFile() : CertificateFile() {}
 
-MockCertificateFile::~MockCertificateFile() {}
+MockCertificateFile::~MockCertificateFile() = default;
 
 }  // namespace shill

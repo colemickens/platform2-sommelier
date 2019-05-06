@@ -27,7 +27,7 @@ const char PendingActivationStore::kMeidGroupId[] = "meid_list";
 const char PendingActivationStore::kStorageFileName[] =
     "activating_iccid_store.profile";
 
-PendingActivationStore::PendingActivationStore() {}
+PendingActivationStore::PendingActivationStore() = default;
 
 PendingActivationStore::~PendingActivationStore() {
   if (storage_)

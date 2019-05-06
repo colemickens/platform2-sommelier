@@ -11,7 +11,7 @@ namespace shill {
 // fi::w1::wpa_supplicant1::BSS_proxy that is actually used by WiFi.
 class SupplicantBSSProxyInterface {
  public:
-  virtual ~SupplicantBSSProxyInterface() {}
+  virtual ~SupplicantBSSProxyInterface() = default;
 };
 
 }  // namespace shill

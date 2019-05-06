@@ -6,7 +6,7 @@
 
 namespace shill {
 
-MockSupplicantBSSProxy::MockSupplicantBSSProxy() {}
+MockSupplicantBSSProxy::MockSupplicantBSSProxy() = default;
 
 MockSupplicantBSSProxy::~MockSupplicantBSSProxy() {
   Die();

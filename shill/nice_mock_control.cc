@@ -14,9 +14,9 @@ using ::testing::NiceMock;
 
 namespace shill {
 
-NiceMockControl::NiceMockControl() {}
+NiceMockControl::NiceMockControl() = default;
 
-NiceMockControl::~NiceMockControl() {}
+NiceMockControl::~NiceMockControl() = default;
 
 std::unique_ptr<DeviceAdaptorInterface> NiceMockControl::CreateDeviceAdaptor(
     Device* /*device*/) {

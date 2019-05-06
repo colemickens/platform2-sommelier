@@ -19,7 +19,7 @@ class KeyValueStore;
 // An interface to a persistent store implementation.
 class StoreInterface {
  public:
-  virtual ~StoreInterface() {}
+  virtual ~StoreInterface() = default;
 
   // Returns true if the store doesn't exist or is empty.
   virtual bool IsEmpty() const = 0;

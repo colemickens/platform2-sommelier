@@ -93,7 +93,7 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
   CheckForTetheringSignature();
 }
 
-WiFiEndpoint::~WiFiEndpoint() {}
+WiFiEndpoint::~WiFiEndpoint() = default;
 
 void WiFiEndpoint::Start() {
   supplicant_bss_proxy_ =

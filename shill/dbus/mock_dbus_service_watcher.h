@@ -9,7 +9,7 @@ namespace shill {
 
 class MockDBusServiceWatcher : public ChromeosDBusServiceWatcher {
  public:
-  MockDBusServiceWatcher() {}
+  MockDBusServiceWatcher() = default;
 };
 
 }  // namespace shill

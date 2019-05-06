@@ -50,9 +50,9 @@ bool SetupChild(const map<string, string>& env, bool terminate_with_parent) {
 
 }  // namespace
 
-ProcessManager::ProcessManager() {}
+ProcessManager::ProcessManager() = default;
 
-ProcessManager::~ProcessManager() {}
+ProcessManager::~ProcessManager() = default;
 
 // static
 ProcessManager* ProcessManager::GetInstance() {

@@ -6,8 +6,8 @@
 
 namespace shill {
 
-MockDHCPProvider::MockDHCPProvider() {}
+MockDHCPProvider::MockDHCPProvider() = default;
 
-MockDHCPProvider::~MockDHCPProvider() {}
+MockDHCPProvider::~MockDHCPProvider() = default;
 
 }  // namespace shill

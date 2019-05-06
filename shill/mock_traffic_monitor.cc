@@ -18,6 +18,6 @@ MockTrafficMonitor::MockTrafficMonitor()
     : TrafficMonitor(
           nullptr, nullptr, base::Bind(&NoOpNetworkProblemDetectedCallback)) {}
 
-MockTrafficMonitor::~MockTrafficMonitor() {}
+MockTrafficMonitor::~MockTrafficMonitor() = default;
 
 }  // namespace shill

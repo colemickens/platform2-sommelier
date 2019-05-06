@@ -28,6 +28,6 @@ MockWiFi::MockWiFi(ControlInterface* control_interface,
            interface_index,
            std::unique_ptr<WakeOnWiFiInterface>(wake_on_wifi)) {}
 
-MockWiFi::~MockWiFi() {}
+MockWiFi::~MockWiFi() = default;
 
 }  // namespace shill

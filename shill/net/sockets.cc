@@ -17,9 +17,9 @@
 
 namespace shill {
 
-Sockets::Sockets() {}
+Sockets::Sockets() = default;
 
-Sockets::~Sockets() {}
+Sockets::~Sockets() = default;
 
 // Some system calls can be interrupted and return EINTR, but will succeed on
 // retry.  The HANDLE_EINTR macro retries a call if it returns EINTR.  For a

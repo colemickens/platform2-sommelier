@@ -120,7 +120,7 @@ RoutingTable::RoutingTable() : rtnl_handler_(RTNLHandler::GetInstance()) {
   SLOG(this, 2) << __func__;
 }
 
-RoutingTable::~RoutingTable() {}
+RoutingTable::~RoutingTable() = default;
 
 RoutingTable* RoutingTable::GetInstance() {
   return g_routing_table.Pointer();

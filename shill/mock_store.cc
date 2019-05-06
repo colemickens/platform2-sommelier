@@ -6,8 +6,8 @@
 
 namespace shill {
 
-MockStore::MockStore() {}
+MockStore::MockStore() = default;
 
-MockStore::~MockStore() {}
+MockStore::~MockStore() = default;
 
 }  // namespace shill

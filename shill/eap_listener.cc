@@ -28,7 +28,7 @@ EapListener::EapListener(EventDispatcher* event_dispatcher,
       sockets_(new Sockets()),
       socket_(-1) {}
 
-EapListener::~EapListener() {}
+EapListener::~EapListener() = default;
 
 bool EapListener::Start() {
   if (!CreateSocket()) {

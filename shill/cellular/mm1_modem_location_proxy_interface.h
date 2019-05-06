@@ -19,7 +19,7 @@ namespace mm1 {
 // Implemented as ChromeosModemLocationProxy.
 class ModemLocationProxyInterface {
  public:
-  virtual ~ModemLocationProxyInterface() {}
+  virtual ~ModemLocationProxyInterface() = default;
 
   virtual void Setup(uint32_t sources,
                      bool signal_location,

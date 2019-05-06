@@ -15,7 +15,7 @@ namespace shill {
 // fi::w1::wpa_supplicant1_proxy that is actually used by WiFi.
 class SupplicantProcessProxyInterface {
  public:
-  virtual ~SupplicantProcessProxyInterface() {}
+  virtual ~SupplicantProcessProxyInterface() = default;
   virtual bool CreateInterface(const KeyValueStore& args,
                                std::string* rpc_identifier) = 0;
   virtual bool GetInterface(const std::string& ifname,

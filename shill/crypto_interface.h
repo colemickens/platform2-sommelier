@@ -12,7 +12,7 @@ namespace shill {
 // An interface to an encryption/decryption module.
 class CryptoInterface {
  public:
-  virtual ~CryptoInterface() {}
+  virtual ~CryptoInterface() = default;
 
   // Returns a unique identifier for this crypto module.
   virtual std::string GetId() const = 0;

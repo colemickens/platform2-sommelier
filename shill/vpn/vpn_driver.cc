@@ -42,7 +42,7 @@ VPNDriver::VPNDriver(EventDispatcher* dispatcher,
       property_count_(property_count),
       connect_timeout_seconds_(0) {}
 
-VPNDriver::~VPNDriver() {}
+VPNDriver::~VPNDriver() = default;
 
 bool VPNDriver::Load(StoreInterface* storage, const string& storage_id) {
   SLOG(this, 2) << __func__;

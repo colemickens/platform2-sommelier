@@ -256,7 +256,7 @@ Manager::Manager(ControlInterface* control_interface,
   SLOG(this, 2) << "Manager initialized.";
 }
 
-Manager::~Manager() {}
+Manager::~Manager() = default;
 
 void Manager::RegisterAsync(const Callback<void(bool)>& completion_callback) {
   adaptor_->RegisterAsync(completion_callback);

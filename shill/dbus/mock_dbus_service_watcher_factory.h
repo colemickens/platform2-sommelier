@@ -16,8 +16,8 @@ namespace shill {
 
 class MockDBusServiceWatcherFactory : public DBusServiceWatcherFactory {
  public:
-  MockDBusServiceWatcherFactory() {}
-  virtual ~MockDBusServiceWatcherFactory() {}
+  MockDBusServiceWatcherFactory() = default;
+  virtual ~MockDBusServiceWatcherFactory() = default;
 
   MOCK_METHOD3(CreateDBusServiceWatcher,
                std::unique_ptr<ChromeosDBusServiceWatcher>(

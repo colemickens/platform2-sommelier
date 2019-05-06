@@ -34,7 +34,7 @@ using InterfacesRemovedSignalCallback =
 // is signalled via the callbacks passed to the methods.
 class DBusObjectManagerProxyInterface {
  public:
-  virtual ~DBusObjectManagerProxyInterface() {}
+  virtual ~DBusObjectManagerProxyInterface() = default;
   virtual void GetManagedObjects(Error* error,
                                  const ManagedObjectsCallback& callback,
                                  int timeout) = 0;

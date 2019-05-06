@@ -63,6 +63,6 @@ NiceScopedMockLog::NiceScopedMockLog() : ScopedMockLog() {
   EXPECT_CALL(*this, Log(_, _, _)).Times(AnyNumber());
 }
 
-NiceScopedMockLog::~NiceScopedMockLog() {}
+NiceScopedMockLog::~NiceScopedMockLog() = default;
 
 }  // namespace shill

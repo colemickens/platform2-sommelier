@@ -24,7 +24,7 @@ using ModemStateChangedSignalCallback =
 // is signalled via the callbacks passed to the methods.
 class ModemProxyInterface {
  public:
-  virtual ~ModemProxyInterface() {}
+  virtual ~ModemProxyInterface() = default;
 
   virtual void Enable(bool enable,
                       Error* error,

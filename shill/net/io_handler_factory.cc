@@ -9,8 +9,8 @@
 
 namespace shill {
 
-IOHandlerFactory::IOHandlerFactory() {}
-IOHandlerFactory::~IOHandlerFactory() {}
+IOHandlerFactory::IOHandlerFactory() = default;
+IOHandlerFactory::~IOHandlerFactory() = default;
 
 IOHandler* IOHandlerFactory::CreateIOInputHandler(
     int fd,

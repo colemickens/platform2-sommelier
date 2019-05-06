@@ -25,8 +25,7 @@ ChromeosSimProxy::ChromeosSimProxy(const scoped_refptr<dbus::Bus>& bus,
         new org::freedesktop::ModemManager1::SimProxy(
             bus, service, dbus::ObjectPath(path))) {}
 
-ChromeosSimProxy::~ChromeosSimProxy() {}
-
+ChromeosSimProxy::~ChromeosSimProxy() = default;
 
 void ChromeosSimProxy::SendPin(const string& pin,
                                Error* error,

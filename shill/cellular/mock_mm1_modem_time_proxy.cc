@@ -16,7 +16,7 @@ MockModemTimeProxy::MockModemTimeProxy() {
       .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
 }
 
-MockModemTimeProxy::~MockModemTimeProxy() {}
+MockModemTimeProxy::~MockModemTimeProxy() = default;
 
 }  // namespace mm1
 }  // namespace shill

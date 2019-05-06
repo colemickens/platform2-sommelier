@@ -14,6 +14,6 @@ ChromeosDBusServiceWatcher::ChromeosDBusServiceWatcher(
         new brillo::dbus_utils::DBusServiceWatcher(
             bus, connection_name, on_connection_vanished)) {}
 
-ChromeosDBusServiceWatcher::~ChromeosDBusServiceWatcher() {}
+ChromeosDBusServiceWatcher::~ChromeosDBusServiceWatcher() = default;
 
 }  // namespace shill

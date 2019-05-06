@@ -49,7 +49,7 @@ class PropertyAccessor : public AccessorInterface<T> {
       : property_(property), default_value_(*property) {
     DCHECK(property);
   }
-  ~PropertyAccessor() override {}
+  ~PropertyAccessor() override = default;
 
   void Clear(Error* error) override { Set(default_value_, error); }
   T Get(Error* /*error*/) override { return *property_; }
@@ -73,7 +73,7 @@ class ConstPropertyAccessor : public AccessorInterface<T> {
   explicit ConstPropertyAccessor(const T* property) : property_(property) {
     DCHECK(property);
   }
-  ~ConstPropertyAccessor() override {}
+  ~ConstPropertyAccessor() override = default;
 
   void Clear(Error* error) override {
     // TODO(quiche): check if this is the right error.
@@ -100,7 +100,7 @@ class WriteOnlyPropertyAccessor : public AccessorInterface<T> {
       : property_(property), default_value_(*property) {
     DCHECK(property);
   }
-  ~WriteOnlyPropertyAccessor() override {}
+  ~WriteOnlyPropertyAccessor() override = default;
 
   void Clear(Error* error) override { Set(default_value_, error); }
   T Get(Error* error) override {
@@ -162,7 +162,7 @@ class CustomAccessor : public AccessorInterface<T> {
                  T(C::*getter)(Error* error),
                  bool(C::*setter)(const T& value, Error* error))
       : CustomAccessor(target, getter, setter, nullptr) {}
-  ~CustomAccessor() override {}
+  ~CustomAccessor() override = default;
 
   void Clear(Error* error) override {
     if (clearer_) {
@@ -223,7 +223,7 @@ class CustomWriteOnlyAccessor : public AccessorInterface<T> {
       default_value_ = *default_value;
     }
   }
-  ~CustomWriteOnlyAccessor() override {}
+  ~CustomWriteOnlyAccessor() override = default;
 
   void Clear(Error* error) override {
     if (clearer_) {
@@ -263,7 +263,7 @@ class CustomReadOnlyAccessor : public AccessorInterface<T> {
     DCHECK(target);
     DCHECK(getter);
   }
-  ~CustomReadOnlyAccessor() override {}
+  ~CustomReadOnlyAccessor() override = default;
 
   void Clear(Error* error) override {
     error->Populate(Error::kInvalidArguments, "Property is read-only");
@@ -310,7 +310,7 @@ class CustomMappedAccessor : public AccessorInterface<T> {
     DCHECK(target);
     DCHECK(getter);
   }
-  ~CustomMappedAccessor() override {}
+  ~CustomMappedAccessor() override = default;
 
   void Clear(Error* error) override {
     (target_->*clearer_)(argument_, error);

@@ -14,9 +14,9 @@ namespace shill {
 
 namespace shims {
 
-Environment::Environment() {}
+Environment::Environment() = default;
 
-Environment::~Environment() {}
+Environment::~Environment() = default;
 
 // static
 Environment* Environment::GetInstance() {

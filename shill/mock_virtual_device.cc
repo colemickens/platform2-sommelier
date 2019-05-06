@@ -16,6 +16,6 @@ MockVirtualDevice::MockVirtualDevice(ControlInterface* control,
     : VirtualDevice(control, dispatcher, metrics, manager, link_name,
                     interface_index, technology) {}
 
-MockVirtualDevice::~MockVirtualDevice() {}
+MockVirtualDevice::~MockVirtualDevice() = default;
 
 }  // namespace shill

@@ -41,7 +41,7 @@ VPNProvider::VPNProvider(ControlInterface* control_interface,
       metrics_(metrics),
       manager_(manager) {}
 
-VPNProvider::~VPNProvider() {}
+VPNProvider::~VPNProvider() = default;
 
 void VPNProvider::Start() {}
 

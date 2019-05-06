@@ -24,7 +24,7 @@ class RPCTaskAdaptorInterface;
 // (crbug.com/212273).
 class RPCTaskDelegate {
  public:
-  virtual ~RPCTaskDelegate() {}
+  virtual ~RPCTaskDelegate() = default;
 
   virtual void GetLogin(std::string* user, std::string* password) = 0;
   virtual void Notify(const std::string& reason,

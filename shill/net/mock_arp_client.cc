@@ -8,6 +8,6 @@ namespace shill {
 
 MockArpClient::MockArpClient() : ArpClient(0) {}
 
-MockArpClient::~MockArpClient() {}
+MockArpClient::~MockArpClient() = default;
 
 }  // namespace shill

@@ -28,6 +28,6 @@ MockProfile::MockProfile(ControlInterface* control,
               base::FilePath(), false) {
 }
 
-MockProfile::~MockProfile() {}
+MockProfile::~MockProfile() = default;
 
 }  // namespace shill

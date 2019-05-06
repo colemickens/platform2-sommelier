@@ -17,8 +17,8 @@ class NetlinkMessage;
 
 class MockNetlinkManager : public NetlinkManager {
  public:
-  MockNetlinkManager() {}
-  ~MockNetlinkManager() override {}
+  MockNetlinkManager() = default;
+  ~MockNetlinkManager() override = default;
 
   MOCK_METHOD0(Init, bool());
   MOCK_METHOD0(Start, void());

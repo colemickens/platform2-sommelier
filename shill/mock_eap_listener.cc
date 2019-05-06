@@ -8,6 +8,6 @@ namespace shill {
 
 MockEapListener::MockEapListener() : EapListener(nullptr, 0) {}
 
-MockEapListener::~MockEapListener() {}
+MockEapListener::~MockEapListener() = default;
 
 }  // namespace shill

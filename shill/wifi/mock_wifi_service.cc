@@ -29,6 +29,6 @@ MockWiFiService::MockWiFiService(ControlInterface* control_interface,
       .WillByDefault(testing::Return(KeyValueStore()));
 }
 
-MockWiFiService::~MockWiFiService() {}
+MockWiFiService::~MockWiFiService() = default;
 
 }  // namespace shill

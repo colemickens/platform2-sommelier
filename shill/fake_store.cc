@@ -42,7 +42,7 @@ bool DoesGroupContainProperties(
 
 }  // namespace
 
-FakeStore::FakeStore() {}
+FakeStore::FakeStore() = default;
 
 bool FakeStore::IsEmpty() const {
   // For now, the choice for return value is arbitrary. Revisit if we

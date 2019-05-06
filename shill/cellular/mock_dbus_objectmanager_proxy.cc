@@ -15,7 +15,7 @@ MockDBusObjectManagerProxy::MockDBusObjectManagerProxy() {
       .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
 }
 
-MockDBusObjectManagerProxy::~MockDBusObjectManagerProxy() {}
+MockDBusObjectManagerProxy::~MockDBusObjectManagerProxy() = default;
 
 void MockDBusObjectManagerProxy::IgnoreSetCallbacks() {
   EXPECT_CALL(*this, set_interfaces_added_callback(_)).Times(AnyNumber());

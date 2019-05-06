@@ -6,8 +6,8 @@
 
 namespace shill {
 
-MockDHCPProxy::MockDHCPProxy() {}
+MockDHCPProxy::MockDHCPProxy() = default;
 
-MockDHCPProxy::~MockDHCPProxy() {}
+MockDHCPProxy::~MockDHCPProxy() = default;
 
 }  // namespace shill

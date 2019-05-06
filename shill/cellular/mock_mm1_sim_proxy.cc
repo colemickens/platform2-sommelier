@@ -22,7 +22,7 @@ MockSimProxy::MockSimProxy() {
       .WillByDefault(SetOperationFailedInArgumentAndWarn<2>());
 }
 
-MockSimProxy::~MockSimProxy() {}
+MockSimProxy::~MockSimProxy() = default;
 
 }  // namespace mm1
 }  // namespace shill

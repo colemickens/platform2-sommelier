@@ -6,8 +6,8 @@
 
 namespace shill {
 
-MockDBusPropertiesProxy::MockDBusPropertiesProxy() {}
+MockDBusPropertiesProxy::MockDBusPropertiesProxy() = default;
 
-MockDBusPropertiesProxy::~MockDBusPropertiesProxy() {}
+MockDBusPropertiesProxy::~MockDBusPropertiesProxy() = default;
 
 }  // namespace shill

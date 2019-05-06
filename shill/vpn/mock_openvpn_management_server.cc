@@ -9,6 +9,6 @@ namespace shill {
 MockOpenVPNManagementServer::MockOpenVPNManagementServer()
     : OpenVPNManagementServer(nullptr) {}
 
-MockOpenVPNManagementServer::~MockOpenVPNManagementServer() {}
+MockOpenVPNManagementServer::~MockOpenVPNManagementServer() = default;
 
 }  // namespace shill

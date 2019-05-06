@@ -33,7 +33,7 @@ MobileOperatorInfo::MobileOperatorInfo(EventDispatcher* dispatcher,
                                        const string& info_owner)
     : impl_(new MobileOperatorInfoImpl(dispatcher, info_owner)) {}
 
-MobileOperatorInfo::~MobileOperatorInfo() {}
+MobileOperatorInfo::~MobileOperatorInfo() = default;
 
 string MobileOperatorInfo::GetLogPrefix(const char* func) const {
   return impl_->info_owner() + ": " + func;

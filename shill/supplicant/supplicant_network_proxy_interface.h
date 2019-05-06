@@ -11,7 +11,7 @@ namespace shill {
 // fi::w1::wpa_supplicant1::Network_proxy that is actually used by WiFi.
 class SupplicantNetworkProxyInterface {
  public:
-  virtual ~SupplicantNetworkProxyInterface() {}
+  virtual ~SupplicantNetworkProxyInterface() = default;
 
   virtual bool SetEnabled(bool enabled) = 0;
 };

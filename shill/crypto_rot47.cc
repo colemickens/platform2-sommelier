@@ -12,7 +12,7 @@ namespace {
 constexpr char kId[] = "rot47";
 }  // namespace
 
-CryptoRot47::CryptoRot47() {}
+CryptoRot47::CryptoRot47() = default;
 
 string CryptoRot47::GetId() const {
   return kId;

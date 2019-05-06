@@ -13,6 +13,6 @@ MockVPNService::MockVPNService(ControlInterface* control,
                                VPNDriver* driver)
     : VPNService(control, dispatcher, metrics, manager, driver) {}
 
-MockVPNService::~MockVPNService() {}
+MockVPNService::~MockVPNService() = default;
 
 }  // namespace shill

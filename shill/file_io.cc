@@ -11,9 +11,9 @@
 
 namespace shill {
 
-FileIO::FileIO() {}
+FileIO::FileIO() = default;
 
-FileIO::~FileIO() {}
+FileIO::~FileIO() = default;
 
 // static
 FileIO* FileIO::GetInstance() {

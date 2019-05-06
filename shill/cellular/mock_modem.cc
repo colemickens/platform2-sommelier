@@ -11,6 +11,6 @@ MockModem::MockModem(const std::string& service,
                      ModemInfo* modem_info)
     : Modem(service, path, modem_info) {}
 
-MockModem::~MockModem() {}
+MockModem::~MockModem() = default;
 
 }  // namespace shill

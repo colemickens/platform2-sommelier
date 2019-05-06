@@ -23,7 +23,7 @@ class ChromeosDBusServiceWatcher {
   ~ChromeosDBusServiceWatcher();
 
  protected:
-  ChromeosDBusServiceWatcher() {}  // for mocking.
+  ChromeosDBusServiceWatcher() = default;  // for mocking.
 
  private:
   std::unique_ptr<brillo::dbus_utils::DBusServiceWatcher> watcher_;

@@ -25,6 +25,6 @@ MockEthernet::MockEthernet(ControlInterface* control_interface,
                address,
                interface_index) {}
 
-MockEthernet::~MockEthernet() {}
+MockEthernet::~MockEthernet() = default;
 
 }  // namespace shill

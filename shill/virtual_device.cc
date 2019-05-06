@@ -33,7 +33,7 @@ VirtualDevice::VirtualDevice(ControlInterface* control,
     : Device(control, dispatcher, metrics, manager, link_name,
              kHardwareAddressEmpty, interface_index, technology) {}
 
-VirtualDevice::~VirtualDevice() {}
+VirtualDevice::~VirtualDevice() = default;
 
 bool VirtualDevice::Load(StoreInterface* /*storage*/) {
   // Virtual devices have no persistent state.

@@ -21,7 +21,7 @@ namespace mm1 {
 // is signalled via the callbacks passed to the methods.
 class SimProxyInterface {
  public:
-  virtual ~SimProxyInterface() {}
+  virtual ~SimProxyInterface() = default;
 
   virtual void SendPin(const std::string& pin,
                        Error* error,

@@ -10,6 +10,6 @@ MockPowerManager::MockPowerManager(EventDispatcher* dispatcher,
                                    ControlInterface* control_interface)
     : PowerManager(dispatcher, control_interface) {}
 
-MockPowerManager::~MockPowerManager() {}
+MockPowerManager::~MockPowerManager() = default;
 
 }  // namespace shill

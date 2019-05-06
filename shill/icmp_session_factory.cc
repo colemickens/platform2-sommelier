@@ -8,8 +8,8 @@
 
 namespace shill {
 
-IcmpSessionFactory::IcmpSessionFactory() {}
-IcmpSessionFactory::~IcmpSessionFactory() {}
+IcmpSessionFactory::IcmpSessionFactory() = default;
+IcmpSessionFactory::~IcmpSessionFactory() = default;
 
 IcmpSessionFactory* IcmpSessionFactory::GetInstance() {
   static base::NoDestructor<IcmpSessionFactory> instance;

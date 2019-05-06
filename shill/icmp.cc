@@ -20,7 +20,7 @@ Icmp::Icmp()
       destination_(IPAddress::kFamilyUnknown),
       interface_index_(-1) {}
 
-Icmp::~Icmp() {}
+Icmp::~Icmp() = default;
 
 bool Icmp::Start(const IPAddress& destination, int interface_index) {
   if (!destination.IsValid()) {

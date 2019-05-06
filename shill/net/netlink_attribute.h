@@ -43,7 +43,7 @@ class SHILL_EXPORT NetlinkAttribute {
 
   NetlinkAttribute(int id, const char* id_string,
                    Type datatype, const char* datatype_string);
-  virtual ~NetlinkAttribute() {}
+  virtual ~NetlinkAttribute() = default;
 
   // Static factories generate the appropriate attribute object from the
   // raw nlattr data.

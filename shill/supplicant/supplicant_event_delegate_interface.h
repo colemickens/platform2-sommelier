@@ -14,7 +14,7 @@ namespace shill {
 // wpa_supplicant events occur on the network interface interface.
 class SupplicantEventDelegateInterface {
  public:
-  virtual ~SupplicantEventDelegateInterface() {}
+  virtual ~SupplicantEventDelegateInterface() = default;
 
   // Supplicant has added a BSS to its table of visible endpoints.
   virtual void BSSAdded(const std::string& BSS,

@@ -51,7 +51,7 @@ static base::LazyInstance<PPP>::DestructorAtExit g_ppp =
 
 PPP::PPP() : running_(false) {}
 
-PPP::~PPP() {}
+PPP::~PPP() = default;
 
 // static
 PPP* PPP::GetInstance() {

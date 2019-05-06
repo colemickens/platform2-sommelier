@@ -28,7 +28,7 @@ class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
 
   Nl80211Message(uint8_t command, const char* command_string)
       : GenericNetlinkMessage(nl80211_message_type_, command, command_string) {}
-  ~Nl80211Message() override {}
+  ~Nl80211Message() override = default;
 
   // Gets the family_id / message_type for all Nl80211 messages.
   static uint16_t GetMessageType();

@@ -48,7 +48,7 @@ NetfilterQueueProcessor::Packet::Packet()
       source_port_(0),
       destination_port_(0) {}
 
-NetfilterQueueProcessor::Packet::~Packet() {}
+NetfilterQueueProcessor::Packet::~Packet() = default;
 
 std::string NetfilterQueueProcessor::AddressAndPortToString(uint32_t ip,
                                                             uint16_t port) {

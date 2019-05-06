@@ -20,7 +20,7 @@ namespace shill {
 // is deleted before the delegate.
 class PowerManagerProxyInterface {
  public:
-  virtual ~PowerManagerProxyInterface() {}
+  virtual ~PowerManagerProxyInterface() = default;
 
   // Sends a request to the power manager to wait for this client for up to
   // |timeout| before suspending the system.  |description| is a
@@ -63,7 +63,7 @@ class PowerManagerProxyInterface {
 // PowerManager signal delegate to be associated with the proxy.
 class PowerManagerProxyDelegate {
  public:
-  virtual ~PowerManagerProxyDelegate() {}
+  virtual ~PowerManagerProxyDelegate() = default;
 
   // Broadcast by the power manager when it's about to suspend. Delegates
   // that have registered through RegisterSuspendDelay() should tell the power

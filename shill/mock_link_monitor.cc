@@ -12,6 +12,6 @@ MockLinkMonitor::MockLinkMonitor()
     : LinkMonitor(nullptr, nullptr, nullptr, nullptr, FailureCallback(),
                   GatewayChangeCallback()) {}
 
-MockLinkMonitor::~MockLinkMonitor() {}
+MockLinkMonitor::~MockLinkMonitor() = default;
 
 }  // namespace shill

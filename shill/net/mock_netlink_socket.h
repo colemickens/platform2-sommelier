@@ -17,7 +17,7 @@ class ByteString;
 
 class MockNetlinkSocket : public NetlinkSocket {
  public:
-  MockNetlinkSocket() {}
+  MockNetlinkSocket() = default;
   MOCK_METHOD0(Init, bool());
 
   uint32_t GetLastSequenceNumber() const { return sequence_number_; }

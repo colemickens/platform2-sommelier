@@ -6,8 +6,8 @@
 
 namespace shill {
 
-MockSocketInfoReader::MockSocketInfoReader() {}
+MockSocketInfoReader::MockSocketInfoReader() = default;
 
-MockSocketInfoReader::~MockSocketInfoReader() {}
+MockSocketInfoReader::~MockSocketInfoReader() = default;
 
 }  // namespace shill

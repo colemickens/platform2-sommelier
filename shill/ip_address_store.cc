@@ -14,9 +14,9 @@ bool IPAddressLTIgnorePrefix::operator () (const IPAddress& lhs,
   return lhs.ToString() < rhs.ToString();
 }
 
-IPAddressStore::IPAddressStore() {}
+IPAddressStore::IPAddressStore() = default;
 
-IPAddressStore::~IPAddressStore() {}
+IPAddressStore::~IPAddressStore() = default;
 
 void IPAddressStore::AddUnique(const IPAddress& ip) {
   ip_addresses_.insert(ip);

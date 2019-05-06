@@ -6,8 +6,8 @@
 
 namespace shill {
 
-MockDnsClientFactory::MockDnsClientFactory() {}
-MockDnsClientFactory::~MockDnsClientFactory() {}
+MockDnsClientFactory::MockDnsClientFactory() = default;
+MockDnsClientFactory::~MockDnsClientFactory() = default;
 
 MockDnsClientFactory* MockDnsClientFactory::GetInstance() {
   static base::NoDestructor<MockDnsClientFactory> instance;

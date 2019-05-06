@@ -29,7 +29,7 @@ EthernetTemporaryService::EthernetTemporaryService(
   set_friendly_name("Ethernet");
 }
 
-EthernetTemporaryService::~EthernetTemporaryService() {}
+EthernetTemporaryService::~EthernetTemporaryService() = default;
 
 std::string EthernetTemporaryService::GetDeviceRpcId(Error* /*error*/) const {
   return control_interface()->NullRPCIdentifier();

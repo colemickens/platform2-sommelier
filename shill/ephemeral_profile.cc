@@ -33,7 +33,7 @@ EphemeralProfile::EphemeralProfile(ControlInterface* control_interface,
               base::FilePath(), false) {
 }
 
-EphemeralProfile::~EphemeralProfile() {}
+EphemeralProfile::~EphemeralProfile() = default;
 
 string EphemeralProfile::GetFriendlyName() const {
   return kFriendlyName;

@@ -62,7 +62,7 @@ CellularCapability::CellularCapability(Cellular* cellular,
                                        ModemInfo* modem_info)
     : cellular_(cellular), modem_info_(modem_info) {}
 
-CellularCapability::~CellularCapability() {}
+CellularCapability::~CellularCapability() = default;
 
 void CellularCapability::OnUnsupportedOperation(const char* operation,
                                                 Error* error) {

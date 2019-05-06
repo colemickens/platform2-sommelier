@@ -78,7 +78,7 @@ ChromeosPowerManagerProxy::ChromeosPowerManagerProxy(
                  weak_factory_.GetWeakPtr()));
 }
 
-ChromeosPowerManagerProxy::~ChromeosPowerManagerProxy() {}
+ChromeosPowerManagerProxy::~ChromeosPowerManagerProxy() = default;
 
 bool ChromeosPowerManagerProxy::RegisterSuspendDelay(
     base::TimeDelta timeout,

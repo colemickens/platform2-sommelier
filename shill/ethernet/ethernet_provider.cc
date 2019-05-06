@@ -32,7 +32,7 @@ EthernetProvider::EthernetProvider(ControlInterface* control_interface,
       metrics_(metrics),
       manager_(manager) {}
 
-EthernetProvider::~EthernetProvider() {}
+EthernetProvider::~EthernetProvider() = default;
 
 void EthernetProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
   SLOG(this, 2) << __func__;

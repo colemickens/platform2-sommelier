@@ -22,7 +22,7 @@ namespace mm1 {
 // passed to the methods.
 class ModemSimpleProxyInterface {
  public:
-  virtual ~ModemSimpleProxyInterface() {}
+  virtual ~ModemSimpleProxyInterface() = default;
 
   virtual void Connect(const KeyValueStore& properties,
                        Error* error,

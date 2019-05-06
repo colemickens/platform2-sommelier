@@ -100,7 +100,7 @@ ChromeosSupplicantProcessProxy::ChromeosSupplicantProcessProxy(
                  weak_factory_.GetWeakPtr()));
 }
 
-ChromeosSupplicantProcessProxy::~ChromeosSupplicantProcessProxy() {}
+ChromeosSupplicantProcessProxy::~ChromeosSupplicantProcessProxy() = default;
 
 bool ChromeosSupplicantProcessProxy::CreateInterface(
     const KeyValueStore& args, string* rpc_identifier) {

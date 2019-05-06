@@ -42,9 +42,9 @@ std::string GetFullPropertyName(const std::string& property_name) {
 const char DhcpProperties::kHostnameProperty[] = "Hostname";
 const char DhcpProperties::kVendorClassProperty[] = "VendorClass";
 
-DhcpProperties::DhcpProperties() {}
+DhcpProperties::DhcpProperties() = default;
 
-DhcpProperties::~DhcpProperties() {}
+DhcpProperties::~DhcpProperties() = default;
 
 void DhcpProperties::InitPropertyStore(PropertyStore* store) {
   SLOG(this, 2) << __func__;

@@ -11,8 +11,8 @@ using std::vector;
 
 namespace shill {
 
-DnsClientFactory::DnsClientFactory() {}
-DnsClientFactory::~DnsClientFactory() {}
+DnsClientFactory::DnsClientFactory() = default;
+DnsClientFactory::~DnsClientFactory() = default;
 
 DnsClientFactory* DnsClientFactory::GetInstance() {
   static base::NoDestructor<DnsClientFactory> instance;

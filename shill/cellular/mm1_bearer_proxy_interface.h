@@ -19,7 +19,7 @@ namespace mm1 {
 // via callbacks passed to the methods.
 class BearerProxyInterface {
  public:
-  virtual ~BearerProxyInterface() {}
+  virtual ~BearerProxyInterface() = default;
 
   virtual void Connect(Error* error,
                        const ResultCallback& callback,

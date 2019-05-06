@@ -6,8 +6,8 @@
 
 namespace shill {
 
-MockEventDispatcher::MockEventDispatcher() {}
+MockEventDispatcher::MockEventDispatcher() = default;
 
-MockEventDispatcher::~MockEventDispatcher() {}
+MockEventDispatcher::~MockEventDispatcher() = default;
 
 }  // namespace shill

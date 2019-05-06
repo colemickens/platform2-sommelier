@@ -64,7 +64,7 @@ PPPoEService::PPPoEService(ControlInterface* control_interface,
   NotifyIfVisibilityChanged();
 }
 
-PPPoEService::~PPPoEService() {}
+PPPoEService::~PPPoEService() = default;
 
 void PPPoEService::Connect(Error* error, const char* reason) {
   Service::Connect(error, reason);

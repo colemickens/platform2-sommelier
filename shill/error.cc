@@ -66,7 +66,7 @@ Error::Error(Type type, const string& message) {
   Populate(type, message);
 }
 
-Error::~Error() {}
+Error::~Error() = default;
 
 void Error::Populate(Type type) {
   Populate(type, GetDefaultMessage(type));

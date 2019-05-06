@@ -6,8 +6,8 @@
 
 namespace shill {
 
-MockPowerManagerProxy::MockPowerManagerProxy() {}
+MockPowerManagerProxy::MockPowerManagerProxy() = default;
 
-MockPowerManagerProxy::~MockPowerManagerProxy() {}
+MockPowerManagerProxy::~MockPowerManagerProxy() = default;
 
 }  // namespace shill

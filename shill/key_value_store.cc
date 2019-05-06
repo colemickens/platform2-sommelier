@@ -14,7 +14,7 @@ using std::vector;
 
 namespace shill {
 
-KeyValueStore::KeyValueStore() {}
+KeyValueStore::KeyValueStore() = default;
 
 void KeyValueStore::Clear() {
   properties_.clear();

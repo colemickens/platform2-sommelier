@@ -10,7 +10,7 @@ namespace shill {
 
 class DHCPCDListenerInterface {
  public:
-  virtual ~DHCPCDListenerInterface() {}
+  virtual ~DHCPCDListenerInterface() = default;
 };
 
 }  // namespace shill

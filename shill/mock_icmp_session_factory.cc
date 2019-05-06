@@ -6,8 +6,8 @@
 
 namespace shill {
 
-MockIcmpSessionFactory::MockIcmpSessionFactory() {}
-MockIcmpSessionFactory::~MockIcmpSessionFactory() {}
+MockIcmpSessionFactory::MockIcmpSessionFactory() = default;
+MockIcmpSessionFactory::~MockIcmpSessionFactory() = default;
 
 MockIcmpSessionFactory* MockIcmpSessionFactory::GetInstance() {
   static base::NoDestructor<MockIcmpSessionFactory> instance;

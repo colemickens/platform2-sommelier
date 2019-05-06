@@ -46,7 +46,7 @@ DaemonTask::DaemonTask(const Settings& settings, Config* config)
       process_manager_(nullptr) {
 }
 
-DaemonTask::~DaemonTask() {}
+DaemonTask::~DaemonTask() = default;
 
 void DaemonTask::ApplySettings() {
   manager_->SetBlacklistedDevices(settings_.device_blacklist);

@@ -10,7 +10,7 @@ namespace shill {
 
 MockDhcpProperties::MockDhcpProperties() : DhcpProperties() {}
 
-MockDhcpProperties::~MockDhcpProperties() {}
+MockDhcpProperties::~MockDhcpProperties() = default;
 
 }  // namespace shill
 

@@ -9,6 +9,6 @@ namespace shill {
 MockUpstart::MockUpstart(ControlInterface* control_interface)
     : Upstart(control_interface) {}
 
-MockUpstart::~MockUpstart() {}
+MockUpstart::~MockUpstart() = default;
 
 }  // namespace shill

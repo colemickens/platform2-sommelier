@@ -35,7 +35,7 @@ TDLSManager::TDLSManager(
       supplicant_interface_proxy_(supplicant_interface_proxy),
       interface_name_(interface_name) {}
 
-TDLSManager::~TDLSManager() {}
+TDLSManager::~TDLSManager() = default;
 
 string TDLSManager::PerformOperation(const string& peer_mac_address,
                                      const string& operation,

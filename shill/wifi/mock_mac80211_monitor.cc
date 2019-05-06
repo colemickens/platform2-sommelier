@@ -16,6 +16,6 @@ MockMac80211Monitor::MockMac80211Monitor(
         dispatcher, link_name, queue_length_limit, on_repair_callback, metrics)
 {}
 
-MockMac80211Monitor::~MockMac80211Monitor() {}
+MockMac80211Monitor::~MockMac80211Monitor() = default;
 
 }  // namespace shill

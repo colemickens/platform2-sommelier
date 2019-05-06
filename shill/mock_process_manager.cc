@@ -6,8 +6,8 @@
 
 namespace shill {
 
-MockProcessManager::MockProcessManager() {}
+MockProcessManager::MockProcessManager() = default;
 
-MockProcessManager::~MockProcessManager() {}
+MockProcessManager::~MockProcessManager() = default;
 
 }  // namespace shill

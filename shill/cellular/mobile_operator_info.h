@@ -53,7 +53,7 @@ class MobileOperatorInfo {
  public:
   class Observer {
    public:
-    virtual ~Observer() {}
+    virtual ~Observer() = default;
 
     // This event fires when
     //   - A mobile [virtual] network operator

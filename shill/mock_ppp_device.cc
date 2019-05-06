@@ -15,6 +15,6 @@ MockPPPDevice::MockPPPDevice(ControlInterface* control,
     : PPPDevice(control, dispatcher, metrics, manager, link_name,
                 interface_index) {}
 
-MockPPPDevice::~MockPPPDevice() {}
+MockPPPDevice::~MockPPPDevice() = default;
 
 }  // namespace shill

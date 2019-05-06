@@ -23,7 +23,7 @@ EventDispatcher::EventDispatcher()
           IOHandlerFactoryContainer::GetInstance()->GetIOHandlerFactory()) {
 }
 
-EventDispatcher::~EventDispatcher() {}
+EventDispatcher::~EventDispatcher() = default;
 
 void EventDispatcher::DispatchForever() {
   base::RunLoop().Run();

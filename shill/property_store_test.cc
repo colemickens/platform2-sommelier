@@ -77,7 +77,7 @@ PropertyStoreTest::PropertyStoreTest()
                string()) {
 }
 
-PropertyStoreTest::~PropertyStoreTest() {}
+PropertyStoreTest::~PropertyStoreTest() = default;
 
 void PropertyStoreTest::SetUp() {
   ASSERT_FALSE(run_path().empty());

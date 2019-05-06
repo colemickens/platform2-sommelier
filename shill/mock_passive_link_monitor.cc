@@ -11,6 +11,6 @@ namespace shill {
 MockPassiveLinkMonitor::MockPassiveLinkMonitor()
     : PassiveLinkMonitor(nullptr, nullptr, ResultCallback()) {}
 
-MockPassiveLinkMonitor::~MockPassiveLinkMonitor() {}
+MockPassiveLinkMonitor::~MockPassiveLinkMonitor() = default;
 
 }  // namespace shill

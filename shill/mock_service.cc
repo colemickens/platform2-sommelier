@@ -40,7 +40,7 @@ MockService::MockService(ControlInterface* control_interface,
   ON_CALL(*this, connection()).WillByDefault(ReturnRef(mock_connection_));
 }
 
-MockService::~MockService() {}
+MockService::~MockService() = default;
 
 bool MockService::FauxSave(StoreInterface* store) {
   return store->SetString(GetStorageIdentifier(), "dummy", "dummy");

@@ -29,9 +29,9 @@ static string ObjectID(Resolver* r) { return "(resolver)"; }
 
 const char Resolver::kDefaultIgnoredSearchList[] = "gateway.2wire.net";
 
-Resolver::Resolver() {}
+Resolver::Resolver() = default;
 
-Resolver::~Resolver() {}
+Resolver::~Resolver() = default;
 
 Resolver* Resolver::GetInstance() {
   static base::NoDestructor<Resolver> instance;

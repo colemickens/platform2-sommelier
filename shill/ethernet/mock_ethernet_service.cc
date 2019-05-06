@@ -15,6 +15,6 @@ MockEthernetService::MockEthernetService(ControlInterface* control_interface,
     : EthernetService(
           control_interface, nullptr, metrics, nullptr, Properties(ethernet)) {}
 
-MockEthernetService::~MockEthernetService() {}
+MockEthernetService::~MockEthernetService() = default;
 
 }  // namespace shill

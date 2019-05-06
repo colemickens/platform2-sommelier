@@ -20,7 +20,7 @@ namespace shill {
 template <class V>
 class ReadablePropertyConstIterator {
  public:
-  ~ReadablePropertyConstIterator() {}
+  ~ReadablePropertyConstIterator() = default;
 
   bool AtEnd() const { return it_ == collection_.end(); }
 

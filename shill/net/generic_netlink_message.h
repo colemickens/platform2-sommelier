@@ -63,7 +63,7 @@ class SHILL_EXPORT GenericNetlinkMessage : public NetlinkMessage {
         attributes_(new AttributeList),
         command_(command),
         command_string_(command_string) {}
-  ~GenericNetlinkMessage() override {}
+  ~GenericNetlinkMessage() override = default;
 
   ByteString Encode(uint32_t sequence_number) override;
 

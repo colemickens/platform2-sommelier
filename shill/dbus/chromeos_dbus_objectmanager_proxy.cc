@@ -55,7 +55,7 @@ ChromeosDBusObjectManagerProxy::ChromeosDBusObjectManagerProxy(
                  weak_factory_.GetWeakPtr()));
 }
 
-ChromeosDBusObjectManagerProxy::~ChromeosDBusObjectManagerProxy() {}
+ChromeosDBusObjectManagerProxy::~ChromeosDBusObjectManagerProxy() = default;
 
 void ChromeosDBusObjectManagerProxy::GetManagedObjects(
     Error* error,

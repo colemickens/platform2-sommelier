@@ -582,7 +582,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(WiFiServiceTest, ConnectTaskFT);
 
   struct DeviceClaim {
-    DeviceClaim() {}
+    DeviceClaim() = default;
     DeviceClaim(const std::string& in_device_name,
                 const ResultCallback& in_result_callback)
         : device_name(in_device_name),

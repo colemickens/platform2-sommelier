@@ -18,7 +18,7 @@ MockModemModem3gppProxy::MockModemModem3gppProxy() {
       .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
 }
 
-MockModemModem3gppProxy::~MockModemModem3gppProxy() {}
+MockModemModem3gppProxy::~MockModemModem3gppProxy() = default;
 
 }  // namespace mm1
 }  // namespace shill

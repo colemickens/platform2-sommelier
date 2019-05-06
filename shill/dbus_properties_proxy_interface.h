@@ -31,7 +31,7 @@ class DBusPropertiesProxyInterface {
   using ModemManagerPropertiesChangedCallback = base::Callback<void(
       const std::string& interface, const KeyValueStore& properties)>;
 
-  virtual ~DBusPropertiesProxyInterface() {}
+  virtual ~DBusPropertiesProxyInterface() = default;
 
   virtual KeyValueStore GetAll(const std::string& interface_name) = 0;
   virtual brillo::Any Get(const std::string& interface_name,

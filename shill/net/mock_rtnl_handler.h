@@ -16,8 +16,8 @@ namespace shill {
 
 class MockRTNLHandler : public RTNLHandler {
  public:
-  MockRTNLHandler() {}
-  ~MockRTNLHandler() override {}
+  MockRTNLHandler() = default;
+  ~MockRTNLHandler() override = default;
 
   MOCK_METHOD1(Start, void(uint32_t netlink_groups_mask));
   MOCK_METHOD1(AddListener, void(RTNLListener* to_add));

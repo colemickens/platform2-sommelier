@@ -13,7 +13,7 @@ namespace shill {
 // provided so that it can be mocked in tests.
 class DHCPProxyInterface {
  public:
-  virtual ~DHCPProxyInterface() {}
+  virtual ~DHCPProxyInterface() = default;
 
   virtual void Rebind(const std::string& interface) = 0;
   virtual void Release(const std::string& interface) = 0;

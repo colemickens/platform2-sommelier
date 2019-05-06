@@ -6,8 +6,8 @@
 
 namespace shill {
 
-MockSupplicantProcessProxy::MockSupplicantProcessProxy() {}
+MockSupplicantProcessProxy::MockSupplicantProcessProxy() = default;
 
-MockSupplicantProcessProxy::~MockSupplicantProcessProxy() {}
+MockSupplicantProcessProxy::~MockSupplicantProcessProxy() = default;
 
 }  // namespace shill

@@ -11,6 +11,6 @@ namespace shill {
 MockHttpRequest::MockHttpRequest(ConnectionRefPtr connection)
     : HttpRequest(connection, nullptr, true) {}
 
-MockHttpRequest::~MockHttpRequest() {}
+MockHttpRequest::~MockHttpRequest() = default;
 
 }  // namespace shill

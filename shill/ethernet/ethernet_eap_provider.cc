@@ -22,7 +22,7 @@ EthernetEapProvider::EthernetEapProvider(ControlInterface* control_interface,
       metrics_(metrics),
       manager_(manager) {}
 
-EthernetEapProvider::~EthernetEapProvider() {}
+EthernetEapProvider::~EthernetEapProvider() = default;
 
 void EthernetEapProvider::CreateServicesFromProfile(
     const ProfileRefPtr& profile) {

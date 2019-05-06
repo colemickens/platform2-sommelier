@@ -11,7 +11,7 @@ namespace shill {
 IOHandlerFactoryContainer::IOHandlerFactoryContainer()
     : factory_(new IOHandlerFactory()) {}
 
-IOHandlerFactoryContainer::~IOHandlerFactoryContainer() {}
+IOHandlerFactoryContainer::~IOHandlerFactoryContainer() = default;
 
 IOHandlerFactoryContainer* IOHandlerFactoryContainer::GetInstance() {
   static base::NoDestructor<IOHandlerFactoryContainer> instance;

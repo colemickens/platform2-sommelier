@@ -22,7 +22,7 @@ namespace mm1 {
 // the callbacks passed to the methods.
 class ModemModemCdmaProxyInterface {
  public:
-  virtual ~ModemModemCdmaProxyInterface() {}
+  virtual ~ModemModemCdmaProxyInterface() = default;
 
   virtual void Activate(const std::string& carrier,
                         Error* error,

@@ -31,7 +31,7 @@ ArpPacket::ArpPacket(
       local_mac_address_(local_mac),
       remote_mac_address_(remote_mac) {}
 
-ArpPacket::~ArpPacket() {}
+ArpPacket::~ArpPacket() = default;
 
 // Format of an ARP packet (all multi-byte values are big-endian):
 //

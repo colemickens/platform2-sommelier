@@ -17,7 +17,7 @@ ShillDaemon::ShillDaemon(const base::Closure& startup_callback,
                          Config* config)
     : daemon_task_(settings, config), startup_callback_(startup_callback) {}
 
-ShillDaemon::~ShillDaemon() {}
+ShillDaemon::~ShillDaemon() = default;
 
 int ShillDaemon::OnInit() {
   // Manager DBus interface will get registered as part of this init call.

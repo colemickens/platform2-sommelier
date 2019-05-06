@@ -6,8 +6,8 @@
 
 namespace shill {
 
-MockAres::MockAres() {}
+MockAres::MockAres() = default;
 
-MockAres::~MockAres() {}
+MockAres::~MockAres() = default;
 
 }  // namespace shill

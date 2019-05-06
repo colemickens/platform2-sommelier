@@ -17,7 +17,7 @@ namespace shill {
 Modem1::Modem1(const string& service, const string& path, ModemInfo* modem_info)
     : Modem(service, path, modem_info) {}
 
-Modem1::~Modem1() {}
+Modem1::~Modem1() = default;
 
 bool Modem1::GetLinkName(const KeyValueStore& modem_props,
                          string* name) const {

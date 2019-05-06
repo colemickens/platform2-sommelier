@@ -29,7 +29,7 @@ const int HttpUrl::kDefaultHttpsPort = 443;
 
 HttpUrl::HttpUrl() : port_(kDefaultHttpPort), protocol_(Protocol::kHttp) {}
 
-HttpUrl::~HttpUrl() {}
+HttpUrl::~HttpUrl() = default;
 
 bool HttpUrl::ParseFromString(const string& url_string) {
   Protocol protocol = Protocol::kUnknown;

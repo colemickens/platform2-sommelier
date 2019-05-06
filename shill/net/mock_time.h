@@ -14,8 +14,8 @@ namespace shill {
 
 class MockTime : public Time {
  public:
-  MockTime() {}
-  ~MockTime() override {}
+  MockTime() = default;
+  ~MockTime() override = default;
 
   MOCK_METHOD1(GetSecondsMonotonic, bool(time_t* seconds));
   MOCK_METHOD1(GetSecondsBoottime, bool(time_t* seconds));

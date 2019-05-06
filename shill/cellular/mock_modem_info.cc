@@ -19,7 +19,7 @@ MockModemInfo::MockModemInfo(ControlInterface* control,
   SetMockMembers();
 }
 
-MockModemInfo::~MockModemInfo() {}
+MockModemInfo::~MockModemInfo() = default;
 
 void MockModemInfo::SetMockMembers() {
   // These are always replaced by mocks.

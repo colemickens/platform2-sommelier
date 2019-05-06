@@ -36,7 +36,7 @@ ChromeosDBusPropertiesProxy::ChromeosDBusPropertiesProxy(
                  weak_factory_.GetWeakPtr()));
 }
 
-ChromeosDBusPropertiesProxy::~ChromeosDBusPropertiesProxy() {}
+ChromeosDBusPropertiesProxy::~ChromeosDBusPropertiesProxy() = default;
 
 KeyValueStore ChromeosDBusPropertiesProxy::GetAll(
     const string& interface_name) {

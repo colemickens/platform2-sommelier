@@ -64,7 +64,7 @@ EapCredentials::EapCredentials()
       password_provider_(
           std::make_unique<password_provider::PasswordProvider>()) {}
 
-EapCredentials::~EapCredentials() {}
+EapCredentials::~EapCredentials() = default;
 
 // static
 void EapCredentials::PopulateSupplicantProperties(

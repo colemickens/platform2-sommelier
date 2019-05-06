@@ -8,5 +8,5 @@ namespace shill {
 
 MockThrottler::MockThrottler() : Throttler(nullptr, nullptr) {}
 
-MockThrottler::~MockThrottler() {}
+MockThrottler::~MockThrottler() = default;
 }

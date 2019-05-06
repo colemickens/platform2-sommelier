@@ -16,7 +16,7 @@ namespace shill {
 // A stub implementation of StoreInterface.
 class StubStorage : public StoreInterface {
  public:
-  ~StubStorage() override {}
+  ~StubStorage() override = default;
 
   bool IsEmpty() const override { return true; }
   bool Open() override { return false; }

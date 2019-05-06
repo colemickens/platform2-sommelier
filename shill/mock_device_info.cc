@@ -12,6 +12,6 @@ MockDeviceInfo::MockDeviceInfo(ControlInterface* control_interface,
                                Manager* manager)
     : DeviceInfo(control_interface, dispatcher, metrics, manager) {}
 
-MockDeviceInfo::~MockDeviceInfo() {}
+MockDeviceInfo::~MockDeviceInfo() = default;
 
 }  // namespace shill

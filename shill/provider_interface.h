@@ -17,7 +17,7 @@ class KeyValueStore;
 // This is an interface for objects that creates and manages service objects.
 class ProviderInterface {
  public:
-  virtual ~ProviderInterface() {}
+  virtual ~ProviderInterface() = default;
 
   // Creates services from the entries within |profile|.
   virtual void CreateServicesFromProfile(const ProfileRefPtr& profile) = 0;

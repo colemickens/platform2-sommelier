@@ -15,6 +15,6 @@ MockWiFiProvider::MockWiFiProvider()
   ON_CALL(*this, GetHiddenSSIDList()).WillByDefault(Return(ByteArrays()));
 }
 
-MockWiFiProvider::~MockWiFiProvider() {}
+MockWiFiProvider::~MockWiFiProvider() = default;
 
 }  // namespace shill

@@ -66,7 +66,7 @@ class SimProxyInterface;
 // objects
 class ControlInterface {
  public:
-  virtual ~ControlInterface() {}
+  virtual ~ControlInterface() = default;
   virtual void RegisterManagerObject(
       Manager* manager, const base::Closure& registration_done_callback) = 0;
   virtual std::unique_ptr<DeviceAdaptorInterface> CreateDeviceAdaptor(

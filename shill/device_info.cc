@@ -167,7 +167,7 @@ DeviceInfo::DeviceInfo(ControlInterface* control_interface,
       sockets_(new Sockets()),
       time_(Time::GetInstance()) {}
 
-DeviceInfo::~DeviceInfo() {}
+DeviceInfo::~DeviceInfo() = default;
 
 void DeviceInfo::AddDeviceToBlackList(const string& device_name) {
   black_list_.insert(device_name);

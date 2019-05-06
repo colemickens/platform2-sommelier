@@ -550,7 +550,7 @@ Metrics::Metrics(EventDispatcher* dispatcher)
   chromeos_metrics::TimerReporter::set_metrics_lib(library_);
 }
 
-Metrics::~Metrics() {}
+Metrics::~Metrics() = default;
 
 // static
 Metrics::WiFiChannel Metrics::WiFiFrequencyToChannel(uint16_t frequency) {

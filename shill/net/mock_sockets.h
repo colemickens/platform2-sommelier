@@ -16,8 +16,8 @@ namespace shill {
 
 class MockSockets : public Sockets {
  public:
-  MockSockets() {}
-  ~MockSockets() override {}
+  MockSockets() = default;
+  ~MockSockets() override = default;
 
   MOCK_CONST_METHOD3(Accept, int(int sockfd, struct sockaddr* addr,
                                  socklen_t* addrlen));

@@ -52,7 +52,7 @@ VPNService::VPNService(ControlInterface* control,
                   nullptr)));
 }
 
-VPNService::~VPNService() {}
+VPNService::~VPNService() = default;
 
 void VPNService::Connect(Error* error, const char* reason) {
   if (IsConnected()) {

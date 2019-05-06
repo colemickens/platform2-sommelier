@@ -8,6 +8,6 @@ namespace shill {
 
 MockTDLSManager::MockTDLSManager() : TDLSManager(nullptr, nullptr, "") {}
 
-MockTDLSManager::~MockTDLSManager() {}
+MockTDLSManager::~MockTDLSManager() = default;
 
 }  // namespace shill

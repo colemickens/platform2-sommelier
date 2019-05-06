@@ -25,7 +25,7 @@ constexpr char kId[] = "des-cbc";
 
 }  // namespace
 
-CryptoDesCbc::CryptoDesCbc() {}
+CryptoDesCbc::CryptoDesCbc() = default;
 
 string CryptoDesCbc::GetId() const {
   return kId;

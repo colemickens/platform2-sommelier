@@ -20,7 +20,7 @@ DeviceMockAdaptor::DeviceMockAdaptor()
       rpc_conn_id_(kRpcConnId) {
 }
 
-DeviceMockAdaptor::~DeviceMockAdaptor() {}
+DeviceMockAdaptor::~DeviceMockAdaptor() = default;
 
 const string& DeviceMockAdaptor::GetRpcIdentifier() const {
   return rpc_id_;
@@ -31,7 +31,7 @@ const char IPConfigMockAdaptor::kRpcId[] = "/ipconfig_rpc";
 
 IPConfigMockAdaptor::IPConfigMockAdaptor() : rpc_id_(kRpcId) {}
 
-IPConfigMockAdaptor::~IPConfigMockAdaptor() {}
+IPConfigMockAdaptor::~IPConfigMockAdaptor() = default;
 
 const string& IPConfigMockAdaptor::GetRpcIdentifier() const {
   return rpc_id_;
@@ -42,7 +42,7 @@ const char ManagerMockAdaptor::kRpcId[] = "/manager_rpc";
 
 ManagerMockAdaptor::ManagerMockAdaptor() : rpc_id_(kRpcId) {}
 
-ManagerMockAdaptor::~ManagerMockAdaptor() {}
+ManagerMockAdaptor::~ManagerMockAdaptor() = default;
 
 const string& ManagerMockAdaptor::GetRpcIdentifier() const {
   return rpc_id_;
@@ -53,7 +53,7 @@ const char ProfileMockAdaptor::kRpcId[] = "/profile_rpc";
 
 ProfileMockAdaptor::ProfileMockAdaptor() : rpc_id_(kRpcId) {}
 
-ProfileMockAdaptor::~ProfileMockAdaptor() {}
+ProfileMockAdaptor::~ProfileMockAdaptor() = default;
 
 const string& ProfileMockAdaptor::GetRpcIdentifier() const {
   return rpc_id_;
@@ -67,7 +67,7 @@ RPCTaskMockAdaptor::RPCTaskMockAdaptor()
     : rpc_id_(kRpcId),
       rpc_conn_id_(kRpcConnId) {}
 
-RPCTaskMockAdaptor::~RPCTaskMockAdaptor() {}
+RPCTaskMockAdaptor::~RPCTaskMockAdaptor() = default;
 
 const string& RPCTaskMockAdaptor::GetRpcIdentifier() const {
   return rpc_id_;
@@ -81,16 +81,16 @@ const char ServiceMockAdaptor::kRpcId[] = "/service_rpc";
 
 ServiceMockAdaptor::ServiceMockAdaptor() : rpc_id_(kRpcId) {}
 
-ServiceMockAdaptor::~ServiceMockAdaptor() {}
+ServiceMockAdaptor::~ServiceMockAdaptor() = default;
 
 const string& ServiceMockAdaptor::GetRpcIdentifier() const {
   return rpc_id_;
 }
 
 #ifndef DISABLE_VPN
-ThirdPartyVpnMockAdaptor::ThirdPartyVpnMockAdaptor() {}
+ThirdPartyVpnMockAdaptor::ThirdPartyVpnMockAdaptor() = default;
 
-ThirdPartyVpnMockAdaptor::~ThirdPartyVpnMockAdaptor() {}
+ThirdPartyVpnMockAdaptor::~ThirdPartyVpnMockAdaptor() = default;
 #endif
 
 }  // namespace shill

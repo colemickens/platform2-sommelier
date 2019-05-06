@@ -10,8 +10,8 @@
 
 namespace shill {
 
-DBusServiceWatcherFactory::DBusServiceWatcherFactory() {}
-DBusServiceWatcherFactory::~DBusServiceWatcherFactory() {}
+DBusServiceWatcherFactory::DBusServiceWatcherFactory() = default;
+DBusServiceWatcherFactory::~DBusServiceWatcherFactory() = default;
 
 DBusServiceWatcherFactory* DBusServiceWatcherFactory::GetInstance() {
   static base::NoDestructor<DBusServiceWatcherFactory> instance;

@@ -66,7 +66,7 @@ NetlinkManager::NetlinkResponseHandler::NetlinkResponseHandler(
     : ack_handler_(ack_handler),
       error_handler_(error_handler) {}
 
-NetlinkManager::NetlinkResponseHandler::~NetlinkResponseHandler() {}
+NetlinkManager::NetlinkResponseHandler::~NetlinkResponseHandler() = default;
 
 void NetlinkManager::NetlinkResponseHandler::HandleError(
     AuxilliaryMessageType type, const NetlinkMessage* netlink_message) const {
@@ -185,7 +185,7 @@ NetlinkManager::NetlinkManager()
           IOHandlerFactoryContainer::GetInstance()->GetIOHandlerFactory()),
           dump_pending_(false) {}
 
-NetlinkManager::~NetlinkManager() {}
+NetlinkManager::~NetlinkManager() = default;
 
 NetlinkManager* NetlinkManager::GetInstance() {
   return g_netlink_manager.Pointer();

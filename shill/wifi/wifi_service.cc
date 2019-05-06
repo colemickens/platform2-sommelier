@@ -174,7 +174,7 @@ WiFiService::WiFiService(ControlInterface* control_interface,
             << " name: " << WiFi::LogSSID(friendly_name());
 }
 
-WiFiService::~WiFiService() {}
+WiFiService::~WiFiService() = default;
 
 bool WiFiService::IsAutoConnectable(const char** reason) const {
   if (!Service::IsAutoConnectable(reason)) {

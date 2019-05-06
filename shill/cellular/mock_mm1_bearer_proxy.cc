@@ -18,7 +18,7 @@ MockBearerProxy::MockBearerProxy() {
       .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
 }
 
-MockBearerProxy::~MockBearerProxy() {}
+MockBearerProxy::~MockBearerProxy() = default;
 
 }  // namespace mm1
 }  // namespace shill

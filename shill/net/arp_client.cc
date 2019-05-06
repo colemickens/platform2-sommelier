@@ -29,7 +29,7 @@ ArpClient::ArpClient(int interface_index)
       sockets_(new Sockets()),
       socket_(-1) {}
 
-ArpClient::~ArpClient() {}
+ArpClient::~ArpClient() = default;
 
 bool ArpClient::StartReplyListener() {
   return Start(ARPOP_REPLY);

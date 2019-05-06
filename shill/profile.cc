@@ -79,7 +79,7 @@ Profile::Profile(ControlInterface* control_interface,
   }
 }
 
-Profile::~Profile() {}
+Profile::~Profile() = default;
 
 bool Profile::InitStorage(InitStorageOption storage_option, Error* error) {
   CHECK(!persistent_profile_path_.empty());

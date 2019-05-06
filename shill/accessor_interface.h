@@ -26,8 +26,8 @@ class Error;
 template <class T>
 class AccessorInterface {
  public:
-  AccessorInterface() {}
-  virtual ~AccessorInterface() {}
+  AccessorInterface() = default;
+  virtual ~AccessorInterface() = default;
 
   // Reset the property to its default value. Sets |error| on failure.
   virtual void Clear(Error* error) = 0;

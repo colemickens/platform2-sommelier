@@ -18,6 +18,6 @@ MockDnsClient::MockDnsClient()
     : DnsClient(IPAddress::kFamilyIPv4, "", vector<string>(), 0, nullptr,
                 ClientCallback()) {}
 
-MockDnsClient::~MockDnsClient() {}
+MockDnsClient::~MockDnsClient() = default;
 
 }  // namespace shill

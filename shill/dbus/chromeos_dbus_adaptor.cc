@@ -55,7 +55,7 @@ ChromeosDBusAdaptor::ChromeosDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
   SLOG(this, 2) << "DBusAdaptor: " << object_path;
 }
 
-ChromeosDBusAdaptor::~ChromeosDBusAdaptor() {}
+ChromeosDBusAdaptor::~ChromeosDBusAdaptor() = default;
 
 // static
 bool ChromeosDBusAdaptor::SetProperty(PropertyStore* store,

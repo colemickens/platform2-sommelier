@@ -32,9 +32,9 @@ const char kTcpv6SocketInfoFilePath[] = "/proc/net/tcp6";
 
 }  // namespace
 
-SocketInfoReader::SocketInfoReader() {}
+SocketInfoReader::SocketInfoReader() = default;
 
-SocketInfoReader::~SocketInfoReader() {}
+SocketInfoReader::~SocketInfoReader() = default;
 
 FilePath SocketInfoReader::GetTcpv4SocketInfoFilePath() const {
   return FilePath(kTcpv4SocketInfoFilePath);

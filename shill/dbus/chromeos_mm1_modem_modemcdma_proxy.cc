@@ -33,7 +33,7 @@ ChromeosModemModemCdmaProxy::ChromeosModemModemCdmaProxy(
                  weak_factory_.GetWeakPtr()));
 }
 
-ChromeosModemModemCdmaProxy::~ChromeosModemModemCdmaProxy() {}
+ChromeosModemModemCdmaProxy::~ChromeosModemModemCdmaProxy() = default;
 
 void ChromeosModemModemCdmaProxy::Activate(const std::string& carrier,
                                            Error* error,

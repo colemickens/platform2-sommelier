@@ -13,6 +13,6 @@ MockConnection::MockConnection(const DeviceInfo* device_info)
           0, std::string(), false, Technology::kUnknown, device_info, nullptr) {
 }
 
-MockConnection::~MockConnection() {}
+MockConnection::~MockConnection() = default;
 
 }  // namespace shill

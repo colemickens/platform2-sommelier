@@ -16,7 +16,7 @@ namespace shill {
 // fi::w1::wpa_supplicant1::Interface_proxy that is actually used by WiFi.
 class SupplicantInterfaceProxyInterface {
  public:
-  virtual ~SupplicantInterfaceProxyInterface() {}
+  virtual ~SupplicantInterfaceProxyInterface() = default;
 
   virtual bool AddNetwork(const KeyValueStore& args,
                           std::string* network) = 0;

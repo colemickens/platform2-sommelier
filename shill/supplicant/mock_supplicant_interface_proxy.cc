@@ -6,7 +6,7 @@
 
 namespace shill {
 
-MockSupplicantInterfaceProxy::MockSupplicantInterfaceProxy() {}
-MockSupplicantInterfaceProxy::~MockSupplicantInterfaceProxy() {}
+MockSupplicantInterfaceProxy::MockSupplicantInterfaceProxy() = default;
+MockSupplicantInterfaceProxy::~MockSupplicantInterfaceProxy() = default;
 
 }  // namespace shill

@@ -40,7 +40,7 @@ PPPDevice::PPPDevice(ControlInterface* control,
     : VirtualDevice(control, dispatcher, metrics, manager, link_name,
                     interface_index, Technology::kPPP) {}
 
-PPPDevice::~PPPDevice() {}
+PPPDevice::~PPPDevice() = default;
 
 void PPPDevice::UpdateIPConfigFromPPP(const map<string, string>& configuration,
                                       bool blackhole_ipv6) {

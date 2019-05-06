@@ -18,6 +18,6 @@ MockCellularService::MockCellularService(ModemInfo* modem_info,
       .WillByDefault(ReturnRef(default_activation_state_));
 }
 
-MockCellularService::~MockCellularService() {}
+MockCellularService::~MockCellularService() = default;
 
 }  // namespace shill

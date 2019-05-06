@@ -26,7 +26,7 @@ ChromeosModemModem3gppProxy::ChromeosModemModem3gppProxy(
         new org::freedesktop::ModemManager1::Modem::Modem3gppProxy(
             bus, service, dbus::ObjectPath(path))) {}
 
-ChromeosModemModem3gppProxy::~ChromeosModemModem3gppProxy() {}
+ChromeosModemModem3gppProxy::~ChromeosModemModem3gppProxy() = default;
 
 void ChromeosModemModem3gppProxy::Register(const std::string& operator_id,
                                            Error* error,

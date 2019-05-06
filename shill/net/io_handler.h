@@ -36,8 +36,8 @@ class SHILL_EXPORT IOHandler {
   // Data buffer size in bytes.
   static const int kDataBufferSize = 4096;
 
-  IOHandler() {}
-  virtual ~IOHandler() {}
+  IOHandler() = default;
+  virtual ~IOHandler() = default;
 
   virtual void Start() {}
   virtual void Stop() {}

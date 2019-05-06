@@ -10,9 +10,9 @@
 
 namespace shill {
 
-MockControl::MockControl() {}
+MockControl::MockControl() = default;
 
-MockControl::~MockControl() {}
+MockControl::~MockControl() = default;
 
 std::unique_ptr<DeviceAdaptorInterface> MockControl::CreateDeviceAdaptor(
     Device* /*device*/) {

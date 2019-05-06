@@ -37,6 +37,6 @@ MockDevice::MockDevice(ControlInterface* control_interface,
       .WillByDefault(testing::ReturnRef(Device::connection()));
 }
 
-MockDevice::~MockDevice() {}
+MockDevice::~MockDevice() = default;
 
 }  // namespace shill

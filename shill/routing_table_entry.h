@@ -110,7 +110,7 @@ struct RoutingTableEntry {
     return *this;
   }
 
-  ~RoutingTableEntry() {}
+  ~RoutingTableEntry() = default;
 
   bool Equals(const RoutingTableEntry& b) const {
     return (dst.Equals(b.dst) &&
@@ -179,7 +179,7 @@ struct RoutingTableEntry {
 
 struct RoutingPolicyEntry {
  public:
-  RoutingPolicyEntry() {}
+  RoutingPolicyEntry() = default;
 
   RoutingPolicyEntry(IPAddress::Family family_in,
                      uint32_t priority_in,
@@ -227,7 +227,7 @@ struct RoutingPolicyEntry {
     return *this;
   }
 
-  ~RoutingPolicyEntry() {}
+  ~RoutingPolicyEntry() = default;
 
   bool Equals(const RoutingPolicyEntry& b) {
     return (family == b.family &&

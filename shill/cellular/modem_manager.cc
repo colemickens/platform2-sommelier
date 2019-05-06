@@ -27,7 +27,7 @@ ModemManager::ModemManager(const string& service,
       service_connected_(false),
       modem_info_(modem_info) {}
 
-ModemManager::~ModemManager() {}
+ModemManager::~ModemManager() = default;
 
 void ModemManager::Connect() {
   // Inheriting classes call this superclass method.

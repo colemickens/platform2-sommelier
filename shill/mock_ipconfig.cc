@@ -15,6 +15,6 @@ MockIPConfig::MockIPConfig(ControlInterface* control_interface,
       .WillByDefault(Invoke(this, &MockIPConfig::real_properties));
 }
 
-MockIPConfig::~MockIPConfig() {}
+MockIPConfig::~MockIPConfig() = default;
 
 }  // namespace shill

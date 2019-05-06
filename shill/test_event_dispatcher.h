@@ -19,7 +19,7 @@ class EventDispatcherForTest : public EventDispatcher {
   EventDispatcherForTest() {
     chromeos_message_loop_.SetAsCurrent();
   }
-  ~EventDispatcherForTest() override {}
+  ~EventDispatcherForTest() override = default;
 
  private:
   // Message loop for testing.

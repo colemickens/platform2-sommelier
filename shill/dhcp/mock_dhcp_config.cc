@@ -17,7 +17,7 @@ MockDHCPConfig::MockDHCPConfig(ControlInterface* control_interface,
                  string(),
                  string()) {}
 
-MockDHCPConfig::~MockDHCPConfig() {}
+MockDHCPConfig::~MockDHCPConfig() = default;
 
 void MockDHCPConfig::ProcessEventSignal(const std::string& reason,
                                         const KeyValueStore& configuration) {}

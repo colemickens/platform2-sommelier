@@ -60,7 +60,7 @@ CellularBearer::CellularBearer(ControlInterface* control_interface,
   CHECK(control_interface_);
 }
 
-CellularBearer::~CellularBearer() {}
+CellularBearer::~CellularBearer() = default;
 
 bool CellularBearer::Init() {
   SLOG(this, 3) << __func__ << ": path='" << dbus_path_

@@ -25,6 +25,6 @@ MockMobileOperatorInfo::MockMobileOperatorInfo(EventDispatcher* dispatcher,
   ON_CALL(*this, uuid()).WillByDefault(ReturnRef(empty_uuid_));
 }
 
-MockMobileOperatorInfo::~MockMobileOperatorInfo() {}
+MockMobileOperatorInfo::~MockMobileOperatorInfo() = default;
 
 }  // namespace shill

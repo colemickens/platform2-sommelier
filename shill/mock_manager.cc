@@ -36,6 +36,6 @@ MockManager::MockManager(ControlInterface* control_interface,
       .WillByDefault(Return(kSuspendDurationUsecs));
 }
 
-MockManager::~MockManager() {}
+MockManager::~MockManager() = default;
 
 }  // namespace shill

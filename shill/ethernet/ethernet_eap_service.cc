@@ -27,7 +27,7 @@ EthernetEapService::EthernetEapService(ControlInterface* control_interface,
   set_friendly_name("Ethernet EAP Parameters");
 }
 
-EthernetEapService::~EthernetEapService() {}
+EthernetEapService::~EthernetEapService() = default;
 
 string EthernetEapService::GetStorageIdentifier() const {
   return base::StringPrintf(

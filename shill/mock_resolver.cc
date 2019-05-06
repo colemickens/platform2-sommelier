@@ -6,8 +6,8 @@
 
 namespace shill {
 
-MockResolver::MockResolver() {}
+MockResolver::MockResolver() = default;
 
-MockResolver::~MockResolver() {}
+MockResolver::~MockResolver() = default;
 
 }  // namespace shill

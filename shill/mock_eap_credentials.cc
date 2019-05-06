@@ -13,6 +13,6 @@ MockEapCredentials::MockEapCredentials() : EapCredentials() {
       .WillByDefault(testing::ReturnRef(kDefaultKeyManagement));
 }
 
-MockEapCredentials::~MockEapCredentials() {}
+MockEapCredentials::~MockEapCredentials() = default;
 
 }  // namespace shill

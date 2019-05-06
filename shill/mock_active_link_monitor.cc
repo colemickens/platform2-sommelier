@@ -12,6 +12,6 @@ MockActiveLinkMonitor::MockActiveLinkMonitor()
     : ActiveLinkMonitor(nullptr, nullptr, nullptr, nullptr, FailureCallback(),
                         SuccessCallback()) {}
 
-MockActiveLinkMonitor::~MockActiveLinkMonitor() {}
+MockActiveLinkMonitor::~MockActiveLinkMonitor() = default;
 
 }  // namespace shill

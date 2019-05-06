@@ -43,7 +43,7 @@ PowerManager::PowerManager(EventDispatcher* dispatcher,
       current_dark_suspend_id_(0),
       suspend_duration_us_(0) {}
 
-PowerManager::~PowerManager() {}
+PowerManager::~PowerManager() = default;
 
 void PowerManager::Start(
     TimeDelta suspend_delay,

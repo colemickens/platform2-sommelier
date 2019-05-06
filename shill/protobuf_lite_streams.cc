@@ -39,7 +39,8 @@ ProtobufLiteCopyingFileInputStream::ProtobufLiteCopyingFileInputStream(int fd)
     scoped_fd_closer_(fd_),
     previous_seek_failed_(false) {}
 
-ProtobufLiteCopyingFileInputStream::~ProtobufLiteCopyingFileInputStream() {}
+ProtobufLiteCopyingFileInputStream::~ProtobufLiteCopyingFileInputStream() =
+    default;
 
 int ProtobufLiteCopyingFileInputStream::Read(void* buffer, int size) {
   return HANDLE_EINTR(read(fd_, buffer, size));

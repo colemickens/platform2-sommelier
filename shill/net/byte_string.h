@@ -17,7 +17,7 @@ namespace shill {
 // Provides a holder of a string of bytes
 class SHILL_EXPORT ByteString {
  public:
-  ByteString() {}
+  ByteString() = default;
   ByteString(const ByteString& b);
   ByteString(ByteString&&) = default;
 

@@ -37,7 +37,7 @@ class Profile : public base::RefCounted<Profile> {
     kCreateOrOpenExisting
   };
   struct Identifier {
-    Identifier() {}
+    Identifier() = default;
     explicit Identifier(const std::string& i) : identifier(i) {}
     Identifier(const std::string& u, const std::string& i)
         : user(u),

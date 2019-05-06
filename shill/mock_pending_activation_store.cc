@@ -6,7 +6,7 @@
 
 namespace shill {
 
-MockPendingActivationStore::MockPendingActivationStore() {}
-MockPendingActivationStore::~MockPendingActivationStore() {}
+MockPendingActivationStore::MockPendingActivationStore() = default;
+MockPendingActivationStore::~MockPendingActivationStore() = default;
 
 }  // namespace shill

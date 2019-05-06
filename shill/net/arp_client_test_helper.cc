@@ -14,7 +14,7 @@ namespace shill {
 ArpClientTestHelper::ArpClientTestHelper(MockArpClient* client)
     : client_(client) {}
 
-ArpClientTestHelper::~ArpClientTestHelper() {}
+ArpClientTestHelper::~ArpClientTestHelper() = default;
 
 void ArpClientTestHelper::GeneratePacket(uint16_t operation,
                                          const IPAddress& local_ip,

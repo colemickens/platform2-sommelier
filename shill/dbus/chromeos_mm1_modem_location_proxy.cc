@@ -29,7 +29,7 @@ ChromeosModemLocationProxy::ChromeosModemLocationProxy(
             bus, service, dbus::ObjectPath(path))) {
 }
 
-ChromeosModemLocationProxy::~ChromeosModemLocationProxy() {}
+ChromeosModemLocationProxy::~ChromeosModemLocationProxy() = default;
 
 void ChromeosModemLocationProxy::Setup(uint32_t sources, bool signal_location,
                                        Error* error,

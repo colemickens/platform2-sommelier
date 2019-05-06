@@ -34,7 +34,7 @@ ServiceUnderTest::ServiceUnderTest(ControlInterface* control_interface,
               &ServiceUnderTest::SetKeyValueStore)));
 }
 
-ServiceUnderTest::~ServiceUnderTest() {}
+ServiceUnderTest::~ServiceUnderTest() = default;
 
 string ServiceUnderTest::GetRpcIdentifier() const {
   return ServiceMockAdaptor::kRpcId;

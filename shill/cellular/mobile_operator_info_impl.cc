@@ -106,7 +106,7 @@ MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
           dispatcher, info_owner, kDefaultDatabasePath, kOverrideDatabasePath) {
 }
 
-MobileOperatorInfoImpl::~MobileOperatorInfoImpl() {}
+MobileOperatorInfoImpl::~MobileOperatorInfoImpl() = default;
 
 void MobileOperatorInfoImpl::ClearDatabasePaths() {
   database_paths_.clear();

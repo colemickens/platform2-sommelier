@@ -17,7 +17,7 @@ namespace shill {
 // These are the functions that a Device adaptor must support
 class DeviceAdaptorInterface {
  public:
-  virtual ~DeviceAdaptorInterface() {}
+  virtual ~DeviceAdaptorInterface() = default;
 
   // Getter for the opaque identifier that represents this object on the
   // RPC interface to which the implementation is adapting.
@@ -46,7 +46,7 @@ class DeviceAdaptorInterface {
 // These are the functions that an IPConfig adaptor must support
 class IPConfigAdaptorInterface {
  public:
-  virtual ~IPConfigAdaptorInterface() {}
+  virtual ~IPConfigAdaptorInterface() = default;
 
   // Getter for the opaque identifier that represents this object on the
   // RPC interface to which the implementation is adapting.
@@ -64,7 +64,7 @@ class IPConfigAdaptorInterface {
 // These are the functions that a Manager adaptor must support
 class ManagerAdaptorInterface {
  public:
-  virtual ~ManagerAdaptorInterface() {}
+  virtual ~ManagerAdaptorInterface() = default;
 
   virtual void RegisterAsync(
       const base::Callback<void(bool)>& completion_callback) = 0;
@@ -91,7 +91,7 @@ class ManagerAdaptorInterface {
 // These are the functions that a Profile adaptor must support
 class ProfileAdaptorInterface {
  public:
-  virtual ~ProfileAdaptorInterface() {}
+  virtual ~ProfileAdaptorInterface() = default;
 
   // Getter for the opaque identifier that represents this object on the
   // RPC interface to which the implementation is adapting.
@@ -107,7 +107,7 @@ class ProfileAdaptorInterface {
 // These are the functions that a RPCTask adaptor must support.
 class RPCTaskAdaptorInterface {
  public:
-  virtual ~RPCTaskAdaptorInterface() {}
+  virtual ~RPCTaskAdaptorInterface() = default;
 
   // Getter for the opaque identifier that represents this object on the
   // RPC interface to which the implementation is adapting.
@@ -121,7 +121,7 @@ class RPCTaskAdaptorInterface {
 // These are the functions that a Service adaptor must support
 class ServiceAdaptorInterface {
  public:
-  virtual ~ServiceAdaptorInterface() {}
+  virtual ~ServiceAdaptorInterface() = default;
 
   // Getter for the opaque identifier that represents this object on the
   // RPC interface to which the implementation is adapting.
@@ -144,7 +144,7 @@ class ServiceAdaptorInterface {
 
 class ThirdPartyVpnAdaptorInterface {
  public:
-  virtual ~ThirdPartyVpnAdaptorInterface() {}
+  virtual ~ThirdPartyVpnAdaptorInterface() = default;
 
   virtual void EmitPacketReceived(const std::vector<uint8_t>& packet) = 0;
 

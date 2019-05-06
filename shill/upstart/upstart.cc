@@ -16,7 +16,7 @@ const char Upstart::kShillConnectEvent[] = "shill-connected";
 Upstart::Upstart(ControlInterface* control_interface)
     : upstart_proxy_(control_interface->CreateUpstartProxy()) {}
 
-Upstart::~Upstart() {}
+Upstart::~Upstart() = default;
 
 void Upstart::NotifyDisconnected() {
   upstart_proxy_->EmitEvent(kShillDisconnectEvent, {}, false);

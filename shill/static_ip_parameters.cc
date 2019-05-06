@@ -40,9 +40,9 @@ const StaticIPParameters::Property StaticIPParameters::kProperties[] = {
   { kExcludedRoutesProperty, Property::kTypeStrings },
 };
 
-StaticIPParameters::StaticIPParameters() {}
+StaticIPParameters::StaticIPParameters() = default;
 
-StaticIPParameters::~StaticIPParameters() {}
+StaticIPParameters::~StaticIPParameters() = default;
 
 void StaticIPParameters::PlumbPropertyStore(PropertyStore* store) {
   // These individual fields will be deprecated once Chrome starts using

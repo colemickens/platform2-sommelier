@@ -18,7 +18,7 @@ MockModemModemCdmaProxy::MockModemModemCdmaProxy() {
       .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
 }
 
-MockModemModemCdmaProxy::~MockModemModemCdmaProxy() {}
+MockModemModemCdmaProxy::~MockModemModemCdmaProxy() = default;
 
 }  // namespace mm1
 }  // namespace shill

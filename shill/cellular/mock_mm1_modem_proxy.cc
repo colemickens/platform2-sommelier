@@ -32,7 +32,7 @@ MockModemProxy::MockModemProxy() {
       .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
 }
 
-MockModemProxy::~MockModemProxy() {}
+MockModemProxy::~MockModemProxy() = default;
 
 }  // namespace mm1
 }  // namespace shill

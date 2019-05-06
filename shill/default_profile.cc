@@ -84,7 +84,7 @@ DefaultProfile::DefaultProfile(ControlInterface* control,
       GetFinalStoragePath(storage_directory, Identifier(profile_id)));
 }
 
-DefaultProfile::~DefaultProfile() {}
+DefaultProfile::~DefaultProfile() = default;
 
 void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props,
                                            DhcpProperties* dhcp_properties) {

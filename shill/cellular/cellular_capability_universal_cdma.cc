@@ -44,7 +44,7 @@ CellularCapabilityUniversalCdma::CellularCapabilityUniversalCdma(
   // See crbug.com/197330.
 }
 
-CellularCapabilityUniversalCdma::~CellularCapabilityUniversalCdma() {}
+CellularCapabilityUniversalCdma::~CellularCapabilityUniversalCdma() = default;
 
 void CellularCapabilityUniversalCdma::InitProxies() {
   SLOG(this, 2) << __func__;

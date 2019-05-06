@@ -21,7 +21,7 @@ namespace mm1 {
 // the callbacks passed to the methods.
 class ModemModem3gppProxyInterface {
  public:
-  virtual ~ModemModem3gppProxyInterface() {}
+  virtual ~ModemModem3gppProxyInterface() = default;
 
   virtual void Register(const std::string& operator_id,
                         Error* error,

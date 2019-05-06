@@ -81,7 +81,7 @@ class SHILL_EXPORT NetlinkMessage {
   explicit NetlinkMessage(uint16_t message_type) :
       flags_(0), message_type_(message_type),
       sequence_number_(kBroadcastSequenceNumber) {}
-  virtual ~NetlinkMessage() {}
+  virtual ~NetlinkMessage() = default;
 
   // Returns a string of bytes representing the message (with it headers) and
   // any necessary padding.  These bytes are appropriately formatted to be
@@ -227,7 +227,7 @@ class SHILL_EXPORT NetlinkMessageFactory {
   using FactoryMethod = base::Callback<std::unique_ptr<NetlinkMessage>(
       const NetlinkPacket& packet)>;
 
-  NetlinkMessageFactory() {}
+  NetlinkMessageFactory() = default;
 
   // Adds a message factory for a specific message_type.  Intended to be used
   // at initialization.

@@ -29,9 +29,9 @@ static std::string ObjectID(const AttributeList* obj) {
 }
 }  // namespace Logging
 
-AttributeList::AttributeList() {}
+AttributeList::AttributeList() = default;
 
-AttributeList::~AttributeList() {}
+AttributeList::~AttributeList() = default;
 
 bool AttributeList::CreateAttribute(
     int id, AttributeList::NewFromIdMethod factory) {

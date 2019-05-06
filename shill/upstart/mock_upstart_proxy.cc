@@ -6,8 +6,8 @@
 
 namespace shill {
 
-MockUpstartProxy::MockUpstartProxy() {}
+MockUpstartProxy::MockUpstartProxy() = default;
 
-MockUpstartProxy::~MockUpstartProxy() {}
+MockUpstartProxy::~MockUpstartProxy() = default;
 
 }  // namespace shill

@@ -161,7 +161,7 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(Cellular* cellular,
       &CellularCapabilityUniversal::SimLockStatusToProperty);
 }
 
-CellularCapabilityUniversal::~CellularCapabilityUniversal() {}
+CellularCapabilityUniversal::~CellularCapabilityUniversal() = default;
 
 KeyValueStore CellularCapabilityUniversal::SimLockStatusToProperty(
     Error* /*error*/) {

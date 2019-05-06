@@ -14,6 +14,6 @@ MockPortalDetector::MockPortalDetector(ConnectionRefPtr connection)
                      nullptr,
                      base::Callback<void(const PortalDetector::Result&)>()) {}
 
-MockPortalDetector::~MockPortalDetector() {}
+MockPortalDetector::~MockPortalDetector() = default;
 
 }  // namespace shill

@@ -91,7 +91,7 @@ WiFiProvider::WiFiProvider(ControlInterface* control_interface,
       time_(Time::GetInstance()),
       disable_vht_(false) {}
 
-WiFiProvider::~WiFiProvider() {}
+WiFiProvider::~WiFiProvider() = default;
 
 void WiFiProvider::Start() {
   running_ = true;

@@ -23,7 +23,7 @@ using NetworkTimeChangedSignalCallback =
 // via callbacks passed to the methods.
 class ModemTimeProxyInterface {
  public:
-  virtual ~ModemTimeProxyInterface() {}
+  virtual ~ModemTimeProxyInterface() = default;
 
   virtual void GetNetworkTime(Error* error,
                               const StringCallback& callback,

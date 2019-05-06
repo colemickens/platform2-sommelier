@@ -26,7 +26,7 @@ ChromeosModemSimpleProxy::ChromeosModemSimpleProxy(
         new org::freedesktop::ModemManager1::Modem::SimpleProxy(
             bus, service, dbus::ObjectPath(path))) {}
 
-ChromeosModemSimpleProxy::~ChromeosModemSimpleProxy() {}
+ChromeosModemSimpleProxy::~ChromeosModemSimpleProxy() = default;
 
 void ChromeosModemSimpleProxy::Connect(
     const KeyValueStore& properties,

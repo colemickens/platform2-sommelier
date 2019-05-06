@@ -27,12 +27,12 @@ static auto kModuleLogScope = ScopeLogger::kProperty;
 static string ObjectID(const PropertyStore* p) { return "(property_store)"; }
 }
 
-PropertyStore::PropertyStore() {}
+PropertyStore::PropertyStore() = default;
 
 PropertyStore::PropertyStore(PropertyChangeCallback on_property_changed) :
     property_changed_callback_(on_property_changed) {}
 
-PropertyStore::~PropertyStore() {}
+PropertyStore::~PropertyStore() = default;
 
 bool PropertyStore::Contains(const string& prop) const {
   return (base::ContainsKey(bool_properties_, prop) ||

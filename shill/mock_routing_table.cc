@@ -8,8 +8,8 @@
 
 namespace shill {
 
-MockRoutingTable::MockRoutingTable() {}
+MockRoutingTable::MockRoutingTable() = default;
 
-MockRoutingTable::~MockRoutingTable() {}
+MockRoutingTable::~MockRoutingTable() = default;
 
 }  // namespace shill
