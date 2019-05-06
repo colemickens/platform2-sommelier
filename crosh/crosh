@@ -404,8 +404,10 @@ HELP_vmc=''
 EXEC_vmc='/usr/bin/vmc'
 cmd_vmc() (
   if ! is_chrome_feature_enabled "IsCrostiniEnabled"; then
-    echo "This command is not available."
-    return 1
+    if ! is_chrome_feature_enabled "IsPluginVmEnabled"; then
+      echo "This command is not available."
+      return 1
+    fi
   fi
 
   vmc "$@"
