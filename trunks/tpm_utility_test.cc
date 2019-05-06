@@ -187,6 +187,10 @@ class TpmUtilityTest : public testing::Test {
         .WillOnce(DoAll(SetArgPointee<1>(vendor_id), Return(true)));
   }
 
+  TPM_RC TpmUtilityGetRsuDeviceIdInternal(std::string* rsu_device_id) {
+    return utility_.GetRsuDeviceIdInternal(rsu_device_id);
+  }
+
  protected:
   TrunksFactoryForTest factory_;
   NiceMock<MockCommandTransceiver> mock_transceiver_;
@@ -2935,6 +2939,107 @@ TEST_F(TpmUtilityTest,
       "9B5CF4E5";
   EXPECT_EQ(hex_encoded_ekm,
             base::HexEncode(ekm.data(), ekm.size()));
+}
+
+TEST_F(TpmUtilityTest, GetRsuDeviceIdDecodesCorrectly) {
+  // Hardcoded kCr50GetRmaChallenge command and response.
+  std::string expected_command(
+      "\x80\x01"          // tag=TPM_ST_NO_SESSIONS
+      "\x00\x00\x00\x0c"  // size=12
+      "\x20\x00\x00\x00"  // code=kCr50VendorCC
+      "\x00\x1e",         // subcommand=kCr50GetRmaChallenge
+      12);
+  std::string command_response(
+      "\x80\x01"          // tag=TPM_STD_NO_SESSIONS
+      "\x00\x00\x00\x5c"  // size=92
+      "\x00\x00\x00\x00"  // code=TPM_RC_SUCCESS
+      "\x00\x1e\x41\x46\x48\x35\x53\x5a\x37\x51\x47\x55\x56\x58\x58\x33\x36\x56"
+      "\x4e\x39\x41\x55\x51\x35\x48\x45\x46\x56\x47\x37\x57\x38\x4d\x45\x4b\x50"
+      "\x56\x34\x53\x51\x4d\x42\x52\x45\x43\x54\x34\x46\x35\x50\x47\x5a\x57\x48"
+      "\x53\x46\x33\x58\x58\x43\x54\x57\x55\x42\x4d\x4b\x50\x4a\x57\x58\x59\x48"
+      "\x51\x45\x36\x57\x50\x34\x39\x46\x46\x46",  // RMA Challenge data
+      92);
+  std::string expected_device_id(
+      "\xcc\x39\xa9\xc9\xfa\xc2\x02\x4d\xa1\xef\xe7\xd3\xec\xd3\x68\xe6\xa1\x9f"
+      "\xa3\x79\xfc\x49\x29\x27\x8a\xf1\x31\x67\x33\xf3\x89\xa9",
+      32);
+
+  SetCr50(true);
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(expected_command))
+      .WillOnce(Return(command_response));
+
+  std::string rsu_device_id;
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetRsuDeviceId(&rsu_device_id));
+  EXPECT_EQ(rsu_device_id, expected_device_id);
+}
+
+TEST_F(TpmUtilityTest, GetRsuDeviceIdCaching) {
+  std::string rsu_device_id, rsu_device_id2, rsu_device_id3;
+  SetCr50(true);
+  // Hardcoded RMA challenges from two devices.
+  std::string command_response(
+      "\x80\x01"          // tag=TPM_STD_NO_SESSIONS
+      "\x00\x00\x00\x5c"  // size=92
+      "\x00\x00\x00\x00"  // code=TPM_RC_SUCCESS
+      "\x00\x1e\x41\x46\x48\x35\x53\x5a\x37\x51\x47\x55\x56\x58\x58\x33\x36\x56"
+      "\x4e\x39\x41\x55\x51\x35\x48\x45\x46\x56\x47\x37\x57\x38\x4d\x45\x4b\x50"
+      "\x56\x34\x53\x51\x4d\x42\x52\x45\x43\x54\x34\x46\x35\x50\x47\x5a\x57\x48"
+      "\x53\x46\x33\x58\x58\x43\x54\x57\x55\x42\x4d\x4b\x50\x4a\x57\x58\x59\x48"
+      "\x51\x45\x36\x57\x50\x34\x39\x46\x46\x46",  // RMA Challenge data
+      92);
+  std::string command_response2(
+      "\x80\x01"          // tag=TPM_STD_NO_SESSIONS
+      "\x00\x00\x00\x5c"  // size=92
+      "\x00\x00\x00\x00"  // code=TPM_RC_SUCCESS
+      "\x00\x1e\x41\x48\x47\x32\x48\x42\x4b\x45\x35\x42\x37\x52\x41\x4b\x55\x53"
+      "\x43\x47\x5a\x45\x35\x56\x35\x4c\x38\x48\x46\x35\x33\x36\x4d\x34\x42\x36"
+      "\x45\x45\x33\x33\x38\x34\x56\x39\x4c\x47\x4b\x53\x4e\x44\x41\x32\x41\x38"
+      "\x50\x34\x5a\x58\x43\x55\x54\x57\x55\x42\x4d\x4b\x50\x51\x33\x4d\x5a\x39"
+      "\x35\x52\x58\x39\x51\x45\x52\x33\x4c\x32",  // RMA challenge data
+      92);
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_))
+      .WillOnce(Return(command_response))
+      .WillOnce(Return(command_response2));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetRsuDeviceId(&rsu_device_id));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetRsuDeviceId(&rsu_device_id2));
+  EXPECT_EQ(rsu_device_id, rsu_device_id2);
+
+  EXPECT_EQ(TPM_RC_SUCCESS, TpmUtilityGetRsuDeviceIdInternal(&rsu_device_id3));
+  EXPECT_NE(rsu_device_id, rsu_device_id3);
+}
+
+TEST_F(TpmUtilityTest,
+       GetRsuDeviceIdReturnsTheSameValueForDifferentChallenges) {
+  SetCr50(true);
+  // Hardcoded RMA challanges from the same device.
+  std::string command_response(
+      "\x80\x01"          // tag=TPM_STD_NO_SESSIONS
+      "\x00\x00\x00\x5c"  // size=92
+      "\x00\x00\x00\x00"  // code=TPM_RC_SUCCESS
+      "\x00\x1e\x41\x46\x48\x35\x53\x5a\x37\x51\x47\x55\x56\x58\x58\x33\x36\x56"
+      "\x4e\x39\x41\x55\x51\x35\x48\x45\x46\x56\x47\x37\x57\x38\x4d\x45\x4b\x50"
+      "\x56\x34\x53\x51\x4d\x42\x52\x45\x43\x54\x34\x46\x35\x50\x47\x5a\x57\x48"
+      "\x53\x46\x33\x58\x58\x43\x54\x57\x55\x42\x4d\x4b\x50\x4a\x57\x58\x59\x48"
+      "\x51\x45\x36\x57\x50\x34\x39\x46\x46\x46",  // RMA Challenge data
+      92);
+  std::string command_response2(
+      "\x80\x01"
+      "\x00\x00\x00\x5c"
+      "\x00\x00\x00\x00"
+      "\x00\x1e\x41\x46\x56\x4c\x4e\x4a\x4b\x48\x38\x4e\x4a\x46\x56\x35\x48\x34"
+      "\x39\x57\x56\x59\x51\x43\x4a\x58\x52\x45\x4d\x5a\x32\x36\x44\x55\x4c\x51"
+      "\x4e\x44\x39\x54\x35\x38\x50\x43\x33\x54\x52\x51\x55\x41\x4e\x35\x53\x51"
+      "\x55\x54\x59\x35\x4d\x55\x54\x4b\x55\x42\x4d\x4b\x50\x4a\x57\x58\x59\x48"
+      "\x51\x45\x36\x57\x50\x34\x39\x46\x46\x46",  // RMA Challenge data
+      92);
+
+  std::string rsu_device_id, rsu_device_id2;
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_))
+      .WillOnce(Return(command_response))
+      .WillOnce(Return(command_response2));
+  EXPECT_EQ(TPM_RC_SUCCESS, TpmUtilityGetRsuDeviceIdInternal(&rsu_device_id));
+  EXPECT_EQ(TPM_RC_SUCCESS, TpmUtilityGetRsuDeviceIdInternal(&rsu_device_id2));
+  EXPECT_EQ(rsu_device_id, rsu_device_id2);
 }
 
 TEST_F(TpmUtilityTest, ManageCCDPwdNonCr50) {

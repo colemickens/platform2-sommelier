@@ -237,6 +237,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
       const std::string& h_aux, const std::string& cred_metadata,
       uint32_t* result_code, std::string* root_hash,
       std::string* cred_metadata_out, std::string* mac_out) override;
+  TPM_RC GetRsuDeviceId(std::string* device_id) override;
 
  private:
   friend class TpmUtilityTest;
@@ -245,6 +246,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   const TrunksFactory& factory_;
   std::map<uint32_t, TPMS_NV_PUBLIC> nvram_public_area_map_;
   uint32_t vendor_id_;
+  std::string cached_rsu_device_id_;
 
   // This methods sets the well-known owner authorization and creates SRK and
   // the salting key with it. Only succeeds if owner authorization was not set
@@ -407,6 +409,9 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   // Helper function for PinWeaver vendor specific commands.
   template <typename S, typename P> TPM_RC PinWeaverCommand(
       const std::string& tag, S serialize, P parse);
+
+  // Obrains RSU device id from Cr50.
+  TPM_RC GetRsuDeviceIdInternal(std::string* device_id);
 
   DISALLOW_COPY_AND_ASSIGN(TpmUtilityImpl);
 };

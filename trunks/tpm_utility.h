@@ -704,6 +704,9 @@ class TRUNKS_EXPORT TpmUtility {
                                     std::string* cred_metadata_out,
                                     std::string* mac_out) = 0;
 
+  // Retrieves cached RSU device id.
+  virtual TPM_RC GetRsuDeviceId(std::string* device_id) = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(TpmUtility);
 };

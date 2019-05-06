@@ -527,6 +527,9 @@ class TpmUtilityForwarder : public TpmUtility {
         root_hash, cred_metadata_out, mac_out);
   }
 
+  TPM_RC GetRsuDeviceId(std::string* device_id) override {
+    return target_->GetRsuDeviceId(device_id);
+  }
 
  private:
   TpmUtility* target_;
