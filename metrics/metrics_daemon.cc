@@ -26,8 +26,16 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
+#include "metrics/process_meter.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 #include "uploader/upload_service.h"
+
+// Returns a pointer for use in PostDelayedTask.  The daemon never exits on its
+// own: it can only abort or get killed.  Thus the daemon instance is never
+// deleted, and base::Unretained() is appropriate.  This macro exists so we can
+// comment this fact in one place.  A function is hard to write because of the
+// retturn type.
+#define GET_THIS_FOR_POSTTASK() (base::Unretained(this))
 
 using base::FilePath;
 using base::StringPrintf;
@@ -103,6 +111,11 @@ constexpr char kUncleanShutdownsDailyName[] = "Platform.UncleanShutdownsDaily";
 constexpr char kUncleanShutdownsWeeklyName[] =
     "Platform.UncleanShutdownsWeekly";
 
+// Max process allocation size in megabytes, used as an upper bound for UMA
+// histograms (these are all consumer devices, and 64 GB should be good for a
+// few more years).
+constexpr int kMaxMemSizeMiB = 64 * (1 << 10);
+
 // Handles the result of an attempt to connect to a D-Bus signal.
 void DBusSignalConnected(const std::string& interface,
                          const std::string& signal,
@@ -130,6 +143,8 @@ const int MetricsDaemon::kMetricStatsShortInterval = 1;       // seconds
 const int MetricsDaemon::kMetricStatsLongInterval = 30;       // seconds
 const int MetricsDaemon::kMetricMeminfoInterval = 30;         // seconds
 const int MetricsDaemon::kMetricDetachableBaseInterval = 30;  // seconds
+constexpr base::TimeDelta MetricsDaemon::kMetricReportProcessMemoryInterval =
+    base::TimeDelta::FromMinutes(10);
 
 // Assume a max rate of 250Mb/s for reads (worse for writes) and 512 byte
 // sectors.
@@ -320,6 +335,7 @@ void MetricsDaemon::Init(bool testing,
   upload_interval_ = upload_interval;
   server_ = server;
   metrics_file_ = metrics_file;
+  status_has_details_ = StatusHasDetails();
 
   // Get ticks per second (HZ) on this system.
   // Sysconf cannot fail, so no sanity checks are needed.
@@ -386,6 +402,9 @@ int MetricsDaemon::OnInit() {
   memuse_final_time_ = GetActiveTime() + kMemuseIntervals[0];
   ScheduleMemuseCallback(kMemuseIntervals[0]);
 
+  // Start collecting process memory stats.
+  ScheduleReportProcessMemory(kMetricReportProcessMemoryInterval);
+
   // Start collecting detachable base stats.
   ScheduleDetachableBaseCallback(kMetricDetachableBaseInterval);
 
@@ -428,7 +447,7 @@ int MetricsDaemon::OnInit() {
     powerd_proxy->ConnectToSignal(
         power_manager::kPowerManagerInterface,
         power_manager::kSuspendDoneSignal,
-        base::Bind(&MetricsDaemon::HandleSuspendDone, base::Unretained(this)),
+        base::Bind(&MetricsDaemon::HandleSuspendDone, GET_THIS_FOR_POSTTASK()),
         base::Bind(&DBusSignalConnected));
 
   } else {
@@ -439,7 +458,7 @@ int MetricsDaemon::OnInit() {
   base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&MetricsDaemon::HandleUpdateStatsTimeout,
-                 base::Unretained(this)),
+                 GET_THIS_FOR_POSTTASK()),
       base::TimeDelta::FromMilliseconds(kUpdateStatsIntervalMs));
 
   // Emit a "0" value on start, to provide a baseline for this metric.
@@ -629,7 +648,7 @@ void MetricsDaemon::ScheduleStatsCallback(int wait) {
   }
   base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&MetricsDaemon::StatsCallback, base::Unretained(this)),
+      base::Bind(&MetricsDaemon::StatsCallback, GET_THIS_FOR_POSTTASK()),
       base::TimeDelta::FromSeconds(wait));
 }
 
@@ -928,7 +947,7 @@ void MetricsDaemon::ScheduleMeminfoCallback(int wait) {
   base::TimeDelta wait_delta = base::TimeDelta::FromSeconds(wait);
   base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&MetricsDaemon::MeminfoCallback, base::Unretained(this),
+      base::Bind(&MetricsDaemon::MeminfoCallback, GET_THIS_FOR_POSTTASK(),
                  wait_delta),
       wait_delta);
 }
@@ -943,13 +962,59 @@ void MetricsDaemon::MeminfoCallback(base::TimeDelta wait) {
   // Make both calls even if the first one fails.  Only stop rescheduling if
   // both calls fail, since some platforms do not support zram.
   bool success = ProcessMeminfo(meminfo_raw);
-  bool reschedule = ReportZram(base::FilePath("/sys/block/zram0")) || success;
-  if (reschedule) {
+  success = ReportZram(base::FilePath("/sys/block/zram0")) || success;
+  if (success) {
     base::MessageLoop::current()->task_runner()->PostDelayedTask(
         FROM_HERE,
-        base::Bind(&MetricsDaemon::MeminfoCallback, base::Unretained(this),
+        base::Bind(&MetricsDaemon::MeminfoCallback, GET_THIS_FOR_POSTTASK(),
                    wait),
         wait);
+  }
+}
+
+void MetricsDaemon::ScheduleReportProcessMemory(base::TimeDelta interval) {
+  if (testing_)
+    return;
+  base::MessageLoop::current()->task_runner()->PostDelayedTask(
+      FROM_HERE,
+      base::Bind(&MetricsDaemon::ReportProcessMemoryCallback,
+                 GET_THIS_FOR_POSTTASK(), interval),
+      interval);
+}
+
+void MetricsDaemon::ReportProcessMemoryCallback(base::TimeDelta wait) {
+  ReportProcessMemory();
+  base::MessageLoop::current()->task_runner()->PostDelayedTask(
+      FROM_HERE,
+      base::Bind(&MetricsDaemon::ReportProcessMemoryCallback,
+                 GET_THIS_FOR_POSTTASK(), wait),
+      wait);
+}
+
+void MetricsDaemon::ReportProcessMemory() {
+  base::FilePath procfs_path("/proc");
+  base::FilePath run_path("/run");
+  ProcessInfo info(procfs_path, run_path);
+  info.Collect();
+  info.Classify();
+  for (int i = 0; i < PG_KINDS_COUNT; i++) {
+    ProcessGroupKind kind = static_cast<ProcessGroupKind>(i);
+    ProcessMemoryStats stats;
+    static_assert(
+        arraysize(kProcessMemoryUMANames[i]) == arraysize(stats.rss_sizes),
+        "RSS array size mismatch");
+    AccumulateProcessGroupStats(procfs_path, info.GetGroup(kind),
+                                status_has_details_, &stats);
+    ReportProcessGroupStats(kProcessMemoryUMANames[i], stats);
+  }
+}
+
+void MetricsDaemon::ReportProcessGroupStats(
+    const char* const uma_names[MEM_KINDS_COUNT],
+    const ProcessMemoryStats& stats) {
+  const uint64_t MiB = 1 << 20;
+  for (int i = 0; i < arraysize(stats.rss_sizes); i++) {
+    SendSample(uma_names[i], stats.rss_sizes[i] / MiB, 1, kMaxMemSizeMiB, 50);
   }
 }
 
@@ -960,8 +1025,9 @@ void MetricsDaemon::ScheduleDetachableBaseCallback(int wait) {
   base::TimeDelta wait_delta = base::TimeDelta::FromSeconds(wait);
   base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&MetricsDaemon::DetachableBaseCallback, base::Unretained(this),
-                 base::FilePath{kHammerSysfsPathPath}, wait_delta),
+      base::Bind(&MetricsDaemon::DetachableBaseCallback,
+                 GET_THIS_FOR_POSTTASK(), base::FilePath{kHammerSysfsPathPath},
+                 wait_delta),
       wait_delta);
 }
 
@@ -1009,8 +1075,8 @@ void MetricsDaemon::DetachableBaseCallback(const base::FilePath sysfs_path_path,
 
   base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&MetricsDaemon::DetachableBaseCallback, base::Unretained(this),
-                 sysfs_path_path, wait),
+      base::Bind(&MetricsDaemon::DetachableBaseCallback,
+                 GET_THIS_FOR_POSTTASK(), sysfs_path_path, wait),
       wait);
 }
 
@@ -1287,7 +1353,7 @@ void MetricsDaemon::ScheduleMemuseCallback(double interval) {
   }
   base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&MetricsDaemon::MemuseCallback, base::Unretained(this)),
+      base::Bind(&MetricsDaemon::MemuseCallback, GET_THIS_FOR_POSTTASK()),
       base::TimeDelta::FromSeconds(interval));
 }
 
@@ -1436,7 +1502,7 @@ void MetricsDaemon::SendCroutonStats() {
   } else {
     base::MessageLoop::current()->task_runner()->PostDelayedTask(
         FROM_HERE,
-        base::Bind(&MetricsDaemon::SendCroutonStats, base::Unretained(this)),
+        base::Bind(&MetricsDaemon::SendCroutonStats, GET_THIS_FOR_POSTTASK()),
         base::TimeDelta::FromMilliseconds(kUpdateStatsIntervalMs));
   }
 }
@@ -1486,7 +1552,7 @@ void MetricsDaemon::HandleUpdateStatsTimeout() {
   base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&MetricsDaemon::HandleUpdateStatsTimeout,
-                 base::Unretained(this)),
+                 GET_THIS_FOR_POSTTASK()),
       base::TimeDelta::FromMilliseconds(kUpdateStatsIntervalMs));
 }
 

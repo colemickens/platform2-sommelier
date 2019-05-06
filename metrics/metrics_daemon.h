@@ -19,6 +19,7 @@
 
 #include "metrics/metrics_library.h"
 #include "metrics/persistent_integer.h"
+#include "metrics/process_meter.h"
 #include "metrics/vmlog_writer.h"
 #include "uploader/upload_service.h"
 
@@ -184,6 +185,7 @@ class MetricsDaemon : public brillo::DBusDaemon {
   static const int kMetricStatsShortInterval;
   static const int kMetricStatsLongInterval;
   static const int kMetricMeminfoInterval;
+  static const base::TimeDelta kMetricReportProcessMemoryInterval;
   static const int kMetricDetachableBaseInterval;
   static const int kMetricSectorsIOMax;
   static const int kMetricSectorsBuckets;
@@ -305,6 +307,21 @@ class MetricsDaemon : public brillo::DBusDaemon {
 
   // Reports memory statistics.  Reschedules callback on success.
   void MeminfoCallback(base::TimeDelta wait);
+
+  // Schedules the initial process memory stats collection.  |interval| is the
+  // delay before the first collection and between further collections.
+  void ScheduleReportProcessMemory(base::TimeDelta interval);
+
+  // Runs ReportProcessMemory every |interval| time delta.
+  void ReportProcessMemoryCallback(base::TimeDelta interval);
+
+  // Classifies all processes into groups and reports the sum of their memory
+  // usage (total, anon, file, and shmem).
+  void ReportProcessMemory();
+
+  // Sends uma samples for memory usage of a group of processes.
+  void ReportProcessGroupStats(const char* const uma_names[MEM_KINDS_COUNT],
+                               const ProcessMemoryStats& stats);
 
   // Schedules detachable base collection callback.
   void ScheduleDetachableBaseCallback(int wait);
@@ -428,6 +445,10 @@ class MetricsDaemon : public brillo::DBusDaemon {
   // autosuspend idle time.
   uint64_t detachable_base_active_time_;
   uint64_t detachable_base_suspended_time_;
+
+  // True when /proc/<pid>/status contains separate RSS for anon, file, and
+  // shmem.
+  bool status_has_details_ = false;
 
   // Persistent values and accumulators for crash statistics.
   std::unique_ptr<PersistentInteger> daily_cycle_;

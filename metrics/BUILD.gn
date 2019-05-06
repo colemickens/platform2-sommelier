@@ -23,6 +23,7 @@ group("all") {
       ":cumulative_metrics_test",
       ":metrics_library_test",
       ":persistent_integer_test",
+      ":process_meter_test",
       ":timer_test",
       ":upload_service_test",
     ]
@@ -90,6 +91,7 @@ static_library("libmetrics_daemon") {
   sources = [
     "metrics_daemon.cc",
     "metrics_daemon_main.cc",
+    "process_meter.cc",
     "vmlog_writer.cc",
   ]
   include_dirs = [ "." ]
@@ -188,6 +190,19 @@ if (use.test) {
       "serialization/serialization_utils_test.cc",
     ]
     libs = [ "policy-${libbase_ver}" ]
+  }
+  executable("process_meter_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      "//common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "process_meter.cc",
+      "process_meter_test.cc",
+    ]
   }
   executable("timer_test") {
     configs += [
