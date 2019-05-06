@@ -144,10 +144,33 @@ void LegacyCryptohomeInterfaceAdaptor::GetKeyDataEx(
     const cryptohome::AccountIdentifier& in_account_id,
     const cryptohome::AuthorizationRequest& in_authorization_request,
     const cryptohome::GetKeyDataRequest& in_get_key_data_request) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
+          std::move(response));
+
+  user_data_auth::GetKeyDataRequest request;
+  request.mutable_account_id()->CopyFrom(in_account_id);
+  request.mutable_authorization_request()->CopyFrom(in_authorization_request);
+  request.mutable_key()->CopyFrom(in_get_key_data_request.key());
+  userdataauth_proxy_->GetKeyDataAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::GetKeyDataOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::GetKeyDataOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+    const user_data_auth::GetKeyDataReply& reply) {
+  cryptohome::BaseReply result;
+  result.set_error(
+      static_cast<cryptohome::CryptohomeErrorCode>(result.error()));
+  cryptohome::GetKeyDataReply* result_extension =
+      result.MutableExtension(cryptohome::GetKeyDataReply::reply);
+  result_extension->mutable_key_data()->CopyFrom(reply.key_data());
+  response->Return(result);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::MigrateKeyEx(

@@ -464,6 +464,9 @@ class LegacyCryptohomeInterfaceAdaptor
   void ListKeysExOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
       const user_data_auth::ListKeysReply& reply);
+  void GetKeyDataOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+      const user_data_auth::GetKeyDataReply& reply);
   void MountExOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
       const user_data_auth::MountReply& reply);
