@@ -29,9 +29,6 @@ bool IsTestImage();
 // Returns true if running on an official image.
 bool IsOfficialImage();
 
-// Returns true if the FORCE_OFFICIAL env var is set and non-zero.
-bool IsForceOfficialSet();
-
 // Gets a string describing the hardware class of the device. Returns
 // "undefined" if this cannot be determined.
 std::string GetHardwareClass();

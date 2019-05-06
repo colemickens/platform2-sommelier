@@ -41,6 +41,9 @@ namespace {
 
 // URL to send official build crash reports to.
 constexpr char kReportUploadProdUrl[] = "https://clients2.google.com/cr/report";
+// URL to send test/dev build crash reports to.
+constexpr char kReportUploadStagingUrl[] =
+    "https://clients2.google.com/cr/staging_report";
 constexpr char kUndefined[] = "undefined";
 constexpr char kChromeOsProduct[] = "ChromeOS";
 constexpr char kUploadVarPrefix[] = "upload_var_";
@@ -156,6 +159,9 @@ void ParseCommandLine(int argc,
       kMaxHoldOffTime.InSeconds());
   DEFINE_bool(ignore_hold_off_time, false,
               ignore_hold_off_time_description.c_str());
+  DEFINE_bool(dev, false,
+              "Send crash reports regardless of image/build type "
+              "and upload them to the staging server instead.");
   brillo::FlagHelper::Init(new_argv.size() - 1, new_argv.data(),
                            "Chromium OS Crash Sender");
   // TODO(satorux): Remove this once -e option is gone.
@@ -171,6 +177,7 @@ void ParseCommandLine(int argc,
   flags->crash_directory = FLAGS_crash_directory;
   flags->ignore_rate_limits = FLAGS_ignore_rate_limits;
   flags->ignore_hold_off_time = FLAGS_ignore_hold_off_time;
+  flags->allow_dev_sending = FLAGS_dev;
 
   // Set the predefined environment variables.
   for (const auto& it : env_vars)
@@ -200,8 +207,6 @@ std::string GetImageType() {
     return "test";
   else if (util::IsDeveloperImage())
     return "dev";
-  else if (util::IsForceOfficialSet())
-    return "force-official";
   else if (IsMock() && !IsMockSuccessful())
     return "mock-fail";
   else
@@ -253,9 +258,10 @@ void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir) {
 
 Action ChooseAction(const base::FilePath& meta_file,
                     MetricsLibraryInterface* metrics_lib,
+                    bool allow_dev_sending,
                     std::string* reason,
                     CrashInfo* info) {
-  if (!IsMock() && !IsOfficialImage()) {
+  if (!IsMock() && !IsOfficialImage() && !allow_dev_sending) {
     *reason = "Not an official OS version";
     return kRemove;
   }
@@ -559,7 +565,8 @@ Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
       max_crash_rate_(options.max_crash_rate),
       max_spread_time_(options.max_spread_time),
       hold_off_time_(options.hold_off_time),
-      sleep_function_(options.sleep_function) {}
+      sleep_function_(options.sleep_function),
+      allow_dev_sending_(options.allow_dev_sending) {}
 
 bool Sender::Init() {
   if (!scoped_temp_dir_.CreateUniqueTempDir()) {
@@ -579,7 +586,8 @@ void Sender::RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
 
     std::string reason;
     CrashInfo info;
-    switch (ChooseAction(meta_file, metrics_lib_.get(), &reason, &info)) {
+    switch (ChooseAction(meta_file, metrics_lib_.get(), allow_dev_sending_,
+                         &reason, &info)) {
       case kRemove:
         LOG(INFO) << "Removing: " << reason;
         RemoveReportFiles(meta_file);
@@ -831,8 +839,8 @@ bool Sender::RequestToSendCrash(const CrashDetails& details) {
     brillo::ErrorPtr upload_error;
     std::unique_ptr<brillo::http::Response> response =
         brillo::http::PostFormDataAndBlock(
-            kReportUploadProdUrl, std::move(form_data), {} /* headers */,
-            transport, &upload_error);
+            allow_dev_sending_ ? kReportUploadStagingUrl : kReportUploadProdUrl,
+            std::move(form_data), {} /* headers */, transport, &upload_error);
 
     if (!response) {
       LOG(ERROR) << "Crash sending failed with error: "

@@ -96,25 +96,8 @@ TEST_F(CrashCommonUtilTest, IsTestImage) {
   EXPECT_FALSE(IsTestImage());
 }
 
-TEST_F(CrashCommonUtilTest, IsForceOfficialSet) {
-  EXPECT_FALSE(IsForceOfficialSet());
-
-  // Check if FORCE_OFFICIAL is handled correctly.
-  setenv("FORCE_OFFICIAL", "0", 1 /* overwrite */);
-  EXPECT_FALSE(IsForceOfficialSet());
-
-  setenv("FORCE_OFFICIAL", "1", 1 /* overwrite */);
-  EXPECT_TRUE(IsForceOfficialSet());
-  unsetenv("FORCE_OFFICIAL");
-}
-
 TEST_F(CrashCommonUtilTest, IsOfficialImage) {
   EXPECT_FALSE(IsOfficialImage());
-
-  // Check if FORCE_OFFICIAL is handled correctly.
-  setenv("FORCE_OFFICIAL", "1", 1 /* overwrite */);
-  EXPECT_TRUE(IsOfficialImage());
-  unsetenv("FORCE_OFFICIAL");
 
   // Check if lsb-release is handled correctly.
   ASSERT_TRUE(test_util::CreateFile(

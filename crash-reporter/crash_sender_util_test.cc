@@ -300,8 +300,6 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_NoFlags) {
   const char* argv[] = {"crash_sender"};
   CommandLineFlags flags;
   ParseCommandLine(arraysize(argv), argv, &flags);
-  // By default, the value is 0.
-  EXPECT_STREQ("0", getenv("FORCE_OFFICIAL"));
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
   EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_FALSE(flags.ignore_rate_limits);
@@ -309,11 +307,11 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_NoFlags) {
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_HonorExistingValue) {
-  setenv("FORCE_OFFICIAL", "1", 1 /* overwrite */);
+  setenv("OVERRIDE_PAUSE_SENDING", "1", 1 /* overwrite */);
   const char* argv[] = {"crash_sender"};
   CommandLineFlags flags;
   ParseCommandLine(arraysize(argv), argv, &flags);
-  EXPECT_STREQ("1", getenv("FORCE_OFFICIAL"));
+  EXPECT_STREQ("1", getenv("OVERRIDE_PAUSE_SENDING"));
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
   EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_FALSE(flags.ignore_rate_limits);
@@ -321,10 +319,10 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_HonorExistingValue) {
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_OverwriteDefaultValue) {
-  const char* argv[] = {"crash_sender", "-e", "FORCE_OFFICIAL=1"};
+  const char* argv[] = {"crash_sender", "-e", "OVERRIDE_PAUSE_SENDING=1"};
   CommandLineFlags flags;
   ParseCommandLine(arraysize(argv), argv, &flags);
-  EXPECT_STREQ("1", getenv("FORCE_OFFICIAL"));
+  EXPECT_STREQ("1", getenv("OVERRIDE_PAUSE_SENDING"));
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
   EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_FALSE(flags.ignore_rate_limits);
@@ -332,11 +330,11 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_OverwriteDefaultValue) {
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_OverwriteExistingValue) {
-  setenv("FORCE_OFFICIAL", "1", 1 /* overwrite */);
-  const char* argv[] = {"crash_sender", "-e", "FORCE_OFFICIAL=2"};
+  setenv("OVERRIDE_PAUSE_SENDING", "1", 1 /* overwrite */);
+  const char* argv[] = {"crash_sender", "-e", "OVERRIDE_PAUSE_SENDING=2"};
   CommandLineFlags flags;
   ParseCommandLine(arraysize(argv), argv, &flags);
-  EXPECT_STREQ("2", getenv("FORCE_OFFICIAL"));
+  EXPECT_STREQ("2", getenv("OVERRIDE_PAUSE_SENDING"));
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
   EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_FALSE(flags.ignore_rate_limits);
@@ -426,9 +424,6 @@ TEST_F(CrashSenderUtilTest, GetImageType) {
   EXPECT_EQ("", GetImageType());
   ASSERT_TRUE(SetMockCrashSending(false));
   EXPECT_EQ("mock-fail", GetImageType());
-  setenv("FORCE_OFFICIAL", "1", 1 /* overwrite */);
-  EXPECT_EQ("force-official", GetImageType());
-  unsetenv("FORCE_OFFICIAL");
   ASSERT_TRUE(test_util::CreateFile(paths::Get(paths::kLeaveCoreFile), ""));
   EXPECT_EQ("dev", GetImageType());
   ASSERT_TRUE(test_util::CreateFile(
@@ -508,13 +503,14 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
   ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
 
   std::string reason;
+  bool allow_dev_sending = false;
 
   CrashInfo info;
   // The following files should be sent.
-  EXPECT_EQ(kSend,
-            ChooseAction(good_meta_, metrics_lib_.get(), &reason, &info));
-  EXPECT_EQ(kSend,
-            ChooseAction(absolute_meta_, metrics_lib_.get(), &reason, &info));
+  EXPECT_EQ(kSend, ChooseAction(good_meta_, metrics_lib_.get(),
+                                allow_dev_sending, &reason, &info));
+  EXPECT_EQ(kSend, ChooseAction(absolute_meta_, metrics_lib_.get(),
+                                allow_dev_sending, &reason, &info));
   // Sanity check that the valid crash info is returned.
   std::string value;
   EXPECT_EQ(absolute_log_.value(), info.payload_file.value());
@@ -523,54 +519,60 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
 
   // The following files should be ignored.
   EXPECT_EQ(kIgnore, ChooseAction(new_incomplete_meta_, metrics_lib_.get(),
-                                  &reason, &info));
+                                  allow_dev_sending, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Recent incomplete metadata"));
 
   // Device coredump should be ignored by default.
-  EXPECT_EQ(kIgnore,
-            ChooseAction(devcore_meta_, metrics_lib_.get(), &reason, &info));
+  EXPECT_EQ(kIgnore, ChooseAction(devcore_meta_, metrics_lib_.get(),
+                                  allow_dev_sending, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Device coredump upload not allowed"));
 
   // Device coredump should be sent, if uploading is allowed.
   CreateDeviceCoredumpUploadAllowedFile();
-  EXPECT_EQ(kSend,
-            ChooseAction(devcore_meta_, metrics_lib_.get(), &reason, &info));
+  EXPECT_EQ(kSend, ChooseAction(devcore_meta_, metrics_lib_.get(),
+                                allow_dev_sending, &reason, &info));
 
   // The following files should be removed.
-  EXPECT_EQ(kRemove,
-            ChooseAction(empty_meta_, metrics_lib_.get(), &reason, &info));
+  EXPECT_EQ(kRemove, ChooseAction(empty_meta_, metrics_lib_.get(),
+                                  allow_dev_sending, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Payload is not found"));
 
-  EXPECT_EQ(kRemove,
-            ChooseAction(corrupted_meta_, metrics_lib_.get(), &reason, &info));
+  EXPECT_EQ(kRemove, ChooseAction(corrupted_meta_, metrics_lib_.get(),
+                                  allow_dev_sending, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Corrupted metadata"));
 
   EXPECT_EQ(kRemove, ChooseAction(nonexistent_meta_, metrics_lib_.get(),
-                                  &reason, &info));
+                                  allow_dev_sending, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Missing payload"));
 
-  EXPECT_EQ(kRemove,
-            ChooseAction(unknown_meta_, metrics_lib_.get(), &reason, &info));
+  EXPECT_EQ(kRemove, ChooseAction(unknown_meta_, metrics_lib_.get(),
+                                  allow_dev_sending, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Unknown kind"));
 
   EXPECT_EQ(kRemove, ChooseAction(old_incomplete_meta_, metrics_lib_.get(),
-                                  &reason, &info));
+                                  allow_dev_sending, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Removing old incomplete metadata"));
 
   ASSERT_TRUE(SetConditions(kUnofficialBuild, kSignInMode, kMetricsEnabled));
-  EXPECT_EQ(kRemove,
-            ChooseAction(good_meta_, metrics_lib_.get(), &reason, &info));
+  EXPECT_EQ(kRemove, ChooseAction(good_meta_, metrics_lib_.get(),
+                                  allow_dev_sending, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Not an official OS version"));
 
+  // If we set allow_dev_sending, then the OS check will be skipped.
+  allow_dev_sending = true;
+  EXPECT_EQ(kSend, ChooseAction(good_meta_, metrics_lib_.get(),
+                                allow_dev_sending, &reason, &info));
+  allow_dev_sending = false;
+
   ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsDisabled));
-  EXPECT_EQ(kRemove,
-            ChooseAction(good_meta_, metrics_lib_.get(), &reason, &info));
+  EXPECT_EQ(kRemove, ChooseAction(good_meta_, metrics_lib_.get(),
+                                  allow_dev_sending, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Crash reporting is disabled"));
 
   // Valid crash files should be kept in the guest mode.
   ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsDisabled));
-  EXPECT_EQ(kSend,
-            ChooseAction(good_meta_, metrics_lib_.get(), &reason, &info));
+  EXPECT_EQ(kSend, ChooseAction(good_meta_, metrics_lib_.get(),
+                                allow_dev_sending, &reason, &info));
 }
 
 TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {

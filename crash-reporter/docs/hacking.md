@@ -18,13 +18,12 @@ Similarly, if you want Chrome coredumps to be retained, you can `touch
 Crash uploading is disabled on test images.
 You can force them to be uploaded by running:
 ```sh
-# crash_sender -e FORCE_OFFICIAL=1 --max_spread_time=0
+# crash_sender --dev --max_spread_time=0
 ```
 
 The `--max_spread_time=0` option is to make `crash_sender` upload right away.
 Otherwise it'll sleep a random amount of time (up to 10 minutes) between
 reports.
 
-If you're running a test image, `FORCE_OFFICIAL=1` isn't sufficient.
-You will also have to `touch /run/crash_reporter/crash-test-in-progress`.
-This will bypass all normal OS image checks though, so use this with caution.
+Crash reports uploaded with the `--dev` flag will be sent to the staging crash
+server which can be access at http://go/crash-staging.

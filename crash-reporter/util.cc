@@ -64,9 +64,6 @@ bool IsTestImage() {
 }
 
 bool IsOfficialImage() {
-  if (IsForceOfficialSet())
-    return true;
-
   std::string description;
   if (!GetCachedKeyValueDefault(base::FilePath(paths::kLsbRelease),
                                 "CHROMEOS_RELEASE_DESCRIPTION", &description)) {
@@ -74,11 +71,6 @@ bool IsOfficialImage() {
   }
 
   return description.find("Official") != std::string::npos;
-}
-
-bool IsForceOfficialSet() {
-  const char* value = getenv("FORCE_OFFICIAL");
-  return value && std::string(value) != "0";
 }
 
 std::string GetHardwareClass() {

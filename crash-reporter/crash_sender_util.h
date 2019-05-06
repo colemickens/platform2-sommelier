@@ -45,6 +45,7 @@ struct CommandLineFlags {
   std::string crash_directory;
   bool ignore_rate_limits = false;
   bool ignore_hold_off_time = false;
+  bool allow_dev_sending = false;
 };
 
 // Crash information obtained in ChooseAction().
@@ -83,9 +84,6 @@ enum Action {
 // script is gone. The environment variables are handy in the shell script, but
 // should not be needed in the C++ version.
 constexpr EnvPair kEnvironmentVariables[] = {
-    // Set this to 1 in the environment to allow uploading crash reports
-    // for unofficial versions.
-    {"FORCE_OFFICIAL", "0"},
     // Ignore PAUSE_CRASH_SENDING file if set.
     {"OVERRIDE_PAUSE_SENDING", "0"},
 };
@@ -127,8 +125,11 @@ void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir);
 // Chooses an action to take for the crash report associated with the given meta
 // file, and reports the reason. |metrics_lib| is used to check if metrics are
 // enabled, etc. The crash information will be stored in |info| for reuse.
+// Setting |allow_dev_sending| to true allows sending of crash reports even for
+// non-official builds.
 Action ChooseAction(const base::FilePath& meta_file,
                     MetricsLibraryInterface* metrics_lib,
+                    bool allow_dev_sending,
                     std::string* reason,
                     CrashInfo* info);
 
@@ -217,7 +218,11 @@ class Sender {
 
     // If true, we will ignore other checks when deciding if we should write to
     // the Chrome uploads.log file.
-    bool always_write_uploads_log;
+    bool always_write_uploads_log = false;
+
+    // If true, we allow sending crash reports for unofficial test images and
+    // the reports are uploaded to a staging crash server instead.
+    bool allow_dev_sending = false;
   };
 
   Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
@@ -281,6 +286,7 @@ class Sender {
   const base::TimeDelta max_spread_time_;
   const base::TimeDelta hold_off_time_;
   base::Callback<void(base::TimeDelta)> sleep_function_;
+  bool allow_dev_sending_;
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<brillo::OsReleaseReader> os_release_reader_;
 

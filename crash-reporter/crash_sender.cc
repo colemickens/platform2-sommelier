@@ -91,9 +91,14 @@ int RunChildMain(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  if (util::IsTestImage()) {
+  if (util::IsTestImage() && !flags.allow_dev_sending) {
     LOG(INFO) << "Exiting early due to test image.";
     return EXIT_FAILURE;
+  }
+
+  if (flags.allow_dev_sending) {
+    LOG(INFO) << "--dev flag present, ignore image checks and uploading "
+              << "crashes to staging server at go/crash-staging";
   }
 
   auto metrics_lib = std::make_unique<MetricsLibrary>();
@@ -105,6 +110,7 @@ int RunChildMain(int argc, char* argv[]) {
   if (flags.ignore_hold_off_time) {
     options.hold_off_time = base::TimeDelta::FromSeconds(0);
   }
+  options.allow_dev_sending = flags.allow_dev_sending;
   util::Sender sender(std::move(metrics_lib), options);
   if (!sender.Init()) {
     LOG(ERROR) << "Failed to initialize util::Sender";
