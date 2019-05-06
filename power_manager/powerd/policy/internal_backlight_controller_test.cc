@@ -965,7 +965,7 @@ TEST_F(InternalBacklightControllerTest, PreemptTransitionForShutdown) {
   // Start a user-requested transition to 0.
   Init(PowerSource::AC);
   test::CallSetScreenBrightness(
-      dbus_wrapper_.get(), 0, SetBacklightBrightnessRequest_Transition_GRADUAL,
+      dbus_wrapper_.get(), 0, SetBacklightBrightnessRequest_Transition_FAST,
       SetBacklightBrightnessRequest_Cause_USER_REQUEST);
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransitionMs,
@@ -1068,10 +1068,9 @@ TEST_F(InternalBacklightControllerTest, SetAndGetBrightness) {
 
   // Set the brightness to a known percent.
   const double kBrightnessPercent = 55.0;
-  test::CallSetScreenBrightness(
-      dbus_wrapper_.get(), kBrightnessPercent,
-      SetBacklightBrightnessRequest_Transition_GRADUAL,
-      SetBacklightBrightnessRequest_Cause_MODEL);
+  test::CallSetScreenBrightness(dbus_wrapper_.get(), kBrightnessPercent,
+                                SetBacklightBrightnessRequest_Transition_FAST,
+                                SetBacklightBrightnessRequest_Cause_MODEL);
   double percent = 0.0;
   ASSERT_TRUE(controller_->GetBrightnessPercent(&percent));
   ASSERT_DOUBLE_EQ(round(kBrightnessPercent), round(percent));

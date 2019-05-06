@@ -53,11 +53,14 @@ void OnSetBrightness(const std::string& method_name,
   if (reader.PopArrayOfBytesAsProto(&request)) {
     percent = request.percent();
     switch (request.transition()) {
-      case SetBacklightBrightnessRequest_Transition_GRADUAL:
-        transition = Transition::FAST;
-        break;
       case SetBacklightBrightnessRequest_Transition_INSTANT:
         transition = Transition::INSTANT;
+        break;
+      case SetBacklightBrightnessRequest_Transition_FAST:
+        transition = Transition::FAST;
+        break;
+      case SetBacklightBrightnessRequest_Transition_SLOW:
+        transition = Transition::SLOW;
         break;
     }
     cause = request.cause();
