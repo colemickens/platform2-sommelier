@@ -51,11 +51,23 @@ class CecDeviceTest : public ::testing::Test {
   void Init();
   // Sets up physical and logical address on the device.
   void Connect();
+  // Peforms the last stage of device initialization.
+  void ConfigureTVAddress(uint8_t address);
+  // Does the 2 above things at once.
+  void ConnectAndConfigureTVAddress(uint8_t address);
   // Sets device into active source mode (by issuing ImageViewOn request).
   void SetActiveSource();
   // Sends state update event to the device.
   void SendStateUpdateEvent(uint16_t physical_address,
                             uint16_t logical_address_mask);
+
+  // Sends state update event to the device.
+  void SendAndCheckMessage(uint16_t source_addr,
+                           uint16_t dest_addr,
+                           uint8_t opcode);
+
+  // Reads in a message initialized by provided function.
+  void ReadMessageIn(struct cec_msg msg);
 
   CecFd::Callback event_callback_;
   CecFdMock* cec_fd_mock_;  // owned by |device_|
@@ -94,8 +106,24 @@ void CecDeviceTest::Init() {
   ASSERT_FALSE(event_callback_.is_null());
 }
 
+void CecDeviceTest::ConfigureTVAddress(uint8_t address) {
+  EXPECT_CALL(*cec_fd_mock_, ReceiveMessage(_))
+      .WillOnce(Invoke([address](struct cec_msg* msg) {
+        cec_msg_init(msg, address, CEC_LOG_ADDR_BROADCAST);
+        cec_msg_report_physical_addr(msg, 0, CEC_OP_PRIM_DEVTYPE_TV);
+        return true;
+      }));
+  // Read the active source request.
+  event_callback_.Run(CecFd::EventType::kRead);
+}
+
 void CecDeviceTest::Connect() {
   SendStateUpdateEvent(kPhysicalAddress, kLogicalAddressMask);
+}
+
+void CecDeviceTest::ConnectAndConfigureTVAddress(uint8_t address) {
+  Connect();
+  ConfigureTVAddress(address);
 }
 
 void CecDeviceTest::SendStateUpdateEvent(uint16_t physical_address,
@@ -111,6 +139,29 @@ void CecDeviceTest::SendStateUpdateEvent(uint16_t physical_address,
       }));
 
   event_callback_.Run(CecFd::EventType::kPriorityRead);
+}
+
+void CecDeviceTest::SendAndCheckMessage(uint16_t source_addr,
+                                        uint16_t dest_addr,
+                                        uint8_t opcode) {
+  sent_message_ = {};
+  EXPECT_CALL(*cec_fd_mock_, TransmitMessage(_))
+      .WillOnce(DoAll(SaveArgPointee<0>(&sent_message_),
+                      Return(CecFd::TransmitResult::kOk)))
+      .RetiresOnSaturation();
+  event_callback_.Run(CecFd::EventType::kWrite);
+  EXPECT_EQ(source_addr, cec_msg_initiator(&sent_message_));
+  EXPECT_EQ(dest_addr, cec_msg_destination(&sent_message_));
+  EXPECT_EQ(opcode, cec_msg_opcode(&sent_message_));
+}
+
+void CecDeviceTest::ReadMessageIn(struct cec_msg msg) {
+  EXPECT_CALL(*cec_fd_mock_, ReceiveMessage(_))
+      .WillOnce(Invoke([&](struct cec_msg* message) {
+        *message = msg;
+        return true;
+      }));
+  event_callback_.Run(CecFd::EventType::kRead);
 }
 
 void CecDeviceTest::SetActiveSource() {
@@ -180,6 +231,8 @@ TEST_F(CecDeviceTest, TestConnect) {
   SendStateUpdateEvent(kPhysicalAddress, 0);
   SendStateUpdateEvent(kPhysicalAddress, kLogicalAddressMask);
 
+  ConfigureTVAddress(CEC_LOG_ADDR_TV);
+
   // Test if we are truly connected - if we are standby request should result in
   // write watch being requested.
   EXPECT_CALL(*cec_fd_mock_, WriteWatch());
@@ -188,7 +241,7 @@ TEST_F(CecDeviceTest, TestConnect) {
 
 TEST_F(CecDeviceTest, TestSendWakeUp) {
   Init();
-  Connect();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
 
   EXPECT_CALL(*cec_fd_mock_, WriteWatch())
       .Times(2)
@@ -226,7 +279,6 @@ TEST_F(CecDeviceTest, TestSendWakeUpWhileDisconnected) {
   Connect();
 
   event_callback_.Run(CecFd::EventType::kWrite);
-
   EXPECT_EQ(kLogicalAddress, cec_msg_initiator(&sent_message_));
   EXPECT_EQ(CEC_LOG_ADDR_BROADCAST, cec_msg_destination(&sent_message_));
   EXPECT_EQ(CEC_MSG_ACTIVE_SOURCE, cec_msg_opcode(&sent_message_));
@@ -234,7 +286,7 @@ TEST_F(CecDeviceTest, TestSendWakeUpWhileDisconnected) {
 
 TEST_F(CecDeviceTest, TestActiveSourceRequestResponse) {
   Init();
-  Connect();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
   SetActiveSource();
 
   EXPECT_CALL(*cec_fd_mock_, WriteWatch());
@@ -260,7 +312,7 @@ TEST_F(CecDeviceTest, TestActiveSourceRequestResponse) {
 
 TEST_F(CecDeviceTest, TestActiveSourceBrodcastHandling) {
   Init();
-  Connect();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
   SetActiveSource();
 
   // After receiving active source request broadcast, we should stop
@@ -289,7 +341,7 @@ TEST_F(CecDeviceTest, TestActiveSourceBrodcastHandling) {
 
 TEST_F(CecDeviceTest, TestGetDevicePowerStatus) {
   Init();
-  Connect();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
 
   EXPECT_CALL(*cec_fd_mock_, ReceiveMessage(_))
       .WillOnce(Invoke([](struct cec_msg* msg) {
@@ -315,7 +367,7 @@ TEST_F(CecDeviceTest, TestGetDevicePowerStatus) {
 
 TEST_F(CecDeviceTest, TestFeatureAbortResponse) {
   Init();
-  Connect();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
 
   // All others, not explicitly supported messages should be responded with
   // feature abort, let's test it with 'record off' request.
@@ -354,7 +406,7 @@ TEST_F(CecDeviceTest, TestEventReadFailureDisablesDevice) {
 
 TEST_F(CecDeviceTest, TestReadFailureDisablesDevice) {
   Init();
-  Connect();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
 
   // Object should enter disabled state when event read happens.
   EXPECT_CALL(*cec_fd_mock_, CecFdDestructorCalled());
@@ -368,7 +420,7 @@ TEST_F(CecDeviceTest, TestReadFailureDisablesDevice) {
 
 TEST_F(CecDeviceTest, TestFailureToSetWriteWatchDisablesDevice) {
   Init();
-  Connect();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
 
   // Object should enter disabled state when write watch failed.
   EXPECT_CALL(*cec_fd_mock_, WriteWatch()).WillOnce(Return(false));
@@ -382,7 +434,7 @@ TEST_F(CecDeviceTest, TestFailureToSetWriteWatchDisablesDevice) {
 
 TEST_F(CecDeviceTest, TestFailureToSendMessageDisablesDevice) {
   Init();
-  Connect();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
 
   // Object should enter disabled state when it fails to write out image view
   // on message.
@@ -399,7 +451,7 @@ TEST_F(CecDeviceTest, TestFailureToSendMessageDisablesDevice) {
 
 TEST_F(CecDeviceTest, TestErrorBusyRetries) {
   Init();
-  Connect();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
 
   // Object should retry
   EXPECT_CALL(*cec_fd_mock_, WriteWatch())
@@ -421,7 +473,7 @@ TEST_F(CecDeviceTest, TestErrorBusyRetries) {
 
 TEST_F(CecDeviceTest, TestGetTvStatus) {
   Init();
-  Connect();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
 
   TvPowerStatus power_status = kTvPowerStatusUnknown;
 
@@ -453,27 +505,23 @@ TEST_F(CecDeviceTest, TestGetTvStatus) {
 
 TEST_F(CecDeviceTest, TestGetTvStatusOnDisconnect) {
   Init();
-  Connect();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
 
   TvPowerStatus power_status = kTvPowerStatusUnknown;
-
   device_->GetTvPowerStatus(base::Bind(Copy, &power_status));
 
   SendStateUpdateEvent(CEC_PHYS_ADDR_INVALID, CEC_LOG_ADDR_INVALID);
-
   EXPECT_EQ(kTvPowerStatusAdapterNotConfigured, power_status);
 }
 
 TEST_F(CecDeviceTest, TestGetTvStatusError) {
   Init();
-  Connect();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
 
   TvPowerStatus power_status = kTvPowerStatusUnknown;
-
   EXPECT_CALL(*cec_fd_mock_, WriteWatch()).WillOnce(Return(false));
 
   device_->GetTvPowerStatus(base::Bind(Copy, &power_status));
-
   EXPECT_EQ(kTvPowerStatusError, power_status);
 }
 
@@ -498,6 +546,8 @@ TEST_F(CecDeviceTest, TestMessageSendingWhenNoLogicalAddressIsConfigured) {
   // Provide a logical address now.
   SendStateUpdateEvent(kPhysicalAddress, kLogicalAddressMask);
 
+  ConfigureTVAddress(CEC_LOG_ADDR_TV);
+
   // Tell the object that the fd is ready to be written to.
   event_callback_.Run(CecFd::EventType::kWrite);
 
@@ -509,7 +559,7 @@ extern const size_t kCecDeviceMaxTxQueueSize;
 
 TEST_F(CecDeviceTest, TestMaxTxQueueSize) {
   Init();
-  Connect();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
 
   ON_CALL(*cec_fd_mock_, WriteWatch()).WillByDefault(Return(true));
 
@@ -522,6 +572,229 @@ TEST_F(CecDeviceTest, TestMaxTxQueueSize) {
   TvPowerStatus power_status_error = kTvPowerStatusUnknown;
   device_->GetTvPowerStatus(base::Bind(Copy, &power_status_error));
   EXPECT_EQ(kTvPowerStatusError, power_status_error);
+}
+
+TEST_F(CecDeviceTest, TestTvProbingFirstProbeSuceedes) {
+  Init();
+  Connect();
+
+  device_->SetStandBy();
+
+  event_callback_.Run(CecFd::EventType::kWrite);
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  struct cec_msg msg;
+  cec_msg_init(&msg, 0, CEC_LOG_ADDR_BROADCAST);
+  cec_msg_report_physical_addr(&msg, 0, CEC_OP_PRIM_DEVTYPE_TV);
+  msg.sequence = 1;
+  ReadMessageIn(msg);
+
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_TV, CEC_MSG_STANDBY);
+}
+
+TEST_F(CecDeviceTest, TestTvProbingSecondProbeSuceeds) {
+  Init();
+  Connect();
+
+  device_->SetStandBy();
+
+  // Two 'ticks' are needed for the the CecDevice to send an initial
+  // 'give physical address' message.
+  event_callback_.Run(CecFd::EventType::kWrite);
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  struct cec_msg msg;
+  cec_msg_init(&msg, kLogicalAddress, 0);
+  cec_msg_give_physical_addr(&msg, 0);
+  msg.sequence = 1;
+  msg.tx_status = CEC_TX_STATUS_NACK;
+  ReadMessageIn(msg);
+
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_SPECIFIC,
+                      CEC_MSG_GIVE_PHYSICAL_ADDR);
+
+  cec_msg_init(&msg, CEC_LOG_ADDR_SPECIFIC, CEC_LOG_ADDR_BROADCAST);
+  cec_msg_report_physical_addr(&msg, 0, CEC_OP_PRIM_DEVTYPE_TV);
+  msg.sequence = 1;
+  ReadMessageIn(msg);
+
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_SPECIFIC, CEC_MSG_STANDBY);
+}
+
+TEST_F(CecDeviceTest, TestTvProbingBroadcastTerminatesProbing) {
+  Init();
+  Connect();
+
+  device_->SetWakeUp();
+
+  // Two 'ticks' are needed for the the CecDevice to send an initial
+  // 'give physical address' message.
+  event_callback_.Run(CecFd::EventType::kWrite);
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  struct cec_msg msg;
+
+  // Unsolicited broadcast.
+  cec_msg_init(&msg, CEC_LOG_ADDR_SPECIFIC, kLogicalAddress);
+  cec_msg_report_physical_addr(&msg, 0, CEC_OP_PRIM_DEVTYPE_TV);
+  ReadMessageIn(msg);
+
+  // Response to the query.
+  cec_msg_init(&msg, kLogicalAddress, 0);
+  cec_msg_give_physical_addr(&msg, 0);
+  msg.sequence = 1;
+  msg.tx_status = CEC_TX_STATUS_NACK;
+  ReadMessageIn(msg);
+
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_SPECIFIC,
+                      CEC_MSG_IMAGE_VIEW_ON);
+}
+
+TEST_F(CecDeviceTest, TestTvProbingFirstResponseFromWrongPhysicalAddress) {
+  Init();
+  Connect();
+
+  device_->SetWakeUp();
+
+  // Two 'ticks' are needed for the the CecDevice to send an initial
+  // 'give physical address' message.
+  event_callback_.Run(CecFd::EventType::kWrite);
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  struct cec_msg msg;
+  cec_msg_init(&msg, 0, 0);
+  cec_msg_report_physical_addr(&msg, 1, CEC_OP_PRIM_DEVTYPE_TV);
+  msg.sequence = 1;
+  ReadMessageIn(msg);
+
+  // We should see another probe.
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_SPECIFIC,
+                      CEC_MSG_GIVE_PHYSICAL_ADDR);
+}
+
+TEST_F(CecDeviceTest, TestTvProbingAllRequestsFail) {
+  Init();
+  Connect();
+
+  struct cec_msg fail_msg;
+  cec_msg_init(&fail_msg, kLogicalAddress, 0);
+  cec_msg_give_physical_addr(&fail_msg, 0);
+  fail_msg.sequence = 1;
+  fail_msg.tx_status = CEC_TX_STATUS_NACK;
+
+  device_->SetStandBy();
+
+  // Two 'ticks' are needed for the the CecDevice to send an initial
+  // 'give physical address' message.
+  event_callback_.Run(CecFd::EventType::kWrite);
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  ReadMessageIn(fail_msg);
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_SPECIFIC,
+                      CEC_MSG_GIVE_PHYSICAL_ADDR);
+
+  ReadMessageIn(fail_msg);
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_TV, CEC_MSG_STANDBY);
+}
+
+TEST_F(CecDeviceTest, TestTvProbingAllSendsFail) {
+  Init();
+  Connect();
+
+  device_->SetStandBy();
+
+  // Two 'ticks' are needed for the the CecDevice to send an initial
+  // 'give physical address' message.
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  EXPECT_CALL(*cec_fd_mock_, TransmitMessage(_))
+      .WillOnce(Return(CecFd::TransmitResult::kNoNet));
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  EXPECT_CALL(*cec_fd_mock_, TransmitMessage(_))
+      .WillOnce(Return(CecFd::TransmitResult::kBusy));
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  EXPECT_CALL(*cec_fd_mock_, TransmitMessage(_))
+      .WillOnce(Return(CecFd::TransmitResult::kNoNet));
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_TV, CEC_MSG_STANDBY);
+}
+
+TEST_F(CecDeviceTest, TestTvProbingSendNonrecoverableError) {
+  Init();
+  Connect();
+
+  device_->SetStandBy();
+  // Two 'ticks' are needed for the the CecDevice to send an initial
+  // 'give physical address' message.
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  EXPECT_CALL(*cec_fd_mock_, CecFdDestructorCalled());
+  EXPECT_CALL(*cec_fd_mock_, TransmitMessage(_))
+      .WillOnce(Return(CecFd::TransmitResult::kError));
+  event_callback_.Run(CecFd::EventType::kWrite);
+  // Verify that the fd has been destroyed at this point, i.e.
+  // object has entered disabled state.
+  EXPECT_TRUE(Mock::VerifyAndClearExpectations(cec_fd_mock_));
+}
+
+TEST_F(CecDeviceTest, TestApiRequestRetriggersProbing) {
+  Init();
+  Connect();
+
+  device_->SetStandBy();
+
+  // Two 'ticks' are needed for the the CecDevice to send an initial
+  // 'give physical address' message.
+  event_callback_.Run(CecFd::EventType::kWrite);
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  struct cec_msg msg;
+  cec_msg_init(&msg, kLogicalAddress, 0);
+  cec_msg_give_physical_addr(&msg, 0);
+  msg.sequence = 1;
+  msg.tx_status = CEC_TX_STATUS_NACK;
+
+  ReadMessageIn(msg);
+  // Ignore the sent out message.
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  ReadMessageIn(msg);
+  // Ignore the sent out message.
+  event_callback_.Run(CecFd::EventType::kWrite);
+
+  // Another request, should trigger requery.
+  device_->SetStandBy();
+
+  // First spurious write.
+  event_callback_.Run(CecFd::EventType::kWrite);
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_TV,
+                      CEC_MSG_GIVE_PHYSICAL_ADDR);
+}
+
+TEST_F(CecDeviceTest, TestSendingToTVFailsReproesAddress) {
+  Init();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
+
+  device_->SetStandBy();
+
+  struct cec_msg msg;
+  cec_msg_init(&msg, kLogicalAddress, 0);
+  cec_msg_standby(&msg);
+  msg.sequence = 1;
+  msg.tx_status = CEC_TX_STATUS_NACK;
+  ReadMessageIn(msg);
+
+  // We should start off by reprobing TV address.
+  device_->SetStandBy();
+
+  // Two 'ticks' are needed for the the CecDevice to send an initial
+  // 'give physical address' message.
+  event_callback_.Run(CecFd::EventType::kWrite);
+  SendAndCheckMessage(kLogicalAddress, CEC_LOG_ADDR_TV,
+                      CEC_MSG_GIVE_PHYSICAL_ADDR);
 }
 
 }  // namespace cecservice
