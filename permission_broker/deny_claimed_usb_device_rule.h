@@ -45,7 +45,7 @@ class DenyClaimedUsbDeviceRule : public UsbSubsystemUdevRule {
 
   // Returns whether a USB device is whitelisted inside the device settings
   // to be detached from its kernel driver.
-  bool IsDeviceDetachable(udev_device* device);
+  bool IsDeviceDetachableByPolicy(udev_device* device);
 
   // Returns whether a USB interface represents the Android Debug Bridge.
   // If so, then its parent node is an Android device with USB debugging
