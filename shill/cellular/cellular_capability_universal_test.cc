@@ -814,11 +814,11 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
       .Times(3);
 
   EXPECT_FALSE(cellular_->sim_present());
-  EXPECT_EQ(nullptr, capability_->sim_proxy_);;
+  EXPECT_EQ(nullptr, capability_->sim_proxy_);
 
   capability_->OnSimPathChanged(kSimPath);
   EXPECT_TRUE(cellular_->sim_present());
-  EXPECT_NE(nullptr, capability_->sim_proxy_);;
+  EXPECT_NE(nullptr, capability_->sim_proxy_);
   EXPECT_EQ(kSimPath, capability_->sim_path_);
 
   cellular_->set_imsi("");
@@ -853,7 +853,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   // SIM is missing and SIM path is "/".
   capability_->OnSimPathChanged(CellularCapabilityUniversal::kRootPath);
   EXPECT_FALSE(cellular_->sim_present());
-  EXPECT_EQ(nullptr, capability_->sim_proxy_);;
+  EXPECT_EQ(nullptr, capability_->sim_proxy_);
   EXPECT_EQ(CellularCapabilityUniversal::kRootPath, capability_->sim_path_);
 
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
@@ -868,7 +868,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   // SIM is missing and SIM path is empty.
   capability_->OnSimPathChanged("");
   EXPECT_FALSE(cellular_->sim_present());
-  EXPECT_EQ(nullptr, capability_->sim_proxy_);;
+  EXPECT_EQ(nullptr, capability_->sim_proxy_);
   EXPECT_EQ("", capability_->sim_path_);
 
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
@@ -1191,7 +1191,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
       .Times(4);
 
   EXPECT_FALSE(cellular_->sim_present());
-  EXPECT_EQ(nullptr, capability_->sim_proxy_);;
+  EXPECT_EQ(nullptr, capability_->sim_proxy_);
   EXPECT_EQ("", capability_->sim_path_);
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->sim_identifier());
@@ -1199,7 +1199,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
 
   capability_->OnSimPathChanged(kSimPath);
   EXPECT_TRUE(cellular_->sim_present());
-  EXPECT_NE(nullptr, capability_->sim_proxy_);;
+  EXPECT_NE(nullptr, capability_->sim_proxy_);
   EXPECT_EQ(kSimPath, capability_->sim_path_);
   EXPECT_EQ(kImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
@@ -1208,7 +1208,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   // Changing to the same SIM path should be a no-op.
   capability_->OnSimPathChanged(kSimPath);
   EXPECT_TRUE(cellular_->sim_present());
-  EXPECT_NE(nullptr, capability_->sim_proxy_);;
+  EXPECT_NE(nullptr, capability_->sim_proxy_);
   EXPECT_EQ(kSimPath, capability_->sim_path_);
   EXPECT_EQ(kImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
@@ -1218,7 +1218,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
   Mock::VerifyAndClearExpectations(properties_proxy_.get());
   EXPECT_FALSE(cellular_->sim_present());
-  EXPECT_EQ(nullptr, capability_->sim_proxy_);;
+  EXPECT_EQ(nullptr, capability_->sim_proxy_);
   EXPECT_EQ("", capability_->sim_path_);
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->sim_identifier());
@@ -1232,7 +1232,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
 
   capability_->OnSimPathChanged(kSimPath);
   EXPECT_TRUE(cellular_->sim_present());
-  EXPECT_NE(nullptr, capability_->sim_proxy_);;
+  EXPECT_NE(nullptr, capability_->sim_proxy_);
   EXPECT_EQ(kSimPath, capability_->sim_path_);
   EXPECT_EQ(kImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
@@ -1240,7 +1240,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
 
   capability_->OnSimPathChanged("/");
   EXPECT_FALSE(cellular_->sim_present());
-  EXPECT_EQ(nullptr, capability_->sim_proxy_);;
+  EXPECT_EQ(nullptr, capability_->sim_proxy_);
   EXPECT_EQ("/", capability_->sim_path_);
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->sim_identifier());
@@ -1327,7 +1327,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateActiveBearer) {
         base::StringPrintf("%s/%zu", kInactiveBearerPathPrefix, i);
   }
 
-  EXPECT_EQ(nullptr, capability_->GetActiveBearer());;
+  EXPECT_EQ(nullptr, capability_->GetActiveBearer());
 
   // Check that |active_bearer_| is set correctly when an active bearer is
   // returned.
@@ -1337,7 +1337,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateActiveBearer) {
                                  inactive_paths[1],
                                  inactive_paths[2]});
   capability_->UpdateActiveBearer();
-  ASSERT_NE(nullptr, capability_->GetActiveBearer());;
+  ASSERT_NE(nullptr, capability_->GetActiveBearer());
   EXPECT_EQ(active_paths[2], capability_->GetActiveBearer()->dbus_path());
 
   // Check that |active_bearer_| is nullptr if no active bearers are returned.
@@ -1346,7 +1346,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateActiveBearer) {
                                  inactive_paths[2],
                                  inactive_paths[1]});
   capability_->UpdateActiveBearer();
-  EXPECT_EQ(nullptr, capability_->GetActiveBearer());;
+  EXPECT_EQ(nullptr, capability_->GetActiveBearer());
 
   // Check that returning multiple bearers causes death.
   capability_->OnBearersChanged({active_paths[0],
@@ -1359,7 +1359,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateActiveBearer) {
 
   capability_->OnBearersChanged({});
   capability_->UpdateActiveBearer();
-  EXPECT_EQ(nullptr, capability_->GetActiveBearer());;
+  EXPECT_EQ(nullptr, capability_->GetActiveBearer());
 }
 
 // Validates FillConnectPropertyMap

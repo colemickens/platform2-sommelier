@@ -129,7 +129,7 @@ constexpr int Metrics::kMetricsMonthlyTimeOnlineSamplePeriod =
 constexpr int Metrics::kMetricsMonthlyTimeOnlineAccumulationPeriod =
     24 * 60 * 60 * 30;  // 30 days in seconds
 
-const char Metrics::kMetricTimeToDropSeconds[] = "Network.Shill.TimeToDrop";;
+const char Metrics::kMetricTimeToDropSeconds[] = "Network.Shill.TimeToDrop";
 const int Metrics::kMetricTimeToDropSecondsMax = 8 * 60 * 60;  // 8 hours
 const int Metrics::kMetricTimeToDropSecondsMin = 1;
 

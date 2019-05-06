@@ -252,7 +252,7 @@ TEST_F(CellularServiceTest, ClearApn) {
   EXPECT_TRUE(error.IsSuccess());
   resultapn = service_->GetApn(&error);
   EXPECT_TRUE(resultapn.empty());
-  EXPECT_EQ(nullptr, service_->GetUserSpecifiedApn());;
+  EXPECT_EQ(nullptr, service_->GetUserSpecifiedApn());
 }
 
 TEST_F(CellularServiceTest, LastGoodApn) {
@@ -282,7 +282,7 @@ TEST_F(CellularServiceTest, LastGoodApn) {
   Error error;
   service_->SetApn(userapn, &error);
 
-  ASSERT_NE(nullptr, service_->GetLastGoodApn());;
+  ASSERT_NE(nullptr, service_->GetLastGoodApn());
   EXPECT_EQ(2, resultapn->size());
   EXPECT_EQ(kApn, (*resultapn)[kApnProperty]);
   EXPECT_EQ(kUsername, (*resultapn)[kApnUsernameProperty]);

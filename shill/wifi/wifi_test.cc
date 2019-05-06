@@ -1471,7 +1471,7 @@ class WiFiMainTest : public WiFiObjectTest {
 };
 
 TEST_F(WiFiMainTest, ProxiesSetUpDuringStart) {
-  EXPECT_EQ(nullptr, GetSupplicantInterfaceProxyFromWiFi());;
+  EXPECT_EQ(nullptr, GetSupplicantInterfaceProxyFromWiFi());
 
   StartWiFi();
   EXPECT_NE(nullptr, GetSupplicantInterfaceProxyFromWiFi());
@@ -1510,10 +1510,10 @@ TEST_F(WiFiMainTest, RoamThresholdProperty) {
 }
 
 TEST_F(WiFiMainTest, OnSupplicantAppearStarted) {
-  EXPECT_EQ(nullptr, GetSupplicantInterfaceProxyFromWiFi());;
+  EXPECT_EQ(nullptr, GetSupplicantInterfaceProxyFromWiFi());
 
   StartWiFi(false);  // No supplicant present.
-  EXPECT_EQ(nullptr, GetSupplicantInterfaceProxyFromWiFi());;
+  EXPECT_EQ(nullptr, GetSupplicantInterfaceProxyFromWiFi());
 
   SetRoamThresholdMember(kRoamThreshold);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveAllNetworks());
@@ -1546,7 +1546,7 @@ TEST_F(WiFiMainTest, OnSupplicantAppearStopped) {
 }
 
 TEST_F(WiFiMainTest, OnSupplicantVanishStarted) {
-  EXPECT_EQ(nullptr, GetSupplicantInterfaceProxyFromWiFi());;
+  EXPECT_EQ(nullptr, GetSupplicantInterfaceProxyFromWiFi());
 
   StartWiFi();
   EXPECT_NE(nullptr, GetSupplicantInterfaceProxyFromWiFi());
@@ -1583,7 +1583,7 @@ TEST_F(WiFiMainTest, OnSupplicantVanishedWhileConnected) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect()).Times(0);
   EXPECT_CALL(*manager(), RegisterDevice(_));
   OnSupplicantVanish();
-  EXPECT_EQ(nullptr, GetCurrentService());;
+  EXPECT_EQ(nullptr, GetCurrentService());
 }
 
 TEST_F(WiFiMainTest, CleanStart) {
@@ -1945,7 +1945,7 @@ TEST_F(WiFiMainTest, DisconnectPendingService) {
   service->set_expecting_disconnect(true);
   InitiateDisconnect(service);
   Mock::VerifyAndClearExpectations(service.get());
-  EXPECT_EQ(nullptr, GetPendingService());;
+  EXPECT_EQ(nullptr, GetPendingService());
 }
 
 TEST_F(WiFiMainTest, DisconnectPendingServiceWithFailure) {
@@ -1958,7 +1958,7 @@ TEST_F(WiFiMainTest, DisconnectPendingServiceWithFailure) {
   EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(AtLeast(1));
   InitiateDisconnect(service);
   Mock::VerifyAndClearExpectations(service.get());
-  EXPECT_EQ(nullptr, GetPendingService());;
+  EXPECT_EQ(nullptr, GetPendingService());
 }
 
 TEST_F(WiFiMainTest, DisconnectPendingServiceWithOutOfRange) {
@@ -1976,7 +1976,7 @@ TEST_F(WiFiMainTest, DisconnectPendingServiceWithOutOfRange) {
   ReportDisconnectReasonChanged(-IEEE_80211::kReasonCodeInactivity);
   InitiateDisconnect(service);
   Mock::VerifyAndClearExpectations(service.get());
-  EXPECT_EQ(nullptr, GetPendingService());;
+  EXPECT_EQ(nullptr, GetPendingService());
 }
 
 TEST_F(WiFiMainTest, DisconnectPendingServiceWithCurrent) {
@@ -2341,7 +2341,7 @@ TEST_F(WiFiMainTest, StopWhileConnected) {
                 &EndpointRemovalHandler::OnEndpointRemoved));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
   StopWiFi();
-  EXPECT_EQ(nullptr, GetCurrentService());;
+  EXPECT_EQ(nullptr, GetCurrentService());
 }
 
 TEST_F(WiFiMainTest, ReconnectTimer) {

@@ -176,7 +176,7 @@ bool ChromeosManagerDBusAdaptor::InsertUserProfile(
     return false;
   }
   *profile_path = dbus::ObjectPath(path);
-  return true;;
+  return true;
 }
 
 bool ChromeosManagerDBusAdaptor::PopProfile(brillo::ErrorPtr* error,
