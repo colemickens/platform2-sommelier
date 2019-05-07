@@ -65,8 +65,7 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(
       ip_helper_fd, -1,
       "Control socket for starting an IpHelper subprocess. Used internally.");
-  // TODO(garrick): Enable along with corresponding sslh.conf change.
-  DEFINE_bool(adb_proxy, false, "Run ADB proxy");
+  DEFINE_bool(adb_proxy, true, "Run ADB proxy");
   DEFINE_string(force_multinet, "",
                 "Override auto-detection and toggle multi-networking support.");
 
@@ -86,7 +85,7 @@ int main(int argc, char* argv[]) {
     return ip_helper.Run();
   }
 
-  if (FLAGS_adb_proxy > 0 && fork() == 0) {
+  if (fork() == 0) {
     LOG(INFO) << "Spawning adb proxy";
     arc_networkd::AdbProxy adb_proxy;
     return adb_proxy.Run();

@@ -17,7 +17,12 @@
 
 namespace arc_networkd {
 namespace {
-constexpr uint16_t kTcpPort = 5555;
+// adb gets confused if we listen on 5555 and thinks there is an emulator
+// running, which in turn ends up confusing our integration test libraries
+// because multiple devices show up.
+constexpr uint16_t kTcpListenPort = 5550;
+// But we still connect to adbd on its standard TCP port.
+constexpr uint16_t kTcpConnectPort = 5555;
 constexpr uint32_t kTcpAddr = 0x64735C02;  // 100.115.92.2
 constexpr uint32_t kVsockPort = 5555;
 // Reference: (./src/private-overlays/project-cheets-private/
@@ -97,7 +102,7 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
   // Try to connect with TCP IPv4.
   struct sockaddr_in addr_in = {0};
   addr_in.sin_family = AF_INET;
-  addr_in.sin_port = htons(kTcpPort);
+  addr_in.sin_port = htons(kTcpConnectPort);
   addr_in.sin_addr.s_addr = htonl(kTcpAddr);
 
   dst = std::make_unique<Socket>(AF_INET, SOCK_STREAM);
@@ -113,7 +118,7 @@ bool AdbProxy::OnSignal(const struct signalfd_siginfo& info) {
     src_ = std::make_unique<Socket>(AF_INET, SOCK_STREAM | SOCK_NONBLOCK);
     struct sockaddr_in addr = {0};
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(kTcpPort);
+    addr.sin_port = htons(kTcpListenPort);
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     if (!src_->Bind((const struct sockaddr*)&addr, sizeof(addr))) {
       LOG(ERROR) << "Cannot bind source socket";
