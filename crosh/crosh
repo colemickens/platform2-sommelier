@@ -638,14 +638,17 @@ help_ff_debug() (
   cmd_ff_debug --help
 )
 
-# Set the help string so crosh can discover us automatically.
+# Set the vars to pass the unittests ...
+USAGE_wpa_debug=''
 HELP_wpa_debug=''
-EXEC_wpa_debug='/usr/bin/wpa_debug'
+# ... then unset them to hide the command from "help" output.
+unset USAGE_wpa_debug HELP_wpa_debug
 cmd_wpa_debug() (
-  debugd_shill wpa_debug "$@"
-)
-help_wpa_debug() (
-  cmd_wpa_debug --help
+  cat <<EOF
+This command has been removed.  Please use the Chrome page instead, and select
+Wi-Fi there:
+chrome://net-internals/#chromeos
+EOF
 )
 
 USAGE_authpolicy_debug='<level>'

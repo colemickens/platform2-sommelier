@@ -42,7 +42,6 @@ const char * const kWhitelistedScripts[] = {
     "set_arpgw",
     "set_cellular_ppp",
     "set_wake_on_lan",
-    "wpa_debug",
 };
 // clang-format on
 
