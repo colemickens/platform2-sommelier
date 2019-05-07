@@ -41,6 +41,14 @@ const DEBUGD_INTERFACE: &str = "org.chromium.debugd";
 const DEBUGD_SERVICE_PATH: &str = "/org/chromium/debugd";
 const DEBUGD_SERVICE_NAME: &str = "org.chromium.debugd";
 const START_VM_CONCIERGE: &str = "StartVmConcierge";
+const START_VM_PLUGIN_DISPATCHER: &str = "StartVmPluginDispatcher";
+
+// Chrome dbus service_constants.h
+const CHROME_FEATURES_INTERFACE: &str = "org.chromium.ChromeFeaturesServiceInterface";
+const CHROME_FEATURES_SERVICE_PATH: &str = "/org/chromium/ChromeFeaturesService";
+const CHROME_FEATURES_SERVICE_NAME: &str = "org.chromium.ChromeFeaturesService";
+const IS_CROSTINI_ENABLED: &str = "IsCrostiniEnabled";
+const IS_PLUGIN_VM_ENABLED: &str = "IsPluginVmEnabled";
 
 // concierge dbus-constants.h
 const VM_CONCIERGE_INTERFACE: &str = "org.chromium.VmConcierge";
@@ -114,9 +122,11 @@ const REMOVE_VPN_SETUP: &str = "RemoveVpnSetup";
 const POWER_CYCLE_USB_PORTS: &str = "PowerCycleUsbPorts";
 
 enum ChromeOSError {
+    BadChromeFeatureStatus,
     BadConciergeStatus,
     BadDiskImageStatus(DiskImageStatus, String),
     BadVmStatus(VmStatus, String),
+    BadVmPluginDispatcherStatus,
     EnableGpuOnStable,
     ExportPathExists,
     FailedAttachUsb(String),
@@ -136,6 +146,7 @@ enum ChromeOSError {
     FailedStartContainerStatus(StartLxdContainerResponse_Status, String),
     FailedStopVm { vm_name: String, reason: String },
     InvalidExportPath,
+    NoVmTechnologyEnabled,
     RetrieveActiveSessions,
     TpmOnStable,
 }
@@ -145,11 +156,13 @@ use self::ChromeOSError::*;
 impl fmt::Display for ChromeOSError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            BadChromeFeatureStatus => write!(f, "invalid response to chrome feature request"),
             BadConciergeStatus => write!(f, "failed to start concierge"),
             BadDiskImageStatus(s, reason) => {
                 write!(f, "bad disk image status: `{:?}`: {}", s, reason)
             }
             BadVmStatus(s, reason) => write!(f, "bad VM status: `{:?}`: {}", s, reason),
+            BadVmPluginDispatcherStatus => write!(f, "failed to start Plugin VM dispatcher"),
             EnableGpuOnStable => write!(f, "gpu support is disabled on the stable channel"),
             ExportPathExists => write!(f, "disk export path already exists"),
             FailedAttachUsb(reason) => write!(f, "failed to attach usb device to vm: {}", reason),
@@ -193,6 +206,7 @@ impl fmt::Display for ChromeOSError {
                 write!(f, "failed to stop vm `{}`: {}", vm_name, reason)
             }
             InvalidExportPath => write!(f, "disk export path is invalid"),
+            NoVmTechnologyEnabled => write!(f, "Neither Crostini nor Plugin VMs are enabled"),
             RetrieveActiveSessions => write!(f, "failed to retrieve active sessions"),
             TpmOnStable => write!(f, "TPM device is not available on stable channel"),
         }
@@ -298,6 +312,37 @@ impl ChromeOS {
         }
     }
 
+    fn is_chrome_feature_enabled(
+        &mut self,
+        user_id_hash: &str,
+        feature_name: &str,
+    ) -> Result<bool, Box<Error>> {
+        let method = Message::new_method_call(
+            CHROME_FEATURES_SERVICE_NAME,
+            CHROME_FEATURES_SERVICE_PATH,
+            CHROME_FEATURES_INTERFACE,
+            feature_name,
+        )?
+        .append1(user_id_hash);
+
+        let message = self
+            .connection
+            .send_with_reply_and_block(method, DEFAULT_TIMEOUT_MS)?;
+        match message.get1() {
+            Some(true) => Ok(true),
+            Some(false) => Ok(false),
+            _ => Err(BadChromeFeatureStatus.into()),
+        }
+    }
+
+    fn is_crostini_enabled(&mut self, user_id_hash: &str) -> Result<bool, Box<Error>> {
+        self.is_chrome_feature_enabled(user_id_hash, IS_CROSTINI_ENABLED)
+    }
+
+    fn is_plugin_vm_enabled(&mut self, user_id_hash: &str) -> Result<bool, Box<Error>> {
+        self.is_chrome_feature_enabled(user_id_hash, IS_PLUGIN_VM_ENABLED)
+    }
+
     /// Request debugd to start vm_concierge.
     fn start_concierge(&mut self) -> Result<(), Box<Error>> {
         // Mount the termina component, waiting up to 2 minutes to download it. If this fails we
@@ -315,6 +360,38 @@ impl ChromeOS {
         match message.get1() {
             Some(true) => Ok(()),
             _ => Err(BadConciergeStatus.into()),
+        }
+    }
+
+    /// Request debugd to start vmplugin_dispatcher.
+    fn start_vm_plugin_dispather(&mut self) -> Result<(), Box<Error>> {
+        // TODO(dtor): download the component before trying to start it.
+
+        let method = Message::new_method_call(
+            DEBUGD_SERVICE_NAME,
+            DEBUGD_SERVICE_PATH,
+            DEBUGD_INTERFACE,
+            START_VM_PLUGIN_DISPATCHER,
+        )?;
+
+        let message = self
+            .connection
+            .send_with_reply_and_block(method, DEFAULT_TIMEOUT_MS)?;
+        match message.get1() {
+            Some(true) => Ok(()),
+            _ => Err(BadVmPluginDispatcherStatus.into()),
+        }
+    }
+
+    /// Starts all necessary VM services (concierge and optionally the Plugin VM dispatcher).
+    fn start_vm_infrastructure(&mut self, user_id_hash: &str) -> Result<(), Box<Error>> {
+        if self.is_plugin_vm_enabled(user_id_hash)? {
+            // Starting the dispatcher will also start concierge.
+            self.start_vm_plugin_dispather()
+        } else if self.is_crostini_enabled(user_id_hash)? {
+            self.start_concierge()
+        } else {
+            Err(NoVmTechnologyEnabled.into())
         }
     }
 
@@ -875,13 +952,13 @@ impl Backend for ChromeOS {
         if features.software_tpm && is_stable_channel {
             return Err(TpmOnStable.into());
         }
-        self.start_concierge()?;
+        self.start_vm_infrastructure(user_id_hash)?;
         let disk_image_path = self.create_disk_image(name, user_id_hash)?;
         self.start_vm_with_disk(name, user_id_hash, features, disk_image_path)
     }
 
     fn vm_stop(&mut self, name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {
-        self.start_concierge()?;
+        self.start_vm_infrastructure(user_id_hash)?;
         self.stop_vm(name, user_id_hash)
     }
 
@@ -892,7 +969,7 @@ impl Backend for ChromeOS {
         file_name: &str,
         removable_media: Option<&str>,
     ) -> Result<(), Box<Error>> {
-        self.start_concierge()?;
+        self.start_vm_infrastructure(user_id_hash)?;
         self.export_disk_image(name, user_id_hash, file_name, removable_media)
     }
 
@@ -902,7 +979,7 @@ impl Backend for ChromeOS {
         user_id_hash: &str,
         path: &str,
     ) -> Result<String, Box<Error>> {
-        self.start_concierge()?;
+        self.start_vm_infrastructure(user_id_hash)?;
         let vm_info = self.get_vm_info(name, user_id_hash)?;
         // The VmInfo uses a u64 as the handle, but SharePathRequest uses a u32 for the handle.
         if vm_info.seneschal_server_handle > u64::from(u32::max_value()) {
@@ -948,12 +1025,12 @@ impl Backend for ChromeOS {
     }
 
     fn disk_destroy(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {
-        self.start_concierge()?;
+        self.start_vm_infrastructure(user_id_hash)?;
         self.destroy_disk_image(vm_name, user_id_hash)
     }
 
     fn disk_list(&mut self, user_id_hash: &str) -> Result<(Vec<(String, u64)>, u64), Box<Error>> {
-        self.start_concierge()?;
+        self.start_vm_infrastructure(user_id_hash)?;
         self.list_disk_images(user_id_hash)
     }
 
@@ -965,7 +1042,7 @@ impl Backend for ChromeOS {
         image_server: &str,
         image_alias: &str,
     ) -> Result<(), Box<Error>> {
-        self.start_concierge()?;
+        self.start_vm_infrastructure(user_id_hash)?;
         self.create_container(
             vm_name,
             user_id_hash,
@@ -981,7 +1058,7 @@ impl Backend for ChromeOS {
         user_id_hash: &str,
         container_name: &str,
     ) -> Result<(), Box<Error>> {
-        self.start_concierge()?;
+        self.start_vm_infrastructure(user_id_hash)?;
         self.start_container(vm_name, user_id_hash, container_name)
     }
 
@@ -992,7 +1069,7 @@ impl Backend for ChromeOS {
         container_name: &str,
         username: &str,
     ) -> Result<(), Box<Error>> {
-        self.start_concierge()?;
+        self.start_vm_infrastructure(user_id_hash)?;
         self.setup_container_user(vm_name, user_id_hash, container_name, username)
     }
 
@@ -1003,7 +1080,7 @@ impl Backend for ChromeOS {
         bus: u8,
         device: u8,
     ) -> Result<u8, Box<Error>> {
-        self.start_concierge()?;
+        self.start_vm_infrastructure(user_id_hash)?;
         let usb_file_path = format!("/dev/bus/usb/{:03}/{:03}", bus, device);
         let usb_fd = self.permission_broker_open_path(Path::new(&usb_file_path))?;
         self.attach_usb(vm_name, user_id_hash, bus, device, usb_fd)
@@ -1015,7 +1092,7 @@ impl Backend for ChromeOS {
         user_id_hash: &str,
         port: u8,
     ) -> Result<(), Box<Error>> {
-        self.start_concierge()?;
+        self.start_vm_infrastructure(user_id_hash)?;
         self.detach_usb(vm_name, user_id_hash, port)
     }
 
@@ -1024,7 +1101,7 @@ impl Backend for ChromeOS {
         vm_name: &str,
         user_id_hash: &str,
     ) -> Result<Vec<(u8, u16, u16, String)>, Box<Error>> {
-        self.start_concierge()?;
+        self.start_vm_infrastructure(user_id_hash)?;
         let device_list = self
             .list_usb(vm_name, user_id_hash)?
             .into_iter()
