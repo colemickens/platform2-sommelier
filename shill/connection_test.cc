@@ -316,7 +316,7 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
   ConnectionRefPtr connection = GetNewConnection();
   const std::string kExcludeAddress1 = "192.0.1.0/24";
   const std::string kExcludeAddress2 = "192.0.2.0/24";
-  const unsigned char table_id = 8;
+  const uint8_t table_id = 8;
   const uint32_t uid = 1000;
   IPAddress address1(IPAddress::kFamilyIPv4);
   IPAddress address2(IPAddress::kFamilyIPv4);
@@ -749,7 +749,7 @@ TEST_F(ConnectionTest, Destructor) {
 }
 
 TEST_F(ConnectionTest, BlackholeIPv6) {
-  const unsigned char table_id = 9;
+  const uint8_t table_id = 9;
   properties_.blackhole_ipv6 = true;
   UpdateProperties();
   EXPECT_CALL(*device_info_, HasOtherAddress(_, _))

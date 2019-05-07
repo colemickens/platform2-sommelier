@@ -121,10 +121,9 @@ class RoutingTable {
 
   // Allocates a per-device routing table, and returns the ID.  If no
   // IDs are available, returns 0.
-  virtual unsigned char AllocTableId();
-
+  virtual uint8_t AllocTableId();
   // Frees routing table |id| that was obtained from AllocTableId().
-  virtual void FreeTableId(unsigned char id);
+  virtual void FreeTableId(uint8_t id);
 
  protected:
   RoutingTable();
@@ -194,7 +193,7 @@ class RoutingTable {
   std::deque<Query> route_queries_;
 
   // A list of unused routing table IDs.
-  std::vector<unsigned char> available_table_ids_;
+  std::vector<uint8_t> available_table_ids_;
 
   // Cache singleton pointer for performance and test purposes.
   RTNLHandler* rtnl_handler_;

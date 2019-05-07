@@ -135,7 +135,7 @@ void RoutingTable::Start() {
   rtnl_handler_->RequestDump(RTNLHandler::kRequestRoute);
   rtnl_handler_->RequestDump(RTNLHandler::kRequestRule);
 
-  for (unsigned char i = RT_TABLE_DEFAULT - 1; i > RT_TABLE_UNSPEC; i--) {
+  for (uint8_t i = RT_TABLE_DEFAULT - 1; i > RT_TABLE_UNSPEC; i--) {
     available_table_ids_.push_back(i);
   }
 }
@@ -836,11 +836,11 @@ void RoutingTable::FlushRules(int interface_index) {
   table->second.clear();
 }
 
-unsigned char RoutingTable::AllocTableId() {
+uint8_t RoutingTable::AllocTableId() {
   if (available_table_ids_.empty()) {
     return 0;
   } else {
-    unsigned char table_id = available_table_ids_.back();
+    uint8_t table_id = available_table_ids_.back();
     available_table_ids_.pop_back();
 
     // Flush any entries currently in this table before letting the caller
@@ -859,7 +859,7 @@ unsigned char RoutingTable::AllocTableId() {
   }
 }
 
-void RoutingTable::FreeTableId(unsigned char id) {
+void RoutingTable::FreeTableId(uint8_t id) {
   if (id == RT_TABLE_MAIN) {
     return;
   }

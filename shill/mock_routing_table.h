@@ -51,8 +51,8 @@ class MockRoutingTable : public RoutingTable {
                                         const QueryCallback& callback,
                                         uint8_t table));
 
-  MOCK_METHOD0(AllocTableId, unsigned char());
-  MOCK_METHOD1(FreeTableId, void(unsigned char id));
+  MOCK_METHOD0(AllocTableId, uint8_t());
+  MOCK_METHOD1(FreeTableId, void(uint8_t id));
   MOCK_METHOD2(AddRule,
                bool(int interface_index, const RoutingPolicyEntry& entry));
   MOCK_METHOD1(FlushRules, void(int interface_index));

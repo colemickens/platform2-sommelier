@@ -517,9 +517,9 @@ TEST_F(RoutingTableTest, PolicyRuleAddFlush) {
   // Expect the tables to be empty by default.
   EXPECT_EQ(CountRoutingPolicyEntries(), 0);
 
-  unsigned char table0 = routing_table_->AllocTableId();
-  unsigned char table1 = routing_table_->AllocTableId();
-  unsigned char table2 = routing_table_->AllocTableId();
+  uint8_t table0 = routing_table_->AllocTableId();
+  uint8_t table1 = routing_table_->AllocTableId();
+  uint8_t table2 = routing_table_->AllocTableId();
   EXPECT_GT(table0, 0);
   EXPECT_NE(table0, table1);
   EXPECT_NE(table0, table2);
