@@ -17,8 +17,6 @@
 #include <dbus/object_path.h>
 #include <shill/dbus-proxies.h>
 
-#include "modemfwd/modem.h"
-
 namespace modemfwd {
 
 using OnModemAppearedCallback =
