@@ -274,4 +274,44 @@ do.
     </method>
   </interface>
 
+  <interface name="org.chromium.CryptohomePkcs11Interface">
+    <method name="Pkcs11IsTpmTokenReady">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::Pkcs11IsTpmTokenReadyRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::Pkcs11IsTpmTokenReadyReply" />
+      </arg>
+    </method>
+
+    <method name="Pkcs11GetTpmTokeInfo">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::Pkcs11GetTpmTokeInfoRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::Pkcs11GetTpmTokeInfoReply" />
+      </arg>
+    </method>
+
+    <method name="Pkcs11Terminate">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::Pkcs11TerminateRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::Pkcs11TerminateReply" />
+      </arg>
+    </method>
+  </interface>
 </node>

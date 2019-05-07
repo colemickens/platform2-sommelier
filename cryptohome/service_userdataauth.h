@@ -20,26 +20,17 @@ class UserDataAuthAdaptor
       public org::chromium::UserDataAuthInterfaceAdaptor {
  public:
   explicit UserDataAuthAdaptor(scoped_refptr<dbus::Bus> bus,
+                               brillo::dbus_utils::DBusObject* dbus_object,
                                UserDataAuth* service)
       : org::chromium::UserDataAuthInterfaceAdaptor(this),
-        dbus_object_(nullptr, bus, dbus::ObjectPath(kUserDataAuthServicePath)),
+        dbus_object_(dbus_object),
         service_(service) {
     // This is to silence the compiler's warning about unused fields. It will be
     // removed once we start to use it.
     (void)service_;
   }
 
-  void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
-          completion_callback) {
-    // completion_callback is a callback that will be run when all method
-    // registration have finished. We don't have anything to run after
-    // completion so we'll just pass this along to libbrillo.
-    // This callback is typically used to signal to the DBus Daemon that method
-    // registration is complete
-    RegisterWithDBusObject(&dbus_object_);
-    dbus_object_.RegisterAsync(completion_callback);
-  }
+  void RegisterAsync() { RegisterWithDBusObject(dbus_object_); }
 
   // Interface overrides
   void IsMounted(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
@@ -111,13 +102,53 @@ class UserDataAuthAdaptor
       const user_data_auth::GetCurrentSpaceForGidRequest& in_request) override;
 
  private:
-  brillo::dbus_utils::DBusObject dbus_object_;
+  brillo::dbus_utils::DBusObject* dbus_object_;
 
   // This is the object that holds most of the states that this adaptor uses, it
   // also contains most of the actual logics.
   UserDataAuth* service_;
 
   DISALLOW_COPY_AND_ASSIGN(UserDataAuthAdaptor);
+};
+
+class Pkcs11Adaptor : public org::chromium::CryptohomePkcs11InterfaceInterface,
+                      public org::chromium::CryptohomePkcs11InterfaceAdaptor {
+ public:
+  explicit Pkcs11Adaptor(scoped_refptr<dbus::Bus> bus,
+                         brillo::dbus_utils::DBusObject* dbus_object,
+                         UserDataAuth* service)
+      : org::chromium::CryptohomePkcs11InterfaceAdaptor(this),
+        dbus_object_(dbus_object),
+        service_(service) {
+    // This is to silence the compiler's warning about unused fields. It will be
+    // removed once we start to use it.
+    (void)service_;
+  }
+
+  void RegisterAsync() { RegisterWithDBusObject(dbus_object_); }
+
+  // Interface overrides and related implementations
+  void Pkcs11IsTpmTokenReady(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::Pkcs11IsTpmTokenReadyReply>> response,
+      const user_data_auth::Pkcs11IsTpmTokenReadyRequest& in_request) override;
+  void Pkcs11GetTpmTokeInfo(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::Pkcs11GetTpmTokeInfoReply>> response,
+      const user_data_auth::Pkcs11GetTpmTokeInfoRequest& in_request) override;
+  void Pkcs11Terminate(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::Pkcs11TerminateReply>> response,
+      const user_data_auth::Pkcs11TerminateRequest& in_request) override;
+
+ private:
+  brillo::dbus_utils::DBusObject* dbus_object_;
+
+  // This is the object that holds most of the states that this adaptor uses, it
+  // also contains most of the actual logics.
+  UserDataAuth* service_;
+
+  DISALLOW_COPY_AND_ASSIGN(Pkcs11Adaptor);
 };
 
 }  // namespace cryptohome

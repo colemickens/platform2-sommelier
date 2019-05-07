@@ -26,15 +26,29 @@ class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
  protected:
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
-    adaptor_.reset(new UserDataAuthAdaptor(bus_, service_.get()));
-    adaptor_->RegisterAsync(
-        sequencer->GetHandler("RegisterAsync() failed", true));
+    DCHECK(!dbus_object_);
+    dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
+        nullptr, bus_, dbus::ObjectPath(kUserDataAuthServicePath));
+
+    userdataauth_adaptor_.reset(
+        new UserDataAuthAdaptor(bus_, dbus_object_.get(), service_.get()));
+    userdataauth_adaptor_->RegisterAsync();
+
+    pkcs11_adaptor_.reset(
+        new Pkcs11Adaptor(bus_, dbus_object_.get(), service_.get()));
+    pkcs11_adaptor_->RegisterAsync();
+
+    dbus_object_->RegisterAsync(
+        sequencer->GetHandler("RegisterAsync() for UserDataAuth failed", true));
   }
 
  private:
-  std::unique_ptr<UserDataAuthAdaptor> adaptor_;
+  std::unique_ptr<UserDataAuthAdaptor> userdataauth_adaptor_;
+  std::unique_ptr<Pkcs11Adaptor> pkcs11_adaptor_;
 
   std::unique_ptr<UserDataAuth> service_;
+
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
   DISALLOW_COPY_AND_ASSIGN(UserDataAuthDaemon);
 };

@@ -158,4 +158,28 @@ void UserDataAuthAdaptor::GetCurrentSpaceForGid(
   response->Return(reply);
 }
 
+void Pkcs11Adaptor::Pkcs11IsTpmTokenReady(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::Pkcs11IsTpmTokenReadyReply>> response,
+    const user_data_auth::Pkcs11IsTpmTokenReadyRequest& in_request) {
+  user_data_auth::Pkcs11IsTpmTokenReadyReply reply;
+  response->Return(reply);
+}
+
+void Pkcs11Adaptor::Pkcs11GetTpmTokeInfo(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::Pkcs11GetTpmTokeInfoReply>> response,
+    const user_data_auth::Pkcs11GetTpmTokeInfoRequest& in_request) {
+  user_data_auth::Pkcs11GetTpmTokeInfoReply reply;
+  response->Return(reply);
+}
+
+void Pkcs11Adaptor::Pkcs11Terminate(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::Pkcs11TerminateReply>> response,
+    const user_data_auth::Pkcs11TerminateRequest& in_request) {
+  user_data_auth::Pkcs11TerminateReply reply;
+  response->Return(reply);
+}
+
 }  // namespace cryptohome
