@@ -46,11 +46,6 @@ do_mount_var_and_home_chronos() {
       mount -n --bind /mnt/stateful_partition/var /var || return 1
       mount -n --bind /mnt/stateful_partition/home/chronos /home/chronos
       ;;
-    factory)
-      # TODO(hungte) Remove this mode and let mount-encrypted drop related code
-      # when we are confident of using unencrypted mode.
-      mount_var_and_home_chronos "factory"
-      ;;
     tmpfs)
       # Mount tmpfs to /var/.  When booting from USB disk, writing to /var/
       # slows down system performance dramatically.  Since there is no need to
