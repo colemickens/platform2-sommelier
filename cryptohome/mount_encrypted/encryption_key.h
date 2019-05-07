@@ -32,7 +32,6 @@ class EncryptionKey {
     kNVRAMLockbox,         // Using lockbox salt as system key.
     kNVRAMEncstateful,     // Key in dedicated encstateful NVRAM space.
     kFinalizationPending,  // TPM not ready, obfuscated key on on disk.
-    kFactory,              // Hard-coded factory key.
     kKernelCommandLine,    // Key from kernel command line.
     kProductUUID,          // Using product UUID as system key.
     kStaticFallback,       // Using hard-coded fallback key.
@@ -66,10 +65,6 @@ class EncryptionKey {
   // rest will fallback through various places (kernel command line, BIOS UUID,
   // and finally a static value) for a system key.
   result_code SetInsecureFallbackSystemKey();
-
-  // Loads the insecure well-known factory system key. This is used on factory
-  // images instead of a proper key.
-  result_code SetFactorySystemKey();
 
   // Load the encryption key from disk using the previously loaded system key.
   result_code LoadEncryptionKey();

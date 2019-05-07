@@ -244,7 +244,6 @@ int main(int argc, char* argv[]) {
 
   LOG(INFO) << "Starting.";
 
-  bool use_factory_system_key = false;
   if (argc > 1) {
     if (!strcmp(argv[1], "umount")) {
       return encrypted_fs.Teardown();
@@ -254,10 +253,8 @@ int main(int argc, char* argv[]) {
     } else if (!strcmp(argv[1], "finalize")) {
       return finalize_from_cmdline(encrypted_fs, rootdir,
                                    argc > 2 ? argv[2] : NULL);
-    } else if (!strcmp(argv[1], "factory")) {
-      use_factory_system_key = true;
     } else {
-      fprintf(stderr, "Usage: %s [info|finalize|umount|factory]\n", argv[0]);
+      fprintf(stderr, "Usage: %s [info|finalize|umount]\n", argv[0]);
       return RESULT_FAIL_FATAL;
     }
   }
@@ -273,9 +270,7 @@ int main(int argc, char* argv[]) {
   Tpm tpm;
   auto loader = SystemKeyLoader::Create(&tpm, rootdir);
   EncryptionKey key(loader.get(), rootdir);
-  if (use_factory_system_key) {
-    rc = key.SetFactorySystemKey();
-  } else if (has_chromefw()) {
+  if (has_chromefw()) {
     rc = key.LoadChromeOSSystemKey();
   } else {
     rc = key.SetInsecureFallbackSystemKey();
@@ -294,7 +289,7 @@ int main(int argc, char* argv[]) {
   }
 
   /* Log errors during sending seed to biod, but don't stop execution. */
-  if (!use_factory_system_key && has_chromefw()) {
+  if (has_chromefw()) {
     if (!SendSecretToBiodTmpFile(key)) {
       LOG(ERROR) << "Failed to send TPM secret to biod.";
     }

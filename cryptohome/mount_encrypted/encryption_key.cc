@@ -32,7 +32,6 @@ namespace {
 
 const char kKernelCmdlineOption[] = "encrypted-stateful-key=";
 const char kStaticKeyDefault[] = "default unsafe static key";
-const char kStaticKeyFactory[] = "factory unsafe static key";
 const char kStaticKeyFinalizationNeeded[] = "needs finalization";
 
 const size_t kMaxReadSize = 4 * 1024;
@@ -193,14 +192,6 @@ EncryptionKey::EncryptionKey(SystemKeyLoader* loader,
       stateful_mount.AppendASCII(paths::kStatefulPreservationRequest);
   preserved_previous_key_path_ =
       stateful_mount.AppendASCII(paths::kPreservedPreviousKey);
-}
-
-result_code EncryptionKey::SetFactorySystemKey() {
-  LOG(INFO) << "Using factory insecure system key.";
-  system_key_ = Sha256(kStaticKeyFactory);
-  VLOG(1) << "system key: " << HexEncode(system_key_);
-  system_key_status_ = SystemKeyStatus::kFactory;
-  return RESULT_SUCCESS;
 }
 
 result_code EncryptionKey::SetTpmSystemKey() {
