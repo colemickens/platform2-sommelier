@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include <base/bind.h>
 #include <base/macros.h>
 #include <brillo/brillo_export.h>
 #include <brillo/dbus/dbus_param_writer.h>
@@ -31,8 +32,16 @@ class BRILLO_EXPORT DBusMethodResponseBase {
  public:
   DBusMethodResponseBase(::dbus::MethodCall* method_call,
                          ResponseSender sender);
-  DBusMethodResponseBase(DBusMethodResponseBase&& other) = default;
-  DBusMethodResponseBase& operator=(DBusMethodResponseBase&& other) = default;
+  DBusMethodResponseBase(DBusMethodResponseBase&& other)
+      : sender_(std::exchange(
+            other.sender_,
+            base::Bind([](std::unique_ptr<dbus::Response> response) {
+              LOG(DFATAL)
+                  << "Empty DBusMethodResponseBase attempts to send a response";
+            }))),
+        method_call_(std::exchange(other.method_call_, nullptr)) {}
+  DBusMethodResponseBase& operator=(DBusMethodResponseBase&& other) = delete;
+
   virtual ~DBusMethodResponseBase();
 
   // Sends an error response. Marshals the |error| object over D-Bus.
