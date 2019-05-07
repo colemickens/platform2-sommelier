@@ -226,10 +226,21 @@ void LegacyCryptohomeInterfaceAdaptor::MountGuestEx(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::MountGuestRequest& in_request) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
+          std::move(response));
+
+  user_data_auth::MountRequest request;
+  request.set_guest_mount(true);
+
+  userdataauth_proxy_->MountAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
+                     user_data_auth::MountReply>,
+                 response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response_shared));
 }
 
 void LegacyCryptohomeInterfaceAdaptor::RenameCryptohome(
