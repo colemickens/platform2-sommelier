@@ -18,6 +18,7 @@ namespace bluetooth {
 
 namespace {
 
+#if USE_BLUETOOTH_SUSPEND_MANAGEMENT
 // Description for power manager's RegisterSuspendDelay.
 constexpr char kSuspendDelayDescription[] = "btdispatch";
 
@@ -25,6 +26,7 @@ constexpr char kSuspendDelayDescription[] = "btdispatch";
 // Bluez's PauseDiscovery should take less than 5 seconds to complete.
 constexpr base::TimeDelta kSuspendDelayTimeout =
     base::TimeDelta::FromSeconds(5);
+#endif
 
 // Used for ObjectProxy::ConnectToSignal callbacks.
 void HandleSignalConnected(const std::string& interface,
@@ -77,6 +79,7 @@ void SuspendManager::Init() {
 }
 
 void SuspendManager::HandlePowerManagerAvailableOrRestarted(bool available) {
+#if USE_BLUETOOTH_SUSPEND_MANAGEMENT
   if (!available) {
     LOG(INFO) << "Power manager becomes not available";
     // Power manager is dead, undo suspend to make sure we're not stack in
@@ -100,6 +103,10 @@ void SuspendManager::HandlePowerManagerAvailableOrRestarted(bool available) {
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
       base::Bind(&SuspendManager::OnSuspendDelayRegistered,
                  weak_ptr_factory_.GetWeakPtr()));
+#else
+  VLOG(1) << "Skip registration of SuspendManager in Power manager.";
+  suspend_delay_id_ = 0;
+#endif
 }
 
 void SuspendManager::HandleSuspendImminentSignal(dbus::Signal* signal) {

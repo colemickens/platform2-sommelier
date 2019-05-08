@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#if USE_BLUETOOTH_SUSPEND_MANAGEMENT
 #include <memory>
 #include <string>
 #include <utility>
@@ -530,3 +531,4 @@ TEST_F(SuspendManagerTest, PowerManagerSuspendDoneEarlySuspendImminentEarly) {
 }
 
 }  // namespace bluetooth
+#endif

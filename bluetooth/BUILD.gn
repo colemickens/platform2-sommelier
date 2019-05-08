@@ -59,6 +59,8 @@ static_library("libdispatcher") {
     "dispatcher/service_watcher.cc",
     "dispatcher/suspend_manager.cc",
   ]
+  defines =
+      [ "USE_BLUETOOTH_SUSPEND_MANAGEMENT=${use.bluetooth_suspend_management}" ]
 }
 
 static_library("libnewblued") {
