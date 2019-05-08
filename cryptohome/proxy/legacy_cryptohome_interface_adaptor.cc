@@ -634,10 +634,48 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationCreateCertRequest(
     int32_t in_certificate_profile,
     const std::string& in_username,
     const std::string& in_request_origin) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  attestation::CreateCertificateRequestRequest request;
+  request.set_certificate_profile(
+      IntegerToCertificateProfile(in_certificate_profile));
+  request.set_username(in_username);
+  request.set_request_origin(in_request_origin);
+  base::Optional<attestation::ACAType> aca_type;
+  aca_type = IntegerToACAType(in_pca_type);
+  if (!aca_type.has_value()) {
+    std::string error_msg = "Requested ACA type " +
+                            std::to_string(in_pca_type) + " is not supported";
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_NOT_SUPPORTED, error_msg);
+    return;
+  }
+  request.set_aca_type(aca_type.value());
+
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<std::vector<uint8_t>>>(
+          std::move(response));
+  attestation_proxy_->CreateCertificateRequestAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
+                     TpmAttestationCreateCertRequestOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::vector<uint8_t>>,
+          base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::TpmAttestationCreateCertRequestOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>>> response,
+    const attestation::CreateCertificateRequestReply& reply) {
+  if (reply.status() != attestation::STATUS_SUCCESS) {
+    std::string error_msg = "Attestation daemon returned status " +
+                            std::to_string(static_cast<int>(reply.status()));
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_FAILED, error_msg);
+    return;
+  }
+  std::vector<uint8_t> result(reply.pca_request().begin(),
+                              reply.pca_request().end());
+  response->Return(result);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::AsyncTpmAttestationCreateCertRequest(

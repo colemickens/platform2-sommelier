@@ -57,6 +57,7 @@ constexpr char kUsername1[] = "foo@gmail.com";
 constexpr char kSecret[] = "blah";
 constexpr char kSanitizedUsername1[] = "baadf00ddeadbeeffeedcafe";
 constexpr char kPCARequest[] = "PCA\0Request\xFFMay\x80Have\0None.ASCII";
+constexpr char kRequestOrigin[] = "SomeOrigin";
 
 class LegacyCryptohomeInterfaceAdaptorTest : public ::testing::Test {
  public:
@@ -380,6 +381,110 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest, TpmAttestationEnrollFailed) {
   EXPECT_EQ(proxied_request.aca_type(), attestation::DEFAULT_ACA);
   EXPECT_EQ(proxied_request.pca_response(),
             std::string(kPCARequest, kPCARequest + sizeof(kPCARequest)));
+}
+
+// ------------- TpmAttestationCreateCertRequest Related Tests -------------
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
+       TpmAttestationCreateCertRequestSuccess) {
+  attestation::CreateCertificateRequestRequest proxied_request;
+  EXPECT_CALL(attestation_, CreateCertificateRequestAsync(_, _, _, _))
+      .WillOnce(DoAll(
+          SaveArg<0>(&proxied_request),
+          Invoke(
+              [](const attestation::CreateCertificateRequestRequest& in_request,
+                 const base::Callback<void(
+                     const attestation::CreateCertificateRequestReply&)>&
+                     success_callback,
+                 const base::Callback<void(brillo::Error*)>& error_callback,
+                 int timeout_ms) {
+                attestation::CreateCertificateRequestReply proxied_reply;
+                proxied_reply.set_status(attestation::STATUS_SUCCESS);
+                proxied_reply.set_pca_request(
+                    std::string(kPCARequest, sizeof(kPCARequest)));
+                success_callback.Run(proxied_reply);
+              })));
+
+  base::Optional<std::vector<uint8_t>> result_pca_request;
+  std::unique_ptr<MockDBusMethodResponse<std::vector<uint8_t>>> response(
+      new MockDBusMethodResponse<std::vector<uint8_t>>(nullptr));
+  response->save_return_args(&result_pca_request);
+
+  adaptor_->TpmAttestationCreateCertRequest(
+      std::move(response), static_cast<int>(attestation::TEST_ACA),
+      static_cast<int>(attestation::CONTENT_PROTECTION_CERTIFICATE), kUsername1,
+      kRequestOrigin);
+
+  // Verify that Return() is indeed called at least once.
+  ASSERT_TRUE(result_pca_request.has_value());
+
+  // Verify response content.
+  EXPECT_EQ(
+      result_pca_request.value(),
+      std::vector<uint8_t>(kPCARequest, kPCARequest + sizeof(kPCARequest)));
+
+  // Verify that the parameters passed to DBus Proxy (New interface) is correct.
+  EXPECT_EQ(proxied_request.aca_type(), attestation::TEST_ACA);
+  EXPECT_EQ(proxied_request.username(), kUsername1);
+  EXPECT_EQ(proxied_request.request_origin(), kRequestOrigin);
+  EXPECT_EQ(proxied_request.certificate_profile(),
+            attestation::CONTENT_PROTECTION_CERTIFICATE);
+}
+
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
+       TpmAttestationCreateCertRequestInvalidACA) {
+  std::unique_ptr<MockDBusMethodResponse<std::vector<uint8_t>>> response(
+      new MockDBusMethodResponse<std::vector<uint8_t>>(nullptr));
+  EXPECT_CALL(
+      *response,
+      ReplyWithError(_, brillo::errors::dbus::kDomain, DBUS_ERROR_NOT_SUPPORTED,
+                     "Requested ACA type 99999 is not supported"))
+      .WillOnce(Return());
+
+  // 99999 is an invalid ACA
+  adaptor_->TpmAttestationCreateCertRequest(std::move(response), 99999, 2,
+                                            kUsername1, kRequestOrigin);
+}
+
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
+       TpmAttestationCreateCertRequestFailed) {
+  attestation::CreateCertificateRequestRequest proxied_request;
+  EXPECT_CALL(attestation_, CreateCertificateRequestAsync(_, _, _, _))
+      .WillOnce(DoAll(
+          SaveArg<0>(&proxied_request),
+          Invoke(
+              [](const attestation::CreateCertificateRequestRequest& in_request,
+                 const base::Callback<void(
+                     const attestation::CreateCertificateRequestReply&)>&
+                     success_callback,
+                 const base::Callback<void(brillo::Error*)>& error_callback,
+                 int timeout_ms) {
+                attestation::CreateCertificateRequestReply reply;
+                reply.set_status(attestation::STATUS_UNEXPECTED_DEVICE_ERROR);
+                success_callback.Run(reply);
+              })));
+
+  std::unique_ptr<MockDBusMethodResponse<std::vector<uint8_t>>> response(
+      new MockDBusMethodResponse<std::vector<uint8_t>>(nullptr));
+  EXPECT_CALL(
+      *response,
+      ReplyWithError(_, brillo::errors::dbus::kDomain, DBUS_ERROR_FAILED,
+                     "Attestation daemon returned status " +
+                         std::to_string(static_cast<int>(
+                             attestation::STATUS_UNEXPECTED_DEVICE_ERROR))))
+      .WillOnce(Return());
+
+  // 12345 is an invalid certificate profile and should result in
+  // ENTERPRISE_USER_CERTIFICATE.
+  adaptor_->TpmAttestationCreateCertRequest(
+      std::move(response), static_cast<int>(attestation::DEFAULT_ACA), 12345,
+      kUsername1, kRequestOrigin);
+
+  // Verify that the parameters passed to DBus Proxy (New interface) is correct.
+  EXPECT_EQ(proxied_request.aca_type(), attestation::DEFAULT_ACA);
+  EXPECT_EQ(proxied_request.username(), kUsername1);
+  EXPECT_EQ(proxied_request.request_origin(), kRequestOrigin);
+  EXPECT_EQ(proxied_request.certificate_profile(),
+            attestation::ENTERPRISE_USER_CERTIFICATE);
 }
 
 }  // namespace
