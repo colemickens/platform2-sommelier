@@ -321,3 +321,10 @@ TEST_F(ScanDirTest, SkipRecurse) {
   EXPECT_EQ(0,
             getxattr(subf_cstr, file_attrs_cleaner::xdg_origin_url, NULL, 0));
 }
+
+TEST_F(ScanDirTest, InvalidDirSucceeds) {
+  const base::FilePath subdir(
+      test_dir_.Append("this_dir_definitely_does_not_exist"));
+
+  EXPECT_TRUE(ScanDir(subdir, {}, &url_xattrs_count_));
+}

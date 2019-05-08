@@ -141,7 +141,9 @@ bool ScanDir(const base::FilePath& dir,
   ScopedDir dirp(opendir(dir.value().c_str()));
   if (dirp.get() == nullptr) {
     PLOG(WARNING) << "Unable to open directory " << dir.value();
-    return false;
+    // This is a best effort routine so don't fail if the directory cannot be
+    // opened.
+    return true;
   }
 
   int dfd = dirfd(dirp.get());
@@ -223,12 +225,13 @@ bool ScanDir(const base::FilePath& dir,
                                O_RDONLY | O_NONBLOCK | O_NOFOLLOW | O_CLOEXEC));
 
       if (!fd.is_valid()) {
-        // This is normal for encrypted files.
-        if (errno == ENOKEY)
-          continue;
+        // This routine can be executed over encrypted filesystems.
+        // ENOKEY is normal for encrypted files, so don't log in that case.
+        if (errno != ENOKEY)
+          PLOG(WARNING) << "Skipping path: " << path.value();
 
-        PLOG(ERROR) << "Skipping path: " << path.value();
-        ret = false;
+        // This is a best effort routine so don't fail if the path cannot be
+        // opened.
         continue;
       }
 

@@ -11,6 +11,7 @@
 
 #include <base/command_line.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
@@ -37,8 +38,14 @@ int main(int argc, char* argv[]) {
   auto args = base::CommandLine::ForCurrentProcess()->GetArgs();
   bool ret = true;
   int url_xattrs_count = 0;
-  for (const auto& arg : args)
-    ret &= ScanDir(arg, skip_recurse, &url_xattrs_count);
+  for (const auto& arg : args) {
+    if (base::DirectoryExists(base::FilePath(arg))) {
+      ret &= ScanDir(arg, skip_recurse, &url_xattrs_count);
+    } else {
+      LOG(ERROR) << "Directory '" << arg << "' does not exist.";
+      ret = false;
+    }
+  }
 
   if (FLAGS_enable_metrics) {
     constexpr int min = 1;
