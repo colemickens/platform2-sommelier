@@ -123,7 +123,6 @@ void AddTaskObserverToThread(base::Thread* thread,
 }  // anonymous namespace
 
 const char kPublicMountSaltFilePath[] = "/var/lib/public_mount_salt";
-const char kChapsSystemToken[] = "/var/lib/chaps";
 const int kAutoCleanupPeriodMS = 1000 * 60 * 60;         // 1 hour
 const int kUpdateUserActivityPeriodHours = 24;           // daily
 const int kLowDiskNotificationPeriodMS = 1000 * 60 * 1;  // 1 minute
@@ -320,7 +319,8 @@ bool Service::UnloadPkcs11Tokens(const std::vector<FilePath>& exclude) {
   if (!chaps_client_->GetTokenList(isolate, &tokens))
     return false;
   for (size_t i = 0; i < tokens.size(); ++i) {
-    if (tokens[i] != kChapsSystemToken && !PrefixPresent(exclude, tokens[i])) {
+    if (tokens[i] != chaps::kSystemTokenPath &&
+        !PrefixPresent(exclude, tokens[i])) {
       LOG(INFO) << "Cleaning up PKCS #11 token: " << tokens[i];
       chaps_client_->UnloadToken(isolate, FilePath(tokens[i]));
     }
@@ -2545,7 +2545,8 @@ gboolean Service::Pkcs11GetTpmTokenInfo(gchar** OUT_label,
   pkcs11_init_->GetTpmTokenInfo(OUT_label, OUT_user_pin);
   *OUT_slot = -1;
   CK_SLOT_ID slot;
-  if (pkcs11_init_->GetTpmTokenSlotForPath(FilePath(kChapsSystemToken), &slot))
+  if (pkcs11_init_->GetTpmTokenSlotForPath(FilePath(chaps::kSystemTokenPath),
+                                           &slot))
     *OUT_slot = slot;
   return TRUE;
 }

@@ -18,6 +18,8 @@
 
 namespace chaps {
 
+constexpr char kSystemTokenPath[] = "/var/lib/chaps";
+
 extern const size_t kTokenLabelSize;
 extern const CK_ATTRIBUTE_TYPE kKeyBlobAttribute;
 extern const CK_ATTRIBUTE_TYPE kAuthDataAttribute;

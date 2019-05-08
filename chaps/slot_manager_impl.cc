@@ -49,7 +49,6 @@ constexpr char kManufacturerID[] = "Chromium OS";
 constexpr CK_ULONG kMaxPinLen = 127;
 constexpr CK_ULONG kMinPinLen = 6;
 constexpr char kSlotDescription[] = "TPM Slot";
-constexpr char kSystemTokenPath[] = "/var/lib/chaps";
 constexpr char kSystemTokenAuthData[] = "000000";
 constexpr char kSystemTokenLabel[] = "System TPM Token";
 constexpr char kTokenLabel[] = "User-Specific TPM Token";
