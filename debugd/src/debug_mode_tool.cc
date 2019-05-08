@@ -22,7 +22,7 @@ const int kFlimflamLogLevelVerbose3 = -3;
 const int kFlimflamLogLevelInfo = 0;
 
 const char kSupplicantServiceName[] = "fi.w1.wpa_supplicant1";
-const char kSupplicantObjectPath[] = "/f1/w1/wpa_supplicant1";
+const char kSupplicantObjectPath[] = "/fi/w1/wpa_supplicant1";
 const char kSupplicantDebugLevel[] = "DebugLevel";
 
 class SupplicantProxy {
