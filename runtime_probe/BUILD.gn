@@ -41,6 +41,7 @@ static_library("libruntime_probe") {
     "functions/generic_storage.cc",
     "functions/sequence.cc",
     "functions/sysfs.cc",
+    "functions/vpd_cached.cc",
     "probe_config.cc",
     "probe_function.cc",
     "probe_function_argument.cc",
