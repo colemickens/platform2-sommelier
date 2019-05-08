@@ -24,7 +24,7 @@ pkg_config("target_defaults") {
 shared_library("libhwsec") {
   configs += [ ":target_defaults" ]
   sources = [
-    # "task_dispatching_framework.cc",
+    "crypto_utility.cc",
   ]
 }
 
@@ -40,6 +40,7 @@ if (use.test) {
       ":test_config",
     ]
     sources = [
+      "crypto_utility_test.cc",
       "task_dispatching_framework_test.cc",
     ]
     deps = [
