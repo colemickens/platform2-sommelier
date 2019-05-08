@@ -1,7 +1,8 @@
-/* Copyright 2018 The Chromium OS Authors. All rights reserved.
- * Use of this source code is governed by a BSD-style license that can be
- * found in the LICENSE file.
- */
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "runtime_probe/functions/generic_battery.h"
 
 #include <string>
 #include <utility>
@@ -10,16 +11,34 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/json/json_reader.h>
+#include <base/json/json_writer.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 #include <pcrecpp.h>
 
-#include "runtime_probe/functions/generic_battery.h"
 #include "runtime_probe/utils/file_utils.h"
 
 namespace runtime_probe {
 
 GenericBattery::DataType GenericBattery::Eval() const {
+  DataType result{};
+  std::string json_output;
+  if (!InvokeHelper(&json_output)) {
+    LOG(ERROR) << "Failed to invoke helper to retrieve battery sysfs results.";
+    return result;
+  }
+  const auto battery_results =
+      base::ListValue::From(base::JSONReader::Read(json_output));
+
+  for (int i = 0; i < battery_results->GetSize(); ++i) {
+    const base::DictionaryValue* battery_res;
+    battery_results->GetDictionary(i, &battery_res);
+    result.push_back(std::move(*battery_res));
+  }
+  return result;
+}
+int GenericBattery::EvalInHelper(std::string* output) const {
   constexpr char kSysfsBatteryPath[] = "/sys/class/power_supply/BAT*";
   constexpr char kSysfsExpectedType[] = "Battery";
   const std::vector<std::string> keys{"manufacturer", "model_name",
@@ -32,7 +51,7 @@ GenericBattery::DataType GenericBattery::Eval() const {
       "serial_number",      "status",
       "voltage_min_design", "voltage_now"};
 
-  DataType result{};
+  base::ListValue result;
 
   const base::FilePath glob_path{kSysfsBatteryPath};
   const auto glob_root = glob_path.DirName();
@@ -67,15 +86,20 @@ GenericBattery::DataType GenericBattery::Eval() const {
         dict_value.SetString("index", base::IntToString(battery_index + 1));
       }
 
-      result.push_back(std::move(dict_value));
+      result.Append(dict_value.CreateDeepCopy());
     }
   }
 
-  if (result.size() > 1) {
+  if (result.GetSize() > 1) {
     LOG(ERROR) << "Multiple batteries is not supported yet.";
-    return {};
+    return -1;
   }
-  return result;
+  if (!base::JSONWriter::Write(result, output)) {
+    LOG(ERROR)
+        << "Failed to serialize generic battery probed result to json string";
+    return -1;
+  }
+  return 0;
 }
 
 }  // namespace runtime_probe

@@ -51,6 +51,7 @@ class GenericBattery : public ProbeFunction {
   std::string GetFunctionName() const override { return function_name; }
 
   DataType Eval() const override;
+  int EvalInHelper(std::string*) const override;
 
  private:
   static ProbeFunction::Register<GenericBattery> register_;
