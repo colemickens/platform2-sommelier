@@ -71,6 +71,7 @@ copies.
 | [libchromeos-rs](./libchromeos-rs/) | Common platform utility library for Rust |
 | [libchromeos-ui](./libchromeos-ui/) ||
 | [libcontainer](./libcontainer/) ||
+| [libhwsec](./libhwsec/) | Library for the utility functions of all TPM related daemons |
 | [libipproto](./libipproto/) | Library for building and parsing IPP (Internet Printing Protocol) frames |
 | [libpasswordprovider](./libpasswordprovider/) | Password Provider library for securely managing credentials with system services |
 | [libtpmcrypto](./libtpmcrypto/) | Library for AES256-GCM encryption with TPM sealed keys |
