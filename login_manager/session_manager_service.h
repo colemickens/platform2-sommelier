@@ -230,6 +230,10 @@ class SessionManagerService
   // Stops all running VMs if the vm_concierge D-Bus service is available.
   void MaybeStopAllVms();
 
+  // Writes the PID of the browser to a file for the crash reporter to read in
+  // preparation for the killing the browser.
+  void WriteAbortedBrowserPidFile();
+
   std::unique_ptr<BrowserJobInterface> browser_;
   base::TimeTicks last_browser_restart_time_;
   bool exit_on_child_done_ = false;

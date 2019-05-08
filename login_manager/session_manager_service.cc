@@ -5,6 +5,7 @@
 #include "login_manager/session_manager_service.h"
 
 #include <dbus/dbus.h>  // C dbus library header. Used in FilterMessage().
+#include <fcntl.h>
 #include <stdint.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -240,25 +241,7 @@ void SessionManagerService::RunBrowser() {
 
 void SessionManagerService::AbortBrowser(int signal,
                                          const std::string& message) {
-  std::string pid_string = base::IntToString(browser_->CurrentPid());
-  base::WriteFile(aborted_browser_pid_path_, pid_string.c_str(),
-                  pid_string.size());
-
-  // Change the file to be owned by the user and group of the containing
-  // directory. crash_reporter, which reads this file, is run by chrome using
-  // the chronos user.
-  struct stat stat_buf;
-  if (stat(aborted_browser_pid_path_.DirName().value().c_str(), &stat_buf) <
-      0) {
-    PLOG(ERROR) << "Could not stat: "
-                << aborted_browser_pid_path_.DirName().value();
-  } else {
-    if (chown(aborted_browser_pid_path_.value().c_str(), stat_buf.st_uid,
-              stat_buf.st_gid) < 0) {
-      PLOG(ERROR) << "Could not chown: " << aborted_browser_pid_path_.value();
-    }
-  }
-
+  WriteAbortedBrowserPidFile();
   browser_->Kill(signal, message);
   browser_->WaitAndAbort(GetKillTimeout());
 }
@@ -546,6 +529,49 @@ void SessionManagerService::MaybeStopAllVms() {
                                vm_tools::concierge::kStopAllVmsMethod);
   vm_concierge_dbus_proxy_->CallMethod(&method_call, kStopAllVmsTimeoutMs,
                                        base::Bind(&HandleStopAllVmsResponse));
+}
+
+void SessionManagerService::WriteAbortedBrowserPidFile() {
+  // This is safe from symlink attacks because /run/chrome is guaranteed to be a
+  // root-owned directory (/run is in the rootfs, /run/chrome is created by
+  // session_manager as a directory).
+  if (!base::DeleteFile(aborted_browser_pid_path_, false /* recursive */)) {
+    PLOG(ERROR) << "Failed to delete " << aborted_browser_pid_path_.value();
+    return;
+  }
+
+  // Note that we pass O_CREAT | O_EXCL to make this fail should the file
+  // already exist. This avoids race conditions with malicious chronos processes
+  // attempting to recreate e.g. a symlink at the path to redirect our write
+  // elsewhere.
+  base::ScopedFD aborted_browser_pid_fd(open(
+      aborted_browser_pid_path_.value().c_str(),
+      O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK, 0644));
+  if (!aborted_browser_pid_fd.is_valid()) {
+    PLOG(ERROR) << "Could not create " << aborted_browser_pid_path_.value();
+    return;
+  }
+
+  std::string pid_string = base::IntToString(browser_->CurrentPid());
+  if (!base::WriteFileDescriptor(aborted_browser_pid_fd.get(),
+                                 pid_string.c_str(), pid_string.size())) {
+    PLOG(ERROR) << "Failed to write " << aborted_browser_pid_path_.value();
+    return;
+  }
+
+  // Change the file to be owned by the user and group of the containing
+  // directory. crash_reporter, which reads this file, is run by chrome using
+  // the chronos user.
+  struct stat sbuf;
+  if (stat(aborted_browser_pid_path_.DirName().value().c_str(), &sbuf) != 0) {
+    PLOG(ERROR) << "Could not stat: "
+                << aborted_browser_pid_path_.DirName().value();
+    return;
+  }
+
+  if (fchown(aborted_browser_pid_fd.get(), sbuf.st_uid, sbuf.st_gid) < 0) {
+    PLOG(ERROR) << "Could not chown: " << aborted_browser_pid_path_.value();
+  }
 }
 
 }  // namespace login_manager
