@@ -16,8 +16,7 @@ class ControlInterface;
 
 class MockPowerManager : public PowerManager {
  public:
-  MockPowerManager(EventDispatcher* dispatcher,
-                   ControlInterface* control_interface);
+  explicit MockPowerManager(ControlInterface* control_interface);
   ~MockPowerManager() override;
 
   MOCK_METHOD0(ReportSuspendReadiness, bool());

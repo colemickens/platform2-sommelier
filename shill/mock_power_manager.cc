@@ -6,9 +6,8 @@
 
 namespace shill {
 
-MockPowerManager::MockPowerManager(EventDispatcher* dispatcher,
-                                   ControlInterface* control_interface)
-    : PowerManager(dispatcher, control_interface) {}
+MockPowerManager::MockPowerManager(ControlInterface* control_interface)
+    : PowerManager(control_interface) {}
 
 MockPowerManager::~MockPowerManager() = default;
 

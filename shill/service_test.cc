@@ -83,7 +83,7 @@ class ServiceTest : public PropertyStoreTest {
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
         eap_(new MockEapCredentials()),
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
-        power_manager_(new MockPowerManager(nullptr, &control_)) {
+        power_manager_(new MockPowerManager(&control_)) {
     ON_CALL(control_, CreatePowerManagerProxy(_, _, _))
         .WillByDefault(ReturnNull());
 

@@ -19,7 +19,6 @@
 
 namespace shill {
 
-class EventDispatcher;
 class ControlInterface;
 
 class PowerManager : public PowerManagerProxyDelegate {
@@ -45,8 +44,7 @@ class PowerManager : public PowerManagerProxyDelegate {
 
   // |control_itnerface| creates the PowerManagerProxy. Use a fake for testing.
   // Note: |Start| should be called to initialize this object before using it.
-  PowerManager(EventDispatcher* dispatcher,
-               ControlInterface* control_interface);
+  explicit PowerManager(ControlInterface* control_interface);
   ~PowerManager() override;
 
   bool suspending() const { return suspending_; }
@@ -103,7 +101,6 @@ class PowerManager : public PowerManagerProxyDelegate {
 
   void NotifySuspendDone();
 
-  EventDispatcher* dispatcher_;
   ControlInterface* control_interface_;
 
   // The power manager proxy created by this class.  It dispatches the inherited

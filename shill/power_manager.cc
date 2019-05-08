@@ -10,7 +10,6 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
-#include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/power_manager_proxy_interface.h"
 
@@ -27,10 +26,8 @@ const char PowerManager::kSuspendDelayDescription[] = "shill";
 const char PowerManager::kDarkSuspendDelayDescription[] = "shill";
 const int PowerManager::kSuspendTimeoutMilliseconds = 15 * 1000;
 
-PowerManager::PowerManager(EventDispatcher* dispatcher,
-                           ControlInterface* control_interface)
-    : dispatcher_(dispatcher),
-      control_interface_(control_interface),
+PowerManager::PowerManager(ControlInterface* control_interface)
+    : control_interface_(control_interface),
       suspend_delay_registered_(false),
       suspend_delay_id_(0),
       dark_suspend_delay_registered_(false),

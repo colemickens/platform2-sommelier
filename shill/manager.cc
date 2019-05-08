@@ -296,8 +296,7 @@ void Manager::Start() {
   ComputeBrowserTrafficUids();
   ApplyPolicies();
 
-  power_manager_.reset(
-      new PowerManager(dispatcher_, control_interface_));
+  power_manager_.reset(new PowerManager(control_interface_));
   power_manager_->Start(base::TimeDelta::FromMilliseconds(
                             kTerminationActionsTimeoutMilliseconds),
                         Bind(&Manager::OnSuspendImminent, AsWeakPtr()),

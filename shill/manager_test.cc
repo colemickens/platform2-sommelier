@@ -91,7 +91,7 @@ using ::testing::WithArg;
 class ManagerTest : public PropertyStoreTest {
  public:
   ManagerTest()
-      : power_manager_(new MockPowerManager(nullptr, control_interface())),
+      : power_manager_(new MockPowerManager(control_interface())),
         device_info_(new NiceMock<MockDeviceInfo>(control_interface(),
                                                   nullptr,
                                                   nullptr,

@@ -14,7 +14,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_control.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_power_manager_proxy.h"
 #include "shill/power_manager_proxy_interface.h"
@@ -79,7 +78,7 @@ class PowerManagerTest : public Test {
 
   PowerManagerTest()
       : kTimeout(base::TimeDelta::FromSeconds(3)),
-        power_manager_(&dispatcher_, &control_),
+        power_manager_(&control_),
         power_manager_proxy_(control_.power_manager_proxy()),
         delegate_(control_.delegate()) {
     suspend_imminent_callback_ =
@@ -184,7 +183,6 @@ class PowerManagerTest : public Test {
   // This is non-static since it's a non-POD type.
   const base::TimeDelta kTimeout;
 
-  MockEventDispatcher dispatcher_;
   FakeControl control_;
   PowerManager power_manager_;
   MockPowerManagerProxy* const power_manager_proxy_;
