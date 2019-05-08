@@ -91,7 +91,6 @@ class InputDeviceControllerTest : public ::testing::Test {
   }
 
   void InitInputDeviceController() {
-    prefs_.SetInt64(kAllowDockedModePref, default_allow_docked_mode_);
     input_device_controller_.Init(&backlight_controller_, &udev_,
                                   &acpi_wakeup_helper_, &ec_helper_,
                                   initial_lid_state_, initial_tablet_mode_,
@@ -103,8 +102,6 @@ class InputDeviceControllerTest : public ::testing::Test {
   system::AcpiWakeupHelperStub acpi_wakeup_helper_;
   system::EcHelperStub ec_helper_;
   FakePrefs prefs_;
-
-  bool default_allow_docked_mode_ = true;
 
   LidState initial_lid_state_ = LidState::OPEN;
   TabletMode initial_tablet_mode_ = TabletMode::OFF;
@@ -189,26 +186,6 @@ TEST_F(InputDeviceControllerTest, InhibitDocking) {
   EXPECT_EQ("0", GetSysattr(kSyspath0, kInhibited));
 
   // When the lid is open, inhibit should still be off.
-  input_device_controller_.SetLidState(LidState::OPEN);
-  EXPECT_EQ("0", GetSysattr(kSyspath0, kInhibited));
-}
-
-TEST_F(InputDeviceControllerTest, InhibitDockingDisallowed) {
-  AddDeviceWithTags(kSyspath0, kTagInhibit, kTagUsableWhenLaptop,
-                    kTagUsableWhenDocked, nullptr);
-  default_allow_docked_mode_ = false;
-  initial_display_mode_ = DisplayMode::PRESENTATION;
-  InitInputDeviceController();
-
-  // In laptop mode, inhibit should be off.
-  EXPECT_EQ("0", GetSysattr(kSyspath0, kInhibited));
-
-  // When the lid is closed, inhibit should be on since docking is disallowed,
-  // even though the device supports it.
-  input_device_controller_.SetLidState(LidState::CLOSED);
-  EXPECT_EQ("1", GetSysattr(kSyspath0, kInhibited));
-
-  // When the lid is open, inhibit should be off again.
   input_device_controller_.SetLidState(LidState::OPEN);
   EXPECT_EQ("0", GetSysattr(kSyspath0, kInhibited));
 }

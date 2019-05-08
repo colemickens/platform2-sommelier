@@ -155,7 +155,7 @@ class StateController : public PrefsObserver {
   // Is the system currently in "docked mode", where it remains awake while
   // the lid is closed because an external display is connected?
   bool in_docked_mode() {
-    return allow_docked_mode_ && display_mode_ == DisplayMode::PRESENTATION &&
+    return display_mode_ == DisplayMode::PRESENTATION &&
            lid_state_ == LidState::CLOSED;
   }
 
@@ -443,9 +443,6 @@ class StateController : public PrefsObserver {
   // Is the device using a factory image? This is controlled by the
   // |kFactoryModePref| pref and overrides |policy_|.
   bool factory_mode_ = false;
-
-  // True if docked mode is allowed.
-  bool allow_docked_mode_ = false;
 
   // Should |policy_| be ignored?  Used by tests and developers.
   bool ignore_external_policy_ = false;

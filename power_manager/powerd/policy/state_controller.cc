@@ -783,7 +783,6 @@ void StateController::LoadPrefs() {
   prefs_->GetBool(kDisableIdleSuspendPref, &disable_idle_suspend_);
   prefs_->GetBool(kFactoryModePref, &factory_mode_);
   prefs_->GetBool(kIgnoreExternalPolicyPref, &ignore_external_policy_);
-  prefs_->GetBool(kAllowDockedModePref, &allow_docked_mode_);
 
   int64_t tpm_threshold = 0;
   prefs_->GetInt64(kTpmCounterSuspendThresholdPref, &tpm_threshold);
@@ -887,7 +886,7 @@ void StateController::UpdateSettingsAndState() {
   }
 
   // Ignore the lid being closed while presenting to support docked mode.
-  if (allow_docked_mode_ && presenting)
+  if (presenting)
     lid_closed_action_ = Action::DO_NOTHING;
 
   // Override the idle and lid-closed actions to suspend instead of shutting

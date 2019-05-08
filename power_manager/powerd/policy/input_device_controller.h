@@ -122,7 +122,6 @@ class InputDeviceController : public policy::BacklightControllerObserver,
   LidState lid_state_ = LidState::OPEN;
   TabletMode tablet_mode_ = TabletMode::OFF;
   DisplayMode display_mode_ = DisplayMode::NORMAL;
-  bool allow_docked_mode_ = false;
   bool backlight_enabled_ = false;
 
   // The mode calculated in the most recent invocation of UpdatePolicy().

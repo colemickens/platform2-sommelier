@@ -184,7 +184,6 @@ class StateControllerTest : public testing::Test {
         default_require_usb_input_device_to_suspend_(0),
         default_avoid_suspend_when_headphone_jack_plugged_(0),
         default_ignore_external_policy_(0),
-        default_allow_docked_mode_(1),
         initial_power_source_(PowerSource::AC),
         initial_lid_state_(LidState::OPEN),
         initial_display_mode_(DisplayMode::NORMAL),
@@ -222,7 +221,6 @@ class StateControllerTest : public testing::Test {
     prefs_.SetInt64(kAvoidSuspendWhenHeadphoneJackPluggedPref,
                     default_avoid_suspend_when_headphone_jack_plugged_);
     prefs_.SetInt64(kIgnoreExternalPolicyPref, default_ignore_external_policy_);
-    prefs_.SetInt64(kAllowDockedModePref, default_allow_docked_mode_);
 
     test_api_.clock()->set_current_time_for_testing(now_);
     controller_.Init(&delegate_, &prefs_, &dbus_wrapper_, initial_power_source_,
@@ -405,7 +403,6 @@ class StateControllerTest : public testing::Test {
   int64_t default_require_usb_input_device_to_suspend_;
   int64_t default_avoid_suspend_when_headphone_jack_plugged_;
   int64_t default_ignore_external_policy_;
-  int64_t default_allow_docked_mode_;
 
   // Values passed by Init() to StateController::Init().
   PowerSource initial_power_source_;
@@ -1588,19 +1585,6 @@ TEST_F(StateControllerTest, DockedMode) {
   controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
   EXPECT_EQ(JoinActions(kUndocked, kSuspendLidClosed, nullptr),
             delegate_.GetActions());
-}
-
-// Tests that the system does not enable docked mode when allow_docked_mode
-// is not set.
-TEST_F(StateControllerTest, DisallowDockedMode) {
-  default_allow_docked_mode_ = 0;
-  Init();
-
-  // Connect an external display and close the lid.  The system should suspend.
-  controller_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-  controller_.HandleLidStateChange(LidState::CLOSED);
-  EXPECT_EQ(kSuspendLidClosed, delegate_.GetActions());
 }
 
 // Tests that PowerManagementPolicy's

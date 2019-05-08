@@ -674,7 +674,6 @@ TEST_F(DaemonTest, DeferShutdownWhileFlashromRunning) {
 TEST_F(DaemonTest, ForceLidOpenForDockedModeReboot) {
   // During initialization, we should always stop forcing the lid open to undo
   // a force request that might've been sent earlier.
-  prefs_->SetInt64(kAllowDockedModePref, 1);
   prefs_->SetInt64(kUseLidPref, 1);
   Init();
   ASSERT_EQ(1, async_commands_.size());
@@ -691,7 +690,6 @@ TEST_F(DaemonTest, ForceLidOpenForDockedModeReboot) {
 
 TEST_F(DaemonTest, DontForceLidOpenForDockedModeShutdown) {
   // When shutting down in docked mode, we shouldn't force the lid open.
-  prefs_->SetInt64(kAllowDockedModePref, 1);
   prefs_->SetInt64(kUseLidPref, 1);
   Init();
   async_commands_.clear();

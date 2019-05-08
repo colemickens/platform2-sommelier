@@ -146,7 +146,6 @@ void InputDeviceController::Init(
   tablet_mode_ = tablet_mode;
   display_mode_ = display_mode;
   backlight_enabled_ = true;
-  prefs_->GetBool(kAllowDockedModePref, &allow_docked_mode_);
 
   UpdatePolicy();
 
@@ -255,7 +254,7 @@ void InputDeviceController::ConfigureAcpiWakeup() {
 }
 
 InputDeviceController::Mode InputDeviceController::GetMode() const {
-  if (allow_docked_mode_ && display_mode_ == DisplayMode::PRESENTATION &&
+  if (display_mode_ == DisplayMode::PRESENTATION &&
       lid_state_ == LidState::CLOSED)
     return Mode::DOCKED;
 
