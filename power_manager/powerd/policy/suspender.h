@@ -21,6 +21,7 @@
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 
+#include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/suspend_delay_observer.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
@@ -224,6 +225,7 @@ class Suspender : public SuspendDelayObserver {
   void HandleUserActivity();
   void HandleWakeNotification();
   void HandleShutdown();
+  void HandleDisplayModeChange(DisplayMode mode);
 
   // Handles the D-Bus name |name| becoming owned by |new_owner| instead of
   // |old_owner|.
@@ -270,6 +272,8 @@ class Suspender : public SuspendDelayObserver {
     SHUTDOWN_STARTED,
     // A notification was created or updated.
     WAKE_NOTIFICATION,
+    // Display mode change was reported.
+    DISPLAY_MODE_CHANGE,
   };
 
   // Converts |event| to a string.
@@ -422,6 +426,9 @@ class Suspender : public SuspendDelayObserver {
 
   // Runs HandleEvent(EVENT_READY_TO_RESUSPEND).
   base::OneShotTimer resuspend_timer_;
+
+  // Whether the system is presenting or not.
+  DisplayMode display_mode_ = DisplayMode::NORMAL;
 
   // Keep this last.
   base::WeakPtrFactory<Suspender> weak_ptr_factory_;

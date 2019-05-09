@@ -591,6 +591,31 @@ TEST_F(SuspenderTest, DontCancelForUserActivityWhileLidClosed) {
   EXPECT_EQ(JoinActions(kSuspend, kUnprepare, nullptr), delegate_.GetActions());
 }
 
+// Tests that announcing suspend readiness doesn't trigger a call to Suspend()
+// if user activity that should cancel the current suspend attempt was
+// previously received when the device is docked.
+TEST_F(SuspenderTest, CancelForUserActivityWhileDocked) {
+  delegate_.set_lid_closed(true);
+  Init();
+  suspender_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta());
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(test_api_.suspend_id(), GetSuspendImminentId(0));
+  EXPECT_TRUE(delegate_.suspend_announced());
+
+  suspender_.HandleUserActivity();
+  EXPECT_EQ(test_api_.suspend_id(), GetSuspendDoneId(1));
+  EXPECT_FALSE(delegate_.suspend_announced());
+  EXPECT_EQ(kUnprepare, delegate_.GetActions());
+  EXPECT_FALSE(delegate_.suspend_was_successful());
+  EXPECT_EQ(0, delegate_.num_suspend_attempts());
+  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
+
+  AnnounceReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
+}
+
 // Tests that expected wakeup counts passed to
 // RequestSuspendWithExternalWakeupCount() are honored.
 TEST_F(SuspenderTest, ExternalWakeupCount) {

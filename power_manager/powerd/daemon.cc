@@ -1117,6 +1117,7 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetIsProjectingMethod(
   LOG(INFO) << "Chrome is using " << DisplayModeToString(mode)
             << " display mode";
   state_controller_->HandleDisplayModeChange(mode);
+  suspender_->HandleDisplayModeChange(mode);
   input_device_controller_->SetDisplayMode(mode);
   for (auto controller : all_backlight_controllers_)
     controller->HandleDisplayModeChange(mode);
