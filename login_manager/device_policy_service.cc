@@ -106,6 +106,30 @@ int GetSwitchPrefixLength(const std::string& switch_string) {
   return 0;
 }
 
+bool DockMacAddressSourceToString(
+    enterprise_management::DeviceDockMacAddressSourceProto::Source source,
+    std::string* source_out) {
+  DCHECK(source_out);
+  switch (source) {
+    case enterprise_management::DeviceDockMacAddressSourceProto::
+        SOURCE_UNSPECIFIED:
+      return false;
+    case enterprise_management::DeviceDockMacAddressSourceProto::
+        DEVICE_DOCK_MAC_ADDRESS:
+      *source_out = DevicePolicyService::kDockMacPassThroughDockMac;
+      return true;
+    case enterprise_management::DeviceDockMacAddressSourceProto::
+        DEVICE_NIC_MAC_ADDRESS:
+      *source_out = DevicePolicyService::kDockMacPassThroughEthernetMac;
+      return true;
+    case enterprise_management::DeviceDockMacAddressSourceProto::
+        DOCK_NIC_MAC_ADDRESS:
+      *source_out = DevicePolicyService::kDockMacPassThroughBuiltinMac;
+      return true;
+  }
+  return false;
+}
+
 const char kInstallAttributesPath[] = "/home/.shadow/install_attributes.pb";
 
 }  // namespace
@@ -121,6 +145,16 @@ const char DevicePolicyService::kExtensionPolicyType[] =
 const char DevicePolicyService::kAttrEnterpriseMode[] = "enterprise.mode";
 // static
 const char DevicePolicyService::kEnterpriseDeviceMode[] = "enterprise";
+// static
+const char DevicePolicyService::kDockMacPassThroughVpdFieldName[] =
+    "dock_passthrough";
+// static
+const char DevicePolicyService::kDockMacPassThroughDockMac[] = "dock_mac";
+// static
+const char DevicePolicyService::kDockMacPassThroughEthernetMac[] =
+    "ethernet_mac0";
+// static
+const char DevicePolicyService::kDockMacPassThroughBuiltinMac[] = "builtin";
 
 DevicePolicyService::~DevicePolicyService() = default;
 
@@ -617,6 +651,21 @@ bool DevicePolicyService::UpdateSystemSettings(const Completion& completion) {
   int is_enrolled = InstallAttributesEnterpriseMode();
   updates.push_back(std::make_pair(Crossystem::kCheckEnrollment,
                                    std::to_string(is_enrolled)));
+
+  // This part should be in the shill network manager.
+  // TODO(lamzin): remove when shill implementation will be ready (b/132240657).
+  if (GetSettings().has_device_dock_mac_address_source() &&
+      GetSettings().device_dock_mac_address_source().has_source()) {
+    std::string source;
+    if (DockMacAddressSourceToString(
+            GetSettings().device_dock_mac_address_source().source(), &source)) {
+      updates.push_back(
+          std::make_pair(kDockMacPassThroughVpdFieldName, source));
+    } else {
+      LOG(ERROR) << "Invalid dock mac address source value: "
+                 << GetSettings().device_dock_mac_address_source().source();
+    }
+  }
 
   // Note that VPD update errors will be ignored if the device is not enrolled.
   return vpd_process_->RunInBackground(

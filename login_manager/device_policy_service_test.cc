@@ -263,6 +263,21 @@ class DevicePolicyServiceTest : public ::testing::Test {
     EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(key_populated));
   }
 
+  void SetExpectationAndUpdateDockMacPassThrough(
+      em::DeviceDockMacAddressSourceProto::Source source,
+      const VpdProcess::KeyValuePairs& updates) {
+    MockNssUtil nss;
+    InitService(&nss, true);
+
+    auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
+    proto->mutable_device_dock_mac_address_source()->set_source(source);
+    SetSettings(service_.get(), std::move(proto));
+
+    EXPECT_CALL(vpd_process_, RunInBackground(updates, false, _))
+        .WillOnce(Return(true));
+    EXPECT_TRUE(UpdateSystemSettings(service_.get()));
+  }
+
   bool IsResilient() { return service_->IsChromeStoreResilientForTesting(); }
 
   LoginMetrics::PolicyFileState SimulateNullPolicy() {
@@ -777,6 +792,34 @@ TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
       .WillOnce(Return(false));
 
   EXPECT_FALSE(UpdateSystemSettings(&service));
+}
+
+// Check dock mac address source policy.
+TEST_F(DevicePolicyServiceTest, DockMacPassThrough) {
+  SetExpectationAndUpdateDockMacPassThrough(
+      em::DeviceDockMacAddressSourceProto::SOURCE_UNSPECIFIED,
+      {{Crossystem::kBlockDevmode, "0"}, {Crossystem::kCheckEnrollment, "0"}});
+
+  SetExpectationAndUpdateDockMacPassThrough(
+      em::DeviceDockMacAddressSourceProto::DEVICE_DOCK_MAC_ADDRESS,
+      {{Crossystem::kBlockDevmode, "0"},
+       {Crossystem::kCheckEnrollment, "0"},
+       {DevicePolicyService::kDockMacPassThroughVpdFieldName,
+        DevicePolicyService::kDockMacPassThroughDockMac}});
+
+  SetExpectationAndUpdateDockMacPassThrough(
+      em::DeviceDockMacAddressSourceProto::DEVICE_NIC_MAC_ADDRESS,
+      {{Crossystem::kBlockDevmode, "0"},
+       {Crossystem::kCheckEnrollment, "0"},
+       {DevicePolicyService::kDockMacPassThroughVpdFieldName,
+        DevicePolicyService::kDockMacPassThroughEthernetMac}});
+
+  SetExpectationAndUpdateDockMacPassThrough(
+      em::DeviceDockMacAddressSourceProto::DOCK_NIC_MAC_ADDRESS,
+      {{Crossystem::kBlockDevmode, "0"},
+       {Crossystem::kCheckEnrollment, "0"},
+       {DevicePolicyService::kDockMacPassThroughVpdFieldName,
+        DevicePolicyService::kDockMacPassThroughBuiltinMac}});
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NoPrivateKey) {

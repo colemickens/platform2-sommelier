@@ -142,6 +142,11 @@ class DevicePolicyService : public PolicyService {
   static const char kAttrEnterpriseMode[];
   static const char kEnterpriseDeviceMode[];
 
+  static const char kDockMacPassThroughVpdFieldName[];
+  static const char kDockMacPassThroughDockMac[];
+  static const char kDockMacPassThroughEthernetMac[];
+  static const char kDockMacPassThroughBuiltinMac[];
+
  private:
   friend class DevicePolicyServiceTest;
   friend class MockDevicePolicyService;
