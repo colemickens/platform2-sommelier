@@ -12,7 +12,6 @@
 #include <string>
 #include <vector>
 
-#include "kerberos/account_manager.h"
 #include "kerberos/org.chromium.Kerberos.h"
 
 namespace brillo {
@@ -22,6 +21,8 @@ class DBusObject;
 }  // namespace brillo
 
 namespace kerberos {
+
+class AccountManager;
 
 // Implementation of the Kerberos D-Bus interface.
 class KerberosAdaptor : public org::chromium::KerberosAdaptor,
@@ -54,7 +55,9 @@ class KerberosAdaptor : public org::chromium::KerberosAdaptor,
   void OnKerberosFilesChanged(const std::string& principal_name);
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
-  AccountManager manager_;
+
+  // Manages Kerberos accounts and tickets.
+  std::unique_ptr<AccountManager> manager_;
 
   DISALLOW_COPY_AND_ASSIGN(KerberosAdaptor);
 };

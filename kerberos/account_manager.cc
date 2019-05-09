@@ -42,7 +42,7 @@ WARN_UNUSED_RESULT ErrorType LoadFile(const base::FilePath& path,
                                       std::string* data) {
   data->clear();
   if (!base::ReadFileToStringWithMaxSize(path, data, kKrb5FileSizeLimit)) {
-    PLOG(ERROR) << "Failed to read '" << path.value() << "'";
+    PLOG(ERROR) << "Failed to read " << path.value();
     data->clear();
     return ERROR_LOCAL_IO;
   }

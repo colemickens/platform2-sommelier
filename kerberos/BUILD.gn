@@ -53,6 +53,7 @@ pkg_config("libkerberos_config") {
     "dbus-1",
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "libsession_manager-client",
     "mit-krb5",
   ]
 }

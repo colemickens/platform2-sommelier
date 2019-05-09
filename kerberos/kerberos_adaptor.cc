@@ -11,7 +11,11 @@
 #include <base/files/file_util.h>
 #include <base/optional.h>
 #include <brillo/dbus/dbus_object.h>
+#include <brillo/errors/error.h>
+#include <dbus/login_manager/dbus-constants.h>
+#include <session_manager/dbus-proxies.h>
 
+#include "kerberos/account_manager.h"
 #include "kerberos/error_strings.h"
 #include "kerberos/platform_helper.h"
 #include "kerberos/proto_bindings/kerberos_service.pb.h"
@@ -52,20 +56,28 @@ void PrintResult(const char* method_name, ErrorType error) {
     LOG(ERROR) << "<<< " << method_name << " failed: " << GetErrorString(error);
 }
 
+// Calls Session Manager to get the user hash for the primary session. Returns
+// an empty string and logs on error.
+std::string GetSanitizedUsername(brillo::dbus_utils::DBusObject* dbus_object) {
+  std::string username;
+  std::string sanitized_username;
+  brillo::ErrorPtr error;
+  org::chromium::SessionManagerInterfaceProxy proxy(dbus_object->GetBus());
+  if (!proxy.RetrievePrimarySession(&username, &sanitized_username, &error)) {
+    const char* error_msg =
+        error ? error->GetMessage().c_str() : "Unknown error.";
+    LOG(ERROR) << "Call to RetrievePrimarySession failed. " << error_msg;
+    return std::string();
+  }
+  return sanitized_username;
+}
+
 }  // namespace
 
 KerberosAdaptor::KerberosAdaptor(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object)
     : org::chromium::KerberosAdaptor(this),
-      dbus_object_(std::move(dbus_object)),
-      // TODO(https://crbug.com/951718): Figure out user hash and set storage
-      // dir to daemon store folder.
-      manager_(base::FilePath("/tmp/kerberosd"),
-               base::BindRepeating(&KerberosAdaptor::OnKerberosFilesChanged,
-                                   base::Unretained(this))) {
-  base::CreateDirectory(base::FilePath("/tmp/kerberosd"));
-  manager_.LoadAccounts();
-}
+      dbus_object_(std::move(dbus_object)) {}
 
 KerberosAdaptor::~KerberosAdaptor() = default;
 
@@ -74,6 +86,28 @@ void KerberosAdaptor::RegisterAsync(
         completion_callback) {
   RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(completion_callback);
+
+  // Get the sanitized username (aka user hash). It's needded to determine the
+  // daemon store directory where account data is stored.
+  base::FilePath storage_dir;
+  const std::string sanitized_username =
+      GetSanitizedUsername(dbus_object_.get());
+  if (!sanitized_username.empty()) {
+    storage_dir = base::FilePath("/run/daemon-store/kerberosd/")
+                      .Append(sanitized_username);
+  } else {
+    // /tmp is a tmpfs and the daemon is shut down on logout, so data is cleared
+    // on logout. Better than nothing, though.
+    storage_dir = base::FilePath("/tmp");
+    LOG(ERROR) << "Failed to retrieve user hash to determine storage "
+                  "directory. Falling back to "
+               << storage_dir.value() << ".";
+  }
+
+  manager_ = std::make_unique<AccountManager>(
+      storage_dir, base::BindRepeating(&KerberosAdaptor::OnKerberosFilesChanged,
+                                       base::Unretained(this)));
+  manager_->LoadAccounts();
 }
 
 ByteArray KerberosAdaptor::AddAccount(const ByteArray& request_blob) {
@@ -82,7 +116,7 @@ ByteArray KerberosAdaptor::AddAccount(const ByteArray& request_blob) {
   ErrorType error = ParseProto(&request, request_blob);
 
   if (error == ERROR_NONE)
-    error = manager_.AddAccount(request.principal_name());
+    error = manager_->AddAccount(request.principal_name());
 
   PrintResult(__FUNCTION__, error);
   AddAccountResponse response;
@@ -96,7 +130,7 @@ ByteArray KerberosAdaptor::RemoveAccount(const ByteArray& request_blob) {
   ErrorType error = ParseProto(&request, request_blob);
 
   if (error == ERROR_NONE)
-    error = manager_.RemoveAccount(request.principal_name());
+    error = manager_->RemoveAccount(request.principal_name());
 
   PrintResult(__FUNCTION__, error);
   RemoveAccountResponse response;
@@ -112,7 +146,7 @@ ByteArray KerberosAdaptor::ListAccounts(const ByteArray& request_blob) {
   // Note: request is empty right now, but keeping it for future changes.
   std::vector<Account> accounts;
   if (error == ERROR_NONE)
-    error = manager_.ListAccounts(&accounts);
+    error = manager_->ListAccounts(&accounts);
 
   PrintResult(__FUNCTION__, error);
   ListAccountsResponse response;
@@ -128,7 +162,7 @@ ByteArray KerberosAdaptor::SetConfig(const ByteArray& request_blob) {
   ErrorType error = ParseProto(&request, request_blob);
 
   if (error == ERROR_NONE)
-    error = manager_.SetConfig(request.principal_name(), request.krb5conf());
+    error = manager_->SetConfig(request.principal_name(), request.krb5conf());
 
   PrintResult(__FUNCTION__, error);
   SetConfigResponse response;
@@ -152,7 +186,7 @@ ByteArray KerberosAdaptor::AcquireKerberosTgt(
   }
 
   if (error == ERROR_NONE)
-    error = manager_.AcquireTgt(request.principal_name(), password.value());
+    error = manager_->AcquireTgt(request.principal_name(), password.value());
 
   PrintResult(__FUNCTION__, error);
   AcquireKerberosTgtResponse response;
@@ -167,8 +201,8 @@ ByteArray KerberosAdaptor::GetKerberosFiles(const ByteArray& request_blob) {
 
   GetKerberosFilesResponse response;
   if (error == ERROR_NONE) {
-    error = manager_.GetKerberosFiles(request.principal_name(),
-                                      response.mutable_files());
+    error = manager_->GetKerberosFiles(request.principal_name(),
+                                       response.mutable_files());
   }
 
   PrintResult(__FUNCTION__, error);
