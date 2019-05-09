@@ -424,17 +424,15 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
   EXPECT_TRUE(connection->IsDefault());
 
   EXPECT_CALL(routing_table_, FlushRules(kTestDeviceInterfaceIndex0));
-  EXPECT_CALL(
-      routing_table_,
-      AddRule(kTestDeviceInterfaceIndex0,
-              IsValidUidRule(
-                  IPAddress::kFamilyIPv4, Connection::kLowestPriorityMetric, uid)))
+  EXPECT_CALL(routing_table_,
+              AddRule(kTestDeviceInterfaceIndex0,
+                      IsValidUidRule(IPAddress::kFamilyIPv4,
+                                     Connection::kLowestPriorityMetric, uid)))
       .WillOnce(Return(true));
-  EXPECT_CALL(
-      routing_table_,
-      AddRule(kTestDeviceInterfaceIndex0,
-              IsValidUidRule(
-                  IPAddress::kFamilyIPv6, Connection::kLowestPriorityMetric, uid)))
+  EXPECT_CALL(routing_table_,
+              AddRule(kTestDeviceInterfaceIndex0,
+                      IsValidUidRule(IPAddress::kFamilyIPv6,
+                                     Connection::kLowestPriorityMetric, uid)))
       .WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection->SetUseDNS(false);
