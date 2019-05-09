@@ -38,6 +38,8 @@ base::FilePath PrefixAbsolutePath(const base::FilePath& prefix,
 void TryFileCopy(const base::FilePath& source,
                  const base::FilePath& destination);
 
+bool IsSymlink(const base::FilePath& path);
+
 bool CopyFileAndSetPermissions(const base::FilePath& source,
                                const base::FilePath& destination,
                                const std::string& owner_username,

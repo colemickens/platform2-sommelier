@@ -6,6 +6,7 @@
 
 #include <vector>
 
+#include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
 #include <sys/stat.h>
@@ -14,6 +15,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/rollback_constants.h"
@@ -218,6 +220,11 @@ bool FinishRestore(const base::FilePath& root_path,
   CleanupRestoreFiles(root_path, excluded_files);
 
   // Indicate that the second stage completed.
+  if (IsSymlink(kSecondStageCompletedFile)) {
+    PLOG(ERROR) << "Couldn't create file " << kSecondStageCompletedFile.value()
+                << " as it exists as a symlink";
+    return false;
+  }
   oobe_config.WriteFile(kSecondStageCompletedFile, "");
   LOG(INFO) << "Rollback restore stage 2 completed.";
 
@@ -273,6 +280,19 @@ void TryFileCopy(const base::FilePath& source,
   }
 }
 
+bool IsSymlink(const base::FilePath& path) {
+  int fd = HANDLE_EINTR(open(path.value().c_str(), O_PATH));
+  if (fd < 0)
+    return false;
+  char buf[PATH_MAX];
+  ssize_t count = readlink(base::StringPrintf("/proc/self/fd/%d", fd).c_str(),
+                           buf, arraysize(buf));
+  if (count <= 0)
+    return false;
+  base::FilePath real(std::string(buf, count));
+  return real != path;
+}
+
 bool CopyFileAndSetPermissions(const base::FilePath& source,
                                const base::FilePath& destination,
                                const std::string& owner_username,
@@ -280,6 +300,11 @@ bool CopyFileAndSetPermissions(const base::FilePath& source,
                                bool ignore_permissions_for_testing) {
   if (!base::PathExists(source.DirName())) {
     LOG(ERROR) << "Parent path doesn't exist: " << source.DirName().value();
+    return false;
+  }
+  if (IsSymlink(destination)) {
+    PLOG(ERROR) << "Couldn't copy file " << source.value() << " to a symlink "
+                << destination.value();
     return false;
   }
   TryFileCopy(source, destination);
