@@ -264,7 +264,7 @@
       <arg name="subsystem" type="s" direction="in">
         <tp:docstring>
           Subsystem to change the debug mode of. One of "cellular", "wifi",
-          "wimax", "ethernet" or "none".
+          "ethernet" or "none".
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
