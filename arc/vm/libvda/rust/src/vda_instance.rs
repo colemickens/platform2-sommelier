@@ -5,12 +5,13 @@
 //! This module provides type safe interfaces for each operation exposed by Chrome's
 //! VideoDecodeAccelerator.
 
-use crate::bindings;
-
+use std::os::raw::c_void;
 use std::slice;
 
+use crate::bindings;
 use crate::error::*;
 use crate::format::*;
+use crate::session::*;
 
 /// Represents a backend implementation of libvda.
 pub enum VdaImplType {
@@ -26,7 +27,8 @@ pub struct Capabilities {
 
 /// Represents a libvda instance.
 pub struct VdaInstance {
-    raw_ptr: *mut ::std::os::raw::c_void,
+    // `raw_ptr` must be a valid pointer obtained from `bindings::initialize`.
+    raw_ptr: *mut c_void,
     caps: Capabilities,
 }
 
@@ -105,6 +107,15 @@ impl VdaInstance {
     /// Get media capabilities.
     pub fn get_capabilities(&self) -> &Capabilities {
         &self.caps
+    }
+
+    /// Opens a new `Session` for a given `Profile`.
+    pub fn open_session<'a>(&'a self, profile: Profile) -> VdaResult<Session<'a>> {
+        // Safe because `self.raw_ptr` is a non-NULL pointer obtained from `bindings::initialize`
+        // in `VdaInstance::new`.
+        unsafe {
+            Session::new(self.raw_ptr, profile).ok_or_else(|| VdaError::SessionInitFailure(profile))
+        }
     }
 }
 

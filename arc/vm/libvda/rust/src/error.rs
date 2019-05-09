@@ -7,6 +7,8 @@
 use std::error;
 use std::fmt::{self, Display};
 
+use crate::format;
+
 pub type VdaResult<T> = std::result::Result<T, VdaError>;
 
 #[derive(Debug)]
@@ -14,6 +16,9 @@ pub enum VdaError {
     GetCapabilitiesFailure,
     InstanceInitFailure,
     InvalidCapabilities(String),
+    SessionIdAlreadyUsed(u32),
+    SessionInitFailure(format::Profile),
+    SessionNotFound(u32),
     UnknownPixelFormat(u32),
     UnknownProfile(i32),
 }
@@ -26,6 +31,9 @@ impl Display for VdaError {
             GetCapabilitiesFailure => write!(f, "failed to get capabilities"),
             InstanceInitFailure => write!(f, "failed to initialize VDA instance"),
             InvalidCapabilities(e) => write!(f, "obtained capabilities are invalid: {}", e),
+            SessionInitFailure(p) => write!(f, "failed to initialize decode session with {:?}", p),
+            SessionIdAlreadyUsed(id) => write!(f, "session_id {} is already used", id),
+            SessionNotFound(id) => write!(f, "no session has session_id {}", id),
             UnknownPixelFormat(p) => write!(f, "unknown pixel format: {}", p),
             UnknownProfile(p) => write!(f, "unknown profile: {}", p),
         }

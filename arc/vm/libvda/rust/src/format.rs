@@ -18,6 +18,16 @@ pub enum Profile {
     H264 = bindings::vda_profile_H264PROFILE_MAIN,
 }
 
+impl Profile {
+    pub(crate) fn to_raw_profile(self) -> bindings::vda_profile_t {
+        match self {
+            Profile::VP8 => bindings::vda_profile_VP8PROFILE_MIN,
+            Profile::VP9Profile0 => bindings::vda_profile_VP9PROFILE_PROFILE0,
+            Profile::H264 => bindings::vda_profile_H264PROFILE_MAIN,
+        }
+    }
+}
+
 /// Represents an input video format for VDA.
 pub struct InputFormat {
     pub profile: Profile,
