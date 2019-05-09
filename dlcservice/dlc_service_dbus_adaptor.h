@@ -26,29 +26,6 @@ class DlcServiceDBusAdaptor
     : public org::chromium::DlcServiceInterfaceInterface,
       public org::chromium::DlcServiceInterfaceAdaptor {
  public:
-  class ShutdownDelegate {
-   public:
-    virtual ~ShutdownDelegate() = default;
-    // Cancels the shutdown event scheduled.
-    virtual void CancelShutdown() = 0;
-    // Schedules the shutdown event.
-    virtual void ScheduleShutdown() = 0;
-  };
-
-  class ScopedShutdown {
-   public:
-    explicit ScopedShutdown(ShutdownDelegate* shutdown_delegate)
-        : shutdown_delegate_(shutdown_delegate) {
-      shutdown_delegate_->CancelShutdown();
-    }
-    ~ScopedShutdown() { shutdown_delegate_->ScheduleShutdown(); }
-
-   private:
-    ShutdownDelegate* shutdown_delegate_;
-
-    DISALLOW_COPY_AND_ASSIGN(ScopedShutdown);
-  };
-
   DlcServiceDBusAdaptor(
       std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
           image_loader_proxy,
@@ -56,8 +33,7 @@ class DlcServiceDBusAdaptor
           update_engine_proxy,
       std::unique_ptr<BootSlot> boot_slot,
       const base::FilePath& manifest_dir,
-      const base::FilePath& content_dir,
-      ShutdownDelegate* shutdown_delegate);
+      const base::FilePath& content_dir);
   ~DlcServiceDBusAdaptor();
 
   // Loads installed DLC module images.
@@ -96,8 +72,6 @@ class DlcServiceDBusAdaptor
 
   base::FilePath manifest_dir_;
   base::FilePath content_dir_;
-
-  ShutdownDelegate* shutdown_delegate_;
 
   DISALLOW_COPY_AND_ASSIGN(DlcServiceDBusAdaptor);
 };

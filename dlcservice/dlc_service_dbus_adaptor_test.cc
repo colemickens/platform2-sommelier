@@ -40,19 +40,6 @@ MATCHER_P(ProtoHasUrl,
 
 }  // namespace
 
-class FakeShutdownDelegate : public DlcServiceDBusAdaptor::ShutdownDelegate {
- public:
-  FakeShutdownDelegate() : shutdown_scheduled_(false) {}
-  bool is_shutdown_scheduled() const { return shutdown_scheduled_; }
-  void CancelShutdown() override { shutdown_scheduled_ = false; }
-  void ScheduleShutdown() override { shutdown_scheduled_ = true; }
-
- private:
-  bool shutdown_scheduled_;
-
-  DISALLOW_COPY_AND_ASSIGN(FakeShutdownDelegate);
-};
-
 class DlcServiceDBusAdaptorTest : public testing::Test {
  public:
   DlcServiceDBusAdaptorTest() {
@@ -109,7 +96,7 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
         std::move(mock_image_loader_proxy_),
         std::move(mock_update_engine_proxy_),
         std::make_unique<BootSlot>(std::move(mock_boot_device_)),
-        manifest_path_, content_path_, &fake_shutdown_delegate_);
+        manifest_path_, content_path_);
   }
 
  protected:
@@ -125,7 +112,6 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
   std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyMock>
       mock_update_engine_proxy_;
   org::chromium::UpdateEngineInterfaceProxyMock* mock_update_engine_proxy_ptr_;
-  FakeShutdownDelegate fake_shutdown_delegate_;
   std::unique_ptr<DlcServiceDBusAdaptor> dlc_service_dbus_adaptor_;
 
  private:
@@ -141,8 +127,6 @@ TEST_F(DlcServiceDBusAdaptorTest, GetInstalledTest) {
   EXPECT_TRUE(dlc_module_list.ParseFromString(dlc_module_list_str));
   EXPECT_EQ(dlc_module_list.dlc_module_infos_size(), 1);
   EXPECT_EQ(dlc_module_list.dlc_module_infos(0).dlc_id(), kFirstDlc);
-
-  EXPECT_TRUE(fake_shutdown_delegate_.is_shutdown_scheduled());
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, UninstallTest) {
@@ -160,14 +144,10 @@ TEST_F(DlcServiceDBusAdaptorTest, UninstallTest) {
 
   EXPECT_TRUE(dlc_service_dbus_adaptor_->Uninstall(nullptr, kFirstDlc));
   EXPECT_FALSE(base::PathExists(content_path_.Append(kFirstDlc)));
-
-  EXPECT_TRUE(fake_shutdown_delegate_.is_shutdown_scheduled());
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, UninstallFailureTest) {
   EXPECT_FALSE(dlc_service_dbus_adaptor_->Uninstall(nullptr, kSecondDlc));
-
-  EXPECT_TRUE(fake_shutdown_delegate_.is_shutdown_scheduled());
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, UninstallUnmountFailureTest) {
@@ -179,8 +159,6 @@ TEST_F(DlcServiceDBusAdaptorTest, UninstallUnmountFailureTest) {
 
   EXPECT_FALSE(dlc_service_dbus_adaptor_->Uninstall(nullptr, kFirstDlc));
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
-
-  EXPECT_TRUE(fake_shutdown_delegate_.is_shutdown_scheduled());
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
@@ -226,8 +204,6 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
       utils::GetDlcModuleImagePath(content_path_, kSecondDlc, kPackage, 1);
   base::GetPosixFilePermissions(image_b_path.DirName(), &permissions);
   EXPECT_EQ(permissions, expected_permissions);
-
-  EXPECT_TRUE(fake_shutdown_delegate_.is_shutdown_scheduled());
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, InstallUrlTest) {
@@ -249,8 +225,6 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallUrlTest) {
   std::string dlc_root_path;
   dlc_service_dbus_adaptor_->Install(nullptr, kSecondDlc, omaha_url_override,
                                      &dlc_root_path);
-
-  EXPECT_TRUE(fake_shutdown_delegate_.is_shutdown_scheduled());
 }
 
 }  // namespace dlcservice

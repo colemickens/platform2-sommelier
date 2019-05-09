@@ -85,15 +85,13 @@ DlcServiceDBusAdaptor::DlcServiceDBusAdaptor(
         update_engine_proxy,
     std::unique_ptr<BootSlot> boot_slot,
     const base::FilePath& manifest_dir,
-    const base::FilePath& content_dir,
-    ShutdownDelegate* shutdown_delegate)
+    const base::FilePath& content_dir)
     : org::chromium::DlcServiceInterfaceAdaptor(this),
       image_loader_proxy_(std::move(image_loader_proxy)),
       update_engine_proxy_(std::move(update_engine_proxy)),
       boot_slot_(std::move(boot_slot)),
       manifest_dir_(manifest_dir),
-      content_dir_(content_dir),
-      shutdown_delegate_(shutdown_delegate) {}
+      content_dir_(content_dir) {}
 
 DlcServiceDBusAdaptor::~DlcServiceDBusAdaptor() {}
 
@@ -139,8 +137,6 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
                                     std::string* dlc_root_out) {
   // TODO(xiaochu): change API to accept a list of DLC module ids.
   // https://crbug.com/905075
-  ScopedShutdown scoped_shutdown(shutdown_delegate_);
-
   // Initialize supported DLC module id list.
   //
   // TODO(ahassani): This is inefficient. We don't need to know about all DLCs
@@ -274,8 +270,6 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
 
 bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
                                       const std::string& id_in) {
-  ScopedShutdown scoped_shutdown(shutdown_delegate_);
-
   // Initialize supported DLC module id list.
   //
   // TODO(ahassani): This is inefficient. We don't need to know about all DLCs
@@ -332,8 +326,6 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
 
 bool DlcServiceDBusAdaptor::GetInstalled(brillo::ErrorPtr* err,
                                          std::string* dlc_module_list_out) {
-  ScopedShutdown scoped_shutdown(shutdown_delegate_);
-
   // Initialize supported DLC module id list.
   std::vector<std::string> dlc_module_ids = ScanDlcModules();
 

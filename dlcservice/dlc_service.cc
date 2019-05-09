@@ -7,36 +7,19 @@
 #include <string>
 
 #include <chromeos/constants/imageloader.h>
-#include <chromeos/dbus/service_constants.h>
+#include <chromeos/dbus/dlcservice/dbus-constants.h>
 #include <sysexits.h>
 
 #include "dlcservice/boot_device.h"
 #include "dlcservice/boot_slot.h"
 
 namespace dlcservice {
-namespace {
-// Delay for scheduling shutdown event.
-// The delay is between dlcservice process being started and the corresponding
-// D-Bus method call is called. Not delaying the shutdown in |OnInit| will cause
-// the process to stop without D-Bus method being invoked.
-constexpr base::TimeDelta kShutdownTimeout = base::TimeDelta::FromSeconds(1);
 
-}  // namespace
-
-// kDlcServiceName is defined in chromeos/dbus/service_constant.h
+// kDlcServiceServiceName is defined in
+// chromeos/dbus/dlcservice/dbus-constants.h
 DlcService::DlcService(bool load_installed)
-    : DBusServiceDaemon(kDlcServiceName), load_installed_(load_installed) {}
-
-void DlcService::CancelShutdown() {
-  shutdown_callback_.Cancel();
-}
-
-void DlcService::ScheduleShutdown() {
-  shutdown_callback_.Reset(
-      base::Bind(&brillo::Daemon::Quit, base::Unretained(this)));
-  base::MessageLoop::current()->task_runner()->PostDelayedTask(
-      FROM_HERE, shutdown_callback_.callback(), kShutdownTimeout);
-}
+    : DBusServiceDaemon(kDlcServiceServiceName),
+      load_installed_(load_installed) {}
 
 int DlcService::OnInit() {
   int return_code = brillo::DBusServiceDaemon::OnInit();
@@ -59,16 +42,10 @@ void DlcService::RegisterDBusObjectsAsync(
       std::make_unique<org::chromium::UpdateEngineInterfaceProxy>(bus_),
       std::make_unique<BootSlot>(std::make_unique<BootDevice>()),
       base::FilePath(imageloader::kDlcManifestRootpath),
-      base::FilePath(imageloader::kDlcImageRootpath), this);
+      base::FilePath(imageloader::kDlcImageRootpath));
   dbus_adaptor_->RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("RegisterAsync() failed.", true));
-}
-
-int DlcService::OnEventLoopStarted() {
-  ScheduleShutdown();
-
-  return Daemon::OnEventLoopStarted();
 }
 
 }  // namespace dlcservice
