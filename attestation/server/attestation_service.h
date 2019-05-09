@@ -520,13 +520,17 @@ class AttestationService : public AttestationInterface {
       const std::string& data,
       EncryptedData* encrypted_data);
 
-  // Activates an attestation key given an |encrypted_certificate|. On success
-  // returns true and provides the decrypted |certificate| if not null. If
-  // |save_certificate| is set, also writes the |certificate| to the database
-  // and returns the certificate number in |certificate_index|. The value of
-  // |certificate_index| is undefined if the certificate is not saved.
-  bool ActivateAttestationKeyInternal(int identity,
+  // Activates an attestation key given an |encrypted_certificate|. The EK with
+  // |ek_key_type| will be used for activation. On success returns true and
+  // provides the decrypted |certificate| if not null. If |save_certificate| is
+  // set, also writes the |certificate| to the database and returns the
+  // certificate number in |certificate_index|. The value of |certificate_index|
+  // is undefined if the certificate is not saved. |ek_key_type| is only used in
+  // TPM 2.0.
+  bool ActivateAttestationKeyInternal(
+      int identity,
       ACAType aca_type,
+      KeyType ek_key_type,
       const EncryptedIdentityCredential& encrypted_certificate,
       bool save_certificate,
       std::string* certificate,
@@ -610,10 +614,9 @@ class AttestationService : public AttestationInterface {
   bool VerifyCertifiedKeyGeneration(const std::string& aik_key_blob,
                                     const std::string& aik_public_key_info);
 
-  // Performs AIK activation with a fake credential.
-  // ek_public_key_info must be provided in X.509 SubjectPublicKeyInfo format.
-  bool VerifyActivateIdentity(const std::string& ek_public_key_info,
-                              const std::string& aik_public_key_tpm_format);
+  // Performs AIK activation with a fake credential. It use RSA EK for the fake
+  // credential sharing.
+  bool VerifyActivateIdentity(const std::string& aik_public_key_tpm_format);
 
   // Compute the enterprise DEN for attestation-based enrollment.
   std::string ComputeEnterpriseEnrollmentNonce();

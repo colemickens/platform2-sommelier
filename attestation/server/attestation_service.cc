@@ -828,11 +828,10 @@ void AttestationService::ActivateAttestationKeyTask(
     return;
   }
   std::string certificate;
-  if (!ActivateAttestationKeyInternal(kFirstIdentity, request.aca_type(),
-                                     request.encrypted_certificate(),
-                                     request.save_certificate(),
-                                     &certificate,
-                                     nullptr /* certificate_index */)) {
+  if (!ActivateAttestationKeyInternal(
+          kFirstIdentity, request.aca_type(), GetEndorsementKeyType(),
+          request.encrypted_certificate(), request.save_certificate(),
+          &certificate, nullptr /* certificate_index */)) {
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
   }
@@ -1165,8 +1164,7 @@ bool AttestationService::FinishEnrollInternal(
   }
   int certificate_index;
   if (!ActivateAttestationKeyInternal(
-          identity,
-          aca_type,
+          identity, aca_type, GetEndorsementKeyType(),
           response_pb.encrypted_identity_credential(),
           true /* save_certificate */, nullptr /* certificate */,
           &certificate_index)) {
@@ -1829,6 +1827,7 @@ bool AttestationService::EncryptDataForAttestationCA(
 bool AttestationService::ActivateAttestationKeyInternal(
     int identity,
     ACAType aca_type,
+    KeyType ek_key_type,
     const EncryptedIdentityCredential& encrypted_certificate,
     bool save_certificate,
     std::string* certificate,
@@ -1856,8 +1855,7 @@ bool AttestationService::ActivateAttestationKeyInternal(
     // TPM 2.0 style activate.
     std::string credential;
     if (!tpm_utility_->ActivateIdentityForTpm2(
-            GetEndorsementKeyType(),
-            identity_data.identity_key().identity_key_blob(),
+            ek_key_type, identity_data.identity_key().identity_key_blob(),
             encrypted_certificate.encrypted_seed(),
             encrypted_certificate.credential_mac(),
             encrypted_certificate.wrapped_certificate().wrapped_key(),
@@ -2172,21 +2170,25 @@ bool AttestationService::VerifyCertifiedKeyGeneration(
 }
 
 bool AttestationService::VerifyActivateIdentity(
-    const std::string& ek_public_key_info,
     const std::string& aik_public_key_tpm_format) {
+  std::string rsa_ek_public_key;
+  if (!tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_RSA,
+                                             &rsa_ek_public_key)) {
+    LOG(ERROR) << __func__
+               << ": Can't get RSA EK public key for VerifyActivateIdentity.";
+    return false;
+  }
   std::string test_credential = "test credential";
   EncryptedIdentityCredential encrypted_credential;
-  if (!crypto_utility_->EncryptIdentityCredential(tpm_utility_->GetVersion(),
-                                                  test_credential,
-                                                  ek_public_key_info,
-                                                  aik_public_key_tpm_format,
-                                                  &encrypted_credential)) {
+  if (!crypto_utility_->EncryptIdentityCredential(
+          tpm_utility_->GetVersion(), test_credential, rsa_ek_public_key,
+          aik_public_key_tpm_format, &encrypted_credential)) {
     LOG(ERROR) << __func__ << ": Failed to encrypt identity credential";
     return false;
   }
-  if (!ActivateAttestationKeyInternal(kFirstIdentity, DEFAULT_ACA,
-                                     encrypted_credential, false,
-                                     nullptr, nullptr)) {
+  if (!ActivateAttestationKeyInternal(kFirstIdentity, DEFAULT_ACA, KEY_TYPE_RSA,
+                                      encrypted_credential, false, nullptr,
+                                      nullptr)) {
     LOG(ERROR) << __func__ << ": Failed to activate identity";
     return false;
   }
@@ -2278,8 +2280,14 @@ void AttestationService::VerifyTask(
     LOG(ERROR) << __func__ << ": Failed to verify certified key generation.";
     return;
   }
+
+  // Originally, we use VerifyActivateIdentity to test ActivateIdentity TPM
+  // command works in TPM 1.2, but we don't really need it for TPM 2.0. Because
+  // we have more complete tests in Cr50, we are planning to obsolete the tests
+  // in the service daemon. Moreover, supporting this would require simulating
+  // the entire attestation flow but pointless. We decide to not to support this
+  // test for ECC EK.
   if (!VerifyActivateIdentity(
-          ek_public_key.value(),
           identity_data.identity_binding().identity_public_key_tpm_format())) {
     LOG(ERROR) << __func__ << ": Failed to verify identity activation.";
     return;
