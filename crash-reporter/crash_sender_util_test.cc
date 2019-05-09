@@ -1097,25 +1097,45 @@ TEST_F(CrashSenderUtilTest, GetUserCrashDirectories) {
                                    paths::Get("/home/user/hash2/crash")));
 }
 
-TEST_F(CrashSenderUtilTest, CreateCrashFormData) {
+class CreateCrashFormDataTest : public CrashSenderUtilTest {
+ public:
+  void TestCreateCrashFormData(bool absolute_paths);
+};
+
+void CreateCrashFormDataTest::TestCreateCrashFormData(bool absolute_paths) {
   const base::FilePath system_dir = paths::Get(paths::kSystemCrashDirectory);
   ASSERT_TRUE(base::CreateDirectory(system_dir));
 
-  const base::FilePath payload_file = system_dir.Append("0.0.0.0.payload");
+  const base::FilePath payload_file_relative("0.0.0.0.payload");
+  const base::FilePath payload_file_absolute =
+      system_dir.Append(payload_file_relative);
   const std::string payload_contents = "foobar_payload";
-  ASSERT_TRUE(test_util::CreateFile(payload_file, payload_contents));
+  ASSERT_TRUE(test_util::CreateFile(payload_file_absolute, payload_contents));
+  const base::FilePath& payload_file =
+      absolute_paths ? payload_file_absolute : payload_file_relative;
 
-  const base::FilePath log_file = system_dir.Append("0.0.0.0.log");
+  const base::FilePath log_file_relative("0.0.0.0.log");
+  const base::FilePath log_file_absolute = system_dir.Append(log_file_relative);
   const std::string log_contents = "foobar_log";
-  ASSERT_TRUE(test_util::CreateFile(log_file, log_contents));
+  ASSERT_TRUE(test_util::CreateFile(log_file_absolute, log_contents));
+  const base::FilePath& log_file =
+      absolute_paths ? log_file_absolute : log_file_relative;
 
-  const base::FilePath text_var_file = system_dir.Append("data.txt");
+  const base::FilePath text_var_file_relative("data.txt");
+  const base::FilePath text_var_file_absolute =
+      system_dir.Append(text_var_file_relative);
   const std::string text_var_contents = "upload_text_contents";
-  ASSERT_TRUE(test_util::CreateFile(text_var_file, text_var_contents));
+  ASSERT_TRUE(test_util::CreateFile(text_var_file_absolute, text_var_contents));
+  const base::FilePath& text_var_file =
+      absolute_paths ? text_var_file_absolute : text_var_file_relative;
 
-  const base::FilePath file_var_file = system_dir.Append("data.bin");
+  const base::FilePath file_var_file_relative("data.bin");
+  const base::FilePath file_var_file_absolute =
+      system_dir.Append(file_var_file_relative);
   const std::string file_var_contents = "upload_file_contents";
-  ASSERT_TRUE(test_util::CreateFile(file_var_file, file_var_contents));
+  ASSERT_TRUE(test_util::CreateFile(file_var_file_absolute, file_var_contents));
+  const base::FilePath& file_var_file =
+      absolute_paths ? file_var_file_absolute : file_var_file_relative;
 
   brillo::KeyValueStore metadata;
   metadata.SetString("exec_name", "fake_exec_name");
@@ -1220,6 +1240,14 @@ TEST_F(CrashSenderUtilTest, CreateCrashFormData) {
       "--boundary--";
 
   EXPECT_EQ(expected_data, std::string(data.begin(), data.end()));
+}
+
+TEST_F(CreateCrashFormDataTest, HandlesAbsolutePaths) {
+  TestCreateCrashFormData(true);
+}
+
+TEST_F(CreateCrashFormDataTest, HandlesRelativePaths) {
+  TestCreateCrashFormData(false);
 }
 
 TEST_F(CrashSenderUtilTest, SendCrashes) {

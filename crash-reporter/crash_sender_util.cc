@@ -785,9 +785,13 @@ std::unique_ptr<brillo::http::FormData> Sender::CreateCrashFormData(
     form_data->AddTextField("sig", sig);
     form_data->AddTextField("sig2", sig);
   }
+  base::FilePath payload_file = details.payload_file;
+  if (!payload_file.IsAbsolute()) {
+    payload_file = details.meta_file.DirName().Append(payload_file);
+  }
   brillo::ErrorPtr file_error;
   if (!form_data->AddFileField("upload_file_" + details.payload_kind,
-                               details.payload_file, {}, &file_error)) {
+                               payload_file, {}, &file_error)) {
     LOG(ERROR) << "Failed adding payload file as attachment: "
                << file_error->GetMessage();
     return nullptr;
@@ -802,26 +806,36 @@ std::unique_ptr<brillo::http::FormData> Sender::CreateCrashFormData(
     std::string value;
     details.metadata.GetString(key, &value);
     brillo::ErrorPtr error;
-    if (base::StartsWith(key, kUploadVarPrefix, base::CompareCase::SENSITIVE)) {
+    bool is_upload_var =
+        base::StartsWith(key, kUploadVarPrefix, base::CompareCase::SENSITIVE);
+    bool is_upload_text =
+        base::StartsWith(key, kUploadTextPrefix, base::CompareCase::SENSITIVE);
+    bool is_upload_file =
+        base::StartsWith(key, kUploadFilePrefix, base::CompareCase::SENSITIVE);
+    if (is_upload_var) {
       form_data->AddTextField(key.substr(sizeof(kUploadVarPrefix) - 1), value);
-    } else if (base::StartsWith(key, kUploadTextPrefix,
-                                base::CompareCase::SENSITIVE)) {
-      std::string value_content;
-      if (base::ReadFileToString(base::FilePath(value), &value_content)) {
-        form_data->AddTextField(key.substr(sizeof(kUploadTextPrefix) - 1),
-                                value_content);
-      } else {
-        LOG(ERROR) << "Failed attaching file contents from " << value
-                   << " of: " << error->GetMessage();
-      }
-    } else if (base::StartsWith(key, kUploadFilePrefix,
-                                base::CompareCase::SENSITIVE)) {
+    } else if (is_upload_text || is_upload_file) {
       base::FilePath value_file(value);
-      if (base::PathExists(value_file) &&
-          !form_data->AddFileField(key.substr(sizeof(kUploadFilePrefix) - 1),
-                                   value_file, {}, &error)) {
-        LOG(ERROR) << "Failed attaching file " << value
-                   << " of: " << error->GetMessage();
+      // Relative paths are relative to the meta data file.
+      if (!value_file.IsAbsolute()) {
+        value_file = details.meta_file.DirName().Append(value_file);
+      }
+      if (is_upload_text) {
+        std::string value_content;
+        if (base::ReadFileToString(value_file, &value_content)) {
+          form_data->AddTextField(key.substr(sizeof(kUploadTextPrefix) - 1),
+                                  value_content);
+        } else {
+          LOG(ERROR) << "Failed attaching file contents from "
+                     << value_file.value() << " of: " << error->GetMessage();
+        }
+      } else {  // not is_upload_text so must be is_upload_file
+        if (base::PathExists(value_file) &&
+            !form_data->AddFileField(key.substr(sizeof(kUploadFilePrefix) - 1),
+                                     value_file, {}, &error)) {
+          LOG(ERROR) << "Failed attaching file " << value_file.value()
+                     << " of: " << error->GetMessage();
+        }
       }
     }
   }
