@@ -18,7 +18,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
-#include <dbus/message.h>
 
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
@@ -336,6 +335,8 @@ void StateController::Init(Delegate* delegate,
       kGetInactivityDelaysMethod,
       base::Bind(&StateController::HandleGetInactivityDelaysMethodCall,
                  weak_ptr_factory_.GetWeakPtr()));
+  // TODO(alanlxl): remove this ExportMethod after chrome is uprevved.
+  // https://crrev.com/c/1598921
   dbus_wrapper->ExportMethod(
       kDeferScreenDimMethod,
       base::Bind(&StateController::HandleDeferScreenDimMethodCall,
@@ -352,6 +353,14 @@ void StateController::Init(Delegate* delegate,
       update_engine_dbus_proxy_, update_engine::kUpdateEngineInterface,
       update_engine::kStatusUpdate,
       base::Bind(&StateController::HandleUpdateEngineStatusUpdateSignal,
+                 weak_ptr_factory_.GetWeakPtr()));
+
+  ml_decision_dbus_proxy_ =
+      dbus_wrapper_->GetObjectProxy(machine_learning::kMlDecisionServiceName,
+                                    machine_learning::kMlDecisionServicePath);
+  dbus_wrapper_->RegisterForServiceAvailability(
+      ml_decision_dbus_proxy_,
+      base::Bind(&StateController::HandleMlDecisionServiceAvailable,
                  weak_ptr_factory_.GetWeakPtr()));
 
   last_user_activity_time_ = clock_->GetCurrentTime();
@@ -721,8 +730,7 @@ base::TimeTicks StateController::GetLastActivityTimeForIdle(
     last_time = std::max(last_time, audio_activity_->GetLastActiveTime(now));
   if (use_video_activity_)
     last_time = std::max(last_time, last_video_activity_time_);
-  if (emit_screen_dim_imminent_)
-    last_time = std::max(last_time, last_defer_screen_dim_time_);
+  last_time = std::max(last_time, last_defer_screen_dim_time_);
   last_time = std::max(last_time, last_wake_notification_time_);
 
   // All types of wake locks defer the idle action.
@@ -739,8 +747,7 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenDim(
       waiting_for_initial_user_activity() ? now : last_user_activity_time_;
   if (use_video_activity_)
     last_time = std::max(last_time, last_video_activity_time_);
-  if (emit_screen_dim_imminent_)
-    last_time = std::max(last_time, last_defer_screen_dim_time_);
+  last_time = std::max(last_time, last_defer_screen_dim_time_);
   last_time = std::max(last_time, last_wake_notification_time_);
 
   // Only full-brightness wake locks keep the screen from dimming.
@@ -916,7 +923,10 @@ void StateController::UpdateSettingsAndState() {
 
   SanitizeDelays(&delays_);
 
-  if (emit_screen_dim_imminent_) {
+  // TODO(alanlxl): Calculate delays.screen_dim_imminent anyway, move the check
+  // of request_smart_dim_decision_ to UpdateState, before
+  // RequestSmartDimDecision.
+  if (request_smart_dim_decision_) {
     delays_.screen_dim_imminent = std::max(
         delays_.screen_dim - kScreenDimImminentInterval, base::TimeDelta());
   }
@@ -1002,13 +1012,26 @@ void StateController::UpdateState() {
   base::TimeDelta screen_lock_duration =
       now - GetLastActivityTimeForScreenLock(now);
 
+  // TODO(alanlxl): Replace the first condition with
+  // request_smart_dim_decision_. And audio activity like playing ended between
+  // delays_.screen_dim_imminent and delays.screen_dim may cause unexpected
+  // requests here. Add a new timestamp to fix this.
   if (delays_.screen_dim_imminent > base::TimeDelta() &&
       screen_dim_duration >= delays_.screen_dim_imminent) {
-    if (!sent_screen_dim_imminent_) {
+    if (ml_decision_service_available_ && !waiting_for_smart_dim_decision_ &&
+        !screen_dimmed_) {
+      RequestSmartDimDecision();
+      waiting_for_smart_dim_decision_ = true;
+    }
+    // TODO(alanlxl): Remove EmitBareSignal after chrome is uprevved.
+    // https://crrev.com/c/1598921
+    if (!sent_screen_dim_imminent_ && !screen_dimmed_) {
       dbus_wrapper_->EmitBareSignal(kScreenDimImminentSignal);
       sent_screen_dim_imminent_ = true;
     }
-  } else if (sent_screen_dim_imminent_) {
+  } else {
+    waiting_for_smart_dim_decision_ = false;
+    // TODO(alanlxl): Remove this part after chrome is uprevved.
     sent_screen_dim_imminent_ = false;
   }
 
@@ -1201,6 +1224,8 @@ void StateController::HandleGetInactivityDelaysMethodCall(
   response_sender.Run(std::move(response));
 }
 
+// TODO(alanlxl): remove this method after chrome is uprevved.
+// https://crrev.com/c/1598921
 void StateController::HandleDeferScreenDimMethodCall(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
@@ -1275,6 +1300,59 @@ void StateController::EmitScreenIdleStateChanged(bool dimmed, bool off) {
   proto.set_off(off);
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kScreenIdleStateChangedSignal,
                                               proto);
+}
+
+void StateController::HandleMlDecisionServiceAvailable(bool available) {
+  ml_decision_service_available_ = available;
+  if (!available) {
+    LOG(ERROR) << "Failed waiting for ml decision service to become "
+                  "available";
+    return;
+  }
+}
+
+void StateController::RequestSmartDimDecision() {
+  dbus::MethodCall method_call(machine_learning::kMlDecisionServiceInterface,
+                               machine_learning::kShouldDeferScreenDimMethod);
+
+  dbus_wrapper_->CallMethodAsync(
+      ml_decision_dbus_proxy_, &method_call, kSmartDimDecisionTimeout,
+      base::Bind(&StateController::HandleSmartDimResponse,
+                 weak_ptr_factory_.GetWeakPtr()));
+}
+
+void StateController::HandleSmartDimResponse(dbus::Response* response) {
+  screen_dim_deferred_for_testing_ = false;
+  if (!waiting_for_smart_dim_decision_ || screen_dimmed_) {
+    VLOG(1) << "Smart dim decision is not being waited for";
+    return;
+  }
+
+  if (!response) {
+    LOG(ERROR) << "D-Bus method call to "
+               << machine_learning::kMlDecisionServiceInterface << "."
+               << machine_learning::kShouldDeferScreenDimMethod << " failed";
+    return;
+  }
+
+  dbus::MessageReader reader(response);
+  bool should_defer_screen_dim = false;
+  if (!reader.PopBool(&should_defer_screen_dim)) {
+    LOG(ERROR) << "Unable to read info from "
+               << machine_learning::kMlDecisionServiceInterface << "."
+               << machine_learning::kShouldDeferScreenDimMethod << " response";
+    return;
+  }
+
+  if (!should_defer_screen_dim) {
+    VLOG(1) << "Smart dim decided not to defer screen dimming";
+    return;
+  }
+
+  screen_dim_deferred_for_testing_ = true;
+  LOG(INFO) << "Smart dim decided to defer screen dimming";
+  last_defer_screen_dim_time_ = clock_->GetCurrentTime();
+  UpdateState();
 }
 
 }  // namespace policy

@@ -14,6 +14,7 @@
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <dbus/exported_object.h>
+#include <dbus/message.h>
 
 #include "power_manager/common/activity_logger.h"
 #include "power_manager/common/power_constants.h"
@@ -139,6 +140,10 @@ class StateController : public PrefsObserver {
   static constexpr base::TimeDelta kScreenDimImminentInterval =
       base::TimeDelta::FromSeconds(5);
 
+  // Timeout for RequestSmartDimDecision.
+  static constexpr base::TimeDelta kSmartDimDecisionTimeout =
+      base::TimeDelta::FromSeconds(3);
+
   // Returns a string describing |policy|.
   static std::string GetPolicyDebugString(const PowerManagementPolicy& policy);
 
@@ -148,8 +153,9 @@ class StateController : public PrefsObserver {
   base::TimeTicks last_user_activity_time() const {
     return last_user_activity_time_;
   }
-  void set_emit_screen_dim_imminent(bool should_emit) {
-    emit_screen_dim_imminent_ = should_emit;
+
+  void set_request_smart_dim_decision_for_testing(bool should_ask) {
+    request_smart_dim_decision_ = should_ask;
   }
 
   // Is the system currently in "docked mode", where it remains awake while
@@ -189,6 +195,10 @@ class StateController : public PrefsObserver {
 
   // PrefsInterface::Observer implementation:
   void OnPrefChanged(const std::string& pref_name) override;
+
+  bool screen_dim_deferred_for_testing() const {
+    return screen_dim_deferred_for_testing_;
+  }
 
  private:
   // Holds a collection of delays. Unset delays take the zero value.
@@ -330,6 +340,8 @@ class StateController : public PrefsObserver {
   void HandleGetInactivityDelaysMethodCall(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
+  // TODO(alanlxl): remove this method declaration after chrome is uprevved.
+  // https://crrev.com/c/1598921
   void HandleDeferScreenDimMethodCall(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
@@ -350,12 +362,22 @@ class StateController : public PrefsObserver {
   // changed.
   void EmitScreenIdleStateChanged(bool dimmed, bool off);
 
+  // Handles the |ml_decision_dbus_proxy_| becoming initially available.
+  void HandleMlDecisionServiceAvailable(bool available);
+
+  // Request from ML decision D-Bus service.
+  void RequestSmartDimDecision();
+
+  // Handles smart dim response, serves as callback in RequestSmartDimDecision.
+  void HandleSmartDimResponse(dbus::Response* response);
+
   Delegate* delegate_ = nullptr;                          // not owned
   PrefsInterface* prefs_ = nullptr;                       // not owned
   system::DBusWrapperInterface* dbus_wrapper_ = nullptr;  // not owned
 
   // Owned by |dbus_wrapper_|.
   dbus::ObjectProxy* update_engine_dbus_proxy_ = nullptr;
+  dbus::ObjectProxy* ml_decision_dbus_proxy_ = nullptr;
 
   std::unique_ptr<Clock> clock_;
 
@@ -393,7 +415,10 @@ class StateController : public PrefsObserver {
 
   // These track whether various actions have already been performed by
   // UpdateState().
+  // TODO(alanlxl): Remove sent_screen_dim_imminent_ when chrome is uprevved.
+  // https://crrev.com/c/1598921
   bool sent_screen_dim_imminent_ = false;
+  bool waiting_for_smart_dim_decision_ = false;
   bool screen_dimmed_ = false;
   bool screen_turned_off_ = false;
   bool requested_screen_lock_ = false;
@@ -447,9 +472,12 @@ class StateController : public PrefsObserver {
   // Should |policy_| be ignored?  Used by tests and developers.
   bool ignore_external_policy_ = false;
 
-  // Should ScreenDimImminent D-Bus signals be emitted? May be disabled by tests
-  // that aren't exercising these signals.
-  bool emit_screen_dim_imminent_ = true;
+  // Should powerd request smart dim decision via D-Bus service? May be disabled
+  // by tests.
+  bool request_smart_dim_decision_ = true;
+
+  // True if ml decision service is available.
+  bool ml_decision_service_available_ = false;
 
   // TPM dictionary-attack counter value.
   int tpm_dictionary_attack_count_ = 0;
@@ -500,6 +528,10 @@ class StateController : public PrefsObserver {
   // hard find and interpret these messages when the last policy change happened
   // long ago.
   OngoingStateActivityLogger wake_lock_logger_;
+
+  // True if the most recent RequestSmartDimDecision call returned true.
+  // Used by unit tests.
+  bool screen_dim_deferred_for_testing_ = false;
 
   base::WeakPtrFactory<StateController> weak_ptr_factory_;
 

@@ -11,6 +11,7 @@
 #include <base/compiler_specific.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
+#include <base/run_loop.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
@@ -172,6 +173,9 @@ class StateControllerTest : public testing::Test {
         update_engine_proxy_(dbus_wrapper_.GetObjectProxy(
             update_engine::kUpdateEngineServiceName,
             update_engine::kUpdateEngineServicePath)),
+        ml_decision_proxy_(dbus_wrapper_.GetObjectProxy(
+            machine_learning::kMlDecisionServiceName,
+            machine_learning::kMlDecisionServicePath)),
         now_(base::TimeTicks::FromInternalValue(1000)),
         default_ac_suspend_delay_(base::TimeDelta::FromSeconds(120)),
         default_ac_screen_off_delay_(base::TimeDelta::FromSeconds(100)),
@@ -193,11 +197,11 @@ class StateControllerTest : public testing::Test {
     dbus_wrapper_.SetMethodCallback(base::Bind(
         &StateControllerTest::HandleDBusMethodCall, base::Unretained(this)));
 
-    // Don't emit ScreenDimImminent D-Bus signals by default, as they complicate
-    // tests and aren't integral to this class's behavior. Tests can change the
-    // setting to true before calling Init() if they want to verify these
-    // signals.
-    controller_.set_emit_screen_dim_imminent(false);
+    // Don't ask smart dim decision about whether to defer imminent screen dim
+    // by default, as they complicate tests and aren't integral to this class's
+    // behavior. Tests can change the setting to true before calling Init()
+    // if they want to verify these method calls.
+    controller_.set_request_smart_dim_decision_for_testing(false);
   }
 
  protected:
@@ -299,26 +303,31 @@ class StateControllerTest : public testing::Test {
     dbus_wrapper_.EmitRegisteredSignal(update_engine_proxy_, &signal);
   }
 
-  // Calls the DeferScreenDim D-Bus method, returning true on success and false
-  // if an error was returned.
-  bool CallDeferScreenDim() WARN_UNUSED_RESULT {
-    dbus::MethodCall method_call(kPowerManagerInterface, kDeferScreenDimMethod);
-    std::unique_ptr<dbus::Response> response =
-        dbus_wrapper_.CallExportedMethodSync(&method_call);
-    return response.get() &&
-           response->GetMessageType() != dbus::Message::MESSAGE_ERROR;
-  }
-
   // Generates responses for D-Bus method calls to other processes sent via
   // |dbus_wrapper_|.
   std::unique_ptr<dbus::Response> HandleDBusMethodCall(dbus::ObjectProxy* proxy,
                                                        dbus::MethodCall* call) {
+    dbus_method_calls_.push_back(call->GetMember());
     if (proxy == update_engine_proxy_ &&
         call->GetInterface() == update_engine::kUpdateEngineInterface &&
         call->GetMember() == update_engine::kGetStatus) {
       std::unique_ptr<dbus::Response> response =
           dbus::Response::FromMethodCall(call);
       FillUpdateMessage(response.get(), update_engine_operation_);
+      return response;
+    }
+
+    if (proxy == ml_decision_proxy_ &&
+        call->GetInterface() == machine_learning::kMlDecisionServiceInterface &&
+        call->GetMember() == machine_learning::kShouldDeferScreenDimMethod) {
+      if (simulate_smart_dim_timeout_)
+        return nullptr;
+
+      std::unique_ptr<dbus::Response> response =
+          dbus::Response::FromMethodCall(call);
+      dbus::MessageWriter writer(response.get());
+      writer.AppendBool(defer_screen_dimming_);
+
       return response;
     }
 
@@ -346,8 +355,7 @@ class StateControllerTest : public testing::Test {
     for (size_t i = 0; i < dbus_wrapper_.num_sent_signals(); ++i) {
       const std::string name = dbus_wrapper_.GetSentSignalName(i);
       if (signal_type == SignalType::ACTIONS &&
-          (name != kScreenDimImminentSignal &&
-           name != kIdleActionImminentSignal &&
+          (name != kIdleActionImminentSignal &&
            name != kIdleActionDeferredSignal))
         continue;
 
@@ -379,12 +387,21 @@ class StateControllerTest : public testing::Test {
     return base::JoinString(signals, ",");
   }
 
+  // Return a comma-separated string listing the names of D-Bus method calls
+  // sent by |dbus_wrapper_|. Also clears all recorded method calls.
+  std::string GetDBusMethodCalls() {
+    std::string method_calls_str = base::JoinString(dbus_method_calls_, ",");
+    dbus_method_calls_.clear();
+    return method_calls_str;
+  }
+
   FakePrefs prefs_;
   TestDelegate delegate_;
   system::DBusWrapperStub dbus_wrapper_;
   StateController controller_;
   StateController::TestApi test_api_;
   dbus::ObjectProxy* update_engine_proxy_;  // owned by |dbus_wrapper_|
+  dbus::ObjectProxy* ml_decision_proxy_;    // owned by |dbus_wrapper_|
 
   base::TimeTicks now_;
 
@@ -418,6 +435,15 @@ class StateControllerTest : public testing::Test {
 
   // Operation for update_engine to return in response to GetStatus calls.
   std::string update_engine_operation_;
+
+  // Names of D-Bus method calls.
+  std::vector<std::string> dbus_method_calls_;
+
+  // Response that powerd will receive from RequestSmartDimDecision.
+  bool defer_screen_dimming_ = true;
+  // If true, RequestSmartDimDecision will receive a nullptr as response, just
+  // like when timeout.
+  bool simulate_smart_dim_timeout_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(StateControllerTest);
 };
@@ -2088,8 +2114,9 @@ TEST_F(StateControllerTest, ReportInactivityDelays) {
 }
 
 TEST_F(StateControllerTest, ScreenDimImminent) {
-  controller_.set_emit_screen_dim_imminent(true);
+  controller_.set_request_smart_dim_decision_for_testing(true);
   Init();
+  dbus_wrapper_.NotifyServiceAvailable(ml_decision_proxy_, true);
 
   // Send a policy setting delays and instructing powerd to double the
   // screen-dim delay while Chrome is presenting the screen.
@@ -2105,22 +2132,26 @@ TEST_F(StateControllerTest, ScreenDimImminent) {
   policy.set_presentation_screen_dim_delay_factor(kPresentationFactor);
   controller_.HandlePolicyChange(policy);
 
-  // ScreenDimImminent should be emitted shortly before the screen is dimmed.
+  // Powerd should request smart dim decision shortly before the screen is
+  // dimmed.
   const base::TimeDelta kDimImminentDelay =
       kDimDelay - StateController::kScreenDimImminentInterval;
-  dbus_wrapper_.ClearSentSignals();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimImminentDelay));
-  EXPECT_EQ(kScreenDimImminentSignal, GetDBusSignals(SignalType::ACTIONS));
+  EXPECT_EQ(machine_learning::kShouldDeferScreenDimMethod,
+            GetDBusMethodCalls());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kOffDelay));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
+  // RequestSmartDimDecision runs asynchronously, we need wait until the last
+  // call finishes.
+  base::RunLoop().RunUntilIdle();
 
   // Turn the screen back on.
   controller_.HandleUserActivity();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, nullptr),
             delegate_.GetActions());
-  EXPECT_EQ("", GetDBusSignals(SignalType::ACTIONS));
+  EXPECT_EQ("", GetDBusMethodCalls());
 
   // After entering presentation mode, the screen-dim delay should be doubled,
   // and ScreenDimImminent should be emitted again after its now-scaled delay is
@@ -2132,35 +2163,68 @@ TEST_F(StateControllerTest, ScreenDimImminent) {
 
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledDimImminentDelay));
-  EXPECT_EQ(kScreenDimImminentSignal, GetDBusSignals(SignalType::ACTIONS));
+  EXPECT_EQ(machine_learning::kShouldDeferScreenDimMethod,
+            GetDBusMethodCalls());
+  base::RunLoop().RunUntilIdle();
 
-  // Reset everything, wait for the dim-imminent signal, and request that screen
-  // dimming be deferred.
+  // Reset everything, wait for powerd to request smart dim decision, and defer
+  // the imminent screen dim.
   controller_.HandleUserActivity();
   controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimImminentDelay));
-  EXPECT_EQ(kScreenDimImminentSignal, GetDBusSignals(SignalType::ACTIONS));
-  EXPECT_TRUE(CallDeferScreenDim());
+  EXPECT_EQ(machine_learning::kShouldDeferScreenDimMethod,
+            GetDBusMethodCalls());
+  base::RunLoop().RunUntilIdle();
+  EXPECT_TRUE(controller_.screen_dim_deferred_for_testing());
 
-  // The timer should've been reset when we called DeferScreenDim, so wait for
-  // the next dim-imminent signal and for the screen to be dimmed.
+  // Reset the timer and wait for the screen to be dimmed.
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimImminentDelay));
-  EXPECT_EQ(kScreenDimImminentSignal, GetDBusSignals(SignalType::ACTIONS));
+  EXPECT_EQ(machine_learning::kShouldDeferScreenDimMethod,
+            GetDBusMethodCalls());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  base::RunLoop().RunUntilIdle();
 
-  // Defer requests should be rejected if the screen is already dimmed.
+  // Powerd shouldn't request smart dim decision if screen is already dimmed.
   EXPECT_FALSE(AdvanceTimeAndTriggerTimeout(base::TimeDelta::FromSeconds(5)));
-  EXPECT_FALSE(CallDeferScreenDim());
+  EXPECT_EQ("", GetDBusMethodCalls());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
-  // They should also be rejected if screen-dim isn't imminent.
+  // Powerd shouldn't request if screen-dim isn't imminent.
   controller_.HandleUserActivity();
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
-  EXPECT_FALSE(CallDeferScreenDim());
+  EXPECT_EQ("", GetDBusMethodCalls());
+
+  // Set the smart dim response to false, reset everything, and wait for powerd
+  // to request smart dim decision.
+  // Powerd should decide not to defer the imminent screen dim.
+  defer_screen_dimming_ = false;
+  controller_.HandleUserActivity();
+  controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimImminentDelay));
+  base::RunLoop().RunUntilIdle();
+  EXPECT_FALSE(controller_.screen_dim_deferred_for_testing());
+  EXPECT_EQ(machine_learning::kShouldDeferScreenDimMethod,
+            GetDBusMethodCalls());
+
+  // Simulate D-Bus method call timeouts, it shouldn't block subsequent
+  // RequestSmartDimDecision calls when another kDimImminentDelay lapses.
+  simulate_smart_dim_timeout_ = true;
+  size_t call_count = 10;
+  std::vector<std::string> method_calls;
+  for (size_t i = 0; i <= call_count; ++i) {
+    controller_.HandleUserActivity();
+    controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
+    ResetLastStepDelay();
+    ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimImminentDelay));
+    base::RunLoop().RunUntilIdle();
+    method_calls.push_back(machine_learning::kShouldDeferScreenDimMethod);
+  }
+  EXPECT_EQ(base::JoinString(method_calls, ","), GetDBusMethodCalls());
 }
 
 }  // namespace policy
