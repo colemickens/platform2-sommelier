@@ -38,8 +38,8 @@ pub struct InputFormat {
 }
 
 impl InputFormat {
-    pub(crate) fn new(f: &bindings::vda_input_format_t) -> VdaResult<InputFormat> {
-        let profile = Profile::n(f.profile).ok_or_else(|| VdaError::UnknownProfile(f.profile))?;
+    pub(crate) fn new(f: &bindings::vda_input_format_t) -> Result<InputFormat> {
+        let profile = Profile::n(f.profile).ok_or(Error::UnknownProfile(f.profile))?;
 
         Ok(InputFormat {
             profile,
@@ -60,7 +60,14 @@ pub enum PixelFormat {
 }
 
 impl PixelFormat {
-    pub(crate) fn new(f: bindings::vda_pixel_format_t) -> VdaResult<PixelFormat> {
-        PixelFormat::n(f).ok_or_else(|| VdaError::UnknownPixelFormat(f))
+    pub(crate) fn new(f: bindings::vda_pixel_format_t) -> Result<PixelFormat> {
+        PixelFormat::n(f).ok_or(Error::UnknownPixelFormat(f))
+    }
+
+    pub(crate) fn to_raw_pixel_format(&self) -> bindings::vda_pixel_format_t {
+        match *self {
+            PixelFormat::YV12 => bindings::vda_pixel_format_YV12,
+            PixelFormat::NV12 => bindings::vda_pixel_format_NV12,
+        }
     }
 }

@@ -28,3 +28,32 @@ fn test_initialize_decode_session() {
     // `drop(instance)` here must cause a compile error because `_session` must be dropped in
     // advance.
 }
+
+#[test]
+fn test_decode_and_get_picture_ready_fake() {
+    let instance = create_vda_instance();
+    let mut session = instance
+        .open_session(Profile::VP8)
+        .expect("failed to open a session");
+
+    // Call decode() with dummy arguments.
+    let fake_bitstream_id = 12345;
+    session
+        .decode(
+            fake_bitstream_id,
+            1, // fd
+            0, // offset
+            0, // bytes_used
+        )
+        .expect("failed to send a decode request");
+
+    // Since we are using the fake backend,
+    // we must get a event immediately after calling decode().
+    match session.read_event() {
+        Ok(Event::PictureReady { bitstream_id, .. }) => {
+            assert_eq!(bitstream_id, fake_bitstream_id);
+        }
+        Ok(event) => panic!("Obtained event is not PictureReady but {:?}", event),
+        Err(msg) => panic!(msg),
+    }
+}

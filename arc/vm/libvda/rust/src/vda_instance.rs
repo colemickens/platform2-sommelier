@@ -35,17 +35,17 @@ pub struct VdaInstance {
 impl VdaInstance {
     // The callers must garantee that `ptr` is valid for |`num`| elements when both `ptr` and `num`
     // are valid.
-    unsafe fn validate_formats<T, U, F>(ptr: *const T, num: usize, f: F) -> VdaResult<Vec<U>>
+    unsafe fn validate_formats<T, U, F>(ptr: *const T, num: usize, f: F) -> Result<Vec<U>>
     where
-        F: FnMut(&T) -> VdaResult<U>,
+        F: FnMut(&T) -> Result<U>,
     {
         if num == 0 {
-            return Err(VdaError::InvalidCapabilities(
+            return Err(Error::InvalidCapabilities(
                 "num must not be 0".to_string(),
             ));
         }
         if ptr.is_null() {
-            return Err(VdaError::InvalidCapabilities(
+            return Err(Error::InvalidCapabilities(
                 "input_formats must not be NULL".to_string(),
             ));
         }
@@ -53,11 +53,11 @@ impl VdaInstance {
         slice::from_raw_parts(ptr, num)
             .iter()
             .map(f)
-            .collect::<VdaResult<Vec<_>>>()
+            .collect::<Result<Vec<_>>>()
     }
 
     /// Creates VdaInstance. `typ` specifies which backend will be used.
-    pub fn new(typ: VdaImplType) -> VdaResult<Self> {
+    pub fn new(typ: VdaImplType) -> Result<Self> {
         let impl_type = match typ {
             VdaImplType::Fake => bindings::vda_impl_type_FAKE,
             VdaImplType::Gavda => bindings::vda_impl_type_GAVDA,
@@ -66,14 +66,14 @@ impl VdaInstance {
         // Safe because libvda's API is called properly.
         let raw_ptr = unsafe { bindings::initialize(impl_type) };
         if raw_ptr.is_null() {
-            return Err(VdaError::InstanceInitFailure);
+            return Err(Error::InstanceInitFailure);
         }
 
         // Get available input/output formats.
         // Safe because libvda's API is called properly.
         let vda_cap_ptr = unsafe { bindings::get_vda_capabilities(raw_ptr) };
         if vda_cap_ptr.is_null() {
-            return Err(VdaError::GetCapabilitiesFailure);
+            return Err(Error::GetCapabilitiesFailure);
         }
         // Safe because `vda_cap_ptr` is not NULL.
         let vda_cap = unsafe { *vda_cap_ptr };
@@ -110,12 +110,10 @@ impl VdaInstance {
     }
 
     /// Opens a new `Session` for a given `Profile`.
-    pub fn open_session<'a>(&'a self, profile: Profile) -> VdaResult<Session<'a>> {
+    pub fn open_session<'a>(&'a self, profile: Profile) -> Result<Session<'a>> {
         // Safe because `self.raw_ptr` is a non-NULL pointer obtained from `bindings::initialize`
         // in `VdaInstance::new`.
-        unsafe {
-            Session::new(self.raw_ptr, profile).ok_or_else(|| VdaError::SessionInitFailure(profile))
-        }
+        unsafe { Session::new(self.raw_ptr, profile).ok_or(Error::SessionInitFailure(profile)) }
     }
 }
 

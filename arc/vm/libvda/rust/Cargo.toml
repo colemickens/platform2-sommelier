@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 enumn = { path = "../../../../../platform/crosvm/enumn" } # provided by ebuild
+libc = "*"
 
 [build-dependencies]
 pkg-config = "*"
