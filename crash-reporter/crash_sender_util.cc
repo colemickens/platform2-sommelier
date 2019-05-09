@@ -969,17 +969,30 @@ bool Sender::RequestToSendCrash(const CrashDetails& details) {
   std::string silent;
   details.metadata.GetString("silent", &silent);
   if (always_write_uploads_log_ || (!USE_CHROMELESS_TTY && silent != "true")) {
-    base::File upload_logs_file(
-        paths::Get(paths::kChromeCrashLog),
-        base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_APPEND);
-    std::string upload_log_entry =
-        base::StringPrintf("%" PRId64 ",%s,%s\n", timestamp, report_id.c_str(),
-                           product_name.c_str());
-    if (!upload_logs_file.IsValid() ||
-        upload_logs_file.WriteAtCurrentPos(upload_log_entry.c_str(),
-                                           upload_log_entry.size()) !=
-            upload_log_entry.size()) {
-      PLOG(ERROR) << "Error writing to Chrome uploads.log file";
+    base::FilePath upload_logs_path(paths::Get(paths::kChromeCrashLog));
+
+    // Open the file before we check the normalized path or it will fail if the
+    // path doesn't exist.
+    base::File upload_logs_file(upload_logs_path, base::File::FLAG_OPEN_ALWAYS |
+                                                      base::File::FLAG_APPEND);
+
+    base::FilePath normalized_path;
+    if (base::NormalizeFilePath(upload_logs_path, &normalized_path) &&
+        upload_logs_path == normalized_path) {
+      std::string upload_log_entry =
+          base::StringPrintf("%" PRId64 ",%s,%s\n", timestamp,
+                             report_id.c_str(), product_name.c_str());
+      if (!upload_logs_file.IsValid() ||
+          upload_logs_file.WriteAtCurrentPos(upload_log_entry.c_str(),
+                                             upload_log_entry.size()) !=
+              upload_log_entry.size()) {
+        PLOG(ERROR) << "Error writing to Chrome uploads.log file";
+      }
+    } else {
+      LOG(ERROR) << "Did not write to Chrome uploads.log file because the "
+                 << "normalized path didn't match the target path, target: "
+                 << upload_logs_path.value()
+                 << " normalized: " << normalized_path.value();
     }
   }
   LOG(INFO) << "Crash report receipt ID " << report_id;
