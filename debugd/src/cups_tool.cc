@@ -156,12 +156,20 @@ bool UriHasKnownScheme(const std::string& uri) {
 // Determine whether a URI comprises mostly alphanumeric ASCII.
 // Logic mirrors Chrome browser's CupsURIEscape.
 bool UriIsGoodAscii(const std::string& uri) {
+  int expected_hex_digits = 0;
   for (const char c : uri) {
-    if ((c == ' ') || (c == '%') || (c & 0x80)) {
+    if (expected_hex_digits > 0) {
+      // Only allow percent-encoding for space (%20).
+      if (c != ((expected_hex_digits == 2) ? '2' : '0'))
+        return false;
+      expected_hex_digits--;
+    } else if (c == '%') {
+      expected_hex_digits = 2;
+    } else if ((c == ' ') || (c & 0x80)) {
       return false;
     }
   }
-  return true;
+  return expected_hex_digits == 0;
 }
 
 }  // namespace

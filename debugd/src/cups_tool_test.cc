@@ -55,4 +55,15 @@ TEST_F(CupsToolTest, OkayUri) {
   }
 }
 
+TEST_F(CupsToolTest, PercentedUris) {
+  std::string uri_with_space("lpd://127.0.0.1/PRINTER%20NAME");
+  EXPECT_TRUE(cups_tool_.UriSeemsReasonable(uri_with_space));
+
+  std::string incomplete("lpd://127.0.0.1/PRINTER%2");
+  EXPECT_FALSE(cups_tool_.UriSeemsReasonable(incomplete));
+
+  std::string questionable_uri("lpd://127.0.0.1/PRINTER%3F");
+  EXPECT_FALSE(cups_tool_.UriSeemsReasonable(questionable_uri));
+}
+
 }  // namespace debugd
