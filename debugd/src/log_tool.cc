@@ -154,8 +154,6 @@ const std::vector<Log> kCommandLogs {
     LogTool::Encoding::kBase64},
   {kCommand, "ifconfig", "/bin/ifconfig -a"},
   {kFile, "input_devices", "/proc/bus/input/devices"},
-  // Information about the wiphy device, such as current channel.
-  {kCommand, "iw_dev", "/usr/sbin/iw dev"},
   // Hardware capabilities of the wiphy device.
   {kCommand, "iw_list", "/usr/sbin/iw list"},
 #if USE_IWLWIFI_DUMP
