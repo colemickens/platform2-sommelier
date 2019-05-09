@@ -53,19 +53,10 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
     return -errno;
   }
 
-  v4l2_capability cap = {};
-  if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_QUERYCAP, &cap)) != 0) {
-    PLOGF(ERROR) << "VIDIOC_QUERYCAP fail";
+  if (!IsCameraDevice(device_path)) {
+    LOGF(ERROR) << device_path << " is not a V4L2 video capture device";
     device_fd_.reset();
-    return -errno;
-  }
-
-  // TODO(henryhsu): Add MPLANE support.
-  if (!((cap.capabilities & V4L2_CAP_VIDEO_CAPTURE) &&
-        !(cap.capabilities & V4L2_CAP_VIDEO_OUTPUT))) {
-    LOGF(ERROR) << "This is not a V4L2 video capture device";
-    device_fd_.reset();
-    return -EIO;
+    return -EINVAL;
   }
 
   // Get and set format here is used to prevent multiple camera using.
@@ -441,20 +432,37 @@ std::vector<float> V4L2CameraDevice::GetFrameRateList(int fd,
 
 // static
 bool V4L2CameraDevice::IsCameraDevice(const std::string& device_path) {
-  base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
+  // RetryDeviceOpen() assumes the device is a camera and waits until the camera
+  // is ready, so we use open() instead of RetryDeviceOpen() here.
+  base::ScopedFD fd(TEMP_FAILURE_RETRY(open(device_path.c_str(), O_RDONLY)));
   if (!fd.is_valid()) {
     PLOGF(ERROR) << "Failed to open " << device_path;
     return false;
   }
 
-  const uint32_t kCaptureMask =
-      V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_VIDEO_CAPTURE_MPLANE;
-  const uint32_t kOutputMask =
-      V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_VIDEO_OUTPUT_MPLANE;
+  v4l2_capability v4l2_cap;
+  if (TEMP_FAILURE_RETRY(ioctl(fd.get(), VIDIOC_QUERYCAP, &v4l2_cap)) != 0) {
+    return false;
+  }
 
-  v4l2_capability cap;
-  return TEMP_FAILURE_RETRY(ioctl(fd.get(), VIDIOC_QUERYCAP, &cap)) == 0 &&
-         (cap.capabilities & kCaptureMask) && !(cap.capabilities & kOutputMask);
+  auto check_mask = [](uint32_t caps) {
+    const uint32_t kCaptureMask =
+        V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_VIDEO_CAPTURE_MPLANE;
+    // Old drivers use (CAPTURE | OUTPUT) for memory-to-memory video devices.
+    const uint32_t kOutputMask =
+        V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_VIDEO_OUTPUT_MPLANE;
+    const uint32_t kM2mMask = V4L2_CAP_VIDEO_M2M | V4L2_CAP_VIDEO_M2M_MPLANE;
+    return (caps & kCaptureMask) && !(caps & kOutputMask) && !(caps & kM2mMask);
+  };
+
+  // Prefer to use available capabilities of that specific device node instead
+  // of the physical device as a whole, so we can properly ignore the metadata
+  // device node.
+  if (v4l2_cap.capabilities & V4L2_CAP_DEVICE_CAPS) {
+    return check_mask(v4l2_cap.device_caps);
+  } else {
+    return check_mask(v4l2_cap.capabilities);
+  }
 }
 
 // static
