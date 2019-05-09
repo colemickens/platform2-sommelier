@@ -81,9 +81,6 @@ class VPNService : public Service {
   std::unique_ptr<VPNDriver> driver_;
   std::unique_ptr<Connection::Binder> connection_binder_;
 
-  // Provided only for compatibility.  crbug.com/211858
-  std::string vpn_domain_;
-
   DISALLOW_COPY_AND_ASSIGN(VPNService);
 };
 

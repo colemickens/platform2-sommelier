@@ -42,7 +42,6 @@ VPNService::VPNService(ControlInterface* control,
       driver_(driver) {
   SetConnectable(true);
   set_save_credentials(false);
-  mutable_store()->RegisterString(kVPNDomainProperty, &vpn_domain_);
   mutable_store()->RegisterDerivedString(
           kPhysicalTechnologyProperty,
           StringAccessor(
