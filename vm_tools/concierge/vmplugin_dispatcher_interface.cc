@@ -5,6 +5,7 @@
 #include <memory>
 
 #include <base/guid.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
@@ -18,6 +19,9 @@
 namespace {
 
 constexpr char kVmpluginImageDir[] = "/run/pvm-images";
+
+constexpr base::TimeDelta kVmShutdownTimeout = base::TimeDelta::FromMinutes(2);
+constexpr base::TimeDelta kVmSuspendTimeout = base::TimeDelta::FromSeconds(20);
 
 }  // namespace
 
@@ -166,6 +170,88 @@ bool VmpluginIsVmRegistered(dbus::ObjectProxy* proxy,
       *result = true;
       break;
     }
+  }
+
+  return true;
+}
+
+bool VmpluginShutdownVm(dbus::ObjectProxy* proxy, const VmId& vm_id) {
+  LOG(INFO) << "Shutting down VM " << vm_id;
+
+  dbus::MethodCall method_call(
+      vm_tools::plugin_dispatcher::kVmPluginDispatcherInterface,
+      vm_tools::plugin_dispatcher::kStopVmMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::plugin_dispatcher::StopVmRequest request;
+
+  request.set_owner_id(vm_id.owner_id());
+  request.set_vm_name_uuid(vm_id.name());
+  // Allow request to fail if VM is busy.
+  request.set_noforce(true);
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode StopVmRequest protobuf";
+    return false;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response = proxy->CallMethodAndBlock(
+      &method_call, kVmShutdownTimeout.InMilliseconds());
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send StopVm message to dispatcher service";
+    return false;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::plugin_dispatcher::StopVmResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse StopVmResponse protobuf";
+    return false;
+  }
+
+  if (response.error() != vm_tools::plugin_dispatcher::VM_SUCCESS) {
+    LOG(ERROR) << "Failed to stop VM: " << response.error();
+    return false;
+  }
+
+  return true;
+}
+
+bool VmpluginSuspendVm(dbus::ObjectProxy* proxy, const VmId& vm_id) {
+  LOG(INFO) << "Suspending VM " << vm_id;
+
+  dbus::MethodCall method_call(
+      vm_tools::plugin_dispatcher::kVmPluginDispatcherInterface,
+      vm_tools::plugin_dispatcher::kSuspendVmMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::plugin_dispatcher::SuspendVmRequest request;
+
+  request.set_owner_id(vm_id.owner_id());
+  request.set_vm_name_uuid(vm_id.name());
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode SuspendVmRequest protobuf";
+    return false;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response = proxy->CallMethodAndBlock(
+      &method_call, kVmSuspendTimeout.InMilliseconds());
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send SuspendVm message to dispatcher service";
+    return false;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::plugin_dispatcher::SuspendVmResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse SuspendVmResponse protobuf";
+    return false;
+  }
+
+  if (response.error() != vm_tools::plugin_dispatcher::VM_SUCCESS) {
+    LOG(ERROR) << "Failed to suspend VM: " << response.error();
+    return false;
   }
 
   return true;

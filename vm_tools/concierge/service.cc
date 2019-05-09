@@ -1333,11 +1333,13 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
       std::make_move_iterator(request.mutable_params()->end()));
 
   // Now start the VM.
+  VmId vm_id(request.owner_id(), request.name());
   auto vm = PluginVm::Create(
-      request.cpus(), std::move(params), std::move(mac_addr),
+      vm_id, request.cpus(), std::move(params), std::move(mac_addr),
       std::move(ipv4_addr), plugin_subnet_->Netmask(),
       plugin_subnet_->AddressAtOffset(0), std::move(stateful_dir),
-      root_dir.Take(), runtime_dir.Take(), std::move(seneschal_server_proxy));
+      root_dir.Take(), runtime_dir.Take(), std::move(seneschal_server_proxy),
+      vmplugin_service_proxy_);
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
     response.set_failure_reason("Unable to start VM");
@@ -1369,7 +1371,6 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
   response.set_success(true);
   writer.AppendProtoAsArrayOfBytes(response);
 
-  VmId vm_id(request.owner_id(), request.name());
   NotifyCiceroneOfVmStarted(vm_id, 0 /* cid */, std::move(vm_token));
 
   vms_[vm_id] = std::move(vm);
@@ -1434,8 +1435,9 @@ std::unique_ptr<dbus::Response> Service::StopAllVms(
     // Notify cicerone that we have stopped a VM.
     NotifyCiceroneOfVmStopped(iter.first);
 
-    // Resetting the unique_ptr will call the destructor for that VM, which
-    // will shut it down.
+    // Resetting the unique_ptr will call the destructor for that VM,
+    // which will try stopping it normally (and then forcibly) it if
+    // it hasn't stopped yet.
     iter.second.reset();
   }
 

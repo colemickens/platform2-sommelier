@@ -21,6 +21,7 @@
 #include <base/time/time.h>
 
 #include "vm_tools/concierge/tap_device_builder.h"
+#include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
 using std::string;
 
@@ -70,10 +71,17 @@ bool SetPgid() {
   return true;
 }
 
+bool CheckProcessExists(pid_t pid) {
+  // kill() with a signal value of 0 is explicitly documented as a way to
+  // check for the existence of a process.
+  return pid != 0 && (kill(pid, 0) >= 0 || errno != ESRCH);
+}
+
 }  // namespace
 
 // static
 std::unique_ptr<PluginVm> PluginVm::Create(
+    VmId id,
     uint32_t cpus,
     std::vector<string> params,
     arc_networkd::MacAddress mac_addr,
@@ -83,11 +91,12 @@ std::unique_ptr<PluginVm> PluginVm::Create(
     base::FilePath stateful_dir,
     base::FilePath root_dir,
     base::FilePath runtime_dir,
-    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy) {
-  auto vm = base::WrapUnique(
-      new PluginVm(std::move(mac_addr), std::move(ipv4_addr), ipv4_netmask,
-                   ipv4_gateway, std::move(seneschal_server_proxy),
-                   std::move(root_dir), std::move(runtime_dir)));
+    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
+    dbus::ObjectProxy* vmplugin_service_proxy) {
+  auto vm = base::WrapUnique(new PluginVm(
+      std::move(id), std::move(mac_addr), std::move(ipv4_addr), ipv4_netmask,
+      ipv4_gateway, std::move(seneschal_server_proxy), vmplugin_service_proxy,
+      std::move(root_dir), std::move(runtime_dir)));
 
   if (!vm->CreateUsbListeningSocket() ||
       !vm->Start(cpus, std::move(params), std::move(stateful_dir))) {
@@ -98,21 +107,24 @@ std::unique_ptr<PluginVm> PluginVm::Create(
 }
 
 PluginVm::~PluginVm() {
-  Shutdown();
+  StopVm();
 }
 
-bool PluginVm::Shutdown() {
-  // Do a sanity check here to make sure the process is still around.  It may
-  // have crashed and we don't want to be waiting around for an RPC response
-  // that's never going to come.  kill with a signal value of 0 is explicitly
-  // documented as a way to check for the existence of a process.
-  if (process_.pid() == 0 || (kill(process_.pid(), 0) < 0 && errno == ESRCH)) {
+bool PluginVm::StopVm() {
+  // Do a sanity check here to make sure the process is still around.
+  if (!CheckProcessExists(process_.pid())) {
     // The process is already gone.
     process_.Release();
     return true;
   }
 
-  // Kill the process with SIGTERM.
+  if (VmpluginSuspendVm(vmplugin_service_proxy_, id_)) {
+    process_.Release();
+    return true;
+  }
+
+  // Kill the process with SIGTERM. For Plugin VMs this will cause plugin to
+  // try to suspend the VM.
   if (process_.Kill(SIGTERM, kChildExitTimeout.InSeconds())) {
     return true;
   }
@@ -126,6 +138,11 @@ bool PluginVm::Shutdown() {
 
   LOG(ERROR) << "Failed to kill plugin VM with SIGKILL";
   return false;
+}
+
+bool PluginVm::Shutdown() {
+  return !CheckProcessExists(process_.pid()) ||
+         VmpluginShutdownVm(vmplugin_service_proxy_, id_);
 }
 
 VmInterface::Info PluginVm::GetInfo() {
@@ -487,21 +504,26 @@ bool PluginVm::SetResolvConfig(const std::vector<string>& nameservers,
                          search_domains);
 }
 
-PluginVm::PluginVm(arc_networkd::MacAddress mac_addr,
+PluginVm::PluginVm(VmId id,
+                   arc_networkd::MacAddress mac_addr,
                    std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr,
                    uint32_t ipv4_netmask,
                    uint32_t ipv4_gateway,
                    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
+                   dbus::ObjectProxy* vmplugin_service_proxy,
                    base::FilePath root_dir,
                    base::FilePath runtime_dir)
-    : mac_addr_(std::move(mac_addr)),
+    : id_(std::move(id)),
+      mac_addr_(std::move(mac_addr)),
       ipv4_addr_(std::move(ipv4_addr)),
       netmask_(ipv4_netmask),
       gateway_(ipv4_gateway),
       seneschal_server_proxy_(std::move(seneschal_server_proxy)),
+      vmplugin_service_proxy_(vmplugin_service_proxy),
       usb_last_handle_(0),
       usb_fd_watcher_(FROM_HERE) {
   CHECK(ipv4_addr_);
+  CHECK(vmplugin_service_proxy_);
   CHECK(base::DirectoryExists(root_dir));
   CHECK(base::DirectoryExists(runtime_dir));
 

@@ -24,7 +24,9 @@
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
 #include <brillo/process.h>
+#include <dbus/exported_object.h>
 
+#include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/plugin_vm_usb.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/vm_interface.h"
@@ -35,6 +37,7 @@ namespace concierge {
 class PluginVm final : public VmInterface, base::MessageLoopForIO::Watcher {
  public:
   static std::unique_ptr<PluginVm> Create(
+      const VmId id,
       uint32_t cpus,
       std::vector<std::string> params,
       arc_networkd::MacAddress mac_addr,
@@ -44,7 +47,8 @@ class PluginVm final : public VmInterface, base::MessageLoopForIO::Watcher {
       base::FilePath stateful_dir,
       base::FilePath root_dir,
       base::FilePath runtime_dir,
-      std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy);
+      std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
+      dbus::ObjectProxy* vmplugin_service_proxy);
   ~PluginVm() override;
 
   // VmInterface overrides.
@@ -87,11 +91,13 @@ class PluginVm final : public VmInterface, base::MessageLoopForIO::Watcher {
   }
 
  private:
-  PluginVm(arc_networkd::MacAddress mac_addr,
+  PluginVm(const VmId id,
+           arc_networkd::MacAddress mac_addr,
            std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr,
            uint32_t ipv4_netmask,
            uint32_t ipv4_gateway,
            std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
+           dbus::ObjectProxy* vmplugin_service_proxy,
            base::FilePath root_dir,
            base::FilePath runtime_dir);
   bool Start(uint32_t cpus,
@@ -99,6 +105,13 @@ class PluginVm final : public VmInterface, base::MessageLoopForIO::Watcher {
              base::FilePath stateful_dir);
   bool CreateUsbListeningSocket();
   void HandleUsbControlResponse();
+
+  // Attempt to stop VM.
+  bool StopVm();
+
+  // This VM ID. It is used to communicate with the dispatcher to request
+  // VM state changes.
+  const VmId id_;
 
   // Allows to build skeleton of root file system for the plugin.
   // Individual directories, such as /etc, are mounted plugin jail.
@@ -119,6 +132,9 @@ class PluginVm final : public VmInterface, base::MessageLoopForIO::Watcher {
 
   // Proxy to the server providing shared directory access for this VM.
   std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy_;
+
+  // Proxy to the dispatcher service.  Not owned.
+  dbus::ObjectProxy* vmplugin_service_proxy_;
 
   // List of USB devices attached to VM (vid, pid, handle)
   using UsbDeviceInfo = std::tuple<uint16_t, uint16_t, uint32_t>;

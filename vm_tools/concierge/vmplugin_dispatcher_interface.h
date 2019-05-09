@@ -27,6 +27,9 @@ bool VmpluginIsVmRegistered(dbus::ObjectProxy* proxy,
                             const VmId& vm_id,
                             bool* result);
 
+bool VmpluginShutdownVm(dbus::ObjectProxy* proxy, const VmId& vm_id);
+bool VmpluginSuspendVm(dbus::ObjectProxy* proxy, const VmId& vm_id);
+
 }  // namespace concierge
 }  // namespace vm_tools
 

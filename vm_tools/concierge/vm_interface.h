@@ -46,8 +46,8 @@ class VmInterface {
     Status status;
   };
 
-  // Classes that implement this interface *MUST* call Shutdown() in their
-  // destructors.
+  // Classes that implement this interface *MUST* exit as quickly as possible
+  // once their destructor is called.
   virtual ~VmInterface() = default;
 
   // Shuts down the VM. Returns true if the VM was successfully shut down and
