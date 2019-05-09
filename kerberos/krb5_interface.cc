@@ -46,12 +46,23 @@ struct ScopedKrb5Context {
 };
 
 struct ScopedKrb5CCache {
-  explicit ScopedKrb5CCache(krb5_context ctx) : ctx(ctx) { DCHECK(ctx); }
+  // Prefer the constructor taking a context if possible.
+  ScopedKrb5CCache() {}
+  explicit ScopedKrb5CCache(krb5_context _ctx) { set_ctx(_ctx); }
+
   ~ScopedKrb5CCache() {
     if (ccache) {
-      krb5_cc_destroy(ctx, ccache);
+      DCHECK(ctx);
+      krb5_cc_close(ctx, ccache);
       ccache = nullptr;
     }
+  }
+
+  // The context must be set if |ccache| is set (though get_mutable_ptr())
+  // before this object is destroyed.
+  void set_ctx(krb5_context _ctx) {
+    ctx = _ctx;
+    DCHECK(ctx);
   }
 
   krb5_ccache get() const { return ccache; }
@@ -59,7 +70,7 @@ struct ScopedKrb5CCache {
 
  private:
   // Pointer to parent data, not owned.
-  const krb5_context ctx = nullptr;
+  krb5_context ctx = nullptr;
   krb5_ccache ccache = nullptr;
 };
 
@@ -157,7 +168,6 @@ class KinitContext {
   // It has been formatted to fit this screen.
 
   struct Krb5Data {
-    krb5_ccache out_cc;
     krb5_principal me;
     char* name;
   };
@@ -194,7 +204,9 @@ class KinitContext {
       return TranslateErrorCode(ret);
     }
 
-    ret = krb5_cc_resolve(ctx.get(), options_.krb5cc_path.c_str(), &k5_.out_cc);
+    out_cc.set_ctx(ctx.get());
+    ret = krb5_cc_resolve(ctx.get(), options_.krb5cc_path.c_str(),
+                          out_cc.get_mutable_ptr());
     if (ret) {
       LOG(ERROR) << ctx.GetErrorMessage(ret) << " resolving ccache";
       return TranslateErrorCode(ret);
@@ -221,8 +233,6 @@ class KinitContext {
   void Finalize() {
     krb5_free_unparsed_name(ctx.get(), k5_.name);
     krb5_free_principal(ctx.get(), k5_.me);
-    if (k5_.out_cc != nullptr)
-      krb5_cc_close(ctx.get(), k5_.out_cc);
     memset(&k5_, 0, sizeof(k5_));
   }
 
@@ -238,7 +248,7 @@ class KinitContext {
     }
 
     ret = krb5_get_init_creds_opt_set_out_ccache(ctx.get(), d.options,
-                                                 k5_.out_cc);
+                                                 out_cc.get());
     if (ret) {
       LOG(ERROR) << ctx.GetErrorMessage(ret) << " while getting options";
       return TranslateErrorCode(ret);
@@ -255,8 +265,9 @@ class KinitContext {
             nullptr /* in_tkt_service */, d.options);
         break;
       case Action::RenewTgt:
-        ret = krb5_get_renewed_creds(ctx.get(), &d.my_creds, k5_.me, k5_.out_cc,
-                                     nullptr /* options_.in_tkt_service */);
+        ret =
+            krb5_get_renewed_creds(ctx.get(), &d.my_creds, k5_.me, out_cc.get(),
+                                   nullptr /* options_.in_tkt_service */);
         break;
     }
 
@@ -266,13 +277,13 @@ class KinitContext {
     }
 
     if (options_.action != Action::AcquireTgt) {
-      ret = krb5_cc_initialize(ctx.get(), k5_.out_cc, k5_.me);
+      ret = krb5_cc_initialize(ctx.get(), out_cc.get(), k5_.me);
       if (ret) {
         LOG(ERROR) << ctx.GetErrorMessage(ret) << " when initializing cache";
         return TranslateErrorCode(ret);
       }
 
-      ret = krb5_cc_store_cred(ctx.get(), k5_.out_cc, &d.my_creds);
+      ret = krb5_cc_store_cred(ctx.get(), out_cc.get(), &d.my_creds);
       if (ret) {
         LOG(ERROR) << ctx.GetErrorMessage(ret) << " while storing credentials";
         return TranslateErrorCode(ret);
@@ -283,6 +294,7 @@ class KinitContext {
   }
 
   ScopedKrb5Context ctx;
+  ScopedKrb5CCache out_cc;
   Krb5Data k5_;
   Options options_;
   bool did_run_ = false;
@@ -333,17 +345,17 @@ ErrorType Krb5Interface::GetTgtStatus(const base::FilePath& krb5cc_path,
     return TranslateErrorCode(ret);
   }
 
-  ScopedKrb5CCache cache(ctx.get());
+  ScopedKrb5CCache ccache(ctx.get());
   std::string prefixed_krb5cc_path = "FILE:" + krb5cc_path.value();
   ret = krb5_cc_resolve(ctx.get(), prefixed_krb5cc_path.c_str(),
-                        cache.get_mutable_ptr());
+                        ccache.get_mutable_ptr());
   if (ret) {
-    LOG(ERROR) << ctx.GetErrorMessage(ret) << " while resolving ccache";
+    LOG(ERROR) << ctx.GetErrorMessage(ret) << " while resolving cache";
     return TranslateErrorCode(ret);
   }
 
   krb5_cc_cursor cur;
-  ret = krb5_cc_start_seq_get(ctx.get(), cache.get(), &cur);
+  ret = krb5_cc_start_seq_get(ctx.get(), ccache.get(), &cur);
   if (ret) {
     LOG(ERROR) << ctx.GetErrorMessage(ret)
                << " while starting to retrieve tickets";
@@ -354,7 +366,8 @@ ErrorType Krb5Interface::GetTgtStatus(const base::FilePath& krb5cc_path,
 
   krb5_creds creds;
   bool found_tgt = false;
-  while ((ret = krb5_cc_next_cred(ctx.get(), cache.get(), &cur, &creds)) == 0) {
+  while ((ret = krb5_cc_next_cred(ctx.get(), ccache.get(), &cur, &creds)) ==
+         0) {
     if (IsTgt(creds)) {
       if (creds.times.endtime)
         status->validity_seconds =
@@ -383,7 +396,7 @@ ErrorType Krb5Interface::GetTgtStatus(const base::FilePath& krb5cc_path,
     return TranslateErrorCode(ret);
   }
 
-  ret = krb5_cc_end_seq_get(ctx.get(), cache.get(), &cur);
+  ret = krb5_cc_end_seq_get(ctx.get(), ccache.get(), &cur);
   if (ret) {
     LOG(ERROR) << ctx.GetErrorMessage(ret)
                << " while finishing ticket retrieval";
