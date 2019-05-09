@@ -16,6 +16,9 @@
 class CrashCollectorMock : public CrashCollector {
  public:
   CrashCollectorMock();
+  CrashCollectorMock(
+      CrashDirectorySelectionMethod crash_directory_selection_method,
+      CrashSendingMode crash_sending_mode);
   MOCK_METHOD0(SetUpDBus, void());
 };
 

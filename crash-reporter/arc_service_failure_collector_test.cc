@@ -65,14 +65,16 @@ class ArcServiceFailureCollectorTest : public ::testing::Test {
 
 TEST_F(ArcServiceFailureCollectorTest, CollectOK) {
   // Collector produces an ARC service failure report.
-  ASSERT_TRUE(test_util::CreateFile(
-      test_path_, "arc-crash main process (2563) terminated with status 2\n"));
+  const char kLog[] =
+      "arc-crash main process (2563) terminated with status 2\n";
+  ASSERT_TRUE(test_util::CreateFile(test_path_, kLog));
   collector_.SetServiceName("arc-crash");
   EXPECT_TRUE(collector_.Collect());
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "arc_service_failure_arc_crash.*.meta", NULL));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "arc_service_failure_arc_crash.*.log", NULL));
+  EXPECT_GT(collector_.get_bytes_written(), strlen(kLog));
 }
 
 TEST_F(ArcServiceFailureCollectorTest, FailureReportDoesNotExist) {
@@ -80,4 +82,5 @@ TEST_F(ArcServiceFailureCollectorTest, FailureReportDoesNotExist) {
   // message.
   EXPECT_TRUE(collector_.Collect());
   EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
+  EXPECT_EQ(collector_.get_bytes_written(), 0);
 }

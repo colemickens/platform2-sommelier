@@ -9,6 +9,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/message_loop/message_loop.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <libminijail.h>
@@ -301,7 +302,11 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(pid, -1, "PID of crashing process");
   DEFINE_int32(uid, -1, "UID of crashing process");
   DEFINE_string(exe, "", "Executable name of crashing process");
-  DEFINE_bool(core2md_failure, false, "Core2md failure test");
+  DEFINE_int64(crash_loop_before, -1,
+               "UNIX timestamp. If invoked before this time, use the special "
+               "login-crash-loop handling system. (Keep crash report in memory "
+               "and then pass to debugd for immediate upload.)")
+      DEFINE_bool(core2md_failure, false, "Core2md failure test");
   DEFINE_bool(directory_failure, false, "Spool directory failure test");
   DEFINE_string(filter_in, "", "Ignore all crashes but this for testing");
 #if USE_CHEETS
@@ -315,6 +320,8 @@ int main(int argc, char* argv[]) {
   OpenStandardFileDescriptors();
   FilePath my_path = base::MakeAbsoluteFilePath(FilePath(argv[0]));
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Crash Reporter");
+
+  base::MessageLoopForIO message_loop;
 
   // In certain cases, /dev/log may not be available: log to stderr instead.
   if (FLAGS_log_to_stderr) {
@@ -330,6 +337,26 @@ int main(int argc, char* argv[]) {
   EarlyCrashMetaCollector early_crash_meta_collector;
   early_crash_meta_collector.Initialize(IsFeedbackAllowed,
                                         FLAGS_preserve_across_clobber);
+
+  // Decide if we should use Crash-Loop sending mode. If session_manager sees
+  // several Chrome crashes in a brief period, it will log the user out. On the
+  // last Chrome startup before it logs the user out, it will set the
+  // --crash_loop_before flag. The value of the flag will be a time_t timestamp
+  // giving the last second at which a crash would be considered a crash loop
+  // and thus log the user out. If we have another crash before that second,
+  // we have detected a crash-loop and we want to invoke special handling
+  // (specifically, we don't want to save the crash in the user's home directory
+  // because that will be inaccessible to crash_sender once the user is logged
+  // out).
+  CrashCollector::CrashSendingMode crash_sending_mode =
+      CrashCollector::kNormalCrashSendMode;
+  if (FLAGS_crash_loop_before >= 0) {
+    base::Time crash_loop_before =
+        base::Time::FromTimeT(static_cast<time_t>(FLAGS_crash_loop_before));
+    if (base::Time::Now() <= crash_loop_before) {
+      crash_sending_mode = CrashCollector::kCrashLoopSendingMode;
+    }
+  }
 
   KernelCollector kernel_collector;
   kernel_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
@@ -360,7 +387,7 @@ int main(int argc, char* argv[]) {
 
   UdevCollector udev_collector;
   udev_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
-  ChromeCollector chrome_collector;
+  ChromeCollector chrome_collector(crash_sending_mode);
   chrome_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
 
   KernelWarningCollector kernel_warning_collector;

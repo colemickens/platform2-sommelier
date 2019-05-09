@@ -139,13 +139,11 @@ bool BERTCollector::Collect() {
     return false;
   }
 
-  // Create meta file with bert dump info.
-  WriteCrashMetaData(
-      GetCrashPath(root_crash_directory, dump_basename, "meta"),
-      kBertErrorName,
-      bert_crash_path.value());
+  // Create meta file with bert dump info and finish up.
+  FinishCrash(GetCrashPath(root_crash_directory, dump_basename, "meta"),
+              kBertErrorName, bert_crash_path.value());
 
-  LOG(INFO) << "Stored BERT dump to " << bert_crash_path.value();
+  VLOG(3) << "Stored BERT dump to " << bert_crash_path.value();
 
   return true;
 }

@@ -123,7 +123,8 @@ std::string FormatDuration(uint64_t seconds);
 ArcCollector::ArcCollector() : ArcCollector(ContextPtr(new ArcContext(this))) {}
 
 ArcCollector::ArcCollector(ContextPtr context)
-    : UserCollectorBase("ARC", true), context_(std::move(context)) {}
+    : UserCollectorBase("ARC", kAlwaysUseUserCrashDirectory),
+      context_(std::move(context)) {}
 
 bool ArcCollector::IsArcProcess(pid_t pid) const {
   pid_t arc_pid;
@@ -556,7 +557,7 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string& crash_type,
   }
 
   const FilePath meta_path = GetCrashPath(crash_dir, basename, "meta");
-  WriteCrashMetaData(meta_path, process, log_path.value());
+  FinishCrash(meta_path, process, log_path.value());
   return true;
 }
 

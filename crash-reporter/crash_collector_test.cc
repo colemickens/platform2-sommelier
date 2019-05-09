@@ -14,10 +14,16 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/simple_test_clock.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <brillo/syslog_logging.h>
+#include <dbus/object_path.h>
+#include <dbus/message.h>
+#include <dbus/mock_bus.h>
+#include <dbus/mock_object_proxy.h>
 #include <gtest/gtest.h>
 
 #include "crash-reporter/crash_collector.h"
@@ -27,7 +33,20 @@
 using base::FilePath;
 using base::StringPrintf;
 using brillo::FindLog;
+using ::testing::_;
+using ::testing::Invoke;
+using ::testing::IsEmpty;
 using ::testing::Return;
+
+// The QEMU emulator we use to run unit tests on simulated ARM boards does not
+// support memfd_create. (https://bugs.launchpad.net/qemu/+bug/1734792) Skip
+// tests that rely on memfd_create on ARM boards. (The tast test will still
+// provide a basic sanity check.)
+#if defined(ARCH_CPU_ARM_FAMILY)
+#define DISABLED_ON_QEMU_FOR_MEMFD_CREATE(test_name) DISABLED_##test_name
+#else
+#define DISABLED_ON_QEMU_FOR_MEMFD_CREATE(test_name) test_name
+#endif
 
 namespace {
 
@@ -41,6 +60,11 @@ bool IsMetrics() {
 }  // namespace
 
 CrashCollectorMock::CrashCollectorMock() : CrashCollector("mock") {}
+CrashCollectorMock::CrashCollectorMock(
+    CrashDirectorySelectionMethod crash_directory_selection_method,
+    CrashSendingMode crash_sending_mode)
+    : CrashCollector(
+          "mock", crash_directory_selection_method, crash_sending_mode) {}
 
 class CrashCollectorTest : public ::testing::Test {
  public:
@@ -60,6 +84,10 @@ class CrashCollectorTest : public ::testing::Test {
 
   bool CheckHasCapacity();
 
+  // Body of FinishCrashInCrashLoopModeSuccessfulResponse and
+  // FinishCrashInCrashLoopModeErrorResponse.
+  void TestFinishCrashInCrashLoopMode(bool give_success_response);
+
  protected:
   CrashCollectorMock collector_;
   FilePath test_dir_;
@@ -75,7 +103,119 @@ TEST_F(CrashCollectorTest, WriteNewFile) {
   const char kBuffer[] = "buffer";
   EXPECT_EQ(strlen(kBuffer),
             collector_.WriteNewFile(test_file, kBuffer, strlen(kBuffer)));
+  EXPECT_EQ(collector_.get_bytes_written(), strlen(kBuffer));
   EXPECT_LT(collector_.WriteNewFile(test_file, kBuffer, strlen(kBuffer)), 0);
+  EXPECT_EQ(collector_.get_bytes_written(), strlen(kBuffer));
+}
+
+TEST_F(CrashCollectorTest,
+       DISABLED_ON_QEMU_FOR_MEMFD_CREATE(CrashLoopModeCreatesInMemoryFiles)) {
+  CrashCollectorMock collector(
+      CrashCollector::kUseNormalCrashDirectorySelectionMethod,
+      CrashCollector::kCrashLoopSendingMode);
+  collector.Initialize(IsMetrics, false);
+
+  const char kBuffer[] = "Hello, this is buffer";
+  const FilePath kPath = test_dir_.Append("buffer.txt");
+  EXPECT_EQ(collector.WriteNewFile(kPath, kBuffer, strlen(kBuffer)),
+            strlen(kBuffer));
+
+  auto result = collector.get_in_memory_files_for_test();
+  ASSERT_EQ(result.size(), 1);
+  EXPECT_EQ(std::get<0>(result[0]), "buffer.txt");
+  base::File file(std::get<1>(result[0]).release());
+  EXPECT_TRUE(file.IsValid());
+  EXPECT_EQ(file.GetLength(), strlen(kBuffer));
+  char result_buffer[100] = {'\0'};
+  EXPECT_EQ(file.Read(0, result_buffer, sizeof(result_buffer)),
+            strlen(kBuffer));
+  EXPECT_EQ(std::string(kBuffer), std::string(result_buffer));
+  // This should be an in-memory file, not a real file.
+  EXPECT_FALSE(base::PathExists(kPath));
+  EXPECT_EQ(collector.get_bytes_written(), strlen(kBuffer));
+}
+
+TEST_F(CrashCollectorTest,
+       DISABLED_ON_QEMU_FOR_MEMFD_CREATE(
+           CrashLoopModeCreatesMultipleInMemoryFiles)) {
+  CrashCollectorMock collector(
+      CrashCollector::kUseNormalCrashDirectorySelectionMethod,
+      CrashCollector::kCrashLoopSendingMode);
+  collector.Initialize(IsMetrics, false);
+
+  const char kBuffer1[] = "Hello, this is buffer";
+  const FilePath kPath1 = test_dir_.Append("buffer1.txt");
+  EXPECT_EQ(collector.WriteNewFile(kPath1, kBuffer1, strlen(kBuffer1)),
+            strlen(kBuffer1));
+
+  const char kBuffer2[] = "Another buffer";
+  const FilePath kPath2 = test_dir_.Append("buffer2.txt");
+  EXPECT_EQ(collector.WriteNewFile(kPath2, kBuffer2, strlen(kBuffer2)),
+            strlen(kBuffer2));
+
+  const char kBuffer3[] = "Funny meme-ish text here";
+  const FilePath kPath3 = test_dir_.Append("buffer3.txt");
+  EXPECT_EQ(collector.WriteNewFile(kPath3, kBuffer3, strlen(kBuffer3)),
+            strlen(kBuffer3));
+
+  auto result = collector.get_in_memory_files_for_test();
+  EXPECT_EQ(result.size(), 3);
+  bool found1 = false;
+  bool found2 = false;
+  bool found3 = false;
+  // Order doesn't matter as long as they're all there.
+  for (int i = 0; i < 3; i++) {
+    const char* expected_buffer = nullptr;
+    if (std::get<0>(result[i]) == "buffer1.txt") {
+      EXPECT_FALSE(found1);
+      found1 = true;
+      expected_buffer = kBuffer1;
+    } else if (std::get<0>(result[i]) == "buffer2.txt") {
+      EXPECT_FALSE(found2);
+      found2 = true;
+      expected_buffer = kBuffer2;
+    } else {
+      EXPECT_EQ(std::get<0>(result[i]), "buffer3.txt");
+      EXPECT_FALSE(found3);
+      found3 = true;
+      expected_buffer = kBuffer3;
+    }
+    base::File file(std::get<1>(result[i]).release());
+    EXPECT_TRUE(file.IsValid());
+    EXPECT_EQ(file.GetLength(), strlen(expected_buffer));
+    char result_buffer[100] = {'\0'};
+    EXPECT_EQ(file.Read(0, result_buffer, sizeof(result_buffer)),
+              strlen(expected_buffer));
+    EXPECT_EQ(std::string(expected_buffer), std::string(result_buffer));
+  }
+  // These should be an in-memory files, not a real files.
+  EXPECT_FALSE(base::PathExists(kPath1));
+  EXPECT_FALSE(base::PathExists(kPath2));
+  EXPECT_FALSE(base::PathExists(kPath3));
+  EXPECT_EQ(collector.get_bytes_written(),
+            strlen(kBuffer1) + strlen(kBuffer2) + strlen(kBuffer3));
+}
+
+TEST_F(CrashCollectorTest,
+       DISABLED_ON_QEMU_FOR_MEMFD_CREATE(
+           CrashLoopModeWillNotCreateDuplicateFileNames)) {
+  CrashCollectorMock collector(
+      CrashCollector::kUseNormalCrashDirectorySelectionMethod,
+      CrashCollector::kCrashLoopSendingMode);
+  collector.Initialize(IsMetrics, false);
+
+  const FilePath kPath = test_dir_.Append("buffer.txt");
+  const char kBuffer[] = "Hello, this is buffer";
+  // First should succeed.
+  EXPECT_EQ(collector.WriteNewFile(kPath, kBuffer, strlen(kBuffer)),
+            strlen(kBuffer));
+  EXPECT_EQ(collector.get_bytes_written(), strlen(kBuffer));
+
+  // Second should fail.
+  EXPECT_EQ(collector.WriteNewFile(kPath, kBuffer, strlen(kBuffer)), -1);
+  EXPECT_EQ(collector.get_bytes_written(), strlen(kBuffer));
+
+  ASSERT_EQ(collector.get_in_memory_files_for_test().size(), 1);
 }
 
 TEST_F(CrashCollectorTest, WriteNewCompressedFile) {
@@ -84,6 +224,9 @@ TEST_F(CrashCollectorTest, WriteNewCompressedFile) {
   EXPECT_TRUE(
       collector_.WriteNewCompressedFile(test_file, kBuffer, strlen(kBuffer)));
   EXPECT_TRUE(base::PathExists(test_file));
+  int64_t file_size = -1;
+  EXPECT_TRUE(base::GetFileSize(test_file, &file_size));
+  EXPECT_EQ(collector_.get_bytes_written(), file_size);
 
   int decompress_result = system(("gunzip " + test_file.value()).c_str());
   EXPECT_TRUE(WIFEXITED(decompress_result));
@@ -105,6 +248,186 @@ TEST_F(CrashCollectorTest, WriteNewCompressedFileFailsIfFileExists) {
   const char kBuffer[] = "buffer";
   EXPECT_FALSE(
       collector_.WriteNewCompressedFile(test_file, kBuffer, strlen(kBuffer)));
+  EXPECT_EQ(collector_.get_bytes_written(), 0);
+}
+
+TEST_F(CrashCollectorTest,
+       DISABLED_ON_QEMU_FOR_MEMFD_CREATE(
+           CrashLoopModeCreatesInMemoryCompressedFiles)) {
+  CrashCollectorMock collector(
+      CrashCollector::kUseNormalCrashDirectorySelectionMethod,
+      CrashCollector::kCrashLoopSendingMode);
+  collector.Initialize(IsMetrics, false);
+
+  const char kBuffer[] = "Hello, this is buffer";
+  const FilePath kPath = test_dir_.Append("buffer.txt.gz");
+  EXPECT_TRUE(
+      collector.WriteNewCompressedFile(kPath, kBuffer, strlen(kBuffer)));
+
+  // This should be an in-memory file, not a real file.
+  EXPECT_FALSE(base::PathExists(kPath));
+
+  auto result = collector.get_in_memory_files_for_test();
+  ASSERT_EQ(result.size(), 1);
+  EXPECT_EQ(std::get<0>(result[0]), "buffer.txt.gz");
+  base::File file(std::get<1>(result[0]).release());
+  EXPECT_TRUE(file.IsValid());
+  char compressed_result_buffer[100] = {'\0'};
+  int read_amount =
+      file.Read(0, compressed_result_buffer, sizeof(compressed_result_buffer));
+  ASSERT_GT(read_amount, 0);
+  EXPECT_EQ(collector.get_bytes_written(), read_amount);
+
+  // Uncompress the data.
+  base::FilePath uncompressed_path = test_dir_.Append("result.txt");
+  base::FilePath compressed_path = uncompressed_path.AddExtension("gz");
+  base::File compressed_file(compressed_path,
+                             base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  EXPECT_TRUE(compressed_file.IsValid())
+      << base::File::ErrorToString(compressed_file.error_details());
+  EXPECT_EQ(compressed_file.Write(0, compressed_result_buffer, read_amount),
+            read_amount);
+  compressed_file.Close();
+  int decompress_result = system(("gunzip " + compressed_path.value()).c_str());
+  EXPECT_TRUE(WIFEXITED(decompress_result));
+  EXPECT_EQ(WEXITSTATUS(decompress_result), 0);
+
+  std::string result_buffer;
+  EXPECT_TRUE(base::ReadFileToString(uncompressed_path, &result_buffer));
+  EXPECT_EQ(std::string(kBuffer), result_buffer);
+}
+
+TEST_F(CrashCollectorTest,
+       DISABLED_ON_QEMU_FOR_MEMFD_CREATE(
+           CrashLoopModeWillNotCreateDuplicateCompressedFileNames)) {
+  CrashCollectorMock collector(
+      CrashCollector::kUseNormalCrashDirectorySelectionMethod,
+      CrashCollector::kCrashLoopSendingMode);
+  collector.Initialize(IsMetrics, false);
+
+  const FilePath kPath = test_dir_.Append("buffer.txt.gz");
+  const char kBuffer[] = "Hello, this is buffer";
+  // First should succeed.
+  EXPECT_TRUE(
+      collector.WriteNewCompressedFile(kPath, kBuffer, strlen(kBuffer)));
+  EXPECT_GT(collector.get_bytes_written(), 0);
+  off_t bytes_written_after_first = collector.get_bytes_written();
+
+  // Second should fail.
+  EXPECT_FALSE(
+      collector.WriteNewCompressedFile(kPath, kBuffer, strlen(kBuffer)));
+  EXPECT_EQ(collector.get_bytes_written(), bytes_written_after_first);
+
+  ASSERT_EQ(collector.get_in_memory_files_for_test().size(), 1);
+}
+
+TEST_F(CrashCollectorTest, RemoveNewFileRemovesNormalFiles) {
+  const FilePath kPath = test_dir_.Append("buffer.txt");
+  const char kBuffer[] = "Hello, this is buffer";
+  EXPECT_EQ(strlen(kBuffer),
+            collector_.WriteNewFile(kPath, kBuffer, strlen(kBuffer)));
+  EXPECT_EQ(collector_.get_bytes_written(), strlen(kBuffer));
+  EXPECT_TRUE(base::PathExists(kPath));
+
+  EXPECT_TRUE(collector_.RemoveNewFile(kPath));
+  EXPECT_EQ(collector_.get_bytes_written(), 0);
+  EXPECT_FALSE(base::PathExists(kPath));
+}
+
+TEST_F(CrashCollectorTest, RemoveNewFileRemovesCompressedFiles) {
+  const FilePath kPath = test_dir_.Append("buffer.txt.gz");
+  const char kBuffer[] = "Hello, this is buffer";
+  EXPECT_TRUE(
+      collector_.WriteNewCompressedFile(kPath, kBuffer, strlen(kBuffer)));
+  EXPECT_GT(collector_.get_bytes_written(), 0);
+  EXPECT_TRUE(base::PathExists(kPath));
+
+  EXPECT_TRUE(collector_.RemoveNewFile(kPath));
+  EXPECT_EQ(collector_.get_bytes_written(), 0);
+  EXPECT_FALSE(base::PathExists(kPath));
+}
+
+TEST_F(CrashCollectorTest, RemoveNewFileFailsOnNonExistantFiles) {
+  const FilePath kPath = test_dir_.Append("doesnt_exist");
+  EXPECT_FALSE(collector_.RemoveNewFile(kPath));
+  EXPECT_EQ(collector_.get_bytes_written(), 0);
+}
+
+TEST_F(CrashCollectorTest,
+       DISABLED_ON_QEMU_FOR_MEMFD_CREATE(
+           RemoveNewFileRemovesNormalFilesInCrashLoopMode)) {
+  CrashCollectorMock collector(
+      CrashCollector::kUseNormalCrashDirectorySelectionMethod,
+      CrashCollector::kCrashLoopSendingMode);
+  collector.Initialize(IsMetrics, false);
+
+  const FilePath kPath = test_dir_.Append("buffer.txt");
+  const char kBuffer[] = "Hello, this is buffer";
+  EXPECT_EQ(strlen(kBuffer),
+            collector.WriteNewFile(kPath, kBuffer, strlen(kBuffer)));
+  EXPECT_EQ(collector.get_bytes_written(), strlen(kBuffer));
+
+  EXPECT_TRUE(collector.RemoveNewFile(kPath));
+  EXPECT_EQ(collector.get_bytes_written(), 0);
+  EXPECT_THAT(collector.get_in_memory_files_for_test(), IsEmpty());
+}
+
+TEST_F(CrashCollectorTest,
+       DISABLED_ON_QEMU_FOR_MEMFD_CREATE(
+           RemoveNewFileRemovesCorrectFileInCrashLoopMode)) {
+  CrashCollectorMock collector(
+      CrashCollector::kUseNormalCrashDirectorySelectionMethod,
+      CrashCollector::kCrashLoopSendingMode);
+  collector.Initialize(IsMetrics, false);
+
+  const FilePath kPath1 = test_dir_.Append("buffer1.txt");
+  const char kBuffer1[] = "Hello, this is buffer";
+  EXPECT_EQ(strlen(kBuffer1),
+            collector.WriteNewFile(kPath1, kBuffer1, strlen(kBuffer1)));
+  const FilePath kPath2 = test_dir_.Append("buffer2.txt");
+  const char kBuffer2[] =
+      "And if you gaze long into an abyss, you may become the domain expert on "
+      "the abyss";
+  EXPECT_EQ(strlen(kBuffer2),
+            collector.WriteNewFile(kPath2, kBuffer2, strlen(kBuffer2)));
+  EXPECT_EQ(collector.get_bytes_written(), strlen(kBuffer1) + strlen(kBuffer2));
+
+  EXPECT_TRUE(collector.RemoveNewFile(kPath1));
+  EXPECT_EQ(collector.get_bytes_written(), strlen(kBuffer2));
+  auto results = collector.get_in_memory_files_for_test();
+  ASSERT_EQ(results.size(), 1);
+  EXPECT_EQ(std::get<0>(results[0]), "buffer2.txt");
+}
+
+TEST_F(CrashCollectorTest,
+       DISABLED_ON_QEMU_FOR_MEMFD_CREATE(
+           RemoveNewFileRemovesCompressedFilesInCrashLoopMode)) {
+  CrashCollectorMock collector(
+      CrashCollector::kUseNormalCrashDirectorySelectionMethod,
+      CrashCollector::kCrashLoopSendingMode);
+  collector.Initialize(IsMetrics, false);
+
+  const FilePath kPath = test_dir_.Append("buffer.txt.gz");
+  const char kBuffer[] = "Hello, this is buffer";
+  EXPECT_TRUE(
+      collector.WriteNewCompressedFile(kPath, kBuffer, strlen(kBuffer)));
+  EXPECT_GT(collector.get_bytes_written(), 0);
+
+  EXPECT_TRUE(collector.RemoveNewFile(kPath));
+  EXPECT_EQ(collector.get_bytes_written(), 0);
+  EXPECT_THAT(collector.get_in_memory_files_for_test(), IsEmpty());
+}
+
+TEST_F(CrashCollectorTest,
+       RemoveNewFileFailsOnNonExistantFilesInCrashLoopMode) {
+  CrashCollectorMock collector(
+      CrashCollector::kUseNormalCrashDirectorySelectionMethod,
+      CrashCollector::kCrashLoopSendingMode);
+  collector.Initialize(IsMetrics, false);
+
+  const FilePath kPath = test_dir_.Append("doesnt_exist");
+  EXPECT_FALSE(collector.RemoveNewFile(kPath));
+  EXPECT_EQ(collector.get_bytes_written(), 0);
 }
 
 TEST_F(CrashCollectorTest, Sanitize) {
@@ -459,7 +782,7 @@ TEST_F(CrashCollectorTest, MetaData) {
   const char kKernelName[] = "Linux";
   const char kKernelVersion[] = "3.8.11 #1 SMP Wed Aug 22 02:18:30 PDT 2018";
   collector_.set_test_kernel_info(kKernelName, kKernelVersion);
-  collector_.WriteCrashMetaData(meta_file, "kernel", payload_file.value());
+  collector_.FinishCrash(meta_file, "kernel", payload_file.value());
   EXPECT_TRUE(base::ReadFileToString(meta_file, &contents));
   std::string expected_meta = StringPrintf(
       "upload_var_collector=mock\n"
@@ -478,30 +801,53 @@ TEST_F(CrashCollectorTest, MetaData) {
       kFakeNow, kKernelName, kKernelVersion, payload_full_path.value().c_str(),
       (os_time - base::Time::UnixEpoch()).InMilliseconds());
   EXPECT_EQ(expected_meta, contents);
+  EXPECT_EQ(collector_.get_bytes_written(), expected_meta.size());
+}
 
-  // Test target of symlink is not overwritten.
-  payload_file = test_dir_.Append("payload2-file");
-  ASSERT_TRUE(test_util::CreateFile(payload_file, kPayload));
+// Test target of symlink is not overwritten.
+TEST_F(CrashCollectorTest, MetaDataDoesntOverwriteSymlink) {
+  const char kSymlinkTarget[] = "important_file";
+  FilePath symlink_target_path = test_dir_.Append(kSymlinkTarget);
+  const char kOriginalContents[] = "Very important contents";
+  EXPECT_EQ(base::WriteFile(symlink_target_path, kOriginalContents,
+                            strlen(kOriginalContents)),
+            strlen(kOriginalContents));
+
   FilePath meta_symlink_path = test_dir_.Append("symlink.meta");
-  ASSERT_EQ(0, symlink(kMetaFileBasename, meta_symlink_path.value().c_str()));
+  ASSERT_EQ(0, symlink(kSymlinkTarget, meta_symlink_path.value().c_str()));
   ASSERT_TRUE(base::PathExists(meta_symlink_path));
-  brillo::ClearLog();
-  collector_.WriteCrashMetaData(meta_symlink_path, "kernel",
-                                payload_file.value());
-  // Target metadata contents should have stayed the same.
-  contents.clear();
-  EXPECT_TRUE(base::ReadFileToString(meta_file, &contents));
-  EXPECT_EQ(expected_meta, contents);
-  EXPECT_TRUE(FindLog("Unable to write"));
 
-  // Test target of dangling symlink is not created.
-  base::DeleteFile(meta_file, false);
-  ASSERT_FALSE(base::PathExists(meta_file));
+  FilePath payload_file = test_dir_.Append("payload2-file");
+  ASSERT_TRUE(test_util::CreateFile(payload_file, "whatever"));
+
   brillo::ClearLog();
-  collector_.WriteCrashMetaData(meta_symlink_path, "kernel",
-                                payload_file.value());
-  EXPECT_FALSE(base::PathExists(meta_file));
+  collector_.FinishCrash(meta_symlink_path, "kernel", payload_file.value());
+  // Target file contents should have stayed the same.
+  std::string contents;
+  EXPECT_TRUE(base::ReadFileToString(symlink_target_path, &contents));
+  EXPECT_EQ(kOriginalContents, contents);
   EXPECT_TRUE(FindLog("Unable to write"));
+  EXPECT_EQ(collector_.get_bytes_written(), 0);
+}
+
+// Test target of dangling symlink is not created.
+TEST_F(CrashCollectorTest, MetaDataDoesntCreateSymlink) {
+  const char kSymlinkTarget[] = "important_file";
+  FilePath symlink_target_path = test_dir_.Append(kSymlinkTarget);
+  ASSERT_FALSE(base::PathExists(symlink_target_path));
+
+  FilePath meta_symlink_path = test_dir_.Append("symlink.meta");
+  ASSERT_EQ(0, symlink(kSymlinkTarget, meta_symlink_path.value().c_str()));
+  ASSERT_FALSE(base::PathExists(meta_symlink_path));
+
+  FilePath payload_file = test_dir_.Append("payload2-file");
+  ASSERT_TRUE(test_util::CreateFile(payload_file, "whatever"));
+
+  brillo::ClearLog();
+  collector_.FinishCrash(meta_symlink_path, "kernel", payload_file.value());
+  EXPECT_FALSE(base::PathExists(symlink_target_path));
+  EXPECT_TRUE(FindLog("Unable to write"));
+  EXPECT_EQ(collector_.get_bytes_written(), 0);
 }
 
 TEST_F(CrashCollectorTest, GetLogContents) {
@@ -513,9 +859,11 @@ TEST_F(CrashCollectorTest, GetLogContents) {
   base::DeleteFile(FilePath(output_file), false);
   EXPECT_FALSE(collector_.GetLogContents(config_file, "barfoo", output_file));
   EXPECT_FALSE(base::PathExists(output_file));
+  EXPECT_EQ(collector_.get_bytes_written(), 0);
   base::DeleteFile(FilePath(output_file), false);
   EXPECT_TRUE(collector_.GetLogContents(config_file, "foobar", output_file));
   ASSERT_TRUE(base::PathExists(output_file));
+  EXPECT_GT(collector_.get_bytes_written(), 0);
 
   int decompress_result = system(("gunzip " + output_file.value()).c_str());
   EXPECT_TRUE(WIFEXITED(decompress_result));
@@ -535,12 +883,16 @@ TEST_F(CrashCollectorTest, GetProcessTree) {
   ASSERT_TRUE(base::PathExists(output_file));
   EXPECT_TRUE(base::ReadFileToString(output_file, &contents));
   EXPECT_LT(300, contents.size());
+  EXPECT_EQ(collector_.get_bytes_written(), contents.size());
   base::DeleteFile(FilePath(output_file), false);
 
   ASSERT_TRUE(collector_.GetProcessTree(0, output_file));
   ASSERT_TRUE(base::PathExists(output_file));
-  EXPECT_TRUE(base::ReadFileToString(output_file, &contents));
-  EXPECT_GT(100, contents.size());
+  std::string contents_pid_0;
+  EXPECT_TRUE(base::ReadFileToString(output_file, &contents_pid_0));
+  EXPECT_GT(100, contents_pid_0.size());
+  EXPECT_EQ(collector_.get_bytes_written(),
+            contents.size() + contents_pid_0.size());
 }
 
 TEST_F(CrashCollectorTest, TruncatedLog) {
@@ -552,6 +904,9 @@ TEST_F(CrashCollectorTest, TruncatedLog) {
   collector_.max_log_size_ = 10;
   EXPECT_TRUE(collector_.GetLogContents(config_file, "foobar", output_file));
   ASSERT_TRUE(base::PathExists(output_file));
+  int64_t file_size = -1;
+  EXPECT_TRUE(base::GetFileSize(output_file, &file_size));
+  EXPECT_EQ(collector_.get_bytes_written(), file_size);
 
   int decompress_result = system(("gunzip " + output_file.value()).c_str());
   EXPECT_TRUE(WIFEXITED(decompress_result));
@@ -664,4 +1019,127 @@ TEST_F(CrashCollectorTest, CreateDirectoryWithSettingsSymlinks) {
   EXPECT_FALSE(base::IsLink(td.Append("sub/sym")));
   EXPECT_TRUE(base::DirectoryExists(td.Append("sub/sym")));
   EXPECT_FALSE(base::PathExists(td.Append("sub/subsub")));
+}
+
+void CrashCollectorTest::TestFinishCrashInCrashLoopMode(
+    bool give_success_response) {
+  const char kBuffer[] = "Buffer full of goodness";
+  const FilePath kPath = test_dir_.Append("buffer.txt");
+  const FilePath kMetaFilePath = test_dir_.Append("meta.txt");
+  base::MessageLoopForIO message_loop;
+
+  CrashCollectorMock collector(
+      CrashCollector::kUseNormalCrashDirectorySelectionMethod,
+      CrashCollector::kCrashLoopSendingMode);
+  dbus::Bus::Options bus_options;
+  auto mock_bus = make_scoped_refptr(new dbus::MockBus(bus_options));
+  auto mock_object_proxy = make_scoped_refptr(
+      new dbus::MockObjectProxy(mock_bus.get(), "org.chromium.debugd",
+                                dbus::ObjectPath("/org/chromium/debugd")));
+  EXPECT_CALL(collector, SetUpDBus())
+      .WillOnce(Invoke([&collector, &mock_bus]() {
+        collector.bus_ = mock_bus;
+        collector.debugd_proxy_ =
+            std::make_unique<org::chromium::debugdProxy>(mock_bus);
+      }))
+      .WillRepeatedly(Return());
+  EXPECT_CALL(*mock_bus,
+              GetObjectProxy("org.chromium.debugd",
+                             dbus::ObjectPath("/org/chromium/debugd")))
+      .WillRepeatedly(Return(mock_object_proxy.get()));
+  std::unique_ptr<dbus::Response> empty_response;
+  std::unique_ptr<dbus::ErrorResponse> empty_error_response;
+  EXPECT_CALL(*mock_object_proxy, CallMethodWithErrorCallback(_, 0, _, _))
+      .WillOnce(Invoke([&](dbus::MethodCall* method_call, int timeout_ms,
+                           dbus::ObjectProxy::ResponseCallback callback,
+                           dbus::ObjectProxy::ErrorCallback error_callback) {
+        // We can't copy or move the method_call object, and it will be
+        // destroyed shortly after this lambda ends, so we must validate its
+        // contents inside the lambda.
+        dbus::MessageReader reader(method_call);
+        dbus::MessageReader array_reader(nullptr);
+        EXPECT_TRUE(reader.PopArray(&array_reader));
+        EXPECT_FALSE(reader.HasMoreData());
+        dbus::MessageReader struct_reader_1(nullptr);
+        EXPECT_TRUE(array_reader.PopStruct(&struct_reader_1));
+        dbus::MessageReader struct_reader_2(nullptr);
+        EXPECT_TRUE(array_reader.PopStruct(&struct_reader_2));
+        EXPECT_FALSE(array_reader.HasMoreData())
+            << "Should only have 2 files in array";
+        std::string file_name_1;
+        EXPECT_TRUE(struct_reader_1.PopString(&file_name_1));
+        base::ScopedFD fd_1;
+        EXPECT_TRUE(struct_reader_1.PopFileDescriptor(&fd_1));
+        EXPECT_TRUE(fd_1.is_valid());
+        EXPECT_FALSE(struct_reader_1.HasMoreData());
+
+        std::string file_name_2;
+        EXPECT_TRUE(struct_reader_2.PopString(&file_name_2));
+        base::ScopedFD fd_2;
+        EXPECT_TRUE(struct_reader_2.PopFileDescriptor(&fd_2));
+        EXPECT_TRUE(fd_2.is_valid());
+        EXPECT_FALSE(struct_reader_2.HasMoreData());
+
+        base::ScopedFD payload_fd;
+        base::ScopedFD meta_fd;
+        if (file_name_1 == "buffer.txt") {
+          EXPECT_EQ(file_name_2, "meta.txt");
+          payload_fd = std::move(fd_1);
+          meta_fd = std::move(fd_2);
+        } else {
+          EXPECT_EQ(file_name_1, "meta.txt");
+          EXPECT_EQ(file_name_2, "buffer.txt");
+          payload_fd = std::move(fd_2);
+          meta_fd = std::move(fd_1);
+        }
+        base::File payload_file(payload_fd.release());
+        EXPECT_TRUE(payload_file.IsValid());
+        EXPECT_EQ(payload_file.GetLength(), strlen(kBuffer));
+        char result_buffer[100] = {'\0'};
+        EXPECT_EQ(payload_file.Read(0, result_buffer, sizeof(result_buffer)),
+                  strlen(kBuffer));
+        EXPECT_EQ(std::string(kBuffer), std::string(result_buffer));
+
+        base::File meta_file(meta_fd.release());
+        EXPECT_TRUE(meta_file.IsValid());
+        EXPECT_GT(meta_file.GetLength(), 0);
+
+        ASSERT_TRUE(base::ThreadTaskRunnerHandle::IsSet());
+        // Serial would normally be set by the transmission code before we tried
+        // to make a reply from it. Since we are bypassing the transmission
+        // code, we must set the serial number here.
+        method_call->SetSerial(1);
+        if (give_success_response) {
+          empty_response = dbus::Response::FromMethodCall(method_call);
+          base::ThreadTaskRunnerHandle::Get()->PostTask(
+              FROM_HERE, base::Bind(callback, empty_response.get()));
+        } else {
+          empty_error_response = dbus::ErrorResponse::FromMethodCall(
+              method_call, "org.freedesktop.DBus.Error.Failed",
+              "Things didn't work");
+          base::ThreadTaskRunnerHandle::Get()->PostTask(
+              FROM_HERE,
+              base::Bind(error_callback, empty_error_response.get()));
+        }
+      }));
+
+  collector.Initialize(IsMetrics, false);
+
+  EXPECT_EQ(collector.WriteNewFile(kPath, kBuffer, strlen(kBuffer)),
+            strlen(kBuffer));
+  EXPECT_EQ(collector.get_bytes_written(), strlen(kBuffer));
+  collector.FinishCrash(kMetaFilePath, "kernel", kPath.value());
+  EXPECT_GT(collector.get_bytes_written(), strlen(kBuffer));
+}
+
+TEST_F(CrashCollectorTest,
+       DISABLED_ON_QEMU_FOR_MEMFD_CREATE(
+           FinishCrashInCrashLoopModeSuccessfulResponse)) {
+  TestFinishCrashInCrashLoopMode(true);
+}
+
+TEST_F(CrashCollectorTest,
+       DISABLED_ON_QEMU_FOR_MEMFD_CREATE(
+           FinishCrashInCrashLoopModeErrorResponse)) {
+  TestFinishCrashInCrashLoopMode(false);
 }

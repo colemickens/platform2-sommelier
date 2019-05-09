@@ -6,6 +6,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
 #include <brillo/syslog_logging.h>
 #include <fcntl.h>
 #include <gmock/gmock.h>
@@ -80,6 +81,7 @@ class BERTCollectorTest : public ::testing::Test {
 
 TEST_F(BERTCollectorTest, TestNoBERTData) {
   ASSERT_FALSE(collector_.Collect());
+  EXPECT_EQ(collector_.get_bytes_written(), 0);
 }
 
 TEST_F(BERTCollectorTest, TestNoConsent) {
@@ -87,6 +89,7 @@ TEST_F(BERTCollectorTest, TestNoConsent) {
   PrepareBertDataTest(false);
   ASSERT_TRUE(collector_.Collect());
   ASSERT_TRUE(FindLog("(ignoring - no consent)"));
+  EXPECT_EQ(collector_.get_bytes_written(), 0);
 }
 
 TEST_F(BERTCollectorTest, TestBadBERTData) {
@@ -94,11 +97,14 @@ TEST_F(BERTCollectorTest, TestBadBERTData) {
   ASSERT_FALSE(collector_.Collect());
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog("Bad data in BERT table"));
+  EXPECT_EQ(collector_.get_bytes_written(), 0);
 }
 
 TEST_F(BERTCollectorTest, TestGoodBERTData) {
   PrepareBertDataTest(true);
+  logging::SetMinLogLevel(-3);
   ASSERT_TRUE(collector_.Collect());
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog("Stored BERT dump"));
+  EXPECT_GT(collector_.get_bytes_written(), 0);
 }

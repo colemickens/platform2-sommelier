@@ -92,9 +92,9 @@ bool ECCollector::Collect() {
 
     /* TODO(drinkcat): Figure out a way to add EC version to metadata. */
     AddCrashMetaData("sig", signature);
-    WriteCrashMetaData(root_crash_directory.Append(
-                           StringPrintf("%s.meta", dump_basename.c_str())),
-                       kECExecName, ec_crash_path.value());
+    FinishCrash(root_crash_directory.Append(
+                    StringPrintf("%s.meta", dump_basename.c_str())),
+                kECExecName, ec_crash_path.value());
 
     LOG(INFO) << "Stored EC crash to " << ec_crash_path.value();
   }

@@ -112,8 +112,8 @@ bool UdevCollector::ProcessUdevCrashLogs(const FilePath& crash_directory,
 
   std::string exec_name = std::string(kUdevExecName) + "-" + subsystem;
   AddCrashMetaData(kUdevSignatureKey, udev_log_name);
-  WriteCrashMetaData(GetCrashPath(crash_directory, log_file_name, "meta"),
-                     exec_name, crash_path.value());
+  FinishCrash(GetCrashPath(crash_directory, log_file_name, "meta"), exec_name,
+              crash_path.value());
   return true;
 }
 
@@ -173,7 +173,7 @@ bool UdevCollector::AppendDevCoredump(const FilePath& crash_directory,
     AddCrashMetaUploadFile("logs", log_path.value());
   }
 
-  WriteCrashMetaData(meta_path, coredump_prefix, core_path.value());
+  FinishCrash(meta_path, coredump_prefix, core_path.value());
 
   return true;
 }

@@ -100,7 +100,7 @@ bool SELinuxViolationCollector::Collect() {
   for (const auto& metadata : extra_metadata)
     AddCrashMetaUploadData(metadata.first, metadata.second);
 
-  WriteCrashMetaData(meta_path, kExecName, log_path.value());
+  FinishCrash(meta_path, kExecName, log_path.value());
 
   return true;
 }

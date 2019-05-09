@@ -11,7 +11,6 @@
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <debugd/dbus-proxies.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "crash-reporter/crash_collector.h"
@@ -19,7 +18,7 @@
 // Chrome crash collector.
 class ChromeCollector : public CrashCollector {
  public:
-  ChromeCollector();
+  explicit ChromeCollector(CrashSendingMode crash_sending_mode);
   ~ChromeCollector() override;
 
   // Magic string to let Chrome know the crash report succeeded.
@@ -31,8 +30,9 @@ class ChromeCollector : public CrashCollector {
                    uid_t uid,
                    const std::string& exe_name);
 
- protected:
-  void SetUpDBus() override;
+  void set_max_upload_bytes_for_test(int max_upload_bytes) {
+    max_upload_bytes_ = max_upload_bytes;
+  }
 
  private:
   friend class ChromeCollectorTest;
@@ -41,6 +41,7 @@ class ChromeCollector : public CrashCollector {
   FRIEND_TEST(ChromeCollectorTest, Newlines);
   FRIEND_TEST(ChromeCollectorTest, File);
   FRIEND_TEST(ChromeCollectorTest, HandleCrash);
+  FRIEND_TEST(ChromeCollectorTest, HandleCrashWithEmbeddedNuls);
 
   // Crashes are expected to be in a TLV-style format of:
   // <name>:<length>:<value>
@@ -65,10 +66,24 @@ class ChromeCollector : public CrashCollector {
       const std::string& basename,
       const std::string& exe_name);
 
+  // Add the (|log_map_key|, |complete_file_name|) pair to |logs| if we are not
+  // over kDefaultMaxUploadBytes. If we are over kDefaultMaxUploadBytes,
+  // delete the file |complete_file_name| instead and don't change |logs|.
+  // |complete_file_name| must be a file created by
+  // CrashCollector::WriteNewFile() or CrashCollector::WriteNewCompressedFile()
+  // so that CrashCollector::RemoveNewFile() works on it.
+  void AddLogIfNotTooBig(const char* log_map_key,
+                         const base::FilePath& complete_file_name,
+                         std::map<std::string, base::FilePath>* logs);
+
+  // The file where we write our special "done" marker (to indicate to Chrome
+  // that we are finished dumping). Always stdout in production.
   FILE* output_file_ptr_;
 
-  // D-Bus proxy for debugd interface.  Unset in unit tests.
-  std::unique_ptr<org::chromium::debugdProxy> debugd_proxy_;
+  // We skip uploading the supplemental files (logs, i915_error_state) if it
+  // would make the report larger than max_upload_bytes_. In production, this
+  // is always kDefaultMaxUploadBytes.
+  int max_upload_bytes_;
 
   DISALLOW_COPY_AND_ASSIGN(ChromeCollector);
 };

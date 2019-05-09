@@ -8,7 +8,7 @@
 #include <fcntl.h>  // For file creation modes.
 #include <inttypes.h>
 #include <linux/limits.h>  // PATH_MAX
-#include <sys/types.h>     // for mode_t.
+#include <sys/mman.h>      // for memfd_create
 #include <sys/utsname.h>   // For uname.
 #include <sys/wait.h>      // For waitpid.
 #include <unistd.h>        // For execv and fork.
@@ -20,18 +20,22 @@
 
 #include <pcrecpp.h>
 
+#include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/run_loop.h>
 #include <base/scoped_clear_errno.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <brillo/key_value_store.h>
 #include <brillo/process.h>
 #include <brillo/userdb_utils.h>
+#include <debugd/dbus-constants.h>
 #include <zlib.h>
 
 #include "crash-reporter/paths.h"
@@ -48,6 +52,7 @@ const char kUploadVarPrefix[] = "upload_var_";
 const char kUploadTextPrefix[] = "upload_text_";
 const char kUploadFilePrefix[] = "upload_file_";
 const char kCollectorNameKey[] = "collector";
+const char kCrashLoopModeKey[] = "crash_loop_mode";
 
 // Key of the lsb-release entry containing the OS version.
 const char kLsbOsVersionKey[] = "CHROMEOS_RELEASE_VERSION";
@@ -198,17 +203,28 @@ bool CrashCollector::CreateDirectoryWithSettings(const FilePath& dir,
 }
 
 CrashCollector::CrashCollector(const std::string& collector_name)
-    : CrashCollector(collector_name, false) {}
+    : CrashCollector(collector_name,
+                     kUseNormalCrashDirectorySelectionMethod,
+                     kNormalCrashSendMode) {}
 
-CrashCollector::CrashCollector(const std::string& collector_name,
-                               bool force_user_crash_dir)
+CrashCollector::CrashCollector(
+    const std::string& collector_name,
+    CrashDirectorySelectionMethod crash_directory_selection_method,
+    CrashSendingMode crash_sending_mode)
+
     : lsb_release_(FilePath(paths::kEtcDirectory).Append(paths::kLsbRelease)),
       system_crash_path_(paths::kSystemCrashDirectory),
       crash_reporter_state_path_(paths::kCrashReporterStateDirectory),
       log_config_path_(kDefaultLogConfig),
       max_log_size_(kMaxLogSize),
-      force_user_crash_dir_(force_user_crash_dir) {
+      crash_sending_mode_(crash_sending_mode),
+      crash_directory_selection_method_(crash_directory_selection_method),
+      is_finished_(false),
+      bytes_written_(0) {
   AddCrashMetaUploadData(kCollectorNameKey, collector_name);
+  if (crash_sending_mode_ == kCrashLoopSendingMode) {
+    AddCrashMetaUploadData(kCrashLoopModeKey, "true");
+  }
 }
 
 CrashCollector::~CrashCollector() {
@@ -242,14 +258,53 @@ void CrashCollector::SetUpDBus() {
 
   session_manager_proxy_.reset(
       new org::chromium::SessionManagerInterfaceProxy(bus_));
+
+  debugd_proxy_.reset(new org::chromium::debugdProxy(bus_));
+}
+
+bool CrashCollector::InMemoryFileExists(const base::FilePath& filename) const {
+  base::FilePath base_name = filename.BaseName();
+  for (const auto& in_memory_file : in_memory_files_) {
+    if (std::get<0>(in_memory_file) == base_name.value()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 base::ScopedFD CrashCollector::GetNewFileHandle(
     const base::FilePath& filename) {
-  // The O_NOFOLLOW is redundant with O_CREAT|O_EXCL, but doesn't hurt.
-  int fd = HANDLE_EINTR(open(
-      filename.value().c_str(),
-      O_CREAT | O_WRONLY | O_TRUNC | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600));
+  DCHECK(!is_finished_);
+  int fd = -1;
+  // Note: Getting the c_str() before calling open or memfd_create ensures that
+  // PLOG works correctly -- there won't be intervening standard library calls
+  // between the open / memfd_create and PLOG which could overwrite errno.
+  std::string filename_string;
+  const char* filename_cstr;
+  switch (crash_sending_mode_) {
+    case kNormalCrashSendMode:
+      filename_string = filename.value();
+      filename_cstr = filename_string.c_str();
+      // The O_NOFOLLOW is redundant with O_CREAT|O_EXCL, but doesn't hurt.
+      fd = HANDLE_EINTR(
+          open(filename_cstr,
+               O_CREAT | O_WRONLY | O_TRUNC | O_EXCL | O_NOFOLLOW | O_CLOEXEC,
+               0600));
+      if (fd < 0) {
+        PLOG(ERROR) << "Could not open " << filename_cstr;
+      }
+      break;
+    case kCrashLoopSendingMode:
+      filename_string = filename.BaseName().value();
+      filename_cstr = filename_string.c_str();
+      fd = memfd_create(filename_cstr, MFD_CLOEXEC);
+      if (fd < 0) {
+        PLOG(ERROR) << "Could not memfd_create " << filename_cstr;
+      }
+      break;
+    default:
+      NOTREACHED();
+  }
   return base::ScopedFD(fd);
 }
 
@@ -261,10 +316,24 @@ int CrashCollector::WriteNewFile(const FilePath& filename,
     return -1;
   }
 
-  int rv = base::WriteFileDescriptor(fd.get(), data, size) ? size : -1;
-  base::ScopedClearErrno restore_error;
-  fd.reset();
-  return rv;
+  if (!base::WriteFileDescriptor(fd.get(), data, size)) {
+    base::ScopedClearErrno restore_error;
+    fd.reset();
+    return -1;
+  }
+
+  if (crash_sending_mode_ == kCrashLoopSendingMode) {
+    if (InMemoryFileExists(filename)) {
+      LOG(ERROR)
+          << "Duplicate file names not allowed in crash loop sending mode: "
+          << filename.value();
+      errno = EEXIST;
+      return -1;
+    }
+    in_memory_files_.emplace_back(filename.BaseName().value(), std::move(fd));
+  }
+  bytes_written_ += size;
+  return size;
 }
 
 bool CrashCollector::WriteNewCompressedFile(const FilePath& filename,
@@ -275,6 +344,16 @@ bool CrashCollector::WriteNewCompressedFile(const FilePath& filename,
   base::ScopedFD fd = GetNewFileHandle(filename);
   if (!fd.is_valid()) {
     LOG(ERROR) << "Failed to open " << filename.value();
+    return false;
+  }
+  // No way to stop gzclose_w from closing the file descriptor, but we need a
+  // copy to send to debugd if crash_sending_mode_ == kCrashLoopSendingMode, so
+  // duplicate first. We don't *need* a duplicate for kNormalCrashSendMode, but
+  // it makes the bytes_written_-updating code easier below, so we duplicate in
+  // both crash sending modes.
+  base::ScopedFD fd_dup(dup(fd.get()));
+  if (!fd_dup.is_valid()) {
+    PLOG(ERROR) << "Failed to dup file descriptor";
     return false;
   }
 
@@ -313,7 +392,64 @@ bool CrashCollector::WriteNewCompressedFile(const FilePath& filename,
     LOG(ERROR) << "gzclose_w failed with error code " << result;
     return false;
   }
+
+  struct stat compressed_output_stats;
+  if (fstat(fd_dup.get(), &compressed_output_stats) < 0) {
+    PLOG(WARNING) << "Failed to fstat compressed file";
+    // Make sure st_size is set so we don't add junk to bytes_written.
+    compressed_output_stats.st_size = 0;
+  }
+
+  if (crash_sending_mode_ == kCrashLoopSendingMode) {
+    if (InMemoryFileExists(filename)) {
+      LOG(ERROR)
+          << "Duplicate file names not allowed in crash loop sending mode: "
+          << filename.value();
+      return false;
+    }
+    in_memory_files_.emplace_back(filename.BaseName().value(),
+                                  std::move(fd_dup));
+  }
+  bytes_written_ += compressed_output_stats.st_size;
   return true;
+}
+
+bool CrashCollector::RemoveNewFile(const base::FilePath& file_name) {
+  switch (crash_sending_mode_) {
+    case kNormalCrashSendMode: {
+      if (!base::PathExists(file_name)) {
+        return false;
+      }
+      int64_t file_size = 0;
+      if (base::GetFileSize(file_name, &file_size)) {
+        bytes_written_ -= file_size;
+      }
+      return base::DeleteFile(file_name, false /*recursive*/);
+    }
+    case kCrashLoopSendingMode: {
+      base::FilePath base_name = file_name.BaseName();
+      for (auto it = in_memory_files_.begin(); it != in_memory_files_.end();
+           ++it) {
+        if (std::get<0>(*it) == base_name.value()) {
+          struct stat file_stat;
+          const brillo::dbus_utils::FileDescriptor& fd = std::get<1>(*it);
+          if (fstat(fd.get(), &file_stat) == 0) {
+            bytes_written_ -= file_stat.st_size;
+          }
+          // Resources for memfd_create files are automatically released once
+          // the last file descriptor is closed, and this will close what should
+          // be the last file descriptor, so we are effectively deleting the
+          // file by erasing the vector entry.
+          in_memory_files_.erase(it);
+          return true;
+        }
+      }
+      return false;
+    }
+    default:
+      NOTREACHED();
+      return false;
+  }
 }
 
 std::string CrashCollector::Sanitize(const std::string& name) {
@@ -486,7 +622,8 @@ FilePath CrashCollector::GetCrashDirectoryInfo(uid_t process_euid,
   // User crashes should go into the cryptohome, since they may contain PII.
   // For system crashes, there may not be a cryptohome mounted, so we use the
   // system crash path.
-  if (process_euid == default_user_id || force_user_crash_dir_) {
+  if (process_euid == default_user_id ||
+      crash_directory_selection_method_ == kAlwaysUseUserCrashDirectory) {
     *mode = kUserCrashPathMode;
     *directory_owner = default_user_id;
     *directory_group = default_user_group;
@@ -508,6 +645,13 @@ bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
 
   if (out_of_capacity)
     *out_of_capacity = false;
+
+  // In crash loop mode, we don't actually need a crash directory, so don't
+  // bother creating one.
+  if (crash_sending_mode_ == kCrashLoopSendingMode) {
+    crash_directory->clear();
+    return true;
+  }
 
   // For testing.
   if (!forced_crash_directory_.empty()) {
@@ -810,10 +954,18 @@ void CrashCollector::AddCrashMetaData(const std::string& key,
 void CrashCollector::AddCrashMetaUploadFile(const std::string& key,
                                             const std::string& path) {
   if (!path.empty()) {
-    // TODO(vapier): Make it fatal if the name is not relative.
     FilePath file_path = FilePath(path);
-    if (!NormalizeFilePath(file_path, &file_path))
-      PLOG(WARNING) << "Could not normalize " << path;
+    switch (crash_sending_mode_) {
+      case kNormalCrashSendMode:
+        // TODO(vapier): Make it fatal if the name is not relative.
+        if (!NormalizeFilePath(file_path, &file_path))
+          PLOG(WARNING) << "Could not normalize " << path;
+        break;
+      case kCrashLoopSendingMode:
+        // Only the base name is recorded in the metadata file.
+        file_path = file_path.BaseName();
+        break;
+    }
     AddCrashMetaData(kUploadFilePrefix + key, file_path.value());
   }
 }
@@ -827,10 +979,18 @@ void CrashCollector::AddCrashMetaUploadData(const std::string& key,
 void CrashCollector::AddCrashMetaUploadText(const std::string& key,
                                             const std::string& path) {
   if (!path.empty()) {
-    // TODO(vapier): Make it fatal if the name is not relative.
     FilePath file_path = FilePath(path);
-    if (!NormalizeFilePath(file_path, &file_path))
-      PLOG(WARNING) << "Could not normalize " << path;
+    switch (crash_sending_mode_) {
+      case kNormalCrashSendMode:
+        // TODO(vapier): Make it fatal if the name is not relative.
+        if (!NormalizeFilePath(file_path, &file_path))
+          PLOG(WARNING) << "Could not normalize " << path;
+        break;
+      case kCrashLoopSendingMode:
+        // Only the base name is recorded in the metadata file.
+        file_path = file_path.BaseName();
+        break;
+    }
     AddCrashMetaData(kUploadTextPrefix + key, file_path.value());
   }
 }
@@ -878,14 +1038,41 @@ std::string CrashCollector::GetKernelVersion() const {
   return StringPrintf("%s %s", buf.release, buf.version);
 }
 
-void CrashCollector::WriteCrashMetaData(const FilePath& meta_path,
-                                        const std::string& exec_name,
-                                        const std::string& payload_name) {
+// Callback for CallMethodWithErrorCallback(). Discards the response pointer
+// and just calls |callback|.
+static void IgnoreResponsePointer(base::Callback<void()> callback,
+                                  dbus::Response*) {
+  callback.Run();
+}
+
+// Error callback for CallMethodWithErrorCallback(). Discards the error pointer
+// and just calls |callback|.
+static void IgnoreErrorResponsePointer(base::Callback<void()> callback,
+                                       dbus::ErrorResponse*) {
+  // We set the timeout to 0, so of course we time out before we get a response.
+  // 99% of the time, the ErrorResponse is just "NoReply". Don't spam the error
+  // log with that information, just discard the error response.
+  callback.Run();
+}
+
+void CrashCollector::FinishCrash(const FilePath& meta_path,
+                                 const std::string& exec_name,
+                                 const std::string& payload_name) {
+  DCHECK(!is_finished_);
+
   // TODO(vapier): Make it fatal if the name is not relative.
   FilePath payload_path = FilePath(payload_name);
-  payload_path = meta_path.DirName().Append(payload_path.BaseName());
-  if (!NormalizeFilePath(payload_path, &payload_path))
-    PLOG(WARNING) << "Could not normalize " << payload_name;
+  switch (crash_sending_mode_) {
+    case kNormalCrashSendMode:
+      payload_path = meta_path.DirName().Append(payload_path.BaseName());
+      if (!NormalizeFilePath(payload_path, &payload_path))
+        PLOG(WARNING) << "Could not normalize " << payload_name;
+      break;
+    case kCrashLoopSendingMode:
+      // Only the base name of the payload is recorded in the metadata file.
+      payload_path = payload_path.BaseName();
+      break;
+  }
 
   const std::string version = GetOsVersion();
   const std::string description = GetOsDescription();
@@ -921,6 +1108,31 @@ void CrashCollector::WriteCrashMetaData(const FilePath& meta_path,
   if (WriteNewFile(meta_path, meta_data.c_str(), meta_data.size()) < 0) {
     PLOG(ERROR) << "Unable to write " << meta_path.value();
   }
+
+  if (crash_sending_mode_ == kCrashLoopSendingMode) {
+    SetUpDBus();
+
+    // We'd like to call debugd_proxy_->UploadSingleCrash here; that seems like
+    // the simplest method. However, calling debugd_proxy_->UploadSingleCrash
+    // with a timeout of zero will spam the error log with messages about timing
+    // out and not receiving a response. Going through
+    // CallMethodWithErrorCallback avoids the error messages, but it does mean
+    // we need a RunLoop.
+    base::RunLoop run_loop;
+    auto quit_closure = run_loop.QuitClosure();
+    dbus::MethodCall method_call(debugd::kDebugdInterface,
+                                 debugd::kUploadSingleCrash);
+    dbus::MessageWriter writer(&method_call);
+    brillo::dbus_utils::DBusParamWriter::Append(&writer,
+                                                std::move(in_memory_files_));
+    debugd_proxy_->GetObjectProxy()->CallMethodWithErrorCallback(
+        &method_call, 0 /*timeout_ms*/,
+        base::Bind(IgnoreResponsePointer, quit_closure),
+        base::Bind(IgnoreErrorResponsePointer, quit_closure));
+    run_loop.Run();
+  }
+
+  is_finished_ = true;
 }
 
 bool CrashCollector::ShouldHandleChromeCrashes() {

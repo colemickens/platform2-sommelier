@@ -53,8 +53,12 @@ bool GetDelimitedString(const std::string& str,
 
 }  // namespace
 
-ChromeCollector::ChromeCollector()
-    : CrashCollector("chrome"), output_file_ptr_(stdout) {}
+ChromeCollector::ChromeCollector(CrashSendingMode crash_sending_mode)
+    : CrashCollector("chrome",
+                     kUseNormalCrashDirectorySelectionMethod,
+                     crash_sending_mode),
+      output_file_ptr_(stdout),
+      max_upload_bytes_(kDefaultMaxUploadBytes) {}
 
 ChromeCollector::~ChromeCollector() {}
 
@@ -94,30 +98,15 @@ bool ChromeCollector::HandleCrash(const FilePath& file_path,
     return false;
   }
 
-  int64_t report_size = 0;
-  base::GetFileSize(minidump_path, &report_size);
-
   // Keyed by crash metadata key name.
   const std::map<std::string, base::FilePath> additional_logs =
       GetAdditionalLogs(dir, dump_basename, exe_name);
   for (const auto& it : additional_logs) {
-    int64_t file_size = 0;
-    if (!base::GetFileSize(it.second, &file_size)) {
-      PLOG(WARNING) << "Unable to get size of " << it.second.value();
-      continue;
-    }
-    if (report_size + file_size > kDefaultMaxUploadBytes) {
-      LOG(INFO) << "Skipping upload of " << it.second.value() << "("
-                << file_size << "B) because report size would exceed limit ("
-                << kDefaultMaxUploadBytes << "B)";
-      continue;
-    }
     VLOG(1) << "Adding metadata: " << it.first << " -> " << it.second.value();
     // Call AddCrashMetaUploadFile() rather than AddCrashMetaData() here. The
     // former adds a prefix to the key name; without the prefix, only the key
     // "logs" appears to be displayed on the crash server.
     AddCrashMetaUploadFile(it.first, it.second.value());
-    report_size += file_size;
   }
 
   base::FilePath aborted_path(kAbortedBrowserPidPath);
@@ -131,7 +120,7 @@ bool ChromeCollector::HandleCrash(const FilePath& file_path,
   }
 
   // We're done.
-  WriteCrashMetaData(meta_path, exe_name, minidump_path.value());
+  FinishCrash(meta_path, exe_name, minidump_path.value());
 
   // In production |output_file_ptr_| must be stdout because chrome expects to
   // read the magic string there.
@@ -139,15 +128,6 @@ bool ChromeCollector::HandleCrash(const FilePath& file_path,
   fflush(output_file_ptr_);
 
   return true;
-}
-
-void ChromeCollector::SetUpDBus() {
-  if (bus_)
-    return;
-
-  CrashCollector::SetUpDBus();
-
-  debugd_proxy_.reset(new org::chromium::debugdProxy(bus_));
 }
 
 bool ChromeCollector::ParseCrashLog(const std::string& data,
@@ -250,17 +230,42 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
   return at == data.size();
 }
 
+void ChromeCollector::AddLogIfNotTooBig(
+    const char* log_map_key,
+    const base::FilePath& complete_file_name,
+    std::map<std::string, base::FilePath>* logs) {
+  if (get_bytes_written() <= max_upload_bytes_) {
+    (*logs)[log_map_key] = complete_file_name;
+  } else {
+    // Logs were really big, don't upload them.
+    LOG(WARNING) << "Skipping upload of " << complete_file_name.value()
+                 << " because report size would exceed limit ("
+                 << max_upload_bytes_ << "B)";
+    // And free up resources to avoid leaving orphaned file around.
+    if (!RemoveNewFile(complete_file_name)) {
+      LOG(WARNING) << "Could not remove " << complete_file_name.value();
+    }
+  }
+}
+
 std::map<std::string, base::FilePath> ChromeCollector::GetAdditionalLogs(
     const FilePath& dir,
     const std::string& basename,
     const std::string& exe_name) {
   std::map<std::string, base::FilePath> logs;
+  if (get_bytes_written() > max_upload_bytes_) {
+    // Minidump is already too big, no point in processing logs or querying
+    // debugd.
+    LOG(WARNING) << "Skipping upload of supplemental logs because report size "
+                 << "already exceeds limit (" << max_upload_bytes_ << "B)";
+    return logs;
+  }
 
   // Run the command specified by the config file to gather logs.
   const FilePath chrome_log_path =
       GetCrashPath(dir, basename, kChromeLogFilename).AddExtension("gz");
   if (GetLogContents(log_config_path_, exe_name, chrome_log_path)) {
-    logs[kChromeLogFilename] = chrome_log_path;
+    AddLogIfNotTooBig(kChromeLogFilename, chrome_log_path, &logs);
   }
 
   // For unit testing, debugd_proxy_ isn't initialized, so skip attempting to
@@ -270,7 +275,7 @@ std::map<std::string, base::FilePath> ChromeCollector::GetAdditionalLogs(
     const FilePath dri_error_state_path =
         GetCrashPath(dir, basename, kGpuStateFilename);
     if (GetDriErrorState(dri_error_state_path))
-      logs[kGpuStateFilename] = dri_error_state_path;
+      AddLogIfNotTooBig(kGpuStateFilename, dri_error_state_path, &logs);
   }
 
   return logs;

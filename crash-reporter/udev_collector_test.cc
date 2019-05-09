@@ -94,30 +94,33 @@ class UdevCollectorTest : public ::testing::Test {
         test_util::CreateFile(uevent_path, kFailingDeviceUeventContents));
   }
 
+  void SetUpCollector(UdevCollectorMock* collector) {
+    EXPECT_CALL(*collector, SetUpDBus()).WillRepeatedly(testing::Return());
+    collector->Initialize(IsMetrics, false);
+
+    collector->log_config_path_ = log_config_path_;
+    collector->set_crash_directory_for_test(temp_dir_generator_.GetPath());
+
+    FilePath dev_coredump_path =
+        temp_dir_generator_.GetPath().Append(kDevCoredumpDirectory);
+    collector->dev_coredump_directory_ = dev_coredump_path.value();
+  }
+
  private:
   void SetUp() override {
     s_consent_given = true;
 
-    EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
-
-    collector_.Initialize(IsMetrics, false);
-
     ASSERT_TRUE(temp_dir_generator_.CreateUniqueTempDir());
+    log_config_path_ = temp_dir_generator_.GetPath().Append(kLogConfigFileName);
 
-    FilePath log_config_path =
-        temp_dir_generator_.GetPath().Append(kLogConfigFileName);
-    collector_.log_config_path_ = log_config_path;
-    collector_.set_crash_directory_for_test(temp_dir_generator_.GetPath());
-
-    FilePath dev_coredump_path =
-        temp_dir_generator_.GetPath().Append(kDevCoredumpDirectory);
-    collector_.dev_coredump_directory_ = dev_coredump_path.value();
-
+    SetUpCollector(&collector_);
     // Write to a dummy log config file.
-    ASSERT_TRUE(test_util::CreateFile(log_config_path, kLogConfigFileContents));
+    ASSERT_TRUE(
+        test_util::CreateFile(log_config_path_, kLogConfigFileContents));
     brillo::ClearLog();
   }
 
+  FilePath log_config_path_;
   UdevCollectorMock collector_;
 };
 
@@ -141,7 +144,12 @@ TEST_F(UdevCollectorTest, TestMatches) {
   HandleCrash("ACTION=change:KERNEL=card0:SUBSYSTEM=drm");
   EXPECT_EQ(1,
             GetNumFiles(temp_dir_generator_.GetPath(), kCrashLogFilePattern));
-  HandleCrash("ACTION=add:KERNEL=state0:SUBSYSTEM=cpu");
+
+  // Each collector is only allowed to handle one crash, so create a second
+  // collector for the second crash.
+  UdevCollectorMock second_collector;
+  SetUpCollector(&second_collector);
+  second_collector.HandleCrash("ACTION=add:KERNEL=state0:SUBSYSTEM=cpu");
   EXPECT_EQ(2,
             GetNumFiles(temp_dir_generator_.GetPath(), kCrashLogFilePattern));
 }
@@ -152,7 +160,12 @@ TEST_F(UdevCollectorTest, TestDevCoredump) {
   EXPECT_EQ(
       1, GetNumFiles(temp_dir_generator_.GetPath(), kDevCoredumpFilePattern));
   GenerateDevCoredump("devcd1");
-  HandleCrash("ACTION=add:KERNEL_NUMBER=1:SUBSYSTEM=devcoredump");
+  // Each collector is only allowed to handle one crash, so create a second
+  // collector for the second crash.
+  UdevCollectorMock second_collector;
+  SetUpCollector(&second_collector);
+  second_collector.HandleCrash(
+      "ACTION=add:KERNEL_NUMBER=1:SUBSYSTEM=devcoredump");
   EXPECT_EQ(
       2, GetNumFiles(temp_dir_generator_.GetPath(), kDevCoredumpFilePattern));
 }

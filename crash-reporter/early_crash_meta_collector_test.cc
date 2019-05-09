@@ -79,4 +79,5 @@ TEST_F(EarlyCrashMetaCollectorTest, NoConsent) {
   base::FilePath destination_crash_file = dest_dir_.Append(kTestCrashFileName);
 
   EXPECT_FALSE(base::PathExists(destination_crash_file));
+  EXPECT_EQ(collector_.get_bytes_written(), 0);
 }

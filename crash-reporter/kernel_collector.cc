@@ -723,9 +723,9 @@ bool KernelCollector::HandleCrash(const std::string& kernel_dump,
     }
 
     AddCrashMetaData(kKernelSignatureKey, signature);
-    WriteCrashMetaData(root_crash_directory.Append(
-                           StringPrintf("%s.meta", dump_basename.c_str())),
-                       kKernelExecName, kernel_crash_path.value());
+    FinishCrash(root_crash_directory.Append(
+                    StringPrintf("%s.meta", dump_basename.c_str())),
+                kKernelExecName, kernel_crash_path.value());
 
     LOG(INFO) << "Stored kcrash to " << kernel_crash_path.value();
   }

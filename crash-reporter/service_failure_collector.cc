@@ -74,8 +74,7 @@ bool ServiceFailureCollector::Collect() {
 
   bool result = GetLogContents(log_config_path_, exec_name_, log_path);
   if (result) {
-    WriteCrashMetaData(meta_path, exec_name_ + "-" + service_name_,
-                       log_path.value());
+    FinishCrash(meta_path, exec_name_ + "-" + service_name_, log_path.value());
   }
 
   return true;

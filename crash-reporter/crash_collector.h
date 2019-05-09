@@ -6,9 +6,11 @@
 #define CRASH_REPORTER_CRASH_COLLECTOR_H_
 
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -16,17 +18,46 @@
 #include <base/macros.h>
 #include <base/time/clock.h>
 #include <base/time/time.h>
+#include <brillo/dbus/file_descriptor.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <session_manager/dbus-proxies.h>
+#include <debugd/dbus-proxies.h>
 
 // User crash collector.
 class CrashCollector {
  public:
   typedef bool (*IsFeedbackAllowedFunction)();
 
+  enum CrashDirectorySelectionMethod {
+    // Force reports to be stored in the user crash directory, even if we are
+    // not running as the "chronos" user.
+    kAlwaysUseUserCrashDirectory,
+    // Use the normal crash directory selection process: Store in the user crash
+    // directory if running as the "chronos" user, otherwise store in the system
+    // crash directory.
+    kUseNormalCrashDirectorySelectionMethod
+  };
+
+  enum CrashSendingMode {
+    // Use the normal crash sending mode: Write crash files out to disk, and
+    // assume crash_sender will be along later to send them out.
+    kNormalCrashSendMode,
+    // Use a special mode suitable when we are in a login-crash-loop. where
+    // Chrome keeps crashing right after login, and we're about to log the user
+    // out because we can't get into a good logged-in state. Write the crash
+    // files into special in-memory locations, since the normal user crash
+    // directory is in the cryptohome which will be locked out momentarily, and
+    // send those in-memory files over to debugd for immediate upload, since
+    // they are in volatile storage and the user may turn off their machine in
+    // frustration shortly.
+    kCrashLoopSendingMode
+  };
+
   explicit CrashCollector(const std::string& collector_name);
-  explicit CrashCollector(const std::string& collector_name,
-                          bool force_user_crash_dir);
+  explicit CrashCollector(
+      const std::string& collector_name,
+      CrashDirectorySelectionMethod crash_directory_selection_method,
+      CrashSendingMode crash_sending_mode);
 
   virtual ~CrashCollector();
 
@@ -64,9 +95,22 @@ class CrashCollector {
     test_kernel_version_ = kernel_version;
   }
 
+  // For testing, return the in-memory files generated when in
+  // kCrashLoopSendingMode. Since in_memory_files_ is a move-only type, this
+  // clears the in_memory_files_ member variable.
+  std::vector<std::tuple<std::string, brillo::dbus_utils::FileDescriptor>>
+  get_in_memory_files_for_test() {
+    return std::move(in_memory_files_);
+  }
+
   // Initialize the crash collector for detection of crashes, given a
   // metrics collection enabled oracle.
   void Initialize(IsFeedbackAllowedFunction is_metrics_allowed, bool early);
+
+  // Return the number of bytes successfully written by all calls to
+  // WriteNewFile() and WriteNewCompressedFile() so far. For
+  // WriteNewCompressedFile(), the count is of bytes on disk, after compression.
+  off_t get_bytes_written() const { return bytes_written_; }
 
   // Initialize the system crash paths.
   static bool InitializeSystemCrashDirectories(bool early);
@@ -75,6 +119,21 @@ class CrashCollector {
   friend class CrashCollectorTest;
   FRIEND_TEST(ArcContextTest, GetAndroidVersion);
   FRIEND_TEST(ChromeCollectorTest, HandleCrash);
+  FRIEND_TEST(CrashCollectorTest, CrashLoopModeCreatesInMemoryCompressedFiles);
+  FRIEND_TEST(CrashCollectorTest,
+              DISABLED_CrashLoopModeCreatesInMemoryCompressedFiles);
+  FRIEND_TEST(CrashCollectorTest, CrashLoopModeCreatesInMemoryFiles);
+  FRIEND_TEST(CrashCollectorTest, DISABLED_CrashLoopModeCreatesInMemoryFiles);
+  FRIEND_TEST(CrashCollectorTest, CrashLoopModeCreatesMultipleInMemoryFiles);
+  FRIEND_TEST(CrashCollectorTest,
+              DISABLED_CrashLoopModeCreatesMultipleInMemoryFiles);
+  FRIEND_TEST(CrashCollectorTest,
+              CrashLoopModeWillNotCreateDuplicateCompressedFileNames);
+  FRIEND_TEST(CrashCollectorTest,
+              DISABLED_CrashLoopModeWillNotCreateDuplicateCompressedFileNames);
+  FRIEND_TEST(CrashCollectorTest, CrashLoopModeWillNotCreateDuplicateFileNames);
+  FRIEND_TEST(CrashCollectorTest,
+              DISABLED_CrashLoopModeWillNotCreateDuplicateFileNames);
   FRIEND_TEST(CrashCollectorTest, CheckHasCapacityCorrectBasename);
   FRIEND_TEST(CrashCollectorTest, CheckHasCapacityStrangeNames);
   FRIEND_TEST(CrashCollectorTest, CheckHasCapacityUsual);
@@ -90,12 +149,31 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, GetUptime);
   FRIEND_TEST(CrashCollectorTest, Initialize);
   FRIEND_TEST(CrashCollectorTest, MetaData);
+  FRIEND_TEST(CrashCollectorTest, MetaDataDoesntCreateSymlink);
+  FRIEND_TEST(CrashCollectorTest, MetaDataDoesntOverwriteSymlink);
   FRIEND_TEST(CrashCollectorTest, ParseProcessTicksFromStat);
   FRIEND_TEST(CrashCollectorTest, Sanitize);
   FRIEND_TEST(CrashCollectorTest, StripMacAddressesBasic);
   FRIEND_TEST(CrashCollectorTest, StripMacAddressesBulk);
   FRIEND_TEST(CrashCollectorTest, StripSensitiveDataSample);
   FRIEND_TEST(CrashCollectorTest, StripEmailAddresses);
+  FRIEND_TEST(CrashCollectorTest, RemoveNewFileFailsOnNonExistantFiles);
+  FRIEND_TEST(CrashCollectorTest,
+              RemoveNewFileFailsOnNonExistantFilesInCrashLoopMode);
+  FRIEND_TEST(CrashCollectorTest, RemoveNewFileRemovesCompressedFiles);
+  FRIEND_TEST(CrashCollectorTest,
+              RemoveNewFileRemovesCompressedFilesInCrashLoopMode);
+  FRIEND_TEST(CrashCollectorTest,
+              DISABLED_RemoveNewFileRemovesCompressedFilesInCrashLoopMode);
+  FRIEND_TEST(CrashCollectorTest,
+              RemoveNewFileRemovesCorrectFileInCrashLoopMode);
+  FRIEND_TEST(CrashCollectorTest,
+              DISABLED_RemoveNewFileRemovesCorrectFileInCrashLoopMode);
+  FRIEND_TEST(CrashCollectorTest, RemoveNewFileRemovesNormalFiles);
+  FRIEND_TEST(CrashCollectorTest,
+              RemoveNewFileRemovesNormalFilesInCrashLoopMode);
+  FRIEND_TEST(CrashCollectorTest,
+              DISABLED_RemoveNewFileRemovesNormalFilesInCrashLoopMode);
   FRIEND_TEST(CrashCollectorTest, TruncatedLog);
   FRIEND_TEST(CrashCollectorTest, WriteNewFile);
   FRIEND_TEST(CrashCollectorTest, WriteNewCompressedFile);
@@ -124,6 +202,12 @@ class CrashCollector {
   bool WriteNewCompressedFile(const base::FilePath& filename,
                               const char* data,
                               size_t size);
+
+  // Deletes a file created by WriteNewFile() or WriteNewCompressedFile(). Also
+  // decrements get_bytes_written() by the file size. Needed because
+  // base::DeleteFile() doesn't work on files created when in
+  // kCrashLoopSendingMode.
+  bool RemoveNewFile(const base::FilePath& filename);
 
   // Return a filename that has only [a-z0-1_] characters by mapping
   // all others into '_'.
@@ -198,8 +282,8 @@ class CrashCollector {
   bool GetProcessTree(pid_t pid, const base::FilePath& output_file);
 
   // Add non-standard meta data to the crash metadata file.  Call
-  // before calling WriteCrashMetaData.  Key must not contain "=" or
-  // "\n" characters.  Value must not contain "\n" characters.
+  // before calling FinishCrash.  Key must not contain "=" or "\n" characters.
+  // Value must not contain "\n" characters.
   void AddCrashMetaData(const std::string& key, const std::string& value);
 
   // Add a file to be uploaded to the crash reporter server. The file must
@@ -233,10 +317,13 @@ class CrashCollector {
   // 3.8.11 #1 SMP Wed Aug 22 02:18:30 PDT 2018
   std::string GetKernelVersion() const;
 
-  // Write a file of metadata about crash.
-  void WriteCrashMetaData(const base::FilePath& meta_path,
-                          const std::string& exec_name,
-                          const std::string& payload_name);
+  // Called after all files have been written and we want to send out this
+  // crash. Write a file of metadata about crash and, if in crash-loop mode,
+  // sends the UploadSingleCrash message to debugd. Not called if we failed to
+  // make a good crash report.
+  void FinishCrash(const base::FilePath& meta_path,
+                   const std::string& exec_name,
+                   const std::string& payload_name);
 
   // Returns true if chrome crashes should be handled.
   bool ShouldHandleChromeCrashes();
@@ -259,6 +346,14 @@ class CrashCollector {
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
       session_manager_proxy_;
 
+  // D-Bus proxy for debugd interface.
+  std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
+
+  // If kCrashLoopSendingMode, reports are stored in memory and sent over DBus
+  // to debugd when finished. Otherwise, we store the crash reports on disk and
+  // rely on crash_sender to later pick it up and send it.
+  const CrashSendingMode crash_sending_mode_;
+
   // Hash a string to a number.  We define our own hash function to not
   // be dependent on a C++ library that might change.
   static unsigned HashString(base::StringPiece input);
@@ -267,12 +362,32 @@ class CrashCollector {
   static bool ParseProcessTicksFromStat(base::StringPiece stat,
                                         uint64_t* ticks);
 
-  // True if reports should always be stored in the user crash directory.
-  const bool force_user_crash_dir_;
+  // Should reports always be stored in the user crash directory, or can they be
+  // stored in the system directory if we are not running as "chronos"?
+  const CrashDirectorySelectionMethod crash_directory_selection_method_;
+
+  // True when FinishCrash has been called. Once true, no new files should be
+  // created.
+  bool is_finished_;
+
+  // If crash_loop_mode_ is true, all files are collected in here instead of
+  // being written to disk. The first element of the tuple is the base filename,
+  // the second is a memfd_create file descriptor with the file contents.
+  std::vector<std::tuple<std::string, brillo::dbus_utils::FileDescriptor>>
+      in_memory_files_;
+
+  // Number of bytes successfully written by all calls to WriteNewFile() and
+  // WriteNewCompressedFile() so far. For WriteNewCompressedFile(), the count is
+  // of bytes on disk, after compression.
+  off_t bytes_written_;
 
   // Creates a new file and returns a file descriptor to it. Helper for
   // WriteNewFile() and WriteNewCompressedFile().
   base::ScopedFD GetNewFileHandle(const base::FilePath& filename);
+
+  // Returns true if there is already a file in in_memory_files_ with
+  // filename.BaseName().
+  bool InMemoryFileExists(const base::FilePath& filename) const;
 
   DISALLOW_COPY_AND_ASSIGN(CrashCollector);
 };

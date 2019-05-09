@@ -61,9 +61,12 @@ void AccounceUserCrash() {
 const char* UserCollectorBase::kUserId = "Uid:\t";
 const char* UserCollectorBase::kGroupId = "Gid:\t";
 
-UserCollectorBase::UserCollectorBase(const std::string& collector_name,
-                                     bool force_user_crash_dir)
-    : CrashCollector(collector_name, force_user_crash_dir),
+UserCollectorBase::UserCollectorBase(
+    const std::string& collector_name,
+    CrashDirectorySelectionMethod crash_directory_selection_method)
+    : CrashCollector(collector_name,
+                     crash_directory_selection_method,
+                     kNormalCrashSendMode),
       tag_(collector_name) {}
 
 void UserCollectorBase::Initialize(
@@ -328,7 +331,7 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
   // Here we commit to sending this file.  We must not return false
   // after this point or we will generate a log report as well as a
   // crash report.
-  WriteCrashMetaData(meta_path, exec, minidump_path.value());
+  FinishCrash(meta_path, exec, minidump_path.value());
 
   if (!util::IsDeveloperImage()) {
     base::DeleteFile(core_path, false);
@@ -438,7 +441,7 @@ void UserCollectorBase::EnqueueCollectionErrorLog(pid_t pid,
     PLOG(ERROR) << "Error writing new file " << log_path.value();
     return;
   }
-  WriteCrashMetaData(meta_path, exec, log_path.value());
+  FinishCrash(meta_path, exec, log_path.value());
 }
 
 std::vector<std::string> UserCollectorBase::GetCommandLine(pid_t pid) const {

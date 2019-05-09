@@ -16,8 +16,9 @@
 // Common functionality shared by user collectors.
 class UserCollectorBase : public CrashCollector {
  public:
-  UserCollectorBase(const std::string& collector_name,
-                    bool force_user_crash_dir);
+  UserCollectorBase(
+      const std::string& collector_name,
+      CrashDirectorySelectionMethod crash_directory_selection_method);
 
   void Initialize(IsFeedbackAllowedFunction is_metrics_allowed,
                   bool generate_diagnostics,

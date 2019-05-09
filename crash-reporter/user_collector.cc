@@ -72,7 +72,7 @@ bool LockCorePattern() {
 }  // namespace
 
 UserCollector::UserCollector()
-    : UserCollectorBase("user", false),
+    : UserCollectorBase("user", kUseNormalCrashDirectorySelectionMethod),
       core_pattern_file_(kCorePatternFile),
       core_pipe_limit_file_(kCorePipeLimitFile),
       filter_path_(kFilterPath),

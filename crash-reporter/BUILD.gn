@@ -197,6 +197,7 @@ if (use.test) {
       "libmetrics-${libbase_ver}",
       "libsession_manager-client-test",
       "libshill-client-test",
+      "libdebugd-client-test",
     ]
   }
 
