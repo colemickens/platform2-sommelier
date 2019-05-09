@@ -911,6 +911,17 @@ TEST(ArcSetupUtil, TestPropertyExpansionsMissingProperty) {
   EXPECT_FALSE(ExpandPropertyContents("{model}", &config, &expanded));
 }
 
+// Verify that ro.product.board gets copied to ro.oem.key1 as well.
+TEST(ArcSetupUtil, TestPropertyExpansionBoard) {
+  brillo::FakeCrosConfig config;
+  config.SetString("/arc/build-properties", "board", "testboard");
+
+  std::string expanded;
+  EXPECT_TRUE(
+      ExpandPropertyContents("ro.product.board={board}", &config, &expanded));
+  EXPECT_EQ("ro.product.board=testboard\nro.oem.key1=testboard\n", expanded);
+}
+
 // Non-fingerprint property should do simple truncation.
 TEST(ArcSetupUtil, TestPropertyTruncation) {
   std::string truncated = TruncateAndroidProperty(

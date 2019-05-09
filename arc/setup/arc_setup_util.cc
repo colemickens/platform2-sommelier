@@ -62,6 +62,16 @@ namespace {
 // looked up.
 constexpr char kCrosConfigPropertiesPath[] = "/arc/build-properties";
 
+// Android property name used to store the board name.
+constexpr char kBoardPropertyPrefix[] = "ro.product.board=";
+
+// Android property name for custom key used for Play Auto Install selection.
+constexpr char kOEMKey1PropertyPrefix[] = "ro.oem.key1=";
+
+// Configuration property name of an optional string that contains a comma-
+// separated list of regions to include in the OEM key property.
+constexpr char kPAIRegionsPropertyName[] = "pai-regions";
+
 // Version element prefix in packages.xml and packages_cache.xml files.
 constexpr char kElementVersion[] = "<version ";
 
@@ -1121,10 +1131,56 @@ bool ExpandPropertyContents(const std::string& content,
     } while (inserted);
 
     new_properties += TruncateAndroidProperty(line) + "\n";
+
+    // Special-case ro.product.board to compute ro.oem.key1 at runtime, as it
+    // can depend upon the device region.
+    std::string property;
+    if (FindProperty(kBoardPropertyPrefix, &property, line)) {
+      std::string oem_key_property = ComputeOEMKey(config, property);
+      new_properties +=
+          std::string(kOEMKey1PropertyPrefix) + oem_key_property + "\n";
+    }
   }
 
   *expanded_content = new_properties;
   return true;
+}
+
+std::string ComputeOEMKey(brillo::CrosConfigInterface* config,
+                          const std::string& board) {
+  std::string regions;
+  if (!config->GetString(kCrosConfigPropertiesPath, kPAIRegionsPropertyName,
+                         &regions)) {
+    // No region list found, just use the board name as before.
+    return board;
+  }
+
+  std::string region_code;
+  if (!base::GetAppOutput({"cros_region_data", "region_code"}, &region_code)) {
+    LOG(WARNING) << "Failed to get region code";
+    return board;
+  }
+
+  // Remove trailing newline.
+  region_code.erase(std::remove(region_code.begin(), region_code.end(), '\n'),
+                    region_code.end());
+
+  // Allow wildcard configuration to indicate that all regions should be
+  // included.
+  if (regions.compare("*") == 0 && region_code.length() >= 2)
+    return board + "_" + region_code;
+
+  // Check to see if region code is in the list of regions that should be
+  // included in the property.
+  std::vector<std::string> region_vector =
+      base::SplitString(regions, ",", base::WhitespaceHandling::TRIM_WHITESPACE,
+                        base::SplitResult::SPLIT_WANT_NONEMPTY);
+  for (const auto& region : region_vector) {
+    if (region_code.compare(region) == 0)
+      return board + "_" + region_code;
+  }
+
+  return board;
 }
 
 void SetFingerprintsForPackagesCache(const std::string& content,

@@ -283,6 +283,11 @@ bool ExpandPropertyContents(const std::string& content,
                             brillo::CrosConfigInterface* config,
                             std::string* expanded_content);
 
+// Computes the value of ro.oem.key1 based on the build-time ro.product.board
+// value and the device's region of origin.
+std::string ComputeOEMKey(brillo::CrosConfigInterface* config,
+                          const std::string& board);
+
 // Replaces fingerprint in packages cache xml file.
 void SetFingerprintsForPackagesCache(const std::string& content,
                                      const std::string& fingerprint,
