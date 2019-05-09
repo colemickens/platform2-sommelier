@@ -50,7 +50,8 @@ class LogTool {
         std::string user = SandboxedProcess::kDefaultUser,
         std::string group = SandboxedProcess::kDefaultGroup,
         int64_t max_bytes = kDefaultMaxBytes,
-        LogTool::Encoding encoding = LogTool::Encoding::kAutodetect);
+        LogTool::Encoding encoding = LogTool::Encoding::kAutodetect,
+        bool access_root_mount_ns = false);
 
     std::string GetName() const;
     std::string GetLogData() const;
@@ -73,6 +74,7 @@ class LogTool {
     std::string group_;
     int64_t max_bytes_;  // passed as arg to 'tail -c'
     LogTool::Encoding encoding_;
+    bool access_root_mount_ns_;
 
     bool minijail_disabled_for_test_ = false;
   };

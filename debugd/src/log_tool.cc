@@ -88,7 +88,9 @@ const std::vector<Log> kCommandLogs {
    kRoot, kDebugfsGroup},
   {kFile, "atrus_logs", "/var/log/atrus.log"},
   {kFile, "authpolicy", "/var/log/authpolicy.log"},
-  {kCommand, "bootstat_summary", "/usr/bin/bootstat_summary"},
+  {kCommand, "bootstat_summary", "/usr/bin/bootstat_summary",
+    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
+    Log::kDefaultMaxBytes, LogTool::Encoding::kAutodetect, true},
   {kFile, "bio_crypto_init.LATEST",
     "/var/log/bio_crypto_init/bio_crypto_init.LATEST"},
   {kFile, "bio_crypto_init.PREVIOUS",
@@ -484,14 +486,16 @@ Log::Log(Log::LogType type,
          std::string user,
          std::string group,
          int64_t max_bytes,
-         LogTool::Encoding encoding)
+         LogTool::Encoding encoding,
+         bool access_root_mount_ns)
     : type_(type),
       name_(name),
       data_(data),
       user_(user),
       group_(group),
       max_bytes_(max_bytes),
-      encoding_(encoding) {}
+      encoding_(encoding),
+      access_root_mount_ns_(access_root_mount_ns) {}
 
 std::string Log::GetName() const {
   return name_;
@@ -532,6 +536,8 @@ std::string Log::GetCommandLogData() const {
     p.set_use_minijail(false);
   if (!user_.empty() && !group_.empty())
     p.SandboxAs(user_, group_);
+  if (access_root_mount_ns_)
+    p.AllowAccessRootMountNamespace();
   if (!p.Init())
     return "<not available>";
   p.AddArg(kShell);
