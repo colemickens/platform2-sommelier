@@ -52,24 +52,24 @@ class AccountManager {
   // Returns a list of all existing accounts, including current status like
   // remaining Kerberos ticket lifetime. Does a best effort returning results.
   // See documentation of |Account| for more details.
-  ErrorType ListAccounts(std::vector<Account>* accounts);
+  ErrorType ListAccounts(std::vector<Account>* accounts) const;
 
   // Sets the Kerberos configuration (krb5.conf) used for the given
   // |principal_name|.
   ErrorType SetConfig(const std::string& principal_name,
-                      const std::string& krb5_conf) WARN_UNUSED_RESULT;
+                      const std::string& krb5_conf) const WARN_UNUSED_RESULT;
 
   // Acquires a Kerberos ticket-granting-ticket for the account keyed by
   // |principal_name|.
   ErrorType AcquireTgt(const std::string& principal_name,
-                       const std::string& password) WARN_UNUSED_RESULT;
+                       const std::string& password) const WARN_UNUSED_RESULT;
 
   // Retrieves the Kerberos credential cache and the configuration file for the
   // account keyed by |principal_name|. Returns ERROR_NONE if both files could
   // be retrieved or if the credential cache is missing. Returns ERROR_LOCAL_IO
   // if any of the files failed to read.
   ErrorType GetKerberosFiles(const std::string& principal_name,
-                             KerberosFiles* files) WARN_UNUSED_RESULT;
+                             KerberosFiles* files) const WARN_UNUSED_RESULT;
 
  private:
   // Directory where account data is stored.
@@ -83,7 +83,7 @@ class AccountManager {
   const std::unique_ptr<Krb5Interface> krb5_;
 
   // Calls |kerberos_files_changed_| if set.
-  void TriggerKerberosFilesChanged(const std::string& principal_name);
+  void TriggerKerberosFilesChanged(const std::string& principal_name) const;
 
   struct AccountData {
     // File path for the Kerberos configuration.
@@ -92,9 +92,9 @@ class AccountManager {
     base::FilePath krb5cc_path;
   };
 
-  // Returns the AccountData for |principal_name| if available or nullopt
+  // Returns the AccountData for |principal_name| if available or nullptr
   // otherwise.
-  base::Optional<AccountData> GetAccountData(const std::string& principal_name);
+  const AccountData* GetAccountData(const std::string& principal_name) const;
 
   // Maps principal name (user@REALM.COM) to account data.
   using AccountsMap =

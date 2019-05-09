@@ -96,7 +96,7 @@ ErrorType AccountManager::RemoveAccount(const std::string& principal_name) {
   return ERROR_NONE;
 }
 
-ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) {
+ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) const {
   for (const auto& it : accounts_) {
     const std::string& principal_name = it.first;
     const AccountData* data = it.second.get();
@@ -131,8 +131,8 @@ ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) {
 }
 
 ErrorType AccountManager::SetConfig(const std::string& principal_name,
-                                    const std::string& krb5conf) {
-  base::Optional<AccountData> data = GetAccountData(principal_name);
+                                    const std::string& krb5conf) const {
+  const AccountData* data = GetAccountData(principal_name);
   if (!data)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
@@ -143,8 +143,8 @@ ErrorType AccountManager::SetConfig(const std::string& principal_name,
 }
 
 ErrorType AccountManager::AcquireTgt(const std::string& principal_name,
-                                     const std::string& password) {
-  base::Optional<AccountData> data = GetAccountData(principal_name);
+                                     const std::string& password) const {
+  const AccountData* data = GetAccountData(principal_name);
   if (!data)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
@@ -158,11 +158,11 @@ ErrorType AccountManager::AcquireTgt(const std::string& principal_name,
 }
 
 ErrorType AccountManager::GetKerberosFiles(const std::string& principal_name,
-                                           KerberosFiles* files) {
+                                           KerberosFiles* files) const {
   files->clear_krb5cc();
   files->clear_krb5conf();
 
-  base::Optional<AccountData> data = GetAccountData(principal_name);
+  const AccountData* data = GetAccountData(principal_name);
   if (!data)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
@@ -186,19 +186,19 @@ ErrorType AccountManager::GetKerberosFiles(const std::string& principal_name,
 }
 
 void AccountManager::TriggerKerberosFilesChanged(
-    const std::string& principal_name) {
+    const std::string& principal_name) const {
   if (!kerberos_files_changed_.is_null())
     kerberos_files_changed_.Run(principal_name);
 }
 
-base::Optional<AccountManager::AccountData> AccountManager::GetAccountData(
-    const std::string& principal_name) {
+const AccountManager::AccountData* AccountManager::GetAccountData(
+    const std::string& principal_name) const {
   auto it = accounts_.find(principal_name);
   if (it == accounts_.end())
-    return base::nullopt;
+    return nullptr;
   AccountData* data = it->second.get();
   DCHECK(data);
-  return *data;
+  return data;
 }
 
 }  // namespace kerberos
