@@ -12,6 +12,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 
+#include "bindings/kerberos_containers.pb.h"
 #include "kerberos/krb5_interface.h"
 
 namespace kerberos {
@@ -22,6 +23,8 @@ namespace {
 constexpr char kKrb5ConfFilePart[] = "_krb5.conf";
 // Kerberos credential caches are stored as storage_dir + principal hash + this.
 constexpr char kKrb5CCFilePart[] = "_krb5cc";
+// Account data is stored as storage_dir + this.
+constexpr char kAccountsFile[] = "accounts";
 
 // Size limit for GetKerberosFiles (1 MB).
 constexpr size_t kKrb5FileSizeLimit = 1024 * 1024;
@@ -35,7 +38,7 @@ std::string HashPrincipal(const std::string& principal_name) {
 
 // Reads the file at |path| into |data|. Returns |ERROR_LOCAL_IO| if the file
 // could not be read.
-WARN_UNUSED_RESULT ErrorType ReadFile(const base::FilePath& path,
+WARN_UNUSED_RESULT ErrorType LoadFile(const base::FilePath& path,
                                       std::string* data) {
   data->clear();
   if (!base::ReadFileToStringWithMaxSize(path, data, kKrb5FileSizeLimit)) {
@@ -69,15 +72,65 @@ AccountManager::AccountManager(
 
 AccountManager::~AccountManager() = default;
 
+ErrorType AccountManager::SaveAccounts() const {
+  // Copy |accounts_| into proto message.
+  StorageAccountsList storage_accounts;
+  for (const auto& it : accounts_) {
+    const std::string& principal_name = it.first;
+
+    StorageAccount* storage_account = storage_accounts.add_accounts();
+    storage_account->set_principal_name(principal_name);
+    // TODO(https://crbug.com/952239): Set additional properties.
+  }
+
+  // Store serialized proto message on disk.
+  std::string accounts_blob;
+  if (!storage_accounts.SerializeToString(&accounts_blob)) {
+    LOG(ERROR) << "Failed to serialize accounts list to string";
+    return ERROR_LOCAL_IO;
+  }
+  return SaveFile(GetAccountsPath(), accounts_blob);
+}
+
+ErrorType AccountManager::LoadAccounts() {
+  accounts_.clear();
+
+  // A missing file counts as a file with empty data.
+  const base::FilePath accounts_path = GetAccountsPath();
+  if (!base::PathExists(accounts_path))
+    return ERROR_NONE;
+
+  // Load serialized proto blob.
+  std::string accounts_blob;
+  ErrorType error = LoadFile(accounts_path, &accounts_blob);
+  if (error != ERROR_NONE)
+    return error;
+
+  // Parse blob into proto message.
+  StorageAccountsList storage_accounts;
+  if (!storage_accounts.ParseFromString(accounts_blob)) {
+    LOG(ERROR) << "Failed to parse accounts list from string";
+    return ERROR_LOCAL_IO;
+  }
+
+  // Copy data into |accounts_|..
+  for (int n = 0; n < storage_accounts.accounts_size(); ++n) {
+    const StorageAccount& storage_account = storage_accounts.accounts(n);
+
+    auto data = std::make_unique<AccountData>();
+    // TODO(https://crbug.com/952239): Set additional properties.
+    accounts_[storage_account.principal_name()] = std::move(data);
+  }
+
+  return ERROR_NONE;
+}
+
 ErrorType AccountManager::AddAccount(const std::string& principal_name) {
   if (accounts_.find(principal_name) != accounts_.end())
     return ERROR_DUPLICATE_PRINCIPAL_NAME;
 
-  auto data = std::make_unique<AccountData>();
-  std::string hash = HashPrincipal(principal_name);
-  data->krb5conf_path = storage_dir_.Append(hash + kKrb5ConfFilePart);
-  data->krb5cc_path = storage_dir_.Append(hash + kKrb5CCFilePart);
-  accounts_[principal_name] = std::move(data);
+  accounts_[principal_name] = std::make_unique<AccountData>();
+  SaveAccounts();
   return ERROR_NONE;
 }
 
@@ -88,10 +141,11 @@ ErrorType AccountManager::RemoveAccount(const std::string& principal_name) {
   AccountData* data = it->second.get();
   DCHECK(data);
 
-  base::DeleteFile(data->krb5conf_path, false /* recursive */);
-  base::DeleteFile(data->krb5cc_path, false /* recursive */);
+  base::DeleteFile(GetKrb5ConfPath(principal_name), false /* recursive */);
+  base::DeleteFile(GetKrb5CCPath(principal_name), false /* recursive */);
   accounts_.erase(it);
 
+  SaveAccounts();
   TriggerKerberosFilesChanged(principal_name);
   return ERROR_NONE;
 }
@@ -111,15 +165,17 @@ ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) const {
 
     // Check PathExists, so that no error is printed if the file doesn't exist.
     std::string krb5conf;
-    if (base::PathExists(data->krb5conf_path) &&
-        ReadFile(data->krb5conf_path, &krb5conf) == ERROR_NONE) {
+    const base::FilePath krb5conf_path = GetKrb5ConfPath(principal_name);
+    if (base::PathExists(krb5conf_path) &&
+        LoadFile(krb5conf_path, &krb5conf) == ERROR_NONE) {
       account.set_krb5conf(krb5conf);
     }
 
     // A missing krb5cc file just translates to an invalid ticket (lifetime 0).
     Krb5Interface::TgtStatus tgt_status;
-    if (base::PathExists(data->krb5cc_path) &&
-        krb5_->GetTgtStatus(data->krb5cc_path, &tgt_status) == ERROR_NONE) {
+    const base::FilePath krb5cc_path = GetKrb5CCPath(principal_name);
+    if (base::PathExists(krb5cc_path) &&
+        krb5_->GetTgtStatus(krb5cc_path, &tgt_status) == ERROR_NONE) {
       account.set_tgt_validity_seconds(tgt_status.validity_seconds);
       account.set_tgt_renewal_seconds(tgt_status.renewal_seconds);
     }
@@ -136,7 +192,7 @@ ErrorType AccountManager::SetConfig(const std::string& principal_name,
   if (!data)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
-  ErrorType error = SaveFile(data->krb5conf_path, krb5conf);
+  ErrorType error = SaveFile(GetKrb5ConfPath(principal_name), krb5conf);
   if (error == ERROR_NONE)
     TriggerKerberosFilesChanged(principal_name);
   return error;
@@ -148,8 +204,9 @@ ErrorType AccountManager::AcquireTgt(const std::string& principal_name,
   if (!data)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
-  ErrorType error = krb5_->AcquireTgt(principal_name, password,
-                                      data->krb5cc_path, data->krb5conf_path);
+  ErrorType error =
+      krb5_->AcquireTgt(principal_name, password, GetKrb5CCPath(principal_name),
+                        GetKrb5ConfPath(principal_name));
 
   // Assume the ticket changed if AcquireTgt() was successful.
   if (error == ERROR_NONE)
@@ -167,16 +224,17 @@ ErrorType AccountManager::GetKerberosFiles(const std::string& principal_name,
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
   // By convention, no credential cache means no error.
-  if (!base::PathExists(data->krb5cc_path))
+  const base::FilePath krb5cc_path = GetKrb5CCPath(principal_name);
+  if (!base::PathExists(krb5cc_path))
     return ERROR_NONE;
 
   std::string krb5cc;
-  ErrorType error = ReadFile(data->krb5cc_path, &krb5cc);
+  ErrorType error = LoadFile(krb5cc_path, &krb5cc);
   if (error != ERROR_NONE)
     return error;
 
   std::string krb5conf;
-  error = ReadFile(data->krb5conf_path, &krb5conf);
+  error = LoadFile(GetKrb5ConfPath(principal_name), &krb5conf);
   if (error != ERROR_NONE)
     return error;
 
@@ -191,12 +249,26 @@ void AccountManager::TriggerKerberosFilesChanged(
     kerberos_files_changed_.Run(principal_name);
 }
 
+base::FilePath AccountManager::GetKrb5ConfPath(
+    const std::string& principal_name) const {
+  return storage_dir_.Append(HashPrincipal(principal_name) + kKrb5ConfFilePart);
+}
+
+base::FilePath AccountManager::GetKrb5CCPath(
+    const std::string& principal_name) const {
+  return storage_dir_.Append(HashPrincipal(principal_name) + kKrb5CCFilePart);
+}
+
+base::FilePath AccountManager::GetAccountsPath() const {
+  return storage_dir_.Append(kAccountsFile);
+}
+
 const AccountManager::AccountData* AccountManager::GetAccountData(
     const std::string& principal_name) const {
   auto it = accounts_.find(principal_name);
   if (it == accounts_.end())
     return nullptr;
-  AccountData* data = it->second.get();
+  const AccountData* data = it->second.get();
   DCHECK(data);
   return data;
 }

@@ -2,4 +2,16 @@ syntax = "proto2";
 
 option optimize_for = LITE_RUNTIME;
 
-package kerberos.protos;
+package kerberos;
+
+message StorageAccount {
+  // Principal name (user@REALM.COM). Accounts are keyed by principal name.
+  optional string principal_name = 1;
+
+  // TODO(https://crbug.com/952239): Add additional properties.
+}
+
+// Used for serialization of the accounts list.
+message StorageAccountsList {
+  repeated StorageAccount accounts = 1;
+}

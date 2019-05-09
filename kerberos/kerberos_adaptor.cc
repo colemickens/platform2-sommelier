@@ -64,6 +64,7 @@ KerberosAdaptor::KerberosAdaptor(
                base::BindRepeating(&KerberosAdaptor::OnKerberosFilesChanged,
                                    base::Unretained(this))) {
   base::CreateDirectory(base::FilePath("/tmp/kerberosd"));
+  manager_.LoadAccounts();
 }
 
 KerberosAdaptor::~KerberosAdaptor() = default;

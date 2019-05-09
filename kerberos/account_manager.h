@@ -38,6 +38,15 @@ class AccountManager {
                           KerberosFilesChangedCallback kerberos_files_changed);
   ~AccountManager();
 
+  // Saves all accounts to disk. Returns ERROR_LOCAL_IO and logs on error.
+  ErrorType SaveAccounts() const;
+
+  // Loads all accounts from disk. Returns ERROR_LOCAL_IO and logs on error.
+  // Removes all old accounts before setting the new ones. Treats a non-existent
+  // file on disk as if the file was empty, i.e. loading succeeds and the
+  // account list is empty afterwards.
+  ErrorType LoadAccounts();
+
   // Adds an account keyed by |principal_name| (user@REALM.COM) to the list of
   // accounts. Returns |ERROR_DUPLICATE_PRINCIPAL_NAME| if the account is
   // already present.
@@ -72,7 +81,21 @@ class AccountManager {
                              KerberosFiles* files) const WARN_UNUSED_RESULT;
 
  private:
-  // Directory where account data is stored.
+  // File path helpers. All paths are relative to |storage_dir_|.
+
+  // File path of the Kerberos configuration for the given |principal_name|.
+  base::FilePath GetKrb5ConfPath(const std::string& principal_name) const;
+
+  // File path of the Kerberos credential cache for the given |principal_name|.
+  base::FilePath GetKrb5CCPath(const std::string& principal_name) const;
+
+  // File path where |accounts_| is stored.
+  base::FilePath GetAccountsPath() const;
+
+  // Calls |kerberos_files_changed_| if set.
+  void TriggerKerberosFilesChanged(const std::string& principal_name) const;
+
+  // Directory where all account data is stored.
   const base::FilePath storage_dir_;
 
   // Gets called when the Kerberos configuration or credential cache changes for
@@ -82,14 +105,10 @@ class AccountManager {
   // Interface for Kerberos methods (may be overridden for tests).
   const std::unique_ptr<Krb5Interface> krb5_;
 
-  // Calls |kerberos_files_changed_| if set.
-  void TriggerKerberosFilesChanged(const std::string& principal_name) const;
-
   struct AccountData {
-    // File path for the Kerberos configuration.
-    base::FilePath krb5conf_path;
-    // File path for the Kerberos credential cache.
-    base::FilePath krb5cc_path;
+    // TODO(https://crbug.com/952239): Empty so far. This will contain
+    // properties set by policy like password and whether the account is
+    // managed.
   };
 
   // Returns the AccountData for |principal_name| if available or nullptr
