@@ -18,6 +18,8 @@
 #include <brillo/process.h>
 #include <brillo/syslog_logging.h>
 
+#include "crash-reporter/util.h"
+
 using base::FilePath;
 using base::StringPrintf;
 
@@ -309,7 +311,7 @@ std::map<std::string, base::FilePath> ChromeCollector::GetAdditionalLogs(
   const FilePath chrome_log_path =
       GetCrashPath(dir, basename, kChromeLogFilename);
   if (GetLogContents(log_config_path_, exe_name, chrome_log_path)) {
-    const FilePath compressed_path = GzipFile(chrome_log_path);
+    const FilePath compressed_path = util::GzipFile(chrome_log_path);
     if (!compressed_path.empty())
       logs[kChromeLogFilename] = compressed_path;
     else

@@ -226,11 +226,6 @@ class CrashCollector {
   // Returns true if chrome crashes should be handled.
   bool ShouldHandleChromeCrashes();
 
-  // Gzip-compresses |path|, removes the original file, and returns the path of
-  // the new file. On failure, the original file is left alone and an empty path
-  // is returned.
-  base::FilePath GzipFile(const base::FilePath& path);
-
   IsFeedbackAllowedFunction is_feedback_allowed_function_;
   std::string extra_metadata_;
   base::FilePath forced_crash_directory_;

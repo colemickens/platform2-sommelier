@@ -106,7 +106,7 @@ bool KernelWarningCollector::Collect(WarningType type) {
   // Get the log contents, compress, and attach to crash report.
   bool result = GetLogContents(log_config_path_, exec_name, log_path);
   if (result) {
-    const FilePath compressed_log_path = GzipFile(log_path);
+    const FilePath compressed_log_path = util::GzipFile(log_path);
     // The log could be large, so only send it if compression succeeds.
     if (!compressed_log_path.empty()) {
       AddCrashMetaUploadFile("log", compressed_log_path.value());

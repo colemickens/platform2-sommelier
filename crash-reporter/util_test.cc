@@ -10,6 +10,9 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/rand_util.h>
+#include <brillo/process.h>
+#include <brillo/streams/memory_stream.h>
 #include <gtest/gtest.h>
 
 #include "crash-reporter/crash_sender_paths.h"
@@ -19,17 +22,88 @@
 namespace util {
 namespace {
 
-const char kLsbReleaseContents[] =
+constexpr char kLsbReleaseContents[] =
     "CHROMEOS_RELEASE_BOARD=bob\n"
     "CHROMEOS_RELEASE_NAME=Chromium OS\n"
     "CHROMEOS_RELEASE_VERSION=10964.0.2018_08_13_1405\n";
 
 constexpr char kHwClassContents[] = "fake_hwclass";
 
+constexpr char kGzipPath[] = "/bin/gzip";
+
+constexpr char kSemiRandomData[] =
+    "ABJCI239AJSDLKJ;kalkjkjsd98723;KJHASD87;kqw3p088ad;lKJASDP823;KJ";
+constexpr int kRandomDataMinLength = 32768;   // 32kB
+constexpr int kRandomDataMaxLength = 262144;  // 256kB
+
+// Verifies that |raw_file| corresponds to the gzip'd version of
+// |compressed_file| by decompressing it and comparing the contents. Returns
+// true if they match, false otherwise. This will overwrite the contents of
+// |compressed_file| in the process of doing this.
+bool VerifyCompression(const base::FilePath& raw_file,
+                       const base::FilePath& compressed_file) {
+  if (!base::PathExists(raw_file)) {
+    LOG(ERROR) << "raw_file doesn't exist for verifying compression: "
+               << raw_file.value();
+    return false;
+  }
+  if (!base::PathExists(compressed_file)) {
+    LOG(ERROR) << "compressed_file doesn't exist for verifying compression: "
+               << compressed_file.value();
+    return false;
+  }
+  brillo::ProcessImpl proc;
+  proc.AddArg(kGzipPath);
+  proc.AddArg("-d");  // decompress
+  proc.AddArg(compressed_file.value());
+  std::string error;
+  const int res = util::RunAndCaptureOutput(&proc, STDERR_FILENO, &error);
+  if (res < 0) {
+    PLOG(ERROR) << "Failed to execute gzip";
+    return false;
+  }
+  if (res != 0) {
+    LOG(ERROR) << "Failed to un-gzip " << compressed_file.value();
+    util::LogMultilineError(error);
+    return false;
+  }
+  base::FilePath uncompressed_file = compressed_file.RemoveFinalExtension();
+  std::string raw_contents;
+  std::string uncompressed_contents;
+  if (!base::ReadFileToString(raw_file, &raw_contents)) {
+    LOG(ERROR) << "Failed reading in raw_file " << raw_file.value();
+    return false;
+  }
+  if (!base::ReadFileToString(uncompressed_file, &uncompressed_contents)) {
+    LOG(ERROR) << "Failed reading in uncompressed_file "
+               << uncompressed_file.value();
+    return false;
+  }
+  return raw_contents == uncompressed_contents;
+}
+
+// We use a somewhat random string of ASCII data to better reflect the data we
+// would be compressing for real. We also shouldn't use something like
+// base::RandBytesAsString() because that will generate uniformly random data
+// which does not compress.
+std::string CreateSemiRandomString(size_t size) {
+  std::string result;
+  result.reserve(size);
+  while (result.length() < size) {
+    int rem = size - result.length();
+    if (rem > sizeof(kSemiRandomData) - 1)
+      rem = sizeof(kSemiRandomData) - 1;
+    int rand_start = base::RandInt(0, rem - 1);
+    int rand_end = base::RandInt(rand_start + 1, rem);
+    result.append(&kSemiRandomData[rand_start], rand_end - rand_start);
+  }
+  return result;
+}
+
 }  // namespace
 
 class CrashCommonUtilTest : public testing::Test {
- private:
+ protected:
   void SetUp() override {
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
     test_dir_ = scoped_temp_dir_.GetPath();
@@ -211,6 +285,48 @@ TEST_F(CrashCommonUtilTest, GetUserCrashDirectories) {
             directories[0].value());
   EXPECT_EQ(paths::Get("/home/user/hash2/crash").value(),
             directories[1].value());
+}
+
+TEST_F(CrashCommonUtilTest, GzipFile) {
+  // Create a temp file of semi-structured ASCII data then compress it using our
+  // function and then decompress it and see if we have the same data. Don't use
+  // random data because random data doesn't compress well. :)
+  base::FilePath file;
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(test_dir_, &file));
+  base::FilePath file_copy;
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(test_dir_, &file_copy));
+  std::string content = CreateSemiRandomString(
+      base::RandInt(kRandomDataMinLength, kRandomDataMaxLength));
+  ASSERT_EQ(base::WriteFile(file, content.c_str(), content.length()),
+            content.length());
+  ASSERT_TRUE(base::CopyFile(file, file_copy));
+  base::FilePath zip_file = util::GzipFile(file);
+  EXPECT_EQ(zip_file, file.AddExtension(".gz"));
+  EXPECT_TRUE(VerifyCompression(file_copy, zip_file))
+      << "Random input data: " << content;
+}
+
+TEST_F(CrashCommonUtilTest, GzipStream) {
+  std::string content = CreateSemiRandomString(
+      base::RandInt(kRandomDataMinLength, kRandomDataMaxLength));
+  std::string compressed_content =
+      util::GzipStream(brillo::MemoryStream::OpenCopyOf(
+          content.c_str(), content.length(), nullptr));
+  EXPECT_FALSE(compressed_content.empty());
+  base::FilePath raw_file;
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(test_dir_, &raw_file));
+  base::FilePath compressed_file;
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(test_dir_, &compressed_file));
+  // Remove the file we will decompress to or gzip will fail on decompression.
+  ASSERT_TRUE(base::DeleteFile(compressed_file, false));
+  compressed_file = compressed_file.AddExtension(".gz");
+  ASSERT_EQ(base::WriteFile(raw_file, content.c_str(), content.length()),
+            content.length());
+  ASSERT_EQ(base::WriteFile(compressed_file, compressed_content.c_str(),
+                            compressed_content.length()),
+            compressed_content.length());
+  EXPECT_TRUE(VerifyCompression(raw_file, compressed_file))
+      << "Random input data: " << content;
 }
 
 }  // namespace util

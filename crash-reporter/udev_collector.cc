@@ -110,7 +110,7 @@ bool UdevCollector::ProcessUdevCrashLogs(const FilePath& crash_directory,
   }
 
   // Compress the output using gzip.
-  FilePath crash_path_zipped = GzipFile(crash_path);
+  FilePath crash_path_zipped = util::GzipFile(crash_path);
 
   // If the zip file was not created, use the uncompressed file.
   if (crash_path_zipped.empty())

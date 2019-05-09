@@ -4,6 +4,8 @@
 
 #include "crash-reporter/util.h"
 
+#include <poll.h>
+#include <signal.h>
 #include <stdlib.h>
 
 #include <map>
@@ -28,6 +30,10 @@ constexpr char kHwClassPath[] = "/sys/devices/platform/chromeos_acpi/HWID";
 
 constexpr char kDevSwBoot[] = "devsw_boot";
 constexpr char kDevMode[] = "dev";
+
+constexpr char kGzipPath[] = "/bin/gzip";
+constexpr int kPollTimeoutMillis = 5000;
+constexpr int kKillTimeoutSec = 5;
 
 }  // namespace
 
@@ -161,6 +167,130 @@ bool GetUserCrashDirectories(
   }
 
   return true;
+}
+
+base::FilePath GzipFile(const base::FilePath& path) {
+  brillo::ProcessImpl proc;
+  proc.AddArg(kGzipPath);
+  proc.AddArg(path.value());
+  std::string error;
+  const int res = util::RunAndCaptureOutput(&proc, STDERR_FILENO, &error);
+  if (res < 0) {
+    PLOG(ERROR) << "Failed to execute gzip";
+    return base::FilePath();
+  }
+  if (res != 0) {
+    LOG(ERROR) << "Failed to gzip " << path.value();
+    util::LogMultilineError(error);
+    return base::FilePath();
+  }
+  return path.AddExtension(".gz");
+}
+
+std::string GzipStream(brillo::StreamPtr data) {
+  brillo::ProcessImpl proc;
+  proc.AddArg(kGzipPath);
+  std::string compressed;
+  // We need to redirect both stdin/stdout to pipes so we can manage them.
+  proc.RedirectUsingPipe(STDOUT_FILENO, false /* is_input */);
+  proc.RedirectUsingPipe(STDIN_FILENO, true /* is_input */);
+  if (!proc.Start()) {
+    PLOG(ERROR) << "Failed to execute gzip";
+    return std::string();
+  }
+
+  const int out = proc.GetPipe(STDOUT_FILENO);
+  const int in = proc.GetPipe(STDIN_FILENO);
+  char out_buffer[kBufferSize];
+  char in_buffer[kBufferSize];
+
+  // First entry polls for input writing, second for output reading.
+  struct pollfd fdtab[2];
+  memset(fdtab, 0, sizeof(fdtab));
+  fdtab[0].fd = in;
+  fdtab[0].events = POLLOUT;
+  fdtab[1].fd = out;
+  fdtab[1].events = POLLIN;
+
+  while (true) {
+    int poll_rv =
+        HANDLE_EINTR(poll(fdtab, arraysize(fdtab), kPollTimeoutMillis));
+    // Timed out, give up.
+    if (poll_rv == 0) {
+      LOG(ERROR) << "Timed out polling fds for gzip, abort";
+      proc.Kill(SIGKILL, kKillTimeoutSec);
+      return std::string();
+    }
+
+    if (poll_rv < 0) {
+      PLOG(ERROR) << "Failed polling gzip fds";
+      proc.Kill(SIGKILL, kKillTimeoutSec);
+      return std::string();
+    }
+
+    if (fdtab[0].revents & POLLOUT) {
+      // Write more data to stdin.
+      size_t read_size = 0;
+      if (!data->ReadBlocking(in_buffer, kBufferSize, &read_size, nullptr)) {
+        // We are reading from a memory stream, so this really shouldn't happen.
+        LOG(ERROR) << "Error reading from gzip input stream";
+        proc.Kill(SIGKILL, kKillTimeoutSec);
+        return std::string();
+      }
+      char* buf_ptr = in_buffer;
+      while (read_size > 0) {
+        const ssize_t write_size = HANDLE_EINTR(write(in, buf_ptr, read_size));
+        if (write_size < 0) {
+          PLOG(ERROR) << "Error writing to gzip stdin";
+          proc.Kill(SIGKILL, kKillTimeoutSec);
+          return std::string();
+        }
+        read_size -= write_size;
+        buf_ptr += write_size;
+      }
+      if (data->GetRemainingSize() <= 0) {
+        // Finished writing all data to stdin, break out of the polling loop so
+        // we can just read all the data from stdout.
+        if (close(in) < 0) {
+          PLOG(ERROR) << "Failed closing stdin to gzip, aborting";
+          proc.Kill(SIGKILL, kKillTimeoutSec);
+          return std::string();
+        }
+        break;
+      }
+    }
+
+    if (fdtab[1].revents & POLLIN) {
+      const ssize_t count = HANDLE_EINTR(read(out, out_buffer, kBufferSize));
+      if (count < 0) {
+        PLOG(ERROR) << "Error reading from gzip stdout";
+        proc.Kill(SIGKILL, kKillTimeoutSec);
+        return std::string();
+      }
+
+      compressed.append(out_buffer, count);
+    }
+  }
+
+  // Finish reading all of the output, no reason to poll anymore since we have
+  // written all the input data.
+  int proc_rv;
+  while (true) {
+    const ssize_t count = HANDLE_EINTR(read(out, out_buffer, kBufferSize));
+    if (count <= 0) {
+      proc_rv = proc.Wait();
+      break;
+    }
+
+    compressed.append(out_buffer, count);
+  }
+
+  if (proc_rv < 0) {
+    LOG(ERROR) << "Failed to gzip data";
+    return std::string();
+  }
+
+  return compressed;
 }
 
 int RunAndCaptureOutput(brillo::ProcessImpl* process,

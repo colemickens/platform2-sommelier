@@ -70,8 +70,6 @@ const uid_t kRootGroup = 0;
 // Buffer size for reading a log into memory.
 constexpr size_t kMaxLogSize = 1024 * 1024;
 
-const char kGzipPath[] = "/bin/gzip";
-
 // Limit how many processes we walk back up.  This avoids any possible races
 // and loops, and we probably don't need that many in the first place.
 constexpr size_t kMaxParentProcessLogs = 8;
@@ -827,24 +825,6 @@ bool CrashCollector::ShouldHandleChromeCrashes() {
   }
   // We default to ignoring chrome crashes.
   return false;
-}
-
-FilePath CrashCollector::GzipFile(const FilePath& path) {
-  brillo::ProcessImpl proc;
-  proc.AddArg(kGzipPath);
-  proc.AddArg(path.value());
-  std::string error;
-  const int res = util::RunAndCaptureOutput(&proc, STDERR_FILENO, &error);
-  if (res < 0) {
-    PLOG(ERROR) << "Failed to execute gzip";
-    return FilePath();
-  }
-  if (res != 0) {
-    LOG(ERROR) << "Failed to gzip " << path.value();
-    util::LogMultilineError(error);
-    return FilePath();
-  }
-  return path.AddExtension(".gz");
 }
 
 // Hash a string to a number.  We define our own hash function to not
