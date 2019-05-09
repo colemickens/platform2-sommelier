@@ -642,6 +642,11 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
                  policy->mutable_device_wilco_dtc_configuration()
                      ->set_device_wilco_dtc_configuration(value);
                });
+
+  EncodeInteger(key::kDeviceDockMacAddressSource, [policy](int value) {
+    policy->mutable_device_dock_mac_address_source()->set_source(
+        static_cast<em::DeviceDockMacAddressSourceProto::Source>(value));
+  });
 }
 
 void DevicePolicyEncoder::EncodeBoolean(

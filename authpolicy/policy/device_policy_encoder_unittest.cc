@@ -424,6 +424,13 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
       policy.device_wilco_dtc_configuration().device_wilco_dtc_configuration());
 
   // The encoder of this policy converts ints to
+  // DeviceDockMacAddressSourceProto::Source enums.
+  EncodeInteger(&policy, key::kDeviceDockMacAddressSource,
+                em::DeviceDockMacAddressSourceProto::DOCK_NIC_MAC_ADDRESS);
+  EXPECT_EQ(em::DeviceDockMacAddressSourceProto::DOCK_NIC_MAC_ADDRESS,
+            policy.device_dock_mac_address_source().source());
+
+  // The encoder of this policy converts ints to
   // DeviceUserPolicyLoopbackProcessingModeProto::Mode enums.
   EncodeInteger(
       &policy, key::kDeviceUserPolicyLoopbackProcessingMode,
