@@ -2499,10 +2499,7 @@ void Service::OnTremplinStartedSignal(dbus::Signal* signal) {
     LOG(ERROR) << "Received signal from an unknown vm.";
     return;
   }
-  LOG(INFO) << "Received TremplinStartedSignal for owner: "
-            << tremplin_started_signal.owner_id()
-            << ", vm: " << tremplin_started_signal.vm_name();
-
+  LOG(INFO) << "Received TremplinStartedSignal for " << iter->first;
   iter->second->SetTremplinStarted();
 }
 
@@ -2545,8 +2542,8 @@ void Service::HandleSuspendDone() {
       if (vm_entry.second->SetTime(&failure_reason)) {
         successes++;
       } else {
-        LOG(ERROR) << "Failed to set VM clock in " << vm_entry.first.owner_id()
-                   << "/" << vm_entry.first.name() << ": " << failure_reason;
+        LOG(ERROR) << "Failed to set VM clock in " << vm_entry.first << ": "
+                   << failure_reason;
       }
     }
 

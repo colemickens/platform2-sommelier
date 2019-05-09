@@ -5,6 +5,7 @@
 #ifndef VM_TOOLS_COMMON_VM_ID_H_
 #define VM_TOOLS_COMMON_VM_ID_H_
 
+#include <ostream>
 #include <string>
 #include <utility>
 
@@ -20,6 +21,10 @@ class VmId {
 
   bool operator==(const VmId& rhs) const { return id_ == rhs.id_; }
   bool operator<(const VmId& rhs) const { return id_ < rhs.id_; }
+
+  friend std::ostream& operator<<(std::ostream& os, const VmId& id) {
+    return os << id.owner_id() << '/' << id.name();
+  }
 
  private:
   std::pair<std::string, std::string> id_;
