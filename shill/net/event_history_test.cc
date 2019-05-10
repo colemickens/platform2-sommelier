@@ -16,7 +16,6 @@
 using std::deque;
 using std::string;
 using std::vector;
-using ::testing::Mock;
 using ::testing::Return;
 
 namespace shill {

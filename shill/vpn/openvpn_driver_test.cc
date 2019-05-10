@@ -38,7 +38,6 @@
 #include "shill/vpn/vpn_service.h"
 
 using base::FilePath;
-using base::WeakPtr;
 using std::map;
 using std::string;
 using std::vector;
@@ -46,7 +45,6 @@ using testing::_;
 using testing::DoAll;
 using testing::Field;
 using testing::Mock;
-using testing::Ne;
 using testing::NiceMock;
 using testing::Return;
 using testing::SetArgPointee;

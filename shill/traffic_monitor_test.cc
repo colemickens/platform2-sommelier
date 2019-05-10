@@ -27,7 +27,6 @@ using std::vector;
 using testing::_;
 using testing::Mock;
 using testing::NiceMock;
-using testing::Return;
 using testing::ReturnRef;
 using testing::Test;
 

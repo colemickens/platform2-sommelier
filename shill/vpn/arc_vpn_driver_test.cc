@@ -22,7 +22,6 @@
 #include "shill/vpn/mock_vpn_service.h"
 
 using testing::_;
-using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::SetArgPointee;

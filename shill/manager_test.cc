@@ -76,7 +76,6 @@ using ::testing::ElementsAre;
 using ::testing::HasSubstr;
 using ::testing::Invoke;
 using ::testing::Mock;
-using ::testing::Ne;
 using ::testing::NiceMock;
 using ::testing::Ref;
 using ::testing::Return;

@@ -22,7 +22,6 @@
 
 using base::Bind;
 using base::Unretained;
-using std::string;
 using testing::_;
 using testing::EndsWith;
 using testing::DoAll;

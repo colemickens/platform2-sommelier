@@ -23,7 +23,6 @@
 #include "shill/testing.h"
 
 using base::Bind;
-using base::StringPrintf;
 using base::Unretained;
 using std::string;
 using std::vector;

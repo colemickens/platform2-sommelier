@@ -24,10 +24,8 @@ using std::string;
 using std::vector;
 using testing::_;
 using testing::ByMove;
-using testing::Pointee;
 using testing::Return;
 using testing::SaveArg;
-using testing::StrEq;
 using testing::Test;
 
 namespace shill {

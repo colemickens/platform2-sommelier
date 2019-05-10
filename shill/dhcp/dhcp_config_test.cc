@@ -33,7 +33,6 @@ using testing::ContainsRegex;
 using testing::InvokeWithoutArgs;
 using testing::Mock;
 using testing::Return;
-using testing::Test;
 
 namespace shill {
 

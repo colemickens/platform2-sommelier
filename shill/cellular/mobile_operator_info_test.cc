@@ -37,7 +37,6 @@
 using base::FilePath;
 using shill::mobile_operator_db::MobileOperatorDB;
 using std::map;
-using std::ofstream;
 using std::set;
 using std::string;
 using std::vector;

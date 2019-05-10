@@ -9,7 +9,6 @@
 #include <gtest/gtest.h>
 
 using ::std::string;
-using ::std::vector;
 using ::testing::Test;
 
 namespace shill {

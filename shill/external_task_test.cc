@@ -26,9 +26,7 @@ using std::map;
 using std::string;
 using std::vector;
 using testing::_;
-using testing::MatchesRegex;
 using testing::Mock;
-using testing::NiceMock;
 using testing::Return;
 
 namespace shill {

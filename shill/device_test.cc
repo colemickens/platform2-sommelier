@@ -68,7 +68,6 @@ using ::testing::ReturnRef;
 using ::testing::SetArgPointee;
 using ::testing::StrEq;
 using ::testing::StrictMock;
-using ::testing::Test;
 
 namespace shill {
 

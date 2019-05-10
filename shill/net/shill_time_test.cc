@@ -8,7 +8,6 @@
 
 #include <gtest/gtest.h>
 
-using std::string;
 using testing::Test;
 
 namespace shill {

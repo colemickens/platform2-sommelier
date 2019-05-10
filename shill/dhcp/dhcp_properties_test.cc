@@ -14,7 +14,6 @@ using std::string;
 using std::unique_ptr;
 using testing::_;
 using testing::DoAll;
-using testing::Mock;
 using testing::Return;
 using testing::SetArgPointee;
 using testing::Test;

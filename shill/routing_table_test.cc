@@ -27,7 +27,6 @@
 #include "shill/routing_table_entry.h"
 
 using base::Bind;
-using base::Callback;
 using base::Unretained;
 using std::deque;
 using std::vector;

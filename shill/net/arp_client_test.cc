@@ -21,7 +21,6 @@ using testing::AnyNumber;
 using testing::HasSubstr;
 using testing::InSequence;
 using testing::Invoke;
-using testing::Mock;
 using testing::Return;
 using testing::StrictMock;
 using testing::Test;

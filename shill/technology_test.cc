@@ -9,7 +9,6 @@
 
 #include "shill/error.h"
 
-using std::string;
 using std::vector;
 using testing::ElementsAre;
 

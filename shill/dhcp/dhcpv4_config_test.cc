@@ -39,7 +39,6 @@ using testing::InvokeWithoutArgs;
 using testing::Mock;
 using testing::Return;
 using testing::SetArgPointee;
-using testing::Test;
 
 namespace shill {
 

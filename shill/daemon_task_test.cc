@@ -32,7 +32,6 @@
 #endif  // DISABLE_WIFI
 
 using base::Bind;
-using base::Callback;
 using base::Unretained;
 using std::string;
 using std::vector;

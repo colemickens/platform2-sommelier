@@ -48,7 +48,6 @@
 #include "shill/net/nl80211_message.h"
 #endif  // DISABLE_WIFI
 
-using base::Callback;
 using base::FilePath;
 using std::set;
 using std::string;
