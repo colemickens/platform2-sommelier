@@ -11,6 +11,7 @@
 CLEANUP_PAUSED_FILE="/var/lib/cleanup_logs_paused"
 NUM_DAYS_TO_PRESERVE=7
 MAX_SUBDIR_SIZE=100   # MB
+MAX_SUBDIR_FILES=21
 # Threshold for additional histogram reporting (in 1KB blocks), 1GB in total.
 ADDITIONAL_REPORTING_THRESHOLD_BLOCKS=1048576
 SHADOW="/home/.shadow"
@@ -26,7 +27,8 @@ report_additional_statistics() {
 }
 
 # Remove older files, keep deleting until the directory is less than 100MB
-# or only one day old files remains.
+# or only one day old files remains.  ...and also delete older files if
+# there are too many.
 remove_old_files() {
   local subdir="$1"
   local file_pattern="$2"
@@ -43,6 +45,17 @@ remove_old_files() {
       break
     fi
   done
+
+  # Delete all but the most recent MAX_SUBDIR_FILES files.
+  #
+  # Note that 'ls -t' doesn't have a "null terminated" mode apparently
+  # because you're not supposed to use it for scripts, so we end up
+  # using several steps.
+  find "${subdir}" -type f -name "${file_pattern}" -printf "%T+ %p\0" | \
+    sort -zr | \
+    cut -z -d ' ' -f 2- | \
+    tail -z -n+$(( MAX_SUBDIR_FILES + 1 )) | \
+    xargs -r -0 rm
 }
 
 rotate_file() {
