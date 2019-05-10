@@ -1721,7 +1721,9 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
     return dbus_response;
   }
 
-  if (!base::DeleteFile(disk_path, false)) {
+  if (!base::DeleteFile(disk_path,
+                        request.storage_location() ==
+                            STORAGE_CRYPTOHOME_PLUGINVM /* recursive */)) {
     response.set_status(DISK_STATUS_FAILED);
     response.set_failure_reason("Disk removal failed");
     writer.AppendProtoAsArrayOfBytes(response);
