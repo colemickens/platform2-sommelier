@@ -166,8 +166,7 @@ class DeviceTest : public PropertyStoreTest {
                                kDeviceAddress,
                                kDeviceInterfaceIndex,
                                Technology::kUnknown)),
-        device_info_(control_interface(), nullptr, nullptr, nullptr),
-        metrics_(dispatcher()) {
+        device_info_(control_interface(), nullptr, nullptr, nullptr) {
     DHCPProvider::GetInstance()->control_interface_ = control_interface();
     DHCPProvider::GetInstance()->dispatcher_ = dispatcher();
     device_->time_ = &time_;

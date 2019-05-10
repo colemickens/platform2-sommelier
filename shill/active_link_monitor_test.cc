@@ -117,8 +117,7 @@ MATCHER_P4(IsArpRequest, local_ip, remote_ip, local_mac, remote_mac, "") {
 class ActiveLinkMonitorTest : public Test {
  public:
   ActiveLinkMonitorTest()
-      : metrics_(&dispatcher_),
-        device_info_(&control_, nullptr, nullptr, nullptr),
+      : device_info_(&control_, nullptr, nullptr, nullptr),
         connection_(new StrictMock<MockConnection>(&device_info_)),
         client_(new MockArpClient()),
         client_test_helper_(client_),

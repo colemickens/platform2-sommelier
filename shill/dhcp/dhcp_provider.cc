@@ -49,8 +49,7 @@ constexpr char DHCPProvider::kDHCPCDPathFormatLease6[];
 DHCPProvider::DHCPProvider()
     : root_("/"),
       control_interface_(nullptr),
-      dispatcher_(nullptr),
-      metrics_(nullptr) {
+      dispatcher_(nullptr) {
   SLOG(this, 2) << __func__;
 }
 

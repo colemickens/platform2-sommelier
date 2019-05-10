@@ -531,9 +531,8 @@ constexpr char kMetricsMonthlyChosenTechnologyCellular[] =
 
 }  // namespace
 
-Metrics::Metrics(EventDispatcher* dispatcher)
-    : dispatcher_(dispatcher),
-      library_(&metrics_library_),
+Metrics::Metrics()
+    : library_(&metrics_library_),
       last_default_technology_(Technology::kUnknown),
       was_last_online_(false),
       time_online_timer_(new chromeos_metrics::Timer),

@@ -71,8 +71,7 @@ class LinkMonitorObserver {
 class LinkMonitorTest : public Test {
  public:
   LinkMonitorTest()
-      : metrics_(&dispatcher_),
-        device_info_(&control_, nullptr, nullptr, nullptr),
+      : device_info_(&control_, nullptr, nullptr, nullptr),
         connection_(new StrictMock<MockConnection>(&device_info_)),
         active_link_monitor_(new MockActiveLinkMonitor()),
         passive_link_monitor_(new MockPassiveLinkMonitor()),

@@ -40,7 +40,6 @@ class ChromeosManagerDBusAdaptorTest : public Test {
   ChromeosManagerDBusAdaptorTest()
       : adaptor_bus_(new MockBus(dbus::Bus::Options())),
         proxy_bus_(new MockBus(dbus::Bus::Options())),
-        metrics_(&dispatcher_),
         manager_(&control_interface_, &dispatcher_, &metrics_),
         manager_adaptor_(adaptor_bus_, proxy_bus_, &manager_) {}
 

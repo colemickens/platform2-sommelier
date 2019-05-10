@@ -71,7 +71,7 @@ class DaemonTaskTest : public Test {
       : daemon_(DaemonTask::Settings(), &config_),
         dispatcher_(new EventDispatcherForTest()),
         control_(new MockControl()),
-        metrics_(new MockMetrics(dispatcher_)),
+        metrics_(new MockMetrics()),
         manager_(new MockManager(control_, dispatcher_, metrics_)),
 #if !defined(DISABLE_WIFI)
         callback_metrics_(new Callback80211Metrics(metrics_)),

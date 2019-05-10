@@ -41,8 +41,7 @@ using QState = Mac80211Monitor::QueueState;
 class Mac80211MonitorTest : public testing::Test {
  public:
   Mac80211MonitorTest()
-      : metrics_(nullptr),
-        mac80211_monitor_(
+      : mac80211_monitor_(
             &event_dispatcher_,
             kTestDeviceName,
             kQueueLengthLimit,

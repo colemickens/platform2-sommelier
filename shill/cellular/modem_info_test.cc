@@ -26,8 +26,7 @@ namespace shill {
 class ModemInfoTest : public Test {
  public:
   ModemInfoTest()
-      : metrics_(&dispatcher_),
-        manager_(&control_interface_, &dispatcher_, &metrics_),
+      : manager_(&control_interface_, &dispatcher_, &metrics_),
         modem_info_(&control_interface_, &dispatcher_, &metrics_, &manager_) {}
 
  protected:

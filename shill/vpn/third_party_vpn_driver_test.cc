@@ -33,7 +33,6 @@ class ThirdPartyVpnDriverTest : public testing::Test {
  public:
   ThirdPartyVpnDriverTest()
       : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
-        metrics_(&dispatcher_),
         manager_(&control_, &dispatcher_, &metrics_),
         driver_(new ThirdPartyVpnDriver(&control_, &dispatcher_, &metrics_,
                                         &manager_, &device_info_)),

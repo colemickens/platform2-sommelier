@@ -45,7 +45,6 @@ class L2TPIPSecDriverTest : public testing::Test,
  public:
   L2TPIPSecDriverTest()
       : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
-        metrics_(&dispatcher_),
         manager_(&control_, &dispatcher_, &metrics_),
         driver_(new L2TPIPSecDriver(&control_, &dispatcher_, &metrics_,
                                     &manager_, &device_info_,

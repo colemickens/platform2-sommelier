@@ -88,7 +88,7 @@ bool DaemonTask::Quit(const base::Closure& completion_callback) {
 void DaemonTask::Init() {
   dispatcher_.reset(new EventDispatcher());
   control_.reset(new ChromeosDBusControl(dispatcher_.get()));
-  metrics_.reset(new Metrics(dispatcher_.get()));
+  metrics_.reset(new Metrics());
   rtnl_handler_ = RTNLHandler::GetInstance();
   routing_table_ = RoutingTable::GetInstance();
   dhcp_provider_ = DHCPProvider::GetInstance();

@@ -30,7 +30,7 @@ TEST(PPPDeviceTest, GetInterfaceName) {
 
 TEST(PPPDeviceTest, ParseIPConfiguration) {
   MockControl control;
-  MockMetrics metrics(nullptr);
+  MockMetrics metrics;
   scoped_refptr<PPPDevice> device = new PPPDevice(&control, nullptr, &metrics,
                                                   nullptr, "test0", 0);
 

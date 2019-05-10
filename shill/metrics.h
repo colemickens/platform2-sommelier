@@ -15,7 +15,6 @@
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 
-#include "shill/event_dispatcher.h"
 #include "shill/portal_detector.h"
 #include "shill/power_manager.h"
 #include "shill/refptr_types.h"
@@ -935,7 +934,7 @@ class Metrics {
   // Portal detection results.
   static const char kMetricPortalDetectionMultiProbeResult[];
 
-  explicit Metrics(EventDispatcher* dispatcher);
+  Metrics();
   virtual ~Metrics();
 
   // Converts the WiFi frequency into the associated UMA channel enumerator.
@@ -1439,7 +1438,6 @@ class Metrics {
   // |library_| points to |metrics_library_| when shill runs normally.
   // However, in order to allow for unit testing, we point |library_| to a
   // MetricsLibraryMock object instead.
-  EventDispatcher* dispatcher_;
   MetricsLibrary metrics_library_;
   MetricsLibraryInterface* library_;
   ServiceMetricsLookupMap services_metrics_;

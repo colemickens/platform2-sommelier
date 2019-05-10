@@ -66,7 +66,6 @@ class PortalDetectorTest : public Test {
             new NiceMock<MockDeviceInfo>(&control_, nullptr, nullptr, nullptr)),
         connection_(new StrictMock<MockConnection>(device_info_.get())),
         transport_(std::make_shared<brillo::http::MockTransport>()),
-        metrics_(&dispatcher_),
         brillo_connection_(
             std::make_shared<brillo::http::MockConnection>(transport_)),
         portal_detector_(

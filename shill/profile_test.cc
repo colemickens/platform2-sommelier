@@ -36,7 +36,7 @@ namespace shill {
 
 class ProfileTest : public PropertyStoreTest {
  public:
-  ProfileTest() : mock_metrics_(new MockMetrics(nullptr)) {
+  ProfileTest() : mock_metrics_(new MockMetrics()) {
     Profile::Identifier id("rather", "irrelevant");
     profile_ = new Profile(
         control_interface(), metrics(), manager(), id, FilePath(), false);

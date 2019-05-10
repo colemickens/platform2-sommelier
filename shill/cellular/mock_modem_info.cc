@@ -37,7 +37,7 @@ void MockModemInfo::SetMockMembers() {
     set_event_dispatcher(mock_dispatcher_.get());
   }
   if (metrics() == nullptr) {
-    mock_metrics_.reset(new MockMetrics(dispatcher()));
+    mock_metrics_.reset(new MockMetrics());
     set_metrics(mock_metrics_.get());
   }
   if (manager() == nullptr) {

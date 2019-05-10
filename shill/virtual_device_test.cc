@@ -30,8 +30,7 @@ const int kTestInterfaceIndex = 5;
 class VirtualDeviceTest : public testing::Test {
  public:
   VirtualDeviceTest()
-      : metrics_(&dispatcher_),
-        manager_(&control_, &dispatcher_, &metrics_),
+      : manager_(&control_, &dispatcher_, &metrics_),
         device_(new VirtualDevice(&control_,
                                   &dispatcher_,
                                   &metrics_,

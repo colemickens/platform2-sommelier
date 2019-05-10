@@ -621,7 +621,7 @@ const uint8_t KIPV6ProtocolTypeSuffixBytesForUDP[] = {
 
 class WakeOnWiFiTest : public ::testing::Test {
  public:
-  WakeOnWiFiTest() : metrics_(nullptr) {}
+  WakeOnWiFiTest() {}
   virtual ~WakeOnWiFiTest() {}
 
   void SetUp() override {

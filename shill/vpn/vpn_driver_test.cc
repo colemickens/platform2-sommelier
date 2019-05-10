@@ -89,7 +89,6 @@ class VPNDriverTest : public Test {
  public:
   VPNDriverTest()
       : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
-        metrics_(&dispatcher_),
         manager_(&control_, &dispatcher_, &metrics_),
         driver_(&dispatcher_, &manager_) {}
 

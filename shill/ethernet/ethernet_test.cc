@@ -59,8 +59,7 @@ namespace shill {
 class EthernetTest : public testing::Test {
  public:
   EthernetTest()
-      : metrics_(nullptr),
-        manager_(&control_interface_, nullptr, &metrics_),
+      : manager_(&control_interface_, nullptr, &metrics_),
         device_info_(&control_interface_, &dispatcher_, &metrics_, &manager_),
         ethernet_(new Ethernet(&control_interface_,
                                &dispatcher_,

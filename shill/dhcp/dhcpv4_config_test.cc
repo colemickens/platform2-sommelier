@@ -61,7 +61,6 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
  public:
   DHCPv4ConfigTest()
       : proxy_(new MockDHCPProxy()),
-        metrics_(dispatcher()),
         config_(new DHCPv4Config(&control_,
                                  dispatcher(),
                                  &provider_,

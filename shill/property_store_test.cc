@@ -64,7 +64,6 @@ PropertyStoreTest::PropertyStoreTest()
       invalid_args_(kErrorResultInvalidArguments),
       invalid_prop_(kErrorResultInvalidProperty),
       path_(dir_.CreateUniqueTempDir() ? dir_.GetPath().value() : ""),
-      metrics_(dispatcher()),
       default_technology_order_{Technology::kVPN,
                                 Technology::kEthernet,
                                 Technology::kWifi,

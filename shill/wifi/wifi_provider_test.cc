@@ -61,8 +61,7 @@ const time_t kTestDays = 20;
 class WiFiProviderTest : public testing::Test {
  public:
   WiFiProviderTest()
-      : metrics_(nullptr),
-        manager_(&control_, &dispatcher_, &metrics_),
+      : manager_(&control_, &dispatcher_, &metrics_),
         provider_(&control_, &dispatcher_, &metrics_, &manager_),
         default_profile_(
             new NiceMock<MockProfile>(

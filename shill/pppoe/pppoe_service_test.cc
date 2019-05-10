@@ -37,8 +37,7 @@ namespace shill {
 class PPPoEServiceTest : public testing::Test {
  public:
   PPPoEServiceTest()
-      : metrics_(&dispatcher_),
-        manager_(&control_interface_, &dispatcher_, &metrics_),
+      : manager_(&control_interface_, &dispatcher_, &metrics_),
         ethernet_(new MockEthernet(&control_interface_,
                                    &dispatcher_,
                                    &metrics_,

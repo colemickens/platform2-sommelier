@@ -450,8 +450,7 @@ const uint8_t kPassiveScanTriggerNlMsg[] = {
 class WiFiPropertyTest : public PropertyStoreTest {
  public:
   WiFiPropertyTest()
-      : metrics_(nullptr),
-        device_(new WiFi(control_interface(),
+      : device_(new WiFi(control_interface(),
                          dispatcher(),
                          &metrics_,
                          manager(),
@@ -552,7 +551,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
  public:
   explicit WiFiObjectTest(std::unique_ptr<EventDispatcher> dispatcher)
       : event_dispatcher_(std::move(dispatcher)),
-        metrics_(nullptr),
         manager_(&control_interface_, nullptr, &metrics_),
         device_info_(
             &control_interface_, event_dispatcher_.get(), &metrics_, &manager_),

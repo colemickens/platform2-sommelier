@@ -284,7 +284,7 @@ TEST_F(EapCredentialsTest, OutputConnectionMetrics) {
   SetInnerEap(kEapPhase2AuthPEAPMSCHAPV2);
 
   MockEventDispatcher dispatcher;
-  MockMetrics metrics(&dispatcher);
+  MockMetrics metrics;
   EXPECT_CALL(metrics, SendEnumToUMA("Network.Shill.Wifi.EapOuterProtocol",
                                      Metrics::kEapOuterProtocolPeap,
                                      Metrics::kEapOuterProtocolMax));

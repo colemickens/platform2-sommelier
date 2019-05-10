@@ -70,7 +70,6 @@ class MetricsTest : public Test {
       : manager_(&control_interface_,
                  &dispatcher_,
                  &metrics_),
-        metrics_(&dispatcher_),
 #if !defined(DISABLE_WIFI)
         open_wifi_service_(new MockWiFiService(&control_interface_,
                                                &dispatcher_,

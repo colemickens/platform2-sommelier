@@ -13,7 +13,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
 #include "shill/net/ieee80211.h"
@@ -128,15 +127,13 @@ const unsigned char kGetFamilyMessage[] = {
 
 class Callback80211MetricsTest : public Test {
  public:
-  Callback80211MetricsTest() :
-      metrics_(&dispatcher_), callback_(&metrics_) {
+  Callback80211MetricsTest() : callback_(&metrics_) {
     message_factory_.AddFactoryMethod(
         kNl80211FamilyId, Bind(&Nl80211Message::CreateMessage));
     Nl80211Message::SetMessageType(kNl80211FamilyId);
   }
 
  protected:
-  MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
   NetlinkMessageFactory message_factory_;
   Callback80211Metrics callback_;
