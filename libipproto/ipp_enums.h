@@ -1024,11 +1024,11 @@ enum class E_ipp_features_supported : uint16_t {
   subscription_object = 0x000b
 };
 enum class E_ipp_versions_supported : uint16_t {
-  _1_0 = 0x0000,
-  _1_1 = 0x0001,
-  _2_0 = 0x0002,
-  _2_1 = 0x0003,
-  _2_2 = 0x0004
+  _1_0 = 0x0100,
+  _1_1 = 0x0101,
+  _2_0 = 0x0200,
+  _2_1 = 0x0201,
+  _2_2 = 0x0202
 };
 enum class E_job_account_type : uint16_t {
   general = 0x0000,
