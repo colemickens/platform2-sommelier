@@ -172,6 +172,9 @@ properties:
                 count:
                   type: integer
                   description: Specified the number of cameras on the model.
+                config-path:
+                  type: string
+                  description: Specified the camera configuration file path on the model.
               additionalProperties: false
             firmware:
               type: object
