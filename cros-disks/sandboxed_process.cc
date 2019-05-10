@@ -5,6 +5,7 @@
 #include "cros-disks/sandboxed_process.h"
 
 #include <sys/mount.h>
+#include <sys/wait.h>
 
 #include <base/logging.h>
 #include <chromeos/libminijail.h>
@@ -101,22 +102,49 @@ void SandboxedProcess::SetUserId(uid_t user_id) {
   minijail_change_uid(jail_, user_id);
 }
 
-bool SandboxedProcess::Start() {
-  char** arguments = GetArguments();
-  CHECK(arguments) << "No argument is provided.";
-
+pid_t SandboxedProcess::StartImpl(std::vector<char*>& args,
+                                  base::ScopedFD* in_fd,
+                                  base::ScopedFD* out_fd,
+                                  base::ScopedFD* err_fd) {
+  char** arguments = args.data();
   pid_t child_pid = kInvalidProcessId;
-  int result = minijail_run_pid(jail_, arguments[0], arguments, &child_pid);
+  int in = kInvalidFD, out = kInvalidFD, err = kInvalidFD;
+  int result = minijail_run_pid_pipes(jail_, arguments[0], arguments,
+                                      &child_pid, &in, &out, &err);
   if (result == 0) {
-    set_pid(child_pid);
+    in_fd->reset(in);
+    out_fd->reset(out);
+    err_fd->reset(err);
+    return child_pid;
+  }
+
+  return kInvalidProcessId;
+}
+
+int SandboxedProcess::WaitImpl() {
+  return minijail_wait(jail_);
+}
+
+bool SandboxedProcess::WaitNonBlockingImpl(int* status) {
+  // Minijail didn't implement the non-blocking wait.
+  // Code below is stolen from minijail_wait() with addition of WNOHANG.
+  int ret = waitpid(pid(), status, WNOHANG);
+  if (ret < 0) {
+    PLOG(ERROR) << "waitpid failed.";
     return true;
   }
 
-  return false;
-}
+  if (ret == 0) {
+    return false;
+  }
 
-int SandboxedProcess::Wait() {
-  return minijail_wait(jail_);
+  if (WIFEXITED(*status)) {
+    *status = WEXITSTATUS(*status);
+  } else if (WIFSIGNALED(*status)) {
+    // Also from minijail_wait().
+    *status = 128 + WTERMSIG(*status);
+  }
+  return true;
 }
 
 }  // namespace cros_disks

@@ -340,10 +340,15 @@ MountErrorType FUSEMounter::MountImpl() const {
     mount_process->AddArgument(target_path().value());
   }
 
-  int return_code = mount_process->Run();
+  std::vector<std::string> output;
+  int return_code = mount_process->Run(&output);
   if (return_code != 0) {
     LOG(WARNING) << "FUSE mount program failed with a return code "
-                 << return_code;
+                 << return_code << " and output:";
+    // Logging escapes newline chars so we need to process it line by line.
+    for (const auto& line : output) {
+      LOG(WARNING) << line;
+    }
     return MountErrorType::MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
   }
   // The |fuse_failure_unmounter| closure runner is used to unmount the FUSE

@@ -70,12 +70,14 @@ class SandboxedProcess : public Process {
   // Sets the user ID of the process to be sandboxed.
   void SetUserId(uid_t user_id);
 
-  // Implements Process::Start() to start the process in a sandbox.
-  // Returns true on success.
-  bool Start() override;
-
-  // Waits for the process to finish and returns its exit status.
-  int Wait() override;
+ protected:
+  // Process overrides:
+  pid_t StartImpl(std::vector<char*>& args,
+                  base::ScopedFD* in_fd,
+                  base::ScopedFD* out_fd,
+                  base::ScopedFD* err_fd) override;
+  int WaitImpl() override;
+  bool WaitNonBlockingImpl(int* status) override;
 
  private:
   minijail* jail_;

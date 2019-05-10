@@ -105,8 +105,13 @@ class MockFUSEPlatform : public Platform {
 class MockSandboxedProcess : public SandboxedProcess {
  public:
   MockSandboxedProcess() = default;
-  MOCK_METHOD0(Start, bool());
-  MOCK_METHOD0(Wait, int());
+  MOCK_METHOD4(StartImpl,
+               pid_t(std::vector<char*>& args,
+                     base::ScopedFD*,
+                     base::ScopedFD*,
+                     base::ScopedFD*));
+  MOCK_METHOD0(WaitImpl, int());
+  MOCK_METHOD1(WaitNonBlockingImpl, bool(int*));
 };
 
 class FUSEMounterForTesting : public FUSEMounter {
@@ -131,8 +136,8 @@ class FUSEMounterForTesting : public FUSEMounter {
   std::unique_ptr<SandboxedProcess> CreateSandboxedProcess() const override {
     auto mock = std::make_unique<MockSandboxedProcess>();
     auto* raw_ptr = mock.get();
-    ON_CALL(*mock, Start()).WillByDefault(Return(true));
-    ON_CALL(*mock, Wait()).WillByDefault(Invoke([raw_ptr, this]() {
+    ON_CALL(*mock, StartImpl(_, _, _, _)).WillByDefault(Return(123));
+    ON_CALL(*mock, WaitImpl()).WillByDefault(Invoke([raw_ptr, this]() {
       return InvokeMountTool(raw_ptr->arguments());
     }));
     return mock;
