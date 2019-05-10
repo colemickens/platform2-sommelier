@@ -70,12 +70,6 @@ namespace shill {
 
 class TestEventDispatcherForDeviceInfo : public EventDispatcherForTest {
  public:
-  virtual IOHandler* CreateInputHandler(
-      int /*fd*/,
-      const IOHandler::InputCallback& /*input_callback*/,
-      const IOHandler::ErrorCallback& /*error_callback*/) {
-    return nullptr;
-  }
   MOCK_METHOD3(PostDelayedTask, void(const tracked_objects::Location& location,
                                      const base::Closure& task,
                                      int64_t delay_ms));

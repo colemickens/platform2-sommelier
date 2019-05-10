@@ -39,16 +39,6 @@ using testing::Test;
 
 namespace shill {
 
-class TestEventDispatcher : public EventDispatcher {
- public:
-  virtual IOHandler* CreateInputHandler(
-      int /*fd*/,
-      const IOHandler::InputCallback& /*input_callback*/,
-      const IOHandler::ErrorCallback& /*error_callback*/) {
-    return nullptr;
-  }
-};
-
 class RoutingTableTest : public Test {
  public:
   static const uint8_t kTestTableId;
@@ -144,7 +134,6 @@ class RoutingTableTest : public Test {
   };
 
   std::unique_ptr<RoutingTable> routing_table_;
-  TestEventDispatcher dispatcher_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
 };
 
