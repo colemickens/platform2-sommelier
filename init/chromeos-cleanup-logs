@@ -5,6 +5,8 @@
 # found in the LICENSE file.
 
 # This script should be called daily to clean up log files.
+# It can also be called with "--no-periodic" directly from an init
+# script in which case it will clean up but not rotate.
 
 . /usr/share/cros/disk_utils.sh
 
@@ -107,86 +109,115 @@ wipe_crx_cache() {
   fi
 }
 
-if [ -r "${CLEANUP_PAUSED_FILE}" ]; then
-  echo "Exiting early because ${CLEANUP_PAUSED_FILE} exists."
-  exit 1
-fi
+remove_old_pattern_log_files() {
+  # Remove old biometrics cypto init, daemon, and firmware
+  # updater logs
+  remove_old_files /var/log/bio_crypto_init "*"
+  remove_old_files /var/log/biod "biod.*"
+  remove_old_files /var/log/biod "bio_fw_updater.*"
 
-# Remove old biometrics cypto init, daemon, and firmware
-# updater logs
-remove_old_files /var/log/bio_crypto_init "*"
-remove_old_files /var/log/biod "biod.*"
-remove_old_files /var/log/biod "bio_fw_updater.*"
+  # Remove old chrome logs (not logged in)
+  remove_old_files /var/log/chrome "chrome_*-*"
 
-# Remove old chrome logs (not logged in)
-remove_old_files /var/log/chrome "chrome_*-*"
+  # Remove old chrome logs (logged in)
+  remove_old_files /home/chronos/user/log "chrome_*-*"
 
-# Remove old chrome logs (logged in)
-remove_old_files /home/chronos/user/log "chrome_*-*"
+  # Remove old miscellaneous UI logs
+  remove_old_files /var/log/ui "ui.*-*"
 
-# Remove old miscellaneous UI logs
-remove_old_files /var/log/ui "ui.*-*"
+  # Remove old update engine logs
+  remove_old_files /var/log/update_engine "update_engine.*-*"
 
-# Remove old update engine logs
-remove_old_files /var/log/update_engine "update_engine.*-*"
+  # Remove old power manager logs
+  remove_old_files /var/log/power_manager "power*"
 
-# Remove old power manager logs
-remove_old_files /var/log/power_manager "power*"
+  # Remove old vmlog logs (written by metrics_daemon)
+  remove_old_files /var/log/vmlog "vmlog.*"
+}
 
-# Remove old vmlog logs (written by metrics_daemon)
-remove_old_files /var/log/vmlog "vmlog.*"
+usage() {
+  echo "usage: $0 [--no-periodic]"
+  echo
+  echo "Delete old logs and perform periodic tasks like rotating logs."
+  echo
+  echo "This program always deletes old log files for programs that"
+  echo "create one log per boot.  Unless called with --no-periodic"
+  echo "it will also do periodic tasks like rotating log files"
+  echo "and sending metrics."
+}
 
-# Remove iwlwifi logs older than one hour, since they are large.
-find /var/log -name "last_iwlwifi_dump*" -mmin +60 -delete
+main() {
+  if [ "$#" -eq 1 ] && [ "$1" != "--no-periodic" ] ||
+     [ "$#" -gt 1 ]; then
+    usage
+    return 1
+  fi
 
-# Rotate other logs
-rotate_logs
+  if [ -r "${CLEANUP_PAUSED_FILE}" ]; then
+    echo "Exiting early because ${CLEANUP_PAUSED_FILE} exists."
+    return 0
+  fi
 
-# Report disk usage statistics
-METRICS_ARGS="0 1073741824 50"
-metrics_client Platform.DiskUsageVar \
-               $(du -sxk /var/ | awk '{print $1}') $METRICS_ARGS
-metrics_client Platform.DiskUsageChronos \
-               $(du -sxk /home/chronos | awk '{print $1}') $METRICS_ARGS
+  remove_old_pattern_log_files
 
-# Report overall stateful usage.
-metrics_client -e Platform.StatefulUsage "$(get_stateful_usage_percent)" 101
+  # Remove iwlwifi logs older than one hour, since they are large.
+  find /var/log -name "last_iwlwifi_dump*" -mmin +60 -delete
 
-# Report lifetime writes from the stateful partition in GBs.
-LIFETIME_WRITES="$(get_stateful_lifetime_writes)"
-metrics_client Platform.StatefulLifetimeWrites \
-  $((${LIFETIME_WRITES} / 1000000)) 0 16777216 100
+  # Quit if called at init; everything below only happens periodically
+  if [ "$1" = "--no-periodic" ]; then
+    return 0
+  fi
 
-NUMBER_OF_USERS=$(ls /home/user/ | wc -l)
-metrics_client Platform.DiskUsage.NumUserHomeDirectories \
-               $NUMBER_OF_USERS 1 50 50
+  # Rotate other logs
+  rotate_logs
 
-WEEKLY_USERS_ACTIVE=$(cryptohome --action=dump_last_activity |
-    awk 'BEGIN {count = 0} $2 <= 7 {++count} END {print count}')
-metrics_client -s Login.UsersActiveWeekly ${WEEKLY_USERS_ACTIVE}
+  # Report disk usage statistics
+  METRICS_ARGS="0 1073741824 50"
+  metrics_client Platform.DiskUsageVar \
+                $(du -sxk /var/ | awk '{print $1}') $METRICS_ARGS
+  metrics_client Platform.DiskUsageChronos \
+                $(du -sxk /home/chronos | awk '{print $1}') $METRICS_ARGS
 
-if [ $NUMBER_OF_USERS -gt 0 ] ; then
-  metrics_client -s Login.UsersActiveWeekly.Percent \
-                 $(($WEEKLY_USERS_ACTIVE * 100 / $NUMBER_OF_USERS))
-else
-  metrics_client -s Login.UsersActiveWeekly.Percent 0
-fi
+  # Report overall stateful usage.
+  metrics_client -e Platform.StatefulUsage "$(get_stateful_usage_percent)" 101
 
-# Report days since the least frequently used account signed in.
-# It is reported every time to measure effect of autodeletion feature.
-DAYS_SINCE_LFU_ACCOUNT_SIGNIN=$(cryptohome --action=dump_last_activity |
-    awk 'BEGIN {max = 0} $2 > max {max = $2} END {print max}')
+  # Report lifetime writes from the stateful partition in GBs.
+  LIFETIME_WRITES="$(get_stateful_lifetime_writes)"
+  metrics_client Platform.StatefulLifetimeWrites \
+    $((${LIFETIME_WRITES} / 1000000)) 0 16777216 100
 
-# Check if there are any users.
-if [ "${DAYS_SINCE_LFU_ACCOUNT_SIGNIN}" != "" ]; then
-  metrics_client Login.LeastUsedAccountDays \
-                 $DAYS_SINCE_LFU_ACCOUNT_SIGNIN 1 90 90
-fi
+  NUMBER_OF_USERS=$(ls /home/user/ | wc -l)
+  metrics_client Platform.DiskUsage.NumUserHomeDirectories \
+                $NUMBER_OF_USERS 1 50 50
 
-# Report additional metrics if we are low on free space.
-if [ "$(get_stateful_free_space_blocks)" -le \
-     "$ADDITIONAL_REPORTING_THRESHOLD_BLOCKS" ] ; then
-  report_additional_statistics
-fi
+  WEEKLY_USERS_ACTIVE=$(cryptohome --action=dump_last_activity |
+      awk 'BEGIN {count = 0} $2 <= 7 {++count} END {print count}')
+  metrics_client -s Login.UsersActiveWeekly ${WEEKLY_USERS_ACTIVE}
 
-wipe_crx_cache
+  if [ $NUMBER_OF_USERS -gt 0 ] ; then
+    metrics_client -s Login.UsersActiveWeekly.Percent \
+                  $(($WEEKLY_USERS_ACTIVE * 100 / $NUMBER_OF_USERS))
+  else
+    metrics_client -s Login.UsersActiveWeekly.Percent 0
+  fi
+
+  # Report days since the least frequently used account signed in.
+  # It is reported every time to measure effect of autodeletion feature.
+  DAYS_SINCE_LFU_ACCOUNT_SIGNIN=$(cryptohome --action=dump_last_activity |
+      awk 'BEGIN {max = 0} $2 > max {max = $2} END {print max}')
+
+  # Check if there are any users.
+  if [ "${DAYS_SINCE_LFU_ACCOUNT_SIGNIN}" != "" ]; then
+    metrics_client Login.LeastUsedAccountDays \
+                  $DAYS_SINCE_LFU_ACCOUNT_SIGNIN 1 90 90
+  fi
+
+  # Report additional metrics if we are low on free space.
+  if [ "$(get_stateful_free_space_blocks)" -le \
+      "$ADDITIONAL_REPORTING_THRESHOLD_BLOCKS" ] ; then
+    report_additional_statistics
+  fi
+
+  wipe_crx_cache
+}
+main "$@"
