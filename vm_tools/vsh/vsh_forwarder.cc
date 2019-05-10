@@ -355,12 +355,6 @@ void VshForwarder::PrepareExec(
         return;
       }
     }
-
-    // Close the pty fd if it's not one of the stdio fds.
-    if (pty.get() != STDIN_FILENO && pty.get() != STDOUT_FILENO &&
-        pty.get() != STDERR_FILENO) {
-      pty.reset();
-    }
   } else {
     // Dup the pipe ends into stdin/stdout/stderr.
     for (int fd : {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO}) {
@@ -387,10 +381,18 @@ void VshForwarder::PrepareExec(
     return;
   }
 
-  // Set the controlling terminal for the process.
-  if (pty.is_valid() && ioctl(pty.get(), TIOCSCTTY, nullptr) < 0) {
-    PLOG(ERROR) << "Failed to set controlling terminal";
-    return;
+  if (interactive_) {
+    // Set the controlling terminal for the process.
+    if (ioctl(pty.get(), TIOCSCTTY, nullptr) < 0) {
+      PLOG(ERROR) << "Failed to set controlling terminal";
+      return;
+    }
+
+    // Close the pty fd if it's not one of the stdio fds.
+    if (pty.get() != STDIN_FILENO && pty.get() != STDOUT_FILENO &&
+        pty.get() != STDERR_FILENO) {
+      pty.reset();
+    }
   }
 
   if (chdir(passwd->pw_dir) < 0) {
