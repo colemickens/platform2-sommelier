@@ -22,6 +22,7 @@
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
+#include "shill/net/io_handler_factory.h"
 #include "shill/property_accessor.h"
 #include "shill/store_interface.h"
 #include "shill/virtual_device.h"
@@ -75,11 +76,11 @@ ThirdPartyVpnDriver::ThirdPartyVpnDriver(ControlInterface* control,
                                          DeviceInfo* device_info)
     : VPNDriver(dispatcher, manager, kProperties, arraysize(kProperties)),
       control_(control),
-      dispatcher_(dispatcher),
       metrics_(metrics),
       device_info_(device_info),
       tun_fd_(-1),
       ip_properties_set_(false),
+      io_handler_factory_(IOHandlerFactory::GetInstance()),
       parameters_expected_(false),
       default_service_callback_tag_(0),
       reconnect_supported_(false),
@@ -507,7 +508,7 @@ bool ThirdPartyVpnDriver::ClaimInterface(const std::string& link_name,
     Cleanup(Service::kStateFailure, Service::kFailureInternal,
             "Unable to open tun interface");
   } else {
-    io_handler_.reset(dispatcher_->CreateInputHandler(
+    io_handler_.reset(io_handler_factory_->CreateIOInputHandler(
         tun_fd_,
         base::Bind(&ThirdPartyVpnDriver::OnInput, base::Unretained(this)),
         base::Bind(&ThirdPartyVpnDriver::OnInputError,

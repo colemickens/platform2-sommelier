@@ -26,6 +26,7 @@ class ControlInterface;
 class DeviceInfo;
 class Error;
 class FileIO;
+class IOHandlerFactory;
 class Metrics;
 class ThirdPartyVpnAdaptorInterface;
 
@@ -196,7 +197,6 @@ class ThirdPartyVpnDriver : public VPNDriver {
   static ThirdPartyVpnDriver* active_client_;
 
   ControlInterface* control_;
-  EventDispatcher* dispatcher_;
   Metrics* metrics_;
   DeviceInfo* device_info_;
 
@@ -223,6 +223,8 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // Configuration properties of the virtual VPN device set by the VPN client.
   IPConfig::Properties ip_properties_;
   bool ip_properties_set_;
+
+  IOHandlerFactory* io_handler_factory_;
 
   // IO handler triggered when there is an error or data ready for read in the
   // tun device.

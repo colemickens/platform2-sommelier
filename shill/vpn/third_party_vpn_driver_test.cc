@@ -17,6 +17,7 @@
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/mock_virtual_device.h"
+#include "shill/net/mock_io_handler_factory.h"
 #include "shill/nice_mock_control.h"
 #include "shill/vpn/mock_vpn_provider.h"
 #include "shill/vpn/mock_vpn_service.h"
@@ -41,7 +42,9 @@ class ThirdPartyVpnDriverTest : public testing::Test {
                                     &manager_, driver_)),
         device_(new MockVirtualDevice(&control_, &dispatcher_, &metrics_,
                                       &manager_, kInterfaceName,
-                                      kInterfaceIndex, Technology::kVPN)) {}
+                                      kInterfaceIndex, Technology::kVPN)) {
+    driver_->io_handler_factory_ = &io_handler_factory_;
+  }
 
   virtual ~ThirdPartyVpnDriverTest() {}
 
@@ -69,6 +72,7 @@ class ThirdPartyVpnDriverTest : public testing::Test {
   MockMetrics metrics_;
   MockFileIO mock_file_io_;
   MockManager manager_;
+  MockIOHandlerFactory io_handler_factory_;
   ThirdPartyVpnDriver* driver_;                  // Owned by |service_|
   ThirdPartyVpnMockAdaptor* adaptor_interface_;  // Owned by |driver_|
   scoped_refptr<MockVPNService> service_;
@@ -95,7 +99,7 @@ TEST_F(ThirdPartyVpnDriverTest, ConnectAndDisconnect) {
 
   EXPECT_CALL(device_info_, OpenTunnelInterface(interface))
       .WillOnce(Return(fd));
-  EXPECT_CALL(dispatcher_, CreateInputHandler(fd, _, _))
+  EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(fd, _, _))
       .WillOnce(Return(io_handler));
   EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
                                        ThirdPartyVpnDriver::kConnected)));
@@ -128,7 +132,7 @@ TEST_F(ThirdPartyVpnDriverTest, ReconnectionEvents) {
 
   EXPECT_CALL(device_info_, OpenTunnelInterface(interface))
       .WillOnce(Return(fd));
-  EXPECT_CALL(dispatcher_, CreateInputHandler(fd, _, _))
+  EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(fd, _, _))
       .WillOnce(Return(io_handler));
   EXPECT_TRUE(driver_->ClaimInterface(interface, kInterfaceIndex));
 
@@ -191,7 +195,7 @@ TEST_F(ThirdPartyVpnDriverTest, PowerEvents) {
 
   EXPECT_CALL(device_info_, OpenTunnelInterface(interface))
       .WillOnce(Return(fd));
-  EXPECT_CALL(dispatcher_, CreateInputHandler(fd, _, _))
+  EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(fd, _, _))
       .WillOnce(Return(io_handler));
   EXPECT_TRUE(driver_->ClaimInterface(interface, kInterfaceIndex));
 
