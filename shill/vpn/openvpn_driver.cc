@@ -872,7 +872,7 @@ void OpenVPNDriver::InitClientAuthOptions(vector<vector<string>>* options) {
 
 bool OpenVPNDriver::InitManagementChannelOptions(
     vector<vector<string>>* options, Error* error) {
-  if (!management_server_->Start(dispatcher(), &sockets_, options)) {
+  if (!management_server_->Start(&sockets_, options)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInternalError,
         "Unable to setup management channel.");

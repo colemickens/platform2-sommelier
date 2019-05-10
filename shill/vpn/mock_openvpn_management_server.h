@@ -19,9 +19,9 @@ class MockOpenVPNManagementServer : public OpenVPNManagementServer {
   MockOpenVPNManagementServer();
   ~MockOpenVPNManagementServer() override;
 
-  MOCK_METHOD3(Start, bool(EventDispatcher* dispatcher,
-                           Sockets* sockets,
-                           std::vector<std::vector<std::string>>* options));
+  MOCK_METHOD2(Start,
+               bool(Sockets* sockets,
+                    std::vector<std::vector<std::string>>* options));
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD0(ReleaseHold, void());
   MOCK_METHOD0(Hold, void());

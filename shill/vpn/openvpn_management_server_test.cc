@@ -10,7 +10,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/key_value_store.h"
-#include "shill/mock_event_dispatcher.h"
+#include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_sockets.h"
 #include "shill/vpn/mock_openvpn_driver.h"
 
@@ -34,7 +34,9 @@ MATCHER_P(VoidStringEq, value, "") {
 class OpenVPNManagementServerTest : public testing::Test {
  public:
   OpenVPNManagementServerTest()
-      : server_(&driver_) {}
+      : server_(&driver_) {
+    server_.io_handler_factory_ = &io_handler_factory_;
+  }
 
   virtual ~OpenVPNManagementServerTest() {}
 
@@ -42,7 +44,6 @@ class OpenVPNManagementServerTest : public testing::Test {
   static const int kConnectedSocket;
 
   void SetSockets() { server_.sockets_ = &sockets_; }
-  void SetDispatcher() { server_.dispatcher_ = &dispatcher_; }
   void ExpectNotStarted() { EXPECT_FALSE(server_.IsStarted()); }
 
   void SetConnectedSocket() {
@@ -149,7 +150,7 @@ class OpenVPNManagementServerTest : public testing::Test {
 
   MockOpenVPNDriver driver_;
   MockSockets sockets_;
-  MockEventDispatcher dispatcher_;
+  MockIOHandlerFactory io_handler_factory_;
   OpenVPNManagementServer server_;  // Destroy before anything it references.
 };
 
@@ -158,13 +159,13 @@ const int OpenVPNManagementServerTest::kConnectedSocket = 555;
 
 TEST_F(OpenVPNManagementServerTest, StartStarted) {
   SetSockets();
-  EXPECT_TRUE(server_.Start(nullptr, nullptr, nullptr));
+  EXPECT_TRUE(server_.Start(nullptr, nullptr));
 }
 
 TEST_F(OpenVPNManagementServerTest, StartSocketFail) {
   EXPECT_CALL(sockets_, Socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC,
         IPPROTO_TCP)).WillOnce(Return(-1));
-  EXPECT_FALSE(server_.Start(nullptr, &sockets_, nullptr));
+  EXPECT_FALSE(server_.Start(&sockets_, nullptr));
   ExpectNotStarted();
 }
 
@@ -176,7 +177,7 @@ TEST_F(OpenVPNManagementServerTest, StartGetSockNameFail) {
   EXPECT_CALL(sockets_, Listen(kSocket, 1)).WillOnce(Return(0));
   EXPECT_CALL(sockets_, GetSockName(kSocket, _, _)).WillOnce(Return(-1));
   EXPECT_CALL(sockets_, Close(kSocket)).WillOnce(Return(0));
-  EXPECT_FALSE(server_.Start(nullptr, &sockets_, nullptr));
+  EXPECT_FALSE(server_.Start(&sockets_, nullptr));
   ExpectNotStarted();
 }
 
@@ -189,15 +190,14 @@ TEST_F(OpenVPNManagementServerTest, Start) {
   EXPECT_CALL(sockets_, Bind(kSocket, _, _)).WillOnce(Return(0));
   EXPECT_CALL(sockets_, Listen(kSocket, 1)).WillOnce(Return(0));
   EXPECT_CALL(sockets_, GetSockName(kSocket, _, _)).WillOnce(Return(0));
-  EXPECT_CALL(dispatcher_,
-              CreateReadyHandler(kSocket, IOHandler::kModeInput, _))
+  EXPECT_CALL(io_handler_factory_,
+              CreateIOReadyHandler(kSocket, IOHandler::kModeInput, _))
       .WillOnce(ReturnNew<IOHandler>());
   vector<vector<string>> options;
-  EXPECT_TRUE(server_.Start(&dispatcher_, &sockets_, &options));
+  EXPECT_TRUE(server_.Start(&sockets_, &options));
   EXPECT_EQ(&sockets_, server_.sockets_);
   EXPECT_EQ(kSocket, server_.socket_);
   EXPECT_TRUE(server_.ready_handler_.get());
-  EXPECT_EQ(&dispatcher_, server_.dispatcher_);
   vector<vector<string>> expected_options {
       { "management", "127.0.0.1", "0" },
       { "management-client" },
@@ -215,7 +215,6 @@ TEST_F(OpenVPNManagementServerTest, Stop) {
   const int kConnectedSocket = 234;
   server_.connected_socket_ = kConnectedSocket;
   EXPECT_CALL(sockets_, Close(kConnectedSocket)).WillOnce(Return(0));
-  SetDispatcher();
   server_.ready_handler_.reset(new IOHandler());
   const int kSocket = 345;
   server_.socket_ = kSocket;
@@ -224,7 +223,6 @@ TEST_F(OpenVPNManagementServerTest, Stop) {
   server_.Stop();
   EXPECT_FALSE(server_.input_handler_.get());
   EXPECT_EQ(-1, server_.connected_socket_);
-  EXPECT_FALSE(server_.dispatcher_);
   EXPECT_FALSE(server_.ready_handler_.get());
   EXPECT_EQ(-1, server_.socket_);
   EXPECT_TRUE(server_.state().empty());
@@ -242,11 +240,10 @@ TEST_F(OpenVPNManagementServerTest, OnReadyAcceptFail) {
 TEST_F(OpenVPNManagementServerTest, OnReady) {
   const int kSocket = 111;
   SetConnectedSocket();
-  SetDispatcher();
   EXPECT_CALL(sockets_, Accept(kSocket, nullptr, nullptr))
       .WillOnce(Return(kConnectedSocket));
   server_.ready_handler_.reset(new IOHandler());
-  EXPECT_CALL(dispatcher_, CreateInputHandler(kConnectedSocket, _, _))
+  EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(kConnectedSocket, _, _))
       .WillOnce(ReturnNew<IOHandler>());
   ExpectSend("state on\n");
   server_.OnReady(kSocket);

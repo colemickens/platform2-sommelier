@@ -15,9 +15,9 @@
 namespace shill {
 
 class Error;
-class EventDispatcher;
 struct InputData;
 class IOHandler;
+class IOHandlerFactory;
 class OpenVPNDriver;
 class Sockets;
 
@@ -32,8 +32,7 @@ class OpenVPNManagementServer {
 
   // Returns false on failure. On success, returns true and appends management
   // interface openvpn options to |options|.
-  virtual bool Start(EventDispatcher* dispatcher,
-                     Sockets* sockets,
+  virtual bool Start(Sockets* sockets,
                      std::vector<std::vector<std::string>>* options);
 
   virtual void Stop();
@@ -143,8 +142,8 @@ class OpenVPNManagementServer {
 
   Sockets* sockets_;
   int socket_;
+  IOHandlerFactory* io_handler_factory_;
   std::unique_ptr<IOHandler> ready_handler_;
-  EventDispatcher* dispatcher_;
   int connected_socket_;
   std::unique_ptr<IOHandler> input_handler_;
 

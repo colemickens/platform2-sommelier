@@ -16,8 +16,8 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
-#include "shill/event_dispatcher.h"
 #include "shill/logging.h"
+#include "shill/net/io_handler_factory.h"
 #include "shill/net/sockets.h"
 #include "shill/vpn/openvpn_driver.h"
 
@@ -50,7 +50,7 @@ OpenVPNManagementServer::OpenVPNManagementServer(OpenVPNDriver* driver)
     : driver_(driver),
       sockets_(nullptr),
       socket_(-1),
-      dispatcher_(nullptr),
+      io_handler_factory_(IOHandlerFactory::GetInstance()),
       connected_socket_(-1),
       hold_waiting_(false),
       hold_release_(false) {}
@@ -59,8 +59,7 @@ OpenVPNManagementServer::~OpenVPNManagementServer() {
   OpenVPNManagementServer::Stop();
 }
 
-bool OpenVPNManagementServer::Start(EventDispatcher* dispatcher,
-                                    Sockets* sockets,
+bool OpenVPNManagementServer::Start(Sockets* sockets,
                                     vector<vector<string>>* options) {
   SLOG(this, 2) << __func__;
   if (IsStarted()) {
@@ -92,11 +91,9 @@ bool OpenVPNManagementServer::Start(EventDispatcher* dispatcher,
   SLOG(this, 2) << "Listening socket: " << socket;
   sockets_ = sockets;
   socket_ = socket;
-  ready_handler_.reset(
-      dispatcher->CreateReadyHandler(
-          socket, IOHandler::kModeInput,
-          Bind(&OpenVPNManagementServer::OnReady, Unretained(this))));
-  dispatcher_ = dispatcher;
+  ready_handler_.reset(io_handler_factory_->CreateIOReadyHandler(
+      socket, IOHandler::kModeInput,
+      Bind(&OpenVPNManagementServer::OnReady, Unretained(this))));
 
   // Append openvpn management API options.
   driver_->AppendOption("management", inet_ntoa(addr.sin_addr),
@@ -126,7 +123,6 @@ void OpenVPNManagementServer::Stop() {
     sockets_->Close(connected_socket_);
     connected_socket_ = -1;
   }
-  dispatcher_ = nullptr;
   ready_handler_.reset();
   if (socket_ >= 0) {
     sockets_->Close(socket_);
@@ -168,7 +164,7 @@ void OpenVPNManagementServer::OnReady(int fd) {
     return;
   }
   ready_handler_.reset();
-  input_handler_.reset(dispatcher_->CreateInputHandler(
+  input_handler_.reset(io_handler_factory_->CreateIOInputHandler(
       connected_socket_,
       Bind(&OpenVPNManagementServer::OnInput, Unretained(this)),
       Bind(&OpenVPNManagementServer::OnInputError, Unretained(this))));
