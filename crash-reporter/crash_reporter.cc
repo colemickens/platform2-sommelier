@@ -218,21 +218,6 @@ int HandleSELinuxViolation(
   return handled ? 0 : 1;
 }
 
-// Interactive/diagnostics mode for generating kernel crash signatures.
-int GenerateKernelSignature(KernelCollector* kernel_collector,
-                            const std::string& kernel_signature_file) {
-  std::string kcrash_contents;
-  std::string signature;
-  if (!base::ReadFileToString(FilePath(kernel_signature_file),
-                              &kcrash_contents)) {
-    fprintf(stderr, "Could not read file.\n");
-    return 1;
-  }
-  signature = kernel_collector->ComputeKernelStackSignature(kcrash_contents);
-  printf("Kernel crash signature is \"%s\".\n", signature.c_str());
-  return 0;
-}
-
 // Ensure stdout, stdin, and stderr are open file descriptors.  If
 // they are not, any code which writes to stderr/stdout may write out
 // to files opened during execution.  In particular, when
@@ -290,8 +275,6 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(init, false, "Initialize crash logging");
   DEFINE_bool(boot_collect, false, "Run per-boot crash collection tasks");
   DEFINE_bool(clean_shutdown, false, "Signal clean shutdown");
-  DEFINE_string(generate_kernel_signature, "",
-                "Generate signature from given kcrash file");
   DEFINE_bool(crash_test, false, "Crash test");
   DEFINE_string(user, "", "User crash info (pid:signal:exec_name)");
   DEFINE_string(udev, "", "Udev event description (type:device:subsystem)");
@@ -392,11 +375,6 @@ int main(int argc, char* argv[]) {
     if (!user_collector.Disable())
       ret = 1;
     return ret;
-  }
-
-  if (!FLAGS_generate_kernel_signature.empty()) {
-    return GenerateKernelSignature(&kernel_collector,
-                                   FLAGS_generate_kernel_signature);
   }
 
   if (!FLAGS_udev.empty()) {
