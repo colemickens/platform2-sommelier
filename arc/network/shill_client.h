@@ -40,10 +40,27 @@ class ShillClient {
   void OnManagerPropertyChange(const std::string& property_name,
                                const brillo::Any& property_value);
 
-  virtual bool GetDefaultInterface(std::string* name);
+  // Returns the name of the default interface for the system, or an empty
+  // string when the system has no default interface.
+  virtual std::string GetDefaultInterface();
 
+ private:
+  // Sets the internal variable tracking the system default interface and calls
+  // the default interface handler if the default interface changed. When the
+  // default interface is lost and a fallback exists, the fallback is used
+  // instead.
+  void SetDefaultInterface(std::string new_default);
+
+  // Tracks the name of the system default interface chosen by shill.
   std::string default_interface_;
+  // Another network interface on the system to use as a possible fallback if
+  // no system default interface exists.
+  std::string fallback_default_interface_;
+  // Tracks all network interfaces managed by shill.
+  std::set<std::string> devices_;
+  // Called when the interface used as the default interface changes.
   base::Callback<void(const std::string&)> default_interface_callback_;
+  // Called when the list of network interfaces managed by shill changes.
   base::Callback<void(const std::set<std::string>&)> devices_callback_;
 
   scoped_refptr<dbus::Bus> bus_;
@@ -51,7 +68,6 @@ class ShillClient {
 
   base::WeakPtrFactory<ShillClient> weak_factory_{this};
 
- private:
   DISALLOW_COPY_AND_ASSIGN(ShillClient);
 };
 
