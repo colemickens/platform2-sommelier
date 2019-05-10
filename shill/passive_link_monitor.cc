@@ -14,6 +14,7 @@
 #include "shill/net/arp_client.h"
 #include "shill/net/arp_packet.h"
 #include "shill/net/byte_string.h"
+#include "shill/net/io_handler_factory.h"
 
 using base::Bind;
 using base::Unretained;
@@ -51,8 +52,8 @@ PassiveLinkMonitor::PassiveLinkMonitor(const ConnectionRefPtr& connection,
       result_callback_(result_callback),
       num_cycles_to_monitor_(kDefaultMonitorCycles),
       num_requests_received_(0),
-      num_cycles_passed_(0) {
-}
+      num_cycles_passed_(0),
+      io_handler_factory_(IOHandlerFactory::GetInstance()) {}
 
 PassiveLinkMonitor::~PassiveLinkMonitor() {
   Stop();
@@ -89,7 +90,7 @@ bool PassiveLinkMonitor::StartArpClient() {
     return false;
   }
   receive_request_handler_.reset(
-      dispatcher_->CreateReadyHandler(
+      io_handler_factory_->CreateIOReadyHandler(
           arp_client_->socket(),
           IOHandler::kModeInput,
           Bind(&PassiveLinkMonitor::ReceiveRequest, Unretained(this))));

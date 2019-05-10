@@ -21,6 +21,7 @@
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/mock_arp_client.h"
+#include "shill/net/mock_io_handler_factory.h"
 
 using base::Bind;
 using base::Unretained;
@@ -73,7 +74,10 @@ class PassiveLinkMonitorTest : public Test {
         client_(new MockArpClient()),
         client_test_helper_(client_),
         link_monitor_(connection_, &dispatcher_, observer_.result_callback()),
-        interface_name_(kInterfaceName) {}
+        interface_name_(kInterfaceName) {
+    link_monitor_.io_handler_factory_ = &io_handler_factory_;
+  }
+
   virtual ~PassiveLinkMonitorTest() {}
 
   void SetUp() override {
@@ -121,6 +125,7 @@ class PassiveLinkMonitorTest : public Test {
 
  protected:
   MockEventDispatcher dispatcher_;
+  MockIOHandlerFactory io_handler_factory_;
   MockControl control_;
   NiceMock<MockDeviceInfo> device_info_;
   ResultCallbackObserver observer_;
@@ -138,7 +143,8 @@ TEST_F(PassiveLinkMonitorTest, StartFailedArpClient) {
 
 TEST_F(PassiveLinkMonitorTest, StartSuccess) {
   EXPECT_CALL(*client_, StartRequestListener()).WillOnce(Return(true));
-  EXPECT_CALL(dispatcher_, CreateReadyHandler(_, IOHandler::kModeInput, _))
+  EXPECT_CALL(io_handler_factory_,
+              CreateIOReadyHandler(_, IOHandler::kModeInput, _))
       .Times(1);
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _)).Times(1);
   EXPECT_TRUE(link_monitor_.Start(PassiveLinkMonitor::kDefaultMonitorCycles));

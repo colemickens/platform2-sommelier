@@ -17,6 +17,7 @@ namespace shill {
 class ArpClient;
 class EventDispatcher;
 class IOHandler;
+class IOHandlerFactory;
 
 // PassiveLinkMonitor tracks the status of a connection by monitoring ARP
 // requests received on the given interface. Each cycle consist of 25 seconds,
@@ -74,6 +75,7 @@ class PassiveLinkMonitor {
   // Number of cycles passed so far.
   int num_cycles_passed_;
 
+  IOHandlerFactory* io_handler_factory_;
   // IOCallback that fires when the socket associated with our ArpClient
   // has a packet to be received.  Calls ReceiveRequest().
   std::unique_ptr<IOHandler> receive_request_handler_;
