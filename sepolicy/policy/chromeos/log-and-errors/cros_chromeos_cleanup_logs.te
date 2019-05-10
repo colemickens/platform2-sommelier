@@ -2,4 +2,11 @@ type cros_chromeos_cleanup_logs, chromeos_domain, domain, cros_log_file_creator_
 
 permissive cros_chromeos_cleanup_logs;
 
+# We can also have a transition directly from init at bootup
+# That means we won't magically get these from cros_periodic_scheduler
+exec_coreutils(cros_chromeos_cleanup_logs);
+use_init_fd(cros_chromeos_cleanup_logs);
+log_writer(cros_chromeos_cleanup_logs);
+
 domain_auto_trans(cros_periodic_scheduler, cros_chromeos_cleanup_logs_exec, cros_chromeos_cleanup_logs);
+domain_auto_trans(cros_init, cros_chromeos_cleanup_logs_exec, cros_chromeos_cleanup_logs);
