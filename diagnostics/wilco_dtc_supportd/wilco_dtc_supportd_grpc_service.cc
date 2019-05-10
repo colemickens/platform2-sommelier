@@ -264,6 +264,15 @@ void WilcoDtcSupportdGrpcService::GetProcData(
     case grpc_api::GetProcDataRequest::FILE_NET_DEV:
       AddFileDump(base::FilePath("proc/net/dev"), reply->mutable_file_dump());
       break;
+    case grpc_api::GetProcDataRequest::FILE_DISKSTATS:
+      AddFileDump(base::FilePath("proc/diskstats"), reply->mutable_file_dump());
+      break;
+    case grpc_api::GetProcDataRequest::FILE_CPUINFO:
+      AddFileDump(base::FilePath("proc/cpuinfo"), reply->mutable_file_dump());
+      break;
+    case grpc_api::GetProcDataRequest::FILE_VMSTAT:
+      AddFileDump(base::FilePath("proc/vmstat"), reply->mutable_file_dump());
+      break;
     default:
       LOG(ERROR) << "GetProcData gRPC request type unset or invalid: "
                  << request->type();
@@ -292,6 +301,26 @@ void WilcoDtcSupportdGrpcService::GetSysfsData(
       break;
     case grpc_api::GetSysfsDataRequest::FIRMWARE_DMI_TABLES:
       AddDirectoryDump(base::FilePath("sys/firmware/dmi/tables/"),
+                       reply->mutable_file_dump());
+      break;
+    case grpc_api::GetSysfsDataRequest::CLASS_POWER_SUPPLY:
+      AddDirectoryDump(base::FilePath("sys/class/power_supply/"),
+                       reply->mutable_file_dump());
+      break;
+    case grpc_api::GetSysfsDataRequest::CLASS_BACKLIGHT:
+      AddDirectoryDump(base::FilePath("sys/class/backlight/"),
+                       reply->mutable_file_dump());
+      break;
+    case grpc_api::GetSysfsDataRequest::CLASS_NETWORK:
+      AddDirectoryDump(base::FilePath("sys/class/net/"),
+                       reply->mutable_file_dump());
+      break;
+    case grpc_api::GetSysfsDataRequest::CLASS_BLUETOOTH:
+      AddDirectoryDump(base::FilePath("sys/class/bluetooth"),
+                       reply->mutable_file_dump());
+      break;
+    case grpc_api::GetSysfsDataRequest::DEVICES_SYSTEM_CPU:
+      AddDirectoryDump(base::FilePath("sys/devices/system/cpu/"),
                        reply->mutable_file_dump());
       break;
     default:
