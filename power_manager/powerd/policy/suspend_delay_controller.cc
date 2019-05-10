@@ -28,9 +28,16 @@ SuspendDelayController::SuspendDelayController(
     : description_(description),
       next_delay_id_(initial_delay_id),
       current_suspend_id_(0),
-      max_delay_timeout_(max_delay_timeout) {}
+      max_delay_timeout_(max_delay_timeout) {
+  DCHECK_LT(dark_resume_min_delay_, max_delay_timeout_);
+}
 
 SuspendDelayController::~SuspendDelayController() {}
+
+bool SuspendDelayController::ReadyForSuspend() const {
+  return delay_ids_being_waited_on_.empty() &&
+         !min_delay_expiration_timer_.IsRunning();
+}
 
 void SuspendDelayController::AddObserver(SuspendDelayObserver* observer) {
   DCHECK(observer);
@@ -120,7 +127,8 @@ void SuspendDelayController::HandleDBusClientDisconnected(
   }
 }
 
-void SuspendDelayController::PrepareForSuspend(int suspend_id) {
+void SuspendDelayController::PrepareForSuspend(int suspend_id,
+                                               bool in_dark_resume) {
   current_suspend_id_ = suspend_id;
 
   size_t old_count = delay_ids_being_waited_on_.size();
@@ -133,17 +141,27 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id) {
             << current_suspend_id_ << " with "
             << delay_ids_being_waited_on_.size() << " pending delay(s) and "
             << old_count << " outstanding delay(s) from previous request";
-  if (delay_ids_being_waited_on_.empty()) {
+
+  const bool waiting = !delay_ids_being_waited_on_.empty();
+
+  if (in_dark_resume) {
+    min_delay_expiration_timer_.Start(
+        FROM_HERE, dark_resume_min_delay_, this,
+        &SuspendDelayController::OnMinDelayExpiration);
+  } else if (!waiting) {
     PostNotifyObserversTask(current_suspend_id_);
-  } else {
+  }
+
+  if (waiting) {
     base::TimeDelta max_timeout;
     for (DelayInfoMap::const_iterator it = registered_delays_.begin();
          it != registered_delays_.end(); ++it) {
       max_timeout = std::max(max_timeout, it->second.timeout);
     }
     max_timeout = std::min(max_timeout, max_delay_timeout_);
-    delay_expiration_timer_.Start(FROM_HERE, max_timeout, this,
-                                  &SuspendDelayController::OnDelayExpiration);
+    max_delay_expiration_timer_.Start(
+        FROM_HERE, max_timeout, this,
+        &SuspendDelayController::OnMaxDelayExpiration);
   }
 }
 
@@ -151,7 +169,8 @@ void SuspendDelayController::FinishSuspend(int suspend_id) {
   if (suspend_id != current_suspend_id_)
     return;
 
-  delay_expiration_timer_.Stop();
+  max_delay_expiration_timer_.Stop();
+  min_delay_expiration_timer_.Stop();
   delay_ids_being_waited_on_.clear();
 }
 
@@ -180,13 +199,14 @@ void SuspendDelayController::RemoveDelayFromWaitList(int delay_id) {
     return;
 
   delay_ids_being_waited_on_.erase(delay_id);
-  if (delay_ids_being_waited_on_.empty()) {
-    delay_expiration_timer_.Stop();
+  if (delay_ids_being_waited_on_.empty() &&
+      !min_delay_expiration_timer_.IsRunning()) {
+    max_delay_expiration_timer_.Stop();
     PostNotifyObserversTask(current_suspend_id_);
   }
 }
 
-void SuspendDelayController::OnDelayExpiration() {
+void SuspendDelayController::OnMaxDelayExpiration() {
   std::string tardy_delays;
   for (std::set<int>::const_iterator it = delay_ids_being_waited_on_.begin();
        it != delay_ids_being_waited_on_.end(); ++it) {
@@ -204,6 +224,13 @@ void SuspendDelayController::OnDelayExpiration() {
 
   delay_ids_being_waited_on_.clear();
   PostNotifyObserversTask(current_suspend_id_);
+}
+
+void SuspendDelayController::OnMinDelayExpiration() {
+  if (delay_ids_being_waited_on_.empty()) {
+    max_delay_expiration_timer_.Stop();
+    PostNotifyObserversTask(current_suspend_id_);
+  }
 }
 
 void SuspendDelayController::PostNotifyObserversTask(int suspend_id) {

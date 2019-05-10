@@ -39,7 +39,11 @@ class SuspendDelayController {
   static constexpr base::TimeDelta kDefaultMaxSuspendDelayTimeout =
       base::TimeDelta::FromSeconds(20);
 
-  bool ready_for_suspend() const { return delay_ids_being_waited_on_.empty(); }
+  bool ReadyForSuspend() const;
+
+  void set_dark_resume_min_delay_for_testing(const base::TimeDelta& min_delay) {
+    dark_resume_min_delay_ = min_delay;
+  }
 
   // Adds or removes an observer that will be notified when it's safe to
   // suspend.
@@ -65,8 +69,10 @@ class SuspendDelayController {
   void HandleDBusClientDisconnected(const std::string& client);
 
   // Called when suspend is desired.  Updates |current_suspend_id_| and
-  // |delays_being_waited_on_| and notifies clients that suspend is imminent.
-  void PrepareForSuspend(int suspend_id);
+  // |delays_being_waited_on_| and notifies clients that suspend is imminent. If
+  // |in_dark_resume| is true, also starts a timer for
+  // |dark_resume_min_delay_|.
+  void PrepareForSuspend(int suspend_id, bool in_dark_resume);
 
   // Stops |suspend_id| if it is in-progress, i.e. it matches
   // |current_suspend_id_|. This really just entails stopping
@@ -88,6 +94,12 @@ class SuspendDelayController {
     std::string description;
   };
 
+  // Minimum time that the controller will wait before resuspending on dark
+  // resume. This delay helps for external monitor enumeration when the
+  // device dark resumes on hot plug detect.
+  static constexpr base::TimeDelta kDarkResumeMinDelayTimeout =
+      base::TimeDelta::FromSeconds(5);
+
   // Returns a substring to use in log messages to describe the types of
   // suspends controlled by this object. If |description_| is non-empty,
   // |description_| + " suspend"; otherwise, just "suspend".
@@ -101,15 +113,22 @@ class SuspendDelayController {
   void UnregisterDelayInternal(int delay_id);
 
   // Removes |delay_id| from |delay_ids_being_waited_on_|.  If the set goes from
-  // non-empty to empty, cancels the delay expiration timeout and notifies
-  // observers that it's safe to to suspend.
+  // non-empty to empty and |min_delay_expiration_timer_| is not running,
+  // cancels the max delay expiration timeout and notifies observers that it's
+  // safe to to suspend.
   void RemoveDelayFromWaitList(int delay_id);
 
-  // Called by |delay_expiration_timer_| after a PrepareForSuspend() call if
+  // Called by |max_delay_expiration_timer_| after a PrepareForSuspend() call if
   // HandleSuspendReadiness() isn't invoked for all registered delays before the
   // maximum delay timeout has elapsed.  Notifies observers that it's safe to
   // suspend.
-  void OnDelayExpiration();
+  void OnMaxDelayExpiration();
+
+  // Called on |min_delay_expiration_timer_| expiry if armed by
+  // PrepareForSuspend() call. If HandleSuspendReadiness() has been invoked for
+  // all registered suspend delays, notifies observers that it's safe to
+  // suspend.
+  void OnMinDelayExpiration();
 
   // Posts a NotifyObservers() call to the message loop.
   void PostNotifyObserversTask(int suspend_id);
@@ -144,8 +163,15 @@ class SuspendDelayController {
   // Used to invoke NotifyObservers().
   base::OneShotTimer notify_observers_timer_;
 
-  // Used to invoke OnDelayExpiration().
-  base::OneShotTimer delay_expiration_timer_;
+  // Used to invoke OnMaxDelayExpiration().
+  base::OneShotTimer max_delay_expiration_timer_;
+
+  // Used to invoke OnMinDelayExpiration().
+  base::OneShotTimer min_delay_expiration_timer_;
+
+  // Defaulted to |kDarkResumeMinDelayTimeout|. Overridden for test
+  // cases. Note that this timer is armed only on dark resume.
+  base::TimeDelta dark_resume_min_delay_ = kDarkResumeMinDelayTimeout;
 
   base::ObserverList<SuspendDelayObserver> observers_;
 

@@ -72,16 +72,16 @@ void Suspender::Init(
       initial_id, "", SuspendDelayController::kDefaultMaxSuspendDelayTimeout));
   suspend_delay_controller_->AddObserver(this);
 
-  // Default value same as regular suspend timeout in case this pref isn't
-  // provided.
-  base::TimeDelta max_dark_suspend_delay_timeout =
-      SuspendDelayController::kDefaultMaxSuspendDelayTimeout;
+  base::TimeDelta max_dark_suspend_delay_timeout;
   int64_t max_dark_suspend_delay_timeout_ms;
-  if (prefs->GetInt64(kMaxDarkSuspendDelayTimeoutMsPref,
-                      &max_dark_suspend_delay_timeout_ms)) {
+  prefs->GetInt64(kMaxDarkSuspendDelayTimeoutMsPref,
+                  &max_dark_suspend_delay_timeout_ms);
+  // Default value same as regular suspend timeout if the pref isn't
+  // provided or if the provided value is less than the default.
+  if (max_dark_suspend_delay_timeout <
+      SuspendDelayController::kDefaultMaxSuspendDelayTimeout)
     max_dark_suspend_delay_timeout =
-        base::TimeDelta::FromMilliseconds(max_dark_suspend_delay_timeout_ms);
-  }
+        SuspendDelayController::kDefaultMaxSuspendDelayTimeout;
   const int initial_dark_id = delegate_->GetInitialDarkSuspendId();
   dark_suspend_id_ = initial_dark_id - 1;
   dark_suspend_delay_controller_.reset(new SuspendDelayController(
@@ -475,6 +475,8 @@ Suspender::State Suspender::HandleWakeEventInSuspend(Event event) {
 }
 
 void Suspender::StartRequest() {
+  DCHECK(!dark_resume_->InDarkResume());
+
   suspend_request_id_++;
   LOG(INFO) << "Starting request " << suspend_request_id_;
 
@@ -496,7 +498,7 @@ void Suspender::StartRequest() {
   // set the backlight level to 0 before Chrome turns the display on in response
   // to the signal.
   delegate_->PrepareToSuspend();
-  suspend_delay_controller_->PrepareForSuspend(suspend_request_id_);
+  suspend_delay_controller_->PrepareForSuspend(suspend_request_id_, false);
   dark_resume_->PrepareForSuspendRequest();
   delegate_->SetSuspendAnnounced(true);
 
@@ -632,7 +634,7 @@ Suspender::State Suspender::HandleDarkResume(Delegate::SuspendResult result) {
 
   LOG(INFO) << "Notifying registered dark suspend delays about "
             << dark_suspend_id_;
-  dark_suspend_delay_controller_->PrepareForSuspend(dark_suspend_id_);
+  dark_suspend_delay_controller_->PrepareForSuspend(dark_suspend_id_, true);
   EmitDarkSuspendImminentSignal();
 
   return State::WAITING_FOR_DARK_SUSPEND_DELAYS;

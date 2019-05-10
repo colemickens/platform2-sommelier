@@ -101,134 +101,134 @@ class SuspendDelayControllerTest : public ::testing::Test {
 TEST_F(SuspendDelayControllerTest, NoDelays) {
   // The controller should say that it's initially ready to suspend when no
   // delays have been registered.
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // The controller should still say that it's ready to suspend after we request
   // suspending -- there are no delays to wait for.
   const int kSuspendId = 5;
-  controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  controller_.PrepareForSuspend(kSuspendId, false);
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // The observer should be notified that it's safe to suspend.
   EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 }
 
 TEST_F(SuspendDelayControllerTest, SingleDelay) {
   // Register a delay.
   const std::string kClient = "client";
   int delay_id = RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // A SuspendImminent signal should be emitted after suspending is requested.
   // The controller shouldn't report readiness now; it's waiting on the delay.
   const int kSuspendId = 5;
-  controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_FALSE(controller_.ready_for_suspend());
+  controller_.PrepareForSuspend(kSuspendId, false);
+  EXPECT_FALSE(controller_.ReadyForSuspend());
 
   // Tell the controller that the delay is ready and check that the controller
   // reports readiness now.
   HandleSuspendReadiness(delay_id, kSuspendId, kClient);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
   EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 }
 
 TEST_F(SuspendDelayControllerTest, UnregisterDelayBeforeRequestingSuspend) {
   // Register a delay, but unregister it immediately.
   const std::string kClient = "client";
   int delay_id = RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
   UnregisterSuspendDelay(delay_id, kClient);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // The controller should immediately report readiness.
   const int kSuspendId = 5;
-  controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  controller_.PrepareForSuspend(kSuspendId, false);
+  EXPECT_TRUE(controller_.ReadyForSuspend());
   EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 }
 
 TEST_F(SuspendDelayControllerTest, UnregisterDelayAfterRequestingSuspend) {
   // Register a delay.
   const std::string kClient = "client";
   int delay_id = RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // Request suspending.
   const int kSuspendId = 5;
-  controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_FALSE(controller_.ready_for_suspend());
+  controller_.PrepareForSuspend(kSuspendId, false);
+  EXPECT_FALSE(controller_.ReadyForSuspend());
 
   // If the delay is unregistered while the controller is waiting for it, the
   // controller should start reporting readiness.
   UnregisterSuspendDelay(delay_id, kClient);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
   EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 }
 
 TEST_F(SuspendDelayControllerTest, RegisterDelayAfterRequestingSuspend) {
   // Request suspending before any delays have been registered.
   const int kSuspendId = 5;
-  controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  controller_.PrepareForSuspend(kSuspendId, false);
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // Register a delay now.  The controller should still report readiness.
   const std::string kClient = "client";
   int delay_id = RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
   EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // Request suspending again.  The controller should say it isn't ready now.
   const int kNextSuspendId = 6;
-  controller_.PrepareForSuspend(kNextSuspendId);
-  EXPECT_FALSE(controller_.ready_for_suspend());
+  controller_.PrepareForSuspend(kNextSuspendId, false);
+  EXPECT_FALSE(controller_.ReadyForSuspend());
 
   HandleSuspendReadiness(delay_id, kNextSuspendId, kClient);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
   EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 }
 
 TEST_F(SuspendDelayControllerTest, Timeout) {
   // Register a delay with a short timeout.
   const std::string kClient = "client";
   RegisterSuspendDelay(base::TimeDelta::FromMilliseconds(8), kClient);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // The controller should report readiness due to the timeout being hit.
   const int kSuspendId = 5;
-  controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_FALSE(controller_.ready_for_suspend());
+  controller_.PrepareForSuspend(kSuspendId, false);
+  EXPECT_FALSE(controller_.ReadyForSuspend());
   EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 }
 
 TEST_F(SuspendDelayControllerTest, FinishRequest) {
   const std::string kClient = "client";
   RegisterSuspendDelay(base::TimeDelta::FromMilliseconds(1), kClient);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
   const int kSuspendId = 5;
-  controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_FALSE(controller_.ready_for_suspend());
+  controller_.PrepareForSuspend(kSuspendId, false);
+  EXPECT_FALSE(controller_.ReadyForSuspend());
 
   // FinishSuspend() calls with bogus IDs should be ignored.
   controller_.FinishSuspend(kSuspendId - 1);
   controller_.FinishSuspend(kSuspendId + 1);
-  EXPECT_FALSE(controller_.ready_for_suspend());
+  EXPECT_FALSE(controller_.ReadyForSuspend());
 
   // The controller should report that the system is ready to suspend as soon as
   // the suspend request is cancelled.
   controller_.FinishSuspend(kSuspendId);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // The timer should also be stopped.
   observer_.set_timeout(base::TimeDelta::FromMilliseconds(2));
   EXPECT_FALSE(observer_.RunUntilReadyForSuspend());
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 }
 
 TEST_F(SuspendDelayControllerTest, DisconnectClientBeforeRequestingSuspend) {
@@ -236,60 +236,60 @@ TEST_F(SuspendDelayControllerTest, DisconnectClientBeforeRequestingSuspend) {
   // that registered the delay has disconnected.
   const std::string kClient = "client";
   RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
   controller_.HandleDBusClientDisconnected(kClient);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // The delay should have been removed.
   const int kSuspendId = 5;
-  controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  controller_.PrepareForSuspend(kSuspendId, false);
+  EXPECT_TRUE(controller_.ReadyForSuspend());
   EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 }
 
 TEST_F(SuspendDelayControllerTest, DisconnectClientAfterRequestingSuspend) {
   const std::string kClient = "client";
   RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 
   const int kSuspendId = 5;
-  controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_FALSE(controller_.ready_for_suspend());
+  controller_.PrepareForSuspend(kSuspendId, false);
+  EXPECT_FALSE(controller_.ReadyForSuspend());
 
   // If the client is disconnected while the controller is waiting, it should
   // report readiness.
   controller_.HandleDBusClientDisconnected(kClient);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
   EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 }
 
 TEST_F(SuspendDelayControllerTest, MultipleSuspendRequests) {
   const std::string kClient = "client";
   int delay_id = RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // Request suspending.
   const int kSuspendId = 5;
-  controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_FALSE(controller_.ready_for_suspend());
+  controller_.PrepareForSuspend(kSuspendId, false);
+  EXPECT_FALSE(controller_.ReadyForSuspend());
 
   // Before confirming that the delay is ready, request suspending again.
   const int kNextSuspendId = 6;
-  controller_.PrepareForSuspend(kNextSuspendId);
-  EXPECT_FALSE(controller_.ready_for_suspend());
+  controller_.PrepareForSuspend(kNextSuspendId, false);
+  EXPECT_FALSE(controller_.ReadyForSuspend());
 
   // Report readiness, but do it on behalf of the original suspend attempt.  The
   // controller shouldn't say it's ready yet.
   HandleSuspendReadiness(delay_id, kSuspendId, kClient);
-  EXPECT_FALSE(controller_.ready_for_suspend());
+  EXPECT_FALSE(controller_.ReadyForSuspend());
 
   // Now report readiness on behalf of the second suspend attempt.
   HandleSuspendReadiness(delay_id, kNextSuspendId, kClient);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
   EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 }
 
 TEST_F(SuspendDelayControllerTest, MultipleDelays) {
@@ -297,24 +297,82 @@ TEST_F(SuspendDelayControllerTest, MultipleDelays) {
   const std::string kClient1 = "client1";
   int delay_id1 =
       RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient1);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 
   const std::string kClient2 = "client2";
   int delay_id2 =
       RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient2);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // After getting a suspend request, the controller shouldn't report readiness
   // until both delays have confirmed their readiness.
   const int kSuspendId = 5;
-  controller_.PrepareForSuspend(kSuspendId);
-  EXPECT_FALSE(controller_.ready_for_suspend());
+  controller_.PrepareForSuspend(kSuspendId, false);
+  EXPECT_FALSE(controller_.ReadyForSuspend());
   HandleSuspendReadiness(delay_id2, kSuspendId, kClient2);
-  EXPECT_FALSE(controller_.ready_for_suspend());
+  EXPECT_FALSE(controller_.ReadyForSuspend());
   HandleSuspendReadiness(delay_id1, kSuspendId, kClient1);
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
   EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
-  EXPECT_TRUE(controller_.ready_for_suspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
+}
+
+// Controller should wait for |kDarkResumeMinDelay| on dark resume when no
+// additional delays are registered.
+TEST_F(SuspendDelayControllerTest, DarkResumeNoExternalDelays) {
+  // The controller should say that it's initially ready to suspend when no
+  // delays have been registered.
+  EXPECT_TRUE(controller_.ReadyForSuspend());
+
+  const int kSuspendId = 5;
+  const base::TimeDelta kDarkResumeMinDelay =
+      base::TimeDelta::FromMilliseconds(5);
+  // The minimum delay controller is expected to wait when in dark resume before
+  // saying it is ready for suspend.
+  controller_.set_dark_resume_min_delay_for_testing(kDarkResumeMinDelay);
+
+  controller_.PrepareForSuspend(kSuspendId, true);
+  EXPECT_FALSE(controller_.ReadyForSuspend());
+
+  observer_.set_timeout(kDarkResumeMinDelay);
+  // The observer should be notified that it's safe to suspend after
+  // |kDarkResumeMinDelay| since no other delays are registered.
+  EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
+}
+
+// When a client requests a delay greater than |kDarkResumeMinDelay| controller
+// should wait for the client readiness (or its timeout) before saying it is
+// ready for suspend.
+TEST_F(SuspendDelayControllerTest, DarkResumeSingleDelay) {
+  // Register a delay.
+  const std::string kClient = "client";
+  int delay_id = RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient);
+  EXPECT_TRUE(controller_.ReadyForSuspend());
+
+  // Set dark resume min delay to 5 milliseconds.
+  const base::TimeDelta kDarkResumeMinDelay =
+      base::TimeDelta::FromMilliseconds(5);
+  controller_.set_dark_resume_min_delay_for_testing(kDarkResumeMinDelay);
+
+  // The controller shouldn't report readiness now; it's waiting on the both
+  // |kDarkResumeMinDelay| and registered client delay.
+  const int kSuspendId = 5;
+  controller_.PrepareForSuspend(kSuspendId, true);
+  EXPECT_FALSE(controller_.ReadyForSuspend());
+
+  // The observers should not be notified after |kDarkResumeMinDelay| as the
+  // registered client is not yet ready.
+  observer_.set_timeout(kDarkResumeMinDelay);
+  EXPECT_FALSE(observer_.RunUntilReadyForSuspend());
+  EXPECT_FALSE(controller_.ReadyForSuspend());
+
+  // Tell the controller that registered client is ready and check that the
+  // controller reports readiness now.
+  HandleSuspendReadiness(delay_id, kSuspendId, kClient);
+  EXPECT_TRUE(controller_.ReadyForSuspend());
+  EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
 }
 
 }  // namespace policy
