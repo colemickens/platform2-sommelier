@@ -1721,6 +1721,28 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
     return dbus_response;
   }
 
+  if (request.storage_location() == STORAGE_CRYPTOHOME_PLUGINVM) {
+    // Plugin VMs need to be unregistered before we can delete them.
+    VmId vm_id(request.cryptohome_id(), request.disk_path());
+    bool registered;
+    if (!VmpluginIsVmRegistered(vmplugin_service_proxy_, vm_id, &registered)) {
+      response.set_status(DISK_STATUS_FAILED);
+      response.set_failure_reason(
+          "failed to check Plugin VM registration status");
+      writer.AppendProtoAsArrayOfBytes(response);
+
+      return dbus_response;
+    }
+
+    if (registered && !VmpluginUnregisterVm(vmplugin_service_proxy_, vm_id)) {
+      response.set_status(DISK_STATUS_FAILED);
+      response.set_failure_reason("failed to unregister Plugin VM");
+      writer.AppendProtoAsArrayOfBytes(response);
+
+      return dbus_response;
+    }
+  }
+
   if (!base::DeleteFile(disk_path,
                         request.storage_location() ==
                             STORAGE_CRYPTOHOME_PLUGINVM /* recursive */)) {
