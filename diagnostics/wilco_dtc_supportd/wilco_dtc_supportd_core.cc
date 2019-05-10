@@ -178,6 +178,10 @@ void WilcoDtcSupportdCore::ShutDown(const base::Closure& on_shutdown) {
     client->Shutdown(barrier_closure);
   }
   ui_message_receiver_wilco_dtc_grpc_client_ = nullptr;
+
+  if (dbus_object_) {
+    dbus_object_->UnregisterAsync();
+  }
 }
 
 void WilcoDtcSupportdCore::RegisterDBusObjectsAsync(

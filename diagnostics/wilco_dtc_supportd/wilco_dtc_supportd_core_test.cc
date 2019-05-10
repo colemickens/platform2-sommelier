@@ -117,9 +117,52 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
  protected:
   WilcoDtcSupportdCoreTest() { InitializeMojo(); }
 
-  ~WilcoDtcSupportdCoreTest() { SetDBusShutdownExpectations(); }
+  void CreateCore(const std::vector<std::string>& grpc_service_uris,
+                  const std::string& ui_message_receiver_wilco_dtc_grpc_uri,
+                  const std::vector<std::string>& wilco_dtc_grpc_uris) {
+    core_ = std::make_unique<WilcoDtcSupportdCore>(
+        grpc_service_uris, ui_message_receiver_wilco_dtc_grpc_uri,
+        wilco_dtc_grpc_uris, &core_delegate_);
+  }
 
+  WilcoDtcSupportdCore* core() {
+    DCHECK(core_);
+    return core_.get();
+  }
+
+  MockWilcoDtcSupportdCoreDelegate* core_delegate() { return &core_delegate_; }
+
+ private:
+  // Initialize the Mojo subsystem.
+  void InitializeMojo() { mojo::edk::Init(); }
+
+  base::MessageLoop message_loop_;
+
+  StrictMock<MockWilcoDtcSupportdCoreDelegate> core_delegate_;
+
+  std::unique_ptr<WilcoDtcSupportdCore> core_;
+};
+
+}  // namespace
+
+// Test successful shutdown after failed start.
+TEST_F(WilcoDtcSupportdCoreTest, FailedStartAndSuccessfulShutdown) {
+  CreateCore({""}, "", {""});
+  EXPECT_FALSE(core()->Start());
+
+  base::RunLoop run_loop;
+  core()->ShutDown(run_loop.QuitClosure());
+  run_loop.Run();
+}
+
+namespace {
+
+// Tests for the WilcoDtcSupportdCore class which started successfully.
+class StartedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
+ protected:
   void SetUp() override {
+    ASSERT_NO_FATAL_FAILURE(WilcoDtcSupportdCoreTest::SetUp());
+
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
 
     wilco_dtc_supportd_grpc_uri_ = base::StringPrintf(
@@ -131,15 +174,13 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
     wilco_dtc_grpc_uri_ = base::StringPrintf(
         kWilcoDtcGrpcUriTemplate, temp_dir_.GetPath().value().c_str());
 
-    core_ = std::make_unique<WilcoDtcSupportdCore>(
-        std::vector<std::string>{wilco_dtc_supportd_grpc_uri_},
-        ui_message_receiver_wilco_dtc_grpc_uri_,
-        std::vector<std::string>{wilco_dtc_grpc_uri_}, &core_delegate_);
-    core_->set_root_dir_for_testing(temp_dir_.GetPath());
+    CreateCore({wilco_dtc_supportd_grpc_uri_},
+               ui_message_receiver_wilco_dtc_grpc_uri_, {wilco_dtc_grpc_uri_});
+    core()->set_root_dir_for_testing(temp_dir_.GetPath());
 
     SetUpEcEventService();
 
-    ASSERT_TRUE(core_->Start());
+    ASSERT_TRUE(core()->Start());
 
     SetUpEcEventServiceFifoWriteEnd();
 
@@ -151,17 +192,19 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
   }
 
   void TearDown() override {
+    SetDBusShutdownExpectations();
+
     base::RunLoop run_loop;
-    core_->ShutDown(run_loop.QuitClosure());
+    core()->ShutDown(run_loop.QuitClosure());
     run_loop.Run();
+
+    WilcoDtcSupportdCoreTest::TearDown();
   }
 
   const base::FilePath& temp_dir_path() const {
     DCHECK(temp_dir_.IsValid());
     return temp_dir_.GetPath();
   }
-
-  MockWilcoDtcSupportdCoreDelegate* core_delegate() { return &core_delegate_; }
 
   mojo::InterfacePtr<MojomWilcoDtcSupportdServiceFactory>*
   mojo_service_factory_interface_ptr() {
@@ -179,7 +222,7 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
   // initialized to point to the tested Mojo service.
   void SetSuccessMockBindWilcoDtcSupportdMojoService(
       FakeMojoFdGenerator* fake_mojo_fd_generator) {
-    EXPECT_CALL(core_delegate_,
+    EXPECT_CALL(*core_delegate(),
                 BindWilcoDtcSupportdMojoServiceFactoryImpl(_, _))
         .WillOnce(Invoke(
             [fake_mojo_fd_generator, this](
@@ -225,9 +268,6 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
   }
 
  private:
-  // Initialize the Mojo subsystem.
-  void InitializeMojo() { mojo::edk::Init(); }
-
   // Perform initialization of the D-Bus object exposed by the tested code.
   void SetUpDBus() {
     const dbus::ObjectPath kDBusObjectPath(kWilcoDtcSupportdServicePath);
@@ -262,7 +302,7 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
     // Run the tested code that exports D-Bus objects and methods.
     scoped_refptr<brillo::dbus_utils::AsyncEventSequencer> dbus_sequencer(
         new brillo::dbus_utils::AsyncEventSequencer());
-    core_->RegisterDBusObjectsAsync(dbus_bus_, dbus_sequencer.get());
+    core()->RegisterDBusObjectsAsync(dbus_bus_, dbus_sequencer.get());
 
     // Verify that required D-Bus methods are exported.
     EXPECT_FALSE(bootstrap_mojo_connection_dbus_method_.is_null());
@@ -271,11 +311,14 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
   // Set mock expectations for calls triggered during test destruction.
   void SetDBusShutdownExpectations() {
     EXPECT_CALL(*wilco_dtc_supportd_dbus_object_, Unregister());
+    // dbus::MockBus does not provide UnregisterExportedObject mock method.
+    // Real UnregisterExportedObject() called AssertOnOriginThread mock method.
+    EXPECT_CALL(*dbus_bus_, AssertOnOriginThread());
   }
 
   // Creates FIFO to emulates the EC event file used by EC event service.
   void SetUpEcEventService() {
-    core_->set_ec_event_service_fd_events_for_testing(POLLIN);
+    core()->set_ec_event_service_fd_events_for_testing(POLLIN);
     ASSERT_TRUE(base::CreateDirectory(ec_event_file_path().DirName()));
     ASSERT_EQ(mkfifo(ec_event_file_path().value().c_str(), 0600), 0);
   }
@@ -293,8 +336,6 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
   base::FilePath ec_event_file_path() const {
     return temp_dir_.GetPath().Append(kEcEventFilePath);
   }
-
-  base::MessageLoop message_loop_;
 
   base::ScopedTempDir temp_dir_;
 
@@ -324,10 +365,6 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
   // Must be initialized only after |WilcoDtcSupportdCore::Start()| call.
   base::ScopedFD ec_event_service_fd_;
 
-  StrictMock<MockWilcoDtcSupportdCoreDelegate> core_delegate_;
-
-  std::unique_ptr<WilcoDtcSupportdCore> core_;
-
   // Callback that the tested code exposed as the BootstrapMojoConnection D-Bus
   // method.
   dbus::ExportedObject::MethodCallCallback
@@ -340,7 +377,7 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
 
 // Test that the Mojo service gets successfully bootstrapped after the
 // BootstrapMojoConnection D-Bus method is called.
-TEST_F(WilcoDtcSupportdCoreTest, MojoBootstrapSuccess) {
+TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapSuccess) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
   SetSuccessMockBindWilcoDtcSupportdMojoService(&fake_mojo_fd_generator);
 
@@ -351,7 +388,7 @@ TEST_F(WilcoDtcSupportdCoreTest, MojoBootstrapSuccess) {
 
 // Test failure to bootstrap the Mojo service due to en error returned by
 // BindWilcoDtcSupportdMojoService() delegate method.
-TEST_F(WilcoDtcSupportdCoreTest, MojoBootstrapErrorToBind) {
+TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapErrorToBind) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
   EXPECT_CALL(*core_delegate(),
               BindWilcoDtcSupportdMojoServiceFactoryImpl(_, _))
@@ -366,7 +403,7 @@ TEST_F(WilcoDtcSupportdCoreTest, MojoBootstrapErrorToBind) {
 
 // Test that second attempt to bootstrap the Mojo service results in error and
 // the daemon shutdown.
-TEST_F(WilcoDtcSupportdCoreTest, MojoBootstrapErrorRepeated) {
+TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapErrorRepeated) {
   FakeMojoFdGenerator first_fake_mojo_fd_generator;
   SetSuccessMockBindWilcoDtcSupportdMojoService(&first_fake_mojo_fd_generator);
 
@@ -385,7 +422,7 @@ TEST_F(WilcoDtcSupportdCoreTest, MojoBootstrapErrorRepeated) {
 
 // Test that the daemon gets shut down when the previously bootstrapped Mojo
 // connection aborts.
-TEST_F(WilcoDtcSupportdCoreTest, MojoBootstrapSuccessThenAbort) {
+TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapSuccessThenAbort) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
   SetSuccessMockBindWilcoDtcSupportdMojoService(&fake_mojo_fd_generator);
 
@@ -406,10 +443,11 @@ namespace {
 // Tests for the WilcoDtcSupportdCore class with the already established Mojo
 // connection to the fake browser and gRPC communication with the fake
 // wilco_dtc.
-class BootstrappedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
+class BootstrappedWilcoDtcSupportdCoreTest
+    : public StartedWilcoDtcSupportdCoreTest {
  protected:
   void SetUp() override {
-    ASSERT_NO_FATAL_FAILURE(WilcoDtcSupportdCoreTest::SetUp());
+    ASSERT_NO_FATAL_FAILURE(StartedWilcoDtcSupportdCoreTest::SetUp());
 
     FakeMojoFdGenerator fake_mojo_fd_generator;
     SetSuccessMockBindWilcoDtcSupportdMojoService(&fake_mojo_fd_generator);
@@ -428,7 +466,7 @@ class BootstrappedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
   void TearDown() override {
     fake_wilco_dtc_.reset();
     fake_ui_message_receiver_wilco_dtc_.reset();
-    WilcoDtcSupportdCoreTest::TearDown();
+    StartedWilcoDtcSupportdCoreTest::TearDown();
   }
 
   FakeWilcoDtc* fake_ui_message_receiver_wilco_dtc() {
