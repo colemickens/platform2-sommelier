@@ -13,6 +13,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/net/byte_string.h"
+#include "shill/net/io_handler_factory.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/sockets.h"
 
@@ -38,6 +39,7 @@ const size_t IcmpSession::kTimeoutSeconds =
 IcmpSession::IcmpSession(EventDispatcher* dispatcher)
     : weak_ptr_factory_(this),
       dispatcher_(dispatcher),
+      io_handler_factory_(IOHandlerFactory::GetInstance()),
       icmp_(new Icmp()),
       echo_id_(kNextUniqueEchoId),
       current_sequence_number_(0),
@@ -65,7 +67,7 @@ bool IcmpSession::Start(const IPAddress& destination,
   if (!icmp_->Start(destination, interface_index)) {
     return false;
   }
-  echo_reply_handler_.reset(dispatcher_->CreateInputHandler(
+  echo_reply_handler_.reset(io_handler_factory_->CreateIOInputHandler(
       icmp_->socket(),
       Bind(&IcmpSession::OnEchoReplyReceived, weak_ptr_factory_.GetWeakPtr()),
       Bind(&IcmpSession::OnEchoReplyError, weak_ptr_factory_.GetWeakPtr())));

@@ -28,6 +28,7 @@
 namespace shill {
 
 class EventDispatcher;
+class IOHandlerFactory;
 class IPAddress;
 
 // The IcmpSession class encapsulates the task of performing a stateful exchange
@@ -123,6 +124,7 @@ class IcmpSession {
 
   base::WeakPtrFactory<IcmpSession> weak_ptr_factory_;
   EventDispatcher* dispatcher_;
+  IOHandlerFactory* io_handler_factory_;
   std::unique_ptr<Icmp> icmp_;
   const uint16_t echo_id_;  // unique ID for this object's echo request/replies
   uint16_t current_sequence_number_;
