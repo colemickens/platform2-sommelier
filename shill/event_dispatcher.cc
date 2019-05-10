@@ -46,17 +46,6 @@ void EventDispatcher::PostDelayedTask(const Location& location,
 // TODO(zqiu): Remove all reference to this function and use the
 // IOHandlerFactory function directly. Delete this function once
 // all references are removed.
-IOHandler* EventDispatcher::CreateInputHandler(
-    int fd,
-    const IOHandler::InputCallback& input_callback,
-    const IOHandler::ErrorCallback& error_callback) {
-  return io_handler_factory_->CreateIOInputHandler(
-          fd, input_callback, error_callback);
-}
-
-// TODO(zqiu): Remove all reference to this function and use the
-// IOHandlerFactory function directly. Delete this function once
-// all references are removed.
 IOHandler* EventDispatcher::CreateReadyHandler(
     int fd,
     IOHandler::ReadyMode mode,

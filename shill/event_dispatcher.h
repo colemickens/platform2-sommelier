@@ -35,11 +35,6 @@ class EventDispatcher {
   virtual void PostDelayedTask(const tracked_objects::Location& location,
                                const base::Closure& task, int64_t delay_ms);
 
-  virtual IOHandler* CreateInputHandler(
-      int fd,
-      const IOHandler::InputCallback& input_callback,
-      const IOHandler::ErrorCallback& error_callback);
-
   virtual IOHandler* CreateReadyHandler(
       int fd,
       IOHandler::ReadyMode mode,

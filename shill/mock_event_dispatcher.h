@@ -24,11 +24,6 @@ class MockEventDispatcher : public EventDispatcher {
   MOCK_METHOD3(PostDelayedTask, void(const tracked_objects::Location& location,
                                      const base::Closure& task,
                                      int64_t delay_ms));
-  MOCK_METHOD3(CreateInputHandler, IOHandler*(
-      int fd,
-      const IOHandler::InputCallback& input_callback,
-      const IOHandler::ErrorCallback& error_callback));
-
   MOCK_METHOD3(CreateReadyHandler,
                IOHandler*(int fd,
                           IOHandler::ReadyMode mode,
