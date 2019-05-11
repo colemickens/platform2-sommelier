@@ -52,6 +52,7 @@ static_library("sealed_storage") {
   ]
   sources = [
     "sealed_storage.cc",
+    "wrapper.cc",
   ]
   libs = [
     "trunks",

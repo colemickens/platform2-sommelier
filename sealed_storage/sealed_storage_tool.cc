@@ -15,6 +15,7 @@
 #include <brillo/syslog_logging.h>
 
 #include "sealed_storage/sealed_storage.h"
+#include "sealed_storage/wrapper.h"
 
 namespace {
 
@@ -138,6 +139,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(extend, false, "extend PCR");
   DEFINE_bool(check, false, "check if state matches policy");
   DEFINE_bool(test, false, "run a test with the specified boot mode");
+  DEFINE_bool(wrapper, false, "use wrapper function when unsealing");
 
   brillo::FlagHelper::Init(argc, argv, "sealed_storage_tool");
 
@@ -240,12 +242,35 @@ int main(int argc, char** argv) {
       LOG(ERROR) << "Failed to read from " << FLAGS_blob;
       return 1;
     }
-    sealed_storage::Data blob(input.begin(), input.end());
-    auto data = storage.Unseal(blob);
-    if (!data) {
-      return 1;
+    std::string output;
+    if (FLAGS_wrapper) {
+      std::vector<uint8_t> blob(input.begin(), input.end());
+      std::vector<uint8_t> data;
+      bool verified_boot_mode = false;
+      if (FLAGS_verified_boot) {
+        verified_boot_mode = true;
+      } else if (FLAGS_dev) {
+        LOG(ERROR) << "dev mode not supported with wrapper";
+        return 1;
+      }
+
+      size_t output_size = 2 * blob.size();
+      data.resize(output_size);
+      if (!sealed_storage::wrapper::Unseal(verified_boot_mode, FLAGS_policy_pcr,
+                                           blob.data(), blob.size(),
+                                           data.data(), &output_size)) {
+        return 1;
+      }
+      data.resize(output_size);
+      output = std::string(data.data(), data.data() + data.size());
+    } else {
+      sealed_storage::Data blob(input.begin(), input.end());
+      auto data = storage.Unseal(blob);
+      if (!data) {
+        return 1;
+      }
+      output = std::string(data->begin(), data->end());
     }
-    std::string output(data->begin(), data->end());
     if (!brillo::WriteStringToFile(base::FilePath(FLAGS_data), output)) {
       LOG(ERROR) << "Failed to write to " << FLAGS_data;
       return 1;
