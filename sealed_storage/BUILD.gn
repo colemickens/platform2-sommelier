@@ -8,6 +8,7 @@ group("all") {
   deps = [
     ":sealed_storage",
     ":sealed_storage_tool",
+    ":sealed_storage_wrapper",
   ]
   if (use.test) {
     deps += [ ":sealed_storage_testrunner" ]
@@ -59,6 +60,12 @@ static_library("sealed_storage") {
     "tpm_manager",
   ]
   all_dependent_configs = [ ":sealed_storage_dependent_config" ]
+}
+
+shared_library("sealed_storage_wrapper") {
+  deps = [
+    ":sealed_storage",
+  ]
 }
 
 executable("sealed_storage_tool") {
