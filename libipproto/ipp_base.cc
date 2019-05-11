@@ -4,11 +4,9 @@
 
 #include "libipproto/ipp_base.h"
 
-#include <cstdint>
-#include <memory>
-#include <vector>
-
-#include "libipproto/ipp_protocol.h"
+#include "libipproto/ipp_frame.h"
+#include "libipproto/ipp_frame_builder.h"
+#include "libipproto/ipp_parser.h"
 
 namespace ipp {
 
@@ -56,25 +54,47 @@ void ClearPackage(Package* package) {
   }
 }
 
-Version GetVersion(const Protocol* protocol) {
-  uint16_t v = protocol->major_version_number_;
+Version GetVersion(const Frame* frame) {
+  uint16_t v = frame->major_version_number_;
   v <<= 8;
-  v += protocol->minor_version_number_;
+  v += frame->minor_version_number_;
   return static_cast<Version>(v);
 }
 
-void SetVersion(Protocol* protocol, Version version) {
+void SetVersion(Version version, Frame* frame) {
   uint16_t v = static_cast<uint16_t>(version);
-  protocol->major_version_number_ = (v >> 8);
-  protocol->minor_version_number_ = (v & 0xff);
+  frame->major_version_number_ = (v >> 8);
+  frame->minor_version_number_ = (v & 0xff);
 }
 
 }  // namespace
 
+// internal structure with all data
+struct Protocol {
+  // internal buffer for current frame
+  Frame frame;
+  // log with errors
+  std::vector<Log> log;
+  // parser and frame builder, both work on the frame and the log defined above
+  Parser parser;
+  FrameBuilder frame_builder;
+  // constructor
+  Protocol() : parser(&frame, &log), frame_builder(&frame, &log) {}
+  // resets everything to initial state
+  void ResetContent() {
+    frame.operation_id_or_status_code_ = 0;
+    frame.groups_tags_.clear();
+    frame.groups_content_.clear();
+    frame.data_.clear();
+    log.clear();
+    parser.ResetContent();
+  }
+};
+
 Client::Client(Version version, int32_t request_id)
     : protocol_(std::make_unique<Protocol>()) {
   SetVersionNumber(version);
-  protocol_->request_id_ = request_id;
+  protocol_->frame.request_id_ = request_id;
 }
 
 // Destructor must be defined here, because we do not have definition of
@@ -82,61 +102,61 @@ Client::Client(Version version, int32_t request_id)
 Client::~Client() = default;
 
 Version Client::GetVersionNumber() const {
-  return GetVersion(protocol_.get());
+  return GetVersion(&protocol_->frame);
 }
 
 void Client::SetVersionNumber(Version version) {
-  SetVersion(protocol_.get(), version);
+  SetVersion(version, &protocol_->frame);
 }
 
 void Client::BuildRequestFrom(Request* request) {
   protocol_->ResetContent();
   SetDefaultPackageAttributes(request);
-  ++(protocol_->request_id_);
-  protocol_->operation_id_or_status_code_ =
+  ++(protocol_->frame.request_id_);
+  protocol_->frame.operation_id_or_status_code_ =
       static_cast<uint16_t>(request->GetOperationId());
-  protocol_->LoadFromPackage(request);
+  protocol_->frame_builder.BuildFrameFromPackage(request);
 }
 
 bool Client::WriteRequestFrameTo(std::vector<uint8_t>* data) const {
   if (data == nullptr)
     return false;
   data->resize(GetFrameLength());
-  return protocol_->WriteToFrame(data->data());
+  return protocol_->frame_builder.WriteFrameToBuffer(data->data());
 }
 
 std::size_t Client::GetFrameLength() const {
-  return protocol_->GetFrameLength();
+  return protocol_->frame_builder.GetFrameLength();
 }
 
 bool Client::ReadResponseFrameFrom(const uint8_t* ptr,
                                    const uint8_t* const buf_end) {
   protocol_->ResetContent();
-  return protocol_->ReadFromFrame(ptr, buf_end);
+  return protocol_->parser.ReadFrameFromBuffer(ptr, buf_end);
 }
 
 bool Client::ReadResponseFrameFrom(const std::vector<uint8_t>& data) {
   protocol_->ResetContent();
   const uint8_t* ptr = (data.empty()) ? (nullptr) : (&(data[0]));
-  return protocol_->ReadFromFrame(ptr, ptr + data.size());
+  return protocol_->parser.ReadFrameFromBuffer(ptr, ptr + data.size());
 }
 
 bool Client::ParseResponseAndSaveTo(Response* response,
                                     bool log_unknown_values) {
   ClearPackage(response);
   response->StatusCode() =
-      static_cast<Status>(protocol_->operation_id_or_status_code_);
-  return protocol_->SaveToPackage(response, log_unknown_values);
+      static_cast<Status>(protocol_->frame.operation_id_or_status_code_);
+  return protocol_->parser.SaveFrameToPackage(log_unknown_values, response);
 }
 
 const std::vector<Log>& Client::GetErrorLog() const {
-  return protocol_->errors_;
+  return protocol_->log;
 }
 
 Server::Server(Version version, int32_t request_id)
     : protocol_(std::make_unique<Protocol>()) {
   SetVersionNumber(version);
-  protocol_->request_id_ = request_id;
+  protocol_->frame.request_id_ = request_id;
 }
 
 // Destructor must be defined here, because we do not have definition of
@@ -144,55 +164,56 @@ Server::Server(Version version, int32_t request_id)
 Server::~Server() = default;
 
 Version Server::GetVersionNumber() const {
-  return GetVersion(protocol_.get());
+  return GetVersion(&protocol_->frame);
 }
 
 void Server::SetVersionNumber(Version version) {
-  SetVersion(protocol_.get(), version);
+  SetVersion(version, &protocol_->frame);
 }
 
 bool Server::ReadRequestFrameFrom(const uint8_t* ptr,
                                   const uint8_t* const buf_end) {
   protocol_->ResetContent();
-  return protocol_->ReadFromFrame(ptr, buf_end);
+  return protocol_->parser.ReadFrameFromBuffer(ptr, buf_end);
 }
 
 bool Server::ReadRequestFrameFrom(const std::vector<uint8_t>& data) {
   protocol_->ResetContent();
-  return protocol_->ReadFromFrame(data.data(), data.data() + data.size());
+  return protocol_->parser.ReadFrameFromBuffer(data.data(),
+                                               data.data() + data.size());
 }
 
 Operation Server::GetOperationId() const {
-  return static_cast<Operation>(protocol_->operation_id_or_status_code_);
+  return static_cast<Operation>(protocol_->frame.operation_id_or_status_code_);
 }
 
 bool Server::ParseRequestAndSaveTo(Request* request, bool log_unknown_values) {
   ClearPackage(request);
-  return protocol_->SaveToPackage(request, log_unknown_values);
+  return protocol_->parser.SaveFrameToPackage(log_unknown_values, request);
 }
 
 void Server::BuildResponseFrom(Response* package) {
   protocol_->ResetContent();
   SetDefaultPackageAttributes(package);
   SetDefaultResponseAttributes(package);
-  protocol_->operation_id_or_status_code_ =
+  protocol_->frame.operation_id_or_status_code_ =
       static_cast<uint16_t>(package->StatusCode());
-  protocol_->LoadFromPackage(package);
+  protocol_->frame_builder.BuildFrameFromPackage(package);
 }
 
 std::size_t Server::GetFrameLength() const {
-  return protocol_->GetFrameLength();
+  return protocol_->frame_builder.GetFrameLength();
 }
 
 bool Server::WriteResponseFrameTo(std::vector<uint8_t>* data) const {
   if (data == nullptr)
     return false;
   data->resize(GetFrameLength());
-  return protocol_->WriteToFrame(data->data());
+  return protocol_->frame_builder.WriteFrameToBuffer(data->data());
 }
 
 const std::vector<Log>& Server::GetErrorLog() const {
-  return protocol_->errors_;
+  return protocol_->log;
 }
 
 }  // namespace ipp

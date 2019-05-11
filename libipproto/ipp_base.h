@@ -85,8 +85,8 @@ struct Log {
   std::string parser_context;
 };
 
-// Forward declaration of internal class.
-class Protocol;
+// Forward declaration of internal structure.
+struct Protocol;
 
 // This is a main class to build/parse frames from the client side.
 class IPP_EXPORT Client {
@@ -207,8 +207,8 @@ class IPP_EXPORT Server {
   // last entry in the error log contains a reason of the failure.
   bool ParseRequestAndSaveTo(Request* request, bool log_unknown_values = false);
 
-  // Clears internal buffer and error log, fields with the protocol version and
-  // request_id is left untouched.
+  // Clears internal buffer and error log, fields with the protocol version
+  // and request_id is left untouched.
   // Then fills internal buffer with the content defined in the given
   // Response object. The given object may be modified by the method,
   // the following attributes are set automatically if their state is

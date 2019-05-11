@@ -5,7 +5,6 @@
 #include "libipproto/ipp.h"
 
 #include <cstdint>
-#include <iostream>
 #include <string>
 #include <vector>
 
