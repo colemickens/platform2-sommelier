@@ -14,6 +14,7 @@
 using brillo::Blob;
 using brillo::BlobToString;
 using testing::_;
+using testing::Invoke;
 using testing::Mock;
 using testing::SaveArg;
 
@@ -51,9 +52,17 @@ void KeyChallengeServiceMockController::ExpectSignatureChallenge(
   request_data.set_signature_algorithm(expected_signature_algorithm);
 
   EXPECT_CALL(*mock_service_,
-              ChallengeKey(ProtobufEquals(account_identifier),
-                           ProtobufEquals(challenge_request), _))
-      .WillOnce(SaveArg<2>(&intercepted_response_callback_));
+              ChallengeKeyMovable(ProtobufEquals(account_identifier),
+                                  ProtobufEquals(challenge_request), _))
+      .WillOnce(Invoke(
+          [this](const AccountIdentifier& account_id,
+                 const KeyChallengeRequest& key_challenge_request,
+                 KeyChallengeService::ResponseCallback* response_callback) {
+            // Can't use SaveArg or SaveArgPointee here because
+            // response_callback is move only.
+            this->intercepted_response_callback_ =
+                std::move(*response_callback);
+          }));
 }
 
 void KeyChallengeServiceMockController::SimulateSignatureChallengeResponse(
@@ -65,13 +74,13 @@ void KeyChallengeServiceMockController::SimulateSignatureChallengeResponse(
       *response->mutable_signature_response_data();
   response_data.set_signature(BlobToString(signature_value));
 
-  intercepted_response_callback_.Run(std::move(response));
+  std::move(intercepted_response_callback_).Run(std::move(response));
   intercepted_response_callback_.Reset();
 }
 
 void KeyChallengeServiceMockController::SimulateFailureResponse() {
   ASSERT_FALSE(intercepted_response_callback_.is_null());
-  intercepted_response_callback_.Run(nullptr /* response */);
+  std::move(intercepted_response_callback_).Run(nullptr /* response */);
   intercepted_response_callback_.Reset();
 }
 

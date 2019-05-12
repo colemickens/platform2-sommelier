@@ -41,7 +41,7 @@ class ChallengeCredentialsDecryptOperation final
   // If the operation succeeds, |credentials| will contain the decrypted
   // credentials that can be used for decryption of the user's vault keyset.
   using CompletionCallback =
-      base::Callback<void(std::unique_ptr<Credentials> credentials)>;
+      base::OnceCallback<void(std::unique_ptr<Credentials> credentials)>;
 
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.
@@ -56,7 +56,7 @@ class ChallengeCredentialsDecryptOperation final
       const std::string& account_id,
       const KeyData& key_data,
       const KeysetSignatureChallengeInfo& keyset_challenge_info,
-      const CompletionCallback& completion_callback);
+      CompletionCallback completion_callback);
 
   ~ChallengeCredentialsDecryptOperation() override;
 

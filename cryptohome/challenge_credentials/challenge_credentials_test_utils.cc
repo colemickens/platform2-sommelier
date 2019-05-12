@@ -22,7 +22,7 @@ ChallengeCredentialsHelper::GenerateNewCallback
 MakeChallengeCredentialsGenerateNewResultWriter(
     std::unique_ptr<ChallengeCredentialsGenerateNewResult>* result) {
   DCHECK(!*result);
-  return base::Bind(
+  return base::BindOnce(
       [](std::unique_ptr<ChallengeCredentialsGenerateNewResult>* result,
          std::unique_ptr<Credentials> credentials) {
         ASSERT_FALSE(*result);

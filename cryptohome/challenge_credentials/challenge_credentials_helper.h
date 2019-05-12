@@ -54,7 +54,7 @@ class ChallengeCredentialsHelper final {
   // stored in the created vault keyset.
   // If the operation fails, the argument will be null.
   using GenerateNewCallback =
-      base::Callback<void(std::unique_ptr<Credentials> /* credentials */)>;
+      base::OnceCallback<void(std::unique_ptr<Credentials> /* credentials */)>;
 
   // This callback reports result of a Decrypt() call.
   //
@@ -62,13 +62,13 @@ class ChallengeCredentialsHelper final {
   // that should be used for decrypting the user's vault keyset.
   // If the operation fails, the argument will be null.
   using DecryptCallback =
-      base::Callback<void(std::unique_ptr<Credentials> /* credentials */)>;
+      base::OnceCallback<void(std::unique_ptr<Credentials> /* credentials */)>;
 
   // This callback reports result of a VerifyKey() call.
   //
   // The |is_key_valid| argument will be true iff the operation succeeds and
   // the provided key is valid for decryption of the given vault keyset.
-  using VerifyKeyCallback = base::Callback<void(bool /* is_key_valid */)>;
+  using VerifyKeyCallback = base::OnceCallback<void(bool /* is_key_valid */)>;
 
   // |tpm| is a non-owned pointer that must stay valid for the whole lifetime of
   // the created object.
@@ -102,7 +102,7 @@ class ChallengeCredentialsHelper final {
       const KeyData& key_data,
       const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
-      const GenerateNewCallback& callback);
+      GenerateNewCallback callback);
 
   // Builds credentials for the given user, based on the encrypted
   // (challenge-protected) representation of the previously created secrets. The
@@ -119,7 +119,7 @@ class ChallengeCredentialsHelper final {
                const KeyData& key_data,
                const KeysetSignatureChallengeInfo& keyset_challenge_info,
                std::unique_ptr<KeyChallengeService> key_challenge_service,
-               const DecryptCallback& callback);
+               DecryptCallback callback);
 
   // Verifies whether the specified cryptographic key may be used to decrypt
   // the specified vault keyset. This operation involves cryptographic
@@ -135,7 +135,7 @@ class ChallengeCredentialsHelper final {
                  const KeyData& key_data,
                  const KeysetSignatureChallengeInfo& keyset_challenge_info,
                  std::unique_ptr<KeyChallengeService> key_challenge_service,
-                 const VerifyKeyCallback& callback);
+                 VerifyKeyCallback callback);
 
  private:
   // Aborts the currently running operation, if any, and destroys all resources
@@ -145,13 +145,13 @@ class ChallengeCredentialsHelper final {
   // Wrapper for the completion callback of GenerateNew(). Cleans up resources
   // associated with the operation and forwards results to the original
   // callback.
-  void OnGenerateNewCompleted(const GenerateNewCallback& original_callback,
+  void OnGenerateNewCompleted(GenerateNewCallback original_callback,
                               std::unique_ptr<Credentials> credentials);
 
   // Wrapper for the completion callback of Decrypt(). Cleans up resources
   // associated with the operation and forwards results to the original
   // callback.
-  void OnDecryptCompleted(const DecryptCallback& original_callback,
+  void OnDecryptCompleted(DecryptCallback original_callback,
                           std::unique_ptr<Credentials> credentials);
 
   // Non-owned.

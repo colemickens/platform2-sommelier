@@ -143,7 +143,7 @@ class ChallengeCredentialsHelperTestBase : public testing::Test {
 
     auto mock_key_challenge_service =
         std::make_unique<MockKeyChallengeService>();
-    EXPECT_CALL(*mock_key_challenge_service, ChallengeKey(_, _, _))
+    EXPECT_CALL(*mock_key_challenge_service, ChallengeKeyMovable(_, _, _))
         .Times(AnyNumber());
     const KeyData key_data = MakeKeyData(
         kLocalPublicKeySpkiDer, {kLocalAlgorithm} /* key_algorithms */);

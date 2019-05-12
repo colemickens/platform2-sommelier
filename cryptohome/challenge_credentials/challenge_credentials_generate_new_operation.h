@@ -44,7 +44,7 @@ class ChallengeCredentialsGenerateNewOperation final
   // with the challenge_credentials_keyset_info() field containing the data to
   // be stored in the created vault keyset.
   using CompletionCallback =
-      base::Callback<void(std::unique_ptr<Credentials> credentials)>;
+      base::OnceCallback<void(std::unique_ptr<Credentials> credentials)>;
 
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.
@@ -66,7 +66,7 @@ class ChallengeCredentialsGenerateNewOperation final
       const std::string& account_id,
       const KeyData& key_data,
       const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
-      const CompletionCallback& completion_callback);
+      CompletionCallback completion_callback);
 
   ~ChallengeCredentialsGenerateNewOperation() override;
 

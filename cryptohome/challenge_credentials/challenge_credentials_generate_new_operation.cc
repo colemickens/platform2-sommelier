@@ -66,7 +66,7 @@ ChallengeCredentialsGenerateNewOperation::
         const std::string& account_id,
         const KeyData& key_data,
         const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
-        const CompletionCallback& completion_callback)
+        CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
       tpm_(tpm),
       delegate_blob_(delegate_blob),
@@ -74,7 +74,7 @@ ChallengeCredentialsGenerateNewOperation::
       account_id_(account_id),
       key_data_(key_data),
       pcr_restrictions_(pcr_restrictions),
-      completion_callback_(completion_callback),
+      completion_callback_(std::move(completion_callback)),
       signature_sealing_backend_(tpm_->GetSignatureSealingBackend()) {
   DCHECK_EQ(key_data.type(), KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
 }

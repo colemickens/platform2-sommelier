@@ -23,10 +23,18 @@ class MockKeyChallengeService : public KeyChallengeService {
   MockKeyChallengeService();
   ~MockKeyChallengeService() override;
 
-  MOCK_METHOD3(ChallengeKey,
+  MOCK_METHOD3(ChallengeKeyMovable,
                void(const AccountIdentifier&,
                     const KeyChallengeRequest&,
-                    const ResponseCallback&));
+                    ResponseCallback*));
+
+  void ChallengeKey(const AccountIdentifier& account_id,
+                    const KeyChallengeRequest& key_challenge_request,
+                    ResponseCallback response_callback) override {
+    // Note: this method contains a move-only argument and thus cannot be mocked
+    // directly. Use ChallengeKeyMovable for all mocking needs.
+    ChallengeKeyMovable(account_id, key_challenge_request, &response_callback);
+  };
 };
 
 // Helper class for simplifying the use of MockKeyChallengeService.

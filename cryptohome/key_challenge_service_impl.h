@@ -35,7 +35,7 @@ class KeyChallengeServiceImpl final : public KeyChallengeService {
   // KeyChallengeService overrides:
   void ChallengeKey(const AccountIdentifier& account_id,
                     const KeyChallengeRequest& key_challenge_request,
-                    const ResponseCallback& response_callback) override;
+                    ResponseCallback response_callback) override;
 
  private:
   const std::string key_delegate_dbus_service_name_;

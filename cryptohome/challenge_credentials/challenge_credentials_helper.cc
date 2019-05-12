@@ -40,7 +40,7 @@ void ChallengeCredentialsHelper::GenerateNew(
     const KeyData& key_data,
     const std::vector<std::map<uint32_t, Blob>>& pcr_restrictions,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
-    const GenerateNewCallback& callback) {
+    GenerateNewCallback callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK_EQ(key_data.type(), KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
   DCHECK(!callback.is_null());
@@ -50,8 +50,8 @@ void ChallengeCredentialsHelper::GenerateNew(
   operation_ = std::make_unique<ChallengeCredentialsGenerateNewOperation>(
       key_challenge_service_.get(), tpm_, delegate_blob_, delegate_secret_,
       account_id, key_data, pcr_restrictions,
-      base::Bind(&ChallengeCredentialsHelper::OnGenerateNewCompleted,
-                 base::Unretained(this), callback));
+      base::BindOnce(&ChallengeCredentialsHelper::OnGenerateNewCompleted,
+                     base::Unretained(this), std::move(callback)));
   operation_->Start();
 }
 
@@ -60,7 +60,7 @@ void ChallengeCredentialsHelper::Decrypt(
     const KeyData& key_data,
     const KeysetSignatureChallengeInfo& keyset_challenge_info,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
-    const DecryptCallback& callback) {
+    DecryptCallback callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK_EQ(key_data.type(), KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
   DCHECK(!callback.is_null());
@@ -70,8 +70,8 @@ void ChallengeCredentialsHelper::Decrypt(
   operation_ = std::make_unique<ChallengeCredentialsDecryptOperation>(
       key_challenge_service_.get(), tpm_, delegate_blob_, delegate_secret_,
       account_id, key_data, keyset_challenge_info,
-      base::Bind(&ChallengeCredentialsHelper::OnDecryptCompleted,
-                 base::Unretained(this), callback));
+      base::BindOnce(&ChallengeCredentialsHelper::OnDecryptCompleted,
+                     base::Unretained(this), std::move(callback)));
   operation_->Start();
 }
 
@@ -80,7 +80,7 @@ void ChallengeCredentialsHelper::VerifyKey(
     const KeyData& key_data,
     const KeysetSignatureChallengeInfo& keyset_challenge_info,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
-    const VerifyKeyCallback& callback) {
+    VerifyKeyCallback callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK_EQ(key_data.type(), KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
   DCHECK(!callback.is_null());
@@ -109,19 +109,19 @@ void ChallengeCredentialsHelper::CancelRunningOperation() {
 }
 
 void ChallengeCredentialsHelper::OnGenerateNewCompleted(
-    const GenerateNewCallback& original_callback,
+    GenerateNewCallback original_callback,
     std::unique_ptr<Credentials> credentials) {
   DCHECK(thread_checker_.CalledOnValidThread());
   CancelRunningOperation();
-  original_callback.Run(std::move(credentials));
+  std::move(original_callback).Run(std::move(credentials));
 }
 
 void ChallengeCredentialsHelper::OnDecryptCompleted(
-    const DecryptCallback& original_callback,
+    DecryptCallback original_callback,
     std::unique_ptr<Credentials> credentials) {
   DCHECK(thread_checker_.CalledOnValidThread());
   CancelRunningOperation();
-  original_callback.Run(std::move(credentials));
+  std::move(original_callback).Run(std::move(credentials));
 }
 
 }  // namespace cryptohome

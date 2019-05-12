@@ -32,7 +32,7 @@ class ChallengeCredentialsOperation {
   // If the challenge succeeded, then |signature| will contain the signature of
   // the challenge. Otherwise, it will be null.
   using KeySignatureChallengeCallback =
-      base::Callback<void(std::unique_ptr<brillo::Blob> signature)>;
+      base::OnceCallback<void(std::unique_ptr<brillo::Blob> signature)>;
 
   virtual ~ChallengeCredentialsOperation();
 
@@ -72,7 +72,7 @@ class ChallengeCredentialsOperation {
     // callback execution.
     CompletionCallback callback_copy;
     std::swap(*completion_callback, callback_copy);
-    callback_copy.Run(std::forward<Args>(args)...);
+    std::move(callback_copy).Run(std::forward<Args>(args)...);
   }
 
   // Starts a signature challenge request. In real use cases, this will make an
@@ -83,7 +83,7 @@ class ChallengeCredentialsOperation {
       const brillo::Blob& public_key_spki_der,
       const brillo::Blob& data_to_sign,
       ChallengeSignatureAlgorithm signature_algorithm,
-      const KeySignatureChallengeCallback& response_callback);
+      KeySignatureChallengeCallback response_callback);
 
   base::ThreadChecker thread_checker_;
 

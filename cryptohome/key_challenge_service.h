@@ -31,8 +31,8 @@ class KeyChallengeService {
   //
   // In case of error, |response| will be null; otherwise, it will contain the
   // challenge response data.
-  using ResponseCallback = base::Callback<void(
-      std::unique_ptr<KeyChallengeResponse> response)>;
+  using ResponseCallback =
+      base::OnceCallback<void(std::unique_ptr<KeyChallengeResponse> response)>;
 
   // Starts a challenge request against the specified cryptographic key.
   //
@@ -41,7 +41,7 @@ class KeyChallengeService {
   // is reported via |response_callback|.
   virtual void ChallengeKey(const AccountIdentifier& account_id,
                             const KeyChallengeRequest& key_challenge_request,
-                            const ResponseCallback& response_callback) = 0;
+                            ResponseCallback response_callback) = 0;
 };
 
 }  // namespace cryptohome

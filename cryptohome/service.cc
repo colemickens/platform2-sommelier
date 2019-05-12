@@ -2112,11 +2112,12 @@ void Service::DoChallengeResponseMountEx(
         account_id, key_data,
         vault_keyset->serialized().signature_challenge_info(),
         std::move(key_challenge_service),
-        base::Bind(&Service::OnChallengeResponseMountCredentialsObtained,
-                   base::Unretained(this), base::Passed(std::move(identifier)),
-                   base::Passed(std::move(authorization)),
-                   base::Passed(std::move(request)), mount_args,
-                   base::Unretained(context)));
+        base::BindOnce(&Service::OnChallengeResponseMountCredentialsObtained,
+                       base::Unretained(this),
+                       base::Passed(std::move(identifier)),
+                       base::Passed(std::move(authorization)),
+                       base::Passed(std::move(request)), mount_args,
+                       base::Unretained(context)));
   } else {
     if (!mount_args.create_if_missing) {
       LOG(ERROR) << "No existing challenge-response vault keyset found";
@@ -2130,11 +2131,12 @@ void Service::DoChallengeResponseMountEx(
     challenge_credentials_helper_->GenerateNew(
         account_id, key_data, pcr_restrictions,
         std::move(key_challenge_service),
-        base::Bind(&Service::OnChallengeResponseMountCredentialsObtained,
-                   base::Unretained(this), base::Passed(std::move(identifier)),
-                   base::Passed(std::move(authorization)),
-                   base::Passed(std::move(request)), mount_args,
-                   base::Unretained(context)));
+        base::BindOnce(&Service::OnChallengeResponseMountCredentialsObtained,
+                       base::Unretained(this),
+                       base::Passed(std::move(identifier)),
+                       base::Passed(std::move(authorization)),
+                       base::Passed(std::move(request)), mount_args,
+                       base::Unretained(context)));
   }
 }
 

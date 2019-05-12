@@ -45,7 +45,7 @@ ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
     const std::string& account_id,
     const KeyData& key_data,
     const KeysetSignatureChallengeInfo& keyset_challenge_info,
-    const CompletionCallback& completion_callback)
+    CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
       tpm_(tpm),
       delegate_blob_(delegate_blob),
@@ -53,7 +53,7 @@ ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
       account_id_(account_id),
       key_data_(key_data),
       keyset_challenge_info_(keyset_challenge_info),
-      completion_callback_(completion_callback),
+      completion_callback_(std::move(completion_callback)),
       signature_sealing_backend_(tpm_->GetSignatureSealingBackend()) {
   DCHECK_EQ(key_data.type(), KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
 }
