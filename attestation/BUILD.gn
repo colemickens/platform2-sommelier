@@ -102,6 +102,7 @@ static_library("common_library") {
   ]
   deps = [
     ":proto_library",
+    ":proto_library_proto",
   ]
   if (use.tpm2) {
     sources += [ "common/tpm_utility_v2.cc" ]
@@ -126,6 +127,7 @@ static_library("client_library") {
     "//common-mk:pic",
     ":target_defaults",
     "//common-mk:nouse_thin_archive",
+    ":local_proto_include",
 
     # TODO: Use brillo/brillo_export.h instead to export symbols.
     "//common-mk:visibility_default",
@@ -135,6 +137,7 @@ static_library("client_library") {
   ]
   deps = [
     ":proto_library",
+    ":proto_library_proto",
   ]
 }
 
@@ -142,6 +145,7 @@ static_library("client_library") {
 shared_library("libattestation") {
   configs += [
     "//common-mk:nouse_thin_archive",
+    ":local_proto_include",
 
     # TODO: Use brillo/brillo_export.h instead to export symbols.
     "//common-mk:visibility_default",
@@ -150,6 +154,7 @@ shared_library("libattestation") {
   deps = [
     ":client_library",
     ":proto_library",
+    ":proto_library_proto",
   ]
   pkg_deps = [
     # system_api depends on protobuf (or protobuf-lite). It must appear
@@ -173,6 +178,7 @@ executable("attestation_client") {
     ":client_library",
     ":common_library",
     ":proto_library",
+    ":proto_library_proto",
   ]
   pkg_deps = [
     # system_api depends on protobuf (or protobuf-lite). It must appear
@@ -226,6 +232,7 @@ executable("attestationd") {
   deps = [
     ":common_library",
     ":proto_library",
+    ":proto_library_proto",
     ":server_library",
   ]
   pkg_deps = [
@@ -275,6 +282,7 @@ if (use.test) {
       ":client_library",
       ":common_library",
       ":proto_library",
+      ":proto_library_proto",
       ":server_library",
     ]
     pkg_deps = [
