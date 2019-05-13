@@ -469,6 +469,9 @@ REGIONS_LIST = [
     Region(
         'is', 'xkb:is::ice', 'Atlantic/Reykjavik', ['is', 'en-GB'], KML.ISO,
         'Iceland'),
+    Region(
+        'us.intl', 'xkb:us:intl:eng', 'America/Los_Angeles', 'en-US', KML.ANSI,
+        'US (English Intl)'),
     ]
 
 """A list of :py:class:`regions.Region` objects for
