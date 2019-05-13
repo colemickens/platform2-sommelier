@@ -155,6 +155,7 @@ if (use.test) {
     sources = [
       "conversion.cc",
       "conversion_test.cc",
+      "keymaster_logger_test.cc",
     ]
   }
 }

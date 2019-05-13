@@ -12,6 +12,7 @@
 
 namespace arc {
 namespace keymaster {
+
 namespace {
 
 constexpr char kLogTag[] = "ArcKeymaster ";
@@ -62,6 +63,10 @@ int KeymasterLogger::log_msg(LogLevel level,
   }
 
   return 0;
+}
+
+const char* TrimFilePathForTesting(const char* logMessage) {
+  return TrimFilePath(logMessage);
 }
 
 }  // namespace keymaster

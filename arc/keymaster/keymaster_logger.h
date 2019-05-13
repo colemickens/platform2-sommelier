@@ -23,6 +23,9 @@ class KeymasterLogger : public ::keymaster::Logger {
   DISALLOW_COPY_AND_ASSIGN(KeymasterLogger);
 };
 
+// Expose the TrimFilePath function in the anonymous namespace for testing.
+const char* TrimFilePathForTesting(const char* logMessage);
+
 }  // namespace keymaster
 }  // namespace arc
 
