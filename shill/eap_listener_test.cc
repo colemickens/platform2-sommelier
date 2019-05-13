@@ -15,9 +15,9 @@
 #include <gtest/gtest.h>
 
 #include "shill/eap_protocol.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/net/byte_string.h"
+#include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_sockets.h"
 
 using testing::_;
@@ -30,7 +30,10 @@ namespace shill {
 
 class EapListenerTest : public testing::Test {
  public:
-  EapListenerTest() : listener_(&dispatcher_, kInterfaceIndex) {}
+  EapListenerTest() : listener_(kInterfaceIndex) {
+    listener_.io_handler_factory_ = &io_handler_factory_;
+  }
+
   virtual ~EapListenerTest() {}
 
   void SetUp() override {
@@ -66,7 +69,7 @@ class EapListenerTest : public testing::Test {
   void ReceiveRequest() { listener_.ReceiveRequest(kSocketFD); }
   void StartListenerWithFD(int fd);
 
-  MockEventDispatcher dispatcher_;
+  MockIOHandlerFactory io_handler_factory_;
   EapListener listener_;
 
   // Owned by EapListener, and tracked here only for mocks.
@@ -114,7 +117,8 @@ void EapListenerTest::StartListenerWithFD(int fd) {
   EXPECT_CALL(*sockets_,
               Bind(fd, IsEapLinkAddress(kInterfaceIndex), sizeof(sockaddr_ll)))
       .WillOnce(Return(0));
-  EXPECT_CALL(dispatcher_, CreateReadyHandler(fd, IOHandler::kModeInput, _));
+  EXPECT_CALL(io_handler_factory_,
+              CreateIOReadyHandler(fd, IOHandler::kModeInput, _));
   EXPECT_TRUE(listener_.Start());
   EXPECT_EQ(fd, listener_.socket_);
 }

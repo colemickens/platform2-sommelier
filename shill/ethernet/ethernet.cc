@@ -70,7 +70,7 @@ Ethernet::Ethernet(ControlInterface* control_interface,
 #if !defined(DISABLE_WIRED_8021X)
       is_eap_authenticated_(false),
       is_eap_detected_(false),
-      eap_listener_(new EapListener(dispatcher, interface_index)),
+      eap_listener_(new EapListener(interface_index)),
       supplicant_process_proxy_(control_interface->CreateSupplicantProcessProxy(
           base::Closure(), base::Closure())),
 #endif  // DISABLE_WIRED_8021X

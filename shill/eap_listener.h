@@ -14,6 +14,7 @@ namespace shill {
 
 class EventDispatcher;
 class IOHandler;
+class IOHandlerFactory;
 class ScopedSocketCloser;
 class Sockets;
 
@@ -23,7 +24,7 @@ class EapListener {
  public:
   using EapRequestReceivedCallback = base::Callback<void()>;
 
-  EapListener(EventDispatcher* event_dispatcher, int interface_index);
+  explicit EapListener(int interface_index);
   virtual ~EapListener();
 
   // Create a socket for tranmission and reception.  Returns true
@@ -52,8 +53,8 @@ class EapListener {
   // configured on |receive_request_handler_|.
   void ReceiveRequest(int fd);
 
-  // Event dispatcher to use for creating an input handler.
-  EventDispatcher* dispatcher_;
+  // Factory to use for creating an input handler.
+  IOHandlerFactory* io_handler_factory_;
 
   // The interface index fo the device to monitor.
   const int interface_index_;

@@ -14,6 +14,7 @@
 #include "shill/eap_protocol.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
+#include "shill/net/io_handler_factory.h"
 #include "shill/net/sockets.h"
 
 namespace shill {
@@ -21,9 +22,8 @@ namespace shill {
 const size_t EapListener::kMaxEapPacketLength =
     sizeof(eap_protocol::Ieee8021xHdr) + sizeof(eap_protocol::EapHeader);
 
-EapListener::EapListener(EventDispatcher* event_dispatcher,
-                         int interface_index)
-    : dispatcher_(event_dispatcher),
+EapListener::EapListener(int interface_index)
+    : io_handler_factory_(IOHandlerFactory::GetInstance()),
       interface_index_(interface_index),
       sockets_(new Sockets()),
       socket_(-1) {}
@@ -38,7 +38,7 @@ bool EapListener::Start() {
   }
 
   receive_request_handler_.reset(
-    dispatcher_->CreateReadyHandler(
+    io_handler_factory_->CreateIOReadyHandler(
         socket_,
         IOHandler::kModeInput,
         base::Bind(&EapListener::ReceiveRequest, base::Unretained(this))));
