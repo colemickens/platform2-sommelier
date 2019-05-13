@@ -2,11 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/functions/generic_storage.h"
+
 #include <cstdint>
 #include <utility>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <base/json/json_reader.h>
+#include <base/json/json_writer.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <brillo/strings/string_utils.h>
@@ -16,7 +20,6 @@
 #include <dbus/object_proxy.h>
 #include <pcrecpp.h>
 
-#include "runtime_probe/functions/generic_storage.h"
 #include "runtime_probe/utils/file_utils.h"
 
 namespace runtime_probe {
@@ -91,6 +94,8 @@ int32_t GetStorageLogicalBlockSize(const base::FilePath& node_path) {
                     "size in sysfs. Use default value instead.";
     return kDefaultBytesPerSector;
   }
+  base::TrimWhitespaceASCII(block_size_str, base::TrimPositions::TRIM_ALL,
+                            &block_size_str);
   int32_t logical_block_size;
   if (!base::StringToInt(block_size_str, &logical_block_size)) {
     LOG(WARNING) << "Failed to convert retrieved block size to integer. Use "
@@ -220,9 +225,8 @@ std::string GenericStorageFunction::GetEMMC5FirmwareVersion(
 
   pcrecpp::RE re(R"(^\[FIRMWARE_VERSION\[\d+\]\]: (.*)$)",
                  pcrecpp::RE_Options());
-  /* version list stores each byte as the format "ff" (two hex digits)
-   * raw version list stores each byte as an int
-   */
+  // version list stores each byte as the format "ff" (two hex digits)
+  // raw version list stores each byte as an int
 
   const auto ext_csd_lines = base::SplitString(
       ext_csd_res, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -274,8 +278,42 @@ std::string GenericStorageFunction::GetEMMC5FirmwareVersion(
 }
 
 GenericStorageFunction::DataType GenericStorageFunction::Eval() const {
-  const auto storage_nodes_path_list = GetFixedDevices();
   DataType result{};
+  std::string json_output;
+  if (!InvokeHelper(&json_output)) {
+    LOG(ERROR) << "Failed to invoke helper to retrieve storage information.";
+    return result;
+  }
+  const auto storage_results =
+      base::ListValue::From(base::JSONReader::Read(json_output));
+  for (int i = 0; i < storage_results->GetSize(); ++i) {
+    base::DictionaryValue* storage_res;
+    storage_results->GetDictionary(i, &storage_res);
+
+    // Get eMMC 5.0 firmaware version
+    std::string storage_type;
+    std::string node_path_str;
+    if (!storage_res->GetString("type", &storage_type)) {
+      LOG(ERROR) << "Type of storage is not set in runtime_probe helper";
+    }
+    if (!storage_res->GetString("path", &node_path_str)) {
+      LOG(ERROR) << "Path to storage node is not set in runtime_probe helper";
+    }
+    if (storage_type == kEmmcType && !node_path_str.empty()) {
+      const auto emmc5_fw_ver =
+        GetEMMC5FirmwareVersion(base::FilePath(node_path_str));
+      if (!emmc5_fw_ver.empty())
+        storage_res->SetString("emmc5_fw_ver", emmc5_fw_ver);
+    }
+
+    result.push_back(std::move(*storage_res));
+  }
+  return result;
+}
+
+int GenericStorageFunction::EvalInHelper(std::string* output) const {
+  const auto storage_nodes_path_list = GetFixedDevices();
+  base::ListValue result;
 
   for (const auto& node_path : storage_nodes_path_list) {
     VLOG(2) << "Processing the node " << node_path.value();
@@ -298,13 +336,8 @@ GenericStorageFunction::DataType GenericStorageFunction::Eval() const {
         MapFilesToDict(dev_path, kEmmcFields, kEmmcOptionalFields);
 
     if (!emmc_res.empty()) {
-      // Get eMMC 5.0 firmaware version
       PrependToDVKey(&emmc_res, kEmmcPrefix);
       emmc_res.SetString("type", kEmmcType);
-      const auto emmc5_fw_ver = GetEMMC5FirmwareVersion(node_path);
-      if (!emmc5_fw_ver.empty()) {
-        emmc_res.SetString("emmc5_fw_ver", emmc5_fw_ver);
-      }
     }
 
     if (!ata_res.empty()) {
@@ -359,11 +392,15 @@ GenericStorageFunction::DataType GenericStorageFunction::Eval() const {
       node_res.SetString("size", "-1");
     }
 
-    result.emplace_back();
-    result.back().Swap(&node_res);
+    result.Append(node_res.CreateDeepCopy());
   }
 
-  return result;
+  if (!base::JSONWriter::Write(result, output)) {
+    LOG(ERROR)
+        << "Failed to serialize generic battery probed result to json string";
+    return -1;
+  }
+  return 0;
 }
 
 }  // namespace runtime_probe

@@ -1,7 +1,7 @@
-/* Copyright 2018 The Chromium OS Authors. All rights reserved.
- * Use of this source code is governed by a BSD-style license that can be
- * found in the LICENSE file.
- */
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 #ifndef RUNTIME_PROBE_FUNCTIONS_GENERIC_STORAGE_H_
 #define RUNTIME_PROBE_FUNCTIONS_GENERIC_STORAGE_H_
 
@@ -32,8 +32,11 @@ class GenericStorageFunction : public ProbeFunction {
     return instance;
   }
 
+  std::string GetFunctionName() const override { return function_name; }
+
   // Override `Eval` function, which should return a list of DictionaryValue
   DataType Eval() const override;
+  int EvalInHelper(std::string* output) const override;
 
  private:
   static ProbeFunction::Register<GenericStorageFunction> register_;
@@ -54,7 +57,7 @@ class GenericStorageFunction : public ProbeFunction {
   std::string GetEMMC5FirmwareVersion(const base::FilePath& node_path) const;
 };
 
-/* Register the GenericStorageFunction */
+// Register the GenericStorageFunction
 REGISTER_PROBE_FUNCTION(GenericStorageFunction);
 
 }  // namespace runtime_probe
