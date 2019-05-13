@@ -1905,17 +1905,13 @@ void Manager::DevicePresenceStatusCheck() {
 }
 
 bool Manager::MatchProfileWithService(const ServiceRefPtr& service) {
-  vector<ProfileRefPtr>::reverse_iterator it;
-  for (it = profiles_.rbegin(); it != profiles_.rend(); ++it) {
+  for (auto it = profiles_.rbegin(); it != profiles_.rend(); ++it) {
     if ((*it)->ConfigureService(service)) {
-      break;
+      return true;
     }
   }
-  if (it == profiles_.rend()) {
-    ephemeral_profile_->AdoptService(service);
-    return false;
-  }
-  return true;
+  ephemeral_profile_->AdoptService(service);
+  return false;
 }
 
 void Manager::AutoConnect() {
