@@ -23,6 +23,7 @@
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/mock_arp_client.h"
+#include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_sockets.h"
 #include "shill/net/mock_time.h"
 
@@ -133,7 +134,10 @@ class ActiveLinkMonitorTest : public Test {
                  &metrics_,
                  &device_info_,
                  observer_.failure_callback(),
-                 observer_.success_callback()) {}
+                 observer_.success_callback()) {
+    monitor_.io_handler_factory_ = &io_handler_factory_;
+  }
+
   virtual ~ActiveLinkMonitorTest() {}
 
   void SetUp() override {
@@ -353,6 +357,7 @@ class ActiveLinkMonitorTest : public Test {
   ByteString zero_mac_;
   bool link_scope_logging_was_enabled_;
   const string interface_name_;
+  MockIOHandlerFactory io_handler_factory_;
   ActiveLinkMonitor monitor_;
 };
 

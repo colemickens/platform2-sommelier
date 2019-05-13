@@ -23,6 +23,7 @@ class ArpClient;
 class DeviceInfo;
 class EventDispatcher;
 class IOHandler;
+class IOHandlerFactory;
 class Time;
 
 // ActiveLinkMonitor probes the status of a connection by sending ARP
@@ -181,6 +182,7 @@ class ActiveLinkMonitor {
   // The sum of response samples in our rolling average.
   int response_sample_bucket_;
 
+  IOHandlerFactory* io_handler_factory_;
   // IOCallback that fires when the socket associated with our ArpClient
   // has a packet to be received.  Calls ReceiveResponse().
   std::unique_ptr<IOHandler> receive_response_handler_;

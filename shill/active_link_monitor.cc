@@ -18,6 +18,7 @@
 #include "shill/metrics.h"
 #include "shill/net/arp_client.h"
 #include "shill/net/arp_packet.h"
+#include "shill/net/io_handler_factory.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/shill_time.h"
 
@@ -63,6 +64,7 @@ ActiveLinkMonitor::ActiveLinkMonitor(const ConnectionRefPtr& connection,
       gateway_supports_unicast_arp_(false),
       response_sample_count_(0),
       response_sample_bucket_(0),
+      io_handler_factory_(IOHandlerFactory::GetInstance()),
       time_(Time::GetInstance()) {
 }
 
@@ -179,11 +181,9 @@ bool ActiveLinkMonitor::StartArpClient() {
   }
   SLOG(connection_.get(), 4) << "Created ARP client; listening on socket "
                              << arp_client_->socket() << ".";
-  receive_response_handler_.reset(
-    dispatcher_->CreateReadyHandler(
-        arp_client_->socket(),
-        IOHandler::kModeInput,
-        Bind(&ActiveLinkMonitor::ReceiveResponse, Unretained(this))));
+  receive_response_handler_.reset(io_handler_factory_->CreateIOReadyHandler(
+      arp_client_->socket(), IOHandler::kModeInput,
+      Bind(&ActiveLinkMonitor::ReceiveResponse, Unretained(this))));
   return true;
 }
 
