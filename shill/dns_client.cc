@@ -24,6 +24,8 @@
 #include <base/strings/string_util.h>
 
 #include "shill/logging.h"
+#include "shill/net/io_handler.h"
+#include "shill/net/io_handler_factory.h"
 #include "shill/net/shill_time.h"
 #include "shill/shill_ares.h"
 
@@ -85,6 +87,7 @@ DnsClient::DnsClient(IPAddress::Family family,
       interface_name_(interface_name),
       dns_servers_(FilterEmptyIPs(dns_servers)),
       dispatcher_(dispatcher),
+      io_handler_factory_(IOHandlerFactory::GetInstance()),
       callback_(callback),
       timeout_ms_(timeout_ms),
       running_(false),
@@ -307,7 +310,7 @@ bool DnsClient::RefreshHandles() {
             std::move(old_read[sockets[i]]);
       } else {
         resolver_state_->read_handlers[sockets[i]] =
-            base::WrapUnique(dispatcher_->CreateReadyHandler(
+            base::WrapUnique(io_handler_factory_->CreateIOReadyHandler(
                 sockets[i], IOHandler::kModeInput, read_callback));
       }
     }
@@ -317,7 +320,7 @@ bool DnsClient::RefreshHandles() {
             std::move(old_write[sockets[i]]);
       } else {
         resolver_state_->write_handlers[sockets[i]] =
-            base::WrapUnique(dispatcher_->CreateReadyHandler(
+            base::WrapUnique(io_handler_factory_->CreateIOReadyHandler(
                 sockets[i], IOHandler::kModeOutput, write_callback));
       }
     }

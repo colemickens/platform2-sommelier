@@ -19,6 +19,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/net/io_handler.h"
+#include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_time.h"
 #include "shill/testing.h"
 
@@ -119,6 +120,7 @@ class DnsClientTest : public Test {
                                     callback_target_.callback()));
     dns_client_->ares_ = &ares_;
     dns_client_->time_ = &time_;
+    dns_client_->io_handler_factory_ = &io_handler_factory_;
   }
 
   void SetActive() {
@@ -154,8 +156,8 @@ class DnsClientTest : public Test {
 
   void StartValidRequest() {
     SetupRequest(kGoodName, kGoodServer);
-    EXPECT_CALL(dispatcher_,
-                CreateReadyHandler(kAresFd, IOHandler::kModeInput, _))
+    EXPECT_CALL(io_handler_factory_,
+                CreateIOReadyHandler(kAresFd, IOHandler::kModeInput, _))
         .WillOnce(ReturnNew<IOHandler>());
     SetActive();
     EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWaitMS));
@@ -217,6 +219,7 @@ class DnsClientTest : public Test {
     DnsClient::ClientCallback callback_;
   };
 
+  MockIOHandlerFactory io_handler_factory_;
   std::unique_ptr<DnsClient> dns_client_;
   StrictMock<MockEventDispatcher> dispatcher_;
   string queued_request_;
@@ -256,8 +259,8 @@ TEST_F(DnsClientTest, ServerJoin) {
       .Times(1);
   EXPECT_CALL(ares_, GetHostByName(kAresChannel, StrEq(kGoodName), _, _, _));
 
-  EXPECT_CALL(dispatcher_,
-              CreateReadyHandler(kAresFd, IOHandler::kModeInput, _))
+  EXPECT_CALL(io_handler_factory_,
+              CreateIOReadyHandler(kAresFd, IOHandler::kModeInput, _))
       .WillOnce(ReturnNew<IOHandler>());
   SetActive();
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWaitMS));
@@ -415,8 +418,8 @@ TEST_F(DnsClientTest, IOHandleDeallocGetSock) {
   SetupRequest(kGoodName, kGoodServer);
   // This isn't any kind of scoped/ref pointer because we are tracking dealloc.
   SentinelIOHandler* io_handler = new SentinelIOHandler();
-  EXPECT_CALL(dispatcher_,
-              CreateReadyHandler(kAresFd, IOHandler::kModeInput, _))
+  EXPECT_CALL(io_handler_factory_,
+              CreateIOReadyHandler(kAresFd, IOHandler::kModeInput, _))
       .WillOnce(Return(io_handler));
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWaitMS));
   SetActive();
@@ -436,8 +439,8 @@ TEST_F(DnsClientTest, IOHandleDeallocStop) {
   SetupRequest(kGoodName, kGoodServer);
   // This isn't any kind of scoped/ref pointer because we are tracking dealloc.
   SentinelIOHandler* io_handler = new SentinelIOHandler();
-  EXPECT_CALL(dispatcher_,
-              CreateReadyHandler(kAresFd, IOHandler::kModeInput, _))
+  EXPECT_CALL(io_handler_factory_,
+              CreateIOReadyHandler(kAresFd, IOHandler::kModeInput, _))
       .WillOnce(Return(io_handler));
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWaitMS));
   SetActive();

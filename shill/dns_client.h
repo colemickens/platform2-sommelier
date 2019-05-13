@@ -24,6 +24,7 @@ struct hostent;
 namespace shill {
 
 class Ares;
+class IOHandlerFactory;
 class Time;
 struct DnsClientState;
 
@@ -85,6 +86,7 @@ class DnsClient {
   std::string interface_name_;
   const std::vector<std::string> dns_servers_;
   EventDispatcher* dispatcher_;
+  IOHandlerFactory* io_handler_factory_;
   ClientCallback callback_;
   int timeout_ms_;
   bool running_;
