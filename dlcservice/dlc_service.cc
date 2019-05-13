@@ -17,18 +17,14 @@ namespace dlcservice {
 
 // kDlcServiceServiceName is defined in
 // chromeos/dbus/dlcservice/dbus-constants.h
-DlcService::DlcService(bool load_installed)
-    : DBusServiceDaemon(kDlcServiceServiceName),
-      load_installed_(load_installed) {}
+DlcService::DlcService() : DBusServiceDaemon(kDlcServiceServiceName) {}
 
 int DlcService::OnInit() {
   int return_code = brillo::DBusServiceDaemon::OnInit();
   if (return_code != EX_OK)
     return return_code;
 
-  if (load_installed_) {
-    dbus_adaptor_->LoadDlcModuleImages();
-  }
+  dbus_adaptor_->LoadDlcModuleImages();
   return EX_OK;
 }
 

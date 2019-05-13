@@ -18,7 +18,7 @@ namespace dlcservice {
 // DlcService is a D-Bus service daemon.
 class DlcService : public brillo::DBusServiceDaemon {
  public:
-  explicit DlcService(bool load_installed);
+  DlcService();
   ~DlcService() override = default;
 
  private:
@@ -29,8 +29,6 @@ class DlcService : public brillo::DBusServiceDaemon {
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<dlcservice::DlcServiceDBusAdaptor> dbus_adaptor_;
-  // Whether to load installed DLC modules.
-  const bool load_installed_;
 
   DISALLOW_COPY_AND_ASSIGN(DlcService);
 };
