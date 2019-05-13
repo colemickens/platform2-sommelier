@@ -23,6 +23,9 @@ struct DeviceInfo {
   // ex: /dev/video0
   std::string device_path;
 
+  // Whether the device is an emulated vivid camera.
+  bool is_vivid;
+
   // USB vendor id, the emulated vivid devices do not have this field.
   std::string usb_vid;
 

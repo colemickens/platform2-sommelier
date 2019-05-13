@@ -264,16 +264,17 @@ int32_t CameraHalAdapter::SetCallbacks(
 
   // Send latest status to the new client, so all presented external cameras are
   // available to the client after SetCallbacks() returns.
-  for (const auto& it : torch_mode_status_map_) {
+  for (const auto& it : device_status_map_) {
     int camera_id = it.first;
-    torch_mode_status_t status = it.second;
-    if (camera_id >= num_builtin_cameras_) {
-      // it's an external camera, fire the callback.
+    camera_device_status_t device_status = it.second;
+    if (device_status != default_device_status_map_[camera_id]) {
       NotifyCameraDeviceStatusChange(callbacks_delegate.get(), camera_id,
-                                     CAMERA_DEVICE_STATUS_PRESENT);
+                                     device_status);
     }
-    if (status != default_torch_mode_status_map_[camera_id]) {
-      NotifyTorchModeStatusChange(callbacks_delegate.get(), camera_id, status);
+    torch_mode_status_t torch_status = torch_mode_status_map_[camera_id];
+    if (torch_status != default_torch_mode_status_map_[camera_id]) {
+      NotifyTorchModeStatusChange(callbacks_delegate.get(), camera_id,
+                                  torch_status);
     }
   }
 
@@ -391,23 +392,25 @@ void CameraHalAdapter::CameraDeviceStatusChange(
             std::make_pair(aux->module_id, internal_camera_id);
         camera_id_inverse_map_[aux->module_id][internal_camera_id] =
             external_camera_id;
+        device_status_map_[external_camera_id] = CAMERA_DEVICE_STATUS_PRESENT;
+        default_device_status_map_[external_camera_id] =
+            CAMERA_DEVICE_STATUS_NOT_PRESENT;
         torch_mode_status_map_[external_camera_id] =
             TORCH_MODE_STATUS_NOT_AVAILABLE;
         default_torch_mode_status_map_[external_camera_id] =
             TORCH_MODE_STATUS_NOT_AVAILABLE;
-        LOGF(INFO) << "External camera plugged"
-                   << ", external_camera_id = " << external_camera_id;
       } else {
-        LOGF(WARNING) << "Ignore duplicated camera"
-                      << ", external_camera_id = " << external_camera_id;
+        device_status_map_[external_camera_id] = CAMERA_DEVICE_STATUS_PRESENT;
       }
+      LOGF(INFO) << "External camera plugged, external_camera_id = "
+                 << external_camera_id;
       break;
     case CAMERA_DEVICE_STATUS_NOT_PRESENT:
       if (external_camera_id != -1) {
-        camera_id_map_.erase(external_camera_id);
-        camera_id_inverse_map_[aux->module_id].erase(internal_camera_id);
-        torch_mode_status_map_.erase(external_camera_id);
-        default_torch_mode_status_map_.erase(external_camera_id);
+        device_status_map_[external_camera_id] =
+            CAMERA_DEVICE_STATUS_NOT_PRESENT;
+        torch_mode_status_map_[external_camera_id] =
+            default_torch_mode_status_map_[external_camera_id];
         auto it = device_adapters_.find(external_camera_id);
         if (it != device_adapters_.end()) {
           device_adapters_.erase(it);
@@ -541,6 +544,8 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
     int camera_id = std::get<2>(cameras[i]);
     camera_id_map_[i] = std::make_pair(module_id, camera_id);
     camera_id_inverse_map_[module_id][camera_id] = i;
+    device_status_map_[i] = CAMERA_DEVICE_STATUS_PRESENT;
+    default_device_status_map_[i] = device_status_map_[i];
     torch_mode_status_map_[i] = has_flash_unit[module_id][camera_id]
                                     ? TORCH_MODE_STATUS_AVAILABLE_OFF
                                     : TORCH_MODE_STATUS_NOT_AVAILABLE;

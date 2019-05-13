@@ -96,6 +96,13 @@ const char* GetPreferredPath(udev_device* dev) {
   return udev_device_get_devnode(dev);
 }
 
+std::string GetModelId(const DeviceInfo& info) {
+  if (info.is_vivid) {
+    return "vivid";
+  }
+  return base::JoinString({info.usb_vid, info.usb_pid}, ":");
+}
+
 }  // namespace
 
 CameraHal::CameraHal()
@@ -333,8 +340,8 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
                << " pid: " << pid;
   }
 
-  const DeviceInfo* info_ptr = characteristics_.Find(vid, pid);
   DeviceInfo info;
+  const DeviceInfo* info_ptr = characteristics_.Find(vid, pid);
   if (info_ptr != nullptr) {
     VLOGF(1) << "Found a built-in camera";
     info = *info_ptr;
@@ -349,14 +356,31 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
       VLOGF(1) << "No callbacks set, ignore it for now";
       return;
     }
-    info.camera_id = next_external_camera_id_++;
-    info.lens_facing = ANDROID_LENS_FACING_EXTERNAL;
   }
 
   info.device_path = path;
   info.usb_vid = vid;
   info.usb_pid = pid;
+  info.is_vivid = is_vivid;
   info.power_line_frequency = V4L2CameraDevice::GetPowerLineFrequency(path);
+
+  if (info_ptr == nullptr) {
+    info.lens_facing = ANDROID_LENS_FACING_EXTERNAL;
+
+    // Try to reuse the same id for the same camera.
+    std::string model_id = GetModelId(info);
+    std::set<int>& preferred_ids = previous_ids_[model_id];
+    if (!preferred_ids.empty()) {
+      info.camera_id = *preferred_ids.begin();
+      previous_ids_.erase(previous_ids_.begin());
+      VLOGF(1) << "Use the previous id " << info.camera_id << " for camera "
+               << model_id;
+    } else {
+      info.camera_id = next_external_camera_id_++;
+      VLOGF(1) << "Use a new id " << info.camera_id << " for camera "
+               << model_id;
+    }
+  }
 
   CameraMetadataUniquePtr static_info = GetStaticInfoFromDeviceInfo(info);
   if (!static_info) {
@@ -406,6 +430,8 @@ void CameraHal::OnDeviceRemoved(ScopedUdevDevicePtr dev) {
   // panic.
   CHECK(cameras_.find(id) == cameras_.end())
       << "Unplug an opening camera, abort as intended";
+
+  previous_ids_[GetModelId(device_infos_[id])].insert(id);
 
   path_to_id_.erase(it);
   device_infos_.erase(id);

@@ -8,6 +8,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -91,6 +92,13 @@ class CameraHal : public UdevWatcher::Observer {
   // The next id for newly plugged external camera, which is starting from
   // |num_builtin_cameras_|.
   int next_external_camera_id_;
+
+  // The map from the model of a disconnected external camera to the set camera
+  // ids it used previously.  We would try to reuse the same id for the same
+  // external camera according to this map.  Note that there might be multiple
+  // external cameras with the same model, so we maintain a set instead of an
+  // integer here, and use the smallest free id when the camera is reconnected.
+  std::map<std::string, std::set<int>> previous_ids_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraHal);
 };

@@ -161,6 +161,8 @@ class CameraHalAdapter {
   // We need to keep the status for each camera to send up-to-date information
   // for newly connected client so everyone is in sync.
   // (external camera id) <=> (latest status)
+  std::map<int, camera_device_status_t> device_status_map_;
+  std::map<int, camera_device_status_t> default_device_status_map_;
   std::map<int, torch_mode_status_t> torch_mode_status_map_;
   std::map<int, torch_mode_status_t> default_torch_mode_status_map_;
 
