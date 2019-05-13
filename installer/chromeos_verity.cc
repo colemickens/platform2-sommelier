@@ -159,10 +159,10 @@ ssize_t PwriteToUbi(int fd,
   return nr_written;
 }
 
-int WriteHash(const std::string& dev,
-              const uint8_t* buf,
-              size_t size,
-              off64_t offset) {
+ssize_t WriteHash(const std::string& dev,
+                  const uint8_t* buf,
+                  size_t size,
+                  off64_t offset) {
   int64_t eraseblock_size = GetUbiLebSize(dev);
   base::ScopedFD fd(open(dev.c_str(), O_WRONLY | O_CLOEXEC));
   if (!fd.is_valid()) {
@@ -185,14 +185,6 @@ int chromeos_verity(const std::string& alg,
                     const std::string& salt,
                     const std::string& expected,
                     bool enforce_rootfs_verification) {
-  struct dm_bht bht;
-  int ret;
-  uint8_t* io_buffer;
-  uint8_t* hash_buffer;
-  size_t hash_size;
-  uint8_t digest[DM_BHT_MAX_DIGEST_SIZE];
-  uint64_t cur_block = 0;
-
   // Blocksize better be a power of two and fit into 1 MiB.
   if (IO_BUF_SIZE % blocksize != 0) {
     LOG(WARNING) << "blocksize % " << IO_BUF_SIZE << " != 0";
@@ -201,11 +193,14 @@ int chromeos_verity(const std::string& alg,
 
   // we don't need to call dm_bht_destroy after this because we're supplying
   // our own buffer -- in fact calling it will trigger a bogus assert.
+  int ret;
+  struct dm_bht bht;
   if ((ret = dm_bht_create(&bht, fs_blocks, alg.c_str()))) {
     LOG(WARNING) << "dm_bht_create failed: " << ret;
     return ret;
   }
 
+  uint8_t* io_buffer;
   ret = posix_memalign(reinterpret_cast<void**>(&io_buffer), blocksize,
                        IO_BUF_SIZE);
   if (ret != 0) {
@@ -216,8 +211,9 @@ int chromeos_verity(const std::string& alg,
   // We aren't going to do any automatic reading.
   dm_bht_set_read_cb(&bht, dm_bht_zeroread_callback);
   dm_bht_set_salt(&bht, salt.c_str());
-  hash_size = dm_bht_sectors(&bht) << SECTOR_SHIFT;
+  size_t hash_size = dm_bht_sectors(&bht) << SECTOR_SHIFT;
 
+  uint8_t* hash_buffer;
   ret = posix_memalign(reinterpret_cast<void**>(&hash_buffer), blocksize,
                        hash_size);
   if (ret != 0) {
@@ -236,6 +232,7 @@ int chromeos_verity(const std::string& alg,
     return errno;
   }
 
+  uint64_t cur_block = 0;
   while (cur_block < fs_blocks) {
     unsigned int i;
     ssize_t readb;
@@ -274,6 +271,7 @@ int chromeos_verity(const std::string& alg,
     return ret;
   }
 
+  uint8_t digest[DM_BHT_MAX_DIGEST_SIZE];
   dm_bht_root_hexdigest(&bht, digest, DM_BHT_MAX_DIGEST_SIZE);
 
   if (memcmp(digest, expected.c_str(), bht.digest_size)) {
@@ -288,9 +286,11 @@ int chromeos_verity(const std::string& alg,
     }
   }
 
-  if (WriteHash(device, hash_buffer, hash_size, cur_block * blocksize) <
-      (ssize_t)hash_size) {
-    LOG(ERROR) << "Writing out hash failed";
+  ssize_t written =
+      WriteHash(device, hash_buffer, hash_size, cur_block * blocksize);
+  if (written < static_cast<ssize_t>(hash_size)) {
+    PLOG(ERROR) << "Writing out hash failed: written" << written
+                << ", expected %d" << hash_size;
     free(hash_buffer);
     return errno;
   }
