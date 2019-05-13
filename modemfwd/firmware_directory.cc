@@ -10,10 +10,10 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/macros.h>
+#include <brillo/proto_file_io.h>
 #include <cros_config/cros_config.h>
 
 #include "modemfwd/proto_bindings/firmware_manifest.pb.h"
-#include "modemfwd/proto_file_io.h"
 
 namespace modemfwd {
 
@@ -138,7 +138,8 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
 std::unique_ptr<FirmwareDirectory> CreateFirmwareDirectory(
     const base::FilePath& directory) {
   FirmwareManifest parsed_manifest;
-  if (!ReadProtobuf(directory.Append(kManifestName), &parsed_manifest))
+  if (!brillo::ReadTextProtobuf(directory.Append(kManifestName),
+                                &parsed_manifest))
     return nullptr;
 
   return std::make_unique<FirmwareDirectoryImpl>(parsed_manifest, directory);

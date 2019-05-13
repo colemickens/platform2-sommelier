@@ -172,6 +172,15 @@ libbrillo_sublibs = [
       "brillo/minijail/minijail.cc",
     ]
   },
+
+  {
+    library_name = "brillo-protobuf-${libbase_ver}"
+    configs = [ "//common-mk:visibility_default" ]
+    all_dependent_pkg_deps = [ "protobuf" ]
+    sources = [
+      "brillo/proto_file_io.cc",
+    ]
+  },
 ]
 
 # Generate shared libraries.

@@ -10,10 +10,10 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <brillo/proto_file_io.h>
 
 #include "modemfwd/modem_helper.h"
 #include "modemfwd/proto_bindings/helper_manifest.pb.h"
-#include "modemfwd/proto_file_io.h"
 
 namespace {
 
@@ -69,7 +69,8 @@ class ModemHelperDirectoryImpl : public ModemHelperDirectory {
 std::unique_ptr<ModemHelperDirectory> CreateModemHelperDirectory(
     const base::FilePath& directory) {
   HelperManifest parsed_manifest;
-  if (!ReadProtobuf(directory.Append(kManifestName), &parsed_manifest))
+  if (!brillo::ReadTextProtobuf(directory.Append(kManifestName),
+                                &parsed_manifest))
     return nullptr;
 
   auto helper_dir =

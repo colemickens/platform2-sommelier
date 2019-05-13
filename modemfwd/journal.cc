@@ -9,10 +9,10 @@
 
 #include <base/files/file.h>
 #include <base/strings/string_split.h>
+#include <brillo/proto_file_io.h>
 
 #include "modemfwd/modem_helper.h"
 #include "modemfwd/proto_bindings/journal_entry.pb.h"
-#include "modemfwd/proto_file_io.h"
 
 namespace modemfwd {
 
@@ -113,7 +113,7 @@ class JournalImpl : public Journal {
       return false;
     }
     journal_file_.Seek(base::File::FROM_BEGIN, 0);
-    return ReadProtobuf(journal_file_.GetPlatformFile(), entry);
+    return brillo::ReadTextProtobuf(journal_file_.GetPlatformFile(), entry);
   }
 
   bool WriteJournalEntry(const JournalEntry& entry) {
@@ -122,7 +122,7 @@ class JournalImpl : public Journal {
       return false;
     }
     journal_file_.Seek(base::File::FROM_BEGIN, 0);
-    return WriteProtobuf(entry, journal_file_.GetPlatformFile());
+    return brillo::WriteTextProtobuf(journal_file_.GetPlatformFile(), entry);
   }
 
   void ClearJournalFile() {
@@ -152,7 +152,7 @@ std::unique_ptr<Journal> OpenJournal(const base::FilePath& journal_path,
   // Restart operations if necessary.
   if (journal_file.GetLength() > 0) {
     JournalEntry last_entry;
-    if (ReadProtobuf(journal_file.GetPlatformFile(), &last_entry) &&
+    if (brillo::ReadTextProtobuf(journal_file.GetPlatformFile(), &last_entry) &&
         !RestartOperation(last_entry, firmware_dir, helper_dir)) {
       LOG(ERROR) << "Failed to restart uncommitted operation";
     }
