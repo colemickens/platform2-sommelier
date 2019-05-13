@@ -21,7 +21,9 @@ from chromite.lib import portage_util
 
 import common_utils
 
-# List of all USE flags that can be used in BUILD.gn.
+# USE flags used in BUILD.gn should be listed in _IUSE or _IUSE_TRUE.
+
+# USE flags whose default values are false.
 _IUSE = [
     'amd64',
     'arm',
@@ -49,6 +51,7 @@ _IUSE = [
     'ftdi_tpm',
     'fuzzer',
     'hammerd_api',
+    'hwid_override',
     'iwlwifi_dump',
     'kvm_host',
     'metrics_uploader',
@@ -74,6 +77,12 @@ _IUSE = [
     'wake_on_wifi',
     'wifi',
     'wired_8021x',
+]
+
+# USE flags whose default values are true.
+_IUSE_TRUE = [
+    'chrome_kiosk_app',
+    'chrome_network_proxy',
 ]
 
 
@@ -348,6 +357,8 @@ class Platform2(object):
     uses = {}
     for flag in _IUSE:
       uses[flag] = False
+    for flag in _IUSE_TRUE:
+      uses[flag] = True
     for x in self.use_flags:
       uses[x.replace('-', '_')] = True
     use_args = ['%s=%s' % (x, str(uses[x]).lower()) for x in uses]
