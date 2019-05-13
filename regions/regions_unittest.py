@@ -150,18 +150,23 @@ class RegionTest(unittest.TestCase):
 
     bmp_locale_dir = os.path.join(bmpblk_dir, 'strings', 'locale')
     for r in regions.BuildRegionsDict(include_all=True).values():
+      checked_paths = []
       for l in r.locales:
         paths = [os.path.join(bmp_locale_dir, l)]
         if '-' in l:
           paths.append(os.path.join(bmp_locale_dir, l.partition('-')[0]))
-        if not any([os.path.exists(x) for x in paths]):
-          if r.region_code in regions.REGIONS:
-            self.fail(
-                'For region %r, none of %r exists' % (r.region_code, paths))
-          else:
-            logging.warn('For region %r, none of %r exists; '
-                         'just a warning since this region is not confirmed',
-                         r.region_code, paths)
+        if any([os.path.exists(x) for x in paths]):
+          break
+        checked_paths += paths
+      else:
+        if r.region_code in regions.REGIONS:
+          self.fail(
+              'For region %r, none of %r exists' % (r.region_code,
+                                                    checked_paths))
+        else:
+          logging.warn('For region %r, none of %r exists; '
+                       'just a warning since this region is not confirmed',
+                       r.region_code, checked_paths)
 
   def testYAMLOutput(self):
     output = StringIO.StringIO()
