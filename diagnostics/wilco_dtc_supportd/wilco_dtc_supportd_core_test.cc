@@ -648,8 +648,13 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetProcDataGrpcCall) {
 TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetEcTelemetryGrpcCall) {
   const base::FilePath file_path =
       temp_dir_path().Append(kEcGetTelemetryFilePath);
-  const std::string kRequestPayload = "1";
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(file_path, ""));
+  const std::string kRequestPayload = "12345";
+  const std::string kResponsePayload = "67890";
+
+  // Write request and response payload because EC telemetry char device is
+  // non-seekable.
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(file_path,
+                                           kRequestPayload + kResponsePayload));
 
   grpc_api::GetEcTelemetryRequest request;
   request.set_payload(kRequestPayload);
@@ -662,7 +667,7 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetEcTelemetryGrpcCall) {
   ASSERT_TRUE(response);
   grpc_api::GetEcTelemetryResponse expected_response;
   expected_response.set_status(grpc_api::GetEcTelemetryResponse::STATUS_OK);
-  expected_response.set_payload(kRequestPayload);
+  expected_response.set_payload(kResponsePayload);
   EXPECT_THAT(*response, ProtobufEquals(expected_response))
       << "Actual: {" << response->ShortDebugString() << "}";
 }

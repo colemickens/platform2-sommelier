@@ -909,7 +909,10 @@ class GetEcTelemetryWilcoDtcSupportdGrpcServiceTest
 // Test that GetEcTelemetry() response contains expected |status| and |payload|
 // field values.
 TEST_P(GetEcTelemetryWilcoDtcSupportdGrpcServiceTest, Base) {
-  EXPECT_TRUE(WriteFileAndCreateParentDirs(devfs_telemetry_file(), ""));
+  // Write request and response payload because EC telemetry char device is
+  // non-seekable.
+  EXPECT_TRUE(WriteFileAndCreateParentDirs(
+      devfs_telemetry_file(), request_payload() + expected_response_payload()));
   std::unique_ptr<grpc_api::GetEcTelemetryResponse> response;
   ExecuteGetEcTelemetry(request_payload(), &response);
   ASSERT_TRUE(response);
@@ -928,7 +931,7 @@ INSTANTIATE_TEST_CASE_P(
                         FakeFileContents()),
         std::make_tuple(std::string("A", kEcGetTelemetryPayloadMaxSize),
                         grpc_api::GetEcTelemetryResponse::STATUS_OK,
-                        std::string("A", kEcGetTelemetryPayloadMaxSize)),
+                        std::string("B", kEcGetTelemetryPayloadMaxSize)),
         std::make_tuple(
             "",
             grpc_api::GetEcTelemetryResponse::STATUS_ERROR_INPUT_PAYLOAD_EMPTY,

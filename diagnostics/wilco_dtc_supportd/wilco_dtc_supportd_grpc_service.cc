@@ -4,15 +4,18 @@
 
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_grpc_service.h"
 
+#include <fcntl.h>
+#include <unistd.h>
 #include <cstdint>
 #include <iterator>
 #include <utility>
 
 #include <base/bind.h>
-#include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>
 #include <base/sys_info.h>
 
@@ -331,11 +334,11 @@ void WilcoDtcSupportdGrpcService::GetEcTelemetry(
   base::FilePath telemetry_file_path =
       root_dir_.Append(kEcGetTelemetryFilePath);
 
-  base::File telemetry_file(telemetry_file_path,
-                            base::File::Flags::FLAG_OPEN |
-                                base::File::Flags::FLAG_READ |
-                                base::File::Flags::FLAG_WRITE);
-  if (!telemetry_file.IsValid()) {
+  // Use base::ScopedFD to operate with non-seekable files.
+  base::ScopedFD telemetry_file(
+      HANDLE_EINTR(open(telemetry_file_path.value().c_str(), O_RDWR)));
+
+  if (!telemetry_file.is_valid()) {
     VPLOG(2) << "GetEcTelemetry gRPC can not open the "
              << "telemetry node: " << telemetry_file_path.value();
     reply->set_status(
@@ -344,8 +347,9 @@ void WilcoDtcSupportdGrpcService::GetEcTelemetry(
     return;
   }
 
-  int write_result = telemetry_file.Write(
-      0 /* offset */, request->payload().c_str(), request->payload().length());
+  int write_result =
+      HANDLE_EINTR(write(telemetry_file.get(), request->payload().c_str(),
+                         request->payload().length()));
   if (write_result != request->payload().length()) {
     VPLOG(2) << "GetEcTelemetry gRPC can not write request payload to the "
              << "telemetry node: " << telemetry_file_path.value();
@@ -357,8 +361,8 @@ void WilcoDtcSupportdGrpcService::GetEcTelemetry(
 
   // Reply payload must be empty in case of any failure.
   char file_content[kEcGetTelemetryPayloadMaxSize];
-  int read_result = telemetry_file.Read(0 /* offset */, file_content,
-                                        kEcGetTelemetryPayloadMaxSize);
+  int read_result = HANDLE_EINTR(
+      read(telemetry_file.get(), file_content, kEcGetTelemetryPayloadMaxSize));
   if (read_result > 0) {
     reply->set_status(grpc_api::GetEcTelemetryResponse::STATUS_OK);
     reply->set_payload(file_content, read_result);
