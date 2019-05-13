@@ -123,7 +123,6 @@ void FakeWilcoDtc::HandleEcNotification(
   callback.Run(std::move(response));
 
   handle_ec_event_request_callback_->Run(request->type(), request->payload());
-  handle_ec_event_request_callback_.reset();
 }
 
 void FakeWilcoDtc::HandleConfigurationDataChanged(

@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -759,27 +760,36 @@ const uint16_t kFakeEcEventType2 = 0x1234;
 class EcEventServiceBootstrappedWilcoDtcSupportdCoreTest
     : public BootstrappedWilcoDtcSupportdCoreTest {
  protected:
-  void EmulateEcEvent(uint16_t size, uint16_t type) const {
-    WriteEcEventToEcEventFile(GetEcEvent(size, type));
+  // Holds EC event type and payload.
+  using ExpectedEcEvent = std::pair<uint16_t, std::string>;
+
+  std::string GetPayload(size_t expected_size_in_bytes) const {
+    return std::string(reinterpret_cast<const char*>(kPayload),
+                       expected_size_in_bytes);
   }
 
-  void ExpectFakeWilcoDtcEcEventCalled(FakeWilcoDtc* fake_wilco_dtc,
-                                       uint16_t expected_size,
-                                       uint16_t type) {
-    const std::string payload =
-        GetPayload(expected_size *
-                   sizeof(WilcoDtcSupportdEcEventService::EcEvent::data[0]));
+  void EmulateEcEvent(uint16_t size_in_words, uint16_t type) const {
+    WriteEcEventToEcEventFile(GetEcEvent(size_in_words, type));
+  }
+
+  void ExpectAllFakeWilcoDtcReceivedEcEvents(
+      const std::multiset<ExpectedEcEvent>& expected_ec_events) {
     base::RunLoop run_loop;
-    fake_wilco_dtc->set_handle_ec_event_request_callback(base::BindRepeating(
-        [](const base::Closure& callback, int32_t expected_type,
-           const std::string& expected_payload, int32_t type,
-           const std::string& payload) {
-          ASSERT_EQ(type, expected_type);
-          ASSERT_EQ(payload, expected_payload);
-          callback.Run();
-        },
-        run_loop.QuitClosure(), type, payload));
+    auto barrier_closure =
+        BarrierClosure(2 * expected_ec_events.size(), run_loop.QuitClosure());
+
+    std::multiset<ExpectedEcEvent> fake_wilco_dtc_ec_events;
+    std::multiset<ExpectedEcEvent> fake_ui_message_receiver_wilco_dtc_ec_events;
+    SetupFakeWilcoDtcEcEventCallback(barrier_closure, fake_wilco_dtc(),
+                                     &fake_wilco_dtc_ec_events);
+    SetupFakeWilcoDtcEcEventCallback(
+        barrier_closure, fake_ui_message_receiver_wilco_dtc(),
+        &fake_ui_message_receiver_wilco_dtc_ec_events);
+
     run_loop.Run();
+
+    EXPECT_EQ(fake_wilco_dtc_ec_events, expected_ec_events);
+    EXPECT_EQ(fake_ui_message_receiver_wilco_dtc_ec_events, expected_ec_events);
   }
 
  private:
@@ -788,14 +798,26 @@ class EcEventServiceBootstrappedWilcoDtcSupportdCoreTest
   const uint8_t kPayload[12]{0x02, 0x01, 0x14, 0x13, 0x26, 0x25,
                              0x38, 0x37, 0x4a, 0x49, 0x5c, 0x5b};
 
-  WilcoDtcSupportdEcEventService::EcEvent GetEcEvent(uint16_t size,
+  WilcoDtcSupportdEcEventService::EcEvent GetEcEvent(uint16_t size_in_words,
                                                      uint16_t type) const {
-    return WilcoDtcSupportdEcEventService::EcEvent(size, type, kData);
+    return WilcoDtcSupportdEcEventService::EcEvent(size_in_words, type, kData);
   }
 
-  std::string GetPayload(size_t expected_size_in_bytes) const {
-    return std::string(reinterpret_cast<const char*>(kPayload),
-                       expected_size_in_bytes);
+  void SetupFakeWilcoDtcEcEventCallback(
+      const base::Closure& callback,
+      FakeWilcoDtc* fake_wilco_dtc,
+      std::multiset<ExpectedEcEvent>* events_out) {
+    DCHECK(fake_wilco_dtc);
+    DCHECK(events_out);
+    fake_wilco_dtc->set_handle_ec_event_request_callback(base::BindRepeating(
+        [](const base::Closure& callback,
+           std::multiset<ExpectedEcEvent>* events_out, int32_t type,
+           const std::string& payload) {
+          DCHECK(events_out);
+          events_out->insert({type, payload});
+          callback.Run();
+        },
+        callback, events_out));
   }
 };
 
@@ -803,58 +825,45 @@ class EcEventServiceBootstrappedWilcoDtcSupportdCoreTest
 
 // Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
 // called by wilco_dtc support daemon.
-// TODO(b/124598866): Disabled due to flakiness.
 TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
-       DISABLED_SendGrpcEcEventToWilcoDtcSize0) {
+       SendGrpcEcEventToWilcoDtcSize0) {
   EmulateEcEvent(0, kFakeEcEventType1);
-  ExpectFakeWilcoDtcEcEventCalled(fake_wilco_dtc(), 0, kFakeEcEventType1);
-  ExpectFakeWilcoDtcEcEventCalled(fake_ui_message_receiver_wilco_dtc(), 0,
-                                  kFakeEcEventType1);
+  ExpectAllFakeWilcoDtcReceivedEcEvents({{kFakeEcEventType1, GetPayload(0)}});
 }
 
-// TODO(b/124598866): Disabled due to flakiness.
+// Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
+// called by wilco_dtc support daemon.
 TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
-       DISABLED_SendGrpcEcEventToWilcoDtcSize5) {
+       SendGrpcEcEventToWilcoDtcSize5) {
   EmulateEcEvent(5, kFakeEcEventType1);
-  ExpectFakeWilcoDtcEcEventCalled(fake_wilco_dtc(), 5, kFakeEcEventType1);
-  ExpectFakeWilcoDtcEcEventCalled(fake_ui_message_receiver_wilco_dtc(), 5,
-                                  kFakeEcEventType1);
+  ExpectAllFakeWilcoDtcReceivedEcEvents({{kFakeEcEventType1, GetPayload(10)}});
 }
 
-// TODO(b/124598866): Disabled due to flakiness.
+// Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
+// called by wilco_dtc support daemon.
 TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
-       DISABLED_SendGrpcEcEventToDiagnosticsWilcoDtcSize6) {
+       SendGrpcEcEventToWilcoDtcSize6) {
   EmulateEcEvent(6, kFakeEcEventType1);
-  ExpectFakeWilcoDtcEcEventCalled(fake_wilco_dtc(), 6, kFakeEcEventType1);
-  ExpectFakeWilcoDtcEcEventCalled(fake_ui_message_receiver_wilco_dtc(), 6,
-                                  kFakeEcEventType1);
+  ExpectAllFakeWilcoDtcReceivedEcEvents({{kFakeEcEventType1, GetPayload(12)}});
 }
 
 // Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
 // called by wilco_dtc support daemon multiple times.
-// TODO(b/124598866): Disabled due to flakiness.
 TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
-       DISABLED_SendGrpcEcEventToDiagnosticsWilcoDtcMultipleEvents) {
+       SendGrpcEcEventToWilcoDtcMultipleEvents) {
   EmulateEcEvent(3, kFakeEcEventType1);
   EmulateEcEvent(4, kFakeEcEventType2);
-  ExpectFakeWilcoDtcEcEventCalled(fake_wilco_dtc(), 3, kFakeEcEventType1);
-  ExpectFakeWilcoDtcEcEventCalled(fake_wilco_dtc(), 4, kFakeEcEventType2);
-  ExpectFakeWilcoDtcEcEventCalled(fake_ui_message_receiver_wilco_dtc(), 3,
-                                  kFakeEcEventType1);
-  ExpectFakeWilcoDtcEcEventCalled(fake_ui_message_receiver_wilco_dtc(), 4,
-                                  kFakeEcEventType2);
+  ExpectAllFakeWilcoDtcReceivedEcEvents(
+      {{kFakeEcEventType1, GetPayload(6)}, {kFakeEcEventType2, GetPayload(8)}});
 }
 
 // Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
 // called by wilco_dtc support daemon even when |ec_event.size| exceeds
 // allocated data array.
-// TODO(b/124598866): Disabled due to flakiness.
 TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
-       DISABLED_SendGrpcEcEventToDiagnosticsWilcoDtcInvalidSize) {
+       SendGrpcEcEventToWilcoDtcInvalidSize) {
   EmulateEcEvent(7, kFakeEcEventType1);
-  ExpectFakeWilcoDtcEcEventCalled(fake_wilco_dtc(), 6, kFakeEcEventType1);
-  ExpectFakeWilcoDtcEcEventCalled(fake_ui_message_receiver_wilco_dtc(), 6,
-                                  kFakeEcEventType1);
+  ExpectAllFakeWilcoDtcReceivedEcEvents({{kFakeEcEventType1, GetPayload(12)}});
 }
 
 }  // namespace diagnostics

@@ -75,7 +75,7 @@ class FakeWilcoDtc final {
       const std::string& json_message_response);
 
   // Setups callback for the next |HandleEcNotification| gRPC call.
-  // |handle_ec_event_request_callback_| will be called only once.
+  // |handle_ec_event_request_callback_| will be called multiple times.
   void set_handle_ec_event_request_callback(
       HandleEcNotificationRequestCallback handle_ec_event_request_callback) {
     handle_ec_event_request_callback_ = handle_ec_event_request_callback;
