@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/time/time.h>
 #include <brillo/process.h>
 #include <brillo/streams/stream.h>
 #include <session_manager/dbus-proxies.h>
@@ -29,6 +30,16 @@ bool IsTestImage();
 
 // Returns true if running on an official image.
 bool IsOfficialImage();
+
+// Returns the timestamp for the OS version we are currently running. Returns
+// a null (zero-valued) base::Time if it is unable to calculate it for some
+// reason.
+base::Time GetOsTimestamp();
+
+// Returns true if this version is old enough that we do not want to upload the
+// crash reports anymore. This just checks if |timestamp| is more than 180
+// days old. If |timestamp| is null (zero-valued) then this will return false.
+bool IsOsTimestampTooOldForUploads(base::Time timestamp);
 
 // Gets a string describing the hardware class of the device. Returns
 // "undefined" if this cannot be determined.

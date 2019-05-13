@@ -35,6 +35,9 @@ constexpr char kGzipPath[] = "/bin/gzip";
 constexpr int kPollTimeoutMillis = 5000;
 constexpr int kKillTimeoutSec = 5;
 
+// If the OS version is older than this we do not upload crash reports.
+constexpr base::TimeDelta kAgeForNoUploads = base::TimeDelta::FromDays(180);
+
 }  // namespace
 
 bool IsCrashTestInProgress() {
@@ -77,6 +80,23 @@ bool IsOfficialImage() {
   }
 
   return description.find("Official") != std::string::npos;
+}
+
+base::Time GetOsTimestamp() {
+  base::FilePath lsb_release_path =
+      paths::Get(paths::kEtcDirectory).Append(paths::kLsbRelease);
+  base::File::Info info;
+  if (!base::GetFileInfo(lsb_release_path, &info)) {
+    LOG(ERROR) << "Failed reading info for /etc/lsb-release";
+    return base::Time();
+  }
+
+  return info.last_modified;
+}
+
+bool IsOsTimestampTooOldForUploads(base::Time timestamp) {
+  return !timestamp.is_null() &&
+         (base::Time::Now() - timestamp) > kAgeForNoUploads;
 }
 
 std::string GetHardwareClass() {

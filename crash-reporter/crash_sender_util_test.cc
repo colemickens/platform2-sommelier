@@ -5,6 +5,7 @@
 #include "crash-reporter/crash_sender_util.h"
 
 #include <fcntl.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -348,11 +349,41 @@ class CrashSenderUtilTest : public testing::Test {
     if (!test_util::CreateFile(new_incomplete_meta_, "payload=good.log\n"))
       return false;
 
+    // This should be kept since the OS timestamp is recent.
+    recent_os_meta_ = crash_directory.Append("recent_os.meta");
+    if (!test_util::CreateFile(
+            recent_os_meta_,
+            base::StringPrintf("payload=recent_os.log\n"
+                               "os_millis=%" PRId64 "\n"
+                               "done=1\n",
+                               (base::Time::Now() - base::Time::UnixEpoch())
+                                   .InMilliseconds()))) {
+      return false;
+    }
+    recent_os_log_ = crash_directory.Append("recent_os.log");
+    if (!test_util::CreateFile(recent_os_log_, ""))
+      return false;
+
+    // This should be removed since the OS timestamp is old.
+    old_os_meta_ = crash_directory.Append("old_os.meta");
+    if (!test_util::CreateFile(
+            old_os_meta_,
+            base::StringPrintf("payload=good.log\n"
+                               "os_millis=%" PRId64 "\n"
+                               "done=1\n",
+                               ((base::Time::Now() - base::Time::UnixEpoch()) -
+                                base::TimeDelta::FromDays(200))
+                                   .InMilliseconds()))) {
+      return false;
+    }
+
     // Update timestamps, so that the return value of GetMetaFiles() is sorted
     // per timestamps correctly.
-    if (!TouchFileHelper(good_meta_, now - hour * 2))
+    if (!TouchFileHelper(good_meta_, now - hour * 3))
       return false;
-    if (!TouchFileHelper(absolute_meta_, now - hour))
+    if (!TouchFileHelper(absolute_meta_, now - hour * 2))
+      return false;
+    if (!TouchFileHelper(recent_os_meta_, now - hour))
       return false;
     if (!TouchFileHelper(devcore_meta_, now))
       return false;
@@ -406,6 +437,9 @@ class CrashSenderUtilTest : public testing::Test {
   base::FilePath unknown_xxx_;
   base::FilePath old_incomplete_meta_;
   base::FilePath new_incomplete_meta_;
+  base::FilePath recent_os_meta_;
+  base::FilePath recent_os_log_;
+  base::FilePath old_os_meta_;
 };
 
 base::FilePath* CrashSenderUtilTest::build_directory_ = nullptr;
@@ -640,6 +674,8 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
   // The following files should be sent.
   EXPECT_EQ(kSend, ChooseAction(good_meta_, metrics_lib_.get(),
                                 allow_dev_sending, &reason, &info));
+  EXPECT_EQ(kSend, ChooseAction(recent_os_meta_, metrics_lib_.get(),
+                                allow_dev_sending, &reason, &info));
   EXPECT_EQ(kSend, ChooseAction(absolute_meta_, metrics_lib_.get(),
                                 allow_dev_sending, &reason, &info));
   // Sanity check that the valid crash info is returned.
@@ -684,6 +720,10 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
                                   allow_dev_sending, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Removing old incomplete metadata"));
 
+  EXPECT_EQ(kRemove, ChooseAction(old_os_meta_, metrics_lib_.get(),
+                                  allow_dev_sending, &reason, &info));
+  EXPECT_THAT(reason, HasSubstr("Old OS version"));
+
   ASSERT_TRUE(SetConditions(kUnofficialBuild, kSignInMode, kMetricsEnabled));
   EXPECT_EQ(kRemove, ChooseAction(good_meta_, metrics_lib_.get(),
                                   allow_dev_sending, &reason, &info));
@@ -692,6 +732,8 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
   // If we set allow_dev_sending, then the OS check will be skipped.
   allow_dev_sending = true;
   EXPECT_EQ(kSend, ChooseAction(good_meta_, metrics_lib_.get(),
+                                allow_dev_sending, &reason, &info));
+  EXPECT_EQ(kSend, ChooseAction(old_os_meta_, metrics_lib_.get(),
                                 allow_dev_sending, &reason, &info));
   allow_dev_sending = false;
 
@@ -736,16 +778,20 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   EXPECT_TRUE(base::PathExists(absolute_meta_));
   EXPECT_TRUE(base::PathExists(absolute_log_));
   EXPECT_TRUE(base::PathExists(new_incomplete_meta_));
+  EXPECT_TRUE(base::PathExists(recent_os_meta_));
+  EXPECT_TRUE(base::PathExists(recent_os_log_));
   EXPECT_FALSE(base::PathExists(empty_meta_));
   EXPECT_FALSE(base::PathExists(corrupted_meta_));
   EXPECT_FALSE(base::PathExists(nonexistent_meta_));
   EXPECT_FALSE(base::PathExists(unknown_meta_));
   EXPECT_FALSE(base::PathExists(unknown_xxx_));
   EXPECT_FALSE(base::PathExists(old_incomplete_meta_));
+  EXPECT_FALSE(base::PathExists(old_os_meta_));
   // Check what files were picked for sending.
-  ASSERT_EQ(2, to_send.size());
+  EXPECT_EQ(3, to_send.size());
   EXPECT_EQ(good_meta_.value(), to_send[0].first.value());
   EXPECT_EQ(absolute_meta_.value(), to_send[1].first.value());
+  EXPECT_EQ(recent_os_meta_.value(), to_send[2].first.value());
 
   // Sanity check that the valid crash info is returned.
   std::string value;
@@ -789,8 +835,8 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   CreateDeviceCoredumpUploadAllowedFile();
   to_send.clear();
   sender.RemoveAndPickCrashFiles(crash_directory, &to_send);
-  ASSERT_EQ(3, to_send.size());
-  EXPECT_EQ(devcore_meta_.value(), to_send[2].first.value());
+  EXPECT_EQ(4, to_send.size());
+  EXPECT_EQ(devcore_meta_.value(), to_send[3].first.value());
 }
 
 TEST_F(CrashSenderUtilTest, RemoveReportFiles) {

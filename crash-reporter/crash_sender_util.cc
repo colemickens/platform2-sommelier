@@ -50,6 +50,7 @@ constexpr char kChromeOsProduct[] = "ChromeOS";
 constexpr char kUploadVarPrefix[] = "upload_var_";
 constexpr char kUploadTextPrefix[] = "upload_text_";
 constexpr char kUploadFilePrefix[] = "upload_file_";
+constexpr char kOsTimestamp[] = "os_millis";
 
 // Length of the client ID. This is a standard GUID which has the dashes
 // removed.
@@ -324,6 +325,21 @@ Action ChooseAction(const base::FilePath& meta_file,
 
   if (!IsKnownKind(info->payload_kind)) {
     *reason = "Unknown kind: " + info->payload_kind;
+    return kRemove;
+  }
+
+  // If we have an OS timestamp in the metadata and it's too old to upload then
+  // remove the report. We wouldn't have gotten here if the current OS version
+  // is too old, so this is an old report from before an OS update.
+  std::string os_timestamp_str;
+  int64_t os_millis;
+  if (!allow_dev_sending &&
+      info->metadata.GetString(kOsTimestamp, &os_timestamp_str) &&
+      base::StringToInt64(os_timestamp_str, &os_millis) &&
+      util::IsOsTimestampTooOldForUploads(
+          base::Time::UnixEpoch() +
+          base::TimeDelta::FromMilliseconds(os_millis))) {
+    *reason = "Old OS version";
     return kRemove;
   }
 

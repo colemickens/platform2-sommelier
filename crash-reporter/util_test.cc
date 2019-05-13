@@ -185,6 +185,28 @@ TEST_F(CrashCommonUtilTest, IsOfficialImage) {
   EXPECT_TRUE(IsOfficialImage());
 }
 
+TEST_F(CrashCommonUtilTest, GetOsTimestamp) {
+  // If we can't read /etc/lsb-release then we should be returning the null
+  // time.
+  EXPECT_TRUE(util::GetOsTimestamp().is_null());
+
+  base::FilePath lsb_file_path = paths::Get("/etc/lsb-release");
+  ASSERT_TRUE(test_util::CreateFile(lsb_file_path, "foo=bar"));
+  base::Time old_time = base::Time::Now() - base::TimeDelta::FromDays(366);
+  ASSERT_TRUE(base::TouchFile(lsb_file_path, old_time, old_time));
+  // ext2/ext3 seem to have a timestamp granularity of 1s.
+  EXPECT_EQ(util::GetOsTimestamp().ToTimeVal().tv_sec,
+            old_time.ToTimeVal().tv_sec);
+}
+
+TEST_F(CrashCommonUtilTest, IsOsTimestampTooOldForUploads) {
+  EXPECT_FALSE(util::IsOsTimestampTooOldForUploads(base::Time()));
+  EXPECT_FALSE(util::IsOsTimestampTooOldForUploads(
+      base::Time::Now() - base::TimeDelta::FromDays(179)));
+  EXPECT_TRUE(util::IsOsTimestampTooOldForUploads(
+      base::Time::Now() - base::TimeDelta::FromDays(181)));
+}
+
 TEST_F(CrashCommonUtilTest, GetHardwareClass) {
   EXPECT_EQ("undefined", GetHardwareClass());
 

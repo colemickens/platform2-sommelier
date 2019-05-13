@@ -799,16 +799,25 @@ void CrashCollector::WriteCrashMetaData(const FilePath& meta_path,
   const std::string description = GetOsDescription();
   base::Time now = test_clock_ ? test_clock_->Now() : base::Time::Now();
   int64_t now_millis = (now - base::Time::UnixEpoch()).InMilliseconds();
-  std::string meta_data = StringPrintf(
-      "%supload_var_reportTimeMillis=%" PRId64
-      "\n"
-      "upload_var_lsb-release=%s\n"
-      "exec_name=%s\n"
-      "ver=%s\n"
-      "payload=%s\n"
-      "done=1\n",
-      extra_metadata_.c_str(), now_millis, description.c_str(),
-      exec_name.c_str(), version.c_str(), payload_path.value().c_str());
+  base::Time os_timestamp = util::GetOsTimestamp();
+  std::string os_timestamp_str;
+  if (!os_timestamp.is_null()) {
+    os_timestamp_str =
+        StringPrintf("os_millis=%" PRId64 "\n",
+                     (os_timestamp - base::Time::UnixEpoch()).InMilliseconds());
+  }
+  std::string meta_data =
+      StringPrintf("%supload_var_reportTimeMillis=%" PRId64
+                   "\n"
+                   "upload_var_lsb-release=%s\n"
+                   "exec_name=%s\n"
+                   "ver=%s\n"
+                   "payload=%s\n"
+                   "%s"
+                   "done=1\n",
+                   extra_metadata_.c_str(), now_millis, description.c_str(),
+                   exec_name.c_str(), version.c_str(),
+                   payload_path.value().c_str(), os_timestamp_str.c_str());
   // We must use WriteNewFile instead of base::WriteFile as we
   // do not want to write with root access to a symlink that an attacker
   // might have created.

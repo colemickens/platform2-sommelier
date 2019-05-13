@@ -67,6 +67,12 @@ int RunChildMain(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
+  if (util::IsOsTimestampTooOldForUploads(util::GetOsTimestamp()) &&
+      !flags.allow_dev_sending) {
+    LOG(INFO) << "Version is too old, will not upload crash reports";
+    return EXIT_FAILURE;
+  }
+
   if (flags.allow_dev_sending) {
     LOG(INFO) << "--dev flag present, ignore image checks and uploading "
               << "crashes to staging server at go/crash-staging";

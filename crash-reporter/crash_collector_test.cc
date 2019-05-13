@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include "crash-reporter/crash_collector.h"
+#include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 
 using base::FilePath;
@@ -46,6 +47,9 @@ class CrashCollectorTest : public ::testing::Test {
 
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
     test_dir_ = scoped_temp_dir_.GetPath();
+    // TODO(jkardatzke): Cleanup the usage of paths in here so that we use this
+    // technique instead rather than setting various specific dirs.
+    paths::SetPrefixForTesting(test_dir_);
 
     brillo::ClearLog();
   }
@@ -248,7 +252,8 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
   path = collector_.GetCrashDirectoryInfo(kChronosUid, kChronosUid, kChronosGid,
                                           &directory_mode, &directory_owner,
                                           &directory_group);
-  EXPECT_EQ("/home/user/hashcakes/crash", path.value());
+  EXPECT_EQ(test_dir_.Append("home/user/hashcakes/crash").value(),
+            path.value());
   EXPECT_EQ(kExpectedUserMode, directory_mode);
   EXPECT_EQ(kChronosUid, directory_owner);
   EXPECT_EQ(kChronosGid, directory_group);
@@ -391,7 +396,7 @@ TEST_F(CrashCollectorTest, CheckHasCapacityStrangeNames) {
 TEST_F(CrashCollectorTest, MetaData) {
   const char kMetaFileBasename[] = "generated.meta";
   FilePath meta_file = test_dir_.Append(kMetaFileBasename);
-  FilePath lsb_release = test_dir_.Append("lsb-release");
+  FilePath lsb_release = paths::Get("/etc/lsb-release");
   FilePath payload_file = test_dir_.Append("payload-file");
   FilePath payload_full_path;
   std::string contents;
@@ -402,6 +407,13 @@ TEST_F(CrashCollectorTest, MetaData) {
       "CHROMEOS_RELEASE_NAME=Chromium OS\n"
       "CHROMEOS_RELEASE_DESCRIPTION=6727.0.2015_01_26_0853 (Test Build - foo)";
   ASSERT_TRUE(test_util::CreateFile(lsb_release, kLsbContents));
+  base::Time os_time = base::Time::Now() - base::TimeDelta::FromDays(123);
+  // ext2/ext3 seem to have a timestamp granularity of 1s so round this time
+  // value down to the nearest second.
+  os_time = base::TimeDelta::FromSeconds(
+                (os_time - base::Time::UnixEpoch()).InSeconds()) +
+            base::Time::UnixEpoch();
+  ASSERT_TRUE(base::TouchFile(lsb_release, os_time, os_time));
   const char kPayload[] = "foo";
   ASSERT_TRUE(test_util::CreateFile(payload_file, kPayload));
   collector_.AddCrashMetaData("foo", "bar");
@@ -422,8 +434,11 @@ TEST_F(CrashCollectorTest, MetaData) {
       "exec_name=kernel\n"
       "ver=6727.0.2015_01_26_0853\n"
       "payload=%s\n"
+      "os_millis=%" PRId64
+      "\n"
       "done=1\n",
-      kFakeNow, payload_full_path.value().c_str());
+      kFakeNow, payload_full_path.value().c_str(),
+      (os_time - base::Time::UnixEpoch()).InMilliseconds());
   EXPECT_EQ(expected_meta, contents);
 
   // Test target of symlink is not overwritten.
