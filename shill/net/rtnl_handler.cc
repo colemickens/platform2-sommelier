@@ -312,29 +312,28 @@ void RTNLHandler::ParseRTNL(InputData* data) {
             }
 
             int error_number =
-              -(reinterpret_cast<nlmsgerr*>(NLMSG_DATA(hdr))->error);
+              reinterpret_cast<nlmsgerr*>(NLMSG_DATA(hdr))->error;
             std::string request_str;
             if (request_msg)
               request_str = " (" + request_msg->ToString() + ")";
-            bool invalid_error = (error_number < 0 ||
-               error_number == std::numeric_limits<int>::min());
 
-            std::string error_msg;
-            if (invalid_error) {
-              error_msg = base::StringPrintf(
+            if ((error_number >= 0 ||
+                 error_number == std::numeric_limits<int>::min())) {
+              LOG(ERROR) << base::StringPrintf(
                 "sequence %d%s received invalid error %d",
                 hdr->nlmsg_seq, request_str.c_str(), error_number);
             } else {
-              error_msg = base::StringPrintf(
+              error_number = -error_number;
+              std::string error_msg = base::StringPrintf(
                 "sequence %d%s received error %d (%s)",
                 hdr->nlmsg_seq, request_str.c_str(),
                 error_number, strerror(error_number));
-            }
-            if (!base::ContainsKey(GetAndClearErrorMask(hdr->nlmsg_seq),
-                                   error_number)) {
-              LOG(ERROR) << error_msg;
-            } else {
-              SLOG(this, 3) << error_msg;
+              if (!base::ContainsKey(GetAndClearErrorMask(hdr->nlmsg_seq),
+                                     error_number)) {
+                LOG(ERROR) << error_msg;
+              } else {
+                SLOG(this, 3) << error_msg;
+              }
             }
             break;
           }
