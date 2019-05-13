@@ -21,6 +21,7 @@
 #include "shill/net/arp_client.h"
 #include "shill/net/arp_packet.h"
 #include "shill/net/byte_string.h"
+#include "shill/net/io_handler_factory.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
@@ -163,7 +164,8 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       icmp_session_factory_(IcmpSessionFactory::GetInstance()),
       num_dns_attempts_(0),
       running_(false),
-      result_callback_(result_callback) {}
+      result_callback_(result_callback),
+      io_handler_factory_(IOHandlerFactory::GetInstance()) {}
 
 ConnectionDiagnostics::~ConnectionDiagnostics() {
   Stop();
@@ -550,7 +552,7 @@ void ConnectionDiagnostics::CheckIpCollision() {
     return;
   }
 
-  receive_response_handler_.reset(dispatcher_->CreateReadyHandler(
+  receive_response_handler_.reset(io_handler_factory_->CreateIOReadyHandler(
       arp_client_->socket(), IOHandler::kModeInput,
       Bind(&ConnectionDiagnostics::OnArpReplyReceived,
            weak_ptr_factory_.GetWeakPtr())));

@@ -27,6 +27,7 @@
 #include "shill/net/arp_client.h"
 #include "shill/net/arp_client_test_helper.h"
 #include "shill/net/mock_arp_client.h"
+#include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_rtnl_handler.h"
 
 using base::Bind;
@@ -151,7 +152,10 @@ class ConnectionDiagnosticsTest : public Test {
         connection_diagnostics_(connection_, &dispatcher_, &metrics_,
                                 &device_info_,
                                 callback_target_.result_callback()),
-        portal_detector_(new NiceMock<MockPortalDetector>(connection_)) {}
+        portal_detector_(new NiceMock<MockPortalDetector>(connection_)) {
+    connection_diagnostics_.io_handler_factory_ = &io_handler_factory_;
+  }
+
   virtual ~ConnectionDiagnosticsTest() {}
 
   void SetUp() override {
@@ -826,6 +830,7 @@ class ConnectionDiagnosticsTest : public Test {
   MockManager manager_;
   NiceMock<MockDeviceInfo> device_info_;
   scoped_refptr<NiceMock<MockConnection>> connection_;
+  MockIOHandlerFactory io_handler_factory_;
   ConnectionDiagnostics connection_diagnostics_;
   NiceMock<MockEventDispatcher> dispatcher_;
   NiceMock<MockRoutingTable> routing_table_;

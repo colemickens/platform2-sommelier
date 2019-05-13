@@ -28,6 +28,7 @@ class Error;
 class EventDispatcher;
 class HttpUrl;
 class IOHandler;
+class IOHandlerFactory;
 class IcmpSession;
 class IcmpSessionFactory;
 class Metrics;
@@ -356,6 +357,8 @@ class ConnectionDiagnostics {
   base::CancelableClosure route_query_timeout_callback_;
   base::CancelableClosure arp_reply_timeout_callback_;
   base::CancelableClosure neighbor_request_timeout_callback_;
+
+  IOHandlerFactory* io_handler_factory_;
 
   // IOCallback that fires when the socket associated with |arp_client_| has a
   // packet to be received.  Calls ConnectionDiagnostics::OnArpReplyReceived.
