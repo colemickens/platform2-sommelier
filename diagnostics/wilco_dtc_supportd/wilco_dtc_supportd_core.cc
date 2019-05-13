@@ -31,31 +31,44 @@ using MojomWilcoDtcSupportdWebRequestHttpMethod =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestHttpMethod;
 
 // Converts HTTP method into an appropriate mojom one.
-MojomWilcoDtcSupportdWebRequestHttpMethod ConvertWebRequestHttpMethodToMojom(
-    WilcoDtcSupportdCore::WebRequestHttpMethod http_method) {
+bool ConvertWebRequestHttpMethodToMojom(
+    WilcoDtcSupportdCore::WebRequestHttpMethod http_method,
+    MojomWilcoDtcSupportdWebRequestHttpMethod* mojo_http_method_out) {
+  DCHECK(mojo_http_method_out);
   switch (http_method) {
     case WilcoDtcSupportdCore::WebRequestHttpMethod::kGet:
-      return MojomWilcoDtcSupportdWebRequestHttpMethod::kGet;
+      *mojo_http_method_out = MojomWilcoDtcSupportdWebRequestHttpMethod::kGet;
+      return true;
     case WilcoDtcSupportdCore::WebRequestHttpMethod::kHead:
-      return MojomWilcoDtcSupportdWebRequestHttpMethod::kHead;
+      *mojo_http_method_out = MojomWilcoDtcSupportdWebRequestHttpMethod::kHead;
+      return true;
     case WilcoDtcSupportdCore::WebRequestHttpMethod::kPost:
-      return MojomWilcoDtcSupportdWebRequestHttpMethod::kPost;
+      *mojo_http_method_out = MojomWilcoDtcSupportdWebRequestHttpMethod::kPost;
+      return true;
     case WilcoDtcSupportdCore::WebRequestHttpMethod::kPut:
-      return MojomWilcoDtcSupportdWebRequestHttpMethod::kPut;
+      *mojo_http_method_out = MojomWilcoDtcSupportdWebRequestHttpMethod::kPut;
+      return true;
   }
+  return false;
 }
 
 // Convert the result back from mojom status.
-WilcoDtcSupportdCore::WebRequestStatus ConvertStatusFromMojom(
-    MojomWilcoDtcSupportdWebRequestStatus status) {
-  switch (status) {
+bool ConvertStatusFromMojom(
+    MojomWilcoDtcSupportdWebRequestStatus mojo_status,
+    WilcoDtcSupportdCore::WebRequestStatus* status_out) {
+  DCHECK(status_out);
+  switch (mojo_status) {
     case MojomWilcoDtcSupportdWebRequestStatus::kOk:
-      return WilcoDtcSupportdCore::WebRequestStatus::kOk;
+      *status_out = WilcoDtcSupportdCore::WebRequestStatus::kOk;
+      return true;
     case MojomWilcoDtcSupportdWebRequestStatus::kNetworkError:
-      return WilcoDtcSupportdCore::WebRequestStatus::kNetworkError;
+      *status_out = WilcoDtcSupportdCore::WebRequestStatus::kNetworkError;
+      return true;
     case MojomWilcoDtcSupportdWebRequestStatus::kHttpError:
-      return WilcoDtcSupportdCore::WebRequestStatus::kHttpError;
+      *status_out = WilcoDtcSupportdCore::WebRequestStatus::kHttpError;
+      return true;
   }
+  return false;
 }
 
 }  // namespace
@@ -298,15 +311,28 @@ void WilcoDtcSupportdCore::PerformWebRequestToBrowser(
     return;
   }
 
+  MojomWilcoDtcSupportdWebRequestHttpMethod mojo_http_method;
+  if (!ConvertWebRequestHttpMethodToMojom(http_method, &mojo_http_method)) {
+    LOG(ERROR) << "Unknown gRPC http method: " << static_cast<int>(http_method);
+    callback.Run(WebRequestStatus::kInternalError, 0 /* http_status */,
+                 "" /* response_body */);
+    return;
+  }
+
   mojo_service_->PerformWebRequest(
-      ConvertWebRequestHttpMethodToMojom(http_method), url, headers,
-      request_body,
+      mojo_http_method, url, headers, request_body,
       base::Bind(
           [](const PerformWebRequestToBrowserCallback& callback,
-             MojomWilcoDtcSupportdWebRequestStatus status, int http_status,
+             MojomWilcoDtcSupportdWebRequestStatus mojo_status, int http_status,
              base::StringPiece response_body) {
-            callback.Run(ConvertStatusFromMojom(status), http_status,
-                         response_body);
+            WebRequestStatus status;
+            if (!ConvertStatusFromMojom(mojo_status, &status)) {
+              LOG(ERROR) << "Unknown mojo web request status: " << mojo_status;
+              callback.Run(WebRequestStatus::kInternalError,
+                           0 /* http_status */, "" /* response_body */);
+              return;
+            }
+            callback.Run(status, http_status, response_body);
           },
           callback));
 }
