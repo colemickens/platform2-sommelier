@@ -472,6 +472,9 @@ REGIONS_LIST = [
     Region(
         'us.intl', 'xkb:us:intl:eng', 'America/Los_Angeles', 'en-US', KML.ANSI,
         'US (English Intl)'),
+    Region(
+        'co', 'xkb:latam::spa', 'America/Bogota', 'es-CO', KML.ANSI,
+        'Colombia'),
     ]
 
 """A list of :py:class:`regions.Region` objects for
@@ -853,9 +856,6 @@ UNCONFIRMED_REGIONS_LIST = [
     Region(
         'ci', 'xkb:ci::fra', 'Africa/Abidjan', 'fr-CI', KML.ANSI,
         'Ivory Coast'),
-    Region(
-        'co', 'xkb:latam::spa', 'America/Bogota', 'es-419', KML.ANSI,
-        'Colombia'),
     Region(
         'cn', 'xkb:us::eng', 'Asia/Shanghai', 'zh-CN', KML.ANSI,
         'China'),
