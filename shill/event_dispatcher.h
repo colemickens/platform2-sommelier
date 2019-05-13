@@ -11,8 +11,6 @@
 #include <base/message_loop/message_loop.h>
 #include <base/tracked_objects.h>
 
-#include "shill/net/io_handler_factory_container.h"
-
 namespace shill {
 
 // This is the main event dispatcher.  It contains a central instance, and is
@@ -35,14 +33,7 @@ class EventDispatcher {
   virtual void PostDelayedTask(const tracked_objects::Location& location,
                                const base::Closure& task, int64_t delay_ms);
 
-  virtual IOHandler* CreateReadyHandler(
-      int fd,
-      IOHandler::ReadyMode mode,
-      const IOHandler::ReadyCallback& ready_callback);
-
  private:
-  IOHandlerFactory* io_handler_factory_;
-
   DISALLOW_COPY_AND_ASSIGN(EventDispatcher);
 };
 

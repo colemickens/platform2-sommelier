@@ -18,10 +18,7 @@ using tracked_objects::Location;
 
 namespace shill {
 
-EventDispatcher::EventDispatcher()
-    : io_handler_factory_(
-          IOHandlerFactoryContainer::GetInstance()->GetIOHandlerFactory()) {
-}
+EventDispatcher::EventDispatcher() = default;
 
 EventDispatcher::~EventDispatcher() = default;
 
@@ -41,17 +38,6 @@ void EventDispatcher::PostDelayedTask(const Location& location,
                                       const Closure& task, int64_t delay_ms) {
   base::MessageLoop::current()->task_runner()->PostDelayedTask(
       location, task, base::TimeDelta::FromMilliseconds(delay_ms));
-}
-
-// TODO(zqiu): Remove all reference to this function and use the
-// IOHandlerFactory function directly. Delete this function once
-// all references are removed.
-IOHandler* EventDispatcher::CreateReadyHandler(
-    int fd,
-    IOHandler::ReadyMode mode,
-    const Callback<void(int)>& ready_callback) {
-  return io_handler_factory_->CreateIOReadyHandler(
-          fd, mode, ready_callback);
 }
 
 }  // namespace shill
