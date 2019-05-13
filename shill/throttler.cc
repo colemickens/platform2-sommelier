@@ -8,8 +8,8 @@
 #include <algorithm>
 #include <vector>
 
-#include "shill/event_dispatcher.h"
 #include "shill/logging.h"
+#include "shill/net/io_handler_factory.h"
 #include "shill/process_manager.h"
 #include "shill/throttler.h"
 
@@ -55,8 +55,8 @@ Throttler::Throttler(EventDispatcher* dispatcher, Manager* manager)
     : file_io_(FileIO::GetInstance()),
       tc_stdin_(-1),
       tc_pid_(0),
-      dispatcher_(dispatcher),
       manager_(manager),
+      io_handler_factory_(IOHandlerFactory::GetInstance()),
       process_manager_(ProcessManager::GetInstance()) {
   SLOG(this, 2) << __func__;
 }
@@ -242,7 +242,7 @@ bool Throttler::StartTCForCommands(const std::vector<std::string>& commands) {
          "Unable to set TC pipes to be non-blocking");
     return false;
   }
-  tc_stdin_handler_.reset(dispatcher_->CreateReadyHandler(
+  tc_stdin_handler_.reset(io_handler_factory_->CreateIOReadyHandler(
       tc_stdin_, IOHandler::kModeOutput,
       Bind(&Throttler::WriteTCCommands, AsWeakPtr())));
   return true;

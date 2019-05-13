@@ -10,6 +10,7 @@
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_process_manager.h"
+#include "shill/net/mock_io_handler_factory.h"
 #include "shill/testing.h"
 
 using testing::_;
@@ -26,6 +27,7 @@ class ThrottlerTest : public Test {
       : mock_manager_(&control_interface_, &dispatcher_, nullptr),
         throttler_(&dispatcher_, &mock_manager_) {
     throttler_.process_manager_ = &mock_process_manager_;
+    throttler_.io_handler_factory_ = &mock_io_factory_handler_;
     throttler_.file_io_ = &mock_file_io_;
   }
 
@@ -42,6 +44,7 @@ class ThrottlerTest : public Test {
   MockEventDispatcher dispatcher_;
   StrictMock<MockManager> mock_manager_;
   NiceMock<MockProcessManager> mock_process_manager_;
+  NiceMock<MockIOHandlerFactory> mock_io_factory_handler_;
   NiceMock<MockFileIO> mock_file_io_;
   Throttler throttler_;
 };

@@ -12,13 +12,14 @@
 #include <base/memory/weak_ptr.h>
 
 #include "shill/callbacks.h"
-#include "shill/event_dispatcher.h"
 #include "shill/file_io.h"
 #include "shill/manager.h"
 #include "shill/net/io_handler.h"
 #include "shill/process_manager.h"
 
 namespace shill {
+
+class IOHandlerFactory;
 
 // The Throttler class implements bandwidth throttling for inbound/outbound
 // traffic, using Linux's 'traffic control'(tc) tool from the iproute2 code.
@@ -106,10 +107,10 @@ class Throttler : public base::SupportsWeakPtr<Throttler> {
   virtual void ClearTCState();
   virtual void ClearThrottleStatus();
 
-  // For I/O handling with the spawned process
-  EventDispatcher* dispatcher_;
   // To get a list of interfaces to throttle
   Manager* manager_;
+  // For I/O handling with the spawned process
+  IOHandlerFactory* io_handler_factory_;
   // For spawning 'tc'
   ProcessManager* process_manager_;
 
