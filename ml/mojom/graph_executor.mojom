@@ -2,19 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// NOTE: This mojom should be kept in sync with the copy in Chromium's repo in
-// //chromeos/services/machine_learning/public/mojom/.
-// Example: A backwards-compatible interface change and corresponding
-// implementation change can be made here first, then replicated to the client
-// (Chromium) later.
+// NOTE: This mojom exists in two places and must be kept in sync:
+//       Chromium:  //chromeos/services/machine_learning/public/mojom/
+//       Chrome OS: src/platform2/ml/mojom/
+// Example: A backwards-compatible mojom change (and corresponding
+// implementation change) can be made in Chrome OS first, then replicated to the
+// client (Chromium) later.
 
 module chromeos.machine_learning.mojom;
 
+// NOTE: The base directory for 'import' statements is expected to differ
+//       between Chromium and Chrome OS versions of this file.
 import "ml/mojom/tensor.mojom";
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
-// Remove the kMax in favour of kMaxValue after Mojo uprev (crbug.com/909719)
 enum ExecuteResult {
   OK = 0,
   INPUT_MISSING_ERROR = 1,
@@ -26,6 +28,7 @@ enum ExecuteResult {
   UNKNOWN_OUTPUT_ERROR = 7,
   DUPLICATE_OUTPUT_ERROR = 8,
   EXECUTION_ERROR = 9,
+  // Remove kMax and use builtin kMaxValue after Mojo uprev (crbug.com/909719).
   kMax = EXECUTION_ERROR,
 };
 
