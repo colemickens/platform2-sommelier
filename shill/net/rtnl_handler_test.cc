@@ -85,6 +85,12 @@ class RTNLHandlerTest : public Test {
     RTNLHandler::GetInstance()->request_sequence_ = sequence;
   }
 
+  bool SendMessageWithErrorMask(RTNLMessage* message,
+                                const RTNLHandler::ErrorMask& error_mask) {
+    return RTNLHandler::GetInstance()->SendMessageWithErrorMask(
+      message, error_mask);
+  }
+
   bool IsSequenceInErrorMaskWindow(uint32_t sequence) {
     return RTNLHandler::GetInstance()->IsSequenceInErrorMaskWindow(sequence);
   }
@@ -280,8 +286,7 @@ TEST_F(RTNLHandlerTest, SendMessageWithEmptyMask) {
   SetRequestSequence(kSequenceNumber);
   SetErrorMask(kSequenceNumber, {1, 2, 3});
   EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(ReturnArg<2>());
-  EXPECT_TRUE(RTNLHandler::GetInstance()->SendMessageWithErrorMask(
-      &dummy_message_, {}));
+  EXPECT_TRUE(SendMessageWithErrorMask(&dummy_message_, {}));
   EXPECT_EQ(kSequenceNumber + 1, GetRequestSequence());
   EXPECT_TRUE(GetAndClearErrorMask(kSequenceNumber).empty());
   StopRTNLHandler();
@@ -292,8 +297,7 @@ TEST_F(RTNLHandlerTest, SendMessageWithErrorMask) {
   const uint32_t kSequenceNumber = 123;
   SetRequestSequence(kSequenceNumber);
   EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(ReturnArg<2>());
-  EXPECT_TRUE(RTNLHandler::GetInstance()->SendMessageWithErrorMask(
-      &dummy_message_, {1, 2, 3}));
+  EXPECT_TRUE(SendMessageWithErrorMask(&dummy_message_, {1, 2, 3}));
   EXPECT_EQ(kSequenceNumber + 1, GetRequestSequence());
   EXPECT_TRUE(GetAndClearErrorMask(kSequenceNumber + 1).empty());
   EXPECT_THAT(GetAndClearErrorMask(kSequenceNumber), ElementsAre(1, 2, 3));
@@ -336,8 +340,7 @@ TEST_F(RTNLHandlerTest, MaskedError) {
   const uint32_t kSequenceNumber = 123;
   SetRequestSequence(kSequenceNumber);
   EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(ReturnArg<2>());
-  EXPECT_TRUE(RTNLHandler::GetInstance()->SendMessageWithErrorMask(
-      &dummy_message_, {1, 2, 3}));
+  EXPECT_TRUE(SendMessageWithErrorMask(&dummy_message_, {1, 2, 3}));
   ScopedMockLog log;
 
   // This error will be not be masked since this sequence number has no mask.

@@ -45,8 +45,6 @@ class SHILL_EXPORT RTNLHandler {
   static const uint32_t kRequestNeighbor;
   static const uint32_t kRequestBridgeNeighbor;
 
-  using ErrorMask = std::set<int>;
-
   virtual ~RTNLHandler();
 
   // Since this is a singleton, use RTNHandler::GetInstance()->Foo().
@@ -105,14 +103,6 @@ class SHILL_EXPORT RTNLHandler {
   // determine the index.
   virtual int GetInterfaceIndex(const std::string& interface_name);
 
-  // Send a formatted RTNL message.  Associates an error mask -- a list
-  // of errors that are expected and should not trigger log messages by
-  // default -- with the outgoing message.  If the message is sent
-  // successfully, the sequence number in |message| is set, and the
-  // function returns true.  Otherwise this function returns false.
-  virtual bool SendMessageWithErrorMask(RTNLMessage* message,
-                                        const ErrorMask& error_mask);
-
   // Sends a formatted RTNL message using SendMessageWithErrorMask
   // using an error mask inferred from the mode and type of |message|.
   virtual bool SendMessage(RTNLMessage* message);
@@ -124,6 +114,8 @@ class SHILL_EXPORT RTNLHandler {
   RTNLHandler();
 
  private:
+  using ErrorMask = std::set<int>;
+
   friend base::LazyInstanceTraitsBase<RTNLHandler>;
   friend class CellularTest;
   friend class DeviceInfoTest;
@@ -133,6 +125,7 @@ class SHILL_EXPORT RTNLHandler {
   friend class RTNLListenerTest;
   friend class RoutingTableTest;
 
+  FRIEND_TEST(RTNLHandlerTest, SendMessageInferredErrorMasks);
   FRIEND_TEST(RTNLListenerTest, NoRun);
   FRIEND_TEST(RTNLListenerTest, Run);
 
@@ -160,6 +153,14 @@ class SHILL_EXPORT RTNLHandler {
                       const IPAddress& local,
                       const IPAddress& gateway,
                       const IPAddress& peer);
+
+  // Send a formatted RTNL message.  Associates an error mask -- a list
+  // of errors that are expected and should not trigger log messages by
+  // default -- with the outgoing message.  If the message is sent
+  // successfully, the sequence number in |message| is set, and the
+  // function returns true.  Otherwise this function returns false.
+  bool SendMessageWithErrorMask(RTNLMessage* message,
+                                const ErrorMask& error_mask);
 
   // Called by the RTNL read handler on exceptional events.
   void OnReadError(const std::string& error_msg);
