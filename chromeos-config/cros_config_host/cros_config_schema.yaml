@@ -419,8 +419,14 @@ properties:
                   description: Is there an accelerometer in the base of the
                     device.
                   type: boolean
+                has-lid-gyroscope:
+                  description: Is there a gyroscope in the lid of the device.
+                  type: boolean
                 has-base-gyroscope:
                   description: Is there a gyroscope in the base of the device.
+                  type: boolean
+                has-lid-magnetometer:
+                  description: Is there a magnetometer in the lid of the device.
                   type: boolean
                 has-base-magnetometer:
                   description: Is there a magnetometer in the base of the device.
