@@ -339,12 +339,14 @@ void WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc(
     const WilcoDtcSupportdEcEventService::EcEvent& ec_event) {
   VLOG(1) << "WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc";
 
+  size_t data_size = ec_event.size * sizeof(ec_event.data[0]);
+  if (data_size > sizeof(ec_event.data)) {
+    VLOG(2) << "Received EC event with invalid size: " << ec_event.size;
+    return;
+  }
+
   grpc_api::HandleEcNotificationRequest request;
   request.set_type(ec_event.type);
-
-  size_t data_size =
-      std::min(ec_event.size * sizeof(ec_event.data[0]), sizeof(ec_event.data));
-
   request.set_payload(ec_event.data, data_size);
 
   for (auto& client : wilco_dtc_grpc_clients_) {

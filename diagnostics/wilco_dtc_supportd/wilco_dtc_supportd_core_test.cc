@@ -861,12 +861,15 @@ TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
 }
 
 // Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
-// called by wilco_dtc support daemon even when |ec_event.size| exceeds
+// not called by wilco_dtc support daemon when |ec_event.size| exceeds
 // allocated data array.
 TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
        SendGrpcEcEventToWilcoDtcInvalidSize) {
-  EmulateEcEvent(7, kFakeEcEventType1);
-  ExpectAllFakeWilcoDtcReceivedEcEvents({{kFakeEcEventType1, GetPayload(12)}});
+  EmulateEcEvent(3, kFakeEcEventType1);
+  EmulateEcEvent(7, kFakeEcEventType2);
+
+  // Expect only EC event with valid size.
+  ExpectAllFakeWilcoDtcReceivedEcEvents({{kFakeEcEventType1, GetPayload(6)}});
 }
 
 }  // namespace diagnostics
