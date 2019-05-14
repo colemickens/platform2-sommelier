@@ -151,6 +151,68 @@ class Pkcs11Adaptor : public org::chromium::CryptohomePkcs11InterfaceInterface,
   DISALLOW_COPY_AND_ASSIGN(Pkcs11Adaptor);
 };
 
+class InstallAttributesAdaptor
+    : public org::chromium::InstallAttributesInterfaceInterface,
+      public org::chromium::InstallAttributesInterfaceAdaptor {
+ public:
+  explicit InstallAttributesAdaptor(scoped_refptr<dbus::Bus> bus,
+                                    brillo::dbus_utils::DBusObject* dbus_object,
+                                    UserDataAuth* service)
+      : org::chromium::InstallAttributesInterfaceAdaptor(this),
+        dbus_object_(dbus_object),
+        service_(service) {
+    // This is to silence the compiler's warning about unused fields. It will be
+    // removed once we start to use it.
+    (void)service_;
+  }
+
+  void RegisterAsync() { RegisterWithDBusObject(dbus_object_); }
+
+  // Interface overrides and related implementations
+  void InstallAttributesGet(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::InstallAttributesGetReply>> response,
+      const user_data_auth::InstallAttributesGetRequest& in_request) override;
+  void InstallAttributesSet(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::InstallAttributesSetReply>> response,
+      const user_data_auth::InstallAttributesSetRequest& in_request) override;
+  void InstallAttributesFinalize(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::InstallAttributesFinalizeReply>> response,
+      const user_data_auth::InstallAttributesFinalizeRequest& in_request)
+      override;
+  void InstallAttributesGetStatus(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::InstallAttributesGetStatusReply>> response,
+      const user_data_auth::InstallAttributesGetStatusRequest& in_request)
+      override;
+  void GetFirmwareManagementParameters(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetFirmwareManagementParametersReply>> response,
+      const user_data_auth::GetFirmwareManagementParametersRequest& in_request)
+      override;
+  void RemoveFirmwareManagementParameters(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::RemoveFirmwareManagementParametersReply>> response,
+      const user_data_auth::RemoveFirmwareManagementParametersRequest&
+          in_request) override;
+  void SetFirmwareManagementParameters(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::SetFirmwareManagementParametersReply>> response,
+      const user_data_auth::SetFirmwareManagementParametersRequest& in_request)
+      override;
+
+ private:
+  brillo::dbus_utils::DBusObject* dbus_object_;
+
+  // This is the object that holds most of the states that this adaptor uses, it
+  // also contains most of the actual logics.
+  UserDataAuth* service_;
+
+  DISALLOW_COPY_AND_ASSIGN(InstallAttributesAdaptor);
+};
+
 }  // namespace cryptohome
 
 #endif  // CRYPTOHOME_SERVICE_USERDATAAUTH_H_

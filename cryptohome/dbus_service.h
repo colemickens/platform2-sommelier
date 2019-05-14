@@ -38,6 +38,10 @@ class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
         new Pkcs11Adaptor(bus_, dbus_object_.get(), service_.get()));
     pkcs11_adaptor_->RegisterAsync();
 
+    install_attributes_adaptor_.reset(
+        new InstallAttributesAdaptor(bus_, dbus_object_.get(), service_.get()));
+    install_attributes_adaptor_->RegisterAsync();
+
     dbus_object_->RegisterAsync(
         sequencer->GetHandler("RegisterAsync() for UserDataAuth failed", true));
   }
@@ -45,6 +49,7 @@ class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
  private:
   std::unique_ptr<UserDataAuthAdaptor> userdataauth_adaptor_;
   std::unique_ptr<Pkcs11Adaptor> pkcs11_adaptor_;
+  std::unique_ptr<InstallAttributesAdaptor> install_attributes_adaptor_;
 
   std::unique_ptr<UserDataAuth> service_;
 

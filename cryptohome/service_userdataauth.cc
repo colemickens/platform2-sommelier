@@ -182,4 +182,61 @@ void Pkcs11Adaptor::Pkcs11Terminate(
   response->Return(reply);
 }
 
+void InstallAttributesAdaptor::InstallAttributesGet(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::InstallAttributesGetReply>> response,
+    const user_data_auth::InstallAttributesGetRequest& in_request) {
+  user_data_auth::InstallAttributesGetReply reply;
+  response->Return(reply);
+}
+
+void InstallAttributesAdaptor::InstallAttributesSet(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::InstallAttributesSetReply>> response,
+    const user_data_auth::InstallAttributesSetRequest& in_request) {
+  user_data_auth::InstallAttributesSetReply reply;
+  response->Return(reply);
+}
+
+void InstallAttributesAdaptor::InstallAttributesFinalize(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::InstallAttributesFinalizeReply>> response,
+    const user_data_auth::InstallAttributesFinalizeRequest& in_request) {
+  user_data_auth::InstallAttributesFinalizeReply reply;
+  response->Return(reply);
+}
+
+void InstallAttributesAdaptor::InstallAttributesGetStatus(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::InstallAttributesGetStatusReply>> response,
+    const user_data_auth::InstallAttributesGetStatusRequest& in_request) {
+  user_data_auth::InstallAttributesGetStatusReply reply;
+  response->Return(reply);
+}
+
+void InstallAttributesAdaptor::GetFirmwareManagementParameters(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetFirmwareManagementParametersReply>> response,
+    const user_data_auth::GetFirmwareManagementParametersRequest& in_request) {
+  user_data_auth::GetFirmwareManagementParametersReply reply;
+  response->Return(reply);
+}
+
+void InstallAttributesAdaptor::RemoveFirmwareManagementParameters(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::RemoveFirmwareManagementParametersReply>> response,
+    const user_data_auth::RemoveFirmwareManagementParametersRequest&
+        in_request) {
+  user_data_auth::RemoveFirmwareManagementParametersReply reply;
+  response->Return(reply);
+}
+
+void InstallAttributesAdaptor::SetFirmwareManagementParameters(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::SetFirmwareManagementParametersReply>> response,
+    const user_data_auth::SetFirmwareManagementParametersRequest& in_request) {
+  user_data_auth::SetFirmwareManagementParametersReply reply;
+  response->Return(reply);
+}
+
 }  // namespace cryptohome

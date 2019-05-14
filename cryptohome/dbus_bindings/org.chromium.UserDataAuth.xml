@@ -314,4 +314,99 @@ do.
       </arg>
     </method>
   </interface>
+
+  <!-- Note that both install attributes and firmware management parameters are
+  grouped under this interface. -->
+  <interface name="org.chromium.InstallAttributesInterface">
+    <method name="InstallAttributesGet">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::InstallAttributesGetRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::InstallAttributesGetReply" />
+      </arg>
+    </method>
+
+    <method name="InstallAttributesSet">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::InstallAttributesSetRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::InstallAttributesSetReply" />
+      </arg>
+    </method>
+
+    <method name="InstallAttributesFinalize">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::InstallAttributesFinalizeRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::InstallAttributesFinalizeReply" />
+      </arg>
+    </method>
+
+    <method name="InstallAttributesGetStatus">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::InstallAttributesGetStatusRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::InstallAttributesGetStatusReply" />
+      </arg>
+    </method>
+
+    <method name="GetFirmwareManagementParameters">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetFirmwareManagementParametersRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetFirmwareManagementParametersReply" />
+      </arg>
+    </method>
+
+    <method name="RemoveFirmwareManagementParameters">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::RemoveFirmwareManagementParametersRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::RemoveFirmwareManagementParametersReply" />
+      </arg>
+    </method>
+
+    <method name="SetFirmwareManagementParameters">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::SetFirmwareManagementParametersRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::SetFirmwareManagementParametersReply" />
+      </arg>
+    </method>
+  </interface>
 </node>
