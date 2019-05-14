@@ -26,6 +26,7 @@ class MockLibNewblue : public LibNewblue {
                gatt_client_conn_t(void* userData,
                                   const struct bt_addr*,
                                   gattCliConnectResultCbk));
+  MOCK_METHOD1(GattClientDisconnect, uint8_t(gatt_client_conn_t));
 
   // gatt-builtin.h
   MOCK_METHOD0(GattBuiltinInit, bool());

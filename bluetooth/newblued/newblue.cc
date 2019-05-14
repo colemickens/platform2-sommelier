@@ -212,6 +212,18 @@ gatt_client_conn_t Newblue::GattClientConnect(const std::string& device_address,
   return conn_id;
 }
 
+GattClientOperationStatus Newblue::GattClientDisconnect(
+    gatt_client_conn_t conn_id) {
+  if (conn_id == kInvalidGattConnectionId) {
+    LOG(WARNING) << "Invalid connection ID " << conn_id
+                 << " to disconnect from";
+    return GattClientOperationStatus::ERR;
+  }
+
+  return static_cast<GattClientOperationStatus>(
+      libnewblue_->GattClientDisconnect(conn_id));
+}
+
 std::vector<KnownDevice> Newblue::GetKnownDevices() {
   struct smKnownDevNode* head = libnewblue_->SmGetKnownDevices();
   struct smKnownDevNode* node = head;

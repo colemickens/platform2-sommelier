@@ -95,9 +95,17 @@ class DeviceInterfaceHandler {
 
   // Represents a connection session.
   struct ConnectSession {
+    ConnectSession() : connect_by_us(false), disconnect_by_us(false) {}
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> connect_response;
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>>
         disconnect_response;
+
+    // *_by_us are used to distinguish whether the connection/disconnection is
+    // initiated by either newblued (us) or our clients. With only the above
+    // |*_response|, we cannot tell whether the connection/disconnection comes
+    // from nowhere or from newblued.
+    bool connect_by_us;
+    bool disconnect_by_us;
   };
 
   // Structure representing a connection.

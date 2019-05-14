@@ -24,6 +24,9 @@
 
 namespace bluetooth {
 
+// The value(s) is/are based on libnewblue API.
+constexpr gatt_client_conn_t kInvalidGattConnectionId = 0;
+
 // These are based on the numbers assigned by Bluetooth SIG, see
 // www.bluetooth.com/specifications/assigned-numbers/generic-access-profile.
 // Note that only the subset of all EIR data types is needed for now.
@@ -78,6 +81,14 @@ enum class PairError : uint8_t {
   UNEXPECTED_L2C_EVT,
   STALLED,
   UNKNOWN
+};
+
+// These are based on GATT_CLI_STATUS_* in newblue/gatt.h
+enum class GattClientOperationStatus : uint8_t {
+  OK,
+  OTHER_SIDE_DISC,
+  ERR,
+  WE_DISC
 };
 
 // Agent to receive pairing user interaction events.
@@ -177,6 +188,8 @@ class Newblue {
   // Connects as a GATT client to a peer device.
   gatt_client_conn_t GattClientConnect(const std::string& device_address,
                                        bool is_random_address);
+  // Disconnects from a peer device.
+  GattClientOperationStatus GattClientDisconnect(gatt_client_conn_t conn_id);
 
   // Retrieves the known devices from NewBlue's persist.
   std::vector<KnownDevice> GetKnownDevices();

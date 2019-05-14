@@ -16,6 +16,7 @@
 #include <newblue/sm.h>
 
 #include <base/macros.h>
+#include <cstdint>
 
 #include "bluetooth/newblued/libnewblue_generated_function.h"
 
@@ -40,6 +41,9 @@ class LibNewblue {
                      gatt_client_conn_t(void* userData,
                                         const struct bt_addr*,
                                         gattCliConnectResultCbk));
+  LIBNEWBLUE_METHOD1(GattClientDisconnect,
+                     gattClientDisconnect,
+                     uint8_t(gatt_client_conn_t));
 
   // gatt-builtin.h
   LIBNEWBLUE_METHOD0(GattBuiltinInit, gattBuiltinInit, bool());

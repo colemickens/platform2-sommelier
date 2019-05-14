@@ -4,6 +4,7 @@
 
 #include "bluetooth/newblued/newblue_daemon.h"
 
+#include <cstdlib>
 #include <map>
 #include <memory>
 #include <string>
@@ -110,19 +111,26 @@ class NewblueDaemonTest : public ::testing::Test {
   // Expects that the standard methods on org.freedesktop.DBus.Properties
   // interface are exported.
   void ExpectPropertiesMethodsExported(
-      scoped_refptr<dbus::MockExportedObject> exported_object) {
+      scoped_refptr<dbus::MockExportedObject> exported_object,
+      MethodHandlerMap method_handlers) {
     EXPECT_CALL(*exported_object,
                 ExportMethodAndBlock(dbus::kPropertiesInterface,
                                      dbus::kPropertiesGet, _))
-        .WillOnce(Return(true));
+        .WillOnce(DoAll(
+            SaveArg<2>(GetMethodHandler(method_handlers, dbus::kPropertiesGet)),
+            Return(true)));
     EXPECT_CALL(*exported_object,
                 ExportMethodAndBlock(dbus::kPropertiesInterface,
                                      dbus::kPropertiesSet, _))
-        .WillOnce(Return(true));
+        .WillOnce(DoAll(
+            SaveArg<2>(GetMethodHandler(method_handlers, dbus::kPropertiesSet)),
+            Return(true)));
     EXPECT_CALL(*exported_object,
                 ExportMethodAndBlock(dbus::kPropertiesInterface,
                                      dbus::kPropertiesGetAll, _))
-        .WillOnce(Return(true));
+        .WillOnce(DoAll(SaveArg<2>(GetMethodHandler(method_handlers,
+                                                    dbus::kPropertiesGetAll)),
+                        Return(true)));
   }
 
   // Expects that the methods on org.bluez.Device1 interface are exported.
@@ -245,7 +253,7 @@ class NewblueDaemonTest : public ::testing::Test {
     scoped_refptr<dbus::MockExportedObject> exported_dev_object =
         AddOrGetMockExportedObject(device_object_path);
     ExpectDeviceMethodsExported(exported_dev_object, method_handlers);
-    ExpectPropertiesMethodsExported(exported_dev_object);
+    ExpectPropertiesMethodsExported(exported_dev_object, method_handlers);
     EXPECT_CALL(*bus_, GetExportedObject(device_object_path))
         .WillOnce(Return(exported_dev_object.get()));
     EXPECT_CALL(*exported_dev_object, SendSignal(_)).Times(AnyNumber());
@@ -364,13 +372,15 @@ class NewblueDaemonTest : public ::testing::Test {
     ExpectPropertiesMethodsExportedAsync(exported_root_object);
   }
 
-  void TestInit() {
+  void TestInit(MethodHandlerMap adapter_method_handlers) {
     exported_root_object_ = SetupExportedRootObject();
     exported_agent_manager_object_ = SetupExportedAgentManagerObject();
     exported_adapter_object_ = SetupExportedAdapterObject();
-    ExpectPropertiesMethodsExported(exported_adapter_object_);
+    ExpectPropertiesMethodsExported(exported_adapter_object_,
+                                    adapter_method_handlers);
     ExpectAdvertisingManagerMethodsExported(exported_adapter_object_);
-    ExpectPropertiesMethodsExported(exported_agent_manager_object_);
+    ExpectPropertiesMethodsExported(exported_agent_manager_object_,
+                                    adapter_method_handlers);
     ExpectAgentManagerMethodsExported(exported_agent_manager_object_);
 
     ExpectTestInit(exported_root_object_);
@@ -555,11 +565,34 @@ class NewblueDaemonTest : public ::testing::Test {
         base::Bind(&SaveResponse, &stop_discovery_response));
     EXPECT_EQ("", stop_discovery_response->GetErrorName());
   }
+  std::unique_ptr<dbus::Response> ReadProperty(
+      const std::string& interface_name,
+      const std::string& property_name,
+      dbus::ExportedObject::MethodCallCallback get_property_handler,
+      const char* sender,
+      int serial) {
+    std::unique_ptr<dbus::Response> get_property_response;
+    dbus::MethodCall get_property_method_call(dbus::kPropertiesInterface,
+                                              dbus::kPropertiesGet);
+    get_property_method_call.SetSender(sender);
+    get_property_method_call.SetSerial(serial);
+
+    dbus::MessageWriter get_property_message_writer(&get_property_method_call);
+    get_property_message_writer.AppendString(interface_name);
+    get_property_message_writer.AppendString(property_name);
+
+    get_property_handler.Run(&get_property_method_call,
+                             base::Bind(&SaveResponse, &get_property_response));
+
+    EXPECT_TRUE(get_property_response != nullptr);
+    return get_property_response;
+  }
 
   // Tests org.bluez.Device1.Connect() and org.bluez.Device1.Disconnect()
   void TestConnectDisconnect(
       dbus::ExportedObject::MethodCallCallback connect_handler,
-      dbus::ExportedObject::MethodCallCallback disconnect_handler) {
+      dbus::ExportedObject::MethodCallCallback disconnect_handler,
+      dbus::ExportedObject::MethodCallCallback get_property_handler) {
     dbus::MethodCall connect_method_call(
         bluetooth_device::kBluetoothDeviceInterface,
         bluetooth_device::kConnect);
@@ -610,6 +643,16 @@ class NewblueDaemonTest : public ::testing::Test {
     base::RunLoop().RunUntilIdle();
     ASSERT_TRUE(success_connect_response.get());
     EXPECT_EQ("", success_connect_response->GetErrorName());
+    // Check "connected" property value after connected.
+    std::unique_ptr<dbus::Response> get_property_response =
+        ReadProperty(bluetooth_device::kBluetoothDeviceInterface,
+                     bluetooth_device::kConnectedProperty, get_property_handler,
+                     kTestSender, kTestSerial);
+    dbus::MessageReader connect_message_reader(get_property_response.get());
+    bool connected = false;
+    EXPECT_TRUE(connect_message_reader.PopVariantOfBool(&connected));
+    EXPECT_TRUE(connected);
+    get_property_response.reset();
 
     // Disconnect
     dbus::MethodCall disconnect_method_call(
@@ -628,18 +671,26 @@ class NewblueDaemonTest : public ::testing::Test {
     EXPECT_EQ(bluetooth_device::kErrorDoesNotExist,
               failed_disconnect_response->GetErrorName());
 
-    // Disconnect succeeds
-    std::unique_ptr<dbus::Response> success_disconnect_response;
+    // Disconnect succeeds by client
+    std::unique_ptr<dbus::Response> success_disconnect_by_client_response;
     disconnect_method_call.SetPath(dbus::ObjectPath(kTestDeviceObjectPath));
     disconnect_handler.Run(
         &disconnect_method_call,
-        base::Bind(&SaveResponse, &success_disconnect_response));
+        base::Bind(&SaveResponse, &success_disconnect_by_client_response));
     gatt_client_connect_callback(
         data, kTestGattClientConnectionId,
         static_cast<uint8_t>(ConnectState::DISCONNECTED_BY_US));
     base::RunLoop().RunUntilIdle();
-    ASSERT_TRUE(success_disconnect_response.get());
-    EXPECT_EQ("", success_disconnect_response->GetErrorName());
+    ASSERT_TRUE(success_disconnect_by_client_response.get());
+    EXPECT_EQ("", success_disconnect_by_client_response->GetErrorName());
+    // Check "connected" property value after disconnected.
+    get_property_response =
+        ReadProperty(bluetooth_device::kBluetoothDeviceInterface,
+                     bluetooth_device::kConnectedProperty, get_property_handler,
+                     kTestSender, kTestSerial);
+    dbus::MessageReader disconnect_message_reader(get_property_response.get());
+    EXPECT_TRUE(disconnect_message_reader.PopVariantOfBool(&connected));
+    EXPECT_FALSE(connected);
   }
 
   void TestPair(dbus::ExportedObject::MethodCallCallback pair_handler) {
@@ -694,11 +745,13 @@ class NewblueDaemonTest : public ::testing::Test {
 };
 
 TEST_F(NewblueDaemonTest, InitFailed) {
+  MethodHandlerMap adapter_method_handlers;
   scoped_refptr<dbus::MockExportedObject> exported_root_object =
       SetupExportedRootObject();
   scoped_refptr<dbus::MockExportedObject> exported_agent_manager_object =
       SetupExportedAgentManagerObject();
-  ExpectPropertiesMethodsExported(exported_agent_manager_object);
+  ExpectPropertiesMethodsExported(exported_agent_manager_object,
+                                  adapter_method_handlers);
   ExpectAgentManagerMethodsExported(exported_agent_manager_object);
 
   ExpectTestInit(exported_root_object);
@@ -713,9 +766,9 @@ TEST_F(NewblueDaemonTest, InitFailed) {
 }
 
 TEST_F(NewblueDaemonTest, InitSuccessAndBringUp) {
-  TestInit();
-
   MethodHandlerMap adapter_method_handlers;
+
+  TestInit(adapter_method_handlers);
   TestAdapterBringUp(exported_adapter_object_, adapter_method_handlers,
                      /* with_saved_devices */ true);
 
@@ -723,8 +776,6 @@ TEST_F(NewblueDaemonTest, InitSuccessAndBringUp) {
 }
 
 TEST_F(NewblueDaemonTest, DiscoveryAPI) {
-  TestInit();
-
   dbus::ExportedObject::MethodCallCallback start_discovery_handler;
   dbus::ExportedObject::MethodCallCallback stop_discovery_handler;
   dbus::ExportedObject::MethodCallCallback remove_device_handler;
@@ -733,6 +784,8 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
       {bluetooth_adapter::kStopDiscovery, &stop_discovery_handler},
       {bluetooth_adapter::kRemoveDevice, &remove_device_handler},
   };
+
+  TestInit(adapter_method_handlers);
   TestAdapterBringUp(exported_adapter_object_, adapter_method_handlers,
                      /* with_saved_devices */ false);
 
@@ -809,14 +862,14 @@ TEST_F(NewblueDaemonTest, IdleMode) {
 }
 
 TEST_F(NewblueDaemonTest, Pair) {
-  TestInit();
-
   dbus::ExportedObject::MethodCallCallback start_discovery_handler;
   dbus::ExportedObject::MethodCallCallback pair_handler;
   MethodHandlerMap method_handlers = {
       {bluetooth_adapter::kStartDiscovery, &start_discovery_handler},
       {bluetooth_device::kPair, &pair_handler},
   };
+
+  TestInit(method_handlers);
   TestAdapterBringUp(exported_adapter_object_, method_handlers,
                      /* with_saved_devices */ false);
 
@@ -843,16 +896,18 @@ TEST_F(NewblueDaemonTest, Pair) {
 }
 
 TEST_F(NewblueDaemonTest, Connection) {
-  TestInit();
-
   dbus::ExportedObject::MethodCallCallback start_discovery_handler;
   dbus::ExportedObject::MethodCallCallback connect_handler;
   dbus::ExportedObject::MethodCallCallback disconnect_handler;
+  dbus::ExportedObject::MethodCallCallback get_property_handler;
   MethodHandlerMap method_handlers = {
       {bluetooth_adapter::kStartDiscovery, &start_discovery_handler},
       {bluetooth_device::kConnect, &connect_handler},
       {bluetooth_device::kDisconnect, &disconnect_handler},
+      {dbus::kPropertiesGet, &get_property_handler},
   };
+
+  TestInit(method_handlers);
   TestAdapterBringUp(exported_adapter_object_, method_handlers,
                      /* with_saved_devices */ true);
 
@@ -873,14 +928,13 @@ TEST_F(NewblueDaemonTest, Connection) {
   // Trigger the queued inquiry_response_callback task.
   base::RunLoop().RunUntilIdle();
 
-  TestConnectDisconnect(connect_handler, disconnect_handler);
+  TestConnectDisconnect(connect_handler, disconnect_handler,
+                        get_property_handler);
 
   TestDeinit();
 }
 
 TEST_F(NewblueDaemonTest, BackgroundScan) {
-  TestInit();
-
   dbus::ExportedObject::MethodCallCallback start_discovery_handler;
   dbus::ExportedObject::MethodCallCallback stop_discovery_handler;
   dbus::ExportedObject::MethodCallCallback connect_handler;
@@ -893,6 +947,8 @@ TEST_F(NewblueDaemonTest, BackgroundScan) {
       {bluetooth_device::kDisconnect, &disconnect_handler},
       {bluetooth_device::kPair, &pair_handler},
   };
+
+  TestInit(method_handlers);
   TestAdapterBringUp(exported_adapter_object_, method_handlers,
                      /* with_saved_devices */ false);
 
