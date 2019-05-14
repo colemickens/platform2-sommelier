@@ -52,21 +52,23 @@ MATCHER_P(MessageType, message_type, "") {
   return std::get<0>(arg).type() == message_type;
 }
 
+std::unique_ptr<RTNLMessage> CreateDummyMessage() {
+  return std::make_unique<RTNLMessage>(RTNLMessage::kTypeLink,
+                                       RTNLMessage::kModeGet,
+                                       0,
+                                       0,
+                                       0,
+                                       0,
+                                       IPAddress::kFamilyUnknown);
+}
+
 }  // namespace
 
 class RTNLHandlerTest : public Test {
  public:
   RTNLHandlerTest()
       : sockets_(new StrictMock<MockSockets>()),
-        callback_(Bind(&RTNLHandlerTest::HandlerCallback, Unretained(this))),
-        dummy_message_(RTNLMessage::kTypeLink,
-                       RTNLMessage::kModeGet,
-                       0,
-                       0,
-                       0,
-                       0,
-                       IPAddress::kFamilyUnknown) {
-  }
+        callback_(Bind(&RTNLHandlerTest::HandlerCallback, Unretained(this))) {}
 
   void SetUp() override {
     RTNLHandler::GetInstance()->io_handler_factory_ = &io_handler_factory_;
@@ -85,10 +87,11 @@ class RTNLHandlerTest : public Test {
     RTNLHandler::GetInstance()->request_sequence_ = sequence;
   }
 
-  bool SendMessageWithErrorMask(RTNLMessage* message,
-                                const RTNLHandler::ErrorMask& error_mask) {
+  bool SendMessageWithErrorMask(std::unique_ptr<RTNLMessage> message,
+                                const RTNLHandler::ErrorMask& error_mask,
+                                uint32_t* msg_seq) {
     return RTNLHandler::GetInstance()->SendMessageWithErrorMask(
-      message, error_mask);
+      std::move(message), error_mask, msg_seq);
   }
 
   bool IsSequenceInErrorMaskWindow(uint32_t sequence) {
@@ -144,7 +147,6 @@ class RTNLHandlerTest : public Test {
   MockSockets* sockets_;
   StrictMock<MockIOHandlerFactory> io_handler_factory_;
   Callback<void(const RTNLMessage&)> callback_;
-  RTNLMessage dummy_message_;
 };
 
 const int RTNLHandlerTest::kTestSocket = 123;
@@ -273,8 +275,12 @@ TEST_F(RTNLHandlerTest, SendMessageReturnsErrorAndAdvancesSequenceNumber) {
   const uint32_t kSequenceNumber = 123;
   SetRequestSequence(kSequenceNumber);
   EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(Return(-1));
-  EXPECT_FALSE(RTNLHandler::GetInstance()->SendMessage(&dummy_message_));
+  uint32_t seq = 0;
+  EXPECT_FALSE(RTNLHandler::GetInstance()->SendMessage(CreateDummyMessage(),
+                                                       &seq));
 
+  // |seq| should not be set if there was a failure.
+  EXPECT_EQ(seq, 0);
   // Sequence number should still increment even if there was a failure.
   EXPECT_EQ(kSequenceNumber + 1, GetRequestSequence());
   StopRTNLHandler();
@@ -286,7 +292,9 @@ TEST_F(RTNLHandlerTest, SendMessageWithEmptyMask) {
   SetRequestSequence(kSequenceNumber);
   SetErrorMask(kSequenceNumber, {1, 2, 3});
   EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(ReturnArg<2>());
-  EXPECT_TRUE(SendMessageWithErrorMask(&dummy_message_, {}));
+  uint32_t seq;
+  EXPECT_TRUE(SendMessageWithErrorMask(CreateDummyMessage(), {}, &seq));
+  EXPECT_EQ(seq, kSequenceNumber);
   EXPECT_EQ(kSequenceNumber + 1, GetRequestSequence());
   EXPECT_TRUE(GetAndClearErrorMask(kSequenceNumber).empty());
   StopRTNLHandler();
@@ -297,7 +305,9 @@ TEST_F(RTNLHandlerTest, SendMessageWithErrorMask) {
   const uint32_t kSequenceNumber = 123;
   SetRequestSequence(kSequenceNumber);
   EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(ReturnArg<2>());
-  EXPECT_TRUE(SendMessageWithErrorMask(&dummy_message_, {1, 2, 3}));
+  uint32_t seq;
+  EXPECT_TRUE(SendMessageWithErrorMask(CreateDummyMessage(), {1, 2, 3}, &seq));
+  EXPECT_EQ(seq, kSequenceNumber);
   EXPECT_EQ(kSequenceNumber + 1, GetRequestSequence());
   EXPECT_TRUE(GetAndClearErrorMask(kSequenceNumber + 1).empty());
   EXPECT_THAT(GetAndClearErrorMask(kSequenceNumber), ElementsAre(1, 2, 3));
@@ -323,14 +333,15 @@ TEST_F(RTNLHandlerTest, SendMessageInferredErrorMasks) {
   EXPECT_CALL(*sockets_, Send(_, _, _, 0)).WillRepeatedly(ReturnArg<2>());
   for (const auto& expectation : expectations) {
     SetRequestSequence(kSequenceNumber);
-    RTNLMessage message(expectation.type,
-                        expectation.mode,
-                        0,
-                        0,
-                        0,
-                        0,
-                        IPAddress::kFamilyUnknown);
-    EXPECT_TRUE(RTNLHandler::GetInstance()->SendMessage(&message));
+    auto message = std::make_unique<RTNLMessage>(expectation.type,
+                                                 expectation.mode,
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 IPAddress::kFamilyUnknown);
+    EXPECT_TRUE(RTNLHandler::GetInstance()->SendMessage(std::move(message),
+                                                        nullptr));
     EXPECT_EQ(expectation.mask, GetAndClearErrorMask(kSequenceNumber));
   }
 }
@@ -340,7 +351,9 @@ TEST_F(RTNLHandlerTest, MaskedError) {
   const uint32_t kSequenceNumber = 123;
   SetRequestSequence(kSequenceNumber);
   EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(ReturnArg<2>());
-  EXPECT_TRUE(SendMessageWithErrorMask(&dummy_message_, {1, 2, 3}));
+  uint32_t seq;
+  EXPECT_TRUE(SendMessageWithErrorMask(CreateDummyMessage(), {1, 2, 3}, &seq));
+  EXPECT_EQ(seq, kSequenceNumber);
   ScopedMockLog log;
 
   // This error will be not be masked since this sequence number has no mask.

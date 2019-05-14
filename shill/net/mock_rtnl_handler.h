@@ -5,6 +5,7 @@
 #ifndef SHILL_NET_MOCK_RTNL_HANDLER_H_
 #define SHILL_NET_MOCK_RTNL_HANDLER_H_
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
@@ -35,8 +36,11 @@ class MockRTNLHandler : public RTNLHandler {
   MOCK_METHOD1(RemoveInterface, bool(int interface_index));
   MOCK_METHOD1(RequestDump, void(uint32_t request_flags));
   MOCK_METHOD1(GetInterfaceIndex, int(const std::string& interface_name));
-  using RTNLHandler::SendMessage;
-  MOCK_METHOD1(SendMessage, bool(RTNLMessage* message));
+  MOCK_METHOD2(DoSendMessage, bool(RTNLMessage* message, uint32_t* seq));
+  bool SendMessage(std::unique_ptr<RTNLMessage> message,
+                   uint32_t* seq) override {
+    return DoSendMessage(message.get(), seq);
+  }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockRTNLHandler);

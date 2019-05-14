@@ -144,7 +144,7 @@ void RTNLHandler::SetInterfaceFlags(int interface_index, unsigned int flags,
     return;
   }
 
-  RTNLMessage msg(
+  auto msg = std::make_unique<RTNLMessage>(
       RTNLMessage::kTypeLink,
       RTNLMessage::kModeAdd,
       NLM_F_REQUEST,
@@ -153,18 +153,18 @@ void RTNLHandler::SetInterfaceFlags(int interface_index, unsigned int flags,
       interface_index,
       IPAddress::kFamilyUnknown);
 
-  msg.set_link_status(RTNLMessage::LinkStatus(ARPHRD_VOID, flags, change));
+  msg->set_link_status(RTNLMessage::LinkStatus(ARPHRD_VOID, flags, change));
 
   ErrorMask error_mask;
   if ((flags & IFF_UP) == 0) {
     error_mask.insert(ENODEV);
   }
 
-  SendMessageWithErrorMask(&msg, error_mask);
+  SendMessageWithErrorMask(std::move(msg), error_mask, nullptr);
 }
 
 void RTNLHandler::SetInterfaceMTU(int interface_index, unsigned int mtu) {
-  RTNLMessage msg(
+  auto msg = std::make_unique<RTNLMessage>(
       RTNLMessage::kTypeLink,
       RTNLMessage::kModeAdd,
       NLM_F_REQUEST,
@@ -173,26 +173,27 @@ void RTNLHandler::SetInterfaceMTU(int interface_index, unsigned int mtu) {
       interface_index,
       IPAddress::kFamilyUnknown);
 
-  msg.SetAttribute(
-      IFLA_MTU,
-      ByteString(reinterpret_cast<unsigned char*>(&mtu), sizeof(mtu)));
+  msg->SetAttribute(
+    IFLA_MTU,
+    ByteString(reinterpret_cast<unsigned char*>(&mtu), sizeof(mtu)));
 
-  CHECK(SendMessage(&msg));
+  CHECK(SendMessage(std::move(msg), nullptr));
 }
 
 void RTNLHandler::SetInterfaceMac(int interface_index,
                                   const ByteString& mac_address) {
-  RTNLMessage msg(RTNLMessage::kTypeLink,
-                  RTNLMessage::kModeAdd,
-                  NLM_F_REQUEST,
-                  0,  // sequence to be filled in by RTNLHandler::SendMessage().
-                  0,  // pid.
-                  interface_index,
-                  IPAddress::kFamilyUnknown);
+  auto msg = std::make_unique<RTNLMessage>(
+      RTNLMessage::kTypeLink,
+      RTNLMessage::kModeAdd,
+      NLM_F_REQUEST,
+      0,  // sequence to be filled in by RTNLHandler::SendMessage().
+      0,  // pid.
+      interface_index,
+      IPAddress::kFamilyUnknown);
 
-  msg.SetAttribute(IFLA_ADDRESS, mac_address);
+  msg->SetAttribute(IFLA_ADDRESS, mac_address);
 
-  CHECK(SendMessage(&msg));
+  CHECK(SendMessage(std::move(msg), nullptr));
 }
 
 void RTNLHandler::RequestDump(uint32_t request_flags) {
@@ -254,7 +255,7 @@ void RTNLHandler::NextRequest(uint32_t seq) {
     return;
   }
 
-  RTNLMessage msg(
+  auto msg = std::make_unique<RTNLMessage>(
       type,
       RTNLMessage::kModeGet,
       0,
@@ -262,9 +263,10 @@ void RTNLHandler::NextRequest(uint32_t seq) {
       0,
       0,
       family);
-  CHECK(SendMessage(&msg));
+  uint32_t msg_seq;
+  CHECK(SendMessage(std::move(msg), &msg_seq));
 
-  last_dump_sequence_ = msg.seq();
+  last_dump_sequence_ = msg_seq;
   request_flags_ &= ~flag;
   in_request_ = true;
 }
@@ -380,7 +382,7 @@ bool RTNLHandler::AddressRequest(int interface_index,
   CHECK(local.family() == broadcast.family());
   CHECK(local.family() == peer.family());
 
-  RTNLMessage msg(
+  auto msg = std::make_unique<RTNLMessage>(
       RTNLMessage::kTypeAddress,
       mode,
       NLM_F_REQUEST | flags,
@@ -389,20 +391,20 @@ bool RTNLHandler::AddressRequest(int interface_index,
       interface_index,
       local.family());
 
-  msg.set_address_status(RTNLMessage::AddressStatus(
+  msg->set_address_status(RTNLMessage::AddressStatus(
       local.prefix(),
       0,
       0));
 
-  msg.SetAttribute(IFA_LOCAL, local.address());
+  msg->SetAttribute(IFA_LOCAL, local.address());
   if (!broadcast.IsDefault()) {
-    msg.SetAttribute(IFA_BROADCAST, broadcast.address());
+    msg->SetAttribute(IFA_BROADCAST, broadcast.address());
   }
   if (!peer.IsDefault()) {
-    msg.SetAttribute(IFA_ADDRESS, peer.address());
+    msg->SetAttribute(IFA_ADDRESS, peer.address());
   }
 
-  return SendMessage(&msg);
+  return SendMessage(std::move(msg), nullptr);
 }
 
 bool RTNLHandler::AddInterfaceAddress(int interface_index,
@@ -428,7 +430,7 @@ bool RTNLHandler::RemoveInterfaceAddress(int interface_index,
 }
 
 bool RTNLHandler::RemoveInterface(int interface_index) {
-  RTNLMessage msg(
+  auto msg = std::make_unique<RTNLMessage>(
       RTNLMessage::kTypeLink,
       RTNLMessage::kModeDelete,
       NLM_F_REQUEST,
@@ -436,7 +438,7 @@ bool RTNLHandler::RemoveInterface(int interface_index) {
       0,
       interface_index,
       IPAddress::kFamilyUnknown);
-  return SendMessage(&msg);
+  return SendMessage(std::move(msg), nullptr);
 }
 
 int RTNLHandler::GetInterfaceIndex(const string& interface_name) {
@@ -465,8 +467,24 @@ int RTNLHandler::GetInterfaceIndex(const string& interface_name) {
   return ifr.ifr_ifindex;
 }
 
-bool RTNLHandler::SendMessageWithErrorMask(RTNLMessage* message,
-                                           const ErrorMask& error_mask) {
+bool RTNLHandler::SendMessage(std::unique_ptr<RTNLMessage> message,
+                              uint32_t* msg_seq) {
+  ErrorMask error_mask;
+  if (message->mode() == RTNLMessage::kModeAdd) {
+    error_mask = { EEXIST };
+  } else if (message->mode() == RTNLMessage::kModeDelete) {
+    error_mask = { ESRCH, ENODEV };
+    if (message->type() == RTNLMessage::kTypeAddress) {
+      error_mask.insert(EADDRNOTAVAIL);
+    }
+  }
+  return SendMessageWithErrorMask(std::move(message), error_mask, msg_seq);
+}
+
+bool RTNLHandler::SendMessageWithErrorMask(
+    std::unique_ptr<RTNLMessage> message,
+    const ErrorMask& error_mask,
+    uint32_t* msg_seq) {
   SLOG(this, 5) << __func__ << " sequence " << request_sequence_
                 << " message type " << message->type() << " mode "
                 << message->mode() << " with error mask size "
@@ -493,27 +511,6 @@ bool RTNLHandler::SendMessageWithErrorMask(RTNLMessage* message,
     PLOG(ERROR) << "RTNL send failed";
     return false;
   }
-
-  return true;
-}
-
-bool RTNLHandler::SendMessage(RTNLMessage* message) {
-  ErrorMask error_mask;
-  if (message->mode() == RTNLMessage::kModeAdd) {
-    error_mask = { EEXIST };
-  } else if (message->mode() == RTNLMessage::kModeDelete) {
-    error_mask = { ESRCH, ENODEV };
-    if (message->type() == RTNLMessage::kTypeAddress) {
-      error_mask.insert(EADDRNOTAVAIL);
-    }
-  }
-  return SendMessageWithErrorMask(message, error_mask);
-}
-
-bool RTNLHandler::SendMessage(std::unique_ptr<RTNLMessage> message,
-                              uint32_t* msg_seq) {
-  if (!SendMessage(message.get()))
-    return false;
 
   if (msg_seq)
     *msg_seq = message->seq();

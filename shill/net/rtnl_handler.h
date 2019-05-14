@@ -103,9 +103,6 @@ class SHILL_EXPORT RTNLHandler {
   // determine the index.
   virtual int GetInterfaceIndex(const std::string& interface_name);
 
-  // Sends a formatted RTNL message using SendMessageWithErrorMask
-  // using an error mask inferred from the mode and type of |message|.
-  virtual bool SendMessage(RTNLMessage* message);
   // Sends an RTNL message. If the message is successfully sent, and |seq| is
   // not null, then it will be set to the message's assigned sequence number.
   virtual bool SendMessage(std::unique_ptr<RTNLMessage> message, uint32_t* seq);
@@ -159,8 +156,9 @@ class SHILL_EXPORT RTNLHandler {
   // default -- with the outgoing message.  If the message is sent
   // successfully, the sequence number in |message| is set, and the
   // function returns true.  Otherwise this function returns false.
-  bool SendMessageWithErrorMask(RTNLMessage* message,
-                                const ErrorMask& error_mask);
+  bool SendMessageWithErrorMask(std::unique_ptr<RTNLMessage> message,
+                                const ErrorMask& error_mask,
+                                uint32_t* msg_seq);
 
   // Called by the RTNL read handler on exceptional events.
   void OnReadError(const std::string& error_msg);
