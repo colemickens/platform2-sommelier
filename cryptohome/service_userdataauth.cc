@@ -239,4 +239,45 @@ void InstallAttributesAdaptor::SetFirmwareManagementParameters(
   response->Return(reply);
 }
 
+void CryptohomeMiscAdaptor::GetSystemSalt(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetSystemSaltReply>> response,
+    const user_data_auth::GetSystemSaltRequest& in_request) {
+  user_data_auth::GetSystemSaltReply reply;
+  response->Return(reply);
+}
+
+void CryptohomeMiscAdaptor::UpdateCurrentUserActivityTimestamp(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::UpdateCurrentUserActivityTimestampReply>> response,
+    const user_data_auth::UpdateCurrentUserActivityTimestampRequest&
+        in_request) {
+  user_data_auth::UpdateCurrentUserActivityTimestampReply reply;
+  response->Return(reply);
+}
+
+void CryptohomeMiscAdaptor::GetSanitizedUsername(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetSanitizedUsernameReply>> response,
+    const user_data_auth::GetSanitizedUsernameRequest& in_request) {
+  user_data_auth::GetSanitizedUsernameReply reply;
+  response->Return(reply);
+}
+
+void CryptohomeMiscAdaptor::GetLoginStatus(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetLoginStatusReply>> response,
+    const user_data_auth::GetLoginStatusRequest& in_request) {
+  user_data_auth::GetLoginStatusReply reply;
+  response->Return(reply);
+}
+
+void CryptohomeMiscAdaptor::GetStatusString(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetStatusStringReply>> response,
+    const user_data_auth::GetStatusStringRequest& in_request) {
+  user_data_auth::GetStatusStringReply reply;
+  response->Return(reply);
+}
+
 }  // namespace cryptohome

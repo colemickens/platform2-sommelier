@@ -104,8 +104,10 @@ class UserDataAuthAdaptor
  private:
   brillo::dbus_utils::DBusObject* dbus_object_;
 
-  // This is the object that holds most of the states that this adaptor uses, it
-  // also contains most of the actual logics.
+  // This is the object that holds most of the states that this adaptor uses,
+  // it also contains most of the actual logics.
+  // This object is owned by the parent dbus service daemon, and whose lifetime
+  // will cover the entire lifetime of this class.
   UserDataAuth* service_;
 
   DISALLOW_COPY_AND_ASSIGN(UserDataAuthAdaptor);
@@ -144,8 +146,10 @@ class Pkcs11Adaptor : public org::chromium::CryptohomePkcs11InterfaceInterface,
  private:
   brillo::dbus_utils::DBusObject* dbus_object_;
 
-  // This is the object that holds most of the states that this adaptor uses, it
-  // also contains most of the actual logics.
+  // This is the object that holds most of the states that this adaptor uses,
+  // it also contains most of the actual logics.
+  // This object is owned by the parent dbus service daemon, and whose lifetime
+  // will cover the entire lifetime of this class.
   UserDataAuth* service_;
 
   DISALLOW_COPY_AND_ASSIGN(Pkcs11Adaptor);
@@ -206,11 +210,65 @@ class InstallAttributesAdaptor
  private:
   brillo::dbus_utils::DBusObject* dbus_object_;
 
-  // This is the object that holds most of the states that this adaptor uses, it
-  // also contains most of the actual logics.
+  // This is the object that holds most of the states that this adaptor uses,
+  // it also contains most of the actual logics.
+  // This object is owned by the parent dbus service daemon, and whose lifetime
+  // will cover the entire lifetime of this class.
   UserDataAuth* service_;
 
   DISALLOW_COPY_AND_ASSIGN(InstallAttributesAdaptor);
+};
+
+class CryptohomeMiscAdaptor
+    : public org::chromium::CryptohomeMiscInterfaceInterface,
+      public org::chromium::CryptohomeMiscInterfaceAdaptor {
+ public:
+  explicit CryptohomeMiscAdaptor(scoped_refptr<dbus::Bus> bus,
+                                 brillo::dbus_utils::DBusObject* dbus_object,
+                                 UserDataAuth* service)
+      : org::chromium::CryptohomeMiscInterfaceAdaptor(this),
+        dbus_object_(dbus_object),
+        service_(service) {
+    // This is to silence the compiler's warning about unused fields. It will be
+    // removed once we start to use it.
+    (void)service_;
+  }
+
+  void RegisterAsync() { RegisterWithDBusObject(dbus_object_); }
+
+  // Interface overrides and related implementations
+  void GetSystemSalt(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetSystemSaltReply>> response,
+      const user_data_auth::GetSystemSaltRequest& in_request) override;
+  void UpdateCurrentUserActivityTimestamp(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::UpdateCurrentUserActivityTimestampReply>> response,
+      const user_data_auth::UpdateCurrentUserActivityTimestampRequest&
+          in_request) override;
+  void GetSanitizedUsername(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetSanitizedUsernameReply>> response,
+      const user_data_auth::GetSanitizedUsernameRequest& in_request) override;
+  void GetLoginStatus(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetLoginStatusReply>> response,
+      const user_data_auth::GetLoginStatusRequest& in_request) override;
+  void GetStatusString(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetStatusStringReply>> response,
+      const user_data_auth::GetStatusStringRequest& in_request) override;
+
+ private:
+  brillo::dbus_utils::DBusObject* dbus_object_;
+
+  // This is the object that holds most of the states that this adaptor uses,
+  // it also contains most of the actual logics.
+  // This object is owned by the parent dbus service daemon, and whose lifetime
+  // will cover the entire lifetime of this class.
+  UserDataAuth* service_;
+
+  DISALLOW_COPY_AND_ASSIGN(CryptohomeMiscAdaptor);
 };
 
 }  // namespace cryptohome
