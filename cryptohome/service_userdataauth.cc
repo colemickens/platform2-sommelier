@@ -141,7 +141,24 @@ void UserDataAuthAdaptor::AddKey(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::AddKeyReply>> response,
     const user_data_auth::AddKeyRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &UserDataAuthAdaptor::DoAddKey, base::Unretained(this),
+          ThreadSafeDBusMethodResponse<
+              user_data_auth::AddKeyReply>::MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void UserDataAuthAdaptor::DoAddKey(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::AddKeyReply>> response,
+    const user_data_auth::AddKeyRequest& in_request) {
   user_data_auth::AddKeyReply reply;
+  auto status = service_->AddKey(in_request);
+  // Note, if there's no error, then |status| is set to CRYPTOHOME_ERROR_NOT_SET
+  // to indicate that.
+  reply.set_error(status);
   response->Return(reply);
 }
 

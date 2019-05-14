@@ -1282,4 +1282,74 @@ void UserDataAuth::ContinueMountWithCredentials(
   }
 }
 
+user_data_auth::CryptohomeErrorCode UserDataAuth::AddKey(
+    const user_data_auth::AddKeyRequest request) {
+  AssertOnMountThread();
+
+  if (!request.has_account_id() || !request.has_authorization_request()) {
+    LOG(ERROR)
+        << "AddKeyRequest must have account_id and authorization_request.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  std::string account_id = GetAccountId(request.account_id());
+  if (account_id.empty()) {
+    LOG(ERROR) << "AddKeyRequest must have vaid account_id.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  // Note that there's no check for empty AuthorizationRequest key label because
+  // such a key will test against all VaultKeysets of a compatible
+  // key().data().type(), and thus is valid.
+
+  if (request.authorization_request().key().secret().empty()) {
+    LOG(ERROR) << "No key secret in AddKeyRequest.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  if (request.key().secret().empty()) {
+    LOG(ERROR) << "No new key in AddKeyRequest.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  if (request.key().data().label().empty()) {
+    LOG(ERROR) << "No new key label in AddKeyRequest.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  // Ensure any new keys do not contain a wrapped authorization key.
+  if (KeyHasWrappedAuthorizationSecrets(request.key())) {
+    LOG(ERROR)
+        << "KeyAuthorizationSecrets may not be wrapped in AddKeyRequest.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  const std::string& auth_key_secret =
+      request.authorization_request().key().secret();
+  Credentials credentials(account_id.c_str(), SecureBlob(auth_key_secret));
+
+  credentials.set_key_data(request.authorization_request().key().data());
+
+  if (!homedirs_->Exists(credentials.GetObfuscatedUsername(system_salt_))) {
+    return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
+  }
+
+  // An integer for AddKeyset to write the resulting index. This is discarded in
+  // the end.
+  int unused_keyset_index;
+
+  const std::string& new_key_secret = request.key().secret();
+  SecureBlob new_secret(new_key_secret);
+  CryptohomeErrorCode result;
+  result =
+      homedirs_->AddKeyset(credentials, new_secret, &request.key().data(),
+                           request.clobber_if_exists(), &unused_keyset_index);
+
+  // Note that cryptohome::CryptohomeErrorCode and
+  // user_data_auth::CryptohomeErrorCode are same in content, and it'll remain
+  // so until the end of the refactor, so we can safely cast from one to
+  // another. This is enforced in our unit test.
+  return static_cast<user_data_auth::CryptohomeErrorCode>(result);
+}
+
 }  // namespace cryptohome

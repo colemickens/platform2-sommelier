@@ -138,6 +138,208 @@ class UserDataAuthTest : public UserDataAuthTestNotInitialized {
   DISALLOW_COPY_AND_ASSIGN(UserDataAuthTest);
 };
 
+namespace CryptohomeErrorCodeEquivalenceTest {
+// This test is completely static, so it is not wrapped in the TEST_F() block.
+static_assert(static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_NOT_SET) ==
+                  static_cast<int>(cryptohome::CRYPTOHOME_ERROR_NOT_SET),
+              "Enum member CRYPTOHOME_ERROR_NOT_SET differs between "
+              "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND),
+    "Enum member CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(
+        user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND) ==
+        static_cast<int>(
+            cryptohome::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND),
+    "Enum member CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(
+        user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED),
+    "Enum member CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_NOT_IMPLEMENTED),
+    "Enum member CRYPTOHOME_ERROR_NOT_IMPLEMENTED differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL) ==
+                  static_cast<int>(cryptohome::CRYPTOHOME_ERROR_MOUNT_FATAL),
+              "Enum member CRYPTOHOME_ERROR_MOUNT_FATAL differs between "
+              "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY),
+    "Enum member CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_TPM_COMM_ERROR) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_TPM_COMM_ERROR),
+    "Enum member CRYPTOHOME_ERROR_TPM_COMM_ERROR differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_TPM_DEFEND_LOCK) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_TPM_DEFEND_LOCK),
+    "Enum member CRYPTOHOME_ERROR_TPM_DEFEND_LOCK differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_TPM_NEEDS_REBOOT) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_TPM_NEEDS_REBOOT),
+    "Enum member CRYPTOHOME_ERROR_TPM_NEEDS_REBOOT differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(
+        user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED),
+    "Enum member CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED),
+    "Enum member CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_KEY_LABEL_EXISTS) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_KEY_LABEL_EXISTS),
+    "Enum member CRYPTOHOME_ERROR_KEY_LABEL_EXISTS differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE),
+    "Enum member CRYPTOHOME_ERROR_BACKING_STORE_FAILURE differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(
+        user_data_auth::CRYPTOHOME_ERROR_UPDATE_SIGNATURE_INVALID) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_UPDATE_SIGNATURE_INVALID),
+    "Enum member CRYPTOHOME_ERROR_UPDATE_SIGNATURE_INVALID differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_KEY_NOT_FOUND),
+    "Enum member CRYPTOHOME_ERROR_KEY_NOT_FOUND differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(static_cast<int>(
+                  user_data_auth::CRYPTOHOME_ERROR_LOCKBOX_SIGNATURE_INVALID) ==
+                  static_cast<int>(
+                      cryptohome::CRYPTOHOME_ERROR_LOCKBOX_SIGNATURE_INVALID),
+              "Enum member CRYPTOHOME_ERROR_LOCKBOX_SIGNATURE_INVALID differs "
+              "between user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_LOCKBOX_CANNOT_SIGN) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_LOCKBOX_CANNOT_SIGN),
+    "Enum member CRYPTOHOME_ERROR_LOCKBOX_CANNOT_SIGN differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(
+        user_data_auth::CRYPTOHOME_ERROR_BOOT_ATTRIBUTE_NOT_FOUND) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_BOOT_ATTRIBUTE_NOT_FOUND),
+    "Enum member CRYPTOHOME_ERROR_BOOT_ATTRIBUTE_NOT_FOUND differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(
+        user_data_auth::CRYPTOHOME_ERROR_BOOT_ATTRIBUTES_CANNOT_SIGN) ==
+        static_cast<int>(
+            cryptohome::CRYPTOHOME_ERROR_BOOT_ATTRIBUTES_CANNOT_SIGN),
+    "Enum member CRYPTOHOME_ERROR_BOOT_ATTRIBUTES_CANNOT_SIGN differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_TPM_EK_NOT_AVAILABLE) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_TPM_EK_NOT_AVAILABLE),
+    "Enum member CRYPTOHOME_ERROR_TPM_EK_NOT_AVAILABLE differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_ATTESTATION_NOT_READY) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_ATTESTATION_NOT_READY),
+    "Enum member CRYPTOHOME_ERROR_ATTESTATION_NOT_READY differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_CANNOT_CONNECT_TO_CA) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_CANNOT_CONNECT_TO_CA),
+    "Enum member CRYPTOHOME_ERROR_CANNOT_CONNECT_TO_CA differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_CA_REFUSED_ENROLLMENT) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_CA_REFUSED_ENROLLMENT),
+    "Enum member CRYPTOHOME_ERROR_CA_REFUSED_ENROLLMENT differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_CA_REFUSED_CERTIFICATE) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_CA_REFUSED_CERTIFICATE),
+    "Enum member CRYPTOHOME_ERROR_CA_REFUSED_CERTIFICATE differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(
+        user_data_auth::CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR) ==
+        static_cast<int>(
+            cryptohome::CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR),
+    "Enum member CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(
+        user_data_auth::
+            CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID) ==
+        static_cast<int>(
+            cryptohome::
+                CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID),
+    "Enum member CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID "
+    "differs between user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(
+        user_data_auth::
+            CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE) ==
+        static_cast<int>(
+            cryptohome::
+                CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE),
+    "Enum member CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE "
+    "differs between user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(
+        user_data_auth::
+            CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_REMOVE) ==
+        static_cast<int>(
+            cryptohome::
+                CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_REMOVE),
+    "Enum member CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_REMOVE "
+    "differs between user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_MOUNT_OLD_ENCRYPTION) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_MOUNT_OLD_ENCRYPTION),
+    "Enum member CRYPTOHOME_ERROR_MOUNT_OLD_ENCRYPTION differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(
+        user_data_auth::CRYPTOHOME_ERROR_MOUNT_PREVIOUS_MIGRATION_INCOMPLETE) ==
+        static_cast<int>(
+            cryptohome::CRYPTOHOME_ERROR_MOUNT_PREVIOUS_MIGRATION_INCOMPLETE),
+    "Enum member CRYPTOHOME_ERROR_MOUNT_PREVIOUS_MIGRATION_INCOMPLETE differs "
+    "between user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED),
+    "Enum member CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_REMOVE_FAILED) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_REMOVE_FAILED),
+    "Enum member CRYPTOHOME_ERROR_REMOVE_FAILED differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
+    "Enum member CRYPTOHOME_ERROR_INVALID_ARGUMENT differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    user_data_auth::CryptohomeErrorCode_MAX == 33,
+    "user_data_auth::CrytpohomeErrorCode's element count is incorrect");
+static_assert(cryptohome::CryptohomeErrorCode_MAX == 33,
+              "cryptohome::CrytpohomeErrorCode's element count is incorrect");
+}  // namespace CryptohomeErrorCodeEquivalenceTest
+
 TEST_F(UserDataAuthTest, IsMounted) {
   // By default there are no mount right after initialization
   EXPECT_FALSE(userdataauth_.IsMounted());
@@ -723,6 +925,49 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
           base::Unretained(&called)));
 
   EXPECT_TRUE(called);
+}
+
+TEST_F(UserDataAuthExTest, AddKeyInvalidArgs) {
+  PrepareArguments();
+
+  // Test for when there's no email supplied.
+  EXPECT_EQ(userdataauth_.AddKey(*add_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+
+  // Test for when there's no secret.
+  add_req_->mutable_account_id()->set_account_id("foo@gmail.com");
+  EXPECT_EQ(userdataauth_.AddKey(*add_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+
+  // Test for when there's no new key.
+  add_req_->mutable_authorization_request()->mutable_key()->set_secret("blerg");
+  add_req_->clear_key();
+  EXPECT_EQ(userdataauth_.AddKey(*add_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+
+  // Test for no new key label.
+  add_req_->mutable_key();
+  // No label
+  add_req_->mutable_key()->set_secret("some secret");
+  EXPECT_EQ(userdataauth_.AddKey(*add_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
+TEST_F(UserDataAuthExTest, AddKeySanity) {
+  PrepareArguments();
+
+  add_req_->mutable_account_id()->set_account_id("foo@gmail.com");
+  add_req_->mutable_authorization_request()->mutable_key()->set_secret("blerg");
+  add_req_->mutable_key();
+  add_req_->mutable_key()->set_secret("some secret");
+  add_req_->mutable_key()->mutable_data()->set_label("just a label");
+
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, AddKeyset(_, _, _, _, _))
+      .WillOnce(Return(cryptohome::CRYPTOHOME_ERROR_NOT_SET));
+
+  EXPECT_EQ(userdataauth_.AddKey(*add_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
 }  // namespace cryptohome

@@ -104,6 +104,13 @@ class UserDataAuth {
   // main() because there's a command line switch for selecting this.
   void set_legacy_mount(bool legacy) { legacy_mount_ = legacy; }
 
+  // =============== Key Related Public Utilities ===============
+  // Add the key specified in the request, and return a CryptohomeErrorCode to
+  // indicate the status of adding the key. If CryptohomeErrorCode is
+  // CRYPTOHOME_ERROR_NOT_SET, then the key is successfully added.
+  user_data_auth::CryptohomeErrorCode AddKey(
+      const user_data_auth::AddKeyRequest request);
+
   // =============== PKCS#11 Related Public Methods ===============
 
   // This initializes the PKCS#11 for a particular mount. Note that this is
@@ -455,7 +462,9 @@ class UserDataAuth {
 
   // This holds the object that records informations about the homedirs.
   // This is usually set to default_homedirs_, but can be overridden for
-  // testing
+  // testing.
+  // This is to be accessed from the mount thread only because there's no
+  // guarantee on thread safety of the HomeDirs object.
   HomeDirs* homedirs_;
 
   // This holds a timestamp for each user that is the time that the user was

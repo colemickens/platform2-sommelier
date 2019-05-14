@@ -33,6 +33,10 @@ class UserDataAuthAdaptor
   void RegisterAsync() { RegisterWithDBusObject(dbus_object_); }
 
   // Interface overrides and related implementations
+  // Note that the documentation for all of the methods below can be found in
+  // either the DBus Introspection XML
+  // (cryptohome/dbus_bindings/org.chromium.UserDataAuth.xml), or the protobuf
+  // definition file (system_api/dbus/cryptohome/UserDataAuth.proto)
   void IsMounted(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                      user_data_auth::IsMountedReply>> response,
                  const user_data_auth::IsMountedRequest& in_request) override;
@@ -70,6 +74,10 @@ class UserDataAuthAdaptor
   void AddKey(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                   user_data_auth::AddKeyReply>> response,
               const user_data_auth::AddKeyRequest& in_request) override;
+  void DoAddKey(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                    user_data_auth::AddKeyReply>> response,
+                const user_data_auth::AddKeyRequest& in_request);
+
   void UpdateKey(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                      user_data_auth::UpdateKeyReply>> response,
                  const user_data_auth::UpdateKeyRequest& in_request) override;
