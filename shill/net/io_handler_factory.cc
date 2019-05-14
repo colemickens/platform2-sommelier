@@ -9,6 +9,12 @@
 
 namespace shill {
 
+// static
+IOHandlerFactory* IOHandlerFactory::GetInstance() {
+  static base::NoDestructor<IOHandlerFactory> instance;
+  return instance.get();
+}
+
 IOHandlerFactory::IOHandlerFactory() = default;
 IOHandlerFactory::~IOHandlerFactory() = default;
 

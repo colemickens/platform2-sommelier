@@ -5,6 +5,8 @@
 #ifndef SHILL_NET_IO_HANDLER_FACTORY_H_
 #define SHILL_NET_IO_HANDLER_FACTORY_H_
 
+#include <base/no_destructor.h>
+
 #include "shill/net/io_handler.h"
 #include "shill/net/shill_export.h"
 
@@ -12,6 +14,11 @@ namespace shill {
 
 class SHILL_EXPORT IOHandlerFactory {
  public:
+  static IOHandlerFactory* GetInstance();
+
+  // TODO(benchan): Make constructor protected once all users of
+  // IOHandlerFactory has been migrated to use IOHandlerFactory::GetInstance()
+  // instead of constructing a new IOHandlerFactory.
   IOHandlerFactory();
   virtual ~IOHandlerFactory();
 
@@ -26,6 +33,8 @@ class SHILL_EXPORT IOHandlerFactory {
       const IOHandler::ReadyCallback& input_callback);
 
  private:
+  friend class base::NoDestructor<IOHandlerFactory>;
+
   DISALLOW_COPY_AND_ASSIGN(IOHandlerFactory);
 };
 
