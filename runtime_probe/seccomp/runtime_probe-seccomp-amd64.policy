@@ -75,7 +75,9 @@ execve: 1
 wait4: 1
 gettid: 1
 getuid: 1
-socket: arg0 == AF_UNIX && arg1 == SOCK_STREAM|SOCK_CLOEXEC && arg2 == 0
+# Here AF_UNIX + SOCK_STREAM is to allow dbus usage,
+# and AF_UNIX + SOCK_DGRAM is to allow logging to /dev/log
+socket: arg0 == AF_UNIX && arg1 == SOCK_STREAM|SOCK_CLOEXEC && arg2 == 0 || arg0 == AF_UNIX && arg1 == SOCK_DGRAM|SOCK_CLOEXEC && arg2 == 0
 getresuid: 1
 munmap: 1
 pipe2: 1
