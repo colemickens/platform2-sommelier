@@ -6,19 +6,19 @@
 
 #include <fcntl.h>
 #include <grp.h>
+#include <memory>
 #include <pwd.h>
 #include <string.h>
 #include <sys/mount.h>
 #include <sys/statvfs.h>
 #include <sys/types.h>
-#include <memory>
 
 #include <string>
 
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
-#include <brillo/secure_blob.h>
 #include <brillo/process.h>
+#include <brillo/secure_blob.h>
 
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
@@ -230,21 +230,20 @@ bool UdevAdmSettle(const base::FilePath& device_path, bool wait_for_device) {
 
 }  // namespace
 
-EncryptedFs::EncryptedFs(const base::FilePath& mount_root,
+EncryptedFs::EncryptedFs(const base::FilePath& rootdir,
                          Platform* platform,
                          brillo::LoopDeviceManager* loop_device_manager,
                          brillo::DeviceMapper* device_mapper)
     : platform_(platform),
       loopdev_manager_(loop_device_manager),
-      device_mapper_(device_mapper) {
+      device_mapper_(device_mapper),
+      rootdir_(rootdir) {
   dmcrypt_name_ = std::string(kCryptDevName);
-  rootdir_ = base::FilePath("/");
-  if (!mount_root.empty()) {
+  if (rootdir_ != base::FilePath("/")) {
     brillo::SecureBlob digest =
-        cryptohome::CryptoLib::Sha256(brillo::SecureBlob(mount_root.value()));
+        cryptohome::CryptoLib::Sha256(brillo::SecureBlob(rootdir_.value()));
     std::string hex = cryptohome::CryptoLib::SecureBlobToHex(digest);
     dmcrypt_name_ += "_" + hex.substr(0, 16);
-    rootdir_ = mount_root;
   }
   // Initialize remaining directories.
   stateful_mount_ = rootdir_.Append(STATEFUL_MNT);

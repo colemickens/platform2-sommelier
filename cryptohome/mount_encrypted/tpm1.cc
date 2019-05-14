@@ -610,6 +610,9 @@ bool Tpm1SystemKeyLoader::IsTPMFirmwareUpdatePending() {
       *newline_pos = '\0';
     }
     base::FilePath update_path(update_location);
+    LOG(INFO) << "Checking whether "
+              << rootdir_.AppendASCII(paths::kFirmwareDir) << " is a parent of "
+              << update_path;
     if (!rootdir_.AppendASCII(paths::kFirmwareDir).IsParent(update_path) ||
         !base::PathExists(update_path)) {
       LOG(ERROR) << "Failure locating TPM firmware update file.";

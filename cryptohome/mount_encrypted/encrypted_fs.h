@@ -7,8 +7,8 @@
 
 #include <glib.h>
 #include <inttypes.h>
-#include <sys/stat.h>
 #include <string>
+#include <sys/stat.h>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -56,7 +56,7 @@ class EncryptedFs {
   };
 
   // Setup EncryptedFs with the root dir, platform and loopdev manager.
-  EncryptedFs(const base::FilePath& mount_root,
+  EncryptedFs(const base::FilePath& rootdir,
               Platform* platform,
               brillo::LoopDeviceManager* loop_device_manager,
               brillo::DeviceMapper* device_mapper);

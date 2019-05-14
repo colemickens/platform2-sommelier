@@ -229,7 +229,8 @@ bool SendSecretToBiodTmpFile(const EncryptionKey& key) {
 
 int main(int argc, char* argv[]) {
   result_code rc;
-  base::FilePath rootdir = base::FilePath(getenv("MOUNT_ENCRYPTED_ROOT"));
+  char *rootdir_env = getenv("MOUNT_ENCRYPTED_ROOT");
+  base::FilePath rootdir = base::FilePath(rootdir_env ? rootdir_env : "/");
   cryptohome::Platform platform;
   brillo::LoopDeviceManager loopdev_manager;
   brillo::DeviceMapper device_mapper;
