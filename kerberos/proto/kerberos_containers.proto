@@ -8,6 +8,9 @@ message StorageAccount {
   // Principal name (user@REALM.COM). Accounts are keyed by principal name.
   optional string principal_name = 1;
 
+  // Whether the account is managed by policy.
+  optional bool is_managed = 2;
+
   // TODO(https://crbug.com/952239): Add additional properties.
 }
 

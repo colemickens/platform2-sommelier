@@ -77,9 +77,12 @@ ErrorType AccountManager::SaveAccounts() const {
   StorageAccountsList storage_accounts;
   for (const auto& it : accounts_) {
     const std::string& principal_name = it.first;
+    const AccountData* data = it.second.get();
+    DCHECK(data);
 
     StorageAccount* storage_account = storage_accounts.add_accounts();
     storage_account->set_principal_name(principal_name);
+    storage_account->set_is_managed(data->is_managed);
     // TODO(https://crbug.com/952239): Set additional properties.
   }
 
@@ -118,18 +121,31 @@ ErrorType AccountManager::LoadAccounts() {
     const StorageAccount& storage_account = storage_accounts.accounts(n);
 
     auto data = std::make_unique<AccountData>();
+    data->is_managed = storage_account.is_managed();
     // TODO(https://crbug.com/952239): Set additional properties.
+
     accounts_[storage_account.principal_name()] = std::move(data);
   }
 
   return ERROR_NONE;
 }
 
-ErrorType AccountManager::AddAccount(const std::string& principal_name) {
-  if (accounts_.find(principal_name) != accounts_.end())
+ErrorType AccountManager::AddAccount(const std::string& principal_name,
+                                     bool is_managed) {
+  auto it = accounts_.find(principal_name);
+  if (it != accounts_.end()) {
+    // Policy should overwrite user-added accounts, but user-added accounts
+    // should not overwrite policy accounts.
+    if (is_managed && !it->second->is_managed) {
+      it->second->is_managed = is_managed;
+      SaveAccounts();
+    }
     return ERROR_DUPLICATE_PRINCIPAL_NAME;
+  }
 
-  accounts_[principal_name] = std::make_unique<AccountData>();
+  auto data = std::make_unique<AccountData>();
+  data->is_managed = is_managed;
+  accounts_[principal_name] = std::move(data);
   SaveAccounts();
   return ERROR_NONE;
 }
@@ -158,6 +174,8 @@ ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) const {
 
     Account account;
     account.set_principal_name(principal_name);
+    account.set_is_managed(data->is_managed);
+    // TODO(https://crbug.com/952239): Set additional properties.
 
     // Do a best effort reporting results, don't bail on the first error. If
     // there's a broken account, the user is able to recover the situation this

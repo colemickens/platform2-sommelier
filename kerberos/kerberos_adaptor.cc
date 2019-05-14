@@ -115,8 +115,10 @@ ByteArray KerberosAdaptor::AddAccount(const ByteArray& request_blob) {
   AddAccountRequest request;
   ErrorType error = ParseProto(&request, request_blob);
 
-  if (error == ERROR_NONE)
-    error = manager_->AddAccount(request.principal_name());
+  if (error == ERROR_NONE) {
+    error =
+        manager_->AddAccount(request.principal_name(), request.is_managed());
+  }
 
   PrintResult(__FUNCTION__, error);
   AddAccountResponse response;

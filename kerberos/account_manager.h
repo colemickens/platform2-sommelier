@@ -48,9 +48,11 @@ class AccountManager {
   ErrorType LoadAccounts();
 
   // Adds an account keyed by |principal_name| (user@REALM.COM) to the list of
-  // accounts. Returns |ERROR_DUPLICATE_PRINCIPAL_NAME| if the account is
-  // already present.
-  ErrorType AddAccount(const std::string& principal_name) WARN_UNUSED_RESULT;
+  // accounts. |is_managed| indicates whether the account is managed by the
+  // KerberosAccounts policy. Returns |ERROR_DUPLICATE_PRINCIPAL_NAME| if the
+  // account is already present.
+  ErrorType AddAccount(const std::string& principal_name,
+                       bool is_managed) WARN_UNUSED_RESULT;
 
   // The following methods return |ERROR_UNKNOWN_PRINCIPAL_NAME| if
   // |principal_name| (user@REALM.COM) is not known.
@@ -106,9 +108,10 @@ class AccountManager {
   const std::unique_ptr<Krb5Interface> krb5_;
 
   struct AccountData {
-    // TODO(https://crbug.com/952239): Empty so far. This will contain
-    // properties set by policy like password and whether the account is
-    // managed.
+    // Whether the account is managed by policy.
+    bool is_managed = false;
+
+    // TODO(https://crbug.com/952239): Set additional properties.
   };
 
   // Returns the AccountData for |principal_name| if available or nullptr
