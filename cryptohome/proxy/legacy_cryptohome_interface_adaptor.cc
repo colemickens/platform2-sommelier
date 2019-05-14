@@ -348,6 +348,15 @@ void LegacyCryptohomeInterfaceAdaptor::MountEx(
 void LegacyCryptohomeInterfaceAdaptor::MountExOnSuccess(
     std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
     const user_data_auth::MountReply& reply) {
+  if (reply.error() ==
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT) {
+    constexpr char error_msg[] =
+        "Invalid argument on MountEx(), see logs for more details.";
+    LOG(WARNING) << error_msg;
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_INVALID_ARGS, error_msg);
+    return;
+  }
   cryptohome::BaseReply result;
   result.set_error(static_cast<cryptohome::CryptohomeErrorCode>(reply.error()));
   MountReply* result_extension =

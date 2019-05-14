@@ -8,19 +8,88 @@
 #include <brillo/cryptohome.h>
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
+#include <dbus/cryptohome/dbus-constants.h>
+#include <unordered_map>
 #include <vector>
 
+#include "cryptohome/bootlockbox/boot_lockbox_client.h"
+#include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/key_challenge_service.h"
+#include "cryptohome/key_challenge_service_impl.h"
+#include "cryptohome/obfuscated_username.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/userdataauth.h"
 
 using base::FilePath;
+using brillo::Blob;
 using brillo::SecureBlob;
 
 namespace cryptohome {
 
 const char kMountThreadName[] = "MountThread";
+const char kPublicMountSaltFilePath[] = "/var/lib/public_mount_salt";
+
+namespace {
+// Some utility functions used by UserDataAuth.
+
+// Get the Account ID for an AccountIdentifier proto.
+const std::string& GetAccountId(const AccountIdentifier& id) {
+  if (id.has_account_id()) {
+    return id.account_id();
+  }
+  return id.email();
+}
+
+// If any of the authorization data contained in the key have a secret that is
+// wrapped, then return true. Otherwise, false is returned.
+bool KeyHasWrappedAuthorizationSecrets(const Key& k) {
+  for (const KeyAuthorizationData& auth_data : k.data().authorization_data()) {
+    for (const KeyAuthorizationSecret& secret : auth_data.secrets()) {
+      // If wrapping becomes richer in the future, this may change.
+      if (secret.wrapped())
+        return true;
+    }
+  }
+  return false;
+}
+
+// Convert MountError used by mount.cc to CryptohomeErrorCode defined in the
+// protos.
+user_data_auth::CryptohomeErrorCode MountErrorToCryptohomeError(
+    const MountError code) {
+  static const std::unordered_map<MountError,
+                                  user_data_auth::CryptohomeErrorCode>
+      error_code_lut = {
+          {MOUNT_ERROR_FATAL, user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL},
+          {MOUNT_ERROR_KEY_FAILURE,
+           user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED},
+          {MOUNT_ERROR_MOUNT_POINT_BUSY,
+           user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY},
+          {MOUNT_ERROR_TPM_COMM_ERROR,
+           user_data_auth::CRYPTOHOME_ERROR_TPM_COMM_ERROR},
+          {MOUNT_ERROR_TPM_DEFEND_LOCK,
+           user_data_auth::CRYPTOHOME_ERROR_TPM_DEFEND_LOCK},
+          {MOUNT_ERROR_USER_DOES_NOT_EXIST,
+           user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND},
+          {MOUNT_ERROR_TPM_NEEDS_REBOOT,
+           user_data_auth::CRYPTOHOME_ERROR_TPM_NEEDS_REBOOT},
+          {MOUNT_ERROR_OLD_ENCRYPTION,
+           user_data_auth::CRYPTOHOME_ERROR_MOUNT_OLD_ENCRYPTION},
+          {MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE,
+           user_data_auth::
+               CRYPTOHOME_ERROR_MOUNT_PREVIOUS_MIGRATION_INCOMPLETE},
+          {MOUNT_ERROR_RECREATED, user_data_auth::CRYPTOHOME_ERROR_NOT_SET}};
+
+  if (error_code_lut.count(code) != 0) {
+    return error_code_lut.at(code);
+  }
+
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+}
+
+}  // namespace
 
 UserDataAuth::UserDataAuth()
     : origin_thread_id_(base::PlatformThread::CurrentId()),
@@ -40,6 +109,9 @@ UserDataAuth::UserDataAuth()
       default_homedirs_(new cryptohome::HomeDirs()),
       homedirs_(default_homedirs_.get()),
       user_timestamp_cache_(new UserOldestActivityTimestampCache()),
+      default_mount_factory_(new cryptohome::MountFactory()),
+      mount_factory_(default_mount_factory_.get()),
+      public_mount_salt_(),
       guest_user_(brillo::cryptohome::home::kGuestUserName),
       force_ecryptfs_(true),
       legacy_mount_(true) {}
@@ -619,6 +691,594 @@ void UserDataAuth::FinalizeInstallAttributesIfMounted() {
                                  },
                                  base::Unretained(this)));
     }
+  }
+}
+
+bool UserDataAuth::CreatePublicMountSaltIfNeeded() {
+  if (!public_mount_salt_.empty())
+    return true;
+  FilePath saltfile(kPublicMountSaltFilePath);
+  return crypto_->GetOrCreateSalt(saltfile, CRYPTOHOME_DEFAULT_SALT_LENGTH,
+                                  false, &public_mount_salt_);
+}
+
+bool UserDataAuth::GetPublicMountPassKey(const std::string& public_mount_id,
+                                         std::string* public_mount_passkey) {
+  if (!CreatePublicMountSaltIfNeeded())
+    return false;
+  SecureBlob passkey;
+  Crypto::PasswordToPasskey(public_mount_id.c_str(), public_mount_salt_,
+                            &passkey);
+  *public_mount_passkey = passkey.to_string();
+  return true;
+}
+
+bool UserDataAuth::GetShouldMountAsEphemeral(
+    const std::string& account_id,
+    bool is_ephemeral_mount_requested,
+    bool has_create_request,
+    bool* is_ephemeral,
+    user_data_auth::CryptohomeErrorCode* error) const {
+  const bool is_or_will_be_owner = homedirs_->IsOrWillBeOwner(account_id);
+  if (is_ephemeral_mount_requested && is_or_will_be_owner) {
+    LOG(ERROR) << "An ephemeral cryptohome can only be mounted when the user "
+                  "is not the owner.";
+    *error = user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL;
+    return false;
+  }
+  *is_ephemeral =
+      !is_or_will_be_owner &&
+      (homedirs_->AreEphemeralUsersEnabled() || is_ephemeral_mount_requested);
+  if (*is_ephemeral && !has_create_request) {
+    LOG(ERROR) << "An ephemeral cryptohome can only be mounted when its "
+                  "creation on-the-fly is allowed.";
+    *error =
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
+    return false;
+  }
+  return true;
+}
+
+scoped_refptr<cryptohome::Mount> UserDataAuth::GetOrCreateMountForUser(
+    const std::string& username) {
+  // This method touches the |mounts_| object so it needs to run on
+  // |mount_thread_|
+  AssertOnMountThread();
+
+  scoped_refptr<cryptohome::Mount> m;
+  if (mounts_.count(username) == 0U) {
+    // We don't have a mount associated with |username|, let's create one with
+    // the |mount_factory_|.
+    m = mount_factory_->New();
+    m->Init(platform_, crypto_, user_timestamp_cache_.get(),
+            base::BindRepeating(&UserDataAuth::PreMountCallback,
+                                base::Unretained(this)));
+    m->set_enterprise_owned(enterprise_owned_);
+    m->set_legacy_mount(legacy_mount_);
+    mounts_[username] = m;
+  } else {
+    // A mount is already associated with |username|, so return it directly.
+    m = mounts_[username];
+  }
+  return m;
+}
+
+void UserDataAuth::PreMountCallback() {
+#if USE_TPM2
+  // Lock NVRamBootLockbox
+  auto nvram_boot_lockbox_client = BootLockboxClient::CreateBootLockboxClient();
+  if (!nvram_boot_lockbox_client) {
+    LOG(WARNING) << "Failed to create nvram_boot_lockbox_client";
+    return;
+  }
+
+  if (!nvram_boot_lockbox_client->Finalize()) {
+    LOG(WARNING) << "Failed to finalize nvram lockbox.";
+  }
+#endif  // USE_TMP2
+}
+
+bool UserDataAuth::CleanUpHiddenMounts() {
+  AssertOnMountThread();
+
+  bool ok = true;
+  for (auto it = mounts_.begin(); it != mounts_.end();) {
+    scoped_refptr<cryptohome::Mount> mount = it->second;
+    if (mount->IsMounted() && mount->IsShadowOnly()) {
+      ok = ok && mount->UnmountCryptohome();
+      it = mounts_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+  return ok;
+}
+
+void UserDataAuth::GetChallengeCredentialsPcrRestrictions(
+    const std::string& obfuscated_username,
+    std::vector<std::map<uint32_t, brillo::Blob>>* pcr_restrictions) {
+  {
+    std::map<uint32_t, brillo::Blob> pcrs_1;
+    for (const auto& pcr : crypto_->GetPcrMap(obfuscated_username,
+                                              false /* use_extended_pcr */)) {
+      pcrs_1[pcr.first] = brillo::BlobFromString(pcr.second);
+    }
+    pcr_restrictions->push_back(pcrs_1);
+  }
+  {
+    std::map<uint32_t, brillo::Blob> pcrs_2;
+    for (const auto& pcr :
+         crypto_->GetPcrMap(obfuscated_username, true /* use_extended_pcr */)) {
+      pcrs_2[pcr.first] = brillo::BlobFromString(pcr.second);
+    }
+    pcr_restrictions->push_back(pcrs_2);
+  }
+}
+
+void UserDataAuth::DoMount(
+    user_data_auth::MountRequest request,
+    base::OnceCallback<void(const user_data_auth::MountReply&)> on_done) {
+  // DoMount current supports normal plaintext password login and challenge
+  // response login. Both of these will flow through this method. This method
+  // generally does some parameter sanity checking, then pass the request onto
+  // ContinueMountWithCredentials() for plaintext password login and
+  // DoChallengeResponseMount() for challenge response login.
+  // DoChallengeResponseMount() will contact a dbus service and transmit the
+  // challenge, and once the response is received and checked with the TPM,
+  // it'll pass the request to ContinueMountWithCredentials(), which is the
+  // same as password login case, and in ContinueMountWithCredentials(), the
+  // mount is actually mounted through system call.
+
+  user_data_auth::MountReply reply;
+
+  // At present, we only enforce non-empty email addresses.
+  // In the future, we may wish to canonicalize if we don't move
+  // to requiring a IdP-unique identifier.
+  const std::string& account_id = GetAccountId(request.account());
+
+  // Check for empty account ID
+  if (account_id.empty()) {
+    LOG(ERROR) << "No email supplied";
+    reply.set_error(
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    std::move(on_done).Run(reply);
+    return;
+  }
+
+  if (request.public_mount()) {
+    // Public mount have a set of passkey/password that is generated directly
+    // from the username (and a local system salt.)
+    std::string public_mount_passkey;
+    if (!GetPublicMountPassKey(account_id, &public_mount_passkey)) {
+      LOG(ERROR) << "Could not get public mount passkey.";
+      reply.set_error(user_data_auth::CryptohomeErrorCode::
+                          CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+      std::move(on_done).Run(reply);
+      return;
+    }
+
+    // Set the secret as the key for cryptohome authorization/creation.
+    request.mutable_authorization()->mutable_key()->set_secret(
+        public_mount_passkey);
+    if (request.has_create()) {
+      request.mutable_create()->mutable_keys(0)->set_secret(
+          public_mount_passkey);
+    }
+  }
+
+  // We do not allow empty password, except for challenge response type login.
+  if (request.authorization().key().secret().empty() &&
+      request.authorization().key().data().type() !=
+          KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
+    LOG(ERROR) << "No key secret supplied";
+    reply.set_error(
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    std::move(on_done).Run(reply);
+    return;
+  }
+
+  if (request.has_create()) {
+    // copy_authorization_key in CreateRequest means that we'll copy the
+    // authorization request's key and use it as if it's the key specified in
+    // CreateRequest.
+    if (request.create().copy_authorization_key()) {
+      Key* auth_key = request.mutable_create()->add_keys();
+      *auth_key = request.authorization().key();
+      // Don't allow a key creation and mount if the key lacks
+      // the privileges.
+      if (!auth_key->data().privileges().mount()) {
+        reply.set_error(user_data_auth::CryptohomeErrorCode::
+                            CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED);
+        std::move(on_done).Run(reply);
+        return;
+      }
+    }
+
+    // Sanity check for |request.create.keys|.
+    int keys_size = request.create().keys_size();
+    if (keys_size == 0) {
+      LOG(ERROR) << "CreateRequest supplied with no keys";
+      reply.set_error(user_data_auth::CryptohomeErrorCode::
+                          CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+      std::move(on_done).Run(reply);
+      return;
+    } else if (keys_size > 1) {
+      LOG(INFO) << "MountEx: unimplemented CreateRequest with multiple keys";
+      reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+      std::move(on_done).Run(reply);
+      return;
+    } else {
+      const Key key = request.create().keys(0);
+      // TODO(wad) Ensure the labels are all unique.
+      if (!key.has_data() || key.data().label().empty() ||
+          (key.secret().empty() &&
+           key.data().type() != KeyData::KEY_TYPE_CHALLENGE_RESPONSE)) {
+        LOG(ERROR) << "CreateRequest Keys are not fully specified";
+        reply.set_error(user_data_auth::CryptohomeErrorCode::
+                            CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+        std::move(on_done).Run(reply);
+        return;
+      }
+      if (KeyHasWrappedAuthorizationSecrets(key)) {
+        LOG(ERROR) << "KeyAuthorizationSecrets may not be wrapped";
+        reply.set_error(user_data_auth::CryptohomeErrorCode::
+                            CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+        std::move(on_done).Run(reply);
+        return;
+      }
+    }
+  }
+
+  // Determine whether the mount should be ephemeral.
+  bool is_ephemeral = false;
+  user_data_auth::CryptohomeErrorCode mount_error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  if (!GetShouldMountAsEphemeral(account_id, request.require_ephemeral(),
+                                 request.has_create(), &is_ephemeral,
+                                 &mount_error)) {
+    reply.set_error(mount_error);
+    std::move(on_done).Run(reply);
+    return;
+  }
+
+  // MountArgs is a set of parameters that we'll be passing around to
+  // ContinueMountWithCredentials() and DoChallengeResponseMount().
+  Mount::MountArgs mount_args;
+  mount_args.create_if_missing = request.has_create();
+  mount_args.is_ephemeral = is_ephemeral;
+  mount_args.create_as_ecryptfs =
+      force_ecryptfs_ ||
+      (request.has_create() && request.create().force_ecryptfs());
+  mount_args.to_migrate_from_ecryptfs = request.to_migrate_from_ecryptfs();
+  // Force_ecryptfs_ wins.
+  mount_args.force_dircrypto =
+      !force_ecryptfs_ && request.force_dircrypto_if_available();
+  mount_args.shadow_only = request.hidden_mount();
+
+  // Process challenge-response credentials asynchronously.
+  if (request.authorization().key().data().type() ==
+      KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
+    DoChallengeResponseMount(request, mount_args, std::move(on_done));
+    return;
+  }
+
+  auto credentials = std::make_unique<Credentials>(
+      account_id.c_str(), SecureBlob(request.authorization().key().secret()));
+  // Everything else can be the default.
+  credentials->set_key_data(request.authorization().key().data());
+
+  ContinueMountWithCredentials(request, std::move(credentials), mount_args,
+                               std::move(on_done));
+  return;
+}
+
+void UserDataAuth::DoChallengeResponseMount(
+    const user_data_auth::MountRequest& request,
+    const Mount::MountArgs& mount_args,
+    base::OnceCallback<void(const user_data_auth::MountReply&)> on_done) {
+  DCHECK_EQ(request.authorization().key().data().type(),
+            KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
+
+  // Setup a reply for use during error handling.
+  user_data_auth::MountReply reply;
+
+  if (!tpm_) {
+    LOG(ERROR) << "Cannot do challenge-response mount without TPM";
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+    std::move(on_done).Run(reply);
+    return;
+  }
+  if (!tpm_init_->IsTpmReady()) {
+    LOG(ERROR)
+        << "TPM must be initialized in order to do challenge-response mount";
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+    std::move(on_done).Run(reply);
+    return;
+  }
+
+  if (!challenge_credentials_helper_) {
+    // Lazily create the helper object that manages generation/decryption of
+    // credentials for challenge-protected vaults.
+    Blob delegate_blob, delegate_secret;
+
+    bool has_reset_lock_permissions = false;
+    // TPM Delegate is required for TPM1.2. For TPM2.0, this is a no-op.
+    if (!tpm_->GetDelegate(&delegate_blob, &delegate_secret,
+                           &has_reset_lock_permissions)) {
+      LOG(ERROR) << "Cannot do challenge-response mount without TPM delegate";
+      reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+      std::move(on_done).Run(reply);
+      return;
+    }
+
+    challenge_credentials_helper_ =
+        std::make_unique<ChallengeCredentialsHelper>(tpm_, delegate_blob,
+                                                     delegate_secret);
+  }
+
+  const std::string& account_id = GetAccountId(request.account());
+  const std::string obfuscated_username =
+      BuildObfuscatedUsername(account_id, system_salt_);
+  const KeyData key_data = request.authorization().key().data();
+
+  if (!request.authorization().has_key_delegate() ||
+      !request.authorization().key_delegate().has_dbus_service_name()) {
+    LOG(ERROR) << "Cannot do challenge-response mount without key delegate "
+                  "information";
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+    std::move(on_done).Run(reply);
+    return;
+  }
+
+  // KeyChallengeServiceImpl is tasked with contacting the challenge response
+  // DBus service that'll provide the response once we send the challenge.
+  auto key_challenge_service = std::make_unique<KeyChallengeServiceImpl>(
+      bus_, request.authorization().key_delegate().dbus_service_name());
+
+  if (!homedirs_->Exists(obfuscated_username) &&
+      !mount_args.create_if_missing) {
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+    std::move(on_done).Run(reply);
+    return;
+  }
+
+  std::unique_ptr<VaultKeyset> vault_keyset(homedirs_->GetVaultKeyset(
+      obfuscated_username, request.authorization().key().data().label()));
+  const bool use_existing_credentials =
+      vault_keyset && !mount_args.is_ephemeral;
+  // If the home directory already exist (and thus the corresponding encrypted
+  // VaultKeyset exists) and the mount is not ephemeral, then we'll use the
+  // ChallengeCredentialsHelper (which handles challenge response
+  // authentication) to decrypt the VaultKeyset.
+  if (use_existing_credentials) {
+    // Home directory already exist and we are not doing ephemeral mount, so
+    // we'll decrypt existing VaultKeyset.
+    challenge_credentials_helper_->Decrypt(
+        account_id, key_data,
+        vault_keyset->serialized().signature_challenge_info(),
+        std::move(key_challenge_service),
+        base::BindOnce(
+            &UserDataAuth::OnChallengeResponseMountCredentialsObtained,
+            base::Unretained(this), request, mount_args, std::move(on_done)));
+  } else {
+    // We'll create a new VaultKeyset that accepts challenge response
+    // authentication.
+    if (!mount_args.create_if_missing) {
+      LOG(ERROR) << "No existing challenge-response vault keyset found";
+      reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+      std::move(on_done).Run(reply);
+      return;
+    }
+
+    std::vector<std::map<uint32_t, brillo::Blob>> pcr_restrictions;
+    GetChallengeCredentialsPcrRestrictions(obfuscated_username,
+                                           &pcr_restrictions);
+    challenge_credentials_helper_->GenerateNew(
+        account_id, key_data, pcr_restrictions,
+        std::move(key_challenge_service),
+        base::BindOnce(
+            &UserDataAuth::OnChallengeResponseMountCredentialsObtained,
+            base::Unretained(this), request, mount_args, std::move(on_done)));
+  }
+}
+
+void UserDataAuth::OnChallengeResponseMountCredentialsObtained(
+    const user_data_auth::MountRequest& request,
+    const Mount::MountArgs mount_args,
+    base::OnceCallback<void(const user_data_auth::MountReply&)> on_done,
+    std::unique_ptr<Credentials> credentials) {
+  // If we get here, that means the ChallengeCredentialsHelper have finished the
+  // process of doing challenge response authentication, either successful or
+  // otherwise.
+
+  // Setup a reply for use during error handling.
+  user_data_auth::MountReply reply;
+
+  DCHECK_EQ(request.authorization().key().data().type(),
+            KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
+
+  if (!credentials) {
+    // Challenge response authentication have failed.
+    LOG(ERROR) << "Could not mount due to failure to obtain challenge-response "
+                  "credentials";
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+    std::move(on_done).Run(reply);
+    return;
+  }
+
+  DCHECK_EQ(credentials->key_data().type(),
+            KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
+
+  ContinueMountWithCredentials(request, std::move(credentials), mount_args,
+                               std::move(on_done));
+}
+
+void UserDataAuth::ContinueMountWithCredentials(
+    const user_data_auth::MountRequest& request,
+    std::unique_ptr<Credentials> credentials,
+    const Mount::MountArgs& mount_args,
+    base::OnceCallback<void(const user_data_auth::MountReply&)> on_done) {
+  CleanUpHiddenMounts();
+
+  // Setup a reply for use during error handling.
+  user_data_auth::MountReply reply;
+
+  // This is safe even if cryptohomed restarts during a multi-mount
+  // session and a new mount is added because cleanup is not forced.
+  // An existing process will keep the mount alive.  On the next
+  // Unmount() it'll be forcibly cleaned up.  In the case that
+  // cryptohomed crashes and misses the Unmount call, the stale
+  // mountpoints should still be cleaned up on the next daemon
+  // interaction.
+  //
+  // As we introduce multiple mounts, we can consider API changes to
+  // make it clearer what the UI expectations are (AddMount, etc).
+  bool other_mounts_active = true;
+  if (mounts_.size() == 0) {
+    other_mounts_active = CleanUpStaleMounts(false);
+    // This could run on every interaction to catch any unused mounts.
+  }
+
+  // If the home directory for our user doesn't exist and we aren't instructed
+  // to create the home directory, and reply with the error.
+  if (!request.has_create() &&
+      !homedirs_->Exists(credentials->GetObfuscatedUsername(system_salt_))) {
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+    std::move(on_done).Run(reply);
+    return;
+  }
+
+  std::string account_id = GetAccountId(request.account());
+  // Provide an authoritative filesystem-sanitized username.
+  reply.set_sanitized_username(
+      brillo::cryptohome::home::SanitizeUserName(account_id));
+
+  // While it would be cleaner to implement the privilege enforcement
+  // here, that can only be done if a label was supplied.  If a wildcard
+  // was supplied, then we can only perform the enforcement after the
+  // matching key is identified.
+  //
+  // See Mount::MountCryptohome for privilege checking.
+
+  // Check if the guest user is mounted, if it is, we can't proceed.
+  scoped_refptr<cryptohome::Mount> guest_mount = GetMountForUser(guest_user_);
+  bool guest_mounted = guest_mount.get() && guest_mount->IsMounted();
+  // TODO(wad,ellyjones) Change this behavior to return failure even
+  // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
+  if (guest_mounted && !guest_mount->UnmountCryptohome()) {
+    LOG(ERROR) << "Could not unmount cryptohome from Guest session";
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+    std::move(on_done).Run(reply);
+    return;
+  }
+
+  scoped_refptr<cryptohome::Mount> user_mount =
+      GetOrCreateMountForUser(account_id);
+
+  if (request.hidden_mount() && user_mount->IsMounted()) {
+    LOG(ERROR) << "Hidden mount requested, but mount already exists.";
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+    std::move(on_done).Run(reply);
+    return;
+  }
+
+  // For public mount, don't proceed if there is any existing mount or stale
+  // mount. Exceptionally, it is normal and ok to have a failed previous mount
+  // attempt for the same user.
+  const bool only_self_unmounted_attempt =
+      mounts_.size() == 1 && !user_mount->IsMounted();
+  if (request.public_mount() && other_mounts_active &&
+      !only_self_unmounted_attempt) {
+    LOG(ERROR) << "Public mount requested with other mounts active.";
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+    std::move(on_done).Run(reply);
+    return;
+  }
+
+  // Don't overlay an ephemeral mount over a file-backed one.
+  if (mount_args.is_ephemeral && user_mount->IsNonEphemeralMounted()) {
+    // TODO(wad,ellyjones) Change this behavior to return failure even
+    // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
+    if (!user_mount->UnmountCryptohome()) {
+      LOG(ERROR) << "Could not unmount vault before an ephemeral mount.";
+      reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+      std::move(on_done).Run(reply);
+      return;
+    }
+  }
+
+  // If a user's home directory is already mounted, then we'll just recheck its
+  // credential with what's cached in memory. This is much faster than going to
+  // the TPM.
+  if (user_mount->IsMounted()) {
+    LOG(INFO) << "Mount exists. Rechecking credentials.";
+    // Attempt a short-circuited credential test.
+    if (user_mount->AreSameUser(*credentials) &&
+        user_mount->AreValid(*credentials)) {
+      std::move(on_done).Run(reply);
+      homedirs_->ResetLECredentials(*credentials);
+      return;
+    }
+    // If the Mount has invalid credentials (repopulated from system state)
+    // this will ensure a user can still sign-in with the right ones.
+    // TODO(wad) Should we unmount on a failed re-mount attempt?
+    if (!user_mount->AreValid(*credentials) &&
+        !homedirs_->AreCredentialsValid(*credentials)) {
+      reply.set_error(
+          user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+    } else {
+      homedirs_->ResetLECredentials(*credentials);
+    }
+    std::move(on_done).Run(reply);
+    return;
+  }
+
+  // Any non-guest mount attempt triggers InstallAttributes finalization.
+  // The return value is ignored as it is possible we're pre-ownership.
+  // The next login will assure finalization if possible.
+  if (install_attrs_->status() == InstallAttributes::Status::kFirstInstall) {
+    install_attrs_->Finalize();
+  }
+
+  // As per the other timers, this really only tracks time spent in
+  // MountCryptohome() not in the other areas prior.
+  ReportTimerStart(kMountExTimer);
+
+  MountError code = MOUNT_ERROR_NONE;
+  // Does actual mounting here.
+  bool status = user_mount->MountCryptohome(*credentials, mount_args, &code);
+
+  // PKCS#11 always starts out uninitialized right after a fresh mount.
+  user_mount->set_pkcs11_state(cryptohome::Mount::kUninitialized);
+
+  // Mark the timer as done.
+  ReportTimerStop(kMountExTimer);
+
+  if (!status) {
+    reply.set_error(MountErrorToCryptohomeError(code));
+  }
+  if (code == MOUNT_ERROR_RECREATED) {
+    // MOUNT_ERROR_RECREATED is not actually an error, so we'll not reply with
+    // an error. Instead, we'll set the recreated flag to true.
+    reply.set_recreated(true);
+  }
+  if (status) {
+    homedirs_->ResetLECredentials(*credentials);
+  }
+
+  std::move(on_done).Run(reply);
+
+  // Update user timestamp and kick off PKCS#11 initialization for non-hidden
+  // mount.
+  if (!request.hidden_mount()) {
+    // Update user activity timestamp to be able to detect old users.
+    // This action is not mandatory, so we perform it after
+    // CryptohomeMount() returns, in background.
+    user_mount->UpdateCurrentUserActivityTimestamp(0);
+    // Time to push the task for PKCS#11 initialization.
+    // TODO(wad) This call will PostTask back to the same thread. It is safe,
+    //           but it seems pointless.
+    InitializePkcs11(user_mount.get());
   }
 }
 

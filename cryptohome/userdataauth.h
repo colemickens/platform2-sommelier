@@ -17,11 +17,16 @@
 #include <brillo/secure_blob.h>
 #include <dbus/bus.h>
 
+#include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
+#include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/homedirs.h"
 #include "cryptohome/install_attributes.h"
 #include "cryptohome/mount.h"
+#include "cryptohome/mount_factory.h"
 #include "cryptohome/platform.h"
+
+#include "UserDataAuth.pb.h"
 
 namespace cryptohome {
 
@@ -60,6 +65,14 @@ class UserDataAuth {
   // true if all mounts are cleanly unmounted.
   // Note: This must only be called on mount thread
   bool Unmount();
+
+  // This function will attempt to mount the requested user's home directory, as
+  // specified in |request|. Once that's done, it'll call |on_done| to notify
+  // the result. Note that there's no guarantee on whether |on_done| is called
+  // before or after this function returns.
+  void DoMount(
+      user_data_auth::MountRequest request,
+      base::OnceCallback<void(const user_data_auth::MountReply&)> on_done);
 
   // =============== Mount Related Public Utilities ===============
 
@@ -108,6 +121,10 @@ class UserDataAuth {
   // This is called by tpm_init_ when there's any update on ownership status
   // of the TPM.
   void OwnershipCallback(bool status, bool took_ownership);
+
+  // This is called whenever we try to create a Mount object. This callback is
+  // used by |mount_factory_|.
+  void PreMountCallback();
 
   // Set the current dbus connection, this is usually used by the dbus daemon
   // object that owns the instance of this object.
@@ -240,6 +257,70 @@ class UserDataAuth {
   // Note that this function is case insensitive
   static bool PrefixPresent(const std::vector<base::FilePath>& prefixes,
                             const std::string path);
+
+  // Calling this function will try to ensure that |public_mount_salt_| is ready
+  // to use. If it's not ready, we'll generate it. Returns true if
+  // |public_mount_salt_| is ready.
+  bool CreatePublicMountSaltIfNeeded();
+
+  // Gets passkey for |public_mount_id|. Returns true if a passkey is generated
+  // successfully. Otherwise, returns false.
+  bool GetPublicMountPassKey(const std::string& public_mount_id,
+                             std::string* public_mount_passkey);
+
+  // Determines whether the mount request should be ephemeral. On error, returns
+  // false and sets the error code in |error|. Otherwise, returns true and fills
+  // the result in |is_ephemeral|.
+  bool GetShouldMountAsEphemeral(
+      const std::string& account_id,
+      bool is_ephemeral_mount_requested,
+      bool has_create_request,
+      bool* is_ephemeral,
+      user_data_auth::CryptohomeErrorCode* error) const;
+
+  // Does what its name suggests. The use of this method is to ensure that only
+  // one Mount is ever created per username.
+  scoped_refptr<cryptohome::Mount> GetOrCreateMountForUser(
+      const std::string& username);
+
+  // Called during mount requests to ensure old hidden mounts are unmounted.
+  // Note that this only cleans up |mounts_| entries which were mounted with the
+  // hidden_mount=true parameter, as these are supposed to be temporary. Old
+  // mounts from another cryptohomed run (e.g. after a crash) are cleaned up in
+  // CleanUpStaleMounts().
+  bool CleanUpHiddenMounts();
+
+  // Builds the PCR restrictions to be applied to the challenge-protected vault
+  // keyset.
+  void GetChallengeCredentialsPcrRestrictions(
+      const std::string& obfuscated_username,
+      std::vector<std::map<uint32_t, brillo::Blob>>* pcr_restrictions);
+
+  // This is a utility function used by DoMount(). It is called if the request
+  // mounting operation requires challenge response authentication. i.e. The key
+  // for the storage is sealed.
+  void DoChallengeResponseMount(
+      const user_data_auth::MountRequest& request,
+      const Mount::MountArgs& mount_args,
+      base::OnceCallback<void(const user_data_auth::MountReply&)> on_done);
+
+  // This is a utility function used by DoChallengeResponseMount(), and is
+  // called once we're done doing challenge response authentication.
+  void OnChallengeResponseMountCredentialsObtained(
+      const user_data_auth::MountRequest& request,
+      const Mount::MountArgs mount_args,
+      base::OnceCallback<void(const user_data_auth::MountReply&)> on_done,
+      std::unique_ptr<Credentials> credentials);
+
+  // This is a utility function used by DoMount(). It is called either by
+  // DoMount() (when using password for authentication.), or by
+  // OnChallengeResponseMountCredentialsObtained() (when using challenge
+  // response authentication.).
+  void ContinueMountWithCredentials(
+      const user_data_auth::MountRequest& request,
+      std::unique_ptr<Credentials> credentials,
+      const Mount::MountArgs& mount_args,
+      base::OnceCallback<void(const user_data_auth::MountReply&)> on_done);
 
   // =============== PKCS#11 Related Utilities ===============
 
@@ -380,6 +461,22 @@ class UserDataAuth {
   // This holds a timestamp for each user that is the time that the user was
   // active.
   std::unique_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
+
+  // The default mount factory instance that is used for creating Mount objects.
+  std::unique_ptr<cryptohome::MountFactory> default_mount_factory_;
+
+  // The mount factory instance that is actually used by this class to create
+  // Mount object. This is usually |default_mount_factory_|, but can be
+  // overridden for testing.
+  cryptohome::MountFactory* mount_factory_;
+
+  // This holds the salt that is used to derive the passkey for public mounts.
+  brillo::SecureBlob public_mount_salt_;
+
+  // Challenge credential helper utility class. This class is required for doing
+  // a challenge response style login, and is only lazily created when mounting
+  // a mount that requires challenge response login type is performed.
+  std::unique_ptr<ChallengeCredentialsHelper> challenge_credentials_helper_;
 
   // Guest user's username.
   std::string guest_user_;

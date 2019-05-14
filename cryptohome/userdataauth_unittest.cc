@@ -17,6 +17,7 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mock_tpm_init.h"
+#include "cryptohome/mock_vault_keyset.h"
 
 using base::FilePath;
 using brillo::SecureBlob;
@@ -550,6 +551,178 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_OpenLegacy_ShadowOnly) {
       .Times(5)
       .WillRepeatedly(Return(true));
   EXPECT_TRUE(userdataauth_.CleanUpStaleMounts(false));
+}
+
+// ==================== Mount and Keys related tests =======================
+
+// A test fixture with some utility functions for testing mount and keys related
+// functionalities.
+class UserDataAuthExTest : public UserDataAuthTest {
+ public:
+  UserDataAuthExTest() = default;
+  ~UserDataAuthExTest() override = default;
+
+  VaultKeyset* GetNiceMockVaultKeyset(const std::string& obfuscated_username,
+                                      const std::string& key_label) const {
+    // Note that technically speaking this is not strictly a mock, and probably
+    // closer to a stub. However, the underlying class is
+    // NiceMock<MockVaultKeyset>, thus we name the method accordingly.
+    std::unique_ptr<VaultKeyset> mvk(new NiceMock<MockVaultKeyset>);
+    mvk->mutable_serialized()->mutable_key_data()->set_label(key_label);
+    return mvk.release();
+  }
+
+ protected:
+  void PrepareArguments() {
+    add_req_.reset(new user_data_auth::AddKeyRequest);
+    check_req_.reset(new user_data_auth::CheckKeyRequest);
+    mount_req_.reset(new user_data_auth::MountRequest);
+    remove_req_.reset(new user_data_auth::RemoveKeyRequest);
+    list_keys_req_.reset(new user_data_auth::ListKeysRequest);
+  }
+
+  template <class ProtoBuf>
+  brillo::Blob BlobFromProtobuf(const ProtoBuf& pb) {
+    std::string serialized;
+    CHECK(pb.SerializeToString(&serialized));
+    return brillo::BlobFromString(serialized);
+  }
+
+  template <class ProtoBuf>
+  brillo::SecureBlob SecureBlobFromProtobuf(const ProtoBuf& pb) {
+    std::string serialized;
+    CHECK(pb.SerializeToString(&serialized));
+    return brillo::SecureBlob(serialized);
+  }
+
+  std::unique_ptr<user_data_auth::AddKeyRequest> add_req_;
+  std::unique_ptr<user_data_auth::CheckKeyRequest> check_req_;
+  std::unique_ptr<user_data_auth::MountRequest> mount_req_;
+  std::unique_ptr<user_data_auth::RemoveKeyRequest> remove_req_;
+  std::unique_ptr<user_data_auth::ListKeysRequest> list_keys_req_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(UserDataAuthExTest);
+};
+
+TEST_F(UserDataAuthExTest, MountInvalidArgs) {
+  // Note that this test doesn't distinguish between different causes of invalid
+  // argument, that is, this doesn't check that
+  // CRYPTOHOME_ERROR_INVALID_ARGUMENT is coming back because of the right
+  // reason. This is because in the current structuring of the code, it would
+  // not be possible to distinguish between those cases. This test only checks
+  // that parameters that should lead to invalid argument does indeed lead to
+  // invalid argument error.
+
+  bool called;
+
+  // This calls DoMount and check that the result is reported (i.e. the callback
+  // is called), and is CRYPTOHOME_ERROR_INVALID_ARGUMENT.
+  auto CallDoMountAndCheckResultIsInvalidArgument = [&called, this]() {
+    called = false;
+    userdataauth_.DoMount(
+        *mount_req_,
+        base::BindOnce(
+            [](bool* called_ptr, const user_data_auth::MountReply& reply) {
+              *called_ptr = true;
+              EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT,
+                        reply.error());
+            },
+            base::Unretained(&called)));
+    EXPECT_TRUE(called);
+  };
+
+  // Test for case with no email.
+  PrepareArguments();
+
+  CallDoMountAndCheckResultIsInvalidArgument();
+
+  // Test for case with no secrets.
+  PrepareArguments();
+  mount_req_->mutable_account()->set_account_id("foo@gmail.com");
+
+  CallDoMountAndCheckResultIsInvalidArgument();
+
+  // Test for case with empty secret.
+  PrepareArguments();
+  mount_req_->mutable_account()->set_account_id("foo@gmail.com");
+  mount_req_->mutable_authorization()->mutable_key()->set_secret("");
+
+  CallDoMountAndCheckResultIsInvalidArgument();
+
+  // Test for create request given but without key.
+  PrepareArguments();
+  mount_req_->mutable_account()->set_account_id("foo@gmail.com");
+  mount_req_->mutable_authorization()->mutable_key()->set_secret("blerg");
+  mount_req_->mutable_create();
+
+  CallDoMountAndCheckResultIsInvalidArgument();
+
+  // Test for create request given but with an empty key.
+  PrepareArguments();
+  mount_req_->mutable_account()->set_account_id("foo@gmail.com");
+  mount_req_->mutable_authorization()->mutable_key()->set_secret("blerg");
+  mount_req_->mutable_create()->add_keys();
+  // TODO(wad) Add remaining missing field tests and NULL tests
+
+  CallDoMountAndCheckResultIsInvalidArgument();
+}
+
+TEST_F(UserDataAuthExTest, MountPublicWithExistingMounts) {
+  constexpr char kUser[] = "chromeos-user";
+  PrepareArguments();
+  SetupMount("foo@gmail.com");
+
+  mount_req_->mutable_account()->set_account_id(kUser);
+  mount_req_->set_public_mount(true);
+
+  bool called = false;
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
+  userdataauth_.DoMount(
+      *mount_req_,
+      base::BindOnce(
+          [](bool* called_ptr, const user_data_auth::MountReply& reply) {
+            *called_ptr = true;
+            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY,
+                      reply.error());
+          },
+          base::Unretained(&called)));
+
+  EXPECT_TRUE(called);
+}
+
+TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
+  constexpr char kUser[] = "chromeos-user";
+  PrepareArguments();
+
+  mount_req_->mutable_account()->set_account_id(kUser);
+  mount_req_->set_public_mount(true);
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(testing::InvokeWithoutArgs([&]() {
+    SetupMount(kUser);
+    EXPECT_CALL(*mount_, MountCryptohome(_, _, _))
+        .WillOnce(testing::Invoke([](const Credentials& credentials,
+                                     const Mount::MountArgs& mount_args,
+                                     MountError* error) {
+          brillo::SecureBlob passkey;
+          credentials.GetPasskey(&passkey);
+          // Tests that the passkey is filled when public_mount is set.
+          EXPECT_FALSE(passkey.empty());
+          return true;
+        }));
+    return true;
+  }));
+
+  bool called = false;
+  userdataauth_.DoMount(
+      *mount_req_,
+      base::BindOnce(
+          [](bool* called_ptr, const user_data_auth::MountReply& reply) {
+            *called_ptr = true;
+            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, reply.error());
+          },
+          base::Unretained(&called)));
+
+  EXPECT_TRUE(called);
 }
 
 }  // namespace cryptohome

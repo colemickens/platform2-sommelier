@@ -28,9 +28,9 @@ class OnceCallbackHolder {
   explicit OnceCallbackHolder(T obj) : obj_(std::move(obj)) {}
 
   T get() {
+    DCHECK(obj_.has_value());
     base::Optional<T> res;
     std::swap(res, obj_);
-    DCHECK(res.has_value());
     return std::move(res.value());
   }
 
