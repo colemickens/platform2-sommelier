@@ -32,69 +32,75 @@ bool IsValidOptions(const MountOptionsProto& options) {
 }
 
 bool IsValidOptions(const UnmountOptionsProto& options) {
-  return options.has_mount_id();
+  return options.has_mount_id() && options.mount_id() >= 0;
 }
 
 bool IsValidOptions(const ReadDirectoryOptionsProto& options) {
-  return options.has_mount_id() && options.has_directory_path();
+  return options.has_mount_id() && options.mount_id() >= 0 &&
+         options.has_directory_path();
 }
 
 bool IsValidOptions(const GetMetadataEntryOptionsProto& options) {
-  return options.has_mount_id() && options.has_entry_path();
+  return options.has_mount_id() && options.mount_id() >= 0 &&
+         options.has_entry_path();
 }
 
 bool IsValidOptions(const OpenFileOptionsProto& options) {
   return options.has_file_path() && options.has_writeable() &&
-         options.has_mount_id();
+         options.has_mount_id() && options.mount_id() >= 0;
 }
 
 bool IsValidOptions(const CloseFileOptionsProto& options) {
-  return options.has_mount_id() && options.has_file_id();
+  return options.has_mount_id() && options.mount_id() >= 0 &&
+         options.has_file_id();
 }
 
 bool IsValidOptions(const DeleteEntryOptionsProto& options) {
-  return options.has_mount_id() && options.has_entry_path() &&
-         options.has_recursive();
+  return options.has_mount_id() && options.mount_id() >= 0 &&
+         options.has_entry_path() && options.has_recursive();
 }
 
 bool IsValidOptions(const ReadFileOptionsProto& options) {
-  return options.has_mount_id() && options.has_file_id() &&
-         options.has_offset() && options.has_length() &&
-         options.offset() >= 0 && options.length() >= 0;
+  return options.has_mount_id() && options.mount_id() >= 0 &&
+         options.has_file_id() && options.has_offset() &&
+         options.has_length() && options.offset() >= 0 && options.length() >= 0;
 }
 
 bool IsValidOptions(const CreateFileOptionsProto& options) {
-  return options.has_mount_id() && options.has_file_path();
+  return options.has_mount_id() && options.mount_id() >= 0 &&
+         options.has_file_path();
 }
 
 bool IsValidOptions(const TruncateOptionsProto& options) {
-  return options.has_mount_id() && options.has_file_path() &&
-         options.has_length() && options.length() >= 0;
+  return options.has_mount_id() && options.mount_id() >= 0 &&
+         options.has_file_path() && options.has_length() &&
+         options.length() >= 0;
 }
 
 bool IsValidOptions(const WriteFileOptionsProto& options) {
-  return options.has_mount_id() && options.has_file_id() &&
-         options.has_offset() && options.has_length() &&
-         options.offset() >= 0 && options.length() >= 0;
+  return options.has_mount_id() && options.mount_id() >= 0 &&
+         options.has_file_id() && options.has_offset() &&
+         options.has_length() && options.offset() >= 0 && options.length() >= 0;
 }
 
 bool IsValidOptions(const CreateDirectoryOptionsProto& options) {
-  return options.has_mount_id() && options.has_directory_path() &&
-         options.has_recursive();
+  return options.has_mount_id() && options.mount_id() >= 0 &&
+         options.has_directory_path() && options.has_recursive();
 }
 
 bool IsValidOptions(const MoveEntryOptionsProto& options) {
-  return options.has_mount_id() && options.has_source_path() &&
-         options.has_target_path();
+  return options.has_mount_id() && options.mount_id() >= 0 &&
+         options.has_source_path() && options.has_target_path();
 }
 
 bool IsValidOptions(const CopyEntryOptionsProto& options) {
-  return options.has_mount_id() && options.has_source_path() &&
-         options.has_target_path();
+  return options.has_mount_id() && options.mount_id() >= 0 &&
+         options.has_source_path() && options.has_target_path();
 }
 
 bool IsValidOptions(const GetDeleteListOptionsProto& options) {
-  return options.has_mount_id() && options.has_entry_path();
+  return options.has_mount_id() && options.mount_id() >= 0 &&
+         options.has_entry_path();
 }
 
 bool IsValidOptions(const GetSharesOptionsProto& options) {
@@ -103,8 +109,8 @@ bool IsValidOptions(const GetSharesOptionsProto& options) {
 
 bool IsValidOptions(const RemountOptionsProto& options) {
   return options.has_path() && options.has_mount_id() &&
-         options.has_workgroup() && options.has_username() &&
-         IsValidMountConfig(options.mount_config());
+         options.mount_id() >= 0 && options.has_workgroup() &&
+         options.has_username() && IsValidMountConfig(options.mount_config());
 }
 
 bool IsValidOptions(const PremountOptionsProto& options) {
@@ -112,12 +118,13 @@ bool IsValidOptions(const PremountOptionsProto& options) {
 }
 
 bool IsValidOptions(const UpdateMountCredentialsOptionsProto& options) {
-  return options.has_mount_id() && options.has_workgroup() &&
-         options.has_username();
+  return options.has_mount_id() && options.mount_id() >= 0 &&
+         options.has_workgroup() && options.has_username();
 }
 
 bool IsValidOptions(const UpdateSharePathOptionsProto& options) {
-  return options.has_mount_id() && options.has_path();
+  return options.has_mount_id() && options.mount_id() >= 0 &&
+         options.has_path();
 }
 
 bool IsValidMountConfig(const MountConfigProto& options) {
