@@ -4,6 +4,9 @@
 
 #include "debugd/src/cups_tool.h"
 
+#include <string>
+#include <vector>
+
 #include <gtest/gtest.h>
 
 namespace debugd {
@@ -25,32 +28,55 @@ class CupsToolTest : public testing::Test {
 
 // We reject empty and over-short URIs.
 TEST_F(CupsToolTest, CatchShortUri) {
+  // This URI is trivially bad.
   EXPECT_FALSE(cups_tool_.UriSeemsReasonable(""));
 
+  // Our URIs must have an authority - it's too short otherwise.
   for (const std::string& sch : known_schemes) {
     EXPECT_FALSE(cups_tool_.UriSeemsReasonable(sch));
   }
 }
 
-// We reject garbage URIs.
+// We reject strings obviously dissimilar to HTTP URIs.
 TEST_F(CupsToolTest, CatchGarbageUri) {
+  // This is straight nonsense.
   EXPECT_FALSE(cups_tool_.UriSeemsReasonable("aoeu"));
-  EXPECT_FALSE(cups_tool_.UriSeemsReasonable("scheeeeeeme://bad"));
+  // We expect 2 slashes preceding the authority.
+  EXPECT_FALSE(cups_tool_.UriSeemsReasonable("ipps:/i-accidentally-a-slash"));
 }
 
-// We reject URIs with ``special'' characters.
-TEST_F(CupsToolTest, CatchSpecialUri) {
-  std::string special_uri("usb://looks.mostly.reasonable");
-  EXPECT_TRUE(cups_tool_.UriSeemsReasonable(special_uri));
+// URIs must not contain literal spaces.
+TEST_F(CupsToolTest, DontAllowSpaces) {
+  EXPECT_FALSE(
+      cups_tool_.UriSeemsReasonable("ipp:// 127.0.0.1:9001/hello-there"));
+  EXPECT_FALSE(
+      cups_tool_.UriSeemsReasonable("ipp://127. 0.0.1:9001/hello-there"));
+  EXPECT_FALSE(
+      cups_tool_.UriSeemsReasonable("ipp://127.0.0.1:90 01/hello-there"));
+  EXPECT_FALSE(
+      cups_tool_.UriSeemsReasonable("ipp://127.0.0.1:9001 /hello-there"));
+  EXPECT_FALSE(
+      cups_tool_.UriSeemsReasonable("ipp://127.0.0.1:9001/ hello-there"));
+  EXPECT_FALSE(
+      cups_tool_.UriSeemsReasonable("ipp://127.0.0.1:9001/hello- there"));
+}
 
-  special_uri.push_back(0x80);
-  EXPECT_FALSE(cups_tool_.UriSeemsReasonable(special_uri));
+// URIs must not contain characters outside the printable ASCII range.
+TEST_F(CupsToolTest, DontAllowUnprintableOctets) {
+  EXPECT_FALSE(
+      cups_tool_.UriSeemsReasonable("ipp://\x7F"
+                                    "127.0.0.1:9001/hello-there"));
+  EXPECT_FALSE(
+      cups_tool_.UriSeemsReasonable("ipp://127.0.0.1:9001\x7F/hello-there"));
+  EXPECT_FALSE(
+      cups_tool_.UriSeemsReasonable("ipp://127.0.0.1:7001/hello-there\x7F"));
 }
 
 // We pass URIs not violating the above conditions.
 TEST_F(CupsToolTest, OkayUri) {
   for (std::string uri : known_schemes) {
-    uri.append("looks.good.to.me:1313");
+    // Tack on any old hostname (and then some) to make a valid URI.
+    uri.append("1.2.3.4:9001/ipp/print");
     EXPECT_TRUE(cups_tool_.UriSeemsReasonable(uri));
   }
 }
@@ -59,11 +85,59 @@ TEST_F(CupsToolTest, PercentedUris) {
   std::string uri_with_space("lpd://127.0.0.1/PRINTER%20NAME");
   EXPECT_TRUE(cups_tool_.UriSeemsReasonable(uri_with_space));
 
+  // We allow valid percent encodings anywhere after the scheme.
+  std::string lots_of_percents("lpd://%20%FF%00%20%2E/PRINTER%20NAME");
+  EXPECT_TRUE(cups_tool_.UriSeemsReasonable(lots_of_percents));
+}
+
+TEST_F(CupsToolTest, InvalidPercentedUris) {
   std::string incomplete("lpd://127.0.0.1/PRINTER%2");
   EXPECT_FALSE(cups_tool_.UriSeemsReasonable(incomplete));
 
-  std::string questionable_uri("lpd://127.0.0.1/PRINTER%3F");
-  EXPECT_FALSE(cups_tool_.UriSeemsReasonable(questionable_uri));
+  std::string bad_hex("lpd://127.0.0.1/PRINTER%ZZ%ZZ");
+  EXPECT_FALSE(cups_tool_.UriSeemsReasonable(bad_hex));
+}
+
+TEST_F(CupsToolTest, PortNumbers) {
+  // URIs might not refer to a port number.
+  EXPECT_TRUE(cups_tool_.UriSeemsReasonable("ipp://[2001:4860:4860::8888]"));
+  EXPECT_TRUE(cups_tool_.UriSeemsReasonable("ipp://localhost"));
+  EXPECT_TRUE(cups_tool_.UriSeemsReasonable("ipp://127.0.0.1"));
+
+  // If there is a port number, it must be in range.
+  EXPECT_TRUE(
+      cups_tool_.UriSeemsReasonable("ipp://[2001:4860:4860::8888]:65535"));
+  EXPECT_FALSE(
+      cups_tool_.UriSeemsReasonable("ipp://[2001:4860:4860::8888]:65536"));
+  EXPECT_TRUE(cups_tool_.UriSeemsReasonable("ipp://localhost:65535"));
+  EXPECT_FALSE(cups_tool_.UriSeemsReasonable("ipp://localhost:65536"));
+  EXPECT_TRUE(cups_tool_.UriSeemsReasonable("ipp://127.0.0.1:65535"));
+  EXPECT_FALSE(cups_tool_.UriSeemsReasonable("ipp://127.0.0.1:65536"));
+}
+
+TEST_F(CupsToolTest, PortNumbersAndPaths) {
+  // Port number range checks should work with trailing characters beyond
+  // the port number.
+  EXPECT_TRUE(
+      cups_tool_.UriSeemsReasonable("ipp://[2001:4860:4860::8888]:65535/"));
+  EXPECT_TRUE(cups_tool_.UriSeemsReasonable(
+      "ipp://[2001:4860:4860::8888]:65535/blah%20blah"));
+  EXPECT_FALSE(
+      cups_tool_.UriSeemsReasonable("ipp://[2001:4860:4860::8888]:65536/"));
+  EXPECT_FALSE(cups_tool_.UriSeemsReasonable(
+      "ipp://[2001:4860:4860::8888]:65536/blah%20blah"));
+  EXPECT_TRUE(cups_tool_.UriSeemsReasonable("ipp://localhost:65535/"));
+  EXPECT_TRUE(
+      cups_tool_.UriSeemsReasonable("ipp://localhost:65535/blah%20blah"));
+  EXPECT_FALSE(cups_tool_.UriSeemsReasonable("ipp://localhost:65536/"));
+  EXPECT_FALSE(
+      cups_tool_.UriSeemsReasonable("ipp://localhost:65536/blah%20blah"));
+  EXPECT_TRUE(cups_tool_.UriSeemsReasonable("ipp://127.0.0.1:65535/"));
+  EXPECT_TRUE(
+      cups_tool_.UriSeemsReasonable("ipp://127.0.0.1:65535/blah%20blah"));
+  EXPECT_FALSE(cups_tool_.UriSeemsReasonable("ipp://127.0.0.1:65536/"));
+  EXPECT_FALSE(
+      cups_tool_.UriSeemsReasonable("ipp://127.0.0.1:65536/blah%20blah"));
 }
 
 }  // namespace debugd
