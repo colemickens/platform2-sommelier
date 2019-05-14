@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "kerberos/krb5_interface.h"
+#include "kerberos/krb5_interface_impl.h"
 
 #include <algorithm>
 #include <utility>
@@ -302,14 +302,14 @@ class KinitContext {
 
 }  // namespace
 
-Krb5Interface::Krb5Interface() = default;
+Krb5InterfaceImpl::Krb5InterfaceImpl() = default;
 
-Krb5Interface::~Krb5Interface() = default;
+Krb5InterfaceImpl::~Krb5InterfaceImpl() = default;
 
-ErrorType Krb5Interface::AcquireTgt(const std::string& principal_name,
-                                    const std::string& password,
-                                    const base::FilePath& krb5cc_path,
-                                    const base::FilePath& krb5conf_path) {
+ErrorType Krb5InterfaceImpl::AcquireTgt(const std::string& principal_name,
+                                        const std::string& password,
+                                        const base::FilePath& krb5cc_path,
+                                        const base::FilePath& krb5conf_path) {
   Options options;
   options.action = Action::AcquireTgt;
   options.principal_name = principal_name;
@@ -321,9 +321,9 @@ ErrorType Krb5Interface::AcquireTgt(const std::string& principal_name,
   return error;
 }
 
-ErrorType Krb5Interface::RenewTgt(const std::string& principal_name,
-                                  const base::FilePath& krb5cc_path,
-                                  const base::FilePath& config_path) {
+ErrorType Krb5InterfaceImpl::RenewTgt(const std::string& principal_name,
+                                      const base::FilePath& krb5cc_path,
+                                      const base::FilePath& config_path) {
   Options options;
   options.action = Action::RenewTgt;
   options.principal_name = principal_name;
@@ -334,8 +334,8 @@ ErrorType Krb5Interface::RenewTgt(const std::string& principal_name,
   return error;
 }
 
-ErrorType Krb5Interface::GetTgtStatus(const base::FilePath& krb5cc_path,
-                                      TgtStatus* status) {
+ErrorType Krb5InterfaceImpl::GetTgtStatus(const base::FilePath& krb5cc_path,
+                                          TgtStatus* status) {
   DCHECK(status);
 
   ScopedKrb5Context ctx;

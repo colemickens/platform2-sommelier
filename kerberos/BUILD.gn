@@ -67,9 +67,10 @@ static_library("libkerberos") {
   sources = [
     "account_manager.cc",
     "error_strings.cc",
+    "fake_krb5_interface.cc",
     "kerberos_adaptor.cc",
     "kerberos_daemon.cc",
-    "krb5_interface.cc",
+    "krb5_interface_impl.cc",
     "platform_helper.cc",
   ]
   deps = [

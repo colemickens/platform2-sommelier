@@ -33,9 +33,11 @@ class AccountManager {
   // |kerberos_files_changed| is a callback that gets called when either the
   // Kerberos credential cache or the configuration file changes for a specific
   // account. Use in combination with GetKerberosFiles() to get the latest
-  // files.
+  // files. |krb5| interacts with lower level Kerberos libraries. It can be
+  // overridden for tests.
   explicit AccountManager(base::FilePath storage_dir,
-                          KerberosFilesChangedCallback kerberos_files_changed);
+                          KerberosFilesChangedCallback kerberos_files_changed,
+                          std::unique_ptr<Krb5Interface> krb5);
   ~AccountManager();
 
   // Saves all accounts to disk. Returns ERROR_LOCAL_IO and logs on error.

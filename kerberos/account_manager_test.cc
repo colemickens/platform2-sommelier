@@ -9,10 +9,13 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "kerberos/fake_krb5_interface.h"
 
 namespace {
 constexpr char kUser[] = "user@REALM.COM";
@@ -34,7 +37,8 @@ class AccountManagerTest : public ::testing::Test {
     manager_ = std::make_unique<AccountManager>(
         storage_dir_.GetPath(),
         base::BindRepeating(&AccountManagerTest::OnKerberosFilesChanged,
-                            base::Unretained(this)));
+                            base::Unretained(this)),
+        std::make_unique<FakeKrb5Interface>());
   }
 
  protected:
@@ -82,5 +86,14 @@ TEST_F(AccountManagerTest, RepeatedAddRemoveSuccess) {
 }
 
 // TODO(https://crbug.com/952248): Add more tests.
+// - SerializeAccounts and DeserializeAccounts()
+// - RemoveAccount deletes files on disk
+// - RemoveAccount triggers KerberosFilesChanged IF FILES EXISTS (todo)
+// - ListAccounts (stub out GetTgtStatus)
+// - SetConfig saves file and triggers KerberosFilesChanged
+// - AcquireTgt (stub out AcquireTgt) triggers KerberosFilesChanged if there
+// was no error.
+// - GetKerberosFiles returns ERROR_NONE with no info if krb5cc doesn't exist,
+// otherwise returns files.
 
 }  // namespace kerberos

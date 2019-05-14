@@ -64,11 +64,11 @@ ErrorType SaveFile(const base::FilePath& path, const std::string& data) {
 
 AccountManager::AccountManager(
     base::FilePath storage_dir,
-    KerberosFilesChangedCallback kerberos_files_changed)
-    // TODO(https://crbug.com/951740): Make |krb5_| overridable for testing.
+    KerberosFilesChangedCallback kerberos_files_changed,
+    std::unique_ptr<Krb5Interface> krb5)
     : storage_dir_(std::move(storage_dir)),
       kerberos_files_changed_(std::move(kerberos_files_changed)),
-      krb5_(std::make_unique<Krb5Interface>()) {}
+      krb5_(std::move(krb5)) {}
 
 AccountManager::~AccountManager() = default;
 

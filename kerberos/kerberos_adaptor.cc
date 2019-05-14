@@ -17,6 +17,7 @@
 
 #include "kerberos/account_manager.h"
 #include "kerberos/error_strings.h"
+#include "kerberos/krb5_interface_impl.h"
 #include "kerberos/platform_helper.h"
 #include "kerberos/proto_bindings/kerberos_service.pb.h"
 
@@ -109,8 +110,10 @@ void KerberosAdaptor::RegisterAsync(
   }
 
   manager_ = std::make_unique<AccountManager>(
-      storage_dir, base::BindRepeating(&KerberosAdaptor::OnKerberosFilesChanged,
-                                       base::Unretained(this)));
+      storage_dir,
+      base::BindRepeating(&KerberosAdaptor::OnKerberosFilesChanged,
+                          base::Unretained(this)),
+      std::make_unique<Krb5InterfaceImpl>());
   manager_->LoadAccounts();
 }
 
