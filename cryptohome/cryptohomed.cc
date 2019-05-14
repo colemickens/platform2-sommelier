@@ -84,6 +84,18 @@ int main(int argc, char** argv) {
     // UserDataAuthDaemon
     cryptohome::UserDataAuthDaemon user_data_auth_daemon;
 
+    // Set options on whether we are going to use legacy mount. See comments on
+    // Mount::MountLegacyHome() for more information.
+    user_data_auth_daemon.GetUserDataAuth()->set_legacy_mount(!nolegacymount);
+
+    // Set options on whether we are going to use ext4 directory encryption or
+    // eCryptfs.
+    user_data_auth_daemon.GetUserDataAuth()->set_force_ecryptfs(!direncryption);
+
+    // Initialize the UserDataAuth service.
+    // Note that the initialization should be done after setting the options.
+    CHECK(user_data_auth_daemon.GetUserDataAuth()->Initialize());
+
     // Start UserDataAuth daemon if the option is selected
     user_data_auth_daemon.Run();
 #else

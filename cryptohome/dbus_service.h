@@ -18,10 +18,11 @@ class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
  public:
   UserDataAuthDaemon()
       : DBusServiceDaemon(kUserDataAuthServiceName),
-        service_(new cryptohome::UserDataAuth()) {
-    // Initialize the User Data Auth service
-    service_->Initialize();
-  }
+        service_(new cryptohome::UserDataAuth()) {}
+
+  // Retrieve the UserDataAuth object, it holds the service's state and provides
+  // a good chunk of functionality.
+  UserDataAuth* GetUserDataAuth() { return service_.get(); }
 
  protected:
   void RegisterDBusObjectsAsync(

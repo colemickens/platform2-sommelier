@@ -35,7 +35,9 @@ UserDataAuth::UserDataAuth()
       reported_pkcs11_init_fail_(false),
       default_homedirs_(new cryptohome::HomeDirs()),
       homedirs_(default_homedirs_.get()),
-      user_timestamp_cache_(new UserOldestActivityTimestampCache()) {}
+      user_timestamp_cache_(new UserOldestActivityTimestampCache()),
+      force_ecryptfs_(true),
+      legacy_mount_(true) {}
 
 UserDataAuth::~UserDataAuth() {
   mount_thread_.Stop();

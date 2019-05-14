@@ -75,6 +75,20 @@ class UserDataAuth {
   // it'll force a reload of all cryptohome key that is associated with mounts.
   void ResetAllTPMContext();
 
+  // Set the |force_ecryptfs_| variable, if true, all mounts will use eCryptfs
+  // for encryption. If eCryptfs is not used, then dircrypto -- the native ext4
+  // directory encryption mechanism is used. Note that this is usually used in
+  // main() because there's a command line switch for selecting dircrypto or
+  // eCryptfs.
+  void set_force_ecryptfs(bool force_ecryptfs) {
+    force_ecryptfs_ = force_ecryptfs;
+  }
+
+  // Set the |legacy_mount_| variable. For more information on legacy_mount_,
+  // see comment of Mount::MountLegacyHome(). Note that this is usually used in
+  // main() because there's a command line switch for selecting this.
+  void set_legacy_mount(bool legacy) { legacy_mount_ = legacy; }
+
   // =============== PKCS#11 Related Public Methods ===============
 
   // This initializes the PKCS#11 for a particular mount. Note that this is
@@ -310,6 +324,14 @@ class UserDataAuth {
   // This holds a timestamp for each user that is the time that the user was
   // active.
   std::unique_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
+
+  // Force the use of eCryptfs. If eCryptfs is not used, then dircrypto -- the
+  // native ext4 directory encryption is used.
+  bool force_ecryptfs_;
+
+  // Whether we are using legacy mount. See Mount::MountLegacyHome()'s comment
+  // for more information.
+  bool legacy_mount_;
 };
 
 }  // namespace cryptohome
