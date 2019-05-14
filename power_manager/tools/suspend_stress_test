@@ -142,7 +142,9 @@ get_s0ix_count() {
 
 FLAGS "$@" || exit 1
 
-if [ "${USER}" != root ]; then
+# Some environment variables (USER/EUID) are not set in the factory, so use
+# 'id' to check if running as root instead.
+if [ "$(id -u)" -ne 0 ]; then
   echo "This script must be run as root." 1>&2
   exit 1
 fi
