@@ -232,6 +232,9 @@ class CameraClient {
     // Enqueue V4L2 frame buffer.
     int EnqueueV4L2Buffer();
 
+    // Discard all out-of-date V4L2 frame buffers.
+    void DiscardOutdatedBuffers();
+
     // Used to notify caller that all requests are handled.
     void FlushDone(const base::Callback<void(int)>& callback);
 

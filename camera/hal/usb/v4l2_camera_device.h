@@ -76,6 +76,10 @@ class V4L2CameraDevice {
   // after StreamOn().
   int ReuseFrameBuffer(uint32_t buffer_id);
 
+  // Return true if buffer specified by |buffer_id| is filled and moved to
+  // outgoing queue.
+  bool IsBufferFilled(uint32_t buffer_id);
+
   // TODO(shik): Change the type of |device_path| to base::FilePath.
 
   // Get all supported formats of device by |device_path|. This function can be
@@ -89,6 +93,9 @@ class V4L2CameraDevice {
 
   static bool IsCameraDevice(const std::string& device_path);
 
+  // Get clock type in UVC driver to report the same time base in user space.
+  static clockid_t GetUvcClock();
+
  private:
   static std::vector<float> GetFrameRateList(int fd,
                                              uint32_t fourcc,
@@ -98,9 +105,6 @@ class V4L2CameraDevice {
   // This is for suspend/resume feature. USB camera will be enumerated after
   // device resumed. But camera device may not be ready immediately.
   static int RetryDeviceOpen(const std::string& device_path, int flags);
-
-  // Get clock type in UVC driver to report the same time base in user space.
-  static clockid_t GetUvcClock();
 
   // Set power frequency supported from device.
   int SetPowerLineFrequency(PowerLineFrequency setting);

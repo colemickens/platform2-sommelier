@@ -13,6 +13,7 @@
 #include "common/utils/camera_config.h"
 #include "cros-camera/common.h"
 #include "hal/usb/stream_format.h"
+#include "hal/usb/v4l2_camera_device.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 #define UPDATE(tag, data, size)                      \
@@ -199,7 +200,12 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
          ARRAY_SIZE(test_pattern_modes));
   UPDATE(ANDROID_SENSOR_TEST_PATTERN_MODE, &test_pattern_modes[0], 1);
 
-  const uint8_t timestamp_source = ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE_UNKNOWN;
+  uint8_t timestamp_source;
+  if (V4L2CameraDevice::GetUvcClock() == CLOCK_BOOTTIME) {
+    timestamp_source = ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE_REALTIME;
+  } else {
+    timestamp_source = ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE_UNKNOWN;
+  }
   UPDATE(ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE, &timestamp_source, 1);
 
   // android.shading

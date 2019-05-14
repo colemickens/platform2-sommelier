@@ -351,6 +351,19 @@ int V4L2CameraDevice::ReuseFrameBuffer(uint32_t buffer_id) {
   return 0;
 }
 
+bool V4L2CameraDevice::IsBufferFilled(uint32_t buffer_id) {
+  v4l2_buffer buffer = {};
+  buffer.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  buffer.memory = V4L2_MEMORY_MMAP;
+  buffer.index = buffer_id;
+  if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_QUERYBUF, &buffer)) <
+      0) {
+    PLOGF(ERROR) << "QUERYBUF fails";
+    return false;
+  }
+  return buffer.flags & V4L2_BUF_FLAG_DONE;
+}
+
 // static
 const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
     const std::string& device_path) {

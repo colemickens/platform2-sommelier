@@ -713,6 +713,16 @@ void CameraClient::RequestHandler::HandleFlush(
                                     base::Unretained(this), callback));
 }
 
+void CameraClient::RequestHandler::DiscardOutdatedBuffers() {
+  int filled_count = 0;
+  for (size_t i = 0; i < input_buffers_.size(); i++) {
+    if (device_->IsBufferFilled(i)) {
+      filled_count++;
+    }
+  }
+  SkipFramesAfterStreamOn(filled_count);
+}
+
 int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution,
                                                bool constant_frame_rate,
                                                bool use_native_sensor_ratio) {
@@ -725,6 +735,7 @@ int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution,
       constant_frame_rate == constant_frame_rate_ &&
       use_native_sensor_ratio == use_native_sensor_ratio_) {
     VLOGFID(1, device_id_) << "Skip stream on for the same configuration";
+    DiscardOutdatedBuffers();
     return 0;
   } else if (!input_buffers_.empty()) {
     // StreamOff first if stream is started.
