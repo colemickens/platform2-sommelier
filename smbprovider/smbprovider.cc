@@ -132,10 +132,12 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
   // before calling CanReadMountRoot().
   const bool success =
       AddMount(options.path(), mount_config, options.workgroup(),
-               options.username(), password_fd, error_code, mount_id) &&
-      CanReadMountRoot(*mount_id, options.path(), error_code);
+               options.username(), password_fd, error_code, mount_id);
+  if (!success || options.skip_connect()) {
+    return;
+  }
 
-  if (!success) {
+  if (!CanReadMountRoot(*mount_id, options.path(), error_code)) {
     // If AddMount() was successful but the mount could not be accessed, remove
     // the mount from mount_manager_.
     RemoveMountIfMounted(*mount_id);
