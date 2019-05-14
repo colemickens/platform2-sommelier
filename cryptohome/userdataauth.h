@@ -111,6 +111,12 @@ class UserDataAuth {
   user_data_auth::CryptohomeErrorCode AddKey(
       const user_data_auth::AddKeyRequest request);
 
+  // Check the key given in |request| again the currently mounted directories
+  // and other credentials. Returns CRYPTOHOME_ERROR_NOT_SET if the key is found
+  // to match.
+  user_data_auth::CryptohomeErrorCode CheckKey(
+      const user_data_auth::CheckKeyRequest request);
+
   // =============== PKCS#11 Related Public Methods ===============
 
   // This initializes the PKCS#11 for a particular mount. Note that this is

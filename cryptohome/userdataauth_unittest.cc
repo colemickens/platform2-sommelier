@@ -803,9 +803,15 @@ class UserDataAuthExTest : public UserDataAuthTest {
   std::unique_ptr<user_data_auth::RemoveKeyRequest> remove_req_;
   std::unique_ptr<user_data_auth::ListKeysRequest> list_keys_req_;
 
+  static constexpr char kUser[] = "chromeos-user";
+  static constexpr char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
+
  private:
   DISALLOW_COPY_AND_ASSIGN(UserDataAuthExTest);
 };
+
+constexpr char UserDataAuthExTest::kUser[];
+constexpr char UserDataAuthExTest::kKey[];
 
 TEST_F(UserDataAuthExTest, MountInvalidArgs) {
   // Note that this test doesn't distinguish between different causes of invalid
@@ -968,6 +974,88 @@ TEST_F(UserDataAuthExTest, AddKeySanity) {
 
   EXPECT_EQ(userdataauth_.AddKey(*add_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+}
+
+// Note that CheckKey tries to two method to check whether a key is valid or
+// not. The first is through Homedirs, and the second is through Mount.
+// Therefore, we test the combinations of (Homedirs, Mount) x (Success, Fail)
+// below.
+TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckSuccess) {
+  PrepareArguments();
+  SetupMount(kUser);
+
+  check_req_->mutable_account_id()->set_account_id(kUser);
+  check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
+
+  EXPECT_CALL(*mount_, AreSameUser(_)).WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, AreCredentialsValid(_)).WillOnce(Return(true));
+  EXPECT_EQ(userdataauth_.CheckKey(*check_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+}
+
+TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckFail) {
+  PrepareArguments();
+  SetupMount(kUser);
+
+  check_req_->mutable_account_id()->set_account_id(kUser);
+  check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
+
+  // Ensure failure
+  EXPECT_CALL(*mount_, AreSameUser(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, AreCredentialsValid(_)).WillOnce(Return(false));
+
+  EXPECT_EQ(userdataauth_.CheckKey(*check_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+}
+
+TEST_F(UserDataAuthExTest, CheckKeyMountCheckSuccess) {
+  PrepareArguments();
+  SetupMount(kUser);
+
+  check_req_->mutable_account_id()->set_account_id(kUser);
+  check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
+
+  EXPECT_CALL(*mount_, AreSameUser(_)).WillOnce(Return(true));
+  EXPECT_CALL(*mount_, AreValid(_)).WillOnce(Return(true));
+
+  EXPECT_EQ(userdataauth_.CheckKey(*check_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+}
+
+TEST_F(UserDataAuthExTest, CheckKeyMountCheckFail) {
+  PrepareArguments();
+  SetupMount(kUser);
+
+  check_req_->mutable_account_id()->set_account_id(kUser);
+  check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
+
+  EXPECT_CALL(*mount_, AreSameUser(_)).WillOnce(Return(true));
+  EXPECT_CALL(*mount_, AreValid(_)).WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, AreCredentialsValid(_)).WillOnce(Return(false));
+
+  EXPECT_EQ(userdataauth_.CheckKey(*check_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+}
+
+TEST_F(UserDataAuthExTest, CheckKeyInvalidArgs) {
+  PrepareArguments();
+
+  // No email supplied.
+  EXPECT_EQ(userdataauth_.CheckKey(*check_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+
+  // No secret.
+  check_req_->mutable_account_id()->set_account_id("foo@gmail.com");
+  EXPECT_EQ(userdataauth_.CheckKey(*check_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+
+  // Empty secret.
+  check_req_->mutable_authorization_request()->mutable_key()->set_secret("");
+  EXPECT_EQ(userdataauth_.CheckKey(*check_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
 }  // namespace cryptohome

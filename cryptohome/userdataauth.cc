@@ -1352,4 +1352,64 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::AddKey(
   return static_cast<user_data_auth::CryptohomeErrorCode>(result);
 }
 
+user_data_auth::CryptohomeErrorCode UserDataAuth::CheckKey(
+    const user_data_auth::CheckKeyRequest request) {
+  AssertOnMountThread();
+
+  if (!request.has_account_id() || !request.has_authorization_request()) {
+    LOG(ERROR)
+        << "CheckKeyRequest must have account_id and authorization_request.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  std::string account_id = GetAccountId(request.account_id());
+  if (account_id.empty()) {
+    LOG(ERROR) << "CheckKeyRequest must have valid account_id.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  // Note that there's no check for empty AuthorizationRequest key label because
+  // such a key will test against all VaultKeysets of a compatible
+  // key().data().type(), and thus is valid.
+
+  const std::string& auth_secret =
+      request.authorization_request().key().secret();
+  if (auth_secret.empty()) {
+    LOG(ERROR) << "No key secret in CheckKeyRequest.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  Credentials credentials(account_id.c_str(), SecureBlob(auth_secret));
+  credentials.set_key_data(request.authorization_request().key().data());
+
+  bool found_valid_credentials = false;
+  for (const auto& mount_pair : mounts_) {
+    if (mount_pair.second->AreSameUser(credentials)) {
+      found_valid_credentials = mount_pair.second->AreValid(credentials);
+      break;
+    }
+  }
+
+  if (found_valid_credentials) {
+    // Entered the right creds, so reset LE credentials.
+    homedirs_->ResetLECredentials(credentials);
+    return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  } else {
+    // Cover different keys for the same user with homedirs.
+    if (!homedirs_->Exists(credentials.GetObfuscatedUsername(system_salt_))) {
+      return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
+    }
+
+    if (!homedirs_->AreCredentialsValid(credentials)) {
+      // TODO(wad) Should this pass along KEY_NOT_FOUND too?
+      return user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
+    }
+
+    homedirs_->ResetLECredentials(credentials);
+    return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  }
+
+  NOTREACHED();
+}
+
 }  // namespace cryptohome

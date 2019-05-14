@@ -133,7 +133,24 @@ void UserDataAuthAdaptor::CheckKey(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::CheckKeyReply>> response,
     const user_data_auth::CheckKeyRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &UserDataAuthAdaptor::DoCheckKey, base::Unretained(this),
+          ThreadSafeDBusMethodResponse<user_data_auth::CheckKeyReply>::
+              MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void UserDataAuthAdaptor::DoCheckKey(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::CheckKeyReply>> response,
+    const user_data_auth::CheckKeyRequest& in_request) {
   user_data_auth::CheckKeyReply reply;
+  auto status = service_->CheckKey(in_request);
+  // Note, if there's no error, then |status| is set to CRYPTOHOME_ERROR_NOT_SET
+  // to indicate that.
+  reply.set_error(status);
   response->Return(reply);
 }
 

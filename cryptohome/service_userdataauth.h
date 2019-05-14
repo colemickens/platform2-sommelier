@@ -71,6 +71,10 @@ class UserDataAuthAdaptor
   void CheckKey(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                     user_data_auth::CheckKeyReply>> response,
                 const user_data_auth::CheckKeyRequest& in_request) override;
+  void DoCheckKey(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                      user_data_auth::CheckKeyReply>> response,
+                  const user_data_auth::CheckKeyRequest& in_request);
+
   void AddKey(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                   user_data_auth::AddKeyReply>> response,
               const user_data_auth::AddKeyRequest& in_request) override;
