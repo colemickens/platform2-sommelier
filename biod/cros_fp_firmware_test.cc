@@ -17,6 +17,7 @@
 #include <base/files/file_util.h>
 #include <base/files/memory_mapped_file.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
 #include <base/rand_util.h>
 #include <fmap.h>
 #include <gtest/gtest.h>

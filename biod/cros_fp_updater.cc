@@ -12,6 +12,7 @@
 #include <utility>
 
 #include <base/command_line.h>
+#include <base/logging.h>
 #include <base/process/launch.h>
 #include <base/time/time.h>
 #include <base/files/file_enumerator.h>

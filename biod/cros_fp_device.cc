@@ -4,11 +4,13 @@
 
 #include "biod/cros_fp_device.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
 #include <algorithm>
 
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 

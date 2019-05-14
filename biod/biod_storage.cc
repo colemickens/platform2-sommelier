@@ -19,6 +19,7 @@
 #include <base/guid.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_string_value_serializer.h>
+#include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
