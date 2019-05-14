@@ -129,7 +129,10 @@ if (use.test) {
       ":kerberos_test_config",
       ":target_defaults",
     ]
-    sources = []
+    sources = [
+      "account_manager_test.cc",
+      "kerberos_adaptor_test.cc",
+    ]
     defines = [ "UNIT_TEST" ]
     deps = [
       ":libkerberos",

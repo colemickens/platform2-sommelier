@@ -5,12 +5,14 @@
 #ifndef KERBEROS_KERBEROS_ADAPTOR_H_
 #define KERBEROS_KERBEROS_ADAPTOR_H_
 
-#include <base/macros.h>
-#include <brillo/dbus/async_event_sequencer.h>
-
 #include <memory>
 #include <string>
 #include <vector>
+
+#include <base/files/file_path.h>
+#include <base/macros.h>
+#include <base/optional.h>
+#include <brillo/dbus/async_event_sequencer.h>
 
 #include "kerberos/org.chromium.Kerberos.h"
 
@@ -48,6 +50,14 @@ class KerberosAdaptor : public org::chromium::KerberosAdaptor,
                                const base::ScopedFD& password_fd) override;
   ByteArray GetKerberosFiles(const ByteArray& request_blob) override;
 
+  AccountManager* GetAccountManagerForTesting() { return manager_.get(); }
+
+  // Overrides the directory where data is stored. Must be called before
+  // RegisterAsync().
+  void set_storage_dir_for_testing(const base::FilePath& dir) {
+    storage_dir_for_testing_ = dir;
+  }
+
  private:
   // Gets triggered by when the Kerberos credential cache or the configuration
   // file changes of the given principal. Triggers the KerberosFilesChanged
@@ -58,6 +68,9 @@ class KerberosAdaptor : public org::chromium::KerberosAdaptor,
 
   // Manages Kerberos accounts and tickets.
   std::unique_ptr<AccountManager> manager_;
+
+  // If set, overrides the directory where data is stored.
+  base::Optional<base::FilePath> storage_dir_for_testing_;
 
   DISALLOW_COPY_AND_ASSIGN(KerberosAdaptor);
 };

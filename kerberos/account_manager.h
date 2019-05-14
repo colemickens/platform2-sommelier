@@ -82,6 +82,8 @@ class AccountManager {
   ErrorType GetKerberosFiles(const std::string& principal_name,
                              KerberosFiles* files) const WARN_UNUSED_RESULT;
 
+  const base::FilePath GetStorageDirForTesting() { return storage_dir_; }
+
  private:
   // File path helpers. All paths are relative to |storage_dir_|.
 

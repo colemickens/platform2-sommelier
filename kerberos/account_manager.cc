@@ -116,7 +116,7 @@ ErrorType AccountManager::LoadAccounts() {
     return ERROR_LOCAL_IO;
   }
 
-  // Copy data into |accounts_|..
+  // Copy data into |accounts_|.
   for (int n = 0; n < storage_accounts.accounts_size(); ++n) {
     const StorageAccount& storage_account = storage_accounts.accounts(n);
 

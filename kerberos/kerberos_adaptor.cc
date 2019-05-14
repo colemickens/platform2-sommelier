@@ -90,18 +90,22 @@ void KerberosAdaptor::RegisterAsync(
   // Get the sanitized username (aka user hash). It's needded to determine the
   // daemon store directory where account data is stored.
   base::FilePath storage_dir;
-  const std::string sanitized_username =
-      GetSanitizedUsername(dbus_object_.get());
-  if (!sanitized_username.empty()) {
-    storage_dir = base::FilePath("/run/daemon-store/kerberosd/")
-                      .Append(sanitized_username);
+  if (storage_dir_for_testing_) {
+    storage_dir = *storage_dir_for_testing_;
   } else {
-    // /tmp is a tmpfs and the daemon is shut down on logout, so data is cleared
-    // on logout. Better than nothing, though.
-    storage_dir = base::FilePath("/tmp");
-    LOG(ERROR) << "Failed to retrieve user hash to determine storage "
-                  "directory. Falling back to "
-               << storage_dir.value() << ".";
+    const std::string sanitized_username =
+        GetSanitizedUsername(dbus_object_.get());
+    if (!sanitized_username.empty()) {
+      storage_dir = base::FilePath("/run/daemon-store/kerberosd/")
+                        .Append(sanitized_username);
+    } else {
+      // /tmp is a tmpfs and the daemon is shut down on logout, so data is
+      // cleared on logout. Better than nothing, though.
+      storage_dir = base::FilePath("/tmp");
+      LOG(ERROR) << "Failed to retrieve user hash to determine storage "
+                    "directory. Falling back to "
+                 << storage_dir.value() << ".";
+    }
   }
 
   manager_ = std::make_unique<AccountManager>(
