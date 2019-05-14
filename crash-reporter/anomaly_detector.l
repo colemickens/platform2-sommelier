@@ -26,6 +26,8 @@
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <time.h>
 #include <sys/inotify.h>
 #include <sys/select.h>
 #include <sys/stat.h>
@@ -33,6 +35,8 @@
 #include <unistd.h>
 
 #include "metrics/c_metrics_library.h"
+
+static unsigned selinux_rand_cap = 0;
 
 static char *cur_service_name;
 
@@ -360,6 +364,9 @@ static int ReportSELinuxViolation(void) {
   if (selinux_audit_text == NULL)
     return 0;
 
+  if ((unsigned) (rand()) >= selinux_rand_cap)
+    return 0;
+
   uint32_t hash = StringHashAlphabetOnly(selinux_audit_text);
 
   if (!AnomalyStart(selinux_violation_hist_name, selinux_violation_hash_bitmap,
@@ -512,8 +519,10 @@ static void CollectorInput(char *buf, yy_size_t *result, size_t max_size) {
 }
 
 int AnomalyLexer(bool flag_filter, bool flag_test) {
+  srand(time(NULL));
   testing = flag_test;
   filter = flag_filter;
+  selinux_rand_cap = (unsigned) (RAND_MAX * 0.001);
 
   metrics_library = CMetricsLibraryNew();
 
@@ -523,6 +532,7 @@ int AnomalyLexer(bool flag_filter, bool flag_test) {
   yyin_fd = dup(fileno(stdin));
   if (testing) {
     msg_path = "messages";
+    selinux_rand_cap = (unsigned) RAND_MAX + 1;
   }
   if (!filter) {
     CollectorOpenInput(msg_path);

@@ -33,10 +33,6 @@ class SELinuxViolationCollector : public CrashCollector {
     developer_image_for_testing_ = true;
   }
 
-  void set_fake_random_for_statistic_sampling(int fake_random) {
-    fake_random_for_statistic_sampling_ = fake_random;
-  }
-
  private:
   friend class SELinuxViolationCollectorTest;
   FRIEND_TEST(SELinuxViolationCollectorTest, CollectOK);

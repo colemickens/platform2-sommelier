@@ -72,9 +72,6 @@ bool SELinuxViolationCollector::Collect() {
   } else if (!is_feedback_allowed_function_()) {
     reason = "no user consent";
     feedback = false;
-  } else if (ShouldDropThisReport()) {
-    reason = "ignoring - only 0.1% reports are collected on release images";
-    feedback = false;
   }
   LOG(INFO) << "Processing selinux violation: " << reason;
 
@@ -109,11 +106,4 @@ bool SELinuxViolationCollector::Collect() {
   WriteCrashMetaData(meta_path, kExecName, log_path.value());
 
   return true;
-}
-
-bool SELinuxViolationCollector::ShouldDropThisReport() {
-  int random = fake_random_for_statistic_sampling_;
-  if (fake_random_for_statistic_sampling_ <= 0)
-    random = base::RandInt(1, 1000);
-  return random != 1;
 }

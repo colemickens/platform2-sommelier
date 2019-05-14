@@ -89,7 +89,6 @@ TEST_F(SELinuxViolationCollectorTest, CollectOK) {
 
 TEST_F(SELinuxViolationCollectorTest, CollectSample) {
   // Collector produces a violation report.
-  collector_.set_fake_random_for_statistic_sampling(1);
   ASSERT_TRUE(test_util::CreateFile(test_path_, TestSELinuxViolationMessage));
   EXPECT_TRUE(collector_.Collect());
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
@@ -125,10 +124,3 @@ TEST_F(SELinuxViolationCollectorTest, FeedbackNotAllowed) {
   EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
 }
 
-TEST_F(SELinuxViolationCollectorTest, DroppedSample) {
-  // Drop sample.
-  collector_.set_fake_random_for_statistic_sampling(999);
-  ASSERT_TRUE(test_util::CreateFile(test_path_, TestSELinuxViolationMessage));
-  EXPECT_TRUE(collector_.Collect());
-  EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
-}
