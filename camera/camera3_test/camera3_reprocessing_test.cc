@@ -180,6 +180,11 @@ void Camera3ReprocessingTest::TestReprocessing(
     }
 
     // Check similarity
+    if (input_format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED ||
+        input_format == HAL_PIXEL_FORMAT_RAW_OPAQUE) {
+      // Skip similarity check if we cannot identify the real format
+      continue;
+    }
     ImageUniquePtr input_image =
         ConvertToImage(std::move(result_buffer), input_size.Width(),
                        input_size.Height(), ImageFormat::IMAGE_FORMAT_I420);
