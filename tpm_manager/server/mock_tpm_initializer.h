@@ -30,6 +30,7 @@ class MockTpmInitializer : public TpmInitializer {
 
   MOCK_METHOD0(PreInitializeTpm, bool());
   MOCK_METHOD0(InitializeTpm, bool());
+  MOCK_METHOD0(EnsurePersistentOwnerDelegate, bool());
   MOCK_METHOD0(VerifiedBootHelper, void());
   MOCK_METHOD0(ResetDictionaryAttackLock, bool());
 };

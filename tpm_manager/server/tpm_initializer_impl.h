@@ -60,6 +60,7 @@ class TpmInitializerImpl : public TpmInitializer {
   // TpmInitializer methods.
   bool InitializeTpm() override;
   bool PreInitializeTpm() override;
+  bool EnsurePersistentOwnerDelegate() override;
   void VerifiedBootHelper() override;
   bool ResetDictionaryAttackLock() override;
 
@@ -95,7 +96,8 @@ class TpmInitializerImpl : public TpmInitializer {
   bool ReadOwnerAuthFromLocalData(std::string* owner_password,
                                   AuthDelegate* owner_delegate);
 
-  // create delegate with the default label and store the result in |delegate|.
+  // Creates delegate with the default label and store the result in |delegate|.
+  // Returns |true| iff the operation suceeds.
   bool CreateDelegateWithDefaultLabel(AuthDelegate* delegate);
 
   // Creates a TPM owner delegate for future use.

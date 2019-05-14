@@ -231,4 +231,8 @@ bool Tpm2InitializerImpl::GetTpmRandomData(size_t num_bytes,
   return true;
 }
 
+bool Tpm2InitializerImpl::EnsurePersistentOwnerDelegate() {
+  return true;
+}
+
 }  // namespace tpm_manager

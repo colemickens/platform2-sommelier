@@ -40,6 +40,12 @@ class TpmInitializer {
   // Returns an error if pre-initialization is attempted but failed.
   virtual bool PreInitializeTpm() = 0;
 
+  // Ensures the owner delegate is stored in the persistent storage, if
+  // applicable. Returns |true| iff the owner delegate can be found after this
+  // function call. In case the delegate is non-applicable for the underlying
+  // implementation, performs no-ops and returns |true|.
+  virtual bool EnsurePersistentOwnerDelegate() = 0;
+
   // This will be called when the service is initializing. It is an early
   // opportunity to perform tasks related to verified boot.
   virtual void VerifiedBootHelper() = 0;

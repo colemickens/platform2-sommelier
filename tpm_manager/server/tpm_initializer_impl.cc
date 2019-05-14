@@ -330,7 +330,7 @@ bool TpmInitializerImpl::ReadOwnerAuthFromLocalData(
     std::string* owner_password, AuthDelegate* owner_delegate) {
   LocalData local_data;
   if (!local_data_store_->Read(&local_data)) {
-    LOG(ERROR) << __func__ << ": couldn't read local data.";
+    LOG(ERROR) << __func__ << ": Failed to read local data.";
     return false;
   }
 
@@ -362,6 +362,28 @@ bool TpmInitializerImpl::CreateDelegateWithDefaultLabel(
   delegate->set_blob(delegate_blob);
   delegate->set_secret(delegate_secret);
   delegate->set_has_reset_lock_permissions(true);
+  return true;
+}
+
+bool TpmInitializerImpl::EnsurePersistentOwnerDelegate() {
+  LocalData local_data;
+  if (!local_data_store_->Read(&local_data)) {
+    LOG(ERROR) << __func__ << ": Failed to read local data.";
+    return false;
+  }
+  auto owner_delegate = local_data.mutable_owner_delegate();
+  if (!owner_delegate->blob().empty() && !owner_delegate->secret().empty()) {
+    return true;
+  }
+  LOG(WARNING) << __func__ << ": Owner delegate is missing; re-creating.";
+  if (!CreateDelegateWithDefaultLabel(owner_delegate)) {
+    LOG(ERROR) << __func__ << ": Failed to create owner delegate.";
+    return false;
+  }
+  if (!local_data_store_->Write(local_data)) {
+    LOG(ERROR) << __func__ << ": Failed to write local data change.";
+    return false;
+  }
   return true;
 }
 

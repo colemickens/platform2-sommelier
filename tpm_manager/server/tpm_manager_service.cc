@@ -128,6 +128,13 @@ void TpmManagerService::InitializeTask() {
   // is.
   if (TpmStatus::kTpmOwned == tpm_status_->CheckAndNotifyIfTpmOwned()) {
     VLOG(1) << "Tpm is already owned.";
+    if (!tpm_initializer_->EnsurePersistentOwnerDelegate()) {
+      // Only treat the failure as a warning because the daemon can be partly
+      // operational still.
+      LOG(WARNING)
+          << __func__
+          << ": Failed to ensure owner delegate is ready with ownership taken.";
+    }
     return;
   }
 
