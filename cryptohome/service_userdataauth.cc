@@ -191,7 +191,24 @@ void UserDataAuthAdaptor::RemoveKey(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::RemoveKeyReply>> response,
     const user_data_auth::RemoveKeyRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &UserDataAuthAdaptor::DoRemoveKey, base::Unretained(this),
+          ThreadSafeDBusMethodResponse<user_data_auth::RemoveKeyReply>::
+              MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void UserDataAuthAdaptor::DoRemoveKey(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::RemoveKeyReply>> response,
+    const user_data_auth::RemoveKeyRequest& in_request) {
   user_data_auth::RemoveKeyReply reply;
+  auto status = service_->RemoveKey(in_request);
+  // Note, if there's no error, then |status| is set to CRYPTOHOME_ERROR_NOT_SET
+  // to indicate that.
+  reply.set_error(status);
   response->Return(reply);
 }
 

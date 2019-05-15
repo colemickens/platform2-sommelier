@@ -117,6 +117,12 @@ class UserDataAuth {
   user_data_auth::CryptohomeErrorCode CheckKey(
       const user_data_auth::CheckKeyRequest request);
 
+  // Remove the key given in |request.key| with the authorization given in
+  // |request.authorization_request|. Returns CRYPTOHOME_ERROR_NOT_SET if the
+  // key is successfully removed, returns other Error Code if not.
+  user_data_auth::CryptohomeErrorCode RemoveKey(
+      const user_data_auth::RemoveKeyRequest request);
+
   // =============== PKCS#11 Related Public Methods ===============
 
   // This initializes the PKCS#11 for a particular mount. Note that this is

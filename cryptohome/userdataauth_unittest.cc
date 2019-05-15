@@ -28,6 +28,7 @@ using ::testing::EndsWith;
 using ::testing::Invoke;
 using ::testing::Mock;
 using ::testing::NiceMock;
+using ::testing::Property;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 using ::testing::WithArgs;
@@ -1055,6 +1056,69 @@ TEST_F(UserDataAuthExTest, CheckKeyInvalidArgs) {
   // Empty secret.
   check_req_->mutable_authorization_request()->mutable_key()->set_secret("");
   EXPECT_EQ(userdataauth_.CheckKey(*check_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
+TEST_F(UserDataAuthExTest, RemoveKeySanity) {
+  PrepareArguments();
+
+  constexpr char kUsername1[] = "foo@gmail.com";
+  constexpr char kLabel1[] = "some label";
+
+  remove_req_->mutable_account_id()->set_account_id(kUsername1);
+  remove_req_->mutable_authorization_request()->mutable_key()->set_secret(
+      "some secret");
+  remove_req_->mutable_key()->mutable_data()->set_label(kLabel1);
+
+  // Success case.
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_,
+              RemoveKeyset(Property(&Credentials::username, kUsername1),
+                           Property(&KeyData::label, kLabel1)))
+      .WillOnce(Return(cryptohome::CRYPTOHOME_ERROR_NOT_SET));
+
+  EXPECT_EQ(userdataauth_.RemoveKey(*remove_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Check the case when the account doesn't exist.
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(false));
+
+  EXPECT_EQ(userdataauth_.RemoveKey(*remove_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+
+  // Check when RemoveKeyset failed.
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_,
+              RemoveKeyset(Property(&Credentials::username, kUsername1),
+                           Property(&KeyData::label, kLabel1)))
+      .WillOnce(Return(cryptohome::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
+
+  EXPECT_EQ(userdataauth_.RemoveKey(*remove_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+}
+
+TEST_F(UserDataAuthExTest, RemoveKeyInvalidArgs) {
+  PrepareArguments();
+
+  // No email supplied.
+  EXPECT_EQ(userdataauth_.RemoveKey(*remove_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+
+  // No secret.
+  remove_req_->mutable_account_id()->set_account_id("foo@gmail.com");
+  EXPECT_EQ(userdataauth_.RemoveKey(*remove_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+
+  // Empty secret.
+  remove_req_->mutable_authorization_request()->mutable_key()->set_secret("");
+  EXPECT_EQ(userdataauth_.RemoveKey(*remove_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+
+  // No label provided for removal.
+  remove_req_->mutable_authorization_request()->mutable_key()->set_secret(
+      "some secret");
+  remove_req_->mutable_key()->mutable_data();
+  EXPECT_EQ(userdataauth_.RemoveKey(*remove_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
