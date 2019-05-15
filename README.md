@@ -67,6 +67,7 @@ copies.
 | [ippusb_manager](./ippusb_manager/) | "Service" for ipp-over-usb printing |
 | [kerberos](./kerberos/) | Daemon for managing Kerberos tickets |
 | [libbrillo](./libbrillo/) | Common platform utility library |
+| [libchromeos-rs](./libchromeos-rs/) | Common platform utility library for Rust |
 | [libchromeos-ui](./libchromeos-ui/) ||
 | [libcontainer](./libcontainer/) ||
 | [libipproto](./libipproto/) | Library for building and parsing IPP (Internet Printing Protocol) frames |
