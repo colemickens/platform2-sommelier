@@ -3519,8 +3519,8 @@ TEST_F(ManagerTest, RefreshConnectionState) {
       .WillOnce(Return(Service::kStateNoConnectivity));
   EXPECT_CALL(*mock_service, IsConnected())
       .WillOnce(Return(true));
-  EXPECT_CALL(*manager_adaptor_,
-              EmitStringChanged(kConnectionStateProperty, kStatePortal));
+  EXPECT_CALL(*manager_adaptor_, EmitStringChanged(kConnectionStateProperty,
+                                                   kStateNoConnectivity));
   RefreshConnectionState();
   Mock::VerifyAndClearExpectations(manager_adaptor_);
   Mock::VerifyAndClearExpectations(upstart_);

@@ -1254,9 +1254,11 @@ string Service::GetStateString() const {
     case kStateFailure:
       return shill::kStateFailure;
     case kStateNoConnectivity:
+      return shill::kStateNoConnectivity;
     case kStateRedirectFound:
+      return shill::kStateRedirectFound;
     case kStatePortalSuspected:
-      return shill::kStatePortal;
+      return shill::kStatePortalSuspected;
     case kStateOnline:
       return shill::kStateOnline;
     case kStateUnknown:
