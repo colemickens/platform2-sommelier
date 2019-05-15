@@ -1707,48 +1707,6 @@ cmd_evtest() (
   fi
 )
 
-USAGE_alt_os='[-s SIZE_GB] enable | disable'
-HELP_alt_os='Manage Alt OS mode'
-EXEC_alt_os='/usr/bin/campfire-setup'
-cmd_alt_os() (
-  local opt opt_size
-  while getopts "s:" opt; do
-    case "${opt}" in
-      s)
-        opt_size="${OPTARG}"
-        if ! is_numeric "${opt_size}"; then
-          help "'${opt_size}' is not a valid number"
-        fi
-        ;;
-      *)
-        help "unknown option: '${opt}'"
-        return 1
-    esac
-  done
-
-  shift $((OPTIND - 1))
-  local action="$1"
-
-  case "${action}" in
-    enable)
-      size="${opt_size:-40}"
-      if ! debugd CampfireEnableAltOS "int32:${size}"; then
-        echo "Failed to enable Alt OS."
-        return 1
-      fi
-      ;;
-    disable)
-      if ! debugd CampfireDisableAltOS; then
-        echo "Failed to disable Alt OS."
-        return 1
-      fi
-      ;;
-    *)
-      help "unknown action: '${action}'"
-      return 1
-  esac
-)
-
 substr() {
   local str="$1"
   local start="$2"
