@@ -7,12 +7,10 @@
 /// [9P]: http://man.cat-v.org/plan_9/5/0intro
 extern crate getopts;
 extern crate libc;
+extern crate libchromeos;
 #[macro_use]
 extern crate log;
 extern crate p9;
-
-mod syslog;
-mod vsock;
 
 use libc::gid_t;
 
@@ -34,7 +32,8 @@ use std::string;
 use std::sync::Arc;
 use std::thread;
 
-use vsock::*;
+use libchromeos::syslog;
+use libchromeos::vsock::*;
 
 const DEFAULT_BUFFER_SIZE: usize = 8192;
 
