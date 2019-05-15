@@ -148,6 +148,7 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
 
 // Test successful shutdown after failed start.
 TEST_F(WilcoDtcSupportdCoreTest, FailedStartAndSuccessfulShutdown) {
+  // Invalid gRPC service URI.
   CreateCore({""}, "", {""});
   EXPECT_FALSE(core()->Start());
 
@@ -312,9 +313,6 @@ class StartedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
   // Set mock expectations for calls triggered during test destruction.
   void SetDBusShutdownExpectations() {
     EXPECT_CALL(*wilco_dtc_supportd_dbus_object_, Unregister());
-    // dbus::MockBus does not provide UnregisterExportedObject mock method.
-    // Real UnregisterExportedObject() called AssertOnOriginThread mock method.
-    EXPECT_CALL(*dbus_bus_, AssertOnOriginThread());
   }
 
   // Creates FIFO to emulates the EC event file used by EC event service.

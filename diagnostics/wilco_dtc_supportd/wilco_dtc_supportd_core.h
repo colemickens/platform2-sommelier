@@ -101,7 +101,7 @@ class WilcoDtcSupportdCore final
   bool Start();
 
   // Performs asynchronous shutdown and cleanup of gRPC servers, gRPC clients
-  // and EC event service.
+  // and EC event service. Destroys |dbus_object_| object.
   // This must be used before deleting this instance in case Start() was
   // called and returned success - in that case, the instance must be
   // destroyed only after |on_shutdown| has been called.
