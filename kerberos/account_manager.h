@@ -7,7 +7,6 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include <base/callback.h>
@@ -16,6 +15,7 @@
 #include <base/macros.h>
 #include <base/optional.h>
 
+#include "bindings/kerberos_containers.pb.h"
 #include "kerberos/proto_bindings/kerberos_service.pb.h"
 
 namespace kerberos {
@@ -111,21 +111,17 @@ class AccountManager {
   // Interface for Kerberos methods (may be overridden for tests).
   const std::unique_ptr<Krb5Interface> krb5_;
 
-  struct AccountData {
-    // Whether the account is managed by policy.
-    bool is_managed = false;
-
-    // TODO(https://crbug.com/952239): Set additional properties.
-  };
+  // Returns the index of the account for |principal_name| or |kInvalidIndex| if
+  // the account does not exist.
+  int GetAccountIndex(const std::string& principal_name) const;
 
   // Returns the AccountData for |principal_name| if available or nullptr
-  // otherwise.
+  // otherwise. The returned pointer may lose validity if |accounts_| gets
+  // modified.
   const AccountData* GetAccountData(const std::string& principal_name) const;
 
-  // Maps principal name (user@REALM.COM) to account data.
-  using AccountsMap =
-      std::unordered_map<std::string, std::unique_ptr<AccountData>>;
-  AccountsMap accounts_;
+  // List of all accounts. Stored in a vector to keep order of addition.
+  std::vector<AccountData> accounts_;
 
   DISALLOW_COPY_AND_ASSIGN(AccountManager);
 };

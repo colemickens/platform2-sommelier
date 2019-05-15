@@ -4,7 +4,8 @@ option optimize_for = LITE_RUNTIME;
 
 package kerberos;
 
-message StorageAccount {
+// Data for a single account. Used internally and for serialization.
+message AccountData {
   // Principal name (user@REALM.COM). Accounts are keyed by principal name.
   optional string principal_name = 1;
 
@@ -14,7 +15,7 @@ message StorageAccount {
   // TODO(https://crbug.com/952239): Add additional properties.
 }
 
-// Used for serialization of the accounts list.
-message StorageAccountsList {
-  repeated StorageAccount accounts = 1;
+// List of all accounts. Used for serialization.
+message AccountDataList {
+  repeated AccountData accounts = 1;
 }

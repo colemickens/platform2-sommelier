@@ -4,6 +4,7 @@
 
 #include "kerberos/account_manager.h"
 
+#include <limits>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -12,12 +13,13 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 
-#include "bindings/kerberos_containers.pb.h"
 #include "kerberos/krb5_interface.h"
 
 namespace kerberos {
 
 namespace {
+
+constexpr int kInvalidIndex = -1;
 
 // Kerberos config files are stored as storage_dir + principal hash + this.
 constexpr char kKrb5ConfFilePart[] = "_krb5.conf";
@@ -74,17 +76,9 @@ AccountManager::~AccountManager() = default;
 
 ErrorType AccountManager::SaveAccounts() const {
   // Copy |accounts_| into proto message.
-  StorageAccountsList storage_accounts;
-  for (const auto& it : accounts_) {
-    const std::string& principal_name = it.first;
-    const AccountData* data = it.second.get();
-    DCHECK(data);
-
-    StorageAccount* storage_account = storage_accounts.add_accounts();
-    storage_account->set_principal_name(principal_name);
-    storage_account->set_is_managed(data->is_managed);
-    // TODO(https://crbug.com/952239): Set additional properties.
-  }
+  AccountDataList storage_accounts;
+  for (const auto& account : accounts_)
+    *storage_accounts.add_accounts() = account;
 
   // Store serialized proto message on disk.
   std::string accounts_blob;
@@ -110,56 +104,49 @@ ErrorType AccountManager::LoadAccounts() {
     return error;
 
   // Parse blob into proto message.
-  StorageAccountsList storage_accounts;
+  AccountDataList storage_accounts;
   if (!storage_accounts.ParseFromString(accounts_blob)) {
     LOG(ERROR) << "Failed to parse accounts list from string";
     return ERROR_LOCAL_IO;
   }
 
   // Copy data into |accounts_|.
-  for (int n = 0; n < storage_accounts.accounts_size(); ++n) {
-    const StorageAccount& storage_account = storage_accounts.accounts(n);
-
-    auto data = std::make_unique<AccountData>();
-    data->is_managed = storage_account.is_managed();
-    // TODO(https://crbug.com/952239): Set additional properties.
-
-    accounts_[storage_account.principal_name()] = std::move(data);
-  }
+  accounts_.reserve(storage_accounts.accounts_size());
+  for (int n = 0; n < storage_accounts.accounts_size(); ++n)
+    accounts_.push_back(storage_accounts.accounts(n));
 
   return ERROR_NONE;
 }
 
 ErrorType AccountManager::AddAccount(const std::string& principal_name,
                                      bool is_managed) {
-  auto it = accounts_.find(principal_name);
-  if (it != accounts_.end()) {
+  int index = GetAccountIndex(principal_name);
+  if (index != kInvalidIndex) {
     // Policy should overwrite user-added accounts, but user-added accounts
     // should not overwrite policy accounts.
-    if (is_managed && !it->second->is_managed) {
-      it->second->is_managed = is_managed;
+    if (!accounts_[index].is_managed() && is_managed) {
+      accounts_[index].set_is_managed(is_managed);
       SaveAccounts();
     }
     return ERROR_DUPLICATE_PRINCIPAL_NAME;
   }
 
-  auto data = std::make_unique<AccountData>();
-  data->is_managed = is_managed;
-  accounts_[principal_name] = std::move(data);
+  AccountData data;
+  data.set_principal_name(principal_name);
+  data.set_is_managed(is_managed);
+  accounts_.push_back(std::move(data));
   SaveAccounts();
   return ERROR_NONE;
 }
 
 ErrorType AccountManager::RemoveAccount(const std::string& principal_name) {
-  auto it = accounts_.find(principal_name);
-  if (it == accounts_.end())
+  int index = GetAccountIndex(principal_name);
+  if (index == kInvalidIndex)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
-  AccountData* data = it->second.get();
-  DCHECK(data);
 
   base::DeleteFile(GetKrb5ConfPath(principal_name), false /* recursive */);
   base::DeleteFile(GetKrb5CCPath(principal_name), false /* recursive */);
-  accounts_.erase(it);
+  accounts_.erase(accounts_.begin() + index);
 
   SaveAccounts();
   TriggerKerberosFilesChanged(principal_name);
@@ -168,13 +155,9 @@ ErrorType AccountManager::RemoveAccount(const std::string& principal_name) {
 
 ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) const {
   for (const auto& it : accounts_) {
-    const std::string& principal_name = it.first;
-    const AccountData* data = it.second.get();
-    DCHECK(data);
-
     Account account;
-    account.set_principal_name(principal_name);
-    account.set_is_managed(data->is_managed);
+    account.set_principal_name(it.principal_name());
+    account.set_is_managed(it.is_managed());
     // TODO(https://crbug.com/952239): Set additional properties.
 
     // Do a best effort reporting results, don't bail on the first error. If
@@ -183,7 +166,7 @@ ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) const {
 
     // Check PathExists, so that no error is printed if the file doesn't exist.
     std::string krb5conf;
-    const base::FilePath krb5conf_path = GetKrb5ConfPath(principal_name);
+    const base::FilePath krb5conf_path = GetKrb5ConfPath(it.principal_name());
     if (base::PathExists(krb5conf_path) &&
         LoadFile(krb5conf_path, &krb5conf) == ERROR_NONE) {
       account.set_krb5conf(krb5conf);
@@ -191,7 +174,7 @@ ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) const {
 
     // A missing krb5cc file just translates to an invalid ticket (lifetime 0).
     Krb5Interface::TgtStatus tgt_status;
-    const base::FilePath krb5cc_path = GetKrb5CCPath(principal_name);
+    const base::FilePath krb5cc_path = GetKrb5CCPath(it.principal_name());
     if (base::PathExists(krb5cc_path) &&
         krb5_->GetTgtStatus(krb5cc_path, &tgt_status) == ERROR_NONE) {
       account.set_tgt_validity_seconds(tgt_status.validity_seconds);
@@ -281,14 +264,20 @@ base::FilePath AccountManager::GetAccountsPath() const {
   return storage_dir_.Append(kAccountsFile);
 }
 
-const AccountManager::AccountData* AccountManager::GetAccountData(
+int AccountManager::GetAccountIndex(const std::string& principal_name) const {
+  for (size_t n = 0; n < accounts_.size(); ++n) {
+    if (accounts_[n].principal_name() == principal_name) {
+      CHECK(n <= std::numeric_limits<int>::max());
+      return static_cast<int>(n);
+    }
+  }
+  return kInvalidIndex;
+}
+
+const AccountData* AccountManager::GetAccountData(
     const std::string& principal_name) const {
-  auto it = accounts_.find(principal_name);
-  if (it == accounts_.end())
-    return nullptr;
-  const AccountData* data = it->second.get();
-  DCHECK(data);
-  return data;
+  int index = GetAccountIndex(principal_name);
+  return index != kInvalidIndex ? &accounts_[index] : nullptr;
 }
 
 }  // namespace kerberos
