@@ -13,6 +13,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/local/[^/]+                u:object_r:cros_dev_image_files:s0
 /sbin/init                      u:object_r:chromeos_init_exec:s0
 
+/sbin/auditd                    u:object_r:cros_auditd_exec:s0
 /sbin/chromeos_startup          u:object_r:chromeos_startup_script_exec:s0
 /sbin/crash_reporter            u:object_r:cros_crash_reporter_exec:s0
 /sbin/crash_sender              u:object_r:cros_crash_sender_exec:s0
@@ -129,6 +130,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/log                        u:object_r:cros_var_log:s0
 /var/log/arc.log                u:object_r:cros_arc_log:s0
 /var/log/asan(/.*)?             u:object_r:cros_var_log_asan:s0
+/var/log/audit(/.*)?            u:object_r:cros_var_log_audit:s0
 /var/log/authpolicy.log         u:object_r:cros_authpolicy_log:s0
 /var/log/boot.log               u:object_r:cros_boot_log:s0
 /var/log/chrome(/.*)?           u:object_r:cros_var_log_chrome:s0

@@ -1,0 +1,12 @@
+type cros_auditd, chromeos_domain, domain;
+
+permissive cros_auditd;
+
+domain_auto_trans(cros_init, cros_auditd_exec, cros_auditd);
+
+filetrans_pattern(cros_init_scripts, cros_var_log, cros_var_log_audit, dir, "audit");
+
+log_writer(cros_auditd);
+
+allow cros_auditd self:capability audit_control;
+allow cros_auditd self:netlink_audit_socket read;
