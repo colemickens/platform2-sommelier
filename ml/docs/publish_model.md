@@ -69,8 +69,8 @@ don't plan to use them ever again.
 
 Once your model is uploaded to the ChromeOS file mirror, the next step is to
 create a CL.
-This CL will have changes to the ML ebuild, which installs the model(s) into
-rootfs.
+This CL will have changes to the [ML Service ebuild], which installs the
+model(s) into rootfs.
 The ebuild is located at
 `/chromiumos/overlays/chromiumos-overlay/chromeos-base/ml/ml-9999.ebuild`.
 Simply add your models in the `system_models` variable: they are installed in the
@@ -129,11 +129,38 @@ the system has succesfully updated.
 If you believe that your case is eligible for Method #1, contact
 chrome-knowledge-eng@ to get your case approved.
 
+
+## Upgrading to a new version of a model
+
+If you have a new, probably better version of a model, these are the recommended
+steps to swap it in:
+
+1. Chrome OS: Add it as a separate model using the instructions above, with a
+   timestamped name like MY_MODEL_201905.
+2. Chrome: [Add a feature flag][add-feature-flag] and use it to toggle between
+   the old & new versions of the model.
+   * If any Chrome-side pre-processing or post-processing code is
+     model-dependent, this should also be toggled based on this feature flag.
+   * Consider updating your existing unit tests to run against both versions of
+     the model, by using TEST_P.
+3. Finch: Launch the new feature according to the instructions at
+   [go/finch-best-practices]. Those instructions will take you all the way
+   through to removing the feature flag you added above.
+4. Chrome OS: Mark the old model MY_MODEL_OLD as unsupported:
+   1. Rename the old model to UNSUPPORTED_MY_MODEL_OLD in [model.mojom].
+   2. Remove the model from [model_metadata.cc], and remove its [loading &
+      inference test].
+   3. Update the [ML Service ebuild] to no longer install the model file onto
+      rootfs. Remove it from the Manifest file in the same directory.
+
+[add-feature-flag]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/how_to_add_your_feature_flag.md
 [CL/1125701]: http://crrev.com/c/1125701
 [CL/1140020]: http://crrev.com/c/1140020
 [go/cros-ml-service-models]: http://go/cros-ml-service-models
 [go/dlc-service-proposal]: http://go/dlc-service-proposal
+[go/finch-best-practices]: http://go/finch-best-practices
 [go/toco]: http://go/toco
 [loading & inference test]: https://cs.corp.google.com/chromeos_public/src/platform2/ml/machine_learning_service_impl_test.cc
+[ML Service ebuild]: https://cs.corp.google.com/chromeos_public/src/third_party/chromiumos-overlay/chromeos-base/ml/ml-9999.ebuild
 [model.mojom]: https://cs.corp.google.com/chromeos_public/src/platform2/ml/mojom/model.mojom
 [model_metadata.cc]: https://cs.corp.google.com/chromeos_public/src/platform2/ml/model_metadata.cc
