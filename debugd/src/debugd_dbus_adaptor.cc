@@ -36,7 +36,6 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
     : org::chromium::debugdAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kDebugdServicePath)) {
   battery_tool_ = std::make_unique<BatteryTool>();
-  campfire_tool_ = std::make_unique<CampfireTool>();
   container_tool_ = std::make_unique<ContainerTool>();
   crash_sender_tool_ = std::make_unique<CrashSenderTool>();
   cups_tool_ = std::make_unique<CupsTool>();
@@ -495,14 +494,6 @@ bool DebugdDBusAdaptor::SetRlzPingSent(brillo::ErrorPtr* error) {
   // returns true regardless of the result of removing |kRlzEmbargoEndDateKey|
   // or the cache log update.
   return true;
-}
-
-std::string DebugdDBusAdaptor::CampfireEnableAltOS(int size_gb) {
-  return campfire_tool_->EnableAltOS(size_gb);
-}
-
-std::string DebugdDBusAdaptor::CampfireDisableAltOS() {
-  return campfire_tool_->DisableAltOS();
 }
 
 bool DebugdDBusAdaptor::UpdateAndVerifyFWOnUsbStart(
