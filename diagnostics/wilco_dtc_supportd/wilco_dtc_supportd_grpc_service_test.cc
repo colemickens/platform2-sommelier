@@ -679,11 +679,7 @@ INSTANTIATE_TEST_CASE_P(
         std::tie(grpc_api::GetProcDataRequest::FILE_STAT, "proc/stat"),
         std::tie(grpc_api::GetProcDataRequest::FILE_NET_NETSTAT,
                  "proc/net/netstat"),
-        std::tie(grpc_api::GetProcDataRequest::FILE_NET_DEV, "proc/net/dev"),
-        std::tie(grpc_api::GetProcDataRequest::FILE_DISKSTATS,
-                 "proc/diskstats"),
-        std::tie(grpc_api::GetProcDataRequest::FILE_CPUINFO, "proc/cpuinfo"),
-        std::tie(grpc_api::GetProcDataRequest::FILE_VMSTAT, "proc/vmstat")));
+        std::tie(grpc_api::GetProcDataRequest::FILE_NET_DEV, "proc/net/dev")));
 
 namespace {
 
@@ -875,21 +871,6 @@ INSTANTIATE_TEST_CASE_P(
                         true),
         std::make_tuple(grpc_api::GetSysfsDataRequest::FIRMWARE_DMI_TABLES,
                         "sys/firmware/dmi/tables/",
-                        false),
-        std::make_tuple(grpc_api::GetSysfsDataRequest::CLASS_POWER_SUPPLY,
-                        "sys/class/power_supply/",
-                        true),
-        std::make_tuple(grpc_api::GetSysfsDataRequest::CLASS_BACKLIGHT,
-                        "sys/class/backlight/",
-                        true),
-        std::make_tuple(grpc_api::GetSysfsDataRequest::CLASS_NETWORK,
-                        "sys/class/net/",
-                        true),
-        std::make_tuple(grpc_api::GetSysfsDataRequest::CLASS_BLUETOOTH,
-                        "sys/class/bluetooth/",
-                        true),
-        std::make_tuple(grpc_api::GetSysfsDataRequest::DEVICES_SYSTEM_CPU,
-                        "sys/devices/system/cpu/",
                         false)));
 
 namespace {
