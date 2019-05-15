@@ -184,14 +184,19 @@ mode_update_tpm_firmware() {
   show_assets_message "update_tpm_firmware"
 }
 
-# Show a message indicating that we're doing a hammer firmware update.
+# Show a message indicating that we're doing a detachable base firmware update.
 mode_update_detachable_base_firmware() {
   show_assets_message "update_detachable_base_firmware"
 }
 
-# Show a message indicating that we're doing a hammer firmware update.
+# Show a message indicating that we're doing a touchpad firmware update.
 mode_update_touchpad_firmware() {
   show_assets_message "update_touchpad_firmware"
+}
+
+# Show a message indicating that we're doing a touchscreen firmware update.
+mode_update_touchscreen_firmware() {
+  show_assets_message "update_touchscreen_firmware"
 }
 
 # Show a message explaining to the user that the battery isn't sufficiently
