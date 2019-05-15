@@ -19,6 +19,7 @@
 #include "hal/usb/metadata_handler.h"
 #include "hal/usb/stream_format.h"
 #include "hal/usb/v4l2_camera_device.h"
+#include "hal/usb/vendor_tag.h"
 
 namespace cros {
 
@@ -45,6 +46,15 @@ CameraMetadataUniquePtr GetStaticInfoFromDeviceInfo(
           qualified_formats, &metadata, is_external) != 0) {
     return nullptr;
   }
+
+  if (!device_info.usb_vid.empty()) {
+    metadata.update(kVendorTagVendorId, device_info.usb_vid);
+  }
+  if (!device_info.usb_pid.empty()) {
+    metadata.update(kVendorTagProductId, device_info.usb_pid);
+  }
+  metadata.update(kVendorTagModelName,
+                  V4L2CameraDevice::GetModelName(device_info.device_path));
 
   return CameraMetadataUniquePtr(metadata.release());
 }
@@ -440,8 +450,12 @@ static int set_callbacks(const camera_module_callbacks_t* callbacks) {
   return CameraHal::GetInstance().SetCallbacks(callbacks);
 }
 
-static void get_vendor_tag_ops(vendor_tag_ops_t* /*ops*/) {
-  // no-op
+static void get_vendor_tag_ops(vendor_tag_ops_t* ops) {
+  ops->get_all_tags = VendorTagOps::GetAllTags;
+  ops->get_tag_count = VendorTagOps::GetTagCount;
+  ops->get_section_name = VendorTagOps::GetSectionName;
+  ops->get_tag_name = VendorTagOps::GetTagName;
+  ops->get_tag_type = VendorTagOps::GetTagType;
 }
 
 static int open_legacy(const struct hw_module_t* /*module*/,

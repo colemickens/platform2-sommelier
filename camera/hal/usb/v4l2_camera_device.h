@@ -96,6 +96,9 @@ class V4L2CameraDevice {
   // Get clock type in UVC driver to report the same time base in user space.
   static clockid_t GetUvcClock();
 
+  // Get the model name from |device_path|.
+  static std::string GetModelName(const std::string& device_path);
+
  private:
   static std::vector<float> GetFrameRateList(int fd,
                                              uint32_t fourcc,

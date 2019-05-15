@@ -17,6 +17,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/posix/safe_strerror.h>
+#include <base/strings/pattern.h>
 #include <base/strings/stringprintf.h>
 #include <base/timer/elapsed_timer.h>
 #include <camera/camera_metadata.h>
@@ -476,6 +477,50 @@ bool V4L2CameraDevice::IsCameraDevice(const std::string& device_path) {
   } else {
     return check_mask(v4l2_cap.capabilities);
   }
+}
+
+// static
+std::string V4L2CameraDevice::GetModelName(const std::string& device_path) {
+  auto get_by_interface = [&](std::string* name) {
+    base::FilePath real_path;
+    if (!base::NormalizeFilePath(base::FilePath(device_path), &real_path)) {
+      return false;
+    }
+    if (!base::MatchPattern(real_path.value(), "/dev/video*")) {
+      return false;
+    }
+    // /sys/class/video4linux/video{N}/device is a symlink to the corresponding
+    // USB device info directory.
+    auto interface_path = base::FilePath("/sys/class/video4linux")
+                              .Append(real_path.BaseName())
+                              .Append("device/interface");
+    return base::ReadFileToString(interface_path, name);
+  };
+
+  auto get_by_cap = [&](std::string* name) {
+    base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
+    if (!fd.is_valid()) {
+      PLOGF(WARNING) << "Failed to open " << device_path;
+      return false;
+    }
+
+    v4l2_capability cap;
+    if (TEMP_FAILURE_RETRY(ioctl(fd.get(), VIDIOC_QUERYCAP, &cap)) != 0) {
+      PLOGF(WARNING) << "Failed to query capability of " << device_path;
+      return false;
+    }
+    *name = std::string(reinterpret_cast<const char*>(cap.card));
+    return true;
+  };
+
+  std::string name;
+  if (get_by_interface(&name)) {
+    return name;
+  }
+  if (get_by_cap(&name)) {
+    return name;
+  }
+  return "USB Camera";
 }
 
 // static

@@ -29,6 +29,7 @@
       ],
       'sources': [
         '../../common/utils/camera_config.cc',
+        '../../common/vendor_tag_manager.cc',
         'cached_frame.cc',
         'camera_characteristics.cc',
         'camera_client.cc',
@@ -41,6 +42,7 @@
         'stream_format.cc',
         'test_pattern.cc',
         'v4l2_camera_device.cc',
+        'vendor_tag.cc',
       ],
     },
   ],
