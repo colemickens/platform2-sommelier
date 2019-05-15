@@ -10,6 +10,7 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":chromeos-pgmem",
     ":libmetrics-${libbase_ver}",
     ":libmetrics_daemon",
     ":libupload_service",
@@ -104,6 +105,15 @@ executable("metrics_client") {
   ]
   sources = [
     "metrics_client.cc",
+  ]
+}
+
+executable("chromeos-pgmem") {
+  configs += [ ":target_defaults" ]
+  deps = []
+  sources = [
+    "pgmem.cc",
+    "process_meter.cc",
   ]
 }
 
