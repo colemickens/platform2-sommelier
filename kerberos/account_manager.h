@@ -84,7 +84,10 @@ class AccountManager {
   ErrorType GetKerberosFiles(const std::string& principal_name,
                              KerberosFiles* files) const WARN_UNUSED_RESULT;
 
-  const base::FilePath GetStorageDirForTesting() { return storage_dir_; }
+  const base::FilePath& GetStorageDirForTesting() { return storage_dir_; }
+
+  // Returns the SHA1 hash of |principal_name| as hex string.
+  static std::string HashPrincipalForTesting(const std::string& principal_name);
 
  private:
   // File path helpers. All paths are relative to |storage_dir_|.

@@ -144,12 +144,17 @@ ErrorType AccountManager::RemoveAccount(const std::string& principal_name) {
   if (index == kInvalidIndex)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
+  // Delete krb files, but only trigger TriggerKerberosFilesChanged if the
+  // credential cache existed.
   base::DeleteFile(GetKrb5ConfPath(principal_name), false /* recursive */);
-  base::DeleteFile(GetKrb5CCPath(principal_name), false /* recursive */);
+  const base::FilePath krb5cc_path = GetKrb5CCPath(principal_name);
+  if (base::PathExists(krb5cc_path)) {
+    base::DeleteFile(krb5cc_path, false /* recursive */);
+    TriggerKerberosFilesChanged(principal_name);
+  }
   accounts_.erase(accounts_.begin() + index);
 
   SaveAccounts();
-  TriggerKerberosFilesChanged(principal_name);
   return ERROR_NONE;
 }
 
@@ -194,7 +199,9 @@ ErrorType AccountManager::SetConfig(const std::string& principal_name,
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
   ErrorType error = SaveFile(GetKrb5ConfPath(principal_name), krb5conf);
-  if (error == ERROR_NONE)
+
+  // Triggering the signal is only necessary if the credential cache exists.
+  if (error == ERROR_NONE && base::PathExists(GetKrb5CCPath(principal_name)))
     TriggerKerberosFilesChanged(principal_name);
   return error;
 }
@@ -242,6 +249,12 @@ ErrorType AccountManager::GetKerberosFiles(const std::string& principal_name,
   files->mutable_krb5cc()->assign(krb5cc.begin(), krb5cc.end());
   files->mutable_krb5conf()->assign(krb5conf.begin(), krb5conf.end());
   return ERROR_NONE;
+}
+
+// static
+std::string AccountManager::HashPrincipalForTesting(
+    const std::string& principal_name) {
+  return HashPrincipal(principal_name);
 }
 
 void AccountManager::TriggerKerberosFilesChanged(

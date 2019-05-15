@@ -5,9 +5,16 @@
 #include "kerberos/fake_krb5_interface.h"
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <krb5.h>
 
 namespace kerberos {
+namespace {
+
+// Fake Kerberos credential cache.
+constexpr char kFakeKrb5cc[] = "I'm authenticated, trust me!";
+
+}  // namespace
 
 FakeKrb5Interface::FakeKrb5Interface() = default;
 
@@ -17,18 +24,21 @@ ErrorType FakeKrb5Interface::AcquireTgt(const std::string& principal_name,
                                         const std::string& password,
                                         const base::FilePath& krb5cc_path,
                                         const base::FilePath& krb5conf_path) {
-  return ERROR_NONE;
+  const int size = strlen(kFakeKrb5cc);
+  CHECK(base::WriteFile(krb5cc_path, kFakeKrb5cc, strlen(kFakeKrb5cc)) == size);
+  return acquire_tgt_error_;
 }
 
 ErrorType FakeKrb5Interface::RenewTgt(const std::string& principal_name,
                                       const base::FilePath& krb5cc_path,
                                       const base::FilePath& krb5conf_path) {
-  return ERROR_NONE;
+  return renew_tgt_error_;
 }
 
 ErrorType FakeKrb5Interface::GetTgtStatus(const base::FilePath& krb5cc_path,
                                           TgtStatus* status) {
-  return ERROR_NONE;
+  *status = tgt_status_;
+  return get_tgt_status_error_;
 }
 
 }  // namespace kerberos
