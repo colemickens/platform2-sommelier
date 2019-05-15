@@ -123,6 +123,13 @@ class UserDataAuth {
   user_data_auth::CryptohomeErrorCode RemoveKey(
       const user_data_auth::RemoveKeyRequest request);
 
+  // List the keys stored in |homedirs_|. If CRYPTOHOME_ERROR_NOT_SET is
+  // returned, then |labels_out| contains the label of the keys. Otherwise, the
+  // content of |labels_out| is undefined.
+  user_data_auth::CryptohomeErrorCode ListKeys(
+      const user_data_auth::ListKeysRequest& request,
+      std::vector<std::string>* labels_out);
+
   // =============== PKCS#11 Related Public Methods ===============
 
   // This initializes the PKCS#11 for a particular mount. Note that this is

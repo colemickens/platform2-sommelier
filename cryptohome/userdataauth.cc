@@ -1462,4 +1462,33 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::RemoveKey(
   return static_cast<user_data_auth::CryptohomeErrorCode>(result);
 }
 
+user_data_auth::CryptohomeErrorCode UserDataAuth::ListKeys(
+    const user_data_auth::ListKeysRequest& request,
+    std::vector<std::string>* labels_out) {
+  AssertOnMountThread();
+  DCHECK(labels_out);
+
+  if (!request.has_account_id()) {
+    LOG(ERROR) << "ListKeysRequest must have account_id.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  const std::string& account_id = GetAccountId(request.account_id());
+  if (account_id.empty()) {
+    LOG(ERROR) << "ListKeysRequest must have valid account_id.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  const std::string obfuscated_username =
+      BuildObfuscatedUsername(account_id, system_salt_);
+  if (!homedirs_->Exists(obfuscated_username)) {
+    return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
+  }
+
+  if (!homedirs_->GetVaultKeysetLabels(obfuscated_username, labels_out)) {
+    return user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND;
+  }
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+}
+
 }  // namespace cryptohome

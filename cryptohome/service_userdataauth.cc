@@ -4,6 +4,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -117,7 +118,30 @@ void UserDataAuthAdaptor::ListKeys(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::ListKeysReply>> response,
     const user_data_auth::ListKeysRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &UserDataAuthAdaptor::DoListKeys, base::Unretained(this),
+          ThreadSafeDBusMethodResponse<user_data_auth::ListKeysReply>::
+              MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void UserDataAuthAdaptor::DoListKeys(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::ListKeysReply>> response,
+    const user_data_auth::ListKeysRequest& in_request) {
+  // TODO(b/136152258): Add unit test for this method.
   user_data_auth::ListKeysReply reply;
+  std::vector<std::string> labels;
+  auto status = service_->ListKeys(in_request, &labels);
+  // Note, if there's no error, then |status| is set to CRYPTOHOME_ERROR_NOT_SET
+  // to indicate that.
+  reply.set_error(status);
+  if (status == user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    // The contents is |labels| is valid.
+    *reply.mutable_labels() = {labels.begin(), labels.end()};
+  }
   response->Return(reply);
 }
 

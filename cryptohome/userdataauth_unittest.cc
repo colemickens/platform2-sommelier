@@ -24,6 +24,7 @@ using brillo::SecureBlob;
 
 using ::testing::_;
 using ::testing::AtLeast;
+using ::testing::ElementsAre;
 using ::testing::EndsWith;
 using ::testing::Invoke;
 using ::testing::Mock;
@@ -1119,6 +1120,60 @@ TEST_F(UserDataAuthExTest, RemoveKeyInvalidArgs) {
       "some secret");
   remove_req_->mutable_key()->mutable_data();
   EXPECT_EQ(userdataauth_.RemoveKey(*remove_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
+constexpr char ListKeysSanityTest_label1[] = "Label 1";
+constexpr char ListKeysSanityTest_label2[] = "Yet another label";
+
+TEST_F(UserDataAuthExTest, ListKeysSanity) {
+  PrepareArguments();
+
+  list_keys_req_->mutable_account_id()->set_account_id("foo@gmail.com");
+  // Note that authorization request in ListKeyRequest is currently not
+  // required.
+
+  // Success case.
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, GetVaultKeysetLabels(_, _))
+      .WillOnce(Invoke(
+          [](const std::string& ignored, std::vector<std::string>* output) {
+            output->clear();
+            output->push_back(ListKeysSanityTest_label1);
+            output->push_back(ListKeysSanityTest_label2);
+            return true;
+          }));
+
+  std::vector<std::string> labels;
+  EXPECT_EQ(userdataauth_.ListKeys(*list_keys_req_, &labels),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  EXPECT_THAT(labels, ElementsAre(ListKeysSanityTest_label1,
+                                  ListKeysSanityTest_label2));
+
+  // Test for account not found case.
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(false));
+  EXPECT_EQ(userdataauth_.ListKeys(*list_keys_req_, &labels),
+            user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+
+  // Test for key not found case.
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, GetVaultKeysetLabels(_, _)).WillOnce(Return(false));
+  EXPECT_EQ(userdataauth_.ListKeys(*list_keys_req_, &labels),
+            user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+}
+
+TEST_F(UserDataAuthExTest, ListKeysInvalidArgs) {
+  PrepareArguments();
+  std::vector<std::string> labels;
+
+  // No Email.
+  EXPECT_EQ(userdataauth_.ListKeys(*list_keys_req_, &labels),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+
+  // Empty email.
+  list_keys_req_->mutable_account_id()->set_account_id("");
+  EXPECT_EQ(userdataauth_.ListKeys(*list_keys_req_, &labels),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
