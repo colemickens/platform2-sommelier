@@ -85,6 +85,10 @@ class HostNotifier : public base::MessageLoopForIO::Watcher,
   // Sends a message to the host indicating the container is shutting down.
   void NotifyHostOfContainerShutdown();
 
+  // Sends a message to the host indicating the number of triggered, but not yet
+  // sent, app list updates.
+  void NotifyHostOfPendingAppListUpdates();
+
   // Sends a list of the installed applications to the host.
   void SendAppListToHost();
 

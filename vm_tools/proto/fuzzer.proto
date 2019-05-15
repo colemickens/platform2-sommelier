@@ -26,6 +26,7 @@ message ContainerListenerFuzzerSingleAction {
     UninstallPackageProgressInfo uninstall_package_progress_info = 6;
     OpenTerminalRequest open_terminal_request = 7;
     UpdateMimeTypesRequest update_mime_types_request = 8;
+    PendingAppListUpdateCount pending_app_list_update_count = 27;
 
     // Calls to the TremplinListener service.
     vm_tools.tremplin.TremplinStartupInfo tremplin_startup_info = 100;

@@ -104,6 +104,39 @@ grpc::Status ContainerListenerImpl::ContainerShutdown(
   return grpc::Status::OK;
 }
 
+grpc::Status ContainerListenerImpl::PendingUpdateApplicationListCalls(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::PendingAppListUpdateCount* request,
+    vm_tools::EmptyMessage* response) {
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
+  if (cid == 0) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failed parsing cid for ContainerListener");
+  }
+
+  if (request->token().empty()) {
+    return grpc::Status(grpc::INVALID_ARGUMENT, "`token` cannot be empty");
+  }
+
+  bool result = false;
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::Bind(
+          &vm_tools::cicerone::Service::PendingUpdateApplicationListCalls,
+          service_, request->token(), cid, request->count(), &result, &event));
+  event.Wait();
+  if (!result) {
+    LOG(ERROR) << "Received ContainerShutdown but could not find matching VM: "
+               << ctx->peer();
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Cannot find VM for ContainerListener");
+  }
+
+  return grpc::Status::OK;
+}
+
 grpc::Status ContainerListenerImpl::UpdateApplicationList(
     grpc::ServerContext* ctx,
     const vm_tools::container::UpdateApplicationListRequest* request,

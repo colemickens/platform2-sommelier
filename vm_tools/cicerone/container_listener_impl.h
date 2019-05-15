@@ -43,6 +43,10 @@ class ContainerListenerImpl final
       grpc::ServerContext* ctx,
       const vm_tools::container::ContainerShutdownInfo* request,
       vm_tools::EmptyMessage* response) override;
+  grpc::Status PendingUpdateApplicationListCalls(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::PendingAppListUpdateCount* request,
+      vm_tools::EmptyMessage* response) override;
   grpc::Status UpdateApplicationList(
       grpc::ServerContext* ctx,
       const vm_tools::container::UpdateApplicationListRequest* request,

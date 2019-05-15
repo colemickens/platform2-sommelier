@@ -89,6 +89,16 @@ message OpenUrlRequest {
   string token = 2;
 }
 
+// A message sent to indicate how many UpdateApplicationList are
+// scheduled to be sent.
+message PendingAppListUpdateCount {
+  // Security token for the container.
+  string token = 1;
+
+  // The number of app list updates that have been triggered but not yet sent.
+  uint32 count = 2;
+}
+
 // Progress update when a Linux package install is in progress or completed.
 message InstallLinuxPackageProgressInfo {
   // The security token the container was given.
@@ -181,6 +191,11 @@ service ContainerListener {
   // Called by a container to update the list of applications installed within
   // the container.
   rpc UpdateApplicationList(UpdateApplicationListRequest)
+      returns (EmptyMessage);
+
+  // Called by a container to indicate that an app list update has
+  // been scheduled or completed.
+  rpc PendingUpdateApplicationListCalls(PendingAppListUpdateCount)
       returns (EmptyMessage);
 
   // Called by a container to open the specified URL with the browser in the

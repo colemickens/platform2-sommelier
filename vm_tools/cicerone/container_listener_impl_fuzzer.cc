@@ -216,6 +216,12 @@ DEFINE_PROTO_FUZZER(
         break;
 
       case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kPendingAppListUpdateCount:
+        container_listener->PendingUpdateApplicationListCalls(
+            &context, &action.pending_app_list_update_count(), &response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
           kTremplinStartupInfo:
         tremplin_listener->TremplinReady(
             &context, &action.tremplin_startup_info(), &tremplin_response);

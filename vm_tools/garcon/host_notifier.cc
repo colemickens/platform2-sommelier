@@ -383,6 +383,20 @@ void HostNotifier::NotifyHostOfContainerShutdown() {
   }
 }
 
+void HostNotifier::NotifyHostOfPendingAppListUpdates() {
+  grpc::ClientContext ctx;
+  vm_tools::container::PendingAppListUpdateCount msg;
+  msg.set_token(token_);
+  msg.set_count(update_app_list_posted_ + send_app_list_to_host_in_progress_);
+  vm_tools::EmptyMessage empty;
+  grpc::Status status =
+      stub_->PendingUpdateApplicationListCalls(&ctx, msg, &empty);
+  if (!status.ok()) {
+    LOG(WARNING) << "Failed to notify host system of pending app list updates: "
+                 << status.error_message();
+  }
+}
+
 void HostNotifier::SendAppListToHost() {
   if (send_app_list_to_host_in_progress_) {
     // Don't have multiple SendAppListToHost callback chains happening at the
@@ -530,6 +544,7 @@ void HostNotifier::RequestNextPackageIdOrCompleteUpdateApplicationList(
       LOG(WARNING) << "Failed to notify host of the application list: "
                    << status.error_message();
     }
+    NotifyHostOfPendingAppListUpdates();
     return;
   }
   // else we still need to do more package_id queries
@@ -621,6 +636,7 @@ void HostNotifier::DesktopPathsChanged(const base::FilePath& path, bool error) {
       base::Bind(&HostNotifier::SendAppListToHost, base::Unretained(this)),
       kFilesystemChangeCoalesceTime);
   update_app_list_posted_ = true;
+  NotifyHostOfPendingAppListUpdates();
 }
 
 void HostNotifier::MimeTypesChanged(const base::FilePath& path, bool error) {

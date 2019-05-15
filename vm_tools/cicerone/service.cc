@@ -864,6 +864,46 @@ void Service::ContainerImportProgress(
   event->Signal();
 }
 
+void Service::PendingUpdateApplicationListCalls(
+    const std::string& container_token,
+    const uint32_t cid,
+    const uint32_t count,
+    bool* result,
+    base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  CHECK(result);
+  CHECK(event);
+  *result = false;
+
+  std::string owner_id;
+  std::string vm_name;
+  VirtualMachine* vm;
+  if (!GetVirtualMachineForCidOrToken(cid, container_token, &vm, &owner_id,
+                                      &vm_name)) {
+    LOG(ERROR) << "Could not get virtual machine for cid " << cid;
+    event->Signal();
+    return;
+  }
+  std::string container_name = vm->GetContainerNameForToken(container_token);
+  if (container_name.empty()) {
+    LOG(ERROR) << "Could not get container";
+    event->Signal();
+    return;
+  }
+
+  PendingAppListUpdatesSignal msg;
+  msg.set_vm_name(vm_name);
+  msg.set_container_name(container_name);
+  msg.set_count(count);
+
+  // Send the D-Bus signal out updating progress/completion for the import.
+  dbus::Signal signal(kVmCiceroneInterface, kPendingAppListUpdatesSignal);
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(msg);
+  exported_object_->SendSignal(&signal);
+  *result = true;
+  event->Signal();
+}
+
 void Service::UpdateApplicationList(const std::string& container_token,
                                     const uint32_t cid,
                                     vm_tools::apps::ApplicationList* app_list,

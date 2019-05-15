@@ -197,6 +197,12 @@ class Service final : public base::MessageLoopForIO::Watcher {
       bool* result,
       base::WaitableEvent* event);
 
+  void PendingUpdateApplicationListCalls(const std::string& container_token,
+                                         const uint32_t cid,
+                                         const uint32_t count,
+                                         bool* result,
+                                         base::WaitableEvent* event);
+
   // This will send a D-Bus message to Chrome to inform it of the current
   // installed application list for a container. It will use |cid| to
   // resolve the request to a VM and then |container_token| to resolve it to a
