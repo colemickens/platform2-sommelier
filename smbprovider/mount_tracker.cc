@@ -61,25 +61,6 @@ bool MountTracker::AddMount(const std::string& mount_root,
   return true;
 }
 
-bool MountTracker::AddMountWithId(
-    const std::string& mount_root,
-    SmbCredential credential,
-    std::unique_ptr<SambaInterface> samba_interface,
-    int32_t mount_id) {
-  DCHECK_GE(mount_id, 0);
-
-  if (IsAlreadyMounted(mount_id)) {
-    return false;
-  }
-
-  mounts_.InsertWithSpecificId(
-      mount_id, CreateMountInfo(mount_root, std::move(credential),
-                                std::move(samba_interface)));
-
-  AddSambaInterfaceIdToSambaInterfaceMap(mount_id);
-  return true;
-}
-
 bool MountTracker::RemoveMount(int32_t mount_id) {
   const auto mount_iter = mounts_.Find(mount_id);
   if (mount_iter == mounts_.End()) {

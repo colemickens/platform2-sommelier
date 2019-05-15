@@ -87,12 +87,6 @@ GetDeleteListOptionsProto CreateGetDeleteListOptionsProto(
 GetSharesOptionsProto CreateGetSharesOptionsProto(
     const std::string& server_url);
 
-RemountOptionsProto CreateRemountOptionsProto(const std::string& path,
-                                              const std::string& workgroup,
-                                              const std::string& username,
-                                              int32_t mount_id,
-                                              MountConfig mount_config);
-
 // Writes the Credential Cache file contents |krb5cc| and the krb5.conf file
 // contents |krb5conf| into a authpolicy::KerberosFiles proto.
 authpolicy::KerberosFiles CreateKerberosFilesProto(const std::string& krb5cc,
@@ -102,8 +96,6 @@ UpdateMountCredentialsOptionsProto CreateUpdateMountCredentialsOptionsProto(
     int32_t mount_id,
     const std::string& workgroup,
     const std::string& username);
-
-PremountOptionsProto CreatePremountOptionsProto(const std::string& path);
 
 UpdateSharePathOptionsProto CreateUpdateSharePathOptionsProto(
     int32_t mount_id, const std::string& path);
@@ -170,17 +162,9 @@ ProtoBlob CreateGetDeleteListOptionsBlob(int32_t mount_id,
 
 ProtoBlob CreateGetSharesOptionsBlob(const std::string& server_url);
 
-ProtoBlob CreateRemountOptionsBlob(const std::string& path,
-                                   const std::string& workgroup,
-                                   const std::string& username,
-                                   int32_t mount_id,
-                                   MountConfig mount_config);
-
 ProtoBlob CreateUpdateMountCredentialsOptionsBlob(int32_t mount_id,
                                                   const std::string& workgroup,
                                                   const std::string& username);
-
-ProtoBlob CreatePremountOptionsBlob(const std::string& path);
 
 ProtoBlob CreateUpdateSharePathOptionsBlob(int32_t mount_id,
                                            const std::string& path);

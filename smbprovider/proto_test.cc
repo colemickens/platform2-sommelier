@@ -121,19 +121,10 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForValidProtos) {
       CreateGetSharesOptionsProto("smb://192.168.0.1");
   EXPECT_TRUE(IsValidOptions(get_shares_proto));
 
-  RemountOptionsProto remount_proto = CreateRemountOptionsProto(
-      "smb://testShare/", "" /* workgroup */, "" /* username */,
-      3 /* mount_id */, MountConfig(true /* enable_ntlm */));
-  EXPECT_TRUE(IsValidOptions(remount_proto));
-
   UpdateMountCredentialsOptionsProto update_proto =
       CreateUpdateMountCredentialsOptionsProto(
           3 /* mount_id */, "" /* work_group */, "" /* user_name */);
   EXPECT_TRUE(IsValidOptions(update_proto));
-
-  PremountOptionsProto premount_proto =
-      CreatePremountOptionsProto("smb://testShare/dir1");
-  EXPECT_TRUE(IsValidOptions(premount_proto));
 
   UpdateSharePathOptionsProto update_share_path_proto =
       CreateUpdateSharePathOptionsProto(1 /* mount_id */,
@@ -188,14 +179,8 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForInValidProtos) {
   GetDeleteListOptionsProto get_delete_list_proto_blank;
   EXPECT_FALSE(IsValidOptions(get_delete_list_proto_blank));
 
-  RemountOptionsProto remount_proto_blank;
-  EXPECT_FALSE(IsValidOptions(remount_proto_blank));
-
   UpdateMountCredentialsOptionsProto update_proto_blank;
   EXPECT_FALSE(IsValidOptions(update_proto_blank));
-
-  PremountOptionsProto premount_proto_blank;
-  EXPECT_FALSE(IsValidOptions(premount_proto_blank));
 
   UpdateSharePathOptionsProto update_share_path_proto_blank;
   EXPECT_FALSE(IsValidOptions(update_share_path_proto_blank));
@@ -309,10 +294,8 @@ TEST_F(SmbProviderProtoTest, GetMethodName) {
   CheckMethodName(kCopyEntryMethod, CopyEntryOptionsProto());
   CheckMethodName(kGetDeleteListMethod, GetDeleteListOptionsProto());
   CheckMethodName(kGetSharesMethod, GetSharesOptionsProto());
-  CheckMethodName(kRemountMethod, RemountOptionsProto());
   CheckMethodName(kUpdateMountCredentialsMethod,
                   UpdateMountCredentialsOptionsProto());
-  CheckMethodName(kPremountMethod, PremountOptionsProto());
 }
 
 // DirectoryEntryCtor initializes a DirectoryEntry correctly.

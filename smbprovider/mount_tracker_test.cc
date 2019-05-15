@@ -72,29 +72,6 @@ class MountTrackerTest : public testing::Test {
                                     CreateSambaInterface(), mount_id);
   }
 
-  bool RemountWithEmptyCredential(const std::string& root_path,
-                                  int32_t mount_id) {
-    base::ScopedFD password_fd =
-        smbprovider::WritePasswordToFile(&temp_files_, "" /* password */);
-
-    SmbCredential credential("" /* workgroup */, "" /* username */,
-                             GetPassword(password_fd));
-
-    return mount_tracker_->AddMountWithId(root_path, std::move(credential),
-                                          CreateSambaInterface(), mount_id);
-  }
-
-  bool Remount(const std::string& root_path,
-               const std::string& workgroup,
-               const std::string& username,
-               const std::string& password,
-               int32_t mount_id) {
-    SmbCredential credential(workgroup, username, CreatePassword(password));
-
-    return mount_tracker_->AddMountWithId(root_path, std::move(credential),
-                                          CreateSambaInterface(), mount_id);
-  }
-
   std::unique_ptr<SambaInterface> CreateSambaInterface() {
     return samba_interface_factory_.Run();
   }
@@ -231,68 +208,6 @@ TEST_F(MountTrackerTest, TestAddMultipleDifferentMountId) {
   EXPECT_GE(mount_id1, 0);
   EXPECT_GE(mount_id2, 0);
   EXPECT_NE(mount_id1, mount_id2);
-}
-
-TEST_F(MountTrackerTest, TestRemountSucceeds) {
-  const std::string root_path = "smb://server/share1";
-  const int32_t mount_id = 9;
-
-  EXPECT_TRUE(RemountWithEmptyCredential(root_path, mount_id));
-
-  EXPECT_EQ(1, mount_tracker_->MountCount());
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
-}
-
-TEST_F(MountTrackerTest, TestRemountSucceedsWithSameMountPath) {
-  const std::string root_path = "smb://server/share1";
-  const int32_t mount_id = 9;
-
-  EXPECT_TRUE(RemountWithEmptyCredential(root_path, mount_id));
-
-  EXPECT_EQ(1, mount_tracker_->MountCount());
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
-
-  const int32_t mount_id2 = 10;
-  EXPECT_TRUE(RemountWithEmptyCredential(root_path, mount_id2));
-}
-
-TEST_F(MountTrackerTest, TestRemountFailsWithSameMountId) {
-  const std::string root_path = "smb://server/share1";
-  const int32_t mount_id = 9;
-
-  EXPECT_TRUE(RemountWithEmptyCredential(root_path, mount_id));
-
-  EXPECT_EQ(1, mount_tracker_->MountCount());
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
-
-  const std::string root_path2 = "smb://server/share2";
-  const int32_t mount_id2 = 9;
-  // Should be false since the same id cannot be mounted twice.
-  EXPECT_FALSE(RemountWithEmptyCredential(root_path2, mount_id2));
-}
-
-TEST_F(MountTrackerTest, TestMountAfterRemounts) {
-  const std::string root_path_1 = "smb://server/share1";
-  const int32_t mount_id_1 = 9;
-
-  const std::string root_path_2 = "smb://server/share2";
-  const int32_t mount_id_2 = 4;
-
-  const std::string new_root_path = "smb://server/share3";
-
-  EXPECT_TRUE(RemountWithEmptyCredential(root_path_1, mount_id_1));
-  EXPECT_TRUE(RemountWithEmptyCredential(root_path_2, mount_id_2));
-
-  EXPECT_EQ(2, mount_tracker_->MountCount());
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id_1));
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id_2));
-
-  int32_t mount_id_3;
-  EXPECT_TRUE(AddMountWithEmptyCredential(new_root_path, &mount_id_3));
-
-  EXPECT_EQ(3, mount_tracker_->MountCount());
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id_3));
-  EXPECT_GT(mount_id_3, mount_id_1);
 }
 
 TEST_F(MountTrackerTest, TestAddRemoveMount) {
@@ -588,36 +503,6 @@ TEST_F(MountTrackerTest, TestRemoveCredentialFromMultiple) {
   EXPECT_EQ(0, mount_tracker_->MountCount());
 }
 
-TEST_F(MountTrackerTest, TestRemountWithCredential) {
-  int32_t mount_id = 9;
-  EXPECT_TRUE(Remount(kMountRoot, kWorkgroup, kUsername, kPassword, mount_id));
-
-  EXPECT_EQ(1, mount_tracker_->MountCount());
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
-
-  ExpectCredentialsEqual(mount_id, kWorkgroup, kUsername, kPassword);
-}
-
-TEST_F(MountTrackerTest, TestAddRemoveRemountWithCredential) {
-  int32_t mount_id;
-  EXPECT_TRUE(
-      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id));
-
-  EXPECT_EQ(1, mount_tracker_->MountCount());
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
-
-  EXPECT_TRUE(mount_tracker_->RemoveMount(mount_id));
-
-  EXPECT_EQ(0, mount_tracker_->MountCount());
-
-  EXPECT_TRUE(Remount(kMountRoot, kWorkgroup, kUsername, kPassword, mount_id));
-
-  EXPECT_EQ(1, mount_tracker_->MountCount());
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
-
-  ExpectCredentialsEqual(mount_id, kWorkgroup, kUsername, kPassword);
-}
-
 TEST_F(MountTrackerTest, TestIsSambaInterfaceIdMounted) {
   int32_t mount_id;
   EXPECT_TRUE(
@@ -646,19 +531,6 @@ TEST_F(MountTrackerTest, TestAddRemoveSambaInterfaceId) {
   EXPECT_TRUE(mount_tracker_->RemoveMount(mount_id));
 
   EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(samba_interface_id));
-}
-
-TEST_F(MountTrackerTest, TestIsSambaInterfaceIdMountedWithRemount) {
-  int32_t mount_id = 9;
-  EXPECT_TRUE(Remount(kMountRoot, kWorkgroup, kUsername, kPassword, mount_id));
-
-  EXPECT_EQ(1, mount_tracker_->MountCount());
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
-
-  SambaInterface::SambaInterfaceId samba_interface_id =
-      GetSambaInterfaceId(mount_id);
-
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(samba_interface_id));
 }
 
 TEST_F(MountTrackerTest, TestNonExistantSambaInterfaceId) {

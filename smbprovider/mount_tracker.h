@@ -51,15 +51,6 @@ class MountTracker {
                 std::unique_ptr<SambaInterface> samba_interface,
                 int32_t* mount_id);
 
-  // Adds |mount_root| to the |mounts_| map with a specific |mount_id| and adds
-  // SambaInterfaceId to |samba_interface_map_|. Also adds |mount_root| to
-  // |mounted_root_shares_|. Returns false if |mount_root| already
-  // exists in |mounted_share_paths_| or |mount_id| exists in |mounts_|.
-  bool AddMountWithId(const std::string& mount_root,
-                      SmbCredential credential,
-                      std::unique_ptr<SambaInterface> samba_interface,
-                      int32_t mount_id);
-
   // Returns true if |mount_id| was mounted and removes the mount. Returns false
   // if |mount_id| does not exist in |mounts_|.
   bool RemoveMount(int32_t mount_id);

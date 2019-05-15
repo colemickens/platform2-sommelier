@@ -3002,43 +3002,6 @@ TEST_F(SmbProviderTest, GetSharesReturnsShareContainingDirectory) {
   EXPECT_TRUE(entry1.is_directory());
 }
 
-// Remount fails on an invalid protobuf.
-TEST_F(SmbProviderTest, RemountFailsWithInvalidProto) {
-  ProtoBlob empty_blob;
-
-  EXPECT_EQ(ERROR_DBUS_PARSE_FAILED,
-            CastError(smbprovider_->Remount(empty_blob, base::ScopedFD())));
-  EXPECT_EQ(0, mount_manager_->MountCount());
-  ExpectNoOpenEntries();
-}
-
-// Remount should succeed regardless if shares are valid or not. This is to
-// mimic the behavior of remounting a dormant share.
-TEST_F(SmbProviderTest, RemountSucceedsOnInvalidShare) {
-  const int32_t mount_id = 1;
-  ProtoBlob blob = CreateRemountOptionsBlob(
-      "smb://testshare/none", "" /* workgroup */, "" /* username */, mount_id,
-      MountConfig(true /* enable_ntlm */));
-
-  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Remount(blob, base::ScopedFD())));
-  EXPECT_EQ(1, mount_manager_->MountCount());
-  ExpectNoOpenEntries();
-}
-
-// Remount succeeds on a mountable share.
-TEST_F(SmbProviderTest, RemountSucceedsOnValidShare) {
-  fake_samba_->AddDirectory("smb://testshare");
-
-  const int32_t mount_id = 1;
-  ProtoBlob blob = CreateRemountOptionsBlob(
-      "smb://testshare", "" /* workgroup */, "" /* username */, mount_id,
-      MountConfig(true /* enable_ntlm */));
-
-  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Remount(blob, base::ScopedFD())));
-  EXPECT_EQ(1, mount_manager_->MountCount());
-  EXPECT_TRUE(mount_manager_->IsAlreadyMounted(mount_id));
-}
-
 TEST_F(SmbProviderTest, SetupKerberosWritesKerberosFilesSuccessfully) {
   const std::string user = "test user";
   const std::string krb5cc = "test creds";
@@ -3472,36 +3435,6 @@ TEST_F(SmbProviderTest, TestMountConfigDisableNTLM) {
   EXPECT_FALSE(enable_ntlm_);
 }
 
-TEST_F(SmbProviderTest, TestRemountConfigEnableNTLM) {
-  fake_samba_->AddDirectory("smb://testshare");
-
-  const int32_t mount_id = 1;
-  MountConfig mount_config(true /* enable_ntlm */);
-  ProtoBlob blob = CreateRemountOptionsBlob(
-      "smb://testshare", "" /* workgroup */, "" /* username */, mount_id,
-      std::move(mount_config));
-
-  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Remount(blob, base::ScopedFD())));
-  EXPECT_EQ(1, mount_manager_->MountCount());
-  EXPECT_TRUE(mount_manager_->IsAlreadyMounted(mount_id));
-  EXPECT_TRUE(enable_ntlm_);
-}
-
-TEST_F(SmbProviderTest, TestRemountConfigDisableNTLM) {
-  fake_samba_->AddDirectory("smb://testshare");
-
-  const int32_t mount_id = 1;
-  MountConfig mount_config(false /* enable_ntlm */);
-  ProtoBlob blob = CreateRemountOptionsBlob(
-      "smb://testshare", "" /* workgroup */, "" /* username */, mount_id,
-      std::move(mount_config));
-
-  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Remount(blob, base::ScopedFD())));
-  EXPECT_EQ(1, mount_manager_->MountCount());
-  EXPECT_TRUE(mount_manager_->IsAlreadyMounted(mount_id));
-  EXPECT_FALSE(enable_ntlm_);
-}
-
 TEST_F(SmbProviderTest, UpdateMountCredentialsSucceedsOnValidMount) {
   const std::string workgroup = "google";
   const std::string username = "user";
@@ -3540,100 +3473,6 @@ TEST_F(SmbProviderTest, UpdateMountCredentialsFailsOnNonExistantMount) {
   EXPECT_NE(ERROR_OK, smbprovider_->UpdateMountCredentials(
                           blob, WritePasswordToFile(&temp_file_manager_,
                                                     updated_password)));
-}
-
-TEST_F(SmbProviderTest, TestPremountSucceeds) {
-  fake_samba_->AddDirectory(GetDefaultServer());
-  fake_samba_->AddDirectory(GetDefaultMountRoot());
-
-  ProtoBlob blob = CreatePremountOptionsBlob(GetDefaultMountRoot());
-
-  EXPECT_EQ(0, mount_manager_->MountCount());
-
-  int32_t error_code;
-  int32_t mount_id;
-  smbprovider_->Premount(blob, &error_code, &mount_id);
-
-  EXPECT_EQ(ERROR_OK, CastError(error_code));
-  EXPECT_GE(mount_id, 0);
-  EXPECT_EQ(1, mount_manager_->MountCount());
-}
-
-TEST_F(SmbProviderTest, TestPremountSucceedsOnEPERM) {
-  fake_samba_->AddDirectory(GetDefaultServer());
-  fake_samba_->AddDirectory(GetDefaultMountRoot());
-
-  // EPERM is an acceptable authentication error.
-  const int32_t permission_error = EPERM;
-  fake_samba_->SetGetDirectoryError(permission_error);
-
-  ProtoBlob blob = CreatePremountOptionsBlob(GetDefaultMountRoot());
-
-  EXPECT_EQ(0, mount_manager_->MountCount());
-
-  int32_t error_code;
-  int32_t mount_id;
-  smbprovider_->Premount(blob, &error_code, &mount_id);
-
-  EXPECT_EQ(ERROR_OK, CastError(error_code));
-  EXPECT_GE(mount_id, 0);
-  EXPECT_EQ(1, mount_manager_->MountCount());
-}
-
-TEST_F(SmbProviderTest, TestPremountSucceedsOnEACCES) {
-  fake_samba_->AddDirectory(GetDefaultServer());
-  fake_samba_->AddDirectory(GetDefaultMountRoot());
-
-  // EACCES is an acceptable authentication error.
-  const int32_t access_error = EACCES;
-  fake_samba_->SetGetDirectoryError(access_error);
-
-  ProtoBlob blob = CreatePremountOptionsBlob(GetDefaultMountRoot());
-  EXPECT_EQ(0, mount_manager_->MountCount());
-
-  int32_t error_code;
-  int32_t mount_id;
-  smbprovider_->Premount(blob, &error_code, &mount_id);
-
-  EXPECT_EQ(ERROR_OK, CastError(error_code));
-  EXPECT_GE(mount_id, 0);
-  EXPECT_EQ(1, mount_manager_->MountCount());
-}
-
-TEST_F(SmbProviderTest, TestPremountSucceedsOnETIMEDOUT) {
-  fake_samba_->AddDirectory(GetDefaultServer());
-  fake_samba_->AddDirectory(GetDefaultMountRoot());
-
-  // No connection to the host.
-  const int32_t access_error = ETIMEDOUT;
-  fake_samba_->SetGetDirectoryError(access_error);
-
-  ProtoBlob blob = CreatePremountOptionsBlob(GetDefaultMountRoot());
-  EXPECT_EQ(0, mount_manager_->MountCount());
-
-  int32_t error_code;
-  int32_t mount_id;
-  smbprovider_->Premount(blob, &error_code, &mount_id);
-
-  EXPECT_EQ(ERROR_OK, CastError(error_code));
-  EXPECT_GE(mount_id, 0);
-  EXPECT_EQ(1, mount_manager_->MountCount());
-}
-
-TEST_F(SmbProviderTest, TestPremountSucceedsOnExistingMount) {
-  PrepareMount();
-
-  EXPECT_EQ(1, mount_manager_->MountCount());
-
-  ProtoBlob blob = CreatePremountOptionsBlob(GetDefaultMountRoot());
-
-  int32_t mount_id2 = -1;
-  int32_t error_code;
-  smbprovider_->Premount(blob, &error_code, &mount_id2);
-
-  EXPECT_EQ(ERROR_OK, CastError(error_code));
-  EXPECT_GE(mount_id2, 0);
-  EXPECT_EQ(2, mount_manager_->MountCount());
 }
 
 TEST_F(SmbProviderTest, TestUpdateSharePathSucceeds) {

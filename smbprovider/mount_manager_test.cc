@@ -74,25 +74,6 @@ class MountManagerTest : public testing::Test {
                              mount_id);
   }
 
-  bool Remount(const std::string& root_path, int32_t mount_id) {
-    return Remount(root_path, mount_id, SmbCredential());
-  }
-
-  bool Remount(const std::string& root_path,
-               int32_t mount_id,
-               SmbCredential credential) {
-    return mounts_->Remount(root_path, mount_id, std::move(credential),
-                            MountConfig(true /* enable_ntlm */));
-  }
-
-  bool RemountWithMountConfig(const std::string& root_path,
-                              SmbCredential credential,
-                              const MountConfig& mount_config,
-                              int32_t mount_id) {
-    return mounts_->Remount(root_path, mount_id, std::move(credential),
-                            mount_config);
-  }
-
   void ExpectCredentialsEqual(int32_t mount_id,
                               const std::string& root_path,
                               const std::string& workgroup,
@@ -306,51 +287,6 @@ TEST_F(MountManagerTest, TestGetRelativePathOnRoot) {
             mounts_->GetRelativePath(mount_id, full_path));
 }
 
-TEST_F(MountManagerTest, TestRemountSucceeds) {
-  const std::string root_path = "smb://server/share1";
-  const int32_t mount_id = 9;
-
-  EXPECT_TRUE(Remount(root_path, mount_id));
-  EXPECT_EQ(1, mounts_->MountCount());
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
-}
-
-TEST_F(MountManagerTest, TestRemountSucceedsWithSameMount) {
-  const std::string root_path = "smb://server/share1";
-  const int32_t mount_id = 9;
-
-  EXPECT_TRUE(Remount(root_path, mount_id));
-  EXPECT_EQ(1, mounts_->MountCount());
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
-
-  const int32_t mount_id2 = 10;
-  EXPECT_TRUE(Remount(root_path, mount_id2));
-}
-
-TEST_F(MountManagerTest, TestMountAfterRemounts) {
-  const std::string root_path_1 = "smb://server/share1";
-  const int32_t mount_id_1 = 9;
-
-  const std::string root_path_2 = "smb://server/share2";
-  const int32_t mount_id_2 = 4;
-
-  const std::string new_root_path = "smb://server/share3";
-
-  EXPECT_TRUE(Remount(root_path_1, mount_id_1));
-  EXPECT_TRUE(Remount(root_path_2, mount_id_2));
-
-  EXPECT_EQ(2, mounts_->MountCount());
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id_1));
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id_2));
-
-  int32_t mount_id_3;
-
-  EXPECT_TRUE(AddMount(new_root_path, &mount_id_3));
-  EXPECT_EQ(3, mounts_->MountCount());
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id_3));
-  EXPECT_GT(mount_id_3, mount_id_1);
-}
-
 TEST_F(MountManagerTest, TestAddMountWithCredential) {
   const std::string root_path = "smb://server/share1";
   const std::string workgroup = "google";
@@ -445,13 +381,6 @@ TEST_F(MountManagerTest, TestAddSameMount) {
   EXPECT_NE(mount_id, mount_id2);
 }
 
-TEST_F(MountManagerTest, TestRemountWithSamePath) {
-  const std::string root_path = "smb://server/share1";
-
-  EXPECT_TRUE(Remount(root_path, 1 /* mount_id */));
-  EXPECT_TRUE(Remount(root_path, 2 /* mount_id */));
-}
-
 TEST_F(MountManagerTest, TestRemovedMountCanBeRemounted) {
   const std::string root_path = "smb://server/share1";
   int32_t mount_id;
@@ -461,26 +390,6 @@ TEST_F(MountManagerTest, TestRemovedMountCanBeRemounted) {
 
   // Should be able to be remounted again.
   EXPECT_TRUE(AddMount(root_path, &mount_id));
-}
-
-TEST_F(MountManagerTest, TestRemountWithCredential) {
-  const std::string root_path = "smb://server/share1";
-  const std::string workgroup = "google";
-  const std::string username = "user1";
-  const std::string password = "admin";
-  const int32_t mount_id = 1;
-
-  EXPECT_EQ(0, mounts_->MountCount());
-  EXPECT_FALSE(mounts_->IsAlreadyMounted(mount_id));
-
-  SmbCredential credential = CreateCredential(workgroup, username, password);
-
-  EXPECT_TRUE(Remount(root_path, mount_id, std::move(credential)));
-
-  EXPECT_EQ(1, mounts_->MountCount());
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
-
-  ExpectCredentialsEqual(mount_id, root_path, workgroup, username, password);
 }
 
 TEST_F(MountManagerTest, TestReturnsEmptyPasswordWithInvalidFd) {
@@ -672,32 +581,6 @@ TEST_F(MountManagerTest, TestDisableNTLM) {
   EXPECT_FALSE(enable_ntlm_);
 }
 
-TEST_F(MountManagerTest, TestRemountEnableNTLM) {
-  EXPECT_FALSE(enable_ntlm_);
-
-  int mount_id = 2;
-  SmbCredential credential = CreateCredential(kWorkgroup, kUsername, kPassword);
-
-  MountConfig mount_config(true /* enable_ntlm */);
-
-  EXPECT_TRUE(RemountWithMountConfig(kMountRoot, std::move(credential),
-                                     mount_config, mount_id));
-  EXPECT_TRUE(enable_ntlm_);
-}
-
-TEST_F(MountManagerTest, TestRemountDisableNTLM) {
-  EXPECT_FALSE(enable_ntlm_);
-
-  int mount_id = 2;
-  SmbCredential credential = CreateCredential(kWorkgroup, kUsername, kPassword);
-
-  MountConfig mount_config(false /* enable_ntlm */);
-
-  EXPECT_TRUE(RemountWithMountConfig(kMountRoot, std::move(credential),
-                                     mount_config, mount_id));
-  EXPECT_FALSE(enable_ntlm_);
-}
-
 TEST_F(MountManagerTest, TestUpdateMountCredentials) {
   int mount_id = 1;
   SmbCredential credential = CreateCredential(kWorkgroup, kUsername, kPassword);
@@ -754,35 +637,6 @@ TEST_F(MountManagerTest, TestUpdateMountCredentialsOnUnmountedMount) {
 
   EXPECT_FALSE(
       mounts_->UpdateMountCredential(mount_id, std::move(credential2)));
-}
-
-TEST_F(MountManagerTest, TestPremountSucceeds) {
-  int mount_id = -1;
-
-  EXPECT_EQ(0, mounts_->MountCount());
-  EXPECT_TRUE(mounts_->Premount(kMountRoot, MountConfig(true /* enable_ntlm */),
-                                &mount_id));
-
-  EXPECT_GE(mount_id, 0);
-  EXPECT_EQ(1, mounts_->MountCount());
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
-}
-
-TEST_F(MountManagerTest, TestPremountSucceedsOnExistingMount) {
-  int mount_id = -1;
-
-  EXPECT_EQ(0, mounts_->MountCount());
-  EXPECT_TRUE(AddMount(kMountRoot, &mount_id));
-
-  EXPECT_GE(mount_id, 0);
-  EXPECT_EQ(1, mounts_->MountCount());
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
-
-  int mount_id2 = -1;
-  EXPECT_TRUE(mounts_->Premount(kMountRoot, MountConfig(true /* enable_ntlm */),
-                                &mount_id2));
-  EXPECT_GE(mount_id2, 0);
-  EXPECT_NE(mount_id, mount_id2);
 }
 
 TEST_F(MountManagerTest, TestUpdateSharePathSucceeds) {

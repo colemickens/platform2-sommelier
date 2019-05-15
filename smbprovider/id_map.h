@@ -36,13 +36,6 @@ class IdMap {
     return next_id;
   }
 
-  void InsertWithSpecificId(int32_t id, T value) {
-    DCHECK_EQ(0, ids_.count(id));
-
-    ids_.emplace(id, std::move(value));
-    next_unused_id_ = std::max(next_unused_id_, id) + 1;
-  }
-
   typename MapType::const_iterator Find(int32_t id) const {
     return ids_.find(id);
   }

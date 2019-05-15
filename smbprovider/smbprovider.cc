@@ -144,31 +144,6 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
   }
 }
 
-int32_t SmbProvider::Remount(const ProtoBlob& options_blob,
-                             const base::ScopedFD& password_fd) {
-  // The functions below will set the error if they fail.
-  int32_t error_code = static_cast<int32_t>(ERROR_OK);
-
-  RemountOptionsProto options;
-  if (!ParseOptionsProto(options_blob, &options, &error_code)) {
-    return error_code;  // Error with parsing proto.
-  }
-
-  MountConfig mount_config = ConvertToMountConfig(options);
-
-  const bool remounted = Remount(options.path(), GetMountId(options),
-                                 mount_config, options.workgroup(),
-                                 options.username(), password_fd, &error_code);
-
-  if (!remounted) {
-    LOG(WARNING) << "Mount ID " << options.mount_id()
-                 << " was not available during remount."
-                 << " Leaving mount in dormant state.";
-  }
-
-  return error_code;
-}
-
 int32_t SmbProvider::Unmount(const ProtoBlob& options_blob) {
   int32_t error_code;
   UnmountOptionsProto options;
@@ -643,32 +618,6 @@ int32_t SmbProvider::UpdateMountCredentials(const ProtoBlob& options_blob,
   return static_cast<int32_t>(ERROR_OK);
 }
 
-void SmbProvider::Premount(const ProtoBlob& options_blob,
-                           int32_t* error_code,
-                           int32_t* mount_id) {
-  DCHECK(error_code);
-  DCHECK(mount_id);
-  *mount_id = -1;
-
-  // The functions below will set the error if they fail.
-  *error_code = static_cast<int32_t>(ERROR_OK);
-  PremountOptionsProto options;
-
-  if (!ParseOptionsProto(options_blob, &options, error_code)) {
-    return;  // Error parsing proto.
-  }
-
-  MountConfig mount_config = ConvertToMountConfig(options);
-
-  const bool success =
-      Premount(options.path(), mount_config, error_code, mount_id);
-
-  if (!success) {
-    LOG(ERROR) << "Failed to premount preconfigured share.";
-    RemoveMountIfMounted(*mount_id);
-  }
-}
-
 int32_t SmbProvider::UpdateSharePath(const ProtoBlob& options_blob) {
   int32_t error_code;
   UpdateSharePathOptionsProto options;
@@ -889,37 +838,6 @@ bool SmbProvider::AddMount(const std::string& mount_root,
   }
 
   return added;
-}
-
-bool SmbProvider::Remount(const std::string& mount_root,
-                          int32_t mount_id,
-                          const MountConfig& mount_config,
-                          const std::string& workgroup,
-                          const std::string& username,
-                          const base::ScopedFD& password_fd,
-                          int32_t* error_code) {
-  SmbCredential credential(workgroup, username, GetPassword(password_fd));
-  bool remounted = mount_manager_->Remount(mount_root, mount_id,
-                                           std::move(credential), mount_config);
-  if (!remounted) {
-    *error_code = static_cast<int32_t>(ERROR_IN_USE);
-  }
-
-  return remounted;
-}
-
-bool SmbProvider::Premount(const std::string& mount_root,
-                           const MountConfig& mount_config,
-                           int32_t* error_code,
-                           int32_t* mount_id) {
-  const bool premounted =
-      mount_manager_->Premount(mount_root, mount_config, mount_id);
-
-  if (!premounted) {
-    *error_code = static_cast<int32_t>(ERROR_IN_USE);
-  }
-
-  return premounted;
 }
 
 void SmbProvider::RemoveMountIfMounted(int32_t mount_id) {

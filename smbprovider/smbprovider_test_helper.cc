@@ -195,27 +195,6 @@ GetSharesOptionsProto CreateGetSharesOptionsProto(
   return options;
 }
 
-RemountOptionsProto CreateRemountOptionsProto(const std::string& path,
-                                              const std::string& workgroup,
-                                              const std::string& username,
-                                              int32_t mount_id,
-                                              MountConfig mount_config) {
-  RemountOptionsProto options;
-  options.set_path(path);
-  options.set_mount_id(mount_id);
-  options.set_workgroup(workgroup);
-  options.set_username(username);
-
-  // set_allocated_mount_config() transfers ownership of |mount_config| to
-  // |mount_options| so |mount_config| needs to be created in the heap.
-  auto config = std::make_unique<MountConfigProto>();
-  config->set_enable_ntlm(mount_config.enable_ntlm);
-
-  options.set_allocated_mount_config(config.release());
-
-  return options;
-}
-
 authpolicy::KerberosFiles CreateKerberosFilesProto(
     const std::string& krb5cc, const std::string& krb5conf) {
   authpolicy::KerberosFiles kerberos_files;
@@ -234,19 +213,6 @@ UpdateMountCredentialsOptionsProto CreateUpdateMountCredentialsOptionsProto(
   update_options.set_username(username);
 
   return update_options;
-}
-
-PremountOptionsProto CreatePremountOptionsProto(const std::string& path) {
-  PremountOptionsProto premount_options;
-  premount_options.set_path(path);
-
-  // Default to enable NTLM authentication.
-  std::unique_ptr<MountConfigProto> config =
-      CreateMountConfigProto(true /* enable_ntlm */);
-
-  premount_options.set_allocated_mount_config(config.release());
-
-  return premount_options;
 }
 
 UpdateSharePathOptionsProto CreateUpdateSharePathOptionsProto(
@@ -374,24 +340,11 @@ ProtoBlob CreateGetSharesOptionsBlob(const std::string& server_url) {
   return SerializeProtoToBlobAndCheck(CreateGetSharesOptionsProto(server_url));
 }
 
-ProtoBlob CreateRemountOptionsBlob(const std::string& path,
-                                   const std::string& workgroup,
-                                   const std::string& username,
-                                   int32_t mount_id,
-                                   MountConfig mount_config) {
-  return SerializeProtoToBlobAndCheck(CreateRemountOptionsProto(
-      path, workgroup, username, mount_id, std::move(mount_config)));
-}
-
 ProtoBlob CreateUpdateMountCredentialsOptionsBlob(int32_t mount_id,
                                                   const std::string& workgroup,
                                                   const std::string& username) {
   return SerializeProtoToBlobAndCheck(
       CreateUpdateMountCredentialsOptionsProto(mount_id, workgroup, username));
-}
-
-ProtoBlob CreatePremountOptionsBlob(const std::string& path) {
-  return SerializeProtoToBlobAndCheck(CreatePremountOptionsProto(path));
 }
 
 ProtoBlob CreateUpdateSharePathOptionsBlob(int32_t mount_id,

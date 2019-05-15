@@ -69,9 +69,6 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
              int32_t* error_code,
              int32_t* mount_id) override;
 
-  int32_t Remount(const ProtoBlob& options_blob,
-                  const base::ScopedFD& password_fd) override;
-
   int32_t Unmount(const ProtoBlob& options_blob) override;
 
   void ReadDirectory(const ProtoBlob& options_blob,
@@ -140,10 +137,6 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
 
   int32_t UpdateMountCredentials(const ProtoBlob& options_blob,
                                  const base::ScopedFD& password_fd) override;
-
-  void Premount(const ProtoBlob& options_blob,
-                int32_t* error_code,
-                int32_t* mount_id) override;
 
   int32_t UpdateSharePath(const ProtoBlob& options_blob) override;
 
@@ -222,22 +215,6 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                 const std::string& workgroup,
                 const std::string& username,
                 const base::ScopedFD& password_fd,
-                int32_t* error_code,
-                int32_t* mount_id);
-
-  // Remounts |mount_root| on mount_manager_ with |mount_id| and sets
-  // |error_code| on failure.
-  bool Remount(const std::string& mount_root,
-               int32_t mount_id,
-               const MountConfig& mount_config,
-               const std::string& workgroup,
-               const std::string& username,
-               const base::ScopedFD& password_fd,
-               int32_t* error_code);
-
-  // Premounts |mount_root| on mount_manager_ and sets |error_code| on failure.
-  bool Premount(const std::string& mount_root,
-                const MountConfig& mount_config,
                 int32_t* error_code,
                 int32_t* mount_id);
 

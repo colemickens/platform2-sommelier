@@ -107,16 +107,6 @@ bool IsValidOptions(const GetSharesOptionsProto& options) {
   return options.has_server_url();
 }
 
-bool IsValidOptions(const RemountOptionsProto& options) {
-  return options.has_path() && options.has_mount_id() &&
-         options.mount_id() >= 0 && options.has_workgroup() &&
-         options.has_username() && IsValidMountConfig(options.mount_config());
-}
-
-bool IsValidOptions(const PremountOptionsProto& options) {
-  return options.has_path() && IsValidMountConfig(options.mount_config());
-}
-
 bool IsValidOptions(const UpdateMountCredentialsOptionsProto& options) {
   return options.has_mount_id() && options.mount_id() >= 0 &&
          options.has_workgroup() && options.has_username();
@@ -247,16 +237,8 @@ const char* GetMethodName(const GetSharesOptionsProto& unused) {
   return kGetSharesMethod;
 }
 
-const char* GetMethodName(const RemountOptionsProto& unused) {
-  return kRemountMethod;
-}
-
 const char* GetMethodName(const UpdateMountCredentialsOptionsProto& unused) {
   return kUpdateMountCredentialsMethod;
-}
-
-const char* GetMethodName(const PremountOptionsProto& unused) {
-  return kPremountMethod;
 }
 
 const char* GetMethodName(const UpdateSharePathOptionsProto& unused) {

@@ -33,53 +33,6 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
 
-    <method name="Remount">
-      <tp:docstring>
-        'Remounts' a given share by attempting to call smbc_opendir on given share path. Shares will always be remounted regardless if they can be reached on the network or not. 'Remounts' is
-        in quotes because similarly to Mount this does not do an actual mount since it is not needed on an SMB share.
-        This will assign the mount the mount_id in the RemountOptions proto.
-      </tp:docstring>
-      <arg name="options_blob" type="ay" direction="in">
-        <tp:docstring>
-          Serialized RemountOptions protobuf.
-        </tp:docstring>
-      </arg>
-      <arg name="password_fd" type="h" direction="in">
-        <tp:docstring>
-          File descriptor of the file that contains the password.
-        </tp:docstring>
-      </arg>
-      <arg name="error_code" type="i" direction="out">
-        <tp:docstring>
-          Returned error code. See ErrorType enum.
-        </tp:docstring>
-      </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
-    </method>
-
-    <method name="Premount">
-      <tp:docstring>
-       'Premounts' a given share by attempting to call smbc_opendir on given share path. Shares will only be premounted if shares are reachable on the network. Premount will succeed if there is an authentication failure.
-       'Premounts' is in quotes because this does not actually do an actual mount since it is not needed on an SMB share. On success, this returns the corresponding mount id.
-      </tp:docstring>
-      <arg name="options_blob" type="ay" direction="in">
-        <tp:docstring>
-          Serialized PremountOptionsProto protobuf.
-        </tp:docstring>
-      </arg>
-      <arg name="error_code" type="i" direction="out">
-        <tp:docstring>
-          Returned error code. See ErrorType enum.
-        </tp:docstring>
-      </arg>
-      <arg name="mount_id" type="i" direction="out">
-        <tp:docstring>
-          Unique identifier of the mounted share.
-        </tp:docstring>
-      </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
-    </method>
-
     <method name="Unmount">
       <tp:docstring>
         Unmounts' the mount corresponding to the mount id. 'Unmounts' is in quotes because this

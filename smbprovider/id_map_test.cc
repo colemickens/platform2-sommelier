@@ -152,20 +152,6 @@ TEST_F(IdMapTest, TestIdReuse) {
   EXPECT_NE(id3, id4);
 }
 
-TEST_F(IdMapTest, TestInsertWithSpecificId) {
-  const int32_t specific_id = 5;
-  map_.InsertWithSpecificId(specific_id, "Foo");
-
-  // Subsequent id's will be higher than the specific id.
-  const int32_t id2 = map_.Insert("Bar");
-  EXPECT_GE(id2, specific_id);
-
-  // The specific id can be reused though.
-  EXPECT_TRUE(map_.Remove(specific_id));
-  const int32_t id3 = map_.Insert("Baz");
-  EXPECT_EQ(specific_id, id3);
-}
-
 TEST_F(IdMapTest, TestInsertAndAt) {
   const std::string expected = "Foo";
   const int32_t id = map_.Insert(expected);

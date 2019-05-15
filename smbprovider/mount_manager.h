@@ -64,28 +64,6 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
                 const MountConfig& mount_config,
                 int32_t* mount_id);
 
-  // Adds |mount_root| to the |mounts_| map with a specific mount_id. Must not
-  // be called after AddMount is called for the first time. |mount_config| holds
-  // the mount options set by the client.  Will always remount a share
-  // regardless if it can be reached on the network or not. Returns false if
-  // |mount_root| is already mounted.
-  bool Remount(const std::string& mount_root,
-               int32_t mount_id,
-               SmbCredential credential,
-               const MountConfig& mount_config);
-
-  // Adds |mount_root| to the |mounts_| map and outputs the |mount_id|
-  // that was assigned to this mount. Ids are >=0 and are not
-  // re-used within the lifetime of this class. |mount_config| holds the mount
-  // options set by the client. If |mount_root| is already mounted, this
-  // returns false and |mount_id| will be unmodified. Differs from AddMount() in
-  // that credentials are not required for premounts. Shares that require
-  // authentication will be successfully mounted and credentials can be added
-  // later.
-  bool Premount(const std::string& mount_root,
-                const MountConfig& mount_config,
-                int32_t* mount_id);
-
   // Returns true if |mount_id| was mounted and removes the mount.
   bool RemoveMount(int32_t mount_id);
 

@@ -158,27 +158,6 @@ bool MountManager::AddMount(const std::string& mount_root,
   return mount_succeeded;
 }
 
-bool MountManager::Remount(const std::string& mount_root,
-                           int32_t mount_id,
-                           SmbCredential credential,
-                           const MountConfig& mount_config) {
-  DCHECK(can_remount_);
-  DCHECK_GE(mount_id, 0);
-
-  return mount_tracker_->AddMountWithId(mount_root, std::move(credential),
-                                        CreateSambaInterface(mount_config),
-                                        mount_id);
-}
-
-bool MountManager::Premount(const std::string& mount_root,
-                            const MountConfig& mount_config,
-                            int32_t* mount_id) {
-  DCHECK(mount_id);
-
-  return mount_tracker_->AddMount(mount_root, SmbCredential(),
-                                  CreateSambaInterface(mount_config), mount_id);
-}
-
 bool MountManager::RemoveMount(int32_t mount_id) {
   DCHECK_GE(mount_id, 0);
 
