@@ -690,12 +690,6 @@ class Device : public base::RefCounted<Device> {
   // Configure static IP address parameters if the service provides them.
   void ConfigureStaticIPTask();
 
-  // Right now, Devices reference IPConfigs directly when persisted to disk
-  // It's not clear that this makes sense long-term, but that's how it is now.
-  // This call generates a string in the right format for this persisting.
-  // |suffix| is injected into the storage identifier used for the configs.
-  std::string SerializeIPConfigs(const std::string& suffix);
-
   // Set an IP configuration flag on the device. |family| should be "ipv6" or
   // "ipv4". |flag| should be the name of the flag to be set and |value| is
   // what this flag should be set to. Overridden by unit tests to pretend
