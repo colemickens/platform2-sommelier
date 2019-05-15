@@ -43,6 +43,10 @@ class FieldConverter {
     FIELD_NOT_FOUND = 1,
     // Failed to convert the field
     INCOMPATIBLE_VALUE = 2,
+    // The operator is not supported by this converter
+    UNSUPPORTED_OPERATOR = 3,
+    // Field value is invalid
+    INVALID_VALUE = 4,
   };
 
   // Try to find |field_name| in dict_value, and convert it to expected type.
@@ -50,6 +54,13 @@ class FieldConverter {
   // @return |ReturnCode| to indicate success or reason of failure.
   virtual ReturnCode Convert(const std::string& field_name,
                              base::DictionaryValue* const dict_value) const = 0;
+
+  // Check if value of |field_name| in dict_value is valid.
+  //
+  // @return |ReturnCode| to indicate success or reason of failure.
+  virtual ReturnCode Validate(
+      const std::string& field_name,
+      base::DictionaryValue* const dict_value) const = 0;
 
   virtual std::string ToString() const = 0;
 
@@ -66,6 +77,9 @@ class StringFieldConverter : public FieldConverter {
  public:
   ReturnCode Convert(const std::string& field_name,
                      base::DictionaryValue* const dict_value) const override;
+
+  ReturnCode Validate(const std::string& field_name,
+                      base::DictionaryValue* const dict_value) const override;
 
   std::string ToString() const override;
 
@@ -85,6 +99,8 @@ class StringFieldConverter : public FieldConverter {
   ValidatorOperator operator_;
   std::string operand_;
   std::unique_ptr<pcrecpp::RE> regex_;
+
+  FRIEND_TEST(StringFieldConverterTest, TestValidateRule);
 };
 
 // Numeric Field Converters convert a field into a numeric type.
@@ -114,6 +130,9 @@ class IntegerFieldConverter : public FieldConverter {
   ReturnCode Convert(const std::string& field_name,
                      base::DictionaryValue* const dict_value) const override;
 
+  ReturnCode Validate(const std::string& field_name,
+                      base::DictionaryValue* const dict_value) const override;
+
   std::string ToString() const override;
 
   static std::unique_ptr<IntegerFieldConverter> Build(
@@ -129,6 +148,8 @@ class IntegerFieldConverter : public FieldConverter {
  private:
   ValidatorOperator operator_;
   OperandType operand_;
+
+  FRIEND_TEST(IntegerFieldConverterTest, TestValidateRule);
 };
 
 // Convert a hex string field to integer.
@@ -146,6 +167,9 @@ class HexFieldConverter : public FieldConverter {
   ReturnCode Convert(const std::string& field_name,
                      base::DictionaryValue* const dict_value) const override;
 
+  ReturnCode Validate(const std::string& field_name,
+                      base::DictionaryValue* const dict_value) const override;
+
   std::string ToString() const override;
 
   static std::unique_ptr<HexFieldConverter> Build(
@@ -161,6 +185,8 @@ class HexFieldConverter : public FieldConverter {
  private:
   ValidatorOperator operator_;
   OperandType operand_;
+
+  FRIEND_TEST(HexFieldConverterTest, TestValidateRule);
 };
 
 // Convert a field to double.
@@ -174,6 +200,9 @@ class DoubleFieldConverter : public FieldConverter {
 
   ReturnCode Convert(const std::string& field_name,
                      base::DictionaryValue* const dict_value) const override;
+
+  ReturnCode Validate(const std::string& field_name,
+                      base::DictionaryValue* const dict_value) const override;
 
   std::string ToString() const override;
 
@@ -190,6 +219,8 @@ class DoubleFieldConverter : public FieldConverter {
  private:
   ValidatorOperator operator_;
   OperandType operand_;
+
+  FRIEND_TEST(DoubleFieldConverterTest, TestValidateRule);
 };
 
 // Holds |expect| attribute of a |ProbeStatement|.

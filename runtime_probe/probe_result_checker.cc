@@ -13,7 +13,8 @@
 #include "runtime_probe/utils/type_utils.h"
 
 namespace {
-typedef runtime_probe::ValidatorOperator ValidatorOperator;
+using ValidatorOperator = runtime_probe::ValidatorOperator;
+using ReturnCode = runtime_probe::FieldConverter::ReturnCode;
 
 constexpr const char* GetPrefix(ValidatorOperator op) {
   switch (op) {
@@ -113,11 +114,43 @@ std::unique_ptr<ConverterType> BuildNumericConverter(
   return nullptr;
 }
 
+template <typename ValueType>
+ReturnCode CheckNumber(ValidatorOperator op,
+                       const ValueType lhs,
+                       const ValueType rhs) {
+  bool is_valid = true;
+  switch (op) {
+    case ValidatorOperator::NOP:
+      break;
+    case ValidatorOperator::EQ:
+      is_valid = lhs == rhs;
+      break;
+    case ValidatorOperator::GE:
+      is_valid = lhs >= rhs;
+      break;
+    case ValidatorOperator::GT:
+      is_valid = lhs > rhs;
+      break;
+    case ValidatorOperator::LE:
+      is_valid = lhs <= rhs;
+      break;
+    case ValidatorOperator::LT:
+      is_valid = lhs < rhs;
+      break;
+    case ValidatorOperator::NE:
+      is_valid = lhs != rhs;
+      break;
+    default:
+      return ReturnCode::UNSUPPORTED_OPERATOR;
+  }
+  return is_valid ? ReturnCode::OK : ReturnCode::INVALID_VALUE;
+}
+
 }  // namespace
 
 namespace runtime_probe {
 
-typedef FieldConverter::ReturnCode ReturnCode;
+using ReturnCode = FieldConverter::ReturnCode;
 
 std::string StringFieldConverter::ToString() const {
   return base::StringPrintf("StringFieldConverter(%s, %s)",
@@ -306,6 +339,63 @@ ReturnCode DoubleFieldConverter::Convert(
   }
 }
 
+ReturnCode StringFieldConverter::Validate(
+    const std::string& field_name,
+    base::DictionaryValue* const dict_value) const {
+  std::string value;
+
+  if (!dict_value->GetString(field_name, &value))
+    return ReturnCode::FIELD_NOT_FOUND;
+
+  bool is_valid = true;
+  switch (operator_) {
+    case ValidatorOperator::NOP:
+      break;
+    case ValidatorOperator::EQ:
+      is_valid = value == operand_;
+      break;
+    case ValidatorOperator::RE:
+      is_valid = regex_->FullMatch(value);
+      break;
+    case ValidatorOperator::NE:
+      is_valid = value != operand_;
+      break;
+    default:
+      return ReturnCode::UNSUPPORTED_OPERATOR;
+  }
+  return is_valid ? ReturnCode::OK : ReturnCode::INVALID_VALUE;
+}
+
+ReturnCode IntegerFieldConverter::Validate(
+    const std::string& field_name,
+    base::DictionaryValue* const dict_value) const {
+  int value;
+  if (!dict_value->GetInteger(field_name, &value))
+    return ReturnCode::FIELD_NOT_FOUND;
+
+  return CheckNumber(operator_, value, operand_);
+}
+
+ReturnCode HexFieldConverter::Validate(
+    const std::string& field_name,
+    base::DictionaryValue* const dict_value) const {
+  int value;
+  if (!dict_value->GetInteger(field_name, &value))
+    return ReturnCode::FIELD_NOT_FOUND;
+
+  return CheckNumber(operator_, value, operand_);
+}
+
+ReturnCode DoubleFieldConverter::Validate(
+    const std::string& field_name,
+    base::DictionaryValue* const dict_value) const {
+  double value;
+  if (!dict_value->GetDouble(field_name, &value))
+    return ReturnCode::FIELD_NOT_FOUND;
+
+  return CheckNumber(operator_, value, operand_);
+}
+
 std::unique_ptr<ProbeResultChecker> ProbeResultChecker::FromDictionaryValue(
     const base::DictionaryValue& dict_value) {
   std::unique_ptr<ProbeResultChecker> instance{new ProbeResultChecker};
@@ -407,7 +497,17 @@ bool ProbeResultChecker::Apply(base::DictionaryValue* probe_result) const {
     }
   }
 
-  return true;
+  // Now all fields should have the correct type, let's validate them.
+  for (const auto& it : required_fields_) {
+    auto return_code = it.second->Validate(it.first, probe_result);
+    if (return_code != ReturnCode::OK) {
+      success = false;
+      break;
+    }
+  }
+  // Optional fields shouldn't have expect value.
+
+  return success;
 }
 
 }  // namespace runtime_probe
