@@ -90,8 +90,12 @@ ChromeProcessKind GetChromeKind(const base::CommandLine& cmdline) {
   // Assume all Chrome binaries are in /opt/google/chrome.
   auto program = cmdline.GetProgram().MaybeAsASCII();
 
-  if (program.find("/opt/google/chrome") != 0)
-    return CHROME_NOT_CHROME;
+  // Chrome execs a bunch of other binaries (for instance, crossystem) so we
+  // can't have a complete list.
+  if (!base::StartsWith(program, "/opt/google/chrome",
+                        base::CompareCase::SENSITIVE)) {
+    return CHROME_OTHER;
+  }
 
   if (program.find("/opt/google/chrome/nacl_helper") == 0)
     return CHROME_BROWSER_HELPER;
@@ -220,6 +224,7 @@ void ProcessInfo::Classify() {
       case CHROME_NOT_CHROME:
         LOG(FATAL) << "Unexpected chrome process: "
                    << process->GetCmdlineString();
+        break;
     }
   }
 
@@ -285,13 +290,16 @@ void ProcessNode::LinkToParent(
     // Not every process has a parent.
     return;
   }
-  const auto& pit = processes.find(ppid_);
+  auto pit = processes.find(ppid_);
   if (pit == processes.end()) {
-    // Parent process does not exist.  This can only happen on a race, because
-    // surviving orphans are reparented to init.  This should be rare.
+    // Parent process does not exist.  This might happen on a race, before the
+    // orphan is reparented to init.  At worst, this should be rare.  We do the
+    // reparenting for consistency.
     LOG(WARNING) << "PID " << pid_ << ": parent " << ppid_ << " not found";
-    return;
+    ppid_ = 1;
+    pit = processes.find(ppid_);
   }
+  // |pit| is now guaranteed to be valid.
   parent_ = pit->second.get();
   parent_->children_.push_back(this);
 }
