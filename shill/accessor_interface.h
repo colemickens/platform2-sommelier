@@ -12,6 +12,7 @@
 
 #include <base/macros.h>
 
+#include "shill/data_types.h"
 #include "shill/key_value_store.h"
 
 namespace shill {
@@ -43,28 +44,14 @@ class AccessorInterface {
   DISALLOW_COPY_AND_ASSIGN(AccessorInterface);
 };
 
-using ByteArray = std::vector<uint8_t>;
-using ByteArrays = std::vector<ByteArray>;
-// Note that while the RpcIdentifiers type has the same concrete
-// representation as the Strings type, it may be serialized
-// differently. Accordingly, PropertyStore tracks RpcIdentifiers
-// separately from Strings. We create a separate typedef here, to make
-// the PropertyStore-related code read more simply.
-using RpcIdentifier = std::string;
-using RpcIdentifiers = std::vector<std::string>;
-using Strings = std::vector<std::string>;
-using Stringmap = std::map<std::string, std::string>;
-using Stringmaps = std::vector<Stringmap>;
-using Uint16s = std::vector<uint16_t>;
-
 // Using a smart pointer here allows pointers to classes derived from
 // AccessorInterface<> to be stored in maps and other STL container types.
 using BoolAccessor = std::unique_ptr<AccessorInterface<bool>>;
 using Int16Accessor = std::unique_ptr<AccessorInterface<int16_t>>;
 using Int32Accessor = std::unique_ptr<AccessorInterface<int32_t>>;
-// See comment above RpcIdentifiers typedef, for the reason why the
-// RpcIdentifiersAccessor exists (even though it has the same
-// underlying type as StringsAccessor).
+// As mentioned in data_types.h, this is a separate typedef from
+// StringAccessor despite having the same underlying type because RpcIdentifier
+// may be serialized differently.
 using RpcIdentifierAccessor = std::unique_ptr<AccessorInterface<RpcIdentifier>>;
 using RpcIdentifiersAccessor =
     std::unique_ptr<AccessorInterface<std::vector<std::string>>>;

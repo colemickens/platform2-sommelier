@@ -10,7 +10,8 @@
 
 #include <base/callback.h>
 
-#include "shill/accessor_interface.h"
+#include "shill/data_types.h"
+#include "shill/key_value_store.h"
 
 namespace shill {
 

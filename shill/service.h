@@ -18,9 +18,9 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/accessor_interface.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
+#include "shill/data_types.h"
 #include "shill/dhcp/dhcp_properties.h"
 #include "shill/net/event_history.h"
 #include "shill/net/shill_time.h"

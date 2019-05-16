@@ -16,6 +16,7 @@
 #include <brillo/variant_dictionary.h>
 
 #include "shill/accessor_interface.h"
+#include "shill/key_value_store.h"
 #include "shill/property_iterator.h"
 
 namespace shill {

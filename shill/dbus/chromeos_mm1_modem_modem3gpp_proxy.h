@@ -11,6 +11,7 @@
 
 #include "cellular/dbus-proxies.h"
 #include "shill/cellular/mm1_modem_modem3gpp_proxy_interface.h"
+#include "shill/key_value_store.h"
 
 namespace shill {
 namespace mm1 {

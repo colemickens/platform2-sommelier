@@ -17,7 +17,6 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <ModemManager/ModemManager.h>
 
-#include "shill/accessor_interface.h"
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_capability.h"
@@ -27,6 +26,8 @@
 #include "shill/cellular/mm1_modem_simple_proxy_interface.h"
 #include "shill/cellular/mm1_sim_proxy_interface.h"
 #include "shill/cellular/subscription_state.h"
+#include "shill/data_types.h"
+#include "shill/key_value_store.h"
 
 namespace shill {
 

@@ -14,7 +14,7 @@
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/accessor_interface.h"  // for ByteArrays
+#include "shill/data_types.h"
 #include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
 

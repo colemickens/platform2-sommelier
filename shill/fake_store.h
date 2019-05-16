@@ -12,6 +12,7 @@
 
 #include <brillo/variant_dictionary.h>
 
+#include "shill/key_value_store.h"
 #include "shill/store_interface.h"
 
 namespace shill {
