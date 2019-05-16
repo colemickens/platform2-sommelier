@@ -17,6 +17,7 @@
 #include "hardware_verifier/hardware_verifier.pb.h"
 #include "hardware_verifier/hw_verification_spec_getter_impl.h"
 #include "hardware_verifier/probe_result_getter_impl.h"
+#include "hardware_verifier/verifier_impl.h"
 
 namespace hardware_verifier {
 
@@ -24,7 +25,7 @@ namespace hardware_verifier {
 CLI::CLI()
     : pr_getter_(std::make_unique<ProbeResultGetterImpl>()),
       vp_getter_(std::make_unique<HwVerificationSpecGetterImpl>()),
-      verifier_(nullptr),
+      verifier_(std::make_unique<VerifierImpl>()),
       output_stream_(&std::cout) {}
 
 CLIVerificationResult CLI::Run(const std::string& probe_result_file,
