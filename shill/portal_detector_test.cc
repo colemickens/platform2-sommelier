@@ -335,6 +335,7 @@ TEST_F(PortalDetectorTest, AttemptCount) {
   PortalDetector::Properties props =
       PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   EXPECT_TRUE(StartPortalRequest(props, 0));
+  EXPECT_EQ(portal_detector()->http_url_string_, kHttpUrl);
 
   EXPECT_CALL(
       callback_target(),
@@ -356,6 +357,7 @@ TEST_F(PortalDetectorTest, AttemptCount) {
     int delay = portal_detector()->AdjustStartDelay(init_delay);
     EXPECT_EQ(delay, init_delay);
     portal_detector()->StartAfterDelay(props, delay);
+    EXPECT_NE(portal_detector()->http_url_string_, kHttpUrl);
     AdvanceTime(delay * 1000);
     PortalDetector::Result r = PortalDetector::GetPortalResultForRequestResult(
         HttpRequest::kResultDNSFailure);

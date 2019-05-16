@@ -171,6 +171,11 @@ class PortalDetector {
   // Time to wait for request to complete.
   static const int kRequestTimeoutSeconds;
 
+  // Picks the HTTP probe URL based on |attempt_count_|. Returns kDefaultHttpUrl
+  // if this is the first attempt. Otherwise, randomly returns an element of
+  // kDefaultFallbackHttpUrls.
+  const std::string PickHttpProbeUrl(const Properties& props);
+
   // Internal method to update the start time of the next event.  This is used
   // to keep attempts spaced by the right duration in the event of a retry.
   void UpdateAttemptTime(int delay_seconds);

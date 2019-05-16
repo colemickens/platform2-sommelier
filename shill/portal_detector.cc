@@ -26,29 +26,6 @@ using base::Callback;
 using base::StringPrintf;
 using std::string;
 
-namespace {
-
-// This keyword gets replaced with a number from the below range.
-const char kRandomKeyword[] = "${RAND}";
-
-// This range is determined by the server-side configuration.  See b/63033351
-const int kMinRandomHost = 1;
-const int kMaxRandomHost = 25;
-
-// If |in| contains the substring |kRandomKeyword|, replace it with a
-// random number between |kMinRandomHost| and |kMaxRandomHost| and return
-// the newly-mangled string.  Otherwise return an exact copy of |in|.  This
-// is used to rotate through alternate hostnames (e.g. alt1..alt25) on
-// each portal check, to defeat IP-based blocking.
-string RandomizeURL(string url) {
-  int alt_host = base::RandInt(kMinRandomHost, kMaxRandomHost);
-  base::ReplaceFirstSubstringAfterOffset(&url, 0, kRandomKeyword,
-                                         base::IntToString(alt_host));
-  return url;
-}
-
-}  // namespace
-
 namespace shill {
 
 namespace Logging {
@@ -105,6 +82,14 @@ bool PortalDetector::StartAfterDelay(const PortalDetector::Properties& props,
   return true;
 }
 
+const string PortalDetector::PickHttpProbeUrl(const Properties& props) {
+  if (attempt_count_ == 0 || props.fallback_http_url_strings.empty()) {
+    return props.http_url_string;
+  }
+  return props.fallback_http_url_strings[base::RandInt(
+      0, props.fallback_http_url_strings.size() - 1)];
+}
+
 bool PortalDetector::StartTrial(const Properties& props,
                                 int start_delay_milliseconds) {
   SLOG(connection_.get(), 3) << "In " << __func__;
@@ -112,16 +97,16 @@ bool PortalDetector::StartTrial(const Properties& props,
   // This step is rerun on each attempt, but trying it here will allow
   // Start() to abort on any obviously malformed URL strings.
   HttpUrl http_url, https_url;
-  if (!http_url.ParseFromString(RandomizeURL(props.http_url_string))) {
+  http_url_string_ = PickHttpProbeUrl(props);
+  https_url_string_ = props.https_url_string;
+  if (!http_url.ParseFromString(http_url_string_)) {
     LOG(ERROR) << "Failed to parse URL string: " << props.http_url_string;
     return false;
   }
-  if (!https_url.ParseFromString(props.https_url_string)) {
+  if (!https_url.ParseFromString(https_url_string_)) {
     LOG(ERROR) << "Failed to parse URL string: " << props.https_url_string;
     return false;
   }
-  http_url_string_ = props.http_url_string;
-  https_url_string_ = props.https_url_string;
 
   if (http_request_ || https_request_) {
     CleanupTrial();
@@ -155,9 +140,9 @@ void PortalDetector::StartTrialTask() {
   base::Callback<void(HttpRequest::Result)> http_request_error_callback(
       Bind(&PortalDetector::HttpRequestErrorCallback,
            weak_ptr_factory_.GetWeakPtr()));
-  HttpRequest::Result http_result = http_request_->Start(
-      RandomizeURL(http_url_string_), http_request_success_callback,
-      http_request_error_callback);
+  HttpRequest::Result http_result =
+      http_request_->Start(http_url_string_, http_request_success_callback,
+                           http_request_error_callback);
   if (http_result != HttpRequest::kResultInProgress) {
     // Return successful HTTPS probe by default.
     CompleteTrial(PortalDetector::GetPortalResultForRequestResult(http_result),
