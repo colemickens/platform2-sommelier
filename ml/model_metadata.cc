@@ -19,9 +19,17 @@ std::map<ModelId, ModelMetadata> GetModelMetadata() {
       },
     },
     {
-      ModelId::SMART_DIM, {
-        ModelId::SMART_DIM,
+      ModelId::SMART_DIM_20181115, {
+        ModelId::SMART_DIM_20181115,
         "mlservice-model-smart_dim-20181115.tflite",
+        {{"input", 3}},
+        {{"output", 4}},
+      },
+    },
+    {
+      ModelId::SMART_DIM_20190221, {
+        ModelId::SMART_DIM_20190221,
+        "mlservice-model-smart_dim-20190221.tflite",
         {{"input", 3}},
         {{"output", 4}},
       },

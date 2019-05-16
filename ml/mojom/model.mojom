@@ -24,7 +24,8 @@ import "ml/mojom/graph_executor.mojom";
 enum ModelId {
   UNSUPPORTED_UNKNOWN = 0,
   TEST_MODEL = 1,
-  SMART_DIM = 2,
+  SMART_DIM_20181115 = 2,
+  SMART_DIM_20190221 = 3,
 };
 
 // These values are persisted to logs. Entries should not be renumbered and
