@@ -32,13 +32,21 @@ constexpr auto kDebugdMmcOption = "extcsd_read";
 constexpr auto kDebugdMmcDefaultTimeout = 10 * 1000;  // in ms
 
 const std::vector<std::string> kAtaFields{"vendor", "model"};
-const std::vector<std::string> kEmmcFields{"type", "name", "oemid", "manfid",
-                                           "serial"};
+const std::vector<std::string> kEmmcFields{"name", "oemid", "manfid", "serial"};
 // Attributes in optional fields:
 // prv: SD and MMCv4 only
 // hwrev: SD and MMCv1 only
 const std::vector<std::string> kEmmcOptionalFields{"prv", "hwrev"};
 const std::vector<std::string> kNvmeFields{"vendor", "device", "class"};
+
+// Note that to be backward portable with old protocol buffer we use empty
+// prefix for Emmc field
+constexpr auto kEmmcType = "MMC";
+constexpr auto kEmmcPrefix = "";
+constexpr auto kAtaType = "ATA";
+constexpr auto kAtaPrefix = "ata_";
+constexpr auto kNvmeType = "NVMe";
+constexpr auto kNvmePrefix = "pci_";
 
 // Check if the string represented by |input_string| is printable
 bool IsPrintable(const std::string& input_string) {
@@ -53,6 +61,23 @@ bool IsPrintable(const std::string& input_string) {
 std::string VersionFormattedString(const std::string& v,
                                    const std::string& v_decode) {
   return v + " (" + v_decode + ")";
+}
+
+// Append the given |prefix| to each key in the |dict_value|
+void PrependToDVKey(base::DictionaryValue* dict_value,
+                    const std::string& prefix) {
+  if (prefix.empty())
+    return;
+  std::vector<std::string> original_keys;
+  for (base::DictionaryValue::Iterator it(*dict_value); !it.IsAtEnd();
+       it.Advance()) {
+    original_keys.push_back(it.key());
+  }
+  for (const auto& key : original_keys) {
+    std::unique_ptr<base::Value> tmp;
+    dict_value->Remove(key, &tmp);
+    dict_value->SetString(prefix + key, tmp->GetString());
+  }
 }
 
 }  // namespace
@@ -109,7 +134,8 @@ std::vector<base::FilePath> GenericStorageFunction::GetFixedDevices() const {
     std::string removable_res;
     if (!base::ReadFileToString(storage_removable_path, &removable_res)) {
       VLOG(2) << "Storage device " << storage_path.value()
-              << " does not specify the removable property. Assume removable.";
+              << " does not specify the removable property. May be a partition "
+                 "of a storage device.";
       continue;
     }
 
@@ -243,26 +269,35 @@ GenericStorageFunction::DataType GenericStorageFunction::Eval() const {
     }
 
     // ATA, NVMe and eMMC are mutually exclusive indicators
-    // TODO(b/122027599): Add "ATA" to field "type" if ata_res is not empty
-    const base::DictionaryValue ata_res =
-        MapFilesToDict(dev_path, kAtaFields, {});
-    const base::DictionaryValue emmc_res =
+    base::DictionaryValue ata_res = MapFilesToDict(dev_path, kAtaFields, {});
+    base::DictionaryValue emmc_res =
         MapFilesToDict(dev_path, kEmmcFields, kEmmcOptionalFields);
 
     if (!emmc_res.empty()) {
       // Get eMMC 5.0 firmaware version
+      PrependToDVKey(&emmc_res, kEmmcPrefix);
+      emmc_res.SetString("type", kEmmcType);
       const auto emmc5_fw_ver = GetEMMC5FirmwareVersion(node_path);
-      if (!emmc5_fw_ver.empty())
-        node_res.SetString("emmc5_fw_ver", emmc5_fw_ver);
+      if (!emmc5_fw_ver.empty()) {
+        emmc_res.SetString("emmc5_fw_ver", emmc5_fw_ver);
+      }
+    }
+
+    if (!ata_res.empty()) {
+      PrependToDVKey(&ata_res, kAtaPrefix);
+      ata_res.SetString("type", kAtaType);
     }
 
     node_res.MergeDictionary(&ata_res);
     node_res.MergeDictionary(&emmc_res);
 
     if (base::PathExists(nvme_dev_path)) {
-      // TODO(b/122027599): Add "NVMe" to field "type" if nvme_res is not empty
-      const base::DictionaryValue nvme_res =
+      base::DictionaryValue nvme_res =
           MapFilesToDict(nvme_dev_path, kNvmeFields, {});
+      if (!nvme_res.empty()) {
+        PrependToDVKey(&nvme_res, kNvmePrefix);
+        nvme_res.SetString("type", kNvmeType);
+      }
       node_res.MergeDictionary(&nvme_res);
     }
 
