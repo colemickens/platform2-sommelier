@@ -125,9 +125,11 @@ bool BERTCollector::Collect() {
   FilePath bert_crash_path = GetCrashPath(
       root_crash_directory, dump_basename, "bertdump");
 
-  if (base::WriteFile(bert_crash_path,
-                      bert_table_contents.c_str(),
-                      bert_table.length) != bert_table.length) {
+  // We must use WriteNewFile instead of base::WriteFile as we
+  // do not want to write with root access to a symlink that an attacker
+  // might have created.
+  if (WriteNewFile(bert_crash_path, bert_table_contents.c_str(),
+                   bert_table.length) != bert_table.length) {
     PLOG(ERROR) << "Failed to write BERT table to "
                 << bert_crash_path.value();
     return false;

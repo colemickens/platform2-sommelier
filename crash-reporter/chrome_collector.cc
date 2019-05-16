@@ -52,55 +52,6 @@ bool GetDelimitedString(const std::string& str,
   return true;
 }
 
-// Gets the GPU's error state from debugd and writes it to |error_state_path|.
-// Returns true on success.
-bool GetDriErrorState(const FilePath& error_state_path,
-                      org::chromium::debugdProxy* proxy) {
-  brillo::ErrorPtr error;
-  std::string error_state_str;
-
-  proxy->GetLog("i915_error_state", &error_state_str, &error);
-
-  if (error) {
-    LOG(ERROR) << "Error calling D-Bus proxy call to interface "
-               << "'" << proxy->GetObjectPath().value()
-               << "':" << error->GetMessage();
-    return false;
-  }
-
-  if (error_state_str == "<empty>")
-    return false;
-
-  const char kBase64Header[] = "<base64>: ";
-  const size_t kBase64HeaderLength = sizeof(kBase64Header) - 1;
-  if (error_state_str.compare(0, kBase64HeaderLength, kBase64Header)) {
-    LOG(ERROR) << "i915_error_state is missing base64 header";
-    return false;
-  }
-
-  std::string decoded_error_state;
-
-  if (!brillo::data_encoding::Base64Decode(
-          error_state_str.c_str() + kBase64HeaderLength,
-          &decoded_error_state)) {
-    LOG(ERROR) << "Could not decode i915_error_state";
-    return false;
-  }
-
-  int written = base::WriteFile(error_state_path, decoded_error_state.c_str(),
-                                decoded_error_state.length());
-  if (written < 0 ||
-      static_cast<size_t>(written) != decoded_error_state.length()) {
-    PLOG(ERROR) << "Could not write file " << error_state_path.value()
-                << " Written: " << written
-                << " Len: " << decoded_error_state.length();
-    base::DeleteFile(error_state_path, false);
-    return false;
-  }
-
-  return true;
-}
-
 }  // namespace
 
 ChromeCollector::ChromeCollector()
@@ -325,11 +276,60 @@ std::map<std::string, base::FilePath> ChromeCollector::GetAdditionalLogs(
   if (debugd_proxy_) {
     const FilePath dri_error_state_path =
         GetCrashPath(dir, basename, kGpuStateFilename);
-    if (GetDriErrorState(dri_error_state_path, debugd_proxy_.get()))
+    if (GetDriErrorState(dri_error_state_path))
       logs[kGpuStateFilename] = dri_error_state_path;
   }
 
   return logs;
+}
+
+bool ChromeCollector::GetDriErrorState(const FilePath& error_state_path) {
+  brillo::ErrorPtr error;
+  std::string error_state_str;
+
+  debugd_proxy_->GetLog("i915_error_state", &error_state_str, &error);
+
+  if (error) {
+    LOG(ERROR) << "Error calling D-Bus proxy call to interface "
+               << "'" << debugd_proxy_->GetObjectPath().value()
+               << "':" << error->GetMessage();
+    return false;
+  }
+
+  if (error_state_str == "<empty>")
+    return false;
+
+  const char kBase64Header[] = "<base64>: ";
+  const size_t kBase64HeaderLength = sizeof(kBase64Header) - 1;
+  if (error_state_str.compare(0, kBase64HeaderLength, kBase64Header)) {
+    LOG(ERROR) << "i915_error_state is missing base64 header";
+    return false;
+  }
+
+  std::string decoded_error_state;
+
+  if (!brillo::data_encoding::Base64Decode(
+          error_state_str.c_str() + kBase64HeaderLength,
+          &decoded_error_state)) {
+    LOG(ERROR) << "Could not decode i915_error_state";
+    return false;
+  }
+
+  // We must use WriteNewFile instead of base::WriteFile as we
+  // do not want to write with root access to a symlink that an attacker
+  // might have created.
+  int written = WriteNewFile(error_state_path, decoded_error_state.c_str(),
+                             decoded_error_state.length());
+  if (written < 0 ||
+      static_cast<size_t>(written) != decoded_error_state.length()) {
+    PLOG(ERROR) << "Could not write file " << error_state_path.value()
+                << " Written: " << written
+                << " Len: " << decoded_error_state.length();
+    base::DeleteFile(error_state_path, false);
+    return false;
+  }
+
+  return true;
 }
 
 // See chrome's src/components/crash/content/app/breakpad_linux.cc.

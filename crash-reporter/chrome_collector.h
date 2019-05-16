@@ -55,6 +55,10 @@ class ChromeCollector : public CrashCollector {
                      const base::FilePath& minidump,
                      const std::string& basename);
 
+  // Gets the GPU's error state from debugd and writes it to |error_state_path|.
+  // Returns true on success.
+  bool GetDriErrorState(const base::FilePath& error_state_path);
+
   // Writes additional logs for |exe_name| to files based on |basename| within
   // |dir|. Crash report metadata key names and the corresponding file paths are
   // returned.
