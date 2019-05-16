@@ -721,11 +721,9 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
         connection.hid_id = newblue_->libnewblue()->BtleHidAttach(conn_id);
 
       // Track the new connection and close the attempt.
+      connection_attempts_.erase(iter);
       connections_.emplace(dev_to_be_connected->address, connection);
       ConnectReply(dev_to_be_connected->address, true, "");
-      connection_attempts_.erase(iter);
-
-      SetDeviceConnected(dev_to_be_connected, true);
       break;
     case ConnectState::ERROR:  // Fall through.
       VLOG(1) << "Unexpected GATT connection error";
@@ -759,9 +757,8 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
             newblue_->libnewblue()->BtleHidDetach(connection.second.hid_id);
           }
 
-          ConnectReply(connected_dev->address, true, "");
           connections_.erase(connected_dev->address);
-          SetDeviceConnected(connected_dev, false);
+          ConnectReply(connected_dev->address, true, "");
           dev_to_notify = connected_dev;
           break;
         }
@@ -773,24 +770,26 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
       return;
   }
 
-  if (dev_to_notify)
-    OnConnectStateChanged(dev_to_notify->address, state);
+  if (dev_to_notify) {
+    VLOG(1) << "Connection state changed to "
+            << ConvertConnectStateToString(state) << " for device "
+            << dev_to_notify->address;
+
+    SetDeviceConnected(dev_to_notify, state == ConnectState::CONNECTED);
+    ExportOrUpdateDevice(dev_to_notify);
+  }
 }
 
 void DeviceInterfaceHandler::SetDeviceConnected(Device* device,
                                                 bool is_connected) {
   CHECK(device != nullptr);
 
-  if (device->connected.value() == is_connected)
-    return;
-
   device->connected.SetValue(is_connected);
   UpdateBackgroundScan();
 }
 
 void DeviceInterfaceHandler::SetDevicePaired(Device* device, bool is_paired) {
-  if (device->paired.value() == is_paired)
-    return;
+  CHECK(device != nullptr);
 
   device->paired.SetValue(is_paired);
   UpdateBackgroundScan();
@@ -1144,20 +1143,19 @@ DeviceInterfaceHandler::DetermineSecurityRequirements(const Device& device) {
 void DeviceInterfaceHandler::OnPairStateChanged(const std::string& address,
                                                 PairState pair_state,
                                                 PairError pair_error) {
+  // The device D-Bus object may have already been unexported, e.g. pairing
+  // information is removed during the device removal.
   Device* device = FindDevice(address);
+  if (!device)
+    return;
 
   VLOG(1) << "Pairing state changed to " << ConvertPairStateToString(pair_state)
           << " for device " << device->address;
 
-  // The device D-Bus object may have already been unexported.
-  if (!device)
-    return;
-
   std::string dbus_error;
 
   switch (pair_state) {
-    case PairState::CANCELED:
-      SetDevicePaired(device, false);
+    case PairState::CANCELED:  // Fall through.
       dbus_error = bluetooth_device::kErrorAuthenticationCanceled;
     case PairState::NOT_PAIRED:
       SetDevicePaired(device, false);
@@ -1259,23 +1257,6 @@ void DeviceInterfaceHandler::OnPairStateChanged(const std::string& address,
 
   ongoing_pairing_.cancel_pair_response.reset();
 
-  ExportOrUpdateDevice(device);
-}
-
-void DeviceInterfaceHandler::OnConnectStateChanged(const std::string& address,
-                                                   ConnectState connect_state) {
-  VLOG(1) << "Connection state changed to "
-          << ConvertConnectStateToString(connect_state) << " for device "
-          << address;
-
-  Device* device = FindDevice(address);
-  if (!device) {
-    LOG(WARNING) << "Connection state changed for an unknown device "
-                 << address;
-    return;
-  }
-
-  SetDeviceConnected(device, connect_state == ConnectState::CONNECTED);
   ExportOrUpdateDevice(device);
 }
 

@@ -272,10 +272,6 @@ class DeviceInterfaceHandler {
                           PairState pair_state,
                           PairError pair_error);
 
-  // Called when a connection state changed.
-  void OnConnectStateChanged(const std::string& address,
-                             ConnectState connect_state);
-
   scoped_refptr<dbus::Bus> bus_;
   Newblue* newblue_;
   ExportedObjectManagerWrapper* exported_object_manager_wrapper_;
