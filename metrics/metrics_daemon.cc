@@ -1236,10 +1236,10 @@ bool MetricsDaemon::ProcessMeminfo(const string& meminfo_raw) {
       // { "SwapCached", "SwapCached" },
       {"Active", "Active"},
       {"Inactive", "Inactive"},
-      {"ActiveAnon", "Active(anon)"},
-      {"InactiveAnon", "Inactive(anon)"},
-      {"ActiveFile", "Active(file)"},
-      {"InactiveFile", "Inactive(file)"},
+      {"ActiveAnon", "Active(anon)", kMeminfoOp_Anon},
+      {"InactiveAnon", "Inactive(anon)", kMeminfoOp_Anon},
+      {"ActiveFile", "Active(file)", kMeminfoOp_File},
+      {"InactiveFile", "Inactive(file)", kMeminfoOp_File},
       {"Unevictable", "Unevictable", kMeminfoOp_HistLog},
       // { "Mlocked", "Mlocked" },
       {"SwapTotal", "SwapTotal", kMeminfoOp_SwapTotal},
@@ -1266,8 +1266,10 @@ bool MetricsDaemon::ProcessMeminfo(const string& meminfo_raw) {
   }
   int swap_total = 0;
   int swap_free = 0;
-  int mem_free_derived = 0;  // free + cached + buffers
-  int mem_used_derived = 0;  // total - free_derived
+  int mem_free_derived = 0;    // free + cached + buffers
+  int mem_used_derived = 0;    // total - free_derived
+  int process_data_total = 0;  // anon (active and inactive) + swap
+  int file_total = 0;          // file active and inactive
   // Send all fields retrieved, except total memory.
   for (unsigned int i = 1; i < fields.size(); i++) {
     string metrics_name =
@@ -1289,6 +1291,12 @@ bool MetricsDaemon::ProcessMeminfo(const string& meminfo_raw) {
       case kMeminfoOp_SwapFree:
         swap_free = fields[i].value;
         break;
+      case kMeminfoOp_Anon:
+        process_data_total += fields[i].value;
+        break;
+      case kMeminfoOp_File:
+        file_total += fields[i].value;
+        break;
     }
     if (strcmp(fields[i].match, "MemFree") == 0 ||
         strcmp(fields[i].match, "Buffers") == 0 ||
@@ -1296,13 +1304,14 @@ bool MetricsDaemon::ProcessMeminfo(const string& meminfo_raw) {
       mem_free_derived += fields[i].value;
     }
   }
+  int swap_used = swap_total - swap_free;
   if (swap_total > 0) {
-    int swap_used = swap_total - swap_free;
     int swap_used_percent = swap_used * 100 / swap_total;
     SendSample("Platform.MeminfoSwapUsed", swap_used, 1, 8 * 1000 * 1000, 100);
     SendLinearSample("Platform.MeminfoSwapUsedPercent", swap_used_percent, 100,
                      101);
   }
+  process_data_total += swap_used;
   mem_used_derived = total_memory - mem_free_derived;
   SendSample("Platform.MeminfoMemFreeDerived", mem_free_derived, 1,
              kMaximumMemorySizeInKB, 100);
@@ -1310,6 +1319,10 @@ bool MetricsDaemon::ProcessMeminfo(const string& meminfo_raw) {
              kMaximumMemorySizeInKB, 100);
   SendSample("Platform.MeminfoMemTotal", total_memory, 1,
              kMaximumMemorySizeInKB, 100);
+  SendSample("Platform.MeminfoProcessDataTotal", process_data_total, 1,
+             kMaximumMemorySizeInKB, 100);
+  SendSample("Platform.MeminfoFileTotal", file_total, 1, kMaximumMemorySizeInKB,
+             100);
   return true;
 }
 

@@ -156,6 +156,8 @@ class MetricsDaemon : public brillo::DBusDaemon {
     kMeminfoOp_HistLog,
     kMeminfoOp_SwapTotal,
     kMeminfoOp_SwapFree,
+    kMeminfoOp_Anon,
+    kMeminfoOp_File,
   };
 
   // Record for retrieving and reporting values from /proc/meminfo.
