@@ -13,6 +13,9 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
+  # Manually add the include path so that the generated .pb.h files can
+  # include runtime_probe.pb.h properly.
+  cflags = [ "-I${sysroot}/usr/include/runtime_probe/proto_bindings" ]
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
@@ -27,8 +30,10 @@ pkg_config("target_defaults") {
 }
 
 proto_library("hardware_verifier-protos") {
+  configs = [ ":target_defaults" ]
   proto_in_dir = "./"
   proto_out_dir = "include/hardware_verifier"
+  proto_lib_dirs = [ "${sysroot}/usr/include/chromeos/dbus/runtime_probe" ]
   sources = [
     "${proto_in_dir}/hardware_verifier.proto",
   ]

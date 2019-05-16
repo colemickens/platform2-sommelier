@@ -8,6 +8,7 @@
 
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
+#include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 #include "hardware_verifier/hardware_verifier.pb.h"
 #include "hardware_verifier/hw_verification_spec_getter_impl.h"
@@ -22,6 +23,22 @@ class HwVerificationSpecGetterImplTest : public testing::Test {
   void SetUp() {
     vp_getter_ = std::make_unique<HwVerificationSpecGetterImpl>();
     vp_getter_->root_ = GetTestDataPath();
+
+    auto comp_info = golden_expected_vp_.add_component_infos();
+    comp_info->set_component_category(
+        runtime_probe::ProbeRequest_SupportCategory_battery);
+    comp_info->set_component_uuid("batt1");
+    comp_info->set_qualification_status(QualificationStatus::QUALIFIED);
+    comp_info = golden_expected_vp_.add_component_infos();
+    comp_info->set_component_category(
+        runtime_probe::ProbeRequest_SupportCategory_storage);
+    comp_info->set_component_uuid("storage1");
+    comp_info->set_qualification_status(QualificationStatus::REJECTED);
+    comp_info = golden_expected_vp_.add_component_infos();
+    comp_info->set_component_category(
+        runtime_probe::ProbeRequest_SupportCategory_storage);
+    comp_info->set_component_uuid("storage2");
+    comp_info->set_qualification_status(QualificationStatus::UNQUALIFIED);
   }
 
   void SetFakeRoot(const std::string& root_name) {
@@ -33,14 +50,15 @@ class HwVerificationSpecGetterImplTest : public testing::Test {
   }
 
   std::unique_ptr<HwVerificationSpecGetterImpl> vp_getter_;
+  HwVerificationSpec golden_expected_vp_;
 };
 
 TEST_F(HwVerificationSpecGetterImplTest, TestGetDefaultPass) {
   SetFakeRoot("test_root1");
-  HwVerificationSpec expected_vp;
   const auto actual_vp = vp_getter_->GetDefault();
   EXPECT_TRUE(actual_vp);
-  EXPECT_TRUE(MessageDifferencer::Equivalent(actual_vp.value(), expected_vp));
+  EXPECT_TRUE(
+      MessageDifferencer::Equivalent(actual_vp.value(), golden_expected_vp_));
 }
 
 TEST_F(HwVerificationSpecGetterImplTest, TestGetDefaultFail) {
@@ -62,11 +80,11 @@ TEST_F(HwVerificationSpecGetterImplTest, TestGetFromFileNoCheckCrosDebug) {
 
   const auto tmp_path = GetTestDataPath().Append("test_root1").Append("tmp");
 
-  HwVerificationSpec expected_vp;
   const auto actual_vp = vp_getter_->GetFromFile(
       tmp_path.Append("hw_verification_spec1.prototxt"));
   EXPECT_TRUE(actual_vp);
-  EXPECT_TRUE(MessageDifferencer::Equivalent(actual_vp.value(), expected_vp));
+  EXPECT_TRUE(
+      MessageDifferencer::Equivalent(actual_vp.value(), golden_expected_vp_));
 
   // |hw_verification_spec2.prototxt| contains invalid data.
   EXPECT_FALSE(vp_getter_->GetFromFile(

@@ -11,8 +11,38 @@ option optimize_for = SPEED;
 
 package hardware_verifier;
 
-message HwVerificationSpec {}
+// Name of the folder which contains |runtime_probe.pb.h| is different than
+// the one which contains |runtime_probo.proto| so we import the file name
+// directly and use |BUILD.gn| to handle the include path properly.
+import "runtime_probe.proto";
+
+// List of the possible qualification status of a component.
+// TODO(yhong): Using the existing definition from AVL side when the
+//     integration work starts.
+enum QualificationStatus {
+  UNQUALIFIED = 0;
+  REJECTED = 1;
+  QUALIFIED = 2;
+}
+
+message ComponentInfo {
+  // required
+  runtime_probe.ProbeRequest.SupportCategory component_category = 1;
+
+  string component_uuid = 2;  // required
+
+  QualificationStatus qualification_status = 3;  // required
+}
+
+message HwVerificationSpec {
+  // A list of all known components and their qualification status.
+  repeated ComponentInfo component_infos = 1;
+}
 
 message HwVerificationReport {
   bool is_compliant = 1;
+
+  // Records the qualification status of the components that is also probed
+  // by the hardware prober.
+  repeated ComponentInfo found_component_infos = 2;
 }
