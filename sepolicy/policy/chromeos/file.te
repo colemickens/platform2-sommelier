@@ -153,21 +153,26 @@ type cros_var_lib_ureadahead, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_whitelist, file_type, cros_file_type, cros_var_file_type;
 
 # /var/log
-type cros_arc_log, file_type, cros_log_type, cros_file_type, cros_var_file_type;
-type cros_authpolicy_log, file_type, cros_log_type, cros_file_type, cros_var_file_type;
-type cros_boot_log, file_type, cros_log_type, cros_file_type, cros_var_file_type;
-type cros_hammerd_log, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_arc_log, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
+type cros_authpolicy_log, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
+type cros_boot_log, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
+type cros_hammerd_log, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_metrics_file, file_type, cros_file_type, cros_var_file_type;
 type cros_metrics_uma_events_file, file_type, cros_file_type, cros_var_file_type;
-type cros_net_log, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_net_log, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_powerd_log, file_type, cros_file_type, cros_var_file_type;
-type cros_secure_log, file_type, cros_log_type, cros_file_type, cros_var_file_type;
-type cros_syslog, file_type, cros_log_type, cros_file_type, cros_var_file_type;
-type cros_tlsdate_log, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_secure_log, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
+type cros_syslog, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
+type cros_tlsdate_log, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
+type cros_var_log_atrus, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_chrome, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_audit, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_eventlog, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_var_log_faillog, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_journal, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_var_log_recover_duts, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
+type cros_var_log_session_manager, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
+type cros_var_log_tpm_firmware_updater, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_ui, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_vmlog, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 
@@ -238,6 +243,9 @@ type sysfs_net, sysfs_type;
 type wayland_socket, file_type, cros_file_type, cros_run_file_type;
 type cros_system_bus_socket, file_type, cros_file_type, cros_run_file_type;
 type cros_tcsd_socket, file_type, cros_file_type, cros_run_file_type;
+
+type cros_stateful_partition, file_type, cros_file_type, cros_uncategorized_file_type;
+type cros_stateful_partition_unencrypted, file_type, cros_file_type, cros_uncategorized_file_type;
 
 # TODO(fqj): temporarily let un-decomposed chromeos domain to write file as tmpfs.
 type_transition {chromeos cros_arc_setup} cros_run:dir tmpfs;

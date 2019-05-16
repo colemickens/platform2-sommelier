@@ -7,3 +7,10 @@ filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_hammerd_log, 
 filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_secure_log, file, "secure");
 filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_syslog, file, "messages");
 filetrans_pattern(cros_log_file_creator_domain, cros_var_log, cros_tlsdate_log, file, "tlsdate.log");
+
+# TODO: identify all creators
+filetrans_pattern(chromeos_domain, cros_var_log, cros_var_log_faillog, file, "faillog");
+filetrans_pattern(chromeos_domain, cros_var_log, cros_var_log_session_manager, file, "session_manager");
+filetrans_pattern(chromeos_domain, cros_var_log, cros_var_log_atrus, file, "atrus.log");
+filetrans_pattern(chromeos_domain, cros_var_log, cros_var_log_tpm_firmware_updater, file, "tpm-firmware-updater.log");
+filetrans_pattern(chromeos_domain, cros_var_log, cros_var_log_recover_duts, dir, "recover_duts");
