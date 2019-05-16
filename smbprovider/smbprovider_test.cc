@@ -3620,11 +3620,10 @@ TEST_F(SmbProviderTest, TestPremountSucceedsOnETIMEDOUT) {
   EXPECT_EQ(1, mount_manager_->MountCount());
 }
 
-TEST_F(SmbProviderTest, TestPremountFailsOnExistingMount) {
+TEST_F(SmbProviderTest, TestPremountSucceedsOnExistingMount) {
   PrepareMount();
 
   EXPECT_EQ(1, mount_manager_->MountCount());
-  EXPECT_TRUE(mount_manager_->IsAlreadyMounted(GetDefaultMountRoot()));
 
   ProtoBlob blob = CreatePremountOptionsBlob(GetDefaultMountRoot());
 
@@ -3632,9 +3631,9 @@ TEST_F(SmbProviderTest, TestPremountFailsOnExistingMount) {
   int32_t error_code;
   smbprovider_->Premount(blob, &error_code, &mount_id2);
 
-  EXPECT_EQ(ERROR_IN_USE, CastError(error_code));
-  // Check that a mount_id did not get assigned on a failed premount.
-  EXPECT_EQ(-1, mount_id2);
+  EXPECT_EQ(ERROR_OK, CastError(error_code));
+  EXPECT_GE(mount_id2, 0);
+  EXPECT_EQ(2, mount_manager_->MountCount());
 }
 
 TEST_F(SmbProviderTest, TestUpdateSharePathSucceeds) {
@@ -3652,9 +3651,6 @@ TEST_F(SmbProviderTest, TestUpdateSharePathSucceeds) {
   std::string updated_path;
   EXPECT_TRUE(GetRootPath(mount_id, &updated_path));
   EXPECT_EQ(new_path, updated_path);
-
-  EXPECT_FALSE(mount_manager_->IsAlreadyMounted(GetDefaultMountRoot()));
-  EXPECT_TRUE(mount_manager_->IsAlreadyMounted(new_path));
 }
 
 TEST_F(SmbProviderTest, TestUpdateSharePathFailsOnNonExistantMount) {
@@ -3665,7 +3661,6 @@ TEST_F(SmbProviderTest, TestUpdateSharePathFailsOnNonExistantMount) {
       CreateUpdateSharePathOptionsBlob(999 /* mount_id */, new_path);
 
   EXPECT_EQ(ERROR_NOT_FOUND, smbprovider_->UpdateSharePath(blob));
-  EXPECT_FALSE(mount_manager_->IsAlreadyMounted(new_path));
 }
 
 }  // namespace smbprovider

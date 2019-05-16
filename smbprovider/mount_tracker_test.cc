@@ -132,6 +132,14 @@ class MountTrackerTest : public testing::Test {
     return GetPassword(WritePasswordToFile(password));
   }
 
+  std::string GetSharePath(int32_t mount_id) const {
+    std::string path;
+    if (!mount_tracker_->GetMountRootPath(mount_id, &path)) {
+      return {};
+    }
+    return path;
+  }
+
   std::unique_ptr<MountTracker> mount_tracker_;
   TempFileManager temp_files_;
   SambaInterfaceFactory samba_interface_factory_;
@@ -156,49 +164,41 @@ TEST_F(MountTrackerTest, TestNegativeMounts) {
   const std::string root_path = "smb://server/share";
   const int32_t mount_id = 1;
 
-  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(root_path));
+  EXPECT_EQ(GetSharePath(mount_id), "");
   EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(mount_id));
 }
 
 TEST_F(MountTrackerTest, TestAddMount) {
   const std::string root_path = "smb://server/share";
 
-  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(root_path));
   int32_t mount_id;
   EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
 
   EXPECT_EQ(1, mount_tracker_->MountCount());
 
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(root_path));
+  EXPECT_EQ(GetSharePath(mount_id), root_path);
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
 }
 
 TEST_F(MountTrackerTest, TestAddSameMount) {
   const std::string root_path = "smb://server/share";
 
-  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(root_path));
   int32_t mount_id;
   EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
 
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(root_path));
+  EXPECT_EQ(GetSharePath(mount_id), root_path);
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
   EXPECT_EQ(1, mount_tracker_->MountCount());
 
-  // Ensure IsAlreadyMounted is working after adding a mount.
-  const std::string root_path2 = "smb://server/share2";
-  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(root_path2));
+  int32_t mount_id2;
+  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id2));
 
-  const int32_t mount_id2 = 9;
-  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(mount_id2));
-
-  EXPECT_FALSE(AddMountWithEmptyCredential(root_path, &mount_id));
-
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(root_path));
+  EXPECT_EQ(GetSharePath(mount_id2), root_path);
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id2));
 
-  EXPECT_FALSE(AddMountWithEmptyCredential(root_path, &mount_id));
-
-  EXPECT_EQ(1, mount_tracker_->MountCount());
+  EXPECT_EQ(2, mount_tracker_->MountCount());
+  EXPECT_NE(mount_id, mount_id2);
 }
 
 TEST_F(MountTrackerTest, TestMountCount) {
@@ -243,7 +243,7 @@ TEST_F(MountTrackerTest, TestRemountSucceeds) {
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
 }
 
-TEST_F(MountTrackerTest, TestRemountFailsWithSameMountPath) {
+TEST_F(MountTrackerTest, TestRemountSucceedsWithSameMountPath) {
   const std::string root_path = "smb://server/share1";
   const int32_t mount_id = 9;
 
@@ -253,8 +253,7 @@ TEST_F(MountTrackerTest, TestRemountFailsWithSameMountPath) {
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
 
   const int32_t mount_id2 = 10;
-  // Should be false since the same path cannot be mounted twice.
-  EXPECT_FALSE(RemountWithEmptyCredential(root_path, mount_id2));
+  EXPECT_TRUE(RemountWithEmptyCredential(root_path, mount_id2));
 }
 
 TEST_F(MountTrackerTest, TestRemountFailsWithSameMountId) {
@@ -304,14 +303,14 @@ TEST_F(MountTrackerTest, TestAddRemoveMount) {
   EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
 
   EXPECT_EQ(1, mount_tracker_->MountCount());
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(root_path));
+  EXPECT_EQ(GetSharePath(mount_id), root_path);
 
   // Verify the mount can be removed.
   EXPECT_TRUE(mount_tracker_->RemoveMount(mount_id));
   EXPECT_EQ(0, mount_tracker_->MountCount());
 
+  EXPECT_EQ(GetSharePath(mount_id), "");
   EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(mount_id));
-  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(root_path));
 }
 
 TEST_F(MountTrackerTest, TestAddThenRemoveWrongMount) {
@@ -330,7 +329,7 @@ TEST_F(MountTrackerTest, TestAddThenRemoveWrongMount) {
   EXPECT_EQ(1, mount_tracker_->MountCount());
 
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(root_path));
+  EXPECT_EQ(GetSharePath(mount_id), root_path);
 
   // Verify the valid id can still be removed.
   EXPECT_TRUE(mount_tracker_->RemoveMount(mount_id));
@@ -338,7 +337,7 @@ TEST_F(MountTrackerTest, TestAddThenRemoveWrongMount) {
   EXPECT_EQ(0, mount_tracker_->MountCount());
 
   EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(mount_id));
-  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(root_path));
+  EXPECT_EQ(GetSharePath(mount_id), "");
 }
 
 TEST_F(MountTrackerTest, TestAddRemoveMultipleMounts) {
@@ -360,10 +359,10 @@ TEST_F(MountTrackerTest, TestAddRemoveMultipleMounts) {
   EXPECT_EQ(1, mount_tracker_->MountCount());
 
   EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(mount_id_2));
-  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(root_path2));
+  EXPECT_EQ(GetSharePath(mount_id_2), "");
 
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id_1));
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(root_path1));
+  EXPECT_EQ(GetSharePath(mount_id_1), root_path1);
 
   // Remove the first id and verify it is also removed.
   EXPECT_TRUE(mount_tracker_->RemoveMount(mount_id_1));
@@ -371,7 +370,7 @@ TEST_F(MountTrackerTest, TestAddRemoveMultipleMounts) {
   EXPECT_EQ(0, mount_tracker_->MountCount());
 
   EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(mount_id_1));
-  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(root_path1));
+  EXPECT_EQ(GetSharePath(mount_id_1), "");
 }
 
 TEST_F(MountTrackerTest, TestRemovedMountCanBeRemounted) {
@@ -550,8 +549,8 @@ TEST_F(MountTrackerTest, TestAddingRemovingMultipleCredentials) {
 
   EXPECT_EQ(2, mount_tracker_->MountCount());
 
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(kMountRoot));
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_root2));
+  EXPECT_EQ(GetSharePath(mount_id1), kMountRoot);
+  EXPECT_EQ(GetSharePath(mount_id2), mount_root2);
 
   ExpectCredentialsEqual(mount_id1, kWorkgroup, kUsername, kPassword);
 
@@ -580,9 +579,8 @@ TEST_F(MountTrackerTest, TestRemoveCredentialFromMultiple) {
   EXPECT_TRUE(mount_tracker_->RemoveMount(mount_id1));
 
   EXPECT_EQ(1, mount_tracker_->MountCount());
-
-  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(kMountRoot));
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_root2));
+  EXPECT_EQ(GetSharePath(mount_id1), "");
+  EXPECT_EQ(GetSharePath(mount_id2), mount_root2);
 
   ExpectCredentialsEqual(mount_id2, workgroup2, username2, password2);
 
@@ -739,20 +737,13 @@ TEST_F(MountTrackerTest, TestUpdateSharePath) {
   EXPECT_TRUE(
       AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id));
 
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(kMountRoot));
+  EXPECT_EQ(GetSharePath(mount_id), kMountRoot);
 
   const std::string updated_path = "smb://192.168.1.1/test";
   EXPECT_TRUE(mount_tracker_->UpdateSharePath(mount_id, updated_path));
 
   // Check that the share path was successfully updated.
-  std::string mount_path;
-  EXPECT_TRUE(mount_tracker_->GetMountRootPath(mount_id, &mount_path));
-  EXPECT_EQ(updated_path, mount_path);
-
-  // Check that the previous share path is no longer stored.
-  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(kMountRoot));
-  // Check that |updated_path| is stored.
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(updated_path));
+  EXPECT_EQ(GetSharePath(mount_id), updated_path);
 }
 
 TEST_F(MountTrackerTest, TestUpdateSharePathDoesNotCreateNewMount) {
@@ -761,15 +752,13 @@ TEST_F(MountTrackerTest, TestUpdateSharePathDoesNotCreateNewMount) {
   EXPECT_TRUE(
       AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id));
 
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(kMountRoot));
+  EXPECT_EQ(GetSharePath(mount_id), kMountRoot);
 
   const std::string updated_path = "smb://192.168.1.1/test";
   EXPECT_TRUE(mount_tracker_->UpdateSharePath(mount_id, updated_path));
 
-  // Check that the previous share path is no longer stored.
-  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(kMountRoot));
   // Check that |updated_path| is stored.
-  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(updated_path));
+  EXPECT_EQ(GetSharePath(mount_id), updated_path);
 
   EXPECT_EQ(1, mount_tracker_->MountCount());
 }
@@ -780,8 +769,6 @@ TEST_F(MountTrackerTest, TestUpdateSharePathFailsOnNonExistingMount) {
   const std::string updated_path = "smb://192.168.1.1/test";
   EXPECT_FALSE(
       mount_tracker_->UpdateSharePath(999 /* mount_id */, updated_path));
-
-  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(updated_path));
 }
 
 }  // namespace smbprovider

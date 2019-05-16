@@ -34,9 +34,6 @@ class MountTracker {
   // Returns true if |mount_id| is already mounted.
   bool IsAlreadyMounted(int32_t mount_id) const;
 
-  // Returns true if |mount_root| is already mounted.
-  bool IsAlreadyMounted(const std::string& mount_root) const;
-
   // Return true if |samba_interface_id| is already mounted.
   bool IsAlreadyMounted(
       const SambaInterface::SambaInterfaceId samba_interface_id) const;
@@ -146,11 +143,6 @@ class MountTracker {
     DISALLOW_COPY_AND_ASSIGN(MountInfo);
   };
 
-  // Returns true if |mount_root| exists as a value in |mounts_|. This method is
-  // only used for DCHECK to ensure that mounts_ is in sync with
-  // mounted_shares_.
-  bool ExistsInMounts(const std::string& mount_root) const;
-
   // Returns true if |mount_id| exists as a value in |samba_interface_map_|.
   // This method is only used for DCHECK to ensure that |mounts_| is in sync
   // |samba_interface_map_|
@@ -177,9 +169,6 @@ class MountTracker {
   // Maps SambaInterfaceId to MountId.
   std::unordered_map<SambaInterface::SambaInterfaceId, int32_t>
       samba_interface_map_;
-
-  // Keeps track of share paths that have been mounted.
-  std::unordered_set<std::string> mounted_share_paths_;
 
   std::unique_ptr<base::TickClock> tick_clock_;
   bool metadata_cache_enabled_;

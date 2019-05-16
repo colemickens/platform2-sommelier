@@ -128,7 +128,6 @@ TEST_F(MountManagerTest, TestEmptyManager) {
   EXPECT_FALSE(mounts_->RemoveMount(0 /* mount_id */));
   EXPECT_EQ(0, mounts_->MountCount());
   EXPECT_FALSE(mounts_->IsAlreadyMounted(0 /* mount_id */));
-  EXPECT_FALSE(mounts_->IsAlreadyMounted("smb://192.168.0.1/share"));
 
   std::string full_path;
   EXPECT_FALSE(mounts_->GetFullPath(0 /* mount_id */, "foo.txt", &full_path));
@@ -145,13 +144,11 @@ TEST_F(MountManagerTest, TestAddRemoveMount) {
   EXPECT_GE(mount_id, 0);
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
 
   // Verify the mount can be removed.
   EXPECT_TRUE(mounts_->RemoveMount(mount_id));
   EXPECT_EQ(0, mounts_->MountCount());
   EXPECT_FALSE(mounts_->IsAlreadyMounted(mount_id));
-  EXPECT_FALSE(mounts_->IsAlreadyMounted(root_path));
 }
 
 TEST_F(MountManagerTest, TestAddThenRemoveWrongMount) {
@@ -167,13 +164,11 @@ TEST_F(MountManagerTest, TestAddThenRemoveWrongMount) {
   EXPECT_FALSE(mounts_->RemoveMount(invalid_mount_id));
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
 
   // Verify the valid id can still be removed.
   EXPECT_TRUE(mounts_->RemoveMount(mount_id));
   EXPECT_EQ(0, mounts_->MountCount());
   EXPECT_FALSE(mounts_->IsAlreadyMounted(mount_id));
-  EXPECT_FALSE(mounts_->IsAlreadyMounted(root_path));
 }
 
 TEST_F(MountManagerTest, TestAddRemoveMultipleMounts) {
@@ -192,8 +187,6 @@ TEST_F(MountManagerTest, TestAddRemoveMultipleMounts) {
   EXPECT_EQ(2, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id_1));
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id_2));
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path1));
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path2));
 
   // Verify the ids are valid and different.
   EXPECT_GE(mount_id_1, 0);
@@ -205,14 +198,11 @@ TEST_F(MountManagerTest, TestAddRemoveMultipleMounts) {
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_FALSE(mounts_->IsAlreadyMounted(mount_id_2));
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id_1));
-  EXPECT_FALSE(mounts_->IsAlreadyMounted(root_path2));
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path1));
 
   // Remove the first id and verify it is also removed.
   EXPECT_TRUE(mounts_->RemoveMount(mount_id_1));
   EXPECT_EQ(0, mounts_->MountCount());
   EXPECT_FALSE(mounts_->IsAlreadyMounted(mount_id_1));
-  EXPECT_FALSE(mounts_->IsAlreadyMounted(root_path1));
 }
 
 TEST_F(MountManagerTest, TestGetFullPath) {
@@ -325,7 +315,7 @@ TEST_F(MountManagerTest, TestRemountSucceeds) {
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
 }
 
-TEST_F(MountManagerTest, TestRemountFailsWithSameMount) {
+TEST_F(MountManagerTest, TestRemountSucceedsWithSameMount) {
   const std::string root_path = "smb://server/share1";
   const int32_t mount_id = 9;
 
@@ -334,8 +324,7 @@ TEST_F(MountManagerTest, TestRemountFailsWithSameMount) {
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
 
   const int32_t mount_id2 = 10;
-  // Should be false since the same path cannot be mounted twice.
-  EXPECT_FALSE(Remount(root_path, mount_id2));
+  EXPECT_TRUE(Remount(root_path, mount_id2));
 }
 
 TEST_F(MountManagerTest, TestMountAfterRemounts) {
@@ -375,7 +364,6 @@ TEST_F(MountManagerTest, TestAddMountWithCredential) {
   EXPECT_GE(mount_id, 0);
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
 
   ExpectCredentialsEqual(mount_id, root_path, workgroup, username, password);
 }
@@ -392,7 +380,6 @@ TEST_F(MountManagerTest, TestAddMountWithEmptyCredential) {
   EXPECT_GE(mount_id, 0);
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
   ExpectCredentialsEqual(mount_id, root_path, workgroup, username, password);
 }
 
@@ -410,7 +397,6 @@ TEST_F(MountManagerTest, TestAddMountWithoutWorkgroup) {
   EXPECT_GE(mount_id, 0);
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
 
   ExpectCredentialsEqual(mount_id, root_path, workgroup, username, password);
 }
@@ -428,22 +414,11 @@ TEST_F(MountManagerTest, TestAddMountWithEmptyPassword) {
   EXPECT_GE(mount_id, 0);
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
 
   ExpectCredentialsEqual(mount_id, root_path, workgroup, username, password);
 }
 
-TEST_F(MountManagerTest, TestCantAddMountWithSamePath) {
-  const std::string root_path = "smb://server/share1";
-  int32_t mount_id;
-
-  EXPECT_TRUE(AddMount(root_path, &mount_id));
-
-  // Should return false since |root_path| is already mounted.
-  EXPECT_FALSE(AddMount(root_path, &mount_id));
-}
-
-TEST_F(MountManagerTest, TestCantAddSameMount) {
+TEST_F(MountManagerTest, TestAddSameMount) {
   const std::string workgroup2 = "workgroup2";
   const std::string username2 = "user2";
   const std::string password2 = "root2";
@@ -458,23 +433,23 @@ TEST_F(MountManagerTest, TestCantAddSameMount) {
   SmbCredential credential2 =
       CreateCredential(workgroup2, username2, password2);
 
-  // Should return false since the credential is already added for that
-  // mount.
-  EXPECT_FALSE(AddMount(kMountRoot, std::move(credential2), &mount_id));
-  EXPECT_EQ(1, mounts_->MountCount());
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
+  int32_t mount_id2;
+  EXPECT_TRUE(AddMount(kMountRoot, std::move(credential2), &mount_id2));
+  EXPECT_EQ(2, mounts_->MountCount());
+  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id2));
 
   ExpectCredentialsEqual(mount_id, kMountRoot, kWorkgroup, kUsername,
                          kPassword);
+  ExpectCredentialsEqual(mount_id2, kMountRoot, workgroup2, username2,
+                         password2);
+  EXPECT_NE(mount_id, mount_id2);
 }
 
-TEST_F(MountManagerTest, TestCantRemountWithSamePath) {
+TEST_F(MountManagerTest, TestRemountWithSamePath) {
   const std::string root_path = "smb://server/share1";
 
   EXPECT_TRUE(Remount(root_path, 1 /* mount_id */));
-
-  // Should return false since |root_path| is already mounted.
-  EXPECT_FALSE(Remount(root_path, 2 /* mount_id */));
+  EXPECT_TRUE(Remount(root_path, 2 /* mount_id */));
 }
 
 TEST_F(MountManagerTest, TestRemovedMountCanBeRemounted) {
@@ -504,7 +479,6 @@ TEST_F(MountManagerTest, TestRemountWithCredential) {
 
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
 
   ExpectCredentialsEqual(mount_id, root_path, workgroup, username, password);
 }
@@ -575,7 +549,6 @@ TEST_F(MountManagerTest, TestBufferNullTerminatedWhenLengthTooSmall) {
 
   EXPECT_TRUE(AddMount(kMountRoot, std::move(credential), &mount_id));
   EXPECT_EQ(1, mounts_->MountCount());
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(kMountRoot));
 
   // Initialize buffers with 1.
   char workgroup_buffer[kBufferSize] = {1};
@@ -634,8 +607,6 @@ TEST_F(MountManagerTest, TestAddingRemovingMultipleCredentials) {
   EXPECT_TRUE(AddMount(mount_root2, std::move(credential2), &mount_id2));
 
   EXPECT_EQ(2, mounts_->MountCount());
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(kMountRoot));
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_root2));
 
   ExpectCredentialsEqual(mount_id1, kMountRoot, kWorkgroup, kUsername,
                          kPassword);
@@ -667,8 +638,6 @@ TEST_F(MountManagerTest, TestRemoveCredentialFromMultiple) {
   EXPECT_TRUE(mounts_->RemoveMount(mount_id1));
 
   EXPECT_EQ(1, mounts_->MountCount());
-  EXPECT_FALSE(mounts_->IsAlreadyMounted(kMountRoot));
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_root2));
 
   ExpectCredentialsEqual(mount_id2, mount_root2, workgroup2, username2,
                          password2);
@@ -797,10 +766,9 @@ TEST_F(MountManagerTest, TestPremountSucceeds) {
   EXPECT_GE(mount_id, 0);
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(kMountRoot));
 }
 
-TEST_F(MountManagerTest, TestPremountFailsOnExistingMount) {
+TEST_F(MountManagerTest, TestPremountSucceedsOnExistingMount) {
   int mount_id = -1;
 
   EXPECT_EQ(0, mounts_->MountCount());
@@ -809,13 +777,12 @@ TEST_F(MountManagerTest, TestPremountFailsOnExistingMount) {
   EXPECT_GE(mount_id, 0);
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(kMountRoot));
 
   int mount_id2 = -1;
-  EXPECT_FALSE(mounts_->Premount(
-      kMountRoot, MountConfig(true /* enable_ntlm */), &mount_id2));
-  // Check that mount_id2 did not get set on unsuccessful premount.
-  EXPECT_EQ(-1, mount_id2);
+  EXPECT_TRUE(mounts_->Premount(kMountRoot, MountConfig(true /* enable_ntlm */),
+                                &mount_id2));
+  EXPECT_GE(mount_id2, 0);
+  EXPECT_NE(mount_id, mount_id2);
 }
 
 TEST_F(MountManagerTest, TestUpdateSharePathSucceeds) {
@@ -830,9 +797,6 @@ TEST_F(MountManagerTest, TestUpdateSharePathSucceeds) {
   std::string updated_path;
   EXPECT_TRUE(GetRootPath(mount_id, &updated_path));
   EXPECT_EQ(new_path, updated_path);
-
-  EXPECT_FALSE(mounts_->IsAlreadyMounted(kMountRoot));
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(new_path));
 }
 
 TEST_F(MountManagerTest, TestUpdateSharePathDoesNotAddANewMount) {
@@ -845,8 +809,6 @@ TEST_F(MountManagerTest, TestUpdateSharePathDoesNotAddANewMount) {
   const std::string new_path = "smb://192.168.50.105/testshare";
   EXPECT_TRUE(mounts_->UpdateSharePath(mount_id, new_path));
 
-  EXPECT_FALSE(mounts_->IsAlreadyMounted(kMountRoot));
-  EXPECT_TRUE(mounts_->IsAlreadyMounted(new_path));
   EXPECT_EQ(1, mounts_->MountCount());
 }
 
@@ -855,7 +817,6 @@ TEST_F(MountManagerTest, TestUpdateShareFailsOnNonExistantMount) {
 
   const std::string new_path = "smb://192.168.50.105/testshare";
   EXPECT_FALSE(mounts_->UpdateSharePath(999 /* mount_id */, new_path));
-  EXPECT_FALSE(mounts_->IsAlreadyMounted(kMountRoot));
 }
 
 }  // namespace smbprovider

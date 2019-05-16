@@ -51,9 +51,6 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   // Returns true if |mount_id| is already mounted.
   bool IsAlreadyMounted(int32_t mount_id) const;
 
-  // Returns true if |mount_root| is already mounted.
-  bool IsAlreadyMounted(const std::string& mount_root) const;
-
   // Adds |mount_root| to the |mounts_| map and outputs the |mount_id|
   // that was assigned to this mount. Ids are >=0 and are not
   // re-used within the lifetime of this class. |mount_config| holds the mount

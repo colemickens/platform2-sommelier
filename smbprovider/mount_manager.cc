@@ -139,10 +139,6 @@ bool MountManager::IsAlreadyMounted(int32_t mount_id) const {
   return mount_tracker_->IsAlreadyMounted(mount_id);
 }
 
-bool MountManager::IsAlreadyMounted(const std::string& mount_root) const {
-  return mount_tracker_->IsAlreadyMounted(mount_root);
-}
-
 bool MountManager::AddMount(const std::string& mount_root,
                             SmbCredential credential,
                             const MountConfig& mount_config,

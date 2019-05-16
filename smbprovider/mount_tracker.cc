@@ -22,22 +22,6 @@ bool MountTracker::IsAlreadyMounted(int32_t mount_id) const {
     return false;
   }
 
-  // Check if |mounted_share_paths_| and |mounts_| are in sync.
-  DCHECK(ExistsInMounts(mount_iter->second.mount_root));
-  return true;
-}
-
-bool MountTracker::IsAlreadyMounted(const std::string& mount_root) const {
-  bool exists_in_mounted_share_paths =
-      mounted_share_paths_.count(mount_root) == 1;
-
-  if (!exists_in_mounted_share_paths) {
-    DCHECK(!ExistsInMounts(mount_root));
-
-    return false;
-  }
-
-  DCHECK(ExistsInMounts(mount_root));
   return true;
 }
 
@@ -52,17 +36,6 @@ bool MountTracker::IsAlreadyMounted(
   DCHECK(IsAlreadyMounted(samba_interface_map_.at(samba_interface_id)));
 
   return true;
-}
-
-bool MountTracker::ExistsInMounts(const std::string& mount_root) const {
-  for (auto mount_iter = mounts_.Begin(); mount_iter != mounts_.End();
-       ++mount_iter) {
-    if (mount_iter->second.mount_root == mount_root) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 bool MountTracker::ExistsInSambaInterfaceMap(const int32_t mount_id) const {
@@ -81,15 +54,10 @@ bool MountTracker::AddMount(const std::string& mount_root,
                             int32_t* mount_id) {
   DCHECK(mount_id);
 
-  if (IsAlreadyMounted(mount_root)) {
-    return false;
-  }
-
   *mount_id = mounts_.Insert(CreateMountInfo(mount_root, std::move(credential),
                                              std::move(samba_interface)));
 
   AddSambaInterfaceIdToSambaInterfaceMap(*mount_id);
-  mounted_share_paths_.insert(mount_root);
   return true;
 }
 
@@ -100,7 +68,7 @@ bool MountTracker::AddMountWithId(
     int32_t mount_id) {
   DCHECK_GE(mount_id, 0);
 
-  if (IsAlreadyMounted(mount_id) || IsAlreadyMounted(mount_root)) {
+  if (IsAlreadyMounted(mount_id)) {
     return false;
   }
 
@@ -109,7 +77,6 @@ bool MountTracker::AddMountWithId(
                                 std::move(samba_interface)));
 
   AddSambaInterfaceIdToSambaInterfaceMap(mount_id);
-  mounted_share_paths_.insert(mount_root);
   return true;
 }
 
@@ -120,10 +87,6 @@ bool MountTracker::RemoveMount(int32_t mount_id) {
     return false;
   }
   DeleteSambaInterfaceIdFromSambaInterfaceMap(mount_id);
-
-  const bool path_removed =
-      mounted_share_paths_.erase(mount_iter->second.mount_root);
-  DCHECK(path_removed);
 
   mounts_.Remove(mount_iter->first);
   return true;
@@ -226,10 +189,7 @@ bool MountTracker::UpdateSharePath(int32_t mount_id,
     return false;
   }
 
-  mounted_share_paths_.erase(mount_iter->second.mount_root);
-  mounted_share_paths_.insert(share_path);
   mount_iter->second.mount_root = share_path;
-
   return true;
 }
 
