@@ -124,6 +124,20 @@ properties:
                       description: |
                         The first Android API level that this model shipped with.
                       type: string
+                    pai-regions:
+                      description: |
+                        (Optional) Comma-separated allow list of region codes
+                        that can be appended to 'ro.oem.key1' for the purpose of
+                        targeting Play Auto Install applications by region. The
+                        value(s) should match the values that would be returned
+                        by `cros_region_data region_code` for the relevant
+                        region(s). If the device's region code is not in the
+                        allow list, or if there is no allow list, 'ro.oem.key1'
+                        will not include the region code. The allow list can
+                        also be a single '*' character to indicate that the
+                        region code should always be appended.
+                      type: string
+                      pattern: "(^([a-zA-Z0-9\\.\\-]+,)*[a-zA-Z0-9\\.\\-]+$)|(^\\*$)"
                   additionalProperties: false
                 files:
                   type: array
