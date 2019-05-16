@@ -4,10 +4,6 @@
 
 #include "shill/event_dispatcher.h"
 
-#include <stdio.h>
-
-#include <base/callback.h>
-#include <base/location.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <base/time/time.h>
