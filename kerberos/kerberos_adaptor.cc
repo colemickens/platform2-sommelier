@@ -147,6 +147,20 @@ ByteArray KerberosAdaptor::RemoveAccount(const ByteArray& request_blob) {
   return SerializeProto(response);
 }
 
+ByteArray KerberosAdaptor::ClearAccounts(const ByteArray& request_blob) {
+  PrintRequest(__FUNCTION__);
+  ClearAccountsRequest request;
+  ErrorType error = ParseProto(&request, request_blob);
+
+  if (error == ERROR_NONE)
+    error = manager_->ClearAccounts();
+
+  PrintResult(__FUNCTION__, error);
+  ClearAccountsResponse response;
+  response.set_error(error);
+  return SerializeProto(response);
+}
+
 ByteArray KerberosAdaptor::ListAccounts(const ByteArray& request_blob) {
   PrintRequest(__FUNCTION__);
   ListAccountsRequest request;

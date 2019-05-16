@@ -37,6 +37,23 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
 
+    <method name="ClearAccounts">
+      <tp:docstring>
+        Removes all Kerberos accounts.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <tp:docstring>
+          Serialized ClearAccountsRequest message.
+        </tp:docstring>
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <tp:docstring>
+          Serialized ClearAccountsResponse message.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
     <method name="ListAccounts">
       <tp:docstring>
         Gets a list of all existing accounts, including current status like

@@ -125,6 +125,7 @@ ErrorType AccountManager::AddAccount(const std::string& principal_name,
     // Policy should overwrite user-added accounts, but user-added accounts
     // should not overwrite policy accounts.
     if (!accounts_[index].is_managed() && is_managed) {
+      DeleteKerberosFiles(principal_name);
       accounts_[index].set_is_managed(is_managed);
       SaveAccounts();
     }
@@ -144,15 +145,31 @@ ErrorType AccountManager::RemoveAccount(const std::string& principal_name) {
   if (index == kInvalidIndex)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
-  // Delete krb files, but only trigger TriggerKerberosFilesChanged if the
-  // credential cache existed.
+  DeleteKerberosFiles(principal_name);
+  accounts_.erase(accounts_.begin() + index);
+
+  SaveAccounts();
+  return ERROR_NONE;
+}
+
+void AccountManager::DeleteKerberosFiles(const std::string& principal_name) {
   base::DeleteFile(GetKrb5ConfPath(principal_name), false /* recursive */);
   const base::FilePath krb5cc_path = GetKrb5CCPath(principal_name);
   if (base::PathExists(krb5cc_path)) {
     base::DeleteFile(krb5cc_path, false /* recursive */);
     TriggerKerberosFilesChanged(principal_name);
   }
-  accounts_.erase(accounts_.begin() + index);
+}
+
+ErrorType AccountManager::ClearAccounts() {
+  // Early out.
+  if (accounts_.size() == 0)
+    return ERROR_NONE;
+
+  // Delete all teh dataz.
+  for (const auto& account : accounts_)
+    DeleteKerberosFiles(account.principal_name());
+  accounts_.clear();
 
   SaveAccounts();
   return ERROR_NONE;
@@ -166,10 +183,11 @@ ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) const {
     // TODO(https://crbug.com/952239): Set additional properties.
 
     // Do a best effort reporting results, don't bail on the first error. If
-    // there's a broken account, the user is able to recover the situation this
-    // way (reauthenticate or remove account and add back).
+    // there's a broken account, the user is able to recover the situation
+    // this way (reauthenticate or remove account and add back).
 
-    // Check PathExists, so that no error is printed if the file doesn't exist.
+    // Check PathExists, so that no error is printed if the file doesn't
+    // exist.
     std::string krb5conf;
     const base::FilePath krb5conf_path = GetKrb5ConfPath(it.principal_name());
     if (base::PathExists(krb5conf_path) &&
@@ -177,7 +195,8 @@ ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) const {
       account.set_krb5conf(krb5conf);
     }
 
-    // A missing krb5cc file just translates to an invalid ticket (lifetime 0).
+    // A missing krb5cc file just translates to an invalid ticket (lifetime
+    // 0).
     Krb5Interface::TgtStatus tgt_status;
     const base::FilePath krb5cc_path = GetKrb5CCPath(it.principal_name());
     if (base::PathExists(krb5cc_path) &&

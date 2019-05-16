@@ -62,10 +62,14 @@ class AccountManager {
   // Removes the account keyed by |principal_name| from the list of accounts.
   ErrorType RemoveAccount(const std::string& principal_name) WARN_UNUSED_RESULT;
 
+  // Removes all accounts.
+  ErrorType ClearAccounts() WARN_UNUSED_RESULT;
+
   // Returns a list of all existing accounts, including current status like
   // remaining Kerberos ticket lifetime. Does a best effort returning results.
   // See documentation of |Account| for more details.
-  ErrorType ListAccounts(std::vector<Account>* accounts) const;
+  ErrorType ListAccounts(std::vector<Account>* accounts) const
+      WARN_UNUSED_RESULT;
 
   // Sets the Kerberos configuration (krb5.conf) used for the given
   // |principal_name|.
@@ -100,6 +104,10 @@ class AccountManager {
 
   // File path where |accounts_| is stored.
   base::FilePath GetAccountsPath() const;
+
+  // Deletes the Kerberos config and credential cache. Triggers
+  // KerberosFilesChanged if the credential cache was deleted.
+  void DeleteKerberosFiles(const std::string& principal_name);
 
   // Calls |kerberos_files_changed_| if set.
   void TriggerKerberosFilesChanged(const std::string& principal_name) const;

@@ -55,9 +55,43 @@ class AccountManagerTest : public ::testing::Test {
         storage_dir_.GetPath(), kerberos_files_changed_, std::move(krb5));
   }
 
+  void TearDown() override {
+    // Make sure the file stored on disk contains the same accounts as the
+    // manager instance. This catches cases where AccountManager forgets to save
+    // accounts on some change.
+    if (base::PathExists(accounts_path_)) {
+      std::vector<Account> accounts;
+      EXPECT_EQ(ERROR_NONE, manager_->ListAccounts(&accounts));
+
+      AccountManager other_manager(storage_dir_.GetPath(),
+                                   kerberos_files_changed_,
+                                   std::make_unique<FakeKrb5Interface>());
+      other_manager.LoadAccounts();
+      std::vector<Account> other_accounts;
+      EXPECT_EQ(ERROR_NONE, other_manager.ListAccounts(&other_accounts));
+
+      ASSERT_NO_FATAL_FAILURE(ExpectAccountsEqual(accounts, other_accounts));
+    }
+
+    ::testing::Test::TearDown();
+  }
+
  protected:
   void OnKerberosFilesChanged(const std::string& principal_name) {
     kerberos_files_changed_count_[principal_name]++;
+  }
+
+  void ExpectAccountsEqual(const std::vector<Account>& account_list_1,
+                           const std::vector<Account>& account_list_2) {
+    ASSERT_EQ(account_list_1.size(), account_list_2.size());
+    for (size_t n = 0; n < account_list_1.size(); ++n) {
+      const Account& account1 = account_list_1[n];
+      const Account& account2 = account_list_2[n];
+
+      EXPECT_EQ(account1.principal_name(), account2.principal_name());
+      EXPECT_EQ(account1.is_managed(), account2.is_managed());
+      // TODO(https://crbug.com/952239): Check additional properties.
+    }
   }
 
   std::unique_ptr<AccountManager> manager_;
@@ -99,8 +133,15 @@ TEST_F(AccountManagerTest, AddDuplicateAccountFail) {
 TEST_F(AccountManagerTest, ManagedOverridesUnmanaged) {
   ignore_result(manager_->AddAccount(kUser, false /* is_managed */));
 
+  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword));
+  EXPECT_TRUE(base::PathExists(krb5cc_path_));
+
+  // Overwriting with a managed account should wipe existing files and make the
+  // account managed.
   EXPECT_EQ(ERROR_DUPLICATE_PRINCIPAL_NAME,
             manager_->AddAccount(kUser, true /* is_managed */));
+  EXPECT_FALSE(base::PathExists(krb5cc_path_));
+
   std::vector<Account> accounts;
   EXPECT_EQ(ERROR_NONE, manager_->ListAccounts(&accounts));
   ASSERT_EQ(1u, accounts.size());
@@ -163,6 +204,49 @@ TEST_F(AccountManagerTest, RepeatedAddRemoveSuccess) {
   EXPECT_EQ(ERROR_NONE, manager_->RemoveAccount(kUser));
 }
 
+// ClearAccount() clears all accounts.
+TEST_F(AccountManagerTest, ClearAccountSuccess) {
+  ignore_result(manager_->AddAccount(kUser, false /* is_managed */));
+  ignore_result(manager_->AddAccount(kUser2, true /* is_managed */));
+
+  EXPECT_EQ(ERROR_NONE, manager_->ClearAccounts());
+  std::vector<Account> accounts;
+  EXPECT_EQ(ERROR_NONE, manager_->ListAccounts(&accounts));
+  EXPECT_EQ(0u, accounts.size());
+}
+
+// ClearAccount() wipes Kerberos configuration and credential cache.
+TEST_F(AccountManagerTest, ClearAccountRemovesKerberosFiles) {
+  ignore_result(manager_->AddAccount(kUser, false /* is_managed */));
+
+  EXPECT_EQ(ERROR_NONE, manager_->SetConfig(kUser, kKrb5Conf));
+  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword));
+  EXPECT_TRUE(base::PathExists(krb5conf_path_));
+  EXPECT_TRUE(base::PathExists(krb5cc_path_));
+  EXPECT_EQ(ERROR_NONE, manager_->ClearAccounts());
+  EXPECT_FALSE(base::PathExists(krb5conf_path_));
+  EXPECT_FALSE(base::PathExists(krb5cc_path_));
+}
+
+// ClearAccount() triggers KerberosFilesChanged if the credential cache exists.
+TEST_F(AccountManagerTest, ClearAccountTriggersKFCIfCCExists) {
+  ignore_result(manager_->AddAccount(kUser, true /* is_managed */));
+
+  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword));
+  EXPECT_EQ(1, kerberos_files_changed_count_[kUser]);
+  EXPECT_EQ(ERROR_NONE, manager_->ClearAccounts());
+  EXPECT_EQ(2, kerberos_files_changed_count_[kUser]);
+}
+
+// ClearAccount() does not trigger KerberosFilesChanged if the credential cache
+// does not exist.
+TEST_F(AccountManagerTest, ClearAccountDoesNotTriggerKFCIfDoesNotCCExist) {
+  ignore_result(manager_->AddAccount(kUser, true /* is_managed */));
+
+  EXPECT_EQ(ERROR_NONE, manager_->ClearAccounts());
+  EXPECT_EQ(0, kerberos_files_changed_count_[kUser]);
+}
+
 // SetConfig() succeeds and writes the config to |krb5conf_path_|.
 TEST_F(AccountManagerTest, SetConfigSuccess) {
   ignore_result(manager_->AddAccount(kUser, true /* is_managed */));
@@ -183,8 +267,8 @@ TEST_F(AccountManagerTest, SetConfigTriggersKFCIfCCExists) {
   EXPECT_EQ(2, kerberos_files_changed_count_[kUser]);
 }
 
-// SetConfig does not trigger KerberosFilesChanged if the credential cache does
-// not exist.
+// SetConfig() does not trigger KerberosFilesChanged if the credential cache
+// does not exist.
 TEST_F(AccountManagerTest, SetConfigDoesNotTriggerKFCIfDoesNotCCExist) {
   ignore_result(manager_->AddAccount(kUser, true /* is_managed */));
 
@@ -338,7 +422,7 @@ TEST_F(AccountManagerTest, SerializationSuccess) {
                                std::make_unique<FakeKrb5Interface>());
   other_manager.LoadAccounts();
   std::vector<Account> accounts;
-  EXPECT_EQ(ERROR_NONE, manager_->ListAccounts(&accounts));
+  EXPECT_EQ(ERROR_NONE, other_manager.ListAccounts(&accounts));
   ASSERT_EQ(2u, accounts.size());
 
   EXPECT_EQ(kUser, accounts[0].principal_name());
