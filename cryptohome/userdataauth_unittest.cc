@@ -799,6 +799,7 @@ class UserDataAuthExTest : public UserDataAuthTest {
     update_req_.reset(new user_data_auth::UpdateKeyRequest);
     migrate_req_.reset(new user_data_auth::MigrateKeyRequest);
     remove_homedir_req_.reset(new user_data_auth::RemoveRequest);
+    rename_homedir_req_.reset(new user_data_auth::RenameRequest);
   }
 
   template <class ProtoBuf>
@@ -824,6 +825,7 @@ class UserDataAuthExTest : public UserDataAuthTest {
   std::unique_ptr<user_data_auth::UpdateKeyRequest> update_req_;
   std::unique_ptr<user_data_auth::MigrateKeyRequest> migrate_req_;
   std::unique_ptr<user_data_auth::RemoveRequest> remove_homedir_req_;
+  std::unique_ptr<user_data_auth::RenameRequest> rename_homedir_req_;
 
   static constexpr char kUser[] = "chromeos-user";
   static constexpr char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
@@ -1393,6 +1395,53 @@ TEST_F(UserDataAuthExTest, RemoveInvalidArguments) {
   // Empty account_id
   remove_homedir_req_->mutable_identifier()->set_account_id("");
   EXPECT_EQ(userdataauth_.Remove(*remove_homedir_req_),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
+TEST_F(UserDataAuthExTest, RenameSanity) {
+  PrepareArguments();
+
+  constexpr char kUsername1[] = "foo@gmail.com";
+  constexpr char kUsername2[] = "bar@gmail.com";
+  rename_homedir_req_->mutable_id_from()->set_account_id(kUsername1);
+  rename_homedir_req_->mutable_id_to()->set_account_id(kUsername2);
+
+  SetupMount(kUsername1);
+
+  // Test for successful case.
+  EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, Rename(kUsername1, kUsername2)).WillOnce(Return(true));
+  EXPECT_EQ(userdataauth_.Rename(*rename_homedir_req_),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Test for unsuccessful case.
+  EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, Rename(kUsername1, kUsername2))
+      .WillOnce(Return(false));
+  EXPECT_EQ(userdataauth_.Rename(*rename_homedir_req_),
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+
+  // Test for mount point busy case.
+  EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
+  EXPECT_EQ(userdataauth_.Rename(*rename_homedir_req_),
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+}
+
+TEST_F(UserDataAuthExTest, RenameInvalidArguments) {
+  PrepareArguments();
+
+  constexpr char kUsername1[] = "foo@gmail.com";
+
+  rename_homedir_req_->mutable_id_from()->set_account_id(kUsername1);
+
+  // No id_to
+  EXPECT_EQ(userdataauth_.Rename(*rename_homedir_req_),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+
+  // No id_from
+  rename_homedir_req_->clear_id_from();
+  rename_homedir_req_->mutable_id_to()->set_account_id(kUsername1);
+  EXPECT_EQ(userdataauth_.Rename(*rename_homedir_req_),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 

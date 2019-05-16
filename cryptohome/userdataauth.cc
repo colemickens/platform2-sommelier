@@ -1647,4 +1647,34 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::Remove(
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
+user_data_auth::CryptohomeErrorCode UserDataAuth::Rename(
+    const user_data_auth::RenameRequest& request) {
+  AssertOnMountThread();
+
+  if (!request.has_id_from() || !request.has_id_to()) {
+    LOG(ERROR) << "RenameRequest must have id_from and id_to.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  std::string username_from = GetAccountId(request.id_from());
+  std::string username_to = GetAccountId(request.id_to());
+
+  scoped_refptr<cryptohome::Mount> mount = GetMountForUser(username_from);
+  const bool is_mounted = mount.get() && mount->IsMounted();
+
+  if (is_mounted) {
+    LOG(ERROR) << "RenameCryptohome('" << username_from << "','" << username_to
+               << "'): Unable to rename mounted cryptohome.";
+    return user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY;
+  } else if (!homedirs_) {
+    LOG(ERROR) << "RenameCryptohome('" << username_from << "','" << username_to
+               << "'): Homedirs not initialized.";
+    return user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY;
+  } else if (!homedirs_->Rename(username_from, username_to)) {
+    return user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL;
+  }
+
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+}
+
 }  // namespace cryptohome

@@ -167,6 +167,12 @@ class UserDataAuth {
   user_data_auth::CryptohomeErrorCode Remove(
       const user_data_auth::RemoveRequest& request);
 
+  // Rename the cryptohome (user's home directory) specified by
+  // |request.id_from| to |request.id_to|. If renamed successfully, then return
+  // CRYPTOHOME_ERROR_NOT_SET, otherwise, some error code is returned.
+  user_data_auth::CryptohomeErrorCode Rename(
+      const user_data_auth::RenameRequest& request);
+
   // =============== PKCS#11 Related Public Methods ===============
 
   // This initializes the PKCS#11 for a particular mount. Note that this is
