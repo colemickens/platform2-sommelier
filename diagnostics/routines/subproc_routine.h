@@ -88,8 +88,8 @@ class SubprocRoutine final : public DiagnosticRoutine {
   std::unique_ptr<DiagProcessAdapter> process_adapter_;
   std::unique_ptr<base::TickClock> tick_clock_;
   base::CommandLine command_line_;
-  int predicted_duration_in_seconds_;
-  base::ProcessHandle handle_;
+  int predicted_duration_in_seconds_ = 0;
+  base::ProcessHandle handle_ = base::kNullProcessHandle;
   base::TimeTicks start_ticks_;
 
   DISALLOW_COPY_AND_ASSIGN(SubprocRoutine);

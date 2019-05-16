@@ -187,7 +187,7 @@ void SubprocRoutine::KillProcess(bool from_dtor) {
       break;
     case kSubprocStatusKilling:
       // The process is already being killed. Do nothing.
-      DCHECK(handle_ != base::kNullProcessHandle);
+      DCHECK_NE(handle_, base::kNullProcessHandle);
       break;
     case kSubprocStatusCanceled:
     case kSubprocStatusCompleteFailure:
@@ -197,13 +197,13 @@ void SubprocRoutine::KillProcess(bool from_dtor) {
     case kSubprocStatusReady:
       // If the process has already exited, is exiting, or never started,
       // there's no need to kill it.
-      DCHECK(handle_ == base::kNullProcessHandle);
+      DCHECK_EQ(handle_, base::kNullProcessHandle);
       break;
   }
 }
 
 void SubprocRoutine::CheckActiveProcessStatus() {
-  DCHECK(handle_ != base::kNullProcessHandle);
+  DCHECK_NE(handle_, base::kNullProcessHandle);
   switch (process_adapter_->GetStatus(handle_)) {
     case base::TERMINATION_STATUS_STILL_RUNNING:
       DCHECK(subproc_status_ == kSubprocStatusKilling ||
@@ -247,7 +247,7 @@ void SubprocRoutine::CheckProcessStatus() {
     case kSubprocStatusError:
     case kSubprocStatusLaunchFailed:
     case kSubprocStatusReady:
-      DCHECK(handle_ == base::kNullProcessHandle);
+      DCHECK_EQ(handle_, base::kNullProcessHandle);
       break;
     case kSubprocStatusKilling:
     case kSubprocStatusRunning:
