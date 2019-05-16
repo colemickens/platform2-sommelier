@@ -144,6 +144,14 @@ class UserDataAuth {
       cryptohome::KeyData* data_out,
       bool* found);
 
+  // This will update the keyset specified by |request.account_id|, with the
+  // changes being |request.changes| and authorized by
+  // |request.authorization_request| and |request.authorization_signature|.
+  // It'll return CRYPTOHOME_ERROR_NOT_SET if the operation is successful, and
+  // other error code if it failed.
+  user_data_auth::CryptohomeErrorCode UpdateKey(
+      const user_data_auth::UpdateKeyRequest& request);
+
   // =============== PKCS#11 Related Public Methods ===============
 
   // This initializes the PKCS#11 for a particular mount. Note that this is

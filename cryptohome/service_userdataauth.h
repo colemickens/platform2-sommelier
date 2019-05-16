@@ -98,6 +98,9 @@ class UserDataAuthAdaptor
   void UpdateKey(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                      user_data_auth::UpdateKeyReply>> response,
                  const user_data_auth::UpdateKeyRequest& in_request) override;
+  void DoUpdateKey(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                       user_data_auth::UpdateKeyReply>> response,
+                   const user_data_auth::UpdateKeyRequest& in_request);
 
   void RemoveKey(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                      user_data_auth::RemoveKeyReply>> response,

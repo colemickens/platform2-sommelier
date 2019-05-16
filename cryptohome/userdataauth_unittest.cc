@@ -18,6 +18,8 @@
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mock_tpm_init.h"
 #include "cryptohome/mock_vault_keyset.h"
+#include "cryptohome/obfuscated_username.h"
+#include "cryptohome/protobuf_test_utils.h"
 
 using base::FilePath;
 using brillo::SecureBlob;
@@ -29,6 +31,7 @@ using ::testing::EndsWith;
 using ::testing::Invoke;
 using ::testing::Mock;
 using ::testing::NiceMock;
+using ::testing::Pointee;
 using ::testing::Property;
 using ::testing::Return;
 using ::testing::SetArgPointee;
@@ -86,6 +89,14 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
   void SetupMount(const std::string& username) {
     mount_ = new NiceMock<MockMount>();
     userdataauth_.set_mount_for_user(username, mount_.get());
+  }
+
+  // This is a helper function that compute the obfuscated username with the
+  // fake salt.
+  std::string GetObfuscatedUsername(const std::string& username) {
+    brillo::SecureBlob salt;
+    AssignSalt(CRYPTOHOME_DEFAULT_SALT_LENGTH, &salt);
+    return BuildObfuscatedUsername(username, salt);
   }
 
  protected:
@@ -784,6 +795,7 @@ class UserDataAuthExTest : public UserDataAuthTest {
     remove_req_.reset(new user_data_auth::RemoveKeyRequest);
     list_keys_req_.reset(new user_data_auth::ListKeysRequest);
     get_key_data_req_.reset(new user_data_auth::GetKeyDataRequest);
+    update_req_.reset(new user_data_auth::UpdateKeyRequest);
   }
 
   template <class ProtoBuf>
@@ -806,6 +818,7 @@ class UserDataAuthExTest : public UserDataAuthTest {
   std::unique_ptr<user_data_auth::RemoveKeyRequest> remove_req_;
   std::unique_ptr<user_data_auth::ListKeysRequest> list_keys_req_;
   std::unique_ptr<user_data_auth::GetKeyDataRequest> get_key_data_req_;
+  std::unique_ptr<user_data_auth::UpdateKeyRequest> update_req_;
 
   static constexpr char kUser[] = "chromeos-user";
   static constexpr char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
@@ -1236,6 +1249,76 @@ TEST_F(UserDataAuthExTest, GetKeyDataInvalidArgs) {
   EXPECT_EQ(userdataauth_.GetKeyData(*get_key_data_req_, &keydata_out, &found),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   EXPECT_FALSE(found);
+}
+
+TEST_F(UserDataAuthExTest, UpdateKeySanity) {
+  PrepareArguments();
+
+  constexpr char kUsername1[] = "foo@gmail.com";
+
+  update_req_->mutable_account_id()->set_account_id(kUsername1);
+  update_req_->mutable_authorization_request()->mutable_key()->set_secret(
+      "some secret");
+  update_req_->mutable_changes()->mutable_data()->set_label("some label");
+
+  EXPECT_CALL(homedirs_, Exists(GetObfuscatedUsername(kUsername1)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(homedirs_,
+              UpdateKeyset(Property(&Credentials::username, kUsername1),
+                           Pointee(ProtobufEquals(update_req_->changes())),
+                           update_req_->authorization_signature()))
+      .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
+
+  EXPECT_EQ(userdataauth_.UpdateKey(*update_req_),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+}
+
+TEST_F(UserDataAuthExTest, UpdateKeyInvalidArguments) {
+  PrepareArguments();
+
+  // No email.
+  EXPECT_EQ(userdataauth_.UpdateKey(*update_req_),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+
+  // No authorization request key secret.
+  update_req_->mutable_account_id()->set_account_id("foo@gmail.com");
+  EXPECT_EQ(userdataauth_.UpdateKey(*update_req_),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+
+  // No changes field.
+  update_req_->mutable_authorization_request()->mutable_key()->set_secret(
+      "some secret");
+  EXPECT_EQ(userdataauth_.UpdateKey(*update_req_),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
+TEST_F(UserDataAuthExTest, UpdateKeyError) {
+  PrepareArguments();
+
+  constexpr char kUsername1[] = "foo@gmail.com";
+
+  update_req_->mutable_account_id()->set_account_id(kUsername1);
+  update_req_->mutable_authorization_request()->mutable_key()->set_secret(
+      "some secret");
+  update_req_->mutable_changes()->mutable_data()->set_label("some label");
+
+  // Check when the homedir doesn't exist.
+  EXPECT_CALL(homedirs_, Exists(GetObfuscatedUsername(kUsername1)))
+      .WillOnce(Return(false));
+
+  EXPECT_EQ(userdataauth_.UpdateKey(*update_req_),
+            user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+
+  // Check when UpdateKeyset returns an error.
+  EXPECT_CALL(homedirs_, Exists(GetObfuscatedUsername(kUsername1)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(homedirs_,
+              UpdateKeyset(_, Pointee(ProtobufEquals(update_req_->changes())),
+                           update_req_->authorization_signature()))
+      .WillOnce(Return(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED));
+
+  EXPECT_EQ(userdataauth_.UpdateKey(*update_req_),
+            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
 }
 
 }  // namespace cryptohome
