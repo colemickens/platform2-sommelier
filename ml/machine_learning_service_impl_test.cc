@@ -77,7 +77,7 @@ TEST(MachineLearningServiceImplTest, TestBadModel) {
 
   // Set up model spec to specify an invalid model.
   ModelSpecPtr spec = ModelSpec::New();
-  spec->id = ModelId::UNKNOWN;
+  spec->id = ModelId::UNSUPPORTED_UNKNOWN;
 
   // Load model.
   ModelPtr model;

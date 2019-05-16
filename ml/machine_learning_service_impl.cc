@@ -56,19 +56,14 @@ void MachineLearningServiceImpl::LoadModel(ModelSpecPtr spec,
                                            const LoadModelCallback& callback) {
   RequestMetrics<LoadModelResult> request_metrics(kMetricsNameBase);
   request_metrics.StartRecordingPerformanceMetrics();
-  if (spec->id <= ModelId::UNKNOWN || spec->id > ModelId::kMax) {
-    callback.Run(LoadModelResult::MODEL_SPEC_ERROR);
-    request_metrics.RecordRequestEvent(LoadModelResult::MODEL_SPEC_ERROR);
-    return;
-  }
 
-  // Shouldn't happen (as we maintain a metadata entry for every valid model),
-  // but can't hurt to be defensive.
+  // Unsupported models do not have metadata entries.
   const auto metadata_lookup = model_metadata_.find(spec->id);
   if (metadata_lookup == model_metadata_.end()) {
-    LOG(ERROR) << "No metadata present for model ID " << spec->id << ".";
-    callback.Run(LoadModelResult::LOAD_MODEL_ERROR);
-    request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
+    LOG(WARNING) << "LoadModel requested for unsupported model ID " << spec->id
+                 << ".";
+    callback.Run(LoadModelResult::MODEL_SPEC_ERROR);
+    request_metrics.RecordRequestEvent(LoadModelResult::MODEL_SPEC_ERROR);
     return;
   }
   const ModelMetadata& metadata = metadata_lookup->second;
