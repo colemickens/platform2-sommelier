@@ -22,6 +22,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <dbus/message.h>
 #include <dbus/property.h>
+#include <dbus/scoped_dbus_error.h>
 
 #include "container_guest.grpc.pb.h"  // NOLINT(build/include)
 
@@ -200,8 +201,8 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
                                  kCreateTransactionMethod);
     dbus::MessageWriter writer(&method_call);
     std::unique_ptr<dbus::Response> dbus_response =
-        packagekit_service_proxy_->CallMethodAndBlock(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+        packagekit_service_proxy_->CallMethodAndBlockWithErrorDetails(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
     if (!dbus_response) {
       GeneralErrorInternal("Failure calling CreateTransaction");
       return;
@@ -227,11 +228,12 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
                                    kSetHintsMethod);
     dbus::MessageWriter sethints_writer(&sethints_call);
     sethints_writer.AppendArrayOfStrings({"interactive=false"});
-    dbus_response = transaction_proxy_->CallMethodAndBlock(
-        &sethints_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    dbus_response = transaction_proxy_->CallMethodAndBlockWithErrorDetails(
+        &sethints_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
     if (!dbus_response) {
       // Don't propagate a failure, this was just a hint.
-      LOG(WARNING) << "Failure calling SetHints";
+      LOG(WARNING) << "Failure calling SetHints - " << dbus_error_.name()
+                   << ": " << dbus_error_.message();
     }
 
     // Hook up all the necessary signals to PackageKit for monitoring the
@@ -307,7 +309,12 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
   }
 
   void GeneralErrorInternal(const std::string& details) {
-    GeneralError(details);
+    if (dbus_error_.is_set()) {
+      GeneralError(details + "(error=" + dbus_error_.name() + ": " +
+                   dbus_error_.message() + ")");
+    } else {
+      GeneralError(details);
+    }
     // An unknown error has occurred, we should self-destruct now.
     delete this;
   }
@@ -466,6 +473,7 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
 
  protected:
   scoped_refptr<dbus::Bus> bus_;
+  dbus::ScopedDBusError dbus_error_;
   PackageKitProxy* packagekit_proxy_;            // Not owned.
   dbus::ObjectProxy* packagekit_service_proxy_;  // Not owned.
 
@@ -523,8 +531,8 @@ class GetDetailsTransaction : public PackageKitTransaction {
     writer.AppendArrayOfStrings({value});
 
     std::unique_ptr<dbus::Response> dbus_response =
-        transaction_proxy->CallMethodAndBlock(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+        transaction_proxy->CallMethodAndBlockWithErrorDetails(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
     return !!dbus_response;
   }
 
@@ -598,8 +606,8 @@ class SearchFilesTransaction : public PackageKitTransaction {
     writer.AppendUint64(kPackageKitFilterInstalled);
     writer.AppendArrayOfStrings({file_path_.value()});
     std::unique_ptr<dbus::Response> dbus_response =
-        transaction_proxy->CallMethodAndBlock(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+        transaction_proxy->CallMethodAndBlockWithErrorDetails(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
     return !!dbus_response;
   }
 
@@ -721,8 +729,8 @@ class InstallTransaction : public PackageKitTransaction {
     writer.AppendArrayOfStrings({value});
 
     std::unique_ptr<dbus::Response> dbus_response =
-        transaction_proxy->CallMethodAndBlock(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+        transaction_proxy->CallMethodAndBlockWithErrorDetails(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
     return !!dbus_response;
   }
 
@@ -833,8 +841,8 @@ class UninstallPackagesTransaction : public PackageKitTransaction {
     // commands.
     writer.AppendBool(true);
     std::unique_ptr<dbus::Response> dbus_response =
-        transaction_proxy->CallMethodAndBlock(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+        transaction_proxy->CallMethodAndBlockWithErrorDetails(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
     return !!dbus_response;
   }
 
@@ -933,8 +941,8 @@ class UpdatePackagesTransaction : public PackageKitTransaction {
     writer.AppendUint64(0);  // No transaction flag.
     writer.AppendArrayOfStrings(package_ids_);
     std::unique_ptr<dbus::Response> dbus_response =
-        transaction_proxy->CallMethodAndBlock(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+        transaction_proxy->CallMethodAndBlockWithErrorDetails(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
     return !!dbus_response;
   }
 
@@ -981,8 +989,8 @@ class GetUpdatesTransaction : public PackageKitTransaction {
     // Set the filter to installed packages.
     writer.AppendUint64(kPackageKitFilterInstalled);
     std::unique_ptr<dbus::Response> dbus_response =
-        transaction_proxy->CallMethodAndBlock(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+        transaction_proxy->CallMethodAndBlockWithErrorDetails(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
     return !!dbus_response;
   }
 
@@ -1077,8 +1085,8 @@ class RefreshCacheTransaction : public PackageKitTransaction {
     dbus::MessageWriter writer(&method_call);
     writer.AppendBool(false);  // Don't force cache wipe.
     std::unique_ptr<dbus::Response> dbus_response =
-        transaction_proxy->CallMethodAndBlock(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+        transaction_proxy->CallMethodAndBlockWithErrorDetails(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
     return !!dbus_response;
   }
 
@@ -1138,8 +1146,8 @@ class ResolveTransaction : public PackageKitTransaction {
     writer.AppendUint64(kPackageKitFilterNone);
     writer.AppendArrayOfStrings({package_name_});
     std::unique_ptr<dbus::Response> dbus_response =
-        transaction_proxy->CallMethodAndBlock(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+        transaction_proxy->CallMethodAndBlockWithErrorDetails(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
     return !!dbus_response;
   }
 
