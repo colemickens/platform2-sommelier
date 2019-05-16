@@ -151,7 +151,7 @@ bool ChromeCollector::HandleCrash(const FilePath& file_path,
   // Keyed by crash metadata key name.
   const std::map<std::string, base::FilePath> additional_logs =
       GetAdditionalLogs(dir, dump_basename, exe_name);
-  for (auto it : additional_logs) {
+  for (const auto& it : additional_logs) {
     int64_t file_size = 0;
     if (!base::GetFileSize(it.second, &file_size)) {
       PLOG(WARNING) << "Unable to get size of " << it.second.value();
