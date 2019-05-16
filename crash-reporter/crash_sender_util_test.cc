@@ -702,8 +702,8 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
 
   // Valid crash files should be kept in the guest mode.
   ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsDisabled));
-  EXPECT_EQ(kSend, ChooseAction(good_meta_, metrics_lib_.get(),
-                                allow_dev_sending, &reason, &info));
+  EXPECT_EQ(kIgnore, ChooseAction(good_meta_, metrics_lib_.get(),
+                                  allow_dev_sending, &reason, &info));
 }
 
 TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
@@ -772,18 +772,14 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   EXPECT_TRUE(to_send.empty());
 
   // Valid crash files should be kept in the guest mode, thus the directory
-  // won't be empty.
+  // won't be empty. None should be selected for sending.
   ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
   ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsDisabled,
                             raw_metrics_lib));
   to_send.clear();
   sender.RemoveAndPickCrashFiles(crash_directory, &to_send);
   EXPECT_FALSE(base::IsDirectoryEmpty(crash_directory));
-  // TODO(satorux): This will become zero, once we move the "skip in guest mode"
-  // logic to C++.
-  ASSERT_EQ(2, to_send.size());
-  EXPECT_EQ(good_meta_.value(), to_send[0].first.value());
-  EXPECT_EQ(absolute_meta_.value(), to_send[1].first.value());
+  EXPECT_TRUE(to_send.empty());
 
   // devcore_meta_ should be included in to_send, if uploading of device
   // coredumps is allowed.

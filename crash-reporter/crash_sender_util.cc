@@ -278,8 +278,7 @@ Action ChooseAction(const base::FilePath& meta_file,
   }
 
   // AreMetricsEnabled() returns false in guest mode, thus IsGuestMode() should
-  // also be checked here (otherwise, all crash files are deleted in guest
-  // mode).
+  // be checked first (otherwise, all crash files are deleted in guest mode).
   //
   // Note that this check is slightly racey, but should be rare enough for us
   // not to care:
@@ -288,7 +287,11 @@ Action ChooseAction(const base::FilePath& meta_file,
   // - User logs in to guest mode
   // - crash_sender checks AreMetricsEnabled() and it's now false
   // - Reports are deleted
-  if (!metrics_lib->IsGuestMode() && !metrics_lib->AreMetricsEnabled()) {
+  if (metrics_lib->IsGuestMode()) {
+    *reason = "Crash sending delayed due to guest mode";
+    return kIgnore;
+  }
+  if (!metrics_lib->AreMetricsEnabled()) {
     *reason = "Crash reporting is disabled";
     return kRemove;
   }
@@ -315,8 +318,6 @@ Action ChooseAction(const base::FilePath& meta_file,
   info->payload_file = meta_file.DirName().Append(info->payload_file);
 
   if (!base::PathExists(info->payload_file)) {
-    // TODO(satorux): logging_CrashSender.py expects "Missing payload" in the
-    // error message. Revise the autotest once the rewrite to C++ is complete.
     *reason = "Missing payload: " + info->payload_file.value();
     return kRemove;
   }
