@@ -102,7 +102,24 @@ void UserDataAuthAdaptor::Remove(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::RemoveReply>> response,
     const user_data_auth::RemoveRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &UserDataAuthAdaptor::DoRemove, base::Unretained(this),
+          ThreadSafeDBusMethodResponse<
+              user_data_auth::RemoveReply>::MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void UserDataAuthAdaptor::DoRemove(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::RemoveReply>> response,
+    const user_data_auth::RemoveRequest& in_request) {
   user_data_auth::RemoveReply reply;
+  auto status = service_->Remove(in_request);
+  // Note, if there's no error, then |status| is set to CRYPTOHOME_ERROR_NOT_SET
+  // to indicate that.
+  reply.set_error(status);
   response->Return(reply);
 }
 

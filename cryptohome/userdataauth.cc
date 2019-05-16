@@ -1626,4 +1626,25 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::MigrateKey(
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
+user_data_auth::CryptohomeErrorCode UserDataAuth::Remove(
+    const user_data_auth::RemoveRequest& request) {
+  AssertOnMountThread();
+
+  if (!request.has_identifier()) {
+    LOG(ERROR) << "RemoveRequest must have identifier.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  std::string account_id = GetAccountId(request.identifier());
+  if (account_id.empty()) {
+    LOG(ERROR) << "RemoveRequest must have valid account_id.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  if (!homedirs_->Remove(request.identifier().account_id())) {
+    return user_data_auth::CRYPTOHOME_ERROR_REMOVE_FAILED;
+  }
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+}
+
 }  // namespace cryptohome

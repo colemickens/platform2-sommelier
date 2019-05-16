@@ -60,9 +60,14 @@ class UserDataAuthAdaptor
   void DoMount(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                    user_data_auth::MountReply>> response,
                const user_data_auth::MountRequest& in_request);
+
   void Remove(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                   user_data_auth::RemoveReply>> response,
               const user_data_auth::RemoveRequest& in_request) override;
+  void DoRemove(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                    user_data_auth::RemoveReply>> response,
+                const user_data_auth::RemoveRequest& in_request);
+
   void Rename(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                   user_data_auth::RenameReply>> response,
               const user_data_auth::RenameRequest& in_request) override;

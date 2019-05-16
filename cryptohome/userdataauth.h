@@ -161,6 +161,12 @@ class UserDataAuth {
   user_data_auth::CryptohomeErrorCode MigrateKey(
       const user_data_auth::MigrateKeyRequest& request);
 
+  // Remove the cryptohome (user's home directory) specified in
+  // |request.identifier|. If removed successfully, then return
+  // CRYPTOHOME_ERROR_NOT_SET, otherwise, some error code is returned.
+  user_data_auth::CryptohomeErrorCode Remove(
+      const user_data_auth::RemoveRequest& request);
+
   // =============== PKCS#11 Related Public Methods ===============
 
   // This initializes the PKCS#11 for a particular mount. Note that this is

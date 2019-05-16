@@ -798,6 +798,7 @@ class UserDataAuthExTest : public UserDataAuthTest {
     get_key_data_req_.reset(new user_data_auth::GetKeyDataRequest);
     update_req_.reset(new user_data_auth::UpdateKeyRequest);
     migrate_req_.reset(new user_data_auth::MigrateKeyRequest);
+    remove_homedir_req_.reset(new user_data_auth::RemoveRequest);
   }
 
   template <class ProtoBuf>
@@ -822,6 +823,7 @@ class UserDataAuthExTest : public UserDataAuthTest {
   std::unique_ptr<user_data_auth::GetKeyDataRequest> get_key_data_req_;
   std::unique_ptr<user_data_auth::UpdateKeyRequest> update_req_;
   std::unique_ptr<user_data_auth::MigrateKeyRequest> migrate_req_;
+  std::unique_ptr<user_data_auth::RemoveRequest> remove_homedir_req_;
 
   static constexpr char kUser[] = "chromeos-user";
   static constexpr char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
@@ -1360,6 +1362,37 @@ TEST_F(UserDataAuthExTest, MigrateKeyInvalidArguments) {
   // No authorization request key secret.
   migrate_req_->mutable_account_id()->set_account_id("foo@gmail.com");
   EXPECT_EQ(userdataauth_.MigrateKey(*migrate_req_),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
+TEST_F(UserDataAuthExTest, RemoveSanity) {
+  PrepareArguments();
+
+  constexpr char kUsername1[] = "foo@gmail.com";
+
+  remove_homedir_req_->mutable_identifier()->set_account_id(kUsername1);
+
+  // Test for successful case.
+  EXPECT_CALL(homedirs_, Remove(kUsername1)).WillOnce(Return(true));
+  EXPECT_EQ(userdataauth_.Remove(*remove_homedir_req_),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Test for unsuccessful case.
+  EXPECT_CALL(homedirs_, Remove(kUsername1)).WillOnce(Return(false));
+  EXPECT_EQ(userdataauth_.Remove(*remove_homedir_req_),
+            user_data_auth::CRYPTOHOME_ERROR_REMOVE_FAILED);
+}
+
+TEST_F(UserDataAuthExTest, RemoveInvalidArguments) {
+  PrepareArguments();
+
+  // No account_id
+  EXPECT_EQ(userdataauth_.Remove(*remove_homedir_req_),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+
+  // Empty account_id
+  remove_homedir_req_->mutable_identifier()->set_account_id("");
+  EXPECT_EQ(userdataauth_.Remove(*remove_homedir_req_),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
