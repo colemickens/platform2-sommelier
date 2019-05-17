@@ -103,9 +103,9 @@ void UserSession::GetObfuscatedUsername(std::string* username) const {
 }
 
 int UserSession::key_index() const {
-  // Ensures a crash when persisting or retrieving a key.
-  CHECK_GE(key_index_, 0) << "Attempt to access an uninitialized key_index."
-                          << "Guest mount? Ephemeral mount?";
+  LOG_IF(WARNING, key_index_ < 0)
+                << "Attempt to access an uninitialized key_index."
+                << "Guest mount? Ephemeral mount?";
   return key_index_;
 }
 

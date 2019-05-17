@@ -66,9 +66,7 @@ class UserSession {
   //   username (OUT) - the username
   virtual void GetObfuscatedUsername(std::string* username) const;
 
-  std::string username() const {
-    return username_;
-  }
+  std::string username() const { return username_; }
 
   // Assigns a key to the UserSession object.  This indicates which key on disk
   // is associated to the UserSession.
@@ -78,17 +76,15 @@ class UserSession {
   virtual void set_key_index(int index) { key_index_ = index; }
 
   // Get the current key index of this session
+  // Returns -1 as indication key data is not initialized and log a warning.
+  // The caller should handle this case gracefully.
   int key_index() const;
 
   // Allow updating outside of construction
-  void set_key_data(const KeyData& data) {
-    key_data_ = data;
-  }
+  void set_key_data(const KeyData& data) { key_data_ = data; }
 
   // Get the current key data of this session.
-  const KeyData& key_data() const {
-    return key_data_;
-  }
+  const KeyData& key_data() const { return key_data_; }
 
  private:
   std::string obfuscated_username_;
