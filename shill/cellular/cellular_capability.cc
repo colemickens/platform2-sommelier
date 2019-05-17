@@ -6,7 +6,6 @@
 
 #include <memory>
 
-#include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/cellular/cellular.h"
@@ -14,7 +13,6 @@
 #include "shill/cellular/cellular_capability_universal_cdma.h"
 #include "shill/error.h"
 #include "shill/logging.h"
-#include "shill/property_accessor.h"
 
 using std::string;
 

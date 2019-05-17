@@ -9,13 +9,11 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/callbacks.h"
 #include "shill/cellular/cellular.h"
-#include "shill/metrics.h"
 
 namespace shill {
 
