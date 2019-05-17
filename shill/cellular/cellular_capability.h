@@ -89,9 +89,7 @@ class CellularCapability {
   virtual void StopModem(Error* error, const ResultCallback& callback) = 0;
 
   // Resets the modem.
-  //
-  // The default implementation fails by returning kNotSupported via |error|.
-  virtual void Reset(Error* error, const ResultCallback& callback);
+  virtual void Reset(Error* error, const ResultCallback& callback) = 0;
 
   // Checks to see if all proxies have been initialized.
   virtual bool AreProxiesInitialized() const = 0;
@@ -101,14 +99,10 @@ class CellularCapability {
   // -------------------------------------------------------------------------
 
   // Returns true if service activation is required.
-  //
-  // The default implementation returns false.
-  virtual bool IsServiceActivationRequired() const;
+  virtual bool IsServiceActivationRequired() const = 0;
 
   // Returns true if the modem is being activated.
-  //
-  // The default implementation returns false.
-  virtual bool IsActivating() const;
+  virtual bool IsActivating() const = 0;
 
   // Activates the modem.
   //
@@ -119,17 +113,13 @@ class CellularCapability {
   // Initiates the necessary to steps to verify that the cellular service has
   // been activated. Once these steps have been completed, the service should
   // be marked as activated.
-  //
-  // The default implementation fails by returning kNotSupported via |error|.
-  virtual void CompleteActivation(Error* error);
+  virtual void CompleteActivation(Error* error) = 0;
 
   // -------------------------------------------------------------------------
   // Network service and registration
   // -------------------------------------------------------------------------
 
   // Asks the modem to scan for networks.
-  //
-  // The default implementation fails by returning kNotSupported via |error|.
   //
   // Subclasses should implement this by fetching scan results asynchronously.
   // When the results are ready, update the kFoundNetworksProperty and send a
@@ -143,12 +133,12 @@ class CellularCapability {
   // Cellular or CellularCapability.
   //
   // TODO(jglasgow): Implement real error handling.
-  virtual void Scan(Error* error, const ResultStringmapsCallback& callback);
+  virtual void Scan(Error* error, const ResultStringmapsCallback& callback) = 0;
 
   // Registers on a network with |network_id|.
   virtual void RegisterOnNetwork(const std::string& network_id,
                                  Error* error,
-                                 const ResultCallback& callback);
+                                 const ResultCallback& callback) = 0;
 
   // Returns true if the modem is registered on a network, which can be a home
   // or roaming network. It is possible that we cannot determine whether it is
@@ -168,7 +158,7 @@ class CellularCapability {
   // below. Overrides should chain up to this function.
   // Note: This may be called before |CellularService| is created.
   virtual void OnOperatorChanged();
-  virtual void UpdateServiceOLP();
+  virtual void UpdateServiceOLP() = 0;
 
   // Returns an empty string if the network technology is unknown.
   virtual std::string GetNetworkTechnologyString() const = 0;
@@ -178,15 +168,13 @@ class CellularCapability {
   // -------------------------------------------------------------------------
   // Location reporting
   // -------------------------------------------------------------------------
-  // These default to dummy methods, and should be overriden in subclasses if
-  // the modem supports location reporting
   virtual void SetupLocation(uint32_t sources,
                              bool signal_location,
-                             const ResultCallback& callback);
+                             const ResultCallback& callback) = 0;
 
-  virtual void GetLocation(const StringCallback& callback);
+  virtual void GetLocation(const StringCallback& callback) = 0;
 
-  virtual bool IsLocationUpdateSupported() const;
+  virtual bool IsLocationUpdateSupported() const = 0;
 
   // -------------------------------------------------------------------------
   // Connection management
@@ -207,32 +195,31 @@ class CellularCapability {
 
   // Returns a pointer to the current active bearer object or nullptr if no
   // active bearer exists. The returned bearer object is managed by this
-  // capability object. This implementation returns nullptr by default.
-  virtual CellularBearer* GetActiveBearer() const;
+  // capability object.
+  virtual CellularBearer* GetActiveBearer() const = 0;
 
   // -------------------------------------------------------------------------
   // SIM PIN management
   // -------------------------------------------------------------------------
 
-  // The default implementation fails by returning kNotSupported via |error|.
   virtual void RequirePIN(const std::string& pin,
                           bool require,
                           Error* error,
-                          const ResultCallback& callback);
+                          const ResultCallback& callback) = 0;
 
   virtual void EnterPIN(const std::string& pin,
                         Error* error,
-                        const ResultCallback& callback);
+                        const ResultCallback& callback) = 0;
 
   virtual void UnblockPIN(const std::string& unblock_code,
                           const std::string& pin,
                           Error* error,
-                          const ResultCallback& callback);
+                          const ResultCallback& callback) = 0;
 
   virtual void ChangePIN(const std::string& old_pin,
                          const std::string& new_pin,
                          Error* error,
-                         const ResultCallback& callback);
+                         const ResultCallback& callback) = 0;
 
   // -------------------------------------------------------------------------
 

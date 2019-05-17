@@ -41,7 +41,6 @@ class CellularCapabilityUniversalCdma : public CellularCapabilityUniversal {
   std::string GetRoamingStateString() const override;
   void SetupConnectProperties(KeyValueStore* properties) override;
 
-  // TODO(armansito): Remove once 3GPP is implemented in its own class
   void RegisterOnNetwork(const std::string& network_id, Error* error,
                          const ResultCallback& callback) override;
   void RequirePIN(const std::string& pin, bool require, Error* error,
@@ -53,8 +52,10 @@ class CellularCapabilityUniversalCdma : public CellularCapabilityUniversal {
                   const ResultCallback& callback) override;
   void ChangePIN(const std::string& old_pin, const std::string& new_pin,
                  Error* error, const ResultCallback& callback) override;
+  void Reset(Error* error, const ResultCallback& callback) override;
   void Scan(Error* error,
             const ResultStringmapsCallback& callback) override;
+  // TODO(armansito): Remove once 3GPP is implemented in its own class
   void OnSimPathChanged(const std::string& sim_path) override;
 
   void GetProperties() override;

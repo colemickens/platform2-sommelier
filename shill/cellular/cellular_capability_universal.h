@@ -74,6 +74,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   void Reset(Error* error, const ResultCallback& callback) override;
   bool AreProxiesInitialized() const override;
   bool IsServiceActivationRequired() const override;
+  bool IsActivating() const override;
   void CompleteActivation(Error* error) override;
   void Scan(Error* error, const ResultStringmapsCallback& callback) override;
   void RegisterOnNetwork(const std::string& network_id,

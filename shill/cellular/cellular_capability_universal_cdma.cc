@@ -335,7 +335,7 @@ void CellularCapabilityUniversalCdma::RegisterOnNetwork(
     const string& network_id,
     Error* error,
     const ResultCallback& callback) {
-  // TODO(armansito): Remove once 3GPP is implemented in its own class.
+  OnUnsupportedOperation(__func__, error);
 }
 
 bool CellularCapabilityUniversalCdma::IsActivating() const {
@@ -369,14 +369,14 @@ void CellularCapabilityUniversalCdma::SetupConnectProperties(
 void CellularCapabilityUniversalCdma::RequirePIN(
     const string& pin, bool require,
     Error* error, const ResultCallback& callback) {
-  // TODO(armansito): Remove once 3GPP is implemented in its own class.
+  OnUnsupportedOperation(__func__, error);
 }
 
 void CellularCapabilityUniversalCdma::EnterPIN(
     const string& pin,
     Error* error,
     const ResultCallback& callback) {
-  // TODO(armansito): Remove once 3GPP is implemented in its own class.
+  OnUnsupportedOperation(__func__, error);
 }
 
 void CellularCapabilityUniversalCdma::UnblockPIN(
@@ -384,19 +384,23 @@ void CellularCapabilityUniversalCdma::UnblockPIN(
     const string& pin,
     Error* error,
     const ResultCallback& callback) {
-  // TODO(armansito): Remove once 3GPP is implemented in its own class.
+  OnUnsupportedOperation(__func__, error);
 }
 
 void CellularCapabilityUniversalCdma::ChangePIN(
     const string& old_pin, const string& new_pin,
     Error* error, const ResultCallback& callback) {
-  // TODO(armansito): Remove once 3GPP is implemented in its own class.
+  OnUnsupportedOperation(__func__, error);
+}
+
+void CellularCapabilityUniversalCdma::Reset(Error* error,
+                                            const ResultCallback& callback) {
+  OnUnsupportedOperation(__func__, error);
 }
 
 void CellularCapabilityUniversalCdma::Scan(
     Error* error,
     const ResultStringmapsCallback& callback) {
-  // TODO(armansito): Remove once 3GPP is implemented in its own class.
   OnUnsupportedOperation(__func__, error);
 }
 

@@ -78,91 +78,11 @@ void CellularCapability::Activate(const string& carrier,
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapability::CompleteActivation(Error* error) {
-  OnUnsupportedOperation(__func__, error);
-}
-
-bool CellularCapability::IsServiceActivationRequired() const {
-  return false;
-}
-
-void CellularCapability::RegisterOnNetwork(
-    const string& /*network_id*/,
-    Error* error,
-    const ResultCallback& /*callback*/) {
-  OnUnsupportedOperation(__func__, error);
-}
-
-void CellularCapability::RequirePIN(const std::string& /*pin*/,
-                                    bool /*require*/,
-                                    Error* error,
-                                    const ResultCallback& /*callback*/) {
-  OnUnsupportedOperation(__func__, error);
-}
-
-void CellularCapability::EnterPIN(const string& /*pin*/,
-                                  Error* error,
-                                  const ResultCallback& /*callback*/) {
-  OnUnsupportedOperation(__func__, error);
-}
-
-void CellularCapability::UnblockPIN(const string& /*unblock_code*/,
-                                    const string& /*pin*/,
-                                    Error* error,
-                                    const ResultCallback& /*callback*/) {
-  OnUnsupportedOperation(__func__, error);
-}
-
-void CellularCapability::ChangePIN(const string& /*old_pin*/,
-                                   const string& /*new_pin*/,
-                                   Error* error,
-                                   const ResultCallback& /*callback*/) {
-  OnUnsupportedOperation(__func__, error);
-}
-
-void CellularCapability::Scan(Error* error,
-                              const ResultStringmapsCallback& callback) {
-  OnUnsupportedOperation(__func__, error);
-}
-
-void CellularCapability::Reset(Error* error,
-                               const ResultCallback& /*callback*/) {
-  OnUnsupportedOperation(__func__, error);
-}
-
-CellularBearer* CellularCapability::GetActiveBearer() const {
-  return nullptr;
-}
-
-bool CellularCapability::IsActivating() const {
-  return false;
-}
-
-void CellularCapability::SetupLocation(uint32_t sources,
-                                       bool signal_location,
-                                       const ResultCallback& callback) {
-  Error e(Error::kNotImplemented);
-  callback.Run(e);
-}
-
-void CellularCapability::GetLocation(const StringCallback& callback) {
-  Error e(Error::kNotImplemented);
-  callback.Run(string(), e);
-}
-
-bool CellularCapability::IsLocationUpdateSupported() const {
-  return false;
-}
-
 void CellularCapability::OnOperatorChanged() {
   SLOG(this, 3) << __func__;
   if (cellular()->service()) {
     UpdateServiceOLP();
   }
-}
-
-void CellularCapability::UpdateServiceOLP() {
-  SLOG(this, 3) << __func__;
 }
 
 }  // namespace shill

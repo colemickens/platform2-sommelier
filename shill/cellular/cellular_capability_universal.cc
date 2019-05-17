@@ -827,6 +827,10 @@ bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
   return !IsMdnValid();
 }
 
+bool CellularCapabilityUniversal::IsActivating() const {
+  return false;
+}
+
 bool CellularCapabilityUniversal::IsMdnValid() const {
   const string& mdn = cellular()->mdn();
   // Note that |mdn| is normalized to contain only digits in OnMdnChanged().
