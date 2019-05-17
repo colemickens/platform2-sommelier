@@ -1100,7 +1100,7 @@ void CellularCapabilityUniversal::OnGetLocationReply(
   }
 }
 
-bool CellularCapabilityUniversal::IsLocationUpdateSupported() {
+bool CellularCapabilityUniversal::IsLocationUpdateSupported() const {
   // Whitelist modems as they're tested / needed
   return cellular()->mm_plugin() == kTelitMMPlugin;
 }

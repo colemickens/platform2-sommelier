@@ -150,7 +150,7 @@ void CellularCapability::GetLocation(const StringCallback& callback) {
   callback.Run(string(), e);
 }
 
-bool CellularCapability::IsLocationUpdateSupported() {
+bool CellularCapability::IsLocationUpdateSupported() const {
   return false;
 }
 

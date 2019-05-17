@@ -115,7 +115,7 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   void GetLocation(const StringCallback& callback) override;
 
-  bool IsLocationUpdateSupported() override;
+  bool IsLocationUpdateSupported() const override;
 
  protected:
   virtual void InitProxies();

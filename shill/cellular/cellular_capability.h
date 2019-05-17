@@ -186,7 +186,7 @@ class CellularCapability {
 
   virtual void GetLocation(const StringCallback& callback);
 
-  virtual bool IsLocationUpdateSupported();
+  virtual bool IsLocationUpdateSupported() const;
 
   // -------------------------------------------------------------------------
   // Connection management
