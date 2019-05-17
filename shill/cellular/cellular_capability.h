@@ -55,8 +55,6 @@ class CellularCapability {
   static const int kTimeoutScan;
   static const int kTimeoutSetupLocation;
 
-  static const char kModemPropertyIMSI[];
-
   static std::unique_ptr<CellularCapability> Create(Cellular::Type type,
                                                     Cellular* cellular,
                                                     ModemInfo* modem_info);
