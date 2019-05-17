@@ -331,10 +331,6 @@ string CellularCapabilityUniversalCdma::GetActivationErrorString(
   }
 }
 
-void CellularCapabilityUniversalCdma::Register(const ResultCallback& callback) {
-  // TODO(armansito): Remove once 3GPP is implemented in its own class.
-}
-
 void CellularCapabilityUniversalCdma::RegisterOnNetwork(
     const string& network_id,
     Error* error,

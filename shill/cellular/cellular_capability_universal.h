@@ -107,7 +107,6 @@ class CellularCapabilityUniversal : public CellularCapability {
                  const ResultCallback& callback) override;
 
   virtual void GetProperties();
-  virtual void Register(const ResultCallback& callback);
 
   // Location proxy methods
   void SetupLocation(uint32_t sources,
@@ -259,6 +258,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   void Stop_PowerDown(const ResultCallback& callback);
   void Stop_PowerDownCompleted(const ResultCallback& callback,
                                const Error& error);
+
+  void Register(const ResultCallback& callback);
 
   // Updates |active_bearer_| to match the currently active bearer.
   void UpdateActiveBearer();

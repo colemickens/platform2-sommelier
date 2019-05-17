@@ -42,7 +42,6 @@ class CellularCapabilityUniversalCdma : public CellularCapabilityUniversal {
   void SetupConnectProperties(KeyValueStore* properties) override;
 
   // TODO(armansito): Remove once 3GPP is implemented in its own class
-  void Register(const ResultCallback& callback) override;
   void RegisterOnNetwork(const std::string& network_id, Error* error,
                          const ResultCallback& callback) override;
   void RequirePIN(const std::string& pin, bool require, Error* error,
