@@ -29,8 +29,8 @@ class ChromeCollector : public CrashCollector {
 
   // Handle a specific chrome crash.  Returns true on success.
   bool HandleCrash(const base::FilePath& file_path,
-                   const std::string& pid_string,
-                   const std::string& uid_string,
+                   pid_t pid,
+                   uid_t uid,
                    const std::string& exe_name);
 
  protected:

@@ -129,7 +129,7 @@ TEST_F(ChromeCollectorTest, HandleCrash) {
     ASSERT_TRUE(output.get());
     base::AutoReset<FILE*> auto_reset_file_ptr(&collector_.output_file_ptr_,
                                                output.get());
-    EXPECT_TRUE(collector_.HandleCrash(dump_file, "123", "456", "chrome_test"));
+    EXPECT_TRUE(collector_.HandleCrash(dump_file, 123, 456, "chrome_test"));
   }
   ExpectFileEquals(ChromeCollector::kSuccessMagic, log_file);
 }

@@ -156,12 +156,12 @@ int HandleArcJavaCrash(ArcCollector* arc_collector,
 
 int HandleChromeCrash(ChromeCollector* chrome_collector,
                       const std::string& chrome_dump_file,
-                      const std::string& pid,
-                      const std::string& uid,
+                      pid_t pid,
+                      uid_t uid,
                       const std::string& exe) {
   CHECK(!chrome_dump_file.empty()) << "--chrome= must be set";
-  CHECK(!pid.empty()) << "--pid= must be set";
-  CHECK(!uid.empty()) << "--uid= must be set";
+  CHECK(pid != (pid_t)-1) << "--pid= must be set";
+  CHECK(uid != (uid_t)-1) << "--uid= must be set";
   CHECK(!exe.empty()) << "--exe= must be set";
 
   brillo::LogToString(true);
@@ -289,8 +289,8 @@ int main(int argc, char* argv[]) {
   DEFINE_string(service_failure, "", "The specific service name that failed");
   DEFINE_bool(selinux_violation, false, "Report collected SELinux violation");
   DEFINE_string(chrome, "", "Chrome crash dump file");
-  DEFINE_string(pid, "", "PID of crashing process");
-  DEFINE_string(uid, "", "UID of crashing process");
+  DEFINE_int32(pid, -1, "PID of crashing process");
+  DEFINE_int32(uid, -1, "UID of crashing process");
   DEFINE_string(exe, "", "Executable name of crashing process");
   DEFINE_bool(core2md_failure, false, "Core2md failure test");
   DEFINE_bool(directory_failure, false, "Spool directory failure test");

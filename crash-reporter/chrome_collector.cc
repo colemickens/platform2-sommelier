@@ -59,14 +59,14 @@ ChromeCollector::ChromeCollector()
 ChromeCollector::~ChromeCollector() {}
 
 bool ChromeCollector::HandleCrash(const FilePath& file_path,
-                                  const std::string& pid_string,
-                                  const std::string& uid_string,
+                                  pid_t pid,
+                                  uid_t uid,
                                   const std::string& exe_name) {
   if (!is_feedback_allowed_function_())
     return true;
 
-  LOG(WARNING) << "Received crash notification for " << exe_name << "["
-               << pid_string << "] user " << uid_string << " (called directly)";
+  LOG(WARNING) << "Received crash notification for " << exe_name << "[" << pid
+               << "] user " << uid << " (called directly)";
 
   if (exe_name.find('/') != std::string::npos) {
     LOG(ERROR) << "exe_name contains illegal characters: " << exe_name;
@@ -74,8 +74,6 @@ bool ChromeCollector::HandleCrash(const FilePath& file_path,
   }
 
   FilePath dir;
-  uid_t uid = atoi(uid_string.c_str());
-  pid_t pid = atoi(pid_string.c_str());
   if (!GetCreatedCrashDirectoryByEuid(uid, &dir, nullptr)) {
     LOG(ERROR) << "Can't create crash directory for uid " << uid;
     return false;
