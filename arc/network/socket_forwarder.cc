@@ -123,7 +123,8 @@ void SocketForwarder::Run() {
           ev.data.fd = dst->fd();
           if (epoll_ctl(efd.get(), EPOLL_CTL_MOD, dst->fd(), &ev) == -1) {
             PLOG(ERROR) << "epoll_ctl failed";
-            return;
+            run = false;
+            break;
           }
         }
       }
@@ -174,7 +175,8 @@ void SocketForwarder::Run() {
           ev.data.fd = dst->fd();
           if (epoll_ctl(efd.get(), EPOLL_CTL_MOD, dst->fd(), &ev) == -1) {
             PLOG(ERROR) << "epoll_ctl failed";
-            return;
+            run = false;
+            break;
           }
         }
       }

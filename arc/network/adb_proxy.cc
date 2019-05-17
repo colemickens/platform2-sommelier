@@ -95,10 +95,10 @@ void AdbProxy::OnFileCanReadWithoutBlocking(int fd) {
 
   // Cleanup any defunct forwarders.
   for (auto it = fwd_.begin(); it != fwd_.end();) {
-    if ((*it)->IsValid())
-      ++it;
-    else
+    if (!(*it)->IsValid() && (*it)->HasBeenStarted())
       it = fwd_.erase(it);
+    else
+      ++it;
   }
 }
 
