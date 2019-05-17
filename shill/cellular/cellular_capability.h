@@ -153,11 +153,6 @@ class CellularCapability {
   // Invoked by the parent Cellular device when a new service is created.
   virtual void OnServiceCreated() = 0;
 
-  // Hook called by the Cellular device when either the Home Provider or the
-  // Serving Operator changes. Default implementation calls other hooks declared
-  // below. Overrides should chain up to this function.
-  // Note: This may be called before |CellularService| is created.
-  virtual void OnOperatorChanged();
   virtual void UpdateServiceOLP() = 0;
 
   // Returns an empty string if the network technology is unknown.

@@ -12,18 +12,10 @@
 #include "shill/cellular/cellular_capability_universal.h"
 #include "shill/cellular/cellular_capability_universal_cdma.h"
 #include "shill/error.h"
-#include "shill/logging.h"
 
 using std::string;
 
 namespace shill {
-
-namespace Logging {
-static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(CellularCapability* c) {
-  return c->cellular()->GetRpcIdentifier();
-}
-}
 
 // All timeout values are in milliseconds
 const int CellularCapability::kTimeoutActivate = 300000;
@@ -76,13 +68,6 @@ void CellularCapability::Activate(const string& carrier,
   // non-cellular networks and only the final step of the OTA activation
   // procedure ("automatic activation") is performed.
   OnUnsupportedOperation(__func__, error);
-}
-
-void CellularCapability::OnOperatorChanged() {
-  SLOG(this, 3) << __func__;
-  if (cellular()->service()) {
-    UpdateServiceOLP();
-  }
 }
 
 }  // namespace shill

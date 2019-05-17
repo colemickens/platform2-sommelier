@@ -1680,8 +1680,9 @@ vector<GeolocationInfo> Cellular::GetGeolocationObjects() const {
 void Cellular::OnOperatorChanged() {
   SLOG(this, 3) << __func__;
 
-  // Give the capabilities a chance to hook in and update their state.
-  capability_->OnOperatorChanged();
+  if (service()) {
+    capability_->UpdateServiceOLP();
+  }
 
   const bool home_provider_known =
       home_provider_info_->IsMobileNetworkOperatorKnown();
