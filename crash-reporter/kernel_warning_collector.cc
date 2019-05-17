@@ -24,7 +24,7 @@ using base::FilePath;
 using base::StringPrintf;
 
 KernelWarningCollector::KernelWarningCollector()
-    : warning_report_path_("/dev/stdin") {}
+    : CrashCollector("kernel_warning"), warning_report_path_("/dev/stdin") {}
 
 KernelWarningCollector::~KernelWarningCollector() {}
 

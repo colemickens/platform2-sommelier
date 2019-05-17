@@ -45,6 +45,7 @@ const char kShellPath[] = "/bin/sh";
 const char kUploadVarPrefix[] = "upload_var_";
 const char kUploadTextPrefix[] = "upload_text_";
 const char kUploadFilePrefix[] = "upload_file_";
+const char kCollectorNameKey[] = "collector";
 
 // Key of the lsb-release entry containing the OS version.
 const char kLsbOsVersionKey[] = "CHROMEOS_RELEASE_VERSION";
@@ -194,15 +195,19 @@ bool CrashCollector::CreateDirectoryWithSettings(const FilePath& dir,
   return true;
 }
 
-CrashCollector::CrashCollector() : CrashCollector(false) {}
+CrashCollector::CrashCollector(const std::string& collector_name)
+    : CrashCollector(collector_name, false) {}
 
-CrashCollector::CrashCollector(bool force_user_crash_dir)
+CrashCollector::CrashCollector(const std::string& collector_name,
+                               bool force_user_crash_dir)
     : lsb_release_(FilePath(paths::kEtcDirectory).Append(paths::kLsbRelease)),
       system_crash_path_(paths::kSystemCrashDirectory),
       crash_reporter_state_path_(paths::kCrashReporterStateDirectory),
       log_config_path_(kDefaultLogConfig),
       max_log_size_(kMaxLogSize),
-      force_user_crash_dir_(force_user_crash_dir) {}
+      force_user_crash_dir_(force_user_crash_dir) {
+  AddCrashMetaUploadData(kCollectorNameKey, collector_name);
+}
 
 CrashCollector::~CrashCollector() {
   if (bus_)

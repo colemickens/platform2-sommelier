@@ -18,7 +18,9 @@ using base::FilePath;
 using base::StringPrintf;
 
 ServiceFailureCollector::ServiceFailureCollector()
-    : failure_report_path_("/dev/stdin"), exec_name_("service-failure") {}
+    : CrashCollector("service_failure"),
+      failure_report_path_("/dev/stdin"),
+      exec_name_("service-failure") {}
 
 ServiceFailureCollector::~ServiceFailureCollector() {}
 

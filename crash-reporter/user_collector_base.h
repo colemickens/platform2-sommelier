@@ -16,7 +16,8 @@
 // Common functionality shared by user collectors.
 class UserCollectorBase : public CrashCollector {
  public:
-  UserCollectorBase(const char* tag, bool force_user_crash_dir);
+  UserCollectorBase(const std::string& collector_name,
+                    bool force_user_crash_dir);
 
   void Initialize(IsFeedbackAllowedFunction is_metrics_allowed,
                   bool generate_diagnostics,
@@ -142,7 +143,7 @@ class UserCollectorBase : public CrashCollector {
 #endif  // USE_DIRENCRYPTION
 
   // Prepended to log messages to differentiate between collectors.
-  const char* const tag_;
+  std::string tag_;
 
   bool generate_diagnostics_ = false;
   bool directory_failure_ = false;

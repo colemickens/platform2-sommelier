@@ -22,7 +22,7 @@ using base::FilePath;
 using base::StringPrintf;
 
 SELinuxViolationCollector::SELinuxViolationCollector()
-    : violation_report_path_("/dev/stdin") {}
+    : CrashCollector("selinux"), violation_report_path_("/dev/stdin") {}
 
 SELinuxViolationCollector::~SELinuxViolationCollector() {}
 

@@ -87,7 +87,8 @@ pcrecpp::RE kSanityCheckRe("\n(<\\d+>)?\\[\\s*(\\d+\\.\\d+)\\]");
 }  // namespace
 
 KernelCollector::KernelCollector()
-    : is_enabled_(false),
+    : CrashCollector("kernel"),
+      is_enabled_(false),
       eventlog_path_(kEventLogPath),
       dump_path_(kDumpPath),
       bios_log_path_(kBiosLogPath),

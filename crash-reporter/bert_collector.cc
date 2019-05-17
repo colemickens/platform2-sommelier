@@ -72,7 +72,8 @@ bool BertRead(const FilePath& bert_table_path,
 
 }  // namespace
 
-BERTCollector::BERTCollector(): acpitable_path_(kACPITablePath) {}
+BERTCollector::BERTCollector()
+    : CrashCollector("bert"), acpitable_path_(kACPITablePath) {}
 
 BERTCollector::~BERTCollector() {}
 

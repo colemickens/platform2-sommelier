@@ -34,7 +34,8 @@ const char kDevCoredumpDisabledPath[] = "/sys/class/devcoredump/disabled";
 }  // namespace
 
 UdevCollector::UdevCollector()
-    : dev_coredump_directory_(kDefaultDevCoredumpDirectory) {}
+    : CrashCollector("udev"),
+      dev_coredump_directory_(kDefaultDevCoredumpDirectory) {}
 
 UdevCollector::~UdevCollector() {}
 

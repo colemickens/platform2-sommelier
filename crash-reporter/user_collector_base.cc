@@ -61,8 +61,10 @@ void AccounceUserCrash() {
 const char* UserCollectorBase::kUserId = "Uid:\t";
 const char* UserCollectorBase::kGroupId = "Gid:\t";
 
-UserCollectorBase::UserCollectorBase(const char* tag, bool force_user_crash_dir)
-    : CrashCollector(force_user_crash_dir), tag_(tag) {}
+UserCollectorBase::UserCollectorBase(const std::string& collector_name,
+                                     bool force_user_crash_dir)
+    : CrashCollector(collector_name, force_user_crash_dir),
+      tag_(collector_name) {}
 
 void UserCollectorBase::Initialize(
     IsFeedbackAllowedFunction is_feedback_allowed_function,

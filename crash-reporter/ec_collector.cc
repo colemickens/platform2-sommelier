@@ -24,7 +24,8 @@ const char kECExecName[] = "embedded-controller";
 
 }  // namespace
 
-ECCollector::ECCollector() : debugfs_path_(kECDebugFSPath) {}
+ECCollector::ECCollector()
+    : CrashCollector("ec"), debugfs_path_(kECDebugFSPath) {}
 
 ECCollector::~ECCollector() {}
 

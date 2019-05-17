@@ -24,7 +24,8 @@ const char kPowerdSuspended[] = "powerd_suspended";
 using base::FilePath;
 
 UncleanShutdownCollector::UncleanShutdownCollector()
-    : unclean_shutdown_file_(kUncleanShutdownFile),
+    : CrashCollector("unclean_shutdown"),
+      unclean_shutdown_file_(kUncleanShutdownFile),
       powerd_trace_path_(kPowerdTracePath),
       powerd_suspended_file_(powerd_trace_path_.Append(kPowerdSuspended)),
       os_release_path_(kOsRelease) {}

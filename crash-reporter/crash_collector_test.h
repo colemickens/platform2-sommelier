@@ -15,6 +15,7 @@
 
 class CrashCollectorMock : public CrashCollector {
  public:
+  CrashCollectorMock();
   MOCK_METHOD0(SetUpDBus, void());
 };
 

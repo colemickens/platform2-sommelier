@@ -35,6 +35,8 @@ bool IsMetrics() {
 
 }  // namespace
 
+CrashCollectorMock::CrashCollectorMock() : CrashCollector("mock") {}
+
 class CrashCollectorTest : public ::testing::Test {
  public:
   void SetUp() {
@@ -412,6 +414,7 @@ TEST_F(CrashCollectorTest, MetaData) {
   collector_.WriteCrashMetaData(meta_file, "kernel", payload_file.value());
   EXPECT_TRUE(base::ReadFileToString(meta_file, &contents));
   std::string expected_meta = StringPrintf(
+      "upload_var_collector=mock\n"
       "foo=bar\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"

@@ -24,8 +24,9 @@ class CrashCollector {
  public:
   typedef bool (*IsFeedbackAllowedFunction)();
 
-  CrashCollector();
-  explicit CrashCollector(bool force_user_crash_dir);
+  explicit CrashCollector(const std::string& collector_name);
+  explicit CrashCollector(const std::string& collector_name,
+                          bool force_user_crash_dir);
 
   virtual ~CrashCollector();
 

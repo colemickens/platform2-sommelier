@@ -103,7 +103,8 @@ bool GetDriErrorState(const FilePath& error_state_path,
 
 }  // namespace
 
-ChromeCollector::ChromeCollector() : output_file_ptr_(stdout) {}
+ChromeCollector::ChromeCollector()
+    : CrashCollector("chrome"), output_file_ptr_(stdout) {}
 
 ChromeCollector::~ChromeCollector() {}
 
