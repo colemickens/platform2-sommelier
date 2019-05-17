@@ -47,6 +47,8 @@ enum class ArcCodeVerificationResult {
 
 // Enum is append only and need to match the definition in
 // Chromium's src/tools/metrics/histograms/enums.xml.
+// Note we only care important upgrade types listed below, rather than
+// all possible permutations.
 enum class ArcSdkVersionUpgradeType {
   NO_UPGRADE = 0,
   UNKNOWN_UPGRADE = 1,
@@ -54,6 +56,7 @@ enum class ArcSdkVersionUpgradeType {
   M_TO_N = 3,
   M_TO_P = 4,
   N_TO_P = 5,
+  P_TO_Q = 6,
   COUNT
 };
 

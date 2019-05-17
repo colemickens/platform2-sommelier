@@ -19,6 +19,8 @@
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 
+#include "arc/setup/android_sdk_version.h"
+
 namespace base {
 
 class Environment;
@@ -325,6 +327,12 @@ bool GetSha1HashOfFiles(const std::vector<base::FilePath>& files,
 bool SetXattr(const base::FilePath& path,
               const char* name,
               const std::string& value);
+
+// Checks whether to clear entire android data directory before starting the
+// container by comparing |system_sdk_version| from the current boot against
+// |data_sdk_version| from the previous boot.
+bool ShouldDeleteAndroidData(AndroidSdkVersion system_sdk_version,
+                             AndroidSdkVersion data_sdk_version);
 
 }  // namespace arc
 

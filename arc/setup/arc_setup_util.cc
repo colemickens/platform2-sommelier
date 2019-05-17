@@ -1449,4 +1449,25 @@ bool SetXattr(const base::FilePath& path,
   return true;
 }
 
+bool ShouldDeleteAndroidData(AndroidSdkVersion system_sdk_version,
+                             AndroidSdkVersion data_sdk_version) {
+  // Downgraded. (b/80113276)
+  if (data_sdk_version > system_sdk_version) {
+    LOG(INFO) << "Clearing /data dir because ARC was downgraded from "
+              << static_cast<int>(data_sdk_version) << " to "
+              << static_cast<int>(system_sdk_version) << ".";
+    return true;
+  }
+  // Upgraded from pre-M to post-P. (b/77591360)
+  if (data_sdk_version > AndroidSdkVersion::UNKNOWN &&
+      data_sdk_version <= AndroidSdkVersion::ANDROID_M &&
+      system_sdk_version >= AndroidSdkVersion::ANDROID_P) {
+    LOG(INFO) << "Clearing /data dir because ARC was upgraded from pre-M("
+              << static_cast<int>(data_sdk_version) << ") to post-P("
+              << static_cast<int>(system_sdk_version) << ").";
+    return true;
+  }
+  return false;
+}
+
 }  // namespace arc
