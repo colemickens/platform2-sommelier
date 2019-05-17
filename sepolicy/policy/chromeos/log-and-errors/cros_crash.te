@@ -106,3 +106,8 @@ minijail_mounts(
   cros_crash_tmp_file
  }
 )
+
+type cros_crash_reporter_tmp_file, cros_tmpfile_type, cros_run_file_type, cros_file_type, file_type;
+filetrans_pattern(cros_crash, cros_run, cros_crash_reporter_tmp_file, file, "unclean-shutdown-detected");
+filetrans_pattern(cros_crash, cros_run, cros_crash_reporter_tmp_file, file, "kernel-crash-detected");
+neverallow { domain -cros_crash -cros_metrics_daemon } cros_crash_tmp_file:file *;

@@ -19,12 +19,16 @@ allow cros_metrics_daemon sysfs:file { open read getattr };
 allow cros_metrics_daemon sysfs:dir { open read };
 allow cros_metrics_daemon sysfs_zram:dir search;
 allow cros_metrics_daemon sysfs_zram:file { open read getattr };
+allow cros_metrics_daemon sysfs_devices_system_cpu:file { open read getattr };
 
 filetrans_pattern(cros_metrics_daemon, cros_var_log, cros_var_log_vmlog, dir, "vmlog");
 allow cros_metrics_daemon cros_var_log_vmlog:dir create_dir_perms;
 allow cros_metrics_daemon cros_var_log_vmlog:{file lnk_file} create_file_perms;
 
 allow cros_metrics_daemon device:blk_file getattr;
+
+allow cros_metrics_daemon cros_crash_reporter_tmp_file:file { r_file_perms unlink };
+allow cros_metrics_daemon cros_run:dir { rw_dir_perms remove_name };
 
 has_arc(`
 allow cros_metrics_daemon gpu_device:dir search;
