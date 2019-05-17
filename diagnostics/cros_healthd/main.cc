@@ -10,6 +10,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
+#include "diagnostics/cros_healthd/cros_healthd.h"
 #include "diagnostics/cros_healthd/utils/battery_utils.h"
 #include "diagnostics/cros_healthd/utils/disk_utils.h"
 
@@ -63,7 +64,7 @@ int main(int argc, char** argv) {
     }
     printf("sku_number: %s\n", sku_number.c_str());
   } else {
-    // TODO(pmoy): implement daemon
+    return diagnostics::CrosHealthd().Run();
   }
   return EXIT_SUCCESS;
 }

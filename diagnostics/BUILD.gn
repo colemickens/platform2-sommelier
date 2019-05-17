@@ -104,6 +104,7 @@ static_library("libcros_healthd_utils") {
 # Library that provides core functionality for the cros_healthd daemon.
 pkg_config("libcros_healthd_pkg_deps") {
   pkg_deps = [
+    "dbus-1",
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
     "libmojo-${libbase_ver}",
@@ -117,6 +118,7 @@ static_library("libcros_healthd") {
   ]
   all_dependent_configs = [ ":libcros_healthd_pkg_deps" ]
   sources = [
+    "cros_healthd/cros_healthd.cc",
     "cros_healthd/cros_healthd_mojo_service.cc",
     "cros_healthd/cros_healthd_routine_service_impl.cc",
     "cros_healthd/cros_healthd_telemetry_service_impl.cc",
