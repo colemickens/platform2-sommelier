@@ -25,6 +25,7 @@
       'type': 'shared_library',
       'dependencies': [
         '../../common/libcamera_jpeg.gyp:libcamera_jpeg',
+        '../../common/libcamera_metrics.gyp:libcamera_metrics',
       ],
       'sources': [
         '../../common/utils/camera_config.cc',

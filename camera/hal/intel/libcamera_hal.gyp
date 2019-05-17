@@ -51,6 +51,7 @@
       ],
       'dependencies': [
         '../../common/libcamera_jpeg.gyp:libcamera_jpeg',
+        '../../common/libcamera_metrics.gyp:libcamera_metrics',
       ],
       'sources': [
         'AAL/Camera3HAL.cpp',
