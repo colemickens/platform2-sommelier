@@ -33,6 +33,7 @@ group("all") {
       ":nl80211_message_fuzzer",
       ":rtnl_handler_fuzzer",
       ":verizon_subscription_state_fuzzer",
+      ":wifi_ies_fuzzer",
     ]
   }
   if (use.test) {
@@ -605,6 +606,20 @@ if (use.fuzzer) {
     configs -= [ "//common-mk:no_exceptions" ]
     sources = [
       "cellular/verizon_subscription_state_fuzzer.cc",
+    ]
+    deps = [
+      ":libshill",
+    ]
+  }
+  executable("wifi_ies_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+      ":shill_config",
+    ]
+    configs -= [ "//common-mk:no_exceptions" ]
+    sources = [
+      "wifi/wifi_ies_fuzzer.cc",
     ]
     deps = [
       ":libshill",

@@ -110,6 +110,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
 
  private:
   friend class WiFiEndpointTest;
+  friend class WiFiIEsFuzz;
   friend class WiFiObjectTest;  // for MakeOpenEndpoint
   friend class WiFiProviderTest;  // for MakeOpenEndpoint
   friend class WiFiServiceTest;  // for MakeOpenEndpoint
