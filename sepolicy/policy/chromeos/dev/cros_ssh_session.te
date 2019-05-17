@@ -5,3 +5,10 @@ permissive cros_ssh_session;
 has_arc(
 typeattribute cros_ssh_session netdomain;
 )
+
+type cros_audit_sanity_test_file, file_type, cros_file_type, cros_tmpfile_type;
+filetrans_pattern(cros_ssh_session, tmpfs, cros_audit_sanity_test_file, dir, "cros_selinux_audit_sanity_test")
+allow cros_ssh_session cros_audit_sanity_test_file:file create_file_perms;
+allow cros_ssh_session cros_audit_sanity_test_file:dir create_file_perms;
+# Intentially audit this to test in tast tests.
+auditallow cros_ssh_session cros_audit_sanity_test_file:file create;
