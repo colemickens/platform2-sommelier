@@ -48,18 +48,22 @@ unique enough to avoid conflicts.
 This is the **required convention** for filenames of models:
 
 ```
-mlservice-model-<feature_name_and_variant>-<timestamp>.<ext>
+mlservice-model-<feature_name_and_variant>-<timestamp_and_version>.<ext>
 ```
 
 * `mlservice-model` is a fixed prefix
 * `<feature_name_and_variant>` should indicate the feature that this model is
-built for and any variant of the model if applicable
-* `<timestamp>` is used to differentiate different versions of the same
-model. The preferred format is `20180725` but the actual time (hour, minutes,
-etc) can be added if needed.
+  built for and any variant of the model if applicable
+* `<timestamp_and_version>` is used to differentiate different versions of the
+  same model. The preferred format is `20180725`. To disambiguate further, the
+  actual time (hour, minutes, etc) can be added, or you can add a version string
+  like `-v2`.
 
 An example of filename is:
-`mlservice-model-tab_discarder_quantized-20180507.pb`.
+`mlservice-model-tab_discarder_quantized-20180507-v2.tflite`.
+
+After you upload the file, make it publicly visible by selecting Edit
+Permissions and adding a 'Reader' permission for a Group named 'allUsers'.
 
 Files in the ChromeOS file mirror should never be deleted. You simply add newer
 models as you need them, but leave the previous ones in the mirror, even if you
