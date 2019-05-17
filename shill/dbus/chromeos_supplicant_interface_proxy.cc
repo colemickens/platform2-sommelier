@@ -46,7 +46,7 @@ ChromeosSupplicantInterfaceProxy::PropertySet::PropertySet(
 
 ChromeosSupplicantInterfaceProxy::ChromeosSupplicantInterfaceProxy(
     const scoped_refptr<dbus::Bus>& bus,
-    const std::string& object_path,
+    const RpcIdentifier& object_path,
     SupplicantEventDelegateInterface* delegate)
     : interface_proxy_(
           new fi::w1::wpa_supplicant1::InterfaceProxy(
@@ -126,7 +126,7 @@ ChromeosSupplicantInterfaceProxy::~ChromeosSupplicantInterfaceProxy() {
 }
 
 bool ChromeosSupplicantInterfaceProxy::AddNetwork(const KeyValueStore& args,
-                                                  string* network) {
+                                                  RpcIdentifier* network) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   brillo::VariantDictionary dict =
       KeyValueStore::ConvertToVariantDictionary(args);
@@ -185,9 +185,10 @@ bool ChromeosSupplicantInterfaceProxy::FlushBSS(const uint32_t& age) {
   return true;
 }
 
-bool ChromeosSupplicantInterfaceProxy::NetworkReply(const string& network,
-                                                    const string& field,
-                                                    const string& value) {
+bool ChromeosSupplicantInterfaceProxy::NetworkReply(
+    const RpcIdentifier& network,
+    const string& field,
+    const string& value) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__
       << " network: " << network << " field: " << field << " value: " << value;
   brillo::ErrorPtr error;
@@ -246,7 +247,8 @@ bool ChromeosSupplicantInterfaceProxy::RemoveAllNetworks() {
   return true;
 }
 
-bool ChromeosSupplicantInterfaceProxy::RemoveNetwork(const string& network) {
+bool ChromeosSupplicantInterfaceProxy::RemoveNetwork(
+    const RpcIdentifier& network) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << network;
   brillo::ErrorPtr error;
   if (!interface_proxy_->RemoveNetwork(dbus::ObjectPath(network),
@@ -283,7 +285,8 @@ bool ChromeosSupplicantInterfaceProxy::Scan(const KeyValueStore& args) {
   return true;
 }
 
-bool ChromeosSupplicantInterfaceProxy::SelectNetwork(const string& network) {
+bool ChromeosSupplicantInterfaceProxy::SelectNetwork(
+    const RpcIdentifier& network) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << network;
   brillo::ErrorPtr error;
   if (!interface_proxy_->SelectNetwork(dbus::ObjectPath(network), &error)) {
@@ -294,8 +297,9 @@ bool ChromeosSupplicantInterfaceProxy::SelectNetwork(const string& network) {
   return true;
 }
 
-bool ChromeosSupplicantInterfaceProxy::SetHT40Enable(const string& network,
-                                                     bool enable) {
+bool ChromeosSupplicantInterfaceProxy::SetHT40Enable(
+    const RpcIdentifier& network,
+    bool enable) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__
       << " network: " << network << " enable: " << enable;
   brillo::ErrorPtr error;

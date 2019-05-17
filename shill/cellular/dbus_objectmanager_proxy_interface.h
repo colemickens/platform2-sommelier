@@ -18,15 +18,15 @@ namespace shill {
 class Error;
 
 using InterfaceToProperties = std::map<std::string, KeyValueStore>;
-using ObjectsWithProperties = std::map<std::string, InterfaceToProperties>;
+using ObjectsWithProperties = std::map<RpcIdentifier, InterfaceToProperties>;
 using ManagedObjectsCallback =
     base::Callback<void(const ObjectsWithProperties&, const Error&)>;
 using InterfaceAndPropertiesCallback =
     base::Callback<void(const InterfaceToProperties&, const Error&)>;
 using InterfacesAddedSignalCallback =
-    base::Callback<void(const std::string&, const InterfaceToProperties&)>;
+    base::Callback<void(const RpcIdentifier&, const InterfaceToProperties&)>;
 using InterfacesRemovedSignalCallback =
-    base::Callback<void(const std::string&, const std::vector<std::string>&)>;
+    base::Callback<void(const RpcIdentifier&, const std::vector<std::string>&)>;
 
 // These are the methods that a org.freedesktop.DBus.ObjectManager
 // proxy must support.  The interface is provided so that it can be

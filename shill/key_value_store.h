@@ -11,6 +11,8 @@
 
 #include <brillo/variant_dictionary.h>
 
+#include "shill/data_types.h"
+
 namespace shill {
 
 class KeyValueStore {
@@ -74,8 +76,8 @@ class KeyValueStore {
   double GetDouble(const std::string& name) const;
   const std::vector<double>& GetDoubles(const std::string& name) const;
   const KeyValueStore& GetKeyValueStore(const std::string& name) const;
-  const std::string& GetRpcIdentifier(const std::string& name) const;
-  std::vector<std::string> GetRpcIdentifiers(const std::string& name) const;
+  const RpcIdentifier& GetRpcIdentifier(const std::string& name) const;
+  RpcIdentifiers GetRpcIdentifiers(const std::string& name) const;
   const std::string& GetString(const std::string& name) const;
   const std::map<std::string, std::string>& GetStringmap(
       const std::string& name) const;
@@ -102,9 +104,9 @@ class KeyValueStore {
   void SetDouble(const std::string& name, double value);
   void SetDoubles(const std::string& name, const std::vector<double>& value);
   void SetKeyValueStore(const std::string& name, const KeyValueStore& value);
-  void SetRpcIdentifier(const std::string& name, const std::string& value);
+  void SetRpcIdentifier(const std::string& name, const RpcIdentifier& value);
   void SetRpcIdentifiers(const std::string& name,
-                         const std::vector<std::string>& value);
+                         const RpcIdentifiers& value);
   void SetString(const std::string& name, const std::string& value);
   void SetStringmap(const std::string& name,
                     const std::map<std::string, std::string>& value);
@@ -139,7 +141,7 @@ class KeyValueStore {
   static KeyValueStore ConvertFromVariantDictionary(
       const brillo::VariantDictionary& in_dict);
 
-  static std::vector<std::string> ConvertPathsToRpcIdentifiers(
+  static RpcIdentifiers ConvertPathsToRpcIdentifiers(
       const std::vector<dbus::ObjectPath>& paths);
 
  private:

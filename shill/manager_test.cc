@@ -201,7 +201,7 @@ class ManagerTest : public PropertyStoreTest {
 
   Error::Type TestCreateProfile(Manager* manager, const string& name) {
     Error error;
-    string path;
+    RpcIdentifier path;
     manager->CreateProfile(name, &path, &error);
     return error.type();
   }
@@ -226,7 +226,7 @@ class ManagerTest : public PropertyStoreTest {
 
   Error::Type TestPushProfile(Manager* manager, const string& name) {
     Error error;
-    string path;
+    RpcIdentifier path;
     manager->PushProfile(name, &path, &error);
     return error.type();
   }
@@ -235,13 +235,13 @@ class ManagerTest : public PropertyStoreTest {
                                     const string& name,
                                     const string& user_hash) {
     Error error;
-    string path;
+    RpcIdentifier path;
     manager->InsertUserProfile(name, user_hash, &path, &error);
     return error.type();
   }
 
   scoped_refptr<MockProfile> AddNamedMockProfileToManager(
-      Manager* manager, const string& name) {
+      Manager* manager, const RpcIdentifier& name) {
     scoped_refptr<MockProfile> profile(new MockProfile(manager, ""));
     EXPECT_CALL(*profile, GetRpcIdentifier()).WillRepeatedly(Return(name));
     EXPECT_CALL(*profile, UpdateDevice(_)).WillRepeatedly(Return(false));
@@ -250,7 +250,7 @@ class ManagerTest : public PropertyStoreTest {
   }
 
   void AddMockProfileToManager(Manager* manager) {
-    AddNamedMockProfileToManager(manager, "/");
+    AddNamedMockProfileToManager(manager, RpcIdentifier("/"));
   }
 
   void CompleteServiceSort() {
@@ -417,11 +417,11 @@ class ManagerTest : public PropertyStoreTest {
     manager()->OnSuspendActionsComplete(error);
   }
 
-  vector<string> EnumerateAvailableServices() {
+  vector<RpcIdentifier> EnumerateAvailableServices() {
     return manager()->EnumerateAvailableServices(nullptr);
   }
 
-  vector<string> EnumerateWatchedServices() {
+  vector<RpcIdentifier> EnumerateWatchedServices() {
     return manager()->EnumerateWatchedServices(nullptr);
   }
 
@@ -627,8 +627,8 @@ TEST_F(ManagerTest, ServiceRegistration) {
   MockServiceRefPtr mock_service(new NiceMock<MockService>(&manager));
   MockServiceRefPtr mock_service2(new NiceMock<MockService>(&manager));
 
-  string service1_name(mock_service->unique_name());
-  string service2_name(mock_service2->unique_name());
+  RpcIdentifier service1_name(mock_service->unique_name());
+  RpcIdentifier service2_name(mock_service2->unique_name());
 
   EXPECT_CALL(*mock_service, GetRpcIdentifier())
       .WillRepeatedly(Return(service1_name));
@@ -642,8 +642,8 @@ TEST_F(ManagerTest, ServiceRegistration) {
   manager.RegisterService(mock_service2);
 
   Error error;
-  vector<string> rpc_ids = manager.EnumerateAvailableServices(&error);
-  set<string> ids(rpc_ids.begin(), rpc_ids.end());
+  vector<RpcIdentifier> rpc_ids = manager.EnumerateAvailableServices(&error);
+  set<RpcIdentifier> ids(rpc_ids.begin(), rpc_ids.end());
   EXPECT_EQ(2, ids.size());
   EXPECT_TRUE(base::ContainsKey(ids, mock_service->GetRpcIdentifier()));
   EXPECT_TRUE(base::ContainsKey(ids, mock_service2->GetRpcIdentifier()));
@@ -809,19 +809,19 @@ TEST_F(ManagerTest, MoveService) {
 
 TEST_F(ManagerTest, LookupProfileByRpcIdentifier) {
   scoped_refptr<MockProfile> mock_profile(new MockProfile(manager(), ""));
-  const string kProfileName("profile0");
+  const RpcIdentifier kProfileName("profile0");
   EXPECT_CALL(*mock_profile, GetRpcIdentifier())
       .WillRepeatedly(Return(kProfileName));
   AdoptProfile(manager(), mock_profile);
 
-  EXPECT_FALSE(manager()->LookupProfileByRpcIdentifier("foo"));
+  EXPECT_FALSE(manager()->LookupProfileByRpcIdentifier(RpcIdentifier("foo")));
   ProfileRefPtr profile = manager()->LookupProfileByRpcIdentifier(kProfileName);
   EXPECT_EQ(mock_profile, profile);
 }
 
 TEST_F(ManagerTest, SetProfileForService) {
   scoped_refptr<MockProfile> profile0(new MockProfile(manager(), ""));
-  string profile_name0("profile0");
+  RpcIdentifier profile_name0("profile0");
   EXPECT_CALL(*profile0, GetRpcIdentifier())
       .WillRepeatedly(Return(profile_name0));
   AdoptProfile(manager(), profile0);
@@ -833,7 +833,7 @@ TEST_F(ManagerTest, SetProfileForService) {
         .WillOnce(Return(true));
     // Expect that setting the profile of a service that does not already
     // have one assigned does not cause a crash.
-    manager()->SetProfileForService(service, "profile0", &error);
+    manager()->SetProfileForService(service, RpcIdentifier("profile0"), &error);
     EXPECT_TRUE(error.IsSuccess());
   }
 
@@ -847,7 +847,7 @@ TEST_F(ManagerTest, SetProfileForService) {
 
   {
     Error error;
-    manager()->SetProfileForService(service, "foo", &error);
+    manager()->SetProfileForService(service, RpcIdentifier("foo"), &error);
     EXPECT_EQ(Error::kInvalidArguments, error.type());
     EXPECT_EQ("Unknown Profile foo requested for Service", error.message());
   }
@@ -860,7 +860,7 @@ TEST_F(ManagerTest, SetProfileForService) {
   }
 
   scoped_refptr<MockProfile> profile1(new MockProfile(manager(), ""));
-  string profile_name1("profile1");
+  RpcIdentifier profile_name1("profile1");
   EXPECT_CALL(*profile1, GetRpcIdentifier())
       .WillRepeatedly(Return(profile_name1));
   AdoptProfile(manager(), profile1);
@@ -902,11 +902,11 @@ TEST_F(ManagerTest, CreateProfile) {
   const char kProfile[] = "~user/profile";
   {
     Error error;
-    string path;
+    RpcIdentifier path;
     ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("user")));
     manager.CreateProfile(kProfile, &path, &error);
     EXPECT_EQ(Error::kSuccess, error.type());
-    EXPECT_EQ("/profile_rpc", path);
+    EXPECT_EQ(RpcIdentifier("/profile_rpc"), path);
   }
 
   // We should fail in creating it a second time (already exists).
@@ -1712,8 +1712,8 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
   scoped_refptr<MockProfile> profile0(new NiceMock<MockProfile>(manager(), ""));
   scoped_refptr<MockProfile> profile1(new NiceMock<MockProfile>(manager(), ""));
 
-  const string kProfileName0 = "profile0";
-  const string kProfileName1 = "profile1";
+  const RpcIdentifier kProfileName0("profile0");
+  const RpcIdentifier kProfileName1("profile1");
 
   EXPECT_CALL(*profile0, GetRpcIdentifier())
       .WillRepeatedly(Return(kProfileName0));
@@ -1761,7 +1761,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
 TEST_F(ManagerTest, ConfigureRegisteredServiceWithSameProfile) {
   scoped_refptr<MockProfile> profile0(new NiceMock<MockProfile>(manager(), ""));
 
-  const string kProfileName0 = "profile0";
+  const RpcIdentifier kProfileName0("profile0");
 
   EXPECT_CALL(*profile0, GetRpcIdentifier())
       .WillRepeatedly(Return(kProfileName0));
@@ -1804,8 +1804,8 @@ TEST_F(ManagerTest, ConfigureUnregisteredServiceWithProfile) {
   scoped_refptr<MockProfile> profile0(new NiceMock<MockProfile>(manager(), ""));
   scoped_refptr<MockProfile> profile1(new NiceMock<MockProfile>(manager(), ""));
 
-  const string kProfileName0 = "profile0";
-  const string kProfileName1 = "profile1";
+  const RpcIdentifier kProfileName0("profile0");
+  const RpcIdentifier kProfileName1("profile1");
 
   EXPECT_CALL(*profile0, GetRpcIdentifier())
       .WillRepeatedly(Return(kProfileName0));
@@ -1847,7 +1847,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithNoType) {
   KeyValueStore args;
   Error error;
   ServiceRefPtr service =
-      manager()->ConfigureServiceForProfile("", args, &error);
+      manager()->ConfigureServiceForProfile(RpcIdentifier(""), args, &error);
   EXPECT_EQ(Error::kInvalidArguments, error.type());
   EXPECT_EQ("must specify service type", error.message());
   EXPECT_EQ(nullptr, service);
@@ -1858,7 +1858,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithWrongType) {
   args.SetString(kTypeProperty, kTypeCellular);
   Error error;
   ServiceRefPtr service =
-      manager()->ConfigureServiceForProfile("", args, &error);
+      manager()->ConfigureServiceForProfile(RpcIdentifier(""), args, &error);
   EXPECT_EQ(Error::kNotSupported, error.type());
   EXPECT_EQ("service type is unsupported", error.message());
   EXPECT_EQ(nullptr, service);
@@ -1869,15 +1869,16 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithMissingProfile) {
   args.SetString(kTypeProperty, kTypeWifi);
   Error error;
   ServiceRefPtr service =
-      manager()->ConfigureServiceForProfile("/profile/foo", args, &error);
+      manager()->ConfigureServiceForProfile(RpcIdentifier("/profile/foo"),
+                                            args, &error);
   EXPECT_EQ(Error::kNotFound, error.type());
   EXPECT_EQ("Profile specified was not found", error.message());
   EXPECT_EQ(nullptr, service);
 }
 
 TEST_F(ManagerTest, ConfigureServiceForProfileWithProfileMismatch) {
-  const string kProfileName0 = "profile0";
-  const string kProfileName1 = "profile1";
+  const RpcIdentifier kProfileName0("profile0");
+  const RpcIdentifier kProfileName1("profile1");
   scoped_refptr<MockProfile> profile0(
       AddNamedMockProfileToManager(manager(), kProfileName0));
 
@@ -1895,7 +1896,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithProfileMismatch) {
 
 TEST_F(ManagerTest,
        ConfigureServiceForProfileWithNoMatchingServiceFailGetService) {
-  const string kProfileName0 = "profile0";
+  const RpcIdentifier kProfileName0("profile0");
   scoped_refptr<MockProfile> profile0(
       AddNamedMockProfileToManager(manager(), kProfileName0));
   KeyValueStore args;
@@ -1915,7 +1916,7 @@ TEST_F(ManagerTest,
 }
 
 TEST_F(ManagerTest, ConfigureServiceForProfileCreateNewService) {
-  const string kProfileName0 = "profile0";
+  const RpcIdentifier kProfileName0("profile0");
   scoped_refptr<MockProfile> profile0(
       AddNamedMockProfileToManager(manager(), kProfileName0));
 
@@ -1951,7 +1952,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
   manager()->RegisterService(mock_service);
   ServiceRefPtr mock_service_generic(mock_service.get());
 
-  const string kProfileName = "profile";
+  const RpcIdentifier kProfileName("profile");
   scoped_refptr<MockProfile> profile(
       AddNamedMockProfileToManager(manager(), kProfileName));
   mock_service->set_profile(profile);
@@ -1994,7 +1995,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
 }
 
 TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceAndProfile) {
-  const string kProfileName = "profile";
+  const RpcIdentifier kProfileName("profile");
   scoped_refptr<MockProfile> profile(
       AddNamedMockProfileToManager(manager(), kProfileName));
 
@@ -2027,7 +2028,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceAndProfile) {
 }
 
 TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceEphemeralProfile) {
-  const string kProfileName = "profile";
+  const RpcIdentifier kProfileName("profile");
   scoped_refptr<MockProfile> profile(
       AddNamedMockProfileToManager(manager(), kProfileName));
 
@@ -2059,10 +2060,10 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceEphemeralProfile) {
 }
 
 TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServicePrecedingProfile) {
-  const string kProfileName0 = "profile0";
+  const RpcIdentifier kProfileName0("profile0");
   scoped_refptr<MockProfile> profile0(
       AddNamedMockProfileToManager(manager(), kProfileName0));
-  const string kProfileName1 = "profile1";
+  const RpcIdentifier kProfileName1("profile1");
   scoped_refptr<MockProfile> profile1(
       AddNamedMockProfileToManager(manager(), kProfileName1));
 
@@ -2101,10 +2102,10 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServicePrecedingProfile) {
 
 TEST_F(ManagerTest,
        ConfigureServiceForProfileMatchingServiceProceedingProfile) {
-  const string kProfileName0 = "profile0";
+  const RpcIdentifier kProfileName0("profile0");
   scoped_refptr<MockProfile> profile0(
       AddNamedMockProfileToManager(manager(), kProfileName0));
-  const string kProfileName1 = "profile1";
+  const RpcIdentifier kProfileName1("profile1");
   scoped_refptr<MockProfile> profile1(
       AddNamedMockProfileToManager(manager(), kProfileName1));
 
@@ -2815,18 +2816,19 @@ TEST_F(ManagerTest, UpdateDevice) {
 }
 
 TEST_F(ManagerTest, EnumerateProfiles) {
-  vector<string> profile_paths;
+  vector<RpcIdentifier> profile_paths;
   for (size_t i = 0; i < 10; i++) {
     scoped_refptr<MockProfile> profile(
         new StrictMock<MockProfile>(manager(), ""));
-    profile_paths.push_back(base::StringPrintf("/profile/%zd", i));
+    profile_paths.push_back(
+      RpcIdentifier(base::StringPrintf("/profile/%zd", i)));
     EXPECT_CALL(*profile, GetRpcIdentifier())
         .WillOnce(Return(profile_paths.back()));
     AdoptProfile(manager(), profile);
   }
 
   Error error;
-  vector<string> returned_paths = manager()->EnumerateProfiles(&error);
+  vector<RpcIdentifier> returned_paths = manager()->EnumerateProfiles(&error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(profile_paths.size(), returned_paths.size());
   for (size_t i = 0; i < profile_paths.size(); i++) {
@@ -2837,15 +2839,16 @@ TEST_F(ManagerTest, EnumerateProfiles) {
 TEST_F(ManagerTest, EnumerateServiceInnerDevices) {
   MockServiceRefPtr service1(new NiceMock<MockService>(manager()));
   MockServiceRefPtr service2(new NiceMock<MockService>(manager()));
-  const string kDeviceRpcID = "/rpc/";
+  const RpcIdentifier kDeviceRpcID("/rpc/");
   manager()->RegisterService(service1);
   manager()->RegisterService(service2);
   EXPECT_CALL(*service1, GetInnerDeviceRpcIdentifier())
       .WillRepeatedly(Return(kDeviceRpcID));
   EXPECT_CALL(*service2, GetInnerDeviceRpcIdentifier())
-      .WillRepeatedly(Return(""));
+      .WillRepeatedly(Return(RpcIdentifier("")));
   Error error;
-  EXPECT_EQ(vector<string>{kDeviceRpcID}, manager()->EnumerateDevices(&error));
+  EXPECT_EQ(vector<RpcIdentifier>{kDeviceRpcID},
+            manager()->EnumerateDevices(&error));
   EXPECT_TRUE(error.IsSuccess());
 }
 
@@ -3736,14 +3739,14 @@ TEST_F(ManagerTest, GetLoadableProfileEntriesForService) {
   EXPECT_CALL(*service, GetLoadableStorageIdentifier(Ref(storage2)))
       .WillOnce(Return(kEntry2));
 
-  const string kProfileRpc0("service_station");
-  const string kProfileRpc2("crystal_tiaras");
+  const RpcIdentifier kProfileRpc0("service_station");
+  const RpcIdentifier kProfileRpc2("crystal_tiaras");
 
   EXPECT_CALL(*profile0, GetRpcIdentifier()).WillOnce(Return(kProfileRpc0));
   EXPECT_CALL(*profile1, GetRpcIdentifier()).Times(0);
   EXPECT_CALL(*profile2, GetRpcIdentifier()).WillOnce(Return(kProfileRpc2));
 
-  map<string, string> entries =
+  map<RpcIdentifier, string> entries =
       manager()->GetLoadableProfileEntriesForService(service);
   EXPECT_EQ(2, entries.size());
   EXPECT_TRUE(base::ContainsKey(entries, kProfileRpc0));
@@ -3781,7 +3784,7 @@ TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
   // times. First, create 2 user profiles...
   const char kProfile0[] = "~user/profile0";
   const char kProfile1[] = "~user/profile1";
-  string profile_rpc_path;
+  RpcIdentifier profile_rpc_path;
   Error error;
   ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("user")));
   manager.CreateProfile(kProfile0, &profile_rpc_path, &error);

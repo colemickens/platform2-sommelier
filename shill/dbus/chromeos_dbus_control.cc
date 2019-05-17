@@ -55,7 +55,7 @@ const char ChromeosDBusControl::kNullPath[] = "/";
 
 ChromeosDBusControl::ChromeosDBusControl(EventDispatcher* dispatcher)
     : dispatcher_(dispatcher),
-      null_identifier_(kNullPath) {
+      null_identifier_(RpcIdentifier(kNullPath)) {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
 
@@ -74,7 +74,7 @@ ChromeosDBusControl::~ChromeosDBusControl() {
   }
 }
 
-const string& ChromeosDBusControl::NullRpcIdentifier() {
+const RpcIdentifier& ChromeosDBusControl::NullRpcIdentifier() {
   return null_identifier_;
 }
 
@@ -178,13 +178,15 @@ ChromeosDBusControl::CreateSupplicantProcessProxy(
 
 std::unique_ptr<SupplicantInterfaceProxyInterface>
 ChromeosDBusControl::CreateSupplicantInterfaceProxy(
-    SupplicantEventDelegateInterface* delegate, const string& object_path) {
+    SupplicantEventDelegateInterface* delegate,
+    const RpcIdentifier& object_path) {
   return std::make_unique<ChromeosSupplicantInterfaceProxy>(
       proxy_bus_, object_path, delegate);
 }
 
 std::unique_ptr<SupplicantNetworkProxyInterface>
-ChromeosDBusControl::CreateSupplicantNetworkProxy(const string& object_path) {
+ChromeosDBusControl::CreateSupplicantNetworkProxy(
+    const RpcIdentifier& object_path) {
   return std::make_unique<ChromeosSupplicantNetworkProxy>(proxy_bus_,
                                                           object_path);
 }
@@ -192,8 +194,9 @@ ChromeosDBusControl::CreateSupplicantNetworkProxy(const string& object_path) {
 
 #if !defined(DISABLE_WIFI)
 std::unique_ptr<SupplicantBSSProxyInterface>
-ChromeosDBusControl::CreateSupplicantBSSProxy(WiFiEndpoint* wifi_endpoint,
-                                              const string& object_path) {
+ChromeosDBusControl::CreateSupplicantBSSProxy(
+    WiFiEndpoint* wifi_endpoint,
+    const RpcIdentifier& object_path) {
   return std::make_unique<ChromeosSupplicantBSSProxy>(
       proxy_bus_, object_path, wifi_endpoint);
 }
@@ -217,7 +220,7 @@ ChromeosDBusControl::CreateUpstartProxy() {
 
 #if !defined(DISABLE_CELLULAR)
 std::unique_ptr<DBusPropertiesProxyInterface>
-ChromeosDBusControl::CreateDBusPropertiesProxy(const string& path,
+ChromeosDBusControl::CreateDBusPropertiesProxy(const RpcIdentifier& path,
                                                const string& service) {
   return std::make_unique<ChromeosDBusPropertiesProxy>(
       proxy_bus_, path, service);
@@ -225,7 +228,7 @@ ChromeosDBusControl::CreateDBusPropertiesProxy(const string& path,
 
 std::unique_ptr<DBusObjectManagerProxyInterface>
 ChromeosDBusControl::CreateDBusObjectManagerProxy(
-    const string& path,
+    const RpcIdentifier& path,
     const string& service,
     const base::Closure& service_appeared_callback,
     const base::Closure& service_vanished_callback) {
@@ -240,41 +243,41 @@ ChromeosDBusControl::CreateDBusObjectManagerProxy(
 
 // Proxies for ModemManager1 interfaces
 std::unique_ptr<mm1::ModemLocationProxyInterface>
-ChromeosDBusControl::CreateMM1ModemLocationProxy(const string& path,
+ChromeosDBusControl::CreateMM1ModemLocationProxy(const RpcIdentifier& path,
                                                  const string& service) {
   return std::make_unique<mm1::ChromeosModemLocationProxy>(
       proxy_bus_, path, service);
 }
 
 std::unique_ptr<mm1::ModemModem3gppProxyInterface>
-ChromeosDBusControl::CreateMM1ModemModem3gppProxy(const string& path,
+ChromeosDBusControl::CreateMM1ModemModem3gppProxy(const RpcIdentifier& path,
                                                   const string& service) {
   return std::make_unique<mm1::ChromeosModemModem3gppProxy>(
       proxy_bus_, path, service);
 }
 
 std::unique_ptr<mm1::ModemModemCdmaProxyInterface>
-ChromeosDBusControl::CreateMM1ModemModemCdmaProxy(const string& path,
+ChromeosDBusControl::CreateMM1ModemModemCdmaProxy(const RpcIdentifier& path,
                                                   const string& service) {
   return std::make_unique<mm1::ChromeosModemModemCdmaProxy>(
       proxy_bus_, path, service);
 }
 
 std::unique_ptr<mm1::ModemProxyInterface>
-ChromeosDBusControl::CreateMM1ModemProxy(const string& path,
+ChromeosDBusControl::CreateMM1ModemProxy(const RpcIdentifier& path,
                                          const string& service) {
   return std::make_unique<mm1::ChromeosModemProxy>(proxy_bus_, path, service);
 }
 
 std::unique_ptr<mm1::ModemSimpleProxyInterface>
-ChromeosDBusControl::CreateMM1ModemSimpleProxy(const string& path,
+ChromeosDBusControl::CreateMM1ModemSimpleProxy(const RpcIdentifier& path,
                                                const string& service) {
   return std::make_unique<mm1::ChromeosModemSimpleProxy>(
       proxy_bus_, path, service);
 }
 
 std::unique_ptr<mm1::SimProxyInterface> ChromeosDBusControl::CreateMM1SimProxy(
-    const string& path, const string& service) {
+    const RpcIdentifier& path, const string& service) {
   return std::make_unique<mm1::ChromeosSimProxy>(proxy_bus_, path, service);
 }
 #endif  // DISABLE_CELLULAR

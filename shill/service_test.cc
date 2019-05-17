@@ -301,7 +301,7 @@ TEST_F(ServiceTest, GetProperties) {
     ASSERT_FALSE(props.find(kDeviceProperty) == props.end());
     EXPECT_TRUE(props[kDeviceProperty].IsTypeCompatible<dbus::ObjectPath>());
     EXPECT_EQ(props[kDeviceProperty].Get<dbus::ObjectPath>().value(),
-              string(ServiceUnderTest::kRpcId));
+              ServiceUnderTest::kRpcId);
   }
 }
 
@@ -1489,9 +1489,9 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
 
   {
     Error error;
-    const string empty_string;
+    const RpcIdentifier empty_rpcid;
     EXPECT_CALL(*mock_connection, ipconfig_rpc_identifier())
-        .WillOnce(ReturnRef(empty_string));
+        .WillOnce(ReturnRef(empty_rpcid));
     EXPECT_EQ(control_interface()->NullRpcIdentifier(),
               service_->GetIPConfigRpcIdentifier(&error));
     EXPECT_EQ(Error::kNotFound, error.type());
@@ -1499,10 +1499,10 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
 
   {
     Error error;
-    const string nonempty_string("/ipconfig/path");
+    const RpcIdentifier nonempty_rpcid("/ipconfig/path");
     EXPECT_CALL(*mock_connection, ipconfig_rpc_identifier())
-        .WillOnce(ReturnRef(nonempty_string));
-    EXPECT_EQ(nonempty_string, service_->GetIPConfigRpcIdentifier(&error));
+        .WillOnce(ReturnRef(nonempty_rpcid));
+    EXPECT_EQ(nonempty_rpcid, service_->GetIPConfigRpcIdentifier(&error));
     EXPECT_EQ(Error::kSuccess, error.type());
   }
 

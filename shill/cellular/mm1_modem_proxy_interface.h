@@ -34,7 +34,7 @@ class ModemProxyInterface {
                             Error* error,
                             const RpcIdentifierCallback& callback,
                             int timeout) = 0;
-  virtual void DeleteBearer(const std::string& bearer,
+  virtual void DeleteBearer(const RpcIdentifier& bearer,
                             Error* error,
                             const ResultCallback& callback,
                             int timeout) = 0;

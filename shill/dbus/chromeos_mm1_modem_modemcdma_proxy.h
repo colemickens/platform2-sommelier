@@ -20,7 +20,7 @@ class ChromeosModemModemCdmaProxy : public ModemModemCdmaProxyInterface {
   // Constructs a org.freedesktop.ModemManager1.Modem.ModemCdma DBus
   // object proxy at |path| owned by |service|.
   ChromeosModemModemCdmaProxy(const scoped_refptr<dbus::Bus>& bus,
-                              const std::string& path,
+                              const RpcIdentifier& path,
                               const std::string& service);
   ~ChromeosModemModemCdmaProxy() override;
 

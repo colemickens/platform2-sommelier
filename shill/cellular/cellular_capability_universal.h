@@ -125,7 +125,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Updates the |sim_path_| variable and creates a new proxy to the
   // DBUS ModemManager1.Sim interface.
   // TODO(armansito): Put this method in a 3GPP-only subclass.
-  virtual void OnSimPathChanged(const std::string& sim_path);
+  virtual void OnSimPathChanged(const RpcIdentifier& sim_path);
 
   // Updates the online payment portal information, if any, for the cellular
   // provider.
@@ -338,7 +338,7 @@ class CellularCapabilityUniversal : public CellularCapability {
                    const ScanResults& results,
                    const Error& error);
   void OnConnectReply(const ResultCallback& callback,
-                      const std::string& bearer,
+                      const RpcIdentifier& bearer,
                       const Error& error);
   void OnSetupLocationReply(const Error& error);
   void OnGetLocationReply(const StringCallback& callback,
@@ -348,7 +348,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Returns true, if |sim_path| constitutes a valid SIM path. Currently, a
   // path is accepted to be valid, as long as it is not equal to one of ""
   // and "/".
-  bool IsValidSimPath(const std::string& sim_path) const;
+  bool IsValidSimPath(const RpcIdentifier& sim_path) const;
 
   // Returns the normalized version of |mdn| by keeping only digits in |mdn|
   // and removing other non-digit characters.
@@ -390,7 +390,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   bool resetting_;
   SimLockStatus sim_lock_status_;
   SubscriptionState subscription_state_;
-  std::string sim_path_;
+  RpcIdentifier sim_path_;
   std::unique_ptr<CellularBearer> active_bearer_;
   RpcIdentifiers bearer_paths_;
   bool reset_done_;

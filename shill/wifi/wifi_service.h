@@ -239,7 +239,7 @@ class WiFiService : public Service {
       bool(WiFiService::*set)(const uint16_t& value, Error* error),
       void(WiFiService::*clear)(Error* error));
 
-  std::string GetDeviceRpcId(Error* error) const override;
+  RpcIdentifier GetDeviceRpcId(Error* error) const override;
 
   void ClearPassphrase(Error* error);
   void UpdateConnectable();

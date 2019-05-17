@@ -30,7 +30,7 @@ class Modem;
 class ModemManager {
  public:
   ModemManager(const std::string& service,
-               const std::string& path,
+               const RpcIdentifier& path,
                ModemInfo* modem_info);
   virtual ~ModemManager();
 
@@ -45,7 +45,7 @@ class ModemManager {
 
  protected:
   const std::string& service() const { return service_; }
-  const std::string& path() const { return path_; }
+  const RpcIdentifier& path() const { return path_; }
   ControlInterface* control_interface() const {
     return modem_info_->control_interface();
   }
@@ -61,12 +61,12 @@ class ModemManager {
   // Inheriting classes must call this superclass method.
   virtual void Disconnect();
 
-  bool ModemExists(const std::string& path) const;
+  bool ModemExists(const RpcIdentifier& path) const;
   // Put the modem into our modem map
   void RecordAddedModem(std::unique_ptr<Modem> modem);
 
   // Removes a modem on |path|.
-  void RemoveModem(const std::string& path);
+  void RemoveModem(const RpcIdentifier& path);
 
  private:
   friend class ModemManagerCoreTest;
@@ -78,11 +78,11 @@ class ModemManager {
   FRIEND_TEST(ModemManagerCoreTest, ConnectDisconnect);
 
   const std::string service_;
-  const std::string path_;
+  const RpcIdentifier path_;
   bool service_connected_;
 
   // Maps a modem path to a modem instance.
-  std::map<std::string, std::unique_ptr<Modem>> modems_;
+  std::map<RpcIdentifier, std::unique_ptr<Modem>> modems_;
 
   ModemInfo* modem_info_;
 
@@ -92,7 +92,7 @@ class ModemManager {
 class ModemManager1 : public ModemManager {
  public:
   ModemManager1(const std::string& service,
-                const std::string& path,
+                const RpcIdentifier& path,
                 ModemInfo* modem_info);
   ~ModemManager1() override;
 
@@ -100,7 +100,7 @@ class ModemManager1 : public ModemManager {
   void Stop() override;
 
  protected:
-  void AddModem1(const std::string& path,
+  void AddModem1(const RpcIdentifier& path,
                  const InterfaceToProperties& properties);
   virtual void InitModem1(Modem1* modem,
                           const InterfaceToProperties& properties);
@@ -111,10 +111,10 @@ class ModemManager1 : public ModemManager {
 
   // DBusObjectManagerProxyDelegate signal methods
   virtual void OnInterfacesAddedSignal(
-      const std::string& object_path,
+      const RpcIdentifier& object_path,
       const InterfaceToProperties& properties);
   virtual void OnInterfacesRemovedSignal(
-      const std::string& object_path,
+      const RpcIdentifier& object_path,
       const std::vector<std::string>& interfaces);
 
   // DBusObjectManagerProxyDelegate method callbacks

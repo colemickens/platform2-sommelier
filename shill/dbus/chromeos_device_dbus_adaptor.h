@@ -35,7 +35,7 @@ class ChromeosDeviceDBusAdaptor
   ~ChromeosDeviceDBusAdaptor() override;
 
   // Implementation of DeviceAdaptorInterface.
-  const std::string& GetRpcIdentifier() const override;
+  RpcIdentifier GetRpcIdentifier() const override;
   void EmitBoolChanged(const std::string& name, bool value) override;
   void EmitUintChanged(const std::string& name, uint32_t value) override;
   void EmitUint16Changed(const std::string& name, uint16_t value) override;
@@ -51,9 +51,9 @@ class ChromeosDeviceDBusAdaptor
   void EmitKeyValueStoreChanged(const std::string& name,
                                 const KeyValueStore& value) override;
   void EmitRpcIdentifierChanged(const std::string& name,
-                                const std::string& value) override;
-  void EmitRpcIdentifierArrayChanged(
-      const std::string& name, const std::vector<std::string>& value) override;
+                                const RpcIdentifier& value) override;
+  void EmitRpcIdentifierArrayChanged(const std::string& name,
+                                     const RpcIdentifiers& value) override;
 
   // Implementation of DeviceAdaptor.
   bool GetProperties(brillo::ErrorPtr* error,

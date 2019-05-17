@@ -34,7 +34,7 @@ void ModemInfo::Start() {
   pending_activation_store_->InitStorage(manager_->storage_path());
   modem_manager_ = std::make_unique<ModemManager1>(
       modemmanager::kModemManager1ServiceName,
-      modemmanager::kModemManager1ServicePath, this);
+      RpcIdentifier(modemmanager::kModemManager1ServicePath), this);
   modem_manager_->Start();
 }
 

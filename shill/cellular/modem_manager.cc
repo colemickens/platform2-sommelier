@@ -20,7 +20,7 @@ using std::string;
 namespace shill {
 
 ModemManager::ModemManager(const string& service,
-                           const string& path,
+                           const RpcIdentifier& path,
                            ModemInfo* modem_info)
     : service_(service),
       path_(path),
@@ -50,7 +50,7 @@ void ModemManager::OnVanished() {
   Disconnect();
 }
 
-bool ModemManager::ModemExists(const std::string& path) const {
+bool ModemManager::ModemExists(const RpcIdentifier& path) const {
   CHECK(service_connected_);
   if (base::ContainsKey(modems_, path)) {
     LOG(INFO) << "ModemExists: " << path << " already exists.";
@@ -64,7 +64,7 @@ void ModemManager::RecordAddedModem(std::unique_ptr<Modem> modem) {
   modems_[modem->path()] = std::move(modem);
 }
 
-void ModemManager::RemoveModem(const string& path) {
+void ModemManager::RemoveModem(const RpcIdentifier& path) {
   LOG(INFO) << "Remove modem: " << path;
   CHECK(service_connected_);
   modems_.erase(path);

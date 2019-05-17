@@ -993,9 +993,9 @@ bool OpenVPNDriver::AppendFlag(
   return false;
 }
 
-string OpenVPNDriver::GetServiceRpcIdentifier() const {
+RpcIdentifier OpenVPNDriver::GetServiceRpcIdentifier() const {
   if (service_ == nullptr)
-    return "(openvpn_driver)";
+    return RpcIdentifier("(openvpn_driver)");
   return service_->GetRpcIdentifier();
 }
 

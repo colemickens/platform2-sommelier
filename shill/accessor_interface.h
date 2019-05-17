@@ -54,7 +54,7 @@ using Int32Accessor = std::unique_ptr<AccessorInterface<int32_t>>;
 // may be serialized differently.
 using RpcIdentifierAccessor = std::unique_ptr<AccessorInterface<RpcIdentifier>>;
 using RpcIdentifiersAccessor =
-    std::unique_ptr<AccessorInterface<std::vector<std::string>>>;
+    std::unique_ptr<AccessorInterface<RpcIdentifiers>>;
 using StringAccessor = std::unique_ptr<AccessorInterface<std::string>>;
 using StringmapAccessor = std::unique_ptr<AccessorInterface<Stringmap>>;
 using StringmapsAccessor = std::unique_ptr<AccessorInterface<Stringmaps>>;

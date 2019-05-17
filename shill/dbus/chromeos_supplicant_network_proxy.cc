@@ -37,7 +37,7 @@ ChromeosSupplicantNetworkProxy::PropertySet::PropertySet(
 
 ChromeosSupplicantNetworkProxy::ChromeosSupplicantNetworkProxy(
     const scoped_refptr<dbus::Bus>& bus,
-    const std::string& object_path)
+    const RpcIdentifier& object_path)
     : network_proxy_(
         new fi::w1::wpa_supplicant1::NetworkProxy(
             bus,

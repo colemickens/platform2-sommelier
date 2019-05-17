@@ -32,7 +32,7 @@ const int Modem::kFakeDevInterfaceIndex = -1;
 size_t Modem::fake_dev_serial_ = 0;
 
 Modem::Modem(const string& service,
-             const string& path,
+             const RpcIdentifier& path,
              ModemInfo* modem_info)
     : service_(service),
       path_(path),

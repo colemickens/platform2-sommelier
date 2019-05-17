@@ -7,7 +7,7 @@
 namespace shill {
 
 MockModem::MockModem(const std::string& service,
-                     const std::string& path,
+                     const RpcIdentifier& path,
                      ModemInfo* modem_info)
     : Modem(service, path, modem_info) {}
 

@@ -113,7 +113,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
                                0,
                                Cellular::kTypeUniversal,
                                "",
-                               "")),
+                               RpcIdentifier(""))),
         service_(new MockCellularService(modem_info_.manager(), cellular_)),
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr) {
@@ -259,7 +259,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   static const char kActiveBearerPathPrefix[];
   static const char kImei[];
   static const char kInactiveBearerPathPrefix[];
-  static const char kSimPath[];
+  static const RpcIdentifier kSimPath;
   static const uint32_t kAccessTechnologies;
   static const char kTestMobileProviderDBPath[];
 
@@ -288,35 +288,38 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     }
 
     std::unique_ptr<mm1::ModemLocationProxyInterface>
-    CreateMM1ModemLocationProxy(const std::string& /*path*/,
+    CreateMM1ModemLocationProxy(const RpcIdentifier& /*path*/,
                                 const std::string& /*service*/) override {
       return std::move(test_->modem_location_proxy_);
     }
 
     std::unique_ptr<mm1::ModemModem3gppProxyInterface>
-    CreateMM1ModemModem3gppProxy(const std::string& /*path*/,
+    CreateMM1ModemModem3gppProxy(const RpcIdentifier& /*path*/,
                                  const std::string& /*service*/) override {
       return std::move(test_->modem_3gpp_proxy_);
     }
 
     std::unique_ptr<mm1::ModemModemCdmaProxyInterface>
-    CreateMM1ModemModemCdmaProxy(const std::string& /*path*/,
+    CreateMM1ModemModemCdmaProxy(const RpcIdentifier& /*path*/,
                                  const std::string& /*service*/) override {
       return std::move(test_->modem_cdma_proxy_);
     }
 
     std::unique_ptr<mm1::ModemProxyInterface> CreateMM1ModemProxy(
-        const std::string& /*path*/, const std::string& /*service*/) override {
+        const RpcIdentifier& /*path*/,
+        const std::string& /*service*/) override {
       return std::move(test_->modem_proxy_);
     }
 
     std::unique_ptr<mm1::ModemSimpleProxyInterface> CreateMM1ModemSimpleProxy(
-        const std::string& /*path*/, const std::string& /*service*/) override {
+        const RpcIdentifier& /*path*/,
+        const std::string& /*service*/) override {
       return std::move(test_->modem_simple_proxy_);
     }
 
     std::unique_ptr<mm1::SimProxyInterface> CreateMM1SimProxy(
-        const std::string& /*path*/, const std::string& /*service*/) override {
+        const RpcIdentifier& /*path*/,
+        const std::string& /*service*/) override {
       std::unique_ptr<mm1::MockSimProxy> sim_proxy =
           std::move(test_->sim_proxy_);
       test_->sim_proxy_ = std::make_unique<mm1::MockSimProxy>();
@@ -324,7 +327,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     }
 
     std::unique_ptr<DBusPropertiesProxyInterface> CreateDBusPropertiesProxy(
-        const std::string& path,
+        const RpcIdentifier& path,
         const std::string& /*service*/) override {
       std::unique_ptr<MockDBusPropertiesProxy> properties_proxy =
           std::move(test_->properties_proxy_);
@@ -397,7 +400,8 @@ const char CellularCapabilityUniversalTest::kActiveBearerPathPrefix[] =
 const char CellularCapabilityUniversalTest::kImei[] = "999911110000";
 const char CellularCapabilityUniversalTest::kInactiveBearerPathPrefix[] =
     "/bearer/inactive";
-const char CellularCapabilityUniversalTest::kSimPath[] = "/foo/sim";
+const RpcIdentifier CellularCapabilityUniversalTest::kSimPath =
+  RpcIdentifier("/foo/sim");
 const uint32_t CellularCapabilityUniversalTest::kAccessTechnologies =
     MM_MODEM_ACCESS_TECHNOLOGY_LTE |
     MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS;
@@ -553,7 +557,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModemAltair) {
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   capability_->InitProxies();
 
-  const char kBearerDBusPath[] = "/bearer/dbus/path";
+  const RpcIdentifier kBearerDBusPath("/bearer/dbus/path");
   capability_->set_active_bearer_for_test(std::make_unique<CellularBearer>(
       &control_interface_, kBearerDBusPath, cellular_->dbus_service()));
 
@@ -598,7 +602,7 @@ TEST_F(CellularCapabilityUniversalMainTest,
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   capability_->InitProxies();
 
-  const char kBearerDBusPath[] = "/bearer/dbus/path";
+  const RpcIdentifier kBearerDBusPath("/bearer/dbus/path");
   capability_->set_active_bearer_for_test(std::make_unique<CellularBearer>(
       &control_interface_, kBearerDBusPath, cellular_->dbus_service()));
 
@@ -866,10 +870,10 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   EXPECT_EQ("", capability_->spn_);
 
   // SIM is missing and SIM path is empty.
-  capability_->OnSimPathChanged("");
+  capability_->OnSimPathChanged(RpcIdentifier(""));
   EXPECT_FALSE(cellular_->sim_present());
   EXPECT_EQ(nullptr, capability_->sim_proxy_);
-  EXPECT_EQ("", capability_->sim_path_);
+  EXPECT_EQ(RpcIdentifier(""), capability_->sim_path_);
 
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(_, _)).Times(0);
@@ -1148,17 +1152,17 @@ TEST_F(CellularCapabilityUniversalMainTest,
 
 TEST_F(CellularCapabilityUniversalMainTest, IsValidSimPath) {
   // Invalid paths
-  EXPECT_FALSE(capability_->IsValidSimPath(""));
-  EXPECT_FALSE(capability_->IsValidSimPath("/"));
+  EXPECT_FALSE(capability_->IsValidSimPath(RpcIdentifier("")));
+  EXPECT_FALSE(capability_->IsValidSimPath(RpcIdentifier("/")));
 
   // A valid path
   EXPECT_TRUE(capability_->IsValidSimPath(
-      "/org/freedesktop/ModemManager1/SIM/0"));
+      RpcIdentifier("/org/freedesktop/ModemManager1/SIM/0")));
 
   // Note that any string that is not one of the above invalid paths is
   // currently regarded as valid, since the ModemManager spec doesn't impose
   // a strict format on the path. The validity of this is subject to change.
-  EXPECT_TRUE(capability_->IsValidSimPath("path"));
+  EXPECT_TRUE(capability_->IsValidSimPath(RpcIdentifier("path")));
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, NormalizeMdn) {
@@ -1192,7 +1196,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
 
   EXPECT_FALSE(cellular_->sim_present());
   EXPECT_EQ(nullptr, capability_->sim_proxy_);
-  EXPECT_EQ("", capability_->sim_path_);
+  EXPECT_EQ(RpcIdentifier(""), capability_->sim_path_);
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->sim_identifier());
   EXPECT_EQ("", capability_->spn_);
@@ -1214,12 +1218,12 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
   EXPECT_EQ(kOperatorName, capability_->spn_);
 
-  capability_->OnSimPathChanged("");
+  capability_->OnSimPathChanged(RpcIdentifier(""));
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
   Mock::VerifyAndClearExpectations(properties_proxy_.get());
   EXPECT_FALSE(cellular_->sim_present());
   EXPECT_EQ(nullptr, capability_->sim_proxy_);
-  EXPECT_EQ("", capability_->sim_path_);
+  EXPECT_EQ(RpcIdentifier(""), capability_->sim_path_);
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->sim_identifier());
   EXPECT_EQ("", capability_->spn_);
@@ -1238,10 +1242,10 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
   EXPECT_EQ(kOperatorName, capability_->spn_);
 
-  capability_->OnSimPathChanged("/");
+  capability_->OnSimPathChanged(RpcIdentifier("/"));
   EXPECT_FALSE(cellular_->sim_present());
   EXPECT_EQ(nullptr, capability_->sim_proxy_);
-  EXPECT_EQ("/", capability_->sim_path_);
+  EXPECT_EQ(RpcIdentifier("/"), capability_->sim_path_);
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->sim_identifier());
   EXPECT_EQ("", capability_->spn_);
@@ -1320,11 +1324,12 @@ TEST_F(CellularCapabilityUniversalMainTest, Reset) {
 TEST_F(CellularCapabilityUniversalMainTest, UpdateActiveBearer) {
   // Common resources.
   const size_t kPathCount = 3;
-  string active_paths[kPathCount], inactive_paths[kPathCount];
+  RpcIdentifier active_paths[kPathCount], inactive_paths[kPathCount];
   for (size_t i = 0; i < kPathCount; ++i) {
-    active_paths[i] = base::StringPrintf("%s/%zu", kActiveBearerPathPrefix, i);
+    active_paths[i] =
+      RpcIdentifier(base::StringPrintf("%s/%zu", kActiveBearerPathPrefix, i));
     inactive_paths[i] =
-        base::StringPrintf("%s/%zu", kInactiveBearerPathPrefix, i);
+      RpcIdentifier(base::StringPrintf("%s/%zu", kInactiveBearerPathPrefix, i));
   }
 
   EXPECT_EQ(nullptr, capability_->GetActiveBearer());
@@ -1436,7 +1441,7 @@ TEST_F(CellularCapabilityUniversalMainTest, Connect) {
   capability_->apn_try_list_.clear();
   ResultCallback callback =
       Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
-  string bearer("/foo");
+  RpcIdentifier bearer("/foo");
 
   // Test connect failures
   EXPECT_CALL(*modem_simple_proxy, Connect(_, _, _, _))
@@ -1476,7 +1481,7 @@ TEST_F(CellularCapabilityUniversalMainTest, ConnectApns) {
   capability_->apn_try_list_.clear();
   ResultCallback callback =
       Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
-  string bearer("/bearer0");
+  RpcIdentifier bearer("/bearer0");
 
   const char apn_name_foo[] = "foo";
   const char apn_name_bar[] = "bar";

@@ -181,7 +181,7 @@ class Device : public base::RefCounted<Device> {
   // connection.  Returns true if portal detection was started.
   virtual bool RequestPortalDetection();
 
-  std::string GetRpcIdentifier() const;
+  RpcIdentifier GetRpcIdentifier() const;
   virtual std::string GetStorageIdentifier() const;
 
   // Returns a list of Geolocation objects. Each object is multiple
@@ -717,8 +717,8 @@ class Device : public base::RefCounted<Device> {
   // will contain the best local address for the target.
   void EnableArpFiltering();
 
-  std::string GetSelectedServiceRpcIdentifier(Error* error);
-  std::vector<std::string> AvailableIPConfigs(Error* error);
+  RpcIdentifier GetSelectedServiceRpcIdentifier(Error* error);
+  RpcIdentifiers AvailableIPConfigs(Error* error);
 
   // Get the LinkMonitor's average response time.
   uint64_t GetLinkMonitorResponseTime(Error* error);

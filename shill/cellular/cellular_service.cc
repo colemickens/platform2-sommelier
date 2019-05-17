@@ -382,7 +382,7 @@ string CellularService::GetStorageIdentifier() const {
   return storage_identifier_;
 }
 
-string CellularService::GetDeviceRpcId(Error* /*error*/) const {
+RpcIdentifier CellularService::GetDeviceRpcId(Error* /*error*/) const {
   return cellular_->GetRpcIdentifier();
 }
 

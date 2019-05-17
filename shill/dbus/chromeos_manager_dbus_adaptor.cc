@@ -85,14 +85,14 @@ void ChromeosManagerDBusAdaptor::EmitStringsChanged(const string& name,
 
 void ChromeosManagerDBusAdaptor::EmitRpcIdentifierChanged(
     const string& name,
-    const string& value) {
+    const RpcIdentifier& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(dbus::ObjectPath(value)));
 }
 
 void ChromeosManagerDBusAdaptor::EmitRpcIdentifierArrayChanged(
     const string& name,
-    const vector<string>& value) {
+    const RpcIdentifiers& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   vector<dbus::ObjectPath> paths;
   for (const auto& element : value) {

@@ -21,7 +21,7 @@ static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
 namespace mm1 {
 
 ChromeosModemProxy::ChromeosModemProxy(const scoped_refptr<dbus::Bus>& bus,
-                                       const string& path,
+                                       const RpcIdentifier& path,
                                        const string& service)
     : proxy_(
         new org::freedesktop::ModemManager1::ModemProxy(
@@ -72,7 +72,7 @@ void ChromeosModemProxy::CreateBearer(
       timeout);
 }
 
-void ChromeosModemProxy::DeleteBearer(const string& bearer,
+void ChromeosModemProxy::DeleteBearer(const RpcIdentifier& bearer,
                                       Error* error,
                                       const ResultCallback& callback,
                                       int timeout) {

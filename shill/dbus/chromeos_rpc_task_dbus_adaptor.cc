@@ -40,12 +40,12 @@ ChromeosRpcTaskDBusAdaptor::~ChromeosRpcTaskDBusAdaptor() {
   task_ = nullptr;
 }
 
-const string& ChromeosRpcTaskDBusAdaptor::GetRpcIdentifier() const {
-  return dbus_path().value();
+RpcIdentifier ChromeosRpcTaskDBusAdaptor::GetRpcIdentifier() const {
+  return RpcIdentifier(dbus_path().value());
 }
 
-const string& ChromeosRpcTaskDBusAdaptor::GetRpcConnectionIdentifier() const {
-  return connection_name_;
+RpcIdentifier ChromeosRpcTaskDBusAdaptor::GetRpcConnectionIdentifier() const {
+  return RpcIdentifier(connection_name_);
 }
 
 bool ChromeosRpcTaskDBusAdaptor::getsec(

@@ -38,8 +38,8 @@ class ModemManagerTest : public Test {
 
  protected:
   static const char kService[];
-  static const char kPath[];
-  static const char kModemPath[];
+  static const RpcIdentifier kPath;
+  static const RpcIdentifier kModemPath;
 
   std::unique_ptr<StrictModem> CreateModem() {
     return std::make_unique<StrictModem>(kService, kModemPath, &modem_info_);
@@ -52,14 +52,15 @@ class ModemManagerTest : public Test {
 };
 
 const char ModemManagerTest::kService[] = "org.freedesktop.ModemManager1";
-const char ModemManagerTest::kPath[] = "/org/freedesktop/ModemManager1";
-const char ModemManagerTest::kModemPath[] =
-    "/org/freedesktop/ModemManager1/Modem/0";
+const RpcIdentifier ModemManagerTest::kPath =
+    RpcIdentifier("/org/freedesktop/ModemManager1");
+const RpcIdentifier ModemManagerTest::kModemPath =
+    RpcIdentifier("/org/freedesktop/ModemManager1/Modem/0");
 
 class ModemManagerForTest : public ModemManager {
  public:
   ModemManagerForTest(const string& service,
-                      const string& path,
+                      const RpcIdentifier& path,
                       ModemInfo* modem_info)
       : ModemManager(service, path, modem_info) {}
 
@@ -114,7 +115,7 @@ TEST_F(ModemManagerCoreTest, AddRemoveModem) {
 class ModemManager1MockInit : public ModemManager1 {
  public:
   ModemManager1MockInit(const string& service,
-                        const string& path,
+                        const RpcIdentifier& path,
                         ModemInfo* modem_info_)
       : ModemManager1(service, path, modem_info_) {}
 

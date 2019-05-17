@@ -17,10 +17,10 @@ class SupplicantProcessProxyInterface {
  public:
   virtual ~SupplicantProcessProxyInterface() = default;
   virtual bool CreateInterface(const KeyValueStore& args,
-                               std::string* rpc_identifier) = 0;
+                               RpcIdentifier* rpc_identifier) = 0;
   virtual bool GetInterface(const std::string& ifname,
-                            std::string* rpc_identifier) = 0;
-  virtual bool RemoveInterface(const std::string& rpc_identifier) = 0;
+                            RpcIdentifier* rpc_identifier) = 0;
+  virtual bool RemoveInterface(const RpcIdentifier& rpc_identifier) = 0;
   virtual bool SetDebugLevel(const std::string& level) = 0;
   virtual bool GetDebugLevel(std::string* level) = 0;
   virtual bool ExpectDisconnect() = 0;

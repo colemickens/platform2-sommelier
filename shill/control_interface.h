@@ -11,6 +11,7 @@
 
 #include <base/callback.h>
 
+#include "shill/data_types.h"
 #include "shill/logging.h"
 
 namespace shill {
@@ -86,7 +87,7 @@ class ControlInterface {
   CreateThirdPartyVpnAdaptor(ThirdPartyVpnDriver* driver) = 0;
 #endif
 
-  virtual const std::string& NullRpcIdentifier() = 0;
+  virtual const RpcIdentifier& NullRpcIdentifier() = 0;
 
   // The caller retains ownership of 'delegate'.  It must not be deleted before
   // the proxy.
@@ -103,16 +104,16 @@ class ControlInterface {
 
   virtual std::unique_ptr<SupplicantInterfaceProxyInterface>
   CreateSupplicantInterfaceProxy(SupplicantEventDelegateInterface* delegate,
-                                 const std::string& object_path) = 0;
+                                 const RpcIdentifier& object_path) = 0;
 
   virtual std::unique_ptr<SupplicantNetworkProxyInterface>
-  CreateSupplicantNetworkProxy(const std::string& object_path) = 0;
+  CreateSupplicantNetworkProxy(const RpcIdentifier& object_path) = 0;
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 #if !defined(DISABLE_WIFI)
   // See comment in supplicant_bss_proxy.h, about bare pointer.
   virtual std::unique_ptr<SupplicantBSSProxyInterface> CreateSupplicantBSSProxy(
-      WiFiEndpoint* wifi_endpoint, const std::string& object_path) = 0;
+      WiFiEndpoint* wifi_endpoint, const RpcIdentifier& object_path) = 0;
 #endif  // DISABLE_WIFI
 
   virtual std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() = 0;
@@ -125,38 +126,38 @@ class ControlInterface {
 
 #if !defined(DISABLE_CELLULAR)
   virtual std::unique_ptr<DBusPropertiesProxyInterface>
-  CreateDBusPropertiesProxy(const std::string& path,
+  CreateDBusPropertiesProxy(const RpcIdentifier& path,
                             const std::string& service) = 0;
 
   virtual std::unique_ptr<DBusObjectManagerProxyInterface>
   CreateDBusObjectManagerProxy(
-      const std::string& path,
+      const RpcIdentifier& path,
       const std::string& service,
       const base::Closure& service_appeared_callback,
       const base::Closure& service_vanished_callback) = 0;
 
   // Proxies for ModemManager1 interfaces
   virtual std::unique_ptr<mm1::ModemLocationProxyInterface>
-  CreateMM1ModemLocationProxy(const std::string& path,
+  CreateMM1ModemLocationProxy(const RpcIdentifier& path,
                               const std::string& service) = 0;
 
   virtual std::unique_ptr<mm1::ModemModem3gppProxyInterface>
-  CreateMM1ModemModem3gppProxy(const std::string& path,
+  CreateMM1ModemModem3gppProxy(const RpcIdentifier& path,
                                const std::string& service) = 0;
 
   virtual std::unique_ptr<mm1::ModemModemCdmaProxyInterface>
-  CreateMM1ModemModemCdmaProxy(const std::string& path,
+  CreateMM1ModemModemCdmaProxy(const RpcIdentifier& path,
                                const std::string& service) = 0;
 
   virtual std::unique_ptr<mm1::ModemProxyInterface> CreateMM1ModemProxy(
-      const std::string& path, const std::string& service) = 0;
+      const RpcIdentifier& path, const std::string& service) = 0;
 
   virtual std::unique_ptr<mm1::ModemSimpleProxyInterface>
-  CreateMM1ModemSimpleProxy(const std::string& path,
+  CreateMM1ModemSimpleProxy(const RpcIdentifier& path,
                             const std::string& service) = 0;
 
   virtual std::unique_ptr<mm1::SimProxyInterface> CreateMM1SimProxy(
-      const std::string& path, const std::string& service) = 0;
+      const RpcIdentifier& path, const std::string& service) = 0;
 #endif  // DISABLE_CELLULAR
 };
 

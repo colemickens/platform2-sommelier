@@ -126,7 +126,7 @@ class Connection : public base::RefCounted<Connection> {
   }
   virtual uint8_t table_id() const { return table_id_; }
 
-  virtual const std::string& ipconfig_rpc_identifier() const {
+  virtual const RpcIdentifier& ipconfig_rpc_identifier() const {
     return ipconfig_rpc_identifier_;
   }
 
@@ -202,7 +202,7 @@ class Connection : public base::RefCounted<Connection> {
   std::vector<std::string> dns_domain_search_;
   std::vector<std::string> excluded_ips_cidr_;
   std::string dns_domain_name_;
-  std::string ipconfig_rpc_identifier_;
+  RpcIdentifier ipconfig_rpc_identifier_;
 
   // True if this device has its own dedicated routing table.  False if
   // this device uses the global routing table.

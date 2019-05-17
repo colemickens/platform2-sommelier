@@ -10,6 +10,7 @@
 
 #include <base/macros.h>
 
+#include "shill/data_types.h"
 #include "shill/refptr_types.h"
 #include "shill/supplicant/supplicant_bss_proxy_interface.h"
 #include "supplicant/dbus-proxies.h"
@@ -22,7 +23,7 @@ class ChromeosSupplicantBSSProxy
     : public SupplicantBSSProxyInterface {
  public:
   ChromeosSupplicantBSSProxy(const scoped_refptr<dbus::Bus>& bus,
-                             const std::string& object_path,
+                             const RpcIdentifier& object_path,
                              WiFiEndpoint* wifi_endpoint);
   ~ChromeosSupplicantBSSProxy() override;
 

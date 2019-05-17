@@ -22,7 +22,7 @@ class MockCellular : public Cellular {
                int interface_index,
                Type type,
                const std::string& service,
-               const std::string& path);
+               const RpcIdentifier& path);
   ~MockCellular() override;
 
   MOCK_METHOD1(Connect, void(Error* error));

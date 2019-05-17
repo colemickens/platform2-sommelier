@@ -63,7 +63,7 @@ class CellularCapabilityUniversalCdmaTest : public testing::Test {
                                0,
                                Cellular::kTypeUniversalCdma,
                                "",
-                               "")),
+                               RpcIdentifier(""))),
         service_(new MockCellularService(modem_info_.manager(), cellular_)),
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr) {}
@@ -110,34 +110,37 @@ class CellularCapabilityUniversalCdmaTest : public testing::Test {
     // TODO(armansito): Some of these methods won't be necessary after 3GPP
     // gets refactored out of CellularCapabilityUniversal.
     std::unique_ptr<mm1::ModemModem3gppProxyInterface>
-    CreateMM1ModemModem3gppProxy(const std::string& /*path*/,
+    CreateMM1ModemModem3gppProxy(const RpcIdentifier& /*path*/,
                                  const std::string& /*service*/) override {
       return std::move(test_->modem_3gpp_proxy_);
     }
 
     std::unique_ptr<mm1::ModemModemCdmaProxyInterface>
-    CreateMM1ModemModemCdmaProxy(const std::string& /*path*/,
+    CreateMM1ModemModemCdmaProxy(const RpcIdentifier& /*path*/,
                                  const std::string& /*service*/) override {
       return std::move(test_->modem_cdma_proxy_);
     }
 
     std::unique_ptr<mm1::ModemProxyInterface> CreateMM1ModemProxy(
-        const std::string& /*path*/, const std::string& /*service*/) override {
+        const RpcIdentifier& /*path*/,
+        const std::string& /*service*/) override {
       return std::move(test_->modem_proxy_);
     }
 
     std::unique_ptr<mm1::ModemSimpleProxyInterface> CreateMM1ModemSimpleProxy(
-        const std::string& /*path*/, const std::string& /*service*/) override {
+        const RpcIdentifier& /*path*/,
+        const std::string& /*service*/) override {
       return std::move(test_->modem_simple_proxy_);
     }
 
     std::unique_ptr<mm1::SimProxyInterface> CreateMM1SimProxy(
-        const std::string& /*path*/, const std::string& /*service*/) override {
+        const RpcIdentifier& /*path*/,
+        const std::string& /*service*/) override {
       return std::move(test_->sim_proxy_);
     }
 
     std::unique_ptr<DBusPropertiesProxyInterface> CreateDBusPropertiesProxy(
-        const std::string& /*path*/,
+        const RpcIdentifier& /*path*/,
         const std::string& /*service*/) override {
       return std::move(test_->properties_proxy_);
     }

@@ -15,7 +15,7 @@ namespace shill {
 
 // static
 const char ServiceUnderTest::kKeyValueStoreProperty[] = "key_value_store";
-const char ServiceUnderTest::kRpcId[] = "/mock_device_rpc";
+const RpcIdentifier ServiceUnderTest::kRpcId = "/mock_device_rpc";
 const char ServiceUnderTest::kStringsProperty[] = "strings";
 const char ServiceUnderTest::kStorageId[] = "service";
 
@@ -32,12 +32,12 @@ ServiceUnderTest::ServiceUnderTest(Manager* manager)
 
 ServiceUnderTest::~ServiceUnderTest() = default;
 
-string ServiceUnderTest::GetRpcIdentifier() const {
-  return ServiceMockAdaptor::kRpcId;
+RpcIdentifier ServiceUnderTest::GetRpcIdentifier() const {
+  return RpcIdentifier(ServiceMockAdaptor::kRpcId);
 }
 
-string ServiceUnderTest::GetDeviceRpcId(Error* /*error*/) const {
-  return kRpcId;
+RpcIdentifier ServiceUnderTest::GetDeviceRpcId(Error* /*error*/) const {
+  return RpcIdentifier(kRpcId);
 }
 
 string ServiceUnderTest::GetStorageIdentifier() const { return kStorageId; }

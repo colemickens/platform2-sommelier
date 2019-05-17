@@ -38,7 +38,7 @@ class ChromeosProfileDBusAdaptor
   ~ChromeosProfileDBusAdaptor() override;
 
   // Implementation of ProfileAdaptorInterface.
-  const std::string& GetRpcIdentifier() const override {
+  RpcIdentifier GetRpcIdentifier() const override {
     return dbus_path().value();
   }
   void EmitBoolChanged(const std::string& name, bool value) override;

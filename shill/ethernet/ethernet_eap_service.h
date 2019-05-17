@@ -22,7 +22,7 @@ class EthernetEapService : public Service {
   ~EthernetEapService() override;
 
   // Inherited from Service.
-  std::string GetDeviceRpcId(Error* error) const override;
+  RpcIdentifier GetDeviceRpcId(Error* error) const override;
   std::string GetStorageIdentifier() const override;
   bool Is8021x() const override { return true; }
   bool IsVisible() const override { return false; }

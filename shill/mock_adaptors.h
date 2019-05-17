@@ -19,12 +19,12 @@ namespace shill {
 // These are the functions that a Device adaptor must support
 class DeviceMockAdaptor : public DeviceAdaptorInterface {
  public:
-  static const char kRpcId[];
-  static const char kRpcConnId[];
+  static const RpcIdentifier kRpcId;
+  static const RpcIdentifier kRpcConnId;
 
   DeviceMockAdaptor();
   ~DeviceMockAdaptor() override;
-  const std::string& GetRpcIdentifier() const override;
+  RpcIdentifier GetRpcIdentifier() const override;
 
   MOCK_METHOD2(EmitBoolChanged, void(const std::string& name, bool value));
   MOCK_METHOD2(EmitUintChanged, void(const std::string& name, uint32_t value));
@@ -43,24 +43,24 @@ class DeviceMockAdaptor : public DeviceAdaptorInterface {
                                               const KeyValueStore& value));
   MOCK_METHOD2(EmitRpcIdentifierChanged,
                void(const std::string& name,
-                    const std::string& value));
+                    const RpcIdentifier& value));
   MOCK_METHOD2(EmitRpcIdentifierArrayChanged,
                void(const std::string& name,
-                    const std::vector<std::string>& value));
+                    const std::vector<RpcIdentifier>& value));
 
  private:
-  const std::string rpc_id_;
-  const std::string rpc_conn_id_;
+  const RpcIdentifier rpc_id_;
+  const RpcIdentifier rpc_conn_id_;
 };
 
 // These are the functions that a IPConfig adaptor must support
 class IPConfigMockAdaptor : public IPConfigAdaptorInterface {
  public:
-  static const char kRpcId[];
+  static const RpcIdentifier kRpcId;
 
   IPConfigMockAdaptor();
   ~IPConfigMockAdaptor() override;
-  const std::string& GetRpcIdentifier() const override;
+  RpcIdentifier GetRpcIdentifier() const override;
 
   MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
   MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32_t));
@@ -70,17 +70,17 @@ class IPConfigMockAdaptor : public IPConfigAdaptorInterface {
                void(const std::string&, const std::vector<std::string>&));
 
  private:
-  const std::string rpc_id_;
+  const RpcIdentifier rpc_id_;
 };
 
 // These are the functions that a Manager adaptor must support
 class ManagerMockAdaptor : public ManagerAdaptorInterface {
  public:
-  static const char kRpcId[];
+  static const RpcIdentifier kRpcId;
 
   ManagerMockAdaptor();
   ~ManagerMockAdaptor() override;
-  const std::string& GetRpcIdentifier() const override;
+  RpcIdentifier GetRpcIdentifier() const override;
 
   MOCK_METHOD1(RegisterAsync,
                void(const base::Callback<void(bool)>& completion_callback));
@@ -91,22 +91,22 @@ class ManagerMockAdaptor : public ManagerAdaptorInterface {
   MOCK_METHOD2(EmitStringsChanged,
                void(const std::string&, const std::vector<std::string>&));
   MOCK_METHOD2(EmitRpcIdentifierChanged,
-               void(const std::string&, const std::string&));
+               void(const std::string&, const RpcIdentifier&));
   MOCK_METHOD2(EmitRpcIdentifierArrayChanged,
-               void(const std::string&, const std::vector<std::string>&));
+               void(const std::string&, const std::vector<RpcIdentifier>&));
 
  private:
-  const std::string rpc_id_;
+  const RpcIdentifier rpc_id_;
 };
 
 // These are the functions that a Profile adaptor must support
 class ProfileMockAdaptor : public ProfileAdaptorInterface {
  public:
-  static const char kRpcId[];
+  static const RpcIdentifier kRpcId;
 
   ProfileMockAdaptor();
   ~ProfileMockAdaptor() override;
-  const std::string& GetRpcIdentifier() const override;
+  RpcIdentifier GetRpcIdentifier() const override;
 
   MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
   MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32_t));
@@ -114,34 +114,34 @@ class ProfileMockAdaptor : public ProfileAdaptorInterface {
   MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));
 
  private:
-  const std::string rpc_id_;
+  const RpcIdentifier rpc_id_;
 };
 
 // These are the functions that a Task adaptor must support
 class RpcTaskMockAdaptor : public RpcTaskAdaptorInterface {
  public:
-  static const char kRpcId[];
-  static const char kRpcConnId[];
+  static const RpcIdentifier kRpcId;
+  static const RpcIdentifier kRpcConnId;
 
   RpcTaskMockAdaptor();
   ~RpcTaskMockAdaptor() override;
 
-  const std::string& GetRpcIdentifier() const override;
-  const std::string& GetRpcConnectionIdentifier() const override;
+  RpcIdentifier GetRpcIdentifier() const override;
+  RpcIdentifier GetRpcConnectionIdentifier() const override;
 
  private:
-  const std::string rpc_id_;
-  const std::string rpc_conn_id_;
+  const RpcIdentifier rpc_id_;
+  const RpcIdentifier rpc_conn_id_;
 };
 
 // These are the functions that a Service adaptor must support
 class ServiceMockAdaptor : public ServiceAdaptorInterface {
  public:
-  static const char kRpcId[];
+  static const RpcIdentifier kRpcId;
 
   ServiceMockAdaptor();
   ~ServiceMockAdaptor() override;
-  const std::string& GetRpcIdentifier() const override;
+  RpcIdentifier GetRpcIdentifier() const override;
 
   MOCK_METHOD2(EmitBoolChanged, void(const std::string& name, bool value));
   MOCK_METHOD2(EmitUint8Changed, void(const std::string& name, uint8_t value));
@@ -152,14 +152,14 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
   MOCK_METHOD2(EmitUintChanged, void(const std::string& name, uint32_t value));
   MOCK_METHOD2(EmitIntChanged, void(const std::string& name, int value));
   MOCK_METHOD2(EmitRpcIdentifierChanged,
-               void(const std::string& name, const std::string& value));
+               void(const std::string& name, const RpcIdentifier& value));
   MOCK_METHOD2(EmitStringChanged,
                void(const std::string& name, const std::string& value));
   MOCK_METHOD2(EmitStringmapChanged,
                void(const std::string& name, const Stringmap& value));
 
  private:
-  const std::string rpc_id_;
+  const RpcIdentifier rpc_id_;
 };
 
 #ifndef DISABLE_VPN

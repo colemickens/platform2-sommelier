@@ -148,9 +148,9 @@ string Profile::GetFriendlyName() const {
   return (name_.user.empty() ? "" : name_.user + "/") + name_.identifier;
 }
 
-string Profile::GetRpcIdentifier() const {
+RpcIdentifier Profile::GetRpcIdentifier() const {
   if (!adaptor_) {
-    return string();
+    return RpcIdentifier();
   }
   return adaptor_->GetRpcIdentifier();
 }
@@ -353,12 +353,12 @@ bool Profile::Save() {
   return storage_->Flush();
 }
 
-vector<string> Profile::EnumerateAvailableServices(Error* error) {
+RpcIdentifiers Profile::EnumerateAvailableServices(Error* error) {
   // We should return the Manager's service list if this is the active profile.
   if (manager_->IsActiveProfile(this)) {
     return manager_->EnumerateAvailableServices(error);
   } else {
-    return vector<string>();
+    return RpcIdentifiers();
   }
 }
 

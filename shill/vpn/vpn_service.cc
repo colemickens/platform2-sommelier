@@ -112,9 +112,9 @@ string VPNService::GetPhysicalTechnologyProperty(Error* error) {
   return Technology::NameFromIdentifier(underlying_connection->technology());
 }
 
-string VPNService::GetDeviceRpcId(Error* error) const {
+RpcIdentifier VPNService::GetDeviceRpcId(Error* error) const {
   error->Populate(Error::kNotSupported);
-  return "/";
+  return RpcIdentifier("/");
 }
 
 ConnectionConstRefPtr VPNService::GetUnderlyingConnection() const {

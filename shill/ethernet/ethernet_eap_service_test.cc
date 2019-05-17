@@ -42,7 +42,7 @@ class EthernetEapServiceTest : public testing::Test {
 };
 
 TEST_F(EthernetEapServiceTest, MethodOverrides) {
-  EXPECT_EQ("/", service_->GetDeviceRpcId(nullptr));
+  EXPECT_EQ(RpcIdentifier("/"), service_->GetDeviceRpcId(nullptr));
   EXPECT_EQ("etherneteap_all", service_->GetStorageIdentifier());
   EXPECT_EQ(Technology::kEthernetEap, service_->technology());
   EXPECT_TRUE(service_->Is8021x());

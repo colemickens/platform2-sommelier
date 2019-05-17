@@ -43,8 +43,8 @@ class ChromeosManagerDBusAdaptor
   // Implementation of ManagerAdaptorInterface.
   void RegisterAsync(
       const base::Callback<void(bool)>& completion_callback) override;
-  const std::string& GetRpcIdentifier() const override {
-    return dbus_path().value();
+  RpcIdentifier GetRpcIdentifier() const override {
+    return RpcIdentifier(dbus_path().value());
   }
   void EmitBoolChanged(const std::string& name, bool value) override;
   void EmitUintChanged(const std::string& name, uint32_t value) override;
@@ -53,10 +53,10 @@ class ChromeosManagerDBusAdaptor
                          const std::string& value) override;
   void EmitStringsChanged(const std::string& name,
                           const std::vector<std::string>& value) override;
-  void EmitRpcIdentifierChanged(
-      const std::string& name, const std::string& value) override;
-  void EmitRpcIdentifierArrayChanged(
-      const std::string& name, const std::vector<std::string>& value) override;
+  void EmitRpcIdentifierChanged(const std::string& name,
+                                const RpcIdentifier& value) override;
+  void EmitRpcIdentifierArrayChanged(const std::string& name,
+                                     const RpcIdentifiers& value) override;
 
   // Implementation of Manager_adaptor
   bool GetProperties(brillo::ErrorPtr* error,

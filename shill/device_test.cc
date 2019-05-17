@@ -780,7 +780,7 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<string>{ IPConfigMockAdaptor::kRpcId }));
+                  vector<RpcIdentifier>{ IPConfigMockAdaptor::kRpcId }));
 
   OnIPConfigUpdated(ipconfig.get());
 }
@@ -814,7 +814,7 @@ TEST_F(DeviceTest, IPConfigUpdatedAlreadyOnline) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<string>{ IPConfigMockAdaptor::kRpcId }));
+                  vector<RpcIdentifier>{ IPConfigMockAdaptor::kRpcId }));
 
   OnIPConfigUpdated(ipconfig.get());
 }
@@ -1260,9 +1260,9 @@ TEST_F(DeviceTest, IsConnectedViaTether) {
 }
 
 TEST_F(DeviceTest, AvailableIPConfigs) {
-  EXPECT_EQ(vector<string>(), device_->AvailableIPConfigs(nullptr));
+  EXPECT_EQ(vector<RpcIdentifier>(), device_->AvailableIPConfigs(nullptr));
   device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);
-  EXPECT_EQ(vector<string> { IPConfigMockAdaptor::kRpcId },
+  EXPECT_EQ(vector<RpcIdentifier> { IPConfigMockAdaptor::kRpcId },
             device_->AvailableIPConfigs(nullptr));
   device_->ip6config_ = new IPConfig(control_interface(), kDeviceName);
 
@@ -1278,11 +1278,11 @@ TEST_F(DeviceTest, AvailableIPConfigs) {
   EXPECT_EQ(2, device_->AvailableIPConfigs(nullptr).size());
 
   device_->ipconfig_ = nullptr;
-  EXPECT_EQ(vector<string> { IPConfigMockAdaptor::kRpcId },
+  EXPECT_EQ(vector<RpcIdentifier> { IPConfigMockAdaptor::kRpcId },
             device_->AvailableIPConfigs(nullptr));
 
   device_->ip6config_ = nullptr;
-  EXPECT_EQ(vector<string>(), device_->AvailableIPConfigs(nullptr));
+  EXPECT_EQ(vector<RpcIdentifier>(), device_->AvailableIPConfigs(nullptr));
 }
 
 TEST_F(DeviceTest, OnIPv6AddressChanged) {
@@ -1314,7 +1314,7 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+                  vector<RpcIdentifier> { IPConfigMockAdaptor::kRpcId }));
   device_->OnIPv6AddressChanged();
   EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
   EXPECT_EQ(kAddress0, device_->ip6config_->properties().address);
@@ -1341,7 +1341,7 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+                  vector<RpcIdentifier> { IPConfigMockAdaptor::kRpcId }));
   device_->OnIPv6AddressChanged();
   EXPECT_EQ(kAddress1, device_->ip6config_->properties().address);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
@@ -1354,7 +1354,7 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+                  vector<RpcIdentifier> { IPConfigMockAdaptor::kRpcId }));
   device_->OnIPv6AddressChanged();
   EXPECT_EQ(kAddress1, device_->ip6config_->properties().address);
 
@@ -1363,7 +1363,7 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
       .WillOnce(Return(false));
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(kIPConfigsProperty,
-                                            vector<string>()));
+                                            vector<RpcIdentifier>()));
   device_->OnIPv6AddressChanged();
   EXPECT_THAT(device_->ip6config_, IsNullRefPtr());
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
@@ -1457,7 +1457,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+                  vector<RpcIdentifier> { IPConfigMockAdaptor::kRpcId }));
   device_->OnIPv6DnsServerAddressesChanged();
   EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
   EXPECT_EQ(dns_server_addresses_str,
@@ -1474,7 +1474,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+                  vector<RpcIdentifier> { IPConfigMockAdaptor::kRpcId }));
   device_->OnIPv6AddressChanged();
   EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
   EXPECT_EQ(kAddress3, device_->ip6config_->properties().address);
@@ -1508,7 +1508,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+                  vector<RpcIdentifier> { IPConfigMockAdaptor::kRpcId }));
   device_->OnIPv6DnsServerAddressesChanged();
   EXPECT_EQ(empty_dns_server, device_->ip6config_->properties().dns_servers);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
@@ -1524,7 +1524,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+                  vector<RpcIdentifier> { IPConfigMockAdaptor::kRpcId }));
   device_->OnIPv6DnsServerAddressesChanged();
   EXPECT_EQ(dns_server_addresses_str,
             device_->ip6config_->properties().dns_servers);
@@ -1538,7 +1538,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+                  vector<RpcIdentifier> { IPConfigMockAdaptor::kRpcId }));
   device_->OnIPv6DnsServerAddressesChanged();
   EXPECT_EQ(empty_dns_server, device_->ip6config_->properties().dns_servers);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
@@ -1573,7 +1573,7 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+                  vector<RpcIdentifier> { IPConfigMockAdaptor::kRpcId }));
   EXPECT_CALL(*connection, IsIPv6())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*service, SetConnection(_)).Times(0);
@@ -1592,7 +1592,7 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+                  vector<RpcIdentifier> { IPConfigMockAdaptor::kRpcId }));
   EXPECT_CALL(*connection, IsIPv6())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*connection, UpdateFromIPConfig(device_->ip6config_));
@@ -1624,7 +1624,7 @@ TEST_F(DeviceTest, OnDHCPv6ConfigUpdated) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+                  vector<RpcIdentifier> { IPConfigMockAdaptor::kRpcId }));
   device_->OnDHCPv6ConfigUpdated(device_->dhcpv6_config_.get(), true);
 }
 
@@ -1640,7 +1640,7 @@ TEST_F(DeviceTest, OnDHCPv6ConfigFailed) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+                  vector<RpcIdentifier> { IPConfigMockAdaptor::kRpcId }));
   device_->OnDHCPv6ConfigFailed(device_->dhcpv6_config_.get());
   EXPECT_TRUE(device_->dhcpv6_config_->properties().dhcpv6_addresses.empty());
   EXPECT_TRUE(
@@ -1660,7 +1660,7 @@ TEST_F(DeviceTest, OnDHCPv6ConfigExpired) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitRpcIdentifierArrayChanged(
                   kIPConfigsProperty,
-                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+                  vector<RpcIdentifier> { IPConfigMockAdaptor::kRpcId }));
   device_->OnDHCPv6ConfigExpired(device_->dhcpv6_config_.get());
   EXPECT_TRUE(device_->dhcpv6_config_->properties().dhcpv6_addresses.empty());
   EXPECT_TRUE(

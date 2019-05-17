@@ -129,11 +129,12 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   bool IsActiveProfile(const ProfileRefPtr& profile) const;
   bool MoveServiceToProfile(const ServiceRefPtr& to_move,
                             const ProfileRefPtr& destination);
-  ProfileRefPtr LookupProfileByRpcIdentifier(const std::string& profile_rpcid);
+  ProfileRefPtr LookupProfileByRpcIdentifier(
+    const RpcIdentifier& profile_rpcid);
 
   // Called via RPC call on Service (|to_set|) to set the "Profile" property.
   virtual void SetProfileForService(const ServiceRefPtr& to_set,
-                                    const std::string& profile,
+                                    const RpcIdentifier& profile,
                                     Error* error);
 
   virtual void RegisterDevice(const DeviceRefPtr& to_manage);
@@ -168,12 +169,12 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   RpcIdentifiers EnumerateCompleteServices(Error* error);
 
   // called via RPC (e.g., from ManagerDBusAdaptor)
-  std::map<std::string, std::string> GetLoadableProfileEntriesForService(
+  std::map<RpcIdentifier, std::string> GetLoadableProfileEntriesForService(
       const ServiceConstRefPtr& service);
   ServiceRefPtr GetService(const KeyValueStore& args, Error* error);
   ServiceRefPtr ConfigureService(const KeyValueStore& args, Error* error);
   ServiceRefPtr ConfigureServiceForProfile(
-      const std::string& profile_rpcid,
+      const RpcIdentifier& profile_rpcid,
       const KeyValueStore& args,
       Error* error);
   ServiceRefPtr FindMatchingService(const KeyValueStore& args, Error* error);
@@ -214,16 +215,18 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void InitializeProfiles();
   // Create a profile.  This does not affect the profile stack.  Returns
   // the RPC path of the created profile in |path|.
-  void CreateProfile(const std::string& name, std::string* path, Error* error);
+  void CreateProfile(const std::string& name,
+                     RpcIdentifier* path,
+                     Error* error);
   // Pushes existing profile with name |name| onto stack of managed profiles.
   // Returns the RPC path of the pushed profile in |path|.
-  void PushProfile(const std::string& name, std::string* path, Error* error);
+  void PushProfile(const std::string& name, RpcIdentifier* path, Error* error);
   // Insert an existing user profile with name |name| into the stack of
   // managed profiles.  Associate |user_hash| with this profile entry.
   // Returns the RPC path of the pushed profile in |path|.
   void InsertUserProfile(const std::string& name,
                          const std::string& user_hash,
-                         std::string* path,
+                         RpcIdentifier* path,
                          Error* error);
   // Pops profile named |name| off the top of the stack of managed profiles.
   void PopProfile(const std::string& name, Error* error);
@@ -652,7 +655,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   bool HasProfile(const Profile::Identifier& ident);
   void PushProfileInternal(const Profile::Identifier& ident,
-                           std::string* path,
+                           RpcIdentifier* path,
                            Error* error);
   void PopProfileInternal();
   void OnProfilesChanged();

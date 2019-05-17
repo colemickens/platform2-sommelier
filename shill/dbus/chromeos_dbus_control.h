@@ -42,7 +42,7 @@ class ChromeosDBusControl : public ControlInterface {
       ThirdPartyVpnDriver* driver) override;
 #endif
 
-  const std::string& NullRpcIdentifier() override;
+  const RpcIdentifier& NullRpcIdentifier() override;
 
   // The caller retains ownership of 'delegate'.  It must not be deleted before
   // the proxy.
@@ -58,16 +58,16 @@ class ChromeosDBusControl : public ControlInterface {
 
   std::unique_ptr<SupplicantInterfaceProxyInterface>
   CreateSupplicantInterfaceProxy(SupplicantEventDelegateInterface* delegate,
-                                 const std::string& object_path) override;
+                                 const RpcIdentifier& object_path) override;
 
   std::unique_ptr<SupplicantNetworkProxyInterface> CreateSupplicantNetworkProxy(
-      const std::string& object_path) override;
+      const RpcIdentifier& object_path) override;
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 #if !defined(DISABLE_WIFI)
   // See comment in supplicant_bss_proxy.h, about bare pointer.
   std::unique_ptr<SupplicantBSSProxyInterface> CreateSupplicantBSSProxy(
-      WiFiEndpoint* wifi_endpoint, const std::string& object_path) override;
+      WiFiEndpoint* wifi_endpoint, const RpcIdentifier& object_path) override;
 #endif  // DISABLE_WIFI
 
   std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() override;
@@ -80,34 +80,34 @@ class ChromeosDBusControl : public ControlInterface {
 
 #if !defined(DISABLE_CELLULAR)
   std::unique_ptr<DBusPropertiesProxyInterface> CreateDBusPropertiesProxy(
-      const std::string& path, const std::string& service) override;
+      const RpcIdentifier& path, const std::string& service) override;
 
   std::unique_ptr<DBusObjectManagerProxyInterface> CreateDBusObjectManagerProxy(
-      const std::string& path,
+      const RpcIdentifier& path,
       const std::string& service,
       const base::Closure& service_appeared_callback,
       const base::Closure& service_vanished_callback) override;
 
   // Proxies for ModemManager1 interfaces
   std::unique_ptr<mm1::ModemLocationProxyInterface> CreateMM1ModemLocationProxy(
-      const std::string& path, const std::string& service) override;
+      const RpcIdentifier& path, const std::string& service) override;
 
   std::unique_ptr<mm1::ModemModem3gppProxyInterface>
-  CreateMM1ModemModem3gppProxy(const std::string& path,
+  CreateMM1ModemModem3gppProxy(const RpcIdentifier& path,
                                const std::string& service) override;
 
   std::unique_ptr<mm1::ModemModemCdmaProxyInterface>
-  CreateMM1ModemModemCdmaProxy(const std::string& path,
+  CreateMM1ModemModemCdmaProxy(const RpcIdentifier& path,
                                const std::string& service) override;
 
   std::unique_ptr<mm1::ModemProxyInterface> CreateMM1ModemProxy(
-      const std::string& path, const std::string& service) override;
+      const RpcIdentifier& path, const std::string& service) override;
 
   std::unique_ptr<mm1::ModemSimpleProxyInterface> CreateMM1ModemSimpleProxy(
-      const std::string& path, const std::string& service) override;
+      const RpcIdentifier& path, const std::string& service) override;
 
   std::unique_ptr<mm1::SimProxyInterface> CreateMM1SimProxy(
-      const std::string& path, const std::string& service) override;
+      const RpcIdentifier& path, const std::string& service) override;
 #endif  // DISABLE_CELLULAR
 
  private:
@@ -123,7 +123,7 @@ class ChromeosDBusControl : public ControlInterface {
   scoped_refptr<dbus::Bus> adaptor_bus_;
   scoped_refptr<dbus::Bus> proxy_bus_;
   EventDispatcher* dispatcher_;
-  std::string null_identifier_;
+  RpcIdentifier null_identifier_;
   base::Closure registration_done_callback_;
 };
 

@@ -18,7 +18,7 @@ static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
 
 ChromeosDBusPropertiesProxy::ChromeosDBusPropertiesProxy(
     const scoped_refptr<dbus::Bus>& bus,
-    const string& path,
+    const RpcIdentifier& path,
     const string& service)
     : proxy_(
         new org::freedesktop::DBus::PropertiesProxy(

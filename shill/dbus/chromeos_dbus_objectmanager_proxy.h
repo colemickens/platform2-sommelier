@@ -22,7 +22,7 @@ class ChromeosDBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
   ChromeosDBusObjectManagerProxy(
       EventDispatcher* dispatcher,
       const scoped_refptr<dbus::Bus>& bus,
-      const std::string& path,
+      const RpcIdentifier& path,
       const std::string& service,
       const base::Closure& service_appeared_callback,
       const base::Closure& service_vanished_callback);

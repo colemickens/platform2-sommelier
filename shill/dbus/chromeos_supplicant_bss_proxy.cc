@@ -23,7 +23,7 @@ static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
 
 ChromeosSupplicantBSSProxy::ChromeosSupplicantBSSProxy(
     const scoped_refptr<dbus::Bus>& bus,
-    const std::string& object_path,
+    const RpcIdentifier& object_path,
     WiFiEndpoint* wifi_endpoint)
     : bss_proxy_(
         new fi::w1::wpa_supplicant1::BSSProxy(

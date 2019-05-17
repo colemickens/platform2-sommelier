@@ -22,7 +22,7 @@ class ChromeosModemProxy : public ModemProxyInterface {
   // Constructs a org.freedesktop.ModemManager1.Modem DBus object
   // proxy at |path| owned by |service|.
   ChromeosModemProxy(const scoped_refptr<dbus::Bus>& bus,
-                     const std::string& path,
+                     const RpcIdentifier& path,
                      const std::string& service);
   ~ChromeosModemProxy() override;
 
@@ -35,7 +35,7 @@ class ChromeosModemProxy : public ModemProxyInterface {
                     Error* error,
                     const RpcIdentifierCallback& callback,
                     int timeout) override;
-  void DeleteBearer(const std::string& bearer,
+  void DeleteBearer(const RpcIdentifier& bearer,
                     Error* error,
                     const ResultCallback& callback,
                     int timeout) override;

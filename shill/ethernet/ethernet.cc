@@ -210,11 +210,12 @@ void Ethernet::TryEapAuthentication() {
                          try_eap_authentication_callback_.callback());
 }
 
-void Ethernet::BSSAdded(const string& path, const KeyValueStore& properties) {
+void Ethernet::BSSAdded(const RpcIdentifier& path,
+                        const KeyValueStore& properties) {
   NOTREACHED() << __func__ << " is not implemented for Ethernet";
 }
 
-void Ethernet::BSSRemoved(const string& path) {
+void Ethernet::BSSRemoved(const RpcIdentifier& path) {
   NOTREACHED() << __func__ << " is not implemented for Ethernet";
 }
 
@@ -283,7 +284,7 @@ bool Ethernet::StartSupplicant() {
     return true;
   }
 
-  string interface_path;
+  RpcIdentifier interface_path;
   KeyValueStore create_interface_args;
   create_interface_args.SetString(WPASupplicant::kInterfacePropertyName,
                                   link_name());
@@ -349,8 +350,8 @@ void Ethernet::StopSupplicant() {
       LOG(ERROR) << __func__ << ": Failed to remove interface from supplicant.";
     }
   }
-  supplicant_network_path_ = "";
-  supplicant_interface_path_ = "";
+  supplicant_network_path_ = RpcIdentifier("");
+  supplicant_interface_path_ = RpcIdentifier("");
   SetIsEapAuthenticated(false);
 }
 

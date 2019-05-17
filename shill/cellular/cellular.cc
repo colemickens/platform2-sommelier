@@ -73,7 +73,7 @@ Cellular::Cellular(ModemInfo* modem_info,
                    int interface_index,
                    Type type,
                    const string& service,
-                   const string& path)
+                   const RpcIdentifier& path)
     : Device(modem_info->manager(),
              link_name,
              address,

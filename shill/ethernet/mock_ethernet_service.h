@@ -25,7 +25,7 @@ class MockEthernetService : public EthernetService {
   MOCK_METHOD2(Disconnect, void(Error* error, const char* reason));
   MOCK_METHOD3(DisconnectWithFailure,
                void(ConnectFailure failure, Error* error, const char* reason));
-  MOCK_CONST_METHOD1(GetDeviceRpcId, std::string(Error* error));
+  MOCK_CONST_METHOD1(GetDeviceRpcId, RpcIdentifier(Error* error));
   MOCK_CONST_METHOD0(GetStorageIdentifier, std::string());
   MOCK_CONST_METHOD0(Is8021xConnectable, bool());
   MOCK_CONST_METHOD0(IsConnected, bool());

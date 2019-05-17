@@ -21,7 +21,7 @@ class ChromeosModemLocationProxy : public ModemLocationProxyInterface {
   // Constructs an org.freedesktop.ModemManager1.Modem.Location DBus
   // object proxy at |path| owned by |service|.
   ChromeosModemLocationProxy(const scoped_refptr<dbus::Bus>& bus,
-                             const std::string& path,
+                             const RpcIdentifier& path,
                              const std::string& service);
   ~ChromeosModemLocationProxy() override;
   // Inherited methods from ModemLocationProxyInterface.

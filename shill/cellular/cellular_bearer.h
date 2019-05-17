@@ -32,7 +32,7 @@ class CellularBearer {
   // TODO(benchan): Use a context object approach to pass objects like
   // ControlInterface through constructor.
   CellularBearer(ControlInterface* control_interface,
-                 const std::string& dbus_path,
+                 const RpcIdentifier& dbus_path,
                  const std::string& dbus_service);
   ~CellularBearer();
 
@@ -48,7 +48,7 @@ class CellularBearer {
       const KeyValueStore& changed_properties,
       const std::vector<std::string>& invalidated_properties);
 
-  const std::string& dbus_path() const { return dbus_path_; }
+  const RpcIdentifier& dbus_path() const { return dbus_path_; }
   const std::string& dbus_service() const { return dbus_service_; }
 
   bool connected() const { return connected_; }
@@ -106,7 +106,7 @@ class CellularBearer {
   }
 
   ControlInterface* control_interface_;
-  std::string dbus_path_;
+  RpcIdentifier dbus_path_;
   std::string dbus_service_;
   std::unique_ptr<DBusPropertiesProxyInterface> dbus_properties_proxy_;
   bool connected_;

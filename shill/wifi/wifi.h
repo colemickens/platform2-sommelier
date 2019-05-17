@@ -157,9 +157,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
-  void BSSAdded(const std::string& BSS,
+  void BSSAdded(const RpcIdentifier& BSS,
                 const KeyValueStore& properties) override;
-  void BSSRemoved(const std::string& BSS) override;
+  void BSSRemoved(const RpcIdentifier& BSS) override;
   void Certification(const KeyValueStore& properties) override;
   void EAPEvent(
       const std::string& status, const std::string& parameter) override;
@@ -252,11 +252,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Result from a BSSAdded or BSSRemoved event.
   struct ScanResult {
     ScanResult() : is_removal(false) {}
-    ScanResult(const std::string& path_in,
+    ScanResult(const RpcIdentifier& path_in,
                const KeyValueStore& properties_in,
                bool is_removal_in)
         : path(path_in), properties(properties_in), is_removal(is_removal_in) {}
-    std::string path;
+    RpcIdentifier path;
     KeyValueStore properties;
     bool is_removal;
   };
@@ -320,8 +320,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // kMaxPassiveScanRetries, kMaxFreqsForPassiveScanRetries
   FRIEND_TEST(WiFiMainTest, InitiateScanInDarkResume_Idle);
 
-  using EndpointMap = std::map<const std::string, WiFiEndpointRefPtr>;
-  using ReverseServiceMap = std::map<const WiFiService*, std::string>;
+  using EndpointMap = std::map<const RpcIdentifier, WiFiEndpointRefPtr>;
+  using ReverseServiceMap = std::map<const WiFiService*, RpcIdentifier>;
 
   static const char* const kDefaultBgscanMethod;
   static const uint16_t kBackgroundScanIntervalSeconds;
@@ -388,7 +388,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   void AssocStatusChanged(const int32_t new_assoc_status);
   void AuthStatusChanged(const int32_t new_auth_status);
-  void CurrentBSSChanged(const std::string& new_bss);
+  void CurrentBSSChanged(const RpcIdentifier& new_bss);
   void DisconnectReasonChanged(const int32_t new_disconnect_reason);
   void CurrentAuthModeChanged(const std::string& auth_mode);
   // Return the correct Metrics suffix (PSK, FTPSK, EAP, FTEAP) corresponding to
@@ -397,8 +397,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Return the RPC identifier associated with the wpa_supplicant network
   // entry created for |service|.  If one does not exist, an empty string
   // is returned, and |error| is populated.
-  std::string FindNetworkRpcidForService(const WiFiService* service,
-                                         Error* error);
+  RpcIdentifier FindNetworkRpcidForService(const WiFiService* service,
+                                           Error* error);
   void HandleDisconnect();
   // Update failure and state for disconnected service.
   // Set failure for disconnected service if disconnect is not user-initiated
@@ -409,10 +409,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Returns inferred type of failure, which is useful in cases where we don't
   // have a disconnect reason from supplicant.
   Service::ConnectFailure ExamineStatusCodes() const;
-  void HandleRoam(const std::string& new_bssid);
-  void BSSAddedTask(const std::string& BSS,
+  void HandleRoam(const RpcIdentifier& new_bssid);
+  void BSSAddedTask(const RpcIdentifier& BSS,
                     const KeyValueStore& properties);
-  void BSSRemovedTask(const std::string& BSS);
+  void BSSRemovedTask(const RpcIdentifier& BSS);
   void CertificationTask(const KeyValueStore& properties);
   void EAPEventTask(const std::string& status, const std::string& parameter);
   void PropertiesChangedTask(const KeyValueStore& properties);
@@ -464,7 +464,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Disable a network entry in wpa_supplicant, and catch any exception
   // that occurs.  Returns false if an exception occurred, true otherwise.
-  bool DisableNetwork(const std::string& network);
+  bool DisableNetwork(const RpcIdentifier& network);
   // Disable the wpa_supplicant network entry associated with |service|.
   // Any cached credentials stored in wpa_supplicant related to this
   // network entry will be preserved.  This will have the side-effect of
@@ -475,7 +475,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
       const WiFiService* service, Error* error);
   // Remove a network entry from wpa_supplicant, and catch any exception
   // that occurs.  Returns false if an exception occurred, true otherwise.
-  bool RemoveNetwork(const std::string& network);
+  bool RemoveNetwork(const RpcIdentifier& network);
   // Remove the wpa_supplicant network entry associated with |service|.
   // Any cached credentials stored in wpa_supplicant related to this
   // network entry will be removed.  This will have the side-effect of
@@ -586,7 +586,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Add a scan result to the list of pending scan results, and post a task
   // for handling these results if one is not already running.
-  void AddPendingScanResult(const std::string& path,
+  void AddPendingScanResult(const RpcIdentifier& path,
                             const KeyValueStore& properties,
                             bool is_removal);
 
@@ -627,7 +627,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   std::unique_ptr<SupplicantInterfaceProxyInterface>
       supplicant_interface_proxy_;
   // wpa_supplicant's RPC path for this device/interface.
-  std::string supplicant_interface_path_;
+  RpcIdentifier supplicant_interface_path_;
   // The rpcid used as the key is wpa_supplicant's D-Bus path for the
   // Endpoint (BSS, in supplicant parlance).
   EndpointMap endpoint_by_rpcid_;
@@ -643,7 +643,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // simultaneously be both pending, and current.)
   WiFiServiceRefPtr pending_service_;
   std::string supplicant_state_;
-  std::string supplicant_bss_;
+  RpcIdentifier supplicant_bss_;
   int32_t supplicant_assoc_status_;
   int32_t supplicant_auth_status_;
   int32_t supplicant_disconnect_reason_;

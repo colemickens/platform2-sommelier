@@ -94,7 +94,7 @@ class OpenVPNDriver : public VPNDriver,
                   const std::string& option,
                   std::vector<std::vector<std::string>>* options);
 
-  virtual std::string GetServiceRpcIdentifier() const;
+  virtual RpcIdentifier GetServiceRpcIdentifier() const;
 
  protected:
   // Inherited from VPNDriver. |Connect| initiates the VPN connection by

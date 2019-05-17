@@ -70,7 +70,7 @@ class VPNService : public Service {
   static const char kAutoConnNeverConnected[];
   static const char kAutoConnVPNAlreadyActive[];
 
-  std::string GetDeviceRpcId(Error* error) const override;
+  RpcIdentifier GetDeviceRpcId(Error* error) const override;
 
   ConnectionConstRefPtr GetUnderlyingConnection() const;
 

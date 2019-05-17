@@ -17,11 +17,11 @@ class SupplicantEventDelegateInterface {
   virtual ~SupplicantEventDelegateInterface() = default;
 
   // Supplicant has added a BSS to its table of visible endpoints.
-  virtual void BSSAdded(const std::string& BSS,
+  virtual void BSSAdded(const RpcIdentifier& BSS,
                         const KeyValueStore& properties) = 0;
 
   // Supplicant has removed a BSS from its table of visible endpoints.
-  virtual void BSSRemoved(const std::string& BSS) = 0;
+  virtual void BSSRemoved(const RpcIdentifier& BSS) = 0;
 
   // Supplicant has received a certficate from the remote server during
   // the process of authentication.

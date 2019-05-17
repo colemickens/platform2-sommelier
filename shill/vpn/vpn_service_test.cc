@@ -104,7 +104,7 @@ class VPNServiceTest : public testing::Test {
   }
 
   std::string interface_name_;
-  std::string ipconfig_rpc_identifier_;
+  RpcIdentifier ipconfig_rpc_identifier_;
   MockVPNDriver* driver_;  // Owned by |service_|.
   MockControl control_;
   MockMetrics metrics_;
@@ -189,7 +189,7 @@ TEST_F(VPNServiceTest, IsAlwaysOnVpn) {
 
 TEST_F(VPNServiceTest, GetDeviceRpcId) {
   Error error;
-  EXPECT_EQ("/", service_->GetDeviceRpcId(&error));
+  EXPECT_EQ(RpcIdentifier("/"), service_->GetDeviceRpcId(&error));
   EXPECT_EQ(Error::kNotSupported, error.type());
 }
 

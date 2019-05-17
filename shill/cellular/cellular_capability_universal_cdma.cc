@@ -403,7 +403,7 @@ void CellularCapabilityUniversalCdma::Scan(
 }
 
 void CellularCapabilityUniversalCdma::OnSimPathChanged(
-    const string& sim_path) {
+    const RpcIdentifier& sim_path) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 

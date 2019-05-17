@@ -75,7 +75,7 @@ void EthernetService::Disconnect(Error* error, const char* reason) {
   }
 }
 
-string EthernetService::GetDeviceRpcId(Error* error) const {
+RpcIdentifier EthernetService::GetDeviceRpcId(Error* error) const {
   if (!props_.ethernet_) {
     error->Populate(Error::kNotFound, "Not associated with a device");
     return control_interface()->NullRpcIdentifier();

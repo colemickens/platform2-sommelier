@@ -39,7 +39,7 @@ namespace {
 const int kTestInterfaceIndex = 5;
 const char kLinkName[] = "usb0";
 const char kService[] = "org.freedesktop.ModemManager1";
-const char kPath[] = "/org/freedesktop/ModemManager1/Modem/0";
+const RpcIdentifier kPath("/org/freedesktop/ModemManager1/Modem/0");
 const unsigned char kAddress[] = {0xa0, 0xb1, 0xc2, 0xd3, 0xe4, 0xf5};
 const char kAddressAsString[] = "A0B1C2D3E4F5";
 

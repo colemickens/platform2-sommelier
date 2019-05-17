@@ -35,8 +35,8 @@ class ChromeosRpcTaskDBusAdaptor
   ~ChromeosRpcTaskDBusAdaptor() override;
 
   // Implementation of RpcTaskAdaptorInterface.
-  const std::string& GetRpcIdentifier() const override;
-  const std::string& GetRpcConnectionIdentifier() const override;
+  RpcIdentifier GetRpcIdentifier() const override;
+  RpcIdentifier GetRpcConnectionIdentifier() const override;
 
   // Implementation of TaskAdaptor
   bool getsec(brillo::ErrorPtr* error,

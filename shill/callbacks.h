@@ -29,7 +29,7 @@ using KeyValueStoreCallback =
 using KeyValueStoresCallback =
     base::Callback<void(const std::vector<KeyValueStore>&, const Error&)>;
 using RpcIdentifierCallback =
-    base::Callback<void(const std::string&, const Error&)>;
+    base::Callback<void(const RpcIdentifier&, const Error&)>;
 using StringCallback = base::Callback<void(const std::string&, const Error&)>;
 using ActivationStateSignalCallback =
     base::Callback<void(uint32_t, uint32_t, const KeyValueStore&)>;

@@ -86,7 +86,7 @@ class Cellular : public Device,
            int interface_index,
            Type type,
            const std::string& service,
-           const std::string& path);
+           const RpcIdentifier& path);
   ~Cellular() override;
 
   // Returns the equipment identifier of the device. If the device is a 3GPP
@@ -253,7 +253,7 @@ class Cellular : public Device,
 
   // getters
   const std::string& dbus_service() const { return dbus_service_; }
-  const std::string& dbus_path() const { return dbus_path_; }
+  RpcIdentifier dbus_path() const { return RpcIdentifier(dbus_path_); }
   const Stringmap& home_provider() const { return home_provider_; }
   const std::string& carrier() const { return carrier_; }
   bool scanning_supported() const { return scanning_supported_; }

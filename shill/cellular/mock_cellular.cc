@@ -19,7 +19,7 @@ MockCellular::MockCellular(ModemInfo* modem_info,
                            int interface_index,
                            Type type,
                            const std::string& service,
-                           const std::string& path)
+                           const RpcIdentifier& path)
     : Cellular(modem_info, link_name, address, interface_index, type,
                service, path) {}
 

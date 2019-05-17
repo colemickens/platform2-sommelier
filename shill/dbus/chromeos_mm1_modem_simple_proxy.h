@@ -20,7 +20,7 @@ class ChromeosModemSimpleProxy : public ModemSimpleProxyInterface {
   // Constructs a org.freedesktop.ModemManager1.Modem.Simple DBus
   // object proxy at |path| owned by |service|.
   ChromeosModemSimpleProxy(const scoped_refptr<dbus::Bus>& bus,
-                           const std::string& path,
+                           const RpcIdentifier& path,
                            const std::string& service);
   ~ChromeosModemSimpleProxy() override;
 
@@ -30,7 +30,7 @@ class ChromeosModemSimpleProxy : public ModemSimpleProxyInterface {
       Error* error,
       const RpcIdentifierCallback& callback,
       int timeout) override;
-  void Disconnect(const std::string& bearer,
+  void Disconnect(const RpcIdentifier& bearer,
                   Error* error,
                   const ResultCallback& callback,
                   int timeout) override;

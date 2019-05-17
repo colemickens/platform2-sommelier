@@ -23,15 +23,15 @@ class Metrics;
 class ServiceUnderTest : public Service {
  public:
   static const char kKeyValueStoreProperty[];
-  static const char kRpcId[];
+  static const RpcIdentifier kRpcId;
   static const char kStringsProperty[];
   static const char kStorageId[];
 
   explicit ServiceUnderTest(Manager* manager);
   ~ServiceUnderTest() override;
 
-  std::string GetRpcIdentifier() const override;
-  std::string GetDeviceRpcId(Error* error) const override;
+  RpcIdentifier GetRpcIdentifier() const override;
+  RpcIdentifier GetDeviceRpcId(Error* error) const override;
   std::string GetStorageIdentifier() const override;
 
   // Getter and setter for a string array property for use in testing.

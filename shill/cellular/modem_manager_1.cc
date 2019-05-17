@@ -23,7 +23,7 @@ using std::vector;
 namespace shill {
 
 ModemManager1::ModemManager1(const string& service,
-                             const string& path,
+                             const RpcIdentifier& path,
                              ModemInfo* modem_info)
     : ModemManager(service, path, modem_info), weak_ptr_factory_(this) {}
 
@@ -67,7 +67,7 @@ void ModemManager1::Disconnect() {
   ModemManager::Disconnect();
 }
 
-void ModemManager1::AddModem1(const string& path,
+void ModemManager1::AddModem1(const RpcIdentifier& path,
                               const InterfaceToProperties& properties) {
   if (ModemExists(path)) {
     return;
@@ -87,7 +87,7 @@ void ModemManager1::InitModem1(Modem1* modem,
 // signal methods
 // Also called by OnGetManagedObjectsReply
 void ModemManager1::OnInterfacesAddedSignal(
-    const string& object_path,
+    const RpcIdentifier& object_path,
     const InterfaceToProperties& properties) {
   if (base::ContainsKey(properties, MM_DBUS_INTERFACE_MODEM)) {
     AddModem1(object_path, properties);
@@ -97,7 +97,7 @@ void ModemManager1::OnInterfacesAddedSignal(
 }
 
 void ModemManager1::OnInterfacesRemovedSignal(
-    const string& object_path,
+    const RpcIdentifier& object_path,
     const vector<string>& interfaces) {
   LOG(INFO) << "MM1:  Removing interfaces from " << object_path;
   if (base::ContainsValue(interfaces, MM_DBUS_INTERFACE_MODEM)) {

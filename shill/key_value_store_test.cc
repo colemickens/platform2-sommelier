@@ -11,6 +11,8 @@ using std::string;
 using std::vector;
 using testing::Test;
 
+namespace shill {
+
 namespace {
 const char kBoolKey[] = "BoolKey";
 const char kBoolsKey[] = "BoolsKey";
@@ -46,9 +48,12 @@ const vector<int64_t> kInt64sValue{0x2345000000000000, 0x6789000000000000};
 const double kDoubleValue = 1.1;
 const vector<double> kDoublesValue{2.2, 3.3};
 const size_t kDoublesValueSize = kDoublesValue.size();
-const char kRpcIdentifierValue[] = "/org/chromium/test";
-const vector<string> kRpcIdentifiersValue{
-    "/org/chromium/test0", "/org/chromium/test1", "/org/chromium/test2"};
+const RpcIdentifier kRpcIdentifierValue("/org/chromium/test");
+const vector<RpcIdentifier> kRpcIdentifiersValue{
+    RpcIdentifier("/org/chromium/test0"),
+    RpcIdentifier("/org/chromium/test1"),
+    RpcIdentifier("/org/chromium/test2")
+};
 const char kStringValue[] = "StringValue";
 const map<string, string> kStringmapValue = {{"key", "value"}};
 const vector<string> kStringsValue = {"StringsValue1", "StringsValue2"};
@@ -59,8 +64,6 @@ const vector<uint8_t> kUint8sValue{1, 2};
 const vector<uint32_t> kUint32sValue{1, 2};
 const int32_t kNestedInt32Value = 1;
 }  // namespace
-
-namespace shill {
 
 class KeyValueStoreTest : public Test {
  public:
@@ -521,14 +524,16 @@ TEST_F(KeyValueStoreTest, Equals) {
 
   first.Clear();
   second.Clear();
-  first.SetRpcIdentifier("rpcIdentifierKey", "rpcIdentifier");
-  second.SetRpcIdentifier("rpcIdentifierOtherKey", "rpcIdentifier");
+  first.SetRpcIdentifier("rpcIdentifierKey", RpcIdentifier("rpcIdentifier"));
+  second.SetRpcIdentifier("rpcIdentifierOtherKey",
+                          RpcIdentifier("rpcIdentifier"));
   EXPECT_NE(first, second);
 
   first.Clear();
   second.Clear();
-  first.SetRpcIdentifier("rpcIdentifierKey", "rpcIdentifier");
-  second.SetRpcIdentifier("rpcIdentifierKey", "otherRpcIdentifier");
+  first.SetRpcIdentifier("rpcIdentifierKey", RpcIdentifier("rpcIdentifier"));
+  second.SetRpcIdentifier("rpcIdentifierKey",
+                          RpcIdentifier("otherRpcIdentifier"));
   EXPECT_NE(first, second);
 
   first.Clear();
@@ -646,7 +651,7 @@ TEST_F(KeyValueStoreTest, Equals) {
   first.SetInt64s("int64sKey", kInt64s1);
   first.SetDouble("doubleKey", 1.1);
   first.SetDoubles("doublesKey", kDoubles1);
-  first.SetRpcIdentifier("rpcIdentifierKey", "rpcid");
+  first.SetRpcIdentifier("rpcIdentifierKey", RpcIdentifier("rpcid"));
   first.SetString("stringKey", "value");
   first.SetStringmap("stringmapKey", kStringmap1);
   first.SetStrings("stringsKey", kStrings1);
@@ -664,7 +669,7 @@ TEST_F(KeyValueStoreTest, Equals) {
   second.SetInt64s("int64sKey", kInt64s1);
   second.SetDouble("doubleKey", 1.1);
   second.SetDoubles("doublesKey", kDoubles1);
-  second.SetRpcIdentifier("rpcIdentifierKey", "rpcid");
+  second.SetRpcIdentifier("rpcIdentifierKey", RpcIdentifier("rpcid"));
   second.SetString("stringKey", "value");
   second.SetStringmap("stringmapKey", kStringmap1);
   second.SetStrings("stringsKey", kStrings1);
@@ -801,14 +806,14 @@ TEST_F(KeyValueStoreTest, ConvertFromVariantDictionary) {
 }
 
 TEST_F(KeyValueStoreTest, ConvertPathsToRpcIdentifiers) {
-  const string kRpcIdentifier1("/test1");
-  const string kRpcIdentifier2("/test2");
+  const RpcIdentifier kRpcIdentifier1("/test1");
+  const RpcIdentifier kRpcIdentifier2("/test2");
   vector<dbus::ObjectPath> paths;
   paths.push_back(dbus::ObjectPath(kRpcIdentifier1));
   paths.push_back(dbus::ObjectPath(kRpcIdentifier2));
-  vector<string> actual_rpc_identifiers =
+  vector<RpcIdentifier> actual_rpc_identifiers =
       KeyValueStore::ConvertPathsToRpcIdentifiers(paths);
-  vector<string> expected_rpc_identifiers;
+  vector<RpcIdentifier> expected_rpc_identifiers;
   expected_rpc_identifiers.push_back(kRpcIdentifier1);
   expected_rpc_identifiers.push_back(kRpcIdentifier2);
   EXPECT_EQ(expected_rpc_identifiers, actual_rpc_identifiers);

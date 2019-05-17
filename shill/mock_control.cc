@@ -55,7 +55,7 @@ MockControl::CreateThirdPartyVpnAdaptor(ThirdPartyVpnDriver* /*driver*/) {
 }
 #endif
 
-const std::string& MockControl::NullRpcIdentifier() {
+const RpcIdentifier& MockControl::NullRpcIdentifier() {
   return null_identifier_;
 }
 

@@ -699,7 +699,7 @@ void WiFiService::Disconnect(Error* error, const char* reason) {
   wifi_->DisconnectFromIfActive(this);
 }
 
-string WiFiService::GetDeviceRpcId(Error* error) const {
+RpcIdentifier WiFiService::GetDeviceRpcId(Error* error) const {
   if (!wifi_) {
     error->Populate(Error::kNotFound, "Not associated with a device");
     return control_interface()->NullRpcIdentifier();

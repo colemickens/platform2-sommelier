@@ -118,7 +118,7 @@ class EthernetTest : public testing::Test {
  protected:
   static const char kDeviceName[];
   static const char kDeviceAddress[];
-  static const char kInterfacePath[];
+  static const RpcIdentifier kInterfacePath;
   static const int kInterfaceIndex;
 
   bool GetLinkUp() { return ethernet_->link_up_; }
@@ -149,13 +149,13 @@ class EthernetTest : public testing::Test {
   const SupplicantInterfaceProxyInterface* GetSupplicantInterfaceProxy() {
     return ethernet_->supplicant_interface_proxy_.get();
   }
-  const string& GetSupplicantInterfacePath() {
+  const RpcIdentifier& GetSupplicantInterfacePath() {
     return ethernet_->supplicant_interface_path_;
   }
-  const string& GetSupplicantNetworkPath() {
+  const RpcIdentifier& GetSupplicantNetworkPath() {
     return ethernet_->supplicant_network_path_;
   }
-  void SetSupplicantNetworkPath(const string& network_path) {
+  void SetSupplicantNetworkPath(const RpcIdentifier& network_path) {
     ethernet_->supplicant_network_path_ = network_path;
   }
   bool InvokeStartSupplicant() {
@@ -171,7 +171,7 @@ class EthernetTest : public testing::Test {
     MockSupplicantInterfaceProxy* interface_proxy =
         ExpectCreateSupplicantInterfaceProxy();
     EXPECT_CALL(*supplicant_process_proxy_, CreateInterface(_, _))
-        .WillOnce(DoAll(SetArgPointee<1>(string(kInterfacePath)),
+        .WillOnce(DoAll(SetArgPointee<1>(kInterfacePath),
                         Return(true)));
     EXPECT_TRUE(InvokeStartSupplicant());
     EXPECT_EQ(interface_proxy, GetSupplicantInterfaceProxy());
@@ -225,7 +225,7 @@ class EthernetTest : public testing::Test {
 // static
 const char EthernetTest::kDeviceName[] = "eth0";
 const char EthernetTest::kDeviceAddress[] = "000102030405";
-const char EthernetTest::kInterfacePath[] = "/interface/path";
+const RpcIdentifier EthernetTest::kInterfacePath("/interface/path");
 const int EthernetTest::kInterfaceIndex = 123;
 
 TEST_F(EthernetTest, Construct) {
@@ -439,7 +439,7 @@ TEST_F(EthernetTest, StartSupplicantWithInterfaceExistsException) {
   EXPECT_CALL(*process_proxy, CreateInterface(_, _)).WillOnce(Return(false));
   EXPECT_CALL(*process_proxy, GetInterface(kDeviceName, _))
       .WillOnce(
-          DoAll(SetArgPointee<1>(string(kInterfacePath)), Return(true)));
+          DoAll(SetArgPointee<1>(kInterfacePath), Return(true)));
   EXPECT_TRUE(InvokeStartSupplicant());
   EXPECT_EQ(interface_proxy, GetSupplicantInterfaceProxy());
   EXPECT_EQ(kInterfacePath, GetSupplicantInterfacePath());
@@ -452,7 +452,7 @@ TEST_F(EthernetTest, StartSupplicantWithUnknownException) {
       .WillOnce(Return(false));
   EXPECT_FALSE(InvokeStartSupplicant());
   EXPECT_EQ(nullptr, GetSupplicantInterfaceProxy());
-  EXPECT_EQ("", GetSupplicantInterfacePath());
+  EXPECT_EQ(RpcIdentifier(""), GetSupplicantInterfacePath());
 }
 
 TEST_F(EthernetTest, StartEapAuthentication) {
@@ -476,17 +476,17 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   Mock::VerifyAndClearExpectations(mock_service_.get());
   Mock::VerifyAndClearExpectations(mock_eap_service_.get());
   Mock::VerifyAndClearExpectations(interface_proxy);
-  EXPECT_EQ("", GetSupplicantNetworkPath());
+  EXPECT_EQ(RpcIdentifier(""), GetSupplicantNetworkPath());
 
   EXPECT_CALL(*mock_service_, ClearEAPCertification());
   EXPECT_CALL(*interface_proxy, RemoveNetwork(_)).Times(0);
   EXPECT_CALL(*mock_eap_service_, eap())
       .WillOnce(Return(&mock_eap_credentials));
   EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _));
-  const char kFirstNetworkPath[] = "/network/first-path";
+  const RpcIdentifier kFirstNetworkPath("/network/first-path");
   EXPECT_CALL(*interface_proxy, AddNetwork(_, _))
       .WillOnce(
-          DoAll(SetArgPointee<1>(string(kFirstNetworkPath)),
+          DoAll(SetArgPointee<1>(kFirstNetworkPath),
                 Return(true)));
   EXPECT_CALL(*interface_proxy, SelectNetwork(StrEq(kFirstNetworkPath)));
   EXPECT_CALL(*interface_proxy, EAPLogon());
@@ -503,10 +503,10 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   EXPECT_CALL(*mock_eap_service_, eap())
       .WillOnce(Return(&mock_eap_credentials));
   EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _));
-  const char kSecondNetworkPath[] = "/network/second-path";
+  const RpcIdentifier kSecondNetworkPath("/network/second-path");
   EXPECT_CALL(*interface_proxy, AddNetwork(_, _))
       .WillOnce(
-          DoAll(SetArgPointee<1>(string(kSecondNetworkPath)),
+          DoAll(SetArgPointee<1>(kSecondNetworkPath),
                 Return(true)));
   EXPECT_CALL(*interface_proxy, SelectNetwork(StrEq(kSecondNetworkPath)));
   EXPECT_CALL(*interface_proxy, EAPLogon());
@@ -520,14 +520,14 @@ TEST_F(EthernetTest, StopSupplicant) {
       supplicant_interface_proxy_.get();
   StartSupplicant();
   SetIsEapAuthenticated(true);
-  SetSupplicantNetworkPath("/network/1");
+  SetSupplicantNetworkPath(RpcIdentifier("/network/1"));
   EXPECT_CALL(*interface_proxy, EAPLogoff()).WillOnce(Return(true));
   EXPECT_CALL(*process_proxy, RemoveInterface(StrEq(kInterfacePath)))
       .WillOnce(Return(true));
   InvokeStopSupplicant();
   EXPECT_EQ(nullptr, GetSupplicantInterfaceProxy());
-  EXPECT_EQ("", GetSupplicantInterfacePath());
-  EXPECT_EQ("", GetSupplicantNetworkPath());
+  EXPECT_EQ(RpcIdentifier(""), GetSupplicantInterfacePath());
+  EXPECT_EQ(RpcIdentifier(""), GetSupplicantNetworkPath());
   EXPECT_FALSE(GetIsEapAuthenticated());
 }
 

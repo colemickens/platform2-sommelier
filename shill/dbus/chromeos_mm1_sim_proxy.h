@@ -20,7 +20,7 @@ class ChromeosSimProxy : public SimProxyInterface {
   // Constructs an org.freedesktop.ModemManager1.Sim DBus object
   // proxy at |path| owned by |service|.
   ChromeosSimProxy(const scoped_refptr<dbus::Bus>& bus,
-                   const std::string& path,
+                   const RpcIdentifier& path,
                    const std::string& service);
   ~ChromeosSimProxy() override;
 

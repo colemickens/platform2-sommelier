@@ -120,9 +120,9 @@ L2TPIPSecDriver::~L2TPIPSecDriver() {
   IdleService();
 }
 
-std::string L2TPIPSecDriver::GetServiceRpcIdentifier() {
+RpcIdentifier L2TPIPSecDriver::GetServiceRpcIdentifier() {
   if (service_ == nullptr)
-    return "(l2tp_ipsec_driver)";
+    return RpcIdentifier("(l2tp_ipsec_driver)");
   return service_->GetRpcIdentifier();
 }
 

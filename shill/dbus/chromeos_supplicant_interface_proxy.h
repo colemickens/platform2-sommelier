@@ -29,31 +29,31 @@ class ChromeosSupplicantInterfaceProxy
  public:
   ChromeosSupplicantInterfaceProxy(
       const scoped_refptr<dbus::Bus>& bus,
-      const std::string& object_path,
+      const RpcIdentifier& object_path,
       SupplicantEventDelegateInterface* delegate);
   ~ChromeosSupplicantInterfaceProxy() override;
 
   // Implementation of SupplicantInterfaceProxyInterface.
-  bool AddNetwork(const KeyValueStore& args, std::string* network) override;
+  bool AddNetwork(const KeyValueStore& args, RpcIdentifier* network) override;
   bool EAPLogon() override;
   bool EAPLogoff() override;
   bool Disconnect() override;
   bool FlushBSS(const uint32_t& age) override;
-  bool NetworkReply(const std::string& network,
+  bool NetworkReply(const RpcIdentifier& network,
                     const std::string& field,
                     const std::string& value) override;
   bool Reassociate() override;
   bool Reattach() override;
   bool RemoveAllNetworks() override;
-  bool RemoveNetwork(const std::string& network) override;
+  bool RemoveNetwork(const RpcIdentifier& network) override;
   bool Roam(const std::string& addr) override;
   bool Scan(const KeyValueStore& args) override;
-  bool SelectNetwork(const std::string& network) override;
+  bool SelectNetwork(const RpcIdentifier& network) override;
   bool TDLSDiscover(const std::string& peer) override;
   bool TDLSSetup(const std::string& peer) override;
   bool TDLSStatus(const std::string& peer, std::string* status) override;
   bool TDLSTeardown(const std::string& peer) override;
-  bool SetHT40Enable(const std::string& network, bool enable) override;
+  bool SetHT40Enable(const RpcIdentifier& network, bool enable) override;
   bool EnableMACAddressRandomization(
       const std::vector<unsigned char>& mask) override;
   bool DisableMACAddressRandomization() override;

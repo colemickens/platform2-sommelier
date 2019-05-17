@@ -404,7 +404,7 @@ bool Device::IsConnectedViaTether() const {
               vendor_encapsulated_options.size());
 }
 
-string Device::GetRpcIdentifier() const {
+RpcIdentifier Device::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 
@@ -1780,25 +1780,25 @@ void Device::PortalDetectorCallback(
   }
 }
 
-string Device::GetSelectedServiceRpcIdentifier(Error* /*error*/) {
+RpcIdentifier Device::GetSelectedServiceRpcIdentifier(Error* /*error*/) {
   if (!selected_service_) {
-    return "/";
+    return RpcIdentifier("/");
   }
   return selected_service_->GetRpcIdentifier();
 }
 
-vector<string> Device::AvailableIPConfigs(Error* /*error*/) {
-  vector<string> ipconfigs;
+RpcIdentifiers Device::AvailableIPConfigs(Error* /*error*/) {
+  RpcIdentifiers identifiers;
   if (ipconfig_) {
-    ipconfigs.push_back(ipconfig_->GetRpcIdentifier());
+    identifiers.push_back(ipconfig_->GetRpcIdentifier());
   }
   if (ip6config_) {
-    ipconfigs.push_back(ip6config_->GetRpcIdentifier());
+    identifiers.push_back(ip6config_->GetRpcIdentifier());
   }
   if (dhcpv6_config_) {
-    ipconfigs.push_back(dhcpv6_config_->GetRpcIdentifier());
+    identifiers.push_back(dhcpv6_config_->GetRpcIdentifier());
   }
-  return ipconfigs;
+  return identifiers;
 }
 
 uint64_t Device::GetLinkMonitorResponseTime(Error* error) {

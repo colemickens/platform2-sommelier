@@ -24,7 +24,7 @@ class MockModemSimpleProxy : public ModemSimpleProxyInterface {
                              Error* error,
                              const RpcIdentifierCallback& callback,
                              int timeout));
-  MOCK_METHOD4(Disconnect, void(const std::string& bearer,
+  MOCK_METHOD4(Disconnect, void(const RpcIdentifier& bearer,
                                 Error* error,
                                 const ResultCallback& callback,
                                 int timeout));

@@ -32,10 +32,10 @@ class ChromeosSupplicantProcessProxy : public SupplicantProcessProxyInterface {
 
   // Implementation of SupplicantProcessProxyInterface.
   bool CreateInterface(const KeyValueStore& args,
-                       std::string* rpc_identifier) override;
-  bool RemoveInterface(const std::string& rpc_identifier) override;
+                       RpcIdentifier* rpc_identifier) override;
+  bool RemoveInterface(const RpcIdentifier& rpc_identifier) override;
   bool GetInterface(const std::string& ifname,
-                    std::string* rpc_identifier) override;
+                    RpcIdentifier* rpc_identifier) override;
   // This function will always return true since PropertySet::Set is an async
   // method. Any failures will be logged in the callback.
   bool SetDebugLevel(const std::string& level) override;

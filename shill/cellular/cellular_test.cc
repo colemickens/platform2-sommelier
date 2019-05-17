@@ -85,7 +85,7 @@ class CellularPropertyTest : public PropertyStoreTest {
                              3,
                              Cellular::kTypeUniversal,
                              "",
-                             "")) {}
+                             RpcIdentifier(""))) {}
 
  protected:
   MockModemInfo modem_info_;
@@ -246,7 +246,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     if (!callback.is_null())
       callback.Run(*error);
   }
-  void InvokeDisconnectMM1(const string& bearer, Error* error,
+  void InvokeDisconnectMM1(const RpcIdentifier& bearer, Error* error,
                            const ResultCallback& callback, int timeout) {
     if (!callback.is_null())
       callback.Run(Error());
@@ -354,7 +354,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   static const char kTestDeviceName[];
   static const char kTestDeviceAddress[];
   static const char kDBusService[];
-  static const char kDBusPath[];
+  static const RpcIdentifier kDBusPath;
   static const char kTestCarrier[];
   static const char kTestCarrierSPN[];
   static const char kMEID[];
@@ -378,34 +378,34 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     explicit TestControl(CellularTest* test) : test_(test) {}
 
     std::unique_ptr<DBusPropertiesProxyInterface> CreateDBusPropertiesProxy(
-        const std::string& path,
+        const RpcIdentifier& path,
         const std::string& service) override {
       CHECK(test_->dbus_properties_proxy_);
       return std::move(test_->dbus_properties_proxy_);
     }
 
     std::unique_ptr<mm1::ModemLocationProxyInterface>
-    CreateMM1ModemLocationProxy(const std::string& path,
+    CreateMM1ModemLocationProxy(const RpcIdentifier& path,
                                 const std::string& service) override {
       CHECK(test_->mm1_modem_location_proxy_);
       return std::move(test_->mm1_modem_location_proxy_);
     }
 
     std::unique_ptr<mm1::ModemModem3gppProxyInterface>
-    CreateMM1ModemModem3gppProxy(const std::string& path,
+    CreateMM1ModemModem3gppProxy(const RpcIdentifier& path,
                                  const std::string& service) override {
       CHECK(test_->mm1_modem_3gpp_proxy_);
       return std::move(test_->mm1_modem_3gpp_proxy_);
     }
 
     std::unique_ptr<mm1::ModemProxyInterface> CreateMM1ModemProxy(
-        const std::string& path, const std::string& service) override {
+        const RpcIdentifier& path, const std::string& service) override {
       CHECK(test_->mm1_proxy_);
       return std::move(test_->mm1_proxy_);
     }
 
     std::unique_ptr<mm1::ModemSimpleProxyInterface> CreateMM1ModemSimpleProxy(
-        const string& /*path*/, const string& /*service*/) override {
+        const RpcIdentifier& /*path*/, const string& /*service*/) override {
       CHECK(test_->mm1_simple_proxy_);
       return std::move(test_->mm1_simple_proxy_);
     }
@@ -467,7 +467,8 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
 const char CellularTest::kTestDeviceName[] = "usb0";
 const char CellularTest::kTestDeviceAddress[] = "000102030405";
 const char CellularTest::kDBusService[] = "org.freedesktop.ModemManager1";
-const char CellularTest::kDBusPath[] = "/org/freedesktop/ModemManager1/Modem/0";
+const RpcIdentifier CellularTest::kDBusPath(
+    "/org/freedesktop/ModemManager1/Modem/0");
 const char CellularTest::kTestCarrier[] = "The Cellular Carrier";
 const char CellularTest::kTestCarrierSPN[] = "Home Provider";
 const char CellularTest::kMEID[] = "01234567EF8901";
@@ -2099,7 +2100,9 @@ TEST_P(CellularTest, EstablishLinkDHCP) {
     return;
   }
 
-  auto bearer = std::make_unique<CellularBearer>(&control_interface_, "", "");
+  auto bearer = std::make_unique<CellularBearer>(&control_interface_,
+                                                 RpcIdentifier(""),
+                                                 "");
   bearer->set_ipv4_config_method(IPConfig::kMethodDHCP);
   SetCapabilityUniversalActiveBearer(std::move(bearer));
   device_->state_ = Cellular::kStateConnected;
@@ -2123,7 +2126,9 @@ TEST_P(CellularTest, EstablishLinkPPP) {
     return;
   }
 
-  auto bearer = std::make_unique<CellularBearer>(&control_interface_, "", "");
+  auto bearer = std::make_unique<CellularBearer>(&control_interface_,
+                                                 RpcIdentifier(""),
+                                                 "");
   bearer->set_ipv4_config_method(IPConfig::kMethodPPP);
   SetCapabilityUniversalActiveBearer(std::move(bearer));
   device_->state_ = Cellular::kStateConnected;
@@ -2156,7 +2161,9 @@ TEST_P(CellularTest, EstablishLinkStatic) {
   ipconfig_properties->subnet_prefix = kSubnetPrefix;
   ipconfig_properties->dns_servers = vector<string>{kDNS[0], kDNS[1], kDNS[2]};
 
-  auto bearer = std::make_unique<CellularBearer>(&control_interface_, "", "");
+  auto bearer = std::make_unique<CellularBearer>(&control_interface_,
+                                                 RpcIdentifier(""),
+                                                 "");
   bearer->set_ipv4_config_method(IPConfig::kMethodStatic);
   bearer->set_ipv4_config_properties(std::move(ipconfig_properties));
   SetCapabilityUniversalActiveBearer(std::move(bearer));

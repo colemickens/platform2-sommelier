@@ -269,7 +269,7 @@ void WiFi::Stop(Error* error, const EnabledStateChangedCallback& /*callback*/) {
       supplicant_interface_proxy_) {
       supplicant_process_proxy_->RemoveInterface(supplicant_interface_path_);
   }
-  supplicant_interface_path_ = "";
+  supplicant_interface_path_ = RpcIdentifier("");
   SetSupplicantInterfaceProxy(nullptr);
   pending_scan_results_.reset();
   tdls_manager_.reset();
@@ -324,7 +324,7 @@ void WiFi::SetSchedScan(bool enable, Error* /*error*/) {
           weak_ptr_factory_while_started_.GetWeakPtr(), enable));
 }
 
-void WiFi::AddPendingScanResult(const string& path,
+void WiFi::AddPendingScanResult(const RpcIdentifier& path,
                                 const KeyValueStore& properties,
                                 bool is_removal) {
   if (!pending_scan_results_) {
@@ -337,13 +337,14 @@ void WiFi::AddPendingScanResult(const string& path,
   pending_scan_results_->results.emplace_back(path, properties, is_removal);
 }
 
-void WiFi::BSSAdded(const string& path, const KeyValueStore& properties) {
+void WiFi::BSSAdded(const RpcIdentifier& path,
+                    const KeyValueStore& properties) {
   // Called from a D-Bus signal handler, and may need to send a D-Bus
   // message. So defer work to event loop.
   AddPendingScanResult(path, properties, false);
 }
 
-void WiFi::BSSRemoved(const string& path) {
+void WiFi::BSSRemoved(const RpcIdentifier& path) {
   // Called from a D-Bus signal handler, and may need to send a D-Bus
   // message. So defer work to event loop.
   AddPendingScanResult(path, {}, true);
@@ -403,7 +404,7 @@ void WiFi::ScanDone(const bool& success) {
 
 void WiFi::ConnectTo(WiFiService* service) {
   CHECK(service) << "Can't connect to NULL service.";
-  string network_path;
+  RpcIdentifier network_rpcid;
 
   // Ignore this connection attempt if suppplicant is not present.
   // This is possible when we try to connect right after WiFi
@@ -447,8 +448,8 @@ void WiFi::ConnectTo(WiFiService* service) {
   }
 
   Error unused_error;
-  network_path = FindNetworkRpcidForService(service, &unused_error);
-  if (network_path.empty()) {
+  network_rpcid = FindNetworkRpcidForService(service, &unused_error);
+  if (network_rpcid.empty()) {
     KeyValueStore service_params =
         service->GetSupplicantConfigurationParameters();
     const uint32_t scan_ssid = 1;  // "True": Use directed probe.
@@ -457,13 +458,13 @@ void WiFi::ConnectTo(WiFiService* service) {
     service_params.SetUint(WPASupplicant::kNetworkPropertyDisableVHT,
                            provider_->disable_vht());
     if (!supplicant_interface_proxy_->AddNetwork(service_params,
-                                                 &network_path)) {
+                                                 &network_rpcid)) {
       LOG(ERROR) << "Failed to add network";
       SetScanState(kScanIdle, scan_method_, __func__);
       return;
     }
-    CHECK(!network_path.empty());  // No DBus path should be empty.
-    rpcid_by_service_[service] = network_path;
+    CHECK(!network_rpcid.empty());  // No DBus path should be empty.
+    rpcid_by_service_[service] = network_rpcid;
   }
 
   if (service->HasRecentConnectionIssues()) {
@@ -472,9 +473,9 @@ void WiFi::ConnectTo(WiFiService* service) {
 
   // Enable HT40 for this network in case if it was disabled previously due to
   // unreliable link.
-  supplicant_interface_proxy_->SetHT40Enable(network_path, true);
+  supplicant_interface_proxy_->SetHT40Enable(network_rpcid, true);
 
-  supplicant_interface_proxy_->SelectNetwork(network_path);
+  supplicant_interface_proxy_->SelectNetwork(network_rpcid);
   SetPendingService(service);
   CHECK(current_service_.get() != pending_service_.get());
 
@@ -589,7 +590,7 @@ void WiFi::DisconnectFrom(WiFiService* service) {
         current_service_.get() != pending_service_.get());
 }
 
-bool WiFi::DisableNetwork(const string& network) {
+bool WiFi::DisableNetwork(const RpcIdentifier& network) {
   std::unique_ptr<SupplicantNetworkProxyInterface> supplicant_network_proxy =
       control_interface()->CreateSupplicantNetworkProxy(network);
   if (!supplicant_network_proxy->SetEnabled(false)) {
@@ -599,7 +600,7 @@ bool WiFi::DisableNetwork(const string& network) {
   return true;
 }
 
-bool WiFi::RemoveNetwork(const string& network) {
+bool WiFi::RemoveNetwork(const RpcIdentifier& network) {
   return supplicant_interface_proxy_->RemoveNetwork(network);
 }
 
@@ -611,7 +612,7 @@ void WiFi::SetHT40EnableForService(const WiFiService* service, bool enable) {
   }
 
   Error error;
-  string rpcid = FindNetworkRpcidForService(service, &error);
+  RpcIdentifier rpcid = FindNetworkRpcidForService(service, &error);
   if (rpcid.empty()) {
       LOG(ERROR) << "Unable to find supplicant network.";
       return;
@@ -809,7 +810,7 @@ void WiFi::AuthStatusChanged(const int32_t new_auth_status) {
   supplicant_auth_status_ = new_auth_status;
 }
 
-void WiFi::CurrentBSSChanged(const string& new_bss) {
+void WiFi::CurrentBSSChanged(const RpcIdentifier& new_bss) {
   SLOG(this, 3) << "WiFi " << link_name() << " CurrentBSS "
                 << supplicant_bss_ << " -> " << new_bss;
 
@@ -1092,7 +1093,7 @@ Service::ConnectFailure WiFi::ExamineStatusCodes() const {
 
 // We use the term "Roam" loosely. In particular, we include the case
 // where we "Roam" to a BSS from the disconnected state.
-void WiFi::HandleRoam(const string& new_bss) {
+void WiFi::HandleRoam(const RpcIdentifier& new_bss) {
   EndpointMap::iterator endpoint_it = endpoint_by_rpcid_.find(new_bss);
   if (endpoint_it == endpoint_by_rpcid_.end()) {
     LOG(WARNING) << "WiFi " << link_name() << " connected to unknown BSS "
@@ -1221,7 +1222,7 @@ void WiFi::HandleRoam(const string& new_bss) {
   return;
 }
 
-string WiFi::FindNetworkRpcidForService(
+RpcIdentifier WiFi::FindNetworkRpcidForService(
     const WiFiService* service, Error* error) {
   ReverseServiceMap::const_iterator rpcid_it = rpcid_by_service_.find(service);
   if (rpcid_it == rpcid_by_service_.end()) {
@@ -1242,7 +1243,7 @@ string WiFi::FindNetworkRpcidForService(
 }
 
 bool WiFi::DisableNetworkForService(const WiFiService* service, Error* error) {
-  string rpcid = FindNetworkRpcidForService(service, error);
+  RpcIdentifier rpcid = FindNetworkRpcidForService(service, error);
   if (rpcid.empty()) {
       // Error is already populated.
       return false;
@@ -1269,7 +1270,7 @@ bool WiFi::DisableNetworkForService(const WiFiService* service, Error* error) {
 }
 
 bool WiFi::RemoveNetworkForService(const WiFiService* service, Error* error) {
-  string rpcid = FindNetworkRpcidForService(service, error);
+  RpcIdentifier rpcid = FindNetworkRpcidForService(service, error);
   if (rpcid.empty()) {
       // Error is already populated.
       return false;
@@ -1411,7 +1412,8 @@ void WiFi::OnScanStarted(const NetlinkMessage& netlink_message) {
   wake_on_wifi_->OnScanStarted(is_active_scan);
 }
 
-void WiFi::BSSAddedTask(const string& path, const KeyValueStore& properties) {
+void WiFi::BSSAddedTask(const RpcIdentifier& path,
+                        const KeyValueStore& properties) {
   // Note: we assume that BSSIDs are unique across endpoints. This
   // means that if an AP reuses the same BSSID for multiple SSIDs, we
   // lose.
@@ -1455,7 +1457,7 @@ void WiFi::BSSAddedTask(const string& path, const KeyValueStore& properties) {
   endpoint->Start();
 }
 
-void WiFi::BSSRemovedTask(const string& path) {
+void WiFi::BSSRemovedTask(const RpcIdentifier& path) {
   EndpointMap::iterator i = endpoint_by_rpcid_.find(path);
   if (i == endpoint_by_rpcid_.end()) {
     SLOG(this, 1) << "WiFi " << link_name()
@@ -1511,7 +1513,7 @@ void WiFi::EAPEventTask(const string& status, const string& parameter) {
     // wpa_supplicant can sometimes forget the PIN on disconnect from the AP.
     const string& pin = current_service_->eap()->pin();
     Error unused_error;
-    string rpcid = FindNetworkRpcidForService(current_service_.get(),
+    RpcIdentifier rpcid = FindNetworkRpcidForService(current_service_.get(),
                                               &unused_error);
     if (!pin.empty() && !rpcid.empty()) {
       // We have a PIN configured, so we can provide it back to wpa_supplicant.

@@ -12,6 +12,8 @@
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/data_types.h"
+
 namespace shill {
 
 class Error;
@@ -54,7 +56,7 @@ class OpenVPNManagementServer {
   const std::string& state() const { return state_; }
 
   // Method to get service identifier for logging.
-  virtual std::string GetServiceRpcIdentifier();
+  virtual RpcIdentifier GetServiceRpcIdentifier();
 
  private:
   friend class OpenVPNDriverTest;

@@ -16,7 +16,7 @@ namespace shill {
 class MockModem : public Modem {
  public:
   MockModem(const std::string& service,
-            const std::string& path,
+            const RpcIdentifier& path,
             ModemInfo* modem_info);
   ~MockModem() override;
 

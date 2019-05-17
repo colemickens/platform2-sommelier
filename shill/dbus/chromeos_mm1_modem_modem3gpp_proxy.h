@@ -22,7 +22,7 @@ class ChromeosModemModem3gppProxy : public ModemModem3gppProxyInterface {
   // Constructs an org.freedesktop.ModemManager1.Modem.Modem3gpp DBus
   // object proxy at |path| owned by |service|.
   ChromeosModemModem3gppProxy(const scoped_refptr<dbus::Bus>& bus,
-                              const std::string& path,
+                              const RpcIdentifier& path,
                               const std::string& service);
   ~ChromeosModemModem3gppProxy() override;
   // Inherited methods from ModemModem3gppProxyInterface.

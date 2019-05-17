@@ -42,8 +42,8 @@ ChromeosDeviceDBusAdaptor::~ChromeosDeviceDBusAdaptor() {
   device_ = nullptr;
 }
 
-const string& ChromeosDeviceDBusAdaptor::GetRpcIdentifier() const {
-  return dbus_path().value();
+RpcIdentifier ChromeosDeviceDBusAdaptor::GetRpcIdentifier() const {
+  return RpcIdentifier(dbus_path().value());
 }
 
 void ChromeosDeviceDBusAdaptor::EmitBoolChanged(const string& name,
@@ -102,14 +102,13 @@ void ChromeosDeviceDBusAdaptor::EmitKeyValueStoreChanged(
 }
 
 void ChromeosDeviceDBusAdaptor::EmitRpcIdentifierChanged(
-    const std::string& name, const std::string& value) {
+    const std::string& name, const RpcIdentifier& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(dbus::ObjectPath(value)));
 }
 
 void ChromeosDeviceDBusAdaptor::EmitRpcIdentifierArrayChanged(
-    const string& name,
-    const vector<string>& value) {
+    const string& name, const RpcIdentifiers& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   vector<dbus::ObjectPath> paths;
   for (const auto& element : value) {

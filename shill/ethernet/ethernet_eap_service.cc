@@ -30,8 +30,8 @@ string EthernetEapService::GetStorageIdentifier() const {
       "%s_all", Technology::NameFromIdentifier(technology()).c_str());
 }
 
-string EthernetEapService::GetDeviceRpcId(Error* /*error*/) const {
-  return "/";
+RpcIdentifier EthernetEapService::GetDeviceRpcId(Error* /*error*/) const {
+  return RpcIdentifier("/");
 }
 
 void EthernetEapService::OnEapCredentialsChanged(

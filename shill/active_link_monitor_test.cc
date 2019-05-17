@@ -50,7 +50,7 @@ const char kLocalIPAddress[] = "10.0.1.1";
 const uint8_t kLocalMACAddress[] = { 0, 1, 2, 3, 4, 5 };
 const char kRemoteIPAddress[] = "10.0.1.2";
 const uint8_t kRemoteMACAddress[] = { 6, 7, 8, 9, 10, 11 };
-const char kDBusPath[] = "/dbus/path";
+const RpcIdentifier kDBusPath("/dbus/path");
 }  // namespace
 
 

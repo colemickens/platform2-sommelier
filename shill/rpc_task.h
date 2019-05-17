@@ -11,6 +11,8 @@
 
 #include <base/macros.h>
 
+#include "shill/data_types.h"
+
 namespace shill {
 
 // Declared in the header to avoid linking unused code into shims.
@@ -51,8 +53,8 @@ class RpcTask {
   // Generates environment variable strings for a child process to
   // communicate back to us over RPC.
   virtual std::map<std::string, std::string> GetEnvironment() const;
-  std::string GetRpcIdentifier() const;
-  std::string GetRpcConnectionIdentifier() const;
+  RpcIdentifier GetRpcIdentifier() const;
+  RpcIdentifier GetRpcConnectionIdentifier() const;
 
  private:
   RpcTaskDelegate* delegate_;

@@ -152,7 +152,7 @@ class CellularService : public Service {
       bool(CellularService::*get)(Error* error),
       bool(CellularService::*set)(const bool&, Error*));
 
-  std::string GetDeviceRpcId(Error* error) const override;
+  RpcIdentifier GetDeviceRpcId(Error* error) const override;
 
   std::set<std::string> GetStorageGroupsWithProperty(
       const StoreInterface& storage,

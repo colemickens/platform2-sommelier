@@ -37,7 +37,7 @@ class L2TPIPSecDriver : public VPNDriver,
   ~L2TPIPSecDriver() override;
 
   // Method to return service RPC identifier.
-  std::string GetServiceRpcIdentifier();
+  RpcIdentifier GetServiceRpcIdentifier();
 
  protected:
   // Inherited from VPNDriver.

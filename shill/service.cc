@@ -484,7 +484,7 @@ void Service::SetFailureSilent(ConnectFailure failure) {
   failed_time_ = time(nullptr);
 }
 
-string Service::GetRpcIdentifier() const {
+RpcIdentifier Service::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 
@@ -786,7 +786,7 @@ void Service::SetConnection(const ConnectionRefPtr& connection) {
 
 void Service::NotifyIPConfigChanges() {
   Error error;
-  string ipconfig = GetIPConfigRpcIdentifier(&error);
+  RpcIdentifier ipconfig = GetIPConfigRpcIdentifier(&error);
   if (error.IsSuccess()) {
     adaptor_->EmitRpcIdentifierChanged(kIPConfigProperty, ipconfig);
   }
@@ -1155,7 +1155,7 @@ void Service::SetProfile(const ProfileRefPtr& p) {
   }
   profile_ = p;
   Error error;
-  string profile_rpc_id = GetProfileRpcId(&error);
+  std::string profile_rpc_id = GetProfileRpcId(&error);
   if (!error.IsSuccess()) {
     return;
   }
@@ -1197,13 +1197,13 @@ void Service::OnDefaultServiceStateChanged(const ServiceRefPtr& parent) {
   // Nothing to do in the general case.
 }
 
-string Service::GetIPConfigRpcIdentifier(Error* error) const {
+RpcIdentifier Service::GetIPConfigRpcIdentifier(Error* error) const {
   if (!connection_) {
     error->Populate(Error::kNotFound);
     return control_interface()->NullRpcIdentifier();
   }
 
-  string id = connection_->ipconfig_rpc_identifier();
+  RpcIdentifier id = connection_->ipconfig_rpc_identifier();
 
   if (id.empty()) {
     // Do not return an empty IPConfig.
@@ -1399,7 +1399,7 @@ void Service::SaveString(StoreInterface* storage,
   storage->SetString(id, key, value);
 }
 
-map<string, string> Service::GetLoadableProfileEntries() {
+map<RpcIdentifier, string> Service::GetLoadableProfileEntries() {
   return manager_->GetLoadableProfileEntriesForService(this);
 }
 
@@ -1548,16 +1548,16 @@ bool Service::SetPriority(const int32_t& priority, Error* error) {
   return true;
 }
 
-string Service::GetProfileRpcId(Error* error) {
+RpcIdentifier Service::GetProfileRpcId(Error* error) {
   if (!profile_) {
     // This happens in some unit tests where profile_ is not set.
     error->Populate(Error::kNotFound);
-    return "";
+    return RpcIdentifier();
   }
   return profile_->GetRpcIdentifier();
 }
 
-bool Service::SetProfileRpcId(const string& profile, Error* error) {
+bool Service::SetProfileRpcId(const RpcIdentifier& profile, Error* error) {
   if (profile_ && profile_->GetRpcIdentifier() == profile) {
     return false;
   }

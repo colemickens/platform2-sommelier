@@ -229,7 +229,7 @@ const KeyValueStore& KeyValueStore::GetKeyValueStore(const string& name) const {
   return it->second.Get<KeyValueStore>();
 }
 
-const string& KeyValueStore::GetRpcIdentifier(const string& name) const {
+const RpcIdentifier& KeyValueStore::GetRpcIdentifier(const string& name) const {
   const auto it(properties_.find(name));
   CHECK(it != properties_.end() &&
         it->second.IsTypeCompatible<dbus::ObjectPath>())
@@ -237,7 +237,7 @@ const string& KeyValueStore::GetRpcIdentifier(const string& name) const {
   return it->second.Get<dbus::ObjectPath>().value();
 }
 
-vector<string> KeyValueStore::GetRpcIdentifiers(const string& name) const {
+RpcIdentifiers KeyValueStore::GetRpcIdentifiers(const string& name) const {
   const auto it(properties_.find(name));
   CHECK(it != properties_.end() &&
         it->second.IsTypeCompatible<vector<dbus::ObjectPath>>())
@@ -360,12 +360,13 @@ void KeyValueStore::SetKeyValueStore(const string& name,
   properties_[name] = brillo::Any(value);
 }
 
-void KeyValueStore::SetRpcIdentifier(const string& name, const string& value) {
+void KeyValueStore::SetRpcIdentifier(const string& name,
+                                     const RpcIdentifier& value) {
   properties_[name] = brillo::Any(dbus::ObjectPath(value));
 }
 
 void KeyValueStore::SetRpcIdentifiers(const string& name,
-                                      const vector<string>& value) {
+                                      const vector<RpcIdentifier>& value) {
   vector<dbus::ObjectPath> paths;
   for (const auto& rpcid : value) {
     paths.push_back(dbus::ObjectPath(rpcid));
@@ -482,9 +483,9 @@ KeyValueStore KeyValueStore::ConvertFromVariantDictionary(
 }
 
 // static.
-std::vector<string> KeyValueStore::ConvertPathsToRpcIdentifiers(
+RpcIdentifiers KeyValueStore::ConvertPathsToRpcIdentifiers(
   const vector<dbus::ObjectPath>& paths) {
-  std::vector<string> rpc_identifiers;
+  RpcIdentifiers rpc_identifiers;
   for (const auto& path : paths) {
     rpc_identifiers.push_back(path.value());
   }

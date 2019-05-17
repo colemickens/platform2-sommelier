@@ -20,7 +20,7 @@ namespace mm1 {
 
 ChromeosModemSimpleProxy::ChromeosModemSimpleProxy(
     const scoped_refptr<dbus::Bus>& bus,
-    const string& path,
+    const RpcIdentifier& path,
     const string& service)
     : proxy_(
         new org::freedesktop::ModemManager1::Modem::SimpleProxy(
@@ -46,7 +46,7 @@ void ChromeosModemSimpleProxy::Connect(
                        timeout);
 }
 
-void ChromeosModemSimpleProxy::Disconnect(const string& bearer,
+void ChromeosModemSimpleProxy::Disconnect(const RpcIdentifier& bearer,
                                           Error* error,
                                           const ResultCallback& callback,
                                           int timeout) {

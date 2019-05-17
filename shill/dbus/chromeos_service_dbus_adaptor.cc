@@ -83,8 +83,8 @@ void ChromeosServiceDBusAdaptor::EmitIntChanged(const string& name, int value) {
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void ChromeosServiceDBusAdaptor::EmitRpcIdentifierChanged(const string& name,
-                                                          const string& value) {
+void ChromeosServiceDBusAdaptor::EmitRpcIdentifierChanged(
+    const string& name, const RpcIdentifier& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(dbus::ObjectPath(value)));
 }
@@ -191,7 +191,7 @@ bool ChromeosServiceDBusAdaptor::CompleteCellularActivation(
 bool ChromeosServiceDBusAdaptor::GetLoadableProfileEntries(
     brillo::ErrorPtr* /*error*/, map<dbus::ObjectPath, string>* entries) {
   SLOG(this, 2) << __func__;
-  map<string, string> profile_entry_strings =
+  map<RpcIdentifier, string> profile_entry_strings =
       service_->GetLoadableProfileEntries();
   for (const auto& entry : profile_entry_strings) {
     (*entries)[dbus::ObjectPath(entry.first)] = entry.second;

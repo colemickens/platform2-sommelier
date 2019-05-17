@@ -21,7 +21,7 @@ namespace shill {
 
 MockService::MockService(Manager* manager)
     : Service(manager, Technology::kUnknown) {
-  const std::string& id = unique_name();
+  const RpcIdentifier id(unique_name());
   EXPECT_CALL(*this, GetRpcIdentifier()).WillRepeatedly(Return(id));
   EXPECT_CALL(*this, GetStorageIdentifier()).WillRepeatedly(Return(id));
   ON_CALL(*this, IsVisible()).WillByDefault(Return(true));

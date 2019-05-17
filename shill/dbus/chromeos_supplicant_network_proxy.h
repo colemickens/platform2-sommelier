@@ -10,6 +10,7 @@
 
 #include <base/macros.h>
 
+#include "shill/data_types.h"
 #include "shill/refptr_types.h"
 #include "shill/supplicant/supplicant_network_proxy_interface.h"
 #include "supplicant/dbus-proxies.h"
@@ -22,7 +23,7 @@ class ChromeosSupplicantNetworkProxy
     : public SupplicantNetworkProxyInterface {
  public:
   ChromeosSupplicantNetworkProxy(const scoped_refptr<dbus::Bus>& bus,
-                                 const std::string& object_path);
+                                 const RpcIdentifier& object_path);
   ~ChromeosSupplicantNetworkProxy() override;
 
   // Implementation of SupplicantNetworkProxyInterface.

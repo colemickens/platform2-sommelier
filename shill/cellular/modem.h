@@ -28,7 +28,7 @@ class Modem {
   // ||path| is the ModemManager.Modem DBus object path (e.g.,
   // "/org/freedesktop/ModemManager1/Modem/0").
   Modem(const std::string& service,
-        const std::string& path,
+        const RpcIdentifier& path,
         ModemInfo* modem_info);
   virtual ~Modem();
 
@@ -42,7 +42,7 @@ class Modem {
   void OnDeviceInfoAvailable(const std::string& link_name);
 
   const std::string& service() const { return service_; }
-  const std::string& path() const { return path_; }
+  const RpcIdentifier& path() const { return path_; }
 
   void set_type(Cellular::Type type) { type_ = type; }
 
@@ -98,7 +98,7 @@ class Modem {
   InterfaceToProperties initial_properties_;
 
   const std::string service_;
-  const std::string path_;
+  const RpcIdentifier path_;
 
   CellularRefPtr device_;
 
@@ -119,7 +119,7 @@ class Modem {
 class Modem1 : public Modem {
  public:
   Modem1(const std::string& service,
-         const std::string& path,
+         const RpcIdentifier& path,
          ModemInfo* modem_info);
   ~Modem1() override;
 

@@ -64,7 +64,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   };
   WiFiEndpoint(ControlInterface* control_interface,
                const WiFiRefPtr& device,
-               const std::string& rpc_id,
+               const RpcIdentifier& rpc_id,
                const KeyValueStore& properties,
                Metrics* metrics);
   virtual ~WiFiEndpoint();
@@ -248,7 +248,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
 
   ControlInterface* control_interface_;
   WiFiRefPtr device_;
-  std::string rpc_id_;
+  RpcIdentifier rpc_id_;
   std::unique_ptr<SupplicantBSSProxyInterface> supplicant_bss_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFiEndpoint);

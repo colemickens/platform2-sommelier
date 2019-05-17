@@ -397,7 +397,9 @@ void Manager::InitializeProfiles() {
   }
 }
 
-void Manager::CreateProfile(const string& name, string* path, Error* error) {
+void Manager::CreateProfile(const string& name,
+                            RpcIdentifier* path,
+                            Error* error) {
   SLOG(this, 2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
@@ -444,7 +446,7 @@ bool Manager::HasProfile(const Profile::Identifier& ident) {
 }
 
 void Manager::PushProfileInternal(
-    const Profile::Identifier& ident, string* path, Error* error) {
+    const Profile::Identifier& ident, RpcIdentifier* path, Error* error) {
   if (HasProfile(ident)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kAlreadyExists,
                           "Profile name " + Profile::IdentifierToString(ident) +
@@ -516,7 +518,9 @@ void Manager::PushProfileInternal(
             << " profile(s) now present.";
 }
 
-void Manager::PushProfile(const string& name, string* path, Error* error) {
+void Manager::PushProfile(const string& name,
+                          RpcIdentifier* path,
+                          Error* error) {
   SLOG(this, 2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
@@ -529,7 +533,7 @@ void Manager::PushProfile(const string& name, string* path, Error* error) {
 
 void Manager::InsertUserProfile(const string& name,
                                 const string& user_hash,
-                                string* path,
+                                RpcIdentifier* path,
                                 Error* error) {
   SLOG(this, 2) << __func__ << " " << name;
   Profile::Identifier ident;
@@ -812,9 +816,9 @@ bool Manager::HandleProfileEntryDeletion(const ProfileRefPtr& profile,
   return moved_services;
 }
 
-map<string, string> Manager::GetLoadableProfileEntriesForService(
+map<RpcIdentifier, string> Manager::GetLoadableProfileEntriesForService(
     const ServiceConstRefPtr& service) {
-  map<string, string> profile_entries;
+  map<RpcIdentifier, string> profile_entries;
   for (const auto& profile : profiles_) {
     string entry_name = service->GetLoadableStorageIdentifier(
         *profile->GetConstStorage());
@@ -1017,7 +1021,7 @@ bool Manager::MoveServiceToProfile(const ServiceRefPtr& to_move,
 }
 
 ProfileRefPtr Manager::LookupProfileByRpcIdentifier(
-    const string& profile_rpcid) {
+    const RpcIdentifier& profile_rpcid) {
   for (const auto& profile : profiles_) {
     if (profile_rpcid == profile->GetRpcIdentifier()) {
       return profile;
@@ -1027,7 +1031,7 @@ ProfileRefPtr Manager::LookupProfileByRpcIdentifier(
 }
 
 void Manager::SetProfileForService(const ServiceRefPtr& to_set,
-                                   const string& profile_rpcid,
+                                   const RpcIdentifier& profile_rpcid,
                                    Error* error) {
   ProfileRefPtr profile = LookupProfileByRpcIdentifier(profile_rpcid);
   if (!profile) {
@@ -1274,7 +1278,7 @@ void Manager::LoadDeviceFromProfiles(const DeviceRefPtr& device) {
 
 void Manager::EmitDeviceProperties() {
   Error error;
-  vector<string> device_paths = EnumerateDevices(&error);
+  vector<RpcIdentifier> device_paths = EnumerateDevices(&error);
   adaptor_->EmitRpcIdentifierArrayChanged(kDevicesProperty,
                                           device_paths);
   adaptor_->EmitStringsChanged(kAvailableTechnologiesProperty,
@@ -2283,7 +2287,7 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore& args,
   ProfileRefPtr profile = ActiveProfile();
   bool profile_specified = args.ContainsString(kProfileProperty);
   if (profile_specified) {
-    string profile_rpcid = args.GetString(kProfileProperty);
+    RpcIdentifier profile_rpcid(args.GetString(kProfileProperty));
     profile = LookupProfileByRpcIdentifier(profile_rpcid);
     if (!profile) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
@@ -2349,7 +2353,9 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore& args,
 
 // called via RPC (e.g., from ManagerDBusAdaptor)
 ServiceRefPtr Manager::ConfigureServiceForProfile(
-    const string& profile_rpcid, const KeyValueStore& args, Error* error) {
+    const RpcIdentifier& profile_rpcid,
+    const KeyValueStore& args,
+    Error* error) {
   if (!args.ContainsString(kTypeProperty)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInvalidArguments, kErrorTypeRequired);

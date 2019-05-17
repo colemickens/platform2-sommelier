@@ -30,7 +30,7 @@ class MockModemProxy : public ModemProxyInterface {
                                   Error* error,
                                   const RpcIdentifierCallback& callback,
                                   int timeout));
-  MOCK_METHOD4(DeleteBearer, void(const std::string& bearer,
+  MOCK_METHOD4(DeleteBearer, void(const RpcIdentifier& bearer,
                                   Error* error,
                                   const ResultCallback& callback,
                                   int timeout));

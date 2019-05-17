@@ -683,7 +683,7 @@ void CellularCapabilityUniversal::FillConnectPropertyMap(
 }
 
 void CellularCapabilityUniversal::OnConnectReply(const ResultCallback& callback,
-                                                 const string& path,
+                                                 const RpcIdentifier& bearer,
                                                  const Error& error) {
   SLOG(this, 3) << __func__ << "(" << error << ")";
 
@@ -713,7 +713,7 @@ void CellularCapabilityUniversal::OnConnectReply(const ResultCallback& callback,
       service->SetLastGoodApn(apn_try_list_.front());
       apn_try_list_.clear();
     }
-    SLOG(this, 2) << "Connected bearer " << path;
+    SLOG(this, 2) << "Connected bearer " << bearer;
   }
 
   if (!callback.is_null())
@@ -1254,7 +1254,8 @@ bool CellularCapabilityUniversal::RetriableConnectError(
   return error.type() == Error::kInvalidApn;
 }
 
-bool CellularCapabilityUniversal::IsValidSimPath(const string& sim_path) const {
+bool CellularCapabilityUniversal::IsValidSimPath(
+    const RpcIdentifier& sim_path) const {
   return !sim_path.empty() && sim_path != kRootPath;
 }
 
@@ -1268,7 +1269,7 @@ string CellularCapabilityUniversal::NormalizeMdn(const string& mdn) const {
 }
 
 void CellularCapabilityUniversal::OnSimPathChanged(
-    const string& sim_path) {
+    const RpcIdentifier& sim_path) {
   if (sim_path == sim_path_)
     return;
 

@@ -37,8 +37,8 @@ class ChromeosIPConfigDBusAdaptor
   ~ChromeosIPConfigDBusAdaptor() override;
 
   // Implementation of IPConfigAdaptorInterface.
-  const std::string& GetRpcIdentifier() const override {
-    return dbus_path().value();
+  RpcIdentifier GetRpcIdentifier() const override {
+    return RpcIdentifier(dbus_path().value());
   }
   void EmitBoolChanged(const std::string& name, bool value) override;
   void EmitUintChanged(const std::string& name, uint32_t value) override;

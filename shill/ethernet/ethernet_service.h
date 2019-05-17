@@ -75,7 +75,7 @@ class EthernetService : public Service {
  private:
   FRIEND_TEST(EthernetServiceTest, GetTethering);
 
-  std::string GetDeviceRpcId(Error* error) const override;
+  RpcIdentifier GetDeviceRpcId(Error* error) const override;
 
   Properties props_;
   DISALLOW_COPY_AND_ASSIGN(EthernetService);

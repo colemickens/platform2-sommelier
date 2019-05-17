@@ -152,7 +152,7 @@ void OpenVPNManagementServer::Restart() {
   SendSignal("SIGUSR1");
 }
 
-std::string OpenVPNManagementServer::GetServiceRpcIdentifier() {
+RpcIdentifier OpenVPNManagementServer::GetServiceRpcIdentifier() {
   return driver_->GetServiceRpcIdentifier();
 }
 

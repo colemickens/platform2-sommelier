@@ -20,10 +20,10 @@ class MockSupplicantProcessProxy : public SupplicantProcessProxyInterface {
   ~MockSupplicantProcessProxy() override;
 
   MOCK_METHOD2(CreateInterface,
-               bool(const KeyValueStore& args, std::string* rpc_identifier));
+               bool(const KeyValueStore& args, RpcIdentifier* rpc_identifier));
   MOCK_METHOD2(GetInterface,
-               bool(const std::string& ifname, std::string* rpc_identifier));
-  MOCK_METHOD1(RemoveInterface, bool(const std::string& rpc_identifier));
+               bool(const std::string& ifname, RpcIdentifier* rpc_identifier));
+  MOCK_METHOD1(RemoveInterface, bool(const RpcIdentifier& rpc_identifier));
   MOCK_METHOD1(GetDebugLevel, bool(std::string* level));
   MOCK_METHOD1(SetDebugLevel, bool(const std::string& level));
   MOCK_METHOD0(ExpectDisconnect, bool());

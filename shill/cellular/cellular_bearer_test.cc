@@ -23,7 +23,8 @@ namespace shill {
 
 namespace {
 
-const char kBearerDBusPath[] = "/org/freedesktop/ModemManager/Bearer/0";
+const RpcIdentifier kBearerDBusPath =
+  RpcIdentifier("/org/freedesktop/ModemManager/Bearer/0");
 const char kBearerDBusService[] = "org.freedesktop.ModemManager";
 const char kDataInterface[] = "/dev/ppp0";
 const char kIPv4Address[] = "10.0.0.1";

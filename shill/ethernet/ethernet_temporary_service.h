@@ -25,7 +25,7 @@ class EthernetTemporaryService : public Service {
   ~EthernetTemporaryService() override;
 
   // Inherited from Service.
-  std::string GetDeviceRpcId(Error* error) const override;
+  RpcIdentifier GetDeviceRpcId(Error* error) const override;
   std::string GetStorageIdentifier() const override;
   bool IsVisible() const override;
 

@@ -70,9 +70,9 @@ class Ethernet
   // are called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
   void BSSAdded(
-      const std::string& BSS,
+      const RpcIdentifier& BSS,
       const KeyValueStore& properties) override;
-  void BSSRemoved(const std::string& BSS) override;
+  void BSSRemoved(const RpcIdentifier& BSS) override;
   void Certification(const KeyValueStore& properties) override;
   void EAPEvent(const std::string& status,
                 const std::string& parameter) override;
@@ -150,8 +150,8 @@ class Ethernet
   std::unique_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;
   std::unique_ptr<SupplicantInterfaceProxyInterface>
       supplicant_interface_proxy_;
-  std::string supplicant_interface_path_;
-  std::string supplicant_network_path_;
+  RpcIdentifier supplicant_interface_path_;
+  RpcIdentifier supplicant_network_path_;
 
   // Certificate file instance to generate public key data for remote
   // authentication.

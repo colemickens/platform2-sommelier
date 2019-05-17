@@ -19,7 +19,7 @@ static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
 namespace mm1 {
 
 ChromeosSimProxy::ChromeosSimProxy(const scoped_refptr<dbus::Bus>& bus,
-                                   const string& path,
+                                   const RpcIdentifier& path,
                                    const string& service)
     : proxy_(
         new org::freedesktop::ModemManager1::SimProxy(

@@ -20,7 +20,7 @@ namespace mm1 {
 
 ChromeosModemModem3gppProxy::ChromeosModemModem3gppProxy(
     const scoped_refptr<dbus::Bus>& bus,
-    const string& path,
+    const RpcIdentifier& path,
     const string& service)
     : proxy_(
         new org::freedesktop::ModemManager1::Modem::Modem3gppProxy(

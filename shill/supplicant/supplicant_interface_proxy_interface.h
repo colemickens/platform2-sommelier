@@ -19,21 +19,21 @@ class SupplicantInterfaceProxyInterface {
   virtual ~SupplicantInterfaceProxyInterface() = default;
 
   virtual bool AddNetwork(const KeyValueStore& args,
-                          std::string* network) = 0;
+                          RpcIdentifier* network) = 0;
   virtual bool EAPLogoff() = 0;
   virtual bool EAPLogon() = 0;
   virtual bool Disconnect() = 0;
   virtual bool FlushBSS(const uint32_t& age) = 0;
-  virtual bool NetworkReply(const std::string& network,
+  virtual bool NetworkReply(const RpcIdentifier& network,
                             const std::string& field,
                             const std::string& value) = 0;
   virtual bool Reassociate() = 0;
   virtual bool Reattach() = 0;
   virtual bool RemoveAllNetworks() = 0;
-  virtual bool RemoveNetwork(const std::string& network) = 0;
+  virtual bool RemoveNetwork(const RpcIdentifier& network) = 0;
   virtual bool Roam(const std::string& addr) = 0;
   virtual bool Scan(const KeyValueStore& args) = 0;
-  virtual bool SelectNetwork(const std::string& network) = 0;
+  virtual bool SelectNetwork(const RpcIdentifier& network) = 0;
   virtual bool SetFastReauth(bool enabled) = 0;
   virtual bool SetRoamThreshold(uint16_t seconds) = 0;
   virtual bool SetScanInterval(int seconds) = 0;
@@ -44,7 +44,7 @@ class SupplicantInterfaceProxyInterface {
   virtual bool TDLSStatus(const std::string& peer,
                                       std::string* status) = 0;
   virtual bool TDLSTeardown(const std::string& peer) = 0;
-  virtual bool SetHT40Enable(const std::string& network, bool enable) = 0;
+  virtual bool SetHT40Enable(const RpcIdentifier& network, bool enable) = 0;
   virtual bool EnableMACAddressRandomization(
       const std::vector<unsigned char>& mask) = 0;
   virtual bool DisableMACAddressRandomization() = 0;

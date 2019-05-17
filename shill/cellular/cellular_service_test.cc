@@ -46,7 +46,7 @@ class CellularServiceTest : public testing::Test {
                                  3,
                                  Cellular::kTypeUniversalCdma,
                                  "",
-                                 "")),
+                                 RpcIdentifier(""))),
         service_(new CellularService(modem_info_.manager(), device_)),
         adaptor_(nullptr) {}
 

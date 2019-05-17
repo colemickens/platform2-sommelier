@@ -103,7 +103,7 @@ ChromeosSupplicantProcessProxy::ChromeosSupplicantProcessProxy(
 ChromeosSupplicantProcessProxy::~ChromeosSupplicantProcessProxy() = default;
 
 bool ChromeosSupplicantProcessProxy::CreateInterface(
-    const KeyValueStore& args, string* rpc_identifier) {
+    const KeyValueStore& args, RpcIdentifier* rpc_identifier) {
   SLOG(&supplicant_proxy_->GetObjectPath(), 2) << __func__;
   if (!service_available_) {
     LOG(ERROR) << "Supplicant process not present";
@@ -124,7 +124,7 @@ bool ChromeosSupplicantProcessProxy::CreateInterface(
 }
 
 bool ChromeosSupplicantProcessProxy::RemoveInterface(
-    const string& rpc_identifier) {
+    const RpcIdentifier& rpc_identifier) {
   SLOG(&supplicant_proxy_->GetObjectPath(), 2) << __func__ << ": "
                                                << rpc_identifier;
   if (!service_available_) {
@@ -143,7 +143,7 @@ bool ChromeosSupplicantProcessProxy::RemoveInterface(
 }
 
 bool ChromeosSupplicantProcessProxy::GetInterface(
-    const std::string& ifname, string* rpc_identifier) {
+    const std::string& ifname, RpcIdentifier* rpc_identifier) {
   SLOG(&supplicant_proxy_->GetObjectPath(), 2) << __func__ << ": " << ifname;
   if (!service_available_) {
     LOG(ERROR) << "Supplicant process not present";

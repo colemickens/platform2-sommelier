@@ -237,7 +237,7 @@ class Service : public base::RefCounted<Service> {
   // instance.
   const std::string& unique_name() const { return unique_name_; }
 
-  virtual std::string GetRpcIdentifier() const;
+  virtual RpcIdentifier GetRpcIdentifier() const;
 
   // Returns the unique persistent storage identifier for the service.
   virtual std::string GetStorageIdentifier() const = 0;
@@ -366,7 +366,9 @@ class Service : public base::RefCounted<Service> {
 
   // Return RPC identifier for device that's internal to this service, which is
   // not registered with the manager.
-  virtual std::string GetInnerDeviceRpcIdentifier() const { return ""; }
+  virtual RpcIdentifier GetInnerDeviceRpcIdentifier() const {
+    return RpcIdentifier();
+  }
 
   bool retain_auto_connect() const { return retain_auto_connect_; }
   // Setter is deliberately omitted; use EnableAndRetainAutoConnect.
@@ -530,7 +532,7 @@ class Service : public base::RefCounted<Service> {
   // Called via RPC to get a dict containing profile-to-entry_name mappings
   // of all the profile entires which contain configuration applicable to
   // this service.
-  std::map<std::string, std::string> GetLoadableProfileEntries();
+  std::map<RpcIdentifier, std::string> GetLoadableProfileEntries();
 
   virtual std::string CalculateState(Error* error);
 
@@ -591,7 +593,7 @@ class Service : public base::RefCounted<Service> {
       uint16_t(Service::*get)(Error* error) const);
   void HelpRegisterConstDerivedRpcIdentifier(
       const std::string& name,
-      std::string(Service::*get)(Error*) const);
+      RpcIdentifier(Service::*get)(Error*) const);
   void HelpRegisterConstDerivedStrings(
       const std::string& name, Strings(Service::*get)(Error* error) const);
   void HelpRegisterConstDerivedString(
@@ -732,9 +734,9 @@ class Service : public base::RefCounted<Service> {
 
   std::string GetGuid(Error* error);
 
-  virtual std::string GetDeviceRpcId(Error* error) const = 0;
+  virtual RpcIdentifier GetDeviceRpcId(Error* error) const = 0;
 
-  std::string GetIPConfigRpcIdentifier(Error* error) const;
+  RpcIdentifier GetIPConfigRpcIdentifier(Error* error) const;
 
   std::string GetNameProperty(Error* error);
   // The base implementation asserts that |name| matches the current Name
@@ -743,8 +745,8 @@ class Service : public base::RefCounted<Service> {
 
   int32_t GetPriority(Error* error);
 
-  std::string GetProfileRpcId(Error* error);
-  bool SetProfileRpcId(const std::string& profile, Error* error);
+  RpcIdentifier GetProfileRpcId(Error* error);
+  bool SetProfileRpcId(const RpcIdentifier& profile, Error* error);
 
   std::string GetProxyConfig(Error* error);
   bool SetProxyConfig(const std::string& proxy_config, Error* error);

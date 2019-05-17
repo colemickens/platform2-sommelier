@@ -49,7 +49,7 @@ IPConfig::Method ConvertMMBearerIPConfigMethod(uint32_t method) {
 }  // namespace
 
 CellularBearer::CellularBearer(ControlInterface* control_interface,
-                               const string& dbus_path,
+                               const RpcIdentifier& dbus_path,
                                const string& dbus_service)
     : control_interface_(control_interface),
       dbus_path_(dbus_path),

@@ -28,7 +28,7 @@ class ModemSimpleProxyInterface {
                        Error* error,
                        const RpcIdentifierCallback& callback,
                        int timeout) = 0;
-  virtual void Disconnect(const std::string& bearer,
+  virtual void Disconnect(const RpcIdentifier& bearer,
                           Error* error,
                           const ResultCallback& callback,
                           int timeout) = 0;

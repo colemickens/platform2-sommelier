@@ -4,16 +4,13 @@
 
 #include "shill/mock_adaptors.h"
 
-#include <string>
-
-using std::string;
-
 namespace shill {
 
 // static
-const char DeviceMockAdaptor::kRpcId[] = "/device_rpc";
+const RpcIdentifier DeviceMockAdaptor::kRpcId("/device_rpc");
 // static
-const char DeviceMockAdaptor::kRpcConnId[] = "/device_rpc_conn";
+const RpcIdentifier DeviceMockAdaptor::kRpcConnId =
+  RpcIdentifier("/device_rpc_conn");
 
 DeviceMockAdaptor::DeviceMockAdaptor()
     : rpc_id_(kRpcId),
@@ -22,46 +19,46 @@ DeviceMockAdaptor::DeviceMockAdaptor()
 
 DeviceMockAdaptor::~DeviceMockAdaptor() = default;
 
-const string& DeviceMockAdaptor::GetRpcIdentifier() const {
+RpcIdentifier DeviceMockAdaptor::GetRpcIdentifier() const {
   return rpc_id_;
 }
 
 // static
-const char IPConfigMockAdaptor::kRpcId[] = "/ipconfig_rpc";
+const RpcIdentifier IPConfigMockAdaptor::kRpcId = "/ipconfig_rpc";
 
 IPConfigMockAdaptor::IPConfigMockAdaptor() : rpc_id_(kRpcId) {}
 
 IPConfigMockAdaptor::~IPConfigMockAdaptor() = default;
 
-const string& IPConfigMockAdaptor::GetRpcIdentifier() const {
+RpcIdentifier IPConfigMockAdaptor::GetRpcIdentifier() const {
   return rpc_id_;
 }
 
 // static
-const char ManagerMockAdaptor::kRpcId[] = "/manager_rpc";
+const RpcIdentifier ManagerMockAdaptor::kRpcId = "/manager_rpc";
 
 ManagerMockAdaptor::ManagerMockAdaptor() : rpc_id_(kRpcId) {}
 
 ManagerMockAdaptor::~ManagerMockAdaptor() = default;
 
-const string& ManagerMockAdaptor::GetRpcIdentifier() const {
+RpcIdentifier ManagerMockAdaptor::GetRpcIdentifier() const {
   return rpc_id_;
 }
 
 // static
-const char ProfileMockAdaptor::kRpcId[] = "/profile_rpc";
+const RpcIdentifier ProfileMockAdaptor::kRpcId = "/profile_rpc";
 
 ProfileMockAdaptor::ProfileMockAdaptor() : rpc_id_(kRpcId) {}
 
 ProfileMockAdaptor::~ProfileMockAdaptor() = default;
 
-const string& ProfileMockAdaptor::GetRpcIdentifier() const {
+RpcIdentifier ProfileMockAdaptor::GetRpcIdentifier() const {
   return rpc_id_;
 }
 
 // static
-const char RpcTaskMockAdaptor::kRpcId[] = "/rpc_task_rpc";
-const char RpcTaskMockAdaptor::kRpcConnId[] = "/rpc_task_rpc_conn";
+const RpcIdentifier RpcTaskMockAdaptor::kRpcId = "/rpc_task_rpc";
+const RpcIdentifier RpcTaskMockAdaptor::kRpcConnId = "/rpc_task_rpc_conn";
 
 RpcTaskMockAdaptor::RpcTaskMockAdaptor()
     : rpc_id_(kRpcId),
@@ -69,21 +66,21 @@ RpcTaskMockAdaptor::RpcTaskMockAdaptor()
 
 RpcTaskMockAdaptor::~RpcTaskMockAdaptor() = default;
 
-const string& RpcTaskMockAdaptor::GetRpcIdentifier() const {
+RpcIdentifier RpcTaskMockAdaptor::GetRpcIdentifier() const {
   return rpc_id_;
 }
-const string& RpcTaskMockAdaptor::GetRpcConnectionIdentifier() const {
+RpcIdentifier RpcTaskMockAdaptor::GetRpcConnectionIdentifier() const {
   return rpc_conn_id_;
 }
 
 // static
-const char ServiceMockAdaptor::kRpcId[] = "/service_rpc";
+const RpcIdentifier ServiceMockAdaptor::kRpcId = "/service_rpc";
 
 ServiceMockAdaptor::ServiceMockAdaptor() : rpc_id_(kRpcId) {}
 
 ServiceMockAdaptor::~ServiceMockAdaptor() = default;
 
-const string& ServiceMockAdaptor::GetRpcIdentifier() const {
+RpcIdentifier ServiceMockAdaptor::GetRpcIdentifier() const {
   return rpc_id_;
 }
 

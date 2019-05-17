@@ -56,7 +56,7 @@ class CellularCapabilityUniversalCdma : public CellularCapabilityUniversal {
   void Scan(Error* error,
             const ResultStringmapsCallback& callback) override;
   // TODO(armansito): Remove once 3GPP is implemented in its own class
-  void OnSimPathChanged(const std::string& sim_path) override;
+  void OnSimPathChanged(const RpcIdentifier& sim_path) override;
 
   void GetProperties() override;
 

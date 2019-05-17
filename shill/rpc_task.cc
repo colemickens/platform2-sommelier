@@ -46,12 +46,12 @@ map<string, string> RpcTask::GetEnvironment() const {
 }
 
 // TODO(quiche): remove after moving OpenVPNDriver over to ExternalTask.
-string RpcTask::GetRpcIdentifier() const {
+RpcIdentifier RpcTask::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 
 // TODO(quiche): remove after moving OpenVPNDriver over to ExternalTask.
-string RpcTask::GetRpcConnectionIdentifier() const {
+RpcIdentifier RpcTask::GetRpcConnectionIdentifier() const {
   return adaptor_->GetRpcConnectionIdentifier();
 }
 
