@@ -41,6 +41,7 @@ BluezAdapterInterfaceHandler::BluezAdapterInterfaceHandler() {
   AddMethodForwarding(bluetooth_adapter::kRemoveServiceRecord);
   AddMethodForwarding(bluetooth_adapter::kHandleSuspendImminent);
   AddMethodForwarding(bluetooth_adapter::kHandleSuspendDone);
+  AddMethodForwarding(bluetooth_adapter::kGetSupportedCapabilities);
 }
 
 BluezDeviceInterfaceHandler::BluezDeviceInterfaceHandler() {
