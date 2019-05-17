@@ -551,10 +551,13 @@ void RTNLHandler::StoreRequest(std::unique_ptr<RTNLMessage> request) {
   // number, removing the original RTNLMessage.
   stored_requests_[seq] = std::move(request);
   while (CalculateStoredRequestWindowSize() > kStoredRequestWindowSize) {
+    auto old_request = PopStoredRequest(oldest_request_sequence_);
+    CHECK(old_request) << "PopStoredRequest returned nullptr but "
+                       << "the calculated window size is greater than 0. "
+                       << "This is a bug in RTNLHandler.";
     SLOG(this, 1) << "Removing stored RTNLMessage of sequence "
-                  << oldest_request_sequence_ << " (" << request->ToString()
+                  << old_request->seq() << " (" << old_request->ToString()
                   << ") without receiving a response for this sequence";
-    auto request = PopStoredRequest(oldest_request_sequence_);
   }
 }
 
