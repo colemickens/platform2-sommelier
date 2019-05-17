@@ -130,7 +130,7 @@ class SHILL_EXPORT RTNLHandler {
   static const int kErrorWindowSize;
   // Size of the window for maintaining RTNLMessages in |stored_requests_| that
   // haven't yet gotten a response.
-  static const int kStoredRequestWindowSize;
+  static const uint32_t kStoredRequestWindowSize;
 
   // This stops the event-monitoring function of the RTNL handler -- it is
   // private since it will never happen in normal running, but is useful for

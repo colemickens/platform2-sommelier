@@ -56,7 +56,7 @@ const uint32_t RTNLHandler::kRequestRdnss = 16;
 const uint32_t RTNLHandler::kRequestNeighbor = 32;
 const uint32_t RTNLHandler::kRequestBridgeNeighbor = 64;
 const int RTNLHandler::kErrorWindowSize = 16;
-const int RTNLHandler::kStoredRequestWindowSize = 32;
+const uint32_t RTNLHandler::kStoredRequestWindowSize = 32;
 
 namespace {
 base::LazyInstance<RTNLHandler>::DestructorAtExit g_rtnl_handler =
