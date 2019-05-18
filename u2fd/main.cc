@@ -159,6 +159,13 @@ class U2fDaemon : public brillo::Daemon {
       LOG(ERROR) << "Cannot connect to D-Bus.";
       return EX_IOERR;
     }
+    if (!bus_->RequestOwnershipAndBlock(u2f::kU2FServiceName,
+                                        dbus::Bus::REQUIRE_PRIMARY)) {
+      LOG(ERROR) << "Cannot acquire dbus ownership for "
+                 << u2f::kU2FServiceName;
+      return EX_IOERR;
+    }
+
     SetupU2fDBusInterface();
     pm_proxy_ = std::make_unique<org::chromium::PowerManagerProxy>(bus_.get());
 
