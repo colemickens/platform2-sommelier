@@ -15,7 +15,6 @@ const char kSignatureKey[] = "sig";
 }  // namespace
 
 using base::FilePath;
-using base::StringPrintf;
 
 ServiceFailureCollector::ServiceFailureCollector()
     : CrashCollector("service_failure"),

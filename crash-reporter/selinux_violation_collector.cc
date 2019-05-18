@@ -19,7 +19,6 @@ constexpr char kSignatureKey[] = "sig";
 }  // namespace
 
 using base::FilePath;
-using base::StringPrintf;
 
 SELinuxViolationCollector::SELinuxViolationCollector()
     : CrashCollector("selinux"), violation_report_path_("/dev/stdin") {}

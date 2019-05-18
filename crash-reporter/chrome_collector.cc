@@ -21,7 +21,6 @@
 #include "crash-reporter/util.h"
 
 using base::FilePath;
-using base::StringPrintf;
 
 namespace {
 

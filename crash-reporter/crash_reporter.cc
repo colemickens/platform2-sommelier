@@ -31,7 +31,6 @@
 #include "crash-reporter/user_collector.h"
 
 using base::FilePath;
-using base::StringPrintf;
 
 namespace {
 
