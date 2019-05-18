@@ -557,7 +557,7 @@ bool CrashCollector::GetExecutableBaseNameFromPid(pid_t pid,
 // Return true if the given crash directory has not already reached
 // maximum capacity.
 bool CrashCollector::CheckHasCapacity(const FilePath& crash_directory,
-                                      const std::string display_path) {
+                                      const std::string& display_path) {
   DIR* dir = opendir(crash_directory.value().c_str());
   if (!dir) {
     PLOG(ERROR) << "Unable to open directory to check capacity: "

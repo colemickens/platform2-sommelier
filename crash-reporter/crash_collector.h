@@ -179,7 +179,7 @@ class CrashCollector {
   // crash.
   bool CheckHasCapacity(const base::FilePath& crash_directory);
   bool CheckHasCapacity(const base::FilePath& crash_directory,
-                        const std::string display_path);
+                        const std::string& display_path);
 
   // Write a log applicable to |exec_name| to |output_file| based on the
   // log configuration file at |config_path|.
