@@ -102,6 +102,15 @@ void SandboxedProcess::SetUserId(uid_t user_id) {
   minijail_change_uid(jail_, user_id);
 }
 
+void SandboxedProcess::CloseOpenFds() {
+  minijail_close_open_fds(jail_);
+}
+
+bool SandboxedProcess::PreserveFile(const base::File& file) {
+  return minijail_preserve_fd(jail_, file.GetPlatformFile(),
+                              file.GetPlatformFile()) == 0;
+}
+
 pid_t SandboxedProcess::StartImpl(std::vector<char*>& args,
                                   base::ScopedFD* in_fd,
                                   base::ScopedFD* out_fd,

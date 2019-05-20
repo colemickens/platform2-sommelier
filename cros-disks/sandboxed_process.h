@@ -8,6 +8,9 @@
 #include <sys/types.h>
 
 #include <string>
+#include <vector>
+
+#include <base/files/file.h>
 
 #include "cros-disks/process.h"
 
@@ -69,6 +72,13 @@ class SandboxedProcess : public Process {
 
   // Sets the user ID of the process to be sandboxed.
   void SetUserId(uid_t user_id);
+
+  // Close all open fds on fork.
+  void CloseOpenFds();
+
+  // Preserves |file| to still be available in the sandboxed process with the
+  // same file descriptor. Only effective if CloseOpenFds has been called.
+  bool PreserveFile(const base::File& file);
 
  protected:
   // Process overrides:

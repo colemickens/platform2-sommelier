@@ -6,9 +6,11 @@
 
 #include <string>
 
+#include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/process.h>
 
 #include "cros-disks/format_manager_observer_interface.h"
@@ -67,6 +69,28 @@ FormatErrorType FormatManager::StartFormatting(const std::string& device_path,
   process->NewIpcNamespace();
   process->NewNetworkNamespace();
   process->SetCapabilities(0);
+  if (!process->EnterPivotRoot()) {
+    LOG(WARNING) << "Could not enter pivot root";
+    return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
+  }
+  if (!process->SetUpMinimalMounts()) {
+    LOG(WARNING) << "Could not set up minimal mounts for jail";
+    return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
+  }
+
+  // Open device_file so we can pass only the fd path to the format program.
+  base::File dev_file(base::FilePath(device_file), base::File::FLAG_OPEN |
+                                                       base::File::FLAG_READ |
+                                                       base::File::FLAG_WRITE);
+  if (!dev_file.IsValid()) {
+    LOG(WARNING) << "Could not open " << device_file << " for formatting";
+    return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
+  }
+  if (!process->PreserveFile(dev_file)) {
+    LOG(WARNING) << "Could not preserve device fd";
+    return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
+  }
+  process->CloseOpenFds();
 
   process->AddArgument(format_program);
 
@@ -79,7 +103,9 @@ FormatErrorType FormatManager::StartFormatting(const std::string& device_path,
     process->AddArgument("-n");
     process->AddArgument(kDefaultLabel);
   }
-  process->AddArgument(device_file);
+
+  process->AddArgument(
+      base::StringPrintf("/dev/fd/%d", dev_file.GetPlatformFile()));
   if (!process->Start()) {
     LOG(WARNING) << "Cannot start a process for formatting '" << device_path
                  << "' as filesystem '" << filesystem << "'";
