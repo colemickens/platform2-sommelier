@@ -16,6 +16,8 @@
 /sys/devices/system/cpu/cpufreq/ondemand/sampling_down_factor   u:object_r:sysfs:s0
 /sys/devices/system/cpu/cpufreq/ondemand/sampling_rate          u:object_r:sysfs:s0
 /sys/devices/system/cpu/cpufreq/ondemand/up_threshold           u:object_r:sysfs:s0
+/sys/devices/system/cpu/cpufreq/schedutil/down_rate_limit_us    u:object_r:sysfs:s0
+/sys/devices/system/cpu/cpufreq/schedutil/up_rate_limit_us      u:object_r:sysfs:s0
 /sys/devices/system/cpu/cpufreq/policy[0-9]+/cpb                u:object_r:sysfs:s0
 /sys/devices/system/cpu/cpufreq/policy[0-9]+/stats/reset        u:object_r:sysfs:s0
 /sys/devices/system/cpu/(cpu[0-9]+/)?(cache/)?(index[0-9]+/)?hotplug/fail               u:object_r:sysfs:s0
@@ -37,6 +39,7 @@
 /sys/devices/system/cpu/(cpu[0-9]+/)?cpufreq/(interactive/)?timer_rate          u:object_r:sysfs:s0
 /sys/devices/system/cpu/(cpu[0-9]+/)?cpufreq/(interactive/)?timer_slack         u:object_r:sysfs:s0
 /sys/devices/system/cpu/(cpu[0-9]+/)?cpuidle/(state[0-9]+/)?disable             u:object_r:sysfs:s0
+/sys/devices/system/cpu/cpu[0-9]+/cpu_capacity                  u:object_r:sysfs:s0
 /sys/devices/system/cpu/cpu[0-9]+/cpufreq/scaling_governor      u:object_r:sysfs:s0
 /sys/devices/system/cpu/cpu[0-9]+/cpufreq/scaling_max_freq      u:object_r:sysfs:s0
 /sys/devices/system/cpu/cpu[0-9]+/cpufreq/scaling_min_freq      u:object_r:sysfs:s0
