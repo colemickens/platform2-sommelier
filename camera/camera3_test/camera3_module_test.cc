@@ -1259,6 +1259,12 @@ bool InitializeTest(int* argc, char*** argv, void** cam_hal_handle) {
   settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
   LOG_ASSERT(logging::InitLogging(settings));
 
+  if (geteuid() == 0) {
+    LOGF(WARNING)
+        << "Running tests as root might leak some root owned resources, which "
+           "cannot be accessed by the user arc-camera.";
+  }
+
   base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
   base::FilePath camera_hal_path =
       cmd_line->GetSwitchValuePath("camera_hal_path");
