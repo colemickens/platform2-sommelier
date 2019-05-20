@@ -8,6 +8,9 @@ group("all") {
   deps = [
     ":mems_setup",
   ]
+  if (use.test) {
+    deps += [ ":mems_setup_testrunner" ]
+  }
 }
 
 pkg_config("target_defaults_pkg_deps") {
@@ -25,6 +28,8 @@ config("target_defaults") {
 static_library("libmems_setup") {
   configs += [ ":target_defaults" ]
   sources = [
+    "configuration.cc",
+    "delegate_impl.cc",
     "iio_channel_impl.cc",
     "iio_context_impl.cc",
     "iio_device.cc",
@@ -41,4 +46,32 @@ executable("mems_setup") {
   deps = [
     ":libmems_setup",
   ]
+}
+
+if (use.test) {
+  pkg_config("mems_setup_testrunner_pkg_deps") {
+    pkg_deps = [
+      "libbrillo-test-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+
+  executable("mems_setup_testrunner") {
+    configs += [
+      "//common-mk:test",
+      ":mems_setup_testrunner_pkg_deps",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libmems_setup",
+      "../../common-mk/testrunner:testrunner",
+    ]
+
+    sources = [
+      "gyroscope_test.cc",
+      "test_helper.cc",
+      "test_mocks.cc",
+      "vpd_loader_test.cc",
+    ]
+  }
 }
