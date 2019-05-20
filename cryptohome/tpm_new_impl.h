@@ -50,8 +50,11 @@ class TpmNewImpl : public TpmImpl {
   // |is_enabled_|, |is_owned_|, and |last_tpm_manager_data_| for later use.
   bool CacheTpmManagerStatus();
 
+  tpm_manager::TpmManagerUtility default_tpm_manager_utility_;
+
   //  wrapped tpm_manager proxy to get information from |tpm_manager|.
-  tpm_manager::TpmManagerUtility tpm_manager_utility_;
+  tpm_manager::TpmManagerUtility* tpm_manager_utility_{
+      &default_tpm_manager_utility_};
 
   // give |TpmNewImpl| a new set of members of status from tpm manager so we can
   // touch the already working code as little as possible. Otherwise need to
@@ -60,6 +63,10 @@ class TpmNewImpl : public TpmImpl {
   bool is_owned_{false};
 
   tpm_manager::LocalData last_tpm_manager_data_;
+
+  // The following fields are for testing purpose.
+  friend class TpmNewImplTest;
+  explicit TpmNewImpl(tpm_manager::TpmManagerUtility* tpm_manager_utility);
 
   DISALLOW_COPY_AND_ASSIGN(TpmNewImpl);
 };

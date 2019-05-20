@@ -6,6 +6,9 @@
 
 namespace cryptohome {
 
+TpmNewImpl::TpmNewImpl(tpm_manager::TpmManagerUtility* tpm_manager_utility)
+    : tpm_manager_utility_(tpm_manager_utility) {}
+
 bool TpmNewImpl::GetOwnerPassword(brillo::SecureBlob* owner_password) {
   if (IsOwned()) {
     *owner_password =
@@ -24,7 +27,7 @@ bool TpmNewImpl::GetOwnerPassword(brillo::SecureBlob* owner_password) {
 }
 
 bool TpmNewImpl::InitializeTpmManagerUtility() {
-  return tpm_manager_utility_.Initialize();
+  return tpm_manager_utility_->Initialize();
 }
 
 bool TpmNewImpl::CacheTpmManagerStatus() {
@@ -32,8 +35,8 @@ bool TpmNewImpl::CacheTpmManagerStatus() {
     LOG(ERROR) << __func__ << ": Failed to initialize |TpmMangerUtility|.";
     return false;
   }
-  return tpm_manager_utility_.GetTpmStatus(&is_enabled_, &is_owned_,
-                                           &last_tpm_manager_data_);
+  return tpm_manager_utility_->GetTpmStatus(&is_enabled_, &is_owned_,
+                                            &last_tpm_manager_data_);
 }
 
 bool TpmNewImpl::IsEnabled() {
@@ -67,7 +70,7 @@ bool TpmNewImpl::TakeOwnership(int, const brillo::SecureBlob&) {
     LOG(INFO) << __func__ << ": TPM is already owned.";
     return true;
   }
-  return tpm_manager_utility_.TakeOwnership();
+  return tpm_manager_utility_->TakeOwnership();
 }
 
 void TpmNewImpl::SetOwnerPassword(const brillo::SecureBlob&) {
@@ -114,7 +117,7 @@ bool TpmNewImpl::GetDictionaryAttackInfo(int* counter,
     LOG(ERROR) << __func__ << ": failed to initialize |TpmMangerUtility|.";
     return false;
   }
-  return tpm_manager_utility_.GetDictionaryAttackInfo(
+  return tpm_manager_utility_->GetDictionaryAttackInfo(
       counter, threshold, lockout, seconds_remaining);
 }
 
@@ -124,7 +127,7 @@ bool TpmNewImpl::ResetDictionaryAttackMitigation(const brillo::Blob&,
     LOG(ERROR) << __func__ << ": failed to initialize |TpmMangerUtility|.";
     return false;
   }
-  return tpm_manager_utility_.ResetDictionaryAttackLock();
+  return tpm_manager_utility_->ResetDictionaryAttackLock();
 }
 
 }  // namespace cryptohome

@@ -460,7 +460,10 @@ if (use.test) {
         "tpm_manager_test",
       ]
     } else {
-      sources += [ "tpm1_static_utils_unittest.cc" ]
+      sources += [
+        "tpm1_static_utils_unittest.cc",
+        "tpm_new_impl_test.cc",
+      ]
     }
 
     if (use.cert_provision) {
