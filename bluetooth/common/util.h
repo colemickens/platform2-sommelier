@@ -7,11 +7,14 @@
 
 #include <stdint.h>
 
-#include <newblue/bt.h>
-
 #include <cstdint>
 #include <string>
 #include <vector>
+
+#include <newblue/bt.h>
+#include <newblue/uuid.h>
+
+#include "bluetooth/common/uuid.h"
 
 namespace bluetooth {
 
@@ -105,6 +108,9 @@ std::string ConvertDescriptorHandleToObjectPath(const std::string& address,
                                                 uint16_t service_handle,
                                                 uint16_t char_handle,
                                                 uint16_t desc_handle);
+
+// Converts struct uuid to bluetooth::Uuid.
+Uuid ConvertToUuid(const struct uuid& from);
 
 // Called when an interface of a D-Bus object is exported.
 // At the moment this function only does VLOG, but it's commonly used by some

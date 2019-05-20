@@ -7,6 +7,7 @@
 #include <newblue/bt.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <regex>  // NOLINT(build/c++11)
 
 #include <base/files/file_util.h>
@@ -15,6 +16,8 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/string_number_conversions.h>
+
+#include "bluetooth/common/uuid.h"
 
 namespace {
 
@@ -292,6 +295,20 @@ std::string ConvertDescriptorHandleToObjectPath(const std::string& address,
   if (c.empty() || d.empty())
     return "";
   return c + d;
+}
+
+Uuid ConvertToUuid(const struct uuid& uuid) {
+  std::vector<uint8_t> uuid_value;
+  uint64_t lo = uuid.lo;
+  uint64_t hi = uuid.hi;
+  int i;
+
+  for (i = 0; i < sizeof(lo); ++i, lo >>= 8)
+    uuid_value.emplace(uuid_value.begin(), static_cast<uint8_t>(lo));
+  for (i = 0; i < sizeof(hi); ++i, hi >>= 8)
+    uuid_value.emplace(uuid_value.begin(), static_cast<uint8_t>(hi));
+
+  return Uuid(uuid_value);
 }
 
 void OnInterfaceExported(std::string object_path,

@@ -17,7 +17,7 @@
 #include <dbus/property.h>
 
 #include "bluetooth/common/util.h"
-#include "bluetooth/newblued/uuid.h"
+#include "bluetooth/common/uuid.h"
 
 namespace bluetooth {
 

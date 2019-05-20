@@ -2,12 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <bluetooth/common/util.h>
+#include "bluetooth/common/util.h"
 
 #include <vector>
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+
+#include <newblue/uuid.h>
 
 using testing::ElementsAre;
 
@@ -280,6 +282,23 @@ TEST(UtilTest, ConvertDescriptorObjectPathToHandles) {
   EXPECT_EQ(0x001F, sh);
   EXPECT_EQ(0x0123, ch);
   EXPECT_EQ(0x001F, dh);
+}
+
+TEST(UtilTest, ConvertToUuid) {
+  struct uuid uuid;
+  const std::array<uint8_t, 16> expected_value = {
+      0x00, 0x00, 0x12, 0x34, 0x00, 0x00, 0x10, 0x00,
+      0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb,
+  };
+  const std::string expected_canonical_value(
+      "00001234-0000-1000-8000-00805f9b34fb");
+
+  uuidFromUuid16(&uuid, 0x1234);
+
+  Uuid result = ConvertToUuid(uuid);
+  EXPECT_EQ(UuidFormat::UUID128, result.format());
+  EXPECT_EQ(expected_value, result.value());
+  EXPECT_EQ(expected_canonical_value, result.canonical_value());
 }
 
 }  // namespace

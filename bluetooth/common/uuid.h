@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BLUETOOTH_NEWBLUED_UUID_H_
-#define BLUETOOTH_NEWBLUED_UUID_H_
+#ifndef BLUETOOTH_COMMON_UUID_H_
+#define BLUETOOTH_COMMON_UUID_H_
 
 #include <stdint.h>
 #include <array>
@@ -86,4 +86,4 @@ class Uuid {
 
 }  // namespace bluetooth
 
-#endif  // BLUETOOTH_NEWBLUED_UUID_H_
+#endif  // BLUETOOTH_COMMON_UUID_H_

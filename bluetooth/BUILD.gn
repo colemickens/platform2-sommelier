@@ -40,6 +40,7 @@ static_library("libcommon") {
     "common/exported_object_manager_wrapper.cc",
     "common/property.cc",
     "common/util.cc",
+    "common/uuid.cc",
   ]
 }
 
@@ -73,7 +74,6 @@ static_library("libnewblued") {
     "newblued/newblue.cc",
     "newblued/newblue_daemon.cc",
     "newblued/stack_sync_monitor.cc",
-    "newblued/uuid.cc",
   ]
 }
 
@@ -114,6 +114,7 @@ if (use.test) {
       "common/exported_object_manager_wrapper_test.cc",
       "common/property_test.cc",
       "common/util_test.cc",
+      "common/uuid_test.cc",
       "dispatcher/catch_all_forwarder_test.cc",
       "dispatcher/dispatcher_client_test.cc",
       "dispatcher/dispatcher_test.cc",
@@ -128,7 +129,6 @@ if (use.test) {
       "newblued/newblue_test.cc",
       "newblued/property_test.cc",
       "newblued/stack_sync_monitor_test.cc",
-      "newblued/uuid_test.cc",
     ]
     deps = [
       ":libcommon",

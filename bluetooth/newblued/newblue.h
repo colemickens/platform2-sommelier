@@ -18,9 +18,9 @@
 #include <base/single_thread_task_runner.h>
 
 #include "bluetooth/common/util.h"
+#include "bluetooth/common/uuid.h"
 #include "bluetooth/newblued/libnewblue.h"
 #include "bluetooth/newblued/property.h"
-#include "bluetooth/newblued/uuid.h"
 
 namespace bluetooth {
 
