@@ -100,9 +100,7 @@ void ModemManager1::OnInterfacesRemovedSignal(
     const string& object_path,
     const vector<string>& interfaces) {
   LOG(INFO) << "MM1:  Removing interfaces from " << object_path;
-  if (find(interfaces.begin(),
-           interfaces.end(),
-           MM_DBUS_INTERFACE_MODEM) != interfaces.end()) {
+  if (base::ContainsValue(interfaces, MM_DBUS_INTERFACE_MODEM)) {
     RemoveModem(object_path);
   } else {
     // In theory, a modem could drop, say, 3GPP, but not CDMA.  In

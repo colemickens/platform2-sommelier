@@ -706,18 +706,14 @@ void Manager::RemoveProfile(const string& name, Error* error) {
 }
 
 bool Manager::DeviceManagementAllowed(const string& device_name) {
-  if (std::find(blacklisted_devices_.begin(),
-                blacklisted_devices_.end(),
-                device_name) != blacklisted_devices_.end()) {
+  if (base::ContainsValue(blacklisted_devices_, device_name)) {
     return false;
   }
   if (!whitelisted_devices_.size()) {
     // If no whitelist is specified, all devices are considered whitelisted.
     return true;
   }
-  if (std::find(whitelisted_devices_.begin(),
-                whitelisted_devices_.end(),
-                device_name) != whitelisted_devices_.end()) {
+  if (base::ContainsValue(whitelisted_devices_, device_name)) {
     return true;
   }
   return false;
@@ -962,10 +958,8 @@ bool Manager::IsTechnologyInList(const string& technology_list,
   Error error;
   vector<Technology::Identifier> technologies;
   return Technology::GetTechnologyVectorFromString(technology_list,
-                                                   &technologies,
-                                                   &error) &&
-      std::find(technologies.begin(), technologies.end(), tech) !=
-          technologies.end();
+                                                   &technologies, &error) &&
+         base::ContainsValue(technologies, tech);
 }
 
 bool Manager::IsPortalDetectionEnabled(Technology::Identifier tech) {
@@ -1198,9 +1192,7 @@ void Manager::SetDHCPv6EnabledDevices(const vector<string>& device_list) {
 }
 
 bool Manager::IsDHCPv6EnabledForDevice(const string& device_name) const {
-  return std::find(dhcpv6_enabled_devices_.begin(),
-                   dhcpv6_enabled_devices_.end(),
-                   device_name) != dhcpv6_enabled_devices_.end();
+  return base::ContainsValue(dhcpv6_enabled_devices_, device_name);
 }
 
 vector<string> Manager::FilterPrependDNSServersByFamily(
@@ -1896,9 +1888,7 @@ void Manager::DevicePresenceStatusCheck() {
   vector<string> available_technologies = AvailableTechnologies(&error);
 
   for (const auto& technology : kProbeTechnologies) {
-    bool presence = std::find(available_technologies.begin(),
-                              available_technologies.end(),
-                              technology) != available_technologies.end();
+    bool presence = base::ContainsValue(available_technologies, technology);
     metrics_->NotifyDevicePresenceStatus(
         Technology::IdentifierFromName(technology), presence);
   }

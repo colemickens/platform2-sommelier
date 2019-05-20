@@ -7,6 +7,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/weak_ptr.h>
+#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
@@ -28,7 +29,6 @@
 #include "shill/vpn/mock_vpn_service.h"
 
 using base::FilePath;
-using std::find;
 using std::map;
 using std::string;
 using std::vector;
@@ -218,10 +218,7 @@ void L2TPIPSecDriverTest::Notify(
 void L2TPIPSecDriverTest::ExpectInFlags(
     const vector<string>& options, const string& flag, const string& value) {
   string flag_value = base::StringPrintf("%s=%s", flag.c_str(), value.c_str());
-  vector<string>::const_iterator it =
-      find(options.begin(), options.end(), flag_value);
-
-  EXPECT_TRUE(it != options.end());
+  EXPECT_TRUE(base::ContainsValue(options, flag_value));
 }
 
 FilePath L2TPIPSecDriverTest::SetupPSKFile() {

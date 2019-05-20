@@ -4,12 +4,12 @@
 
 #include "shill/resolver.h"
 
-#include <algorithm>
 #include <string>
 #include <vector>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 
 #include "shill/dns_util.h"
@@ -61,14 +61,13 @@ bool Resolver::SetDNSFromLists(const std::vector<std::string>& dns_servers,
 
   vector<string> filtered_domain_search;
   for (const auto& domain : domain_search) {
-    if (std::find(ignored_search_list_.begin(),
-                  ignored_search_list_.end(),
-                  domain) == ignored_search_list_.end()) {
-      if (IsValidDNSDomain(domain)) {
-        filtered_domain_search.push_back(domain);
-      } else {
-        LOG(WARNING) << "Malformed search domain: " << domain;
-      }
+    if (base::ContainsValue(ignored_search_list_, domain)) {
+      continue;
+    }
+    if (IsValidDNSDomain(domain)) {
+      filtered_domain_search.push_back(domain);
+    } else {
+      LOG(WARNING) << "Malformed search domain: " << domain;
     }
   }
 
