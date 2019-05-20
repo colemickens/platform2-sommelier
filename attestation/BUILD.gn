@@ -191,10 +191,7 @@ executable("attestation_client") {
 
 # A library for server code.
 config("server_library_config") {
-  libs = [
-    "chaps",
-    "tpm_manager",
-  ]
+  libs = [ "chaps" ]
 }
 
 static_library("server_library") {
@@ -215,6 +212,10 @@ static_library("server_library") {
   ]
 }
 
+config("server_library_link_config") {
+  libs = [ "tpm_manager" ]
+}
+
 # The attestation daemon.
 pkg_config("attestationd_config") {
   pkg_deps = [ "libminijail" ]
@@ -226,8 +227,9 @@ executable("attestationd") {
   ]
   configs += [
     ":attestationd_config",
-    ":target_defaults",
     ":local_proto_include",
+    ":server_library_link_config",
+    ":target_defaults",
   ]
   deps = [
     ":common_library",
@@ -255,8 +257,9 @@ if (use.test) {
     configs += [
       "//common-mk:test",
       ":attestation_testrunner_config",
-      ":target_defaults",
       ":local_proto_include",
+      ":server_library_link_config",
+      ":target_defaults",
     ]
     sources = [
       "attestation_testrunner.cc",
