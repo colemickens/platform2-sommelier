@@ -10,6 +10,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/telem/cache_writer_impl.h"
 #include "diagnostics/telem/telem_parsers.h"
 #include "diagnostics/telem/telemetry.h"
 #include "diagnostics/telem/telemetry_item_enum.h"
@@ -36,25 +37,6 @@ constexpr int kFakeNumRunnableEntities = 2;
 constexpr char kFakeStatFileContents[] =
     "cpu  0 0 0 165432156432413546\ncpu0 0 0 0 653435243543\ncpu1 0 0 0 "
     "235435413\nctxt 5345634354";
-
-struct CacheWriterImpl : public CacheWriter {
-  ~CacheWriterImpl() {}
-
-  void SetParsedData(TelemetryItemEnum item,
-                     base::Optional<base::Value> data) override {
-    cache_[item] = data;
-  }
-
-  void CheckParsedDataFor(TelemetryItemEnum item, base::Value data) {
-    ASSERT_EQ(cache_.at(item).value(), data);
-  }
-
-  void CheckParsedDataIsNull(TelemetryItemEnum item) {
-    CHECK(!cache_.at(item).has_value());
-  }
-
-  std::map<TelemetryItemEnum, base::Optional<base::Value>> cache_;
-};
 
 // Test that we can retrieve kMemTotalMebibytes and kMemFreeMebibytes.
 TEST(TelemParsers, GetMemTotal) {

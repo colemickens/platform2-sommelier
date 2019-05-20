@@ -55,6 +55,9 @@ mojo_ipc::TelemetryItemEnum GetMojoEnumFromTelemetryItemEnum(
       return mojo_ipc::TelemetryItemEnum::kTotalIdleTime;
     case TelemetryItemEnum::kIdleTimePerCPUUserHz:
       return mojo_ipc::TelemetryItemEnum::kIdleTimePerCPU;
+    case TelemetryItemEnum::kBatteryCycleCount:    // FALLTHROUGH
+    case TelemetryItemEnum::kBatteryVoltage:       // FALLTHROUGH
+    case TelemetryItemEnum::kBatteryManufacturer:  // FALLTHROUGH
     case TelemetryItemEnum::kUptime:   // FALLTHROUGH
     case TelemetryItemEnum::kNetStat:  // FALLTHROUGH
     case TelemetryItemEnum::kNetDev:   // FALLTHROUGH

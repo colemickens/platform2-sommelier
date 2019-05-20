@@ -149,6 +149,7 @@ pkg_config("libtelem_pkg_deps") {
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
     "re2",
+    "system_api",
   ]
 }
 
@@ -160,6 +161,7 @@ static_library("libtelem") {
   ]
   all_dependent_configs = [ ":libtelem_pkg_deps" ]
   sources = [
+    "telem/battery_utils.cc",
     "telem/telem_cache.cc",
     "telem/telem_parsers.cc",
     "telem/telemetry.cc",
@@ -360,6 +362,8 @@ if (use.test) {
     ]
     sources = [
       "common/file_test_utils.cc",
+      "telem/battery_utils_test.cc",
+      "telem/cache_writer_impl.cc",
       "telem/telem_cache_test.cc",
       "telem/telem_parsers_test.cc",
       "telem/telemetry_test.cc",

@@ -199,6 +199,7 @@ struct PowerStatus {
   std::string battery_vendor;
   std::string battery_model_name;
   std::string battery_technology;
+  int64_t battery_cycle_count = 0;
 };
 
 // Fetches the system's power status, e.g. whether on AC or battery, charge and

@@ -22,9 +22,12 @@ enum class TelemetryItemEnum {
   kIdleTimePerCPUUserHz,
   kNetStat,
   kNetDev,
-  kHwmon,     // Placeholder until /sys/class/hwmon/ is parsed.
-  kThermal,   // Placeholder until /sys/class/thermal/ is parsed.
-  kDmiTables  // Placeholder until /sys/firmware/dmi/tables/ is parsed.
+  kHwmon,      // Placeholder until /sys/class/hwmon/ is parsed.
+  kThermal,    // Placeholder until /sys/class/thermal/ is parsed.
+  kDmiTables,  // Placeholder until /sys/firmware/dmi/tables/ is parsed.
+  kBatteryCycleCount,
+  kBatteryVoltage,
+  kBatteryManufacturer,
 };
 
 }  // namespace diagnostics

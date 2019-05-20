@@ -46,7 +46,12 @@ struct {
     {"idle_time_per_cpu",
      diagnostics::TelemetryItemEnum::kIdleTimePerCPUUserHz},
     {"netstat", diagnostics::TelemetryItemEnum::kNetStat},
-    {"netdev", diagnostics::TelemetryItemEnum::kNetDev}};
+    {"netdev", diagnostics::TelemetryItemEnum::kNetDev},
+    {"battery_cycle_count", diagnostics::TelemetryItemEnum::kBatteryCycleCount},
+    {"battery_voltage", diagnostics::TelemetryItemEnum::kBatteryVoltage},
+    {"battery_manufacturer",
+     diagnostics::TelemetryItemEnum::kBatteryManufacturer},
+};
 
 struct {
   const char* switch_name;

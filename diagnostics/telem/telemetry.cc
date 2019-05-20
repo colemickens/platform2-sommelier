@@ -2,15 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <map>
+#include "diagnostics/telem/telemetry.h"
 
+#include <map>
+#include <memory>
+
+#include <base/bind.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <base/time/time.h>
 
+#include "diagnostics/telem/battery_utils.h"
 #include "diagnostics/telem/telem_parsers.h"
-#include "diagnostics/telem/telemetry.h"
 #include "diagnostics/telem/telemetry_group_enum.h"
 
 namespace diagnostics {
@@ -90,6 +96,11 @@ base::Optional<base::Value> Telemetry::GetItem(TelemetryItemEnum item,
       case TelemetryItemEnum::kIdleTimePerCPUUserHz:
         ReadAndParseFile(root_dir_, "proc/stat", ParseDataFromProcStat,
                          &cache_);
+        break;
+      case TelemetryItemEnum::kBatteryCycleCount:  // FALLTHROUGH
+      case TelemetryItemEnum::kBatteryVoltage:     // FALLTHROUGH
+      case TelemetryItemEnum::kBatteryManufacturer:
+        FetchBatteryMetrics(&cache_);
         break;
       case TelemetryItemEnum::kDmiTables:  // FALLTHROUGH
       case TelemetryItemEnum::kHwmon:      // FALLTHROUGH

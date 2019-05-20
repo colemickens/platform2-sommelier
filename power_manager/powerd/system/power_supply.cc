@@ -208,6 +208,12 @@ void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
     } else {
       proto->set_battery_discharge_rate(status.battery_energy_rate);
     }
+
+    // Cros_healthd is interested in the following items for reporting
+    // telemetry data.
+    proto->set_battery_vendor(status.battery_vendor);
+    proto->set_battery_voltage(status.battery_voltage);
+    proto->set_battery_cycle_count(status.battery_cycle_count);
   }
 
   for (auto port : status.ports) {
@@ -882,6 +888,11 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
 
   double voltage = ReadScaledDouble(path, "voltage_now");
   status->battery_voltage = voltage;
+
+  int64_t cycle_count = 0;
+  if (ReadInt64(path, "cycle_count", &cycle_count)) {
+    status->battery_cycle_count = cycle_count;
+  }
 
   // Attempt to determine nominal voltage for time-remaining calculations. This
   // may or may not be the same as the instantaneous voltage |battery_voltage|,

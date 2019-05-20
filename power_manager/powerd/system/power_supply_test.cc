@@ -53,7 +53,7 @@ constexpr double kDefaultSecondCharge = 2.0;
 constexpr double kDefaultSecondChargeFull = 3.0;
 constexpr double kDefaultSecondChargeFullDesign = 4.0;
 constexpr double kVoltage = 2.5;
-
+constexpr int64_t kCycleCount = 10000;
 // Default value for kPowerSupplyFullFactorPref.
 constexpr double kFullFactor = 0.98;
 
@@ -167,7 +167,7 @@ class PowerSupplyTest : public ::testing::Test {
                      kDefaultChargeFullDesign);
     WriteDoubleValue(battery_dir_, "voltage_now", kVoltage);
     WriteDoubleValue(battery_dir_, "voltage_min_design", kVoltage);
-    WriteValue(battery_dir_, "cycle_count", base::IntToString(10000));
+    WriteValue(battery_dir_, "cycle_count", base::IntToString(kCycleCount));
   }
 
   // Updates the files describing the power source and battery status.
@@ -419,6 +419,7 @@ TEST_F(PowerSupplyTest, ChargingAndDischarging) {
   EXPECT_DOUBLE_EQ(kCharge * kVoltage, power_status.battery_energy);
   EXPECT_DOUBLE_EQ(kCurrent * kVoltage, power_status.battery_energy_rate);
   EXPECT_DOUBLE_EQ(50.0, power_status.battery_percentage);
+  EXPECT_EQ(kCycleCount, power_status.battery_cycle_count);
 
   // Test with a negative current.
   UpdateChargeAndCurrent(kCharge, -kCurrent);
@@ -1635,6 +1636,9 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   status.external_power = PowerSupplyProperties_ExternalPower_AC;
   status.battery_state = PowerSupplyProperties_BatteryState_CHARGING;
   status.supports_dual_role_devices = false;
+  status.battery_vendor = "TEST_MFR";
+  status.battery_voltage = 12.792;
+  status.battery_cycle_count = 2;
 
   PowerSupplyProperties proto;
   CopyPowerStatusToProtocolBuffer(status, &proto);
@@ -1647,6 +1651,9 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   EXPECT_FALSE(proto.is_calculating_battery_time());
   EXPECT_DOUBLE_EQ(-status.battery_energy_rate, proto.battery_discharge_rate());
   EXPECT_FALSE(proto.supports_dual_role_devices());
+  EXPECT_EQ(status.battery_vendor, proto.battery_vendor());
+  EXPECT_EQ(status.battery_voltage, proto.battery_voltage());
+  EXPECT_EQ(status.battery_cycle_count, proto.battery_cycle_count());
 
   // Check that power source details are copied, but that ports that don't have
   // anything connected are ignored.
