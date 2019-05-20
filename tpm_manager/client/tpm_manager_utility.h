@@ -25,7 +25,7 @@ class TPM_MANAGER_EXPORT TpmManagerUtility {
   // a constructor which enables injection of mock interfaces.
   TpmManagerUtility(tpm_manager::TpmOwnershipInterface* tpm_owner,
                     tpm_manager::TpmNvramInterface* tpm_nvram);
-  ~TpmManagerUtility() = default;
+  virtual ~TpmManagerUtility() = default;
 
   // Initializes the worker thread and proxies of |tpm_manager| and returns
   // |true| if successful. Returns |false| if we cannot start
@@ -33,36 +33,38 @@ class TPM_MANAGER_EXPORT TpmManagerUtility {
   //
   // Once returing |true|, the calls of this function afterwards return |true|
   // without mutating any data member.
-  bool Initialize();
+  virtual bool Initialize();
 
   // Blocking call of |TpmOwnershipDBusProxy::TakeOwnership|. Returns |true| iff
   // the operation succeeds.
-  bool TakeOwnership();
+  virtual bool TakeOwnership();
 
   // Blocking call of |TpmOwnershipDBusProxy::GetTpmStatus|.
   // Returns |true| iff the operation succeeds. Once returning |true|,
   // |is_enabled| indicates if TPM is enabled, and |is_owned| indicates if TPM
   // is owned. |local_data| is the current |LocalData| stored in the
   // |tpm_manager| service.
-  bool GetTpmStatus(bool* is_enabled, bool* is_owned, LocalData* local_data);
+  virtual bool GetTpmStatus(bool* is_enabled,
+                            bool* is_owned,
+                            LocalData* local_data);
 
   // Blocking call of
   // |TpmOwnershipDBusProxy::RemoveOwnerDependency|. Returns |true| iff the
   // operation succeeds. |dependency| is the idenitier of the dependency.
-  bool RemoveOwnerDependency(const std::string& dependency);
+  virtual bool RemoveOwnerDependency(const std::string& dependency);
 
   // Blocking call of |TpmOwnershipDBusProxy::GetDictionaryAttackInfo|. Returns
   // |true| iff the operation succeeds. Once returning |true|, |counter|,
   // |threshold|, |lockout| and |seconds_remaining| will set to the respective
   // values of received |GetDictionaryAttackInfoReply|.
-  bool GetDictionaryAttackInfo(int* counter,
-                               int* threshold,
-                               bool* lockout,
-                               int* seconds_remaining);
+  virtual bool GetDictionaryAttackInfo(int* counter,
+                                       int* threshold,
+                                       bool* lockout,
+                                       int* seconds_remaining);
 
   // Blocking call of |TpmOwnershipDBusProxy::GetDictionaryAttackInfo|. Returns
   // |true| iff the operation succeeds.
-  bool ResetDictionaryAttackLock();
+  virtual bool ResetDictionaryAttackLock();
 
   // Blocking call of |TpmOwnershipDBusProxy::ReadSpace|. Returns |true| iff
   // the operation succeeds. This call sends a request to read the content of
@@ -70,7 +72,9 @@ class TPM_MANAGER_EXPORT TpmManagerUtility {
   // |use_owner_auth| is set, the request tells the service to use owner
   // authorization. Note: currently the arbitrary auth value is not supported
   // since we got no use case for now.
-  bool ReadSpace(uint32_t index, bool use_owner_auth, std::string* output);
+  virtual bool ReadSpace(uint32_t index,
+                         bool use_owner_auth,
+                         std::string* output);
 
  private:
   // Tpm_manager communication thread class that cleans up after stopping.
