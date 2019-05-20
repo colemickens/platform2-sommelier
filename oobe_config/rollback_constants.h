@@ -33,9 +33,11 @@ extern const base::FilePath kRollbackSaveMarkerFile;
 
 // The path to the file that indicates if OOBE has completed.
 extern const base::FilePath kOobeCompletedFile;
+extern const char kOobeCompletedFileName[];
 
 // The path to the file that indicates if metrics reporting is enabled.
 extern const base::FilePath kMetricsReportingEnabledFile;
+extern const char kMetricsReportingEnabledFileName[];
 
 // Name of the files (without path) we want to preserve.
 extern const base::FilePath kInstallAttributesPath;

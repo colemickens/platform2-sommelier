@@ -13,6 +13,7 @@
 #include <libtpmcrypto/tpm_crypto_impl.h>
 
 #include "oobe_config/rollback_constants.h"
+#include "oobe_config/rollback_data.pb.h"
 
 namespace oobe_config {
 
@@ -61,6 +62,7 @@ class OobeConfigTest : public ::testing::Test {
         kSaveTempPath.Append(kPolicyDotOneFileNameForTesting), "policy1");
     oobe_config_->WriteFile(kSaveTempPath.Append(kShillDefaultProfileFileName),
                             "shill");
+    oobe_config_->WriteFile(kSaveTempPath.Append(kOobeCompletedFileName), "");
 
     // Saving rollback data.
     LOG(INFO) << "Saving rollback data...";
@@ -70,10 +72,17 @@ class OobeConfigTest : public ::testing::Test {
       ASSERT_TRUE(oobe_config_->UnencryptedRollbackSave());
     }
 
-    std::string rollback_data;
+    std::string rollback_data_str;
     ASSERT_TRUE(oobe_config_->ReadFile(kUnencryptedStatefulRollbackDataPath,
-                                       &rollback_data));
-    EXPECT_FALSE(rollback_data.empty());
+                                       &rollback_data_str));
+    EXPECT_FALSE(rollback_data_str.empty());
+
+    if (!encrypted) {
+      oobe_config::RollbackData rollback_data;
+      ASSERT_TRUE(rollback_data.ParseFromString(rollback_data_str));
+      ASSERT_TRUE(rollback_data.eula_auto_accept());
+      ASSERT_FALSE(rollback_data.eula_send_statistics());
+    }
 
     // Simulate powerwash and only preserve rollback_data by creating new temp
     // dir.
@@ -90,7 +99,7 @@ class OobeConfigTest : public ::testing::Test {
     // Rewrite the rollback data to simulate the preservation that happens
     // during a rollback powerwash.
     ASSERT_TRUE(oobe_config_->WriteFile(kUnencryptedStatefulRollbackDataPath,
-                                        rollback_data));
+                                        rollback_data_str));
 
     // Restore data.
     LOG(INFO) << "Restoring rollback data...";

@@ -47,6 +47,8 @@ TEST(OobeConfigPrepareSaveTest, PrepareSaveTest) {
       temp_path, kPolicyFileDirectory.Append(kPolicyFileName)));
   WriteTestFile(PrefixAbsolutePath(
       temp_path, kPolicyFileDirectory.Append(kPolicyDotOneFileNameForTesting)));
+  WriteTestFile(PrefixAbsolutePath(temp_path, kOobeCompletedFile));
+  WriteTestFile(PrefixAbsolutePath(temp_path, kMetricsReportingEnabledFile));
 
   ASSERT_TRUE(PrepareSave(temp_path, /*ignore_permissions_for_testing=*/true));
 
@@ -60,6 +62,10 @@ TEST(OobeConfigPrepareSaveTest, PrepareSaveTest) {
       PrefixAbsolutePath(temp_path, kSaveTempPath).Append(kPolicyFileName));
   VerifyTestFile(PrefixAbsolutePath(temp_path, kSaveTempPath)
                      .Append(kPolicyDotOneFileNameForTesting));
+  VerifyTestFile(PrefixAbsolutePath(temp_path, kSaveTempPath)
+                     .Append(kOobeCompletedFileName));
+  VerifyTestFile(PrefixAbsolutePath(temp_path, kSaveTempPath)
+                     .Append(kMetricsReportingEnabledFileName));
 }
 
 TEST(OobeConfigPrepareSaveTest, PrepareSaveFolderAlreadyExistedTest) {

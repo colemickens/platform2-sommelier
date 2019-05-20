@@ -28,9 +28,11 @@ const base::FilePath kRollbackSaveMarkerFile =
 
 const base::FilePath kOobeCompletedFile =
     base::FilePath("/home/chronos/.oobe_completed");
+const char kOobeCompletedFileName[] = ".oobe_completed";
 
 const base::FilePath kMetricsReportingEnabledFile =
     base::FilePath("/home/chronos/Consent To Send Stats");
+const char kMetricsReportingEnabledFileName[] = "Consent To Send Stats";
 
 const base::FilePath kInstallAttributesPath =
     base::FilePath("/home/.shadow/install_attributes.pb");

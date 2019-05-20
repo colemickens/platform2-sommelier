@@ -138,6 +138,10 @@ bool PrepareSave(const base::FilePath& root_path,
               save_path.Append(kOwnerKeyFileName));
   TryFileCopy(PrefixAbsolutePath(root_path, kShillDefaultProfilePath),
               save_path.Append(kShillDefaultProfileFileName));
+  TryFileCopy(PrefixAbsolutePath(root_path, kOobeCompletedFile),
+              save_path.Append(kOobeCompletedFileName));
+  TryFileCopy(PrefixAbsolutePath(root_path, kMetricsReportingEnabledFile),
+              save_path.Append(kMetricsReportingEnabledFileName));
 
   base::FileEnumerator policy_file_enumerator(
       PrefixAbsolutePath(root_path, kPolicyFileDirectory), false,

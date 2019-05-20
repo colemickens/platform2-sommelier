@@ -87,12 +87,14 @@ bool OobeConfig::GetRollbackData(RollbackData* rollback_data) const {
   ReadFile(kSaveTempPath.Append(kShillDefaultProfileFileName), &file_content);
   rollback_data->set_shill_default_profile(file_content);
 
-  if (base::PathExists(kOobeCompletedFile)) {
+  if (base::PathExists(
+          GetPrefixedFilePath(kSaveTempPath.Append(kOobeCompletedFileName)))) {
     // If OOBE has been completed already, we know the EULA has been accepted.
     rollback_data->set_eula_auto_accept(true);
   }
 
-  if (base::PathExists(kMetricsReportingEnabledFile)) {
+  if (base::PathExists(GetPrefixedFilePath(
+          kSaveTempPath.Append(kMetricsReportingEnabledFileName)))) {
     // If |kMetricsReportingEnabledFile| exists, metrics are enabled.
     rollback_data->set_eula_send_statistics(true);
   }
