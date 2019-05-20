@@ -25,7 +25,7 @@ ChromeosModemProxy::ChromeosModemProxy(const scoped_refptr<dbus::Bus>& bus,
                                        const string& service)
     : proxy_(
         new org::freedesktop::ModemManager1::ModemProxy(
-            bus, service, dbus::ObjectPath(path))) {
+            bus, service, path)) {
   // Register signal handlers.
   proxy_->RegisterStateChangedSignalHandler(
       base::Bind(&ChromeosModemProxy::StateChanged,
@@ -76,8 +76,8 @@ void ChromeosModemProxy::DeleteBearer(const RpcIdentifier& bearer,
                                       Error* error,
                                       const ResultCallback& callback,
                                       int timeout) {
-  SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << bearer;
-  proxy_->DeleteBearerAsync(dbus::ObjectPath(bearer),
+  SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << bearer.value();
+  proxy_->DeleteBearerAsync(bearer,
                             base::Bind(&ChromeosModemProxy::OnOperationSuccess,
                                        weak_factory_.GetWeakPtr(),
                                        callback,
@@ -225,7 +225,7 @@ void ChromeosModemProxy::StateChanged(
 void ChromeosModemProxy::OnCreateBearerSuccess(
     const RpcIdentifierCallback& callback, const dbus::ObjectPath& path) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << path.value();
-  callback.Run(path.value(), Error());
+  callback.Run(path, Error());
 }
 
 void ChromeosModemProxy::OnCreateBearerFailure(
@@ -233,7 +233,7 @@ void ChromeosModemProxy::OnCreateBearerFailure(
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
-  callback.Run("", error);
+  callback.Run(RpcIdentifier(""), error);
 }
 
 void ChromeosModemProxy::OnCommandSuccess(const StringCallback& callback,

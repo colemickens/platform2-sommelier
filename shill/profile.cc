@@ -32,6 +32,10 @@ using std::vector;
 
 namespace shill {
 
+namespace {
+const RpcIdentifier kEmptyIdentifier = RpcIdentifier();
+}  // namespace
+
 // static
 const char Profile::kUserProfileListPathname[] =
     RUNDIR "/loaded_profile_list";
@@ -148,9 +152,9 @@ string Profile::GetFriendlyName() const {
   return (name_.user.empty() ? "" : name_.user + "/") + name_.identifier;
 }
 
-RpcIdentifier Profile::GetRpcIdentifier() const {
+const RpcIdentifier& Profile::GetRpcIdentifier() const {
   if (!adaptor_) {
-    return RpcIdentifier();
+    return kEmptyIdentifier;
   }
   return adaptor_->GetRpcIdentifier();
 }
@@ -353,13 +357,16 @@ bool Profile::Save() {
   return storage_->Flush();
 }
 
-RpcIdentifiers Profile::EnumerateAvailableServices(Error* error) {
+vector<string> Profile::EnumerateAvailableServices(Error* error) {
+  vector<string> result;
   // We should return the Manager's service list if this is the active profile.
   if (manager_->IsActiveProfile(this)) {
-    return manager_->EnumerateAvailableServices(error);
-  } else {
-    return RpcIdentifiers();
+    auto services = manager_->EnumerateAvailableServices(error);
+    for (const auto service : services) {
+      result.push_back(service.value());
+    }
   }
+  return result;
 }
 
 vector<string> Profile::EnumerateEntries(Error* /*error*/) {

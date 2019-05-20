@@ -66,8 +66,8 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static string ObjectID(WiFi* w) { return w->GetRpcIdentifier(); }
-}
+static string ObjectID(WiFi* w) { return w->GetRpcIdentifier().value(); }
+}  // namespace Logging
 
 // statics
 const char* const WiFi::kDefaultBgscanMethod =
@@ -451,7 +451,7 @@ void WiFi::ConnectTo(WiFiService* service) {
 
   Error unused_error;
   network_rpcid = FindNetworkRpcidForService(service, &unused_error);
-  if (network_rpcid.empty()) {
+  if (network_rpcid.value().empty()) {
     KeyValueStore service_params =
         service->GetSupplicantConfigurationParameters();
     const uint32_t scan_ssid = 1;  // "True": Use directed probe.
@@ -465,7 +465,7 @@ void WiFi::ConnectTo(WiFiService* service) {
       SetScanState(kScanIdle, scan_method_, __func__);
       return;
     }
-    CHECK(!network_rpcid.empty());  // No DBus path should be empty.
+    CHECK(!network_rpcid.value().empty());  // No DBus path should be empty.
     rpcid_by_service_[service] = network_rpcid;
   }
 
@@ -596,7 +596,7 @@ bool WiFi::DisableNetwork(const RpcIdentifier& network) {
   std::unique_ptr<SupplicantNetworkProxyInterface> supplicant_network_proxy =
       control_interface()->CreateSupplicantNetworkProxy(network);
   if (!supplicant_network_proxy->SetEnabled(false)) {
-    LOG(ERROR) << "DisableNetwork for " << network << " failed.";
+    LOG(ERROR) << "DisableNetwork for " << network.value() << " failed.";
     return false;
   }
   return true;
@@ -615,13 +615,13 @@ void WiFi::SetHT40EnableForService(const WiFiService* service, bool enable) {
 
   Error error;
   RpcIdentifier rpcid = FindNetworkRpcidForService(service, &error);
-  if (rpcid.empty()) {
+  if (rpcid.value().empty()) {
       LOG(ERROR) << "Unable to find supplicant network.";
       return;
   }
 
   if (!supplicant_interface_proxy_->SetHT40Enable(rpcid, enable)) {
-    LOG(ERROR) << "SetHT40Enable for " << rpcid << " failed.";
+    LOG(ERROR) << "SetHT40Enable for " << rpcid.value() << " failed.";
   }
 }
 
@@ -814,15 +814,15 @@ void WiFi::AuthStatusChanged(const int32_t new_auth_status) {
 
 void WiFi::CurrentBSSChanged(const RpcIdentifier& new_bss) {
   SLOG(this, 3) << "WiFi " << link_name() << " CurrentBSS "
-                << supplicant_bss_ << " -> " << new_bss;
+                << supplicant_bss_.value() << " -> " << new_bss.value();
 
   // Store signal strength of BSS when disconnecting.
-  if (supplicant_bss_ != WPASupplicant::kCurrentBSSNull &&
-      new_bss == WPASupplicant::kCurrentBSSNull) {
+  if (supplicant_bss_.value() != WPASupplicant::kCurrentBSSNull &&
+      new_bss.value() == WPASupplicant::kCurrentBSSNull) {
     const WiFiEndpointConstRefPtr endpoint(GetCurrentEndpoint());
     if (endpoint == nullptr) {
       LOG(ERROR) << "Can't get endpoint for current supplicant BSS "
-                 << supplicant_bss_;
+                 << supplicant_bss_.value();
       // Default to value that will not imply out of range error in
       // ServiceDisconnected or PendingTimeoutHandler.
       disconnect_signal_dbm_ = kDefaultDisconnectDbm;
@@ -843,7 +843,7 @@ void WiFi::CurrentBSSChanged(const RpcIdentifier& new_bss) {
   StopReconnectTimer();
   StopRequestingStationInfo();
 
-  if (new_bss == WPASupplicant::kCurrentBSSNull) {
+  if (new_bss.value() == WPASupplicant::kCurrentBSSNull) {
     HandleDisconnect();
     if (!provider_->GetHiddenSSIDList().empty()) {
       // Before disconnecting, wpa_supplicant probably scanned for
@@ -1103,7 +1103,7 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss) {
   EndpointMap::iterator endpoint_it = endpoint_by_rpcid_.find(new_bss);
   if (endpoint_it == endpoint_by_rpcid_.end()) {
     LOG(WARNING) << "WiFi " << link_name() << " connected to unknown BSS "
-                 << new_bss;
+                 << new_bss.value();
     return;
   }
 
@@ -1242,7 +1242,7 @@ RpcIdentifier WiFi::FindNetworkRpcidForService(
     if (error) {
       error->Populate(Error::kNotFound, error_message);
     }
-    return "";
+    return RpcIdentifier("");
   }
 
   return rpcid_it->second;
@@ -1250,7 +1250,7 @@ RpcIdentifier WiFi::FindNetworkRpcidForService(
 
 bool WiFi::DisableNetworkForService(const WiFiService* service, Error* error) {
   RpcIdentifier rpcid = FindNetworkRpcidForService(service, error);
-  if (rpcid.empty()) {
+  if (rpcid.value().empty()) {
       // Error is already populated.
       return false;
   }
@@ -1260,7 +1260,7 @@ bool WiFi::DisableNetworkForService(const WiFiService* service, Error* error) {
         StringPrintf("WiFi %s cannot disable network for service %s: "
                      "DBus operation failed for rpcid %s.",
                      link_name().c_str(), service->unique_name().c_str(),
-                     rpcid.c_str());
+                     rpcid.value().c_str());
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed, error_message);
 
@@ -1277,7 +1277,7 @@ bool WiFi::DisableNetworkForService(const WiFiService* service, Error* error) {
 
 bool WiFi::RemoveNetworkForService(const WiFiService* service, Error* error) {
   RpcIdentifier rpcid = FindNetworkRpcidForService(service, error);
-  if (rpcid.empty()) {
+  if (rpcid.value().empty()) {
       // Error is already populated.
       return false;
   }
@@ -1293,7 +1293,7 @@ bool WiFi::RemoveNetworkForService(const WiFiService* service, Error* error) {
         StringPrintf("WiFi %s cannot remove network for service %s: "
                      "DBus operation failed for rpcid %s.",
                      link_name().c_str(), service->unique_name().c_str(),
-                     rpcid.c_str());
+                     rpcid.value().c_str());
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed, error_message);
     return false;
@@ -1426,7 +1426,7 @@ void WiFi::BSSAddedTask(const RpcIdentifier& path,
   WiFiEndpointRefPtr endpoint(
       new WiFiEndpoint(control_interface(), this, path, properties, metrics()));
   SLOG(this, 5) << "Found endpoint. "
-                << "RPC path: " << path << ", "
+                << "RPC path: " << path.value() << ", "
                 << LogSSID(endpoint->ssid_string()) << ", "
                 << "bssid: " << endpoint->bssid_string() << ", "
                 << "signal: " << endpoint->signal_strength() << ", "
@@ -1467,7 +1467,7 @@ void WiFi::BSSRemovedTask(const RpcIdentifier& path) {
   EndpointMap::iterator i = endpoint_by_rpcid_.find(path);
   if (i == endpoint_by_rpcid_.end()) {
     SLOG(this, 1) << "WiFi " << link_name()
-                  << " could not find BSS " << path
+                  << " could not find BSS " << path.value()
                   << " to remove.";
     return;
   }
@@ -1521,7 +1521,7 @@ void WiFi::EAPEventTask(const string& status, const string& parameter) {
     Error unused_error;
     RpcIdentifier rpcid = FindNetworkRpcidForService(current_service_.get(),
                                               &unused_error);
-    if (!pin.empty() && !rpcid.empty()) {
+    if (!pin.empty() && !rpcid.value().empty()) {
       // We have a PIN configured, so we can provide it back to wpa_supplicant.
       LOG(INFO) << "Re-supplying PIN parameter to wpa_supplicant.";
       supplicant_interface_proxy_->NetworkReply(
@@ -2952,7 +2952,7 @@ void WiFi::RequestStationInfo() {
   EndpointMap::iterator endpoint_it = endpoint_by_rpcid_.find(supplicant_bss_);
   if (endpoint_it == endpoint_by_rpcid_.end()) {
     LOG(ERROR) << "Can't get endpoint for current supplicant BSS "
-               << supplicant_bss_;
+               << supplicant_bss_.value();
     return;
   }
 
@@ -3063,7 +3063,7 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
   EndpointMap::iterator endpoint_it = endpoint_by_rpcid_.find(supplicant_bss_);
   if (endpoint_it == endpoint_by_rpcid_.end()) {
     LOG(ERROR) << "Can't get endpoint for current supplicant BSS."
-               << supplicant_bss_;
+               << supplicant_bss_.value();
     return;
   }
 

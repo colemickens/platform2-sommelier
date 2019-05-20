@@ -29,7 +29,7 @@ ChromeosSupplicantBSSProxy::ChromeosSupplicantBSSProxy(
         new fi::w1::wpa_supplicant1::BSSProxy(
             bus,
             WPASupplicant::kDBusAddr,
-            dbus::ObjectPath(object_path))),
+            object_path)),
       wifi_endpoint_(wifi_endpoint) {
   // Register signal handler.
   bss_proxy_->RegisterPropertiesChangedSignalHandler(

@@ -26,7 +26,7 @@ class MockProfile : public Profile {
   MOCK_METHOD1(ConfigureService,  bool(const ServiceRefPtr& service));
   MOCK_METHOD1(ConfigureDevice, bool(const DeviceRefPtr& device));
   MOCK_METHOD2(DeleteEntry,  void(const std::string& entry_name, Error* error));
-  MOCK_CONST_METHOD0(GetRpcIdentifier, RpcIdentifier());
+  MOCK_CONST_METHOD0(GetRpcIdentifier, const RpcIdentifier&());
   MOCK_METHOD1(UpdateService, bool(const ServiceRefPtr& service));
   MOCK_METHOD1(UpdateDevice, bool(const DeviceRefPtr& device));
   MOCK_METHOD1(UpdateWiFiProvider, bool(const WiFiProvider& wifi_provider));

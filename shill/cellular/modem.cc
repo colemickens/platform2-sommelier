@@ -22,7 +22,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kModem;
-static string ObjectID(Modem* m) { return m->path().c_str(); }
+static string ObjectID(Modem* m) { return m->path().value(); }
 }
 
 // statics
@@ -40,11 +40,11 @@ Modem::Modem(const string& service,
       type_(Cellular::kTypeInvalid),
       pending_device_info_(false),
       rtnl_handler_(RTNLHandler::GetInstance()) {
-  LOG(INFO) << "Modem created: at " << path;
+  LOG(INFO) << "Modem created: at " << path.value();
 }
 
 Modem::~Modem() {
-  LOG(INFO) << "Modem destructed: " << path_;
+  LOG(INFO) << "Modem destructed: " << path_.value();
   if (device_) {
     device_->DestroyService();
     modem_info_->manager()->device_info()->DeregisterDevice(device_);

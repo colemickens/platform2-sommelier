@@ -53,7 +53,7 @@ void ModemManager::OnVanished() {
 bool ModemManager::ModemExists(const RpcIdentifier& path) const {
   CHECK(service_connected_);
   if (base::ContainsKey(modems_, path)) {
-    LOG(INFO) << "ModemExists: " << path << " already exists.";
+    LOG(INFO) << "ModemExists: " << path.value() << " already exists.";
     return true;
   } else {
     return false;
@@ -65,7 +65,7 @@ void ModemManager::RecordAddedModem(std::unique_ptr<Modem> modem) {
 }
 
 void ModemManager::RemoveModem(const RpcIdentifier& path) {
-  LOG(INFO) << "Remove modem: " << path;
+  LOG(INFO) << "Remove modem: " << path.value();
   CHECK(service_connected_);
   modems_.erase(path);
 }

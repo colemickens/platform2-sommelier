@@ -16,9 +16,9 @@ namespace shill {
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosRpcTaskDBusAdaptor* r) {
-  return r->GetRpcIdentifier();
+  return r->GetRpcIdentifier().value();
 }
-}
+}  // namespace Logging
 
 // static
 const char ChromeosRpcTaskDBusAdaptor::kPath[] = "/task/";
@@ -40,12 +40,13 @@ ChromeosRpcTaskDBusAdaptor::~ChromeosRpcTaskDBusAdaptor() {
   task_ = nullptr;
 }
 
-RpcIdentifier ChromeosRpcTaskDBusAdaptor::GetRpcIdentifier() const {
-  return RpcIdentifier(dbus_path().value());
+const RpcIdentifier& ChromeosRpcTaskDBusAdaptor::GetRpcIdentifier() const {
+  return dbus_path();
 }
 
-RpcIdentifier ChromeosRpcTaskDBusAdaptor::GetRpcConnectionIdentifier() const {
-  return RpcIdentifier(connection_name_);
+const RpcIdentifier&
+ChromeosRpcTaskDBusAdaptor::GetRpcConnectionIdentifier() const {
+  return connection_name_;
 }
 
 bool ChromeosRpcTaskDBusAdaptor::getsec(

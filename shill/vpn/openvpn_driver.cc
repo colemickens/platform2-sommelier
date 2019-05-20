@@ -41,9 +41,9 @@ namespace shill {
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
 static string ObjectID(const OpenVPNDriver* o) {
-  return o->GetServiceRpcIdentifier();
+  return o->GetServiceRpcIdentifier().value();
 }
-}
+}  // namespace Logging
 
 namespace {
 
@@ -768,11 +768,11 @@ void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
   // Setup openvpn-script options and RPC information required to send back
   // Layer 3 configuration.
   AppendOption("setenv", kRpcTaskServiceVariable,
-               rpc_task_->GetRpcConnectionIdentifier(), options);
+               rpc_task_->GetRpcConnectionIdentifier().value(), options);
   AppendOption("setenv", kRpcTaskServiceVariable,
-               rpc_task_->GetRpcConnectionIdentifier(), options);
-  AppendOption("setenv", kRpcTaskPathVariable, rpc_task_->GetRpcIdentifier(),
-               options);
+               rpc_task_->GetRpcConnectionIdentifier().value(), options);
+  AppendOption("setenv", kRpcTaskPathVariable,
+               rpc_task_->GetRpcIdentifier().value(), options);
   AppendOption("script-security", "2", options);
   AppendOption("up", kOpenVPNScript, options);
   AppendOption("up-restart", options);

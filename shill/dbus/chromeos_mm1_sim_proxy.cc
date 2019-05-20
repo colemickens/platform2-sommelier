@@ -23,7 +23,7 @@ ChromeosSimProxy::ChromeosSimProxy(const scoped_refptr<dbus::Bus>& bus,
                                    const string& service)
     : proxy_(
         new org::freedesktop::ModemManager1::SimProxy(
-            bus, service, dbus::ObjectPath(path))) {}
+            bus, service, path)) {}
 
 ChromeosSimProxy::~ChromeosSimProxy() = default;
 

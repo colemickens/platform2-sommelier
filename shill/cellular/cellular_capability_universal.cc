@@ -42,9 +42,9 @@ namespace shill {
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
 static string ObjectID(CellularCapabilityUniversal* c) {
-  return c->cellular()->GetRpcIdentifier();
+  return c->cellular()->GetRpcIdentifier().value();
 }
-}
+}  // namespace Logging
 
 // static
 const char CellularCapabilityUniversal::kConnectApn[] = "apn";
@@ -57,7 +57,8 @@ const int64_t CellularCapabilityUniversal::kEnterPinTimeoutMilliseconds = 20000;
 const int64_t
 CellularCapabilityUniversal::kRegistrationDroppedUpdateTimeoutMilliseconds =
     15000;
-const char CellularCapabilityUniversal::kRootPath[] = "/";
+const RpcIdentifier CellularCapabilityUniversal::kRootPath =
+    RpcIdentifier("/");
 const char CellularCapabilityUniversal::kStatusProperty[] = "status";
 const char CellularCapabilityUniversal::kOperatorLongProperty[] =
     "operator-long";
@@ -713,7 +714,7 @@ void CellularCapabilityUniversal::OnConnectReply(const ResultCallback& callback,
       service->SetLastGoodApn(apn_try_list_.front());
       apn_try_list_.clear();
     }
-    SLOG(this, 2) << "Connected bearer " << bearer;
+    SLOG(this, 2) << "Connected bearer " << bearer.value();
   }
 
   if (!callback.is_null())
@@ -785,7 +786,7 @@ void CellularCapabilityUniversal::UpdateActiveBearer() {
     if (!bearer->connected())
       continue;
 
-    SLOG(this, 2) << "Found active bearer \"" << path << "\".";
+    SLOG(this, 2) << "Found active bearer \"" << path.value() << "\".";
     CHECK(!active_bearer_) << "Found more than one active bearer.";
     active_bearer_ = std::move(bearer);
   }
@@ -1256,7 +1257,7 @@ bool CellularCapabilityUniversal::RetriableConnectError(
 
 bool CellularCapabilityUniversal::IsValidSimPath(
     const RpcIdentifier& sim_path) const {
-  return !sim_path.empty() && sim_path != kRootPath;
+  return !sim_path.value().empty() && sim_path != kRootPath;
 }
 
 string CellularCapabilityUniversal::NormalizeMdn(const string& mdn) const {

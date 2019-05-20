@@ -169,10 +169,9 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const int64_t kRegistrationDroppedUpdateTimeoutMilliseconds;
   static const int kSetPowerStateTimeoutMilliseconds;
 
-
   // Root path. The SIM path is reported by ModemManager to be the root path
   // when no SIM is present.
-  static const char kRootPath[];
+  static const RpcIdentifier kRootPath;
 
   friend class CellularTest;
   friend class CellularCapabilityUniversalTest;

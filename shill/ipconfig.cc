@@ -23,8 +23,8 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kInet;
-static string ObjectID(IPConfig* i) { return i->GetRpcIdentifier(); }
-}
+static string ObjectID(IPConfig* i) { return i->GetRpcIdentifier().value(); }
+}  // namespace Logging
 
 namespace {
 
@@ -88,7 +88,7 @@ IPConfig::~IPConfig() {
   SLOG(this, 2) << __func__ << " device: " << device_name();
 }
 
-RpcIdentifier IPConfig::GetRpcIdentifier() const {
+const RpcIdentifier& IPConfig::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 

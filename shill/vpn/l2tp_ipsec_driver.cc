@@ -59,9 +59,9 @@ namespace shill {
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
 static string ObjectID(L2TPIPSecDriver* l) {
-  return l->GetServiceRpcIdentifier();
+  return l->GetServiceRpcIdentifier().value();
 }
-}
+}  // namespace Logging
 
 namespace {
 const char kL2TPIPSecIPSecTimeoutProperty[] = "L2TPIPsec.IPsecTimeout";

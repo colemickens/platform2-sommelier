@@ -57,8 +57,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(Cellular* c) { return c->GetRpcIdentifier(); }
+static string ObjectID(Cellular* c) {
+  return c->GetRpcIdentifier().value();
 }
+}  // namespace Logging
 
 // static
 const char Cellular::kAllowRoaming[] = "AllowRoaming";
@@ -86,7 +88,7 @@ Cellular::Cellular(ModemInfo* modem_info,
       serving_operator_info_(
           new MobileOperatorInfo(modem_info->dispatcher(), "ServingOperator")),
       dbus_service_(service),
-      dbus_path_(path),
+      dbus_path_(path.value()),
       scanning_supported_(false),
       scanning_(false),
       polling_location_(false),

@@ -14,8 +14,8 @@ using std::string;
 namespace shill {
 
 // static
+const RpcIdentifier ServiceUnderTest::kDeviceRpcId("/mock_device_rpc");
 const char ServiceUnderTest::kKeyValueStoreProperty[] = "key_value_store";
-const RpcIdentifier ServiceUnderTest::kRpcId = "/mock_device_rpc";
 const char ServiceUnderTest::kStringsProperty[] = "strings";
 const char ServiceUnderTest::kStorageId[] = "service";
 
@@ -32,12 +32,12 @@ ServiceUnderTest::ServiceUnderTest(Manager* manager)
 
 ServiceUnderTest::~ServiceUnderTest() = default;
 
-RpcIdentifier ServiceUnderTest::GetRpcIdentifier() const {
-  return RpcIdentifier(ServiceMockAdaptor::kRpcId);
+const RpcIdentifier& ServiceUnderTest::GetRpcIdentifier() const {
+  return ServiceMockAdaptor::kRpcId;
 }
 
 RpcIdentifier ServiceUnderTest::GetDeviceRpcId(Error* /*error*/) const {
-  return RpcIdentifier(kRpcId);
+  return kDeviceRpcId;
 }
 
 string ServiceUnderTest::GetStorageIdentifier() const { return kStorageId; }

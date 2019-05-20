@@ -9,6 +9,7 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/control_interface.h"
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -27,8 +28,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static string ObjectID(const VPNService* s) { return s->GetRpcIdentifier(); }
+static string ObjectID(const VPNService* s) {
+  return s->GetRpcIdentifier().value();
 }
+}  // namespace Logging
 
 const char VPNService::kAutoConnNeverConnected[] = "never connected";
 const char VPNService::kAutoConnVPNAlreadyActive[] = "vpn already active";
@@ -114,7 +117,7 @@ string VPNService::GetPhysicalTechnologyProperty(Error* error) {
 
 RpcIdentifier VPNService::GetDeviceRpcId(Error* error) const {
   error->Populate(Error::kNotSupported);
-  return RpcIdentifier("/");
+  return control_interface()->NullRpcIdentifier();
 }
 
 ConnectionConstRefPtr VPNService::GetUnderlyingConnection() const {

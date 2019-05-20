@@ -22,7 +22,7 @@ ChromeosDBusPropertiesProxy::ChromeosDBusPropertiesProxy(
     const string& service)
     : proxy_(
         new org::freedesktop::DBus::PropertiesProxy(
-            bus, service, dbus::ObjectPath(path))) {
+            bus, service, path)) {
   // Register signal handlers.
   proxy_->RegisterPropertiesChangedSignalHandler(
       base::Bind(&ChromeosDBusPropertiesProxy::PropertiesChanged,

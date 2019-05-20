@@ -63,7 +63,7 @@ CellularBearer::CellularBearer(ControlInterface* control_interface,
 CellularBearer::~CellularBearer() = default;
 
 bool CellularBearer::Init() {
-  SLOG(this, 3) << __func__ << ": path='" << dbus_path_
+  SLOG(this, 3) << __func__ << ": path='" << dbus_path_.value()
                 << "', service='" << dbus_service_ << "'";
 
   dbus_properties_proxy_ =
@@ -72,7 +72,7 @@ bool CellularBearer::Init() {
   // nullptr as the bearer DBus object may no longer exist.
   if (!dbus_properties_proxy_) {
     LOG(WARNING) << "Failed to create DBus properties proxy for bearer '"
-                 << dbus_path_ << "'. Bearer is likely gone.";
+                 << dbus_path_.value() << "'. Bearer is likely gone.";
     return false;
   }
 
@@ -94,7 +94,7 @@ void CellularBearer::GetIPConfigMethodAndProperties(
   if (properties.ContainsUint(kPropertyMethod)) {
     method = properties.GetUint(kPropertyMethod);
   } else {
-    SLOG(this, 2) << "Bearer '" << dbus_path_
+    SLOG(this, 2) << "Bearer '" << dbus_path_.value()
                   << "' does not specify an IP configuration method.";
   }
 
@@ -106,7 +106,7 @@ void CellularBearer::GetIPConfigMethodAndProperties(
 
   if (!properties.ContainsString(kPropertyAddress) ||
       !properties.ContainsString(kPropertyGateway)) {
-    SLOG(this, 2) << "Bearer '" << dbus_path_
+    SLOG(this, 2) << "Bearer '" << dbus_path_.value()
                   << "' static IP configuration does not specify valid "
                          "address/gateway information.";
     *ipconfig_method = IPConfig::kMethodUnknown;
@@ -165,7 +165,7 @@ void CellularBearer::UpdateProperties() {
   KeyValueStore properties =
       dbus_properties_proxy_->GetAll(MM_DBUS_INTERFACE_BEARER);
   if (properties.IsEmpty()) {
-    LOG(WARNING) << "Could not get properties of bearer '" << dbus_path_
+    LOG(WARNING) << "Could not get properties of bearer '" << dbus_path_.value()
                  << "'. Bearer is likely gone and thus ignored.";
     return;
   }
@@ -179,7 +179,7 @@ void CellularBearer::OnPropertiesChanged(
     const string& interface,
     const KeyValueStore& changed_properties,
     const vector<string>& /*invalidated_properties*/) {
-  SLOG(this, 3) << __func__ << ": path=" << dbus_path_
+  SLOG(this, 3) << __func__ << ": path=" << dbus_path_.value()
                 << ", interface=" << interface;
 
   if (interface != MM_DBUS_INTERFACE_BEARER)

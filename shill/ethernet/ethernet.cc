@@ -48,8 +48,8 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kEthernet;
-static string ObjectID(Ethernet* e) { return e->GetRpcIdentifier(); }
-}
+static string ObjectID(Ethernet* e) { return e->GetRpcIdentifier().value(); }
+}  // namespace Logging
 
 Ethernet::Ethernet(Manager* manager,
                    const string& link_name,
@@ -321,9 +321,10 @@ bool Ethernet::StartEapAuthentication() {
   service_->ClearEAPCertification();
   eap_state_handler_.Reset();
 
-  if (!supplicant_network_path_.empty()) {
+  if (!supplicant_network_path_.value().empty()) {
     if (!supplicant_interface_proxy_->RemoveNetwork(supplicant_network_path_)) {
-      LOG(ERROR) << "Failed to remove network: " << supplicant_network_path_;
+      LOG(ERROR) << "Failed to remove network: "
+                 << supplicant_network_path_.value();
       return false;
     }
   }
@@ -332,7 +333,7 @@ bool Ethernet::StartEapAuthentication() {
     LOG(ERROR) << "Failed to add network";
     return false;
   }
-  CHECK(!supplicant_network_path_.empty());
+  CHECK(!supplicant_network_path_.value().empty());
 
   supplicant_interface_proxy_->SelectNetwork(supplicant_network_path_);
   supplicant_interface_proxy_->EAPLogon();
@@ -344,7 +345,7 @@ void Ethernet::StopSupplicant() {
     supplicant_interface_proxy_->EAPLogoff();
   }
   supplicant_interface_proxy_.reset();
-  if (!supplicant_interface_path_.empty()) {
+  if (!supplicant_interface_path_.value().empty()) {
     if (!supplicant_process_proxy_->RemoveInterface(
         supplicant_interface_path_)) {
       LOG(ERROR) << __func__ << ": Failed to remove interface from supplicant.";

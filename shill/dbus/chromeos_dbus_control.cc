@@ -55,7 +55,7 @@ const char ChromeosDBusControl::kNullPath[] = "/";
 
 ChromeosDBusControl::ChromeosDBusControl(EventDispatcher* dispatcher)
     : dispatcher_(dispatcher),
-      null_identifier_(RpcIdentifier(kNullPath)) {
+      null_identifier_(kNullPath) {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
 

@@ -18,9 +18,9 @@ namespace shill {
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosProfileDBusAdaptor* p) {
-  return p->GetRpcIdentifier();
+  return p->GetRpcIdentifier().value();
 }
-}
+}  // namespace Logging
 
 
 // static

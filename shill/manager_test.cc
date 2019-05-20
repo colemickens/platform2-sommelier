@@ -243,7 +243,7 @@ class ManagerTest : public PropertyStoreTest {
   scoped_refptr<MockProfile> AddNamedMockProfileToManager(
       Manager* manager, const RpcIdentifier& name) {
     scoped_refptr<MockProfile> profile(new MockProfile(manager, ""));
-    EXPECT_CALL(*profile, GetRpcIdentifier()).WillRepeatedly(Return(name));
+    EXPECT_CALL(*profile, GetRpcIdentifier()).WillRepeatedly(ReturnRef(name));
     EXPECT_CALL(*profile, UpdateDevice(_)).WillRepeatedly(Return(false));
     AdoptProfile(manager, profile);
     return profile;
@@ -631,9 +631,9 @@ TEST_F(ManagerTest, ServiceRegistration) {
   RpcIdentifier service2_name(mock_service2->unique_name());
 
   EXPECT_CALL(*mock_service, GetRpcIdentifier())
-      .WillRepeatedly(Return(service1_name));
+      .WillRepeatedly(ReturnRef(service1_name));
   EXPECT_CALL(*mock_service2, GetRpcIdentifier())
-      .WillRepeatedly(Return(service2_name));
+      .WillRepeatedly(ReturnRef(service2_name));
   // TODO(quiche): make this EXPECT_CALL work (crbug.com/203247)
   // EXPECT_CALL(*static_cast<ManagerMockAdaptor*>(manager.adaptor_.get()),
   //             EmitRpcIdentifierArrayChanged(kServicesProperty, _));
@@ -648,8 +648,8 @@ TEST_F(ManagerTest, ServiceRegistration) {
   EXPECT_TRUE(base::ContainsKey(ids, mock_service->GetRpcIdentifier()));
   EXPECT_TRUE(base::ContainsKey(ids, mock_service2->GetRpcIdentifier()));
 
-  EXPECT_NE(nullptr, manager.FindService(service1_name));
-  EXPECT_NE(nullptr, manager.FindService(service2_name));
+  EXPECT_NE(nullptr, manager.FindService(service1_name.value()));
+  EXPECT_NE(nullptr, manager.FindService(service2_name.value()));
 
   manager.set_power_manager(power_manager_.release());
   manager.Stop();
@@ -811,7 +811,7 @@ TEST_F(ManagerTest, LookupProfileByRpcIdentifier) {
   scoped_refptr<MockProfile> mock_profile(new MockProfile(manager(), ""));
   const RpcIdentifier kProfileName("profile0");
   EXPECT_CALL(*mock_profile, GetRpcIdentifier())
-      .WillRepeatedly(Return(kProfileName));
+      .WillRepeatedly(ReturnRef(kProfileName));
   AdoptProfile(manager(), mock_profile);
 
   EXPECT_FALSE(manager()->LookupProfileByRpcIdentifier(RpcIdentifier("foo")));
@@ -823,7 +823,7 @@ TEST_F(ManagerTest, SetProfileForService) {
   scoped_refptr<MockProfile> profile0(new MockProfile(manager(), ""));
   RpcIdentifier profile_name0("profile0");
   EXPECT_CALL(*profile0, GetRpcIdentifier())
-      .WillRepeatedly(Return(profile_name0));
+      .WillRepeatedly(ReturnRef(profile_name0));
   AdoptProfile(manager(), profile0);
   MockServiceRefPtr service(new MockService(manager()));
   EXPECT_FALSE(manager()->HasService(service));
@@ -862,7 +862,7 @@ TEST_F(ManagerTest, SetProfileForService) {
   scoped_refptr<MockProfile> profile1(new MockProfile(manager(), ""));
   RpcIdentifier profile_name1("profile1");
   EXPECT_CALL(*profile1, GetRpcIdentifier())
-      .WillRepeatedly(Return(profile_name1));
+      .WillRepeatedly(ReturnRef(profile_name1));
   AdoptProfile(manager(), profile1);
 
   {
@@ -1432,10 +1432,12 @@ TEST_F(ManagerTest, PopProfileWithUnload) {
   EXPECT_CALL(*s_will_not_remove1, Unload())
       .WillOnce(Return(false));
 
-  // Ignore calls to Profile::GetRpcIdentifier because of emitted changes of the
-  // profile list.
-  EXPECT_CALL(*profile0, GetRpcIdentifier()).Times(AnyNumber());
-  EXPECT_CALL(*profile1, GetRpcIdentifier()).Times(AnyNumber());
+  const RpcIdentifier kProfileName0("/profile0");
+  EXPECT_CALL(*profile0, GetRpcIdentifier())
+      .WillRepeatedly(ReturnRef(kProfileName0));
+  const RpcIdentifier kProfileName1("/profile1");
+  EXPECT_CALL(*profile1, GetRpcIdentifier())
+      .WillRepeatedly(ReturnRef(kProfileName1));
 
   // This will pop profile1, which should cause all our profiles to unload.
   manager()->PopProfileInternal();
@@ -1644,6 +1646,10 @@ TEST_F(ManagerTest, GetServiceVPN) {
 TEST_F(ManagerTest, ConfigureServiceWithInvalidProfile) {
   // Manager calls ActiveProfile() so we need at least one profile installed.
   scoped_refptr<MockProfile> profile(new NiceMock<MockProfile>(manager(), ""));
+  const RpcIdentifier kProfileName("/profile");
+    EXPECT_CALL(*profile, GetRpcIdentifier())
+        .WillRepeatedly(ReturnRef(kProfileName));
+
   AdoptProfile(manager(), profile);
 
   KeyValueStore args;
@@ -1716,9 +1722,9 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
   const RpcIdentifier kProfileName1("profile1");
 
   EXPECT_CALL(*profile0, GetRpcIdentifier())
-      .WillRepeatedly(Return(kProfileName0));
+      .WillRepeatedly(ReturnRef(kProfileName0));
   EXPECT_CALL(*profile1, GetRpcIdentifier())
-      .WillRepeatedly(Return(kProfileName1));
+      .WillRepeatedly(ReturnRef(kProfileName1));
 
   AdoptProfile(manager(), profile0);
   AdoptProfile(manager(), profile1);  // profile1 is now the ActiveProfile.
@@ -1748,7 +1754,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
 
   KeyValueStore args;
   args.SetString(kTypeProperty, kTypeWifi);
-  args.SetString(kProfileProperty, kProfileName0);
+  args.SetString(kProfileProperty, kProfileName0.value());
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1764,7 +1770,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithSameProfile) {
   const RpcIdentifier kProfileName0("profile0");
 
   EXPECT_CALL(*profile0, GetRpcIdentifier())
-      .WillRepeatedly(Return(kProfileName0));
+      .WillRepeatedly(ReturnRef(kProfileName0));
 
   AdoptProfile(manager(), profile0);  // profile0 is now the ActiveProfile.
 
@@ -1791,7 +1797,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithSameProfile) {
 
   KeyValueStore args;
   args.SetString(kTypeProperty, kTypeWifi);
-  args.SetString(kProfileProperty, kProfileName0);
+  args.SetString(kProfileProperty, kProfileName0.value());
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1808,9 +1814,9 @@ TEST_F(ManagerTest, ConfigureUnregisteredServiceWithProfile) {
   const RpcIdentifier kProfileName1("profile1");
 
   EXPECT_CALL(*profile0, GetRpcIdentifier())
-      .WillRepeatedly(Return(kProfileName0));
+      .WillRepeatedly(ReturnRef(kProfileName0));
   EXPECT_CALL(*profile1, GetRpcIdentifier())
-      .WillRepeatedly(Return(kProfileName1));
+      .WillRepeatedly(ReturnRef(kProfileName1));
 
   AdoptProfile(manager(), profile0);
   AdoptProfile(manager(), profile1);  // profile1 is now the ActiveProfile.
@@ -1837,7 +1843,7 @@ TEST_F(ManagerTest, ConfigureUnregisteredServiceWithProfile) {
 
   KeyValueStore args;
   args.SetString(kTypeProperty, kTypeWifi);
-  args.SetString(kProfileProperty, kProfileName0);
+  args.SetString(kProfileProperty, kProfileName0.value());
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1884,7 +1890,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithProfileMismatch) {
 
   KeyValueStore args;
   args.SetString(kTypeProperty, kTypeWifi);
-  args.SetString(kProfileProperty, kProfileName1);
+  args.SetString(kProfileProperty, kProfileName1.value());
   Error error;
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile(kProfileName0, args, &error);
@@ -1901,7 +1907,7 @@ TEST_F(ManagerTest,
       AddNamedMockProfileToManager(manager(), kProfileName0));
   KeyValueStore args;
   args.SetString(kTypeProperty, kTypeWifi);
-  args.SetString(kProfileProperty, kProfileName0);
+  args.SetString(kProfileProperty, kProfileName0.value());
 
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
       .WillOnce(Return(WiFiServiceRefPtr()));
@@ -2739,7 +2745,6 @@ TEST_F(ManagerTest, UpdateServiceLogging) {
   CompleteServiceSort();
   manager()->UpdateService(mock_service);
   CompleteServiceSort();
-  Mock::VerifyAndClearExpectations(mock_service.get());
   Mock::VerifyAndClearExpectations(&log);
 
   // A service leaving the idle state should create a log message.
@@ -2757,7 +2762,6 @@ TEST_F(ManagerTest, UpdateServiceLogging) {
       .Times(0);
   manager()->UpdateService(mock_service);
   CompleteServiceSort();
-  Mock::VerifyAndClearExpectations(mock_service.get());
   Mock::VerifyAndClearExpectations(&log);
 
   // A service transitioning between two non-idle states should create
@@ -2768,7 +2772,6 @@ TEST_F(ManagerTest, UpdateServiceLogging) {
       .Times(1);
   manager()->UpdateService(mock_service.get());
   CompleteServiceSort();
-  Mock::VerifyAndClearExpectations(mock_service.get());
   Mock::VerifyAndClearExpectations(&log);
 
   // A service transitioning from a non-idle state to idle should create
@@ -2816,14 +2819,18 @@ TEST_F(ManagerTest, UpdateDevice) {
 }
 
 TEST_F(ManagerTest, EnumerateProfiles) {
+  const int kNumServices = 10;
   vector<RpcIdentifier> profile_paths;
-  for (size_t i = 0; i < 10; i++) {
+  // We cannot use ReturnRef if the vector is going to reallocate later.
+  profile_paths.reserve(kNumServices);
+
+  for (size_t i = 0; i < kNumServices; i++) {
     scoped_refptr<MockProfile> profile(
         new StrictMock<MockProfile>(manager(), ""));
     profile_paths.push_back(
       RpcIdentifier(base::StringPrintf("/profile/%zd", i)));
     EXPECT_CALL(*profile, GetRpcIdentifier())
-        .WillOnce(Return(profile_paths.back()));
+        .WillOnce(ReturnRef(profile_paths.back()));
     AdoptProfile(manager(), profile);
   }
 
@@ -3742,9 +3749,9 @@ TEST_F(ManagerTest, GetLoadableProfileEntriesForService) {
   const RpcIdentifier kProfileRpc0("service_station");
   const RpcIdentifier kProfileRpc2("crystal_tiaras");
 
-  EXPECT_CALL(*profile0, GetRpcIdentifier()).WillOnce(Return(kProfileRpc0));
+  EXPECT_CALL(*profile0, GetRpcIdentifier()).WillOnce(ReturnRef(kProfileRpc0));
   EXPECT_CALL(*profile1, GetRpcIdentifier()).Times(0);
-  EXPECT_CALL(*profile2, GetRpcIdentifier()).WillOnce(Return(kProfileRpc2));
+  EXPECT_CALL(*profile2, GetRpcIdentifier()).WillOnce(ReturnRef(kProfileRpc2));
 
   map<RpcIdentifier, string> entries =
       manager()->GetLoadableProfileEntriesForService(service);

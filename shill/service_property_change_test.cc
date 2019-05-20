@@ -148,9 +148,17 @@ void TestCustomSetterNoopChange(ServiceRefPtr service,
   {
     Error error;
     scoped_refptr<MockProfile> profile(new NiceMock<MockProfile>(nullptr));
+    const RpcIdentifier kProfileName("/profile");
+    // We expect GetRpcIdentifier to be called, but Google Mock has no default
+    // value for type RpcIdentifier. This could also be solved globally by using
+    // DefaultValue<RpcIdentifier>::Set, but this way forces us to be explicit
+    // about our expectations.
+    EXPECT_CALL(*profile, GetRpcIdentifier())
+        .WillRepeatedly(testing::ReturnRef(kProfileName));
+
     service->set_profile(profile);
-    EXPECT_FALSE(service->SetProfileRpcId(profile->GetRpcIdentifier(),
-                                           &error));
+    EXPECT_FALSE(service->SetProfileRpcId(profile->GetRpcIdentifier().value(),
+                                          &error));
     EXPECT_TRUE(error.IsSuccess());
   }
 
