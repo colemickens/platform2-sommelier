@@ -264,90 +264,91 @@ TEST(PropertyAccessorTest, StringCorrectness) {
 }
 
 TEST(PropertyAccessorTest, ByteArrayCorrectness) {
-  ByteArray byteArray;
+  ByteArray byte_array;
   {
     Error error;
-    ByteArray orig_byteArray = byteArray;
-    ByteArrayAccessor accessor(new PropertyAccessor<ByteArray>(&byteArray));
-    EXPECT_EQ(byteArray, accessor->Get(&error));
+    ByteArray orig_byte_array = byte_array;
+    ByteArrayAccessor accessor(new PropertyAccessor<ByteArray>(&byte_array));
+    EXPECT_EQ(byte_array, accessor->Get(&error));
 
-    ByteArray expected_byteArray({ 0x01, 0x7F, 0x80, 0xFF });
-    EXPECT_TRUE(accessor->Set(expected_byteArray, &error));
+    ByteArray expected_byte_array({ 0x01, 0x7F, 0x80, 0xFF });
+    EXPECT_TRUE(accessor->Set(expected_byte_array, &error));
     EXPECT_TRUE(error.IsSuccess());
-    EXPECT_EQ(expected_byteArray, accessor->Get(&error));
+    EXPECT_EQ(expected_byte_array, accessor->Get(&error));
 
     // Resetting to the same value should return false, but without
     // an error.
-    EXPECT_FALSE(accessor->Set(expected_byteArray, &error));
+    EXPECT_FALSE(accessor->Set(expected_byte_array, &error));
     EXPECT_TRUE(error.IsSuccess());
 
     accessor->Clear(&error);
     EXPECT_TRUE(error.IsSuccess());
-    EXPECT_EQ(orig_byteArray, accessor->Get(&error));
+    EXPECT_EQ(orig_byte_array, accessor->Get(&error));
 
-    byteArray = ByteArray({ 0xFF, 0x7F, 0x80, 0x00 });
-    EXPECT_EQ(byteArray, accessor->Get(&error));
+    byte_array = ByteArray({ 0xFF, 0x7F, 0x80, 0x00 });
+    EXPECT_EQ(byte_array, accessor->Get(&error));
   }
   {
     Error error;
     ByteArrayAccessor accessor(
-        new ConstPropertyAccessor<ByteArray>(&byteArray));
-    EXPECT_EQ(byteArray, accessor->Get(&error));
+        new ConstPropertyAccessor<ByteArray>(&byte_array));
+    EXPECT_EQ(byte_array, accessor->Get(&error));
 
-    ByteArray expected_byteArray({ 0x01, 0x7F, 0x80, 0xFF });
-    EXPECT_FALSE(accessor->Set(expected_byteArray, &error));
+    ByteArray expected_byte_array({ 0x01, 0x7F, 0x80, 0xFF });
+    EXPECT_FALSE(accessor->Set(expected_byte_array, &error));
     ASSERT_FALSE(error.IsSuccess());
     EXPECT_EQ(Error::kInvalidArguments, error.type());
-    EXPECT_EQ(byteArray, accessor->Get(&error));
+    EXPECT_EQ(byte_array, accessor->Get(&error));
 
-    byteArray = ByteArray({ 0xFF, 0x7F, 0x80, 0x00 });
-    EXPECT_EQ(byteArray, accessor->Get(&error));
+    byte_array = ByteArray({ 0xFF, 0x7F, 0x80, 0x00 });
+    EXPECT_EQ(byte_array, accessor->Get(&error));
   }
   {
     Error error;
     ByteArrayAccessor accessor(
-        new ConstPropertyAccessor<ByteArray>(&byteArray));
+        new ConstPropertyAccessor<ByteArray>(&byte_array));
     accessor->Clear(&error);
     ASSERT_FALSE(error.IsSuccess());
   }
   {
     Error error;
     ByteArrayAccessor accessor(
-        new WriteOnlyPropertyAccessor<ByteArray>(&byteArray));
+        new WriteOnlyPropertyAccessor<ByteArray>(&byte_array));
     accessor->Get(&error);
     EXPECT_TRUE(error.IsFailure());
     EXPECT_EQ(Error::kPermissionDenied, error.type());
   }
   {
     Error error;
-    ByteArray expected_byteArray({ 0x01, 0x7F, 0x80, 0xFF });
-    WriteOnlyPropertyAccessor<ByteArray> accessor(&byteArray);
+    ByteArray expected_byte_array({ 0x01, 0x7F, 0x80, 0xFF });
+    WriteOnlyPropertyAccessor<ByteArray> accessor(&byte_array);
 
-    EXPECT_TRUE(accessor.Set(expected_byteArray, &error));
+    EXPECT_TRUE(accessor.Set(expected_byte_array, &error));
     EXPECT_TRUE(error.IsSuccess());
-    EXPECT_EQ(expected_byteArray, *accessor.property_);
+    EXPECT_EQ(expected_byte_array, *accessor.property_);
 
     // Resetting to the same value should return false, but without
     // an error.
-    EXPECT_FALSE(accessor.Set(expected_byteArray, &error));
+    EXPECT_FALSE(accessor.Set(expected_byte_array, &error));
     EXPECT_TRUE(error.IsSuccess());
 
     // As a write-only, the value can't be read.
     EXPECT_EQ(ByteArray(), accessor.Get(&error));
     EXPECT_FALSE(error.IsSuccess());
 
-    byteArray = ByteArray({ 0xFF, 0x7F, 0x80, 0x00 });
+    byte_array = ByteArray({ 0xFF, 0x7F, 0x80, 0x00 });
     EXPECT_EQ(ByteArray({ 0xFF, 0x7F, 0x80, 0x00 }), *accessor.property_);
   }
   {
     Error error;
-    ByteArray orig_byteArray = byteArray = ByteArray({0x00, 0x7F, 0x80, 0xFF});
-    WriteOnlyPropertyAccessor<ByteArray> accessor(&byteArray);
+    ByteArray orig_byte_array = byte_array =
+        ByteArray({0x00, 0x7F, 0x80, 0xFF});
+    WriteOnlyPropertyAccessor<ByteArray> accessor(&byte_array);
 
     EXPECT_TRUE(accessor.Set(ByteArray({ 0xFF, 0x7F, 0x80, 0x00 }), &error));
     accessor.Clear(&error);
     EXPECT_TRUE(error.IsSuccess());
-    EXPECT_EQ(orig_byteArray, *accessor.property_);
+    EXPECT_EQ(orig_byte_array, *accessor.property_);
   }
 }
 

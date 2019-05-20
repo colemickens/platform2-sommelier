@@ -217,9 +217,9 @@ void L2TPIPSecDriverTest::Notify(
 
 void L2TPIPSecDriverTest::ExpectInFlags(
     const vector<string>& options, const string& flag, const string& value) {
-  string flagValue = base::StringPrintf("%s=%s", flag.c_str(), value.c_str());
+  string flag_value = base::StringPrintf("%s=%s", flag.c_str(), value.c_str());
   vector<string>::const_iterator it =
-      find(options.begin(), options.end(), flagValue);
+      find(options.begin(), options.end(), flag_value);
 
   EXPECT_TRUE(it != options.end());
 }
