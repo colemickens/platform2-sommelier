@@ -16,6 +16,10 @@
 #include <base/synchronization/lock.h>
 #include <chromeos/dbus/service_constants.h>
 
+// Note that cryptohome generates its own copy of UserDataAuth.pb.h, so we
+// shouldn't include from the system's version.
+#include "UserDataAuth.pb.h"
+
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/dircrypto_data_migrator/atomic_flag.h"
 #include "cryptohome/migration_type.h"
@@ -49,13 +53,14 @@ extern const char kReferrerURLXattrName[];
 //   option.
 class MigrationHelper {
  public:
-  // Callback for monitoring migration progress.  The first parameter is the
-  // number of bytes migrated so far, and the second parameter is the total
-  // number of bytes that need to be migrated, including what has already been
-  // migrated.  If status is not DIRCRYPTO_MIGRATION_IN_PROGRESS the values in
-  // migrated should be ignored as they are undefined.
+  // Callback for monitoring migration progress.  The |progress.current_bytes|
+  // parameter is the number of bytes migrated so far, and the
+  // |progress.total_bytes| parameter is the total number of bytes that need to
+  // be migrated, including what has already been migrated.  If
+  // |progress.status| is not DIRCRYPTO_MIGRATION_IN_PROGRESS the two
+  // aforementioned values should be ignored as they are undefined.
   using ProgressCallback = base::Callback<void(
-      DircryptoMigrationStatus status, uint64_t migrated, uint64_t total)>;
+      const user_data_auth::DircryptoMigrationProgress& progress)>;
 
   // Creates a new MigrationHelper for migrating from |from| to |to|.
   // Status files will be stored in |status_files_dir|, which should not be in
@@ -106,6 +111,27 @@ class MigrationHelper {
   // for it to happen. Can be called on any thread.
   void Cancel();
 
+  // Converts user_data_auth::DircryptoMigrationStatus (a protobuf enum field
+  // defined in UserDataAuth.proto), to cryptohome::DircryptoMigrationStatus (a
+  // C/C++ enum field defined in dbus-constants.h). This will be removed after
+  // the migratio to the new UserDataAuth dbus interface.
+  static DircryptoMigrationStatus ConvertDircryptoMigrationStatus(
+      user_data_auth::DircryptoMigrationStatus status) {
+    switch (status) {
+      case user_data_auth::DIRCRYPTO_MIGRATION_SUCCESS:
+        return DIRCRYPTO_MIGRATION_SUCCESS;
+      case user_data_auth::DIRCRYPTO_MIGRATION_FAILED:
+        return DIRCRYPTO_MIGRATION_FAILED;
+      case user_data_auth::DIRCRYPTO_MIGRATION_INITIALIZING:
+        return DIRCRYPTO_MIGRATION_INITIALIZING;
+      case user_data_auth::DIRCRYPTO_MIGRATION_IN_PROGRESS:
+        return DIRCRYPTO_MIGRATION_IN_PROGRESS;
+      default:
+        LOG(DFATAL) << "Unknown status in ConvertDircryptoMigrationStatus";
+        return DIRCRYPTO_MIGRATION_FAILED;
+    }
+  }
+
  private:
   FRIEND_TEST(MigrationHelperTest, CopyOwnership);
 
@@ -121,7 +147,7 @@ class MigrationHelper {
   void IncrementMigratedBytes(uint64_t bytes);
   // Call |progress_callback_| with the number of bytes already migrated, the
   // total number of bytes to be migrated, and the migration status.
-  void ReportStatus(DircryptoMigrationStatus status);
+  void ReportStatus(user_data_auth::DircryptoMigrationStatus status);
   // Creates a new directory that is the result of appending |child| to |to|,
   // migrating recursively all contents of the source directory.
   //

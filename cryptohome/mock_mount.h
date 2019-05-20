@@ -37,6 +37,11 @@ class MockMount : public Mount {
   MOCK_CONST_METHOD0(mount_point, const base::FilePath&());
   MOCK_CONST_METHOD1(OwnsMountPoint, bool(const base::FilePath&));
   MOCK_METHOD0(InsertPkcs11Token, bool());
+
+  MOCK_METHOD2(
+      MigrateToDircrypto,
+      bool(const dircrypto_data_migrator::MigrationHelper::ProgressCallback&,
+           MigrationType migration_type));
 };
 }  // namespace cryptohome
 

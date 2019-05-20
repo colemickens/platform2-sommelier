@@ -857,6 +857,11 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
       uint64_t current_bytes,
       uint64_t total_bytes);
 
+  // This is a simple conversion that takes the protobuf version of the progress
+  // callback and forward it to SendDircryptoMigrationProgressSignal() above.
+  virtual void SendDircryptoMigrationProgressSignalProto(
+      const user_data_auth::DircryptoMigrationProgress& progress);
+
   // Listens to the ownership taken signal sent from tpm manager.
   virtual void ConnectOwnershipTakenSignal() = 0;
 

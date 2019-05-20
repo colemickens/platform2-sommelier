@@ -338,6 +338,23 @@ void UserDataAuthAdaptor::StartMigrateToDircrypto(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::StartMigrateToDircryptoReply>> response,
     const user_data_auth::StartMigrateToDircryptoRequest& in_request) {
+  // This will be called whenever there's a status update from the migration.
+  auto status_callback = base::Bind(
+      [](UserDataAuthAdaptor* adaptor,
+         const user_data_auth::DircryptoMigrationProgress& progress) {
+        adaptor->SendDircryptoMigrationProgressSignal(progress);
+      },
+      base::Unretained(this));
+
+  // Kick start the migration process.
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::Bind(&UserDataAuth::StartMigrateToDircrypto,
+                 base::Unretained(service_), in_request, status_callback));
+
+  // This function returns immediately after starting the migration process.
+  // Also, this is always successful. Failure will be notified through the
+  // signal.
   user_data_auth::StartMigrateToDircryptoReply reply;
   response->Return(reply);
 }

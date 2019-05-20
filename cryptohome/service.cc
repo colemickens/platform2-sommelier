@@ -3431,6 +3431,14 @@ gboolean Service::MigrateToDircrypto(const GArray* account_id,
   return TRUE;
 }
 
+void Service::SendDircryptoMigrationProgressSignalProto(
+    const user_data_auth::DircryptoMigrationProgress& progress) {
+  SendDircryptoMigrationProgressSignal(
+      dircrypto_data_migrator::MigrationHelper::ConvertDircryptoMigrationStatus(
+          progress.status()),
+      progress.current_bytes(), progress.total_bytes());
+}
+
 void Service::DoMigrateToDircrypto(
     AccountIdentifier* identifier,
     MigrationType migration_type) {
@@ -3443,7 +3451,7 @@ void Service::DoMigrateToDircrypto(
   }
   LOG(INFO) << "Migrating to dircrypto.";
   if (!mount->MigrateToDircrypto(
-          base::Bind(&Service::SendDircryptoMigrationProgressSignal,
+          base::Bind(&Service::SendDircryptoMigrationProgressSignalProto,
                      base::Unretained(this)),
           migration_type)) {
     LOG(ERROR) << "Failed to migrate.";

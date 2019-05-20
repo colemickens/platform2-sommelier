@@ -292,7 +292,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Call MountCryptohome with to_migrate_from_ecryptfs beforehand.
   // If |migration_type| is MINIMAL, no progress reporting will be done and only
   // whitelisted paths will be migrated.
-  bool MigrateToDircrypto(
+  virtual bool MigrateToDircrypto(
       const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
           callback,
       MigrationType migration_type);

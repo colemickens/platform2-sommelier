@@ -769,6 +769,76 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_OpenLegacy_ShadowOnly) {
   EXPECT_TRUE(userdataauth_.CleanUpStaleMounts(false));
 }
 
+TEST_F(UserDataAuthTest, StartMigrateToDircryptoSanity) {
+  constexpr char kUsername1[] = "foo@gmail.com";
+
+  user_data_auth::StartMigrateToDircryptoRequest request;
+  request.mutable_account_id()->set_account_id(kUsername1);
+  request.set_minimal_migration(false);
+
+  SetupMount(kUsername1);
+
+  EXPECT_CALL(*mount_, MigrateToDircrypto(_, MigrationType::FULL))
+      .WillOnce(Return(true));
+
+  int success_cnt = 0;
+  userdataauth_.StartMigrateToDircrypto(
+      request,
+      base::Bind(
+          [](int* success_cnt_ptr,
+             const user_data_auth::DircryptoMigrationProgress& progress) {
+            EXPECT_EQ(progress.status(),
+                      user_data_auth::DIRCRYPTO_MIGRATION_SUCCESS);
+            (*success_cnt_ptr)++;
+          },
+          base::Unretained(&success_cnt)));
+
+  EXPECT_EQ(success_cnt, 1);
+}
+
+TEST_F(UserDataAuthTest, StartMigrateToDircryptoFailure) {
+  constexpr char kUsername1[] = "foo@gmail.com";
+
+  user_data_auth::StartMigrateToDircryptoRequest request;
+  request.mutable_account_id()->set_account_id(kUsername1);
+  request.set_minimal_migration(false);
+
+  // Test mount non-existent.
+  int call_cnt = 0;
+  userdataauth_.StartMigrateToDircrypto(
+      request,
+      base::Bind(
+          [](int* call_cnt_ptr,
+             const user_data_auth::DircryptoMigrationProgress& progress) {
+            EXPECT_EQ(progress.status(),
+                      user_data_auth::DIRCRYPTO_MIGRATION_FAILED);
+            (*call_cnt_ptr)++;
+          },
+          base::Unretained(&call_cnt)));
+
+  EXPECT_EQ(call_cnt, 1);
+
+  // Test MigrateToDircrypto failed
+  SetupMount(kUsername1);
+
+  EXPECT_CALL(*mount_, MigrateToDircrypto(_, MigrationType::FULL))
+      .WillOnce(Return(false));
+
+  call_cnt = 0;
+  userdataauth_.StartMigrateToDircrypto(
+      request,
+      base::Bind(
+          [](int* call_cnt_ptr,
+             const user_data_auth::DircryptoMigrationProgress& progress) {
+            EXPECT_EQ(progress.status(),
+                      user_data_auth::DIRCRYPTO_MIGRATION_FAILED);
+            (*call_cnt_ptr)++;
+          },
+          base::Unretained(&call_cnt)));
+
+  EXPECT_EQ(call_cnt, 1);
+}
+
 // ==================== Mount and Keys related tests =======================
 
 // A test fixture with some utility functions for testing mount and keys related

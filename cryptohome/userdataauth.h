@@ -76,6 +76,18 @@ class UserDataAuth {
       user_data_auth::MountRequest request,
       base::OnceCallback<void(const user_data_auth::MountReply&)> on_done);
 
+  // Calling this method will kick start the migration to Dircrypto format (from
+  // eCryptfs). |request| contains the account whose cryptohome to migrate, and
+  // what whether minimal migration is to be performed. See definition of
+  // message StartMigrateToDircryptoRequest for more information on minimal
+  // migration. |progress_callback| is a callback that will be called whenever
+  // there's progress update from the migration, or if the migration
+  // completes/fails.
+  void StartMigrateToDircrypto(
+      const user_data_auth::StartMigrateToDircryptoRequest& request,
+      base::Callback<void(const user_data_auth::DircryptoMigrationProgress&)>
+          progress_callback);
+
   // =============== Mount Related Public Utilities ===============
 
   // Called during initialization (and on mount events) to ensure old mounts

@@ -195,6 +195,15 @@ do.
       </arg>
     </method>
 
+    <signal name="DircryptoMigrationProgress">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="status" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::DircryptoMigrationProgress" />
+      </arg>
+    </signal>
+
     <method name="NeedsDircryptoMigration">
       <annotation name="org.chromium.DBus.Method.Kind"
                   value="async"/>

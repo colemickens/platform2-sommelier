@@ -1677,4 +1677,40 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::Rename(
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
+void UserDataAuth::StartMigrateToDircrypto(
+    const user_data_auth::StartMigrateToDircryptoRequest& request,
+    base::Callback<void(const user_data_auth::DircryptoMigrationProgress&)>
+        progress_callback) {
+  AssertOnMountThread();
+
+  MigrationType migration_type = request.minimal_migration()
+                                     ? MigrationType::MINIMAL
+                                     : MigrationType::FULL;
+
+  // Note that total_bytes and current_bytes field in |progress| is discarded by
+  // client whenever |progress.status| is not DIRCRYPTO_MIGRATION_IN_PROGRESS,
+  // this is why they are left with the default value of 0 here. Please see
+  // MigrationHelper::ProgressCallback for more details.
+  user_data_auth::DircryptoMigrationProgress progress;
+
+  scoped_refptr<cryptohome::Mount> mount =
+      GetMountForUser(GetAccountId(request.account_id()));
+  if (!mount.get()) {
+    LOG(ERROR) << "StartMigrateToDircrypto: Failed to get mount.";
+    progress.set_status(user_data_auth::DIRCRYPTO_MIGRATION_FAILED);
+    progress_callback.Run(progress);
+    return;
+  }
+  LOG(INFO) << "StartMigrateToDircrypto: Migrating to dircrypto.";
+  if (!mount->MigrateToDircrypto(progress_callback, migration_type)) {
+    LOG(ERROR) << "StartMigrateToDircrypto: Failed to migrate.";
+    progress.set_status(user_data_auth::DIRCRYPTO_MIGRATION_FAILED);
+    progress_callback.Run(progress);
+    return;
+  }
+  LOG(INFO) << "StartMigrateToDircrypto: Migration done.";
+  progress.set_status(user_data_auth::DIRCRYPTO_MIGRATION_SUCCESS);
+  progress_callback.Run(progress);
+}
+
 }  // namespace cryptohome
