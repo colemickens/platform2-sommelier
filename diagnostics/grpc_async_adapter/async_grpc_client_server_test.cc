@@ -208,6 +208,11 @@ class AsyncGrpcClientServerTest : public ::testing::Test {
     base::RunLoop loop;
     client2_->Shutdown(loop.QuitClosure());
     loop.Run();
+    // Explicitly delete client before server to avoid gRPC 1.6.1 "magic" 10
+    // seconds hangs to delete grpc::CompletionQueue. It affects HeavyRpcData
+    // test only.
+    // TODO(b/132969701): remove when gRPC won't have hangs bug.
+    client2_.reset();
   }
 
   void TearDown() override {
@@ -248,6 +253,11 @@ class AsyncGrpcClientServerTest : public ::testing::Test {
     base::RunLoop loop;
     client_->Shutdown(loop.QuitClosure());
     loop.Run();
+    // Explicitly delete client before server to avoid gRPC 1.6.1 "magic" 10
+    // seconds hangs to delete grpc::CompletionQueue. It affects HeavyRpcData
+    // test only.
+    // TODO(b/132969701): remove when gRPC won't have hangs bug.
+    client_.reset();
   }
 
   base::ScopedTempDir tmpdir_;
