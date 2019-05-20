@@ -5,8 +5,9 @@
 #ifndef SHILL_DATA_TYPES_H_
 #define SHILL_DATA_TYPES_H_
 
+#include <stdint.h>
+
 #include <map>
-#include <memory>
 #include <string>
 #include <vector>
 
