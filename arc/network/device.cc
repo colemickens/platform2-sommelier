@@ -102,13 +102,12 @@ void Device::FillProto(DeviceConfig* msg) {
 }
 
 void Device::Enable(const std::string& ifname) {
-  if (ifname.empty())
-    return;
-
   LOG(INFO) << "Enabling device " << ifname_;
 
   // If operating in legacy single network mode, enable inbound traffic to ARC
   // from the interface.
+  // TODO(b/77293260) Also enable inbound traffic rules specific to the input
+  // physical interface in multinetworking mode.
   if (ifname_ == kAndroidLegacyDevice) {
     LOG(INFO) << "Binding interface " << ifname << " to device " << ifname_;
     legacy_lan_ifname_ = ifname;
@@ -121,26 +120,23 @@ void Device::Enable(const std::string& ifname) {
     }
   }
 
-  // TODO(garrick): Revisit multicast forwarding when NAT rules are enabled
-  // for other devices.
   if (options_.fwd_multicast) {
     mdns_forwarder_.reset(new MulticastForwarder());
-    mdns_forwarder_->Start(config_->host_ifname(), legacy_lan_ifname_,
+    mdns_forwarder_->Start(config_->host_ifname(), ifname,
                            config_->guest_ipv4_addr(), kMdnsMcastAddress,
                            kMdnsPort,
                            /* allow_stateless */ true);
 
     ssdp_forwarder_.reset(new MulticastForwarder());
-    ssdp_forwarder_->Start(config_->host_ifname(), legacy_lan_ifname_,
-                           INADDR_ANY, kSsdpMcastAddress, kSsdpPort,
+    ssdp_forwarder_->Start(config_->host_ifname(), ifname, INADDR_ANY,
+                           kSsdpMcastAddress, kSsdpPort,
                            /* allow_stateless */ false);
   }
 
   if (options_.find_ipv6_routes) {
     router_finder_.reset(new RouterFinder());
     router_finder_->Start(
-        legacy_lan_ifname_,
-        base::Bind(&Device::OnRouteFound, weak_factory_.GetWeakPtr()));
+        ifname, base::Bind(&Device::OnRouteFound, weak_factory_.GetWeakPtr()));
   }
 }
 
@@ -152,9 +148,7 @@ void Device::Disable() {
   ssdp_forwarder_.reset();
   mdns_forwarder_.reset();
 
-  // The rest of this function clears state applicable only when operating in
-  // legacy single network mode.
-  if (msg_sink_.is_null() || ifname_ != kAndroidLegacyDevice)
+  if (msg_sink_.is_null())
     return;
 
   // Clear IPv6 info, if necessary.
@@ -166,6 +160,8 @@ void Device::Disable() {
   }
 
   // Disable inbound traffic.
+  // TODO(b/77293260) Also disable inbound traffic rules in multinetworking
+  // mode.
   if (!legacy_lan_ifname_.empty()) {
     LOG(INFO) << "Unbinding interface " << legacy_lan_ifname_ << " from device "
               << ifname_;
@@ -181,10 +177,12 @@ void Device::Disable() {
 void Device::OnRouteFound(const struct in6_addr& prefix,
                           int prefix_len,
                           const struct in6_addr& router) {
+  const std::string& ifname =
+      legacy_lan_ifname_.empty() ? ifname_ : legacy_lan_ifname_;
+
   if (prefix_len == 64) {
-    LOG(INFO) << "Found IPv6 network on iface " << legacy_lan_ifname_
-              << " route=" << prefix << "/" << prefix_len
-              << ", gateway=" << router;
+    LOG(INFO) << "Found IPv6 network on iface " << ifname << " route=" << prefix
+              << "/" << prefix_len << ", gateway=" << router;
 
     memcpy(&random_address_, &prefix, sizeof(random_address_));
     random_address_prefix_len_ = prefix_len;
@@ -194,14 +192,17 @@ void Device::OnRouteFound(const struct in6_addr& prefix,
 
     neighbor_finder_.reset(new NeighborFinder());
     neighbor_finder_->Check(
-        legacy_lan_ifname_, random_address_,
+        ifname, random_address_,
         base::Bind(&Device::OnNeighborCheckResult, weak_factory_.GetWeakPtr()));
   } else {
-    LOG(INFO) << "No IPv6 connectivity available on " << legacy_lan_ifname_;
+    LOG(INFO) << "No IPv6 connectivity available on " << ifname;
   }
 }
 
 void Device::OnNeighborCheckResult(bool found) {
+  const std::string& ifname =
+      legacy_lan_ifname_.empty() ? ifname_ : legacy_lan_ifname_;
+
   if (found) {
     if (++random_address_tries_ >= kMaxRandomAddressTries) {
       LOG(WARNING) << "Too many IP collisions, giving up.";
@@ -215,7 +216,7 @@ void Device::OnNeighborCheckResult(bool found) {
               << ", retrying with new address " << random_address_;
 
     neighbor_finder_->Check(
-        legacy_lan_ifname_, random_address_,
+        ifname, random_address_,
         base::Bind(&Device::OnNeighborCheckResult, weak_factory_.GetWeakPtr()));
   } else {
     struct in6_addr router;
@@ -227,7 +228,7 @@ void Device::OnNeighborCheckResult(bool found) {
     }
 
     LOG(INFO) << "Setting IPv6 address " << random_address_
-              << "/128, gateway=" << router << " on " << legacy_lan_ifname_;
+              << "/128, gateway=" << router << " on " << ifname;
 
     // Set up new ARC IPv6 address, NDP, and forwarding rules.
     if (!msg_sink_.is_null()) {
@@ -237,10 +238,28 @@ void Device::OnNeighborCheckResult(bool found) {
       setup_msg->set_prefix(&random_address_, sizeof(struct in6_addr));
       setup_msg->set_prefix_len(128);
       setup_msg->set_router(&router, sizeof(struct in6_addr));
-      setup_msg->set_lan_ifname(legacy_lan_ifname_);
+      setup_msg->set_lan_ifname(ifname);
       msg_sink_.Run(msg);
     }
   }
+}
+
+std::ostream& operator<<(std::ostream& stream, const Device& device) {
+  stream << "{ ifname=" << device.ifname_;
+  if (!device.legacy_lan_ifname_.empty())
+    stream << ", legacy_lan_ifname=" << device.legacy_lan_ifname_;
+  stream << ", bridge_ifname=" << device.config_->host_ifname()
+         << ", guest_ifname=" << device.config_->guest_ifname()
+         << ", guest_mac_addr="
+         << MacAddressToString(device.config_->guest_mac_addr())
+         // TODO(hugobenichi): add subnet prefix
+         << ", bridge_ipv4_addr="
+         << IPv4AddressToString(device.config_->host_ipv4_addr())
+         << ", guest_ipv4_addr="
+         << IPv4AddressToString(device.config_->guest_ipv4_addr())
+         << ", fwd_multicast=" << device.options_.fwd_multicast
+         << ", find_ipv6_routes=" << device.options_.find_ipv6_routes << '}';
+  return stream;
 }
 
 }  // namespace arc_networkd

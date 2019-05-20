@@ -93,6 +93,10 @@ bool Manager::OnContainerStart(const struct signalfd_siginfo& info) {
         &Manager::OnDefaultInterfaceChanged, weak_factory_.GetWeakPtr()));
   }
 
+  if (enable_multinet_ && device_mgr_) {
+      device_mgr_->EnableAllDevices();
+  }
+
   // Stay registered.
   return false;
 }
@@ -100,8 +104,13 @@ bool Manager::OnContainerStart(const struct signalfd_siginfo& info) {
 bool Manager::OnContainerStop(const struct signalfd_siginfo& info) {
   if (info.ssi_code == SI_USER) {
     shill_client_->UnregisterDefaultInterfaceChangedHandler();
-    if (device_mgr_)
-      device_mgr_->Disable();
+    if (device_mgr_) {
+      if (enable_multinet_) {
+        device_mgr_->DisableAllDevices();
+      } else {
+        device_mgr_->DisableLegacyDevice();
+      }
+    }
   }
 
   // Stay registered.
@@ -110,8 +119,8 @@ bool Manager::OnContainerStop(const struct signalfd_siginfo& info) {
 
 void Manager::OnDefaultInterfaceChanged(const std::string& ifname) {
   LOG(INFO) << "Default interface changed to " << ifname;
-  if (device_mgr_)
-    device_mgr_->Enable(ifname);
+  if (!enable_multinet_ && device_mgr_)
+    device_mgr_->EnableLegacyDevice(ifname);
 }
 
 void Manager::OnDevicesChanged(const std::set<std::string>& devices) {

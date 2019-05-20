@@ -79,12 +79,38 @@ class DeviceManagerTest : public testing::Test {
 
 }  // namespace
 
-TEST_F(DeviceManagerTest, MakeDevice) {
+TEST_F(DeviceManagerTest, MakeEthernetDevice) {
   auto mgr = NewManager();
   DeviceConfig msg;
   mgr->MakeDevice("eth0")->FillProto(&msg);
   EXPECT_EQ(msg.br_ifname(), "arc_eth0");
   EXPECT_EQ(msg.arc_ifname(), "eth0");
+  EXPECT_EQ(msg.br_ipv4(), "100.115.92.9");
+  EXPECT_EQ(msg.arc_ipv4(), "100.115.92.10");
+  EXPECT_FALSE(msg.mac_addr().empty());
+  EXPECT_TRUE(msg.fwd_multicast());
+  EXPECT_TRUE(msg.find_ipv6_routes());
+}
+
+TEST_F(DeviceManagerTest, MakeWifiDevice) {
+  auto mgr = NewManager();
+  DeviceConfig msg;
+  mgr->MakeDevice("wlan0")->FillProto(&msg);
+  EXPECT_EQ(msg.br_ifname(), "arc_wlan0");
+  EXPECT_EQ(msg.arc_ifname(), "wlan0");
+  EXPECT_EQ(msg.br_ipv4(), "100.115.92.9");
+  EXPECT_EQ(msg.arc_ipv4(), "100.115.92.10");
+  EXPECT_FALSE(msg.mac_addr().empty());
+  EXPECT_TRUE(msg.fwd_multicast());
+  EXPECT_TRUE(msg.find_ipv6_routes());
+}
+
+TEST_F(DeviceManagerTest, MakeCellularDevice) {
+  auto mgr = NewManager();
+  DeviceConfig msg;
+  mgr->MakeDevice("wwan0")->FillProto(&msg);
+  EXPECT_EQ(msg.br_ifname(), "arc_wwan0");
+  EXPECT_EQ(msg.arc_ifname(), "wwan0");
   EXPECT_EQ(msg.br_ipv4(), "100.115.92.9");
   EXPECT_EQ(msg.arc_ipv4(), "100.115.92.10");
   EXPECT_FALSE(msg.mac_addr().empty());
@@ -197,29 +223,29 @@ TEST_F(DeviceManagerTest, ResetRemovesExistingDevices) {
   EXPECT_FALSE(mgr->Add("wlan0"));
 }
 
-TEST_F(DeviceManagerTest, EnableDoesNothing_Multinet) {
+TEST_F(DeviceManagerTest, EnableLegacyDeviceDoesNothing_Multinet) {
   auto mgr = NewManager(kAndroidDevice);
-  EXPECT_FALSE(mgr->Enable("eth0"));
+  EXPECT_FALSE(mgr->EnableLegacyDevice("eth0"));
 }
 
-TEST_F(DeviceManagerTest, DisableDoesNothing_Multinet) {
+TEST_F(DeviceManagerTest, DisableLegacyDeviceDoesNothing_Multinet) {
   auto mgr = NewManager(kAndroidDevice);
-  EXPECT_FALSE(mgr->Enable("eth0"));
-  EXPECT_FALSE(mgr->Disable());
+  EXPECT_FALSE(mgr->EnableLegacyDevice("eth0"));
+  EXPECT_FALSE(mgr->DisableLegacyDevice());
 }
 
-TEST_F(DeviceManagerTest, Enable_MultinetDisabled) {
+TEST_F(DeviceManagerTest, EnableLegacyDevice_MultinetDisabled) {
   auto mgr = NewManager(kAndroidLegacyDevice);
   // Need to use an empty interface here so that Device::Enable does not
   // proceed since it will crash during testing while trying to set up
   // IPv6 route finding.
-  EXPECT_TRUE(mgr->Enable(""));
+  EXPECT_TRUE(mgr->EnableLegacyDevice(""));
 }
 
 TEST_F(DeviceManagerTest, CanDisableLegacyAndroidDevice_MultinetDisabled) {
   auto mgr = NewManager(kAndroidLegacyDevice);
-  EXPECT_TRUE(mgr->Enable(""));
-  EXPECT_TRUE(mgr->Disable());
+  EXPECT_TRUE(mgr->EnableLegacyDevice(""));
+  EXPECT_TRUE(mgr->DisableLegacyDevice());
 }
 
 }  // namespace arc_networkd

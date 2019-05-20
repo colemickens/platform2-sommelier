@@ -12,6 +12,23 @@
 namespace {
 constexpr const char kVpnInterfaceHostPattern[] = "tun";
 constexpr const char kVpnInterfaceGuestPrefix[] = "cros_";
+constexpr const char kEthernetInterfacePrefix[] = "eth";
+constexpr const char kWifiInterfacePrefix[] = "wlan";
+
+bool IsHostVpnInterface(const std::string& ifname) {
+  return base::StartsWith(ifname, kVpnInterfaceHostPattern,
+                          base::CompareCase::INSENSITIVE_ASCII);
+}
+
+bool IsEthernetInterface(const std::string& ifname) {
+  return base::StartsWith(ifname, kEthernetInterfacePrefix,
+                          base::CompareCase::INSENSITIVE_ASCII);
+}
+
+bool IsWifiInterface(const std::string& ifname) {
+  return base::StartsWith(ifname, kWifiInterfacePrefix,
+                          base::CompareCase::INSENSITIVE_ASCII);
+}
 }  // namespace
 
 namespace arc_networkd {
@@ -51,12 +68,12 @@ bool DeviceManager::Add(const std::string& name) {
   if (!device)
     return false;
 
-  LOG(INFO) << "Adding device " << name;
+  LOG(INFO) << "Adding device " << *device;
   devices_.emplace(name, std::move(device));
   return true;
 }
 
-bool DeviceManager::Enable(const std::string& ifname) {
+bool DeviceManager::EnableLegacyDevice(const std::string& ifname) {
   const auto it = devices_.find(kAndroidLegacyDevice);
   if (it == devices_.end()) {
     LOG(WARNING) << "Enable not supported in multinetworking mode";
@@ -69,8 +86,26 @@ bool DeviceManager::Enable(const std::string& ifname) {
   return true;
 }
 
-bool DeviceManager::Disable() {
-  return Enable("");
+bool DeviceManager::DisableLegacyDevice() {
+  return EnableLegacyDevice("");
+}
+
+void DeviceManager::EnableAllDevices() {
+  for (auto const& kv : devices_) {
+    if (kv.first == kAndroidDevice) {
+      continue;
+    }
+    kv.second->Enable(kv.first);
+  }
+}
+
+void DeviceManager::DisableAllDevices() {
+  for (auto const& kv : devices_) {
+    if (kv.first == kAndroidDevice) {
+      continue;
+    }
+    kv.second->Disable();
+  }
 }
 
 std::unique_ptr<Device> DeviceManager::MakeDevice(
@@ -81,8 +116,6 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
   std::string host_ifname, guest_ifname;
   AddressManager::Guest guest = AddressManager::Guest::ARC;
 
-  // TODO(garrick): Multicast forwarding should be only on for Ethernet and
-  // Wifi.
   if (name == kAndroidLegacyDevice) {
     host_ifname = "arcbr0";
     guest_ifname = "arc0";
@@ -102,12 +135,15 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
     // ARC network namespace. This additional naming convention is not known to
     // Chrome and ARC has to fix names in ArcNetworkBridge.java when receiving
     // NetworkConfiguration mojo objects from Chrome.
-    if (base::StartsWith(guest_ifname, kVpnInterfaceHostPattern,
-                         base::CompareCase::INSENSITIVE_ASCII)) {
+    if (IsHostVpnInterface(guest_ifname)) {
       guest_ifname = kVpnInterfaceGuestPrefix + guest_ifname;
     }
-    opts.find_ipv6_routes = false;
-    opts.fwd_multicast = false;
+    // TODO(crbug/726815) Also enable |find_ipv6_routes| for cellular networks
+    // once IPv6 is enabled on cellular networks in shill.
+    opts.find_ipv6_routes =
+        IsEthernetInterface(guest_ifname) || IsWifiInterface(guest_ifname);
+    opts.fwd_multicast =
+        IsEthernetInterface(guest_ifname) || IsWifiInterface(guest_ifname);
   }
 
   auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(guest);

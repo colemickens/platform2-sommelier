@@ -55,6 +55,8 @@ class Device {
     uint32_t host_ipv4_addr() const { return host_ipv4_addr_->Address(); }
     uint32_t guest_ipv4_addr() const { return guest_ipv4_addr_->Address(); }
 
+    friend std::ostream& operator<<(std::ostream& stream, const Device& device);
+
    private:
     std::string host_ifname_;
     std::string guest_ifname_;
@@ -85,6 +87,8 @@ class Device {
   // real interfaces (e.g. eth0) to the container.
   void Enable(const std::string& ifname);
   void Disable();
+
+  friend std::ostream& operator<<(std::ostream& stream, const Device& device);
 
  private:
   // Callback from RouterFinder.  May be triggered multiple times, e.g.

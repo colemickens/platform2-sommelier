@@ -36,8 +36,13 @@ class DeviceManager {
 
   // Enable/disable traffic to the legacy Android device.
   // These calls do nothing if multinetworking is enabled.
-  bool Enable(const std::string& ifname);
-  bool Disable();
+  bool EnableLegacyDevice(const std::string& ifname);
+  bool DisableLegacyDevice();
+
+  // Enable/disable traffic for all physical devices.
+  // These calls do nothing if multinetworking is disabled.
+  void EnableAllDevices();
+  void DisableAllDevices();
 
   // Returns a new fully configured device.
   // Note this is public mainly for testing and should not be called directly.
