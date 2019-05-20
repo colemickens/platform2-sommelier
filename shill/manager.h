@@ -581,16 +581,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(VPNProviderTest, SetDefaultRoutingPolicy);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskFT);
 
-  struct DeviceClaim {
-    DeviceClaim() = default;
-    DeviceClaim(const std::string& in_device_name,
-                const ResultCallback& in_result_callback)
-        : device_name(in_device_name),
-          result_callback(in_result_callback) {}
-    std::string device_name;
-    ResultCallback result_callback;
-  };
-
   void ApplyPolicies();
   void AutoConnect();
   std::vector<std::string> AvailableTechnologies(Error* error);
