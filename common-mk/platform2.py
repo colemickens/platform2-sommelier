@@ -74,7 +74,6 @@ _IUSE = [
     'wake_on_wifi',
     'wifi',
     'wired_8021x',
-    'workaround_crbug_909793',
 ]
 
 
