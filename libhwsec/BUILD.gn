@@ -1,0 +1,50 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":libhwsec",
+  ]
+  if (use.test) {
+    deps += [ ":hwsec_test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "openssl",
+  ]
+}
+
+shared_library("libhwsec") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    # "task_dispatching_framework.cc",
+  ]
+}
+
+if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+
+  executable("hwsec_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    sources = [
+      "task_dispatching_framework_test.cc",
+    ]
+    deps = [
+      ":libhwsec",
+      "//common-mk/testrunner",
+    ]
+  }
+}
