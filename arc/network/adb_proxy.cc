@@ -4,6 +4,7 @@
 
 #include "arc/network/adb_proxy.h"
 
+#include <linux/vm_sockets.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 
@@ -18,6 +19,10 @@ namespace arc_networkd {
 namespace {
 constexpr uint16_t kTcpPort = 5555;
 constexpr uint32_t kTcpAddr = 0x64735C02;  // 100.115.92.2
+constexpr uint32_t kVsockPort = 5555;
+// Reference: (./src/private-overlays/project-cheets-private/
+// chromeos-base/android-vm-pi/files/run-arcvm)
+constexpr uint32_t kVsockCid = 5;
 constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_RAW);
 constexpr char kUnprivilegedUser[] = "arc-networkd";
 constexpr int kMaxConn = 16;
@@ -98,15 +103,27 @@ void AdbProxy::OnFileCanReadWithoutBlocking(int fd) {
 }
 
 std::unique_ptr<Socket> AdbProxy::Connect() const {
-  // TODO(garrick): Add others.
+  // Try to connect with VSOCK.
+  struct sockaddr_vm addr_vm;
+  addr_vm.svm_family = AF_VSOCK;
+  addr_vm.svm_port = kVsockPort;
+  addr_vm.svm_cid = kVsockCid;
+
+  auto dst = std::make_unique<Socket>(AF_VSOCK, SOCK_STREAM);
+  if (dst->Connect((const struct sockaddr*)&addr_vm))
+    return dst;
+
+  // Try to connect with TCP IPv4.
   struct sockaddr_in addr_in;
   addr_in.sin_family = AF_INET;
   addr_in.sin_port = htons(kTcpPort);
   addr_in.sin_addr.s_addr = htonl(kTcpAddr);
 
-  auto dst = std::make_unique<Socket>(AF_INET, SOCK_STREAM);
-  return dst->Connect((const struct sockaddr*)&addr_in) ? std::move(dst)
-                                                        : nullptr;
+  dst = std::make_unique<Socket>(AF_INET, SOCK_STREAM);
+  if (dst->Connect((const struct sockaddr*)&addr_in))
+    return dst;
+
+  return nullptr;
 }
 
 bool AdbProxy::OnSignal(const struct signalfd_siginfo& info) {
