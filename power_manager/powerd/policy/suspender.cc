@@ -504,21 +504,9 @@ void Suspender::FinishRequest(bool success) {
 }
 
 Suspender::State Suspender::Suspend() {
-  system::DarkResumeInterface::Action action =
-      dark_resume_->GetActionForSuspendAttempt();
-
-  switch (action) {
-    case system::DarkResumeInterface::Action::SHUT_DOWN:
-      LOG(INFO) << "Shutting down from dark resume";
-      // Don't call FinishRequest(); we want the backlight to stay off.
-      delegate_->ShutDownForDarkResume();
-      return State::SHUTTING_DOWN;
-    case system::DarkResumeInterface::Action::SUSPEND:
-      if (suspend_duration_ != base::TimeDelta()) {
-        LOG(INFO) << "Suspending for " << suspend_duration_.InSeconds()
-                  << " seconds";
-      }
-      break;
+  if (suspend_duration_ != base::TimeDelta()) {
+    LOG(INFO) << "Suspending for " << suspend_duration_.InSeconds()
+              << " seconds";
   }
 
   // Note: If this log message is changed, the power_AudioDetector test

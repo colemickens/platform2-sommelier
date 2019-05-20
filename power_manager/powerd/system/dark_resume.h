@@ -30,7 +30,6 @@ class DarkResume : public DarkResumeInterface {
   // DarkResumeInterface implementation:
   void PrepareForSuspendRequest() override;
   void UndoPrepareForSuspendRequest() override;
-  Action GetActionForSuspendAttempt() override;
   void HandleSuccessfulResume() override;
   bool InDarkResume() override;
   bool IsEnabled() override;

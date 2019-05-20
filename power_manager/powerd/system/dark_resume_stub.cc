@@ -7,18 +7,13 @@
 namespace power_manager {
 namespace system {
 
-DarkResumeStub::DarkResumeStub()
-    : action_(Action::SUSPEND), in_dark_resume_(false), enabled_(false) {}
+DarkResumeStub::DarkResumeStub() {}
 
 DarkResumeStub::~DarkResumeStub() {}
 
 void DarkResumeStub::PrepareForSuspendRequest() {}
 
 void DarkResumeStub::UndoPrepareForSuspendRequest() {}
-
-DarkResumeInterface::Action DarkResumeStub::GetActionForSuspendAttempt() {
-  return action_;
-}
 
 void DarkResumeStub::HandleSuccessfulResume() {}
 

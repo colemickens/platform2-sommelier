@@ -258,10 +258,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     return std::move(passed_sar_watcher_);
   }
   std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
-      system::PowerSupplyInterface* power_supply,
       PrefsInterface* prefs,
       system::InputWatcherInterface* input_watcher) override {
-    EXPECT_EQ(power_supply_, power_supply);
     EXPECT_EQ(prefs_, prefs);
     return std::move(passed_dark_resume_);
   }

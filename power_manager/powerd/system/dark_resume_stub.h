@@ -20,7 +20,6 @@ class DarkResumeStub : public DarkResumeInterface {
   DarkResumeStub();
   ~DarkResumeStub() override;
 
-  void set_action(Action action) { action_ = action; }
   void set_in_dark_resume(bool in_dark_resume) {
     in_dark_resume_ = in_dark_resume;
   }
@@ -29,7 +28,6 @@ class DarkResumeStub : public DarkResumeInterface {
   // DarkResumeInterface implementation:
   void PrepareForSuspendRequest() override;
   void UndoPrepareForSuspendRequest() override;
-  Action GetActionForSuspendAttempt() override;
   void HandleSuccessfulResume() override;
   bool InDarkResume() override;
   bool IsEnabled() override;
@@ -37,9 +35,8 @@ class DarkResumeStub : public DarkResumeInterface {
 
  private:
   // Values to return.
-  Action action_;
-  bool in_dark_resume_;
-  bool enabled_;
+  bool in_dark_resume_ = false;
+  bool enabled_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(DarkResumeStub);
 };

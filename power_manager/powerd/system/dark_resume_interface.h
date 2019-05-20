@@ -16,13 +16,6 @@ namespace system {
 // without user interaction to display notifications, or to show alarms.
 class DarkResumeInterface {
  public:
-  enum class Action {
-    // Suspend the system.
-    SUSPEND = 0,
-    // Shut the system down immediately.
-    SHUT_DOWN,
-  };
-
   DarkResumeInterface() {}
   virtual ~DarkResumeInterface() {}
 
@@ -31,12 +24,6 @@ class DarkResumeInterface {
   // counts after resume to identify the wake source.
   virtual void PrepareForSuspendRequest() = 0;
   virtual void UndoPrepareForSuspendRequest() = 0;
-
-  // Returns the action that should actually be performed in response to an
-  // decision to attempt to suspend or resuspend the device. We will typically
-  // suspend in this case, but we may sometimes choose to perform other actions
-  // (e.g. shutting down if the device has been suspended for a long time).
-  virtual Action GetActionForSuspendAttempt() = 0;
 
   // Reads the system state to see if it's in a dark resume.
   virtual void HandleSuccessfulResume() = 0;

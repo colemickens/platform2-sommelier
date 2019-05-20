@@ -39,10 +39,6 @@ void DarkResume::UndoPrepareForSuspendRequest() {
   in_dark_resume_ = false;
 }
 
-DarkResumeInterface::Action DarkResume::GetActionForSuspendAttempt() {
-  return DarkResumeInterface::Action::SUSPEND;
-}
-
 void DarkResume::HandleSuccessfulResume() {
   in_dark_resume_ = false;
 
