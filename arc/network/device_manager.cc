@@ -12,7 +12,7 @@
 namespace {
 constexpr const char kVpnInterfaceHostPattern[] = "tun";
 constexpr const char kVpnInterfaceGuestPrefix[] = "cros_";
-}
+}  // namespace
 
 namespace arc_networkd {
 

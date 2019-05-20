@@ -26,9 +26,7 @@ class FakeShillClient : public ShillClient {
  public:
   explicit FakeShillClient(scoped_refptr<dbus::Bus> bus) : ShillClient(bus) {}
 
-  std::string GetDefaultInterface() override {
-    return fake_default_ifname_;
-  }
+  std::string GetDefaultInterface() override { return fake_default_ifname_; }
 
   void SetFakeDefaultInterface(const std::string& ifname) {
     fake_default_ifname_ = ifname;
@@ -114,24 +112,24 @@ TEST_F(ShillClientTest,
        DefaultInterfaceChangedHandlerCalledOnNewDefaultInterface) {
   client_->SetFakeDefaultInterface("eth0");
   client_->NotifyManagerPropertyChange(shill::kDefaultServiceProperty,
-                                   brillo::Any() /* ignored */);
+                                       brillo::Any() /* ignored */);
   EXPECT_EQ(default_ifname_, "eth0");
 
   client_->SetFakeDefaultInterface("wlan0");
   client_->NotifyManagerPropertyChange(shill::kDefaultServiceProperty,
-                                   brillo::Any() /* ignored */);
+                                       brillo::Any() /* ignored */);
   EXPECT_EQ(default_ifname_, "wlan0");
 }
 
 TEST_F(ShillClientTest, DefaultInterfaceChangedHandlerNotCalledForSameDefault) {
   client_->SetFakeDefaultInterface("eth0");
   client_->NotifyManagerPropertyChange(shill::kDefaultServiceProperty,
-                                   brillo::Any() /* ignored */);
+                                       brillo::Any() /* ignored */);
   EXPECT_EQ(default_ifname_, "eth0");
 
   default_ifname_.clear();
   client_->NotifyManagerPropertyChange(shill::kDefaultServiceProperty,
-                                   brillo::Any() /* ignored */);
+                                       brillo::Any() /* ignored */);
   // Implies the callback was not run the second time.
   EXPECT_EQ(default_ifname_, "");
 }
@@ -155,14 +153,14 @@ TEST_F(ShillClientTest, DefaultInterfaceFallbackUsingDevices) {
   // The second device becomes the default interface.
   client_->SetFakeDefaultInterface("eth0");
   client_->NotifyManagerPropertyChange(shill::kDefaultServiceProperty,
-                                   brillo::Any() /* ignored */);
+                                       brillo::Any() /* ignored */);
   // The real default interface is preferred over the fallback interface.
   EXPECT_EQ(default_ifname_, "eth0");
 
   // The system loses the default interface.
   client_->SetFakeDefaultInterface("");
   client_->NotifyManagerPropertyChange(shill::kDefaultServiceProperty,
-                                   brillo::Any() /* ignored */);
+                                       brillo::Any() /* ignored */);
   // The fallback interface is used instead.
   EXPECT_EQ(default_ifname_, "wlan0");
 

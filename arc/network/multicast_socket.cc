@@ -30,8 +30,8 @@ bool MulticastSocket::Bind(const std::string& ifname,
 
   base::ScopedFD fd(socket(AF_INET, SOCK_DGRAM, 0));
   if (!fd.is_valid()) {
-    PLOG(ERROR) << "socket() failed for multicast forwarder on "
-        << ifname << " for " << mcast_addr << ":" << port;
+    PLOG(ERROR) << "socket() failed for multicast forwarder on " << ifname
+                << " for " << mcast_addr << ":" << port;
     return false;
   }
 
@@ -43,8 +43,8 @@ bool MulticastSocket::Bind(const std::string& ifname,
   memset(&ifr, 0, sizeof(ifr));
   strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
   if (ioctl(fd.get(), SIOCGIFADDR, &ifr) < 0) {
-    PLOG(ERROR) << "SIOCGIFADDR failed for multicast forwarder on "
-        << ifname << " for " << mcast_addr << ":" << port;
+    PLOG(ERROR) << "SIOCGIFADDR failed for multicast forwarder on " << ifname
+                << " for " << mcast_addr << ":" << port;
     return false;
   }
 
@@ -54,7 +54,7 @@ bool MulticastSocket::Bind(const std::string& ifname,
 
   if (setsockopt(fd.get(), SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr))) {
     PLOG(ERROR) << "setsockopt(SOL_SOCKET) failed for multicast forwarder on "
-        << ifname << " for " << mcast_addr << ":" << port;
+                << ifname << " for " << mcast_addr << ":" << port;
     return false;
   }
 
@@ -97,7 +97,7 @@ bool MulticastSocket::Bind(const std::string& ifname,
   int on = 1;
   if (setsockopt(fd.get(), SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
     PLOG(ERROR) << "setsockopt(SO_REUSEADDR) failed for multicast forwarder on "
-        << ifname << " for " << mcast_addr << ":" << port;
+                << ifname << " for " << mcast_addr << ":" << port;
     return false;
   }
 
@@ -107,7 +107,7 @@ bool MulticastSocket::Bind(const std::string& ifname,
   if (bind(fd.get(), (const struct sockaddr*)&bind_addr, sizeof(bind_addr)) <
       0) {
     PLOG(ERROR) << "bind(" << port << ") failed for multicast forwarder on "
-        << ifname << " for " << mcast_addr << ":" << port;
+                << ifname << " for " << mcast_addr << ":" << port;
     return false;
   }
 

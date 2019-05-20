@@ -19,11 +19,11 @@ namespace {
 // not been conclusive yet (Ready, NoConnectivity).
 bool IsConnectedState(const std::string& connection_state) {
   return connection_state == shill::kStateOnline ||
-      connection_state == shill::kStateReady ||
-      connection_state == shill::kStatePortal ||
-      connection_state == shill::kStateNoConnectivity ||
-      connection_state == shill::kStateRedirectFound ||
-      connection_state == shill::kStatePortalSuspected;
+         connection_state == shill::kStateReady ||
+         connection_state == shill::kStatePortal ||
+         connection_state == shill::kStateNoConnectivity ||
+         connection_state == shill::kStateRedirectFound ||
+         connection_state == shill::kStatePortalSuspected;
 }
 
 std::set<std::string> GetDevices(const brillo::Any& property_value) {
@@ -154,16 +154,15 @@ void ShillClient::OnManagerPropertyChange(const std::string& property_name,
 
     // Choose a fallback interface when any network device exist. Update the
     // fallback interface if it that device does not exist anymore.
-    if (!devices_.empty()
-        && devices_.find(fallback_default_interface_) == devices_.end()) {
+    if (!devices_.empty() &&
+        devices_.find(fallback_default_interface_) == devices_.end()) {
       fallback_default_interface_ = *devices_.begin();
       // When the system appears to have no default interface, use the fallback
       // interface instead.
-      if (default_interface_.empty()
-          || default_interface_ != fallback_default_interface_)
+      if (default_interface_.empty() ||
+          default_interface_ != fallback_default_interface_)
         SetDefaultInterface(fallback_default_interface_);
     }
-
 
     // Remove the fallback interface when no network device is managed by shill.
     if (!fallback_default_interface_.empty() && devices_.empty()) {
