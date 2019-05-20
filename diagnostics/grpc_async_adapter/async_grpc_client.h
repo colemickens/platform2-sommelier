@@ -45,6 +45,9 @@ class AsyncGrpcClientBase {
  protected:
   GrpcCompletionQueueDispatcher* dispatcher() { return &dispatcher_; }
 
+  static std::shared_ptr<grpc::Channel> CreateGrpcChannel(
+      const std::string& target_uri);
+
  private:
   grpc::CompletionQueue completion_queue_;
   GrpcCompletionQueueDispatcher dispatcher_;
@@ -76,9 +79,7 @@ class AsyncGrpcClient final : public internal::AsyncGrpcClientBase {
   AsyncGrpcClient(scoped_refptr<base::SequencedTaskRunner> task_runner,
                   const std::string& target_uri)
       : AsyncGrpcClientBase(task_runner) {
-    std::shared_ptr<grpc::Channel> grpc_channel =
-        grpc::CreateChannel(target_uri, grpc::InsecureChannelCredentials());
-    stub_ = ServiceType::NewStub(grpc_channel);
+    stub_ = ServiceType::NewStub(CreateGrpcChannel(target_uri));
   }
 
   ~AsyncGrpcClient() override = default;

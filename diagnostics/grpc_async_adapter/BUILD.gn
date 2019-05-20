@@ -18,6 +18,7 @@ static_library("libgrpc_async_adapter") {
   libs = [ "gpr" ]
   sources = [
     "async_grpc_client.cc",
+    "async_grpc_constants.cc",
     "async_grpc_server.cc",
     "grpc_completion_queue_dispatcher.cc",
     "rpc_state.cc",

@@ -4,6 +4,8 @@
 
 #include "diagnostics/grpc_async_adapter/async_grpc_client.h"
 
+#include "diagnostics/grpc_async_adapter/async_grpc_constants.h"
+
 namespace diagnostics {
 namespace internal {
 
@@ -17,6 +19,16 @@ AsyncGrpcClientBase::~AsyncGrpcClientBase() = default;
 
 void AsyncGrpcClientBase::Shutdown(const base::Closure& on_shutdown) {
   dispatcher_.Shutdown(on_shutdown);
+}
+
+// static
+std::shared_ptr<grpc::Channel> AsyncGrpcClientBase::CreateGrpcChannel(
+    const std::string& target_uri) {
+  grpc::ChannelArguments arguments;
+  arguments.SetMaxSendMessageSize(kMaxGrpcMessageSize);
+  arguments.SetMaxReceiveMessageSize(kMaxGrpcMessageSize);
+  return grpc::CreateCustomChannel(
+      target_uri, grpc::InsecureChannelCredentials(), arguments);
 }
 
 }  // namespace internal

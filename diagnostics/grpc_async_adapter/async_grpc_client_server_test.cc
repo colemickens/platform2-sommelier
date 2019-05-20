@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/grpc_async_adapter/async_grpc_client.h"
+#include "diagnostics/grpc_async_adapter/async_grpc_constants.h"
 #include "diagnostics/grpc_async_adapter/async_grpc_server.h"
 #include "test_rpcs.grpc.pb.h"  // NOLINT(build/include)
 
@@ -410,7 +411,10 @@ TEST_F(AsyncGrpcClientServerTest, ManyRpcs) {
 // Test that heavy, but within the acceptable bounds, requests and responses are
 // handled correctly.
 TEST_F(AsyncGrpcClientServerTest, HeavyRpcData) {
-  const int kDataSize = 3 * 1024 * 1024;
+  // kDataSize must be close to kMaxGrpcMessageSize, but also takes
+  // into account protobuf/gRPC size overhead.
+  const int kDataSize = kMaxGrpcMessageSize - 100;
+  ASSERT_GE(kDataSize, 0);
   const std::string kData(kDataSize, '\1');
 
   RpcReply<test_rpcs::HeavyRpcResponse> rpc_reply;
@@ -434,7 +438,7 @@ TEST_F(AsyncGrpcClientServerTest, HeavyRpcData) {
 
 // Test than an excessively big request gets rejected.
 TEST_F(AsyncGrpcClientServerTest, ExcessivelyBigRpcRequest) {
-  const int kDataSize = 5 * 1024 * 1024;
+  const int kDataSize = kMaxGrpcMessageSize + 1;
   const std::string kData(kDataSize, '\1');
 
   RpcReply<test_rpcs::HeavyRpcResponse> rpc_reply;
@@ -450,7 +454,7 @@ TEST_F(AsyncGrpcClientServerTest, ExcessivelyBigRpcRequest) {
 // Test than an excessively big response gets rejected and results in the
 // request being resolved with an error.
 TEST_F(AsyncGrpcClientServerTest, ExcessivelyBigRpcResponse) {
-  const int kDataSize = 5 * 1024 * 1024;
+  const int kDataSize = kMaxGrpcMessageSize + 1;
   const std::string kData(kDataSize, '\1');
 
   RpcReply<test_rpcs::HeavyRpcResponse> rpc_reply;

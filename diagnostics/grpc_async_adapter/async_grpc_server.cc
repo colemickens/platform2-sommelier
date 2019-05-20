@@ -6,6 +6,8 @@
 
 #include <base/logging.h>
 
+#include "diagnostics/grpc_async_adapter/async_grpc_constants.h"
+
 namespace diagnostics {
 namespace internal {
 
@@ -23,6 +25,8 @@ bool AsyncGrpcServerBase::Start() {
   state_ = State::kStarted;
 
   grpc::ServerBuilder builder;
+  builder.SetMaxSendMessageSize(kMaxGrpcMessageSize);
+  builder.SetMaxReceiveMessageSize(kMaxGrpcMessageSize);
 
   for (const auto& uri : server_uris_) {
     builder.AddListeningPort(uri, grpc::InsecureServerCredentials());
