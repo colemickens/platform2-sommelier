@@ -55,19 +55,6 @@ class WiFiEndpointTest : public PropertyStoreTest {
   virtual ~WiFiEndpointTest() {}
 
  protected:
-  vector<string> make_string_vector1(const string& str1) {
-    vector<string> strvec;
-    strvec.push_back(str1);
-    return strvec;
-  }
-
-  vector<string> make_string_vector2(const string& str1, const string& str2) {
-    vector<string> strvec;
-    strvec.push_back(str1);
-    strvec.push_back(str2);
-    return strvec;
-  }
-
   KeyValueStore make_key_management_args(
       vector<string> key_management_method_strings) {
     KeyValueStore args;
@@ -88,7 +75,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
     KeyValueStore args;
     vector<string> key_management_method_vector;
     if (!key_management_method.empty()) {
-      key_management_method_vector = make_string_vector1(key_management_method);
+      key_management_method_vector = {key_management_method};
     }
     args.SetKeyValueStore(
         security_protocol,
@@ -231,7 +218,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
 TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAP) {
   set<WiFiEndpoint::KeyManagement> parsed_methods;
   WiFiEndpoint::ParseKeyManagementMethods(
-      make_key_management_args(make_string_vector1("something-eap")),
+      make_key_management_args({"something-eap"}),
       &parsed_methods);
   EXPECT_TRUE(
       base::ContainsKey(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
@@ -242,7 +229,7 @@ TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAP) {
 TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsPSK) {
   set<WiFiEndpoint::KeyManagement> parsed_methods;
   WiFiEndpoint::ParseKeyManagementMethods(
-      make_key_management_args(make_string_vector1("something-psk")),
+      make_key_management_args({"something-psk"}),
       &parsed_methods);
   EXPECT_TRUE(
       base::ContainsKey(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
@@ -253,8 +240,7 @@ TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsPSK) {
 TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK) {
   set<WiFiEndpoint::KeyManagement> parsed_methods;
   WiFiEndpoint::ParseKeyManagementMethods(
-      make_key_management_args(
-          make_string_vector2("something-eap", "something-psk")),
+      make_key_management_args({"something-eap", "something-psk"}),
       &parsed_methods);
   EXPECT_TRUE(
       base::ContainsKey(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
