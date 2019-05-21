@@ -171,6 +171,9 @@ class TpmUtility {
   // |identity|.
   virtual bool CreateIdentity(KeyType key_type,
                               AttestationDatabase::Identity* identity) = 0;
+
+  // Retrieves a hashed representation of DeviceId from the TPM.
+  virtual bool GetRsuDeviceId(std::string* device_id) = 0;
 };
 
 }  // namespace attestation

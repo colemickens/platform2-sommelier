@@ -1947,6 +1947,51 @@ TEST_P(AttestationServiceTest, CreateCertificateRequestSuccess) {
 }
 
 TEST_P(AttestationServiceTest, CreateEnrollmentCertificateRequestSuccess) {
+#if USE_TPM2
+  EXPECT_CALL(mock_tpm_utility_, GetRsuDeviceId(_))
+      .WillRepeatedly(DoAll(SetArgPointee<0>("rsu_device_id"),
+                            Return(true)));
+#endif
+  SetUpIdentity(identity_);
+  SetUpIdentityCertificate(identity_, aca_type_);
+  auto callback = [](const std::string& cert_name,
+                     const base::Closure& quit_closure,
+                     const CreateCertificateRequestReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.has_pca_request());
+    AttestationCertificateRequest pca_request;
+    EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
+    EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
+    EXPECT_EQ(ENTERPRISE_ENROLLMENT_CERTIFICATE, pca_request.profile());
+#if USE_TPM2
+    EXPECT_EQ(3, pca_request.nvram_quotes().size());
+    EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
+    EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
+    EXPECT_FALSE(pca_request.nvram_quotes().at(RSU_DEVICE_ID).has_quote());
+    EXPECT_EQ("rsu_device_id",
+              pca_request.nvram_quotes().at(RSU_DEVICE_ID).quoted_pcr_value());
+#else
+  EXPECT_TRUE(pca_request.nvram_quotes().empty());
+#endif
+    EXPECT_EQ(cert_name, pca_request.identity_credential());
+    quit_closure.Run();
+  };
+  CreateCertificateRequestRequest request;
+  request.set_aca_type(aca_type_);
+  request.set_certificate_profile(ENTERPRISE_ENROLLMENT_CERTIFICATE);
+  request.set_username("user");
+  request.set_request_origin("origin");
+  service_->CreateCertificateRequest(request, base::Bind(callback,
+      GetCertificateName(identity_, aca_type_), QuitClosure()));
+  Run();
+}
+
+TEST_P(AttestationServiceTest,
+       CreateEnrollmentCertificateRequestWithoutRsuDeviceIdSuccess) {
+#if USE_TPM2
+  EXPECT_CALL(mock_tpm_utility_, GetRsuDeviceId(_))
+      .WillRepeatedly(Return(false));
+#endif
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
   auto callback = [](const std::string& cert_name,
@@ -1962,6 +2007,8 @@ TEST_P(AttestationServiceTest, CreateEnrollmentCertificateRequestSuccess) {
     EXPECT_EQ(2, pca_request.nvram_quotes().size());
     EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
     EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
+    EXPECT_EQ(pca_request.nvram_quotes().find(RSU_DEVICE_ID),
+              pca_request.nvram_quotes().cend());
 #else
   EXPECT_TRUE(pca_request.nvram_quotes().empty());
 #endif

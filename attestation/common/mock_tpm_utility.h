@@ -94,6 +94,7 @@ class MockTpmUtility : public TpmUtility {
                bool(const std::string&, std::string*));
   MOCK_METHOD0(RemoveOwnerDependency, bool());
   MOCK_METHOD2(CreateIdentity, bool(KeyType, AttestationDatabase::Identity*));
+  MOCK_METHOD1(GetRsuDeviceId, bool(std::string*));
 };
 
 }  // namespace attestation

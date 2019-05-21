@@ -1224,6 +1224,16 @@ bool AttestationService::CreateCertificateRequestInternal(
         (*request_pb.mutable_nvram_quotes())[index] = found->second;
       }
     }
+    // The RSU Device ID is retrieved each time as it may change over time.
+    // TODO(b/133263401): Provide an attested value through CertifyNV().
+    std::string rsu_device_id;
+    if (tpm_utility_->GetRsuDeviceId(&rsu_device_id)) {
+      Quote quote;
+      quote.set_quoted_pcr_value(rsu_device_id);
+      (*request_pb.mutable_nvram_quotes())[RSU_DEVICE_ID] = quote;
+    } else {
+      LOG(WARNING) << "Could not obtain an RSU Device ID.";
+    }
   }
 
 #endif

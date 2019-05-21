@@ -1285,4 +1285,9 @@ bool TpmUtilityV1::MakeIdentity(std::string* identity_public_key_der,
   return true;
 }
 
+bool TpmUtilityV1::GetRsuDeviceId(std::string* rsu_device_id) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  return false;
+}
+
 }  // namespace attestation

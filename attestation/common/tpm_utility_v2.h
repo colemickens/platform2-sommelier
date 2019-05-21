@@ -99,6 +99,8 @@ class TpmUtilityV2 : public TpmUtility {
   bool CreateIdentity(KeyType key_type,
                       AttestationDatabase::Identity* identity) override;
 
+  bool GetRsuDeviceId(std::string* device_id) override;
+
   // Creates a restricted key of |key_type| for |key_usage|.
   // |public_key_der| is DER encoded which is converted from TPM public key
   // object. |public_key_tpm_format| is a serialized TPMT_PUBLIC.

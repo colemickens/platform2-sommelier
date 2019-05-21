@@ -1125,4 +1125,9 @@ bool TpmUtilityV2::CreateIdentity(KeyType key_type,
   return true;
 }
 
+bool TpmUtilityV2::GetRsuDeviceId(std::string* rsu_device_id) {
+  return trunks_utility_->GetRsuDeviceId(rsu_device_id) ==
+      trunks::TPM_RC_SUCCESS;
+}
+
 }  // namespace attestation

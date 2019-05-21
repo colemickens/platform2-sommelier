@@ -91,6 +91,8 @@ class TpmUtilityV1 : public TpmUtilityCommon {
   bool CreateIdentity(KeyType key_type,
                       AttestationDatabase::Identity* identity) override;
 
+  bool GetRsuDeviceId(std::string* device_id) override;
+
  private:
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle|
   // with its matching TPM object iff the context can be created and a TPM
