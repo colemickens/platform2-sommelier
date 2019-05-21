@@ -121,7 +121,6 @@ class ProfileMockAdaptor : public ProfileAdaptorInterface {
 class RPCTaskMockAdaptor : public RPCTaskAdaptorInterface {
  public:
   static const char kRpcId[];
-  static const char kRpcInterfaceId[];
   static const char kRpcConnId[];
 
   RPCTaskMockAdaptor();
@@ -132,7 +131,6 @@ class RPCTaskMockAdaptor : public RPCTaskAdaptorInterface {
 
  private:
   const std::string rpc_id_;
-  const std::string rpc_interface_id_;
   const std::string rpc_conn_id_;
 };
 
