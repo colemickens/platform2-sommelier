@@ -156,11 +156,10 @@ int passthrough_ftruncate(const char*, off_t size, struct fuse_file_info* fi) {
 }
 
 int passthrough_getattr(const char* path, struct stat* buf) {
-  int check_allowed_result = check_allowed();
-  if (check_allowed_result < 0) {
-    return check_allowed_result;
-  }
   // File owner is overridden by uid/gid options passed to fuse.
+  // Unfortunately, we dont have check_allowed() here because getattr is called
+  // by kernel VFS during fstat (which receives fd). We couldn't prohibit such
+  // fd calls to happen, so we need to relax this.
   return WRAP_FS_CALL(lstat(path, buf));
 }
 
