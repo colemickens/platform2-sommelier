@@ -2,7 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <grp.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include <memory>
 
 #include <vector>
 
@@ -108,6 +113,40 @@ bool DelegateImpl::ProbeKernelModule(const std::string& module) {
 
 bool DelegateImpl::Exists(const base::FilePath& fp) {
   return base::PathExists(fp);
+}
+
+base::Optional<gid_t> DelegateImpl::FindGroupId(const char* group) {
+  size_t len = 1024;
+  const auto max_len = sysconf(_SC_GETGR_R_SIZE_MAX);
+  if (max_len != -1) len = max_len;
+
+  std::unique_ptr<char> buf(new char[len]);
+  struct group result;
+  struct group *resultp;
+
+  int err = getgrnam_r(group, &result, buf.get(), len, &resultp);
+  if (err)
+    return base::nullopt;
+  else
+    return result.gr_gid;
+}
+
+int DelegateImpl::GetPermissions(const base::FilePath& path) {
+  int mode = 0;
+  bool ok = base::GetPosixFilePermissions(path, &mode);
+  if (ok)
+    return mode;
+  return 0;
+}
+
+bool DelegateImpl::SetPermissions(const base::FilePath& path, int mode) {
+  return base::SetPosixFilePermissions(path, mode);
+}
+
+bool DelegateImpl::SetOwnership(const base::FilePath& path,
+                                uid_t user,
+                                gid_t group) {
+  return lchown(path.value().c_str(), user, group) == 0;
 }
 
 }  // namespace mems_setup

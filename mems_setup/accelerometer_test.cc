@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/files/file_util.h>
+
 #include <gtest/gtest.h>
 
 #include "mems_setup/configuration.h"
@@ -21,11 +23,15 @@ namespace mems_setup {
 
 namespace {
 
+static gid_t kChronosGroupId = 666;
+
 class AccelerometerTest : public SensorTestBase {
  public:
   AccelerometerTest()
       : SensorTestBase(
-            "cros-ec-accel", "iio:device1", SensorKind::ACCELEROMETER) {}
+            "cros-ec-accel", "iio:device1", SensorKind::ACCELEROMETER) {
+    mock_delegate_->AddGroup("chronos", kChronosGroupId);
+  }
 };
 
 TEST_F(AccelerometerTest, MissingVpd) {
@@ -119,6 +125,18 @@ TEST_F(AccelerometerTest, MultipleSensorDevice) {
       mock_device_->ReadNumberAttribute("in_accel_y_lid_calibbias").value());
   EXPECT_FALSE(mock_device_->ReadNumberAttribute("in_accel_z_lid_calibbias")
                    .has_value());
+}
+
+TEST_F(AccelerometerTest, TriggerPermissions) {
+  SetSingleSensor("lid");
+  EXPECT_TRUE(GetConfiguration()->Configure());
+
+  base::FilePath trigger_now = mock_trigger0_->GetPath().Append("trigger_now");
+  EXPECT_NE(0, mock_delegate_->GetPermissions(trigger_now) &
+                   base::FILE_PERMISSION_WRITE_BY_GROUP);
+  gid_t gid = 0;
+  mock_delegate_->GetOwnership(trigger_now, nullptr, &gid);
+  EXPECT_EQ(kChronosGroupId, gid);
 }
 
 }  // namespace

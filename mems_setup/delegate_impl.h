@@ -26,6 +26,15 @@ class DelegateImpl : public Delegate {
 
   bool Exists(const base::FilePath&) override;
 
+  base::Optional<gid_t> FindGroupId(const char* group) override;
+
+  int GetPermissions(const base::FilePath& path) override;
+  bool SetPermissions(const base::FilePath& path, int mode) override;
+
+  bool SetOwnership(const base::FilePath& path,
+                    uid_t user,
+                    gid_t group) override;
+
  private:
   void LoadVpdIfNeeded();
 

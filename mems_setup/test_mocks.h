@@ -118,9 +118,26 @@ class MockDelegate : public Delegate {
 
   bool Exists(const base::FilePath&) override;
 
+  base::Optional<gid_t> FindGroupId(const char* group) override;
+
+  int GetPermissions(const base::FilePath& path) override;
+  bool SetPermissions(const base::FilePath& path, int mode) override;
+
+  void AddGroup(const std::string& name, gid_t gid) {
+    groups_.emplace(name, gid);
+  }
+
+  bool GetOwnership(const base::FilePath& path, uid_t* user, gid_t* group);
+  bool SetOwnership(const base::FilePath& path,
+                    uid_t user,
+                    gid_t group) override;
+
  private:
   std::vector<std::string> probed_modules_;
   std::map<std::string, std::string> vpd_;
+  std::map<std::string, gid_t> groups_;
+  std::map<std::string, int> permissions_;
+  std::map<std::string, std::pair<uid_t, gid_t>> ownerships_;
 };
 
 }  // namespace mocks

@@ -29,6 +29,8 @@ class Configuration {
   bool CopyCalibrationBiasFromVpd(int max_value);
   bool CopyCalibrationBiasFromVpd(int max_value, const std::string& location);
 
+  bool AddSysfsTrigger(int trigger_id);
+
   Delegate* delegate_;  // non-owned
   SensorKind kind_;
   IioDevice* sensor_;  // non-owned

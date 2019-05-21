@@ -24,6 +24,15 @@ class Delegate {
 
   virtual bool Exists(const base::FilePath&) = 0;
 
+  virtual base::Optional<gid_t> FindGroupId(const char* group) = 0;
+
+  virtual int GetPermissions(const base::FilePath& path) = 0;
+  virtual bool SetPermissions(const base::FilePath& path, int mode) = 0;
+
+  virtual bool SetOwnership(const base::FilePath& path,
+                            uid_t user,
+                            gid_t group) = 0;
+
  protected:
   Delegate() = default;
 
