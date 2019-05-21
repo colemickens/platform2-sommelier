@@ -1,7 +1,7 @@
-/* Copyright 2018 The Chromium OS Authors. All rights reserved.
- * Use of this source code is governed by a BSD-style license that can be
- * found in the LICENSE file.
- */
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
@@ -21,20 +21,29 @@ enum ExitStatus {
   kFailToParseProbeArgFromConfig = 12,
   kNoPermissionForArbitraryProbeConfig = 13,
 };
+
+// VLOG uses negative log level. This function provides safe coversion from the
+// input |log_level| into the corresponding negative integer.
+int SafeLogLevelConversion(const int log_level) {
+  if (log_level < 0)
+    return 0;
+  if (log_level > 3)
+    return -3;
+  return -log_level;
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
   // Flags are subject to change
   DEFINE_string(config_file_path, "",
                 "File path to probe config, empty to use default one");
-  DEFINE_bool(dbus, false, "Run in the mode to respond DBus call");
-  DEFINE_bool(debug, false, "Output debug message");
-  brillo::FlagHelper::Init(argc, argv, "ChromeOS runtime probe tool");
+  DEFINE_bool(dbus, false, "Run in the mode to respond D-Bus call");
+  DEFINE_int32(verbosity_level, 0, "Set verbosity level. Allowed value: 0 to 3")
+      brillo::FlagHelper::Init(argc, argv, "ChromeOS runtime probe tool");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
 
-  // VLOG uses negative log level. So VLOG(1) used for debugging messgae will
-  // only display if min log_level < 0
-  const int log_level = FLAGS_debug ? -1 : 0;
+  const int log_level = SafeLogLevelConversion(FLAGS_verbosity_level);
   logging::SetMinLogLevel(log_level);
   LOG(INFO) << "Starting Runtime Probe";
 

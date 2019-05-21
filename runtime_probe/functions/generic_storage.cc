@@ -108,14 +108,14 @@ std::vector<base::FilePath> GenericStorageFunction::GetFixedDevices() const {
     const auto storage_removable_path = storage_path.Append("removable");
     std::string removable_res;
     if (!base::ReadFileToString(storage_removable_path, &removable_res)) {
-      VLOG(1) << "Storage device " << storage_path.value()
+      VLOG(2) << "Storage device " << storage_path.value()
               << " does not specify the removable property. Assume removable.";
       continue;
     }
 
     if (base::TrimWhitespaceASCII(removable_res, base::TrimPositions::TRIM_ALL)
             .as_string() != "0") {
-      VLOG(1) << "Storage device " << storage_path.value() << " is removable.";
+      VLOG(2) << "Storage device " << storage_path.value() << " is removable.";
       continue;
     }
 
@@ -134,7 +134,7 @@ std::vector<base::FilePath> GenericStorageFunction::GetFixedDevices() const {
 
 std::string GenericStorageFunction::GetEMMC5FirmwareVersion(
     const base::FilePath& node_path) const {
-  VLOG(1) << "Checking eMMC firmware version of "
+  VLOG(2) << "Checking eMMC firmware version of "
           << node_path.BaseName().value();
 
   std::string ext_csd_res;
@@ -203,7 +203,7 @@ std::string GenericStorageFunction::GetEMMC5FirmwareVersion(
 
   const auto hex_version = brillo::string_utils::JoinRange(
       "", hex_version_components.begin(), hex_version_components.end());
-  VLOG(1) << "eMMC 5.0 firmware version is " << hex_version;
+  VLOG(2) << "eMMC 5.0 firmware version is " << hex_version;
   // Convert each int in raw_version_list to char and concat them
   if (IsPrintable(char_version)) {
     return VersionFormattedString(hex_version, char_version);
@@ -228,7 +228,7 @@ GenericStorageFunction::DataType GenericStorageFunction::Eval() const {
   DataType result{};
 
   for (const auto& node_path : storage_nodes_path_list) {
-    VLOG(1) << "Processnig the node " << node_path.value();
+    VLOG(2) << "Processnig the node " << node_path.value();
     base::DictionaryValue node_res{};
 
     const auto dev_path = node_path.Append("device");
@@ -293,7 +293,7 @@ GenericStorageFunction::DataType GenericStorageFunction::Eval() const {
                            base::Int64ToString(sector_int * kBytesPerSector));
       }
     } else {
-      VLOG(1) << "Storage device " << node_path.value()
+      VLOG(2) << "Storage device " << node_path.value()
               << " does not specify size";
       node_res.SetString("sectors", "-1");
       node_res.SetString("size", "-1");

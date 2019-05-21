@@ -1,7 +1,6 @@
-/* Copyright 2018 The Chromium OS Authors. All rights reserved.
- * Use of this source code is governed by a BSD-style license that can be
- * found in the LICENSE file.
- */
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
 #include <string>
 #include <utility>
@@ -33,7 +32,7 @@ EctoolI2Cread::DataType EctoolI2Cread::Eval() const {
   if (!base::GetAppOutput(ectool_cmd_arg, &ectool_output)) {
     LOG(ERROR) << "Failed to execute command \"ectool i2cread\"";
   } else {
-    VLOG(1) << "ectool i2cread output:\n" << ectool_output;
+    VLOG(2) << "ectool i2cread output:\n" << ectool_output;
     pcrecpp::RE re(kRegexPattern);
     std::string reg_value;
     if (re.PartialMatch(ectool_output, &reg_value)) {

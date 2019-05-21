@@ -28,13 +28,13 @@ namespace {
 
 void DumpProtocolBuffer(const google::protobuf::Message& protobuf,
                         std::string message_name) {
-  VLOG(1) << "---> Protobuf dump of " << message_name;
-  VLOG(1) << "       DebugString():\n\n" << protobuf.DebugString();
+  VLOG(3) << "---> Protobuf dump of " << message_name;
+  VLOG(3) << "       DebugString():\n\n" << protobuf.DebugString();
   std::string json_string;
   google::protobuf::util::JsonPrintOptions options;
   MessageToJsonString(protobuf, &json_string, options);
-  VLOG(1) << "       JSON output:\n\n" << json_string << "\n";
-  VLOG(1) << "<--- Finished Protobuf dump\n";
+  VLOG(3) << "       JSON output:\n\n" << json_string << "\n";
+  VLOG(3) << "<--- Finished Protobuf dump\n";
 }
 
 }  // namespace
@@ -151,14 +151,14 @@ void Daemon::ProbeCategories(
   // TODO(itspeter): Report assigned but not in the probe config's category.
   std::string output_js;
   base::JSONWriter::Write(*probe_result, &output_js);
-  VLOG(1) << "Raw JSON probe result\n" << output_js;
+  VLOG(3) << "Raw JSON probe result\n" << output_js;
 
   // Convert JSON to Protocol Buffer.
   auto options = google::protobuf::util::JsonParseOptions();
   options.ignore_unknown_fields = true;
   auto json_parse_status =
       google::protobuf::util::JsonStringToMessage(output_js, &reply, options);
-  VLOG(1) << "serialize JSON to Protobuf status: " << json_parse_status;
+  VLOG(3) << "serialize JSON to Protobuf status: " << json_parse_status;
 
   return SendProbeResult(reply, method_call, &response_sender);
 }

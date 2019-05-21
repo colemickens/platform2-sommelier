@@ -1,7 +1,6 @@
-/* Copyright 2018 The Chromium OS Authors. All rights reserved.
- * Use of this source code is governed by a BSD-style license that can be
- * found in the LICENSE file.
- */
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
 #include <map>
 #include <memory>
@@ -61,14 +60,13 @@ ReturnCode IntegerFieldConverter::Convert(
     case base::Value::Type::STRING: {
       std::string string_value = value->GetString();
       int int_value;
-      /* base::StringToInt() only returns true on "perfect" conversion,
-       *
-       * That is, if the function returns false, it doesn't mean the conversion
-       * failed, but might due to leading / trailing whitespace or other
-       * characters.
-       *
-       * For now, let's print a warning message and proceed.
-       */
+      // base::StringToInt() only returns true on "perfect" conversion,
+
+      // That is, if the function returns false, it doesn't mean the conversion
+      // failed, but might due to leading / trailing whitespace or other
+      // characters.
+
+      // For now, let's print a warning message and proceed.
       if (!base::StringToInt(string_value, &int_value)) {
         if (int_value == 0) {
           LOG(WARNING) << "'" << string_value << "' is converted to "
@@ -103,14 +101,14 @@ ReturnCode HexFieldConverter::Convert(
     case base::Value::Type::STRING: {
       std::string string_value = value->GetString();
       int int_value;
-      /* base::HexStringToInt() only returns true on "perfect" conversion,
-       *
-       * That is, if the function returns false, it doesn't mean the conversion
-       * failed, but might due to leading / trailing whitespace or other
-       * characters.
-       *
-       * For now, let's print a warning message and proceed.
-       */
+      // base::HexStringToInt() only returns true on "perfect" conversion,
+      //
+      // That is, if the function returns false, it doesn't mean the conversion
+      // failed, but might due to leading / trailing whitespace or other
+      // characters.
+      //
+      // For now, let's print a warning message and proceed.
+
       if (!base::HexStringToInt(string_value, &int_value)) {
         if (int_value == 0) {
           LOG(WARNING) << "'" << string_value << "' is converted to "
@@ -206,9 +204,9 @@ bool ProbeResultChecker::Apply(base::DictionaryValue* probe_result) const {
 
   CHECK(probe_result != nullptr);
 
-  /* Try to convert and valid each required fields.
-   * Any failures will cause the final result be |false|.
-   */
+  // Try to convert and valid each required fields.
+  // Any failures will cause the final result be |false|.
+
   for (const auto& it : required_fields_) {
     if (!probe_result->HasKey(it.first)) {
       LOG(ERROR) << "Missing key: " << it.first;
@@ -230,17 +228,17 @@ bool ProbeResultChecker::Apply(base::DictionaryValue* probe_result) const {
     }
   }
 
-  /* |ProbeStatement| will remove this element from final results, there is no
-   * need to continue.
-   */
+  // |ProbeStatement| will remove this element from final results, there is no
+  //  need to continue.
+
   if (!success) {
-    VLOG(1) << "probe_result = " << *probe_result;
+    VLOG(3) << "probe_result = " << *probe_result;
     return false;
   }
 
-  /* Try to convert and valid each optional fields.
-   * For failures, just remove them from probe_result and continue.
-   */
+  // Try to convert and valid each optional fields.
+  // For failures, just remove them from probe_result and continue.
+
   for (const auto& it : optional_fields_) {
     if (!probe_result->HasKey(it.first))
       continue;
