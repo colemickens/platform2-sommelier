@@ -483,6 +483,13 @@ void OpenVPNDriver::ParseIPConfiguration(
 
   manager()->vpn_provider()->SetDefaultRoutingPolicy(properties);
 
+  // Since we use persist-tun, we expect that a reconnection will use the same
+  // routes *and* that OpenVPN will not re-provide us with all the needed
+  // routing information. Simply re-use the routing information we attained from
+  // the initial connection.
+  if (!properties->routes.empty())
+    return;
+
   // Ignore the route_vpn_gateway parameter as VPNs don't need gateway IPs.
   // This guarantees that we will pass the various sanity checks in
   // connection.cc.
