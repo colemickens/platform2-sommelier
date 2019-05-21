@@ -335,7 +335,6 @@ void MetricsDaemon::Init(bool testing,
   upload_interval_ = upload_interval;
   server_ = server;
   metrics_file_ = metrics_file;
-  status_has_details_ = StatusHasDetails();
 
   // Get ticks per second (HZ) on this system.
   // Sysconf cannot fail, so no sanity checks are needed.
@@ -1003,8 +1002,7 @@ void MetricsDaemon::ReportProcessMemory() {
     static_assert(
         arraysize(kProcessMemoryUMANames[i]) == arraysize(stats.rss_sizes),
         "RSS array size mismatch");
-    AccumulateProcessGroupStats(procfs_path, info.GetGroup(kind),
-                                status_has_details_, &stats);
+    AccumulateProcessGroupStats(procfs_path, info.GetGroup(kind), &stats);
     ReportProcessGroupStats(kProcessMemoryUMANames[i], stats);
   }
 }

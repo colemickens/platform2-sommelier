@@ -37,34 +37,28 @@ void CreateProcEntry(const base::FilePath& procfs_path,
                      int swap_mib) {
   base::FilePath proc_pid_path(
       procfs_path.Append(base::StringPrintf("%d", pid)));
-  base::FilePath status_path(proc_pid_path.Append("status"));
-  base::FilePath statm_path(proc_pid_path.Append("statm"));
+  base::FilePath totmaps_path(proc_pid_path.Append("totmaps"));
   base::FilePath stat_path(proc_pid_path.Append("stat"));
   base::FilePath cmdline_path(proc_pid_path.Append("cmdline"));
   std::string stat_content =
       base::StringPrintf("%d (%s) R %d 33 44 blah blah \n", pid, name, ppid);
   bool is_kdaemon = total_mib == 0;
-  std::string status_content =
+  std::string totmaps_content =
       is_kdaemon ? "blah\nblah\nblah"
                  : base::StringPrintf(
                        "blah\nblah\nblah\n"
-                       "VmRSS:      %d kB\n"
-                       "RssAnon:    %d kB\n"
-                       "RssFile:     %d kB\n"
-                       "RssShmem:    %d kB\n"
-                       "VmSwap:    %d kB\n"
+                       "Pss:         %d kB\n"
+                       "Pss_Anon:    %d kB\n"
+                       "Pss_File:    %d kB\n"
+                       "Pss_Shmem:   %d kB\n"
+                       "blah\nblah\nblah\n"
+                       "Swap:        %d kB\n"
                        "blah\nblah\nblah\n",
                        total_mib * 1024, anon_mib * 1024, file_mib * 1024,
                        shmem_mib * 1024, swap_mib * 1024);
-  // statm fields: size resident shared text lib data dt.  Units: 4k pages.
-  std::string statm_content =
-      is_kdaemon ? "0 0 0 0 0 0 0\n"
-                 : base::StringPrintf("999999 %d %d 5 0 2 0\n", total_mib * 256,
-                                      shmem_mib * 256);
   CHECK(CreateDirectory(proc_pid_path));
   CreateFile(stat_path, stat_content);
-  CreateFile(statm_path, statm_content);
-  CreateFile(status_path, status_content);
+  CreateFile(totmaps_path, totmaps_content);
   CreateFile(cmdline_path, std::string(cmdline));
 }
 
@@ -149,7 +143,7 @@ TEST_F(ProcessMeterTest, ReportProcessStats) {
   for (int i = 0; i < PG_KINDS_COUNT; i++) {
     ProcessMemoryStats stats;
     ProcessGroupKind kind = static_cast<ProcessGroupKind>(i);
-    AccumulateProcessGroupStats(procfs_path, info.GetGroup(kind), true, &stats);
+    AccumulateProcessGroupStats(procfs_path, info.GetGroup(kind), &stats);
     for (int j = 0; j < MEM_KINDS_COUNT; j++) {
       EXPECT_EQ(stats.rss_sizes[j], expected_stats[i].rss_sizes[j]);
     }

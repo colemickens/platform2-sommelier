@@ -154,24 +154,14 @@ class ProcessInfo {
 // 0).  This depends on the kernel version.
 void AccumulateProcessGroupStats(const base::FilePath& procfs_path,
                                  const std::vector<ProcessNode*>& processes,
-                                 bool status_has_details,
                                  ProcessMemoryStats* stats);
 
-// GetMemoryUsageFromStatus fills |stats| with memory usage stats for |pid|.
-// The data is found in /proc/<pid>/status.
-bool GetMemoryUsageFromStatus(const base::FilePath& procfs_path,
-                              int pid,
-                              ProcessMemoryStats* stats);
-
-// GetMemoryUsageFromStatm fills |stats| with memory usage stats for |pid|.
-// The data is found in /proc/<pid>/statm.
-bool GetMemoryUsageFromStatm(const base::FilePath& procfs_path,
-                             int pid,
-                             ProcessMemoryStats* stats);
-
-// StatusHasDetails returns true if the procfs "status" entries of processes
-// contain separate RSS for anon, file and shmem.
-bool StatusHasDetails();
+// GetMemoryUsage fills |stats| with memory usage stats for |pid|.  The data is
+// found in /proc/<pid>/smaps_rollup if |has_smaps_rollup| is true; otherwise in
+// /proc/<pid>/totmaps.
+bool GetMemoryUsage(const base::FilePath& procfs_path,
+                    int pid,
+                    ProcessMemoryStats* stats);
 
 }  // namespace chromeos_metrics
 

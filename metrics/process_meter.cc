@@ -343,13 +343,18 @@ const std::vector<ProcessNode*>& ProcessInfo::GetGroup(
   return groups_[group_kind];
 }
 
-bool GetMemoryUsageFromStatus(const base::FilePath& procfs_path,
-                              int pid,
-                              ProcessMemoryStats* stats) {
+bool GetMemoryUsage(const base::FilePath& procfs_path,
+                    int pid,
+                    ProcessMemoryStats* stats) {
+  static bool has_smaps_rollup =
+      base::PathExists(procfs_path.Append("1/smaps_rollup"));
   std::string file_content;
-  const std::string status_name = base::StringPrintf("%d/status", pid);
-  const base::FilePath status_path = procfs_path.Append(status_name);
-  if (!base::ReadFileToString(status_path, &file_content))
+
+  const std::string file_name = has_smaps_rollup
+                                    ? base::StringPrintf("%d/smaps_rollup", pid)
+                                    : base::StringPrintf("%d/totmaps", pid);
+  const base::FilePath file_path = procfs_path.Append(file_name);
+  if (!base::ReadFileToString(file_path, &file_content))
     return false;
   const std::vector<std::string> lines = base::SplitString(
       file_content, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -357,11 +362,11 @@ bool GetMemoryUsageFromStatus(const base::FilePath& procfs_path,
     const std::string name;
     uint64_t value;
   };
-  std::vector<NameValuePair> pairs = {{"VmRSS:", 0},
-                                      {"RssAnon:", 0},
-                                      {"RssFile:", 0},
-                                      {"RssShmem:", 0},
-                                      {"VmSwap:", 0}};
+  std::vector<NameValuePair> pairs = {{"Pss:", 0},
+                                      {"Pss_Anon:", 0},
+                                      {"Pss_File:", 0},
+                                      {"Pss_Shmem:", 0},
+                                      {"Swap:", 0}};
   int index = 0;
   for (const auto& line : lines) {
     if (base::StartsWith(line, pairs[index].name,
@@ -369,9 +374,9 @@ bool GetMemoryUsageFromStatus(const base::FilePath& procfs_path,
       std::vector<std::string> fields = base::SplitString(
           line, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
       if (fields.size() != 3)
-        LOG(FATAL) << "bad status line: " << line;
+        LOG(FATAL) << "bad rollup line: " << line;
       if (!base::StringToUint64(fields[1], &pairs[index].value))
-        LOG(FATAL) << "bad integer in status line: " << line;
+        LOG(FATAL) << "bad integer in rollup line: " << line;
       index++;
       if (index == pairs.size())
         break;
@@ -379,7 +384,7 @@ bool GetMemoryUsageFromStatus(const base::FilePath& procfs_path,
   }
   if (index < pairs.size() && index != 0) {
     // We expect to find either all fields, or none (for kernel threads).
-    LOG(FATAL) << "found " << index << " fields in /proc/#/status, wanted "
+    LOG(FATAL) << "found " << index << " fields in smaps, wanted "
                << pairs.size() << " or 0";
   }
 
@@ -391,55 +396,13 @@ bool GetMemoryUsageFromStatus(const base::FilePath& procfs_path,
   return true;
 }
 
-bool GetMemoryUsageFromStatm(const base::FilePath& procfs_path,
-                             int pid,
-                             ProcessMemoryStats* stats) {
-  std::string file_content;
-  const std::string statm_name = base::StringPrintf("%d/statm", pid);
-  const base::FilePath statm_path = procfs_path.Append(statm_name);
-  if (!base::ReadFileToString(statm_path, &file_content))
-    return false;
-  // statm fields: size resident shared text lib data dt.  Units: 4k pages.
-  // The "shared" field is actually file pages.
-  std::vector<std::string> fields = base::SplitString(
-      file_content, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  if (fields.size() != 7)
-    LOG(FATAL) << "bad statm content: " << file_content;
-  uint64_t total, file;
-  if (!base::StringToUint64(fields[1], &total))
-    LOG(FATAL) << "bad field 1 in statm: " << file_content;
-  if (!base::StringToUint64(fields[2], &file))
-    LOG(FATAL) << "bad field 2 in statm: " << file_content;
-  if (total < file)
-    LOG(FATAL) << "total < file (" << total << " < " << file << ")";
-  stats->rss_sizes[MEM_TOTAL] = total * kPageSize;
-  stats->rss_sizes[MEM_ANON] = (total - file) * kPageSize;
-  stats->rss_sizes[MEM_FILE] = file * kPageSize;
-  stats->rss_sizes[MEM_SHMEM] = 0;  // unknown
-  stats->rss_sizes[MEM_SWAP] = 0;   // unknown
-  return true;
-}
-
-bool StatusHasDetails() {
-  std::string file_content;
-  const base::FilePath status_path("/proc/1/status");
-  if (!base::ReadFileToString(status_path, &file_content))
-    LOG(FATAL) << "cannot read " << status_path.MaybeAsASCII();
-  return file_content.find("RssShmem") != std::string::npos;
-}
-
 void AccumulateProcessGroupStats(const base::FilePath& procfs_path,
                                  const std::vector<ProcessNode*>& processes,
-                                 bool status_has_details,
                                  ProcessMemoryStats* stats) {
   for (const auto& process : processes) {
     ProcessMemoryStats process_stats;
-    if (status_has_details)
-      GetMemoryUsageFromStatus(procfs_path, process->GetPID(), &process_stats);
-    else
-      GetMemoryUsageFromStatm(procfs_path, process->GetPID(), &process_stats);
-
-    // If GetMemoryUsageFromX fails (which will happen if the process has
+    GetMemoryUsage(procfs_path, process->GetPID(), &process_stats);
+    // If GetMemoryUsage fails (which will happen if the process has
     // exited), process_stats are all 0 and the accumulation is a no-op.
     for (int i = 0; i < MEM_KINDS_COUNT; i++) {
       stats->rss_sizes[i] += process_stats.rss_sizes[i];

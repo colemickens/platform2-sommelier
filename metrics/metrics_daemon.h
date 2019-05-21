@@ -448,10 +448,6 @@ class MetricsDaemon : public brillo::DBusDaemon {
   uint64_t detachable_base_active_time_;
   uint64_t detachable_base_suspended_time_;
 
-  // True when /proc/<pid>/status contains separate RSS for anon, file, and
-  // shmem.
-  bool status_has_details_ = false;
-
   // Persistent values and accumulators for crash statistics.
   std::unique_ptr<PersistentInteger> daily_cycle_;
   std::unique_ptr<PersistentInteger> weekly_cycle_;

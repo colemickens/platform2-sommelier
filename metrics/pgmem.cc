@@ -38,14 +38,12 @@ int PrintProcessGroupStats() {
   info.Collect();
   info.Classify();
 
-  bool use_status = StatusHasDetails();
   std::cout << base::StringPrintf("group     total  anon  file shmem  swap\n");
   const int MiB = 1 << 20;
   for (int i = 0; i < PG_KINDS_COUNT; i++) {
     ProcessMemoryStats stats;
     ProcessGroupKind kind = static_cast<ProcessGroupKind>(i);
-    AccumulateProcessGroupStats(procfs_path, info.GetGroup(kind), use_status,
-                                &stats);
+    AccumulateProcessGroupStats(procfs_path, info.GetGroup(kind), &stats);
     std::cout << base::StringPrintf("%-9s %5" PRIu64 " %5" PRIu64 " %5" PRIu64
                                     " %5" PRIu64 " %5" PRIu64,
                                     kGroupNames[i],
