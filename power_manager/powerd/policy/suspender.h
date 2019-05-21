@@ -148,8 +148,7 @@ class Suspender : public SuspendDelayObserver {
     // Undoes the preparations performed by PrepareToSuspend(). Called by
     // FinishRequest().
     virtual void UndoPrepareToSuspend(bool success,
-                                      int num_suspend_attempts,
-                                      bool canceled_while_in_dark_resume) = 0;
+                                      int num_suspend_attempts) = 0;
 
     // Generates and reports metrics for wakeups in dark resume.
     virtual void GenerateDarkResumeMetrics(

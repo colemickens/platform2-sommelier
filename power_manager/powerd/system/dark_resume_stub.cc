@@ -30,9 +30,5 @@ bool DarkResumeStub::IsEnabled() {
   return enabled_;
 }
 
-bool DarkResumeStub::ExitDarkResume() {
-  return true;
-}
-
 }  // namespace system
 }  // namespace power_manager

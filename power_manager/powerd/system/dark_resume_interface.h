@@ -48,8 +48,7 @@ class DarkResumeInterface {
   virtual bool IsEnabled() = 0;
 
   // Exits dark resume so that the system can transition to fully resumed.
-  // Returns true if the transition was successful.
-  virtual bool ExitDarkResume() = 0;
+  virtual void ExitDarkResume() = 0;
 };
 
 }  // namespace system

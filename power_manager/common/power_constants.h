@@ -337,8 +337,6 @@ enum class ShutdownReason {
   DARK_RESUME = 4,
   // System is being rebooted to apply an update.
   SYSTEM_UPDATE = 5,
-  // Failed to properly recover from dark resume.
-  EXIT_DARK_RESUME_FAILED = 6,
   // Unclassified external request sent to powerd by another process.
   OTHER_REQUEST_TO_POWERD = 7,
 };

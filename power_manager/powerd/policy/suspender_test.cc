@@ -70,9 +70,6 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   const base::TimeDelta& suspend_duration() const { return suspend_duration_; }
   bool suspend_was_successful() const { return suspend_was_successful_; }
   int num_suspend_attempts() const { return num_suspend_attempts_; }
-  bool suspend_canceled_while_in_dark_resume() const {
-    return suspend_canceled_while_in_dark_resume_;
-  }
 
   const std::vector<Suspender::DarkResumeInfo>& dark_resume_wake_durations()
       const {
@@ -119,13 +116,10 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
     return suspend_result_;
   }
 
-  void UndoPrepareToSuspend(bool success,
-                            int num_suspend_attempts,
-                            bool canceled_while_in_dark_resume) override {
+  void UndoPrepareToSuspend(bool success, int num_suspend_attempts) override {
     AppendAction(kUnprepare);
     suspend_was_successful_ = success;
     num_suspend_attempts_ = num_suspend_attempts;
-    suspend_canceled_while_in_dark_resume_ = canceled_while_in_dark_resume;
     if (!completion_callback_.is_null())
       completion_callback_.Run();
   }
@@ -186,7 +180,6 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   // Arguments passed to last invocation of UndoPrepareToSuspend().
   bool suspend_was_successful_ = false;
   int num_suspend_attempts_ = 0;
-  bool suspend_canceled_while_in_dark_resume_ = false;
 
   // Dark resume wake data provided to GenerateDarkResumeMetrics().
   std::vector<Suspender::DarkResumeInfo> dark_resume_wake_durations_;
@@ -308,7 +301,6 @@ TEST_F(SuspenderTest, SuspendResume) {
   EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
   EXPECT_TRUE(delegate_.suspend_was_successful());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
-  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
 
   // A SuspendDone signal should be emitted to announce that the attempt is
   // complete.
@@ -400,7 +392,6 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   EXPECT_NE(kExternalWakeupCount, delegate_.suspend_wakeup_count());
   EXPECT_TRUE(delegate_.suspend_was_successful());
   EXPECT_EQ(3, delegate_.num_suspend_attempts());
-  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
   EXPECT_EQ(suspend_id, GetSuspendDoneId(0));
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
@@ -418,7 +409,6 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   EXPECT_EQ(JoinActions(kSuspend, kUnprepare, nullptr), delegate_.GetActions());
   EXPECT_TRUE(delegate_.suspend_was_successful());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
-  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
   EXPECT_EQ(new_suspend_id, GetSuspendDoneId(0));
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 }
@@ -469,7 +459,6 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   EXPECT_EQ(kUnprepare, delegate_.GetActions());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(0, delegate_.num_suspend_attempts());
-  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
 
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
@@ -485,7 +474,6 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   EXPECT_EQ(kUnprepare, delegate_.GetActions());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(0, delegate_.num_suspend_attempts());
-  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
@@ -500,7 +488,6 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   EXPECT_EQ(kUnprepare, delegate_.GetActions());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(0, delegate_.num_suspend_attempts());
-  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
@@ -515,7 +502,6 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   EXPECT_EQ(kUnprepare, delegate_.GetActions());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(0, delegate_.num_suspend_attempts());
-  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
@@ -545,7 +531,6 @@ TEST_F(SuspenderTest, CancelAfterSuspend) {
   EXPECT_EQ(kUnprepare, delegate_.GetActions());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(2, delegate_.num_suspend_attempts());
-  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
   EXPECT_EQ(test_api_.suspend_id(), GetSuspendDoneId(1));
 }
@@ -609,7 +594,6 @@ TEST_F(SuspenderTest, CancelForUserActivityWhileDocked) {
   EXPECT_EQ(kUnprepare, delegate_.GetActions());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(0, delegate_.num_suspend_attempts());
-  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
 
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
@@ -637,7 +621,6 @@ TEST_F(SuspenderTest, ExternalWakeupCount) {
   EXPECT_EQ(kWakeupCount - 1, delegate_.suspend_wakeup_count());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
-  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
   // Send another suspend request with the current wakeup count. Report failure
@@ -842,7 +825,6 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
   EXPECT_EQ(kUnprepare, delegate_.GetActions());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
-  EXPECT_TRUE(delegate_.suspend_canceled_while_in_dark_resume());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
   // Clear dark resume state now that the device is transitioned to State::IDLE.
@@ -862,7 +844,6 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
   EXPECT_EQ(kUnprepare, delegate_.GetActions());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
-  EXPECT_TRUE(delegate_.suspend_canceled_while_in_dark_resume());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
   // Clear dark resume state now that the device is transitioned to State::IDLE.
@@ -882,7 +863,6 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
   EXPECT_EQ(kUnprepare, delegate_.GetActions());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
-  EXPECT_TRUE(delegate_.suspend_canceled_while_in_dark_resume());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
   // Clear dark resume state now that the device is transitioned to State::IDLE.
@@ -904,7 +884,6 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
   EXPECT_EQ(kUnprepare, delegate_.GetActions());
   EXPECT_FALSE(delegate_.suspend_was_successful());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
-  EXPECT_TRUE(delegate_.suspend_canceled_while_in_dark_resume());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 }
 
@@ -1091,7 +1070,6 @@ TEST_F(SuspenderTest, ReportInitialSuspendAttempts) {
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
   EXPECT_TRUE(delegate_.suspend_was_successful());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
-  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
 }
 
 // Tests the standard suspend/resume cycle with a wakeup timeout and wakeup
@@ -1125,7 +1103,6 @@ TEST_F(SuspenderTest, SuspendWakeupTimeout) {
   // Suspender shall pass a right duration to delegate
   EXPECT_EQ(kDuration, delegate_.suspend_duration());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
-  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
 
   // A resuspend timeout shouldn't be set.
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
@@ -1157,7 +1134,6 @@ TEST_F(SuspenderTest, SuspendWakeupTimeoutNoWakeupCount) {
   // Suspender shall pass a right duration to delegate
   EXPECT_EQ(kDuration, delegate_.suspend_duration());
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
-  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
 
   // A resuspend timeout shouldn't be set.
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());

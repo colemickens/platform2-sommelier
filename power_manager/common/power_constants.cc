@@ -212,8 +212,6 @@ std::string ShutdownReasonToString(ShutdownReason reason) {
       return "dark-resume";
     case ShutdownReason::SYSTEM_UPDATE:
       return "system-update";
-    case ShutdownReason::EXIT_DARK_RESUME_FAILED:
-      return "exit-dark-resume-failed";
     case ShutdownReason::OTHER_REQUEST_TO_POWERD:
       return "other-request-to-powerd";
   }

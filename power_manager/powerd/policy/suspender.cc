@@ -489,10 +489,10 @@ void Suspender::FinishRequest(bool success) {
   dark_suspend_delay_controller_->FinishSuspend(dark_suspend_id_);
   EmitSuspendDoneSignal(suspend_request_id_, suspend_duration);
   delegate_->SetSuspendAnnounced(false);
-  delegate_->UndoPrepareToSuspend(
-      success,
-      initial_num_attempts_ ? initial_num_attempts_ : current_num_attempts_,
-      dark_resume_->InDarkResume());
+  dark_resume_->ExitDarkResume();
+  delegate_->UndoPrepareToSuspend(success, initial_num_attempts_
+                                               ? initial_num_attempts_
+                                               : current_num_attempts_);
 
   // Only report dark resume metrics if it is actually enabled to prevent a
   // bunch of noise in the data.

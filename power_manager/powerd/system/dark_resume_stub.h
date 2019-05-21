@@ -33,7 +33,7 @@ class DarkResumeStub : public DarkResumeInterface {
   void HandleSuccessfulResume() override;
   bool InDarkResume() override;
   bool IsEnabled() override;
-  bool ExitDarkResume() override;
+  void ExitDarkResume() override{};
 
  private:
   // Values to return.

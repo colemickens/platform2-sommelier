@@ -684,12 +684,7 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   }
 }
 
-void Daemon::UndoPrepareToSuspend(bool success,
-                                  int num_suspend_attempts,
-                                  bool canceled_while_in_dark_resume) {
-  if (canceled_while_in_dark_resume && !dark_resume_->ExitDarkResume())
-    ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::EXIT_DARK_RESUME_FAILED);
-
+void Daemon::UndoPrepareToSuspend(bool success, int num_suspend_attempts) {
   // Do this first so we have the correct settings (including for the
   // backlight).
   state_controller_->HandleResume();

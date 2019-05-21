@@ -34,7 +34,7 @@ class DarkResume : public DarkResumeInterface {
   void HandleSuccessfulResume() override;
   bool InDarkResume() override;
   bool IsEnabled() override;
-  bool ExitDarkResume() override;
+  void ExitDarkResume() override;
 
  private:
   // Are we currently in dark resume?

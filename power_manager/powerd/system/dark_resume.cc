@@ -66,10 +66,10 @@ bool DarkResume::IsEnabled() {
   return enabled_;
 }
 
-bool DarkResume::ExitDarkResume() {
+void DarkResume::ExitDarkResume() {
   LOG(INFO) << "Transitioning from dark resume to full resume";
   in_dark_resume_ = false;
-  return true;
 }
+
 }  // namespace system
 }  // namespace power_manager
