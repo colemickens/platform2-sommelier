@@ -84,12 +84,35 @@ bool DenyClaimedUsbDeviceRule::IsInterfaceAdb(udev_device* device) {
 }
 
 bool IsDeviceAllowedSerial(udev_device* device) {
-  // Check whether this USB device is from Arduino.
   const uint32_t kArduinoVendorId = 0x2341;
-  uint32_t vendor_id;
-  if (!GetUIntSysattr(device, "idVendor", &vendor_id))
+  const uint32_t kGoogleVendorId = 0x18d1;
+  uint32_t vendor_id, product_id;
+  if (!GetUIntSysattr(device, "idVendor", &vendor_id) ||
+      !GetUIntSysattr(device, "idProduct", &product_id))
     return false;
-  return vendor_id == kArduinoVendorId;
+
+  if (vendor_id == kArduinoVendorId)
+    return true;
+
+  if (vendor_id == kGoogleVendorId) {
+    switch (product_id) {
+      case 0x5002:  // Servo V2
+      case 0x5003:  // Servo V2
+      case 0x500a:  // twinkie
+      case 0x500b:  // Plankton
+      case 0x500c:  // Plankton
+      case 0x5014:  // Cr50
+      case 0x501a:  // Servo micro
+      case 0x501b:  // Servo V4
+      case 0x501f:  // Suzyq
+      case 0x5020:  // Sweetberry
+      case 0x5027:  // Tigertail
+      case 0x5036:  // Chocodile
+        return true;
+    }
+  }
+
+  return false;
 }
 
 Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
