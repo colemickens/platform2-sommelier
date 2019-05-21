@@ -2,6 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Stop linter from complaining XXX_unittest.cc naming.
+# TODO(cylai): rename all the unittest files and enable this linting option.
+# gnlint: disable=GnLintSourceFileNames
+
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
