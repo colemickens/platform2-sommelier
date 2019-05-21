@@ -139,23 +139,14 @@ bool MountManager::IsAlreadyMounted(int32_t mount_id) const {
   return mount_tracker_->IsAlreadyMounted(mount_id);
 }
 
-bool MountManager::AddMount(const std::string& mount_root,
+void MountManager::AddMount(const std::string& mount_root,
                             SmbCredential credential,
                             const MountConfig& mount_config,
                             int32_t* mount_id) {
   DCHECK(mount_id);
 
-  const bool mount_succeeded =
-      mount_tracker_->AddMount(mount_root, std::move(credential),
-                               CreateSambaInterface(mount_config), mount_id);
-
-  if (mount_succeeded) {
-    // After adding a new mount, remounts are disabled. This is only used as a
-    // DCHECK to ensure remounts are not called after a new mount.
-    can_remount_ = false;
-  }
-
-  return mount_succeeded;
+  mount_tracker_->AddMount(mount_root, std::move(credential),
+                           CreateSambaInterface(mount_config), mount_id);
 }
 
 bool MountManager::RemoveMount(int32_t mount_id) {

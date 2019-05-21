@@ -54,12 +54,11 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   // Adds |mount_root| to the |mounts_| map and outputs the |mount_id|
   // that was assigned to this mount. Ids are >=0 and are not
   // re-used within the lifetime of this class. |mount_config| holds the mount
-  // options set by the client. If |mount_root| is already mounted, this
-  // returns false and |mount_id| will be unmodified.
+  // options set by the client.
   // TODO(zentaro): Review if this should have a maximum number of mounts,
   // even if it is relatively large. It may already be enforced at a higher
   // level.
-  bool AddMount(const std::string& mount_root,
+  void AddMount(const std::string& mount_root,
                 SmbCredential credential,
                 const MountConfig& mount_config,
                 int32_t* mount_id);
@@ -123,8 +122,6 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   // Returns the SmbCredential for |samba_interface_id|.
   const SmbCredential& GetCredential(
       SambaInterface::SambaInterfaceId samba_interface_id) const;
-
-  bool can_remount_ = true;
 
   std::unique_ptr<MountTracker> mount_tracker_;
   std::unique_ptr<SambaInterface> system_samba_interface_;

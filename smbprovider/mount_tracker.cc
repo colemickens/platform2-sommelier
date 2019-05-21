@@ -48,7 +48,7 @@ bool MountTracker::ExistsInSambaInterfaceMap(const int32_t mount_id) const {
   return false;
 }
 
-bool MountTracker::AddMount(const std::string& mount_root,
+void MountTracker::AddMount(const std::string& mount_root,
                             SmbCredential credential,
                             std::unique_ptr<SambaInterface> samba_interface,
                             int32_t* mount_id) {
@@ -58,7 +58,6 @@ bool MountTracker::AddMount(const std::string& mount_root,
                                              std::move(samba_interface)));
 
   AddSambaInterfaceIdToSambaInterfaceMap(*mount_id);
-  return true;
 }
 
 bool MountTracker::RemoveMount(int32_t mount_id) {

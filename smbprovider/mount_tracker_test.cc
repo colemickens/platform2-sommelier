@@ -52,24 +52,24 @@ class MountTrackerTest : public testing::Test {
   ~MountTrackerTest() override = default;
 
  protected:
-  bool AddMountWithEmptyCredential(const std::string& root_path,
+  void AddMountWithEmptyCredential(const std::string& root_path,
                                    int32_t* mount_id) {
     SmbCredential credential("" /* workgroup */, "" /* username */,
                              GetEmptyPassword());
 
-    return mount_tracker_->AddMount(root_path, std::move(credential),
-                                    CreateSambaInterface(), mount_id);
+    mount_tracker_->AddMount(root_path, std::move(credential),
+                             CreateSambaInterface(), mount_id);
   }
 
-  bool AddMount(const std::string& root_path,
+  void AddMount(const std::string& root_path,
                 const std::string& workgroup,
                 const std::string& username,
                 const std::string& password,
                 int32_t* mount_id) {
     SmbCredential credential(workgroup, username, CreatePassword(password));
 
-    return mount_tracker_->AddMount(root_path, std::move(credential),
-                                    CreateSambaInterface(), mount_id);
+    mount_tracker_->AddMount(root_path, std::move(credential),
+                             CreateSambaInterface(), mount_id);
   }
 
   std::unique_ptr<SambaInterface> CreateSambaInterface() {
@@ -149,7 +149,7 @@ TEST_F(MountTrackerTest, TestAddMount) {
   const std::string root_path = "smb://server/share";
 
   int32_t mount_id;
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
+  AddMountWithEmptyCredential(root_path, &mount_id);
 
   EXPECT_EQ(1, mount_tracker_->MountCount());
 
@@ -161,14 +161,14 @@ TEST_F(MountTrackerTest, TestAddSameMount) {
   const std::string root_path = "smb://server/share";
 
   int32_t mount_id;
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
+  AddMountWithEmptyCredential(root_path, &mount_id);
 
   EXPECT_EQ(GetSharePath(mount_id), root_path);
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
   EXPECT_EQ(1, mount_tracker_->MountCount());
 
   int32_t mount_id2;
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id2));
+  AddMountWithEmptyCredential(root_path, &mount_id2);
 
   EXPECT_EQ(GetSharePath(mount_id2), root_path);
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
@@ -185,12 +185,12 @@ TEST_F(MountTrackerTest, TestMountCount) {
   EXPECT_EQ(0, mount_tracker_->MountCount());
 
   int32_t mount_id1;
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id1));
+  AddMountWithEmptyCredential(root_path, &mount_id1);
 
   EXPECT_EQ(1, mount_tracker_->MountCount());
 
   int32_t mount_id2;
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path2, &mount_id2));
+  AddMountWithEmptyCredential(root_path2, &mount_id2);
 
   EXPECT_EQ(2, mount_tracker_->MountCount());
   EXPECT_NE(mount_id1, mount_id2);
@@ -199,11 +199,11 @@ TEST_F(MountTrackerTest, TestMountCount) {
 TEST_F(MountTrackerTest, TestAddMultipleDifferentMountId) {
   const std::string root_path1 = "smb://server/share1";
   int32_t mount_id1;
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path1, &mount_id1));
+  AddMountWithEmptyCredential(root_path1, &mount_id1);
 
   const std::string root_path2 = "smb://server/share2";
   int32_t mount_id2;
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path2, &mount_id2));
+  AddMountWithEmptyCredential(root_path2, &mount_id2);
 
   EXPECT_GE(mount_id1, 0);
   EXPECT_GE(mount_id2, 0);
@@ -215,7 +215,7 @@ TEST_F(MountTrackerTest, TestAddRemoveMount) {
   const std::string root_path = "smb://server/share";
   int32_t mount_id;
 
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
+  AddMountWithEmptyCredential(root_path, &mount_id);
 
   EXPECT_EQ(1, mount_tracker_->MountCount());
   EXPECT_EQ(GetSharePath(mount_id), root_path);
@@ -233,7 +233,7 @@ TEST_F(MountTrackerTest, TestAddThenRemoveWrongMount) {
   const std::string root_path = "smb://server/share";
   int32_t mount_id;
 
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
+  AddMountWithEmptyCredential(root_path, &mount_id);
 
   // Verify RemoveMount fails with an invalid id and nothing is removed.
   const int32_t invalid_mount_id = mount_id + 1;
@@ -263,8 +263,8 @@ TEST_F(MountTrackerTest, TestAddRemoveMultipleMounts) {
   int32_t mount_id_1;
   int32_t mount_id_2;
 
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path1, &mount_id_1));
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path2, &mount_id_2));
+  AddMountWithEmptyCredential(root_path1, &mount_id_1);
+  AddMountWithEmptyCredential(root_path2, &mount_id_2);
 
   EXPECT_EQ(2, mount_tracker_->MountCount());
 
@@ -292,14 +292,14 @@ TEST_F(MountTrackerTest, TestRemovedMountCanBeRemounted) {
   const std::string root_path = "smb://server/share1";
 
   int32_t mount_id;
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
+  AddMountWithEmptyCredential(root_path, &mount_id);
 
   EXPECT_TRUE(mount_tracker_->RemoveMount(mount_id));
 
   EXPECT_EQ(0, mount_tracker_->MountCount());
 
   // Should be able to be remounted again.
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
+  AddMountWithEmptyCredential(root_path, &mount_id);
 
   EXPECT_EQ(1, mount_tracker_->MountCount());
 }
@@ -313,7 +313,7 @@ TEST_F(MountTrackerTest, TestRemoveInvalidMountId) {
   const std::string root_path = "smb://server/share";
 
   int32_t mount_id1;
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id1));
+  AddMountWithEmptyCredential(root_path, &mount_id1);
 
   EXPECT_EQ(1, mount_tracker_->MountCount());
 
@@ -328,7 +328,7 @@ TEST_F(MountTrackerTest, TestGetFullPath) {
   const std::string root_path = "smb://server/share";
   int32_t mount_id;
 
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
+  AddMountWithEmptyCredential(root_path, &mount_id);
 
   // Verify the full path is as expected.
   const std::string entry_path = "/foo/bar";
@@ -346,7 +346,7 @@ TEST_F(MountTrackerTest, TestGetFullPathWithInvalidId) {
   const std::string root_path = "smb://server/share";
   int32_t mount_id;
 
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
+  AddMountWithEmptyCredential(root_path, &mount_id);
 
   // Verify calling GetFullPath() with an invalid id fails.
   const int32_t invalid_mount_id = mount_id + 1;
@@ -367,8 +367,8 @@ TEST_F(MountTrackerTest, TestGetFullPathMultipleMounts) {
   int32_t mount_id_1;
   int32_t mount_id_2;
 
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path_1, &mount_id_1));
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path_2, &mount_id_2));
+  AddMountWithEmptyCredential(root_path_1, &mount_id_1);
+  AddMountWithEmptyCredential(root_path_2, &mount_id_2);
 
   // Verify correct ids map to the correct paths.
   std::string actual_full_path;
@@ -393,7 +393,7 @@ TEST_F(MountTrackerTest, TestGetRelativePath) {
   const std::string full_path = root_path + expected_relative_path;
 
   int32_t mount_id;
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
+  AddMountWithEmptyCredential(root_path, &mount_id);
 
   EXPECT_EQ(expected_relative_path,
             mount_tracker_->GetRelativePath(mount_id, full_path));
@@ -405,7 +405,7 @@ TEST_F(MountTrackerTest, TestGetRelativePathOnRoot) {
   const std::string full_path = root_path + expected_relative_path;
 
   int32_t mount_id;
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
+  AddMountWithEmptyCredential(root_path, &mount_id);
 
   EXPECT_EQ(expected_relative_path,
             mount_tracker_->GetRelativePath(mount_id, full_path));
@@ -415,7 +415,7 @@ TEST_F(MountTrackerTest, TestGetEmptyCredential) {
   const std::string root_path = "smb://server/share";
 
   int32_t mount_id;
-  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
+  AddMountWithEmptyCredential(root_path, &mount_id);
 
   EXPECT_EQ(1, mount_tracker_->MountCount());
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
@@ -426,8 +426,7 @@ TEST_F(MountTrackerTest, TestGetEmptyCredential) {
 
 TEST_F(MountTrackerTest, TestAddMountWithGetCredential) {
   int32_t mount_id;
-  EXPECT_TRUE(
-      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id));
+  AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id);
 
   EXPECT_EQ(1, mount_tracker_->MountCount());
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
@@ -439,7 +438,7 @@ TEST_F(MountTrackerTest, TestAddMountWithEmptyPassword) {
   const std::string password = "";
 
   int32_t mount_id;
-  EXPECT_TRUE(AddMount(kMountRoot, kWorkgroup, kUsername, password, &mount_id));
+  AddMount(kMountRoot, kWorkgroup, kUsername, password, &mount_id);
 
   EXPECT_GE(mount_id, 0);
   EXPECT_EQ(1, mount_tracker_->MountCount());
@@ -455,12 +454,10 @@ TEST_F(MountTrackerTest, TestAddingRemovingMultipleCredentials) {
   const std::string password2 = "root";
 
   int32_t mount_id1;
-  EXPECT_TRUE(
-      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id1));
+  AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id1);
 
   int32_t mount_id2;
-  EXPECT_TRUE(
-      AddMount(mount_root2, workgroup2, username2, password2, &mount_id2));
+  AddMount(mount_root2, workgroup2, username2, password2, &mount_id2);
 
   EXPECT_EQ(2, mount_tracker_->MountCount());
 
@@ -482,12 +479,10 @@ TEST_F(MountTrackerTest, TestRemoveCredentialFromMultiple) {
   const std::string password2 = "root";
 
   int32_t mount_id1;
-  EXPECT_TRUE(
-      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id1));
+  AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id1);
 
   int32_t mount_id2;
-  EXPECT_TRUE(
-      AddMount(mount_root2, workgroup2, username2, password2, &mount_id2));
+  AddMount(mount_root2, workgroup2, username2, password2, &mount_id2);
 
   EXPECT_EQ(2, mount_tracker_->MountCount());
 
@@ -505,8 +500,7 @@ TEST_F(MountTrackerTest, TestRemoveCredentialFromMultiple) {
 
 TEST_F(MountTrackerTest, TestIsSambaInterfaceIdMounted) {
   int32_t mount_id;
-  EXPECT_TRUE(
-      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id));
+  AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id);
 
   EXPECT_EQ(1, mount_tracker_->MountCount());
 
@@ -518,8 +512,7 @@ TEST_F(MountTrackerTest, TestIsSambaInterfaceIdMounted) {
 
 TEST_F(MountTrackerTest, TestAddRemoveSambaInterfaceId) {
   int32_t mount_id;
-  EXPECT_TRUE(
-      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id));
+  AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id);
 
   EXPECT_EQ(1, mount_tracker_->MountCount());
 
@@ -549,7 +542,7 @@ TEST_F(MountTrackerTest, TestGetCacheNoMounts) {
 
 TEST_F(MountTrackerTest, TestGetCache) {
   int32_t mount_id;
-  EXPECT_TRUE(AddMountWithEmptyCredential("smb://server/share", &mount_id));
+  AddMountWithEmptyCredential("smb://server/share", &mount_id);
 
   MetadataCache* cache = nullptr;
   EXPECT_TRUE(mount_tracker_->GetMetadataCache(mount_id, &cache));
@@ -558,7 +551,7 @@ TEST_F(MountTrackerTest, TestGetCache) {
 
 TEST_F(MountTrackerTest, TestGetCacheForInvalidMount) {
   int32_t mount_id;
-  EXPECT_TRUE(AddMountWithEmptyCredential("smb://server/share", &mount_id));
+  AddMountWithEmptyCredential("smb://server/share", &mount_id);
 
   // mount_id + 1 does not exist.
   MetadataCache* cache = nullptr;
@@ -567,9 +560,7 @@ TEST_F(MountTrackerTest, TestGetCacheForInvalidMount) {
 
 TEST_F(MountTrackerTest, TestUpdateMountCredentials) {
   int32_t mount_id;
-
-  EXPECT_TRUE(
-      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id));
+  AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id);
 
   EXPECT_EQ(1, mount_tracker_->MountCount());
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
@@ -605,9 +596,7 @@ TEST_F(MountTrackerTest, TestUpdateMountCredentialsOnNontExistantMountId) {
 
 TEST_F(MountTrackerTest, TestUpdateSharePath) {
   int32_t mount_id;
-
-  EXPECT_TRUE(
-      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id));
+  AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id);
 
   EXPECT_EQ(GetSharePath(mount_id), kMountRoot);
 
@@ -620,9 +609,7 @@ TEST_F(MountTrackerTest, TestUpdateSharePath) {
 
 TEST_F(MountTrackerTest, TestUpdateSharePathDoesNotCreateNewMount) {
   int32_t mount_id;
-
-  EXPECT_TRUE(
-      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id));
+  AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id);
 
   EXPECT_EQ(GetSharePath(mount_id), kMountRoot);
 

@@ -55,23 +55,22 @@ class MountManagerTest : public testing::Test {
 
   ~MountManagerTest() override = default;
 
-  bool AddMount(const std::string& root_path, int32_t* mount_id) {
-    return AddMount(root_path, SmbCredential(), mount_id);
+  void AddMount(const std::string& root_path, int32_t* mount_id) {
+    AddMount(root_path, SmbCredential(), mount_id);
   }
 
-  bool AddMount(const std::string& root_path,
+  void AddMount(const std::string& root_path,
                 SmbCredential credential,
                 int32_t* mount_id) {
-    return mounts_->AddMount(root_path, std::move(credential),
-                             MountConfig(true /* enable_ntlm */), mount_id);
+    mounts_->AddMount(root_path, std::move(credential),
+                      MountConfig(true /* enable_ntlm */), mount_id);
   }
 
-  bool AddMountWithMountConfig(const std::string& root_path,
+  void AddMountWithMountConfig(const std::string& root_path,
                                SmbCredential credential,
                                const MountConfig& mount_config,
                                int32_t* mount_id) {
-    return mounts_->AddMount(root_path, std::move(credential), mount_config,
-                             mount_id);
+    mounts_->AddMount(root_path, std::move(credential), mount_config, mount_id);
   }
 
   void ExpectCredentialsEqual(int32_t mount_id,
@@ -119,7 +118,7 @@ TEST_F(MountManagerTest, TestAddRemoveMount) {
   const std::string root_path = "smb://server/share";
   int32_t mount_id;
 
-  EXPECT_TRUE(AddMount(root_path, &mount_id));
+  AddMount(root_path, &mount_id);
 
   // Verify the mount was added with a valid id.
   EXPECT_GE(mount_id, 0);
@@ -137,7 +136,7 @@ TEST_F(MountManagerTest, TestAddThenRemoveWrongMount) {
   const std::string root_path = "smb://server/share";
   int32_t mount_id;
 
-  EXPECT_TRUE(AddMount(root_path, &mount_id));
+  AddMount(root_path, &mount_id);
 
   // Verify RemoveMount fails with an invalid id and nothing is removed.
   const int32_t invalid_mount_id = mount_id + 1;
@@ -162,8 +161,8 @@ TEST_F(MountManagerTest, TestAddRemoveMultipleMounts) {
   int32_t mount_id_1;
   int32_t mount_id_2;
 
-  EXPECT_TRUE(AddMount(root_path1, &mount_id_1));
-  EXPECT_TRUE(AddMount(root_path2, &mount_id_2));
+  AddMount(root_path1, &mount_id_1);
+  AddMount(root_path2, &mount_id_2);
 
   EXPECT_EQ(2, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id_1));
@@ -191,7 +190,7 @@ TEST_F(MountManagerTest, TestGetFullPath) {
   const std::string root_path = "smb://server/share";
   int32_t mount_id;
 
-  EXPECT_TRUE(AddMount(root_path, &mount_id));
+  AddMount(root_path, &mount_id);
 
   // Verify the full path is as expected.
   const std::string entry_path = "/foo/bar";
@@ -209,7 +208,7 @@ TEST_F(MountManagerTest, TestGetCacheNoMounts) {
 
 TEST_F(MountManagerTest, TestGetCache) {
   int32_t mount_id;
-  EXPECT_TRUE(AddMount("smb://server/share", &mount_id));
+  AddMount("smb://server/share", &mount_id);
 
   MetadataCache* cache = nullptr;
   EXPECT_TRUE(mounts_->GetMetadataCache(mount_id, &cache));
@@ -218,7 +217,7 @@ TEST_F(MountManagerTest, TestGetCache) {
 
 TEST_F(MountManagerTest, TestGetCacheForInvalidMount) {
   int32_t mount_id;
-  EXPECT_TRUE(AddMount("smb://server/share", &mount_id));
+  AddMount("smb://server/share", &mount_id);
 
   // mount_id + 1 does not exist.
   MetadataCache* cache = nullptr;
@@ -230,7 +229,7 @@ TEST_F(MountManagerTest, TestGetFullPathWithInvalidId) {
   const std::string root_path = "smb://server/share";
   int32_t mount_id;
 
-  EXPECT_TRUE(AddMount(root_path, &mount_id));
+  AddMount(root_path, &mount_id);
 
   // Verify calling GetFullPath() with an invalid id fails.
   const int32_t invalid_mount_id = mount_id + 1;
@@ -247,8 +246,8 @@ TEST_F(MountManagerTest, TestGetFullPathMultipleMounts) {
   int32_t mount_id_1;
   int32_t mount_id_2;
 
-  EXPECT_TRUE(AddMount(root_path_1, &mount_id_1));
-  EXPECT_TRUE(AddMount(root_path_2, &mount_id_2));
+  AddMount(root_path_1, &mount_id_1);
+  AddMount(root_path_2, &mount_id_2);
 
   // Verify correct ids map to the correct paths.
   std::string actual_full_path;
@@ -265,7 +264,7 @@ TEST_F(MountManagerTest, TestGetRelativePath) {
   const std::string root_path = "smb://server/share1";
   int32_t mount_id;
 
-  EXPECT_TRUE(AddMount(root_path, &mount_id));
+  AddMount(root_path, &mount_id);
 
   const std::string full_path = "smb://server/share1/animals/dog.jpg";
   const std::string expected_relative_path = "/animals/dog.jpg";
@@ -278,7 +277,7 @@ TEST_F(MountManagerTest, TestGetRelativePathOnRoot) {
   const std::string root_path = "smb://server/share1";
   int32_t mount_id;
 
-  EXPECT_TRUE(AddMount(root_path, &mount_id));
+  AddMount(root_path, &mount_id);
 
   const std::string full_path = "smb://server/share1/";
   const std::string expected_relative_path = "/";
@@ -295,7 +294,7 @@ TEST_F(MountManagerTest, TestAddMountWithCredential) {
   int32_t mount_id;
 
   SmbCredential credential = CreateCredential(workgroup, username, password);
-  EXPECT_TRUE(AddMount(root_path, std::move(credential), &mount_id));
+  AddMount(root_path, std::move(credential), &mount_id);
 
   EXPECT_GE(mount_id, 0);
   EXPECT_EQ(1, mounts_->MountCount());
@@ -311,7 +310,7 @@ TEST_F(MountManagerTest, TestAddMountWithEmptyCredential) {
   const std::string password = "";
   int32_t mount_id;
 
-  EXPECT_TRUE(AddMount(root_path, &mount_id));
+  AddMount(root_path, &mount_id);
 
   EXPECT_GE(mount_id, 0);
   EXPECT_EQ(1, mounts_->MountCount());
@@ -328,7 +327,7 @@ TEST_F(MountManagerTest, TestAddMountWithoutWorkgroup) {
 
   SmbCredential credential = CreateCredential(workgroup, username, password);
 
-  EXPECT_TRUE(AddMount(root_path, std::move(credential), &mount_id));
+  AddMount(root_path, std::move(credential), &mount_id);
 
   EXPECT_GE(mount_id, 0);
   EXPECT_EQ(1, mounts_->MountCount());
@@ -345,7 +344,7 @@ TEST_F(MountManagerTest, TestAddMountWithEmptyPassword) {
   int32_t mount_id;
 
   SmbCredential credential = CreateCredential(workgroup, username, password);
-  EXPECT_TRUE(AddMount(root_path, std::move(credential), &mount_id));
+  AddMount(root_path, std::move(credential), &mount_id);
 
   EXPECT_GE(mount_id, 0);
   EXPECT_EQ(1, mounts_->MountCount());
@@ -362,7 +361,7 @@ TEST_F(MountManagerTest, TestAddSameMount) {
 
   SmbCredential credential = CreateCredential(kWorkgroup, kUsername, kPassword);
 
-  EXPECT_TRUE(AddMount(kMountRoot, std::move(credential), &mount_id));
+  AddMount(kMountRoot, std::move(credential), &mount_id);
 
   EXPECT_EQ(1, mounts_->MountCount());
 
@@ -370,7 +369,7 @@ TEST_F(MountManagerTest, TestAddSameMount) {
       CreateCredential(workgroup2, username2, password2);
 
   int32_t mount_id2;
-  EXPECT_TRUE(AddMount(kMountRoot, std::move(credential2), &mount_id2));
+  AddMount(kMountRoot, std::move(credential2), &mount_id2);
   EXPECT_EQ(2, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id2));
 
@@ -385,11 +384,11 @@ TEST_F(MountManagerTest, TestRemovedMountCanBeRemounted) {
   const std::string root_path = "smb://server/share1";
   int32_t mount_id;
 
-  EXPECT_TRUE(AddMount(root_path, &mount_id));
+  AddMount(root_path, &mount_id);
   EXPECT_TRUE(mounts_->RemoveMount(mount_id));
 
   // Should be able to be remounted again.
-  EXPECT_TRUE(AddMount(root_path, &mount_id));
+  AddMount(root_path, &mount_id);
 }
 
 TEST_F(MountManagerTest, TestReturnsEmptyPasswordWithInvalidFd) {
@@ -456,7 +455,7 @@ TEST_F(MountManagerTest, TestBufferNullTerminatedWhenLengthTooSmall) {
 
   SmbCredential credential = CreateCredential(kWorkgroup, kUsername, kPassword);
 
-  EXPECT_TRUE(AddMount(kMountRoot, std::move(credential), &mount_id));
+  AddMount(kMountRoot, std::move(credential), &mount_id);
   EXPECT_EQ(1, mounts_->MountCount());
 
   // Initialize buffers with 1.
@@ -512,8 +511,8 @@ TEST_F(MountManagerTest, TestAddingRemovingMultipleCredentials) {
   SmbCredential credential2 =
       CreateCredential(workgroup2, username2, password2);
 
-  EXPECT_TRUE(AddMount(kMountRoot, std::move(credential), &mount_id1));
-  EXPECT_TRUE(AddMount(mount_root2, std::move(credential2), &mount_id2));
+  AddMount(kMountRoot, std::move(credential), &mount_id1);
+  AddMount(mount_root2, std::move(credential2), &mount_id2);
 
   EXPECT_EQ(2, mounts_->MountCount());
 
@@ -540,8 +539,8 @@ TEST_F(MountManagerTest, TestRemoveCredentialFromMultiple) {
   SmbCredential credential2 =
       CreateCredential(workgroup2, username2, password2);
 
-  EXPECT_TRUE(AddMount(kMountRoot, std::move(credential), &mount_id1));
-  EXPECT_TRUE(AddMount(mount_root2, std::move(credential2), &mount_id2));
+  AddMount(kMountRoot, std::move(credential), &mount_id1);
+  AddMount(mount_root2, std::move(credential2), &mount_id2);
   EXPECT_EQ(2, mounts_->MountCount());
 
   EXPECT_TRUE(mounts_->RemoveMount(mount_id1));
@@ -563,8 +562,8 @@ TEST_F(MountManagerTest, TestEnableNTLM) {
 
   MountConfig mount_config(true /* enable_ntlm */);
 
-  EXPECT_TRUE(AddMountWithMountConfig(kMountRoot, std::move(credential),
-                                      mount_config, &mount_id));
+  AddMountWithMountConfig(kMountRoot, std::move(credential), mount_config,
+                          &mount_id);
   EXPECT_TRUE(enable_ntlm_);
 }
 
@@ -576,8 +575,8 @@ TEST_F(MountManagerTest, TestDisableNTLM) {
 
   MountConfig mount_config(false /* enable_ntlm */);
 
-  EXPECT_TRUE(AddMountWithMountConfig(kMountRoot, std::move(credential),
-                                      mount_config, &mount_id));
+  AddMountWithMountConfig(kMountRoot, std::move(credential), mount_config,
+                          &mount_id);
   EXPECT_FALSE(enable_ntlm_);
 }
 
@@ -585,7 +584,7 @@ TEST_F(MountManagerTest, TestUpdateMountCredentials) {
   int mount_id = 1;
   SmbCredential credential = CreateCredential(kWorkgroup, kUsername, kPassword);
 
-  EXPECT_TRUE(AddMount(kMountRoot, std::move(credential), &mount_id));
+  AddMount(kMountRoot, std::move(credential), &mount_id);
   EXPECT_EQ(1, mounts_->MountCount());
 
   ExpectCredentialsEqual(mount_id, kMountRoot, kWorkgroup, kUsername,
@@ -621,7 +620,7 @@ TEST_F(MountManagerTest, TestUpdateMountCredentialsOnUnmountedMount) {
   int mount_id = 1;
   SmbCredential credential = CreateCredential(kWorkgroup, kUsername, kPassword);
 
-  EXPECT_TRUE(AddMount(kMountRoot, std::move(credential), &mount_id));
+  AddMount(kMountRoot, std::move(credential), &mount_id);
   EXPECT_EQ(1, mounts_->MountCount());
 
   mounts_->RemoveMount(mount_id);
@@ -643,7 +642,7 @@ TEST_F(MountManagerTest, TestUpdateSharePathSucceeds) {
   int mount_id;
 
   EXPECT_EQ(0, mounts_->MountCount());
-  EXPECT_TRUE(AddMount(kMountRoot, &mount_id));
+  AddMount(kMountRoot, &mount_id);
 
   const std::string new_path = "smb://192.168.50.105/testshare";
   EXPECT_TRUE(mounts_->UpdateSharePath(mount_id, new_path));
@@ -657,7 +656,7 @@ TEST_F(MountManagerTest, TestUpdateSharePathDoesNotAddANewMount) {
   int mount_id;
 
   EXPECT_EQ(0, mounts_->MountCount());
-  EXPECT_TRUE(AddMount(kMountRoot, &mount_id));
+  AddMount(kMountRoot, &mount_id);
   EXPECT_EQ(1, mounts_->MountCount());
 
   const std::string new_path = "smb://192.168.50.105/testshare";

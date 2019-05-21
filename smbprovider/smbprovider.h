@@ -210,12 +210,11 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // A Credential that has fields such as |workgroup|, |username| and
   // |password_fd| will be used if provided. Sets |mount_id| when mount is
   // successful.
-  bool AddMount(const std::string& mount_root,
+  void AddMount(const std::string& mount_root,
                 const MountConfig& mount_config,
                 const std::string& workgroup,
                 const std::string& username,
                 const base::ScopedFD& password_fd,
-                int32_t* error_code,
                 int32_t* mount_id);
 
   // Removes |mount_id| from mount_manager_ if |mount_id| is mounted.

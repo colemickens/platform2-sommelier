@@ -39,14 +39,12 @@ class MountTracker {
       const SambaInterface::SambaInterfaceId samba_interface_id) const;
 
   // Adds |mount_root| to the |mounts_| map and adds SambaInterfaceId to
-  // |samba_interface_map_|. Also adds |mount_root| to |mounted_root_shares_|.
-  // Ids are >=0 and are not re-used within the lifetime of this class. Returns
-  // false if |mount_root| already exists in |mounted_share_paths_| and
-  // |mount_id| will be unmodified.
+  // |samba_interface_map_|.  Ids are >=0 and are not re-used within the
+  // lifetime of this class.
   // TODO(zentaro): Review if this should have a maximum number of mounts,
   // even if it is relatively large. It may already be enforced at a higher
   // level.
-  bool AddMount(const std::string& mount_root,
+  void AddMount(const std::string& mount_root,
                 SmbCredential credential,
                 std::unique_ptr<SambaInterface> samba_interface,
                 int32_t* mount_id);

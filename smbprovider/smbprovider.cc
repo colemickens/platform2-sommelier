@@ -130,10 +130,9 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
 
   // AddMount() has to be called first since the credential has to be stored
   // before calling CanReadMountRoot().
-  const bool success =
-      AddMount(options.path(), mount_config, options.workgroup(),
-               options.username(), password_fd, error_code, mount_id);
-  if (!success || options.skip_connect()) {
+  AddMount(options.path(), mount_config, options.workgroup(),
+           options.username(), password_fd, mount_id);
+  if (options.skip_connect()) {
     return;
   }
 
@@ -823,21 +822,16 @@ bool SmbProvider::RemoveMount(int32_t mount_id, int32_t* error_code) {
   return removed;
 }
 
-bool SmbProvider::AddMount(const std::string& mount_root,
+void SmbProvider::AddMount(const std::string& mount_root,
                            const MountConfig& mount_config,
                            const std::string& workgroup,
                            const std::string& username,
                            const base::ScopedFD& password_fd,
-                           int32_t* error_code,
                            int32_t* mount_id) {
   SmbCredential credential(workgroup, username, GetPassword(password_fd));
-  bool added = mount_manager_->AddMount(mount_root, std::move(credential),
-                                        mount_config, mount_id);
-  if (!added) {
-    *error_code = static_cast<int32_t>(ERROR_IN_USE);
-  }
-
-  return added;
+  mount_manager_->AddMount(mount_root, std::move(credential), mount_config,
+                           mount_id);
+  DCHECK_GE(*mount_id, 0);
 }
 
 void SmbProvider::RemoveMountIfMounted(int32_t mount_id) {
