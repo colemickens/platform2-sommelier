@@ -197,9 +197,11 @@ void DecodeEventThread::OnProvidePictureBuffers(
     const provide_picture_buffers_event_data_t& data) {
   DCHECK(thread_checker_.CalledOnValidThread());
 
-  LOG(INFO) << "PROVIDE_PICTURE_BUFFERS event: min_num_buffers "
-            << data.min_num_buffers << " width " << data.width << " height "
-            << data.height;
+  VLOG(3) << "PROVIDE_PICTURE_BUFFERS event: min_num_buffers "
+          << data.min_num_buffers << " width " << data.width << " height "
+          << data.height << " visible_rect " << data.visible_rect_left << " "
+          << data.visible_rect_top << " " << data.visible_rect_right << " "
+          << data.visible_rect_bottom;
 
   picture_buffer_id_to_bo_map_.clear();
 

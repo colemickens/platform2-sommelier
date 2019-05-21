@@ -65,12 +65,23 @@ void VdaContext::WriteOnEventWriteThread(vda_event_t event) {
 
 void VdaContext::DispatchProvidePictureBuffers(uint32_t min_num_buffers,
                                                int32_t width,
-                                               int32_t height) {
+                                               int32_t height,
+                                               int32_t visible_rect_left,
+                                               int32_t visible_rect_top,
+                                               int32_t visible_rect_right,
+                                               int32_t visible_rect_bottom) {
   vda_event_t event;
   event.event_type = PROVIDE_PICTURE_BUFFERS;
   event.event_data.provide_picture_buffers.min_num_buffers = min_num_buffers;
   event.event_data.provide_picture_buffers.width = width;
   event.event_data.provide_picture_buffers.height = height;
+  event.event_data.provide_picture_buffers.visible_rect_left =
+      visible_rect_left;
+  event.event_data.provide_picture_buffers.visible_rect_top = visible_rect_top;
+  event.event_data.provide_picture_buffers.visible_rect_right =
+      visible_rect_right;
+  event.event_data.provide_picture_buffers.visible_rect_bottom =
+      visible_rect_bottom;
   event_write_thread_.task_runner()->PostTask(
       FROM_HERE, base::BindOnce(&VdaContext::WriteOnEventWriteThread,
                                 base::Unretained(this), std::move(event)));

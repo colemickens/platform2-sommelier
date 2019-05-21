@@ -259,7 +259,9 @@ class GpuVdaContext : public VdaContext, arc::mojom::VideoDecodeClient {
   vda_result_t Flush() override;
 
   // arc::mojom::VideoDecodeClient overrides.
-  void ProvidePictureBuffers(
+  void ProvidePictureBuffers(arc::mojom::PictureBufferFormatPtr format_ptr,
+                             arc::mojom::RectPtr visible_rect_ptr) override;
+  void ProvidePictureBuffersDeprecated(
       arc::mojom::PictureBufferFormatPtr format_ptr) override;
   void PictureReady(arc::mojom::PicturePtr) override;
   void NotifyError(arc::mojom::VideoDecodeAccelerator::Result error) override;
@@ -507,11 +509,18 @@ void GpuVdaContext::OnFlushDone(
 
 // VideoDecodeClient implementation function.
 void GpuVdaContext::ProvidePictureBuffers(
-    arc::mojom::PictureBufferFormatPtr format_ptr) {
+    arc::mojom::PictureBufferFormatPtr format_ptr,
+    arc::mojom::RectPtr visible_rect_ptr) {
   DCHECK(ipc_thread_checker_.CalledOnValidThread());
-  DispatchProvidePictureBuffers(format_ptr->min_num_buffers,
-                                format_ptr->coded_size->width,
-                                format_ptr->coded_size->height);
+  DispatchProvidePictureBuffers(
+      format_ptr->min_num_buffers, format_ptr->coded_size->width,
+      format_ptr->coded_size->height, visible_rect_ptr->left,
+      visible_rect_ptr->top, visible_rect_ptr->right, visible_rect_ptr->bottom);
+}
+
+void GpuVdaContext::ProvidePictureBuffersDeprecated(
+    arc::mojom::PictureBufferFormatPtr format_ptr) {
+  NOTIMPLEMENTED();
 }
 
 // VideoDecodeClient implementation function.

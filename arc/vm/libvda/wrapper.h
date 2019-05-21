@@ -55,7 +55,11 @@ class VdaContext {
   // Dispatch a PROVIDE_PICTURE_BUFFERS event to the event pipe.
   void DispatchProvidePictureBuffers(uint32_t min_num_buffers,
                                      int32_t width,
-                                     int32_t height);
+                                     int32_t height,
+                                     int32_t visible_rect_left,
+                                     int32_t visible_rect_top,
+                                     int32_t visible_rect_right,
+                                     int32_t visible_rect_bottom);
 
   // Dispatch a PICTURE_READY event to the event pipe.
   void DispatchPictureReady(int32_t picture_buffer_id,

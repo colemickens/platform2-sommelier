@@ -111,6 +111,12 @@ typedef struct provide_picture_buffers_event_data {
   uint32_t min_num_buffers;
   int32_t width;
   int32_t height;
+
+  // Visible rect coordinates.
+  int32_t visible_rect_left;
+  int32_t visible_rect_top;
+  int32_t visible_rect_right;
+  int32_t visible_rect_bottom;
 } provide_picture_buffers_event_data_t;
 
 // Event data for event type PICTURE_READY.
