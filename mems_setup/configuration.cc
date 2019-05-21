@@ -26,7 +26,9 @@ struct VpdCalibrationEntry {
 
 constexpr char kCalibrationBias[] = "bias";
 
-constexpr int kGyroMaxVpdCalibration = 16384;
+constexpr int kGyroMaxVpdCalibration = 16384;  // 16dps
+constexpr int kAccelMaxVpdCalibration = 256;  // .250g
+
 }  // namespace
 
 Configuration::Configuration(IioDevice* sensor, SensorKind kind, Delegate* del)
@@ -34,6 +36,8 @@ Configuration::Configuration(IioDevice* sensor, SensorKind kind, Delegate* del)
 
 bool Configuration::Configure() {
   switch (kind_) {
+    case SensorKind::ACCELEROMETER:
+      return ConfigAccelerometer();
     case SensorKind::GYROSCOPE:
       return ConfigGyro();
     default:
@@ -120,6 +124,14 @@ bool Configuration::ConfigGyro() {
     return false;
 
   LOG(INFO) << "gyroscope configuration complete";
+  return true;
+}
+
+bool Configuration::ConfigAccelerometer() {
+  if (!CopyCalibrationBiasFromVpd(kAccelMaxVpdCalibration))
+    return false;
+
+  LOG(INFO) << "accelerometer configuration complete";
   return true;
 }
 

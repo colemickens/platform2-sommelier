@@ -24,6 +24,7 @@ class Configuration {
 
  private:
   bool ConfigGyro();
+  bool ConfigAccelerometer();
 
   bool CopyCalibrationBiasFromVpd(int max_value);
   bool CopyCalibrationBiasFromVpd(int max_value, const std::string& location);
