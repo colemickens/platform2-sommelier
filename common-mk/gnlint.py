@@ -549,7 +549,7 @@ def ParseOptions(options, name=None):
 
   # Validate the options.
   all_linters = FindLinters([])
-  bad_linters = skip - all_linters
+  bad_linters = skip - set(all_linters.keys())
   if bad_linters:
     issues.append(
         LintResult('ParseOptions', name, 'unknown linters: %s' % (bad_linters,),
@@ -576,9 +576,10 @@ def FindLinters(skip):
     skip: A string list of linter names to be skipped.
 
   Returns:
-    List of linter functions.
+    A dict of linters, in which the key is the name and the value is the
+    linter function.
   """
-  return set(f for name, f in _ALL_LINTERS.items() if name not in skip)
+  return {name: f for name, f in _ALL_LINTERS.items() if name not in skip}
 
 
 def RunLinters(name, gndata, settings=None):
@@ -599,7 +600,7 @@ def RunLinters(name, gndata, settings=None):
     settings = ParseOptions([])
     issues += settings.issues
 
-  for linter in FindLinters(settings.skip):
+  for linter in FindLinters(settings.skip).values():
     for result in linter(gndata):
       issues.append(LintResult(linter, name, result, logging.ERROR))
   return issues

@@ -91,6 +91,21 @@ class FilesystemUtilityTests(cros_test_lib.MockTempDirTestCase):
     ret = gnlint.CheckGnFile(gnfile)
     self.assertEqual(ret, [])
 
+  def testGnFileOption(self):
+    """Check CheckGnFile processes file options correctly."""
+    static_library_with_visibility_flag = (
+        'static_library("a") {\n'
+        '  cflags = [ "-fvisibility=default" ]\n'
+        '}\n')
+    gn_options = '#gnlint: disable=GnLintVisibilityFlags\n'
+    gnfile = os.path.join(self.tempdir, 'asdf')
+    osutils.WriteFile(gnfile, static_library_with_visibility_flag)
+    ret = gnlint.CheckGnFile(gnfile)
+    self.assertEqual(len(ret), 1)
+    osutils.WriteFile(gnfile, gn_options+static_library_with_visibility_flag)
+    ret = gnlint.CheckGnFile(gnfile)
+    self.assertEqual(ret, [])
+
   def testCheckFormatDetectError(self):
     """Check CheckGnFile detects non-standard format."""
     content = 'executable("foo"){\n}\n'   # no space after ')'
