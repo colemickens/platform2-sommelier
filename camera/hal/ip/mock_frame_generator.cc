@@ -3,87 +3,81 @@
  * found in the LICENSE file.
  */
 
-#include <memory>
-#include <utility>
 
-#include "hal/ip/mock_frame_generator.h"
-
-#include <system/graphics.h>
-
-#include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/common.h"
+#include "cros-camera/ipc_util.h"
+#include "hal/ip/mock_frame_generator.h"
 
 namespace cros {
 
 MockFrameGenerator::MockFrameGenerator()
-    : thread_(), lock_(), stopping_(false), pattern_counter_(0) {}
+    : running_(false), pattern_counter_(0) {}
 
-MockFrameGenerator::~MockFrameGenerator() {
-  StopStreaming();
+int MockFrameGenerator::Init() {
+  if (!shm_.CreateAndMapAnonymous(GetWidth() * GetHeight() * 3 / 2)) {
+    LOGF(ERROR) << "Unable to create/map shared memory";
+    return -ENOMEM;
+  }
+  shm_y_ = shm_.memory();
+  shm_u_ = static_cast<uint8_t*>(shm_y_) + GetWidth() * GetHeight();
+  shm_v_ = static_cast<uint8_t*>(shm_u_) + (GetWidth() * GetHeight() / 4);
+
+  // Set the Y and U planes to all 0
+  memset(shm_y_, 0, GetWidth() * GetHeight());
+  memset(shm_u_, 0, GetWidth() * GetHeight() / 4);
+
+  return 0;
 }
 
-int MockFrameGenerator::GetFormat() const {
-  return HAL_PIXEL_FORMAT_YCbCr_420_888;
-}
+MockFrameGenerator::~MockFrameGenerator() {}
 
-int MockFrameGenerator::GetWidth() const {
+int32_t MockFrameGenerator::GetWidth() const {
   return 1920;
 }
 
-int MockFrameGenerator::GetHeight() const {
+int32_t MockFrameGenerator::GetHeight() const {
   return 1080;
 }
 
-double MockFrameGenerator::GetFPS() const {
+mojom::PixelFormat MockFrameGenerator::GetFormat() const {
+  return mojom::PixelFormat::YUV_420;
+}
+
+double MockFrameGenerator::GetFps() const {
   return 30.0;
 }
 
-RequestQueue* MockFrameGenerator::StartStreaming() {
-  {
-    base::AutoLock l(lock_);
-    stopping_ = false;
+void MockFrameGenerator::StartStreaming() {
+  if (!listener_) {
+    LOGF(ERROR) << "Called start streaming without a frame listener";
   }
-
-  base::PlatformThread::Create(0, this, &thread_);
-  return &request_queue_;
+  running_ = true;
+  FrameLoop();
 }
 
 void MockFrameGenerator::StopStreaming() {
-  {
-    base::AutoLock l(lock_);
-    stopping_ = true;
-  }
-  request_queue_.CancelPop();
+  running_ = false;
 }
 
-void MockFrameGenerator::ThreadMain() {
-  base::PlatformThread::SetName("Mock IP Camera");
-
-  base::AutoLock l(lock_);
-  while (!stopping_) {
-    base::AutoUnlock r(lock_);
-    std::unique_ptr<CaptureRequest> request = request_queue_.Pop();
-    if (request) {
-      FillBuffer(request->GetOutputBuffer()->buffer);
-      request_queue_.NotifyCapture(std::move(request));
-    }
+void MockFrameGenerator::FrameLoop() {
+  DCHECK(ipc_task_runner_->RunsTasksOnCurrentThread());
+  if (!running_) {
+    return;
   }
-}
+  if (listener_) {
+    // modulate the V plane
+    memset(shm_v_, pattern_counter_, GetWidth() * GetHeight() / 4);
 
-void MockFrameGenerator::FillBuffer(buffer_handle_t* buffer) {
-  auto* buffer_manager = CameraBufferManager::GetInstance();
-  buffer_manager->Register(*buffer);
-  struct android_ycbcr ycbcr;
-  buffer_manager->LockYCbCr(*buffer, 0, 0, 0, GetWidth(), GetHeight(), &ycbcr);
+    listener_->OnFrameCaptured(WrapPlatformHandle(dup(shm_.handle().fd)),
+                               shm_.requested_size());
+  }
 
-  // For some reason the buffer manager allocates this as an NV12 buffer even
-  // though it's supposed to be YUV420
-  memset(ycbcr.y, 127, ycbcr.ystride * GetHeight());
-  memset(ycbcr.cb, pattern_counter_, ycbcr.cstride * GetHeight() / 2);
   pattern_counter_++;
 
-  buffer_manager->Unlock(*buffer);
-  buffer_manager->Deregister(*buffer);
+  ipc_task_runner_->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&MockFrameGenerator::FrameLoop, base::Unretained(this)),
+      base::TimeDelta::FromSecondsD(1 / GetFps()));
 }
 
 }  // namespace cros

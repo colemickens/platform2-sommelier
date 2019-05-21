@@ -3,36 +3,42 @@
  * found in the LICENSE file.
  */
 
-#include "hal/ip/camera_hal.h"
-#include "hal/ip/metadata_handler.h"
 
 #include <base/strings/string_number_conversions.h>
+#include <mojo/edk/embedder/embedder.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <utility>
 
 #include "cros-camera/common.h"
 #include "cros-camera/export.h"
+#include "hal/ip/camera_hal.h"
+#include "hal/ip/metadata_handler.h"
 
 namespace cros {
 
 CameraHal::CameraHal()
-    : ip_camera_detector_(this),
-      camera_map_lock_(),
-      cameras_(),
-      camera_static_info_(),
-      open_cameras_(),
+    : ipc_thread_("IP Camera HAL IPC"),
+      binding_(this),
       next_camera_id_(0),
       callbacks_set_(base::WaitableEvent::ResetPolicy::MANUAL,
                      base::WaitableEvent::InitialState::NOT_SIGNALED),
-      callbacks_(NULL) {}
+      callbacks_(nullptr) {}
 
 CameraHal::~CameraHal() {
-  ip_camera_detector_.Stop();
+  detector_impl_.reset();
 
+  if (ipc_thread_.IsRunning()) {
+    ipc_thread_.task_runner()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&CameraHal::DestroyOnIpcThread, base::Unretained(this)));
+    ipc_thread_.Stop();
+  }
+
+  mojo::edk::ShutdownIPCSupport(base::Bind(&base::DoNothing));
   base::AutoLock l(camera_map_lock_);
 
-  open_cameras_.clear();
-
-  camera_static_info_.clear();
+  cameras_.clear();
 }
 
 CameraHal& CameraHal::GetInstance() {
@@ -44,42 +50,19 @@ int CameraHal::OpenDevice(int id,
                           const hw_module_t* module,
                           hw_device_t** hw_device) {
   base::AutoLock l(camera_map_lock_);
-
   if (cameras_.find(id) == cameras_.end()) {
     LOGF(ERROR) << "Camera " << id << " is invalid";
     return -EINVAL;
   }
 
-  if (open_cameras_.find(id) != open_cameras_.end()) {
+  if (cameras_[id]->IsOpen()) {
     LOGF(ERROR) << "Camera " << id << " is already open";
     return -EBUSY;
   }
 
-  open_cameras_[id] =
-      std::make_unique<CameraDevice>(id, cameras_[id], module, hw_device);
+  cameras_[id]->Open(module, hw_device);
 
   return 0;
-}
-
-int CameraHal::CloseDeviceLocked(int id) {
-  if (cameras_.find(id) == cameras_.end()) {
-    LOGF(ERROR) << "Camera " << id << " is invalid";
-    return -EINVAL;
-  }
-
-  if (open_cameras_.find(id) == open_cameras_.end()) {
-    LOGF(ERROR) << "Camera " << id << " is not open";
-    return -EINVAL;
-  }
-
-  open_cameras_.erase(id);
-
-  return 0;
-}
-
-int CameraHal::CloseDevice(int id) {
-  base::AutoLock l(camera_map_lock_);
-  return CloseDeviceLocked(id);
 }
 
 int CameraHal::GetNumberOfCameras() const {
@@ -89,8 +72,8 @@ int CameraHal::GetNumberOfCameras() const {
 
 int CameraHal::GetCameraInfo(int id, struct camera_info* info) {
   base::AutoLock l(camera_map_lock_);
-  auto it = camera_static_info_.find(id);
-  if (cameras_.find(id) == cameras_.end() || it == camera_static_info_.end()) {
+  auto it = cameras_.find(id);
+  if (it == cameras_.end()) {
     LOGF(ERROR) << "Camera id " << id << " is not valid";
     return -EINVAL;
   }
@@ -98,7 +81,8 @@ int CameraHal::GetCameraInfo(int id, struct camera_info* info) {
   info->facing = CAMERA_FACING_EXTERNAL;
   info->orientation = 0;
   info->device_version = CAMERA_DEVICE_API_VERSION_3_3;
-  info->static_camera_characteristics = it->second.getAndLock();
+  info->static_camera_characteristics =
+      it->second->GetStaticMetadata()->getAndLock();
   info->resource_cost = 0;
   info->conflicting_devices = nullptr;
   info->conflicting_devices_length = 0;
@@ -112,48 +96,103 @@ int CameraHal::SetCallbacks(const camera_module_callbacks_t* callbacks) {
 }
 
 int CameraHal::Init() {
-  if (!ip_camera_detector_.Start()) {
-    LOGF(ERROR) << "Failed to start IP Camera Detector";
+  if (ipc_thread_.IsRunning()) {
+    LOGF(ERROR) << "Init called more than once";
+    return -EBUSY;
+  }
+
+  if (!ipc_thread_.StartWithOptions(
+          base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
+    LOGF(ERROR) << "Failed to start IP Camera HAL IPC thread";
     return -ENODEV;
   }
 
-  return 0;
+  mojo::edk::Init();
+  mojo::edk::InitIPCSupport(ipc_thread_.task_runner());
+
+  auto return_val = Future<int>::Create(nullptr);
+  mojo::edk::GetIOTaskRunner()->PostTask(
+      FROM_HERE, base::BindOnce(&CameraHal::InitOnIpcThread,
+                                base::Unretained(this), return_val));
+
+  return return_val->Get();
 }
 
-int CameraHal::OnDeviceConnected(IpCameraDevice* device) {
+void CameraHal::InitOnIpcThread(scoped_refptr<Future<int>> return_val) {
+  detector_impl_ = std::make_unique<IpCameraDetectorImpl>();
+
+  mojom::IpCameraDetectorPtr detector;
+  int ret = detector_impl_->Init(mojo::MakeRequest(&detector));
+  if (ret != 0) {
+    return_val->Set(ret);
+    return;
+  }
+
+  mojom::IpCameraConnectionListenerPtr listener;
+  binding_.Bind(mojo::MakeRequest(&listener));
+  detector->RegisterConnectionListener(std::move(listener));
+  return_val->Set(0);
+}
+
+void CameraHal::DestroyOnIpcThread() {
+  binding_.Close();
+}
+
+void CameraHal::OnDeviceConnected(int32_t id,
+                                  mojom::IpCameraDevicePtr device_ptr,
+                                  mojom::IpCameraStreamPtr default_stream) {
   int camera_id = -1;
   {
     base::AutoLock l(camera_map_lock_);
     camera_id = next_camera_id_;
+
+    auto device = std::make_unique<CameraDevice>(camera_id);
+    if (device->Init(std::move(device_ptr), default_stream->format,
+                     default_stream->width, default_stream->height,
+                     default_stream->fps)) {
+      LOGF(ERROR) << "Error creating camera device";
+      return;
+    }
+
     next_camera_id_++;
-    cameras_[camera_id] = device;
-    camera_static_info_[camera_id] = MetadataHandler::CreateStaticMetadata(
-        device->GetFormat(), device->GetWidth(), device->GetHeight(),
-        device->GetFPS());
+    detector_ids_[id] = camera_id;
+    cameras_[camera_id] = std::move(device);
   }
 
   callbacks_set_.Wait();
   callbacks_->camera_device_status_change(callbacks_, camera_id,
                                           CAMERA_DEVICE_STATUS_PRESENT);
-  return camera_id;
 }
 
-void CameraHal::OnDeviceDisconnected(int id) {
+void CameraHal::OnDeviceDisconnected(int32_t id) {
   callbacks_set_.Wait();
-  callbacks_->camera_device_status_change(callbacks_, id,
+
+  int hal_id = -1;
+  {
+    base::AutoLock l(camera_map_lock_);
+    if (detector_ids_.find(id) == detector_ids_.end()) {
+      LOGF(ERROR) << "Camera detector id " << id << " is invalid";
+      return;
+    }
+    hal_id = detector_ids_[id];
+
+    if (cameras_.find(hal_id) == cameras_.end()) {
+      LOGF(ERROR) << "Camera id " << hal_id << " is invalid";
+      return;
+    }
+  }
+
+  callbacks_->camera_device_status_change(callbacks_, hal_id,
                                           CAMERA_DEVICE_STATUS_NOT_PRESENT);
 
-  base::AutoLock l(camera_map_lock_);
-  if (open_cameras_.find(id) != open_cameras_.end()) {
-    CloseDeviceLocked(id);
-  }
+  {
+    base::AutoLock l(camera_map_lock_);
+    if (cameras_[hal_id]->IsOpen()) {
+      cameras_[hal_id]->Close();
+    }
 
-  if (cameras_.erase(id) == 0) {
-    LOGF(ERROR) << "Camera " << id << " is invalid";
-  }
-
-  if (camera_static_info_.erase(id) == 0) {
-    LOGF(ERROR) << "Camera " << id << " has no static info";
+    detector_ids_.erase(id);
+    cameras_.erase(hal_id);
   }
 }
 
@@ -217,7 +256,7 @@ camera_module_t HAL_MODULE_INFO_SYM CROS_CAMERA_EXPORT = {
                .name = "IP Camera HAL v3",
                .author = "The Chromium OS Authors",
                .methods = &gCameraModuleMethods,
-               .dso = NULL,
+               .dso = nullptr,
                .reserved = {0}},
     .get_number_of_cameras = cros::get_number_of_cameras,
     .get_camera_info = cros::get_camera_info,

@@ -6,23 +6,22 @@
 #ifndef CAMERA_HAL_IP_CAMERA_HAL_H_
 #define CAMERA_HAL_IP_CAMERA_HAL_H_
 
-#include <map>
-#include <memory>
-
 #include <base/macros.h>
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
 #include <camera/camera_metadata.h>
-
-#include <hardware/camera_common.h>
+#include <map>
+#include <memory>
 #include <sys/types.h>
 
+#include "cros-camera/future.h"
 #include "hal/ip/camera_device.h"
 #include "hal/ip/ip_camera_detector.h"
+#include "mojo/ip/ip_camera.mojom.h"
 
 namespace cros {
 
-class CameraHal : public IpCameraDetector::Observer {
+class CameraHal : public mojom::IpCameraConnectionListener {
  public:
   CameraHal();
   ~CameraHal();
@@ -36,23 +35,25 @@ class CameraHal : public IpCameraDetector::Observer {
   int SetCallbacks(const camera_module_callbacks_t* callbacks);
   int Init();
 
-  // Called from CameraDevice (camera3_device_t)
-  int CloseDevice(int id);
-
  private:
-  // IpCameraDetector::Observer interface
-  int OnDeviceConnected(IpCameraDevice* device) override;
-  void OnDeviceDisconnected(int id) override;
+  // IpCameraConnectionListener interface
+  void OnDeviceConnected(int32_t id,
+                         mojom::IpCameraDevicePtr device_ptr,
+                         mojom::IpCameraStreamPtr default_stream) override;
+  void OnDeviceDisconnected(int32_t id) override;
 
-  int CloseDeviceLocked(int id);
+  void InitOnIpcThread(scoped_refptr<Future<int>> return_val);
+  void DestroyOnIpcThread();
 
-  IpCameraDetector ip_camera_detector_;
+  base::Thread ipc_thread_;
+  std::unique_ptr<IpCameraDetectorImpl> detector_impl_;
+  mojo::Binding<IpCameraConnectionListener> binding_;
 
-  // The three maps, as well as |next_camera_id_| are protected by this lock
+  // The maps, as well as |next_camera_id_| are protected by this lock
   base::Lock camera_map_lock_;
-  std::map<int, IpCameraDevice*> cameras_;
-  std::map<int, android::CameraMetadata> camera_static_info_;
-  std::map<int, std::unique_ptr<CameraDevice>> open_cameras_;
+  // Maps from detector id to HAL id
+  std::map<int32_t, int> detector_ids_;
+  std::map<int, std::unique_ptr<CameraDevice>> cameras_;
   int next_camera_id_;
 
   // Any calls to OnDeviceConnected/OnDeviceDisconnected will block until

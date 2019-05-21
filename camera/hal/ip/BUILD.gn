@@ -1,0 +1,40 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/mojom_bindings_generator.gni")
+
+group("all") {
+  deps = [
+    ":libcamera_hal",
+  ]
+}
+
+generate_mojom_bindings("libcamera_hal_mojom") {
+  sources = [
+    "//camera/mojo/ip/ip_camera.mojom",
+  ]
+  mojo_root = "//camera"
+}
+
+shared_library("libcamera_hal") {
+  sources = [
+    "camera_device.cc",
+    "camera_hal.cc",
+    "ip_camera.cc",
+    "ip_camera_detector.cc",
+    "metadata_handler.cc",
+    "mock_frame_generator.cc",
+    "request_queue.cc",
+  ]
+  configs += [ "//camera/build:cros_camera_common" ]
+  pkg_deps = [
+    "cros-camera-android-headers",
+    "libcamera_common",
+    "libcamera_metadata",
+  ]
+  deps = [
+    ":libcamera_hal_mojom",
+    "//camera/common/libcamera_ipc:libcamera_ipc",
+  ]
+}

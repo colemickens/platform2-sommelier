@@ -6,23 +6,34 @@
 #ifndef CAMERA_HAL_IP_CAMERA_DEVICE_H_
 #define CAMERA_HAL_IP_CAMERA_DEVICE_H_
 
+#include <base/threading/thread.h>
+#include <camera/camera_metadata.h>
 #include <hardware/camera3.h>
+#include <hardware/camera_common.h>
 #include <hardware/hardware.h>
+#include <mojo/public/cpp/bindings/binding.h>
 
-#include "hal/ip/ip_camera_device.h"
+#include "cros-camera/camera_buffer_manager.h"
+#include "cros-camera/future.h"
 #include "hal/ip/request_queue.h"
+#include "mojo/ip/ip_camera.mojom.h"
 
 namespace cros {
 
-class CameraDevice {
+class CameraDevice : public mojom::IpCameraFrameListener {
  public:
-  CameraDevice(int id,
-               IpCameraDevice* ip_device,
-               const hw_module_t* module,
-               hw_device_t** hw_device);
+  explicit CameraDevice(int id);
   ~CameraDevice();
 
-  int GetId() const;
+  int Init(mojom::IpCameraDevicePtr ip_device,
+           mojom::PixelFormat format,
+           int32_t width,
+           int32_t height,
+           double fps);
+  void Open(const hw_module_t* module, hw_device_t** hw_device);
+  void Close();
+  bool IsOpen();
+  android::CameraMetadata* GetStaticMetadata();
 
   // Implementations of camera3_device_ops_t
   int Initialize(const camera3_callback_ops_t* callback_ops);
@@ -31,18 +42,27 @@ class CameraDevice {
   int ProcessCaptureRequest(camera3_capture_request_t* request);
   int Flush();
 
-  void Close();
-
  private:
+  void StartStreamingOnIpcThread(scoped_refptr<Future<void>> return_val);
+  void StopStreamingOnIpcThread(scoped_refptr<Future<void>> return_val);
   bool ValidateStream(camera3_stream_t* stream);
+  void OnFrameCaptured(mojo::ScopedHandle shm_handle, uint32_t size) override;
+
+  std::atomic<bool> open_;
 
   const int id_;
-  IpCameraDevice* const ip_device_;
+  mojom::IpCameraDevicePtr ip_device_;
   camera3_device_t camera3_device_;
-
   const camera3_callback_ops_t* callback_ops_;
-
-  RequestQueue* request_queue_;
+  // Android HAL pixel format
+  int format_;
+  int width_;
+  int height_;
+  RequestQueue request_queue_;
+  scoped_refptr<base::TaskRunner> ipc_task_runner_;
+  mojo::Binding<IpCameraFrameListener> binding_;
+  CameraBufferManager* buffer_manager_;
+  android::CameraMetadata static_metadata_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraDevice);
 };

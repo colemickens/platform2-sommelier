@@ -6,41 +6,41 @@
 #ifndef CAMERA_HAL_IP_IP_CAMERA_DETECTOR_H_
 #define CAMERA_HAL_IP_IP_CAMERA_DETECTOR_H_
 
+#include <base/threading/thread.h>
 #include <map>
+#include <memory>
+#include <mojo/public/cpp/bindings/binding.h>
 
-#include <base/macros.h>
-#include <base/threading/platform_thread.h>
-
-#include "hal/ip/ip_camera_device.h"
+#include "cros-camera/future.h"
+#include "hal/ip/ip_camera.h"
+#include "mojo/ip/ip_camera.mojom.h"
 
 namespace cros {
 
 // Tracks which IP cameras are available on the network and notifies the
 // observer when they connect/disconnect.
-class IpCameraDetector : base::PlatformThread::Delegate {
+class IpCameraDetectorImpl : public mojom::IpCameraDetector {
  public:
-  class Observer {
-   public:
-    virtual ~Observer() = default;
-    virtual int OnDeviceConnected(IpCameraDevice* device);
-    virtual void OnDeviceDisconnected(int id);
-  };
+  IpCameraDetectorImpl();
+  ~IpCameraDetectorImpl();
 
-  explicit IpCameraDetector(Observer* observer);
-  ~IpCameraDetector();
-
-  bool Start();
-  void Stop();
+  int Init(mojom::IpCameraDetectorRequest request);
 
  private:
-  void ThreadMain() override;
-  Observer* observer_;
+  void RegisterConnectionListener(
+      mojom::IpCameraConnectionListenerPtr listener) override;
+  void DestroyOnIpcThread(scoped_refptr<Future<void>> return_val);
+  void MockFrameGeneratorConnect();
+  void DeviceDisconnect(int32_t id);
 
-  base::PlatformThreadHandle thread_handle_;
+  mojo::Binding<IpCameraDetector> binding_;
+  scoped_refptr<base::TaskRunner> ipc_task_runner_;
+  mojom::IpCameraConnectionListenerPtr listener_;
 
-  std::map<int, IpCameraDevice*> cameras_;
+  int32_t next_camera_id_;
+  std::map<int32_t, std::unique_ptr<IpCamera>> devices_;
 
-  DISALLOW_COPY_AND_ASSIGN(IpCameraDetector);
+  DISALLOW_COPY_AND_ASSIGN(IpCameraDetectorImpl);
 };
 
 }  // namespace cros

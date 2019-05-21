@@ -48,7 +48,7 @@ RequestQueue::RequestQueue()
       requests_being_filled_(0),
       flushing_(false),
       cancel_next_pop_(false),
-      callback_ops_(NULL) {}
+      callback_ops_(nullptr) {}
 
 RequestQueue::~RequestQueue() {
   base::AutoLock l(lock_);
@@ -105,6 +105,11 @@ void RequestQueue::CancelPop() {
   new_request_available_.Signal();
 }
 
+bool RequestQueue::IsEmpty() {
+  base::AutoLock l(lock_);
+  return queue_.empty();
+}
+
 void RequestQueue::Flush() {
   base::AutoLock l(lock_);
   flushing_ = true;
@@ -134,7 +139,7 @@ void RequestQueue::NotifyCaptureInternal(
     std::unique_ptr<CaptureRequest> request) {
   camera3_capture_result_t result = {};
   result.frame_number = request->GetFrameNumber();
-  result.result = NULL;
+  result.result = nullptr;
   result.num_output_buffers = 1;
   result.output_buffers = request->GetOutputBuffer();
   result.partial_result = 1;
@@ -154,7 +159,7 @@ void RequestQueue::CancelRequestLocked(
   camera3_notify_msg_t msg = {};
   msg.type = CAMERA3_MSG_ERROR;
   msg.message.error.frame_number = request->GetFrameNumber();
-  msg.message.error.error_stream = NULL;
+  msg.message.error.error_stream = nullptr;
   msg.message.error.error_code = CAMERA3_MSG_ERROR_REQUEST;
   callback_ops_->notify(callback_ops_, &msg);
 

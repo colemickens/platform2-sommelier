@@ -56,6 +56,9 @@ class RequestQueue {
   // Causes any pending call to Pop to return null.
   void CancelPop();
 
+  // Checks if a request is currently available.
+  bool IsEmpty();
+
   // Waits until any requests that have already been popped are completed, then
   // cancels any other pending requests.
   void Flush();

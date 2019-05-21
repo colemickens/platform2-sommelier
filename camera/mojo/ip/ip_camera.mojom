@@ -1,0 +1,42 @@
+// Copyright 2019 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+module cros.mojom;
+
+enum PixelFormat {
+  YUV_420,
+};
+
+struct IpCameraStream {
+  PixelFormat format;
+  int32 width;
+  int32 height;
+  double fps;
+};
+
+// TODO(pceballos): Investigate using handle<shared_buffer> instead of handle.
+interface IpCameraFrameListener {
+  OnFrameCaptured(handle shm_handle, uint32 size);
+};
+
+interface IpCameraDevice {
+  // Only a single listener is supported. Registering a new one will replace any
+  // existing listener.
+  RegisterFrameListener(IpCameraFrameListener listener);
+
+  StartStreaming();
+  StopStreaming();
+};
+
+interface IpCameraConnectionListener {
+  OnDeviceConnected(int32 id, IpCameraDevice device,
+                    IpCameraStream default_stream);
+  OnDeviceDisconnected(int32 id);
+};
+
+interface IpCameraDetector {
+  // Only a single listener is supported. Registering a new one will replace any
+  // existing listener.
+  RegisterConnectionListener(IpCameraConnectionListener listener);
+};
