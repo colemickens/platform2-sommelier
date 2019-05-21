@@ -2665,8 +2665,13 @@ void Service::UnregisterVmContainers(VirtualMachine* vm,
   // still need this in case that happens.
   std::vector<std::string> containers = vm->GetContainerNames();
   for (auto& container_name : containers) {
-    LOG(WARNING) << "Latent container left in VM " << vm_name << " of "
-                 << container_name;
+    // We create an instance of default container for Plugin VMs, but it
+    // does not get shut down, so we need not to complain about it.
+    if (!vm->IsPluginVm() || container_name != kDefaultContainerName) {
+      LOG(WARNING) << "Latent container left in VM " << vm_name << " of "
+                   << container_name;
+    }
+
     if (owner_id == primary_owner_id_) {
       UnregisterHostname(base::StringPrintf(
           "%s.%s.linux.test", container_name.c_str(), vm_name.c_str()));
