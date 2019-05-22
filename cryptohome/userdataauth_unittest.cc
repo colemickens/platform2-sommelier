@@ -21,8 +21,10 @@ using base::FilePath;
 using brillo::SecureBlob;
 
 using ::testing::_;
+using ::testing::AtLeast;
 using ::testing::EndsWith;
 using ::testing::Invoke;
+using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgPointee;
@@ -194,6 +196,89 @@ TEST_F(UserDataAuthTest, Unmount) {
 
   // Unmount will remove all mounts even if it failed.
   EXPECT_FALSE(userdataauth_.IsMounted());
+}
+
+TEST_F(UserDataAuthTest, InitializePkcs11Success) {
+  // This test the most common success case for PKCS#11 initialization.
+
+  EXPECT_FALSE(userdataauth_.IsMounted());
+
+  // Add a mount associated with foo@gmail.com
+  SetupMount("foo@gmail.com");
+
+  // PKCS#11 will initialization works only when it's mounted.
+  ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
+  // The initialization code should at least check, right?
+  EXPECT_CALL(*mount_, IsMounted())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
+  // |mount_| should get a request to insert PKCS#11 token.
+  EXPECT_CALL(*mount_, InsertPkcs11Token()).WillOnce(Return(true));
+
+  userdataauth_.InitializePkcs11(mount_.get());
+
+  EXPECT_EQ(mount_->pkcs11_state(), cryptohome::Mount::kIsInitialized);
+}
+
+TEST_F(UserDataAuthTest, InitializePkcs11TpmNotOwned) {
+  // Test when TPM isn't owned.
+
+  // Add a mount associated with foo@gmail.com
+  SetupMount("foo@gmail.com");
+
+  // PKCS#11 will initialization works only when it's mounted.
+  ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
+
+  // |mount_| should not get a request to insert PKCS#11 token.
+  EXPECT_CALL(*mount_, InsertPkcs11Token()).Times(0);
+
+  // TPM is enabled but not owned.
+  ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
+  EXPECT_CALL(tpm_, IsOwned()).Times(AtLeast(1)).WillRepeatedly(Return(false));
+
+  userdataauth_.InitializePkcs11(mount_.get());
+
+  EXPECT_EQ(mount_->pkcs11_state(), cryptohome::Mount::kIsWaitingOnTPM);
+
+  // We'll need to call InsertPkcs11Token() and IsEnabled() later in the test.
+  Mock::VerifyAndClearExpectations(mount_.get());
+  Mock::VerifyAndClearExpectations(&tpm_);
+
+  // Next check when the TPM is now owned.
+
+  // The initialization code should at least check, right?
+  EXPECT_CALL(*mount_, IsMounted())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
+
+  // |mount_| should get a request to insert PKCS#11 token.
+  EXPECT_CALL(*mount_, InsertPkcs11Token()).WillOnce(Return(true));
+
+  // TPM is enabled and owned.
+  ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
+  EXPECT_CALL(tpm_, IsOwned()).Times(AtLeast(1)).WillRepeatedly(Return(true));
+
+  userdataauth_.InitializePkcs11(mount_.get());
+
+  EXPECT_EQ(mount_->pkcs11_state(), cryptohome::Mount::kIsInitialized);
+}
+
+TEST_F(UserDataAuthTest, InitializePkcs11Unmounted) {
+  // Add a mount associated with foo@gmail.com
+  SetupMount("foo@gmail.com");
+
+  ON_CALL(*mount_, IsMounted()).WillByDefault(Return(false));
+  // The initialization code should at least check, right?
+  EXPECT_CALL(*mount_, IsMounted())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(false));
+
+  // |mount_| should not get a request to insert PKCS#11 token.
+  EXPECT_CALL(*mount_, InsertPkcs11Token()).Times(0);
+
+  userdataauth_.InitializePkcs11(mount_.get());
+
+  EXPECT_EQ(mount_->pkcs11_state(), cryptohome::Mount::kUninitialized);
 }
 
 // ======================= CleanUpStaleMounts tests ==========================

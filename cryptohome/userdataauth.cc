@@ -9,6 +9,7 @@
 #include <chaps/token_manager_client.h>
 #include <vector>
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/userdataauth.h"
@@ -95,9 +96,9 @@ bool UserDataAuth::Initialize() {
 
   // We expect |tpm_| and |tpm_init_| to be available by this point.
   DCHECK(tpm_ && tpm_init_);
-  // Ownerhip is not handled by tpm_init_ in this class, so we don't care
-  // about the ownership callback
-  tpm_init_->Init(base::Bind([](bool, bool) {}));
+
+  tpm_init_->Init(
+      base::Bind(&UserDataAuth::OwnershipCallback, base::Unretained(this)));
 
   return true;
 }
@@ -424,6 +425,115 @@ bool UserDataAuth::Unmount() {
   CleanUpStaleMounts(true);
 
   return unmount_ok;
+}
+
+void UserDataAuth::InitializePkcs11(cryptohome::Mount* mount) {
+  // We should not pass nullptr to this method.
+  DCHECK(mount);
+
+  if (!IsOnMountThread()) {
+    // We are not on mount thread, but to be safe, we'll only access Mount
+    // objects on mount thread, so let's post ourself there.
+    PostTaskToMountThread(
+        FROM_HERE,
+        base::BindOnce(&UserDataAuth::InitializePkcs11, base::Unretained(this),
+                       base::Unretained(mount)));
+    return;
+  }
+
+  AssertOnMountThread();
+
+  // Wait for ownership if there is a working TPM.
+  if (tpm_ && tpm_->IsEnabled() && !tpm_->IsOwned()) {
+    LOG(WARNING) << "TPM was not owned. TPM initialization call back will"
+                 << " handle PKCS#11 initialization.";
+    mount->set_pkcs11_state(cryptohome::Mount::kIsWaitingOnTPM);
+    return;
+  }
+
+  bool still_mounted = false;
+
+  // The mount have be mounted, that is, still tracked by cryptohome. Otherwise
+  // there's no point in initializing PKCS#11 for it. The reason for this check
+  // is because it might be possible for Unmount() to be called after mounting
+  // and before getting here.
+  for (const auto& mount_pair : mounts_) {
+    if (mount_pair.second.get() == mount && mount->IsMounted()) {
+      still_mounted = true;
+      break;
+    }
+  }
+
+  if (!still_mounted) {
+    LOG(WARNING)
+        << "PKCS#11 initialization requested but cryptohome is not mounted.";
+    return;
+  }
+
+  mount->set_pkcs11_state(cryptohome::Mount::kIsBeingInitialized);
+
+  // Note that the timer stops in the Mount class' method.
+  ReportTimerStart(kPkcs11InitTimer);
+
+  mount->InsertPkcs11Token();
+
+  LOG(INFO) << "PKCS#11 initialization succeeded.";
+
+  mount->set_pkcs11_state(cryptohome::Mount::kIsInitialized);
+}
+
+void UserDataAuth::ResumeAllPkcs11Initialization() {
+  if (!IsOnMountThread()) {
+    // We are not on mount thread, but to be safe, we'll only access Mount
+    // objects on mount thread, so let's post ourself there.
+    PostTaskToMountThread(
+        FROM_HERE, base::BindOnce(&UserDataAuth::ResumeAllPkcs11Initialization,
+                                  base::Unretained(this)));
+    return;
+  }
+
+  for (const auto& mount_pair : mounts_) {
+    cryptohome::Mount* mount = mount_pair.second.get();
+    if (mount->pkcs11_state() == cryptohome::Mount::kIsWaitingOnTPM) {
+      InitializePkcs11(mount);
+    }
+  }
+}
+
+void UserDataAuth::ResetAllTPMContext() {
+  if (!IsOnMountThread()) {
+    // We are not on mount thread, but to be safe, we'll only access Mount
+    // objects on mount thread, so let's post ourself there.
+    PostTaskToMountThread(FROM_HERE,
+                          base::BindOnce(&UserDataAuth::ResetAllTPMContext,
+                                         base::Unretained(this)));
+    return;
+  }
+
+  for (const auto& mount_pair : mounts_) {
+    if (mount_pair.second) {
+      Crypto* crypto = mount_pair.second->crypto();
+      if (crypto) {
+        crypto->EnsureTpm(true);
+      }
+    }
+  }
+}
+
+void UserDataAuth::OwnershipCallback(bool status, bool took_ownership) {
+  if (took_ownership) {
+    // Reset the TPM context of all mounts, that is, force a reload of
+    // cryptohome keys, and make sure it is loaded and ready for every mount.
+    PostTaskToMountThread(FROM_HERE,
+                          base::BindOnce(&UserDataAuth::ResetAllTPMContext,
+                                         base::Unretained(this)));
+
+    // There might be some mounts that is half way through the PKCS#11
+    // initialization, let's resume them.
+    PostTaskToMountThread(
+        FROM_HERE, base::BindOnce(&UserDataAuth::ResumeAllPkcs11Initialization,
+                                  base::Unretained(this)));
+  }
 }
 
 }  // namespace cryptohome

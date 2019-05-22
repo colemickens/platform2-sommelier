@@ -71,6 +71,23 @@ class UserDataAuth {
   //          if false, unmounts shadows mounts with no open files.
   bool CleanUpStaleMounts(bool force);
 
+  // Calling this function will reset the TPM context of every mount, that is,
+  // it'll force a reload of all cryptohome key that is associated with mounts.
+  void ResetAllTPMContext();
+
+  // =============== PKCS#11 Related Public Methods ===============
+
+  // This initializes the PKCS#11 for a particular mount. Note that this is
+  // used mostly internally, by Mount related functions to bring up the PKCS#11
+  // functionalities after mounting.
+  void InitializePkcs11(cryptohome::Mount* mount);
+
+  // =============== Miscellaneous ===============
+
+  // This is called by tpm_init_ when there's any update on ownership status
+  // of the TPM.
+  void OwnershipCallback(bool status, bool took_ownership);
+
   // ================= Threading Utilities ==================
 
   // Returns true if we are currently running on the origin thread
@@ -192,6 +209,13 @@ class UserDataAuth {
   // Note that this function is case insensitive
   static bool PrefixPresent(const std::vector<base::FilePath>& prefixes,
                             const std::string path);
+
+  // =============== PKCS#11 Related Utilities ===============
+
+  // This is called when TPM is enabled and owned, so that we can continue
+  // the initialization of any PKCS#11 that was paused because TPM wasn't
+  // ready.
+  void ResumeAllPkcs11Initialization();
 
   // =============== Threading Related Variables ===============
 

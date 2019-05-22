@@ -280,7 +280,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   virtual std::unique_ptr<base::Value> GetStatus();
 
   // Inserts the current user's PKCS #11 token.
-  bool InsertPkcs11Token();
+  virtual bool InsertPkcs11Token();
 
   // Removes the current user's PKCS #11 token.
   void RemovePkcs11Token();
