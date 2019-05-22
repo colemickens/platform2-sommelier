@@ -25,11 +25,17 @@ struct MountConfig;
 class TempFileManager;
 
 MountOptionsProto CreateMountOptionsProto(const std::string& path,
+                                          const std::string& original_path,
                                           const std::string& workgroup,
                                           const std::string& username,
+                                          const std::string& account_hash,
+                                          bool skip_connect,
+                                          bool save_password,
+                                          bool restore_password,
                                           const MountConfig& mount_config);
 
-UnmountOptionsProto CreateUnmountOptionsProto(int32_t mount_id);
+UnmountOptionsProto CreateUnmountOptionsProto(int32_t mount_id,
+                                              bool remove_password);
 
 ReadDirectoryOptionsProto CreateReadDirectoryOptionsProto(
     int32_t mount_id, const std::string& directory_path);
@@ -106,7 +112,18 @@ ProtoBlob CreateMountOptionsBlob(const std::string& path,
                                  const std::string& username,
                                  const MountConfig& mount_config);
 
-ProtoBlob CreateUnmountOptionsBlob(int32_t mount_id);
+ProtoBlob CreateMountOptionsBlob(const std::string& path,
+                                 const std::string& original_path,
+                                 const std::string& workgroup,
+                                 const std::string& username,
+                                 const std::string& account_hash,
+                                 bool skip_connect,
+                                 bool save_password,
+                                 bool restore_password,
+                                 const MountConfig& mount_config);
+
+ProtoBlob CreateUnmountOptionsBlob(int32_t mount_id,
+                                   bool remove_password = false);
 
 ProtoBlob CreateReadDirectoryOptionsBlob(int32_t mount_id,
                                          const std::string& directory_path);

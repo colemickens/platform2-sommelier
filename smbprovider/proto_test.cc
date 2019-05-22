@@ -56,12 +56,14 @@ TEST_F(SmbProviderProtoTest, SerializeProtoToBlob) {
 // IsValidOptions returns true when options are valid for valid protos.
 TEST_F(SmbProviderProtoTest, IsValidOptionsForValidProtos) {
   MountOptionsProto mount_proto = CreateMountOptionsProto(
-      "smb://testShare", "" /* workgroup */, "" /* username */,
+      "smb://testShare", "" /* original_path */, "" /* workgroup */,
+      "" /* username */, "" /* account_hash */, false /* skip_connect */,
+      false /* save_password */, false /* restore_password */,
       MountConfig(true /* enable_ntlm */));
   EXPECT_TRUE(IsValidOptions(mount_proto));
 
   UnmountOptionsProto unmount_proto =
-      CreateUnmountOptionsProto(3 /* mount_id */);
+      CreateUnmountOptionsProto(3 /* mount_id */, false /* remove_password */);
   EXPECT_TRUE(IsValidOptions(unmount_proto));
 
   ReadDirectoryOptionsProto read_directory_proto =

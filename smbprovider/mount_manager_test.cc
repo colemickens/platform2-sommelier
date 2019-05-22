@@ -2,11 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <memory>
 #include <utility>
 #include <vector>
 
 #include <base/bind.h>
+#include <base/files/file.h>
+#include <base/files/file_util.h>
 #include <base/test/simple_test_tick_clock.h>
 #include <gtest/gtest.h>
 
@@ -84,9 +89,11 @@ class MountManagerTest : public testing::Test {
 
   SmbCredential CreateCredential(const std::string& workgroup,
                                  const std::string& username,
-                                 const std::string& password) {
+                                 const std::string& password,
+                                 const base::FilePath& password_file = {}) {
     base::ScopedFD password_fd = WritePasswordToFile(&temp_files_, password);
-    return SmbCredential(workgroup, username, GetPassword(password_fd));
+    return SmbCredential(workgroup, username, GetPassword(password_fd),
+                         password_file);
   }
 
  protected:
@@ -670,6 +677,61 @@ TEST_F(MountManagerTest, TestUpdateShareFailsOnNonExistentMount) {
 
   const std::string new_path = "smb://192.168.50.105/testshare";
   EXPECT_FALSE(mounts_->UpdateSharePath(999 /* mount_id */, new_path));
+}
+
+TEST_F(MountManagerTest, TestSavePassword) {
+  base::FilePath password_file_path;
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_files_.GetTempDirectoryPath(),
+                                             &password_file_path));
+
+  SmbCredential credential =
+      CreateCredential(kWorkgroup, kUsername, kPassword, password_file_path);
+  int32_t mount_id;
+  AddMount(kMountRoot, std::move(credential), &mount_id);
+  EXPECT_TRUE(mounts_->SavePasswordToFile(mount_id));
+
+  base::File password_file(password_file_path,
+                           base::File::FLAG_OPEN | base::File::FLAG_READ);
+  ASSERT_TRUE(password_file.IsValid());
+  base::ScopedFD password_fd(password_file.TakePlatformFile());
+  std::unique_ptr<password_provider::Password> password_ptr =
+      GetPassword(password_fd);
+  EXPECT_TRUE(password_ptr);
+
+  EXPECT_EQ(password_ptr->size(), strlen(kPassword));
+  EXPECT_EQ(std::string(password_ptr->GetRaw()), kPassword);
+}
+
+TEST_F(MountManagerTest, TestSavePasswordInvalidMountId) {
+  base::ScopedFD password_fd = temp_files_.CreateTempFile();
+  ASSERT_TRUE(password_fd.is_valid());
+  EXPECT_FALSE(mounts_->SavePasswordToFile(314159));
+}
+
+TEST_F(MountManagerTest, TestErasePasswordFile) {
+  base::FilePath password_file_path;
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_files_.GetTempDirectoryPath(),
+                                             &password_file_path));
+
+  SmbCredential credential =
+      CreateCredential(kWorkgroup, kUsername, kPassword, password_file_path);
+  int32_t mount_id;
+  AddMount(kMountRoot, std::move(credential), &mount_id);
+  EXPECT_TRUE(base::PathExists(password_file_path));
+  EXPECT_TRUE(mounts_->ErasePasswordFile(mount_id));
+  EXPECT_FALSE(base::PathExists(password_file_path));
+}
+
+TEST_F(MountManagerTest, TestEraseNonExistentPasswordFile) {
+  base::FilePath password_file_path =
+      temp_files_.GetTempDirectoryPath().Append("non-existent-password-file");
+  ASSERT_FALSE(base::PathExists(password_file_path));
+
+  SmbCredential credential =
+      CreateCredential(kWorkgroup, kUsername, kPassword, password_file_path);
+  int32_t mount_id;
+  AddMount(kMountRoot, std::move(credential), &mount_id);
+  EXPECT_TRUE(mounts_->ErasePasswordFile(mount_id));
 }
 
 }  // namespace smbprovider

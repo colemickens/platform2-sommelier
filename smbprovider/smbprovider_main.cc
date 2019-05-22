@@ -23,6 +23,8 @@ namespace smbprovider {
 
 namespace {
 
+constexpr char kDaemonStoreRoot[] = "/run/daemon-store/smbproviderd";
+
 // Helper method to set $HOME variable to a temporary path that only
 // smbproviderd user can access.
 bool SetHomeEnvironmentVariable() {
@@ -168,7 +170,8 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
 
     smb_provider_ = std::make_unique<SmbProvider>(
         std::move(dbus_object), std::move(mount_manager),
-        std::move(kerberos_artifact_synchronizer));
+        std::move(kerberos_artifact_synchronizer),
+        base::FilePath(kDaemonStoreRoot));
     smb_provider_->RegisterAsync(
         sequencer->GetHandler("SmbProvider.RegisterAsync() failed.", true));
   }

@@ -27,13 +27,23 @@ ProtoBlob SerializeProtoToBlobAndCheck(
 }  // namespace
 
 MountOptionsProto CreateMountOptionsProto(const std::string& path,
+                                          const std::string& original_path,
                                           const std::string& workgroup,
                                           const std::string& username,
+                                          const std::string& account_hash,
+                                          bool skip_connect,
+                                          bool save_password,
+                                          bool restore_password,
                                           const MountConfig& mount_config) {
   MountOptionsProto mount_options;
   mount_options.set_path(path);
+  mount_options.set_original_path(original_path);
   mount_options.set_workgroup(workgroup);
   mount_options.set_username(username);
+  mount_options.set_account_hash(account_hash);
+  mount_options.set_skip_connect(skip_connect);
+  mount_options.set_save_password(save_password);
+  mount_options.set_restore_password(restore_password);
 
   std::unique_ptr<MountConfigProto> config =
       std::make_unique<MountConfigProto>();
@@ -44,9 +54,11 @@ MountOptionsProto CreateMountOptionsProto(const std::string& path,
   return mount_options;
 }
 
-UnmountOptionsProto CreateUnmountOptionsProto(int32_t mount_id) {
+UnmountOptionsProto CreateUnmountOptionsProto(int32_t mount_id,
+                                              bool remove_password) {
   UnmountOptionsProto unmount_options;
   unmount_options.set_mount_id(mount_id);
+  unmount_options.set_remove_password(remove_password);
   return unmount_options;
 }
 
@@ -211,27 +223,48 @@ UpdateSharePathOptionsProto CreateUpdateSharePathOptionsProto(
 }
 
 ProtoBlob CreateMountOptionsBlob(const std::string& path) {
-  return SerializeProtoToBlobAndCheck(
-      CreateMountOptionsProto(path, "" /* workgroup */, "" /* username */,
-                              MountConfig(true /* enable_ntlm */)));
+  return SerializeProtoToBlobAndCheck(CreateMountOptionsProto(
+      path, "" /* original_path */, "" /* workgroup */, "" /* username */,
+      "" /* account_hash */, false /* skip_connect */,
+      false /* save_password */, false /* restore_password */,
+      MountConfig(true /* enable_ntlm */)));
 }
 
 ProtoBlob CreateMountOptionsBlob(const std::string& path,
                                  const MountConfig& mount_config) {
   return SerializeProtoToBlobAndCheck(CreateMountOptionsProto(
-      path, "" /* workgroup */, "" /* username */, mount_config));
+      path, "" /* original_path */, "" /* workgroup */, "" /* username */,
+      "" /* account_hash */, false /* skip_connect */,
+      false /* save_password */, false /* restore_password */, mount_config));
 }
 
 ProtoBlob CreateMountOptionsBlob(const std::string& path,
                                  const std::string& workgroup,
                                  const std::string& username,
                                  const MountConfig& mount_config) {
-  return SerializeProtoToBlobAndCheck(
-      CreateMountOptionsProto(path, workgroup, username, mount_config));
+  return SerializeProtoToBlobAndCheck(CreateMountOptionsProto(
+      path, "" /* original_path */, workgroup, username, "" /* account_hash */,
+      false /* skip_connect */, false /* save_password */,
+      false /* restore_password */, mount_config));
 }
 
-ProtoBlob CreateUnmountOptionsBlob(int32_t mount_id) {
-  return SerializeProtoToBlobAndCheck(CreateUnmountOptionsProto(mount_id));
+ProtoBlob CreateMountOptionsBlob(const std::string& path,
+                                 const std::string& original_path,
+                                 const std::string& workgroup,
+                                 const std::string& username,
+                                 const std::string& account_hash,
+                                 bool skip_connect,
+                                 bool save_password,
+                                 bool restore_password,
+                                 const MountConfig& mount_config) {
+  return SerializeProtoToBlobAndCheck(CreateMountOptionsProto(
+      path, original_path, workgroup, username, account_hash, skip_connect,
+      save_password, restore_password, mount_config));
+}
+
+ProtoBlob CreateUnmountOptionsBlob(int32_t mount_id, bool remove_password) {
+  return SerializeProtoToBlobAndCheck(
+      CreateUnmountOptionsProto(mount_id, remove_password));
 }
 
 ProtoBlob CreateReadDirectoryOptionsBlob(int32_t mount_id,

@@ -111,6 +111,14 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   // not exist.
   bool UpdateSharePath(int32_t mount_id, const std::string& share_path);
 
+  // Write the password for |mount_id| to the password file given in the mount
+  // credentials. Return false if unable to write the password.
+  bool SavePasswordToFile(int32_t mount_id);
+
+  // Delete the password file for |mount_id|, if it exists. Return false if
+  // unable to erase the file.
+  bool ErasePasswordFile(int32_t mount_id);
+
  private:
   // Runs |samba_interface_factory_|.
   std::unique_ptr<SambaInterface> CreateSambaInterface(

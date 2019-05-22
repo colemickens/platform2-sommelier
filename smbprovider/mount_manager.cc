@@ -6,6 +6,7 @@
 
 #include <algorithm>
 
+#include <base/files/file.h>
 #include <base/strings/string_util.h>
 #include <base/time/tick_clock.h>
 
@@ -244,6 +245,68 @@ bool MountManager::UpdateMountCredential(int32_t mount_id,
 bool MountManager::UpdateSharePath(int32_t mount_id,
                                    const std::string& share_path) {
   return mount_tracker_->UpdateSharePath(mount_id, share_path);
+}
+
+bool MountManager::SavePasswordToFile(int32_t mount_id) {
+  SambaInterface* samba_interface = nullptr;
+  if (!GetSambaInterface(mount_id, &samba_interface)) {
+    LOG(ERROR) << "Unable to find mount id " << mount_id;
+    return false;
+  }
+
+  const SmbCredential& credential =
+      mount_tracker_->GetCredential(samba_interface->GetSambaInterfaceId());
+  DCHECK(!credential.password_file.empty());
+
+  base::File password_file(
+      credential.password_file,
+      base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
+  if (!password_file.IsValid()) {
+    LOG(ERROR) << "Unable to open password file for write with error: "
+               << password_file.error_details();
+    return false;
+  }
+
+  size_t password_length = 0;
+  if (credential.password) {
+    password_length = credential.password->size();
+  }
+  int written = password_file.WriteAtCurrentPos(
+      reinterpret_cast<const char*>(&password_length), sizeof(password_length));
+  if (written != sizeof(password_length)) {
+    LOG(ERROR) << "Unable to write password length";
+    return false;
+  }
+  if (password_length > 0) {
+    written = password_file.WriteAtCurrentPos(credential.password->GetRaw(),
+                                              password_length);
+    if (written != password_length) {
+      LOG(ERROR) << "Unable to write password";
+      return false;
+    }
+  }
+  return true;
+}
+
+bool MountManager::ErasePasswordFile(int32_t mount_id) {
+  SambaInterface* samba_interface = nullptr;
+  if (!GetSambaInterface(mount_id, &samba_interface)) {
+    LOG(ERROR) << "Unable to find mount id " << mount_id;
+    return false;
+  }
+
+  const SmbCredential& credential =
+      mount_tracker_->GetCredential(samba_interface->GetSambaInterfaceId());
+  if (credential.password_file.empty() ||
+      !base::PathExists(credential.password_file)) {
+    // No password file exists.
+    return true;
+  }
+  if (!base::DeleteFile(credential.password_file, false /* recursive */)) {
+    PLOG(ERROR) << "Unable to erase password file";
+    return false;
+  }
+  return true;
 }
 
 }  // namespace smbprovider

@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <libpasswordprovider/password.h>
 
@@ -18,14 +19,17 @@ struct SmbCredential {
   std::string workgroup;
   std::string username;
   std::unique_ptr<password_provider::Password> password;
+  base::FilePath password_file;
 
   SmbCredential() = default;
   SmbCredential(const std::string& workgroup,
                 const std::string& username,
-                std::unique_ptr<password_provider::Password> password)
+                std::unique_ptr<password_provider::Password> password,
+                const base::FilePath& password_file = {})
       : workgroup(workgroup),
         username(username),
-        password(std::move(password)) {}
+        password(std::move(password)),
+        password_file(password_file) {}
 
   SmbCredential(SmbCredential&& other) = default;
   SmbCredential& operator=(SmbCredential&& other) = default;

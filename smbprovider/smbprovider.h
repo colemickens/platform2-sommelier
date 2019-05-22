@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <dbus_adaptors/org.chromium.SmbProvider.h>
 
@@ -61,7 +62,8 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   SmbProvider(
       std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
       std::unique_ptr<MountManager> mount_manager,
-      std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer);
+      std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer,
+      const base::FilePath& daemon_store_directory);
 
   // org::chromium::SmbProviderInterface: (see org.chromium.SmbProvider.xml).
   void Mount(const ProtoBlob& options_blob,
@@ -215,6 +217,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                 const std::string& workgroup,
                 const std::string& username,
                 const base::ScopedFD& password_fd,
+                const base::FilePath& password_file,
                 int32_t* mount_id);
 
   // Removes |mount_id| from mount_manager_ if |mount_id| is mounted.
@@ -472,6 +475,10 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   ErrorType ContinueReadDirectory(int32_t read_dir_token,
                                   DirectoryEntryListProto* entries);
 
+  // Return the daemon store directory for the user profile |username_hash|.
+  base::FilePath GetDaemonStoreDirectory(
+      const std::string& username_hash) const;
+
   // Returns true if |mount_id_| corresponds to a valid mount. Returns false and
   // sets |error_code| to ERROR_NOT_FOUND otherwise.
   template <typename Proto>
@@ -490,6 +497,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // Keeps track of in-progress copy operations. Maps a read dir token to a
   // ReadDirProgress.
   IdMap<std::unique_ptr<ReadDirProgress>> read_dir_tracker_;
+  const base::FilePath daemon_store_directory_;
 
   DISALLOW_COPY_AND_ASSIGN(SmbProvider);
 };

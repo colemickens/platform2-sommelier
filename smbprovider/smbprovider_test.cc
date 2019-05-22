@@ -6,6 +6,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/files/file_util.h>
 #include <base/test/simple_test_tick_clock.h>
 #include <dbus/mock_bus.h>
 #include <dbus/object_path.h>
@@ -36,6 +37,11 @@ constexpr uint64_t kFileDate = 42;
 
 // arbitary D-Bus
 constexpr int32_t kDBusSerial = 123;
+
+constexpr char kTestUsername[] = "user";
+constexpr char kTestWorkgroup[] = "google";
+constexpr char kTestPassword[] = "password";
+constexpr char kTestAccountHash[] = "0123456789abcdef";
 
 ErrorType CastError(int error) {
   EXPECT_GE(error, 0);
@@ -136,19 +142,43 @@ class SmbProviderTest : public testing::Test {
   int32_t PrepareMountWithMountConfig(bool enable_ntlm,
                                       const std::string& workgroup,
                                       const std::string& username,
-                                      const std::string& password) {
+                                      const std::string& password,
+                                      const std::string& original_path = {},
+                                      const std::string& account_hash = {},
+                                      bool skip_connect = false,
+                                      bool save_password = false,
+                                      bool restore_password = false) {
     fake_samba_->AddDirectory(GetDefaultServer());
     fake_samba_->AddDirectory(GetDefaultMountRoot());
+    int32_t mount_id =
+        MountShare(GetDefaultMountRoot(), original_path, workgroup, username,
+                   password, account_hash, enable_ntlm, skip_connect,
+                   save_password, restore_password);
+    ExpectNoOpenEntries();
+    return mount_id;
+  }
+
+  // Mounts a share with the given options.
+  int32_t MountShare(const std::string& path,
+                     const std::string& original_path,
+                     const std::string& workgroup,
+                     const std::string& username,
+                     const std::string& password,
+                     const std::string& account_hash = {},
+                     bool enable_ntlm = true,
+                     bool skip_connect = false,
+                     bool save_password = false,
+                     bool restore_password = false) {
     int32_t mount_id;
     int32_t err;
     MountConfig mount_config(enable_ntlm);
     ProtoBlob proto_blob = CreateMountOptionsBlob(
-        GetDefaultMountRoot(), workgroup, username, mount_config);
+        path, original_path, workgroup, username, account_hash, skip_connect,
+        save_password, restore_password, mount_config);
     smbprovider_->Mount(proto_blob,
                         WritePasswordToFile(&temp_file_manager_, password),
                         &err, &mount_id);
     EXPECT_EQ(ERROR_OK, CastError(err));
-    ExpectNoOpenEntries();
     return mount_id;
   }
 
@@ -236,6 +266,11 @@ class SmbProviderTest : public testing::Test {
     }
     EXPECT_TRUE(krb_temp_dir_.CreateUniqueTempDir());
 
+    if (daemon_store_temp_dir_.IsValid()) {
+      EXPECT_TRUE(daemon_store_temp_dir_.Delete());
+    }
+    EXPECT_TRUE(daemon_store_temp_dir_.CreateUniqueTempDir());
+
     krb5_conf_path_ = CreateKrb5ConfPath(krb_temp_dir_.GetPath());
     krb5_ccache_path_ = CreateKrb5CCachePath(krb_temp_dir_.GetPath());
 
@@ -248,8 +283,8 @@ class SmbProviderTest : public testing::Test {
     const dbus::ObjectPath object_path("/object/path");
     smbprovider_ = std::make_unique<SmbProvider>(
         std::make_unique<DBusObject>(nullptr, mock_bus_, object_path),
-        std::move(mount_manager_ptr),
-        std::move(kerberos_artifact_synchronizer));
+        std::move(mount_manager_ptr), std::move(kerberos_artifact_synchronizer),
+        daemon_store_temp_dir_.GetPath());
 
     metadata_cache_ = std::make_unique<MetadataCache>(
         fake_tick_clock_,
@@ -293,9 +328,18 @@ class SmbProviderTest : public testing::Test {
                                        mount_path);
   }
 
+  void CreateDaemonStoreForUser(const std::string& user_hash) {
+    base::File::Error error = base::File::FILE_OK;
+    EXPECT_TRUE(base::CreateDirectoryAndGetError(
+        daemon_store_temp_dir_.GetPath().Append(base::FilePath(user_hash)),
+        &error))
+        << "CreateDaemonStoreForUser error: " << error;
+  }
+
   std::string krb5_conf_path_;
   std::string krb5_ccache_path_;
   base::ScopedTempDir krb_temp_dir_;
+  base::ScopedTempDir daemon_store_temp_dir_;
   scoped_refptr<dbus::MockBus> mock_bus_ =
       new dbus::MockBus(dbus::Bus::Options());
   std::unique_ptr<SmbProvider> smbprovider_;
@@ -402,6 +446,125 @@ TEST_F(SmbProviderTest, MountUnmountSucceedsWithValidShare) {
   ExpectNoOpenEntries();
   EXPECT_EQ(0, mount_manager_->MountCount());
   EXPECT_FALSE(mount_manager_->IsAlreadyMounted(mount_id));
+}
+
+TEST_F(SmbProviderTest, MountRestoreWithSavedPassword) {
+  CreateDaemonStoreForUser(kTestAccountHash);
+  int32_t mount_id = PrepareMountWithMountConfig(
+      true /* enable_ntlm */, kTestWorkgroup, kTestUsername, kTestPassword, "",
+      kTestAccountHash, false, true, false);
+
+  EXPECT_EQ(1, mount_manager_->MountCount());
+  ExpectCredentialsEqual(mount_manager_, mount_id, GetDefaultMountRoot(),
+                         kTestWorkgroup, kTestUsername, kTestPassword);
+
+  ProtoBlob unmount_blob = CreateUnmountOptionsBlob(mount_id);
+  int32_t error = smbprovider_->Unmount(unmount_blob);
+  EXPECT_EQ(ERROR_OK, CastError(error));
+  EXPECT_EQ(0, mount_manager_->MountCount());
+  EXPECT_FALSE(mount_manager_->IsAlreadyMounted(mount_id));
+
+  mount_id =
+      MountShare(GetDefaultMountRoot(), "" /* original_path */, kTestWorkgroup,
+                 kTestUsername, "" /* password */, kTestAccountHash,
+                 true /* enable_ntlm */, false /* skip_connect */,
+                 false /* save_password */, true /* restore_password */);
+  EXPECT_EQ(1, mount_manager_->MountCount());
+  ExpectCredentialsEqual(mount_manager_, mount_id, GetDefaultMountRoot(),
+                         kTestWorkgroup, kTestUsername, kTestPassword);
+}
+
+TEST_F(SmbProviderTest, MountRestoreWithSavedPasswordOriginalPath) {
+  const std::string original_path = GetDefaultMountRoot();
+  const std::string resolved_path = "smb://1.2.3.4/test";
+
+  CreateDaemonStoreForUser(kTestAccountHash);
+  int32_t mount_id = PrepareMountWithMountConfig(
+      true /* enable_ntlm */, kTestWorkgroup, kTestUsername, kTestPassword,
+      original_path, kTestAccountHash, false, true, false);
+
+  EXPECT_EQ(1, mount_manager_->MountCount());
+  ExpectCredentialsEqual(mount_manager_, mount_id, GetDefaultMountRoot(),
+                         kTestWorkgroup, kTestUsername, kTestPassword);
+
+  ProtoBlob unmount_blob = CreateUnmountOptionsBlob(mount_id);
+  int32_t error = smbprovider_->Unmount(unmount_blob);
+  EXPECT_EQ(ERROR_OK, CastError(error));
+  EXPECT_EQ(0, mount_manager_->MountCount());
+  EXPECT_FALSE(mount_manager_->IsAlreadyMounted(mount_id));
+
+  mount_id = MountShare(resolved_path, original_path, kTestWorkgroup,
+                        kTestUsername, "" /* password */, kTestAccountHash,
+                        true /* enable_ntlm */, true /* skip_connect */,
+                        false /* save_password */, true /* restore_password */);
+  EXPECT_EQ(1, mount_manager_->MountCount());
+  ExpectCredentialsEqual(mount_manager_, mount_id, resolved_path,
+                         kTestWorkgroup, kTestUsername, kTestPassword);
+}
+
+TEST_F(SmbProviderTest, MountRestoreWithSavedPasswordDifferentUser) {
+  const std::string workgroup2 = "cros";
+  const std::string username2 = "user2";
+
+  CreateDaemonStoreForUser(kTestAccountHash);
+  int32_t mount_id = PrepareMountWithMountConfig(
+      true /* enable_ntlm */, kTestWorkgroup, kTestUsername, kTestPassword, "",
+      kTestAccountHash, false, true, false);
+
+  EXPECT_EQ(1, mount_manager_->MountCount());
+  ExpectCredentialsEqual(mount_manager_, mount_id, GetDefaultMountRoot(),
+                         kTestWorkgroup, kTestUsername, kTestPassword);
+
+  ProtoBlob unmount_blob = CreateUnmountOptionsBlob(mount_id);
+  int32_t error = smbprovider_->Unmount(unmount_blob);
+  EXPECT_EQ(ERROR_OK, CastError(error));
+  EXPECT_EQ(0, mount_manager_->MountCount());
+  EXPECT_FALSE(mount_manager_->IsAlreadyMounted(mount_id));
+
+  mount_id =
+      MountShare(GetDefaultMountRoot(), "" /* original_path */, kTestWorkgroup,
+                 username2, "" /* password */, kTestAccountHash,
+                 true /* enable_ntlm */, false /* skip_connect */,
+                 false /* save_password */, true /* restore_password */);
+  EXPECT_EQ(1, mount_manager_->MountCount());
+  ExpectCredentialsEqual(mount_manager_, mount_id, GetDefaultMountRoot(),
+                         kTestWorkgroup, username2, "" /* password */);
+
+  int32_t mount_id2 =
+      MountShare(GetDefaultMountRoot(), "" /* original_path */, workgroup2,
+                 kTestUsername, "" /* password */, kTestAccountHash,
+                 true /* enable_ntlm */, false /* skip_connect */,
+                 false /* save_password */, true /* restore_password */);
+  EXPECT_EQ(2, mount_manager_->MountCount());
+  ExpectCredentialsEqual(mount_manager_, mount_id2, GetDefaultMountRoot(),
+                         workgroup2, kTestUsername, "" /* password */);
+}
+
+TEST_F(SmbProviderTest, UnmountDeleteSavedPassword) {
+  CreateDaemonStoreForUser(kTestAccountHash);
+  int32_t mount_id = PrepareMountWithMountConfig(
+      true /* enable_ntlm */, kTestWorkgroup, kTestUsername, kTestPassword, "",
+      kTestAccountHash, false, true, false);
+
+  EXPECT_EQ(1, mount_manager_->MountCount());
+  ExpectCredentialsEqual(mount_manager_, mount_id, GetDefaultMountRoot(),
+                         kTestWorkgroup, kTestUsername, kTestPassword);
+
+  ProtoBlob unmount_blob =
+      CreateUnmountOptionsBlob(mount_id, true /* remove_password */);
+  int32_t error = smbprovider_->Unmount(unmount_blob);
+  EXPECT_EQ(ERROR_OK, CastError(error));
+  EXPECT_EQ(0, mount_manager_->MountCount());
+  EXPECT_FALSE(mount_manager_->IsAlreadyMounted(mount_id));
+
+  mount_id =
+      MountShare(GetDefaultMountRoot(), "" /* original_path */, kTestWorkgroup,
+                 kTestUsername, "" /* password */, kTestAccountHash,
+                 true /* enable_ntlm */, false /* skip_connect */,
+                 false /* save_password */, true /* restore_password */);
+  EXPECT_EQ(1, mount_manager_->MountCount());
+  ExpectCredentialsEqual(mount_manager_, mount_id, GetDefaultMountRoot(),
+                         kTestWorkgroup, kTestUsername, "" /* password */);
 }
 
 // ReadDirectory fails when an invalid protobuf with missing fields is passed.
@@ -3428,16 +3591,12 @@ TEST_F(SmbProviderTest, TestMountConfigDisableNTLM) {
 }
 
 TEST_F(SmbProviderTest, UpdateMountCredentialsSucceedsOnValidMount) {
-  const std::string workgroup = "google";
-  const std::string username = "user";
-  const std::string password = "password";
-
-  int32_t mount_id = PrepareMountWithMountConfig(true /* enable_ntlm */,
-                                                 workgroup, username, password);
+  int32_t mount_id = PrepareMountWithMountConfig(
+      true /* enable_ntlm */, kTestWorkgroup, kTestUsername, kTestPassword);
 
   EXPECT_EQ(1, mount_manager_->MountCount());
   ExpectCredentialsEqual(mount_manager_, mount_id, GetDefaultMountRoot(),
-                         workgroup, username, password);
+                         kTestWorkgroup, kTestUsername, kTestPassword);
 
   const std::string updated_workgroup = "chrome";
   const std::string updated_username = "player1";

@@ -8,8 +8,13 @@
 #include <map>
 #include <utility>
 
+#include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
+#include <crypto/sha2.h>
 #include <dbus/smbprovider/dbus-constants.h>
 
 #include "smbprovider/constants.h"
@@ -35,6 +40,17 @@ void PopulateMountRootStat(struct stat* mount_root_stat) {
   mount_root_stat->st_mode = kDirMode;
   mount_root_stat->st_mtime = 0;
 }
+
+base::FilePath MakePasswordFileName(const std::string& share_path,
+                                    const std::string& username,
+                                    const std::string& workgroup) {
+  const std::string raw_name = base::StringPrintf(
+      "%s@@%s@%s", share_path.c_str(), username.c_str(), workgroup.c_str());
+  const std::string raw_hash = crypto::SHA256HashString(raw_name);
+  CHECK_EQ(raw_hash.size(), crypto::kSHA256Length);
+  return base::FilePath(base::HexEncode(raw_hash.c_str(), raw_hash.size()));
+}
+
 }  // namespace
 
 bool GetEntries(const ReadDirectoryOptionsProto& options,
@@ -96,18 +112,26 @@ bool GetShareEntries(const GetSharesOptionsProto& options,
 SmbProvider::SmbProvider(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
     std::unique_ptr<MountManager> mount_manager,
-    std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer)
+    std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer,
+    const base::FilePath& daemon_store_directory)
     : org::chromium::SmbProviderAdaptor(this),
       dbus_object_(std::move(dbus_object)),
       mount_manager_(std::move(mount_manager)),
       kerberos_synchronizer_(std::move(kerberos_synchronizer)),
       copy_tracker_(kInitialCopyProgressTrackerId),
-      read_dir_tracker_(kInitialReadDirProgressTrackerId) {}
+      read_dir_tracker_(kInitialReadDirProgressTrackerId),
+      daemon_store_directory_(daemon_store_directory) {}
 
 void SmbProvider::RegisterAsync(
     const AsyncEventSequencer::CompletionAction& completion_callback) {
   RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(completion_callback);
+}
+
+base::FilePath SmbProvider::GetDaemonStoreDirectory(
+    const std::string& username_hash) const {
+  CHECK(!username_hash.empty());
+  return daemon_store_directory_.Append(username_hash);
 }
 
 void SmbProvider::Mount(const ProtoBlob& options_blob,
@@ -125,13 +149,51 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
   if (!ParseOptionsProto(options_blob, &options, error_code)) {
     return;  // Error with parsing proto.
   }
+  if ((options.restore_password() || options.save_password()) &&
+      options.account_hash().empty()) {
+    // |account_hash| should always be set if the password is being saved or
+    // restored.
+    LOG(ERROR) << "Unknown profile for password save/restore";
+    *error_code = static_cast<int32_t>(ERROR_DBUS_PARSE_FAILED);
+    return;
+  }
+
+  std::string original_share_path = options.original_path();
+  if (original_share_path.empty()) {
+    original_share_path = options.path();
+  }
 
   MountConfig mount_config = ConvertToMountConfig(options);
+
+  const base::ScopedFD* passed_password_fd = &password_fd;
+
+  base::ScopedFD saved_password_fd;
+  base::FilePath password_filepath;
+  if (options.restore_password() || options.save_password()) {
+    password_filepath =
+        GetDaemonStoreDirectory(options.account_hash())
+            .Append(MakePasswordFileName(
+                original_share_path, options.username(), options.workgroup()));
+  }
+
+  if (options.restore_password()) {
+    LOG(INFO) << "Restoring saved password";
+    base::File password_file(password_filepath,
+                             base::File::FLAG_OPEN | base::File::FLAG_READ);
+    if (!password_file.IsValid()) {
+      LOG(ERROR) << "Unable to open password file for read with error: "
+                 << password_file.error_details();
+    } else {
+      saved_password_fd.reset(password_file.TakePlatformFile());
+      passed_password_fd = &saved_password_fd;
+    }
+  }
 
   // AddMount() has to be called first since the credential has to be stored
   // before calling CanReadMountRoot().
   AddMount(options.path(), mount_config, options.workgroup(),
-           options.username(), password_fd, mount_id);
+           options.username(), *passed_password_fd, password_filepath,
+           mount_id);
   if (options.skip_connect()) {
     return;
   }
@@ -140,6 +202,13 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
     // If AddMount() was successful but the mount could not be accessed, remove
     // the mount from mount_manager_.
     RemoveMountIfMounted(*mount_id);
+    return;
+  }
+
+  if (options.save_password()) {
+    LOG(INFO) << "Saving password for mount [" << *mount_id << "]";
+    bool success = mount_manager_->SavePasswordToFile(*mount_id);
+    DCHECK(success);
   }
 }
 
@@ -147,8 +216,16 @@ int32_t SmbProvider::Unmount(const ProtoBlob& options_blob) {
   int32_t error_code;
   UnmountOptionsProto options;
   if (!ParseOptionsProto(options_blob, &options, &error_code) ||
-      !IsMounted(options, &error_code) ||
-      !RemoveMount(GetMountId(options), &error_code)) {
+      !IsMounted(options, &error_code)) {
+    return error_code;
+  }
+
+  if (options.remove_password()) {
+    bool success = mount_manager_->ErasePasswordFile(GetMountId(options));
+    DCHECK(success);
+  }
+
+  if (!RemoveMount(GetMountId(options), &error_code)) {
     return error_code;
   }
 
@@ -608,7 +685,7 @@ int32_t SmbProvider::UpdateMountCredentials(const ProtoBlob& options_blob,
       mount_manager_->UpdateMountCredential(
           options.mount_id(),
           SmbCredential(options.workgroup(), options.username(),
-                        GetPassword(password_fd)));
+                        GetPassword(password_fd), {}));
   if (!success) {
     LOG(ERROR) << "Failed to update credentials of mount id: "
                << options.mount_id();
@@ -827,8 +904,10 @@ void SmbProvider::AddMount(const std::string& mount_root,
                            const std::string& workgroup,
                            const std::string& username,
                            const base::ScopedFD& password_fd,
+                           const base::FilePath& password_file,
                            int32_t* mount_id) {
-  SmbCredential credential(workgroup, username, GetPassword(password_fd));
+  SmbCredential credential(workgroup, username, GetPassword(password_fd),
+                           password_file);
   mount_manager_->AddMount(mount_root, std::move(credential), mount_config,
                            mount_id);
   DCHECK_GE(*mount_id, 0);
