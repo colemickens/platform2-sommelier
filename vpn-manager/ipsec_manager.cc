@@ -30,7 +30,6 @@
 using ::base::FilePath;
 using ::base::StringPrintf;
 using ::brillo::Process;
-using ::brillo::ProcessImpl;
 
 namespace vpn_manager {
 
