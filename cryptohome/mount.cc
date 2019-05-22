@@ -28,6 +28,7 @@
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
 #include <brillo/cryptohome.h>
+#include <brillo/process.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/bootlockbox/boot_lockbox.h"
@@ -99,6 +100,19 @@ const gid_t kDaemonStoreGid = 400;
 // User daemon store directories.
 const char kRunDaemonStoreBaseDir[] = "/run/daemon-store/";
 const char kEtcDaemonStoreBaseDir[] = "/etc/daemon-store/";
+
+void StartUserFileAttrsCleanerService(const std::string& username) {
+  brillo::ProcessImpl file_attrs;
+  file_attrs.AddArg("/sbin/initctl");
+  file_attrs.AddArg("start");
+  file_attrs.AddArg("--no-wait");
+  file_attrs.AddArg("file_attrs_cleaner_tool");
+  file_attrs.AddArg(
+      base::StringPrintf("OBFUSCATED_USERNAME=%s", username.c_str()));
+
+  if (file_attrs.Run() != 0)
+    PLOG(WARNING) << "Error while running file_attrs_cleaner_tool";
+}
 
 // A helper class for scoping umask changes.
 class ScopedUmask {
@@ -682,6 +696,9 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   if (is_pkcs11_passkey_migration_required_) {
     credentials.GetPasskey(&legacy_pkcs11_passkey_);
   }
+
+  // Start file attribute cleaner service.
+  StartUserFileAttrsCleanerService(obfuscated_username);
 
   // TODO(fqj,b/116072767) Ignore errors since unlabeled files are currently
   // still okay during current development progress.
