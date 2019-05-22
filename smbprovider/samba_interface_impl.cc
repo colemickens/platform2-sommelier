@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
@@ -393,8 +394,12 @@ void SambaInterfaceImpl::CloseOutstandingFileDescriptors() {
       << "Closing " << fds_.Count()
       << " file descriptors that were left open at unmount or shutdown.";
 
+  std::vector<int32_t> open_fds;
+  open_fds.reserve(fds_.Count());
   for (auto it = fds_.Begin(); it != fds_.End(); ++it) {
-    const int32_t fd = it->first;
+    open_fds.push_back(it->first);
+  }
+  for (const int32_t fd : open_fds) {
     const int32_t result = CloseFile(fd);
 
     if (result != 0) {
