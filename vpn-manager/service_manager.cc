@@ -10,6 +10,7 @@
 #include <netdb.h>      // for getaddrinfo
 
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
@@ -160,28 +161,22 @@ bool ServiceManager::ConvertSockAddrToIPString(const struct sockaddr& address,
 
 bool ServiceManager::GetLocalAddressFromRemote(
     const struct sockaddr& remote_address, struct sockaddr* local_address) {
-  int sock = HANDLE_EINTR(socket(AF_INET, SOCK_DGRAM, 0));
-  if (sock < 0) {
-    LOG(ERROR) << "Unable to create socket";
+  base::ScopedFD socket_fd(socket(AF_INET, SOCK_DGRAM, 0));
+  if (!socket_fd.is_valid()) {
+    PLOG(ERROR) << "Unable to create socket";
     return false;
   }
-  if (HANDLE_EINTR(connect(sock, &remote_address, sizeof(struct sockaddr))) !=
-      0) {
-    LOG(ERROR) << "Unable to connect";
-    IGNORE_EINTR(close(sock));
+  if (HANDLE_EINTR(connect(socket_fd.get(), &remote_address,
+                           sizeof(struct sockaddr))) != 0) {
+    PLOG(ERROR) << "Unable to connect";
     return false;
   }
-  bool result = false;
   socklen_t addr_len = sizeof(*local_address);
-  if (getsockname(sock, local_address, &addr_len) != 0) {
+  if (getsockname(socket_fd.get(), local_address, &addr_len) != 0) {
     PLOG(ERROR) << "getsockname failed on socket";
-    goto error_label;
+    return false;
   }
-  result = true;
-
-error_label:
-  IGNORE_EINTR(close(sock));
-  return result;
+  return true;
 }
 
 }  // namespace vpn_manager
