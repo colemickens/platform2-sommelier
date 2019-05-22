@@ -95,7 +95,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     int minimum_mtu;
     // Whether to run third party VPN client programs in a minijail.
     bool jail_vpn_clients;
-    // Name of Android VPN package that should be enforced for browser traffic.
+    // Name of Android VPN package that should be enforced for user traffic.
     // Empty string if the lockdown feature is not enabled.
     std::string always_on_vpn_package;
   };
@@ -507,10 +507,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   bool GetFTEnabled() const { return ft_enabled_; }
 
-  bool ShouldBlackholeBrowserTraffic(const std::string& device_name) const;
+  bool ShouldBlackholeUserTraffic(const std::string& device_name) const;
 
-  const std::vector<uint32_t>& browser_traffic_uids() const {
-    return browser_traffic_uids_;
+  const std::vector<uint32_t>& user_traffic_uids() const {
+    return user_traffic_uids_;
   }
 
   ControlInterface* control_interface() const { return control_interface_; }
@@ -576,7 +576,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, RunTerminationActions);
   FRIEND_TEST(ManagerTest, ServiceRegistration);
   FRIEND_TEST(ManagerTest, SetAlwaysOnVpnPackage);
-  FRIEND_TEST(ManagerTest, ShouldBlackholeBrowserTraffic);
+  FRIEND_TEST(ManagerTest, ShouldBlackholeUserTraffic);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, StartupPortalList);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
@@ -722,9 +722,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   std::string GetAlwaysOnVpnPackage(Error* error);
 
-  void UpdateBlackholeBrowserTraffic();
+  void UpdateBlackholeUserTraffic();
 
-  void ComputeBrowserTrafficUids();
+  void ComputeUserTrafficUids();
 
   // Returns the names of all of the devices that have been claimed by the
   // current DeviceClaimer.  Returns an empty vector if no DeviceClaimer is set.
@@ -870,12 +870,11 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Fast Transition enabled
   bool ft_enabled_;
 
-  // "Browser traffic" refers to traffic from processes under the chronos and
-  // debugd users, which includes everything going through chrome and nacl
-  // application, but not e.g. Android apps or system processes like the
-  // update engine.
-  bool should_blackhole_browser_traffic_;
-  std::vector<uint32_t> browser_traffic_uids_;
+  // "User traffic" refers to traffic from processes that run under one of the
+  // unix users enumered in |kUserTrafficUsernames| constant in
+  // shill/manager.cc.
+  bool should_blackhole_user_traffic_;
+  std::vector<uint32_t> user_traffic_uids_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };

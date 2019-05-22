@@ -370,8 +370,8 @@ void VPNProvider::DisconnectAll() {
 }
 
 void VPNProvider::SetDefaultRoutingPolicy(IPConfig::Properties* properties) {
-  CHECK(!manager_->browser_traffic_uids().empty());
-  properties->allowed_uids = manager_->browser_traffic_uids();
+  CHECK(!manager_->user_traffic_uids().empty());
+  properties->allowed_uids = manager_->user_traffic_uids();
   properties->allowed_iifs = allowed_iifs_;
 }
 

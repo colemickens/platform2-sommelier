@@ -417,7 +417,7 @@ TEST_F(VPNProviderTest, HasActiveService) {
 }
 
 TEST_F(VPNProviderTest, SetDefaultRoutingPolicy) {
-  manager_.browser_traffic_uids_.push_back(1000);
+  manager_.user_traffic_uids_.push_back(1000);
 
   IPConfig::Properties properties;
   provider_.SetDefaultRoutingPolicy(&properties);

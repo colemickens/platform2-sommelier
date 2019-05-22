@@ -125,7 +125,13 @@ constexpr char kDefaultClaimerName[] = "";
 // these are the usernames that will be used to create the routing policy
 // rules. Also, when an AlwaysOnVpnPackage is set and a corresponding VPN
 // service is not active, traffic from these users will blackholed.
-const char* const kBrowserTrafficUsernames[] = {"chronos", "debugd"};
+// Currently the "user traffic" as defined by these usernames does not include
+// e.g. Android apps or system processes like the update engine.
+const char* const kUserTrafficUsernames[] = {
+    "chronos",  // Traffic originating from chrome and nacl applications
+    "debugd",   // crosh terminal
+    "cups"      // native printing using the cups daemon
+};
 
 }  // namespace
 
@@ -177,7 +183,7 @@ Manager::Manager(ControlInterface* control_interface,
       download_rate_kbits_(0),
       upload_rate_kbits_(0),
       ft_enabled_(false),
-      should_blackhole_browser_traffic_(false) {
+      should_blackhole_user_traffic_(false) {
   HelpRegisterDerivedString(kActiveProfileProperty,
                             &Manager::GetActiveProfileRpcIdentifier,
                             nullptr);
@@ -286,7 +292,7 @@ void Manager::ApplyPolicies() {
 void Manager::Start() {
   LOG(INFO) << "Manager started.";
 
-  ComputeBrowserTrafficUids();
+  ComputeUserTrafficUids();
   ApplyPolicies();
 
   power_manager_.reset(new PowerManager(control_interface_));
@@ -1812,7 +1818,7 @@ void Manager::SortServicesTask() {
                                ConnectedTechnologies(&error));
   adaptor_->EmitStringChanged(kDefaultTechnologyProperty,
                               DefaultTechnology(&error));
-  UpdateBlackholeBrowserTraffic();
+  UpdateBlackholeUserTraffic();
   UpdateDefaultServices(new_logical, new_physical);
   RefreshConnectionState();
   DetectMultiHomedDevices();
@@ -2653,9 +2659,8 @@ std::vector<std::string> Manager::GetDeviceInterfaceNames() {
   return interfaces;
 }
 
-bool Manager::ShouldBlackholeBrowserTraffic(const std::string& device_name)
-    const {
-  if (!should_blackhole_browser_traffic_) {
+bool Manager::ShouldBlackholeUserTraffic(const std::string& device_name) const {
+  if (!should_blackhole_user_traffic_) {
     return false;
   }
   for (const auto& device : devices_) {
@@ -2665,21 +2670,21 @@ bool Manager::ShouldBlackholeBrowserTraffic(const std::string& device_name)
   return false;
 }
 
-void Manager::UpdateBlackholeBrowserTraffic() {
-  bool before_update = should_blackhole_browser_traffic_;
+void Manager::UpdateBlackholeUserTraffic() {
+  bool before_update = should_blackhole_user_traffic_;
   if (props_.always_on_vpn_package.empty()) {
-    should_blackhole_browser_traffic_ = false;
+    should_blackhole_user_traffic_ = false;
   } else {
-    should_blackhole_browser_traffic_ = true;
+    should_blackhole_user_traffic_ = true;
     for (const auto& service : services_) {
       if (service->IsOnline() &&
           service->IsAlwaysOnVpn(props_.always_on_vpn_package)) {
-        should_blackhole_browser_traffic_ = false;
+        should_blackhole_user_traffic_ = false;
         break;
       }
     }
   }
-  if (should_blackhole_browser_traffic_ == before_update) {
+  if (should_blackhole_user_traffic_ == before_update) {
     return;
   }
   for (const auto& device : devices_) {
@@ -2687,13 +2692,13 @@ void Manager::UpdateBlackholeBrowserTraffic() {
   }
 }
 
-void Manager::ComputeBrowserTrafficUids() {
-  for (const auto& username : kBrowserTrafficUsernames) {
+void Manager::ComputeUserTrafficUids() {
+  for (const auto& username : kUserTrafficUsernames) {
     uid_t uid;
     if (!brillo::userdb::GetUserInfo(username, &uid, nullptr))
       LOG(WARNING) << "Unable to look up UID for " << username << ", skipping";
     else
-      browser_traffic_uids_.push_back(static_cast<uint32_t>(uid));
+      user_traffic_uids_.push_back(static_cast<uint32_t>(uid));
   }
 }
 
@@ -2706,7 +2711,7 @@ bool Manager::SetAlwaysOnVpnPackage(const string& package_name,
   if (props_.always_on_vpn_package == package_name)
     return false;
   props_.always_on_vpn_package = package_name;
-  UpdateBlackholeBrowserTraffic();
+  UpdateBlackholeUserTraffic();
   return true;
 }
 

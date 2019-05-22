@@ -61,7 +61,7 @@ class L2TPIPSecDriverTest : public testing::Test,
   void SetUp() override {
     manager_.vpn_provider_ = std::make_unique<MockVPNProvider>();
     manager_.vpn_provider_->manager_ = &manager_;
-    manager_.browser_traffic_uids_.push_back(1000);
+    manager_.user_traffic_uids_.push_back(1000);
     manager_.UpdateProviderMapping();
 
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
