@@ -115,7 +115,6 @@ class IpsecManager : public ServiceManager {
   // for testing, always return these values from
   // GetAddressesFromRemoteHostname.
   const char* force_local_address_;
-  const char* force_remote_address_;
   // ipsec daemon stderr pipe file descriptor.
   int output_fd_;
   // IKE key exchange version to use.
