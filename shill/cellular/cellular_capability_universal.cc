@@ -68,7 +68,6 @@ const char CellularCapabilityUniversal::kOperatorCodeProperty[] =
 const char CellularCapabilityUniversal::kOperatorAccessTechnologyProperty[] =
     "access-technology";
 const char CellularCapabilityUniversal::kAltairLTEMMPlugin[] = "Altair LTE";
-const char CellularCapabilityUniversal::kNovatelLTEMMPlugin[] = "Novatel LTE";
 const char CellularCapabilityUniversal::kTelitMMPlugin[] = "Telit";
 const int CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds =
     20000;

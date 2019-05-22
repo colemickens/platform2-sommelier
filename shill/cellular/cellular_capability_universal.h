@@ -163,7 +163,6 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   // Plugin strings via ModemManager.
   static const char kAltairLTEMMPlugin[];
-  static const char kNovatelLTEMMPlugin[];
   static const char kTelitMMPlugin[];
 
   static const int64_t kEnterPinTimeoutMilliseconds;
