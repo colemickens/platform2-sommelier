@@ -2,9 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/functions/vpd_cached.h"
+
 #include <utility>
 
-#include "runtime_probe/functions/vpd_cached.h"
+#include <base/json/json_reader.h>
+#include <base/json/json_writer.h>
+
 #include "runtime_probe/utils/file_utils.h"
 
 namespace runtime_probe {
@@ -13,6 +17,23 @@ using base::DictionaryValue;
 using base::Value;
 
 VPDCached::DataType VPDCached::Eval() const {
+  DataType result;
+  std::string json_output;
+  if (!InvokeHelper(&json_output)) {
+    LOG(ERROR) << "Failed to invoke helper to retrieve cached vpd information.";
+    return result;
+  }
+  const auto vpd_results =
+      base::ListValue::From(base::JSONReader::Read(json_output));
+
+  for (int i = 0; i < vpd_results->GetSize(); i++) {
+    const base::DictionaryValue* vpd_res;
+    vpd_results->GetDictionary(i, &vpd_res);
+    result.push_back(std::move(*vpd_res));
+  }
+  return result;
+}
+int VPDCached::EvalInHelper(std::string* output) const {
   constexpr char kSysfsVPDCached[] = "/sys/firmware/vpd/ro/";
 
   std::vector<std::string> allowed_require_keys;
@@ -23,7 +44,7 @@ VPDCached::DataType VPDCached::Eval() const {
   // sku_number is allowed to be exposed as stated in b/130322365#c28
   allowed_optional_keys.push_back("sku_number");
 
-  DataType result{};
+  base::ListValue result{};
 
   const base::FilePath vpd_ro_path{kSysfsVPDCached};
   const auto dict_value =
@@ -40,10 +61,16 @@ VPDCached::DataType VPDCached::Eval() const {
   }
 
   if (!dict_with_prefix.empty()) {
-    result.push_back(std::move(dict_with_prefix));
+    result.Append(dict_with_prefix.CreateDeepCopy());
   }
 
-  return result;
+  if (!base::JSONWriter::Write(result, output)) {
+    LOG(ERROR)
+        << "Failed to serialize generic battery probed result to json string";
+    return -1;
+  }
+
+  return 0;
 }
 
 }  // namespace runtime_probe

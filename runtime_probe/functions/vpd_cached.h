@@ -29,6 +29,8 @@ class VPDCached : public ProbeFunction {
  public:
   static constexpr auto function_name = "vpd_cached";
 
+  std::string GetFunctionName() const override { return function_name; }
+
   // Define a parser for this function.
   //
   // @args dict_value: a JSON dictionary to parse arguments from.
@@ -54,6 +56,7 @@ class VPDCached : public ProbeFunction {
   }
 
   DataType Eval() const override;
+  int EvalInHelper(std::string* output) const override;
 
  private:
   std::string vpd_name_;
