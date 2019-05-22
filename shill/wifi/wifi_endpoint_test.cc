@@ -55,7 +55,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
   virtual ~WiFiEndpointTest() {}
 
  protected:
-  KeyValueStore make_key_management_args(
+  KeyValueStore MakeKeyManagementArgs(
       vector<string> key_management_method_strings) {
     KeyValueStore args;
     args.SetStrings(WPASupplicant::kSecurityMethodPropertyKeyManagement,
@@ -63,13 +63,13 @@ class WiFiEndpointTest : public PropertyStoreTest {
     return args;
   }
 
-  KeyValueStore make_privacy_args(bool is_private) {
+  KeyValueStore MakePrivacyArgs(bool is_private) {
     KeyValueStore props;
     props.SetBool(WPASupplicant::kPropertyPrivacy, is_private);
     return props;
   }
 
-  KeyValueStore make_security_args(
+  KeyValueStore MakeSecurityArgs(
       const string& security_protocol,
       const string& key_management_method) {
     KeyValueStore args;
@@ -79,7 +79,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
     }
     args.SetKeyValueStore(
         security_protocol,
-        make_key_management_args(key_management_method_vector));
+        MakeKeyManagementArgs(key_management_method_vector));
     return args;
   }
 
@@ -218,7 +218,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
 TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAP) {
   set<WiFiEndpoint::KeyManagement> parsed_methods;
   WiFiEndpoint::ParseKeyManagementMethods(
-      make_key_management_args({"something-eap"}),
+      MakeKeyManagementArgs({"something-eap"}),
       &parsed_methods);
   EXPECT_TRUE(
       base::ContainsKey(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
@@ -229,7 +229,7 @@ TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAP) {
 TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsPSK) {
   set<WiFiEndpoint::KeyManagement> parsed_methods;
   WiFiEndpoint::ParseKeyManagementMethods(
-      make_key_management_args({"something-psk"}),
+      MakeKeyManagementArgs({"something-psk"}),
       &parsed_methods);
   EXPECT_TRUE(
       base::ContainsKey(parsed_methods, WiFiEndpoint::kKeyManagementPSK));
@@ -240,7 +240,7 @@ TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsPSK) {
 TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK) {
   set<WiFiEndpoint::KeyManagement> parsed_methods;
   WiFiEndpoint::ParseKeyManagementMethods(
-      make_key_management_args({"something-eap", "something-psk"}),
+      MakeKeyManagementArgs({"something-eap", "something-psk"}),
       &parsed_methods);
   EXPECT_TRUE(
       base::ContainsKey(parsed_methods, WiFiEndpoint::kKeyManagement802_1x));
@@ -250,26 +250,26 @@ TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK) {
 
 TEST_F(WiFiEndpointTest, ParseSecurityRSN802_1x) {
   EXPECT_STREQ(kSecurity8021x,
-               ParseSecurity(make_security_args("RSN", "something-eap")));
+               ParseSecurity(MakeSecurityArgs("RSN", "something-eap")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityWPA802_1x) {
   EXPECT_STREQ(kSecurity8021x,
-               ParseSecurity(make_security_args("WPA", "something-eap")));
+               ParseSecurity(MakeSecurityArgs("WPA", "something-eap")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityRSNPSK) {
   EXPECT_STREQ(kSecurityRsn,
-               ParseSecurity(make_security_args("RSN", "something-psk")));
+               ParseSecurity(MakeSecurityArgs("RSN", "something-psk")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityWPAPSK) {
   EXPECT_STREQ(kSecurityWpa,
-               ParseSecurity(make_security_args("WPA", "something-psk")));
+               ParseSecurity(MakeSecurityArgs("WPA", "something-psk")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityWEP) {
-  EXPECT_STREQ(kSecurityWep, ParseSecurity(make_privacy_args(true)));
+  EXPECT_STREQ(kSecurityWep, ParseSecurity(MakePrivacyArgs(true)));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityNone) {
@@ -1039,7 +1039,7 @@ TEST_F(WiFiEndpointTest, PropertiesChangedSecurityMode) {
 
   // Upgrade to WEP if privacy flag is added.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
-  endpoint->PropertiesChanged(make_privacy_args(true));
+  endpoint->PropertiesChanged(MakePrivacyArgs(true));
   Mock::VerifyAndClearExpectations(wifi().get());
   EXPECT_EQ(kSecurityWep, endpoint->security_mode());
 
@@ -1052,14 +1052,14 @@ TEST_F(WiFiEndpointTest, PropertiesChangedSecurityMode) {
 
   // Another upgrade to 802.1x.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
-  endpoint->PropertiesChanged(make_security_args("RSN", "something-eap"));
+  endpoint->PropertiesChanged(MakeSecurityArgs("RSN", "something-eap"));
   Mock::VerifyAndClearExpectations(wifi().get());
   EXPECT_EQ(kSecurity8021x, endpoint->security_mode());
 
   // Add WPA-PSK, however this is trumped by RSN 802.1x above, so we don't
   // change our security nor do we notify anyone.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
-  endpoint->PropertiesChanged(make_security_args("WPA", "something-psk"));
+  endpoint->PropertiesChanged(MakeSecurityArgs("WPA", "something-psk"));
   Mock::VerifyAndClearExpectations(wifi().get());
   EXPECT_EQ(kSecurity8021x, endpoint->security_mode());
 
@@ -1072,19 +1072,19 @@ TEST_F(WiFiEndpointTest, PropertiesChangedSecurityMode) {
   // However, if the BSS updates to no longer support 802.1x, we degrade
   // to WPA.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
-  endpoint->PropertiesChanged(make_security_args("RSN", ""));
+  endpoint->PropertiesChanged(MakeSecurityArgs("RSN", ""));
   Mock::VerifyAndClearExpectations(wifi().get());
   EXPECT_EQ(kSecurityWpa, endpoint->security_mode());
 
   // Losing WPA brings us back to WEP (since the privacy flag hasn't changed).
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
-  endpoint->PropertiesChanged(make_security_args("WPA", ""));
+  endpoint->PropertiesChanged(MakeSecurityArgs("WPA", ""));
   Mock::VerifyAndClearExpectations(wifi().get());
   EXPECT_EQ(kSecurityWep, endpoint->security_mode());
 
   // From WEP to open security.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
-  endpoint->PropertiesChanged(make_privacy_args(false));
+  endpoint->PropertiesChanged(MakePrivacyArgs(false));
   Mock::VerifyAndClearExpectations(wifi().get());
   EXPECT_EQ(kSecurityNone, endpoint->security_mode());
 }
