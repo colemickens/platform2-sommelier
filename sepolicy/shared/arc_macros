@@ -2,6 +2,7 @@
 define(`has_arc', ifelse(arc_version, `none', $2, $1))
 define(`no_arc', has_arc(, $1))
 define(`is_arc_nyc', ifelse(arc_version, `n', $1, $2))
+define(`is_arc_p', ifelse(arc_version, `p', $1, $2))
 
 define(`dev_only', ifelse(use_selinux_develop, `y', $1))
 
@@ -35,4 +36,11 @@ divert
 define(`arc_cts_fails_release', `
 ifelse(use_selinux_develop, `y', $1,
 break_cts((`n', `p'), $1, $2))
+')
+
+
+define(`n_to_p_migration', `
+is_arc_p(`
+ifelse(use_arc_first_release_n, `y', `$1');
+')
 ')
