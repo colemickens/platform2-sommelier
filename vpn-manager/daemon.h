@@ -57,7 +57,8 @@ class Daemon {
 
   // Replace the current process with |process|.  Any previous process
   // will be terminated if it is not the same process id as |process|.
-  void SetProcess(brillo::Process* process);
+  // Returns the underlying pointer managed by |process|.
+  brillo::Process* SetProcess(std::unique_ptr<brillo::Process> process);
 
   // Give daemon time to shut down cleanly after a SIGTERM before killing it
   // in a more decisive fashion.

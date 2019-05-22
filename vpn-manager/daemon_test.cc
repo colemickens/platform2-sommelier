@@ -5,6 +5,7 @@
 #include <signal.h>
 
 #include <string>
+#include <utility>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -70,7 +71,9 @@ class DaemonTest : public ::testing::Test {
 
   Process* GetProcess() { return daemon_->process_.get(); }
 
-  void SetProcess(Process* process) { daemon_->SetProcess(process); }
+  void SetProcess(std::unique_ptr<Process> process) {
+    daemon_->SetProcess(std::move(process));
+  }
 
   FilePath pid_file_path_;
   std::unique_ptr<Daemon> daemon_;
@@ -114,7 +117,7 @@ TEST_F(DaemonTest, IsRunningAndGetPid) {
   MakeRealProcess();
   pid_t pid = real_process_->pid();
   ASSERT_NE(0, pid);
-  SetProcess(real_process_.release());
+  SetProcess(std::move(real_process_));
   EXPECT_TRUE(daemon_->IsRunning());
   EXPECT_EQ(pid, daemon_->GetPid());
 
@@ -132,63 +135,66 @@ TEST_F(DaemonTest, IsRunningAndGetPid) {
 TEST_F(DaemonTest, SetProcessFromNull) {
   EXPECT_EQ(nullptr, GetProcess());
   SetProcess(nullptr);  // Should be a no-op.
-  ProcessMock* process0 = new ProcessMock;
-  SetProcess(process0);  // Passes ownership.
-  EXPECT_EQ(process0, GetProcess());
+  auto process = std::make_unique<ProcessMock>();
+  ProcessMock* process_ptr = process.get();
+  SetProcess(std::move(process));
+  EXPECT_EQ(process_ptr, GetProcess());
   // Called during destructor.
-  EXPECT_CALL(*process0, pid()).WillOnce(Return(0));
+  EXPECT_CALL(*process_ptr, pid()).WillOnce(Return(0));
 }
 
 TEST_F(DaemonTest, SetProcessToNullFromNotRunning) {
-  ProcessMock* process = new ProcessMock;
+  auto process = std::make_unique<ProcessMock>();
   EXPECT_CALL(*process, Release()).Times(0);
   EXPECT_CALL(*process, pid()).WillOnce(Return(0));
-  SetProcess(process);  // Passes ownership.
+  SetProcess(std::move(process));
   SetProcess(nullptr);
   EXPECT_EQ(nullptr, GetProcess());
 }
 
 TEST_F(DaemonTest, SetProcessToNullFromRunning) {
   MakeRealProcess();
-  ProcessMock* process = new ProcessMock;
+  auto process = std::make_unique<ProcessMock>();
   EXPECT_CALL(*process, Release()).Times(0);
   EXPECT_CALL(*process, pid()).WillRepeatedly(Return(real_process_->pid()));
   EXPECT_CALL(*process, Kill(SIGKILL, _)).Times(1);
-  SetProcess(process);  // Passes ownership.
+  SetProcess(std::move(process));
   SetProcess(nullptr);
   EXPECT_EQ(nullptr, GetProcess());
 }
 
 TEST_F(DaemonTest, SetProcessToDifferentPid) {
   MakeRealProcess();
-  ProcessMock* process0 = new ProcessMock;
+  auto process0 = std::make_unique<ProcessMock>();
   EXPECT_CALL(*process0, Release()).Times(0);
   EXPECT_CALL(*process0, pid()).WillRepeatedly(Return(real_process_->pid()));
   EXPECT_CALL(*process0, Kill(SIGKILL, _)).Times(1);
-  ProcessMock* process1 = new ProcessMock;
+  auto process1 = std::make_unique<ProcessMock>();
+  ProcessMock* process1_ptr = process1.get();
   EXPECT_CALL(*process1, Release()).Times(0);
   EXPECT_CALL(*process1, pid()).WillOnce(Return(2));
-  SetProcess(process0);  // Passes ownership.
-  SetProcess(process1);  // Passes ownership.
-  EXPECT_EQ(process1, GetProcess());
+  SetProcess(std::move(process0));
+  SetProcess(std::move(process1));
+  EXPECT_EQ(process1_ptr, GetProcess());
   // Verify expectations now so we don't trigger on calls during the destructor.
-  Mock::VerifyAndClearExpectations(process1);
-  EXPECT_CALL(*process1, pid()).WillOnce(Return(0));
+  Mock::VerifyAndClearExpectations(process1_ptr);
+  EXPECT_CALL(*process1_ptr, pid()).WillOnce(Return(0));
 }
 
 TEST_F(DaemonTest, SetProcessToSamePid) {
-  ProcessMock* process0 = new ProcessMock;
+  auto process0 = std::make_unique<ProcessMock>();
   EXPECT_CALL(*process0, Release()).Times(1);
   EXPECT_CALL(*process0, pid()).WillOnce(Return(1));
-  ProcessMock* process1 = new ProcessMock;
+  auto process1 = std::make_unique<ProcessMock>();
+  ProcessMock* process1_ptr = process1.get();
   EXPECT_CALL(*process1, Release()).Times(0);
   EXPECT_CALL(*process1, pid()).WillOnce(Return(1));
-  SetProcess(process0);  // Passes ownership.
-  SetProcess(process1);  // Passes ownership.
-  EXPECT_EQ(process1, GetProcess());
+  SetProcess(std::move(process0));
+  SetProcess(std::move(process1));
+  EXPECT_EQ(process1_ptr, GetProcess());
   // Reset expectations now so we don't trigger on calls during the destructor.
-  Mock::VerifyAndClearExpectations(process1);
-  EXPECT_CALL(*process1, pid()).WillOnce(Return(0));
+  Mock::VerifyAndClearExpectations(process1_ptr);
+  EXPECT_CALL(*process1_ptr, pid()).WillOnce(Return(0));
 }
 
 TEST_F(DaemonTest, TerminateNoProcess) {
@@ -199,10 +205,10 @@ TEST_F(DaemonTest, TerminateNoProcess) {
 }
 
 TEST_F(DaemonTest, TerminateDeadProcess) {
-  ProcessMock* process = new ProcessMock;
+  auto process = std::make_unique<ProcessMock>();
   EXPECT_CALL(*process, pid()).Times(2).WillRepeatedly(Return(0));
   EXPECT_CALL(*process, Kill(SIGTERM, _)).Times(0);
-  SetProcess(process);  // Passes ownership.
+  SetProcess(std::move(process));
   WritePidFile("");
   ASSERT_TRUE(base::PathExists(pid_file_path_));
   EXPECT_TRUE(daemon_->Terminate());
@@ -211,12 +217,12 @@ TEST_F(DaemonTest, TerminateDeadProcess) {
 
 TEST_F(DaemonTest, TerminateLiveProcess) {
   MakeRealProcess();
-  ProcessMock* process = new ProcessMock;
+  auto process = std::make_unique<ProcessMock>();
   EXPECT_CALL(*process, pid()).WillRepeatedly(Return(real_process_->pid()));
   EXPECT_CALL(*process, Kill(SIGTERM, _))
       .WillOnce(InvokeWithoutArgs(this, &DaemonTest::KillRealProcess));
   EXPECT_CALL(*process, Kill(SIGKILL, _)).Times(0);
-  SetProcess(process);  // Passes ownership.
+  SetProcess(std::move(process));
   WritePidFile("");
   ASSERT_TRUE(base::PathExists(pid_file_path_));
   // Returns false since the daemon was unable to terminate the process.
@@ -228,10 +234,10 @@ TEST_F(DaemonTest, Destructor) {
   // This doesn't directly unit-test the Daemon class, but it does illuminate
   // a side effect of the destruction of the underlying Process it holds.
   MakeRealProcess();
-  ProcessMock* process = new ProcessMock;
+  auto process = std::make_unique<ProcessMock>();
   EXPECT_CALL(*process, pid()).WillRepeatedly(Return(real_process_->pid()));
   EXPECT_CALL(*process, Kill(SIGKILL, _)).Times(1);
-  SetProcess(process);  // Passes ownership.
+  SetProcess(std::move(process));
 
   EXPECT_TRUE(daemon_->IsRunning());
   SetProcess(nullptr);

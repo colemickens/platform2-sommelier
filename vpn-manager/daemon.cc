@@ -7,6 +7,7 @@
 #include <signal.h>
 
 #include <string>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -30,10 +31,8 @@ void Daemon::ClearProcess() {
   SetProcess(nullptr);
 }
 
-brillo::Process* Daemon::CreateProcess() {
-  brillo::Process* process = new ProcessImpl;
-  SetProcess(process);
-  return process;
+Process* Daemon::CreateProcess() {
+  return SetProcess(std::make_unique<ProcessImpl>());
 }
 
 bool Daemon::FindProcess() {
@@ -47,7 +46,7 @@ bool Daemon::FindProcess() {
     return false;
   }
 
-  SetProcess(process.release());
+  SetProcess(std::move(process));
   return true;
 }
 
@@ -60,7 +59,7 @@ pid_t Daemon::GetPid() const {
   return process_ ? process_->pid() : 0;
 }
 
-void Daemon::SetProcess(brillo::Process* process) {
+Process* Daemon::SetProcess(std::unique_ptr<Process> process) {
   if (process_) {
     // If we are re-assigning the same pid, do not terminate the process.
     // Otherwise, we should kill the previous process if it is still running.
@@ -70,8 +69,8 @@ void Daemon::SetProcess(brillo::Process* process) {
       process_->Kill(SIGKILL, kTerminationTimeoutSeconds);
   }
 
-  // Take ownership of the found process.
-  process_.reset(process);
+  process_ = std::move(process);
+  return process_.get();
 }
 
 bool Daemon::Terminate() {
