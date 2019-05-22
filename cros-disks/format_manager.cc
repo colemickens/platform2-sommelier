@@ -28,6 +28,8 @@ const char* const kFormatProgramPaths[] = {
 // Supported file systems
 const char* const kSupportedFilesystems[] = {
     "vfat",
+    "exfat",
+    "ntfs",
 };
 
 const char kDefaultLabel[] = "UNTITLED";
@@ -101,6 +103,13 @@ FormatErrorType FormatManager::StartFormatting(const std::string& device_path,
     process->AddArgument("-F");
     process->AddArgument("32");
     process->AddArgument("-n");
+    process->AddArgument(kDefaultLabel);
+  } else if (filesystem == "exfat") {
+    process->AddArgument("-n");
+    process->AddArgument(kDefaultLabel);
+  } else if (filesystem == "ntfs") {
+    process->AddArgument("--quick");
+    process->AddArgument("--label");
     process->AddArgument(kDefaultLabel);
   }
 

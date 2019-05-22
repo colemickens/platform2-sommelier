@@ -22,6 +22,8 @@ TEST_F(FormatManagerTest, GetFormatProgramPath) {
 
 TEST_F(FormatManagerTest, IsFilesystemSupported) {
   EXPECT_TRUE(manager_.IsFilesystemSupported("vfat"));
+  EXPECT_TRUE(manager_.IsFilesystemSupported("exfat"));
+  EXPECT_TRUE(manager_.IsFilesystemSupported("ntfs"));
   EXPECT_FALSE(manager_.IsFilesystemSupported("nonexistent-fs"));
 }
 
