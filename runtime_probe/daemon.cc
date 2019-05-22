@@ -136,23 +136,29 @@ void Daemon::ProbeCategories(
   VLOG(2) << "SHA1 checksum returned with protocol buffer: "
           << reply.probe_config_checksum();
 
-  auto probe_config = runtime_probe::ProbeConfig::FromDictionaryValue(
+  const auto probe_config = runtime_probe::ProbeConfig::FromDictionaryValue(
       probe_config_data.value().config_dv);
   if (!probe_config) {
     reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INCOMPLETE_PROBE_FUNCTION);
     return SendProbeResult(reply, method_call, &response_sender);
   }
 
-  // Convert the ProbeReuslt from enum into array of string.
-  std::vector<std::string> categories_to_probe;
-  const google::protobuf::EnumDescriptor* descriptor =
-      ProbeRequest_SupportCategory_descriptor();
+  std::unique_ptr<base::DictionaryValue> probe_result;
+  if (request.probe_default_category()) {
+    probe_result = probe_config->Eval();
+  } else {
+    // Convert the ProbeReuslt from enum into array of string.
+    std::vector<std::string> categories_to_probe;
+    const google::protobuf::EnumDescriptor* descriptor =
+        ProbeRequest_SupportCategory_descriptor();
 
-  for (int j = 0; j < request.categories_size(); j++)
-    categories_to_probe.push_back(
-        descriptor->FindValueByNumber(request.categories(j))->name());
+    for (int j = 0; j < request.categories_size(); j++)
+      categories_to_probe.push_back(
+          descriptor->FindValueByNumber(request.categories(j))->name());
 
-  auto probe_result = probe_config->Eval(categories_to_probe);
+    probe_result = probe_config->Eval(categories_to_probe);
+  }
+
   // TODO(itspeter): Report assigned but not in the probe config's category.
   std::string output_js;
   base::JSONWriter::Write(*probe_result, &output_js);
@@ -162,7 +168,7 @@ void Daemon::ProbeCategories(
   auto options = google::protobuf::util::JsonParseOptions();
   options.ignore_unknown_fields = true;
   ProbeResult placeholder;
-  auto json_parse_status = google::protobuf::util::JsonStringToMessage(
+  const auto json_parse_status = google::protobuf::util::JsonStringToMessage(
       output_js, &placeholder, options);
   reply.MergeFrom(placeholder);
   VLOG(3) << "serialize JSON to Protobuf status: " << json_parse_status;
