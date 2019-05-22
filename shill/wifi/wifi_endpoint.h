@@ -156,7 +156,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
       int16_t signal_dbm);
   // Maps mode strings from supplicant into flimflam's nomenclature, as defined
   // in chromeos/dbus/service_constants.h.
-  static const char* ParseMode(const std::string& mode_string);
+  static std::string ParseMode(const std::string& mode_string);
   // Parses an Endpoint's properties to identify an approprirate flimflam
   // security property value, as defined in chromeos/dbus/service_constants.h.
   // The stored data in the |flags| parameter is merged with the provided

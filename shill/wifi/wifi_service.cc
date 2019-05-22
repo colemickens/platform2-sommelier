@@ -516,13 +516,6 @@ void WiFiService::SendPostReadyStateMetrics(
         Metrics::kTimerHistogramMillisecondsMax,
         Metrics::kTimerHistogramNumBuckets);
   }
-
-  Metrics::WiFiApMode ap_mode_uma = Metrics::WiFiApModeStringToEnum(mode_);
-  metrics()->SendEnumToUMA(
-      metrics()->GetFullMetricName(Metrics::kMetricNetworkApModeSuffix,
-                                   technology()),
-      ap_mode_uma,
-      Metrics::kWiFiApModeMax);
 }
 
 // private methods
@@ -636,13 +629,6 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
 
   params.SetUint(WPASupplicant::kNetworkPropertyMode,
                  WiFiEndpoint::ModeStringToUint(mode_));
-
-  if (mode_ == kModeAdhoc && frequency_ != 0) {
-    // Frequency is required in order to successfully connect to an IBSS
-    // with wpa_supplicant.  If we have one from our endpoint, insert it
-    // here.
-    params.SetInt(WPASupplicant::kNetworkPropertyFrequency, frequency_);
-  }
 
   if (Is8021x()) {
     eap()->PopulateSupplicantProperties(certificate_file_.get(), &params);
@@ -1121,7 +1107,7 @@ bool WiFiService::FixupServiceEntries(StoreInterface* storage) {
 
 // static
 bool WiFiService::IsValidMode(const string& mode) {
-  return mode == kModeManaged || mode == kModeAdhoc;
+  return mode == kModeManaged;
 }
 
 // static

@@ -80,10 +80,6 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
   has_wpa_property_ =
       properties.ContainsKeyValueStore(WPASupplicant::kPropertyWPA);
 
-  if (network_mode_.empty()) {
-    // XXX log error?
-  }
-
   ssid_string_ = string(ssid_.begin(), ssid_.end());
   WiFi::SanitizeSSID(&ssid_string_);
   ssid_hex_ = base::HexEncode(ssid_.data(), ssid_.size());
@@ -117,7 +113,7 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
   if (properties.ContainsString(WPASupplicant::kBSSPropertyMode)) {
     string new_mode =
         ParseMode(properties.GetString(WPASupplicant::kBSSPropertyMode));
-    if (new_mode != network_mode_) {
+    if (!new_mode.empty() && new_mode != network_mode_) {
       network_mode_ = new_mode;
       SLOG(this, 2) << "WiFiEndpoint " << bssid_string_ << " mode is now "
                     << network_mode_;
@@ -200,10 +196,8 @@ map<string, string> WiFiEndpoint::GetVendorInformation() const {
 uint32_t WiFiEndpoint::ModeStringToUint(const string& mode_string) {
   if (mode_string == kModeManaged)
     return WPASupplicant::kNetworkModeInfrastructureInt;
-  else if (mode_string == kModeAdhoc)
-    return WPASupplicant::kNetworkModeAdHocInt;
   else
-    NOTIMPLEMENTED() << "Shill dos not support " << mode_string
+    NOTIMPLEMENTED() << "Shill does not support " << mode_string
                      << " mode at this time.";
   return 0;
 }
@@ -336,17 +330,18 @@ WiFiEndpointRefPtr WiFiEndpoint::MakeEndpoint(
 }
 
 // static
-const char* WiFiEndpoint::ParseMode(const string& mode_string) {
+string WiFiEndpoint::ParseMode(const string& mode_string) {
   if (mode_string == WPASupplicant::kNetworkModeInfrastructure) {
     return kModeManaged;
   } else if (mode_string == WPASupplicant::kNetworkModeAdHoc) {
-    return kModeAdhoc;
+    SLOG(nullptr, 2) << "Shill does not support ad-hoc mode.";
+    return "";
   } else if (mode_string == WPASupplicant::kNetworkModeAccessPoint) {
     NOTREACHED() << "Shill does not support AP mode at this time.";
-    return nullptr;
+    return "";
   } else {
     NOTREACHED() << "Unknown WiFi endpoint mode!";
-    return nullptr;
+    return "";
   }
 }
 

@@ -642,7 +642,7 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 
 			If the service type is "wifi", then this property is
 			present and contains the mode of the network. The
-			possible values are "managed" or "adhoc".
+			only possible value is "managed".
 
 			This property is present only for WiFi services.
 

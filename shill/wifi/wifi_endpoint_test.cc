@@ -1010,12 +1010,13 @@ TEST_F(WiFiEndpointTest, PropertiesChangedNetworkMode) {
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01");
   EXPECT_EQ(kModeManaged, endpoint->network_mode());
-  EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
+  // AdHoc mode is not supported. Mode should not change.
+  EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
   KeyValueStore changed_properties;
   changed_properties.SetString(WPASupplicant::kBSSPropertyMode,
                                WPASupplicant::kNetworkModeAdHoc);
   endpoint->PropertiesChanged(changed_properties);
-  EXPECT_EQ(kModeAdhoc, endpoint->network_mode());
+  EXPECT_EQ(kModeManaged, endpoint->network_mode());
 }
 
 TEST_F(WiFiEndpointTest, PropertiesChangedFrequency) {

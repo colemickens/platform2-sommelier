@@ -49,7 +49,6 @@ const int Metrics::kMetricSignalAtDisconnectMin = 1;
 const int Metrics::kMetricSignalAtDisconnectMax = 200;
 const int Metrics::kMetricSignalAtDisconnectNumBuckets = 40;
 
-const char Metrics::kMetricNetworkApModeSuffix[] = "ApMode";
 const char Metrics::kMetricNetworkChannelSuffix[] = "Channel";
 const int Metrics::kMetricNetworkChannelMax = Metrics::kWiFiChannelMax;
 const char Metrics::kMetricNetworkEapInnerProtocolSuffix[] = "EapInnerProtocol";
@@ -630,17 +629,6 @@ Metrics::WiFiSecurity Metrics::WiFiSecurityStringToEnum(
     return kWiFiSecurityPsk;
   } else {
     return kWiFiSecurityUnknown;
-  }
-}
-
-// static
-Metrics::WiFiApMode Metrics::WiFiApModeStringToEnum(const string& ap_mode) {
-  if (ap_mode == kModeManaged) {
-    return kWiFiApModeManaged;
-  } else if (ap_mode == kModeAdhoc) {
-    return kWiFiApModeAdHoc;
-  } else {
-    return kWiFiApModeUnknown;
   }
 }
 

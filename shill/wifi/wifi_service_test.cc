@@ -475,11 +475,6 @@ MATCHER(PSKSecurityArgs, "") {
       arg.ContainsString(WPASupplicant::kPropertyPreSharedKey);
 }
 
-MATCHER_P(FrequencyArg, has_arg, "") {
-  return has_arg ==
-      arg.ContainsInt(WPASupplicant::kNetworkPropertyFrequency);
-}
-
 TEST_F(WiFiServiceTest, ConnectReportBSSes) {
   WiFiEndpointRefPtr endpoint1 =
       MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
@@ -597,71 +592,6 @@ TEST_F(WiFiServiceTest, ConnectTask8021xWithMockEap) {
   // The mocked function does not actually set EAP parameters so we cannot
   // expect them to be set.
   service->GetSupplicantConfigurationParameters();
-}
-
-TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
-  vector<uint8_t> ssid(1, 'a');
-  WiFiEndpointRefPtr endpoint_nofreq =
-      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
-  WiFiEndpointRefPtr endpoint_freq =
-      MakeOpenEndpoint("a", "00:00:00:00:00:02", 2412, 0);
-
-  WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityNone);
-  wifi_service->AddEndpoint(endpoint_freq);
-  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
-  wifi_service->Connect(nullptr, "in test");
-
-  EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
-              FrequencyArg(false));
-
-  wifi_service = new WiFiService(control_interface(),
-                                 dispatcher(),
-                                 metrics(),
-                                 manager(),
-                                 provider(),
-                                 ssid,
-                                 kModeAdhoc,
-                                 kSecurityNone,
-                                 false);
-  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
-  SetWiFiForService(wifi_service, wifi());
-  wifi_service->Connect(nullptr, "in test");
-
-  EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
-              FrequencyArg(false));
-
-  wifi_service = new WiFiService(control_interface(),
-                                 dispatcher(),
-                                 metrics(),
-                                 manager(),
-                                 provider(),
-                                 ssid,
-                                 kModeAdhoc,
-                                 kSecurityNone,
-                                 false);
-  wifi_service->AddEndpoint(endpoint_nofreq);
-  SetWiFiForService(wifi_service, wifi());
-  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
-  wifi_service->Connect(nullptr, "in test");
-
-  EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
-              FrequencyArg(false));
-
-  wifi_service = new WiFiService(control_interface(),
-                                 dispatcher(),
-                                 metrics(),
-                                 manager(),
-                                 provider(),
-                                 ssid,
-                                 kModeAdhoc,
-                                 kSecurityNone,
-                                 false);
-  wifi_service->AddEndpoint(endpoint_freq);
-  SetWiFiForService(wifi_service, wifi());
-  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
-  wifi_service->Connect(nullptr, "in test");
-  EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
-              FrequencyArg(true));
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskWPA80211w) {

@@ -1446,6 +1446,11 @@ void WiFi::BSSAddedTask(const string& path, const KeyValueStore& properties) {
     return;
   }
 
+  if (endpoint->network_mode().empty()) {
+    // Unsupported modes (e.g., ad-hoc) should be ignored.
+    return;
+  }
+
   provider_->OnEndpointAdded(endpoint);
 
   // Do this last, to maintain the invariant that any Endpoint we

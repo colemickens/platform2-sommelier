@@ -145,14 +145,6 @@ class Metrics {
     kWiFiSecurityMax
   };
 
-  enum WiFiApMode {
-    kWiFiApModeUnknown = 0,
-    kWiFiApModeManaged = 1,
-    kWiFiApModeAdHoc = 2,
-
-    kWiFiApModeMax
-  };
-
   enum PortalResult {
     kPortalResultSuccess = 0,
     kPortalResultDNSFailure = 1,
@@ -588,7 +580,6 @@ class Metrics {
   static const int kMetricSignalAtDisconnectMin;
   static const int kMetricSignalAtDisconnectMax;
   static const int kMetricSignalAtDisconnectNumBuckets;
-  static const char kMetricNetworkApModeSuffix[];
   static const char kMetricNetworkChannelSuffix[];
   static const int kMetricNetworkChannelMax;
   static const char kMetricNetworkEapInnerProtocolSuffix[];
@@ -945,9 +936,6 @@ class Metrics {
 
   // Converts a flimflam security string into its UMA security enumerator.
   static WiFiSecurity WiFiSecurityStringToEnum(const std::string& security);
-
-  // Converts a flimflam AP mode string into its UMA AP mode enumerator.
-  static WiFiApMode WiFiApModeStringToEnum(const std::string& ap_mode);
 
   // Converts a flimflam EAP outer protocol string into its UMA enumerator.
   static EapOuterProtocol EapOuterProtocolStringToEnum(

@@ -908,6 +908,15 @@ TEST_F(WiFiProviderTest, GetServiceBadMode) {
   EXPECT_EQ("service mode is unsupported", error.message());
 }
 
+TEST_F(WiFiProviderTest, GetServiceAdhocNotSupported) {
+  Error error;
+  EXPECT_FALSE(GetService("foo", "adhoc",
+                          kSecurityNone,
+                          false, false, &error).get());
+  EXPECT_EQ(Error::kNotSupported, error.type());
+  EXPECT_EQ("service mode is unsupported", error.message());
+}
+
 TEST_F(WiFiProviderTest, GetServiceNoSSID) {
   Error error;
   EXPECT_FALSE(GetService(nullptr, kModeManaged,
