@@ -309,45 +309,34 @@ TEST_F(CrashCommonUtilTest, GetUserCrashDirectories) {
             directories[1].value());
 }
 
-TEST_F(CrashCommonUtilTest, GzipFile) {
-  // Create a temp file of semi-structured ASCII data then compress it using our
-  // function and then decompress it and see if we have the same data. Don't use
-  // random data because random data doesn't compress well. :)
-  base::FilePath file;
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(test_dir_, &file));
-  base::FilePath file_copy;
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(test_dir_, &file_copy));
-  std::string content = CreateSemiRandomString(
-      base::RandInt(kRandomDataMinLength, kRandomDataMaxLength));
-  ASSERT_EQ(base::WriteFile(file, content.c_str(), content.length()),
-            content.length());
-  ASSERT_TRUE(base::CopyFile(file, file_copy));
-  base::FilePath zip_file = util::GzipFile(file);
-  EXPECT_EQ(zip_file, file.AddExtension(".gz"));
-  EXPECT_TRUE(VerifyCompression(file_copy, zip_file))
-      << "Random input data: " << content;
-}
-
 TEST_F(CrashCommonUtilTest, GzipStream) {
   std::string content = CreateSemiRandomString(
       base::RandInt(kRandomDataMinLength, kRandomDataMaxLength));
-  std::string compressed_content =
+  std::vector<unsigned char> compressed_content =
       util::GzipStream(brillo::MemoryStream::OpenCopyOf(
           content.c_str(), content.length(), nullptr));
   EXPECT_FALSE(compressed_content.empty());
+  EXPECT_LT(compressed_content.size(), content.size())
+      << "Didn't actually compress";
   base::FilePath raw_file;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(test_dir_, &raw_file));
-  base::FilePath compressed_file;
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(test_dir_, &compressed_file));
+  base::FilePath compressed_file_name;
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(test_dir_, &compressed_file_name));
   // Remove the file we will decompress to or gzip will fail on decompression.
-  ASSERT_TRUE(base::DeleteFile(compressed_file, false));
-  compressed_file = compressed_file.AddExtension(".gz");
+  ASSERT_TRUE(base::DeleteFile(compressed_file_name, false));
+  compressed_file_name = compressed_file_name.AddExtension(".gz");
   ASSERT_EQ(base::WriteFile(raw_file, content.c_str(), content.length()),
             content.length());
-  ASSERT_EQ(base::WriteFile(compressed_file, compressed_content.c_str(),
-                            compressed_content.length()),
-            compressed_content.length());
-  EXPECT_TRUE(VerifyCompression(raw_file, compressed_file))
+  {
+    base::File compressed_file(
+        compressed_file_name, base::File::FLAG_WRITE | base::File::FLAG_CREATE);
+    ASSERT_TRUE(compressed_file.IsValid());
+    ssize_t write_result = HANDLE_EINTR(write(compressed_file.GetPlatformFile(),
+                                              compressed_content.data(),
+                                              compressed_content.size()));
+    ASSERT_EQ(write_result, compressed_content.size());
+  }
+  EXPECT_TRUE(VerifyCompression(raw_file, compressed_file_name))
       << "Random input data: " << content;
 }
 

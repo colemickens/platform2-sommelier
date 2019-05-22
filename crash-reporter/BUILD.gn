@@ -47,6 +47,7 @@ pkg_config("libcrash_reporter_config") {
     "libdebugd-client",
     "libpcrecpp",
     "libsession_manager-client",
+    "zlib",
   ]
 }
 
@@ -105,6 +106,7 @@ pkg_config("crash_sender_config") {
     "libmetrics-${libbase_ver}",
     "libminijail",
     "libsession_manager-client",
+    "zlib",
   ]
 }
 

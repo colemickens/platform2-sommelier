@@ -84,7 +84,8 @@ bool KernelWarningCollector::Collect(WarningType type) {
 
   std::string dump_basename =
       FormatDumpBasename(exec_name, time(nullptr), kKernelPid);
-  FilePath log_path = GetCrashPath(root_crash_directory, dump_basename, "log");
+  FilePath log_path =
+      GetCrashPath(root_crash_directory, dump_basename, "log.gz");
   FilePath meta_path =
       GetCrashPath(root_crash_directory, dump_basename, "meta");
   FilePath kernel_crash_path = root_crash_directory.Append(
@@ -106,12 +107,7 @@ bool KernelWarningCollector::Collect(WarningType type) {
   // Get the log contents, compress, and attach to crash report.
   bool result = GetLogContents(log_config_path_, exec_name, log_path);
   if (result) {
-    const FilePath compressed_log_path = util::GzipFile(log_path);
-    // The log could be large, so only send it if compression succeeds.
-    if (!compressed_log_path.empty()) {
-      AddCrashMetaUploadFile("log", compressed_log_path.value());
-    }
-    base::DeleteFile(log_path, false /* recursive */);
+    AddCrashMetaUploadFile("log", log_path.value());
   }
 
   WriteCrashMetaData(meta_path, exec_name, kernel_crash_path.value());

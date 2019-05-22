@@ -5,7 +5,11 @@
 #include "crash-reporter/crash_collector_test.h"
 
 #include <inttypes.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
+
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -72,6 +76,35 @@ TEST_F(CrashCollectorTest, WriteNewFile) {
   EXPECT_EQ(strlen(kBuffer),
             collector_.WriteNewFile(test_file, kBuffer, strlen(kBuffer)));
   EXPECT_LT(collector_.WriteNewFile(test_file, kBuffer, strlen(kBuffer)), 0);
+}
+
+TEST_F(CrashCollectorTest, WriteNewCompressedFile) {
+  FilePath test_file = test_dir_.Append("test_compressed_new.gz");
+  const char kBuffer[] = "buffer";
+  EXPECT_TRUE(
+      collector_.WriteNewCompressedFile(test_file, kBuffer, strlen(kBuffer)));
+  EXPECT_TRUE(base::PathExists(test_file));
+
+  int decompress_result = system(("gunzip " + test_file.value()).c_str());
+  EXPECT_TRUE(WIFEXITED(decompress_result));
+  EXPECT_EQ(WEXITSTATUS(decompress_result), 0);
+
+  FilePath test_file_uncompressed = test_file.RemoveFinalExtension();
+  std::string contents;
+  EXPECT_TRUE(base::ReadFileToString(test_file_uncompressed, &contents));
+  EXPECT_EQ(kBuffer, contents);
+}
+
+TEST_F(CrashCollectorTest, WriteNewCompressedFileFailsIfFileExists) {
+  FilePath test_file = test_dir_.Append("test_compressed_exist.gz");
+  base::File touch_test_file(test_file,
+                             base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  EXPECT_TRUE(touch_test_file.IsValid());
+  touch_test_file.Close();
+
+  const char kBuffer[] = "buffer";
+  EXPECT_FALSE(
+      collector_.WriteNewCompressedFile(test_file, kBuffer, strlen(kBuffer)));
 }
 
 TEST_F(CrashCollectorTest, Sanitize) {
@@ -468,7 +501,7 @@ TEST_F(CrashCollectorTest, MetaData) {
 
 TEST_F(CrashCollectorTest, GetLogContents) {
   FilePath config_file = test_dir_.Append("crash_config");
-  FilePath output_file = test_dir_.Append("crash_log");
+  FilePath output_file = test_dir_.Append("crash_log.gz");
   const char kConfigContents[] =
       "foobar=echo hello there | \\\n  sed -e \"s/there/world/\"";
   ASSERT_TRUE(test_util::CreateFile(config_file, kConfigContents));
@@ -478,8 +511,14 @@ TEST_F(CrashCollectorTest, GetLogContents) {
   base::DeleteFile(FilePath(output_file), false);
   EXPECT_TRUE(collector_.GetLogContents(config_file, "foobar", output_file));
   ASSERT_TRUE(base::PathExists(output_file));
+
+  int decompress_result = system(("gunzip " + output_file.value()).c_str());
+  EXPECT_TRUE(WIFEXITED(decompress_result));
+  EXPECT_EQ(WEXITSTATUS(decompress_result), 0);
+
+  FilePath decompressed_output_file = test_dir_.Append("crash_log");
   std::string contents;
-  EXPECT_TRUE(base::ReadFileToString(output_file, &contents));
+  EXPECT_TRUE(base::ReadFileToString(decompressed_output_file, &contents));
   EXPECT_EQ("hello world\n", contents);
 }
 
@@ -501,15 +540,21 @@ TEST_F(CrashCollectorTest, GetProcessTree) {
 
 TEST_F(CrashCollectorTest, TruncatedLog) {
   FilePath config_file = test_dir_.Append("crash_config");
-  FilePath output_file = test_dir_.Append("crash_log");
+  FilePath output_file = test_dir_.Append("crash_log.gz");
   const char kConfigContents[] = "foobar=echo These are log contents.";
   ASSERT_TRUE(test_util::CreateFile(config_file, kConfigContents));
   base::DeleteFile(FilePath(output_file), false);
   collector_.max_log_size_ = 10;
   EXPECT_TRUE(collector_.GetLogContents(config_file, "foobar", output_file));
   ASSERT_TRUE(base::PathExists(output_file));
+
+  int decompress_result = system(("gunzip " + output_file.value()).c_str());
+  EXPECT_TRUE(WIFEXITED(decompress_result));
+  EXPECT_EQ(WEXITSTATUS(decompress_result), 0);
+
+  FilePath decompressed_output_file = test_dir_.Append("crash_log");
   std::string contents;
-  EXPECT_TRUE(base::ReadFileToString(output_file, &contents));
+  EXPECT_TRUE(base::ReadFileToString(decompressed_output_file, &contents));
   EXPECT_EQ("These are \n<TRUNCATED>\n", contents);
 }
 

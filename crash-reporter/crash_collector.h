@@ -92,6 +92,8 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, StripEmailAddresses);
   FRIEND_TEST(CrashCollectorTest, TruncatedLog);
   FRIEND_TEST(CrashCollectorTest, WriteNewFile);
+  FRIEND_TEST(CrashCollectorTest, WriteNewCompressedFile);
+  FRIEND_TEST(CrashCollectorTest, WriteNewCompressedFileFailsIfFileExists);
   FRIEND_TEST(ForkExecAndPipeTest, BadExecutable);
   FRIEND_TEST(ForkExecAndPipeTest, BadOutputFile);
   FRIEND_TEST(ForkExecAndPipeTest, Basic);
@@ -118,6 +120,13 @@ class CrashCollector {
   // If the file already exists or writing fails, return a negative value.
   // Otherwise returns the number of bytes written.
   int WriteNewFile(const base::FilePath& filename, const char* data, int size);
+
+  // Writes |data| of |size| to |filename|, which must be a new file ending in
+  // ".gz". File will be a gzip-compressed file. Returns true on success,
+  // false on failure.
+  bool WriteNewCompressedFile(const base::FilePath& filename,
+                              const char* data,
+                              size_t size);
 
   // Return a filename that has only [a-z0-1_] characters by mapping
   // all others into '_'.
@@ -182,7 +191,8 @@ class CrashCollector {
                         const std::string& display_path);
 
   // Write a log applicable to |exec_name| to |output_file| based on the
-  // log configuration file at |config_path|.
+  // log configuration file at |config_path|. If |output_file| ends in .gz, it
+  // will be compressed in gzip format, otherwise it will be plaintext.
   bool GetLogContents(const base::FilePath& config_path,
                       const std::string& exec_name,
                       const base::FilePath& output_file);
@@ -253,6 +263,10 @@ class CrashCollector {
 
   // True if reports should always be stored in the user crash directory.
   const bool force_user_crash_dir_;
+
+  // Creates a new file and returns a file descriptor to it. Helper for
+  // WriteNewFile() and WriteNewCompressedFile().
+  base::ScopedFD GetNewFileHandle(const base::FilePath& filename);
 
   DISALLOW_COPY_AND_ASSIGN(CrashCollector);
 };

@@ -857,18 +857,18 @@ bool Sender::RequestToSendCrash(const CrashDetails& details) {
           brillo::http::Transport::CreateDefaultWithProxy(proxy_servers_[0]);
     }
 
-    // Gzip the data before sending it to the server. We compress the entire
+    // Compress the data before sending it to the server. We compress the entire
     // request body and then specify the Content-Encoding as gzip to achieve
     // this.
-    std::string gzip_form_data =
+    std::vector<unsigned char> compressed_form_data =
         util::GzipStream(form_data->ExtractDataStream());
 
     brillo::ErrorPtr upload_error;
     std::unique_ptr<brillo::http::Response> response;
-    if (!gzip_form_data.empty()) {
+    if (!compressed_form_data.empty()) {
       response = brillo::http::PostBinaryAndBlock(
           allow_dev_sending_ ? kReportUploadStagingUrl : kReportUploadProdUrl,
-          gzip_form_data.data(), gzip_form_data.length(),
+          compressed_form_data.data(), compressed_form_data.size(),
           form_data->GetContentType(),
           {{brillo::http::request_header::kContentEncoding, "gzip"}}, transport,
           &upload_error);
@@ -878,7 +878,7 @@ bool Sender::RequestToSendCrash(const CrashDetails& details) {
       // This really should never happen, but it's probably better to try to
       // send this uncompressed even though it requires regenerating all the
       // data since extracting the data stream from the FormData is a
-      // potentially destructive operatqion.
+      // potentially destructive operation.
       form_data = CreateCrashFormData(details, &product_name);
       response = brillo::http::PostFormDataAndBlock(
           allow_dev_sending_ ? kReportUploadStagingUrl : kReportUploadProdUrl,

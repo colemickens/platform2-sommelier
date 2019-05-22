@@ -70,14 +70,9 @@ bool GetUserCrashDirectories(
     org::chromium::SessionManagerInterfaceProxyInterface* session_manager_proxy,
     std::vector<base::FilePath>* directories);
 
-// Gzip-compresses |path|, removes the original file, and returns the path of
-// the new file. On failure, the original file is left alone and an empty path
-// is returned.
-base::FilePath GzipFile(const base::FilePath& path);
-
 // Gzip's the |data| passed in and returns the compressed data. Returns an empty
-// string on failure.
-std::string GzipStream(brillo::StreamPtr data);
+// vector on failure.
+std::vector<unsigned char> GzipStream(brillo::StreamPtr data);
 
 // Runs |process| and redirects |fd| to |output|. Returns the exit code, or -1
 // if the process failed to start.

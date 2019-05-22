@@ -258,13 +258,9 @@ std::map<std::string, base::FilePath> ChromeCollector::GetAdditionalLogs(
 
   // Run the command specified by the config file to gather logs.
   const FilePath chrome_log_path =
-      GetCrashPath(dir, basename, kChromeLogFilename);
+      GetCrashPath(dir, basename, kChromeLogFilename).AddExtension("gz");
   if (GetLogContents(log_config_path_, exe_name, chrome_log_path)) {
-    const FilePath compressed_path = util::GzipFile(chrome_log_path);
-    if (!compressed_path.empty())
-      logs[kChromeLogFilename] = compressed_path;
-    else
-      base::DeleteFile(chrome_log_path, false /* recursive */);
+    logs[kChromeLogFilename] = chrome_log_path;
   }
 
   // For unit testing, debugd_proxy_ isn't initialized, so skip attempting to

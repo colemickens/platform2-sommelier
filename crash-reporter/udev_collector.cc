@@ -101,7 +101,7 @@ bool UdevCollector::ProcessUdevCrashLogs(const FilePath& crash_directory,
 
   // Create the destination path.
   std::string log_file_name = FormatDumpBasename(basename, time(nullptr), 0);
-  FilePath crash_path = GetCrashPath(crash_directory, log_file_name, "log");
+  FilePath crash_path = GetCrashPath(crash_directory, log_file_name, "log.gz");
 
   // Handle the crash.
   bool result = GetLogContents(log_config_path_, udev_log_name, crash_path);
@@ -109,15 +109,6 @@ bool UdevCollector::ProcessUdevCrashLogs(const FilePath& crash_directory,
     LOG(ERROR) << "Error reading udev log info " << udev_log_name;
     return false;
   }
-
-  // Compress the output using gzip.
-  FilePath crash_path_zipped = util::GzipFile(crash_path);
-
-  // If the zip file was not created, use the uncompressed file.
-  if (crash_path_zipped.empty())
-    LOG(ERROR) << "Could not create zip file for: " << crash_path.value();
-  else
-    crash_path = crash_path_zipped;
 
   std::string exec_name = std::string(kUdevExecName) + "-" + subsystem;
   AddCrashMetaData(kUdevSignatureKey, udev_log_name);

@@ -16,6 +16,7 @@
 #include <brillo/cryptohome.h>
 #include <brillo/key_value_store.h>
 #include <vboot/crossystem.h>
+#include <zlib.h>
 
 #include "crash-reporter/paths.h"
 
@@ -30,10 +31,6 @@ constexpr char kHwClassPath[] = "/sys/devices/platform/chromeos_acpi/HWID";
 
 constexpr char kDevSwBoot[] = "devsw_boot";
 constexpr char kDevMode[] = "dev";
-
-constexpr char kGzipPath[] = "/bin/gzip";
-constexpr int kPollTimeoutMillis = 5000;
-constexpr int kKillTimeoutSec = 5;
 
 // If the OS version is older than this we do not upload crash reports.
 constexpr base::TimeDelta kAgeForNoUploads = base::TimeDelta::FromDays(180);
@@ -189,128 +186,64 @@ bool GetUserCrashDirectories(
   return true;
 }
 
-base::FilePath GzipFile(const base::FilePath& path) {
-  brillo::ProcessImpl proc;
-  proc.AddArg(kGzipPath);
-  proc.AddArg(path.value());
-  std::string error;
-  const int res = util::RunAndCaptureOutput(&proc, STDERR_FILENO, &error);
-  if (res < 0) {
-    PLOG(ERROR) << "Failed to execute gzip";
-    return base::FilePath();
-  }
-  if (res != 0) {
-    LOG(ERROR) << "Failed to gzip " << path.value();
-    util::LogMultilineError(error);
-    return base::FilePath();
-  }
-  return path.AddExtension(".gz");
-}
+std::vector<unsigned char> GzipStream(brillo::StreamPtr data) {
+  // Adapted from https://zlib.net/zlib_how.html
+  z_stream deflate_stream;
+  memset(&deflate_stream, 0, sizeof(deflate_stream));
+  deflate_stream.zalloc = Z_NULL;
+  deflate_stream.zfree = Z_NULL;
 
-std::string GzipStream(brillo::StreamPtr data) {
-  brillo::ProcessImpl proc;
-  proc.AddArg(kGzipPath);
-  std::string compressed;
-  // We need to redirect both stdin/stdout to pipes so we can manage them.
-  proc.RedirectUsingPipe(STDOUT_FILENO, false /* is_input */);
-  proc.RedirectUsingPipe(STDIN_FILENO, true /* is_input */);
-  if (!proc.Start()) {
-    PLOG(ERROR) << "Failed to execute gzip";
-    return std::string();
+  // Using a window size of 31 sets us to gzip mode (16) + default window size
+  // (15).
+  const int kDefaultWindowSize = 15;
+  const int kWindowSizeGzipAdd = 16;
+  const int kDefaultMemLevel = 8;
+  int result = deflateInit2(&deflate_stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED,
+                            kDefaultWindowSize + kWindowSizeGzipAdd,
+                            kDefaultMemLevel, Z_DEFAULT_STRATEGY);
+  if (result != Z_OK) {
+    LOG(ERROR) << "Error initializing zlib: error code " << result
+               << ", error msg: "
+               << (deflate_stream.msg == nullptr ? "None" : deflate_stream.msg);
+    return std::vector<unsigned char>();
   }
 
-  const int out = proc.GetPipe(STDOUT_FILENO);
-  const int in = proc.GetPipe(STDIN_FILENO);
-  char out_buffer[kBufferSize];
-  char in_buffer[kBufferSize];
-
-  // First entry polls for input writing, second for output reading.
-  struct pollfd fdtab[2];
-  memset(fdtab, 0, sizeof(fdtab));
-  fdtab[0].fd = in;
-  fdtab[0].events = POLLOUT;
-  fdtab[1].fd = out;
-  fdtab[1].events = POLLIN;
-
-  while (true) {
-    int poll_rv =
-        HANDLE_EINTR(poll(fdtab, arraysize(fdtab), kPollTimeoutMillis));
-    // Timed out, give up.
-    if (poll_rv == 0) {
-      LOG(ERROR) << "Timed out polling fds for gzip, abort";
-      proc.Kill(SIGKILL, kKillTimeoutSec);
-      return std::string();
+  std::vector<unsigned char> deflated;
+  int flush = Z_NO_FLUSH;
+  /* compress until end of stream */
+  do {
+    size_t read_size = 0;
+    unsigned char in[kBufferSize];
+    if (!data->ReadBlocking(in, kBufferSize, &read_size, nullptr)) {
+      // We are reading from a memory stream, so this really shouldn't happen.
+      LOG(ERROR) << "Error reading from input stream";
+      deflateEnd(&deflate_stream);
+      return std::vector<unsigned char>();
     }
-
-    if (poll_rv < 0) {
-      PLOG(ERROR) << "Failed polling gzip fds";
-      proc.Kill(SIGKILL, kKillTimeoutSec);
-      return std::string();
+    if (data->GetRemainingSize() <= 0) {
+      // We must request a flush on the last chunk of data, else deflateEnd
+      // may just discard some compressed data.
+      flush = Z_FINISH;
     }
-
-    if (fdtab[0].revents & POLLOUT) {
-      // Write more data to stdin.
-      size_t read_size = 0;
-      if (!data->ReadBlocking(in_buffer, kBufferSize, &read_size, nullptr)) {
-        // We are reading from a memory stream, so this really shouldn't happen.
-        LOG(ERROR) << "Error reading from gzip input stream";
-        proc.Kill(SIGKILL, kKillTimeoutSec);
-        return std::string();
-      }
-      char* buf_ptr = in_buffer;
-      while (read_size > 0) {
-        const ssize_t write_size = HANDLE_EINTR(write(in, buf_ptr, read_size));
-        if (write_size < 0) {
-          PLOG(ERROR) << "Error writing to gzip stdin";
-          proc.Kill(SIGKILL, kKillTimeoutSec);
-          return std::string();
-        }
-        read_size -= write_size;
-        buf_ptr += write_size;
-      }
-      if (data->GetRemainingSize() <= 0) {
-        // Finished writing all data to stdin, break out of the polling loop so
-        // we can just read all the data from stdout.
-        if (close(in) < 0) {
-          PLOG(ERROR) << "Failed closing stdin to gzip, aborting";
-          proc.Kill(SIGKILL, kKillTimeoutSec);
-          return std::string();
-        }
-        break;
-      }
-    }
-
-    if (fdtab[1].revents & POLLIN) {
-      const ssize_t count = HANDLE_EINTR(read(out, out_buffer, kBufferSize));
-      if (count < 0) {
-        PLOG(ERROR) << "Error reading from gzip stdout";
-        proc.Kill(SIGKILL, kKillTimeoutSec);
-        return std::string();
-      }
-
-      compressed.append(out_buffer, count);
-    }
-  }
-
-  // Finish reading all of the output, no reason to poll anymore since we have
-  // written all the input data.
-  int proc_rv;
-  while (true) {
-    const ssize_t count = HANDLE_EINTR(read(out, out_buffer, kBufferSize));
-    if (count <= 0) {
-      proc_rv = proc.Wait();
-      break;
-    }
-
-    compressed.append(out_buffer, count);
-  }
-
-  if (proc_rv < 0) {
-    LOG(ERROR) << "Failed to gzip data";
-    return std::string();
-  }
-
-  return compressed;
+    deflate_stream.next_in = in;
+    deflate_stream.avail_in = read_size;
+    do {
+      unsigned char out[kBufferSize];
+      deflate_stream.avail_out = kBufferSize;
+      deflate_stream.next_out = out;
+      result = deflate(&deflate_stream, flush);
+      // Note that most return values are acceptable; don't error out if result
+      // is not Z_OK. See discussion at https://zlib.net/zlib_how.html
+      DCHECK_NE(result, Z_STREAM_ERROR);
+      DCHECK_LE(deflate_stream.avail_out, kBufferSize);
+      int amount_in_output_buffer = kBufferSize - deflate_stream.avail_out;
+      deflated.insert(deflated.end(), out, out + amount_in_output_buffer);
+    } while (deflate_stream.avail_out == 0);
+    DCHECK_EQ(deflate_stream.avail_in, 0) << "deflate did not consume all data";
+  } while (flush != Z_FINISH);
+  DCHECK_EQ(result, Z_STREAM_END) << "Stream did not complete properly";
+  deflateEnd(&deflate_stream);
+  return deflated;
 }
 
 int RunAndCaptureOutput(brillo::ProcessImpl* process,

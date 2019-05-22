@@ -31,6 +31,7 @@
 #include <brillo/key_value_store.h>
 #include <brillo/process.h>
 #include <brillo/userdb_utils.h>
+#include <zlib.h>
 
 #include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
@@ -234,21 +235,76 @@ void CrashCollector::SetUpDBus() {
       new org::chromium::SessionManagerInterfaceProxy(bus_));
 }
 
-int CrashCollector::WriteNewFile(const FilePath& filename,
-                                 const char* data,
-                                 int size) {
+base::ScopedFD CrashCollector::GetNewFileHandle(
+    const base::FilePath& filename) {
   // The O_NOFOLLOW is redundant with O_CREAT|O_EXCL, but doesn't hurt.
   int fd = HANDLE_EINTR(open(
       filename.value().c_str(),
       O_CREAT | O_WRONLY | O_TRUNC | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600));
-  if (fd < 0) {
+  return base::ScopedFD(fd);
+}
+
+int CrashCollector::WriteNewFile(const FilePath& filename,
+                                 const char* data,
+                                 int size) {
+  base::ScopedFD fd = GetNewFileHandle(filename);
+  if (!fd.is_valid()) {
     return -1;
   }
 
-  int rv = base::WriteFileDescriptor(fd, data, size) ? size : -1;
+  int rv = base::WriteFileDescriptor(fd.get(), data, size) ? size : -1;
   base::ScopedClearErrno restore_error;
-  IGNORE_EINTR(close(fd));
+  fd.reset();
   return rv;
+}
+
+bool CrashCollector::WriteNewCompressedFile(const FilePath& filename,
+                                            const char* data,
+                                            size_t size) {
+  DCHECK_EQ(filename.FinalExtension(), ".gz")
+      << filename.value() << " must end in .gz";
+  base::ScopedFD fd = GetNewFileHandle(filename);
+  if (!fd.is_valid()) {
+    LOG(ERROR) << "Failed to open " << filename.value();
+    return false;
+  }
+
+  gzFile compressed_output = gzdopen(fd.get(), "wb");
+  if (compressed_output == nullptr) {
+    LOG(ERROR) << "Failed to gzip " << filename.value();
+    return false;
+  }
+
+  // zlib now owns the file descriptor; we must not close it past this point.
+  // Note that if gzdopen fails, we are still responsible for closing the file,
+  // so we can't just put the release() call inside gzdopen().
+  (void)fd.release();
+  int result = gzwrite(compressed_output, data, size);
+  if (result != size) {
+    if (result <= 0) {
+      int saved_errno = errno;
+      int errnum = 0;
+      const char* error_msg = gzerror(compressed_output, &errnum);
+      if (errnum == Z_ERRNO) {
+        LOG(ERROR) << "gzwrite failed with file system error: "
+                   << strerror(saved_errno);
+      } else {
+        LOG(ERROR) << "gzwrite failed: error code " << errnum << ", error msg: "
+                   << (error_msg == nullptr ? "None" : error_msg);
+      }
+    } else {
+      LOG(ERROR) << "gzwrite wrote partial output";
+    }
+    gzclose_w(compressed_output);
+    return false;
+  }
+
+  result = gzclose_w(compressed_output);
+  if (result != Z_OK) {
+    LOG(ERROR) << "gzclose_w failed with error code " << result;
+    return false;
+  }
+  return true;
 }
 
 std::string CrashCollector::Sanitize(const std::string& name) {
@@ -659,14 +715,18 @@ bool CrashCollector::GetLogContents(const FilePath& config_path,
   // leak data.
   StripSensitiveData(&log_contents);
 
-  // We must use WriteNewFile instead of base::WriteFile as we
-  // do not want to write with root access to a symlink that an attacker
-  // might have created.
-  if (WriteNewFile(output_file, log_contents.data(), log_contents.size()) !=
-      static_cast<int>(log_contents.length())) {
-    PLOG(WARNING) << "Error writing sanitized log to "
-                  << output_file.value().c_str();
-    return false;
+  if (output_file.FinalExtension() == ".gz") {
+    if (!WriteNewCompressedFile(output_file, log_contents.data(),
+                                log_contents.size())) {
+      LOG(WARNING) << "Error writing sanitized log to " << output_file.value();
+      return false;
+    }
+  } else {
+    if (WriteNewFile(output_file, log_contents.data(), log_contents.size()) !=
+        static_cast<int>(log_contents.length())) {
+      PLOG(WARNING) << "Error writing sanitized log to " << output_file.value();
+      return false;
+    }
   }
 
   return true;
