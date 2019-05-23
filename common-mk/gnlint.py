@@ -6,7 +6,7 @@
 
 """Linter for checking GN files used in platform2 projects."""
 
-# Most apart of this linter utilize the token tree parser of the gn binary.
+# This linter utilizes the token tree parser of the gn binary.
 # For example,
 #
 # executable("my_target") {
