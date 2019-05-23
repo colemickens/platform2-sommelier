@@ -1234,7 +1234,7 @@ TEST_F(ManagerTest, RemoveService) {
   const ServiceRefPtr& service = mock_service;
 
   manager()->RegisterService(service);
-  EXPECT_EQ(GetEphemeralProfile(manager()), service->profile().get());
+  EXPECT_EQ(GetEphemeralProfile(manager()), service->profile());
 
   scoped_refptr<MockProfile> profile(
       new StrictMock<MockProfile>(
@@ -1248,7 +1248,7 @@ TEST_F(ManagerTest, RemoveService) {
   manager()->RemoveService(service);
   Mock::VerifyAndClearExpectations(mock_service.get());
   Mock::VerifyAndClearExpectations(profile.get());
-  EXPECT_EQ(GetEphemeralProfile(manager()), service->profile().get());
+  EXPECT_EQ(GetEphemeralProfile(manager()), service->profile());
   EXPECT_TRUE(manager()->HasService(service));  // Since Unload() was false.
 
   // If service is not ephemeral and the Manager finds a profile to assign
@@ -1392,7 +1392,7 @@ TEST_F(ManagerTest, HandleProfileEntryDeletion) {
   EXPECT_TRUE(manager()->HandleProfileEntryDeletion(profile1, entry_name));
   EXPECT_TRUE(IsSortServicesTaskPending());
 
-  EXPECT_EQ(GetEphemeralProfile(manager()), s_not_in_profile->profile().get());
+  EXPECT_EQ(GetEphemeralProfile(manager()), s_not_in_profile->profile());
   EXPECT_EQ(profile1, s_not_in_group->profile());
   EXPECT_EQ(GetEphemeralProfile(manager()), s_configure_fail->profile());
 

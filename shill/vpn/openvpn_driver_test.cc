@@ -360,7 +360,7 @@ TEST_F(OpenVPNDriverTest, Notify) {
               UpdateIPConfig(Field(&IPConfig::Properties::address, "")));
   driver_->Notify("up", config);
   EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
-  EXPECT_TRUE(GetSelectedService().get() == service_.get());
+  EXPECT_EQ(GetSelectedService(), service_);
 
   // Tests that existing properties are reused if no new ones provided.
   driver_->ip_properties_.address = "1.2.3.4";

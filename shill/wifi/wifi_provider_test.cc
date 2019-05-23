@@ -1171,23 +1171,20 @@ TEST_F(WiFiProviderTest, FindServiceWPA) {
       kSSID.c_str(), kModeManaged, nullptr, false, false, &args);
   args.SetString(kSecurityProperty, kSecurityRsn);
   WiFiServiceRefPtr service = GetWiFiService(args, &error);
-  ASSERT_TRUE(service.get());
+  ASSERT_NE(nullptr, service);
   const vector<uint8_t> ssid_bytes(kSSID.begin(), kSSID.end());
   WiFiServiceRefPtr wpa_service(FindService(ssid_bytes, kModeManaged,
                                             kSecurityWpa));
-  EXPECT_TRUE(wpa_service.get());
-  EXPECT_EQ(service.get(), wpa_service.get());
+  EXPECT_EQ(service, wpa_service);
   WiFiServiceRefPtr rsn_service(FindService(ssid_bytes, kModeManaged,
                                             kSecurityRsn));
-  EXPECT_TRUE(rsn_service.get());
-  EXPECT_EQ(service.get(), rsn_service.get());
+  EXPECT_EQ(service, rsn_service);
   WiFiServiceRefPtr psk_service(FindService(ssid_bytes, kModeManaged,
                                             kSecurityPsk));
-  EXPECT_EQ(service.get(), psk_service.get());
+  EXPECT_EQ(service, psk_service);
   WiFiServiceRefPtr wep_service(FindService(ssid_bytes, kModeManaged,
                                             kSecurityWep));
-  EXPECT_TRUE(service.get() != wep_service.get());
-  EXPECT_EQ(nullptr, wep_service.get());
+  EXPECT_EQ(nullptr, wep_service);
 }
 
 TEST_F(WiFiProviderTest, FindServiceForEndpoint) {
@@ -1328,9 +1325,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedToMockService) {
                                                   kModeManaged,
                                                   kSecurityNone,
                                                   false);
-  EXPECT_EQ(service0.get(), FindService(ssid0_bytes,
-                                        kModeManaged,
-                                        kSecurityNone).get());
+  EXPECT_EQ(service0, FindService(ssid0_bytes, kModeManaged, kSecurityNone));
   WiFiEndpointRefPtr endpoint0 = MakeEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0))).Times(1);

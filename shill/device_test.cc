@@ -589,7 +589,7 @@ TEST_F(DeviceTest, SelectedService) {
                                   metrics(),
                                   manager()));
   SelectService(service);
-  EXPECT_TRUE(device_->selected_service_.get() == service.get());
+  EXPECT_EQ(device_->selected_service_, service);
 
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
   device_->SetServiceState(Service::kStateConfiguring);
@@ -620,7 +620,7 @@ TEST_F(DeviceTest, ResetConnection) {
                                   metrics(),
                                   manager()));
   SelectService(service);
-  EXPECT_TRUE(device_->selected_service_.get() == service.get());
+  EXPECT_EQ(device_->selected_service_, service);
 
   // ResetConnection() should drop the connection and the selected service,
   // but should not change the service state.
@@ -637,7 +637,7 @@ TEST_F(DeviceTest, LinkMonitorFailure) {
                                   metrics(),
                                   manager()));
   SelectService(service);
-  EXPECT_TRUE(device_->selected_service().get() == service.get());
+  EXPECT_EQ(device_->selected_service(), service);
 
   time_t current_time = 1000;
 

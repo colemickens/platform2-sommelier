@@ -353,7 +353,7 @@ TEST_F(EthernetTest, ConnectToFailure) {
   EXPECT_CALL(dispatcher_, PostTask(_, _));  // Posts ConfigureStaticIPTask.
   EXPECT_CALL(*mock_service_, SetState(Service::kStateFailure));
   ethernet_->ConnectTo(mock_service_.get());
-  EXPECT_EQ(mock_service_, GetSelectedService().get());
+  EXPECT_EQ(mock_service_, GetSelectedService());
 }
 
 TEST_F(EthernetTest, ConnectToSuccess) {

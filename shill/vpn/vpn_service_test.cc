@@ -253,13 +253,12 @@ TEST_F(VPNServiceTest, EnableAndRetainAutoConnect) {
 }
 
 TEST_F(VPNServiceTest, SetConnection) {
-  EXPECT_FALSE(service_->connection_binder_.get());
+  EXPECT_EQ(nullptr, service_->connection_binder_);
   EXPECT_FALSE(service_->connection());
   service_->SetConnection(connection_);
-  ASSERT_TRUE(service_->connection_binder_.get());
-  EXPECT_EQ(connection_.get(),
-            service_->connection_binder_->connection().get());
-  EXPECT_EQ(connection_.get(), service_->connection().get());
+  ASSERT_NE(nullptr, service_->connection_binder_);
+  EXPECT_EQ(connection_, service_->connection_binder_->connection());
+  EXPECT_EQ(connection_, service_->connection());
   EXPECT_CALL(*driver_, OnConnectionDisconnected()).Times(0);
 }
 
