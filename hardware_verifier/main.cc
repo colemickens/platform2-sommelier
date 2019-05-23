@@ -62,7 +62,7 @@ hardware_verifier::CLIOutputFormat SafeConvertOutputFormatFlagToEnum(
     return hardware_verifier::CLIOutputFormat::kProtoBin;
   }
   if (output_format_flag == "text") {
-    return hardware_verifier::CLIOutputFormat::kProtoText;
+    return hardware_verifier::CLIOutputFormat::kJSON;
   }
   LOG(ERROR) << "The output format (" << output_format_flag << ") is invalid.";
   exit(EX_USAGE);

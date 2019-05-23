@@ -6,12 +6,13 @@
 #include "hardware_verifier/cli.h"
 
 #include <iostream>
+#include <string>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/optional.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
-#include <google/protobuf/text_format.h>
+#include <google/protobuf/util/json_util.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 #include "hardware_verifier/hardware_verifier.pb.h"
@@ -72,13 +73,19 @@ CLIVerificationResult CLI::Run(const std::string& probe_result_file,
         return CLIVerificationResult::kUnknownError;
       }
       break;
-    case CLIOutputFormat::kProtoText:
-      google::protobuf::io::OstreamOutputStream ostream_output_stream(
-          output_stream_);
-      if (!google::protobuf::TextFormat::Print(hw_verification_report,
-                                               &ostream_output_stream)) {
+    case CLIOutputFormat::kJSON:
+      auto json_print_opts = google::protobuf::util::JsonPrintOptions();
+      json_print_opts.add_whitespace = true;
+      json_print_opts.always_print_primitive_fields = true;
+      std::string output_data;
+      const auto convert_status = google::protobuf::util::MessageToJsonString(
+          hw_verification_report, &output_data, json_print_opts);
+      if (!convert_status.ok()) {
+        LOG(ERROR) << "Failed to transform the report into JSON format: "
+                   << convert_status.ToString() << ".";
         return CLIVerificationResult::kUnknownError;
       }
+      *output_stream_ << output_data;
       break;
   }
 

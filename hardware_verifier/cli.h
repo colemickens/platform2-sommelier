@@ -43,8 +43,8 @@ enum CLIVerificationResult {
 };
 
 enum CLIOutputFormat {
-  kProtoBin = 0,  // Protobuf binary format.
-  kProtoText = 1  // Human readable protobuf text format for debug purpose.
+  kProtoBin,  // Protobuf binary format.
+  kJSON       // Human readable JSON format for debug purpose.
 };
 
 // A class that holds the core logic of the program if runs in CLI mode.
