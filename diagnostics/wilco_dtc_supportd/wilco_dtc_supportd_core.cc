@@ -133,6 +133,10 @@ bool WilcoDtcSupportdCore::Start() {
       base::Bind(&WilcoDtcSupportdGrpcService::GetOsVersion,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
+      &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetVpdField,
+      base::Bind(&WilcoDtcSupportdGrpcService::GetVpdField,
+                 base::Unretained(&grpc_service_)));
+  grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetConfigurationData,
       base::Bind(&WilcoDtcSupportdGrpcService::GetConfigurationData,
                  base::Unretained(&grpc_service_)));
