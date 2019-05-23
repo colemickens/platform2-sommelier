@@ -76,36 +76,36 @@ TEST_F(ChromeosManagerDBusAdaptorTest, ClaimInterface) {
   std::unique_ptr<Response> message(Response::CreateEmpty());
 
   // Watcher for device claimer is not created when we fail to claim the device.
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_.get());
+  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_);
   EXPECT_CALL(manager_, ClaimDevice(_, kInterfaceName, _))
       .WillOnce(WithArg<2>(Invoke(SetErrorTypeFailure)));
   EXPECT_CALL(dbus_service_watcher_factory_, CreateDBusServiceWatcher(_, _, _))
       .Times(0);
   manager_adaptor_.ClaimInterface(&error, message.get(), kNonDefaultClaimerName,
                                   kInterfaceName);
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_.get());
+  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_);
 
   // Watcher for device claimer is not created when we succeed in claiming the
   // device from the default claimer.
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_.get());
+  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_);
   EXPECT_CALL(manager_, ClaimDevice(_, kInterfaceName, _))
       .WillOnce(WithArg<2>(Invoke(SetErrorTypeSuccess)));
   EXPECT_CALL(dbus_service_watcher_factory_, CreateDBusServiceWatcher(_, _, _))
       .Times(0);
   manager_adaptor_.ClaimInterface(&error, message.get(), kDefaultClaimerName,
                                   kInterfaceName);
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_.get());
+  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_);
 
   // Watcher for device claimer is created when we succeed in claiming the
   // device from a non-default claimer.
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_.get());
+  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_);
   EXPECT_CALL(manager_, ClaimDevice(_, kInterfaceName, _))
       .WillOnce(WithArg<2>(Invoke(SetErrorTypeSuccess)));
   EXPECT_CALL(dbus_service_watcher_factory_, CreateDBusServiceWatcher(_, _, _))
       .WillOnce(Return(ByMove(std::make_unique<MockDBusServiceWatcher>())));
   manager_adaptor_.ClaimInterface(&error, message.get(), kNonDefaultClaimerName,
                                   kInterfaceName);
-  EXPECT_NE(nullptr, manager_adaptor_.watcher_for_device_claimer_.get());
+  EXPECT_NE(nullptr, manager_adaptor_.watcher_for_device_claimer_);
 }
 
 TEST_F(ChromeosManagerDBusAdaptorTest, ReleaseInterface) {
@@ -124,14 +124,14 @@ TEST_F(ChromeosManagerDBusAdaptorTest, ReleaseInterface) {
       .WillOnce(SetArgPointee<2>(false));
   manager_adaptor_.ReleaseInterface(&error, message.get(), kClaimerName,
                                   kInterfaceName);
-  EXPECT_NE(nullptr, manager_adaptor_.watcher_for_device_claimer_.get());
+  EXPECT_NE(nullptr, manager_adaptor_.watcher_for_device_claimer_);
 
   // If the device claimer is removed, reset the watcher for device claimer.
   EXPECT_CALL(manager_, ReleaseDevice(_, kInterfaceName, _, _))
       .WillOnce(SetArgPointee<2>(true));
   manager_adaptor_.ReleaseInterface(&error, message.get(), kClaimerName,
                                     kInterfaceName);
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_.get());
+  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_);
 }
 
 TEST_F(ChromeosManagerDBusAdaptorTest, SetupApModeInterface) {
@@ -160,7 +160,7 @@ TEST_F(ChromeosManagerDBusAdaptorTest, OnApModeSetterVanished) {
 
   // Reset watcher for AP mode setter after AP mode setter vanishes.
   manager_adaptor_.OnApModeSetterVanished();
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_ap_mode_setter_.get());
+  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_ap_mode_setter_);
 }
 
 TEST_F(ChromeosManagerDBusAdaptorTest, OnDeviceClaimerVanished) {
@@ -171,7 +171,7 @@ TEST_F(ChromeosManagerDBusAdaptorTest, OnDeviceClaimerVanished) {
   // Reset watcher for device claimer after the device claimer vanishes.
   EXPECT_CALL(manager_, OnDeviceClaimerVanished());
   manager_adaptor_.OnDeviceClaimerVanished();
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_.get());
+  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_);
 }
 
 }  // namespace shill

@@ -260,16 +260,16 @@ MATCHER_P(IsIPAddress, address, "") {
 }
 
 TEST_F(DeviceInfoTest, StartStop) {
-  EXPECT_FALSE(device_info_.link_listener_.get());
-  EXPECT_FALSE(device_info_.address_listener_.get());
+  EXPECT_EQ(nullptr, device_info_.link_listener_);
+  EXPECT_EQ(nullptr, device_info_.address_listener_);
   EXPECT_TRUE(device_info_.infos_.empty());
 
   EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink |
                                          RTNLHandler::kRequestAddr));
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _));
   device_info_.Start();
-  EXPECT_TRUE(device_info_.link_listener_.get());
-  EXPECT_TRUE(device_info_.address_listener_.get());
+  EXPECT_NE(nullptr, device_info_.link_listener_);
+  EXPECT_NE(nullptr, device_info_.address_listener_);
   EXPECT_TRUE(device_info_.infos_.empty());
   Mock::VerifyAndClearExpectations(&rtnl_handler_);
 
@@ -277,8 +277,8 @@ TEST_F(DeviceInfoTest, StartStop) {
   EXPECT_FALSE(device_info_.infos_.empty());
 
   device_info_.Stop();
-  EXPECT_FALSE(device_info_.link_listener_.get());
-  EXPECT_FALSE(device_info_.address_listener_.get());
+  EXPECT_EQ(nullptr, device_info_.link_listener_);
+  EXPECT_EQ(nullptr, device_info_.address_listener_);
   EXPECT_TRUE(device_info_.infos_.empty());
 }
 
@@ -300,10 +300,10 @@ TEST_F(DeviceInfoTest, RequestLinkStatistics) {
 TEST_F(DeviceInfoTest, DeviceEnumeration) {
   unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
-  EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
+  EXPECT_EQ(nullptr, device_info_.GetDevice(kTestDeviceIndex));
   EXPECT_EQ(-1, device_info_.GetIndex(kTestDeviceName));
   SendMessageToDeviceInfo(*message);
-  EXPECT_TRUE(device_info_.GetDevice(kTestDeviceIndex).get());
+  EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
   unsigned int flags = 0;
   EXPECT_TRUE(device_info_.GetFlags(kTestDeviceIndex, &flags));
   EXPECT_EQ(IFF_LOWER_UP, flags);
@@ -323,7 +323,7 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   message = BuildLinkMessage(RTNLMessage::kModeDelete);
   EXPECT_CALL(manager_, DeregisterDevice(_)).Times(1);
   SendMessageToDeviceInfo(*message);
-  EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
+  EXPECT_EQ(nullptr, device_info_.GetDevice(kTestDeviceIndex));
   EXPECT_FALSE(device_info_.GetFlags(kTestDeviceIndex, nullptr));
   EXPECT_EQ(-1, device_info_.GetIndex(kTestDeviceName));
 }
@@ -471,7 +471,7 @@ TEST_F(DeviceInfoTest, CreateDeviceEthernet) {
                                                     IsIPAddress(address)));
   DeviceRefPtr device = CreateDevice(
       kTestDeviceName, "address", kTestDeviceIndex, Technology::kEthernet);
-  EXPECT_TRUE(device.get());
+  EXPECT_NE(nullptr, device);
   Mock::VerifyAndClearExpectations(&routing_table_);
   Mock::VerifyAndClearExpectations(&rtnl_handler_);
 
@@ -496,7 +496,7 @@ TEST_F(DeviceInfoTest, CreateDeviceVirtioEthernet) {
   DeviceRefPtr device = CreateDevice(
       kTestDeviceName, "address", kTestDeviceIndex,
       Technology::kVirtioEthernet);
-  EXPECT_TRUE(device.get());
+  EXPECT_NE(nullptr, device);
   Mock::VerifyAndClearExpectations(&routing_table_);
   Mock::VerifyAndClearExpectations(&rtnl_handler_);
 }
@@ -641,7 +641,7 @@ TEST_F(DeviceInfoTest, DeviceBlackList) {
   SendMessageToDeviceInfo(*message);
 
   DeviceRefPtr device = device_info_.GetDevice(kTestDeviceIndex);
-  ASSERT_TRUE(device.get());
+  ASSERT_NE(nullptr, device);
   EXPECT_TRUE(device->technology() == Technology::kBlacklisted);
 }
 
@@ -653,7 +653,7 @@ TEST_F(DeviceInfoTest, AddDeviceToBlackListWithManagerRunning) {
   SendMessageToDeviceInfo(*message);
 
   DeviceRefPtr device = device_info_.GetDevice(kTestDeviceIndex);
-  ASSERT_TRUE(device.get());
+  ASSERT_NE(nullptr, device);
   EXPECT_TRUE(device->technology() == Technology::kBlacklisted);
 }
 
@@ -663,7 +663,7 @@ TEST_F(DeviceInfoTest, RenamedBlacklistedDevice) {
   SendMessageToDeviceInfo(*message);
 
   DeviceRefPtr device = device_info_.GetDevice(kTestDeviceIndex);
-  ASSERT_TRUE(device.get());
+  ASSERT_NE(nullptr, device);
   EXPECT_TRUE(device->technology() == Technology::kBlacklisted);
 
   // Rename the test device.
@@ -675,10 +675,10 @@ TEST_F(DeviceInfoTest, RenamedBlacklistedDevice) {
   SendMessageToDeviceInfo(*rename_message);
 
   DeviceRefPtr renamed_device = device_info_.GetDevice(kTestDeviceIndex);
-  ASSERT_TRUE(renamed_device.get());
+  ASSERT_NE(nullptr, renamed_device);
 
   // Expect that a different device has been created.
-  EXPECT_NE(device.get(), renamed_device.get());
+  EXPECT_NE(device, renamed_device);
 
   // Since we didn't create a uevent file for kRenamedDeviceName, its
   // technology should be unknown.
@@ -693,7 +693,7 @@ TEST_F(DeviceInfoTest, RenamedNonBlacklistedDevice) {
   unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
 
   DeviceRefPtr initial_device = device_info_.GetDevice(kTestDeviceIndex);
-  ASSERT_TRUE(initial_device.get());
+  ASSERT_NE(nullptr, initial_device);
 
   // Since we didn't create a uevent file for kInitialDeviceName, its
   // technology should be unknown.
@@ -709,11 +709,11 @@ TEST_F(DeviceInfoTest, RenamedNonBlacklistedDevice) {
   SendMessageToDeviceInfo(*rename_message);
 
   DeviceRefPtr renamed_device = device_info_.GetDevice(kTestDeviceIndex);
-  ASSERT_TRUE(renamed_device.get());
+  ASSERT_NE(nullptr, renamed_device);
 
   // Expect that the the presence of a renamed device does not cause a new
   // Device entry to be created if the initial device was not blacklisted.
-  EXPECT_EQ(initial_device.get(), renamed_device.get());
+  EXPECT_EQ(initial_device, renamed_device);
   EXPECT_TRUE(initial_device->technology() == Technology::kUnknown);
 }
 
@@ -773,7 +773,7 @@ TEST_F(DeviceInfoTest, DeviceAddressList) {
   // Should be able to handle message for interface that doesn't exist
   message = BuildAddressMessage(RTNLMessage::kModeAdd, ip_address0, 0, 0);
   SendMessageToDeviceInfo(*message);
-  EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
+  EXPECT_EQ(nullptr, device_info_.GetDevice(kTestDeviceIndex));
 }
 
 TEST_F(DeviceInfoTest, FlushAddressList) {
@@ -961,7 +961,7 @@ TEST_F(DeviceInfoTest, GetMACAddressFromKernelUnableToOpenSocket) {
   unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
-  EXPECT_TRUE(device_info_.GetDevice(kTestDeviceIndex).get());
+  EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
   ByteString mac_address =
       device_info_.GetMACAddressFromKernel(kTestDeviceIndex);
   EXPECT_TRUE(mac_address.IsEmpty());
@@ -978,7 +978,7 @@ TEST_F(DeviceInfoTest, GetMACAddressFromKernelIoctlFails) {
   unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
-  EXPECT_TRUE(device_info_.GetDevice(kTestDeviceIndex).get());
+  EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
 
   ByteString mac_address =
       device_info_.GetMACAddressFromKernel(kTestDeviceIndex);
@@ -1013,7 +1013,7 @@ TEST_F(DeviceInfoTest, GetMACAddressFromKernel) {
   unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
-  EXPECT_TRUE(device_info_.GetDevice(kTestDeviceIndex).get());
+  EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
 
   ByteString mac_address =
       device_info_.GetMACAddressFromKernel(kTestDeviceIndex);
@@ -1027,7 +1027,7 @@ TEST_F(DeviceInfoTest, GetMACAddressOfPeerUnknownDevice) {
   IPAddress address(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(address.SetAddressFromString(kTestIPAddress0));
   ByteString mac_address;
-  EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
+  EXPECT_EQ(nullptr, device_info_.GetDevice(kTestDeviceIndex));
   EXPECT_FALSE(device_info_.GetMACAddressOfPeer(
       kTestDeviceIndex, address, &mac_address));
 }
@@ -1037,7 +1037,7 @@ TEST_F(DeviceInfoTest, GetMACAddressOfPeerBadAddress) {
   unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
-  EXPECT_TRUE(device_info_.GetDevice(kTestDeviceIndex).get());
+  EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
 
   EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).Times(0);
 

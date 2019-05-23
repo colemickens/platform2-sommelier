@@ -330,7 +330,7 @@ class ManagerTest : public PropertyStoreTest {
 #endif  // DISABLE_WIFI
 
   void VerifyPassiveMode() {
-    EXPECT_NE(nullptr, manager()->device_claimer_.get());
+    EXPECT_NE(nullptr, manager()->device_claimer_);
     EXPECT_TRUE(manager()->device_claimer_->default_claimer());
   }
 
@@ -651,7 +651,7 @@ TEST_F(ManagerTest, ServiceRegistration) {
                   storage_path(),
                   string());
   ProfileRefPtr profile(CreateProfileForManager(&manager));
-  ASSERT_TRUE(profile.get());
+  ASSERT_NE(nullptr, profile);
   AdoptProfile(&manager, profile);
 
   scoped_refptr<MockService> mock_service(
@@ -686,8 +686,8 @@ TEST_F(ManagerTest, ServiceRegistration) {
   EXPECT_TRUE(base::ContainsKey(ids, mock_service->GetRpcIdentifier()));
   EXPECT_TRUE(base::ContainsKey(ids, mock_service2->GetRpcIdentifier()));
 
-  EXPECT_NE(nullptr, manager.FindService(service1_name).get());
-  EXPECT_NE(nullptr, manager.FindService(service2_name).get());
+  EXPECT_NE(nullptr, manager.FindService(service1_name));
+  EXPECT_NE(nullptr, manager.FindService(service2_name));
 
   manager.set_power_manager(power_manager_.release());
   manager.Stop();
@@ -701,7 +701,7 @@ TEST_F(ManagerTest, RegisterKnownService) {
                   storage_path(),
                   string());
   ProfileRefPtr profile(CreateProfileForManager(&manager));
-  ASSERT_TRUE(profile.get());
+  ASSERT_NE(nullptr, profile);
   AdoptProfile(&manager, profile);
   {
     ServiceRefPtr service1(new ServiceUnderTest(control_interface(),
@@ -717,7 +717,7 @@ TEST_F(ManagerTest, RegisterKnownService) {
                                               metrics(),
                                               &manager));
   manager.RegisterService(service2);
-  EXPECT_EQ(service2->profile().get(), profile.get());
+  EXPECT_EQ(service2->profile(), profile);
 
   manager.set_power_manager(power_manager_.release());
   manager.Stop();
@@ -731,7 +731,7 @@ TEST_F(ManagerTest, RegisterUnknownService) {
                   storage_path(),
                   string());
   ProfileRefPtr profile(CreateProfileForManager(&manager));
-  ASSERT_TRUE(profile.get());
+  ASSERT_NE(nullptr, profile);
   AdoptProfile(&manager, profile);
   {
     ServiceRefPtr service1(new ServiceUnderTest(control_interface(),
@@ -749,7 +749,7 @@ TEST_F(ManagerTest, RegisterUnknownService) {
   EXPECT_CALL(*mock_service2, GetStorageIdentifier())
       .WillRepeatedly(Return(mock_service2->unique_name()));
   manager.RegisterService(mock_service2);
-  EXPECT_NE(mock_service2->profile().get(), profile.get());
+  EXPECT_NE(mock_service2->profile(), profile);
 
   manager.set_power_manager(power_manager_.release());
   manager.Stop();
@@ -876,7 +876,7 @@ TEST_F(ManagerTest, LookupProfileByRpcIdentifier) {
 
   EXPECT_FALSE(manager()->LookupProfileByRpcIdentifier("foo"));
   ProfileRefPtr profile = manager()->LookupProfileByRpcIdentifier(kProfileName);
-  EXPECT_EQ(mock_profile.get(), profile.get());
+  EXPECT_EQ(mock_profile, profile);
 }
 
 TEST_F(ManagerTest, SetProfileForService) {
@@ -1263,7 +1263,7 @@ TEST_F(ManagerTest, RemoveService) {
   Mock::VerifyAndClearExpectations(mock_service.get());
   Mock::VerifyAndClearExpectations(profile.get());
   EXPECT_TRUE(manager()->HasService(service));
-  EXPECT_EQ(profile.get(), service->profile().get());
+  EXPECT_EQ(profile, service->profile());
 
   // If service becomes ephemeral since there is no profile to support it,
   // it should be unloaded.
@@ -1490,8 +1490,8 @@ TEST_F(ManagerTest, HandleProfileEntryDeletionWithUnload) {
   // 2 of the 4 services added above should have been unregistered and
   // removed, leaving 2.
   EXPECT_EQ(2, manager()->services_.size());
-  EXPECT_EQ(s_will_not_remove0.get(), manager()->services_[0].get());
-  EXPECT_EQ(s_will_not_remove1.get(), manager()->services_[1].get());
+  EXPECT_EQ(s_will_not_remove0, manager()->services_[0]);
+  EXPECT_EQ(s_will_not_remove1, manager()->services_[1]);
 }
 
 TEST_F(ManagerTest, PopProfileWithUnload) {
@@ -1571,8 +1571,8 @@ TEST_F(ManagerTest, PopProfileWithUnload) {
   // 2 of the 4 services added above should have been unregistered and
   // removed, leaving 2.
   EXPECT_EQ(2, manager()->services_.size());
-  EXPECT_EQ(s_will_not_remove0.get(), manager()->services_[0].get());
-  EXPECT_EQ(s_will_not_remove1.get(), manager()->services_[1].get());
+  EXPECT_EQ(s_will_not_remove0, manager()->services_[0]);
+  EXPECT_EQ(s_will_not_remove1, manager()->services_[1]);
 
   // Expect the unloaded services to lose their profile reference.
   EXPECT_FALSE(s_will_remove0->profile());
@@ -1580,7 +1580,7 @@ TEST_F(ManagerTest, PopProfileWithUnload) {
 
   // If we explicitly deregister a service, the effect should be the same
   // with respect to the profile reference.
-  ASSERT_TRUE(s_will_not_remove0->profile().get());
+  ASSERT_NE(nullptr, s_will_not_remove0->profile());
   manager()->DeregisterService(s_will_not_remove0);
   EXPECT_FALSE(s_will_not_remove0->profile());
 }
@@ -1766,7 +1766,7 @@ TEST_F(ManagerTest, GetServiceVPN) {
       .WillOnce(DoAll(SaveArg<0>(&configured_service), Return(true)));
   ServiceRefPtr service = manager()->GetService(args, &e);
   EXPECT_TRUE(e.IsSuccess());
-  EXPECT_TRUE(service.get());
+  EXPECT_NE(nullptr, service);
   EXPECT_EQ(service, updated_service);
   EXPECT_EQ(service, configured_service);
 
@@ -2010,7 +2010,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithNoType) {
       manager()->ConfigureServiceForProfile("", args, &error);
   EXPECT_EQ(Error::kInvalidArguments, error.type());
   EXPECT_EQ("must specify service type", error.message());
-  EXPECT_EQ(nullptr, service.get());
+  EXPECT_EQ(nullptr, service);
 }
 
 TEST_F(ManagerTest, ConfigureServiceForProfileWithWrongType) {
@@ -2021,7 +2021,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithWrongType) {
       manager()->ConfigureServiceForProfile("", args, &error);
   EXPECT_EQ(Error::kNotSupported, error.type());
   EXPECT_EQ("service type is unsupported", error.message());
-  EXPECT_EQ(nullptr, service.get());
+  EXPECT_EQ(nullptr, service);
 }
 
 TEST_F(ManagerTest, ConfigureServiceForProfileWithMissingProfile) {
@@ -2032,7 +2032,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithMissingProfile) {
       manager()->ConfigureServiceForProfile("/profile/foo", args, &error);
   EXPECT_EQ(Error::kNotFound, error.type());
   EXPECT_EQ("Profile specified was not found", error.message());
-  EXPECT_EQ(nullptr, service.get());
+  EXPECT_EQ(nullptr, service);
 }
 
 TEST_F(ManagerTest, ConfigureServiceForProfileWithProfileMismatch) {
@@ -2050,7 +2050,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithProfileMismatch) {
   EXPECT_EQ(Error::kInvalidArguments, error.type());
   EXPECT_EQ("Profile argument does not match that in "
             "the configuration arguments", error.message());
-  EXPECT_EQ(nullptr, service.get());
+  EXPECT_EQ(nullptr, service);
 }
 
 TEST_F(ManagerTest,
@@ -2071,7 +2071,7 @@ TEST_F(ManagerTest,
       manager()->ConfigureServiceForProfile(kProfileName0, args, &error);
   // Since we didn't set the error in the GetService expectation above...
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ(nullptr, service.get());
+  EXPECT_EQ(nullptr, service);
 }
 
 TEST_F(ManagerTest, ConfigureServiceForProfileCreateNewService) {
@@ -2103,7 +2103,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileCreateNewService) {
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile(kProfileName0, args, &error);
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ(mock_service.get(), service.get());
+  EXPECT_EQ(mock_service, service);
   mock_service->set_profile(nullptr);  // Breaks reference cycle.
 }
 
@@ -2141,7 +2141,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
     Error error;
     ServiceRefPtr service =
         manager()->ConfigureServiceForProfile(kProfileName, args, &error);
-    EXPECT_EQ(nullptr, service.get());
+    EXPECT_EQ(nullptr, service);
     EXPECT_EQ(Error::kNotSupported, error.type());
     EXPECT_EQ("This GUID matches a non-wifi service", error.message());
   }
@@ -2154,8 +2154,8 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
     ServiceRefPtr service =
         manager()->ConfigureServiceForProfile(kProfileName, args, &error);
     EXPECT_TRUE(error.IsSuccess());
-    EXPECT_EQ(mock_service.get(), service.get());
-    EXPECT_EQ(profile.get(), service->profile().get());
+    EXPECT_EQ(mock_service, service);
+    EXPECT_EQ(profile, service->profile());
   }
   mock_service->set_profile(nullptr);  // Breaks reference cycle.
 }
@@ -2191,8 +2191,8 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceAndProfile) {
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile(kProfileName, args, &error);
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ(mock_service.get(), service.get());
-  EXPECT_EQ(profile.get(), service->profile().get());
+  EXPECT_EQ(mock_service, service);
+  EXPECT_EQ(profile, service->profile());
   mock_service->set_profile(nullptr);  // Breaks reference cycle.
 }
 
@@ -2226,8 +2226,8 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceEphemeralProfile) {
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile(kProfileName, args, &error);
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ(mock_service.get(), service.get());
-  EXPECT_EQ(profile.get(), service->profile().get());
+  EXPECT_EQ(mock_service, service);
+  EXPECT_EQ(profile, service->profile());
   mock_service->set_profile(nullptr);  // Breaks reference cycle.
 }
 
@@ -2271,7 +2271,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServicePrecedingProfile) {
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile(kProfileName1, args, &error);
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ(mock_service.get(), service.get());
+  EXPECT_EQ(mock_service, service);
   mock_service->set_profile(nullptr);  // Breaks reference cycle.
 }
 
@@ -2335,8 +2335,8 @@ TEST_F(ManagerTest,
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_EQ(Error::kNotFound, error.type());
   EXPECT_EQ("Temporary service configured but not usable", error.message());
-  EXPECT_EQ(nullptr, service.get());
-  EXPECT_EQ(profile1.get(), matching_service->profile().get());
+  EXPECT_EQ(nullptr, service);
+  EXPECT_EQ(profile1, matching_service->profile());
 }
 #endif  // DISABLE_WIFI
 
@@ -3335,7 +3335,7 @@ TEST_F(ManagerTest, RecheckPortalOnService) {
 }
 
 TEST_F(ManagerTest, GetDefaultService) {
-  EXPECT_FALSE(manager()->GetDefaultService().get());
+  EXPECT_EQ(nullptr, manager()->GetDefaultService());
   EXPECT_EQ(control_interface()->NullRPCIdentifier(),
             GetDefaultServiceRpcIdentifier());
 
@@ -3346,14 +3346,14 @@ TEST_F(ManagerTest, GetDefaultService) {
                                 manager()));
 
   manager()->RegisterService(mock_service);
-  EXPECT_FALSE(manager()->GetDefaultService().get());
+  EXPECT_EQ(nullptr, manager()->GetDefaultService());
   EXPECT_EQ(control_interface()->NullRPCIdentifier(),
             GetDefaultServiceRpcIdentifier());
 
   scoped_refptr<MockConnection> mock_connection(
       new NiceMock<MockConnection>(device_info_.get()));
   mock_service->set_mock_connection(mock_connection);
-  EXPECT_EQ(mock_service.get(), manager()->GetDefaultService().get());
+  EXPECT_EQ(mock_service, manager()->GetDefaultService());
   EXPECT_EQ(mock_service->GetRpcIdentifier(), GetDefaultServiceRpcIdentifier());
 
   mock_service->set_mock_connection(nullptr);
@@ -3406,7 +3406,7 @@ TEST_F(ManagerTest, GetServiceWithGUID) {
     Error error;
     ServiceRefPtr service = manager()->GetServiceWithGUID(kGUID0, &error);
     EXPECT_TRUE(error.IsSuccess());
-    EXPECT_EQ(mock_service0.get(), service.get());
+    EXPECT_EQ(mock_service0, service);
   }
 
   {
@@ -3414,7 +3414,7 @@ TEST_F(ManagerTest, GetServiceWithGUID) {
     EXPECT_CALL(*mock_service1, Configure(_, &error)).Times(1);
     ServiceRefPtr service = manager()->GetService(args, &error);
     EXPECT_TRUE(error.IsSuccess());
-    EXPECT_EQ(mock_service1.get(), service.get());
+    EXPECT_EQ(mock_service1, service);
   }
 
   manager()->DeregisterService(mock_service0);
@@ -4669,7 +4669,7 @@ TEST_F(ManagerTest, ClaimBlacklistedDevice) {
   EXPECT_TRUE(error.IsFailure());
   EXPECT_EQ("Not allowed to claim unmanaged device", error.message());
   // Verify device claimer is not created.
-  EXPECT_EQ(nullptr, manager()->device_claimer_.get());
+  EXPECT_EQ(nullptr, manager()->device_claimer_);
 }
 
 TEST_F(ManagerTest, ReleaseBlacklistedDevice) {
@@ -4734,7 +4734,7 @@ TEST_F(ManagerTest, ClaimDeviceWithoutClaimer) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(manager()->device_info()->IsDeviceBlackListed(kDeviceName));
   // Verify device claimer is created.
-  EXPECT_NE(nullptr, manager()->device_claimer_.get());
+  EXPECT_NE(nullptr, manager()->device_claimer_);
 }
 
 TEST_F(ManagerTest, ClaimDeviceWithClaimer) {

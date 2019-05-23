@@ -1169,7 +1169,7 @@ TEST_F(WiFiServiceTest, ConfigureMakesConnectable) {
   service->SetGuid(guid, nullptr);
   manager()->RegisterService(service);
   EXPECT_FALSE(service->connectable());
-  EXPECT_EQ(service.get(), manager()->GetService(args, &error).get());
+  EXPECT_EQ(service, manager()->GetService(args, &error));
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(service->connectable());
 }

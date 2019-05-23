@@ -562,7 +562,7 @@ TEST_P(CellularTest, StartCdmaRegister) {
   EXPECT_EQ(kMEID, device_->meid());
   EXPECT_EQ(kTestCarrier, device_->carrier());
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
-  ASSERT_TRUE(device_->service_.get());
+  ASSERT_NE(nullptr, device_->service_);
   EXPECT_EQ(kNetworkTechnology1Xrtt, device_->service_->network_technology());
   EXPECT_EQ(kStrength, device_->service_->strength());
   EXPECT_EQ(kRoamingStateHome, device_->service_->roaming_state());
@@ -616,7 +616,7 @@ TEST_P(CellularTest, StartGsmRegister) {
   EXPECT_EQ(kTestCarrierSPN, GetCapabilityGsm()->spn_);
   EXPECT_EQ(kMSISDN, device_->mdn());
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
-  ASSERT_TRUE(device_->service_.get());
+  ASSERT_NE(nullptr, device_->service_);
   EXPECT_EQ(kNetworkTechnologyEdge, device_->service_->network_technology());
   EXPECT_TRUE(GetCapabilityGsm()->sim_lock_status_.enabled);
   EXPECT_EQ(kStrength, device_->service_->strength());
@@ -1343,7 +1343,7 @@ TEST_P(CellularTest, StopModemCallback) {
                                   Unretained(this)),
                              Error(Error::kSuccess));
   EXPECT_EQ(device_->state_, Cellular::kStateDisabled);
-  EXPECT_FALSE(device_->service_.get());
+  EXPECT_EQ(nullptr, device_->service_);
 }
 
 TEST_P(CellularTest, StopModemCallbackFail) {
@@ -1353,7 +1353,7 @@ TEST_P(CellularTest, StopModemCallbackFail) {
                                   Unretained(this)),
                              Error(Error::kOperationFailed));
   EXPECT_EQ(device_->state_, Cellular::kStateDisabled);
-  EXPECT_FALSE(device_->service_.get());
+  EXPECT_EQ(nullptr, device_->service_);
 }
 
 TEST_P(CellularTest, IsRoamingAllowedOrRequired) {
@@ -2176,7 +2176,7 @@ TEST_P(CellularTest, EstablishLinkStatic) {
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
   device_->EstablishLink();
   EXPECT_EQ(service, device_->selected_service());
-  ASSERT_TRUE(device_->ipconfig().get());
+  ASSERT_NE(nullptr, device_->ipconfig());
   EXPECT_EQ(kAddressFamily, device_->ipconfig()->properties().address_family);
   EXPECT_EQ(kAddress, device_->ipconfig()->properties().address);
   EXPECT_EQ(kGateway, device_->ipconfig()->properties().gateway);

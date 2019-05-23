@@ -88,7 +88,7 @@ class PortalDetectorTest : public Test {
         .WillRepeatedly(Invoke(this, &PortalDetectorTest::GetTimeMonotonic));
     EXPECT_CALL(*connection_, dns_servers())
         .WillRepeatedly(ReturnRef(dns_servers_));
-    EXPECT_FALSE(portal_detector_->http_request_.get());
+    EXPECT_EQ(nullptr, portal_detector_->http_request_);
   }
 
   void TearDown() override {
@@ -171,8 +171,8 @@ class PortalDetectorTest : public Test {
     EXPECT_FALSE(portal_detector_->attempt_count_);
     EXPECT_TRUE(callback_target_.result_callback().
                 Equals(portal_detector_->portal_result_callback_));
-    EXPECT_FALSE(portal_detector_->http_request_.get());
-    EXPECT_FALSE(portal_detector_->https_request_.get());
+    EXPECT_EQ(nullptr, portal_detector_->http_request_);
+    EXPECT_EQ(nullptr, portal_detector_->https_request_);
   }
 
   void AdvanceTime(int milliseconds) {

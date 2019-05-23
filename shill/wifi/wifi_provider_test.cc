@@ -961,7 +961,7 @@ TEST_F(WiFiProviderTest, GetServiceMinimal) {
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   WiFiServiceRefPtr service = GetService(kSSID.c_str(), kModeManaged,
                                          nullptr, false, false, &error);
-  EXPECT_TRUE(service.get());
+  EXPECT_NE(nullptr, service);
   EXPECT_TRUE(error.IsSuccess());
   const string service_ssid(service->ssid().begin(), service->ssid().end());
   EXPECT_EQ(kSSID, service_ssid);
@@ -992,7 +992,7 @@ TEST_F(WiFiProviderTest, GetServiceFullySpecified) {
   WiFiServiceRefPtr service1 =
       GetService(kSSID.c_str(), kModeManaged, kSecurityPsk, true, true, &error);
   Mock::VerifyAndClearExpectations(&manager_);
-  EXPECT_EQ(service0.get(), service1.get());
+  EXPECT_EQ(service0, service1);
   EXPECT_EQ(1, GetServices().size());
 
   // Getting the same ssid with different other parameters should return
@@ -1001,7 +1001,7 @@ TEST_F(WiFiProviderTest, GetServiceFullySpecified) {
   WiFiServiceRefPtr service2 = GetService(
       kSSID.c_str(), kModeManaged, kSecurityNone, true, true, &error);
   Mock::VerifyAndClearExpectations(&manager_);
-  EXPECT_NE(service0.get(), service2.get());
+  EXPECT_NE(service0, service2);
   EXPECT_EQ(2, GetServices().size());
 }
 
@@ -1031,7 +1031,7 @@ TEST_F(WiFiProviderTest, GetServiceByHexSsid) {
   Error find_error;
   ServiceRefPtr find_service = provider_.FindSimilarService(args, &find_error);
   EXPECT_TRUE(find_error.IsSuccess());
-  EXPECT_EQ(service.get(), find_service.get());
+  EXPECT_EQ(service, find_service);
 }
 
 TEST_F(WiFiProviderTest, GetServiceWithSecurityAndSecurityClassMismatched) {
@@ -1116,7 +1116,7 @@ TEST_F(WiFiProviderTest, FindSimilarService) {
   {
     Error error;
     ServiceRefPtr find_service = provider_.FindSimilarService(args, &error);
-    EXPECT_EQ(service.get(), find_service.get());
+    EXPECT_EQ(service, find_service);
     EXPECT_TRUE(error.IsSuccess());
   }
 
@@ -1125,7 +1125,7 @@ TEST_F(WiFiProviderTest, FindSimilarService) {
   {
     Error error;
     ServiceRefPtr find_service = provider_.FindSimilarService(args, &error);
-    EXPECT_EQ(service.get(), find_service.get());
+    EXPECT_EQ(service, find_service);
     EXPECT_TRUE(error.IsSuccess());
   }
 
@@ -1134,7 +1134,7 @@ TEST_F(WiFiProviderTest, FindSimilarService) {
   {
     Error error;
     ServiceRefPtr find_service = provider_.FindSimilarService(args, &error);
-    EXPECT_EQ(nullptr, find_service.get());
+    EXPECT_EQ(nullptr, find_service);
     EXPECT_EQ(Error::kNotFound, error.type());
   }
 }
@@ -1193,14 +1193,14 @@ TEST_F(WiFiProviderTest, FindServiceForEndpoint) {
   const string kSSID("an_ssid");
   WiFiServiceRefPtr service = GetService(
       kSSID.c_str(), kModeManaged, kSecurityNone, false, true, &error);
-  ASSERT_TRUE(service.get());
+  ASSERT_NE(nullptr, service);
   WiFiEndpointRefPtr endpoint = MakeEndpoint(kSSID, "00:00:00:00:00:00", 0, 0);
   WiFiServiceRefPtr endpoint_service =
       provider_.FindServiceForEndpoint(endpoint);
   // Just because a matching service exists, we shouldn't necessarily have
   // it returned.  We will test that this function returns the correct
   // service if the endpoint is added below.
-  EXPECT_EQ(nullptr, endpoint_service.get());
+  EXPECT_EQ(nullptr, endpoint_service);
 }
 
 TEST_F(WiFiProviderTest, OnEndpointAdded) {
@@ -1217,12 +1217,12 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
   EXPECT_EQ(1, GetServices().size());
   WiFiServiceRefPtr service0(FindService(ssid0_bytes, kModeManaged,
                                          kSecurityNone));
-  EXPECT_TRUE(service0.get());
+  EXPECT_NE(nullptr, service0);
   EXPECT_TRUE(service0->HasEndpoints());
   EXPECT_EQ(1, GetServiceByEndpoint().size());
   WiFiServiceRefPtr endpoint_service =
       provider_.FindServiceForEndpoint(endpoint0);
-  EXPECT_EQ(service0.get(), endpoint_service.get());
+  EXPECT_EQ(service0, endpoint_service);
 
   WiFiEndpointRefPtr endpoint1 = MakeEndpoint(ssid0, "00:00:00:00:00:01", 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
@@ -1245,7 +1245,7 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
 
   WiFiServiceRefPtr service1(FindService(ssid1_bytes, kModeManaged,
                                          kSecurityNone));
-  EXPECT_TRUE(service1.get());
+  EXPECT_NE(nullptr, service1);
   EXPECT_TRUE(service1->HasEndpoints());
   EXPECT_TRUE(service1 != service0);
 }
@@ -1265,7 +1265,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
   EXPECT_EQ(1, GetServices().size());
   WiFiServiceRefPtr service0(FindService(ssid0_bytes, kModeManaged,
                                          kSecurityWpa));
-  EXPECT_TRUE(service0.get());
+  EXPECT_NE(nullptr, service0);
   EXPECT_TRUE(service0->HasEndpoints());
   EXPECT_EQ(kSecurityPsk, service0->security_);
 
@@ -1291,7 +1291,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
 
   WiFiServiceRefPtr service1(FindService(ssid1_bytes, kModeManaged,
                                          kSecurityRsn));
-  EXPECT_TRUE(service1.get());
+  EXPECT_NE(nullptr, service1);
   EXPECT_TRUE(service1->HasEndpoints());
   EXPECT_EQ(kSecurityPsk, service1->security_);
   EXPECT_TRUE(service1 != service0);
@@ -1389,7 +1389,7 @@ TEST_F(WiFiProviderTest, OnEndpointRemoved) {
   Mock::VerifyAndClearExpectations(service0.get());
   Mock::VerifyAndClearExpectations(service1.get());
   EXPECT_EQ(1, GetServices().size());
-  EXPECT_EQ(service1.get(), GetServices().front().get());
+  EXPECT_EQ(service1, GetServices().front());
   EXPECT_TRUE(GetServiceByEndpoint().empty());
 }
 

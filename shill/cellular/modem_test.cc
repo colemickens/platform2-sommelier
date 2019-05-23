@@ -112,7 +112,7 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   EXPECT_CALL(*modem_, GetModemInterface()).
       WillRepeatedly(Return(MM_DBUS_INTERFACE_MODEM));
   modem_->CreateDeviceFromModemProperties(properties);
-  EXPECT_FALSE(modem_->device_.get());
+  EXPECT_EQ(nullptr, modem_->device_);
 
   // On the second time, we allow GetMACAddress to succeed.  Now we
   // expect a device to be built
@@ -143,7 +143,7 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   EXPECT_CALL(device_info_, RegisterDevice(_));
   modem_->OnDeviceInfoAvailable(kLinkName);
 
-  EXPECT_TRUE(modem_->device_.get());
+  EXPECT_NE(nullptr, modem_->device_);
   EXPECT_EQ(base::ToLowerASCII(kAddressAsString), cellular->address());
 
   // Add expectations for the eventual |modem_| destruction.
@@ -155,7 +155,7 @@ TEST_F(ModemTest, EarlyDeviceProperties) {
   // OnDeviceInfoAvailable called before
   // CreateDeviceFromModemProperties: Do nothing
   modem_->OnDeviceInfoAvailable(kLinkName);
-  EXPECT_FALSE(modem_->device_.get());
+  EXPECT_EQ(nullptr, modem_->device_);
 }
 
 TEST_F(ModemTest, CreateDeviceEarlyFailures) {
@@ -167,7 +167,7 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
 
   // No modem interface properties:  no device created
   modem_->CreateDeviceFromModemProperties(properties);
-  EXPECT_FALSE(modem_->device_.get());
+  EXPECT_EQ(nullptr, modem_->device_);
 
   properties[MM_DBUS_INTERFACE_MODEM] = KeyValueStore();
 
@@ -178,7 +178,7 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName))).WillOnce(
       Return(-1));
   modem_->CreateDeviceFromModemProperties(properties);
-  EXPECT_FALSE(modem_->device_.get());
+  EXPECT_EQ(nullptr, modem_->device_);
 
   // The params are good, but the device is blacklisted.
   EXPECT_CALL(*modem_, GetLinkName(_, _)).WillOnce(DoAll(
@@ -192,7 +192,7 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
   EXPECT_CALL(device_info_, IsDeviceBlackListed(kLinkName))
       .WillRepeatedly(Return(true));
   modem_->CreateDeviceFromModemProperties(properties);
-  EXPECT_FALSE(modem_->device_.get());
+  EXPECT_EQ(nullptr, modem_->device_);
 
   // No link name: see CreateDevicePPP.
 }
@@ -226,7 +226,7 @@ TEST_F(ModemTest, CreateDevicePPP) {
   EXPECT_CALL(device_info_, RegisterDevice(_));
 
   modem_->CreateDeviceFromModemProperties(properties);
-  EXPECT_TRUE(modem_->device_.get());
+  EXPECT_NE(nullptr, modem_->device_);
 
   // Add expectations for the eventual |modem_| destruction.
   EXPECT_CALL(*cellular, DestroyService());

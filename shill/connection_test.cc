@@ -912,7 +912,7 @@ TEST_F(ConnectionTest, Binder) {
   // Bind lower |connection1| and check if it's bound.
   binder.Attach(connection1);
   EXPECT_TRUE(binder.IsBound());
-  EXPECT_EQ(connection1.get(), binder.connection().get());
+  EXPECT_EQ(connection1, binder.connection());
   ASSERT_FALSE(connection1->binders_.empty());
   EXPECT_TRUE(&binder == connection1->binders_.at(0));
 

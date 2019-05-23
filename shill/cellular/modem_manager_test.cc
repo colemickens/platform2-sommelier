@@ -161,7 +161,7 @@ class ModemManager1Test : public ModemManagerTest {
 };
 
 TEST_F(ModemManager1Test, StartStop) {
-  EXPECT_EQ(nullptr, modem_manager_.proxy_.get());
+  EXPECT_EQ(nullptr, modem_manager_.proxy_);
 
   auto proxy = CreateDBusObjectManagerProxy();
   EXPECT_CALL(*proxy, set_interfaces_added_callback(_));
@@ -170,10 +170,10 @@ TEST_F(ModemManager1Test, StartStop) {
       .WillOnce(Return(ByMove(std::move(proxy))));
 
   modem_manager_.Start();
-  EXPECT_NE(nullptr, modem_manager_.proxy_.get());
+  EXPECT_NE(nullptr, modem_manager_.proxy_);
 
   modem_manager_.Stop();
-  EXPECT_EQ(nullptr, modem_manager_.proxy_.get());
+  EXPECT_EQ(nullptr, modem_manager_.proxy_);
 }
 
 TEST_F(ModemManager1Test, Connect) {

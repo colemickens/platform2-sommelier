@@ -197,7 +197,7 @@ TEST_F(OpenVPNManagementServerTest, Start) {
   EXPECT_TRUE(server_.Start(&sockets_, &options));
   EXPECT_EQ(&sockets_, server_.sockets_);
   EXPECT_EQ(kSocket, server_.socket_);
-  EXPECT_TRUE(server_.ready_handler_.get());
+  EXPECT_NE(nullptr, server_.ready_handler_);
   vector<vector<string>> expected_options {
       { "management", "127.0.0.1", "0" },
       { "management-client" },
@@ -221,9 +221,9 @@ TEST_F(OpenVPNManagementServerTest, Stop) {
   SetClientState(OpenVPNManagementServer::kStateReconnecting);
   EXPECT_CALL(sockets_, Close(kSocket)).WillOnce(Return(0));
   server_.Stop();
-  EXPECT_FALSE(server_.input_handler_.get());
+  EXPECT_EQ(nullptr, server_.input_handler_);
   EXPECT_EQ(-1, server_.connected_socket_);
-  EXPECT_FALSE(server_.ready_handler_.get());
+  EXPECT_EQ(nullptr, server_.ready_handler_);
   EXPECT_EQ(-1, server_.socket_);
   EXPECT_TRUE(server_.state().empty());
   ExpectNotStarted();
@@ -248,8 +248,8 @@ TEST_F(OpenVPNManagementServerTest, OnReady) {
   ExpectSend("state on\n");
   server_.OnReady(kSocket);
   EXPECT_EQ(kConnectedSocket, server_.connected_socket_);
-  EXPECT_FALSE(server_.ready_handler_.get());
-  EXPECT_TRUE(server_.input_handler_.get());
+  EXPECT_EQ(nullptr, server_.ready_handler_);
+  EXPECT_NE(nullptr, server_.input_handler_);
 }
 
 TEST_F(OpenVPNManagementServerTest, OnInput) {

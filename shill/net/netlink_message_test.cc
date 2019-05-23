@@ -924,7 +924,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_UNKNOWN) {
       kNL80211_CMD_UNKNOWN, sizeof(kNL80211_CMD_UNKNOWN));
   unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
       &netlink_packet, NetlinkMessage::MessageContext()));
-  ASSERT_NE(nullptr, netlink_message.get());
+  ASSERT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
   unique_ptr<Nl80211Message> message(static_cast<Nl80211Message*>(

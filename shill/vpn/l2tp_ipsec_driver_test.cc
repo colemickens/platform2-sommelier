@@ -689,11 +689,11 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
 
   // Make sure that a notification of an intermediate state doesn't cause
   // the driver to fail the connection.
-  ASSERT_TRUE(driver_->service_.get());
+  ASSERT_NE(nullptr, driver_->service_);
   VPNServiceConstRefPtr service = driver_->service_;
   InvokeNotify(kPPPReasonAuthenticating, config);
   InvokeNotify(kPPPReasonAuthenticated, config);
-  EXPECT_TRUE(driver_->service_.get());
+  EXPECT_NE(nullptr, driver_->service_);
   EXPECT_FALSE(service->IsFailed());
 
   ExpectDeviceConnected(config);
@@ -741,7 +741,7 @@ TEST_F(L2TPIPSecDriverTest, NotifyDisconnected) {
       .Times(0);  // Not until event loop.
   driver_->Notify(kPPPReasonDisconnect, dict);
   EXPECT_FALSE(driver_->device_);
-  EXPECT_FALSE(driver_->external_task_.get());
+  EXPECT_EQ(nullptr, driver_->external_task_);
   Mock::VerifyAndClearExpectations(local_external_task);
 
   EXPECT_CALL(*local_external_task, OnDelete());

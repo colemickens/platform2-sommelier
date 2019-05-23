@@ -326,24 +326,24 @@ TEST_F(DeviceTest, ClearReadOnlyDerivedProperty) {
 }
 
 TEST_F(DeviceTest, DestroyIPConfig) {
-  ASSERT_FALSE(device_->ipconfig_.get());
+  ASSERT_EQ(nullptr, device_->ipconfig_);
   device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);
   device_->ip6config_ = new IPConfig(control_interface(), kDeviceName);
   device_->dhcpv6_config_ = new IPConfig(control_interface(), kDeviceName);
   device_->DestroyIPConfig();
-  ASSERT_FALSE(device_->ipconfig_.get());
-  ASSERT_FALSE(device_->ip6config_.get());
-  ASSERT_FALSE(device_->dhcpv6_config_.get());
+  ASSERT_EQ(nullptr, device_->ipconfig_);
+  ASSERT_EQ(nullptr, device_->ip6config_);
+  ASSERT_EQ(nullptr, device_->dhcpv6_config_);
 }
 
 TEST_F(DeviceTest, DestroyIPConfigNULL) {
-  ASSERT_FALSE(device_->ipconfig_.get());
-  ASSERT_FALSE(device_->ip6config_.get());
-  ASSERT_FALSE(device_->dhcpv6_config_.get());
+  ASSERT_EQ(nullptr, device_->ipconfig_);
+  ASSERT_EQ(nullptr, device_->ip6config_);
+  ASSERT_EQ(nullptr, device_->dhcpv6_config_);
   device_->DestroyIPConfig();
-  ASSERT_FALSE(device_->ipconfig_.get());
-  ASSERT_FALSE(device_->ip6config_.get());
-  ASSERT_FALSE(device_->dhcpv6_config_.get());
+  ASSERT_EQ(nullptr, device_->ipconfig_);
+  ASSERT_EQ(nullptr, device_->ip6config_);
+  ASSERT_EQ(nullptr, device_->dhcpv6_config_);
 }
 
 MATCHER_P(IsCombinedDhcpProperties, dhcp_props, "") {
@@ -419,7 +419,7 @@ TEST_F(DeviceTest, AcquireIPConfigWithSelectedService) {
   EXPECT_CALL(*dhcp_config, RequestIP())
       .WillOnce(Return(true));
   EXPECT_TRUE(device_->AcquireIPConfig());
-  ASSERT_TRUE(device_->ipconfig_.get());
+  ASSERT_NE(nullptr, device_->ipconfig_);
   EXPECT_EQ(kDeviceName, device_->ipconfig_->device_name());
   EXPECT_FALSE(device_->ipconfig_->update_callback_.is_null());
 #ifndef DISABLE_DHCPV6
@@ -461,7 +461,7 @@ TEST_F(DeviceTest, AcquireIPConfigWithoutSelectedService) {
   EXPECT_CALL(*dhcp_config, RequestIP())
       .WillOnce(Return(true));
   EXPECT_TRUE(device_->AcquireIPConfig());
-  ASSERT_TRUE(device_->ipconfig_.get());
+  ASSERT_NE(nullptr, device_->ipconfig_);
   EXPECT_EQ(kDeviceName, device_->ipconfig_->device_name());
   EXPECT_FALSE(device_->ipconfig_->update_callback_.is_null());
 #ifndef DISABLE_DHCPV6
@@ -581,7 +581,7 @@ TEST_F(DeviceTest, Save) {
 }
 
 TEST_F(DeviceTest, SelectedService) {
-  EXPECT_FALSE(device_->selected_service_.get());
+  EXPECT_EQ(nullptr, device_->selected_service_);
   device_->SetServiceState(Service::kStateAssociating);
   scoped_refptr<MockService> service(
       new StrictMock<MockService>(control_interface(),
@@ -612,7 +612,7 @@ TEST_F(DeviceTest, SelectedService) {
 }
 
 TEST_F(DeviceTest, ResetConnection) {
-  EXPECT_FALSE(device_->selected_service_.get());
+  EXPECT_EQ(nullptr, device_->selected_service_);
   device_->SetServiceState(Service::kStateAssociating);
   scoped_refptr<MockService> service(
       new StrictMock<MockService>(control_interface(),
@@ -627,7 +627,7 @@ TEST_F(DeviceTest, ResetConnection) {
   EXPECT_CALL(*service, SetState(_)).Times(0);
   EXPECT_CALL(*service, SetConnection(IsNullRefPtr()));
   device_->ResetConnection();
-  EXPECT_FALSE(device_->selected_service_.get());
+  EXPECT_EQ(nullptr, device_->selected_service_);
 }
 
 TEST_F(DeviceTest, LinkMonitorFailure) {
@@ -1031,8 +1031,8 @@ TEST_F(DeviceTest, Stop) {
   device_->SetEnabled(false);
   device_->OnEnabledStateChanged(ResultCallback(), Error());
 
-  EXPECT_FALSE(device_->ipconfig_.get());
-  EXPECT_FALSE(device_->selected_service_.get());
+  EXPECT_EQ(nullptr, device_->ipconfig_);
+  EXPECT_EQ(nullptr, device_->selected_service_);
 }
 
 TEST_F(DeviceTest, StopWithFixedIpParams) {
@@ -1052,8 +1052,8 @@ TEST_F(DeviceTest, StopWithFixedIpParams) {
   device_->SetEnabled(false);
   device_->OnEnabledStateChanged(ResultCallback(), Error());
 
-  EXPECT_FALSE(device_->ipconfig_.get());
-  EXPECT_FALSE(device_->selected_service_.get());
+  EXPECT_EQ(nullptr, device_->ipconfig_);
+  EXPECT_EQ(nullptr, device_->selected_service_);
 }
 
 TEST_F(DeviceTest, StopWithNetworkInterfaceDisabledAfterward) {
@@ -1074,8 +1074,8 @@ TEST_F(DeviceTest, StopWithNetworkInterfaceDisabledAfterward) {
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, 0, IFF_UP));
   device_->OnEnabledStateChanged(ResultCallback(), Error());
 
-  EXPECT_FALSE(device_->ipconfig_.get());
-  EXPECT_FALSE(device_->selected_service_.get());
+  EXPECT_EQ(nullptr, device_->ipconfig_);
+  EXPECT_EQ(nullptr, device_->selected_service_);
 }
 
 TEST_F(DeviceTest, StartProhibited) {
@@ -1122,7 +1122,7 @@ TEST_F(DeviceTest, ResumeWithIPConfig) {
 
 TEST_F(DeviceTest, ResumeWithoutIPConfig) {
   // Just test that we don't crash in this case.
-  ASSERT_EQ(nullptr, device_->ipconfig().get());
+  ASSERT_EQ(nullptr, device_->ipconfig());
   device_->OnAfterResume();
 }
 
@@ -2027,10 +2027,10 @@ class DevicePortalDetectionTest : public DeviceTest {
     device_->SetServiceConnectedState(state);
   }
   void ExpectPortalDetectorReset() {
-    EXPECT_FALSE(device_->portal_detector_.get());
+    EXPECT_EQ(nullptr, device_->portal_detector_);
   }
   void ExpectPortalDetectorSet() {
-    EXPECT_TRUE(device_->portal_detector_.get());
+    EXPECT_NE(nullptr, device_->portal_detector_);
   }
   void ExpectPortalDetectorIsMock() {
     EXPECT_EQ(portal_detector_, device_->portal_detector_.get());

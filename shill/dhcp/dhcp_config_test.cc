@@ -118,13 +118,13 @@ TestDHCPConfigRefPtr DHCPConfigTest::CreateMockMinijailConfig(
 
 TEST_F(DHCPConfigTest, InitProxy) {
   static const char kService[] = ":1.200";
-  EXPECT_TRUE(proxy_.get());
-  EXPECT_FALSE(config_->proxy_.get());
+  EXPECT_NE(nullptr, proxy_);
+  EXPECT_EQ(nullptr, config_->proxy_);
   EXPECT_CALL(control_, CreateDHCPProxy(kService))
       .WillOnce(Return(ByMove(std::move(proxy_))));
   config_->InitProxy(kService);
-  EXPECT_FALSE(proxy_.get());
-  EXPECT_TRUE(config_->proxy_.get());
+  EXPECT_EQ(nullptr, proxy_);
+  EXPECT_NE(nullptr, config_->proxy_);
 
   config_->InitProxy(kService);
 }
@@ -284,7 +284,7 @@ TEST_F(DHCPConfigTest, ReleaseIPStaticIPWithLease) {
   EXPECT_CALL(*proxy_, Release(kDeviceName));
   config_->proxy_ = std::move(proxy_);
   EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonStaticIP));
-  EXPECT_EQ(nullptr, config_->proxy_.get());
+  EXPECT_EQ(nullptr, config_->proxy_);
   config_->pid_ = 0;
 }
 

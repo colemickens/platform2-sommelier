@@ -904,7 +904,7 @@ TEST_F(CellularCapabilityUniversalMainTest, PropertiesChanged) {
   EXPECT_EQ("", cellular_->imei());
   EXPECT_EQ(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN,
             capability_->access_technologies_);
-  EXPECT_FALSE(capability_->sim_proxy_.get());
+  EXPECT_EQ(nullptr, capability_->sim_proxy_);
   EXPECT_CALL(*device_adaptor_, EmitStringChanged(
       kTechnologyFamilyProperty, kTechnologyFamilyGsm));
   EXPECT_CALL(*device_adaptor_, EmitStringChanged(kImeiProperty, kImei));
@@ -912,7 +912,7 @@ TEST_F(CellularCapabilityUniversalMainTest, PropertiesChanged) {
                                    modem_properties, vector<string>());
   EXPECT_EQ(kAccessTechnologies, capability_->access_technologies_);
   EXPECT_EQ(kSimPath, capability_->sim_path_);
-  EXPECT_TRUE(capability_->sim_proxy_.get());
+  EXPECT_NE(nullptr, capability_->sim_proxy_);
 
   // Changing properties on wrong interface will not have an effect
   capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
@@ -1263,11 +1263,11 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
       .Times(0);
 
-  EXPECT_FALSE(capability_->sim_proxy_.get());
+  EXPECT_EQ(nullptr, capability_->sim_proxy_);
   capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
                                    modem_properties, vector<string>());
   EXPECT_EQ(kSimPath, capability_->sim_path_);
-  EXPECT_TRUE(capability_->sim_proxy_.get());
+  EXPECT_NE(nullptr, capability_->sim_proxy_);
   EXPECT_EQ(kImsi, cellular_->imsi());
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 

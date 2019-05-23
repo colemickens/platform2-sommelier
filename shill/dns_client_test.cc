@@ -202,7 +202,7 @@ class DnsClientTest : public Test {
   void ExpectReset() {
     EXPECT_TRUE(dns_client_->address_.family() == IPAddress::kFamilyIPv4);
     EXPECT_TRUE(dns_client_->address_.IsDefault());
-    EXPECT_FALSE(dns_client_->resolver_state_.get());
+    EXPECT_EQ(nullptr, dns_client_->resolver_state_);
   }
 
  protected:

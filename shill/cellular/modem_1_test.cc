@@ -109,7 +109,7 @@ TEST_F(Modem1Test, CreateDeviceMM1) {
               CreateDBusPropertiesProxy(kPath, kService))
       .WillOnce(Return(ByMove(std::make_unique<MockDBusPropertiesProxy>())));
   modem_->CreateDeviceMM1(properties);
-  EXPECT_TRUE(modem_->device().get());
+  EXPECT_NE(nullptr, modem_->device());
   EXPECT_TRUE(modem_->device()->capability_->IsRegistered());
 }
 

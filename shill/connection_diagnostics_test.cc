@@ -255,15 +255,15 @@ class ConnectionDiagnosticsTest : public Test {
     EXPECT_FALSE(connection_diagnostics_.running());
     EXPECT_EQ(0, connection_diagnostics_.num_dns_attempts_);
     EXPECT_TRUE(connection_diagnostics_.diagnostic_events_.empty());
-    EXPECT_FALSE(connection_diagnostics_.dns_client_.get());
+    EXPECT_EQ(nullptr, connection_diagnostics_.dns_client_);
     EXPECT_FALSE(connection_diagnostics_.arp_client_->IsStarted());
     EXPECT_FALSE(connection_diagnostics_.icmp_session_->IsStarted());
-    EXPECT_FALSE(connection_diagnostics_.portal_detector_.get());
-    EXPECT_FALSE(connection_diagnostics_.receive_response_handler_.get());
-    EXPECT_FALSE(connection_diagnostics_.neighbor_msg_listener_.get());
+    EXPECT_EQ(nullptr, connection_diagnostics_.portal_detector_);
+    EXPECT_EQ(nullptr, connection_diagnostics_.receive_response_handler_);
+    EXPECT_EQ(nullptr, connection_diagnostics_.neighbor_msg_listener_);
     EXPECT_TRUE(
         connection_diagnostics_.id_to_pending_dns_server_icmp_session_.empty());
-    EXPECT_FALSE(connection_diagnostics_.target_url_.get());
+    EXPECT_EQ(nullptr, connection_diagnostics_.target_url_);
     EXPECT_TRUE(connection_diagnostics_.route_query_callback_.IsCancelled());
     EXPECT_TRUE(
         connection_diagnostics_.route_query_timeout_callback_.IsCancelled());

@@ -57,7 +57,7 @@ TEST_F(DHCPProviderTest, CreateIPv4Config) {
                                                         kStorageIdentifier,
                                                         kArpGateway,
                                                         dhcp_props);
-  EXPECT_TRUE(config.get());
+  EXPECT_NE(nullptr, config);
   EXPECT_EQ(kDeviceName, config->device_name());
   EXPECT_TRUE(provider_->configs_.empty());
 }

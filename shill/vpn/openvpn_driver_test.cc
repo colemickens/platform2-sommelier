@@ -1106,7 +1106,7 @@ TEST_F(OpenVPNDriverTest, ClaimInterface) {
   EXPECT_CALL(manager_, RegisterDefaultServiceCallback(_))
       .WillOnce(Return(kServiceCallbackTag));
   EXPECT_TRUE(driver_->ClaimInterface(kInterfaceName, kInterfaceIndex));
-  ASSERT_TRUE(driver_->device_.get());
+  ASSERT_NE(nullptr, driver_->device_);
   EXPECT_EQ(kInterfaceIndex, driver_->device_->interface_index());
   EXPECT_EQ(kServiceCallbackTag, driver_->default_service_callback_tag_);
 }
@@ -1160,7 +1160,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
       Service::kStateFailure, Service::kFailureInternal,  kErrorDetails);
   EXPECT_EQ(0, driver_->default_service_callback_tag_);
   EXPECT_EQ(0, driver_->pid_);
-  EXPECT_FALSE(driver_->rpc_task_.get());
+  EXPECT_EQ(nullptr, driver_->rpc_task_);
   EXPECT_TRUE(driver_->tunnel_interface_.empty());
   EXPECT_FALSE(driver_->device_);
   EXPECT_FALSE(driver_->service_);

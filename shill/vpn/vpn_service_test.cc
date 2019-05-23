@@ -360,7 +360,7 @@ TEST_F(VPNServiceTest, CustomSetterNoopChange) {
 
 TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyFailsIfNoCarrier) {
   service_->SetConnection(connection_);
-  EXPECT_EQ(connection_.get(), service_->connection().get());
+  EXPECT_EQ(connection_, service_->connection());
 
   // Simulate an error by causing GetPrimaryPhysicalService() to return nullptr.
   EXPECT_CALL(manager_, GetPrimaryPhysicalService())
@@ -375,7 +375,7 @@ TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi) {
   EXPECT_CALL(*connection_, technology())
       .Times(0);
   service_->SetConnection(connection_);
-  EXPECT_EQ(connection_.get(), service_->connection().get());
+  EXPECT_EQ(connection_, service_->connection());
 
   scoped_refptr<NiceMock<MockConnection>> lower_connection =
     new NiceMock<MockConnection>(&device_info_);
@@ -401,7 +401,7 @@ TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi) {
 
 TEST_F(VPNServiceTest, GetTethering) {
   service_->SetConnection(connection_);
-  EXPECT_EQ(connection_.get(), service_->connection().get());
+  EXPECT_EQ(connection_, service_->connection());
 
   // Simulate an error by causing GetPrimaryPhysicalService() to return nullptr.
   EXPECT_CALL(manager_, GetPrimaryPhysicalService())

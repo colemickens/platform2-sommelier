@@ -62,12 +62,12 @@ TEST(ErrorTest, CopyFrom) {
 
 TEST(ErrorTest, ToChromeosError) {
   brillo::ErrorPtr chromeos_error;
-  EXPECT_EQ(nullptr, chromeos_error.get());
+  EXPECT_EQ(nullptr, chromeos_error);
   Error().ToChromeosError(&chromeos_error);
-  EXPECT_EQ(nullptr, chromeos_error.get());
+  EXPECT_EQ(nullptr, chromeos_error);
   static const std::string kMessage = "Test error message";
   Error(Error::kPermissionDenied, kMessage).ToChromeosError(&chromeos_error);
-  EXPECT_NE(nullptr, chromeos_error.get());
+  EXPECT_NE(nullptr, chromeos_error);
   EXPECT_EQ(brillo::errors::dbus::kDomain, chromeos_error->GetDomain());
   EXPECT_EQ(kErrorResultPermissionDenied, chromeos_error->GetCode());
   EXPECT_EQ(kMessage, chromeos_error->GetMessage());

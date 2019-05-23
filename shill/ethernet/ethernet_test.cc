@@ -243,7 +243,7 @@ TEST_F(EthernetTest, Construct) {
   EXPECT_TRUE(GetStore().Contains(kEapAuthenticationCompletedProperty));
   EXPECT_TRUE(GetStore().Contains(kEapAuthenticatorDetectedProperty));
 #endif  // DISABLE_WIRED_8021X
-  EXPECT_NE(nullptr, GetService().get());
+  EXPECT_NE(nullptr, GetService());
 }
 
 TEST_F(EthernetTest, StartStop) {
@@ -333,20 +333,20 @@ TEST_F(EthernetTest, ConnectToLinkDown) {
   StartEthernet();
   SetService(mock_service_);
   SetLinkUp(false);
-  EXPECT_EQ(nullptr, GetSelectedService().get());
+  EXPECT_EQ(nullptr, GetSelectedService());
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _)).Times(0);
   EXPECT_CALL(*dhcp_config_, RequestIP()).Times(0);
   EXPECT_CALL(dispatcher_, PostTask(_, _)).Times(0);
   EXPECT_CALL(*mock_service_, SetState(_)).Times(0);
   ethernet_->ConnectTo(mock_service_.get());
-  EXPECT_EQ(nullptr, GetSelectedService().get());
+  EXPECT_EQ(nullptr, GetSelectedService());
 }
 
 TEST_F(EthernetTest, ConnectToFailure) {
   StartEthernet();
   SetService(mock_service_);
   SetLinkUp(true);
-  EXPECT_EQ(nullptr, GetSelectedService().get());
+  EXPECT_EQ(nullptr, GetSelectedService());
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _)).
       WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(false));
@@ -360,19 +360,19 @@ TEST_F(EthernetTest, ConnectToSuccess) {
   StartEthernet();
   SetService(mock_service_);
   SetLinkUp(true);
-  EXPECT_EQ(nullptr, GetSelectedService().get());
+  EXPECT_EQ(nullptr, GetSelectedService());
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _)).
       WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
   EXPECT_CALL(dispatcher_, PostTask(_, _));  // Posts ConfigureStaticIPTask.
   EXPECT_CALL(*mock_service_, SetState(Service::kStateConfiguring));
   ethernet_->ConnectTo(mock_service_.get());
-  EXPECT_EQ(GetService().get(), GetSelectedService().get());
+  EXPECT_EQ(GetService(), GetSelectedService());
   Mock::VerifyAndClearExpectations(mock_service_.get());
 
   EXPECT_CALL(*mock_service_, SetState(Service::kStateIdle));
   ethernet_->DisconnectFrom(mock_service_.get());
-  EXPECT_EQ(nullptr, GetSelectedService().get());
+  EXPECT_EQ(nullptr, GetSelectedService());
 }
 
 #if !defined(DISABLE_WIRED_8021X)

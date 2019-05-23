@@ -147,7 +147,7 @@ class HttpRequestTest : public Test {
 
   // Expectations
   void ExpectReset() {
-    EXPECT_EQ(connection_.get(), request_->connection_.get());
+    EXPECT_EQ(connection_, request_->connection_);
     EXPECT_TRUE(request_->request_error_callback_.is_null());
     EXPECT_TRUE(request_->request_success_callback_.is_null());
     EXPECT_FALSE(request_->dns_client_callback_.is_null());

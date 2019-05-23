@@ -117,7 +117,7 @@ TEST_F(PPPDaemonTest, ErrorPropagated) {
   std::unique_ptr<ExternalTask> task(Start(options, "eth0", &error));
 
   EXPECT_NE(error.type(), Error::kSuccess);
-  EXPECT_EQ(task.get(), nullptr);
+  EXPECT_EQ(nullptr, task);
 }
 
 }  // namespace shill

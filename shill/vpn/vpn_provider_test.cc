@@ -107,7 +107,7 @@ TEST_F(VPNProviderTest, GetService) {
     Error error;
     ServiceRefPtr service = provider_.FindSimilarService(args, &error);
     EXPECT_EQ(Error::kNotFound, error.type());
-    EXPECT_EQ(nullptr, service.get());
+    EXPECT_EQ(nullptr, service);
   }
 
   EXPECT_EQ(0, GetServiceCount());
@@ -119,7 +119,7 @@ TEST_F(VPNProviderTest, GetService) {
     EXPECT_CALL(manager_, RegisterService(_));
     service = provider_.GetService(args, &error);
     EXPECT_TRUE(error.IsSuccess());
-    ASSERT_TRUE(service.get());
+    ASSERT_NE(nullptr, service);
     testing::Mock::VerifyAndClearExpectations(&manager_);
   }
 
@@ -296,7 +296,7 @@ TEST_F(VPNProviderTest, CreateService) {
     Error error;
     VPNServiceRefPtr service =
         provider_.CreateService(type, kName, kStorageID, &error);
-    ASSERT_TRUE(service.get()) << type;
+    ASSERT_NE(nullptr, service) << type;
     ASSERT_TRUE(service->driver()) << type;
     EXPECT_EQ(type, service->driver()->GetProviderType());
     EXPECT_EQ(kName, GetServiceFriendlyName(service)) << type;
@@ -320,7 +320,7 @@ TEST_F(VPNProviderTest, CreateArcService) {
   Error error;
   VPNServiceRefPtr service = provider_.CreateService(
       kProviderArcVpn, kName, kStorageID, &error);
-  ASSERT_TRUE(service.get());
+  ASSERT_NE(nullptr, service);
   ASSERT_TRUE(service->driver());
   service->driver()->args()->SetString(kProviderHostProperty, kHost);
 

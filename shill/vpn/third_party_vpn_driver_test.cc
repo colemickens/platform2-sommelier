@@ -108,7 +108,7 @@ TEST_F(ThirdPartyVpnDriverTest, ConnectAndDisconnect) {
   EXPECT_EQ(driver_->active_client_, driver_);
   EXPECT_TRUE(driver_->parameters_expected_);
   EXPECT_EQ(driver_->io_handler_.get(), io_handler);
-  ASSERT_TRUE(driver_->device_.get());
+  ASSERT_NE(nullptr, driver_->device_);
   EXPECT_EQ(kInterfaceIndex, driver_->device_->interface_index());
 
   EXPECT_CALL(*service_, SetState(Service::kStateIdle)).Times(1);
@@ -116,7 +116,7 @@ TEST_F(ThirdPartyVpnDriverTest, ConnectAndDisconnect) {
                                        ThirdPartyVpnDriver::kDisconnected)));
   EXPECT_CALL(mock_file_io_, Close(fd));
   driver_->Disconnect();
-  EXPECT_EQ(driver_->io_handler_.get(), nullptr);
+  EXPECT_EQ(nullptr, driver_->io_handler_);
 }
 
 TEST_F(ThirdPartyVpnDriverTest, ReconnectionEvents) {
