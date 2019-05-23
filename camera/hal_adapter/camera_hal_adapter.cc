@@ -462,13 +462,45 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
 
+  if (reprocess_effect_manager_.Initialize() != 0) {
+    LOGF(ERROR) << "Failed to initialize reprocess effect manager";
+    callback.Run(false);
+    return;
+  }
+
+  vendor_tag_manager_.Add(&reprocess_effect_manager_);
+
   // The setup sequence for each camera HAL:
-  //   1. init()
-  //   2. get_number_of_cameras()
-  //   3. set_callbacks()
-  //   4. get_camera_info()
-  // Note that camera HALs shuold NOT run any callback before set_callbacks()
+  //   1. get_vendor_tag_ops()
+  //   2. init()
+  //   3. get_number_of_cameras()
+  //   4. set_callbacks()
+  //   5. get_camera_info()
+  //
+  // Normally, init() is the first invoked method in the sequence.  But init()
+  // might manipulate vendor tags with libcamera_metadata, which requires
+  // set_camera_metadata_vendor_ops() to be invoked already.  To prepare the
+  // aggregated |vendor_tag_ops| for set_camera_metadata_vendor_ops(), we need
+  // to collect |vendor_tag_ops| from all camera modules by calling
+  // get_vendor_tag_ops() first, which should be fine as it just set some
+  // function pointers in the struct.
+  //
+  // Note that camera HALs should NOT run any callback before set_callbacks()
   // returns.
+
+  for (const auto& m : camera_modules_) {
+    if (m->get_vendor_tag_ops) {
+      vendor_tag_ops ops = {};
+      m->get_vendor_tag_ops(&ops);
+      if (ops.get_tag_count != nullptr) {
+        vendor_tag_manager_.Add(&ops);
+      }
+    }
+  }
+
+  if (set_camera_metadata_vendor_ops(&vendor_tag_manager_) != 0) {
+    LOGF(ERROR) << "Failed to set vendor ops to camera metadata";
+  }
 
   for (const auto& m : camera_modules_) {
     if (m->init) {
@@ -504,14 +536,6 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
       return;
     }
     callbacks_auxs_.push_back(std::move(aux));
-
-    if (m->get_vendor_tag_ops) {
-      vendor_tag_ops ops = {};
-      m->get_vendor_tag_ops(&ops);
-      if (ops.get_tag_count != nullptr) {
-        vendor_tag_manager_.Add(&ops);
-      }
-    }
 
     for (int camera_id = 0; camera_id < n; camera_id++) {
       camera_info_t info;
@@ -554,18 +578,6 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
 
   num_builtin_cameras_ = cameras.size();
   next_external_camera_id_ = num_builtin_cameras_;
-
-  if (reprocess_effect_manager_.Initialize() != 0) {
-    LOGF(ERROR) << "Failed to initialize reprocess effect manager";
-    callback.Run(false);
-    return;
-  }
-
-  vendor_tag_manager_.Add(&reprocess_effect_manager_);
-
-  if (set_camera_metadata_vendor_ops(&vendor_tag_manager_) != 0) {
-    LOGF(ERROR) << "Failed to set vendor ops to camera metadata";
-  }
 
   LOGF(INFO) << "SuperHAL started with " << camera_modules_.size()
              << " modules and " << num_builtin_cameras_ << " built-in cameras";
