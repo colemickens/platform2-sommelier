@@ -32,7 +32,7 @@ dbus::ObjectProxy* GetVmpluginServiceProxy(scoped_refptr<dbus::Bus> bus) {
 }
 
 bool VmpluginRegisterVm(dbus::ObjectProxy* proxy,
-                        const std::string& owner_id,
+                        const VmId& vm_id,
                         const base::FilePath& image_path) {
   dbus::MethodCall method_call(
       vm_tools::plugin_dispatcher::kVmPluginDispatcherInterface,
@@ -41,9 +41,10 @@ bool VmpluginRegisterVm(dbus::ObjectProxy* proxy,
 
   vm_tools::plugin_dispatcher::RegisterVmRequest request;
 
-  request.set_owner_id(owner_id);
+  request.set_owner_id(vm_id.owner_id());
+  request.set_new_name(vm_id.name());
   base::FilePath dispatcher_image_path(base::FilePath(kVmpluginImageDir)
-                                           .Append(owner_id)
+                                           .Append(vm_id.owner_id())
                                            .Append(image_path.BaseName()));
   LOG(INFO) << "Registering VM at " << dispatcher_image_path.value();
   request.set_path(dispatcher_image_path.value());

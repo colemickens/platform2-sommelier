@@ -19,7 +19,7 @@ namespace concierge {
 dbus::ObjectProxy* GetVmpluginServiceProxy(scoped_refptr<dbus::Bus> bus);
 
 bool VmpluginRegisterVm(dbus::ObjectProxy* proxy,
-                        const std::string& owner_id,
+                        const VmId& vm_id,
                         const base::FilePath& disk_image_path);
 bool VmpluginUnregisterVm(dbus::ObjectProxy* proxy, const VmId& vm_id);
 

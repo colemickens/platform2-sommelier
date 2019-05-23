@@ -2009,7 +2009,8 @@ std::unique_ptr<dbus::Response> Service::ImportDiskImage(
 
   auto op = PluginVmImportOperation::Create(
       std::move(in_fd), disk_path, request.source_size(),
-      request.cryptohome_id(), vmplugin_service_proxy_);
+      VmId(request.cryptohome_id(), request.disk_path()),
+      vmplugin_service_proxy_);
 
   response.set_status(op->status());
   response.set_command_uuid(op->uuid());

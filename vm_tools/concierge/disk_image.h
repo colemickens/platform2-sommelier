@@ -19,6 +19,8 @@
 
 #include <vm_concierge/proto_bindings/service.pb.h>
 
+#include "vm_tools/common/vm_id.h"
+
 namespace vm_tools {
 namespace concierge {
 
@@ -131,7 +133,7 @@ class PluginVmImportOperation : public DiskImageOperation {
       base::ScopedFD in_fd,
       const base::FilePath disk_path,
       uint64_t source_size,
-      const std::string owner_id,
+      const VmId vm_id,
       dbus::ObjectProxy* vmplugin_service_proxy);
 
  protected:
@@ -142,7 +144,7 @@ class PluginVmImportOperation : public DiskImageOperation {
   PluginVmImportOperation(base::ScopedFD in_fd,
                           uint64_t source_size,
                           const base::FilePath disk_path,
-                          const std::string owner_id,
+                          const VmId vm_id_,
                           dbus::ObjectProxy* vmplugin_service_proxy);
 
   bool PrepareInput();
@@ -157,9 +159,9 @@ class PluginVmImportOperation : public DiskImageOperation {
   // Path to the directory that will contain the imported image.
   const base::FilePath dest_image_path_;
 
-  // Owner of the VM. Used when registering imported image with the
+  // VM owner and name. Used when registering imported image with the
   // dispatcher.
-  const std::string owner_id_;
+  const VmId vm_id_;
 
   // Proxy to the dispatcher service.  Not owned.
   dbus::ObjectProxy* vmplugin_service_proxy_;

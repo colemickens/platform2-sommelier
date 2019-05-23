@@ -257,10 +257,10 @@ std::unique_ptr<PluginVmImportOperation> PluginVmImportOperation::Create(
     base::ScopedFD fd,
     const base::FilePath disk_path,
     uint64_t source_size,
-    const std::string owner_id,
+    const VmId vm_id,
     dbus::ObjectProxy* vmplugin_service_proxy) {
   auto op = base::WrapUnique(new PluginVmImportOperation(
-      std::move(fd), source_size, std::move(disk_path), std::move(owner_id),
+      std::move(fd), source_size, std::move(disk_path), std::move(vm_id),
       vmplugin_service_proxy));
 
   if (op->PrepareInput() && op->PrepareOutput()) {
@@ -274,10 +274,10 @@ PluginVmImportOperation::PluginVmImportOperation(
     base::ScopedFD in_fd,
     uint64_t source_size,
     const base::FilePath disk_path,
-    const std::string owner_id,
+    const VmId vm_id,
     dbus::ObjectProxy* vmplugin_service_proxy)
     : dest_image_path_(std::move(disk_path)),
-      owner_id_(std::move(owner_id)),
+      vm_id_(std::move(vm_id)),
       vmplugin_service_proxy_(vmplugin_service_proxy),
       in_fd_(std::move(in_fd)),
       copying_data_(false) {
@@ -512,8 +512,7 @@ void PluginVmImportOperation::Finalize() {
   // image.
   output_dir_.Take();
 
-  if (!VmpluginRegisterVm(vmplugin_service_proxy_, owner_id_,
-                          dest_image_path_)) {
+  if (!VmpluginRegisterVm(vmplugin_service_proxy_, vm_id_, dest_image_path_)) {
     MarkFailed("Unable to register imported VM image", NULL);
     DeleteFile(dest_image_path_, true /* recursive */);
     return;
