@@ -130,24 +130,10 @@ constexpr char kArcDiskCheckPath[] = "/home";
 constexpr int64_t kArcCriticalDiskFreeBytes = 64 << 20;  // 64MB
 
 // To set the CPU limits of the Android container.
-// These settings are documented in the kernel source under
-// Documentation/cgroups/cpu.txt
-// cpu.shares is meant as a lower-bound which divides cpu resources between
-// cgroups of the same level, and 1024 is the default for equal sharing.
 const char kCpuSharesFile[] =
     "/sys/fs/cgroup/cpu/session_manager_containers/cpu.shares";
 const unsigned int kCpuSharesForeground = 1024;
 const unsigned int kCpuSharesBackground = 64;
-
-// cpu.cfs_quota_us is an upper limit on cpu time given to a cgroup, and
-// the quantity is represented as a fraction with 1 equaling 1 CPU, more
-// than one would be allowed to take up multiple CPUs.
-const char kCpuQuotaFile[] =
-    "/sys/fs/cgroup/cpu/session_manager_containers/cpu.cfs_quota_us";
-// Foreground is -1 for unlimited.
-const int kCpuQuotaForeground = -1;
-// Background is 75000 out of 100000 for 75% of 1 cpu.
-const int kCpuQuotaBackground = 75000;
 #endif
 
 // The interval used to periodically check if time sync was done by tlsdated.
@@ -1255,15 +1241,12 @@ bool SessionManagerImpl::SetArcCpuRestriction(brillo::ErrorPtr* error,
                                               uint32_t in_restriction_state) {
 #if USE_CHEETS
   std::string shares_out;
-  std::string quota_out;
   switch (static_cast<ContainerCpuRestrictionState>(in_restriction_state)) {
     case CONTAINER_CPU_RESTRICTION_FOREGROUND:
       shares_out = std::to_string(kCpuSharesForeground);
-      quota_out = std::to_string(kCpuQuotaForeground);
       break;
     case CONTAINER_CPU_RESTRICTION_BACKGROUND:
       shares_out = std::to_string(kCpuSharesBackground);
-      quota_out = std::to_string(kCpuQuotaBackground);
       break;
     default:
       *error = CREATE_ERROR_AND_LOG(dbus_error::kArcCpuCgroupFail,
@@ -1277,14 +1260,6 @@ bool SessionManagerImpl::SetArcCpuRestriction(brillo::ErrorPtr* error,
                              "Error updating Android container's cgroups.");
     return false;
   }
-  if (base::WriteFile(base::FilePath(kCpuQuotaFile), quota_out.c_str(),
-                      quota_out.length()) != quota_out.length()) {
-    constexpr char kMessage[] = "Error updating Android container's CPU quota.";
-    PLOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kArcCpuCgroupFail, kMessage);
-    return false;
-  }
-
   return true;
 #else
   *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
