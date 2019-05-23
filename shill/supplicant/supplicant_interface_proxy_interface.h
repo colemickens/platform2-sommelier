@@ -20,7 +20,6 @@ class SupplicantInterfaceProxyInterface {
 
   virtual bool AddNetwork(const KeyValueStore& args,
                           std::string* network) = 0;
-  virtual bool EnableHighBitrates() = 0;
   virtual bool EAPLogoff() = 0;
   virtual bool EAPLogon() = 0;
   virtual bool Disconnect() = 0;
@@ -38,7 +37,6 @@ class SupplicantInterfaceProxyInterface {
   virtual bool SetFastReauth(bool enabled) = 0;
   virtual bool SetRoamThreshold(uint16_t seconds) = 0;
   virtual bool SetScanInterval(int seconds) = 0;
-  virtual bool SetDisableHighBitrates(bool disable_high_bitrates) = 0;
   virtual bool SetSchedScan(bool enable) = 0;
   virtual bool SetScan(bool enable) = 0;
   virtual bool TDLSDiscover(const std::string& peer) = 0;

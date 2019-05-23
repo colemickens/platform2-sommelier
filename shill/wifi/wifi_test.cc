@@ -1515,7 +1515,6 @@ TEST_F(WiFiMainTest, OnSupplicantAppearStarted) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetFastReauth(false));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetRoamThreshold(kRoamThreshold));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetScanInterval(_));
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetDisableHighBitrates(true));
 
   OnSupplicantAppear();
   EXPECT_NE(nullptr, GetSupplicantInterfaceProxyFromWiFi());
@@ -2759,9 +2758,7 @@ TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
   // Simulate a rekeying event from the AP.  These show as transitions from
   // completed->completed from wpa_supplicant.
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
-  // When we get an IP, WiFi should enable high bitrates on the interface again.
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), EnableHighBitrates()).Times(1);
   EXPECT_CALL(*manager(), device_info()).WillOnce(Return(device_info()));
   ReportIPConfigComplete();
   // Similarly, rekeying events after we have an IP don't trigger L3
@@ -2769,7 +2766,6 @@ TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
   // reassociations, so we will reenable high rates again here.
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   EXPECT_CALL(*service, IsConnected()).WillOnce(Return(true));
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), EnableHighBitrates()).Times(1);
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
 }
 
@@ -3055,7 +3051,6 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   Mock::VerifyAndClearExpectations(service.get());
 
   // Successful connect.
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), EnableHighBitrates()).Times(1);
   EXPECT_CALL(*service, ResetSuspectedCredentialFailures());
   ReportConnected();
 

@@ -545,9 +545,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void OnWiFiDebugScopeChanged(bool enabled);
   // Enable or disable debugging for the current connection attempt.
   void SetConnectionDebugging(bool enabled);
-  // Enable high bitrates for the current network.  High rates are disabled
-  // on the initial association and every reassociation afterward.
-  void EnableHighBitrates();
 
   // Request and retrieve information about the currently connected station.
   void RequestStationInfo();

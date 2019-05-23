@@ -23,8 +23,6 @@ static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
 
 const char ChromeosSupplicantInterfaceProxy::kInterfaceName[] =
     "fi.w1.wpa_supplicant1.Interface";
-const char ChromeosSupplicantInterfaceProxy::kPropertyDisableHighBitrates[] =
-    "DisableHighBitrates";
 const char ChromeosSupplicantInterfaceProxy::kPropertyFastReauth[] =
     "FastReauth";
 const char ChromeosSupplicantInterfaceProxy::kPropertyRoamThreshold[] =
@@ -39,7 +37,6 @@ ChromeosSupplicantInterfaceProxy::PropertySet::PropertySet(
     const std::string& interface_name,
     const PropertyChangedCallback& callback)
     : dbus::PropertySet(object_proxy, interface_name, callback) {
-  RegisterProperty(kPropertyDisableHighBitrates, &disable_high_bitrates);
   RegisterProperty(kPropertyFastReauth, &fast_reauth);
   RegisterProperty(kPropertyRoamThreshold, &roam_threshold);
   RegisterProperty(kPropertyScan, &scan);
@@ -141,17 +138,6 @@ bool ChromeosSupplicantInterfaceProxy::AddNetwork(const KeyValueStore& args,
     return false;
   }
   *network = path.value();
-  return true;
-}
-
-bool ChromeosSupplicantInterfaceProxy::EnableHighBitrates() {
-  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
-  brillo::ErrorPtr error;
-  if (!interface_proxy_->EnableHighBitrates(&error)) {
-    LOG(ERROR) << "Failed to enable high bitrates: "
-               << error->GetCode() << " " << error->GetMessage();
-    return false;
-  }
   return true;
 }
 
@@ -414,17 +400,6 @@ bool ChromeosSupplicantInterfaceProxy::SetScanInterval(int32_t scan_interval) {
       << scan_interval;
   if (!properties_->scan_interval.SetAndBlock(scan_interval)) {
     LOG(ERROR) << __func__ << " failed: " << scan_interval;
-    return false;
-  }
-  return true;
-}
-
-bool ChromeosSupplicantInterfaceProxy::SetDisableHighBitrates(
-    bool disable_high_bitrates) {
-  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": "
-      << disable_high_bitrates;
-  if (!properties_->disable_high_bitrates.SetAndBlock(disable_high_bitrates)) {
-    LOG(ERROR) << __func__ << " failed: " << disable_high_bitrates;
     return false;
   }
   return true;

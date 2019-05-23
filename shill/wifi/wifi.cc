@@ -1826,7 +1826,6 @@ void WiFi::StateChanged(const string& new_state) {
   if (new_state == WPASupplicant::kInterfaceStateCompleted) {
     if (affected_service->IsConnected()) {
       StopReconnectTimer();
-      EnableHighBitrates();
       if (is_roaming_in_progress_) {
         // This means wpa_supplicant completed a roam without an intervening
         // disconnect.  We should renew our DHCP lease just in case the new
@@ -2253,7 +2252,6 @@ void WiFi::TriggerPassiveScan(const FreqSet& freqs) {
 
 void WiFi::OnConnected() {
   Device::OnConnected();
-  EnableHighBitrates();
   if (current_service_ &&
       current_service_->IsSecurityMatch(kSecurityWep)) {
     // With a WEP network, we are now reasonably certain the credentials are
@@ -2651,11 +2649,6 @@ void WiFi::ConnectToSupplicant() {
                << "May be running an older version of wpa_supplicant.";
   }
 
-  if (!supplicant_interface_proxy_->SetDisableHighBitrates(true)) {
-    LOG(ERROR) << "Failed to disable high bitrates. "
-               << "May be running an older version of wpa_supplicant.";
-  }
-
   if (random_mac_enabled_ &&
       !supplicant_interface_proxy_->EnableMACAddressRandomization(
            kRandomMACMask)) {
@@ -2665,13 +2658,6 @@ void WiFi::ConnectToSupplicant() {
 
   Scan(nullptr, __func__);
   StartScanTimer();
-}
-
-void WiFi::EnableHighBitrates() {
-  LOG(INFO) << "Enabling high bitrates.";
-  if (!supplicant_interface_proxy_->EnableHighBitrates()) {
-    LOG(ERROR) << "Failed to enable high rates";
-  }
 }
 
 void WiFi::Restart() {

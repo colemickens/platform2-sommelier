@@ -35,7 +35,6 @@ class ChromeosSupplicantInterfaceProxy
 
   // Implementation of SupplicantInterfaceProxyInterface.
   bool AddNetwork(const KeyValueStore& args, std::string* network) override;
-  bool EnableHighBitrates() override;
   bool EAPLogon() override;
   bool EAPLogoff() override;
   bool Disconnect() override;
@@ -63,7 +62,6 @@ class ChromeosSupplicantInterfaceProxy
   bool SetFastReauth(bool enabled) override;
   bool SetRoamThreshold(uint16_t threshold) override;
   bool SetScanInterval(int seconds) override;
-  bool SetDisableHighBitrates(bool disable_high_bitrates) override;
   bool SetSchedScan(bool enable) override;
   bool SetScan(bool enable) override;
 
@@ -73,7 +71,6 @@ class ChromeosSupplicantInterfaceProxy
     PropertySet(dbus::ObjectProxy* object_proxy,
                 const std::string& interface_name,
                 const PropertyChangedCallback& callback);
-    brillo::dbus_utils::Property<bool> disable_high_bitrates;
     brillo::dbus_utils::Property<bool> fast_reauth;
     brillo::dbus_utils::Property<uint16_t> roam_threshold;
     brillo::dbus_utils::Property<bool> scan;
@@ -85,7 +82,6 @@ class ChromeosSupplicantInterfaceProxy
   };
 
   static const char kInterfaceName[];
-  static const char kPropertyDisableHighBitrates[];
   static const char kPropertyFastReauth[];
   static const char kPropertyRoamThreshold[];
   static const char kPropertyScan[];
