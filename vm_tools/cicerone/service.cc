@@ -1920,7 +1920,8 @@ std::unique_ptr<dbus::Response> Service::CreateLxdContainer(
   VirtualMachine::CreateLxdContainerStatus status = vm->CreateLxdContainer(
       request.container_name().empty() ? kDefaultContainerName
                                        : request.container_name(),
-      request.image_server(), request.image_alias(), &error_msg);
+      request.image_server(), request.image_alias(), request.rootfs_path(),
+      request.metadata_path(), &error_msg);
 
   switch (status) {
     case VirtualMachine::CreateLxdContainerStatus::UNKNOWN:

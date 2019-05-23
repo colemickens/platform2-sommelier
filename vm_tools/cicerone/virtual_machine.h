@@ -191,6 +191,8 @@ class VirtualMachine {
   CreateLxdContainerStatus CreateLxdContainer(const std::string& container_name,
                                               const std::string& image_server,
                                               const std::string& image_alias,
+                                              const std::string& rootfs_path,
+                                              const std::string& metadata_path,
                                               std::string* out_error);
 
   // Deletes and LXD container.

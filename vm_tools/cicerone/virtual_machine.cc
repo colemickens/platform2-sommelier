@@ -235,6 +235,8 @@ VirtualMachine::CreateLxdContainerStatus VirtualMachine::CreateLxdContainer(
     const std::string& container_name,
     const std::string& image_server,
     const std::string& image_alias,
+    const std::string& rootfs_path,
+    const std::string& metadata_path,
     std::string* out_error) {
   DCHECK(out_error);
   if (!tremplin_stub_) {
@@ -248,6 +250,8 @@ VirtualMachine::CreateLxdContainerStatus VirtualMachine::CreateLxdContainer(
   request.set_container_name(container_name);
   request.set_image_server(image_server);
   request.set_image_alias(image_alias);
+  request.set_rootfs_path(rootfs_path);
+  request.set_metadata_path(metadata_path);
 
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(

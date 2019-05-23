@@ -23,6 +23,12 @@ message CreateContainerRequest {
 
   // LXD image alias.
   string image_alias = 3;
+
+  // rootfs path to create the container from.
+  string rootfs_path = 4;
+
+  // metadata path to create the container from.
+  string metadata_path = 5;
 }
 
 message CreateContainerResponse {

@@ -96,7 +96,9 @@ int CreateLxdContainer(dbus::ObjectProxy* proxy,
                        const string& container_name,
                        const string& owner_id,
                        string image_server,
-                       string image_alias) {
+                       string image_alias,
+                       string rootfs_path,
+                       string metadata_path) {
   LOG(INFO) << "Creating LXD container";
 
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
@@ -109,6 +111,8 @@ int CreateLxdContainer(dbus::ObjectProxy* proxy,
   request.set_owner_id(owner_id);
   request.set_image_server(std::move(image_server));
   request.set_image_alias(std::move(image_alias));
+  request.set_rootfs_path(std::move(rootfs_path));
+  request.set_metadata_path(std::move(metadata_path));
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode CreateLxdContainer protobuf";
@@ -857,6 +861,8 @@ int main(int argc, char** argv) {
   DEFINE_string(owner_id, "", "User id");
   DEFINE_string(image_server, "", "Image server to pull a container from");
   DEFINE_string(image_alias, "", "Container image alias");
+  DEFINE_string(rootfs_path, "", "Path to rootfs tarball");
+  DEFINE_string(metadata_path, "", "Path to metadata tarball");
   DEFINE_string(container_username, "", "Container username");
   DEFINE_string(application, "", "Name of the application to launch");
   DEFINE_string(output_filepath, "",
@@ -937,9 +943,10 @@ int main(int argc, char** argv) {
   }
 
   if (FLAGS_create_lxd_container) {
-    return CreateLxdContainer(proxy, FLAGS_vm_name, FLAGS_container_name,
-                              FLAGS_owner_id, std::move(FLAGS_image_server),
-                              std::move(FLAGS_image_alias));
+    return CreateLxdContainer(
+        proxy, FLAGS_vm_name, FLAGS_container_name, FLAGS_owner_id,
+        std::move(FLAGS_image_server), std::move(FLAGS_image_alias),
+        std::move(FLAGS_rootfs_path), std::move(FLAGS_metadata_path));
   } else if (FLAGS_start_lxd_container) {
     return StartLxdContainer(proxy, FLAGS_vm_name, FLAGS_container_name,
                              FLAGS_owner_id);
