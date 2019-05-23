@@ -155,8 +155,13 @@ bool EthernetService::Save(StoreInterface* storage) {
     return false;
   }
 
+  if (!IsRemembered()) {
+    return true;
+  }
+
   StoreInterface* store = manager()->ActiveProfile()->GetStorage();
-  mutable_static_ip_parameters()->Save(store, kDefaultEthernetDeviceIdentifier);
+  mutable_static_ip_parameters()->Save(store,
+                                       kDefaultEthernetDeviceIdentifier);
   store->Flush();
   // Now that the IP parameters are saved to the ethernet_any profile, load it
   // into the in-memory ethernet_any service.
