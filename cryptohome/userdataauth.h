@@ -15,6 +15,7 @@
 #include <base/location.h>
 #include <base/threading/thread.h>
 #include <brillo/secure_blob.h>
+#include <dbus/bus.h>
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/homedirs.h"
@@ -101,6 +102,10 @@ class UserDataAuth {
   // This is called by tpm_init_ when there's any update on ownership status
   // of the TPM.
   void OwnershipCallback(bool status, bool took_ownership);
+
+  // Set the current dbus connection, this is usually used by the dbus daemon
+  // object that owns the instance of this object.
+  void set_dbus(scoped_refptr<::dbus::Bus> bus) { bus_ = bus; }
 
   // ================= Threading Utilities ==================
 
@@ -290,6 +295,11 @@ class UserDataAuth {
   // The actual token manager client used by this class, usually set to
   // default_chaps_client_, but can be overridden for testing.
   chaps::TokenManagerClient* chaps_client_;
+
+  // A dbus connection, this is used by any code in this class that needs access
+  // to the system DBus. Such as when creating an instance of
+  // KeyChallengeService.
+  scoped_refptr<::dbus::Bus> bus_;
 
   // =============== Mount Related Variables ===============
 

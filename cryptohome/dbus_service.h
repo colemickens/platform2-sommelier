@@ -27,6 +27,8 @@ class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
  protected:
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
+    service_->set_dbus(bus_);
+
     DCHECK(!dbus_object_);
     dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
         nullptr, bus_, dbus::ObjectPath(kUserDataAuthServicePath));
