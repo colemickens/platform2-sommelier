@@ -4,8 +4,6 @@
 
 #include "shill/link_monitor.h"
 
-#include <string>
-
 #include <base/bind.h>
 #include <gtest/gtest.h>
 
@@ -23,7 +21,6 @@
 
 using base::Bind;
 using base::Unretained;
-using std::string;
 using testing::_;
 using testing::HasSubstr;
 using testing::Mock;

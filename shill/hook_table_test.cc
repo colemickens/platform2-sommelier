@@ -5,7 +5,6 @@
 #include "shill/hook_table.h"
 
 #include <memory>
-#include <string>
 
 #include <base/bind.h>
 #include <base/message_loop/message_loop.h>
@@ -17,7 +16,6 @@
 using base::Bind;
 using base::Closure;
 using base::Unretained;
-using std::string;
 using ::testing::_;
 
 namespace shill {

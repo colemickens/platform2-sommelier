@@ -9,8 +9,6 @@
 #include "shill/ethernet/ethernet_eap_service.h"
 #include "shill/manager.h"
 
-using std::string;
-
 namespace shill {
 
 EthernetEapProvider::EthernetEapProvider(ControlInterface* control_interface,
