@@ -64,6 +64,10 @@ constexpr uint32_t kVendorCmdRcSuccess = 0x000;
 constexpr uint32_t kVendorCmdRcNotAllowed = 0x507;
 constexpr uint32_t kVendorCmdRcPasswordRequired = 0x50a;
 
+// UMA Metric names.
+constexpr char kLegacyU2fCommand[] = "Platform.U2F.LegacyCommand";
+constexpr char kU2fCommand[] = "Platform.U2F.Command";
+
 }  // namespace
 
 namespace u2f {
@@ -322,13 +326,12 @@ void U2fHid::IgnorePowerButton() {
   ignore_button_.Run(kPresenceTimeout.ToInternalValue(), &err, -1);
 }
 
-void U2fHid::MaybeIgnorePowerButton(const std::string& payload) {
+void U2fHid::MaybeIgnorePowerButton(
+    const base::Optional<U2fCommandAdpu>& adpu) {
   bool ignore = false;
 
   // All U2F_REGISTER requests require physical presence.
   // U2F_AUTHENTICATE requests may require physical presence.
-  base::Optional<U2fCommandAdpu> adpu =
-      U2fCommandAdpu::ParseFromString(payload);
   if (adpu.has_value()) {
     if (adpu->Ins() == U2fIns::kU2fRegister) {
       ignore = true;
@@ -446,7 +449,18 @@ int U2fHid::CmdMsg(std::string* resp) {
 }
 
 int U2fHid::ForwardMsg(std::string* resp) {
-  MaybeIgnorePowerButton(transaction_->payload);
+  U2fIns ins = U2fIns::kInsInvalid;
+
+  base::Optional<U2fCommandAdpu> adpu =
+      U2fCommandAdpu::ParseFromString(transaction_->payload);
+  if (adpu.has_value()) {
+    ins = adpu->Ins();
+  }
+
+  metrics_.SendEnumToUMA(kLegacyU2fCommand, static_cast<int>(ins),
+                         static_cast<int>(U2fIns::kU2fVersion));
+
+  MaybeIgnorePowerButton(adpu);
   return transmit_apdu_.Run(transaction_->payload, resp);
 }
 
@@ -458,6 +472,9 @@ int U2fHid::ProcessMsg(std::string* resp) {
   if (adpu.has_value()) {
     ins = adpu->Ins();
   }
+
+  metrics_.SendEnumToUMA(kU2fCommand, static_cast<int>(ins),
+                         static_cast<int>(U2fIns::kU2fVersion));
 
   // TODO(louiscollard): Check expected response length is large enough.
 

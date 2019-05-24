@@ -25,6 +25,7 @@ pkg_config("target_defaults") {
 
 pkg_config("u2fd_config") {
   pkg_deps = [
+    "libmetrics-${libbase_ver}",
     "libpower_manager-client",
     "libtrunks",
     "openssl",

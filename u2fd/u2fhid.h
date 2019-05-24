@@ -11,6 +11,7 @@
 
 #include <base/timer/timer.h>
 #include <brillo/errors/error.h>
+#include <metrics/metrics_library.h>
 #include <trunks/cr50_headers/u2f.h>
 
 #include "u2fd/hid_interface.h"
@@ -151,10 +152,10 @@ class U2fHid {
   // Ignores power button presses for 10 seconds.
   void IgnorePowerButton();
 
-  // Parses the ISO7816-4:2005 U2F APDU contained in |payload| to guess
-  // if it contains a user physical presence request and if so, temporarily
-  // disable the power button's normal behavior (eg. turning the screen off).
-  void MaybeIgnorePowerButton(const std::string& payload);
+  // Checks if |adpu| contains a user physical presence request and if so,
+  // temporarily disable the power button's normal behavior (eg. turning the
+  // screen off).
+  void MaybeIgnorePowerButton(const base::Optional<U2fCommandAdpu>& adpu);
 
   // Executes the action requested by the command contained in the current
   // transaction.
@@ -220,6 +221,7 @@ class U2fHid {
   uint32_t locked_cid_;
   base::OneShotTimer lock_timeout_;
   std::unique_ptr<UserState> user_state_;
+  MetricsLibrary metrics_;
 
   std::string vendor_sysinfo_;
 
