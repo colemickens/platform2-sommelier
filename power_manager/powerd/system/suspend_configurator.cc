@@ -23,7 +23,13 @@ void SuspendConfigurator::Init(PrefsInterface* prefs) {
 }
 
 // TODO(crbug.com/941298) Move powerd_suspend script here eventually.
-void SuspendConfigurator::PrepareForSuspend() {}
+void SuspendConfigurator::PrepareForSuspend(
+    const base::TimeDelta& suspend_duration) {
+  if (suspend_duration != base::TimeDelta()) {
+    alarm_.Start(FROM_HERE, suspend_duration, base::Bind(&base::DoNothing));
+  }
+}
+
 void SuspendConfigurator::UndoPrepareForSuspend() {}
 
 void SuspendConfigurator::ConfigureConsoleForSuspend() {

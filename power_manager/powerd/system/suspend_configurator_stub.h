@@ -19,7 +19,7 @@ class SuspendConfiguratorStub : public SuspendConfiguratorInterface {
   ~SuspendConfiguratorStub() override = default;
 
   // SuspendConfiguratorInterface implementation.
-  void PrepareForSuspend() override {}
+  void PrepareForSuspend(const base::TimeDelta& suspend_duration) override {}
   void UndoPrepareForSuspend() override {}
 
  private:

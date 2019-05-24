@@ -646,15 +646,10 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
         base::StringPrintf("--suspend_wakeup_count=%" PRIu64, wakeup_count));
   }
 
-  if (duration != base::TimeDelta()) {
-    args.push_back(base::StringPrintf("--suspend_duration=%" PRId64,
-                                      duration.InSeconds()));
-  }
-
   if (suspend_to_idle_)
     args.push_back("--suspend_to_idle");
 
-  suspend_configurator_->PrepareForSuspend();
+  suspend_configurator_->PrepareForSuspend(duration);
   const int exit_code =
       RunSetuidHelper("suspend", base::JoinString(args, " "), true);
   LOG(INFO) << "powerd_suspend returned " << exit_code;

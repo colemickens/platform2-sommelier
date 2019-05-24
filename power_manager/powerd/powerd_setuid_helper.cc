@@ -67,10 +67,6 @@ int main(int argc, char* argv[]) {
                 "Optional shutdown or reboot reason starting with a "
                 "lowercase letter and consisting only of lowercase letters and "
                 "dashes.");
-  DEFINE_int64(suspend_duration, -1,
-               "Pass --suspend_duration <INT> to "
-               "powerd_suspend to resume after <INT> seconds for a dark "
-               "resume.");
   DEFINE_uint64(suspend_wakeup_count, 0,
                 "Pass --wakeup_count <INT> to "
                 "powerd_suspend for the \"suspend\" action.");
@@ -123,8 +119,6 @@ int main(int argc, char* argv[]) {
         FLAGS_wifi_transmit_power_tablet ? "--tablet" : "--notablet";
     RunCommand("set_wifi_transmit_power", tablet, nullptr);
   } else if (FLAGS_action == "suspend") {
-    std::string duration_flag =
-        "--suspend_duration=" + base::IntToString(FLAGS_suspend_duration);
     std::string idle_flag = FLAGS_suspend_to_idle
                                 ? std::string("--suspend_to_idle")
                                 : std::string("--nosuspend_to_idle");
@@ -133,7 +127,7 @@ int main(int argc, char* argv[]) {
       wakeup_flag =
           "--wakeup_count=" + base::Uint64ToString(FLAGS_suspend_wakeup_count);
     }
-    RunCommand("powerd_suspend", duration_flag.c_str(), idle_flag.c_str(),
+    RunCommand("powerd_suspend", idle_flag.c_str(),
                wakeup_flag.empty() ? nullptr : wakeup_flag.c_str(), nullptr);
   } else {
     LOG(ERROR) << "Unknown action \"" << FLAGS_action << "\"";

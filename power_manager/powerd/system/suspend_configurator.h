@@ -7,6 +7,8 @@
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
+#include <base/time/time.h>
+#include <components/timers/alarm_timer_chromeos.h>
 
 namespace power_manager {
 
@@ -23,7 +25,7 @@ class SuspendConfiguratorInterface {
 
   // Do pre-suspend configuration and logging just before asking kernel to
   // suspend.
-  virtual void PrepareForSuspend() = 0;
+  virtual void PrepareForSuspend(const base::TimeDelta& suspend_duration) = 0;
   // Do post-suspend logging and cleaning just after resuming from suspend.
   virtual void UndoPrepareForSuspend() = 0;
 
@@ -42,7 +44,7 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
   void Init(PrefsInterface* prefs);
 
   // SuspendConfiguratorInterface implementation.
-  void PrepareForSuspend() override;
+  void PrepareForSuspend(const base::TimeDelta& suspend_duration) override;
   void UndoPrepareForSuspend() override;
 
   // Sets a prefix path which is used as file system root when testing.
@@ -62,6 +64,10 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
   // Prefixing all paths for testing with a temp directory. Empty (no
   // prefix) by default.
   base::FilePath prefix_path_for_testing_;
+
+  // Timer to wake the system from suspend. Set when suspend_duration is passed
+  // to  PrepareForSuspend().
+  timers::SimpleAlarmTimer alarm_;
 
   DISALLOW_COPY_AND_ASSIGN(SuspendConfigurator);
 };
