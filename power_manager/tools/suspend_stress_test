@@ -204,7 +204,7 @@ while true; do
     echo "+$(( sus_time + 5 ))" > /sys/class/rtc/rtc1/wakealarm
   fi
 
-  ${suspend_cmd} --wakeup_count=${wakeup_count} --wakeup_timeout=${sus_time}
+  ${suspend_cmd} --wakeup_count=${wakeup_count} --suspend_for_sec=${sus_time}
 
   if [ -n "${FLAGS_post_resume_command}" ]; then
     # Leading space because this will appear on the same line as the

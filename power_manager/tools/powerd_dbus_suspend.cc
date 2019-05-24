@@ -29,6 +29,10 @@
 
 namespace {
 
+// The sysfs entry that controls RTC wake alarms.  To set an alarm, write
+// into this file the time of the alarm in seconds since the epoch.
+const char kRtcWakeAlarmPath[] = "/sys/class/rtc/rtc0/wakealarm";
+
 // Exits when powerd announces that the suspend attempt has completed.
 void OnSuspendDone(dbus::Signal* signal) {
   base::MessageLoop::current()->QuitNow();
@@ -61,9 +65,12 @@ int main(int argc, char* argv[]) {
                 "Wakeup count to pass to powerd or 0 if "
                 "unset.");
   DEFINE_int32(wakeup_timeout, 0,
-               "RTC alarm timeout in seconds.  Sets an RTC "
-               "alarm that fires after the given interval.  Useful "
-               "to ensure that device resumes while testing remotely.");
+               "Sets an RTC alarm immediately that fires after the given "
+               "interval. This ensures that device resumes while testing "
+               "remotely.");
+  DEFINE_int32(suspend_for_sec, 0,
+               "Ask powerd to suspend the device for this many seconds. powerd "
+               "then sets an alarm just before going to suspend.");
 
   brillo::FlagHelper::Init(argc, argv,
                            "Instruct powerd to suspend the system.");
@@ -81,6 +88,13 @@ int main(int argc, char* argv[]) {
   if (FLAGS_delay)
     sleep(FLAGS_delay);
 
+  // Set an RTC alarm to wake up the system.
+  if (FLAGS_wakeup_timeout > 0) {
+    std::string alarm_string = "+" + base::IntToString(FLAGS_wakeup_timeout);
+    CHECK(base::WriteFile(base::FilePath(kRtcWakeAlarmPath),
+                          alarm_string.c_str(), alarm_string.length()));
+  }
+
   powerd_proxy->ConnectToSignal(
       power_manager::kPowerManagerInterface, power_manager::kSuspendDoneSignal,
       base::Bind(&OnSuspendDone), base::Bind(&OnDBusSignalConnected));
@@ -92,10 +106,10 @@ int main(int argc, char* argv[]) {
     dbus::MessageWriter writer(&method_call);
     writer.AppendUint64(FLAGS_wakeup_count);
   }
-  // Pass RTC wakealarm timeout to the daemon.
-  if (FLAGS_wakeup_timeout) {
+  // Pass suspend_for_sec to the daemon.
+  if (FLAGS_suspend_for_sec) {
     dbus::MessageWriter writer(&method_call);
-    writer.AppendInt32(FLAGS_wakeup_timeout);
+    writer.AppendInt32(FLAGS_suspend_for_sec);
   }
   std::unique_ptr<dbus::Response> response(powerd_proxy->CallMethodAndBlock(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
