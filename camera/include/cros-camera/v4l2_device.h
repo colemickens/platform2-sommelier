@@ -91,10 +91,11 @@ class CROS_CAMERA_EXPORT V4L2Buffer {
  */
 class CROS_CAMERA_EXPORT V4L2Format {
  public:
-  V4L2Format() { v4l2_fmt_ = {}; }
-  explicit V4L2Format(const struct v4l2_format& fmt) { v4l2_fmt_ = fmt; }
-  const V4L2Format& operator=(const V4L2Format& fmt);
-  uint32_t Type() const { return v4l2_fmt_.type; }
+  V4L2Format();
+  explicit V4L2Format(const struct v4l2_format& fmt);
+  explicit V4L2Format(const V4L2Format& fmt) = default;
+  V4L2Format& operator=(const V4L2Format& fmt) = default;
+  uint32_t Type() const { return type_; }
   void SetType(uint32_t type);
   uint32_t Width() const;
   void SetWidth(uint32_t width);
@@ -108,11 +109,16 @@ class CROS_CAMERA_EXPORT V4L2Format {
   void SetBytesPerLine(uint32_t bytesperline, uint32_t plane);
   uint32_t SizeImage(uint32_t plane) const;
   void SetSizeImage(uint32_t size, uint32_t plane);
-  struct v4l2_format* Get() {
-    return &v4l2_fmt_;
-  }
+  struct v4l2_format* Get();
 
  private:
+  uint32_t type_;
+  uint32_t width_;
+  uint32_t height_;
+  uint32_t pixel_fmt_;
+  uint32_t field_;
+  std::vector<uint32_t> plane_bytes_per_line_;
+  std::vector<uint32_t> plane_size_image_;
   struct v4l2_format v4l2_fmt_;
 };
 

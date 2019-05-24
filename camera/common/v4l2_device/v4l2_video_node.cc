@@ -170,156 +170,146 @@ const V4L2Buffer& V4L2Buffer::operator=(const V4L2Buffer& buf) {
   return *this;
 }
 
-void V4L2Format::SetType(uint32_t type) {
-  DCHECK(IsValidV4L2BufferType(v4l2_fmt_.type));
+V4L2Format::V4L2Format()
+    : type_(0),
+      width_(0),
+      height_(0),
+      pixel_fmt_(0),
+      field_(V4L2_FIELD_NONE),
+      v4l2_fmt_() {}
 
-  v4l2_fmt_.type = type;
+V4L2Format::V4L2Format(const v4l2_format& fmt) {
+  DCHECK(IsValidV4L2BufferType(fmt.type));
+  type_ = fmt.type;
+  if (V4L2_TYPE_IS_META(fmt.type)) {
+    pixel_fmt_ = fmt.fmt.meta.dataformat;
+    plane_size_image_.push_back(fmt.fmt.meta.buffersize);
+  } else if (V4L2_TYPE_IS_MULTIPLANAR(fmt.type)) {
+    width_ = fmt.fmt.pix_mp.width;
+    height_ = fmt.fmt.pix_mp.height;
+    pixel_fmt_ = fmt.fmt.pix_mp.pixelformat;
+    field_ = fmt.fmt.pix_mp.field;
+    for (uint8_t plane = 0; plane < fmt.fmt.pix_mp.num_planes; plane++) {
+      plane_bytes_per_line_.push_back(
+          fmt.fmt.pix_mp.plane_fmt[plane].bytesperline);
+      plane_size_image_.push_back(fmt.fmt.pix_mp.plane_fmt[plane].sizeimage);
+    }
+  } else {
+    width_ = fmt.fmt.pix.width;
+    height_ = fmt.fmt.pix.height;
+    pixel_fmt_ = fmt.fmt.pix.pixelformat;
+    field_ = fmt.fmt.pix.field;
+    plane_bytes_per_line_.push_back(fmt.fmt.pix.bytesperline);
+    plane_size_image_.push_back(fmt.fmt.pix.sizeimage);
+  }
+}
+
+void V4L2Format::SetType(uint32_t type) {
+  DCHECK(IsValidV4L2BufferType(type));
+  type_ = type;
 }
 
 uint32_t V4L2Format::Width() const {
-  DCHECK(IsValidV4L2BufferType(v4l2_fmt_.type));
-
-  return V4L2_TYPE_IS_MULTIPLANAR(v4l2_fmt_.type) ? v4l2_fmt_.fmt.pix_mp.width
-                                                  : v4l2_fmt_.fmt.pix.width;
+  return width_;
 }
 
 void V4L2Format::SetWidth(uint32_t width) {
-  DCHECK(IsValidV4L2BufferType(v4l2_fmt_.type));
-  DCHECK(!V4L2_TYPE_IS_META(v4l2_fmt_.type));
-  if (V4L2_TYPE_IS_MULTIPLANAR(v4l2_fmt_.type))
-    v4l2_fmt_.fmt.pix_mp.width = width;
-  else
-    v4l2_fmt_.fmt.pix.width = width;
+  width_ = width;
 }
 
 uint32_t V4L2Format::Height() const {
-  DCHECK(IsValidV4L2BufferType(v4l2_fmt_.type));
-  DCHECK(!V4L2_TYPE_IS_META(v4l2_fmt_.type));
-
-  return V4L2_TYPE_IS_MULTIPLANAR(v4l2_fmt_.type) ? v4l2_fmt_.fmt.pix_mp.height
-                                                  : v4l2_fmt_.fmt.pix.height;
+  return height_;
 }
 
 void V4L2Format::SetHeight(uint32_t height) {
-  DCHECK(IsValidV4L2BufferType(v4l2_fmt_.type));
-  DCHECK(!V4L2_TYPE_IS_META(v4l2_fmt_.type));
-
-  if (V4L2_TYPE_IS_MULTIPLANAR(v4l2_fmt_.type))
-    v4l2_fmt_.fmt.pix_mp.height = height;
-  else
-    v4l2_fmt_.fmt.pix.height = height;
+  height_ = height;
 }
 
 uint32_t V4L2Format::PixelFormat() const {
-  DCHECK(IsValidV4L2BufferType(v4l2_fmt_.type));
-
-  if (V4L2_TYPE_IS_META(v4l2_fmt_.type))
-    return v4l2_fmt_.fmt.meta.dataformat;
-  else
-    return V4L2_TYPE_IS_MULTIPLANAR(v4l2_fmt_.type)
-               ? v4l2_fmt_.fmt.pix_mp.pixelformat
-               : v4l2_fmt_.fmt.pix.pixelformat;
+  return pixel_fmt_;
 }
 
 void V4L2Format::SetPixelFormat(uint32_t format) {
-  DCHECK(IsValidV4L2BufferType(v4l2_fmt_.type));
-
-  if (V4L2_TYPE_IS_META(v4l2_fmt_.type))
-    v4l2_fmt_.fmt.meta.dataformat = format;
-  else if (V4L2_TYPE_IS_MULTIPLANAR(v4l2_fmt_.type))
-    v4l2_fmt_.fmt.pix_mp.pixelformat = format;
-  else
-    v4l2_fmt_.fmt.pix.pixelformat = format;
+  pixel_fmt_ = format;
 }
 
 uint32_t V4L2Format::Field() const {
-  DCHECK(IsValidV4L2BufferType(v4l2_fmt_.type));
-
-  if (V4L2_TYPE_IS_META(v4l2_fmt_.type))
-    return V4L2_FIELD_NONE;
-  else
-    return V4L2_TYPE_IS_MULTIPLANAR(v4l2_fmt_.type) ? v4l2_fmt_.fmt.pix_mp.field
-                                                    : v4l2_fmt_.fmt.pix.field;
+  return field_;
 }
 
 void V4L2Format::SetField(uint32_t field) {
-  DCHECK(IsValidV4L2BufferType(v4l2_fmt_.type));
-  DCHECK(!V4L2_TYPE_IS_META(v4l2_fmt_.type));
-
-  if (V4L2_TYPE_IS_MULTIPLANAR(v4l2_fmt_.type))
-    v4l2_fmt_.fmt.pix_mp.field = field;
-  else
-    v4l2_fmt_.fmt.pix.field = field;
+  field_ = field;
 }
 
 uint32_t V4L2Format::BytesPerLine(uint32_t plane) const {
-  DCHECK(IsValidV4L2BufferType(v4l2_fmt_.type));
-  if (V4L2_TYPE_IS_META(v4l2_fmt_.type))
-    return v4l2_fmt_.fmt.meta.buffersize;
-
-  bool mp = V4L2_TYPE_IS_MULTIPLANAR(v4l2_fmt_.type);
-  if ((!mp && plane) || (mp && plane >= v4l2_fmt_.fmt.pix_mp.num_planes)) {
-    LOGF(ERROR) << "Invalid plane " << plane;
-    plane = 0;
-  }
-
-  return mp ? v4l2_fmt_.fmt.pix_mp.plane_fmt[plane].bytesperline
-            : v4l2_fmt_.fmt.pix.bytesperline;
+  DCHECK(plane < plane_bytes_per_line_.size());
+  return plane_bytes_per_line_[plane];
 }
 
 void V4L2Format::SetBytesPerLine(uint32_t bytesperline, uint32_t plane) {
-  DCHECK(IsValidV4L2BufferType(v4l2_fmt_.type));
-  DCHECK(!V4L2_TYPE_IS_META(v4l2_fmt_.type));
-
-  bool mp = V4L2_TYPE_IS_MULTIPLANAR(v4l2_fmt_.type);
-  if ((!mp && plane) || (mp && plane >= v4l2_fmt_.fmt.pix_mp.num_planes)) {
+  if (plane >= VIDEO_MAX_PLANES) {
     LOGF(ERROR) << "Invalid plane " << plane;
-    plane = 0;
+    return;
   }
-
-  if (V4L2_TYPE_IS_MULTIPLANAR(v4l2_fmt_.type))
-    v4l2_fmt_.fmt.pix_mp.plane_fmt[plane].bytesperline = bytesperline;
-  else
-    v4l2_fmt_.fmt.pix.bytesperline = bytesperline;
+  if (plane >= plane_bytes_per_line_.size()) {
+    plane_bytes_per_line_.resize(plane + 1);
+  }
+  plane_bytes_per_line_[plane] = bytesperline;
 }
 
 uint32_t V4L2Format::SizeImage(uint32_t plane) const {
-  DCHECK(IsValidV4L2BufferType(v4l2_fmt_.type));
-
-  if (V4L2_TYPE_IS_META(v4l2_fmt_.type))
-    return v4l2_fmt_.fmt.meta.buffersize;
-
-  bool mp = V4L2_TYPE_IS_MULTIPLANAR(v4l2_fmt_.type);
-  if ((!mp && plane) ||
-      (mp && plane && plane >= v4l2_fmt_.fmt.pix_mp.num_planes)) {
-    LOGF(ERROR) << "Invalid plane " << plane;
-    plane = 0;
-  }
-
-  return mp ? v4l2_fmt_.fmt.pix_mp.plane_fmt[plane].sizeimage
-            : v4l2_fmt_.fmt.pix.sizeimage;
+  DCHECK(plane < plane_size_image_.size());
+  return plane_size_image_[plane];
 }
 
 void V4L2Format::SetSizeImage(uint32_t size, uint32_t plane) {
-  DCHECK(IsValidV4L2BufferType(v4l2_fmt_.type));
-  DCHECK(!V4L2_TYPE_IS_META(v4l2_fmt_.type));
-
-  bool mp = V4L2_TYPE_IS_MULTIPLANAR(v4l2_fmt_.type);
-  if ((!mp && plane) ||
-      (mp && plane && plane >= v4l2_fmt_.fmt.pix_mp.num_planes)) {
+  if (plane >= VIDEO_MAX_PLANES) {
     LOGF(ERROR) << "Invalid plane " << plane;
-    plane = 0;
+    return;
   }
-
-  if (V4L2_TYPE_IS_MULTIPLANAR(v4l2_fmt_.type))
-    v4l2_fmt_.fmt.pix_mp.plane_fmt[plane].sizeimage = size;
-  else
-    v4l2_fmt_.fmt.pix.sizeimage = size;
+  if (plane >= plane_size_image_.size()) {
+    plane_size_image_.resize(plane + 1);
+  }
+  plane_size_image_[plane] = size;
 }
 
-const V4L2Format& V4L2Format::operator=(const V4L2Format& fmt) {
-  v4l2_fmt_ = fmt.v4l2_fmt_;
-  return *this;
+v4l2_format* V4L2Format::Get() {
+  DCHECK(IsValidV4L2BufferType(type_));
+
+  v4l2_fmt_.type = type_;
+  if (V4L2_TYPE_IS_META(v4l2_fmt_.type)) {
+    DCHECK_EQ(plane_size_image_.size(), 1);
+
+    v4l2_fmt_.fmt.meta.dataformat = pixel_fmt_;
+    v4l2_fmt_.fmt.meta.buffersize = plane_size_image_[0];
+  } else if (V4L2_TYPE_IS_MULTIPLANAR(v4l2_fmt_.type)) {
+    // TODO(hywu): add DCHECK_EQ(plane_bytes_per_line_.size(),
+    // plane_size_image_.size())
+    v4l2_fmt_.fmt.pix_mp.width = width_;
+    v4l2_fmt_.fmt.pix_mp.height = height_;
+    v4l2_fmt_.fmt.pix_mp.pixelformat = pixel_fmt_;
+    v4l2_fmt_.fmt.pix_mp.field = field_;
+    v4l2_fmt_.fmt.pix_mp.num_planes = plane_bytes_per_line_.size();
+    for (size_t plane = 0; plane < plane_bytes_per_line_.size(); plane++) {
+      v4l2_fmt_.fmt.pix_mp.plane_fmt[plane].bytesperline =
+          plane_bytes_per_line_[plane];
+    }
+    for (size_t plane = 0; plane < plane_size_image_.size(); plane++) {
+      v4l2_fmt_.fmt.pix_mp.plane_fmt[plane].sizeimage =
+          plane_size_image_[plane];
+    }
+  } else {
+    DCHECK_EQ(plane_bytes_per_line_.size(), 1);
+    DCHECK_EQ(plane_size_image_.size(), 1);
+
+    v4l2_fmt_.fmt.pix.width = width_;
+    v4l2_fmt_.fmt.pix.height = height_;
+    v4l2_fmt_.fmt.pix.pixelformat = pixel_fmt_;
+    v4l2_fmt_.fmt.pix.field = field_;
+    v4l2_fmt_.fmt.pix.bytesperline = plane_bytes_per_line_[0];
+    v4l2_fmt_.fmt.pix.sizeimage = plane_size_image_[0];
+  }
+  return &v4l2_fmt_;
 }
 
 V4L2VideoNode::V4L2VideoNode(const std::string name)
@@ -455,7 +445,7 @@ int V4L2VideoNode::SetFormat(const V4L2Format& format) {
     return -EINVAL;
   }
 
-  V4L2Format fmt = format;
+  V4L2Format fmt(format);
   fmt.SetType(buffer_type_);
   if (V4L2_TYPE_IS_META(buffer_type_)) {
     VLOGF(1) << "Device " << name_ << ": before VIDIOC_S_FMT  fourcc: "
@@ -802,14 +792,16 @@ int V4L2VideoNode::GetFormat(V4L2Format* format) {
     return -EINVAL;
   }
 
-  format->SetType(buffer_type_);
-  int ret = ::ioctl(fd_, VIDIOC_G_FMT, format->Get());
+  v4l2_format fmt;
+  fmt.type = buffer_type_;
+  int ret = ::ioctl(fd_, VIDIOC_G_FMT, &fmt);
 
   if (ret < 0) {
     PLOGF(ERROR) << name_ << " VIDIOC_G_FMT failed";
     return -EINVAL;
   }
 
+  *format = V4L2Format(fmt);
   if (V4L2_TYPE_IS_META(buffer_type_)) {
     VLOGF(1) << "Device " << name_ << ": VIDIOC_G_FMT fourcc: "
              << FormatToString(format->PixelFormat())
