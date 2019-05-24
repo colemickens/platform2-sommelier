@@ -12,8 +12,6 @@
 // bindings in a dedicated class, this code should move there.
 // (See crbug.com/246425)
 
-using std::string;
-
 namespace shill {
 
 namespace {
@@ -49,8 +47,8 @@ void CellularError::FromMM1ChromeosDBusError(brillo::Error* dbus_error,
     return;
   }
 
-  const string name = dbus_error->GetCode();
-  const string msg = dbus_error->GetMessage();
+  const std::string name = dbus_error->GetCode();
+  const std::string msg = dbus_error->GetMessage();
   Error::Type type;
 
   if (name == kErrorIncorrectPassword)

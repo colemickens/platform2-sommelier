@@ -9,13 +9,14 @@
 
 #include "shill/net/ip_address.h"
 
-using std::string;
-using std::vector;
-
 namespace shill {
 
 MockDnsClient::MockDnsClient()
-    : DnsClient(IPAddress::kFamilyIPv4, "", vector<string>(), 0, nullptr,
+    : DnsClient(IPAddress::kFamilyIPv4,
+                "",
+                std::vector<std::string>(),
+                0,
+                nullptr,
                 ClientCallback()) {}
 
 MockDnsClient::~MockDnsClient() = default;

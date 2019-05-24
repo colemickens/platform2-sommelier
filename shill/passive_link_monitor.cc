@@ -18,13 +18,12 @@
 
 using base::Bind;
 using base::Unretained;
-using std::string;
 
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kLink;
-static string ObjectID(Connection* c) { return c->interface_name(); }
+static std::string ObjectID(Connection* c) { return c->interface_name(); }
 }
 
 namespace {

@@ -21,9 +21,6 @@
 
 using base::StringAppendF;
 using base::StringPrintf;
-using std::map;
-using std::min;
-using std::string;
 
 namespace shill {
 
@@ -167,8 +164,8 @@ void NetlinkMessage::PrintHeader(int log_level, const nlmsghdr* header) {
 void NetlinkMessage::PrintPayload(int log_level, const unsigned char* buf,
                                   size_t num_bytes) {
   while (num_bytes) {
-    string output;
-    size_t bytes_this_row = min(num_bytes, static_cast<size_t>(32));
+    std::string output;
+    size_t bytes_this_row = std::min(num_bytes, static_cast<size_t>(32));
     for (size_t i = 0; i < bytes_this_row; ++i) {
       StringAppendF(&output, " %02x", *buf++);
     }
@@ -200,8 +197,8 @@ ByteString ErrorAckMessage::Encode(uint32_t sequence_number) {
   return ByteString();
 }
 
-string ErrorAckMessage::ToString() const {
-  string output;
+std::string ErrorAckMessage::ToString() const {
+  std::string output;
   if (error()) {
     StringAppendF(&output, "NETLINK_ERROR 0x%" PRIx32 ": %s",
                   -error_, strerror(-error_));
@@ -267,7 +264,7 @@ void UnknownMessage::Print(int header_log_level,
   int total_bytes = message_body_.GetLength();
   const uint8_t* const_data = message_body_.GetConstData();
 
-  string output = StringPrintf("%d bytes:", total_bytes);
+  std::string output = StringPrintf("%d bytes:", total_bytes);
   for (int i = 0; i < total_bytes; ++i) {
     StringAppendF(&output, " %02x", const_data[i]);
   }
@@ -306,7 +303,7 @@ std::unique_ptr<NetlinkMessage> NetlinkMessageFactory::CreateMessage(
   } else if (message_type == ErrorAckMessage::kMessageType) {
     message = std::make_unique<ErrorAckMessage>();
   } else if (base::ContainsKey(factories_, message_type)) {
-    map<uint16_t, FactoryMethod>::const_iterator factory;
+    std::map<uint16_t, FactoryMethod>::const_iterator factory;
     factory = factories_.find(message_type);
     message = factory->second.Run(*packet);
   }

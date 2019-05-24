@@ -8,9 +8,6 @@
 
 #include "shill/logging.h"
 
-using std::string;
-using std::vector;
-
 namespace shill {
 
 const char ChromeosUpstartProxy::kUpstartServiceName[] = "com.ubuntu.Upstart";
@@ -19,9 +16,10 @@ ChromeosUpstartProxy::ChromeosUpstartProxy(const scoped_refptr<dbus::Bus>& bus)
     : shill_event_proxy_(new com::ubuntu::Upstart0_6::JobProxy(
           bus, kUpstartServiceName)) {}
 
-void ChromeosUpstartProxy::EmitEvent(
-    const string& name, const vector<string>& env, bool wait) {
-  vector<string> start_job_env = env;
+void ChromeosUpstartProxy::EmitEvent(const std::string& name,
+                                     const std::vector<std::string>& env,
+                                     bool wait) {
+  std::vector<std::string> start_job_env = env;
   start_job_env.push_back("EVENT_NAME=" + name);
   shill_event_proxy_->StartAsync(
       start_job_env, wait, base::Bind([](const dbus::ObjectPath& path) {

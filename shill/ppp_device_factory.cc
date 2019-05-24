@@ -6,8 +6,6 @@
 
 #include "shill/ppp_device.h"
 
-using std::string;
-
 namespace shill {
 
 PPPDeviceFactory::PPPDeviceFactory() = default;
@@ -23,7 +21,7 @@ PPPDevice* PPPDeviceFactory::CreatePPPDevice(
     EventDispatcher* dispatcher,
     Metrics* metrics,
     Manager* manager,
-    const string& link_name,
+    const std::string& link_name,
     int interface_index) {
   return new PPPDevice(control, dispatcher, metrics, manager, link_name,
                        interface_index);

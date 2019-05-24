@@ -22,9 +22,6 @@
 #include "shill/wifi/wifi_provider.h"
 #endif  // DISABLE_WIFI
 
-using base::FilePath;
-using std::string;
-
 namespace shill {
 // static
 const char DefaultProfile::kDefaultId[] = "default";
@@ -58,8 +55,8 @@ const char DefaultProfile::kStorageProhibitedTechnologies[] =
 DefaultProfile::DefaultProfile(ControlInterface* control,
                                Metrics* metrics,
                                Manager* manager,
-                               const FilePath& storage_directory,
-                               const string& profile_id,
+                               const base::FilePath& storage_directory,
+                               const std::string& profile_id,
                                const Manager::Properties& manager_props)
     : Profile(
           control, metrics, manager, Identifier(profile_id),

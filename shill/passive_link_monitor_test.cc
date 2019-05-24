@@ -25,7 +25,6 @@
 
 using base::Bind;
 using base::Unretained;
-using std::string;
 using testing::_;
 using testing::AnyNumber;
 using testing::HasSubstr;
@@ -133,7 +132,7 @@ class PassiveLinkMonitorTest : public Test {
   MockArpClient* client_;
   ArpClientTestHelper client_test_helper_;
   PassiveLinkMonitor link_monitor_;
-  const string interface_name_;
+  const std::string interface_name_;
 };
 
 TEST_F(PassiveLinkMonitorTest, StartFailedArpClient) {

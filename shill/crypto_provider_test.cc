@@ -15,7 +15,6 @@
 
 using base::FilePath;
 using base::ScopedTempDir;
-using std::string;
 using testing::Test;
 
 namespace shill {
@@ -42,7 +41,7 @@ class CryptoProviderTest : public Test {
 
 FilePath CryptoProviderTest::InitKeyMatterFile(const FilePath& dir) {
   FilePath path = dir.Append(kKeyMatterFile);
-  string matter = string(kTestIV) + kTestKey;
+  std::string matter = std::string(kTestIV) + kTestKey;
   base::WriteFile(path, matter.data(), matter.size());
   return path;
 }

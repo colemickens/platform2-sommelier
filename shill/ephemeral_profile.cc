@@ -13,11 +13,11 @@
 
 namespace shill {
 
-using std::string;
-
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kProfile;
-static string ObjectID(EphemeralProfile* e) { return e->GetRpcIdentifier(); }
+static std::string ObjectID(EphemeralProfile* e) {
+  return e->GetRpcIdentifier();
+}
 }
 
 namespace {
@@ -35,7 +35,7 @@ EphemeralProfile::EphemeralProfile(ControlInterface* control_interface,
 
 EphemeralProfile::~EphemeralProfile() = default;
 
-string EphemeralProfile::GetFriendlyName() const {
+std::string EphemeralProfile::GetFriendlyName() const {
   return kFriendlyName;
 }
 

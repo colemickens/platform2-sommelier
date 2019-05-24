@@ -33,7 +33,6 @@
 #include "shill/nice_mock_control.h"
 #include "shill/test_event_dispatcher.h"
 
-using base::UintToString;
 using std::string;
 using std::unique_ptr;
 using std::vector;
@@ -232,8 +231,10 @@ TEST_F(CellularCapabilityUniversalCdmaMainTest, OnCdmaRegistrationChanged) {
   const unsigned kSid = 2;
   const unsigned kNid = 1;
   SetMockMobileOperatorInfoObjects();
-  EXPECT_CALL(*mock_serving_operator_info_, UpdateSID(UintToString(kSid)));
-  EXPECT_CALL(*mock_serving_operator_info_, UpdateNID(UintToString(kNid)));
+  EXPECT_CALL(*mock_serving_operator_info_,
+              UpdateSID(base::UintToString(kSid)));
+  EXPECT_CALL(*mock_serving_operator_info_,
+              UpdateNID(base::UintToString(kNid)));
   capability_->OnCdmaRegistrationChanged(
       MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
       MM_MODEM_CDMA_REGISTRATION_STATE_HOME,

@@ -13,7 +13,6 @@
 #include "shill/store_interface.h"
 #include "shill/technology.h"
 
-using std::string;
 using testing::_;
 using testing::Return;
 using testing::ReturnRef;
@@ -30,7 +29,7 @@ MockService::MockService(ControlInterface* control_interface,
                          Manager* manager)
     : Service(control_interface, dispatcher, metrics, manager,
               Technology::kUnknown) {
-  const string& id = unique_name();
+  const std::string& id = unique_name();
   EXPECT_CALL(*this, GetRpcIdentifier()).WillRepeatedly(Return(id));
   EXPECT_CALL(*this, GetStorageIdentifier()).WillRepeatedly(Return(id));
   ON_CALL(*this, IsVisible()).WillByDefault(Return(true));

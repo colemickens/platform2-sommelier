@@ -8,8 +8,6 @@
 
 #include "shill/logging.h"
 
-using std::string;
-
 namespace shill {
 
 // static
@@ -171,7 +169,7 @@ const char WPASupplicant::kSupplicantConfPath[] =
 
 // static
 bool WPASupplicant::ExtractRemoteCertification(const KeyValueStore& properties,
-                                               string* subject,
+                                               std::string* subject,
                                                uint32_t* depth) {
   if (!properties.ContainsUint(WPASupplicant::kInterfacePropertyDepth)) {
     LOG(ERROR) << __func__ << " no depth parameter.";

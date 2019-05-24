@@ -8,7 +8,6 @@
 
 #include <gtest/gtest.h>
 
-using std::string;
 using testing::Test;
 
 namespace shill {
@@ -29,7 +28,7 @@ TEST_F(CryptoRot47Test, GetId) {
 }
 
 TEST_F(CryptoRot47Test, Encrypt) {
-  string text;
+  std::string text;
   EXPECT_TRUE(crypto_.Encrypt(kPlainText, &text));
   EXPECT_EQ(kCipherText, text);
   EXPECT_TRUE(crypto_.Encrypt(kEmpty, &text));
@@ -37,7 +36,7 @@ TEST_F(CryptoRot47Test, Encrypt) {
 }
 
 TEST_F(CryptoRot47Test, Decrypt) {
-  string text;
+  std::string text;
   EXPECT_TRUE(crypto_.Decrypt(kCipherText, &text));
   EXPECT_EQ(kPlainText, text);
   EXPECT_TRUE(crypto_.Decrypt(kEmpty, &text));

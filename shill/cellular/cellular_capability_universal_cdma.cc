@@ -16,8 +16,6 @@
 #include "shill/logging.h"
 #include "shill/pending_activation_store.h"
 
-using base::UintToString;
-
 using std::string;
 using std::vector;
 
@@ -499,8 +497,8 @@ void CellularCapabilityUniversalCdma::OnCdmaRegistrationChanged(
   cdma_evdo_registration_state_ = state_evdo;
   sid_ = sid;
   nid_ = nid;
-  cellular()->serving_operator_info()->UpdateSID(UintToString(sid));
-  cellular()->serving_operator_info()->UpdateNID(UintToString(nid));
+  cellular()->serving_operator_info()->UpdateSID(base::UintToString(sid));
+  cellular()->serving_operator_info()->UpdateNID(base::UintToString(nid));
   cellular()->HandleNewRegistrationState();
 }
 

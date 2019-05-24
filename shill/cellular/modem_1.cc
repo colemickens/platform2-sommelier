@@ -10,7 +10,6 @@
 #include "shill/device_info.h"
 
 using std::string;
-using std::vector;
 
 namespace shill {
 
@@ -26,8 +25,8 @@ bool Modem1::GetLinkName(const KeyValueStore& modem_props,
     return false;
   }
 
-  auto ports = modem_props.Get(MM_MODEM_PROPERTY_PORTS).
-      Get<vector<std::tuple<string, uint32_t>>>();
+  auto ports = modem_props.Get(MM_MODEM_PROPERTY_PORTS)
+                   .Get<std::vector<std::tuple<string, uint32_t>>>();
   string net_port;
   for (const auto& port_pair : ports) {
     if (std::get<1>(port_pair) == MM_MODEM_PORT_TYPE_NET) {

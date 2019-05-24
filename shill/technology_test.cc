@@ -9,7 +9,6 @@
 
 #include "shill/error.h"
 
-using std::vector;
 using testing::ElementsAre;
 
 namespace shill {
@@ -56,7 +55,7 @@ TEST(TechnologyTest, IdentifierFromStorageGroup) {
 }
 
 TEST(TechnologyTest, GetTechnologyVectorFromStringWithValidTechnologyNames) {
-  vector<Technology::Identifier> technologies;
+  std::vector<Technology::Identifier> technologies;
   Error error;
 
   EXPECT_TRUE(Technology::GetTechnologyVectorFromString(
@@ -84,7 +83,7 @@ TEST(TechnologyTest, GetTechnologyVectorFromStringWithValidTechnologyNames) {
 }
 
 TEST(TechnologyTest, GetTechnologyVectorFromStringWithInvalidTechnologyNames) {
-  vector<Technology::Identifier> technologies;
+  std::vector<Technology::Identifier> technologies;
   Error error;
 
   EXPECT_FALSE(Technology::GetTechnologyVectorFromString(
@@ -105,7 +104,7 @@ TEST(TechnologyTest, GetTechnologyVectorFromStringWithInvalidTechnologyNames) {
 
 TEST(TechnologyTest,
      GetTechnologyVectorFromStringWithDuplicateTechnologyNames) {
-  vector<Technology::Identifier> technologies;
+  std::vector<Technology::Identifier> technologies;
   Error error;
 
   EXPECT_FALSE(Technology::GetTechnologyVectorFromString(

@@ -10,13 +10,11 @@
 #include "shill/logging.h"
 #include "shill/net/rtnl_handler.h"
 
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDevice;
-static string ObjectID(VirtualDevice* v) { return "(virtual_device)"; }
+static std::string ObjectID(VirtualDevice* v) { return "(virtual_device)"; }
 }
 
 namespace {
@@ -27,7 +25,7 @@ VirtualDevice::VirtualDevice(ControlInterface* control,
                              EventDispatcher* dispatcher,
                              Metrics* metrics,
                              Manager* manager,
-                             const string& link_name,
+                             const std::string& link_name,
                              int interface_index,
                              Technology::Identifier technology)
     : Device(control, dispatcher, metrics, manager, link_name,

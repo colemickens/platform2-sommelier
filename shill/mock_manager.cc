@@ -10,8 +10,6 @@
 
 #include "shill/ethernet/mock_ethernet_provider.h"
 
-using std::string;
-using std::vector;
 using testing::_;
 using testing::Invoke;
 using testing::Return;
@@ -31,7 +29,7 @@ MockManager::MockManager(ControlInterface* control_interface,
   EXPECT_CALL(*this, device_info())
       .WillRepeatedly(Invoke(this, &MockManager::mock_device_info));
   ON_CALL(*this, FilterPrependDNSServersByFamily(_))
-      .WillByDefault(Return(vector<string>()));
+      .WillByDefault(Return(std::vector<std::string>()));
   ON_CALL(*this, GetSuspendDurationUsecs())
       .WillByDefault(Return(kSuspendDurationUsecs));
 }

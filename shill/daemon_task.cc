@@ -25,13 +25,12 @@
 
 using base::Bind;
 using base::Unretained;
-using std::string;
 
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDaemon;
-static string ObjectID(DaemonTask* d) { return "(chromeos_daemon)"; }
+static std::string ObjectID(DaemonTask* d) { return "(chromeos_daemon)"; }
 }
 
 DaemonTask::DaemonTask(const Settings& settings, Config* config)

@@ -21,8 +21,6 @@
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
-using std::string;
-using std::vector;
 using testing::_;
 using testing::ByMove;
 using testing::DoAll;
@@ -94,7 +92,7 @@ TEST_F(Modem1Test, CreateDeviceMM1) {
   KeyValueStore modem_properties;
   modem_properties.SetUint(MM_MODEM_PROPERTY_UNLOCKREQUIRED,
                            MM_MODEM_LOCK_NONE);
-  vector<std::tuple<string, uint32_t>> ports = {
+  std::vector<std::tuple<std::string, uint32_t>> ports = {
       std::make_tuple(kLinkName, MM_MODEM_PORT_TYPE_NET) };
   modem_properties.Set(MM_MODEM_PROPERTY_PORTS, brillo::Any(ports));
   properties[MM_DBUS_INTERFACE_MODEM] = modem_properties;

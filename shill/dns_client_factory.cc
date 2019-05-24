@@ -6,9 +6,6 @@
 
 #include <memory>
 
-using std::string;
-using std::vector;
-
 namespace shill {
 
 DnsClientFactory::DnsClientFactory() = default;
@@ -21,8 +18,8 @@ DnsClientFactory* DnsClientFactory::GetInstance() {
 
 std::unique_ptr<DnsClient> DnsClientFactory::CreateDnsClient(
     IPAddress::Family family,
-    const string& interface_name,
-    const vector<string>& dns_servers,
+    const std::string& interface_name,
+    const std::vector<std::string>& dns_servers,
     int timeout_ms,
     EventDispatcher* dispatcher,
     const DnsClient::ClientCallback& callback) {

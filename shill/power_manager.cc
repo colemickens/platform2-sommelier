@@ -16,7 +16,6 @@
 using base::Bind;
 using base::TimeDelta;
 using base::Unretained;
-using std::string;
 
 namespace shill {
 
@@ -99,7 +98,7 @@ bool PowerManager::ReportDarkSuspendReadiness() {
       current_dark_suspend_id_);
 }
 
-bool PowerManager::RecordDarkResumeWakeReason(const string& wake_reason) {
+bool PowerManager::RecordDarkResumeWakeReason(const std::string& wake_reason) {
   return power_manager_proxy_->RecordDarkResumeWakeReason(wake_reason);
 }
 

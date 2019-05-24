@@ -14,8 +14,6 @@
 #include "shill/manager.h"
 #include "shill/pending_activation_store.h"
 
-using std::string;
-
 namespace shill {
 
 ModemInfo::ModemInfo(ControlInterface* control_interface,
@@ -45,7 +43,7 @@ void ModemInfo::Stop() {
   modem_manager_ = nullptr;
 }
 
-void ModemInfo::OnDeviceInfoAvailable(const string& link_name) {
+void ModemInfo::OnDeviceInfoAvailable(const std::string& link_name) {
   modem_manager_->OnDeviceInfoAvailable(link_name);
 }
 

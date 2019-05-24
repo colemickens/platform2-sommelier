@@ -12,13 +12,11 @@
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
 
-using std::string;
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static string ObjectID(const Callback80211Metrics* c) {
+static std::string ObjectID(const Callback80211Metrics* c) {
   return "(callback80211metrics)";
 }
 }

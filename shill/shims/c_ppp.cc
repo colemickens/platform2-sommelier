@@ -11,7 +11,6 @@
 #include "shill/shims/ppp.h"
 
 using shill::shims::PPP;
-using std::string;
 
 namespace {
 base::AtExitManager* g_exit_manager = nullptr;  // Cleans up LazyInstances.
@@ -27,7 +26,7 @@ int PPPHasSecret() {
 }
 
 int PPPGetSecret(char* username, char* password) {
-  string user, pass;
+  std::string user, pass;
   if (!PPP::GetInstance()->GetSecret(&user, &pass)) {
     return -1;
   }

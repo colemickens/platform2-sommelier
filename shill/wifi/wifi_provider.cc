@@ -34,9 +34,7 @@
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_service.h"
 
-using base::SplitString;
 using base::StringPrintf;
-using std::set;
 using std::string;
 using std::vector;
 
@@ -477,7 +475,7 @@ WiFiServiceRefPtr WiFiProvider::FindService(const vector<uint8_t>& ssid,
 
 ByteArrays WiFiProvider::GetHiddenSSIDList() {
   // Create a unique set of hidden SSIDs.
-  set<ByteArray> hidden_ssids_set;
+  std::set<ByteArray> hidden_ssids_set;
   for (const auto& service : services_) {
     if (service->hidden_ssid() && service->IsRemembered()) {
       hidden_ssids_set.insert(service->ssid());
@@ -713,7 +711,7 @@ time_t WiFiProvider::GetStringListStartWeek(const string& week_string) {
 // static
 void WiFiProvider::ParseStringListFreqCount(const string& freq_count_string,
                                             ConnectFrequencyMap* numbers) {
-  vector<string> freq_count = SplitString(
+  vector<string> freq_count = base::SplitString(
       freq_count_string, std::string{kFrequencyDelimiter},
       base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (freq_count.size() != 2) {

@@ -9,15 +9,13 @@
 
 namespace shill {
 
-using std::string;
-
 SupplicantEAPStateHandler::SupplicantEAPStateHandler()
     : is_eap_in_progress_(false) {}
 
 SupplicantEAPStateHandler::~SupplicantEAPStateHandler() = default;
 
-bool SupplicantEAPStateHandler::ParseStatus(const string& status,
-                                            const string& parameter,
+bool SupplicantEAPStateHandler::ParseStatus(const std::string& status,
+                                            const std::string& parameter,
                                             Service::ConnectFailure* failure) {
   if (status == WPASupplicant::kEAPStatusAcceptProposedMethod) {
     LOG(INFO) << "EAP: accepted method " << parameter;

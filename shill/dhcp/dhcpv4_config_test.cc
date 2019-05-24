@@ -31,7 +31,6 @@ using base::FilePath;
 using base::ScopedTempDir;
 using base::Unretained;
 using std::string;
-using std::unique_ptr;
 using std::vector;
 using testing::_;
 using testing::DoAll;
@@ -98,7 +97,7 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
   FilePath lease_file_;
   FilePath pid_file_;
   ScopedTempDir temp_dir_;
-  unique_ptr<MockDHCPProxy> proxy_;
+  std::unique_ptr<MockDHCPProxy> proxy_;
   MockControl control_;
   MockProcessManager process_manager_;
   MockMetrics metrics_;

@@ -7,9 +7,6 @@
 #include <base/stl_util.h>
 #include <gtest/gtest.h>
 
-using std::map;
-using std::string;
-
 namespace shill {
 
 namespace shims {
@@ -31,7 +28,7 @@ TEST_F(EnvironmentTest, GetVariable) {
   for (size_t i = 0; i < arraysize(kVarValues); i++) {
     EXPECT_FALSE(environment_->GetVariable(kVarName, nullptr));
     EXPECT_EQ(0, setenv(kVarName, kVarValues[i], 0)) << kVarValues[i];
-    string value;
+    std::string value;
     EXPECT_TRUE(environment_->GetVariable(kVarName, &value)) << kVarValues[i];
     EXPECT_EQ(kVarValues[i], value);
     EXPECT_EQ(0, unsetenv(kVarName));
@@ -53,7 +50,7 @@ TEST_F(EnvironmentTest, AsMap) {
   for (size_t i = 0; i < arraysize(kVarNames); i++) {
     EXPECT_EQ(0, setenv(kVarNames[i], kVarValues[i], 0)) << kVarNames[i];
   }
-  map<string, string> env = environment_->AsMap();
+  std::map<std::string, std::string> env = environment_->AsMap();
   for (size_t i = 0; i < arraysize(kVarNames); i++) {
     EXPECT_TRUE(base::ContainsKey(env, kVarNames[i])) << kVarNames[i];
     EXPECT_EQ(kVarValues[i], env[kVarNames[i]]) << kVarNames[i];

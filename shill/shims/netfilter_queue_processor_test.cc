@@ -12,8 +12,6 @@
 
 #include <gtest/gtest.h>
 
-using std::string;
-
 namespace shill {
 
 namespace shims {
@@ -41,7 +39,7 @@ class NetfilterQueueProcessorTest : public testing::Test {
   int GetExpirationInterval() {
     return NetfilterQueueProcessor::kExpirationIntervalSeconds;
   }
-  string AddressAndPortToString(uint32_t ip, uint16_t port) {
+  std::string AddressAndPortToString(uint32_t ip, uint16_t port) {
     return NetfilterQueueProcessor::AddressAndPortToString(ip, port);
   }
 

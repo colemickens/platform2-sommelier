@@ -10,10 +10,6 @@
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 
-using base::StringTokenizer;
-using std::string;
-using std::vector;
-
 namespace shill {
 
 namespace {
@@ -87,13 +83,14 @@ bool ScopeLogger::IsScopeEnabled(Scope scope) const {
   return scope_enabled_[scope];
 }
 
-string ScopeLogger::GetAllScopeNames() const {
-  vector<string> names(std::begin(kScopeNames), std::end(kScopeNames));
+std::string ScopeLogger::GetAllScopeNames() const {
+  std::vector<std::string> names(std::begin(kScopeNames),
+                                 std::end(kScopeNames));
   return base::JoinString(names, "+");
 }
 
-string ScopeLogger::GetEnabledScopeNames() const {
-  vector<string> names;
+std::string ScopeLogger::GetEnabledScopeNames() const {
+  std::vector<std::string> names;
   for (size_t i = 0; i < arraysize(kScopeNames); ++i) {
     if (scope_enabled_[i])
       names.push_back(kScopeNames[i]);
@@ -101,7 +98,7 @@ string ScopeLogger::GetEnabledScopeNames() const {
   return base::JoinString(names, "+");
 }
 
-void ScopeLogger::EnableScopesByName(const string& expression) {
+void ScopeLogger::EnableScopesByName(const std::string& expression) {
   if (expression.empty()) {
     DisableAllScopes();
     return;
@@ -115,8 +112,8 @@ void ScopeLogger::EnableScopesByName(const string& expression) {
     DisableAllScopes();
 
   bool enable_scope = true;
-  StringTokenizer tokenizer(expression, "+-");
-  tokenizer.set_options(StringTokenizer::RETURN_DELIMS);
+  base::StringTokenizer tokenizer(expression, "+-");
+  tokenizer.set_options(base::StringTokenizer::RETURN_DELIMS);
   while (tokenizer.GetNext()) {
     if (tokenizer.token_is_delim()) {
       enable_scope = (tokenizer.token() == "+");

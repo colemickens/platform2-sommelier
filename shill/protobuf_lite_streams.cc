@@ -12,12 +12,11 @@
 
 using google::protobuf::io::CopyingInputStream;
 using google::protobuf::io::CopyingInputStreamAdaptor;
-using std::string;
 
 namespace shill {
 
 CopyingInputStreamAdaptor* protobuf_lite_file_input_stream(
-    const string& file_path) {
+    const std::string& file_path) {
   int fd = HANDLE_EINTR(open(file_path.c_str(), O_RDONLY | O_CLOEXEC));
   if (fd == -1) {
     PLOG(ERROR) << __func__ << ": "

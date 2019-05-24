@@ -28,10 +28,6 @@
 #include "shill/net/sockets.h"
 
 using base::Bind;
-using base::LazyInstance;
-using base::MessageLoop;
-using std::list;
-using std::map;
 using std::string;
 
 namespace shill {
@@ -44,7 +40,7 @@ static std::string ObjectID(const NetlinkManager* obj) {
 }  // namespace Logging
 
 namespace {
-LazyInstance<NetlinkManager>::DestructorAtExit g_netlink_manager =
+base::LazyInstance<NetlinkManager>::DestructorAtExit g_netlink_manager =
     LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
@@ -425,7 +421,7 @@ bool NetlinkManager::AddBroadcastHandler(const NetlinkMessageHandler& handler) {
 
 bool NetlinkManager::RemoveBroadcastHandler(
     const NetlinkMessageHandler& handler) {
-  list<NetlinkMessageHandler>::iterator i;
+  std::list<NetlinkMessageHandler>::iterator i;
   for (i = broadcast_handlers_.begin(); i != broadcast_handlers_.end(); ++i) {
     if ((*i).Equals(handler)) {
       broadcast_handlers_.erase(i);
@@ -515,7 +511,7 @@ bool NetlinkManager::RegisterHandlersAndSendMessage(
   // be small.
   struct timeval now;
   time_->GetTimeMonotonic(&now);
-  map<uint32_t, NetlinkResponseHandlerRefPtr>::iterator handler_it =
+  std::map<uint32_t, NetlinkResponseHandlerRefPtr>::iterator handler_it =
       message_handlers_.begin();
   while (handler_it != message_handlers_.end()) {
     if (timercmp(&now, &handler_it->second->delete_after(), >)) {
@@ -564,7 +560,7 @@ bool NetlinkManager::SendMessageInternal(
     dump_pending_ = true;
     pending_dump_timeout_callback_.Reset(Bind(
         &NetlinkManager::OnPendingDumpTimeout, weak_ptr_factory_.GetWeakPtr()));
-    MessageLoop::current()->task_runner()->PostDelayedTask(
+    base::MessageLoop::current()->task_runner()->PostDelayedTask(
         FROM_HERE, pending_dump_timeout_callback_.callback(),
         base::TimeDelta::FromMilliseconds(kPendingDumpTimeoutMilliseconds));
   }
@@ -836,7 +832,7 @@ void NetlinkManager::ResendPendingDumpMessageAfterDelay() {
   resend_dump_message_callback_.Reset(
       Bind(&NetlinkManager::ResendPendingDumpMessage,
            weak_ptr_factory_.GetWeakPtr()));
-  MessageLoop::current()->task_runner()->PostDelayedTask(
+  base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE, resend_dump_message_callback_.callback(),
       base::TimeDelta::FromMilliseconds(kNlMessageRetryDelayMilliseconds));
 }
