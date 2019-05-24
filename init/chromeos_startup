@@ -55,7 +55,7 @@ is_var_full() {
   [ ${var_avail} -lt 10000 ]
 }
 
-# Returns if the TPM is owned.
+# Returns if the TPM is owned or couldn't determine.
 is_tpm_owned() {
   local tpm_owned
   # Depending on the kernel version, the file containing tpm owned information
@@ -67,7 +67,7 @@ is_tpm_owned() {
   else
     tpm_owned=$(cat /sys/class/tpm/tpm0/device/owned)
   fi
-  [ "${tpm_owned}" = "1" ]
+  [ "${tpm_owned}" != "0" ]
 }
 
 # Sanity check the date in case the RTC battery died and it initialized to
