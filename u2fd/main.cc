@@ -19,6 +19,7 @@
 #include <dbus/u2f/dbus-constants.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
+#include <session_manager/dbus-proxies.h>
 #include <sysexits.h>
 #include <u2f/proto_bindings/interface.pb.h>
 
@@ -65,12 +66,16 @@ enum class U2fMode : uint8_t {
   kU2fExtended = em::DeviceSecondFactorAuthenticationProto_U2fMode_U2F_EXTENDED,
 };
 
+bool U2fPolicyReady() {
+  policy::PolicyProvider policy_provider;
+
+  return policy_provider.Reload();
+}
+
 U2fMode ReadU2fPolicy() {
   policy::PolicyProvider policy_provider;
 
-  // No available policy.
-  if (!policy_provider.Reload())
-    return U2fMode::kUnset;
+  DCHECK(policy_provider.Reload());
 
   int mode = 0;
   const policy::DevicePolicy* policy = &policy_provider.GetDevicePolicy();
@@ -114,14 +119,25 @@ const char* U2fModeToString(U2fMode mode) {
   return "unknown";
 }
 
+void OnPolicySignalConnected(const std::string& interface,
+                             const std::string& signal,
+                             bool success) {
+  if (!success) {
+    LOG(FATAL) << "Could not connect to signal " << signal << " on interface "
+               << interface;
+  }
+}
+
 class U2fDaemon : public brillo::Daemon {
  public:
-  U2fDaemon(U2fMode mode,
+  U2fDaemon(bool force_u2f,
+            bool force_g2f,
             bool user_keys,
             bool legacy_kh_fallback,
             uint32_t vendor_id,
             uint32_t product_id)
-      : u2f_mode_(mode),
+      : force_u2f_(force_u2f),
+        force_g2f_(force_g2f),
         user_keys_(user_keys),
         legacy_kh_fallback_(legacy_kh_fallback),
         vendor_id_(vendor_id),
@@ -129,6 +145,70 @@ class U2fDaemon : public brillo::Daemon {
 
  private:
   int OnInit() override {
+    brillo::Daemon::OnInit();
+
+    if (!bus_ && !InitializeDBus())
+      return EX_IOERR;
+
+    sm_proxy_->RegisterPropertyChangeCompleteSignalHandler(
+        base::Bind(&U2fDaemon::TryStartService, base::Unretained(this)),
+        base::Bind(&OnPolicySignalConnected));
+
+    bool policy_ready = U2fPolicyReady();
+
+    if (policy_ready) {
+      int status = StartService();
+
+      // If U2F is not currently enabled, we'll wait for policy updates
+      // that may enable it. We don't ever disable U2F on policy updates.
+      // TODO(louiscollard): Fix the above.
+      if (status != EX_CONFIG)
+        return status;
+    }
+
+    if (policy_ready) {
+      LOG(INFO) << "U2F currently disabled, waiting for policy updates...";
+    } else {
+      LOG(INFO) << "Policy not available, waiting...";
+    }
+
+    return EX_OK;
+  }
+
+  void TryStartService(const std::string& /* unused dbus signal status */) {
+    if (!u2fhid_ && U2fPolicyReady()) {
+      int status = StartService();
+      if (status != EX_OK && status != EX_CONFIG) {
+        exit(status);
+      }
+    }
+  }
+
+  int StartService() {
+    if (u2fhid_) {
+      // Any failures in previous calls to this function would have caused the
+      // program to terminate, so we can assume we have successfully started.
+      return EX_OK;
+    }
+
+    u2f_mode_ = GetU2fMode(force_u2f_, force_g2f_);
+    LOG(INFO) << "Mode: " << U2fModeToString(u2f_mode_)
+              << " (force_u2f=" << force_u2f_ << " force_g2f=" << force_g2f_
+              << ")";
+    if (u2f_mode_ == U2fMode::kDisabled) {
+      return EX_CONFIG;
+    }
+
+    // User keys should always be enabled when a U2F policy is set, and may
+    // additionally be enabled on the command line.
+    // User keys may not be disabled if a policy is defined, as non-user keys
+    // are legacy and should not be used beyond the initial beta launch.
+    if (ReadU2fPolicy() != U2fMode::kUnset) {
+      user_keys_ = true;
+    }
+
+    RegisterU2fDBusInterface();
+
     std::string version;
     if (!tpm_proxy_.Init()) {
       LOG(ERROR) << "Failed to initialize D-Bus proxy with trunksd.";
@@ -152,23 +232,6 @@ class U2fDaemon : public brillo::Daemon {
     if (u2f_mode_ == U2fMode::kU2fExtended)
       tpm_proxy_.GetVendorSysInfo(&vendor_sysinfo);
 
-    dbus::Bus::Options options;
-    options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::Bus(options);
-    if (!bus_->Connect()) {
-      LOG(ERROR) << "Cannot connect to D-Bus.";
-      return EX_IOERR;
-    }
-    if (!bus_->RequestOwnershipAndBlock(u2f::kU2FServiceName,
-                                        dbus::Bus::REQUIRE_PRIMARY)) {
-      LOG(ERROR) << "Cannot acquire dbus ownership for "
-                 << u2f::kU2FServiceName;
-      return EX_IOERR;
-    }
-
-    SetupU2fDBusInterface();
-    pm_proxy_ = std::make_unique<org::chromium::PowerManagerProxy>(bus_.get());
-
     u2fhid_ = std::make_unique<u2f::U2fHid>(
         std::make_unique<u2f::UHidDevice>(vendor_id_, product_id_, kDeviceName,
                                           "u2fd-tpm-cr50"),
@@ -189,12 +252,35 @@ class U2fDaemon : public brillo::Daemon {
             base::Unretained(pm_proxy_.get())),
         base::Bind(&U2fDaemon::SendWinkSignal, base::Unretained(this)),
         std::make_unique<u2f::UserState>(
-            bus_, legacy_kh_fallback_ ? kLegacyKhCounterMin : 0));
+            sm_proxy_.get(), legacy_kh_fallback_ ? kLegacyKhCounterMin : 0));
 
     return u2fhid_->Init() ? EX_OK : EX_PROTOCOL;
   }
 
-  void SetupU2fDBusInterface() {
+  bool InitializeDBus() {
+    dbus::Bus::Options options;
+    options.bus_type = dbus::Bus::SYSTEM;
+    bus_ = new dbus::Bus(options);
+    if (!bus_->Connect()) {
+      LOG(ERROR) << "Cannot connect to D-Bus.";
+      return false;
+    }
+
+    if (!bus_->RequestOwnershipAndBlock(u2f::kU2FServiceName,
+                                        dbus::Bus::REQUIRE_PRIMARY)) {
+      LOG(ERROR) << "Cannot acquire dbus ownership for "
+                 << u2f::kU2FServiceName;
+      return EX_IOERR;
+    }
+
+    pm_proxy_ = std::make_unique<org::chromium::PowerManagerProxy>(bus_.get());
+    sm_proxy_ = std::make_unique<org::chromium::SessionManagerInterfaceProxy>(
+        bus_.get());
+
+    return true;
+  }
+
+  void RegisterU2fDBusInterface() {
     dbus_object_.reset(new brillo::dbus_utils::DBusObject(
         nullptr, bus_, dbus::ObjectPath(u2f::kU2FServicePath)));
 
@@ -220,14 +306,17 @@ class U2fDaemon : public brillo::Daemon {
     }
   }
 
-  U2fMode u2f_mode_;
+  bool force_u2f_;
+  bool force_g2f_;
   bool user_keys_;
   bool legacy_kh_fallback_;
   uint32_t vendor_id_;
   uint32_t product_id_;
+  U2fMode u2f_mode_;
   u2f::TpmVendorCommandProxy tpm_proxy_;
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::chromium::PowerManagerProxy> pm_proxy_;
+  std::unique_ptr<org::chromium::SessionManagerInterfaceProxy> sm_proxy_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<u2f::UserNotification>>
       wink_signal_;
@@ -261,24 +350,8 @@ int main(int argc, char* argv[]) {
 
   LOG(INFO) << "Daemon version " << VCSID;
 
-  U2fMode mode = GetU2fMode(FLAGS_force_u2f, FLAGS_force_g2f);
-  LOG(INFO) << "Mode: " << U2fModeToString(mode)
-            << " (force_u2f=" << FLAGS_force_u2f
-            << " force_g2f=" << FLAGS_force_g2f << ")";
-  if (mode == U2fMode::kDisabled) {
-    LOG(INFO) << "U2F disabled, exiting...";
-    // Exit gracefully as we don't want to re-spawn.
-    return EX_OK;
-  }
-
-  // User keys should always be enabled when a U2F policy is set, and may
-  // additionally be enabled on the command line.
-  // User keys may not be disabled if a policy is defined, as non-user keys
-  // are legacy and should not be used beyond the initial beta launch.
-  bool user_keys = (ReadU2fPolicy() != U2fMode::kUnset) || FLAGS_user_keys;
-
-  U2fDaemon daemon(mode, user_keys, FLAGS_legacy_kh_fallback, FLAGS_vendor_id,
-                   FLAGS_product_id);
+  U2fDaemon daemon(FLAGS_force_u2f, FLAGS_force_g2f, FLAGS_user_keys,
+                   FLAGS_legacy_kh_fallback, FLAGS_vendor_id, FLAGS_product_id);
   int rc = daemon.Run();
 
   return rc == EX_UNAVAILABLE ? EX_OK : rc;

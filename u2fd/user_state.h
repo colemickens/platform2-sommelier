@@ -22,7 +22,8 @@ class UserState {
  public:
   // Constructs a new UserState object using the specified dbus object.
   // The counter values returned by this object will be >= counter_min.
-  explicit UserState(scoped_refptr<dbus::Bus> dbus, uint32_t counter_min);
+  explicit UserState(org::chromium::SessionManagerInterfaceProxy* sm_proxy,
+                     uint32_t counter_min);
 
   // Get*() methods return base::nullopt if user state is currently
   // unavailable.
@@ -69,7 +70,7 @@ class UserState {
   base::Optional<brillo::SecureBlob> user_secret_;
   base::Optional<uint32_t> counter_;
 
-  org::chromium::SessionManagerInterfaceProxy proxy_;
+  org::chromium::SessionManagerInterfaceProxy* sm_proxy_;
   base::WeakPtrFactory<UserState> weak_ptr_factory_;
 
   const uint32_t counter_min_;

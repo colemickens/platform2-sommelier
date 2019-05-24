@@ -37,9 +37,10 @@ void OnSignalConnected(const std::string& interface,
 
 }  // namespace
 
-UserState::UserState(scoped_refptr<dbus::Bus> dbus, uint32_t counter_min)
-    : proxy_(dbus), weak_ptr_factory_(this), counter_min_(counter_min) {
-  proxy_.RegisterSessionStateChangedSignalHandler(
+UserState::UserState(org::chromium::SessionManagerInterfaceProxy* sm_proxy,
+                     uint32_t counter_min)
+    : sm_proxy_(sm_proxy), weak_ptr_factory_(this), counter_min_(counter_min) {
+  sm_proxy_->RegisterSessionStateChangedSignalHandler(
       base::Bind(&UserState::OnSessionStateChanged,
                  weak_ptr_factory_.GetWeakPtr()),
       base::Bind(&OnSignalConnected));
@@ -102,7 +103,7 @@ void UserState::UpdatePrimarySessionSanitizedUser() {
   std::string sanitized_user;
   brillo::ErrorPtr error;
 
-  if (!proxy_.RetrievePrimarySession(&user, &sanitized_user, &error) ||
+  if (!sm_proxy_->RetrievePrimarySession(&user, &sanitized_user, &error) ||
       sanitized_user.empty()) {
     LOG(ERROR) << "Failed to retreive current user. This is expected on "
                   "startup if no user is logged in.";
