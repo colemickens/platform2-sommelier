@@ -422,7 +422,6 @@ def GnLintStaticSharedLibMixing(gndata):
   # Now with the full state, run the checks.
   ret = []
   for pie_lib in pie_static_libs:
-    pie_lib = Unquote(pie_lib)
     # Pull out all shared libs that depend on static PIE libs.
     dependency_libs = [
         shared_lib for shared_lib, deps in shared_lib_deps.items()
