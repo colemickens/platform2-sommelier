@@ -27,12 +27,6 @@ DEFINE_string  ignore_wakeup_source "none" "Wakeup source to ignore" i
 DEFINE_string  record_dmesg_dir "" "dir to record dmesgs for failed iterations"
 DEFINE_string  post_resume_command "" "Command to run after each resume"
 
-# Location of disable_dark_resume preference file.
-readonly DISABLE_DARK_RESUME=/var/lib/power_manager/disable_dark_resume
-
-# Location of the temporary preference file. Set by disable_dark_resume.
-MUTABLE_PREF_FILE=
-
 # Record the dmesg for the last iteration.
 # Accepts iteration number as an argument (to name the file dmesg_<iter_num>)
 record_dmesg_for_iteration() {
@@ -77,41 +71,8 @@ boolean_value() {
   fi
 }
 
-# Restarts powerd and blocks until it's re-registered its D-Bus name.
-restart_powerd() {
-  restart powerd
-  while ! dbus-send --system --print-reply --dest=org.freedesktop.DBus \
-      /org/freedesktop/DBus org.freedesktop.DBus.NameHasOwner \
-      string:org.chromium.PowerManager | grep -q true; do
-    sleep 0.1
-  done
-}
-
-disable_dark_resume() {
-  # We can only bind-mount over the DISABLE_DARK_RESUME file if it
-  # already exists. If it doesn't, we can just use it directly and clean
-  # it up later the same way.
-  if [ ! -e ${DISABLE_DARK_RESUME} ]; then
-    MUTABLE_PREF_FILE=${DISABLE_DARK_RESUME}
-  else
-    MUTABLE_PREF_FILE=$(mktemp /tmp/powerd_disable_dark_resume.XXXXXXXXXXXX)
-    mount --bind ${MUTABLE_PREF_FILE} ${DISABLE_DARK_RESUME}
-  fi
-  echo 1 > ${MUTABLE_PREF_FILE}
-  restart_powerd
-}
-
-restore_dark_resume_state() {
-  if [ ${MUTABLE_PREF_FILE} != ${DISABLE_DARK_RESUME} ]; then
-    umount ${DISABLE_DARK_RESUME}
-  fi
-  rm -f ${MUTABLE_PREF_FILE}
-  restart_powerd
-}
-
 dump_stats_and_exit() {
   echo "${preserved_pm_print_times}" > /sys/power/pm_print_times
-  restore_dark_resume_state
   start tlsdated
   echo ""
   echo "Finished ${cur} iterations."
@@ -209,7 +170,6 @@ else
 fi
 
 trap dump_stats_and_exit INT
-disable_dark_resume
 
 # Turn off network sync of time to prevent any spurious RTC wake events
 stop tlsdated
