@@ -151,7 +151,7 @@ void EapCredentials::PopulateSupplicantProperties(
                         std::string(password->GetRaw(), password->size()));
     }
   } else {
-    if (password_.size() > 0) {
+    if (!password_.empty()) {
       params->SetString(WPASupplicant::kNetworkPropertyEapCaPassword,
                         password_);
     }

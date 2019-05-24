@@ -1102,7 +1102,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     for (const auto& mccmnc : mccmnc_list_) {
       EXPECT_TRUE(mccmnc_set.find(mccmnc) != mccmnc_set.end());
     }
-    if (mccmnc_list_.size() > 0) {
+    if (!mccmnc_list_.empty()) {
       // It is not specified which entry will be chosen, but mccmnc() must be
       // non empty.
       EXPECT_FALSE(operator_info_->mccmnc().empty());
@@ -1147,7 +1147,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     for (const auto& sid : sid_list_) {
       EXPECT_TRUE(sid_set.find(sid) != sid_set.end());
     }
-    if (sid_list_.size() > 0) {
+    if (!sid_list_.empty()) {
       // It is not specified which entry will be chosen, but |sid()| must be
       // non-empty.
       EXPECT_FALSE(operator_info_->sid().empty());

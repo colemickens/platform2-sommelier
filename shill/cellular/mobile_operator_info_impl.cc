@@ -548,7 +548,7 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
 
   if (candidates_by_operator_code_.size() == 1) {
     candidate = candidates_by_operator_code_[0];
-    if (candidates_by_name_.size() > 0) {
+    if (!candidates_by_name_.empty()) {
       bool found_match = false;
       for (auto candidate_by_name : candidates_by_name_) {
         if (candidate_by_name == candidate) {
@@ -877,7 +877,7 @@ void MobileOperatorInfoImpl::HandleMCCMNCUpdate() {
 
   if (!user_mccmnc_.empty()) {
     mccmnc_ = user_mccmnc_;
-  } else if (mccmnc_list_.size() > 0) {
+  } else if (!mccmnc_list_.empty()) {
     mccmnc_ = mccmnc_list_[0];
   } else {
     mccmnc_.clear();
@@ -920,7 +920,7 @@ void MobileOperatorInfoImpl::HandleSIDUpdate() {
 
   if (!user_sid_.empty()) {
     sid_ = user_sid_;
-  } else if (sid_list_.size() > 0) {
+  } else if (!sid_list_.empty()) {
     sid_ = sid_list_[0];
   } else {
     sid_.clear();

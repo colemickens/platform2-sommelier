@@ -117,7 +117,7 @@ bool IcmpSession::IsPacketLossPercentageGreaterThan(
     return false;
   }
 
-  if (result.size() == 0) {
+  if (result.empty()) {
     return false;
   }
 

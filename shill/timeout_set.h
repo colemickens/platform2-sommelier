@@ -114,13 +114,13 @@ class TimeoutSet {
     std::vector<T> removed_elements;
     // Invalidate all elements that have timed out.
     base::TimeTicks now = TimeNow();
-    while (elements_.size() && elements_[0].deathtime <= now) {
+    while (!elements_.empty() && elements_[0].deathtime <= now) {
       removed_elements.push_back(std::move(elements_[0].element));
       std::pop_heap(elements_.begin(), elements_.end());
       elements_.pop_back();
     }
     // Post task for earliest subsequent timeout.
-    if (elements_.size()) {
+    if (!elements_.empty()) {
       int64_t shortest_lifetime =
         (elements_[0].deathtime - now).InMilliseconds();
       timeout_callback_.Reset(

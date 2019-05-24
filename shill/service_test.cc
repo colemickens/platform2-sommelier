@@ -1611,7 +1611,7 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
 }
 
 TEST_F(ServiceTest, Certification) {
-  EXPECT_FALSE(service_->remote_certification_.size());
+  EXPECT_TRUE(service_->remote_certification_.empty());
 
   ScopedMockLog log;
   EXPECT_CALL(log, Log(logging::LOG_WARNING, _,

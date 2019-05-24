@@ -420,7 +420,7 @@ Metrics::WiFiNetworkPhyMode WiFiEndpoint::DeterminePhyModeFromFrequency(
   if (properties.ContainsUint32s(WPASupplicant::kBSSPropertyRates)) {
     vector<uint32_t> rates =
         properties.GetUint32s(WPASupplicant::kBSSPropertyRates);
-    if (rates.size() > 0) {
+    if (!rates.empty()) {
       max_rate = rates[0];  // Rates are sorted in descending order
     }
   }

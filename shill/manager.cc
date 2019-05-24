@@ -709,7 +709,7 @@ bool Manager::DeviceManagementAllowed(const string& device_name) {
   if (base::ContainsValue(blacklisted_devices_, device_name)) {
     return false;
   }
-  if (!whitelisted_devices_.size()) {
+  if (whitelisted_devices_.empty()) {
     // If no whitelist is specified, all devices are considered whitelisted.
     return true;
   }
@@ -1041,13 +1041,12 @@ DeviceRefPtr Manager::GetEnabledDeviceByLinkName(
 }
 
 const ProfileRefPtr& Manager::ActiveProfile() const {
-  DCHECK_NE(profiles_.size(), 0U);
+  DCHECK(!profiles_.empty());
   return profiles_.back();
 }
 
 bool Manager::IsActiveProfile(const ProfileRefPtr& profile) const {
-  return (profiles_.size() > 0 &&
-          ActiveProfile().get() == profile.get());
+  return !profiles_.empty() && ActiveProfile().get() == profile.get();
 }
 
 bool Manager::MoveServiceToProfile(const ServiceRefPtr& to_move,

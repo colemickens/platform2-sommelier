@@ -28,7 +28,7 @@ bool Tethering::IsAndroidBSSID(const vector<uint8_t>& bssid) {
 
 // static
 bool Tethering::IsLocallyAdministeredBSSID(const vector<uint8_t>& bssid) {
-  return bssid.size() > 0 && (bssid[0] & kLocallyAdministratedMACBit);
+  return !bssid.empty() && (bssid[0] & kLocallyAdministratedMACBit);
 }
 
 // static

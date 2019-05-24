@@ -1227,7 +1227,7 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
     vector<string> numbers =
         properties.GetStrings(MM_MODEM_PROPERTY_OWNNUMBERS);
     string mdn;
-    if (numbers.size() > 0)
+    if (!numbers.empty())
       mdn = numbers[0];
     OnMdnChanged(mdn);
   }
