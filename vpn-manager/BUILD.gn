@@ -22,7 +22,6 @@ pkg_config("target_defaults") {
   ]
   defines = [
     "IPSEC_STARTER=\"/usr/libexec/ipsec/starter\"",
-    "IPSEC_WHACK=\"/usr/libexec/ipsec/whack\"",
     "IPSEC_UPDOWN=\"/usr/libexec/l2tpipsec_vpn/pluto_updown\"",
     "L2TPD=\"/usr/sbin/xl2tpd\"",
     "PKCS11_LIB=\"${libdir}/libchaps.so\"",
