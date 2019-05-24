@@ -29,6 +29,7 @@ if [ -e "${VPD_CACHE_FILE}" ]; then
     echo "${MAX_NITS}" >"${TEMP_FILE}"
     PREF_FILE="${PREFS_DIR}/${MAX_NITS_PREF}"
     mv "${TEMP_FILE}" "${PREF_FILE}"
+    [ -x "/sbin/restorecon" ] && restorecon "${PREF_FILE}"
     chown power:power "${PREF_FILE}"
     chmod 644 "${PREF_FILE}"
   fi
