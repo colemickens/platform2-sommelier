@@ -6,16 +6,27 @@
 #ifndef HARDWARE_VERIFIER_HW_VERIFICATION_SPEC_GETTER_IMPL_H_
 #define HARDWARE_VERIFIER_HW_VERIFICATION_SPEC_GETTER_IMPL_H_
 
+#include <memory>
+
 #include <base/files/file_path.h>
 
 #include "hardware_verifier/hw_verification_spec_getter.h"
 
 namespace hardware_verifier {
 
+// A wrapper to access the vboot system properties.
+class VbSystemPropertyGetter {
+ public:
+  virtual ~VbSystemPropertyGetter() = default;
+  virtual int GetCrosDebug() const;
+};
+
 // The actual implementation to the |HwVerificationSpecGetter|.
 class HwVerificationSpecGetterImpl : public HwVerificationSpecGetter {
  public:
   HwVerificationSpecGetterImpl();
+  explicit HwVerificationSpecGetterImpl(
+      std::unique_ptr<VbSystemPropertyGetter> vb_system_property_getter);
 
   base::Optional<HwVerificationSpec> GetDefault() const override;
   base::Optional<HwVerificationSpec> GetFromFile(
@@ -24,11 +35,8 @@ class HwVerificationSpecGetterImpl : public HwVerificationSpecGetter {
  private:
   friend class HwVerificationSpecGetterImplTest;
 
+  std::unique_ptr<VbSystemPropertyGetter> vb_system_property_getter_;
   base::FilePath root_;
-
-  // For unittest purpose, whether to check if |cros_debug| flag is 1 or not
-  // in |GetFromFile| method.
-  bool check_cros_debug_flag_;
 
   DISALLOW_COPY_AND_ASSIGN(HwVerificationSpecGetterImpl);
 };

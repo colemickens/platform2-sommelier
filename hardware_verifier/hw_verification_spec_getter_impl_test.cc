@@ -7,6 +7,7 @@
 #include <string>
 
 #include <google/protobuf/util/message_differencer.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
@@ -18,10 +19,22 @@ using google::protobuf::util::MessageDifferencer;
 
 namespace hardware_verifier {
 
+namespace {
+
+class MockVbSystemPropertyGetter : public VbSystemPropertyGetter {
+ public:
+  MOCK_CONST_METHOD0(GetCrosDebug, int());
+};
+
+}  // namespace
+
 class HwVerificationSpecGetterImplTest : public testing::Test {
  protected:
   void SetUp() {
-    vp_getter_ = std::make_unique<HwVerificationSpecGetterImpl>();
+    mock_vb_system_property_getter_ = new MockVbSystemPropertyGetter();
+    vp_getter_ = std::make_unique<HwVerificationSpecGetterImpl>(
+        std::unique_ptr<VbSystemPropertyGetter>(
+            mock_vb_system_property_getter_));
     vp_getter_->root_ = GetTestDataPath();
 
     auto comp_info = golden_expected_vp_.add_component_infos();
@@ -45,10 +58,12 @@ class HwVerificationSpecGetterImplTest : public testing::Test {
     vp_getter_->root_ = GetTestDataPath().Append(root_name);
   }
 
-  void SetCrosDebugFlag(bool value) {
-    vp_getter_->check_cros_debug_flag_ = value;
+  void SetCrosDebugFlag(int value) {
+    EXPECT_CALL(*mock_vb_system_property_getter_, GetCrosDebug())
+        .WillRepeatedly(testing::Return(value));
   }
 
+  MockVbSystemPropertyGetter* mock_vb_system_property_getter_;
   std::unique_ptr<HwVerificationSpecGetterImpl> vp_getter_;
   HwVerificationSpec golden_expected_vp_;
 };
@@ -70,13 +85,13 @@ TEST_F(HwVerificationSpecGetterImplTest, TestGetDefaultFail) {
 TEST_F(HwVerificationSpecGetterImplTest, TestGetFromFileCrosDebugOff) {
   const auto tmp_path = GetTestDataPath().Append("test_root1").Append("tmp");
 
-  // cros_debug=0 in unittest envronment.
+  SetCrosDebugFlag(0);
   EXPECT_FALSE(vp_getter_->GetFromFile(
       tmp_path.Append("hw_verification_spec1.prototxt")));
 }
 
 TEST_F(HwVerificationSpecGetterImplTest, TestGetFromFileNoCheckCrosDebug) {
-  SetCrosDebugFlag(false);
+  SetCrosDebugFlag(1);
 
   const auto tmp_path = GetTestDataPath().Append("test_root1").Append("tmp");
 

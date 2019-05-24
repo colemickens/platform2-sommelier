@@ -6,6 +6,7 @@
 #include "hardware_verifier/hw_verification_spec_getter_impl.h"
 
 #include <string>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -61,8 +62,18 @@ base::Optional<HwVerificationSpec> ReadOutHwVerificationSpecFromFile(
 
 }  // namespace
 
+int VbSystemPropertyGetter::GetCrosDebug() const {
+  return VbGetSystemPropertyInt("cros_debug");
+}
+
 HwVerificationSpecGetterImpl::HwVerificationSpecGetterImpl()
-    : root_("/"), check_cros_debug_flag_(true) {}
+    : HwVerificationSpecGetterImpl(std::make_unique<VbSystemPropertyGetter>()) {
+}
+
+HwVerificationSpecGetterImpl::HwVerificationSpecGetterImpl(
+    std::unique_ptr<VbSystemPropertyGetter> vb_system_property_getter)
+    : vb_system_property_getter_(std::move(vb_system_property_getter)),
+      root_("/") {}
 
 base::Optional<HwVerificationSpec> HwVerificationSpecGetterImpl::GetDefault()
     const {
@@ -72,7 +83,7 @@ base::Optional<HwVerificationSpec> HwVerificationSpecGetterImpl::GetDefault()
 
 base::Optional<HwVerificationSpec> HwVerificationSpecGetterImpl::GetFromFile(
     const base::FilePath& file_path) const {
-  if (check_cros_debug_flag_ && VbGetSystemPropertyInt("cros_debug") != 1) {
+  if (vb_system_property_getter_->GetCrosDebug() != 1) {
     LOG(ERROR) << "Arbitrary hardware verificaion spec is only allowed with "
                   "cros_debug=1";
     return base::nullopt;

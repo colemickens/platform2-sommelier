@@ -1,0 +1,11 @@
+is_compliant: false
+found_component_infos: {
+  component_category: battery
+  component_uuid: "batt_1"
+  qualification_status: QUALIFIED
+}
+found_component_infos: {
+  component_category: storage
+  component_uuid: "storage_B"
+  qualification_status: REJECTED
+}
