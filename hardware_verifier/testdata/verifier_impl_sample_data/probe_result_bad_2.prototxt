@@ -7,6 +7,6 @@ battery: {
 }
 storage: {
   values: {
-    type: "eMMC"
+    type: "MMC"
   }
 }

@@ -37,6 +37,18 @@ message ComponentInfo {
 message HwVerificationSpec {
   // A list of all known components and their qualification status.
   repeated ComponentInfo component_infos = 1;
+
+  message GenericComponentValueWhitelist {
+    // required
+    runtime_probe.ProbeRequest.SupportCategory component_category = 1;
+
+    // A list of field names that are allowed to be included in the report.
+    repeated string field_names = 2;
+  }
+
+  // Records the whitelist of the generic component values of each category.
+  repeated GenericComponentValueWhitelist generic_component_value_whitelists =
+      2;
 }
 
 message HwVerificationReport {
@@ -45,4 +57,16 @@ message HwVerificationReport {
   // Records the qualification status of the components that is also probed
   // by the hardware prober.
   repeated ComponentInfo found_component_infos = 2;
+
+  message GenericDeviceInfo {
+    // Records the generic component values of some specific types.  Note
+    // that because |HwVerificationReport| intents to only include the needed
+    // data, not all categories which |runtime_probe| supports are listed.
+    repeated runtime_probe.AudioCodec.Fields audio_codec = 1;
+    repeated runtime_probe.Battery.Fields battery = 2;
+    repeated runtime_probe.Storage.Fields storage = 3;
+  }
+
+  // Records the overall device matrics.
+  GenericDeviceInfo generic_device_info = 3;
 }

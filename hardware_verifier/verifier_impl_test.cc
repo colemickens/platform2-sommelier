@@ -41,15 +41,20 @@ class TestVerifierImpl : public testing::Test {
     vs_getter_.reset(new HwVerificationSpecGetterImpl(
         std::unique_ptr<VbSystemPropertyGetter>(
             new FakeVbSystemPropertyGetter())));
-  }
 
-  void ExpectHwVerificationReportEqual(const HwVerificationReport& lhs,
-                                       const HwVerificationReport& rhs) {
-    MessageDifferencer differencer;
-    // We don't care about the order in the list.
-    differencer.TreatAsSet(HwVerificationReport::descriptor()->FindFieldByName(
-        "found_component_infos"));
-    EXPECT_TRUE(differencer.Compare(lhs, rhs));
+    hw_verification_report_differencer_.TreatAsSet(
+        HwVerificationReport::descriptor()->FindFieldByName(
+            "found_component_infos"));
+    const auto* category_enum_desc =
+        runtime_probe::ProbeRequest_SupportCategory_descriptor();
+    for (int i = 0; i < category_enum_desc->value_count(); ++i) {
+      const auto* field_desc =
+          HwVerificationReport_GenericDeviceInfo::descriptor()->FindFieldByName(
+              category_enum_desc->value(i)->name());
+      if (field_desc) {
+        hw_verification_report_differencer_.TreatAsSet(field_desc);
+      }
+    }
   }
 
   HwVerificationReport LoadHwVerificationReport(
@@ -88,8 +93,8 @@ class TestVerifierImpl : public testing::Test {
     const auto& actual_hw_verification_report =
         verifier.Verify(probe_result, hw_verification_spec);
     EXPECT_TRUE(actual_hw_verification_report);
-    ExpectHwVerificationReportEqual(actual_hw_verification_report.value(),
-                                    expect_hw_verification_report);
+    EXPECT_TRUE(hw_verification_report_differencer_.Compare(
+        actual_hw_verification_report.value(), expect_hw_verification_report));
   }
 
   void TestVerifyFailWithSampleData(const std::string& probe_result_sample_name,
@@ -110,6 +115,7 @@ class TestVerifierImpl : public testing::Test {
  private:
   std::unique_ptr<ProbeResultGetter> pr_getter_;
   std::unique_ptr<HwVerificationSpecGetter> vs_getter_;
+  MessageDifferencer hw_verification_report_differencer_;
 };
 
 TEST_F(TestVerifierImpl, TestVerifySuccWithSample1) {
@@ -127,6 +133,11 @@ TEST_F(TestVerifierImpl, TestVerifySuccWithSample3) {
                                "expect_hw_verification_report_3");
 }
 
+TEST_F(TestVerifierImpl, TestVerifySuccWithSample4) {
+  TestVerifySuccWithSampleData("probe_result_4", "hw_verification_spec_1",
+                               "expect_hw_verification_report_4");
+}
+
 TEST_F(TestVerifierImpl, TestVerifyFailWithSample1) {
   TestVerifyFailWithSampleData("probe_result_bad_1", "hw_verification_spec_1");
 }
@@ -137,6 +148,10 @@ TEST_F(TestVerifierImpl, TestVerifyFailWithSample2) {
 
 TEST_F(TestVerifierImpl, TestVerifyFailWithSample3) {
   TestVerifyFailWithSampleData("probe_result_1", "hw_verification_spec_bad_1");
+}
+
+TEST_F(TestVerifierImpl, TestVerifyFailWithSample4) {
+  TestVerifyFailWithSampleData("probe_result_1", "hw_verification_spec_bad_2");
 }
 
 }  // namespace hardware_verifier

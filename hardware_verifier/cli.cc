@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <base/optional.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/text_format.h>
 #include <google/protobuf/util/json_util.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
@@ -22,7 +23,42 @@
 
 namespace hardware_verifier {
 
-// TODO(yhong): Link to the correct class once they are implemented.
+namespace {
+
+bool OutputInTextFormat(std::ostream* output_stream,
+                        HwVerificationReport hw_verification_report) {
+  const auto generic_device_info = hw_verification_report.generic_device_info();
+  hw_verification_report.clear_generic_device_info();
+
+  // Output the AVL qualification status in JSON format.
+  auto json_print_opts = google::protobuf::util::JsonPrintOptions();
+  json_print_opts.add_whitespace = true;
+  json_print_opts.always_print_primitive_fields = true;
+  std::string json_output_data;
+  const auto convert_status = google::protobuf::util::MessageToJsonString(
+      hw_verification_report, &json_output_data, json_print_opts);
+  if (!convert_status.ok()) {
+    LOG(ERROR) << "Failed to output the qualification report in JSON: "
+               << convert_status.ToString() << ".";
+    return false;
+  }
+  *output_stream << "[Component Qualification Status]\n" << json_output_data;
+
+  // Output the generic device info in prototxt format.
+  *output_stream << "\n[Generic Device Info]\n";
+  google::protobuf::io::OstreamOutputStream ostream_output_stream{
+      output_stream};
+  if (!google::protobuf::TextFormat::Print(generic_device_info,
+                                           &ostream_output_stream)) {
+    LOG(ERROR)
+        << "Failed to output the generic device info in prototxt format.";
+    return false;
+  }
+  return true;
+}
+
+}  // namespace
+
 CLI::CLI()
     : pr_getter_(std::make_unique<ProbeResultGetterImpl>()),
       vp_getter_(std::make_unique<HwVerificationSpecGetterImpl>()),
@@ -73,20 +109,10 @@ CLIVerificationResult CLI::Run(const std::string& probe_result_file,
         return CLIVerificationResult::kUnknownError;
       }
       break;
-    case CLIOutputFormat::kJSON:
-      auto json_print_opts = google::protobuf::util::JsonPrintOptions();
-      json_print_opts.add_whitespace = true;
-      json_print_opts.always_print_primitive_fields = true;
-      std::string output_data;
-      const auto convert_status = google::protobuf::util::MessageToJsonString(
-          hw_verification_report, &output_data, json_print_opts);
-      if (!convert_status.ok()) {
-        LOG(ERROR) << "Failed to transform the report into JSON format: "
-                   << convert_status.ToString() << ".";
+    case CLIOutputFormat::kText:
+      if (!OutputInTextFormat(output_stream_, hw_verification_report)) {
         return CLIVerificationResult::kUnknownError;
       }
-      *output_stream_ << output_data;
-      break;
   }
 
   return (hw_verification_report.is_compliant() ? CLIVerificationResult::kPass

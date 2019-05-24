@@ -2,6 +2,6 @@
 storage: {
   name: "storage_C"
   values: {
-    type: "eMMC"
+    type: "MMC"
   }
 }

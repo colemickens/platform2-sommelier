@@ -15,4 +15,15 @@ found_component_infos: {
   qualification_status: QUALIFIED
 }
 generic_device_info: {
+  battery: {
+    manufacturer: "generic_1_manufacturer"
+    model_name: "generic_1_model_name"
+  }
+  battery: {
+    manufacturer: "generic_2_manufacturer"
+    model_name: "generic_2_model_name"
+  }
+  storage: {
+    type: "MMC"
+  }
 }

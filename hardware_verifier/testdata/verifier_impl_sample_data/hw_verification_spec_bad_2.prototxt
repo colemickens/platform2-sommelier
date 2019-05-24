@@ -1,5 +1,4 @@
-# A valid hardware verification spec.  This sample is shared between many
-# test cases.
+# This spec contains duplicated whitelist tables.
 component_infos: {
   component_category: battery
   component_uuid: "batt_1"
@@ -32,9 +31,12 @@ component_infos: {
 }
 generic_component_value_whitelists {
   component_category: battery
-  # Field |techonlogy| is not allowed.
+  # Field |path| is not allowed.
   field_names: "manufacturer"
   field_names: "model_name"
+}
+generic_component_value_whitelists {
+  component_category: battery
 }
 generic_component_value_whitelists {
   component_category: storage

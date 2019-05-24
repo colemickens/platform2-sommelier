@@ -4,3 +4,5 @@ found_component_infos: {
   component_uuid: "storage_C"
   qualification_status: UNQUALIFIED
 }
+generic_device_info: {
+}

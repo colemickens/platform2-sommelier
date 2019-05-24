@@ -9,3 +9,5 @@ found_component_infos: {
   component_uuid: "storage_B"
   qualification_status: REJECTED
 }
+generic_device_info: {
+}

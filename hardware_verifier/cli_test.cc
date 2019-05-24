@@ -102,7 +102,7 @@ TEST_F(CLITest, TestOutput) {
 
   // For human readable format, only check if there's something printed.
   *output_stream_ = std::ostringstream();
-  EXPECT_EQ(cli_->Run("", "", CLIOutputFormat::kJSON),
+  EXPECT_EQ(cli_->Run("", "", CLIOutputFormat::kText),
             CLIVerificationResult::kPass);
   EXPECT_FALSE(output_stream_->str().empty());
 }
