@@ -15,6 +15,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
+#include "power_manager/powerd/policy/shutdown_from_suspend_interface.h"
 #include "power_manager/powerd/policy/suspend_delay_controller.h"
 #include "power_manager/powerd/system/dark_resume_interface.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
@@ -52,13 +53,16 @@ Suspender::Suspender()
 
 Suspender::~Suspender() = default;
 
-void Suspender::Init(Delegate* delegate,
-                     system::DBusWrapperInterface* dbus_wrapper,
-                     system::DarkResumeInterface* dark_resume,
-                     PrefsInterface* prefs) {
+void Suspender::Init(
+    Delegate* delegate,
+    system::DBusWrapperInterface* dbus_wrapper,
+    system::DarkResumeInterface* dark_resume,
+    policy::ShutdownFromSuspendInterface* shutdown_from_suspend,
+    PrefsInterface* prefs) {
   delegate_ = delegate;
   dbus_wrapper_ = dbus_wrapper;
   dark_resume_ = dark_resume;
+  shutdown_from_suspend_ = shutdown_from_suspend;
 
   const int initial_id = delegate_->GetInitialSuspendId();
   suspend_request_id_ = initial_id - 1;
@@ -487,6 +491,7 @@ void Suspender::FinishRequest(bool success) {
   resuspend_timer_.Stop();
   suspend_delay_controller_->FinishSuspend(suspend_request_id_);
   dark_suspend_delay_controller_->FinishSuspend(dark_suspend_id_);
+  shutdown_from_suspend_->HandleFullResume();
   EmitSuspendDoneSignal(suspend_request_id_, suspend_duration);
   delegate_->SetSuspendAnnounced(false);
   dark_resume_->ExitDarkResume();
@@ -504,9 +509,21 @@ void Suspender::FinishRequest(bool success) {
 }
 
 Suspender::State Suspender::Suspend() {
-  if (suspend_duration_ != base::TimeDelta()) {
-    LOG(INFO) << "Suspending for " << suspend_duration_.InSeconds()
-              << " seconds";
+  policy::ShutdownFromSuspendInterface::Action action =
+      shutdown_from_suspend_->PrepareForSuspendAttempt();
+
+  switch (action) {
+    case policy::ShutdownFromSuspendInterface::Action::SHUT_DOWN:
+      LOG(INFO) << "Shutting down from suspend";
+      // Don't call FinishRequest(); we want the backlight to stay off.
+      delegate_->ShutDownFromSuspend();
+      return State::SHUTTING_DOWN;
+    case policy::ShutdownFromSuspendInterface::Action::SUSPEND:
+      if (suspend_duration_ != base::TimeDelta()) {
+        LOG(INFO) << "Suspending for " << suspend_duration_.InSeconds()
+                  << " seconds";
+      }
+      break;
   }
 
   // Note: If this log message is changed, the power_AudioDetector test
@@ -566,6 +583,8 @@ Suspender::State Suspender::HandleDarkResume(Delegate::SuspendResult result) {
     initial_num_attempts_ = current_num_attempts_;
 
   dark_suspend_id_++;
+
+  shutdown_from_suspend_->HandleDarkResume();
 
   if (result == Delegate::SuspendResult::SUCCESS) {
     // This is the start of a new dark resume wake.

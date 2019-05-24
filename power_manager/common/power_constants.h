@@ -157,9 +157,9 @@ extern const char kTurnOffScreenTimeoutMsPref[];
 // If true, disables dark resume even on systems where it is available.
 extern const char kDisableDarkResumePref[];
 
-// Newline-separated suspend durations to use for dark resume at different
-// battery levels, with each line taking the form "<battery-level> <seconds>".
-extern const char kDarkResumeSuspendDurationsPref[];
+// Seconds in suspend without full resume after which the device should shutdown
+// proactively. Should be a positive integer for the feature to be enabled.
+extern const char kShutdownFromSuspendSecPref[];
 
 // sysfs device directories with power/dark_resume_active and
 // power/dark_resume_source files, respectively, that are used to control
@@ -333,8 +333,9 @@ enum class ShutdownReason {
   LOW_BATTERY = 2,
   // Multiple suspend attempts failed.
   SUSPEND_FAILED = 3,
-  // Battery level was below threshold during dark resume from suspend.
-  DARK_RESUME = 4,
+  // Device spent |kShutdownFromSuspendAfterSecPref| in suspend without full
+  // resume.
+  SHUTDOWN_FROM_SUSPEND = 4,
   // System is being rebooted to apply an update.
   SYSTEM_UPDATE = 5,
   // Unclassified external request sent to powerd by another process.

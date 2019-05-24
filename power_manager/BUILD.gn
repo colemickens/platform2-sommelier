@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//common-mk/pkg_config.gni")
 import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
@@ -156,6 +156,7 @@ static_library("libpolicy") {
     "powerd/policy/internal_backlight_controller.cc",
     "powerd/policy/keyboard_backlight_controller.cc",
     "powerd/policy/sar_handler.cc",
+    "powerd/policy/shutdown_from_suspend.cc",
     "powerd/policy/state_controller.cc",
     "powerd/policy/suspend_delay_controller.cc",
     "powerd/policy/suspender.cc",
@@ -427,6 +428,7 @@ if (use.test) {
       "powerd/policy/internal_backlight_controller_test.cc",
       "powerd/policy/keyboard_backlight_controller_test.cc",
       "powerd/policy/sar_handler_test.cc",
+      "powerd/policy/shutdown_from_suspend_test.cc",
       "powerd/policy/state_controller_test.cc",
       "powerd/policy/suspend_delay_controller_test.cc",
       "powerd/policy/suspender_test.cc",

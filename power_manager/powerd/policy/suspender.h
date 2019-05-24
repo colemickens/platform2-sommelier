@@ -38,6 +38,7 @@ class InputWatcher;
 
 namespace policy {
 
+class ShutdownFromSuspendInterface;
 class SuspendDelayController;
 
 // Suspender is responsible for suspending the system.
@@ -158,9 +159,9 @@ class Suspender : public SuspendDelayObserver {
     // Shuts the system down in response to repeated failed suspend attempts.
     virtual void ShutDownForFailedSuspend() = 0;
 
-    // Shuts the system down in response to the DarkResumePolicy determining the
-    // system should shut down.
-    virtual void ShutDownForDarkResume() = 0;
+    // Shuts the system down in response to the ShutdownFromSuspend determining
+    // the system should shut down.
+    virtual void ShutDownFromSuspend() = 0;
   };
 
   // Helper class providing functionality needed by tests.
@@ -201,6 +202,7 @@ class Suspender : public SuspendDelayObserver {
   void Init(Delegate* delegate,
             system::DBusWrapperInterface* dbus_wrapper,
             system::DarkResumeInterface* dark_resume,
+            policy::ShutdownFromSuspendInterface* shutdown_from_suspend,
             PrefsInterface* prefs);
 
   // Starts the suspend process. Note that suspending happens
@@ -348,6 +350,8 @@ class Suspender : public SuspendDelayObserver {
   Delegate* delegate_ = nullptr;                          // weak
   system::DBusWrapperInterface* dbus_wrapper_ = nullptr;  // weak
   system::DarkResumeInterface* dark_resume_ = nullptr;    // weak
+  policy::ShutdownFromSuspendInterface* shutdown_from_suspend_ =
+      nullptr;  // weak
 
   std::unique_ptr<Clock> clock_;
   std::unique_ptr<SuspendDelayController> suspend_delay_controller_;

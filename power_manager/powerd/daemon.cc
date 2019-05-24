@@ -37,6 +37,7 @@
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/input_device_controller.h"
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
+#include "power_manager/powerd/policy/shutdown_from_suspend.h"
 #include "power_manager/powerd/policy/state_controller.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper_interface.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
@@ -255,6 +256,7 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       state_controller_(new policy::StateController),
       input_event_handler_(new policy::InputEventHandler),
       input_device_controller_(new policy::InputDeviceController),
+      shutdown_from_suspend_(std::make_unique<policy::ShutdownFromSuspend>()),
       suspender_(new policy::Suspender),
       wifi_controller_(std::make_unique<policy::WifiController>()),
       cellular_controller_(std::make_unique<policy::CellularController>()),
@@ -383,7 +385,11 @@ void Daemon::Init() {
 
   dark_resume_ =
       delegate_->CreateDarkResume(prefs_.get(), input_watcher_.get());
-  suspender_->Init(this, dbus_wrapper_.get(), dark_resume_.get(), prefs_.get());
+
+  shutdown_from_suspend_->Init(prefs_.get(), power_supply_.get());
+
+  suspender_->Init(this, dbus_wrapper_.get(), dark_resume_.get(),
+                   shutdown_from_suspend_.get(), prefs_.get());
 
   input_event_handler_->Init(input_watcher_.get(), this, display_watcher_.get(),
                              dbus_wrapper_.get(), prefs_.get());
@@ -712,8 +718,8 @@ void Daemon::ShutDownForFailedSuspend() {
   ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::SUSPEND_FAILED);
 }
 
-void Daemon::ShutDownForDarkResume() {
-  ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::DARK_RESUME);
+void Daemon::ShutDownFromSuspend() {
+  ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::SHUTDOWN_FROM_SUSPEND);
 }
 
 void Daemon::SetWifiTransmitPower(RadioTransmitPower power) {

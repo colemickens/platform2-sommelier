@@ -16,6 +16,7 @@
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/powerd/policy/shutdown_from_suspend_stub.h"
 #include "power_manager/powerd/system/dark_resume_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
@@ -138,7 +139,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
       shutdown_callback_.Run();
   }
 
-  void ShutDownForDarkResume() override {
+  void ShutDownFromSuspend() override {
     AppendAction(kShutDown);
     if (!shutdown_callback_.is_null())
       shutdown_callback_.Run();
@@ -204,7 +205,8 @@ class SuspenderTest : public testing::Test {
     test_api_.clock()->set_current_boot_time_for_testing(
         base::TimeTicks() + base::TimeDelta::FromHours(1));
     delegate_.set_clock(test_api_.clock());
-    suspender_.Init(&delegate_, &dbus_wrapper_, &dark_resume_, &prefs_);
+    suspender_.Init(&delegate_, &dbus_wrapper_, &dark_resume_,
+                    &shutdown_from_suspend_, &prefs_);
   }
 
   // Returns the ID from a SuspendImminent signal at |position|.
@@ -263,6 +265,7 @@ class SuspenderTest : public testing::Test {
   TestDelegate delegate_;
   system::DBusWrapperStub dbus_wrapper_;
   system::DarkResumeStub dark_resume_;
+  policy::ShutdownFromSuspendStub shutdown_from_suspend_;
   Suspender suspender_;
   Suspender::TestApi test_api_;
 
@@ -685,7 +688,8 @@ TEST_F(SuspenderTest, EventReceivedWhileHandlingEvent) {
       base::Bind(&Suspender::HandleShutdown, base::Unretained(&suspender_)));
   suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta());
   EXPECT_EQ(kPrepare, delegate_.GetActions());
-  dark_resume_.set_action(system::DarkResumeInterface::Action::SHUT_DOWN);
+  shutdown_from_suspend_.set_action(
+      policy::ShutdownFromSuspendInterface::Action::SHUT_DOWN);
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kShutDown, delegate_.GetActions());
 }
@@ -713,7 +717,8 @@ TEST_F(SuspenderTest, DarkResume) {
   const int kSuspendId = test_api_.suspend_id();
   EXPECT_EQ(kSuspendId, GetSuspendImminentId(0));
 
-  dark_resume_.set_action(system::DarkResumeInterface::Action::SUSPEND);
+  shutdown_from_suspend_.set_action(
+      policy::ShutdownFromSuspendInterface::Action::SUSPEND);
   dark_resume_.set_in_dark_resume(true);
   dbus_wrapper_.ClearSentSignals();
   AnnounceReadyForSuspend(kSuspendId);
@@ -737,7 +742,8 @@ TEST_F(SuspenderTest, DarkResumeShutDown) {
   Init();
   suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta());
   EXPECT_EQ(kPrepare, delegate_.GetActions());
-  dark_resume_.set_action(system::DarkResumeInterface::Action::SHUT_DOWN);
+  shutdown_from_suspend_.set_action(
+      policy::ShutdownFromSuspendInterface::Action::SHUT_DOWN);
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kShutDown, delegate_.GetActions());
 }
@@ -752,7 +758,8 @@ TEST_F(SuspenderTest, DarkResumeRetry) {
 
   const uint64_t kDarkWakeupCount = 71;
   delegate_.set_wakeup_count(kDarkWakeupCount);
-  dark_resume_.set_action(system::DarkResumeInterface::Action::SUSPEND);
+  shutdown_from_suspend_.set_action(
+      policy::ShutdownFromSuspendInterface::Action::SUSPEND);
   dark_resume_.set_in_dark_resume(true);
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kSuspend, delegate_.GetActions());
@@ -804,7 +811,8 @@ TEST_F(SuspenderTest, DarkResumeRetry) {
 TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
   Init();
 
-  dark_resume_.set_action(system::DarkResumeInterface::Action::SUSPEND);
+  shutdown_from_suspend_.set_action(
+      policy::ShutdownFromSuspendInterface::Action::SUSPEND);
 
   // Simulate being in dark resume after each suspend attempt.
   delegate_.set_suspend_callback(base::Bind(
@@ -893,7 +901,8 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
 TEST_F(SuspenderTest, RerunDarkSuspendDelaysForCanceledSuspend) {
   Init();
 
-  dark_resume_.set_action(system::DarkResumeInterface::Action::SUSPEND);
+  shutdown_from_suspend_.set_action(
+      policy::ShutdownFromSuspendInterface::Action::SUSPEND);
 
   // Simulate being in dark resume after each suspend attempt.
   delegate_.set_suspend_callback(base::Bind(
@@ -1050,7 +1059,8 @@ TEST_F(SuspenderTest, ReportInitialSuspendAttempts) {
   EXPECT_EQ(kPrepare, delegate_.GetActions());
 
   // Suspend successfully once and do a dark resume.
-  dark_resume_.set_action(system::DarkResumeInterface::Action::SUSPEND);
+  shutdown_from_suspend_.set_action(
+      policy::ShutdownFromSuspendInterface::Action::SUSPEND);
   dark_resume_.set_in_dark_resume(true);
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kSuspend, delegate_.GetActions());

@@ -52,6 +52,7 @@ class BacklightController;
 class CellularController;
 class InputDeviceController;
 class SarHandler;
+class ShutdownFromSuspend;
 class StateController;
 class Suspender;
 class WifiController;
@@ -141,7 +142,7 @@ class Daemon : public policy::InputEventHandler::Delegate,
           dark_resume_wake_durations,
       base::TimeDelta suspend_duration) override;
   void ShutDownForFailedSuspend() override;
-  void ShutDownForDarkResume() override;
+  void ShutDownFromSuspend() override;
 
   // Overridden from policy::WifiController::Delegate:
   void SetWifiTransmitPower(RadioTransmitPower power) override;
@@ -288,6 +289,7 @@ class Daemon : public policy::InputEventHandler::Delegate,
   std::unique_ptr<system::SarWatcherInterface> sar_watcher_;
   std::unique_ptr<policy::SarHandler> sar_handler_;
   std::unique_ptr<system::DarkResumeInterface> dark_resume_;
+  std::unique_ptr<policy::ShutdownFromSuspend> shutdown_from_suspend_;
   std::unique_ptr<policy::Suspender> suspender_;
   std::unique_ptr<policy::WifiController> wifi_controller_;
   std::unique_ptr<policy::CellularController> cellular_controller_;

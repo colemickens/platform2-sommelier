@@ -65,7 +65,7 @@ const char kUsbMinAcWattsPref[] = "usb_min_ac_watts";
 const char kChargingPortsPref[] = "charging_ports";
 const char kTurnOffScreenTimeoutMsPref[] = "turn_off_screen_timeout_ms";
 const char kDisableDarkResumePref[] = "disable_dark_resume";
-const char kDarkResumeSuspendDurationsPref[] = "dark_resume_suspend_durations";
+const char kShutdownFromSuspendSecPref[] = "shutdown_from_suspend_sec";
 const char kDarkResumeDevicesPref[] = "dark_resume_devices";
 const char kDarkResumeSourcesPref[] = "dark_resume_sources";
 const char kIgnoreExternalPolicyPref[] = "ignore_external_policy";
@@ -208,8 +208,8 @@ std::string ShutdownReasonToString(ShutdownReason reason) {
       return "low-battery";
     case ShutdownReason::SUSPEND_FAILED:
       return "suspend-failed";
-    case ShutdownReason::DARK_RESUME:
-      return "dark-resume";
+    case ShutdownReason::SHUTDOWN_FROM_SUSPEND:
+      return "shutdown-from-suspend";
     case ShutdownReason::SYSTEM_UPDATE:
       return "system-update";
     case ShutdownReason::OTHER_REQUEST_TO_POWERD:
