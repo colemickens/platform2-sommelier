@@ -26,17 +26,21 @@ class FakeKrb5Interface : public Krb5Interface {
   ~FakeKrb5Interface() override;
 
   // Krb5Interface:
+  // Returns ERROR_BAD_PASSWORD if |password| is empty. Otherwise, returns
+  // |acquire_tgt_error_| and writes a file at |krb5cc_path|.
   ErrorType AcquireTgt(const std::string& principal_name,
                        const std::string& password,
                        const base::FilePath& krb5cc_path,
                        const base::FilePath& krb5conf_path) override;
 
   // Krb5Interface:
+  // Returns |renew_tgt_error_|.
   ErrorType RenewTgt(const std::string& principal_name,
                      const base::FilePath& krb5cc_path,
                      const base::FilePath& krb5conf_path) override;
 
   // Krb5Interface:
+  // Returns |get_tgt_status_error_|.
   ErrorType GetTgtStatus(const base::FilePath& krb5cc_path,
                          TgtStatus* status) override;
 

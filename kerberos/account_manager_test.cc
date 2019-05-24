@@ -44,9 +44,11 @@ class AccountManagerTest : public ::testing::Test {
     // Create temp directory for files written during tests.
     CHECK(storage_dir_.CreateUniqueTempDir());
     accounts_path_ = storage_dir_.GetPath().Append("accounts");
-    const std::string hash = AccountManager::HashPrincipalForTesting(kUser);
-    krb5cc_path_ = storage_dir_.GetPath().Append(hash + "_krb5cc");
-    krb5conf_path_ = storage_dir_.GetPath().Append(hash + "_krb5.conf");
+    const base::FilePath account_dir = storage_dir_.GetPath().Append(
+        AccountManager::GetSafeFilenameForTesting(kUser));
+    krb5cc_path_ = account_dir.Append("krb5cc");
+    krb5conf_path_ = account_dir.Append("krb5.conf");
+    password_path_ = account_dir.Append("password");
 
     // Create the manager with a fake krb5 interface.
     auto krb5 = std::make_unique<FakeKrb5Interface>();
@@ -104,6 +106,7 @@ class AccountManagerTest : public ::testing::Test {
   base::FilePath accounts_path_;
   base::FilePath krb5conf_path_;
   base::FilePath krb5cc_path_;
+  base::FilePath password_path_;
 
   AccountManager::KerberosFilesChangedCallback kerberos_files_changed_;
   std::map<std::string, int> kerberos_files_changed_count_;
@@ -133,7 +136,8 @@ TEST_F(AccountManagerTest, AddDuplicateAccountFail) {
 TEST_F(AccountManagerTest, ManagedOverridesUnmanaged) {
   ignore_result(manager_->AddAccount(kUser, false /* is_managed */));
 
-  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword));
+  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword,
+                                             false /* remember_password */));
   EXPECT_TRUE(base::PathExists(krb5cc_path_));
 
   // Overwriting with a managed account should wipe existing files and make the
@@ -189,7 +193,8 @@ TEST_F(AccountManagerTest, RemoveAccountTriggersKFCIfCCExists) {
 TEST_F(AccountManagerTest, RemoveAccountDoesNotTriggerKFCIfCCDoesNotExist) {
   ignore_result(manager_->AddAccount(kUser, false /* is_managed */));
 
-  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword));
+  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword,
+                                             false /* remember_password */));
   EXPECT_EQ(1, kerberos_files_changed_count_[kUser]);
   EXPECT_EQ(ERROR_NONE, manager_->RemoveAccount(kUser));
   EXPECT_EQ(2, kerberos_files_changed_count_[kUser]);
@@ -220,7 +225,8 @@ TEST_F(AccountManagerTest, ClearAccountRemovesKerberosFiles) {
   ignore_result(manager_->AddAccount(kUser, false /* is_managed */));
 
   EXPECT_EQ(ERROR_NONE, manager_->SetConfig(kUser, kKrb5Conf));
-  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword));
+  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword,
+                                             false /* remember_password */));
   EXPECT_TRUE(base::PathExists(krb5conf_path_));
   EXPECT_TRUE(base::PathExists(krb5cc_path_));
   EXPECT_EQ(ERROR_NONE, manager_->ClearAccounts());
@@ -232,7 +238,8 @@ TEST_F(AccountManagerTest, ClearAccountRemovesKerberosFiles) {
 TEST_F(AccountManagerTest, ClearAccountTriggersKFCIfCCExists) {
   ignore_result(manager_->AddAccount(kUser, true /* is_managed */));
 
-  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword));
+  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword,
+                                             false /* remember_password */));
   EXPECT_EQ(1, kerberos_files_changed_count_[kUser]);
   EXPECT_EQ(ERROR_NONE, manager_->ClearAccounts());
   EXPECT_EQ(2, kerberos_files_changed_count_[kUser]);
@@ -261,7 +268,8 @@ TEST_F(AccountManagerTest, SetConfigSuccess) {
 TEST_F(AccountManagerTest, SetConfigTriggersKFCIfCCExists) {
   ignore_result(manager_->AddAccount(kUser, true /* is_managed */));
 
-  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword));
+  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword,
+                                             false /* remember_password */));
   EXPECT_EQ(1, kerberos_files_changed_count_[kUser]);
   EXPECT_EQ(ERROR_NONE, manager_->SetConfig(kUser, kKrb5Conf));
   EXPECT_EQ(2, kerberos_files_changed_count_[kUser]);
@@ -290,7 +298,8 @@ TEST_F(AccountManagerTest, RemoveAccountRemovesConfig) {
 TEST_F(AccountManagerTest, AcquireTgtSuccess) {
   ignore_result(manager_->AddAccount(kUser, true /* is_managed */));
 
-  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword));
+  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword,
+                                             false /* remember_password */));
   EXPECT_TRUE(base::PathExists(krb5cc_path_));
 }
 
@@ -299,7 +308,8 @@ TEST_F(AccountManagerTest, AcquireTgtTriggersKFCOnSuccess) {
   ignore_result(manager_->AddAccount(kUser, true /* is_managed */));
 
   EXPECT_EQ(0, kerberos_files_changed_count_[kUser]);
-  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword));
+  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword,
+                                             false /* remember_password */));
   EXPECT_EQ(1, kerberos_files_changed_count_[kUser]);
 }
 
@@ -308,25 +318,81 @@ TEST_F(AccountManagerTest, AcquireTgtDoesNotTriggerKFCOnFailure) {
   ignore_result(manager_->AddAccount(kUser, true /* is_managed */));
 
   krb5_->set_acquire_tgt_error(ERROR_UNKNOWN);
-  EXPECT_EQ(ERROR_UNKNOWN, manager_->AcquireTgt(kUser, kPassword));
+  EXPECT_EQ(ERROR_UNKNOWN, manager_->AcquireTgt(kUser, kPassword,
+                                                false /* remember_password */));
   EXPECT_EQ(0, kerberos_files_changed_count_[kUser]);
+}
+
+// AcquireTgt() saves password to disk if |remember_password| is true and
+// removes the file again if |remember_password| is false.
+TEST_F(AccountManagerTest, AcquireTgtRemembersPasswordsIfWanted) {
+  ignore_result(manager_->AddAccount(kUser, true /* is_managed */));
+
+  EXPECT_FALSE(base::PathExists(password_path_));
+  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword,
+                                             true /* remember_password */));
+  EXPECT_TRUE(base::PathExists(password_path_));
+
+  EXPECT_EQ(ERROR_NONE, manager_->AcquireTgt(kUser, kPassword,
+                                             false /* remember_password */));
+  EXPECT_FALSE(base::PathExists(password_path_));
+}
+
+// AcquireTgt() uses saved password if none is given, no matter if it should be
+// remembered again or not.
+TEST_F(AccountManagerTest, AcquireTgtLoadsRememberedPassword) {
+  ignore_result(manager_->AddAccount(kUser, true /* is_managed */));
+  ignore_result(
+      manager_->AcquireTgt(kUser, kPassword, true /* remember_password */));
+
+  // This should load stored password and keep it.
+  EXPECT_EQ(ERROR_NONE,
+            manager_->AcquireTgt(kUser, std::string() /* password */,
+                                 true /* remember_password */));
+  EXPECT_TRUE(base::PathExists(password_path_));
+
+  // This should load stored password, but erase it afterwards.
+  EXPECT_EQ(ERROR_NONE,
+            manager_->AcquireTgt(kUser, std::string() /* password */,
+                                 false /* remember_password */));
+  EXPECT_FALSE(base::PathExists(password_path_));
+
+  // Check that the fake krb5 interface returns an error for a missing password.
+  // This verifies that the above AcquireTgt() call actually loaded the
+  // password from disk.
+  EXPECT_EQ(ERROR_BAD_PASSWORD,
+            manager_->AcquireTgt(kUser, std::string() /* password */,
+                                 false /* remember_password */));
 }
 
 // RemoveAccount() removes the credential cache file.
 TEST_F(AccountManagerTest, RemoveAccountRemovesCC) {
   ignore_result(manager_->AddAccount(kUser, true /* is_managed */));
-  ignore_result(manager_->AcquireTgt(kUser, kPassword));
+  ignore_result(
+      manager_->AcquireTgt(kUser, kPassword, false /* remember_password */));
 
   EXPECT_TRUE(base::PathExists(krb5cc_path_));
   EXPECT_EQ(ERROR_NONE, manager_->RemoveAccount(kUser));
   EXPECT_FALSE(base::PathExists(krb5cc_path_));
 }
 
+// RemoveAccount() removes saved passwords.
+TEST_F(AccountManagerTest, RemoveAccountRemovesPassword) {
+  ignore_result(manager_->AddAccount(kUser, true /* is_managed */));
+  ignore_result(
+      manager_->AcquireTgt(kUser, kPassword, true /* remember_password */));
+
+  EXPECT_TRUE(base::PathExists(password_path_));
+  EXPECT_EQ(ERROR_NONE, manager_->RemoveAccount(kUser));
+  EXPECT_FALSE(base::PathExists(password_path_));
+}
+
 // ListAccounts() succeeds and contains the expected data.
 TEST_F(AccountManagerTest, ListAccountsSuccess) {
   ignore_result(manager_->AddAccount(kUser, true /* is_managed */));
   ignore_result(manager_->SetConfig(kUser, kKrb5Conf));
-  ignore_result(manager_->AcquireTgt(kUser, kPassword));
+  ignore_result(
+      manager_->AcquireTgt(kUser, kPassword, true /* remember_password */));
   EXPECT_TRUE(base::PathExists(krb5cc_path_));
 
   // Set a fake tgt status.
@@ -346,13 +412,15 @@ TEST_F(AccountManagerTest, ListAccountsSuccess) {
   EXPECT_EQ(kRenewalSeconds, accounts[0].tgt_renewal_seconds());
   EXPECT_EQ(kValiditySeconds, accounts[0].tgt_validity_seconds());
   EXPECT_TRUE(accounts[0].is_managed());
+  EXPECT_TRUE(accounts[0].password_was_remembered());
 }
 
 // ListAccounts() ignores failures in GetTgtStatus() and loading the config.
 TEST_F(AccountManagerTest, ListAccountsIgnoresFailures) {
   ignore_result(manager_->AddAccount(kUser, true /* is_managed */));
   ignore_result(manager_->SetConfig(kUser, kKrb5Conf));
-  ignore_result(manager_->AcquireTgt(kUser, kPassword));
+  ignore_result(
+      manager_->AcquireTgt(kUser, kPassword, false /* remember_password */));
   EXPECT_TRUE(base::PathExists(krb5cc_path_));
 
   // Make reading the config fail.
@@ -392,7 +460,8 @@ TEST_F(AccountManagerTest, GetKerberosFilesSucceesWithoutCC) {
 TEST_F(AccountManagerTest, GetKerberosFilesSucceesWithCC) {
   ignore_result(manager_->AddAccount(kUser, true /* is_managed */));
   ignore_result(manager_->SetConfig(kUser, kKrb5Conf));
-  ignore_result(manager_->AcquireTgt(kUser, kPassword));
+  ignore_result(
+      manager_->AcquireTgt(kUser, kPassword, false /* remember_password */));
 
   KerberosFiles files;
   EXPECT_EQ(ERROR_NONE, manager_->GetKerberosFiles(kUser, &files));
@@ -406,8 +475,9 @@ TEST_F(AccountManagerTest, MethodsReturnUnknownPrincipal) {
   EXPECT_EQ(ERROR_UNKNOWN_PRINCIPAL_NAME, manager_->RemoveAccount(kUser));
   EXPECT_EQ(ERROR_UNKNOWN_PRINCIPAL_NAME,
             manager_->SetConfig(kUser, kKrb5Conf));
-  EXPECT_EQ(ERROR_UNKNOWN_PRINCIPAL_NAME,
-            manager_->AcquireTgt(kUser, kPassword));
+  EXPECT_EQ(
+      ERROR_UNKNOWN_PRINCIPAL_NAME,
+      manager_->AcquireTgt(kUser, kPassword, false /* remember_password */));
   EXPECT_EQ(ERROR_UNKNOWN_PRINCIPAL_NAME,
             manager_->GetKerberosFiles(kUser, &files));
 }

@@ -35,9 +35,9 @@ class AccountManager {
   // account. Use in combination with GetKerberosFiles() to get the latest
   // files. |krb5| interacts with lower level Kerberos libraries. It can be
   // overridden for tests.
-  explicit AccountManager(base::FilePath storage_dir,
-                          KerberosFilesChangedCallback kerberos_files_changed,
-                          std::unique_ptr<Krb5Interface> krb5);
+  AccountManager(base::FilePath storage_dir,
+                 KerberosFilesChangedCallback kerberos_files_changed,
+                 std::unique_ptr<Krb5Interface> krb5);
   ~AccountManager();
 
   // Saves all accounts to disk. Returns ERROR_LOCAL_IO and logs on error.
@@ -77,9 +77,12 @@ class AccountManager {
                       const std::string& krb5_conf) const WARN_UNUSED_RESULT;
 
   // Acquires a Kerberos ticket-granting-ticket for the account keyed by
-  // |principal_name|.
+  // |principal_name| using |password|. If |password| is empty, a stored
+  // password is used if available. If |remember_password| is true and
+  // |password| is not empty, the password is stored on disk.
   ErrorType AcquireTgt(const std::string& principal_name,
-                       const std::string& password) const WARN_UNUSED_RESULT;
+                       std::string password,
+                       bool remember_password) const WARN_UNUSED_RESULT;
 
   // Retrieves the Kerberos credential cache and the configuration file for the
   // account keyed by |principal_name|. Returns ERROR_NONE if both files could
@@ -90,11 +93,15 @@ class AccountManager {
 
   const base::FilePath& GetStorageDirForTesting() { return storage_dir_; }
 
-  // Returns the SHA1 hash of |principal_name| as hex string.
-  static std::string HashPrincipalForTesting(const std::string& principal_name);
+  // Returns the base64-encoded |principal_name|.
+  static std::string GetSafeFilenameForTesting(
+      const std::string& principal_name);
 
  private:
   // File path helpers. All paths are relative to |storage_dir_|.
+
+  // Directory where files specific to the |principal_name| account are stored.
+  base::FilePath GetAccountDir(const std::string& principal_name) const;
 
   // File path of the Kerberos configuration for the given |principal_name|.
   base::FilePath GetKrb5ConfPath(const std::string& principal_name) const;
@@ -102,12 +109,16 @@ class AccountManager {
   // File path of the Kerberos credential cache for the given |principal_name|.
   base::FilePath GetKrb5CCPath(const std::string& principal_name) const;
 
+  // File path of the Kerberos password for the given |principal_name|.
+  base::FilePath GetPasswordPath(const std::string& principal_name) const;
+
   // File path where |accounts_| is stored.
   base::FilePath GetAccountsPath() const;
 
-  // Deletes the Kerberos config and credential cache. Triggers
-  // KerberosFilesChanged if the credential cache was deleted.
-  void DeleteKerberosFiles(const std::string& principal_name);
+  // Deletes all files (credential cache, password etc.) for the given
+  // |principal_name|. Triggers KerberosFilesChanged if the credential cache was
+  // deleted.
+  void DeleteAllFilesFor(const std::string& principal_name);
 
   // Calls |kerberos_files_changed_| if set.
   void TriggerKerberosFilesChanged(const std::string& principal_name) const;

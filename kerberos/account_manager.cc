@@ -7,10 +7,9 @@
 #include <limits>
 #include <utility>
 
+#include <base/base64.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/sha1.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 
 #include "kerberos/krb5_interface.h"
@@ -21,21 +20,24 @@ namespace {
 
 constexpr int kInvalidIndex = -1;
 
-// Kerberos config files are stored as storage_dir + principal hash + this.
-constexpr char kKrb5ConfFilePart[] = "_krb5.conf";
-// Kerberos credential caches are stored as storage_dir + principal hash + this.
-constexpr char kKrb5CCFilePart[] = "_krb5cc";
+// Kerberos config files are stored as storage_dir/account_dir/this.
+constexpr char kKrb5ConfFilePart[] = "krb5.conf";
+// Kerberos credential caches are stored as storage_dir/account_dir/this.
+constexpr char kKrb5CCFilePart[] = "krb5cc";
+// Passwords are stored as storage_dir/account_dir/this.
+constexpr char kPasswordFilePart[] = "password";
 // Account data is stored as storage_dir + this.
 constexpr char kAccountsFile[] = "accounts";
 
-// Size limit for GetKerberosFiles (1 MB).
-constexpr size_t kKrb5FileSizeLimit = 1024 * 1024;
+// Size limit for file (1 MB).
+constexpr size_t kFileSizeLimit = 1024 * 1024;
 
-// Returns the SHA1 hash of |principal_name| as hex string. This is used to
-// generate (almost guaranteed) unique filenames for account data.
-std::string HashPrincipal(const std::string& principal_name) {
-  std::string hash = base::SHA1HashString(principal_name);
-  return base::ToLowerASCII(base::HexEncode(hash.data(), hash.size()));
+// Returns the base64 encoded |principal_name|. This is used to create safe
+// filenames while at the same time allowing easy debugging.
+std::string GetSafeFilename(const std::string& principal_name) {
+  std::string encoded_principal;
+  base::Base64Encode(principal_name, &encoded_principal);
+  return encoded_principal;
 }
 
 // Reads the file at |path| into |data|. Returns |ERROR_LOCAL_IO| if the file
@@ -43,7 +45,7 @@ std::string HashPrincipal(const std::string& principal_name) {
 WARN_UNUSED_RESULT ErrorType LoadFile(const base::FilePath& path,
                                       std::string* data) {
   data->clear();
-  if (!base::ReadFileToStringWithMaxSize(path, data, kKrb5FileSizeLimit)) {
+  if (!base::ReadFileToStringWithMaxSize(path, data, kFileSizeLimit)) {
     PLOG(ERROR) << "Failed to read " << path.value();
     data->clear();
     return ERROR_LOCAL_IO;
@@ -125,13 +127,23 @@ ErrorType AccountManager::AddAccount(const std::string& principal_name,
     // Policy should overwrite user-added accounts, but user-added accounts
     // should not overwrite policy accounts.
     if (!accounts_[index].is_managed() && is_managed) {
-      DeleteKerberosFiles(principal_name);
+      DeleteAllFilesFor(principal_name);
       accounts_[index].set_is_managed(is_managed);
       SaveAccounts();
     }
     return ERROR_DUPLICATE_PRINCIPAL_NAME;
   }
 
+  // Create the account directory.
+  const base::FilePath account_dir = GetAccountDir(principal_name);
+  base::File::Error error;
+  if (!base::CreateDirectoryAndGetError(account_dir, &error)) {
+    LOG(ERROR) << "Failed to create directory '" << account_dir.value()
+               << "': " << base::File::ErrorToString(error);
+    return ERROR_LOCAL_IO;
+  }
+
+  // Create account record.
   AccountData data;
   data.set_principal_name(principal_name);
   data.set_is_managed(is_managed);
@@ -145,20 +157,18 @@ ErrorType AccountManager::RemoveAccount(const std::string& principal_name) {
   if (index == kInvalidIndex)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
-  DeleteKerberosFiles(principal_name);
+  DeleteAllFilesFor(principal_name);
   accounts_.erase(accounts_.begin() + index);
 
   SaveAccounts();
   return ERROR_NONE;
 }
 
-void AccountManager::DeleteKerberosFiles(const std::string& principal_name) {
-  base::DeleteFile(GetKrb5ConfPath(principal_name), false /* recursive */);
-  const base::FilePath krb5cc_path = GetKrb5CCPath(principal_name);
-  if (base::PathExists(krb5cc_path)) {
-    base::DeleteFile(krb5cc_path, false /* recursive */);
+void AccountManager::DeleteAllFilesFor(const std::string& principal_name) {
+  const bool krb5cc_existed = base::PathExists(GetKrb5CCPath(principal_name));
+  CHECK(base::DeleteFile(GetAccountDir(principal_name), true /* recursive */));
+  if (krb5cc_existed)
     TriggerKerberosFilesChanged(principal_name);
-  }
 }
 
 ErrorType AccountManager::ClearAccounts() {
@@ -168,7 +178,7 @@ ErrorType AccountManager::ClearAccounts() {
 
   // Delete all teh dataz.
   for (const auto& account : accounts_)
-    DeleteKerberosFiles(account.principal_name());
+    DeleteAllFilesFor(account.principal_name());
   accounts_.clear();
 
   SaveAccounts();
@@ -180,6 +190,8 @@ ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) const {
     Account account;
     account.set_principal_name(it.principal_name());
     account.set_is_managed(it.is_managed());
+    account.set_password_was_remembered(
+        base::PathExists(GetPasswordPath(it.principal_name())));
     // TODO(https://crbug.com/952239): Set additional properties.
 
     // Do a best effort reporting results, don't bail on the first error. If
@@ -226,12 +238,37 @@ ErrorType AccountManager::SetConfig(const std::string& principal_name,
 }
 
 ErrorType AccountManager::AcquireTgt(const std::string& principal_name,
-                                     const std::string& password) const {
+                                     std::string password,
+                                     bool remember_password) const {
   const AccountData* data = GetAccountData(principal_name);
   if (!data)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
-  ErrorType error =
+  // Decision table what to do with the password:
+  // pw empty / remember| false                      | true
+  // -------------------+----------------------------+------------------------
+  // false              | use given, erase file      | use given, save to file
+  // true               | load from file, erase file | load from file
+
+  // Remember password even if authentication failed.
+  const base::FilePath password_path = GetPasswordPath(principal_name);
+  if (!password.empty() && remember_password)
+    SaveFile(password_path, password);
+
+  // Try to load a saved password if available and none is given.
+  ErrorType error;
+  if (password.empty() && base::PathExists(password_path)) {
+    error = LoadFile(password_path, &password);
+    if (error != ERROR_NONE)
+      return error;
+  }
+
+  // Erase a previously remembered password.
+  if (!remember_password)
+    base::DeleteFile(password_path, false /* recursive */);
+
+  // Acquire a Kerberos ticket-granting-ticket.
+  error =
       krb5_->AcquireTgt(principal_name, password, GetKrb5CCPath(principal_name),
                         GetKrb5ConfPath(principal_name));
 
@@ -271,9 +308,9 @@ ErrorType AccountManager::GetKerberosFiles(const std::string& principal_name,
 }
 
 // static
-std::string AccountManager::HashPrincipalForTesting(
+std::string AccountManager::GetSafeFilenameForTesting(
     const std::string& principal_name) {
-  return HashPrincipal(principal_name);
+  return GetSafeFilename(principal_name);
 }
 
 void AccountManager::TriggerKerberosFilesChanged(
@@ -282,14 +319,24 @@ void AccountManager::TriggerKerberosFilesChanged(
     kerberos_files_changed_.Run(principal_name);
 }
 
+base::FilePath AccountManager::GetAccountDir(
+    const std::string& principal_name) const {
+  return storage_dir_.Append(GetSafeFilename(principal_name));
+}
+
 base::FilePath AccountManager::GetKrb5ConfPath(
     const std::string& principal_name) const {
-  return storage_dir_.Append(HashPrincipal(principal_name) + kKrb5ConfFilePart);
+  return GetAccountDir(principal_name).Append(kKrb5ConfFilePart);
 }
 
 base::FilePath AccountManager::GetKrb5CCPath(
     const std::string& principal_name) const {
-  return storage_dir_.Append(HashPrincipal(principal_name) + kKrb5CCFilePart);
+  return GetAccountDir(principal_name).Append(kKrb5CCFilePart);
+}
+
+base::FilePath AccountManager::GetPasswordPath(
+    const std::string& principal_name) const {
+  return GetAccountDir(principal_name).Append(kPasswordFilePart);
 }
 
 base::FilePath AccountManager::GetAccountsPath() const {

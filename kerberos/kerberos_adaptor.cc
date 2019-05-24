@@ -208,8 +208,10 @@ ByteArray KerberosAdaptor::AcquireKerberosTgt(
     }
   }
 
-  if (error == ERROR_NONE)
-    error = manager_->AcquireTgt(request.principal_name(), password.value());
+  if (error == ERROR_NONE) {
+    error = manager_->AcquireTgt(request.principal_name(), password.value(),
+                                 request.remember_password());
+  }
 
   PrintResult(__FUNCTION__, error);
   AcquireKerberosTgtResponse response;
