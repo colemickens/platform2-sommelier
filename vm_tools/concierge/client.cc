@@ -54,7 +54,6 @@ constexpr char kImageTypeAuto[] = "auto";
 constexpr int64_t kMinimumDiskSize = 1ll * 1024 * 1024 * 1024;  // 1 GiB
 constexpr char kRemovableMediaRoot[] = "/media/removable";
 constexpr char kStorageCryptohomeRoot[] = "cryptohome-root";
-constexpr char kStorageCryptohomeDownloads[] = "cryptohome-downloads";
 constexpr char kStorageCryptohomePluginVm[] = "cryptohome-pluginvm";
 
 // Cryptohome user base path.
@@ -88,8 +87,6 @@ void IPv4AddressToString(uint32_t addr, string* address) {
 bool StringToStorageLocation(const string& str, StorageLocation* location) {
   if (str == kStorageCryptohomeRoot) {
     *location = vm_tools::concierge::STORAGE_CRYPTOHOME_ROOT;
-  } else if (str == kStorageCryptohomeDownloads) {
-    *location = vm_tools::concierge::STORAGE_CRYPTOHOME_DOWNLOADS;
   } else if (str == kStorageCryptohomePluginVm) {
     *location = vm_tools::concierge::STORAGE_CRYPTOHOME_PLUGINVM;
   } else {

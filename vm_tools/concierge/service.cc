@@ -98,12 +98,6 @@ constexpr char kPluginVmDir[] = "pvm";
 // Cryptohome root base path.
 constexpr char kCryptohomeRoot[] = "/home/root";
 
-// Cryptohome user base path.
-constexpr char kCryptohomeUser[] = "/home/user";
-
-// Downloads directory for a user.
-constexpr char kDownloadsDir[] = "Downloads";
-
 // File extension for raw disk types
 constexpr char kRawImageExtension[] = ".img";
 
@@ -278,85 +272,82 @@ bool GetDiskPathFromName(
   base::Base64UrlEncode(disk_path, base::Base64UrlEncodePolicy::INCLUDE_PADDING,
                         &disk_name);
 
-  base::FilePath storage_path;
-  if (storage_location == STORAGE_CRYPTOHOME_ROOT) {
-    base::FilePath crosvm_dir = base::FilePath(kCryptohomeRoot)
-                                    .Append(cryptohome_id)
-                                    .Append(kCrosvmDir);
-    base::File::Error dir_error;
-    if (!base::DirectoryExists(crosvm_dir)) {
-      if (!create_parent_dir) {
-        return false;
-      }
-
-      if (!base::CreateDirectoryAndGetError(crosvm_dir, &dir_error)) {
-        LOG(ERROR) << "Failed to create crosvm directory in /home/root: "
-                   << base::File::ErrorToString(dir_error);
-        return false;
-      }
-    }
-    storage_path = crosvm_dir;
-  } else if (storage_location == STORAGE_CRYPTOHOME_DOWNLOADS) {
-    storage_path = base::FilePath(kCryptohomeUser)
-                       .Append(cryptohome_id)
-                       .Append(kDownloadsDir);
-
-  } else if (storage_location == STORAGE_CRYPTOHOME_PLUGINVM) {
-    base::FilePath pluginvm_dir = base::FilePath(kCryptohomeRoot)
+  switch (storage_location) {
+    case STORAGE_CRYPTOHOME_ROOT: {
+      base::FilePath crosvm_dir = base::FilePath(kCryptohomeRoot)
                                       .Append(cryptohome_id)
-                                      .Append(kPluginVmDir);
-    base::File::Error dir_error;
-    if (!base::DirectoryExists(pluginvm_dir)) {
-      if (!create_parent_dir) {
+                                      .Append(kCrosvmDir);
+      base::File::Error dir_error;
+      if (!base::DirectoryExists(crosvm_dir)) {
+        if (!create_parent_dir) {
+          return false;
+        }
+
+        if (!base::CreateDirectoryAndGetError(crosvm_dir, &dir_error)) {
+          LOG(ERROR) << "Failed to create crosvm directory in /home/root: "
+                     << base::File::ErrorToString(dir_error);
+          return false;
+        }
+      }
+
+      auto qcow2_path = crosvm_dir.Append(disk_name + kQcowImageExtension);
+      auto raw_path = crosvm_dir.Append(disk_name + kRawImageExtension);
+      bool qcow2_exists = base::PathExists(qcow2_path);
+      bool raw_exists = base::PathExists(raw_path);
+
+      // This scenario (both <name>.img and <name>.qcow2 exist) should never
+      // happen. It is prevented by the later checks in this function.
+      // However, in case it does happen somehow (e.g. user manually created
+      // files in dev mode), bail out, since we can't tell which one the user
+      // wants.
+      if (qcow2_exists && raw_exists) {
+        LOG(ERROR) << "Both qcow2 and raw variants of " << disk_path
+                   << " already exist.";
         return false;
       }
 
-      if (!base::CreateDirectoryAndGetError(pluginvm_dir, &dir_error)) {
-        LOG(ERROR) << "Failed to create plugin directory in /home/root: "
-                   << base::File::ErrorToString(dir_error);
+      // Return the path to an existing image of any type, if one exists.
+      // If not, generate a path based on the preferred image type.
+      if (qcow2_exists) {
+        *path_out = qcow2_path;
+      } else if (raw_exists) {
+        *path_out = raw_path;
+      } else if (preferred_image_type == DISK_IMAGE_QCOW2) {
+        *path_out = qcow2_path;
+      } else if (preferred_image_type == DISK_IMAGE_RAW ||
+                 preferred_image_type == DISK_IMAGE_AUTO) {
+        *path_out = raw_path;
+      } else {
+        LOG(ERROR) << "Unknown image type " << preferred_image_type;
         return false;
       }
+
+      return true;
     }
+    case STORAGE_CRYPTOHOME_PLUGINVM: {
+      base::FilePath pluginvm_dir = base::FilePath(kCryptohomeRoot)
+                                        .Append(cryptohome_id)
+                                        .Append(kPluginVmDir);
+      base::File::Error dir_error;
+      if (!base::DirectoryExists(pluginvm_dir)) {
+        if (!create_parent_dir) {
+          return false;
+        }
 
-    *path_out = pluginvm_dir.Append(disk_name + kPluginVmImageExtension);
-    return true;
-  } else {
-    LOG(ERROR) << "Unknown storage location type";
-    return false;
+        if (!base::CreateDirectoryAndGetError(pluginvm_dir, &dir_error)) {
+          LOG(ERROR) << "Failed to create plugin directory in /home/root: "
+                     << base::File::ErrorToString(dir_error);
+          return false;
+        }
+      }
+
+      *path_out = pluginvm_dir.Append(disk_name + kPluginVmImageExtension);
+      return true;
+    }
+    default:
+      LOG(ERROR) << "Unknown storage location type";
+      return false;
   }
-
-  auto qcow2_path = storage_path.Append(disk_name + kQcowImageExtension);
-  auto raw_path = storage_path.Append(disk_name + kRawImageExtension);
-  bool qcow2_exists = base::PathExists(qcow2_path);
-  bool raw_exists = base::PathExists(raw_path);
-
-  // This scenario (both <name>.img and <name>.qcow2 exist) should never happen.
-  // It is prevented by the later checks in this function.
-  // However, in case it does happen somehow (e.g. user manually created files
-  // in dev mode), bail out, since we can't tell which one the user wants.
-  if (qcow2_exists && raw_exists) {
-    LOG(ERROR) << "Both qcow2 and raw variants of " << disk_path
-               << " already exist.";
-    return false;
-  }
-
-  // Return the path to an existing image of any type, if one exists.
-  // If not, generate a path based on the preferred image type.
-  if (qcow2_exists) {
-    *path_out = qcow2_path;
-  } else if (raw_exists) {
-    *path_out = raw_path;
-  } else if (preferred_image_type == DISK_IMAGE_QCOW2) {
-    *path_out = qcow2_path;
-  } else if (preferred_image_type == DISK_IMAGE_RAW ||
-             preferred_image_type == DISK_IMAGE_AUTO) {
-    *path_out = raw_path;
-  } else {
-    LOG(ERROR) << "Unknown image type " << preferred_image_type;
-    return false;
-  }
-
-  return true;
 }
 
 bool CheckVmExists(const std::string& vm_name,
@@ -494,12 +485,6 @@ bool ListVmDisksInLocation(const string& cryptohome_id,
       image_dir = base::FilePath(kCryptohomeRoot)
                       .Append(cryptohome_id)
                       .Append(kCrosvmDir);
-      break;
-
-    case STORAGE_CRYPTOHOME_DOWNLOADS:
-      image_dir = base::FilePath(kCryptohomeUser)
-                      .Append(cryptohome_id)
-                      .Append(kDownloadsDir);
       break;
 
     case STORAGE_CRYPTOHOME_PLUGINVM:
