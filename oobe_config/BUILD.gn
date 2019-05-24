@@ -77,7 +77,7 @@ static_library("liboobeconfig") {
 
 pkg_config("crypto") {
   pkg_deps = [
-    " libcrypto",
+    "libcrypto",
     "libtpmcrypto",
   ]
 }
