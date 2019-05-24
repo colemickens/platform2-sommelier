@@ -571,7 +571,7 @@ impl ChromeOS {
         let mut request = SharePathRequest::new();
         request.handle = seneschal_handle;
         request.shared_path.set_default().path = path.to_owned();
-        request.storage_location = SharePathRequest_StorageLocation::DOWNLOADS;
+        request.storage_location = SharePathRequest_StorageLocation::MY_FILES;
         request.owner_id = user_id_hash.to_owned();
 
         let response: SharePathResponse = self.sync_protobus(
