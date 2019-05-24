@@ -131,14 +131,20 @@ template("proto_library") {
   }
 
   static_library(target_name) {
-    forward_variables_from(invoker,
-                           [
-                             "all_dependent_configs",
-                             "defines",
-                             "public_configs",
-                             "public_deps",
-                             "visibility",
-                           ])
+    forward_variables_from(
+        invoker,
+        [
+          "all_dependent_configs",
+          "defines",
+          "public_configs",
+          "public_deps",
+          "visibility",
+
+          # TODO(oka): we should not have to use all_dependent_pkg_deps here, because there is no
+          # inherent reason that all users of this target should depend on some external
+          # dependency. Remove this after no user uses it.
+          "all_dependent_pkg_deps",
+        ])
     if (defined(invoker.configs)) {
       configs += invoker.configs
     }
