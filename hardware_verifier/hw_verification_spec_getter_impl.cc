@@ -11,6 +11,8 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/optional.h>
+#include <base/sha1.h>
+#include <base/strings/string_number_conversions.h>
 #include <google/protobuf/text_format.h>
 #include <vboot/crossystem.h>
 
@@ -24,6 +26,11 @@ namespace {
 const char kTextFmtExt[] = ".prototxt";
 const char kDefaultHwVerificationSpecRelPath[] =
     "etc/hardware_verifier/hw_verification_spec.prototxt";
+
+std::string GetSHA1HashHexString(const std::string& content) {
+  const auto& sha1_hash = base::SHA1HashString(content);
+  return base::HexEncode(sha1_hash.data(), sha1_hash.size());
+}
 
 base::Optional<HwVerificationSpec> ReadOutHwVerificationSpecFromFile(
     const base::FilePath& file_path) {
@@ -40,6 +47,8 @@ base::Optional<HwVerificationSpec> ReadOutHwVerificationSpecFromFile(
     LOG(ERROR) << "Failed to read the verification payload file.";
     return base::nullopt;
   }
+  LOG(INFO) << "SHA-1 Hash of the file content: "
+            << GetSHA1HashHexString(content) << ".";
 
   HwVerificationSpec hw_spec;
   if (!google::protobuf::TextFormat::ParseFromString(content, &hw_spec)) {
