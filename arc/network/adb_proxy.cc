@@ -104,7 +104,7 @@ void AdbProxy::OnFileCanReadWithoutBlocking(int fd) {
 
 std::unique_ptr<Socket> AdbProxy::Connect() const {
   // Try to connect with VSOCK.
-  struct sockaddr_vm addr_vm;
+  struct sockaddr_vm addr_vm = {0};
   addr_vm.svm_family = AF_VSOCK;
   addr_vm.svm_port = kVsockPort;
   addr_vm.svm_cid = kVsockCid;
@@ -114,7 +114,7 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
     return dst;
 
   // Try to connect with TCP IPv4.
-  struct sockaddr_in addr_in;
+  struct sockaddr_in addr_in = {0};
   addr_in.sin_family = AF_INET;
   addr_in.sin_port = htons(kTcpPort);
   addr_in.sin_addr.s_addr = htonl(kTcpAddr);
