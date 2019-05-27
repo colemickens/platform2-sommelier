@@ -404,7 +404,8 @@ void Camera3DeviceImpl::AllocateOutputBuffersByStreamsOnThread(
     ScopedBufferHandle buffer = gralloc_->Allocate(
         (it->format == HAL_PIXEL_FORMAT_BLOB) ? jpeg_max_size : it->width,
         (it->format == HAL_PIXEL_FORMAT_BLOB) ? 1 : it->height, it->format,
-        GRALLOC_USAGE_SW_WRITE_OFTEN | GRALLOC_USAGE_HW_CAMERA_WRITE);
+        it->usage | GRALLOC_USAGE_SW_WRITE_OFTEN |
+            GRALLOC_USAGE_HW_CAMERA_WRITE);
     if (!buffer) {
       LOG(ERROR) << "Gralloc allocation fails";
       *result = -ENOMEM;

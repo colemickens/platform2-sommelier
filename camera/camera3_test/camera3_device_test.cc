@@ -73,6 +73,11 @@ void Camera3Device::AddInputStream(int format, int width, int height) {
   impl_->AddStream(format, width, height, 0, CAMERA3_STREAM_INPUT);
 }
 
+void Camera3Device::AddBidirectionalStream(int format, int width, int height) {
+  DCHECK(impl_);
+  impl_->AddStream(format, width, height, 0, CAMERA3_STREAM_BIDIRECTIONAL);
+}
+
 void Camera3Device::AddOutputStreamWithRawDegrees(
     int format, int width, int height, int crop_rotate_scale_degrees) {
   DCHECK(impl_);

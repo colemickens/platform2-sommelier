@@ -100,6 +100,9 @@ class Camera3Device {
   // Add input stream in preparation for stream configuration
   void AddInputStream(int format, int width, int height);
 
+  // Add bidirection stream in preparation for stream configuration
+  void AddBidirectionalStream(int format, int width, int height);
+
   // Add output stream with raw |crop_rotate_scale_degrees| values. This
   // function should be used for testing invalid values only.
   void AddOutputStreamWithRawDegrees(int format,

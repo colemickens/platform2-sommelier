@@ -51,6 +51,15 @@ class Camera3ReprocessingTest : public Camera3FrameFixture,
       int32_t in_format,
       const std::vector<std::pair<ResolutionInfo, int32_t>>& out_configs);
 
+  // Configure all IO streams at once. Similar to PrepareStreams, this function
+  // returns configured input and output streams, but the input stream and the
+  // first output stream will be the same bidirectional stream.
+  std::pair<const camera3_stream_t*, std::vector<const camera3_stream_t*>>
+  PrepareBidirectionalStreams(const ResolutionInfo& bi_size,
+                              int32_t bi_format,
+                              const ResolutionInfo& out_size,
+                              int32_t out_format);
+
   virtual void AddPrepareStreams(
       const ResolutionInfo& in_size,
       int32_t in_format,
@@ -143,9 +152,14 @@ void Camera3ReprocessingTest::TestReprocessing(
   // Prepare all streams
   const camera3_stream_t* input_stream;
   std::vector<const camera3_stream_t*> output_streams;
-  std::tie(input_stream, output_streams) = PrepareStreams(
-      input_size, input_format,
-      {{input_size, input_format}, {reprocessing_size, reprocessing_format}});
+  if (input_format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
+    std::tie(input_stream, output_streams) = PrepareBidirectionalStreams(
+        input_size, input_format, reprocessing_size, reprocessing_format);
+  } else {
+    std::tie(input_stream, output_streams) = PrepareStreams(
+        input_size, input_format,
+        {{input_size, input_format}, {reprocessing_size, reprocessing_format}});
+  }
   ASSERT_TRUE(input_stream != nullptr && !output_streams.empty())
       << "PrepareStreams failed";
 
@@ -217,6 +231,54 @@ void Camera3ReprocessingTest::TestReprocessing(
               kReprocessingTestSsimThreshold)
         << "SSIM value is lower than threshold";
   }
+}
+
+std::pair<const camera3_stream_t*, std::vector<const camera3_stream_t*>>
+Camera3ReprocessingTest::PrepareBidirectionalStreams(
+    const ResolutionInfo& bi_size,
+    int32_t bi_format,
+    const ResolutionInfo& out_size,
+    int32_t out_format) {
+  // Add and configure streams
+  cam_device_.AddBidirectionalStream(bi_format, bi_size.Width(),
+                                     bi_size.Height());
+  cam_device_.AddOutputStream(out_format, out_size.Width(), out_size.Height(),
+                              CAMERA3_STREAM_ROTATION_0);
+  std::vector<const camera3_stream_t*> streams;
+  if (cam_device_.ConfigureStreams(&streams) != 0) {
+    ADD_FAILURE() << "Configure stream failed";
+    return {};
+  }
+
+  auto GetStream = [&streams](const ResolutionInfo& size, int32_t format,
+                              bool is_output) {
+    auto dir = is_output ? CAMERA3_STREAM_OUTPUT : CAMERA3_STREAM_BIDIRECTIONAL;
+    auto it = std::find_if(
+        streams.begin(), streams.end(), [&](const camera3_stream_t* stream) {
+          return stream->format == format && stream->stream_type == dir &&
+                 stream->width == size.Width() &&
+                 stream->height == size.Height();
+        });
+    return it == streams.end() ? nullptr : *it;
+  };
+
+  auto bi_stream = GetStream(bi_size, bi_format, false);
+  if (bi_stream == nullptr) {
+    ADD_FAILURE() << "Connot find configured bidirectional stream Format 0x"
+                  << std::hex << bi_format << " Resolution " << std::dec
+                  << bi_size;
+    return {};
+  }
+  std::vector<const camera3_stream_t*> out_streams{bi_stream};
+  auto stream = GetStream(out_size, out_format, true);
+  if (stream == nullptr) {
+    ADD_FAILURE() << "Connot find configured output stream Format 0x"
+                  << std::hex << out_format << " Resolution " << std::dec
+                  << out_size;
+    return {};
+  }
+  out_streams.push_back(stream);
+  return {bi_stream, out_streams};
 }
 
 std::pair<const camera3_stream_t*, std::vector<const camera3_stream_t*>>
@@ -562,7 +624,11 @@ TEST_P(Camera3ReprocessingReorderTest, ReorderStream) {
         TestReprocessing(input_size, in_format, output_size, out_format,
                          {max_thumbnail_size, 0, 90, 85},
                          kNumOfReprocessCaptures);
-      } while (NextOrder());
+        // We only configure a bidirectional stream and an output_stream when
+        // input format is implementation-defined. Therefore there is no need
+        // run this test multiple times by reordering the streams.
+      } while (NextOrder() &&
+               in_format != HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED);
     }
   }
 }
