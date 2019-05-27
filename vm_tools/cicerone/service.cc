@@ -30,6 +30,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/sys_info.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_proxy.h>
@@ -2372,9 +2373,22 @@ std::unique_ptr<dbus::Response> Service::ImportLxdContainer(
     return dbus_response;
   }
 
+  // AmountOfFreeDiskSpace returns a negative value if it fails.
+  // Nothing can be done to resolve a failure here, so the import should still
+  // be attempted. To this end, on failure we set free_disk_space to zero, which
+  // is a sentinel value meaning unlimited free disk space.
+  int64_t free_disk_space =
+      base::SysInfo::AmountOfFreeDiskSpace(base::FilePath{"/home"});
+  if (free_disk_space < 0) {
+    LOG(ERROR) << "AmountofFreeDiskSpace for /home returned "
+               << free_disk_space;
+    free_disk_space = 0;
+  }
+
   std::string error_msg;
-  VirtualMachine::ImportLxdContainerStatus status = vm->ImportLxdContainer(
-      request.container_name(), request.import_path(), &error_msg);
+  VirtualMachine::ImportLxdContainerStatus status =
+      vm->ImportLxdContainer(request.container_name(), request.import_path(),
+                             free_disk_space, &error_msg);
 
   response.set_status(ImportLxdContainerResponse::UNKNOWN);
   if (ImportLxdContainerResponse::Status_IsValid(static_cast<int>(status))) {

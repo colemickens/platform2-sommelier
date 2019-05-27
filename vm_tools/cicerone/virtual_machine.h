@@ -234,11 +234,11 @@ class VirtualMachine {
       const std::string& export_path,
       std::string* out_error);
 
-  // Imports an LXD container.
-  ImportLxdContainerStatus ImportLxdContainer(
-      const std::string& container_name,
-      const std::string& import_path,
-      std::string* out_error);
+  // Imports an LXD container. |available_disk_space| of zero means unlimited
+  ImportLxdContainerStatus ImportLxdContainer(const std::string& container_name,
+                                              const std::string& import_path,
+                                              uint64_t available_disk_space,
+                                              std::string* out_error);
 
   // Gets a list of all the active container names in this VM.
   std::vector<std::string> GetContainerNames();

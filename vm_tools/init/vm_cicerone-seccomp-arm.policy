@@ -69,6 +69,7 @@ execve: 1
 access: 1
 set_tid_address: 1
 stat64: 1
+statfs64: 1
 umask: 1
 recvfrom: 1
 getpeername: 1
