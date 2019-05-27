@@ -438,6 +438,9 @@ message ImportContainerRequest {
   // to the VM root mount point (/mnt/shared) as returned in seneschal
   // SharePathResponse.path.  E.g.: "MyFiles/export/backup.tar.gz".
   string import_path = 2;
+
+  // The amount of bytes that this operation can use. Zero means unlimited.
+  uint64 available_disk_space = 3;
 }
 
 message ImportContainerResponse {
@@ -482,8 +485,11 @@ message ContainerImportProgress {
     // The image is being unpacked to create a container.
     IMPORTING_UNPACK = 4;
 
-    // The container could be imported due to mismatched architecture.
+    // The container could not be imported due to mismatched architecture.
     FAILED_ARCHITECTURE = 5;
+
+    // The container could not be imported due to insufficient space.
+    FAILED_SPACE = 6;
   }
 
   // Container status.
@@ -504,6 +510,12 @@ message ContainerImportProgress {
   // Architecture of container which failed to import.
   // Set when status is FAILED_ARCHITECTURE.
   string architecture_container = 7;
+
+  // Disk space available. Set when status is FAILED_SPACE.
+  uint64 disk_space_available_bytes = 8;
+
+  // Disk space required. Set when status is FAILED_SPACE.
+  uint64 disk_space_required_bytes = 9;
 }
 
 // Sent by tremplin to update the host that a container has shutdown.
