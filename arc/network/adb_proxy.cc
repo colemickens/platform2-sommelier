@@ -54,29 +54,10 @@ int AdbProxy::OnInit() {
   m->Enter(jail);
   m->Destroy(jail);
 
-  src_ = std::make_unique<Socket>(AF_INET, SOCK_STREAM | SOCK_NONBLOCK);
-  struct sockaddr_in addr = {0};
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(kTcpPort);
-  addr.sin_addr.s_addr = htonl(INADDR_ANY);
-  if (!src_->Bind((const struct sockaddr*)&addr, sizeof(addr))) {
-    LOG(ERROR) << "Cannot bind source socket; exiting";
-    return -1;
-  }
-
-  if (!src_->Listen(kMaxConn)) {
-    LOG(ERROR) << "Cannot listen on source socket; exiting";
-    return -1;
-  }
-
   RegisterHandler(SIGUSR1,
                   base::Bind(&AdbProxy::OnSignal, base::Unretained(this)));
   RegisterHandler(SIGUSR2,
                   base::Bind(&AdbProxy::OnSignal, base::Unretained(this)));
-
-  base::MessageLoopForIO::current()->WatchFileDescriptor(
-      src_->fd(), true, base::MessageLoopForIO::WATCH_READ, &src_watcher_,
-      this);
 
   return Daemon::OnInit();
 }
@@ -127,9 +108,35 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
 }
 
 bool AdbProxy::OnSignal(const struct signalfd_siginfo& info) {
-  // On guest down just ensure any existing connections are culled.
-  if (info.ssi_signo == SIGUSR2)
+  // On guest ARC up, start accepting connections.
+  if (info.ssi_signo == SIGUSR1) {
+    src_ = std::make_unique<Socket>(AF_INET, SOCK_STREAM | SOCK_NONBLOCK);
+    struct sockaddr_in addr = {0};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(kTcpPort);
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    if (!src_->Bind((const struct sockaddr*)&addr, sizeof(addr))) {
+      LOG(ERROR) << "Cannot bind source socket";
+      return false;
+    }
+
+    if (!src_->Listen(kMaxConn)) {
+      LOG(ERROR) << "Cannot listen on source socket";
+      return false;
+    }
+
+    // Run the accept loop.
+    base::MessageLoopForIO::current()->WatchFileDescriptor(
+        src_->fd(), true, base::MessageLoopForIO::WATCH_READ, &src_watcher_,
+        this);
+  }
+
+  // On ARC down cull any open connections and stop listening.
+  if (info.ssi_signo == SIGUSR2) {
     fwd_.clear();
+    src_.reset();
+    src_watcher_.StopWatchingFileDescriptor();
+  }
 
   // Stay registered.
   return false;
