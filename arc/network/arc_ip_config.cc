@@ -66,8 +66,8 @@ ArcIpConfig::~ArcIpConfig() {
 }
 
 void ArcIpConfig::Setup() {
-  LOG(INFO) << "Setting up " << ifname_ << " " << config_.br_ifname() << " "
-            << config_.arc_ifname();
+  LOG(INFO) << "Setting up " << ifname_ << " bridge: " << config_.br_ifname()
+            << " guest_iface: " << config_.arc_ifname();
 
   // Configure the persistent Chrome OS bridge interface with static IP.
   process_runner_->Run({kBrctlPath, "addbr", config_.br_ifname()});
@@ -125,8 +125,8 @@ void ArcIpConfig::Setup() {
 }
 
 void ArcIpConfig::Teardown() {
-  LOG(INFO) << "Tearing down " << ifname_ << " " << config_.br_ifname() << " "
-            << config_.arc_ifname();
+  LOG(INFO) << "Tearing down " << ifname_ << " bridge: " << config_.br_ifname()
+            << " guest_iface: " << config_.arc_ifname();
   Clear();
   DisableInbound();
 
@@ -176,14 +176,16 @@ bool ArcIpConfig::Init(pid_t con_netns) {
   const std::string peer = "peer_" + ifname_;
 
   if (!con_netns_) {
-    LOG(INFO) << "Uninitializing " << ifname_ << " " << config_.br_ifname()
-              << " " << config_.arc_ifname();
+    LOG(INFO) << "Uninitializing " << ifname_
+              << " bridge: " << config_.br_ifname()
+              << " guest_iface: " << config_.arc_ifname();
     ContainerReady(false);
     return true;
   }
 
-  LOG(INFO) << "Initializing " << con_netns_ << " " << ifname_ << " "
-            << config_.br_ifname() << " " << config_.arc_ifname();
+  LOG(INFO) << "Initializing " << ifname_ << " bridge: " << config_.br_ifname()
+            << " guest_iface: " << config_.arc_ifname() << " for container pid "
+            << con_netns_;
 
   process_runner_->Run({kIpPath, "link", "delete", veth},
                        false /* log_failures */);
@@ -246,7 +248,8 @@ int ArcIpConfig::GetTableIdForInterface(const std::string& ifname) {
   constexpr int kRouteControllerRouteTableOffsetFromIndex = 1000;
   table_id += kRouteControllerRouteTableOffsetFromIndex;
 
-  LOG(INFO) << "Found table id " << table_id << " for iface " << ifname;
+  LOG(INFO) << "Found table id " << table_id << " for container iface "
+            << ifname;
 
   return table_id;
 }
@@ -315,8 +318,9 @@ bool ArcIpConfig::Set(const struct in6_addr& address,
   if (routing_table_id_ == kInvalidTableId) {
     routing_table_id_ = GetTableIdForInterface(config_.arc_ifname());
     if (routing_table_id_ == kInvalidTableId) {
-      LOG(FATAL) << "Could not look up routing table ID for "
-                 << config_.arc_ifname();
+      LOG(FATAL)
+          << "Could not look up routing table ID for container interface "
+          << config_.arc_ifname();
     }
   }
 
@@ -489,12 +493,12 @@ void ArcIpConfig::DisableInbound() {
 
 std::ostream& operator<<(std::ostream& stream, const ArcIpConfig& conf) {
   stream << "ArcIpConfig "
-         << "{ netns=" << conf.con_netns_
-         << ", host iface=" << conf.config_.br_ifname()
-         << ", guest iface=" << conf.config_.arc_ifname()
-         << ", inbound iface=" << conf.ifname_
-         << ", ipv6=" << conf.ipv6_address_full_
-         << ", gateway=" << conf.ipv6_router_ << " }";
+         << "{ netns: " << conf.con_netns_
+         << ", bridge iface: " << conf.config_.br_ifname()
+         << ", guest iface: " << conf.config_.arc_ifname()
+         << ", inbound iface: " << conf.ifname_
+         << ", ipv6: " << conf.ipv6_address_full_
+         << ", gateway: " << conf.ipv6_router_ << " }";
   return stream;
 }
 
