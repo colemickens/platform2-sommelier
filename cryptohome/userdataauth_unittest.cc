@@ -12,6 +12,7 @@
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_homedirs.h"
 #include "cryptohome/mock_install_attributes.h"
+#include "cryptohome/mock_le_credential_backend.h"
 #include "cryptohome/mock_mount.h"
 #include "cryptohome/mock_mount_factory.h"
 #include "cryptohome/mock_platform.h"
@@ -872,6 +873,23 @@ TEST_F(UserDataAuthTest, NeedsDircryptoMigration) {
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(false));
   EXPECT_EQ(userdataauth_.NeedsDircryptoMigration(account, &result),
             user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+}
+
+TEST_F(UserDataAuthTest, LowEntropyCredentialSupported) {
+  // Test when there's no Low Entropy Credential Backend.
+  EXPECT_CALL(tpm_, GetLECredentialBackend()).WillOnce(Return(nullptr));
+  EXPECT_FALSE(userdataauth_.IsLowEntropyCredentialSupported());
+
+  NiceMock<MockLECredentialBackend> backend;
+  EXPECT_CALL(tpm_, GetLECredentialBackend()).WillRepeatedly(Return(&backend));
+
+  // Test when the backend says it's not supported.
+  EXPECT_CALL(backend, IsSupported()).WillOnce(Return(false));
+  EXPECT_FALSE(userdataauth_.IsLowEntropyCredentialSupported());
+
+  // Test when it's supported.
+  EXPECT_CALL(backend, IsSupported()).WillOnce(Return(true));
+  EXPECT_TRUE(userdataauth_.IsLowEntropyCredentialSupported());
 }
 
 // ==================== Mount and Keys related tests =======================

@@ -393,6 +393,8 @@ void UserDataAuthAdaptor::GetSupportedKeyPolicies(
         user_data_auth::GetSupportedKeyPoliciesReply>> response,
     const user_data_auth::GetSupportedKeyPoliciesRequest& in_request) {
   user_data_auth::GetSupportedKeyPoliciesReply reply;
+  reply.set_low_entropy_credentials_supported(
+      service_->IsLowEntropyCredentialSupported());
   response->Return(reply);
 }
 

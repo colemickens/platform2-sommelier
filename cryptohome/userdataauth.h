@@ -192,6 +192,9 @@ class UserDataAuth {
   user_data_auth::CryptohomeErrorCode Rename(
       const user_data_auth::RenameRequest& request);
 
+  // Return true if we support low entropy credential.
+  bool IsLowEntropyCredentialSupported();
+
   // =============== PKCS#11 Related Public Methods ===============
 
   // This initializes the PKCS#11 for a particular mount. Note that this is

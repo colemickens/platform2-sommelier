@@ -1727,4 +1727,9 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::NeedsDircryptoMigration(
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
+bool UserDataAuth::IsLowEntropyCredentialSupported() {
+  return tpm_->GetLECredentialBackend() &&
+         tpm_->GetLECredentialBackend()->IsSupported();
+}
+
 }  // namespace cryptohome
