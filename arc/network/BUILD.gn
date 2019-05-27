@@ -52,6 +52,7 @@ static_library("libarcnetwork") {
   configs += [ ":target_defaults" ]
   sources = [
     "adb_proxy.cc",
+    "arc_helper.cc",
     "arc_ip_config.cc",
     "device.cc",
     "device_manager.cc",

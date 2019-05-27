@@ -5,10 +5,6 @@
 #ifndef ARC_NETWORK_IP_HELPER_H_
 #define ARC_NETWORK_IP_HELPER_H_
 
-#include <netinet/in.h>
-#include <sys/socket.h>
-
-#include <map>
 #include <memory>
 #include <string>
 
@@ -17,11 +13,8 @@
 #include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
 #include <brillo/daemons/daemon.h>
-#include <shill/net/rtnl_handler.h>
-#include <shill/net/rtnl_listener.h>
 
-#include "arc/network/arc_ip_config.h"
-#include "arc/network/device.h"
+#include "arc/network/arc_helper.h"
 #include "arc/network/ipc.pb.h"
 
 using MessageLoopForIO = base::MessageLoopForIO;
@@ -44,46 +37,18 @@ class IpHelper : public brillo::Daemon, public base::MessageLoopForIO::Watcher {
 
   void InitialSetup();
 
-  // Callbacks from Daemon to notify that a signal was received
-  // indicating the container is either booting up or going down.
-  bool OnContainerStart(const struct signalfd_siginfo& info);
-  bool OnContainerStop(const struct signalfd_siginfo& info);
-
-  // Handle |pending_command_|.
-  void HandleCommand();
-
-  // Helper function to extract raw IPv6 address from a protobuf string.
-  const struct in6_addr& ExtractAddr6(const std::string& in);
-
-  // Validate interface name string.
-  bool ValidateIfname(const std::string& in);
-
-  void AddDevice(const std::string& ifname, const DeviceConfig& config);
-  void RemoveDevice(const std::string& ifname);
+  // Callback from system to notify that a signal was received
+  // indicating that ARC is either booting up or going down.
+  bool OnSignal(const struct signalfd_siginfo& info);
 
  private:
-  void LinkMsgHandler(const shill::RTNLMessage& msg);
-
   base::ScopedFD control_fd_;
   MessageLoopForIO::FileDescriptorWatcher control_watcher_;
-  std::unique_ptr<shill::RTNLHandler> rtnl_handler_;
-  std::unique_ptr<shill::RTNLListener> link_listener_;
-
-  pid_t con_pid_;
-  int con_init_tries_{0};
+  std::unique_ptr<ArcHelper> arc_helper_;
 
   IpHelperMessage pending_command_;
 
-  // IP configurations for the devices representing both physical host
-  // interfaces (e.g. eth0) as well a pseudo devices (e.g. Android)
-  // that can be remapped between host interfaces. Keyed by device interface.
-  std::map<std::string, std::unique_ptr<ArcIpConfig>> arc_ip_configs_;
-  // Remapping of |arc_ip_configs_| (which owns the pointers) keyed by
-  // the container interface name.
-  std::map<std::string, ArcIpConfig*> configs_by_arc_ifname_;
-
   base::WeakPtrFactory<IpHelper> weak_factory_{this};
-
   DISALLOW_COPY_AND_ASSIGN(IpHelper);
 };
 
