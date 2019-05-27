@@ -48,6 +48,7 @@ _IUSE = [
     'dhcpv6',
     'direncryption',
     'dlc',
+    'fake_drivefs_launcher',
     'feedback',
     'ftdi_tpm',
     'fuzzer',
