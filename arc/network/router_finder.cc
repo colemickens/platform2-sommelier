@@ -54,7 +54,7 @@ void RouterFinder::CheckForRouter() {
 
   rs_attempts_++;
   if (rs_attempts_ > kMaxRtrSolicitations) {
-    LOG(INFO) << "No IPv6 router found on iface " << ifname_;
+    LOG(INFO) << "No IPv6 router found on " << ifname_;
     return;
   }
 
@@ -75,7 +75,8 @@ void RouterFinder::SendRouterSolicitation() {
   success = ndp_msg_new(&msg, NDP_MSG_RS);
   if (success < 0) {
     errno = -success;
-    PLOG(WARNING) << "Failed to allocate NDP Router Solicitation msg";
+    PLOG(WARNING) << "Failed to allocate RS msg for NDP receiver on "
+                  << ifname_;
     return;
   }
 
@@ -83,7 +84,7 @@ void RouterFinder::SendRouterSolicitation() {
   success = ndp_msg_send(ndp_, msg);
   if (success < 0) {
     errno = -success;
-    PLOG(WARNING) << "Error sending router solicitation";
+    PLOG(WARNING) << "Error sending RS msg for NDP receiver on " << ifname_;
   }
   ndp_msg_destroy(msg);
 }
@@ -91,7 +92,8 @@ void RouterFinder::SendRouterSolicitation() {
 int RouterFinder::OnNdpMsg(struct ndp* ndp, struct ndp_msg* msg) {
   enum ndp_msg_type msg_type = ndp_msg_type(msg);
   if (msg_type != NDP_MSG_RA) {
-    LOG(WARNING) << "Unexpected message type " << MsgTypeName(msg_type);
+    LOG(WARNING) << "Unexpected message type " << MsgTypeName(msg_type)
+                 << " for NDP receiver on " << ifname_;
     return -1;
   }
 

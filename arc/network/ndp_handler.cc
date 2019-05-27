@@ -39,8 +39,8 @@ bool NdpHandler::StartNdp(const std::string& ifname,
 
   if (ndp_msgrcv_handler_register(ndp_, &NdpHandler::LibNdpCallback, msg_type_,
                                   ifindex_, this)) {
-    LOG(WARNING) << "Can't register NDP receiver for "
-                 << MsgTypeName(msg_type_);
+    LOG(WARNING) << "Can't register NDP receiver " << MsgTypeName(msg_type_)
+                 << " for " << ifname;
     ndp_close(ndp_);
     ndp_ = nullptr;
     return false;
@@ -50,8 +50,8 @@ bool NdpHandler::StartNdp(const std::string& ifname,
   MessageLoopForIO::current()->WatchFileDescriptor(
       fd_, true, MessageLoopForIO::WATCH_READ, &watcher_, this);
 
-  VLOG(1) << "NDP started on iface " << ifname << " for "
-          << MsgTypeName(msg_type_);
+  VLOG(1) << "NDP receiver " << MsgTypeName(msg_type_) << " started for "
+          << ifname;
 
   return true;
 }
@@ -66,8 +66,8 @@ void NdpHandler::StopNdp() {
 
     char ifname[IF_NAMESIZE] = "'unknown'";
     if_indextoname(ifindex_, ifname);
-    VLOG(1) << "NDP stopped on iface " << ifname << " for "
-            << MsgTypeName(msg_type_);
+    VLOG(1) << "NDP receiver " << MsgTypeName(msg_type_) << " stopped for "
+            << ifname;
   }
 }
 
