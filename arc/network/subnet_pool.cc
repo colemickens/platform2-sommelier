@@ -22,23 +22,24 @@ constexpr uint32_t kMaxSubnets = 32;
 
 // static
 std::unique_ptr<SubnetPool> SubnetPool::New(uint32_t base_addr,
-                                            uint32_t prefix,
+                                            uint32_t prefix_length,
                                             uint32_t num_subnets) {
   if (num_subnets > kMaxSubnets) {
     LOG(ERROR) << "Maximum subnets supported is " << kMaxSubnets << "; got "
                << num_subnets;
     return nullptr;
   }
-  return base::WrapUnique(new SubnetPool(base_addr, prefix, num_subnets));
+  return base::WrapUnique(
+      new SubnetPool(base_addr, prefix_length, num_subnets));
 }
 
 SubnetPool::SubnetPool(uint32_t base_addr,
-                       uint32_t prefix,
+                       uint32_t prefix_length,
                        uint32_t num_subnets)
     : base_addr_(base_addr),
-      prefix_(prefix),
+      prefix_length_(prefix_length),
       num_subnets_(num_subnets),
-      addr_per_index_(1ull << (kMaxSubnets - prefix)) {}
+      addr_per_index_(1ull << (kMaxSubnets - prefix_length)) {}
 
 SubnetPool::~SubnetPool() {
   if (subnets_.any()) {
@@ -60,7 +61,7 @@ std::unique_ptr<Subnet> SubnetPool::Allocate() {
 
   subnets_.set(index);
   return std::make_unique<Subnet>(
-      base_addr_ + (index * addr_per_index_), prefix_,
+      base_addr_ + (index * addr_per_index_), prefix_length_,
       base::Bind(&SubnetPool::Release, weak_ptr_factory_.GetWeakPtr(), index));
 }
 

@@ -25,7 +25,7 @@ class BRILLO_EXPORT SubnetPool {
  public:
   // Returns a new pool or nullptr if num_subnets exceeds 32.
   static std::unique_ptr<SubnetPool> New(uint32_t base_addr,
-                                         uint32_t prefix,
+                                         uint32_t prefix_length,
                                          uint32_t num_subnets);
   ~SubnetPool();
 
@@ -33,13 +33,13 @@ class BRILLO_EXPORT SubnetPool {
   std::unique_ptr<Subnet> Allocate();
 
  private:
-  SubnetPool(uint32_t base_addr, uint32_t prefix, uint32_t num_subnets);
+  SubnetPool(uint32_t base_addr, uint32_t prefix_length, uint32_t num_subnets);
 
   // Called by Subnets on destruction to free a given subnet.
   void Release(uint32_t index);
 
   const uint32_t base_addr_;
-  const uint32_t prefix_;
+  const uint32_t prefix_length_;
   const uint32_t num_subnets_;
   const uint32_t addr_per_index_;
   std::bitset<32> subnets_;

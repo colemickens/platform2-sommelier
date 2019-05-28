@@ -23,7 +23,7 @@ namespace {
 // +---------------+------------+----------------------------------------------+
 
 constexpr uint32_t kBaseAddress = 0x64735c00;  // 100.115.92.0 (host order)
-constexpr uint32_t kDefaultSubnetPrefix = 30;
+constexpr uint32_t kDefaultSubnetPrefixLength = 30;
 
 }  // namespace
 
@@ -31,7 +31,7 @@ AddressManager::AddressManager(
     std::initializer_list<AddressManager::Guest> guests) {
   for (auto g : guests) {
     uint32_t base_addr = kBaseAddress;
-    uint32_t prefix = kDefaultSubnetPrefix;
+    uint32_t prefix_length = kDefaultSubnetPrefixLength;
     uint32_t subnets = 1;
     switch (g) {
       case Guest::ARC:
@@ -49,15 +49,15 @@ AddressManager::AddressManager(
         break;
       case Guest::VM_PLUGIN:
         base_addr += 128;
-        prefix = 28;
+        prefix_length = 28;
         break;
       case Guest::CONTAINER:
         base_addr += 192;
-        prefix = 28;
+        prefix_length = 28;
         subnets = 4;
         break;
     }
-    pools_.emplace(g, SubnetPool::New(base_addr, prefix, subnets));
+    pools_.emplace(g, SubnetPool::New(base_addr, prefix_length, subnets));
   }
 }
 

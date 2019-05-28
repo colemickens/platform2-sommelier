@@ -39,13 +39,6 @@ std::string MacAddressToString(const MacAddress& addr) {
                             addr[2], addr[3], addr[4], addr[5]);
 }
 
-std::string IPv4AddressToString(uint32_t addr) {
-  char buf[INET_ADDRSTRLEN] = {0};
-  struct in_addr ia;
-  ia.s_addr = addr;
-  return !inet_ntop(AF_INET, &ia, buf, sizeof(buf)) ? "" : buf;
-}
-
 }  // namespace
 
 Device::Config::Config(const std::string& host_ifname,
@@ -245,20 +238,19 @@ void Device::OnNeighborCheckResult(bool found) {
 }
 
 std::ostream& operator<<(std::ostream& stream, const Device& device) {
-  stream << "{ ifname=" << device.ifname_;
+  stream << "{ ifname: " << device.ifname_;
   if (!device.legacy_lan_ifname_.empty())
-    stream << ", legacy_lan_ifname=" << device.legacy_lan_ifname_;
-  stream << ", bridge_ifname=" << device.config_->host_ifname()
-         << ", guest_ifname=" << device.config_->guest_ifname()
-         << ", guest_mac_addr="
+    stream << ", legacy_lan_ifname: " << device.legacy_lan_ifname_;
+  stream << ", bridge_ifname: " << device.config_->host_ifname()
+         << ", bridge_ipv4_addr: "
+         << device.config_->host_ipv4_addr_->ToCidrString()
+         << ", guest_ifname: " << device.config_->guest_ifname()
+         << ", guest_ipv4_addr: "
+         << device.config_->guest_ipv4_addr_->ToCidrString()
+         << ", guest_mac_addr: "
          << MacAddressToString(device.config_->guest_mac_addr())
-         // TODO(hugobenichi): add subnet prefix
-         << ", bridge_ipv4_addr="
-         << IPv4AddressToString(device.config_->host_ipv4_addr())
-         << ", guest_ipv4_addr="
-         << IPv4AddressToString(device.config_->guest_ipv4_addr())
-         << ", fwd_multicast=" << device.options_.fwd_multicast
-         << ", find_ipv6_routes=" << device.options_.find_ipv6_routes << '}';
+         << ", fwd_multicast: " << device.options_.fwd_multicast
+         << ", find_ipv6_routes: " << device.options_.find_ipv6_routes << '}';
   return stream;
 }
 

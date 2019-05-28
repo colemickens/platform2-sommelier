@@ -6,6 +6,7 @@
 
 #include <arpa/inet.h>
 
+#include <string>
 #include <utility>
 
 #include <base/bind.h>
@@ -13,8 +14,12 @@
 
 namespace arc_networkd {
 
-SubnetAddress::SubnetAddress(uint32_t addr, base::Closure release_cb)
-    : addr_(addr), release_cb_(std::move(release_cb)) {}
+SubnetAddress::SubnetAddress(uint32_t addr,
+                             uint32_t prefix_length,
+                             base::Closure release_cb)
+    : addr_(addr),
+      prefix_length_(prefix_length),
+      release_cb_(std::move(release_cb)) {}
 
 SubnetAddress::~SubnetAddress() {
   release_cb_.Run();
@@ -24,14 +29,24 @@ uint32_t SubnetAddress::Address() const {
   return htonl(addr_);
 }
 
-Subnet::Subnet(uint32_t network_id, uint32_t prefix, base::Closure release_cb)
-    : network_id_(network_id),
-      prefix_(prefix),
+std::string SubnetAddress::ToCidrString() const {
+  return IPv4AddressToCidrString(htonl(addr_), prefix_length_);
+}
+
+std::string SubnetAddress::ToIPv4String() const {
+  return IPv4AddressToString(htonl(addr_));
+}
+
+Subnet::Subnet(uint32_t base_addr,
+               uint32_t prefix_length,
+               base::Closure release_cb)
+    : network_id_(base_addr),
+      prefix_length_(prefix_length),
       release_cb_(std::move(release_cb)),
       weak_factory_(this) {
-  CHECK_LT(prefix, 32);
+  CHECK_LT(prefix_length, 32);
 
-  addrs_.resize(1ull << (32 - prefix), false);
+  addrs_.resize(1ull << (32 - prefix_length), false);
 
   // Mark the network id and broadcast address as allocated.
   addrs_.front() = true;
@@ -56,7 +71,8 @@ std::unique_ptr<SubnetAddress> Subnet::Allocate(uint32_t addr) {
 
   addrs_[offset] = true;
   return std::make_unique<SubnetAddress>(
-      addr, base::Bind(&Subnet::Free, weak_factory_.GetWeakPtr(), offset));
+      addr, prefix_length_,
+      base::Bind(&Subnet::Free, weak_factory_.GetWeakPtr(), offset));
 }
 
 std::unique_ptr<SubnetAddress> Subnet::AllocateAtOffset(uint32_t offset) {
@@ -79,11 +95,19 @@ uint32_t Subnet::AvailableCount() const {
 }
 
 uint32_t Subnet::Netmask() const {
-  return htonl((0xffffffffull << (32 - prefix_)) & 0xffffffff);
+  return htonl((0xffffffffull << (32 - prefix_length_)) & 0xffffffff);
 }
 
 uint32_t Subnet::Prefix() const {
-  return prefix_;
+  return htonl(network_id_) & Netmask();
+}
+
+uint32_t Subnet::PrefixLength() const {
+  return prefix_length_;
+}
+
+std::string Subnet::ToCidrString() const {
+  return IPv4AddressToCidrString(htonl(network_id_), prefix_length_);
 }
 
 void Subnet::Free(uint32_t offset) {
@@ -91,6 +115,19 @@ void Subnet::Free(uint32_t offset) {
   DCHECK_LT(offset, addrs_.size() - 1);
 
   addrs_[offset] = false;
+}
+
+// static
+std::string IPv4AddressToString(uint32_t addr) {
+  char buf[INET_ADDRSTRLEN] = {0};
+  struct in_addr ia;
+  ia.s_addr = addr;
+  return !inet_ntop(AF_INET, &ia, buf, sizeof(buf)) ? "" : buf;
+}
+
+// static
+std::string IPv4AddressToCidrString(uint32_t addr, uint32_t prefix_length) {
+  return IPv4AddressToString(addr) + "/" + std::to_string(prefix_length);
 }
 
 }  // namespace arc_networkd

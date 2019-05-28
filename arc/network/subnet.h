@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <base/callback.h>
@@ -17,19 +18,31 @@
 
 namespace arc_networkd {
 
-// Represents an allocated address inside a subnet.  The address is freed when
-// this object is destroyed.
+// Represents an allocated address inside an IPv4 subnet.  The address is freed
+// when this object is destroyed.
 class BRILLO_EXPORT SubnetAddress {
  public:
-  SubnetAddress(uint32_t addr, base::Closure release_cb);
+  SubnetAddress(uint32_t addr,
+                uint32_t prefix_length,
+                base::Closure release_cb);
   ~SubnetAddress();
 
   // Returns this address in network-byte order.
   uint32_t Address() const;
 
+  // Returns the CIDR representation of this address, for instance
+  // 192.168.0.34/24.
+  std::string ToCidrString() const;
+
+  // Returns the IPv4 literal representation of this address, for instance
+  // 192.168.0.34.
+  std::string ToIPv4String() const;
+
  private:
   // The address in host-byte order.
   uint32_t addr_;
+  // The prefix length of the address.
+  uint32_t prefix_length_;
 
   // Callback to run when this object is destroyed.
   base::Closure release_cb_;
@@ -37,13 +50,14 @@ class BRILLO_EXPORT SubnetAddress {
   DISALLOW_COPY_AND_ASSIGN(SubnetAddress);
 };
 
-// Represents an allocated subnet.
+// Represents an allocated IPv4 subnet.
 class BRILLO_EXPORT Subnet {
  public:
-  // Creates a new Subnet with the given network id and prefix. |release_cb|
-  // runs in the destructor of this class and can be used to free other
-  // resources associated with the subnet.
-  Subnet(uint32_t network_id, uint32_t prefix, base::Closure release_cb);
+  // Creates a new Subnet with the given base address and prefix length.
+  // |base_addr| must be in host-byte order. |release_cb| runs in the destructor
+  // of this class and can be used to free other resources associated with the
+  // subnet.
+  Subnet(uint32_t base_addr, uint32_t prefix_length, base::Closure release_cb);
   ~Subnet();
 
   // Marks |addr| as allocated. |addr| must be in host-byte order. Returns
@@ -69,18 +83,25 @@ class BRILLO_EXPORT Subnet {
   // Returns the netmask in network-byte order.
   uint32_t Netmask() const;
 
-  // Returns the prefix.
+  // Returns the prefix in network-byte order.
   uint32_t Prefix() const;
+
+  // Returns the prefix length.
+  uint32_t PrefixLength() const;
+
+  // Returns the CIDR representation of this subnet, for instance
+  // 192.168.0.0/24.
+  std::string ToCidrString() const;
 
  private:
   // Marks the address at |offset| as free.
   void Free(uint32_t offset);
 
-  // Subnet network id in host byte order.
+  // Base address of the subnet, in host byte order.
   uint32_t network_id_;
 
-  // Prefix.
-  uint32_t prefix_;
+  // Prefix length.
+  uint32_t prefix_length_;
 
   // Keeps track of allocated addresses.
   std::vector<bool> addrs_;
@@ -92,6 +113,14 @@ class BRILLO_EXPORT Subnet {
 
   DISALLOW_COPY_AND_ASSIGN(Subnet);
 };
+
+// Returns the literal representation of the IPv4 address given in network byte
+// order.
+std::string IPv4AddressToString(uint32_t addr);
+
+// Returns the CIDR representation of an IPv4 address given in network byte
+// order.
+std::string IPv4AddressToCidrString(uint32_t addr, uint32_t prefix_length);
 
 }  // namespace arc_networkd
 

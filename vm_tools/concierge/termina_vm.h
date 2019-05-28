@@ -137,9 +137,9 @@ class TerminaVm final : public VmInterface {
   // if there is no container subnet.
   uint32_t ContainerNetmask() const;
 
-  // The VM's container subnet prefix. Returns 0 if there is no container
+  // The VM's container subnet prefix length. Returns 0 if there is no container
   // subnet.
-  size_t ContainerPrefix() const;
+  size_t ContainerPrefixLength() const;
 
   // The first address in the VM's container subnet in network byte order.
   // Returns INADDR_ANY if there is no container subnet.

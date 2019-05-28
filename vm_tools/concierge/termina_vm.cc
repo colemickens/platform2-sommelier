@@ -712,9 +712,9 @@ uint32_t TerminaVm::ContainerNetmask() const {
   return INADDR_ANY;
 }
 
-size_t TerminaVm::ContainerPrefix() const {
+size_t TerminaVm::ContainerPrefixLength() const {
   if (container_subnet_)
-    return container_subnet_->Prefix();
+    return container_subnet_->PrefixLength();
 
   return 0;
 }

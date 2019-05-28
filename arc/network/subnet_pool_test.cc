@@ -26,19 +26,19 @@ namespace {
 // The maximum number of subnets that can be allocated at a given time.
 constexpr uint32_t kMaxSubnets = 32;
 constexpr uint32_t kBaseAddress = 0x44556677;
-constexpr uint32_t kPrefix = 30;
+constexpr uint32_t kPrefixLength = 30;
 
 }  // namespace
 
 // Tests cannot create a pool with more than 32 supported subnets.
 TEST(SubnetPool, MaxSubnets) {
-  auto pool = SubnetPool::New(kBaseAddress, kPrefix, kMaxSubnets + 1);
+  auto pool = SubnetPool::New(kBaseAddress, kPrefixLength, kMaxSubnets + 1);
   EXPECT_TRUE(pool == nullptr);
 }
 
 // Tests that the SubnetPool does not allocate more than max subnets at a time.
 TEST(SubnetPool, AllocationRange) {
-  auto pool = SubnetPool::New(kBaseAddress, kPrefix, kMaxSubnets);
+  auto pool = SubnetPool::New(kBaseAddress, kPrefixLength, kMaxSubnets);
 
   std::deque<std::unique_ptr<Subnet>> subnets;
   for (size_t i = 0; i < kMaxSubnets; ++i) {
@@ -53,7 +53,7 @@ TEST(SubnetPool, AllocationRange) {
 
 // Tests that subnets are properly released and reused.
 TEST(SubnetPool, Release) {
-  auto pool = SubnetPool::New(kBaseAddress, kPrefix, kMaxSubnets);
+  auto pool = SubnetPool::New(kBaseAddress, kPrefixLength, kMaxSubnets);
 
   // First allocate all the subnets.
   std::deque<std::unique_ptr<Subnet>> subnets;

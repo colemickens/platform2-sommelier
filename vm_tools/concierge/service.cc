@@ -1573,10 +1573,10 @@ bool Service::StartTermina(TerminaVm* vm, string* failure_reason) {
 
   std::string dst_addr;
   IPv4AddressToString(container_subnet_addr, &dst_addr);
-  size_t prefix = vm->ContainerPrefix();
+  size_t prefix_length = vm->ContainerPrefixLength();
 
   std::string container_subnet_cidr =
-      base::StringPrintf("%s/%zu", dst_addr.c_str(), prefix);
+      base::StringPrintf("%s/%zu", dst_addr.c_str(), prefix_length);
 
   string error;
   if (!vm->StartTermina(std::move(container_subnet_cidr), &error)) {
