@@ -12,6 +12,7 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/message_loop/message_loop.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -3423,8 +3424,11 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Pattern) {
       kWakeReasonPatternNlMsg, sizeof(kWakeReasonPatternNlMsg));
   msg.InitFromPacket(&packet, GetWakeupReportMsgContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log, Log(_, _, HasSubstr("Wakeup reason: Pattern " +
-                                       kWakeReasonPatternNlMsg_PattIndex)));
+  EXPECT_CALL(
+      log,
+      Log(_, _,
+          HasSubstr(base::StringPrintf("Wakeup reason: Pattern %d",
+                                       kWakeReasonPatternNlMsg_PattIndex))));
   EXPECT_CALL(metrics_, NotifyWakeupReasonReceived());
   EXPECT_CALL(*this, RecordDarkResumeWakeReasonCallback(
                          WakeOnWiFi::kWakeReasonStringPattern));
