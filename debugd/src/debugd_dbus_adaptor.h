@@ -158,6 +158,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::string SwapSetParameter(const std::string& parameter_name,
                                int32_t parameter_value) override;
   std::string SetU2fFlags(const std::string& flags) override;
+  std::string GetU2fFlags() override;
   void ContainerStarted() override;
   void ContainerStopped() override;
   std::string SetWifiPowerSave(bool enable) override;

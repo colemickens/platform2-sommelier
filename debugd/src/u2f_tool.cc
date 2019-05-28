@@ -14,6 +14,7 @@
 #include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <brillo/file_utils.h>
+#include <chromeos/dbus/debugd/dbus-constants.h>
 
 #include "debugd/src/process_with_output.h"
 
@@ -24,7 +25,12 @@ namespace {
 constexpr char kOverrideConfigDir[] = "/var/lib/u2f/force";
 constexpr char kJobName[] = "u2fd";
 
-constexpr const char* kKnownFlags[] = {"u2f", "g2f", "user_keys", "verbose"};
+constexpr const char* kKnownFlags[] = {
+  u2f_flags::kU2f,
+  u2f_flags::kG2f,
+  u2f_flags::kVerbose,
+  u2f_flags::kUserKeys,
+};
 
 int ControlU2fd(bool start) {
   const char* action = start ? "start" : "stop";
@@ -76,6 +82,17 @@ std::string U2fTool::SetFlags(const std::string& flags) {
 
   // Returns the outcome of the operations (empty for success).
   return result;
+}
+
+std::string U2fTool::GetFlags() const {
+  std::vector<std::string> flags;
+  for (const char* cur : kKnownFlags) {
+    if (base::PathExists(FlagFile(cur))) {
+      flags.push_back(cur);
+    }
+  }
+
+  return base::JoinString(flags, ",");
 }
 
 }  // namespace debugd

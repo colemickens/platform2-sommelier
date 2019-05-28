@@ -392,6 +392,10 @@ std::string DebugdDBusAdaptor::SetU2fFlags(const std::string& flags) {
   return u2f_tool_->SetFlags(flags);
 }
 
+std::string DebugdDBusAdaptor::GetU2fFlags() {
+  return u2f_tool_->GetFlags();
+}
+
 void DebugdDBusAdaptor::ContainerStarted() {
   container_tool_->ContainerStarted();
 }

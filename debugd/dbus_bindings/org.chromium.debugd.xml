@@ -838,10 +838,22 @@
       <arg name="flags" type="s" direction="in">
         <tp:docstring>
           Flags (comma separated) to force debugging features.
-          Supports flag(s): u2f g2f verbose
+          See debugd::u2f_flags in system_api for supported flags.
         </tp:docstring>
       </arg>
       <arg name="status" type="s" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="GetU2fFlags">
+      <tp:docstring>
+        Get u2fd daemon debugging/override flags.
+      </tp:docstring>
+      <arg name="flags" type="s" direction="out">
+        <tp:docstring>
+          Flags (comma separated) that are currently set.
+          See debugd::u2f_flags in system_api for supported flags.
+        </tp:docstring>
+      </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="ContainerStarted">

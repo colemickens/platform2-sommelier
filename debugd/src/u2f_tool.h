@@ -20,6 +20,9 @@ class U2fTool {
   // Set override/debugging flags for u2fd.
   std::string SetFlags(const std::string& flags);
 
+  // Get current flags.
+  std::string GetFlags() const;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(U2fTool);
 };
