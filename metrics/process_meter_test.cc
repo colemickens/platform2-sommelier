@@ -42,7 +42,7 @@ void CreateProcEntry(const base::FilePath& procfs_path,
   base::FilePath stat_path(proc_pid_path.Append("stat"));
   base::FilePath cmdline_path(proc_pid_path.Append("cmdline"));
   std::string stat_content =
-      base::StringPrintf("%d %s R %d f4 f5 f6 f7 f8 f9 110", pid, name, ppid);
+      base::StringPrintf("%d (%s) R %d 33 44 blah blah \n", pid, name, ppid);
   bool is_kdaemon = total_mib == 0;
   std::string status_content =
       is_kdaemon ? "blah\nblah\nblah"
@@ -98,6 +98,9 @@ TEST_F(ProcessMeterTest, ReportProcessStats) {
                   10, 5, 5, 0, 1);
   // kthreadd (kernel daemon)
   CreateProcEntry(procfs_path, 2, 0, "kthreadd", "",
+                  0, 0, 0, 0, 0);
+  // kworker with a space in its name
+  CreateProcEntry(procfs_path, 2, 0, "kworker/0:0-My worker", "",
                   0, 0, 0, 0, 0);
   // Browser processes.
   CreateProcEntry(procfs_path, 100, 1, "chrome",

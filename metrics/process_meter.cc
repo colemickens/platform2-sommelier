@@ -4,6 +4,7 @@
 
 #include "metrics/process_meter.h"
 
+#include <pcrecpp.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -262,13 +263,11 @@ bool ProcessNode::RetrieveProcessData(const base::FilePath& procfs_root) {
     // Assume process has exited.
     return false;
   }
-  const std::vector<std::string> fields = base::SplitString(
-      file_content, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  if (fields.size() < 4)
-    LOG(FATAL) << "bad /proc/#/stat content: " << file_content;
-  name_ = fields[1];
-  if (!base::StringToInt(fields[3], &ppid_))
-    LOG(FATAL) << "bad ppid in /proc/#/stat field 3: " << file_content;
+  // stat: pid (comm) run_state ppid etc. The only parentheses in the file
+  // are around <comm>.
+  pcrecpp::RE re(R"(.*\((.*)\) \w+ (\d+)(.|\n)*)");
+  if (!re.FullMatch(file_content, &name_, &ppid_))
+    LOG(FATAL) << "cannot parse /proc/pid/stat: " << file_content;
 
   // Get command line from /proc/#/cmdline and parse it.
   const std::string cmdline_name = base::StringPrintf("%d/cmdline", pid_);
