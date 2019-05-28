@@ -157,6 +157,21 @@ steps to swap it in:
    3. Update the [ML Service ebuild] to no longer install the model file onto
       rootfs. Remove it from the Manifest file in the same directory.
 
+If the model you are replacing hasn't launched yet, you can of course skip the
+Finch rollout. Optionally, you can also take this shortcut (with caveats):
+
+* Upload a new .tflite file, update the [ML Service ebuild], and then directly
+  change [model_metadata.cc] to point the existing model at that file, instead
+  of adding a new model ID. This will silently swap the model (from Chrome's
+  POV).
+* If there is any Chrome-side logic that depends on the specific version of the
+  model (such as pre-processing config), it will break. You can update Chrome at
+  the "same" time, but it will be a day or three before Chrome is up-revved into
+  Chrome OS and everything is back in sync. It's to you if breaking your
+  unlaunched feature for a few days is OK. (Don't cause Chrome to start crashing
+  of course.)
+
+
 [add-feature-flag]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/how_to_add_your_feature_flag.md
 [CL/1125701]: http://crrev.com/c/1125701
 [CL/1140020]: http://crrev.com/c/1140020
