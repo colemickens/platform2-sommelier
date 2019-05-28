@@ -24,8 +24,8 @@ class Socket {
   explicit Socket(base::ScopedFD fd);
   virtual ~Socket() = default;
 
-  bool Bind(const struct sockaddr* addr);
-  bool Connect(const struct sockaddr* addr);
+  bool Bind(const struct sockaddr* addr, socklen_t addrlen);
+  bool Connect(const struct sockaddr* addr, socklen_t addrlen);
   bool Listen(int backlog) const;
   std::unique_ptr<Socket> Accept(struct sockaddr* addr = nullptr,
                                  socklen_t* addrlen = nullptr) const;

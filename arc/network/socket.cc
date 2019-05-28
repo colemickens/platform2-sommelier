@@ -79,16 +79,16 @@ Socket::Socket(base::ScopedFD fd) : fd_(std::move(fd)) {
     LOG(ERROR) << "invalid fd";
 }
 
-bool Socket::Bind(const struct sockaddr* addr) {
-  if (bind(fd_.get(), addr, sizeof(*addr)) < 0) {
+bool Socket::Bind(const struct sockaddr* addr, socklen_t addrlen) {
+  if (bind(fd_.get(), addr, addrlen) < 0) {
     PLOG(WARNING) << "bind failed: " << *addr;
     return false;
   }
   return true;
 }
 
-bool Socket::Connect(const struct sockaddr* addr) {
-  if (connect(fd_.get(), addr, sizeof(*addr)) < 0) {
+bool Socket::Connect(const struct sockaddr* addr, socklen_t addrlen) {
+  if (connect(fd_.get(), addr, addrlen) < 0) {
     PLOG(WARNING) << "connect failed: " << *addr;
     return false;
   }

@@ -59,7 +59,7 @@ int AdbProxy::OnInit() {
   addr.sin_family = AF_INET;
   addr.sin_port = htons(kTcpPort);
   addr.sin_addr.s_addr = htonl(INADDR_ANY);
-  if (!src_->Bind((const struct sockaddr*)&addr)) {
+  if (!src_->Bind((const struct sockaddr*)&addr, sizeof(addr))) {
     LOG(ERROR) << "Cannot bind source socket; exiting";
     return -1;
   }
@@ -110,7 +110,7 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
   addr_vm.svm_cid = kVsockCid;
 
   auto dst = std::make_unique<Socket>(AF_VSOCK, SOCK_STREAM);
-  if (dst->Connect((const struct sockaddr*)&addr_vm))
+  if (dst->Connect((const struct sockaddr*)&addr_vm, sizeof(addr_vm)))
     return dst;
 
   // Try to connect with TCP IPv4.
@@ -120,7 +120,7 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
   addr_in.sin_addr.s_addr = htonl(kTcpAddr);
 
   dst = std::make_unique<Socket>(AF_INET, SOCK_STREAM);
-  if (dst->Connect((const struct sockaddr*)&addr_in))
+  if (dst->Connect((const struct sockaddr*)&addr_in, sizeof(addr_in)))
     return dst;
 
   return nullptr;
