@@ -212,6 +212,11 @@ class UserDataAuth {
   // cryptohome/arc_disk_quota.h for more details.
   int64_t GetCurrentSpaceForArcUid(uid_t android_uid);
 
+  // Return the current disk usage for an android uid (a shifted uid) in bytes.
+  // Will return a negative number if the request fails. See
+  // cryptohome/arc_disk_quota.h for more details.
+  int64_t GetCurrentSpaceForArcGid(uid_t android_gid);
+
   // =============== PKCS#11 Related Public Methods ===============
 
   // This initializes the PKCS#11 for a particular mount. Note that this is

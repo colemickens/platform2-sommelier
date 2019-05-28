@@ -563,6 +563,15 @@ TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceFoArcUid) {
   EXPECT_EQ(kSpaceUsage, userdataauth_.GetCurrentSpaceForArcUid(kUID));
 }
 
+TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceForArcGid) {
+  constexpr uid_t kGID = 42;  // Yet another answer.
+  constexpr int64_t kSpaceUsage = 87654321987654;
+
+  EXPECT_CALL(arc_disk_quota_, GetCurrentSpaceForGid(kGID))
+      .WillOnce(Return(kSpaceUsage));
+  EXPECT_EQ(kSpaceUsage, userdataauth_.GetCurrentSpaceForArcGid(kGID));
+}
+
 // ======================= CleanUpStaleMounts tests ==========================
 
 namespace {

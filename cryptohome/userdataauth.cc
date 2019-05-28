@@ -1753,4 +1753,8 @@ int64_t UserDataAuth::GetCurrentSpaceForArcUid(uid_t android_uid) {
   return arc_disk_quota_->GetCurrentSpaceForUid(android_uid);
 }
 
+int64_t UserDataAuth::GetCurrentSpaceForArcGid(uid_t android_gid) {
+  return arc_disk_quota_->GetCurrentSpaceForGid(android_gid);
+}
+
 }  // namespace cryptohome
