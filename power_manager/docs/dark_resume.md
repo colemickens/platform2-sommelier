@@ -184,8 +184,14 @@ Thus when adding a new device under EC that can wakeup the system
 *   Call `pm_wakeup_event()` if the  event is for this particular driver in
     the notification handler.
 
+## Features dependent on Dark Resume
 
-### FAQS
+### shutdown-from-suspend
+
+[shutdown-from-suspend] extends battery life of ChromeOS device during prolonged
+non-use by proactively shutting down.
+
+## FAQS
 
 *   **Why does `/sys/power/wakeup_count` increase even when the system is not
     in suspend/resume path?**
@@ -240,3 +246,4 @@ Thus when adding a new device under EC that can wakeup the system
 [monitoring this specific input device]: https://chromium.googlesource.com/chromiumos/platform2/+/master/power_manager/powerd/system/input_watcher.cc#479
 [power_WakeSources]: https://chromium.googlesource.com/chromiumos/third_party/autotest/+/master/server/site_tests/power_WakeSources/README.md
 [chromium bug]: https://bugs.chromium.org/p/chromium/issues/list
+[shutdown-from-suspend]: ./shutdown_from_suspend.md
