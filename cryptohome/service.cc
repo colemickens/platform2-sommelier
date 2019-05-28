@@ -2658,7 +2658,11 @@ gboolean Service::Pkcs11GetTpmTokenInfo(gchar** OUT_label,
                                         gchar** OUT_user_pin,
                                         gint* OUT_slot,
                                         GError** error) {
-  pkcs11_init_->GetTpmTokenInfo(OUT_label, OUT_user_pin);
+  std::string label, pin;
+  pkcs11_init_->GetTpmTokenInfo(&label, &pin);
+  *OUT_label = g_strdup(reinterpret_cast<const gchar*>(label.c_str()));
+  *OUT_user_pin = g_strdup(reinterpret_cast<const gchar*>(pin.c_str()));
+
   *OUT_slot = -1;
   CK_SLOT_ID slot;
   if (pkcs11_init_->GetTpmTokenSlotForPath(FilePath(chaps::kSystemTokenPath),
@@ -2667,12 +2671,18 @@ gboolean Service::Pkcs11GetTpmTokenInfo(gchar** OUT_label,
   return TRUE;
 }
 
-gboolean Service::Pkcs11GetTpmTokenInfoForUser(gchar* username,
+gboolean Service::Pkcs11GetTpmTokenInfoForUser(gchar* IN_username,
                                                gchar** OUT_label,
                                                gchar** OUT_user_pin,
                                                gint* OUT_slot,
                                                GError** error) {
-  pkcs11_init_->GetTpmTokenInfoForUser(username, OUT_label, OUT_user_pin);
+  const std::string username = reinterpret_cast<const char*>(IN_username);
+
+  std::string label, pin;
+  pkcs11_init_->GetTpmTokenInfoForUser(username, &label, &pin);
+  *OUT_label = g_strdup(reinterpret_cast<const gchar*>(label.c_str()));
+  *OUT_user_pin = g_strdup(reinterpret_cast<const gchar*>(pin.c_str()));
+
   *OUT_slot = -1;
   CK_SLOT_ID slot;
   FilePath token_path = homedirs_->GetChapsTokenDir(username);

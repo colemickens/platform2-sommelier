@@ -102,6 +102,8 @@ UserDataAuth::UserDataAuth()
       crypto_(default_crypto_.get()),
       default_chaps_client_(new chaps::TokenManagerClient()),
       chaps_client_(default_chaps_client_.get()),
+      default_pkcs11_init_(new Pkcs11Init()),
+      pkcs11_init_(default_pkcs11_init_.get()),
       default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
       install_attrs_(default_install_attrs_.get()),
       enterprise_owned_(false),
@@ -1770,6 +1772,40 @@ bool UserDataAuth::Pkcs11IsTpmTokenReady() {
   }
 
   return ready;
+}
+
+user_data_auth::TpmTokenInfo UserDataAuth::Pkcs11GetTpmTokenInfo(
+    const std::string& username) {
+  user_data_auth::TpmTokenInfo result;
+  std::string label, pin;
+  CK_SLOT_ID slot;
+  FilePath token_path;
+  if (username.empty()) {
+    // We want to get the system token.
+
+    // Get the label and pin for system token.
+    pkcs11_init_->GetTpmTokenInfo(&label, &pin);
+
+    token_path = FilePath(chaps::kSystemTokenPath);
+  } else {
+    // We want to get the user token.
+
+    // Get the label and pin for user token.
+    pkcs11_init_->GetTpmTokenInfoForUser(username, &label, &pin);
+
+    token_path = homedirs_->GetChapsTokenDir(username);
+  }
+
+  result.set_label(label);
+  result.set_user_pin(pin);
+
+  if (!pkcs11_init_->GetTpmTokenSlotForPath(token_path, &slot)) {
+    // Failed to get the slot, let's use -1 for default.
+    slot = -1;
+  }
+  result.set_slot(slot);
+
+  return result;
 }
 
 }  // namespace cryptohome

@@ -16,6 +16,7 @@
 #include "cryptohome/mock_le_credential_backend.h"
 #include "cryptohome/mock_mount.h"
 #include "cryptohome/mock_mount_factory.h"
+#include "cryptohome/mock_pkcs11_init.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mock_tpm_init.h"
@@ -73,6 +74,7 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
     userdataauth_.set_platform(&platform_);
     userdataauth_.set_chaps_client(&chaps_client_);
     userdataauth_.set_arc_disk_quota(&arc_disk_quota_);
+    userdataauth_.set_pkcs11_init(&pkcs11_init_);
     userdataauth_.set_disable_threading(true);
     homedirs_.set_crypto(&crypto_);
     homedirs_.set_platform(&platform_);
@@ -132,6 +134,10 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
   // Mock chaps token manager client, will be passed to UserDataAuth for its
   // internal use.
   NiceMock<chaps::TokenManagerClientMock> chaps_client_;
+
+  // Mock PKCS#11 init object, will be passed to UserDataAuth for its internal
+  // use.
+  NiceMock<MockPkcs11Init> pkcs11_init_;
 
   // This is used to hold the mount object when we create a mock mount with
   // SetupMount().
@@ -572,6 +578,47 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
   EXPECT_CALL(*mount2, pkcs11_state())
       .WillOnce(Return(cryptohome::Mount::kUninitialized));
   EXPECT_FALSE(userdataauth_.Pkcs11IsTpmTokenReady());
+}
+
+TEST_F(UserDataAuthTest, Pkcs11GetTpmTokenInfo) {
+  user_data_auth::TpmTokenInfo info;
+
+  constexpr CK_SLOT_ID kSlot = 42;
+  constexpr char kUsername1[] = "foo@gmail.com";
+
+  // Check the system token case.
+  EXPECT_CALL(pkcs11_init_, GetTpmTokenSlotForPath(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kSlot), Return(true)));
+  info = userdataauth_.Pkcs11GetTpmTokenInfo("");
+
+  EXPECT_EQ(info.label(), Pkcs11Init::kDefaultSystemLabel);
+  EXPECT_EQ(info.user_pin(), Pkcs11Init::kDefaultPin);
+  EXPECT_EQ(info.slot(), kSlot);
+
+  // Check the user token case.
+  EXPECT_CALL(pkcs11_init_, GetTpmTokenSlotForPath(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kSlot), Return(true)));
+  info = userdataauth_.Pkcs11GetTpmTokenInfo(kUsername1);
+
+  // Note that the label will usually be appended with a part of the sanitized
+  // username. However, the sanitized username cannot be generated during
+  // testing as we can't mock global functions in libbrillo. Therefore, we'll
+  // only test that it is prefixed by prefix.
+  EXPECT_EQ(info.label().substr(0, strlen(Pkcs11Init::kDefaultUserLabelPrefix)),
+            Pkcs11Init::kDefaultUserLabelPrefix);
+  EXPECT_EQ(info.user_pin(), Pkcs11Init::kDefaultPin);
+  EXPECT_EQ(info.slot(), kSlot);
+
+  // Verify that if GetTpmTokenSlotForPath fails, we'll get -1 for slot.
+  EXPECT_CALL(pkcs11_init_, GetTpmTokenSlotForPath(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kSlot), Return(false)));
+  info = userdataauth_.Pkcs11GetTpmTokenInfo("");
+  EXPECT_EQ(info.slot(), -1);
+
+  EXPECT_CALL(pkcs11_init_, GetTpmTokenSlotForPath(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kSlot), Return(false)));
+  info = userdataauth_.Pkcs11GetTpmTokenInfo(kUsername1);
+  EXPECT_EQ(info.slot(), -1);
 }
 
 TEST_F(UserDataAuthTestNotInitialized, InstallAttributesEnterpriseOwned) {

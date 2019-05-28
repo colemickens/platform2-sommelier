@@ -17,7 +17,6 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <chaps/pkcs11/cryptoki.h>
-#include <glib.h>
 
 #include "cryptohome/platform.h"
 
@@ -28,12 +27,12 @@ class Pkcs11Init {
   Pkcs11Init();
   virtual ~Pkcs11Init();
 
-  virtual void GetTpmTokenInfo(gchar **OUT_label,
-                               gchar **OUT_user_pin);
+  virtual void GetTpmTokenInfo(std::string* OUT_label,
+                               std::string* OUT_user_pin);
 
-  virtual void GetTpmTokenInfoForUser(gchar *username,
-                                      gchar **OUT_label,
-                                      gchar **OUT_user_pin);
+  virtual void GetTpmTokenInfoForUser(const std::string& username,
+                                      std::string* OUT_label,
+                                      std::string* OUT_user_pin);
 
   // Returns the same label as GetTpmTokenInfoForUser.
   virtual std::string GetTpmTokenLabelForUser(const std::string& username);
@@ -49,9 +48,9 @@ class Pkcs11Init {
   // Check if the system PKCS #11 token is valid.
   virtual bool IsSystemTokenOK();
 
-  static const char kDefaultPin[];
-  static const char kDefaultSystemLabel[];
-  static const char kDefaultUserLabelPrefix[];
+  static constexpr char kDefaultPin[] = "111111";
+  static constexpr char kDefaultSystemLabel[] = "System TPM Token";
+  static constexpr char kDefaultUserLabelPrefix[] = "User TPM Token ";
 
  private:
   // Returns true if a token in the given |slot_id| passes basic sanity checks.

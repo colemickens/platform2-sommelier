@@ -25,6 +25,7 @@
 #include "cryptohome/install_attributes.h"
 #include "cryptohome/mount.h"
 #include "cryptohome/mount_factory.h"
+#include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
 
 #include "UserDataAuth.pb.h"
@@ -227,6 +228,16 @@ class UserDataAuth {
   // Returns true if and only if PKCS#11 tokens are ready for all mounts.
   bool Pkcs11IsTpmTokenReady();
 
+  // Return the information regarding a token. If username is empty, then system
+  // token's information is given. Otherwise, the corresponding user token
+  // information is given. Note that this function doesn't check if the given
+  // username is valid or not. If a non-existent user is given, then the result
+  // is undefined.
+  // Note that if this method fails to get the slot associated with the token,
+  // then -1 will be supplied for slot.
+  user_data_auth::TpmTokenInfo Pkcs11GetTpmTokenInfo(
+      const std::string& username);
+
   // =============== Install Attributes Related Utilities ===============
 
   // Return true if this device is enterprise owned.
@@ -320,6 +331,9 @@ class UserDataAuth {
   void set_arc_disk_quota(cryptohome::ArcDiskQuota* arc_disk_quota) {
     arc_disk_quota_ = arc_disk_quota;
   }
+
+  // Override |pkcs11_init_| for testing purpose
+  void set_pkcs11_init(Pkcs11Init* pkcs11_init) { pkcs11_init_ = pkcs11_init; }
 
   // Associate a particular mount object |mount| with the username |username|
   // for testing purpose
@@ -533,6 +547,14 @@ class UserDataAuth {
   // to the system DBus. Such as when creating an instance of
   // KeyChallengeService.
   scoped_refptr<::dbus::Bus> bus_;
+
+  // The default PKCS#11 init object that is used to supply some PKCS#11 related
+  // information.
+  std::unique_ptr<Pkcs11Init> default_pkcs11_init_;
+
+  // The actual PKCS#11 init object that is used by this class, but can be
+  // overridden for testing.
+  Pkcs11Init* pkcs11_init_;
 
   // =============== Install Attributes Related Variables ===============
 

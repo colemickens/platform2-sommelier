@@ -477,6 +477,8 @@ void Pkcs11Adaptor::Pkcs11GetTpmTokeInfo(
         user_data_auth::Pkcs11GetTpmTokeInfoReply>> response,
     const user_data_auth::Pkcs11GetTpmTokeInfoRequest& in_request) {
   user_data_auth::Pkcs11GetTpmTokeInfoReply reply;
+  *reply.mutable_token_info() =
+      service_->Pkcs11GetTpmTokenInfo(in_request.username());
   response->Return(reply);
 }
 

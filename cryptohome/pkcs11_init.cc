@@ -17,16 +17,15 @@
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
 #include <errno.h>
-#include <glib.h>
 
 using base::FilePath;
 
 namespace cryptohome {
 
-// static
-const char Pkcs11Init::kDefaultPin[] = "111111";
-const char Pkcs11Init::kDefaultSystemLabel[] = "System TPM Token";
-const char Pkcs11Init::kDefaultUserLabelPrefix[] = "User TPM Token ";
+// Static members of Pkcs11Init
+constexpr char Pkcs11Init::kDefaultPin[];
+constexpr char Pkcs11Init::kDefaultSystemLabel[];
+constexpr char Pkcs11Init::kDefaultUserLabelPrefix[];
 
 extern const FilePath kTpmOwnedFile;
 
@@ -37,19 +36,17 @@ Pkcs11Init::Pkcs11Init() : default_platform_(new Platform),
 Pkcs11Init::~Pkcs11Init() {
 }
 
-void Pkcs11Init::GetTpmTokenInfo(gchar **OUT_label,
-                                 gchar **OUT_user_pin) {
-  *OUT_label = g_strdup(reinterpret_cast<const gchar*>(kDefaultSystemLabel));
-  *OUT_user_pin = g_strdup(reinterpret_cast<const gchar*>(kDefaultPin));
+void Pkcs11Init::GetTpmTokenInfo(std::string* OUT_label,
+                                 std::string* OUT_user_pin) {
+  *OUT_label = kDefaultSystemLabel;
+  *OUT_user_pin = kDefaultPin;
 }
 
-void Pkcs11Init::GetTpmTokenInfoForUser(gchar *username,
-                                        gchar **OUT_label,
-                                        gchar **OUT_user_pin) {
-  std::string label = GetTpmTokenLabelForUser(
-      reinterpret_cast<const char*>(username));
-  *OUT_label = g_strdup(reinterpret_cast<const gchar*>(label.c_str()));
-  *OUT_user_pin = g_strdup(reinterpret_cast<const gchar*>(kDefaultPin));
+void Pkcs11Init::GetTpmTokenInfoForUser(const std::string& username,
+                                        std::string* OUT_label,
+                                        std::string* OUT_user_pin) {
+  *OUT_label = GetTpmTokenLabelForUser(username);
+  *OUT_user_pin = kDefaultPin;
 }
 
 std::string Pkcs11Init::GetTpmTokenLabelForUser(const std::string& username) {
