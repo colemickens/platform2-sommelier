@@ -9,6 +9,7 @@
 #include <chaps/token_manager_client_mock.h>
 #include <vector>
 
+#include "cryptohome/mock_arc_disk_quota.h"
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_homedirs.h"
 #include "cryptohome/mock_install_attributes.h"
@@ -71,6 +72,7 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
     userdataauth_.set_tpm_init(&tpm_init_);
     userdataauth_.set_platform(&platform_);
     userdataauth_.set_chaps_client(&chaps_client_);
+    userdataauth_.set_arc_disk_quota(&arc_disk_quota_);
     userdataauth_.set_disable_threading(true);
     homedirs_.set_crypto(&crypto_);
     homedirs_.set_platform(&platform_);
@@ -84,6 +86,8 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
     // Setup fake salt by default.
     ON_CALL(crypto_, GetOrCreateSalt(_, _, _, _))
         .WillByDefault(WithArgs<1, 3>(Invoke(AssignSalt)));
+    // ARC Disk Quota initialization will do nothing.
+    ON_CALL(arc_disk_quota_, Initialize()).WillByDefault(Return());
   }
 
   // This is a utility function for tests to setup a mount for a particular
@@ -120,6 +124,10 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
 
   // Mock TPM Init object, will be passed to UserDataAuth for its internal use.
   NiceMock<MockTpmInit> tpm_init_;
+
+  // Mock ARC Disk Quota object, will be passed to UserDataAuth for its internal
+  // use.
+  NiceMock<MockArcDiskQuota> arc_disk_quota_;
 
   // Mock chaps token manager client, will be passed to UserDataAuth for its
   // internal use.
@@ -531,6 +539,11 @@ TEST_F(UserDataAuthTestNotInitialized, InstallAttributesNotEnterpriseOwned) {
   userdataauth_.Initialize();
 
   EXPECT_FALSE(userdataauth_.IsEnterpriseOwned());
+}
+
+TEST_F(UserDataAuthTestNotInitialized, InitializeArcDiskQuota) {
+  EXPECT_CALL(arc_disk_quota_, Initialize()).Times(1);
+  EXPECT_TRUE(userdataauth_.Initialize());
 }
 
 // ======================= CleanUpStaleMounts tests ==========================

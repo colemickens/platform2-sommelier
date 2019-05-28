@@ -18,6 +18,10 @@
 
 namespace cryptohome {
 
+// This is the constant that is usually fed to the |home| parameter in
+// ArcDiskQuota's constructor.
+constexpr char kArcDiskHome[] = "/home";
+
 // This class handles quota-related query from ARC++, and only designed to be
 // called from within the container. The main reason is that IsQuotaSupported
 // only makes sense from within the container since it counts the number of

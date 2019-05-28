@@ -149,8 +149,6 @@ const bool kUseInternalAttestationModeByDefault = true;
 
 const char kAutoInitializeTpmSwitch[] = "auto_initialize_tpm";
 
-const char kHome[] = "/home";
-
 class TpmInitStatus : public CryptohomeEventBase {
  public:
   TpmInitStatus(bool took_ownership, bool status)
@@ -256,7 +254,7 @@ Service::Service()
       default_homedirs_(new cryptohome::HomeDirs()),
       homedirs_(default_homedirs_.get()),
       default_arc_disk_quota_(new cryptohome::ArcDiskQuota(
-          homedirs_, platform_, base::FilePath(kHome))),
+          homedirs_, platform_, base::FilePath(kArcDiskHome))),
       arc_disk_quota_(default_arc_disk_quota_.get()),
       guest_user_(brillo::cryptohome::home::kGuestUserName),
       force_ecryptfs_(true),

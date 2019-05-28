@@ -114,7 +114,10 @@ UserDataAuth::UserDataAuth()
       public_mount_salt_(),
       guest_user_(brillo::cryptohome::home::kGuestUserName),
       force_ecryptfs_(true),
-      legacy_mount_(true) {}
+      legacy_mount_(true),
+      default_arc_disk_quota_(new cryptohome::ArcDiskQuota(
+          homedirs_, platform_, base::FilePath(kArcDiskHome))),
+      arc_disk_quota_(default_arc_disk_quota_.get()) {}
 
 UserDataAuth::~UserDataAuth() {
   mount_thread_.Stop();
@@ -158,6 +161,9 @@ bool UserDataAuth::Initialize() {
   if (!homedirs_->GetSystemSalt(&system_salt_)) {
     return false;
   }
+
+  // Initialize ARC Disk Quota Service.
+  arc_disk_quota_->Initialize();
 
   // If the TPM is unowned or doesn't exist, it's safe for
   // this function to be called again. However, it shouldn't

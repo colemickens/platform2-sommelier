@@ -17,6 +17,7 @@
 #include <brillo/secure_blob.h>
 #include <dbus/bus.h>
 
+#include "cryptohome/arc_disk_quota.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
@@ -295,6 +296,11 @@ class UserDataAuth {
   // Override |install_attrs_| for testing purpose
   void set_install_attrs(InstallAttributes* install_attrs) {
     install_attrs_ = install_attrs;
+  }
+
+  // Override |arc_disk_quota_| for testing purpose
+  void set_arc_disk_quota(cryptohome::ArcDiskQuota* arc_disk_quota) {
+    arc_disk_quota_ = arc_disk_quota;
   }
 
   // Associate a particular mount object |mount| with the username |username|
@@ -587,6 +593,14 @@ class UserDataAuth {
   // Whether we are using legacy mount. See Mount::MountLegacyHome()'s comment
   // for more information.
   bool legacy_mount_;
+
+  // The default ARC Disk Quota object. This is used to provide Quota related
+  // information function for ARC.
+  std::unique_ptr<ArcDiskQuota> default_arc_disk_quota_;
+
+  // The actual ARC Disk Quota object used by this class. Usually set to
+  // default_arc_disk_quota_, but can be overridden for testing.
+  ArcDiskQuota* arc_disk_quota_;
 };
 
 }  // namespace cryptohome
