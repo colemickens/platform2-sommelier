@@ -1749,4 +1749,8 @@ bool UserDataAuth::IsArcQuotaSupported() {
   return arc_disk_quota_->IsQuotaSupported();
 }
 
+int64_t UserDataAuth::GetCurrentSpaceForArcUid(uid_t android_uid) {
+  return arc_disk_quota_->GetCurrentSpaceForUid(android_uid);
+}
+
 }  // namespace cryptohome

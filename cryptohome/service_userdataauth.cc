@@ -436,6 +436,7 @@ void ArcQuotaAdaptor::GetCurrentSpaceForArcUid(
         user_data_auth::GetCurrentSpaceForArcUidReply>> response,
     const user_data_auth::GetCurrentSpaceForArcUidRequest& in_request) {
   user_data_auth::GetCurrentSpaceForArcUidReply reply;
+  reply.set_cur_space(service_->GetCurrentSpaceForArcUid(in_request.uid()));
   response->Return(reply);
 }
 

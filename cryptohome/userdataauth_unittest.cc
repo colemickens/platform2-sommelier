@@ -554,6 +554,15 @@ TEST_F(UserDataAuthTestNotInitialized, IsArcQuotaSupported) {
   EXPECT_FALSE(userdataauth_.IsArcQuotaSupported());
 }
 
+TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceFoArcUid) {
+  constexpr uid_t kUID = 42;  // The Answer.
+  constexpr int64_t kSpaceUsage = 98765432198765;
+
+  EXPECT_CALL(arc_disk_quota_, GetCurrentSpaceForUid(kUID))
+      .WillOnce(Return(kSpaceUsage));
+  EXPECT_EQ(kSpaceUsage, userdataauth_.GetCurrentSpaceForArcUid(kUID));
+}
+
 // ======================= CleanUpStaleMounts tests ==========================
 
 namespace {
