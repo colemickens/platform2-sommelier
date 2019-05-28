@@ -4,6 +4,8 @@
 
 #include "arc/network/address_manager.h"
 
+#include "arc/network/net_util.h"
+
 namespace arc_networkd {
 
 namespace {
@@ -22,7 +24,7 @@ namespace {
 // | 192-252 (/28) | Containers | Used by Crostini                             |
 // +---------------+------------+----------------------------------------------+
 
-constexpr uint32_t kBaseAddress = 0x64735c00;  // 100.115.92.0 (host order)
+constexpr uint32_t kBaseAddress = Ntohl(Ipv4Addr(100, 115, 92, 0));
 constexpr uint32_t kDefaultSubnetPrefixLength = 30;
 
 }  // namespace

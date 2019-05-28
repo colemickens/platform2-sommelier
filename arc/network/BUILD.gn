@@ -39,6 +39,7 @@ proto_library("protos") {
 util_sources = [
   "address_manager.cc",
   "mac_address_generator.cc",
+  "net_util.cc",
   "subnet.cc",
   "subnet_pool.cc",
 ]
@@ -107,6 +108,7 @@ if (use.test) {
       "device_test.cc",
       "mac_address_generator_test.cc",
       "minijailed_process_runner_test.cc",
+      "net_util_test.cc",
       "shill_client_test.cc",
       "subnet_pool_test.cc",
       "subnet_test.cc",

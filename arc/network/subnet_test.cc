@@ -15,12 +15,14 @@
 #include <base/strings/string_util.h>
 #include <gtest/gtest.h>
 
+#include "arc/network/net_util.h"
+
 namespace arc_networkd {
 namespace {
 
-constexpr size_t kContainerBaseAddress = 0x64735cc0;  // 100.115.92.192
-constexpr size_t kVmBaseAddress = 0x64735c18;         // 100.115.92.24
-constexpr size_t kPluginBaseAddress = 0x64735c80;     // 100.115.92.128
+constexpr size_t kContainerBaseAddress = Ntohl(Ipv4Addr(100, 115, 92, 192));
+constexpr size_t kVmBaseAddress = Ntohl(Ipv4Addr(100, 115, 92, 24));
+constexpr size_t kPluginBaseAddress = Ntohl(Ipv4Addr(100, 115, 92, 128));
 
 constexpr size_t kContainerSubnetPrefixLength = 28;
 constexpr size_t kVmSubnetPrefixLength = 30;
@@ -39,23 +41,43 @@ constexpr size_t kExpectedAvailableCount[] = {
 
 // kExpectedNetmask[i] == Netmask() for subnet with prefix_length i.
 constexpr uint32_t kExpectedNetmask[] = {
-    0x00000000, 0x80000000, 0xc0000000, 0xe0000000, 0xf0000000, 0xf8000000,
-    0xfc000000, 0xfe000000, 0xff000000, 0xff800000, 0xffc00000, 0xffe00000,
-    0xfff00000, 0xfff80000, 0xfffc0000, 0xfffe0000, 0xffff0000, 0xffff8000,
-    0xffffc000, 0xffffe000, 0xfffff000, 0xfffff800, 0xfffffc00, 0xfffffe00,
-    0xffffff00, 0xffffff80, 0xffffffc0, 0xffffffe0, 0xfffffff0, 0xfffffff8,
-    0xfffffffc, 0xfffffffe,
+    Ipv4Addr(0, 0, 0, 0),         Ipv4Addr(128, 0, 0, 0),
+    Ipv4Addr(192, 0, 0, 0),       Ipv4Addr(224, 0, 0, 0),
+    Ipv4Addr(240, 0, 0, 0),       Ipv4Addr(248, 0, 0, 0),
+    Ipv4Addr(252, 0, 0, 0),       Ipv4Addr(254, 0, 0, 0),
+    Ipv4Addr(255, 0, 0, 0),       Ipv4Addr(255, 128, 0, 0),
+    Ipv4Addr(255, 192, 0, 0),     Ipv4Addr(255, 224, 0, 0),
+    Ipv4Addr(255, 240, 0, 0),     Ipv4Addr(255, 248, 0, 0),
+    Ipv4Addr(255, 252, 0, 0),     Ipv4Addr(255, 254, 0, 0),
+    Ipv4Addr(255, 255, 0, 0),     Ipv4Addr(255, 255, 128, 0),
+    Ipv4Addr(255, 255, 192, 0),   Ipv4Addr(255, 255, 224, 0),
+    Ipv4Addr(255, 255, 240, 0),   Ipv4Addr(255, 255, 248, 0),
+    Ipv4Addr(255, 255, 252, 0),   Ipv4Addr(255, 255, 254, 0),
+    Ipv4Addr(255, 255, 255, 0),   Ipv4Addr(255, 255, 255, 128),
+    Ipv4Addr(255, 255, 255, 192), Ipv4Addr(255, 255, 255, 224),
+    Ipv4Addr(255, 255, 255, 240), Ipv4Addr(255, 255, 255, 248),
+    Ipv4Addr(255, 255, 255, 252), Ipv4Addr(255, 255, 255, 254),
 };
 
 // kExpectedPrefix[i] == Prefix() for subnet with 4 * i offset to
 // |kVmBaseAddress|.
 constexpr uint32_t kExpectedPrefix[] = {
-    0x185c7364, 0x1c5c7364, 0x205c7364, 0x245c7364, 0x285c7364, 0x2c5c7364,
-    0x305c7364, 0x345c7364, 0x385c7364, 0x3c5c7364, 0x405c7364, 0x445c7364,
-    0x485c7364, 0x4c5c7364, 0x505c7364, 0x545c7364, 0x585c7364, 0x5c5c7364,
-    0x605c7364, 0x645c7364, 0x685c7364, 0x6c5c7364, 0x705c7364, 0x745c7364,
-    0x785c7364, 0x7c5c7364, 0x805c7364, 0x845c7364, 0x885c7364, 0x8c5c7364,
-    0x905c7364, 0x945c7364,
+    Ipv4Addr(100, 115, 92, 24),  Ipv4Addr(100, 115, 92, 28),
+    Ipv4Addr(100, 115, 92, 32),  Ipv4Addr(100, 115, 92, 36),
+    Ipv4Addr(100, 115, 92, 40),  Ipv4Addr(100, 115, 92, 44),
+    Ipv4Addr(100, 115, 92, 48),  Ipv4Addr(100, 115, 92, 52),
+    Ipv4Addr(100, 115, 92, 56),  Ipv4Addr(100, 115, 92, 60),
+    Ipv4Addr(100, 115, 92, 64),  Ipv4Addr(100, 115, 92, 68),
+    Ipv4Addr(100, 115, 92, 72),  Ipv4Addr(100, 115, 92, 76),
+    Ipv4Addr(100, 115, 92, 80),  Ipv4Addr(100, 115, 92, 84),
+    Ipv4Addr(100, 115, 92, 88),  Ipv4Addr(100, 115, 92, 92),
+    Ipv4Addr(100, 115, 92, 96),  Ipv4Addr(100, 115, 92, 100),
+    Ipv4Addr(100, 115, 92, 104), Ipv4Addr(100, 115, 92, 108),
+    Ipv4Addr(100, 115, 92, 112), Ipv4Addr(100, 115, 92, 116),
+    Ipv4Addr(100, 115, 92, 120), Ipv4Addr(100, 115, 92, 124),
+    Ipv4Addr(100, 115, 92, 128), Ipv4Addr(100, 115, 92, 132),
+    Ipv4Addr(100, 115, 92, 136), Ipv4Addr(100, 115, 92, 140),
+    Ipv4Addr(100, 115, 92, 144), Ipv4Addr(100, 115, 92, 148),
 };
 
 // kExpectedCidrString[i] == ToCidrString() for subnet with 4 * i offset to
@@ -144,7 +166,7 @@ TEST_P(PrefixTest, Netmask) {
   size_t prefix_length = GetParam();
 
   Subnet subnet(0, prefix_length, base::Bind(&DoNothing));
-  EXPECT_EQ(htonl(kExpectedNetmask[prefix_length]), subnet.Netmask());
+  EXPECT_EQ(kExpectedNetmask[prefix_length], subnet.Netmask());
 }
 
 INSTANTIATE_TEST_CASE_P(AllValues,

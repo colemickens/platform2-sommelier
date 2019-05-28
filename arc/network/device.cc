@@ -17,6 +17,7 @@
 #include <base/strings/stringprintf.h>
 
 #include "arc/network/arc_ip_config.h"
+#include "arc/network/net_util.h"
 
 namespace arc_networkd {
 
@@ -27,9 +28,9 @@ const char kAndroidLegacyDevice[] = "android";
 
 namespace {
 
-constexpr uint32_t kMdnsMcastAddress = 0xfb0000e0;  // 224.0.0.251 (NBO)
+constexpr uint32_t kMdnsMcastAddress = Ipv4Addr(224, 0, 0, 251);
 constexpr uint16_t kMdnsPort = 5353;
-constexpr uint32_t kSsdpMcastAddress = 0xfaffffef;  // 239.255.255.250 (NBO)
+constexpr uint32_t kSsdpMcastAddress = Ipv4Addr(239, 255, 255, 250);
 constexpr uint16_t kSsdpPort = 1900;
 
 constexpr int kMaxRandomAddressTries = 3;

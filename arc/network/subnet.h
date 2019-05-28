@@ -114,14 +114,6 @@ class BRILLO_EXPORT Subnet {
   DISALLOW_COPY_AND_ASSIGN(Subnet);
 };
 
-// Returns the literal representation of the IPv4 address given in network byte
-// order.
-std::string IPv4AddressToString(uint32_t addr);
-
-// Returns the CIDR representation of an IPv4 address given in network byte
-// order.
-std::string IPv4AddressToCidrString(uint32_t addr, uint32_t prefix_length);
-
 }  // namespace arc_networkd
 
 #endif  // ARC_NETWORK_SUBNET_H_

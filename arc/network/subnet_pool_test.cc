@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium OS Authors. All rights reserved.
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,6 +15,7 @@
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
+#include "arc/network/net_util.h"
 #include "arc/network/subnet.h"
 #include "arc/network/subnet_pool.h"
 
@@ -25,7 +26,7 @@ namespace {
 
 // The maximum number of subnets that can be allocated at a given time.
 constexpr uint32_t kMaxSubnets = 32;
-constexpr uint32_t kBaseAddress = 0x44556677;
+constexpr uint32_t kBaseAddress = Ntohl(Ipv4Addr(44, 55, 66, 77));
 constexpr uint32_t kPrefixLength = 30;
 
 }  // namespace

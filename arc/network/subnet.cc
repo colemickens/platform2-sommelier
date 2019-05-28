@@ -12,6 +12,8 @@
 #include <base/bind.h>
 #include <base/logging.h>
 
+#include "arc/network/net_util.h"
+
 namespace arc_networkd {
 
 SubnetAddress::SubnetAddress(uint32_t addr,
@@ -115,19 +117,6 @@ void Subnet::Free(uint32_t offset) {
   DCHECK_LT(offset, addrs_.size() - 1);
 
   addrs_[offset] = false;
-}
-
-// static
-std::string IPv4AddressToString(uint32_t addr) {
-  char buf[INET_ADDRSTRLEN] = {0};
-  struct in_addr ia;
-  ia.s_addr = addr;
-  return !inet_ntop(AF_INET, &ia, buf, sizeof(buf)) ? "" : buf;
-}
-
-// static
-std::string IPv4AddressToCidrString(uint32_t addr, uint32_t prefix_length) {
-  return IPv4AddressToString(addr) + "/" + std::to_string(prefix_length);
 }
 
 }  // namespace arc_networkd

@@ -10,6 +10,8 @@
 
 #include <arpa/inet.h>
 
+#include "arc/network/net_util.h"
+
 #include <gtest/gtest.h>
 
 namespace arc_networkd {
@@ -33,12 +35,12 @@ TEST(AddressManager, OnlyAllocateFromKnownGuests) {
 
 TEST(AddressManager, BaseAddresses) {
   std::map<AddressManager::Guest, size_t> addrs = {
-      {AddressManager::Guest::ARC, 0x64735c00},         // 100.115.92.0
-      {AddressManager::Guest::VM_ARC, 0x64735c04},      // 100.115.92.4
-      {AddressManager::Guest::ARC_NET, 0x64735c08},     // 100.115.92.8
-      {AddressManager::Guest::VM_TERMINA, 0x64735c18},  // 100.115.92.24
-      {AddressManager::Guest::VM_PLUGIN, 0x64735c80},   // 100.115.92.128
-      {AddressManager::Guest::VM_TERMINA, 0x64735cc0},  // 100.115.92.192
+      {AddressManager::Guest::ARC, ntohl(Ipv4Addr(100, 115, 92, 0))},
+      {AddressManager::Guest::VM_ARC, ntohl(Ipv4Addr(100, 115, 92, 4))},
+      {AddressManager::Guest::ARC_NET, ntohl(Ipv4Addr(100, 115, 92, 8))},
+      {AddressManager::Guest::VM_TERMINA, ntohl(Ipv4Addr(100, 115, 92, 24))},
+      {AddressManager::Guest::VM_PLUGIN, ntohl(Ipv4Addr(100, 115, 92, 128))},
+      {AddressManager::Guest::VM_TERMINA, ntohl(Ipv4Addr(100, 115, 92, 192))},
   };
   AddressManager mgr({
       AddressManager::Guest::ARC,

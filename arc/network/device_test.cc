@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 
 #include "arc/network/mac_address_generator.h"
+#include "arc/network/net_util.h"
 #include "arc/network/subnet.h"
 
 namespace arc_networkd {
@@ -24,8 +25,8 @@ class DeviceTest : public testing::Test {
 
   std::unique_ptr<Device> NewDevice(const std::string& name,
                                     const Device::Options& options) {
-    auto ipv4_subnet =
-        std::make_unique<Subnet>(0x64646464, 30, base::Bind(&DoNothing));
+    auto ipv4_subnet = std::make_unique<Subnet>(Ipv4Addr(100, 100, 100, 100),
+                                                30, base::Bind(&DoNothing));
     EXPECT_TRUE(ipv4_subnet);
 
     auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);

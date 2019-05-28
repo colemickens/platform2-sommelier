@@ -15,6 +15,8 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/minijail/minijail.h>
 
+#include "arc/network/net_util.h"
+
 namespace arc_networkd {
 namespace {
 // adb gets confused if we listen on 5555 and thinks there is an emulator
@@ -23,7 +25,7 @@ namespace {
 constexpr uint16_t kTcpListenPort = 5550;
 // But we still connect to adbd on its standard TCP port.
 constexpr uint16_t kTcpConnectPort = 5555;
-constexpr uint32_t kTcpAddr = 0x64735C02;  // 100.115.92.2
+constexpr uint32_t kTcpAddr = Ipv4Addr(100, 115, 92, 2);
 constexpr uint32_t kVsockPort = 5555;
 // Reference: (./src/private-overlays/project-cheets-private/
 // chromeos-base/android-vm-pi/files/run-arcvm)
@@ -103,7 +105,7 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
   struct sockaddr_in addr_in = {0};
   addr_in.sin_family = AF_INET;
   addr_in.sin_port = htons(kTcpConnectPort);
-  addr_in.sin_addr.s_addr = htonl(kTcpAddr);
+  addr_in.sin_addr.s_addr = kTcpAddr;
 
   dst = std::make_unique<Socket>(AF_INET, SOCK_STREAM);
   if (dst->Connect((const struct sockaddr*)&addr_in, sizeof(addr_in)))
