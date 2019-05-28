@@ -28,10 +28,10 @@ class ArcHelper {
   ~ArcHelper() = default;
   static std::unique_ptr<ArcHelper> New();
 
-  void Start();
-  void Stop();
+  void Start(pid_t pid);
+  void Stop(pid_t pid);
 
-  void HandleCommand(const IpHelperMessage& cmd);
+  void HandleCommand(const DeviceMessage& cmd);
 
  protected:
   ArcHelper() = default;

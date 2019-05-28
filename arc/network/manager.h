@@ -11,6 +11,7 @@
 #include <string>
 
 #include <base/memory/weak_ptr.h>
+#include <base/message_loop/message_loop.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/process_reaper.h>
 
@@ -19,16 +20,24 @@
 #include "arc/network/device_manager.h"
 #include "arc/network/helper_process.h"
 #include "arc/network/shill_client.h"
+#include "arc/network/socket.h"
 
 namespace arc_networkd {
 
 // Main class that runs the mainloop and responds to LAN interface changes.
-class Manager final : public brillo::DBusDaemon {
+class Manager final : public brillo::DBusDaemon,
+                      public base::MessageLoopForIO::Watcher {
  public:
-  Manager(std::unique_ptr<HelperProcess> ip_helper, bool enable_multinet);
+  Manager(std::unique_ptr<HelperProcess> ip_helper,
+          std::unique_ptr<HelperProcess> adb_proxy,
+          bool enable_multinet);
+  ~Manager();
 
  protected:
   int OnInit() override;
+
+  void OnFileCanReadWithoutBlocking(int fd) override;
+  void OnFileCanWriteWithoutBlocking(int fd) override {}
 
  private:
   void InitialSetup();
@@ -41,22 +50,28 @@ class Manager final : public brillo::DBusDaemon {
   // the daemon should clean up in preparation to exit.
   void OnShutdown(int* exit_code) override;
 
-  // Callbacks from Daemon to notify that a signal was received
-  // indicating the container is either booting up or going down.
-  bool OnContainerStart(const struct signalfd_siginfo& info);
-  bool OnContainerStop(const struct signalfd_siginfo& info);
+  // Processes notification messages received from guests.
+  void OnGuestNotification(const std::string& notification);
 
-  // Relays messages to the helper process.
-  void SendMessage(const IpHelperMessage& msg);
+  // Relays guest messages to the helper processes.
+  void SendGuestMessage(const GuestMessage& msg);
+
+  // Relays device messages to the IpHelper process.
+  void SendDeviceMessage(const DeviceMessage& msg);
 
   friend std::ostream& operator<<(std::ostream& stream, const Manager& manager);
 
+  std::unique_ptr<HelperProcess> ip_helper_;
+  std::unique_ptr<HelperProcess> adb_proxy_;
+
   AddressManager addr_mgr_;
   brillo::ProcessReaper process_reaper_;
-  std::unique_ptr<HelperProcess> ip_helper_;
   std::unique_ptr<DeviceManager> device_mgr_;
 
   bool enable_multinet_;
+
+  Socket gsock_;
+  base::MessageLoopForIO::FileDescriptorWatcher gsock_watcher_;
 
   base::WeakPtrFactory<Manager> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Manager);

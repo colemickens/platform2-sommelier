@@ -47,7 +47,7 @@ class DeviceTest : public testing::Test {
     return dev;
   }
 
-  void VerifyMsgs(const std::vector<IpHelperMessage>& expected) {
+  void VerifyMsgs(const std::vector<DeviceMessage>& expected) {
     ASSERT_EQ(msgs_recv_.size(), expected.size());
     for (int i = 0; i < msgs_recv_.size(); ++i) {
       EXPECT_EQ(msgs_recv_[i], expected[i].SerializeAsString());
@@ -58,7 +58,7 @@ class DeviceTest : public testing::Test {
   DeviceConfig msg_;
 
  private:
-  void RecvMsg(const IpHelperMessage& msg) {
+  void RecvMsg(const DeviceMessage& msg) {
     if (capture_msgs_)
       msgs_recv_.emplace_back(msg.SerializeAsString());
   }
@@ -86,7 +86,7 @@ TEST_F(DeviceTest, CtorSendsAnnounce) {
   capture_msgs_ = true;
   Device::Options opts = {true, true};
   auto dev = NewDevice(kAndroidDevice, opts);
-  IpHelperMessage msg;
+  DeviceMessage msg;
   msg.set_dev_ifname(kAndroidDevice);
   *msg.mutable_dev_config() = msg_;
   VerifyMsgs({msg});
@@ -97,7 +97,7 @@ TEST_F(DeviceTest, DtorSendsTeardown) {
   auto dev = NewDevice(kAndroidDevice, opts);
   capture_msgs_ = true;
   dev.reset();
-  IpHelperMessage msg;
+  DeviceMessage msg;
   msg.set_dev_ifname(kAndroidDevice);
   msg.set_teardown(true);
   VerifyMsgs({msg});
@@ -108,7 +108,7 @@ TEST_F(DeviceTest, EnableSendsMessageForLegacyAndroid) {
   auto dev = NewDevice(kAndroidLegacyDevice, opts);
   capture_msgs_ = true;
   dev->Enable("eth0");
-  IpHelperMessage enable_msg;
+  DeviceMessage enable_msg;
   enable_msg.set_dev_ifname(kAndroidLegacyDevice);
   enable_msg.set_enable_inbound_ifname("eth0");
   VerifyMsgs({enable_msg});
@@ -134,10 +134,10 @@ TEST_F(DeviceTest, DisableLegacyAndroidDeviceSendsTwoMessages) {
   // message to be sent.
   const_cast<Device::Options*>(&dev->options_)->find_ipv6_routes = true;
   dev->Disable();
-  IpHelperMessage clear_msg;
+  DeviceMessage clear_msg;
   clear_msg.set_dev_ifname(kAndroidLegacyDevice);
   clear_msg.set_clear_arc_ip(true);
-  IpHelperMessage disable_msg;
+  DeviceMessage disable_msg;
   disable_msg.set_dev_ifname(kAndroidLegacyDevice);
   disable_msg.set_disable_inbound(true);
   VerifyMsgs({clear_msg, disable_msg});
@@ -165,7 +165,7 @@ TEST_F(DeviceTest, ClearMessageNotSentIfIPv6RouteFindingIsOff) {
   dev->Enable("eth0");
   capture_msgs_ = true;
   dev->Disable();
-  IpHelperMessage disable_msg;
+  DeviceMessage disable_msg;
   disable_msg.set_dev_ifname(kAndroidLegacyDevice);
   disable_msg.set_disable_inbound(true);
   VerifyMsgs({disable_msg});

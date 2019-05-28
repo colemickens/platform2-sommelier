@@ -13,13 +13,9 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/string_util.h>
 #include <shill/net/rtnl_handler.h>
 #include <shill/net/rtnl_message.h>
 
@@ -27,26 +23,6 @@
 #include "arc/network/scoped_ns.h"
 
 namespace {
-
-const char kContainerPIDPath[] =
-    "/run/containers/android-run_oci/container.pid";
-
-int GetContainerPID() {
-  const base::FilePath path(kContainerPIDPath);
-  std::string pid_str;
-  if (!base::ReadFileToStringWithMaxSize(path, &pid_str, 16 /* max size */)) {
-    LOG(ERROR) << "Failed to read pid file";
-    return -1;
-  }
-  int pid;
-  if (!base::StringToInt(base::TrimWhitespaceASCII(pid_str, base::TRIM_ALL),
-                         &pid)) {
-    LOG(ERROR) << "Failed to convert container pid string";
-    return -1;
-  }
-  LOG(INFO) << "Read container pid as " << pid;
-  return pid;
-}
 
 // This wrapper is required since the base class is a singleton that hides its
 // constructor. It is necessary here because the message loop thread has to be
@@ -106,9 +82,9 @@ std::unique_ptr<ArcHelper> ArcHelper::New() {
   return base::WrapUnique(new ArcHelper);
 }
 
-void ArcHelper::Start() {
-  LOG(INFO) << "Container starting";
-  pid_ = GetContainerPID();
+void ArcHelper::Start(pid_t pid) {
+  LOG(INFO) << "Container starting [" << pid << "]";
+  pid_ = pid;
   CHECK_NE(pid_, 0);
 
   // Start listening for RTNetlink messages in the container's net namespace
@@ -136,8 +112,12 @@ void ArcHelper::Start() {
   }
 }
 
-void ArcHelper::Stop() {
-  LOG(INFO) << "Container stopping";
+void ArcHelper::Stop(pid_t pid) {
+  if (pid != pid_) {
+    LOG(DFATAL) << "Mismatched pid: " << pid;
+    return;
+  }
+  LOG(INFO) << "Container stopping [" << pid_ << "]";
 
   link_listener_.reset();
   rtnl_handler_.reset();
@@ -168,7 +148,7 @@ void ArcHelper::RemoveDevice(const std::string& ifname) {
   arc_ip_configs_.erase(ifname);
 }
 
-void ArcHelper::HandleCommand(const IpHelperMessage& cmd) {
+void ArcHelper::HandleCommand(const DeviceMessage& cmd) {
   const std::string& dev_ifname = cmd.dev_ifname();
   const auto it = arc_ip_configs_.find(dev_ifname);
   if (it == arc_ip_configs_.end()) {

@@ -63,6 +63,7 @@ static_library("libarcnetwork") {
     "helper_process.cc",
     "ip_helper.cc",
     "manager.cc",
+    "message_dispatcher.cc",
     "minijailed_process_runner.cc",
     "multicast_forwarder.cc",
     "multicast_socket.cc",

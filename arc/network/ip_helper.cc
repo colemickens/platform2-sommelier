@@ -4,22 +4,15 @@
 
 #include "arc/network/ip_helper.h"
 
-#include <ctype.h>
-#include <unistd.h>
-
 #include <utility>
-#include <vector>
 
 #include <base/bind.h>
-#include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/posix/unix_domain_socket_linux.h>
 
 namespace arc_networkd {
 
-IpHelper::IpHelper(base::ScopedFD control_fd) : control_watcher_(FROM_HERE) {
-  control_fd_ = std::move(control_fd);
-}
+IpHelper::IpHelper(base::ScopedFD control_fd)
+    : msg_dispatcher_(std::move(control_fd)) {}
 
 int IpHelper::OnInit() {
   // Prevent the main process from sending us any signals.
@@ -28,76 +21,44 @@ int IpHelper::OnInit() {
     return -1;
   }
 
-  // Handle signals for ARC lifecycle.
-  RegisterHandler(SIGUSR1,
-                  base::Bind(&IpHelper::OnSignal, base::Unretained(this)));
-  RegisterHandler(SIGUSR2,
-                  base::Bind(&IpHelper::OnSignal, base::Unretained(this)));
+  msg_dispatcher_.RegisterFailureHandler(
+      base::Bind(&IpHelper::OnParentProcessExit, weak_factory_.GetWeakPtr()));
 
-  // This needs to execute after Daemon::OnInit().
-  base::MessageLoopForIO::current()->task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&IpHelper::InitialSetup, weak_factory_.GetWeakPtr()));
+  msg_dispatcher_.RegisterGuestMessageHandler(
+      base::Bind(&IpHelper::OnGuestMessage, weak_factory_.GetWeakPtr()));
 
-  return Daemon::OnInit();
-}
-
-void IpHelper::InitialSetup() {
-  // Ensure that the parent is alive before trying to continue the setup.
-  char buffer = 0;
-  if (!base::UnixDomainSocket::SendMsg(control_fd_.get(), &buffer,
-                                       sizeof(buffer), std::vector<int>())) {
-    LOG(ERROR) << "Aborting setup flow because the parent died";
-    Quit();
-    return;
-  }
+  msg_dispatcher_.RegisterDeviceMessageHandler(
+      base::Bind(&IpHelper::OnDeviceMessage, weak_factory_.GetWeakPtr()));
 
   arc_helper_ = ArcHelper::New();
   if (!arc_helper_) {
     LOG(ERROR) << "Aborting setup flow";
-    Quit();
-    return;
+    return -1;
   }
 
-  MessageLoopForIO::current()->WatchFileDescriptor(control_fd_.get(), true,
-                                                   MessageLoopForIO::WATCH_READ,
-                                                   &control_watcher_, this);
+  return Daemon::OnInit();
 }
 
-bool IpHelper::OnSignal(const struct signalfd_siginfo& info) {
-  if (info.ssi_signo == SIGUSR1) {
-    arc_helper_->Start();
-  } else if (info.ssi_signo == SIGUSR2) {
-    arc_helper_->Stop();
-  }
-
-  // Stay registered.
-  return false;
+void IpHelper::OnParentProcessExit() {
+  LOG(ERROR) << "Quitting because the parent process died";
+  Quit();
 }
 
-void IpHelper::OnFileCanReadWithoutBlocking(int fd) {
-  CHECK_EQ(fd, control_fd_.get());
+void IpHelper::OnGuestMessage(const GuestMessage& msg) {
+  if (msg.type() != GuestMessage::ARC)
+    return;
 
-  char buffer[1024];
-  std::vector<base::ScopedFD> fds{};
-  ssize_t len =
-      base::UnixDomainSocket::RecvMsg(fd, buffer, sizeof(buffer), &fds);
-
-  // Exit whenever read fails or fd is closed.
-  if (len <= 0) {
-    PLOG(WARNING) << "Read failed: exiting";
-    control_watcher_.StopWatchingFileDescriptor();
-    Quit();
+  if (msg.event() == GuestMessage::START && msg.has_arc_pid()) {
+    arc_helper_->Start(msg.arc_pid());
     return;
   }
 
-  IpHelperMessage cmd;
-  if (!cmd.ParseFromArray(buffer, len)) {
-    LOG(ERROR) << "Error parsing protobuf";
-    return;
-  }
+  if (msg.event() == GuestMessage::STOP && msg.has_arc_pid())
+    arc_helper_->Stop(msg.arc_pid());
+}
 
-  arc_helper_->HandleCommand(cmd);
+void IpHelper::OnDeviceMessage(const DeviceMessage& msg) {
+  arc_helper_->HandleCommand(msg);
 }
 
 }  // namespace arc_networkd

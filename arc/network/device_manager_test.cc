@@ -75,7 +75,7 @@ class DeviceManagerTest : public testing::Test {
     return mgr;
   }
 
-  void VerifyMsgs(const std::vector<IpHelperMessage>& expected) {
+  void VerifyMsgs(const std::vector<DeviceMessage>& expected) {
     ASSERT_EQ(msgs_recv_.size(), expected.size());
     for (size_t i = 0; i < msgs_recv_.size(); ++i) {
       EXPECT_EQ(msgs_recv_[i], expected[i].SerializeAsString());
@@ -85,12 +85,12 @@ class DeviceManagerTest : public testing::Test {
   void ClearMsgs() { msgs_recv_.clear(); }
 
   bool capture_msgs_;
-  IpHelperMessage android_announce_msg_;
-  IpHelperMessage legacy_android_announce_msg_;
   FakeShillClient* shill_client_;
+  DeviceMessage android_announce_msg_;
+  DeviceMessage legacy_android_announce_msg_;
 
  private:
-  void RecvMsg(const IpHelperMessage& msg) {
+  void RecvMsg(const DeviceMessage& msg) {
     if (capture_msgs_)
       msgs_recv_.emplace_back(msg.SerializeAsString());
   }

@@ -37,7 +37,7 @@ extern const char kAndroidLegacyDevice[];
 // source for configuration events.
 class Device {
  public:
-  using MessageSink = base::Callback<void(const IpHelperMessage&)>;
+  using MessageSink = base::Callback<void(const DeviceMessage&)>;
 
   class Config {
    public:

@@ -36,7 +36,14 @@ constexpr int kMaxConn = 16;
 
 }  // namespace
 
-AdbProxy::AdbProxy() : src_watcher_(FROM_HERE) {}
+AdbProxy::AdbProxy(base::ScopedFD control_fd)
+    : msg_dispatcher_(std::move(control_fd)), src_watcher_(FROM_HERE) {
+  msg_dispatcher_.RegisterFailureHandler(
+      base::Bind(&AdbProxy::OnParentProcessExit, weak_factory_.GetWeakPtr()));
+
+  msg_dispatcher_.RegisterGuestMessageHandler(
+      base::Bind(&AdbProxy::OnGuestMessage, weak_factory_.GetWeakPtr()));
+}
 
 AdbProxy::~AdbProxy() {
   src_watcher_.StopWatchingFileDescriptor();
@@ -61,12 +68,13 @@ int AdbProxy::OnInit() {
   m->Enter(jail);
   m->Destroy(jail);
 
-  RegisterHandler(SIGUSR1,
-                  base::Bind(&AdbProxy::OnSignal, base::Unretained(this)));
-  RegisterHandler(SIGUSR2,
-                  base::Bind(&AdbProxy::OnSignal, base::Unretained(this)));
-
   return Daemon::OnInit();
+}
+
+void AdbProxy::OnParentProcessExit() {
+  LOG(ERROR) << "Quitting because the parent process died";
+  src_watcher_.StopWatchingFileDescriptor();
+  Quit();
 }
 
 void AdbProxy::OnFileCanReadWithoutBlocking(int fd) {
@@ -114,17 +122,19 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
   return nullptr;
 }
 
-bool AdbProxy::OnSignal(const struct signalfd_siginfo& info) {
-  // On guest ARC up, start accepting connections.
-  if (info.ssi_signo == SIGUSR1) {
+void AdbProxy::OnGuestMessage(const GuestMessage& msg) {
+  if (msg.type() != GuestMessage::ARC)
+    return;
+
+  // On ARC up, start accepting connections.
+  if (msg.event() == GuestMessage::START) {
     src_ = std::make_unique<Socket>(AF_INET, SOCK_STREAM | SOCK_NONBLOCK);
     // Need to set this to reuse the port on localhost.
-    // TODO(garrick): Move this into Socket.
     int on = 1;
     if (setsockopt(src_->fd(), SOL_SOCKET, SO_REUSEADDR, &on, sizeof(int)) <
         0) {
       PLOG(ERROR) << "setsockopt(SO_REUSEADDR) failed";
-      return false;
+      return;
     }
     struct sockaddr_in addr = {0};
     addr.sin_family = AF_INET;
@@ -132,29 +142,27 @@ bool AdbProxy::OnSignal(const struct signalfd_siginfo& info) {
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     if (!src_->Bind((const struct sockaddr*)&addr, sizeof(addr))) {
       LOG(ERROR) << "Cannot bind source socket";
-      return false;
+      return;
     }
 
     if (!src_->Listen(kMaxConn)) {
       LOG(ERROR) << "Cannot listen on source socket";
-      return false;
+      return;
     }
 
     // Run the accept loop.
     base::MessageLoopForIO::current()->WatchFileDescriptor(
         src_->fd(), true, base::MessageLoopForIO::WATCH_READ, &src_watcher_,
         this);
+    return;
   }
 
-  // On ARC down cull any open connections and stop listening.
-  if (info.ssi_signo == SIGUSR2) {
+  // On ARC down, cull any open connections and stop listening.
+  if (msg.event() == GuestMessage::STOP) {
     src_watcher_.StopWatchingFileDescriptor();
     src_.reset();
     fwd_.clear();
   }
-
-  // Stay registered.
-  return false;
 }
 
 }  // namespace arc_networkd

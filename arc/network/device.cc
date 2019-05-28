@@ -67,7 +67,7 @@ Device::Device(const std::string& ifname,
   if (msg_sink_.is_null())
     return;
 
-  IpHelperMessage msg;
+  DeviceMessage msg;
   msg.set_dev_ifname(ifname_);
   auto* dev_config = msg.mutable_dev_config();
   FillProto(dev_config);
@@ -78,7 +78,7 @@ Device::~Device() {
   if (msg_sink_.is_null())
     return;
 
-  IpHelperMessage msg;
+  DeviceMessage msg;
   msg.set_dev_ifname(ifname_);
   msg.set_teardown(true);
   msg_sink_.Run(msg);
@@ -110,7 +110,7 @@ void Device::Enable(const std::string& ifname) {
     legacy_lan_ifname_ = ifname;
 
     if (!msg_sink_.is_null()) {
-      IpHelperMessage msg;
+      DeviceMessage msg;
       msg.set_dev_ifname(ifname_);
       msg.set_enable_inbound_ifname(legacy_lan_ifname_);
       msg_sink_.Run(msg);
@@ -165,7 +165,7 @@ void Device::Disable() {
 
   // Clear IPv6 info, if necessary.
   if (options_.find_ipv6_routes) {
-    IpHelperMessage msg;
+    DeviceMessage msg;
     msg.set_dev_ifname(ifname_);
     msg.set_clear_arc_ip(true);
     msg_sink_.Run(msg);
@@ -179,7 +179,7 @@ void Device::Disable() {
               << ifname_;
     legacy_lan_ifname_.clear();
 
-    IpHelperMessage msg;
+    DeviceMessage msg;
     msg.set_dev_ifname(ifname_);
     msg.set_disable_inbound(true);
     msg_sink_.Run(msg);
@@ -244,7 +244,7 @@ void Device::OnNeighborCheckResult(bool found) {
 
     // Set up new ARC IPv6 address, NDP, and forwarding rules.
     if (!msg_sink_.is_null()) {
-      IpHelperMessage msg;
+      DeviceMessage msg;
       msg.set_dev_ifname(ifname_);
       SetArcIp* setup_msg = msg.mutable_set_arc_ip();
       setup_msg->set_prefix(&random_address_, sizeof(struct in6_addr));
