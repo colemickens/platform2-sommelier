@@ -203,6 +203,17 @@ class CROS_CAMERA_EXPORT CameraBufferManager {
   //    0 on success; -EINVAL on invalid buffer handle.
   virtual int Unlock(buffer_handle_t buffer) = 0;
 
+  // Resolves the HAL pixel format |hal_format| to the actual DRM format, based
+  // on the gralloc usage flags set in |usage|.
+  //
+  // Args:
+  //    |hal_format|: The HAL pixel format to query.
+  //    |usage|: The gralloc usage of the buffer.
+  //
+  // Returns:
+  //    The corresponding DRM format; 0 if no DRM format could be resolved to.
+  virtual uint32_t ResolveDrmFormat(uint32_t hal_format, uint32_t usage) = 0;
+
   // Get the width of the buffer handle.
   //
   // Args:

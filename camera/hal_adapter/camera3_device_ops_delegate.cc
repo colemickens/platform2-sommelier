@@ -116,4 +116,21 @@ void Camera3DeviceOpsDelegate::Close(const CloseCallback& callback) {
   callback.Run(camera_device_adapter_->Close());
 }
 
+void Camera3DeviceOpsDelegate::ConfigureStreamsAndGetAllocatedBuffers(
+    mojom::Camera3StreamConfigurationPtr config,
+    const ConfigureStreamsAndGetAllocatedBuffersCallback& callback) {
+  VLOGF_ENTER();
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  for (const auto& stream : config->streams) {
+    TRACE_CAMERA_SCOPED("stream_id", stream->id, "width", stream->width,
+                        "height", stream->height, "format", stream->format);
+  }
+  mojom::Camera3StreamConfigurationPtr updated_config;
+  CameraDeviceAdapter::AllocatedBuffers allocated_buffers;
+  int32_t result =
+      camera_device_adapter_->ConfigureStreamsAndGetAllocatedBuffers(
+          std::move(config), &updated_config, &allocated_buffers);
+  callback.Run(result, std::move(updated_config), std::move(allocated_buffers));
+}
+
 }  // namespace cros

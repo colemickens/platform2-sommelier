@@ -147,6 +147,9 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
 
   base::AutoLock l(streams_lock_);
 
+  // Free previous allocated buffers before new allocation.
+  FreeAllocatedStreamBuffers();
+
   internal::ScopedStreams new_streams;
   for (const auto& s : config->streams) {
     LOGF(INFO) << "id = " << s->id << ", type = " << s->stream_type
@@ -373,8 +376,33 @@ int32_t CameraDeviceAdapter::Close() {
   device_closed_ = true;
   DCHECK_EQ(ret, 0);
   fence_sync_thread_.Stop();
+
+  FreeAllocatedStreamBuffers();
+
   close_callback_.Run();
   return ret;
+}
+
+int32_t CameraDeviceAdapter::ConfigureStreamsAndGetAllocatedBuffers(
+    mojom::Camera3StreamConfigurationPtr config,
+    mojom::Camera3StreamConfigurationPtr* updated_config,
+    AllocatedBuffers* allocated_buffers) {
+  VLOGF_ENTER();
+  int32_t result = ConfigureStreams(std::move(config), updated_config);
+
+  // Early return if configure streams failed.
+  if (result) {
+    return result;
+  }
+
+  bool is_success =
+      AllocateBuffersForStreams((*updated_config)->streams, allocated_buffers);
+
+  if (!is_success) {
+    FreeAllocatedStreamBuffers();
+  }
+
+  return result;
 }
 
 // static
@@ -448,6 +476,104 @@ void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
   }
 }
 
+bool CameraDeviceAdapter::AllocateBuffersForStreams(
+    const std::vector<mojom::Camera3StreamPtr>& streams,
+    AllocatedBuffers* allocated_buffers) {
+  AllocatedBuffers tmp_allocated_buffers;
+  auto* camera_buffer_manager = CameraBufferManager::GetInstance();
+  for (const auto& stream : streams) {
+    std::vector<mojom::Camera3StreamBufferPtr> new_buffers;
+    uint32_t stream_format = static_cast<uint32_t>(stream->format);
+    uint64_t stream_id = stream->id;
+    DCHECK(stream_format == HAL_PIXEL_FORMAT_BLOB ||
+           stream_format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED ||
+           stream_format == HAL_PIXEL_FORMAT_YCbCr_420_888);
+    uint32_t buffer_width;
+    uint32_t buffer_height;
+    int status;
+    if (stream_format == HAL_PIXEL_FORMAT_BLOB) {
+      camera_metadata_ro_entry entry;
+      status = find_camera_metadata_ro_entry(static_info_,
+                                             ANDROID_JPEG_MAX_SIZE, &entry);
+      if (status) {
+        LOG(ERROR) << "No Jpeg max size information in metadata.";
+        return false;
+      }
+      buffer_width = entry.data.i32[0];
+      buffer_height = 1;
+    } else {
+      buffer_width = stream->width;
+      buffer_height = stream->height;
+    }
+    for (size_t i = 0; i < stream->max_buffers; i++) {
+      mojom::Camera3StreamBufferPtr new_buffer =
+          mojom::Camera3StreamBuffer::New();
+      new_buffer->stream_id = stream_id;
+
+      mojom::CameraBufferHandlePtr mojo_buffer_handle =
+          mojom::CameraBufferHandle::New();
+
+      buffer_handle_t buffer_handle;
+      uint32_t buffer_stride;
+      status = camera_buffer_manager->Allocate(
+          buffer_width, buffer_height, stream_format, stream->usage,
+          BufferType::GRALLOC, &buffer_handle, &buffer_stride);
+      if (status) {
+        LOGF(ERROR) << "Failed to allocate buffer.";
+        return false;
+      }
+
+      mojo_buffer_handle->width = buffer_width;
+      mojo_buffer_handle->height = buffer_height;
+      mojo_buffer_handle->drm_format =
+          camera_buffer_manager->ResolveDrmFormat(stream_format, stream->usage);
+      CHECK_NE(mojo_buffer_handle->drm_format, 0);
+
+      auto num_planes = CameraBufferManager::GetNumPlanes(buffer_handle);
+      mojo_buffer_handle->sizes = std::vector<uint32_t>();
+      for (size_t plane = 0; plane < num_planes; plane++) {
+        mojo_buffer_handle->fds.push_back(
+            WrapPlatformHandle(buffer_handle->data[plane]));
+        mojo_buffer_handle->strides.push_back(
+            CameraBufferManager::GetPlaneStride(buffer_handle, plane));
+        mojo_buffer_handle->offsets.push_back(
+            CameraBufferManager::GetPlaneOffset(buffer_handle, plane));
+        mojo_buffer_handle->sizes->push_back(
+            CameraBufferManager::GetPlaneSize(buffer_handle, plane));
+      }
+
+      auto* camera_buffer_handle =
+          camera_buffer_handle_t::FromBufferHandle(buffer_handle);
+      uint64_t buffer_id = camera_buffer_handle->buffer_id;
+      mojo_buffer_handle->buffer_id = buffer_id;
+      mojo_buffer_handle->hal_pixel_format = stream->format;
+
+      new_buffer->buffer_id = buffer_id;
+      new_buffer->buffer_handle = std::move(mojo_buffer_handle);
+      new_buffers.push_back(std::move(new_buffer));
+
+      allocated_stream_buffers_[buffer_id] = std::move(buffer_handle);
+    }
+    tmp_allocated_buffers.insert(
+        std::pair<uint64_t, std::vector<mojom::Camera3StreamBufferPtr>>(
+            stream_id, std::move(new_buffers)));
+  }
+  *allocated_buffers = std::move(tmp_allocated_buffers);
+  return true;
+}
+
+void CameraDeviceAdapter::FreeAllocatedStreamBuffers() {
+  auto camera_buffer_manager = CameraBufferManager::GetInstance();
+  if (allocated_stream_buffers_.empty()) {
+    return;
+  }
+
+  for (auto it : allocated_stream_buffers_) {
+    camera_buffer_manager->Free(it.second);
+  }
+  allocated_stream_buffers_.clear();
+}
+
 int32_t CameraDeviceAdapter::RegisterBufferLocked(
     uint64_t buffer_id,
     mojom::Camera3DeviceOps::BufferType type,
@@ -465,8 +591,15 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
   }
   size_t num_planes = fds.size();
 
-  std::unique_ptr<camera_buffer_handle_t> buffer_handle(
-      new camera_buffer_handle_t());
+  std::unique_ptr<camera_buffer_handle_t> buffer_handle;
+  if (allocated_stream_buffers_.find(buffer_id) !=
+      allocated_stream_buffers_.end()) {
+    buffer_handle = std::make_unique<camera_buffer_handle_t>(
+        *camera_buffer_handle_t::FromBufferHandle(
+            allocated_stream_buffers_[buffer_id]));
+  } else {
+    buffer_handle = std::make_unique<camera_buffer_handle_t>();
+  }
   buffer_handle->base.version = sizeof(buffer_handle->base);
   buffer_handle->base.numFds = kCameraBufferHandleNumFds;
   buffer_handle->base.numInts = kCameraBufferHandleNumInts;

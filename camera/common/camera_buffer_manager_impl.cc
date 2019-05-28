@@ -24,6 +24,7 @@ namespace cros {
 namespace {
 
 std::unordered_map<uint32_t, std::vector<uint32_t>> kSupportedHalFormats{
+    {HAL_PIXEL_FORMAT_BLOB, {DRM_FORMAT_R8}},
     {HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
      {DRM_FORMAT_NV12, DRM_FORMAT_XBGR8888}},
     {HAL_PIXEL_FORMAT_YCbCr_420_888, {DRM_FORMAT_NV12}},
@@ -61,6 +62,26 @@ CameraBufferManager* CameraBufferManager::GetInstance() {
     return nullptr;
   }
   return &instance;
+}
+
+// static
+uint32_t CameraBufferManager::GetWidth(buffer_handle_t buffer) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return 0;
+  }
+
+  return handle->width;
+}
+
+// static
+uint32_t CameraBufferManager::GetHeight(buffer_handle_t buffer) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return 0;
+  }
+
+  return handle->height;
 }
 
 // static
@@ -243,26 +264,6 @@ off_t CameraBufferManager::GetPlaneOffset(buffer_handle_t buffer,
     return -1;
   }
   return handle->offsets[plane];
-}
-
-// static
-uint32_t CameraBufferManager::GetWidth(buffer_handle_t buffer) {
-  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
-  if (!handle) {
-    return 0;
-  }
-
-  return handle->width;
-}
-
-// static
-uint32_t CameraBufferManager::GetHeight(buffer_handle_t buffer) {
-  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
-  if (!handle) {
-    return 0;
-  }
-
-  return handle->height;
 }
 
 CameraBufferManagerImpl::CameraBufferManagerImpl()
@@ -538,32 +539,53 @@ int CameraBufferManagerImpl::Unlock(buffer_handle_t buffer) {
   return 0;
 }
 
+uint32_t CameraBufferManagerImpl::ResolveDrmFormat(uint32_t hal_format,
+                                                   uint32_t usage) {
+  uint32_t unused_gbm_flags;
+  return ResolveFormat(hal_format, usage, &unused_gbm_flags);
+}
+
 uint32_t CameraBufferManagerImpl::ResolveFormat(uint32_t hal_format,
                                                 uint32_t usage,
-                                                uint32_t gbm_flags) {
+                                                uint32_t* gbm_flags) {
+  uint32_t gbm_usage = GrallocUsageToGbmFlags(usage);
+  uint32_t drm_format = 0;
   if (usage & GRALLOC_USAGE_FORCE_I420) {
-    if (hal_format != HAL_PIXEL_FORMAT_YCbCr_420_888) {
-      LOGF(ERROR) << "GRALLOC_USAGE_FORCE_I420 is only valid with "
-                     "HAL_PIXEL_FORMAT_YCbCr_420_888";
-      return 0;
-    }
+    CHECK_EQ(hal_format, HAL_PIXEL_FORMAT_YCbCr_420_888);
+    *gbm_flags = gbm_usage;
     return DRM_FORMAT_YUV420;
   }
-  if (hal_format == HAL_PIXEL_FORMAT_BLOB) {
-    return DRM_FORMAT_R8;
-  }
+
   if (kSupportedHalFormats.find(hal_format) == kSupportedHalFormats.end()) {
     LOGF(ERROR) << "Unsupported HAL pixel format";
     return 0;
   }
-  for (uint32_t drm_format : kSupportedHalFormats[hal_format]) {
-    if (gbm_device_is_format_supported(gbm_device_, drm_format, gbm_flags)) {
-      return drm_format;
+
+  for (uint32_t format : kSupportedHalFormats[hal_format]) {
+    if (gbm_device_is_format_supported(gbm_device_, format, gbm_usage)) {
+      drm_format = format;
+      break;
     }
   }
-  LOGF(ERROR) << "Cannot resolve the actual format of HAL pixel format "
-              << hal_format;
-  return 0;
+
+  if (drm_format == 0 && usage & GRALLOC_USAGE_HW_COMPOSER) {
+    gbm_usage &= ~GBM_BO_USE_SCANOUT;
+    for (uint32_t format : kSupportedHalFormats[hal_format]) {
+      if (gbm_device_is_format_supported(gbm_device_, format, gbm_usage)) {
+        drm_format = format;
+        break;
+      }
+    }
+  }
+
+  if (drm_format == 0) {
+    LOGF(ERROR) << "Cannot resolve the actual format of HAL pixel format "
+                << hal_format;
+    return 0;
+  }
+
+  *gbm_flags = gbm_usage;
+  return drm_format;
 }
 
 int CameraBufferManagerImpl::AllocateGrallocBuffer(size_t width,
@@ -574,12 +596,8 @@ int CameraBufferManagerImpl::AllocateGrallocBuffer(size_t width,
                                                    uint32_t* out_stride) {
   base::AutoLock l(lock_);
 
-  uint32_t gbm_flags = GrallocUsageToGbmFlags(usage);
-  uint32_t drm_format = ResolveFormat(format, usage, gbm_flags);
-  if (!drm_format && (usage & GRALLOC_USAGE_HW_COMPOSER)) {
-    gbm_flags &= ~GBM_BO_USE_SCANOUT;
-    drm_format = ResolveFormat(format, usage, gbm_flags);
-  }
+  uint32_t gbm_flags;
+  uint32_t drm_format = ResolveFormat(format, usage, &gbm_flags);
   if (!drm_format) {
     return -EINVAL;
   }

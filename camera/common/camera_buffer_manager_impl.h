@@ -130,6 +130,7 @@ class CameraBufferManagerImpl final : public CameraBufferManager {
                 uint32_t height,
                 struct android_ycbcr* out_ycbcr);
   int Unlock(buffer_handle_t buffer);
+  uint32_t ResolveDrmFormat(uint32_t hal_format, uint32_t usage);
 
  private:
   friend class CameraBufferManager;
@@ -137,10 +138,12 @@ class CameraBufferManagerImpl final : public CameraBufferManager {
   // Allow unit tests to call constructor directly.
   friend class tests::CameraBufferManagerImplTest;
 
-  // Revoles the HAL pixel format |hal_format| to the actual DRM format, based
-  // on the gralloc usage flags set in |usage| and |gbm_flags|.
-  uint32_t ResolveFormat(uint32_t hal_format, uint32_t usage,
-                         uint32_t gbm_flags);
+  // Resolves the HAL pixel format |hal_format| to the actual DRM format, based
+  // on the gralloc usage flags set in |usage|. The |gbm_flags| will be set if
+  // the format is resolved successfully.
+  uint32_t ResolveFormat(uint32_t hal_format,
+                         uint32_t usage,
+                         uint32_t* gbm_flags);
 
   int AllocateGrallocBuffer(size_t width,
                             size_t height,

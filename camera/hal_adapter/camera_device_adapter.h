@@ -8,6 +8,7 @@
 #define CAMERA_HAL_ADAPTER_CAMERA_DEVICE_ADAPTER_H_
 
 #include <deque>
+#include <map>
 #include <memory>
 #include <unordered_map>
 #include <utility>
@@ -68,6 +69,8 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
                              uint32_t,
                              android::CameraMetadata*,
                              ScopedYUVBufferHandle*)>;
+  using AllocatedBuffers =
+      std::unordered_map<uint64_t, std::vector<mojom::Camera3StreamBufferPtr>>;
   // Starts the camera device adapter.  This method must be called before all
   // the other methods are called.
   bool Start(HasReprocessEffectVendorTagCallback
@@ -109,6 +112,11 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   int32_t Close();
 
+  int32_t ConfigureStreamsAndGetAllocatedBuffers(
+      mojom::Camera3StreamConfigurationPtr config,
+      mojom::Camera3StreamConfigurationPtr* updated_config,
+      AllocatedBuffers* allocated_buffers);
+
  private:
   // Implementation of camera3_callback_ops_t.
   static void ProcessCaptureResult(const camera3_callback_ops_t* ops,
@@ -116,6 +124,16 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   static void Notify(const camera3_callback_ops_t* ops,
                      const camera3_notify_msg_t* msg);
+
+  // Allocates buffers for given |streams|. Returns true and the allocated
+  // buffers will be put in |allocated_buffers| if the allocation succeeds.
+  // Otherwise, false is returned.
+  bool AllocateBuffersForStreams(
+      const std::vector<mojom::Camera3StreamPtr>& streams,
+      AllocatedBuffers* allocated_buffers);
+
+  // Frees all allocated stream buffers that are allocated locally.
+  void FreeAllocatedStreamBuffers();
 
   int32_t RegisterBufferLocked(uint64_t buffer_id,
                                mojom::Camera3DeviceOps::BufferType type,
@@ -204,6 +222,11 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // up to the upper layer.
   std::unordered_map<uint64_t, std::unique_ptr<camera_buffer_handle_t>>
       buffer_handles_;
+
+  // A mapping that stores all buffer handles that are allocated when streams
+  // are configured locally. When the session is over, all of these handles
+  // should be freed.
+  std::map<uint64_t, buffer_handle_t> allocated_stream_buffers_;
 
   // A queue of reprocessing buffers.
   std::deque<ScopedYUVBufferHandle> reprocess_handles_;

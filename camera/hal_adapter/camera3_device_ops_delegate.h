@@ -57,6 +57,10 @@ class Camera3DeviceOpsDelegate final
 
   void Close(const CloseCallback& callback) final;
 
+  void ConfigureStreamsAndGetAllocatedBuffers(
+      mojom::Camera3StreamConfigurationPtr config,
+      const ConfigureStreamsAndGetAllocatedBuffersCallback& callback) final;
+
   CameraDeviceAdapter* camera_device_adapter_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(Camera3DeviceOpsDelegate);
