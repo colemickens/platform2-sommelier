@@ -427,6 +427,7 @@ void ArcQuotaAdaptor::GetArcDiskFeatures(
         user_data_auth::GetArcDiskFeaturesReply>> response,
     const user_data_auth::GetArcDiskFeaturesRequest& in_request) {
   user_data_auth::GetArcDiskFeaturesReply reply;
+  reply.set_quota_supported(service_->IsArcQuotaSupported());
   response->Return(reply);
 }
 

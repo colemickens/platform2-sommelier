@@ -202,6 +202,11 @@ class UserDataAuth {
   // Return true if we support low entropy credential.
   bool IsLowEntropyCredentialSupported();
 
+  // =============== ARC Quota Related Public Methods ===============
+
+  // Return true is ARC Disk Quota is supported, false otherwise.
+  bool IsArcQuotaSupported();
+
   // =============== PKCS#11 Related Public Methods ===============
 
   // This initializes the PKCS#11 for a particular mount. Note that this is

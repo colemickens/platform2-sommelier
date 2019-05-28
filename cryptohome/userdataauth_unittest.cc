@@ -546,6 +546,14 @@ TEST_F(UserDataAuthTestNotInitialized, InitializeArcDiskQuota) {
   EXPECT_TRUE(userdataauth_.Initialize());
 }
 
+TEST_F(UserDataAuthTestNotInitialized, IsArcQuotaSupported) {
+  EXPECT_CALL(arc_disk_quota_, IsQuotaSupported()).WillOnce(Return(true));
+  EXPECT_TRUE(userdataauth_.IsArcQuotaSupported());
+
+  EXPECT_CALL(arc_disk_quota_, IsQuotaSupported()).WillOnce(Return(false));
+  EXPECT_FALSE(userdataauth_.IsArcQuotaSupported());
+}
+
 // ======================= CleanUpStaleMounts tests ==========================
 
 namespace {

@@ -1745,4 +1745,8 @@ int64_t UserDataAuth::GetAccountDiskUsage(
   return homedirs_->ComputeSize(GetAccountId(account));
 }
 
+bool UserDataAuth::IsArcQuotaSupported() {
+  return arc_disk_quota_->IsQuotaSupported();
+}
+
 }  // namespace cryptohome
