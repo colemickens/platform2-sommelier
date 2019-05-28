@@ -30,6 +30,9 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(low_battery_shutdown_time, false,
               "Print the time-based low-battery shutdown threshold (in "
               "seconds) to stdout");
+  DEFINE_bool(set_wifi_transmit_power, false,
+              "Exit with success if support for setting WiFi transmit power is "
+              "enabled");
   DEFINE_bool(suspend_to_idle, false,
               "Exit with success if \"freeze\" (rather than \"mem\") will be "
               "written to /sys/power/state when suspending");
@@ -44,7 +47,8 @@ int main(int argc, char* argv[]) {
   if (FLAGS_ambient_light_sensor + FLAGS_hover_detection +
           FLAGS_internal_backlight_ambient_light_steps +
           FLAGS_keyboard_backlight + FLAGS_low_battery_shutdown_percent +
-          FLAGS_low_battery_shutdown_time + FLAGS_suspend_to_idle !=
+          FLAGS_low_battery_shutdown_time + FLAGS_set_wifi_transmit_power +
+          FLAGS_suspend_to_idle !=
       1) {
     fprintf(stderr, "Exactly one flag must be set\n");
     exit(1);
@@ -85,6 +89,15 @@ int main(int argc, char* argv[]) {
       prefs.GetInt64(power_manager::kLowBatteryShutdownTimePref, &sec);
     printf("%" PRId64 "\n", sec);
     exit(0);
+  } else if (FLAGS_set_wifi_transmit_power) {
+    bool set_wifi_transmit_power = false;
+    prefs.GetBool(power_manager::kSetWifiTransmitPowerForTabletModePref,
+                  &set_wifi_transmit_power);
+    if (!set_wifi_transmit_power) {
+      prefs.GetBool(power_manager::kSetWifiTransmitPowerForProximityPref,
+                    &set_wifi_transmit_power);
+    }
+    exit(set_wifi_transmit_power ? 0 : 1);
   } else if (FLAGS_suspend_to_idle) {
     bool suspend_to_idle = false;
     prefs.GetBool(power_manager::kSuspendToIdlePref, &suspend_to_idle);
