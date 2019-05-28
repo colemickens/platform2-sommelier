@@ -279,7 +279,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   virtual bool InsertPkcs11Token();
 
   // Removes the current user's PKCS #11 token.
-  void RemovePkcs11Token();
+  virtual void RemovePkcs11Token();
 
   // Returns true if this Mount instances owns the mount path.
   virtual bool OwnsMountPoint(const base::FilePath& path) const;

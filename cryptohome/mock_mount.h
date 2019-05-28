@@ -37,6 +37,7 @@ class MockMount : public Mount {
   MOCK_CONST_METHOD0(mount_point, const base::FilePath&());
   MOCK_CONST_METHOD1(OwnsMountPoint, bool(const base::FilePath&));
   MOCK_METHOD0(InsertPkcs11Token, bool());
+  MOCK_METHOD0(RemovePkcs11Token, void());
   MOCK_METHOD0(pkcs11_state, Pkcs11State());
 
   Pkcs11State Real_pkcs11_state() { return Mount::pkcs11_state(); }

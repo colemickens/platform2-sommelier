@@ -1808,4 +1808,13 @@ user_data_auth::TpmTokenInfo UserDataAuth::Pkcs11GetTpmTokenInfo(
   return result;
 }
 
+void UserDataAuth::Pkcs11Terminate() {
+  AssertOnMountThread();
+  // We are touching the |mounts_| object so we need to be on mount thread.
+
+  for (const auto& mount_pair : mounts_) {
+    mount_pair.second->RemovePkcs11Token();
+  }
+}
+
 }  // namespace cryptohome

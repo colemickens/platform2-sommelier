@@ -249,10 +249,15 @@ class Pkcs11Adaptor : public org::chromium::CryptohomePkcs11InterfaceInterface,
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::Pkcs11GetTpmTokeInfoReply>> response,
       const user_data_auth::Pkcs11GetTpmTokeInfoRequest& in_request) override;
+
   void Pkcs11Terminate(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::Pkcs11TerminateReply>> response,
       const user_data_auth::Pkcs11TerminateRequest& in_request) override;
+  void DoPkcs11Terminate(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::Pkcs11TerminateReply>> response,
+      const user_data_auth::Pkcs11TerminateRequest& in_request);
 
  private:
   brillo::dbus_utils::DBusObject* dbus_object_;

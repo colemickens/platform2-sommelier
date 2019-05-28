@@ -621,6 +621,17 @@ TEST_F(UserDataAuthTest, Pkcs11GetTpmTokenInfo) {
   EXPECT_EQ(info.slot(), -1);
 }
 
+TEST_F(UserDataAuthTest, Pkcs11Terminate) {
+  // Check that it'll not crash when there's no mount
+  userdataauth_.Pkcs11Terminate();
+
+  // Check that we'll indeed get the Mount object to remove the PKCS#11 token.
+  constexpr char kUsername1[] = "foo@gmail.com";
+  SetupMount(kUsername1);
+  EXPECT_CALL(*mount_, RemovePkcs11Token()).WillOnce(Return());
+  userdataauth_.Pkcs11Terminate();
+}
+
 TEST_F(UserDataAuthTestNotInitialized, InstallAttributesEnterpriseOwned) {
   EXPECT_CALL(attrs_, Init(_)).WillOnce(Return(true));
 

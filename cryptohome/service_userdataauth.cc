@@ -486,7 +486,21 @@ void Pkcs11Adaptor::Pkcs11Terminate(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::Pkcs11TerminateReply>> response,
     const user_data_auth::Pkcs11TerminateRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &Pkcs11Adaptor::DoPkcs11Terminate, base::Unretained(this),
+          ThreadSafeDBusMethodResponse<user_data_auth::Pkcs11TerminateReply>::
+              MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void Pkcs11Adaptor::DoPkcs11Terminate(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::Pkcs11TerminateReply>> response,
+    const user_data_auth::Pkcs11TerminateRequest& in_request) {
   user_data_auth::Pkcs11TerminateReply reply;
+  service_->Pkcs11Terminate();
   response->Return(reply);
 }
 

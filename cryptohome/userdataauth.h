@@ -238,6 +238,10 @@ class UserDataAuth {
   user_data_auth::TpmTokenInfo Pkcs11GetTpmTokenInfo(
       const std::string& username);
 
+  // Calling this method will remove PKCS#11 tokens on all mounts.
+  // Note that this should only be called from mount thread.
+  void Pkcs11Terminate();
+
   // =============== Install Attributes Related Utilities ===============
 
   // Return true if this device is enterprise owned.
