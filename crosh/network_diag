@@ -178,7 +178,7 @@ hex_to_string () {
 seconds_compare () {
   local test_time="$1"
   local reference_time="$2"
-  if [ $test_time -gt $reference_time ] ; then
+  if [ "${test_time}" -gt "${reference_time}" ] ; then
     echo "$((test_time - reference_time)) seconds from now"
   else
     echo "$((reference_time - test_time)) seconds ago"
