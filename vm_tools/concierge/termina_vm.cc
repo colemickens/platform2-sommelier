@@ -30,6 +30,7 @@
 
 #include "vm_tools/common/constants.h"
 #include "vm_tools/concierge/tap_device_builder.h"
+#include "vm_tools/concierge/vm_util.h"
 
 using base::StringPiece;
 using std::string;
@@ -67,65 +68,6 @@ constexpr size_t kHostAddressOffset = 0;
 
 // Offset in a subnet of the client/guest.
 constexpr size_t kGuestAddressOffset = 1;
-
-// Calculates the amount of memory to give the virtual machine. Currently
-// configured to provide 75% of system memory. This is deliberately over
-// provisioned with the expectation that we will use the balloon driver to
-// reduce the actual memory footprint.
-string GetVmMemoryMiB() {
-  int64_t vm_memory_mb = base::SysInfo::AmountOfPhysicalMemoryMB();
-  vm_memory_mb /= 4;
-  vm_memory_mb *= 3;
-
-  return std::to_string(vm_memory_mb);
-}
-
-// Sets the pgid of the current process to its pid.  This is needed because
-// crosvm assumes that only it and its children are in the same process group
-// and indiscriminately sends a SIGKILL if it needs to shut them down.
-bool SetPgid() {
-  if (setpgid(0, 0) != 0) {
-    PLOG(ERROR) << "Failed to change process group id";
-    return false;
-  }
-
-  return true;
-}
-
-// Waits for the |pid| to exit.  Returns true if |pid| successfully exited and
-// false if it did not exit in time.
-bool WaitForChild(pid_t child, base::TimeDelta timeout) {
-  sigset_t set;
-  sigemptyset(&set);
-  sigaddset(&set, SIGCHLD);
-
-  const base::Time deadline = base::Time::Now() + timeout;
-  while (true) {
-    pid_t ret = waitpid(child, nullptr, WNOHANG);
-    if (ret == child || (ret < 0 && errno == ECHILD)) {
-      // Either the child exited or it doesn't exist anymore.
-      return true;
-    }
-
-    // ret == 0 means that the child is still alive
-    if (ret < 0) {
-      PLOG(ERROR) << "Failed to wait for child process";
-      return false;
-    }
-
-    base::Time now = base::Time::Now();
-    if (deadline <= now) {
-      // Timed out.
-      return false;
-    }
-
-    const struct timespec ts = (deadline - now).ToTimeSpec();
-    if (sigtimedwait(&set, nullptr, &ts) < 0 && errno == EAGAIN) {
-      // Timed out.
-      return false;
-    }
-  }
-}
 
 }  // namespace
 
@@ -279,7 +221,7 @@ bool TerminaVm::Shutdown() {
   // have crashed and we don't want to be waiting around for an RPC response
   // that's never going to come.  kill with a signal value of 0 is explicitly
   // documented as a way to check for the existence of a process.
-  if (process_.pid() == 0 || (kill(process_.pid(), 0) < 0 && errno == ESRCH)) {
+  if (!CheckProcessExists(process_.pid())) {
     // The process is already gone.
     process_.Release();
     return true;
@@ -368,15 +310,8 @@ bool TerminaVm::ConfigureNetwork(const std::vector<string>& nameservers,
 }
 
 void TerminaVm::RunCrosvmCommand(string command) {
-  brillo::ProcessImpl crosvm;
-  crosvm.AddArg(kCrosvmBin);
-  crosvm.AddArg(std::move(command));
-  crosvm.AddArg(runtime_dir_.GetPath().Append(kCrosvmSocket).value());
-
-  // This must be synchronous as we may do things after calling this function
-  // that depend on the crosvm command being completed (like suspending the
-  // device).
-  crosvm.Run();
+  vm_tools::concierge::RunCrosvmCommand(
+      std::move(command), runtime_dir_.GetPath().Append(kCrosvmSocket).value());
 }
 
 bool TerminaVm::Mount(string source,

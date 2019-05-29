@@ -78,6 +78,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // StartPluginVmRequest protobuf serialized as an array of bytes.
   std::unique_ptr<dbus::Response> StartPluginVm(dbus::MethodCall* method_call);
 
+  // Handles a request to start ARCVM.  |method_call| must have a
+  // StartArcVmRequest protobuf serialized as an array of bytes.
+  std::unique_ptr<dbus::Response> StartArcVm(dbus::MethodCall* method_call);
+
   // Handles a request to stop a VM.  |method_call| must have a StopVmRequest
   // protobuf serialized as an array of bytes.
   std::unique_ptr<dbus::Response> StopVm(dbus::MethodCall* method_call);

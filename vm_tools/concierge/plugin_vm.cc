@@ -21,6 +21,7 @@
 #include <base/time/time.h>
 
 #include "vm_tools/concierge/tap_device_builder.h"
+#include "vm_tools/concierge/vm_util.h"
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
 using std::string;
@@ -61,24 +62,6 @@ constexpr char kIsoDir[] = "/iso";
 
 // How long to wait before timing out on child process exits.
 constexpr base::TimeDelta kChildExitTimeout = base::TimeDelta::FromSeconds(10);
-
-// Sets the pgid of the current process to its pid.  This is needed because
-// crosvm assumes that only it and its children are in the same process group
-// and indiscriminately sends a SIGKILL if it needs to shut them down.
-bool SetPgid() {
-  if (setpgid(0, 0) != 0) {
-    PLOG(ERROR) << "Failed to change process group id";
-    return false;
-  }
-
-  return true;
-}
-
-bool CheckProcessExists(pid_t pid) {
-  // kill() with a signal value of 0 is explicitly documented as a way to
-  // check for the existence of a process.
-  return pid != 0 && (kill(pid, 0) >= 0 || errno != ESRCH);
-}
 
 }  // namespace
 

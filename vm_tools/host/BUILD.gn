@@ -87,6 +87,7 @@ executable("vsh") {
 
 static_library("libconcierge") {
   sources = [
+    "../concierge/arc_vm.cc",
     "../concierge/disk_image.cc",
     "../concierge/plugin_vm.cc",
     "../concierge/power_manager_client.cc",
@@ -97,6 +98,7 @@ static_library("libconcierge") {
     "../concierge/startup_listener_impl.cc",
     "../concierge/tap_device_builder.cc",
     "../concierge/termina_vm.cc",
+    "../concierge/vm_util.cc",
     "../concierge/vmplugin_dispatcher_interface.cc",
     "../concierge/vsock_cid_pool.cc",
   ]

@@ -933,6 +933,88 @@ int StartPluginVm(dbus::ObjectProxy* proxy,
   return LogVmStatus(request.name(), response);
 }
 
+int StartArcVm(dbus::ObjectProxy* proxy,
+               string cryptohome_id,
+               string name,
+               string kernel,
+               string rootfs,
+               string extra_disks,
+               const std::vector<string>& params) {
+  if (name.empty()) {
+    LOG(ERROR) << "--name is required";
+    return -1;
+  }
+
+  if (kernel.empty()) {
+    LOG(ERROR) << "--kernel is required";
+    return -1;
+  }
+
+  if (rootfs.empty()) {
+    LOG(ERROR) << "--rootfs is required";
+    return -1;
+  }
+
+  if (!base::PathExists(base::FilePath(kernel))) {
+    LOG(ERROR) << kernel << " does not exist";
+    return -1;
+  }
+
+  if (!base::PathExists(base::FilePath(rootfs))) {
+    LOG(ERROR) << rootfs << " does not exist";
+    return -1;
+  }
+
+  LOG(INFO) << "Starting ARCVM " << name << " with kernel " << kernel
+            << " and rootfs " << rootfs;
+
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kStartArcVmMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::concierge::StartArcVmRequest request;
+  request.set_owner_id(std::move(cryptohome_id));
+  request.set_name(std::move(name));
+
+  request.mutable_vm()->set_kernel(std::move(kernel));
+  request.mutable_vm()->set_rootfs(std::move(rootfs));
+
+  {
+    vm_tools::concierge::StartVmRequest vm_request;
+    if (!ParseExtraDisks(&vm_request, extra_disks)) {
+      return -1;
+    }
+    for (const auto& disk : vm_request.disks()) {
+      *request.add_disks() = disk;
+    }
+  }
+
+  for (const string& param : params) {
+    request.add_params(param);
+  }
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode StartVmRequest protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::StartVmResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  return LogVmStatus(request.name(), response);
+}
+
 int SyncVmTimes(dbus::ObjectProxy* proxy) {
   LOG(INFO) << "Setting VM times";
 
@@ -1140,6 +1222,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(start_termina_vm, false,
               "Start a termina VM with a default config");
   DEFINE_bool(start_plugin_vm, false, "Start a plugin VM");
+  DEFINE_bool(start_arc_vm, false, "Start an ARCVM");
   DEFINE_bool(launch_application, false,
               "Launches an application in a container");
   DEFINE_bool(get_icon, false, "Get an app icon from a container within a VM");
@@ -1205,14 +1288,16 @@ int main(int argc, char** argv) {
       FLAGS_create_disk + FLAGS_create_external_disk + FLAGS_start_termina_vm +
       FLAGS_destroy_disk + FLAGS_export_disk + FLAGS_import_disk +
       FLAGS_list_disks + FLAGS_sync_time + FLAGS_attach_usb +
-      FLAGS_detach_usb + FLAGS_list_usb_devices + FLAGS_start_plugin_vm!= 1) {
+      FLAGS_detach_usb + FLAGS_list_usb_devices + FLAGS_start_plugin_vm +
+      FLAGS_start_arc_vm != 1) {
     // clang-format on
     LOG(ERROR)
         << "Exactly one of --start, --stop, --stop_all, --get_vm_info, "
         << "--create_disk, --create_external_disk --destroy_disk, "
         << "--export_disk --import_disk --list_disks, --start_termina_vm, "
         << "--sync_time, --attach_usb, --detach_usb, "
-        << "--start_plugin_vm, or --list_usb_devices must be provided";
+        << "--start_plugin_vm, --start_arc_vm, or --list_usb_devices must "
+        << "be provided";
     return -1;
   }
 
@@ -1266,6 +1351,11 @@ int main(int argc, char** argv) {
     return StartPluginVm(proxy, std::move(FLAGS_name),
                          base::CommandLine::ForCurrentProcess()->GetArgs(),
                          std::move(FLAGS_cryptohome_id));
+  } else if (FLAGS_start_arc_vm) {
+    return StartArcVm(proxy, std::move(FLAGS_cryptohome_id),
+                      std::move(FLAGS_name), std::move(FLAGS_kernel),
+                      std::move(FLAGS_rootfs), std::move(FLAGS_extra_disks),
+                      base::CommandLine::ForCurrentProcess()->GetArgs());
   } else if (FLAGS_sync_time) {
     return SyncVmTimes(proxy);
   } else if (FLAGS_attach_usb) {

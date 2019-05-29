@@ -56,6 +56,7 @@
 #include <vm_concierge/proto_bindings/service.pb.h>
 
 #include "vm_tools/common/constants.h"
+#include "vm_tools/concierge/arc_vm.h"
 #include "vm_tools/concierge/plugin_vm.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/ssh_keys.h"
@@ -139,6 +140,10 @@ constexpr uint64_t kDefaultIoLimit = 1024 * 1024;  // 1 Mib
 // How often we should broadcast state of a disk operation (import or export).
 constexpr base::TimeDelta kDiskOpReportInterval =
     base::TimeDelta::FromSeconds(15);
+
+// Mac address to assign to ARCVM.
+constexpr arc_networkd::MacAddress kArcVmMacAddress{0xd2, 0x47, 0xf7,
+                                                    0xc5, 0x9e, 0x53};
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
@@ -579,6 +584,7 @@ Service::Service(base::Closure quit_closure)
     : network_address_manager_({
           arc_networkd::AddressManager::Guest::VM_TERMINA,
           arc_networkd::AddressManager::Guest::VM_PLUGIN,
+          arc_networkd::AddressManager::Guest::VM_ARC,
           arc_networkd::AddressManager::Guest::CONTAINER,
       }),
       watcher_(FROM_HERE),
@@ -648,6 +654,7 @@ bool Service::Init() {
   const std::map<const char*, ServiceMethod> kServiceMethods = {
       {kStartVmMethod, &Service::StartVm},
       {kStartPluginVmMethod, &Service::StartPluginVm},
+      {kStartArcVmMethod, &Service::StartArcVm},
       {kStopVmMethod, &Service::StopVm},
       {kStopAllVmsMethod, &Service::StopAllVms},
       {kGetVmInfoMethod, &Service::GetVmInfo},
@@ -1395,6 +1402,185 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
 
   NotifyCiceroneOfVmStarted(vm_id, 0 /* cid */, std::move(vm_token));
 
+  vms_[vm_id] = std::move(vm);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::StartArcVm(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received StartArcVm request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  StartArcVmRequest request;
+  StartVmResponse response;
+  // We change to a success status later if necessary.
+  response.set_status(VM_STATUS_FAILURE);
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse StartArcVmRequest from message";
+    response.set_failure_reason("Unable to parse protobuf");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Make sure the VM has a name.
+  if (request.name().empty()) {
+    LOG(ERROR) << "Ignoring request with empty name";
+    response.set_failure_reason("Missing VM name");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto iter = FindVm(request.owner_id(), request.name());
+  if (iter != vms_.end()) {
+    LOG(INFO) << "VM with requested name is already running";
+
+    VmInterface::Info vm = iter->second->GetInfo();
+
+    VmInfo* vm_info = response.mutable_vm_info();
+    vm_info->set_ipv4_address(vm.ipv4_address);
+    vm_info->set_pid(vm.pid);
+    vm_info->set_cid(vm.cid);
+    vm_info->set_seneschal_server_handle(vm.seneschal_server_handle);
+    if (vm.status == VmInterface::Status::RUNNING) {
+      response.set_status(VM_STATUS_RUNNING);
+    } else {
+      response.set_status(VM_STATUS_UNKNOWN);
+    }
+    response.set_success(true);
+
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (request.disks_size() > kMaxExtraDisks) {
+    LOG(ERROR) << "Rejecting request with " << request.disks_size()
+               << " extra disks";
+
+    response.set_failure_reason("Too many extra disks");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  const base::FilePath kernel(request.vm().kernel());
+  const base::FilePath rootfs(request.vm().rootfs());
+
+  if (!base::PathExists(kernel)) {
+    LOG(ERROR) << "Missing VM kernel path: " << kernel.value();
+
+    response.set_failure_reason("Kernel path does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (!base::PathExists(rootfs)) {
+    LOG(ERROR) << "Missing VM rootfs path: " << rootfs.value();
+
+    response.set_failure_reason("Rootfs path does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::vector<ArcVm::Disk> disks;
+  for (const auto& disk : request.disks()) {
+    if (!base::PathExists(base::FilePath(disk.path()))) {
+      LOG(ERROR) << "Missing disk path: " << disk.path();
+      response.set_failure_reason("One or more disk paths do not exist");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+    disks.push_back(ArcVm::Disk{
+        .path = base::FilePath(disk.path()),
+        .writable = disk.writable(),
+    });
+  }
+
+  // Create the runtime directory.
+  base::FilePath runtime_dir;
+  if (!base::CreateTemporaryDirInDir(base::FilePath(kRuntimeDir), "vm.",
+                                     &runtime_dir)) {
+    PLOG(ERROR) << "Unable to create runtime directory for VM";
+
+    response.set_failure_reason(
+        "Internal error: unable to create runtime directory");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Allocate resources for the VM.
+  std::unique_ptr<arc_networkd::Subnet> subnet =
+      network_address_manager_.AllocateIPv4Subnet(
+          arc_networkd::AddressManager::Guest::VM_ARC);
+  if (!subnet) {
+    LOG(ERROR) << "No available subnets; unable to start VM";
+
+    response.set_failure_reason("No available subnets");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  uint32_t vsock_cid = vsock_cid_pool_.Allocate();
+  if (vsock_cid == 0) {
+    LOG(ERROR) << "Unable to allocate vsock context id";
+
+    response.set_failure_reason("Unable to allocate vsock cid");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  uint32_t seneschal_server_port = next_seneschal_server_port_++;
+  std::unique_ptr<SeneschalServerProxy> server_proxy =
+      SeneschalServerProxy::CreateVsockProxy(seneschal_service_proxy_,
+                                             seneschal_server_port, vsock_cid);
+  if (!server_proxy) {
+    LOG(ERROR) << "Unable to start shared directory server";
+
+    response.set_failure_reason("Unable to start shared directory server");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  uint32_t seneschal_server_handle = server_proxy->handle();
+
+  // Build the plugin params.
+  std::vector<string> params(
+      std::make_move_iterator(request.mutable_params()->begin()),
+      std::make_move_iterator(request.mutable_params()->end()));
+
+  // Start the VM and build the response.
+  ArcVmFeatures features;
+  // TODO(lepton): Enable GPU on non-x86_64 platforms.
+  features.gpu = base::SysInfo::OperatingSystemArchitecture() == "x86_64";
+
+  auto vm = ArcVm::Create(std::move(kernel), std::move(rootfs),
+                          std::move(disks), kArcVmMacAddress, std::move(subnet),
+                          vsock_cid, std::move(server_proxy),
+                          std::move(runtime_dir), features, std::move(params));
+  if (!vm) {
+    LOG(ERROR) << "Unable to start VM";
+
+    response.set_failure_reason("Unable to start VM");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // ARCVM is ready.
+  LOG(INFO) << "Started VM with pid " << vm->pid();
+
+  VmInfo* vm_info = response.mutable_vm_info();
+  response.set_success(true);
+  response.set_status(VM_STATUS_RUNNING);
+  vm_info->set_ipv4_address(vm->IPv4Address());
+  vm_info->set_pid(vm->pid());
+  vm_info->set_cid(vsock_cid);
+  vm_info->set_seneschal_server_handle(seneschal_server_handle);
+  writer.AppendProtoAsArrayOfBytes(response);
+
+  VmId vm_id(request.owner_id(), request.name());
   vms_[vm_id] = std::move(vm);
   return dbus_response;
 }
