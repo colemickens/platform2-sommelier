@@ -99,7 +99,7 @@ load_extra_crosh() {
     if [ -e /usr/share/misc/chromeos-common.sh ]; then
       . "/usr/share/misc/chromeos-common.sh" || exit 1
 
-      src=$(get_block_dev_from_partition_dev "$(rootdev -s)")
+      src="$(get_block_dev_from_partition_dev "$(rootdev -s)")"
       local removable="$(cat "/sys/block/${src#/dev/}/removable" 2>/dev/null)"
       if [ "${removable}" = "1" ]; then
         CROSH_REMOVABLE="1"
@@ -115,7 +115,7 @@ load_extra_crosh() {
   if [ -z "${CROSH_DEVMODE}" ]; then
     if type crossystem >/dev/null 2>&1; then
       crossystem "cros_debug?1"
-      CROSH_DEVMODE=$((!$?))
+      CROSH_DEVMODE="$((!$?))"
     else
       echo "Could not locate 'crossystem'; assuming devmode is off."
     fi
@@ -179,8 +179,8 @@ shell_history_init() {
   HISTFILE="${histfile}"
 
   # Now we can limit the size of the history file.
-  HISTSIZE=${histsize}
-  HISTFILESIZE=${histsize}
+  HISTSIZE="${histsize}"
+  HISTFILESIZE="${histsize}"
 
   # Do not add entries that begin with a space, and dedupe sequential commands.
   HISTCONTROL="ignoreboth"
@@ -332,25 +332,25 @@ cmd_set_time() (
     return
   fi
   local sec status
-  sec=$(date +%s --date="${spec}" 2>&1)
-  status=$?
+  sec="$(date +%s --date="${spec}" 2>&1)"
+  status="$?"
   if [ ${status} -ne 0 -o -z "${sec}" ]; then
     echo "Unable to understand the specified time:"
     echo "${sec}"
     return
   fi
   local reply
-  reply=$(dbus-send --system --type=method_call --print-reply \
+  reply="$(dbus-send --system --type=method_call --print-reply \
     --dest=org.torproject.tlsdate /org/torproject/tlsdate \
-    org.torproject.tlsdate.SetTime "int64:$((sec))" 2>/dev/null)
-  status=$?
+    org.torproject.tlsdate.SetTime "int64:$((sec))" 2>/dev/null)"
+  status="$?"
   if [ ${status} -ne 0 ]; then
     echo "Time not set. Unable to communicate with the time service."
     return
   fi
   # Reply format: <dbus response header>\n    uint32 <code>\n
   local code
-  code=$(echo "${reply}" | sed -n -E '$s/.*uint32 ([0-9]).*/\1/p')
+  code="$(echo "${reply}" | sed -n -E '$s/.*uint32 ([0-9]).*/\1/p')"
   case "${code}" in
   0)
     echo "Time has been set."
@@ -375,12 +375,12 @@ cmd_set_time() (
 is_chrome_feature_enabled() {
   local method="$1"
   local reply status
-  reply=$(dbus-send --system --type=method_call --print-reply \
+  reply="$(dbus-send --system --type=method_call --print-reply \
     --dest=org.chromium.ChromeFeaturesService \
     /org/chromium/ChromeFeaturesService \
     "org.chromium.ChromeFeaturesServiceInterface.${method}" \
-    "string:${CROS_USER_ID_HASH}" 2>/dev/null)
-  status=$?
+    "string:${CROS_USER_ID_HASH}" 2>/dev/null)"
+  status="$?"
   [ ${status} -eq 0 -a "${reply##* }" = "true" ]
 }
 
@@ -592,9 +592,9 @@ cmd_newblue() (
 
   case "$1" in
     status|"")
-      reply=$(dbus-send --system --type=method_call --print-reply \
+      reply="$(dbus-send --system --type=method_call --print-reply \
           --dest=org.bluez /org/bluez \
-          org.chromium.BluetoothExperimental.GetNewblueEnabled)
+          org.chromium.BluetoothExperimental.GetNewblueEnabled)"
 
       if [ $? -ne 0 ]; then
         echo "ERROR: querying newblue status failed"
@@ -668,17 +668,17 @@ cmd_authpolicy_debug() (
   fi
 
   local reply status
-  reply=$(dbus-send --system --type=method_call --print-reply \
+  reply="$(dbus-send --system --type=method_call --print-reply \
       --dest=org.chromium.AuthPolicy /org/chromium/AuthPolicy \
-      "org.chromium.AuthPolicy.SetDefaultLogLevel" "int32:$1" 2>&1)
-  status=$?
+      "org.chromium.AuthPolicy.SetDefaultLogLevel" "int32:$1" 2>&1)"
+  status="$?"
   if [ ${status} -ne 0 ]; then
     echo "ERROR: ${reply}"
     return 1
   fi
   # Reply format: <dbus response header>\n    string "<error_message>"\n
   local error_message
-  error_message=$(echo "${reply}" | sed -n -E '$s/.*string "(.*)"/\1/p')
+  error_message="$(echo "${reply}" | sed -n -E '$s/.*string "(.*)"/\1/p')"
   if [ "${error_message}" = "" ]; then
     echo "Successfully set debugging level to ${level}."
     if [ ${level} -gt 0 ]; then
@@ -819,7 +819,7 @@ debugd_poll() (
     fi
 
     if [ -n "${fifo}" ]; then
-      dir=$(dirname "${fifo}")
+      dir="$(dirname "${fifo}")"
       rm -rf "${dir}"
       fifo=''
     fi
@@ -897,7 +897,7 @@ cmd_ping() (
     # Convenient shorthand for the next-hop gateway attached
     # to the default route; this means if you have a host named
     # "gw" then you'll need to specify a FQDN or IP address.
-    dest=$(ip route show | awk '$1 == "default" { print $3 }')
+    dest="$(ip route show | awk '$1 == "default" { print $3 }')"
     if [ -z "${dest}" ]; then
       echo "Cannot determine primary gateway; routing table is:"
       cmd_route
@@ -914,14 +914,14 @@ HELP_chaps_debug='
   Sets the chapsd logging level.  No arguments will start verbose logging.
 '
 cmd_chaps_debug() (
-  local level=${1:--2}
+  local level="${1:--2}"
   if [ "$1" = "stop" ]; then
     level=0
   fi
   if [ "$1" = "start" ]; then
     level=-2
   fi
-  /usr/bin/chaps_client --set_log_level=${level} 2> /dev/null
+  /usr/bin/chaps_client --set_log_level="${level}" 2> /dev/null
   if [ $? -eq 0 ]; then
     echo "Logging level set to ${level}."
   else
@@ -1067,7 +1067,7 @@ cmd_autest() (
   fi
 
   echo "Calling update_engine_client with omaha_url = $omaha_url"
-  /usr/bin/update_engine_client --omaha_url=$omaha_url
+  /usr/bin/update_engine_client "--omaha_url=$omaha_url"
 )
 
 USAGE_p2p_update='[enable|disable] [--num-connections] [--show-peers]'
@@ -1268,7 +1268,7 @@ mk_fifo() {
   # subshell read from the fifo and emit to stdout. When the subshell ends (at a
   # C-c), we stop the test and clean up the fifo.
   # no way to mktemp a fifo, so make a dir to hold it instead
-  dir=$(mktemp -d "/tmp/crosh-test-XXXXXXXXXX")
+  dir="$(mktemp -d "/tmp/crosh-test-XXXXXXXXXX")"
   if [ $? -ne 0 ]; then
     echo "Can't create temporary directory"
     return 1
@@ -1291,7 +1291,7 @@ cmd_storage_test_1() (
 
   debugd Smartctl "string:abort_test" >/dev/null
 
-  test=$(debugd Smartctl "string:short_test")
+  test="$(debugd Smartctl "string:short_test")"
   if [ "$option" != "-v" ]; then
     echo "$test" | sed -n '1p;2p'
     echo ""
@@ -1307,7 +1307,7 @@ cmd_storage_test_1() (
     true
   done
 
-  result=$(debugd Smartctl "string:selftest")
+  result="$(debugd Smartctl "string:selftest")"
   if [ "$option" != "-v" ]; then
     echo "$result" | grep -e "Num" -e "# 1"
   else
@@ -1331,13 +1331,13 @@ HELP_memory_test='
 '
 cmd_memory_test() (
   # Getting total free memory in KB.
-  mem=$(cat /proc/meminfo | grep MemFree | tr -s " " | cut -d" " -f 2)
+  mem="$(cat /proc/meminfo | grep MemFree | tr -s " " | cut -d" " -f 2)"
 
   # Converting to MiB.
-  mem=$(($mem / 1024))
+  mem="$(($mem / 1024))"
 
   # Giving OS 200MB free memory before hogging the rest of it.
-  mem=$(($mem - 200))
+  mem="$(($mem - 200))"
 
   debugd_poll Memtester "fd:1" "uint32:${mem}"
 )
@@ -1677,7 +1677,7 @@ cmd_c() (
   fi
   shift
 
-  local mount_dir=$(/usr/bin/mount_extension_image --name="${container}")
+  local mount_dir="$(/usr/bin/mount_extension_image --name="${container}")"
   if [ -z "${mount_dir}" ]; then
     echo "Could not find container"
     return 1
@@ -1713,10 +1713,10 @@ substr() {
   local start="$2"
   local end="$3"
 
-  start=$(expr "$start" + 1)
+  start="$(expr "$start" + 1)"
 
   if [ ! -z "$end" ]; then
-    end=$(expr "$end" - 1)
+    end="$(expr "$end" - 1)"
   fi
 
   printf '%s' "${str}" | cut -c${start}-${end}
@@ -1769,11 +1769,11 @@ dispatch() {
   local space_pos="$(expr index "${line}" ' ')"
 
   if [ "${space_pos}" = "0" ]; then
-    command=$line
+    command="$line"
   else
-    command=$(substr "$line" "0" "$space_pos")
-    command=${command% *}
-    params=$(substr "$line" "$space_pos")
+    command="$(substr "$line" "0" "$space_pos")"
+    command="${command% *}"
+    params="$(substr "$line" "$space_pos")"
   fi
 
   if ! registered_crosh_command "${command}"; then
@@ -1850,7 +1850,7 @@ EOF
 main() {
   # If we aren't installed, use local files for testing.
   if [ ! -d "${CROSH_MODPATH}" ]; then
-    CROSH_MODPATH=$(dirname "$0")
+    CROSH_MODPATH="$(dirname "$0")"
     echo "Loading from local paths instead: ${CROSH_MODPATH}"
   fi
 
