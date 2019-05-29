@@ -1121,6 +1121,7 @@ bool TpmUtilityV2::CreateIdentity(KeyType key_type,
     LOG(ERROR) << __func__ << ": Failed to create restricted key.";
     return false;
   }
+  key_pb->set_identity_key_type(key_type);
   binding_pb->set_identity_public_key_der(key_pb->identity_public_key_der());
   return true;
 }

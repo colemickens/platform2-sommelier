@@ -38,7 +38,10 @@ message TPMCredentials {
 
 // Holds information relevant to a particular AIK.
 message IdentityKey {
-  // The DER encoded public key.
+  // The key type of stored key.
+  optional KeyType identity_key_type = 5 [default = KEY_TYPE_RSA];
+  // The DER encoded public key. RSAPublicKey for RSA key. SubjectPublicKeyInfo
+  // for ECC key.
   optional bytes identity_public_key_der = 1;
   // The TPM-specific key blob that can be loaded back into the TPM.
   optional bytes identity_key_blob = 2;

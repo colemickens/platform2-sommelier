@@ -768,9 +768,10 @@ void AttestationService::GetAttestationKeyInfoTask(
     return;
   }
   if (identity_pb.identity_key().has_identity_public_key_der()) {
+    // TODO(crbug/942487): Use SubjectPublicKeyInfo for identity_public_key_der
     std::string public_key_info;
     if (!GetSubjectPublicKeyInfo(
-            request.key_type(),
+            identity_pb.identity_key().identity_key_type(),
             identity_pb.identity_key().identity_public_key_der(),
             &public_key_info)) {
       LOG(ERROR) << __func__ << ": Bad public key.";
@@ -2250,9 +2251,10 @@ void AttestationService::VerifyTask(
   auto database_pb = database_->GetProtobuf();
   const auto& identity_data = database_pb.identities().Get(kFirstIdentity);
   std::string identity_public_key_info;
-  if (!GetSubjectPublicKeyInfo(KEY_TYPE_RSA,
-           identity_data.identity_binding().identity_public_key_der(),
-           &identity_public_key_info)) {
+  if (!GetSubjectPublicKeyInfo(
+          identity_data.identity_key().identity_key_type(),
+          identity_data.identity_key().identity_public_key_der(),
+          &identity_public_key_info)) {
     LOG(ERROR) << __func__ << ": Failed to get identity public key info.";
     return;
   }
