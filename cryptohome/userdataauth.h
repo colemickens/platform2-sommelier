@@ -251,6 +251,11 @@ class UserDataAuth {
   bool InstallAttributesGet(const std::string& name,
                             std::vector<uint8_t>* data_out);
 
+  // Insert the key value pair (name, data) into install attributes. Return true
+  // if and only if the key value pair is successfully inserted.
+  bool InstallAttributesSet(const std::string& name,
+                            const std::vector<uint8_t>& data);
+
   // =============== Install Attributes Related Utilities ===============
 
   // Return true if this device is enterprise owned.

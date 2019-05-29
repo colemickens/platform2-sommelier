@@ -1822,4 +1822,9 @@ bool UserDataAuth::InstallAttributesGet(const std::string& name,
   return install_attrs_->Get(name, data_out);
 }
 
+bool UserDataAuth::InstallAttributesSet(const std::string& name,
+                                        const std::vector<uint8_t>& data) {
+  return install_attrs_->Set(name, data);
+}
+
 }  // namespace cryptohome
