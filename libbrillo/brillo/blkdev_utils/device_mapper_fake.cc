@@ -48,6 +48,7 @@ bool StubDmRunTask(DmTask* task, bool udev_sync) {
         return false;
       dm_target_map_.erase(dev_name);
       dm_target_map_.insert(std::make_pair(dev_name, task->targets));
+      break;
     default:
       return false;
   }
