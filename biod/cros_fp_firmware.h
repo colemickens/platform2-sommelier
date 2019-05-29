@@ -28,22 +28,27 @@ class CrosFpFirmware {
   };
 
   explicit CrosFpFirmware(const base::FilePath& image_path);
+  virtual ~CrosFpFirmware() = default;
   base::FilePath GetPath() const;
   bool IsValid() const;
   Status GetStatus() const;
   std::string GetStatusString() const;
   const ImageVersion& GetVersion() const;
 
+ protected:
+  CrosFpFirmware() = default;
+  void set_status(Status status) { status_ = status; }
+  void set_version(const ImageVersion& version) { version_ = version; }
+
  private:
+  base::FilePath path_;
+  ImageVersion version_;
+  Status status_ = Status::kUninitialized;
   friend class CrosFpFirmwareTest;
 
   void DecodeVersionFromFile();
 
   static std::string StatusToString(Status status);
-
-  base::FilePath path_;
-  ImageVersion version_;
-  Status status_;
 
   DISALLOW_COPY_AND_ASSIGN(CrosFpFirmware);
 };

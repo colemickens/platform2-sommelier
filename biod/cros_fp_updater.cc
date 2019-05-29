@@ -203,8 +203,10 @@ namespace updater {
 
 constexpr char kFirmwareDir[] = "/opt/google/biod/fw";
 
-// This function must solely indicate whether a FW file exists,
-// since it is ok to exit when no upgradeable firmware file exists
+// FindFirmwareFile searches |directory| for a single firmware file
+// that matches the |kFirmwareGlob| file pattern.
+// If a single matching firmware file is found is found,
+// its path is written to |file|. Otherwise, |file| will be untouched.
 FindFirmwareFileStatus FindFirmwareFile(const base::FilePath& directory,
                                         base::FilePath* file) {
   if (!base::DirectoryExists(directory)) {

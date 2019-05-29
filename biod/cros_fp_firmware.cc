@@ -53,7 +53,7 @@ bool DecodeVersionFromArea(const base::MemoryMappedFile& image,
 namespace biod {
 
 CrosFpFirmware::CrosFpFirmware(const base::FilePath& image_path)
-    : path_(image_path), status_(Status::kUninitialized) {
+    : path_(image_path) {
   DecodeVersionFromFile();
 }
 
