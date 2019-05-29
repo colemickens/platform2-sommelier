@@ -129,10 +129,6 @@ class IpsecManager : public ServiceManager {
   std::string ipsec_up_file_;
   // String with which to prefix ipsec output log lines.
   std::string ipsec_prefix_;
-  // File containing starter process's process id.
-  std::string starter_pid_file_;
-  // File containing charon process's process id.
-  std::string charon_pid_file_;
   // Remote address of IPsec connection.
   struct sockaddr remote_address_;
   // Remote address of IPsec connection (as a string).
