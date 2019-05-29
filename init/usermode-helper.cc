@@ -19,9 +19,6 @@
 int main(int argc, const char* argv[]) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  if (argc <= 1)
-    LOG(FATAL) << "missing program to run";
-
   // When running locally for testing, argv[0] will be usermode-helper itself.
   // When the kernel invokes us, argv[0] will be set to the program it wants
   // us to run.  So only shift argv when it makes sense.
@@ -29,6 +26,9 @@ int main(int argc, const char* argv[]) {
     --argc;
     ++argv;
   }
+
+  if (argc < 1)
+    LOG(FATAL) << "missing program to run";
 
   // Validate the program and its arguments, and reject all others.
   if (!usermode_helper::ValidateProgramArgs(argc, argv)) {
