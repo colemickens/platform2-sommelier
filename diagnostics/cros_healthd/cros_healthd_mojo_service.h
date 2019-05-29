@@ -47,6 +47,10 @@ class CrosHealthdMojoService final
       bool include_output,
       const GetRoutineUpdateCallback& callback) override;
 
+  void ProbeBatteryInfo(const ProbeBatteryInfoCallback& callback) override;
+  void ProbeNonRemovableBlockDeviceInfo(
+      const ProbeNonRemovableBlockDeviceInfoCallback& callback) override;
+
   // Set the function that will be called if the binding encounters a connection
   // error.
   void set_connection_error_handler(const base::Closure& error_handler);

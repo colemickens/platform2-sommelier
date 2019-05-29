@@ -26,9 +26,12 @@ namespace {
 // Mapping between groups and items. Each item belongs to exactly one
 // group.
 const std::map<TelemetryGroupEnum, std::vector<TelemetryItemEnum>> group_map = {
-    {TelemetryGroupEnum::kDisk,
-     {TelemetryItemEnum::kMemTotalMebibytes,
-      TelemetryItemEnum::kMemFreeMebibytes}}};
+    {TelemetryGroupEnum::kMemory,
+     {
+         TelemetryItemEnum::kMemTotalMebibytes,
+         TelemetryItemEnum::kMemFreeMebibytes,
+     }},
+};
 
 // Makes a dump of the specified file. Returns whether the dumping succeeded.
 void AppendFileDump(const base::FilePath& root_dir,
@@ -121,6 +124,7 @@ Telemetry::GetGroup(TelemetryGroupEnum group, base::TimeDelta acceptable_age) {
   std::vector<std::pair<TelemetryItemEnum, base::Optional<base::Value>>>
       telem_items;
 
+  DCHECK_NE(group_map.count(group), 0);
   for (TelemetryItemEnum item : group_map.at(group)) {
     telem_items.emplace_back(item, GetItem(item, acceptable_age));
   }

@@ -215,10 +215,10 @@ TEST_F(CrosHealthdMojoServiceTest, GetIdleTimePerCPU) {
   GetTelemetryItem(mojo_ipc::TelemetryItemEnum::kIdleTimePerCPU, data_ptr);
 }
 
-// Test that we can retrieve kDisk.
+// Test that we can retrieve kMemory.
 TEST_F(CrosHealthdMojoServiceTest, GetDiskGroup) {
   EXPECT_CALL(*telemetry_service(),
-              GetTelemetryGroup(TelemetryGroupEnum::kDisk))
+              GetTelemetryGroup(TelemetryGroupEnum::kMemory))
       .WillOnce(
           Return(std::vector<
                  std::pair<TelemetryItemEnum, base::Optional<base::Value>>>{
@@ -235,7 +235,7 @@ TEST_F(CrosHealthdMojoServiceTest, GetDiskGroup) {
       mojo_ipc::TelemetryItemEnum::kMemTotal, mem_total.Clone()));
   expected_data.push_back(mojo_ipc::TelemetryItemWithValue::New(
       mojo_ipc::TelemetryItemEnum::kMemFree, mem_free.Clone()));
-  GetTelemetryGroup(mojo_ipc::TelemetryGroupEnum::kDisk, expected_data);
+  GetTelemetryGroup(mojo_ipc::TelemetryGroupEnum::kMemory, expected_data);
 }
 
 }  // namespace diagnostics

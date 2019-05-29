@@ -12,6 +12,7 @@ module chromeos.cros_healthd.mojom;
 
 import "cros_healthd_diagnostics.mojom";
 import "cros_healthd_telemetry.mojom";
+import "cros_healthd_probe.mojom";
 
 // Interface exposed by the cros_healthd daemon.
 interface CrosHealthdService {
@@ -71,4 +72,17 @@ interface CrosHealthdService {
       => (RoutineUpdate routine_update);
 
   // ------------------- End of diagnostics definitions -----------------------
+
+  // ------------------- Start of probe definitions ---------------------
+
+  // Returns an array of all batteries and associated up-to-date info.
+  ProbeBatteryInfo@5()
+      => (array<BatteryInfo> batteries);
+
+  // Returns an array of all non-removable block devices and associated
+  // up-to-date info.
+  ProbeNonRemovableBlockDeviceInfo@6()
+      => (array<NonRemovableBlockDeviceInfo> devices);
+
+  // ------------------- End of probe definitions -----------------------
 };

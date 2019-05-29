@@ -17,6 +17,7 @@
 #include <base/time/time.h>
 #include <base/values.h>
 #include <brillo/flag_helper.h>
+#include <brillo/syslog_logging.h>
 
 #include "diagnostics/constants/grpc_constants.h"
 #include "diagnostics/telem/telemetry.h"
@@ -57,7 +58,8 @@ struct {
   const char* switch_name;
   diagnostics::TelemetryGroupEnum telemetry_group;
 } kTelemetryGroupSwitches[] = {
-    {"disk", diagnostics::TelemetryGroupEnum::kDisk}};
+    {"memory", diagnostics::TelemetryGroupEnum::kMemory},
+};
 
 // Helper function to display a base::Value object which has a string
 // representation.
@@ -168,20 +170,18 @@ int main(int argc, char** argv) {
   DEFINE_string(item, "", item_help.c_str());
   DEFINE_string(group, "", group_help.c_str());
   brillo::FlagHelper::Init(argc, argv, "telem - Device telemetry tool.");
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  std::map<std::string, diagnostics::TelemetryItemEnum>
-      telemetry_switch_to_item;
-  std::map<diagnostics::TelemetryItemEnum, std::string>
-      telemetry_item_to_switch;
+  std::map<std::string, diagnostics::TelemetryItemEnum> switch_to_item;
+  std::map<diagnostics::TelemetryItemEnum, std::string> item_to_switch;
   for (const auto& item : kTelemetryItemSwitches) {
-    telemetry_switch_to_item[item.switch_name] = item.telemetry_item;
-    telemetry_item_to_switch[item.telemetry_item] = item.switch_name;
+    switch_to_item[item.switch_name] = item.telemetry_item;
+    item_to_switch[item.telemetry_item] = item.switch_name;
   }
 
-  std::map<std::string, diagnostics::TelemetryGroupEnum>
-      telemetry_switch_to_group;
+  std::map<std::string, diagnostics::TelemetryGroupEnum> group_map;
   for (const auto& group : kTelemetryGroupSwitches) {
-    telemetry_switch_to_group[group.switch_name] = group.telemetry_group;
+    group_map[group.switch_name] = group.telemetry_group;
   }
 
   logging::InitLogging(logging::LoggingSettings());
@@ -197,21 +197,20 @@ int main(int argc, char** argv) {
   }
   // Validate the item flag.
   if (FLAGS_item != "") {
-    if (!telemetry_switch_to_item.count(FLAGS_item)) {
+    if (!switch_to_item.count(FLAGS_item)) {
       LOG(ERROR) << "Invalid item: " << FLAGS_item;
       return EXIT_FAILURE;
     }
 
     // Retrieve and display the telemetry item.
-    const base::Optional<base::Value> telem_item =
-        telemetry.GetItem(telemetry_switch_to_item.at(FLAGS_item),
-                          base::TimeDelta::FromSeconds(0));
+    const base::Optional<base::Value> telem_item = telemetry.GetItem(
+        switch_to_item.at(FLAGS_item), base::TimeDelta::FromSeconds(0));
     if (!DisplayOptionalTelemetryItem(FLAGS_item, telem_item))
       return EXIT_FAILURE;
   }
   // Validate the group flag.
   if (FLAGS_group != "") {
-    if (!telemetry_switch_to_group.count(FLAGS_group)) {
+    if (!group_map.count(FLAGS_group)) {
       LOG(ERROR) << "Invalid group: " << FLAGS_group;
       return EXIT_FAILURE;
     }
@@ -219,15 +218,13 @@ int main(int argc, char** argv) {
     // Retrieve and display the telemetry group.
     const std::vector<
         std::pair<diagnostics::TelemetryItemEnum, base::Optional<base::Value>>>
-        telem_items =
-            telemetry.GetGroup(telemetry_switch_to_group.at(FLAGS_group),
-                               base::TimeDelta::FromSeconds(0));
+        telem_items = telemetry.GetGroup(group_map.at(FLAGS_group),
+                                         base::TimeDelta::FromSeconds(0));
     for (auto item_pair : telem_items) {
-      if (!DisplayOptionalTelemetryItem(
-              telemetry_item_to_switch.at(item_pair.first), item_pair.second))
+      if (!DisplayOptionalTelemetryItem(item_to_switch.at(item_pair.first),
+                                        item_pair.second))
         return EXIT_FAILURE;
     }
   }
-
   return EXIT_SUCCESS;
 }

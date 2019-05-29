@@ -27,7 +27,7 @@ enum TelemetryItemEnum {
 // Enumeration of each of the retrievable telemetry groups.
 [Extensible]
 enum TelemetryGroupEnum {
-  kDisk = 0,
+  kMemory = 0,
 };
 
 // --------------------- Start of telemetry data definitions -------------------

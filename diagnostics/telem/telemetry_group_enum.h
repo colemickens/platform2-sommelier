@@ -9,7 +9,7 @@ namespace diagnostics {
 
 // Enumerates each of the groups of related telemetry items that
 // can be requested from libtelem.
-enum class TelemetryGroupEnum { kDisk };
+enum class TelemetryGroupEnum { kMemory };
 
 }  // namespace diagnostics
 

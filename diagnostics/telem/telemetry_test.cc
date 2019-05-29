@@ -22,8 +22,8 @@ namespace diagnostics {
 constexpr base::TimeDelta kImpossiblyLongTimeDelta =
     base::TimeDelta::FromSeconds(86400 * 365);
 
-// Test that retrieving the disk group works end-to-end.
-TEST(TelemetryIntegration, TestCacheForDiskGroup) {
+// Test that retrieving the memory group works end-to-end.
+TEST(TelemetryIntegration, TestCacheForMemoryGroup) {
   base::ScopedTempDir fake_root;
   CHECK(fake_root.CreateUniqueTempDir());
 
@@ -34,7 +34,7 @@ TEST(TelemetryIntegration, TestCacheForDiskGroup) {
   WriteFileAndCreateParentDirs(meminfo, fake_meminfo_file_contents);
 
   Telemetry telemetry(root_dir);
-  auto values = telemetry.GetGroup(TelemetryGroupEnum::kDisk,
+  auto values = telemetry.GetGroup(TelemetryGroupEnum::kMemory,
                                    base::TimeDelta::FromSeconds(0));
   ASSERT_EQ(values.size(), 2);
   for (auto& pair : values) {
@@ -52,9 +52,9 @@ TEST(TelemetryIntegration, TestCacheForDiskGroup) {
             base::Value(kFakeMemTotalMebibytes));
 }
 
-// Test that retrieving the disk group fails gracefully when a procfs file is
+// Test that retrieving the Memory group fails gracefully when a procfs file is
 // missing.
-TEST(TelemetryIntegration, TestNonexistentFileForDiskGroup) {
+TEST(TelemetryIntegration, TestNonexistentFileForMemoryGroup) {
   base::ScopedTempDir fake_root;
   CHECK(fake_root.CreateUniqueTempDir());
 
@@ -63,7 +63,7 @@ TEST(TelemetryIntegration, TestNonexistentFileForDiskGroup) {
   base::CreateDirectory(procfs);
 
   Telemetry telemetry(root_dir);
-  auto values = telemetry.GetGroup(TelemetryGroupEnum::kDisk,
+  auto values = telemetry.GetGroup(TelemetryGroupEnum::kMemory,
                                    base::TimeDelta::FromSeconds(0));
   // Even when the file doesn't exist, we should return a null value for the
   // items.
@@ -73,9 +73,9 @@ TEST(TelemetryIntegration, TestNonexistentFileForDiskGroup) {
   }
 }
 
-// Test that retrieving the disk group fails gracefully when the meminfo file is
-// empty. Essentially just testing an edge case.
-TEST(TelemetryIntegration, TestEmptyFileForDiskGroup) {
+// Test that retrieving the Memory group fails gracefully when the meminfo file
+// is empty. Essentially just testing an edge case.
+TEST(TelemetryIntegration, TestEmptyFileForMemoryGroup) {
   base::ScopedTempDir fake_root;
   CHECK(fake_root.CreateUniqueTempDir());
 
@@ -84,7 +84,7 @@ TEST(TelemetryIntegration, TestEmptyFileForDiskGroup) {
   WriteFileAndCreateParentDirs(meminfo, "");
 
   Telemetry telemetry(root_dir);
-  auto values = telemetry.GetGroup(TelemetryGroupEnum::kDisk,
+  auto values = telemetry.GetGroup(TelemetryGroupEnum::kMemory,
                                    base::TimeDelta::FromSeconds(0));
   // Even when the file is empty, we should return a null value for the items.
   ASSERT_EQ(values.size(), 2);

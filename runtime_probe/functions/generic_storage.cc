@@ -254,7 +254,7 @@ GenericStorageFunction::DataType GenericStorageFunction::Eval() const {
   DataType result{};
 
   for (const auto& node_path : storage_nodes_path_list) {
-    VLOG(2) << "Processnig the node " << node_path.value();
+    VLOG(2) << "Processing the node " << node_path.value();
     base::DictionaryValue node_res{};
 
     const auto dev_path = node_path.Append("device");

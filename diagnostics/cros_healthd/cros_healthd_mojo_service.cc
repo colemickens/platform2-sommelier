@@ -74,8 +74,8 @@ mojo_ipc::TelemetryItemEnum GetMojoEnumFromTelemetryItemEnum(
 TelemetryGroupEnum GetTelemetryGroupEnumFromMojoEnum(
     mojo_ipc::TelemetryGroupEnum mojo_enum) {
   switch (mojo_enum) {
-    case mojo_ipc::TelemetryGroupEnum::kDisk:
-      return TelemetryGroupEnum::kDisk;
+    case mojo_ipc::TelemetryGroupEnum::kMemory:
+      return TelemetryGroupEnum::kMemory;
   }
 }
 
@@ -222,6 +222,17 @@ void CrosHealthdMojoService::set_connection_error_handler(
     const base::Closure& error_handler) {
   DCHECK(self_binding_);
   self_binding_->set_connection_error_handler(error_handler);
+}
+
+void CrosHealthdMojoService::ProbeBatteryInfo(
+    const ProbeBatteryInfoCallback& callback) {
+  NOTIMPLEMENTED();
+}
+
+void CrosHealthdMojoService::ProbeNonRemovableBlockDeviceInfo(
+    const ProbeNonRemovableBlockDeviceInfoCallback& callback) {
+  // Gather various info on non-removeable block devices.
+  NOTIMPLEMENTED();
 }
 
 }  // namespace diagnostics

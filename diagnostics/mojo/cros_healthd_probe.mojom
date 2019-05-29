@@ -1,0 +1,66 @@
+// Copyright 2019 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Definitions for the probe API exposed by the cros_healthd daemon. This API is
+// normally consumed by the browser.
+
+// NOTE: This mojom should be kept in sync with the copy in Chromium's repo in
+// src/chrome/services/cros_healthd/public/mojom/cros_healthd_probe.mojom.
+
+module chromeos.cros_healthd.mojom;
+
+struct BatteryInfo {
+  // (1) Most fields are following the naming of exposed ACPI interface.
+  // (2) Most units are in µ because of this unexplained kernel patch:
+  // https://chromium.git.corp.google.com/chromiumos/third_party/kernel/+/d7380965752505951668e85de59c128d1d6fd21f%5E%21/#F1
+
+  // Index number of this battery, starts from 1.
+  int32 index@0;
+  // Manufacturer for length not exceeding EC_COMM_TEXT_MAX.
+  string manufacturer@1;
+  // Model name for length not exceeding EC_COMM_TEXT_MAX.
+  string model_name@2;
+  // Serial number for length not exceeding EC_COMM_TEXT_MAX.
+  string serial_number@3;
+  // Design Capacity (µAh).
+  int32 charge_full_design@4;
+  // Full Capacity (µAh, might change occasionally).
+  int32 charge_full@5;
+  // Remaining capacity (µAh)
+  int32 charge_now@6;
+  // Current Battery voltage (µV)
+  int32 voltage_now@7;
+  // Designed minimum output voltage (µV)
+  int32 voltage_min_design@8;
+  // Smart Battery Cycle Count in http://sbs-forum.org/specs/sbdat110.pdf
+  int32 cycle_count_smart@9;
+  // Smart Battery Status defined in http://sbs-forum.org/specs/sbdat110.pdf
+  int32 status_smart@10;
+  // Temperature in 0.1°K as Smart Battery Temperature defined in
+  // http://sbs-forum.org/specs/sbdat110.pdf
+  int32 temperature_smart@11;
+  // The path of this battery in system. It is useful if caller needs to
+  // correlate with other information
+  string path@12;
+  // Smart Manufacture Date is defined in
+  // http://sbs-forum.org/specs/sbdat110.pdf.
+  // The value is calculated by ((year-1980) * 512 + month * 32 + day).
+  int32 manufacture_date_smart@13;
+};
+
+struct NonRemovableBlockDeviceInfo {
+  // The path of this storage in system. It is useful if caller needs to
+  // correlate with other information.
+  string path@0;
+  // Exact size of this storage, reported in bytes
+  int64 size@1;
+  // Storage type, could be MMC / NVMe / ATA, based on udev subsystem.
+  string type@2;
+  // Manufacturer ID, 8 bits.
+  uint8 manfid@3;
+  // PNM: Product name, ASCII characters for 6 bytes.
+  string name@4;
+  // PSN: Product serial number, 32 bits
+  uint32 serial@5;
+};
