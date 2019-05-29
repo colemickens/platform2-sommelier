@@ -199,11 +199,11 @@ class U2fDaemon : public brillo::Daemon {
       return EX_CONFIG;
     }
 
-    // User keys should always be enabled when a U2F policy is set, and may
-    // additionally be enabled on the command line.
+    // User keys should always be enabled when a U2F policy is set or G2F mode
+    // is enabled, and may additionally be enabled on the command line.
     // User keys may not be disabled if a policy is defined, as non-user keys
     // are legacy and should not be used beyond the initial beta launch.
-    if (ReadU2fPolicy() != U2fMode::kUnset) {
+    if (ReadU2fPolicy() != U2fMode::kUnset || force_g2f_) {
       user_keys_ = true;
     }
 
