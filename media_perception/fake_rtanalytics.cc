@@ -31,6 +31,15 @@ SerializedPerceptionInterfaces FakeRtanalytics::SetupConfiguration(
       perception_interfaces).GetBytes();
 }
 
+SerializedSuccessStatus FakeRtanalytics::SetTemplateArguments(
+    const std::string& configuration_name,
+    const SerializedTemplateArguments& serialized_arguments) {
+  SuccessStatus status;
+  status.set_success(true);
+  status.set_failure_reason(configuration_name);
+  return Serialized<SuccessStatus>(status).GetBytes();
+}
+
 std::vector<SerializedDeviceTemplate> FakeRtanalytics::GetTemplateDevices(
       const std::string& configuration_name) const {
   return serialized_device_templates_;

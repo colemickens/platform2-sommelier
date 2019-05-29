@@ -19,6 +19,7 @@ namespace mri {
 // Note that these aliases are guaranteed to always have this type.
 using SerializedPerceptionInterfaces = std::vector<uint8_t>;
 using SerializedSuccessStatus = std::vector<uint8_t>;
+using SerializedTemplateArguments = std::vector<uint8_t>;
 using SerializedPipelineState = std::vector<uint8_t>;
 using SerializedGlobalPipelineState = std::vector<uint8_t>;
 using SerializedDeviceTemplate = std::vector<uint8_t>;
@@ -43,6 +44,13 @@ class Rtanalytics {
   virtual SerializedPerceptionInterfaces SetupConfiguration(
       const std::string& configuration_name,
       SerializedSuccessStatus* success_status) = 0;
+
+  // Sets template arugments for a specified configuration. Arguments should be
+  // passed as a serialized proto that is kept in sync between the MPS and a
+  // client.
+  virtual SerializedSuccessStatus SetTemplateArguments(
+      const std::string& configuration_name,
+      const SerializedTemplateArguments& serialized_arguments) = 0;
 
   // Returns the list of template names for devices that can be filled in for a
   // particular configuration that has been setup. If the configuration has not

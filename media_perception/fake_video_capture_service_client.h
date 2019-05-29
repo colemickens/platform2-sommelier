@@ -33,7 +33,6 @@ class FakeVideoCaptureServiceClient : public VideoCaptureServiceClient {
       SerializedVideoStreamParams* capture_format) override;
   int AddFrameHandler(
       const std::string& device_id,
-      const SerializedVideoStreamParams& capture_format,
       FrameHandler handler) override;
   bool RemoveFrameHandler(
       const std::string& device_id, int frame_handler_id) override;

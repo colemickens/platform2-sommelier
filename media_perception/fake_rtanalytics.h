@@ -28,6 +28,9 @@ class FakeRtanalytics : public Rtanalytics {
   SerializedPerceptionInterfaces SetupConfiguration(
       const std::string& configuration_name,
       SerializedSuccessStatus* success_status) override;
+  SerializedSuccessStatus SetTemplateArguments(
+      const std::string& configuration_name,
+      const SerializedTemplateArguments& serialized_arguments) override;
   std::vector<SerializedDeviceTemplate> GetTemplateDevices(
       const std::string& configuration_name) const override;
   SerializedSuccessStatus SetVideoDeviceForTemplateName(

@@ -66,6 +66,17 @@ void MediaPerceptionImpl::SetupConfiguration(
                std::move(interfaces_ptr));
 }
 
+void MediaPerceptionImpl::SetTemplateArguments(
+      const std::string& configuration_name,
+      const std::vector<uint8_t>& serialized_arguments_proto,
+      const SetTemplateArgumentsCallback& callback) {
+  SerializedSuccessStatus serialized_status =
+      rtanalytics_->SetTemplateArguments(
+          configuration_name, serialized_arguments_proto);
+  callback.Run(chromeos::media_perception::mojom::ToMojom(
+      Serialized<SuccessStatus>(serialized_status).Deserialize()));
+}
+
 void MediaPerceptionImpl::GetVideoDevices(
     const GetVideoDevicesCallback& callback) {
   // Get the list of video devices from the VideoCaptureServiceClient and

@@ -136,6 +136,23 @@ TEST_F(MediaPerceptionImplTest, TestSetupConfiguration) {
   ASSERT_TRUE(setup_configuration_callback_done);
 }
 
+TEST_F(MediaPerceptionImplTest, TestSetTemplateArguments) {
+  bool set_template_arguments_callback_done = false;
+  std::vector<uint8_t> arguments;
+
+  media_perception_ptr_->SetTemplateArguments(
+      "test_configuration", arguments,
+      base::Bind([](
+          bool* set_template_arguments_callback_done,
+          chromeos::media_perception::mojom::SuccessStatusPtr status) {
+        EXPECT_EQ(status->success, true);
+        EXPECT_EQ(*status->failure_reason, "test_configuration");
+        *set_template_arguments_callback_done = true;
+      }, &set_template_arguments_callback_done));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(set_template_arguments_callback_done);
+}
+
 TEST_F(MediaPerceptionImplTest, TestGetTemplateDevices) {
   DeviceTemplate template_one;
   template_one.set_template_name("one");

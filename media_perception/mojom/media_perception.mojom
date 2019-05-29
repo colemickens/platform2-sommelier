@@ -37,6 +37,13 @@ interface MediaPerception {
 	  (SuccessStatus status,
 	   PerceptionInterfaces interfaces);
 
+  // Sets template arguments for a specified configuration. Arguments should be
+  // passed as a serialized proto that is kept in sync between the MPS and a
+  // client.
+  SetTemplateArguments@10(
+      string configuration_name, array<uint8> serialized_arguments_proto) =>
+      (SuccessStatus status);
+
   // ------------------- Start of device management definitions. -------------
 
   GetVideoDevices@1() => (array<VideoDevice> devices);

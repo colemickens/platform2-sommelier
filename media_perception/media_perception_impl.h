@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <mojo/public/cpp/bindings/binding.h>
 
@@ -31,6 +32,10 @@ class MediaPerceptionImpl :
   // chromeos::media_perception::mojom::MediaPerception:
   void SetupConfiguration(const std::string& configuration_name,
                           const SetupConfigurationCallback& callback) override;
+  void SetTemplateArguments(
+      const std::string& configuration_name,
+      const std::vector<uint8_t>& serialized_arguments_proto,
+      const SetTemplateArgumentsCallback& callback) override;
   void GetVideoDevices(const GetVideoDevicesCallback& callback) override;
   void GetAudioDevices(const GetAudioDevicesCallback& callback) override;
   void GetTemplateDevices(const std::string& configuration_name,

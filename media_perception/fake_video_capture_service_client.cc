@@ -37,7 +37,6 @@ bool FakeVideoCaptureServiceClient::IsVideoCaptureStartedForDevice(
 
 int FakeVideoCaptureServiceClient::AddFrameHandler(
     const std::string& device_id,
-    const SerializedVideoStreamParams& capture_format,
     FrameHandler frame_handler) { return 0; }
 
 void FakeVideoCaptureServiceClient::CreateVirtualDevice(
