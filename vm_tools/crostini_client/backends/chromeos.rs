@@ -910,7 +910,7 @@ impl Backend for ChromeOS {
         }
         let seneschal_handle = vm_info.seneschal_server_handle as u32;
         let vm_path = self.share_path_with_vm(seneschal_handle, user_id_hash, path)?;
-        Ok(format!("{}{}", MNT_SHARED_ROOT, vm_path))
+        Ok(format!("{}/{}", MNT_SHARED_ROOT, vm_path))
     }
 
     fn vsh_exec(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {
