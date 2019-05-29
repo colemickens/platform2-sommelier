@@ -53,17 +53,17 @@ main() {
 
     # Allow the sleep to be killed manually without terminating the handler.
     # Send stderr to /dev/null to suppress the shell's "Terminated" message.
-    sleep $(( CHECK_DELAY + KILL_DELAY )) 2>/dev/null || true
+    sleep "$(( CHECK_DELAY + KILL_DELAY ))" 2>/dev/null || true
 
     local last_rotation="$(stat -c "%Y" "${spool_file}" 2>/dev/null || echo 0)"
     local now="$(date +%s)"
-    local time_diff=$((now - last_rotation))
+    local time_diff="$((now - last_rotation))"
 
-    if [ ${time_diff} -gt ${delay} ]; then
+    if [ "${time_diff}" -gt "${delay}" ]; then
       rm "${spool_file}" || true
       touch "${spool_file}"
       log "${name}: running $*"
-      timeout -k ${KILL_DELAY} ${timeout} "$@" || true
+      timeout -k "${KILL_DELAY}" "${timeout}" "$@" || true
       log "${name}: job completed"
     fi
   done
