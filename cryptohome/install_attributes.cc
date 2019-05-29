@@ -246,6 +246,8 @@ bool InstallAttributes::Finalize() {
       return true;
     case Status::kFirstInstall:
       break;
+    case Status::COUNT:
+      NOTREACHED();
   }
 
   // Restamp the version.

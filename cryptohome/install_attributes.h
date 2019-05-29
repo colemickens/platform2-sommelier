@@ -42,6 +42,8 @@ class InstallAttributes {
     kFirstInstall,  // Allows writing.
     kValid,         // Validated successfully.
     kInvalid,       // Not valid, e.g. clobbered, absent.
+    COUNT,          // This is unused, just for counting the number of elements.
+                    // Note that COUNT should always be the last element.
   };
 
   class Observer {
@@ -55,7 +57,7 @@ class InstallAttributes {
   explicit InstallAttributes(Tpm* tpm);
   virtual ~InstallAttributes();
 
-  Status status() const { return status_; }
+  virtual Status status() const { return status_; }
 
   // Sets status (for testing).
   void set_status_for_testing(Status status) { status_ = status; }

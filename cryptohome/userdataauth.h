@@ -260,6 +260,21 @@ class UserDataAuth {
   // attributes is finalized.
   bool InstallAttributesFinalize();
 
+  // Get the number of key value pair stored in install attributes.
+  int InstallAttributesCount();
+
+  // Return true if and only if the attribute storage is securely stored, that
+  // is, if the system TPM/Lockbox is being used.
+  bool InstallAttributesIsSecure();
+
+  // Return the current status of the install attributes.
+  InstallAttributes::Status InstallAttributesGetStatus();
+
+  // Convert the InstallAttributes::Status enum to
+  // user_data_auth::InstallAttributesState protobuf enum.
+  static user_data_auth::InstallAttributesState
+  InstallAttributesStatusToProtoEnum(InstallAttributes::Status status);
+
   // =============== Install Attributes Related Utilities ===============
 
   // Return true if this device is enterprise owned.

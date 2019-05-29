@@ -1831,4 +1831,40 @@ bool UserDataAuth::InstallAttributesFinalize() {
   return install_attrs_->Finalize();
 }
 
+int UserDataAuth::InstallAttributesCount() {
+  return install_attrs_->Count();
+}
+
+bool UserDataAuth::InstallAttributesIsSecure() {
+  return install_attrs_->is_secure();
+}
+
+InstallAttributes::Status UserDataAuth::InstallAttributesGetStatus() {
+  return install_attrs_->status();
+}
+
+user_data_auth::InstallAttributesState
+UserDataAuth::InstallAttributesStatusToProtoEnum(
+    InstallAttributes::Status status) {
+  static const std::unordered_map<InstallAttributes::Status,
+                                  user_data_auth::InstallAttributesState>
+      state_map = {{InstallAttributes::Status::kUnknown,
+                    user_data_auth::InstallAttributesState::UNKNOWN},
+                   {InstallAttributes::Status::kTpmNotOwned,
+                    user_data_auth::InstallAttributesState::TPM_NOT_OWNED},
+                   {InstallAttributes::Status::kFirstInstall,
+                    user_data_auth::InstallAttributesState::FIRST_INSTALL},
+                   {InstallAttributes::Status::kValid,
+                    user_data_auth::InstallAttributesState::VALID},
+                   {InstallAttributes::Status::kInvalid,
+                    user_data_auth::InstallAttributesState::INVALID}};
+  if (state_map.count(status) != 0) {
+    return state_map.at(status);
+  }
+
+  NOTREACHED();
+  // Return is added so compiler doesn't complain.
+  return user_data_auth::InstallAttributesState::INVALID;
+}
+
 }  // namespace cryptohome

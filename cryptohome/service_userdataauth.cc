@@ -552,6 +552,10 @@ void InstallAttributesAdaptor::InstallAttributesGetStatus(
         user_data_auth::InstallAttributesGetStatusReply>> response,
     const user_data_auth::InstallAttributesGetStatusRequest& in_request) {
   user_data_auth::InstallAttributesGetStatusReply reply;
+  reply.set_count(service_->InstallAttributesCount());
+  reply.set_is_secure(service_->InstallAttributesIsSecure());
+  reply.set_state(UserDataAuth::InstallAttributesStatusToProtoEnum(
+      service_->InstallAttributesGetStatus()));
   response->Return(reply);
 }
 

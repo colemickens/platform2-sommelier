@@ -734,6 +734,58 @@ TEST_F(UserDataAuthTest, InstallAttributesFinalize) {
   EXPECT_FALSE(userdataauth_.InstallAttributesFinalize());
 }
 
+TEST_F(UserDataAuthTest, InstallAttributesCount) {
+  constexpr int kCount = 42;  // The Answer!!
+  EXPECT_CALL(attrs_, Count()).WillOnce(Return(kCount));
+  EXPECT_EQ(kCount, userdataauth_.InstallAttributesCount());
+}
+
+TEST_F(UserDataAuthTest, InstallAttributesIsSecure) {
+  // Test for successful case.
+  EXPECT_CALL(attrs_, is_secure()).WillOnce(Return(true));
+  EXPECT_TRUE(userdataauth_.InstallAttributesIsSecure());
+
+  // Test for unsuccessful case.
+  EXPECT_CALL(attrs_, is_secure()).WillOnce(Return(false));
+  EXPECT_FALSE(userdataauth_.InstallAttributesIsSecure());
+}
+
+TEST_F(UserDataAuthTest, InstallAttributesGetStatus) {
+  std::vector<InstallAttributes::Status> status_list = {
+      InstallAttributes::Status::kUnknown,
+      InstallAttributes::Status::kTpmNotOwned,
+      InstallAttributes::Status::kFirstInstall,
+      InstallAttributes::Status::kValid, InstallAttributes::Status::kInvalid};
+
+  for (auto& s : status_list) {
+    EXPECT_CALL(attrs_, status()).WillOnce(Return(s));
+    EXPECT_EQ(s, userdataauth_.InstallAttributesGetStatus());
+  }
+}
+
+TEST_F(UserDataAuthTestNotInitialized, InstallAttributesStatusToProtoEnum) {
+  EXPECT_EQ(user_data_auth::InstallAttributesState::UNKNOWN,
+            UserDataAuth::InstallAttributesStatusToProtoEnum(
+                InstallAttributes::Status::kUnknown));
+  EXPECT_EQ(user_data_auth::InstallAttributesState::TPM_NOT_OWNED,
+            UserDataAuth::InstallAttributesStatusToProtoEnum(
+                InstallAttributes::Status::kTpmNotOwned));
+  EXPECT_EQ(user_data_auth::InstallAttributesState::FIRST_INSTALL,
+            UserDataAuth::InstallAttributesStatusToProtoEnum(
+                InstallAttributes::Status::kFirstInstall));
+  EXPECT_EQ(user_data_auth::InstallAttributesState::VALID,
+            UserDataAuth::InstallAttributesStatusToProtoEnum(
+                InstallAttributes::Status::kValid));
+  EXPECT_EQ(user_data_auth::InstallAttributesState::INVALID,
+            UserDataAuth::InstallAttributesStatusToProtoEnum(
+                InstallAttributes::Status::kInvalid));
+  static_assert(
+      user_data_auth::InstallAttributesState_MAX == 4,
+      "Incorrect element count in user_data_auth::InstallAttributesState");
+  static_assert(static_cast<int>(InstallAttributes::Status::COUNT) == 5,
+                "Incorrect element count in InstallAttributes::Status");
+}
+
 TEST_F(UserDataAuthTestNotInitialized, InitializeArcDiskQuota) {
   EXPECT_CALL(arc_disk_quota_, Initialize()).Times(1);
   EXPECT_TRUE(userdataauth_.Initialize());

@@ -30,6 +30,8 @@ class MockInstallAttributes : public InstallAttributes {
   MOCK_METHOD2(Set, bool(const std::string&, const brillo::Blob&));
   MOCK_METHOD0(Finalize, bool());
   MOCK_CONST_METHOD0(Count, int());
+  MOCK_CONST_METHOD0(is_secure, bool());
+  MOCK_CONST_METHOD0(status, InstallAttributes::Status());
 };
 
 }  // namespace cryptohome
