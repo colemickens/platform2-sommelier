@@ -509,6 +509,14 @@ void InstallAttributesAdaptor::InstallAttributesGet(
         user_data_auth::InstallAttributesGetReply>> response,
     const user_data_auth::InstallAttributesGetRequest& in_request) {
   user_data_auth::InstallAttributesGetReply reply;
+  std::vector<uint8_t> data;
+  bool result = service_->InstallAttributesGet(in_request.name(), &data);
+  if (result) {
+    *reply.mutable_value() = {data.begin(), data.end()};
+  } else {
+    reply.set_error(
+        user_data_auth::CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_GET_FAILED);
+  }
   response->Return(reply);
 }
 

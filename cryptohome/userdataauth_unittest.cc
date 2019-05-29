@@ -30,6 +30,7 @@ using brillo::SecureBlob;
 using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::ElementsAre;
+using ::testing::ElementsAreArray;
 using ::testing::EndsWith;
 using ::testing::Eq;
 using ::testing::Invoke;
@@ -363,9 +364,16 @@ static_assert(
     "Enum member CRYPTOHOME_ERROR_INVALID_ARGUMENT differs between "
     "user_data_auth:: and cryptohome::");
 static_assert(
-    user_data_auth::CryptohomeErrorCode_MAX == 33,
+    static_cast<int>(
+        user_data_auth::CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_GET_FAILED) ==
+        static_cast<int>(
+            cryptohome::CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_GET_FAILED),
+    "Enum member CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_GET_FAILED differs "
+    "between user_data_auth:: and cryptohome::");
+static_assert(
+    user_data_auth::CryptohomeErrorCode_MAX == 34,
     "user_data_auth::CrytpohomeErrorCode's element count is incorrect");
-static_assert(cryptohome::CryptohomeErrorCode_MAX == 33,
+static_assert(cryptohome::CryptohomeErrorCode_MAX == 34,
               "cryptohome::CrytpohomeErrorCode's element count is incorrect");
 }  // namespace CryptohomeErrorCodeEquivalenceTest
 
@@ -658,6 +666,30 @@ TEST_F(UserDataAuthTestNotInitialized, InstallAttributesNotEnterpriseOwned) {
   userdataauth_.Initialize();
 
   EXPECT_FALSE(userdataauth_.IsEnterpriseOwned());
+}
+
+constexpr char kInstallAttributeName[] = "SomeAttribute";
+constexpr uint8_t kInstallAttributeData[] = {0x01, 0x02, 0x00,
+                                             0x03, 0xFF, 0xAB};
+
+TEST_F(UserDataAuthTest, InstallAttributesGet) {
+  // Test for successful case.
+  EXPECT_CALL(attrs_, Get(kInstallAttributeName, _))
+      .WillOnce(
+          Invoke([](const std::string& name, std::vector<uint8_t>* data_out) {
+            *data_out = std::vector<uint8_t>(
+                kInstallAttributeData,
+                kInstallAttributeData + sizeof(kInstallAttributeData));
+            return true;
+          }));
+  std::vector<uint8_t> data;
+  EXPECT_TRUE(userdataauth_.InstallAttributesGet(kInstallAttributeName, &data));
+  EXPECT_THAT(data, ElementsAreArray(kInstallAttributeData));
+
+  // Test for unsuccessful case.
+  EXPECT_CALL(attrs_, Get(kInstallAttributeName, _)).WillOnce(Return(false));
+  EXPECT_FALSE(
+      userdataauth_.InstallAttributesGet(kInstallAttributeName, &data));
 }
 
 TEST_F(UserDataAuthTestNotInitialized, InitializeArcDiskQuota) {

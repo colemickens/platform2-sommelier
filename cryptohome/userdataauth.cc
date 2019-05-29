@@ -1817,4 +1817,9 @@ void UserDataAuth::Pkcs11Terminate() {
   }
 }
 
+bool UserDataAuth::InstallAttributesGet(const std::string& name,
+                                        std::vector<uint8_t>* data_out) {
+  return install_attrs_->Get(name, data_out);
+}
+
 }  // namespace cryptohome

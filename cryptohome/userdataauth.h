@@ -242,6 +242,15 @@ class UserDataAuth {
   // Note that this should only be called from mount thread.
   void Pkcs11Terminate();
 
+  // =============== Install Attributes Related Public Methods ===============
+
+  // Retrieve the key value pair in install attributes with the key of |name|,
+  // and return its value in |data_out|. Returns true if and only if the key
+  // value pair is successfully retrieved. If false is returned, then
+  // |data_out|'s content is undefined.
+  bool InstallAttributesGet(const std::string& name,
+                            std::vector<uint8_t>* data_out);
+
   // =============== Install Attributes Related Utilities ===============
 
   // Return true if this device is enterprise owned.
