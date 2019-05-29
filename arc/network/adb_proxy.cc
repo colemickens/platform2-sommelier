@@ -116,6 +116,14 @@ bool AdbProxy::OnSignal(const struct signalfd_siginfo& info) {
   // On guest ARC up, start accepting connections.
   if (info.ssi_signo == SIGUSR1) {
     src_ = std::make_unique<Socket>(AF_INET, SOCK_STREAM | SOCK_NONBLOCK);
+    // Need to set this to reuse the port on localhost.
+    // TODO(garrick): Move this into Socket.
+    int on = 1;
+    if (setsockopt(src_->fd(), SOL_SOCKET, SO_REUSEADDR, &on, sizeof(int)) <
+        0) {
+      PLOG(ERROR) << "setsockopt(SO_REUSEADDR) failed";
+      return false;
+    }
     struct sockaddr_in addr = {0};
     addr.sin_family = AF_INET;
     addr.sin_port = htons(kTcpListenPort);
