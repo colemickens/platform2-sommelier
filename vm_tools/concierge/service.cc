@@ -1620,7 +1620,7 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
       return dbus_response;
     }
 
-    if (disk_location != STORAGE_CRYPTOHOME_PLUGINVM) {
+    if (disk_location == STORAGE_CRYPTOHOME_PLUGINVM) {
       // We do not support extending Plugin VM images.
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason("Plugin VM with such name already exists");
