@@ -409,8 +409,9 @@ bool DevicePolicyImpl::GetRollbackAllowedMilestones(
     }
   }
   // Policy is not present, use default for enterprise devices.
-  VLOG(1) << "RollbackAllowedMilestones policy is not set, using default 0.";
-  *rollback_allowed_milestones = 0;
+  VLOG(1) << "RollbackAllowedMilestones policy is not set, using default "
+          << kMaxRollbackAllowedMilestones << ".";
+  *rollback_allowed_milestones = kMaxRollbackAllowedMilestones;
   return true;
 }
 

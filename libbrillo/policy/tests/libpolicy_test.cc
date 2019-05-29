@@ -240,10 +240,10 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   EXPECT_FALSE(policy.GetUpdateDisabled(&bool_value));
   EXPECT_FALSE(policy.GetTargetVersionPrefix(&string_value));
   EXPECT_FALSE(policy.GetRollbackToTargetVersion(&int_value));
-  // RollbackAllowedMilestones has the default value of 0 for enterprise
+  // RollbackAllowedMilestones has the default value of 4 for enterprise
   // devices.
   ASSERT_TRUE(policy.GetRollbackAllowedMilestones(&int_value));
-  EXPECT_EQ(0, int_value);
+  EXPECT_EQ(4, int_value);
   EXPECT_FALSE(policy.GetScatterFactorInSeconds(&int64_value));
   EXPECT_FALSE(policy.GetOpenNetworkConfiguration(&string_value));
   EXPECT_FALSE(policy.GetHttpDownloadsEnabled(&bool_value));

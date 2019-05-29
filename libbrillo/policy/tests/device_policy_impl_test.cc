@@ -108,7 +108,7 @@ TEST_F(DevicePolicyImplTest, GetRollbackAllowedMilestones_NotSet) {
 
   int value = -1;
   ASSERT_TRUE(device_policy_.GetRollbackAllowedMilestones(&value));
-  EXPECT_EQ(0, value);
+  EXPECT_EQ(4, value);
 }
 
 // RollbackAllowedMilestones is set to a valid value.
