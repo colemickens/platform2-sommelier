@@ -12,7 +12,7 @@ ARP=/sbin/arp
 ARPING=/sbin/arping
 TLSDATE=/usr/bin/tlsdate
 ETHTOOL=/usr/sbin/ethtool
-anonymize_macs=${ANONYMIZE_MACS-yes}
+anonymize_macs="${ANONYMIZE_MACS-yes}"
 fail_count=0
 CROS_CERTS=/usr/share/chromeos-ca-certificates/
 declare -A fn_entry
@@ -191,13 +191,13 @@ read_dhcp_lease () {
   local message_types=(UNKNOWN DISCOVER OFFER REQUEST DECLINE \
                        ACK NACK RELEASE INFORM)
   local now="$(date +%s)"
-  local lease_start="$(stat -c %Y $file)"
+  local lease_start="$(stat -c %Y "${file}")"
   local lease_age="$((now-lease_start))"
   echo "  Lease file age: $lease_age"
   local lease_int=($(od --address-radix=n --format=u1 \
-                         --output-duplicates ${file}))
+                         --output-duplicates "${file}"))
   local lease_hex=($(od --address-radix=n --format=x1 \
-                         --output-duplicates ${file}))
+                         --output-duplicates "${file}"))
   echo "  Client MAC address: $(join : ${lease_hex[*]:28:6})"
   echo "  Leased address: $(join . ${lease_int[*]:16:4})"
   local server_address="$(join . ${lease_int[*]:20:4})"
@@ -795,7 +795,8 @@ run_hosts_webget() {
   local proxy="$2"
   local cmd=()
   local timeout_secs=10
-  cmd=( curl -s "https://${host}" --max-time ${timeout_secs} --capath "${CROS_CERTS}" )
+  cmd=( curl -s "https://${host}" --max-time "${timeout_secs}" --capath \
+    "${CROS_CERTS}" )
   if [[ -n "${proxy}" ]]; then
     cmd+=( --proxy "${proxy}" )
   fi
