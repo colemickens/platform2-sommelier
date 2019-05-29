@@ -22,6 +22,10 @@ namespace arc_networkd {
 // when this object is destroyed.
 class BRILLO_EXPORT SubnetAddress {
  public:
+  // Creates a new SubnetAddress with the given base address and prefix length.
+  // |base_addr| must be in network-byte order. |release_cb| runs in the
+  // destructor of this class and can be used to free other resources associated
+  // with the subnet address.
   SubnetAddress(uint32_t addr,
                 uint32_t prefix_length,
                 base::Closure release_cb);
@@ -39,7 +43,7 @@ class BRILLO_EXPORT SubnetAddress {
   std::string ToIPv4String() const;
 
  private:
-  // The address in host-byte order.
+  // The address in network-byte order.
   uint32_t addr_;
   // The prefix length of the address.
   uint32_t prefix_length_;
@@ -54,13 +58,13 @@ class BRILLO_EXPORT SubnetAddress {
 class BRILLO_EXPORT Subnet {
  public:
   // Creates a new Subnet with the given base address and prefix length.
-  // |base_addr| must be in host-byte order. |release_cb| runs in the destructor
-  // of this class and can be used to free other resources associated with the
-  // subnet.
+  // |base_addr| must be in network-byte order. |release_cb| runs in the
+  // destructor of this class and can be used to free other resources associated
+  // with the subnet.
   Subnet(uint32_t base_addr, uint32_t prefix_length, base::Closure release_cb);
   ~Subnet();
 
-  // Marks |addr| as allocated. |addr| must be in host-byte order. Returns
+  // Marks |addr| as allocated. |addr| must be in network-byte order. Returns
   // nullptr if |addr| has already been allocated or if |addr| is not contained
   // within this subnet. Otherwise, the allocated address is automatically
   // freed when the returned SubnetAddress is destroyed.
@@ -71,7 +75,7 @@ class BRILLO_EXPORT Subnet {
   // |offset| is relative to the first usable host address; e.g. network + 1
   std::unique_ptr<SubnetAddress> AllocateAtOffset(uint32_t offset);
 
-  // Returns the address at the given |offset| in network byte order. Returns
+  // Returns the address at the given |offset| in network-byte order. Returns
   // INADDR_ANY if the offset exceeds the available IPs in the subnet.
   // Available IPs do not include the network id or the broadcast address.
   // |offset| is relative to the first usable host address; e.g. network + 1
@@ -97,8 +101,8 @@ class BRILLO_EXPORT Subnet {
   // Marks the address at |offset| as free.
   void Free(uint32_t offset);
 
-  // Base address of the subnet, in host byte order.
-  uint32_t network_id_;
+  // Base address of the subnet, in network-byte order.
+  uint32_t base_addr_;
 
   // Prefix length.
   uint32_t prefix_length_;

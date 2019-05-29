@@ -145,7 +145,7 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
 }
 
 void MulticastForwarder::TranslateMdnsIp(char* data, ssize_t bytes) {
-  if (mdns_ip_.s_addr == INADDR_ANY) {
+  if (mdns_ip_.s_addr == htonl(INADDR_ANY)) {
     return;
   }
 

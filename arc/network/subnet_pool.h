@@ -24,6 +24,7 @@ namespace arc_networkd {
 class BRILLO_EXPORT SubnetPool {
  public:
   // Returns a new pool or nullptr if num_subnets exceeds 32.
+  // |base_addr| must be in network-byte order.
   static std::unique_ptr<SubnetPool> New(uint32_t base_addr,
                                          uint32_t prefix_length,
                                          uint32_t num_subnets);

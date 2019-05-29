@@ -14,6 +14,22 @@
 
 #include "arc/network/net_util.h"
 
+namespace {
+// Returns the offset from the base address given in network-byte order for
+// the address given in network-byte order, or 0 if the second address is
+// lower than the base address. Returns the offset in host-byte order.
+uint32_t OffsetFromBaseAddress(uint32_t base_no, uint32_t addr_no) {
+  if (ntohl(addr_no) < ntohl(base_no))
+    return 0;
+  return ntohl(addr_no) - ntohl(base_no);
+}
+// Adds a positive offset given in host order to the address given in
+// network byte order. Returns the address in network-byte order.
+uint32_t AddOffset(uint32_t addr_no, uint32_t offset_ho) {
+  return htonl(ntohl(addr_no) + offset_ho);
+}
+}  // namespace
+
 namespace arc_networkd {
 
 SubnetAddress::SubnetAddress(uint32_t addr,
@@ -28,21 +44,21 @@ SubnetAddress::~SubnetAddress() {
 }
 
 uint32_t SubnetAddress::Address() const {
-  return htonl(addr_);
+  return addr_;
 }
 
 std::string SubnetAddress::ToCidrString() const {
-  return IPv4AddressToCidrString(htonl(addr_), prefix_length_);
+  return IPv4AddressToCidrString(addr_, prefix_length_);
 }
 
 std::string SubnetAddress::ToIPv4String() const {
-  return IPv4AddressToString(htonl(addr_));
+  return IPv4AddressToString(addr_);
 }
 
 Subnet::Subnet(uint32_t base_addr,
                uint32_t prefix_length,
                base::Closure release_cb)
-    : network_id_(base_addr),
+    : base_addr_(base_addr),
       prefix_length_(prefix_length),
       release_cb_(std::move(release_cb)),
       weak_factory_(this) {
@@ -50,7 +66,7 @@ Subnet::Subnet(uint32_t base_addr,
 
   addrs_.resize(1ull << (32 - prefix_length), false);
 
-  // Mark the network id and broadcast address as allocated.
+  // Mark the base address and broadcast address as allocated.
   addrs_.front() = true;
   addrs_.back() = true;
 }
@@ -60,34 +76,32 @@ Subnet::~Subnet() {
 }
 
 std::unique_ptr<SubnetAddress> Subnet::Allocate(uint32_t addr) {
-  if (addr <= network_id_ || addr >= network_id_ + addrs_.size() - 1) {
-    // Address is out of bounds.
-    return nullptr;
-  }
-
-  uint32_t offset = addr - network_id_;
-  if (addrs_[offset]) {
-    // Address is already allocated.
-    return nullptr;
-  }
-
-  addrs_[offset] = true;
-  return std::make_unique<SubnetAddress>(
-      addr, prefix_length_,
-      base::Bind(&Subnet::Free, weak_factory_.GetWeakPtr(), offset));
+  return AllocateAtOffset(OffsetFromBaseAddress(base_addr_, addr) - 1);
 }
 
 std::unique_ptr<SubnetAddress> Subnet::AllocateAtOffset(uint32_t offset) {
   uint32_t addr = AddressAtOffset(offset);
-  return (addr != INADDR_ANY) ? Allocate(ntohl(addr)) : nullptr;
+  if (addr == INADDR_ANY) {
+    return nullptr;
+  }
+
+  if (addrs_[offset + 1]) {
+    // Address is already allocated.
+    return nullptr;
+  }
+
+  addrs_[offset + 1] = true;
+  return std::make_unique<SubnetAddress>(
+      addr, prefix_length_,
+      base::Bind(&Subnet::Free, weak_factory_.GetWeakPtr(), offset + 1));
 }
 
 uint32_t Subnet::AddressAtOffset(uint32_t offset) const {
-  if (offset >= AvailableCount())
+  if (offset < 0 || offset >= AvailableCount())
     return INADDR_ANY;
 
-  // The first usable IP is after the network id.
-  return htonl(network_id_ + 1 + offset);
+  // The first usable IP is after the base address.
+  return AddOffset(base_addr_, 1 + offset);
 }
 
 uint32_t Subnet::AvailableCount() const {
@@ -101,7 +115,7 @@ uint32_t Subnet::Netmask() const {
 }
 
 uint32_t Subnet::Prefix() const {
-  return htonl(network_id_) & Netmask();
+  return base_addr_ & Netmask();
 }
 
 uint32_t Subnet::PrefixLength() const {
@@ -109,7 +123,7 @@ uint32_t Subnet::PrefixLength() const {
 }
 
 std::string Subnet::ToCidrString() const {
-  return IPv4AddressToCidrString(htonl(network_id_), prefix_length_);
+  return IPv4AddressToCidrString(base_addr_, prefix_length_);
 }
 
 void Subnet::Free(uint32_t offset) {

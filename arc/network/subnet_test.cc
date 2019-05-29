@@ -20,13 +20,17 @@
 namespace arc_networkd {
 namespace {
 
-constexpr size_t kContainerBaseAddress = Ntohl(Ipv4Addr(100, 115, 92, 192));
-constexpr size_t kVmBaseAddress = Ntohl(Ipv4Addr(100, 115, 92, 24));
-constexpr size_t kPluginBaseAddress = Ntohl(Ipv4Addr(100, 115, 92, 128));
+constexpr size_t kContainerBaseAddress = Ipv4Addr(100, 115, 92, 192);
+constexpr size_t kVmBaseAddress = Ipv4Addr(100, 115, 92, 24);
+constexpr size_t kPluginBaseAddress = Ipv4Addr(100, 115, 92, 128);
 
 constexpr size_t kContainerSubnetPrefixLength = 28;
 constexpr size_t kVmSubnetPrefixLength = 30;
 constexpr size_t kPluginSubnetPrefixLength = 28;
+
+uint32_t AddOffset(uint32_t base_addr_no, uint32_t offset_ho) {
+  return htonl(ntohl(base_addr_no) + offset_ho);
+}
 
 // kExpectedAvailableCount[i] == AvailableCount() for subnet with prefix_length
 // i.
@@ -110,7 +114,7 @@ void SetTrue(bool* value) {
 
 TEST_P(VmSubnetTest, Prefix) {
   size_t index = GetParam();
-  Subnet subnet(kVmBaseAddress + index * 4, kVmSubnetPrefixLength,
+  Subnet subnet(AddOffset(kVmBaseAddress, index * 4), kVmSubnetPrefixLength,
                 base::Bind(&DoNothing));
 
   EXPECT_EQ(kExpectedPrefix[index], subnet.Prefix());
@@ -118,7 +122,7 @@ TEST_P(VmSubnetTest, Prefix) {
 
 TEST_P(VmSubnetTest, CidrString) {
   size_t index = GetParam();
-  Subnet subnet(kVmBaseAddress + index * 4, kVmSubnetPrefixLength,
+  Subnet subnet(AddOffset(kVmBaseAddress, index * 4), kVmSubnetPrefixLength,
                 base::Bind(&DoNothing));
 
   EXPECT_EQ(std::string(kExpectedCidrString[index]), subnet.ToCidrString());
@@ -127,11 +131,11 @@ TEST_P(VmSubnetTest, CidrString) {
 
 TEST_P(VmSubnetTest, AddressAtOffset) {
   size_t index = GetParam();
-  Subnet subnet(kVmBaseAddress + index * 4, kVmSubnetPrefixLength,
+  Subnet subnet(AddOffset(kVmBaseAddress, index * 4), kVmSubnetPrefixLength,
                 base::Bind(&DoNothing));
 
   for (uint32_t offset = 0; offset < subnet.AvailableCount(); ++offset) {
-    uint32_t address = htonl(kVmBaseAddress + index * 4 + offset + 1);
+    uint32_t address = AddOffset(kVmBaseAddress, index * 4 + offset + 1);
     EXPECT_EQ(address, subnet.AddressAtOffset(offset));
   }
 }
@@ -142,11 +146,12 @@ INSTANTIATE_TEST_CASE_P(AllValues,
 
 TEST_P(ContainerSubnetTest, AddressAtOffset) {
   size_t index = GetParam();
-  Subnet subnet(kContainerBaseAddress + index * 16,
+  Subnet subnet(AddOffset(kContainerBaseAddress, index * 16),
                 kContainerSubnetPrefixLength, base::Bind(&DoNothing));
 
   for (uint32_t offset = 0; offset < subnet.AvailableCount(); ++offset) {
-    uint32_t address = htonl(kContainerBaseAddress + index * 16 + offset + 1);
+    uint32_t address =
+        AddOffset(kContainerBaseAddress, index * 16 + offset + 1);
     EXPECT_EQ(address, subnet.AddressAtOffset(offset));
   }
 }
@@ -253,12 +258,12 @@ TEST(PluginSubnet, OutOfBounds) {
   Subnet subnet(kPluginBaseAddress, kPluginSubnetPrefixLength,
                 base::Bind(&base::DoNothing));
 
-  EXPECT_FALSE(subnet.Allocate(kPluginBaseAddress - 1));
+  EXPECT_FALSE(subnet.Allocate(htonl(ntohl(kPluginBaseAddress) - 1)));
   EXPECT_FALSE(subnet.Allocate(kPluginBaseAddress));
-  EXPECT_FALSE(subnet.Allocate(kPluginBaseAddress +
-                               (1ull << (32 - kPluginSubnetPrefixLength)) - 1));
-  EXPECT_FALSE(subnet.Allocate(kPluginBaseAddress +
-                               (1ull << (32 - kPluginSubnetPrefixLength))));
+  EXPECT_FALSE(subnet.Allocate(AddOffset(
+      kPluginBaseAddress, (1ull << (32 - kPluginSubnetPrefixLength)) - 1)));
+  EXPECT_FALSE(subnet.Allocate(AddOffset(
+      kPluginBaseAddress, (1ull << (32 - kPluginSubnetPrefixLength)))));
 }
 
 // Tests that the subnet rejects attempts to allocate the same address twice.
@@ -266,9 +271,9 @@ TEST(PluginSubnet, DuplicateAddress) {
   Subnet subnet(kPluginBaseAddress, kPluginSubnetPrefixLength,
                 base::Bind(&base::DoNothing));
 
-  auto addr = subnet.Allocate(kPluginBaseAddress + 1);
+  auto addr = subnet.Allocate(AddOffset(kPluginBaseAddress, 1));
   EXPECT_TRUE(addr);
-  EXPECT_FALSE(subnet.Allocate(kPluginBaseAddress + 1));
+  EXPECT_FALSE(subnet.Allocate(AddOffset(kPluginBaseAddress, 1)));
 }
 
 // Tests that the subnet allows allocating all addresses in the subnet's range.
@@ -281,9 +286,9 @@ TEST(PluginSubnet, Allocate) {
 
   for (size_t offset = 0; offset < subnet.AvailableCount(); ++offset) {
     // Offset by one since the network id is not allocatable.
-    auto addr = subnet.Allocate(kPluginBaseAddress + offset + 1);
+    auto addr = subnet.Allocate(AddOffset(kPluginBaseAddress, offset + 1));
     EXPECT_TRUE(addr);
-    EXPECT_EQ(htonl(kPluginBaseAddress + offset + 1), addr->Address());
+    EXPECT_EQ(AddOffset(kPluginBaseAddress, offset + 1), addr->Address());
     addrs.emplace_back(std::move(addr));
   }
 }
@@ -299,7 +304,7 @@ TEST(PluginSubnet, AllocateAtOffset) {
   for (size_t offset = 0; offset < subnet.AvailableCount(); ++offset) {
     auto addr = subnet.AllocateAtOffset(offset);
     EXPECT_TRUE(addr);
-    EXPECT_EQ(htonl(kPluginBaseAddress + offset + 1), addr->Address());
+    EXPECT_EQ(AddOffset(kPluginBaseAddress, offset + 1), addr->Address());
     addrs.emplace_back(std::move(addr));
   }
 }
@@ -310,11 +315,11 @@ TEST(PluginSubnet, Free) {
                 base::Bind(&base::DoNothing));
 
   {
-    auto addr = subnet.Allocate(kPluginBaseAddress + 1);
+    auto addr = subnet.Allocate(AddOffset(kPluginBaseAddress, 1));
     EXPECT_TRUE(addr);
   }
 
-  EXPECT_TRUE(subnet.Allocate(kPluginBaseAddress + 1));
+  EXPECT_TRUE(subnet.Allocate(AddOffset(kPluginBaseAddress, 1)));
 }
 
 }  // namespace arc_networkd

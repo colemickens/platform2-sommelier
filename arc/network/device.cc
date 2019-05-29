@@ -122,7 +122,7 @@ void Device::Enable(const std::string& ifname) {
                            /* allow_stateless */ true);
 
     ssdp_forwarder_.reset(new MulticastForwarder());
-    ssdp_forwarder_->Start(config_->host_ifname(), ifname, INADDR_ANY,
+    ssdp_forwarder_->Start(config_->host_ifname(), ifname, htonl(INADDR_ANY),
                            kSsdpMcastAddress, kSsdpPort,
                            /* allow_stateless */ false);
   }

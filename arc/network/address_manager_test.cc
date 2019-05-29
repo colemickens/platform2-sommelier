@@ -35,12 +35,12 @@ TEST(AddressManager, OnlyAllocateFromKnownGuests) {
 
 TEST(AddressManager, BaseAddresses) {
   std::map<AddressManager::Guest, size_t> addrs = {
-      {AddressManager::Guest::ARC, ntohl(Ipv4Addr(100, 115, 92, 0))},
-      {AddressManager::Guest::VM_ARC, ntohl(Ipv4Addr(100, 115, 92, 4))},
-      {AddressManager::Guest::ARC_NET, ntohl(Ipv4Addr(100, 115, 92, 8))},
-      {AddressManager::Guest::VM_TERMINA, ntohl(Ipv4Addr(100, 115, 92, 24))},
-      {AddressManager::Guest::VM_PLUGIN, ntohl(Ipv4Addr(100, 115, 92, 128))},
-      {AddressManager::Guest::VM_TERMINA, ntohl(Ipv4Addr(100, 115, 92, 192))},
+      {AddressManager::Guest::ARC, Ipv4Addr(100, 115, 92, 0)},
+      {AddressManager::Guest::VM_ARC, Ipv4Addr(100, 115, 92, 4)},
+      {AddressManager::Guest::ARC_NET, Ipv4Addr(100, 115, 92, 8)},
+      {AddressManager::Guest::VM_TERMINA, Ipv4Addr(100, 115, 92, 24)},
+      {AddressManager::Guest::VM_PLUGIN, Ipv4Addr(100, 115, 92, 128)},
+      {AddressManager::Guest::VM_TERMINA, Ipv4Addr(100, 115, 92, 192)},
   };
   AddressManager mgr({
       AddressManager::Guest::ARC,
@@ -55,7 +55,7 @@ TEST(AddressManager, BaseAddresses) {
     ASSERT_TRUE(subnet != nullptr);
     // The first address (offset 0) returned by Subnet is not the base address,
     // rather it's the first usable IP address... so the base is 1 less.
-    EXPECT_EQ(a.second, ntohl(subnet->AddressAtOffset(0)) - 1);
+    EXPECT_EQ(a.second, htonl(ntohl(subnet->AddressAtOffset(0)) - 1));
   }
 }
 

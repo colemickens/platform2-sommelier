@@ -66,7 +66,7 @@ bool MulticastSocket::Bind(const std::string& ifname,
   struct sockaddr_in bind_addr;
   memset(&bind_addr, 0, sizeof(bind_addr));
 
-  if (mcast_addr.s_addr == INADDR_BROADCAST) {
+  if (mcast_addr.s_addr == htonl(INADDR_BROADCAST)) {
     // FIXME: RX needs to be limited to the given interface.
     int on = 1;
     if (setsockopt(fd.get(), SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
@@ -75,7 +75,7 @@ bool MulticastSocket::Bind(const std::string& ifname,
           << ifname << " for " << mcast_addr << ":" << port;
       return false;
     }
-    bind_addr.sin_addr.s_addr = INADDR_BROADCAST;
+    bind_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
   } else {
     if (setsockopt(fd.get(), IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq,
                    sizeof(mreq)) < 0) {

@@ -24,37 +24,35 @@ namespace {
 // | 192-252 (/28) | Containers | Used by Crostini                             |
 // +---------------+------------+----------------------------------------------+
 
-constexpr uint32_t kBaseAddress = Ntohl(Ipv4Addr(100, 115, 92, 0));
-constexpr uint32_t kDefaultSubnetPrefixLength = 30;
-
 }  // namespace
 
 AddressManager::AddressManager(
     std::initializer_list<AddressManager::Guest> guests) {
   for (auto g : guests) {
-    uint32_t base_addr = kBaseAddress;
-    uint32_t prefix_length = kDefaultSubnetPrefixLength;
+    uint32_t base_addr;
+    uint32_t prefix_length = 30;
     uint32_t subnets = 1;
     switch (g) {
       case Guest::ARC:
+        base_addr = Ipv4Addr(100, 115, 92, 0);
         break;
       case Guest::VM_ARC:
-        base_addr += 4;
+        base_addr = Ipv4Addr(100, 115, 92, 4);
         break;
       case Guest::ARC_NET:
-        base_addr += 8;
+        base_addr = Ipv4Addr(100, 115, 92, 8);
         subnets = 4;
         break;
       case Guest::VM_TERMINA:
-        base_addr += 24;
+        base_addr = Ipv4Addr(100, 115, 92, 24);
         subnets = 26;
         break;
       case Guest::VM_PLUGIN:
-        base_addr += 128;
+        base_addr = Ipv4Addr(100, 115, 92, 128);
         prefix_length = 28;
         break;
       case Guest::CONTAINER:
-        base_addr += 192;
+        base_addr = Ipv4Addr(100, 115, 92, 192);
         prefix_length = 28;
         subnets = 4;
         break;

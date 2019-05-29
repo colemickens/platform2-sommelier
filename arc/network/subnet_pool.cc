@@ -4,6 +4,8 @@
 
 #include "arc/network/subnet_pool.h"
 
+#include <arpa/inet.h>
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -60,8 +62,9 @@ std::unique_ptr<Subnet> SubnetPool::Allocate() {
   }
 
   subnets_.set(index);
+  uint32_t subnet_addr = htonl(ntohl(base_addr_) + index * addr_per_index_);
   return std::make_unique<Subnet>(
-      base_addr_ + (index * addr_per_index_), prefix_length_,
+      subnet_addr, prefix_length_,
       base::Bind(&SubnetPool::Release, weak_ptr_factory_.GetWeakPtr(), index));
 }
 

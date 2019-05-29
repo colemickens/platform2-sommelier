@@ -26,7 +26,7 @@ namespace {
 
 // The maximum number of subnets that can be allocated at a given time.
 constexpr uint32_t kMaxSubnets = 32;
-constexpr uint32_t kBaseAddress = Ntohl(Ipv4Addr(44, 55, 66, 77));
+constexpr uint32_t kBaseAddress = Ipv4Addr(44, 55, 66, 77);
 constexpr uint32_t kPrefixLength = 30;
 
 }  // namespace
