@@ -389,11 +389,11 @@ imageloader() {
   # Default timeout 30 seconds.
   local timeout="--reply-timeout=30000"
   case $1 in
-  --reply-timeout=*) timeout=$1; shift;;
+  --reply-timeout=*) timeout="$1"; shift;;
   esac
   local method="$1"; shift
 
-  dbus-send ${timeout} --system --type=method_call \
+  dbus-send "${timeout}" --system --type=method_call \
     --fixed --print-reply --dest=org.chromium.ComponentUpdaterService \
     /org/chromium/ComponentUpdaterService \
     "org.chromium.ComponentUpdaterService.${method}" "$@" \
@@ -790,11 +790,12 @@ debugd() {
   # Default timeout 30 seconds.
   local timeout="--reply-timeout=30000"
   case $1 in
-  --reply-timeout=*) timeout=$1; shift;;
+  --reply-timeout=*) timeout="$1"; shift;;
   esac
   local method="$1"; shift
-  dbus-send ${timeout} --system --print-reply --fixed --dest=org.chromium.debugd \
-      /org/chromium/debugd "org.chromium.debugd.$method" "$@"
+  dbus-send "${timeout}" --system --print-reply --fixed \
+      --dest=org.chromium.debugd /org/chromium/debugd \
+      "org.chromium.debugd.$method" "$@"
 }
 
 # Run a debugd command for a long time and poll its output.
