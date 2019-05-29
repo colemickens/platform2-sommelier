@@ -23,13 +23,19 @@ std::string GetTestDataPath(const std::string& file_name) {
 }  // namespace
 
 TEST(ConfigParserTest, ReadFromFile) {
-  // Random file path. Should return nullptr
-  EXPECT_EQ(ParseProbeConfig("/random/file/path"), nullptr);
-  // File is not in JSON format. Should return nullptr
-  EXPECT_EQ(ParseProbeConfig(GetTestDataPath("test.txt")), nullptr);
-  // testdata/probe_config.json is a valid JSON file. Should read
-  // successfully and return non-null std::unique_ptr<DictionaryValue>
-  EXPECT_NE(ParseProbeConfig(GetTestDataPath("probe_config.json")), nullptr);
+  // Random file path. The returned optional object should evaluate to false.
+  EXPECT_FALSE(ParseProbeConfig("/random/file/path"));
+  // File is not in JSON format. The returned object should evaluate to false.
+  EXPECT_FALSE(ParseProbeConfig(GetTestDataPath("test.txt")));
+  // testdata/probe_config.json is a valid JSON file. The returned object should
+  // evaluate to true and contains non-empty DictionaryValue,
+  const auto probe_config_data =
+      ParseProbeConfig(GetTestDataPath("probe_config.json"));
+  EXPECT_TRUE(probe_config_data);
+  EXPECT_FALSE(probe_config_data.value().config_dv.empty());
+  // Calculated by sha1sum testdata/probe_config.json
+  EXPECT_EQ(probe_config_data.value().sha1_hash,
+            "B4B67B8FB7B094783926CC581850C492C5A246A4");
 }
 
 }  // namespace runtime_probe

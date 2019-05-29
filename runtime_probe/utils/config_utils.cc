@@ -2,9 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <utility>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
+#include <base/sha1.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/sys_info.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <vboot/crossystem.h>
@@ -50,26 +54,37 @@ std::string GetPathOfRootfsProbeConfig() {
   return default_config.value();
 }
 
+std::string GetProbeConfigSHA1Hash(const std::string& content) {
+  const auto& hash_val = base::SHA1HashString(content);
+  return base::HexEncode(hash_val.data(), hash_val.size());
+}
 }  // namespace
 
 namespace runtime_probe {
 
-std::unique_ptr<DictionaryValue> ParseProbeConfig(
+base::Optional<ProbeConfigData> ParseProbeConfig(
     const std::string& config_file_path) {
   std::string config_json;
   if (!base::ReadFileToString(base::FilePath(config_file_path), &config_json)) {
     LOG(ERROR) << "Config file doesn't exist. "
                << "Input config file path is: " << config_file_path;
-    return nullptr;
+    return base::nullopt;
   }
+  const auto probe_config_sha1_hash = GetProbeConfigSHA1Hash(config_json);
+  LOG(INFO) << "SHA1 hash of probe config read from " << config_file_path
+            << ": " << probe_config_sha1_hash;
+
   std::unique_ptr<DictionaryValue> dict_val =
       DictionaryValue::From(base::JSONReader::Read(config_json));
   if (dict_val == nullptr) {
     LOG(ERROR) << "Failed to parse ProbeConfig from : [" << config_file_path
                << "]\nInput JSON string is:\n"
                << config_json;
+    return base::nullopt;
   }
-  return dict_val;
+
+  return ProbeConfigData{.config_dv = std::move(*dict_val),
+                         .sha1_hash = std::move(probe_config_sha1_hash)};
 }
 
 bool GetProbeConfigPath(std::string* probe_config_path,

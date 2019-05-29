@@ -7,12 +7,19 @@
 
 #include <memory>
 #include <string>
+
+#include <base/optional.h>
 #include <base/values.h>
 
 namespace runtime_probe {
 
-// Parse |config_file_path|, the path of file containing probe config in JSON
-std::unique_ptr<base::DictionaryValue> ParseProbeConfig(
+// Data structure to store different data extraced from probe config file.
+struct ProbeConfigData {
+  base::DictionaryValue config_dv;
+  std::string sha1_hash;
+};
+// Parse |config_file_path|, the path of file containing probe config in json
+base::Optional<ProbeConfigData> ParseProbeConfig(
     const std::string& config_file_path);
 
 // Determine if allowed to load probe config assigned from CLI.

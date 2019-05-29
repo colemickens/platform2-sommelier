@@ -124,15 +124,20 @@ void Daemon::ProbeCategories(
     return SendProbeResult(reply, method_call, &response_sender);
   }
 
-  std::unique_ptr<base::DictionaryValue> config_dv =
+  const auto probe_config_data =
       runtime_probe::ParseProbeConfig(probe_config_path);
-  if (!config_dv) {
+
+  if (!probe_config_data) {
     reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_SYNTAX_ERROR);
     return SendProbeResult(reply, method_call, &response_sender);
   }
 
-  auto probe_config =
-      runtime_probe::ProbeConfig::FromDictionaryValue(*config_dv);
+  reply.set_probe_config_checksum(probe_config_data.value().sha1_hash);
+  VLOG(2) << "SHA1 checksum returned with protocol buffer: "
+          << reply.probe_config_checksum();
+
+  auto probe_config = runtime_probe::ProbeConfig::FromDictionaryValue(
+      probe_config_data.value().config_dv);
   if (!probe_config) {
     reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INCOMPLETE_PROBE_FUNCTION);
     return SendProbeResult(reply, method_call, &response_sender);

@@ -61,13 +61,13 @@ int main(int argc, char* argv[]) {
                                          FLAGS_config_file_path))
     return ExitStatus::kNoPermissionForArbitraryProbeConfig;
 
-  std::unique_ptr<base::DictionaryValue> config_dv =
+  const auto probe_config_data =
       runtime_probe::ParseProbeConfig(probe_config_path);
-  if (config_dv == nullptr)
+  if (!probe_config_data)
     return ExitStatus::kConfigFileSyntaxError;
 
-  auto probe_config =
-      runtime_probe::ProbeConfig::FromDictionaryValue(*config_dv);
+  auto probe_config = runtime_probe::ProbeConfig::FromDictionaryValue(
+      probe_config_data.value().config_dv);
 
   if (!probe_config) {
     LOG(ERROR) << "Failed to parse from argument from ProbeConfig\n";
