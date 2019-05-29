@@ -1634,7 +1634,8 @@ int AttestationService::CreateIdentity(int identity_features) {
     auto* identity_key = new_identity_pb.mutable_identity_key();
     identity_key->set_enrollment_id(database_pb->enrollment_id());
   }
-  if (!tpm_utility_->CreateIdentity(KEY_TYPE_RSA, &new_identity_pb)) {
+  KeyType identity_key_type = GetAttestaionIdentityKeyType();
+  if (!tpm_utility_->CreateIdentity(identity_key_type, &new_identity_pb)) {
     LOG(ERROR) << __func__ << " failed to make a new identity.";
     return -1;
   }
@@ -2830,6 +2831,10 @@ KeyType AttestationService::GetEndorsementKeyType() const {
 
   // We didn't generate any data yet. Use the suggested key type.
   // TODO(crbug.com/910519): Switch to KEY_TYPE_ECC when ready.
+  return KEY_TYPE_RSA;
+}
+
+KeyType AttestationService::GetAttestaionIdentityKeyType() const {
   return KEY_TYPE_RSA;
 }
 

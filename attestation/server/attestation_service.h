@@ -147,8 +147,11 @@ class AttestationService : public AttestationInterface {
       const GetEnrollmentIdRequest& request,
       const GetEnrollmentIdCallback& callback) override;
 
-  // Return the type of the endorsement key.
+  // Return the type of the endorsement key (EK).
   KeyType GetEndorsementKeyType() const;
+
+  // Return the type of the attestation identity key (AIK).
+  KeyType GetAttestaionIdentityKeyType() const;
 
   // Mutators useful for testing.
   void set_crypto_utility(CryptoUtility* crypto_utility) {

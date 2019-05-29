@@ -654,6 +654,11 @@ TEST_F(AttestationServiceBaseTest, GetEndorsementKeyTypeForNewlyCreatedKey) {
   EXPECT_EQ(service_->GetEndorsementKeyType(), KEY_TYPE_RSA);
 }
 
+TEST_F(AttestationServiceBaseTest, GetAttestaionIdentityKeyType) {
+  // Default key type is KEY_TYPE_RSA.
+  EXPECT_EQ(service_->GetAttestaionIdentityKeyType(), KEY_TYPE_RSA);
+}
+
 TEST_F(AttestationServiceBaseTest, GetEndorsementInfoSuccess) {
   AttestationDatabase* database = mock_database_.GetMutableProtobuf();
   database->mutable_credentials()->set_endorsement_public_key("public_key");
