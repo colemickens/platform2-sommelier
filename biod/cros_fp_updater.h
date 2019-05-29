@@ -17,38 +17,23 @@ namespace biod {
 
 // These utilities should be absorbed by CrosFpDevice.
 // This is a temporary holding place until they can be absorbed.
-class CrosFpDeviceUpdateInterface {
+class CrosFpDeviceUpdate {
  public:
-  virtual ~CrosFpDeviceUpdateInterface() = default;
-  virtual bool GetVersion(biod::CrosFpDevice::EcVersion* ecver) const = 0;
-  virtual bool IsFlashProtectEnabled(bool* status) const = 0;
-  virtual bool Flash(const biod::CrosFpFirmware& fw,
-                     enum ec_current_image image) const = 0;
+  virtual ~CrosFpDeviceUpdate() = default;
+  virtual bool GetVersion(biod::CrosFpDevice::EcVersion* ecver) const;
+  virtual bool IsFlashProtectEnabled(bool* status) const;
+  virtual bool Flash(const CrosFpFirmware& fw,
+                     enum ec_current_image image) const;
   static std::string EcCurrentImageToString(enum ec_current_image image);
 };
 
-// These utilities should be absorbed by CrosFpDevice
-class CrosFpDeviceUpdate : public CrosFpDeviceUpdateInterface {
- public:
-  bool GetVersion(biod::CrosFpDevice::EcVersion* ecver) const override;
-  bool IsFlashProtectEnabled(bool* status) const override;
-  bool Flash(const CrosFpFirmware& fw,
-             enum ec_current_image image) const override;
-};
-
-// CrosFpBootUpdateCtrlInterface holds the interfaces for the
+// CrosFpBootUpdateCtrl holds the interfaces for the
 // external boot-time environment.
-class CrosFpBootUpdateCtrlInterface {
+class CrosFpBootUpdateCtrl {
  public:
-  virtual ~CrosFpBootUpdateCtrlInterface() = default;
-  virtual bool TriggerBootUpdateSplash() const = 0;
-  virtual bool ScheduleReboot() const = 0;
-};
-
-class CrosFpBootUpdateCtrl : public CrosFpBootUpdateCtrlInterface {
- public:
-  bool TriggerBootUpdateSplash() const override;
-  bool ScheduleReboot() const override;
+  virtual ~CrosFpBootUpdateCtrl() = default;
+  virtual bool TriggerBootUpdateSplash() const;
+  virtual bool ScheduleReboot() const;
 };
 
 namespace updater {
@@ -77,8 +62,8 @@ enum class UpdateStatus {
   kUpdateFailed,
 };
 
-UpdateStatus DoUpdate(const CrosFpDeviceUpdateInterface& ec_dev,
-                      const CrosFpBootUpdateCtrlInterface& boot_ctrl,
+UpdateStatus DoUpdate(const CrosFpDeviceUpdate& ec_dev,
+                      const CrosFpBootUpdateCtrl& boot_ctrl,
                       const CrosFpFirmware& fw);
 
 }  // namespace updater

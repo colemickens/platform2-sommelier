@@ -32,7 +32,7 @@ void LogFPMCUVersion(const biod::CrosFpDevice::EcVersion& ver) {
   LOG(INFO) << "FPMCU RO Version: '" << ver.ro_version << "'";
   LOG(INFO) << "FPMCU RW Version: '" << ver.rw_version << "'";
   LOG(INFO) << "FPMCU Active Image: "
-            << biod::CrosFpDeviceUpdateInterface::EcCurrentImageToString(
+            << biod::CrosFpDeviceUpdate::EcCurrentImageToString(
                    ver.current_image);
 }
 

@@ -35,8 +35,8 @@ constexpr char kRebootFile[] = "/tmp/force_reboot_after_fw_update";
 constexpr char kUpdateDisableFile[] = "/opt/google/biod/fw/.disable_fp_updater";
 constexpr char kFirmwareGlob[] = "*_fp_*.bin";
 
-bool UpdateImage(const biod::CrosFpDeviceUpdateInterface& ec_dev,
-                 const biod::CrosFpBootUpdateCtrlInterface& boot_ctrl,
+bool UpdateImage(const biod::CrosFpDeviceUpdate& ec_dev,
+                 const biod::CrosFpBootUpdateCtrl& boot_ctrl,
                  const biod::CrosFpFirmware& fw,
                  enum ec_current_image image) {
   if (boot_ctrl.TriggerBootUpdateSplash()) {
@@ -46,8 +46,7 @@ bool UpdateImage(const biod::CrosFpDeviceUpdateInterface& ec_dev,
   }
   if (!ec_dev.Flash(fw, image)) {
     LOG(ERROR) << "Failed to flash "
-               << biod::CrosFpDeviceUpdateInterface::EcCurrentImageToString(
-                      image)
+               << biod::CrosFpDeviceUpdate::EcCurrentImageToString(image)
                << ", aborting.";
     return false;
   }
@@ -67,7 +66,7 @@ bool UpdateImage(const biod::CrosFpDeviceUpdateInterface& ec_dev,
 
 namespace biod {
 
-std::string CrosFpDeviceUpdateInterface::EcCurrentImageToString(
+std::string CrosFpDeviceUpdate::EcCurrentImageToString(
     enum ec_current_image image) {
   switch (image) {
     case EC_IMAGE_UNKNOWN:
@@ -257,8 +256,8 @@ bool UpdateDisallowed() {
   return base::PathExists(base::FilePath(kUpdateDisableFile));
 }
 
-UpdateStatus DoUpdate(const CrosFpDeviceUpdateInterface& ec_dev,
-                      const CrosFpBootUpdateCtrlInterface& boot_ctrl,
+UpdateStatus DoUpdate(const CrosFpDeviceUpdate& ec_dev,
+                      const CrosFpBootUpdateCtrl& boot_ctrl,
                       const CrosFpFirmware& fw) {
   bool attempted = false;
 
