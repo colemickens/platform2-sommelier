@@ -2800,6 +2800,70 @@ void AttestationService::GetEnrollmentIdTask(
   result->set_enrollment_id(enrollment_id);
 }
 
+void AttestationService::GetCertifiedNvIndex(
+    const GetCertifiedNvIndexRequest& request,
+    const GetCertifiedNvIndexCallback& callback) {
+  auto result = std::make_shared<GetCertifiedNvIndexReply>();
+  base::Closure task = base::Bind(&AttestationService::GetCertifiedNvIndexTask,
+                                  base::Unretained(this), request, result);
+
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<GetCertifiedNvIndexReply>,
+      GetWeakPtr(), callback, result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::GetCertifiedNvIndexTask(
+    const GetCertifiedNvIndexRequest& request,
+    const std::shared_ptr<GetCertifiedNvIndexReply>& result) {
+  result->set_status(STATUS_NOT_AVAILABLE);
+
+  auto database_pb = database_->GetProtobuf();
+  if (database_pb.identities().size() < kFirstIdentity) {
+    LOG(ERROR) << __func__ << ": Cannot certify NV index, identity "
+               << kFirstIdentity << " does not exist.";
+    return;
+  }
+
+  const auto& identity_pb = database_pb.identities(kFirstIdentity);
+  if (!identity_pb.has_identity_key()) {
+    LOG(ERROR) << __func__ << ": Identify key missing";
+    return;
+  }
+
+  auto cert_it = FindIdentityCertificate(kFirstIdentity, DEFAULT_ACA);
+  if (cert_it ==
+      database_->GetMutableProtobuf()->mutable_identity_certificates()->end()) {
+    LOG(ERROR) << __func__ << ": Identity " << kFirstIdentity
+               << " is not enrolled for attestation with "
+               << GetACAName(DEFAULT_ACA) << ".";
+    return;
+  }
+
+  std::string certified_value;
+  std::string signature;
+
+  if (!tpm_utility_->CertifyNV(request.nv_index(), request.nv_size(),
+                               identity_pb.identity_key().identity_key_blob(),
+                               &certified_value, &signature)) {
+    LOG(WARNING) << "Attestation: Failed to certify NV data of size "
+                 << request.nv_size() << " at address " << std::hex
+                 << std::showbase << request.nv_index() << ".";
+    result->set_status(STATUS_INVALID_PARAMETER);
+    return;
+  }
+
+  const auto& identity_certificate = cert_it->second;
+  if (identity_certificate.has_identity_credential()) {
+    result->set_identity_certificate(
+        identity_certificate.identity_credential());
+  }
+
+  result->set_certified_data(certified_value);
+  result->set_signature(signature);
+  result->set_status(STATUS_SUCCESS);
+}
+
 std::string AttestationService::ComputeEnterpriseEnrollmentNonce() {
   if (!abe_data_ || abe_data_->empty()) {
     // If there was no device secret we cannot compute the DEN.

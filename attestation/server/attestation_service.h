@@ -146,6 +146,9 @@ class AttestationService : public AttestationInterface {
   void GetEnrollmentId(
       const GetEnrollmentIdRequest& request,
       const GetEnrollmentIdCallback& callback) override;
+  void GetCertifiedNvIndex(
+      const GetCertifiedNvIndexRequest& request,
+      const GetCertifiedNvIndexCallback& callback) override;
 
   // Return the type of the endorsement key (EK).
   KeyType GetEndorsementKeyType() const;
@@ -337,6 +340,11 @@ class AttestationService : public AttestationInterface {
   void GetEnrollmentIdTask(
     const GetEnrollmentIdRequest& request,
     const std::shared_ptr<GetEnrollmentIdReply>& result);
+
+  // A synchronous implementation for GetCertifiedNvIndex.
+  void GetCertifiedNvIndexTask(
+      const GetCertifiedNvIndexRequest& request,
+      const std::shared_ptr<GetCertifiedNvIndexReply>& result);
 
   // Returns true if PrepareForEnrollment() initialization step has been
   // successfully done for any Google Attestation CA.

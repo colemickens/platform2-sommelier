@@ -1498,4 +1498,75 @@ std::string GetProtoDebugStringWithIndent(const GetEnrollmentIdReply& value,
   return output;
 }
 
+std::string GetProtoDebugString(const GetCertifiedNvIndexRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const GetCertifiedNvIndexRequest& value, int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_nv_index()) {
+    output += indent + "  nv_index: ";
+    base::StringAppendF(&output, "%d", value.nv_index());
+    output += "\n";
+  }
+  if (value.has_nv_size()) {
+    output += indent + "  nv_size: ";
+    base::StringAppendF(&output, "%d", value.nv_size());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const GetCertifiedNvIndexReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const GetCertifiedNvIndexReply& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  if (value.has_certified_data()) {
+    output += indent + "  certified_data: ";
+    base::StringAppendF(&output, "%s",
+                        base::HexEncode(value.certified_data().data(),
+                                        value.certified_data().size())
+                            .c_str());
+    output += "\n";
+  }
+  if (value.has_signature()) {
+    output += indent + "  signature: ";
+    base::StringAppendF(
+        &output, "%s",
+        base::HexEncode(value.signature().data(), value.signature().size())
+
+            .c_str());
+    output += "\n";
+  }
+  if (value.has_identity_certificate()) {
+    output += indent + "  identity_certificate: ";
+    base::StringAppendF(&output, "%s",
+                        base::HexEncode(value.identity_certificate().data(),
+                                        value.identity_certificate().size())
+
+                            .c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
 }  // namespace attestation

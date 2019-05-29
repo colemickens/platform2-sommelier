@@ -179,6 +179,12 @@ class DBusService {
           const GetEnrollmentIdReply&>> response,
       const GetEnrollmentIdRequest& request);
 
+  // Handles a GetCertifiedNvIndex D-Bus call.
+  void HandleGetCertifiedNvIndex(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          const GetCertifiedNvIndexReply&>> response,
+      const GetCertifiedNvIndexRequest& request);
+
   brillo::dbus_utils::DBusObject dbus_object_;
   AttestationInterface* service_;
 

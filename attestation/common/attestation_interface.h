@@ -202,6 +202,14 @@ class AttestationInterface {
   virtual void GetEnrollmentId(
       const GetEnrollmentIdRequest& request,
       const GetEnrollmentIdCallback& callback) = 0;
+
+  // Processes a GetCertifiedNvIndex request and responds with
+  // GetCertifiedNvIndexReply.
+  using GetCertifiedNvIndexCallback =
+      base::Callback<void(const GetCertifiedNvIndexReply&)>;
+  virtual void GetCertifiedNvIndex(
+      const GetCertifiedNvIndexRequest& request,
+      const GetCertifiedNvIndexCallback& callback) = 0;
 };
 
 }  // namespace attestation

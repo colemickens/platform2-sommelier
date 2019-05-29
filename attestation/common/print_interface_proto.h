@@ -194,6 +194,12 @@ std::string GetProtoDebugString(const GetEnrollmentIdRequest& value);
 std::string GetProtoDebugStringWithIndent(const GetEnrollmentIdReply& value,
                                           int indent_size);
 std::string GetProtoDebugString(const GetEnrollmentIdReply& value);
+std::string GetProtoDebugStringWithIndent(
+    const GetCertifiedNvIndexRequest& value, int indent_size);
+std::string GetProtoDebugString(const GetCertifiedNvIndexRequest& value);
+std::string GetProtoDebugStringWithIndent(const GetCertifiedNvIndexReply& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const GetCertifiedNvIndexReply& value);
 
 }  // namespace attestation
 

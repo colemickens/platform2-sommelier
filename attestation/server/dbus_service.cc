@@ -101,6 +101,8 @@ void DBusService::Register(const CompletionAction& callback) {
   dbus_interface->AddMethodHandler(
       kGetEnrollmentId, base::Unretained(this),
       &DBusService::HandleGetEnrollmentId);
+  dbus_interface->AddMethodHandler(kGetCertifiedNvIndex, base::Unretained(this),
+                                   &DBusService::HandleGetCertifiedNvIndex);
 
   dbus_object_.RegisterAsync(callback);
 }
@@ -510,6 +512,25 @@ void DBusService::HandleGetEnrollmentId(
     response->Return(reply);
   };
   service_->GetEnrollmentId(
+      request,
+      base::Bind(callback, SharedResponsePointer(std::move(response))));
+}
+
+void DBusService::HandleGetCertifiedNvIndex(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        const GetCertifiedNvIndexReply&>> response,
+    const GetCertifiedNvIndexRequest& request) {
+  LOG(ERROR) << __func__;
+  // Convert |response| to a shared_ptr so |service_| can safely copy the
+  // callback.
+  using SharedResponsePointer =
+      std::shared_ptr<DBusMethodResponse<const GetCertifiedNvIndexReply&>>;
+  // A callback that fills the reply protobuf and sends it.
+  auto callback = [](const SharedResponsePointer& response,
+                     const GetCertifiedNvIndexReply& reply) {
+    response->Return(reply);
+  };
+  service_->GetCertifiedNvIndex(
       request,
       base::Bind(callback, SharedResponsePointer(std::move(response))));
 }

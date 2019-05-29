@@ -26,6 +26,7 @@
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/message_loop/message_loop.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>
 
@@ -56,6 +57,7 @@ const char kCreateCertRequestCommand[] = "create_cert_request";
 const char kFinishCertRequestCommand[] = "finish_cert_request";
 const char kSignChallengeCommand[] = "sign_challenge";
 const char kGetEnrollmentId[] = "get_enrollment_id";
+const char kGetCertifiedNvIndex[] = "get_certified_nv_index";
 const char kUsage[] = R"(
 Usage: attestation_client <command> [<args>]
 Commands:
@@ -132,6 +134,10 @@ Commands:
       Returns the enrollment ID. If ignore_cache option is provided, the ID is
         computed and the cache is not used to read, nor to update the value.
         Otherwise the value from cache is returned if present.
+
+  get_certified_nv_index [--index=<nv_index>] [--size=<bytes>]
+          [--output=<output_file>]
+      Returns a copy of the specified NV index, certified by the identity key.
 )";
 
 // The Daemon class works well as a client loop as well.
@@ -440,6 +446,11 @@ class ClientLoop : public ClientLoopBase {
       task = base::Bind(
           &ClientLoop::GetEnrollmentId, weak_factory_.GetWeakPtr(),
           command_line->HasSwitch("ignore_cache"));
+    } else if (args.front() == kGetCertifiedNvIndex) {
+      task = base::Bind(&ClientLoop::GetCertifiedNvIndex,
+                        weak_factory_.GetWeakPtr(),
+                        command_line->GetSwitchValueASCII("index"),
+                        command_line->GetSwitchValueASCII("size"));
     } else {
       return EX_USAGE;
     }
@@ -853,6 +864,32 @@ class ClientLoop : public ClientLoopBase {
   void OnGetEnrollmentIdComplete(
       const GetEnrollmentIdReply& reply) {
     PrintReplyAndQuit<GetEnrollmentIdReply>(reply);
+  }
+
+  void GetCertifiedNvIndex(const std::string& index,
+                           const std::string& size_bytes) {
+    GetCertifiedNvIndexRequest request;
+    uint32_t parsed_index;
+    uint32_t parsed_size;
+
+    if (!base::HexStringToUInt(index, &parsed_index))
+      LOG(ERROR) << "Failed to parse index.";
+    if (!base::StringToUint(size_bytes, &parsed_size))
+      LOG(ERROR) << "Failed to parse size.";
+
+    request.set_nv_index(parsed_index);
+    request.set_nv_size(parsed_size);
+    attestation_->GetCertifiedNvIndex(
+        request, base::Bind(&ClientLoop::OnGetCertifiedNvIndexComplete,
+                            weak_factory_.GetWeakPtr()));
+  }
+
+  void OnGetCertifiedNvIndexComplete(const GetCertifiedNvIndexReply& reply) {
+    if (reply.status() == STATUS_SUCCESS &&
+        base::CommandLine::ForCurrentProcess()->HasSwitch("output")) {
+      WriteOutput(reply.SerializeAsString());
+    }
+    PrintReplyAndQuit<GetCertifiedNvIndexReply>(reply);
   }
 
   std::unique_ptr<attestation::AttestationInterface> attestation_;

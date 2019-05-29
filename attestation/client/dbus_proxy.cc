@@ -373,4 +373,19 @@ void DBusProxy::GetEnrollmentId(
       base::Bind(on_error, callback), request);
 }
 
+void DBusProxy::GetCertifiedNvIndex(
+    const GetCertifiedNvIndexRequest& request,
+    const GetCertifiedNvIndexCallback& callback) {
+  auto on_error = [](const GetCertifiedNvIndexCallback& callback,
+                     brillo::Error* error) {
+    GetCertifiedNvIndexReply reply;
+    reply.set_status(STATUS_NOT_AVAILABLE);
+    callback.Run(reply);
+  };
+  brillo::dbus_utils::CallMethodWithTimeout(
+      kDBusTimeoutMS, object_proxy_, attestation::kAttestationInterface,
+      attestation::kGetCertifiedNvIndex, callback,
+      base::Bind(on_error, callback), request);
+}
+
 }  // namespace attestation

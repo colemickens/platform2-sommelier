@@ -92,6 +92,9 @@ class MockAttestationInterface : public AttestationInterface {
   MOCK_METHOD2(GetEnrollmentId,
                void(const GetEnrollmentIdRequest&,
                     const GetEnrollmentIdCallback&));
+  MOCK_METHOD2(GetCertifiedNvIndex,
+               void(const GetCertifiedNvIndexRequest&,
+                    const GetCertifiedNvIndexCallback&));
 };
 
 }  // namespace attestation

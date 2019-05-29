@@ -100,6 +100,9 @@ class DBusProxy : public AttestationInterface {
   void GetEnrollmentId(
       const GetEnrollmentIdRequest& request,
       const GetEnrollmentIdCallback& callback) override;
+  void GetCertifiedNvIndex(
+      const GetCertifiedNvIndexRequest& request,
+      const GetCertifiedNvIndexCallback& callback) override;
 
   // Useful for testing.
   void set_object_proxy(dbus::ObjectProxy* object_proxy) {

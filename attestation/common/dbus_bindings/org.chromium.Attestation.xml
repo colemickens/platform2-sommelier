@@ -251,5 +251,16 @@
                     value="attestation::GetEnrollmentIdReply" />
       </arg>
     </method>
+
+    <method name="GetCertifiedNvIndex">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="attestation::GetCertifiedNvIndexRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="attestation::GetCertifiedNvIndexReply" />
+      </arg>
+    </method>
   </interface>
 </node>
