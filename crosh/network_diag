@@ -138,7 +138,7 @@ get_host_addr () {
 get_class_driver () {
   local find_pat="$1"
   local find_driver="$2"
-  for device in /sys/class/${find_pat}*; do
+  for device in "/sys/class/${find_pat}"*; do
     local driver="$(basename $(readlink "${device}/device/driver"))"
     if [ "${driver}" = "${find_driver}" ] ; then
       echo "$(basename "${device}")"
@@ -571,9 +571,9 @@ is_modem () {
   [ "${driver}" = "QCUSBNet2k" ] && return 0
 
   # See if there is a TTY device that is associated the same USB device
-  dev_root="$(readlink -f /sys/class/net/${ifc}/device)"
+  dev_root="$(readlink -f "/sys/class/net/${ifc}/device")"
   if expr "${dev_root}" : '.*usb' > /dev/null; then
-    local -a tty_devs=($(echo $(dirname ${dev_root})/*/*/tty))
+    local -a tty_devs=($(echo "$(dirname "${dev_root}")"/*/*/tty))
     [ -e "${tty_devs[0]}" ] && return 0
   fi
 
@@ -582,7 +582,7 @@ is_modem () {
 
 is_wifi () {
   local ifc="$1"
-  if expr ${ifc} : wlan > /dev/null || \
+  if expr "${ifc}" : wlan > /dev/null || \
      [ -e "/sys/class/net/${ifc}/phy80211" ] ; then
     return 0
   fi
@@ -769,7 +769,7 @@ diag_cellular_dbus () {
 diag_dhcp_lease () {
   fn_enter "${FUNCNAME}" "$@"
   local lease_dir=/var/lib/dhcpcd
-  for file in ${lease_dir}/*.lease; do
+  for file in "${lease_dir}/"*.lease; do
     echo "DHCP Lease file ${file}"
     read_dhcp_lease "${file}" | mac_anonymize
   done
@@ -783,7 +783,7 @@ diag_flimflam () {
   if ! echo "${status}" | fgrep -q 'running'; then
     return
   fi
-  local pid="$(echo ${status} | awk '{print $4}')"
+  local pid="$(echo "${status}" | awk '{print $4}')"
   ps jx | awk '/^ *'${pid}'/ {print $10,$11,$12}' | sort | uniq -c
   echo "Listing of /run/shill"
   ls -al /run/shill
@@ -1187,10 +1187,10 @@ main () {
       return
       ;;
     1)
-      if [[ ${rest[0]} == --* ]]; then
-        option=${rest[0]}
+      if [[ "${rest[0]}" == --* ]]; then
+        option="${rest[0]}"
       else
-        test_host=${rest[0]}
+        test_host="${rest[0]}"
         if ! valid_host "${test_host}"; then
           echo "Invalid host: ${test_host}"
           exit 1
@@ -1200,8 +1200,8 @@ main () {
       fi
       ;;
     2)
-      option=${rest[0]}
-      test_host=${rest[1]}
+      option="${rest[0]}"
+      test_host="${rest[1]}"
       if ! valid_host "${test_host}"; then
         echo "Invalid host: ${test_host}"
         exit 1
