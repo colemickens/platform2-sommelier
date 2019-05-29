@@ -16,7 +16,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/environment.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/guid.h>
@@ -56,23 +55,6 @@ constexpr char kOsTimestamp[] = "os_millis";
 // removed.
 constexpr size_t kClientIdLength = 32U;
 
-// getenv() wrapper that returns an empty string, if the environment variable is
-// not defined.
-std::string GetEnv(const std::string& name) {
-  const char* value = getenv(name.c_str());
-  return value ? value : "";
-}
-
-// Shows the usage of crash_sender and exits the process as a success.
-void ShowUsageAndExit() {
-  printf(
-      "Usage: crash_sender [options]\n"
-      "Options:\n"
-      " -e <var>=<val>     Set env |var| to |val| (only some vars)\n");
-  exit(EXIT_SUCCESS);
-}
-
-
 // Returns true if the given report kind is known.
 // TODO(satorux): Move collector constants to a common file.
 bool IsKnownKind(const std::string& kind) {
@@ -107,46 +89,6 @@ void MetadataToCrashInfo(const brillo::KeyValueStore& metadata,
 void ParseCommandLine(int argc,
                       const char* const* argv,
                       CommandLineFlags* flags) {
-  std::map<std::string, std::string> env_vars;
-  for (const EnvPair& pair : kEnvironmentVariables) {
-    // Honor the existing value if it's already set.
-    const char* value = getenv(pair.name);
-    env_vars[pair.name] = value ? value : pair.value;
-  }
-
-  // Process -e options, and collect other options.
-  std::vector<const char*> new_argv;
-  new_argv.push_back(argv[0]);
-  for (int i = 1; i < argc; ++i) {
-    if (std::string(argv[i]) == "-e") {
-      if (i + 1 < argc) {
-        ++i;
-        std::string name_value = argv[i];
-        std::vector<std::string> pair = base::SplitString(
-            name_value, "=", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-        if (pair.size() == 2) {
-          if (env_vars.count(pair[0]) == 0) {
-            LOG(ERROR) << "Unknown variable name: " << pair[0];
-            exit(EXIT_FAILURE);
-          }
-          env_vars[pair[0]] = pair[1];
-        } else {
-          LOG(ERROR) << "Malformed value for -e: " << name_value;
-          exit(EXIT_FAILURE);
-        }
-      } else {
-        LOG(ERROR) << "Value for -e is missing";
-        exit(EXIT_FAILURE);
-      }
-    } else {
-      new_argv.push_back(argv[i]);
-    }
-  }
-  // argv[argc] should be a null pointer per the C standard.
-  new_argv.push_back(nullptr);
-
-  // Process the remaining flags.
-  DEFINE_bool(h, false, "Show this help and exit");
   DEFINE_int32(max_spread_time, kMaxSpreadTimeInSeconds,
                "Max time in secs to sleep before sending (0 to send now)");
   DEFINE_string(crash_directory, "",
@@ -164,12 +106,9 @@ void ParseCommandLine(int argc,
   DEFINE_bool(dev, false,
               "Send crash reports regardless of image/build type "
               "and upload them to the staging server instead.");
-  brillo::FlagHelper::Init(new_argv.size() - 1, new_argv.data(),
-                           "Chromium OS Crash Sender");
-  // TODO(satorux): Remove this once -e option is gone.
-  if (FLAGS_h)
-    ShowUsageAndExit();
-
+  DEFINE_bool(ignore_pause_file, false,
+              "Ignore the existence of the pause file and run anyways");
+  brillo::FlagHelper::Init(argc, argv, "Chromium OS Crash Sender");
   if (FLAGS_max_spread_time < 0) {
     LOG(ERROR) << "Invalid value for max spread time: "
                << FLAGS_max_spread_time;
@@ -180,10 +119,7 @@ void ParseCommandLine(int argc,
   flags->ignore_rate_limits = FLAGS_ignore_rate_limits;
   flags->ignore_hold_off_time = FLAGS_ignore_hold_off_time;
   flags->allow_dev_sending = FLAGS_dev;
-
-  // Set the predefined environment variables.
-  for (const auto& it : env_vars)
-    setenv(it.first.c_str(), it.second.c_str(), 1 /* overwrite */);
+  flags->ignore_pause_file = FLAGS_ignore_pause_file;
 }
 
 void RecordCrashDone() {
@@ -209,9 +145,8 @@ bool IsMockSuccessful() {
          !file_size;
 }
 
-bool ShouldPauseSending() {
-  return (base::PathExists(paths::Get(paths::kPauseCrashSending)) &&
-          GetEnv("OVERRIDE_PAUSE_SENDING") == "0");
+bool DoesPauseFileExist() {
+  return base::PathExists(paths::Get(paths::kPauseCrashSending));
 }
 
 std::string GetImageType() {

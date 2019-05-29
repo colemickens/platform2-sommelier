@@ -57,7 +57,7 @@ int RunChildMain(int argc, char* argv[]) {
   util::CommandLineFlags flags;
   util::ParseCommandLine(argc, argv, &flags);
 
-  if (util::ShouldPauseSending()) {
+  if (util::DoesPauseFileExist() && !flags.ignore_pause_file) {
     LOG(INFO) << "Exiting early due to " << paths::kPauseCrashSending;
     return EXIT_FAILURE;
   }

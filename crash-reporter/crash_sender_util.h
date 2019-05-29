@@ -35,12 +35,6 @@ constexpr base::TimeDelta kMaxHoldOffTime = base::TimeDelta::FromSeconds(30);
 // immediately.
 constexpr int kMaxSpreadTimeInSeconds = 600;
 
-// Represents a name-value pair for an environment variable.
-struct EnvPair {
-  const char* name;
-  const char* value;
-};
-
 // Parsed command line flags.
 struct CommandLineFlags {
   base::TimeDelta max_spread_time;
@@ -48,6 +42,7 @@ struct CommandLineFlags {
   bool ignore_rate_limits = false;
   bool ignore_hold_off_time = false;
   bool allow_dev_sending = false;
+  bool ignore_pause_file = false;
 };
 
 // Crash information obtained in ChooseAction().
@@ -79,21 +74,7 @@ enum Action {
   kSend,    // Should send the crash report.
 };
 
-// Predefined environment variables for controlling the behaviors of
-// crash_sender.
-//
-// TODO(crbug.com/391887): Remove the environment variables once the shell
-// script is gone. The environment variables are handy in the shell script, but
-// should not be needed in the C++ version.
-constexpr EnvPair kEnvironmentVariables[] = {
-    // Ignore PAUSE_CRASH_SENDING file if set.
-    {"OVERRIDE_PAUSE_SENDING", "0"},
-};
-
 // Parses the command line, and handles the command line flags.
-//
-// This function also sets the predefined environment valuables to the default
-// values, or the values specified by -e options.
 //
 // On error, the process exits as a failure with an error message for the
 // first-encountered error.
@@ -110,8 +91,9 @@ bool IsMock();
 // Returns true if mock is enabled and we should succeed.
 bool IsMockSuccessful();
 
-// Returns true if the sending should be paused.
-bool ShouldPauseSending();
+// Returns true if the marker file exists indicating we should pause sending.
+// This can be overridden with a command line flag to the program.
+bool DoesPauseFileExist();
 
 // Returns the string that describes the type of image. Returns an empty string
 // if we shouldn't specify the image type.
