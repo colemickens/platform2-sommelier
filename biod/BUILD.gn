@@ -112,6 +112,7 @@ if (use.test) {
       "biod_metrics_test.cc",
       "biod_storage_test.cc",
       "cros_fp_firmware_test.cc",
+      "cros_fp_updater_test.cc",
     ]
     deps = [
       ":libbiod",
