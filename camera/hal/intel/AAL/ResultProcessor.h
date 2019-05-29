@@ -101,12 +101,13 @@ private:  /* types  and constants */
          */
         unsigned int buffersReturned;  /*!> from AAL to client */
         unsigned int buffersToReturn;  /*!> total output and input buffer count of request */
-        std::vector<std::shared_ptr<CameraBuffer> > pendingBuffers; /*!> where we store the
-                                                              buffers received
-                                                              from PSL*/
+        std::shared_ptr<CameraBuffer> pendingInputBuffer; /*!> where we store the intput buffers
+                                                             received from PSL*/
+        std::vector<std::shared_ptr<CameraBuffer> > pendingOutputBuffers; /*!> where we store the
+                                                             output buffers received from PSL*/
 
         void init(Camera3Request* req) {
-            pendingBuffers.clear();
+            pendingOutputBuffers.clear();
             pendingPartialResults.clear();
             reqId = req->getId();
             shutterTime = 0;
@@ -115,6 +116,7 @@ private:  /* types  and constants */
             buffersReturned = 0;
             buffersToReturn = req->getNumberOutputBufs() + (req->hasInputBuf() ? 1 : 0);
             request = req;
+            pendingInputBuffer = nullptr;
         }
     } RequestState_t;
 
@@ -150,6 +152,7 @@ private:  /* methods */
     void handleDeviceError(void);
     status_t recycleRequest(Camera3Request *req);
     void returnPendingBuffers(RequestState_t *reqState);
+    void processCaptureResult(RequestState_t* reqState,std::shared_ptr<CameraBuffer> resultBuf);
     void returnPendingPartials(RequestState_t *reqState);
     void returnShutterDone(RequestState_t *reqState);
     status_t returnStoredPartials(void);

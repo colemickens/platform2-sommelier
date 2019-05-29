@@ -168,7 +168,7 @@ status_t ResultProcessor::handleShutterDone(MessageShutterDone msg)
     reqState->shutterTime = msg.time;
     returnShutterDone(reqState);
 
-    if (!reqState->pendingBuffers.empty()) {
+    if (!reqState->pendingOutputBuffers.empty() || reqState->pendingInputBuffer) {
         returnPendingBuffers(reqState);
     }
 
@@ -373,7 +373,11 @@ status_t ResultProcessor::handleBufferDone(MessageBufferDone msg)
     }
 
     LOG2("<Request %d> camera id %d buffer received from PSL", reqId, reqState->request->getCameraId());
-    reqState->pendingBuffers.emplace_back(buffer);
+    if (reqState->request->isInputBuffer(buffer)) {
+        reqState->pendingInputBuffer = buffer;
+    } else {
+        reqState->pendingOutputBuffers.emplace_back(buffer);
+    }
     if (!reqState->isShutterDone) {
         LOG2("@%s Buffer arrived before shutter req %d, queue it", __func__, reqId);
         return NO_ERROR;
@@ -395,57 +399,66 @@ status_t ResultProcessor::handleBufferDone(MessageBufferDone msg)
 
 void ResultProcessor::returnPendingBuffers(RequestState_t* reqState)
 {
-    LOG2("@%s Request %d %zu buffs", __func__, reqState->reqId, reqState->pendingBuffers.size());
+    LOG2("@%s Request %d %u buffs", __func__, reqState->reqId, reqState->buffersToReturn);
     unsigned int i;
-    camera3_capture_result_t result;
-    camera3_stream_buffer_t buf;
     std::shared_ptr<CameraBuffer> pendingBuf;
-    Camera3Request* request = reqState->request;
 
     /**
      * protection against duplicated calls when all buffers have been returned
      */
-    if(reqState->buffersReturned == reqState->buffersToReturn) {
+    if (reqState->buffersReturned == reqState->buffersToReturn) {
         LOGW("trying to return buffers twice. Check PSL implementation");
         return;
     }
 
-    for (i = 0; i < reqState->pendingBuffers.size(); i++) {
-        CLEAR(buf);
-        CLEAR(result);
-
-        pendingBuf = reqState->pendingBuffers[i];
+    for (i = 0; i < reqState->pendingOutputBuffers.size(); i++) {
+        pendingBuf = reqState->pendingOutputBuffers[i];
         CheckError(pendingBuf == nullptr, VOID_VALUE, "@%s: pendingBuf is nullptr, index: %d",
             __func__, i);
+        processCaptureResult(reqState,pendingBuf);
+    }
+    reqState->pendingOutputBuffers.clear();
 
-        if (!request->isInputBuffer(pendingBuf)) {
-            result.num_output_buffers = 1;
-        }
-        result.frame_number = reqState->reqId;
+    //The input buffer is returned when all output buffers have been returned.
+    if (reqState->buffersReturned + 1 == reqState->buffersToReturn && reqState->pendingInputBuffer) {
+        processCaptureResult(reqState,reqState->pendingInputBuffer);
+        reqState->pendingInputBuffer = nullptr;
+    }
+}
 
-        buf.status = pendingBuf->status();
-        buf.stream = pendingBuf->getOwner()->getStream();
-        if (buf.stream) {
-            LOG2("<Request %d> width:%d, height:%d, fmt:%d", reqState->reqId, buf.stream->width, buf.stream->height, buf.stream->format);
-        }
-        buf.buffer = pendingBuf->getBufferHandlePtr();
-        pendingBuf->getFence(&buf);
-        result.result = nullptr;
-        if (request->isInputBuffer(pendingBuf)) {
-            result.input_buffer = &buf;
-            LOG2("<Request %d> return an input buffer", reqState->reqId);
-        } else {
-            result.output_buffers = &buf;
-        }
+void ResultProcessor::processCaptureResult(RequestState_t* reqState,std::shared_ptr<CameraBuffer> resultBuf)
+{
+    camera3_capture_result_t result = {};
+    camera3_stream_buffer_t buf = {};
+    Camera3Request* request = reqState->request;
+    CheckError(request == nullptr, VOID_VALUE, "@%s: request is nullptr", __FUNCTION__);
 
-        mCallbackOps->process_capture_result(mCallbackOps, &result);
-        pendingBuf->getOwner()->decOutBuffersInHal();
-        reqState->buffersReturned += 1;
-        LOG2("<Request %d> camera id %d buffer done %d/%d ", reqState->reqId,
-             reqState->request->getCameraId(), reqState->buffersReturned, reqState->buffersToReturn);
+    if (!request->isInputBuffer(resultBuf)) {
+        result.num_output_buffers = 1;
+    }
+    result.frame_number = reqState->reqId;
+
+    buf.status = resultBuf->status();
+    buf.stream = resultBuf->getOwner()->getStream();
+    if (buf.stream) {
+        LOG2("<Request %d> width:%d, height:%d, fmt:%d", reqState->reqId, buf.stream->width, buf.stream->height, buf.stream->format);
+    }
+    buf.buffer = resultBuf->getBufferHandlePtr();
+    resultBuf->getFence(&buf);
+    result.result = nullptr;
+    if (request->isInputBuffer(resultBuf)) {
+        result.input_buffer = &buf;
+        LOG2("<Request %d> return an input buffer", reqState->reqId);
+    } else {
+        LOG2("<Request %d> return an output buffer", reqState->reqId);
+        result.output_buffers = &buf;
     }
 
-    reqState->pendingBuffers.clear();
+    mCallbackOps->process_capture_result(mCallbackOps, &result);
+    resultBuf->getOwner()->decOutBuffersInHal();
+    reqState->buffersReturned += 1;
+    LOG2("<Request %d> camera id %d buffer done %d/%d ", reqState->reqId,
+        reqState->request->getCameraId(), reqState->buffersReturned, reqState->buffersToReturn);
 }
 
 /**
