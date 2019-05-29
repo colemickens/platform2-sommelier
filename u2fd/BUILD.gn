@@ -25,6 +25,7 @@ pkg_config("target_defaults") {
 
 pkg_config("u2fd_config") {
   pkg_deps = [
+    "libattestation-client",
     "libmetrics-${libbase_ver}",
     "libpower_manager-client",
     "libtrunks",
@@ -52,7 +53,10 @@ executable("u2fd") {
     "user_state.cc",
     "util.cc",
   ]
-  libs = [ "policy-${libbase_ver}" ]
+  libs = [
+    "attestation",
+    "policy-${libbase_ver}",
+  ]
   deps = [
     ":user_state_proto",
     "//common-mk/external_dependencies:policy-protos",

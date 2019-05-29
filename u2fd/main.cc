@@ -23,6 +23,7 @@
 #include <sysexits.h>
 #include <u2f/proto_bindings/interface.pb.h>
 
+#include "attestation-client/attestation/dbus-constants.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "power_manager-client/power_manager/dbus-proxies.h"
 #include "u2fd/tpm_vendor_cmd.h"
@@ -253,6 +254,7 @@ class U2fDaemon : public brillo::Daemon {
             &org::chromium::PowerManagerProxy::IgnoreNextPowerButtonPress,
             base::Unretained(pm_proxy_.get())),
         base::Bind(&U2fDaemon::SendWinkSignal, base::Unretained(this)),
+        attestation_proxy_,
         std::make_unique<u2f::UserState>(
             sm_proxy_.get(), legacy_kh_fallback_ ? kLegacyKhCounterMin : 0));
 
@@ -279,7 +281,11 @@ class U2fDaemon : public brillo::Daemon {
     sm_proxy_ = std::make_unique<org::chromium::SessionManagerInterfaceProxy>(
         bus_.get());
 
-    return true;
+    attestation_proxy_ = bus_->GetObjectProxy(
+        attestation::kAttestationServiceName,
+        dbus::ObjectPath(attestation::kAttestationServicePath));
+
+    return attestation_proxy_ != nullptr;
   }
 
   void RegisterU2fDBusInterface() {
@@ -319,6 +325,7 @@ class U2fDaemon : public brillo::Daemon {
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::chromium::PowerManagerProxy> pm_proxy_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxy> sm_proxy_;
+  dbus::ObjectProxy* attestation_proxy_ = nullptr;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<u2f::UserNotification>>
       wink_signal_;
