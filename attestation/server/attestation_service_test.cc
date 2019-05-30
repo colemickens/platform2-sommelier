@@ -958,7 +958,6 @@ TEST_P(AttestationServiceTest, GetAttestationKeyInfoSuccess) {
   };
   GetAttestationKeyInfoRequest request;
   request.set_aca_type(aca_type_);
-  request.set_key_type(KEY_TYPE_RSA);
   service_->GetAttestationKeyInfo(request, base::Bind(callback,
       GetCertificateName(identity_, aca_type_), QuitClosure()));
   Run();
@@ -979,7 +978,6 @@ TEST_P(AttestationServiceTest, GetAttestationKeyInfoNoInfo) {
   };
   GetAttestationKeyInfoRequest request;
   request.set_aca_type(aca_type_);
-  request.set_key_type(KEY_TYPE_RSA);
   service_->GetAttestationKeyInfo(request, base::Bind(callback, QuitClosure()));
   Run();
 }
@@ -1008,7 +1006,6 @@ TEST_P(AttestationServiceTest, GetAttestationKeyInfoSomeInfo) {
   };
   GetAttestationKeyInfoRequest request;
   request.set_aca_type(aca_type_);
-  request.set_key_type(KEY_TYPE_RSA);
   service_->GetAttestationKeyInfo(request, base::Bind(callback,
       GetCertificateName(identity_, aca_type_), QuitClosure()));
   Run();

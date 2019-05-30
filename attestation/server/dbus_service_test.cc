@@ -156,12 +156,10 @@ TEST_F(DBusServiceTest, GetEndorsementInfo) {
 
 TEST_F(DBusServiceTest, GetAttestationKeyInfo) {
   GetAttestationKeyInfoRequest request;
-  request.set_key_type(KEY_TYPE_ECC);
   EXPECT_CALL(mock_service_, GetAttestationKeyInfo(_, _))
       .WillOnce(Invoke([](
           const GetAttestationKeyInfoRequest& request,
           const AttestationInterface::GetAttestationKeyInfoCallback& callback) {
-        EXPECT_EQ(KEY_TYPE_ECC, request.key_type());
         GetAttestationKeyInfoReply reply;
         reply.set_status(STATUS_SUCCESS);
         reply.set_public_key("public_key");

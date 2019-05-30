@@ -134,7 +134,6 @@ TEST_F(DBusProxyTest, GetAttestationKeyInfo) {
     dbus::MessageReader reader(method_call);
     GetAttestationKeyInfoRequest request_proto;
     EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
-    EXPECT_EQ(KEY_TYPE_ECC, request_proto.key_type());
     // Create reply protobuf.
     auto response = dbus::Response::CreateEmpty();
     dbus::MessageWriter writer(response.get());
@@ -164,7 +163,6 @@ TEST_F(DBusProxyTest, GetAttestationKeyInfo) {
     EXPECT_EQ("pcr1", reply.pcr1_quote().quote());
   };
   GetAttestationKeyInfoRequest request;
-  request.set_key_type(KEY_TYPE_ECC);
   proxy_.GetAttestationKeyInfo(request, base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }

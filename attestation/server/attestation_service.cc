@@ -741,10 +741,6 @@ void AttestationService::GetAttestationKeyInfoTask(
     const GetAttestationKeyInfoRequest& request,
     const std::shared_ptr<GetAttestationKeyInfoReply>& result) {
   const int identity = kFirstIdentity;
-  if (request.key_type() != KEY_TYPE_RSA) {
-    result->set_status(STATUS_INVALID_PARAMETER);
-    return;
-  }
   auto aca_type = request.aca_type();
   auto found = FindIdentityCertificate(identity, aca_type);
   if (found == database_->GetMutableProtobuf()

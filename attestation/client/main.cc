@@ -558,7 +558,6 @@ class ClientLoop : public ClientLoopBase {
   void CallGetAttestationKeyInfo(ACAType aca_type) {
     GetAttestationKeyInfoRequest request;
     request.set_aca_type(aca_type);
-    request.set_key_type(KEY_TYPE_RSA);
     attestation_->GetAttestationKeyInfo(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<GetAttestationKeyInfoReply>,
@@ -602,7 +601,6 @@ class ClientLoop : public ClientLoopBase {
       PrintReplyAndQuit(endorsement_info);
     }
     GetAttestationKeyInfoRequest request;
-    request.set_key_type(KEY_TYPE_RSA);
     attestation_->GetAttestationKeyInfo(
         request,
         base::Bind(&ClientLoop::EncryptForActivate3, weak_factory_.GetWeakPtr(),
