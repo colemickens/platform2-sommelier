@@ -147,12 +147,6 @@ power_blaze_modem() {
 }
 
 # Powers "on" or "off" the built-in modem via EC.
-#
-# This function uses "ectool", provided by chromeos-base/ec-utils, to
-# communicate with EC. chromeos-base/power_manager only depends on
-# chromeos-base/ec-utils on a per-board basis. Before using this function for a
-# particular board, update the chromeos-base/power_manager ebuild to make sure
-# the chromeos-base/ec-utils dependency is specified for that board.
 ec_power_modem() {
   local op="$1"
 
