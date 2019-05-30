@@ -2142,33 +2142,44 @@ bool AttestationService::VerifyCertifiedKey(
 bool AttestationService::VerifyCertifiedKeyGeneration(
     const std::string& aik_key_blob,
     const std::string& aik_public_key_info) {
-  std::string key_blob;
-  std::string public_key;
-  std::string public_key_tpm_format;
-  std::string public_key_der;
-  std::string key_info;
-  std::string proof;
   std::string nonce;
   if (!crypto_utility_->GetRandom(kNonceSize, &nonce)) {
     LOG(ERROR) << __func__ << ": GetRandom(nonce) failed.";
     return false;
   }
-  if (!tpm_utility_->CreateCertifiedKey(
-          KEY_TYPE_RSA, KEY_USAGE_SIGN, aik_key_blob, nonce, &key_blob,
-          &public_key_der, &public_key_tpm_format, &key_info, &proof)) {
-    LOG(ERROR) << __func__ << ": Failed to create certified key.";
-    return false;
+  std::vector<KeyType> key_type_candidates;
+  if (tpm_utility_->GetVersion() == TPM_2_0) {
+    key_type_candidates = {KEY_TYPE_RSA, KEY_TYPE_ECC};
+  } else {
+    key_type_candidates = {KEY_TYPE_RSA};
   }
-  std::string public_key_info;
-  if (!GetSubjectPublicKeyInfo(
-          KEY_TYPE_RSA, public_key_der, &public_key_info)) {
-    LOG(ERROR) << __func__ << ": Failed to get public key info.";
-    return false;
-  }
-  if (!VerifyCertifiedKey(aik_public_key_info, public_key_info,
-                          public_key_tpm_format, key_info, proof)) {
-    LOG(ERROR) << __func__ << ": Bad certified key.";
-    return false;
+
+  for (KeyType key_type : key_type_candidates) {
+    std::string key_blob;
+    std::string public_key_der;
+    std::string public_key_tpm_format;
+    std::string key_info;
+    std::string proof;
+    if (!tpm_utility_->CreateCertifiedKey(
+            key_type, KEY_USAGE_SIGN, aik_key_blob, nonce, &key_blob,
+            &public_key_der, &public_key_tpm_format, &key_info, &proof)) {
+      LOG(ERROR) << __func__
+                 << ": Failed to create certified key for key_type: "
+                 << key_type;
+      return false;
+    }
+    std::string public_key_info;
+    if (!GetSubjectPublicKeyInfo(key_type, public_key_der, &public_key_info)) {
+      LOG(ERROR) << __func__ << ": Failed to get public key info for key_type: "
+                 << key_type;
+      return false;
+    }
+    if (!VerifyCertifiedKey(aik_public_key_info, public_key_info,
+                            public_key_tpm_format, key_info, proof)) {
+      LOG(ERROR) << __func__
+                 << ": Bad certified key for key_type: " << key_type;
+      return false;
+    }
   }
   return true;
 }
