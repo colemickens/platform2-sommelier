@@ -55,7 +55,8 @@ const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};
 
 MATCHER_P(IsResult, result, "") {
   return (result.phase == arg.phase && result.status == arg.status &&
-          result.redirect_url_string == arg.redirect_url_string);
+          result.redirect_url_string == arg.redirect_url_string &&
+          result.probe_url_string == arg.probe_url_string);
 }
 
 
@@ -448,6 +449,7 @@ TEST_F(PortalDetectorTest, RequestRedirect) {
   PortalDetector::Result redirect_result = PortalDetector::Result(
       PortalDetector::Phase::kContent, PortalDetector::Status::kRedirect);
   redirect_result.redirect_url_string = kHttpUrl;
+  redirect_result.probe_url_string = kHttpUrl;
   PortalDetector::Result failure_result = PortalDetector::Result(
       PortalDetector::Phase::kContent, PortalDetector::Status::kFailure);
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(redirect_result),

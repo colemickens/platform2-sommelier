@@ -253,6 +253,7 @@ void PortalDetector::HttpRequestSuccessCallback(
         http_result_->status = Status::kFailure;
       } else {
         http_result_->redirect_url_string = redirect_url_string;
+        http_result_->probe_url_string = http_url_string_;
       }
     }
   } else {

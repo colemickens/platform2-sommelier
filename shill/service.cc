@@ -244,6 +244,7 @@ Service::Service(Manager* manager, Technology::Identifier technology)
                           nullptr,
                           nullptr);
 
+  store_.RegisterConstString(kProbeUrlProperty, &probe_url_string_);
   store_.RegisterConstString(kPortalDetectionFailedPhaseProperty,
                              &portal_detection_failure_phase_);
   store_.RegisterConstString(kPortalDetectionFailedStatusProperty,
@@ -433,6 +434,14 @@ void Service::SetPortalDetectionFailure(const string& phase,
   portal_detection_failure_status_ = status;
   adaptor_->EmitStringChanged(kPortalDetectionFailedPhaseProperty, phase);
   adaptor_->EmitStringChanged(kPortalDetectionFailedStatusProperty, status);
+}
+
+void Service::SetProbeUrl(const string& probe_url_string) {
+  if (probe_url_string_ == probe_url_string) {
+    return;
+  }
+  probe_url_string_ = probe_url_string;
+  adaptor_->EmitStringChanged(kProbeUrlProperty, probe_url_string);
 }
 
 void Service::ReEnableAutoConnectTask() {

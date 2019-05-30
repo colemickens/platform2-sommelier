@@ -99,6 +99,9 @@ class PortalDetector {
 
     // Non-empty redirect URL if status is kRedirect.
     std::string redirect_url_string;
+
+    // Probe URL used to reach redirect URL if status is kRedirect.
+    std::string probe_url_string;
   };
 
   static const char kDefaultHttpUrl[];

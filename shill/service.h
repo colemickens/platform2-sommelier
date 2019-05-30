@@ -198,6 +198,10 @@ class Service : public base::RefCounted<Service> {
   virtual void SetState(ConnectState state);
   std::string GetStateString() const;
 
+  // Set probe URL hint. This function is called when a redirect URL is found
+  // during portal detection.
+  virtual void SetProbeUrl(const std::string& probe_url_string);
+
   // Set portal detection failure phase and status (reason). This function
   // is called when portal detection failed for the Service.
   virtual void SetPortalDetectionFailure(const std::string& phase,
@@ -811,6 +815,7 @@ class Service : public base::RefCounted<Service> {
   uint8_t crypto_algorithm_;
   bool key_rotation_;
   bool endpoint_auth_;
+  std::string probe_url_string_;
   std::string portal_detection_failure_phase_;
   std::string portal_detection_failure_status_;
 

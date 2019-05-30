@@ -1742,6 +1742,10 @@ void Device::PortalDetectorCallback(
 
   Service::ConnectState state =
       CalculatePortalStateFromProbeResults(http_result, https_result);
+  if (selected_service_) {
+    // Set the probe URL. It should be empty if there is no redirect.
+    selected_service_->SetProbeUrl(http_result.probe_url_string);
+  }
   if (state == Service::kStateOnline) {
     SetServiceConnectedState(state);
 

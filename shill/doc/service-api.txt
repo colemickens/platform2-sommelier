@@ -1182,6 +1182,11 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			clients must set one if they desire.  To remove an
 			existing priority use the ClearProperty method.
 
+		string ProbeUrl [readonly]
+
+			The probe URL that was used to find a redirect URL through
+			captive portal detection.
+
 		string Profile [readwrite]
 
 			The object path of the associated Profile object.
