@@ -12,7 +12,6 @@
 #include "mist/usb_device_descriptor.h"
 
 using std::string;
-using std::unique_ptr;
 
 namespace mist {
 
@@ -224,7 +223,7 @@ string UsbDevice::GetStringDescriptorAscii(uint8_t index) {
   // libusb_get_string_descriptor_ascii uses an internal buffer that can only
   // hold up to 128 ASCII characters.
   int length = 128;
-  unique_ptr<uint8_t[]> data(new uint8_t[length]);
+  auto data = std::make_unique<uint8_t[]>(length);
   int result = libusb_get_string_descriptor_ascii(device_handle_, index,
                                                   data.get(), length);
   if (result < 0) {

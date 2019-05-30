@@ -24,7 +24,6 @@
 using std::cerr;
 using std::cout;
 using std::string;
-using std::unique_ptr;
 
 namespace mist {
 
@@ -118,8 +117,7 @@ int Mist::Run(base::CommandLine* command_line) {
       return EXIT_FAILURE;
     }
 
-    unique_ptr<UsbModemSwitchContext> switch_context(
-        new UsbModemSwitchContext());
+    auto switch_context = std::make_unique<UsbModemSwitchContext>();
 
     const string& sys_path = arguments[1];
     // Following the POSIX convention, return EXIT_SUCCESS if the device is

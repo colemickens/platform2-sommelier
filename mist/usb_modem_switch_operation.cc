@@ -453,7 +453,7 @@ void UsbModemSwitchOperation::InitiateUsbBulkTransfer(
     UsbTransferCompletionHandler completion_handler) {
   CHECK_GT(length, 0);
 
-  unique_ptr<UsbBulkTransfer> bulk_transfer(new UsbBulkTransfer());
+  auto bulk_transfer = std::make_unique<UsbBulkTransfer>();
   if (!bulk_transfer->Initialize(*device_, endpoint_address, length,
                                  kUsbMessageTransferTimeoutMilliseconds)) {
     LOG(ERROR) << "Could not create USB bulk transfer: "

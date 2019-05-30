@@ -18,7 +18,6 @@
 using base::Bind;
 using base::Unretained;
 using std::string;
-using std::unique_ptr;
 
 namespace mist {
 
@@ -53,8 +52,8 @@ void UsbModemSwitcher::OnUsbDeviceAdded(const string& sys_path,
   if (!modem_info)
     return;  // Ignore an unsupported device.
 
-  unique_ptr<UsbModemSwitchContext> switch_context(new UsbModemSwitchContext(
-      sys_path, bus_number, device_address, vendor_id, product_id, modem_info));
+  auto switch_context = std::make_unique<UsbModemSwitchContext>(
+      sys_path, bus_number, device_address, vendor_id, product_id, modem_info);
   CHECK(switch_context);
 
   UsbModemSwitchOperation* operation =
