@@ -573,6 +573,11 @@ void InstallAttributesAdaptor::RemoveFirmwareManagementParameters(
     const user_data_auth::RemoveFirmwareManagementParametersRequest&
         in_request) {
   user_data_auth::RemoveFirmwareManagementParametersReply reply;
+  if (!service_->RemoveFirmwareManagementParameters()) {
+    reply.set_error(
+        user_data_auth::
+            CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_REMOVE);
+  }
   response->Return(reply);
 }
 

@@ -11,6 +11,7 @@
 
 #include "cryptohome/mock_arc_disk_quota.h"
 #include "cryptohome/mock_crypto.h"
+#include "cryptohome/mock_firmware_management_parameters.h"
 #include "cryptohome/mock_homedirs.h"
 #include "cryptohome/mock_install_attributes.h"
 #include "cryptohome/mock_le_credential_backend.h"
@@ -74,6 +75,7 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
     userdataauth_.set_tpm_init(&tpm_init_);
     userdataauth_.set_platform(&platform_);
     userdataauth_.set_chaps_client(&chaps_client_);
+    userdataauth_.set_firmware_management_parameters(&fwmp_);
     userdataauth_.set_arc_disk_quota(&arc_disk_quota_);
     userdataauth_.set_pkcs11_init(&pkcs11_init_);
     userdataauth_.set_disable_threading(true);
@@ -139,6 +141,10 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
   // Mock PKCS#11 init object, will be passed to UserDataAuth for its internal
   // use.
   NiceMock<MockPkcs11Init> pkcs11_init_;
+
+  // Mock Firmware Management Parameters object, will be passed to UserDataAuth
+  // for its internal use.
+  NiceMock<MockFirmwareManagementParameters> fwmp_;
 
   // This is used to hold the mount object when we create a mock mount with
   // SetupMount().
@@ -815,6 +821,20 @@ TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceForArcGid) {
   EXPECT_CALL(arc_disk_quota_, GetCurrentSpaceForGid(kGID))
       .WillOnce(Return(kSpaceUsage));
   EXPECT_EQ(kSpaceUsage, userdataauth_.GetCurrentSpaceForArcGid(kGID));
+}
+
+// ================== Firmware Management Parameters tests ==================
+
+TEST_F(UserDataAuthTest, RemoveFirmwareManagementParametersSuccess) {
+  EXPECT_CALL(fwmp_, Destroy()).WillOnce(Return(true));
+
+  EXPECT_TRUE(userdataauth_.RemoveFirmwareManagementParameters());
+}
+
+TEST_F(UserDataAuthTest, RemoveFirmwareManagementParametersError) {
+  EXPECT_CALL(fwmp_, Destroy()).WillOnce(Return(false));
+
+  EXPECT_FALSE(userdataauth_.RemoveFirmwareManagementParameters());
 }
 
 // ======================= CleanUpStaleMounts tests ==========================

@@ -21,6 +21,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/firmware_management_parameters.h"
 #include "cryptohome/homedirs.h"
 #include "cryptohome/install_attributes.h"
 #include "cryptohome/mount.h"
@@ -280,6 +281,13 @@ class UserDataAuth {
   // Return true if this device is enterprise owned.
   bool IsEnterpriseOwned() { return enterprise_owned_; }
 
+  // ========= Firmware Management Parameters Related Public Methods =========
+
+  // Remove the firmware management parameters, that is, undefine its NVRAM
+  // space (if defined). Return true if and only if the firmware management
+  // parameters are gone
+  bool RemoveFirmwareManagementParameters();
+
   // =============== Miscellaneous ===============
 
   // This is called by tpm_init_ when there's any update on ownership status
@@ -371,6 +379,11 @@ class UserDataAuth {
 
   // Override |pkcs11_init_| for testing purpose
   void set_pkcs11_init(Pkcs11Init* pkcs11_init) { pkcs11_init_ = pkcs11_init; }
+
+  // Override |firmware_management_parameters_| for testing purpose
+  void set_firmware_management_parameters(FirmwareManagementParameters* fwmp) {
+    firmware_management_parameters_ = fwmp;
+  }
 
   // Associate a particular mount object |mount| with the username |username|
   // for testing purpose
@@ -592,6 +605,15 @@ class UserDataAuth {
   // The actual PKCS#11 init object that is used by this class, but can be
   // overridden for testing.
   Pkcs11Init* pkcs11_init_;
+
+  // The default Firmware Management Parameters object for accessing any
+  // Firmware Management Parameters related functionalities.
+  std::unique_ptr<FirmwareManagementParameters>
+      default_firmware_management_params_;
+
+  // The actual Firmware Management Parameters object that is used by this
+  // class, but can be overridden for testing.
+  FirmwareManagementParameters* firmware_management_parameters_;
 
   // =============== Install Attributes Related Variables ===============
 

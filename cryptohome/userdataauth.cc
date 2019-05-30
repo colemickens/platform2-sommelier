@@ -104,6 +104,7 @@ UserDataAuth::UserDataAuth()
       chaps_client_(default_chaps_client_.get()),
       default_pkcs11_init_(new Pkcs11Init()),
       pkcs11_init_(default_pkcs11_init_.get()),
+      firmware_management_parameters_(nullptr),
       default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
       install_attrs_(default_install_attrs_.get()),
       enterprise_owned_(false),
@@ -149,6 +150,13 @@ bool UserDataAuth::Initialize() {
   if (!tpm_init_) {
     default_tpm_init_.reset(new TpmInit(tpm_, platform_));
     tpm_init_ = default_tpm_init_.get();
+  }
+
+  // Initialize Firmware Management Parameters
+  if (!firmware_management_parameters_) {
+    default_firmware_management_params_.reset(
+        new FirmwareManagementParameters(tpm_));
+    firmware_management_parameters_ = default_firmware_management_params_.get();
   }
 
   crypto_->set_use_tpm(true);
@@ -1865,6 +1873,10 @@ UserDataAuth::InstallAttributesStatusToProtoEnum(
   NOTREACHED();
   // Return is added so compiler doesn't complain.
   return user_data_auth::InstallAttributesState::INVALID;
+}
+
+bool UserDataAuth::RemoveFirmwareManagementParameters() {
+  return firmware_management_parameters_->Destroy();
 }
 
 }  // namespace cryptohome

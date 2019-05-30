@@ -94,6 +94,8 @@ bool FirmwareManagementParameters::Destroy(void) {
 
   // Only destroy the space if it exists
   if (tpm_->IsNvramDefined(kNvramIndex) && !tpm_->DestroyNvram(kNvramIndex)) {
+    LOG(WARNING) << "Failed to destroy NVRAM Space in "
+                    "FirmwareManagementParameters::Destroy()";
     return false;
   }
 
