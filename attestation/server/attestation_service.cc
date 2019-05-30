@@ -1837,7 +1837,6 @@ bool AttestationService::ActivateAttestationKeyInternal(
     }
   } else {
     // TPM 2.0 style activate.
-        identity_data.identity_key().identity_key_blob();
     std::string credential;
     if (!tpm_utility_->ActivateIdentityForTpm2(
             GetEndorsementKeyType(),
