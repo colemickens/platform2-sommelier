@@ -1906,6 +1906,30 @@ UserDataAuth::GetFirmwareManagementParameters(
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
+user_data_auth::CryptohomeErrorCode
+UserDataAuth::SetFirmwareManagementParameters(
+    const user_data_auth::FirmwareManagementParameters& fwmp) {
+  if (!firmware_management_parameters_->Create()) {
+    return user_data_auth::
+        CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE;
+  }
+
+  uint32_t flags = fwmp.flags();
+  std::unique_ptr<std::vector<uint8_t>> hash;
+
+  if (!fwmp.developer_key_hash().empty()) {
+    hash.reset(new std::vector<uint8_t>(fwmp.developer_key_hash().begin(),
+                                        fwmp.developer_key_hash().end()));
+  }
+
+  if (!firmware_management_parameters_->Store(flags, hash.get())) {
+    return user_data_auth::
+        CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE;
+  }
+
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+}
+
 bool UserDataAuth::RemoveFirmwareManagementParameters() {
   return firmware_management_parameters_->Destroy();
 }

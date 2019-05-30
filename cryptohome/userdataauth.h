@@ -290,6 +290,12 @@ class UserDataAuth {
   user_data_auth::CryptohomeErrorCode GetFirmwareManagementParameters(
       user_data_auth::FirmwareManagementParameters* fwmp);
 
+  // Set the firmware management parameters to the value given in |fwmp|.
+  // Returns CRYPTOHOME_ERROR_NOT_SET if the operation is successful, and other
+  // error code if it failed.
+  user_data_auth::CryptohomeErrorCode SetFirmwareManagementParameters(
+      const user_data_auth::FirmwareManagementParameters& fwmp);
+
   // Remove the firmware management parameters, that is, undefine its NVRAM
   // space (if defined). Return true if and only if the firmware management
   // parameters are gone
