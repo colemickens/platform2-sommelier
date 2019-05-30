@@ -456,6 +456,11 @@ TEST_F(CrashCollectorTest, MetaData) {
   test_clock->SetNow(base::Time::UnixEpoch() +
                      base::TimeDelta::FromMilliseconds(kFakeNow));
   collector_.set_test_clock(std::move(test_clock));
+  const char kKernelName[] = "Linux";
+  const char kKernelVersion[] =
+      "0.0.0 Linux 3.8.11 #1 SMP "
+      "Wed Aug 22 02:18:30 PDT 2018 x86_64";
+  collector_.set_test_kernel_info(kKernelName, kKernelVersion);
   collector_.WriteCrashMetaData(meta_file, "kernel", payload_file.value());
   EXPECT_TRUE(base::ReadFileToString(meta_file, &contents));
   std::string expected_meta = StringPrintf(
@@ -464,13 +469,15 @@ TEST_F(CrashCollectorTest, MetaData) {
       "upload_var_reportTimeMillis=%" PRId64
       "\n"
       "upload_var_lsb-release=6727.0.2015_01_26_0853 (Test Build - foo)\n"
+      "upload_var_osName=%s\n"
+      "upload_var_osVersion=%s\n"
       "exec_name=kernel\n"
       "ver=6727.0.2015_01_26_0853\n"
       "payload=%s\n"
       "os_millis=%" PRId64
       "\n"
       "done=1\n",
-      kFakeNow, payload_full_path.value().c_str(),
+      kFakeNow, kKernelName, kKernelVersion, payload_full_path.value().c_str(),
       (os_time - base::Time::UnixEpoch()).InMilliseconds());
   EXPECT_EQ(expected_meta, contents);
 

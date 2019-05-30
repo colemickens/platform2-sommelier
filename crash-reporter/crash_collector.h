@@ -57,6 +57,13 @@ class CrashCollector {
     test_clock_ = std::move(test_clock);
   }
 
+  // For testing, use to set the kernel version rather than relying on uname
+  void set_test_kernel_info(std::string kernel_name,
+                            std::string kernel_version) {
+    test_kernel_name_ = kernel_name;
+    test_kernel_version_ = kernel_version;
+  }
+
   // Initialize the crash collector for detection of crashes, given a
   // metrics collection enabled oracle.
   void Initialize(IsFeedbackAllowedFunction is_metrics_allowed);
@@ -229,6 +236,13 @@ class CrashCollector {
   // Returns the OS description written to the metadata file.
   virtual std::string GetOsDescription() const;
 
+  // Returns the kernel name from uname (e.g. "Linux")
+  std::string GetKernelName() const;
+
+  // Returns the uname string formatted as
+  // 0.0.0 Linux 3.8.11 #1 SMP Wed Aug 22 02:18:30 PDT 2018 x86_64
+  std::string GetKernelVersion() const;
+
   // Write a file of metadata about crash.
   void WriteCrashMetaData(const base::FilePath& meta_path,
                           const std::string& exec_name,
@@ -246,6 +260,8 @@ class CrashCollector {
   base::FilePath log_config_path_;
   size_t max_log_size_;
   std::unique_ptr<base::Clock> test_clock_;
+  std::string test_kernel_name_;
+  std::string test_kernel_version_;
 
   scoped_refptr<dbus::Bus> bus_;
 

@@ -9,6 +9,7 @@
 #include <inttypes.h>
 #include <linux/limits.h>  // PATH_MAX
 #include <sys/types.h>     // for mode_t.
+#include <sys/utsname.h>   // For uname.
 #include <sys/wait.h>      // For waitpid.
 #include <unistd.h>        // For execv and fork.
 
@@ -846,6 +847,30 @@ std::string CrashCollector::GetOsDescription() const {
   return GetLsbReleaseValue(kLsbOsDescriptionKey);
 }
 
+std::string CrashCollector::GetKernelName() const {
+  struct utsname buf;
+  if (!test_kernel_name_.empty())
+    return test_kernel_name_;
+
+  if (uname(&buf))
+    return kUnknownValue;
+
+  return std::string(buf.sysname);
+}
+
+std::string CrashCollector::GetKernelVersion() const {
+  struct utsname buf;
+  if (!test_kernel_version_.empty())
+    return test_kernel_version_;
+
+  if (uname(&buf))
+    return kUnknownValue;
+
+  // 0.0.0 Linux 3.8.11 #1 SMP Wed Aug 22 02:18:30 PDT 2018 x86_64
+  return StringPrintf("0.0.0 %s %s %s %s", buf.sysname, buf.release,
+                      buf.version, buf.machine);
+}
+
 void CrashCollector::WriteCrashMetaData(const FilePath& meta_path,
                                         const std::string& exec_name,
                                         const std::string& payload_name) {
@@ -857,6 +882,8 @@ void CrashCollector::WriteCrashMetaData(const FilePath& meta_path,
 
   const std::string version = GetOsVersion();
   const std::string description = GetOsDescription();
+  const std::string kernel_name = GetKernelName();
+  const std::string kernel_version = GetKernelVersion();
   base::Time now = test_clock_ ? test_clock_->Now() : base::Time::Now();
   int64_t now_millis = (now - base::Time::UnixEpoch()).InMilliseconds();
   base::Time os_timestamp = util::GetOsTimestamp();
@@ -870,12 +897,15 @@ void CrashCollector::WriteCrashMetaData(const FilePath& meta_path,
       StringPrintf("%supload_var_reportTimeMillis=%" PRId64
                    "\n"
                    "upload_var_lsb-release=%s\n"
+                   "upload_var_osName=%s\n"
+                   "upload_var_osVersion=%s\n"
                    "exec_name=%s\n"
                    "ver=%s\n"
                    "payload=%s\n"
                    "%s"
                    "done=1\n",
                    extra_metadata_.c_str(), now_millis, description.c_str(),
+                   kernel_name.c_str(), kernel_version.c_str(),
                    exec_name.c_str(), version.c_str(),
                    payload_path.value().c_str(), os_timestamp_str.c_str());
   // We must use WriteNewFile instead of base::WriteFile as we
