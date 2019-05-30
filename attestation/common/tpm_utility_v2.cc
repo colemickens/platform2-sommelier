@@ -743,6 +743,7 @@ bool TpmUtilityV2::CreateRestrictedKey(KeyType key_type,
     LOG(ERROR) << __func__ << ": Not implemented.";
     return false;
   }
+
   std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
       trunks_factory_->GetPasswordAuthorization(std::string());
   trunks::TPM_ALG_ID algorithm =
@@ -754,6 +755,7 @@ bool TpmUtilityV2::CreateRestrictedKey(KeyType key_type,
                << trunks::GetErrorString(result);
     return false;
   }
+
   std::unique_ptr<trunks::BlobParser> parser = trunks_factory_->GetBlobParser();
   trunks::TPM2B_PUBLIC public_info;
   trunks::TPM2B_PRIVATE not_used;
@@ -761,6 +763,7 @@ bool TpmUtilityV2::CreateRestrictedKey(KeyType key_type,
     LOG(ERROR) << __func__ << ": Failed to parse key blob.";
     return false;
   }
+
   result = trunks::Serialize_TPMT_PUBLIC(public_info.public_area,
                                          public_key_tpm_format);
   if (result != TPM_RC_SUCCESS) {
@@ -768,12 +771,22 @@ bool TpmUtilityV2::CreateRestrictedKey(KeyType key_type,
                << trunks::GetErrorString(result);
     return false;
   }
-  *public_key_der = RSAPublicKeyToString(
-      GetRsaPublicKeyFromTpmPublicArea(public_info.public_area));
+
+  switch (key_type) {
+    case KEY_TYPE_RSA:
+      *public_key_der = RSAPublicKeyToString(
+          GetRsaPublicKeyFromTpmPublicArea(public_info.public_area));
+      break;
+    case KEY_TYPE_ECC:
+      *public_key_der = EccSubjectPublicKeyInfoToString(
+          GetEccPublicKeyFromTpmPublicArea(public_info.public_area));
+      break;
+  }
   if (public_key_der->empty()) {
     LOG(ERROR) << __func__ << ": Failed to convert public key to DER encoded";
     return false;
   }
+
   return true;
 }
 
