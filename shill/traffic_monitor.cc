@@ -76,10 +76,12 @@ void TrafficMonitor::ResetCongestedTxQueuesStatsWithLogging() {
   ResetCongestedTxQueuesStats();
 }
 
-void TrafficMonitor::BuildIPPortToTxQueueLength(
-    const vector<SocketInfo>& socket_infos,
-    IPPortToTxQueueLengthMap* tx_queue_lengths) {
+TrafficMonitor::IPPortToTxQueueLengthMap
+TrafficMonitor::BuildIPPortToTxQueueLength(
+    const vector<SocketInfo>& socket_infos) {
   SLOG(device_.get(), 3) << __func__;
+
+  IPPortToTxQueueLengthMap tx_queue_lengths;
   string device_ip_address = device_->ipconfig()->properties().address;
   for (const auto& info : socket_infos) {
     SLOG(device_.get(), 4) << "SocketInfo(IP="
@@ -102,8 +104,9 @@ void TrafficMonitor::BuildIPPortToTxQueueLength(
 
     string local_ip_port = StringPrintf(
         "%s:%d", info.local_ip_address.ToString().c_str(), info.local_port);
-    (*tx_queue_lengths)[local_ip_port] = info.transmit_queue_value;
+    tx_queue_lengths[local_ip_port] = info.transmit_queue_value;
   }
+  return tx_queue_lengths;
 }
 
 bool TrafficMonitor::IsCongestedTxQueues() {
@@ -116,8 +119,8 @@ bool TrafficMonitor::IsCongestedTxQueues() {
     return false;
   }
   bool congested_tx_queues = true;
-  IPPortToTxQueueLengthMap curr_tx_queue_lengths;
-  BuildIPPortToTxQueueLength(socket_infos, &curr_tx_queue_lengths);
+  IPPortToTxQueueLengthMap curr_tx_queue_lengths =
+      BuildIPPortToTxQueueLength(socket_infos);
   if (curr_tx_queue_lengths.empty()) {
     SLOG(device_.get(), 3) << __func__ << ": No interesting socket info";
     ResetCongestedTxQueuesStatsWithLogging();

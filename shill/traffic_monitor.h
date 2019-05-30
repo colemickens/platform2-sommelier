@@ -97,9 +97,8 @@ class TrafficMonitor {
   // Builds map of IP address/port to tx queue lengths from socket info vector.
   // Skips sockets not on device, tx queue length is 0, connection state is not
   // established or does not have a pending retransmit timer.
-  void BuildIPPortToTxQueueLength(
-      const std::vector<SocketInfo>& socket_infos,
-      IPPortToTxQueueLengthMap* tx_queue_length);
+  IPPortToTxQueueLengthMap BuildIPPortToTxQueueLength(
+      const std::vector<SocketInfo>& socket_infos);
 
   // Checks for congested tx-queue via network statistics.
   // Returns |true| if tx-queue is congested.

@@ -178,8 +178,8 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthValid) {
                  TrafficMonitorTest::kTxQueueLength1,
                  0,
                  SocketInfo::kTimerStateRetransmitTimerPending));
-  TrafficMonitor::IPPortToTxQueueLengthMap tx_queue_lengths;
-  monitor_.BuildIPPortToTxQueueLength(socket_infos, &tx_queue_lengths);
+  TrafficMonitor::IPPortToTxQueueLengthMap tx_queue_lengths =
+      monitor_.BuildIPPortToTxQueueLength(socket_infos);
   EXPECT_EQ(1, tx_queue_lengths.size());
   string ip_port = FormatIPPort(local_addr_, TrafficMonitorTest::kLocalPort1);
   EXPECT_EQ(TrafficMonitorTest::kTxQueueLength1, tx_queue_lengths[ip_port]);
@@ -198,8 +198,8 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidDevice) {
                  TrafficMonitorTest::kTxQueueLength1,
                  0,
                  SocketInfo::kTimerStateRetransmitTimerPending));
-  TrafficMonitor::IPPortToTxQueueLengthMap tx_queue_lengths;
-  monitor_.BuildIPPortToTxQueueLength(socket_infos, &tx_queue_lengths);
+  TrafficMonitor::IPPortToTxQueueLengthMap tx_queue_lengths =
+      monitor_.BuildIPPortToTxQueueLength(socket_infos);
   EXPECT_EQ(0, tx_queue_lengths.size());
 }
 
@@ -214,8 +214,8 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthZero) {
                  0,
                  0,
                  SocketInfo::kTimerStateRetransmitTimerPending));
-  TrafficMonitor::IPPortToTxQueueLengthMap tx_queue_lengths;
-  monitor_.BuildIPPortToTxQueueLength(socket_infos, &tx_queue_lengths);
+  TrafficMonitor::IPPortToTxQueueLengthMap tx_queue_lengths =
+      monitor_.BuildIPPortToTxQueueLength(socket_infos);
   EXPECT_EQ(0, tx_queue_lengths.size());
 }
 
@@ -230,8 +230,8 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidConnectionState) {
                  TrafficMonitorTest::kTxQueueLength1,
                  0,
                  SocketInfo::kTimerStateRetransmitTimerPending));
-  TrafficMonitor::IPPortToTxQueueLengthMap tx_queue_lengths;
-  monitor_.BuildIPPortToTxQueueLength(socket_infos, &tx_queue_lengths);
+  TrafficMonitor::IPPortToTxQueueLengthMap tx_queue_lengths =
+      monitor_.BuildIPPortToTxQueueLength(socket_infos);
   EXPECT_EQ(0, tx_queue_lengths.size());
 }
 
@@ -246,8 +246,8 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidTimerState) {
                  TrafficMonitorTest::kTxQueueLength1,
                  0,
                  SocketInfo::kTimerStateNoTimerPending));
-  TrafficMonitor::IPPortToTxQueueLengthMap tx_queue_lengths;
-  monitor_.BuildIPPortToTxQueueLength(socket_infos, &tx_queue_lengths);
+  TrafficMonitor::IPPortToTxQueueLengthMap tx_queue_lengths =
+      monitor_.BuildIPPortToTxQueueLength(socket_infos);
   EXPECT_EQ(0, tx_queue_lengths.size());
 }
 
@@ -298,8 +298,8 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthMultipleEntries) {
                  0,
                  0,
                  SocketInfo::kTimerStateRetransmitTimerPending));
-  TrafficMonitor::IPPortToTxQueueLengthMap tx_queue_lengths;
-  monitor_.BuildIPPortToTxQueueLength(socket_infos, &tx_queue_lengths);
+  TrafficMonitor::IPPortToTxQueueLengthMap tx_queue_lengths =
+      monitor_.BuildIPPortToTxQueueLength(socket_infos);
   EXPECT_EQ(2, tx_queue_lengths.size());
   string ip_port = FormatIPPort(local_addr_, TrafficMonitorTest::kLocalPort2);
   EXPECT_EQ(kTxQueueLength2, tx_queue_lengths[ip_port]);
