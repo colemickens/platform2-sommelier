@@ -76,6 +76,9 @@ TEST(UUIDTest, UuidConstruction) {
   EXPECT_EQ(UuidFormat::UUID_INVALID, uuid_non_digit.format());
   EXPECT_EQ(UuidFormat::UUID_INVALID, uuid_misplaced.format());
   EXPECT_EQ(UuidFormat::UUID_INVALID, uuid_at.format());
+
+  Uuid uuid_empty;
+  EXPECT_EQ(UuidFormat::UUID_INVALID, uuid_empty.format());
 }
 
 TEST(UUIDTest, UuidOperators) {

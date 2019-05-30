@@ -37,6 +37,9 @@ enum class UuidFormat {
 // user-specified services.
 class Uuid {
  public:
+  // Constructs an invalid UUID.
+  Uuid();
+
   // |value| can be either a vector of 2, 4 or 16 bytes of UUID value in big
   // endian order. Note that UUID16 and UUID32 must be the assigned number
   // defined by Bluetooth SIG, so the base should be applied to generate
@@ -72,6 +75,9 @@ class Uuid {
   bool operator!=(const Uuid& uuid) const;
 
  private:
+  // Create a canonical value base on |value128_|.
+  std::string ValueToCanonical(const std::array<uint8_t, 16>& value);
+
   // Format provided originally when the instance was constructed.
   UuidFormat format_;
   // The 128-bit UUID representation of the UUID.

@@ -44,6 +44,10 @@ class LibNewblue {
   LIBNEWBLUE_METHOD1(GattClientDisconnect,
                      gattClientDisconnect,
                      uint8_t(gatt_client_conn_t));
+  LIBNEWBLUE_METHOD5(
+      GattClientEnumServices,
+      gattClientEnumServices,
+      uint8_t(void*, gatt_client_conn_t, bool, uniq_t, gattCliSvcEnumCbk));
 
   // gatt-builtin.h
   LIBNEWBLUE_METHOD0(GattBuiltinInit, gattBuiltinInit, bool());

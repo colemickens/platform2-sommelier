@@ -31,6 +31,16 @@ std::string ConvertBtAddrToString(const struct bt_addr& addr) {
                             addr.addr[1], addr.addr[0]);
 }
 
+std::string ConvertGattClientOperationTypeToString(
+    GattClientOperationType type) {
+  switch (type) {
+    case GattClientOperationType::SERVICES_ENUM:
+      return "SERVICES_ENUM";
+    default:
+      return "";
+  }
+}
+
 }  // namespace
 
 Newblue::Newblue(std::unique_ptr<LibNewblue> libnewblue)
@@ -215,8 +225,7 @@ gatt_client_conn_t Newblue::GattClientConnect(const std::string& device_address,
 GattClientOperationStatus Newblue::GattClientDisconnect(
     gatt_client_conn_t conn_id) {
   if (conn_id == kInvalidGattConnectionId) {
-    LOG(WARNING) << "Invalid connection ID " << conn_id
-                 << " to disconnect from";
+    LOG(WARNING) << "Invalid conn id " << conn_id << " to disconnect from";
     return GattClientOperationStatus::ERR;
   }
 
@@ -242,6 +251,38 @@ std::vector<KnownDevice> Newblue::GetKnownDevices() {
 
   libnewblue_->SmKnownDevicesFree(head);
   return devices;
+}
+
+GattClientOperationStatus Newblue::GattClientEnumServices(
+    gatt_client_conn_t conn_id,
+    bool primary,
+    UniqueId transaction_id,
+    GattClientServiceEnumCallback callback) {
+  if (conn_id == kInvalidGattConnectionId) {
+    LOG(WARNING) << "Invalid GATT conn ID " << conn_id
+                 << " provided, ignore request";
+    return GattClientOperationStatus::ERR;
+  }
+
+  if (callback.is_null()) {
+    LOG(WARNING) << "Callback not provided, ignore request";
+    return GattClientOperationStatus::ERR;
+  }
+
+  if (gatt_client_ops_.find(transaction_id) != gatt_client_ops_.end()) {
+    LOG(WARNING) << "Transaction " << transaction_id
+                 << " already exists, ignore request";
+    return GattClientOperationStatus::ERR;
+  }
+
+  GattClientOperation op = {.type = GattClientOperationType::SERVICES_ENUM,
+                            .services_enum_callback = callback};
+  gatt_client_ops_.emplace(transaction_id, std::move(op));
+
+  return static_cast<GattClientOperationStatus>(
+      libnewblue_->GattClientEnumServices(
+          this, conn_id, primary, static_cast<uniq_t>(transaction_id),
+          &Newblue::GattClientEnumServicesCallbackThunk));
 }
 
 /*** Private Methods ***/
@@ -292,7 +333,7 @@ void Newblue::DiscoveryCallback(const std::string& address,
                                 int8_t rssi,
                                 uint8_t reply_type,
                                 const std::vector<uint8_t>& eir) {
-  VLOG(1) << __func__;
+  VLOG(2) << __func__;
 
   if (device_discovered_callback_.is_null()) {
     LOG(WARNING) << "DiscoveryCallback called when not discovering";
@@ -335,9 +376,64 @@ void Newblue::GattConnectCallbackThunk(void* data,
                                        gatt_client_conn_t conn_id,
                                        uint8_t status) {
   Newblue* newblue = static_cast<Newblue*>(data);
+
+  CHECK(newblue != nullptr);
+
   newblue->PostTask(
       FROM_HERE,
       base::Bind(newblue->gatt_client_connect_callback_, conn_id, status));
+}
+
+void Newblue::GattClientEnumServicesCallbackThunk(void* user_data,
+                                                  gatt_client_conn_t conn_id,
+                                                  uniq_t transaction_id,
+                                                  const struct uuid* uuid,
+                                                  bool primary,
+                                                  uint16_t first_handle,
+                                                  uint16_t num_handles,
+                                                  uint8_t status) {
+  Newblue* newblue = static_cast<Newblue*>(user_data);
+
+  CHECK(newblue != nullptr);
+
+  Uuid service_uuid = uuid == nullptr ? Uuid() : ConvertToUuid(*uuid);
+  newblue->PostTask(
+      FROM_HERE,
+      base::Bind(&Newblue::GattClientEnumServicesCallback,
+                 newblue->GetWeakPtr(), conn_id, transaction_id, service_uuid,
+                 primary, first_handle, num_handles, status));
+}
+
+void Newblue::GattClientEnumServicesCallback(gatt_client_conn_t conn_id,
+                                             uniq_t transaction_id,
+                                             Uuid uuid,
+                                             bool primary,
+                                             uint16_t first_handle,
+                                             uint16_t num_handles,
+                                             uint8_t status) {
+  UniqueId tran_id = static_cast<UniqueId>(transaction_id);
+  auto op = gatt_client_ops_.find(tran_id);
+  if (op == gatt_client_ops_.end()) {
+    LOG(WARNING) << "Unexpected service enum result received for GATT conn ID "
+                 << conn_id << ", drop it";
+    return;
+  }
+
+  if (op->second.type != GattClientOperationType::SERVICES_ENUM) {
+    LOG(WARNING) << "Unexpected GATT operation "
+                 << ConvertGattClientOperationTypeToString(op->second.type)
+                 << ", drop it";
+    return;
+  }
+
+  bool finished = uuid.format() == UuidFormat::UUID_INVALID;
+
+  op->second.services_enum_callback.Run(
+      finished, conn_id, tran_id, uuid, primary, first_handle, num_handles,
+      static_cast<GattClientOperationStatus>(status));
+
+  if (finished)
+    gatt_client_ops_.erase(op);
 }
 
 void Newblue::PasskeyDisplayObserverCallbackThunk(

@@ -91,6 +91,12 @@ enum class GattClientOperationStatus : uint8_t {
   WE_DISC
 };
 
+// TODO(mcchou): Add more entries for GATT client operations.
+// The is based on gattCli*Cbk defined in newblue/gatt.h.
+enum class GattClientOperationType {
+  SERVICES_ENUM,
+};
+
 // Agent to receive pairing user interaction events.
 class PairingAgent {
  public:
@@ -130,6 +136,22 @@ class Newblue {
 
   using GattClientConnectCallback =
       base::Callback<void(gatt_client_conn_t conn_id, uint8_t status)>;
+
+  using GattClientServiceEnumCallback =
+      base::Callback<void(bool finished,
+                          gatt_client_conn_t conn_id,
+                          UniqueId transaction_id,
+                          Uuid uuid,
+                          bool primary,
+                          uint16_t first_handle,
+                          uint16_t num_handles,
+                          GattClientOperationStatus status)>;
+
+  // Represents a GATT client operation.
+  struct GattClientOperation {
+    GattClientOperationType type;
+    GattClientServiceEnumCallback services_enum_callback;
+  };
 
   explicit Newblue(std::unique_ptr<LibNewblue> libnewblue);
 
@@ -194,6 +216,13 @@ class Newblue {
   // Retrieves the known devices from NewBlue's persist.
   std::vector<KnownDevice> GetKnownDevices();
 
+  // Enumerates GATT services provided by a connected device.
+  GattClientOperationStatus GattClientEnumServices(
+      gatt_client_conn_t conn_id,
+      bool primary,
+      UniqueId transaction_id,
+      GattClientServiceEnumCallback callback);
+
  private:
   // Posts task to the thread which created this Newblue object.
   // libnewblue callbacks should always post task using this method rather
@@ -231,6 +260,23 @@ class Newblue {
                                        gatt_client_conn_t conn,
                                        uint8_t status);
 
+  static void GattClientEnumServicesCallbackThunk(void* user_data,
+                                                  gatt_client_conn_t conn_id,
+                                                  uniq_t transaction_id,
+                                                  const struct uuid* uuid,
+                                                  bool primary,
+                                                  uint16_t first_handle,
+                                                  uint16_t num_handles,
+                                                  uint8_t status);
+  // Called when the service enumeration results are received.
+  void GattClientEnumServicesCallback(gatt_client_conn_t conn_id,
+                                      uniq_t transaction_id,
+                                      Uuid uuid,
+                                      bool primary,
+                                      uint16_t first_handle,
+                                      uint16_t num_handles,
+                                      uint8_t status);
+
   static void PasskeyDisplayObserverCallbackThunk(
       void* data,
       const struct smPasskeyDisplay* passkey_display,
@@ -261,6 +307,10 @@ class Newblue {
   std::map<UniqueId, PairStateChangedCallback> pair_observers_;
 
   GattClientConnectCallback gatt_client_connect_callback_;
+
+  // Contains pairs of <transaction ID, GATT operation> which track the ongoing
+  // GATT client operations.
+  std::map<UniqueId, GattClientOperation> gatt_client_ops_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.

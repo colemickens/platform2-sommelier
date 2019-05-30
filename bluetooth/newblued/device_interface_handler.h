@@ -13,6 +13,7 @@
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <base/observer_list.h>
 #include <dbus/bus.h>
 
 #include "bluetooth/common/exported_object_manager_wrapper.h"
@@ -115,6 +116,16 @@ class DeviceInterfaceHandler {
   };
 
  public:
+  // Interface for observing changes to devices
+  class DeviceObserver {
+   public:
+    virtual ~DeviceObserver() {}
+    virtual void OnGattConnected(const std::string& device_address,
+                                 gatt_client_conn_t conn_id) {}
+    virtual void OnGattDisconnected(const std::string& device_address,
+                                    gatt_client_conn_t conn_id) {}
+  };
+
   using ConnectCallback = base::Callback<void(const std::string& device_address,
                                               bool success,
                                               const std::string& dbus_error)>;
@@ -150,6 +161,13 @@ class DeviceInterfaceHandler {
 
   // Removes a device D-Bus object and forgets its pairing information.
   bool RemoveDevice(const std::string& address, std::string* dbus_error);
+
+  // Add/remove observer for device events.
+  void AddDeviceObserver(DeviceObserver* observer);
+  void RemoveDeviceObserver(DeviceObserver* observer);
+
+  // Returns device address if the given connection ID exists, empty otherwise.
+  std::string GetAddressByConnectionId(gatt_client_conn_t conn_id);
 
  private:
   // Returns the in-memory discovered device based on its address, adding it if
@@ -306,6 +324,8 @@ class DeviceInterfaceHandler {
   std::map<std::string, struct Connection> connections_;
   // Contains pairs of <device address, connection attempt>.
   std::map<std::string, gatt_client_conn_t> connection_attempts_;
+
+  base::ObserverList<DeviceObserver> observers_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.

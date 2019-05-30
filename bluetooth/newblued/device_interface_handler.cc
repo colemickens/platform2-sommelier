@@ -409,6 +409,31 @@ bool DeviceInterfaceHandler::RemoveDevice(const std::string& address,
   return true;
 }
 
+void DeviceInterfaceHandler::AddDeviceObserver(
+    DeviceInterfaceHandler::DeviceObserver* observer) {
+  CHECK(observer);
+  observers_.AddObserver(observer);
+}
+
+void DeviceInterfaceHandler::RemoveDeviceObserver(
+    DeviceInterfaceHandler::DeviceObserver* observer) {
+  CHECK(observer);
+  observers_.RemoveObserver(observer);
+}
+
+std::string DeviceInterfaceHandler::GetAddressByConnectionId(
+    gatt_client_conn_t conn_id) {
+  if (conn_id == kInvalidGattConnectionId)
+    return "";
+
+  for (auto& connection : connections_) {
+    if (connection.second.conn_id == conn_id)
+      return connection.first;
+  }
+
+  return "";
+}
+
 Device* DeviceInterfaceHandler::AddOrGetDiscoveredDevice(
     const std::string& address, uint8_t address_type) {
   Device* device = FindDevice(address);
@@ -436,6 +461,7 @@ void DeviceInterfaceHandler::ExportOrUpdateDevice(Device* device) {
         device->is_random_address ? "random" : "public",
         device->address.c_str(), device->rssi.value());
     is_new_device = true;
+
     exported_object_manager_wrapper_->AddExportedInterface(
         device_path, bluetooth_device::kBluetoothDeviceInterface);
 
@@ -631,7 +657,7 @@ void DeviceInterfaceHandler::ConnectInternal(
 
   gatt_client_conn_t conn_id =
       newblue_->GattClientConnect(device->address, device->is_random_address);
-  if (!conn_id) {
+  if (conn_id == kInvalidGattConnectionId) {
     LOG(WARNING) << "Failed GATT client connect";
     ConnectReply(device_address, false, bluetooth_device::kErrorFailed);
     return;
@@ -781,6 +807,9 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
       // Track the new connection and close the attempt.
       connections_.emplace(dev_to_be_connected->address, connection);
       ConnectReply(dev_to_be_connected->address, true, "");
+
+      for (auto& observer : observers_)
+        observer.OnGattConnected(dev_to_be_connected->address, conn_id);
       break;
     case ConnectState::ERROR:  // Fall through.
       VLOG(1) << "Unexpected GATT connection error";
@@ -809,6 +838,9 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
         connections_.erase(connection.first);
         ConnectReply(connection.first, true, "");
         dev_to_notify = FindDevice(connection.first);
+
+        for (auto& observer : observers_)
+          observer.OnGattDisconnected(connection.first, conn_id);
         break;
       }
       break;

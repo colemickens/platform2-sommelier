@@ -8,6 +8,7 @@
 
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
+#include <sys/types.h>
 
 namespace bluetooth {
 
@@ -24,6 +25,12 @@ std::vector<uint8_t> UuidStrToBytes(std::string uuid_str) {
   return value;
 }
 }  // namespace
+
+Uuid::Uuid() {
+  format_ = UuidFormat::UUID_INVALID;
+  value128_.fill(0);
+  value_canonical_ = ValueToCanonical(value128_);
+}
 
 Uuid::Uuid(const std::vector<uint8_t>& value) {
   switch (value.size()) {
@@ -45,12 +52,7 @@ Uuid::Uuid(const std::vector<uint8_t>& value) {
       format_ = UuidFormat::UUID_INVALID;
       value128_.fill(0);
   }
-  value_canonical_ = base::StringPrintf(
-      "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-      value128_[0], value128_[1], value128_[2], value128_[3], value128_[4],
-      value128_[5], value128_[6], value128_[7], value128_[8], value128_[9],
-      value128_[10], value128_[11], value128_[12], value128_[13], value128_[14],
-      value128_[15]);
+  value_canonical_ = ValueToCanonical(value128_);
 }
 
 Uuid::Uuid(const std::string& uuid_str) : Uuid(UuidStrToBytes(uuid_str)) {}
@@ -65,6 +67,14 @@ bool Uuid::operator==(const Uuid& uuid) const {
 
 bool Uuid::operator!=(const Uuid& uuid) const {
   return value128_ != uuid.value();
+}
+
+std::string Uuid::ValueToCanonical(const std::array<uint8_t, 16>& value) {
+  return base::StringPrintf(
+      "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+      value[0], value[1], value[2], value[3], value[4], value[5], value[6],
+      value[7], value[8], value[9], value[10], value[11], value[12], value[13],
+      value[14], value[15]);
 }
 
 }  // namespace bluetooth

@@ -19,6 +19,7 @@
 #include "bluetooth/newblued/advertising_manager_interface_handler.h"
 #include "bluetooth/newblued/agent_manager_interface_handler.h"
 #include "bluetooth/newblued/device_interface_handler.h"
+#include "bluetooth/newblued/gatt.h"
 #include "bluetooth/newblued/newblue.h"
 #include "bluetooth/newblued/stack_sync_monitor.h"
 
@@ -69,6 +70,8 @@ class NewblueDaemon : public BluetoothDaemon {
       advertising_manager_interface_handler_;
   std::unique_ptr<AgentManagerInterfaceHandler>
       agent_manager_interface_handler_;
+
+  std::unique_ptr<Gatt> gatt_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.
