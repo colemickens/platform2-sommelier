@@ -137,7 +137,6 @@ bool TerminaVm::Start(base::FilePath kernel,
       kCrosvmBin,       "run",
       "--cpus",         std::to_string(base::SysInfo::NumberOfProcessors()),
       "--mem",          GetVmMemoryMiB(),
-      "--root",         rootfs.value(),
       "--tap-fd",       std::to_string(tap_fd.get()),
       "--cid",          std::to_string(vsock_cid_),
       "--socket",       GetVmSocketPath(),
@@ -146,6 +145,16 @@ bool TerminaVm::Start(base::FilePath kernel,
       "--params",      "snd_intel8x0.inside_vm=1 snd_intel8x0.ac97_clock=48000",
   };
   // clang-format on
+
+  if (USE_PMEM_DEVICE_FOR_ROOTFS) {
+    args.emplace_back("--pmem-device");
+    args.emplace_back(rootfs.value());
+    args.emplace_back("--params");
+    args.emplace_back("root=/dev/pmem0 ro rootflags=dax");
+  } else {
+    args.emplace_back("--root");
+    args.emplace_back(rootfs.value());
+  }
 
   if (USE_CROSVM_WL_DMABUF)
     args.emplace_back("--wayland-dmabuf");
@@ -355,7 +364,6 @@ bool TerminaVm::Mount(string source,
 }
 
 bool TerminaVm::StartTermina(std::string lxd_subnet,
-                             std::string stateful_device,
                              std::string* out_error) {
   // We record the kernel version early to ensure that no container has
   // been started and the VM can still be trusted.
@@ -366,7 +374,7 @@ bool TerminaVm::StartTermina(std::string lxd_subnet,
 
   request.set_tremplin_ipv4_address(GatewayAddress());
   request.mutable_lxd_ipv4_subnet()->swap(lxd_subnet);
-  request.mutable_stateful_device()->swap(stateful_device);
+  request.set_stateful_device(StatefulDevice());
 
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(

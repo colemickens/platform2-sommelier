@@ -1081,10 +1081,11 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   }
 
   // Track the next available virtio-blk device name.
-  // Assume that the rootfs filesystem was assigned /dev/vda and that
-  // every subsequent image was assigned a letter in alphabetical order
+  // Assume that the rootfs filesystem was assigned /dev/pmem0 if
+  // USE_PMEM_DEVICE_FOR_ROOTFS is set, /dev/vda otherwise.
+  // Assume every subsequent image was assigned a letter in alphabetical order
   // starting from 'b'.
-  unsigned char disk_letter = 'b';
+  unsigned char disk_letter = USE_PMEM_DEVICE_FOR_ROOTFS ? 'a' : 'b';
 
   // In newer components, the /opt/google/cros-containers directory
   // is split into its own disk image(vm_tools.img).  Detect whether it exists
@@ -1953,8 +1954,7 @@ bool Service::StartTermina(TerminaVm* vm, string* failure_reason) {
       base::StringPrintf("%s/%zu", dst_addr.c_str(), prefix_length);
 
   string error;
-  if (!vm->StartTermina(std::move(container_subnet_cidr), vm->StatefulDevice(),
-                        &error)) {
+  if (!vm->StartTermina(std::move(container_subnet_cidr), &error)) {
     failure_reason->assign(error);
     return false;
   }

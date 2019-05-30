@@ -466,8 +466,9 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
   if (ret != 0) {
     int saved_errno = errno;
     PLOG(ERROR) << "Failed to mount stateful disk";
-    return grpc::Status(grpc::INTERNAL, string("failed to mount stateful: ") +
-                                            strerror(saved_errno));
+    return grpc::Status(grpc::INTERNAL, string("failed to mount stateful (") +
+                                            stateful_device +
+                                            "): " + strerror(saved_errno));
   }
 
   // Resize the stateful filesystem to fill the block device in case
