@@ -29,7 +29,7 @@ namespace {
 
 // The minimum kernel version of the host which supports untrusted VMs or a
 // trusted VM with nested VM support.
-constexpr UntrustedVMUtils::KernelVersionAndMajorRevision kMinKernelVersion =
+constexpr KernelVersionAndMajorRevision kMinKernelVersion =
     std::make_pair(4, 10);
 
 }  // namespace

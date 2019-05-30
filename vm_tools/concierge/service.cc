@@ -158,8 +158,12 @@ constexpr arc_networkd::MacAddress kArcVmMacAddress{0xd2, 0x47, 0xf7,
 
 // The minimum kernel version of the host which supports untrusted VMs or a
 // trusted VM with nested VM support.
-constexpr UntrustedVMUtils::KernelVersionAndMajorRevision
-    kMinKernelVersionForUntrustedVM = std::make_pair(4, 14);
+constexpr KernelVersionAndMajorRevision kMinKernelVersionForUntrustedVM =
+    std::make_pair(4, 14);
+
+// The minimum kernel version of the host which supports virtio-pmem.
+constexpr KernelVersionAndMajorRevision kMinKernelVersionForVirtioPmem =
+    std::make_pair(4, 4);
 
 // File path that reports the L1TF vulnerability status.
 constexpr const char kL1TFFilePath[] =
@@ -1082,10 +1086,17 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   }
 
   // Track the next available virtio-blk device name.
-  // Assume that the rootfs filesystem was assigned /dev/vda and that
-  // every subsequent image was assigned a letter in alphabetical order
+  // Assume that the rootfs filesystem was assigned /dev/pmem0 if
+  // pmem is used, /dev/vda otherwise.
+  // Assume every subsequent image was assigned a letter in alphabetical order
   // starting from 'b'.
-  unsigned char disk_letter = 'b';
+  auto host_kernel_version = GetKernelVersion();
+  bool use_pmem =
+      host_kernel_version &&
+      host_kernel_version.value() >= kMinKernelVersionForVirtioPmem &&
+      USE_PMEM_DEVICE_FOR_ROOTFS;
+  string rootfs_device = use_pmem ? "/dev/pmem0" : "/dev/vda";
+  unsigned char disk_letter = use_pmem ? 'a' : 'b';
 
   // In newer components, the /opt/google/cros-containers directory
   // is split into its own disk image(vm_tools.img).  Detect whether it exists
@@ -1175,11 +1186,11 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       .software_tpm = request.software_tpm(),
       .audio_capture = request.enable_audio_capture(),
   };
-  auto vm =
-      TerminaVm::Create(std::move(kernel), std::move(rootfs), std::move(disks),
-                        std::move(mac_address), std::move(subnet), vsock_cid,
-                        std::move(server_proxy), std::move(runtime_dir),
-                        std::move(stateful_device), features);
+  auto vm = TerminaVm::Create(
+      std::move(kernel), std::move(rootfs), std::move(disks),
+      std::move(mac_address), std::move(subnet), vsock_cid,
+      std::move(server_proxy), std::move(runtime_dir), std::move(rootfs_device),
+      std::move(stateful_device), features);
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 
@@ -1986,8 +1997,7 @@ bool Service::StartTermina(
 
   string error;
   vm_tools::StartTerminaResponse response;
-  if (!vm->StartTermina(std::move(container_subnet_cidr), vm->StatefulDevice(),
-                        &error, &response)) {
+  if (!vm->StartTermina(std::move(container_subnet_cidr), &error, &response)) {
     failure_reason->assign(error);
     return false;
   }

@@ -27,31 +27,6 @@ namespace {
 // device.
 const char kSchedulerConfigurationConservative[] = "conservative";
 
-// Gets the kernel version of the host it's run on. Returns true if retrieved
-// successfully, false otherwise.
-base::Optional<UntrustedVMUtils::KernelVersionAndMajorRevision>
-GetKernelVersion() {
-  struct utsname buf;
-  if (uname(&buf))
-    return base::nullopt;
-
-  // Parse uname result in the form of x.yy.zzz. The parsed data should be in
-  // the expected format.
-  std::vector<base::StringPiece> versions = base::SplitStringPiece(
-      buf.release, ".", base::WhitespaceHandling::TRIM_WHITESPACE,
-      base::SplitResult::SPLIT_WANT_ALL);
-  DCHECK_EQ(versions.size(), 3);
-  DCHECK(!versions[0].empty());
-  DCHECK(!versions[1].empty());
-  int version;
-  bool result = base::StringToInt(versions[0], &version);
-  DCHECK(result);
-  int major_revision;
-  result = base::StringToInt(versions[1], &major_revision);
-  DCHECK(result);
-  return std::make_pair(version, major_revision);
-}
-
 // Returns the L1TF mitigation status of the host it's run on.
 UntrustedVMUtils::MitigationStatus GetL1TFMitigationStatus(
     const base::FilePath& l1tf_status_path) {
@@ -125,6 +100,30 @@ UntrustedVMUtils::MitigationStatus GetMDSMitigationStatus(
 }
 
 }  // namespace
+
+// Gets the kernel version of the host it's run on. Returns true if retrieved
+// successfully, false otherwise.
+base::Optional<KernelVersionAndMajorRevision> GetKernelVersion() {
+  struct utsname buf;
+  if (uname(&buf))
+    return base::nullopt;
+
+  // Parse uname result in the form of x.yy.zzz. The parsed data should be in
+  // the expected format.
+  std::vector<base::StringPiece> versions = base::SplitStringPiece(
+      buf.release, ".", base::WhitespaceHandling::TRIM_WHITESPACE,
+      base::SplitResult::SPLIT_WANT_ALL);
+  DCHECK_EQ(versions.size(), 3);
+  DCHECK(!versions[0].empty());
+  DCHECK(!versions[1].empty());
+  int version;
+  bool result = base::StringToInt(versions[0], &version);
+  DCHECK(result);
+  int major_revision;
+  result = base::StringToInt(versions[1], &major_revision);
+  DCHECK(result);
+  return std::make_pair(version, major_revision);
+}
 
 UntrustedVMUtils::UntrustedVMUtils(
     dbus::ObjectProxy* debugd_proxy,

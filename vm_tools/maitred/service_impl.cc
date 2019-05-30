@@ -476,9 +476,10 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
     if (ret != 0) {
       int saved_errno_retry = errno;
       response->set_mount_result(StartTerminaResponse::FAILURE);
-      return grpc::Status(grpc::INTERNAL, string("failed to mount stateful: ") +
-                                              strerror(saved_errno) + ", " +
-                                              strerror(saved_errno_retry));
+      return grpc::Status(grpc::INTERNAL,
+                          string("failed to mount stateful(") +
+                              stateful_device + "): " + strerror(saved_errno) +
+                              ", " + strerror(saved_errno_retry));
     } else {
       response->set_mount_result(StartTerminaResponse::PARTIAL_DATA_LOSS);
     }

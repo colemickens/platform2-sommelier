@@ -13,14 +13,15 @@
 
 namespace vm_tools {
 namespace concierge {
+// Used to represent kernel version.
+using KernelVersionAndMajorRevision = std::pair<int, int>;
+
+base::Optional<KernelVersionAndMajorRevision> GetKernelVersion();
 
 // Used to check for, and if needed enable, the conditions required for
 // untrusted VMs.
 class UntrustedVMUtils {
  public:
-  // Used to represent kernel version.
-  using KernelVersionAndMajorRevision = std::pair<int, int>;
-
   // |debugd_proxy| - Used to call into debugd daemon.
   // |min_needed_version| - Minimum kernel version required to support untrusted
   // VMs.

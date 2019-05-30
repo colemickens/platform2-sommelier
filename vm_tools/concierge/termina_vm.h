@@ -73,6 +73,7 @@ class TerminaVm final : public VmInterface {
       uint32_t vsock_cid,
       std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
       base::FilePath runtime_dir,
+      std::string rootfs_device,
       std::string stateful_device,
       VmFeatures features);
   ~TerminaVm() override;
@@ -92,7 +93,6 @@ class TerminaVm final : public VmInterface {
 
   // Starts Termina-specific services in the guest.
   bool StartTermina(std::string lxd_subnet,
-                    std::string stateful_device,
                     std::string* out_error,
                     vm_tools::StartTerminaResponse* response);
 
@@ -152,6 +152,9 @@ class TerminaVm final : public VmInterface {
   // Returns INADDR_ANY if there is no container subnet.
   uint32_t ContainerSubnet() const;
 
+  // Name of the guest block device for the rootfs (e.g. /dev/vda, /dev/pmem0).
+  std::string RootfsDevice() const { return rootfs_device_; }
+
   // Name of the guest block device for the stateful filesystem (e.g. /dev/vdb).
   std::string StatefulDevice() const { return stateful_device_; }
 
@@ -191,6 +194,7 @@ class TerminaVm final : public VmInterface {
       std::unique_ptr<arc_networkd::Subnet> subnet,
       uint32_t vsock_cid,
       base::FilePath runtime_dir,
+      std::string rootfs_device,
       std::string stateful_device,
       std::string kernel_version,
       std::unique_ptr<vm_tools::Maitred::Stub> stub);
@@ -201,6 +205,7 @@ class TerminaVm final : public VmInterface {
             uint32_t vsock_cid,
             std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
             base::FilePath runtime_dir,
+            std::string rootfs_device,
             std::string stateful_device,
             VmFeatures features);
 
@@ -256,6 +261,9 @@ class TerminaVm final : public VmInterface {
 
   // Kernel version retrieved at startup.
   std::string kernel_version_;
+
+  // Rootfs device name.
+  std::string rootfs_device_;
 
   // Stateful device name.
   std::string stateful_device_;
