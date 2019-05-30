@@ -283,6 +283,13 @@ class UserDataAuth {
 
   // ========= Firmware Management Parameters Related Public Methods =========
 
+  // Retrieve the firmware management parameters. Returns
+  // CRYPTOHOME_ERROR_NOT_SET if successful, and in that case, |fwmp| will be
+  // filled with the firmware management parameters. Otherwise, an error code is
+  // returned and |fwmp|'s content is undefined.
+  user_data_auth::CryptohomeErrorCode GetFirmwareManagementParameters(
+      user_data_auth::FirmwareManagementParameters* fwmp);
+
   // Remove the firmware management parameters, that is, undefine its NVRAM
   // space (if defined). Return true if and only if the firmware management
   // parameters are gone

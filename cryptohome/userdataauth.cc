@@ -1875,6 +1875,37 @@ UserDataAuth::InstallAttributesStatusToProtoEnum(
   return user_data_auth::InstallAttributesState::INVALID;
 }
 
+user_data_auth::CryptohomeErrorCode
+UserDataAuth::GetFirmwareManagementParameters(
+    user_data_auth::FirmwareManagementParameters* fwmp) {
+  if (!firmware_management_parameters_->Load()) {
+    return user_data_auth::
+        CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID;
+  }
+
+  uint32_t flags;
+  if (firmware_management_parameters_->GetFlags(&flags)) {
+    fwmp->set_flags(flags);
+  } else {
+    LOG(WARNING)
+        << "Failed to GetFlags() for GetFirmwareManagementParameters().";
+    return user_data_auth::
+        CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID;
+  }
+
+  std::vector<uint8_t> hash;
+  if (firmware_management_parameters_->GetDeveloperKeyHash(&hash)) {
+    *fwmp->mutable_developer_key_hash() = {hash.begin(), hash.end()};
+  } else {
+    LOG(WARNING) << "Failed to GetDeveloperKeyHash() for "
+                    "GetFirmwareManagementParameters().";
+    return user_data_auth::
+        CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID;
+  }
+
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+}
+
 bool UserDataAuth::RemoveFirmwareManagementParameters() {
   return firmware_management_parameters_->Destroy();
 }

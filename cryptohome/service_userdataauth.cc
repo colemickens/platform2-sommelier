@@ -564,6 +564,15 @@ void InstallAttributesAdaptor::GetFirmwareManagementParameters(
         user_data_auth::GetFirmwareManagementParametersReply>> response,
     const user_data_auth::GetFirmwareManagementParametersRequest& in_request) {
   user_data_auth::GetFirmwareManagementParametersReply reply;
+  user_data_auth::FirmwareManagementParameters fwmp;
+  auto status = service_->GetFirmwareManagementParameters(&fwmp);
+  // Note, if there's no error, then |status| is set to CRYPTOHOME_ERROR_NOT_SET
+  // to indicate that.
+  reply.set_error(status);
+
+  if (status == user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    *reply.mutable_fwmp() = fwmp;
+  }
   response->Return(reply);
 }
 
