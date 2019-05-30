@@ -113,6 +113,7 @@
       '-Wformat=2',
       '-fvisibility=internal',
       '-Wa,--noexecstack',
+      '-Wimplicit-fallthrough',
     ],
     'cflags_c': [
       '-std=gnu11',

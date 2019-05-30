@@ -60,6 +60,7 @@ config("compiler_defaults") {
     "-Wformat=2",
     "-fvisibility=internal",
     "-Wa,--noexecstack",
+    "-Wimplicit-fallthrough",
   ]
   cflags_c = [ "-std=gnu11" ] + external_cppflags + external_cxxflags
   cflags_cc = [ "-std=gnu++14" ] + external_cppflags + external_cxxflags
