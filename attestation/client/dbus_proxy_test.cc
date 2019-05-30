@@ -175,7 +175,6 @@ TEST_F(DBusProxyTest, ActivateAttestationKey) {
     dbus::MessageReader reader(method_call);
     ActivateAttestationKeyRequest request_proto;
     EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
-    EXPECT_EQ(KEY_TYPE_ECC, request_proto.key_type());
     EXPECT_EQ("encrypted1",
               request_proto.encrypted_certificate().asym_ca_contents());
     EXPECT_EQ("encrypted2",
@@ -202,7 +201,6 @@ TEST_F(DBusProxyTest, ActivateAttestationKey) {
     EXPECT_EQ("certificate", reply.certificate());
   };
   ActivateAttestationKeyRequest request;
-  request.set_key_type(KEY_TYPE_ECC);
   request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
   request.mutable_encrypted_certificate()->set_sym_ca_attestation("encrypted2");
   request.set_save_certificate(true);

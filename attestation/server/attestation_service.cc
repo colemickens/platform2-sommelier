@@ -808,11 +808,6 @@ void AttestationService::ActivateAttestationKey(
 void AttestationService::ActivateAttestationKeyTask(
     const ActivateAttestationKeyRequest& request,
     const std::shared_ptr<ActivateAttestationKeyReply>& result) {
-  if (request.key_type() != KEY_TYPE_RSA) {
-    result->set_status(STATUS_INVALID_PARAMETER);
-    LOG(ERROR) << __func__ << ": Only RSA currently supported.";
-    return;
-  }
   if (request.encrypted_certificate().tpm_version() !=
       tpm_utility_->GetVersion()) {
     result->set_status(STATUS_INVALID_PARAMETER);

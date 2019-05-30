@@ -1035,7 +1035,6 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeySuccess) {
   };
   ActivateAttestationKeyRequest request;
   request.set_aca_type(aca_type_);
-  request.set_key_type(KEY_TYPE_RSA);
   request.mutable_encrypted_certificate()->set_tpm_version(
       kTpmVersionUnderTest);
   request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
@@ -1076,7 +1075,6 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeySuccessNoSave) {
   };
   ActivateAttestationKeyRequest request;
   request.set_aca_type(aca_type_);
-  request.set_key_type(KEY_TYPE_RSA);
   request.mutable_encrypted_certificate()->set_tpm_version(
       kTpmVersionUnderTest);
   request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
@@ -1102,7 +1100,6 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeySaveFailure) {
   };
   ActivateAttestationKeyRequest request;
   request.set_aca_type(aca_type_);
-  request.set_key_type(KEY_TYPE_RSA);
   request.mutable_encrypted_certificate()->set_tpm_version(
       kTpmVersionUnderTest);
   request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
@@ -1138,7 +1135,6 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeyActivateFailure) {
   };
   ActivateAttestationKeyRequest request;
   request.set_aca_type(aca_type_);
-  request.set_key_type(KEY_TYPE_RSA);
   request.mutable_encrypted_certificate()->set_tpm_version(
       kTpmVersionUnderTest);
   request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");

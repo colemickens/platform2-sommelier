@@ -579,7 +579,6 @@ class ClientLoop : public ClientLoopBase {
                                   bool save_certificate) {
     ActivateAttestationKeyRequest request;
     request.set_aca_type(aca_type);
-    request.set_key_type(KEY_TYPE_RSA);
     request.mutable_encrypted_certificate()->ParseFromString(input);
     request.set_save_certificate(save_certificate);
     attestation_->ActivateAttestationKey(

@@ -187,7 +187,6 @@ TEST_F(DBusServiceTest, GetAttestationKeyInfo) {
 
 TEST_F(DBusServiceTest, ActivateAttestationKey) {
   ActivateAttestationKeyRequest request;
-  request.set_key_type(KEY_TYPE_ECC);
   request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
   request.mutable_encrypted_certificate()->set_sym_ca_attestation("encrypted2");
   request.set_save_certificate(true);
@@ -196,7 +195,6 @@ TEST_F(DBusServiceTest, ActivateAttestationKey) {
           Invoke([](const ActivateAttestationKeyRequest& request,
                     const AttestationInterface::ActivateAttestationKeyCallback&
                         callback) {
-            EXPECT_EQ(KEY_TYPE_ECC, request.key_type());
             EXPECT_EQ("encrypted1",
                       request.encrypted_certificate().asym_ca_contents());
             EXPECT_EQ("encrypted2",
