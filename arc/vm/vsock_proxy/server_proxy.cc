@@ -26,7 +26,7 @@ namespace arc {
 namespace {
 
 // Port for VSOCK.
-constexpr unsigned int kVSockPort = 9999;
+constexpr unsigned int kVSockPort = 9900;
 
 base::ScopedFD CreateVSock() {
   LOG(INFO) << "Creating VSOCK...";
