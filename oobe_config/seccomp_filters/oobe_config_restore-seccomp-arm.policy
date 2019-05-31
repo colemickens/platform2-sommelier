@@ -14,6 +14,7 @@ epoll_wait: 1
 exit: 1
 exit_group: 1
 fcntl64: 1
+flock: 1
 fstat64: 1
 getegid32: 1
 geteuid32: 1

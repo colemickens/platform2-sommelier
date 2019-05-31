@@ -15,6 +15,7 @@ epoll_wait: 1
 exit: 1
 exit_group: 1
 fcntl: 1
+flock: 1
 fstat: 1
 getegid: 1
 geteuid: 1
