@@ -84,6 +84,12 @@ void SetUpRegulatoryLabelFlag(chromeos::ui::ChromiumCommandBuilder* builder,
 void SetUpPowerButtonPositionFlag(chromeos::ui::ChromiumCommandBuilder* builder,
                                   brillo::CrosConfigInterface* cros_config);
 
+// Add "--ash-side-volume-button-position" flag with value in JSON format read
+// from |cros_config|.
+void SetUpSideVolumeButtonPositionFlag(
+    chromeos::ui::ChromiumCommandBuilder* builder,
+    brillo::CrosConfigInterface* cros_config);
+
 // Add "--has-internal-stylus" flag if the device has
 // an internal stylus.
 void SetUpInternalStylusFlag(chromeos::ui::ChromiumCommandBuilder* builder,

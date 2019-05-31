@@ -390,6 +390,27 @@ properties:
                     position:
                       type: string
                   additionalProperties: false
+                side-volume-button:
+                  description: Defines the position of the side volume button. `region` indicates
+                    whether the button is at the side of the "screen" or "keyboard" of the device.
+                    `side` indicates which edge the button is anchored to while the device in
+                    landscape primary screen orientation. It can be "left", "right", "top",
+                    "bottom".
+                  type: object
+                  properties:
+                    region:
+                      type: string
+                      enum:
+                      - keyboard
+                      - screen
+                    side:
+                      type: string
+                      enum:
+                      - left
+                      - right
+                      - top
+                      - bottom
+                  additionalProperties: false
               additionalProperties: false
             oem-id:
               description: |

@@ -44,6 +44,10 @@ const char kPowerButtonPositionPath[] = "/ui/power-button";
 const char kPowerButtonEdgeField[] = "edge";
 const char kPowerButtonPositionField[] = "position";
 
+const char kSideVolumeButtonPath[] = "/ui/side-volume-button";
+const char kSideVolumeButtonRegion[] = "region";
+const char kSideVolumeButtonSide[] = "side";
+
 const char kStylusCategoryPath[] = "/hardware-properties";
 const char kStylusCategoryField[] = "stylus-category";
 
@@ -441,9 +445,8 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   builder->AddFeatureEnableOverride("MyFilesVolume");
 
   SetUpPowerButtonPositionFlag(builder, cros_config);
-
+  SetUpSideVolumeButtonPositionFlag(builder, cros_config);
   SetUpRegulatoryLabelFlag(builder, cros_config);
-
   SetUpInternalStylusFlag(builder, cros_config);
 }
 
@@ -581,6 +584,30 @@ void SetUpPowerButtonPositionFlag(ChromiumCommandBuilder* builder,
   base::JSONWriter::Write(position_info, &json_position_info);
   builder->AddArg(base::StringPrintf("--ash-power-button-position=%s",
                                      json_position_info.c_str()));
+}
+
+void SetUpSideVolumeButtonPositionFlag(
+    ChromiumCommandBuilder* builder, brillo::CrosConfigInterface* cros_config) {
+  std::string region_as_string, side_as_string;
+  if (!cros_config ||
+      !cros_config->GetString(kSideVolumeButtonPath, kSideVolumeButtonRegion,
+                              &region_as_string) ||
+      !cros_config->GetString(kSideVolumeButtonPath, kSideVolumeButtonSide,
+                              &side_as_string)) {
+    return;
+  }
+
+  base::DictionaryValue position_info;
+  position_info.SetString(kSideVolumeButtonRegion, region_as_string);
+  position_info.SetString(kSideVolumeButtonSide, side_as_string);
+
+  std::string json_position_info;
+  if (!base::JSONWriter::Write(position_info, &json_position_info)) {
+    LOG(ERROR) << "JSONWriter::Write failed in writing side volume button "
+               << "position info.";
+    return;
+  }
+  builder->AddArg("--ash-side-volume-button-position=" + json_position_info);
 }
 
 void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,

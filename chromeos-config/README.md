@@ -460,12 +460,19 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | power-button | [power-button](#power-button) |  | False |  | False |  |
+| side-volume-button | [side-volume-button](#side-volume-button) |  | False |  | False | Defines the position of the side volume button. `region` indicates whether the button is at the side of the "screen" or "keyboard" of the device. `side` indicates which edge the button is anchored to while the device in landscape primary screen orientation. It can be "left", "right", "top", "bottom". |
 
 ### power-button
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | edge | string |  | False |  | False |  |
 | position | string |  | False |  | False |  |
+
+### side-volume-button
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| region | string |  | False |  | False |  |
+| side | string |  | False |  | False |  |
 
 
 [](end_definitions)
