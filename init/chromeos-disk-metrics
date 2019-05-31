@@ -6,7 +6,7 @@
 . /usr/share/misc/storage-info-common.sh
 . /usr/share/misc/shflags
 
-DEFINE_boolean 'test' ${FLAGS_FALSE} "For unit testing."
+DEFINE_boolean 'test' "${FLAGS_FALSE}" "For unit testing."
 
 # Parse command line.
 FLAGS "$@" || exit 1
@@ -21,13 +21,13 @@ INVALID="-1"
 #   report_smart_metrics <uncorrectable-errors> <transfer-errors>
 report_smart_metrics() {
   if [ -n "$1" ]; then
-    if [ $1 -ne ${INVALID} ]; then
-      metrics_client Platform.SmartUncorrectableErrors $1 1 1000000 20
+    if [ "$1" -ne "${INVALID}" ]; then
+      metrics_client Platform.SmartUncorrectableErrors "$1" 1 1000000 20
     fi
   fi
   if [ -n "$2" ]; then
-    if [ $2 -ne ${INVALID} ]; then
-      metrics_client Platform.SmartTransferErrors $2 1 1000000 20
+    if [ "$2" -ne "${INVALID}" ]; then
+      metrics_client Platform.SmartTransferErrors "$2" 1 1000000 20
     fi
   fi
 }
@@ -110,7 +110,7 @@ ufs_disk_metrics() {
 
 # Invoke main if not in test mode, otherwise let the test code call.
 main() {
-  if [ ${FLAGS_test} -eq ${FLAGS_TRUE} ]; then
+  if [ "${FLAGS_test}" -eq "${FLAGS_TRUE}" ]; then
     return
   fi
   if [ $# -ne 0 ]; then
