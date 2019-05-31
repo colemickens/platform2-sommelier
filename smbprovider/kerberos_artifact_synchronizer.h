@@ -42,16 +42,18 @@ class KerberosArtifactSynchronizer {
 
  private:
   // Calls GetUserKerberosFiles on |client_|.
-  void GetFiles();
+  void GetFiles(SetupKerberosCallback callback);
 
   // Response handler for GetUserKerberosFiles.
-  void OnGetFilesResponse(authpolicy::ErrorType error,
+  void OnGetFilesResponse(SetupKerberosCallback callback,
+                          authpolicy::ErrorType error,
                           const authpolicy::KerberosFiles& kerberos_files);
 
   // Writes |kerberos_files| to |krb5_conf_path_| and |krb5_ccache_path_|
   // respectively. If Kerberos is not yet fully setup, calls
   // ConnectToKerberosFilesChangedSignal.
-  void WriteFiles(const authpolicy::KerberosFiles& kerberos_files);
+  void WriteFiles(const authpolicy::KerberosFiles& kerberos_files,
+                  SetupKerberosCallback callback);
 
   // Writes |kerberos_file| to |path|. First writes into a temporary file
   // and then replaces the existing one. Returns true if the write succeeds,
@@ -60,14 +62,15 @@ class KerberosArtifactSynchronizer {
 
   // Connects to the 'UserKerberosFilesChanged' D-Bus signal. Called by
   // WriteFiles() on initial setup.
-  void ConnectToKerberosFilesChangedSignal();
+  void ConnectToKerberosFilesChangedSignal(SetupKerberosCallback callback);
 
   // Callback for 'UserKerberosFilesChanged' D-Bus signal.
   void OnKerberosFilesChanged(dbus::Signal* signal);
 
   // Called after connecting to 'UserKerberosFilesChanged' signal. Verifies that
   // the signal connected successfully.
-  void OnKerberosFilesChangedSignalConnected(const std::string& interface_name,
+  void OnKerberosFilesChangedSignalConnected(SetupKerberosCallback callback,
+                                             const std::string& interface_name,
                                              const std::string& signal_name,
                                              bool success);
 
@@ -75,7 +78,6 @@ class KerberosArtifactSynchronizer {
   const std::string krb5_conf_path_;
   const std::string krb5_ccache_path_;
   std::string object_guid_;
-  SetupKerberosCallback setup_result_callback_;
 
   std::unique_ptr<KerberosArtifactClientInterface> client_;
 

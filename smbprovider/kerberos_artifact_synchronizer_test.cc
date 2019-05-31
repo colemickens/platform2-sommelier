@@ -25,6 +25,11 @@ void ExpectSetupFailure(bool success) {
   EXPECT_FALSE(success);
 }
 
+void IncrementInt(int* count, bool expected_success, bool success) {
+  EXPECT_EQ(expected_success, success);
+  (*count)++;
+}
+
 }  // namespace
 
 class KerberosArtifactSynchronizerTest : public testing::Test {
@@ -108,12 +113,41 @@ TEST_F(KerberosArtifactSynchronizerTest, GetFilesRunsOnSignalFire) {
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
   synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
+  int setup_callback_count = 0;
+  synchronizer_->SetupKerberos(
+      user, base::Bind(&IncrementInt, &setup_callback_count, true));
 
   EXPECT_EQ(1, fake_artifact_client_->GetFilesMethodCallCount());
 
   fake_artifact_client_->FireSignal();
 
   EXPECT_EQ(2, fake_artifact_client_->GetFilesMethodCallCount());
+  EXPECT_EQ(1, setup_callback_count);
+}
+
+// Synchronizer calls GetFiles an additional time when the signal fires, but
+// GetUserKerberosFiles() fails.
+TEST_F(KerberosArtifactSynchronizerTest,
+       GetFilesRunsOnSignalFireWithGetFilesFailure) {
+  const std::string user = "test user";
+  const std::string krb5cc = "test creds";
+  const std::string krb5conf = "test conf";
+
+  authpolicy::KerberosFiles kerberos_files =
+      CreateKerberosFilesProto(krb5cc, krb5conf);
+  fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
+  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
+  int setup_callback_count = 0;
+  synchronizer_->SetupKerberos(
+      user, base::Bind(&IncrementInt, &setup_callback_count, true));
+
+  EXPECT_EQ(1, fake_artifact_client_->GetFilesMethodCallCount());
+
+  fake_artifact_client_->ResetKerberosFiles();
+  fake_artifact_client_->FireSignal();
+
+  EXPECT_EQ(2, fake_artifact_client_->GetFilesMethodCallCount());
+  EXPECT_EQ(1, setup_callback_count);
 }
 
 // Synchronizer overwrites the Kerberos files when the signal fires.
@@ -153,6 +187,38 @@ TEST_F(KerberosArtifactSynchronizerTest, SetupKerberosFailsKerberosFilesEmpty) {
   fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
 
   synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupFailure));
+}
+
+// SetupKerberos is called twice for the same user.
+TEST_F(KerberosArtifactSynchronizerTest, SetupKerberosCalledTwice) {
+  const std::string user = "test user";
+  const std::string krb5cc = "test creds";
+  const std::string krb5conf = "test conf";
+
+  authpolicy::KerberosFiles kerberos_files =
+      CreateKerberosFilesProto(krb5cc, krb5conf);
+  fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
+
+  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
+  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
+  EXPECT_EQ(1, fake_artifact_client_->GetFilesMethodCallCount());
+}
+
+// SetupKerberos is called twice for different users.
+TEST_F(KerberosArtifactSynchronizerTest,
+       SetupKerberosCalledTwiceDifferentUsers) {
+  const std::string user = "test user";
+  const std::string user2 = "test user 2";
+  const std::string krb5cc = "test creds";
+  const std::string krb5conf = "test conf";
+
+  authpolicy::KerberosFiles kerberos_files =
+      CreateKerberosFilesProto(krb5cc, krb5conf);
+  fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
+
+  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
+  synchronizer_->SetupKerberos(user2, base::Bind(&ExpectSetupFailure));
+  EXPECT_EQ(1, fake_artifact_client_->GetFilesMethodCallCount());
 }
 
 }  // namespace smbprovider

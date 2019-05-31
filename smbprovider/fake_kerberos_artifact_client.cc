@@ -58,4 +58,8 @@ void FakeKerberosArtifactClient::AddKerberosFiles(
   kerberos_files_map_[account_guid] = kerberos_files;
 }
 
+void FakeKerberosArtifactClient::ResetKerberosFiles() {
+  kerberos_files_map_.clear();
+}
+
 }  // namespace smbprovider

@@ -25,36 +25,48 @@ KerberosArtifactSynchronizer::KerberosArtifactSynchronizer(
 
 void KerberosArtifactSynchronizer::SetupKerberos(
     const std::string& object_guid, SetupKerberosCallback callback) {
-  DCHECK(!is_kerberos_setup_);
+  if (!object_guid_.empty() && object_guid_ != object_guid) {
+    // Only support one kerberos user at a time.
+    LOG(ERROR) << "Kerberos is already set up for a differnet user";
+    std::move(callback).Run(false /* success */);
+    return;
+  }
 
-  setup_result_callback_ = std::move(callback);
+  if (object_guid_ == object_guid && is_kerberos_setup_) {
+    LOG(WARNING) << "Kerberos already set up the user";
+    std::move(callback).Run(true /* success */);
+    return;
+  }
+
   object_guid_ = object_guid;
-
-  GetFiles();
+  GetFiles(std::move(callback));
 }
 
-void KerberosArtifactSynchronizer::GetFiles() {
+void KerberosArtifactSynchronizer::GetFiles(SetupKerberosCallback callback) {
   client_->GetUserKerberosFiles(
       object_guid_,
       base::Bind(&KerberosArtifactSynchronizer::OnGetFilesResponse,
-                 base::Unretained(this)));
+                 base::Unretained(this), std::move(callback)));
 }
 
 void KerberosArtifactSynchronizer::OnGetFilesResponse(
+    SetupKerberosCallback callback,
     authpolicy::ErrorType error,
     const authpolicy::KerberosFiles& kerberos_files) {
   if (error != authpolicy::ERROR_NONE) {
     LOG(ERROR) << "KerberosArtifactSynchronizer failed to get Kerberos files";
-    DCHECK(!is_kerberos_setup_);
-    setup_result_callback_.Run(false /* setup_success */);
+    if (callback) {
+      std::move(callback).Run(false /* setup_success */);
+    }
     return;
   }
 
-  WriteFiles(kerberos_files);
+  WriteFiles(kerberos_files, std::move(callback));
 }
 
 void KerberosArtifactSynchronizer::WriteFiles(
-    const authpolicy::KerberosFiles& kerberos_files) {
+    const authpolicy::KerberosFiles& kerberos_files,
+    SetupKerberosCallback callback) {
   bool success = kerberos_files.has_krb5cc() && kerberos_files.has_krb5conf() &&
                  WriteFile(krb5_conf_path_, kerberos_files.krb5conf()) &&
                  WriteFile(krb5_ccache_path_, kerberos_files.krb5cc());
@@ -65,6 +77,13 @@ void KerberosArtifactSynchronizer::WriteFiles(
       LOG(ERROR) << "KerberosArtifactSynchronizer: failed to write updated "
                     "Keberos Files";
     }
+    if (callback) {
+      // If a callback was passed, this is rare case where the browser restarted
+      // and SetupKerberos() was called twice in quick succession. If
+      // |is_kerberos_setup_| is true, then the first call to SetupKerberos()
+      // succeeded, so treat this as a success.
+      std::move(callback).Run(true /* success */);
+    }
     return;
   }
 
@@ -73,21 +92,23 @@ void KerberosArtifactSynchronizer::WriteFiles(
     LOG(ERROR) << "KerberosArtifactSynchronizer: failed to write initial "
                   "Keberos Files";
     DCHECK(!is_kerberos_setup_);
-    setup_result_callback_.Run(false /* setup_success */);
+    DCHECK(callback);
+    std::move(callback).Run(false /* setup_success */);
     return;
   }
 
   // Sets is_kerberos_setup_ to true on successful signal connection.
-  ConnectToKerberosFilesChangedSignal();
+  ConnectToKerberosFilesChangedSignal(std::move(callback));
 }
 
-void KerberosArtifactSynchronizer::ConnectToKerberosFilesChangedSignal() {
+void KerberosArtifactSynchronizer::ConnectToKerberosFilesChangedSignal(
+    SetupKerberosCallback callback) {
   client_->ConnectToKerberosFilesChangedSignal(
       base::Bind(&KerberosArtifactSynchronizer::OnKerberosFilesChanged,
                  base::Unretained(this)),
       base::Bind(
           &KerberosArtifactSynchronizer::OnKerberosFilesChangedSignalConnected,
-          base::Unretained(this)));
+          base::Unretained(this), std::move(callback)));
 }
 
 void KerberosArtifactSynchronizer::OnKerberosFilesChanged(
@@ -96,10 +117,11 @@ void KerberosArtifactSynchronizer::OnKerberosFilesChanged(
   DCHECK_EQ(signal->GetInterface(), authpolicy::kAuthPolicyInterface);
   DCHECK_EQ(signal->GetMember(), authpolicy::kUserKerberosFilesChangedSignal);
 
-  GetFiles();
+  GetFiles({});
 }
 
 void KerberosArtifactSynchronizer::OnKerberosFilesChangedSignalConnected(
+    SetupKerberosCallback callback,
     const std::string& interface_name,
     const std::string& signal_name,
     bool success) {
@@ -107,9 +129,15 @@ void KerberosArtifactSynchronizer::OnKerberosFilesChangedSignalConnected(
   DCHECK_EQ(signal_name, authpolicy::kUserKerberosFilesChangedSignal);
   DCHECK(success);
 
-  DCHECK(!is_kerberos_setup_);
+  if (is_kerberos_setup_) {
+    // If SetupKerberos() was called twice in quick succession (i.e. if the
+    // browser restarted on login), it's possible for this change signal to be
+    // registered twice. The change handler will be run twice, but this
+    // shouldn't be an issue.
+    LOG(ERROR) << "Duplicate Kerberos file change signals registered";
+  }
   is_kerberos_setup_ = true;
-  setup_result_callback_.Run(true /* setup_success */);
+  std::move(callback).Run(true /* setup_success */);
 }
 
 bool KerberosArtifactSynchronizer::WriteFile(const std::string& path,

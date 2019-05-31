@@ -50,6 +50,9 @@ class FakeKerberosArtifactClient : public KerberosArtifactClientInterface {
   void AddKerberosFiles(const std::string& object_guid,
                         const authpolicy::KerberosFiles& kerberos_files);
 
+  // Test helper method. Clears |kerberos_files_map_|.
+  void ResetKerberosFiles();
+
  private:
   uint32_t call_count_ = 0;
   dbus::ObjectProxy::SignalCallback signal_callback_;
