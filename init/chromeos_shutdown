@@ -23,7 +23,7 @@ kill_with_open_files_on /mnt/stateful_partition /home/chronos /var
 # CROS_DEBUG equals one if we've booted in developer mode or we've booted a
 # developer image.
 crossystem "cros_debug?1"
-CROS_DEBUG=$((! $?))
+CROS_DEBUG="$((! $?))"
 
 dev_unmount_packages() { true; }
 
@@ -38,12 +38,12 @@ TARGET_VERSION="/run/update_target_version"
 UPDATE_TARGET=""
 STATE_DEV=""
 
-if [ "${CROS_DEBUG}" = "1" -a -f "${STATEFUL_UPDATE}" ]; then
-  STATEFUL_UPDATE_ARGS=$(cat "${STATEFUL_UPDATE}")
+if [ "${CROS_DEBUG}" = "1" ] && [ -f "${STATEFUL_UPDATE}" ]; then
+  STATEFUL_UPDATE_ARGS="$(cat "${STATEFUL_UPDATE}")"
 
-  if [ -r "${TARGET_VERSION}" -a ! -L "${TARGET_VERSION}" ]; then
+  if [ -r "${TARGET_VERSION}" ] && [ ! -L "${TARGET_VERSION}" ]; then
     # Used later to clear Quota parameters from stateful.
-    UPDATE_TARGET=$(cut -d '.' -f 1 "${TARGET_VERSION}")
+    UPDATE_TARGET="$(cut -d '.' -f 1 "${TARGET_VERSION}")"
     STATE_DEV="$(findmnt -n -o SOURCE -M /mnt/stateful_partition)"
     rm -f "${TARGET_VERSION}"
   fi
@@ -75,7 +75,7 @@ crash_reporter --log_to_stderr --clean_shutdown
 sync
 
 # Measure shutdown time up to this point.
-bootstat_archive /var/log/metrics/shutdown.$(date '+%Y%m%d%H%M%S')
+bootstat_archive "/var/log/metrics/shutdown.$(date '+%Y%m%d%H%M%S')"
 
 # To be safe, flush buffers to disk again before unmounting. (From
 # https://crbug.com/760007 it seems that a failed umount can get the filesystem
@@ -110,7 +110,7 @@ if [ -e /dev/mapper/encstateful ]; then
   # clearing all reference points yet. Check crosbug.com/p/21345.
   for i in 1 2 3 4 5 6 7 8 9 10; do
     mount-encrypted umount
-    rc=$?
+    rc="$?"
     if [ ${rc} -eq 0 ]; then
       break
     fi
@@ -118,28 +118,28 @@ if [ -e /dev/mapper/encstateful ]; then
   done
   umount -n /usr/local /home
   # Merge the exit status with the earlier mount-encrypted call.
-  : $(( rc |= $? ))
+  : "$(( rc |= $? ))"
 else
   umount -n /var /usr/local /home
-  rc=$?
+  rc="$?"
 fi
 # Unmount /mnt/stateful_partition only if the previous unmounts succeeded.
-if [ ${rc} -eq 0 ]; then
+if [ "${rc}" -eq 0 ]; then
   umount -n /mnt/stateful_partition
 fi
-exit $(( rc | $? ))
+exit "$(( rc | $? ))"
 ) >/run/umount-encrypted.log 2>&1
 
-if [ $? -ne 0 ]; then
+if [ "$?" -ne 0 ]; then
   mv /run/umount-encrypted.log /mnt/stateful_partition/
   (
     set -x
-    cat /proc/$$/mountinfo
+    cat "/proc/$$/mountinfo"
     dmsetup info
     lsof -n
   ) > /mnt/stateful_partition/shutdown_stateful_umount_failure 2>&1
 else
-  if [ -n "${UPDATE_TARGET}" -a -n "${STATE_DEV}" ]; then
+  if [ -n "${UPDATE_TARGET}" ] && [ -n "${STATE_DEV}" ]; then
     # 10756.0.0 is the first build to turn on ext4 quota.
     # See https://crrev.com/c/1016226
     # Older builds will fail to mount stateful if quota is enabled.
