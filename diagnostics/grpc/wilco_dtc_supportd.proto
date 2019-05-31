@@ -107,6 +107,9 @@ message GetProcDataRequest {
         5;  // request contents of files under “/proc/acpi/button/"
     FILE_NET_NETSTAT = 6;  // request contents of “/proc/net/netstat"
     FILE_NET_DEV = 7;      // request contents of “/proc/net/dev"
+    FILE_DISKSTATS = 8;    // request contents of “/proc/diskstats"
+    FILE_CPUINFO = 9;      // request contents of “/proc/cpuinfo"
+    FILE_VMSTAT = 10;      // request contents of “/proc/vmstat"
   };
 
   // Must not be |TYPE_UNSET|.
@@ -143,6 +146,16 @@ message GetSysfsDataRequest {
     FIRMWARE_DMI_TABLES = 3;  // request SMBIOS information as raw DMI tables
                               // (contents of files under
                               // /sys/firmware/dmi/tables/)
+    CLASS_POWER_SUPPLY =  4;  // request information about power supplies
+                              // (contents of files under
+                              // /sys/class/power_supply/)
+    CLASS_BACKLIGHT = 5;      // request information about brightness
+                              // (contents of files under /sys/class/backlight/)
+    CLASS_NETWORK = 6;        // request information about WLAN and Ethernet
+                              // (contents of files under /sys/class/net/)
+    DEVICES_SYSTEM_CPU = 7;   // request information about CPU details.
+                              // (contents of files under
+                              // /sys/devices/system/cpu/)
   };
 
   // Must not be |TYPE_UNSET|.
