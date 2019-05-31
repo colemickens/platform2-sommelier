@@ -162,17 +162,9 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, AdjustStartDelayImmediate);
   FRIEND_TEST(PortalDetectorTest, AdjustStartDelayAfterDelay);
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
-  FRIEND_TEST(PortalDetectorTest, ReadBadHeadersRetry);
-  FRIEND_TEST(PortalDetectorTest, ReadBadHeader);
-  FRIEND_TEST(PortalDetectorTest, RequestTimeout);
-  FRIEND_TEST(PortalDetectorTest, ReadPartialHeaderTimeout);
-  FRIEND_TEST(PortalDetectorTest, ReadCompleteHeader);
   FRIEND_TEST(PortalDetectorTest, RequestSuccess);
   FRIEND_TEST(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess);
   FRIEND_TEST(PortalDetectorTest, RequestFail);
-  FRIEND_TEST(PortalDetectorTest, StartSingleTrial);
-  FRIEND_TEST(PortalDetectorTest, TrialRetry);
-  FRIEND_TEST(PortalDetectorTest, TrialRetryFail);
   FRIEND_TEST(PortalDetectorTest, InvalidURL);
   FRIEND_TEST(PortalDetectorTest, IsActive);
 

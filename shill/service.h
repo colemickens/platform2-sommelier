@@ -648,14 +648,12 @@ class Service : public base::RefCounted<Service> {
   void NotifyIfVisibilityChanged();
 
  private:
-  friend class ActivePassiveOutOfCreditsDetectorTest;
   friend class EthernetEapServiceTest;
   friend class EthernetServiceTest;
   friend class MetricsTest;
   friend class ManagerTest;
   friend class ServiceAdaptorInterface;
   friend class ServiceTest;
-  friend class SubscriptionStateOutOfCreditsDetectorTest;
   friend class VPNProviderTest;
   friend class VPNServiceTest;
   friend class WiFiServiceTest;

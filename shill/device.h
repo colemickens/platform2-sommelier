@@ -359,7 +359,6 @@ class Device : public base::RefCounted<Device> {
 
  protected:
   friend class base::RefCounted<Device>;
-  friend class DeviceHealthCheckerTest;
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
   FRIEND_TEST(CellularTest, UseNoArpGateway);

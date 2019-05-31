@@ -186,7 +186,6 @@ class WiFiService : public Service {
   friend class WiFiServiceTest;  // SetPassphrase
   friend class WiFiServiceUpdateFromEndpointsTest;  // SignalToStrength
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
-  FRIEND_TEST(MetricsTest, WiFiServicePostReadyAdHoc);
   FRIEND_TEST(MetricsTest, WiFiServicePostReadyEAP);
   FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
   FRIEND_TEST(WiFiMainTest, RoamThresholdProperty);

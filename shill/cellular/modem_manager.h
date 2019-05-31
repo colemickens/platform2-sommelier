@@ -72,7 +72,6 @@ class ModemManager {
   friend class ModemManagerCoreTest;
   friend class ModemManager1Test;
 
-  FRIEND_TEST(ModemInfoTest, RegisterModemManager);
   FRIEND_TEST(ModemManager1Test, AddRemoveInterfaces);
   FRIEND_TEST(ModemManager1Test, Connect);
   FRIEND_TEST(ModemManagerCoreTest, AddRemoveModem);

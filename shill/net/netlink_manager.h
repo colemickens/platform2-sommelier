@@ -263,8 +263,6 @@ class SHILL_EXPORT NetlinkManager {
   friend base::LazyInstanceTraitsBase<NetlinkManager>;
   friend class NetlinkManagerTest;
   friend class NetlinkMessageTest;
-  friend class ShillDaemonTest;
-  friend class ChromeosDaemonTest;
   FRIEND_TEST(NetlinkManagerTest, BroadcastHandler);
   FRIEND_TEST(NetlinkManagerTest, GetFamilyOneInterstitialMessage);
   FRIEND_TEST(NetlinkManagerTest, GetFamilyTimeout);

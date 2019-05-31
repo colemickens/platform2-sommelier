@@ -569,7 +569,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, RegisterKnownService);
   FRIEND_TEST(ManagerTest, RegisterUnknownService);
   FRIEND_TEST(ManagerTest, ReleaseBlacklistedDevice);
-  FRIEND_TEST(ManagerTest, ReleaseDevice);
   FRIEND_TEST(ManagerTest, RunTerminationActions);
   FRIEND_TEST(ManagerTest, ServiceRegistration);
   FRIEND_TEST(ManagerTest, SetAlwaysOnVpnPackage);
