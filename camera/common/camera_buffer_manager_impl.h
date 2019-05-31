@@ -22,6 +22,12 @@
 // the HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINEND format on all CrOS boards.
 #define V4L2_PIX_FMT_RGBX32 v4l2_fourcc('X', 'B', '2', '4')
 
+// A 10-bit bayer format for private reprocessing on MediaTek ISP P1. It's a
+// private RAW format that other DRM drivers will never support and thus making
+// it not upstreamable (i.e., defined in official DRM headers). The define
+// should be kept in sync with cs/chromeos_public/src/platform/minigbm/drv.h
+#define DRM_FORMAT_MTISP_SXYZW10 fourcc_code('M', 'B', '1', '0')
+
 struct native_handle;
 typedef const native_handle* buffer_handle_t;
 struct android_ycbcr;

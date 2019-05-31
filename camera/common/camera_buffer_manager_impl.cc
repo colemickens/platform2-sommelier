@@ -26,13 +26,17 @@ namespace {
 std::unordered_map<uint32_t, std::vector<uint32_t>> kSupportedHalFormats{
     {HAL_PIXEL_FORMAT_BLOB, {DRM_FORMAT_R8}},
     {HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
-     {DRM_FORMAT_NV12, DRM_FORMAT_XBGR8888}},
+     {DRM_FORMAT_NV12, DRM_FORMAT_XBGR8888, DRM_FORMAT_MTISP_SXYZW10}},
     {HAL_PIXEL_FORMAT_YCbCr_420_888, {DRM_FORMAT_NV12}},
 };
 
-uint32_t GrallocUsageToGbmFlags(uint32_t usage) {
-  // The default GBM flags for camera buffers.
-  uint32_t flags = GBM_BO_USE_SW_READ_OFTEN | GBM_BO_USE_SW_WRITE_OFTEN;
+uint32_t GetGbmUseFlags(uint32_t hal_format, uint32_t usage) {
+  uint32_t flags = 0;
+  if (hal_format != HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED ||
+      !(usage & GRALLOC_USAGE_HW_CAMERA_READ)) {
+    // The default GBM flags for non-private-reprocessing camera buffers.
+    flags = GBM_BO_USE_SW_READ_OFTEN | GBM_BO_USE_SW_WRITE_OFTEN;
+  }
 
   if (usage & GRALLOC_USAGE_HW_CAMERA_READ) {
     flags |= GBM_BO_USE_CAMERA_READ;
@@ -142,6 +146,7 @@ uint32_t CameraBufferManager::GetNumPlanes(buffer_handle_t buffer) {
     case DRM_FORMAT_XRGB8888:
     case DRM_FORMAT_YUYV:
     case DRM_FORMAT_YVYU:
+    case DRM_FORMAT_MTISP_SXYZW10:
       return 1;
     case DRM_FORMAT_NV12:
     case DRM_FORMAT_NV21:
@@ -190,6 +195,12 @@ uint32_t CameraBufferManager::GetV4L2PixelFormat(buffer_handle_t buffer) {
       return V4L2_PIX_FMT_RGBX32;
     case DRM_FORMAT_XBGR8888:
       return V4L2_PIX_FMT_RGBX32;
+
+    // The format used by MediaTek ISP for private reprocessing. Note that the
+    // V4L2 format used here is a default placeholder. The actual pixel format
+    // varies depending on sensor settings.
+    case DRM_FORMAT_MTISP_SXYZW10:
+      return V4L2_PIX_FMT_MTISP_SBGGR10;
 
     // DRM_FORMAT_R8 is used as the underlying buffer format for
     // HAL_PIXEL_FORMAT_BLOB which corresponds to JPEG buffer.
@@ -550,12 +561,24 @@ uint32_t CameraBufferManagerImpl::ResolveDrmFormat(uint32_t hal_format,
 uint32_t CameraBufferManagerImpl::ResolveFormat(uint32_t hal_format,
                                                 uint32_t usage,
                                                 uint32_t* gbm_flags) {
-  uint32_t gbm_usage = GrallocUsageToGbmFlags(usage);
+  uint32_t gbm_usage = GetGbmUseFlags(hal_format, usage);
   uint32_t drm_format = 0;
   if (usage & GRALLOC_USAGE_FORCE_I420) {
     CHECK_EQ(hal_format, HAL_PIXEL_FORMAT_YCbCr_420_888);
     *gbm_flags = gbm_usage;
     return DRM_FORMAT_YUV420;
+  }
+
+  if (hal_format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED &&
+      (usage & GRALLOC_USAGE_HW_CAMERA_READ)) {
+    // Check which private format the graphics backend support.
+    if (gbm_device_is_format_supported(gbm_device_, DRM_FORMAT_MTISP_SXYZW10,
+                                       gbm_usage)) {
+      *gbm_flags = gbm_usage;
+      return DRM_FORMAT_MTISP_SXYZW10;
+    }
+    // TODO(lnishan): Check other private formats when we have private formats
+    // from other platforms.
   }
 
   if (kSupportedHalFormats.find(hal_format) == kSupportedHalFormats.end()) {
