@@ -19,12 +19,13 @@ ADDITIONAL_REPORTING_THRESHOLD_BLOCKS=1048576
 SHADOW="/home/.shadow"
 
 # Paths for the CRX cache. Shared with installer/crx-import.conf
-UNVALIDATED_CRX_CACHE=${STATEFUL}/unencrypted/import_extensions
+UNVALIDATED_CRX_CACHE="${STATEFUL}/unencrypted/import_extensions"
 VALIDATED_CRX_CACHE=/var/cache/external_cache
 
 report_additional_statistics() {
   # Number of users on device.
-  local user_count="$(find $SHADOW -maxdepth 1 -mindepth  1 -type d | wc -l)"
+  local user_count
+  user_count="$(find "${SHADOW}" -maxdepth 1 -mindepth  1 -type d | wc -l)"
   metrics_client -s Platform.DiskUsage.UsersOnDevice "${user_count}"
 }
 
@@ -34,15 +35,15 @@ report_additional_statistics() {
 remove_old_files() {
   local subdir="$1"
   local file_pattern="$2"
-  local mtime=${NUM_DAYS_TO_PRESERVE}
+  local mtime="${NUM_DAYS_TO_PRESERVE}"
   if [ ! -d "${subdir}" ]; then
     return
   fi
-  while [ ${mtime} -ge 1 ]; do
+  while [ "${mtime}" -ge 1 ]; do
     find "${subdir}" -type f -name "${file_pattern}" -mtime "+${mtime}" -delete
-    if [ $(du -s --block-size=1M "${subdir}" | cut -f 1) -gt \
-         ${MAX_SUBDIR_SIZE} ]; then
-      : $(( mtime -= 1 ))
+    if [ "$(du -s --block-size=1M "${subdir}" | cut -f 1)" -gt \
+         "${MAX_SUBDIR_SIZE}" ]; then
+      : "$(( mtime -= 1 ))"
     else
       break
     fi
@@ -56,7 +57,7 @@ remove_old_files() {
   find "${subdir}" -type f -name "${file_pattern}" -printf "%T+ %p\0" | \
     sort -zr | \
     cut -z -d ' ' -f 2- | \
-    tail -z -n+$(( MAX_SUBDIR_FILES + 1 )) | \
+    tail -z "-n+$(( MAX_SUBDIR_FILES + 1 ))" | \
     xargs -r -0 rm
 }
 
@@ -74,7 +75,7 @@ rotate_file() {
     extension=".${extension}"
   fi
   echo Rotating "${file}"
-  for i in $(seq ${NUM_DAYS_TO_PRESERVE} -1 2); do
+  for i in $(seq "${NUM_DAYS_TO_PRESERVE}" -1 2); do
     mv -f "${basename}.$((i - 1))${extension}" "${basename}.$i${extension}"
   done
   mv -f "${basename}${extension}" "${basename}.1${extension}"
@@ -95,15 +96,19 @@ rotate_logs() {
 
 # Wipe the unencyrpted CRX cache if it still exists.
 wipe_crx_cache() {
+  local root_dev
+  local removable
+  local disk_percent
+
   # If we are on removable media or we haven't imported the crx cache,
   # don't wipe.
-  local root_dev="$(basename "$(rootdev -s -d)")"
-  local removable="$(cat "/sys/block/${root_dev}/removable")" || :
-  local disk_percent="$(get_stateful_usage_percent)" || :
+  root_dev="$(basename "$(rootdev -s -d)")"
+  removable="$(cat "/sys/block/${root_dev}/removable")" || :
+  disk_percent="$(get_stateful_usage_percent)" || :
   [ -z "${disk_percent}" ] && disk_percent=0
-  if [ ${removable:-0} -eq 0 ] && [ -d "${UNVALIDATED_CRX_CACHE}" ] && \
+  if [ "${removable:-0}" -eq 0 ] && [ -d "${UNVALIDATED_CRX_CACHE}" ] && \
       [ -f "${VALIDATED_CRX_CACHE}/.initialized" ] && \
-      [ ${disk_percent} -gt 25 ]; then
+      [ "${disk_percent}" -gt 25 ]; then
     echo "Wiping unvalidated crx cache as it has already been imported."
     rm -rf "${UNVALIDATED_CRX_CACHE}"
   fi
@@ -174,9 +179,9 @@ main() {
   # Report disk usage statistics
   METRICS_ARGS="0 1073741824 50"
   metrics_client Platform.DiskUsageVar \
-                $(du -sxk /var/ | awk '{print $1}') $METRICS_ARGS
+                "$(du -sxk /var/ | awk '{print $1}')" ${METRICS_ARGS}
   metrics_client Platform.DiskUsageChronos \
-                $(du -sxk /home/chronos | awk '{print $1}') $METRICS_ARGS
+                "$(du -sxk /home/chronos | awk '{print $1}')" ${METRICS_ARGS}
 
   # Report overall stateful usage.
   metrics_client -e Platform.StatefulUsage "$(get_stateful_usage_percent)" 101
@@ -184,37 +189,37 @@ main() {
   # Report lifetime writes from the stateful partition in GBs.
   LIFETIME_WRITES="$(get_stateful_lifetime_writes)"
   metrics_client Platform.StatefulLifetimeWrites \
-    $((${LIFETIME_WRITES} / 1000000)) 0 16777216 100
+    "$((LIFETIME_WRITES / 1000000))" 0 16777216 100
 
-  NUMBER_OF_USERS=$(ls /home/user/ | wc -l)
+  NUMBER_OF_USERS="$(ls /home/user/ | wc -l)"
   metrics_client Platform.DiskUsage.NumUserHomeDirectories \
-                $NUMBER_OF_USERS 1 50 50
+                "${NUMBER_OF_USERS}" 1 50 50
 
-  WEEKLY_USERS_ACTIVE=$(cryptohome --action=dump_last_activity |
-      awk 'BEGIN {count = 0} $2 <= 7 {++count} END {print count}')
-  metrics_client -s Login.UsersActiveWeekly ${WEEKLY_USERS_ACTIVE}
+  WEEKLY_USERS_ACTIVE="$(cryptohome --action=dump_last_activity |
+      awk 'BEGIN {count = 0} $2 <= 7 {++count} END {print count}')"
+  metrics_client -s Login.UsersActiveWeekly "${WEEKLY_USERS_ACTIVE}"
 
-  if [ $NUMBER_OF_USERS -gt 0 ] ; then
+  if [ "${NUMBER_OF_USERS}" -gt 0 ] ; then
     metrics_client -s Login.UsersActiveWeekly.Percent \
-                  $(($WEEKLY_USERS_ACTIVE * 100 / $NUMBER_OF_USERS))
+                  "$((WEEKLY_USERS_ACTIVE * 100 / NUMBER_OF_USERS))"
   else
     metrics_client -s Login.UsersActiveWeekly.Percent 0
   fi
 
   # Report days since the least frequently used account signed in.
   # It is reported every time to measure effect of autodeletion feature.
-  DAYS_SINCE_LFU_ACCOUNT_SIGNIN=$(cryptohome --action=dump_last_activity |
-      awk 'BEGIN {max = 0} $2 > max {max = $2} END {print max}')
+  DAYS_SINCE_LFU_ACCOUNT_SIGNIN="$(cryptohome --action=dump_last_activity |
+      awk 'BEGIN {max = 0} $2 > max {max = $2} END {print max}')"
 
   # Check if there are any users.
   if [ "${DAYS_SINCE_LFU_ACCOUNT_SIGNIN}" != "" ]; then
     metrics_client Login.LeastUsedAccountDays \
-                  $DAYS_SINCE_LFU_ACCOUNT_SIGNIN 1 90 90
+                  "${DAYS_SINCE_LFU_ACCOUNT_SIGNIN}" 1 90 90
   fi
 
   # Report additional metrics if we are low on free space.
   if [ "$(get_stateful_free_space_blocks)" -le \
-      "$ADDITIONAL_REPORTING_THRESHOLD_BLOCKS" ] ; then
+      "${ADDITIONAL_REPORTING_THRESHOLD_BLOCKS}" ] ; then
     report_additional_statistics
   fi
 
