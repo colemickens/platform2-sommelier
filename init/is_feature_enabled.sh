@@ -4,10 +4,10 @@
 # found in the LICENSE file.
 
 # Check with Chrome over D-Bus if a particular feature is enabled.
-output=$(minijail0 -u chronos /usr/bin/dbus-send --system \
+output="$(minijail0 -u chronos /usr/bin/dbus-send --system \
   --type=method_call --print-reply \
   --dest=org.chromium.ChromeFeaturesService \
   /org/chromium/ChromeFeaturesService \
   'org.chromium.ChromeFeaturesServiceInterface.IsFeatureEnabled' \
-  "string:$1" 2>/dev/null || true)
+  "string:$1" 2>/dev/null || true)"
 [ "${output##* }" = 'true' ]

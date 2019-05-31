@@ -113,7 +113,7 @@ Chromium OS shell style conventions, most notably:
   * Use $() for command substitution, not ``
   * Format compound statements such as 'if', 'for', and 'while'
     along these lines:
-      if [ -f $testfile ] ; then
+      if [ -f "${testfile}" ] ; then
         # ...
       fi
   * In general, don't use a fully qualified path name for a command
@@ -124,4 +124,4 @@ Chromium OS shell style conventions, most notably:
 == Conventions for logging messages
 Jobs can (should) log significant events via syslog for debug or
 diagnosis.  Use this idiom for messages:
-  logger -t "$UPSTART_JOB" "<your message goes here>"
+  logger -t "${UPSTART_JOB}" "<your message goes here>"

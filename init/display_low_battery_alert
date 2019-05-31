@@ -8,13 +8,16 @@
 set -e
 
 ASSETS=/usr/share/chromeos-assets
-ASSETS_200=$ASSETS/images_200_percent
-ASSETS_100=$ASSETS/images_100_percent
+ASSETS_200="${ASSETS}/images_200_percent"
+ASSETS_100="${ASSETS}/images_100_percent"
 
-IMAGES_100="$ASSETS_100"/battery_alert*.png
-SEQ_100="$(ls $IMAGES_100 ; ls -r $IMAGES_100)"
-IMAGES_200="$ASSETS_200"/battery_alert*.png
-SEQ_200="$(ls $IMAGES_200 ; ls -r $IMAGES_200)"
+IMAGES_100="${ASSETS_100}/battery_alert*.png"
+# IMAGES_100 and IMAGES_200 are globs so they shouldn't be quoted when
+# dereferenced or the pattern will be returned rather than list of
+# matching files.
+SEQ_100="$(ls ${IMAGES_100} ; ls -r ${IMAGES_100})"
+IMAGES_200="${ASSETS_200}/battery_alert*.png"
+SEQ_200="$(ls ${IMAGES_200} ; ls -r ${IMAGES_200})"
 BAT_IMAGES=""
 
 for image in ${SEQ_200}; do

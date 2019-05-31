@@ -21,9 +21,9 @@ SAFESETID_PROCESS_MGMT_POLICIES="/sys/kernel/security/safesetid\
 # Add process management policy.
 add_process_mgmt_policy() {
   if [ -e "${CHROMIUMOS_PROCESS_MGMT_POLICIES}" ]; then
-    printf "$1" > "${CHROMIUMOS_PROCESS_MGMT_POLICIES}"
+    printf "%s" "$1" > "${CHROMIUMOS_PROCESS_MGMT_POLICIES}"
   else
-    printf "$1" > "${SAFESETID_PROCESS_MGMT_POLICIES}"
+    printf "%s" "$1" > "${SAFESETID_PROCESS_MGMT_POLICIES}"
   fi
 }
 

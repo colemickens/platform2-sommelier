@@ -73,11 +73,13 @@ dev_update_stateful_partition() {
   local developer_target="${STATEFUL_PARTITION}/dev_image"
   local developer_new="${developer_target}_new"
   local developer_old="${developer_target}_old"
-  local stateful_update_args=$(cat "${stateful_update_file}")
+  local stateful_update_args
+
+  stateful_update_args="$(cat "${stateful_update_file}")"
 
   # Only replace the developer and var_overlay directories if new replacements
   # are available.
-  if [ -d "${developer_new}" -a -d "${var_new}" ]; then
+  if [ -d "${developer_new}" ] && [ -d "${var_new}" ]; then
     clobber-log -- "Updating from ${developer_new} && ${var_new}."
     rm -rf "${developer_old}" "${var_old}"
     mv "${var_target}" "${var_old}" || true
@@ -130,7 +132,8 @@ dev_gather_logs() {
     return
   fi
 
-  sed -e '/^#/ d' -e '/^$/ d' "${lab_preserve_logs}" | while read log_path; do
+  sed -e '/^#/ d' -e '/^$/ d' "${lab_preserve_logs}" | \
+      while read -r log_path; do
     if [ -d "${log_path}" ]; then
       cp -a -r --parents "${log_path}" "${prior_log_dir}" || true
     elif [ -f "${log_path}" ]; then
@@ -163,12 +166,12 @@ dev_mount_packages() {
   cat /proc/mounts > /var/log/mount_options.log
 
   # Create dev_image directory in base images in developer mode.
-  if [ ! -d "${stateful_partition}/dev_image" ]; then
+  if [ ! -d "${STATEFUL_PARTITION}/dev_image" ]; then
     mkdir -p -m 0755 "${STATEFUL_PARTITION}/dev_image"
   fi
 
   # Mount and then remount to enable exec/suid.
-  mount_or_fail --bind ${STATEFUL_PARTITION}/dev_image /usr/local
+  mount_or_fail --bind "${STATEFUL_PARTITION}/dev_image" /usr/local
   mount -n -o remount,exec,suid /usr/local
 
   if [ ! -e /usr/share/cros/startup/disable_stateful_security_hardening ]; then
@@ -183,10 +186,11 @@ dev_mount_packages() {
   # Set up /var elements needed by gmerge.
   # TODO(keescook) Use dev/test package installs instead of piling more
   # things here (crosbug.com/14091).
-  local base="${STATEFUL_PARTITION}/var_overlay"
+  local base
+  base="${STATEFUL_PARTITION}/var_overlay"
   if [ -d "${base}" ]; then
     local dir dest
-    echo "${MOUNTDIRS}" | while read dir ; do
+    echo "${MOUNTDIRS}" | while read -r dir ; do
       if [ -n "${dir}" ]; then
         if [ ! -d "${base}/${dir}" ]; then
           continue
@@ -206,7 +210,7 @@ dev_unmount_packages() {
   # Unmount bind mounts for /var elements needed by gmerge.
   local base="/var"
   if [ -d "${base}" ]; then
-    echo "${MOUNTDIRS}" | while read dir ; do
+    echo "${MOUNTDIRS}" | while read -r dir ; do
       if [ -n "${dir}" ]; then
         if [ ! -d "${base}/${dir}" ]; then
           continue

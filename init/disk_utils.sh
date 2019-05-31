@@ -1,3 +1,4 @@
+#!/bin/sh
 # Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -11,17 +12,19 @@ get_stateful_df_data() {
 
 # Get the lifetime writes from the stateful partition.
 get_stateful_lifetime_writes() {
-  local stateful_dev="$(get_stateful_df_data | awk '{print $1}' | \
+  local stateful_dev
+  stateful_dev="$(get_stateful_df_data | awk '{print $1}' | \
     sed -e 's#^/dev/##')"
-  local lifetime_writes="$(cat \
-    /sys/fs/ext4/${stateful_dev}/lifetime_write_kbytes)"
+  local lifetime_writes
+  lifetime_writes="$(cat "/sys/fs/ext4/${stateful_dev}/lifetime_write_kbytes")"
   : "${lifetime_writes:=0}"
   echo "${lifetime_writes}"
 }
 
 # Get the percentage of space used on the stateful partition.
 get_stateful_usage_percent() {
-  local stateful_space="$(get_stateful_df_data)"
+  local stateful_space
+  stateful_space="$(get_stateful_df_data)"
   # Remove everything after and including the "%"
   stateful_space="${stateful_space%%%*}"
   # Remove all fields except the last one.
