@@ -16,6 +16,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/compiler_specific.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
@@ -927,7 +928,7 @@ bool ProbingTvAddressState::ProcessResponse(const cec_msg& msg) {
   switch (cec_msg_opcode(&msg)) {
     case CEC_MSG_REPORT_PHYSICAL_ADDR:
       device_->ProcessReportPhysicalAddress(msg);
-      // fallthrough
+      FALLTHROUGH;
     case CEC_MSG_GIVE_PHYSICAL_ADDR:
       switch (subState_) {
         case SubState::kStart:

@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/compiler_specific.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -811,8 +812,9 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
       for (auto& observer : observers_)
         observer.OnGattConnected(dev_to_be_connected->address, conn_id);
       break;
-    case ConnectState::ERROR:  // Fall through.
+    case ConnectState::ERROR:
       VLOG(1) << "Unexpected GATT connection error";
+      FALLTHROUGH;
     case ConnectState::DISCONNECTED:
     case ConnectState::DISCONNECTED_BY_US:
       // Close the connection attempt when there is a match.
@@ -1235,8 +1237,9 @@ void DeviceInterfaceHandler::OnPairStateChanged(const std::string& address,
   std::string dbus_error;
 
   switch (pair_state) {
-    case PairState::CANCELED:  // Fall through.
+    case PairState::CANCELED:
       dbus_error = bluetooth_device::kErrorAuthenticationCanceled;
+      FALLTHROUGH;
     case PairState::NOT_PAIRED:
       SetDevicePaired(device, false);
       break;

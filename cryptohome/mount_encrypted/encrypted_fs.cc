@@ -15,6 +15,7 @@
 
 #include <string>
 
+#include <base/compiler_specific.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/process.h>
@@ -470,7 +471,8 @@ result_code EncryptedFs::TeardownByStage(TeardownStage stage,
       // routines that might be causing crosbug.com/p/17610.
       platform_->Sync();
 
-    // Intentionally fall through here to teardown the lower dmcrypt device.
+      // Intentionally fall through here to teardown the lower dmcrypt device.
+      FALLTHROUGH;
     case TeardownStage::kTeardownDevmapper:
       LOG(INFO) << "Removing " << dmcrypt_dev_;
       if (!device_mapper_->Remove(dmcrypt_name_) && !ignore_errors)
@@ -481,7 +483,8 @@ result_code EncryptedFs::TeardownByStage(TeardownStage stage,
       }
       platform_->Sync();
 
-    // Intentionally fall through here to teardown the lower loop device.
+      // Intentionally fall through here to teardown the lower loop device.
+      FALLTHROUGH;
     case TeardownStage::kTeardownLoopDevice:
       LOG(INFO) << "Unlooping " << block_path_ << " named " << dmcrypt_name_;
       std::unique_ptr<brillo::LoopDevice> lodev =
