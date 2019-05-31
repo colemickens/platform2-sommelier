@@ -18,34 +18,34 @@ LOGPATH="/var/log/shutdown_force_kill_processes"
 term_process() {
   local process="$1"
 
-  pkill "$process"
+  pkill "${process}"
   local pid i=0
-  while [ $i -lt $SIGTERM_TIMEOUT ]; do
-    pid=$(pgrep "$process")
+  while [ "${i}" -lt "${SIGTERM_TIMEOUT}" ]; do
+    pid="$(pgrep "${process}")"
     if [ $? -ne 0 ] ; then
       return
     fi
     sleep .1
-    : $(( i += 100 ))
+    : "$(( i += 100 ))"
   done
 
-  logger -t "term_process($process)" \
-      "PIDs ["$pid"] did not terminate, sending SIGKILL"
-  echo "term_process($process)" \
-      "PIDs ["$pid"] did not terminate, sending SIGKILL"
+  logger -t "term_process(${process})" \
+      "PIDs [${pid}] did not terminate, sending SIGKILL"
+  echo "term_process(${process})" \
+      "PIDs [${pid}] did not terminate, sending SIGKILL"
 
-  pkill -KILL "$process"
+  pkill -KILL "${process}"
   i=0
-  while [ $i -lt $SIGKILL_TIMEOUT ]; do
-    pid=$(pgrep "$process")
+  while [ "${i}" -lt "${SIGKILL_TIMEOUT}" ]; do
+    pid="$(pgrep "${process}")"
     if [ $? -ne 0 ] ; then
       return
     fi
     sleep .1
-    : $(( i += 100 ))
+    : "$(( i += 100 ))"
   done
-  logger -t "term_process($process)" "PIDs ["$pid"] not dead after SIGKILL"
-  echo "term_process($process)" "PIDs ["$pid"] not dead after SIGKILL"
+  logger -t "term_process(${process})" "PIDs [${pid}] not dead after SIGKILL"
+  echo "term_process(${process})" "PIDs [${pid}] not dead after SIGKILL"
 }
 
 # Parses the output of `lsof -Fn` in the format (p<pid>\n(n<filename>\n)*)*,
@@ -84,7 +84,7 @@ kill_with_open_files_on_path_and_mountpoints() {
   local path_regex="$1"
   shift
 
-  pids=$(lsof -n -Fn "$@" | _lsofFn_filter "${path_regex}")
+  pids="$(lsof -n -Fn "$@" | _lsofFn_filter "${path_regex}")"
   if [ -z "${pids}" ] ; then
     return  # The typical case; no open files at this point.
   fi
@@ -95,9 +95,9 @@ kill_with_open_files_on_path_and_mountpoints() {
   # First try a gentle kill -TERM
   for i in 1 2 3 4 5 6 7 8 9 10; do
     for pid in ${pids} ; do
-      ! kill -TERM ${pid}
+      ! kill -TERM "${pid}"
     done
-    pids=$(lsof -n -Fn "$@" | _lsofFn_filter "${path_regex}")
+    pids="$(lsof -n -Fn "$@" | _lsofFn_filter "${path_regex}")"
     if [ -z "${pids}" ] ; then
       return
     fi
@@ -107,7 +107,7 @@ kill_with_open_files_on_path_and_mountpoints() {
   # Now kill -KILL as necessary
   for i in 1 2 3 4 5 6 7 8 9 10; do
     for pid in ${pids} ; do
-      ! kill -KILL ${pid}
+      ! kill -KILL "${pid}"
     done
     pids=$(lsof -n -Fn "$@" | _lsofFn_filter "${path_regex}")
     if [ -z "${pids}" ] ; then
