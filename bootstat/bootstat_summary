@@ -10,7 +10,7 @@ DEFINE_string directory /tmp "Bootstat archive directory" d
 FLAGS "$@" || exit 1
 eval set -- "${FLAGS_ARGV}"
 
-NCPU=$(grep '^processor' /proc/cpuinfo | wc -l)
+readonly NCPU="$(grep -c '^processor' /proc/cpuinfo)"
 
 SUMMARIZE_TIME='
   BEGIN {
@@ -40,10 +40,10 @@ SUMMARIZE_TIME='
 # events.  If there are arguments, summarize only the named events.
 # Error checking is deliberately minimal, to keep this script simple.
 if [ $# -eq 0 ]; then
-  EVENTS="$(ls ${FLAGS_directory}/uptime-*)"
+  EVENTS="$(ls "${FLAGS_directory}/uptime-"*)"
 else
   for EV in "$@"; do
-    EVENTS="$EVENTS ${FLAGS_directory}/uptime-$EV"
+    EVENTS="${EVENTS} ${FLAGS_directory}/uptime-${EV}"
   done
 fi
 
@@ -53,5 +53,5 @@ fi
 #  sort: sort the events by the uptime timestamp.
 #  sed: remove '/tmp/uptime-' from the event name.
 #  2nd awk program:  produce the summarized output
-awk '{print 1000*$1, 1000*$2/'$NCPU', FILENAME}' $EVENTS |
-  sort -k 1n | sed 's=[^ ]*uptime-==' | awk "$SUMMARIZE_TIME"
+awk '{print 1000*$1, 1000*$2/'${NCPU}', FILENAME}' ${EVENTS} |
+  sort -k 1n | sed 's=[^ ]*uptime-==' | awk "${SUMMARIZE_TIME}"
