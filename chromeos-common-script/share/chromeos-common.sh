@@ -46,7 +46,8 @@ numsectors() {
       sectors="$(cat "/sys/block/${block}/${part}/size")"
     fi
   else
-    local bytes="$(stat -c%s "${path}")"
+    local bytes
+    bytes="$(stat -c%s "${path}")"
     local rem=$(( bytes % 512 ))
     block_size=512
     sectors=$(( bytes / 512 ))
@@ -71,8 +72,9 @@ blocksize() {
       cat "${sys}"
     else
       local part="${path##*/}"
-      local block="$(get_block_dev_from_partition_dev "${path}")"
-      local block="${block##*/}"
+      local block
+      block="$(get_block_dev_from_partition_dev "${path}")"
+      block="${block##*/}"
       cat "/sys/block/${block}/${part}/queue/logical_block_size"
     fi
   else
@@ -86,12 +88,12 @@ blocksize() {
 GPT=""
 
 locate_gpt() {
-  if [ -z "$GPT" ]; then
+  if [ -z "${GPT}" ]; then
     if [ -x "${DEFAULT_CHROOT_DIR:-}/usr/bin/cgpt" ]; then
       GPT="${DEFAULT_CHROOT_DIR:-}/usr/bin/cgpt"
     else
-      GPT=$(which cgpt 2>/dev/null) || /bin/true
-      if [ -z "$GPT" ]; then
+      GPT="$(command -v cgpt 2>/dev/null)" || /bin/true
+      if [ -z "${GPT}" ]; then
         echo "can't find cgpt tool" 1>&2
         exit 1
       fi
@@ -104,7 +106,7 @@ locate_gpt() {
 # Args: DEVICE PARTNUM
 # Returns: offset (in sectors) of partition PARTNUM
 partoffset() {
-  maybe_sudo $GPT show -b -i $2 $1
+  maybe_sudo "${GPT}" show -b -i "$2" "$1"
 }
 
 # Read GPT table to find the size of a specific partition.
@@ -112,38 +114,39 @@ partoffset() {
 # Args: DEVICE PARTNUM
 # Returns: size (in sectors) of partition PARTNUM
 partsize() {
-  maybe_sudo $GPT show -s -i $2 $1
+  maybe_sudo "${GPT}" show -s -i "$2" "$1"
 }
 
 # Extract the whole disk block device from the partition device.
 # This works for /dev/sda3 (-> /dev/sda) as well as /dev/mmcblk0p2
 # (-> /dev/mmcblk0).
 get_block_dev_from_partition_dev() {
-  local partition=$1
-  if ! (expr match "$partition" ".*[0-9]$" >/dev/null) ; then
-    echo "Invalid partition name: $partition" >&2
+  local partition="$1"
+  if ! (expr match "${partition}" ".*[0-9]$" >/dev/null) ; then
+    echo "Invalid partition name: ${partition}" >&2
     exit 1
   fi
   # Removes any trailing digits.
-  local block=$(echo "$partition" | sed -e 's/[0-9]*$//')
+  local block
+  block="$(echo "${partition}" | sed -e 's/[0-9]*$//')"
   # If needed, strip the trailing 'p'.
-  if (expr match "$block" ".*[0-9]p$" >/dev/null); then
+  if (expr match "${block}" ".*[0-9]p$" >/dev/null); then
     echo "${block%p}"
   else
-    echo "$block"
+    echo "${block}"
   fi
 }
 
 # Extract the partition number from the partition device.
 # This works for /dev/sda3 (-> 3) as well as /dev/mmcblk0p2 (-> 2).
 get_partition_number() {
-  local partition=$1
-  if ! (expr match "$partition" ".*[0-9]$" >/dev/null) ; then
-    echo "Invalid partition name: $partition" >&2
+  local partition="$1"
+  if ! (expr match "${partition}" ".*[0-9]$" >/dev/null) ; then
+    echo "Invalid partition name: ${partition}" >&2
     exit 1
   fi
   # Extract the last digit.
-  echo "$partition" | sed -e 's/^.*\([0-9]\)$/\1/'
+  echo "${partition}" | sed -e 's/^.*\([0-9]\)$/\1/'
 }
 
 # Construct a partition device name from a whole disk block device and a
@@ -151,11 +154,11 @@ get_partition_number() {
 # This works for [/dev/sda, 3] (-> /dev/sda3) as well as [/dev/mmcblk0, 2]
 # (-> /dev/mmcblk0p2).
 make_partition_dev() {
-  local block=$1
-  local num=$2
+  local block="$1"
+  local num="$2"
   # If the disk block device ends with a number, we add a 'p' before the
   # partition number.
-  if (expr match "$block" ".*[0-9]$" >/dev/null) ; then
+  if (expr match "${block}" ".*[0-9]$" >/dev/null) ; then
     echo "${block}p${num}"
   else
     echo "${block}${num}"
@@ -170,13 +173,13 @@ make_partition_dev() {
 # NVME for NVMe device
 # OTHER for other devices.
 get_device_type() {
-  local dev="$(basename "$1")"
+  local dev
   local vdr
   local type_file
-  local vendor_file
   # True device path of a NVMe device is just a simple PCI device.
   # (there are no other buses),
   # Use the device name to identify the type precisely.
+  dev="$(basename "$1")"
   case "${dev}" in
     nvme*)
       echo "NVME"
@@ -228,10 +231,12 @@ list_fixed_ata_disks() {
     if [ ! -r "${sd}/size" ]; then
       continue
     fi
-    size=$(cat "${sd}/size")
-    remo=$(cat "${sd}/removable")
-    vdr=$(cat "${sd}/device/vendor")
-    if [ "${vdr%% *}" = "ATA" -a ${remo:-0} -eq 0 -a ${size:-0} -gt 0 ]; then
+    size="$(cat "${sd}/size")"
+    remo="$(cat "${sd}/removable")"
+    vdr="$(cat "${sd}/device/vendor")"
+    if [ "${vdr%% *}" = "ATA" ] && [ "${remo:-0}" -eq 0 ] && \
+        [ "${size:-0}" -gt 0 ];
+    then
       echo "${sd##*/}"
     fi
   done
@@ -271,9 +276,9 @@ list_fixed_nvme_disks() {
     if [ ! -r "${nvme}/size" ]; then
       continue
     fi
-    size=$(cat "${nvme}/size")
-    remo=$(cat "${nvme}/removable")
-    if [ ${remo:-0} -eq 0 -a ${size:-0} -gt 0 ]; then
+    size="$(cat "${nvme}/size")"
+    remo="$(cat "${nvme}/removable")"
+    if [ "${remo:-0}" -eq 0 ] && [ "${size:-0}" -gt 0 ]; then
        nvme_base="${nvme##*/}"
        # Store in all_nvme names of nvme devices, without namespace.
        # In case of nvme device with several namespaces, we will have
@@ -296,10 +301,11 @@ list_fixed_ufs_disks() {
     if [ ! -r "${sd}/size" ]; then
       continue
     fi
-    type=$(get_device_type "${sd}")
-    size=$(cat "${sd}/size")
-    remo=$(cat "${sd}/removable")
-    if [ "${type}" = "UFS" -a ${remo:-0} -eq 0 -a ${size:-0} -gt 0 ]; then
+    type="$(get_device_type "${sd}")"
+    size="$(cat "${sd}/size")"
+    remo="$(cat "${sd}/removable")"
+    if [ "${type}" = "UFS" ] && [ "${remo:-0}" -eq 0 ] && \
+        [ "${size:-0}" -gt 0 ]; then
       echo "${sd##*/}"
     fi
   done
@@ -330,12 +336,15 @@ edit_mbr() {
   locate_gpt
   # TODO(icoolidge): Get this from disk_layout somehow.
   local PARTITION_NUM_EFI_SYSTEM=12
-  local start_esp=$(partoffset "$1" ${PARTITION_NUM_EFI_SYSTEM})
-  local num_esp_sectors=$(partsize "$1" ${PARTITION_NUM_EFI_SYSTEM})
+  local start_esp
+  local num_esp_sectors
+
+  start_esp="$(partoffset "$1" "${PARTITION_NUM_EFI_SYSTEM}")"
+  num_esp_sectors="$(partsize "$1" "${PARTITION_NUM_EFI_SYSTEM}")"
   maybe_sudo sfdisk -w never -X dos "${1}" <<EOF
 unit: sectors
 
-disk1 : start=   $start_esp, size=    $num_esp_sectors, Id= c, bootable
+disk1 : start=   ${start_esp}, size=    ${num_esp_sectors}, Id= c, bootable
 disk2 : start=   1, size=    1, Id= ee
 EOF
 }
@@ -364,7 +373,7 @@ ext4_dir_encryption_supported() {
   local direncryption_enabled=false
 
   # Return true if kernel support ext4 directory encryption.
-  ${direncryption_enabled} && \
+  "${direncryption_enabled}" && \
   ! LC_LANG=C e4crypt get_policy / | grep -qF \
     -e "Operation not supported" \
     -e "Inappropriate ioctl for device"
