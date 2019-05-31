@@ -16,6 +16,7 @@
 #include "arc/network/address_manager.h"
 #include "arc/network/device.h"
 #include "arc/network/ipc.pb.h"
+#include "arc/network/shill_client.h"
 
 namespace arc_networkd {
 
@@ -24,33 +25,47 @@ namespace arc_networkd {
 class DeviceManager {
  public:
   // |addr_mgr| must not be null.
-  DeviceManager(AddressManager* addr_mgr,
+  DeviceManager(std::unique_ptr<ShillClient> shill_client,
+                AddressManager* addr_mgr,
                 const Device::MessageSink& msg_sink,
-                const std::string& arc_device);
+                bool is_arc_legacy);
   ~DeviceManager();
 
-  // Provides the list of devices the manager should track.
-  // Returns the number of devices that will be tracked.
-  size_t Reset(const std::set<std::string>& devices);
-
-  // Adds a new device by name. Returns whether the device was successfully
-  // added.
-  bool Add(const std::string& name);
-
-  // Enables/disables the legacy Android device in single-network mode only.
-  void EnableLegacyDevice(const std::string& ifname);
+  // Invoked when the ARC guest starts or stops.
+  // TODO(garrick): When appropriate, pass in specific guest type.
+  void OnGuestStart();
+  void OnGuestStop();
 
   // Returns a new fully configured device.
   // Note this is public mainly for testing and should not be called directly.
   std::unique_ptr<Device> MakeDevice(const std::string& name) const;
 
+  // Returns whether a particular device is traced. For testing only.
+  bool Exists(const std::string& name) const;
+
  private:
+  // Adds a new device by name. Returns whether the device was successfully
+  // added.
+  bool Add(const std::string& name);
+
+  // Callback from ShillClient, invoked whenever the default network
+  // interface changes or goes away.
+  void OnDefaultInterfaceChanged(const std::string& ifname);
+
+  // Callback from ShillClient, invoked whenever the device list changes.
+  // |devices| will contain all devices currently connected to shill
+  // (e.g. "eth0", "wlan0", etc).
+  void OnDevicesChanged(const std::set<std::string>& devices);
+
   // Callback from RTNetlink listener, invoked when an interface changes
   // run state.
   void LinkMsgHandler(const shill::RTNLMessage& msg);
 
   // Listens for RTMGRP_LINK messages and invokes LinkMsgHandler.
   std::unique_ptr<shill::RTNLListener> link_listener_;
+
+  // Receives network device updates and notifications from shill.
+  std::unique_ptr<ShillClient> shill_client_;
 
   // Provisions and tracks subnets and addresses.
   AddressManager* addr_mgr_;
@@ -63,6 +78,9 @@ class DeviceManager {
   std::map<std::string, std::unique_ptr<Device>> devices_;
   // Running devices by the host interface name.
   std::set<std::string> running_devices_;
+
+  const bool is_arc_legacy_;
+  std::string default_ifname_;
 
   base::WeakPtrFactory<DeviceManager> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(DeviceManager);

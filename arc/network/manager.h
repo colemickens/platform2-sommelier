@@ -31,17 +31,7 @@ class Manager final : public brillo::DBusDaemon {
   int OnInit() override;
 
  private:
-  // Callback from ShillClient, invoked whenever the default network
-  // interface changes or goes away.
-  void OnDefaultInterfaceChanged(const std::string& ifname);
-
-  // Establishes the ShillClient and scans for host devices.
   void InitialSetup();
-
-  // Callback from ShillClient, invoked whenever the device list changes.
-  // |devices| will contain all devices currently connected to shill
-  // (e.g. "eth0", "wlan0", etc).
-  void OnDevicesChanged(const std::set<std::string>& devices);
 
   // Callback from ProcessReaper to notify Manager that one of the
   // subprocesses died.
@@ -63,7 +53,6 @@ class Manager final : public brillo::DBusDaemon {
 
   AddressManager addr_mgr_;
   brillo::ProcessReaper process_reaper_;
-  std::unique_ptr<ShillClient> shill_client_;
   std::unique_ptr<HelperProcess> ip_helper_;
   std::unique_ptr<DeviceManager> device_mgr_;
 

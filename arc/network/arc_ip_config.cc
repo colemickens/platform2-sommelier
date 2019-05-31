@@ -350,9 +350,6 @@ bool ArcIpConfig::GetV6Address(const std::string& ifname,
 }
 
 void ArcIpConfig::Set(const SetArcIp& arc_ip) {
-  if (con_netns_ == kInvalidNs)
-    return;
-
   Clear();
 
   if (!if_up_) {
@@ -362,6 +359,13 @@ void ArcIpConfig::Set(const SetArcIp& arc_ip) {
     *pending_ipv6_.get() = arc_ip;
     return;
   }
+
+  // If this device config has not yet been initialized then just return.
+  // This allows for the IPv6 settings to arrive beforehand but also
+  // prevents the retry loop below from executing if the device was shut
+  // down before completing.
+  if (con_netns_ == kInvalidNs)
+    return;
 
   if (arc_ip.prefix_len() == 0 || arc_ip.prefix_len() > 128) {
     LOG(DFATAL) << "Invalid prefix len " << arc_ip.prefix_len();
@@ -565,13 +569,6 @@ void ArcIpConfig::EnableInbound(const std::string& lan_ifname) {
 }
 
 void ArcIpConfig::DisableInbound() {
-  if (ifname_ != kAndroidLegacyDevice) {
-    LOG(ERROR) << "Disabling inbound traffic on non-legacy device is "
-                  "unexpected and not supported: "
-               << ifname_;
-    return;
-  }
-
   if (!pending_inbound_ifname_.empty()) {
     LOG(INFO) << "Clearing pending inbound request for " << ifname_ << " ["
               << config_.arc_ifname() << "] ";

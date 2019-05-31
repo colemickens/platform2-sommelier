@@ -99,4 +99,5 @@ void IpHelper::OnFileCanReadWithoutBlocking(int fd) {
 
   arc_helper_->HandleCommand(cmd);
 }
+
 }  // namespace arc_networkd

@@ -49,35 +49,51 @@ bool IsWifiInterface(const std::string& ifname) {
 
 }  // namespace
 
-DeviceManager::DeviceManager(AddressManager* addr_mgr,
+DeviceManager::DeviceManager(std::unique_ptr<ShillClient> shill_client,
+                             AddressManager* addr_mgr,
                              const Device::MessageSink& msg_sink,
-                             const std::string& arc_device)
-    : addr_mgr_(addr_mgr), msg_sink_(msg_sink) {
+                             bool is_arc_legacy)
+    : shill_client_(std::move(shill_client)),
+      addr_mgr_(addr_mgr),
+      msg_sink_(msg_sink),
+      is_arc_legacy_(is_arc_legacy) {
+  DCHECK(shill_client_);
   DCHECK(addr_mgr_);
   link_listener_ = std::make_unique<shill::RTNLListener>(
       shill::RTNLHandler::kRequestLink,
       Bind(&DeviceManager::LinkMsgHandler, weak_factory_.GetWeakPtr()));
   shill::RTNLHandler::GetInstance()->Start(RTMGRP_LINK);
-  Add(arc_device);
+  Add(is_arc_legacy_ ? kAndroidLegacyDevice : kAndroidDevice);
+
+  // In the legacy (single network) ARC++ world, we need to track the
+  // default shill interface since it's always routed to the arc bridge.
+  // But when mulitple networks are used, this feature is ignored and we
+  // need instead to keep track of all the host devices that shill tells us
+  // about.
+  if (!is_arc_legacy_) {
+    shill_client_->RegisterDevicesChangedHandler(base::Bind(
+        &DeviceManager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
+    shill_client_->ScanDevices(base::Bind(&DeviceManager::OnDevicesChanged,
+                                          weak_factory_.GetWeakPtr()));
+  }
 }
 
-DeviceManager::~DeviceManager() {}
+DeviceManager::~DeviceManager() {
+  shill_client_->UnregisterDevicesChangedHandler();
+}
 
-size_t DeviceManager::Reset(const std::set<std::string>& devices) {
-  for (auto it = devices_.begin(); it != devices_.end();) {
-    const std::string& name = it->first;
-    if (name != kAndroidDevice && name != kAndroidLegacyDevice &&
-        devices.find(name) == devices.end()) {
-      LOG(INFO) << "Removing device " << name;
-      it = devices_.erase(it);
-    } else {
-      ++it;
-    }
+void DeviceManager::OnGuestStart() {
+  if (is_arc_legacy_) {
+    shill_client_->RegisterDefaultInterfaceChangedHandler(base::Bind(
+        &DeviceManager::OnDefaultInterfaceChanged, weak_factory_.GetWeakPtr()));
   }
-  for (const std::string& name : devices) {
-    Add(name);
+}
+
+void DeviceManager::OnGuestStop() {
+  if (is_arc_legacy_) {
+    shill_client_->UnregisterDefaultInterfaceChangedHandler();
+    default_ifname_.clear();
   }
-  return devices_.size();
 }
 
 bool DeviceManager::Add(const std::string& name) {
@@ -93,16 +109,8 @@ bool DeviceManager::Add(const std::string& name) {
   return true;
 }
 
-void DeviceManager::EnableLegacyDevice(const std::string& ifname) {
-  auto it = devices_.find(kAndroidLegacyDevice);
-  if (it == devices_.end()) {
-    LOG(WARNING) << "Device [" << kAndroidLegacyDevice
-                 << "] not found - this call does nothing in multinet mode.";
-    return;
-  }
-  it->second->Disable();
-  if (!ifname.empty())
-    it->second->Enable(ifname);
+bool DeviceManager::Exists(const std::string& name) const {
+  return devices_.find(name) != devices_.end();
 }
 
 void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
@@ -124,17 +132,20 @@ void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
 
   bool run = msg.link_status().flags & IFF_RUNNING;
   auto it = running_devices_.find(ifname);
-  if (!run && it != running_devices_.end()) {
-    LOG(INFO) << ifname << " is no longer running";
-    // If this event is triggered because the guest is going down,
-    // then the host device must be disabled. If the device is no longer
-    // being tracked then it was physically removed (unplugged) and there
-    // is nothing to do.
-    auto dev_it = devices_.find(ifname.substr(strlen(kArcDevicePrefix)));
-    if (dev_it != devices_.end())
-      dev_it->second->Disable();
+  if (it != running_devices_.end()) {
+    // Interface no longer running.
+    if (!run) {
+      LOG(INFO) << ifname << " is no longer running";
+      // If this event is triggered because the guest is going down,
+      // then the host device must be disabled. If the device is no longer
+      // being tracked then it was physically removed (unplugged) and there
+      // is nothing to do.
+      auto dev_it = devices_.find(ifname.substr(strlen(kArcDevicePrefix)));
+      if (dev_it != devices_.end())
+        dev_it->second->Disable();
 
-    running_devices_.erase(it);
+      running_devices_.erase(it);
+    }
     return;
   }
 
@@ -219,6 +230,40 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
       std::move(guest_ipv4_addr));
 
   return std::make_unique<Device>(name, std::move(config), opts, msg_sink_);
+}
+
+void DeviceManager::OnDefaultInterfaceChanged(const std::string& ifname) {
+  if (ifname == default_ifname_)
+    return;
+
+  LOG(INFO) << "Default interface changed from [" << default_ifname_ << "] to ["
+            << ifname << "]";
+  default_ifname_ = ifname;
+
+  const auto it = devices_.find(kAndroidLegacyDevice);
+  if (it == devices_.end()) {
+    LOG(DFATAL) << "Expected device not found: " << kAndroidLegacyDevice;
+    return;
+  }
+  it->second->Disable();
+  if (!default_ifname_.empty())
+    it->second->Enable(default_ifname_);
+}
+
+void DeviceManager::OnDevicesChanged(const std::set<std::string>& devices) {
+  for (auto it = devices_.begin(); it != devices_.end();) {
+    const std::string& name = it->first;
+    if (name != kAndroidDevice && name != kAndroidLegacyDevice &&
+        devices.find(name) == devices.end()) {
+      LOG(INFO) << "Removing device " << name;
+      it = devices_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+  for (const std::string& name : devices) {
+    Add(name);
+  }
 }
 
 }  // namespace arc_networkd

@@ -50,7 +50,6 @@ int Manager::OnInit() {
   m->Destroy(jail);
 
   // Handle subprocess lifecycle.
-
   process_reaper_.Register(this);
 
   CHECK(process_reaper_.WatchForChild(
@@ -74,24 +73,15 @@ int Manager::OnInit() {
 }
 
 void Manager::InitialSetup() {
-  shill_client_ = std::make_unique<ShillClient>(std::move(bus_));
   device_mgr_ = std::make_unique<DeviceManager>(
-      &addr_mgr_, base::Bind(&Manager::SendMessage, weak_factory_.GetWeakPtr()),
-      enable_multinet_ ? kAndroidDevice : kAndroidLegacyDevice);
-
-  if (enable_multinet_) {
-    shill_client_->RegisterDevicesChangedHandler(
-        base::Bind(&Manager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
-    shill_client_->ScanDevices(
-        base::Bind(&Manager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
-  }
+      std::make_unique<ShillClient>(std::move(bus_)), &addr_mgr_,
+      base::Bind(&Manager::SendMessage, weak_factory_.GetWeakPtr()),
+      !enable_multinet_);
 }
 
 bool Manager::OnContainerStart(const struct signalfd_siginfo& info) {
   if (info.ssi_code == SI_USER) {
-    if (!enable_multinet_)
-      shill_client_->RegisterDefaultInterfaceChangedHandler(base::Bind(
-          &Manager::OnDefaultInterfaceChanged, weak_factory_.GetWeakPtr()));
+    device_mgr_->OnGuestStart();
   }
 
   // Stay registered.
@@ -100,23 +90,11 @@ bool Manager::OnContainerStart(const struct signalfd_siginfo& info) {
 
 bool Manager::OnContainerStop(const struct signalfd_siginfo& info) {
   if (info.ssi_code == SI_USER) {
-    if (!enable_multinet_) {
-      shill_client_->UnregisterDefaultInterfaceChangedHandler();
-      device_mgr_->EnableLegacyDevice("" /* disable */);
-    }
+    device_mgr_->OnGuestStop();
   }
 
   // Stay registered.
   return false;
-}
-
-void Manager::OnDefaultInterfaceChanged(const std::string& ifname) {
-  LOG(INFO) << "Default interface changed to " << ifname;
-  device_mgr_->EnableLegacyDevice(ifname);
-}
-
-void Manager::OnDevicesChanged(const std::set<std::string>& devices) {
-  device_mgr_->Reset(devices);
 }
 
 void Manager::OnShutdown(int* exit_code) {

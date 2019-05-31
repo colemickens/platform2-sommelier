@@ -4,12 +4,18 @@
 
 #include "arc/network/device_manager.h"
 
+#include <memory>
 #include <utility>
 #include <vector>
 
 #include <base/message_loop/message_loop.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/mock_bus.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "arc/network/fake_shill_client.h"
 
 namespace arc_networkd {
 
@@ -37,22 +43,36 @@ class DeviceManagerTest : public testing::Test {
     capture_msgs_ = false;
 
     android_announce_msg_.set_dev_ifname(kAndroidDevice);
-    NewManager("")
-        ->MakeDevice(kAndroidDevice)
-        ->FillProto(android_announce_msg_.mutable_dev_config());
+    auto* config = android_announce_msg_.mutable_dev_config();
+    config->set_br_ifname("arcbr0");
+    config->set_br_ipv4("100.115.92.1");
+    config->set_arc_ifname("arc0");
+    config->set_arc_ipv4("100.115.92.2");
+    config->set_mac_addr("f7:69:e5:c4:1f:74");
+    config->set_fwd_multicast(false);
+    config->set_find_ipv6_routes(false);
 
     legacy_android_announce_msg_.set_dev_ifname(kAndroidLegacyDevice);
-    NewManager("")
-        ->MakeDevice(kAndroidLegacyDevice)
-        ->FillProto(legacy_android_announce_msg_.mutable_dev_config());
+    config = legacy_android_announce_msg_.mutable_dev_config();
+    config->set_br_ifname("arcbr0");
+    config->set_br_ipv4("100.115.92.1");
+    config->set_arc_ifname("arc0");
+    config->set_arc_ipv4("100.115.92.2");
+    config->set_mac_addr("f7:69:e5:c4:1f:74");
+    config->set_fwd_multicast(true);
+    config->set_find_ipv6_routes(true);
   }
 
-  std::unique_ptr<DeviceManager> NewManager(
-      const std::string& arc_device = kAndroidDevice) {
-    return std::make_unique<DeviceManager>(
-        &addr_mgr_,
+  std::unique_ptr<DeviceManager> NewManager(bool is_arc_legacy = false) {
+    shill_helper_ = std::make_unique<FakeShillClientHelper>();
+    auto shill_client = shill_helper_->FakeClient();
+    shill_client_ = shill_client.get();
+    auto mgr = std::make_unique<DeviceManager>(
+        std::move(shill_client), &addr_mgr_,
         base::Bind(&DeviceManagerTest::RecvMsg, base::Unretained(this)),
-        arc_device);
+        is_arc_legacy);
+    mgr->OnGuestStart();
+    return mgr;
   }
 
   void VerifyMsgs(const std::vector<IpHelperMessage>& expected) {
@@ -67,12 +87,15 @@ class DeviceManagerTest : public testing::Test {
   bool capture_msgs_;
   IpHelperMessage android_announce_msg_;
   IpHelperMessage legacy_android_announce_msg_;
+  FakeShillClient* shill_client_;
 
  private:
   void RecvMsg(const IpHelperMessage& msg) {
     if (capture_msgs_)
       msgs_recv_.emplace_back(msg.SerializeAsString());
   }
+
+  std::unique_ptr<FakeShillClientHelper> shill_helper_;
 
   std::vector<std::string> msgs_recv_;
   FakeAddressManager addr_mgr_;
@@ -135,29 +158,21 @@ TEST_F(DeviceManagerTest, MakeCellularDevice) {
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_Android) {
-  auto mgr = NewManager("" /* no default arc device */);
-  DeviceConfig msg;
-  mgr->MakeDevice(kAndroidDevice)->FillProto(&msg);
-  EXPECT_EQ(msg.br_ifname(), "arcbr0");
-  EXPECT_EQ(msg.arc_ifname(), "arc0");
-  EXPECT_EQ(msg.br_ipv4(), "100.115.92.1");
-  EXPECT_EQ(msg.arc_ipv4(), "100.115.92.2");
-  EXPECT_FALSE(msg.mac_addr().empty());
-  EXPECT_FALSE(msg.fwd_multicast());
-  EXPECT_FALSE(msg.find_ipv6_routes());
+  capture_msgs_ = true;
+  auto mgr = NewManager();
+  VerifyMsgs({android_announce_msg_});
+
+  // Can't add another.
+  EXPECT_FALSE(mgr->MakeDevice(kAndroidDevice));
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_LegacyAndroid) {
-  auto mgr = NewManager("" /* no default arc device */);
-  DeviceConfig msg;
-  mgr->MakeDevice(kAndroidLegacyDevice)->FillProto(&msg);
-  EXPECT_EQ(msg.br_ifname(), "arcbr0");
-  EXPECT_EQ(msg.arc_ifname(), "arc0");
-  EXPECT_EQ(msg.br_ipv4(), "100.115.92.1");
-  EXPECT_EQ(msg.arc_ipv4(), "100.115.92.2");
-  EXPECT_FALSE(msg.mac_addr().empty());
-  EXPECT_TRUE(msg.fwd_multicast());
-  EXPECT_TRUE(msg.find_ipv6_routes());
+  capture_msgs_ = true;
+  auto mgr = NewManager(false);
+  VerifyMsgs({android_announce_msg_});
+
+  // Can't add another.
+  EXPECT_FALSE(mgr->MakeDevice(kAndroidLegacyDevice));
 }
 
 TEST_F(DeviceManagerTest, MakeVpnTunDevice) {
@@ -174,69 +189,73 @@ TEST_F(DeviceManagerTest, MakeVpnTunDevice) {
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_NoMoreSubnets) {
-  auto mgr = NewManager("" /* no default arc device */);
-  DeviceConfig msg;
-  {
-    auto dev = mgr->MakeDevice(kAndroidDevice);
-    EXPECT_TRUE(dev);
-    EXPECT_FALSE(mgr->MakeDevice(kAndroidDevice));
-  }
-  {
-    auto dev = mgr->MakeDevice(kAndroidLegacyDevice);
-    EXPECT_TRUE(dev);
-    EXPECT_FALSE(mgr->MakeDevice(kAndroidLegacyDevice));
-  }
-  {
-    std::vector<std::unique_ptr<Device>> devices;
-    for (int i = 0; i < 4; ++i) {
-      auto dev = mgr->MakeDevice(base::StringPrintf("%d", i));
-      EXPECT_TRUE(dev);
-      devices.emplace_back(std::move(dev));
-    }
-    EXPECT_FALSE(mgr->MakeDevice("x"));
-  }
-}
-
-TEST_F(DeviceManagerTest, CtorAddsAndroidDevice) {
-  capture_msgs_ = true;
   auto mgr = NewManager();
-  VerifyMsgs({android_announce_msg_});
+  DeviceConfig msg;
+  std::vector<std::unique_ptr<Device>> devices;
+  for (int i = 0; i < 4; ++i) {
+    auto dev = mgr->MakeDevice(base::StringPrintf("%d", i));
+    EXPECT_TRUE(dev);
+    devices.emplace_back(std::move(dev));
+  }
+  EXPECT_FALSE(mgr->MakeDevice("x"));
 }
 
-TEST_F(DeviceManagerTest, CtorAddsLegacyAndroidDevice_MultinetDisabled) {
-  capture_msgs_ = true;
-  auto mgr = NewManager(kAndroidLegacyDevice);
-  VerifyMsgs({legacy_android_announce_msg_});
+TEST_F(DeviceManagerTest, AndroidDeviceAddedByDefault) {
+  auto mgr = NewManager();
+  EXPECT_TRUE(mgr->Exists(kAndroidDevice));
+  EXPECT_FALSE(mgr->Exists(kAndroidLegacyDevice));
+}
+
+TEST_F(DeviceManagerTest,
+       AndroidLegacyDeviceAddedByDefaultWhenMultinetDisabled) {
+  auto mgr = NewManager(true /* is_arc_legacy */);
+  EXPECT_FALSE(mgr->Exists(kAndroidDevice));
+  EXPECT_TRUE(mgr->Exists(kAndroidLegacyDevice));
 }
 
 TEST_F(DeviceManagerTest, AddNewDevices) {
   auto mgr = NewManager();
-  EXPECT_TRUE(mgr->Add("eth0"));
+  std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("eth0"),
+                                           dbus::ObjectPath("wlan0")};
+  auto value = brillo::Any(devices);
+  shill_client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
+  EXPECT_TRUE(mgr->Exists("eth0"));
+  EXPECT_TRUE(mgr->Exists("wlan0"));
+  // Verify Android device is not removed.
+  EXPECT_TRUE(mgr->Exists(kAndroidDevice));
 }
 
-TEST_F(DeviceManagerTest, CannotAddExistingDevice) {
+TEST_F(DeviceManagerTest, NoDevicesAddedWhenMultinetDisabled) {
+  auto mgr = NewManager(true /* is_arc_legacy */);
+  std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("eth0"),
+                                           dbus::ObjectPath("wlan0")};
+  auto value = brillo::Any(devices);
+  shill_client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
+  EXPECT_FALSE(mgr->Exists("eth0"));
+  EXPECT_FALSE(mgr->Exists("wlan0"));
+  // Verify Android device is not removed.
+  EXPECT_TRUE(mgr->Exists(kAndroidLegacyDevice));
+}
+
+TEST_F(DeviceManagerTest, PreviousDevicesRemoved) {
   auto mgr = NewManager();
-  EXPECT_FALSE(mgr->Add(kAndroidDevice));
-}
-
-TEST_F(DeviceManagerTest, CannotAddExistingDevice_MultinetDisabled) {
-  auto mgr = NewManager(kAndroidLegacyDevice);
-  EXPECT_FALSE(mgr->Add(kAndroidLegacyDevice));
-}
-
-TEST_F(DeviceManagerTest, ResetAddsNewDevices) {
-  auto mgr = NewManager();
-  EXPECT_TRUE(mgr->Add("eth0"));
-  EXPECT_EQ(mgr->Reset({"eth0", "wlan0"}), 3);
-}
-
-TEST_F(DeviceManagerTest, ResetRemovesExistingDevices) {
-  auto mgr = NewManager();
-  EXPECT_TRUE(mgr->Add("eth0"));
-  EXPECT_EQ(mgr->Reset({"wlan0"}), 2);
-  // Can use Add now to verify only android and wlan0 exist (eth0 removed).
-  EXPECT_FALSE(mgr->Add(kAndroidDevice));
-  EXPECT_FALSE(mgr->Add("wlan0"));
+  {
+    std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("eth0"),
+                                             dbus::ObjectPath("wlan0")};
+    auto value = brillo::Any(devices);
+    shill_client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
+    EXPECT_TRUE(mgr->Exists("eth0"));
+    EXPECT_TRUE(mgr->Exists("wlan0"));
+  }
+  {
+    std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("eth0"),
+                                             dbus::ObjectPath("eth1")};
+    auto value = brillo::Any(devices);
+    shill_client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
+    EXPECT_TRUE(mgr->Exists("eth0"));
+    EXPECT_TRUE(mgr->Exists("eth1"));
+    EXPECT_FALSE(mgr->Exists("wlan0"));
+  }
 }
 
 }  // namespace arc_networkd

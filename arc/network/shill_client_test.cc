@@ -9,53 +9,19 @@
 #include <string>
 #include <vector>
 
-#include <base/memory/ref_counted.h>
 #include <chromeos/dbus/service_constants.h>
-#include <dbus/mock_bus.h>
-#include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-using testing::_;
-using testing::AnyNumber;
-using testing::Return;
+#include "arc/network/fake_shill_client.h"
 
 namespace arc_networkd {
-
-class FakeShillClient : public ShillClient {
- public:
-  explicit FakeShillClient(scoped_refptr<dbus::Bus> bus) : ShillClient(bus) {}
-
-  std::string GetDefaultInterface() override { return fake_default_ifname_; }
-
-  void SetFakeDefaultInterface(const std::string& ifname) {
-    fake_default_ifname_ = ifname;
-  }
-
-  void NotifyManagerPropertyChange(const std::string& name,
-                                   const brillo::Any& value) {
-    OnManagerPropertyChange(name, value);
-  }
-
- private:
-  std::string fake_default_ifname_;
-};
 
 class ShillClientTest : public testing::Test {
  protected:
   void SetUp() override {
-    mock_proxy_ = new dbus::MockObjectProxy(
-        mock_bus_.get(), "org.chromium.flimflam", dbus::ObjectPath("/path"));
-    // Set these expectations rather than just ignoring them to confirm
-    // the ShillClient obtains the expected proxy and registers for
-    // property changes.
-    EXPECT_CALL(*mock_bus_, GetObjectProxy("org.chromium.flimflam", _))
-        .WillRepeatedly(Return(mock_proxy_.get()));
-    EXPECT_CALL(*mock_proxy_, ConnectToSignal("org.chromium.flimflam.Manager",
-                                              "PropertyChanged", _, _))
-        .Times(AnyNumber());
-
-    client_ = std::make_unique<FakeShillClient>(mock_bus_);
+    helper_ = std::make_unique<FakeShillClientHelper>();
+    client_ = helper_->FakeClient();
     client_->RegisterDefaultInterfaceChangedHandler(
         base::Bind(&ShillClientTest::DefaultInterfaceChangedHandler,
                    base::Unretained(this)));
@@ -77,11 +43,7 @@ class ShillClientTest : public testing::Test {
   std::string default_ifname_;
   std::set<std::string> devices_;
   std::unique_ptr<FakeShillClient> client_;
-
- private:
-  scoped_refptr<dbus::MockBus> mock_bus_{
-      new dbus::MockBus{dbus::Bus::Options{}}};
-  scoped_refptr<dbus::MockObjectProxy> mock_proxy_;
+  std::unique_ptr<FakeShillClientHelper> helper_;
 };
 
 TEST_F(ShillClientTest, DevicesChangedHandlerCalledOnDevicesPropertyChange) {
