@@ -5,6 +5,7 @@
 #include "cros-disks/format_manager.h"
 
 #include <string>
+#include <vector>
 
 #include <base/files/file.h>
 #include <base/files/file_util.h>
@@ -38,34 +39,34 @@ const char kDefaultLabel[] = "UNTITLED";
 
 namespace cros_disks {
 
-FormatManager::FormatManager(brillo::ProcessReaper* process_reaper)
-    : process_reaper_(process_reaper), weak_ptr_factory_(this) {}
+namespace {
 
-FormatManager::~FormatManager() {}
-
-FormatErrorType FormatManager::StartFormatting(const std::string& device_path,
-                                               const std::string& device_file,
-                                               const std::string& filesystem) {
-  // Check if the file system is supported for formatting
-  if (!IsFilesystemSupported(filesystem)) {
-    LOG(WARNING) << filesystem << " filesystem is not supported for formatting";
-    return FORMAT_ERROR_UNSUPPORTED_FILESYSTEM;
+std::vector<std::string> CreateFormatArguments(const std::string& filesystem) {
+  std::vector<std::string> arguments;
+  if (filesystem == "vfat") {
+    // Allow to create filesystem across the entire device.
+    arguments.push_back("-I");
+    // FAT type should be predefined, because mkfs autodetection is faulty.
+    arguments.push_back("-F");
+    arguments.push_back("32");
+    arguments.push_back("-n");
+    arguments.push_back(kDefaultLabel);
+  } else if (filesystem == "exfat") {
+    arguments.push_back("-n");
+    arguments.push_back(kDefaultLabel);
+  } else if (filesystem == "ntfs") {
+    arguments.push_back("--quick");
+    arguments.push_back("--label");
+    arguments.push_back(kDefaultLabel);
   }
+  return arguments;
+}
 
-  // Localize mkfs on disk
-  std::string format_program = GetFormatProgramPath(filesystem);
-  if (format_program.empty()) {
-    LOG(WARNING) << "Could not find a format program for filesystem '"
-                 << filesystem << "'";
-    return FORMAT_ERROR_FORMAT_PROGRAM_NOT_FOUND;
-  }
-
-  if (base::ContainsKey(format_process_, device_path)) {
-    LOG(WARNING) << "Device '" << device_path << "' is already being formatted";
-    return FORMAT_ERROR_DEVICE_BEING_FORMATTED;
-  }
-
-  SandboxedProcess* process = &format_process_[device_path];
+// Initialises the process for formatting and starts it.
+FormatErrorType StartFormatProcess(const std::string& device_file,
+                                   const std::string& format_program,
+                                   const std::vector<std::string>& arguments,
+                                   SandboxedProcess* process) {
   process->SetNoNewPrivileges();
   process->NewMountNamespace();
   process->NewIpcNamespace();
@@ -96,37 +97,63 @@ FormatErrorType FormatManager::StartFormatting(const std::string& device_path,
 
   process->AddArgument(format_program);
 
-  // Allow to create filesystem across the entire device.
-  if (filesystem == "vfat") {
-    process->AddArgument("-I");
-    // FAT type should be predefined, because mkfs autodetection is faulty.
-    process->AddArgument("-F");
-    process->AddArgument("32");
-    process->AddArgument("-n");
-    process->AddArgument(kDefaultLabel);
-  } else if (filesystem == "exfat") {
-    process->AddArgument("-n");
-    process->AddArgument(kDefaultLabel);
-  } else if (filesystem == "ntfs") {
-    process->AddArgument("--quick");
-    process->AddArgument("--label");
-    process->AddArgument(kDefaultLabel);
+  for (std::string arg : arguments) {
+    process->AddArgument(arg);
   }
 
   process->AddArgument(
       base::StringPrintf("/dev/fd/%d", dev_file.GetPlatformFile()));
   if (!process->Start()) {
-    LOG(WARNING) << "Cannot start a process for formatting '" << device_path
-                 << "' as filesystem '" << filesystem << "'";
-    format_process_.erase(device_path);
+    LOG(WARNING) << "Cannot start process '" << format_program
+                 << "' to format '" << device_file << "'";
     return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
   }
 
-  process_reaper_->WatchForChild(
-      FROM_HERE, process->pid(),
-      base::Bind(&FormatManager::OnFormatProcessTerminated,
-                 weak_ptr_factory_.GetWeakPtr(), device_path));
   return FORMAT_ERROR_NONE;
+}
+
+}  // namespace
+
+FormatManager::FormatManager(brillo::ProcessReaper* process_reaper)
+    : process_reaper_(process_reaper), weak_ptr_factory_(this) {}
+
+FormatManager::~FormatManager() {}
+
+FormatErrorType FormatManager::StartFormatting(const std::string& device_path,
+                                               const std::string& device_file,
+                                               const std::string& filesystem) {
+  // Check if the file system is supported for formatting
+  if (!IsFilesystemSupported(filesystem)) {
+    LOG(WARNING) << filesystem << " filesystem is not supported for formatting";
+    return FORMAT_ERROR_UNSUPPORTED_FILESYSTEM;
+  }
+
+  // Localize mkfs on disk
+  std::string format_program = GetFormatProgramPath(filesystem);
+  if (format_program.empty()) {
+    LOG(WARNING) << "Could not find a format program for filesystem '"
+                 << filesystem << "'";
+    return FORMAT_ERROR_FORMAT_PROGRAM_NOT_FOUND;
+  }
+
+  if (base::ContainsKey(format_process_, device_path)) {
+    LOG(WARNING) << "Device '" << device_path << "' is already being formatted";
+    return FORMAT_ERROR_DEVICE_BEING_FORMATTED;
+  }
+
+  SandboxedProcess* process = &format_process_[device_path];
+
+  FormatErrorType error = StartFormatProcess(
+      device_file, format_program, CreateFormatArguments(filesystem), process);
+  if (error == FORMAT_ERROR_NONE) {
+    process_reaper_->WatchForChild(
+        FROM_HERE, process->pid(),
+        base::Bind(&FormatManager::OnFormatProcessTerminated,
+                   weak_ptr_factory_.GetWeakPtr(), device_path));
+  } else {
+    format_process_.erase(device_path);
+  }
+  return error;
 }
 
 void FormatManager::OnFormatProcessTerminated(const std::string& device_path,
