@@ -12,7 +12,6 @@
 
 namespace shill {
 
-class EventDispatcher;
 class IOHandler;
 class IOHandlerFactory;
 class ScopedSocketCloser;

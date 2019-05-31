@@ -26,7 +26,6 @@ class DeviceInfo;
 class RTNLHandler;
 class Resolver;
 class RoutingTable;
-struct RoutingTableEntry;
 
 // The Conneciton maintains the implemented state of an IPConfig, e.g,
 // the IP address, routing table and DNS table entries.

@@ -25,7 +25,6 @@ namespace shill {
 class DnsClient;
 class Error;
 class EventDispatcher;
-class HttpUrl;
 class IPAddress;
 
 // The HttpRequest class implements facilities for performing a simple "GET"
