@@ -3,6 +3,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# TODO(b/129426200): Update how this detects ARCVM is active.
+if [ -n "$(egrep '^arcvm$' /etc/ui_use_flags.txt)" ]; then
+  exec android-sh-vm $@
+fi
+
 die() {
   echo "$0: $1" >&2
   exit 1

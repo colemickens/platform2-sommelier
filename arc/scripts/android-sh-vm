@@ -1,0 +1,51 @@
+#!/bin/sh
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# TODO(b/131121671): Update this when script with a method that works for
+#   user images.
+
+# TODO(b/131121671): Change this when cid becomes dynamic.
+target='vsock:5:5555'
+
+is_connected() {
+  [ -n "$(adb devices 2>/dev/null | grep "${target}")" ]
+}
+
+command=
+if [ "$1" = "-c" ]; then
+  shift
+  command=$@
+fi
+
+# adb tries to create .android in the home directory, pass it
+# a temporary directory instead.
+tmpdir=$(mktemp -d)
+export HOME="${tmpdir}"
+
+# Try to start the server first if it's not started.
+adb start-server 2>/dev/null
+
+# It is necessary to wait a little bit after a successful 'adb connect'
+# before running 'adb shell', else a 'device offline' error occurs and
+# the command fails.
+# The loop below will wait for ~5 seconds at most incase the VM is
+# booting, and will wait for 500ms even after a successful connection
+# instead of immediately breaking.
+attempts=0
+while [ "${attempts}" -le 10 ] && ! is_connected; do
+  adb connect ${target} >/dev/null
+  sleep 0.5
+  attempts=$(( attempts + 1 ))
+done
+
+if ! is_connected; then
+  echo "$0: Could not connect, is the VM running?"
+  rm -rf "${tmpdir}"
+  exit 1
+fi
+
+adb shell ${command}
+ret=$?
+rm -rf "${tmpdir}"
+exit $ret
