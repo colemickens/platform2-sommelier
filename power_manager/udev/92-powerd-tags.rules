@@ -5,6 +5,7 @@ ENV{POWERD_ROLE}=="internal_stylus",      ENV{POWERD_TAGS_USABLE}="usable_when_l
 ENV{POWERD_ROLE}=="external_input",       ENV{POWERD_TAGS_USABLE}="usable_when_docked usable_when_laptop usable_when_tablet usable_when_display_off"
 ENV{POWERD_ROLE}=="cros_fingerprint",     ENV{POWERD_TAGS_USABLE}="usable_when_docked usable_when_laptop usable_when_tablet usable_when_display_off"
 
+ENV{POWERD_ROLE}=="internal_keyboard",    KERNEL=="input*", ENV{POWERD_TAGS_WAKEUP}="wakeup"
 ENV{POWERD_ROLE}=="internal_touchpad",    KERNEL=="input*", ENV{POWERD_TAGS_WAKEUP}="wakeup wakeup_only_when_usable"
 ENV{POWERD_ROLE}=="internal_touchscreen", KERNEL=="input*", ENV{POWERD_TAGS_WAKEUP}="wakeup wakeup_disabled"
 ENV{POWERD_ROLE}=="internal_stylus",      KERNEL=="input*", ENV{POWERD_TAGS_WAKEUP}="wakeup wakeup_only_when_usable"
