@@ -117,7 +117,7 @@ TEST(HttpFormData, MultiPartFormField) {
       "Content-Transfer-Encoding: binary\r\n"
       "\r\n"
       "\x01\x02\x03\x04\x05\r\n"
-      "--Delimiter--";
+      "--Delimiter--\r\n";
   EXPECT_EQ(expected_data, GetFormFieldData(&form_field));
 }
 
@@ -195,8 +195,8 @@ TEST(HttpFormData, FormData) {
       "Content-Transfer-Encoding: binary\r\n"
       "\r\n"
       "\x01\x02\x03\x04\x05\r\n"
-      "--boundary 2--\r\n"
-      "--boundary1--";
+      "--boundary 2--\r\n\r\n"
+      "--boundary1--\r\n";
   EXPECT_EQ(expected_data, (std::string{data.begin(), data.end()}));
 }
 }  // namespace http

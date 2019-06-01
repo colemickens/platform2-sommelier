@@ -192,7 +192,7 @@ std::string MultiPartFormField::GetBoundaryStart() const {
 }
 
 std::string MultiPartFormField::GetBoundaryEnd() const {
-  return base::StringPrintf("--%s--", boundary_.c_str());
+  return base::StringPrintf("--%s--\r\n", boundary_.c_str());
 }
 
 FormData::FormData() : FormData{std::string{}} {

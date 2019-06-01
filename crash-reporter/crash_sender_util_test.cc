@@ -1272,7 +1272,7 @@ void CreateCrashFormDataTest::TestCreateCrashFormData(bool absolute_paths) {
       "Content-Disposition: form-data; name=\"guid\"\r\n"
       "\r\n"
       "00112233445566778899aabbccddeeff\r\n"
-      "--boundary--";
+      "--boundary--\r\n";
 
   EXPECT_EQ(expected_data, std::string(data.begin(), data.end()));
 }

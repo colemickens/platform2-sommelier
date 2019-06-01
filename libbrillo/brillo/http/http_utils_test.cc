@@ -366,7 +366,7 @@ TEST(HttpUtils, PostMultipartFormData) {
       "Content-Disposition: form-data; name=\"key2\"\r\n"
       "\r\n"
       "value2\r\n"
-      "--boundary123--";
+      "--boundary123--\r\n";
   EXPECT_EQ(expected_value, response->ExtractDataAsString());
 }
 
