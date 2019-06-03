@@ -127,13 +127,22 @@ class Camera3FrameFixture : public Camera3StreamFixture {
                                       ImageFormat format,
                                       int32_t rotation);
 
+  // Generate a new I420 image of color bar pattern
   ScopedImage GenerateColorBarsPattern(
       uint32_t width,
       uint32_t height,
-      ImageFormat format,
       const std::vector<std::tuple<uint8_t, uint8_t, uint8_t>>&
           color_bars_pattern,
-      int32_t color_bars_pattern_mode);
+      int32_t color_bars_pattern_mode,
+      uint32_t sensor_pixel_array_width,
+      uint32_t sensor_pixel_array_height);
+
+  // Crop, rotate and scale the input image and return a new I420 image. The
+  // input image is freed.
+  ScopedImage CropRotateScale(ScopedImage input_image,
+                              int32_t rotation_degrees,
+                              uint32_t width,
+                              uint32_t height);
 
   // Computes the structural similarity of given images. Given images must
   // be of the I420 format; otherwise, a value of 0.0 is returned. When given

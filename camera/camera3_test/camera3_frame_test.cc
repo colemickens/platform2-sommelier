@@ -314,30 +314,31 @@ Camera3FrameFixture::ScopedImage Camera3FrameFixture::ConvertToImageAndRotate(
 Camera3FrameFixture::ScopedImage Camera3FrameFixture::GenerateColorBarsPattern(
     uint32_t width,
     uint32_t height,
-    ImageFormat format,
     const std::vector<std::tuple<uint8_t, uint8_t, uint8_t>>&
         color_bars_pattern,
-    int32_t color_bars_pattern_mode) {
-  if (format >= ImageFormat::IMAGE_FORMAT_END ||
-      std::find(supported_color_bars_test_pattern_modes_.begin(),
+    int32_t color_bars_pattern_mode,
+    uint32_t sensor_pixel_array_width,
+    uint32_t sensor_pixel_array_height) {
+  if (std::find(supported_color_bars_test_pattern_modes_.begin(),
                 supported_color_bars_test_pattern_modes_.end(),
                 color_bars_pattern_mode) ==
-          supported_color_bars_test_pattern_modes_.end()) {
+      supported_color_bars_test_pattern_modes_.end()) {
     return nullptr;
   }
-  ScopedImage argb_image(
-      new Image(width, height, ImageFormat::IMAGE_FORMAT_ARGB));
+  ScopedImage argb_image(new Image(sensor_pixel_array_width,
+                                   sensor_pixel_array_height,
+                                   ImageFormat::IMAGE_FORMAT_ARGB));
   uint8_t* pdata = argb_image->planes[0].addr;
-  int color_bar_width = width / color_bars_pattern.size();
-  int color_bar_height = height / 128 * 128;
+  int color_bar_width = sensor_pixel_array_width / color_bars_pattern.size();
+  int color_bar_height = sensor_pixel_array_height / 128 * 128;
   if (color_bar_height == 0) {
-    color_bar_height = height;
+    color_bar_height = sensor_pixel_array_height;
   }
-  for (size_t h = 0; h < height; h++) {
+  for (size_t h = 0; h < sensor_pixel_array_height; h++) {
     float gray_factor =
         static_cast<float>(color_bar_height - (h % color_bar_height)) /
         color_bar_height;
-    for (size_t w = 0; w < width; w++) {
+    for (size_t w = 0; w < sensor_pixel_array_width; w++) {
       int index = (w / color_bar_width) % color_bars_pattern.size();
       auto get_fade_color = [&](uint8_t base_color) {
         if (color_bars_pattern_mode ==
@@ -357,16 +358,110 @@ Camera3FrameFixture::ScopedImage Camera3FrameFixture::GenerateColorBarsPattern(
     }
   }
 
-  if (format == ImageFormat::IMAGE_FORMAT_I420) {
-    ScopedImage i420_image(new Image(width, height, format));
-    libyuv::ARGBToI420(argb_image->planes[0].addr, argb_image->planes[0].stride,
-                       i420_image->planes[0].addr, i420_image->planes[0].stride,
-                       i420_image->planes[1].addr, i420_image->planes[1].stride,
-                       i420_image->planes[2].addr, i420_image->planes[2].stride,
-                       width, height);
-    return i420_image;
+  return CropRotateScale(std::move(argb_image), 0, width, height);
+}
+
+Camera3FrameFixture::ScopedImage Camera3FrameFixture::CropRotateScale(
+    ScopedImage input_image,
+    int32_t rotation_degrees,
+    uint32_t width,
+    uint32_t height) {
+  if (input_image->format != ImageFormat::IMAGE_FORMAT_ARGB &&
+      input_image->format != ImageFormat::IMAGE_FORMAT_I420) {
+    ADD_FAILURE() << "Unsupported image format";
+    return nullptr;
   }
-  return argb_image;
+  libyuv::RotationMode rotation_mode = libyuv::RotationMode::kRotate0;
+  switch (rotation_degrees) {
+    case 0:
+      break;
+    case 90:
+      rotation_mode = libyuv::RotationMode::kRotate90;
+      break;
+    case 270:
+      rotation_mode = libyuv::RotationMode::kRotate270;
+      break;
+    default:
+      LOG(ERROR) << "Invalid rotation degree: " << rotation_degrees;
+      return nullptr;
+  }
+  int cropped_width;
+  int cropped_height;
+  int crop_x = 0;
+  int crop_y = 0;
+  if (rotation_mode == libyuv::RotationMode::kRotate0) {
+    if (input_image->width * height > width * input_image->height) {
+      cropped_width = input_image->height * width / height;
+      cropped_height = input_image->height;
+      if (cropped_width % 2 == 1) {
+        // Make cropped_width to the closest even number.
+        cropped_width++;
+      }
+      crop_x = (input_image->width - cropped_width) / 2;
+    } else {
+      cropped_width = input_image->width;
+      cropped_height = input_image->width * height / width;
+      if (cropped_height % 2 == 1) {
+        // Make cropped_height to the closest even number.
+        cropped_height++;
+      }
+      crop_y = (input_image->height - cropped_height) / 2;
+    }
+  } else {
+    if (input_image->width * width > input_image->height * height) {
+      cropped_width = input_image->height * height / width;
+      cropped_height = input_image->height;
+      if (cropped_width % 2 == 1) {
+        // Make cropped_width to the closest even number.
+        cropped_width++;
+      }
+      crop_x = (input_image->width - cropped_width) / 2;
+    } else {
+      cropped_width = input_image->width;
+      cropped_height = input_image->width * width / height;
+      if (cropped_height % 2 == 1) {
+        // Make cropped_height to the closest even number.
+        cropped_height++;
+      }
+      crop_y = (input_image->height - cropped_height) / 2;
+    }
+  }
+  ScopedImage cropped_image(new Image(
+      rotation_mode == libyuv::RotationMode::kRotate0 ? cropped_width
+                                                      : cropped_height,
+      rotation_mode == libyuv::RotationMode::kRotate0 ? cropped_height
+                                                      : cropped_width,
+      ImageFormat::IMAGE_FORMAT_I420));
+  int res = libyuv::ConvertToI420(
+      input_image->planes[0].addr, input_image->size,
+      cropped_image->planes[0].addr, cropped_image->planes[0].stride,
+      cropped_image->planes[1].addr, cropped_image->planes[1].stride,
+      cropped_image->planes[2].addr, cropped_image->planes[2].stride, crop_x,
+      crop_y, input_image->width, input_image->height, cropped_width,
+      cropped_height, rotation_mode,
+      input_image->format == ImageFormat::IMAGE_FORMAT_ARGB
+          ? libyuv::FourCC::FOURCC_ARGB
+          : libyuv::FourCC::FOURCC_I420);
+  if (res) {
+    ADD_FAILURE() << "ConvertToI420 failed: " << res;
+    return nullptr;
+  }
+  ScopedImage i420_image(
+      new Image(width, height, ImageFormat::IMAGE_FORMAT_I420));
+  res = libyuv::I420Scale(
+      cropped_image->planes[0].addr, cropped_image->planes[0].stride,
+      cropped_image->planes[1].addr, cropped_image->planes[1].stride,
+      cropped_image->planes[2].addr, cropped_image->planes[2].stride,
+      cropped_image->width, cropped_image->height, i420_image->planes[0].addr,
+      i420_image->planes[0].stride, i420_image->planes[1].addr,
+      i420_image->planes[1].stride, i420_image->planes[2].addr,
+      i420_image->planes[2].stride, width, height,
+      libyuv::FilterMode::kFilterNone);
+  if (res) {
+    ADD_FAILURE() << "I420Scale failed: " << res;
+    return nullptr;
+  }
+  return i420_image;
 }
 
 double Camera3FrameFixture::ComputeSsim(const Image& buffer_a,
@@ -1351,10 +1446,15 @@ TEST_P(Camera3FrameContentTest, CorruptionDetection) {
                                       height_, ImageFormat::IMAGE_FORMAT_I420);
   ASSERT_NE(nullptr, capture_image);
 
+  uint32_t sensor_pixel_array_width;
+  uint32_t sensor_pixel_array_height;
+  ASSERT_EQ(0, cam_device_.GetStaticInfo()->GetSensorPixelArraySize(
+                   &sensor_pixel_array_width, &sensor_pixel_array_height));
+
   for (const auto& it : color_bars_test_patterns_) {
     auto pattern_image = GenerateColorBarsPattern(
-        width_, height_, ImageFormat::IMAGE_FORMAT_I420, it,
-        test_pattern_modes.front());
+        width_, height_, it, test_pattern_modes.front(),
+        sensor_pixel_array_width, sensor_pixel_array_height);
     ASSERT_NE(nullptr, pattern_image);
 
     if (ComputeSsim(*capture_image, *pattern_image) >
@@ -1461,9 +1561,6 @@ class Camera3PortraitRotationTest
   // Rotate |in_buffer| 180 degrees to |out_buffer|.
   int Rotate180(const Image& in_buffer, Image* out_buffer);
 
-  // Crop-rotate-scale |in_buffer| to |out_buffer|.
-  int CropRotateScale(const Image& in_buffer, Image* out_buffer);
-
   int32_t format_;
 
   int32_t width_;
@@ -1501,70 +1598,6 @@ int Camera3PortraitRotationTest::Rotate180(const Image& in_buffer,
       out_buffer->planes[1].addr, out_buffer->planes[1].stride,
       out_buffer->planes[2].addr, out_buffer->planes[2].stride, in_buffer.width,
       in_buffer.height, libyuv::RotationMode::kRotate180);
-}
-
-int Camera3PortraitRotationTest::CropRotateScale(const Image& in_buffer,
-                                                 Image* out_buffer) {
-  if (in_buffer.format != ImageFormat::IMAGE_FORMAT_I420 || !out_buffer ||
-      out_buffer->format != ImageFormat::IMAGE_FORMAT_I420 ||
-      in_buffer.width != out_buffer->width ||
-      in_buffer.height != out_buffer->height) {
-    return -EINVAL;
-  }
-  int width = in_buffer.width;
-  int height = in_buffer.height;
-  int cropped_width = height * height / width;
-  if (cropped_width % 2 == 1) {
-    // Make cropped_width to the closest even number.
-    cropped_width++;
-  }
-  int cropped_height = height;
-  int margin = (width - cropped_width) / 2;
-
-  int rotated_height = cropped_width;
-  int rotated_width = cropped_height;
-  libyuv::RotationMode rotation_mode = libyuv::RotationMode::kRotate90;
-  switch (rotation_degrees_) {
-    case 90:
-      rotation_mode = libyuv::RotationMode::kRotate90;
-      break;
-    case 270:
-      rotation_mode = libyuv::RotationMode::kRotate270;
-      break;
-    default:
-      LOG(ERROR) << "Invalid rotation degree: " << rotation_degrees_;
-      return -EINVAL;
-  }
-
-  ScopedImage rotated_buffer(
-      new Image(rotated_width, rotated_height, ImageFormat::IMAGE_FORMAT_I420));
-  // This libyuv method first crops the frame and then rotates it 90 degrees
-  // clockwise or counterclockwise.
-  int res = libyuv::ConvertToI420(
-      in_buffer.planes[0].addr, in_buffer.planes[0].stride,
-      rotated_buffer->planes[0].addr, rotated_buffer->planes[0].stride,
-      rotated_buffer->planes[1].addr, rotated_buffer->planes[1].stride,
-      rotated_buffer->planes[2].addr, rotated_buffer->planes[2].stride, margin,
-      0, width, height, cropped_width, cropped_height, rotation_mode,
-      libyuv::FourCC::FOURCC_I420);
-  if (res) {
-    LOG(ERROR) << "ConvertToI420 failed: " << res;
-    return res;
-  }
-
-  res = libyuv::I420Scale(
-      rotated_buffer->planes[0].addr, rotated_buffer->planes[0].stride,
-      rotated_buffer->planes[1].addr, rotated_buffer->planes[1].stride,
-      rotated_buffer->planes[2].addr, rotated_buffer->planes[2].stride,
-      rotated_width, rotated_height, out_buffer->planes[0].addr,
-      out_buffer->planes[0].stride, out_buffer->planes[1].addr,
-      out_buffer->planes[1].stride, out_buffer->planes[2].addr,
-      out_buffer->planes[2].stride, width, height,
-      libyuv::FilterMode::kFilterNone);
-  if (res) {
-    LOG(ERROR) << "I420Scale failed: " << res;
-  }
-  return res;
 }
 
 TEST_P(Camera3PortraitRotationTest, GetFrame) {
@@ -1638,11 +1671,9 @@ TEST_P(Camera3PortraitRotationTest, GetFrame) {
         << "Test pattern appears to be symmetric";
 
     // Generate software crop-rotate-scaled pattern
-    ScopedImage sw_portrait_i420_image(
-        new Image(width_, height_, ImageFormat::IMAGE_FORMAT_I420));
+    ScopedImage sw_portrait_i420_image = CropRotateScale(
+        std::move(orig_i420_image), rotation_degrees_, width_, height_);
     ASSERT_NE(nullptr, sw_portrait_i420_image);
-    ASSERT_EQ(0,
-              CropRotateScale(*orig_i420_image, sw_portrait_i420_image.get()));
     if (save_images_) {
       SaveImage(*sw_portrait_i420_image, "_swconv");
     }

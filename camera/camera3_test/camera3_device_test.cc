@@ -604,6 +604,23 @@ int32_t Camera3Device::StaticInfo::GetAfMaxRegions() const {
              : 0;
 }
 
+int32_t Camera3Device::StaticInfo::GetSensorPixelArraySize(
+    uint32_t* width, uint32_t* height) const {
+  if (!width || !height) {
+    return -EINVAL;
+  }
+  camera_metadata_ro_entry_t entry;
+  int32_t result = find_camera_metadata_ro_entry(
+      characteristics_, ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE, &entry);
+  if (result == 0 && entry.count == 2) {
+    *width = entry.data.i32[0];
+    *height = entry.data.i32[1];
+  } else if (result == 0) {
+    return -ENOENT;
+  }
+  return result;
+}
+
 // Test fixture
 
 void Camera3DeviceFixture::SetUp() {
