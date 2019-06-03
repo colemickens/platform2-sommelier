@@ -272,10 +272,25 @@ void LegacyCryptohomeInterfaceAdaptor::GetSystemSalt(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>>
         response) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<std::vector<uint8_t>>>(
+          std::move(response));
+
+  user_data_auth::GetSystemSaltRequest request;
+  misc_proxy_->GetSystemSaltAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::GetSystemSaltOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::vector<uint8_t>>,
+          base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::GetSystemSaltOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>>> response,
+    const user_data_auth::GetSystemSaltReply& reply) {
+  std::vector<uint8_t> salt(reply.salt().begin(), reply.salt().end());
+  response->Return(salt);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::GetSanitizedUsername(
