@@ -607,6 +607,8 @@ void CryptohomeMiscAdaptor::GetSystemSalt(
         user_data_auth::GetSystemSaltReply>> response,
     const user_data_auth::GetSystemSaltRequest& in_request) {
   user_data_auth::GetSystemSaltReply reply;
+  const brillo::SecureBlob& salt = service_->GetSystemSalt();
+  reply.set_salt(salt.char_data(), salt.size());
   response->Return(reply);
 }
 

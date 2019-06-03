@@ -301,6 +301,13 @@ class UserDataAuth {
   // parameters are gone
   bool RemoveFirmwareManagementParameters();
 
+  // =============== Miscellaneous Public APIs ===============
+
+  // Retrieve the current system salt. This method call is always successful.
+  // Note that this should never be called before Initialize() is successful,
+  // otherwise an assertion will fail.
+  const brillo::SecureBlob& GetSystemSalt();
+
   // =============== Miscellaneous ===============
 
   // This is called by tpm_init_ when there's any update on ownership status

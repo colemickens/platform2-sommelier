@@ -952,6 +952,17 @@ TEST_F(UserDataAuthTest, RemoveFirmwareManagementParametersError) {
   EXPECT_FALSE(userdataauth_.RemoveFirmwareManagementParameters());
 }
 
+TEST_F(UserDataAuthTest, GetSystemSaltSucess) {
+  brillo::SecureBlob salt;
+  AssignSalt(CRYPTOHOME_DEFAULT_SALT_LENGTH, &salt);
+  EXPECT_EQ(salt, userdataauth_.GetSystemSalt());
+}
+
+TEST_F(UserDataAuthTestNotInitialized, GetSystemSaltUninitialized) {
+  EXPECT_DEATH(userdataauth_.GetSystemSalt(),
+               "Cannot call GetSystemSalt before initialization");
+}
+
 // ======================= CleanUpStaleMounts tests ==========================
 
 namespace {

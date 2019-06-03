@@ -1934,4 +1934,10 @@ bool UserDataAuth::RemoveFirmwareManagementParameters() {
   return firmware_management_parameters_->Destroy();
 }
 
+const brillo::SecureBlob& UserDataAuth::GetSystemSalt() {
+  DCHECK_NE(system_salt_.size(), 0)
+      << "Cannot call GetSystemSalt before initialization";
+  return system_salt_;
+}
+
 }  // namespace cryptohome

@@ -357,6 +357,7 @@ class CryptohomeMiscAdaptor
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::GetSystemSaltReply>> response,
       const user_data_auth::GetSystemSaltRequest& in_request) override;
+
   void UpdateCurrentUserActivityTimestamp(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::UpdateCurrentUserActivityTimestampReply>> response,
