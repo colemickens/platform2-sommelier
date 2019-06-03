@@ -572,6 +572,9 @@ class LegacyCryptohomeInterfaceAdaptor
   void TpmAttestationCreateCertRequestOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>>> response,
       const attestation::CreateCertificateRequestReply& reply);
+  void Pkcs11IsTpmTokenReadyOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+      const user_data_auth::Pkcs11IsTpmTokenReadyReply& reply);
 
   // This method forwards the error received from calling the new interface back
   // to the old interface

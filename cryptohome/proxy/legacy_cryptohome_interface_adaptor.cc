@@ -991,10 +991,23 @@ void LegacyCryptohomeInterfaceAdaptor::TpmGetVersionStructured(
 
 void LegacyCryptohomeInterfaceAdaptor::Pkcs11IsTpmTokenReady(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
+
+  user_data_auth::Pkcs11IsTpmTokenReadyRequest request;
+  pkcs11_proxy_->Pkcs11IsTpmTokenReadyAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::Pkcs11IsTpmTokenReadyOnSuccess,
+          base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::Pkcs11IsTpmTokenReadyOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+    const user_data_auth::Pkcs11IsTpmTokenReadyReply& reply) {
+  response->Return(reply.ready());
 }
 
 void LegacyCryptohomeInterfaceAdaptor::Pkcs11GetTpmTokenInfo(
