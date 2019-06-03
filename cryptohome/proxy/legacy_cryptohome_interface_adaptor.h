@@ -38,12 +38,25 @@ class SharedDBusMethodResponse {
 
   void ReplyWithError(const brillo::Error* error) {
     CHECK(response_) << "ReplyWithError() called after response has been sent";
-    response_.release()->ReplyWithError(error);
+    response_->ReplyWithError(error);
+    response_.reset(nullptr);
+  }
+
+  void ReplyWithError(const tracked_objects::Location& location,
+                      const std::string& error_domain,
+                      const std::string& error_code,
+                      const std::string& error_message) {
+    CHECK(response_) << "ReplyWithError() (4 parameter version) called after "
+                        "response has been sent";
+    response_->ReplyWithError(location, error_domain, error_code,
+                              error_message);
+    response_.reset(nullptr);
   }
 
   void Return(const Types&... return_values) {
     CHECK(response_) << "Return() called after response has been sent";
-    response_.release()->Return(return_values...);
+    response_->Return(return_values...);
+    response_.reset(nullptr);
   }
 
  private:
