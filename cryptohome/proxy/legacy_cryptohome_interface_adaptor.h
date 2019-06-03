@@ -70,12 +70,15 @@ class LegacyCryptohomeInterfaceAdaptor
   explicit LegacyCryptohomeInterfaceAdaptor(scoped_refptr<dbus::Bus> bus)
       : org::chromium::CryptohomeInterfaceAdaptor(this),
         dbus_object_(nullptr, bus, dbus::ObjectPath(kCryptohomeServicePath)),
-        user_data_auth_(new org::chromium::UserDataAuthInterfaceProxy(bus)),
         attestation_proxy_(new org::chromium::AttestationProxy(bus)),
         tpm_ownership_proxy_(new org::chromium::TpmOwnershipProxy(bus)),
         tpm_nvram_proxy_(new org::chromium::TpmNvramProxy(bus)),
-        userdataauth_proxy_(
-            new org::chromium::UserDataAuthInterfaceProxy(bus)) {}
+        userdataauth_proxy_(new org::chromium::UserDataAuthInterfaceProxy(bus)),
+        arc_quota_proxy_(new org::chromium::ArcQuotaProxy(bus)),
+        pkcs11_proxy_(new org::chromium::CryptohomePkcs11InterfaceProxy(bus)),
+        install_attributes_proxy_(
+            new org::chromium::InstallAttributesInterfaceProxy(bus)),
+        misc_proxy_(new org::chromium::CryptohomeMiscInterfaceProxy(bus)) {}
 
   void RegisterAsync(
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
@@ -581,14 +584,19 @@ class LegacyCryptohomeInterfaceAdaptor
 
   brillo::dbus_utils::DBusObject dbus_object_;
 
-  std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
-      user_data_auth_;
   std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
   std::unique_ptr<org::chromium::TpmOwnershipProxyInterface>
       tpm_ownership_proxy_;
   std::unique_ptr<org::chromium::TpmNvramProxyInterface> tpm_nvram_proxy_;
   std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
       userdataauth_proxy_;
+  std::unique_ptr<org::chromium::ArcQuotaProxyInterface> arc_quota_proxy_;
+  std::unique_ptr<org::chromium::CryptohomePkcs11InterfaceProxyInterface>
+      pkcs11_proxy_;
+  std::unique_ptr<org::chromium::InstallAttributesInterfaceProxyInterface>
+      install_attributes_proxy_;
+  std::unique_ptr<org::chromium::CryptohomeMiscInterfaceProxyInterface>
+      misc_proxy_;
 
   // An atomic incrementing sequence for setting asynchronous call ids.
   base::AtomicSequenceNumber sequence_holder_;
