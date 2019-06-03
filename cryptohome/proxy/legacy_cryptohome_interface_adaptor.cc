@@ -1324,10 +1324,34 @@ void LegacyCryptohomeInterfaceAdaptor::MigrateToDircrypto(
 void LegacyCryptohomeInterfaceAdaptor::NeedsDircryptoMigration(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     const cryptohome::AccountIdentifier& in_account_id) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
+
+  user_data_auth::NeedsDircryptoMigrationRequest request;
+  *request.mutable_account_id() = in_account_id;
+  userdataauth_proxy_->NeedsDircryptoMigrationAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::NeedsDircryptoMigrationOnSuccess,
+          base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::NeedsDircryptoMigrationOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+    const user_data_auth::NeedsDircryptoMigrationReply& reply) {
+  if (reply.error() != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    // There's an error, we should return an error.
+    LOG(ERROR) << "NeedsDircryptoMigration returned "
+               << static_cast<int>(reply.error());
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_FAILED,
+                             "An error occurred on the UserDataAuth side when "
+                             "proxying NeedsDircryptoMigration.");
+    return;
+  }
+  response->Return(reply.needs_dircrypto_migration());
 }
 
 void LegacyCryptohomeInterfaceAdaptor::GetSupportedKeyPolicies(

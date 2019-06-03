@@ -588,6 +588,9 @@ class LegacyCryptohomeInterfaceAdaptor
   void Pkcs11TerminateOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<>> response,
       const user_data_auth::Pkcs11TerminateReply& reply);
+  void NeedsDircryptoMigrationOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+      const user_data_auth::NeedsDircryptoMigrationReply& reply);
 
   // This method forwards the error received from calling the new interface back
   // to the old interface
