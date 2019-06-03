@@ -1014,10 +1014,20 @@ void LegacyCryptohomeInterfaceAdaptor::Pkcs11GetTpmTokenInfo(
     std::unique_ptr<brillo::dbus_utils::
                         DBusMethodResponse<std::string, std::string, int32_t>>
         response) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared = std::make_shared<
+      SharedDBusMethodResponse<std::string, std::string, int32_t>>(
+      std::move(response));
+
+  user_data_auth::Pkcs11GetTpmTokeInfoRequest request;
+  pkcs11_proxy_->Pkcs11GetTpmTokeInfoAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::Pkcs11GetTpmTokenInfoOnSuccess,
+          base::Unretained(this), response_shared),
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::string,
+                                                          std::string, int32_t>,
+          base::Unretained(this), response_shared));
 }
 
 void LegacyCryptohomeInterfaceAdaptor::Pkcs11GetTpmTokenInfoForUser(
@@ -1025,10 +1035,32 @@ void LegacyCryptohomeInterfaceAdaptor::Pkcs11GetTpmTokenInfoForUser(
                         DBusMethodResponse<std::string, std::string, int32_t>>
         response,
     const std::string& in_username) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared = std::make_shared<
+      SharedDBusMethodResponse<std::string, std::string, int32_t>>(
+      std::move(response));
+
+  user_data_auth::Pkcs11GetTpmTokeInfoRequest request;
+  request.set_username(in_username);
+  // Note that the response needed for Pkcs11GetTpmTokenInfo and
+  // Pkcs11GetTpmTokenInfoForUser are the same, so we'll use the
+  // Pkcs11GetTpmTokenInfo version here.
+  pkcs11_proxy_->Pkcs11GetTpmTokeInfoAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::Pkcs11GetTpmTokenInfoOnSuccess,
+          base::Unretained(this), response_shared),
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::string,
+                                                          std::string, int32_t>,
+          base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::Pkcs11GetTpmTokenInfoOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<std::string, std::string, int32_t>>
+        response,
+    const user_data_auth::Pkcs11GetTpmTokeInfoReply& reply) {
+  response->Return(reply.token_info().label(), reply.token_info().user_pin(),
+                   reply.token_info().slot());
 }
 
 void LegacyCryptohomeInterfaceAdaptor::Pkcs11Terminate(

@@ -575,6 +575,10 @@ class LegacyCryptohomeInterfaceAdaptor
   void Pkcs11IsTpmTokenReadyOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool>> response,
       const user_data_auth::Pkcs11IsTpmTokenReadyReply& reply);
+  void Pkcs11GetTpmTokenInfoOnSuccess(
+      std::shared_ptr<
+          SharedDBusMethodResponse<std::string, std::string, int32_t>> response,
+      const user_data_auth::Pkcs11GetTpmTokeInfoReply& reply);
 
   // This method forwards the error received from calling the new interface back
   // to the old interface
