@@ -183,6 +183,7 @@ void WilcoDtcSupportdEcEventService::ShutdownMonitoringThread() {
 void WilcoDtcSupportdEcEventService::OnEventAvailable(const EcEvent& ec_event) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   delegate_->SendGrpcEcEventToWilcoDtc(ec_event);
+  delegate_->HandleEvent(ec_event);
 }
 
 void WilcoDtcSupportdEcEventService::OnShutdown() {

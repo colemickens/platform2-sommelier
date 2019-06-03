@@ -35,6 +35,8 @@ class WilcoDtcSupportdMojoService final
       chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestHttpMethod;
   using MojomWilcoDtcSupportdWebRequestStatus =
       chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestStatus;
+  using MojomWilcoDtcSupportdEvent =
+      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
   using MojomPerformWebRequestCallback = base::Callback<void(
       MojomWilcoDtcSupportdWebRequestStatus, int, base::StringPiece)>;
   using MojomGetConfigurationDataCallback =
@@ -92,6 +94,7 @@ class WilcoDtcSupportdMojoService final
                          const std::string& request_body,
                          const MojomPerformWebRequestCallback& callback);
   void GetConfigurationData(const MojomGetConfigurationDataCallback& callback);
+  void HandleEvent(const MojomWilcoDtcSupportdEvent event);
 
  private:
   // Unowned. The delegate should outlive this instance.

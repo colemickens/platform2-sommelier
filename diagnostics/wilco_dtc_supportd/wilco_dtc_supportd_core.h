@@ -129,6 +129,8 @@ class WilcoDtcSupportdCore final
   // WilcoDtcSupportdEcEventService::Delegate overrides:
   void SendGrpcEcEventToWilcoDtc(
       const WilcoDtcSupportdEcEventService::EcEvent& ec_event) override;
+  void HandleEvent(
+      const WilcoDtcSupportdEcEventService::EcEvent& ec_event) override;
 
   // WilcoDtcSupportdGrpcService::Delegate overrides:
   void PerformWebRequestToBrowser(

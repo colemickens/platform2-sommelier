@@ -58,6 +58,9 @@ class WilcoDtcSupportdEcEventService final {
     // Calls wilco_dtc |HandleEcNotification| gRPC function with |payload| in
     // request.
     virtual void SendGrpcEcEventToWilcoDtc(const EcEvent& ec_event) = 0;
+    // Calls browser's HandleEvent mojo function with parsed event type in order
+    // to display relevant system notifications.
+    virtual void HandleEvent(const EcEvent& ec_event) = 0;
   };
 
   explicit WilcoDtcSupportdEcEventService(Delegate* delegate);

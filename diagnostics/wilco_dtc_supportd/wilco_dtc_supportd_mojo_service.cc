@@ -149,4 +149,9 @@ void WilcoDtcSupportdMojoService::GetConfigurationData(
   DCHECK(client_ptr_);
   client_ptr_->GetConfigurationData(callback);
 }
+
+void WilcoDtcSupportdMojoService::HandleEvent(
+    const MojomWilcoDtcSupportdEvent event) {
+  client_ptr_->HandleEvent(event);
+}
 }  // namespace diagnostics

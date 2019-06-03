@@ -34,6 +34,8 @@ class MockWilcoDtcSupportdEcEventServiceDelegate
  public:
   MOCK_METHOD1(SendGrpcEcEventToWilcoDtc,
                void(const WilcoDtcSupportdEcEventService::EcEvent& ec_event));
+  MOCK_METHOD1(HandleEvent,
+               void(const WilcoDtcSupportdEcEventService::EcEvent& ec_event));
 };
 
 class WilcoDtcSupportdEcEventServiceTest : public testing::Test {
@@ -82,6 +84,8 @@ class WilcoDtcSupportdEcEventServiceTest : public testing::Test {
                 const WilcoDtcSupportdEcEventService::EcEvent& ec_event) {
               callback.Run();
             }));
+
+    EXPECT_CALL(delegate_, HandleEvent(ec_event));
   }
 
   MockWilcoDtcSupportdEcEventServiceDelegate* delegate() { return &delegate_; }

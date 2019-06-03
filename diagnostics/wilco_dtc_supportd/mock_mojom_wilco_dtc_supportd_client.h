@@ -23,6 +23,8 @@ class MockMojomWilcoDtcSupportdClient
       chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestHttpMethod;
   using MojoWilcoDtcSupportdWebRequestStatus =
       chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestStatus;
+  using MojoWilcoDtcSupportdEvent =
+      chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
   using MojoPerformWebRequestCallback = base::Callback<void(
       MojoWilcoDtcSupportdWebRequestStatus, int, mojo::ScopedHandle)>;
   using MojoGetConfigurationDataCallback =
@@ -49,6 +51,7 @@ class MockMojomWilcoDtcSupportdClient
                     const std::string& request_body));
   MOCK_METHOD1(GetConfigurationData,
                void(const MojoGetConfigurationDataCallback& callback));
+  MOCK_METHOD1(HandleEvent, void(const MojoWilcoDtcSupportdEvent event));
 };
 
 }  // namespace diagnostics
