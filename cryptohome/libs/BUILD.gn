@@ -311,6 +311,7 @@ static_library("libcryptohome") {
   libs = [
     "attestation",
     "chaps",
+    "hwsec",
     "policy-${libbase_ver}",
     "tpm_manager",
   ]

@@ -2,9 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <chromeos/libhwsec/task_dispatching_framework.h>
 #include "cryptohome/service_userdataauth.h"
 
 namespace cryptohome {
+
+using ::hwsec::ThreadSafeDBusMethodResponse;
 
 void UserDataAuthAdaptor::IsMounted(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
