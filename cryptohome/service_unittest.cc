@@ -908,6 +908,70 @@ class ServiceExTest : public ServiceTest {
   DISALLOW_COPY_AND_ASSIGN(ServiceExTest);
 };
 
+TEST_F(ServiceExTest, AddDataRestoreKeyInvalidArgsNoEmail) {
+  PrepareArguments();
+  service_.DoAddDataRestoreKey(id_.get(), auth_.get(), NULL);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No email supplied", *error_reply());
+}
+
+TEST_F(ServiceExTest, AddDataRestoreKeyInvalidArgsNoSecret) {
+  PrepareArguments();
+  id_->set_account_id("foo@gmail.com");
+  service_.DoAddDataRestoreKey(id_.get(), auth_.get(), NULL);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No key secret supplied", *error_reply());
+}
+
+TEST_F(ServiceExTest, AddDataRestoreKeyAccountNotExist) {
+  PrepareArguments();
+  id_->set_account_id("foo@gmail.com");
+  auth_->mutable_key()->set_secret("blerg");
+  EXPECT_CALL(homedirs_, Exists(_))
+      .WillRepeatedly(Return(false));
+  service_.DoAddDataRestoreKey(id_.get(), auth_.get(), NULL);
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_TRUE(reply()->has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND, reply()->error());
+}
+
+TEST_F(ServiceExTest, AddDataRestoreKeyAccountExistAddFail) {
+  PrepareArguments();
+  id_->set_account_id("foo@gmail.com");
+  auth_->mutable_key()->set_secret("blerg");
+  EXPECT_CALL(homedirs_, Exists(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, AddKeyset(_, _, _, _, _))
+      .WillRepeatedly(Return(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
+  service_.DoAddDataRestoreKey(id_.get(), auth_.get(), NULL);
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_TRUE(reply()->has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE, reply()->error());
+}
+
+TEST_F(ServiceExTest, AddDataRestoreKeyAccountExistAddSuccess) {
+  PrepareArguments();
+  id_->set_account_id("foo@gmail.com");
+  auth_->mutable_key()->set_secret("blerg");
+  EXPECT_CALL(homedirs_, Exists(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, AddKeyset(_, _, _, _, _))
+      .WillRepeatedly(Return(CRYPTOHOME_ERROR_NOT_SET));
+  service_.DoAddDataRestoreKey(id_.get(), auth_.get(), NULL);
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_FALSE(reply()->has_error());
+  // Since the adding is success, the reply should contain raw bytes
+  // of data restore key, whose length is 32 bytes.
+  EXPECT_TRUE(reply()->HasExtension(AddDataRestoreKeyReply::reply));
+  EXPECT_EQ(32, reply()->GetExtension(AddDataRestoreKeyReply::reply)
+            .data_restore_key().length());
+}
+
 TEST_F(ServiceExTest, MountInvalidArgsNoEmail) {
   PrepareArguments();
   // Run will never be called because we aren't running the event loop.

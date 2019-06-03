@@ -221,6 +221,16 @@ void LegacyCryptohomeInterfaceAdaptor::AddKeyEx(
                      cryptohome::BaseReply>,
                  base::Unretained(this), response_shared));
 }
+void LegacyCryptohomeInterfaceAdaptor::AddDataRestoreKey(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
+    const cryptohome::AccountIdentifier& in_account_id,
+    const cryptohome::AuthorizationRequest& in_authorization_request) {
+  // Not implemented yet
+  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                           DBUS_ERROR_NOT_SUPPORTED,
+                           "Method unimplemented yet");
+}
 
 void LegacyCryptohomeInterfaceAdaptor::UpdateKeyEx(
     std::unique_ptr<

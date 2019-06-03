@@ -132,10 +132,12 @@ const int kLowDiskNotificationPeriodMS = 1000 * 60 * 1;  // 1 minute
 const int kUploadAlertsPeriodMS = 1000 * 60 * 60 * 6;    // 6 hours
 const int64_t kNotifyDiskSpaceThreshold = 1 << 30;       // 1GB
 const int kDefaultRandomSeedLength = 64;
+const int kDefaultDataRestoreKeyLength = 32;
 const char kMountThreadName[] = "MountThread";
 const char kTpmInitStatusEventType[] = "TpmInitStatus";
 const char kDircryptoMigrationProgressEventType[] =
                                                "DircryptoMigrationProgress";
+const char kDataRestoreKeyLabel[] = "DataRestoreKey";
 // The default entropy source to seed with random data from the TPM on startup.
 const FilePath kDefaultEntropySource("/dev/urandom");
 
@@ -1479,6 +1481,74 @@ gboolean Service::AddKeyEx(GArray* account_id,
                                  base::Owned(identifier.release()),
                                  base::Owned(authorization.release()),
                                  base::Owned(request.release()),
+                                 base::Unretained(context)));
+  return TRUE;
+}
+
+void Service::DoAddDataRestoreKey(AccountIdentifier* identifier,
+                                  AuthorizationRequest* authorization,
+                                  DBusGMethodInvocation* context) {
+  if (!identifier || !authorization) {
+    SendInvalidArgsReply(context, "Failed to parse parameters.");
+    return;
+  }
+  if (GetAccountId(*identifier).empty()) {
+    SendInvalidArgsReply(context, "No email supplied");
+    return;
+  }
+  if (!authorization->has_key() || !authorization->key().has_secret()) {
+    SendInvalidArgsReply(context, "No key secret supplied");
+    return;
+  }
+  KeyData new_key_data;
+  SecureBlob data_restore_key(kDefaultDataRestoreKeyLength);
+  BaseReply reply;
+  CryptoLib::GetSecureRandom(data_restore_key.data(), data_restore_key.size());
+  new_key_data.set_label(kDataRestoreKeyLabel);
+  Credentials credentials(GetAccountId(*identifier).c_str(),
+                          SecureBlob(authorization->key().secret().begin(),
+                                     authorization->key().secret().end()));
+  credentials.set_key_data(authorization->key().data());
+  if (!homedirs_->Exists(credentials.GetObfuscatedUsername(system_salt_))) {
+    reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+    SendReply(context, reply);
+    return;
+  }
+  int index = -1;
+  reply.set_error(homedirs_->AddKeyset(credentials,
+                                       data_restore_key,
+                                       &new_key_data,
+                                       true,
+                                       &index));
+  if (reply.error() == CRYPTOHOME_ERROR_NOT_SET) {
+    // Don't set the error if there wasn't one.
+    reply.clear_error();
+  } else {
+    SendReply(context, reply);
+    return;
+  }
+  // send the raw bytes of data restore key as a part of reply back to caller
+  AddDataRestoreKeyReply* extension =
+      reply.MutableExtension(AddDataRestoreKeyReply::reply);
+  extension->set_data_restore_key(data_restore_key.to_string());
+  SendReply(context, reply);
+}
+
+gboolean Service::AddDataRestoreKey(GArray* account_id,
+                                    GArray* authorization_request,
+                                    DBusGMethodInvocation *context) {
+  auto identifier = std::make_unique<AccountIdentifier>();
+  auto authorization = std::make_unique<AuthorizationRequest>();
+  // On parsing failure, pass along a NULL.
+  if (!identifier->ParseFromArray(account_id->data, account_id->len))
+    identifier.reset(NULL);
+  if (!authorization->ParseFromArray(authorization_request->data,
+                                     authorization_request->len))
+    authorization.reset(NULL);
+  PostTask(FROM_HERE, base::Bind(&Service::DoAddDataRestoreKey,
+                                 base::Unretained(this),
+                                 base::Owned(identifier.release()),
+                                 base::Owned(authorization.release()),
                                  base::Unretained(context)));
   return TRUE;
 }

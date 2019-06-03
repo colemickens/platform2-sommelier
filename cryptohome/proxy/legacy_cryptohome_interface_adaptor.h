@@ -147,6 +147,12 @@ class LegacyCryptohomeInterfaceAdaptor
       const cryptohome::AccountIdentifier& in_account_id,
       const cryptohome::AuthorizationRequest& in_authorization_request,
       const cryptohome::AddKeyRequest& in_add_key_request) override;
+  void AddDataRestoreKey(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          cryptohome::BaseReply>> response,
+      const cryptohome::AccountIdentifier& in_account_id,
+      const cryptohome::AuthorizationRequest& in_authorization_request)
+      override;
   void UpdateKeyEx(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           cryptohome::BaseReply>> response,

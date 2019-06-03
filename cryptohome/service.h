@@ -271,6 +271,12 @@ class Service : public brillo::dbus::AbstractDbusService,
                             GArray* authorization_request,
                             GArray* add_key_request,
                             DBusGMethodInvocation* context);
+  virtual void DoAddDataRestoreKey(AccountIdentifier* account_id,
+                                   AuthorizationRequest*  authorization_request,
+                                   DBusGMethodInvocation* context);
+  virtual gboolean AddDataRestoreKey(GArray* account_id,
+                                     GArray* authorization_request,
+                                     DBusGMethodInvocation* context);
   virtual void DoUpdateKeyEx(AccountIdentifier* account_id,
                              AuthorizationRequest*  authorization_request,
                              UpdateKeyRequest* update_key_request,

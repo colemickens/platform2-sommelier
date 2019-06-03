@@ -155,6 +155,26 @@
                     value="cryptohome::BaseReply" />
       </arg>
     </method>
+    <!-- This method creates dataRestore key and generate a keyset for it
+         reply: BaseReply with a AddDataRestoreKeyReply extension on success
+    -->
+    <method name="AddDataRestoreKey">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="account_id" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AccountIdentifier" />
+      </arg>
+      <arg type="ay" name="authorization_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AuthorizationRequest" />
+      </arg>
+      <arg type="ay" name="add_key_reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
+    </method>
     <!-- This method looks like an AddKeyEx(clobber=true)
          but it updates the authorizing key exclusively.
     -->

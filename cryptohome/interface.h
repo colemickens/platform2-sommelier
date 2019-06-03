@@ -63,6 +63,10 @@ gboolean cryptohome_add_key_ex(Cryptohome* self,
                                GArray* auth,
                                GArray* params,
                                DBusGMethodInvocation* resp);
+gboolean cryptohome_add_data_restore_key(Cryptohome* self,
+                                         GArray* id,
+                                         GArray* auth,
+                                         DBusGMethodInvocation* resp);
 gboolean cryptohome_update_key_ex(Cryptohome* self,
                                   GArray* id,
                                   GArray* auth,
