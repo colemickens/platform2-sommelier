@@ -449,10 +449,22 @@ void LegacyCryptohomeInterfaceAdaptor::TpmIsReadyOnSuccess(
 
 void LegacyCryptohomeInterfaceAdaptor::TpmIsEnabled(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
+
+  tpm_manager::GetTpmStatusRequest request;
+  tpm_ownership_proxy_->GetTpmStatusAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::TpmIsEnabledOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::TpmIsEnabledOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+    const tpm_manager::GetTpmStatusReply& reply) {
+  response->Return(reply.enabled());
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmGetPassword(
