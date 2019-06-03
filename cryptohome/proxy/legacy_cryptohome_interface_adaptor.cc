@@ -1358,10 +1358,32 @@ void LegacyCryptohomeInterfaceAdaptor::GetSupportedKeyPolicies(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::GetSupportedKeyPoliciesRequest& in_request) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
+          std::move(response));
+
+  user_data_auth::GetSupportedKeyPoliciesRequest request;
+  userdataauth_proxy_->GetSupportedKeyPoliciesAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::GetSupportedKeyPoliciesOnSuccess,
+          base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::GetSupportedKeyPoliciesOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+    const user_data_auth::GetSupportedKeyPoliciesReply& reply) {
+  cryptohome::BaseReply base_reply;
+  cryptohome::GetSupportedKeyPoliciesReply* extension =
+      base_reply.MutableExtension(
+          cryptohome::GetSupportedKeyPoliciesReply::reply);
+
+  extension->set_low_entropy_credentials(
+      reply.low_entropy_credentials_supported());
+  response->Return(base_reply);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::IsQuotaSupported(

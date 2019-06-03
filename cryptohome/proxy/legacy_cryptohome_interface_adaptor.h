@@ -591,6 +591,9 @@ class LegacyCryptohomeInterfaceAdaptor
   void NeedsDircryptoMigrationOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool>> response,
       const user_data_auth::NeedsDircryptoMigrationReply& reply);
+  void GetSupportedKeyPoliciesOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+      const user_data_auth::GetSupportedKeyPoliciesReply& reply);
 
   // This method forwards the error received from calling the new interface back
   // to the old interface
