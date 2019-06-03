@@ -30,6 +30,12 @@ namespace em = enterprise_management;
 
 namespace policy {
 
+// TODO(crbug.com/984789): Remove once support for OpenSSL <1.1 is dropped.
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#define EVP_MD_CTX_new EVP_MD_CTX_create
+#define EVP_MD_CTX_free EVP_MD_CTX_destroy
+#endif
+
 // Maximum value of RollbackAllowedMilestones policy.
 const int kMaxRollbackAllowedMilestones = 4;
 
@@ -55,8 +61,8 @@ bool ReadPublicKeyFromFile(const base::FilePath& key_file,
 bool VerifySignature(const std::string& signed_data,
                      const std::string& signature,
                      const std::string& public_key) {
-  std::unique_ptr<EVP_MD_CTX, void (*)(EVP_MD_CTX *)> ctx(EVP_MD_CTX_create(),
-                                                          EVP_MD_CTX_destroy);
+  std::unique_ptr<EVP_MD_CTX, void (*)(EVP_MD_CTX *)> ctx(EVP_MD_CTX_new(),
+                                                          EVP_MD_CTX_free);
   if (!ctx)
     return false;
 

@@ -68,6 +68,11 @@ const char kCACertificatePath[] =
 
 namespace brillo {
 
+// TODO(crbug.com/984789): Remove once support for OpenSSL <1.1 is dropped.
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#define TLS_client_method() TLSv1_2_client_method()
+#endif
+
 // Helper implementation of TLS stream used to hide most of OpenSSL inner
 // workings from the users of brillo::TlsStream.
 class TlsStream::TlsStreamImpl {
@@ -342,7 +347,7 @@ bool TlsStream::TlsStreamImpl::Init(StreamPtr socket,
                                     const base::Closure& success_callback,
                                     const Stream::ErrorCallback& error_callback,
                                     ErrorPtr* error) {
-  ctx_.reset(SSL_CTX_new(TLSv1_2_client_method()));
+  ctx_.reset(SSL_CTX_new(TLS_client_method()));
   if (!ctx_)
     return ReportError(error, FROM_HERE, "Cannot create SSL_CTX");
 
