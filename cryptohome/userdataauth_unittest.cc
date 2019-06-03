@@ -112,4 +112,37 @@ class UserDataAuthTest : public UserDataAuthTestNotInitialized {
   DISALLOW_COPY_AND_ASSIGN(UserDataAuthTest);
 };
 
+TEST_F(UserDataAuthTest, IsMounted) {
+  // By default there are no mount right after initialization
+  EXPECT_FALSE(userdataauth_.IsMounted());
+  EXPECT_FALSE(userdataauth_.IsMounted("foo@gmail.com"));
+
+  // Add a mount associated with foo@gmail.com
+  SetupMount("foo@gmail.com");
+
+  // Test the code path that doesn't specify a user, and when there's a mount
+  // that's unmounted.
+  EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(false));
+  EXPECT_FALSE(userdataauth_.IsMounted());
+
+  // Test to see if is_ephemeral works and test the code path that doesn't
+  // specify a user.
+  bool is_ephemeral = true;
+  EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
+  EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
+  EXPECT_TRUE(userdataauth_.IsMounted("", &is_ephemeral));
+  EXPECT_FALSE(is_ephemeral);
+
+  // Test to see if is_ephemeral works, and test the code path that specify the
+  // user.
+  EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
+  EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(false));
+  EXPECT_TRUE(userdataauth_.IsMounted("foo@gmail.com", &is_ephemeral));
+  EXPECT_TRUE(is_ephemeral);
+
+  // Note: IsMounted will not be called in this case.
+  EXPECT_FALSE(userdataauth_.IsMounted("bar@gmail.com", &is_ephemeral));
+  EXPECT_FALSE(is_ephemeral);
+}
+
 }  // namespace cryptohome

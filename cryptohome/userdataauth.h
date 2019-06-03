@@ -29,6 +29,27 @@ class UserDataAuth {
   // object, so that |origin_task_runner_| is initialized correctly.
   bool Initialize();
 
+  // =============== Mount Related Public API ===============
+
+  // If username is empty, returns true if any mount is mounted, otherwise,
+  // returns true if the mount associated with the given |username| is mounted.
+  // For |is_ephemeral_out|, if no username is given, then is_ephemeral_out is
+  // set to true when any mount is ephemeral. Otherwise, is_ephemeral_out is set
+  // to true when the mount associated with the given |username| is mounted in
+  // an ephemeral manner. If nullptr is passed in for is_ephemeral_out, then it
+  // won't be touched. Ephemeral mount means that the content of the mount is
+  // cleared once the user logs out.
+  bool IsMounted(const std::string& username = "",
+                 bool* is_ephemeral_out = nullptr);
+
+  // Returns true if the mount that corresponds to the username is mounted,
+  // false otherwise. If that mount is ephemeral, then is_ephemeral_out is set
+  // to true, false otherwise. If nullptr is passed in for is_ephemeral_out,
+  // then it won't be touched. Ephemeral mount means that the content of the
+  // mount is cleared once the user logs out.
+  bool IsMountedForUser(const std::string& username,
+                        bool* is_ephemeral_out = nullptr);
+
   // ================= Threading Utilities ==================
 
   // Returns true if we are currently running on the origin thread
@@ -110,6 +131,10 @@ class UserDataAuth {
   // class and use_tpm_ is used there, then we'll just assume it's true and not
   // have a use_tpm_ variable here.
   // The same is true for initialize_tpm_ variable, it is assumed to be true.
+
+  // =============== Mount Related Utilities ===============
+  // Returns the mount object associated with the given username
+  scoped_refptr<cryptohome::Mount> GetMountForUser(const std::string& username);
 
   // =============== Threading Related Variables ===============
 

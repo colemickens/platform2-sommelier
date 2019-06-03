@@ -102,4 +102,49 @@ bool UserDataAuth::PostTaskToMountThread(
   return mount_thread_.task_runner()->PostTask(from_here, std::move(task));
 }
 
+bool UserDataAuth::IsMounted(const std::string& username,
+                             bool* is_ephemeral_out) {
+  // Note: This can only run in mount_thread_
+  AssertOnMountThread();
+
+  bool is_mounted = false;
+  bool is_ephemeral = false;
+  if (username.empty()) {
+    // No username is specified, so we consider "the cryptohome" to be mounted
+    // if any existing cryptohome is mounted.
+    for (const auto& mount_pair : mounts_) {
+      if (mount_pair.second->IsMounted()) {
+        is_mounted = true;
+        is_ephemeral |= !mount_pair.second->IsNonEphemeralMounted();
+      }
+    }
+  } else {
+    // A username is specified, check the associated mount object.
+    scoped_refptr<cryptohome::Mount> mount = GetMountForUser(username);
+
+    if (mount.get()) {
+      is_mounted = mount->IsMounted();
+      is_ephemeral = is_mounted && !mount->IsNonEphemeralMounted();
+    }
+  }
+
+  if (is_ephemeral_out) {
+    *is_ephemeral_out = is_ephemeral;
+  }
+
+  return is_mounted;
+}
+
+scoped_refptr<cryptohome::Mount> UserDataAuth::GetMountForUser(
+    const std::string& username) {
+  // Note: This can only run in mount_thread_
+  AssertOnMountThread();
+
+  scoped_refptr<cryptohome::Mount> mount = nullptr;
+  if (mounts_.count(username) == 1) {
+    mount = mounts_[username];
+  }
+  return mount;
+}
+
 }  // namespace cryptohome

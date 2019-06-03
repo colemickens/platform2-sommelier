@@ -32,10 +32,14 @@ class UserDataAuthAdaptor
 
   void RegisterAsync() { RegisterWithDBusObject(dbus_object_); }
 
-  // Interface overrides
+  // Interface overrides and related implementations
   void IsMounted(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                      user_data_auth::IsMountedReply>> response,
                  const user_data_auth::IsMountedRequest& in_request) override;
+  void DoIsMounted(const std::string username,
+                   std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                       user_data_auth::IsMountedReply>> response);
+
   void Unmount(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                    user_data_auth::UnmountReply>> response,
                const user_data_auth::UnmountRequest& in_request) override;

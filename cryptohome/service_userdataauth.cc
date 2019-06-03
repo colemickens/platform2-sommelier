@@ -2,8 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
+#include <utility>
+
+#include <base/bind.h>
+#include <base/callback.h>
 #include <chromeos/libhwsec/task_dispatching_framework.h>
+
 #include "cryptohome/service_userdataauth.h"
+#include "cryptohome/userdataauth.h"
 
 namespace cryptohome {
 
@@ -13,8 +20,27 @@ void UserDataAuthAdaptor::IsMounted(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::IsMountedReply>> response,
     const user_data_auth::IsMountedRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &UserDataAuthAdaptor::DoIsMounted, base::Unretained(this),
+          in_request.username(),
+          ThreadSafeDBusMethodResponse<user_data_auth::IsMountedReply>::
+              MakeThreadSafe(std::move(response))));
+}
+
+void UserDataAuthAdaptor::DoIsMounted(
+    const std::string username,
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<user_data_auth::IsMountedReply>>
+        response) {
+  bool is_ephemeral = false;
+  bool is_mounted = service_->IsMounted(username, &is_ephemeral);
+
   user_data_auth::IsMountedReply reply;
-  response->Return(reply);
+  reply.set_is_mounted(is_mounted);
+  reply.set_is_ephemeral_mount(is_ephemeral);
+  std::move(response)->Return(reply);
 }
 
 void UserDataAuthAdaptor::Unmount(

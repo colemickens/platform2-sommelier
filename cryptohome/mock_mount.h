@@ -28,6 +28,8 @@ class MockMount : public Mount {
                                            const Mount::MountArgs&,
                                            MountError*));
   MOCK_METHOD0(UnmountCryptohome, bool());
+  MOCK_CONST_METHOD0(IsMounted, bool());
+  MOCK_CONST_METHOD0(IsNonEphemeralMounted, bool());
   MOCK_METHOD0(MountGuestCryptohome, bool());
   MOCK_METHOD2(MigratePasskey, bool(const Credentials&, const char*));
   MOCK_METHOD1(RemoveCryptohome, bool(const Credentials&));
