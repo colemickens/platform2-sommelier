@@ -57,20 +57,19 @@ class MockSystemUtils : public SystemUtils {
   MOCK_METHOD1(AmountOfFreeDiskSpace, int64_t(const base::FilePath& path));
   MOCK_METHOD3(GetGidAndGroups,
                bool(uid_t uid, gid_t* out_gid, std::vector<gid_t>*));
+  MOCK_METHOD3(SetIDs,
+               int(uid_t uid, gid_t gid, const std::vector<gid_t>& gids));
 
   MOCK_METHOD2(ReadFileToString, bool(const base::FilePath&, std::string*));
   MOCK_METHOD2(WriteStringToFile,
                bool(const base::FilePath&, const std::string&));
+  MOCK_METHOD1(CloseSuperfluousFds,
+               void(const base::InjectiveMultimap& saved_mapping));
 
   MOCK_METHOD2(ChangeBlockedSignals,
                bool(int how, const std::vector<int>& signals));
 
   MOCK_METHOD2(LaunchAndWait, bool(const std::vector<std::string>&, int*));
-  MOCK_METHOD4(RunInMinijail,
-               bool(const ScopedMinijail& jail,
-                    const std::vector<std::string>&,
-                    const std::vector<std::string>&,
-                    pid_t*));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSystemUtils);

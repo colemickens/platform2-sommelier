@@ -19,9 +19,6 @@
 #include <base/process/launch.h>
 #include <base/time/time.h>
 
-#include <libminijail.h>
-#include <scoped_minijail.h>
-
 #include "login_manager/session_manager_service.h"
 #include "login_manager/system_utils.h"
 
@@ -39,51 +36,91 @@ void Subprocess::UseNewMountNamespace() {
   new_mount_namespace_ = true;
 }
 
+// The reason that this method looks complex is because it's doing a
+// bunch of work to keep the code between fork() and exec/exit simple
+// and mostly async signal safe. This is because using fork() in a
+// multithreaded process can create a child with inconsistent state
+// (e.g. locks held by other threads remain locked). While glibc
+// generally handles this gracefully internally, other libs are not as
+// reliable (including base).
 bool Subprocess::ForkAndExec(const std::vector<std::string>& args,
                              const std::vector<std::string>& env_vars) {
   gid_t gid = 0;
   std::vector<gid_t> groups;
   if (desired_uid_ != 0 &&
       !system_->GetGidAndGroups(desired_uid_, &gid, &groups)) {
-    LOG(ERROR) << "Can't get group info for UID " << desired_uid_;
+    LOG(ERROR) << "Can't get group info for " << desired_uid_;
     return false;
   }
 
-  ScopedMinijail j(minijail_new());
-  if (desired_uid_ != 0) {
-    minijail_change_uid(j.get(), desired_uid_);
-    minijail_change_gid(j.get(), gid);
-    minijail_set_supplementary_gids(j.get(), groups.size(), groups.data());
+  std::unique_ptr<char const* []> argv(new char const*[args.size() + 1]);
+  for (size_t i = 0; i < args.size(); ++i)
+    argv[i] = args[i].c_str();
+  argv[args.size()] = 0;
+
+  std::unique_ptr<char const* []> envp(new char const*[env_vars.size() + 1]);
+  for (size_t i = 0; i < env_vars.size(); ++i)
+    envp[i] = env_vars[i].c_str();
+  envp[env_vars.size()] = 0;
+
+  // The browser should not inherit FDs other than stdio, stdin and stdout,
+  // including the logging FD. base::CloseSuperfluousFds() can do this, but
+  // it takes a map of FDs to keep open, and creating this map requires
+  // allocating memory in a way which is not safe to do after forking, so do it
+  // up here in the parent.
+  base::InjectiveMultimap saved_fds;
+  saved_fds.push_back(base::InjectionArc(STDIN_FILENO, STDIN_FILENO, false));
+  saved_fds.push_back(base::InjectionArc(STDOUT_FILENO, STDOUT_FILENO, false));
+  saved_fds.push_back(base::InjectionArc(STDERR_FILENO, STDERR_FILENO, false));
+
+  // Block all signals before the fork so that we can avoid a race in which the
+  // child executes configured signal handlers before the default handlers are
+  // installed, below. In the parent, we restore original signal blocks
+  // immediately after fork.
+  sigset_t new_sigset, old_sigset;
+  sigfillset(&new_sigset);
+  CHECK_EQ(0, sigprocmask(SIG_SETMASK, &new_sigset, &old_sigset));
+  pid_t fork_ret = system_->fork();
+  if (fork_ret == 0) {
+    // Reset signal handlers to default and masks to none per 'man 7 daemon'.
+    struct sigaction action = {};
+    action.sa_handler = SIG_DFL;
+
+    for (int i = 1; i < _NSIG; i++) {
+      // Don't check rvalue because some signals can't have handlers (e.g.
+      // KILL).
+      sigaction(i, &action, nullptr);
+    }
+
+    CHECK_EQ(0, sigprocmask(SIG_UNBLOCK, &new_sigset, nullptr));
+
+    if (new_mount_namespace_)
+      CHECK(system_->EnterNewMountNamespace());
+
+    // We try to set our UID/GID to the desired UID, and then exec
+    // the command passed in.
+    if (desired_uid_ != 0) {
+      int exit_code = system_->SetIDs(desired_uid_, gid, groups);
+      if (exit_code)
+        _exit(exit_code);
+    }
+    system_->CloseSuperfluousFds(saved_fds);
+
+    if (system_->execve(base::FilePath(argv[0]),
+                        const_cast<char* const*>(argv.get()),
+                        const_cast<char* const*>(envp.get()))) {
+      // Should never get here, unless we couldn't exec the command.
+      RAW_LOG(ERROR, "Error executing...");
+      RAW_LOG(ERROR, argv[0]);
+      _exit(errno == E2BIG ? ChildJobInterface::kCantSetEnv
+                           : ChildJobInterface::kCantExec);
+    }
+    return false;  // To make the compiler happy.
   }
-  minijail_preserve_fd(j.get(), STDIN_FILENO, STDIN_FILENO);
-  minijail_preserve_fd(j.get(), STDOUT_FILENO, STDOUT_FILENO);
-  minijail_preserve_fd(j.get(), STDERR_FILENO, STDERR_FILENO);
-  minijail_close_open_fds(j.get());
-  // Reset signal handlers in the child since they'll be blocked below.
-  minijail_reset_signal_mask(j.get());
-  minijail_reset_signal_handlers(j.get());
-
-  if (new_mount_namespace_) {
-    minijail_namespace_vfs(j.get());
-  }
-
-  // Block all signals before running the child so that we can avoid a race
-  // in which the child executes configured signal handlers before the default
-  // handlers are installed. In the parent, we restore original signal blocks
-  // immediately after SystemUtils::RunInMinijail().
-  sigset_t filled_sigset, old_sigset;
-  sigfillset(&filled_sigset);
-  CHECK_EQ(0, sigprocmask(SIG_SETMASK, &filled_sigset, &old_sigset));
-
-  pid_t child_pid = 0;
-  bool success = system_->RunInMinijail(j, args, env_vars, &child_pid);
-
   CHECK_EQ(0, sigprocmask(SIG_SETMASK, &old_sigset, nullptr));
-
-  if (success) {
-    pid_ = child_pid;
+  if (fork_ret > 0) {
+    pid_ = fork_ret;
   }
-
   return pid_.has_value();
 }
 

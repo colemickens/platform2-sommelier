@@ -19,8 +19,6 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include <scoped_minijail.h>
-
 namespace base {
 class FilePath;
 }
@@ -151,6 +149,9 @@ class SystemUtils {
                                gid_t* out_gid,
                                std::vector<gid_t>* out_groups) = 0;
 
+  // Sets user ID, group ID, supplementary groups, and starts a new session.
+  virtual int SetIDs(uid_t uid, gid_t gid, const std::vector<gid_t>& gids) = 0;
+
   // Reads file content from file at |path| into string at |str_out|.
   virtual bool ReadFileToString(const base::FilePath& path,
                                 std::string* str_out) = 0;
@@ -158,6 +159,10 @@ class SystemUtils {
   // Writes string |data| to file at |path|.
   virtual bool WriteStringToFile(const base::FilePath& path,
                                  const std::string& data) = 0;
+
+  // Calls base::CloseSuperfluousFds().
+  virtual void CloseSuperfluousFds(
+      const base::InjectiveMultimap& saved_mapping) = 0;
 
   // Changes blocked signals. |how| takes one of |SIG_BLOCK|, |SIG_UNBLOCK|, and
   // |SIG_SETMASK|. See man page of sigprocmask(2) for more details. |signals|
@@ -171,19 +176,9 @@ class SystemUtils {
   virtual bool LaunchAndWait(const std::vector<std::string>& argv,
                              int* exit_code_out) = 0;
 
-  // Runs command |args[0]| with arguments |args| and environment |env_vars| in
-  // a restricted runtime specified by |jail|.
-  // Does *not* take ownership of |jail|.
-  // Returns true if the process was successfully launched and sandboxed.
-  virtual bool RunInMinijail(const ScopedMinijail& jail,
-                             const std::vector<std::string>& args,
-                             const std::vector<std::string>& env_vars,
-                             pid_t* pchild_pid) = 0;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(SystemUtils);
 };
-
 }  // namespace login_manager
 
 #endif  // LOGIN_MANAGER_SYSTEM_UTILS_H_
