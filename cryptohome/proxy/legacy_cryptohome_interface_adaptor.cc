@@ -512,9 +512,8 @@ void LegacyCryptohomeInterfaceAdaptor::TpmIsOwnedOnSuccess(
 void LegacyCryptohomeInterfaceAdaptor::TpmIsBeingOwned(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
   // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  LOG(WARNING) << "Deprecated TpmIsBeingOwned is called.";
+  response->Return(false);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmCanAttemptOwnership(
