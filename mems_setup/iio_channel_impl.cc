@@ -53,4 +53,29 @@ bool IioChannelImpl::SetEnabled(bool en) {
   return true;
 }
 
+base::Optional<std::string> IioChannelImpl::ReadStringAttribute(
+    const std::string& name) const {
+  char data[1024] = {0};
+  ssize_t len =
+      iio_channel_attr_read(channel_, name.c_str(), data, sizeof(data));
+  if (len < 0) {
+    LOG(WARNING) << "Attempting to read attribute " << name
+                 << " failed: " << len;
+    return base::nullopt;
+  }
+  return std::string(data, len);
+}
+
+base::Optional<int64_t> IioChannelImpl::ReadNumberAttribute(
+    const std::string& name) const {
+  long long val = 0;  // NOLINT(runtime/int)
+  int error = iio_channel_attr_read_longlong(channel_, name.c_str(), &val);
+  if (error) {
+    LOG(WARNING) << "Attempting to read attribute " << name
+                 << " failed: " << error;
+    return base::nullopt;
+  }
+  return val;
+}
+
 }  // namespace mems_setup

@@ -8,6 +8,7 @@
 #include <iio.h>
 
 #include <memory>
+#include <string>
 
 #include "mems_setup/iio_channel.h"
 
@@ -25,6 +26,11 @@ class IioChannelImpl : public IioChannel {
 
   bool IsEnabled() const override;
   bool SetEnabled(bool en) override;
+
+  base::Optional<std::string> ReadStringAttribute(
+      const std::string& name) const override;
+  base::Optional<int64_t> ReadNumberAttribute(
+      const std::string& name) const override;
 
  private:
   iio_channel* const channel_;  // non-owned
