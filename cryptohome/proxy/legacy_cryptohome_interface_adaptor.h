@@ -579,6 +579,9 @@ class LegacyCryptohomeInterfaceAdaptor
       std::shared_ptr<
           SharedDBusMethodResponse<std::string, std::string, int32_t>> response,
       const user_data_auth::Pkcs11GetTpmTokeInfoReply& reply);
+  void Pkcs11TerminateOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<>> response,
+      const user_data_auth::Pkcs11TerminateReply& reply);
 
   // This method forwards the error received from calling the new interface back
   // to the old interface

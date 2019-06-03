@@ -1066,10 +1066,23 @@ void LegacyCryptohomeInterfaceAdaptor::Pkcs11GetTpmTokenInfoOnSuccess(
 void LegacyCryptohomeInterfaceAdaptor::Pkcs11Terminate(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     const std::string& in_username) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<>>(std::move(response));
+
+  user_data_auth::Pkcs11TerminateRequest request;
+  request.set_username(in_username);
+  pkcs11_proxy_->Pkcs11TerminateAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::Pkcs11TerminateOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::Pkcs11TerminateOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<>> response,
+    const user_data_auth::Pkcs11TerminateReply& reply) {
+  response->Return();
 }
 
 void LegacyCryptohomeInterfaceAdaptor::GetStatusString(
