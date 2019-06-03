@@ -128,6 +128,9 @@ message StartTerminaRequest {
   // The IPv4 address config for LXD. Expected to be in a "xxx.xxx.xxx.xxx/yy"
   // format.
   string lxd_ipv4_subnet = 2;
+
+  // Name of the device containing the stateful partition.
+  string stateful_device = 3;
 }
 
 message StartTerminaResponse {

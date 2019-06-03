@@ -87,7 +87,9 @@ class TerminaVm final : public VmInterface {
              std::string options);
 
   // Starts Termina-specific services in the guest.
-  bool StartTermina(std::string lxd_subnet, std::string* out_error);
+  bool StartTermina(std::string lxd_subnet,
+                    std::string stateful_device,
+                    std::string* out_error);
 
   // Mount a 9p file system inside the VM.  The guest VM connects to a server
   // listening on the vsock port |port| and mounts the file system on |target|.

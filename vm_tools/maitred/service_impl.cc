@@ -446,7 +446,10 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
   }
 
   Init::ProcessLaunchInfo launch_info;
-  if (!init_->Spawn({"mkfs.btrfs", "/dev/vdb"}, kLxdEnv, false /*respawn*/,
+  const auto stateful_device = request->stateful_device().empty()
+                                   ? "/dev/vdb"
+                                   : request->stateful_device().c_str();
+  if (!init_->Spawn({"mkfs.btrfs", stateful_device}, kLxdEnv, false /*respawn*/,
                     false /*use_console*/, true /*wait_for_exit*/,
                     &launch_info)) {
     return grpc::Status(grpc::INTERNAL, "failed to spawn mkfs.btrfs");
@@ -457,7 +460,7 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
   // mkfs.btrfs will fail if the disk is already formatted as btrfs.
   // Optimistically continue on - if the mount fails, then return an error.
 
-  int ret = mount("/dev/vdb", "/mnt/stateful", "btrfs", 0,
+  int ret = mount(stateful_device, "/mnt/stateful", "btrfs", 0,
                   "user_subvol_rm_allowed,discard");
   if (ret != 0) {
     int saved_errno = errno;

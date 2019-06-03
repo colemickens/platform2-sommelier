@@ -1577,8 +1577,10 @@ bool Service::StartTermina(TerminaVm* vm, string* failure_reason) {
   std::string container_subnet_cidr =
       base::StringPrintf("%s/%zu", dst_addr.c_str(), prefix_length);
 
+  std::string stateful_device = "/dev/vdb";
   string error;
-  if (!vm->StartTermina(std::move(container_subnet_cidr), &error)) {
+  if (!vm->StartTermina(std::move(container_subnet_cidr),
+                        std::move(stateful_device), &error)) {
     failure_reason->assign(error);
     return false;
   }

@@ -413,12 +413,15 @@ bool TerminaVm::Mount(string source,
   return true;
 }
 
-bool TerminaVm::StartTermina(std::string lxd_subnet, std::string* out_error) {
+bool TerminaVm::StartTermina(std::string lxd_subnet,
+                             std::string stateful_device,
+                             std::string* out_error) {
   vm_tools::StartTerminaRequest request;
   vm_tools::StartTerminaResponse response;
 
   request.set_tremplin_ipv4_address(GatewayAddress());
   request.mutable_lxd_ipv4_subnet()->swap(lxd_subnet);
+  request.mutable_stateful_device()->swap(stateful_device);
 
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(
