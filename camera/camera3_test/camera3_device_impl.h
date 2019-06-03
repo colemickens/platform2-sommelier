@@ -224,6 +224,8 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
     // Merge partial metadata into one.
     CameraMetadataUniquePtr MergePartialMetadata();
 
+    bool have_input_buffer_;
+
     uint32_t num_output_buffers_;
 
     bool have_result_metadata_;

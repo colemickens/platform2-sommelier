@@ -549,10 +549,16 @@ void Camera3DeviceImpl::ProcessCaptureResultOnThread(
 
   capture_result_info_map_[result->frame_number].num_output_buffers_ +=
       result->num_output_buffers;
+  if (result->input_buffer != nullptr) {
+    capture_result_info_map_[result->frame_number].have_input_buffer_ = true;
+  }
   ASSERT_LE(capture_result_info_map_[result->frame_number].num_output_buffers_,
             capture_request_map_[result->frame_number].num_output_buffers);
   if (capture_result_info_map_[result->frame_number].num_output_buffers_ ==
           capture_request_map_[result->frame_number].num_output_buffers &&
+      capture_result_info_map_[result->frame_number].have_input_buffer_ ==
+          (capture_request_map_[result->frame_number].input_buffer !=
+           nullptr) &&
       capture_result_info_map_[result->frame_number].have_result_metadata_) {
     ASSERT_EQ(completed_request_set_.end(),
               completed_request_set_.find(result->frame_number))
@@ -721,7 +727,9 @@ void Camera3DeviceImpl::ProcessPartialResult(CaptureResult* result) {
 }
 
 Camera3DeviceImpl::CaptureResultInfo::CaptureResultInfo()
-    : num_output_buffers_(0), have_result_metadata_(false) {
+    : have_input_buffer_(false),
+      num_output_buffers_(0),
+      have_result_metadata_(false) {
   thread_checker_.DetachFromThread();
 }
 
