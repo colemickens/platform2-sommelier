@@ -554,6 +554,9 @@ class LegacyCryptohomeInterfaceAdaptor
   void TpmGetPasswordOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<std::string>> response,
       const tpm_manager::GetTpmStatusReply& reply);
+  void TpmIsOwnedOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+      const tpm_manager::GetTpmStatusReply& reply);
   void TpmIsAttestationPreparedOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool>> response_raw,
       const attestation::GetEnrollmentPreparationsReply& reply);
