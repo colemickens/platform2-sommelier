@@ -526,10 +526,23 @@ void LegacyCryptohomeInterfaceAdaptor::TpmCanAttemptOwnership(
 
 void LegacyCryptohomeInterfaceAdaptor::TpmClearStoredPassword(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<>>(std::move(response));
+
+  tpm_manager::ClearStoredOwnerPasswordRequest request;
+  tpm_ownership_proxy_->ClearStoredOwnerPasswordAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::TpmClearStoredPasswordOnSuccess,
+          base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::TpmClearStoredPasswordOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<>> response,
+    const tpm_manager::ClearStoredOwnerPasswordReply& reply) {
+  response->Return();
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmIsAttestationPrepared(
