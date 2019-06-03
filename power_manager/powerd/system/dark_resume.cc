@@ -63,7 +63,8 @@ bool DarkResume::IsEnabled() {
 }
 
 void DarkResume::ExitDarkResume() {
-  LOG(INFO) << "Transitioning from dark resume to full resume";
+  if (in_dark_resume_)
+    LOG(INFO) << "Transitioning from dark resume to full resume";
   in_dark_resume_ = false;
 }
 
