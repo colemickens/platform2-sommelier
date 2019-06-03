@@ -23,6 +23,15 @@ int main(int argc, const char* argv[]) {
   // When the kernel invokes us, argv[0] will be set to the program it wants
   // us to run.  So only shift argv when it makes sense.
   if (strcmp(basename(argv[0]), "usermode-helper") == 0) {
+    // Allow users to run this directly and figure out what it is.  It's not
+    // uncommon for curious people to run it directly or pass --help.
+    if (argc == 1 || strcmp(argv[1], "-h") == 0 ||
+        strcmp(argv[1], "--help") == 0) {
+      LOG(INFO) << "usermode-helper securely filters the programs the kernel "
+                << "is allowed to run.";
+      return 0;
+    }
+
     --argc;
     ++argv;
   }
