@@ -303,12 +303,14 @@ void LegacyCryptohomeInterfaceAdaptor::MountEx(
   *request.mutable_account() = in_account_id;
   request.mutable_authorization()->CopyFrom(in_authorization_request);
   request.set_require_ephemeral(in_mount_request.require_ephemeral());
-  request.mutable_create()->mutable_keys()->CopyFrom(
-      in_mount_request.create().keys());
-  request.mutable_create()->set_copy_authorization_key(
-      in_mount_request.create().copy_authorization_key());
-  request.mutable_create()->set_force_ecryptfs(
-      in_mount_request.create().force_ecryptfs());
+  if (in_mount_request.has_create()) {
+    request.mutable_create()->mutable_keys()->CopyFrom(
+        in_mount_request.create().keys());
+    request.mutable_create()->set_copy_authorization_key(
+        in_mount_request.create().copy_authorization_key());
+    request.mutable_create()->set_force_ecryptfs(
+        in_mount_request.create().force_ecryptfs());
+  }
   request.set_force_dircrypto_if_available(
       in_mount_request.force_dircrypto_if_available());
   request.set_to_migrate_from_ecryptfs(

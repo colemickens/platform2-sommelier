@@ -148,6 +148,69 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest, MountExSuccess) {
   EXPECT_FALSE(proxied_request.public_mount());
   EXPECT_FALSE(proxied_request.hidden_mount());
   EXPECT_FALSE(proxied_request.guest_mount());
+  EXPECT_FALSE(proxied_request.has_create());
+}
+
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest, MountExSuccessWithCreate) {
+  cryptohome::MountRequest req;
+  user_data_auth::MountRequest proxied_request;
+
+  req.set_require_ephemeral(false);
+  req.set_force_dircrypto_if_available(true);
+  req.set_to_migrate_from_ecryptfs(false);
+  req.set_public_mount(false);
+  req.set_hidden_mount(false);
+  req.mutable_create()->set_force_ecryptfs(true);
+  req.mutable_create()->set_copy_authorization_key(true);
+  auto key = req.mutable_create()->add_keys();
+  key->set_secret(kSecret);
+
+  EXPECT_CALL(userdataauth_, MountAsync(_, _, _, _))
+      .WillOnce(DoAll(
+          SaveArg<0>(&proxied_request),
+          Invoke([](const user_data_auth::MountRequest& in_request,
+                    const base::Callback<void(
+                        const user_data_auth::MountReply&)>& success_callback,
+                    const base::Callback<void(brillo::Error*)>& error_callback,
+                    int timeout_ms) {
+            user_data_auth::MountReply proxied_reply;
+            proxied_reply.set_recreated(true);
+            proxied_reply.set_sanitized_username(kSanitizedUsername1);
+            success_callback.Run(proxied_reply);
+          })));
+
+  int respond_count = 0;
+  std::unique_ptr<MockDBusMethodResponse<cryptohome::BaseReply>> response(
+      new MockDBusMethodResponse<cryptohome::BaseReply>(nullptr));
+  response->set_return_callback(base::Bind(
+      [](int* respond_count_ptr, const cryptohome::BaseReply& reply) {
+        EXPECT_EQ(cryptohome::CRYPTOHOME_ERROR_NOT_SET, reply.error());
+        EXPECT_TRUE(reply.HasExtension(cryptohome::MountReply::reply));
+        auto ext = reply.GetExtension(cryptohome::MountReply::reply);
+        EXPECT_TRUE(ext.recreated());
+        EXPECT_EQ(ext.sanitized_username(), kSanitizedUsername1);
+        (*respond_count_ptr)++;
+      },
+      &respond_count));
+  adaptor_->MountEx(std::move(response), account_, auth_, req);
+
+  // Verify that Return() is indeed called.
+  EXPECT_EQ(respond_count, 1);
+
+  // Verify that the parameters passed to DBus Proxy (New interface) is correct.
+  EXPECT_EQ(proxied_request.account().account_id(), kUsername1);
+  EXPECT_EQ(proxied_request.authorization().key().secret(), kSecret);
+  EXPECT_FALSE(proxied_request.require_ephemeral());
+  EXPECT_TRUE(proxied_request.force_dircrypto_if_available());
+  EXPECT_FALSE(proxied_request.to_migrate_from_ecryptfs());
+  EXPECT_FALSE(proxied_request.public_mount());
+  EXPECT_FALSE(proxied_request.hidden_mount());
+  EXPECT_FALSE(proxied_request.guest_mount());
+  EXPECT_TRUE(proxied_request.has_create());
+  EXPECT_TRUE(proxied_request.create().force_ecryptfs());
+  EXPECT_TRUE(proxied_request.create().copy_authorization_key());
+  EXPECT_EQ(proxied_request.create().keys_size(), 1);
+  EXPECT_EQ(proxied_request.create().keys(0).secret(), kSecret);
 }
 
 TEST_F(LegacyCryptohomeInterfaceAdaptorTest, MountExFail) {
