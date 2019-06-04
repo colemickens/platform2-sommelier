@@ -6,9 +6,9 @@
 
 #include <string>
 
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/strings/string_utils.h>
 
 #include "chromeos-dbus-bindings/indented_text.h"
 
@@ -27,7 +27,8 @@ void AddCloseNamespace(IndentedText *text, const std::string& name) {
 }  // anonymous namespace
 
 NameParser::NameParser(const std::string& name)
-    : namespaces_{brillo::string_utils::Split(name, ".")} {
+    : namespaces_(base::SplitString(
+          name, ".", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
   CHECK(!namespaces_.empty()) << "Empty name specified";
   type_name_ = namespaces_.back();
   namespaces_.pop_back();
