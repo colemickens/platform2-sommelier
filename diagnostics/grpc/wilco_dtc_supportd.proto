@@ -355,6 +355,7 @@ enum DiagnosticRoutineStatus {
   ROUTINE_STATUS_FAILED_TO_START = 7;  // Routine could not be created.
   ROUTINE_STATUS_REMOVED =
       8;  // Routine has been removed and is no longer valid.
+  ROUTINE_STATUS_CANCELLING = 9;  // Routine is being cancelled.
 }
 
 // Enumeration of each of the messages a diagnostics routine can pass back.

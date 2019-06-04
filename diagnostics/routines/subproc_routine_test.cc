@@ -155,5 +155,45 @@ TEST_F(SubprocRoutineTest, TestHalfProgressPercent) {
   EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_RUNNING);
 }
 
+TEST_F(SubprocRoutineTest, TestHalfProgressThenCancel) {
+  EXPECT_CALL(*mock_adapter(), StartProcess(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(base::GetCurrentProcessHandle()),
+                      Return(true)));
+  EXPECT_CALL(*mock_adapter(), KillProcess(_)).Times(AtMost(1));
+  EXPECT_CALL(*mock_adapter(), GetStatus(_))
+      .Times(AtMost(4))
+      .WillOnce(Return(base::TERMINATION_STATUS_STILL_RUNNING))
+      .WillOnce(Return(base::TERMINATION_STATUS_STILL_RUNNING))
+      .WillOnce(Return(base::TERMINATION_STATUS_STILL_RUNNING))
+      .WillOnce(Return(base::TERMINATION_STATUS_ABNORMAL_TERMINATION));
+
+  routine()->Start();
+
+  tick_clock()->Advance(base::TimeDelta::FromSeconds(5));
+  grpc_api::GetRoutineUpdateResponse response;
+  routine()->PopulateStatusUpdate(&response, false);
+
+  EXPECT_EQ(response.progress_percent(), 50);
+  EXPECT_EQ(response.status_message(), kSubprocRoutineProcessRunningMessage);
+  EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_RUNNING);
+
+  routine()->Cancel();
+
+  tick_clock()->Advance(base::TimeDelta::FromSeconds(1));
+
+  routine()->PopulateStatusUpdate(&response, false);
+
+  EXPECT_EQ(response.progress_percent(), 50);
+  EXPECT_EQ(response.status_message(), kSubprocRoutineProcessCancellingMessage);
+  EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_CANCELLING);
+
+  // Now the process should appear dead
+  routine()->PopulateStatusUpdate(&response, false);
+
+  EXPECT_EQ(response.progress_percent(), 50);
+  EXPECT_EQ(response.status_message(), kSubprocRoutineCancelled);
+  EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_CANCELLED);
+}
+
 }  // namespace
 }  // namespace diagnostics

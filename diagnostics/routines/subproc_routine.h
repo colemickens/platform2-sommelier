@@ -21,19 +21,21 @@
 namespace diagnostics {
 
 // Output messages for the routine when in various states.
-extern const char kSubprocRoutineReady[];
-extern const char kSubprocRoutineProcessRunningMessage[];
-extern const char kSubprocRoutineSucceededMessage[];
+extern const char kSubprocRoutineCancelled[];
 extern const char kSubprocRoutineFailedMessage[];
 extern const char kSubprocRoutineFailedToLaunchProcessMessage[];
-extern const char kSubprocRoutineProcessCrashedOrKilledMessage[];
 extern const char kSubprocRoutineFailedToStopMessage[];
 extern const char kSubprocRoutineInvalidParametersMessage[];
+extern const char kSubprocRoutineProcessCrashedOrKilledMessage[];
+extern const char kSubprocRoutineProcessCancellingMessage[];
+extern const char kSubprocRoutineProcessRunningMessage[];
+extern const char kSubprocRoutineReady[];
+extern const char kSubprocRoutineSucceededMessage[];
 
 // We don't always know when a SubprocRoutine should finish. Sometimes we have
 // to fake our prediction of percent complete.
 extern const int kSubprocRoutineFakeProgressPercentUnknown;
-extern const int kSubprocRoutineFakeProgressPercentKilling;
+extern const int kSubprocRoutineFakeProgressPercentCancelling;
 
 // Progress percentage when the routine has been running for equal to
 // or longer than the time specified in the SubprocRoutineRoutineParameters, but
@@ -49,11 +51,11 @@ class SubprocRoutine final : public DiagnosticRoutine {
  public:
   // The state of the SubprocRoutine is modeled in the SubprocStatus enum.
   enum SubprocStatus {
-    kSubprocStatusCanceled,
+    kSubprocStatusCancelled,
+    kSubprocStatusCancelling,
     kSubprocStatusCompleteFailure,
     kSubprocStatusCompleteSuccess,
     kSubprocStatusError,
-    kSubprocStatusKilling,
     kSubprocStatusLaunchFailed,
     kSubprocStatusReady,
     kSubprocStatusRunning,
@@ -82,14 +84,40 @@ class SubprocRoutine final : public DiagnosticRoutine {
   // Handle state transitions due to process state within this object.
   void CheckProcessStatus();
   void CheckActiveProcessStatus();
-  int CalculateProgressPercent() const;
+  int CalculateProgressPercent();
 
+  // |subproc_status_| is the state of the subproc as understood by the
+  // SubprocRoutine object's state machine. Essentially, this variable stores
+  // which state we are in.
   SubprocStatus subproc_status_;
+
+  // |process_adapter_| is a dependency that is injected at object creation time
+  // which enables swapping out process control functionality for the main
+  // purpose of facilitating Unit tests.
   std::unique_ptr<DiagProcessAdapter> process_adapter_;
+
+  // |tick_clock_| is a dependency that is injected at object creation time
+  // which enables swapping out time-tracking functionality for the main
+  // purpose of facilitating Unit tests.
   std::unique_ptr<base::TickClock> tick_clock_;
+
+  // |command_line_| is the process which runs to test the diagnostic in
+  // question.
   base::CommandLine command_line_;
+
+  // |predicted_duration_in_seconds_| is used to calculate progress percentage
+  // when it is non-zero.
   int predicted_duration_in_seconds_ = 0;
+
+  // |last_reported_progress_percent_| is used to save the last reported
+  // progress percentage for handling progress reported across status changes.
+  int last_reported_progress_percent_ = 0;
+
+  // |handle_| keeps track of the running process.
   base::ProcessHandle handle_ = base::kNullProcessHandle;
+
+  // |start_ticks_| records the time when the routine began. This is used with
+  // |predicted_duration_in_seconds_| to report on progress percentate.
   base::TimeTicks start_ticks_;
 
   DISALLOW_COPY_AND_ASSIGN(SubprocRoutine);
