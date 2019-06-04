@@ -12,7 +12,6 @@
 
 namespace chromeos_dbus_bindings {
 
-struct Interface;
 class  IndentedText;
 
 // A helper class that allows to decompose D-Bus name strings such as

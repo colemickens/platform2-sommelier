@@ -10,12 +10,10 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/strings/string_utils.h>
 
 #include "chromeos-dbus-bindings/indented_text.h"
 
 using std::string;
-using std::vector;
 
 namespace chromeos_dbus_bindings {
 

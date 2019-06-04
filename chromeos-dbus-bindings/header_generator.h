@@ -6,7 +6,6 @@
 #define CHROMEOS_DBUS_BINDINGS_HEADER_GENERATOR_H_
 
 #include <string>
-#include <vector>
 
 #include <base/macros.h>
 

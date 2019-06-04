@@ -15,12 +15,6 @@
 
 #include "chromeos-dbus-bindings/interface.h"
 
-namespace base {
-
-class FilePath;
-
-}  // namespace base
-
 namespace chromeos_dbus_bindings {
 
 class XmlInterfaceParser {
