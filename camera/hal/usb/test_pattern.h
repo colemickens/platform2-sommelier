@@ -19,7 +19,7 @@ namespace cros {
 // This class is not thread-safe. Please call the functions on the same thread.
 class TestPattern {
  public:
-  explicit TestPattern(Size resolution);
+  explicit TestPattern(Size sensor_pixel_array_size, Size resolution);
   ~TestPattern();
 
   // Sets pattern mode.
@@ -37,6 +37,7 @@ class TestPattern {
   bool GenerateColorBarFadeToGray();
   bool ConvertToYU12();
 
+  Size sensor_pixel_array_size_;
   Size resolution_;
   int32_t pattern_mode_;
   std::unique_ptr<SharedFrameBuffer> pattern_image_rgb_;

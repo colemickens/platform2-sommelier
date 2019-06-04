@@ -796,7 +796,10 @@ int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution,
   SkipFramesAfterStreamOn(device_info_.frames_to_skip_after_streamon);
 
   // Reset test pattern.
-  test_pattern_.reset(new TestPattern(stream_on_resolution_));
+  test_pattern_.reset(
+      new TestPattern(Size(device_info_.sensor_info_pixel_array_size_width,
+                           device_info_.sensor_info_pixel_array_size_height),
+                      stream_on_resolution_));
   return 0;
 }
 
