@@ -10,8 +10,8 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/strings/string_utils.h>
 #include <dbus/dbus-protocol.h>
 
 using base::StringPrintf;
@@ -207,9 +207,8 @@ class Struct : public NonScalar {
     std::vector<std::string> child_types;
     for (const auto& child : inner_types_)
       child_types.push_back(child->GetBaseType(direction));
-    return base::StringPrintf(
-        "std::tuple<%s>",
-        brillo::string_utils::Join(", ", child_types).c_str());
+    return base::StringPrintf("std::tuple<%s>",
+                              base::JoinString(child_types, ", ").c_str());
   }
 
  private:

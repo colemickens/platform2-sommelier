@@ -10,8 +10,8 @@
 #include <base/files/file_path.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/strings/string_utils.h>
 
 #include "chromeos-dbus-bindings/dbus_signature.h"
 #include "chromeos-dbus-bindings/header_generator.h"
@@ -728,7 +728,7 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
     block.AddLine("return response && "
                   "brillo::dbus_utils::ExtractMethodCallResults(");
     block.PushOffset(kLineContinuationOffset);
-    block.AddLine(brillo::string_utils::Join(", ", out_param_names) + ");");
+    block.AddLine(base::JoinString(out_param_names, ", ") + ");");
     block.PopOffset();
     block.PopOffset();
     block.AddLine("}");
@@ -770,7 +770,7 @@ void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
   }
   block.AddLine(StringPrintf(
       "const base::Callback<void(%s)>& success_callback,",
-      brillo::string_utils::Join(", ", out_params).c_str()));
+      base::JoinString(out_params, ", ").c_str()));
   block.AddLine(
       "const base::Callback<void(brillo::Error*)>& error_callback,");
   block.AddLine(
@@ -851,7 +851,7 @@ void ProxyGenerator::AddAsyncMethodMock(const Interface::Method& method,
   }
   arguments.push_back(StringPrintf(
       "const base::Callback<void(%s)>& /*success_callback*/",
-      brillo::string_utils::Join(", ", out_params).c_str()));
+      base::JoinString(out_params, ", ").c_str()));
   arguments.push_back(
       "const base::Callback<void(brillo::Error*)>& /*error_callback*/");
   arguments.push_back("int /*timeout_ms*/");

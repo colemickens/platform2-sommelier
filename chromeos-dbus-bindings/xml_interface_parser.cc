@@ -10,7 +10,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
-#include <brillo/strings/string_utils.h>
 
 using std::string;
 using std::vector;
@@ -56,7 +55,7 @@ const char XmlInterfaceParser::kArgumentProtobufClass[] =
 namespace {
 
 string GetElementPath(const vector<string>& path) {
-  return brillo::string_utils::Join("/", path);
+  return base::JoinString(path, "/");
 }
 
 }  // anonymous namespace

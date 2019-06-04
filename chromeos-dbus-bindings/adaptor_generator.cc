@@ -9,7 +9,6 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/strings/string_utils.h>
 
 #include "chromeos-dbus-bindings/dbus_signature.h"
 #include "chromeos-dbus-bindings/header_generator.h"
@@ -283,7 +282,7 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
         method_params.push_back(base::StringPrintf(
             "std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<%s>> "
             "response",
-             brillo::string_utils::Join(", ", out_types).c_str()));
+            base::JoinString(out_types, ", ").c_str()));
         if (method.include_dbus_message)
           method_params.push_back("dbus::Message* message");
         output_arguments_copy.clear();
@@ -373,7 +372,7 @@ void AdaptorGenerator::AddSendSignalMethods(
       block.PopOffset();
     }
 
-    string args = brillo::string_utils::Join(", ", param_names);
+    string args = base::JoinString(param_names, ", ");
     block.PushOffset(kBlockOffset);
     block.AddLine(StringPrintf("auto signal = signal_%s_.lock();",
                                 signal.name.c_str()));

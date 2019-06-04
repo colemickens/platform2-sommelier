@@ -36,7 +36,7 @@ NameParser::NameParser(const std::string& name)
 std::string NameParser::MakeFullyQualified(const std::string& name) const {
   std::vector<std::string> parts = namespaces_;
   parts.push_back(name);
-  return brillo::string_utils::Join("::", parts);
+  return base::JoinString(parts, "::");
 }
 
 std::string NameParser::MakeFullCppName() const {
