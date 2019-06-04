@@ -21,19 +21,14 @@
 namespace power_manager {
 namespace policy {
 
-namespace {
-
-// Maximum time that the controller will wait for a suspend delay to become
-// ready, in milliseconds.
-const int kMaxDelayTimeoutMs = 20000;
-
-}  // namespace
-
-SuspendDelayController::SuspendDelayController(int initial_delay_id,
-                                               const std::string& description)
+SuspendDelayController::SuspendDelayController(
+    int initial_delay_id,
+    const std::string& description,
+    base::TimeDelta max_delay_timeout)
     : description_(description),
       next_delay_id_(initial_delay_id),
-      current_suspend_id_(0) {}
+      current_suspend_id_(0),
+      max_delay_timeout_(max_delay_timeout) {}
 
 SuspendDelayController::~SuspendDelayController() {}
 
@@ -146,8 +141,7 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id) {
          it != registered_delays_.end(); ++it) {
       max_timeout = std::max(max_timeout, it->second.timeout);
     }
-    max_timeout = std::min(
-        max_timeout, base::TimeDelta::FromMilliseconds(kMaxDelayTimeoutMs));
+    max_timeout = std::min(max_timeout, max_delay_timeout_);
     delay_expiration_timer_.Start(FROM_HERE, max_timeout, this,
                                   &SuspendDelayController::OnDelayExpiration);
   }

@@ -66,13 +66,24 @@ void Suspender::Init(
 
   const int initial_id = delegate_->GetInitialSuspendId();
   suspend_request_id_ = initial_id - 1;
-  suspend_delay_controller_.reset(new SuspendDelayController(initial_id, ""));
+  suspend_delay_controller_.reset(new SuspendDelayController(
+      initial_id, "", SuspendDelayController::kDefaultMaxSuspendDelayTimeout));
   suspend_delay_controller_->AddObserver(this);
 
+  // Default value same as regular suspend timeout in case this pref isn't
+  // provided.
+  base::TimeDelta max_dark_suspend_delay_timeout =
+      SuspendDelayController::kDefaultMaxSuspendDelayTimeout;
+  int64_t max_dark_suspend_delay_timeout_ms;
+  if (prefs->GetInt64(kMaxDarkSuspendDelayTimeoutMsPref,
+                      &max_dark_suspend_delay_timeout_ms)) {
+    max_dark_suspend_delay_timeout =
+        base::TimeDelta::FromMilliseconds(max_dark_suspend_delay_timeout_ms);
+  }
   const int initial_dark_id = delegate_->GetInitialDarkSuspendId();
   dark_suspend_id_ = initial_dark_id - 1;
-  dark_suspend_delay_controller_.reset(
-      new SuspendDelayController(initial_dark_id, "dark"));
+  dark_suspend_delay_controller_.reset(new SuspendDelayController(
+      initial_dark_id, "dark", max_dark_suspend_delay_timeout));
   dark_suspend_delay_controller_->AddObserver(this);
 
   int64_t retry_delay_ms = 0;

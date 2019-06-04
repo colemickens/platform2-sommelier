@@ -9,6 +9,8 @@
 
 #include <string>
 
+#include "base/time/time.h"
+
 namespace power_manager {
 
 // Preference names.
@@ -229,6 +231,10 @@ extern const char kSetCellularTransmitPowerDprGpioPref[];
 
 // If true, enables console during suspend.
 extern const char kEnableConsoleDuringSuspendPref[];
+
+// Maximum time in milliseconds to wait to resuspend (i.e. wait for all suspend
+// delays) after a dark resume.
+extern const char kMaxDarkSuspendDelayTimeoutMsPref[];
 
 // Miscellaneous constants.
 

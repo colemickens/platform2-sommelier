@@ -29,8 +29,15 @@ class SuspendDelayObserver;
 // time to do last-minute cleanup.
 class SuspendDelayController {
  public:
-  SuspendDelayController(int initial_delay_id, const std::string& description);
+  SuspendDelayController(int initial_delay_id,
+                         const std::string& description,
+                         base::TimeDelta max_delay_timeout);
   ~SuspendDelayController();
+
+  // Default value corresponding to maximum suspend delay i.e. maximum time
+  // spent waiting to suspend after it's initiated.
+  static constexpr base::TimeDelta kDefaultMaxSuspendDelayTimeout =
+      base::TimeDelta::FromSeconds(20);
 
   bool ready_for_suspend() const { return delay_ids_being_waited_on_.empty(); }
 
@@ -129,6 +136,10 @@ class SuspendDelayController {
   // IDs of delays registered by clients that haven't yet said they're ready to
   // suspend.
   std::set<int> delay_ids_being_waited_on_;
+
+  // Maximum time that the controller will wait for a suspend delay to become
+  // ready.
+  const base::TimeDelta max_delay_timeout_;
 
   // Used to invoke NotifyObservers().
   base::OneShotTimer notify_observers_timer_;
