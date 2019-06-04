@@ -678,7 +678,7 @@ bool DevicePolicyImpl::GetDisallowedTimeIntervals(
 
 bool DevicePolicyImpl::GetDeviceQuickFixBuildToken(
     std::string* device_quick_fix_build_token) const {
-  if (!device_policy_.has_auto_update_settings())
+  if (!IsEnterpriseEnrolled() || !device_policy_.has_auto_update_settings())
     return false;
 
   const em::AutoUpdateSettingsProto& proto =

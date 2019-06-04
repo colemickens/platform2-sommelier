@@ -303,7 +303,7 @@ TEST_F(DevicePolicyImplTest, GetDisallowedTimeIntervals_SetConsumer) {
   ASSERT_FALSE(device_policy_.GetDisallowedTimeIntervals(&value));
 }
 
-// DeviceQuickFixBuildToken is set to a valid value.
+// |DeviceQuickFixBuildToken| is set when device is enterprise enrolled.
 TEST_F(DevicePolicyImplTest, GetDeviceQuickFixBuildToken_Set) {
   const char kToken[] = "some_token";
 
@@ -313,16 +313,25 @@ TEST_F(DevicePolicyImplTest, GetDeviceQuickFixBuildToken_Set) {
   auto_update_settings->set_device_quick_fix_build_token(kToken);
   InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
                    device_policy_proto);
-
   std::string value;
-  ASSERT_TRUE(device_policy_.GetDeviceQuickFixBuildToken(&value));
+  EXPECT_TRUE(device_policy_.GetDeviceQuickFixBuildToken(&value));
   EXPECT_EQ(value, kToken);
 }
 
-// GetDeviceQuickFixBuildToken is not set.
+// If the device is not enterprise-enrolled, |GetDeviceQuickFixBuildToken|
+// does not provide a token even if it is present in local device settings.
 TEST_F(DevicePolicyImplTest, GetDeviceQuickFixBuildToken_NotSet) {
+  const char kToken[] = "some_token";
+
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::AutoUpdateSettingsProto* auto_update_settings =
+      device_policy_proto.mutable_auto_update_settings();
+  auto_update_settings->set_device_quick_fix_build_token(kToken);
+  InitializePolicy(InstallAttributesReader::kDeviceModeConsumer,
+                   device_policy_proto);
   std::string value;
   EXPECT_FALSE(device_policy_.GetDeviceQuickFixBuildToken(&value));
+  EXPECT_TRUE(value.empty());
 }
 
 }  // namespace policy
