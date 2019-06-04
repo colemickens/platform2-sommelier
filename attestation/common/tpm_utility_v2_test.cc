@@ -505,10 +505,11 @@ TEST_F(TpmUtilityTest, CreateRestrictedKeyParserFail) {
   EXPECT_EQ("", public_key_tpm_format);
 }
 
-TEST_F(TpmUtilityTest, QuotePCR) {
+TEST_F(TpmUtilityTest, QuotePCRWithRsa) {
   EXPECT_CALL(mock_tpm_utility_, ReadPCR(5, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<1>("fake_pcr_value"), Return(TPM_RC_SUCCESS)));
+
   trunks::TPMT_SIGNATURE fake_signature;
   fake_signature.sig_alg = trunks::TPM_ALG_RSASSA;
   fake_signature.signature.rsassa.sig =
@@ -517,6 +518,7 @@ TEST_F(TpmUtilityTest, QuotePCR) {
       .WillOnce(
           DoAll(SetArgPointee<5>(trunks::Make_TPM2B_ATTEST("fake_quoted_data")),
                 SetArgPointee<6>(fake_signature), Return(TPM_RC_SUCCESS)));
+
   std::string value;
   std::string quoted_data;
   std::string quote;
@@ -525,6 +527,37 @@ TEST_F(TpmUtilityTest, QuotePCR) {
   EXPECT_EQ("fake_pcr_value", value);
   EXPECT_EQ("fake_quoted_data", quoted_data);
   EXPECT_NE(std::string::npos, quote.find("fake_quote"));
+}
+
+TEST_F(TpmUtilityTest, QuotePCRWithEcc) {
+  ON_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
+      .WillByDefault(DoAll(SetArgPointee<1>(GetValidEccPublicKey(nullptr)),
+                           Return(TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(mock_tpm_utility_, ReadPCR(5, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<1>("fake_pcr_value"), Return(TPM_RC_SUCCESS)));
+
+  trunks::TPMT_SIGNATURE fake_signature;
+  fake_signature.sig_alg = trunks::TPM_ALG_ECDSA;
+  fake_signature.signature.ecdsa.signature_r =
+      trunks::Make_TPM2B_ECC_PARAMETER("fake_quote_r");
+  fake_signature.signature.ecdsa.signature_s =
+      trunks::Make_TPM2B_ECC_PARAMETER("fake_quote_s");
+  EXPECT_CALL(mock_tpm_, QuoteSync(_, _, _, _, _, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<5>(trunks::Make_TPM2B_ATTEST("fake_quoted_data")),
+                SetArgPointee<6>(fake_signature), Return(TPM_RC_SUCCESS)));
+
+  std::string value;
+  std::string quoted_data;
+  std::string quote;
+  EXPECT_TRUE(
+      tpm_utility_->QuotePCR(5, "fake_key_blob", &value, &quoted_data, &quote));
+  EXPECT_EQ("fake_pcr_value", value);
+  EXPECT_EQ("fake_quoted_data", quoted_data);
+  EXPECT_NE(quote.find("fake_quote_r"), std::string::npos);
+  EXPECT_NE(quote.find("fake_quote_s"), std::string::npos);
 }
 
 TEST_F(TpmUtilityTest, QuotePCRFail) {
@@ -593,6 +626,35 @@ TEST_F(TpmUtilityTest, CertifyNVWithRsa) {
                                       "fake_key_blob", &quoted_data, &quote));
   EXPECT_EQ(quoted_data, "fake_quoted_data");
   EXPECT_NE(quote.find("fake_quote"), std::string::npos);
+}
+
+TEST_F(TpmUtilityTest, CertifyNVWithEcc) {
+  constexpr int kFakeNvIndex = 0x123;
+  constexpr int kFakeNvSize = 0x456;
+
+  ON_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
+      .WillByDefault(DoAll(SetArgPointee<1>(GetValidEccPublicKey(nullptr)),
+                           Return(TPM_RC_SUCCESS)));
+
+  trunks::TPMT_SIGNATURE fake_signature;
+  fake_signature.sig_alg = trunks::TPM_ALG_ECDSA;
+  fake_signature.signature.ecdsa.signature_r =
+      trunks::Make_TPM2B_ECC_PARAMETER("fake_quote_r");
+  fake_signature.signature.ecdsa.signature_s =
+      trunks::Make_TPM2B_ECC_PARAMETER("fake_quote_s");
+
+  EXPECT_CALL(mock_tpm_, NV_CertifySyncShort(_, _, _, _, _, _, _, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<7>(trunks::Make_TPM2B_ATTEST("fake_quoted_data")),
+                SetArgPointee<8>(fake_signature), Return(TPM_RC_SUCCESS)));
+
+  std::string quoted_data;
+  std::string quote;
+  EXPECT_TRUE(tpm_utility_->CertifyNV(kFakeNvIndex, kFakeNvSize,
+                                      "fake_key_blob", &quoted_data, &quote));
+  EXPECT_EQ(quoted_data, "fake_quoted_data");
+  EXPECT_NE(quote.find("fake_quote_r"), std::string::npos);
+  EXPECT_NE(quote.find("fake_quote_s"), std::string::npos);
 }
 
 TEST_F(TpmUtilityTest, CertifyNVFail) {

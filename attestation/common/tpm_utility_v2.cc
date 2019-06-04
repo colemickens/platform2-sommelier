@@ -180,6 +180,40 @@ std::string EccSubjectPublicKeyInfoToString(const crypto::ScopedEC_KEY& key) {
   return BytesToString(OpenSSLObjectToBytes(i2d_EC_PUBKEY, key.get()));
 }
 
+crypto::ScopedECDSA_SIG CreateEcdsaSigFromRS(std::string r, std::string s) {
+  crypto::ScopedECDSA_SIG sig(ECDSA_SIG_new());
+
+  // ECDSA_SIG_new populates ECDSA_SIG with two newly allocated BIGNUMs. We
+  // need to free them before replacing them with new ones created by
+  // ConvertToBIGNUM.
+  // TODO(menghuan): use ECDSA_SIG_set0() after upgrading to OpenSSL 1.1.0
+  BN_free(sig->r);
+  BN_free(sig->s);
+  sig->r = StringToBignum(r);
+  sig->s = StringToBignum(s);
+  return sig;
+}
+
+base::Optional<std::string> SerializeFromTpmSignature(
+    const trunks::TPMT_SIGNATURE& signature) {
+  switch (signature.sig_alg) {
+    case trunks::TPM_ALG_RSASSA:
+      return StringFrom_TPM2B_PUBLIC_KEY_RSA(signature.signature.rsassa.sig);
+    case trunks::TPM_ALG_ECDSA: {
+      crypto::ScopedECDSA_SIG sig = CreateEcdsaSigFromRS(
+          StringFrom_TPM2B_ECC_PARAMETER(signature.signature.ecdsa.signature_r),
+          StringFrom_TPM2B_ECC_PARAMETER(
+              signature.signature.ecdsa.signature_s));
+
+      return BytesToString(OpenSSLObjectToBytes(i2d_ECDSA_SIG, sig.get()));
+    }
+    default:
+      LOG(ERROR) << __func__
+                 << ": unkown TPM 2.0 signature type: " << signature.sig_alg;
+      return base::nullopt;
+  }
+}
+
 // An authorization delegate to manage multiple authorization sessions for a
 // single command.
 class MultipleAuthorizations : public AuthorizationDelegate {
@@ -801,6 +835,7 @@ bool TpmUtilityV2::QuotePCR(uint32_t pcr_index,
                << trunks::GetErrorString(result);
     return false;
   }
+
   std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
       trunks_factory_->GetPasswordAuthorization(std::string());
   TPM_HANDLE key_handle;
@@ -811,6 +846,7 @@ bool TpmUtilityV2::QuotePCR(uint32_t pcr_index,
                << ": Failed to load key: " << trunks::GetErrorString(result);
     return false;
   }
+
   TpmObjectScoper scoper(trunks_factory_, key_handle);
   std::string key_name;
   result = trunks_utility_->GetKeyName(key_handle, &key_name);
@@ -819,9 +855,29 @@ bool TpmUtilityV2::QuotePCR(uint32_t pcr_index,
                << trunks::GetErrorString(result);
     return false;
   }
+
+  trunks::TPMT_PUBLIC public_area;
+  result = trunks_utility_->GetKeyPublicArea(key_handle, &public_area);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to get key public data: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+
   trunks::TPMT_SIG_SCHEME scheme;
-  scheme.scheme = trunks::TPM_ALG_RSASSA;
-  scheme.details.rsassa.hash_alg = trunks::TPM_ALG_SHA256;
+  scheme.details.any.hash_alg = trunks::TPM_ALG_SHA256;
+  switch (public_area.type) {
+    case trunks::TPM_ALG_RSA:
+      scheme.scheme = trunks::TPM_ALG_RSASSA;
+      break;
+    case trunks::TPM_ALG_ECC:
+      scheme.scheme = trunks::TPM_ALG_ECDSA;
+      break;
+    default:
+      LOG(ERROR) << __func__ << ": Unknown TPM key type of TPM handle.";
+      return false;
+  }
+
   // This process of selecting pcrs is highlighted in TPM 2.0 Library Spec
   // Part 2 (Section 10.5 - PCR structures).
   trunks::TPML_PCR_SELECTION pcr_selection;
@@ -845,8 +901,9 @@ bool TpmUtilityV2::QuotePCR(uint32_t pcr_index,
                << trunks::GetErrorString(result);
     return false;
   }
+
   *quoted_data = StringFrom_TPM2B_ATTEST(quoted_struct);
-  *quote = StringFrom_TPM2B_PUBLIC_KEY_RSA(signature.signature.rsassa.sig);
+  *quote = SerializeFromTpmSignature(signature).value_or("");
   return true;
 }
 
@@ -955,9 +1012,27 @@ bool TpmUtilityV2::CertifyNV(uint32_t nv_index,
     return false;
   }
 
+  trunks::TPMT_PUBLIC public_area;
+  result = trunks_utility_->GetKeyPublicArea(key_handle, &public_area);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to get key public data: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+
   trunks::TPMT_SIG_SCHEME scheme;
-  scheme.scheme = trunks::TPM_ALG_RSASSA;
-  scheme.details.rsassa.hash_alg = trunks::TPM_ALG_SHA256;
+  scheme.details.any.hash_alg = trunks::TPM_ALG_SHA256;
+  switch (public_area.type) {
+    case trunks::TPM_ALG_RSA:
+      scheme.scheme = trunks::TPM_ALG_RSASSA;
+      break;
+    case trunks::TPM_ALG_ECC:
+      scheme.scheme = trunks::TPM_ALG_ECDSA;
+      break;
+    default:
+      LOG(ERROR) << __func__ << ": Unknown TPM key type of TPM handle.";
+      return false;
+  }
 
   trunks::TPM2B_ATTEST quoted_struct;
   trunks::TPMT_SIGNATURE signature;
@@ -983,7 +1058,7 @@ bool TpmUtilityV2::CertifyNV(uint32_t nv_index,
   }
 
   *quoted_data = StringFrom_TPM2B_ATTEST(quoted_struct);
-  *quote = StringFrom_TPM2B_PUBLIC_KEY_RSA(signature.signature.rsassa.sig);
+  *quote = SerializeFromTpmSignature(signature).value_or("");
   return true;
 }
 
