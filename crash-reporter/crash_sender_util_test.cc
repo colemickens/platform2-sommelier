@@ -1394,9 +1394,10 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
       base::ReadFileToString(paths::Get(paths::kChromeCrashLog), &contents));
   std::vector<std::vector<std::string>> rows = ParseChromeUploadsLog(contents);
   // Should only contain two results, since max_crash_rate is set to 2.
-  // FakeSleep should be called twice for the two crash reports.
+  // FakeSleep should be called three times since we sleep before we check the
+  // crash rate.
   ASSERT_EQ(2, rows.size());
-  EXPECT_EQ(2, sleep_times.size());
+  EXPECT_EQ(3, sleep_times.size());
 
   // Each line of the uploads.log file is "timestamp,report_id,product".
   // The first run should be for the meta file in the system directory.

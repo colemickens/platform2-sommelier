@@ -159,7 +159,7 @@ bool IsTimestampNewEnough(const base::FilePath& timestamp_file);
 //
 // This function checks/creates/removes timestamp files in |timestamps_dir| to
 // track how many attempts were made to send crash reports in that past 24
-// hours. Even if sending failed, it's counted as an attempt.
+// hours.
 bool IsBelowRate(const base::FilePath& timestamps_dir, int max_crash_rate);
 
 // Computes a sleep time needed before attempting to send a new crash report.

@@ -627,14 +627,6 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
       return;
     }
 
-    const base::FilePath timestamps_dir =
-        paths::Get(paths::kTimestampsDirectory);
-    if (!IsBelowRate(timestamps_dir, max_crash_rate_)) {
-      LOG(INFO) << "Cannot send more crashes. Sending " << meta_file.value()
-                << " would exceed the max rate: " << max_crash_rate_;
-      return;
-    }
-
     base::TimeDelta sleep_time;
     if (!GetSleepTime(meta_file, max_spread_time_, hold_off_time_,
                       &sleep_time)) {
@@ -657,6 +649,17 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
     if (!base::PathExists(meta_file)) {
       LOG(INFO) << "Metadata is no longer accessible: " << meta_file.value();
       continue;
+    }
+
+    // Do the rate check only after we have done all of our local file
+    // processing so that the rate check only applies when we are using
+    // network resources.
+    const base::FilePath timestamps_dir =
+        paths::Get(paths::kTimestampsDirectory);
+    if (!IsBelowRate(timestamps_dir, max_crash_rate_)) {
+      LOG(INFO) << "Cannot send more crashes. Sending " << meta_file.value()
+                << " would exceed the max rate: " << max_crash_rate_;
+      return;
     }
 
     const CrashDetails details = {
