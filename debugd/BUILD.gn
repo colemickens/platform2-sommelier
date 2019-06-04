@@ -9,6 +9,7 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":capture_packets",
+    ":cups_uri_helper",
     ":debugd",
     ":debugd-adaptors",
     ":debugd_dbus_utils",
@@ -151,6 +152,14 @@ executable("capture_packets") {
   libs = [ "pcap" ]
 }
 
+executable("cups_uri_helper") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "src/helpers/cups_uri_helper.cc",
+    "src/helpers/cups_uri_helper_utils.cc",
+  ]
+}
+
 executable("dev_features_chrome_remote_debugging") {
   configs += [ ":target_defaults" ]
   sources = [
@@ -269,8 +278,9 @@ if (use.test) {
     sources = [
       "src/anonymizer_tool_test.cc",
       "src/crash_sender_tool_test.cc",
-      "src/cups_tool_test.cc",
       "src/dev_mode_no_owner_restriction_test.cc",
+      "src/helpers/cups_uri_helper_test.cc",
+      "src/helpers/cups_uri_helper_utils.cc",
       "src/helpers/dev_features_password_utils.cc",
       "src/helpers/dev_features_password_utils_test.cc",
       "src/helpers/scheduler_configuration_utils.cc",
