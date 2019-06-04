@@ -73,11 +73,11 @@ CamDeviceManagerImp::validateOpenLocked(int32_t i4OpenId,
   }
   //
 
-  if (Mediatek3AClient::getInstance(i4OpenId) &&
-      !Mediatek3AClient::getInstance(i4OpenId)->isIPCFine()) {
-    Mediatek3AClient::getInstance(i4OpenId)->tryReconnectBridge();
+  if (Mediatek3AClient::getInstance() &&
+      !Mediatek3AClient::getInstance()->isIPCFine()) {
+    Mediatek3AClient::getInstance()->tryReconnectBridge();
 
-    if (!Mediatek3AClient::getInstance(i4OpenId)->isIPCFine()) {
+    if (!Mediatek3AClient::getInstance()->isIPCFine()) {
       MY_LOGE("Reconnect IPC fail, cannot open device %d ...", i4OpenId);
       return -EUSERS;
     }

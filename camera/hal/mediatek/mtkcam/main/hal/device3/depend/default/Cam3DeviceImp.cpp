@@ -101,8 +101,8 @@ status_t Cam3DeviceImp::deviceError(void) {
  ******************************************************************************/
 MERROR
 Cam3DeviceImp::onInitializeLocked() {
-  if (Mediatek3AClient::getInstance(mi4OpenId))
-    Mediatek3AClient::getInstance(mi4OpenId)->registerErrorCallback(this);
+  if (Mediatek3AClient::getInstance())
+    Mediatek3AClient::getInstance()->registerErrorCallback(this);
   return OK;
 }
 
@@ -175,8 +175,8 @@ Cam3DeviceImp::onUninitializeLocked() {
   //--------------------------------------------------------------------------
   profile.print("");
 
-  if (Mediatek3AClient::getInstance(mi4OpenId))
-    Mediatek3AClient::getInstance(mi4OpenId)->registerErrorCallback(nullptr);
+  if (Mediatek3AClient::getInstance())
+    Mediatek3AClient::getInstance()->registerErrorCallback(nullptr);
 
   return OK;
 }

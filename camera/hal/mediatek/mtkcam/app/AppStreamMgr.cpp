@@ -158,8 +158,8 @@ NSCam::v3::Imp::AppStreamMgr::AppStreamMgr(
     mAtMostMetaStreamCount = entry.itemAt(0, Type2Type<MINT32>());
   }
 
-  if (Mediatek3AClient::getInstance(openId))
-    Mediatek3AClient::getInstance(openId)->registerErrorCallback(this);
+  if (Mediatek3AClient::getInstance())
+    Mediatek3AClient::getInstance()->registerErrorCallback(this);
   //
   char cLogLevel[PROPERTY_VALUE_MAX];
   property_get("debug.camera.log", cLogLevel, "0");
