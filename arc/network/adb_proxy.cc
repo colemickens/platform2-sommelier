@@ -83,7 +83,7 @@ void AdbProxy::OnFileCanReadWithoutBlocking(int fd) {
 
   // Cleanup any defunct forwarders.
   for (auto it = fwd_.begin(); it != fwd_.end();) {
-    if (!(*it)->IsValid() && (*it)->HasBeenStarted())
+    if (!(*it)->IsRunning() && (*it)->HasBeenStarted())
       it = fwd_.erase(it);
     else
       ++it;
@@ -91,24 +91,24 @@ void AdbProxy::OnFileCanReadWithoutBlocking(int fd) {
 }
 
 std::unique_ptr<Socket> AdbProxy::Connect() const {
-  // Try to connect with VSOCK.
-  struct sockaddr_vm addr_vm = {0};
-  addr_vm.svm_family = AF_VSOCK;
-  addr_vm.svm_port = kVsockPort;
-  addr_vm.svm_cid = kVsockCid;
-
-  auto dst = std::make_unique<Socket>(AF_VSOCK, SOCK_STREAM);
-  if (dst->Connect((const struct sockaddr*)&addr_vm, sizeof(addr_vm)))
-    return dst;
-
   // Try to connect with TCP IPv4.
   struct sockaddr_in addr_in = {0};
   addr_in.sin_family = AF_INET;
   addr_in.sin_port = htons(kTcpConnectPort);
   addr_in.sin_addr.s_addr = kTcpAddr;
 
-  dst = std::make_unique<Socket>(AF_INET, SOCK_STREAM);
+  auto dst = std::make_unique<Socket>(AF_INET, SOCK_STREAM);
   if (dst->Connect((const struct sockaddr*)&addr_in, sizeof(addr_in)))
+    return dst;
+
+  // Try to connect with VSOCK.
+  struct sockaddr_vm addr_vm = {0};
+  addr_vm.svm_family = AF_VSOCK;
+  addr_vm.svm_port = kVsockPort;
+  addr_vm.svm_cid = kVsockCid;
+
+  dst = std::make_unique<Socket>(AF_VSOCK, SOCK_STREAM);
+  if (dst->Connect((const struct sockaddr*)&addr_vm, sizeof(addr_vm)))
     return dst;
 
   return nullptr;
@@ -148,9 +148,9 @@ bool AdbProxy::OnSignal(const struct signalfd_siginfo& info) {
 
   // On ARC down cull any open connections and stop listening.
   if (info.ssi_signo == SIGUSR2) {
-    fwd_.clear();
-    src_.reset();
     src_watcher_.StopWatchingFileDescriptor();
+    src_.reset();
+    fwd_.clear();
   }
 
   // Stay registered.

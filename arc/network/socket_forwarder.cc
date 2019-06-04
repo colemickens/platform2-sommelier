@@ -40,11 +40,12 @@ SocketForwarder::SocketForwarder(const std::string& name,
 }
 
 SocketForwarder::~SocketForwarder() {
-  Stop();
+  // Ensure the polling loop exits.
+  poll_ = false;
   Join();
 }
 
-bool SocketForwarder::IsValid() const {
+bool SocketForwarder::IsRunning() const {
   return !done_;
 }
 
@@ -61,19 +62,11 @@ void SocketForwarder::Run() {
   }
 
   Poll();
-  Stop();
 
+  LOG(INFO) << "Forwarder stopped: " << *sock0_ << " <-> " << *sock1_;
+  done_ = true;
   sock1_.reset();
   sock0_.reset();
-}
-
-void SocketForwarder::Stop() {
-  if (done_)
-    return;
-
-  LOG(INFO) << "Stopping forwarder: " << *sock0_ << " <-> " << *sock1_;
-  poll_ = false;
-  done_ = true;
 }
 
 void SocketForwarder::Poll() {
@@ -104,7 +97,8 @@ void SocketForwarder::Poll() {
       return;
     }
     for (int i = 0; i < n; ++i) {
-      if (!ProcessEvents(events[i].events, events[i].data.fd, cfd.get()))
+      if (!poll_ ||
+          !ProcessEvents(events[i].events, events[i].data.fd, cfd.get()))
         return;
     }
   }
@@ -112,7 +106,11 @@ void SocketForwarder::Poll() {
 
 bool SocketForwarder::ProcessEvents(uint32_t events, int efd, int cfd) {
   if (events & EPOLLERR) {
-    PLOG(WARNING) << "Socket error: " << *sock0_ << " <-> " << *sock1_;
+    int so_error;
+    socklen_t optlen = sizeof(so_error);
+    getsockopt(efd, SOL_SOCKET, SO_ERROR, &so_error, &optlen);
+    PLOG(WARNING) << "Socket error: (" << so_error << ") " << *sock0_ << " <-> "
+                  << *sock1_;
     return false;
   }
   if (events & (EPOLLHUP | EPOLLRDHUP)) {

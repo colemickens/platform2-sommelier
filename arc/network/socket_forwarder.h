@@ -31,13 +31,12 @@ class SocketForwarder : public base::SimpleThread {
   // Runs the forwarder. The sockets are closed and released on exit,
   // so this can only be run once.
   void Run() override;
-  bool IsValid() const;
+  bool IsRunning() const;
 
  private:
   static constexpr int kBufSize = 4096;
 
   void Poll();
-  void Stop();
   bool ProcessEvents(uint32_t events, int efd, int cfd);
 
   std::unique_ptr<Socket> sock0_;
