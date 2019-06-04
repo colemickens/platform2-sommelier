@@ -88,22 +88,10 @@ class UserDataAuthAdaptor
           user_data_auth::GetSupportedKeyPoliciesReply>> response,
       const user_data_auth::GetSupportedKeyPoliciesRequest& in_request)
       override;
-  void GetDiskFeatures(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::GetDiskFeaturesReply>> response,
-      const user_data_auth::GetDiskFeaturesRequest& in_request) override;
   void GetAccountDiskUsage(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::GetAccountDiskUsageReply>> response,
       const user_data_auth::GetAccountDiskUsageRequest& in_request) override;
-  void GetCurrentSpaceForUid(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::GetCurrentSpaceForUidReply>> response,
-      const user_data_auth::GetCurrentSpaceForUidRequest& in_request) override;
-  void GetCurrentSpaceForGid(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::GetCurrentSpaceForGidReply>> response,
-      const user_data_auth::GetCurrentSpaceForGidRequest& in_request) override;
 
  private:
   brillo::dbus_utils::DBusObject* dbus_object_;
@@ -115,6 +103,54 @@ class UserDataAuthAdaptor
   UserDataAuth* service_;
 
   DISALLOW_COPY_AND_ASSIGN(UserDataAuthAdaptor);
+};
+
+class ArcQuotaAdaptor : public org::chromium::ArcQuotaInterface,
+                        public org::chromium::ArcQuotaAdaptor {
+ public:
+  explicit ArcQuotaAdaptor(scoped_refptr<dbus::Bus> bus,
+                           brillo::dbus_utils::DBusObject* dbus_object,
+                           UserDataAuth* service)
+      : org::chromium::ArcQuotaAdaptor(this),
+        dbus_object_(dbus_object),
+        service_(service) {
+    // This is to silence the compiler's warning about unused fields. It will be
+    // removed once we start to use it.
+    (void)service_;
+  }
+
+  void RegisterAsync() { RegisterWithDBusObject(dbus_object_); }
+
+  // Interface overrides and related implementations
+  // Note that the documentation for all of the methods below can be found in
+  // either the DBus Introspection XML
+  // (cryptohome/dbus_bindings/org.chromium.UserDataAuth.xml), or the protobuf
+  // definition file (system_api/dbus/cryptohome/UserDataAuth.proto)
+  void GetArcDiskFeatures(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetArcDiskFeaturesReply>> response,
+      const user_data_auth::GetArcDiskFeaturesRequest& in_request) override;
+  void GetCurrentSpaceForArcUid(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetCurrentSpaceForArcUidReply>> response,
+      const user_data_auth::GetCurrentSpaceForArcUidRequest& in_request)
+      override;
+  void GetCurrentSpaceForArcGid(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetCurrentSpaceForArcGidReply>> response,
+      const user_data_auth::GetCurrentSpaceForArcGidRequest& in_request)
+      override;
+
+ private:
+  brillo::dbus_utils::DBusObject* dbus_object_;
+
+  // This is the object that holds most of the states that this adaptor uses,
+  // it also contains most of the actual logics.
+  // This object is owned by the parent dbus service daemon, and whose lifetime
+  // will cover the entire lifetime of this class.
+  UserDataAuth* service_;
+
+  DISALLOW_COPY_AND_ASSIGN(ArcQuotaAdaptor);
 };
 
 class Pkcs11Adaptor : public org::chromium::CryptohomePkcs11InterfaceInterface,

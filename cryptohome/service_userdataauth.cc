@@ -155,14 +155,6 @@ void UserDataAuthAdaptor::GetSupportedKeyPolicies(
   response->Return(reply);
 }
 
-void UserDataAuthAdaptor::GetDiskFeatures(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::GetDiskFeaturesReply>> response,
-    const user_data_auth::GetDiskFeaturesRequest& in_request) {
-  user_data_auth::GetDiskFeaturesReply reply;
-  response->Return(reply);
-}
-
 void UserDataAuthAdaptor::GetAccountDiskUsage(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::GetAccountDiskUsageReply>> response,
@@ -171,19 +163,27 @@ void UserDataAuthAdaptor::GetAccountDiskUsage(
   response->Return(reply);
 }
 
-void UserDataAuthAdaptor::GetCurrentSpaceForUid(
+void ArcQuotaAdaptor::GetArcDiskFeatures(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::GetCurrentSpaceForUidReply>> response,
-    const user_data_auth::GetCurrentSpaceForUidRequest& in_request) {
-  user_data_auth::GetCurrentSpaceForUidReply reply;
+        user_data_auth::GetArcDiskFeaturesReply>> response,
+    const user_data_auth::GetArcDiskFeaturesRequest& in_request) {
+  user_data_auth::GetArcDiskFeaturesReply reply;
   response->Return(reply);
 }
 
-void UserDataAuthAdaptor::GetCurrentSpaceForGid(
+void ArcQuotaAdaptor::GetCurrentSpaceForArcUid(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::GetCurrentSpaceForGidReply>> response,
-    const user_data_auth::GetCurrentSpaceForGidRequest& in_request) {
-  user_data_auth::GetCurrentSpaceForGidReply reply;
+        user_data_auth::GetCurrentSpaceForArcUidReply>> response,
+    const user_data_auth::GetCurrentSpaceForArcUidRequest& in_request) {
+  user_data_auth::GetCurrentSpaceForArcUidReply reply;
+  response->Return(reply);
+}
+
+void ArcQuotaAdaptor::GetCurrentSpaceForArcGid(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetCurrentSpaceForArcGidReply>> response,
+    const user_data_auth::GetCurrentSpaceForArcGidRequest& in_request) {
+  user_data_auth::GetCurrentSpaceForArcGidReply reply;
   response->Return(reply);
 }
 

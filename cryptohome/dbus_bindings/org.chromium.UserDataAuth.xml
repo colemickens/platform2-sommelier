@@ -221,19 +221,6 @@ do.
       </arg>
     </method>
 
-    <method name="GetDiskFeatures">
-      <annotation name="org.chromium.DBus.Method.Kind"
-                  value="async"/>
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetDiskFeaturesRequest" />
-      </arg>
-      <arg name="reply" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetDiskFeaturesReply" />
-      </arg>
-    </method>
-
     <method name="GetAccountDiskUsage">
       <annotation name="org.chromium.DBus.Method.Kind"
                   value="async"/>
@@ -246,30 +233,44 @@ do.
                     value="user_data_auth::GetAccountDiskUsageReply" />
       </arg>
     </method>
+  </interface>
 
-    <method name="GetCurrentSpaceForUid">
+  <interface name="org.chromium.ArcQuota">
+    <method name="GetArcDiskFeatures">
       <annotation name="org.chromium.DBus.Method.Kind"
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetCurrentSpaceForUidRequest" />
+                    value="user_data_auth::GetArcDiskFeaturesRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetCurrentSpaceForUidReply" />
+                    value="user_data_auth::GetArcDiskFeaturesReply" />
+      </arg>
+    </method>
+    <method name="GetCurrentSpaceForArcUid">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetCurrentSpaceForArcUidRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetCurrentSpaceForArcUidReply" />
       </arg>
     </method>
 
-    <method name="GetCurrentSpaceForGid">
+    <method name="GetCurrentSpaceForArcGid">
       <annotation name="org.chromium.DBus.Method.Kind"
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetCurrentSpaceForGidRequest" />
+                    value="user_data_auth::GetCurrentSpaceForArcGidRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetCurrentSpaceForGidReply" />
+                    value="user_data_auth::GetCurrentSpaceForArcGidReply" />
       </arg>
     </method>
   </interface>
