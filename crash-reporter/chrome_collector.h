@@ -16,8 +16,6 @@
 
 #include "crash-reporter/crash_collector.h"
 
-class SystemLogging;
-
 // Chrome crash collector.
 class ChromeCollector : public CrashCollector {
  public:

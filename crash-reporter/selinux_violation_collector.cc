@@ -8,8 +8,6 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/rand_util.h>
-#include <base/strings/stringprintf.h>
 
 #include "crash-reporter/util.h"
 
