@@ -304,8 +304,7 @@ void Camera3ExifValidator::ValidateExifKeys(
                       &actual_thumbnail_resolution, nullptr) != 0) {
         ADD_FAILURE() << "No valid thumbnail image found in the buffer";
       } else {
-        EXPECT_EQ(exif_test_data.thumbnail_resolution,
-                  actual_thumbnail_resolution)
+        EXPECT_EQ(expected_thumbnail_resolution, actual_thumbnail_resolution)
             << "EXIF thumbnail image size should match requested size";
       }
     }
