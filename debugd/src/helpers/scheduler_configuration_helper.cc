@@ -7,10 +7,7 @@
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
-#include <cstdio>
-#include <map>
 #include <string>
-#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>

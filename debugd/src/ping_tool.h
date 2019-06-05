@@ -5,7 +5,6 @@
 #ifndef DEBUGD_SRC_PING_TOOL_H_
 #define DEBUGD_SRC_PING_TOOL_H_
 
-#include <map>
 #include <string>
 
 #include <base/macros.h>

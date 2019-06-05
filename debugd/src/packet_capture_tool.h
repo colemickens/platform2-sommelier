@@ -5,7 +5,6 @@
 #ifndef DEBUGD_SRC_PACKET_CAPTURE_TOOL_H_
 #define DEBUGD_SRC_PACKET_CAPTURE_TOOL_H_
 
-#include <map>
 #include <string>
 
 #include <base/macros.h>
@@ -15,8 +14,6 @@
 #include "debugd/src/subprocess_tool.h"
 
 namespace debugd {
-
-class ProcessWithId;
 
 class PacketCaptureTool : public SubprocessTool {
  public:
