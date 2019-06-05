@@ -394,13 +394,13 @@ ispAwbFrEncode(aic_config *config, ipu3_uapi_params *params)
 {
     unsigned int coeff_sum = 0, nf_val = 1;
 
-    params->acc_param.awb_fr.config.bayer_coeff[0] = config->awb_fr_2500_config.awb_fr.bayer_coeffs.A1;
-    params->acc_param.awb_fr.config.bayer_coeff[1] = config->awb_fr_2500_config.awb_fr.bayer_coeffs.A2;
-    params->acc_param.awb_fr.config.bayer_coeff[2] = config->awb_fr_2500_config.awb_fr.bayer_coeffs.A3;
-    params->acc_param.awb_fr.config.bayer_coeff[3] = config->awb_fr_2500_config.awb_fr.bayer_coeffs.A4;
-    params->acc_param.awb_fr.config.bayer_coeff[4] = config->awb_fr_2500_config.awb_fr.bayer_coeffs.A5;
-    params->acc_param.awb_fr.config.bayer_coeff[5] = config->awb_fr_2500_config.awb_fr.bayer_coeffs.A6;
-    params->acc_param.awb_fr.config.bayer_sign = config->awb_fr_2500_config.awb_fr.bayer_coeffs.sign_vec;
+    params->acc_param.awb_fr.bayer_coeff[0] = config->awb_fr_2500_config.awb_fr.bayer_coeffs.A1;
+    params->acc_param.awb_fr.bayer_coeff[1] = config->awb_fr_2500_config.awb_fr.bayer_coeffs.A2;
+    params->acc_param.awb_fr.bayer_coeff[2] = config->awb_fr_2500_config.awb_fr.bayer_coeffs.A3;
+    params->acc_param.awb_fr.bayer_coeff[3] = config->awb_fr_2500_config.awb_fr.bayer_coeffs.A4;
+    params->acc_param.awb_fr.bayer_coeff[4] = config->awb_fr_2500_config.awb_fr.bayer_coeffs.A5;
+    params->acc_param.awb_fr.bayer_coeff[5] = config->awb_fr_2500_config.awb_fr.bayer_coeffs.A6;
+    params->acc_param.awb_fr.bayer_sign = config->awb_fr_2500_config.awb_fr.bayer_coeffs.sign_vec;
 
     coeff_sum += config->awb_fr_2500_config.awb_fr.bayer_coeffs.A1;
     coeff_sum += config->awb_fr_2500_config.awb_fr.bayer_coeffs.A2;
@@ -416,20 +416,20 @@ ispAwbFrEncode(aic_config *config, ipu3_uapi_params *params)
     --nf_val;
 
     if (nf_val < 7 || nf_val > 12)
-        params->acc_param.awb_fr.config.bayer_nf = 7;
+        params->acc_param.awb_fr.bayer_nf = 7;
     else
-        params->acc_param.awb_fr.config.bayer_nf = nf_val;
+        params->acc_param.awb_fr.bayer_nf = nf_val;
 
-    params->acc_param.awb_fr.config.grid_cfg.width = config->awb_fr_2500_config.awb_fr.grid.grid_width & AWB_FR_GRID_DIM_MASK;
-    params->acc_param.awb_fr.config.grid_cfg.height = config->awb_fr_2500_config.awb_fr.grid.grid_height & AWB_FR_GRID_DIM_MASK;
-    params->acc_param.awb_fr.config.grid_cfg.block_width_log2 = config->awb_fr_2500_config.awb_fr.grid.block_width & 0x7;
-    params->acc_param.awb_fr.config.grid_cfg.block_height_log2 = config->awb_fr_2500_config.awb_fr.grid.block_height & 0x7;
+    params->acc_param.awb_fr.grid_cfg.width = config->awb_fr_2500_config.awb_fr.grid.grid_width & AWB_FR_GRID_DIM_MASK;
+    params->acc_param.awb_fr.grid_cfg.height = config->awb_fr_2500_config.awb_fr.grid.grid_height & AWB_FR_GRID_DIM_MASK;
+    params->acc_param.awb_fr.grid_cfg.block_width_log2 = config->awb_fr_2500_config.awb_fr.grid.block_width & 0x7;
+    params->acc_param.awb_fr.grid_cfg.block_height_log2 = config->awb_fr_2500_config.awb_fr.grid.block_height & 0x7;
 
     assert(config->awb_fr_2500_config.awb_fr.grid.grid_width);
-    params->acc_param.awb_fr.config.grid_cfg.height_per_slice =
+    params->acc_param.awb_fr.grid_cfg.height_per_slice =
       (unsigned char)(AWB_FR_MAX_GRID_CELLS_IN_ONE_SET / config->awb_fr_2500_config.awb_fr.grid.grid_width);
-    params->acc_param.awb_fr.config.grid_cfg.x_start = config->awb_fr_2500_config.awb_fr.grid.x_start & 0xFFF;
-    params->acc_param.awb_fr.config.grid_cfg.y_start = (config->awb_fr_2500_config.awb_fr.grid.y_start & 0xFFF) | IPU3_UAPI_GRID_Y_START_EN;
+    params->acc_param.awb_fr.grid_cfg.x_start = config->awb_fr_2500_config.awb_fr.grid.x_start & 0xFFF;
+    params->acc_param.awb_fr.grid_cfg.y_start = (config->awb_fr_2500_config.awb_fr.grid.y_start & 0xFFF) | IPU3_UAPI_GRID_Y_START_EN;
     params->use.acc_awb_fr = 1;
 }
 
@@ -758,52 +758,52 @@ ispTccEncode(aic_config *config, ipu3_uapi_params *params)
 static void
 ispAfEncode(aic_config *config, ipu3_uapi_params *params)
 {
-    params->acc_param.af.config.filter_config.y1_coeff_0.a1 = config->af_2500_config.af.y1_coeffs.A1;
-    params->acc_param.af.config.filter_config.y1_coeff_0.a2 = config->af_2500_config.af.y1_coeffs.A2;
-    params->acc_param.af.config.filter_config.y1_coeff_0.a3 = config->af_2500_config.af.y1_coeffs.A3;
-    params->acc_param.af.config.filter_config.y1_coeff_0.a4 = config->af_2500_config.af.y1_coeffs.A4;
-    params->acc_param.af.config.filter_config.y1_coeff_1.a5 = config->af_2500_config.af.y1_coeffs.A5;
-    params->acc_param.af.config.filter_config.y1_coeff_1.a6 = config->af_2500_config.af.y1_coeffs.A6;
-    params->acc_param.af.config.filter_config.y1_coeff_1.a7 = config->af_2500_config.af.y1_coeffs.A7;
-    params->acc_param.af.config.filter_config.y1_coeff_1.a8 = config->af_2500_config.af.y1_coeffs.A8;
-    params->acc_param.af.config.filter_config.y1_coeff_2.a9 = config->af_2500_config.af.y1_coeffs.A9;
-    params->acc_param.af.config.filter_config.y1_coeff_2.a10 = config->af_2500_config.af.y1_coeffs.A10;
-    params->acc_param.af.config.filter_config.y1_coeff_2.a11 = config->af_2500_config.af.y1_coeffs.A11;
-    params->acc_param.af.config.filter_config.y1_coeff_2.a12 = config->af_2500_config.af.y1_coeffs.A12;
-    params->acc_param.af.config.filter_config.y1_sign_vec = config->af_2500_config.af.y1_coeffs.sign_vec;
+    params->acc_param.af.filter_config.y1_coeff_0.a1 = config->af_2500_config.af.y1_coeffs.A1;
+    params->acc_param.af.filter_config.y1_coeff_0.a2 = config->af_2500_config.af.y1_coeffs.A2;
+    params->acc_param.af.filter_config.y1_coeff_0.a3 = config->af_2500_config.af.y1_coeffs.A3;
+    params->acc_param.af.filter_config.y1_coeff_0.a4 = config->af_2500_config.af.y1_coeffs.A4;
+    params->acc_param.af.filter_config.y1_coeff_1.a5 = config->af_2500_config.af.y1_coeffs.A5;
+    params->acc_param.af.filter_config.y1_coeff_1.a6 = config->af_2500_config.af.y1_coeffs.A6;
+    params->acc_param.af.filter_config.y1_coeff_1.a7 = config->af_2500_config.af.y1_coeffs.A7;
+    params->acc_param.af.filter_config.y1_coeff_1.a8 = config->af_2500_config.af.y1_coeffs.A8;
+    params->acc_param.af.filter_config.y1_coeff_2.a9 = config->af_2500_config.af.y1_coeffs.A9;
+    params->acc_param.af.filter_config.y1_coeff_2.a10 = config->af_2500_config.af.y1_coeffs.A10;
+    params->acc_param.af.filter_config.y1_coeff_2.a11 = config->af_2500_config.af.y1_coeffs.A11;
+    params->acc_param.af.filter_config.y1_coeff_2.a12 = config->af_2500_config.af.y1_coeffs.A12;
+    params->acc_param.af.filter_config.y1_sign_vec = config->af_2500_config.af.y1_coeffs.sign_vec;
 
-    params->acc_param.af.config.filter_config.y2_coeff_0.a1 = config->af_2500_config.af.y2_coeffs.A1;
-    params->acc_param.af.config.filter_config.y2_coeff_0.a2 = config->af_2500_config.af.y2_coeffs.A2;
-    params->acc_param.af.config.filter_config.y2_coeff_0.a3 = config->af_2500_config.af.y2_coeffs.A3;
-    params->acc_param.af.config.filter_config.y2_coeff_0.a4 = config->af_2500_config.af.y2_coeffs.A4;
-    params->acc_param.af.config.filter_config.y2_coeff_1.a5 = config->af_2500_config.af.y2_coeffs.A5;
-    params->acc_param.af.config.filter_config.y2_coeff_1.a6 = config->af_2500_config.af.y2_coeffs.A6;
-    params->acc_param.af.config.filter_config.y2_coeff_1.a7 = config->af_2500_config.af.y2_coeffs.A7;
-    params->acc_param.af.config.filter_config.y2_coeff_1.a8 = config->af_2500_config.af.y2_coeffs.A8;
-    params->acc_param.af.config.filter_config.y2_coeff_2.a9 = config->af_2500_config.af.y2_coeffs.A9;
-    params->acc_param.af.config.filter_config.y2_coeff_2.a10 = config->af_2500_config.af.y2_coeffs.A10;
-    params->acc_param.af.config.filter_config.y2_coeff_2.a11 = config->af_2500_config.af.y2_coeffs.A11;
-    params->acc_param.af.config.filter_config.y2_coeff_2.a12 = config->af_2500_config.af.y2_coeffs.A12;
-    params->acc_param.af.config.filter_config.y2_sign_vec = config->af_2500_config.af.y2_coeffs.sign_vec;
+    params->acc_param.af.filter_config.y2_coeff_0.a1 = config->af_2500_config.af.y2_coeffs.A1;
+    params->acc_param.af.filter_config.y2_coeff_0.a2 = config->af_2500_config.af.y2_coeffs.A2;
+    params->acc_param.af.filter_config.y2_coeff_0.a3 = config->af_2500_config.af.y2_coeffs.A3;
+    params->acc_param.af.filter_config.y2_coeff_0.a4 = config->af_2500_config.af.y2_coeffs.A4;
+    params->acc_param.af.filter_config.y2_coeff_1.a5 = config->af_2500_config.af.y2_coeffs.A5;
+    params->acc_param.af.filter_config.y2_coeff_1.a6 = config->af_2500_config.af.y2_coeffs.A6;
+    params->acc_param.af.filter_config.y2_coeff_1.a7 = config->af_2500_config.af.y2_coeffs.A7;
+    params->acc_param.af.filter_config.y2_coeff_1.a8 = config->af_2500_config.af.y2_coeffs.A8;
+    params->acc_param.af.filter_config.y2_coeff_2.a9 = config->af_2500_config.af.y2_coeffs.A9;
+    params->acc_param.af.filter_config.y2_coeff_2.a10 = config->af_2500_config.af.y2_coeffs.A10;
+    params->acc_param.af.filter_config.y2_coeff_2.a11 = config->af_2500_config.af.y2_coeffs.A11;
+    params->acc_param.af.filter_config.y2_coeff_2.a12 = config->af_2500_config.af.y2_coeffs.A12;
+    params->acc_param.af.filter_config.y2_sign_vec = config->af_2500_config.af.y2_coeffs.sign_vec;
 
-    params->acc_param.af.config.filter_config.y_calc.y_gen_rate_gr = config->af_2500_config.af.y_calc.y_gen_rate_gr;
-    params->acc_param.af.config.filter_config.y_calc.y_gen_rate_r = config->af_2500_config.af.y_calc.y_gen_rate_r;
-    params->acc_param.af.config.filter_config.y_calc.y_gen_rate_b = config->af_2500_config.af.y_calc.y_gen_rate_b;
-    params->acc_param.af.config.filter_config.y_calc.y_gen_rate_gb = config->af_2500_config.af.y_calc.y_gen_rate_gb;
+    params->acc_param.af.filter_config.y_calc.y_gen_rate_gr = config->af_2500_config.af.y_calc.y_gen_rate_gr;
+    params->acc_param.af.filter_config.y_calc.y_gen_rate_r = config->af_2500_config.af.y_calc.y_gen_rate_r;
+    params->acc_param.af.filter_config.y_calc.y_gen_rate_b = config->af_2500_config.af.y_calc.y_gen_rate_b;
+    params->acc_param.af.filter_config.y_calc.y_gen_rate_gb = config->af_2500_config.af.y_calc.y_gen_rate_gb;
 
-    params->acc_param.af.config.filter_config.nf.y1_nf = config->af_2500_config.af.nf.y1_nf;
-    params->acc_param.af.config.filter_config.nf.y2_nf = config->af_2500_config.af.nf.y2_nf;
+    params->acc_param.af.filter_config.nf.y1_nf = config->af_2500_config.af.nf.y1_nf;
+    params->acc_param.af.filter_config.nf.y2_nf = config->af_2500_config.af.nf.y2_nf;
 
-    params->acc_param.af.config.grid_cfg.width = config->af_2500_config.af.grid.grid_width;
-    params->acc_param.af.config.grid_cfg.height = config->af_2500_config.af.grid.grid_height;
-    params->acc_param.af.config.grid_cfg.block_width_log2 = config->af_2500_config.af.grid.block_width;
-    params->acc_param.af.config.grid_cfg.block_height_log2 = config->af_2500_config.af.grid.block_height;
+    params->acc_param.af.grid_cfg.width = config->af_2500_config.af.grid.grid_width;
+    params->acc_param.af.grid_cfg.height = config->af_2500_config.af.grid.grid_height;
+    params->acc_param.af.grid_cfg.block_width_log2 = config->af_2500_config.af.grid.block_width;
+    params->acc_param.af.grid_cfg.block_height_log2 = config->af_2500_config.af.grid.block_height;
 
     assert(config->af_2500_config.af.grid.grid_width);
-    params->acc_param.af.config.grid_cfg.height_per_slice =
+    params->acc_param.af.grid_cfg.height_per_slice =
             (unsigned char)(AF_MAX_GRID_CELLS_IN_ONE_SET / config->af_2500_config.af.grid.grid_width);
-    params->acc_param.af.config.grid_cfg.x_start = config->af_2500_config.af.grid.x_start;
-    params->acc_param.af.config.grid_cfg.y_start = config->af_2500_config.af.grid.y_start | IPU3_UAPI_GRID_Y_START_EN;
+    params->acc_param.af.grid_cfg.x_start = config->af_2500_config.af.grid.x_start;
+    params->acc_param.af.grid_cfg.y_start = config->af_2500_config.af.grid.y_start | IPU3_UAPI_GRID_Y_START_EN;
 
     params->use.acc_af = 1;
 }
@@ -831,7 +831,7 @@ copyBeta(ipu3_uapi_anr_beta *to, beta_t *from)
 }
 
 static void
-copyColoreRg(ipu3_uapi_anr_plain_color *to, plain_color_w_matrix_t *from)
+copyColoreRg(ipu3_uapi_anr_plane_color *to, plain_color_w_matrix_t *from)
 {
     for (int i = 0; i < W_MATRIX_SIZE; i++) {
         to->reg_w_gr[i] = from->Gr[i] & COLOR_REG_W_MASK;
