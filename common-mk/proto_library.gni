@@ -130,11 +130,17 @@ template("proto_library") {
     }
   }
 
+  all_dependent_config_name = "_${target_name}_all_dependent_config"
+  config(all_dependent_config_name) {
+    # Allows for dependents to include protoc-generated header files with relative path from
+    # root_gen_dir i.e. in the form of "${proto_out_dir}/<generated file basename>".
+    include_dirs = [ root_gen_dir ]
+  }
+
   static_library(target_name) {
     forward_variables_from(
         invoker,
         [
-          "all_dependent_configs",
           "defines",
           "public_configs",
           "public_deps",
@@ -159,6 +165,11 @@ template("proto_library") {
         "//common-mk:visibility_default",
       ]
     }
+    all_dependent_configs = [ ":${all_dependent_config_name}" ]
+    if (defined(invoker.all_dependent_configs)) {
+      all_dependent_configs += invoker.all_dependent_configs
+    }
+
     sources = get_target_outputs(":${action_name}")
     deps = [
       ":${action_name}",
