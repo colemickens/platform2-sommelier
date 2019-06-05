@@ -304,8 +304,7 @@ TEST_F(ArcVideoDecoderE2ETest, TestFPS) {
 
   double fps = fps_calculator.CalculateFPS();
   printf("[LOG] Measured decoder FPS: %.4f\n", fps);
-  // TODO(b/131377359): find root cause for unreasonably low FPS.
-  // EXPECT_GE(fps, static_cast<double>(g_env->min_fps_no_render()));
+  EXPECT_GE(fps, static_cast<double>(g_env->min_fps_no_render()));
 }
 
 }  // namespace android

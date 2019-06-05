@@ -19,13 +19,15 @@
 namespace android {
 namespace {
 // The timeout of AMediaCodec_dequeueOutputBuffer function calls.
-constexpr int kTimeoutWaitForOutputUs = 500000;  // 0.5 seconds
+constexpr int kTimeoutWaitForOutputUs = 1000;  // 1 millisecond
 
 // The timeout of AMediaCodec_dequeueInputBuffer function calls.
-constexpr int kTimeoutWaitForInputUs = 5000;  // 5 milliseconds
+constexpr int kTimeoutWaitForInputUs = 1000;  // 1 millisecond
 
 // The maximal retry times of doDecode routine.
-constexpr size_t kTimeoutMaxRetries = 20;
+// The maximal tolerable interval between two dequeued outputs will be:
+//   kTimeoutWaitForOutputUs * kTimeoutMaxRetries = 500 milliseconds
+constexpr size_t kTimeoutMaxRetries = 500;
 
 // The specified framerate for generating input timestamps.
 constexpr int32_t kFrameRate = 25;
