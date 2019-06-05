@@ -149,7 +149,7 @@ class DeviceInterfaceHandler {
                           const std::vector<uint8_t>& eir);
 
   // Removes a device D-Bus object and forgets its pairing information.
-  bool RemoveDevice(const std::string& address);
+  bool RemoveDevice(const std::string& address, std::string* dbus_error);
 
  private:
   // Returns the in-memory discovered device based on its address, adding it if
@@ -183,10 +183,20 @@ class DeviceInterfaceHandler {
   // GetServiceRecords() - No op, but we may need dummy implementation later.
   // ExecuteWrite()
 
-  // Initiates LE connection to a peer device. This is internal function called
-  // by the user facing D-Bus Connect() method and the non-user facing auto
-  // reconnection.
-  void ConnectInternal(const std::string& device_address);
+  // Initiates LE connection/disconnection to a peer device. These are internal
+  // functions called by the user facing D-Bus Connect() method and newblued for
+  // internal stack logic. |*_by_us| indicates whether the
+  // connection/disconnection is initiated by the internal logic but not D-Bus
+  // clients.
+  void ConnectInternal(const std::string& device_address,
+                       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>>
+                           connect_response,
+                       bool connect_by_us);
+  void DisconnectInternal(
+      const std::string& device_address,
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>>
+          disconnect_response,
+      bool disconnect_by_us);
 
   // Called when a connection/disconnection request is fulfilled and we are
   // ready to send a reply of the Connect()/Disconnect() method.

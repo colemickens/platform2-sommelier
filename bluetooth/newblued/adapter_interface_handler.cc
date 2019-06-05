@@ -136,10 +136,10 @@ bool AdapterInterfaceHandler::HandleRemoveDevice(
   std::string device_address =
       ConvertDeviceObjectPathToAddress(device_path.value());
 
-  if (!device_interface_handler_->RemoveDevice(device_address)) {
+  std::string dbus_error;
+  if (!device_interface_handler_->RemoveDevice(device_address, &dbus_error)) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
-                         bluetooth_adapter::kErrorFailed,
-                         "Device does not exist");
+                         bluetooth_adapter::kErrorFailed, dbus_error);
     return false;
   }
 

@@ -111,6 +111,8 @@ std::string ConvertConnectStateToString(ConnectState state) {
       return "Disconnected";
     case ConnectState::ERROR:
       return "Disconnected with error";
+    case ConnectState::DISCONNECTED_BY_US:
+      return "Disconnected by us";
     default:
       return "Unknown";
   }
@@ -337,12 +339,9 @@ void DeviceInterfaceHandler::OnDeviceDiscovered(
     uint8_t reply_type,
     const std::vector<uint8_t>& eir) {
   Device* device = FindDevice(address);
-  if (device && device->paired.value()) {
-    struct ConnectSession session;
-    session.connect_by_us = true;
-    connection_sessions_.emplace(address, std::move(session));
-    ConnectInternal(address);
-  }
+  if (device && device->paired.value())
+    ConnectInternal(address, /* connect_response */ nullptr,
+                    /* connect_by_us */ true);
 
   if (!scanned_by_client)
     return;
@@ -355,7 +354,8 @@ void DeviceInterfaceHandler::OnDeviceDiscovered(
   ExportOrUpdateDevice(device);
 }
 
-bool DeviceInterfaceHandler::RemoveDevice(const std::string& address) {
+bool DeviceInterfaceHandler::RemoveDevice(const std::string& address,
+                                          std::string* dbus_error) {
   Device* device = FindDevice(address);
   // If the device does not exist, assume the operation has succeeded. This is
   // because the dispatcher may forward RemoveDevice to both BlueZ and NewBlue
@@ -363,24 +363,42 @@ bool DeviceInterfaceHandler::RemoveDevice(const std::string& address) {
   if (!device)
     return true;
 
+  // For ongoing pairing, reply to D-Bus calls to prevent timeout.
+  if (ongoing_pairing_.address == address) {
+    ongoing_pairing_.pair_response->ReplyWithError(
+        FROM_HERE, brillo::errors::dbus::kDomain,
+        bluetooth_device::kErrorAuthenticationCanceled, "Pairing canceled");
+
+    if (ongoing_pairing_.cancel_pair_response) {
+      ongoing_pairing_.cancel_pair_response->SendRawResponse(
+          ongoing_pairing_.cancel_pair_response->CreateCustomResponse());
+    }
+    ongoing_pairing_.address.clear();
+    ongoing_pairing_.pair_response.reset();
+    ongoing_pairing_.cancel_pair_response.reset();
+  }
+  // Clear internal pairing state.
   newblue_->CancelPair(address, device->is_random_address);
 
-  auto connection = connections_.find(address);
-  if (connection != connections_.end()) {
-    struct ConnectSession session;
-    session.disconnect_by_us = true;
-    connection_sessions_.emplace(address, std::move(session));
-
-    VLOG(1) << "Disconnect from device " << address << " with conn id "
-            << connection->second.conn_id << " during device removal";
-    // If the disconnection request went through, the actual disconnection event
-    // will be handled in OnGattClientConnectCallback().
-    if (newblue_->GattClientDisconnect(connection->second.conn_id) !=
-        GattClientOperationStatus::OK) {
-      LOG(ERROR) << "Failed to disconnect from device " << address
-                 << " during device removal";
-      return false;
+  // For ongoing connection, reply to D-Bus calls to prevent timeout.
+  auto connection_session = connection_sessions_.find(address);
+  if (connection_session != connection_sessions_.end()) {
+    // The ongoing connection would be canceled and the disconnection would be
+    // honored.
+    if (connection_session->second.disconnect_response ||
+        connection_session->second.disconnect_by_us) {
+      ConnectReply(address, true, "");
+    } else if (connection_session->second.connect_response ||
+               connection_session->second.connect_by_us) {
+      ConnectReply(address, false, bluetooth_device::kErrorFailed);
     }
+  }
+
+  // For device which is either connected or to-be-connected, disconnect it.
+  if (base::ContainsKey(connections_, address) ||
+      base::ContainsKey(connection_attempts_, address)) {
+    DisconnectInternal(address, /* disconnect_response */ nullptr,
+                       /* disconnect_by_us */ true);
   }
 
   dbus::ObjectPath device_path(ConvertDeviceAddressToObjectPath(address));
@@ -543,15 +561,12 @@ void DeviceInterfaceHandler::HandleConnect(
   if (base::ContainsKey(connection_sessions_, device_address)) {
     response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
                              bluetooth_device::kErrorInProgress,
-                             "Connection in progress");
+                             "Connection/disconnection in progress");
     return;
   }
 
-  struct ConnectSession session;
-  session.connect_response = std::move(response);
-  connection_sessions_.emplace(device_address, std::move(session));
-
-  ConnectInternal(device_address);
+  ConnectInternal(device_address, std::move(response),
+                  /* connect_by_us */ false);
 }
 
 void DeviceInterfaceHandler::HandleDisconnect(
@@ -571,39 +586,25 @@ void DeviceInterfaceHandler::HandleDisconnect(
     return;
   }
 
-  if (!FindDevice(device_address)) {
-    LOG(WARNING) << "device " << device_address << " not found";
-    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                             bluetooth_device::kErrorDoesNotExist,
-                             "Device does not exist");
-    return;
-  }
-
-  if (!base::ContainsKey(connections_, device_address)) {
-    LOG(WARNING) << "device " << device_address
-                 << " doesn't have an active connection";
-    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                             bluetooth_device::kErrorNotConnected,
-                             "Device does not have an active connection");
-    return;
-  }
-
-  struct ConnectSession session;
-  session.disconnect_response = std::move(response);
-  connection_sessions_.emplace(device_address, std::move(session));
-
-  VLOG(1) << "Disconnect from device " << device_address << " with conn id "
+  VLOG(1) << "Disconnect from device " << device_address << " with conn ID "
           << connections_[device_address].conn_id;
 
-  if (newblue_->GattClientDisconnect(connections_[device_address].conn_id) !=
-      GattClientOperationStatus::OK) {
-    LOG(ERROR) << "Failed to disconnect from device " << device_address;
-    ConnectReply(device_address, false, bluetooth_device::kErrorFailed);
-  }
+  DisconnectInternal(device_address, std::move(response),
+                     /* disconnect_by_us */ false);
 }
 
 void DeviceInterfaceHandler::ConnectInternal(
-    const std::string& device_address) {
+    const std::string& device_address,
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> connect_response,
+    bool connect_by_us) {
+  CHECK((!connect_by_us && connect_response != nullptr) ||
+        (connect_by_us && connect_response == nullptr));
+
+  struct ConnectSession session;
+  session.connect_by_us = connect_by_us;
+  session.connect_response = std::move(connect_response);
+  connection_sessions_.emplace(device_address, std::move(session));
+
   const Device* device = FindDevice(device_address);
   if (!device) {
     LOG(WARNING) << "device " << device_address << " not found";
@@ -639,14 +640,68 @@ void DeviceInterfaceHandler::ConnectInternal(
   connection_attempts_.emplace(device_address, conn_id);
 }
 
+void DeviceInterfaceHandler::DisconnectInternal(
+    const std::string& device_address,
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>>
+        disconnect_response,
+    bool disconnect_by_us) {
+  CHECK((!disconnect_by_us && disconnect_response != nullptr) ||
+        (disconnect_by_us && disconnect_response == nullptr));
+
+  struct ConnectSession session;
+  session.disconnect_by_us = disconnect_by_us;
+  session.disconnect_response = std::move(disconnect_response);
+  connection_sessions_.emplace(device_address, std::move(session));
+
+  if (!FindDevice(device_address)) {
+    LOG(WARNING) << "device " << device_address << " not found";
+    ConnectReply(device_address, false, bluetooth_device::kErrorDoesNotExist);
+    return;
+  }
+
+  gatt_client_conn_t id = kInvalidGattConnectionId;
+
+  auto attempt = connection_attempts_.find(device_address);
+  auto connection = connections_.find(device_address);
+  bool is_attempt = (attempt != connection_attempts_.end());
+  bool is_connected = (connection != connections_.end());
+
+  if (!is_attempt && !is_connected) {
+    VLOG(1) << "device " << device_address
+            << " doesn't have an active connection nor an ongoing connection";
+    ConnectReply(device_address, false, bluetooth_device::kErrorNotConnected);
+    return;
+  }
+
+  // There can be either connection attempt or existing connection but not both.
+  CHECK(!(is_attempt && is_connected));
+
+  id = is_attempt ? attempt->second : connection->second.conn_id;
+  if (id == kInvalidGattConnectionId) {
+    LOG(WARNING) << "Invalid conn ID to disconnect from device "
+                 << device_address;
+    ConnectReply(device_address, false, bluetooth_device::kErrorFailed);
+    return;
+  }
+
+  if (connection->second.hid_id)
+    newblue_->libnewblue()->BtleHidDetach(connection->second.hid_id);
+
+  if (newblue_->GattClientDisconnect(id) != GattClientOperationStatus::OK) {
+    LOG(ERROR) << "Failed to disconnect from device " << device_address;
+    ConnectReply(device_address, false, bluetooth_device::kErrorFailed);
+  }
+}
+
 void DeviceInterfaceHandler::ConnectReply(const std::string& device_address,
                                           bool success,
                                           const std::string& dbus_error) {
+  // In cases where connection/disconnection events were issued by the remote
+  // device OR RemoveDevice() was called, there wouldn't be connection session.
   auto iter = connection_sessions_.find(device_address);
   if (iter == connection_sessions_.end()) {
-    VLOG(1) << "Cannot find ongoing connection session initiated by us, it "
-               "must be issued by device "
-            << device_address;
+    VLOG(1) << "No connection session with device " << device_address
+            << ", ignoring";
     return;
   }
 
@@ -680,8 +735,9 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
     gatt_client_conn_t conn_id, uint8_t status) {
   Device* dev_to_notify = nullptr;
   Device* dev_to_be_connected = nullptr;
-  std::map<std::string, gatt_client_conn_t>::iterator iter;
   auto temp_connections = connections_;
+  std::map<std::string, gatt_client_conn_t>::iterator iter =
+      connection_attempts_.end();
 
   // See if there is a match in ongoing connection attempts.
   for (auto it = connection_attempts_.begin(); it != connection_attempts_.end();
@@ -690,26 +746,28 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
       dev_to_be_connected = FindDevice(it->first);
       dev_to_notify = dev_to_be_connected;
       iter = it;
+      break;
     }
   }
+
+  if (iter != connection_attempts_.end())
+    connection_attempts_.erase(iter);
 
   ConnectState state = static_cast<ConnectState>(status);
   switch (state) {
     case ConnectState::CONNECTED:
-      // Skip updating connection state if there is no device to associate with.
+      // Skip updating connection state if there is no device to associate with,
+      // e.g. the device could be removed if RemoveDevice() was called.
       if (dev_to_be_connected == nullptr) {
-        LOG(WARNING) << "Cannot find the device corresponding to conn"
-                     << conn_id;
+        VLOG(1) << "Ignoring connected event with conn ID " << conn_id;
         return;
       }
 
-      VLOG(1) << "Connection " << conn_id << " added for device "
+      VLOG(1) << "Connection with ID " << conn_id << " established for device "
               << dev_to_be_connected->address;
 
-      CHECK(iter != connection_attempts_.end());
-
       struct Connection connection;
-      connection.conn_id = iter->second;
+      connection.conn_id = conn_id;
       connection.hid_id = 0;
 
       // Once GATT is connected, start the link encryption if we can.
@@ -721,7 +779,6 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
         connection.hid_id = newblue_->libnewblue()->BtleHidAttach(conn_id);
 
       // Track the new connection and close the attempt.
-      connection_attempts_.erase(iter);
       connections_.emplace(dev_to_be_connected->address, connection);
       ConnectReply(dev_to_be_connected->address, true, "");
       break;
@@ -729,39 +786,30 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
       VLOG(1) << "Unexpected GATT connection error";
     case ConnectState::DISCONNECTED:
     case ConnectState::DISCONNECTED_BY_US:
-      VLOG(1) << "GATT connection rejected/removed, connection ID " << conn_id
-              << " status = " << static_cast<int>(status);
-
       // Close the connection attempt when there is a match.
       if (dev_to_be_connected) {
-        CHECK(iter != connection_attempts_.end());
+        VLOG(1) << "Connection with ID " << conn_id
+                << " failed to established for device "
+                << dev_to_be_connected->address;
 
         ConnectReply(dev_to_be_connected->address, false,
                      bluetooth_device::kErrorFailed);
-        connection_attempts_.erase(iter);
         break;
       }
+
+      VLOG(1) << "GATT disconnection on conn id " << conn_id << " with status "
+              << static_cast<int>(status);
 
       // If there is no match on connection attempt, check if the update is for
       // the existing connection and update the connection state accordingly.
       for (auto& connection : temp_connections) {
-        if (connection.second.conn_id == conn_id) {
-          Device* connected_dev = FindDevice(connection.first);
-          if (connected_dev == nullptr) {
-            LOG(WARNING) << "Ignoring disconnection with unknown device";
-            return;
-          }
+        if (connection.second.conn_id != conn_id)
+          continue;
 
-          if (IsHid(connected_dev->appearance.value()) &&
-              connection.second.hid_id) {
-            newblue_->libnewblue()->BtleHidDetach(connection.second.hid_id);
-          }
-
-          connections_.erase(connected_dev->address);
-          ConnectReply(connected_dev->address, true, "");
-          dev_to_notify = connected_dev;
-          break;
-        }
+        connections_.erase(connection.first);
+        ConnectReply(connection.first, true, "");
+        dev_to_notify = FindDevice(connection.first);
+        break;
       }
       break;
     default:
