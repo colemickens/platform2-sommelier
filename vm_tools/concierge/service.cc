@@ -1223,8 +1223,7 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
   }
 
   // Mark the ip address as in use.
-  auto ipv4_addr =
-      plugin_subnet_->Allocate(ntohl(request.guest_ipv4_address()));
+  auto ipv4_addr = plugin_subnet_->Allocate(request.guest_ipv4_address());
   if (!ipv4_addr) {
     LOG(ERROR) << "Invalid IP address or address already in use";
     response.set_failure_reason("Invalid IP address or address already in use");
