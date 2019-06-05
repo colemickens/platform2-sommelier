@@ -18,6 +18,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/compiler_specific.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <brillo/userdb_utils.h>
@@ -77,7 +78,7 @@ class JailRequestHandler : public device_jail::DeviceJailServer::Delegate {
       return JAIL_REQUEST_ALLOW_WITH_DETACH;
     default:
       LOG(WARNING) << "Unknown rule engine response";
-      // fallthrough
+      FALLTHROUGH;
     case Rule::DENY:
       return JAIL_REQUEST_DENY;
     }

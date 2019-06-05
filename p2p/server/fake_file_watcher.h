@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/compiler_specific.h>
 #include <base/files/file_util.h>
 
 namespace p2p {
@@ -108,6 +109,7 @@ class FakeFileWatcher : public FileWatcher {
       case kFileAdded:
         watcher->exposed_files_.push_back(event.filename);
         // Create the file on disk to allow the consumer get its file size.
+        FALLTHROUGH;
       case kFileChanged:
         // Both kFileAdded and kFileChanged execute this part:
         buf = static_cast<char*>(malloc(event.file_size));
