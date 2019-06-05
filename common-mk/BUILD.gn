@@ -38,6 +38,7 @@ config("gcc_cflags_cc") {
 # because it will be overwritten by the "-fvisibility=internal" in the
 # compiler_defaults' cflags.
 config("visibility_default") {
+  # gnlint: disable=GnLintVisibilityFlags
   cflags = [ "-fvisibility=default" ]
 }
 
@@ -162,10 +163,7 @@ if (use.test || use.fuzzer) {
     #     aosp/external/libchrome/base/logging.h
     # gtest-config and gmock-config are not installed by gtest-1.8.1.
     ldflags = [
-      "-lgmock",
-      "-lgtest",
       "-pthread",
-      "-lpthread",
 
       # Allow unit tests of a shared library to link against the depended .so
       # under the output directory, instead of the ones installed in the system
@@ -173,6 +171,13 @@ if (use.test || use.fuzzer) {
       # directory.
       "-Wl,-rpath=\$ORIGIN/lib/",
       "-Wl,-rpath-link=lib/",
+    ]
+
+    # gnlint: disable=GnLintCommonTesting
+    libs = [
+      "gmock",
+      "gtest",
+      "pthread",
     ]
   }
 }

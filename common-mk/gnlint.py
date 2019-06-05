@@ -319,7 +319,7 @@ def GnLintDefineFlags(gndata):
 
 
 def GnLintCommonTesting(gndata):
-  """Packages should use common_test.gypi instead of -lgtest/-lgmock.
+  """Packages should use //common-mk:test instead of -lgtest/-lgmock.
 
   Args:
     gndata: A dict representing a token tree.
@@ -331,7 +331,7 @@ def GnLintCommonTesting(gndata):
   def CheckNode(node):
     flags = ExtractLiteralAssignment(node, ['libs'])
     if 'gtest' in flags or 'gmock' in flags:
-      issues.append('use common-mk/common_test.gypi for tests instead of '
+      issues.append('use //common-mk:test for tests instead of '
                     'linking against -lgtest/-lgmock directly')
 
   issues = []
