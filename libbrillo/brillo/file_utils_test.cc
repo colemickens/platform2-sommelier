@@ -4,6 +4,7 @@
 
 #include "brillo/file_utils.h"
 
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -23,12 +24,17 @@ constexpr int kPermissions600 =
     base::FILE_PERMISSION_READ_BY_USER | base::FILE_PERMISSION_WRITE_BY_USER;
 constexpr int kPermissions700 = base::FILE_PERMISSION_USER_MASK;
 constexpr int kPermissions777 = base::FILE_PERMISSION_MASK;
+constexpr int kPermissions755 = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 
 std::string GetRandomSuffix() {
   const int kBufferSize = 6;
   unsigned char buffer[kBufferSize];
   base::RandBytes(buffer, arraysize(buffer));
   return base::HexEncode(buffer, arraysize(buffer));
+}
+
+bool IsNonBlockingFD(int fd) {
+  return fcntl(fd, F_GETFL) & O_NONBLOCK;
 }
 
 }  // namespace
@@ -142,6 +148,101 @@ TEST_F(FileUtilsTest, TouchFileExistingPermissionsUnchanged) {
   EXPECT_TRUE(TouchFile(file_path_, kPermissions700, geteuid(), getegid()));
   ExpectFileContains("");
   ExpectFilePermissions(kPermissions777);
+}
+
+// Other parts of OpenSafely are tested in Arcsetup.TestInstallDirectory*.
+TEST_F(FileUtilsTest, TestOpenSafelyWithoutNonblocking) {
+  ASSERT_TRUE(TouchFile(file_path_, kPermissions700, geteuid(), getegid()));
+  base::ScopedFD fd(OpenSafely(file_path_, O_RDONLY, 0));
+  EXPECT_TRUE(fd.is_valid());
+  EXPECT_FALSE(IsNonBlockingFD(fd.get()));
+}
+
+TEST_F(FileUtilsTest, TestOpenSafelyWithNonblocking) {
+  ASSERT_TRUE(TouchFile(file_path_, kPermissions700, geteuid(), getegid()));
+  base::ScopedFD fd = OpenSafely(file_path_, O_RDONLY | O_NONBLOCK, 0);
+  EXPECT_TRUE(fd.is_valid());
+  EXPECT_TRUE(IsNonBlockingFD(fd.get()));
+}
+
+TEST_F(FileUtilsTest, TestOpenFifoSafelySuccess) {
+  ASSERT_EQ(0, mkfifo(file_path_.value().c_str(), kPermissions700));
+  base::ScopedFD fd(OpenFifoSafely(file_path_, O_RDONLY, 0));
+  EXPECT_TRUE(fd.is_valid());
+  EXPECT_FALSE(IsNonBlockingFD(fd.get()));
+}
+
+TEST_F(FileUtilsTest, TestOpenFifoSafelyRegularFile) {
+  ASSERT_TRUE(TouchFile(file_path_, kPermissions700, geteuid(), getegid()));
+  base::ScopedFD fd = OpenFifoSafely(file_path_, O_RDONLY, 0);
+  EXPECT_FALSE(fd.is_valid());
+}
+
+TEST_F(FileUtilsTest, TestMkdirRecursivelyRoot) {
+  // Try to create an existing directory ("/") should still succeed.
+  EXPECT_TRUE(
+      MkdirRecursively(base::FilePath("/"), kPermissions755).is_valid());
+}
+
+TEST_F(FileUtilsTest, TestMkdirRecursivelySuccess) {
+  // Set |temp_directory| to 0707.
+  EXPECT_TRUE(base::SetPosixFilePermissions(temp_dir_.GetPath(), 0707));
+
+  EXPECT_TRUE(
+      MkdirRecursively(temp_dir_.GetPath().Append("a/b/c"), kPermissions755)
+          .is_valid());
+  // Confirm the 3 directories are there.
+  EXPECT_TRUE(base::DirectoryExists(temp_dir_.GetPath().Append("a")));
+  EXPECT_TRUE(base::DirectoryExists(temp_dir_.GetPath().Append("a/b")));
+  EXPECT_TRUE(base::DirectoryExists(temp_dir_.GetPath().Append("a/b/c")));
+
+  // Confirm that the newly created directories have 0755 mode.
+  int mode = 0;
+  EXPECT_TRUE(
+      base::GetPosixFilePermissions(temp_dir_.GetPath().Append("a"), &mode));
+  EXPECT_EQ(kPermissions755, mode);
+  mode = 0;
+  EXPECT_TRUE(
+      base::GetPosixFilePermissions(temp_dir_.GetPath().Append("a/b"), &mode));
+  EXPECT_EQ(kPermissions755, mode);
+  mode = 0;
+  EXPECT_TRUE(base::GetPosixFilePermissions(temp_dir_.GetPath().Append("a/b/c"),
+                                            &mode));
+  EXPECT_EQ(kPermissions755, mode);
+
+  // Confirm that the existing directory |temp_directory| still has 0707 mode.
+  mode = 0;
+  EXPECT_TRUE(base::GetPosixFilePermissions(temp_dir_.GetPath(), &mode));
+  EXPECT_EQ(0707, mode);
+
+  // Call the API again which should still succeed.
+  EXPECT_TRUE(
+      MkdirRecursively(temp_dir_.GetPath().Append("a/b/c"), kPermissions755)
+          .is_valid());
+  EXPECT_TRUE(
+      MkdirRecursively(temp_dir_.GetPath().Append("a/b/c/d"), kPermissions755)
+          .is_valid());
+  EXPECT_TRUE(base::DirectoryExists(temp_dir_.GetPath().Append("a/b/c/d")));
+  mode = 0;
+  EXPECT_TRUE(base::GetPosixFilePermissions(
+      temp_dir_.GetPath().Append("a/b/c/d"), &mode));
+  EXPECT_EQ(kPermissions755, mode);
+
+  // Call the API again which should still succeed.
+  EXPECT_TRUE(
+      MkdirRecursively(temp_dir_.GetPath().Append("a/b"), kPermissions755)
+          .is_valid());
+  EXPECT_TRUE(MkdirRecursively(temp_dir_.GetPath().Append("a"), kPermissions755)
+                  .is_valid());
+}
+
+TEST_F(FileUtilsTest, TestMkdirRecursivelyRelativePath) {
+  // Try to pass a relative or empty directory. They should all fail.
+  EXPECT_FALSE(
+      MkdirRecursively(base::FilePath("foo"), kPermissions755).is_valid());
+  EXPECT_FALSE(
+      MkdirRecursively(base::FilePath("bar/"), kPermissions755).is_valid());
+  EXPECT_FALSE(MkdirRecursively(base::FilePath(), kPermissions755).is_valid());
 }
 
 TEST_F(FileUtilsTest, WriteFileCanBeReadBack) {

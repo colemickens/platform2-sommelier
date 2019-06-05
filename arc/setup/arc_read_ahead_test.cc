@@ -11,6 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/time/time.h>
+#include <brillo/file_utils.h>
 #include <gtest/gtest.h>
 
 #include "arc/setup/arc_setup_util.h"
@@ -22,7 +23,9 @@ namespace {
 TEST(ArcReadAhead, TestEmulateArcUreadahead) {
   base::ScopedTempDir temp_directory;
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
-  ASSERT_TRUE(MkdirRecursively(temp_directory.GetPath().Append("subdir")));
+  ASSERT_TRUE(
+      brillo::MkdirRecursively(temp_directory.GetPath().Append("subdir"), 0755)
+          .is_valid());
 
   // These files should be read-ahead. Note that both framework-res.apk files
   // must be read.

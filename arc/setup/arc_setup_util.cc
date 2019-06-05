@@ -49,6 +49,7 @@
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 #include <base/values.h>
+#include <brillo/file_utils.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <crypto/sha2.h>
 
@@ -256,86 +257,6 @@ bool SetPermissions(base::PlatformFile fd, mode_t mode) {
     return false;
   }
   return true;
-}
-
-// Opens the |path| with safety checks and returns a FD. This function returns
-// an invalid FD if open() fails or the returned fd is not safe for use. The
-// function also returns an invalid FD when |path| is relative. |mode| is
-// ignored unless |flags| has either O_CREAT or O_TMPFILE.
-// TODO(yusukes): Consider moving this to libbrillo. Add HANDLE_EINTR and
-// O_CLOEXEC when doing that.
-base::ScopedFD OpenSafelyInternal(const base::FilePath& path,
-                                  int flags,
-                                  mode_t mode) {
-  if (!path.IsAbsolute()) {
-    LOG(INFO) << "Relative paths are not supported: " << path.value();
-    return base::ScopedFD();
-  }
-
-  base::ScopedFD fd(
-      open(path.value().c_str(), flags | O_NOFOLLOW | O_NONBLOCK, mode));
-  if (!fd.is_valid()) {
-    // open(2) fails with ELOOP whtn the last component of the |path| is a
-    // symlink. It fails with ENXIO when |path| is a FIFO and |flags| is for
-    // writing because of the O_NONBLOCK flag added above.
-    if (errno == ELOOP || errno == ENXIO)
-      PLOG(WARNING) << "Failed to open " << path.value() << " safely.";
-    return base::ScopedFD();
-  }
-
-  // Finally, check if there are symlink(s) in other path components.
-  const base::FilePath proc_fd(
-      base::StringPrintf("/proc/self/fd/%d", fd.get()));
-  base::FilePath resolved;
-  if (!base::ReadSymbolicLink(proc_fd, &resolved)) {
-    LOG(ERROR) << "Failed to read " << proc_fd.value();
-    return base::ScopedFD();
-  }
-  // Note: |path| has to be absolute to pass this check.
-  if (resolved != path) {
-    LOG(ERROR) << "Symbolic link detected in " << path.value()
-               << ". Resolved path=" << resolved.value();
-    return base::ScopedFD();
-  }
-
-  // Remove the O_NONBLOCK flag unless the orignal |flags| have it.
-  if ((flags & O_NONBLOCK) == 0) {
-    flags = fcntl(fd.get(), F_GETFL);
-    if (flags == -1) {
-      PLOG(ERROR) << "Failed to get fd flags for " << path.value();
-      return base::ScopedFD();
-    }
-    if (fcntl(fd.get(), F_SETFL, flags & ~O_NONBLOCK)) {
-      PLOG(ERROR) << "Failed to set fd flags for " << path.value();
-      return base::ScopedFD();
-    }
-  }
-
-  return fd;
-}
-
-// Calls OpenSafelyInternal() and checks if the returned FD is for a regular
-// file or directory. Returns an invalid FD if it's not.
-base::ScopedFD OpenSafely(const base::FilePath& path, int flags, mode_t mode) {
-  base::ScopedFD fd(OpenSafelyInternal(path, flags, mode));
-  if (!fd.is_valid())
-    return base::ScopedFD();
-
-  // Ensure the opened file is a regular file or directory.
-  struct stat st;
-  if (fstat(fd.get(), &st) < 0) {
-    PLOG(ERROR) << "Failed to fstat " << path.value();
-    return base::ScopedFD();
-  }
-
-  if (!S_ISREG(st.st_mode) && !S_ISDIR(st.st_mode)) {
-    // This detects a FIFO opened for reading, for example.
-    LOG(ERROR) << path.value()
-               << " is not a regular file/directory: " << st.st_mode;
-    return base::ScopedFD();
-  }
-
-  return fd;
 }
 
 class ArcMounterImpl : public ArcMounter {
@@ -690,65 +611,8 @@ base::FilePath Realpath(const base::FilePath& path) {
   return base::FilePath(buf);
 }
 
-bool MkdirRecursively(const base::FilePath& full_path) {
-  if (!full_path.IsAbsolute()) {
-    LOG(INFO) << "Relative paths are not supported: " << full_path.value();
-    return false;
-  }
-
-  // Collect a list of all parent directories.
-  std::vector<std::string> components;
-  full_path.GetComponents(&components);
-  DCHECK(!components.empty());
-
-  base::ScopedFD fd(OpenSafely(base::FilePath("/"), O_RDONLY, 0));
-  if (!fd.is_valid())
-    return false;
-
-  // Iterate through the parents and create the missing ones. '+ 1' is for
-  // skipping "/".
-  for (std::vector<std::string>::const_iterator i = components.begin() + 1;
-       i != components.end(); ++i) {
-    // Try to create the directory. Note that Chromium's MkdirRecursively() uses
-    // 0700, but we use 0755.
-    if (mkdirat(fd.get(), i->c_str(), 0755) != 0) {
-      if (errno != EEXIST) {
-        PLOG(ERROR) << "Failed to mkdirat " << *i
-                    << ": full_path=" << full_path.value();
-        return false;
-      }
-
-      // The path already exists. Make sure that the path is a directory.
-      struct stat st;
-      if (fstatat(fd.get(), i->c_str(), &st, AT_SYMLINK_NOFOLLOW) != 0) {
-        PLOG(ERROR) << "Failed to fstatat " << *i
-                    << ": full_path=" << full_path.value();
-        return false;
-      }
-      if (!S_ISDIR(st.st_mode)) {
-        LOG(ERROR) << *i << " is not a directory: st_mode=" << st.st_mode
-                   << ", full_path=" << full_path.value();
-        return false;
-      }
-    }
-
-    // Updates the FD so it refers to the new directory created or checked
-    // above.
-    const int new_fd =
-        openat(fd.get(), i->c_str(), O_RDONLY | O_NOFOLLOW | O_NONBLOCK, 0);
-    if (new_fd < 0) {
-      PLOG(ERROR) << "Failed to openat " << *i
-                  << ": full_path=" << full_path.value();
-      return false;
-    }
-    fd.reset(new_fd);
-    continue;
-  }
-  return true;
-}
-
 bool Chown(uid_t uid, gid_t gid, const base::FilePath& path) {
-  base::ScopedFD fd(OpenSafely(path, O_RDONLY, 0));
+  base::ScopedFD fd(brillo::OpenSafely(path, O_RDONLY, 0));
   if (!fd.is_valid())
     return false;
   return fchown(fd.get(), uid, gid) == 0;
@@ -767,10 +631,10 @@ bool InstallDirectory(mode_t mode,
                       uid_t uid,
                       gid_t gid,
                       const base::FilePath& path) {
-  if (!MkdirRecursively(path))
+  if (!brillo::MkdirRecursively(path, 0755).is_valid())
     return false;
 
-  base::ScopedFD fd(OpenSafely(path, O_RDONLY, 0));
+  base::ScopedFD fd(brillo::OpenSafely(path, O_DIRECTORY | O_RDONLY, 0));
   if (!fd.is_valid())
     return false;
 
@@ -788,7 +652,8 @@ bool WriteToFile(const base::FilePath& file_path,
   // Use the same mode as base/files/file_posix.cc's.
   constexpr mode_t kMode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 
-  base::ScopedFD fd(OpenSafely(file_path, O_WRONLY | O_CREAT | O_TRUNC, kMode));
+  base::ScopedFD fd(
+      brillo::OpenSafely(file_path, O_WRONLY | O_CREAT | O_TRUNC, kMode));
   if (!fd.is_valid())
     return false;
   if (!SetPermissions(fd.get(), mode))
@@ -994,12 +859,6 @@ bool FindLine(const base::FilePath& file_path,
 
   // |callback| didn't find anything in the file.
   return false;
-}
-
-base::ScopedFD OpenSafelyForTesting(const base::FilePath& path,
-                                    int flags,
-                                    mode_t mode) {
-  return OpenSafely(path, flags, mode);
 }
 
 std::string GetChromeOsChannelFromFile(
@@ -1254,28 +1113,6 @@ std::string TruncateAndroidProperty(const std::string& line) {
   return key + "=" + val;
 }
 
-base::ScopedFD OpenFifoSafely(const base::FilePath& path,
-                              int flags,
-                              mode_t mode) {
-  base::ScopedFD fd(OpenSafelyInternal(path, flags, mode));
-  if (!fd.is_valid())
-    return base::ScopedFD();
-
-  // Ensure the opened file is a regular file or directory.
-  struct stat st;
-  if (fstat(fd.get(), &st) < 0) {
-    PLOG(ERROR) << "Failed to fstat " << path.value();
-    return base::ScopedFD();
-  }
-
-  if (!S_ISFIFO(st.st_mode)) {
-    LOG(ERROR) << path.value() << " is not a FIFO: " << st.st_mode;
-    return base::ScopedFD();
-  }
-
-  return fd;
-}
-
 bool CopyWithAttributes(const base::FilePath& from_readonly_path,
                         const base::FilePath& to_path) {
   DCHECK(from_readonly_path.IsAbsolute());
@@ -1303,7 +1140,8 @@ bool CopyWithAttributes(const base::FilePath& from_readonly_path,
       return false;
     }
 
-    base::ScopedFD dirfd(OpenSafely(target_path.DirName(), O_RDONLY, 0));
+    base::ScopedFD dirfd(
+        brillo::OpenSafely(target_path.DirName(), O_DIRECTORY | O_RDONLY, 0));
     if (!dirfd.is_valid()) {
       LOG(ERROR) << "Failed to open " << target_path.DirName().value();
       return false;
@@ -1333,7 +1171,7 @@ bool CopyWithAttributes(const base::FilePath& from_readonly_path,
         PLOG(ERROR) << "Failed to open for reading " << current.value();
         return false;
       }
-      base::ScopedFD fd_write(OpenSafely(
+      base::ScopedFD fd_write(brillo::OpenSafely(
           target_path, O_WRONLY | O_CREAT | O_TRUNC, from_stat.st_mode));
       if (!fd_write.is_valid()) {
         LOG(ERROR) << "Failed to open for writing " << target_path.value();
@@ -1405,7 +1243,7 @@ bool CopyWithAttributes(const base::FilePath& from_readonly_path,
     return true;
   }
 
-  base::ScopedFD fd(OpenSafely(to_path, O_RDONLY, 0));
+  base::ScopedFD fd(brillo::OpenSafely(to_path, O_RDONLY, 0));
   if (fsetfilecon(fd.get(), security_context) < 0) {
     PLOG(ERROR) << "Failed to set security_context " << to_path.value();
     return false;
@@ -1437,7 +1275,7 @@ bool GetSha1HashOfFiles(const std::vector<base::FilePath>& files,
 bool SetXattr(const base::FilePath& path,
               const char* name,
               const std::string& value) {
-  base::ScopedFD fd(OpenSafely(path, O_RDONLY, 0));
+  base::ScopedFD fd(brillo::OpenSafely(path, O_RDONLY, 0));
   if (!fd.is_valid())
     return false;
 

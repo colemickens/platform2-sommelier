@@ -153,10 +153,6 @@ class ScopedMountNamespace {
 // or the special .  or ..  directory entries.
 base::FilePath Realpath(const base::FilePath& path);
 
-// Creates directories specified by |full_path|. Newly created directories will
-// have 0755 permissions. Returns true on success.
-bool MkdirRecursively(const base::FilePath& full_path);
-
 // Changes the owner of the |path|. Returns true on success.
 bool Chown(uid_t uid, gid_t gid, const base::FilePath& path);
 
@@ -298,12 +294,6 @@ void SetFingerprintsForPackagesCache(const std::string& content,
 // Truncates the value side of an Android key=val property line, including
 // handling the special case of build fingerprint.
 std::string TruncateAndroidProperty(const std::string& line);
-
-// Opens the |path| in a safe way (see OpenSafelyInternal() for more details)
-// and checks if the returned FD is a FIFO. Returns an invalid FD if it's not.
-base::ScopedFD OpenFifoSafely(const base::FilePath& path,
-                              int flags,
-                              mode_t mode);
 
 // Performs deep resource copying. Resource means directory, regular file or
 // symbolic link. |from_readonly_path| must point to a read-only filesystem like

@@ -846,7 +846,7 @@ void ArcSetup::CreateContainerFilesAndDirectories() {
   EXIT_IF(mkfifo(arc_paths_->android_kmsg_fifo.value().c_str(), 0644) < 0);
   {
     base::ScopedFD fd =
-        OpenFifoSafely(arc_paths_->android_kmsg_fifo, O_RDONLY, 0);
+        brillo::OpenFifoSafely(arc_paths_->android_kmsg_fifo, O_RDONLY, 0);
     EXIT_IF(!fd.is_valid());
     EXIT_IF(fchown(fd.get(), kRootUid, kRootGid) < 0);
   }
@@ -855,13 +855,16 @@ void ArcSetup::CreateContainerFilesAndDirectories() {
 }
 
 void ArcSetup::ApplyPerBoardConfigurations() {
-  EXIT_IF(!MkdirRecursively(arc_paths_->oem_mount_directory.Append("etc")));
+  EXIT_IF(!brillo::MkdirRecursively(
+               arc_paths_->oem_mount_directory.Append("etc"), 0755)
+               .is_valid());
 
   EXIT_IF(!arc_mounter_->Mount("tmpfs", arc_paths_->oem_mount_directory,
                                "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC,
                                "mode=0755"));
-  EXIT_IF(!MkdirRecursively(
-      arc_paths_->oem_mount_directory.Append("etc/permissions")));
+  EXIT_IF(!brillo::MkdirRecursively(
+               arc_paths_->oem_mount_directory.Append("etc/permissions"), 0755)
+               .is_valid());
 
   // Detect camera device and generate camera profiles.
   const base::FilePath generate_camera_profile(
@@ -906,8 +909,9 @@ void ArcSetup::ApplyPerBoardConfigurations() {
 }
 
 void ArcSetup::CreateBuildProperties() {
-  EXIT_IF(
-      !MkdirRecursively(arc_paths_->android_generated_properties_directory));
+  EXIT_IF(!brillo::MkdirRecursively(
+               arc_paths_->android_generated_properties_directory, 0755)
+               .is_valid());
 
   // InitModel won't succeed on non-unibuild boards, but that doesn't matter
   // because the property files won't contain any templates that need to be
@@ -986,7 +990,8 @@ void ArcSetup::SetUpSdcard() {
 
 void ArcSetup::SetUpSharedTmpfsForExternalStorage() {
   EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->sdcard_mount_directory));
-  EXIT_IF(!MkdirRecursively(arc_paths_->sdcard_mount_directory));
+  EXIT_IF(!brillo::MkdirRecursively(arc_paths_->sdcard_mount_directory, 0755)
+               .is_valid());
   EXIT_IF(!arc_mounter_->Mount("tmpfs", arc_paths_->sdcard_mount_directory,
                                "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC,
                                "mode=0755"));
@@ -1019,7 +1024,8 @@ void ArcSetup::SetUpSharedTmpfsForExternalStorage() {
 
 void ArcSetup::SetUpFilesystemForObbMounter() {
   EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->obb_mount_directory));
-  EXIT_IF(!MkdirRecursively(arc_paths_->obb_mount_directory));
+  EXIT_IF(!brillo::MkdirRecursively(arc_paths_->obb_mount_directory, 0755)
+               .is_valid());
   EXIT_IF(!arc_mounter_->Mount("tmpfs", arc_paths_->obb_mount_directory,
                                "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC,
                                "mode=0755"));
@@ -1492,7 +1498,7 @@ void ArcSetup::SetUpCameraProperty() {
   if (base::PathExists(camera_prop_file))
     return;
 
-  if (!MkdirRecursively(camera_prop_directory))
+  if (!brillo::MkdirRecursively(camera_prop_directory, 0755).is_valid())
     return;
 
   const base::FilePath build_prop =
@@ -2060,8 +2066,9 @@ void ArcSetup::OnSetup() {
 
   // Make sure directories for all ISA are there just to make config.json happy.
   for (const auto* isa : {"arm", "x86", "x86_64"}) {
-    EXIT_IF(
-        !MkdirRecursively(arc_paths_->art_dalvik_cache_directory.Append(isa)));
+    EXIT_IF(!brillo::MkdirRecursively(
+                 arc_paths_->art_dalvik_cache_directory.Append(isa), 0755)
+                 .is_valid());
   }
 
   PlayStoreAutoUpdate play_store_auto_update;

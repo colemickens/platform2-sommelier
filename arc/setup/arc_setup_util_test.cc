@@ -31,6 +31,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
+#include <brillo/file_utils.h>
 #include <chromeos-config/libcros_config/fake_cros_config.h>
 #include <gtest/gtest.h>
 
@@ -43,10 +44,6 @@ bool FindLineCallback(std::string* out_prop, const std::string& line) {
     return false;
   *out_prop = "FOUND";
   return true;
-}
-
-bool IsNonBlockingFD(int fd) {
-  return fcntl(fd, F_GETFL) & O_NONBLOCK;
 }
 
 void ValidateResourcesMatch(const base::FilePath& path1,
@@ -450,61 +447,6 @@ TEST(ArcSetupUtil, TestFindLine) {
   EXPECT_FALSE(FindLine(file, base::Bind(&FindLineCallback, &v)));
 }
 
-TEST(ArcSetupUtil, TestMkdirRecursively) {
-  base::ScopedTempDir temp_directory;
-  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
-
-  // Set |temp_directory| to 0707.
-  EXPECT_TRUE(base::SetPosixFilePermissions(temp_directory.GetPath(), 0707));
-
-  EXPECT_TRUE(MkdirRecursively(temp_directory.GetPath().Append("a/b/c")));
-  // Confirm the 3 directories are there.
-  EXPECT_TRUE(base::DirectoryExists(temp_directory.GetPath().Append("a")));
-  EXPECT_TRUE(base::DirectoryExists(temp_directory.GetPath().Append("a/b")));
-  EXPECT_TRUE(base::DirectoryExists(temp_directory.GetPath().Append("a/b/c")));
-
-  // Confirm that the newly created directories have 0755 mode.
-  int mode = 0;
-  EXPECT_TRUE(base::GetPosixFilePermissions(
-      temp_directory.GetPath().Append("a"), &mode));
-  EXPECT_EQ(0755, mode);
-  mode = 0;
-  EXPECT_TRUE(base::GetPosixFilePermissions(
-      temp_directory.GetPath().Append("a/b"), &mode));
-  EXPECT_EQ(0755, mode);
-  mode = 0;
-  EXPECT_TRUE(base::GetPosixFilePermissions(
-      temp_directory.GetPath().Append("a/b/c"), &mode));
-  EXPECT_EQ(0755, mode);
-
-  // Confirm that the existing directory |temp_directory| still has 0707 mode.
-  mode = 0;
-  EXPECT_TRUE(base::GetPosixFilePermissions(temp_directory.GetPath(), &mode));
-  EXPECT_EQ(0707, mode);
-
-  // Call the API again which should still succeed.
-  EXPECT_TRUE(MkdirRecursively(temp_directory.GetPath().Append("a/b/c")));
-  EXPECT_TRUE(MkdirRecursively(temp_directory.GetPath().Append("a/b/c/d")));
-  EXPECT_TRUE(
-      base::DirectoryExists(temp_directory.GetPath().Append("a/b/c/d")));
-  mode = 0;
-  EXPECT_TRUE(base::GetPosixFilePermissions(
-      temp_directory.GetPath().Append("a/b/c/d"), &mode));
-  EXPECT_EQ(0755, mode);
-
-  // Call the API again which should still succeed.
-  EXPECT_TRUE(MkdirRecursively(temp_directory.GetPath().Append("a/b")));
-  EXPECT_TRUE(MkdirRecursively(temp_directory.GetPath().Append("a")));
-
-  // Try to create an existing directory ("/") should still succeed.
-  EXPECT_TRUE(MkdirRecursively(base::FilePath("/")));
-
-  // Try to pass a relative or empty directory. They should all fail.
-  EXPECT_FALSE(MkdirRecursively(base::FilePath("foo")));
-  EXPECT_FALSE(MkdirRecursively(base::FilePath("bar/")));
-  EXPECT_FALSE(MkdirRecursively(base::FilePath()));
-}
-
 TEST(ArcSetupUtil, TestInstallDirectory) {
   base::ScopedTempDir temp_directory;
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
@@ -586,8 +528,11 @@ TEST(ArcSetupUtil, TestInstallDirectoryWithFifo) {
 TEST(ArcSetupUtil, TestDeleteFilesInDir) {
   base::ScopedTempDir directory;
   ASSERT_TRUE(directory.CreateUniqueTempDir());
-  ASSERT_TRUE(MkdirRecursively(directory.GetPath().Append("arm")));
-  ASSERT_TRUE(MkdirRecursively(directory.GetPath().Append("arm64")));
+  ASSERT_TRUE(brillo::MkdirRecursively(directory.GetPath().Append("arm"), 0755)
+                  .is_valid());
+  ASSERT_TRUE(
+      brillo::MkdirRecursively(directory.GetPath().Append("arm64"), 0755)
+          .is_valid());
   ASSERT_TRUE(CreateOrTruncate(
       directory.GetPath().Append("arm/system@framework@boot.art"), 0755));
   ASSERT_TRUE(CreateOrTruncate(
@@ -674,8 +619,9 @@ TEST(ArcSetupUtil, MoveDirIntoDataOldDir) {
   base::FilePath data_old_dir = test_dir.GetPath().Append("android-data-old");
 
   // Create android-data/path/to/file and run MoveDirIntoDataOldDir.
-  ASSERT_TRUE(
-      MkdirRecursively(test_dir.GetPath().Append("android-data/path/to")));
+  ASSERT_TRUE(brillo::MkdirRecursively(
+                  test_dir.GetPath().Append("android-data/path/to"), 0755)
+                  .is_valid());
   ASSERT_TRUE(CreateOrTruncate(
       test_dir.GetPath().Append("android-data/path/to/file"), 0755));
   EXPECT_TRUE(MoveDirIntoDataOldDir(dir, data_old_dir));
@@ -683,8 +629,9 @@ TEST(ArcSetupUtil, MoveDirIntoDataOldDir) {
 
   // android-data has been cleared.
   // Create android-data/path/to/file and run MoveDirIntoDataOldDir again.
-  ASSERT_TRUE(
-      MkdirRecursively(test_dir.GetPath().Append("android-data/path/to")));
+  ASSERT_TRUE(brillo::MkdirRecursively(
+                  test_dir.GetPath().Append("android-data/path/to"), 0755)
+                  .is_valid());
   ASSERT_TRUE(CreateOrTruncate(
       test_dir.GetPath().Append("android-data/path/to/file"), 0755));
   EXPECT_TRUE(MoveDirIntoDataOldDir(dir, data_old_dir));
@@ -725,7 +672,9 @@ TEST(ArcSetupUtil, MoveDirIntoDataOldDir_AndroidDataDirIsEmpty) {
   base::FilePath dir = test_dir.GetPath().Append("android-data");
   base::FilePath data_old_dir = test_dir.GetPath().Append("android-data-old");
 
-  ASSERT_TRUE(MkdirRecursively(test_dir.GetPath().Append("android-data")));
+  ASSERT_TRUE(
+      brillo::MkdirRecursively(test_dir.GetPath().Append("android-data"), 0755)
+          .is_valid());
 
   EXPECT_TRUE(MoveDirIntoDataOldDir(dir, data_old_dir));
 
@@ -765,8 +714,9 @@ TEST(ArcSetupUtil, MoveDirIntoDataOldDir_AndroidDataOldIsFile) {
   base::FilePath dir = test_dir.GetPath().Append("android-data");
   base::FilePath data_old_dir = test_dir.GetPath().Append("android-data-old");
 
-  ASSERT_TRUE(
-      MkdirRecursively(test_dir.GetPath().Append("android-data/path/to")));
+  ASSERT_TRUE(brillo::MkdirRecursively(
+                  test_dir.GetPath().Append("android-data/path/to"), 0755)
+                  .is_valid());
   ASSERT_TRUE(CreateOrTruncate(
       test_dir.GetPath().Append("android-data/path/to/file"), 0755));
 
@@ -859,7 +809,9 @@ TEST(ArcSetupUtil, TestParseContainerState) {
       json_file, 0700,
       base::StringPrintf(kJsonTemplate,
                          temp_directory.GetPath().value().c_str())));
-  ASSERT_TRUE(MkdirRecursively(temp_directory.GetPath().Append("mountpoints")));
+  ASSERT_TRUE(brillo::MkdirRecursively(
+                  temp_directory.GetPath().Append("mountpoints"), 0755)
+                  .is_valid());
   ASSERT_TRUE(base::CreateSymbolicLink(
       kRootfsPath,
       temp_directory.GetPath().Append("mountpoints/container-root")));
@@ -955,40 +907,6 @@ TEST(ArcSetupUtil, TestPropertyTruncationFingerprintDev) {
       "ro.bootimage.build.fingerprint=google/toolongdevicena/"
       "toolongdevicena_cheets/R65-10299.0.9999/4538390:user/dev-keys",
       truncated);
-}
-
-// Tests if the O_NONBLOCK removal feature is working well. Other part of the
-// function is tested in TestInstallDirectory*.
-TEST(ArcSetupUtil, TestOpenSafely) {
-  base::ScopedTempDir temp_directory;
-  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
-  const base::FilePath file = temp_directory.GetPath().Append("file");
-  ASSERT_TRUE(CreateOrTruncate(file, 0700));
-
-  base::ScopedFD fd(OpenSafelyForTesting(file, O_RDONLY, 0));
-  EXPECT_TRUE(fd.is_valid());
-  EXPECT_FALSE(IsNonBlockingFD(fd.get()));
-
-  fd = OpenSafelyForTesting(file, O_RDONLY | O_NONBLOCK, 0);
-  EXPECT_TRUE(fd.is_valid());
-  EXPECT_TRUE(IsNonBlockingFD(fd.get()));
-}
-
-TEST(ArcSetupUtil, TestOpenFifoSafely) {
-  base::ScopedTempDir temp_directory;
-  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
-  const base::FilePath fifo = temp_directory.GetPath().Append("fifo");
-  ASSERT_EQ(0, mkfifo(fifo.value().c_str(), 0700));
-  const base::FilePath file = temp_directory.GetPath().Append("file");
-  ASSERT_TRUE(CreateOrTruncate(file, 0700));
-
-  base::ScopedFD fd(OpenFifoSafely(fifo, O_RDONLY, 0));
-  EXPECT_TRUE(fd.is_valid());
-  EXPECT_FALSE(IsNonBlockingFD(fd.get()));
-
-  // Opening a file should fail.
-  fd = OpenFifoSafely(file, O_RDONLY, 0);
-  EXPECT_FALSE(fd.is_valid());
 }
 
 TEST(ArcSetupUtil, TestCopyWithAttributes) {
@@ -1144,7 +1062,7 @@ TEST(ArcSetupUtil, TestShouldDeleteAndroidData) {
   EXPECT_FALSE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_Q,
                                        AndroidSdkVersion::ANDROID_Q));
 
-  // Shouldn't delete data for intiial installation.
+  // Shouldn't delete data for initial installation.
   EXPECT_FALSE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_M,
                                        AndroidSdkVersion::UNKNOWN));
   EXPECT_FALSE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_N_MR1,
