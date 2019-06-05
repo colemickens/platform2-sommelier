@@ -607,7 +607,7 @@ void LegacyCryptohomeInterfaceAdaptor::AsyncTpmAttestationCreateCertRequest(
       &attestation::CreateCertificateRequestReply::pca_request, request,
       base::BindOnce(&org::chromium::AttestationProxyInterface::
                          CreateCertificateRequestAsync,
-                     base::Unretained(attestation_proxy_.get())));
+                     base::Unretained(attestation_proxy_)));
   response->Return(async_id);
   return;
 }

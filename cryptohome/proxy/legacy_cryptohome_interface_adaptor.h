@@ -71,15 +71,26 @@ class LegacyCryptohomeInterfaceAdaptor
   explicit LegacyCryptohomeInterfaceAdaptor(scoped_refptr<dbus::Bus> bus)
       : org::chromium::CryptohomeInterfaceAdaptor(this),
         dbus_object_(nullptr, bus, dbus::ObjectPath(kCryptohomeServicePath)),
-        attestation_proxy_(new org::chromium::AttestationProxy(bus)),
-        tpm_ownership_proxy_(new org::chromium::TpmOwnershipProxy(bus)),
-        tpm_nvram_proxy_(new org::chromium::TpmNvramProxy(bus)),
-        userdataauth_proxy_(new org::chromium::UserDataAuthInterfaceProxy(bus)),
-        arc_quota_proxy_(new org::chromium::ArcQuotaProxy(bus)),
-        pkcs11_proxy_(new org::chromium::CryptohomePkcs11InterfaceProxy(bus)),
-        install_attributes_proxy_(
+        default_attestation_proxy_(new org::chromium::AttestationProxy(bus)),
+        attestation_proxy_(default_attestation_proxy_.get()),
+        default_tpm_ownership_proxy_(new org::chromium::TpmOwnershipProxy(bus)),
+        tpm_ownership_proxy_(default_tpm_ownership_proxy_.get()),
+        default_tpm_nvram_proxy_(new org::chromium::TpmNvramProxy(bus)),
+        tpm_nvram_proxy_(default_tpm_nvram_proxy_.get()),
+        default_userdataauth_proxy_(
+            new org::chromium::UserDataAuthInterfaceProxy(bus)),
+        userdataauth_proxy_(default_userdataauth_proxy_.get()),
+        default_arc_quota_proxy_(new org::chromium::ArcQuotaProxy(bus)),
+        arc_quota_proxy_(default_arc_quota_proxy_.get()),
+        default_pkcs11_proxy_(
+            new org::chromium::CryptohomePkcs11InterfaceProxy(bus)),
+        pkcs11_proxy_(default_pkcs11_proxy_.get()),
+        default_install_attributes_proxy_(
             new org::chromium::InstallAttributesInterfaceProxy(bus)),
-        misc_proxy_(new org::chromium::CryptohomeMiscInterfaceProxy(bus)) {}
+        install_attributes_proxy_(default_install_attributes_proxy_.get()),
+        default_misc_proxy_(
+            new org::chromium::CryptohomeMiscInterfaceProxy(bus)),
+        misc_proxy_(default_misc_proxy_.get()) {}
 
   void RegisterAsync(
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
@@ -469,6 +480,46 @@ class LegacyCryptohomeInterfaceAdaptor
           cryptohome::BaseReply>> response,
       const cryptohome::GetRsuDeviceIdRequest& in_request) override;
 
+ protected:
+  // This constructor is reserved only for testing.
+  LegacyCryptohomeInterfaceAdaptor(
+      org::chromium::AttestationProxyInterface* attestation_proxy,
+      org::chromium::TpmOwnershipProxyInterface* tpm_ownership_proxy,
+      org::chromium::TpmNvramProxyInterface* tpm_nvram_proxy,
+      org::chromium::UserDataAuthInterfaceProxyInterface* userdataauth_proxy,
+      org::chromium::ArcQuotaProxyInterface* arc_quota_proxy,
+      org::chromium::CryptohomePkcs11InterfaceProxyInterface* pkcs11_proxy,
+      org::chromium::InstallAttributesInterfaceProxyInterface*
+          install_attributes_proxy,
+      org::chromium::CryptohomeMiscInterfaceProxyInterface* misc_proxy)
+      : org::chromium::CryptohomeInterfaceAdaptor(this),
+        dbus_object_(
+            nullptr, nullptr, dbus::ObjectPath(kCryptohomeServicePath)),
+        attestation_proxy_(attestation_proxy),
+        tpm_ownership_proxy_(tpm_ownership_proxy),
+        tpm_nvram_proxy_(tpm_nvram_proxy),
+        userdataauth_proxy_(userdataauth_proxy),
+        arc_quota_proxy_(arc_quota_proxy),
+        pkcs11_proxy_(pkcs11_proxy),
+        install_attributes_proxy_(install_attributes_proxy),
+        misc_proxy_(misc_proxy) {}
+
+  // This is used in testing to be able to mock SendAsyncCallStatusSignal.
+  virtual void VirtualSendAsyncCallStatusSignal(int32_t in_async_id,
+                                                bool in_return_status,
+                                                int32_t in_return_code) {
+    SendAsyncCallStatusSignal(in_async_id, in_return_status, in_return_code);
+  }
+
+  // This is used in testing to be able to mock
+  // SendAsyncCallStatusWithDataSignal.
+  virtual void VirtualSendAsyncCallStatusWithDataSignal(
+      int32_t in_async_id,
+      bool in_return_status,
+      const std::vector<uint8_t>& in_data) {
+    SendAsyncCallStatusWithDataSignal(in_async_id, in_return_status, in_data);
+  }
+
  private:
   // Method used as callbacks once the call to the new interface returns
   // Note that OnSuccess in the method names below refers to a successful DBus
@@ -536,7 +587,7 @@ class LegacyCryptohomeInterfaceAdaptor
     std::vector<uint8_t> data(data_string.begin(), data_string.end());
     bool return_status =
         reply.status() == attestation::AttestationStatus::STATUS_SUCCESS;
-    SendAsyncCallStatusWithDataSignal(async_id, return_status, data);
+    VirtualSendAsyncCallStatusWithDataSignal(async_id, return_status, data);
   }
 
   // This is a function that handles an async request received on the legacy
@@ -589,19 +640,38 @@ class LegacyCryptohomeInterfaceAdaptor
 
   brillo::dbus_utils::DBusObject dbus_object_;
 
-  std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
+  // Below are the DBus proxy objects that are used in this class. The default_*
+  // versions are for holding an instance that is only used in actual,
+  // non-testing setting. While the non default_* versions are the ones that's
+  // actually used by the class. During testing, the non default_* versions will
+  // be overridden with mocks for testing.
+  // Note that this follows the convention in other cryptohome class such as
+  // UserDataAuth class.
+  std::unique_ptr<org::chromium::AttestationProxyInterface>
+      default_attestation_proxy_;
+  org::chromium::AttestationProxyInterface* attestation_proxy_;
   std::unique_ptr<org::chromium::TpmOwnershipProxyInterface>
-      tpm_ownership_proxy_;
-  std::unique_ptr<org::chromium::TpmNvramProxyInterface> tpm_nvram_proxy_;
+      default_tpm_ownership_proxy_;
+  org::chromium::TpmOwnershipProxyInterface* tpm_ownership_proxy_;
+  std::unique_ptr<org::chromium::TpmNvramProxyInterface>
+      default_tpm_nvram_proxy_;
+  org::chromium::TpmNvramProxyInterface* tpm_nvram_proxy_;
   std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
-      userdataauth_proxy_;
-  std::unique_ptr<org::chromium::ArcQuotaProxyInterface> arc_quota_proxy_;
+      default_userdataauth_proxy_;
+  org::chromium::UserDataAuthInterfaceProxyInterface* userdataauth_proxy_;
+  std::unique_ptr<org::chromium::ArcQuotaProxyInterface>
+      default_arc_quota_proxy_;
+  org::chromium::ArcQuotaProxyInterface* arc_quota_proxy_;
   std::unique_ptr<org::chromium::CryptohomePkcs11InterfaceProxyInterface>
-      pkcs11_proxy_;
+      default_pkcs11_proxy_;
+  org::chromium::CryptohomePkcs11InterfaceProxyInterface* pkcs11_proxy_;
   std::unique_ptr<org::chromium::InstallAttributesInterfaceProxyInterface>
+      default_install_attributes_proxy_;
+  org::chromium::InstallAttributesInterfaceProxyInterface*
       install_attributes_proxy_;
   std::unique_ptr<org::chromium::CryptohomeMiscInterfaceProxyInterface>
-      misc_proxy_;
+      default_misc_proxy_;
+  org::chromium::CryptohomeMiscInterfaceProxyInterface* misc_proxy_;
 
   // An atomic incrementing sequence for setting asynchronous call ids.
   base::AtomicSequenceNumber sequence_holder_;

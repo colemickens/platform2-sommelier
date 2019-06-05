@@ -408,6 +408,8 @@ if (use.test) {
       "persistent_lookup_table_unittest.cc",
       "pkcs11_keystore_unittest.cc",
       "platform_unittest.cc",
+      "proxy/legacy_cryptohome_interface_adaptor.cc",
+      "proxy/legacy_cryptohome_interface_adaptor_test.cc",
       "service_unittest.cc",
       "sign_in_hash_tree_unittest.cc",
       "signature_sealing_backend_test_utils.cc",
@@ -436,6 +438,8 @@ if (use.test) {
       "dbus-1",
       "dbus-glib-1",
       "glib-2.0",
+      "libattestation-client",
+      "libattestation-client-test",
       "libbrillo-${libbase_ver}",
       "libbrillo-glib-${libbase_ver}",
       "libbrillo-test-${libbase_ver}",
@@ -443,6 +447,8 @@ if (use.test) {
       "libchrome-test-${libbase_ver}",
       "libecryptfs",
       "libmetrics-${libbase_ver}",
+      "libtpm_manager-client",
+      "libtpm_manager-client-test",
       "openssl",
 
       # system_api depends on protobuf (or protobuf-lite). It must appear
