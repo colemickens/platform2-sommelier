@@ -94,9 +94,10 @@ class CryptoUtility {
                                 const std::string& data,
                                 std::string* encrypted_data) = 0;
 
-  // Verifies a PKCS #1 v1.5 |signature| over |data| with digest algorithm
-  // |digest_nid|. The |public_key| must be provided in X.509
-  // SubjectPublicKeyInfo format.
+  // Verifies a |signature| over |data| with digest algorithm |digest_nid|.
+  // The |public_key| must be provided in X.509 SubjectPublicKeyInfo format. The
+  // format of |signature| can be PKCS #1 v1.5 for RSA, or OpenSSL DER format of
+  // ECDSA.
   virtual bool VerifySignature(int digest_nid,
                                const std::string& public_key,
                                const std::string& data,

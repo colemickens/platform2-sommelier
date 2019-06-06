@@ -22,6 +22,8 @@
 #include <string>
 
 #include <openssl/rsa.h>
+#include <openssl/ec.h>
+#include <crypto/scoped_openssl_types.h>
 
 #include "attestation/common/tpm_utility.h"
 
@@ -192,10 +194,10 @@ class CryptoUtilityImpl : public CryptoUtility {
 
   // Verifies the |signature| for the provided |data| using the |key|.
   // The digest algorithm depends on OpenSSL nid |digest_nid|.
-  bool VerifySignatureRSA(int digest_nid,
-                          RSA* key,
-                          const std::string& data,
-                          const std::string& signature);
+  bool VerifySignatureInner(int digest_nid,
+                            const crypto::ScopedEVP_PKEY& key,
+                            const std::string& data,
+                            const std::string& signature);
 
   TpmUtility* tpm_utility_;
 };

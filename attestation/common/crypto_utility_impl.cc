@@ -361,47 +361,18 @@ bool CryptoUtilityImpl::EncryptForUnbind(const std::string& public_key,
   return true;
 }
 
-bool CryptoUtilityImpl::VerifySignatureRSA(int digest_nid,
-                                           RSA* key,
-                                           const std::string& data,
-                                           const std::string& signature) {
-  std::string digest;
-  switch (digest_nid) {
-    case NID_sha1:
-      digest = base::SHA1HashString(data);
-      break;
-    case NID_sha256:
-      digest = crypto::SHA256HashString(data);
-      break;
-
-    default:
-      LOG(ERROR) << __func__
-                 << ": Unsupported digest algorithm: " << digest_nid;
-      return false;
-  }
-  auto digest_buffer = reinterpret_cast<const unsigned char*>(digest.data());
-  std::string mutable_signature(signature);
-  unsigned char* signature_buffer = StringAsOpenSSLBuffer(&mutable_signature);
-  if (RSA_verify(digest_nid, digest_buffer, digest.size(), signature_buffer,
-                 signature.size(), key) != 1) {
-    LOG(ERROR) << __func__ << ": Invalid signature: " << GetOpenSSLError();
-    return false;
-  }
-  return true;
-}
-
 bool CryptoUtilityImpl::VerifySignature(int digest_nid,
                                         const std::string& public_key,
                                         const std::string& data,
                                         const std::string& signature) {
   auto asn1_ptr = reinterpret_cast<const unsigned char*>(public_key.data());
-  crypto::ScopedRSA rsa(d2i_RSA_PUBKEY(NULL, &asn1_ptr, public_key.size()));
-  if (!rsa.get()) {
+  crypto::ScopedEVP_PKEY pubkey(d2i_PUBKEY(NULL, &asn1_ptr, public_key.size()));
+  if (!pubkey.get()) {
     LOG(ERROR) << __func__
                << ": Failed to decode public key: " << GetOpenSSLError();
     return false;
   }
-  return VerifySignatureRSA(digest_nid, rsa.get(), data, signature);
+  return VerifySignatureInner(digest_nid, pubkey, data, signature);
 }
 
 bool CryptoUtilityImpl::VerifySignatureUsingHexKey(
@@ -414,7 +385,44 @@ bool CryptoUtilityImpl::VerifySignatureUsingHexKey(
     LOG(ERROR) << __func__ << ": Failed to decode public key.";
     return false;
   }
-  return VerifySignatureRSA(digest_nid, rsa.get(), data, signature);
+
+  crypto::ScopedEVP_PKEY evp_pkey(EVP_PKEY_new());
+  if (!evp_pkey.get()) {
+    LOG(ERROR) << __func__ << ": Failed to allocate EVP PKEY.";
+    return false;
+  }
+  EVP_PKEY_assign_RSA(evp_pkey.get(), rsa.release());
+  return VerifySignatureInner(digest_nid, evp_pkey, data, signature);
+}
+
+bool CryptoUtilityImpl::VerifySignatureInner(
+    int digest_nid,
+    const crypto::ScopedEVP_PKEY& pubkey,
+    const std::string& data,
+    const std::string& signature) {
+  const EVP_MD* md = EVP_get_digestbynid(digest_nid);
+  if (md == nullptr) {
+    LOG(ERROR) << __func__ << ": Failed to get hash algorithm from digest NID: "
+               << digest_nid;
+    return false;
+  }
+
+  crypto::ScopedEVP_MD_CTX mdctx(EVP_MD_CTX_create());
+  if (!EVP_DigestVerifyInit(mdctx.get(), nullptr, md, nullptr, pubkey.get())) {
+    LOG(ERROR) << __func__ << ": Failed to initialize verifying process: "
+               << GetOpenSSLError();
+    return false;
+  }
+
+  if (!EVP_DigestVerifyUpdate(mdctx.get(), data.data(), data.length())) {
+    LOG(ERROR) << __func__
+               << ": Failed to hash the input data: " << GetOpenSSLError();
+    return false;
+  }
+
+  return EVP_DigestVerifyFinal(mdctx.get(),
+                               StringAsConstOpenSSLBuffer(signature.data()),
+                               signature.size());
 }
 
 bool CryptoUtilityImpl::EncryptDataForGoogle(
