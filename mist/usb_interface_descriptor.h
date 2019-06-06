@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <ostream>  // NOLINT(readability/streams)
 #include <string>
 
@@ -49,19 +50,19 @@ class UsbInterfaceDescriptor {
   uint8_t GetInterfaceProtocol() const;
   std::string GetInterfaceDescription() const;
 
-  // Returns a pointer to a UsbEndpointDescriptor object for the endpoint
-  // descriptor indexed at |index|, or a NULL pointer if |index| is invalid.
-  // The returned should be deleted by the caller after use and should not be
-  // held beyond the lifetime of this object.
-  UsbEndpointDescriptor* GetEndpointDescriptor(uint8_t index) const;
+  // Returns a UsbEndpointDescriptor object for the endpoint descriptor indexed
+  // at |index|, or a nullptr if |index| is invalid. The returned object should
+  // not be held beyond the lifetime of this object.
+  std::unique_ptr<UsbEndpointDescriptor> GetEndpointDescriptor(
+      uint8_t index) const;
 
-  // Returns a pointer to a UsbEndpointDescriptor object for the first endpoint
-  // descriptor with its transfer type equal to |transfer_type| and its
-  // direction equal to |direction|, or a NULL pointer if not matching endpoint
-  // descriptor is found. The returned object should be deleted by the caller
-  // after use and should not be held beyond the lifetime of this object.
-  UsbEndpointDescriptor* GetEndpointDescriptorByTransferTypeAndDirection(
-      UsbTransferType transfer_type, UsbDirection direction) const;
+  // Returns a UsbEndpointDescriptor object for the first endpoint descriptor
+  // with its transfer type equal to |transfer_type| and its direction equal to
+  // |direction|, or a nullptr if not matching endpoint descriptor is found.
+  // The returned object should not be held beyond the lifetime of this object.
+  std::unique_ptr<UsbEndpointDescriptor>
+  GetEndpointDescriptorByTransferTypeAndDirection(UsbTransferType transfer_type,
+                                                  UsbDirection direction) const;
 
   // Returns a string describing the properties of this object for logging
   // purpose.

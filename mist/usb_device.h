@@ -78,30 +78,27 @@ class UsbDevice : public base::SupportsWeakPtr<UsbDevice> {
 
   bool ClearHalt(uint8_t endpoint_address);
 
-  // Returns a pointer to a UsbConfigDescriptor object for the descriptor of the
-  // currently active configuration, or a NULL pointer on error. The returned
-  // object should be deleted by the caller after used and should not be held
-  // beyond the lifetime of this object.
-  UsbConfigDescriptor* GetActiveConfigDescriptor();
-
-  // Returns a pointer to a UsbConfigDescriptor object for the configuration
-  // descriptor indexed at |index|, or a NULL pointer if the index is invalid.
-  // The returned object should be deleted by the caller after use and should
+  // Returns a UsbConfigDescriptor object for the descriptor of the currently
+  // active configuration, or a nullptr on error. The returned object should
   // not be held beyond the lifetime of this object.
-  UsbConfigDescriptor* GetConfigDescriptor(uint8_t index);
+  std::unique_ptr<UsbConfigDescriptor> GetActiveConfigDescriptor();
 
-  // Returns a pointer to a UsbConfigDescriptor object for the
-  // configuration descriptor with configuration value |configuration_value|,
-  // or a NULL pointer if the configuration value is invalid. The returned
-  // object should be deleted by the caller after use and should not be held
-  // beyond the lifetime of this object.
-  UsbConfigDescriptor* GetConfigDescriptorByValue(uint8_t configuration_value);
+  // Returns a UsbConfigDescriptor object for the configuration descriptor
+  // indexed at |index|, or a nullptr if the index is invalid.  The returned
+  // object should not be held beyond the lifetime of this object.
+  std::unique_ptr<UsbConfigDescriptor> GetConfigDescriptor(uint8_t index);
 
-  // Returns a pointer to a UsbDeviceDescriptor object for the descriptor
-  // of this device, or a NULL pointer on error. The returned object should be
-  // deleted by the caller after use and should not be held beyond the lifetime
-  // of this object.
-  UsbDeviceDescriptor* GetDeviceDescriptor();
+  // Returns a UsbConfigDescriptor object for the configuration descriptor with
+  // configuration value |configuration_value|, or a nullptr the configuration
+  // value is invalid. The returned object should not be held beyond the
+  // lifetime of this object.
+  std::unique_ptr<UsbConfigDescriptor> GetConfigDescriptorByValue(
+      uint8_t configuration_value);
+
+  // Returns a UsbDeviceDescriptor object for the descriptor of this device, or
+  // a nullptr on error. The returned object should not be held beyond the
+  // lifetime of this object.
+  std::unique_ptr<UsbDeviceDescriptor> GetDeviceDescriptor();
 
   // Returns a string value, in ASCII, of string descriptor indexed at |index|,
   // or an empty string if the index is invalid.

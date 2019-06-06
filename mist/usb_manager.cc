@@ -8,6 +8,7 @@
 #include <poll.h>
 
 #include <memory>
+#include <utility>
 
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
@@ -73,10 +74,10 @@ void UsbManager::SetDebugLevel(int level) {
   libusb_set_option(context_, LIBUSB_OPTION_LOG_LEVEL, level);
 }
 
-UsbDevice* UsbManager::GetDevice(uint8_t bus_number,
-                                 uint8_t device_address,
-                                 uint16_t vendor_id,
-                                 uint16_t product_id) {
+std::unique_ptr<UsbDevice> UsbManager::GetDevice(uint8_t bus_number,
+                                                 uint8_t device_address,
+                                                 uint16_t vendor_id,
+                                                 uint16_t product_id) {
   std::vector<std::unique_ptr<UsbDevice>> devices;
   if (!GetDevices(&devices))
     return nullptr;
@@ -86,12 +87,12 @@ UsbDevice* UsbManager::GetDevice(uint8_t bus_number,
         device->GetDeviceAddress() != device_address)
       continue;
 
-    unique_ptr<UsbDeviceDescriptor> device_descriptor(
-        device->GetDeviceDescriptor());
+    unique_ptr<UsbDeviceDescriptor> device_descriptor =
+        device->GetDeviceDescriptor();
     VLOG(2) << *device_descriptor;
     if (device_descriptor->GetVendorId() == vendor_id &&
         device_descriptor->GetProductId() == product_id) {
-      return device.release();
+      return std::move(device);
     }
   }
 

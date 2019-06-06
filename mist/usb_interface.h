@@ -5,6 +5,8 @@
 #ifndef MIST_USB_INTERFACE_H_
 #define MIST_USB_INTERFACE_H_
 
+#include <memory>
+
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 
@@ -35,9 +37,8 @@ class UsbInterface {
 
   // Returns a pointer to a UsbInterfaceDescriptor object for the interface
   // descriptor indexed at |index|, or a NULL pointer if the index is invalid.
-  // The returned object should be deleted by the caller after use and should
-  // not be held beyond the lifetime of this object.
-  UsbInterfaceDescriptor* GetAlternateSetting(int index) const;
+  // The returned object should not be held beyond the lifetime of this object.
+  std::unique_ptr<UsbInterfaceDescriptor> GetAlternateSetting(int index) const;
 
  private:
   base::WeakPtr<UsbDevice> device_;

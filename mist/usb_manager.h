@@ -43,12 +43,10 @@ class UsbManager : public base::MessageLoopForIO::Watcher {
   // ID equal to |vendor_id|, and its product ID equal to |product_id|. Returns
   // NULL if no such device is found. The returned UsbDevice object becomes
   // invalid, and thus should not be held, beyond the lifetime of this object.
-  // The returned object is also not managed and should be deleted by the caller
-  // after use.
-  UsbDevice* GetDevice(uint8_t bus_number,
-                       uint8_t device_address,
-                       uint16_t vendor_id,
-                       uint16_t product_id);
+  std::unique_ptr<UsbDevice> GetDevice(uint8_t bus_number,
+                                       uint8_t device_address,
+                                       uint16_t vendor_id,
+                                       uint16_t product_id);
 
   // Gets the list of USB devices currently attached to the system. Returns true
   // on success. |devices| is always cleared before being updated. The returned

@@ -173,45 +173,50 @@ bool UsbDevice::ClearHalt(uint8_t endpoint) {
   return error_.SetFromLibUsbError(static_cast<libusb_error>(result));
 }
 
-UsbConfigDescriptor* UsbDevice::GetActiveConfigDescriptor() {
+std::unique_ptr<UsbConfigDescriptor> UsbDevice::GetActiveConfigDescriptor() {
   libusb_config_descriptor* config_descriptor = nullptr;
 
   int result = libusb_get_active_config_descriptor(device_, &config_descriptor);
   if (error_.SetFromLibUsbError(static_cast<libusb_error>(result)))
-    return new UsbConfigDescriptor(AsWeakPtr(), config_descriptor, true);
+    return std::make_unique<UsbConfigDescriptor>(AsWeakPtr(), config_descriptor,
+                                                 true);
 
   return nullptr;
 }
 
-UsbConfigDescriptor* UsbDevice::GetConfigDescriptor(uint8_t index) {
+std::unique_ptr<UsbConfigDescriptor> UsbDevice::GetConfigDescriptor(
+    uint8_t index) {
   libusb_config_descriptor* config_descriptor = nullptr;
 
   int result = libusb_get_config_descriptor(device_, index, &config_descriptor);
   if (error_.SetFromLibUsbError(static_cast<libusb_error>(result)))
-    return new UsbConfigDescriptor(AsWeakPtr(), config_descriptor, true);
+    return std::make_unique<UsbConfigDescriptor>(AsWeakPtr(), config_descriptor,
+                                                 true);
 
   return nullptr;
 }
 
-UsbConfigDescriptor* UsbDevice::GetConfigDescriptorByValue(
+std::unique_ptr<UsbConfigDescriptor> UsbDevice::GetConfigDescriptorByValue(
     uint8_t configuration_value) {
   libusb_config_descriptor* config_descriptor = nullptr;
 
   int result = libusb_get_config_descriptor_by_value(
       device_, configuration_value, &config_descriptor);
   if (error_.SetFromLibUsbError(static_cast<libusb_error>(result)))
-    return new UsbConfigDescriptor(AsWeakPtr(), config_descriptor, true);
+    return std::make_unique<UsbConfigDescriptor>(AsWeakPtr(), config_descriptor,
+                                                 true);
 
   return nullptr;
 }
 
-UsbDeviceDescriptor* UsbDevice::GetDeviceDescriptor() {
+std::unique_ptr<UsbDeviceDescriptor> UsbDevice::GetDeviceDescriptor() {
   if (!device_descriptor_)
     device_descriptor_.reset(new libusb_device_descriptor());
 
   int result = libusb_get_device_descriptor(device_, device_descriptor_.get());
   if (error_.SetFromLibUsbError(static_cast<libusb_error>(result)))
-    return new UsbDeviceDescriptor(AsWeakPtr(), device_descriptor_.get());
+    return std::make_unique<UsbDeviceDescriptor>(AsWeakPtr(),
+                                                 device_descriptor_.get());
 
   return nullptr;
 }

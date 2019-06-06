@@ -149,8 +149,8 @@ void UsbModemSwitchOperation::Complete(bool success) {
 }
 
 void UsbModemSwitchOperation::DetachAllKernelDrivers() {
-  unique_ptr<UsbConfigDescriptor> config_descriptor(
-      device_->GetActiveConfigDescriptor());
+  unique_ptr<UsbConfigDescriptor> config_descriptor =
+      device_->GetActiveConfigDescriptor();
   if (!config_descriptor)
     return;
 
@@ -172,8 +172,8 @@ void UsbModemSwitchOperation::DetachAllKernelDrivers() {
 int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
   CHECK(device_);
 
-  unique_ptr<UsbDeviceDescriptor> device_descriptor(
-      device_->GetDeviceDescriptor());
+  unique_ptr<UsbDeviceDescriptor> device_descriptor =
+      device_->GetDeviceDescriptor();
   if (!device_descriptor) {
     LOG(ERROR) << "Could not get device descriptor: " << device_->error();
     return kUsbConfigurationValueInvalid;
@@ -184,8 +184,8 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
   for (uint8_t config_index = 0;
        config_index < device_descriptor->GetNumConfigurations();
        ++config_index) {
-    unique_ptr<UsbConfigDescriptor> config_descriptor(
-        device_->GetConfigDescriptor(config_index));
+    unique_ptr<UsbConfigDescriptor> config_descriptor =
+        device_->GetConfigDescriptor(config_index);
     if (!config_descriptor)
       continue;
 
@@ -194,14 +194,14 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
     for (uint8_t interface_number = 0;
          interface_number < config_descriptor->GetNumInterfaces();
          ++interface_number) {
-      unique_ptr<UsbInterface> interface(
-          config_descriptor->GetInterface(interface_number));
+      unique_ptr<UsbInterface> interface =
+          config_descriptor->GetInterface(interface_number);
       if (!interface)
         continue;
 
-      unique_ptr<UsbInterfaceDescriptor> interface_descriptor(
+      unique_ptr<UsbInterfaceDescriptor> interface_descriptor =
           interface->GetAlternateSetting(
-              kDefaultUsbInterfaceAlternateSettingIndex));
+              kDefaultUsbInterfaceAlternateSettingIndex);
       if (!interface_descriptor)
         continue;
 
@@ -222,8 +222,8 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
 }
 
 bool UsbModemSwitchOperation::SetConfiguration(int configuration) {
-  unique_ptr<UsbConfigDescriptor> config_descriptor(
-      device_->GetActiveConfigDescriptor());
+  unique_ptr<UsbConfigDescriptor> config_descriptor =
+      device_->GetActiveConfigDescriptor();
   if (!config_descriptor) {
     LOG(ERROR) << "Could not get active configuration descriptor: "
                << device_->error();
@@ -274,9 +274,9 @@ void UsbModemSwitchOperation::CloseDevice() {
 void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
   CHECK(!interface_claimed_);
 
-  device_.reset(context_->usb_manager()->GetDevice(
+  device_ = context_->usb_manager()->GetDevice(
       switch_context_->bus_number(), switch_context_->device_address(),
-      switch_context_->vendor_id(), switch_context_->product_id()));
+      switch_context_->vendor_id(), switch_context_->product_id());
   if (!device_) {
     LOG(ERROR) << StringPrintf(
         "Could not find USB device '%s' (Bus %03d Address %03d ID %04x:%04x).",
@@ -294,8 +294,8 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
     return;
   }
 
-  unique_ptr<UsbConfigDescriptor> config_descriptor(
-      device_->GetActiveConfigDescriptor());
+  unique_ptr<UsbConfigDescriptor> config_descriptor =
+      device_->GetActiveConfigDescriptor();
   if (!config_descriptor) {
     LOG(ERROR) << "Could not get active configuration descriptor: "
                << device_->error();
@@ -313,17 +313,16 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
     return;
   }
 
-  unique_ptr<UsbInterface> interface(
-      config_descriptor->GetInterface(kDefaultUsbInterfaceIndex));
+  unique_ptr<UsbInterface> interface =
+      config_descriptor->GetInterface(kDefaultUsbInterfaceIndex);
   if (!interface) {
     LOG(ERROR) << "Could not get interface 0.";
     Complete(false);
     return;
   }
 
-  unique_ptr<UsbInterfaceDescriptor> interface_descriptor(
-      interface->GetAlternateSetting(
-          kDefaultUsbInterfaceAlternateSettingIndex));
+  unique_ptr<UsbInterfaceDescriptor> interface_descriptor =
+      interface->GetAlternateSetting(kDefaultUsbInterfaceAlternateSettingIndex);
   if (!interface_descriptor) {
     LOG(ERROR) << "Could not get interface alternate setting 0.";
     Complete(false);
@@ -337,9 +336,9 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
     return;
   }
 
-  unique_ptr<UsbEndpointDescriptor> out_endpoint_descriptor(
+  unique_ptr<UsbEndpointDescriptor> out_endpoint_descriptor =
       interface_descriptor->GetEndpointDescriptorByTransferTypeAndDirection(
-          kUsbTransferTypeBulk, kUsbDirectionOut));
+          kUsbTransferTypeBulk, kUsbDirectionOut);
   if (!out_endpoint_descriptor) {
     LOG(ERROR) << "Could not find an output bulk endpoint.";
     Complete(false);
@@ -351,9 +350,9 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
   out_endpoint_address_ = out_endpoint_descriptor->GetEndpointAddress();
 
   if (switch_context_->modem_info()->expect_response()) {
-    unique_ptr<UsbEndpointDescriptor> in_endpoint_descriptor(
+    unique_ptr<UsbEndpointDescriptor> in_endpoint_descriptor =
         interface_descriptor->GetEndpointDescriptorByTransferTypeAndDirection(
-            kUsbTransferTypeBulk, kUsbDirectionIn));
+            kUsbTransferTypeBulk, kUsbDirectionIn);
     if (!in_endpoint_descriptor) {
       LOG(ERROR) << "Could not find an input bulk endpoint.";
       Complete(false);

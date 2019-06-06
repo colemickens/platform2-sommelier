@@ -68,8 +68,8 @@ string UsbInterfaceDescriptor::GetInterfaceDescription() const {
                  : string();
 }
 
-UsbEndpointDescriptor* UsbInterfaceDescriptor::GetEndpointDescriptor(
-    uint8_t index) const {
+std::unique_ptr<UsbEndpointDescriptor>
+UsbInterfaceDescriptor::GetEndpointDescriptor(uint8_t index) const {
   if (index >= GetNumEndpoints()) {
     LOG(ERROR) << StringPrintf(
         "Invalid endpoint index %d. Must be less than %d.", index,
@@ -77,18 +77,19 @@ UsbEndpointDescriptor* UsbInterfaceDescriptor::GetEndpointDescriptor(
     return nullptr;
   }
 
-  return new UsbEndpointDescriptor(&interface_descriptor_->endpoint[index]);
+  return std::make_unique<UsbEndpointDescriptor>(
+      &interface_descriptor_->endpoint[index]);
 }
 
-UsbEndpointDescriptor*
+std::unique_ptr<UsbEndpointDescriptor>
 UsbInterfaceDescriptor::GetEndpointDescriptorByTransferTypeAndDirection(
     UsbTransferType transfer_type, UsbDirection direction) const {
   for (uint8_t i = 0; i < GetNumEndpoints(); ++i) {
-    unique_ptr<UsbEndpointDescriptor> endpoint_descriptor(
-        GetEndpointDescriptor(i));
+    unique_ptr<UsbEndpointDescriptor> endpoint_descriptor =
+        GetEndpointDescriptor(i);
     if ((endpoint_descriptor->GetTransferType() == transfer_type) &&
         (endpoint_descriptor->GetDirection() == direction)) {
-      return endpoint_descriptor.release();
+      return endpoint_descriptor;
     }
   }
   return nullptr;

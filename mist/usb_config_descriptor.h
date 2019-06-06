@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <ostream>  // NOLINT(readability/streams)
 #include <string>
 
@@ -50,11 +51,10 @@ class UsbConfigDescriptor {
   uint8_t GetAttributes() const;
   uint8_t GetMaxPower() const;
 
-  // Returns a pointer to a UsbInterface object for the USB interface indexed at
-  // |index|, or a NULL pointer if the index is invalid. The returned object
-  // should be deleted by the caller and should not be held beyond the lifetime
-  // of this object.
-  UsbInterface* GetInterface(uint8_t index) const;
+  // Returns an UsbInterface object for the USB interface indexed at |index|,
+  // or a nullptr if the index is invalid. The returned object should not be
+  // held beyond the lifetime of this object.
+  std::unique_ptr<UsbInterface> GetInterface(uint8_t index) const;
 
   // Returns a string describing the properties of this object for logging
   // purpose.

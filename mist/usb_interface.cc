@@ -26,7 +26,8 @@ int UsbInterface::GetNumAlternateSettings() const {
   return interface_->num_altsetting;
 }
 
-UsbInterfaceDescriptor* UsbInterface::GetAlternateSetting(int index) const {
+std::unique_ptr<UsbInterfaceDescriptor> UsbInterface::GetAlternateSetting(
+    int index) const {
   if (index < 0 || index >= GetNumAlternateSettings()) {
     LOG(ERROR) << StringPrintf(
         "Invalid alternate setting index %d. "
@@ -35,7 +36,8 @@ UsbInterfaceDescriptor* UsbInterface::GetAlternateSetting(int index) const {
     return nullptr;
   }
 
-  return new UsbInterfaceDescriptor(device_, &interface_->altsetting[index]);
+  return std::make_unique<UsbInterfaceDescriptor>(
+      device_, &interface_->altsetting[index]);
 }
 
 }  // namespace mist
