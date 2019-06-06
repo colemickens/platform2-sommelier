@@ -662,8 +662,13 @@ TEST_F(AttestationServiceBaseTest,
   EXPECT_EQ(service_->GetEndorsementKeyType(), KEY_TYPE_RSA);
 }
 
-TEST_F(AttestationServiceBaseTest, GetAttestaionIdentityKeyType) {
-  // Default key type is KEY_TYPE_RSA.
+TEST_F(AttestationServiceBaseTest, GetAttestaionIdentityKeyTypeInTpm2) {
+  EXPECT_CALL(mock_tpm_utility_, GetVersion()).WillRepeatedly(Return(TPM_2_0));
+  EXPECT_EQ(service_->GetAttestaionIdentityKeyType(), KEY_TYPE_ECC);
+}
+
+TEST_F(AttestationServiceBaseTest, GetAttestaionIdentityKeyTypeInTpm12) {
+  EXPECT_CALL(mock_tpm_utility_, GetVersion()).WillRepeatedly(Return(TPM_1_2));
   EXPECT_EQ(service_->GetAttestaionIdentityKeyType(), KEY_TYPE_RSA);
 }
 
