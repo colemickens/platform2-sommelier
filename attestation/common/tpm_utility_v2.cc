@@ -633,7 +633,7 @@ bool TpmUtilityV2::GetEndorsementPublicKey(KeyType key_type,
   trunks::TPMT_PUBLIC public_area;
   TPM_RC result = trunks_utility_->GetKeyPublicArea(key_handle, &public_area);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Failed to get EK public key: "
+    LOG(ERROR) << __func__ << ": Failed to get EK public area: "
                << trunks::GetErrorString(result);
     return false;
   }
