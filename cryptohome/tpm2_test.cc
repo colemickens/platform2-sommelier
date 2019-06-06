@@ -21,6 +21,7 @@
 #include <base/run_loop.h>
 #include <base/single_thread_task_runner.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -1485,7 +1486,8 @@ class Tpm2RsaSignatureSecretSealingTest
              i2d_PUBKEY(pkey.get(), &key_spki_der_buffer));
     // Obtain the key modulus.
     key_modulus_.resize(RSA_size(rsa.get()));
-    const BIGNUM* n = rsa->n;
+    const BIGNUM* n;
+    RSA_get0_key(rsa.get(), &n, nullptr, nullptr);
     CHECK_EQ(
         key_modulus_.length(),
         BN_bn2bin(n, reinterpret_cast<unsigned char*>(&key_modulus_[0])));

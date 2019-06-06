@@ -13,6 +13,7 @@
 #include <chaps/pkcs11/cryptoki.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
@@ -224,7 +225,8 @@ bool Pkcs11KeyStore::Register(bool is_user_specific,
     return false;
   }
   SecureBlob modulus(RSA_size(public_key.get()));
-  const BIGNUM* n = public_key->n;
+  const BIGNUM* n;
+  RSA_get0_key(public_key.get(), &n, nullptr, nullptr);
   int length = BN_bn2bin(n, modulus.data());
   if (length <= 0) {
     LOG(ERROR) << "Pkcs11KeyStore: Failed to extract public key modulus.";
@@ -506,12 +508,12 @@ bool Pkcs11KeyStore::GetCertificateSubject(
     brillo::SecureBlob* subject) {
   const unsigned char* asn1_ptr = certificate.data();
   ScopedX509 x509(d2i_X509(NULL, &asn1_ptr, certificate.size()));
-  if (!x509.get() || !x509->cert_info || !x509->cert_info->subject) {
+  if (!x509.get()) {
     LOG(WARNING) << "Pkcs11KeyStore: Failed to decode certificate.";
     return false;
   }
   unsigned char* buffer = NULL;
-  int length = i2d_X509_NAME(x509->cert_info->subject, &buffer);
+  int length = i2d_X509_NAME(X509_get_subject_name(x509.get()), &buffer);
   crypto::ScopedOpenSSLBytes scoped_buffer(buffer);
   if (length <= 0) {
     LOG(WARNING) << "Pkcs11KeyStore: Failed to encode certificate subject.";

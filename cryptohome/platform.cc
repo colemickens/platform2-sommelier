@@ -629,7 +629,7 @@ bool Platform::WriteArrayToFile(const FilePath& path, const char* data,
 std::string Platform::GetRandomSuffix() {
   const int kBufferSize = 6;
   unsigned char buffer[kBufferSize];
-  if (RAND_pseudo_bytes(buffer, kBufferSize) < 0) {
+  if (RAND_bytes(buffer, kBufferSize) < 0) {
     return std::string();
   }
   std::string suffix;

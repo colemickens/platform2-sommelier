@@ -23,6 +23,7 @@
 #include <brillo/http/http_utils.h>
 #include <brillo/mime_utils.h>
 #include <brillo/secure_blob.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/repeated_field.h>
@@ -1611,7 +1612,7 @@ bool Attestation::VerifyEndorsementCredential(const SecureBlob& credential,
   }
   // Manually verify the certificate signature.
   char issuer[100];  // A longer CN will truncate.
-  X509_NAME_get_text_by_NID(x509.get()->cert_info->issuer,
+  X509_NAME_get_text_by_NID(X509_get_issuer_name(x509.get()),
                             NID_commonName,
                             issuer,
                             arraysize(issuer));
@@ -1628,10 +1629,18 @@ bool Attestation::VerifyEndorsementCredential(const SecureBlob& credential,
   // Verify that the given public key matches the public key in the credential.
   // Note: Do not use any openssl functions that attempt to decode the public
   // key. These will fail because openssl does not recognize the OAEP key type.
-  auto public_key_data = x509.get()->cert_info->key->public_key->data;
-  SecureBlob credential_public_key(
-      public_key_data,
-      public_key_data + x509.get()->cert_info->key->public_key->length);
+  X509_PUBKEY* x509_pubkey = X509_get_X509_PUBKEY(x509.get());
+  if (!x509_pubkey) {
+    LOG(ERROR) << "Could not extract X509 public key.";
+    return false;
+  }
+  const unsigned char *public_key_data;
+  int pubkey_len;
+  X509_PUBKEY_get0_param(nullptr, &public_key_data, &pubkey_len, nullptr,
+                         x509_pubkey);
+
+  SecureBlob credential_public_key(public_key_data,
+                                   public_key_data + pubkey_len);
   if (credential_public_key.size() != public_key.size() ||
       memcmp(credential_public_key.data(),
              public_key.data(),
@@ -1779,13 +1788,14 @@ bool Attestation::VerifyCertifiedKey(
   }
   const unsigned char* asn1_ptr = certified_public_key.data();
   crypto::ScopedRSA rsa(
-      d2i_RSAPublicKey(NULL, &asn1_ptr, certified_public_key.size()));
+      d2i_RSAPublicKey(nullptr, &asn1_ptr, certified_public_key.size()));
   if (!rsa.get()) {
     LOG(ERROR) << "Failed to decode certified public key.";
     return false;
   }
   SecureBlob modulus(RSA_size(rsa.get()));
-  const BIGNUM* n = rsa->n;
+  const BIGNUM* n;
+  RSA_get0_key(rsa.get(), &n, nullptr, nullptr);
   BN_bn2bin(n, modulus.data());
   SecureBlob key_digest = CryptoLib::Sha1(modulus);
   if (std::search(certified_key_info.begin(),
@@ -2026,7 +2036,7 @@ bool Attestation::VerifyActivateIdentity(const brillo::Blob& delegate_blob,
   // Encrypt the TPM_ASYM_CA_CONTENTS with the EK public key.
   const unsigned char* asn1_ptr = ek_public_key.data();
   crypto::ScopedRSA rsa(
-      d2i_RSAPublicKey(NULL, &asn1_ptr, ek_public_key.size()));
+      d2i_RSAPublicKey(nullptr, &asn1_ptr, ek_public_key.size()));
   if (!rsa.get()) {
     LOG(ERROR) << "Failed to decode EK public key.";
     return false;
@@ -2396,8 +2406,8 @@ Attestation::CreateRSAFromHexModulus(
   BIGNUM* pn = n.get();
   if (0 == BN_hex2bn(&pn, hex_modulus.c_str()))
     return nullptr;
-  rsa->n = n.release();
-  rsa->e = e.release();
+  if (!RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr))
+    return nullptr;
   return rsa;
 }
 
@@ -2459,7 +2469,13 @@ bool Attestation::CreateSignedPublicKey(
   // Be explicit that there are zero unused bits; otherwise i2d below will
   // automatically detect unused bits but signatures require zero unused bits.
   spki.get()->signature->flags = ASN1_STRING_FLAG_BITS_LEFT;
-  X509_ALGOR* sig_algor = spki->sig_algor;
+
+// TODO(crbug.com/984789): Remove once openssl <1.1 support is dropped.
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  X509_ALGOR* sig_algor = spki.get()->sig_algor;
+#else
+  X509_ALGOR* sig_algor = &spki.get()->sig_algor;
+#endif
   X509_ALGOR_set0(sig_algor,
                   OBJ_nid2obj(NID_sha256WithRSAEncryption),
                   V_ASN1_NULL,
@@ -2895,7 +2911,8 @@ Tpm::TpmRetryAction Attestation::ComputeEnterpriseEnrollmentIdInternal(
     return Tpm::kTpmRetryFailNoRetry;
   }
   brillo::Blob modulus(RSA_size(public_key.get()), 0);
-  const BIGNUM* n = public_key->n;
+  const BIGNUM* n;
+  RSA_get0_key(public_key.get(), &n, nullptr, nullptr);
   int length = BN_bn2bin(n, modulus.data());
   if (length <= 0) {
     LOG(ERROR)

@@ -6,29 +6,13 @@
 
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 #include <openssl/x509.h>
 
 #include "cryptohome/cert/cert_provision_util.h"
-
-#ifndef LIBCRYPTO_COMPAT_H
-namespace {
-
-// TODO(djkurtz): Remove when <crypto/libcrypto-compat.h> has landed
-// (https://crrev.com/c/555072)
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-static inline void RSA_get0_key(const RSA *rsa, const BIGNUM **n,
-                                const BIGNUM **e, const BIGNUM **d) {
-  if (n != nullptr) *n = rsa->n;
-  if (e != nullptr) *e = rsa->e;
-  if (d != nullptr) *d = rsa->d;
-}
-#endif
-
-}  // namespace
-#endif  // LIBCRYPTO_COMPAT_H
 
 namespace cert_provision {
 

@@ -9,6 +9,7 @@
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
 #include <base/strings/stringprintf.h>
+#include <crypto/libcrypto-compat.h>
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
 #include <trousers/trousers.h>
@@ -65,8 +66,10 @@ crypto::ScopedRSA ParseRsaFromTpmPubkeyBlob(const Blob& pubkey) {
     return nullptr;
   }
 
-  rsa->n = n.release();
-  rsa->e = e.release();
+  if (!RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr)) {
+    LOG(ERROR) << "Failed to set parameters for RSA";
+    return nullptr;
+  }
 
   return rsa;
 }

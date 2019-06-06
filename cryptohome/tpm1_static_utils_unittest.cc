@@ -5,6 +5,7 @@
 #include <utility>
 
 #include <brillo/secure_blob.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <gtest/gtest.h>
 #include <openssl/bn.h>
@@ -25,7 +26,8 @@ namespace {
 // given RSA public key.
 Blob BuildRsaTpmPubkeyBlob(const RSA& rsa) {
   Blob modulus(RSA_size(&rsa));
-  const BIGNUM* n = rsa.n;
+  const BIGNUM* n;
+  RSA_get0_key(&rsa, &n, nullptr, nullptr);
   EXPECT_EQ(BN_bn2bin(n, modulus.data()), modulus.size());
 
   // Build the TPM_RSA_KEY_PARMS structure.
@@ -95,10 +97,13 @@ TEST_P(Tpm1StaticUtilsRsaKeyTest, ParseRsaFromTpmPubkeyBlob) {
   crypto::ScopedRSA parsed_rsa = ParseRsaFromTpmPubkeyBlob(pubkey_blob);
   ASSERT_TRUE(parsed_rsa);
 
-  const BIGNUM* n = rsa()->n;
-  const BIGNUM* e = rsa()->e;
-  const BIGNUM* parsed_n = parsed_rsa->n;
-  const BIGNUM* parsed_e = parsed_rsa->e;
+  const BIGNUM* n;
+  const BIGNUM* e;
+  RSA_get0_key(rsa(), &n, &e, nullptr);
+
+  const BIGNUM* parsed_n;
+  const BIGNUM* parsed_e;
+  RSA_get0_key(parsed_rsa.get(), &parsed_n, &parsed_e, nullptr);
 
   EXPECT_EQ(BN_cmp(n, parsed_n), 0);
   EXPECT_EQ(BN_cmp(e, parsed_e), 0);

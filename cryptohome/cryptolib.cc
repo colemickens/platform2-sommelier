@@ -18,6 +18,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 
 #include "cryptohome/platform.h"
@@ -136,13 +137,15 @@ bool CryptoLib::CreateRsaKey(size_t key_bits, SecureBlob* n, SecureBlob* p) {
   }
 
   SecureBlob local_n(RSA_size(rsa.get()));
-  const BIGNUM* rsa_n = rsa->n;
+  const BIGNUM* rsa_n;
+  RSA_get0_key(rsa.get(), &rsa_n, nullptr, nullptr);
   if (BN_bn2bin(rsa_n, local_n.data()) <= 0) {
     LOG(ERROR) << "Unable to get modulus from RSA key.";
     return false;
   }
 
-  const BIGNUM* rsa_p = rsa->p;
+  const BIGNUM* rsa_p;
+  RSA_get0_factors(rsa.get(), &rsa_p, nullptr);
   SecureBlob local_p(BN_num_bytes(rsa_p));
   if (BN_bn2bin(rsa_p, local_p.data()) <= 0) {
     LOG(ERROR) << "Unable to get private key from RSA key.";
@@ -173,7 +176,9 @@ bool CryptoLib::FillRsaPrivateKeyFromSecretPrime(
     return false;
   }
   // Calculate the second prime by dividing the public modulus.
-  const BIGNUM* rsa_n = rsa->n;
+  const BIGNUM* rsa_n;
+  const BIGNUM* rsa_e;
+  RSA_get0_key(rsa, &rsa_n, &rsa_e, nullptr);
   if (!BN_div(q.get(), remainder.get(), rsa_n, p.get(), bn_context.get())) {
     LOG(ERROR) << "Failed to divide public modulus";
     return false;
@@ -192,8 +197,9 @@ bool CryptoLib::FillRsaPrivateKeyFromSecretPrime(
     LOG(ERROR) << "Failed to allocate BIGNUM structure";
     return false;
   }
-  const BIGNUM* rsa_p = rsa->p;
-  const BIGNUM* rsa_q = rsa->q;
+  const BIGNUM* rsa_p;
+  const BIGNUM* rsa_q;
+  RSA_get0_factors(rsa, &rsa_p, &rsa_q);
   if (!BN_sub(decremented_p.get(), rsa_p, BN_value_one()) ||
       !BN_sub(decremented_q.get(), rsa_q, BN_value_one()) ||
       !BN_mul(totient.get(), decremented_p.get(), decremented_q.get(),
@@ -201,7 +207,6 @@ bool CryptoLib::FillRsaPrivateKeyFromSecretPrime(
     LOG(ERROR) << "Failed to calculate totient function";
     return false;
   }
-  const BIGNUM* rsa_e = rsa->e;
   if (!BN_mod_inverse(d.get(), rsa_e, totient.get(), bn_context.get())) {
     LOG(ERROR) << "Failed to calculate modular inverse";
     return false;
@@ -214,7 +219,8 @@ bool CryptoLib::FillRsaPrivateKeyFromSecretPrime(
     LOG(ERROR) << "Failed to allocate BIGNUM structure";
     return false;
   }
-  const BIGNUM* rsa_d = rsa->d;
+  const BIGNUM* rsa_d;
+  RSA_get0_key(rsa, nullptr, nullptr, &rsa_d);
   if (!BN_mod(dmp1.get(), rsa_d, decremented_p.get(), bn_context.get()) ||
       !BN_mod(dmq1.get(), rsa_d, decremented_q.get(), bn_context.get())) {
     LOG(ERROR) << "Failed to calculate the private exponent over the modulo";
@@ -228,12 +234,13 @@ bool CryptoLib::FillRsaPrivateKeyFromSecretPrime(
   }
 
   // All checks pass, now assign fields
-  rsa->p = p.release();
-  rsa->q = q.release();
-  rsa->d = d.release();
-  rsa->dmp1 = dmp1.release();
-  rsa->dmq1 = dmq1.release();
-  rsa->iqmp = iqmp.release();
+  if (!RSA_set0_factors(rsa, p.release(), q.release()) ||
+      !RSA_set0_key(rsa, nullptr, nullptr, d.release()) ||
+      !RSA_set0_crt_params(rsa, dmp1.release(), dmq1.release(),
+                           iqmp.release())) {
+    LOG(ERROR) << "Failed to set RSA parameters.";
+    return false;
+  }
   return true;
 }
 
@@ -395,11 +402,15 @@ bool CryptoLib::AesDecryptSpecifyBlockMode(const SecureBlob& encrypted,
     return false;
   }
 
-  EVP_CIPHER_CTX decryption_context;
-  EVP_CIPHER_CTX_init(&decryption_context);
-  EVP_DecryptInit_ex(&decryption_context, cipher, NULL, key.data(), iv.data());
+  crypto::ScopedEVP_CIPHER_CTX decryption_context(EVP_CIPHER_CTX_new());
+  if (!decryption_context) {
+    LOG(ERROR) << "Failed to allocate EVP_CIPHER_CTX";
+    return false;
+  }
+  EVP_DecryptInit_ex(decryption_context.get(), cipher, nullptr, key.data(),
+                     iv.data());
   if (padding == kPaddingNone) {
-    EVP_CIPHER_CTX_set_padding(&decryption_context, 0);
+    EVP_CIPHER_CTX_set_padding(decryption_context.get(), 0);
   }
 
   // Make sure we're not pointing into an empty buffer or past the end.
@@ -407,10 +418,9 @@ bool CryptoLib::AesDecryptSpecifyBlockMode(const SecureBlob& encrypted,
   if (start < encrypted.size())
     encrypted_buf = &encrypted[start];
 
-  if (!EVP_DecryptUpdate(&decryption_context, local_plain_text.data(),
+  if (!EVP_DecryptUpdate(decryption_context.get(), local_plain_text.data(),
                          &decrypt_size, encrypted_buf, count)) {
     LOG(ERROR) << "DecryptUpdate failed";
-    EVP_CIPHER_CTX_cleanup(&decryption_context);
     return false;
   }
 
@@ -420,7 +430,7 @@ bool CryptoLib::AesDecryptSpecifyBlockMode(const SecureBlob& encrypted,
   if (static_cast<unsigned int>(decrypt_size) < local_plain_text.size())
     final_buf = &local_plain_text[decrypt_size];
 
-  if (!EVP_DecryptFinal_ex(&decryption_context, final_buf, &final_size)) {
+  if (!EVP_DecryptFinal_ex(decryption_context.get(), final_buf, &final_size)) {
     unsigned long err = ERR_get_error(); // NOLINT openssl types
     ERR_load_ERR_strings();
     ERR_load_crypto_strings();
@@ -430,7 +440,6 @@ bool CryptoLib::AesDecryptSpecifyBlockMode(const SecureBlob& encrypted,
                << ", " << ERR_func_error_string(err)
                << ", " << ERR_reason_error_string(err);
 
-    EVP_CIPHER_CTX_cleanup(&decryption_context);
     return false;
   }
   final_size += decrypt_size;
@@ -438,7 +447,6 @@ bool CryptoLib::AesDecryptSpecifyBlockMode(const SecureBlob& encrypted,
   if (padding == kPaddingCryptohomeDefault) {
     if (final_size < SHA_DIGEST_LENGTH) {
       LOG(ERROR) << "Plain text was too small.";
-      EVP_CIPHER_CTX_cleanup(&decryption_context);
       return false;
     }
 
@@ -455,14 +463,12 @@ bool CryptoLib::AesDecryptSpecifyBlockMode(const SecureBlob& encrypted,
     md_ptr += final_size;
     if (brillo::SecureMemcmp(md_ptr, md_value, SHA_DIGEST_LENGTH)) {
       LOG(ERROR) << "Digest verification failed.";
-      EVP_CIPHER_CTX_cleanup(&decryption_context);
       return false;
     }
   }
 
   local_plain_text.resize(final_size);
   plain_text->swap(local_plain_text);
-  EVP_CIPHER_CTX_cleanup(&decryption_context);
   return true;
 }
 
@@ -575,11 +581,16 @@ bool CryptoLib::AesEncryptSpecifyBlockMode(const SecureBlob& plain_text,
   }
 
   // Initialize the OpenSSL crypto context
-  EVP_CIPHER_CTX encryption_context;
-  EVP_CIPHER_CTX_init(&encryption_context);
-  EVP_EncryptInit_ex(&encryption_context, cipher, NULL, key.data(), iv.data());
+  crypto::ScopedEVP_CIPHER_CTX encryption_context(EVP_CIPHER_CTX_new());
+  if (!encryption_context) {
+    LOG(ERROR) << "Failed to allocate EVP_CIPHER_CTX";
+    return false;
+  }
+
+  EVP_EncryptInit_ex(encryption_context.get(), cipher, nullptr, key.data(),
+                     iv.data());
   if (padding == kPaddingNone) {
-    EVP_CIPHER_CTX_set_padding(&encryption_context, 0);
+    EVP_CIPHER_CTX_set_padding(encryption_context.get(), 0);
   }
 
   // First, encrypt the plain_text data
@@ -591,10 +602,9 @@ bool CryptoLib::AesEncryptSpecifyBlockMode(const SecureBlob& plain_text,
   if (start < plain_text.size())
     plain_buf = &plain_text[start];
 
-  if (!EVP_EncryptUpdate(&encryption_context, &cipher_text[current_size],
+  if (!EVP_EncryptUpdate(encryption_context.get(), &cipher_text[current_size],
                          &encrypt_size, plain_buf, count)) {
     LOG(ERROR) << "EncryptUpdate failed";
-    EVP_CIPHER_CTX_cleanup(&encryption_context);
     return false;
   }
   current_size += encrypt_size;
@@ -609,10 +619,9 @@ bool CryptoLib::AesEncryptSpecifyBlockMode(const SecureBlob& plain_text,
     SHA1_Init(&sha_context);
     SHA1_Update(&sha_context, &plain_text[start], count);
     SHA1_Final(md_value, &sha_context);
-    if (!EVP_EncryptUpdate(&encryption_context, &cipher_text[current_size],
+    if (!EVP_EncryptUpdate(encryption_context.get(), &cipher_text[current_size],
                            &encrypt_size, md_value, sizeof(md_value))) {
       LOG(ERROR) << "EncryptUpdate failed";
-      EVP_CIPHER_CTX_cleanup(&encryption_context);
       return false;
     }
     current_size += encrypt_size;
@@ -626,16 +635,15 @@ bool CryptoLib::AesEncryptSpecifyBlockMode(const SecureBlob& plain_text,
     final_buf = &cipher_text[current_size];
 
   // Finally, finish the encryption
-  if (!EVP_EncryptFinal_ex(&encryption_context, final_buf, &encrypt_size)) {
+  if (!EVP_EncryptFinal_ex(encryption_context.get(), final_buf,
+                           &encrypt_size)) {
     LOG(ERROR) << "EncryptFinal failed";
-    EVP_CIPHER_CTX_cleanup(&encryption_context);
     return false;
   }
   current_size += encrypt_size;
   cipher_text.resize(current_size);
 
   encrypted->swap(cipher_text);
-  EVP_CIPHER_CTX_cleanup(&encryption_context);
   return true;
 }
 

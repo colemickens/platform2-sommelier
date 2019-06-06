@@ -16,6 +16,7 @@
 #include <base/macros.h>
 #include <base/memory/ptr_util.h>
 #include <base/optional.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <openssl/bn.h>
@@ -1043,8 +1044,7 @@ class SignatureSealedSecretTestCase final {
                    int algorithm_nid,
                    Blob* signature) {
     signature->resize(EVP_PKEY_size(pkey_.get()));
-    crypto::ScopedEVP_MD_CTX sign_context(EVP_MD_CTX_create());
-    EVP_MD_CTX_init(sign_context.get());
+    crypto::ScopedEVP_MD_CTX sign_context(EVP_MD_CTX_new());
     unsigned signature_size = 0;
     if (!sign_context) {
       LOG(ERROR) << "Error creating signing context";

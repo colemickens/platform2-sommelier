@@ -21,6 +21,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <base/values.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec/overalls/overalls_api.h>
 #include <openssl/bn.h>
@@ -353,7 +354,8 @@ void TpmImpl::GetStatus(TpmKeyHandle key_handle,
       public_srk_bytes.value(), public_srk_bytes.value() + public_srk_size));
 
   if (public_srk) {
-    const BIGNUM* n = public_srk->n;
+    const BIGNUM* n;
+    RSA_get0_key(public_srk.get(), &n, nullptr, nullptr);
     status->srk_vulnerable_roca = CryptoLib::TestRocaVulnerable(n);
   } else {
     status->srk_vulnerable_roca = false;
@@ -2033,7 +2035,8 @@ bool TpmImpl::MakeIdentity(SecureBlob* identity_public_key_der,
     return false;
   }
   unsigned char modulus_buffer[kDefaultTpmRsaKeyBits/8];
-  const BIGNUM* n = fake_pca_key->n;
+  const BIGNUM* n;
+  RSA_get0_key(fake_pca_key.get(), &n, nullptr, nullptr);
   BN_bn2bin(n, modulus_buffer);
 
   // Create a TSS object for the fake PCA public key.

@@ -14,6 +14,7 @@
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 
 #include <vboot/tlcl.h>
@@ -502,8 +503,10 @@ result_code Tpm::TakeOwnership() {
     LOG(ERROR) << "Failed to convert BIGNUM for RSA.";
     return RESULT_FAIL_FATAL;
   }
-  rsa->n = n.release();
-  rsa->e = e.release();
+  if (!RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr)) {
+    LOG(ERROR) << "Failed to set modulus or exponent for RSA.";
+    return RESULT_FAIL_FATAL;
+  }
 
   // Encrypt the well-known owner secret under the EK.
   brillo::SecureBlob owner_auth(kOwnerSecret, kOwnerSecret + kOwnerSecretSize);

@@ -15,6 +15,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
@@ -1395,13 +1396,14 @@ bool Tpm2Impl::LoadPublicKeyFromSpki(
     return false;
   }
   SecureBlob key_modulus(RSA_size(rsa.get()));
-  const BIGNUM* n = rsa->n;
+  const BIGNUM* n;
+  const BIGNUM* e;
+  RSA_get0_key(rsa.get(), &n, &e, nullptr);
   if (BN_bn2bin(n, key_modulus.data()) != key_modulus.size()) {
     LOG(ERROR) << "Error extracting public key modulus";
     return false;
   }
   constexpr BN_ULONG kInvalidBnWord = ~static_cast<BN_ULONG>(0);
-  const BIGNUM* e = rsa->e;
   const BN_ULONG exponent_word = BN_get_word(e);
   if (exponent_word == kInvalidBnWord ||
       !base::IsValueInRangeForNumericType<uint32_t>(exponent_word)) {
@@ -1440,12 +1442,11 @@ bool Tpm2Impl::PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,
   }
   if (!BN_set_word(e.get(), kDefaultTpmPublicExponent) ||
       !BN_bin2bn(public_area.unique.rsa.buffer,
-                 public_area.unique.rsa.size, n.get())) {
-    LOG(ERROR) << "Failed to set modulus for RSA.";
+                 public_area.unique.rsa.size, n.get()) ||
+      !RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr)) {
+    LOG(ERROR) << "Failed to set up RSA.";
     return false;
   }
-  rsa->n = n.release();
-  rsa->e = e.release();
   int der_length = i2d_RSAPublicKey(rsa.get(), nullptr);
   if (der_length < 0) {
     LOG(ERROR) << "Failed to get DER-encoded public key length.";
