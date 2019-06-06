@@ -31,7 +31,10 @@ struct ScopedKrb5Context {
 
   // Converts the krb5 |code| to a human readable error message.
   std::string GetErrorMessage(errcode_t code) {
-    DCHECK(ctx);
+    // Fallback if error happens during ctx initialization (e.g. bad config).
+    if (!ctx)
+      return base::StringPrintf("Error %ld", code);
+
     const char* emsg = krb5_get_error_message(ctx, code);
     std::string msg = base::StringPrintf("%s (%ld)", emsg, code);
     krb5_free_error_message(ctx, emsg);
@@ -83,6 +86,9 @@ ErrorType TranslateErrorCode(errcode_t code) {
 
     case KRB5_KDC_UNREACH:
       return ERROR_NETWORK_PROBLEM;
+
+    case KRB5_CONFIG_BADFORMAT:
+      return ERROR_BAD_CONFIG;
 
     case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
       return ERROR_BAD_PRINCIPAL;
