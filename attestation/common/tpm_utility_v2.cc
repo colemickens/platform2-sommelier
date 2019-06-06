@@ -517,6 +517,7 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
     LOG(ERROR) << __func__ << ": Not implemented.";
     return false;
   }
+
   std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
       trunks_factory_->GetPasswordAuthorization(std::string());
   trunks::TpmUtility::AsymmetricKeyUsage trunks_key_usage =
@@ -535,6 +536,7 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
                << ": Failed to create key: " << trunks::GetErrorString(result);
     return false;
   }
+
   TPM_HANDLE key_handle;
   result = trunks_utility_->LoadKey(
       *key_blob, empty_password_authorization.get(), &key_handle);
@@ -544,6 +546,7 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
     return false;
   }
   TpmObjectScoper scoper(trunks_factory_, key_handle);
+
   std::string key_name;
   result = trunks_utility_->GetKeyName(key_handle, &key_name);
   if (result != TPM_RC_SUCCESS) {
@@ -551,6 +554,7 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
                << trunks::GetErrorString(result);
     return false;
   }
+
   trunks::TPMT_PUBLIC public_area;
   result = trunks_utility_->GetKeyPublicArea(key_handle, &public_area);
   if (result != TPM_RC_SUCCESS) {
@@ -558,6 +562,7 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
                << trunks::GetErrorString(result);
     return false;
   }
+
   result = trunks::Serialize_TPMT_PUBLIC(public_area, public_key_tpm_format);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to serialize key public area: "
@@ -570,6 +575,7 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
     LOG(ERROR) << __func__ << ": Failed to convert public key.";
     return false;
   }
+
   TPM_HANDLE identity_key_handle;
   result = trunks_utility_->LoadKey(identity_key_blob,
                                     empty_password_authorization.get(),
@@ -580,16 +586,34 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
     return false;
   }
   TpmObjectScoper scoper2(trunks_factory_, identity_key_handle);
-  std::string identity_key_name;
-  result = trunks_utility_->GetKeyName(identity_key_handle, &identity_key_name);
+  result = trunks_utility_->GetKeyPublicArea(identity_key_handle, &public_area);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Failed to get key name: "
+    LOG(ERROR) << __func__ << ": Failed to get identity key public area: "
                << trunks::GetErrorString(result);
     return false;
   }
+
+  std::string identity_key_name;
+  result = trunks_utility_->GetKeyName(identity_key_handle, &identity_key_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to get identity key name: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+
   trunks::TPMT_SIG_SCHEME scheme;
-  scheme.scheme = trunks::TPM_ALG_RSASSA;
-  scheme.details.rsassa.hash_alg = trunks::TPM_ALG_SHA256;
+  scheme.details.any.hash_alg = trunks::TPM_ALG_SHA256;
+  switch (public_area.type) {
+    case trunks::TPM_ALG_RSA:
+      scheme.scheme = trunks::TPM_ALG_RSASSA;
+      break;
+    case trunks::TPM_ALG_ECC:
+      scheme.scheme = trunks::TPM_ALG_ECDSA;
+      break;
+    default:
+      LOG(ERROR) << __func__ << ": Unknown TPM key type of TPM handle.";
+      return false;
+  }
   trunks::TPM2B_ATTEST certify_info;
   trunks::TPMT_SIGNATURE signature;
   MultipleAuthorizations authorization;
@@ -605,7 +629,7 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
     return false;
   }
   *key_info = StringFrom_TPM2B_ATTEST(certify_info);
-  *proof = StringFrom_TPM2B_PUBLIC_KEY_RSA(signature.signature.rsassa.sig);
+  *proof = SerializeFromTpmSignature(signature).value_or("");
   return true;
 }
 

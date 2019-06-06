@@ -278,7 +278,63 @@ TEST_F(TpmUtilityTest, CreateCertifiedKey) {
   EXPECT_EQ(trunks::TPM_ALG_SHA256, scheme.details.rsassa.hash_alg);
 }
 
-TEST_F(TpmUtilityTest, hreateCertifiedKeyFailCreate) {
+TEST_F(TpmUtilityTest, CreateCertifiedKeyWithEccCertified) {
+  EXPECT_CALL(mock_tpm_utility_, CreateRSAKeyPair(_, _, _, _, _, _, _, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<8>("fake_key_blob"), Return(TPM_RC_SUCCESS)));
+
+  // make sure LoadKey(created key) return RSA, but ECC for AIK
+  EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  constexpr trunks::TPM_HANDLE kFakeIdentityHandle = 0x12345678;
+  EXPECT_CALL(mock_tpm_utility_, LoadKey("fake_identity_blob", _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(kFakeIdentityHandle), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(GetValidRsaPublicKey(nullptr)),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(kFakeIdentityHandle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(GetValidEccPublicKey(nullptr)),
+                      Return(TPM_RC_SUCCESS)));
+
+  trunks::TPM2B_DATA external_data;
+  trunks::TPMT_SIG_SCHEME scheme;
+  trunks::TPM2B_ATTEST fake_certify_info =
+      trunks::Make_TPM2B_ATTEST("fake_attest");
+
+  trunks::TPMT_SIGNATURE fake_signature;
+  fake_signature.sig_alg = trunks::TPM_ALG_ECDSA;
+  fake_signature.signature.ecdsa.signature_r =
+      trunks::Make_TPM2B_ECC_PARAMETER("fake_proof_r");
+  fake_signature.signature.ecdsa.signature_s =
+      trunks::Make_TPM2B_ECC_PARAMETER("fake_proof_s");
+
+  EXPECT_CALL(mock_tpm_, CertifySync(_, _, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<4>(&external_data), SaveArg<5>(&scheme),
+                      SetArgPointee<6>(fake_certify_info),
+                      SetArgPointee<7>(fake_signature),
+                      Return(TPM_RC_SUCCESS)));
+
+  std::string key_blob;
+  std::string public_key_der;
+  std::string public_key_tpm_format;
+  std::string key_info;
+  std::string proof;
+  EXPECT_TRUE(tpm_utility_->CreateCertifiedKey(
+      KEY_TYPE_RSA, KEY_USAGE_SIGN, "fake_identity_blob", "fake_external_data",
+      &key_blob, &public_key_der, &public_key_tpm_format, &key_info, &proof));
+  EXPECT_EQ("fake_key_blob", key_blob);
+  EXPECT_NE("", public_key_der);
+  EXPECT_NE("", public_key_tpm_format);
+  EXPECT_EQ("fake_attest", key_info);
+  EXPECT_NE(proof.find("fake_proof_r"), std::string::npos);
+  EXPECT_NE(proof.find("fake_proof_s"), std::string::npos);
+  EXPECT_EQ("fake_external_data", trunks::StringFrom_TPM2B_DATA(external_data));
+  EXPECT_EQ(trunks::TPM_ALG_ECDSA, scheme.scheme);
+  EXPECT_EQ(trunks::TPM_ALG_SHA256, scheme.details.rsassa.hash_alg);
+}
+
+TEST_F(TpmUtilityTest, CreateCertifiedKeyFailCreate) {
   EXPECT_CALL(mock_tpm_utility_, CreateRSAKeyPair(_, _, _, _, _, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   std::string key_blob;
