@@ -20,14 +20,14 @@ using std::string;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosDBusAdaptor* d) {
   if (d == nullptr)
     return "(dbus_adaptor)";
   return d->dbus_path().value();
 }
-}
+}  // namespace log_scope
 
 namespace {
 

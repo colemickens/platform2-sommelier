@@ -40,10 +40,10 @@ using std::vector;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
 static string ObjectID(WiFiProvider* w) { return "(wifi_provider)"; }
-}
+}  // namespace log_scope
 
 namespace {
 

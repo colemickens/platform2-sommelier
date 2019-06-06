@@ -73,12 +73,12 @@ const uint8_t kMACZeroAddress[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
 static string ObjectID(ConnectionDiagnostics* n) {
   return "(connection_diagnostics)";
 }
-}
+}  // namespace log_scope
 
 const char ConnectionDiagnostics::kIssueIPCollision[] =
     "IP collision detected. Another host on the local network has been "

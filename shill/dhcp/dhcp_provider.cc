@@ -27,10 +27,10 @@ using std::string;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
 static string ObjectID(DHCPProvider* d) { return "(dhcp_provider)"; }
-}
+}  // namespace log_scope
 
 namespace {
 base::LazyInstance<DHCPProvider>::DestructorAtExit g_dhcp_provider =

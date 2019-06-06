@@ -16,12 +16,12 @@ using std::string;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kEthernet;
 static string ObjectID(EthernetProvider* e) {
   return "(ethernet_provider)";
 }
-}  // namespace Logging
+}  // namespace log_scope
 
 EthernetProvider::EthernetProvider(Manager* manager) : manager_(manager) {}
 

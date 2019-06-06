@@ -28,10 +28,10 @@ using std::string;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kPortal;
 static string ObjectID(Connection* c) { return c->interface_name(); }
-}
+}  // namespace log_scope
 
 const int PortalDetector::kInitialCheckIntervalSeconds = 3;
 const int PortalDetector::kMaxPortalCheckIntervalSeconds = 5 * 60;

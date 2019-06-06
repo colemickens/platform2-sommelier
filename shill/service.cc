@@ -59,12 +59,12 @@ const char kServiceSortSerialNumber[] = "SerialNumber";
 const char kServiceSortTechnology[] = "Technology";
 }  // namespace
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kService;
 static string ObjectID(const Service* s) {
   return s->GetRpcIdentifier().value();
 }
-}  // namespace Logging
+}  // namespace log_scope
 
 const char Service::kAutoConnBusy[] = "busy";
 const char Service::kAutoConnConnected[] = "connected";

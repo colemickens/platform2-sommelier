@@ -31,14 +31,12 @@
 
 namespace shill {
 
-namespace Logging {
-
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kVPN;
 static std::string ObjectID(const ThirdPartyVpnDriver* v) {
   return "(third_party_vpn_driver)";
 }
-
-}  // namespace Logging
+}  // namespace log_scope
 
 namespace {
 

@@ -32,12 +32,12 @@ using std::string;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kRTNL;
 static std::string ObjectID(const NetlinkManager* obj) {
   return "(netlink_manager)";
 }
-}  // namespace Logging
+}  // namespace log_scope
 
 namespace {
 base::LazyInstance<NetlinkManager>::DestructorAtExit g_netlink_manager =

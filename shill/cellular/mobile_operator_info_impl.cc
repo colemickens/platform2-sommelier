@@ -35,12 +35,12 @@ using std::vector;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kCellular;
 static string ObjectID(const MobileOperatorInfoImpl* m) {
   return "(mobile_operator_info_impl)";
 }
-}
+}  // namespace log_scope
 
 // static
 const char MobileOperatorInfoImpl::kDefaultDatabasePath[] =

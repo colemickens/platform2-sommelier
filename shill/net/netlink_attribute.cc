@@ -28,12 +28,12 @@ using base::StringPrintf;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kRTNL;
 static std::string ObjectID(const NetlinkAttribute* obj) {
   return "(netlink_attribute)";
 }
-}  // namespace Logging
+}  // namespace log_scope
 
 NetlinkAttribute::NetlinkAttribute(int id,
                                    const char* id_string,

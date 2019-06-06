@@ -20,10 +20,10 @@ using std::vector;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kModem;
 static string ObjectID(Modem* m) { return m->path().value(); }
-}
+}  // namespace log_scope
 
 // statics
 constexpr char Modem::kFakeDevNameFormat[];

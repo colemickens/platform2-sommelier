@@ -16,12 +16,12 @@ using std::string;
 using std::stringstream;
 using std::vector;
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kCellular;
 static string ObjectID(const MobileOperatorInfo* m) {
   return "(mobile_operator_info)";
 }
-}
+}  // namespace log_scope
 
 // /////////////////////////////////////////////////////////////////////////////
 // MobileOperatorInfo implementation note:

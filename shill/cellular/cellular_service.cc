@@ -20,12 +20,12 @@ using std::string;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kCellular;
 static string ObjectID(CellularService* c) {
   return c->GetRpcIdentifier().value();
 }
-}  // namespace Logging
+}  // namespace log_scope
 
 // statics
 const char CellularService::kAutoConnActivating[] = "activating";

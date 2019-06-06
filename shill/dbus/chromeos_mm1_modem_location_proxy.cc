@@ -13,10 +13,10 @@ using std::string;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
-}  // namespace Logging
+}  // namespace log_scope
 
 namespace mm1 {
 

@@ -41,12 +41,12 @@ using std::string;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kRTNL;
 static std::string ObjectID(const RTNLHandler* obj) {
   return "(rtnl_handler)";
 }
-}  // namespace Logging
+}  // namespace log_scope
 
 const uint32_t RTNLHandler::kRequestLink = 1;
 const uint32_t RTNLHandler::kRequestAddr = 2;

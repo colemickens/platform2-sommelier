@@ -20,10 +20,10 @@ using std::string;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
 static string ObjectID(const DhcpProperties* d) { return "(dhcp_properties)"; }
-}
+}  // namespace log_scope
 
 namespace {
 

@@ -44,10 +44,10 @@ using std::vector;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kRoute;
 static string ObjectID(RoutingTable* r) { return "(routing_table)"; }
-}
+}  // namespace log_scope
 
 namespace {
 

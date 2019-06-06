@@ -34,7 +34,9 @@
 //
 //   TEST_F(MockLogTest, MockLogSeverityAndFileAndMessage) {
 //     ScopedMockLog log;
-//     EXPECT_CALL(log, Log(logging::LOG_INFO, "your_file.cc", "your message"));
+//     EXPECT_CALL(log, Log(logging::LOG_INFO,
+//                          "your_file.cc",
+//                          "your message"));
 //     DoSomething();
 //   }
 //
@@ -42,7 +44,7 @@
 //
 //   TEST_F(MockLogTest, MatchWithGmockMatchers) {
 //     ScopedMockLog log;
-//     EXPECT_CALL(log, Log(::testing::Lt(::logging::LOG_ERROR),
+//     EXPECT_CALL(log, Log(::testing::Lt(logging::LOG_ERROR),
 //                          ::testing::EndsWith(".cc"),
 //                          ::testing::StartsWith("Some")));
 //     DoSomething();
@@ -87,7 +89,7 @@ class ScopedMockLog {
 
   // A pointer to any pre-existing message hander function in the logging
   // system.  It is invoked after calling ScopedMockLog::Log().
-  ::logging::LogMessageHandlerFunction previous_handler_;
+  logging::LogMessageHandlerFunction previous_handler_;
 };
 
 // A NiceScopedMockLog is the same as ScopedMockLog, except it creates an

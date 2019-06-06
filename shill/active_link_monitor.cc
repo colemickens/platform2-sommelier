@@ -28,10 +28,10 @@ using std::string;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kLink;
 static string ObjectID(Connection* c) { return c->interface_name(); }
-}
+}  // namespace log_scope
 
 const int ActiveLinkMonitor::kDefaultTestPeriodMilliseconds = 5000;
 const int ActiveLinkMonitor::kFailureThreshold = 5;

@@ -20,10 +20,10 @@ using base::Bind;
 using base::Unretained;
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kLink;
 static std::string ObjectID(Connection* c) { return c->interface_name(); }
-}
+}  // namespace log_scope
 
 const int LinkMonitor::kDefaultTestPeriodMilliseconds =
     ActiveLinkMonitor::kDefaultTestPeriodMilliseconds;

@@ -31,10 +31,10 @@ using std::string;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kService;
 static string ObjectID(const EapCredentials* e) { return "(eap_credentials)"; }
-}
+}  // namespace log_scope
 
 const char EapCredentials::kStorageEapAnonymousIdentity[] =
     "EAP.AnonymousIdentity";

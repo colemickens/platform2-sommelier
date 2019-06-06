@@ -22,10 +22,10 @@ using std::string;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kMetrics;
 static string ObjectID(const Metrics* m) { return "(metrics)"; }
-}
+}  // namespace log_scope
 
 static const char kMetricPrefix[] = "Network.Shill";
 

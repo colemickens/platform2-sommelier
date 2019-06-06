@@ -23,12 +23,12 @@ using std::string;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
 static string ObjectID(ChromeosDHCPCDListener* d) {
   return "(dhcpcd_listener)";
 }
-}
+}  // namespace log_scope
 
 const char ChromeosDHCPCDListener::kDBusInterfaceName[] = "org.chromium.dhcpcd";
 const char ChromeosDHCPCDListener::kSignalEvent[] = "Event";

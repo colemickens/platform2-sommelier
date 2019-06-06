@@ -22,10 +22,10 @@ using std::vector;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kResolver;
 static string ObjectID(Resolver* r) { return "(resolver)"; }
-}
+}  // namespace log_scope
 
 const char Resolver::kDefaultIgnoredSearchList[] = "gateway.2wire.net";
 

@@ -15,12 +15,12 @@
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kTC;
 static std::string ObjectID(Throttler* t) {
   return "throttler";
 }
-}
+}  // namespace log_scope
 
 const char Throttler::kTCPath[] = "/sbin/tc";
 

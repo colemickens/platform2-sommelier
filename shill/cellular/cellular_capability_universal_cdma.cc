@@ -21,12 +21,12 @@ using std::vector;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kCellular;
 static string ObjectID(CellularCapabilityUniversalCdma* c) {
   return c->cellular()->GetRpcIdentifier().value();
 }
-}  // namespace Logging
+}  // namespace log_scope
 
 CellularCapabilityUniversalCdma::CellularCapabilityUniversalCdma(
     Cellular* cellular, ModemInfo* modem_info)

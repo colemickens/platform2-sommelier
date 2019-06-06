@@ -23,10 +23,10 @@ using std::string;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kManager;
 static string ObjectID(const HookTable* h) { return "(hook_table)"; }
-}
+}  // namespace log_scope
 
 HookTable::HookTable(EventDispatcher* event_dispatcher)
     : event_dispatcher_(event_dispatcher) {}

@@ -38,12 +38,12 @@ using std::vector;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kService;
 static string ObjectID(const WiFiService* w) {
   return w->GetRpcIdentifier().value();
 }
-}  // namespace Logging
+}  // namespace log_scope
 
 const char WiFiService::kAutoConnNoEndpoint[] = "no endpoints";
 const char WiFiService::kAnyDeviceAddress[] = "any";

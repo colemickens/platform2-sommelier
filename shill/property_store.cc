@@ -22,10 +22,10 @@ using std::vector;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kProperty;
 static string ObjectID(const PropertyStore* p) { return "(property_store)"; }
-}
+}  // namespace log_scope
 
 PropertyStore::PropertyStore() = default;
 

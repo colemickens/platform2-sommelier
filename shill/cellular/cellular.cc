@@ -55,12 +55,12 @@ using std::vector;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kCellular;
 static string ObjectID(Cellular* c) {
   return c->GetRpcIdentifier().value();
 }
-}  // namespace Logging
+}  // namespace log_scope
 
 // static
 const char Cellular::kAllowRoaming[] = "AllowRoaming";

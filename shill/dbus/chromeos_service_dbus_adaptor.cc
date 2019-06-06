@@ -22,13 +22,13 @@ const char kDBusRpcReasonString[] = "D-Bus RPC";
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosServiceDBusAdaptor* s) {
   return s->GetRpcIdentifier().value() +
     " (" + s->service()->unique_name() + ")";
 }
-}  // namespace Logging
+}  // namespace log_scope
 
 // static
 const char ChromeosServiceDBusAdaptor::kPath[] = "/service/";

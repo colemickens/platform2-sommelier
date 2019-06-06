@@ -21,12 +21,12 @@ using std::vector;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kLink;
 static string ObjectID(ConnectionInfoReader* c) {
   return "(connection_info_reader)";
 }
-}
+}  // namespace log_scope
 
 namespace {
 

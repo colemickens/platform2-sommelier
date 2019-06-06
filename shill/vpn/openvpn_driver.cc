@@ -38,12 +38,12 @@ using std::vector;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kVPN;
 static string ObjectID(const OpenVPNDriver* o) {
   return o->GetServiceRpcIdentifier().value();
 }
-}  // namespace Logging
+}  // namespace log_scope
 
 namespace {
 

@@ -3508,13 +3508,17 @@ TEST_F(WiFiMainTest, EAPCertification) {
   EXPECT_CALL(*service, AddEAPCertification(_, _)).Times(0);
 
   ScopedMockLog log;
-  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("no current service.")));
+  EXPECT_CALL(log, Log(logging::LOG_ERROR,
+                       _,
+                       EndsWith("no current service.")));
   KeyValueStore args;
   ReportCertification(args);
   Mock::VerifyAndClearExpectations(&log);
 
   SetCurrentService(service);
-  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("no depth parameter.")));
+  EXPECT_CALL(log, Log(logging::LOG_ERROR,
+                       _,
+                       EndsWith("no depth parameter.")));
   ReportCertification(args);
   Mock::VerifyAndClearExpectations(&log);
 
@@ -3550,7 +3554,9 @@ TEST_F(WiFiTimerTest, ScanDoneDispatchesTasks) {
 TEST_F(WiFiMainTest, EAPEvent) {
   StartWiFi();
   ScopedMockLog log;
-  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("no current service.")));
+  EXPECT_CALL(log, Log(logging::LOG_ERROR,
+                       _,
+                       EndsWith("no current service.")));
   EXPECT_CALL(*eap_state_handler_, ParseStatus(_, _, _)).Times(0);
   const string kEAPStatus("eap-status");
   const string kEAPParameter("eap-parameter");

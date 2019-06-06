@@ -15,12 +15,12 @@ using std::string;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosProfileDBusAdaptor* p) {
   return p->GetRpcIdentifier().value();
 }
-}  // namespace Logging
+}  // namespace log_scope
 
 
 // static

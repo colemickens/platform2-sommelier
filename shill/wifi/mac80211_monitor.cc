@@ -24,10 +24,10 @@ namespace shill {
 using std::string;
 using std::vector;
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
 static string ObjectID(Mac80211Monitor* m) { return m->link_name(); }
-}
+}  // namespace log_scope
 
 namespace {
 

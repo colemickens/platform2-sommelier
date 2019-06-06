@@ -24,10 +24,10 @@ using std::vector;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kCrypto;
 static string ObjectID(CertificateFile* c) { return "(certificate_file)"; }
-}
+}  // namespace log_scope
 
 const char CertificateFile::kDefaultRootDirectory[] =
     RUNDIR "/certificate_export";

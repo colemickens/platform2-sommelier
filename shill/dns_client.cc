@@ -35,10 +35,10 @@ using std::vector;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kDNS;
 static string ObjectID(DnsClient* d) { return d->interface_name(); }
-}
+}  // namespace log_scope
 
 namespace {
 

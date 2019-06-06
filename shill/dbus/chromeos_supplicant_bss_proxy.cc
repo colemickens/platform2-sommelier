@@ -16,10 +16,10 @@ using std::string;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
-}
+}  // namespace log_scope
 
 ChromeosSupplicantBSSProxy::ChromeosSupplicantBSSProxy(
     const scoped_refptr<dbus::Bus>& bus,

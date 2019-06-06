@@ -27,10 +27,10 @@ using std::string;
 
 namespace shill {
 
-namespace Logging {
+namespace log_scope {
 static auto kModuleLogScope = ScopeLogger::kVPN;
 static string ObjectID(const VPNProvider* v) { return "(vpn_provider)"; }
-}
+}  // namespace log_scope
 
 VPNProvider::VPNProvider(Manager* manager) : manager_(manager) {}
 
