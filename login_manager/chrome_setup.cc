@@ -209,7 +209,6 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   // have this directory at all.
   CHECK(EnsureDirectoryExists(data_dir.Append("Default"), uid, gid, 0755));
 
-  // TODO(cmasone,derat): Stop using this directory and delete this code.
   const base::FilePath state_dir("/run/state");
   CHECK(base::DeleteFile(state_dir, true));
   CHECK(EnsureDirectoryExists(state_dir, kRootUid, kRootGid, 0710));

@@ -47,8 +47,6 @@ std::string LookUpInStringPairs(const base::StringPairs& pairs,
       continue;
 
     // Strip quotes.
-    // TODO(derat): Remove quotes from Pepper .info files after
-    // session_manager_setup.sh is no longer interpreting them as shell scripts.
     std::string value = pairs[i].second;
     if (value.size() >= 2U &&
         ((value[0] == '"' && value[value.size() - 1] == '"') ||
@@ -191,8 +189,6 @@ bool ChromiumCommandBuilder::SetUpChromium() {
   // Create the target for the /etc/localtime symlink. This allows the Chromium
   // process to change the time zone.
   const base::FilePath time_zone_symlink(GetPath(kTimeZonePath));
-  // TODO(derat): Move this back into the !base::PathExists() block in M39 or
-  // later, after http://crbug.com/390188 has had time to be cleaned up.
   CHECK(util::EnsureDirectoryExists(time_zone_symlink.DirName(), uid_, gid_,
                                     0755));
   if (!base::PathExists(time_zone_symlink)) {
@@ -445,8 +441,6 @@ bool ChromiumCommandBuilder::SetUpASAN() {
 
   // Make ASAN output to the file because Chrome stderr is /dev/null now
   // (crbug.com/156308).
-  // TODO(derat): It's weird that this lives in a Chrome directory that's
-  // created by ChromeInitializer; move it somewhere else, maybe.
   AddEnvVar("ASAN_OPTIONS",
             "log_path=/var/log/chrome/asan_log:detect_odr_violation=0");
 
