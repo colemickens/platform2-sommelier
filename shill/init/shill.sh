@@ -49,13 +49,6 @@ if [ ! -f /home/chronos/.oobe_completed ]; then
   ARGS="${ARGS} --portal-list="
 fi
 
-# TODO(mortonm): Previous versions of this code used the
-# shill_sandboxing_{enabled/disabled} files when sandboxing was being
-# rolled out. These lines clean up those leftover files. Remove them
-# after M78 branches.
-rm -f /var/lib/shill/shill_sandboxing_enabled
-rm -f /var/lib/shill/shill_sandboxing_disabled
-
 ARGS="${ARGS} --jail-vpn-clients"
 # Run shill as shill user/group in a minijail:
 #   -G so shill programs can inherit supplementary groups.
@@ -64,6 +57,7 @@ ARGS="${ARGS} --jail-vpn-clients"
 #   -c for runtime capabilities:
 #     CAP_WAKE_ALARM | CAP_NET_RAW | CAP_NET_ADMIN | CAP_NET_BROADCAST |
 #     CAP_NET_BIND_SERVICE | CAP_SETPCAP | CAP_SETUID | CAP_SETGID | CAP_KILL
-#   --ambient so child processes can inherit runtime capabilities:
-exec /sbin/minijail0 -u shill -g shill -G -n -B 20 -c 800003de0 --ambient \
+#   --ambient so child processes can inherit runtime capabilities.
+#   -i to lose the dangling minijail0 process.
+exec /sbin/minijail0 -u shill -g shill -G -n -B 20 -c 800003de0 --ambient -i \
      -- /usr/bin/shill ${ARGS}

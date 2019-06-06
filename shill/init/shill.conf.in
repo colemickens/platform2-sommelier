@@ -16,6 +16,7 @@ start on @expected_started_services@
 stop on starting pre-shutdown
 kill timeout 10
 respawn
+expect fork
 
 # Default parameters to be overridden by upstart configuration.
 env SHILL_LOG_LEVEL=0

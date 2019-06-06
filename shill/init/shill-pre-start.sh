@@ -51,3 +51,10 @@ chmod 0755 /var/lib/shill
 # Set permissions for /var/lib/shill/metrics
 chown -R shill:shill /var/lib/shill/metrics
 chmod 0755 /var/lib/shill/metrics
+
+# TODO(mortonm): Previous versions of this code used the
+# shill_sandboxing_{enabled/disabled} files when sandboxing was being
+# rolled out. These lines clean up those leftover files. Remove them
+# after M78 branches.
+rm -f /var/lib/shill/shill_sandboxing_enabled
+rm -f /var/lib/shill/shill_sandboxing_disabled
