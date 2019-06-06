@@ -25,11 +25,11 @@ class MHDHttpRequest {
   void PushToBody(base::StringPiece data);
   void Finalize();
 
-  std::string method() const { return method_; }
-  std::string url() const { return url_; }
-  std::string version() const { return version_; }
-  std::map<std::string, std::string> headers() const { return headers_; }
-  std::vector<uint8_t> body() const { return body_; }
+  const std::string& method() const { return method_; }
+  const std::string& url() const { return url_; }
+  const std::string& version() const { return version_; }
+  const std::map<std::string, std::string>& headers() const { return headers_; }
+  const std::vector<uint8_t>& body() const { return body_; }
 
  private:
   std::string method_;
