@@ -86,8 +86,8 @@ const char kPowerOverrideLockfileDir[] = "/run/lock/power_override";
 const char kSuspendAnnouncedFile[] = "suspend_announced";
 
 // Strings for states that powerd cares about from the session manager's
-// SessionStateChanged signal.
-// TODO(derat): Add session state constants to login_manager's dbus-constants.h.
+// SessionStateChanged signal. This value is defined in the session_manager
+// codebase.
 const char kSessionStarted[] = "started";
 
 // After noticing that power management is overridden while suspending, wait up
@@ -1064,7 +1064,6 @@ std::unique_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(
   if (!reader.PopBool(&fullscreen))
     LOG(ERROR) << "Unable to read " << kHandleVideoActivityMethod << " args";
 
-  // TODO(derat): Log fullscreen vs. not?
   video_activity_logger_->OnActivityReported();
 
   for (auto controller : all_backlight_controllers_)

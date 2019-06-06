@@ -298,9 +298,8 @@ class StateController : public PrefsObserver {
 
   // Initializes |require_usb_input_device_to_suspend_|, |pref_*|, and other
   // pref-derived members from |prefs_|.
-  // TODO(derat): Add a |reload| argument. Most prefs should only be read once
-  // at startup; ignore runtime changes to anything not checked in
-  // OnPrefChanged().
+  // TODO: Add a |reload| argument. Most prefs should only be read once at
+  // startup; ignore runtime changes to anything not checked in OnPrefChanged().
   void LoadPrefs();
 
   // Updates in-use settings and calls UpdateState().  Copies values from

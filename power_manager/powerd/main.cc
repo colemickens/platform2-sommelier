@@ -249,7 +249,6 @@ class DaemonDelegateImpl : public DaemonDelegate {
     LOG(INFO) << "Launching \"" << command << "\"";
     pid_t pid = fork();
     if (pid == 0) {
-      // TODO(derat): Is this setsid() call necessary?
       setsid();
       // fork() again and exit so that init becomes the command's parent and
       // cleans up when it finally finishes.

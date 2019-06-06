@@ -18,7 +18,7 @@ namespace power_manager {
 // instead of base::TimeTicks::Now() and GetCurrentWallTime() instead of
 // base::Time::Now().
 //
-// TODO(derat): Replace this class with base::Clock and base::TickClock.
+// TODO: Consider replacing this class with base::Clock and base::TickClock.
 class Clock {
  public:
   Clock();

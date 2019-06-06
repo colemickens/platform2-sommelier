@@ -517,9 +517,9 @@ bool KeyboardBacklightController::UpdateState(
   }
 
   // Force the backlight off for several more lower-priority conditions.
-  // TODO(derat): Restructure this so the backlight is kept on for at least a
-  // short period after hovering stops while fullscreen video is playing:
-  // http://crbug.com/623404.
+  // TODO(crbug.com/623404): Restructure this so the backlight is kept on for at
+  // least a short period after hovering stops while fullscreen video is
+  // playing.
   if (fullscreen_video_playing_ || display_brightness_is_zero_ ||
       off_for_inactivity_) {
     return ApplyBrightnessPercent(0.0, transition, cause);

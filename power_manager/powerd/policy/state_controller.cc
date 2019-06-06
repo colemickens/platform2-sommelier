@@ -956,7 +956,6 @@ void StateController::UpdateSettingsAndState() {
 }
 
 void StateController::LogSettings() {
-  // TODO(derat): Switch to base::StringPiece once we have libchrome >= r452432.
   std::vector<std::string> wake_locks;
   wake_locks.reserve(3);
   if (screen_wake_lock_->active())

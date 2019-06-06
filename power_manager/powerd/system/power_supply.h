@@ -67,8 +67,6 @@ struct PowerStatus {
       DEDICATED_SOURCE,
       // A device that can either provide or consume power (source or sink).
       DUAL_ROLE,
-      // TODO(derat): Report non-PD sinks if we ever get the ability to detect
-      // them from userspace.
     };
 
     // Tests for |o| having a matching ID and connection type.

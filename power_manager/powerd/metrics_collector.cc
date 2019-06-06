@@ -46,7 +46,8 @@ bool ChargingPortConnected(const PowerStatus& status, size_t index) {
 
 // Returns a value describing which power ports are connected.
 ConnectedChargingPorts GetConnectedChargingPorts(const PowerStatus& status) {
-  // TODO(derat): Add more values if we ship systems with more than two ports.
+  // More values should be added here if we ship systems with more than two
+  // ports.
   if (status.ports.size() > 2u)
     return ConnectedChargingPorts::TOO_MANY_PORTS;
 

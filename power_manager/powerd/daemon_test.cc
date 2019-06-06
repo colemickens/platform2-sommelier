@@ -118,12 +118,10 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
 
   void Init() {
     // These prefs are required by policy::Suspender.
-    // TODO(derat): Remove these after adding a stub for Suspender.
     prefs_->SetInt64(kRetrySuspendMsPref, 10000);
     prefs_->SetInt64(kRetrySuspendAttemptsPref, 10);
 
     // These prefs are required by policy::StateController.
-    // TODO(derat): Remove these after adding a stub for StateController.
     prefs_->SetInt64(kPluggedSuspendMsPref, 1800000);
     prefs_->SetInt64(kPluggedOffMsPref, 480000);
     prefs_->SetInt64(kPluggedDimMsPref, 420000);
@@ -292,7 +290,6 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   }
   int Run(const std::string& command) override {
     sync_commands_.push_back(command);
-    // TODO(derat): Support returning canned exit code to simulate failure.
     return 0;
   }
 
@@ -407,10 +404,6 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
   Init();
   internal_backlight_controller_->ResetStats();
   keyboard_backlight_controller_->ResetStats();
-
-  // TODO(derat): Create stubs for policy::StateController, policy::Suspender,
-  // and policy::InputDeviceController and verify that they're notified too
-  // (including for lid events).
 
   // Power button events.
   input_watcher_->NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
@@ -786,7 +779,7 @@ TEST_F(DaemonTest, FactoryMode) {
   EXPECT_EQ(0, async_commands_.size());
 }
 
-// TODO(derat): More tests. Namely:
+// TODO: Add more tests. Namely:
 // - PrepareToSuspend / UndoPrepareToSuspend
 // - Creating and deleting suspend_announced file
 // - Handling D-Bus RequestSuspend method calls

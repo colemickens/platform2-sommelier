@@ -31,10 +31,6 @@ namespace {
 
 // Maximum length permitted for an individual DDC message (see DDC/CI v1.1
 // 6.5.1).
-// TODO(derat): I2C permits messages up to 131 bytes, and DDC/CI messages can
-// apparently be fragmented if they exceed 32 bytes. Might need to figure out
-// how to support this (can it all be read in one go?) if longer messages are
-// needed at some point.
 const uint8_t kDdcMaxMessageLength = 32;
 
 // Returns a hexadecimal string representation of |byte|.
