@@ -38,17 +38,9 @@ class RenameManager {
 
  private:
   FRIEND_TEST(RenameManagerTest, CanRename);
-  FRIEND_TEST(RenameManagerTest, ValidateParameters);
-  FRIEND_TEST(RenameManagerVolumeNameTest, ValidateParameters);
 
   void OnRenameProcessTerminated(const std::string& device_path,
                                  const siginfo_t& info);
-
-  // Returns RENAME_ERROR_NONE if file system type is supported, and new
-  // |volume_name| contains only allowed characters and length is not greater
-  // than file system's limit.
-  RenameErrorType ValidateParameters(const std::string& volume_name,
-                                     const std::string& filesystem_type) const;
 
   // Returns true if renaming |source_path| is supported.
   bool CanRename(const std::string& source_path) const;

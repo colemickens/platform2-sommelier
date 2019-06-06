@@ -13,27 +13,26 @@
 #include <base/logging.h>
 #include <brillo/process.h>
 
+#include "cros-disks/filesystem_label.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/rename_manager_observer_interface.h"
+
+namespace cros_disks {
 
 namespace {
 
 struct RenameParameters {
   const char* filesystem_type;
   const char* program_path;
-  const size_t max_volume_name_length;
   const char* rename_group;
 };
-
-// Forbidden characters in volume name
-const char kForbiddenCharacters[] = "*?.,;:/\\|+=<>[]\"'\t";
 
 const char kRenameUser[] = "cros-disks";
 
 // Supported file systems and their parameters
 const RenameParameters kSupportedRenameParameters[] = {
-    {"vfat", "/usr/sbin/fatlabel", 11, "disk"},
-    {"exfat", "/usr/sbin/exfatlabel", 15, "fuse-exfat"}};
+    {"vfat", "/usr/sbin/fatlabel", "disk"},
+    {"exfat", "/usr/sbin/exfatlabel", "fuse-exfat"}};
 
 const RenameParameters* FindRenameParameters(
     const std::string& filesystem_type) {
@@ -46,9 +45,20 @@ const RenameParameters* FindRenameParameters(
   return nullptr;
 }
 
-}  // namespace
+RenameErrorType LabelErrorToRenameError(LabelErrorType error_code) {
+  switch (error_code) {
+    case LabelErrorType::kLabelErrorNone:
+      return RENAME_ERROR_NONE;
+    case LabelErrorType::kLabelErrorUnsupportedFilesystem:
+      return RENAME_ERROR_UNSUPPORTED_FILESYSTEM;
+    case LabelErrorType::kLabelErrorLongName:
+      return RENAME_ERROR_LONG_NAME;
+    case LabelErrorType::kLabelErrorInvalidCharacter:
+      return RENAME_ERROR_INVALID_CHARACTER;
+  }
+}
 
-namespace cros_disks {
+}  // namespace
 
 RenameManager::RenameManager(Platform* platform,
                              brillo::ProcessReaper* process_reaper)
@@ -71,9 +81,10 @@ RenameErrorType RenameManager::StartRenaming(
     return RENAME_ERROR_DEVICE_NOT_ALLOWED;
   }
 
-  RenameErrorType error_code = ValidateParameters(volume_name, filesystem_type);
-  if (error_code != RENAME_ERROR_NONE) {
-    return error_code;
+  LabelErrorType label_error =
+      ValidateVolumeLabel(volume_name, filesystem_type);
+  if (label_error != LabelErrorType::kLabelErrorNone) {
+    return LabelErrorToRenameError(label_error);
   }
 
   const RenameParameters* parameters = FindRenameParameters(filesystem_type);
@@ -166,40 +177,6 @@ void RenameManager::OnRenameProcessTerminated(const std::string& device_path,
   }
   if (observer_)
     observer_->OnRenameCompleted(device_path, error_type);
-}
-
-RenameErrorType RenameManager::ValidateParameters(
-    const std::string& volume_name, const std::string& filesystem_type) const {
-  // Check if the file system is supported for renaming
-  const RenameParameters* parameters = FindRenameParameters(filesystem_type);
-  if (!parameters) {
-    LOG(WARNING) << filesystem_type
-                 << " filesystem is not supported for renaming";
-    return RENAME_ERROR_UNSUPPORTED_FILESYSTEM;
-  }
-
-  // Check if new volume names satisfies file system volume name conditions
-  // Volume name length
-  if (volume_name.size() > parameters->max_volume_name_length) {
-    LOG(WARNING) << "New volume name '" << volume_name << "' exceeds "
-                 << "the limit of '" << parameters->max_volume_name_length
-                 << "' characters"
-                 << " for the file system '" << parameters->filesystem_type
-                 << "'";
-    return RENAME_ERROR_LONG_NAME;
-  }
-
-  // Check if new volume name contains only printable ASCII characters and
-  // none of forbidden.
-  for (char value : volume_name) {
-    if (!std::isprint(value) || strchr(kForbiddenCharacters, value)) {
-      LOG(WARNING) << "New volume name '" << volume_name << "' contains "
-                   << "forbidden character: '" << value << "'";
-      return RENAME_ERROR_INVALID_CHARACTER;
-    }
-  }
-
-  return RENAME_ERROR_NONE;
 }
 
 bool RenameManager::CanRename(const std::string& source_path) const {
