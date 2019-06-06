@@ -531,10 +531,47 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationCreateEnrollRequest(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
     int32_t in_pca_type) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  attestation::CreateEnrollRequestRequest request;
+  base::Optional<attestation::ACAType> aca_type;
+  aca_type = IntegerToACAType(in_pca_type);
+  if (!aca_type.has_value()) {
+    std::string error_msg = "Requested ACA type " +
+                            std::to_string(in_pca_type) + " is not supported";
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_NOT_SUPPORTED, error_msg);
+    return;
+  }
+  request.set_aca_type(aca_type.value());
+
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<std::vector<uint8_t>>>(
+          std::move(response));
+
+  attestation_proxy_->CreateEnrollRequestAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
+                     TpmAttestationCreateEnrollRequestOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::vector<uint8_t>>,
+          base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::
+    TpmAttestationCreateEnrollRequestOnSuccess(
+        std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>>>
+            response,
+        const attestation::CreateEnrollRequestReply& reply) {
+  if (reply.status() != attestation::STATUS_SUCCESS) {
+    std::string error_msg = "Attestation daemon returned status " +
+                            std::to_string(static_cast<int>(reply.status()));
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_FAILED, error_msg);
+    return;
+  }
+  std::vector<uint8_t> result(reply.pca_request().begin(),
+                              reply.pca_request().end());
+  response->Return(result);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::AsyncTpmAttestationCreateEnrollRequest(

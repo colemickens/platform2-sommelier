@@ -20,6 +20,7 @@ using ::testing::_;
 using ::testing::Invoke;
 using ::testing::InvokeArgument;
 using ::testing::NiceMock;
+using ::testing::Return;
 using ::testing::SaveArg;
 
 // A mock adaptor that is used for testing. This is added so that we can capture
@@ -55,6 +56,7 @@ class LegacyCryptohomeInterfaceAdaptorForTesting
 constexpr char kUsername1[] = "foo@gmail.com";
 constexpr char kSecret[] = "blah";
 constexpr char kSanitizedUsername1[] = "baadf00ddeadbeeffeedcafe";
+constexpr char kPCARequest[] = "PCA\0Request\xFFMay\x80Have\0None.ASCII";
 
 class LegacyCryptohomeInterfaceAdaptorTest : public ::testing::Test {
  public:
@@ -197,6 +199,93 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest, MountExFail) {
   EXPECT_TRUE(proxied_request.public_mount());
   EXPECT_TRUE(proxied_request.hidden_mount());
   EXPECT_FALSE(proxied_request.guest_mount());
+}
+
+// ------------- TpmAttestationCreateEnrollRequest Related Tests -------------
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
+       TpmAttestationCreateEnrollRequestSuccess) {
+  attestation::CreateEnrollRequestRequest proxied_request;
+  EXPECT_CALL(attestation_, CreateEnrollRequestAsync(_, _, _, _))
+      .WillOnce(DoAll(
+          SaveArg<0>(&proxied_request),
+          Invoke([](const attestation::CreateEnrollRequestRequest& in_request,
+                    const base::Callback<void(
+                        const attestation::CreateEnrollRequestReply&)>&
+                        success_callback,
+                    const base::Callback<void(brillo::Error*)>& error_callback,
+                    int timeout_ms) {
+            attestation::CreateEnrollRequestReply proxied_reply;
+            proxied_reply.set_status(attestation::STATUS_SUCCESS);
+            proxied_reply.set_pca_request(
+                std::string(kPCARequest, sizeof(kPCARequest)));
+            success_callback.Run(proxied_reply);
+          })));
+
+  base::Optional<std::vector<uint8_t>> result_pca_request;
+  std::unique_ptr<MockDBusMethodResponse<std::vector<uint8_t>>> response(
+      new MockDBusMethodResponse<std::vector<uint8_t>>(nullptr));
+  response->save_return_args(&result_pca_request);
+
+  adaptor_->TpmAttestationCreateEnrollRequest(
+      std::move(response), static_cast<int>(attestation::TEST_ACA));
+
+  // Verify that Return() is indeed called at least once.
+  ASSERT_TRUE(result_pca_request.has_value());
+
+  // Verify response content.
+  EXPECT_EQ(
+      result_pca_request.value(),
+      std::vector<uint8_t>(kPCARequest, kPCARequest + sizeof(kPCARequest)));
+
+  // Verify that the parameters passed to DBus Proxy (New interface) is correct.
+  EXPECT_EQ(proxied_request.aca_type(), attestation::TEST_ACA);
+}
+
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
+       TpmAttestationCreateEnrollRequestInvalidACA) {
+  std::unique_ptr<MockDBusMethodResponse<std::vector<uint8_t>>> response(
+      new MockDBusMethodResponse<std::vector<uint8_t>>(nullptr));
+  EXPECT_CALL(
+      *response,
+      ReplyWithError(_, brillo::errors::dbus::kDomain, DBUS_ERROR_NOT_SUPPORTED,
+                     "Requested ACA type 99999 is not supported"))
+      .WillOnce(Return());
+
+  // 99999 is an invalid ACA
+  adaptor_->TpmAttestationCreateEnrollRequest(std::move(response), 99999);
+}
+
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
+       TpmAttestationCreateEnrollRequestFailed) {
+  attestation::CreateEnrollRequestRequest proxied_request;
+  EXPECT_CALL(attestation_, CreateEnrollRequestAsync(_, _, _, _))
+      .WillOnce(DoAll(
+          SaveArg<0>(&proxied_request),
+          Invoke([](const attestation::CreateEnrollRequestRequest& in_request,
+                    const base::Callback<void(
+                        const attestation::CreateEnrollRequestReply&)>&
+                        success_callback,
+                    const base::Callback<void(brillo::Error*)>& error_callback,
+                    int timeout_ms) {
+            attestation::CreateEnrollRequestReply reply;
+            reply.set_status(attestation::STATUS_UNEXPECTED_DEVICE_ERROR);
+            success_callback.Run(reply);
+          })));
+
+  std::unique_ptr<MockDBusMethodResponse<std::vector<uint8_t>>> response(
+      new MockDBusMethodResponse<std::vector<uint8_t>>(nullptr));
+  EXPECT_CALL(
+      *response,
+      ReplyWithError(_, brillo::errors::dbus::kDomain, DBUS_ERROR_FAILED,
+                     "Attestation daemon returned status " +
+                         std::to_string(static_cast<int>(
+                             attestation::STATUS_UNEXPECTED_DEVICE_ERROR))))
+      .WillOnce(Return());
+  adaptor_->TpmAttestationCreateEnrollRequest(
+      std::move(response), static_cast<int>(attestation::DEFAULT_ACA));
+
+  // Verify that the parameters passed to DBus Proxy (New interface) is correct.
+  EXPECT_EQ(proxied_request.aca_type(), attestation::DEFAULT_ACA);
 }
 
 }  // namespace
