@@ -4,76 +4,97 @@
 
 #include "arc/vm/vsock_proxy/socket_stream.h"
 
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+#include <memory>
 #include <string>
-#include <tuple>
 #include <utility>
 #include <vector>
 
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/macros.h>
 #include <base/optional.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/posix/unix_domain_socket_linux.h>
+#include <base/strings/string_piece.h>
 #include <gtest/gtest.h>
 
 #include "arc/vm/vsock_proxy/file_descriptor_util.h"
-#include "arc/vm/vsock_proxy/message.pb.h"
 
 namespace arc {
 namespace {
 
-TEST(SocketStreamTest, ReadWrite) {
+class SocketStreamTest : public testing::Test {
+ public:
+  SocketStreamTest() = default;
+  ~SocketStreamTest() override = default;
+
+  void SetUp() override {
+    auto sockets = CreateSocketPair();
+    ASSERT_TRUE(sockets.has_value());
+    stream_ = std::make_unique<SocketStream>(std::move(sockets.value().first));
+    socket_ = std::move(sockets.value().second);
+  }
+
+ protected:
+  std::unique_ptr<SocketStream> stream_;  // Paired with socket_.
+  base::ScopedFD socket_;                 // Paired with stream_.
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(SocketStreamTest);
+};
+
+TEST_F(SocketStreamTest, Read) {
+  base::ScopedFD attached_fd(HANDLE_EINTR(open("/dev/null", O_RDONLY)));
+  ASSERT_TRUE(attached_fd.is_valid());
+
   constexpr char kData[] = "abcdefghijklmnopqrstuvwxyz";
+  ASSERT_TRUE(base::UnixDomainSocket::SendMsg(
+      socket_.get(), kData, sizeof(kData), {attached_fd.get()}));
 
-  arc_proxy::VSockMessage message;
-  {
-    auto sockets = CreateSocketPair();
-    ASSERT_TRUE(sockets.has_value());
-    base::ScopedFD fd1;
-    base::ScopedFD fd2;
-    std::tie(fd1, fd2) = std::move(sockets).value();
-    ASSERT_TRUE(
-        base::UnixDomainSocket::SendMsg(fd1.get(), kData, sizeof(kData), {}));
-    fd1.reset();
-    ASSERT_TRUE(
-        SocketStream(std::move(fd2), nullptr /* vsock_proxy */).Read(&message));
-  }
-
-  ASSERT_TRUE(message.has_data());
-  ASSERT_FALSE(message.data().blob().empty());
-
-  std::string read_data;
-  read_data.resize(sizeof(kData));
-  {
-    auto sockets = CreateSocketPair();
-    ASSERT_TRUE(sockets.has_value());
-    base::ScopedFD fd1;
-    base::ScopedFD fd2;
-    std::tie(fd1, fd2) = std::move(sockets).value();
-    ASSERT_TRUE(SocketStream(std::move(fd1), nullptr /* vsock_proxy */)
-                    .Write(message.mutable_data()));
-    std::vector<base::ScopedFD> fds;
-    ASSERT_EQ(sizeof(kData),
-              base::UnixDomainSocket::RecvMsg(fd2.get(), &read_data[0],
-                                              sizeof(kData), &fds));
-    EXPECT_TRUE(fds.empty());
-  }
-
-  EXPECT_EQ(std::string(kData, sizeof(kData)), read_data);
+  auto read_result = stream_->Read();
+  EXPECT_EQ(0, read_result.error_code);
+  EXPECT_EQ(base::StringPiece(kData, sizeof(kData)), read_result.blob);
+  EXPECT_EQ(1, read_result.fds.size());
 }
 
-// TODO(hidehiko): Add test for the FD passing.
+TEST_F(SocketStreamTest, ReadEOF) {
+  // Close the other side immediately.
+  socket_.reset();
 
-TEST(SocketStreamTest, Close) {
-  auto sockets = CreateSocketPair();
-  ASSERT_TRUE(sockets.has_value());
-  base::ScopedFD fd1;
-  base::ScopedFD fd2;
-  std::tie(fd1, fd2) = std::move(sockets).value();
-  // Close the write side then, the read message should be empty.
-  fd1.reset();
-  arc_proxy::VSockMessage message;
-  ASSERT_TRUE(
-      SocketStream(std::move(fd2), nullptr /* vsock_proxy */).Read(&message));
-  EXPECT_TRUE(message.has_close());
+  auto read_result = stream_->Read();
+  EXPECT_EQ(0, read_result.error_code);
+  EXPECT_TRUE(read_result.blob.empty());
+  EXPECT_TRUE(read_result.fds.empty());
+}
+
+TEST_F(SocketStreamTest, ReadError) {
+  // Pass invalid FD.
+  auto read_result = SocketStream(base::ScopedFD()).Read();
+  EXPECT_EQ(EBADF, read_result.error_code);
+}
+
+TEST_F(SocketStreamTest, Write) {
+  base::ScopedFD attached_fd(HANDLE_EINTR(open("/dev/null", O_RDONLY)));
+  ASSERT_TRUE(attached_fd.is_valid());
+
+  constexpr char kData[] = "abcdefghijklmnopqrstuvwxyz";
+  {
+    std::vector<base::ScopedFD> fds;
+    fds.emplace_back(std::move(attached_fd));
+    ASSERT_TRUE(
+        stream_->Write(std::string(kData, sizeof(kData)), std::move(fds)));
+  }
+  std::string read_data;
+  read_data.resize(sizeof(kData));
+  std::vector<base::ScopedFD> fds;
+  ASSERT_EQ(sizeof(kData),
+            base::UnixDomainSocket::RecvMsg(socket_.get(), &read_data[0],
+                                            sizeof(kData), &fds));
+  EXPECT_EQ(1, fds.size());
 }
 
 }  // namespace

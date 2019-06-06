@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
@@ -43,8 +44,6 @@ class VSockProxy {
              ProxyFileSystem* proxy_file_system,
              base::ScopedFD vsock);
   ~VSockProxy();
-
-  ProxyFileSystem* proxy_file_system() { return proxy_file_system_; }
 
   // Registers the |fd| whose type is |fd_type| to watch.
   // Internally, this creates Stream object to read/write Message protocol
@@ -92,6 +91,7 @@ class VSockProxy {
   // to support rvalues. (At least, 3.5, or maybe 3.6).
   void OnClose(arc_proxy::Close* close);
   void OnData(arc_proxy::Data* data);
+  void OnDataInternal(arc_proxy::Data* data);
   void OnConnectRequest(arc_proxy::ConnectRequest* request);
   void OnConnectResponse(arc_proxy::ConnectResponse* response);
   void OnPreadRequest(arc_proxy::PreadRequest* request);
@@ -107,6 +107,11 @@ class VSockProxy {
   // Reads Message from the file descriptor corresponding to the |handle|,
   // and forwards to VSOCK connection.
   void OnLocalFileDesciptorReadReady(int64_t handle);
+
+  // Converts the given data to outgoing VSockMessage.
+  bool ConvertDataToVSockMessage(std::string blob,
+                                 std::vector<base::ScopedFD> fds,
+                                 arc_proxy::VSockMessage* message);
 
   // Returns a bland new cookie to start a sequence of operations.
   int64_t GenerateCookie();

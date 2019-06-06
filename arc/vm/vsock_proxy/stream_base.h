@@ -6,9 +6,12 @@
 #define ARC_VM_VSOCK_PROXY_STREAM_BASE_H_
 
 #include <stdint.h>
+#include <string>
+#include <vector>
+
+#include <base/files/scoped_file.h>
 
 namespace arc_proxy {
-class Data;
 class FstatResponse;
 class PreadResponse;
 class VSockMessage;
@@ -22,13 +25,19 @@ class StreamBase {
  public:
   virtual ~StreamBase() = default;
 
-  // Reads the message from the file descriptor. Returns true on success,
-  // and stores the read message in the |message|. Otherwise false.
-  virtual bool Read(arc_proxy::VSockMessage* message) = 0;
+  // Reads the message from the file descriptor.
+  // Returns a struct of error_code, where it is 0 on succeess or errno, blob
+  // and attached fds if available.
+  struct ReadResult {
+    int error_code;
+    std::string blob;
+    std::vector<base::ScopedFD> fds;
+  };
+  virtual ReadResult Read() = 0;
 
-  // Writes the serialized |data| to the file descriptor.
+  // Writes the given blob and file descriptors to the wrapped file descriptor.
   // Returns true iff the whole message is written.
-  virtual bool Write(arc_proxy::Data* data) = 0;
+  virtual bool Write(std::string blob, std::vector<base::ScopedFD> fds) = 0;
 
   // Reads |count| bytes from the stream starting at |offset|.
   // Returns whether pread() is supported or not.

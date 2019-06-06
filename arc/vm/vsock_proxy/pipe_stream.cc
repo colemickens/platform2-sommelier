@@ -4,15 +4,15 @@
 
 #include "arc/vm/vsock_proxy/pipe_stream.h"
 
+#include <errno.h>
 #include <unistd.h>
 
+#include <string>
 #include <utility>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
-
-#include "arc/vm/vsock_proxy/message.pb.h"
 
 namespace arc {
 
@@ -20,24 +20,27 @@ PipeStream::PipeStream(base::ScopedFD pipe_fd) : pipe_fd_(std::move(pipe_fd)) {}
 
 PipeStream::~PipeStream() = default;
 
-bool PipeStream::Read(arc_proxy::VSockMessage* message) {
-  char buf[4096];
-  ssize_t size = HANDLE_EINTR(read(pipe_fd_.get(), buf, sizeof(buf)));
+StreamBase::ReadResult PipeStream::Read() {
+  std::string buf;
+  buf.resize(4096);
+  ssize_t size = HANDLE_EINTR(read(pipe_fd_.get(), &buf[0], buf.size()));
   if (size < 0) {
+    int error_code = errno;
     PLOG(ERROR) << "Failed to read";
+    return {error_code, std::string(), {}};
+  }
+
+  buf.resize(size);
+  return {0, std::move(buf), {}};
+}
+
+bool PipeStream::Write(std::string blob, std::vector<base::ScopedFD> fds) {
+  if (!fds.empty()) {
+    LOG(ERROR) << "Cannot write file descriptors.";
     return false;
   }
 
-  if (size == 0)
-    message->mutable_close();
-  else
-    message->mutable_data()->set_blob(buf, size);
-  return true;
-}
-
-bool PipeStream::Write(arc_proxy::Data* data) {
   // WriteFileDescriptor takes care of the short write.
-  const auto& blob = data->blob();
   if (!base::WriteFileDescriptor(pipe_fd_.get(), blob.data(), blob.size())) {
     PLOG(ERROR) << "Failed to write";
     return false;

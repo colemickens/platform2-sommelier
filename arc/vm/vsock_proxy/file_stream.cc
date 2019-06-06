@@ -23,12 +23,12 @@ FileStream::FileStream(base::ScopedFD file_fd) : file_fd_(std::move(file_fd)) {}
 
 FileStream::~FileStream() = default;
 
-bool FileStream::Read(arc_proxy::VSockMessage* message) {
+StreamBase::ReadResult FileStream::Read() {
   LOG(ERROR) << "FileStream::Read is unsupported.";
-  return false;
+  return {EOPNOTSUPP, std::string(), {}};
 }
 
-bool FileStream::Write(arc_proxy::Data* data) {
+bool FileStream::Write(std::string blob, std::vector<base::ScopedFD> fds) {
   LOG(ERROR) << "FileStream::Write is unsupported.";
   return false;
 }

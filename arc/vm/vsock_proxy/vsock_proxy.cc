@@ -5,8 +5,14 @@
 #include "arc/vm/vsock_proxy/vsock_proxy.h"
 
 #include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
+#include <tuple>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
@@ -15,18 +21,17 @@
 #include "arc/vm/vsock_proxy/file_descriptor_util.h"
 #include "arc/vm/vsock_proxy/file_stream.h"
 #include "arc/vm/vsock_proxy/pipe_stream.h"
+#include "arc/vm/vsock_proxy/proxy_file_system.h"
 #include "arc/vm/vsock_proxy/socket_stream.h"
 
 namespace arc {
 namespace {
 
 std::unique_ptr<StreamBase> CreateStream(
-    base::ScopedFD fd,
-    arc_proxy::FileDescriptor::Type fd_type,
-    VSockProxy* proxy) {
+    base::ScopedFD fd, arc_proxy::FileDescriptor::Type fd_type) {
   switch (fd_type) {
     case arc_proxy::FileDescriptor::SOCKET:
-      return std::make_unique<SocketStream>(std::move(fd), proxy);
+      return std::make_unique<SocketStream>(std::move(fd));
     case arc_proxy::FileDescriptor::FIFO_READ:
     case arc_proxy::FileDescriptor::FIFO_WRITE:
       return std::make_unique<PipeStream>(std::move(fd));
@@ -75,7 +80,7 @@ int64_t VSockProxy::RegisterFileDescriptor(
       handle = next_handle_--;
   }
 
-  auto stream = CreateStream(std::move(fd), fd_type, this);
+  auto stream = CreateStream(std::move(fd), fd_type);
   std::unique_ptr<base::FileDescriptorWatcher::Controller> controller;
   if (fd_type != arc_proxy::FileDescriptor::REGULAR_FILE) {
     controller = base::FileDescriptorWatcher::WatchReadable(
@@ -213,10 +218,62 @@ void VSockProxy::OnData(arc_proxy::Data* data) {
     return;
   }
 
+  // First, create file descriptors for the received message.
+  std::vector<base::ScopedFD> transferred_fds;
+  transferred_fds.reserve(data->transferred_fd().size());
+  for (const auto& transferred_fd : data->transferred_fd()) {
+    base::ScopedFD local_fd;
+    base::ScopedFD remote_fd;
+    switch (transferred_fd.type()) {
+      case arc_proxy::FileDescriptor::FIFO_READ: {
+        auto created = CreatePipe();
+        if (!created)
+          return;
+        std::tie(remote_fd, local_fd) = std::move(*created);
+        break;
+      }
+      case arc_proxy::FileDescriptor::FIFO_WRITE: {
+        auto created = CreatePipe();
+        if (!created)
+          return;
+        std::tie(local_fd, remote_fd) = std::move(*created);
+        break;
+      }
+      case arc_proxy::FileDescriptor::SOCKET: {
+        auto created = CreateSocketPair();
+        if (!created)
+          return;
+        std::tie(local_fd, remote_fd) = std::move(*created);
+        break;
+      }
+      case arc_proxy::FileDescriptor::REGULAR_FILE: {
+        if (!proxy_file_system_)
+          return;
+        // Create a file descriptor which is handled by |proxy_file_system_|.
+        remote_fd = proxy_file_system_->RegisterHandle(transferred_fd.handle());
+        if (!remote_fd.is_valid())
+          return;
+        break;
+      }
+      default:
+        LOG(ERROR) << "Unsupported FD type: " << transferred_fd.type();
+        return;
+    }
+
+    // |local_fd| is set iff the descriptor's read readiness needs to be
+    // watched, so register it.
+    if (local_fd.is_valid()) {
+      RegisterFileDescriptor(std::move(local_fd), transferred_fd.type(),
+                             transferred_fd.handle());
+    }
+    transferred_fds.emplace_back(std::move(remote_fd));
+  }
+
   // TODO(b/123613033): Fix the error handling. Specifically, if the socket
   // buffer is full, EAGAIN will be returned. The case needs to be rescued
   // at least.
-  if (!it->second.stream->Write(data)) {
+  if (!it->second.stream->Write(std::move(*data->mutable_blob()),
+                                std::move(transferred_fds))) {
     LOG(ERROR) << "Failed to write to a file descriptor: handle="
                << data->handle();
   }
@@ -353,10 +410,18 @@ void VSockProxy::OnLocalFileDesciptorReadReady(int64_t handle) {
     return;
   }
 
+  auto read_result = it->second.stream->Read();
   arc_proxy::VSockMessage message;
-  if (!it->second.stream->Read(&message)) {
+  if (read_result.error_code != 0) {
     LOG(ERROR) << "Failed to read from file descriptor. handle=" << handle;
-    // Notify to the other side to close.
+    // Notify the other side to close.
+    message.mutable_close();
+  } else if (read_result.blob.empty() && read_result.fds.empty()) {
+    // Read empty message, i.e. reached EOF.
+    message.mutable_close();
+  } else if (!ConvertDataToVSockMessage(std::move(read_result.blob),
+                                        std::move(read_result.fds), &message)) {
+    // Failed to convert read result into proto.
     message.Clear();
     message.mutable_close();
   }
@@ -378,6 +443,77 @@ void VSockProxy::OnLocalFileDesciptorReadReady(int64_t handle) {
     fd_map_.clear();
     vsock_controller_.reset();
   }
+}
+
+bool VSockProxy::ConvertDataToVSockMessage(std::string blob,
+                                           std::vector<base::ScopedFD> fds,
+                                           arc_proxy::VSockMessage* message) {
+  DCHECK(!blob.empty() || !fds.empty());
+  // Validate file descriptor type before registering.
+  struct FileDescriptorAttr {
+    arc_proxy::FileDescriptor::Type type;
+    uint64_t size;
+  };
+  std::vector<FileDescriptorAttr> fd_attrs;
+  fd_attrs.reserve(fds.size());
+  for (const auto& fd : fds) {
+    struct stat st;
+    if (fstat(fd.get(), &st) == -1) {
+      PLOG(ERROR) << "Failed to fstat";
+      return false;
+    }
+
+    if (S_ISFIFO(st.st_mode)) {
+      int flags = fcntl(fd.get(), F_GETFL, 0);
+      if (flags < 0) {
+        PLOG(ERROR) << "Failed to find file status flags";
+        return false;
+      }
+      switch (flags & O_ACCMODE) {
+        case O_RDONLY:
+          fd_attrs.emplace_back(
+              FileDescriptorAttr{arc_proxy::FileDescriptor::FIFO_READ, 0});
+          break;
+        case O_WRONLY:
+          fd_attrs.emplace_back(
+              FileDescriptorAttr{arc_proxy::FileDescriptor::FIFO_WRITE, 0});
+          break;
+        default:
+          LOG(ERROR) << "Unsupported access mode: " << (flags & O_ACCMODE);
+          return false;
+      }
+      continue;
+    }
+    if (S_ISSOCK(st.st_mode)) {
+      fd_attrs.emplace_back(
+          FileDescriptorAttr{arc_proxy::FileDescriptor::SOCKET, 0});
+      continue;
+    }
+    if (S_ISREG(st.st_mode)) {
+      fd_attrs.emplace_back(
+          FileDescriptorAttr{arc_proxy::FileDescriptor::REGULAR_FILE,
+                             static_cast<uint64_t>(st.st_size)});
+      continue;
+    }
+
+    LOG(ERROR) << "Unsupported FD type: " << st.st_mode;
+    return false;
+  }
+  DCHECK_EQ(fds.size(), fd_attrs.size());
+
+  // Build returning message.
+  auto* data = message->mutable_data();
+  *data->mutable_blob() = std::move(blob);
+  for (size_t i = 0; i < fds.size(); ++i) {
+    int64_t handle = RegisterFileDescriptor(std::move(fds[i]), fd_attrs[i].type,
+                                            0 /* generate handle */);
+    auto* transferred_fd = data->add_transferred_fd();
+    transferred_fd->set_handle(handle);
+    transferred_fd->set_type(fd_attrs[i].type);
+    if (fd_attrs[i].type == arc_proxy::FileDescriptor::REGULAR_FILE)
+      transferred_fd->set_file_size(fd_attrs[i].size);
+  }
+  return true;
 }
 
 int64_t VSockProxy::GenerateCookie() {
