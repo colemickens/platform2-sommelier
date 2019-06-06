@@ -5,6 +5,8 @@
 #ifndef MIST_UDEV_LIST_ENTRY_H_
 #define MIST_UDEV_LIST_ENTRY_H_
 
+#include <memory>
+
 #include <base/macros.h>
 
 struct udev_list_entry;
@@ -22,13 +24,11 @@ class UdevListEntry {
 
   virtual ~UdevListEntry() = default;
 
-  // Wraps udev_list_entry_get_next(). The returned UdevListEntry object is not
-  // managed and should be deleted by the caller after use.
-  virtual UdevListEntry* GetNext() const;
+  // Wraps udev_list_entry_get_next().
+  virtual std::unique_ptr<UdevListEntry> GetNext() const;
 
-  // Wraps udev_list_entry_get_by_name(). The returned UdevListEntry object is
-  // not managed and should be deleted by the caller after use.
-  virtual UdevListEntry* GetByName(const char* name) const;
+  // Wraps udev_list_entry_get_by_name().
+  virtual std::unique_ptr<UdevListEntry> GetByName(const char* name) const;
 
   // Wraps udev_list_entry_get_name().
   virtual const char* GetName() const;

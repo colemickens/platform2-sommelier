@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+#include <memory>
+
 #include <base/macros.h>
 
 #include "mist/udev_list_entry.h"
@@ -29,14 +31,11 @@ class UdevDevice {
   // underlying udev_device struct by one.
   virtual ~UdevDevice();
 
-  // Wraps udev_device_get_parent(). The returned UdevDevice object is not
-  // managed and should be deleted by the caller after use.
-  virtual UdevDevice* GetParent() const;
+  // Wraps udev_device_get_parent().
+  virtual std::unique_ptr<UdevDevice> GetParent() const;
 
-  // Wraps udev_device_get_parent_with_subsystem_devtype(). The returned
-  // UdevDevice object is not managed and should be deleted by the caller after
-  // use.
-  virtual UdevDevice* GetParentWithSubsystemDeviceType(
+  // Wraps udev_device_get_parent_with_subsystem_devtype().
+  virtual std::unique_ptr<UdevDevice> GetParentWithSubsystemDeviceType(
       const char* subsystem, const char* device_type) const;
 
   // Wraps udev_device_get_is_initialized().
@@ -78,24 +77,20 @@ class UdevDevice {
   // Wraps udev_device_get_action().
   virtual const char* GetAction() const;
 
-  // Wraps udev_device_get_devlinks_list_entry(). The returned UdevListEntry
-  // object is not managed and should be deleted by the caller after use.
-  virtual UdevListEntry* GetDeviceLinksListEntry() const;
+  // Wraps udev_device_get_devlinks_list_entry().
+  virtual std::unique_ptr<UdevListEntry> GetDeviceLinksListEntry() const;
 
-  // Wraps udev_device_get_properties_list_entry(). The returned UdevListEntry
-  // object is not managed and should be deleted by the caller after use.
-  virtual UdevListEntry* GetPropertiesListEntry() const;
+  // Wraps udev_device_get_properties_list_entry().
+  virtual std::unique_ptr<UdevListEntry> GetPropertiesListEntry() const;
 
   // Wraps udev_device_get_property_value().
   virtual const char* GetPropertyValue(const char* key) const;
 
-  // Wraps udev_device_get_tags_list_entry(). The returned UdevListEntry
-  // object is not managed and should be deleted by the caller after use.
-  virtual UdevListEntry* GetTagsListEntry() const;
+  // Wraps udev_device_get_tags_list_entry().
+  virtual std::unique_ptr<UdevListEntry> GetTagsListEntry() const;
 
-  // Wraps udev_device_get_sysattr_list_entry(). The returned UdevListEntry
-  // object is not managed and should be deleted by the caller after use.
-  virtual UdevListEntry* GetSysAttributeListEntry() const;
+  // Wraps udev_device_get_sysattr_list_entry().
+  virtual std::unique_ptr<UdevListEntry> GetSysAttributeListEntry() const;
 
   // Wraps udev_device_get_sysattr_value().
   virtual const char* GetSysAttributeValue(const char* attribute) const;

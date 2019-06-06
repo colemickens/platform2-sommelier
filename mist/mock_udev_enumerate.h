@@ -5,6 +5,8 @@
 #ifndef MIST_MOCK_UDEV_ENUMERATE_H_
 #define MIST_MOCK_UDEV_ENUMERATE_H_
 
+#include <memory>
+
 #include <gmock/gmock.h>
 
 #include "mist/udev_enumerate.h"
@@ -29,7 +31,7 @@ class MockUdevEnumerate : public UdevEnumerate {
   MOCK_METHOD1(AddSysPath, bool(const char* sys_path));
   MOCK_METHOD0(ScanDevices, bool());
   MOCK_METHOD0(ScanSubsystems, bool());
-  MOCK_CONST_METHOD0(GetListEntry, UdevListEntry*());
+  MOCK_CONST_METHOD0(GetListEntry, std::unique_ptr<UdevListEntry>());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockUdevEnumerate);

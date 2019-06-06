@@ -5,6 +5,8 @@
 #ifndef MIST_MOCK_UDEV_DEVICE_H_
 #define MIST_MOCK_UDEV_DEVICE_H_
 
+#include <memory>
+
 #include <gmock/gmock.h>
 
 #include "mist/udev_device.h"
@@ -16,10 +18,10 @@ class MockUdevDevice : public UdevDevice {
   MockUdevDevice() = default;
   ~MockUdevDevice() override = default;
 
-  MOCK_CONST_METHOD0(GetParent, UdevDevice*());
+  MOCK_CONST_METHOD0(GetParent, std::unique_ptr<UdevDevice>());
   MOCK_CONST_METHOD2(GetParentWithSubsystemDeviceType,
-                     UdevDevice*(const char* subsystem,
-                                 const char* device_type));
+                     std::unique_ptr<UdevDevice>(const char* subsystem,
+                                                 const char* device_type));
   MOCK_CONST_METHOD0(IsInitialized, bool());
   MOCK_CONST_METHOD0(GetMicrosecondsSinceInitialized, uint64_t());
   MOCK_CONST_METHOD0(GetSequenceNumber, uint64_t());
@@ -33,11 +35,12 @@ class MockUdevDevice : public UdevDevice {
   MOCK_CONST_METHOD0(GetSysName, const char*());
   MOCK_CONST_METHOD0(GetSysNumber, const char*());
   MOCK_CONST_METHOD0(GetAction, const char*());
-  MOCK_CONST_METHOD0(GetDeviceLinksListEntry, UdevListEntry*());
-  MOCK_CONST_METHOD0(GetPropertiesListEntry, UdevListEntry*());
+  MOCK_CONST_METHOD0(GetDeviceLinksListEntry, std::unique_ptr<UdevListEntry>());
+  MOCK_CONST_METHOD0(GetPropertiesListEntry, std::unique_ptr<UdevListEntry>());
   MOCK_CONST_METHOD1(GetPropertyValue, const char*(const char* key));
-  MOCK_CONST_METHOD0(GetTagsListEntry, UdevListEntry*());
-  MOCK_CONST_METHOD0(GetSysAttributeListEntry, UdevListEntry*());
+  MOCK_CONST_METHOD0(GetTagsListEntry, std::unique_ptr<UdevListEntry>());
+  MOCK_CONST_METHOD0(GetSysAttributeListEntry,
+                     std::unique_ptr<UdevListEntry>());
   MOCK_CONST_METHOD1(GetSysAttributeValue, const char*(const char* attribute));
 
  private:

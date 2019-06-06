@@ -5,6 +5,8 @@
 #ifndef MIST_UDEV_ENUMERATE_H_
 #define MIST_UDEV_ENUMERATE_H_
 
+#include <memory>
+
 #include <base/macros.h>
 
 #include "mist/udev_list_entry.h"
@@ -62,9 +64,8 @@ class UdevEnumerate {
   // Wraps udev_enumerate_scan_subsystems(). Returns true on success.
   virtual bool ScanSubsystems();
 
-  // Wraps udev_enumerate_get_list_entry(). The returned UdevListEntry
-  // object is not managed and should be deleted by the caller after use.
-  virtual UdevListEntry* GetListEntry() const;
+  // Wraps udev_enumerate_get_list_entry().
+  virtual std::unique_ptr<UdevListEntry> GetListEntry() const;
 
  private:
   // Allows MockUdevEnumerate to invoke the private default constructor below.

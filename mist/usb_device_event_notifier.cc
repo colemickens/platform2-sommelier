@@ -50,7 +50,7 @@ UsbDeviceEventNotifier::~UsbDeviceEventNotifier() {
 }
 
 bool UsbDeviceEventNotifier::Initialize() {
-  udev_monitor_.reset(udev_->CreateMonitorFromNetlink("udev"));
+  udev_monitor_ = udev_->CreateMonitorFromNetlink("udev");
   if (!udev_monitor_) {
     LOG(ERROR) << "Could not create udev monitor.";
     return false;
@@ -82,7 +82,7 @@ bool UsbDeviceEventNotifier::Initialize() {
 }
 
 bool UsbDeviceEventNotifier::ScanExistingDevices() {
-  unique_ptr<UdevEnumerate> enumerate(udev_->CreateEnumerate());
+  unique_ptr<UdevEnumerate> enumerate = udev_->CreateEnumerate();
   if (!enumerate || !enumerate->AddMatchSubsystem("usb") ||
       !enumerate->AddMatchProperty("DEVTYPE", "usb_device") ||
       !enumerate->ScanDevices()) {
@@ -90,12 +90,12 @@ bool UsbDeviceEventNotifier::ScanExistingDevices() {
     return false;
   }
 
-  for (unique_ptr<UdevListEntry> list_entry(enumerate->GetListEntry());
-       list_entry; list_entry.reset(list_entry->GetNext())) {
+  for (unique_ptr<UdevListEntry> list_entry = enumerate->GetListEntry();
+       list_entry; list_entry = list_entry->GetNext()) {
     string sys_path = ConvertNullToEmptyString(list_entry->GetName());
 
-    unique_ptr<UdevDevice> device(
-        udev_->CreateDeviceFromSysPath(sys_path.c_str()));
+    unique_ptr<UdevDevice> device =
+        udev_->CreateDeviceFromSysPath(sys_path.c_str());
     if (!device)
       continue;
 
@@ -131,7 +131,7 @@ void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
   VLOG(3) << StringPrintf("File descriptor %d available for read.",
                           file_descriptor);
 
-  unique_ptr<UdevDevice> device(udev_monitor_->ReceiveDevice());
+  unique_ptr<UdevDevice> device = udev_monitor_->ReceiveDevice();
   if (!device) {
     LOG(WARNING) << "Ignore device event with no associated udev device.";
     return;

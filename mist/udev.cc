@@ -39,10 +39,10 @@ bool Udev::Initialize() {
 }
 
 // static
-UdevDevice* Udev::CreateDevice(udev_device* device) {
+std::unique_ptr<UdevDevice> Udev::CreateDevice(udev_device* device) {
   CHECK(device);
 
-  UdevDevice* device_to_return = new UdevDevice(device);
+  auto device_to_return = std::make_unique<UdevDevice>(device);
   CHECK(device_to_return);
 
   // UdevDevice increases the reference count of the udev_device struct by one.
@@ -53,7 +53,8 @@ UdevDevice* Udev::CreateDevice(udev_device* device) {
   return device_to_return;
 }
 
-UdevDevice* Udev::CreateDeviceFromSysPath(const char* sys_path) {
+std::unique_ptr<UdevDevice> Udev::CreateDeviceFromSysPath(
+    const char* sys_path) {
   udev_device* device = udev_device_new_from_syspath(udev_, sys_path);
   if (device)
     return CreateDevice(device);
@@ -65,7 +66,8 @@ UdevDevice* Udev::CreateDeviceFromSysPath(const char* sys_path) {
   return nullptr;
 }
 
-UdevDevice* Udev::CreateDeviceFromDeviceNumber(char type, dev_t device_number) {
+std::unique_ptr<UdevDevice> Udev::CreateDeviceFromDeviceNumber(
+    char type, dev_t device_number) {
   udev_device* device = udev_device_new_from_devnum(udev_, type, device_number);
   if (device)
     return CreateDevice(device);
@@ -77,8 +79,8 @@ UdevDevice* Udev::CreateDeviceFromDeviceNumber(char type, dev_t device_number) {
   return nullptr;
 }
 
-UdevDevice* Udev::CreateDeviceFromSubsystemSysName(const char* subsystem,
-                                                   const char* sys_name) {
+std::unique_ptr<UdevDevice> Udev::CreateDeviceFromSubsystemSysName(
+    const char* subsystem, const char* sys_name) {
   udev_device* device =
       udev_device_new_from_subsystem_sysname(udev_, subsystem, sys_name);
   if (device)
@@ -91,11 +93,10 @@ UdevDevice* Udev::CreateDeviceFromSubsystemSysName(const char* subsystem,
   return nullptr;
 }
 
-UdevEnumerate* Udev::CreateEnumerate() {
+std::unique_ptr<UdevEnumerate> Udev::CreateEnumerate() {
   udev_enumerate* enumerate = udev_enumerate_new(udev_);
   if (enumerate) {
-    UdevEnumerate* enumerate_to_return = new UdevEnumerate(enumerate);
-    CHECK(enumerate_to_return);
+    auto enumerate_to_return = std::make_unique<UdevEnumerate>(enumerate);
 
     // UdevEnumerate increases the reference count of the udev_enumerate struct
     // by one. Thus, decrease the reference count of the udev_enumerate struct
@@ -109,11 +110,10 @@ UdevEnumerate* Udev::CreateEnumerate() {
   return nullptr;
 }
 
-UdevMonitor* Udev::CreateMonitorFromNetlink(const char* name) {
+std::unique_ptr<UdevMonitor> Udev::CreateMonitorFromNetlink(const char* name) {
   udev_monitor* monitor = udev_monitor_new_from_netlink(udev_, name);
   if (monitor) {
-    UdevMonitor* monitor_to_return = new UdevMonitor(monitor);
-    CHECK(monitor_to_return);
+    auto monitor_to_return = std::make_unique<UdevMonitor>(monitor);
 
     // UdevMonitor increases the reference count of the udev_monitor struct by
     // one. Thus, decrease the reference count of the udev_monitor struct by one

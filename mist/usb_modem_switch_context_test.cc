@@ -4,6 +4,9 @@
 
 #include "mist/usb_modem_switch_context.h"
 
+#include <memory>
+#include <utility>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -13,8 +16,9 @@
 #include "mist/mock_udev_device.h"
 #include "mist/proto_bindings/usb_modem_info.pb.h"
 
-using testing::Return;
 using testing::_;
+using testing::ByMove;
+using testing::Return;
 
 namespace mist {
 
@@ -36,16 +40,15 @@ TEST(UsbModemSwitchContextTest, InitializeFromSysPath) {
   MockContext context;
   EXPECT_TRUE(context.Initialize());
 
-  MockUdevDevice* device = new MockUdevDevice();
-  // Ownership of |device| is transferred.
-  EXPECT_CALL(*context.GetMockUdev(), CreateDeviceFromSysPath(_))
-      .WillOnce(Return(device));
+  auto device = std::make_unique<MockUdevDevice>();
   EXPECT_CALL(*device, GetSysPath()).WillRepeatedly(Return(kFakeDeviceSysPath));
   EXPECT_CALL(*device, GetSysAttributeValue(_))
       .WillOnce(Return(kFakeDeviceBusNumberString))
       .WillOnce(Return(kFakeDeviceDeviceAddressString))
       .WillOnce(Return(kFakeDeviceVendorIdString))
       .WillOnce(Return(kFakeDeviceProductIdString));
+  EXPECT_CALL(*context.GetMockUdev(), CreateDeviceFromSysPath(_))
+      .WillOnce(Return(ByMove(std::move(device))));
 
   UsbModemInfo modem_info;
   EXPECT_CALL(*context.GetMockConfigLoader(),

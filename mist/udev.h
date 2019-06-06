@@ -7,6 +7,8 @@
 
 #include <sys/types.h>
 
+#include <memory>
+
 #include <base/macros.h>
 
 struct udev;
@@ -29,33 +31,30 @@ class Udev {
   // Returns true on success.
   virtual bool Initialize();
 
-  // Wraps udev_device_new_from_syspath(). The returned UdevDevice object is not
-  // managed and should be deleted by the caller after use.
-  virtual UdevDevice* CreateDeviceFromSysPath(const char* sys_path);
+  // Wraps udev_device_new_from_syspath().
+  virtual std::unique_ptr<UdevDevice> CreateDeviceFromSysPath(
+      const char* sys_path);
 
-  // Wraps udev_device_new_from_devnum(). The returned UdevDevice object is not
-  // managed and should be deleted by the caller after use.
-  virtual UdevDevice* CreateDeviceFromDeviceNumber(char type,
-                                                   dev_t device_number);
+  // Wraps udev_device_new_from_devnum().
+  virtual std::unique_ptr<UdevDevice> CreateDeviceFromDeviceNumber(
+      char type, dev_t device_number);
 
-  // Wraps udev_device_new_from_subsystem_sysname(). The returned UdevDevice
-  // object is not managed and should be deleted by the caller after use.
-  virtual UdevDevice* CreateDeviceFromSubsystemSysName(const char* subsystem,
-                                                       const char* sys_name);
+  // Wraps udev_device_new_from_subsystem_sysname().
+  virtual std::unique_ptr<UdevDevice> CreateDeviceFromSubsystemSysName(
+      const char* subsystem, const char* sys_name);
 
-  // Wraps udev_enumerate_new(). The returned UdevEnumerate object is not
-  // managed and should be deleted by the caller after use.
-  virtual UdevEnumerate* CreateEnumerate();
+  // Wraps udev_enumerate_new().
+  virtual std::unique_ptr<UdevEnumerate> CreateEnumerate();
 
-  // Wraps udev_monitor_new_from_netlink(). The returned UdevMonitor object is
-  // not managed and should be deleted by the caller after use.
-  virtual UdevMonitor* CreateMonitorFromNetlink(const char* name);
+  // Wraps udev_monitor_new_from_netlink().
+  virtual std::unique_ptr<UdevMonitor> CreateMonitorFromNetlink(
+      const char* name);
 
  private:
   // Creates a UdevDevice object that wraps a given udev_device struct pointed
   // by |device|. The ownership of |device| is transferred to returned
   // UdevDevice object.
-  static UdevDevice* CreateDevice(udev_device* device);
+  static std::unique_ptr<UdevDevice> CreateDevice(udev_device* device);
 
   udev* udev_;
 

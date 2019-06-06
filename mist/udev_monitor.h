@@ -5,6 +5,8 @@
 #ifndef MIST_UDEV_MONITOR_H_
 #define MIST_UDEV_MONITOR_H_
 
+#include <memory>
+
 #include <base/macros.h>
 
 struct udev_monitor;
@@ -37,9 +39,8 @@ class UdevMonitor {
   // Wraps udev_monitor_get_fd().
   virtual int GetFileDescriptor() const;
 
-  // Wraps udev_monitor_receive_device(). The returned UdevDevice object is not
-  // managed and should be deleted by the caller after use.
-  virtual UdevDevice* ReceiveDevice();
+  // Wraps udev_monitor_receive_device().
+  virtual std::unique_ptr<UdevDevice> ReceiveDevice();
 
   // Wraps udev_monitor_filter_add_match_subsystem_devtype(). Returns true on
   // success.

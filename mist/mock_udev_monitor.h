@@ -5,6 +5,8 @@
 #ifndef MIST_MOCK_UDEV_MONITOR_H_
 #define MIST_MOCK_UDEV_MONITOR_H_
 
+#include <memory>
+
 #include <gmock/gmock.h>
 
 #include "mist/udev_monitor.h"
@@ -19,7 +21,7 @@ class MockUdevMonitor : public UdevMonitor {
   MOCK_METHOD0(EnableReceiving, bool());
   MOCK_METHOD1(SetReceiveBufferSize, bool(int size));
   MOCK_CONST_METHOD0(GetFileDescriptor, int());
-  MOCK_METHOD0(ReceiveDevice, UdevDevice*());
+  MOCK_METHOD0(ReceiveDevice, std::unique_ptr<UdevDevice>());
   MOCK_METHOD2(FilterAddMatchSubsystemDeviceType,
                bool(const char* subsystem, const char* device_type));
   MOCK_METHOD1(FilterAddMatchTag, bool(const char* tag));

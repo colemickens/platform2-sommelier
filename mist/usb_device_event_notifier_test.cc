@@ -4,6 +4,8 @@
 
 #include "mist/usb_device_event_notifier.h"
 
+#include <utility>
+
 #include <gtest/gtest.h>
 
 #include "mist/event_dispatcher.h"
@@ -14,10 +16,11 @@
 #include "mist/mock_udev_monitor.h"
 #include "mist/mock_usb_device_event_observer.h"
 
+using testing::_;
+using testing::ByMove;
 using testing::InSequence;
 using testing::Return;
 using testing::StrEq;
-using testing::_;
 
 namespace mist {
 
@@ -164,24 +167,11 @@ TEST_F(UsbDeviceEventNotifierTest, GetDeviceAttributes) {
 }
 
 TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEvents) {
-  MockUdevMonitor* monitor = new MockUdevMonitor();
-  // Ownership of |monitor| is transferred.
-  notifier_.udev_monitor_.reset(monitor);
-
-  MockUdevDevice* device1 = new MockUdevDevice();
-  MockUdevDevice* device2 = new MockUdevDevice();
-  MockUdevDevice* device3 = new MockUdevDevice();
-  MockUdevDevice* device4 = new MockUdevDevice();
-  // Ownership of |device*| is transferred.
-  EXPECT_CALL(*monitor, ReceiveDevice())
-      .WillOnce(Return(device1))
-      .WillOnce(Return(device2))
-      .WillOnce(Return(device3))
-      .WillOnce(Return(device4));
-
+  auto device1 = std::make_unique<MockUdevDevice>();
   EXPECT_CALL(*device1, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
   EXPECT_CALL(*device1, GetAction()).WillOnce(Return(kUdevActionAdd));
 
+  auto device2 = std::make_unique<MockUdevDevice>();
   EXPECT_CALL(*device2, GetSysPath()).WillOnce(Return(kFakeUsbDevice2SysPath));
   EXPECT_CALL(*device2, GetAction()).WillOnce(Return(kUdevActionAdd));
   EXPECT_CALL(*device2, GetSysAttributeValue(_))
@@ -190,11 +180,21 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEvents) {
       .WillOnce(Return(kFakeUsbDevice2VendorIdString))
       .WillOnce(Return(kFakeUsbDevice2ProductIdString));
 
+  auto device3 = std::make_unique<MockUdevDevice>();
   EXPECT_CALL(*device3, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
   EXPECT_CALL(*device3, GetAction()).WillOnce(Return(kUdevActionRemove));
 
+  auto device4 = std::make_unique<MockUdevDevice>();
   EXPECT_CALL(*device4, GetSysPath()).WillOnce(Return(kFakeUsbDevice2SysPath));
   EXPECT_CALL(*device4, GetAction()).WillOnce(Return(kUdevActionRemove));
+
+  auto monitor = std::make_unique<MockUdevMonitor>();
+  EXPECT_CALL(*monitor, ReceiveDevice())
+      .WillOnce(Return(ByMove(std::move(device1))))
+      .WillOnce(Return(ByMove(std::move(device2))))
+      .WillOnce(Return(ByMove(std::move(device3))))
+      .WillOnce(Return(ByMove(std::move(device4))));
+  notifier_.udev_monitor_ = std::move(monitor);
 
   EXPECT_CALL(
       observer_,
@@ -212,75 +212,59 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEvents) {
 }
 
 TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventNotAddOrRemove) {
-  MockUdevMonitor* monitor = new MockUdevMonitor();
-  // Ownership of |monitor| is transferred.
-  notifier_.udev_monitor_.reset(monitor);
-
-  MockUdevDevice* device = new MockUdevDevice();
-  // Ownership of |device| is transferred.
-  EXPECT_CALL(*monitor, ReceiveDevice()).WillOnce(Return(device));
-
+  auto device = std::make_unique<MockUdevDevice>();
   EXPECT_CALL(*device, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
   EXPECT_CALL(*device, GetAction()).WillOnce(Return(kUdevActionChange));
 
+  auto monitor = std::make_unique<MockUdevMonitor>();
+  EXPECT_CALL(*monitor, ReceiveDevice())
+      .WillOnce(Return(ByMove(std::move(device))));
+  notifier_.udev_monitor_ = std::move(monitor);
+
   EXPECT_CALL(observer_, OnUsbDeviceAdded(_, _, _, _, _)).Times(0);
   EXPECT_CALL(observer_, OnUsbDeviceRemoved(_)).Times(0);
-
   notifier_.AddObserver(&observer_);
   notifier_.OnFileCanReadWithoutBlocking(kFakeUdevMonitorFileDescriptor);
 }
 
 TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidBusNumber) {
-  MockUdevMonitor* monitor = new MockUdevMonitor();
-  // Ownership of |monitor| is transferred.
-  notifier_.udev_monitor_.reset(monitor);
-
-  MockUdevDevice* device = new MockUdevDevice();
-  // Ownership of |device| is transferred.
-  EXPECT_CALL(*monitor, ReceiveDevice()).WillOnce(Return(device));
-
+  auto device = std::make_unique<MockUdevDevice>();
   EXPECT_CALL(*device, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
   EXPECT_CALL(*device, GetAction()).WillOnce(Return(kUdevActionAdd));
   EXPECT_CALL(*device, GetSysAttributeValue(_)).WillOnce(Return(""));
 
+  auto monitor = std::make_unique<MockUdevMonitor>();
+  EXPECT_CALL(*monitor, ReceiveDevice())
+      .WillOnce(Return(ByMove(std::move(device))));
+  notifier_.udev_monitor_ = std::move(monitor);
+
   EXPECT_CALL(observer_, OnUsbDeviceAdded(_, _, _, _, _)).Times(0);
   EXPECT_CALL(observer_, OnUsbDeviceRemoved(_)).Times(0);
-
   notifier_.AddObserver(&observer_);
   notifier_.OnFileCanReadWithoutBlocking(kFakeUdevMonitorFileDescriptor);
 }
 
 TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidDeviceAddress) {
-  MockUdevMonitor* monitor = new MockUdevMonitor();
-  // Ownership of |monitor| is transferred.
-  notifier_.udev_monitor_.reset(monitor);
-
-  MockUdevDevice* device = new MockUdevDevice();
-  // Ownership of |device| is transferred.
-  EXPECT_CALL(*monitor, ReceiveDevice()).WillOnce(Return(device));
-
+  auto device = std::make_unique<MockUdevDevice>();
   EXPECT_CALL(*device, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
   EXPECT_CALL(*device, GetAction()).WillOnce(Return(kUdevActionAdd));
   EXPECT_CALL(*device, GetSysAttributeValue(_))
       .WillOnce(Return(kFakeUsbDevice1BusNumberString))
       .WillOnce(Return(""));
 
+  auto monitor = std::make_unique<MockUdevMonitor>();
+  EXPECT_CALL(*monitor, ReceiveDevice())
+      .WillOnce(Return(ByMove(std::move(device))));
+  notifier_.udev_monitor_ = std::move(monitor);
+
   EXPECT_CALL(observer_, OnUsbDeviceAdded(_, _, _, _, _)).Times(0);
   EXPECT_CALL(observer_, OnUsbDeviceRemoved(_)).Times(0);
-
   notifier_.AddObserver(&observer_);
   notifier_.OnFileCanReadWithoutBlocking(kFakeUdevMonitorFileDescriptor);
 }
 
 TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidVendorId) {
-  MockUdevMonitor* monitor = new MockUdevMonitor();
-  // Ownership of |monitor| is transferred.
-  notifier_.udev_monitor_.reset(monitor);
-
-  MockUdevDevice* device = new MockUdevDevice();
-  // Ownership of |device| is transferred.
-  EXPECT_CALL(*monitor, ReceiveDevice()).WillOnce(Return(device));
-
+  auto device = std::make_unique<MockUdevDevice>();
   EXPECT_CALL(*device, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
   EXPECT_CALL(*device, GetAction()).WillOnce(Return(kUdevActionAdd));
   EXPECT_CALL(*device, GetSysAttributeValue(_))
@@ -288,22 +272,19 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidVendorId) {
       .WillOnce(Return(kFakeUsbDevice1DeviceAddressString))
       .WillOnce(Return(""));
 
+  auto monitor = std::make_unique<MockUdevMonitor>();
+  EXPECT_CALL(*monitor, ReceiveDevice())
+      .WillOnce(Return(ByMove(std::move(device))));
+  notifier_.udev_monitor_ = std::move(monitor);
+
   EXPECT_CALL(observer_, OnUsbDeviceAdded(_, _, _, _, _)).Times(0);
   EXPECT_CALL(observer_, OnUsbDeviceRemoved(_)).Times(0);
-
   notifier_.AddObserver(&observer_);
   notifier_.OnFileCanReadWithoutBlocking(kFakeUdevMonitorFileDescriptor);
 }
 
 TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidProductId) {
-  MockUdevMonitor* monitor = new MockUdevMonitor();
-  // Ownership of |monitor| is transferred.
-  notifier_.udev_monitor_.reset(monitor);
-
-  MockUdevDevice* device = new MockUdevDevice();
-  // Ownership of |device| is transferred.
-  EXPECT_CALL(*monitor, ReceiveDevice()).WillOnce(Return(device));
-
+  auto device = std::make_unique<MockUdevDevice>();
   EXPECT_CALL(*device, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
   EXPECT_CALL(*device, GetAction()).WillOnce(Return(kUdevActionAdd));
   EXPECT_CALL(*device, GetSysAttributeValue(_))
@@ -312,48 +293,57 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidProductId) {
       .WillOnce(Return(kFakeUsbDevice1VendorIdString))
       .WillOnce(Return(""));
 
+  auto monitor = std::make_unique<MockUdevMonitor>();
+  EXPECT_CALL(*monitor, ReceiveDevice())
+      .WillOnce(Return(ByMove(std::move(device))));
+  notifier_.udev_monitor_ = std::move(monitor);
+
   EXPECT_CALL(observer_, OnUsbDeviceAdded(_, _, _, _, _)).Times(0);
   EXPECT_CALL(observer_, OnUsbDeviceRemoved(_)).Times(0);
-
   notifier_.AddObserver(&observer_);
   notifier_.OnFileCanReadWithoutBlocking(kFakeUdevMonitorFileDescriptor);
 }
 
 TEST_F(UsbDeviceEventNotifierTest, ScanExistingDevices) {
-  // Ownership of |enumerate|, |list_entry*|, and |device*| is transferred
-  // to and managed inside ScanExistingDevices().
-  MockUdevEnumerate* enumerate = new MockUdevEnumerate();
-  MockUdevListEntry* list_entry1 = new MockUdevListEntry();
-  MockUdevListEntry* list_entry2 = new MockUdevListEntry();
-  MockUdevDevice* device1 = new MockUdevDevice();
-  MockUdevDevice* device2 = new MockUdevDevice();
+  auto list_entry2 = std::make_unique<MockUdevListEntry>();
+  EXPECT_CALL(*list_entry2, GetName()).WillOnce(Return(kFakeUsbDevice2SysPath));
+  EXPECT_CALL(*list_entry2, GetNext()).WillOnce(Return(ByMove(nullptr)));
 
-  EXPECT_CALL(udev_, CreateEnumerate()).WillOnce(Return(enumerate));
+  auto list_entry1 = std::make_unique<MockUdevListEntry>();
+  EXPECT_CALL(*list_entry1, GetName()).WillOnce(Return(kFakeUsbDevice1SysPath));
+  EXPECT_CALL(*list_entry1, GetNext())
+      .WillOnce(Return(ByMove(std::move(list_entry2))));
+
+  auto enumerate = std::make_unique<MockUdevEnumerate>();
   EXPECT_CALL(*enumerate, AddMatchSubsystem(StrEq("usb")))
       .WillOnce(Return(true));
   EXPECT_CALL(*enumerate,
               AddMatchProperty(StrEq("DEVTYPE"), StrEq("usb_device")))
       .WillOnce(Return(true));
   EXPECT_CALL(*enumerate, ScanDevices()).WillOnce(Return(true));
-  EXPECT_CALL(*enumerate, GetListEntry()).WillOnce(Return(list_entry1));
-  EXPECT_CALL(*list_entry1, GetName()).WillOnce(Return(kFakeUsbDevice1SysPath));
-  EXPECT_CALL(*list_entry1, GetNext()).WillOnce(Return(list_entry2));
-  EXPECT_CALL(*list_entry2, GetName()).WillOnce(Return(kFakeUsbDevice2SysPath));
-  EXPECT_CALL(*list_entry2, GetNext())
-      .WillOnce(Return(static_cast<UdevListEntry*>(nullptr)));
-  EXPECT_CALL(udev_, CreateDeviceFromSysPath(_))
-      .WillOnce(Return(device1))
-      .WillOnce(Return(device2));
+  EXPECT_CALL(*enumerate, GetListEntry())
+      .WillOnce(Return(ByMove(std::move(list_entry1))));
+
+  EXPECT_CALL(udev_, CreateEnumerate())
+      .WillOnce(Return(ByMove(std::move(enumerate))));
+
+  auto device1 = std::make_unique<MockUdevDevice>();
   EXPECT_CALL(*device1, GetSysAttributeValue(_))
       .WillOnce(Return(kFakeUsbDevice1BusNumberString))
       .WillOnce(Return(kFakeUsbDevice1DeviceAddressString))
       .WillOnce(Return(kFakeUsbDevice1VendorIdString))
       .WillOnce(Return(kFakeUsbDevice1ProductIdString));
+
+  auto device2 = std::make_unique<MockUdevDevice>();
   EXPECT_CALL(*device2, GetSysAttributeValue(_))
       .WillOnce(Return(kFakeUsbDevice2BusNumberString))
       .WillOnce(Return(kFakeUsbDevice2DeviceAddressString))
       .WillOnce(Return(kFakeUsbDevice2VendorIdString))
       .WillOnce(Return(kFakeUsbDevice2ProductIdString));
+
+  EXPECT_CALL(udev_, CreateDeviceFromSysPath(_))
+      .WillOnce(Return(ByMove(std::move(device1))))
+      .WillOnce(Return(ByMove(std::move(device2))));
 
   InSequence sequence;
   EXPECT_CALL(

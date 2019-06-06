@@ -151,9 +151,9 @@ bool UdevEnumerate::ScanSubsystems() {
   return false;
 }
 
-UdevListEntry* UdevEnumerate::GetListEntry() const {
+std::unique_ptr<UdevListEntry> UdevEnumerate::GetListEntry() const {
   udev_list_entry* list_entry = udev_enumerate_get_list_entry(enumerate_);
-  return list_entry ? new UdevListEntry(list_entry) : nullptr;
+  return list_entry ? std::make_unique<UdevListEntry>(list_entry) : nullptr;
 }
 
 }  // namespace mist
