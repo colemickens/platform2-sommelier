@@ -29,6 +29,7 @@
 #include <chaps/pkcs11/cryptoki.h>
 #include <chaps/token_manager_client.h>
 #include <brillo/cryptohome.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
@@ -249,7 +250,8 @@ bool Pkcs11KeyStore::Register(const std::string& username,
     return false;
   }
   std::string modulus(RSA_size(public_key.get()), 0);
-  const BIGNUM* n = public_key->n;
+  const BIGNUM* n;
+  RSA_get0_key(public_key.get(), &n, nullptr, nullptr);
   int length = BN_bn2bin(
       n, reinterpret_cast<unsigned char*>(base::data(modulus)));
   if (length <= 0) {
@@ -568,12 +570,13 @@ bool Pkcs11KeyStore::GetCertificateFields(const std::string& certificate,
   const unsigned char* asn1_ptr =
       reinterpret_cast<const unsigned char*>(certificate.data());
   ScopedX509 x509(d2i_X509(nullptr, &asn1_ptr, certificate.size()));
-  if (!x509.get() || !x509->cert_info || !x509->cert_info->subject) {
+  if (!x509) {
     LOG(WARNING) << "Pkcs11KeyStore: Failed to decode certificate.";
     return false;
   }
   unsigned char* subject_buffer = nullptr;
-  int length = i2d_X509_NAME(x509->cert_info->subject, &subject_buffer);
+  int length = i2d_X509_NAME(X509_get_subject_name(x509.get()),
+                             &subject_buffer);
   crypto::ScopedOpenSSLBytes scoped_subject_buffer(subject_buffer);
   if (length <= 0) {
     LOG(WARNING) << "Pkcs11KeyStore: Failed to encode certificate subject.";
@@ -582,7 +585,7 @@ bool Pkcs11KeyStore::GetCertificateFields(const std::string& certificate,
   subject->assign(reinterpret_cast<char*>(subject_buffer), length);
 
   unsigned char* issuer_buffer = nullptr;
-  length = i2d_X509_NAME(x509->cert_info->issuer, &issuer_buffer);
+  length = i2d_X509_NAME(X509_get_issuer_name(x509.get()), &issuer_buffer);
   crypto::ScopedOpenSSLBytes scoped_issuer_buffer(issuer_buffer);
   if (length <= 0) {
     LOG(WARNING) << "Pkcs11KeyStore: Failed to encode certificate issuer.";
@@ -591,8 +594,10 @@ bool Pkcs11KeyStore::GetCertificateFields(const std::string& certificate,
   issuer->assign(reinterpret_cast<char*>(issuer_buffer), length);
 
   unsigned char* serial_number_buffer = nullptr;
-  length =
-      i2d_ASN1_INTEGER(x509->cert_info->serialNumber, &serial_number_buffer);
+  // TODO(djkurtz): Use X509_get0_serialNumber once i2d_ASN1_INTEGER is
+  // constified.
+  length = i2d_ASN1_INTEGER(X509_get_serialNumber(x509.get()),
+                            &serial_number_buffer);
   crypto::ScopedOpenSSLBytes scoped_serial_number_buffer(serial_number_buffer);
   if (length <= 0) {
     LOG(WARNING) << "Pkcs11KeyStore: Failed to encode certificate serial "

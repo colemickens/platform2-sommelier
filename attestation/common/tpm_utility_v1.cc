@@ -24,6 +24,7 @@
 #include <base/sha1.h>
 #include <base/stl_util.h>
 #include <brillo/secure_blob.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <openssl/rsa.h>
@@ -1156,8 +1157,10 @@ bool TpmUtilityV1::GetRSAPublicKeyFromTpmPublicKey(
     LOG(ERROR) << "Failed to convert public key to BIGNUM.";
     return false;
   }
-  rsa->n = n.release();
-  rsa->e = e.release();
+  if (!RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr)) {
+    LOG(ERROR) << ": Failed to set exponent or modulus.";
+    return false;
+  }
 
   // DER encode.
   int der_length = i2d_RSAPublicKey(rsa.get(), nullptr);
@@ -1205,7 +1208,8 @@ bool TpmUtilityV1::GetEndorsementPublicKeyModulus(KeyType key_type,
     return false;
   }
   std::vector<uint8_t> modulus_bytes(modulus_bytes_length);
-  const BIGNUM* n = public_key->n;
+  const BIGNUM* n;
+  RSA_get0_key(public_key.get(), &n, nullptr, nullptr);
   int output_length = BN_bn2bin(n, modulus_bytes.data());
   if (output_length != modulus_bytes_length) {
     LOG(ERROR) << __func__ << ": Bad length returned by BN_bn2bin: got "
@@ -1278,7 +1282,8 @@ bool TpmUtilityV1::MakeIdentity(std::string* identity_public_key_der,
     return false;
   }
   unsigned char modulus_buffer[kDefaultTpmRsaKeyBits / 8];
-  const BIGNUM* n = fake_pca_key->n;
+  const BIGNUM* n;
+  RSA_get0_key(fake_pca_key.get(), &n, NULL, NULL);
   if (BN_bn2bin(n, modulus_buffer) != RSA_size(fake_pca_key.get())) {
     LOG(ERROR) << "MakeIdentity: Failed to convert modulus from BIGNUM.";
     return false;

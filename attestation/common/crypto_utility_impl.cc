@@ -24,6 +24,7 @@
 #include <base/sha1.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/secure_util.h>
 #include <crypto/sha2.h>
@@ -75,8 +76,10 @@ crypto::ScopedRSA CreateRSAFromHexModulus(const std::string& hex_modulus) {
     LOG(ERROR) << __func__ << ": Failed to generate exponent or modulus.";
     return nullptr;
   }
-  rsa->n = n.release();
-  rsa->e = e.release();
+  if (!RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr)) {
+    LOG(ERROR) << __func__ << ": Failed to set exponent or modulus.";
+    return nullptr;
+  }
   return rsa;
 }
 
@@ -419,7 +422,12 @@ bool CryptoUtilityImpl::VerifySignatureInner(
     return false;
   }
 
-  crypto::ScopedEVP_MD_CTX mdctx(EVP_MD_CTX_create());
+  crypto::ScopedEVP_MD_CTX mdctx(EVP_MD_CTX_new());
+  if (!mdctx) {
+    LOG(ERROR) << __func__ << ": Failed to allocate EVP_MD_CTX: "
+               << GetOpenSSLError();
+    return false;
+  }
   if (!EVP_DigestVerifyInit(mdctx.get(), nullptr, md, nullptr, pubkey.get())) {
     LOG(ERROR) << __func__ << ": Failed to initialize verifying process: "
                << GetOpenSSLError();
@@ -485,30 +493,31 @@ bool CryptoUtilityImpl::AesEncrypt(const EVP_CIPHER* cipher,
   auto output_buffer =
       reinterpret_cast<unsigned char*>(base::data(*encrypted_data));
   int output_size = 0;
-  EVP_CIPHER_CTX encryption_context;
-  EVP_CIPHER_CTX_init(&encryption_context);
-  if (!EVP_EncryptInit_ex(&encryption_context, cipher, nullptr, key_buffer,
+  crypto::ScopedEVP_CIPHER_CTX encryption_context(EVP_CIPHER_CTX_new());
+  if (!encryption_context) {
+    LOG(ERROR) << __func__ << ": " << GetOpenSSLError();
+    return false;
+  }
+  if (!EVP_EncryptInit_ex(encryption_context.get(), cipher, nullptr, key_buffer,
                           iv_buffer)) {
     LOG(ERROR) << __func__ << ": " << GetOpenSSLError();
     return false;
   }
-  if (!EVP_EncryptUpdate(&encryption_context, output_buffer, &output_size,
+  if (!EVP_EncryptUpdate(encryption_context.get(), output_buffer, &output_size,
                          input_buffer, data.size())) {
     LOG(ERROR) << __func__ << ": " << GetOpenSSLError();
-    EVP_CIPHER_CTX_cleanup(&encryption_context);
     return false;
   }
   size_t total_size = output_size;
   output_buffer += output_size;
   output_size = 0;
-  if (!EVP_EncryptFinal_ex(&encryption_context, output_buffer, &output_size)) {
+  if (!EVP_EncryptFinal_ex(encryption_context.get(), output_buffer,
+                           &output_size)) {
     LOG(ERROR) << __func__ << ": " << GetOpenSSLError();
-    EVP_CIPHER_CTX_cleanup(&encryption_context);
     return false;
   }
   total_size += output_size;
   encrypted_data->resize(total_size);
-  EVP_CIPHER_CTX_cleanup(&encryption_context);
   return true;
 }
 
@@ -536,30 +545,31 @@ bool CryptoUtilityImpl::AesDecrypt(const EVP_CIPHER* cipher,
   data->resize(encrypted_data.size());
   unsigned char* output_buffer = StringAsOpenSSLBuffer(data);
   int output_size = 0;
-  EVP_CIPHER_CTX decryption_context;
-  EVP_CIPHER_CTX_init(&decryption_context);
-  if (!EVP_DecryptInit_ex(&decryption_context, cipher, nullptr, key_buffer,
+  crypto::ScopedEVP_CIPHER_CTX decryption_context(EVP_CIPHER_CTX_new());
+  if (!decryption_context) {
+    LOG(ERROR) << __func__ << ": " << GetOpenSSLError();
+    return false;
+  }
+  if (!EVP_DecryptInit_ex(decryption_context.get(), cipher, nullptr, key_buffer,
                           iv_buffer)) {
     LOG(ERROR) << __func__ << ": " << GetOpenSSLError();
     return false;
   }
-  if (!EVP_DecryptUpdate(&decryption_context, output_buffer, &output_size,
+  if (!EVP_DecryptUpdate(decryption_context.get(), output_buffer, &output_size,
                          input_buffer, encrypted_data.size())) {
     LOG(ERROR) << __func__ << ": " << GetOpenSSLError();
-    EVP_CIPHER_CTX_cleanup(&decryption_context);
     return false;
   }
   size_t total_size = output_size;
   output_buffer += output_size;
   output_size = 0;
-  if (!EVP_DecryptFinal_ex(&decryption_context, output_buffer, &output_size)) {
+  if (!EVP_DecryptFinal_ex(decryption_context.get(), output_buffer,
+                           &output_size)) {
     LOG(ERROR) << __func__ << ": " << GetOpenSSLError();
-    EVP_CIPHER_CTX_cleanup(&decryption_context);
     return false;
   }
   total_size += output_size;
   data->resize(total_size);
-  EVP_CIPHER_CTX_cleanup(&decryption_context);
   return true;
 }
 
@@ -838,7 +848,11 @@ bool CryptoUtilityImpl::CreateSPKAC(const std::string& key_blob,
   // Be explicit that there are zero unused bits; otherwise i2d below will
   // automatically detect unused bits but signatures require zero unused bits.
   spki.get()->signature->flags = ASN1_STRING_FLAG_BITS_LEFT;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
   X509_ALGOR* sig_algor = spki.get()->sig_algor;
+#else
+  X509_ALGOR* sig_algor = &spki.get()->sig_algor;
+#endif
   X509_ALGOR_set0(sig_algor,
                   OBJ_nid2obj(NID_sha256WithRSAEncryption),
                   V_ASN1_NULL,
@@ -902,7 +916,8 @@ bool CryptoUtilityImpl::GetCertificateSubjectPublicKeyInfo(
   }
 
   unsigned char* pubkey_buffer = nullptr;
-  int length = i2d_X509_PUBKEY(x509.get()->cert_info->key, &pubkey_buffer);
+  int length = i2d_X509_PUBKEY(X509_get_X509_PUBKEY(x509.get()),
+                               &pubkey_buffer);
   if (length < 0) {
     LOG(ERROR) << __func__
                << ": Failed to dump SubjectPublicKeyInfo from cert.";
@@ -958,7 +973,7 @@ bool CryptoUtilityImpl::GetCertificateIssuerName(
     return false;
   }
   char issuer_buf[100];  // A longer CN will truncate.
-  X509_NAME_get_text_by_NID(x509.get()->cert_info->issuer,
+  X509_NAME_get_text_by_NID(X509_get_issuer_name(x509.get()),
                             NID_commonName,
                             issuer_buf,
                             arraysize(issuer_buf));
@@ -976,7 +991,8 @@ bool CryptoUtilityImpl::GetKeyDigest(
     return false;
   }
   std::vector<unsigned char> modulus(RSA_size(rsa.get()));
-  const BIGNUM* n = rsa->n;
+  const BIGNUM* n;
+  RSA_get0_key(rsa.get(), &n, nullptr, nullptr);
   if (BN_bn2bin(n, modulus.data()) != modulus.size()) {
     LOG(ERROR) << __func__ << ": Failed to extract modulus.";
     return false;

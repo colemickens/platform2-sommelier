@@ -23,6 +23,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/optional.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <openssl/rsa.h>
@@ -80,8 +81,10 @@ crypto::ScopedRSA CreateRSAFromRawModulus(const uint8_t* modulus_buffer,
     return nullptr;
   }
 
-  rsa->n = n.release();
-  rsa->e = e.release();
+  if (!RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr)) {
+    LOG(ERROR) << __func__ << ": Failed to set exponent or modulus.";
+    return nullptr;
+  }
 
   return rsa;
 }
@@ -208,14 +211,11 @@ crypto::ScopedECDSA_SIG CreateEcdsaSigFromRS(std::string r, std::string s) {
     return nullptr;
   }
 
-  // ECDSA_SIG_new populates ECDSA_SIG with two newly allocated BIGNUMs. We
-  // need to free them before replacing them with new ones created by
-  // ConvertToBIGNUM.
-  // TODO(menghuan): use ECDSA_SIG_set0() after upgrading to OpenSSL 1.1.0
-  BN_free(sig->r);
-  BN_free(sig->s);
-  sig->r = r_bn.release();
-  sig->s = s_bn.release();
+  if (!ECDSA_SIG_set0(sig.get(), r_bn.release(), s_bn.release())) {
+    LOG(ERROR) << __func__ << ": Failed to set ECDSA SIG parameters";
+    return nullptr;
+  }
+
   return sig;
 }
 
