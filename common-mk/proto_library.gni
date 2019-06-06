@@ -2,9 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO: Fix the visibility on the static_library.
-# gnlint: disable=GnLintVisibilityFlags
-
 # Compile protocol buffers.
 #
 # Paramaeters:
@@ -162,6 +159,9 @@ template("proto_library") {
       configs -= [ "//common-mk:use_thin_archive" ]
       configs += [
         "//common-mk:nouse_thin_archive",
+
+        # Generated code. Cannot modify individual symbol attributes there easily.
+        # gnlint: disable=GnLintVisibilityFlags
         "//common-mk:visibility_default",
       ]
     }
