@@ -513,24 +513,37 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
                                       std::string* public_key_tpm_format,
                                       std::string* key_info,
                                       std::string* proof) {
-  if (key_type != KEY_TYPE_RSA) {
-    LOG(ERROR) << __func__ << ": Not implemented.";
-    return false;
-  }
-
   std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
       trunks_factory_->GetPasswordAuthorization(std::string());
   trunks::TpmUtility::AsymmetricKeyUsage trunks_key_usage =
       (key_usage == KEY_USAGE_SIGN) ? trunks::TpmUtility::kSignKey
                                     : trunks::TpmUtility::kDecryptKey;
-  TPM_RC result = trunks_utility_->CreateRSAKeyPair(
-      trunks_key_usage, 2048 /* modulus_bits */,
-      0 /* Use default public exponent */, std::string() /* password */,
-      std::string() /* policy_digest */,
-      false /* use_only_policy_authorization */,
-      std::vector<uint32_t>() /* creation_pcr_indexes */,
-      empty_password_authorization.get(), key_blob,
-      nullptr /* creation_blob */);
+
+  TPM_RC result;
+  switch (key_type) {
+    case KEY_TYPE_RSA:
+      result = trunks_utility_->CreateRSAKeyPair(
+          trunks_key_usage, 2048 /* modulus_bits */,
+          0 /* Use default public exponent */, std::string() /* password */,
+          std::string() /* policy_digest */,
+          false /* use_only_policy_authorization */,
+          std::vector<uint32_t>() /* creation_pcr_indexes */,
+          empty_password_authorization.get(), key_blob,
+          nullptr /* creation_blob */);
+      break;
+    case KEY_TYPE_ECC:
+      result = trunks_utility_->CreateECCKeyPair(
+          trunks_key_usage, trunks::TPM_ECC_NIST_P256 /* curve_id */,
+          std::string() /* password */, std::string() /* policy_digest */,
+          false /* use_only_policy_authorization */,
+          std::vector<uint32_t>() /* creation_pcr_indexes */,
+          empty_password_authorization.get(), key_blob,
+          nullptr /* creation_blob */);
+      break;
+    default:
+      LOG(ERROR) << __func__ << ": Not implemented.";
+      return false;
+  }
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__
                << ": Failed to create key: " << trunks::GetErrorString(result);
@@ -569,8 +582,17 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
                << trunks::GetErrorString(result);
     return false;
   }
-  *public_key_der =
-      RSAPublicKeyToString(GetRsaPublicKeyFromTpmPublicArea(public_area));
+
+  switch (key_type) {
+    case KEY_TYPE_RSA:
+      *public_key_der =
+          RSAPublicKeyToString(GetRsaPublicKeyFromTpmPublicArea(public_area));
+      break;
+    case KEY_TYPE_ECC:
+      *public_key_der = EccSubjectPublicKeyInfoToString(
+          GetEccPublicKeyFromTpmPublicArea(public_area));
+      break;
+  }
   if (public_key_der->empty()) {
     LOG(ERROR) << __func__ << ": Failed to convert public key.";
     return false;
