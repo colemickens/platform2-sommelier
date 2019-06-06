@@ -171,12 +171,6 @@
       </tp:docstring>
       <arg name="serialized_proto" direction="out" type="ay" />
     </signal>
-    <!-- TODO(derat): Remove this once Chrome is no longer consuming it:
-         https://crbug.com/811138 -->
-    <signal name="BrightnessChanged">
-      <arg name="brightness_percent" type="i" />
-      <arg name="user_initiated" type="b" />
-    </signal>
 
     <signal name="PeripheralBatteryStatus">
       <tp:docstring>
