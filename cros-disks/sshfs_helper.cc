@@ -107,7 +107,7 @@ std::unique_ptr<FUSEMounter> SshfsHelper::CreateMounter(
   return std::make_unique<FUSEMounter>(
       source.path(), target_path.value(), type(), mount_options, platform(),
       program_path().value(), user(), "", std::vector<FUSEMounter::BindPath>(),
-      true /* permit_network_access */, true /* unprivileged_mount */);
+      true /* permit_network_access */);
 }
 
 bool SshfsHelper::PrepareWorkingDirectory(

@@ -29,7 +29,6 @@ namespace cros_disks {
 namespace {
 
 const mode_t kSourcePathPermissions = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
-const mode_t kTargetPathPermissions = S_IRWXU | S_IRWXG;
 
 const char kFuseDeviceFile[] = "/dev/fuse";
 const MountOptions::Flags kRequiredFuseMountFlags =
@@ -38,30 +37,15 @@ const MountOptions::Flags kRequiredFuseMountFlags =
 MountErrorType ConfigureCommonSandbox(SandboxedProcess* sandbox,
                                       const Platform* platform,
                                       bool network_ns,
-                                      const base::FilePath& seccomp,
-                                      bool unprivileged) {
-  // TODO(crbug.com/866377): Run FUSE fully deprivileged.
-  // Currently SYS_ADMIN is needed to perform mount()/umount() calls from
-  // libfuse.
-  uint64_t capabilities = unprivileged ? 0 : CAP_TO_MASK(CAP_SYS_ADMIN);
-  sandbox->SetCapabilities(capabilities);
+                                      const base::FilePath& seccomp) {
+  sandbox->SetCapabilities(0);
   sandbox->SetNoNewPrivileges();
 
   // The FUSE mount program is put under a new mount namespace, so mounts
-  // inside that namespace don't normally propagate out except when a mount is
-  // created under /media, which is marked as a shared mount (by
-  // chromeos_startup). This prevents the FUSE mount program from remounting an
-  // existing mount point outside /media.
-  //
-  // TODO(benchan): It's fragile to assume chromeos_startup makes /media a
-  // shared mount. cros-disks should verify that and make /media a shared mount
-  // when necessary.
+  // inside that namespace don't normally propagate.
   sandbox->NewMountNamespace();
 
-  // Prevent minjail from turning /media private again.
-  //
-  // TODO(benchan): Revisit this once minijail provides a finer control over
-  // what should be remounted private and what can remain shared (b:62056108).
+  // TODO(crbug.com/707327): Remove this when we get rid of AVFS.
   sandbox->SkipRemountPrivate();
 
   // TODO(benchan): Re-enable cgroup namespace when either Chrome OS
@@ -87,20 +71,6 @@ MountErrorType ConfigureCommonSandbox(SandboxedProcess* sandbox,
   if (!sandbox->SetUpMinimalMounts()) {
     LOG(ERROR) << "Can't set up minijail mounts";
     return MountErrorType::MOUNT_ERROR_INTERNAL;
-  }
-
-  if (!unprivileged) {
-    // Bind the FUSE device file.
-    if (!sandbox->BindMount(kFuseDeviceFile, kFuseDeviceFile, true, false)) {
-      LOG(ERROR) << "Unable to bind FUSE device file";
-      return MountErrorType::MOUNT_ERROR_INTERNAL;
-    }
-
-    // Mounts are exposed to the rest of the system through this shared mount.
-    if (!sandbox->BindMount("/media", "/media", true, false)) {
-      LOG(ERROR) << "Can't bind /media";
-      return MountErrorType::MOUNT_ERROR_INTERNAL;
-    }
   }
 
   // Data dirs if any are mounted inside /run/fuse.
@@ -199,7 +169,6 @@ FUSEMounter::FUSEMounter(const std::string& source_path,
                          const std::string& seccomp_policy,
                          const std::vector<BindPath>& accessible_paths,
                          bool permit_network_access,
-                         bool unprivileged_mount,
                          const std::string& mount_group)
     : MounterCompat(filesystem_type,
                     source_path,
@@ -211,14 +180,13 @@ FUSEMounter::FUSEMounter(const std::string& source_path,
       mount_group_(mount_group),
       seccomp_policy_(seccomp_policy),
       accessible_paths_(accessible_paths),
-      permit_network_access_(permit_network_access),
-      unprivileged_mount_(unprivileged_mount) {}
+      permit_network_access_(permit_network_access) {}
 
 MountErrorType FUSEMounter::MountImpl() const {
   auto mount_process = CreateSandboxedProcess();
   MountErrorType error = ConfigureCommonSandbox(
       mount_process.get(), platform_, !permit_network_access_,
-      base::FilePath(seccomp_policy_), unprivileged_mount_);
+      base::FilePath(seccomp_policy_));
   if (error != MountErrorType::MOUNT_ERROR_NONE) {
     return error;
   }
@@ -246,51 +214,36 @@ MountErrorType FUSEMounter::MountImpl() const {
 
   base::ScopedClosureRunner fuse_failure_unmounter;
   base::File fuse_file;
-  if (unprivileged_mount_) {
-    LOG(INFO) << "Using deprivileged FUSE with fd passing.";
 
-    fuse_file = base::File(
-        base::FilePath(kFuseDeviceFile),
-        base::File::FLAG_OPEN | base::File::FLAG_READ | base::File::FLAG_WRITE);
-    if (!fuse_file.IsValid()) {
-      LOG(ERROR) << "Unable to open FUSE device file. Error: "
-                 << fuse_file.error_details() << " "
-                 << base::File::ErrorToString(fuse_file.error_details());
-      return MountErrorType::MOUNT_ERROR_INTERNAL;
-    }
-
-    error = MountFuseDevice(platform_, source(), filesystem_type(),
-                            base::FilePath(target_path()), fuse_file,
-                            mount_user_id, mount_group_id, mount_options());
-    if (error != MountErrorType::MOUNT_ERROR_NONE) {
-      LOG(ERROR) << "Can't perform unprivileged FUSE mount";
-      return error;
-    }
-
-    // Unmount the FUSE filesystem if any later part fails.
-    fuse_failure_unmounter.ReplaceClosure(base::Bind(
-        [](const Platform* platform, const std::string& target_path) {
-          MountErrorType unmount_error = platform->Unmount(target_path, 0);
-          if (unmount_error != MountErrorType::MOUNT_ERROR_NONE) {
-            LOG(ERROR) << "Failed to unmount " << target_path
-                       << " on deprivileged fuse mount failure, error code: "
-                       << unmount_error;
-          }
-        },
-        platform_, target_path().value()));
-  } else {
-    // To perform a non-root mount via the FUSE mount program, change the
-    // group of the source and target path to the group of the non-privileged
-    // user, but keep the user of the source and target path unchanged. Also set
-    // appropriate group permissions on the source and target path.
-    if (!platform_->SetOwnership(target_path().value(), getuid(),
-                                 mount_group_id) ||
-        !platform_->SetPermissions(target_path().value(),
-                                   kTargetPathPermissions)) {
-      LOG(ERROR) << "Can't set up permissions on the mount point";
-      return MountErrorType::MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
-    }
+  fuse_file = base::File(
+      base::FilePath(kFuseDeviceFile),
+      base::File::FLAG_OPEN | base::File::FLAG_READ | base::File::FLAG_WRITE);
+  if (!fuse_file.IsValid()) {
+    LOG(ERROR) << "Unable to open FUSE device file. Error: "
+               << fuse_file.error_details() << " "
+               << base::File::ErrorToString(fuse_file.error_details());
+    return MountErrorType::MOUNT_ERROR_INTERNAL;
   }
+
+  error = MountFuseDevice(platform_, source(), filesystem_type(),
+                          base::FilePath(target_path()), fuse_file,
+                          mount_user_id, mount_group_id, mount_options());
+  if (error != MountErrorType::MOUNT_ERROR_NONE) {
+    LOG(ERROR) << "Can't perform unprivileged FUSE mount";
+    return error;
+  }
+
+  // Unmount the FUSE filesystem if any later part fails.
+  fuse_failure_unmounter.ReplaceClosure(base::Bind(
+      [](const Platform* platform, const std::string& target_path) {
+        MountErrorType unmount_error = platform->Unmount(target_path, 0);
+        if (unmount_error != MountErrorType::MOUNT_ERROR_NONE) {
+          LOG(ERROR) << "Failed to unmount " << target_path
+                     << " on deprivileged fuse mount failure, error code: "
+                     << unmount_error;
+        }
+      },
+      platform_, target_path().value()));
 
   // Source might be an URI. Only try to re-own source if it looks like
   // an existing path.
@@ -333,12 +286,8 @@ MountErrorType FUSEMounter::MountImpl() const {
   if (!source().empty()) {
     mount_process->AddArgument(source());
   }
-  if (unprivileged_mount_) {
-    mount_process->AddArgument(
-        base::StringPrintf("/dev/fd/%d", fuse_file.GetPlatformFile()));
-  } else {
-    mount_process->AddArgument(target_path().value());
-  }
+  mount_process->AddArgument(
+      base::StringPrintf("/dev/fd/%d", fuse_file.GetPlatformFile()));
 
   std::vector<std::string> output;
   int return_code = mount_process->Run(&output);

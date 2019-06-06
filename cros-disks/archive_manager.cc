@@ -364,8 +364,7 @@ MountErrorType ArchiveManager::MountAVFSPath(
           // are visiable to AVFS.
           {base_path, false /* writable*/, true /* recursive */},
       }),
-      false /* permit_network_access */, true /* unprivileged_mount */,
-      kAVFSMountGroup);
+      false /* permit_network_access */, kAVFSMountGroup);
 
   MountErrorType mount_error = fuse_mounter->Mount();
   if (mount_error != MOUNT_ERROR_NONE) {

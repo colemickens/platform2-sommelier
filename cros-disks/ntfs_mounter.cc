@@ -33,7 +33,6 @@ NTFSMounter::NTFSMounter(const std::string& source_path,
                   kMountUser,
                   "",
                   {},
-                  false,
-                  true /* unprivileged_mount */) {}
+                  false) {}
 
 }  // namespace cros_disks

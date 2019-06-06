@@ -116,7 +116,7 @@ class MockSandboxedProcess : public SandboxedProcess {
 
 class FUSEMounterForTesting : public FUSEMounter {
  public:
-  FUSEMounterForTesting(const Platform* platform, bool unprivileged)
+  explicit FUSEMounterForTesting(const Platform* platform)
       : FUSEMounter(kSomeSource,
                     kMountDir,
                     kFUSEType,
@@ -126,8 +126,7 @@ class FUSEMounterForTesting : public FUSEMounter {
                     kMountUser,
                     {},
                     {},
-                    false,
-                    unprivileged) {}
+                    false) {}
 
   MOCK_CONST_METHOD1(InvokeMountTool,
                      int(const std::vector<std::string>& args));
@@ -146,35 +145,9 @@ class FUSEMounterForTesting : public FUSEMounter {
 
 }  // namespace
 
-TEST(FUSEMounterTest, Sandboxing) {
-  MockFUSEPlatform platform;
-  FUSEMounterForTesting mounter(&platform, false);
-  EXPECT_CALL(mounter, InvokeMountTool(ElementsAre(kMountProgram, "-o",
-                                                   MountOptions().ToString(),
-                                                   kSomeSource, kMountDir)))
-      .WillOnce(Return(0));
-
-  // Expectations for sandbox setup.
-  EXPECT_CALL(platform, Mount(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(platform, PathExists(kMountProgram)).WillOnce(Return(true));
-  EXPECT_CALL(platform, PathExists(kSomeSource)).WillOnce(Return(true));
-
-  EXPECT_CALL(platform, SetOwnership(kSomeSource, getuid(), kMountGID))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform, SetPermissions(kSomeSource,
-                                       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform, SetOwnership(kMountDir, getuid(), kMountGID))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform, SetPermissions(kMountDir, S_IRWXU | S_IRWXG))
-      .WillOnce(Return(true));
-
-  EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
-}
-
 TEST(FUSEMounterTest, Sandboxing_Unprivileged) {
   MockFUSEPlatform platform;
-  FUSEMounterForTesting mounter(&platform, true);
+  FUSEMounterForTesting mounter(&platform);
   EXPECT_CALL(mounter, InvokeMountTool(ElementsAre(
                            kMountProgram, "-o", MountOptions().ToString(),
                            kSomeSource, StartsWith("/dev/fd/"))))
@@ -197,20 +170,9 @@ TEST(FUSEMounterTest, Sandboxing_Unprivileged) {
   EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
 }
 
-TEST(FUSEMounterTest, Sandboxing_PermissionDenied) {
-  MockFUSEPlatform platform;
-  FUSEMounterForTesting mounter(&platform, false);
-
-  EXPECT_CALL(platform, SetOwnership(kMountDir, getuid(), kMountGID))
-      .WillOnce(Return(false));
-  EXPECT_CALL(mounter, InvokeMountTool(_)).Times(0);
-
-  EXPECT_EQ(MOUNT_ERROR_INSUFFICIENT_PERMISSIONS, mounter.Mount());
-}
-
 TEST(FUSEMounterTest, AppFailed) {
   MockFUSEPlatform platform;
-  FUSEMounterForTesting mounter(&platform, false);
+  FUSEMounterForTesting mounter(&platform);
   EXPECT_CALL(mounter, InvokeMountTool(_)).WillOnce(Return(1));
 
   EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mounter.Mount());

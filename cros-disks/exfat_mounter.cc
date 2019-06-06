@@ -33,7 +33,6 @@ ExFATMounter::ExFATMounter(const std::string& source_path,
                   kMountUser,
                   "",
                   {},
-                  false,
-                  true /* unprivileged_mount */) {}
+                  false) {}
 
 }  // namespace cros_disks

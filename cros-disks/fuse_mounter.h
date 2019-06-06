@@ -39,7 +39,6 @@ class FUSEMounter : public MounterCompat {
               const std::string& seccomp_policy,
               const std::vector<BindPath>& accessible_paths,
               bool permit_network_access,
-              bool unprivileged_mount = false,
               const std::string& mount_group = {});
 
  protected:
@@ -70,11 +69,6 @@ class FUSEMounter : public MounterCompat {
 
   // Whether to leave network access to the mount program.
   const bool permit_network_access_;
-
-  // Whether to run the fuse program deprivileged.
-  // TODO(crbug.com/866377): Remove when all fuse programs can run without
-  // privileges.
-  const bool unprivileged_mount_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FUSEMounter);

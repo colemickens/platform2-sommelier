@@ -77,7 +77,7 @@ std::unique_ptr<FUSEMounter> DrivefsHelper::CreateMounter(
   };
   return std::make_unique<FUSEMounter>(
       "", target_path.value(), type(), mount_options, platform(),
-      program_path().value(), user(), seccomp, paths, true, true);
+      program_path().value(), user(), seccomp, paths, true);
 }
 
 base::FilePath DrivefsHelper::GetValidatedDataDir(
