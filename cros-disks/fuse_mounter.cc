@@ -55,6 +55,8 @@ MountErrorType ConfigureCommonSandbox(SandboxedProcess* sandbox,
 
   sandbox->NewIpcNamespace();
 
+  sandbox->NewPidNamespace();
+
   if (network_ns) {
     sandbox->NewNetworkNamespace();
   }

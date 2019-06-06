@@ -4,15 +4,42 @@
 
 #include "cros-disks/sandboxed_process.h"
 
+#include <stdlib.h>
+
 #include <sys/mount.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
+#include <base/bind.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <chromeos/libminijail.h>
 
 #include "cros-disks/mount_options.h"
+#include "cros-disks/sandboxed_init.h"
 
 namespace cros_disks {
+
+namespace {
+
+int WStatusToStatus(int wstatus) {
+  if (WIFEXITED(wstatus)) {
+    return WEXITSTATUS(wstatus);
+  } else if (WIFSIGNALED(wstatus)) {
+    // Mirrors minijail_wait().
+    return 128 + WTERMSIG(wstatus);
+  }
+  return -1;
+}
+
+int Exec(char** args) {
+  execv(args[0], args);
+  PLOG(FATAL) << "Can't exec " << args[0];
+  return EXIT_FAILURE;
+}
+
+}  // namespace
 
 SandboxedProcess::SandboxedProcess() : jail_(minijail_new()) {
   CHECK(jail_) << "Failed to create a process jail";
@@ -37,6 +64,12 @@ void SandboxedProcess::NewIpcNamespace() {
 
 void SandboxedProcess::NewMountNamespace() {
   minijail_namespace_vfs(jail_);
+}
+
+void SandboxedProcess::NewPidNamespace() {
+  minijail_namespace_pids(jail_);
+  minijail_run_as_init(jail_);
+  run_custom_init_ = true;
 }
 
 bool SandboxedProcess::SetUpMinimalMounts() {
@@ -111,23 +144,42 @@ bool SandboxedProcess::PreserveFile(const base::File& file) {
                               file.GetPlatformFile()) == 0;
 }
 
+int SandboxedProcess::WaitAll() {
+  if (!run_custom_init_) {
+    return Wait();
+  }
+  return WaitImpl();
+}
+
 pid_t SandboxedProcess::StartImpl(std::vector<char*>& args,
                                   base::ScopedFD* in_fd,
                                   base::ScopedFD* out_fd,
                                   base::ScopedFD* err_fd) {
   char** arguments = args.data();
   pid_t child_pid = kInvalidProcessId;
-  int in = kInvalidFD, out = kInvalidFD, err = kInvalidFD;
-  int result = minijail_run_pid_pipes(jail_, arguments[0], arguments,
-                                      &child_pid, &in, &out, &err);
-  if (result == 0) {
+  if (!run_custom_init_) {
+    int in = kInvalidFD, out = kInvalidFD, err = kInvalidFD;
+    if (minijail_run_pid_pipes(jail_, arguments[0], arguments, &child_pid, &in,
+                               &out, &err) != 0) {
+      return kInvalidProcessId;
+    }
     in_fd->reset(in);
     out_fd->reset(out);
     err_fd->reset(err);
-    return child_pid;
+  } else {
+    SandboxedInit init_;
+    child_pid = minijail_fork(jail_);
+    if (child_pid == kInvalidProcessId) {
+      return kInvalidProcessId;
+    }
+    if (child_pid == 0) {
+      init_.RunInsideSandboxNoReturn(base::Bind(Exec, arguments));
+    } else {
+      custom_init_control_fd_ = init_.TakeInitControlFD(in_fd, out_fd, err_fd);
+      CHECK(base::SetNonBlocking(custom_init_control_fd_.get()));
+    }
   }
-
-  return kInvalidProcessId;
+  return child_pid;
 }
 
 int SandboxedProcess::WaitImpl() {
@@ -135,6 +187,11 @@ int SandboxedProcess::WaitImpl() {
 }
 
 bool SandboxedProcess::WaitNonBlockingImpl(int* status) {
+  if (run_custom_init_ && PollStatus(status)) {
+    *status = WStatusToStatus(*status);
+    return true;
+  }
+
   // Minijail didn't implement the non-blocking wait.
   // Code below is stolen from minijail_wait() with addition of WNOHANG.
   int ret = waitpid(pid(), status, WNOHANG);
@@ -147,13 +204,16 @@ bool SandboxedProcess::WaitNonBlockingImpl(int* status) {
     return false;
   }
 
-  if (WIFEXITED(*status)) {
-    *status = WEXITSTATUS(*status);
-  } else if (WIFSIGNALED(*status)) {
-    // Also from minijail_wait().
-    *status = 128 + WTERMSIG(*status);
+  if (WIFEXITED(*status) || WIFSIGNALED(*status)) {
+    *status = WStatusToStatus(*status);
+    return true;
   }
-  return true;
+
+  return false;
+}
+
+bool SandboxedProcess::PollStatus(int* status) {
+  return SandboxedInit::PollLauncherStatus(&custom_init_control_fd_, status);
 }
 
 }  // namespace cros_disks

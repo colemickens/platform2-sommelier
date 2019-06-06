@@ -39,6 +39,9 @@ class SandboxedProcess : public Process {
   // Puts the process to be sandboxed in a new network namespace.
   void NewNetworkNamespace();
 
+  // Puts the process to be sandboxed in a new PID namespace.
+  void NewPidNamespace();
+
   // Assuming the process is sandboxed in a new mount namespace, some essential
   // mountpoints like / and /proc are being set up.
   bool SetUpMinimalMounts();
@@ -80,6 +83,9 @@ class SandboxedProcess : public Process {
   // same file descriptor. Only effective if CloseOpenFds has been called.
   bool PreserveFile(const base::File& file);
 
+  // Waits for all processes inside the sandbox to terminate.
+  int WaitAll();
+
  protected:
   // Process overrides:
   pid_t StartImpl(std::vector<char*>& args,
@@ -90,7 +96,11 @@ class SandboxedProcess : public Process {
   bool WaitNonBlockingImpl(int* status) override;
 
  private:
+  bool PollStatus(int* status);
+
   minijail* jail_;
+  bool run_custom_init_ = false;
+  base::ScopedFD custom_init_control_fd_;
 
   DISALLOW_COPY_AND_ASSIGN(SandboxedProcess);
 };
