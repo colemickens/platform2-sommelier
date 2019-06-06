@@ -457,9 +457,7 @@ TEST_F(CrashCollectorTest, MetaData) {
                      base::TimeDelta::FromMilliseconds(kFakeNow));
   collector_.set_test_clock(std::move(test_clock));
   const char kKernelName[] = "Linux";
-  const char kKernelVersion[] =
-      "0.0.0 Linux 3.8.11 #1 SMP "
-      "Wed Aug 22 02:18:30 PDT 2018 x86_64";
+  const char kKernelVersion[] = "3.8.11 #1 SMP Wed Aug 22 02:18:30 PDT 2018";
   collector_.set_test_kernel_info(kKernelName, kKernelVersion);
   collector_.WriteCrashMetaData(meta_file, "kernel", payload_file.value());
   EXPECT_TRUE(base::ReadFileToString(meta_file, &contents));

@@ -863,7 +863,7 @@ std::string CrashCollector::GetKernelName() const {
   if (uname(&buf))
     return kUnknownValue;
 
-  return std::string(buf.sysname);
+  return buf.sysname;
 }
 
 std::string CrashCollector::GetKernelVersion() const {
@@ -874,9 +874,8 @@ std::string CrashCollector::GetKernelVersion() const {
   if (uname(&buf))
     return kUnknownValue;
 
-  // 0.0.0 Linux 3.8.11 #1 SMP Wed Aug 22 02:18:30 PDT 2018 x86_64
-  return StringPrintf("0.0.0 %s %s %s %s", buf.sysname, buf.release,
-                      buf.version, buf.machine);
+  // 3.8.11 #1 SMP Wed Aug 22 02:18:30 PDT 2018
+  return StringPrintf("%s %s", buf.release, buf.version);
 }
 
 void CrashCollector::WriteCrashMetaData(const FilePath& meta_path,
