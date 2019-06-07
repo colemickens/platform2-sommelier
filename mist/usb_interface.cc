@@ -12,8 +12,6 @@
 #include "mist/usb_device.h"
 #include "mist/usb_interface_descriptor.h"
 
-using base::StringPrintf;
-
 namespace mist {
 
 UsbInterface::UsbInterface(const base::WeakPtr<UsbDevice>& device,
@@ -29,7 +27,7 @@ int UsbInterface::GetNumAlternateSettings() const {
 std::unique_ptr<UsbInterfaceDescriptor> UsbInterface::GetAlternateSetting(
     int index) const {
   if (index < 0 || index >= GetNumAlternateSettings()) {
-    LOG(ERROR) << StringPrintf(
+    LOG(ERROR) << base::StringPrintf(
         "Invalid alternate setting index %d. "
         "Must be non-negative and less than %d.",
         index, GetNumAlternateSettings());

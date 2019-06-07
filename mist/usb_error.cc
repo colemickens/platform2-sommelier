@@ -4,8 +4,6 @@
 
 #include "mist/usb_error.h"
 
-using std::ostream;
-
 namespace mist {
 
 namespace {
@@ -114,7 +112,7 @@ bool UsbError::SetFromLibUsbError(libusb_error error) {
 
 }  // namespace mist
 
-ostream& operator<<(ostream& stream, const mist::UsbError& error) {
+std::ostream& operator<<(std::ostream& stream, const mist::UsbError& error) {
   stream << error.ToString();
   return stream;
 }

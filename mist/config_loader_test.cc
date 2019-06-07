@@ -14,9 +14,6 @@
 #include "mist/proto_bindings/config.pb.h"
 #include "mist/proto_bindings/usb_modem_info.pb.h"
 
-using base::FilePath;
-using std::string;
-
 namespace mist {
 
 namespace {
@@ -47,9 +44,9 @@ const char kTestConfigFileContent[] =
 
 class ConfigLoaderTest : public testing::Test {
  protected:
-  bool CreateConfigFileInDir(const string& content,
-                             const FilePath& dir,
-                             FilePath* config_file) {
+  bool CreateConfigFileInDir(const std::string& content,
+                             const base::FilePath& dir,
+                             base::FilePath* config_file) {
     if (!base::CreateTemporaryFileInDir(dir, config_file))
       return false;
 
@@ -128,7 +125,7 @@ TEST_F(ConfigLoaderTest, LoadInvalidConfigFile) {
 }
 
 TEST_F(ConfigLoaderTest, LoadNonExistentConfigFile) {
-  EXPECT_FALSE(config_loader_.LoadConfig(FilePath("/non-existent-file")));
+  EXPECT_FALSE(config_loader_.LoadConfig(base::FilePath("/non-existent-file")));
   EXPECT_EQ(nullptr, config_loader_.config_.get());
 }
 

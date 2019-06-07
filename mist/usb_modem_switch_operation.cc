@@ -27,14 +27,6 @@
 #include "mist/usb_manager.h"
 #include "mist/usb_modem_switch_context.h"
 
-using base::Bind;
-using base::CancelableClosure;
-using base::StringPrintf;
-using base::Unretained;
-using std::string;
-using std::unique_ptr;
-using std::vector;
-
 namespace mist {
 
 namespace {
@@ -116,13 +108,13 @@ void UsbModemSwitchOperation::Cancel() {
 }
 
 void UsbModemSwitchOperation::ScheduleTask(Task task) {
-  pending_task_.Reset(Bind(task, Unretained(this)));
+  pending_task_.Reset(base::Bind(task, base::Unretained(this)));
   context_->event_dispatcher()->PostTask(pending_task_.callback());
 }
 
 void UsbModemSwitchOperation::ScheduleDelayedTask(
     Task task, const base::TimeDelta& delay) {
-  pending_task_.Reset(Bind(task, Unretained(this)));
+  pending_task_.Reset(base::Bind(task, base::Unretained(this)));
   context_->event_dispatcher()->PostDelayedTask(pending_task_.callback(),
                                                 delay);
 }
@@ -145,11 +137,11 @@ void UsbModemSwitchOperation::Complete(bool success) {
   // 2. The completion callback may delete this object, so this object should
   //    not be accessed after this method returns.
   context_->event_dispatcher()->PostTask(
-      Bind(completion_callback_, Unretained(this), success));
+      base::Bind(completion_callback_, base::Unretained(this), success));
 }
 
 void UsbModemSwitchOperation::DetachAllKernelDrivers() {
-  unique_ptr<UsbConfigDescriptor> config_descriptor =
+  std::unique_ptr<UsbConfigDescriptor> config_descriptor =
       device_->GetActiveConfigDescriptor();
   if (!config_descriptor)
     return;
@@ -161,7 +153,7 @@ void UsbModemSwitchOperation::DetachAllKernelDrivers() {
         // UsbDevice::DetachKernelDriver returns UsbError::kErrorNotFound when
         // there is no driver attached to the device.
         device_->error().type() != UsbError::kErrorNotFound) {
-      LOG(ERROR) << StringPrintf(
+      LOG(ERROR) << base::StringPrintf(
           "Could not detach kernel driver from interface %u: %s",
           interface_number, device_->error().ToString());
       // Continue to detach other kernel drivers in case of an error.
@@ -172,7 +164,7 @@ void UsbModemSwitchOperation::DetachAllKernelDrivers() {
 int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
   CHECK(device_);
 
-  unique_ptr<UsbDeviceDescriptor> device_descriptor =
+  std::unique_ptr<UsbDeviceDescriptor> device_descriptor =
       device_->GetDeviceDescriptor();
   if (!device_descriptor) {
     LOG(ERROR) << "Could not get device descriptor: " << device_->error();
@@ -184,7 +176,7 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
   for (uint8_t config_index = 0;
        config_index < device_descriptor->GetNumConfigurations();
        ++config_index) {
-    unique_ptr<UsbConfigDescriptor> config_descriptor =
+    std::unique_ptr<UsbConfigDescriptor> config_descriptor =
         device_->GetConfigDescriptor(config_index);
     if (!config_descriptor)
       continue;
@@ -194,12 +186,12 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
     for (uint8_t interface_number = 0;
          interface_number < config_descriptor->GetNumInterfaces();
          ++interface_number) {
-      unique_ptr<UsbInterface> interface =
+      std::unique_ptr<UsbInterface> interface =
           config_descriptor->GetInterface(interface_number);
       if (!interface)
         continue;
 
-      unique_ptr<UsbInterfaceDescriptor> interface_descriptor =
+      std::unique_ptr<UsbInterfaceDescriptor> interface_descriptor =
           interface->GetAlternateSetting(
               kDefaultUsbInterfaceAlternateSettingIndex);
       if (!interface_descriptor)
@@ -212,7 +204,7 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
         continue;
 
       int configuration_value = config_descriptor->GetConfigurationValue();
-      LOG(INFO) << StringPrintf(
+      LOG(INFO) << base::StringPrintf(
           "Found MBIM support at configuration %d on device '%s'.",
           configuration_value, switch_context_->sys_path().c_str());
       return configuration_value;
@@ -222,7 +214,7 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
 }
 
 bool UsbModemSwitchOperation::SetConfiguration(int configuration) {
-  unique_ptr<UsbConfigDescriptor> config_descriptor =
+  std::unique_ptr<UsbConfigDescriptor> config_descriptor =
       device_->GetActiveConfigDescriptor();
   if (!config_descriptor) {
     LOG(ERROR) << "Could not get active configuration descriptor: "
@@ -231,21 +223,21 @@ bool UsbModemSwitchOperation::SetConfiguration(int configuration) {
   }
 
   if (config_descriptor->GetConfigurationValue() == configuration) {
-    LOG(INFO) << StringPrintf("Device '%s' is already in configuration %d. ",
-                              switch_context_->sys_path().c_str(),
-                              configuration);
+    LOG(INFO) << base::StringPrintf(
+        "Device '%s' is already in configuration %d. ",
+        switch_context_->sys_path().c_str(), configuration);
     return true;
   }
 
   DetachAllKernelDrivers();
   if (device_->SetConfiguration(configuration)) {
-    LOG(INFO) << StringPrintf(
+    LOG(INFO) << base::StringPrintf(
         "Successfully selected configuration %d for device '%s'.",
         configuration, switch_context_->sys_path().c_str());
     return true;
   }
 
-  LOG(ERROR) << StringPrintf(
+  LOG(ERROR) << base::StringPrintf(
       "Could not select configuration %d for device '%s': %s", configuration,
       switch_context_->sys_path().c_str(), device_->error().ToString());
   return false;
@@ -261,9 +253,9 @@ void UsbModemSwitchOperation::CloseDevice() {
         // as the original device may no longer exist after switching to the
         // modem mode. Do not report such an error.
         device_->error().type() != UsbError::kErrorNoDevice) {
-      LOG(ERROR) << StringPrintf("Could not release interface %u: %s",
-                                 interface_number_,
-                                 device_->error().ToString());
+      LOG(ERROR) << base::StringPrintf("Could not release interface %u: %s",
+                                       interface_number_,
+                                       device_->error().ToString());
     }
     interface_claimed_ = false;
   }
@@ -278,7 +270,7 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
       switch_context_->bus_number(), switch_context_->device_address(),
       switch_context_->vendor_id(), switch_context_->product_id());
   if (!device_) {
-    LOG(ERROR) << StringPrintf(
+    LOG(ERROR) << base::StringPrintf(
         "Could not find USB device '%s' (Bus %03d Address %03d ID %04x:%04x).",
         switch_context_->sys_path().c_str(), switch_context_->bus_number(),
         switch_context_->device_address(), switch_context_->vendor_id(),
@@ -294,7 +286,7 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
     return;
   }
 
-  unique_ptr<UsbConfigDescriptor> config_descriptor =
+  std::unique_ptr<UsbConfigDescriptor> config_descriptor =
       device_->GetActiveConfigDescriptor();
   if (!config_descriptor) {
     LOG(ERROR) << "Could not get active configuration descriptor: "
@@ -306,14 +298,14 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
 
   int mbim_configuration_value = GetMBIMConfigurationValue();
   if (mbim_configuration_value != kUsbConfigurationValueInvalid) {
-    LOG(INFO) << StringPrintf("Switching device '%s' to MBIM configuration %d.",
-                              switch_context_->sys_path().c_str(),
-                              mbim_configuration_value);
+    LOG(INFO) << base::StringPrintf(
+        "Switching device '%s' to MBIM configuration %d.",
+        switch_context_->sys_path().c_str(), mbim_configuration_value);
     Complete(SetConfiguration(mbim_configuration_value));
     return;
   }
 
-  unique_ptr<UsbInterface> interface =
+  std::unique_ptr<UsbInterface> interface =
       config_descriptor->GetInterface(kDefaultUsbInterfaceIndex);
   if (!interface) {
     LOG(ERROR) << "Could not get interface 0.";
@@ -321,7 +313,7 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
     return;
   }
 
-  unique_ptr<UsbInterfaceDescriptor> interface_descriptor =
+  std::unique_ptr<UsbInterfaceDescriptor> interface_descriptor =
       interface->GetAlternateSetting(kDefaultUsbInterfaceAlternateSettingIndex);
   if (!interface_descriptor) {
     LOG(ERROR) << "Could not get interface alternate setting 0.";
@@ -336,7 +328,7 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
     return;
   }
 
-  unique_ptr<UsbEndpointDescriptor> out_endpoint_descriptor =
+  std::unique_ptr<UsbEndpointDescriptor> out_endpoint_descriptor =
       interface_descriptor->GetEndpointDescriptorByTransferTypeAndDirection(
           kUsbTransferTypeBulk, kUsbDirectionOut);
   if (!out_endpoint_descriptor) {
@@ -350,7 +342,7 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
   out_endpoint_address_ = out_endpoint_descriptor->GetEndpointAddress();
 
   if (switch_context_->modem_info()->expect_response()) {
-    unique_ptr<UsbEndpointDescriptor> in_endpoint_descriptor =
+    std::unique_ptr<UsbEndpointDescriptor> in_endpoint_descriptor =
         interface_descriptor->GetEndpointDescriptorByTransferTypeAndDirection(
             kUsbTransferTypeBulk, kUsbDirectionIn);
     if (!in_endpoint_descriptor) {
@@ -366,7 +358,7 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
       // UsbDevice::DetachKernelDriver returns UsbError::kErrorNotFound when
       // there is no driver attached to the device.
       device_->error().type() != UsbError::kErrorNotFound) {
-    LOG(ERROR) << StringPrintf(
+    LOG(ERROR) << base::StringPrintf(
         "Could not detach kernel driver from interface %u: %s",
         interface_number_, device_->error().ToString());
     Complete(false);
@@ -383,8 +375,9 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
   }
 
   if (!device_->ClaimInterface(interface_number_)) {
-    LOG(ERROR) << StringPrintf("Could not claim interface %u: %s",
-                               interface_number_, device_->error().ToString());
+    LOG(ERROR) << base::StringPrintf("Could not claim interface %u: %s",
+                                     interface_number_,
+                                     device_->error().ToString());
     Complete(false);
     return;
   }
@@ -406,7 +399,7 @@ bool UsbModemSwitchOperation::ClearHalt(uint8_t endpoint_address) {
   if (device_->ClearHalt(endpoint_address))
     return true;
 
-  LOG(ERROR) << StringPrintf(
+  LOG(ERROR) << base::StringPrintf(
       "Could not clear halt condition for endpoint %u: %s", endpoint_address,
       device_->error().ToString());
   return false;
@@ -415,20 +408,20 @@ bool UsbModemSwitchOperation::ClearHalt(uint8_t endpoint_address) {
 void UsbModemSwitchOperation::SendMessageToMassStorageEndpoint() {
   CHECK_LT(message_index_, num_usb_messages_);
 
-  const string& usb_message =
+  const std::string& usb_message =
       switch_context_->modem_info()->usb_message(message_index_);
-  vector<uint8_t> bytes;
+  std::vector<uint8_t> bytes;
   if (!base::HexStringToBytes(usb_message, &bytes)) {
-    LOG(ERROR) << StringPrintf("Invalid USB message (%d/%d): %s",
-                               message_index_, num_usb_messages_,
-                               usb_message.c_str());
+    LOG(ERROR) << base::StringPrintf("Invalid USB message (%d/%d): %s",
+                                     message_index_, num_usb_messages_,
+                                     usb_message.c_str());
     Complete(false);
     return;
   }
 
-  VLOG(1) << StringPrintf("Prepare to send USB message (%d/%d): %s",
-                          message_index_ + 1, num_usb_messages_,
-                          usb_message.c_str());
+  VLOG(1) << base::StringPrintf("Prepare to send USB message (%d/%d): %s",
+                                message_index_ + 1, num_usb_messages_,
+                                usb_message.c_str());
 
   InitiateUsbBulkTransfer(out_endpoint_address_, &bytes[0], bytes.size(),
                           &UsbModemSwitchOperation::OnSendMessageCompleted);
@@ -437,8 +430,8 @@ void UsbModemSwitchOperation::SendMessageToMassStorageEndpoint() {
 void UsbModemSwitchOperation::ReceiveMessageFromMassStorageEndpoint() {
   CHECK_LT(message_index_, num_usb_messages_);
 
-  VLOG(1) << StringPrintf("Prepare to receive USB message (%d/%d)",
-                          message_index_ + 1, num_usb_messages_);
+  VLOG(1) << base::StringPrintf("Prepare to receive USB message (%d/%d)",
+                                message_index_ + 1, num_usb_messages_);
 
   InitiateUsbBulkTransfer(in_endpoint_address_, nullptr,
                           kExpectedResponseLength,
@@ -471,7 +464,7 @@ void UsbModemSwitchOperation::InitiateUsbBulkTransfer(
   // of the USB bulk transfer. This avoids the need to defer the destruction
   // of this object in order to wait for the completion callback of the
   // transfer when the transfer is cancelled by this object.
-  if (!bulk_transfer->Submit(Bind(completion_handler, AsWeakPtr()))) {
+  if (!bulk_transfer->Submit(base::Bind(completion_handler, AsWeakPtr()))) {
     LOG(ERROR) << "Could not submit USB bulk transfer: "
                << bulk_transfer->error();
     Complete(false);
@@ -488,7 +481,8 @@ void UsbModemSwitchOperation::OnSendMessageCompleted(UsbTransfer* transfer) {
   CHECK_EQ(out_endpoint_address_, transfer->GetEndpointAddress());
 
   // Keep the bulk transfer valid until this method goes out of scope.
-  unique_ptr<UsbBulkTransfer> scoped_bulk_transfer = std::move(bulk_transfer_);
+  std::unique_ptr<UsbBulkTransfer> scoped_bulk_transfer =
+      std::move(bulk_transfer_);
 
   if (transfer->GetStatus() == kUsbTransferStatusStall) {
     if (!ClearHalt(transfer->GetEndpointAddress())) {
@@ -501,15 +495,15 @@ void UsbModemSwitchOperation::OnSendMessageCompleted(UsbTransfer* transfer) {
   }
 
   if (!transfer->IsCompletedWithExpectedLength(transfer->GetLength())) {
-    LOG(ERROR) << StringPrintf(
+    LOG(ERROR) << base::StringPrintf(
         "Could not successfully send USB message (%d/%d).", message_index_ + 1,
         num_usb_messages_);
     Complete(false);
     return;
   }
 
-  LOG(INFO) << StringPrintf("Successfully sent USB message (%d/%d).",
-                            message_index_ + 1, num_usb_messages_);
+  LOG(INFO) << base::StringPrintf("Successfully sent USB message (%d/%d).",
+                                  message_index_ + 1, num_usb_messages_);
 
   if (switch_context_->modem_info()->expect_response()) {
     ScheduleTask(
@@ -527,7 +521,8 @@ void UsbModemSwitchOperation::OnReceiveMessageCompleted(UsbTransfer* transfer) {
   CHECK_EQ(in_endpoint_address_, transfer->GetEndpointAddress());
 
   // Keep the bulk transfer valid until this method goes out of scope.
-  unique_ptr<UsbBulkTransfer> scoped_bulk_transfer = std::move(bulk_transfer_);
+  std::unique_ptr<UsbBulkTransfer> scoped_bulk_transfer =
+      std::move(bulk_transfer_);
 
   if (transfer->GetStatus() == kUsbTransferStatusStall) {
     if (!ClearHalt(transfer->GetEndpointAddress())) {
@@ -541,15 +536,15 @@ void UsbModemSwitchOperation::OnReceiveMessageCompleted(UsbTransfer* transfer) {
   }
 
   if (!transfer->IsCompletedWithExpectedLength(kExpectedResponseLength)) {
-    LOG(ERROR) << StringPrintf(
+    LOG(ERROR) << base::StringPrintf(
         "Could not successfully receive USB message (%d/%d).",
         message_index_ + 1, num_usb_messages_);
     Complete(false);
     return;
   }
 
-  LOG(INFO) << StringPrintf("Successfully received USB message (%d/%d).",
-                            message_index_ + 1, num_usb_messages_);
+  LOG(INFO) << base::StringPrintf("Successfully received USB message (%d/%d).",
+                                  message_index_ + 1, num_usb_messages_);
 
   ScheduleNextMessageToMassStorageEndpoint();
 }
@@ -568,8 +563,8 @@ void UsbModemSwitchOperation::ScheduleNextMessageToMassStorageEndpoint() {
 
 void UsbModemSwitchOperation::StartWaitingForDeviceToReconnect() {
   pending_task_.Cancel();
-  reconnect_timeout_callback_.Reset(
-      Bind(&UsbModemSwitchOperation::OnReconnectTimeout, Unretained(this)));
+  reconnect_timeout_callback_.Reset(base::Bind(
+      &UsbModemSwitchOperation::OnReconnectTimeout, base::Unretained(this)));
   context_->event_dispatcher()->PostDelayedTask(
       reconnect_timeout_callback_.callback(),
       base::TimeDelta::FromMilliseconds(kReconnectTimeoutMilliseconds));
@@ -580,7 +575,7 @@ void UsbModemSwitchOperation::OnReconnectTimeout() {
   Complete(false);
 }
 
-void UsbModemSwitchOperation::OnUsbDeviceAdded(const string& sys_path,
+void UsbModemSwitchOperation::OnUsbDeviceAdded(const std::string& sys_path,
                                                uint8_t bus_number,
                                                uint8_t device_address,
                                                uint16_t vendor_id,
@@ -602,7 +597,7 @@ void UsbModemSwitchOperation::OnUsbDeviceAdded(const string& sys_path,
     if (vendor_id == final_usb_id.vendor_id() &&
         product_id == final_usb_id.product_id()) {
       const UsbId& initial_usb_id = modem_info->initial_usb_id();
-      LOG(INFO) << StringPrintf(
+      LOG(INFO) << base::StringPrintf(
           "Successfully switched device '%s' from %04x:%04x to %04x:%04x.",
           switch_context_->sys_path().c_str(), initial_usb_id.vendor_id(),
           initial_usb_id.product_id(), final_usb_id.vendor_id(),
@@ -613,7 +608,7 @@ void UsbModemSwitchOperation::OnUsbDeviceAdded(const string& sys_path,
   }
 }
 
-void UsbModemSwitchOperation::OnUsbDeviceRemoved(const string& sys_path) {
+void UsbModemSwitchOperation::OnUsbDeviceRemoved(const std::string& sys_path) {
   if (sys_path == switch_context_->sys_path()) {
     VLOG(1) << "Device '" << switch_context_->sys_path()
             << "' has been removed and is switching to the modem mode.";

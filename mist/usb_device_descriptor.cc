@@ -11,10 +11,6 @@
 
 #include "mist/usb_device.h"
 
-using base::StringPrintf;
-using std::ostream;
-using std::string;
-
 namespace mist {
 
 UsbDeviceDescriptor::UsbDeviceDescriptor(
@@ -56,30 +52,30 @@ uint16_t UsbDeviceDescriptor::GetProductId() const {
   return device_descriptor_->idProduct;
 }
 
-string UsbDeviceDescriptor::GetManufacturer() const {
+std::string UsbDeviceDescriptor::GetManufacturer() const {
   return device_ ? device_->GetStringDescriptorAscii(
                        device_descriptor_->iManufacturer)
-                 : string();
+                 : std::string();
 }
 
-string UsbDeviceDescriptor::GetProduct() const {
+std::string UsbDeviceDescriptor::GetProduct() const {
   return device_
              ? device_->GetStringDescriptorAscii(device_descriptor_->iProduct)
-             : string();
+             : std::string();
 }
 
-string UsbDeviceDescriptor::GetSerialNumber() const {
+std::string UsbDeviceDescriptor::GetSerialNumber() const {
   return device_ ? device_->GetStringDescriptorAscii(
                        device_descriptor_->iSerialNumber)
-                 : string();
+                 : std::string();
 }
 
 uint8_t UsbDeviceDescriptor::GetNumConfigurations() const {
   return device_descriptor_->bNumConfigurations;
 }
 
-string UsbDeviceDescriptor::ToString() const {
-  return StringPrintf(
+std::string UsbDeviceDescriptor::ToString() const {
+  return base::StringPrintf(
       "Device (Length=%u, "
       "DescriptorType=%u, "
       "DeviceClass=%u, "
@@ -100,8 +96,8 @@ string UsbDeviceDescriptor::ToString() const {
 
 }  // namespace mist
 
-ostream& operator<<(ostream& stream,
-                    const mist::UsbDeviceDescriptor& device_descriptor) {
+std::ostream& operator<<(std::ostream& stream,
+                         const mist::UsbDeviceDescriptor& device_descriptor) {
   stream << device_descriptor.ToString();
   return stream;
 }

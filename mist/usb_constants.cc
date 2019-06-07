@@ -6,8 +6,6 @@
 
 #include <base/logging.h>
 
-using std::ostream;
-
 namespace mist {
 
 UsbDirection GetUsbDirectionOfEndpointAddress(uint8_t endpoint_address) {
@@ -88,22 +86,24 @@ const char* UsbTransferStatusToString(UsbTransferStatus transfer_status) {
 
 }  // namespace mist
 
-ostream& operator<<(ostream& stream, mist::UsbDirection direction) {
+std::ostream& operator<<(std::ostream& stream, mist::UsbDirection direction) {
   stream << UsbDirectionToString(direction);
   return stream;
 }
 
-ostream& operator<<(ostream& stream, mist::UsbSpeed speed) {
+std::ostream& operator<<(std::ostream& stream, mist::UsbSpeed speed) {
   stream << UsbSpeedToString(speed);
   return stream;
 }
 
-ostream& operator<<(ostream& stream, mist::UsbTransferType transfer_type) {
+std::ostream& operator<<(std::ostream& stream,
+                         mist::UsbTransferType transfer_type) {
   stream << UsbTransferTypeToString(transfer_type);
   return stream;
 }
 
-ostream& operator<<(ostream& stream, mist::UsbTransferStatus transfer_status) {
+std::ostream& operator<<(std::ostream& stream,
+                         mist::UsbTransferStatus transfer_status) {
   stream << UsbTransferStatusToString(transfer_status);
   return stream;
 }

@@ -21,10 +21,6 @@
 #include "mist/usb_modem_switch_context.h"
 #include "mist/usb_modem_switcher.h"
 
-using std::cerr;
-using std::cout;
-using std::string;
-
 namespace mist {
 
 namespace {
@@ -65,27 +61,28 @@ const char kUsageMessage[] =
 int Mist::Run(base::CommandLine* command_line) {
   // Switch: --help
   if (command_line->HasSwitch(kSwitchHelp)) {
-    cout << kUsageMessage;
+    std::cout << kUsageMessage;
     return EXIT_SUCCESS;
   }
 
   // Switch: --log-level <level>
   int log_level = kDefaultLogLevel;
   if (command_line->HasSwitch(kSwitchLogLevel)) {
-    string log_level_str = command_line->GetSwitchValueASCII(kSwitchLogLevel);
+    std::string log_level_str =
+        command_line->GetSwitchValueASCII(kSwitchLogLevel);
     if (!base::StringToInt(log_level_str, &log_level)) {
-      cerr << "WARNING: Invalid log level '" << log_level_str << "'.\n";
+      std::cerr << "WARNING: Invalid log level '" << log_level_str << "'.\n";
     }
   }
 
   // <command> [<arguments>]
   base::CommandLine::StringVector arguments = command_line->GetArgs();
   if (arguments.empty()) {
-    cout << kUsageMessage;
+    std::cout << kUsageMessage;
     return EXIT_SUCCESS;
   }
 
-  const string& command = arguments[0];
+  const std::string& command = arguments[0];
 
   int log_flags = brillo::kLogToSyslog;
   if (command_line->HasSwitch(kSwitchDaemon)) {
@@ -113,18 +110,19 @@ int Mist::Run(base::CommandLine* command_line) {
   // Command: switch <sys-path>
   if (command == kCommandIsSupported || command == kCommandSwitch) {
     if (arguments.size() < 2) {
-      cerr << "ERROR: No device sysfs path is specified.\n";
+      std::cerr << "ERROR: No device sysfs path is specified.\n";
       return EXIT_FAILURE;
     }
 
     auto switch_context = std::make_unique<UsbModemSwitchContext>();
 
-    const string& sys_path = arguments[1];
+    const std::string& sys_path = arguments[1];
     // Following the POSIX convention, return EXIT_SUCCESS if the device is
     // supported or EXIT_FAILURE otherwise.
     bool supported = switch_context->InitializeFromSysPath(&context, sys_path);
     if (!supported) {
-      cerr << "ERROR: Device '" << sys_path << "' is not supported by mist.\n";
+      std::cerr << "ERROR: Device '" << sys_path
+                << "' is not supported by mist.\n";
       return EXIT_FAILURE;
     }
 
@@ -133,8 +131,8 @@ int Mist::Run(base::CommandLine* command_line) {
       switcher.Start(switch_context.release());
       context.event_dispatcher()->DispatchForever();
       if (!switcher.is_success()) {
-        cerr << "ERROR: Could not switch device '" << sys_path
-             << "' to the modem mode.\n";
+        std::cerr << "ERROR: Could not switch device '" << sys_path
+                  << "' to the modem mode.\n";
         return EXIT_FAILURE;
       }
     }
@@ -143,7 +141,7 @@ int Mist::Run(base::CommandLine* command_line) {
   }
 
   // Unknown command
-  cerr << "ERROR: Unknown command '" << command << "'.";
+  std::cerr << "ERROR: Unknown command '" << command << "'.";
   return EXIT_FAILURE;
 }
 

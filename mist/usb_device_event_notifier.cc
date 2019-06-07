@@ -17,11 +17,6 @@
 #include "mist/event_dispatcher.h"
 #include "mist/usb_device_event_observer.h"
 
-using base::MessageLoopForIO;
-using base::StringPrintf;
-using std::string;
-using std::unique_ptr;
-
 namespace mist {
 
 namespace {
@@ -76,7 +71,8 @@ bool UsbDeviceEventNotifier::Initialize() {
   }
 
   if (!dispatcher_->StartWatchingFileDescriptor(
-          udev_monitor_file_descriptor_, MessageLoopForIO::WATCH_READ, this)) {
+          udev_monitor_file_descriptor_, base::MessageLoopForIO::WATCH_READ,
+          this)) {
     LOG(ERROR) << "Could not watch udev monitor file descriptor.";
     return false;
   }
@@ -85,7 +81,7 @@ bool UsbDeviceEventNotifier::Initialize() {
 }
 
 bool UsbDeviceEventNotifier::ScanExistingDevices() {
-  unique_ptr<brillo::UdevEnumerate> enumerate = udev_->CreateEnumerate();
+  std::unique_ptr<brillo::UdevEnumerate> enumerate = udev_->CreateEnumerate();
   if (!enumerate || !enumerate->AddMatchSubsystem("usb") ||
       !enumerate->AddMatchProperty("DEVTYPE", "usb_device") ||
       !enumerate->ScanDevices()) {
@@ -93,11 +89,12 @@ bool UsbDeviceEventNotifier::ScanExistingDevices() {
     return false;
   }
 
-  for (unique_ptr<brillo::UdevListEntry> list_entry = enumerate->GetListEntry();
+  for (std::unique_ptr<brillo::UdevListEntry> list_entry =
+           enumerate->GetListEntry();
        list_entry; list_entry = list_entry->GetNext()) {
-    string sys_path = ConvertNullToEmptyString(list_entry->GetName());
+    std::string sys_path = ConvertNullToEmptyString(list_entry->GetName());
 
-    unique_ptr<brillo::UdevDevice> device =
+    std::unique_ptr<brillo::UdevDevice> device =
         udev_->CreateDeviceFromSysPath(sys_path.c_str());
     if (!device)
       continue;
@@ -131,16 +128,16 @@ void UsbDeviceEventNotifier::RemoveObserver(UsbDeviceEventObserver* observer) {
 }
 
 void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
-  VLOG(3) << StringPrintf("File descriptor %d available for read.",
-                          file_descriptor);
+  VLOG(3) << base::StringPrintf("File descriptor %d available for read.",
+                                file_descriptor);
 
-  unique_ptr<brillo::UdevDevice> device = udev_monitor_->ReceiveDevice();
+  std::unique_ptr<brillo::UdevDevice> device = udev_monitor_->ReceiveDevice();
   if (!device) {
     LOG(WARNING) << "Ignore device event with no associated udev device.";
     return;
   }
 
-  VLOG(1) << StringPrintf(
+  VLOG(1) << base::StringPrintf(
       "udev (SysPath=%s, "
       "Node=%s, "
       "Subsystem=%s, "
@@ -157,13 +154,13 @@ void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
       device->GetSysAttributeValue(kAttributeIdVendor),
       device->GetSysAttributeValue(kAttributeIdProduct));
 
-  string sys_path = ConvertNullToEmptyString(device->GetSysPath());
+  std::string sys_path = ConvertNullToEmptyString(device->GetSysPath());
   if (sys_path.empty()) {
     LOG(WARNING) << "Ignore device event with no device sysfs path.";
     return;
   }
 
-  string action = ConvertNullToEmptyString(device->GetAction());
+  std::string action = ConvertNullToEmptyString(device->GetAction());
   if (action == "add") {
     uint8_t bus_number;
     uint8_t device_address;
@@ -195,11 +192,11 @@ void UsbDeviceEventNotifier::OnFileCanWriteWithoutBlocking(
 
 // static
 std::string UsbDeviceEventNotifier::ConvertNullToEmptyString(const char* str) {
-  return str ? str : string();
+  return str ? str : std::string();
 }
 
 // static
-bool UsbDeviceEventNotifier::ConvertHexStringToUint16(const string& str,
+bool UsbDeviceEventNotifier::ConvertHexStringToUint16(const std::string& str,
                                                       uint16_t* value) {
   int temp_value = -1;
   if (str.size() != 4 || !base::HexStringToInt(str, &temp_value) ||
@@ -212,7 +209,7 @@ bool UsbDeviceEventNotifier::ConvertHexStringToUint16(const string& str,
 }
 
 // static
-bool UsbDeviceEventNotifier::ConvertStringToUint8(const string& str,
+bool UsbDeviceEventNotifier::ConvertStringToUint8(const std::string& str,
                                                   uint8_t* value) {
   unsigned temp_value = 0;
   if (!base::StringToUint(str, &temp_value) ||
@@ -231,14 +228,14 @@ bool UsbDeviceEventNotifier::GetDeviceAttributes(
     uint8_t* device_address,
     uint16_t* vendor_id,
     uint16_t* product_id) {
-  string bus_number_string = ConvertNullToEmptyString(
+  std::string bus_number_string = ConvertNullToEmptyString(
       device->GetSysAttributeValue(kAttributeBusNumber));
   if (!ConvertStringToUint8(bus_number_string, bus_number)) {
     LOG(WARNING) << "Invalid USB bus number '" << bus_number_string << "'.";
     return false;
   }
 
-  string device_address_string = ConvertNullToEmptyString(
+  std::string device_address_string = ConvertNullToEmptyString(
       device->GetSysAttributeValue(kAttributeDeviceAddress));
   if (!ConvertStringToUint8(device_address_string, device_address)) {
     LOG(WARNING) << "Invalid USB device address '" << device_address_string
@@ -246,14 +243,14 @@ bool UsbDeviceEventNotifier::GetDeviceAttributes(
     return false;
   }
 
-  string vendor_id_string = ConvertNullToEmptyString(
+  std::string vendor_id_string = ConvertNullToEmptyString(
       device->GetSysAttributeValue(kAttributeIdVendor));
   if (!ConvertHexStringToUint16(vendor_id_string, vendor_id)) {
     LOG(WARNING) << "Invalid USB vendor ID '" << vendor_id_string << "'.";
     return false;
   }
 
-  string product_id_string = ConvertNullToEmptyString(
+  std::string product_id_string = ConvertNullToEmptyString(
       device->GetSysAttributeValue(kAttributeIdProduct));
   if (!ConvertHexStringToUint16(product_id_string, product_id)) {
     LOG(WARNING) << "Invalid USB product ID '" << product_id_string << "'.";

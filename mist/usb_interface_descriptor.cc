@@ -14,11 +14,6 @@
 #include "mist/usb_device.h"
 #include "mist/usb_endpoint_descriptor.h"
 
-using base::StringPrintf;
-using std::ostream;
-using std::string;
-using std::unique_ptr;
-
 namespace mist {
 
 UsbInterfaceDescriptor::UsbInterfaceDescriptor(
@@ -62,16 +57,16 @@ uint8_t UsbInterfaceDescriptor::GetInterfaceProtocol() const {
   return interface_descriptor_->bInterfaceProtocol;
 }
 
-string UsbInterfaceDescriptor::GetInterfaceDescription() const {
+std::string UsbInterfaceDescriptor::GetInterfaceDescription() const {
   return device_ ? device_->GetStringDescriptorAscii(
                        interface_descriptor_->iInterface)
-                 : string();
+                 : std::string();
 }
 
 std::unique_ptr<UsbEndpointDescriptor>
 UsbInterfaceDescriptor::GetEndpointDescriptor(uint8_t index) const {
   if (index >= GetNumEndpoints()) {
-    LOG(ERROR) << StringPrintf(
+    LOG(ERROR) << base::StringPrintf(
         "Invalid endpoint index %d. Must be less than %d.", index,
         GetNumEndpoints());
     return nullptr;
@@ -85,7 +80,7 @@ std::unique_ptr<UsbEndpointDescriptor>
 UsbInterfaceDescriptor::GetEndpointDescriptorByTransferTypeAndDirection(
     UsbTransferType transfer_type, UsbDirection direction) const {
   for (uint8_t i = 0; i < GetNumEndpoints(); ++i) {
-    unique_ptr<UsbEndpointDescriptor> endpoint_descriptor =
+    std::unique_ptr<UsbEndpointDescriptor> endpoint_descriptor =
         GetEndpointDescriptor(i);
     if ((endpoint_descriptor->GetTransferType() == transfer_type) &&
         (endpoint_descriptor->GetDirection() == direction)) {
@@ -95,8 +90,8 @@ UsbInterfaceDescriptor::GetEndpointDescriptorByTransferTypeAndDirection(
   return nullptr;
 }
 
-string UsbInterfaceDescriptor::ToString() const {
-  return StringPrintf(
+std::string UsbInterfaceDescriptor::ToString() const {
+  return base::StringPrintf(
       "Interface (Length=%u, "
       "DescriptorType=%u, "
       "InterfaceNumber=%u, "
@@ -114,8 +109,9 @@ string UsbInterfaceDescriptor::ToString() const {
 
 }  // namespace mist
 
-ostream& operator<<(ostream& stream,
-                    const mist::UsbInterfaceDescriptor& interface_descriptor) {
+std::ostream& operator<<(
+    std::ostream& stream,
+    const mist::UsbInterfaceDescriptor& interface_descriptor) {
   stream << interface_descriptor.ToString();
   return stream;
 }

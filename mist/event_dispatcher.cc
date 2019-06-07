@@ -9,15 +9,10 @@
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread_task_runner_handle.h>
 
-using base::MessageLoop;
-using base::MessageLoopForIO;
-using base::StringPrintf;
-using std::unique_ptr;
-
 namespace mist {
 
 EventDispatcher::EventDispatcher()
-    : dont_use_directly_(new MessageLoopForIO()),
+    : dont_use_directly_(new base::MessageLoopForIO()),
       task_runner_(base::ThreadTaskRunnerHandle::Get()) {
   CHECK(dont_use_directly_);
 }
@@ -32,8 +27,8 @@ void EventDispatcher::DispatchForever() {
 
 void EventDispatcher::Stop() {
   // TODO(ejcaruso): move to RunLoop::QuitWhenIdleClosure after libchrome uprev
-  MessageLoop::current()->task_runner()->PostTask(
-      FROM_HERE, MessageLoop::QuitWhenIdleClosure());
+  base::MessageLoop::current()->task_runner()->PostTask(
+      FROM_HERE, base::MessageLoop::QuitWhenIdleClosure());
 }
 
 bool EventDispatcher::PostTask(const base::Closure& task) {
@@ -47,32 +42,33 @@ bool EventDispatcher::PostDelayedTask(const base::Closure& task,
 
 bool EventDispatcher::StartWatchingFileDescriptor(
     int file_descriptor,
-    MessageLoopForIO::Mode mode,
-    MessageLoopForIO::Watcher* watcher) {
+    base::MessageLoopForIO::Mode mode,
+    base::MessageLoopForIO::Watcher* watcher) {
   CHECK_GE(file_descriptor, 0);
   CHECK(watcher);
 
-  unique_ptr<MessageLoopForIO::FileDescriptorWatcher>
+  std::unique_ptr<base::MessageLoopForIO::FileDescriptorWatcher>
       scoped_file_descriptor_watcher;
-  MessageLoopForIO::FileDescriptorWatcher* file_descriptor_watcher;
+  base::MessageLoopForIO::FileDescriptorWatcher* file_descriptor_watcher;
 
   FileDescriptorWatcherMap::iterator it =
       file_descriptor_watchers_.find(file_descriptor);
   if (it == file_descriptor_watchers_.end()) {
     scoped_file_descriptor_watcher =
-        std::make_unique<MessageLoopForIO::FileDescriptorWatcher>(FROM_HERE);
+        std::make_unique<base::MessageLoopForIO::FileDescriptorWatcher>(
+            FROM_HERE);
     file_descriptor_watcher = scoped_file_descriptor_watcher.get();
     CHECK(file_descriptor_watcher);
   } else {
-    // MessageLoopForIO::WatchFileDescriptor supports watching the same file
-    // descriptor again, using the same mode or a different one.
+    // base::MessageLoopForIO::WatchFileDescriptor supports watching the same
+    // file descriptor again, using the same mode or a different one.
     file_descriptor_watcher = it->second;
   }
 
-  if (!MessageLoopForIO::current()->WatchFileDescriptor(
+  if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
           file_descriptor, true, mode, file_descriptor_watcher, watcher)) {
-    LOG(ERROR) << StringPrintf("Could not watch file descriptor %d.",
-                               file_descriptor);
+    LOG(ERROR) << base::StringPrintf("Could not watch file descriptor %d.",
+                                     file_descriptor);
     return false;
   }
 
@@ -80,8 +76,8 @@ bool EventDispatcher::StartWatchingFileDescriptor(
     file_descriptor_watchers_[file_descriptor] =
         scoped_file_descriptor_watcher.release();
   }
-  VLOG(2) << StringPrintf("Started watching file descriptor %d.",
-                          file_descriptor);
+  VLOG(2) << base::StringPrintf("Started watching file descriptor %d.",
+                                file_descriptor);
   return true;
 }
 
@@ -91,16 +87,17 @@ bool EventDispatcher::StopWatchingFileDescriptor(int file_descriptor) {
   FileDescriptorWatcherMap::iterator it =
       file_descriptor_watchers_.find(file_descriptor);
   if (it == file_descriptor_watchers_.end()) {
-    LOG(ERROR) << StringPrintf("File descriptor %d is not being watched.",
-                               file_descriptor);
+    LOG(ERROR) << base::StringPrintf("File descriptor %d is not being watched.",
+                                     file_descriptor);
     return false;
   }
 
-  MessageLoopForIO::FileDescriptorWatcher* file_descriptor_watcher = it->second;
+  base::MessageLoopForIO::FileDescriptorWatcher* file_descriptor_watcher =
+      it->second;
   delete file_descriptor_watcher;
   file_descriptor_watchers_.erase(it);
-  VLOG(2) << StringPrintf("Stopped watching file descriptor %d.",
-                          file_descriptor);
+  VLOG(2) << base::StringPrintf("Stopped watching file descriptor %d.",
+                                file_descriptor);
   return true;
 }
 

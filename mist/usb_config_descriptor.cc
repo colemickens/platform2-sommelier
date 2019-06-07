@@ -12,10 +12,6 @@
 #include "mist/usb_device.h"
 #include "mist/usb_interface.h"
 
-using base::StringPrintf;
-using std::ostream;
-using std::string;
-
 namespace mist {
 
 UsbConfigDescriptor::UsbConfigDescriptor(
@@ -55,10 +51,10 @@ uint8_t UsbConfigDescriptor::GetConfigurationValue() const {
   return config_descriptor_->bConfigurationValue;
 }
 
-string UsbConfigDescriptor::GetConfigurationDescription() const {
+std::string UsbConfigDescriptor::GetConfigurationDescription() const {
   return device_ ? device_->GetStringDescriptorAscii(
                        config_descriptor_->iConfiguration)
-                 : string();
+                 : std::string();
 }
 
 uint8_t UsbConfigDescriptor::GetAttributes() const {
@@ -72,7 +68,7 @@ uint8_t UsbConfigDescriptor::GetMaxPower() const {
 std::unique_ptr<UsbInterface> UsbConfigDescriptor::GetInterface(
     uint8_t index) const {
   if (index >= GetNumInterfaces()) {
-    LOG(ERROR) << StringPrintf(
+    LOG(ERROR) << base::StringPrintf(
         "Invalid interface index %d. Must be less than %d.", index,
         GetNumInterfaces());
     return nullptr;
@@ -82,8 +78,8 @@ std::unique_ptr<UsbInterface> UsbConfigDescriptor::GetInterface(
                                         &config_descriptor_->interface[index]);
 }
 
-string UsbConfigDescriptor::ToString() const {
-  return StringPrintf(
+std::string UsbConfigDescriptor::ToString() const {
+  return base::StringPrintf(
       "Configuration (Length=%u, "
       "DescriptorType=%u, "
       "TotalLength=%u, "
@@ -99,8 +95,8 @@ string UsbConfigDescriptor::ToString() const {
 
 }  // namespace mist
 
-ostream& operator<<(ostream& stream,
-                    const mist::UsbConfigDescriptor& config_descriptor) {
+std::ostream& operator<<(std::ostream& stream,
+                         const mist::UsbConfigDescriptor& config_descriptor) {
   stream << config_descriptor.ToString();
   return stream;
 }

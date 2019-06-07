@@ -17,8 +17,6 @@
 #include "mist/proto_bindings/config.pb.h"
 #include "mist/proto_bindings/usb_modem_info.pb.h"
 
-using base::FilePath;
-
 namespace mist {
 
 namespace {
@@ -32,10 +30,10 @@ ConfigLoader::ConfigLoader() = default;
 ConfigLoader::~ConfigLoader() = default;
 
 bool ConfigLoader::LoadDefaultConfig() {
-  return LoadConfig(FilePath(kDefaultConfigFile));
+  return LoadConfig(base::FilePath(kDefaultConfigFile));
 }
 
-bool ConfigLoader::LoadConfig(const FilePath& file_path) {
+bool ConfigLoader::LoadConfig(const base::FilePath& file_path) {
   int fd = HANDLE_EINTR(open(file_path.MaybeAsASCII().c_str(), O_RDONLY));
   if (fd == -1) {
     PLOG(ERROR) << "Could not open config file '" << file_path.MaybeAsASCII()

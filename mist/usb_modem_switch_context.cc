@@ -15,10 +15,6 @@
 #include "mist/proto_bindings/usb_modem_info.pb.h"
 #include "mist/usb_device_event_notifier.h"
 
-using base::StringPrintf;
-using std::string;
-using std::unique_ptr;
-
 namespace mist {
 
 UsbModemSwitchContext::UsbModemSwitchContext()
@@ -42,10 +38,10 @@ UsbModemSwitchContext::UsbModemSwitchContext(const std::string& sys_path,
       modem_info_(modem_info) {}
 
 bool UsbModemSwitchContext::InitializeFromSysPath(const Context* context,
-                                                  const string& sys_path) {
+                                                  const std::string& sys_path) {
   CHECK(context);
 
-  unique_ptr<brillo::UdevDevice> device(
+  std::unique_ptr<brillo::UdevDevice> device(
       context->udev()->CreateDeviceFromSysPath(sys_path.c_str()));
   if (!device) {
     VLOG(1) << "Could not find device '" << sys_path << "'.";
@@ -77,7 +73,7 @@ bool UsbModemSwitchContext::InitializeFromSysPath(const Context* context,
   product_id_ = product_id;
   modem_info_ = modem_info;
 
-  VLOG(1) << StringPrintf(
+  VLOG(1) << base::StringPrintf(
       "Initialized UsbModemSwitchContext("
       "SysPath=%s, "
       "BusNumber=%03u, "

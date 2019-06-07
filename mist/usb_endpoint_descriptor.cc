@@ -9,10 +9,6 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
-using base::StringPrintf;
-using std::ostream;
-using std::string;
-
 namespace mist {
 
 UsbEndpointDescriptor::UsbEndpointDescriptor(
@@ -59,8 +55,8 @@ UsbTransferType UsbEndpointDescriptor::GetTransferType() const {
                                       LIBUSB_TRANSFER_TYPE_MASK);
 }
 
-string UsbEndpointDescriptor::ToString() const {
-  return StringPrintf(
+std::string UsbEndpointDescriptor::ToString() const {
+  return base::StringPrintf(
       "Endpoint (Length=%u, "
       "DescriptorType=%u, "
       "EndpointAddress=0x%02x, "
@@ -78,8 +74,9 @@ string UsbEndpointDescriptor::ToString() const {
 
 }  // namespace mist
 
-ostream& operator<<(ostream& stream,
-                    const mist::UsbEndpointDescriptor& endpoint_descriptor) {
+std::ostream& operator<<(
+    std::ostream& stream,
+    const mist::UsbEndpointDescriptor& endpoint_descriptor) {
   stream << endpoint_descriptor.ToString();
   return stream;
 }

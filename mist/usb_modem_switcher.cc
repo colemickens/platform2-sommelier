@@ -15,10 +15,6 @@
 #include "mist/usb_modem_switch_context.h"
 #include "mist/usb_modem_switch_operation.h"
 
-using base::Bind;
-using base::Unretained;
-using std::string;
-
 namespace mist {
 
 // TODO(benchan): Add unit tests for UsbModemSwitcher.
@@ -42,7 +38,7 @@ void UsbModemSwitcher::OnSwitchOperationCompleted(
   delete operation;
 }
 
-void UsbModemSwitcher::OnUsbDeviceAdded(const string& sys_path,
+void UsbModemSwitcher::OnUsbDeviceAdded(const std::string& sys_path,
                                         uint8_t bus_number,
                                         uint8_t device_address,
                                         uint16_t vendor_id,
@@ -61,11 +57,11 @@ void UsbModemSwitcher::OnUsbDeviceAdded(const string& sys_path,
   CHECK(operation);
 
   // The operation object will be deleted in OnSwitchOperationCompleted().
-  operation->Start(
-      Bind(&UsbModemSwitcher::OnSwitchOperationCompleted, Unretained(this)));
+  operation->Start(base::Bind(&UsbModemSwitcher::OnSwitchOperationCompleted,
+                              base::Unretained(this)));
 }
 
-void UsbModemSwitcher::OnUsbDeviceRemoved(const string& sys_path) {
+void UsbModemSwitcher::OnUsbDeviceRemoved(const std::string& sys_path) {
   // UsbModemSwitcher does not need to handle device removal.
 }
 

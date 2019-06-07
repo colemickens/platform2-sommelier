@@ -12,9 +12,6 @@
 #include "mist/usb_modem_switch_context.h"
 #include "mist/usb_modem_switch_operation.h"
 
-using base::Bind;
-using base::Unretained;
-
 namespace mist {
 
 // TODO(benchan): Add unit tests for UsbModemOneShotSwitcher.
@@ -36,8 +33,9 @@ void UsbModemOneShotSwitcher::Start(UsbModemSwitchContext* switch_context) {
   operation_.reset(new UsbModemSwitchOperation(context_, switch_context));
   CHECK(operation_);
 
-  operation_->Start(Bind(&UsbModemOneShotSwitcher::OnSwitchOperationCompleted,
-                         Unretained(this)));
+  operation_->Start(
+      base::Bind(&UsbModemOneShotSwitcher::OnSwitchOperationCompleted,
+                 base::Unretained(this)));
 }
 
 void UsbModemOneShotSwitcher::OnSwitchOperationCompleted(

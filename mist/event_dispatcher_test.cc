@@ -10,12 +10,9 @@
 
 #include <gtest/gtest.h>
 
-using base::MessageLoopForIO;
-using std::vector;
-
 namespace mist {
 
-class TestFileDescriptorWatcher : public MessageLoopForIO::Watcher {
+class TestFileDescriptorWatcher : public base::MessageLoopForIO::Watcher {
  public:
   void OnFileCanReadWithoutBlocking(int file_descriptor) {}
   void OnFileCanWriteWithoutBlocking(int file_descriptor) {}
@@ -42,7 +39,7 @@ class EventDispatcherTest : public testing::Test {
 
   EventDispatcher dispatcher_;
   TestFileDescriptorWatcher watcher_;
-  vector<int> file_descriptors_;
+  std::vector<int> file_descriptors_;
 };
 
 TEST_F(EventDispatcherTest, StartAndStopWatchingFileDescriptor) {
@@ -53,15 +50,15 @@ TEST_F(EventDispatcherTest, StartAndStopWatchingFileDescriptor) {
   EXPECT_FALSE(dispatcher_.StopWatchingFileDescriptor(file_descriptor));
 
   EXPECT_TRUE(dispatcher_.StartWatchingFileDescriptor(
-      file_descriptor, MessageLoopForIO::WATCH_READ, &watcher_));
+      file_descriptor, base::MessageLoopForIO::WATCH_READ, &watcher_));
 
   // StartWatchingFileDescriptor on the same file descriptor should be ok.
   EXPECT_TRUE(dispatcher_.StartWatchingFileDescriptor(
-      file_descriptor, MessageLoopForIO::WATCH_READ, &watcher_));
+      file_descriptor, base::MessageLoopForIO::WATCH_READ, &watcher_));
   EXPECT_TRUE(dispatcher_.StartWatchingFileDescriptor(
-      file_descriptor, MessageLoopForIO::WATCH_WRITE, &watcher_));
+      file_descriptor, base::MessageLoopForIO::WATCH_WRITE, &watcher_));
   EXPECT_TRUE(dispatcher_.StartWatchingFileDescriptor(
-      file_descriptor, MessageLoopForIO::WATCH_READ_WRITE, &watcher_));
+      file_descriptor, base::MessageLoopForIO::WATCH_READ_WRITE, &watcher_));
 
   EXPECT_TRUE(dispatcher_.StopWatchingFileDescriptor(file_descriptor));
   EXPECT_FALSE(dispatcher_.StopWatchingFileDescriptor(file_descriptor));
@@ -72,9 +69,9 @@ TEST_F(EventDispatcherTest, StopWatchingAllFileDescriptors) {
   int file_descriptor2 = CreatePollFileDescriptor();
 
   EXPECT_TRUE(dispatcher_.StartWatchingFileDescriptor(
-      file_descriptor1, MessageLoopForIO::WATCH_READ, &watcher_));
+      file_descriptor1, base::MessageLoopForIO::WATCH_READ, &watcher_));
   EXPECT_TRUE(dispatcher_.StartWatchingFileDescriptor(
-      file_descriptor2, MessageLoopForIO::WATCH_READ, &watcher_));
+      file_descriptor2, base::MessageLoopForIO::WATCH_READ, &watcher_));
   dispatcher_.StopWatchingAllFileDescriptors();
   EXPECT_FALSE(dispatcher_.StopWatchingFileDescriptor(file_descriptor1));
   EXPECT_FALSE(dispatcher_.StopWatchingFileDescriptor(file_descriptor2));
