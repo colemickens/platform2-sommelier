@@ -31,6 +31,9 @@ chromeos_domain
 -cros_init_scripts
 -cros_init_shill
 -cros_debugd
+-cros_debugd_minijail
 } cros_minijail_exec:file execute;
 
+dev_only(`
 auditallow minijail tmpfs:dir create_file_perms;
+');

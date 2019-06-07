@@ -8,6 +8,8 @@ uma_writer(cros_chapsd);
 cros_dbus_client(cros_chapsd);
 cros_tcsd_client(cros_chapsd);
 
+r_dir_file(cros_chapsd, cgroup);
+
 allow cros_chapsd self:capability { setuid setgid };
 
 rw_dir_file(cros_chapsd, cros_var_lib_chaps);

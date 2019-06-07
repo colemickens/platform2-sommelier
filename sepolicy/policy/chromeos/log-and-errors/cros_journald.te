@@ -33,4 +33,6 @@ allow cros_journald kernel:system syslog_read;
 
 allow cros_journald kmsg_device:chr_file { open read write };
 
+allow cros_journald cros_rsyslogd:process signull;
+
 pid_file(minijail, cros_run, "systemd-journald.pid", cros_journald_pid_file);
