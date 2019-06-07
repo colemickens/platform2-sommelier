@@ -207,23 +207,24 @@ void ArcIpConfig::Teardown() {
 }
 
 bool ArcIpConfig::Init(pid_t con_netns) {
-  con_netns_ = con_netns;
-  const std::string pid = base::IntToString(con_netns_);
-  const std::string veth = ArcVethHostName(ifname_);
-  const std::string peer = ArcVethPeerName(ifname_);
-
-  if (!con_netns_) {
+  if (!con_netns) {
     LOG(INFO) << "Uninitializing " << ifname_
               << " bridge: " << config_.br_ifname()
               << " guest_iface: " << config_.arc_ifname();
     ContainerReady(false);
+    con_netns_ = 0;
     return true;
   }
+
+  con_netns_ = con_netns;
 
   LOG(INFO) << "Initializing " << ifname_ << " bridge: " << config_.br_ifname()
             << " guest_iface: " << config_.arc_ifname() << " for container pid "
             << con_netns_;
 
+  const std::string pid = base::IntToString(con_netns_);
+  const std::string veth = ArcVethHostName(ifname_);
+  const std::string peer = ArcVethPeerName(ifname_);
   process_runner_->Run({kIpPath, "link", "delete", veth},
                        false /* log_failures */);
   process_runner_->Run(
@@ -256,7 +257,6 @@ void ArcIpConfig::ContainerReady(bool ready) {
     LOG(INFO) << config_.arc_ifname() << " is now up.";
   } else if (if_up_ && !ready) {
     LOG(INFO) << config_.arc_ifname() << " is now down.";
-    DisableInbound();
   }
   if_up_ = ready;
   if (if_up_) {
@@ -536,7 +536,8 @@ void ArcIpConfig::Clear() {
 void ArcIpConfig::EnableInbound(const std::string& lan_ifname) {
   if (ifname_ != kAndroidLegacyDevice) {
     LOG(ERROR) << "Enabling inbound traffic on non-legacy device is unexpected "
-                  "and not supported";
+                  "and not supported: "
+               << ifname_;
     return;
   }
 
@@ -566,7 +567,8 @@ void ArcIpConfig::EnableInbound(const std::string& lan_ifname) {
 void ArcIpConfig::DisableInbound() {
   if (ifname_ != kAndroidLegacyDevice) {
     LOG(ERROR) << "Disabling inbound traffic on non-legacy device is "
-                  "unexpected and not supported";
+                  "unexpected and not supported: "
+               << ifname_;
     return;
   }
 

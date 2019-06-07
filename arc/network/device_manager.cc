@@ -4,16 +4,28 @@
 
 #include "arc/network/device_manager.h"
 
+#include <linux/rtnetlink.h>
+#include <net/if.h>
+
 #include <utility>
 
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <shill/net/rtnl_handler.h>
 
+namespace arc_networkd {
 namespace {
+
+constexpr const char kArcDevicePrefix[] = "arc_";
 constexpr const char kVpnInterfaceHostPattern[] = "tun";
 constexpr const char kVpnInterfaceGuestPrefix[] = "cros_";
 constexpr const char kEthernetInterfacePrefix[] = "eth";
 constexpr std::array<const char*, 2> kWifiInterfacePrefixes{{"wlan", "mlan"}};
+
+bool IsArcDevice(const std::string& ifname) {
+  return base::StartsWith(ifname, kArcDevicePrefix,
+                          base::CompareCase::INSENSITIVE_ASCII);
+}
 
 bool IsHostVpnInterface(const std::string& ifname) {
   return base::StartsWith(ifname, kVpnInterfaceHostPattern,
@@ -34,15 +46,18 @@ bool IsWifiInterface(const std::string& ifname) {
   }
   return false;
 }
-}  // namespace
 
-namespace arc_networkd {
+}  // namespace
 
 DeviceManager::DeviceManager(AddressManager* addr_mgr,
                              const Device::MessageSink& msg_sink,
                              const std::string& arc_device)
     : addr_mgr_(addr_mgr), msg_sink_(msg_sink) {
   DCHECK(addr_mgr_);
+  link_listener_ = std::make_unique<shill::RTNLListener>(
+      shill::RTNLHandler::kRequestLink,
+      Bind(&DeviceManager::LinkMsgHandler, weak_factory_.GetWeakPtr()));
+  shill::RTNLHandler::GetInstance()->Start(RTMGRP_LINK);
   Add(arc_device);
 }
 
@@ -78,38 +93,64 @@ bool DeviceManager::Add(const std::string& name) {
   return true;
 }
 
-bool DeviceManager::EnableLegacyDevice(const std::string& ifname) {
-  const auto it = devices_.find(kAndroidLegacyDevice);
+void DeviceManager::EnableLegacyDevice(const std::string& ifname) {
+  auto it = devices_.find(kAndroidLegacyDevice);
   if (it == devices_.end()) {
-    LOG(WARNING) << "Enable not supported in multinetworking mode";
-    return false;
+    LOG(WARNING) << "Device [" << kAndroidLegacyDevice
+                 << "] not found - this call does nothing in multinet mode.";
+    return;
   }
-
   it->second->Disable();
   if (!ifname.empty())
     it->second->Enable(ifname);
-  return true;
 }
 
-bool DeviceManager::DisableLegacyDevice() {
-  return EnableLegacyDevice("");
-}
-
-void DeviceManager::EnableAllDevices() {
-  for (auto const& kv : devices_) {
-    if (kv.first == kAndroidDevice) {
-      continue;
-    }
-    kv.second->Enable(kv.first);
+void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
+  if (!msg.HasAttribute(IFLA_IFNAME)) {
+    LOG(ERROR) << "Link event message does not have IFLA_IFNAME";
+    return;
   }
-}
 
-void DeviceManager::DisableAllDevices() {
-  for (auto const& kv : devices_) {
-    if (kv.first == kAndroidDevice) {
-      continue;
+  // Only concerned with host interfaces that were created to support
+  // a guest. That said, the arcbr0 device is ignored here since
+  // (a) in single network mode, it will be enabled/disabled as the
+  // default interface changes, and (b) in multi-network mode there is
+  // nothing that is necessary to do for it.
+  shill::ByteString b(msg.GetAttribute(IFLA_IFNAME));
+  std::string ifname(reinterpret_cast<const char*>(
+      b.GetSubstring(0, IFNAMSIZ).GetConstData()));
+  if (!IsArcDevice(ifname))
+    return;
+
+  bool run = msg.link_status().flags & IFF_RUNNING;
+  auto it = running_devices_.find(ifname);
+  if (!run && it != running_devices_.end()) {
+    LOG(INFO) << ifname << " is no longer running";
+    // If this event is triggered because the guest is going down,
+    // then the host device must be disabled. If the device is no longer
+    // being tracked then it was physically removed (unplugged) and there
+    // is nothing to do.
+    auto dev_it = devices_.find(ifname.substr(strlen(kArcDevicePrefix)));
+    if (dev_it != devices_.end())
+      dev_it->second->Disable();
+
+    running_devices_.erase(it);
+    return;
+  }
+
+  if (run && it == running_devices_.end()) {
+    // Untracked interface now running.
+    // As long as the device list is small, this linear search is fine.
+    for (auto& d : devices_) {
+      auto& dev = d.second;
+      if (dev->config().host_ifname() != ifname)
+        continue;
+
+      LOG(INFO) << ifname << " is now running";
+      running_devices_.insert(ifname);
+      dev->Enable(dev->config().guest_ifname());
+      return;
     }
-    kv.second->Disable();
   }
 }
 

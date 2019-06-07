@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/message_loop/message_loop.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
@@ -75,6 +76,9 @@ class DeviceManagerTest : public testing::Test {
 
   std::vector<std::string> msgs_recv_;
   FakeAddressManager addr_mgr_;
+
+  // This is required because of the RT netlink handler.
+  base::MessageLoopForIO msg_loop_;
 };
 
 }  // namespace
@@ -233,31 +237,6 @@ TEST_F(DeviceManagerTest, ResetRemovesExistingDevices) {
   // Can use Add now to verify only android and wlan0 exist (eth0 removed).
   EXPECT_FALSE(mgr->Add(kAndroidDevice));
   EXPECT_FALSE(mgr->Add("wlan0"));
-}
-
-TEST_F(DeviceManagerTest, EnableLegacyDeviceDoesNothing_Multinet) {
-  auto mgr = NewManager(kAndroidDevice);
-  EXPECT_FALSE(mgr->EnableLegacyDevice("eth0"));
-}
-
-TEST_F(DeviceManagerTest, DisableLegacyDeviceDoesNothing_Multinet) {
-  auto mgr = NewManager(kAndroidDevice);
-  EXPECT_FALSE(mgr->EnableLegacyDevice("eth0"));
-  EXPECT_FALSE(mgr->DisableLegacyDevice());
-}
-
-TEST_F(DeviceManagerTest, EnableLegacyDevice_MultinetDisabled) {
-  auto mgr = NewManager(kAndroidLegacyDevice);
-  // Need to use an empty interface here so that Device::Enable does not
-  // proceed since it will crash during testing while trying to set up
-  // IPv6 route finding.
-  EXPECT_TRUE(mgr->EnableLegacyDevice(""));
-}
-
-TEST_F(DeviceManagerTest, CanDisableLegacyAndroidDevice_MultinetDisabled) {
-  auto mgr = NewManager(kAndroidLegacyDevice);
-  EXPECT_TRUE(mgr->EnableLegacyDevice(""));
-  EXPECT_TRUE(mgr->DisableLegacyDevice());
 }
 
 }  // namespace arc_networkd

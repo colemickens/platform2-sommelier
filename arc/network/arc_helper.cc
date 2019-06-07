@@ -138,7 +138,7 @@ void ArcHelper::Start() {
 
 void ArcHelper::Stop() {
   LOG(INFO) << "Container stopping";
-  pid_ = 0;
+
   link_listener_.reset();
   rtnl_handler_.reset();
 
@@ -146,6 +146,8 @@ void ArcHelper::Stop() {
   for (auto& config : arc_ip_configs_) {
     config.second->Init(0);
   }
+
+  pid_ = 0;
 }
 
 void ArcHelper::AddDevice(const std::string& ifname,

@@ -10,6 +10,9 @@
 #include <set>
 #include <string>
 
+#include <base/memory/weak_ptr.h>
+#include <shill/net/rtnl_listener.h>
+
 #include "arc/network/address_manager.h"
 #include "arc/network/device.h"
 #include "arc/network/ipc.pb.h"
@@ -34,21 +37,21 @@ class DeviceManager {
   // added.
   bool Add(const std::string& name);
 
-  // Enable/disable traffic to the legacy Android device.
-  // These calls do nothing if multinetworking is enabled.
-  bool EnableLegacyDevice(const std::string& ifname);
-  bool DisableLegacyDevice();
-
-  // Enable/disable traffic for all physical devices.
-  // These calls do nothing if multinetworking is disabled.
-  void EnableAllDevices();
-  void DisableAllDevices();
+  // Enables/disables the legacy Android device in single-network mode only.
+  void EnableLegacyDevice(const std::string& ifname);
 
   // Returns a new fully configured device.
   // Note this is public mainly for testing and should not be called directly.
   std::unique_ptr<Device> MakeDevice(const std::string& name) const;
 
  private:
+  // Callback from RTNetlink listener, invoked when an interface changes
+  // run state.
+  void LinkMsgHandler(const shill::RTNLMessage& msg);
+
+  // Listens for RTMGRP_LINK messages and invokes LinkMsgHandler.
+  std::unique_ptr<shill::RTNLListener> link_listener_;
+
   // Provisions and tracks subnets and addresses.
   AddressManager* addr_mgr_;
 
@@ -58,7 +61,10 @@ class DeviceManager {
   // Connected devices keyed by the interface name.
   // The legacy device is mapped to the Android interface name.
   std::map<std::string, std::unique_ptr<Device>> devices_;
+  // Running devices by the host interface name.
+  std::set<std::string> running_devices_;
 
+  base::WeakPtrFactory<DeviceManager> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(DeviceManager);
 };
 
