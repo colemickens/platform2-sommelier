@@ -16,7 +16,6 @@
 
 namespace base {
 
-class MessageLoopProxy;
 
 }  // namespace base
 

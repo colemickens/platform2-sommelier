@@ -23,7 +23,6 @@ namespace mist {
 class Context;
 class UsbBulkTransfer;
 class UsbDevice;
-class UsbModemInfo;
 class UsbModemSwitchContext;
 class UsbTransfer;
 

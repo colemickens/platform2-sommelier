@@ -15,7 +15,6 @@ struct udev_enumerate;
 
 namespace mist {
 
-class UdevDevice;
 
 // A udev enumerate class, which wraps a udev_enumerate C struct from libudev
 // and related library functions into a C++ object.
