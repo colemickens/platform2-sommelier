@@ -14,28 +14,36 @@ namespace {
 // Processes core dumps from the kernel when a crash is detected.
 // Controlled via /proc/sys/kernel/core_pattern.
 bool ValidateCrashReporter(int argc, const char* argv[]) {
-  if (argc != 2 && argc != 4) {
-    LOG(ERROR) << "crash_reporter: argc must be either 2 or 4";
-    return false;
+  // Allow normal crash reporting.  Most invocations will be this.
+  if (argc == 2 &&
+      base::StartsWith(argv[1], "--user=", base::CompareCase::SENSITIVE)) {
+    return true;
   }
 
-  // For early crash reporting, "--early --log_to_stderr" is prefixed to the
-  // crash reporter invocation.
+  // Allow early crash reporting invocation.
+  if (argc == 4 && std::string_view(argv[1]) == "--early" &&
+      std::string_view(argv[2]) == "--log_to_stderr" &&
+      base::StartsWith(argv[3], "--user=", base::CompareCase::SENSITIVE)) {
+    return true;
+  }
+
+  // Allow for testing invocations.
+  if (argc == 3 &&
+      base::StartsWith(argv[1], "--user=", base::CompareCase::SENSITIVE) &&
+      base::StartsWith(argv[2], "--filter_in=", base::CompareCase::SENSITIVE)) {
+    return true;
+  }
   if (argc == 4 &&
-      !base::StartsWith(argv[1], "--early", base::CompareCase::SENSITIVE) &&
-      !base::StartsWith(argv[2], "--log_to_stderr",
-                        base::CompareCase::SENSITIVE)) {
-    LOG(ERROR) << "crash_reporter: multiple arguments can only be used for "
-               << "early mode (\"--early --log_to_stderr\").";
+      base::StartsWith(argv[1], "--user=", base::CompareCase::SENSITIVE) &&
+      (std::string_view(argv[2]) == "--core2md_failure" ||
+       std::string_view(argv[2]) == "--directory_failure") &&
+      base::StartsWith(argv[3], "--filter_in=", base::CompareCase::SENSITIVE)) {
+    return true;
   }
 
-  if (!base::StartsWith(argv[argc - 1],
-                        "--user=", base::CompareCase::SENSITIVE)) {
-    LOG(ERROR) << "crash_reporter: last argument must be --user=";
-    return false;
-  }
-
-  return true;
+  // Disallow all other invocations.
+  LOG(ERROR) << "crash_reporter: unknown invocation";
+  return false;
 }
 
 // Automatic module loading when kernel code calls request_module().

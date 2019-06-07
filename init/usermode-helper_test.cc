@@ -25,6 +25,14 @@ TEST(ValidateProgramArgs, UnknownPrograms) {
 
 TEST(ValidateProgramArgs, GoodCrashReporter) {
   EXPECT_TRUE(ValidateProgramArgs({"/sbin/crash_reporter", "--user=foo"}));
+  EXPECT_TRUE(ValidateProgramArgs(
+      {"/sbin/crash_reporter", "--early", "--log_to_stderr", "--user=foo"}));
+  EXPECT_TRUE(ValidateProgramArgs(
+      {"/sbin/crash_reporter", "--user=foo", "--filter_in=blah"}));
+  EXPECT_TRUE(ValidateProgramArgs({"/sbin/crash_reporter", "--user=foo",
+                                   "--core2md_failure", "--filter_in=blah"}));
+  EXPECT_TRUE(ValidateProgramArgs({"/sbin/crash_reporter", "--user=foo",
+                                   "--directory_failure", "--filter_in=blah"}));
 }
 
 TEST(ValidateProgramArgs, BadCrashReporter) {
