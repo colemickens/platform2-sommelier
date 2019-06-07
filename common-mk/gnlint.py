@@ -599,9 +599,9 @@ def RunLinters(name, gndata, settings=None):
     settings = ParseOptions([])
     issues += settings.issues
 
-  for linter in FindLinters(settings.skip).values():
+  for linter_name, linter in FindLinters(settings.skip).items():
     for result in linter(gndata):
-      issues.append(LintResult(linter, name, result, logging.ERROR))
+      issues.append(LintResult(linter_name, name, result, logging.ERROR))
   return issues
 
 
