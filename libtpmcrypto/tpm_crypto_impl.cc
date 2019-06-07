@@ -6,6 +6,7 @@
 
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -78,12 +79,14 @@ bool AesEncryptGcmMode(const SecureBlob& plain_text,
     return false;
   }
 
-  EVP_CIPHER_CTX context;
-  EVP_CIPHER_CTX_init(&context);
-  if (!EVP_EncryptInit_ex(&context, EVP_aes_256_gcm(), nullptr, key.data(),
+  crypto::ScopedEVP_CIPHER_CTX context(EVP_CIPHER_CTX_new());
+  if (!context) {
+    LOG(ERROR) << "Failed to allocate EVP_CIPHER_CTX";
+    return false;
+  }
+  if (!EVP_EncryptInit_ex(context.get(), EVP_aes_256_gcm(), nullptr, key.data(),
                           iv.data())) {
     LOG(ERROR) << "Failed to initialize gcm encryption context";
-    EVP_CIPHER_CTX_cleanup(&context);
     return false;
   }
 
@@ -91,34 +94,31 @@ bool AesEncryptGcmMode(const SecureBlob& plain_text,
   // |cipher_text| will be the same length as |plain_text|.
   SecureBlob local_cipher_text(plain_text.size());
   int encrypted_len;
-  if (!EVP_EncryptUpdate(&context, local_cipher_text.data(), &encrypted_len,
-                         plain_text.data(), plain_text.size())) {
+  if (!EVP_EncryptUpdate(context.get(), local_cipher_text.data(),
+                         &encrypted_len, plain_text.data(),
+                         plain_text.size())) {
     LOG(ERROR) << "EncryptUpdate failed";
-    EVP_CIPHER_CTX_cleanup(&context);
     return false;
   }
   CHECK_EQ(plain_text.size(), encrypted_len);
 
   // In GCM Mode the result of |bytes_written| will be zero and no additional
   // bytes need to be written during EncryptFinal so a nullptr can be passed.
-  if (!EVP_EncryptFinal_ex(&context, nullptr, &encrypted_len)) {
+  if (!EVP_EncryptFinal_ex(context.get(), nullptr, &encrypted_len)) {
     LOG(ERROR) << "EncryptFinal failed";
-    EVP_CIPHER_CTX_cleanup(&context);
     return false;
   }
   CHECK_EQ(0, encrypted_len);
 
   // Now that the encryption is finalized get the tag value.
   tag->resize(kGcmDefaultTagSize);
-  if (!EVP_CIPHER_CTX_ctrl(&context, EVP_CTRL_GCM_GET_TAG, kGcmDefaultTagSize,
-                           tag->data())) {
+  if (!EVP_CIPHER_CTX_ctrl(context.get(), EVP_CTRL_GCM_GET_TAG,
+                           kGcmDefaultTagSize, tag->data())) {
     LOG(ERROR) << "Could not get GCM encryption tag";
-    EVP_CIPHER_CTX_cleanup(&context);
     return false;
   }
 
   *cipher_text = std::move(local_cipher_text);
-  EVP_CIPHER_CTX_cleanup(&context);
   return true;
 }
 
@@ -133,21 +133,22 @@ bool AesDecryptGcmMode(const SecureBlob& cipher_text,
     return false;
   }
 
-  EVP_CIPHER_CTX context;
-  EVP_CIPHER_CTX_init(&context);
-  if (!EVP_DecryptInit_ex(&context, EVP_aes_256_gcm(), nullptr, key.data(),
+  crypto::ScopedEVP_CIPHER_CTX context(EVP_CIPHER_CTX_new());
+  if (!context) {
+    LOG(ERROR) << "Failed to allocate EVP_CIPHER_CTX";
+    return false;
+  }
+  if (!EVP_DecryptInit_ex(context.get(), EVP_aes_256_gcm(), nullptr, key.data(),
                           iv.data())) {
     LOG(ERROR) << "Failed to initialize GCM decryption context";
-    EVP_CIPHER_CTX_cleanup(&context);
     return false;
   }
 
   // Note that |tag| is not modified here, but because the API takes void*
   // |tag| cannot be const.
-  if (!EVP_CIPHER_CTX_ctrl(&context, EVP_CTRL_GCM_SET_TAG, tag.size(),
+  if (!EVP_CIPHER_CTX_ctrl(context.get(), EVP_CTRL_GCM_SET_TAG, tag.size(),
                            const_cast<uint8_t*>(tag.data()))) {
     LOG(ERROR) << "Could not set GCM encryption tag";
-    EVP_CIPHER_CTX_cleanup(&context);
     return false;
   }
 
@@ -155,10 +156,9 @@ bool AesDecryptGcmMode(const SecureBlob& cipher_text,
   // |plain_text| will be the same length as |cipher_text|.
   SecureBlob local_plain_text(cipher_text.size());
   int decrypted_len;
-  if (!EVP_DecryptUpdate(&context, local_plain_text.data(), &decrypted_len,
+  if (!EVP_DecryptUpdate(context.get(), local_plain_text.data(), &decrypted_len,
                          cipher_text.data(), cipher_text.size())) {
     LOG(ERROR) << "DecryptUpdate failed";
-    EVP_CIPHER_CTX_cleanup(&context);
     return false;
   }
   CHECK_EQ(cipher_text.size(), decrypted_len);
@@ -166,15 +166,13 @@ bool AesDecryptGcmMode(const SecureBlob& cipher_text,
   // In GCM mode all the data was decrypted already, so no more data needs to
   // be written so a nullptr can be passed. This call just validates the tag
   // that was set during initialization.
-  if (!EVP_DecryptFinal_ex(&context, nullptr, &decrypted_len)) {
+  if (!EVP_DecryptFinal_ex(context.get(), nullptr, &decrypted_len)) {
     LOG(ERROR) << "DecryptFinal failed ";
-    EVP_CIPHER_CTX_cleanup(&context);
     return false;
   }
   CHECK_EQ(0, decrypted_len);
 
   *plain_text = std::move(local_plain_text);
-  EVP_CIPHER_CTX_cleanup(&context);
   return true;
 }
 
