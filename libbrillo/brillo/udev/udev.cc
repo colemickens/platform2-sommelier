@@ -2,21 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "mist/udev.h"
+#include <brillo/udev/udev.h>
 
 #include <libudev.h>
 
 #include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-
-#include "mist/udev_device.h"
-#include "mist/udev_enumerate.h"
-#include "mist/udev_monitor.h"
+#include <brillo/udev/udev_device.h>
+#include <brillo/udev/udev_enumerate.h>
+#include <brillo/udev/udev_monitor.h>
 
 using base::StringPrintf;
 
-namespace mist {
+namespace brillo {
 
 Udev::Udev() : udev_(nullptr) {}
 
@@ -130,4 +129,4 @@ std::unique_ptr<UdevMonitor> Udev::CreateMonitorFromNetlink(const char* name) {
   return nullptr;
 }
 
-}  // namespace mist
+}  // namespace brillo

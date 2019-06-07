@@ -2,18 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "mist/udev_enumerate.h"
+#include <brillo/udev/udev_enumerate.h>
 
 #include <libudev.h>
 
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-
-#include "mist/udev_device.h"
+#include <brillo/udev/udev_device.h>
 
 using base::StringPrintf;
 
-namespace mist {
+namespace brillo {
 
 UdevEnumerate::UdevEnumerate() : enumerate_(nullptr) {}
 
@@ -156,4 +155,4 @@ std::unique_ptr<UdevListEntry> UdevEnumerate::GetListEntry() const {
   return list_entry ? std::make_unique<UdevListEntry>(list_entry) : nullptr;
 }
 
-}  // namespace mist
+}  // namespace brillo

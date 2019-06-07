@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MIST_MOCK_UDEV_LIST_ENTRY_H_
-#define MIST_MOCK_UDEV_LIST_ENTRY_H_
+#ifndef LIBBRILLO_BRILLO_UDEV_MOCK_UDEV_LIST_ENTRY_H_
+#define LIBBRILLO_BRILLO_UDEV_MOCK_UDEV_LIST_ENTRY_H_
 
 #include <memory>
 
+#include <brillo/brillo_export.h>
+#include <brillo/udev/udev_list_entry.h>
 #include <gmock/gmock.h>
 
-#include "mist/udev_list_entry.h"
+namespace brillo {
 
-namespace mist {
-
-class MockUdevListEntry : public UdevListEntry {
+class BRILLO_EXPORT MockUdevListEntry : public UdevListEntry {
  public:
   MockUdevListEntry() = default;
   ~MockUdevListEntry() override = default;
@@ -28,6 +28,6 @@ class MockUdevListEntry : public UdevListEntry {
   DISALLOW_COPY_AND_ASSIGN(MockUdevListEntry);
 };
 
-}  // namespace mist
+}  // namespace brillo
 
-#endif  // MIST_MOCK_UDEV_LIST_ENTRY_H_
+#endif  // LIBBRILLO_BRILLO_UDEV_MOCK_UDEV_LIST_ENTRY_H_

@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "mist/udev_device.h"
+#include <brillo/udev/udev_device.h>
 
 #include <libudev.h>
 
 #include <base/logging.h>
 
-namespace mist {
+namespace brillo {
 
 UdevDevice::UdevDevice() : device_(nullptr) {}
 
@@ -121,4 +121,4 @@ const char* UdevDevice::GetSysAttributeValue(const char* attribute) const {
   return udev_device_get_sysattr_value(device_, attribute);
 }
 
-}  // namespace mist
+}  // namespace brillo

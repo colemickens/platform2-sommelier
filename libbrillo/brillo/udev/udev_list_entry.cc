@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "mist/udev_list_entry.h"
-
-#include <base/logging.h>
+#include <brillo/udev/udev_list_entry.h>
 
 #include <libudev.h>
 
-namespace mist {
+#include <base/logging.h>
+
+namespace brillo {
 
 UdevListEntry::UdevListEntry() : list_entry_(nullptr) {}
 
@@ -36,4 +36,4 @@ const char* UdevListEntry::GetValue() const {
   return udev_list_entry_get_value(list_entry_);
 }
 
-}  // namespace mist
+}  // namespace brillo

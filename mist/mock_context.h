@@ -7,10 +7,15 @@
 
 #include "mist/context.h"
 
+namespace brillo {
+
+class MockUdev;
+
+}  // namespace brillo
+
 namespace mist {
 
 class MockConfigLoader;
-class MockUdev;
 
 // A mock context class, which replaces helper objects in the Context class with
 // mocks and is used in place of the Context class in unit tests.
@@ -26,8 +31,8 @@ class MockContext : public Context {
   // Returns the MockConfigLoader object held by this context object.
   MockConfigLoader* GetMockConfigLoader() const;
 
-  // Returns the MockUdev object held by this context object.
-  MockUdev* GetMockUdev() const;
+  // Returns the brillo::MockUdev object held by this context object.
+  brillo::MockUdev* GetMockUdev() const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockContext);

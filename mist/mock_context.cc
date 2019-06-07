@@ -4,9 +4,10 @@
 
 #include "mist/mock_context.h"
 
+#include <brillo/udev/mock_udev.h>
+
 #include "mist/event_dispatcher.h"
 #include "mist/mock_config_loader.h"
-#include "mist/mock_udev.h"
 #include "mist/usb_device_event_notifier.h"
 
 namespace mist {
@@ -18,7 +19,7 @@ bool MockContext::Initialize() {
   event_dispatcher_.reset(new EventDispatcher());
   CHECK(event_dispatcher_);
 
-  udev_.reset(new MockUdev());
+  udev_.reset(new brillo::MockUdev());
   CHECK(udev_);
 
   usb_device_event_notifier_.reset(
@@ -33,8 +34,8 @@ MockConfigLoader* MockContext::GetMockConfigLoader() const {
   return static_cast<MockConfigLoader*>(config_loader_.get());
 }
 
-MockUdev* MockContext::GetMockUdev() const {
-  return static_cast<MockUdev*>(udev_.get());
+brillo::MockUdev* MockContext::GetMockUdev() const {
+  return static_cast<brillo::MockUdev*>(udev_.get());
 }
 
 }  // namespace mist

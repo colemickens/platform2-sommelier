@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MIST_MOCK_UDEV_DEVICE_H_
-#define MIST_MOCK_UDEV_DEVICE_H_
+#ifndef LIBBRILLO_BRILLO_UDEV_MOCK_UDEV_DEVICE_H_
+#define LIBBRILLO_BRILLO_UDEV_MOCK_UDEV_DEVICE_H_
 
 #include <memory>
 
+#include <brillo/brillo_export.h>
+#include <brillo/udev/udev_device.h>
 #include <gmock/gmock.h>
 
-#include "mist/udev_device.h"
+namespace brillo {
 
-namespace mist {
-
-class MockUdevDevice : public UdevDevice {
+class BRILLO_EXPORT MockUdevDevice : public UdevDevice {
  public:
   MockUdevDevice() = default;
   ~MockUdevDevice() override = default;
@@ -47,6 +47,6 @@ class MockUdevDevice : public UdevDevice {
   DISALLOW_COPY_AND_ASSIGN(MockUdevDevice);
 };
 
-}  // namespace mist
+}  // namespace brillo
 
-#endif  // MIST_MOCK_UDEV_DEVICE_H_
+#endif  // LIBBRILLO_BRILLO_UDEV_MOCK_UDEV_DEVICE_H_

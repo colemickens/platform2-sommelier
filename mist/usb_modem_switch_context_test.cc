@@ -7,13 +7,13 @@
 #include <memory>
 #include <utility>
 
+#include <brillo/udev/mock_udev.h>
+#include <brillo/udev/mock_udev_device.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "mist/mock_config_loader.h"
 #include "mist/mock_context.h"
-#include "mist/mock_udev.h"
-#include "mist/mock_udev_device.h"
 #include "mist/proto_bindings/usb_modem_info.pb.h"
 
 using testing::_;
@@ -40,7 +40,7 @@ TEST(UsbModemSwitchContextTest, InitializeFromSysPath) {
   MockContext context;
   EXPECT_TRUE(context.Initialize());
 
-  auto device = std::make_unique<MockUdevDevice>();
+  auto device = std::make_unique<brillo::MockUdevDevice>();
   EXPECT_CALL(*device, GetSysPath()).WillRepeatedly(Return(kFakeDeviceSysPath));
   EXPECT_CALL(*device, GetSysAttributeValue(_))
       .WillOnce(Return(kFakeDeviceBusNumberString))

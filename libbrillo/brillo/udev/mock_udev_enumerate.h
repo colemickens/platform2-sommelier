@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MIST_MOCK_UDEV_ENUMERATE_H_
-#define MIST_MOCK_UDEV_ENUMERATE_H_
+#ifndef LIBBRILLO_BRILLO_UDEV_MOCK_UDEV_ENUMERATE_H_
+#define LIBBRILLO_BRILLO_UDEV_MOCK_UDEV_ENUMERATE_H_
 
 #include <memory>
 
+#include <brillo/brillo_export.h>
+#include <brillo/udev/udev_enumerate.h>
 #include <gmock/gmock.h>
 
-#include "mist/udev_enumerate.h"
+namespace brillo {
 
-namespace mist {
-
-class MockUdevEnumerate : public UdevEnumerate {
+class BRILLO_EXPORT MockUdevEnumerate : public UdevEnumerate {
  public:
   MockUdevEnumerate() = default;
   ~MockUdevEnumerate() override = default;
@@ -37,6 +37,6 @@ class MockUdevEnumerate : public UdevEnumerate {
   DISALLOW_COPY_AND_ASSIGN(MockUdevEnumerate);
 };
 
-}  // namespace mist
+}  // namespace brillo
 
-#endif  // MIST_MOCK_UDEV_ENUMERATE_H_
+#endif  // LIBBRILLO_BRILLO_UDEV_MOCK_UDEV_ENUMERATE_H_

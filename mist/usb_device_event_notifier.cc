@@ -9,12 +9,12 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/udev/udev.h>
+#include <brillo/udev/udev_device.h>
+#include <brillo/udev/udev_enumerate.h>
+#include <brillo/udev/udev_monitor.h>
 
 #include "mist/event_dispatcher.h"
-#include "mist/udev.h"
-#include "mist/udev_device.h"
-#include "mist/udev_enumerate.h"
-#include "mist/udev_monitor.h"
 #include "mist/usb_device_event_observer.h"
 
 using base::MessageLoopForIO;
@@ -34,18 +34,20 @@ const char kAttributeIdVendor[] = "idVendor";
 }  // namespace
 
 UsbDeviceEventNotifier::UsbDeviceEventNotifier(EventDispatcher* dispatcher,
-                                               Udev* udev)
+                                               brillo::Udev* udev)
     : dispatcher_(dispatcher),
       udev_(udev),
-      udev_monitor_file_descriptor_(UdevMonitor::kInvalidFileDescriptor) {
+      udev_monitor_file_descriptor_(
+          brillo::UdevMonitor::kInvalidFileDescriptor) {
   CHECK(dispatcher_);
   CHECK(udev_);
 }
 
 UsbDeviceEventNotifier::~UsbDeviceEventNotifier() {
-  if (udev_monitor_file_descriptor_ != UdevMonitor::kInvalidFileDescriptor) {
+  if (udev_monitor_file_descriptor_ !=
+      brillo::UdevMonitor::kInvalidFileDescriptor) {
     dispatcher_->StopWatchingFileDescriptor(udev_monitor_file_descriptor_);
-    udev_monitor_file_descriptor_ = UdevMonitor::kInvalidFileDescriptor;
+    udev_monitor_file_descriptor_ = brillo::UdevMonitor::kInvalidFileDescriptor;
   }
 }
 
@@ -67,7 +69,8 @@ bool UsbDeviceEventNotifier::Initialize() {
   }
 
   udev_monitor_file_descriptor_ = udev_monitor_->GetFileDescriptor();
-  if (udev_monitor_file_descriptor_ == UdevMonitor::kInvalidFileDescriptor) {
+  if (udev_monitor_file_descriptor_ ==
+      brillo::UdevMonitor::kInvalidFileDescriptor) {
     LOG(ERROR) << "Could not get udev monitor file descriptor.";
     return false;
   }
@@ -82,7 +85,7 @@ bool UsbDeviceEventNotifier::Initialize() {
 }
 
 bool UsbDeviceEventNotifier::ScanExistingDevices() {
-  unique_ptr<UdevEnumerate> enumerate = udev_->CreateEnumerate();
+  unique_ptr<brillo::UdevEnumerate> enumerate = udev_->CreateEnumerate();
   if (!enumerate || !enumerate->AddMatchSubsystem("usb") ||
       !enumerate->AddMatchProperty("DEVTYPE", "usb_device") ||
       !enumerate->ScanDevices()) {
@@ -90,11 +93,11 @@ bool UsbDeviceEventNotifier::ScanExistingDevices() {
     return false;
   }
 
-  for (unique_ptr<UdevListEntry> list_entry = enumerate->GetListEntry();
+  for (unique_ptr<brillo::UdevListEntry> list_entry = enumerate->GetListEntry();
        list_entry; list_entry = list_entry->GetNext()) {
     string sys_path = ConvertNullToEmptyString(list_entry->GetName());
 
-    unique_ptr<UdevDevice> device =
+    unique_ptr<brillo::UdevDevice> device =
         udev_->CreateDeviceFromSysPath(sys_path.c_str());
     if (!device)
       continue;
@@ -131,7 +134,7 @@ void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
   VLOG(3) << StringPrintf("File descriptor %d available for read.",
                           file_descriptor);
 
-  unique_ptr<UdevDevice> device = udev_monitor_->ReceiveDevice();
+  unique_ptr<brillo::UdevDevice> device = udev_monitor_->ReceiveDevice();
   if (!device) {
     LOG(WARNING) << "Ignore device event with no associated udev device.";
     return;
@@ -222,11 +225,12 @@ bool UsbDeviceEventNotifier::ConvertStringToUint8(const string& str,
 }
 
 // static
-bool UsbDeviceEventNotifier::GetDeviceAttributes(const UdevDevice* device,
-                                                 uint8_t* bus_number,
-                                                 uint8_t* device_address,
-                                                 uint16_t* vendor_id,
-                                                 uint16_t* product_id) {
+bool UsbDeviceEventNotifier::GetDeviceAttributes(
+    const brillo::UdevDevice* device,
+    uint8_t* bus_number,
+    uint8_t* device_address,
+    uint16_t* vendor_id,
+    uint16_t* product_id) {
   string bus_number_string = ConvertNullToEmptyString(
       device->GetSysAttributeValue(kAttributeBusNumber));
   if (!ConvertStringToUint8(bus_number_string, bus_number)) {

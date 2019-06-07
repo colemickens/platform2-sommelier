@@ -183,6 +183,22 @@ libbrillo_sublibs = [
   },
 ]
 
+if (use.udev) {
+  libbrillo_sublibs += [
+    {
+      library_name = "brillo-udev-${libbase_ver}"
+      all_dependent_pkg_deps = [ "libudev" ]
+      sources = [
+        "brillo/udev/udev.cc",
+        "brillo/udev/udev_device.cc",
+        "brillo/udev/udev_enumerate.cc",
+        "brillo/udev/udev_list_entry.cc",
+        "brillo/udev/udev_monitor.cc",
+      ]
+    },
+  ]
+}
+
 # Generate shared libraries.
 foreach(attr, libbrillo_sublibs) {
   shared_library("lib" + attr.library_name) {

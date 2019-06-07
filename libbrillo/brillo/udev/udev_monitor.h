@@ -2,22 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MIST_UDEV_MONITOR_H_
-#define MIST_UDEV_MONITOR_H_
+#ifndef LIBBRILLO_BRILLO_UDEV_UDEV_MONITOR_H_
+#define LIBBRILLO_BRILLO_UDEV_UDEV_MONITOR_H_
 
 #include <memory>
 
 #include <base/macros.h>
+#include <brillo/brillo_export.h>
 
 struct udev_monitor;
 
-namespace mist {
+namespace brillo {
 
 class UdevDevice;
 
 // A udev monitor, which wraps a udev_monitor C struct from libudev and related
 // library functions into a C++ object.
-class UdevMonitor {
+class BRILLO_EXPORT UdevMonitor {
  public:
   static const int kInvalidFileDescriptor = -1;
 
@@ -69,6 +70,6 @@ class UdevMonitor {
   DISALLOW_COPY_AND_ASSIGN(UdevMonitor);
 };
 
-}  // namespace mist
+}  // namespace brillo
 
-#endif  // MIST_UDEV_MONITOR_H_
+#endif  // LIBBRILLO_BRILLO_UDEV_UDEV_MONITOR_H_

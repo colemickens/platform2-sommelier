@@ -2,20 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MIST_UDEV_LIST_ENTRY_H_
-#define MIST_UDEV_LIST_ENTRY_H_
+#ifndef LIBBRILLO_BRILLO_UDEV_UDEV_LIST_ENTRY_H_
+#define LIBBRILLO_BRILLO_UDEV_UDEV_LIST_ENTRY_H_
 
 #include <memory>
 
 #include <base/macros.h>
+#include <brillo/brillo_export.h>
 
 struct udev_list_entry;
 
-namespace mist {
+namespace brillo {
 
 // A udev list entry, which wraps a udev_list_entry C struct from libudev and
 // related library functions into a C++ object.
-class UdevListEntry {
+class BRILLO_EXPORT UdevListEntry {
  public:
   // Constructs a UdevListEntry object by taking a raw pointer to a
   // udev_list_entry struct as |list_entry|. The ownership of |list_entry| is
@@ -49,6 +50,6 @@ class UdevListEntry {
   DISALLOW_COPY_AND_ASSIGN(UdevListEntry);
 };
 
-}  // namespace mist
+}  // namespace brillo
 
-#endif  // MIST_UDEV_LIST_ENTRY_H_
+#endif  // LIBBRILLO_BRILLO_UDEV_UDEV_LIST_ENTRY_H_

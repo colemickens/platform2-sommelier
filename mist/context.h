@@ -9,12 +9,17 @@
 
 #include <base/macros.h>
 
+namespace brillo {
+
+class Udev;
+
+}  // namespace brillo
+
 namespace mist {
 
 class ConfigLoader;
 class EventDispatcher;
 class Metrics;
-class Udev;
 class UsbDeviceEventNotifier;
 class UsbManager;
 
@@ -33,7 +38,7 @@ class Context {
   Metrics* metrics() const { return metrics_.get(); }
   ConfigLoader* config_loader() const { return config_loader_.get(); }
   EventDispatcher* event_dispatcher() const { return event_dispatcher_.get(); }
-  Udev* udev() const { return udev_.get(); }
+  brillo::Udev* udev() const { return udev_.get(); }
   UsbDeviceEventNotifier* usb_device_event_notifier() const {
     return usb_device_event_notifier_.get();
   }
@@ -45,7 +50,7 @@ class Context {
   std::unique_ptr<Metrics> metrics_;
   std::unique_ptr<ConfigLoader> config_loader_;
   std::unique_ptr<EventDispatcher> event_dispatcher_;
-  std::unique_ptr<Udev> udev_;
+  std::unique_ptr<brillo::Udev> udev_;
   std::unique_ptr<UsbDeviceEventNotifier> usb_device_event_notifier_;
   std::unique_ptr<UsbManager> usb_manager_;
 

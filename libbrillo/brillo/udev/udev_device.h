@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MIST_UDEV_DEVICE_H_
-#define MIST_UDEV_DEVICE_H_
+#ifndef LIBBRILLO_BRILLO_UDEV_UDEV_DEVICE_H_
+#define LIBBRILLO_BRILLO_UDEV_UDEV_DEVICE_H_
 
 #include <stdint.h>
 #include <sys/types.h>
@@ -11,16 +11,16 @@
 #include <memory>
 
 #include <base/macros.h>
-
-#include "mist/udev_list_entry.h"
+#include <brillo/brillo_export.h>
+#include <brillo/udev/udev_list_entry.h>
 
 struct udev_device;
 
-namespace mist {
+namespace brillo {
 
 // A udev device, which wraps a udev_device C struct from libudev and related
 // library functions into a C++ object.
-class UdevDevice {
+class BRILLO_EXPORT UdevDevice {
  public:
   // Constructs a UdevDevice object by taking a raw pointer to a udev_device
   // struct as |device|. The ownership of |device| is not transferred, but its
@@ -108,6 +108,6 @@ class UdevDevice {
   DISALLOW_COPY_AND_ASSIGN(UdevDevice);
 };
 
-}  // namespace mist
+}  // namespace brillo
 
-#endif  // MIST_UDEV_DEVICE_H_
+#endif  // LIBBRILLO_BRILLO_UDEV_UDEV_DEVICE_H_

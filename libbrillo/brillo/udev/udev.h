@@ -2,19 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MIST_UDEV_H_
-#define MIST_UDEV_H_
+#ifndef LIBBRILLO_BRILLO_UDEV_UDEV_H_
+#define LIBBRILLO_BRILLO_UDEV_UDEV_H_
 
 #include <sys/types.h>
 
 #include <memory>
 
 #include <base/macros.h>
+#include <brillo/brillo_export.h>
 
 struct udev;
 struct udev_device;
 
-namespace mist {
+namespace brillo {
 
 class UdevDevice;
 class UdevEnumerate;
@@ -22,7 +23,7 @@ class UdevMonitor;
 
 // A udev library context, which wraps a udev C struct from libudev and related
 // library functions into a C++ object.
-class Udev {
+class BRILLO_EXPORT Udev {
  public:
   Udev();
   virtual ~Udev();
@@ -56,11 +57,11 @@ class Udev {
   // UdevDevice object.
   static std::unique_ptr<UdevDevice> CreateDevice(udev_device* device);
 
-  udev* udev_;
+  struct udev* udev_;
 
   DISALLOW_COPY_AND_ASSIGN(Udev);
 };
 
-}  // namespace mist
+}  // namespace brillo
 
-#endif  // MIST_UDEV_H_
+#endif  // LIBBRILLO_BRILLO_UDEV_UDEV_H_

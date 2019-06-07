@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MIST_MOCK_UDEV_MONITOR_H_
-#define MIST_MOCK_UDEV_MONITOR_H_
+#ifndef LIBBRILLO_BRILLO_UDEV_MOCK_UDEV_MONITOR_H_
+#define LIBBRILLO_BRILLO_UDEV_MOCK_UDEV_MONITOR_H_
 
 #include <memory>
 
+#include <brillo/brillo_export.h>
+#include <brillo/udev/udev_monitor.h>
 #include <gmock/gmock.h>
 
-#include "mist/udev_monitor.h"
+namespace brillo {
 
-namespace mist {
-
-class MockUdevMonitor : public UdevMonitor {
+class BRILLO_EXPORT MockUdevMonitor : public UdevMonitor {
  public:
   MockUdevMonitor() = default;
   ~MockUdevMonitor() override = default;
@@ -32,6 +32,6 @@ class MockUdevMonitor : public UdevMonitor {
   DISALLOW_COPY_AND_ASSIGN(MockUdevMonitor);
 };
 
-}  // namespace mist
+}  // namespace brillo
 
-#endif  // MIST_MOCK_UDEV_MONITOR_H_
+#endif  // LIBBRILLO_BRILLO_UDEV_MOCK_UDEV_MONITOR_H_

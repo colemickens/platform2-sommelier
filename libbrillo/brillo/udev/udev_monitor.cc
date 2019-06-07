@@ -2,18 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "mist/udev_monitor.h"
+#include <brillo/udev/udev_monitor.h>
 
 #include <libudev.h>
 
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-
-#include "mist/udev_device.h"
+#include <brillo/udev/udev_device.h>
 
 using base::StringPrintf;
 
-namespace mist {
+namespace brillo {
 
 UdevMonitor::UdevMonitor() : monitor_(nullptr) {}
 
@@ -124,4 +123,4 @@ bool UdevMonitor::FilterRemove() {
   return false;
 }
 
-}  // namespace mist
+}  // namespace brillo

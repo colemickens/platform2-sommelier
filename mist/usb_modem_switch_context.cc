@@ -7,12 +7,12 @@
 #include <memory>
 
 #include <base/strings/stringprintf.h>
+#include <brillo/udev/udev.h>
+#include <brillo/udev/udev_device.h>
 
 #include "mist/config_loader.h"
 #include "mist/context.h"
 #include "mist/proto_bindings/usb_modem_info.pb.h"
-#include "mist/udev.h"
-#include "mist/udev_device.h"
 #include "mist/usb_device_event_notifier.h"
 
 using base::StringPrintf;
@@ -45,7 +45,7 @@ bool UsbModemSwitchContext::InitializeFromSysPath(const Context* context,
                                                   const string& sys_path) {
   CHECK(context);
 
-  unique_ptr<UdevDevice> device(
+  unique_ptr<brillo::UdevDevice> device(
       context->udev()->CreateDeviceFromSysPath(sys_path.c_str()));
   if (!device) {
     VLOG(1) << "Could not find device '" << sys_path << "'.";

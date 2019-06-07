@@ -2,23 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MIST_UDEV_ENUMERATE_H_
-#define MIST_UDEV_ENUMERATE_H_
+#ifndef LIBBRILLO_BRILLO_UDEV_UDEV_ENUMERATE_H_
+#define LIBBRILLO_BRILLO_UDEV_UDEV_ENUMERATE_H_
 
 #include <memory>
 
 #include <base/macros.h>
-
-#include "mist/udev_list_entry.h"
+#include <brillo/brillo_export.h>
+#include <brillo/udev/udev_list_entry.h>
 
 struct udev_enumerate;
 
-namespace mist {
-
+namespace brillo {
 
 // A udev enumerate class, which wraps a udev_enumerate C struct from libudev
 // and related library functions into a C++ object.
-class UdevEnumerate {
+class BRILLO_EXPORT UdevEnumerate {
  public:
   // Constructs a UdevEnumerate object by taking a raw pointer to a
   // udev_enumerate struct as |enumerate|. The ownership of |enumerate| is not
@@ -79,6 +78,6 @@ class UdevEnumerate {
   DISALLOW_COPY_AND_ASSIGN(UdevEnumerate);
 };
 
-}  // namespace mist
+}  // namespace brillo
 
-#endif  // MIST_UDEV_ENUMERATE_H_
+#endif  // LIBBRILLO_BRILLO_UDEV_UDEV_ENUMERATE_H_

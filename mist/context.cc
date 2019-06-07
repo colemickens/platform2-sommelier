@@ -4,10 +4,11 @@
 
 #include "mist/context.h"
 
+#include <brillo/udev/udev.h>
+
 #include "mist/config_loader.h"
 #include "mist/event_dispatcher.h"
 #include "mist/metrics.h"
-#include "mist/udev.h"
 #include "mist/usb_device_event_notifier.h"
 #include "mist/usb_manager.h"
 
@@ -31,7 +32,7 @@ bool Context::Initialize() {
   event_dispatcher_.reset(new EventDispatcher());
   CHECK(event_dispatcher_);
 
-  udev_.reset(new Udev());
+  udev_.reset(new brillo::Udev());
   CHECK(udev_);
   if (!udev_->Initialize()) {
     LOG(ERROR) << "Could not create udev library context.";

@@ -15,12 +15,17 @@
 #include <base/observer_list.h>
 #include <gtest/gtest_prod.h>
 
-namespace mist {
+namespace brillo {
 
-class EventDispatcher;
 class Udev;
 class UdevDevice;
 class UdevMonitor;
+
+}  // namespace brillo
+
+namespace mist {
+
+class EventDispatcher;
 class UsbDeviceEventObserver;
 
 // A USB device event notifier, which monitors udev events for USB devices and
@@ -29,10 +34,10 @@ class UsbDeviceEventObserver;
 class UsbDeviceEventNotifier : public base::MessageLoopForIO::Watcher {
  public:
   // Constructs a UsbDeviceEventNotifier object by taking a raw pointer to an
-  // EventDispatcher as |dispatcher| and a raw pointer to a Udev as |udev|. The
-  // ownership of |dispatcher| and |udev| is not transferred, and thus they
-  // should outlive this object.
-  UsbDeviceEventNotifier(EventDispatcher* dispatcher, Udev* udev);
+  // EventDispatcher as |dispatcher| and a raw pointer to a brillo::Udev as
+  // |udev|. The ownership of |dispatcher| and |udev| is not transferred, and
+  // thus they should outlive this object.
+  UsbDeviceEventNotifier(EventDispatcher* dispatcher, brillo::Udev* udev);
 
   virtual ~UsbDeviceEventNotifier();
 
@@ -58,7 +63,7 @@ class UsbDeviceEventNotifier : public base::MessageLoopForIO::Watcher {
 
   // Gets the bus number, device address, vendor ID, and product ID of |device|.
   // Return true on success.
-  static bool GetDeviceAttributes(const UdevDevice* device,
+  static bool GetDeviceAttributes(const brillo::UdevDevice* device,
                                   uint8_t* bus_number,
                                   uint8_t* device_address,
                                   uint16_t* vendor_id,
@@ -90,8 +95,8 @@ class UsbDeviceEventNotifier : public base::MessageLoopForIO::Watcher {
 
   EventDispatcher* const dispatcher_;
   base::ObserverList<UsbDeviceEventObserver> observer_list_;
-  Udev* const udev_;
-  std::unique_ptr<UdevMonitor> udev_monitor_;
+  brillo::Udev* const udev_;
+  std::unique_ptr<brillo::UdevMonitor> udev_monitor_;
   int udev_monitor_file_descriptor_;
 
   DISALLOW_COPY_AND_ASSIGN(UsbDeviceEventNotifier);

@@ -6,14 +6,14 @@
 
 #include <utility>
 
+#include <brillo/udev/mock_udev.h>
+#include <brillo/udev/mock_udev_device.h>
+#include <brillo/udev/mock_udev_enumerate.h>
+#include <brillo/udev/mock_udev_list_entry.h>
+#include <brillo/udev/mock_udev_monitor.h>
 #include <gtest/gtest.h>
 
 #include "mist/event_dispatcher.h"
-#include "mist/mock_udev.h"
-#include "mist/mock_udev_device.h"
-#include "mist/mock_udev_enumerate.h"
-#include "mist/mock_udev_list_entry.h"
-#include "mist/mock_udev_monitor.h"
 #include "mist/mock_usb_device_event_observer.h"
 
 using testing::_;
@@ -59,7 +59,7 @@ class UsbDeviceEventNotifierTest : public testing::Test {
   UsbDeviceEventNotifierTest() : notifier_(&dispatcher_, &udev_) {}
 
   EventDispatcher dispatcher_;
-  MockUdev udev_;
+  brillo::MockUdev udev_;
   MockUsbDeviceEventObserver observer_;
   UsbDeviceEventNotifier notifier_;
 };
@@ -119,13 +119,13 @@ TEST_F(UsbDeviceEventNotifierTest, GetDeviceAttributes) {
   uint16_t product_id;
 
   // Invalid bus number.
-  MockUdevDevice device1;
+  brillo::MockUdevDevice device1;
   EXPECT_CALL(device1, GetSysAttributeValue(_)).WillOnce(Return(""));
   EXPECT_FALSE(UsbDeviceEventNotifier::GetDeviceAttributes(
       &device1, &bus_number, &device_address, &vendor_id, &product_id));
 
   // Invalid device address.
-  MockUdevDevice device2;
+  brillo::MockUdevDevice device2;
   EXPECT_CALL(device2, GetSysAttributeValue(_))
       .WillOnce(Return(kFakeUsbDevice1BusNumberString))
       .WillOnce(Return(""));
@@ -133,7 +133,7 @@ TEST_F(UsbDeviceEventNotifierTest, GetDeviceAttributes) {
       &device2, &bus_number, &device_address, &vendor_id, &product_id));
 
   // Invalid vendor ID.
-  MockUdevDevice device3;
+  brillo::MockUdevDevice device3;
   EXPECT_CALL(device3, GetSysAttributeValue(_))
       .WillOnce(Return(kFakeUsbDevice1BusNumberString))
       .WillOnce(Return(kFakeUsbDevice1DeviceAddressString))
@@ -142,7 +142,7 @@ TEST_F(UsbDeviceEventNotifierTest, GetDeviceAttributes) {
       &device3, &bus_number, &device_address, &vendor_id, &product_id));
 
   // Invalid product ID.
-  MockUdevDevice device4;
+  brillo::MockUdevDevice device4;
   EXPECT_CALL(device4, GetSysAttributeValue(_))
       .WillOnce(Return(kFakeUsbDevice1BusNumberString))
       .WillOnce(Return(kFakeUsbDevice1DeviceAddressString))
@@ -152,7 +152,7 @@ TEST_F(UsbDeviceEventNotifierTest, GetDeviceAttributes) {
       &device4, &bus_number, &device_address, &vendor_id, &product_id));
 
   // Valid bus number, device address, vendor ID, and product ID.
-  MockUdevDevice device5;
+  brillo::MockUdevDevice device5;
   EXPECT_CALL(device5, GetSysAttributeValue(_))
       .WillOnce(Return(kFakeUsbDevice1BusNumberString))
       .WillOnce(Return(kFakeUsbDevice1DeviceAddressString))
@@ -167,11 +167,11 @@ TEST_F(UsbDeviceEventNotifierTest, GetDeviceAttributes) {
 }
 
 TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEvents) {
-  auto device1 = std::make_unique<MockUdevDevice>();
+  auto device1 = std::make_unique<brillo::MockUdevDevice>();
   EXPECT_CALL(*device1, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
   EXPECT_CALL(*device1, GetAction()).WillOnce(Return(kUdevActionAdd));
 
-  auto device2 = std::make_unique<MockUdevDevice>();
+  auto device2 = std::make_unique<brillo::MockUdevDevice>();
   EXPECT_CALL(*device2, GetSysPath()).WillOnce(Return(kFakeUsbDevice2SysPath));
   EXPECT_CALL(*device2, GetAction()).WillOnce(Return(kUdevActionAdd));
   EXPECT_CALL(*device2, GetSysAttributeValue(_))
@@ -180,15 +180,15 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEvents) {
       .WillOnce(Return(kFakeUsbDevice2VendorIdString))
       .WillOnce(Return(kFakeUsbDevice2ProductIdString));
 
-  auto device3 = std::make_unique<MockUdevDevice>();
+  auto device3 = std::make_unique<brillo::MockUdevDevice>();
   EXPECT_CALL(*device3, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
   EXPECT_CALL(*device3, GetAction()).WillOnce(Return(kUdevActionRemove));
 
-  auto device4 = std::make_unique<MockUdevDevice>();
+  auto device4 = std::make_unique<brillo::MockUdevDevice>();
   EXPECT_CALL(*device4, GetSysPath()).WillOnce(Return(kFakeUsbDevice2SysPath));
   EXPECT_CALL(*device4, GetAction()).WillOnce(Return(kUdevActionRemove));
 
-  auto monitor = std::make_unique<MockUdevMonitor>();
+  auto monitor = std::make_unique<brillo::MockUdevMonitor>();
   EXPECT_CALL(*monitor, ReceiveDevice())
       .WillOnce(Return(ByMove(std::move(device1))))
       .WillOnce(Return(ByMove(std::move(device2))))
@@ -212,11 +212,11 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEvents) {
 }
 
 TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventNotAddOrRemove) {
-  auto device = std::make_unique<MockUdevDevice>();
+  auto device = std::make_unique<brillo::MockUdevDevice>();
   EXPECT_CALL(*device, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
   EXPECT_CALL(*device, GetAction()).WillOnce(Return(kUdevActionChange));
 
-  auto monitor = std::make_unique<MockUdevMonitor>();
+  auto monitor = std::make_unique<brillo::MockUdevMonitor>();
   EXPECT_CALL(*monitor, ReceiveDevice())
       .WillOnce(Return(ByMove(std::move(device))));
   notifier_.udev_monitor_ = std::move(monitor);
@@ -228,12 +228,12 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventNotAddOrRemove) {
 }
 
 TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidBusNumber) {
-  auto device = std::make_unique<MockUdevDevice>();
+  auto device = std::make_unique<brillo::MockUdevDevice>();
   EXPECT_CALL(*device, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
   EXPECT_CALL(*device, GetAction()).WillOnce(Return(kUdevActionAdd));
   EXPECT_CALL(*device, GetSysAttributeValue(_)).WillOnce(Return(""));
 
-  auto monitor = std::make_unique<MockUdevMonitor>();
+  auto monitor = std::make_unique<brillo::MockUdevMonitor>();
   EXPECT_CALL(*monitor, ReceiveDevice())
       .WillOnce(Return(ByMove(std::move(device))));
   notifier_.udev_monitor_ = std::move(monitor);
@@ -245,14 +245,14 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidBusNumber) {
 }
 
 TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidDeviceAddress) {
-  auto device = std::make_unique<MockUdevDevice>();
+  auto device = std::make_unique<brillo::MockUdevDevice>();
   EXPECT_CALL(*device, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
   EXPECT_CALL(*device, GetAction()).WillOnce(Return(kUdevActionAdd));
   EXPECT_CALL(*device, GetSysAttributeValue(_))
       .WillOnce(Return(kFakeUsbDevice1BusNumberString))
       .WillOnce(Return(""));
 
-  auto monitor = std::make_unique<MockUdevMonitor>();
+  auto monitor = std::make_unique<brillo::MockUdevMonitor>();
   EXPECT_CALL(*monitor, ReceiveDevice())
       .WillOnce(Return(ByMove(std::move(device))));
   notifier_.udev_monitor_ = std::move(monitor);
@@ -264,7 +264,7 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidDeviceAddress) {
 }
 
 TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidVendorId) {
-  auto device = std::make_unique<MockUdevDevice>();
+  auto device = std::make_unique<brillo::MockUdevDevice>();
   EXPECT_CALL(*device, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
   EXPECT_CALL(*device, GetAction()).WillOnce(Return(kUdevActionAdd));
   EXPECT_CALL(*device, GetSysAttributeValue(_))
@@ -272,7 +272,7 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidVendorId) {
       .WillOnce(Return(kFakeUsbDevice1DeviceAddressString))
       .WillOnce(Return(""));
 
-  auto monitor = std::make_unique<MockUdevMonitor>();
+  auto monitor = std::make_unique<brillo::MockUdevMonitor>();
   EXPECT_CALL(*monitor, ReceiveDevice())
       .WillOnce(Return(ByMove(std::move(device))));
   notifier_.udev_monitor_ = std::move(monitor);
@@ -284,7 +284,7 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidVendorId) {
 }
 
 TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidProductId) {
-  auto device = std::make_unique<MockUdevDevice>();
+  auto device = std::make_unique<brillo::MockUdevDevice>();
   EXPECT_CALL(*device, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
   EXPECT_CALL(*device, GetAction()).WillOnce(Return(kUdevActionAdd));
   EXPECT_CALL(*device, GetSysAttributeValue(_))
@@ -293,7 +293,7 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidProductId) {
       .WillOnce(Return(kFakeUsbDevice1VendorIdString))
       .WillOnce(Return(""));
 
-  auto monitor = std::make_unique<MockUdevMonitor>();
+  auto monitor = std::make_unique<brillo::MockUdevMonitor>();
   EXPECT_CALL(*monitor, ReceiveDevice())
       .WillOnce(Return(ByMove(std::move(device))));
   notifier_.udev_monitor_ = std::move(monitor);
@@ -305,16 +305,16 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidProductId) {
 }
 
 TEST_F(UsbDeviceEventNotifierTest, ScanExistingDevices) {
-  auto list_entry2 = std::make_unique<MockUdevListEntry>();
+  auto list_entry2 = std::make_unique<brillo::MockUdevListEntry>();
   EXPECT_CALL(*list_entry2, GetName()).WillOnce(Return(kFakeUsbDevice2SysPath));
   EXPECT_CALL(*list_entry2, GetNext()).WillOnce(Return(ByMove(nullptr)));
 
-  auto list_entry1 = std::make_unique<MockUdevListEntry>();
+  auto list_entry1 = std::make_unique<brillo::MockUdevListEntry>();
   EXPECT_CALL(*list_entry1, GetName()).WillOnce(Return(kFakeUsbDevice1SysPath));
   EXPECT_CALL(*list_entry1, GetNext())
       .WillOnce(Return(ByMove(std::move(list_entry2))));
 
-  auto enumerate = std::make_unique<MockUdevEnumerate>();
+  auto enumerate = std::make_unique<brillo::MockUdevEnumerate>();
   EXPECT_CALL(*enumerate, AddMatchSubsystem(StrEq("usb")))
       .WillOnce(Return(true));
   EXPECT_CALL(*enumerate,
@@ -327,14 +327,14 @@ TEST_F(UsbDeviceEventNotifierTest, ScanExistingDevices) {
   EXPECT_CALL(udev_, CreateEnumerate())
       .WillOnce(Return(ByMove(std::move(enumerate))));
 
-  auto device1 = std::make_unique<MockUdevDevice>();
+  auto device1 = std::make_unique<brillo::MockUdevDevice>();
   EXPECT_CALL(*device1, GetSysAttributeValue(_))
       .WillOnce(Return(kFakeUsbDevice1BusNumberString))
       .WillOnce(Return(kFakeUsbDevice1DeviceAddressString))
       .WillOnce(Return(kFakeUsbDevice1VendorIdString))
       .WillOnce(Return(kFakeUsbDevice1ProductIdString));
 
-  auto device2 = std::make_unique<MockUdevDevice>();
+  auto device2 = std::make_unique<brillo::MockUdevDevice>();
   EXPECT_CALL(*device2, GetSysAttributeValue(_))
       .WillOnce(Return(kFakeUsbDevice2BusNumberString))
       .WillOnce(Return(kFakeUsbDevice2DeviceAddressString))
