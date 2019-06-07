@@ -32,7 +32,8 @@ const char kRenameUser[] = "cros-disks";
 // Supported file systems and their parameters
 const RenameParameters kSupportedRenameParameters[] = {
     {"vfat", "/usr/sbin/fatlabel", "disk"},
-    {"exfat", "/usr/sbin/exfatlabel", "fuse-exfat"}};
+    {"exfat", "/usr/sbin/exfatlabel", "fuse-exfat"},
+    {"ntfs", "/usr/sbin/ntfslabel", "ntfs-3g"}};
 
 const RenameParameters* FindRenameParameters(
     const std::string& filesystem_type) {
@@ -127,7 +128,8 @@ RenameErrorType RenameManager::StartRenaming(
   // Construct program-name arguments
   // Example: dosfslabel /dev/sdb1 "NEWNAME"
   // Example: exfatlabel /dev/sdb1 "NEWNAME"
-  if (filesystem_type == "vfat" || filesystem_type == "exfat") {
+  if (filesystem_type == "vfat" || filesystem_type == "exfat" ||
+      filesystem_type == "ntfs") {
     process->AddArgument(device_file);
     process->AddArgument(volume_name);
   }

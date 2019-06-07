@@ -22,8 +22,8 @@ struct LabelParameters {
 const char kForbiddenCharacters[] = "*?.,;:/\\|+=<>[]\"'\t";
 
 // Supported file systems and their parameters
-const LabelParameters kSupportedLabelParameters[] = {{"vfat", 11},
-                                                     {"exfat", 15}};
+const LabelParameters kSupportedLabelParameters[] = {
+    {"vfat", 11}, {"exfat", 15}, {"ntfs", 32}};
 
 const LabelParameters* FindLabelParameters(const std::string& filesystem_type) {
   for (const auto& parameters : kSupportedLabelParameters) {

@@ -23,12 +23,16 @@ TEST(FilesystemLabelTest, ValidateVolumeLabel) {
             ValidateVolumeLabel("ABCDEFGHIJKL", "vfat"));
   EXPECT_EQ(LabelErrorType::kLabelErrorLongName,
             ValidateVolumeLabel("ABCDEFGHIJKLMNOP", "exfat"));
+  EXPECT_EQ(LabelErrorType::kLabelErrorLongName,
+            ValidateVolumeLabel("ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFG", "ntfs"));
 
   // Test volume name length limits
   EXPECT_EQ(LabelErrorType::kLabelErrorNone,
             ValidateVolumeLabel("ABCDEFGHIJK", "vfat"));
   EXPECT_EQ(LabelErrorType::kLabelErrorNone,
             ValidateVolumeLabel("ABCDEFGHIJKLMNO", "exfat"));
+  EXPECT_EQ(LabelErrorType::kLabelErrorNone,
+            ValidateVolumeLabel("ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEF", "ntfs"));
 
   // Test unsupported file system type
   EXPECT_EQ(LabelErrorType::kLabelErrorUnsupportedFilesystem,
@@ -51,12 +55,16 @@ TEST_P(FilesystemLabelCharacterTest, ValidateVolumeLabelCharacters) {
               ValidateVolumeLabel(volume_name, "vfat"));
     EXPECT_EQ(LabelErrorType::kLabelErrorInvalidCharacter,
               ValidateVolumeLabel(volume_name, "exfat"));
+    EXPECT_EQ(LabelErrorType::kLabelErrorInvalidCharacter,
+              ValidateVolumeLabel(volume_name, "ntfs"));
   } else {
     // Test allowed characters in volume name
     EXPECT_EQ(LabelErrorType::kLabelErrorNone,
               ValidateVolumeLabel(volume_name, "vfat"));
     EXPECT_EQ(LabelErrorType::kLabelErrorNone,
               ValidateVolumeLabel(volume_name, "exfat"));
+    EXPECT_EQ(LabelErrorType::kLabelErrorNone,
+              ValidateVolumeLabel(volume_name, "ntfs"));
   }
 }
 
