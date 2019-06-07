@@ -44,6 +44,7 @@ message GuestMessage {
   enum GuestType {
     UNKNOWN_GUEST = 0;
     ARC = 1;
+    ARC_VM = 2;
   }
   required GuestType type = 1;
 

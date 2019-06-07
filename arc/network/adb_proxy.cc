@@ -37,7 +37,9 @@ constexpr int kMaxConn = 16;
 }  // namespace
 
 AdbProxy::AdbProxy(base::ScopedFD control_fd)
-    : msg_dispatcher_(std::move(control_fd)), src_watcher_(FROM_HERE) {
+    : msg_dispatcher_(std::move(control_fd)),
+      src_watcher_(FROM_HERE),
+      arc_type_(GuestMessage::UNKNOWN_GUEST) {
   msg_dispatcher_.RegisterFailureHandler(
       base::Bind(&AdbProxy::OnParentProcessExit, weak_factory_.GetWeakPtr()));
 
@@ -71,9 +73,15 @@ int AdbProxy::OnInit() {
   return Daemon::OnInit();
 }
 
+void AdbProxy::Reset() {
+  src_watcher_.StopWatchingFileDescriptor();
+  src_.reset();
+  fwd_.clear();
+}
+
 void AdbProxy::OnParentProcessExit() {
   LOG(ERROR) << "Quitting because the parent process died";
-  src_watcher_.StopWatchingFileDescriptor();
+  Reset();
   Quit();
 }
 
@@ -99,32 +107,38 @@ void AdbProxy::OnFileCanReadWithoutBlocking(int fd) {
 }
 
 std::unique_ptr<Socket> AdbProxy::Connect() const {
-  // Try to connect with TCP IPv4.
-  struct sockaddr_in addr_in = {0};
-  addr_in.sin_family = AF_INET;
-  addr_in.sin_port = htons(kTcpConnectPort);
-  addr_in.sin_addr.s_addr = kTcpAddr;
-
-  auto dst = std::make_unique<Socket>(AF_INET, SOCK_STREAM);
-  if (dst->Connect((const struct sockaddr*)&addr_in, sizeof(addr_in)))
-    return dst;
-
-  // Try to connect with VSOCK.
-  struct sockaddr_vm addr_vm = {0};
-  addr_vm.svm_family = AF_VSOCK;
-  addr_vm.svm_port = kVsockPort;
-  addr_vm.svm_cid = kVsockCid;
-
-  dst = std::make_unique<Socket>(AF_VSOCK, SOCK_STREAM);
-  if (dst->Connect((const struct sockaddr*)&addr_vm, sizeof(addr_vm)))
-    return dst;
-
-  return nullptr;
+  switch (arc_type_) {
+    case GuestMessage::ARC: {
+      struct sockaddr_in addr_in = {0};
+      addr_in.sin_family = AF_INET;
+      addr_in.sin_port = htons(kTcpConnectPort);
+      addr_in.sin_addr.s_addr = kTcpAddr;
+      auto dst = std::make_unique<Socket>(AF_INET, SOCK_STREAM);
+      return dst->Connect((const struct sockaddr*)&addr_in, sizeof(addr_in))
+                 ? std::move(dst)
+                 : nullptr;
+    }
+    case GuestMessage::ARC_VM: {
+      struct sockaddr_vm addr_vm = {0};
+      addr_vm.svm_family = AF_VSOCK;
+      addr_vm.svm_port = kVsockPort;
+      addr_vm.svm_cid = kVsockCid;
+      auto dst = std::make_unique<Socket>(AF_VSOCK, SOCK_STREAM);
+      return dst->Connect((const struct sockaddr*)&addr_vm, sizeof(addr_vm))
+                 ? std::move(dst)
+                 : nullptr;
+    }
+    default:
+      LOG(DFATAL) << "Unexpected connect - no ARC guest";
+      return nullptr;
+  }
 }
 
 void AdbProxy::OnGuestMessage(const GuestMessage& msg) {
-  if (msg.type() != GuestMessage::ARC)
+  if (msg.type() != GuestMessage::ARC && msg.type() != GuestMessage::ARC_VM)
     return;
+
+  arc_type_ = msg.type();
 
   // On ARC up, start accepting connections.
   if (msg.event() == GuestMessage::START) {
@@ -151,6 +165,7 @@ void AdbProxy::OnGuestMessage(const GuestMessage& msg) {
     }
 
     // Run the accept loop.
+    LOG(INFO) << "Accepting connections...";
     base::MessageLoopForIO::current()->WatchFileDescriptor(
         src_->fd(), true, base::MessageLoopForIO::WATCH_READ, &src_watcher_,
         this);
@@ -159,9 +174,7 @@ void AdbProxy::OnGuestMessage(const GuestMessage& msg) {
 
   // On ARC down, cull any open connections and stop listening.
   if (msg.event() == GuestMessage::STOP) {
-    src_watcher_.StopWatchingFileDescriptor();
-    src_.reset();
-    fwd_.clear();
+    Reset();
   }
 }
 

@@ -36,6 +36,8 @@ class AdbProxy : public brillo::Daemon, public base::MessageLoopForIO::Watcher {
   void OnGuestMessage(const GuestMessage& msg);
 
  private:
+  void Reset();
+
   // Attempts to establish a connection to ADB at well-known destinations.
   std::unique_ptr<Socket> Connect() const;
 
@@ -43,6 +45,8 @@ class AdbProxy : public brillo::Daemon, public base::MessageLoopForIO::Watcher {
   std::unique_ptr<Socket> src_;
   std::deque<std::unique_ptr<SocketForwarder>> fwd_;
   base::MessageLoopForIO::FileDescriptorWatcher src_watcher_;
+
+  GuestMessage::GuestType arc_type_;
 
   base::WeakPtrFactory<AdbProxy> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(AdbProxy);

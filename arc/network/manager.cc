@@ -140,7 +140,7 @@ void Manager::OnGuestNotification(const std::string& notification) {
   // where the first two fields are required and the thrid is only for ARC++.
   const auto args = base::SplitString(notification, " ", base::TRIM_WHITESPACE,
                                       base::SPLIT_WANT_NONEMPTY);
-  if (args.size() < 2) {
+  if (args.size() < 2 || args.size() > 3) {
     LOG(WARNING) << "Unexpected notification: " << notification;
     return;
   }
@@ -151,7 +151,6 @@ void Manager::OnGuestNotification(const std::string& notification) {
   }
 
   GuestMessage msg;
-  msg.set_type(GuestMessage::ARC);
 
   if (args[1] == kEventUp) {
     msg.set_event(GuestMessage::START);
@@ -162,21 +161,22 @@ void Manager::OnGuestNotification(const std::string& notification) {
     return;
   }
 
-  // ARC++
-  if (args.size() == 3) {
+  if (args.size() == 2) {
+    msg.set_type(GuestMessage::ARC_VM);
+  } else {
     int pid = 0;
     if (!base::StringToInt(args[2], &pid)) {
       LOG(DFATAL) << "Invalid ARC++ pid: " << args[2];
       return;
     }
+    msg.set_type(GuestMessage::ARC);
     msg.set_arc_pid(pid);
-
-    if (msg.event() == GuestMessage::START) {
-      device_mgr_->OnGuestStart();
-    } else if (msg.event() == GuestMessage::STOP) {
-      device_mgr_->OnGuestStop();
-    }
   }
+
+  if (msg.event() == GuestMessage::START)
+    device_mgr_->OnGuestStart();
+  else if (msg.event() == GuestMessage::STOP)
+    device_mgr_->OnGuestStop();
 
   SendGuestMessage(msg);
 }
