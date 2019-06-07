@@ -269,9 +269,8 @@ void VSockProxy::OnData(arc_proxy::Data* data) {
     transferred_fds.emplace_back(std::move(remote_fd));
   }
 
-  // TODO(b/123613033): Fix the error handling. Specifically, if the socket
-  // buffer is full, EAGAIN will be returned. The case needs to be rescued
-  // at least.
+  // TODO(hashimoto): Redesign stream interface for better write error handling.
+  // SocketStream::Write() doesn't return error as it's async.
   if (!it->second.stream->Write(std::move(*data->mutable_blob()),
                                 std::move(transferred_fds))) {
     LOG(ERROR) << "Failed to write to a file descriptor: handle="

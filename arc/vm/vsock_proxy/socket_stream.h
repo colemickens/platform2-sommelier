@@ -6,11 +6,16 @@
 #define ARC_VM_VSOCK_PROXY_SOCKET_STREAM_H_
 
 #include <stdint.h>
+
+#include <deque>
+#include <memory>
 #include <string>
 #include <vector>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 
 #include "arc/vm/vsock_proxy/stream_base.h"
 
@@ -36,8 +41,18 @@ class SocketStream : public StreamBase {
   bool Fstat(arc_proxy::FstatResponse* response) override;
 
  private:
+  void TrySendMsg();
+
   base::ScopedFD socket_fd_;
 
+  struct Data {
+    std::string blob;
+    std::vector<base::ScopedFD> fds;
+  };
+  std::deque<Data> pending_write_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> writable_watcher_;
+
+  base::WeakPtrFactory<SocketStream> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(SocketStream);
 };
 

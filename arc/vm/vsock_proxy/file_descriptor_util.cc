@@ -51,8 +51,8 @@ base::Optional<std::pair<base::ScopedFD, base::ScopedFD>> CreatePipe() {
 
 base::Optional<std::pair<base::ScopedFD, base::ScopedFD>> CreateSocketPair() {
   int fds[2];
-  if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0 /* protocol */, fds) ==
-      -1) {
+  if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK,
+                 0 /* protocol */, fds) == -1) {
     PLOG(ERROR) << "Failed to create socketpair";
     return base::nullopt;
   }

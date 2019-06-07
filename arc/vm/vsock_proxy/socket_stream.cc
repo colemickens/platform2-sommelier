@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/logging.h>
 #include <base/posix/unix_domain_socket_linux.h>
 
@@ -37,17 +38,9 @@ StreamBase::ReadResult SocketStream::Read() {
 }
 
 bool SocketStream::Write(std::string blob, std::vector<base::ScopedFD> fds) {
-  std::vector<int> raw_fds;
-  raw_fds.reserve(fds.size());
-  for (const auto& fd : fds)
-    raw_fds.push_back(fd.get());
-
-  if (!base::UnixDomainSocket::SendMsg(socket_fd_.get(), blob.data(),
-                                       blob.size(), raw_fds)) {
-    PLOG(ERROR) << "Failed to send message";
-    return true;
-  }
-
+  pending_write_.emplace_back(Data{std::move(blob), std::move(fds)});
+  if (!writable_watcher_)  // TrySendMsg will be called later if watching.
+    TrySendMsg();
   return true;
 }
 
@@ -61,6 +54,35 @@ bool SocketStream::Pread(uint64_t count,
 bool SocketStream::Fstat(arc_proxy::FstatResponse* response) {
   LOG(ERROR) << "Fstat for socket file descriptor is unsupported.";
   return false;
+}
+
+void SocketStream::TrySendMsg() {
+  DCHECK(!pending_write_.empty());
+  for (; !pending_write_.empty(); pending_write_.pop_front()) {
+    const auto& data = pending_write_.front();
+
+    std::vector<int> raw_fds;
+    raw_fds.reserve(data.fds.size());
+    for (const auto& fd : data.fds)
+      raw_fds.push_back(fd.get());
+
+    if (!base::UnixDomainSocket::SendMsg(socket_fd_.get(), data.blob.data(),
+                                         data.blob.size(), raw_fds)) {
+      if (errno == EAGAIN) {
+        // Will retry later.
+        if (!writable_watcher_) {
+          writable_watcher_ = base::FileDescriptorWatcher::WatchWritable(
+              socket_fd_.get(),
+              base::BindRepeating(&SocketStream::TrySendMsg,
+                                  weak_factory_.GetWeakPtr()));
+        }
+        return;
+      }
+      PLOG(ERROR) << "Failed to send message";
+    }
+  }
+  // No pending data left. Stop watching.
+  writable_watcher_.reset();
 }
 
 }  // namespace arc

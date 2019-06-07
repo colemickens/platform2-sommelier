@@ -6,6 +6,8 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <memory>
@@ -13,12 +15,15 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
+#include <base/message_loop/message_loop.h>
 #include <base/optional.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/posix/unix_domain_socket_linux.h>
+#include <base/run_loop.h>
 #include <base/strings/string_piece.h>
 #include <gtest/gtest.h>
 
@@ -44,6 +49,9 @@ class SocketStreamTest : public testing::Test {
   base::ScopedFD socket_;                 // Paired with stream_.
 
  private:
+  base::MessageLoopForIO message_loop_;
+  base::FileDescriptorWatcher watcher_{&message_loop_};
+
   DISALLOW_COPY_AND_ASSIGN(SocketStreamTest);
 };
 
@@ -95,6 +103,64 @@ TEST_F(SocketStreamTest, Write) {
             base::UnixDomainSocket::RecvMsg(socket_.get(), &read_data[0],
                                             sizeof(kData), &fds));
   EXPECT_EQ(1, fds.size());
+}
+
+TEST_F(SocketStreamTest, PendingWrite) {
+  int sndbuf_value = 0;
+  socklen_t len = sizeof(sndbuf_value);
+  ASSERT_EQ(
+      0, getsockopt(socket_.get(), SOL_SOCKET, SO_SNDBUF, &sndbuf_value, &len));
+
+  const std::string data1(sndbuf_value, 'a');
+  const std::string data2(sndbuf_value, 'b');
+  const std::string data3(sndbuf_value, 'c');
+
+  // Write data1, data2, and data3 to the stream.
+  ASSERT_TRUE(stream_->Write(data1, {}));
+  ASSERT_TRUE(stream_->Write(data2, {}));
+  ASSERT_TRUE(stream_->Write(data3, {}));
+
+  // Read data1 from the other socket.
+  std::string read_data;
+  read_data.resize(sndbuf_value);
+  std::vector<base::ScopedFD> fds;
+  ASSERT_EQ(data1.size(),
+            base::UnixDomainSocket::RecvMsg(socket_.get(), &read_data[0],
+                                            read_data.size(), &fds));
+  read_data.resize(data1.size());
+  EXPECT_EQ(data1, read_data);
+
+  // data2 is still pending.
+  ASSERT_EQ(-1, base::UnixDomainSocket::RecvMsg(socket_.get(), &read_data[0],
+                                                read_data.size(), &fds));
+  ASSERT_EQ(EAGAIN, errno);
+
+  // Now the socket's buffer is empty. Let the stream write data2 to the socket.
+  base::RunLoop().RunUntilIdle();
+
+  // Read data2 from the other socket.
+  read_data.resize(sndbuf_value);
+  ASSERT_EQ(data2.size(),
+            base::UnixDomainSocket::RecvMsg(socket_.get(), &read_data[0],
+                                            read_data.size(), &fds));
+  read_data.resize(data2.size());
+  EXPECT_EQ(data2, read_data);
+
+  // data3 is still pending.
+  ASSERT_EQ(-1, base::UnixDomainSocket::RecvMsg(socket_.get(), &read_data[0],
+                                                read_data.size(), &fds));
+  ASSERT_EQ(EAGAIN, errno);
+
+  // Let the stream write data3 to the socket.
+  base::RunLoop().RunUntilIdle();
+
+  // Read data3 from the other socket.
+  read_data.resize(sndbuf_value);
+  ASSERT_EQ(data3.size(),
+            base::UnixDomainSocket::RecvMsg(socket_.get(), &read_data[0],
+                                            read_data.size(), &fds));
+  read_data.resize(data3.size());
+  EXPECT_EQ(data3, read_data);
 }
 
 }  // namespace
