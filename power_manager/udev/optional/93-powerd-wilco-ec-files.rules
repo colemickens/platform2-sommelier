@@ -20,8 +20,8 @@ KERNEL=="wilco-charger", \
 KERNEL=="wilco-charge-schedule", \
     SUBSYSTEM=="platform", \
     RUN+="/bin/sh -c \"/bin/chown power:power \
-        $sys$devpath/advanced_charging_* \
-        $sys$devpath/peak_shift_*\"", \
+        $sys$devpath/advanced_charging/* \
+        $sys$devpath/peak_shift/*\"", \
     RUN+="/bin/sh -c \"/bin/chmod ug+w \
-        $sys$devpath/advanced_charging_* \
-        $sys$devpath/peak_shift_*\""
+        $sys$devpath/advanced_charging/* \
+        $sys$devpath/peak_shift/*\""

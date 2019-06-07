@@ -20,14 +20,16 @@ constexpr const char kEcDriverSysfsDirectory[] =
 // Relative path to |kEcDriverSysfsDirectory|.
 constexpr const char kChargeScheduleDirectory[] = "wilco-charge-schedule/";
 
-// kPeakShift* are relative paths to |kChargeScheduleDirectory|.
-constexpr const char kPeakShiftEnablePath[] = "peak_shift_enable";
-constexpr const char kPeakShiftThresholdPath[] = "peak_shift_battery_threshold";
-constexpr const char kPeakShiftSchedulePath[] = "peak_shift_";
+// Relative path to |kChargeScheduleDirectory|.
+constexpr const char kPeakShiftDirectory[] = "peak_shift";
+// Relative paths to |kPeakShiftDirectory|.
+constexpr const char kPeakShiftEnablePath[] = "enable";
+constexpr const char kPeakShiftThresholdPath[] = "battery_threshold";
 
-// kAdvancedCharging* are relative paths to |kChargeScheduleDirectory|.
-constexpr const char kAdvancedChargingEnablePath[] = "advanced_charging_enable";
-constexpr const char kAdvancedChargingSchedulePath[] = "advanced_charging_";
+// Relative path to |kChargeScheduleDirectory|.
+constexpr const char kAdvancedChargingDirectory[] = "advanced_charging";
+// Relative path to |kAdvancedChargingDirectory|.
+constexpr const char kAdvancedChargingEnablePath[] = "enable";
 
 // Relative path to |kEcDriverSysfsDirectory|.
 constexpr const char kBootOnAcEnablePath[] = "boot_on_ac";
@@ -98,6 +100,7 @@ WilcoChargeControllerHelper::~WilcoChargeControllerHelper() = default;
 bool WilcoChargeControllerHelper::SetPeakShiftEnabled(bool enable) {
   return WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
                              .Append(kChargeScheduleDirectory)
+                             .Append(kPeakShiftDirectory)
                              .Append(kPeakShiftEnablePath),
                          enable ? "1" : "0");
 }
@@ -106,6 +109,7 @@ bool WilcoChargeControllerHelper::SetPeakShiftBatteryPercentThreshold(
     int threshold) {
   return WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
                              .Append(kChargeScheduleDirectory)
+                             .Append(kPeakShiftDirectory)
                              .Append(kPeakShiftThresholdPath),
                          base::StringPrintf("%d", threshold));
 }
@@ -114,11 +118,11 @@ bool WilcoChargeControllerHelper::SetPeakShiftDayConfig(
     PowerManagementPolicy::WeekDay week_day, const std::string& config) {
   std::string week_day_str;
   return WeekDayToString(week_day, &week_day_str) &&
-         WriteDataToFile(
-             base::FilePath(kEcDriverSysfsDirectory)
-                 .Append(kChargeScheduleDirectory)
-                 .Append(std::string(kPeakShiftSchedulePath) + week_day_str),
-             config);
+         WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
+                             .Append(kChargeScheduleDirectory)
+                             .Append(kPeakShiftDirectory)
+                             .Append(week_day_str),
+                         config);
 }
 
 bool WilcoChargeControllerHelper::SetBootOnAcEnabled(bool enable) {
@@ -137,6 +141,7 @@ bool WilcoChargeControllerHelper::SetAdvancedBatteryChargeModeEnabled(
     bool enable) {
   return WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
                              .Append(kChargeScheduleDirectory)
+                             .Append(kAdvancedChargingDirectory)
                              .Append(kAdvancedChargingEnablePath),
                          enable ? "1" : "0");
   return false;
@@ -146,12 +151,11 @@ bool WilcoChargeControllerHelper::SetAdvancedBatteryChargeModeDayConfig(
     PowerManagementPolicy::WeekDay week_day, const std::string& config) {
   std::string week_day_str;
   return WeekDayToString(week_day, &week_day_str) &&
-         WriteDataToFile(
-             base::FilePath(kEcDriverSysfsDirectory)
-                 .Append(kChargeScheduleDirectory)
-                 .Append(std::string(kAdvancedChargingSchedulePath) +
-                         week_day_str),
-             config);
+         WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
+                             .Append(kChargeScheduleDirectory)
+                             .Append(kAdvancedChargingDirectory)
+                             .Append(week_day_str),
+                         config);
 }
 
 bool WilcoChargeControllerHelper::SetBatteryChargeMode(
