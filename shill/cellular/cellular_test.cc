@@ -1376,9 +1376,9 @@ TEST_P(CellularTest, SetAllowRoaming) {
   EXPECT_TRUE(device_->allow_roaming_);
 }
 
-class TestRPCTaskDelegate :
-      public RPCTaskDelegate,
-      public base::SupportsWeakPtr<TestRPCTaskDelegate> {
+class TestRpcTaskDelegate :
+      public RpcTaskDelegate,
+      public base::SupportsWeakPtr<TestRpcTaskDelegate> {
  public:
   virtual void GetLogin(std::string* user, std::string* password) {}
   virtual void Notify(const std::string& reason,
@@ -1387,7 +1387,7 @@ class TestRPCTaskDelegate :
 
 TEST_P(CellularTest, LinkEventUpWithPPP) {
   // If PPP is running, don't run DHCP as well.
-  TestRPCTaskDelegate task_delegate;
+  TestRpcTaskDelegate task_delegate;
   base::Callback<void(pid_t, int)> death_callback;
   auto mock_task = std::make_unique<NiceMock<MockExternalTask>>(
       modem_info_.control_interface(),

@@ -26,11 +26,11 @@ class Error;
 class EventDispatcher;
 class ProcessManager;
 
-class ExternalTask : public RPCTaskDelegate {
+class ExternalTask : public RpcTaskDelegate {
  public:
   ExternalTask(ControlInterface* control,
                ProcessManager* process_manager,
-               const base::WeakPtr<RPCTaskDelegate>& task_delegate,
+               const base::WeakPtr<RpcTaskDelegate>& task_delegate,
                const base::Callback<void(pid_t, int)>& death_callback);
   ~ExternalTask() override;  // But consider DestroyLater...
 
@@ -38,7 +38,7 @@ class ExternalTask : public RPCTaskDelegate {
   // middle of an ExternalTask callback. Note that the caller _must_
   // release ownership of |this|. For example:
   //
-  //   class Foo : public SupportsWeakPtr<Foo>, public RPCTaskDelegate {
+  //   class Foo : public SupportsWeakPtr<Foo>, public RpcTaskDelegate {
   //    public:
   //      Foo() {
   //        task_.reset(new ExternalTask(...));
@@ -64,8 +64,8 @@ class ExternalTask : public RPCTaskDelegate {
   // On success, returns true, and leaves |error| unmodified.
   // On failure, returns false, and sets |error|.
   //
-  // |environment| SHOULD NOT contain kRPCTaskServiceVariable or
-  // kRPCTaskPathVariable, as that may prevent the child process
+  // |environment| SHOULD NOT contain kRpcTaskServiceVariable or
+  // kRpcTaskPathVariable, as that may prevent the child process
   // from communicating back to the ExternalTask.
   virtual bool Start(const base::FilePath& program,
                      const std::vector<std::string>& arguments,
@@ -106,7 +106,7 @@ class ExternalTask : public RPCTaskDelegate {
   FRIEND_TEST(ExternalTaskTest, Stop);
   FRIEND_TEST(ExternalTaskTest, StopNotStarted);
 
-  // Implements RPCTaskDelegate.
+  // Implements RpcTaskDelegate.
   void GetLogin(std::string* user, std::string* password) override;
   void Notify(
       const std::string& event,
@@ -120,8 +120,8 @@ class ExternalTask : public RPCTaskDelegate {
   ControlInterface* control_;
   ProcessManager* process_manager_;
 
-  std::unique_ptr<RPCTask> rpc_task_;
-  base::WeakPtr<RPCTaskDelegate> task_delegate_;
+  std::unique_ptr<RpcTask> rpc_task_;
+  base::WeakPtr<RpcTaskDelegate> task_delegate_;
   base::Callback<void(pid_t, int)> death_callback_;
 
   // The PID of the spawned process. May be 0 if no process has been

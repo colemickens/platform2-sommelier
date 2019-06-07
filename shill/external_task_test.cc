@@ -32,7 +32,7 @@ using testing::Return;
 namespace shill {
 
 class ExternalTaskTest : public testing::Test,
-                         public RPCTaskDelegate {
+                         public RpcTaskDelegate {
  public:
   ExternalTaskTest()
       : weak_ptr_factory_(this),
@@ -61,7 +61,7 @@ class ExternalTaskTest : public testing::Test,
     test_rpc_task_destroyed_ = destroyed;
   }
 
-  // Defined out-of-line, due to dependency on TestRPCTask.
+  // Defined out-of-line, due to dependency on TestRpcTask.
   void FakeUpRunningProcess(unsigned int tag, int pid);
 
   void ExpectStop(unsigned int tag, int pid) {
@@ -79,7 +79,7 @@ class ExternalTaskTest : public testing::Test,
   }
 
  protected:
-  // Implements RPCTaskDelegate interface.
+  // Implements RpcTaskDelegate interface.
   MOCK_METHOD2(GetLogin, void(string* user, string* password));
   MOCK_METHOD2(Notify, void(const string& reason,
                             const map<string, string>& dict));
@@ -97,22 +97,22 @@ class ExternalTaskTest : public testing::Test,
 
 namespace {
 
-class TestRPCTask : public RPCTask {
+class TestRpcTask : public RpcTask {
  public:
-  TestRPCTask(ControlInterface* control, ExternalTaskTest* test);
-  virtual ~TestRPCTask();
+  TestRpcTask(ControlInterface* control, ExternalTaskTest* test);
+  virtual ~TestRpcTask();
 
  private:
   ExternalTaskTest* test_;
 };
 
-TestRPCTask::TestRPCTask(ControlInterface* control, ExternalTaskTest* test)
-    : RPCTask(control, test),
+TestRpcTask::TestRpcTask(ControlInterface* control, ExternalTaskTest* test)
+    : RpcTask(control, test),
       test_(test) {
   test_->set_test_rpc_task_destroyed(false);
 }
 
-TestRPCTask::~TestRPCTask() {
+TestRpcTask::~TestRpcTask() {
   test_->set_test_rpc_task_destroyed(true);
   test_ = nullptr;
 }
@@ -121,7 +121,7 @@ TestRPCTask::~TestRPCTask() {
 
 void ExternalTaskTest::FakeUpRunningProcess(unsigned int tag, int pid) {
   external_task_->pid_ = pid;
-  external_task_->rpc_task_.reset(new TestRPCTask(&control_, this));
+  external_task_->rpc_task_.reset(new TestRpcTask(&control_, this));
 }
 
 TEST_F(ExternalTaskTest, Destructor) {
@@ -148,8 +148,8 @@ TEST_F(ExternalTaskTest, Start) {
   const vector<string> kCommandOptions{"arg1", "arg2"};
   const map<string, string> kCommandEnv{{"env1", "val1"}, {"env2", "val2"}};
   map<string, string> expected_env;
-  expected_env.emplace(kRPCTaskServiceVariable, RPCTaskMockAdaptor::kRpcConnId);
-  expected_env.emplace(kRPCTaskPathVariable, RPCTaskMockAdaptor::kRpcId);
+  expected_env.emplace(kRpcTaskServiceVariable, RpcTaskMockAdaptor::kRpcConnId);
+  expected_env.emplace(kRpcTaskPathVariable, RpcTaskMockAdaptor::kRpcId);
   expected_env.insert(kCommandEnv.begin(), kCommandEnv.end());
   const int kPID = 234678;
   EXPECT_CALL(process_manager_,

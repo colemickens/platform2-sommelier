@@ -19,7 +19,7 @@ class MockExternalTask : public ExternalTask {
  public:
   MockExternalTask(ControlInterface* control,
                    ProcessManager* process_manager,
-                   const base::WeakPtr<RPCTaskDelegate>& task_delegate,
+                   const base::WeakPtr<RpcTaskDelegate>& task_delegate,
                    const base::Callback<void(pid_t, int)>& death_callback);
   ~MockExternalTask() override;
 

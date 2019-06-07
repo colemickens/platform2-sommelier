@@ -33,8 +33,8 @@ class ChromeosDBusControl : public ControlInterface {
       Manager* manager) override;
   std::unique_ptr<ProfileAdaptorInterface> CreateProfileAdaptor(
       Profile* profile) override;
-  std::unique_ptr<RPCTaskAdaptorInterface> CreateRPCTaskAdaptor(
-      RPCTask* task) override;
+  std::unique_ptr<RpcTaskAdaptorInterface> CreateRpcTaskAdaptor(
+      RpcTask* task) override;
   std::unique_ptr<ServiceAdaptorInterface> CreateServiceAdaptor(
       Service* service) override;
 #ifndef DISABLE_VPN
@@ -42,7 +42,7 @@ class ChromeosDBusControl : public ControlInterface {
       ThirdPartyVpnDriver* driver) override;
 #endif
 
-  const std::string& NullRPCIdentifier() override;
+  const std::string& NullRpcIdentifier() override;
 
   // The caller retains ownership of 'delegate'.  It must not be deleted before
   // the proxy.

@@ -33,7 +33,7 @@ class StoreInterface;
 // When pppX interfaces are created in the course of a connection they are
 // wrapped with a PPPDevice, and are made to SelectService the PPPoEService that
 // created them.
-class PPPoEService : public EthernetService, public RPCTaskDelegate {
+class PPPoEService : public EthernetService, public RpcTaskDelegate {
  public:
   PPPoEService(Manager* manager, base::WeakPtr<Ethernet> ethernet);
   ~PPPoEService() override;
@@ -48,7 +48,7 @@ class PPPoEService : public EthernetService, public RPCTaskDelegate {
   // Inherited from Service.
   std::string GetInnerDeviceRpcIdentifier() const override;
 
-  // Inherited from RPCTaskDelegate.
+  // Inherited from RpcTaskDelegate.
   void GetLogin(std::string* user, std::string* password) override;
   void Notify(const std::string& reason,
               const std::map<std::string, std::string>& dict) override;

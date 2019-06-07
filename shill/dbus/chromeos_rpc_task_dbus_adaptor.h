@@ -16,25 +16,25 @@
 
 namespace shill {
 
-class RPCTask;
+class RpcTask;
 
-// Subclass of DBusAdaptor for RPCTask objects. There is a 1:1 mapping between
-// RPCTask and ChromeosRPCTaskDBusAdaptor instances. Furthermore, the RPCTask
-// owns the ChromeosRPCTaskDBusAdaptor and manages its lifetime, so we're OK
-// with RPCTaskDBusAdaptor having a bare pointer to its owner task.
-class ChromeosRPCTaskDBusAdaptor
+// Subclass of DBusAdaptor for RpcTask objects. There is a 1:1 mapping between
+// RpcTask and ChromeosRpcTaskDBusAdaptor instances. Furthermore, the RpcTask
+// owns the ChromeosRpcTaskDBusAdaptor and manages its lifetime, so we're OK
+// with RpcTaskDBusAdaptor having a bare pointer to its owner task.
+class ChromeosRpcTaskDBusAdaptor
     : public org::chromium::flimflam::TaskAdaptor,
       public org::chromium::flimflam::TaskInterface,
       public ChromeosDBusAdaptor,
-      public RPCTaskAdaptorInterface {
+      public RpcTaskAdaptorInterface {
  public:
   static const char kPath[];
 
-  ChromeosRPCTaskDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
-                             RPCTask* task);
-  ~ChromeosRPCTaskDBusAdaptor() override;
+  ChromeosRpcTaskDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
+                             RpcTask* task);
+  ~ChromeosRpcTaskDBusAdaptor() override;
 
-  // Implementation of RPCTaskAdaptorInterface.
+  // Implementation of RpcTaskAdaptorInterface.
   const std::string& GetRpcIdentifier() const override;
   const std::string& GetRpcConnectionIdentifier() const override;
 
@@ -47,10 +47,10 @@ class ChromeosRPCTaskDBusAdaptor
               const std::map<std::string, std::string>& dict) override;
 
  private:
-  RPCTask* task_;
+  RpcTask* task_;
   const std::string connection_name_;
 
-  DISALLOW_COPY_AND_ASSIGN(ChromeosRPCTaskDBusAdaptor);
+  DISALLOW_COPY_AND_ASSIGN(ChromeosRpcTaskDBusAdaptor);
 };
 
 }  // namespace shill

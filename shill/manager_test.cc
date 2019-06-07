@@ -2289,7 +2289,7 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(
                   kDefaultServiceProperty,
-                  control_interface()->NullRPCIdentifier()))
+                  control_interface()->NullRpcIdentifier()))
       .Times(AnyNumber());
   manager()->RegisterService(mock_service0);
   CompleteServiceSort();
@@ -3057,13 +3057,13 @@ TEST_F(ManagerTest, RecheckPortalOnService) {
 
 TEST_F(ManagerTest, GetDefaultService) {
   EXPECT_EQ(nullptr, manager()->GetDefaultService());
-  EXPECT_EQ(control_interface()->NullRPCIdentifier(),
+  EXPECT_EQ(control_interface()->NullRpcIdentifier(),
             GetDefaultServiceRpcIdentifier());
 
   MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
   manager()->RegisterService(mock_service);
   EXPECT_EQ(nullptr, manager()->GetDefaultService());
-  EXPECT_EQ(control_interface()->NullRPCIdentifier(),
+  EXPECT_EQ(control_interface()->NullRpcIdentifier(),
             GetDefaultServiceRpcIdentifier());
 
   scoped_refptr<MockConnection> mock_connection(

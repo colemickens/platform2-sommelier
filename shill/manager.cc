@@ -902,7 +902,7 @@ ServiceRefPtr Manager::GetDefaultService() const {
 RpcIdentifier Manager::GetDefaultServiceRpcIdentifier(Error* /*error*/) {
   ServiceRefPtr default_service = GetDefaultService();
   return default_service ? default_service->GetRpcIdentifier() :
-      control_interface_->NullRPCIdentifier();
+      control_interface_->NullRpcIdentifier();
 }
 
 bool Manager::IsTechnologyInList(const string& technology_list,

@@ -26,8 +26,8 @@ int main(int argc, char** argv) {
 
   Environment* environment = Environment::GetInstance();
   string service, path, reason;
-  if (!environment->GetVariable(shill::kRPCTaskServiceVariable, &service) ||
-      !environment->GetVariable(shill::kRPCTaskPathVariable, &path) ||
+  if (!environment->GetVariable(shill::kRpcTaskServiceVariable, &service) ||
+      !environment->GetVariable(shill::kRpcTaskPathVariable, &path) ||
       !environment->GetVariable("script_type", &reason)) {
     LOG(ERROR) << "Environment variables not available.";
     return EXIT_FAILURE;

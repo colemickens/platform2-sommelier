@@ -105,10 +105,10 @@ class ProfileAdaptorInterface {
                                  const std::string& value) = 0;
 };
 
-// These are the functions that a RPCTask adaptor must support.
-class RPCTaskAdaptorInterface {
+// These are the functions that a RpcTask adaptor must support.
+class RpcTaskAdaptorInterface {
  public:
-  virtual ~RPCTaskAdaptorInterface() = default;
+  virtual ~RpcTaskAdaptorInterface() = default;
 
   // Getter for the opaque identifier that represents this object on the
   // RPC interface to which the implementation is adapting.

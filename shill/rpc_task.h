@@ -14,17 +14,17 @@
 namespace shill {
 
 // Declared in the header to avoid linking unused code into shims.
-static const char kRPCTaskServiceVariable[] = "SHILL_TASK_SERVICE";
-static const char kRPCTaskPathVariable[] = "SHILL_TASK_PATH";
+static const char kRpcTaskServiceVariable[] = "SHILL_TASK_SERVICE";
+static const char kRpcTaskPathVariable[] = "SHILL_TASK_PATH";
 
 class ControlInterface;
-class RPCTaskAdaptorInterface;
+class RpcTaskAdaptorInterface;
 
 // TODO(petkov): Switch from delegate interface to registered callbacks
 // (crbug.com/212273).
-class RPCTaskDelegate {
+class RpcTaskDelegate {
  public:
-  virtual ~RPCTaskDelegate() = default;
+  virtual ~RpcTaskDelegate() = default;
 
   virtual void GetLogin(std::string* user, std::string* password) = 0;
   virtual void Notify(const std::string& reason,
@@ -33,18 +33,18 @@ class RPCTaskDelegate {
 
 // RPC tasks are currently used by VPN drivers for communication with external
 // VPN processes. The RPC task should be owned by a single owner -- its
-// RPCTaskDelegate -- so no need to be reference counted.
-class RPCTask {
+// RpcTaskDelegate -- so no need to be reference counted.
+class RpcTask {
  public:
-  // A constructor for the RPCTask object.
-  RPCTask(ControlInterface* control_interface, RPCTaskDelegate* delegate);
-  virtual ~RPCTask();
+  // A constructor for the RpcTask object.
+  RpcTask(ControlInterface* control_interface, RpcTaskDelegate* delegate);
+  virtual ~RpcTask();
 
   virtual void GetLogin(std::string* user, std::string* password) const;
   virtual void Notify(const std::string& reason,
                       const std::map<std::string, std::string>& dict);
 
-  // Returns a string that is guaranteed to uniquely identify this RPCTask
+  // Returns a string that is guaranteed to uniquely identify this RpcTask
   // instance.
   const std::string& UniqueName() const { return unique_name_; }
 
@@ -55,12 +55,12 @@ class RPCTask {
   std::string GetRpcConnectionIdentifier() const;
 
  private:
-  RPCTaskDelegate* delegate_;
+  RpcTaskDelegate* delegate_;
   static unsigned int serial_number_;
   std::string unique_name_;  // MUST be unique amongst RPC task instances
-  std::unique_ptr<RPCTaskAdaptorInterface> adaptor_;
+  std::unique_ptr<RpcTaskAdaptorInterface> adaptor_;
 
-  DISALLOW_COPY_AND_ASSIGN(RPCTask);
+  DISALLOW_COPY_AND_ASSIGN(RpcTask);
 };
 
 }  // namespace shill

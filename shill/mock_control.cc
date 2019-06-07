@@ -34,9 +34,9 @@ std::unique_ptr<ProfileAdaptorInterface> MockControl::CreateProfileAdaptor(
   return std::make_unique<ProfileMockAdaptor>();
 }
 
-std::unique_ptr<RPCTaskAdaptorInterface> MockControl::CreateRPCTaskAdaptor(
-    RPCTask* /*task*/) {
-  return std::make_unique<RPCTaskMockAdaptor>();
+std::unique_ptr<RpcTaskAdaptorInterface> MockControl::CreateRpcTaskAdaptor(
+    RpcTask* /*task*/) {
+  return std::make_unique<RpcTaskMockAdaptor>();
 }
 
 std::unique_ptr<ServiceAdaptorInterface> MockControl::CreateServiceAdaptor(
@@ -51,7 +51,7 @@ MockControl::CreateThirdPartyVpnAdaptor(ThirdPartyVpnDriver* /*driver*/) {
 }
 #endif
 
-const std::string& MockControl::NullRPCIdentifier() {
+const std::string& MockControl::NullRpcIdentifier() {
   return null_identifier_;
 }
 

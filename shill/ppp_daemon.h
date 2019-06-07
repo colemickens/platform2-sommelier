@@ -51,7 +51,7 @@ class PPPDaemon {
 
     // If set, will cause the shill pppd plugin to be used at the creation of
     // the pppd instace.  This will result in connectivity events being plumbed
-    // over D-Bus to the RPCTaskDelegate provided during PPPDaemon::Start.
+    // over D-Bus to the RpcTaskDelegate provided during PPPDaemon::Start.
     bool use_shim_plugin;
 
     // If set, enables the rp-pppoe plugin which allows pppd to be used over
@@ -83,7 +83,7 @@ class PPPDaemon {
   static std::unique_ptr<ExternalTask> Start(
       ControlInterface* control_interface,
       ProcessManager* process_manager,
-      const base::WeakPtr<RPCTaskDelegate>& task_delegate,
+      const base::WeakPtr<RpcTaskDelegate>& task_delegate,
       const Options& options,
       const std::string& device,
       const DeathCallback& death_callback,

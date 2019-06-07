@@ -60,19 +60,19 @@ const string& ProfileMockAdaptor::GetRpcIdentifier() const {
 }
 
 // static
-const char RPCTaskMockAdaptor::kRpcId[] = "/rpc_task_rpc";
-const char RPCTaskMockAdaptor::kRpcConnId[] = "/rpc_task_rpc_conn";
+const char RpcTaskMockAdaptor::kRpcId[] = "/rpc_task_rpc";
+const char RpcTaskMockAdaptor::kRpcConnId[] = "/rpc_task_rpc_conn";
 
-RPCTaskMockAdaptor::RPCTaskMockAdaptor()
+RpcTaskMockAdaptor::RpcTaskMockAdaptor()
     : rpc_id_(kRpcId),
       rpc_conn_id_(kRpcConnId) {}
 
-RPCTaskMockAdaptor::~RPCTaskMockAdaptor() = default;
+RpcTaskMockAdaptor::~RpcTaskMockAdaptor() = default;
 
-const string& RPCTaskMockAdaptor::GetRpcIdentifier() const {
+const string& RpcTaskMockAdaptor::GetRpcIdentifier() const {
   return rpc_id_;
 }
-const string& RPCTaskMockAdaptor::GetRpcConnectionIdentifier() const {
+const string& RpcTaskMockAdaptor::GetRpcConnectionIdentifier() const {
   return rpc_conn_id_;
 }
 

@@ -24,7 +24,7 @@ using std::vector;
 ExternalTask::ExternalTask(
     ControlInterface* control,
     ProcessManager* process_manager,
-    const base::WeakPtr<RPCTaskDelegate>& task_delegate,
+    const base::WeakPtr<RpcTaskDelegate>& task_delegate,
     const base::Callback<void(pid_t, int)>& death_callback)
     : control_(control),
       process_manager_(process_manager),
@@ -52,7 +52,7 @@ bool ExternalTask::Start(const FilePath& program,
   CHECK(!rpc_task_);
 
   // Setup full environment variables.
-  auto local_rpc_task = std::make_unique<RPCTask>(control_, this);
+  auto local_rpc_task = std::make_unique<RpcTask>(control_, this);
   map<string, string> env = local_rpc_task->GetEnvironment();
   env.insert(environment.begin(), environment.end());
 
@@ -84,19 +84,19 @@ bool ExternalTask::StartInMinijail(const FilePath& program,
                                    bool inherit_supplementary_groups,
                                    bool close_nonstd_fds,
                                    Error* error) {
-  // Checks will fail if Start or StartInMinijailWithRPCIdentifiers has already
+  // Checks will fail if Start or StartInMinijailWithRpcIdentifiers has already
   // been called on this object.
   CHECK(!pid_);
   CHECK(!rpc_task_);
 
   // Passes the connection identifiers on the command line instead of through
   // environment variables.
-  auto local_rpc_task = std::make_unique<RPCTask>(control_, this);
+  auto local_rpc_task = std::make_unique<RpcTask>(control_, this);
   map<string, string> env = local_rpc_task->GetEnvironment();
   map<string, string>::iterator task_service_variable =
-                                env.find(kRPCTaskServiceVariable);
+                                env.find(kRpcTaskServiceVariable);
   map<string, string>::iterator task_path_variable =
-                                env.find(kRPCTaskPathVariable);
+                                env.find(kRpcTaskPathVariable);
   // Fails without the necessary environment variables.
   if (task_service_variable == env.end() || task_path_variable == env.end()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,

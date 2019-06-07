@@ -38,9 +38,9 @@ std::unique_ptr<ProfileAdaptorInterface> NiceMockControl::CreateProfileAdaptor(
   return std::make_unique<NiceMock<ProfileMockAdaptor>>();
 }
 
-std::unique_ptr<RPCTaskAdaptorInterface> NiceMockControl::CreateRPCTaskAdaptor(
-    RPCTask* /*task*/) {
-  return std::make_unique<NiceMock<RPCTaskMockAdaptor>>();
+std::unique_ptr<RpcTaskAdaptorInterface> NiceMockControl::CreateRpcTaskAdaptor(
+    RpcTask* /*task*/) {
+  return std::make_unique<NiceMock<RpcTaskMockAdaptor>>();
 }
 
 std::unique_ptr<ServiceAdaptorInterface> NiceMockControl::CreateServiceAdaptor(
@@ -55,7 +55,7 @@ NiceMockControl::CreateThirdPartyVpnAdaptor(ThirdPartyVpnDriver* /*driver*/) {
 }
 #endif
 
-const std::string& NiceMockControl::NullRPCIdentifier() {
+const std::string& NiceMockControl::NullRpcIdentifier() {
   return null_identifier_;
 }
 

@@ -81,7 +81,7 @@ struct AuthenticationExpectations {
 
 class OpenVPNDriverTest
     : public testing::TestWithParam<AuthenticationExpectations>,
-      public RPCTaskDelegate {
+      public RpcTaskDelegate {
  public:
   OpenVPNDriverTest()
       : manager_(&control_, &dispatcher_, &metrics_),
@@ -237,7 +237,7 @@ class OpenVPNDriverTest
 
   void SetupLSBRelease();
 
-  // Inherited from RPCTaskDelegate.
+  // Inherited from RpcTaskDelegate.
   void GetLogin(string* user, string* password) override;
   void Notify(const string& reason, const map<string, string>& dict) override;
 
@@ -720,7 +720,7 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   SetArg(kOpenVPNClientCertIdProperty, kID);
   SetArg(kOpenVPNRemoteCertKUProperty, string(kKU0) + " " + string(kKU1));
   SetArg(kOpenVPNTLSVersionMinProperty, kTLSVersionMin);
-  driver_->rpc_task_.reset(new RPCTask(&control_, this));
+  driver_->rpc_task_.reset(new RpcTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
   EXPECT_CALL(*management_server_, Start(_, _)).WillOnce(Return(true));
   EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(false));
@@ -731,8 +731,8 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(vector<string> { "client" }, options[0]);
   ExpectInFlags(options, "remote", kHost);
-  ExpectInFlags(options, vector<string> { "setenv", kRPCTaskPathVariable,
-                                          RPCTaskMockAdaptor::kRpcId });
+  ExpectInFlags(options, vector<string> { "setenv", kRpcTaskPathVariable,
+                                          RpcTaskMockAdaptor::kRpcId });
   ExpectInFlags(options, "dev", kInterfaceName);
   ExpectInFlags(options, "group", "openvpn");
   EXPECT_EQ(kInterfaceName, driver_->tunnel_interface_);
@@ -751,7 +751,7 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
 
 TEST_F(OpenVPNDriverTest, InitOptionsHostWithPort) {
   SetArg(kProviderHostProperty, "v.com:1234");
-  driver_->rpc_task_.reset(new RPCTask(&control_, this));
+  driver_->rpc_task_.reset(new RpcTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
   EXPECT_CALL(*management_server_, Start(_, _)).WillOnce(Return(true));
   EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(false));
@@ -767,7 +767,7 @@ TEST_F(OpenVPNDriverTest, InitOptionsHostWithExtraHosts) {
   SetArg(kProviderHostProperty, "1.2.3.4");
   SetArgArray(kOpenVPNExtraHostsProperty,
               vector<string>{"abc.com:123", "127.0.0.1", "v.com:8000"});
-  driver_->rpc_task_.reset(new RPCTask(&control_, this));
+  driver_->rpc_task_.reset(new RpcTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
   EXPECT_CALL(*management_server_, Start(_, _)).WillOnce(Return(true));
   EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(false));
@@ -1133,7 +1133,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   static const char kErrorDetails[] = "Certificate revoked.";
   driver_->default_service_callback_tag_ = kServiceCallbackTag;
   driver_->pid_ = kPID;
-  driver_->rpc_task_.reset(new RPCTask(&control_, this));
+  driver_->rpc_task_.reset(new RpcTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
   driver_->device_ = device_;
   driver_->service_ = service_;
@@ -1176,7 +1176,7 @@ TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {
   static const char kHost[] = "192.168.2.254";
   SetArg(kProviderHostProperty, kHost);
   driver_->tunnel_interface_ = "tun0";
-  driver_->rpc_task_.reset(new RPCTask(&control_, this));
+  driver_->rpc_task_.reset(new RpcTask(&control_, this));
   EXPECT_CALL(*management_server_, Start(_, _))
       .Times(2)
       .WillRepeatedly(Return(true));
@@ -1204,7 +1204,7 @@ TEST_F(OpenVPNDriverTest, SpawnOpenVPNInMinijail) {
   static const char kHost[] = "192.168.2.254";
   SetArg(kProviderHostProperty, kHost);
   driver_->tunnel_interface_ = "tun0";
-  driver_->rpc_task_.reset(new RPCTask(&control_, this));
+  driver_->rpc_task_.reset(new RpcTask(&control_, this));
   EXPECT_CALL(*management_server_, Start(_, _))
       .Times(2)
       .WillRepeatedly(Return(true));

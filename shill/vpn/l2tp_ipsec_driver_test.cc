@@ -41,7 +41,7 @@ using testing::ReturnRef;
 namespace shill {
 
 class L2TPIPSecDriverTest : public testing::Test,
-                            public RPCTaskDelegate {
+                            public RpcTaskDelegate {
  public:
   L2TPIPSecDriverTest()
       : manager_(&control_, &dispatcher_, &metrics_),
@@ -186,7 +186,7 @@ class L2TPIPSecDriverTest : public testing::Test,
         Metrics::kVpnUserAuthenticationTypeMax));
   }
 
-  // Inherited from RPCTaskDelegate.
+  // Inherited from RpcTaskDelegate.
   void GetLogin(string* user, string* password) override;
   void Notify(const string& reason, const map<string, string>& dict) override;
 

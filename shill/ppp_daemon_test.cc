@@ -30,7 +30,7 @@ using testing::Return;
 using testing::Test;
 using testing::WithArg;
 
-class PPPDaemonTest : public Test, public RPCTaskDelegate {
+class PPPDaemonTest : public Test, public RpcTaskDelegate {
  public:
   PPPDaemonTest() : weak_ptr_factory_(this) {}
   virtual ~PPPDaemonTest() {}

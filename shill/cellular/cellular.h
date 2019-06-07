@@ -34,7 +34,7 @@ class PPPDeviceFactory;
 class ProcessManager;
 
 class Cellular : public Device,
-                 public RPCTaskDelegate,
+                 public RpcTaskDelegate,
                  public MobileOperatorInfo::Observer {
  public:
   enum Type {
@@ -234,7 +234,7 @@ class Cellular : public Device,
   virtual void StartPPP(const std::string& serial_device);
   // Callback for |ppp_task_|.
   virtual void OnPPPDied(pid_t pid, int exit);
-  // Implements RPCTaskDelegate, for |ppp_task_|.
+  // Implements RpcTaskDelegate, for |ppp_task_|.
   void GetLogin(std::string* user, std::string* password) override;
   void Notify(const std::string& reason,
               const std::map<std::string, std::string>& dict) override;

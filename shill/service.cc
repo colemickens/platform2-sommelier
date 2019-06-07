@@ -1200,7 +1200,7 @@ void Service::OnDefaultServiceStateChanged(const ServiceRefPtr& parent) {
 string Service::GetIPConfigRpcIdentifier(Error* error) const {
   if (!connection_) {
     error->Populate(Error::kNotFound);
-    return control_interface()->NullRPCIdentifier();
+    return control_interface()->NullRpcIdentifier();
   }
 
   string id = connection_->ipconfig_rpc_identifier();
@@ -1208,7 +1208,7 @@ string Service::GetIPConfigRpcIdentifier(Error* error) const {
   if (id.empty()) {
     // Do not return an empty IPConfig.
     error->Populate(Error::kNotFound);
-    return control_interface()->NullRPCIdentifier();
+    return control_interface()->NullRpcIdentifier();
   }
 
   return id;

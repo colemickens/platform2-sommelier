@@ -118,13 +118,13 @@ class ProfileMockAdaptor : public ProfileAdaptorInterface {
 };
 
 // These are the functions that a Task adaptor must support
-class RPCTaskMockAdaptor : public RPCTaskAdaptorInterface {
+class RpcTaskMockAdaptor : public RpcTaskAdaptorInterface {
  public:
   static const char kRpcId[];
   static const char kRpcConnId[];
 
-  RPCTaskMockAdaptor();
-  ~RPCTaskMockAdaptor() override;
+  RpcTaskMockAdaptor();
+  ~RpcTaskMockAdaptor() override;
 
   const std::string& GetRpcIdentifier() const override;
   const std::string& GetRpcConnectionIdentifier() const override;

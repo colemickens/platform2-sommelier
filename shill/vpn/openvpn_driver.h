@@ -29,7 +29,7 @@ class OpenVPNManagementServer;
 class ProcessManager;
 
 class OpenVPNDriver : public VPNDriver,
-                      public RPCTaskDelegate {
+                      public RpcTaskDelegate {
  public:
   enum ReconnectReason {
     kReconnectReasonUnknown,
@@ -230,7 +230,7 @@ class OpenVPNDriver : public VPNDriver,
   // Inherit from VPNDriver to add custom properties.
   KeyValueStore GetProvider(Error* error) override;
 
-  // Implements RPCTaskDelegate.
+  // Implements RpcTaskDelegate.
   void GetLogin(std::string* user, std::string* password) override;
   void Notify(const std::string& reason,
               const std::map<std::string, std::string>& dict) override;
@@ -249,7 +249,7 @@ class OpenVPNDriver : public VPNDriver,
   base::FilePath lsb_release_file_;
 
   VPNServiceRefPtr service_;
-  std::unique_ptr<RPCTask> rpc_task_;
+  std::unique_ptr<RpcTask> rpc_task_;
   std::string tunnel_interface_;
   VirtualDeviceRefPtr device_;
   base::FilePath tls_auth_file_;

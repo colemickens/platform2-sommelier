@@ -60,15 +60,15 @@ class NiceMockControl : public ControlInterface {
       Manager* manager) override;
   std::unique_ptr<ProfileAdaptorInterface> CreateProfileAdaptor(
       Profile* profile) override;
-  std::unique_ptr<RPCTaskAdaptorInterface> CreateRPCTaskAdaptor(
-      RPCTask* task) override;
+  std::unique_ptr<RpcTaskAdaptorInterface> CreateRpcTaskAdaptor(
+      RpcTask* task) override;
   std::unique_ptr<ServiceAdaptorInterface> CreateServiceAdaptor(
       Service* service) override;
 #ifndef DISABLE_VPN
   std::unique_ptr<ThirdPartyVpnAdaptorInterface> CreateThirdPartyVpnAdaptor(
       ThirdPartyVpnDriver* driver) override;
 #endif
-  const std::string& NullRPCIdentifier() override;
+  const std::string& NullRpcIdentifier() override;
 
   MOCK_METHOD3(CreatePowerManagerProxy,
                std::unique_ptr<PowerManagerProxyInterface>(

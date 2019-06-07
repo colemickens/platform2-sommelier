@@ -369,7 +369,7 @@ bool OpenVPNDriver::ClaimInterface(const string& link_name,
                               Technology::kVPN);
   device_->SetEnabled(true);
 
-  rpc_task_.reset(new RPCTask(control_interface(), this));
+  rpc_task_.reset(new RpcTask(control_interface(), this));
   if (SpawnOpenVPN()) {
     default_service_callback_tag_ =
         manager()->RegisterDefaultServiceCallback(
@@ -767,11 +767,11 @@ void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
 
   // Setup openvpn-script options and RPC information required to send back
   // Layer 3 configuration.
-  AppendOption("setenv", kRPCTaskServiceVariable,
+  AppendOption("setenv", kRpcTaskServiceVariable,
                rpc_task_->GetRpcConnectionIdentifier(), options);
-  AppendOption("setenv", kRPCTaskServiceVariable,
+  AppendOption("setenv", kRpcTaskServiceVariable,
                rpc_task_->GetRpcConnectionIdentifier(), options);
-  AppendOption("setenv", kRPCTaskPathVariable, rpc_task_->GetRpcIdentifier(),
+  AppendOption("setenv", kRpcTaskPathVariable, rpc_task_->GetRpcIdentifier(),
                options);
   AppendOption("script-security", "2", options);
   AppendOption("up", kOpenVPNScript, options);

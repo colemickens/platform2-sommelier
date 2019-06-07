@@ -29,7 +29,7 @@ class PPPDeviceFactory;
 class ProcessManager;
 
 class L2TPIPSecDriver : public VPNDriver,
-                        public RPCTaskDelegate {
+                        public RpcTaskDelegate {
  public:
   L2TPIPSecDriver(Manager* manager,
                   DeviceInfo* device_info,
@@ -120,7 +120,7 @@ class L2TPIPSecDriver : public VPNDriver,
   // Inherit from VPNDriver to add custom properties.
   KeyValueStore GetProvider(Error* error) override;
 
-  // Implements RPCTaskDelegate.
+  // Implements RpcTaskDelegate.
   void GetLogin(std::string* user, std::string* password) override;
   void Notify(const std::string& reason,
               const std::map<std::string, std::string>& dict) override;

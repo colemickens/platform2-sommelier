@@ -15,17 +15,17 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(ChromeosRPCTaskDBusAdaptor* r) {
+static string ObjectID(ChromeosRpcTaskDBusAdaptor* r) {
   return r->GetRpcIdentifier();
 }
 }
 
 // static
-const char ChromeosRPCTaskDBusAdaptor::kPath[] = "/task/";
+const char ChromeosRpcTaskDBusAdaptor::kPath[] = "/task/";
 
-ChromeosRPCTaskDBusAdaptor::ChromeosRPCTaskDBusAdaptor(
+ChromeosRpcTaskDBusAdaptor::ChromeosRpcTaskDBusAdaptor(
     const scoped_refptr<dbus::Bus>& bus,
-    RPCTask* task)
+    RpcTask* task)
     : org::chromium::flimflam::TaskAdaptor(this),
       ChromeosDBusAdaptor(bus, kPath + task->UniqueName()),
       task_(task),
@@ -35,27 +35,27 @@ ChromeosRPCTaskDBusAdaptor::ChromeosRPCTaskDBusAdaptor(
   dbus_object()->RegisterAndBlock();
 }
 
-ChromeosRPCTaskDBusAdaptor::~ChromeosRPCTaskDBusAdaptor() {
+ChromeosRpcTaskDBusAdaptor::~ChromeosRpcTaskDBusAdaptor() {
   dbus_object()->UnregisterAsync();
   task_ = nullptr;
 }
 
-const string& ChromeosRPCTaskDBusAdaptor::GetRpcIdentifier() const {
+const string& ChromeosRpcTaskDBusAdaptor::GetRpcIdentifier() const {
   return dbus_path().value();
 }
 
-const string& ChromeosRPCTaskDBusAdaptor::GetRpcConnectionIdentifier() const {
+const string& ChromeosRpcTaskDBusAdaptor::GetRpcConnectionIdentifier() const {
   return connection_name_;
 }
 
-bool ChromeosRPCTaskDBusAdaptor::getsec(
+bool ChromeosRpcTaskDBusAdaptor::getsec(
     brillo::ErrorPtr* /*error*/, string* user, string* password) {
   SLOG(this, 2) << __func__ << ": " << user;
   task_->GetLogin(user, password);
   return true;
 }
 
-bool ChromeosRPCTaskDBusAdaptor::notify(brillo::ErrorPtr* /*error*/,
+bool ChromeosRpcTaskDBusAdaptor::notify(brillo::ErrorPtr* /*error*/,
                                         const string& reason,
                                         const map<string, string>& dict) {
   SLOG(this, 2) << __func__ << ": " << reason;

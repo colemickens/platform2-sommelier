@@ -14,15 +14,15 @@ using std::string;
 
 namespace shill {
 
-class RPCTaskTest : public testing::Test,
-                    public RPCTaskDelegate {
+class RpcTaskTest : public testing::Test,
+                    public RpcTaskDelegate {
  public:
-  RPCTaskTest()
+  RpcTaskTest()
       : get_login_calls_(0),
         notify_calls_(0),
         task_(&control_, this) {}
 
-  // Inherited from RPCTaskDelegate.
+  // Inherited from RpcTaskDelegate.
   virtual void GetLogin(string* user, string* password);
   virtual void Notify(const string& reason, const map<string, string>& dict);
 
@@ -34,35 +34,35 @@ class RPCTaskTest : public testing::Test,
   string last_notify_reason_;
   map<string, string> last_notify_dict_;
   NiceMockControl control_;
-  RPCTask task_;
+  RpcTask task_;
 };
 
-void RPCTaskTest::GetLogin(string* user, string* password) {
+void RpcTaskTest::GetLogin(string* user, string* password) {
   get_login_calls_++;
   last_user_ = user;
   last_password_ = password;
 }
 
-void RPCTaskTest::Notify(const string& reason,
+void RpcTaskTest::Notify(const string& reason,
                          const map<string, string>& dict) {
   notify_calls_++;
   last_notify_reason_ = reason;
   last_notify_dict_ = dict;
 }
 
-TEST_F(RPCTaskTest, GetEnvironment) {
+TEST_F(RpcTaskTest, GetEnvironment) {
   map<string, string> env = task_.GetEnvironment();
   ASSERT_EQ(2, env.size());
-  EXPECT_EQ(env[kRPCTaskServiceVariable], RPCTaskMockAdaptor::kRpcConnId);
-  EXPECT_EQ(env[kRPCTaskPathVariable], RPCTaskMockAdaptor::kRpcId);
+  EXPECT_EQ(env[kRpcTaskServiceVariable], RpcTaskMockAdaptor::kRpcConnId);
+  EXPECT_EQ(env[kRpcTaskPathVariable], RpcTaskMockAdaptor::kRpcId);
 }
 
-TEST_F(RPCTaskTest, GetRpcIdentifiers) {
-  EXPECT_EQ(RPCTaskMockAdaptor::kRpcId, task_.GetRpcIdentifier());
-  EXPECT_EQ(RPCTaskMockAdaptor::kRpcConnId, task_.GetRpcConnectionIdentifier());
+TEST_F(RpcTaskTest, GetRpcIdentifiers) {
+  EXPECT_EQ(RpcTaskMockAdaptor::kRpcId, task_.GetRpcIdentifier());
+  EXPECT_EQ(RpcTaskMockAdaptor::kRpcConnId, task_.GetRpcConnectionIdentifier());
 }
 
-TEST_F(RPCTaskTest, GetLogin) {
+TEST_F(RpcTaskTest, GetLogin) {
   string user, password;
   task_.GetLogin(&user, &password);
   EXPECT_EQ(1, get_login_calls_);
@@ -70,7 +70,7 @@ TEST_F(RPCTaskTest, GetLogin) {
   EXPECT_EQ(&password, last_password_);
 }
 
-TEST_F(RPCTaskTest, Notify) {
+TEST_F(RpcTaskTest, Notify) {
   static const char kReason[] = "up";
   map<string, string> dict;
   dict["foo"] = "bar";

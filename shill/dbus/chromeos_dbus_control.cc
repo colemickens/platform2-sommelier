@@ -74,7 +74,7 @@ ChromeosDBusControl::~ChromeosDBusControl() {
   }
 }
 
-const string& ChromeosDBusControl::NullRPCIdentifier() {
+const string& ChromeosDBusControl::NullRpcIdentifier() {
   return null_identifier_;
 }
 
@@ -134,9 +134,9 @@ ChromeosDBusControl::CreateProfileAdaptor(Profile* profile) {
   return std::make_unique<ChromeosProfileDBusAdaptor>(adaptor_bus_, profile);
 }
 
-std::unique_ptr<RPCTaskAdaptorInterface>
-ChromeosDBusControl::CreateRPCTaskAdaptor(RPCTask* task) {
-  return std::make_unique<ChromeosRPCTaskDBusAdaptor>(adaptor_bus_, task);
+std::unique_ptr<RpcTaskAdaptorInterface>
+ChromeosDBusControl::CreateRpcTaskAdaptor(RpcTask* task) {
+  return std::make_unique<ChromeosRpcTaskDBusAdaptor>(adaptor_bus_, task);
 }
 
 std::unique_ptr<ServiceAdaptorInterface>

@@ -702,7 +702,7 @@ void WiFiService::Disconnect(Error* error, const char* reason) {
 string WiFiService::GetDeviceRpcId(Error* error) const {
   if (!wifi_) {
     error->Populate(Error::kNotFound, "Not associated with a device");
-    return control_interface()->NullRPCIdentifier();
+    return control_interface()->NullRpcIdentifier();
   }
   return wifi_->GetRpcIdentifier();
 }
@@ -1253,7 +1253,7 @@ void WiFiService::SetWiFi(const WiFiRefPtr& new_wifi) {
                                         new_wifi->GetRpcIdentifier());
   } else {
     adaptor()->EmitRpcIdentifierChanged(
-        kDeviceProperty, control_interface()->NullRPCIdentifier());
+        kDeviceProperty, control_interface()->NullRpcIdentifier());
   }
   wifi_ = new_wifi;
 }

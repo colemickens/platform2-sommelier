@@ -1475,7 +1475,7 @@ INSTANTIATE_TEST_CASE_P(
 TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
   {
     Error error;
-    EXPECT_EQ(control_interface()->NullRPCIdentifier(),
+    EXPECT_EQ(control_interface()->NullRpcIdentifier(),
               service_->GetIPConfigRpcIdentifier(&error));
     EXPECT_EQ(Error::kNotFound, error.type());
   }
@@ -1492,7 +1492,7 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
     const string empty_string;
     EXPECT_CALL(*mock_connection, ipconfig_rpc_identifier())
         .WillOnce(ReturnRef(empty_string));
-    EXPECT_EQ(control_interface()->NullRPCIdentifier(),
+    EXPECT_EQ(control_interface()->NullRpcIdentifier(),
               service_->GetIPConfigRpcIdentifier(&error));
     EXPECT_EQ(Error::kNotFound, error.type());
   }
@@ -1525,7 +1525,7 @@ class ServiceWithMockOnEapCredentialsChanged : public ServiceUnderTest {
   bool is_8021x_;
 };
 
-TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
+TEST_F(ServiceTest, SetEAPCredentialsOverRpc) {
   scoped_refptr<ServiceWithMockOnEapCredentialsChanged> service(
       new ServiceWithMockOnEapCredentialsChanged(&mock_manager_));
   static const char* const kEapCredentialProperties[] = {

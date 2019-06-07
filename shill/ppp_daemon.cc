@@ -47,7 +47,7 @@ const char PPPDaemon::kShimPluginPath[] = SHIMDIR "/shill-pppd-plugin.so";
 std::unique_ptr<ExternalTask> PPPDaemon::Start(
     ControlInterface* control_interface,
     ProcessManager* process_manager,
-    const base::WeakPtr<RPCTaskDelegate>& task_delegate,
+    const base::WeakPtr<RpcTaskDelegate>& task_delegate,
     const PPPDaemon::Options& options,
     const std::string& device,
     const PPPDaemon::DeathCallback& death_callback,

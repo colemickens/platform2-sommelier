@@ -23,8 +23,8 @@ class Manager;
 class ManagerAdaptorInterface;
 class Profile;
 class ProfileAdaptorInterface;
-class RPCTask;
-class RPCTaskAdaptorInterface;
+class RpcTask;
+class RpcTaskAdaptorInterface;
 class Service;
 class ServiceAdaptorInterface;
 class ThirdPartyVpnDriver;
@@ -79,14 +79,14 @@ class ControlInterface {
       Profile* profile) = 0;
   virtual std::unique_ptr<ServiceAdaptorInterface> CreateServiceAdaptor(
       Service* service) = 0;
-  virtual std::unique_ptr<RPCTaskAdaptorInterface> CreateRPCTaskAdaptor(
-      RPCTask* task) = 0;
+  virtual std::unique_ptr<RpcTaskAdaptorInterface> CreateRpcTaskAdaptor(
+      RpcTask* task) = 0;
 #ifndef DISABLE_VPN
   virtual std::unique_ptr<ThirdPartyVpnAdaptorInterface>
   CreateThirdPartyVpnAdaptor(ThirdPartyVpnDriver* driver) = 0;
 #endif
 
-  virtual const std::string& NullRPCIdentifier() = 0;
+  virtual const std::string& NullRpcIdentifier() = 0;
 
   // The caller retains ownership of 'delegate'.  It must not be deleted before
   // the proxy.

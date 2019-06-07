@@ -16,42 +16,42 @@ using std::string;
 namespace shill {
 
 // static
-unsigned int RPCTask::serial_number_ = 0;
+unsigned int RpcTask::serial_number_ = 0;
 
-RPCTask::RPCTask(ControlInterface* control_interface, RPCTaskDelegate* delegate)
+RpcTask::RpcTask(ControlInterface* control_interface, RpcTaskDelegate* delegate)
     : delegate_(delegate),
       unique_name_(base::UintToString(serial_number_++)),
-      adaptor_(control_interface->CreateRPCTaskAdaptor(this)) {
+      adaptor_(control_interface->CreateRpcTaskAdaptor(this)) {
   CHECK(delegate);
-  LOG(INFO) << "RPCTask " + unique_name_ + " created.";
+  LOG(INFO) << "RpcTask " + unique_name_ + " created.";
 }
 
-RPCTask::~RPCTask() {
-  LOG(INFO) << "RPCTask " + unique_name_ + " destroyed.";
+RpcTask::~RpcTask() {
+  LOG(INFO) << "RpcTask " + unique_name_ + " destroyed.";
 }
 
-void RPCTask::GetLogin(string* user, string* password) const {
+void RpcTask::GetLogin(string* user, string* password) const {
   delegate_->GetLogin(user, password);
 }
 
-void RPCTask::Notify(const string& reason, const map<string, string>& dict) {
+void RpcTask::Notify(const string& reason, const map<string, string>& dict) {
   delegate_->Notify(reason, dict);
 }
 
-map<string, string> RPCTask::GetEnvironment() const {
+map<string, string> RpcTask::GetEnvironment() const {
   map<string, string> env;
-  env.emplace(kRPCTaskServiceVariable, adaptor_->GetRpcConnectionIdentifier());
-  env.emplace(kRPCTaskPathVariable, adaptor_->GetRpcIdentifier());
+  env.emplace(kRpcTaskServiceVariable, adaptor_->GetRpcConnectionIdentifier());
+  env.emplace(kRpcTaskPathVariable, adaptor_->GetRpcIdentifier());
   return env;
 }
 
 // TODO(quiche): remove after moving OpenVPNDriver over to ExternalTask.
-string RPCTask::GetRpcIdentifier() const {
+string RpcTask::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 
 // TODO(quiche): remove after moving OpenVPNDriver over to ExternalTask.
-string RPCTask::GetRpcConnectionIdentifier() const {
+string RpcTask::GetRpcConnectionIdentifier() const {
   return adaptor_->GetRpcConnectionIdentifier();
 }
 
