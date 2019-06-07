@@ -49,6 +49,7 @@ enum CertificateProfile {
   JETSTREAM_CERTIFICATE = 6,
   ENTERPRISE_ENROLLMENT_CERTIFICATE = 7,
   XTS_CERTIFICATE = 8,
+  ENTERPRISE_VTPM_EK_CERTIFICATE = 9,
 };
 
 // Supported signing mechanisms.
