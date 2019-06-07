@@ -57,17 +57,17 @@ class MulticastForwarder : public MessageLoopForIO::Watcher {
 
  protected:
   // Rewrite mDNS A records pointing to |arc_ip_| so that they point to
-  // |lan_ip_| instead, so that Android can advertise services to devices
-  // on the LAN.  This modifies |data|, an incoming packet that is |bytes|
-  // long.
-  void TranslateMdnsIp(char* data, ssize_t bytes);
+  // the IPv4 assigned to physical interface instead, so that Android can
+  // advertise services to devices on the LAN.  This modifies |data|, an
+  // incoming packet that is |bytes| long.
+  // TODO(b/134717598) Support IPv6 translation.
+  void TranslateMdnsIp(const struct in_addr& lan_ip, char* data, ssize_t bytes);
 
   void CleanupTask();
 
   std::string int_ifname_;
   struct in_addr mdns_ip_;
   std::string lan_ifname_;
-  struct in_addr lan_ip_;
 
   struct in_addr mcast_addr_;
   unsigned int port_;

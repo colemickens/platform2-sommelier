@@ -59,7 +59,6 @@ bool MulticastForwarder::Start(const std::string& int_ifname,
                    << mcast_addr_ << ":" << port;
       return false;
     }
-    lan_ip_ = lan_socket_->interface_ip();
   }
 
   LOG(INFO) << "Started forwarding between " << lan_ifname << " and "
@@ -95,6 +94,17 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
   dst.sin_port = htons(port_);
   dst.sin_addr = mcast_addr_;
 
+  // TODO(b/132574450) The replacement address should instead be specified as an
+  // input argument, based on the properties of the network currently connected
+  // on |lan_ifname_|.
+  const struct in_addr lan_ip = lan_socket_->GetInterfaceIp();
+  if (lan_ip.s_addr == htonl(INADDR_ANY)) {
+    // When the physical interface has no IPv4 address, layer 3 is not
+    // provisioned and there is no point in trying to forward traffic in either
+    // direction.
+    return;
+  }
+
   // Forward traffic that is part of an existing connection.
   for (auto& temp : temp_sockets_) {
     if (fd == temp->fd()) {
@@ -102,7 +112,7 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
       return;
     } else if (fd == int_socket_->fd() &&
                fromaddr.sin_port == temp->int_addr.sin_port) {
-      TranslateMdnsIp(data, bytes);
+      TranslateMdnsIp(lan_ip, data, bytes);
       temp->SendTo(data, bytes, dst);
       return;
     }
@@ -114,7 +124,7 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
     // This requires translating any IPv4 address specific to the guest and not
     // visible to the physical network.
     if (fd == int_socket_->fd()) {
-      TranslateMdnsIp(data, bytes);
+      TranslateMdnsIp(lan_ip, data, bytes);
       lan_socket_->SendTo(data, bytes, dst);
       return;
       // Otherwise forward ingress multicast traffic towards the guest.
@@ -144,7 +154,9 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
   temp_sockets_.push_front(std::move(new_sock));
 }
 
-void MulticastForwarder::TranslateMdnsIp(char* data, ssize_t bytes) {
+void MulticastForwarder::TranslateMdnsIp(const struct in_addr& lan_ip,
+                                         char* data,
+                                         ssize_t bytes) {
   if (mdns_ip_.s_addr == htonl(INADDR_ANY)) {
     return;
   }
@@ -153,6 +165,7 @@ void MulticastForwarder::TranslateMdnsIp(char* data, ssize_t bytes) {
   if (bytes > net::dns_protocol::kMaxUDPSize || bytes <= 0) {
     return;
   }
+
   net::DnsResponse resp;
   memcpy(resp.io_buffer()->data(), data, bytes);
   if (!resp.InitParseWithoutQuery(bytes) ||
@@ -161,11 +174,11 @@ void MulticastForwarder::TranslateMdnsIp(char* data, ssize_t bytes) {
     return;
   }
 
-  // Check all A records for the internal IP, and replace it with |lan_ip_|
+  // Check all A records for the internal IP, and replace it with |lan_ip|
   // if it is found.
   net::DnsRecordParser parser = resp.Parser();
   while (!parser.AtEnd()) {
-    const size_t ipv4_addr_len = sizeof(lan_ip_.s_addr);
+    const size_t ipv4_addr_len = sizeof(lan_ip.s_addr);
 
     net::DnsResourceRecord record;
     if (!parser.ReadRecord(&record)) {
@@ -182,7 +195,7 @@ void MulticastForwarder::TranslateMdnsIp(char* data, ssize_t bytes) {
         // future libchrome changes might break it.
         size_t ip_offset = rr_ip - resp.io_buffer()->data();
         CHECK(ip_offset <= bytes - ipv4_addr_len);
-        memcpy(&data[ip_offset], &lan_ip_.s_addr, ipv4_addr_len);
+        memcpy(&data[ip_offset], &lan_ip.s_addr, ipv4_addr_len);
       }
     }
   }

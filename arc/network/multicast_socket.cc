@@ -42,26 +42,11 @@ bool MulticastSocket::Bind(const std::string& ifname,
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(ifr));
   strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
-  if (ioctl(fd.get(), SIOCGIFADDR, &ifr) < 0) {
-    PLOG(ERROR) << "SIOCGIFADDR failed for multicast forwarder on " << ifname
-                << " for " << mcast_addr << ":" << port;
-    return false;
-  }
-
-  struct sockaddr_in* if_addr =
-      reinterpret_cast<struct sockaddr_in*>(&ifr.ifr_addr);
-  interface_ip_ = if_addr->sin_addr;
-
   if (setsockopt(fd.get(), SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr))) {
     PLOG(ERROR) << "setsockopt(SOL_SOCKET) failed for multicast forwarder on "
                 << ifname << " for " << mcast_addr << ":" << port;
     return false;
   }
-
-  struct ip_mreq mreq;
-  memset(&mreq, 0, sizeof(mreq));
-  mreq.imr_interface = if_addr->sin_addr;
-  mreq.imr_multiaddr = mcast_addr;
 
   struct sockaddr_in bind_addr;
   memset(&bind_addr, 0, sizeof(bind_addr));
@@ -77,8 +62,20 @@ bool MulticastSocket::Bind(const std::string& ifname,
     }
     bind_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
   } else {
-    if (setsockopt(fd.get(), IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq,
-                   sizeof(mreq)) < 0) {
+    int ifindex = if_nametoindex(ifname.c_str());
+    if (ifindex == 0) {
+      PLOG(ERROR)
+          << "could not obtain interface index for multicast forwarder on "
+          << ifname << " for " << mcast_addr << ":" << port;
+      return false;
+    }
+    struct ip_mreqn mreqn;
+    memset(&mreqn, 0, sizeof(mreqn));
+    mreqn.imr_multiaddr = mcast_addr;
+    mreqn.imr_address.s_addr = htonl(INADDR_ANY);
+    mreqn.imr_ifindex = ifindex;
+    if (setsockopt(fd.get(), IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreqn,
+                   sizeof(mreqn)) < 0) {
       PLOG(ERROR)
           << "can't add multicast membership for multicast forwarder on "
           << ifname << " for " << mcast_addr << ":" << port;
@@ -115,6 +112,7 @@ bool MulticastSocket::Bind(const std::string& ifname,
       fd.get(), true, MessageLoopForIO::WATCH_READ, &watcher_, parent);
 
   fd_ = std::move(fd);
+  ifname_ = ifname;
   return true;
 }
 
@@ -129,6 +127,23 @@ bool MulticastSocket::SendTo(const void* data,
   }
   last_used_ = time(NULL);
   return true;
+}
+
+struct in_addr const MulticastSocket::GetInterfaceIp() {
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, ifname_.c_str(), IFNAMSIZ);
+  if (ioctl(fd_.get(), SIOCGIFADDR, &ifr) < 0) {
+    // Ignore EADDRNOTAVAIL: layer 3 was not provisioned.
+    if (errno != EADDRNOTAVAIL) {
+      PLOG(ERROR) << "SIOCGIFADDR failed for " << ifname_;
+    }
+    return {0};
+  }
+
+  struct sockaddr_in* if_addr =
+      reinterpret_cast<struct sockaddr_in*>(&ifr.ifr_addr);
+  return if_addr->sin_addr;
 }
 
 }  // namespace arc_networkd
