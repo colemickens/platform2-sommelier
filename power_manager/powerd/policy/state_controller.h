@@ -314,6 +314,10 @@ class StateController : public PrefsObserver {
   // Instructs |delegate_| to perform |action| for |reason|.
   void PerformAction(Action action, ActionReason reason);
 
+  // Helper function to UpdateState(). Returns idle action to be performed based
+  // on preferences and several other external factors.
+  Action GetIdleAction() const;
+
   // Ensures that the system is in the correct state, given the times at which
   // activity was last seen, the lid state, the currently-set delays, etc.
   // Invokes ScheduleActionTimeout() when done. If something that affects the

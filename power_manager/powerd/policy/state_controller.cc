@@ -1001,6 +1001,25 @@ void StateController::PerformAction(Action action, ActionReason reason) {
   }
 }
 
+StateController::Action StateController::GetIdleAction() const {
+  if (!delegate_->IsOobeCompleted()) {
+    LOG(INFO) << "Not performing idle action without OOBE completed";
+    return Action::DO_NOTHING;
+  }
+  if (idle_action_ == Action::SUSPEND && require_usb_input_device_to_suspend_ &&
+      !delegate_->IsUsbInputDeviceConnected()) {
+    LOG(INFO) << "Not suspending for idle without USB input device";
+    return Action::DO_NOTHING;
+  }
+  if (idle_action_ == Action::SUSPEND &&
+      avoid_suspend_when_headphone_jack_plugged_ &&
+      delegate_->IsHeadphoneJackPlugged()) {
+    LOG(INFO) << "Not suspending for idle due to headphone jack";
+    return Action::DO_NOTHING;
+  }
+  return idle_action_;
+}
+
 void StateController::UpdateState() {
   base::TimeTicks now = clock_->GetCurrentTime();
   base::TimeDelta idle_duration = now - GetLastActivityTimeForIdle(now);
@@ -1106,23 +1125,7 @@ void StateController::UpdateState() {
         LOG(INFO) << "Not performing idle action because "
                   << reason_for_ignoring_idle_action_;
       }
-      idle_action_to_perform = idle_action_;
-      if (!delegate_->IsOobeCompleted()) {
-        LOG(INFO) << "Not performing idle action without OOBE completed";
-        idle_action_to_perform = Action::DO_NOTHING;
-      }
-      if (idle_action_to_perform == Action::SUSPEND &&
-          require_usb_input_device_to_suspend_ &&
-          !delegate_->IsUsbInputDeviceConnected()) {
-        LOG(INFO) << "Not suspending for idle without USB input device";
-        idle_action_to_perform = Action::DO_NOTHING;
-      }
-      if (idle_action_to_perform == Action::SUSPEND &&
-          avoid_suspend_when_headphone_jack_plugged_ &&
-          delegate_->IsHeadphoneJackPlugged()) {
-        LOG(INFO) << "Not suspending for idle due to headphone jack";
-        idle_action_to_perform = Action::DO_NOTHING;
-      }
+      idle_action_to_perform = GetIdleAction();
       LOG(INFO) << "Ready to perform idle action ("
                 << ActionToString(idle_action_to_perform) << ") after "
                 << util::TimeDeltaToString(idle_duration);
