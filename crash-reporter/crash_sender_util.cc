@@ -619,14 +619,6 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
     const CrashInfo& info = pair.second;
     LOG(INFO) << "Evaluating crash report: " << meta_file.value();
 
-    // This should be checked inside of the loop, since the device can enter
-    // guest mode while sending crash reports with an interval up to
-    // max_spread_time_ between sends.
-    if (metrics_lib_->IsGuestMode()) {
-      LOG(INFO) << "Guest mode has been entered. Delaying crash sending";
-      return;
-    }
-
     base::TimeDelta sleep_time;
     if (!GetSleepTime(meta_file, max_spread_time_, hold_off_time_,
                       &sleep_time)) {
@@ -642,6 +634,17 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
       sleep_function_.Run(sleep_time);
     }
     lock = AcquireLockFileOrDie();
+
+    // This should be checked inside of the loop, since the device can disable
+    // metrics while sending crash reports with an interval up to
+    // max_spread_time_ between sends. We only need to check if metrics are
+    // enabled and not guest mode because in guest mode, it always indicates
+    // that metrics are disabled.
+    if (!metrics_lib_->AreMetricsEnabled()) {
+      LOG(INFO) << "Metrics disabled or guest mode entered, delaying crash "
+                << "sending";
+      return;
+    }
 
     // User-specific crash reports become inaccessible if the user signs out
     // while sleeping, thus we need to check if the metadata is still

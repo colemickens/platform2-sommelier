@@ -1357,8 +1357,9 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
                                      &user_info2.last_modified));
   crashes_to_send.emplace_back(user_meta_file2, std::move(user_info2));
 
-  // Set up the conditions to emulate a device in guest mode.
-  ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsEnabled));
+  // Set up the conditions to emulate a device in guest mode; metrics are
+  // disabled in guest mode.
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsDisabled));
   // Keep the raw pointer, that's needed to exit from guest mode later.
   MetricsLibraryMock* raw_metrics_lib = metrics_lib_.get();
 
@@ -1380,12 +1381,15 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   sender.SendCrashes(crashes_to_send);
 
   // The Chrome uploads.log file shouldn't exist because we had nothing to
-  // upload.
+  // upload, but we will have slept once until we determined we shouldn't be
+  // doing uploads.
   EXPECT_FALSE(base::PathExists(paths::Get(paths::kChromeCrashLog)));
-  EXPECT_TRUE(sleep_times.empty());
+  EXPECT_EQ(1, sleep_times.size());
+  sleep_times.clear();
 
-  // Exit from guest mode, and send crashes again.
+  // Exit from guest mode/re-enable metrics, and send crashes again.
   raw_metrics_lib->set_guest_mode(false);
+  raw_metrics_lib->set_metrics_enabled(true);
   sender.SendCrashes(crashes_to_send);
 
   // Check the upload log from crash_sender.
