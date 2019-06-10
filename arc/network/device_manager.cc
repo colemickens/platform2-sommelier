@@ -13,7 +13,7 @@ namespace {
 constexpr const char kVpnInterfaceHostPattern[] = "tun";
 constexpr const char kVpnInterfaceGuestPrefix[] = "cros_";
 constexpr const char kEthernetInterfacePrefix[] = "eth";
-constexpr const char kWifiInterfacePrefix[] = "wlan";
+constexpr std::array<const char*, 2> kWifiInterfacePrefixes{{"wlan", "mlan"}};
 
 bool IsHostVpnInterface(const std::string& ifname) {
   return base::StartsWith(ifname, kVpnInterfaceHostPattern,
@@ -26,8 +26,13 @@ bool IsEthernetInterface(const std::string& ifname) {
 }
 
 bool IsWifiInterface(const std::string& ifname) {
-  return base::StartsWith(ifname, kWifiInterfacePrefix,
-                          base::CompareCase::INSENSITIVE_ASCII);
+  for (const auto& prefix : kWifiInterfacePrefixes) {
+    if (base::StartsWith(ifname, prefix,
+                         base::CompareCase::INSENSITIVE_ASCII)) {
+      return true;
+    }
+  }
+  return false;
 }
 }  // namespace
 

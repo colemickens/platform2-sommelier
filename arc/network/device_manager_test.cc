@@ -92,14 +92,26 @@ TEST_F(DeviceManagerTest, MakeEthernetDevice) {
   EXPECT_TRUE(msg.find_ipv6_routes());
 }
 
-TEST_F(DeviceManagerTest, MakeWifiDevice) {
+TEST_F(DeviceManagerTest, MakeWifiDevices) {
   auto mgr = NewManager();
   DeviceConfig msg;
-  mgr->MakeDevice("wlan0")->FillProto(&msg);
+
+  auto wifi_device0 = mgr->MakeDevice("wlan0");
+  wifi_device0->FillProto(&msg);
   EXPECT_EQ(msg.br_ifname(), "arc_wlan0");
   EXPECT_EQ(msg.arc_ifname(), "wlan0");
   EXPECT_EQ(msg.br_ipv4(), "100.115.92.9");
   EXPECT_EQ(msg.arc_ipv4(), "100.115.92.10");
+  EXPECT_FALSE(msg.mac_addr().empty());
+  EXPECT_TRUE(msg.fwd_multicast());
+  EXPECT_TRUE(msg.find_ipv6_routes());
+
+  auto wifi_device1 = mgr->MakeDevice("mlan0");
+  wifi_device1->FillProto(&msg);
+  EXPECT_EQ(msg.br_ifname(), "arc_mlan0");
+  EXPECT_EQ(msg.arc_ifname(), "mlan0");
+  EXPECT_EQ(msg.br_ipv4(), "100.115.92.13");
+  EXPECT_EQ(msg.arc_ipv4(), "100.115.92.14");
   EXPECT_FALSE(msg.mac_addr().empty());
   EXPECT_TRUE(msg.fwd_multicast());
   EXPECT_TRUE(msg.find_ipv6_routes());
