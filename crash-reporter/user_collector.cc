@@ -38,9 +38,36 @@ const char kCoreToMinidumpConverterPath[] = "/usr/bin/core2md";
 
 const char kFilterPath[] = "/opt/google/crash-reporter/filter";
 
+// Core pattern lock file: only exists on linux-3.18 and earlier.
+const char kCorePatternLockFile[] = "/proc/sys/kernel/lock_core_pattern";
+
 // Returns true if the given executable name matches that of Chrome.  This
 // includes checks for threads that Chrome has renamed.
 bool IsChromeExecName(const std::string& exec);
+
+// This is needed for kernels older than linux-4.4. Once we drop support for
+// older kernels (upgrading or going EOL), we can drop this logic.
+bool LockCorePattern() {
+  base::FilePath core_pattern_lock_file(kCorePatternLockFile);
+
+  // Core pattern lock was only added for kernel versions before 4.4.
+  if (!base::PathExists(core_pattern_lock_file)) {
+    VLOG(1) << "No core pattern lock available";
+    return true;
+  }
+
+  if (util::IsDeveloperImage()) {
+    LOG(INFO) << "Developer image -- leaving core pattern unlocked";
+    return true;
+  }
+
+  if (base::WriteFile(core_pattern_lock_file, "1", 1) != 1) {
+    PLOG(ERROR) << "Failed to lock core pattern";
+    return false;
+  }
+
+  return true;
+}
 
 }  // namespace
 
@@ -100,7 +127,21 @@ bool UserCollector::SetUpInternal(bool enabled, bool early) {
   std::string pattern = GetPattern(enabled, early);
   if (base::WriteFile(FilePath(core_pattern_file_), pattern.c_str(),
                       pattern.length()) != static_cast<int>(pattern.length())) {
-    PLOG(ERROR) << "Unable to write " << core_pattern_file_;
+    // If the core pattern is locked and we try to reset the |core_pattern|
+    // while disabling |user_collector|, expect failure here with an EPERM.
+    if (errno == EPERM && !enabled &&
+        base::PathExists(FilePath(kCorePatternLockFile))) {
+      LOG(WARNING) << "Failed to write to locked core pattern; ignoring";
+    } else {
+      PLOG(ERROR) << "Unable to write " << core_pattern_file_;
+      return false;
+    }
+  }
+
+  // Attempt to lock down |core_pattern|: this only works for kernels older than
+  // linux-3.18.
+  if (enabled && !early && !LockCorePattern()) {
+    LOG(ERROR) << "Failed to lock core pattern on a supported device";
     return false;
   }
 
