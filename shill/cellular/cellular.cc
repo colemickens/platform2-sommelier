@@ -1074,7 +1074,7 @@ void Cellular::StartPPP(const string& serial_device) {
 
   Error error;
   std::unique_ptr<ExternalTask> new_ppp_task(
-      PPPDaemon::Start(modem_info_->control_interface(),
+      PPPDaemon::Start(control_interface(),
                        process_manager_,
                        weak_ptr_factory_.GetWeakPtr(),
                        options,
@@ -1138,7 +1138,7 @@ void Cellular::OnPPPAuthenticating() {
 void Cellular::OnPPPConnected(const map<string, string>& params) {
   SLOG(PPP, this, 2) << __func__;
   string interface_name = PPPDevice::GetInterfaceName(params);
-  DeviceInfo* device_info = modem_info_->manager()->device_info();
+  DeviceInfo* device_info = manager()->device_info();
   int interface_index = device_info->GetIndex(interface_name);
   if (interface_index < 0) {
     // TODO(quiche): Consider handling the race when the RTNL notification about
@@ -1152,7 +1152,7 @@ void Cellular::OnPPPConnected(const map<string, string>& params) {
       ppp_device_->SelectService(nullptr);  // No longer drives |service_|.
     }
     ppp_device_ = ppp_device_factory_->CreatePPPDevice(
-        modem_info_->manager(), interface_name, interface_index);
+        manager(), interface_name, interface_index);
     device_info->RegisterDevice(ppp_device_);
   }
 
@@ -1168,7 +1168,7 @@ void Cellular::OnPPPConnected(const map<string, string>& params) {
 void Cellular::OnPPPDied(pid_t pid, int exit) {
   LOG(INFO) << __func__ << " on " << link_name();
   // DestroyLater, rather than while on stack.
-  ppp_task_.release()->DestroyLater(modem_info_->dispatcher());
+  ppp_task_.release()->DestroyLater(dispatcher());
   if (is_ppp_authenticating_) {
     SetServiceFailure(Service::kFailurePPPAuth);
   } else {
