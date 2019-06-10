@@ -124,6 +124,10 @@ class StateController : public PrefsObserver {
     // timer wasn't running.
     bool TriggerInitialStateTimeout() WARN_UNUSED_RESULT;
 
+    // Runs StateController::HandleWaitForExternalDisplayTimeout(). Returns
+    // false if the timer wasn't running.
+    bool TriggerWaitForExternalDisplayTimeout() WARN_UNUSED_RESULT;
+
    private:
     StateController* controller_;  // weak
 
@@ -257,21 +261,23 @@ class StateController : public PrefsObserver {
 
   // Is StateController currently waiting for the display mode and policy to be
   // received for the first time after Init() was called?
-  bool waiting_for_initial_state() const {
-    return initial_state_timer_.IsRunning();
-  }
+  bool WaitingForInitialState() const;
+
+  // Is Statecontroller waiting for external display on resuming with lid
+  // still closed. Used to defer idle and suspend action until the timer
+  // expires.
+  bool WaitingForExternalDisplay() const;
 
   // Should inactivity-triggered actions be deferred due to StateController
   // waiting for user activity to be seen during the current session?
-  bool waiting_for_initial_user_activity() const {
-    return wait_for_initial_user_activity_ &&
-           session_state_ == SessionState::STARTED &&
-           !saw_user_activity_during_current_session_;
-  }
+  bool WaitingForInitialUserActivity() const;
 
   // Stops |initial_state_timer_| if |got_initial_display_mode_| and
   // |got_initial_policy_| are both true.
   void MaybeStopInitialStateTimer();
+
+  // Stops |wait_for_external_display_timer_|.
+  void StopWaitForExternalDisplayTimer();
 
   // Returns true if the idle, screen-dim, screen-lock, or screen-off actions
   // are currently blocked and can't occur until something changes via a call to
@@ -315,7 +321,7 @@ class StateController : public PrefsObserver {
   void PerformAction(Action action, ActionReason reason);
 
   // Helper function to UpdateState(). Returns idle action to be performed based
-  // on preferences and several other external factors.
+  // on user preferences and several other external factors.
   Action GetIdleAction() const;
 
   // Ensures that the system is in the correct state, given the times at which
@@ -335,6 +341,11 @@ class StateController : public PrefsObserver {
   // Invoked by |initial_state_timer_| if the current display mode and policy
   // weren't received in a reasonable amount of time after Init() was called.
   void HandleInitialStateTimeout();
+
+  // Invoked by |wait_for_external_display_timer_| if display mode change is not
+  // received in |KResuspendOnClosedLidTimeout| after resuming with lid still
+  // closed.
+  void HandleWaitForExternalDisplayTimeout();
 
   // Constructs a protocol message containing the currently-active inactivity
   // delays.
@@ -398,6 +409,9 @@ class StateController : public PrefsObserver {
 
   // Runs HandleInitialStateTimeout().
   base::OneShotTimer initial_state_timer_;
+
+  // Runs HandleWaitForExternalDisplayTimeout().
+  base::OneShotTimer wait_for_external_display_timer_;
 
   // Time at which |action_timer_| has been scheduled to fire.
   base::TimeTicks action_timer_time_for_testing_;

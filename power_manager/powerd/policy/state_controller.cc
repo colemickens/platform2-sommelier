@@ -31,6 +31,11 @@ namespace policy {
 
 namespace {
 
+// Time to wait for display mode change after resuming with lid still closed
+// before triggering idle and lid closed action (crbug.com/786721).
+constexpr base::TimeDelta KWaitForExternalDisplayTimeout =
+    base::TimeDelta::FromSeconds(25);
+
 // Time to wait for the display mode and policy after Init() is called.
 constexpr base::TimeDelta kInitialStateTimeout =
     base::TimeDelta::FromSeconds(10);
@@ -189,6 +194,15 @@ bool StateController::TestApi::TriggerInitialStateTimeout() {
 
   controller_->initial_state_timer_.Stop();
   controller_->HandleInitialStateTimeout();
+  return true;
+}
+
+bool StateController::TestApi::TriggerWaitForExternalDisplayTimeout() {
+  if (!controller_->WaitingForExternalDisplay())
+    return false;
+
+  controller_->wait_for_external_display_timer_.Stop();
+  controller_->HandleWaitForExternalDisplayTimeout();
   return true;
 }
 
@@ -434,6 +448,7 @@ void StateController::HandleDisplayModeChange(DisplayMode mode) {
     UpdateLastUserActivityTime();
   }
 
+  StopWaitForExternalDisplayTimer();
   UpdateSettingsAndState();
 }
 
@@ -447,21 +462,32 @@ void StateController::HandleResume() {
       UpdateLastUserActivityTime();
       break;
     case LidState::CLOSED:
-      // If the lid is closed to suspend the machine and then very quickly
-      // opened and closed again, the machine may resume without lid-opened
-      // and lid-closed events being generated.  Ensure that we're able to
-      // resuspend immediately in this case.
-      if (lid_state_ == LidState::CLOSED &&
-          lid_closed_action_ == Action::SUSPEND &&
-          lid_closed_action_performed_) {
-        LOG(INFO) << "Lid still closed after resuming from lid-close-triggered "
-                  << "suspend; repeating lid-closed action";
-        lid_closed_action_performed_ = false;
+      // This can happen if:
+      //   1. An external display is connected to wake the device.
+      //   2. Lid is closed to suspend and then very quickly opened and closed
+      //      again. Lid open and close events might be suppresed by the kernel
+      //      in this scenario.
+      // Ensure that we suspend again in the case of scenario 2 by giving enough
+      // time for external display to be enumerated if it is scenario 1.
+      if (lid_state_ == LidState::CLOSED) {
+        LOG(INFO) << "Lid still closed after resume";
+        if (lid_closed_action_ == Action::SUSPEND &&
+            lid_closed_action_performed_) {
+          LOG(INFO)
+              << "lid-close-triggered suspend; repeating lid-closed action";
+          lid_closed_action_performed_ = false;
+        }
+
+        LOG(INFO) << "Waiting for external display before performing idle or "
+                     "lid closed action";
+        wait_for_external_display_timer_.Start(
+            FROM_HERE, KWaitForExternalDisplayTimeout, this,
+            &StateController::HandleWaitForExternalDisplayTimeout);
       }
       break;
   }
 
-  UpdateState();
+  UpdateSettingsAndState();
 }
 
 void StateController::HandlePolicyChange(const PowerManagementPolicy& policy) {
@@ -697,9 +723,27 @@ void StateController::MergeDelaysFromPolicy(
   }
 }
 
+bool StateController::WaitingForInitialState() const {
+  return initial_state_timer_.IsRunning();
+}
+
+bool StateController::WaitingForExternalDisplay() const {
+  return wait_for_external_display_timer_.IsRunning();
+}
+
+bool StateController::WaitingForInitialUserActivity() const {
+  return wait_for_initial_user_activity_ &&
+         session_state_ == SessionState::STARTED &&
+         !saw_user_activity_during_current_session_;
+}
+
 void StateController::MaybeStopInitialStateTimer() {
   if (got_initial_display_mode_ && got_initial_policy_)
     initial_state_timer_.Stop();
+}
+
+void StateController::StopWaitForExternalDisplayTimer() {
+  wait_for_external_display_timer_.Stop();
 }
 
 bool StateController::IsIdleBlocked() const {
@@ -725,7 +769,7 @@ bool StateController::IsScreenLockBlocked() const {
 base::TimeTicks StateController::GetLastActivityTimeForIdle(
     base::TimeTicks now) const {
   base::TimeTicks last_time =
-      waiting_for_initial_user_activity() ? now : last_user_activity_time_;
+      WaitingForInitialUserActivity() ? now : last_user_activity_time_;
   if (use_audio_activity_)
     last_time = std::max(last_time, audio_activity_->GetLastActiveTime(now));
   if (use_video_activity_)
@@ -744,7 +788,7 @@ base::TimeTicks StateController::GetLastActivityTimeForIdle(
 base::TimeTicks StateController::GetLastActivityTimeForScreenDim(
     base::TimeTicks now) const {
   base::TimeTicks last_time =
-      waiting_for_initial_user_activity() ? now : last_user_activity_time_;
+      WaitingForInitialUserActivity() ? now : last_user_activity_time_;
   if (use_video_activity_)
     last_time = std::max(last_time, last_video_activity_time_);
   last_time = std::max(last_time, last_defer_screen_dim_time_);
@@ -872,24 +916,32 @@ void StateController::UpdateSettingsAndState() {
   else if (saw_user_activity_soon_after_screen_dim_or_off_)
     ScaleDelays(&delays_, user_activity_factor);
 
-  // The disable-idle-suspend pref overrides |policy_|. Note that it also
-  // prevents the system from shutting down on idle if no session has been
-  // started.
-  if (disable_idle_suspend_ &&
-      (idle_action_ == Action::SUSPEND || idle_action_ == Action::SHUT_DOWN)) {
-    idle_action_ = Action::DO_NOTHING;
-    reason_for_ignoring_idle_action_ =
-        "disable_idle_suspend powerd pref is set (done automatically in dev)";
-  }
+  if (idle_action_ == Action::SUSPEND || idle_action_ == Action::SHUT_DOWN) {
+    // The disable-idle-suspend pref overrides |policy_|. Note that it also
+    // prevents the system from shutting down on idle if no session has been
+    // started.
+    if (disable_idle_suspend_) {
+      idle_action_ = Action::DO_NOTHING;
+      reason_for_ignoring_idle_action_ =
+          "disable_idle_suspend powerd pref is set (done automatically in dev)";
+    }
 
-  // Avoid suspending or shutting down due to inactivity while a system
-  // update is being applied on AC power so users on slow connections can
-  // get updates.  Continue suspending on lid-close so users don't get
-  // confused, though.
-  if (updater_state_ == UpdaterState::UPDATING && on_ac &&
-      (idle_action_ == Action::SUSPEND || idle_action_ == Action::SHUT_DOWN)) {
-    idle_action_ = Action::DO_NOTHING;
-    reason_for_ignoring_idle_action_ = "applying update on AC power";
+    // Avoid suspending or shutting down due to inactivity while a system
+    // update is being applied on AC power so users on slow connections can
+    // get updates. Continue suspending on lid-close so users don't get
+    // confused, though.
+    if (updater_state_ == UpdaterState::UPDATING && on_ac) {
+      idle_action_ = Action::DO_NOTHING;
+      reason_for_ignoring_idle_action_ = "applying update on AC power";
+    }
+
+    // Avoid suspending or shutting down due to inactivity immediately after
+    // resume if we are waiting for external display.
+    if (WaitingForExternalDisplay()) {
+      idle_action_ = Action::DO_NOTHING;
+      reason_for_ignoring_idle_action_ =
+          "waiting for display mode change on resuming with lid closed";
+    }
   }
 
   // Ignore the lid being closed while presenting to support docked mode.
@@ -1136,11 +1188,17 @@ void StateController::UpdateState() {
   }
 
   Action lid_closed_action_to_perform = Action::DO_NOTHING;
-  // Hold off on the lid-closed action if the initial display mode or policy
-  // hasn't been received. powerd starts before Chrome's gotten a chance to
-  // configure the displays and send the policy, and we don't want to shut down
-  // immediately if the user rebooted with the lid closed.
-  if (lid_state_ == LidState::CLOSED && !waiting_for_initial_state()) {
+  // Hold off on the lid-closed action if
+  //  1. The initial display mode or policy hasn't been received. powerd starts
+  //     before Chrome's gotten a chance to configure the displays and send the
+  //     policy, and we don't want to shut down immediately if the user rebooted
+  //     with the lid closed.
+  //  2. Just resumed with lid still closed. Chrome takes a little bit of time
+  //     to identify and configure external display and we don't want to suspend
+  //     immediately if the device resumes with the lid still closed.
+
+  if (lid_state_ == LidState::CLOSED && !WaitingForInitialState() &&
+      !WaitingForExternalDisplay()) {
     if (!lid_closed_action_performed_) {
       lid_closed_action_to_perform = lid_closed_action_;
       LOG(INFO) << "Ready to perform lid-closed action ("
@@ -1214,6 +1272,13 @@ void StateController::HandleInitialStateTimeout() {
             << "policy; using " << DisplayModeToString(display_mode_)
             << " display mode";
   UpdateState();
+}
+
+void StateController::HandleWaitForExternalDisplayTimeout() {
+  LOG(INFO) << "Didn't receive display mode change notification in "
+            << util::TimeDeltaToString(KWaitForExternalDisplayTimeout)
+            << " on resuming with lid closed";
+  UpdateSettingsAndState();
 }
 
 void StateController::HandleGetInactivityDelaysMethodCall(

@@ -1238,18 +1238,23 @@ TEST_F(StateControllerTest, LidCloseAfterIdleSuspend) {
   EXPECT_EQ(kSuspendLidClosed, delegate_.GetActions());
 }
 
-// Tests that the controller resuspends after a resume from
-// suspend-from-lid-closed if the lid is opened and closed so quickly that
-// no events are generated (http://crosbug.com/p/17499).
+// Tests that the controller resuspends after |KResuspendOnClosedLidTimeout| on
+// resuming with closed lid from suspend-from-lid-closed. Happens when the lid
+// is opened and closed so quickly that no events are generated
+// (http://crosbug.com/p/17499).
 TEST_F(StateControllerTest, ResuspendAfterLidOpenAndClose) {
   Init();
   delegate_.set_lid_state(LidState::CLOSED);
   controller_.HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(kSuspendLidClosed, delegate_.GetActions());
 
-  // The lid-closed action should be repeated if the lid is still closed
-  // when the system resumes.
+  // The lid-closed action should be repeated after
+  // |KResuspendOnClosedLidTimeout| if the lid is still closed when the system
+  // resumes and powerd did not receive any display mode change notification in
+  // the mean time.
   controller_.HandleResume();
+  EXPECT_TRUE(test_api_.TriggerWaitForExternalDisplayTimeout());
+
   EXPECT_EQ(kSuspendLidClosed, delegate_.GetActions());
 }
 
@@ -1611,6 +1616,32 @@ TEST_F(StateControllerTest, DockedMode) {
   controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
   EXPECT_EQ(JoinActions(kUndocked, kSuspendLidClosed, nullptr),
             delegate_.GetActions());
+}
+
+// Tests that the system recognizes external display connect on resuming with
+// lid still closed (crbug.com/786721).
+TEST_F(StateControllerTest, ResumeOnExternalDisplayWithLidClosed) {
+  Init();
+
+  // Close the lid and let the system suspend.
+  delegate_.set_lid_state(LidState::CLOSED);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  controller_.HandleLidStateChange(LidState::CLOSED);
+  EXPECT_EQ(kSuspendLidClosed, delegate_.GetActions());
+  // Trigger a resume. StateController is expected to wait for
+  // |KResuspendOnClosedLidTimeout| before triggering idle or lid closed
+  // action again.
+  controller_.HandleResume();
+  // Mimic chrome notifying powerd about display mode change.
+  controller_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
+  // Timer that blocks idle or lid closed action should not be running anymore.
+  EXPECT_FALSE(test_api_.TriggerWaitForExternalDisplayTimeout());
+  // We should see only docked action and not suspend action.
+  EXPECT_EQ(kDocked, delegate_.GetActions());
+  // Open the lid and check that the internal panels turns back on.
+  controller_.HandleLidStateChange(LidState::OPEN);
+  EXPECT_EQ(kUndocked, delegate_.GetActions());
 }
 
 // Tests that PowerManagementPolicy's
