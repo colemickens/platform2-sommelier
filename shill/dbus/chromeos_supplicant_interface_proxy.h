@@ -5,6 +5,7 @@
 #ifndef SHILL_DBUS_CHROMEOS_SUPPLICANT_INTERFACE_PROXY_H_
 #define SHILL_DBUS_CHROMEOS_SUPPLICANT_INTERFACE_PROXY_H_
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -76,6 +77,8 @@ class ChromeosSupplicantInterfaceProxy
     brillo::dbus_utils::Property<bool> scan;
     brillo::dbus_utils::Property<int32_t> scan_interval;
     brillo::dbus_utils::Property<bool> sched_scan;
+    brillo::dbus_utils::Property<std::map<std::string, std::vector<uint8_t>>>
+        mac_address_randomization_mask;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(PropertySet);
@@ -87,6 +90,7 @@ class ChromeosSupplicantInterfaceProxy
   static const char kPropertyScan[];
   static const char kPropertyScanInterval[];
   static const char kPropertySchedScan[];
+  static const char kPropertyMACAddressRandomizationMask[];
 
   // Signal handlers.
   void BlobAdded(const std::string& blobname);

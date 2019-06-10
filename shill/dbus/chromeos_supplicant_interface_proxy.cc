@@ -5,6 +5,7 @@
 #include "shill/dbus/chromeos_supplicant_interface_proxy.h"
 
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 
@@ -31,6 +32,9 @@ const char ChromeosSupplicantInterfaceProxy::kPropertyScan[] = "Scan";
 const char ChromeosSupplicantInterfaceProxy::kPropertyScanInterval[] =
     "ScanInterval";
 const char ChromeosSupplicantInterfaceProxy::kPropertySchedScan[] = "SchedScan";
+const char
+    ChromeosSupplicantInterfaceProxy::kPropertyMACAddressRandomizationMask[] =
+        "MACAddressRandomizationMask";
 
 ChromeosSupplicantInterfaceProxy::PropertySet::PropertySet(
     dbus::ObjectProxy* object_proxy,
@@ -42,6 +46,8 @@ ChromeosSupplicantInterfaceProxy::PropertySet::PropertySet(
   RegisterProperty(kPropertyScan, &scan);
   RegisterProperty(kPropertyScanInterval, &scan_interval);
   RegisterProperty(kPropertySchedScan, &sched_scan);
+  RegisterProperty(kPropertyMACAddressRandomizationMask,
+                   &mac_address_randomization_mask);
 }
 
 ChromeosSupplicantInterfaceProxy::ChromeosSupplicantInterfaceProxy(
@@ -317,7 +323,24 @@ bool ChromeosSupplicantInterfaceProxy::EnableMACAddressRandomization(
     const std::vector<unsigned char>& mask) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   brillo::ErrorPtr error;
-  if (!interface_proxy_->EnableMACAddressRandomization(mask, &error)) {
+  // The MACRandomizationMask property is a map(type_string, ipmask_array)
+  // where type_string is scan type ("scan" || "sched_scan" || "pno") and
+  // ipmask specifies the corresponding mask as an array of bytes.
+  std::map<std::string, std::vector<uint8_t>> mac_randomization_args;
+  mac_randomization_args.insert(
+      std::pair<std::string, std::vector<uint8_t>>("scan", mask));
+  mac_randomization_args.insert(
+      std::pair<std::string, std::vector<uint8_t>>("sched_scan", mask));
+
+  // First try setting the MACRandomizationMask property
+  // (wpa_supplicant-2.8 interface).
+  // If that fails, try the EnableMACAddressRandomization method
+  // (wpa_supplicant-2.6 interface).
+  // TODO(crbug.com/985122): Remove supplicant-2.6 method call after
+  // uprev to supplicant-2.8 is complete.
+  if (!(properties_->mac_address_randomization_mask.SetAndBlock(
+            mac_randomization_args) ||
+        interface_proxy_->EnableMACAddressRandomization(mask, &error))) {
     LOG(ERROR) << "Failed to enable MAC address randomization: "
                << error->GetCode() << " " << error->GetMessage();
     return false;
@@ -328,7 +351,18 @@ bool ChromeosSupplicantInterfaceProxy::EnableMACAddressRandomization(
 bool ChromeosSupplicantInterfaceProxy::DisableMACAddressRandomization() {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   brillo::ErrorPtr error;
-  if (!interface_proxy_->DisableMACAddressRandomization(&error)) {
+  // Send an empty map to disable Randomization for all scan types.
+  std::map<std::string, std::vector<uint8_t>> mac_randomization_empty;
+
+  // First try setting the MACRandomizationMask property
+  // (wpa_supplicant-2.8 interface).
+  // If that fails, try the DisableMACAddressRandomization method
+  // (wpa_supplicant-2.6 interface).
+  // TODO(crbug.com/985122): Remove supplicant-2.6 method call after
+  // uprev to supplicant-2.8 is complete.
+  if (!(properties_->mac_address_randomization_mask.SetAndBlock(
+            mac_randomization_empty) ||
+        interface_proxy_->DisableMACAddressRandomization(&error))) {
     LOG(ERROR) << "Failed to enable MAC address randomization: "
                << error->GetCode() << " " << error->GetMessage();
     return false;
