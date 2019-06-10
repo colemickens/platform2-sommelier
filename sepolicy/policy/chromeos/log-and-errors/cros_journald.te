@@ -35,4 +35,6 @@ allow cros_journald kmsg_device:chr_file { open read write };
 
 allow cros_journald cros_rsyslogd:process signull;
 
+allow cros_journald self:netlink_audit_socket create_socket_perms;
+
 pid_file(minijail, cros_run, "systemd-journald.pid", cros_journald_pid_file);
