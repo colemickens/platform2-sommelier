@@ -21,6 +21,7 @@ enum VendorTags : uint32_t {
   kVendorTagVendorId = kUsbHalVendorTagStart,
   kVendorTagProductId,
   kVendorTagModelName,
+  kVendorTagDevicePath,
 };
 
 static_assert(kVendorTagModelName < kUsbHalVendorTagEnd,

@@ -53,6 +53,7 @@ ScopedCameraMetadata GetStaticInfoFromDeviceInfo(
   if (!device_info.usb_pid.empty()) {
     metadata.update(kVendorTagProductId, device_info.usb_pid);
   }
+  metadata.update(kVendorTagDevicePath, device_info.device_path);
   metadata.update(kVendorTagModelName,
                   V4L2CameraDevice::GetModelName(device_info.device_path));
 
