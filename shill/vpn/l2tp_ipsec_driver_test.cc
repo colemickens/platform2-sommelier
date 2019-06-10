@@ -666,7 +666,7 @@ TEST_F(L2TPIPSecDriverTest, GetProvider) {
     EXPECT_FALSE(props.LookupBool(kPassphraseRequiredProperty, true));
     EXPECT_FALSE(
         props.LookupBool(kL2tpIpsecPskRequiredProperty, true));
-    EXPECT_FALSE(props.ContainsString(kL2tpIpsecPasswordProperty));
+    EXPECT_FALSE(props.Contains<string>(kL2tpIpsecPasswordProperty));
   }
 }
 
