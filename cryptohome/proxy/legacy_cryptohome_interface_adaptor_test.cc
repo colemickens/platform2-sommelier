@@ -288,6 +288,100 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
   EXPECT_EQ(proxied_request.aca_type(), attestation::DEFAULT_ACA);
 }
 
+// ------------------- TpmAttestationEnroll Related Tests -------------------
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest, TpmAttestationEnrollSuccess) {
+  attestation::FinishEnrollRequest proxied_request;
+  EXPECT_CALL(attestation_, FinishEnrollAsync(_, _, _, _))
+      .WillOnce(DoAll(
+          SaveArg<0>(&proxied_request),
+          Invoke(
+              [](const attestation::FinishEnrollRequest& in_request,
+                 const base::Callback<void(
+                     const attestation::FinishEnrollReply&)>& success_callback,
+                 const base::Callback<void(brillo::Error*)>& error_callback,
+                 int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+                attestation::FinishEnrollReply proxied_reply;
+                proxied_reply.set_status(attestation::STATUS_SUCCESS);
+                success_callback.Run(proxied_reply);
+              })));
+
+  base::Optional<bool> result_success;
+  std::unique_ptr<MockDBusMethodResponse<bool>> response(
+      new MockDBusMethodResponse<bool>(nullptr));
+  response->save_return_args(&result_success);
+
+  std::vector<uint8_t> pca_request(kPCARequest,
+                                   kPCARequest + sizeof(kPCARequest));
+  adaptor_->TpmAttestationEnroll(std::move(response),
+                                 static_cast<int>(attestation::TEST_ACA),
+                                 pca_request);
+
+  // Verify that Return() is indeed called at least once.
+  ASSERT_TRUE(result_success.has_value());
+
+  // Verify the response.
+  EXPECT_TRUE(result_success.value());
+
+  // Verify that the parameters passed to DBus Proxy (New interface) is correct.
+  EXPECT_EQ(proxied_request.aca_type(), attestation::TEST_ACA);
+  EXPECT_EQ(proxied_request.pca_response(),
+            std::string(kPCARequest, kPCARequest + sizeof(kPCARequest)));
+}
+
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest, TpmAttestationEnrollInvalidACA) {
+  std::unique_ptr<MockDBusMethodResponse<bool>> response(
+      new MockDBusMethodResponse<bool>(nullptr));
+  EXPECT_CALL(
+      *response,
+      ReplyWithError(_, brillo::errors::dbus::kDomain, DBUS_ERROR_NOT_SUPPORTED,
+                     "Requested ACA type 99999 is not supported"))
+      .WillOnce(Return());
+  std::vector<uint8_t> pca_request(kPCARequest,
+                                   kPCARequest + sizeof(kPCARequest));
+
+  // 99999 is an invalid ACA
+  adaptor_->TpmAttestationEnroll(std::move(response), 99999, pca_request);
+}
+
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest, TpmAttestationEnrollFailed) {
+  attestation::FinishEnrollRequest proxied_request;
+  EXPECT_CALL(attestation_, FinishEnrollAsync(_, _, _, _))
+      .WillOnce(DoAll(
+          SaveArg<0>(&proxied_request),
+          Invoke(
+              [](const attestation::FinishEnrollRequest& in_request,
+                 const base::Callback<void(
+                     const attestation::FinishEnrollReply&)>& success_callback,
+                 const base::Callback<void(brillo::Error*)>& error_callback,
+                 int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+                attestation::FinishEnrollReply reply;
+                reply.set_status(attestation::STATUS_NOT_READY);
+                success_callback.Run(reply);
+              })));
+
+  base::Optional<bool> result_success;
+  std::unique_ptr<MockDBusMethodResponse<bool>> response(
+      new MockDBusMethodResponse<bool>(nullptr));
+  response->save_return_args(&result_success);
+
+  std::vector<uint8_t> pca_request(kPCARequest,
+                                   kPCARequest + sizeof(kPCARequest));
+  adaptor_->TpmAttestationEnroll(std::move(response),
+                                 static_cast<int>(attestation::DEFAULT_ACA),
+                                 pca_request);
+
+  // Verify that Return() is indeed called at least once.
+  ASSERT_TRUE(result_success.has_value());
+
+  // Verify the response.
+  EXPECT_FALSE(result_success.value());
+
+  // Verify that the parameters passed to DBus Proxy (New interface) is correct.
+  EXPECT_EQ(proxied_request.aca_type(), attestation::DEFAULT_ACA);
+  EXPECT_EQ(proxied_request.pca_response(),
+            std::string(kPCARequest, kPCARequest + sizeof(kPCARequest)));
+}
+
 }  // namespace
 
 }  // namespace cryptohome

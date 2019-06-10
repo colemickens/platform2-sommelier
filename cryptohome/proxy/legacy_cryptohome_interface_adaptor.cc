@@ -587,10 +587,34 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationEnroll(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     int32_t in_pca_type,
     const std::vector<uint8_t>& in_pca_response) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  attestation::FinishEnrollRequest request;
+  request.set_pca_response(in_pca_response.data(), in_pca_response.size());
+  base::Optional<attestation::ACAType> aca_type;
+  aca_type = IntegerToACAType(in_pca_type);
+  if (!aca_type.has_value()) {
+    std::string error_msg = "Requested ACA type " +
+                            std::to_string(in_pca_type) + " is not supported";
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_NOT_SUPPORTED, error_msg);
+    return;
+  }
+  request.set_aca_type(aca_type.value());
+
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
+  attestation_proxy_->FinishEnrollAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::TpmAttestationEnrollSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::TpmAttestationEnrollSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+    const attestation::FinishEnrollReply& reply) {
+  response->Return(reply.status() ==
+                   attestation::AttestationStatus::STATUS_SUCCESS);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::AsyncTpmAttestationEnroll(

@@ -548,6 +548,9 @@ class LegacyCryptohomeInterfaceAdaptor
   void TpmAttestationCreateEnrollRequestOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>>> response,
       const attestation::CreateEnrollRequestReply& reply);
+  void TpmAttestationEnrollSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+      const attestation::FinishEnrollReply& reply);
 
   // This method forwards the error received from calling the new interface back
   // to the old interface
