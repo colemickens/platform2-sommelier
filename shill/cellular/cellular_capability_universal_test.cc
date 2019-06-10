@@ -114,7 +114,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
                                Cellular::kTypeUniversal,
                                "",
                                "")),
-        service_(new MockCellularService(&modem_info_, cellular_)),
+        service_(new MockCellularService(modem_info_.manager(), cellular_)),
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr) {
     modem_info_.metrics()->RegisterDevice(cellular_->interface_index(),
@@ -151,7 +151,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     const char kOperatorCountry[] = "us";
 
     // Simulate all the side-effects of Cellular::CreateService
-    auto service = new CellularService(&modem_info_, cellular_);
+    auto service = new CellularService(modem_info_.manager(), cellular_);
     service->SetFriendlyName(kFriendlyServiceName);
 
     Stringmap serving_operator;

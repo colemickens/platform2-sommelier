@@ -47,7 +47,7 @@ class CellularServiceTest : public testing::Test {
                                  Cellular::kTypeUniversalCdma,
                                  "",
                                  "")),
-        service_(new CellularService(&modem_info_, device_)),
+        service_(new CellularService(modem_info_.manager(), device_)),
         adaptor_(nullptr) {}
 
   ~CellularServiceTest() override {

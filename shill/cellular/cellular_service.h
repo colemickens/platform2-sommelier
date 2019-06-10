@@ -22,6 +22,7 @@
 namespace shill {
 
 class Error;
+class Manager;
 
 class CellularService : public Service {
  public:
@@ -33,8 +34,7 @@ class CellularService : public Service {
     kActivationTypeUnknown
   };
 
-  CellularService(ModemInfo* modem_info,
-                  const CellularRefPtr& device);
+  CellularService(Manager* manager, const CellularRefPtr& device);
   ~CellularService() override;
 
   // Inherited from Service.

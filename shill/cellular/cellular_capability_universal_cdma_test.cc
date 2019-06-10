@@ -65,8 +65,7 @@ class CellularCapabilityUniversalCdmaTest : public testing::Test {
                                Cellular::kTypeUniversalCdma,
                                "",
                                "")),
-        service_(new MockCellularService(&modem_info_,
-                                         cellular_)),
+        service_(new MockCellularService(modem_info_.manager(), cellular_)),
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr) {}
 
@@ -85,7 +84,7 @@ class CellularCapabilityUniversalCdmaTest : public testing::Test {
   }
 
   void SetService() {
-    cellular_->service_ = new CellularService(&modem_info_, cellular_);
+    cellular_->service_ = new CellularService(modem_info_.manager(), cellular_);
   }
 
   void SetMockMobileOperatorInfoObjects() {

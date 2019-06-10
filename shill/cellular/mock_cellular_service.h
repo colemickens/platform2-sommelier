@@ -15,8 +15,7 @@ namespace shill {
 
 class MockCellularService : public CellularService {
  public:
-  MockCellularService(ModemInfo* modem_info,
-                      const CellularRefPtr& device);
+  MockCellularService(Manager* manager, const CellularRefPtr& device);
   ~MockCellularService() override;
 
   MOCK_METHOD0(AutoConnect, void());

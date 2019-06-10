@@ -426,11 +426,11 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   // Different tests simulate a cellular service being set using a real /mock
   // service.
   CellularService* SetService() {
-    device_->service_ = new CellularService(&modem_info_, device_);
+    device_->service_ = new CellularService(modem_info_.manager(), device_);
     return device_->service_.get();
   }
   MockCellularService* SetMockService() {
-    device_->service_ = new MockCellularService(&modem_info_, device_);
+    device_->service_ = new MockCellularService(modem_info_.manager(), device_);
     return static_cast<MockCellularService*>(device_->service_.get());
   }
 

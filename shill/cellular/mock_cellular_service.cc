@@ -10,9 +10,9 @@ using testing::ReturnRef;
 
 namespace shill {
 
-MockCellularService::MockCellularService(ModemInfo* modem_info,
+MockCellularService::MockCellularService(Manager* manager,
                                          const CellularRefPtr& device)
-    : CellularService(modem_info, device),
+    : CellularService(manager, device),
       default_activation_state_(kActivationStateUnknown) {
   ON_CALL(*this, activation_state())
       .WillByDefault(ReturnRef(default_activation_state_));
