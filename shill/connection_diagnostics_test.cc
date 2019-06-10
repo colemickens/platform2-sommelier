@@ -147,7 +147,7 @@ class ConnectionDiagnosticsTest : public Test {
         gateway_ipv6_address_(kIPv6GatewayAddress),
         local_mac_address_(string(kLocalMacAddressASCIIString), false),
         manager_(&control_, &dispatcher_, &metrics_),
-        device_info_(&control_, &dispatcher_, &metrics_, &manager_),
+        device_info_(&manager_),
         connection_(new NiceMock<MockConnection>(&device_info_)),
         connection_diagnostics_(connection_, &dispatcher_, &metrics_,
                                 &device_info_,

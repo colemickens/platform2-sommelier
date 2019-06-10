@@ -84,8 +84,8 @@ class OpenVPNDriverTest
       public RPCTaskDelegate {
  public:
   OpenVPNDriverTest()
-      : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
-        manager_(&control_, &dispatcher_, &metrics_),
+      : manager_(&control_, &dispatcher_, &metrics_),
+        device_info_(&manager_),
         driver_(new OpenVPNDriver(&manager_, &device_info_, &process_manager_)),
         service_(new MockVPNService(&manager_, driver_)),
         device_(new MockVirtualDevice(
@@ -242,11 +242,11 @@ class OpenVPNDriverTest
   void Notify(const string& reason, const map<string, string>& dict) override;
 
   NiceMockControl control_;
-  NiceMock<MockDeviceInfo> device_info_;
   MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockProcessManager process_manager_;
   MockManager manager_;
+  NiceMock<MockDeviceInfo> device_info_;
   OpenVPNDriver* driver_;  // Owned by |service_|.
   scoped_refptr<MockVPNService> service_;
   scoped_refptr<MockVirtualDevice> device_;

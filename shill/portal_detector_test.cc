@@ -20,6 +20,7 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_http_request.h"
+#include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/net/mock_time.h"
 
@@ -61,8 +62,8 @@ MATCHER_P(IsResult, result, "") {
 class PortalDetectorTest : public Test {
  public:
   PortalDetectorTest()
-      : device_info_(
-            new NiceMock<MockDeviceInfo>(&control_, nullptr, nullptr, nullptr)),
+      : manager_(&control_, &dispatcher_, nullptr),
+        device_info_(new NiceMock<MockDeviceInfo>(&manager_)),
         connection_(new StrictMock<MockConnection>(device_info_.get())),
         transport_(std::make_shared<brillo::http::MockTransport>()),
         brillo_connection_(
@@ -208,6 +209,7 @@ class PortalDetectorTest : public Test {
 
   StrictMock<MockEventDispatcher> dispatcher_;
   MockControl control_;
+  MockManager manager_;
   std::unique_ptr<MockDeviceInfo> device_info_;
   scoped_refptr<MockConnection> connection_;
   std::shared_ptr<brillo::http::MockTransport> transport_;

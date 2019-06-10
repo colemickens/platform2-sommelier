@@ -150,14 +150,8 @@ constexpr int kRequestLinkStatisticsIntervalMilliseconds = 20000;
 
 }  // namespace
 
-DeviceInfo::DeviceInfo(ControlInterface* control_interface,
-                       EventDispatcher* dispatcher,
-                       Metrics* metrics,
-                       Manager* manager)
-    : control_interface_(control_interface),
-      dispatcher_(dispatcher),
-      metrics_(metrics),
-      manager_(manager),
+DeviceInfo::DeviceInfo(Manager* manager)
+    : manager_(manager),
       device_info_root_(kDeviceInfoRoot),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
@@ -207,9 +201,9 @@ void DeviceInfo::Start() {
                              RTNLHandler::kRequestAddr);
   request_link_statistics_callback_.Reset(
       Bind(&DeviceInfo::RequestLinkStatistics, AsWeakPtr()));
-  dispatcher_->PostDelayedTask(FROM_HERE,
-                               request_link_statistics_callback_.callback(),
-                               kRequestLinkStatisticsIntervalMilliseconds);
+  dispatcher()->PostDelayedTask(FROM_HERE,
+                                request_link_statistics_callback_.callback(),
+                                kRequestLinkStatisticsIntervalMilliseconds);
 }
 
 void DeviceInfo::Stop() {
@@ -248,11 +242,11 @@ void DeviceInfo::RegisterDevice(const DeviceRefPtr& device) {
   delayed_devices_.erase(device->interface_index());
   CHECK(!GetDevice(device->interface_index()).get());
   infos_[device->interface_index()].device = device;
-  if (metrics_->IsDeviceRegistered(device->interface_index(),
-                                   device->technology())) {
-    metrics_->NotifyDeviceInitialized(device->interface_index());
+  if (metrics()->IsDeviceRegistered(device->interface_index(),
+                                    device->technology())) {
+    metrics()->NotifyDeviceInitialized(device->interface_index());
   } else {
-    metrics_->RegisterDevice(device->interface_index(), device->technology());
+    metrics()->RegisterDevice(device->interface_index(), device->technology());
   }
   if (Technology::IsPrimaryConnectivityTechnology(device->technology())) {
     manager_->RegisterDevice(device);
@@ -276,7 +270,7 @@ void DeviceInfo::DeregisterDevice(const DeviceRefPtr& device) {
     // for the index.  That will be cleaned up by an RTNL message.
     iter->second.device = nullptr;
   }
-  metrics_->DeregisterDevice(device->interface_index());
+  metrics()->DeregisterDevice(device->interface_index());
 }
 
 FilePath DeviceInfo::GetDeviceInfoPath(const string& iface_name,
@@ -717,7 +711,7 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
                  << "' does not have IFLA_ADDRESS!";
       return;
     }
-    metrics_->RegisterDevice(dev_index, technology);
+    metrics()->RegisterDevice(dev_index, technology);
     device = CreateDevice(link_name, address, dev_index, technology);
     if (device) {
       RegisterDevice(device);
@@ -1084,7 +1078,7 @@ void DeviceInfo::RemoveInfo(int interface_index) {
     // are deregistered through a call to DeviceInfo::DeregisterDevice.
     if (iter->second.device.get()) {
       manager_->DeregisterDevice(iter->second.device);
-      metrics_->DeregisterDevice(interface_index);
+      metrics()->DeregisterDevice(interface_index);
     }
     indices_.erase(iter->second.name);
     infos_.erase(iter);
@@ -1181,8 +1175,8 @@ void DeviceInfo::DelayDeviceCreation(int interface_index) {
   delayed_devices_.insert(interface_index);
   delayed_devices_callback_.Reset(
       Bind(&DeviceInfo::DelayedDeviceCreationTask, AsWeakPtr()));
-  dispatcher_->PostDelayedTask(FROM_HERE, delayed_devices_callback_.callback(),
-                               kDelayedDeviceCreationSeconds * 1000);
+  dispatcher()->PostDelayedTask(FROM_HERE, delayed_devices_callback_.callback(),
+                                kDelayedDeviceCreationSeconds * 1000);
 }
 
 // Re-evaluate the technology type for each delayed device.
@@ -1265,9 +1259,9 @@ void DeviceInfo::RetrieveLinkStatistics(int interface_index,
 
 void DeviceInfo::RequestLinkStatistics() {
   rtnl_handler_->RequestDump(RTNLHandler::kRequestLink);
-  dispatcher_->PostDelayedTask(FROM_HERE,
-                               request_link_statistics_callback_.callback(),
-                               kRequestLinkStatisticsIntervalMilliseconds);
+  dispatcher()->PostDelayedTask(FROM_HERE,
+                                request_link_statistics_callback_.callback(),
+                                kRequestLinkStatisticsIntervalMilliseconds);
 }
 
 #if !defined(DISABLE_WIFI)
@@ -1331,8 +1325,8 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {
   string address = info->mac_address.HexEncode();
   auto wake_on_wifi = std::make_unique<WakeOnWiFi>(
       netlink_manager_,
-      dispatcher_,
-      metrics_,
+      dispatcher(),
+      metrics(),
       address,
       base::Bind(&Manager::RecordDarkResumeWakeReason, manager_->AsWeakPtr()));
   DeviceRefPtr device = new WiFi(manager_, info->name, address, interface_index,
@@ -1377,4 +1371,13 @@ bool DeviceInfo::IsGuestDevice(const std::string& interface_name) {
 bool DeviceInfo::GetUserId(const std::string& user_name, uid_t* uid) {
   return brillo::userdb::GetUserInfo(user_name, uid, nullptr);
 }
+
+EventDispatcher* DeviceInfo::dispatcher() const {
+  return manager_->dispatcher();
+}
+
+Metrics* DeviceInfo::metrics() const {
+  return manager_->metrics();
+}
+
 }  // namespace shill

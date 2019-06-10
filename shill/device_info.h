@@ -54,10 +54,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
     unsigned char scope;
   };
 
-  DeviceInfo(ControlInterface* control_interface,
-             EventDispatcher* dispatcher,
-             Metrics* metrics,
-             Manager* manager);
+  explicit DeviceInfo(Manager* manager);
   virtual ~DeviceInfo();
 
   virtual void AddDeviceToBlackList(const std::string& device_name);
@@ -257,9 +254,9 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
     sockets_ = std::move(sockets);
   }
 
-  ControlInterface* control_interface_;
-  EventDispatcher* dispatcher_;
-  Metrics* metrics_;
+  EventDispatcher* dispatcher() const;
+  Metrics* metrics() const;
+
   Manager* manager_;
 
   std::map<int, Info> infos_;  // Maps interface index to Info.

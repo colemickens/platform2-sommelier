@@ -732,6 +732,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   std::vector<std::string> ClaimedDevices(Error* error);
 
   EventDispatcher* dispatcher_;
+  ControlInterface* control_interface_;
+  Metrics* metrics_;
+
   const base::FilePath run_path_;
   const base::FilePath storage_path_;
   const base::FilePath user_storage_path_;
@@ -776,8 +779,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // List of startup profile names to push on the profile stack on startup.
   std::vector<ProfileRefPtr> profiles_;
   ProfileRefPtr ephemeral_profile_;
-  ControlInterface* control_interface_;
-  Metrics* metrics_;
   std::unique_ptr<PowerManager> power_manager_;
   std::unique_ptr<Upstart> upstart_;
 

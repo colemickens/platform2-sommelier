@@ -44,10 +44,7 @@ class Modem1Test : public Test {
  public:
   Modem1Test()
       : modem_info_(nullptr, &dispatcher_, nullptr, nullptr),
-        device_info_(modem_info_.control_interface(),
-                     modem_info_.dispatcher(),
-                     modem_info_.metrics(),
-                     modem_info_.manager()),
+        device_info_(modem_info_.manager()),
         modem_(new Modem1(kService, kPath, &modem_info_)) {}
 
   void SetUp() override;

@@ -14,6 +14,7 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
+#include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_passive_link_monitor.h"
 #include "shill/net/byte_string.h"
@@ -68,7 +69,8 @@ class LinkMonitorObserver {
 class LinkMonitorTest : public Test {
  public:
   LinkMonitorTest()
-      : device_info_(&control_, nullptr, nullptr, nullptr),
+      : manager_(&control_, &dispatcher_, &metrics_),
+        device_info_(&manager_),
         connection_(new StrictMock<MockConnection>(&device_info_)),
         active_link_monitor_(new MockActiveLinkMonitor()),
         passive_link_monitor_(new MockPassiveLinkMonitor()),
@@ -130,6 +132,7 @@ class LinkMonitorTest : public Test {
   MockEventDispatcher dispatcher_;
   StrictMock<MockMetrics> metrics_;
   MockControl control_;
+  MockManager manager_;
   NiceMock<MockDeviceInfo> device_info_;
   scoped_refptr<MockConnection> connection_;
   MockTime time_;

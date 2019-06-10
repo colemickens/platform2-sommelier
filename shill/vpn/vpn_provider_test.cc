@@ -35,7 +35,7 @@ class VPNProviderTest : public testing::Test {
  public:
   VPNProviderTest()
       : manager_(&control_, nullptr, &metrics_),
-        device_info_(&control_, nullptr, &metrics_, &manager_),
+        device_info_(&manager_),
         provider_(&manager_) {}
 
   virtual ~VPNProviderTest() {}

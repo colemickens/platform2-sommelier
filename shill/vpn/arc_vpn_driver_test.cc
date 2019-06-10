@@ -51,8 +51,8 @@ MATCHER(ChromeDisabledIPConfig, "") {
 class ArcVpnDriverTest : public testing::Test {
  public:
   ArcVpnDriverTest()
-      : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
-        manager_(&control_, &dispatcher_, &metrics_),
+      : manager_(&control_, &dispatcher_, &metrics_),
+        device_info_(&manager_),
         device_(new MockVirtualDevice(
             &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN)),
         store_(),
@@ -94,10 +94,10 @@ class ArcVpnDriverTest : public testing::Test {
 
  protected:
   NiceMockControl control_;
-  NiceMock<MockDeviceInfo> device_info_;
   MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
+  NiceMock<MockDeviceInfo> device_info_;
   scoped_refptr<MockVirtualDevice> device_;
   MockStore store_;
   ArcVpnDriver* driver_;  // Owned by |service_|

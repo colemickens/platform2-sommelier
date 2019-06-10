@@ -75,7 +75,7 @@ class DaemonTaskTest : public Test {
 #if !defined(DISABLE_WIFI)
         callback_metrics_(new Callback80211Metrics(metrics_)),
 #endif  // DISABLE_WIFI
-        device_info_(control_, dispatcher_, metrics_, manager_) {
+        device_info_(manager_) {
   }
   virtual ~DaemonTaskTest() {}
   void SetUp() override {

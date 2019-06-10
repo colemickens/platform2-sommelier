@@ -1480,8 +1480,8 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
     EXPECT_EQ(Error::kNotFound, error.type());
   }
 
-  auto mock_device_info = std::make_unique<NiceMock<MockDeviceInfo>>(
-      control_interface(), dispatcher(), metrics(), &mock_manager_);
+  auto mock_device_info =
+      std::make_unique<NiceMock<MockDeviceInfo>>(&mock_manager_);
   scoped_refptr<MockConnection> mock_connection(
       new NiceMock<MockConnection>(mock_device_info.get()));
 

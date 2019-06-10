@@ -79,8 +79,7 @@ class DeviceInfoTest : public Test {
  public:
   DeviceInfoTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
-        device_info_(&control_interface_, &dispatcher_, &metrics_, &manager_) {
-  }
+        device_info_(&manager_) {}
   virtual ~DeviceInfoTest() {}
 
   void SetUp() override {
@@ -1524,11 +1523,8 @@ TEST_F(DeviceInfoTechnologyTest, PseudoModem) {
 
 class DeviceInfoForDelayedCreationTest : public DeviceInfo {
  public:
-  DeviceInfoForDelayedCreationTest(ControlInterface* control_interface,
-                                   EventDispatcher* dispatcher,
-                                   Metrics* metrics,
-                                   Manager* manager)
-      : DeviceInfo(control_interface, dispatcher, metrics, manager) {}
+  explicit DeviceInfoForDelayedCreationTest(Manager* manager)
+      : DeviceInfo(manager) {}
   MOCK_METHOD4(CreateDevice, DeviceRefPtr(const std::string& link_name,
                                           const std::string& address,
                                           int interface_index,
@@ -1539,10 +1535,7 @@ class DeviceInfoForDelayedCreationTest : public DeviceInfo {
 
 class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
  public:
-  DeviceInfoDelayedCreationTest()
-      : DeviceInfoTest(),
-        test_device_info_(
-            &control_interface_, &dispatcher_, &metrics_, &manager_) {}
+  DeviceInfoDelayedCreationTest() : test_device_info_(&manager_) {}
   virtual ~DeviceInfoDelayedCreationTest() {}
 
   virtual std::set<int>& GetDelayedDevices() {
@@ -1687,20 +1680,14 @@ TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
 
 class DeviceInfoWithMockedGetUserId : public DeviceInfo {
  public:
-  DeviceInfoWithMockedGetUserId(ControlInterface* control_interface,
-                                EventDispatcher* dispatcher,
-                                Metrics* metrics,
-                                Manager* manager)
-      : DeviceInfo(control_interface, dispatcher, metrics, manager) {}
+  explicit DeviceInfoWithMockedGetUserId(Manager* manager)
+      : DeviceInfo(manager) {}
   MOCK_METHOD2(GetUserId, bool(const std::string& user_name, uid_t* uid));
 };
 
 class DeviceInfoMockedGetUserId : public DeviceInfoTechnologyTest {
  public:
-  DeviceInfoMockedGetUserId()
-      : DeviceInfoTechnologyTest(),
-        test_device_info_(
-            &control_interface_, &dispatcher_, &metrics_, &manager_) {}
+  DeviceInfoMockedGetUserId() : test_device_info_(&manager_) {}
 
   void SetUp() override {
     DeviceInfoTechnologyTest::SetUp();

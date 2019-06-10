@@ -60,7 +60,7 @@ class EthernetTest : public testing::Test {
  public:
   EthernetTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
-        device_info_(&control_interface_, &dispatcher_, &metrics_, &manager_),
+        device_info_(&manager_),
         ethernet_(new Ethernet(&manager_,
                                kDeviceName,
                                kDeviceAddress,

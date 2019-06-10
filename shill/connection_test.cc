@@ -100,15 +100,14 @@ MATCHER_P(IsLinkRouteTo, dst, "") {
 class ConnectionTest : public Test {
  public:
   ConnectionTest()
-      : device_info_(new StrictMock<MockDeviceInfo>(
-            &control_, nullptr, nullptr, nullptr)),
+      : manager_(&control_, nullptr, nullptr),
+        device_info_(new StrictMock<MockDeviceInfo>(&manager_)),
         connection_(new Connection(kTestDeviceInterfaceIndex0,
                                    kTestDeviceName0,
                                    false,
                                    Technology::kUnknown,
                                    device_info_.get(),
                                    &control_)),
-        manager_(&control_, nullptr, nullptr),
         ipconfig_(new IPConfig(&control_, kTestDeviceName0)),
         ip6config_(new IPConfig(&control_, kTestDeviceName0)),
         local_address_(IPAddress::kFamilyIPv4),
@@ -223,10 +222,10 @@ class ConnectionTest : public Test {
     return connection;
   }
 
-  std::unique_ptr<StrictMock<MockDeviceInfo>> device_info_;
-  ConnectionRefPtr connection_;
   MockControl control_;
   MockManager manager_;
+  std::unique_ptr<StrictMock<MockDeviceInfo>> device_info_;
+  ConnectionRefPtr connection_;
   IPConfigRefPtr ipconfig_;
   IPConfigRefPtr ip6config_;
   IPConfig::Properties properties_;

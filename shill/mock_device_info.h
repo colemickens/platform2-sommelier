@@ -24,10 +24,7 @@ class Metrics;
 
 class MockDeviceInfo : public DeviceInfo {
  public:
-  MockDeviceInfo(ControlInterface* control_interface,
-                 EventDispatcher* dispatcher,
-                 Metrics* metrics,
-                 Manager* manager);
+  explicit MockDeviceInfo(Manager* manager);
   ~MockDeviceInfo() override;
 
   MOCK_METHOD1(IsDeviceBlackListed, bool(const std::string& device_name));

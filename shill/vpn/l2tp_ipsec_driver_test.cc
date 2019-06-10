@@ -44,8 +44,8 @@ class L2TPIPSecDriverTest : public testing::Test,
                             public RPCTaskDelegate {
  public:
   L2TPIPSecDriverTest()
-      : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
-        manager_(&control_, &dispatcher_, &metrics_),
+      : manager_(&control_, &dispatcher_, &metrics_),
+        device_info_(&manager_),
         driver_(
             new L2TPIPSecDriver(&manager_, &device_info_, &process_manager_)),
         service_(new MockVPNService(&manager_, driver_)),
@@ -192,11 +192,11 @@ class L2TPIPSecDriverTest : public testing::Test,
 
   base::ScopedTempDir temp_dir_;
   NiceMockControl control_;
-  NiceMock<MockDeviceInfo> device_info_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockProcessManager process_manager_;
   MockManager manager_;
+  NiceMock<MockDeviceInfo> device_info_;
   L2TPIPSecDriver* driver_;  // Owned by |service_|.
   scoped_refptr<MockVPNService> service_;
   scoped_refptr<MockPPPDevice> device_;

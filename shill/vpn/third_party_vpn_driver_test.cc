@@ -33,8 +33,8 @@ namespace shill {
 class ThirdPartyVpnDriverTest : public testing::Test {
  public:
   ThirdPartyVpnDriverTest()
-      : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
-        manager_(&control_, &dispatcher_, &metrics_),
+      : manager_(&control_, &dispatcher_, &metrics_),
+        device_info_(&manager_),
         driver_(new ThirdPartyVpnDriver(&manager_, &device_info_)),
         adaptor_interface_(new ThirdPartyVpnMockAdaptor()),
         service_(new MockVPNService(&manager_, driver_)),
@@ -64,11 +64,11 @@ class ThirdPartyVpnDriverTest : public testing::Test {
   static const int kInterfaceIndex;
 
   NiceMockControl control_;
-  NiceMock<MockDeviceInfo> device_info_;
   MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockFileIO mock_file_io_;
   MockManager manager_;
+  NiceMock<MockDeviceInfo> device_info_;
   MockIOHandlerFactory io_handler_factory_;
   ThirdPartyVpnDriver* driver_;                  // Owned by |service_|
   ThirdPartyVpnMockAdaptor* adaptor_interface_;  // Owned by |driver_|

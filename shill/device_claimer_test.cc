@@ -25,7 +25,7 @@ const char kTestDevice2Name[] = "test_device2";
 class DeviceClaimerTest : public testing::Test {
  public:
   DeviceClaimerTest()
-     : device_info_(nullptr, nullptr, nullptr, nullptr),
+     : device_info_(nullptr),
        device_claimer_(kServiceName, &device_info_, false) {}
 
  protected:

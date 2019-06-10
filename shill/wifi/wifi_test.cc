@@ -548,8 +548,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   explicit WiFiObjectTest(std::unique_ptr<EventDispatcher> dispatcher)
       : event_dispatcher_(std::move(dispatcher)),
         manager_(&control_interface_, event_dispatcher_.get(), &metrics_),
-        device_info_(
-            &control_interface_, event_dispatcher_.get(), &metrics_, &manager_),
+        device_info_(&manager_),
         wifi_(new WiFi(&manager_,
                        kDeviceName,
                        kDeviceAddress,

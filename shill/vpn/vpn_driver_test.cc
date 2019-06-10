@@ -87,8 +87,8 @@ VPNDriverUnderTest::VPNDriverUnderTest(Manager* manager)
 class VPNDriverTest : public Test {
  public:
   VPNDriverTest()
-      : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
-        manager_(&control_, &dispatcher_, &metrics_),
+      : manager_(&control_, &dispatcher_, &metrics_),
+        device_info_(&manager_),
         driver_(&manager_) {}
 
   virtual ~VPNDriverTest() {}
@@ -129,10 +129,10 @@ class VPNDriverTest : public Test {
                                   vector<string>* value);
 
   NiceMockControl control_;
-  NiceMock<MockDeviceInfo> device_info_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
+  NiceMock<MockDeviceInfo> device_info_;
   VPNDriverUnderTest driver_;
 };
 

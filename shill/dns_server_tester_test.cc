@@ -17,6 +17,7 @@
 #include "shill/mock_dns_client.h"
 #include "shill/mock_dns_client_factory.h"
 #include "shill/mock_event_dispatcher.h"
+#include "shill/mock_manager.h"
 #include "shill/net/mock_time.h"
 
 using base::Bind;
@@ -44,8 +45,8 @@ const char* const kDnsServers[] = {kDnsServer0, kDnsServer1};
 class DnsServerTesterTest : public Test {
  public:
   DnsServerTesterTest()
-      : device_info_(
-            new NiceMock<MockDeviceInfo>(&control_, nullptr, nullptr, nullptr)),
+      : manager_(&control_, nullptr, nullptr),
+        device_info_(new NiceMock<MockDeviceInfo>(&manager_)),
         connection_(new StrictMock<MockConnection>(device_info_.get())),
         interface_name_(kInterfaceName),
         dns_servers_(kDnsServers, kDnsServers + 2) {}
@@ -90,6 +91,7 @@ class DnsServerTesterTest : public Test {
  private:
   StrictMock<MockEventDispatcher> dispatcher_;
   MockControl control_;
+  MockManager manager_;
   std::unique_ptr<MockDeviceInfo> device_info_;
   scoped_refptr<MockConnection> connection_;
   CallbackTarget callback_target_;

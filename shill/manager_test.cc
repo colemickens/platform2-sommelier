@@ -91,10 +91,7 @@ class ManagerTest : public PropertyStoreTest {
  public:
   ManagerTest()
       : power_manager_(new MockPowerManager(control_interface())),
-        device_info_(new NiceMock<MockDeviceInfo>(control_interface(),
-                                                  nullptr,
-                                                  nullptr,
-                                                  nullptr)),
+        device_info_(new NiceMock<MockDeviceInfo>(manager())),
         manager_adaptor_(new NiceMock<ManagerMockAdaptor>()),
         ethernet_provider_(new NiceMock<MockEthernetProvider>()),
 #if !defined(DISABLE_WIRED_8021X)

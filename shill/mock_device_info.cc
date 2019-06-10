@@ -6,11 +6,7 @@
 
 namespace shill {
 
-MockDeviceInfo::MockDeviceInfo(ControlInterface* control_interface,
-                               EventDispatcher* dispatcher,
-                               Metrics* metrics,
-                               Manager* manager)
-    : DeviceInfo(control_interface, dispatcher, metrics, manager) {}
+MockDeviceInfo::MockDeviceInfo(Manager* manager) : DeviceInfo(manager) {}
 
 MockDeviceInfo::~MockDeviceInfo() = default;
 

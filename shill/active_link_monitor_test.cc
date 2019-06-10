@@ -17,6 +17,7 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
+#include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/net/arp_client_test_helper.h"
 #include "shill/net/arp_packet.h"
@@ -118,7 +119,8 @@ MATCHER_P4(IsArpRequest, local_ip, remote_ip, local_mac, remote_mac, "") {
 class ActiveLinkMonitorTest : public Test {
  public:
   ActiveLinkMonitorTest()
-      : device_info_(&control_, nullptr, nullptr, nullptr),
+      : manager_(&control_, &dispatcher_, &metrics_),
+        device_info_(&manager_),
         connection_(new StrictMock<MockConnection>(&device_info_)),
         client_(new MockArpClient()),
         client_test_helper_(client_),
@@ -342,6 +344,7 @@ class ActiveLinkMonitorTest : public Test {
   MockEventDispatcher dispatcher_;
   StrictMock<MockMetrics> metrics_;
   MockControl control_;
+  MockManager manager_;
   NiceMock<MockDeviceInfo> device_info_;
   scoped_refptr<MockConnection> connection_;
   MockTime time_;

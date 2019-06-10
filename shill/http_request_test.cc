@@ -27,6 +27,7 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_dns_client.h"
 #include "shill/mock_event_dispatcher.h"
+#include "shill/mock_manager.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/mock_sockets.h"
 
@@ -86,8 +87,8 @@ class HttpRequestTest : public Test {
         transport_(std::make_shared<brillo::http::MockTransport>()),
         brillo_connection_(
             std::make_shared<brillo::http::MockConnection>(transport_)),
-        device_info_(
-            new NiceMock<MockDeviceInfo>(&control_, nullptr, nullptr, nullptr)),
+        manager_(&control_, &dispatcher_, nullptr),
+        device_info_(new NiceMock<MockDeviceInfo>(&manager_)),
         connection_(new StrictMock<MockConnection>(device_info_.get())) {}
 
  protected:
@@ -263,6 +264,7 @@ class HttpRequestTest : public Test {
   std::shared_ptr<brillo::http::MockConnection> brillo_connection_;
   StrictMock<MockEventDispatcher> dispatcher_;
   MockControl control_;
+  MockManager manager_;
   std::unique_ptr<MockDeviceInfo> device_info_;
   scoped_refptr<MockConnection> connection_;
   std::unique_ptr<HttpRequest> request_;

@@ -16,6 +16,7 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
+#include "shill/mock_manager.h"
 #include "shill/net/arp_client_test_helper.h"
 #include "shill/net/arp_packet.h"
 #include "shill/net/byte_string.h"
@@ -68,7 +69,8 @@ class ResultCallbackObserver {
 class PassiveLinkMonitorTest : public Test {
  public:
   PassiveLinkMonitorTest()
-      : device_info_(&control_, nullptr, nullptr, nullptr),
+      : manager_(&control_, &dispatcher_, nullptr),
+        device_info_(&manager_),
         connection_(new StrictMock<MockConnection>(&device_info_)),
         client_(new MockArpClient()),
         client_test_helper_(client_),
@@ -126,6 +128,7 @@ class PassiveLinkMonitorTest : public Test {
   MockEventDispatcher dispatcher_;
   MockIOHandlerFactory io_handler_factory_;
   MockControl control_;
+  MockManager manager_;
   NiceMock<MockDeviceInfo> device_info_;
   ResultCallbackObserver observer_;
   scoped_refptr<MockConnection> connection_;
