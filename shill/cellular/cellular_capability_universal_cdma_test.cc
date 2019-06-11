@@ -30,7 +30,6 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_pending_activation_store.h"
-#include "shill/nice_mock_control.h"
 #include "shill/test_event_dispatcher.h"
 
 using std::string;

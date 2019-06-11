@@ -14,12 +14,12 @@
 #include "shill/fake_store.h"
 #include "shill/ipconfig.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_store.h"
-#include "shill/nice_mock_control.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_service.h"
 
@@ -65,7 +65,7 @@ class VPNProviderTest : public testing::Test {
     return provider_.services_.size();
   }
 
-  NiceMockControl control_;
+  MockControl control_;
   MockMetrics metrics_;
   MockManager manager_;
   MockDeviceInfo device_info_;

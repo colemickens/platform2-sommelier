@@ -13,12 +13,12 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_connection.h"
+#include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
-#include "shill/nice_mock_control.h"
 #include "shill/property_store.h"
 #include "shill/test_event_dispatcher.h"
 
@@ -128,7 +128,7 @@ class VPNDriverTest : public Test {
                                   const string& key,
                                   vector<string>* value);
 
-  NiceMockControl control_;
+  MockControl control_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;

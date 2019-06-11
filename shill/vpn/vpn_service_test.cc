@@ -12,13 +12,13 @@
 #include "shill/error.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_connection.h"
+#include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
-#include "shill/nice_mock_control.h"
 #include "shill/service_property_change_test.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_provider.h"
@@ -106,7 +106,7 @@ class VPNServiceTest : public testing::Test {
   std::string interface_name_;
   std::string ipconfig_rpc_identifier_;
   MockVPNDriver* driver_;  // Owned by |service_|.
-  NiceMockControl control_;
+  MockControl control_;
   MockMetrics metrics_;
   MockManager manager_;
   MockDeviceInfo device_info_;

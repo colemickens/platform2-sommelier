@@ -40,7 +40,7 @@
 
 namespace shill {
 // An implementation of the Shill RPC-channel-interface-factory interface that
-// returns mocks.
+// returns nice mocks.
 class MockControl : public ControlInterface {
  public:
   MockControl();

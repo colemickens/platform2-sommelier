@@ -7,7 +7,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_adaptors.h"
-#include "shill/nice_mock_control.h"
+#include "shill/mock_control.h"
 
 using std::map;
 using std::string;
@@ -33,7 +33,7 @@ class RpcTaskTest : public testing::Test,
   string* last_password_;
   string last_notify_reason_;
   map<string, string> last_notify_dict_;
-  NiceMockControl control_;
+  MockControl control_;
   RpcTask task_;
 };
 

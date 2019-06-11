@@ -32,6 +32,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_eap_credentials.h"
@@ -52,7 +53,6 @@
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_attribute.h"
 #include "shill/net/nl80211_message.h"
-#include "shill/nice_mock_control.h"
 #include "shill/property_store_test.h"
 #include "shill/supplicant/mock_supplicant_bss_proxy.h"
 #include "shill/supplicant/mock_supplicant_eap_state_handler.h"
@@ -1188,7 +1188,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return wifi_->IsConnectedToCurrentService();
   }
 
-  NiceMockControl* control_interface() {
+  MockControl* control_interface() {
     return &control_interface_;
   }
 
@@ -1280,7 +1280,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   MockNetlinkManager netlink_manager_;
 
  private:
-  NiceMockControl control_interface_;
+  MockControl control_interface_;
   MockMetrics metrics_;
   MockManager manager_;
   MockDeviceInfo device_info_;

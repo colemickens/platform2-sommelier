@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_adaptors.h"
+#include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
@@ -17,7 +18,6 @@
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/mock_virtual_device.h"
-#include "shill/nice_mock_control.h"
 #include "shill/vpn/mock_vpn_provider.h"
 #include "shill/vpn/mock_vpn_service.h"
 
@@ -93,7 +93,7 @@ class ArcVpnDriverTest : public testing::Test {
   }
 
  protected:
-  NiceMockControl control_;
+  MockControl control_;
   MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;

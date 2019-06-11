@@ -10,11 +10,11 @@
 #include <gtest/gtest.h>
 
 #include "shill/event_dispatcher.h"
+#include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_store.h"
 #include "shill/net/mock_rtnl_handler.h"
-#include "shill/nice_mock_control.h"
 #include "shill/technology.h"
 
 using testing::_;
@@ -43,7 +43,7 @@ class VirtualDeviceTest : public testing::Test {
   }
 
  protected:
-  NiceMockControl control_;
+  MockControl control_;
   EventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;

@@ -20,6 +20,7 @@
 #include "shill/logging.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_certificate_file.h"
+#include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
@@ -28,7 +29,6 @@
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/mock_virtual_device.h"
-#include "shill/nice_mock_control.h"
 #include "shill/rpc_task.h"
 #include "shill/technology.h"
 #include "shill/virtual_device.h"
@@ -241,7 +241,7 @@ class OpenVPNDriverTest
   void GetLogin(string* user, string* password) override;
   void Notify(const string& reason, const map<string, string>& dict) override;
 
-  NiceMockControl control_;
+  MockControl control_;
   MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockProcessManager process_manager_;

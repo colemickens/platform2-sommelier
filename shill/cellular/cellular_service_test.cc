@@ -12,11 +12,11 @@
 #include "shill/cellular/mock_mobile_operator_info.h"
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_store.h"
-#include "shill/nice_mock_control.h"
 #include "shill/service_property_change_test.h"
 
 using std::string;

@@ -16,6 +16,7 @@
 #include "shill/ipconfig.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_certificate_file.h"
+#include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_external_task.h"
 #include "shill/mock_manager.h"
@@ -23,7 +24,6 @@
 #include "shill/mock_ppp_device.h"
 #include "shill/mock_ppp_device_factory.h"
 #include "shill/mock_process_manager.h"
-#include "shill/nice_mock_control.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_provider.h"
 #include "shill/vpn/mock_vpn_service.h"
@@ -191,7 +191,7 @@ class L2TPIPSecDriverTest : public testing::Test,
   void Notify(const string& reason, const map<string, string>& dict) override;
 
   base::ScopedTempDir temp_dir_;
-  NiceMockControl control_;
+  MockControl control_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockProcessManager process_manager_;

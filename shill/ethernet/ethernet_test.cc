@@ -18,6 +18,7 @@
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/ethernet/mock_ethernet_provider.h"
 #include "shill/ethernet/mock_ethernet_service.h"
+#include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
@@ -26,7 +27,6 @@
 #include "shill/mock_service.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/mock_sockets.h"
-#include "shill/nice_mock_control.h"
 #include "shill/testing.h"
 
 #if !defined(DISABLE_WIRED_8021X)
@@ -195,7 +195,7 @@ class EthernetTest : public testing::Test {
 #endif  // DISABLE_WIRED_8021X
 
   StrictMock<MockEventDispatcher> dispatcher_;
-  NiceMockControl control_interface_;
+  MockControl control_interface_;
   NiceMock<MockMetrics> metrics_;
   MockManager manager_;
   MockDeviceInfo device_info_;

@@ -738,7 +738,6 @@ if (use.test) {
       "net/rtnl_listener_test.cc",
       "net/rtnl_message_test.cc",
       "net/shill_time_test.cc",
-      "nice_mock_control.cc",
       "passive_link_monitor_test.cc",
       "pending_activation_store_test.cc",
       "portal_detector_test.cc",

@@ -21,6 +21,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/ip_address_store.h"
 #include "shill/logging.h"
+#include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
@@ -32,7 +33,6 @@
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/net/shill_time.h"
-#include "shill/nice_mock_control.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
@@ -1107,7 +1107,7 @@ class WakeOnWiFiTest : public ::testing::Test {
                void(const string& wake_reason));
 
  protected:
-  NiceMockControl control_interface_;
+  MockControl control_interface_;
   MockMetrics metrics_;
   MockNetlinkManager netlink_manager_;
   MockTime time_;

@@ -17,6 +17,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
+#include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -24,7 +25,6 @@
 #include "shill/mock_store.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/mock_time.h"
-#include "shill/nice_mock_control.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 #include "shill/wifi/mock_wifi_service.h"
@@ -398,7 +398,7 @@ class WiFiProviderTest : public testing::Test {
   }
 
   map<string, vector<string>> profile_frequency_data_;
-  NiceMockControl control_;
+  MockControl control_;
   MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockTime time_;

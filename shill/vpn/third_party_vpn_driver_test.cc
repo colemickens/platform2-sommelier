@@ -9,6 +9,7 @@
 
 #include "shill/callbacks.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_file_io.h"
@@ -18,7 +19,6 @@
 #include "shill/mock_store.h"
 #include "shill/mock_virtual_device.h"
 #include "shill/net/mock_io_handler_factory.h"
-#include "shill/nice_mock_control.h"
 #include "shill/vpn/mock_vpn_provider.h"
 #include "shill/vpn/mock_vpn_service.h"
 
@@ -63,7 +63,7 @@ class ThirdPartyVpnDriverTest : public testing::Test {
   static const char kInterfaceName[];
   static const int kInterfaceIndex;
 
-  NiceMockControl control_;
+  MockControl control_;
   MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockFileIO mock_file_io_;

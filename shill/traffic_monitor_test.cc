@@ -13,12 +13,12 @@
 #include <netinet/in.h>
 
 #include "shill/mock_connection_info_reader.h"
+#include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_ipconfig.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_socket_info_reader.h"
-#include "shill/nice_mock_control.h"
 
 using base::Bind;
 using base::StringPrintf;
@@ -117,7 +117,7 @@ class TrafficMonitorTest : public Test {
     return StringPrintf("%s:%d", ip.ToString().c_str(), port);
   }
 
-  NiceMockControl control_;
+  MockControl control_;
   NiceMock<MockEventDispatcher> dispatcher_;
   MockManager manager_;
   scoped_refptr<MockDevice> device_;

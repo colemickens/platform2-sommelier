@@ -18,8 +18,8 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_adaptors.h"
+#include "shill/mock_control.h"
 #include "shill/mock_process_manager.h"
-#include "shill/nice_mock_control.h"
 #include "shill/test_event_dispatcher.h"
 
 using std::map;
@@ -86,7 +86,7 @@ class ExternalTaskTest : public testing::Test,
 
   MOCK_METHOD2(TaskDiedCallback, void(pid_t pid, int exit_status));
 
-  NiceMockControl control_;
+  MockControl control_;
   EventDispatcherForTest dispatcher_;
   MockProcessManager process_manager_;
   base::WeakPtrFactory<ExternalTaskTest> weak_ptr_factory_;
