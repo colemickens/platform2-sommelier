@@ -37,6 +37,15 @@ const int kInvalidNs = 0;
 const int kInvalidTableId = -1;
 const char kDefaultNetmask[] = "255.255.255.252";
 
+// Returns for given interface name the host name of a ARC veth pair.
+std::string ArcVethHostName(std::string ifname) {
+  return "veth_" + ifname;
+}
+
+// Returns for given interface name the peer name of a ARC veth pair.
+std::string ArcVethPeerName(std::string ifname) {
+  return "peer_" + ifname;
+}
 }  // namespace
 
 namespace arc_networkd {
@@ -128,9 +137,10 @@ void ArcIpConfig::Teardown() {
   LOG(INFO) << "Tearing down " << ifname_ << " bridge: " << config_.br_ifname()
             << " guest_iface: " << config_.arc_ifname();
   Clear();
-  DisableInbound();
 
   if (ifname_ == kAndroidLegacyDevice) {
+    DisableInbound();
+
     process_runner_->Run({kIpTablesPath, "-t", "filter", "-D", "FORWARD", "-o",
                           config_.br_ifname(), "-j", "ACCEPT", "-w"});
 
@@ -159,6 +169,9 @@ void ArcIpConfig::Teardown() {
     process_runner_->Run({kIpTablesPath, "-t", "nat", "-D", "PREROUTING", "-i",
                           ifname_, "-m", "socket", "--nowildcard", "-j",
                           "ACCEPT", "-w"});
+
+    process_runner_->Run({kIpPath, "link", "delete", ArcVethHostName(ifname_)},
+                         true /* log_failures */);
   }
 
   process_runner_->Run({kIpTablesPath, "-t", "mangle", "-D", "PREROUTING", "-i",
@@ -172,8 +185,8 @@ void ArcIpConfig::Teardown() {
 bool ArcIpConfig::Init(pid_t con_netns) {
   con_netns_ = con_netns;
   const std::string pid = base::IntToString(con_netns_);
-  const std::string veth = "veth_" + ifname_;
-  const std::string peer = "peer_" + ifname_;
+  const std::string veth = ArcVethHostName(ifname_);
+  const std::string peer = ArcVethPeerName(ifname_);
 
   if (!con_netns_) {
     LOG(INFO) << "Uninitializing " << ifname_

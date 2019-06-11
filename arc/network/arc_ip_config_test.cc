@@ -182,6 +182,7 @@ TEST_F(ArcIpConfigTest, VerifyTeardownCmds) {
        "--to-destination 6.7.8.9 -w",
        "/sbin/iptables -t nat -D PREROUTING -i eth0 -m socket --nowildcard "
        "-j ACCEPT -w",
+       "/bin/ip link delete veth_eth0",
        "/sbin/iptables -t mangle -D PREROUTING -i br -j MARK --set-mark 1 "
        "-w",
        "/bin/ifconfig br down", "/sbin/brctl delbr br"},
