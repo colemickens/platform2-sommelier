@@ -88,6 +88,12 @@ result_code NvramSpace::Read(uint32_t size) {
   VLOG(1) << "NVRAM read returned: " << (result == TPM_SUCCESS ? "ok" : "FAIL");
 
   if (result != TPM_SUCCESS) {
+    if (result == TPM_E_BADINDEX) {
+      LOG(INFO) << "NVRAM space " << index_ << " doesn't exist";
+    } else {
+      LOG(ERROR) << "Failed to read NVRAM space " << index_ << ": "
+                 << result;
+    }
     status_ = result == TPM_E_BADINDEX ? Status::kAbsent : Status::kTpmError;
     return RESULT_FAIL_FATAL;
   }
@@ -125,6 +131,8 @@ result_code NvramSpace::Write(const brillo::SecureBlob& contents) {
           << (result == TPM_SUCCESS ? "ok" : "FAIL");
 
   if (result != TPM_SUCCESS) {
+    LOG(ERROR) << "Failed to write NVRAM space " << index_ << ": "
+               << result;
     return RESULT_FAIL_FATAL;
   }
 
