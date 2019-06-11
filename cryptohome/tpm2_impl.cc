@@ -623,7 +623,7 @@ bool Tpm2Impl::SealToPCR0(const brillo::SecureBlob& value,
   result = trunks->tpm_utility->SealData(data_to_seal, policy_digest, "",
                                          session->GetDelegate(), &sealed_data);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error creating sealed object: " << GetErrorString(result);
+    LOG(ERROR) << "Error sealing data to PCR0: " << GetErrorString(result);
     return false;
   }
   sealed_value->assign(sealed_data.begin(), sealed_data.end());
@@ -1148,7 +1148,8 @@ Tpm::TpmRetryAction Tpm2Impl::SealToPcrWithAuthorization(
                                          auth_value, session->GetDelegate(),
                                          &sealed_str);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error creating sealed object: " << GetErrorString(result);
+    LOG(ERROR) << "Error sealing data to PCR with authorization: "
+               << GetErrorString(result);
     return ResultToRetryAction(result);
   }
   sealed_data->assign(sealed_str.begin(), sealed_str.end());
@@ -1198,7 +1199,8 @@ Tpm::TpmRetryAction Tpm2Impl::UnsealWithAuthorization(
                                            policy_session->GetDelegate(),
                                            &unsealed_data);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error creating sealed object: " << GetErrorString(result);
+    LOG(ERROR) << "Error unsealing data with authorization: "
+               << GetErrorString(result);
     return ResultToRetryAction(result);
   }
   plaintext->assign(unsealed_data.begin(), unsealed_data.end());
