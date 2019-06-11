@@ -189,6 +189,12 @@ properties:
                 config-path:
                   type: string
                   description: Specified the camera configuration file path on the model.
+                clock:
+                  type: string
+                  description: Specified the camera clock on the model.
+                  enum:
+                  - monotonic
+                  - boottime
               additionalProperties: false
             firmware:
               type: object

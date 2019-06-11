@@ -355,6 +355,7 @@ In the tables below,
 ### camera
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| clock | string |  | False |  | False | Specified the camera clock on the model. |
 | config-path | string |  | False |  | False | Specified the camera configuration file path on the model. |
 | count | integer |  | False |  | False | Specified the number of cameras on the model. |
 
