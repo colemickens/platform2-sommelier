@@ -48,9 +48,12 @@ class ResolverTest : public Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     path_ = temp_dir_.GetPath().Append("resolver");
     resolver_->set_path(path_);
+    EXPECT_FALSE(base::PathExists(path_));
+    EXPECT_TRUE(resolver_->ClearDNS());
   }
 
   void TearDown() override {
+    EXPECT_TRUE(resolver_->ClearDNS());
     resolver_->set_path(FilePath(""));  // Don't try to save the store.
     ASSERT_TRUE(temp_dir_.Delete());
   }
@@ -70,23 +73,15 @@ string ResolverTest::ReadFile() {
 }
 
 TEST_F(ResolverTest, NonEmpty) {
-  EXPECT_FALSE(base::PathExists(path_));
-  EXPECT_TRUE(resolver_->ClearDNS());
-
   vector<string> dns_servers = {kNameServer0, kNameServer1, kNameServer2};
   vector<string> domain_search = {kSearchDomain0, kSearchDomain1};
 
   EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
   EXPECT_TRUE(base::PathExists(path_));
   EXPECT_EQ(kExpectedOutput, ReadFile());
-
-  EXPECT_TRUE(resolver_->ClearDNS());
 }
 
 TEST_F(ResolverTest, Sanitize) {
-  EXPECT_FALSE(base::PathExists(path_));
-  EXPECT_TRUE(resolver_->ClearDNS());
-
   vector<string> dns_servers = {kNameServer0, kNameServerEvil, kNameServer1,
                                 kNameServerSubtlyEvil, kNameServer2};
   vector<string> domain_search = {kSearchDomainEvil, kSearchDomain0,
@@ -95,24 +90,16 @@ TEST_F(ResolverTest, Sanitize) {
   EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
   EXPECT_TRUE(base::PathExists(path_));
   EXPECT_EQ(kExpectedOutput, ReadFile());
-
-  EXPECT_TRUE(resolver_->ClearDNS());
 }
 
 TEST_F(ResolverTest, Empty) {
-  EXPECT_FALSE(base::PathExists(path_));
-
   vector<string> dns_servers;
   vector<string> domain_search;
 
   EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
-  EXPECT_FALSE(base::PathExists(path_));
 }
 
 TEST_F(ResolverTest, IgnoredSearchList) {
-  EXPECT_FALSE(base::PathExists(path_));
-  EXPECT_TRUE(resolver_->ClearDNS());
-
   vector<string> dns_servers = {kNameServer0, kNameServer1, kNameServer2};
   vector<string> domain_search = {kSearchDomain0, kSearchDomain1};
   vector<string> ignored_search = {kSearchDomain0, kSearchDomain2};
@@ -120,8 +107,6 @@ TEST_F(ResolverTest, IgnoredSearchList) {
   EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
   EXPECT_TRUE(base::PathExists(path_));
   EXPECT_EQ(kExpectedIgnoredSearchOutput, ReadFile());
-
-  EXPECT_TRUE(resolver_->ClearDNS());
 }
 
 }  // namespace shill
