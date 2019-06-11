@@ -10,6 +10,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/posix/safe_strerror.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
 
@@ -63,8 +64,11 @@ bool VSockStream::Write(const arc_proxy::VSockMessage& message) {
   }
 
   google::protobuf::io::FileOutputStream stream(vsock_fd_.get());
-  if (!message.SerializeToZeroCopyStream(&stream)) {
-    LOG(ERROR) << "Failed to serialize proto";
+  if (!message.SerializeToZeroCopyStream(&stream) || !stream.Flush()) {
+    const int error = stream.GetErrno();
+    LOG(ERROR) << "Failed to "
+               << (error ? "write proto: " + base::safe_strerror(error)
+                         : "serialize proto.");
     return false;
   }
   return true;
