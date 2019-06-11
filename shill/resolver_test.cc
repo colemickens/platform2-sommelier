@@ -73,13 +73,8 @@ TEST_F(ResolverTest, NonEmpty) {
   EXPECT_FALSE(base::PathExists(path_));
   EXPECT_TRUE(resolver_->ClearDNS());
 
-  vector<string> dns_servers;
-  vector<string> domain_search;
-  dns_servers.push_back(kNameServer0);
-  dns_servers.push_back(kNameServer1);
-  dns_servers.push_back(kNameServer2);
-  domain_search.push_back(kSearchDomain0);
-  domain_search.push_back(kSearchDomain1);
+  vector<string> dns_servers = {kNameServer0, kNameServer1, kNameServer2};
+  vector<string> domain_search = {kSearchDomain0, kSearchDomain1};
 
   EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
   EXPECT_TRUE(base::PathExists(path_));
@@ -92,19 +87,10 @@ TEST_F(ResolverTest, Sanitize) {
   EXPECT_FALSE(base::PathExists(path_));
   EXPECT_TRUE(resolver_->ClearDNS());
 
-  vector<string> dns_servers;
-  vector<string> domain_search;
-
-  dns_servers.push_back(kNameServer0);
-  dns_servers.push_back(kNameServerEvil);
-  dns_servers.push_back(kNameServer1);
-  dns_servers.push_back(kNameServerSubtlyEvil);
-  dns_servers.push_back(kNameServer2);
-
-  domain_search.push_back(kSearchDomainEvil);
-  domain_search.push_back(kSearchDomain0);
-  domain_search.push_back(kSearchDomain1);
-  domain_search.push_back(kSearchDomainSubtlyEvil);
+  vector<string> dns_servers = {kNameServer0, kNameServerEvil, kNameServer1,
+                                kNameServerSubtlyEvil, kNameServer2};
+  vector<string> domain_search = {kSearchDomainEvil, kSearchDomain0,
+                                  kSearchDomain1, kSearchDomainSubtlyEvil};
 
   EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
   EXPECT_TRUE(base::PathExists(path_));
@@ -127,16 +113,9 @@ TEST_F(ResolverTest, IgnoredSearchList) {
   EXPECT_FALSE(base::PathExists(path_));
   EXPECT_TRUE(resolver_->ClearDNS());
 
-  vector<string> dns_servers;
-  vector<string> domain_search;
-  dns_servers.push_back(kNameServer0);
-  dns_servers.push_back(kNameServer1);
-  dns_servers.push_back(kNameServer2);
-  domain_search.push_back(kSearchDomain0);
-  domain_search.push_back(kSearchDomain1);
-  vector<string> ignored_search;
-  ignored_search.push_back(kSearchDomain0);
-  ignored_search.push_back(kSearchDomain2);
+  vector<string> dns_servers = {kNameServer0, kNameServer1, kNameServer2};
+  vector<string> domain_search = {kSearchDomain0, kSearchDomain1};
+  vector<string> ignored_search = {kSearchDomain0, kSearchDomain2};
   resolver_->set_ignored_search_list(ignored_search);
   EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
   EXPECT_TRUE(base::PathExists(path_));
