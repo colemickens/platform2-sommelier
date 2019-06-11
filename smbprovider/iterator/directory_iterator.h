@@ -109,7 +109,7 @@ class BaseDirectoryIterator {
   // the directory.
   bool include_metadata_ = false;
 
-  SambaInterface* samba_interface_;  // not owned.
+  SambaInterface::WeakPtr samba_interface_;
 
   DISALLOW_COPY_AND_ASSIGN(BaseDirectoryIterator);
 };

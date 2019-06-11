@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include <base/memory/weak_ptr.h>
+
 #include "smbprovider/fake_samba_interface.h"
 #include "smbprovider/samba_interface.h"
 
@@ -76,9 +78,14 @@ class FakeSambaProxy : public SambaInterface {
 
   SambaInterface::SambaInterfaceId GetSambaInterfaceId() override;
 
+  WeakPtr AsWeakPtr() override;
+
  private:
   FakeSambaInterface* fake_samba_interface_;  // Not owned.
   SambaInterface::SambaInterfaceId samba_interface_id_;
+
+  // Weak pointer factory. Should be the last member.
+  base::WeakPtrFactory<FakeSambaProxy> weak_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(FakeSambaProxy);
 };

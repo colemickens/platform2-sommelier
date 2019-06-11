@@ -49,6 +49,10 @@ SambaInterface::SambaInterfaceId FakeSambaProxy::GetSambaInterfaceId() {
   return samba_interface_id_;
 }
 
+SambaInterface::WeakPtr FakeSambaProxy::AsWeakPtr() {
+  return weak_factory_.GetWeakPtr();
+}
+
 int32_t FakeSambaProxy::OpenFile(const std::string& file_path,
                                  int32_t flags,
                                  int32_t* file_id) {

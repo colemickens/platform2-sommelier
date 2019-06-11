@@ -11,6 +11,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/memory/weak_ptr.h>
+
 #include "smbprovider/samba_interface.h"
 
 namespace smbprovider {
@@ -79,6 +81,8 @@ class FakeSambaInterface : public SambaInterface {
                      off_t* bytes_written) override;
 
   SambaInterface::SambaInterfaceId GetSambaInterfaceId() override;
+
+  WeakPtr AsWeakPtr() override;
 
   // Adds a directory that is able to be opened through OpenDirectory().
   // Does not support recursive creation. All parents must exist.
@@ -414,6 +418,9 @@ class FakeSambaInterface : public SambaInterface {
   alignas(struct smbc_dirent) uint8_t dirent_buf_[kDirEntBufSize];
   struct smbc_dirent* dirent_ =
       reinterpret_cast<struct smbc_dirent*>(dirent_buf_);
+
+  // Weak pointer factory. Should be the last member.
+  base::WeakPtrFactory<FakeSambaInterface> weak_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(FakeSambaInterface);
 };

@@ -176,6 +176,10 @@ SambaInterface::SambaInterfaceId SambaInterfaceImpl::GetSambaInterfaceId() {
   return reinterpret_cast<SambaInterface::SambaInterfaceId>(context_);
 }
 
+SambaInterface::WeakPtr SambaInterfaceImpl::AsWeakPtr() {
+  return weak_factory_.GetWeakPtr();
+}
+
 int32_t SambaInterfaceImpl::ReadFile(int32_t file_id,
                                      uint8_t* buffer,
                                      size_t buffer_size,

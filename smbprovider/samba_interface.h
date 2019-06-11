@@ -9,6 +9,7 @@
 
 #include <base/compiler_specific.h>
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 #include <libsmbclient.h>
 
 namespace smbprovider {
@@ -150,6 +151,12 @@ class SambaInterface {
 
   // Returns the SambaInterfaceId of this interface.
   virtual SambaInterface::SambaInterfaceId GetSambaInterfaceId() = 0;
+
+  // Weak pointer type.
+  using WeakPtr = ::base::WeakPtr<SambaInterface>;
+
+  // Gets a weak pointer to this object.
+  virtual WeakPtr AsWeakPtr() = 0;
 
  private:
   static_assert(std::is_same<int, int32_t>::value,

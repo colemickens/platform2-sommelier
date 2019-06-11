@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/callback.h>
+#include <base/memory/weak_ptr.h>
 #include <dbus/smbprovider/dbus-constants.h>
 
 #include "smbprovider/id_map.h"
@@ -58,6 +59,8 @@ class SambaInterfaceImpl : public SambaInterface {
                          struct stat* stat) override;
 
   SambaInterface::SambaInterfaceId GetSambaInterfaceId() override;
+
+  WeakPtr AsWeakPtr() override;
 
   int32_t ReadFile(int32_t file_id,
                    uint8_t* buffer,
@@ -142,6 +145,9 @@ class SambaInterfaceImpl : public SambaInterface {
   smbc_unlink_fn smbc_unlink_ctx_ = nullptr;
   smbc_write_fn smbc_write_ctx_ = nullptr;
   IdMap<SMBCFILE*> fds_;
+
+  // Weak pointer factory. Should be the last member.
+  base::WeakPtrFactory<SambaInterfaceImpl> weak_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(SambaInterfaceImpl);
 };

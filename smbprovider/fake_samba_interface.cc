@@ -975,4 +975,8 @@ SambaInterface::SambaInterfaceId FakeSambaInterface::GetSambaInterfaceId() {
   return 0;
 }
 
+SambaInterface::WeakPtr FakeSambaInterface::AsWeakPtr() {
+  return weak_factory_.GetWeakPtr();
+}
+
 }  // namespace smbprovider

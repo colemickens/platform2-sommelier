@@ -2,9 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
+
 #include <gtest/gtest.h>
 
 #include "smbprovider/fake_samba_interface.h"
+#include "smbprovider/fake_samba_proxy.h"
 #include "smbprovider/iterator/directory_iterator.h"
 #include "smbprovider/smbprovider_helper.h"
 #include "smbprovider/smbprovider_test_helper.h"
@@ -78,6 +81,41 @@ TEST_F(DirectoryIteratorTest, InitSucceedsAndSetsDoneOnEmptyDirectory) {
 
   EXPECT_EQ(0, it.Init());
   EXPECT_TRUE(it.IsDone());
+}
+
+// DirectoryIterator's destructor closes the underlying directory.
+TEST_F(DirectoryIteratorTest, DestructorClosesDirectory) {
+  CreateDefaultMountRoot();
+
+  fake_samba_.AddDirectory(GetAddedFullDirectoryPath());
+
+  {
+    DirectoryIterator it(GetAddedFullDirectoryPath(), &fake_samba_);
+    EXPECT_EQ(0, it.Init());
+    EXPECT_TRUE(it.IsDone());
+    EXPECT_TRUE(fake_samba_.HasOpenEntries());
+  }
+
+  EXPECT_FALSE(fake_samba_.HasOpenEntries());
+}
+
+// DirectoryIterator's destructor can run after the Samba is deleted.
+TEST_F(DirectoryIteratorTest, DestructorCanRunAfterSambaIsDeleted) {
+  CreateDefaultMountRoot();
+  fake_samba_.AddDirectory(GetAddedFullDirectoryPath());
+
+  std::unique_ptr<SambaInterface> proxy =
+      std::make_unique<FakeSambaProxy>(&fake_samba_);
+
+  {
+    DirectoryIterator it(GetAddedFullDirectoryPath(), proxy.get());
+    EXPECT_EQ(0, it.Init());
+    EXPECT_TRUE(it.IsDone());
+    EXPECT_TRUE(fake_samba_.HasOpenEntries());
+    proxy.reset();
+  }
+
+  EXPECT_TRUE(fake_samba_.HasOpenEntries());
 }
 
 // DirectoryIterator succeeds and sets is_done on an empty directory.

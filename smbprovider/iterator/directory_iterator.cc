@@ -39,7 +39,7 @@ BaseDirectoryIterator::BaseDirectoryIterator(const std::string& dir_path,
     : dir_path_(dir_path),
       batch_size_(batch_size),
       include_metadata_(include_metadata),
-      samba_interface_(samba_interface) {}
+      samba_interface_(samba_interface->AsWeakPtr()) {}
 
 BaseDirectoryIterator::BaseDirectoryIterator(BaseDirectoryIterator&& other)
     : dir_path_(std::move(other.dir_path_)),
@@ -50,7 +50,7 @@ BaseDirectoryIterator::BaseDirectoryIterator(BaseDirectoryIterator&& other)
       is_done_(other.is_done_),
       is_initialized_(other.is_initialized_),
       include_metadata_(other.include_metadata_),
-      samba_interface_(other.samba_interface_) {
+      samba_interface_(std::move(other.samba_interface_)) {
   other.dir_id_ = -1;
   other.is_initialized_ = false;
   other.samba_interface_ = nullptr;
@@ -106,13 +106,20 @@ int32_t BaseDirectoryIterator::OpenDirectory() {
 }
 
 void BaseDirectoryIterator::CloseDirectory() {
-  DCHECK_NE(-1, dir_id_);
-  int32_t result = samba_interface_->CloseDirectory(dir_id_);
-  if (result != 0) {
-    LOG(ERROR) << "BaseDirectoryIterator: CloseDirectory failed with error: "
-               << GetErrorFromErrno(result);
+  const int32_t dir_id = std::exchange(dir_id_, -1);
+  DCHECK_NE(-1, dir_id);
+
+  if (!samba_interface_) {
+    LOG(ERROR) << "Cannot close directory [" << dir_id
+               << "]: Samba implementation already deleted";
+    return;
   }
-  dir_id_ = -1;
+
+  const int32_t error = samba_interface_->CloseDirectory(dir_id);
+  if (error != 0) {
+    LOG(ERROR) << "Cannot close directory [" << dir_id << "]: Error "
+               << GetErrorFromErrno(error);
+  }
 }
 
 int32_t BaseDirectoryIterator::FillBuffer() {
