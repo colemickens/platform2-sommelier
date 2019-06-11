@@ -48,47 +48,35 @@ bool IsSymlink(uint16_t file_attrs) {
 
 ErrorType GetErrorFromErrno(int32_t error_code) {
   DCHECK_GT(error_code, 0);
-  ErrorType error;
   switch (error_code) {
     case EPERM:
     case EACCES:
-      error = ERROR_ACCESS_DENIED;
-      break;
+      return ERROR_ACCESS_DENIED;
     case EBADF:
     case ENODEV:
     case ENOENT:
     case ETIMEDOUT:
-      error = ERROR_NOT_FOUND;
-      break;
+      return ERROR_NOT_FOUND;
     case EMFILE:
     case ENFILE:
-      error = ERROR_TOO_MANY_OPENED;
-      break;
+      return ERROR_TOO_MANY_OPENED;
     case ENOTDIR:
-      error = ERROR_NOT_A_DIRECTORY;
-      break;
+      return ERROR_NOT_A_DIRECTORY;
     case EISDIR:
-      error = ERROR_NOT_A_FILE;
-      break;
+      return ERROR_NOT_A_FILE;
     case ENOTEMPTY:
-      error = ERROR_NOT_EMPTY;
-      break;
+      return ERROR_NOT_EMPTY;
     case EEXIST:
-      error = ERROR_EXISTS;
-      break;
+      return ERROR_EXISTS;
     case EINVAL:
-      error = ERROR_INVALID_OPERATION;
-      break;
+      return ERROR_INVALID_OPERATION;
     case ECONNABORTED:
-      error = ERROR_SMB1_UNSUPPORTED;
-      break;
+      return ERROR_SMB1_UNSUPPORTED;
     default:
       LOG(WARNING) << "Unknown error code: " << error_code << " "
                    << strerror(error_code);
-      error = ERROR_FAILED;
-      break;
+      return ERROR_FAILED;
   }
-  return error;
 }
 
 // EINVAL is returned when Samba is unable to parse a hostname
