@@ -8,8 +8,6 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
-#include "shill/mock_control.h"
-
 using base::FilePath;
 using std::string;
 using std::vector;
@@ -75,7 +73,6 @@ TEST_F(ResolverTest, NonEmpty) {
   EXPECT_FALSE(base::PathExists(path_));
   EXPECT_TRUE(resolver_->ClearDNS());
 
-  MockControl control;
   vector<string> dns_servers;
   vector<string> domain_search;
   dns_servers.push_back(kNameServer0);
@@ -95,7 +92,6 @@ TEST_F(ResolverTest, Sanitize) {
   EXPECT_FALSE(base::PathExists(path_));
   EXPECT_TRUE(resolver_->ClearDNS());
 
-  MockControl control;
   vector<string> dns_servers;
   vector<string> domain_search;
 
@@ -120,7 +116,6 @@ TEST_F(ResolverTest, Sanitize) {
 TEST_F(ResolverTest, Empty) {
   EXPECT_FALSE(base::PathExists(path_));
 
-  MockControl control;
   vector<string> dns_servers;
   vector<string> domain_search;
 
@@ -132,7 +127,6 @@ TEST_F(ResolverTest, IgnoredSearchList) {
   EXPECT_FALSE(base::PathExists(path_));
   EXPECT_TRUE(resolver_->ClearDNS());
 
-  MockControl control;
   vector<string> dns_servers;
   vector<string> domain_search;
   dns_servers.push_back(kNameServer0);
