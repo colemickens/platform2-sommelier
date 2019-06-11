@@ -124,7 +124,7 @@ bool Tpm2Impl::SealData(AuthorizationDelegate* session_delegate,
   TPM_RC result = tpm_utility_->SealData(data_to_seal, policy_digest, "",
                                          session_delegate, &sealed_data_str);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error creating sealed object: " << GetErrorString(result);
+    LOG(ERROR) << "Error sealing data: " << GetErrorString(result);
     return false;
   }
 
@@ -140,7 +140,7 @@ bool Tpm2Impl::UnsealData(AuthorizationDelegate* policy_delegate,
   TPM_RC result =
       tpm_utility_->UnsealData(sealed_data, policy_delegate, &unsealed_data);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error unsealing object: " << GetErrorString(result);
+    LOG(ERROR) << "Error unsealing data: " << GetErrorString(result);
     return false;
   }
 
