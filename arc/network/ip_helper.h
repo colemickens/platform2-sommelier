@@ -46,8 +46,6 @@ class IpHelper : public brillo::Daemon, public base::MessageLoopForIO::Watcher {
   MessageLoopForIO::FileDescriptorWatcher control_watcher_;
   std::unique_ptr<ArcHelper> arc_helper_;
 
-  IpHelperMessage pending_command_;
-
   base::WeakPtrFactory<IpHelper> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(IpHelper);
 };

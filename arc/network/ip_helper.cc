@@ -91,13 +91,12 @@ void IpHelper::OnFileCanReadWithoutBlocking(int fd) {
     return;
   }
 
-  if (!pending_command_.ParseFromArray(buffer, len)) {
+  IpHelperMessage cmd;
+  if (!cmd.ParseFromArray(buffer, len)) {
     LOG(ERROR) << "Error parsing protobuf";
     return;
   }
 
-  arc_helper_->HandleCommand(pending_command_);
-  pending_command_.Clear();
+  arc_helper_->HandleCommand(cmd);
 }
-
 }  // namespace arc_networkd

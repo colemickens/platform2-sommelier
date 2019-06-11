@@ -37,9 +37,6 @@ class ArcHelper {
   ArcHelper() = default;
 
  private:
-  // Helper function to extract raw IPv6 address from a protobuf string.
-  const struct in6_addr& ExtractAddr6(const std::string& in);
-
   void AddDevice(const std::string& ifname, const DeviceConfig& config);
   void RemoveDevice(const std::string& ifname);
 

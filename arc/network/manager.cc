@@ -94,7 +94,7 @@ bool Manager::OnContainerStart(const struct signalfd_siginfo& info) {
   }
 
   if (enable_multinet_ && device_mgr_) {
-      device_mgr_->EnableAllDevices();
+    device_mgr_->EnableAllDevices();
   }
 
   // Stay registered.

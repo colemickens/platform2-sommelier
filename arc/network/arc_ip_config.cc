@@ -25,6 +25,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/message_loop/message_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -33,9 +34,31 @@
 
 namespace {
 
-const int kInvalidNs = 0;
-const int kInvalidTableId = -1;
-const char kDefaultNetmask[] = "255.255.255.252";
+constexpr int kInvalidNs = 0;
+constexpr int kInvalidTableId = -1;
+constexpr int kMaxTableRetries = 10;  // Based on 1 second delay.
+constexpr base::TimeDelta kTableRetryDelay = base::TimeDelta::FromSeconds(1);
+constexpr char kDefaultNetmask[] = "255.255.255.252";
+
+const struct in6_addr* ExtractAddr6(const std::string& in) {
+  if (in.size() != sizeof(struct in6_addr)) {
+    LOG(DFATAL) << "Size mismatch";
+    return nullptr;
+  }
+  return reinterpret_cast<const struct in6_addr*>(in.data());
+}
+
+bool ValidateIfname(const std::string& ifname) {
+  if (ifname.size() >= IFNAMSIZ) {
+    return false;
+  }
+  for (const char& c : ifname) {
+    if (!isalnum(c) && c != '_') {
+      return false;
+    }
+  }
+  return true;
+}
 
 // Returns for given interface name the host name of a ARC veth pair.
 std::string ArcVethHostName(std::string ifname) {
@@ -62,6 +85,7 @@ ArcIpConfig::ArcIpConfig(
       config_(config),
       con_netns_(kInvalidNs),
       routing_table_id_(kInvalidTableId),
+      routing_table_attempts_(0),
       if_up_(false),
       ipv6_configured_(false),
       inbound_configured_(false),
@@ -235,36 +259,48 @@ void ArcIpConfig::ContainerReady(bool ready) {
     DisableInbound();
   }
   if_up_ = ready;
-  if (if_up_ && !pending_inbound_ifname_.empty()) {
-    std::string ifname = std::move(pending_inbound_ifname_);
-    EnableInbound(ifname);
+  if (if_up_) {
+    if (!pending_inbound_ifname_.empty()) {
+      std::string ifname = std::move(pending_inbound_ifname_);
+      EnableInbound(ifname);
+    }
+    if (pending_ipv6_) {
+      SetArcIp arc_ip = *pending_ipv6_.get();
+      pending_ipv6_.reset();
+      Set(arc_ip);
+    }
   }
 }
 
-int ArcIpConfig::GetTableIdForInterface(const std::string& ifname) {
-  base::FilePath ifindex_path(base::StringPrintf(
-      "/proc/%d/root/sys/class/net/%s/ifindex", con_netns_, ifname.c_str()));
+void ArcIpConfig::AssignTableIdForArcInterface() {
+  if (routing_table_id_ != kInvalidTableId)
+    return;
+
+  base::FilePath ifindex_path(
+      base::StringPrintf("/proc/%d/root/sys/class/net/%s/ifindex", con_netns_,
+                         config_.arc_ifname().c_str()));
   std::string contents;
   if (!base::ReadFileToString(ifindex_path, &contents)) {
-    PLOG(ERROR) << "Could not read " << ifindex_path.value();
-    return kInvalidTableId;
+    PLOG(WARNING) << "Could not read " << ifindex_path.value();
+    return;
   }
   base::TrimWhitespaceASCII(contents, base::TRIM_TRAILING, &contents);
   int table_id = kInvalidTableId;
   if (!base::StringToInt(contents, &table_id)) {
     LOG(ERROR) << "Could not parse ifindex from " << ifindex_path.value()
                << ": " << contents;
-    return kInvalidTableId;
+    return;
   }
+
   // Android adds a constant to the interface index to derive the table id.
   // This is defined in system/netd/server/RouteController.h
   constexpr int kRouteControllerRouteTableOffsetFromIndex = 1000;
   table_id += kRouteControllerRouteTableOffsetFromIndex;
 
   LOG(INFO) << "Found table id " << table_id << " for container iface "
-            << ifname;
+            << config_.arc_ifname();
 
-  return table_id;
+  routing_table_id_ = table_id;
 }
 
 // static
@@ -313,50 +349,86 @@ bool ArcIpConfig::GetV6Address(const std::string& ifname,
   return found;
 }
 
-bool ArcIpConfig::Set(const struct in6_addr& address,
-                      int prefix_len,
-                      const struct in6_addr& router_addr,
-                      const std::string& lan_ifname) {
+void ArcIpConfig::Set(const SetArcIp& arc_ip) {
+  if (con_netns_ == kInvalidNs)
+    return;
+
   Clear();
 
   if (!if_up_) {
-    LOG(ERROR) << "Cannot set IPv6 address: container interface "
-               << config_.arc_ifname() << " not ready.";
-    return false;
+    LOG(INFO) << "Setting IPv6 for " << config_.arc_ifname()
+              << " pending container interface up.";
+    pending_ipv6_.reset(new SetArcIp);
+    *pending_ipv6_.get() = arc_ip;
+    return;
   }
 
-  // At this point, arc0 is up and the LAN interface has been up for several
-  // seconds. If the routing table name has not yet been populated,
-  // something really bad probably happened on the Android side.
+  if (arc_ip.prefix_len() == 0 || arc_ip.prefix_len() > 128) {
+    LOG(DFATAL) << "Invalid prefix len " << arc_ip.prefix_len();
+    return;
+  }
+  if (!ValidateIfname(arc_ip.lan_ifname())) {
+    LOG(DFATAL) << "Invalid inbound iface name " << arc_ip.lan_ifname();
+    return;
+  }
+
+  const struct in6_addr* address = ExtractAddr6(arc_ip.prefix());
+  if (!address)
+    return;
+
+  const struct in6_addr* router_addr = ExtractAddr6(arc_ip.router());
+  if (!router_addr)
+    return;
+
+  // If we cannot find the routing table id yet, it could either be a race with
+  // Android setting it up, or something legitimately bad happened; so be sure
+  // to try several times before giving up for good.
+  AssignTableIdForArcInterface();
   if (routing_table_id_ == kInvalidTableId) {
-    routing_table_id_ = GetTableIdForInterface(config_.arc_ifname());
-    if (routing_table_id_ == kInvalidTableId) {
-      LOG(FATAL)
+    if (routing_table_attempts_++ < kMaxTableRetries) {
+      LOG(INFO) << "Could not look up routing table ID for container interface "
+                << config_.arc_ifname() << " - trying again...";
+      base::MessageLoop::current()->task_runner()->PostDelayedTask(
+          FROM_HERE,
+          base::Bind(&ArcIpConfig::Set, weak_factory_.GetWeakPtr(), arc_ip),
+          kTableRetryDelay);
+    } else {
+      LOG(DFATAL)
           << "Could not look up routing table ID for container interface "
           << config_.arc_ifname();
     }
+    return;
   }
 
   char buf[INET6_ADDRSTRLEN];
-
-  CHECK(inet_ntop(AF_INET6, &address, buf, sizeof(buf)));
+  if (!inet_ntop(AF_INET6, address, buf, sizeof(buf))) {
+    LOG(DFATAL) << "Invalid address: " << address;
+    return;
+  }
   ipv6_address_ = buf;
   ipv6_address_full_ = ipv6_address_;
-  ipv6_address_full_.append("/" + std::to_string(prefix_len));
+  ipv6_address_full_.append(
+      "/" + std::to_string(static_cast<int>(arc_ip.prefix_len())));
 
-  CHECK(inet_ntop(AF_INET6, &router_addr, buf, sizeof(buf)));
+  if (!inet_ntop(AF_INET6, router_addr, buf, sizeof(buf))) {
+    LOG(DFATAL) << "Invalid router address: " << router_addr;
+    return;
+  }
   ipv6_router_ = buf;
 
   // This is needed to support the single network legacy case.
   // If this isn't the legacy device, then ensure the interface is the same.
-  CHECK(ifname_ == kAndroidLegacyDevice || ifname_ == lan_ifname);
-  ipv6_dev_ifname_ = lan_ifname;
+  if (ifname_ != kAndroidLegacyDevice && ifname_ != arc_ip.lan_ifname()) {
+    LOG(DFATAL) << "Mismatched interfaces " << ifname_ << " vs "
+                << arc_ip.lan_ifname();
+    return;
+  }
+  ipv6_dev_ifname_ = arc_ip.lan_ifname();
 
+  LOG(INFO) << "Setting " << *this;
   {
     ScopedNS ns(con_netns_);
     if (ns.IsValid()) {
-      VLOG(1) << "Setting " << *this;
-
       // These can fail if the interface disappears (e.g. hot-unplug).
       // If that happens, the error will be logged, because sometimes it
       // might help in debugging a real issue.
@@ -381,37 +453,49 @@ bool ArcIpConfig::Set(const struct in6_addr& address,
                         "dev", ipv6_dev_ifname_});
 
   // These should never fail.
+  if (process_runner_->Run({kIp6TablesPath, "-A", "FORWARD", "-i",
+                            ipv6_dev_ifname_, "-o", config_.br_ifname(), "-j",
+                            "ACCEPT", "-w"}) != 0) {
+    LOG(DFATAL) << "Could not update ip6tables";
+    return;
+  }
 
-  CHECK_EQ(process_runner_->Run({kIp6TablesPath, "-A", "FORWARD", "-i",
-                                 ipv6_dev_ifname_, "-o", config_.br_ifname(),
-                                 "-j", "ACCEPT", "-w"}),
-           0);
-
-  CHECK_EQ(process_runner_->Run({kIp6TablesPath, "-A", "FORWARD", "-i",
-                                 config_.br_ifname(), "-o", ipv6_dev_ifname_,
-                                 "-j", "ACCEPT", "-w"}),
-           0);
+  if (process_runner_->Run({kIp6TablesPath, "-A", "FORWARD", "-i",
+                            config_.br_ifname(), "-o", ipv6_dev_ifname_, "-j",
+                            "ACCEPT", "-w"}) != 0) {
+    LOG(DFATAL) << "Could not update ip6tables";
+    return;
+  }
 
   ipv6_configured_ = true;
-  return true;
 }
 
-bool ArcIpConfig::Clear() {
-  if (!ipv6_configured_)
-    return true;
+void ArcIpConfig::Clear() {
+  if (pending_ipv6_) {
+    LOG(INFO) << "Clearing pending IPv6 settings for " << config_.arc_ifname();
+    pending_ipv6_.reset();
+  }
 
-  VLOG(1) << "Clearing " << *this;
+  int routing_tid = routing_table_id_;
+  routing_table_id_ = kInvalidTableId;
+  routing_table_attempts_ = 0;
+  if (!ipv6_configured_)
+    return;
+
+  LOG(INFO) << "Clearing " << *this;
 
   // These should never fail.
-  CHECK_EQ(process_runner_->Run({kIp6TablesPath, "-D", "FORWARD", "-i",
-                                 config_.br_ifname(), "-o", ipv6_dev_ifname_,
-                                 "-j", "ACCEPT", "-w"}),
-           0);
+  if (process_runner_->Run({kIp6TablesPath, "-D", "FORWARD", "-i",
+                            config_.br_ifname(), "-o", ipv6_dev_ifname_, "-j",
+                            "ACCEPT", "-w"}) != 0) {
+    LOG(DFATAL) << "Could not update ip6tables";
+  }
 
-  CHECK_EQ(process_runner_->Run({kIp6TablesPath, "-D", "FORWARD", "-i",
-                                 ipv6_dev_ifname_, "-o", config_.br_ifname(),
-                                 "-j", "ACCEPT", "-w"}),
-           0);
+  if (process_runner_->Run({kIp6TablesPath, "-D", "FORWARD", "-i",
+                            ipv6_dev_ifname_, "-o", config_.br_ifname(), "-j",
+                            "ACCEPT", "-w"}) != 0) {
+    LOG(DFATAL) << "Could not update ip6tables";
+  }
 
   // This often fails because the kernel removes the proxy entry
   // automatically.
@@ -430,11 +514,11 @@ bool ArcIpConfig::Clear() {
     if (ns.IsValid()) {
       process_runner_->Run({kIpPath, "-6", "route", "del", "default", "via",
                             ipv6_router_, "dev", config_.arc_ifname(), "table",
-                            std::to_string(routing_table_id_)});
+                            std::to_string(routing_tid)});
 
       process_runner_->Run({kIpPath, "-6", "route", "del", ipv6_router_, "dev",
                             config_.arc_ifname(), "table",
-                            std::to_string(routing_table_id_)});
+                            std::to_string(routing_tid)});
 
       // This often fails because ARC tries to delete the address on its own
       // when it is notified that the LAN is down.
@@ -447,7 +531,6 @@ bool ArcIpConfig::Clear() {
 
   ipv6_dev_ifname_.clear();
   ipv6_configured_ = false;
-  return true;
 }
 
 void ArcIpConfig::EnableInbound(const std::string& lan_ifname) {
@@ -471,12 +554,13 @@ void ArcIpConfig::EnableInbound(const std::string& lan_ifname) {
             << config_.arc_ifname() << "]"
             << " on " << lan_ifname;
 
-  CHECK_EQ(process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "try_arc",
-                                 "-i", lan_ifname, "-j", "dnat_arc", "-w"}),
-           0);
+  if (process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "try_arc", "-i",
+                            lan_ifname, "-j", "dnat_arc", "-w"}) != 0) {
+    LOG(DFATAL) << "Could not update iptables";
+    return;
+  }
 
   inbound_configured_ = true;
-  DCHECK(pending_inbound_ifname_.empty());
 }
 
 void ArcIpConfig::DisableInbound() {
@@ -498,9 +582,11 @@ void ArcIpConfig::DisableInbound() {
   LOG(INFO) << "Disabling inbound for " << ifname_ << " ["
             << config_.arc_ifname() << "] ";
 
-  CHECK_EQ(
-      process_runner_->Run({kIpTablesPath, "-t", "nat", "-F", "try_arc", "-w"}),
-      0);
+  if (process_runner_->Run(
+          {kIpTablesPath, "-t", "nat", "-F", "try_arc", "-w"}) != 0) {
+    LOG(DFATAL) << "Could not update iptables";
+  }
+
   inbound_configured_ = false;
 }
 

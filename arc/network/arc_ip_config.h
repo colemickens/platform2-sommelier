@@ -15,6 +15,7 @@
 
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 
 #include "arc/network/device.h"
 #include "arc/network/minijailed_process_runner.h"
@@ -46,11 +47,8 @@ class ArcIpConfig {
   void ContainerReady(bool ready);
 
   // Set or Clear the IPv6 configuration/routes/rules for the containerized OS.
-  bool Set(const struct in6_addr& address,
-           int prefix_len,
-           const struct in6_addr& router_addr,
-           const std::string& lan_ifname);
-  bool Clear();
+  void Set(const SetArcIp& arc_ip);
+  void Clear();
 
   // Enable or Disable inbound connections on |lan_ifname| by manipulating
   // a DNAT rule matching unclaimed traffic on the interface.
@@ -69,18 +67,23 @@ class ArcIpConfig {
   void Setup();
   void Teardown();
 
-  int GetTableIdForInterface(const std::string& ifname);
+  void AssignTableIdForArcInterface();
 
   const std::string ifname_;
   const DeviceConfig config_;
 
   pid_t con_netns_;
   int routing_table_id_;
+  int routing_table_attempts_;
 
   bool if_up_;
   bool ipv6_configured_;
   bool inbound_configured_;
+
+  // These commands require the container to be ready.
   std::string pending_inbound_ifname_;
+  std::unique_ptr<SetArcIp> pending_ipv6_;
+
   // These track the current ipv6 configuration, if any.
   std::string ipv6_dev_ifname_;
   std::string ipv6_address_;
@@ -88,6 +91,9 @@ class ArcIpConfig {
   std::string ipv6_router_;
 
   std::unique_ptr<MinijailedProcessRunner> process_runner_;
+
+  base::WeakPtrFactory<ArcIpConfig> weak_factory_{this};
+  DISALLOW_COPY_AND_ASSIGN(ArcIpConfig);
 };
 
 }  // namespace arc_networkd

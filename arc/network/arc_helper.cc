@@ -48,18 +48,6 @@ int GetContainerPID() {
   return pid;
 }
 
-bool ValidateIfname(const std::string& ifname) {
-  if (ifname.size() >= IFNAMSIZ) {
-    return false;
-  }
-  for (const char& c : ifname) {
-    if (!isalnum(c) && c != '_') {
-      return false;
-    }
-  }
-  return true;
-}
-
 // This wrapper is required since the base class is a singleton that hides its
 // constructor. It is necessary here because the message loop thread has to be
 // reassociated to the container's network namespace; and since the container
@@ -178,11 +166,6 @@ void ArcHelper::RemoveDevice(const std::string& ifname) {
   arc_ip_configs_.erase(ifname);
 }
 
-const struct in6_addr& ArcHelper::ExtractAddr6(const std::string& in) {
-  CHECK_EQ(in.size(), sizeof(struct in6_addr));
-  return *reinterpret_cast<const struct in6_addr*>(in.data());
-}
-
 void ArcHelper::HandleCommand(const IpHelperMessage& cmd) {
   const std::string& dev_ifname = cmd.dev_ifname();
   const auto it = arc_ip_configs_.find(dev_ifname);
@@ -199,14 +182,7 @@ void ArcHelper::HandleCommand(const IpHelperMessage& cmd) {
   if (cmd.has_clear_arc_ip()) {
     config->Clear();
   } else if (cmd.has_set_arc_ip()) {
-    const SetArcIp& ip = cmd.set_arc_ip();
-    CHECK(ip.prefix_len() > 0 && ip.prefix_len() <= 128)
-        << "Invalid prefix len " << ip.prefix_len();
-    CHECK(ValidateIfname(ip.lan_ifname()))
-        << "Invalid inbound iface name " << ip.lan_ifname();
-
-    config->Set(ExtractAddr6(ip.prefix()), static_cast<int>(ip.prefix_len()),
-                ExtractAddr6(ip.router()), ip.lan_ifname());
+    config->Set(cmd.set_arc_ip());
   } else if (cmd.has_enable_inbound_ifname()) {
     config->EnableInbound(cmd.enable_inbound_ifname());
   } else if (cmd.has_disable_inbound()) {
