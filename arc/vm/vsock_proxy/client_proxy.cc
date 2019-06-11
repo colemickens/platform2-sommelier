@@ -33,8 +33,6 @@ constexpr char kHostSocketPath[] = "/run/chrome/arc_bridge.sock";
 
 // Port for VSOCK.
 constexpr unsigned int kVSockPort = 9900;
-// TODO(yusukes): Remove this later.
-constexpr unsigned int kVSockOldPort = 9999;
 
 base::ScopedFD ConnectVSock() {
   LOG(INFO) << "Creating VSOCK...";
@@ -43,14 +41,7 @@ base::ScopedFD ConnectVSock() {
   sa.svm_cid = VMADDR_CID_HOST;
   sa.svm_port = kVSockPort;
 
-  // TODO(yusukes): Remove this later.
-  struct sockaddr_vm sa_old = {};
-  sa_old.svm_family = AF_VSOCK;
-  sa_old.svm_cid = VMADDR_CID_HOST;
-  sa_old.svm_port = kVSockOldPort;
-
   // TODO(hidehiko): Consider to time out.
-  uint32_t counter = 0;
   while (true) {
     base::ScopedFD fd(
         socket(AF_VSOCK, SOCK_STREAM | SOCK_CLOEXEC, 0 /* protocol */));
@@ -60,13 +51,11 @@ base::ScopedFD ConnectVSock() {
     }
 
     LOG(INFO) << "Connecting VSOCK";
-    const auto& sa_to_use = (counter++ < 3) ? sa : sa_old;
-    if (HANDLE_EINTR(connect(
-            fd.get(), reinterpret_cast<const struct sockaddr*>(&sa_to_use),
-            sizeof(struct sockaddr_vm))) == -1) {
+    if (HANDLE_EINTR(connect(fd.get(),
+                             reinterpret_cast<const struct sockaddr*>(&sa),
+                             sizeof(sa))) == -1) {
       fd.reset();
-      PLOG(ERROR) << "Failed to connect to port " << sa_to_use.svm_port
-                  << ". Waiting and then retry...";
+      PLOG(ERROR) << "Failed to connect. Waiting and then retry...";
       sleep(1);  // Arbitrary wait.
       continue;
     }
