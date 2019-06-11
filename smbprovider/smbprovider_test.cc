@@ -26,11 +26,10 @@
 #include "smbprovider/smbprovider_helper.h"
 #include "smbprovider/smbprovider_test_helper.h"
 
-using brillo::dbus_utils::DBusObject;
-
 namespace smbprovider {
-
 namespace {
+
+using brillo::dbus_utils::DBusObject;
 
 constexpr size_t kFileSize = 10;
 constexpr uint64_t kFileDate = 42;
@@ -105,8 +104,7 @@ class SmbProviderTest : public testing::Test {
     return std::make_unique<FakeSambaProxy>(fake_samba);
   }
 
-  SmbProviderTest() { SetUpSmbProvider(); }
-  ~SmbProviderTest() override = default;
+  SmbProviderTest() { SetUpSmbProvider(false /* enable_metadata_cache */); }
 
  protected:
   using DirEntries = std::vector<smbc_dirent>;
@@ -257,12 +255,6 @@ class SmbProviderTest : public testing::Test {
         fake_tick_clock_,
         base::TimeDelta::FromMicroseconds(kMetadataCacheLifetimeMicroseconds),
         MetadataCache::Mode::kDisabled);
-  }
-
-  // Sets up the SmbProvider with caching disabled. This is the default
-  // for most tests.
-  void SetUpSmbProvider() {
-    SetUpSmbProvider(false /* enabled_metadata_cache */);
   }
 
   // Helper method that asserts there are no entries that have not been

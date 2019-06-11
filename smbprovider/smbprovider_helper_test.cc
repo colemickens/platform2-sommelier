@@ -19,7 +19,6 @@ namespace smbprovider {
 class SmbProviderHelperTest : public testing::Test {
  public:
   SmbProviderHelperTest() = default;
-  ~SmbProviderHelperTest() override = default;
 
  protected:
   TempFileManager temp_file_manager_;

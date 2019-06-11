@@ -17,7 +17,6 @@ namespace smbprovider {
 class DirectoryIteratorTest : public testing::Test {
  public:
   DirectoryIteratorTest() {}
-  ~DirectoryIteratorTest() override = default;
 
  protected:
   void CreateDefaultMountRoot() {
@@ -31,16 +30,16 @@ class DirectoryIteratorTest : public testing::Test {
   DISALLOW_COPY_AND_ASSIGN(DirectoryIteratorTest);
 };
 
-// DirectoryIterator fails to initialize on a non-existant directory.
-TEST_F(DirectoryIteratorTest, InitFailsOnNonExistantDir) {
-  DirectoryIterator it("smb://non-existant-path/", &fake_samba_);
+// DirectoryIterator fails to initialize on a non-existent directory.
+TEST_F(DirectoryIteratorTest, InitFailsOnNonExistentDir) {
+  DirectoryIterator it("smb://non-existent-path/", &fake_samba_);
 
   EXPECT_EQ(ENOENT, it.Init());
 }
 
-// DirectoryIterator fails to initialize on a non-existant directory.
-TEST_F(DirectoryIteratorTest, InitFailsOnNonExistantDirWithMetadata) {
-  DirectoryIterator it("smb://non-existant-path/", &fake_samba_,
+// DirectoryIterator fails to initialize on a non-existent directory.
+TEST_F(DirectoryIteratorTest, InitFailsOnNonExistentDirWithMetadata) {
+  DirectoryIterator it("smb://non-existent-path/", &fake_samba_,
                        1 /* batch_size */, true /* include_metadata */);
 
   EXPECT_EQ(ENOENT, it.Init());
@@ -188,7 +187,7 @@ TEST_F(DirectoryIteratorTest, InitSucceedsOnNonEmptyDirectoryWithMetadata) {
   EXPECT_TRUE(it.IsDone());
 }
 
-// DirectoryIterator correctly intializes and calls next on 1 entry.
+// DirectoryIterator correctly initializes and calls next on 1 entry.
 TEST_F(DirectoryIteratorTest, NextSucceedsAndSetsDoneOnOneEntry) {
   CreateDefaultMountRoot();
 
