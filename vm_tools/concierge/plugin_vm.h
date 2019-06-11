@@ -45,6 +45,7 @@ class PluginVm final : public VmInterface, base::MessageLoopForIO::Watcher {
       uint32_t ipv4_netmask,
       uint32_t ipv4_gateway,
       base::FilePath stateful_dir,
+      base::FilePath iso_dir,
       base::FilePath root_dir,
       base::FilePath runtime_dir,
       std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
@@ -102,7 +103,8 @@ class PluginVm final : public VmInterface, base::MessageLoopForIO::Watcher {
            base::FilePath runtime_dir);
   bool Start(uint32_t cpus,
              std::vector<std::string> params,
-             base::FilePath stateful_dir);
+             base::FilePath stateful_dir,
+             base::FilePath iso_dir);
   bool CreateUsbListeningSocket();
   void HandleUsbControlResponse();
 

@@ -56,6 +56,9 @@ constexpr char kRuntimeDir[] = "/run/pvm";
 // Name of the stateful directory inside the jail.
 constexpr char kStatefulDir[] = "/pvm";
 
+// Name of the directory holding ISOs inside the jail.
+constexpr char kIsoDir[] = "/iso";
+
 // How long to wait before timing out on child process exits.
 constexpr base::TimeDelta kChildExitTimeout = base::TimeDelta::FromSeconds(10);
 
@@ -89,6 +92,7 @@ std::unique_ptr<PluginVm> PluginVm::Create(
     uint32_t ipv4_netmask,
     uint32_t ipv4_gateway,
     base::FilePath stateful_dir,
+    base::FilePath iso_dir,
     base::FilePath root_dir,
     base::FilePath runtime_dir,
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
@@ -99,7 +103,8 @@ std::unique_ptr<PluginVm> PluginVm::Create(
       std::move(root_dir), std::move(runtime_dir)));
 
   if (!vm->CreateUsbListeningSocket() ||
-      !vm->Start(cpus, std::move(params), std::move(stateful_dir))) {
+      !vm->Start(cpus, std::move(params), std::move(stateful_dir),
+                 std::move(iso_dir))) {
     vm.reset();
   }
 
@@ -535,7 +540,8 @@ PluginVm::PluginVm(VmId id,
 
 bool PluginVm::Start(uint32_t cpus,
                      std::vector<string> params,
-                     base::FilePath stateful_dir) {
+                     base::FilePath stateful_dir,
+                     base::FilePath iso_dir) {
   // Set up the tap device.
   base::ScopedFD tap_fd =
       BuildTapDevice(mac_addr_, gateway_, netmask_, false /*vnet_hdr*/);
@@ -568,6 +574,8 @@ bool PluginVm::Start(uint32_t cpus,
       // This is directory where the VM image resides.
       base::StringPrintf("%s:%s:true", stateful_dir.value().c_str(),
                          kStatefulDir),
+      // This is directory where ISO images for the VM reside.
+      base::StringPrintf("%s:%s:false", iso_dir.value().c_str(), kIsoDir),
       // This is directory where control socket, 9p socket, and other axillary
       // runtime data lives.
       base::StringPrintf("%s:%s:true", runtime_dir_.GetPath().value().c_str(),

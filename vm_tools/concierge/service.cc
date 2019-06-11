@@ -388,13 +388,14 @@ uint64_t CalculateDesiredDiskSize(uint64_t current_usage) {
 bool GetPluginDirectory(const base::FilePath& prefix,
                         const string& extension,
                         const string& vm_id,
+                        bool create,
                         base::FilePath* path_out) {
   string dirname;
   base::Base64UrlEncode(vm_id, base::Base64UrlEncodePolicy::INCLUDE_PADDING,
                         &dirname);
 
   base::FilePath path = prefix.Append(dirname).AddExtension(extension);
-  if (!base::DirectoryExists(path)) {
+  if (create && !base::DirectoryExists(path)) {
     base::File::Error dir_error;
     if (!base::CreateDirectoryAndGetError(path, &dir_error)) {
       LOG(ERROR) << "Failed to create plugin directory " << path.value() << ": "
@@ -413,13 +414,24 @@ bool GetPluginStatefulDirectory(const string& vm_id,
   return GetPluginDirectory(base::FilePath(kCryptohomeRoot)
                                 .Append(cryptohome_id)
                                 .Append(kPluginVmDir),
-                            "pvm", vm_id, path_out);
+                            "pvm", vm_id, true /* create */, path_out);
+}
+
+bool GetPluginIsoDirectory(const string& vm_id,
+                           const string& cryptohome_id,
+                           bool create,
+                           base::FilePath* path_out) {
+  return GetPluginDirectory(base::FilePath(kCryptohomeRoot)
+                                .Append(cryptohome_id)
+                                .Append(kPluginVmDir),
+                            "iso", vm_id, create, path_out);
 }
 
 bool GetPluginRuntimeDirectory(const string& vm_id,
                                base::ScopedTempDir* runtime_dir_out) {
   base::FilePath path;
-  if (GetPluginDirectory(base::FilePath("/run/pvm"), "", vm_id, &path)) {
+  if (GetPluginDirectory(base::FilePath("/run/pvm"), "", vm_id,
+                         true /*create */, &path)) {
     // Take ownership of directory
     CHECK(runtime_dir_out->Set(path));
     return true;
@@ -456,7 +468,7 @@ bool CreatePluginRootHierarchy(const base::FilePath& root_path) {
 bool GetPlugin9PSocketPath(const string& vm_id, base::FilePath* path_out) {
   base::FilePath runtime_dir;
   if (!GetPluginDirectory(base::FilePath("/run/pvm"), "", vm_id,
-                          &runtime_dir)) {
+                          true /* create */, &runtime_dir)) {
     LOG(ERROR) << "Unable to get runtime directory for 9P socket";
     return false;
   }
@@ -1251,6 +1263,17 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
     return dbus_response;
   }
 
+  // Get the directory for ISO images.
+  base::FilePath iso_dir;
+  if (!GetPluginIsoDirectory(request.name(), request.owner_id(),
+                             true /* create */, &iso_dir)) {
+    LOG(ERROR) << "Unable to create directory holding ISOs for VM";
+
+    response.set_failure_reason("Unable to create ISO directory");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
   // Create the runtime directory.
   base::ScopedTempDir runtime_dir;
   if (!GetPluginRuntimeDirectory(request.name(), &runtime_dir)) {
@@ -1337,8 +1360,8 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
       vm_id, request.cpus(), std::move(params), std::move(mac_addr),
       std::move(ipv4_addr), plugin_subnet_->Netmask(),
       plugin_subnet_->AddressAtOffset(0), std::move(stateful_dir),
-      root_dir.Take(), runtime_dir.Take(), std::move(seneschal_server_proxy),
-      vmplugin_service_proxy_);
+      std::move(iso_dir), root_dir.Take(), runtime_dir.Take(),
+      std::move(seneschal_server_proxy), vmplugin_service_proxy_);
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
     response.set_failure_reason("Unable to start VM");
@@ -1843,6 +1866,20 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
     if (registered && !VmpluginUnregisterVm(vmplugin_service_proxy_, vm_id)) {
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason("failed to unregister Plugin VM");
+      writer.AppendProtoAsArrayOfBytes(response);
+
+      return dbus_response;
+    }
+
+    base::FilePath iso_dir;
+    if (GetPluginIsoDirectory(vm_id.name(), vm_id.owner_id(),
+                              false /* create */, &iso_dir) &&
+        base::PathExists(iso_dir) &&
+        !base::DeleteFile(iso_dir, true /* recursive */)) {
+      LOG(ERROR) << "Unable to remove ISO directory for " << vm_id.name();
+
+      response.set_status(DISK_STATUS_FAILED);
+      response.set_failure_reason("Unable to remove ISO directory");
       writer.AppendProtoAsArrayOfBytes(response);
 
       return dbus_response;
