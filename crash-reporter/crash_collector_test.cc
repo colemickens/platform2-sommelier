@@ -6,6 +6,7 @@
 
 #include <inttypes.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -574,11 +575,11 @@ TEST_F(CrashCollectorTest, StripEmailAddresses) {
 TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
   FilePath path;
   const int kRootUid = 0;
-  const int kRootGid = 0;
   const int kNtpUid = 5;
   const int kChronosUid = 1000;
   const int kChronosGid = 1001;
-  const mode_t kExpectedSystemMode = 0700;
+  const int kCrashAccessGid = 419;
+  const mode_t kExpectedSystemMode = 02770;
   const mode_t kExpectedUserMode = 0700;
 
   mode_t directory_mode;
@@ -591,7 +592,7 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
   EXPECT_EQ("/var/spool/crash", path.value());
   EXPECT_EQ(kExpectedSystemMode, directory_mode);
   EXPECT_EQ(kRootUid, directory_owner);
-  EXPECT_EQ(kRootGid, directory_group);
+  EXPECT_EQ(kCrashAccessGid, directory_group);
 
   path = collector_.GetCrashDirectoryInfo(kNtpUid, kChronosUid, kChronosGid,
                                           &directory_mode, &directory_owner,
@@ -599,7 +600,7 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
   EXPECT_EQ("/var/spool/crash", path.value());
   EXPECT_EQ(kExpectedSystemMode, directory_mode);
   EXPECT_EQ(kRootUid, directory_owner);
-  EXPECT_EQ(kRootGid, directory_group);
+  EXPECT_EQ(kCrashAccessGid, directory_group);
 
   auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
   test_util::SetActiveSessions(mock, {{"user", "hashcakes"}});
@@ -1019,6 +1020,164 @@ TEST_F(CrashCollectorTest, CreateDirectoryWithSettingsSymlinks) {
   EXPECT_FALSE(base::IsLink(td.Append("sub/sym")));
   EXPECT_TRUE(base::DirectoryExists(td.Append("sub/sym")));
   EXPECT_FALSE(base::PathExists(td.Append("sub/subsub")));
+}
+
+// Test that CreateDirectoryWithSettings only changes the directory if a file
+// permission mode is not specified.
+TEST_F(CrashCollectorTest, CreateDirectoryWithSettings_FixPermissionsShallow) {
+  FilePath crash_dir = test_dir_.Append("crash_perms");
+  ASSERT_TRUE(base::CreateDirectory(crash_dir.Append("foo/bar")));
+  ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir, 0777));
+  ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir.Append("foo"), 0766));
+  ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir.Append("foo/bar"), 0744));
+
+  const char contents[] = "hello";
+  ASSERT_EQ(
+      base::WriteFile(crash_dir.Append("file"), contents, strlen(contents)),
+      strlen(contents));
+  ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir.Append("file"), 0600));
+
+  int fd;
+  int expected_mode = 0755;
+  EXPECT_TRUE(CrashCollector::CreateDirectoryWithSettings(
+      crash_dir, expected_mode, getuid(), getgid(), &fd));
+  struct stat st;
+  EXPECT_EQ(fstat(fd, &st), 0);
+  EXPECT_EQ(st.st_mode & 07777, expected_mode);
+
+  close(fd);
+
+  int actual_mode;
+  EXPECT_TRUE(base::GetPosixFilePermissions(crash_dir, &actual_mode));
+  EXPECT_EQ(actual_mode, expected_mode);
+
+  EXPECT_TRUE(
+      base::GetPosixFilePermissions(crash_dir.Append("file"), &actual_mode));
+  EXPECT_EQ(actual_mode, 0600);
+
+  EXPECT_TRUE(
+      base::GetPosixFilePermissions(crash_dir.Append("foo"), &actual_mode));
+  EXPECT_EQ(actual_mode, 0766);
+
+  EXPECT_TRUE(
+      base::GetPosixFilePermissions(crash_dir.Append("foo/bar"), &actual_mode));
+  EXPECT_EQ(actual_mode, 0744);
+}
+
+// TODO(mutexlox): Test the following cases:
+//   - Owner/Group changes are possible (may need to run as root?)
+// Test that CreateDirectoryWithSettings fixes the permissions of a full tree.
+TEST_F(CrashCollectorTest,
+       CreateDirectoryWithSettings_FixPermissionsRecursive) {
+  FilePath crash_dir = test_dir_.Append("crash_perms");
+  ASSERT_TRUE(base::CreateDirectory(crash_dir.Append("foo/bar")));
+  ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir, 0777));
+  ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir.Append("foo"), 0766));
+  ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir.Append("foo/bar"), 0744));
+
+  const char contents[] = "hello";
+  ASSERT_EQ(
+      base::WriteFile(crash_dir.Append("file"), contents, strlen(contents)),
+      strlen(contents));
+  ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir.Append("file"), 0600));
+
+  int fd;
+  int expected_mode = 0755;
+  int expected_file_mode = 0644;
+  EXPECT_TRUE(CrashCollector::CreateDirectoryWithSettings(
+      crash_dir, expected_mode, getuid(), getgid(), &fd, expected_file_mode));
+  struct stat st;
+  EXPECT_EQ(fstat(fd, &st), 0);
+  EXPECT_EQ(st.st_mode & 07777, expected_mode);
+
+  close(fd);
+
+  int actual_mode;
+  EXPECT_TRUE(base::GetPosixFilePermissions(crash_dir, &actual_mode));
+  EXPECT_EQ(actual_mode, expected_mode);
+
+  EXPECT_TRUE(
+      base::GetPosixFilePermissions(crash_dir.Append("file"), &actual_mode));
+  EXPECT_EQ(actual_mode, expected_file_mode);
+
+  EXPECT_TRUE(
+      base::GetPosixFilePermissions(crash_dir.Append("foo"), &actual_mode));
+  EXPECT_EQ(actual_mode, expected_mode);
+
+  EXPECT_TRUE(
+      base::GetPosixFilePermissions(crash_dir.Append("foo/bar"), &actual_mode));
+  EXPECT_EQ(actual_mode, expected_mode);
+}
+
+// Verify that CreateDirectoryWithSettings will fix subdirectories even if the
+// top-level directory is correct.
+TEST_F(CrashCollectorTest, CreateDirectoryWithSettings_FixSubdirPermissions) {
+  FilePath crash_dir = test_dir_.Append("crash_perms");
+  int expected_mode = 0755;
+
+  ASSERT_TRUE(base::CreateDirectory(crash_dir.Append("foo/bar")));
+  ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir, expected_mode));
+  ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir.Append("foo"), 0766));
+  ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir.Append("foo/bar"), 0744));
+
+  const char contents[] = "hello";
+  ASSERT_EQ(
+      base::WriteFile(crash_dir.Append("file"), contents, strlen(contents)),
+      strlen(contents));
+  ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir.Append("file"), 0600));
+
+  int fd;
+  int expected_file_mode = 0644;
+  EXPECT_TRUE(CrashCollector::CreateDirectoryWithSettings(
+      crash_dir, expected_mode, getuid(), getgid(), &fd, expected_file_mode));
+  struct stat st;
+  EXPECT_EQ(fstat(fd, &st), 0);
+  EXPECT_EQ(st.st_mode & 07777, expected_mode);
+
+  close(fd);
+
+  int actual_mode;
+  EXPECT_TRUE(base::GetPosixFilePermissions(crash_dir, &actual_mode));
+  EXPECT_EQ(actual_mode, expected_mode);
+
+  EXPECT_TRUE(
+      base::GetPosixFilePermissions(crash_dir.Append("file"), &actual_mode));
+  EXPECT_EQ(actual_mode, expected_file_mode);
+
+  EXPECT_TRUE(
+      base::GetPosixFilePermissions(crash_dir.Append("foo"), &actual_mode));
+  EXPECT_EQ(actual_mode, expected_mode);
+
+  EXPECT_TRUE(
+      base::GetPosixFilePermissions(crash_dir.Append("foo/bar"), &actual_mode));
+  EXPECT_EQ(actual_mode, expected_mode);
+}
+
+TEST_F(CrashCollectorTest, RunAsRoot_CreateDirectoryWithSettings_FixOwners) {
+  ASSERT_EQ(getuid(), 0);
+  ASSERT_EQ(getgid(), 0);
+
+  FilePath crash_dir = test_dir_.Append("crash_perms");
+  ASSERT_TRUE(base::CreateDirectory(crash_dir));
+  ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir, 0777));
+
+  ASSERT_EQ(chown(crash_dir.value().c_str(), 1001, 1001), 0);
+
+  int fd;
+  int expected_mode = 0755;
+  EXPECT_TRUE(CrashCollector::CreateDirectoryWithSettings(
+      crash_dir, expected_mode, getuid(), getgid(), &fd));
+  struct stat st;
+  EXPECT_EQ(fstat(fd, &st), 0);
+  EXPECT_EQ(st.st_mode & 07777, expected_mode);
+  EXPECT_EQ(st.st_uid, getuid());
+  EXPECT_EQ(st.st_gid, getgid());
+
+  close(fd);
+
+  int actual_mode;
+  EXPECT_TRUE(base::GetPosixFilePermissions(crash_dir, &actual_mode));
+  EXPECT_EQ(actual_mode, expected_mode);
 }
 
 void CrashCollectorTest::TestFinishCrashInCrashLoopMode(

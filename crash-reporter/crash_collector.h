@@ -23,6 +23,8 @@
 #include <session_manager/dbus-proxies.h>
 #include <debugd/dbus-proxies.h>
 
+constexpr mode_t kSystemCrashFilesMode = 0660;
+
 // User crash collector.
 class CrashCollector {
  public:
@@ -141,6 +143,14 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, CreateDirectoryWithSettingsNonDir);
   FRIEND_TEST(CrashCollectorTest, CreateDirectoryWithSettingsSubdir);
   FRIEND_TEST(CrashCollectorTest, CreateDirectoryWithSettingsSymlinks);
+  FRIEND_TEST(CrashCollectorTest,
+              CreateDirectoryWithSettings_FixPermissionsShallow);
+  FRIEND_TEST(CrashCollectorTest,
+              CreateDirectoryWithSettings_FixPermissionsRecursive);
+  FRIEND_TEST(CrashCollectorTest,
+              RunAsRoot_CreateDirectoryWithSettings_FixOwners);
+  FRIEND_TEST(CrashCollectorTest,
+              CreateDirectoryWithSettings_FixSubdirPermissions);
   FRIEND_TEST(CrashCollectorTest, FormatDumpBasename);
   FRIEND_TEST(CrashCollectorTest, GetCrashDirectoryInfo);
   FRIEND_TEST(CrashCollectorTest, GetCrashPath);
@@ -240,11 +250,17 @@ class CrashCollector {
 
   // Create a directory using the specified mode/user/group, and make sure it
   // is actually a directory with the specified permissions.
+  // If |files_mode| is set, the call will recursively change permissions on
+  // |dir| such that:
+  //   * any directories under it in the file heirarchy have mode |mode|
+  //   * any files under it in the heirarchy have mode |files_mode|
+  //   * all files AND directories under it are owned by owner:group
   static bool CreateDirectoryWithSettings(const base::FilePath& dir,
                                           mode_t mode,
                                           uid_t owner,
                                           gid_t group,
-                                          int* dir_fd);
+                                          int* dir_fd,
+                                          mode_t files_mode = 0);
 
   // Format crash name based on components.
   std::string FormatDumpBasename(const std::string& exec_name,

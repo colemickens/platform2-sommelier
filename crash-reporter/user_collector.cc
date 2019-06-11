@@ -289,6 +289,11 @@ bool UserCollector::RunCoreToMinidump(const FilePath& core_path,
                << " was not created";
     return false;
   }
+
+  if (chmod(minidump_path.value().c_str(), kSystemCrashFilesMode) < 0) {
+    PLOG(ERROR) << "Couldn't chmod minidump file: " << minidump_path.value();
+    return false;
+  }
   return true;
 }
 

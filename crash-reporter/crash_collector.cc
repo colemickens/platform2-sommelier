@@ -9,6 +9,7 @@
 #include <inttypes.h>
 #include <linux/limits.h>  // PATH_MAX
 #include <sys/mman.h>      // for memfd_create
+#include <sys/types.h>     // for mode_t and gid_t.
 #include <sys/utsname.h>   // For uname.
 #include <sys/wait.h>      // For waitpid.
 #include <unistd.h>        // For execv and fork.
@@ -21,6 +22,7 @@
 #include <pcrecpp.h>
 
 #include <base/bind.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
@@ -64,7 +66,8 @@ const char kLsbOsDescriptionKey[] = "CHROMEOS_RELEASE_DESCRIPTION";
 const mode_t kUserCrashPathMode = 0700;
 
 // Directory mode of the system crash spool directory.
-const mode_t kSystemCrashDirectoryMode = 0700;
+// This is SGID so that files created in it are also accessible to the group.
+const mode_t kSystemCrashDirectoryMode = 02770;
 
 // Directory mode of the run time state directory.
 // Since we place flag files in here for checking by tests, we make it readable.
@@ -73,7 +76,8 @@ constexpr mode_t kSystemRunStateDirectoryMode = 0755;
 // Directory mode of /var/lib/crash_reporter.
 constexpr mode_t kCrashReporterStateDirectoryMode = 0700;
 
-const uid_t kRootGroup = 0;
+constexpr gid_t kRootGroup = 0;
+constexpr char kCrashGroupName[] = "crash-access";
 
 // Buffer size for reading a log into memory.
 constexpr size_t kMaxLogSize = 1024 * 1024;
@@ -98,29 +102,20 @@ const int CrashCollector::kMaxCrashDirectorySize = 32;
 
 const uid_t CrashCollector::kRootUid = 0;
 
+using base::FileEnumerator;
 using base::FilePath;
 using base::StringPrintf;
 
-// Create a directory using the specified mode/user/group, and make sure it
-// is actually a directory with the specified permissions.
-// static
-bool CrashCollector::CreateDirectoryWithSettings(const FilePath& dir,
-                                                 mode_t mode,
-                                                 uid_t owner,
-                                                 gid_t group,
-                                                 int* dirfd_out) {
+// Walk the directory tree to make sure we avoid symlinks.
+// All parent parts must already exist else we abort.
+bool ValidatePathAndOpen(const FilePath& dir, int* outfd) {
   std::vector<FilePath::StringType> components;
-  const FilePath parent_dir = dir.DirName();
-  const FilePath final_dir = dir.BaseName();
-  int dirfd, parentfd;
+  dir.GetComponents(&components);
+  int parentfd = AT_FDCWD;
 
-  // Walk the directory tree to make sure we avoid symlinks.
-  // All parent parts must already exist else we abort.
-  parent_dir.GetComponents(&components);
-  parentfd = AT_FDCWD;
   for (const auto& component : components) {
-    dirfd = openat(parentfd, component.c_str(),
-                   O_CLOEXEC | O_DIRECTORY | O_NOFOLLOW | O_PATH);
+    int dirfd = openat(parentfd, component.c_str(),
+                       O_CLOEXEC | O_DIRECTORY | O_NOFOLLOW | O_PATH);
     if (dirfd < 0) {
       PLOG(ERROR) << "Unable to access crash path: " << dir.value() << " ("
                   << component << ")";
@@ -132,11 +127,32 @@ bool CrashCollector::CreateDirectoryWithSettings(const FilePath& dir,
       close(parentfd);
     parentfd = dirfd;
   }
+  *outfd = parentfd;
+  return true;
+}
+
+// Create a directory using the specified mode/user/group, and make sure it
+// is actually a directory with the specified permissions.
+// static
+bool CrashCollector::CreateDirectoryWithSettings(const FilePath& dir,
+                                                 mode_t mode,
+                                                 uid_t owner,
+                                                 gid_t group,
+                                                 int* dirfd_out,
+                                                 mode_t files_mode) {
+  const FilePath parent_dir = dir.DirName();
+  const FilePath final_dir = dir.BaseName();
+
+  int parentfd;
+  if (!ValidatePathAndOpen(parent_dir, &parentfd)) {
+    return false;
+  }
 
   // Now handle the final part of the crash dir.  This one we can initialize.
   // Note: We omit O_CLOEXEC on purpose as children will use it.
   const char* final_dir_str = final_dir.value().c_str();
-  dirfd = openat(parentfd, final_dir_str, O_DIRECTORY | O_NOFOLLOW | O_RDONLY);
+  int dirfd =
+      openat(parentfd, final_dir_str, O_DIRECTORY | O_NOFOLLOW | O_RDONLY);
   if (dirfd < 0) {
     if (errno != ENOENT) {
       // Delete whatever is there.
@@ -192,6 +208,67 @@ bool CrashCollector::CreateDirectoryWithSettings(const FilePath& dir,
       PLOG(ERROR) << "Unable to chmod crash directory: " << dir.value();
       close(dirfd);
       return false;
+    }
+  }
+
+  if (files_mode) {
+    FileEnumerator files(dir, /*recursive=*/true,
+                         FileEnumerator::FILES | FileEnumerator::DIRECTORIES |
+                             FileEnumerator::SHOW_SYM_LINKS);
+    for (FilePath name = files.Next(); !name.empty(); name = files.Next()) {
+      const struct stat& st = files.GetInfo().stat();
+      const FilePath subdir_path = name.DirName();
+      const FilePath file = name.BaseName();
+
+      mode_t desired_mode = files.GetInfo().IsDirectory() ? mode : files_mode;
+
+      if (st.st_uid != owner || st.st_gid != group ||
+          (st.st_mode & 07777) != desired_mode) {
+        // Something needs to change, so open the file.
+        int subdir_fd;
+        if (subdir_path == dir) {
+          subdir_fd = dirfd;
+        } else {
+          if (!ValidatePathAndOpen(subdir_path, &subdir_fd)) {
+            close(dirfd);
+            return false;
+          }
+        }
+
+        int file_fd =
+            openat(subdir_fd, file.value().c_str(), O_NOFOLLOW | O_RDONLY);
+        if (file_fd < 0) {
+          PLOG(ERROR) << "Unable to open subfile: " << name.value();
+          if (subdir_fd != dirfd) {
+            close(subdir_fd);
+          }
+          close(dirfd);
+          return false;
+        }
+
+        if (subdir_fd != dirfd) {
+          close(subdir_fd);
+        }
+
+        if (st.st_uid != owner || st.st_gid != group) {
+          if (fchown(file_fd, owner, group)) {
+            PLOG(ERROR) << "Unable to chown crash file: " << name.value();
+            close(file_fd);
+            close(dirfd);
+            return false;
+          }
+        }
+        if ((st.st_mode & 07777) != desired_mode) {
+          if (fchmod(file_fd, desired_mode)) {
+            PLOG(ERROR) << "Unable to chmod crash file: " << name.value();
+            close(file_fd);
+            close(dirfd);
+            return false;
+          }
+        }
+
+        close(file_fd);
+      }
     }
   }
 
@@ -289,7 +366,7 @@ base::ScopedFD CrashCollector::GetNewFileHandle(
       fd = HANDLE_EINTR(
           open(filename_cstr,
                O_CREAT | O_WRONLY | O_TRUNC | O_EXCL | O_NOFOLLOW | O_CLOEXEC,
-               0600));
+               kSystemCrashFilesMode));
       if (fd < 0) {
         PLOG(ERROR) << "Could not open " << filename_cstr;
       }
@@ -631,7 +708,9 @@ FilePath CrashCollector::GetCrashDirectoryInfo(uid_t process_euid,
   } else {
     *mode = kSystemCrashDirectoryMode;
     *directory_owner = kRootUid;
-    *directory_group = kRootGroup;
+    if (!brillo::userdb::GetGroupInfo(kCrashGroupName, directory_group)) {
+      PLOG(FATAL) << "Couldn't look up group " << kCrashGroupName;
+    }
     return system_crash_path_;
   }
 }
@@ -1173,9 +1252,15 @@ bool CrashCollector::InitializeSystemCrashDirectories(bool early) {
                                      kRootGroup, nullptr))
       return false;
   } else {
+    gid_t directory_group;
+    if (!brillo::userdb::GetGroupInfo(kCrashGroupName, &directory_group)) {
+      PLOG(ERROR) << "Group " << kCrashGroupName << " doesn't exist";
+      return false;
+    }
     if (!CreateDirectoryWithSettings(FilePath(paths::kSystemCrashDirectory),
                                      kSystemCrashDirectoryMode, kRootUid,
-                                     kRootGroup, nullptr))
+                                     directory_group, nullptr,
+                                     /*files_mode=*/kSystemCrashFilesMode))
       return false;
 
     if (!CreateDirectoryWithSettings(
