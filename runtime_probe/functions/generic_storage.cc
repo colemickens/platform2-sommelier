@@ -1,7 +1,8 @@
-/* Copyright 2018 The Chromium OS Authors. All rights reserved.
- * Use of this source code is governed by a BSD-style license that can be
- * found in the LICENSE file.
- */
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include <cstdint>
 #include <utility>
 
 #include <base/files/file_enumerator.h>
@@ -22,9 +23,9 @@ namespace runtime_probe {
 namespace {
 constexpr auto kStorageDirPath("/sys/class/block/");
 constexpr auto kReadFileMaxSize = 1024;
-// TODO(b/123097249): Remove the following hard-coded constant once
-// authenticated source of storage size to use is determined
-constexpr auto kBytesPerSector = 512;
+// Hard-coded logical block size as a fallback option when the authenticated
+// source in sysfs is not available.
+constexpr auto kDefaultBytesPerSector = 512;
 
 // DBus related constant to issue dbus call to debugd
 constexpr auto kDebugdMmcMethodName = "Mmc";
@@ -80,6 +81,30 @@ void PrependToDVKey(base::DictionaryValue* dict_value,
   }
 }
 
+// Get the logical block size of the storage given the |node_path|
+int32_t GetStorageLogicalBlockSize(const base::FilePath& node_path) {
+  std::string block_size_str;
+  if (!base::ReadFileToString(
+          node_path.Append("queue").Append("logical_block_size"),
+          &block_size_str)) {
+    LOG(WARNING) << "The storage driver does not specify its logical block "
+                    "size in sysfs. Use default value instead.";
+    return kDefaultBytesPerSector;
+  }
+  int32_t logical_block_size;
+  if (!base::StringToInt(block_size_str, &logical_block_size)) {
+    LOG(WARNING) << "Failed to convert retrieved block size to integer. Use "
+                    "default value instead";
+    return kDefaultBytesPerSector;
+  }
+  if (logical_block_size <= 0) {
+    LOG(WARNING) << "The value of logical block size " << logical_block_size
+                 << " seems errorneous. Use default value instead.";
+    return kDefaultBytesPerSector;
+  }
+  return logical_block_size;
+}
+
 }  // namespace
 
 bool GenericStorageFunction::GetOutputOfMmcExtcsd(
@@ -94,7 +119,6 @@ bool GenericStorageFunction::GetOutputOfMmcExtcsd(
     LOG(ERROR) << "Failed to connect to system D-Bus service.";
     return false;
   }
-
   dbus::ObjectProxy* object_proxy = bus->GetObjectProxy(
       debugd::kDebugdServiceName, dbus::ObjectPath(debugd::kDebugdServicePath));
 
@@ -171,29 +195,29 @@ std::string GenericStorageFunction::GetEMMC5FirmwareVersion(
     return std::string{""};
   }
 
-  /* The output of firmware version looks like hexdump of ASCII strings or
-   * hexadecimal values, which depends on vendors.
+  // The output of firmware version looks like hexdump of ASCII strings or
+  // hexadecimal values, which depends on vendors.
 
-   * Example of version "ABCDEFGH" (ASCII hexdump)
-   * [FIRMWARE_VERSION[261]]: 0x48
-   * [FIRMWARE_VERSION[260]]: 0x47
-   * [FIRMWARE_VERSION[259]]: 0x46
-   * [FIRMWARE_VERSION[258]]: 0x45
-   * [FIRMWARE_VERSION[257]]: 0x44
-   * [FIRMWARE_VERSION[256]]: 0x43
-   * [FIRMWARE_VERSION[255]]: 0x42
-   * [FIRMWARE_VERSION[254]]: 0x41
+  // Example of version "ABCDEFGH" (ASCII hexdump)
+  // [FIRMWARE_VERSION[261]]: 0x48
+  // [FIRMWARE_VERSION[260]]: 0x47
+  // [FIRMWARE_VERSION[259]]: 0x46
+  // [FIRMWARE_VERSION[258]]: 0x45
+  // [FIRMWARE_VERSION[257]]: 0x44
+  // [FIRMWARE_VERSION[256]]: 0x43
+  // [FIRMWARE_VERSION[255]]: 0x42
+  // [FIRMWARE_VERSION[254]]: 0x41
 
-   * Example of version 3 (hexadecimal values hexdump)
-   * [FIRMWARE_VERSION[261]]: 0x00
-   * [FIRMWARE_VERSION[260]]: 0x00
-   * [FIRMWARE_VERSION[259]]: 0x00
-   * [FIRMWARE_VERSION[258]]: 0x00
-   * [FIRMWARE_VERSION[257]]: 0x00
-   * [FIRMWARE_VERSION[256]]: 0x00
-   * [FIRMWARE_VERSION[255]]: 0x00
-   * [FIRMWARE_VERSION[254]]: 0x03
-   */
+  // Example of version 3 (hexadecimal values hexdump)
+  // [FIRMWARE_VERSION[261]]: 0x00
+  // [FIRMWARE_VERSION[260]]: 0x00
+  // [FIRMWARE_VERSION[259]]: 0x00
+  // [FIRMWARE_VERSION[258]]: 0x00
+  // [FIRMWARE_VERSION[257]]: 0x00
+  // [FIRMWARE_VERSION[256]]: 0x00
+  // [FIRMWARE_VERSION[255]]: 0x00
+  // [FIRMWARE_VERSION[254]]: 0x03
+
   pcrecpp::RE re(R"(^\[FIRMWARE_VERSION\[\d+\]\]: (.*)$)",
                  pcrecpp::RE_Options());
   /* version list stores each byte as the format "ff" (two hex digits)
@@ -324,8 +348,9 @@ GenericStorageFunction::DataType GenericStorageFunction::Eval() const {
                    << " to integer!";
         node_res.SetString("size", "-1");
       } else {
-        node_res.SetString("size",
-                           base::Int64ToString(sector_int * kBytesPerSector));
+        node_res.SetString(
+            "size", base::Int64ToString(sector_int *
+                                        GetStorageLogicalBlockSize(node_path)));
       }
     } else {
       VLOG(2) << "Storage device " << node_path.value()
