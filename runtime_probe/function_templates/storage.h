@@ -56,6 +56,8 @@ class StorageFunction : public ProbeFunction {
   base::Optional<int64_t> GetStorageSectorCount(
       const base::FilePath& node_path) const;
   int32_t GetStorageLogicalBlockSize(const base::FilePath& node_path) const;
+
+  friend class GenericStorageFunction;
 };
 
 }  // namespace runtime_probe

@@ -12,49 +12,38 @@
 #include <base/files/file_path.h>
 #include <base/values.h>
 
-#include "runtime_probe/probe_function.h"
+#include "runtime_probe/function_templates/storage.h"
+#include "runtime_probe/functions/ata_storage.h"
+#include "runtime_probe/functions/mmc_storage.h"
+#include "runtime_probe/functions/nvme_storage.h"
 
 namespace runtime_probe {
 
-class GenericStorageFunction : public ProbeFunction {
+class GenericStorageFunction : public StorageFunction {
  public:
   static constexpr auto function_name = "generic_storage";
-
-  static std::unique_ptr<ProbeFunction> FromDictionaryValue(
-      const base::DictionaryValue& dict_value) {
-    std::unique_ptr<GenericStorageFunction> instance{
-        new GenericStorageFunction()};
-
-    if (dict_value.size() != 0) {
-      LOG(ERROR) << function_name << " dooes not take any arguement";
-      return nullptr;
-    }
-    return instance;
-  }
-
   std::string GetFunctionName() const override { return function_name; }
 
-  // Override `Eval` function, which should return a list of DictionaryValue
-  DataType Eval() const override;
-  int EvalInHelper(std::string* output) const override;
+  static std::unique_ptr<ProbeFunction> FromDictionaryValue(
+      const base::DictionaryValue& dict_value);
+
+ protected:
+  base::DictionaryValue EvalByDV(
+      const base::DictionaryValue& storage_dv) const override;
+  // Eval the storage indicated by |node_path| inside the
+  // runtime_probe_helper.
+  base::DictionaryValue EvalInHelperByPath(
+      const base::FilePath& node_path) const override;
 
  private:
+  // Use FromDictionaryValue to ensure the arg is correctly parsed.
+  GenericStorageFunction() = default;
+
   static ProbeFunction::Register<GenericStorageFunction> register_;
 
-  // Get the result of mmc extcsd on the device sepcified by |node path| and put
-  // it into |output|
-  bool GetOutputOfMmcExtcsd(const base::FilePath& node_path,
-                            std::string* output) const;
-
-  // Return all the fixed storage devices.
-  std::vector<base::FilePath> GetFixedDevices() const;
-
-  // Extracts eMMC 5.0 firmware version of storage device specified by
-  // |node_path| from EXT_CSD[254:262]
-  // TODO(hmchu): Currently mmc D-Bus call to debugd only retrives info of
-  // /dev/mmcblk0. Retrieve mmc info based on |node_path| once the corresponding
-  // D-Bus call is ready.
-  std::string GetEMMC5FirmwareVersion(const base::FilePath& node_path) const;
+  std::unique_ptr<StorageFunction> ata_prober_;
+  std::unique_ptr<StorageFunction> mmc_prober_;
+  std::unique_ptr<StorageFunction> nvme_prober_;
 };
 
 // Register the GenericStorageFunction

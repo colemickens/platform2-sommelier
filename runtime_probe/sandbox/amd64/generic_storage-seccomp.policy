@@ -20,6 +20,7 @@ munmap: 1
 openat: 1
 prlimit64: 1
 read: 1
+readlink: 1
 restart_syscall: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
