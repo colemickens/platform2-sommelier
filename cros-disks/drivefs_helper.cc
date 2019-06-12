@@ -4,6 +4,7 @@
 
 #include "cros-disks/drivefs_helper.h"
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -21,17 +22,87 @@ namespace {
 const char kDataDirOptionPrefix[] = "datadir=";
 const char kIdentityOptionPrefix[] = "identity=";
 
-const char kUserName[] = "fuse-drivefs";
+const char kOldUser[] = "fuse-drivefs";
 const char kHelperTool[] = "/opt/google/drive-file-stream/drivefs";
 const char kSeccompPolicyFile[] =
     "/opt/google/drive-file-stream/drivefs-seccomp.policy";
 const char kType[] = "drivefs";
 const char kDbusSocketPath[] = "/run/dbus";
 
+// The deepest expected path within a DriveFS datadir is
+// {content,thumbnails}_cache/d<number>/d<number>/<number>. Allow one extra
+// level just in case.
+constexpr int kMaxTraversalDepth = 5;
+
+// Ensures that the datadir has the correct owner. If not, recursively chown the
+// contents, skipping directories with the expected owner. During directory
+// descent, set group to the eventual group to allow directory traversal to
+// allow access to the contents. On ascent, set user to the expected user,
+// marking the directory as having the correct ownership.
+bool EnsureOwnership(const Platform& platform,
+                     const base::FilePath& path,
+                     uid_t mounter_uid,
+                     gid_t files_gid,
+                     uid_t old_mounter_uid,
+                     int depth = 0) {
+  if (depth > kMaxTraversalDepth) {
+    LOG(ERROR) << "Reached maximum traversal depth ensuring drivefs datadir "
+                  "ownership: "
+               << path.value();
+    return false;
+  }
+  uid_t current_uid;
+  gid_t current_gid;
+  if (!platform.GetOwnership(path.value(), &current_uid, &current_gid)) {
+    LOG(ERROR) << "Unable to access datadir '" << path.value() << "'";
+    return false;
+  }
+  if (current_uid == mounter_uid && current_gid == files_gid) {
+    return true;
+  }
+  if (current_uid != old_mounter_uid) {
+    LOG(ERROR) << "Unexpected old uid for '" << path.value() << "'. Expected "
+               << old_mounter_uid << "; found " << current_uid;
+    return false;
+  }
+  // Set group to |files_gid| to ensure the directory is traversable. Keep the
+  // |current_uid| so this directory isn't treated as having the correct
+  // ownership in case this operation is interrupted.
+  if (!platform.SetOwnership(path.value(), current_uid, files_gid)) {
+    LOG(ERROR) << "Unable to chown '" << path.value() << "' to " << current_uid
+               << ":" << files_gid;
+    return false;
+  }
+  base::FileEnumerator dirs(base::FilePath(path), false,
+                            base::FileEnumerator::DIRECTORIES);
+  for (auto dir_path = dirs.Next(); !dir_path.empty(); dir_path = dirs.Next()) {
+    if (!EnsureOwnership(platform, dir_path, mounter_uid, files_gid,
+                         old_mounter_uid, depth + 1)) {
+      return false;
+    }
+  }
+  base::FileEnumerator files(base::FilePath(path), false,
+                             base::FileEnumerator::FILES);
+  for (auto file_path = files.Next(); !file_path.empty();
+       file_path = files.Next()) {
+    if (!platform.SetOwnership(file_path.value(), mounter_uid, files_gid)) {
+      LOG(ERROR) << "Unable to chown '" << file_path.value() << "' to "
+                 << mounter_uid << ":" << files_gid;
+      return false;
+    }
+  }
+  if (!platform.SetOwnership(path.value(), mounter_uid, files_gid)) {
+    LOG(ERROR) << "Unable to chown '" << path.value() << "' to " << mounter_uid
+               << ":" << files_gid;
+    return false;
+  }
+  return true;
+}
+
 }  // namespace
 
 DrivefsHelper::DrivefsHelper(const Platform* platform)
-    : FUSEHelper(kType, platform, base::FilePath(kHelperTool), kUserName) {}
+    : FUSEHelper(kType, platform, base::FilePath(kHelperTool), kFilesUser) {}
 
 DrivefsHelper::~DrivefsHelper() = default;
 
@@ -113,10 +184,10 @@ bool DrivefsHelper::SetupDirectoryForFUSEAccess(
   CHECK(dir.IsAbsolute() && !dir.ReferencesParent())
       << "unsafe path '" << dir.value() << "'";
 
-  uid_t files_uid, mounter_uid;
+  uid_t mounter_uid, old_mounter_uid;
   gid_t files_gid;
   if (!platform()->GetUserAndGroupId(user(), &mounter_uid, nullptr) ||
-      !platform()->GetUserAndGroupId(kFilesUser, &files_uid, nullptr) ||
+      !platform()->GetUserAndGroupId(kOldUser, &old_mounter_uid, nullptr) ||
       !platform()->GetGroupId(kFilesGroup, &files_gid)) {
     LOG(ERROR) << "Invalid user configuration.";
     return false;
@@ -124,31 +195,19 @@ bool DrivefsHelper::SetupDirectoryForFUSEAccess(
   std::string path = dir.value();
 
   if (platform()->DirectoryExists(path)) {
-    uid_t current_uid;
-    gid_t current_gid;
-    if (!platform()->GetOwnership(path, &current_uid, &current_gid)) {
-      LOG(WARNING) << "Can't access datadir '" << path << "'";
-      return false;
-    }
-    if (current_uid == mounter_uid && current_gid == files_gid) {
-      return true;
-    }
-    if (!platform()->RemoveEmptyDirectory(path)) {
-      LOG(WARNING) << "Existing datadir '" << path << "' has unexpected owner "
-                   << current_uid << ":" << current_gid;
-      return false;
-    }
+    return EnsureOwnership(*platform(), base::FilePath(path), mounter_uid,
+                           files_gid, old_mounter_uid);
   }
   if (!platform()->CreateDirectory(path)) {
     LOG(ERROR) << "Failed to create datadir '" << path << "'";
     return false;
   }
   if (!platform()->SetPermissions(path, 0770)) {
-    LOG(ERROR) << "Can't chmod datadir '" << path << "'";
+    LOG(ERROR) << "Unable to chmod datadir '" << path << "'";
     return false;
   }
   if (!platform()->SetOwnership(path, mounter_uid, files_gid)) {
-    LOG(ERROR) << "Can't chown datadir '" << path << "'";
+    LOG(ERROR) << "Unable to chown datadir '" << path << "'";
     return false;
   }
   return true;
