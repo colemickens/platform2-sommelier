@@ -77,6 +77,6 @@ set_modem_manager_logging() {
   if [ "${level}" = "error" ]; then
     level=err
   fi
-  dbus_call "${manager}" "${MM1_OBJECT}" "${MM1_IMANAGER}.SetLogging" \
+  dbus_call "${MM1}" "${MM1_OBJECT}" "${MM1_IMANAGER}.SetLogging" \
     "string:${level}"
 }
