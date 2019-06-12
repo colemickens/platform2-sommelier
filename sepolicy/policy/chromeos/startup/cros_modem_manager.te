@@ -1,4 +1,4 @@
-type cros_modem_manager, chromeos_domain, mlstrustedobject, domain;
+type cros_modem_manager, chromeos_domain, domain;
 
 permissive cros_modem_manager;
 

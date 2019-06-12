@@ -1,4 +1,4 @@
-type cros_tlsdated, chromeos_domain, domain, mlstrustedobject;
+type cros_tlsdated, chromeos_domain, domain;
 
 permissive cros_tlsdated;
 

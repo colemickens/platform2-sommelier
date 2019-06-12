@@ -1,4 +1,4 @@
-type cros_anomaly_detector, chromeos_domain, domain, mlstrustedobject;
+type cros_anomaly_detector, chromeos_domain, domain;
 
 from_minijail_static(cros_anomaly_detector, cros_anomaly_detector_exec);
 cros_dbus_client(cros_anomaly_detector)

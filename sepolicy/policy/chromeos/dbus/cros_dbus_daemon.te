@@ -1,4 +1,4 @@
-type cros_dbus_daemon, chromeos_domain, domain, mlstrustedobject;
+type cros_dbus_daemon, chromeos_domain, domain;
 
 permissive cros_dbus_daemon;
 

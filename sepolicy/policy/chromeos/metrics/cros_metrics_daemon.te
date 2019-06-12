@@ -1,4 +1,4 @@
-type cros_metrics_daemon, chromeos_domain, domain, mlstrustedobject;
+type cros_metrics_daemon, chromeos_domain, domain;
 
 # TODO(crbug.com/954670, crbug.com/956270)
 # /etc/lsb-release is unlabeled (suspect post build_image release process recreating it)

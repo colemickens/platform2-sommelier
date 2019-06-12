@@ -1,4 +1,4 @@
-type cros_cras, chromeos_domain, domain, mlstrustedobject;
+type cros_cras, chromeos_domain, domain;
 
 # TODO(fqj): enforce after ARC change landed.
 permissive cros_cras;

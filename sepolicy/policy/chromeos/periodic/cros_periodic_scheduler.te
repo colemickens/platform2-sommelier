@@ -1,4 +1,4 @@
-type cros_periodic_scheduler, chromeos_domain, domain, mlstrustedobject;
+type cros_periodic_scheduler, chromeos_domain, domain;
 
 exec_coreutils(cros_periodic_scheduler);
 use_init_fd(cros_periodic_scheduler);

@@ -1,4 +1,4 @@
-type cros_crash_sender, chromeos_domain, domain, mlstrustedobject;
+type cros_crash_sender, chromeos_domain, domain;
 
 permissive cros_crash_sender;
 

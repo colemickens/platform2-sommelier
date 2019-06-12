@@ -1,4 +1,4 @@
-type cros_machine_id_regen, chromeos_domain, domain, mlstrustedobject, cros_dbus_uuidgen_domain;
+type cros_machine_id_regen, chromeos_domain, domain, cros_dbus_uuidgen_domain;
 
 permissive cros_machine_id_regen;
 

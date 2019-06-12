@@ -1,2 +1,2 @@
-type kernel, domain, mlstrustedobject;
+type kernel, domain, mlstrustedsubject;
 neverallow * kernel:process { transition dyntransition };

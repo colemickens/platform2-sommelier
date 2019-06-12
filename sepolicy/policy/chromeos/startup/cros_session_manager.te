@@ -1,4 +1,4 @@
-type cros_session_manager, chromeos_domain, cros_miscdomain, domain, mlstrustedobject;
+type cros_session_manager, chromeos_domain, cros_miscdomain, domain;
 
 permissive cros_session_manager;
 

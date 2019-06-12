@@ -1,4 +1,4 @@
-type cros_midis, domain, chromeos_domain, mlstrustedobject;
+type cros_midis, domain, chromeos_domain;
 
 permissive cros_midis;
 

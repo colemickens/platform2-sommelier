@@ -1,6 +1,6 @@
 # SELinux policy for crash reporting.
 
-type cros_crash, cros_miscdomain, chromeos_domain, domain, mlstrustedobject;
+type cros_crash, cros_miscdomain, chromeos_domain, domain;
 
 permissive cros_crash;
 

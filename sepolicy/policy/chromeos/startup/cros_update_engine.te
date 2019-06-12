@@ -1,4 +1,4 @@
-type cros_update_engine, chromeos_domain, domain, mlstrustedobject;
+type cros_update_engine, chromeos_domain, domain;
 
 permissive cros_update_engine;
 

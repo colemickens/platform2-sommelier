@@ -1,6 +1,6 @@
 # SELinux policy for Shill component of Chrome OS.
 
-type cros_shill, chromeos_domain, domain, mlstrustedobject;
+type cros_shill, chromeos_domain, domain;
 
 permissive cros_shill;
 
