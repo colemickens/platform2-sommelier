@@ -827,6 +827,15 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
     status->line_power_current = ReadScaledDouble(path, "current_now");
     status->has_line_power_current = true;
   }
+  if (base::PathExists(path.Append("voltage_max_design"))) {
+    status->line_power_max_voltage =
+      ReadScaledDouble(path, "voltage_max_design");
+    status->has_line_power_max_voltage = true;
+  }
+  if (base::PathExists(path.Append("current_max"))) {
+    status->line_power_max_current = ReadScaledDouble(path, "current_max");
+    status->has_line_power_max_current = true;
+  }
 
   // The USB PD driver reports the maximum power as being 0 watts while it's
   // being determined; avoid reporting a low-power charger in that case.

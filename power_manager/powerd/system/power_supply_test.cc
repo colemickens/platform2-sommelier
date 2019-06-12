@@ -1802,24 +1802,36 @@ TEST_F(PowerSupplyTest, NoCurrentOrVoltage) {
   WriteDefaultValues(PowerSource::AC);
   WriteDoubleValue(ac_dir_, "current_now", 2.0);
   WriteDoubleValue(ac_dir_, "voltage_now", 5.0);
+  WriteDoubleValue(ac_dir_, "current_max", 3.0);
+  WriteDoubleValue(ac_dir_, "voltage_max_design", 20.0);
   Init();
   PowerStatus status;
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_TRUE(status.has_line_power_current);
   EXPECT_TRUE(status.has_line_power_voltage);
+  EXPECT_TRUE(status.has_line_power_max_current);
+  EXPECT_TRUE(status.has_line_power_max_voltage);
 
   // PowerSupply should report the lack of a current_now file:
   // https://crbug.com/807753
   base::DeleteFile(ac_dir_.Append("current_now"), false);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.has_line_power_current);
-  EXPECT_TRUE(status.has_line_power_voltage);
 
   // Ditto for voltage_now.
   base::DeleteFile(ac_dir_.Append("voltage_now"), false);
   ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_FALSE(status.has_line_power_current);
   EXPECT_FALSE(status.has_line_power_voltage);
+
+  // Ditto for current_max.
+  base::DeleteFile(ac_dir_.Append("current_max"), false);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_FALSE(status.has_line_power_max_current);
+
+  // Ditto for voltage_max_design.
+  base::DeleteFile(ac_dir_.Append("voltage_max_design"), false);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_FALSE(status.has_line_power_max_voltage);
 }
 
 TEST_F(PowerSupplyTest, IgnoreMultipleBatteriesWithoutPref) {

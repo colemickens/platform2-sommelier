@@ -110,6 +110,8 @@ struct PowerStatus {
   // True if various |line_power_*| values were set successfully.
   bool has_line_power_voltage = false;
   bool has_line_power_current = false;
+  bool has_line_power_max_voltage = false;
+  bool has_line_power_max_current = false;
 
   // Amount of energy, measured in Wh, in the battery.
   double battery_energy = 0.0;
