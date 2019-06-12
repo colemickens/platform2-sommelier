@@ -8,10 +8,15 @@
 
 #include "shill/cellular/cellular_pco.h"
 
+#include <base/logging.h>
+
 namespace shill {
 namespace {
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+  // Turn off logging.
+  logging::SetMinLogLevel(logging::LOG_FATAL);
+
   base::FuzzedDataProvider data_provider(data, size);
 
   // Prepare a few random elements to search for.

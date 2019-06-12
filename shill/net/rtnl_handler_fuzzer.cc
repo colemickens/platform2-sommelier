@@ -6,6 +6,7 @@
 #include "shill/net/io_handler.h"
 
 #include <base/at_exit.h>
+#include <base/logging.h>
 
 namespace shill {
 
@@ -19,6 +20,9 @@ class RTNLHandlerFuzz {
 };
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+  // Turn off logging.
+  logging::SetMinLogLevel(logging::LOG_FATAL);
+
   RTNLHandlerFuzz::Run(data, size);
   return 0;
 }

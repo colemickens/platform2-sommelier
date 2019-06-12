@@ -7,10 +7,15 @@
 #include "shill/net/byte_string.h"
 #include "shill/net/nl80211_message.h"
 
+#include <base/logging.h>
+
 namespace shill {
 namespace {
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+  // Turn off logging.
+  logging::SetMinLogLevel(logging::LOG_FATAL);
+
   Nl80211Frame frame(ByteString(data, size));
   std::string output = frame.ToString();
 
