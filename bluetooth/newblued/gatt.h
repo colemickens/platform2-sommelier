@@ -33,6 +33,11 @@ class Gatt : DeviceInterfaceHandler::DeviceObserver {
                           gatt_client_conn_t conn_id) override;
 
  private:
+  // Traverses all primary services to retrieve complete structure of remote
+  // GATT attributes.
+  void TravPrimaryServices(const std::string& device_address,
+                           gatt_client_conn_t conn_id);
+
   void OnGattClientEnumServices(bool finished,
                                 gatt_client_conn_t conn_id,
                                 UniqueId transaction_id,
@@ -41,6 +46,10 @@ class Gatt : DeviceInterfaceHandler::DeviceObserver {
                                 uint16_t first_handle,
                                 uint16_t num_handles,
                                 GattClientOperationStatus status);
+
+  void OnGattClientTravPrimaryService(gatt_client_conn_t conn_id,
+                                      UniqueId transaction_id,
+                                      std::unique_ptr<GattService> service);
 
   Newblue* newblue_;
 

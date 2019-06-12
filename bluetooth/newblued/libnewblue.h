@@ -48,6 +48,13 @@ class LibNewblue {
       GattClientEnumServices,
       gattClientEnumServices,
       uint8_t(void*, gatt_client_conn_t, bool, uniq_t, gattCliSvcEnumCbk));
+  LIBNEWBLUE_METHOD5(GattClientUtilFindAndTraversePrimaryService,
+                     gattClientUtilFindAndTraversePrimaryService,
+                     uint8_t(void*,
+                             gatt_client_conn_t,
+                             const struct uuid*,
+                             uniq_t,
+                             gattCliUtilSvcTraversedCbk));
 
   // gatt-builtin.h
   LIBNEWBLUE_METHOD0(GattBuiltinInit, gattBuiltinInit, bool());

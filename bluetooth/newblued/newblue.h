@@ -96,6 +96,7 @@ enum class GattClientOperationStatus : uint8_t {
 // The is based on gattCli*Cbk defined in newblue/gatt.h.
 enum class GattClientOperationType {
   SERVICES_ENUM,
+  PRIMARY_SERVICE_TRAV,
 };
 
 // Agent to receive pairing user interaction events.
@@ -138,7 +139,7 @@ class Newblue {
   using GattClientConnectCallback =
       base::Callback<void(gatt_client_conn_t conn_id, uint8_t status)>;
 
-  using GattClientServiceEnumCallback =
+  using GattClientServicesEnumCallback =
       base::Callback<void(bool finished,
                           gatt_client_conn_t conn_id,
                           UniqueId transaction_id,
@@ -148,10 +149,16 @@ class Newblue {
                           uint16_t num_handles,
                           GattClientOperationStatus status)>;
 
+  using GattClientPrimaryServiceTravCallback =
+      base::Callback<void(gatt_client_conn_t conn_id,
+                          UniqueId transaction_id,
+                          std::unique_ptr<GattService> service)>;
+
   // Represents a GATT client operation.
   struct GattClientOperation {
     GattClientOperationType type;
-    GattClientServiceEnumCallback services_enum_callback;
+    GattClientServicesEnumCallback services_enum_callback;
+    GattClientPrimaryServiceTravCallback service_trav_callback;
   };
 
   explicit Newblue(std::unique_ptr<LibNewblue> libnewblue);
@@ -222,7 +229,14 @@ class Newblue {
       gatt_client_conn_t conn_id,
       bool primary,
       UniqueId transaction_id,
-      GattClientServiceEnumCallback callback);
+      GattClientServicesEnumCallback callback);
+
+  // Traverses the attributes included in a primary service.
+  GattClientOperationStatus GattClientTravPrimaryService(
+      gatt_client_conn_t conn_id,
+      const Uuid& uuid,
+      UniqueId transaction_id,
+      GattClientPrimaryServiceTravCallback callback);
 
  private:
   // Posts task to the thread which created this Newblue object.
@@ -276,6 +290,17 @@ class Newblue {
                                       uint16_t first_handle,
                                       uint16_t num_handles,
                                       uint8_t status);
+
+  static void GattClientTravPrimaryServiceCallbackThunk(
+      void* user_data,
+      gatt_client_conn_t conn,
+      uniq_t transaction_id,
+      const struct GattTraversedService* service);
+  // Called when the primary service traversal result is received.
+  void GattClientTravPrimaryServiceCallback(
+      gatt_client_conn_t conn_id,
+      uniq_t transaction_id,
+      std::unique_ptr<GattService> service);
 
   static void PasskeyDisplayObserverCallbackThunk(
       void* data,

@@ -30,6 +30,12 @@ class MockLibNewblue : public LibNewblue {
   MOCK_METHOD5(
       GattClientEnumServices,
       uint8_t(void*, gatt_client_conn_t, bool, uniq_t, gattCliSvcEnumCbk));
+  MOCK_METHOD5(GattClientUtilFindAndTraversePrimaryService,
+               uint8_t(void*,
+                       gatt_client_conn_t,
+                       const struct uuid*,
+                       uniq_t,
+                       gattCliUtilSvcTraversedCbk));
 
   // gatt-builtin.h
   MOCK_METHOD0(GattBuiltinInit, bool());

@@ -31,16 +31,6 @@ std::string ConvertBtAddrToString(const struct bt_addr& addr) {
                             addr.addr[1], addr.addr[0]);
 }
 
-std::string ConvertGattClientOperationTypeToString(
-    GattClientOperationType type) {
-  switch (type) {
-    case GattClientOperationType::SERVICES_ENUM:
-      return "SERVICES_ENUM";
-    default:
-      return "";
-  }
-}
-
 }  // namespace
 
 Newblue::Newblue(std::unique_ptr<LibNewblue> libnewblue)
@@ -257,21 +247,21 @@ GattClientOperationStatus Newblue::GattClientEnumServices(
     gatt_client_conn_t conn_id,
     bool primary,
     UniqueId transaction_id,
-    GattClientServiceEnumCallback callback) {
+    GattClientServicesEnumCallback callback) {
   if (conn_id == kInvalidGattConnectionId) {
     LOG(WARNING) << "Invalid GATT conn ID " << conn_id
-                 << " provided, ignore request";
+                 << " provided, ignoring request";
     return GattClientOperationStatus::ERR;
   }
 
   if (callback.is_null()) {
-    LOG(WARNING) << "Callback not provided, ignore request";
+    LOG(WARNING) << "Callback not provided, ignoring request";
     return GattClientOperationStatus::ERR;
   }
 
   if (gatt_client_ops_.find(transaction_id) != gatt_client_ops_.end()) {
     LOG(WARNING) << "Transaction " << transaction_id
-                 << " already exists, ignore request";
+                 << " already exists, ignoring request";
     return GattClientOperationStatus::ERR;
   }
 
@@ -283,6 +273,41 @@ GattClientOperationStatus Newblue::GattClientEnumServices(
       libnewblue_->GattClientEnumServices(
           this, conn_id, primary, static_cast<uniq_t>(transaction_id),
           &Newblue::GattClientEnumServicesCallbackThunk));
+}
+
+GattClientOperationStatus Newblue::GattClientTravPrimaryService(
+    gatt_client_conn_t conn_id,
+    const Uuid& uuid,
+    UniqueId transaction_id,
+    GattClientPrimaryServiceTravCallback callback) {
+  if (conn_id == kInvalidGattConnectionId) {
+    LOG(WARNING) << "Invalid GATT conn ID " << conn_id
+                 << " provided, ignoring rquest";
+    return GattClientOperationStatus::ERR;
+  }
+
+  if (callback.is_null()) {
+    LOG(WARNING) << "Callback not provided, ignoring request";
+    return GattClientOperationStatus::ERR;
+  }
+
+  if (gatt_client_ops_.find(transaction_id) != gatt_client_ops_.end()) {
+    LOG(WARNING) << "Transaction " << transaction_id
+                 << " already exists, ignoring request";
+    return GattClientOperationStatus::ERR;
+  }
+
+  GattClientOperation op = {
+      .type = GattClientOperationType::PRIMARY_SERVICE_TRAV,
+      .service_trav_callback = callback};
+  gatt_client_ops_.emplace(transaction_id, std::move(op));
+
+  struct uuid u = ConvertToRawUuid(uuid);
+
+  return static_cast<GattClientOperationStatus>(
+      libnewblue_->GattClientUtilFindAndTraversePrimaryService(
+          this, conn_id, &u, static_cast<uniq_t>(transaction_id),
+          &Newblue::GattClientTravPrimaryServiceCallbackThunk));
 }
 
 /*** Private Methods ***/
@@ -413,18 +438,9 @@ void Newblue::GattClientEnumServicesCallback(gatt_client_conn_t conn_id,
                                              uint8_t status) {
   UniqueId tran_id = static_cast<UniqueId>(transaction_id);
   auto op = gatt_client_ops_.find(tran_id);
-  if (op == gatt_client_ops_.end()) {
-    LOG(WARNING) << "Unexpected service enum result received for GATT conn ID "
-                 << conn_id << ", drop it";
-    return;
-  }
 
-  if (op->second.type != GattClientOperationType::SERVICES_ENUM) {
-    LOG(WARNING) << "Unexpected GATT operation "
-                 << ConvertGattClientOperationTypeToString(op->second.type)
-                 << ", drop it";
-    return;
-  }
+  CHECK(op != gatt_client_ops_.end());
+  CHECK(op->second.type == GattClientOperationType::SERVICES_ENUM);
 
   bool finished = uuid.format() == UuidFormat::UUID_INVALID;
 
@@ -433,7 +449,40 @@ void Newblue::GattClientEnumServicesCallback(gatt_client_conn_t conn_id,
       static_cast<GattClientOperationStatus>(status));
 
   if (finished)
-    gatt_client_ops_.erase(op);
+    gatt_client_ops_.erase(tran_id);
+}
+
+void Newblue::GattClientTravPrimaryServiceCallbackThunk(
+    void* user_data,
+    gatt_client_conn_t conn_id,
+    uniq_t transaction_id,
+    const struct GattTraversedService* service) {
+  Newblue* newblue = static_cast<Newblue*>(user_data);
+
+  CHECK(newblue != nullptr);
+
+  std::unique_ptr<GattService> s = nullptr;
+  if (service)
+    s = ConvertToGattService(*service);
+
+  newblue->PostTask(FROM_HERE,
+                    base::Bind(&Newblue::GattClientTravPrimaryServiceCallback,
+                               newblue->GetWeakPtr(), conn_id, transaction_id,
+                               base::Passed(std::move(s))));
+}
+
+void Newblue::GattClientTravPrimaryServiceCallback(
+    gatt_client_conn_t conn_id,
+    uniq_t transaction_id,
+    std::unique_ptr<GattService> service) {
+  UniqueId tran_id = static_cast<UniqueId>(transaction_id);
+  auto op = gatt_client_ops_.find(tran_id);
+
+  CHECK(op != gatt_client_ops_.end());
+  CHECK(op->second.type == GattClientOperationType::PRIMARY_SERVICE_TRAV);
+
+  op->second.service_trav_callback.Run(conn_id, tran_id, std::move(service));
+  gatt_client_ops_.erase(tran_id);
 }
 
 void Newblue::PasskeyDisplayObserverCallbackThunk(

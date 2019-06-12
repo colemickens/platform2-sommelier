@@ -61,6 +61,43 @@ void Gatt::OnGattDisconnected(const std::string& device_address,
   remote_services_.erase(device_address);
 }
 
+void Gatt::TravPrimaryServices(const std::string& device_address,
+                               gatt_client_conn_t conn_id) {
+  auto services = remote_services_.find(device_address);
+
+  if (services == remote_services_.end()) {
+    LOG(WARNING) << "Failed to find remote services associated with device "
+                 << device_address;
+    return;
+  }
+
+  for (const auto& service_entry : services->second) {
+    GattService* service = service_entry.second.get();
+
+    if (!service->primary())
+      continue;
+
+    UniqueId transaction_id = GetNextId();
+    transactions_.emplace(transaction_id,
+                          GattClientOperationType::PRIMARY_SERVICE_TRAV);
+
+    GattClientOperationStatus status = newblue_->GattClientTravPrimaryService(
+        conn_id, service->uuid(), transaction_id,
+        base::Bind(&Gatt::OnGattClientTravPrimaryService,
+                   weak_ptr_factory_.GetWeakPtr()));
+    if (status != GattClientOperationStatus::OK) {
+      LOG(ERROR) << "Failed to traverse GATT primary service "
+                 << service->uuid().canonical_value() << " for device "
+                 << device_address << " with conn ID " << conn_id;
+      transactions_.erase(transaction_id);
+    } else {
+      VLOG(1) << "Start traversing GATT primary service "
+              << service->uuid().canonical_value() << " for device "
+              << device_address << ", transaction " << transaction_id;
+    }
+  }
+}
+
 void Gatt::OnGattClientEnumServices(bool finished,
                                     gatt_client_conn_t conn_id,
                                     UniqueId transaction_id,
@@ -69,22 +106,17 @@ void Gatt::OnGattClientEnumServices(bool finished,
                                     uint16_t first_handle,
                                     uint16_t num_handles,
                                     GattClientOperationStatus status) {
-  if (status != GattClientOperationStatus::OK) {
-    LOG(ERROR) << "Error GATT client operation, drop it";
-    return;
-  }
-
   auto transaction = transactions_.find(transaction_id);
-  if (transaction == transactions_.end()) {
-    LOG(WARNING) << "Unknown GATT transaction " << transaction_id;
+  CHECK(transaction != transactions_.end());
+  CHECK(transaction->second.type == GattClientOperationType::SERVICES_ENUM);
+
+  if (status != GattClientOperationStatus::OK) {
+    LOG(ERROR) << "Error GATT client operation, dropping it";
     return;
   }
 
-  if (transaction->second != GattClientOperationType::SERVICES_ENUM) {
-    LOG(ERROR) << "Mismatched GATT operation";
-    return;
-  }
-
+  // This may be invoked after device is removed, so we check whether the device
+  // is still valid.
   std::string device_address =
       device_interface_handler_->GetAddressByConnectionId(conn_id);
   if (device_address.empty()) {
@@ -98,6 +130,9 @@ void Gatt::OnGattClientEnumServices(bool finished,
     VLOG(1) << "GATT browsing finished for device " << device_address
             << ", transaction " << transaction_id;
     transactions_.erase(transaction_id);
+
+    // Start primary services traversal.
+    TravPrimaryServices(device_address, conn_id);
     return;
   }
 
@@ -115,6 +150,58 @@ void Gatt::OnGattClientEnumServices(bool finished,
                            std::make_unique<GattService>(
                                device_address, first_handle,
                                first_handle + num_handles - 1, primary, uuid));
+}
+
+void Gatt::OnGattClientTravPrimaryService(
+    gatt_client_conn_t conn_id,
+    UniqueId transaction_id,
+    std::unique_ptr<GattService> service) {
+  auto transaction = transactions_.find(transaction_id);
+  CHECK(transaction != transactions_.end());
+  CHECK(transaction->second.type ==
+        GattClientOperationType::PRIMARY_SERVICE_TRAV);
+
+  // This may be invoked after device is removed, so we check whether the device
+  // is still valid.
+  std::string device_address =
+      device_interface_handler_->GetAddressByConnectionId(conn_id);
+  if (device_address.empty()) {
+    LOG(WARNING) << "Unknown GATT connection " << conn_id
+                 << " for primary service traversal result";
+    transactions_.erase(transaction_id);
+    return;
+  }
+
+  if (service == nullptr) {
+    LOG(ERROR) << "Primary service traversal failed with device "
+               << device_address;
+    transactions_.erase(transaction_id);
+    return;
+  }
+
+  auto services = remote_services_.find(device_address);
+  if (services == remote_services_.end()) {
+    LOG(WARNING) << "No remote services associated with device "
+                 << device_address << ", dropping it";
+    transactions_.erase(transaction_id);
+    return;
+  }
+
+  // If there is service change before the traversal finished where the service
+  // is no longer there, we drop the result.
+  auto srv = services->second.find(service->first_handle());
+  if (srv == services->second.end()) {
+    LOG(WARNING) << "Unknown primary service "
+                 << service->uuid().canonical_value() << ", dropping it";
+    transactions_.erase(transaction_id);
+    return;
+  }
+
+  VLOG(2) << "Replacing service " << service->uuid().canonical_value()
+          << " of device " << device_address
+          << " with the traversed one, transaction id " << transaction_id;
+  srv->second = std::move(service);
+  transactions_.erase(transaction_id);
 }
 
 }  // namespace bluetooth
