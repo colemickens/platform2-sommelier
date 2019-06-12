@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/observer_list.h>
+#include <base/timer/timer.h>
 
 #include "power_manager/powerd/system/display/display_info.h"
 #include "power_manager/powerd/system/display/display_watcher_observer.h"
@@ -49,8 +50,13 @@ class DisplayWatcher : public DisplayWatcherInterface,
   // status.
   static const char kDrmStatusFile[];
 
-  // Value in |kDrmStatusFile| indicating that the device is connected.
+  // Value in |kDrmStatusFile| indicating that the connector status is
+  // connected.
   static const char kDrmStatusConnected[];
+
+  // Value in |kDrmStatusFile| indicating that the connector status is
+  // unknown.
+  static const char kDrmStatusUnknown[];
 
   DisplayWatcher();
   ~DisplayWatcher() override;
@@ -61,6 +67,8 @@ class DisplayWatcher : public DisplayWatcherInterface,
   void set_i2c_dev_path_for_testing(const base::FilePath& path) {
     i2c_dev_path_for_testing_ = path;
   }
+
+  bool trigger_debounce_timeout_for_testing();
 
   // Ownership of |udev| remains with the caller.
   void Init(UdevInterface* udev);
@@ -79,6 +87,11 @@ class DisplayWatcher : public DisplayWatcherInterface,
   // the device isn't found.
   base::FilePath GetI2CDevicePath(const base::FilePath& drm_dir);
 
+  // Invoked by |debounce_timer_| used to delay publishing display changes. This
+  // helps aggregating multiple display configuration events when they are
+  // reported in short time spans.
+  void HandleDebounceTimeout();
+
   // Scans /sys and updates |displays_|.
   void UpdateDisplays();
 
@@ -88,6 +101,9 @@ class DisplayWatcher : public DisplayWatcherInterface,
 
   // Currently-connected displays.
   std::vector<DisplayInfo> displays_;
+
+  // Runs HandleDebounceTimeout().
+  base::OneShotTimer debounce_timer_;
 
   // Used instead of the default paths if non-empty.
   base::FilePath sysfs_drm_path_for_testing_;

@@ -90,6 +90,8 @@ class DisplayWatcherTest : public testing::Test {
 };
 
 TEST_F(DisplayWatcherTest, DisplayStatus) {
+  TestObserver observer;
+  watcher_.AddObserver(&observer);
   watcher_.Init(&udev_);
   EXPECT_EQ(static_cast<size_t>(0), watcher_.GetDisplays().size());
 
@@ -107,12 +109,28 @@ TEST_F(DisplayWatcherTest, DisplayStatus) {
   NotifyAboutUdevEvent();
   EXPECT_EQ(static_cast<size_t>(0), watcher_.GetDisplays().size());
 
-  // The display should be reported when the device's status goes to
-  // "connected".
+  // Observers should be notified when the device's status goes to "unknown".
+  ASSERT_TRUE(base::WriteFile(status_path, DisplayWatcher::kDrmStatusUnknown,
+                              strlen(DisplayWatcher::kDrmStatusUnknown)));
+  NotifyAboutUdevEvent();
+  ASSERT_EQ(static_cast<size_t>(1), watcher_.GetDisplays().size());
+  EXPECT_EQ(system::DisplayInfo::ConnectorStatus::UNKNOWN,
+            watcher_.GetDisplays().front().connector_status);
+  EXPECT_TRUE(watcher_.trigger_debounce_timeout_for_testing());
+  EXPECT_EQ(1, observer.num_display_changes());
+
+  // Observers should be notified when the device's status goes to
+  // "connected" from "unknown".
   ASSERT_TRUE(base::WriteFile(status_path, DisplayWatcher::kDrmStatusConnected,
                               strlen(DisplayWatcher::kDrmStatusConnected)));
   NotifyAboutUdevEvent();
   ASSERT_EQ(static_cast<size_t>(1), watcher_.GetDisplays().size());
+  EXPECT_EQ(system::DisplayInfo::ConnectorStatus::CONNECTED,
+            watcher_.GetDisplays().front().connector_status);
+  // Make sure observers receive a notification when the status changes from
+  // "unkown" to "connected".
+  EXPECT_TRUE(watcher_.trigger_debounce_timeout_for_testing());
+  EXPECT_EQ(2, observer.num_display_changes());
 
   // A trailing newline should be okay.
   std::string kConnectedNewline(DisplayWatcher::kDrmStatusConnected);
@@ -207,11 +225,13 @@ TEST_F(DisplayWatcherTest, Observer) {
   TestObserver observer;
   watcher_.AddObserver(&observer);
   watcher_.Init(&udev_);
+  EXPECT_FALSE(watcher_.trigger_debounce_timeout_for_testing());
   EXPECT_EQ(0, observer.num_display_changes());
 
   // It also shouldn't be notified in response to a Udev event if nothing
   // changed.
   NotifyAboutUdevEvent();
+  EXPECT_FALSE(watcher_.trigger_debounce_timeout_for_testing());
   EXPECT_EQ(0, observer.num_display_changes());
 
   // After adding a display, the observer should be notified.
@@ -221,17 +241,41 @@ TEST_F(DisplayWatcherTest, Observer) {
   ASSERT_TRUE(base::WriteFile(status_path, DisplayWatcher::kDrmStatusConnected,
                               strlen(DisplayWatcher::kDrmStatusConnected)));
   NotifyAboutUdevEvent();
+  EXPECT_TRUE(watcher_.trigger_debounce_timeout_for_testing());
   EXPECT_EQ(1, observer.num_display_changes());
 
   // It shouldn't be notified for another no-op Udev event.
   NotifyAboutUdevEvent();
+  EXPECT_FALSE(watcher_.trigger_debounce_timeout_for_testing());
   EXPECT_EQ(1, observer.num_display_changes());
 
   // After the device is disconnected, the observer should be notified one more
   // time.
   ASSERT_TRUE(base::DeleteFile(status_path, false));
   NotifyAboutUdevEvent();
+  EXPECT_TRUE(watcher_.trigger_debounce_timeout_for_testing());
   EXPECT_EQ(2, observer.num_display_changes());
+
+  watcher_.RemoveObserver(&observer);
+}
+
+TEST_F(DisplayWatcherTest, DebounceTimer) {
+  TestObserver observer;
+  watcher_.AddObserver(&observer);
+  watcher_.Init(&udev_);
+
+  // After adding a display, the observer should be not be notified before
+  // debounce timer expires.
+  base::FilePath device_path = CreateDrmDevice("card0-DP-1");
+  base::FilePath status_path =
+      device_path.Append(DisplayWatcher::kDrmStatusFile);
+  ASSERT_TRUE(base::WriteFile(status_path, DisplayWatcher::kDrmStatusConnected,
+                              strlen(DisplayWatcher::kDrmStatusConnected)));
+  NotifyAboutUdevEvent();
+  EXPECT_EQ(0, observer.num_display_changes());
+  // But on timer expiry, observer should be notified.
+  EXPECT_TRUE(watcher_.trigger_debounce_timeout_for_testing());
+  EXPECT_EQ(1, observer.num_display_changes());
 
   watcher_.RemoveObserver(&observer);
 }

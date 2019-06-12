@@ -23,6 +23,7 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/suspend_delay_observer.h"
+#include "power_manager/powerd/system/display/display_watcher_observer.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
 namespace power_manager {
@@ -33,6 +34,7 @@ class PrefsInterface;
 namespace system {
 class DarkResumeInterface;
 class DBusWrapperInterface;
+class DisplayWatcherInterface;
 class InputWatcher;
 }  // namespace system
 
@@ -74,7 +76,8 @@ class SuspendDelayController;
 //
 // At any point before Suspend() has been called, user activity can cancel the
 // current suspend attempt.
-class Suspender : public SuspendDelayObserver {
+class Suspender : public SuspendDelayObserver,
+                  public system::DisplayWatcherObserver {
  public:
   // Information about dark resumes used for histograms.
   // First value is wake reason; second is wake duration.
@@ -202,6 +205,7 @@ class Suspender : public SuspendDelayObserver {
   void Init(Delegate* delegate,
             system::DBusWrapperInterface* dbus_wrapper,
             system::DarkResumeInterface* dark_resume,
+            system::DisplayWatcherInterface* display_watcher,
             policy::ShutdownFromSuspendInterface* shutdown_from_suspend,
             PrefsInterface* prefs);
 
@@ -237,6 +241,10 @@ class Suspender : public SuspendDelayObserver {
   // SuspendDelayObserver override:
   void OnReadyForSuspend(SuspendDelayController* controller,
                          int suspend_id) override;
+
+  // DisplayWatcherObserver implementation
+  void OnDisplaysChanged(
+      const std::vector<system::DisplayInfo>& displays) override;
 
  private:
   // States that Suspender can be in while the event loop is running.
@@ -275,6 +283,8 @@ class Suspender : public SuspendDelayObserver {
     WAKE_NOTIFICATION,
     // Display mode change was reported.
     DISPLAY_MODE_CHANGE,
+    // New display observed by powerd.
+    NEW_DISPLAY,
   };
 
   // Converts |event| to a string.
@@ -423,6 +433,11 @@ class Suspender : public SuspendDelayObserver {
   // resume, but the entry's wake reason and duration is updated by Suspend()
   // when it commences the next dark suspend cycle.
   std::vector<DarkResumeInfo> dark_resume_wake_durations_;
+
+  // Current set of displays in sorted (compared using operator<) order that
+  // suspender is aware of. Note that OnDisplaysChanged() assumes that this
+  // vector remains unchanged.
+  std::vector<system::DisplayInfo> displays_;
 
   // The wake reason for the last dark resume.
   std::string last_dark_resume_wake_reason_;

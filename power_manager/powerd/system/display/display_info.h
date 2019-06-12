@@ -13,6 +13,16 @@ namespace system {
 // Information about a connected display.
 struct DisplayInfo {
  public:
+  enum class ConnectorStatus {
+    // The connector is definitely connected to a sink device, and can be
+    // enabled.
+    CONNECTED,
+    // The connector's status could not be reliably detected. This happens when
+    // probing would either cause flicker (like load-detection when the
+    // connector is in use), or when connection status probes failed.
+    UNKNOWN,
+  };
+
   DisplayInfo();
   ~DisplayInfo();
 
@@ -26,6 +36,9 @@ struct DisplayInfo {
   // Path to the I2C device in /dev that can be used to communicate with this
   // display.
   base::FilePath i2c_path;
+
+  // Connector status.
+  ConnectorStatus connector_status = ConnectorStatus::UNKNOWN;
 };
 
 }  // namespace system

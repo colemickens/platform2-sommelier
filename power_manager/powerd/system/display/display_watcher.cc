@@ -31,8 +31,13 @@ const char kI2CDeviceNamePattern[] = "i2c-*";
 // Directory containing I2C devices.
 const char kI2CDevPath[] = "/dev";
 
+// The delay to advertise about change in display configuration after udev
+// event.
+constexpr base::TimeDelta kDebounceDelay = base::TimeDelta::FromSeconds(1);
+
 // Returns true if the device described by |drm_device_dir| is connected.
-bool DeviceIsConnected(const base::FilePath& drm_device_dir) {
+bool IsConnectorStatus(const base::FilePath& drm_device_dir,
+                       const std::string& connector_status) {
   base::FilePath status_path =
       drm_device_dir.Append(DisplayWatcher::kDrmStatusFile);
   std::string status;
@@ -41,7 +46,7 @@ bool DeviceIsConnected(const base::FilePath& drm_device_dir) {
 
   // Trim whitespace to deal with trailing newlines.
   base::TrimWhitespaceASCII(status, base::TRIM_TRAILING, &status);
-  return status == DisplayWatcher::kDrmStatusConnected;
+  return status == connector_status;
 }
 
 }  // namespace
@@ -50,6 +55,7 @@ const char DisplayWatcher::kI2CUdevSubsystem[] = "i2c-dev";
 const char DisplayWatcher::kDrmUdevSubsystem[] = "drm";
 const char DisplayWatcher::kDrmStatusFile[] = "status";
 const char DisplayWatcher::kDrmStatusConnected[] = "connected";
+const char DisplayWatcher::kDrmStatusUnknown[] = "unknown";
 
 DisplayWatcher::DisplayWatcher() : udev_(nullptr) {}
 
@@ -59,6 +65,14 @@ DisplayWatcher::~DisplayWatcher() {
     udev_->RemoveSubsystemObserver(kDrmUdevSubsystem, this);
     udev_ = nullptr;
   }
+}
+
+bool DisplayWatcher::trigger_debounce_timeout_for_testing() {
+  if (!debounce_timer_.IsRunning())
+    return false;
+  debounce_timer_.Stop();
+  HandleDebounceTimeout();
+  return true;
 }
 
 void DisplayWatcher::Init(UdevInterface* udev) {
@@ -104,6 +118,11 @@ base::FilePath DisplayWatcher::GetI2CDevicePath(const base::FilePath& drm_dir) {
   return base::FilePath();
 }
 
+void DisplayWatcher::HandleDebounceTimeout() {
+  for (DisplayWatcherObserver& observer : observers_)
+    observer.OnDisplaysChanged(displays_);
+}
+
 void DisplayWatcher::UpdateDisplays() {
   std::vector<DisplayInfo> new_displays;
 
@@ -117,10 +136,14 @@ void DisplayWatcher::UpdateDisplays() {
       kDrmDeviceNamePattern);
   for (base::FilePath device_path = enumerator.Next(); !device_path.empty();
        device_path = enumerator.Next()) {
-    if (!DeviceIsConnected(device_path))
+    DisplayInfo info;
+    if (IsConnectorStatus(device_path, kDrmStatusConnected))
+      info.connector_status = DisplayInfo::ConnectorStatus::CONNECTED;
+    else if (IsConnectorStatus(device_path, kDrmStatusUnknown))
+      info.connector_status = DisplayInfo::ConnectorStatus::UNKNOWN;
+    else
       continue;
 
-    DisplayInfo info;
     info.drm_path = device_path;
     info.i2c_path = GetI2CDevicePath(device_path);
     new_displays.push_back(info);
@@ -129,10 +152,21 @@ void DisplayWatcher::UpdateDisplays() {
   }
 
   std::sort(new_displays.begin(), new_displays.end());
-  if (new_displays != displays_) {
-    displays_.swap(new_displays);
-    for (DisplayWatcherObserver& observer : observers_)
-      observer.OnDisplaysChanged(displays_);
+
+  if (new_displays == displays_)
+    return;
+
+  displays_.swap(new_displays);
+  if (!debounce_timer_.IsRunning()) {
+    // Advertise about display mode change after |kDebounceDelay| delay,
+    // giving enough time for things to settle.
+    debounce_timer_.Start(FROM_HERE, kDebounceDelay, this,
+                          &DisplayWatcher::HandleDebounceTimeout);
+  } else {
+    // If the debounce timer is already running, avoid advertising about
+    // display configuration change immediately. Instead reset the timer to
+    // wait for things to settle.
+    debounce_timer_.Reset();
   }
 }
 

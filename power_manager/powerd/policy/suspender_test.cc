@@ -19,6 +19,7 @@
 #include "power_manager/powerd/policy/shutdown_from_suspend_stub.h"
 #include "power_manager/powerd/system/dark_resume_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
+#include "power_manager/powerd/system/display/display_watcher_stub.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
 namespace power_manager {
@@ -206,7 +207,7 @@ class SuspenderTest : public testing::Test {
         base::TimeTicks() + base::TimeDelta::FromHours(1));
     delegate_.set_clock(test_api_.clock());
     suspender_.Init(&delegate_, &dbus_wrapper_, &dark_resume_,
-                    &shutdown_from_suspend_, &prefs_);
+                    &display_watcher_, &shutdown_from_suspend_, &prefs_);
   }
 
   // Returns the ID from a SuspendImminent signal at |position|.
@@ -265,6 +266,7 @@ class SuspenderTest : public testing::Test {
   TestDelegate delegate_;
   system::DBusWrapperStub dbus_wrapper_;
   system::DarkResumeStub dark_resume_;
+  system::DisplayWatcherStub display_watcher_;
   policy::ShutdownFromSuspendStub shutdown_from_suspend_;
   Suspender suspender_;
   Suspender::TestApi test_api_;

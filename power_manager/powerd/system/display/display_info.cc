@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/system/display/display_info.h"
 
+#include <tuple>
+
 namespace power_manager {
 namespace system {
 
@@ -12,11 +14,9 @@ DisplayInfo::DisplayInfo() {}
 DisplayInfo::~DisplayInfo() {}
 
 bool DisplayInfo::operator<(const DisplayInfo& rhs) const {
-  if (drm_path.value() < rhs.drm_path.value())
-    return true;
-  if (drm_path.value() > rhs.drm_path.value())
-    return false;
-  return i2c_path.value() < rhs.i2c_path.value();
+  return std::tie(drm_path.value(), i2c_path.value(), connector_status) <
+         std::tie(rhs.drm_path.value(), rhs.i2c_path.value(),
+                  rhs.connector_status);
 }
 
 bool DisplayInfo::operator==(const DisplayInfo& o) const {

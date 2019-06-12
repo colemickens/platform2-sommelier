@@ -19,6 +19,7 @@
 #include "power_manager/powerd/policy/suspend_delay_controller.h"
 #include "power_manager/powerd/system/dark_resume_interface.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
+#include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/input_watcher.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
@@ -57,6 +58,7 @@ void Suspender::Init(
     Delegate* delegate,
     system::DBusWrapperInterface* dbus_wrapper,
     system::DarkResumeInterface* dark_resume,
+    system::DisplayWatcherInterface* display_watcher,
     policy::ShutdownFromSuspendInterface* shutdown_from_suspend,
     PrefsInterface* prefs) {
   delegate_ = delegate;
@@ -86,6 +88,7 @@ void Suspender::Init(
       initial_dark_id, "dark", max_dark_suspend_delay_timeout));
   dark_suspend_delay_controller_->AddObserver(this);
 
+  display_watcher->AddObserver(this);
   int64_t retry_delay_ms = 0;
   CHECK(prefs->GetInt64(kRetrySuspendMsPref, &retry_delay_ms));
   retry_delay_ = base::TimeDelta::FromMilliseconds(retry_delay_ms);
@@ -179,6 +182,16 @@ void Suspender::OnReadyForSuspend(SuspendDelayController* controller,
   }
 }
 
+void Suspender::OnDisplaysChanged(
+    const std::vector<system::DisplayInfo>& new_displays) {
+  std::vector<system::DisplayInfo> sorted_new_displays = new_displays;
+  std::sort(sorted_new_displays.begin(), sorted_new_displays.end());
+  if (!std::includes(displays_.begin(), displays_.end(),
+                     sorted_new_displays.begin(), sorted_new_displays.end()))
+    HandleEvent(Event::NEW_DISPLAY);
+  displays_ = std::move(sorted_new_displays);
+}
+
 // static.
 std::string Suspender::EventToString(Event event) {
   switch (event) {
@@ -196,6 +209,8 @@ std::string Suspender::EventToString(Event event) {
       return "WakeNotification";
     case Event::DISPLAY_MODE_CHANGE:
       return "DisplayModeChange";
+    case Event::NEW_DISPLAY:
+      return "NewDisplay";
   }
 }
 
@@ -402,6 +417,8 @@ void Suspender::HandleEventInWaitingForNormalSuspendDelays(Event event) {
     case Event::DISPLAY_MODE_CHANGE:
       // fallthrough.
     case Event::USER_ACTIVITY:
+    // fallthrough
+    case Event::NEW_DISPLAY:
       state_ = HandleWakeEventInSuspend(event);
       break;
     case Event::SHUTDOWN_STARTED:
@@ -425,6 +442,8 @@ void Suspender::HandleEventInDarkResumeOrRetrySuspend(Event event) {
     case Event::DISPLAY_MODE_CHANGE:
       // fallthrough.
     case Event::USER_ACTIVITY:
+      // fallthrough
+    case Event::NEW_DISPLAY:
       state_ = HandleWakeEventInSuspend(event);
       break;
     case Event::SHUTDOWN_STARTED:
@@ -440,12 +459,13 @@ Suspender::State Suspender::HandleWakeEventInSuspend(Event event) {
   DCHECK((state_ == State::WAITING_FOR_NORMAL_SUSPEND_DELAYS) ||
          (state_ == State::WAITING_FOR_DARK_SUSPEND_DELAYS) ||
          (state_ == State::WAITING_TO_RETRY_SUSPEND));
-  DCHECK((event == Event::WAKE_NOTIFICATION) ||
-         (event == Event::USER_ACTIVITY) ||
-         (event == Event::DISPLAY_MODE_CHANGE));
+  DCHECK(
+      (event == Event::WAKE_NOTIFICATION) || (event == Event::USER_ACTIVITY) ||
+      (event == Event::DISPLAY_MODE_CHANGE) || (event == Event::NEW_DISPLAY));
   // Avoid canceling suspend for errant touchpad, power button, etc.
   // events that are generated when the lid is closed and device is not docked.
-  if (display_mode_ == DisplayMode::NORMAL &&
+  // Abort suspend if new display is seen even when the lid is closed.
+  if (display_mode_ == DisplayMode::NORMAL && event != Event::NEW_DISPLAY &&
       delegate_->IsLidClosedForSuspend())
     return state_;
 

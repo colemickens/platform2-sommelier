@@ -241,6 +241,9 @@ void ExternalBacklightController::UpdateDisplays(
     const system::DisplayInfo& info = *it;
     if (info.i2c_path.empty())
       continue;
+    if (info.connector_status !=
+        system::DisplayInfo::ConnectorStatus::CONNECTED)
+      continue;
 
     ExternalDisplayMap::const_iterator existing_display_it =
         external_displays_.find(info.drm_path);
