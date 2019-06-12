@@ -25,7 +25,7 @@ namespace cros {
 
 namespace {
 
-CameraMetadataUniquePtr GetStaticInfoFromDeviceInfo(
+ScopedCameraMetadata GetStaticInfoFromDeviceInfo(
     const DeviceInfo& device_info) {
   android::CameraMetadata metadata;
 
@@ -56,7 +56,7 @@ CameraMetadataUniquePtr GetStaticInfoFromDeviceInfo(
   metadata.update(kVendorTagModelName,
                   V4L2CameraDevice::GetModelName(device_info.device_path));
 
-  return CameraMetadataUniquePtr(metadata.release());
+  return ScopedCameraMetadata(metadata.release());
 }
 
 bool IsVivid(udev_device* dev) {
@@ -382,7 +382,7 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
     }
   }
 
-  CameraMetadataUniquePtr static_info = GetStaticInfoFromDeviceInfo(info);
+  ScopedCameraMetadata static_info = GetStaticInfoFromDeviceInfo(info);
   if (!static_info) {
     if (info.lens_facing == ANDROID_LENS_FACING_EXTERNAL) {
       LOGF(ERROR) << "GetStaticInfoFromDeviceInfo failed, the new external "

@@ -23,7 +23,7 @@ struct CameraMetadataDeleter {
 };
 
 typedef std::unique_ptr<camera_metadata_t, CameraMetadataDeleter>
-    CameraMetadataUniquePtr;
+    ScopedCameraMetadata;
 
 // MetadataHandler is thread-safe. It is used for saving metadata states of
 // CameraDevice.
@@ -64,7 +64,7 @@ class MetadataHandler {
   bool IsValidTemplateType(int template_type);
 
   // Return a copy of metadata according to |template_type|.
-  CameraMetadataUniquePtr CreateDefaultRequestSettings(int template_type);
+  ScopedCameraMetadata CreateDefaultRequestSettings(int template_type);
   int FillDefaultPreviewSettings(android::CameraMetadata* metadata);
   int FillDefaultStillCaptureSettings(android::CameraMetadata* metadata);
   int FillDefaultVideoRecordSettings(android::CameraMetadata* metadata);
@@ -77,7 +77,7 @@ class MetadataHandler {
 
   // Static array of standard camera settings templates. These are owned by
   // CameraClient.
-  CameraMetadataUniquePtr template_settings_[CAMERA3_TEMPLATE_COUNT];
+  ScopedCameraMetadata template_settings_[CAMERA3_TEMPLATE_COUNT];
 
   // Use to check PreHandleRequest and PostHandleRequest are called on the same
   // thread.

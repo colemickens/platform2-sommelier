@@ -21,16 +21,16 @@ class Camera3ReprocessingTest : public Camera3FrameFixture,
 
  protected:
   using ExifTestData = Camera3ExifValidator::ExifTestData;
-  using ImageUniquePtr = std::unique_ptr<struct Image>;
+  using ScopedImage = std::unique_ptr<struct Image>;
 
   const int kNumOfReprocessCaptures = 3;
   const double kReprocessingTestSsimThreshold = 0.75;
 
   // Crop the input image with the output aspect ratio if necessary and then
   // scale it to the designated width and height
-  ImageUniquePtr CropAndScale(const ImageUniquePtr& in_buffer,
-                              uint32_t to_width,
-                              uint32_t to_height);
+  ScopedImage CropAndScale(const ScopedImage& in_buffer,
+                           uint32_t to_width,
+                           uint32_t to_height);
 
   // |exif_test_data| is used only when |reprocessing_format| is
   // HAL_PIXEL_FORMAT_BLOB
@@ -58,38 +58,38 @@ class Camera3ReprocessingTest : public Camera3FrameFixture,
 
   void DoTemplateCapture(int32_t template_type,
                          const camera3_stream_t* output_stream,
-                         CameraMetadataUniquePtr* output_metadata,
-                         BufferHandleUniquePtr* output_buffer,
+                         ScopedCameraMetadata* output_metadata,
+                         ScopedBufferHandle* output_buffer,
                          const uint32_t timeout);
 
-  void DoReprocessingCapture(CameraMetadataUniquePtr* in_metadata,
+  void DoReprocessingCapture(ScopedCameraMetadata* in_metadata,
                              const camera3_stream_t* in_stream,
-                             const BufferHandleUniquePtr& in_buffer,
+                             const ScopedBufferHandle& in_buffer,
                              const camera3_stream_t* out_stream,
                              const ExifTestData& exif_test_data,
-                             CameraMetadataUniquePtr* out_metadata,
-                             BufferHandleUniquePtr* out_buffer,
+                             ScopedCameraMetadata* out_metadata,
+                             ScopedBufferHandle* out_buffer,
                              const uint32_t timeout);
 
  private:
-  BufferHandleUniquePtr buffer_handle_;
-  CameraMetadataUniquePtr result_metadata_;
+  ScopedBufferHandle buffer_handle_;
+  ScopedCameraMetadata result_metadata_;
 
   void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
-      CameraMetadataUniquePtr metadata,
-      std::vector<BufferHandleUniquePtr> buffers) override;
+      ScopedCameraMetadata metadata,
+      std::vector<ScopedBufferHandle> buffers) override;
 };
 
-Camera3ReprocessingTest::ImageUniquePtr Camera3ReprocessingTest::CropAndScale(
-    const ImageUniquePtr& image, uint32_t to_width, uint32_t to_height) {
+Camera3ReprocessingTest::ScopedImage Camera3ReprocessingTest::CropAndScale(
+    const ScopedImage& image, uint32_t to_width, uint32_t to_height) {
   if (ImageFormat::IMAGE_FORMAT_I420 != image->format) {
     ADD_FAILURE() << "Cannot scale non-I420 format";
     return nullptr;
   }
 
   const struct Image* crop_image;
-  ImageUniquePtr crop_buffer;
+  ScopedImage crop_buffer;
   if (image->width * to_height == image->height * to_width) {
     crop_image = image.get();
   } else {
@@ -151,16 +151,16 @@ void Camera3ReprocessingTest::TestReprocessing(
 
   for (int i = 0; i < num_reprocessing_captures; i++) {
     // Capture first image
-    CameraMetadataUniquePtr result_metadata;
-    BufferHandleUniquePtr result_buffer;
+    ScopedCameraMetadata result_metadata;
+    ScopedBufferHandle result_buffer;
     DoTemplateCapture(CAMERA3_TEMPLATE_STILL_CAPTURE, output_streams[0],
                       &result_metadata, &result_buffer, kDefaultTimeoutMs);
     time_t capture_time;
     time(&capture_time);
 
     // Reprocessing first image
-    CameraMetadataUniquePtr reprocess_result_metadata;
-    BufferHandleUniquePtr reprocess_result_buffer;
+    ScopedCameraMetadata reprocess_result_metadata;
+    ScopedBufferHandle reprocess_result_buffer;
     DoReprocessingCapture(&result_metadata, input_stream, result_buffer,
                           output_streams[1], exif_test_data,
                           &reprocess_result_metadata, &reprocess_result_buffer,
@@ -185,7 +185,7 @@ void Camera3ReprocessingTest::TestReprocessing(
       // Skip similarity check if we cannot identify the real format
       continue;
     }
-    ImageUniquePtr input_image =
+    ScopedImage input_image =
         ConvertToImage(std::move(result_buffer), input_size.Width(),
                        input_size.Height(), ImageFormat::IMAGE_FORMAT_I420);
     ASSERT_TRUE(input_image != nullptr) << "Failed to convert input image";
@@ -193,7 +193,7 @@ void Camera3ReprocessingTest::TestReprocessing(
                                reprocessing_size.Height());
     ASSERT_TRUE(input_image != nullptr) << "Failed to scale input image";
 
-    ImageUniquePtr repr_image;
+    ScopedImage repr_image;
     if (exif_orientation == 0 && exif_test_data.orientation != 0) {
       // Rotate the reprocessed image back if HAL auto correct the orientation
       int correct_rotation = (360 - exif_test_data.orientation) % 360;
@@ -287,8 +287,8 @@ void Camera3ReprocessingTest::AddPrepareStreams(
 void Camera3ReprocessingTest::DoTemplateCapture(
     int32_t template_type,
     const camera3_stream_t* output_stream,
-    CameraMetadataUniquePtr* output_metadata,
-    BufferHandleUniquePtr* output_buffer,
+    ScopedCameraMetadata* output_metadata,
+    ScopedBufferHandle* output_buffer,
     const uint32_t timeout) {
   const camera_metadata_t* metadata =
       cam_device_.ConstructDefaultRequestSettings(template_type);
@@ -315,13 +315,13 @@ void Camera3ReprocessingTest::DoTemplateCapture(
 }
 
 void Camera3ReprocessingTest::DoReprocessingCapture(
-    CameraMetadataUniquePtr* in_metadata,
+    ScopedCameraMetadata* in_metadata,
     const camera3_stream_t* in_stream,
-    const BufferHandleUniquePtr& in_buffer,
+    const ScopedBufferHandle& in_buffer,
     const camera3_stream_t* out_stream,
     const ExifTestData& exif_test_data,
-    CameraMetadataUniquePtr* out_metadata,
-    BufferHandleUniquePtr* out_buffer,
+    ScopedCameraMetadata* out_metadata,
+    ScopedBufferHandle* out_buffer,
     const uint32_t timeout) {
   if (out_stream->format == HAL_PIXEL_FORMAT_BLOB) {
     int32_t thumbnail_resolution[] = {
@@ -371,8 +371,8 @@ void Camera3ReprocessingTest::DoReprocessingCapture(
 
 void Camera3ReprocessingTest::ProcessResultMetadataOutputBuffers(
     uint32_t frame_number,
-    CameraMetadataUniquePtr metadata,
-    std::vector<BufferHandleUniquePtr> buffers) {
+    ScopedCameraMetadata metadata,
+    std::vector<ScopedBufferHandle> buffers) {
   ASSERT_EQ(1, buffers.size()) << "Should return one output image only";
   buffer_handle_ = std::move(buffers[0]);
   result_metadata_ = std::move(metadata);

@@ -15,12 +15,12 @@ namespace camera3_test {
 class Camera3ExifValidator {
  public:
   struct JpegExifInfo {
-    const BufferHandleUniquePtr& buffer_handle;
+    const ScopedBufferHandle& buffer_handle;
     size_t buffer_size;
     void* buffer_addr;
     ResolutionInfo jpeg_resolution;
     ExifData* exif_data;
-    JpegExifInfo(const BufferHandleUniquePtr& buffer, size_t size);
+    JpegExifInfo(const ScopedBufferHandle& buffer, size_t size);
     ~JpegExifInfo();
     bool Initialize();
   };
@@ -37,12 +37,11 @@ class Camera3ExifValidator {
 
   void ValidateExifKeys(const ResolutionInfo& jpeg_resolution,
                         const ExifTestData& exif_test_data,
-                        const BufferHandleUniquePtr& buffer,
+                        const ScopedBufferHandle& buffer,
                         size_t buffer_size,
                         const camera_metadata_t& metadata,
                         const time_t& date_time) const;
-  int getExifOrientation(const BufferHandleUniquePtr& buffer,
-                         size_t buffer_size);
+  int getExifOrientation(const ScopedBufferHandle& buffer, size_t buffer_size);
 
  protected:
   const Camera3Device::StaticInfo& cam_info_;

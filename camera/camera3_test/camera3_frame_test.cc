@@ -47,7 +47,7 @@ int32_t Camera3FrameFixture::CreateCaptureRequest(
 }
 
 int32_t Camera3FrameFixture::CreateCaptureRequestByMetadata(
-    const CameraMetadataUniquePtr& metadata, uint32_t* frame_number) {
+    const ScopedCameraMetadata& metadata, uint32_t* frame_number) {
   return CreateCaptureRequest(*metadata, frame_number);
 }
 
@@ -126,22 +126,22 @@ int Camera3FrameFixture::Image::SaveToFile(const std::string filename) const {
   return 0;
 }
 
-Camera3FrameFixture::ImageUniquePtr Camera3FrameFixture::ConvertToImage(
-    BufferHandleUniquePtr buffer,
+Camera3FrameFixture::ScopedImage Camera3FrameFixture::ConvertToImage(
+    ScopedBufferHandle buffer,
     uint32_t width,
     uint32_t height,
     ImageFormat format) {
   if (!buffer || format >= ImageFormat::IMAGE_FORMAT_END) {
     LOGF(ERROR) << "Invalid input buffer or format";
-    return ImageUniquePtr(nullptr);
+    return ScopedImage(nullptr);
   }
   buffer_handle_t handle = *buffer;
   auto hnd = camera_buffer_handle_t::FromBufferHandle(handle);
   if (!hnd || hnd->buffer_id == 0) {
     LOGF(ERROR) << "Invalid input buffer handle";
-    return ImageUniquePtr(nullptr);
+    return ScopedImage(nullptr);
   }
-  ImageUniquePtr out_buffer(new Image(width, height, format));
+  ScopedImage out_buffer(new Image(width, height, format));
   auto gralloc = Camera3TestGralloc::GetInstance();
   if (gralloc->GetFormat(handle) == HAL_PIXEL_FORMAT_BLOB) {
     size_t jpeg_max_size = cam_device_.GetStaticInfo()->GetJpegMaxSize();
@@ -149,7 +149,7 @@ Camera3FrameFixture::ImageUniquePtr Camera3FrameFixture::ConvertToImage(
     if (gralloc->Lock(handle, 0, 0, 0, jpeg_max_size, 1, &buf_addr) != 0 ||
         !buf_addr) {
       LOG(ERROR) << "Failed to lock input buffer";
-      return ImageUniquePtr(nullptr);
+      return ScopedImage(nullptr);
     }
     auto jpeg_blob = reinterpret_cast<camera3_jpeg_blob_t*>(
         static_cast<uint8_t*>(buf_addr) + jpeg_max_size -
@@ -158,7 +158,7 @@ Camera3FrameFixture::ImageUniquePtr Camera3FrameFixture::ConvertToImage(
         jpeg_blob->jpeg_blob_id != CAMERA3_JPEG_BLOB_ID) {
       gralloc->Unlock(handle);
       LOG(ERROR) << "Invalid JPEG BLOB ID";
-      return ImageUniquePtr(nullptr);
+      return ScopedImage(nullptr);
     }
     if ((format == ImageFormat::IMAGE_FORMAT_I420 &&
          libyuv::MJPGToI420(
@@ -181,7 +181,7 @@ Camera3FrameFixture::ImageUniquePtr Camera3FrameFixture::ConvertToImage(
     if (gralloc->LockYCbCr(handle, 0, 0, 0, width, height, &in_ycbcr_info) !=
         0) {
       LOG(ERROR) << "Failed to lock input buffer";
-      return ImageUniquePtr(nullptr);
+      return ScopedImage(nullptr);
     }
     uint32_t v4l2_format =
         cros::CameraBufferManager::GetV4L2PixelFormat(handle);
@@ -259,14 +259,13 @@ Camera3FrameFixture::ImageUniquePtr Camera3FrameFixture::ConvertToImage(
   return out_buffer;
 }
 
-Camera3FrameFixture::ImageUniquePtr
-Camera3FrameFixture::ConvertToImageAndRotate(BufferHandleUniquePtr buffer,
-                                             uint32_t width,
-                                             uint32_t height,
-                                             ImageFormat format,
-                                             int32_t rotation) {
-  ImageUniquePtr image =
-      ConvertToImage(std::move(buffer), width, height, format);
+Camera3FrameFixture::ScopedImage Camera3FrameFixture::ConvertToImageAndRotate(
+    ScopedBufferHandle buffer,
+    uint32_t width,
+    uint32_t height,
+    ImageFormat format,
+    int32_t rotation) {
+  ScopedImage image = ConvertToImage(std::move(buffer), width, height, format);
   if (image == nullptr) {
     LOG(ERROR) << "Failed to convert image before rotate";
     return image;
@@ -300,7 +299,7 @@ Camera3FrameFixture::ConvertToImageAndRotate(BufferHandleUniquePtr buffer,
       break;
   }
 
-  ImageUniquePtr rotated_image(
+  ScopedImage rotated_image(
       new Image(new_width, new_height, ImageFormat::IMAGE_FORMAT_I420));
   libyuv::I420Rotate(
       image->planes[0].addr, image->planes[0].stride, image->planes[1].addr,
@@ -312,8 +311,7 @@ Camera3FrameFixture::ConvertToImageAndRotate(BufferHandleUniquePtr buffer,
   return rotated_image;
 }
 
-Camera3FrameFixture::ImageUniquePtr
-Camera3FrameFixture::GenerateColorBarsPattern(
+Camera3FrameFixture::ScopedImage Camera3FrameFixture::GenerateColorBarsPattern(
     uint32_t width,
     uint32_t height,
     ImageFormat format,
@@ -327,7 +325,7 @@ Camera3FrameFixture::GenerateColorBarsPattern(
           supported_color_bars_test_pattern_modes_.end()) {
     return nullptr;
   }
-  ImageUniquePtr argb_image(
+  ScopedImage argb_image(
       new Image(width, height, ImageFormat::IMAGE_FORMAT_ARGB));
   uint8_t* pdata = argb_image->planes[0].addr;
   int color_bar_width = width / color_bars_pattern.size();
@@ -360,7 +358,7 @@ Camera3FrameFixture::GenerateColorBarsPattern(
   }
 
   if (format == ImageFormat::IMAGE_FORMAT_I420) {
-    ImageUniquePtr i420_image(new Image(width, height, format));
+    ScopedImage i420_image(new Image(width, height, format));
     libyuv::ARGBToI420(argb_image->planes[0].addr, argb_image->planes[0].stride,
                        i420_image->planes[0].addr, i420_image->planes[0].stride,
                        i420_image->planes[1].addr, i420_image->planes[1].stride,
@@ -745,19 +743,18 @@ class Camera3SimpleCaptureFrames
   // Process result metadata and/or output buffers
   void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
-      CameraMetadataUniquePtr metadata,
-      std::vector<BufferHandleUniquePtr> buffers) override;
+      ScopedCameraMetadata metadata,
+      std::vector<ScopedBufferHandle> buffers) override;
 
   // Validate capture result keys
-  void ValidateCaptureResultKeys(
-      const CameraMetadataUniquePtr& request_metadata);
+  void ValidateCaptureResultKeys(const ScopedCameraMetadata& request_metadata);
 
   // Get waiver keys per camera device hardware level and capability
   void GetWaiverKeys(std::set<int32_t>* waiver_keys) const;
 
   // Process partial metadata
   void ProcessPartialMetadata(
-      std::vector<CameraMetadataUniquePtr>* partial_metadata) override;
+      std::vector<ScopedCameraMetadata>* partial_metadata) override;
 
   // Validate partial results
   void ValidatePartialMetadata();
@@ -765,23 +762,23 @@ class Camera3SimpleCaptureFrames
   const int32_t num_frames_;
 
   // Store result metadata in the first-in-first-out order
-  std::list<CameraMetadataUniquePtr> result_metadata_;
+  std::list<ScopedCameraMetadata> result_metadata_;
 
   // Store partial metadata in the first-in-first-out order
-  std::list<std::vector<CameraMetadataUniquePtr>> partial_metadata_list_;
+  std::list<std::vector<ScopedCameraMetadata>> partial_metadata_list_;
 
   static const int32_t kCaptureResultKeys[69];
 };
 
 void Camera3SimpleCaptureFrames::ProcessResultMetadataOutputBuffers(
     uint32_t frame_number,
-    CameraMetadataUniquePtr metadata,
-    std::vector<BufferHandleUniquePtr> buffers) {
+    ScopedCameraMetadata metadata,
+    std::vector<ScopedBufferHandle> buffers) {
   result_metadata_.push_back(std::move(metadata));
 }
 
 void Camera3SimpleCaptureFrames::ValidateCaptureResultKeys(
-    const CameraMetadataUniquePtr& request_metadata) {
+    const ScopedCameraMetadata& request_metadata) {
   std::set<int32_t> waiver_keys;
   GetWaiverKeys(&waiver_keys);
   while (!result_metadata_.empty()) {
@@ -1013,7 +1010,7 @@ void Camera3SimpleCaptureFrames::GetWaiverKeys(
 }
 
 void Camera3SimpleCaptureFrames::ProcessPartialMetadata(
-    std::vector<CameraMetadataUniquePtr>* partial_metadata) {
+    std::vector<ScopedCameraMetadata>* partial_metadata) {
   partial_metadata_list_.resize(partial_metadata_list_.size() + 1);
   for (auto& it : *partial_metadata) {
     partial_metadata_list_.back().push_back(std::move(it));
@@ -1053,7 +1050,7 @@ TEST_P(Camera3SimpleCaptureFrames, Camera3ResultAllKeysTest) {
                               CAMERA3_STREAM_ROTATION_0);
   ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
       << "Configuring stream fails";
-  CameraMetadataUniquePtr metadata(clone_camera_metadata(
+  ScopedCameraMetadata metadata(clone_camera_metadata(
       cam_device_.ConstructDefaultRequestSettings(CAMERA3_TEMPLATE_PREVIEW)));
 
   for (int32_t i = 0; i < num_frames_; i++) {
@@ -1114,8 +1111,8 @@ class Camera3ResultTimestampsTest
   // Process result metadata and/or output buffers
   void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
-      CameraMetadataUniquePtr metadata,
-      std::vector<BufferHandleUniquePtr> buffers) override;
+      ScopedCameraMetadata metadata,
+      std::vector<ScopedBufferHandle> buffers) override;
 
   // Validate and get one timestamp
   void ValidateAndGetTimestamp(int64_t* timestamp);
@@ -1125,7 +1122,7 @@ class Camera3ResultTimestampsTest
   std::list<uint64_t> capture_timestamps_;
 
   // Store result metadata in the first-in-first-out order
-  std::list<CameraMetadataUniquePtr> result_metadata_;
+  std::list<ScopedCameraMetadata> result_metadata_;
 };
 
 void Camera3ResultTimestampsTest::SetUp() {
@@ -1146,8 +1143,8 @@ void Camera3ResultTimestampsTest::Notify(const camera3_notify_msg* msg) {
 
 void Camera3ResultTimestampsTest::ProcessResultMetadataOutputBuffers(
     uint32_t frame_number,
-    CameraMetadataUniquePtr metadata,
-    std::vector<BufferHandleUniquePtr> buffers) {
+    ScopedCameraMetadata metadata,
+    std::vector<ScopedBufferHandle> buffers) {
   VLOGF_ENTER();
   result_metadata_.push_back(std::move(metadata));
 }
@@ -1310,8 +1307,8 @@ class Camera3FrameContentTest
  protected:
   void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
-      CameraMetadataUniquePtr metadata,
-      std::vector<BufferHandleUniquePtr> buffers) override;
+      ScopedCameraMetadata metadata,
+      std::vector<ScopedBufferHandle> buffers) override;
 
   int32_t format_;
 
@@ -1319,13 +1316,13 @@ class Camera3FrameContentTest
 
   int32_t height_;
 
-  BufferHandleUniquePtr buffer_handle_;
+  ScopedBufferHandle buffer_handle_;
 };
 
 void Camera3FrameContentTest::ProcessResultMetadataOutputBuffers(
     uint32_t frame_number,
-    CameraMetadataUniquePtr metadata,
-    std::vector<BufferHandleUniquePtr> buffers) {
+    ScopedCameraMetadata metadata,
+    std::vector<ScopedBufferHandle> buffers) {
   ASSERT_EQ(nullptr, buffer_handle_);
   buffer_handle_ = std::move(buffers.front());
 }
@@ -1339,7 +1336,7 @@ TEST_P(Camera3FrameContentTest, CorruptionDetection) {
                               CAMERA3_STREAM_ROTATION_0);
   ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
       << "Configuring stream fails";
-  CameraMetadataUniquePtr metadata(clone_camera_metadata(
+  ScopedCameraMetadata metadata(clone_camera_metadata(
       cam_device_.ConstructDefaultRequestSettings(CAMERA3_TEMPLATE_PREVIEW)));
   UpdateMetadata(ANDROID_SENSOR_TEST_PATTERN_MODE, test_pattern_modes.data(), 1,
                  &metadata);
@@ -1381,7 +1378,7 @@ TEST_P(Camera3FrameContentTest, DetectGreenLine) {
                               CAMERA3_STREAM_ROTATION_0);
   ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
       << "Configuring stream fails";
-  CameraMetadataUniquePtr metadata(clone_camera_metadata(
+  ScopedCameraMetadata metadata(clone_camera_metadata(
       cam_device_.ConstructDefaultRequestSettings(CAMERA3_TEMPLATE_PREVIEW)));
   UpdateMetadata(ANDROID_SENSOR_TEST_PATTERN_MODE, test_pattern_modes.data(), 1,
                  &metadata);
@@ -1406,7 +1403,7 @@ TEST_P(Camera3FrameContentTest, DetectGreenLine) {
                kGreenLowerLimit &&
            *(pixel + kBlueOffset) < kRedOrBlueUpperLimit;
   };
-  auto IsBottomLineGreen = [&](const ImageUniquePtr& argb_image) {
+  auto IsBottomLineGreen = [&](const ScopedImage& argb_image) {
     uint8_t* pixel_of_last_line =
         argb_image->planes[0].addr +
         argb_image->planes[0].stride * (argb_image->height - 1);
@@ -1420,7 +1417,7 @@ TEST_P(Camera3FrameContentTest, DetectGreenLine) {
   };
   EXPECT_FALSE(IsBottomLineGreen(argb_image))
       << "Green line at the bottom of captured frame";
-  auto IsRightMostLineGreen = [&](const ImageUniquePtr& argb_image) {
+  auto IsRightMostLineGreen = [&](const ScopedImage& argb_image) {
     uint8_t* last_pixel_of_line = argb_image->planes[0].addr +
                                   argb_image->planes[0].stride -
                                   kARGBPixelWidth;
@@ -1458,8 +1455,8 @@ class Camera3PortraitRotationTest
  protected:
   void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
-      CameraMetadataUniquePtr metadata,
-      std::vector<BufferHandleUniquePtr> buffers) override;
+      ScopedCameraMetadata metadata,
+      std::vector<ScopedBufferHandle> buffers) override;
 
   // Rotate |in_buffer| 180 degrees to |out_buffer|.
   int Rotate180(const Image& in_buffer, Image* out_buffer);
@@ -1477,13 +1474,13 @@ class Camera3PortraitRotationTest
 
   bool save_images_;
 
-  BufferHandleUniquePtr buffer_handle_;
+  ScopedBufferHandle buffer_handle_;
 };
 
 void Camera3PortraitRotationTest::ProcessResultMetadataOutputBuffers(
     uint32_t frame_number,
-    CameraMetadataUniquePtr metadata,
-    std::vector<BufferHandleUniquePtr> buffers) {
+    ScopedCameraMetadata metadata,
+    std::vector<ScopedBufferHandle> buffers) {
   ASSERT_EQ(nullptr, buffer_handle_);
   buffer_handle_ = std::move(buffers.front());
 }
@@ -1539,7 +1536,7 @@ int Camera3PortraitRotationTest::CropRotateScale(const Image& in_buffer,
       return -EINVAL;
   }
 
-  ImageUniquePtr rotated_buffer(
+  ScopedImage rotated_buffer(
       new Image(rotated_width, rotated_height, ImageFormat::IMAGE_FORMAT_I420));
   // This libyuv method first crops the frame and then rotates it 90 degrees
   // clockwise or counterclockwise.
@@ -1587,7 +1584,7 @@ TEST_P(Camera3PortraitRotationTest, GetFrame) {
         << "Configuring stream fails";
 
     // Get original pattern
-    CameraMetadataUniquePtr metadata(clone_camera_metadata(
+    ScopedCameraMetadata metadata(clone_camera_metadata(
         cam_device_.ConstructDefaultRequestSettings(CAMERA3_TEMPLATE_PREVIEW)));
     UpdateMetadata(ANDROID_SENSOR_TEST_PATTERN_MODE, test_pattern_modes.data(),
                    1, &metadata);
@@ -1633,7 +1630,7 @@ TEST_P(Camera3PortraitRotationTest, GetFrame) {
         << "Creating capture request fails";
 
     // Verify the original pattern is asymmetric
-    ImageUniquePtr orig_rotated_i420_image(
+    ScopedImage orig_rotated_i420_image(
         new Image(width_, height_, ImageFormat::IMAGE_FORMAT_I420));
     ASSERT_EQ(0, Rotate180(*orig_i420_image, orig_rotated_i420_image.get()));
     ASSERT_LE(ComputeSsim(*orig_i420_image, *orig_rotated_i420_image),
@@ -1641,7 +1638,7 @@ TEST_P(Camera3PortraitRotationTest, GetFrame) {
         << "Test pattern appears to be symmetric";
 
     // Generate software crop-rotate-scaled pattern
-    ImageUniquePtr sw_portrait_i420_image(
+    ScopedImage sw_portrait_i420_image(
         new Image(width_, height_, ImageFormat::IMAGE_FORMAT_I420));
     ASSERT_NE(nullptr, sw_portrait_i420_image);
     ASSERT_EQ(0,

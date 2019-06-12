@@ -410,8 +410,8 @@ Camera3Service::Camera3DeviceService::ConstructDefaultRequestSettings(
 
 void Camera3Service::Camera3DeviceService::ProcessResultMetadataOutputBuffers(
     uint32_t frame_number,
-    CameraMetadataUniquePtr metadata,
-    std::vector<BufferHandleUniquePtr> buffers) {
+    ScopedCameraMetadata metadata,
+    std::vector<ScopedBufferHandle> buffers) {
   VLOGF_ENTER();
   service_thread_.PostTaskAsync(
       FROM_HERE,
@@ -700,8 +700,8 @@ void Camera3Service::Camera3DeviceService::
 void Camera3Service::Camera3DeviceService::
     ProcessResultMetadataOutputBuffersOnServiceThread(
         uint32_t frame_number,
-        CameraMetadataUniquePtr metadata,
-        std::vector<BufferHandleUniquePtr> buffers) {
+        ScopedCameraMetadata metadata,
+        std::vector<ScopedBufferHandle> buffers) {
   DCHECK(service_thread_.IsCurrentThread());
   --number_of_in_flight_requests_;
   size_t capture_request_idx = 0;

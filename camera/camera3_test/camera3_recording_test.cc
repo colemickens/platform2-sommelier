@@ -15,7 +15,7 @@ void Camera3RecordingFixture::SetUp() {
 }
 
 void Camera3RecordingFixture::ProcessRecordingResult(
-    int cam_id, uint32_t /*frame_number*/, CameraMetadataUniquePtr metadata) {
+    int cam_id, uint32_t /*frame_number*/, ScopedCameraMetadata metadata) {
   VLOGF_ENTER();
   camera_metadata_ro_entry_t entry;
   ASSERT_EQ(0, find_camera_metadata_ro_entry(metadata.get(),
@@ -100,7 +100,7 @@ TEST_P(Camera3BasicRecordingTest, BasicRecording) {
   cam_service_.StartPreview(cam_id_, preview_resolution, jpeg_resolution,
                             recording_resolution_);
 
-  CameraMetadataUniquePtr recording_metadata(
+  ScopedCameraMetadata recording_metadata(
       clone_camera_metadata(cam_service_.ConstructDefaultRequestSettings(
           cam_id_, CAMERA3_TEMPLATE_VIDEO_RECORD)));
   ASSERT_NE(nullptr, recording_metadata.get());

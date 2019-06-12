@@ -153,8 +153,8 @@ int Camera3DeviceImpl::AllocateOutputBuffersByStreams(
   return result;
 }
 
-int Camera3DeviceImpl::RegisterOutputBuffer(
-    const camera3_stream_t& stream, BufferHandleUniquePtr unique_buffer) {
+int Camera3DeviceImpl::RegisterOutputBuffer(const camera3_stream_t& stream,
+                                            ScopedBufferHandle unique_buffer) {
   VLOGF_ENTER();
   int32_t result = -EIO;
   hal_thread_.PostTaskSync(
@@ -401,7 +401,7 @@ void Camera3DeviceImpl::AllocateOutputBuffersByStreamsOnThread(
   }
 
   for (const auto& it : *streams) {
-    BufferHandleUniquePtr buffer = gralloc_->Allocate(
+    ScopedBufferHandle buffer = gralloc_->Allocate(
         (it->format == HAL_PIXEL_FORMAT_BLOB) ? jpeg_max_size : it->width,
         (it->format == HAL_PIXEL_FORMAT_BLOB) ? 1 : it->height, it->format,
         GRALLOC_USAGE_SW_WRITE_OFTEN | GRALLOC_USAGE_HW_CAMERA_WRITE);
@@ -427,7 +427,7 @@ void Camera3DeviceImpl::AllocateOutputBuffersByStreamsOnThread(
 
 void Camera3DeviceImpl::RegisterOutputBufferOnThread(
     const camera3_stream_t* stream,
-    BufferHandleUniquePtr unique_buffer,
+    ScopedBufferHandle unique_buffer,
     int32_t* result) {
   DCHECK(thread_checker_.CalledOnValidThread());
   VLOGF_ENTER();
@@ -566,13 +566,13 @@ void Camera3DeviceImpl::ProcessCaptureResultOnThread(
     completed_request_set_.insert(result->frame_number);
 
     // Process all received metadata and output buffers
-    std::vector<BufferHandleUniquePtr> unique_buffers;
+    std::vector<ScopedBufferHandle> unique_buffers;
     if (GetOutputStreamBufferHandles(
             capture_result_info_map_[result->frame_number].output_buffers_,
             &unique_buffers)) {
       ADD_FAILURE() << "Failed to get output buffers";
     }
-    CameraMetadataUniquePtr final_metadata(
+    ScopedCameraMetadata final_metadata(
         capture_result_info_map_[result->frame_number].MergePartialMetadata());
     EXPECT_KEY_VALUE_GT_I64(final_metadata.get(), ANDROID_SENSOR_TIMESTAMP, 0);
     if (!process_result_metadata_output_buffers_cb_.is_null()) {
@@ -580,7 +580,7 @@ void Camera3DeviceImpl::ProcessCaptureResultOnThread(
                                                      std::move(final_metadata),
                                                      std::move(unique_buffers));
     }
-    std::vector<CameraMetadataUniquePtr> partial_metadata;
+    std::vector<ScopedCameraMetadata> partial_metadata;
     partial_metadata.swap(
         capture_result_info_map_[result->frame_number].partial_metadata_);
     if (!process_partial_metadata_cb_.is_null()) {
@@ -668,7 +668,7 @@ void Camera3DeviceImpl::Notify(const camera3_notify_msg_t* msg) {
 
 int Camera3DeviceImpl::GetOutputStreamBufferHandles(
     const std::vector<StreamBuffer>& output_buffers,
-    std::vector<BufferHandleUniquePtr>* unique_buffers) {
+    std::vector<ScopedBufferHandle>* unique_buffers) {
   DCHECK(thread_checker_.CalledOnValidThread());
   VLOGF_ENTER();
 
@@ -682,7 +682,7 @@ int Camera3DeviceImpl::GetOutputStreamBufferHandles(
 
     auto stream_buffers = &stream_buffer_map_[output_buffer.stream];
     auto it = std::find_if(stream_buffers->begin(), stream_buffers->end(),
-                           [=](const BufferHandleUniquePtr& buffer) {
+                           [=](const ScopedBufferHandle& buffer) {
                              return *buffer == output_buffer.buffer_handle;
                            });
     if (it != stream_buffers->end()) {
@@ -753,7 +753,7 @@ int64_t Camera3DeviceImpl::CaptureResultInfo::GetMetadataKeyValue64(
   return GetMetadataKeyEntry(key, &entry) ? entry.data.i64[0] : -EINVAL;
 }
 
-CameraMetadataUniquePtr
+ScopedCameraMetadata
 Camera3DeviceImpl::CaptureResultInfo::MergePartialMetadata() {
   DCHECK(thread_checker_.CalledOnValidThread());
   size_t entry_count = 0;
@@ -771,7 +771,7 @@ Camera3DeviceImpl::CaptureResultInfo::MergePartialMetadata() {
   for (const auto& it : partial_metadata_) {
     append_camera_metadata(metadata, it.get());
   }
-  return CameraMetadataUniquePtr(metadata);
+  return ScopedCameraMetadata(metadata);
 }
 
 bool Camera3DeviceImpl::CaptureResultInfo::GetMetadataKeyEntry(

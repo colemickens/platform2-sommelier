@@ -33,13 +33,13 @@ struct CameraMetadataDeleter {
 class Camera3DeviceImpl;
 
 typedef std::unique_ptr<camera_metadata_t, struct CameraMetadataDeleter>
-    CameraMetadataUniquePtr;
+    ScopedCameraMetadata;
 
 template <typename T>
 int UpdateMetadata(uint32_t tag,
                    const T* data,
                    size_t data_count,
-                   CameraMetadataUniquePtr* metadata_unique_ptr) {
+                   ScopedCameraMetadata* metadata_unique_ptr) {
   android::CameraMetadata metadata(metadata_unique_ptr->release());
   int result = metadata.update(tag, data, data_count);
   metadata_unique_ptr->reset(metadata.release());
@@ -64,12 +64,12 @@ class Camera3Device {
   typedef base::Callback<void(const camera3_notify_msg* msg)> NotifyCallback;
 
   typedef base::Callback<void(uint32_t frame_number,
-                              CameraMetadataUniquePtr metadata,
-                              std::vector<BufferHandleUniquePtr> buffers)>
+                              ScopedCameraMetadata metadata,
+                              std::vector<ScopedBufferHandle> buffers)>
       ProcessResultMetadataOutputBuffersCallback;
 
   typedef base::Callback<void(
-      std::vector<CameraMetadataUniquePtr>* partial_metadata)>
+      std::vector<ScopedCameraMetadata>* partial_metadata)>
       ProcessPartialMetadataCallback;
 
   // Register callback function to process capture result
@@ -126,7 +126,7 @@ class Camera3Device {
   // Register buffer |unique_buffer| that is associated with the given stream
   // |stream|. Camera3Device takes buffer ownership.
   int RegisterOutputBuffer(const camera3_stream_t& stream,
-                           BufferHandleUniquePtr unique_buffer);
+                           ScopedBufferHandle unique_buffer);
 
   // Process given capture request |capture_request|. The frame number field of
   // |capture_request| will be overwritten if this method returns 0 on success.
@@ -313,13 +313,13 @@ class Camera3DeviceFixture : public testing::Test {
   // pointers to keep the metadata and buffer.
   virtual void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
-      CameraMetadataUniquePtr metadata,
-      std::vector<BufferHandleUniquePtr> buffers) {}
+      ScopedCameraMetadata metadata,
+      std::vector<ScopedBufferHandle> buffers) {}
 
   // Process partial metadata. Tests can override this function to handle all
   // received partial metadata.
   virtual void ProcessPartialMetadata(
-      std::vector<CameraMetadataUniquePtr>* partial_metadata) {}
+      std::vector<ScopedCameraMetadata>* partial_metadata) {}
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(Camera3DeviceFixture);
 };

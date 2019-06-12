@@ -50,18 +50,18 @@ bool Camera3TestGralloc::Initialize() {
   return true;
 }
 
-BufferHandleUniquePtr Camera3TestGralloc::Allocate(int32_t width,
-                                                   int32_t height,
-                                                   int32_t format,
-                                                   int32_t usage) {
+ScopedBufferHandle Camera3TestGralloc::Allocate(int32_t width,
+                                                int32_t height,
+                                                int32_t format,
+                                                int32_t usage) {
   if (!buffer_manager_) {
-    return BufferHandleUniquePtr(nullptr);
+    return ScopedBufferHandle(nullptr);
   }
-  BufferHandleUniquePtr handle(new buffer_handle_t);
+  ScopedBufferHandle handle(new buffer_handle_t);
   uint32_t stride;
   if (buffer_manager_->Allocate(width, height, format, usage, cros::GRALLOC,
                                 handle.get(), &stride)) {
-    return BufferHandleUniquePtr(nullptr);
+    return ScopedBufferHandle(nullptr);
   }
   return handle;
 }

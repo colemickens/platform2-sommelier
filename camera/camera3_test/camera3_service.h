@@ -48,12 +48,12 @@ class Camera3Service {
 
   typedef base::Callback<void(int cam_id,
                               uint32_t frame_number,
-                              CameraMetadataUniquePtr metadata,
-                              BufferHandleUniquePtr buffer)>
+                              ScopedCameraMetadata metadata,
+                              ScopedBufferHandle buffer)>
       ProcessStillCaptureResultCallback;
 
   typedef base::Callback<void(
-      int cam_id, uint32_t frame_number, CameraMetadataUniquePtr metadata)>
+      int cam_id, uint32_t frame_number, ScopedCameraMetadata metadata)>
       ProcessRecordingResultCallback;
 
   // Initialize service and corresponding devices and register processing
@@ -194,8 +194,8 @@ class Camera3Service::Camera3DeviceService {
   // Process result metadata and output buffers
   void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
-      CameraMetadataUniquePtr metadata,
-      std::vector<BufferHandleUniquePtr> buffers);
+      ScopedCameraMetadata metadata,
+      std::vector<ScopedBufferHandle> buffers);
 
   void StartPreviewOnServiceThread(ResolutionInfo preview_resolution,
                                    ResolutionInfo still_capture_resolution,
@@ -235,8 +235,8 @@ class Camera3Service::Camera3DeviceService {
 
   void ProcessResultMetadataOutputBuffersOnServiceThread(
       uint32_t frame_number,
-      CameraMetadataUniquePtr metadata,
-      std::vector<BufferHandleUniquePtr> buffers);
+      ScopedCameraMetadata metadata,
+      std::vector<ScopedBufferHandle> buffers);
 
   int cam_id_;
 
@@ -268,11 +268,11 @@ class Camera3Service::Camera3DeviceService {
   size_t number_of_in_flight_requests_;
 
   // Metadata for repeating preview requests
-  CameraMetadataUniquePtr repeating_preview_metadata_;
+  ScopedCameraMetadata repeating_preview_metadata_;
 
   // Metadata for one-shot preview requests. It can be used to trigger AE
   // precapture and auto focus.
-  CameraMetadataUniquePtr oneshot_preview_metadata_;
+  ScopedCameraMetadata oneshot_preview_metadata_;
 
   // Metadata for still capture requests
   const camera_metadata_t* still_capture_metadata_;

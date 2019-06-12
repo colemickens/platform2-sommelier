@@ -100,7 +100,7 @@ int Camera3Device::AllocateOutputBuffersByStreams(
 }
 
 int Camera3Device::RegisterOutputBuffer(const camera3_stream_t& stream,
-                                        BufferHandleUniquePtr unique_buffer) {
+                                        ScopedBufferHandle unique_buffer) {
   DCHECK(impl_);
   return impl_->RegisterOutputBuffer(stream, std::move(unique_buffer));
 }

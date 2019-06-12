@@ -25,7 +25,7 @@ class Camera3RecordingFixture : public Camera3PreviewFixture {
   // freed after returning from this call.
   virtual void ProcessRecordingResult(int cam_id,
                                       uint32_t frame_number,
-                                      CameraMetadataUniquePtr metadata);
+                                      ScopedCameraMetadata metadata);
 
  protected:
   // Stores time at start of image sensor exposure in nanoseconds with camera

@@ -22,7 +22,7 @@ struct BufferHandleDeleter {
 };
 
 typedef std::unique_ptr<buffer_handle_t, struct BufferHandleDeleter>
-    BufferHandleUniquePtr;
+    ScopedBufferHandle;
 
 class Camera3TestGralloc {
  public:
@@ -30,7 +30,7 @@ class Camera3TestGralloc {
   static Camera3TestGralloc* GetInstance();
 
   // Allocate buffer by given parameters
-  BufferHandleUniquePtr Allocate(int width, int height, int format, int usage);
+  ScopedBufferHandle Allocate(int width, int height, int format, int usage);
 
   // This method is analogous to the lock() function in Android gralloc module.
   // Here the buffer handle is mapped with the given args.

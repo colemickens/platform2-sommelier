@@ -198,7 +198,7 @@ class CameraBufferManagerImpl final : public CameraBufferManager {
 
   // The private info about all the mapped (buffer, plane) pairs.
   // |buffer_info_| has to be placed after |gbm_device_| so that the GBM device
-  // is still valid when we delete the MappedGrallocBufferInfoUniquePtr.
+  // is still valid when we delete the MappedGrallocBufferInfoCache.
   // This is only used by gralloc buffers.
   MappedGrallocBufferInfoCache buffer_info_;
 

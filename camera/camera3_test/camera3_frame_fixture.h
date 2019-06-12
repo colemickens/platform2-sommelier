@@ -71,7 +71,7 @@ class Camera3FrameFixture : public Camera3StreamFixture {
  protected:
   // Create and process capture request of given metadata |metadata|. The frame
   // number of the created request is returned if |frame_number| is not null.
-  int CreateCaptureRequestByMetadata(const CameraMetadataUniquePtr& metadata,
+  int CreateCaptureRequestByMetadata(const ScopedCameraMetadata& metadata,
                                      uint32_t* frame_number);
 
   // Create and process capture request of given template |type|. The frame
@@ -110,24 +110,24 @@ class Camera3FrameFixture : public Camera3StreamFixture {
     std::vector<ImagePlane> planes;
   };
 
-  typedef std::unique_ptr<struct Image> ImageUniquePtr;
+  typedef std::unique_ptr<struct Image> ScopedImage;
 
   // Convert the buffer to given format and return a new buffer in the Image
   // structure. The input buffer is freed.
-  ImageUniquePtr ConvertToImage(BufferHandleUniquePtr buffer,
-                                uint32_t width,
-                                uint32_t height,
-                                ImageFormat format);
+  ScopedImage ConvertToImage(ScopedBufferHandle buffer,
+                             uint32_t width,
+                             uint32_t height,
+                             ImageFormat format);
 
   // Convert the buffer to given format, rotate the image by rotation and return
   // a new buffer in the Image structure. The input buffer is freed.
-  ImageUniquePtr ConvertToImageAndRotate(BufferHandleUniquePtr buffer,
-                                         uint32_t width,
-                                         uint32_t height,
-                                         ImageFormat format,
-                                         int32_t rotation);
+  ScopedImage ConvertToImageAndRotate(ScopedBufferHandle buffer,
+                                      uint32_t width,
+                                      uint32_t height,
+                                      ImageFormat format,
+                                      int32_t rotation);
 
-  ImageUniquePtr GenerateColorBarsPattern(
+  ScopedImage GenerateColorBarsPattern(
       uint32_t width,
       uint32_t height,
       ImageFormat format,

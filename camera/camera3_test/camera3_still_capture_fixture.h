@@ -29,8 +29,8 @@ class Camera3StillCaptureFixture : public Camera3PreviewFixture {
   // after returning from this call.
   virtual void ProcessStillCaptureResult(int cam_id,
                                          uint32_t frame_number,
-                                         CameraMetadataUniquePtr metadata,
-                                         BufferHandleUniquePtr buffer);
+                                         ScopedCameraMetadata metadata,
+                                         ScopedBufferHandle buffer);
 
   // Wait for still capture result with timeout
   int WaitStillCaptureResult(int cam_id, const struct timespec& timeout);
@@ -41,11 +41,11 @@ class Camera3StillCaptureFixture : public Camera3PreviewFixture {
   struct StillCaptureResult {
     sem_t capture_result_sem;
 
-    std::vector<CameraMetadataUniquePtr> result_metadatas;
+    std::vector<ScopedCameraMetadata> result_metadatas;
 
     std::vector<time_t> result_date_time;
 
-    std::vector<BufferHandleUniquePtr> buffer_handles;
+    std::vector<ScopedBufferHandle> buffer_handles;
 
     StillCaptureResult();
 

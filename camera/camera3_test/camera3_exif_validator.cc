@@ -140,7 +140,7 @@ static float GetExifTagFloat(const ExifData& exif_data,
 }
 
 Camera3ExifValidator::JpegExifInfo::JpegExifInfo(
-    const BufferHandleUniquePtr& buffer, size_t size)
+    const ScopedBufferHandle& buffer, size_t size)
     : buffer_handle(buffer),
       buffer_size(size),
       buffer_addr(nullptr),
@@ -240,7 +240,7 @@ static float GetMetadataKeyValueFloat(const camera_metadata_t& metadata,
 void Camera3ExifValidator::ValidateExifKeys(
     const ResolutionInfo& jpeg_resolution,
     const ExifTestData& exif_test_data,
-    const BufferHandleUniquePtr& buffer,
+    const ScopedBufferHandle& buffer,
     size_t buffer_size,
     const camera_metadata_t& metadata,
     const time_t& date_time) const {
@@ -464,8 +464,8 @@ void Camera3ExifValidator::ValidateExifKeys(
   EXPECT_TRUE(is_number(EXIF_IFD_EXIF, EXIF_TAG_SUB_SEC_TIME_DIGITIZED));
 }
 
-int Camera3ExifValidator::getExifOrientation(
-    const BufferHandleUniquePtr& buffer, size_t buffer_size) {
+int Camera3ExifValidator::getExifOrientation(const ScopedBufferHandle& buffer,
+                                             size_t buffer_size) {
   JpegExifInfo jpeg_exif_info(buffer, buffer_size);
   jpeg_exif_info.Initialize();
   ExifByteOrder byte_order = exif_data_get_byte_order(jpeg_exif_info.exif_data);

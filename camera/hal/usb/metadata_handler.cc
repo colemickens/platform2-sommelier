@@ -740,7 +740,7 @@ bool MetadataHandler::IsValidTemplateType(int template_type) {
   return template_type > 0 && template_type < CAMERA3_TEMPLATE_COUNT;
 }
 
-CameraMetadataUniquePtr MetadataHandler::CreateDefaultRequestSettings(
+ScopedCameraMetadata MetadataHandler::CreateDefaultRequestSettings(
     int template_type) {
   android::CameraMetadata data(metadata_);
 
@@ -770,9 +770,9 @@ CameraMetadataUniquePtr MetadataHandler::CreateDefaultRequestSettings(
   }
 
   if (ret) {
-    return CameraMetadataUniquePtr();
+    return ScopedCameraMetadata();
   }
-  return CameraMetadataUniquePtr(data.release());
+  return ScopedCameraMetadata(data.release());
 }
 
 int MetadataHandler::FillDefaultPreviewSettings(

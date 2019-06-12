@@ -61,7 +61,7 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
       std::vector<camera3_stream_buffer_t>* output_buffers);
 
   int RegisterOutputBuffer(const camera3_stream_t& stream,
-                           BufferHandleUniquePtr unique_buffer);
+                           ScopedBufferHandle unique_buffer);
 
   int ProcessCaptureRequest(camera3_capture_request_t* request);
 
@@ -112,7 +112,7 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
       int32_t* result);
 
   void RegisterOutputBufferOnThread(const camera3_stream_t* stream,
-                                    BufferHandleUniquePtr unique_buffer,
+                                    ScopedBufferHandle unique_buffer,
                                     int32_t* result);
 
   void ProcessCaptureRequestOnThread(camera3_capture_request_t* request,
@@ -135,7 +135,7 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
 
   struct CaptureResult : camera3_capture_result_t {
     explicit CaptureResult(const camera3_capture_result_t& result);
-    CameraMetadataUniquePtr metadata_result;
+    ScopedCameraMetadata metadata_result;
     std::vector<StreamBuffer> stream_buffers;
   };
 
@@ -154,7 +154,7 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
   // the function is expected to take the buffer ownership.
   int GetOutputStreamBufferHandles(
       const std::vector<StreamBuffer>& output_buffers,
-      std::vector<BufferHandleUniquePtr>* unique_buffers);
+      std::vector<ScopedBufferHandle>* unique_buffers);
 
   // Whether or not partial result is used
   bool UsePartialResult() const;
@@ -190,8 +190,7 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
   Camera3TestGralloc* gralloc_;
 
   // Store allocated buffers with streams as the key
-  std::unordered_map<const camera3_stream_t*,
-                     std::vector<BufferHandleUniquePtr>>
+  std::unordered_map<const camera3_stream_t*, std::vector<ScopedBufferHandle>>
       stream_buffer_map_;
 
   uint32_t request_frame_number_;
@@ -222,7 +221,7 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
     int64_t GetMetadataKeyValue64(int32_t key) const;
 
     // Merge partial metadata into one.
-    CameraMetadataUniquePtr MergePartialMetadata();
+    ScopedCameraMetadata MergePartialMetadata();
 
     bool have_input_buffer_;
 
@@ -230,7 +229,7 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
 
     bool have_result_metadata_;
 
-    std::vector<CameraMetadataUniquePtr> partial_metadata_;
+    std::vector<ScopedCameraMetadata> partial_metadata_;
 
     std::vector<StreamBuffer> output_buffers_;
 

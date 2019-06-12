@@ -23,8 +23,8 @@ void Camera3StillCaptureFixture::SetUp() {
 void Camera3StillCaptureFixture::ProcessStillCaptureResult(
     int cam_id,
     uint32_t frame_number,
-    CameraMetadataUniquePtr metadata,
-    BufferHandleUniquePtr buffer) {
+    ScopedCameraMetadata metadata,
+    ScopedBufferHandle buffer) {
   VLOGF_ENTER();
   StillCaptureResult* result = &still_capture_results_[cam_id];
   result->result_metadatas.emplace_back(std::move(metadata));
@@ -111,7 +111,7 @@ TEST_P(Camera3SimpleStillCaptureTest, JpegExifTest) {
       {thumbnail_resolutions.back(), 270, 100, 100},
   };
 
-  CameraMetadataUniquePtr metadata(
+  ScopedCameraMetadata metadata(
       clone_camera_metadata(cam_service_.ConstructDefaultRequestSettings(
           cam_id_, CAMERA3_TEMPLATE_STILL_CAPTURE)));
   ASSERT_NE(nullptr, metadata.get())
@@ -244,7 +244,7 @@ TEST_P(Camera3JpegResolutionTest, JpegResolutionTest) {
   ResolutionInfo recording_resolution(0, 0);
   cam_service_.StartPreview(cam_id_, preview_resolution, jpeg_resolution,
                             recording_resolution);
-  CameraMetadataUniquePtr metadata(
+  ScopedCameraMetadata metadata(
       clone_camera_metadata(cam_service_.ConstructDefaultRequestSettings(
           cam_id_, CAMERA3_TEMPLATE_STILL_CAPTURE)));
   ASSERT_NE(nullptr, metadata.get())

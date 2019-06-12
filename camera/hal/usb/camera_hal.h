@@ -69,7 +69,7 @@ class CameraHal : public UdevWatcher::Observer {
   base::ThreadChecker thread_checker_;
 
   // Used to report camera info at anytime.
-  std::map<int, CameraMetadataUniquePtr> static_infos_;
+  std::map<int, ScopedCameraMetadata> static_infos_;
 
   // Used to post CloseDevice to run on the same thread.
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
