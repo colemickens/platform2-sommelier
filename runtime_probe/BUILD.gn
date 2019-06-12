@@ -44,6 +44,7 @@ static_library("libruntime_probe") {
     "daemon.cc",
     "function_templates/storage.cc",
     "functions/all_functions.cc",
+    "functions/ata_storage.cc",
     "functions/ectool_i2cread.cc",
     "functions/generic_battery.cc",
     "functions/generic_storage.cc",
