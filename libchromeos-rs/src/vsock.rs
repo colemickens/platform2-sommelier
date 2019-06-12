@@ -7,15 +7,20 @@ use std::fmt;
 use std::io;
 use std::mem::{self, size_of};
 use std::os::raw::{c_int, c_uchar, c_uint, c_ushort};
-use std::os::unix::io::RawFd;
+use std::os::unix::io::{AsRawFd, IntoRawFd, RawFd};
+use std::result;
+use std::str::FromStr;
 
-use libc::{self, c_void, sa_family_t, size_t, sockaddr, socklen_t};
+use libc::{self, c_void, sa_family_t, size_t, sockaddr, socklen_t, F_GETFL, F_SETFL, O_NONBLOCK};
 
 // The domain for vsock sockets.
 const AF_VSOCK: sa_family_t = 40;
 
 // Vsock equivalent of INADDR_ANY.  Indicates the context id of the current endpoint.
-const VMADDR_CID_ANY: c_uint = c_uint::max_value();
+pub const VMADDR_CID_ANY: c_uint = c_uint::max_value();
+
+// Vsock equivalent of binding on port 0. Binds to a random port.
+pub const VMADDR_PORT_ANY: c_uint = c_uint::max_value();
 
 // The number of bytes of padding to be added to the sockaddr_vm struct.  Taken directly
 // from linux/vm_sockets.h.
@@ -33,10 +38,59 @@ struct sockaddr_vm {
     svm_zero: [c_uchar; PADDING],
 }
 
+pub struct AddrParseError;
+
+impl fmt::Display for AddrParseError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "failed to parse vsock address")
+    }
+}
+
 /// An address associated with a virtual socket.
+#[derive(Copy, Clone)]
 pub struct SocketAddr {
     pub cid: c_uint,
     pub port: c_uint,
+}
+
+pub trait ToSocketAddr {
+    fn to_socket_addr(&self) -> result::Result<SocketAddr, AddrParseError>;
+}
+
+impl ToSocketAddr for SocketAddr {
+    fn to_socket_addr(&self) -> result::Result<SocketAddr, AddrParseError> {
+        Ok(*self)
+    }
+}
+
+impl ToSocketAddr for str {
+    fn to_socket_addr(&self) -> result::Result<SocketAddr, AddrParseError> {
+        self.parse()
+    }
+}
+
+impl<'a, T: ToSocketAddr + ?Sized> ToSocketAddr for &'a T {
+    fn to_socket_addr(&self) -> result::Result<SocketAddr, AddrParseError> {
+        (**self).to_socket_addr()
+    }
+}
+
+impl FromStr for SocketAddr {
+    type Err = AddrParseError;
+
+    /// Parse a vsock SocketAddr from a string. vsock socket addresses are of the form
+    /// "vsock:cid:port".
+    fn from_str(s: &str) -> Result<SocketAddr, AddrParseError> {
+        let components: Vec<&str> = s.split(':').collect();
+        if components.len() != 3 || components[0] != "vsock" {
+            return Err(AddrParseError);
+        }
+
+        Ok(SocketAddr {
+            cid: components[1].parse().map_err(|_| AddrParseError)?,
+            port: components[2].parse().map_err(|_| AddrParseError)?,
+        })
+    }
 }
 
 impl fmt::Display for SocketAddr {
@@ -45,12 +99,71 @@ impl fmt::Display for SocketAddr {
     }
 }
 
+/// Sets `fd` to be blocking or nonblocking. `fd` must be a valid fd of a type that accepts the
+/// `O_NONBLOCK` flag. This includes regular files, pipes, and sockets.
+unsafe fn set_nonblocking(fd: RawFd, nonblocking: bool) -> io::Result<()> {
+    let flags = libc::fcntl(fd, F_GETFL, 0);
+    if flags < 0 {
+        return Err(io::Error::last_os_error());
+    }
+
+    let flags = if nonblocking {
+        flags | O_NONBLOCK
+    } else {
+        flags & !O_NONBLOCK
+    };
+
+    let ret = libc::fcntl(fd, F_SETFL, flags);
+    if ret < 0 {
+        return Err(io::Error::last_os_error());
+    }
+
+    Ok(())
+}
+
 /// A virtual stream socket.
 pub struct VsockStream {
     fd: RawFd,
 }
 
 impl VsockStream {
+    pub fn connect<A: ToSocketAddr>(addr: A) -> io::Result<VsockStream> {
+        let sockaddr = addr
+            .to_socket_addr()
+            .map_err(|_| io::Error::from_raw_os_error(libc::EINVAL))?;
+
+        // Safe because this just creates a vsock socket, and the return value is checked.
+        let sockfd =
+            unsafe { libc::socket(libc::AF_VSOCK, libc::SOCK_STREAM | libc::SOCK_CLOEXEC, 0) };
+        if sockfd < 0 {
+            return Err(io::Error::last_os_error());
+        }
+
+        // Safe because we are zero-initializing a struct with only integer fields.
+        let mut svm: sockaddr_vm = unsafe { mem::zeroed() };
+        svm.svm_family = AF_VSOCK;
+        svm.svm_cid = sockaddr.cid;
+        svm.svm_port = sockaddr.port;
+
+        // Safe because this just connects a vsock socket, and the return value is checked.
+        let ret = unsafe {
+            libc::connect(
+                sockfd,
+                &svm as *const sockaddr_vm as *const sockaddr,
+                size_of::<sockaddr_vm>() as socklen_t,
+            )
+        };
+        if ret < 0 {
+            let connect_err = io::Error::last_os_error();
+            // Safe because this doesn't modify any memory and we are the only
+            // owner of the file descriptor.
+            unsafe { libc::close(sockfd) };
+            return Err(connect_err);
+        }
+
+        Ok(VsockStream { fd: sockfd })
+    }
+
     pub fn try_clone(&self) -> io::Result<VsockStream> {
         // Safe because this doesn't modify any memory and we check the return value.
         let dup_fd = unsafe { libc::fcntl(self.fd, libc::F_DUPFD_CLOEXEC, 0) };
@@ -59,6 +172,11 @@ impl VsockStream {
         }
 
         Ok(VsockStream { fd: dup_fd })
+    }
+
+    pub fn set_nonblocking(&mut self, nonblocking: bool) -> io::Result<()> {
+        // Safe because the fd is valid and owned by this stream.
+        unsafe { set_nonblocking(self.fd, nonblocking) }
     }
 }
 
@@ -103,6 +221,20 @@ impl io::Write for VsockStream {
     }
 }
 
+impl AsRawFd for VsockStream {
+    fn as_raw_fd(&self) -> RawFd {
+        self.fd
+    }
+}
+
+impl IntoRawFd for VsockStream {
+    fn into_raw_fd(self) -> RawFd {
+        let fd = self.fd;
+        mem::forget(self);
+        fd
+    }
+}
+
 impl Drop for VsockStream {
     fn drop(&mut self) {
         // Safe because this doesn't modify any memory and we are the only
@@ -124,8 +256,13 @@ impl VsockListener {
         assert_eq!(size_of::<sockaddr_vm>(), size_of::<sockaddr>());
 
         // Safe because this doesn't modify any memory and we check the return value.
-        let fd: RawFd =
-            unsafe { libc::socket(AF_VSOCK as c_int, libc::SOCK_STREAM | libc::SOCK_CLOEXEC, 0) };
+        let fd: RawFd = unsafe {
+            libc::socket(
+                c_int::from(AF_VSOCK),
+                libc::SOCK_STREAM | libc::SOCK_CLOEXEC,
+                0,
+            )
+        };
         if fd < 0 {
             return Err(io::Error::last_os_error());
         }
@@ -165,6 +302,31 @@ impl VsockListener {
         Ok(VsockListener { fd })
     }
 
+    /// Returns the port that this listener is bound to.
+    pub fn local_port(&self) -> io::Result<u32> {
+        // Safe because we are zero-initializing a struct with only integer fields.
+        let mut svm: sockaddr_vm = unsafe { mem::zeroed() };
+
+        // Safe because we give a valid pointer for addrlen and check the length.
+        let mut addrlen = size_of::<sockaddr_vm>() as socklen_t;
+        let ret = unsafe {
+            // Get the socket address that was actually bound.
+            libc::getsockname(
+                self.fd,
+                &mut svm as *mut sockaddr_vm as *mut sockaddr,
+                &mut addrlen as *mut socklen_t,
+            )
+        };
+        if ret < 0 {
+            let getsockname_err = io::Error::last_os_error();
+            return Err(getsockname_err);
+        }
+        // If this doesn't match, it's not safe to get the port out of the sockaddr.
+        assert_eq!(addrlen as usize, size_of::<sockaddr_vm>());
+
+        Ok(svm.svm_port)
+    }
+
     /// Accepts a new incoming connection on this listener.  Blocks the calling thread until a
     /// new connection is established.  When established, returns the corresponding `VsockStream`
     /// and the remote peer's address.
@@ -200,6 +362,17 @@ impl VsockListener {
                 port: svm.svm_port,
             },
         ))
+    }
+
+    pub fn set_nonblocking(&mut self, nonblocking: bool) -> io::Result<()> {
+        // Safe because the fd is valid and owned by this stream.
+        unsafe { set_nonblocking(self.fd, nonblocking) }
+    }
+}
+
+impl AsRawFd for VsockListener {
+    fn as_raw_fd(&self) -> RawFd {
+        self.fd
     }
 }
 
