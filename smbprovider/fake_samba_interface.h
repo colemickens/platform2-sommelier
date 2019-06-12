@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -25,7 +26,6 @@ constexpr size_t kDirEntBufSize = 1024;
 class FakeSambaInterface : public SambaInterface {
  public:
   FakeSambaInterface();
-  ~FakeSambaInterface() override;
 
   // SambaInterface overrides.
   int32_t OpenDirectory(const std::string& directory_path,
@@ -34,10 +34,10 @@ class FakeSambaInterface : public SambaInterface {
   int32_t CloseDirectory(int32_t dir_id) override;
 
   int32_t GetDirectoryEntry(int32_t dir_id,
-                            const struct smbc_dirent** dirent) override;
+                            const smbc_dirent** dirent) override;
 
   int32_t GetDirectoryEntryWithMetadata(
-      int32_t dir_id, const struct libsmb_file_info** file_info) override;
+      int32_t dir_id, const libsmb_file_info** file_info) override;
 
   int32_t GetEntryStatus(const std::string& entry_path,
                          struct stat* stat) override;
@@ -80,7 +80,7 @@ class FakeSambaInterface : public SambaInterface {
                      off_t length,
                      off_t* bytes_written) override;
 
-  SambaInterface::SambaInterfaceId GetSambaInterfaceId() override;
+  SambaInterfaceId GetSambaInterfaceId() override;
 
   WeakPtr AsWeakPtr() override;
 
@@ -192,6 +192,9 @@ class FakeSambaInterface : public SambaInterface {
     // Returns true for SMBC_DIR.
     bool IsDir() const;
 
+    // Checks whether this entry is a file or an empty directory.
+    bool IsFileOrEmptyDir() const;
+
     DISALLOW_COPY_AND_ASSIGN(FakeEntry);
   };
 
@@ -222,9 +225,6 @@ class FakeSambaInterface : public SambaInterface {
     // Returns index of the entry if it was found and deleted. Otherwise returns
     // -1.
     int32_t RemoveEntry(const std::string& name);
-
-    // Checks whether the provided FakeEntry is a file or an empty directory.
-    bool IsFileOrEmptyDirectory(FakeEntry* entry) const;
 
     EntriesIterator GetEntryIt(const std::string& name);
 
@@ -379,16 +379,19 @@ class FakeSambaInterface : public SambaInterface {
       FakeDirectory** target_parent) const;
 
   // Populates the |file_info_| member struct and returns a pointer to it.
-  const struct libsmb_file_info* PopulateFileInfo(const FakeEntry& entry);
+  const libsmb_file_info* PopulateFileInfo(const FakeEntry& entry);
 
   // Populates |dirent_buf_| member and returns a pointer to it.
-  const struct smbc_dirent* PopulateDirEnt(const FakeEntry& entry);
+  const smbc_dirent* PopulateDirEnt(const FakeEntry& entry);
 
   // Counter for assigning file descriptor when opening.
   uint32_t next_fd = 1;
 
-  // Root directory of the file system.
-  std::unique_ptr<FakeDirectory> root;
+  // Root directory of the file system. This is marked as mutable since the
+  // method GetDirectory() has a dubious const-correctness. GetDirectory() is a
+  // const method that returns a pointer to a mutable FakeDirectory owned by
+  // this FakeSambaInterface.
+  mutable FakeDirectory root{"smb://"};
 
   // Errno for CloseFile() to return. If this is set to anything other than
   // 0, CloseFile() will return the error this is set to.
@@ -414,10 +417,8 @@ class FakeSambaInterface : public SambaInterface {
   // only maintains the state for a single call to GetDirectoryEntry or
   // GetDirectoryEntryWithMetadata. Subsequent calls overwrite the values
   // in these structs.
-  struct libsmb_file_info file_info_;
-  alignas(struct smbc_dirent) uint8_t dirent_buf_[kDirEntBufSize];
-  struct smbc_dirent* dirent_ =
-      reinterpret_cast<struct smbc_dirent*>(dirent_buf_);
+  libsmb_file_info file_info_;
+  std::aligned_union_t<kDirEntBufSize, smbc_dirent> dirent_buf_;
 
   // Weak pointer factory. Should be the last member.
   base::WeakPtrFactory<FakeSambaInterface> weak_factory_{this};

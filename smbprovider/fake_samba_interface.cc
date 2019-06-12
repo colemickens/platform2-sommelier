@@ -59,13 +59,10 @@ bool WriteEntry(const std::string& entry_name,
 
 }  // namespace
 
-FakeSambaInterface::FakeSambaInterface()
-    : root(std::make_unique<FakeDirectory>("smb://")) {
+FakeSambaInterface::FakeSambaInterface() {
   // Initialize the |file_info_| struct.
   memset(&file_info_, 0, sizeof(file_info_));
 }
-
-FakeSambaInterface::~FakeSambaInterface() = default;
 
 int32_t FakeSambaInterface::OpenDirectory(const std::string& directory_path,
                                           int32_t* dir_id) {
@@ -90,8 +87,8 @@ int32_t FakeSambaInterface::CloseDirectory(int32_t dir_id) {
   return 0;
 }
 
-int32_t FakeSambaInterface::GetDirectoryEntry(
-    int32_t dir_id, const struct smbc_dirent** dirent) {
+int32_t FakeSambaInterface::GetDirectoryEntry(int32_t dir_id,
+                                              const smbc_dirent** dirent) {
   DCHECK(dirent);
   *dirent = nullptr;
   if (!IsDirectoryFDOpen(dir_id)) {
@@ -114,7 +111,7 @@ int32_t FakeSambaInterface::GetDirectoryEntry(
 }
 
 int32_t FakeSambaInterface::GetDirectoryEntryWithMetadata(
-    int32_t dir_id, const struct libsmb_file_info** file_info) {
+    int32_t dir_id, const libsmb_file_info** file_info) {
   DCHECK(file_info);
   *file_info = nullptr;
   if (!IsDirectoryFDOpen(dir_id)) {
@@ -563,41 +560,25 @@ FakeSambaInterface::FakeEntry* FakeSambaInterface::FakeDirectory::FindEntry(
   return nullptr;
 }
 
-bool FakeSambaInterface::FakeDirectory::IsFileOrEmptyDirectory(
-    FakeEntry* entry) const {
-  DCHECK(entry->IsValidEntryType());
-  if (entry->IsFile()) {
-    return true;
-  }
-
-  FakeDirectory* directory = static_cast<FakeDirectory*>(entry);
-  return directory->entries.empty();
-}
-
 FakeSambaInterface::FakeDirectory::EntriesIterator
 FakeSambaInterface::FakeDirectory::GetEntryIt(const std::string& name) {
-  for (auto it = entries.begin(); it != entries.end(); ++it) {
-    if ((*it)->name == name) {
-      return it;
-    }
-  }
-
-  // This function is only called after verifying that an entry exists, so it
-  // should always return from inside the for-loop above.
-  NOTREACHED();
-  return entries.end();
+  return std::find_if(
+      entries.begin(), entries.end(),
+      [&name](const std::unique_ptr<FakeEntry>& p) { return p->name == name; });
 }
 
 int32_t FakeSambaInterface::FakeDirectory::RemoveEntry(
     const std::string& name) {
-  for (size_t i = 0; i < entries.size(); ++i) {
-    if (entries[i]->name == name) {
-      DCHECK(IsFileOrEmptyDirectory(entries[i].get()));
-      entries.erase(entries.begin() + i);
-      return i;
-    }
+  const EntriesIterator it = GetEntryIt(name);
+  if (it == entries.end()) {
+    return -1;
   }
-  return -1;
+
+  DCHECK((*it)->IsFileOrEmptyDir());
+
+  const size_t i = it - entries.begin();
+  entries.erase(it);
+  return i;
 }
 
 void FakeSambaInterface::FakeFile::WriteData(size_t offset,
@@ -731,9 +712,7 @@ FakeSambaInterface::FakeDirectory* FakeSambaInterface::GetDirectory(
   }
 
   PathParts split_path = SplitPath(full_path);
-
-  FakeDirectory* current = root.get();
-  DCHECK(current);
+  FakeDirectory* current = &root;
 
   // i = 0 represents the root directory which we already have.
   DCHECK_EQ("/", split_path[0]);
@@ -851,6 +830,11 @@ bool FakeSambaInterface::FakeEntry::IsDir() const {
          smbc_type == SMBC_FILE_SHARE;
 }
 
+bool FakeSambaInterface::FakeEntry::IsFileOrEmptyDir() const {
+  DCHECK(IsValidEntryType());
+  return IsFile() || static_cast<const FakeDirectory*>(this)->IsEmpty();
+}
+
 bool FakeSambaInterface::HasReadSet(int32_t fd) const {
   DCHECK(IsFDOpen(fd));
   return open_fds.at(fd).readable;
@@ -943,7 +927,7 @@ void FakeSambaInterface::RemoveEntryAndResetIndicies(
   RewindOpenInfoIndicesIfNeccessary(GetDirPath(full_path), deleted_index);
 }
 
-const struct libsmb_file_info* FakeSambaInterface::PopulateFileInfo(
+const libsmb_file_info* FakeSambaInterface::PopulateFileInfo(
     const FakeEntry& entry) {
   file_info_.size = entry.size;
   file_info_.mtime_ts.tv_sec = entry.date;
@@ -958,13 +942,13 @@ const struct libsmb_file_info* FakeSambaInterface::PopulateFileInfo(
   return &file_info_;
 }
 
-const struct smbc_dirent* FakeSambaInterface::PopulateDirEnt(
-    const FakeEntry& entry) {
-  bool result =
-      WriteEntry(entry.name, entry.smbc_type, kDirEntBufSize, dirent_);
+const smbc_dirent* FakeSambaInterface::PopulateDirEnt(const FakeEntry& entry) {
+  smbc_dirent* const dirent = reinterpret_cast<smbc_dirent*>(&dirent_buf_);
+  const bool result =
+      WriteEntry(entry.name, entry.smbc_type, kDirEntBufSize, dirent);
   DCHECK(result);
 
-  return dirent_;
+  return dirent;
 }
 
 SambaInterface::SambaInterfaceId FakeSambaInterface::GetSambaInterfaceId() {
