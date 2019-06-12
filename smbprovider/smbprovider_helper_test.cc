@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sstream>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -359,6 +360,45 @@ TEST_F(SmbProviderHelperTest, GetOpenFilePermissionsBoolean) {
   EXPECT_EQ(O_RDWR, GetOpenFilePermissions(true));
 
   EXPECT_EQ(O_RDONLY, GetOpenFilePermissions(false));
+}
+
+namespace {
+
+std::string ToString(ErrorType error) {
+  std::ostringstream out;
+  out << error;
+  return out.str();
+}
+
+}  // namespace
+
+TEST_F(SmbProviderHelperTest, ErrorTypeOutputOperator) {
+  EXPECT_EQ(ToString(ERROR_NONE), "ERROR_NONE");
+  EXPECT_EQ(ToString(ERROR_OK), "ERROR_OK");
+  EXPECT_EQ(ToString(ERROR_FAILED), "ERROR_FAILED");
+  EXPECT_EQ(ToString(ERROR_IN_USE), "ERROR_IN_USE");
+  EXPECT_EQ(ToString(ERROR_EXISTS), "ERROR_EXISTS");
+  EXPECT_EQ(ToString(ERROR_NOT_FOUND), "ERROR_NOT_FOUND");
+  EXPECT_EQ(ToString(ERROR_ACCESS_DENIED), "ERROR_ACCESS_DENIED");
+  EXPECT_EQ(ToString(ERROR_TOO_MANY_OPENED), "ERROR_TOO_MANY_OPENED");
+  EXPECT_EQ(ToString(ERROR_NO_MEMORY), "ERROR_NO_MEMORY");
+  EXPECT_EQ(ToString(ERROR_NO_SPACE), "ERROR_NO_SPACE");
+  EXPECT_EQ(ToString(ERROR_NOT_A_DIRECTORY), "ERROR_NOT_A_DIRECTORY");
+  EXPECT_EQ(ToString(ERROR_INVALID_OPERATION), "ERROR_INVALID_OPERATION");
+  EXPECT_EQ(ToString(ERROR_SECURITY), "ERROR_SECURITY");
+  EXPECT_EQ(ToString(ERROR_ABORT), "ERROR_ABORT");
+  EXPECT_EQ(ToString(ERROR_NOT_A_FILE), "ERROR_NOT_A_FILE");
+  EXPECT_EQ(ToString(ERROR_NOT_EMPTY), "ERROR_NOT_EMPTY");
+  EXPECT_EQ(ToString(ERROR_INVALID_URL), "ERROR_INVALID_URL");
+  EXPECT_EQ(ToString(ERROR_IO), "ERROR_IO");
+  EXPECT_EQ(ToString(ERROR_PROVIDER_ERROR_COUNT), "ERROR_PROVIDER_ERROR_COUNT");
+  EXPECT_EQ(ToString(ERROR_DBUS_PARSE_FAILED), "ERROR_DBUS_PARSE_FAILED");
+  EXPECT_EQ(ToString(ERROR_COPY_PENDING), "ERROR_COPY_PENDING");
+  EXPECT_EQ(ToString(ERROR_COPY_FAILED), "ERROR_COPY_FAILED");
+  EXPECT_EQ(ToString(ERROR_SMB1_UNSUPPORTED), "ERROR_SMB1_UNSUPPORTED");
+  EXPECT_EQ(ToString(ERROR_OPERATION_PENDING), "ERROR_OPERATION_PENDING");
+  EXPECT_EQ(ToString(ERROR_OPERATION_FAILED), "ERROR_OPERATION_FAILED");
+  EXPECT_EQ(ToString(ErrorType(987654)), "ERROR_987654");
 }
 
 }  // namespace smbprovider

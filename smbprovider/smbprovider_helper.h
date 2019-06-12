@@ -5,6 +5,7 @@
 #ifndef SMBPROVIDER_SMBPROVIDER_HELPER_H_
 #define SMBPROVIDER_SMBPROVIDER_HELPER_H_
 
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -133,6 +134,9 @@ std::string GetDirPath(const std::string& full_path);
 // processed as an error. |result| is the result of the call to CreateDirectory.
 // If |ignore_existing| is true, EEXIST errors are ignored.
 bool ShouldReportCreateDirError(int32_t result, bool ignore_existing);
+
+// Output operator for logging and debugging.
+std::ostream& operator<<(std::ostream& out, ErrorType error);
 
 }  // namespace smbprovider
 

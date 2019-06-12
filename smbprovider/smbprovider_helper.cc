@@ -73,7 +73,7 @@ ErrorType GetErrorFromErrno(int32_t error_code) {
     case ECONNABORTED:
       return ERROR_SMB1_UNSUPPORTED;
     default:
-      LOG(WARNING) << "Unknown error code: " << error_code << " "
+      LOG(WARNING) << "Unexpected error code " << error_code << ": "
                    << strerror(error_code);
       return ERROR_FAILED;
   }
@@ -109,8 +109,8 @@ void LogAndSetError(const char* operation_name,
 void LogOperationError(const char* operation_name,
                        int32_t mount_id,
                        ErrorType error_received) {
-  LOG(ERROR) << "Error performing " << operation_name
-             << " from mount id: " << mount_id << ": " << error_received;
+  LOG(ERROR) << "Cannot " << operation_name << " on Mount [" << mount_id
+             << "]: " << error_received;
 }
 
 void LogAndSetDBusParseError(const char* operation_name, int32_t* error_code) {
@@ -204,6 +204,64 @@ bool ShouldReportCreateDirError(int32_t result, bool ignore_existing) {
     return false;
   }
   return !(result == EEXIST && ignore_existing);
+}
+
+std::ostream& operator<<(std::ostream& out, const ErrorType error) {
+  switch (error) {
+    case ERROR_NONE:
+      return out << "ERROR_NONE";
+    case ERROR_OK:
+      return out << "ERROR_OK";
+    case ERROR_FAILED:
+      return out << "ERROR_FAILED";
+    case ERROR_IN_USE:
+      return out << "ERROR_IN_USE";
+    case ERROR_EXISTS:
+      return out << "ERROR_EXISTS";
+    case ERROR_NOT_FOUND:
+      return out << "ERROR_NOT_FOUND";
+    case ERROR_ACCESS_DENIED:
+      return out << "ERROR_ACCESS_DENIED";
+    case ERROR_TOO_MANY_OPENED:
+      return out << "ERROR_TOO_MANY_OPENED";
+    case ERROR_NO_MEMORY:
+      return out << "ERROR_NO_MEMORY";
+    case ERROR_NO_SPACE:
+      return out << "ERROR_NO_SPACE";
+    case ERROR_NOT_A_DIRECTORY:
+      return out << "ERROR_NOT_A_DIRECTORY";
+    case ERROR_INVALID_OPERATION:
+      return out << "ERROR_INVALID_OPERATION";
+    case ERROR_SECURITY:
+      return out << "ERROR_SECURITY";
+    case ERROR_ABORT:
+      return out << "ERROR_ABORT";
+    case ERROR_NOT_A_FILE:
+      return out << "ERROR_NOT_A_FILE";
+    case ERROR_NOT_EMPTY:
+      return out << "ERROR_NOT_EMPTY";
+    case ERROR_INVALID_URL:
+      return out << "ERROR_INVALID_URL";
+    case ERROR_IO:
+      return out << "ERROR_IO";
+    case ERROR_PROVIDER_ERROR_COUNT:
+      return out << "ERROR_PROVIDER_ERROR_COUNT";
+    case ERROR_DBUS_PARSE_FAILED:
+      return out << "ERROR_DBUS_PARSE_FAILED";
+    case ERROR_COPY_PENDING:
+      return out << "ERROR_COPY_PENDING";
+    case ERROR_COPY_FAILED:
+      return out << "ERROR_COPY_FAILED";
+    case ERROR_SMB1_UNSUPPORTED:
+      return out << "ERROR_SMB1_UNSUPPORTED";
+    case ERROR_OPERATION_PENDING:
+      return out << "ERROR_OPERATION_PENDING";
+    case ERROR_OPERATION_FAILED:
+      return out << "ERROR_OPERATION_FAILED";
+    default:
+      return out << "ERROR_"
+                 << static_cast<std::underlying_type_t<ErrorType>>(error);
+  }
 }
 
 }  // namespace smbprovider
