@@ -50,13 +50,16 @@ class DrivefsHelper : public FUSEHelper {
   // This is approximately `chown fuse-drivefs:chronos-access |dirpath|'.
   virtual bool SetupDirectoryForFUSEAccess(const base::FilePath& dirpath) const;
 
+  // Ensure |path| is accessible by chronos.
+  virtual bool CheckMyFilesPermissions(const base::FilePath& path) const;
+
  private:
   friend class DrivefsHelperTest;
 
-  // Returns the data dir from the options if one is present and valid. Returns
-  // an empty path on failure.
-  base::FilePath GetValidatedDataDir(
-      const std::vector<std::string>& options) const;
+  // Returns the directory specified by |prefix| from the options if one is
+  // present and valid. Returns an empty path on failure.
+  base::FilePath GetValidatedDirectory(const std::vector<std::string>& options,
+                                       base::StringPiece prefix) const;
 
   DISALLOW_COPY_AND_ASSIGN(DrivefsHelper);
 };

@@ -37,6 +37,8 @@ const uid_t kFilesGID = 701;
 const uid_t kFilesAccessGID = 1501;
 const uid_t kOtherUID = 400;
 
+constexpr char kMyFiles[] = "/home/chronos/user/MyFiles";
+
 // Mock Platform implementation for testing.
 class MockPlatform : public Platform {
  public:
@@ -79,6 +81,10 @@ class MockPlatform : public Platform {
 
  private:
   bool GetRealPathImpl(const std::string& path, std::string* real_path) const {
+    if (path.find("baz") != std::string::npos) {
+      *real_path = "/baz/qux";
+      return true;
+    }
     *real_path = datadir().value();
     return true;
   }
@@ -123,14 +129,23 @@ class TestDrivefsHelper : public DrivefsHelper {
         .WillByDefault(Invoke(
             this,
             &TestDrivefsHelper::ForwardSetupDirectoryForFUSEAccessToImpl));
+    ON_CALL(*this, CheckMyFilesPermissions(_))
+        .WillByDefault(Invoke(
+            this, &TestDrivefsHelper::ForwardCheckMyFilesPermissionsToImpl));
   }
 
   MOCK_CONST_METHOD1(SetupDirectoryForFUSEAccess,
+                     bool(const base::FilePath& dirpath));
+  MOCK_CONST_METHOD1(CheckMyFilesPermissions,
                      bool(const base::FilePath& dirpath));
 
  private:
   bool ForwardSetupDirectoryForFUSEAccessToImpl(const base::FilePath& path) {
     return DrivefsHelper::SetupDirectoryForFUSEAccess(path);
+  }
+
+  bool ForwardCheckMyFilesPermissionsToImpl(const base::FilePath& path) {
+    return DrivefsHelper::CheckMyFilesPermissions(path);
   }
 };
 
@@ -143,6 +158,10 @@ class DrivefsHelperTest : public ::testing::Test {
  protected:
   bool SetupDirectoryForFUSEAccess(const std::string& dir) {
     return helper_.SetupDirectoryForFUSEAccess(base::FilePath(dir));
+  }
+
+  bool CheckMyFilesPermissions(const std::string& dir) {
+    return helper_.CheckMyFilesPermissions(base::FilePath(dir));
   }
 
   MockPlatform platform_;
@@ -165,6 +184,32 @@ TEST_F(DrivefsHelperTest, CreateMounter) {
   auto options_string = mounter->mount_options().ToString();
   EXPECT_THAT(options_string,
               HasSubstr("datadir=" + platform_.datadir().value()));
+  EXPECT_THAT(options_string, HasSubstr("identity=id"));
+  EXPECT_THAT(options_string, HasSubstr("rw"));
+  EXPECT_THAT(options_string, HasSubstr("uid=700"));
+  EXPECT_THAT(options_string, HasSubstr("gid=1501"));
+}
+
+TEST_F(DrivefsHelperTest, CreateMounterWithMyFiles) {
+  EXPECT_CALL(helper_, SetupDirectoryForFUSEAccess(platform_.datadir()))
+      .WillOnce(Return(true));
+  EXPECT_CALL(helper_, CheckMyFilesPermissions(base::FilePath("/baz/qux")))
+      .WillOnce(Return(true));
+
+  auto mounter = helper_.CreateMounter(
+      base::FilePath("/tmp/working_dir"), Uri::Parse("drivefs://id"),
+      base::FilePath("/media/fuse/drivefs/id"),
+      {"rw", "datadir=/foo//bar/./", "datadir=/ignored/second/datadir/value",
+       "myfiles=/baz/.//qux/", "myfiles=/ignored/second/"});
+  ASSERT_TRUE(mounter);
+
+  EXPECT_EQ("drivefs", mounter->filesystem_type());
+  EXPECT_TRUE(mounter->source().empty());
+  EXPECT_EQ("/media/fuse/drivefs/id", mounter->target_path().value());
+  auto options_string = mounter->mount_options().ToString();
+  EXPECT_THAT(options_string,
+              HasSubstr("datadir=" + platform_.datadir().value()));
+  EXPECT_THAT(options_string, HasSubstr("myfiles=/baz/qux"));
   EXPECT_THAT(options_string, HasSubstr("identity=id"));
   EXPECT_THAT(options_string, HasSubstr("rw"));
   EXPECT_THAT(options_string, HasSubstr("uid=700"));
@@ -458,6 +503,29 @@ TEST_F(DrivefsHelperTest,
   ASSERT_TRUE(base::CreateDirectory(platform_.datadir().Append("1/2/3/4/5/6")));
 
   EXPECT_FALSE(SetupDirectoryForFUSEAccess(platform_.datadir().value()));
+}
+
+TEST_F(DrivefsHelperTest, CheckMyFilesPermissions_Success) {
+  EXPECT_CALL(platform_, DirectoryExists(kMyFiles)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, GetOwnership(kMyFiles, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kFilesUID), Return(true)));
+
+  EXPECT_TRUE(CheckMyFilesPermissions(kMyFiles));
+}
+
+TEST_F(DrivefsHelperTest, CheckMyFilesPermissions_WrongOwner) {
+  EXPECT_CALL(platform_, DirectoryExists(kMyFiles)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, GetOwnership(kMyFiles, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kOtherUID), Return(true)));
+
+  EXPECT_FALSE(CheckMyFilesPermissions(kMyFiles));
+}
+
+TEST_F(DrivefsHelperTest, CheckMyFilesPermissions_InvalidUser) {
+  EXPECT_CALL(platform_, GetUserAndGroupId(FUSEHelper::kFilesUser, _, _))
+      .WillOnce(Return(false));
+
+  EXPECT_FALSE(CheckMyFilesPermissions(kMyFiles));
 }
 
 }  // namespace

@@ -21,6 +21,7 @@ namespace {
 
 const char kDataDirOptionPrefix[] = "datadir=";
 const char kIdentityOptionPrefix[] = "identity=";
+const char kMyFilesOptionPrefix[] = "myfiles=";
 
 const char kOldUser[] = "fuse-drivefs";
 const char kHelperTool[] = "/opt/google/drive-file-stream/drivefs";
@@ -116,7 +117,7 @@ std::unique_ptr<FUSEMounter> DrivefsHelper::CreateMounter(
   // Enforced by FUSEHelper::CanMount().
   DCHECK(!identity.empty());
 
-  auto data_dir = GetValidatedDataDir(options);
+  auto data_dir = GetValidatedDirectory(options, kDataDirOptionPrefix);
   if (data_dir.empty()) {
     return nullptr;
   }
@@ -128,12 +129,21 @@ std::unique_ptr<FUSEMounter> DrivefsHelper::CreateMounter(
     LOG(ERROR) << "Invalid user configuration.";
     return nullptr;
   }
+
+  auto my_files_path = GetValidatedDirectory(options, kMyFilesOptionPrefix);
+  if (!my_files_path.empty() && !CheckMyFilesPermissions(my_files_path)) {
+    return nullptr;
+  }
+
   if (!SetupDirectoryForFUSEAccess(data_dir)) {
     return nullptr;
   }
   MountOptions mount_options;
   mount_options.EnforceOption(kDataDirOptionPrefix + data_dir.value());
   mount_options.EnforceOption(kIdentityOptionPrefix + identity);
+  if (!my_files_path.empty()) {
+    mount_options.EnforceOption(kMyFilesOptionPrefix + my_files_path.value());
+  }
   mount_options.Initialize(options, true, base::IntToString(files_uid),
                            base::IntToString(files_gid));
 
@@ -146,21 +156,25 @@ std::unique_ptr<FUSEMounter> DrivefsHelper::CreateMounter(
       {data_dir.value(), true /* writable */},
       {kDbusSocketPath, true},
   };
+  if (!my_files_path.empty()) {
+    paths.push_back(
+        {my_files_path.value(), true /* writable */, true /* recursive */});
+  }
   return std::make_unique<FUSEMounter>(
       "", target_path.value(), type(), mount_options, platform(),
       program_path().value(), user(), seccomp, paths, true);
 }
 
-base::FilePath DrivefsHelper::GetValidatedDataDir(
-    const std::vector<std::string>& options) const {
+base::FilePath DrivefsHelper::GetValidatedDirectory(
+    const std::vector<std::string>& options,
+    const base::StringPiece prefix) const {
   for (const auto& option : options) {
-    if (base::StartsWith(option, kDataDirOptionPrefix,
-                         base::CompareCase::SENSITIVE)) {
-      std::string path_string = option.substr(strlen(kDataDirOptionPrefix));
+    if (base::StartsWith(option, prefix, base::CompareCase::SENSITIVE)) {
+      std::string path_string = option.substr(prefix.size());
       base::FilePath data_dir(path_string);
       if (data_dir.empty() || !data_dir.IsAbsolute() ||
           data_dir.ReferencesParent()) {
-        LOG(ERROR) << "Invalid DriveFS option datadir=" << path_string;
+        LOG(ERROR) << "Invalid DriveFS option " << prefix << path_string;
         return {};
       }
       base::FilePath suffix_component;
@@ -208,6 +222,33 @@ bool DrivefsHelper::SetupDirectoryForFUSEAccess(
   }
   if (!platform()->SetOwnership(path, mounter_uid, files_gid)) {
     LOG(ERROR) << "Unable to chown datadir '" << path << "'";
+    return false;
+  }
+  return true;
+}
+
+bool DrivefsHelper::CheckMyFilesPermissions(const base::FilePath& dir) const {
+  CHECK(dir.IsAbsolute() && !dir.ReferencesParent())
+      << "unsafe my files path '" << dir.value() << "'";
+
+  uid_t mounter_uid;
+  if (!platform()->GetUserAndGroupId(user(), &mounter_uid, nullptr)) {
+    LOG(ERROR) << "Invalid user configuration.";
+    return false;
+  }
+  std::string path = dir.value();
+
+  if (!platform()->DirectoryExists(path)) {
+    LOG(ERROR) << "My files directory '" << path << "' does not exist";
+    return false;
+  }
+  uid_t current_uid;
+  if (!platform()->GetOwnership(path, &current_uid, nullptr)) {
+    LOG(WARNING) << "Can't access my files directory '" << path << "'";
+    return false;
+  }
+  if (current_uid != mounter_uid) {
+    LOG(ERROR) << "Incorrect owner for my files directory '" << path << "'";
     return false;
   }
   return true;
