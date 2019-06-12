@@ -21,6 +21,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /sbin/debugd                    u:object_r:cros_debugd_exec:s0
 /sbin/dhcpcd                    u:object_r:cros_dhcpcd_exec:s0
 /sbin/frecon                    u:object_r:frecon_exec:s0
+/sbin/hwclock                   u:object_r:cros_hwclock_exec:s0
 /sbin/insmod                    u:object_r:cros_modprobe_exec:s0
 /sbin/minijail0                 u:object_r:cros_minijail_exec:s0
 /sbin/modprobe                  u:object_r:cros_modprobe_exec:s0
