@@ -779,7 +779,7 @@ TEST_F(DaemonTest, FactoryMode) {
   EXPECT_EQ(0, async_commands_.size());
 }
 
-// TODO: Add more tests. Namely:
+// TODO(chromeos-power): Add more tests. Namely:
 // - PrepareToSuspend / UndoPrepareToSuspend
 // - Creating and deleting suspend_announced file
 // - Handling D-Bus RequestSuspend method calls

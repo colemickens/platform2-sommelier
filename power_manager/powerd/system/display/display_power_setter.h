@@ -43,7 +43,7 @@ class DisplayPowerSetterInterface {
 
 // Real DisplayPowerSetterInterface implementation that makes D-Bus method
 // calls to DisplayService.
-// TODO: Write unit tests for this class now that it's using
+// TODO(chromeos-power): Write unit tests for this class now that it's using
 // DBusWrapperInterface.
 class DisplayPowerSetter : public DisplayPowerSetterInterface {
  public:

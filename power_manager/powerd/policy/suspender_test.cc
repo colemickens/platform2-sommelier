@@ -49,7 +49,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   void set_suspend_result(SuspendResult result) { suspend_result_ = result; }
   void set_wakeup_count(uint64_t count) { wakeup_count_ = count; }
   void set_clock(Clock* clock) { clock_ = clock; }
-  // TODO: Delete this and use set_suspend_callback instead.
+  // TODO(chromeos-power): Delete this and use set_suspend_callback instead.
   void set_suspend_advance_time(base::TimeDelta delta) {
     suspend_advance_time_ = delta;
   }

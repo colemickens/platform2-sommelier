@@ -215,7 +215,8 @@ class Suspender : public SuspendDelayObserver {
   // |wakeup_count|. Autotests can pass an external wakeup count to ensure
   // that machines in the test cluster don't sleep indefinitely (see
   // http://crbug.com/218175).
-  // TODO: Delete this and add a std::optional<uint64_t> arg to RequestSuspend.
+  // TODO(chromeos-power): Delete this and add a std::optional<uint64_t> arg to
+  // RequestSuspend.
   void RequestSuspendWithExternalWakeupCount(SuspendImminent::Reason reason,
                                              uint64_t wakeup_count,
                                              base::TimeDelta duration);

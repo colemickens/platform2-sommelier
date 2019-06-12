@@ -654,8 +654,8 @@ void InternalBacklightController::UpdateState(
 
   // Hold off on changing the brightness at startup until all the required
   // state has been received.
-  // TODO: Don't bail out if we'll turn the display off, since that's
-  // independent of all of this.
+  // TODO(chromeos-power): Don't bail out if we'll turn the display off, since
+  // that's independent of all of this.
   if (!got_power_source_ ||
       (use_ambient_light_ && !got_ambient_light_brightness_percent_))
     return;
