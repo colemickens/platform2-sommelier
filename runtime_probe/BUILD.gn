@@ -48,6 +48,7 @@ static_library("libruntime_probe") {
     "functions/generic_battery.cc",
     "functions/generic_storage.cc",
     "functions/mmc_storage.cc",
+    "functions/nvme_storage.cc",
     "functions/sequence.cc",
     "functions/sysfs.cc",
     "functions/vpd_cached.cc",

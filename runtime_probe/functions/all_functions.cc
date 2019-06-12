@@ -12,6 +12,7 @@
 #include "runtime_probe/functions/generic_battery.h"
 #include "runtime_probe/functions/generic_storage.h"
 #include "runtime_probe/functions/mmc_storage.h"
+#include "runtime_probe/functions/nvme_storage.h"
 #include "runtime_probe/functions/sequence.h"
 #include "runtime_probe/functions/shell.h"
 #include "runtime_probe/functions/sysfs.h"
