@@ -4,6 +4,7 @@
 
 #include <iomanip>
 #include <iostream>  // NOLINT(readability/streams)
+#include <memory>
 #include <string>
 
 #include <base/at_exit.h>
@@ -18,6 +19,7 @@
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 
+#include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
@@ -96,8 +98,13 @@ int main(int argc, char** argv) {
   power_manager::system::UdevStub udev;
   power_manager::system::DBusWrapperStub dbus_wrapper;
   base::FilePath path(power_manager::kPowerStatusPath);
+
+  auto battery_percentage_converter =
+      power_manager::BatteryPercentageConverter::CreateFromPrefs(&prefs);
+
   power_manager::system::PowerSupply power_supply;
-  power_supply.Init(path, &prefs, &udev, &dbus_wrapper);
+  power_supply.Init(path, &prefs, &udev, &dbus_wrapper,
+                    battery_percentage_converter.get());
 
   CHECK(power_supply.RefreshImmediately());
   const PowerStatus status = power_supply.GetPowerStatus();

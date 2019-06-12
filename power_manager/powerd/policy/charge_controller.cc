@@ -4,11 +4,14 @@
 
 #include "power_manager/powerd/policy/charge_controller.h"
 
+#include <cmath>
+
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/powerd/system/charge_controller_helper_interface.h"
 
 namespace power_manager {
@@ -144,9 +147,13 @@ ChargeController::ChargeController() = default;
 
 ChargeController::~ChargeController() = default;
 
-void ChargeController::Init(system::ChargeControllerHelperInterface* helper) {
+void ChargeController::Init(
+    system::ChargeControllerHelperInterface* helper,
+    BatteryPercentageConverter* battery_percentage_converter) {
   DCHECK(helper);
+  DCHECK(battery_percentage_converter);
   helper_ = helper;
+  battery_percentage_converter_ = battery_percentage_converter;
 }
 
 void ChargeController::HandlePolicyChange(const PowerManagementPolicy& policy) {
@@ -184,8 +191,12 @@ bool ChargeController::ApplyPeakShiftChange(
   if (!helper_->SetPeakShiftEnabled(true)) {
     return false;
   }
+
+  const int actual_battery_percent_threshold =
+      std::round(battery_percentage_converter_->ConvertDisplayToActual(
+          policy.peak_shift_battery_percent_threshold()));
   if (!helper_->SetPeakShiftBatteryPercentThreshold(
-          policy.peak_shift_battery_percent_threshold())) {
+          actual_battery_percent_threshold)) {
     return false;
   }
   for (const auto& day_config : policy.peak_shift_day_configs()) {
@@ -252,8 +263,10 @@ bool ChargeController::ApplyBatteryChargeModeChange(
     return false;
   }
   return helper_->SetBatteryChargeCustomThresholds(
-      policy.battery_charge_mode().custom_charge_start(),
-      policy.battery_charge_mode().custom_charge_stop());
+      std::round(battery_percentage_converter_->ConvertDisplayToActual(
+          policy.battery_charge_mode().custom_charge_start())),
+      std::round(battery_percentage_converter_->ConvertDisplayToActual(
+          policy.battery_charge_mode().custom_charge_stop())));
 }
 
 bool ChargeController::SetPeakShiftDayConfig(

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <cstdio>
+#include <memory>
 
 #include <base/at_exit.h>
 #include <base/files/file_path.h>
@@ -11,6 +12,7 @@
 #include <base/strings/string_util.h>
 #include <brillo/flag_helper.h>
 
+#include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
@@ -52,8 +54,13 @@ int main(int argc, char** argv) {
   power_manager::system::UdevStub udev;
   power_manager::system::DBusWrapperStub dbus_wrapper;
   base::FilePath path(power_manager::kPowerStatusPath);
+
+  auto battery_percentage_converter =
+      power_manager::BatteryPercentageConverter::CreateFromPrefs(&prefs);
+
   power_manager::system::PowerSupply power_supply;
-  power_supply.Init(path, &prefs, &udev, &dbus_wrapper);
+  power_supply.Init(path, &prefs, &udev, &dbus_wrapper,
+                    battery_percentage_converter.get());
 
   CHECK(power_supply.RefreshImmediately());
   const power_manager::system::PowerStatus status =

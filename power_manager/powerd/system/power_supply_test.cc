@@ -18,6 +18,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
+#include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
@@ -120,9 +121,12 @@ class PowerSupplyTest : public ::testing::Test {
   }
 
  protected:
-  // Initializes |power_supply_|.
   void Init() {
-    power_supply_->Init(temp_dir_.GetPath(), &prefs_, &udev_, &dbus_wrapper_);
+    battery_percentage_converter_ =
+        BatteryPercentageConverter::CreateFromPrefs(&prefs_);
+
+    power_supply_->Init(temp_dir_.GetPath(), &prefs_, &udev_, &dbus_wrapper_,
+                        battery_percentage_converter_.get());
   }
 
   // Sets the time so that |power_supply_| will believe that the current
@@ -278,6 +282,7 @@ class PowerSupplyTest : public ::testing::Test {
   base::FilePath second_battery_dir_;
   UdevStub udev_;
   DBusWrapperStub dbus_wrapper_;
+  std::unique_ptr<BatteryPercentageConverter> battery_percentage_converter_;
   std::unique_ptr<PowerSupply> power_supply_;
   std::unique_ptr<PowerSupply::TestApi> test_api_;
 };

@@ -22,6 +22,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 
+#include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/power_constants.h"
@@ -436,10 +437,12 @@ PowerSupply::~PowerSupply() {
     udev_->RemoveSubsystemObserver(kUdevSubsystem, this);
 }
 
-void PowerSupply::Init(const base::FilePath& power_supply_path,
-                       PrefsInterface* prefs,
-                       UdevInterface* udev,
-                       system::DBusWrapperInterface* dbus_wrapper) {
+void PowerSupply::Init(
+    const base::FilePath& power_supply_path,
+    PrefsInterface* prefs,
+    UdevInterface* udev,
+    system::DBusWrapperInterface* dbus_wrapper,
+    BatteryPercentageConverter* battery_percentage_converter) {
   udev_ = udev;
   udev_->AddSubsystemObserver(kUdevSubsystem, this);
 
@@ -455,6 +458,8 @@ void PowerSupply::Init(const base::FilePath& power_supply_path,
       kSetPowerSourceMethod,
       base::Bind(&PowerSupply::OnSetPowerSourceMethodCall,
                  weak_ptr_factory_.GetWeakPtr()));
+
+  battery_percentage_converter_ = battery_percentage_converter;
 
   prefs_->GetBool(kMultipleBatteriesPref, &allow_multiple_batteries_);
 
@@ -993,9 +998,9 @@ void PowerSupply::UpdateBatteryPercentagesAndState(PowerStatus* status) {
   DCHECK(status);
   status->battery_percentage = util::ClampPercent(
       100.0 * status->battery_charge / status->battery_charge_full);
-  status->display_battery_percentage = util::ClampPercent(
-      100.0 * (status->battery_percentage - low_battery_shutdown_percent_) /
-      (100.0 * full_factor_ - low_battery_shutdown_percent_));
+  status->display_battery_percentage =
+      battery_percentage_converter_->ConvertActualToDisplay(
+          status->battery_percentage);
 
   if (status->line_power_on) {
     const bool is_full =

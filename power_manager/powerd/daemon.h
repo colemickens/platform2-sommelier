@@ -37,6 +37,7 @@ class ObjectProxy;
 
 namespace power_manager {
 
+class BatteryPercentageConverter;
 class DaemonDelegate;
 class MetricsSenderInterface;
 class PeriodicActivityLogger;
@@ -262,6 +263,7 @@ class Daemon : public policy::InputEventHandler::Delegate,
   // May be null if the TPM status is not needed.
   dbus::ObjectProxy* cryptohomed_dbus_proxy_ = nullptr;
 
+  std::unique_ptr<BatteryPercentageConverter> battery_percentage_converter_;
   std::unique_ptr<StateControllerDelegate> state_controller_delegate_;
   std::unique_ptr<MetricsSenderInterface> metrics_sender_;
 

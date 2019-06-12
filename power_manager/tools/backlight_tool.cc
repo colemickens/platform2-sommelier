@@ -18,6 +18,7 @@
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 
+#include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
@@ -33,6 +34,7 @@
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/udev_stub.h"
 
+using power_manager::BatteryPercentageConverter;
 using power_manager::PowerSource;
 using power_manager::Prefs;
 using power_manager::TabletMode;
@@ -98,9 +100,14 @@ class Converter {
     PowerSource power_source = PowerSource::BATTERY;
     if (!force_battery) {
       UdevStub udev;
+
+      auto battery_percentage_converter =
+          BatteryPercentageConverter::CreateFromPrefs(&prefs_);
+
       PowerSupply power_supply;
       power_supply.Init(base::FilePath(power_manager::kPowerStatusPath),
-                        &prefs_, &udev, &dbus_wrapper_);
+                        &prefs_, &udev, &dbus_wrapper_,
+                        battery_percentage_converter.get());
       if (!power_supply.RefreshImmediately()) {
         LOG(ERROR) << "Failed to read power supply information; using battery";
       } else {

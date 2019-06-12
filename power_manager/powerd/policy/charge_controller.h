@@ -14,6 +14,8 @@
 
 namespace power_manager {
 
+class BatteryPercentageConverter;
+
 namespace system {
 class ChargeControllerHelperInterface;
 }  // namespace system
@@ -27,8 +29,9 @@ class ChargeController {
   ChargeController();
   ~ChargeController();
 
-  // |helper| must be non-null.
-  void Init(system::ChargeControllerHelperInterface* helper);
+  // |helper| and |battery_percentage_converter| must be non-null.
+  void Init(system::ChargeControllerHelperInterface* helper,
+            BatteryPercentageConverter* battery_percentage_converter);
 
   // Does nothing if |policy| and |cached_policy_| peak shift related fields are
   // equal. Otherwise updates the charging configuration per |policy| and
@@ -61,7 +64,10 @@ class ChargeController {
   bool IsPolicyEqualToCache(const PowerManagementPolicy& policy) const;
 
   // Not owned.
-  system::ChargeControllerHelperInterface* helper_;
+  system::ChargeControllerHelperInterface* helper_ = nullptr;
+
+  // Not owned.
+  BatteryPercentageConverter* battery_percentage_converter_ = nullptr;
 
   // Contains last successfully applied power policies settings.
   base::Optional<PowerManagementPolicy> cached_policy_;

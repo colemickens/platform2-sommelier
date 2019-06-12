@@ -119,7 +119,8 @@ class DaemonDelegate {
       const base::FilePath& power_supply_path,
       PrefsInterface* prefs,
       system::UdevInterface* udev,
-      system::DBusWrapperInterface* dbus_wrapper) = 0;
+      system::DBusWrapperInterface* dbus_wrapper,
+      BatteryPercentageConverter* battery_percentage_converter) = 0;
 
   virtual std::unique_ptr<system::SarWatcherInterface> CreateSarWatcher(
       PrefsInterface* prefs, system::UdevInterface* udev) = 0;

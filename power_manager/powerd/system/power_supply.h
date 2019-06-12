@@ -31,6 +31,7 @@ class MethodCall;
 
 namespace power_manager {
 
+class BatteryPercentageConverter;
 class Clock;
 class PowerSupplyProperties;
 class PrefsInterface;
@@ -322,7 +323,8 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   void Init(const base::FilePath& power_supply_path,
             PrefsInterface* prefs,
             UdevInterface* udev,
-            DBusWrapperInterface* dbus_wrapper);
+            DBusWrapperInterface* dbus_wrapper,
+            BatteryPercentageConverter* battery_percentage_converter);
 
   // PowerSupplyInterface implementation:
   void AddObserver(PowerSupplyObserver* observer) override;
@@ -443,6 +445,8 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   PrefsInterface* prefs_ = nullptr;               // non-owned
   UdevInterface* udev_ = nullptr;                 // non-owned
   DBusWrapperInterface* dbus_wrapper_ = nullptr;  // non-owned
+  BatteryPercentageConverter* battery_percentage_converter_ =
+      nullptr;  // non-owned
 
   std::unique_ptr<Clock> clock_;
 

@@ -71,6 +71,7 @@ static_library("libutil") {
   all_dependent_configs = [ ":libutil_dependent_config" ]
   sources = [
     "common/activity_logger.cc",
+    "common/battery_percentage_converter.cc",
     "common/clock.cc",
     "common/cros_config_prefs_source.cc",
     "common/file_prefs_store.cc",
@@ -348,6 +349,7 @@ if (use.test) {
     configs += [ ":target_defaults" ]
     sources = [
       "common/action_recorder.cc",
+      "common/battery_percentage_converter.cc",
       "common/fake_prefs.cc",
       "common/metrics_sender_stub.cc",
       "common/test_main_loop_runner.cc",
@@ -361,6 +363,7 @@ if (use.test) {
     ]
     sources = [
       "common/activity_logger_test.cc",
+      "common/battery_percentage_converter_test.cc",
       "common/prefs_test.cc",
       "common/testrunner.cc",
       "common/util_test.cc",

@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/policy/charge_controller.h"
 
+#include <cmath>
 #include <map>
 #include <string>
 #include <utility>
@@ -14,6 +15,8 @@
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
+#include "power_manager/common/battery_percentage_converter.h"
+#include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/charge_controller_helper_stub.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
@@ -24,6 +27,9 @@ namespace {
 
 // Holds hours and minutes.
 using TestDayConfig = std::vector<std::pair<int, int>>;
+
+constexpr double kLowBatteryShutdownPercent = 4.0;
+constexpr double kFullFactor = 0.97;
 
 // |configs| must contain three hour/minute pairs: the start time, the end time
 // and the charge start time.
@@ -61,7 +67,13 @@ void MakeAdvancedBatteryChargeModeDayConfig(
 
 class ChargeControllerTest : public ::testing::Test {
  public:
-  ChargeControllerTest() { controller_.Init(&helper_); }
+  ChargeControllerTest() {
+    controller_.Init(&helper_, &battery_percentage_converter_);
+  }
+
+  const BatteryPercentageConverter& battery_percentage_converter() const {
+    return battery_percentage_converter_;
+  }
 
  protected:
   // Sets PeakShift policy in PowerManagementPolicy proto.
@@ -149,8 +161,13 @@ class ChargeControllerTest : public ::testing::Test {
   }
 
   system::ChargeControllerHelperStub helper_;
+
   ChargeController controller_;
   PowerManagementPolicy policy_;
+
+ private:
+  BatteryPercentageConverter battery_percentage_converter_{
+      kLowBatteryShutdownPercent, kFullFactor};
 };
 
 }  // namespace
@@ -181,6 +198,11 @@ TEST_F(ChargeControllerTest, PeakShift) {
   constexpr int kThreshold1 = 50;
   constexpr int kThreshold2 = 45;
 
+  const int actual_threshold1 = std::round(
+      battery_percentage_converter().ConvertDisplayToActual(kThreshold1));
+  const int actual_threshold2 = std::round(
+      battery_percentage_converter().ConvertDisplayToActual(kThreshold2));
+
   constexpr PowerManagementPolicy::WeekDay kDay1 =
       PowerManagementPolicy::MONDAY;
   constexpr PowerManagementPolicy::WeekDay kDay2 =
@@ -195,13 +217,13 @@ TEST_F(ChargeControllerTest, PeakShift) {
   SetPeakShift(kThreshold1, {{kDay1, kDayConfig1}, {kDay2, kDayConfig2}});
   controller_.HandlePolicyChange(policy_);
   EXPECT_TRUE(CheckPeakShift(
-      true, kThreshold1,
+      true, actual_threshold1,
       {{kDay1, kExpectedDayConfig1}, {kDay2, kExpectedDayConfig2}}));
 
   SetPeakShift(kThreshold2, {{kDay1, kDayConfig2}, {kDay2, kDayConfig1}});
   controller_.HandlePolicyChange(policy_);
   EXPECT_TRUE(CheckPeakShift(
-      true, kThreshold2,
+      true, actual_threshold2,
       {{kDay1, kExpectedDayConfig2}, {kDay2, kExpectedDayConfig1}}));
 
   helper_.Reset();
@@ -298,14 +320,20 @@ TEST_F(ChargeControllerTest, BatteryChargeMode) {
   constexpr int kCustomStartCharge = 60;
   constexpr int kCustomEndCharge = 90;
 
+  const int actual_custom_start_charge =
+      std::round(battery_percentage_converter().ConvertDisplayToActual(
+          kCustomStartCharge));
+  const int actual_custom_end_charge = std::round(
+      battery_percentage_converter().ConvertDisplayToActual(kCustomEndCharge));
+
   policy_.mutable_battery_charge_mode()->set_mode(kMode1);
   controller_.HandlePolicyChange(policy_);
   EXPECT_TRUE(CheckBatteryChargeMode(kMode1));
 
   SetBatteryChargeMode(kMode2, kCustomStartCharge, kCustomEndCharge);
   controller_.HandlePolicyChange(policy_);
-  EXPECT_TRUE(
-      CheckBatteryChargeMode(kMode2, kCustomStartCharge, kCustomEndCharge));
+  EXPECT_TRUE(CheckBatteryChargeMode(kMode2, actual_custom_start_charge,
+                                     actual_custom_end_charge));
 
   helper_.Reset();
 

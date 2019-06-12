@@ -20,6 +20,7 @@
 #include <dbus/message.h>
 #include <gtest/gtest.h>
 
+#include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/metrics_sender_stub.h"
 #include "power_manager/common/power_constants.h"
@@ -242,11 +243,13 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       const base::FilePath& power_supply_path,
       PrefsInterface* prefs,
       system::UdevInterface* udev,
-      system::DBusWrapperInterface* dbus_wrapper) override {
+      system::DBusWrapperInterface* dbus_wrapper,
+      BatteryPercentageConverter* battery_percentage_converter) override {
     EXPECT_EQ(kPowerStatusPath, power_supply_path.value());
     EXPECT_EQ(prefs_, prefs);
     EXPECT_EQ(udev_, udev);
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
+    EXPECT_TRUE(battery_percentage_converter);
     return std::move(passed_power_supply_);
   }
   std::unique_ptr<system::SarWatcherInterface> CreateSarWatcher(

@@ -25,6 +25,7 @@
 
 #include "cryptohome/proto_bindings/rpc.pb.h"
 #include "power_manager/common/activity_logger.h"
+#include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -371,9 +372,12 @@ void Daemon::Init() {
   prefs_->GetBool(kMosysEventlogPref, &log_suspend_with_mosys_eventlog_);
   prefs_->GetBool(kSuspendToIdlePref, &suspend_to_idle_);
 
-  power_supply_ = delegate_->CreatePowerSupply(base::FilePath(kPowerStatusPath),
-                                               prefs_.get(), udev_.get(),
-                                               dbus_wrapper_.get());
+  battery_percentage_converter_ =
+      BatteryPercentageConverter::CreateFromPrefs(prefs_.get());
+
+  power_supply_ = delegate_->CreatePowerSupply(
+      base::FilePath(kPowerStatusPath), prefs_.get(), udev_.get(),
+      dbus_wrapper_.get(), battery_percentage_converter_.get());
   power_supply_->AddObserver(this);
   if (!power_supply_->RefreshImmediately())
     LOG(ERROR) << "Initial power supply refresh failed; brace for weirdness";
@@ -430,7 +434,8 @@ void Daemon::Init() {
   if (BoolPrefIsTrue(kHasChargeControllerPref)) {
     charge_controller_helper_ = delegate_->CreateChargeControllerHelper();
     charge_controller_ = std::make_unique<policy::ChargeController>(),
-    charge_controller_->Init(charge_controller_helper_.get());
+    charge_controller_->Init(charge_controller_helper_.get(),
+                             battery_percentage_converter_.get());
   }
 
   // Asynchronously undo the previous force-lid-open request to the EC (if there

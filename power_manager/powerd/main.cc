@@ -192,9 +192,11 @@ class DaemonDelegateImpl : public DaemonDelegate {
       const base::FilePath& power_supply_path,
       PrefsInterface* prefs,
       system::UdevInterface* udev,
-      system::DBusWrapperInterface* dbus_wrapper) override {
+      system::DBusWrapperInterface* dbus_wrapper,
+      BatteryPercentageConverter* battery_percentage_converter) override {
     auto supply = std::make_unique<system::PowerSupply>();
-    supply->Init(power_supply_path, prefs, udev, dbus_wrapper);
+    supply->Init(power_supply_path, prefs, udev, dbus_wrapper,
+                 battery_percentage_converter);
     return supply;
   }
 
