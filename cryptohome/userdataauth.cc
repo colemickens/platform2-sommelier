@@ -1827,4 +1827,8 @@ bool UserDataAuth::InstallAttributesSet(const std::string& name,
   return install_attrs_->Set(name, data);
 }
 
+bool UserDataAuth::InstallAttributesFinalize() {
+  return install_attrs_->Finalize();
+}
+
 }  // namespace cryptohome

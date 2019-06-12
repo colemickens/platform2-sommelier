@@ -540,6 +540,10 @@ void InstallAttributesAdaptor::InstallAttributesFinalize(
         user_data_auth::InstallAttributesFinalizeReply>> response,
     const user_data_auth::InstallAttributesFinalizeRequest& in_request) {
   user_data_auth::InstallAttributesFinalizeReply reply;
+  if (!service_->InstallAttributesFinalize()) {
+    reply.set_error(
+        user_data_auth::CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_FINALIZE_FAILED);
+  }
   response->Return(reply);
 }
 

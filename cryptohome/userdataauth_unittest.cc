@@ -378,9 +378,16 @@ static_assert(
     "Enum member CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_SET_FAILED differs "
     "between user_data_auth:: and cryptohome::");
 static_assert(
-    user_data_auth::CryptohomeErrorCode_MAX == 35,
+    static_cast<int>(
+        user_data_auth::CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_FINALIZE_FAILED) ==
+        static_cast<int>(
+            cryptohome::CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_FINALIZE_FAILED),
+    "Enum member CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_FINALIZE_FAILED differs "
+    "between user_data_auth:: and cryptohome::");
+static_assert(
+    user_data_auth::CryptohomeErrorCode_MAX == 36,
     "user_data_auth::CrytpohomeErrorCode's element count is incorrect");
-static_assert(cryptohome::CryptohomeErrorCode_MAX == 35,
+static_assert(cryptohome::CryptohomeErrorCode_MAX == 36,
               "cryptohome::CrytpohomeErrorCode's element count is incorrect");
 }  // namespace CryptohomeErrorCodeEquivalenceTest
 
@@ -715,6 +722,16 @@ TEST_F(UserDataAuthTest, InstallAttributesSet) {
                           ElementsAreArray(kInstallAttributeData)))
       .WillOnce(Return(false));
   EXPECT_FALSE(userdataauth_.InstallAttributesSet(kInstallAttributeName, data));
+}
+
+TEST_F(UserDataAuthTest, InstallAttributesFinalize) {
+  // Test for successful case.
+  EXPECT_CALL(attrs_, Finalize()).WillOnce(Return(true));
+  EXPECT_TRUE(userdataauth_.InstallAttributesFinalize());
+
+  // Test for unsuccessful case.
+  EXPECT_CALL(attrs_, Finalize()).WillOnce(Return(false));
+  EXPECT_FALSE(userdataauth_.InstallAttributesFinalize());
 }
 
 TEST_F(UserDataAuthTestNotInitialized, InitializeArcDiskQuota) {

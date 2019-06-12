@@ -256,6 +256,10 @@ class UserDataAuth {
   bool InstallAttributesSet(const std::string& name,
                             const std::vector<uint8_t>& data);
 
+  // Finalize the install attributes. Return true if and only if the install
+  // attributes is finalized.
+  bool InstallAttributesFinalize();
+
   // =============== Install Attributes Related Utilities ===============
 
   // Return true if this device is enterprise owned.
