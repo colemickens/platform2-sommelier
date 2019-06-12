@@ -564,8 +564,8 @@ bool CecDeviceImpl::Impl::SendNextPendingMessage() {
   if (IsMessageDirectedToTv(message)) {
     uint16_t address = tv_logical_address_;
     if (address == CEC_LOG_ADDR_INVALID) {
-      LOG(WARNING) << device_path_.value()
-                   << ": Unknown TV logical address, falling back on 0.";
+      VLOG(1) << device_path_.value()
+              << ": Unknown TV logical address, falling back on 0.";
       address = CEC_LOG_ADDR_TV;
     }
 
@@ -638,8 +638,8 @@ void CecDeviceImpl::Impl::ProcessReportPhysicalAddress(
   }
 
   tv_logical_address_ = cec_msg_initiator(&msg);
-  LOG(INFO) << device_path_.value()
-            << ": TV's logical address: " << uint32_t(tv_logical_address_);
+  VLOG(1) << device_path_.value()
+          << ": TV's logical address: " << uint32_t(tv_logical_address_);
 }
 
 bool CecDeviceImpl::Impl::HasTvAddress() const {
@@ -664,7 +664,7 @@ void CecDeviceImpl::Impl::ProcessSentMessage(const struct cec_msg& msg) {
                                   device_path_.value().c_str(),
                                   cec_msg_opcode(&msg));
   } else {
-    LOG(WARNING) << base::StringPrintf(
+    VLOG(1) << base::StringPrintf(
         "%s: failed to send message, opcode: 0x%x tx_status: 0x%x",
         device_path_.value().c_str(), cec_msg_opcode(&msg),
         static_cast<uint32_t>(msg.tx_status));
@@ -874,8 +874,8 @@ bool DisabledState::ProcessWrite() {
 
 void StartState::GetTvPowerStatus(
     CecDevice::GetTvPowerStatusCallback callback) {
-  LOG(INFO) << device_->GetDevicePathString()
-            << ": not configured, not querying TV power state";
+  VLOG(1) << device_->GetDevicePathString()
+          << ": not configured, not querying TV power state";
   std::move(callback).Run(kTvPowerStatusAdapterNotConfigured);
 }
 
@@ -884,17 +884,17 @@ bool StartState::NeedsWrite() {
 }
 
 void StartState::SetStandBy() {
-  LOG(INFO) << device_->GetDevicePathString()
-            << ": ignoring standby request, we are not connected";
+  VLOG(1) << device_->GetDevicePathString()
+          << ": ignoring standby request, we are not connected";
 }
 
 void StartState::SetWakeUp() {
   struct cec_msg msg = CreateMessage(CEC_LOG_ADDR_TV);
   cec_msg_image_view_on(&msg);
   if (device_->SendMessage(&msg) != CecFd::TransmitResult::kOk) {
-    LOG(WARNING) << device_->GetDevicePathString()
-                 << ": failed to send image view on message while in start "
-                    "state, we are not able to wake up this TV";
+    VLOG(1) << device_->GetDevicePathString()
+            << ": failed to send image view on message while in start "
+               "state, we are not able to wake up this TV";
   } else {
     device_->EnqueueActiveSourceMessage();
   }
@@ -938,8 +938,8 @@ bool ProbingTvAddressState::ProcessResponse(const cec_msg& msg) {
           break;
         case SubState::kProbing14:
           if (!device_->HasTvAddress()) {
-            LOG(WARNING) << device_->GetDevicePathString()
-                         << ": failed to find a TV";
+            VLOG(1) << device_->GetDevicePathString()
+                    << ": failed to find a TV";
             device_->SetTvProbingCompleted();
             device_->EnterState(CecDeviceImpl::Impl::State::kReady);
           }
@@ -987,8 +987,7 @@ bool ProbingTvAddressState::ProcessWrite() {
       if (subState_ == SubState::kStart) {
         subState_ = SubState::kProbing0Completed;
       } else {
-        LOG(WARNING) << device_->GetDevicePathString()
-                     << ": failed to find a TV";
+        VLOG(1) << device_->GetDevicePathString() << ": failed to find a TV";
         device_->SetTvProbingCompleted();
         device_->EnterState(CecDeviceImpl::Impl::State::kReady);
       }
@@ -1041,9 +1040,9 @@ bool ReadyState::ProcessResponse(const cec_msg& msg) {
   if ((msg.tx_status & CEC_TX_STATUS_NACK) &&
       device_->IsMessageDirectedToTv(msg) && device_->HasTvAddress()) {
     device_->ResetTvAddress();
-    LOG(INFO) << device_->GetDevicePathString()
-              << ": message directed to TV not acked. "
-              << "Setting TV address to unknown";
+    VLOG(1) << device_->GetDevicePathString()
+            << ": message directed to TV not acked. "
+            << "Setting TV address to unknown";
   }
 
   return false;
