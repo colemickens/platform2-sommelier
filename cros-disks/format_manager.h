@@ -7,6 +7,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
@@ -28,7 +29,8 @@ class FormatManager {
   // Starts a formatting process of a given device.
   FormatErrorType StartFormatting(const std::string& device_path,
                                   const std::string& device_file,
-                                  const std::string& filesystem);
+                                  const std::string& filesystem,
+                                  const std::vector<std::string>& options);
 
   void set_observer(FormatManagerObserverInterface* observer) {
     observer_ = observer;

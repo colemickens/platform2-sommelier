@@ -14,9 +14,16 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/process.h>
 
+#include "cros-disks/filesystem_label.h"
 #include "cros-disks/format_manager_observer_interface.h"
 
+namespace cros_disks {
+
 namespace {
+
+struct FormatOptions {
+  std::string label;
+};
 
 // Expected locations of an external format program
 const char* const kFormatProgramPaths[] = {
@@ -35,13 +42,46 @@ const char* const kSupportedFilesystems[] = {
 
 const char kDefaultLabel[] = "UNTITLED";
 
-}  // namespace
+FormatErrorType LabelErrorToFormatError(LabelErrorType error_code) {
+  switch (error_code) {
+    case LabelErrorType::kLabelErrorNone:
+      return FORMAT_ERROR_NONE;
+    case LabelErrorType::kLabelErrorUnsupportedFilesystem:
+      return FORMAT_ERROR_UNSUPPORTED_FILESYSTEM;
+    case LabelErrorType::kLabelErrorLongName:
+      return FORMAT_ERROR_LONG_NAME;
+    case LabelErrorType::kLabelErrorInvalidCharacter:
+      return FORMAT_ERROR_INVALID_CHARACTER;
+  }
+}
 
-namespace cros_disks {
+// Turns a flat vector of key value pairs into a format options struct. Returns
+// true if a valid options struct could be extracted from the vector.
+bool ExtractFormatOptions(const std::vector<std::string>& options,
+                          FormatOptions* format_options) {
+  if (options.size() % 2 == 1) {
+    LOG(WARNING) << "Number of options passed in (" << options.size()
+                 << ") is not an even number";
+    return false;
+  }
 
-namespace {
+  for (int i = 0; i < options.size(); i += 2) {
+    if (options[i] == kFormatLabelOption) {
+      format_options->label = options[i + 1];
+    } else {
+      LOG(WARNING) << "Unknown format option '" << options[i] << "'";
+      return false;
+    }
+  }
 
-std::vector<std::string> CreateFormatArguments(const std::string& filesystem) {
+  if (format_options->label.empty()) {
+    format_options->label = kDefaultLabel;
+  }
+  return true;
+}
+
+std::vector<std::string> CreateFormatArguments(const std::string& filesystem,
+                                               const FormatOptions& options) {
   std::vector<std::string> arguments;
   if (filesystem == "vfat") {
     // Allow to create filesystem across the entire device.
@@ -50,14 +90,14 @@ std::vector<std::string> CreateFormatArguments(const std::string& filesystem) {
     arguments.push_back("-F");
     arguments.push_back("32");
     arguments.push_back("-n");
-    arguments.push_back(kDefaultLabel);
+    arguments.push_back(options.label);
   } else if (filesystem == "exfat") {
     arguments.push_back("-n");
-    arguments.push_back(kDefaultLabel);
+    arguments.push_back(options.label);
   } else if (filesystem == "ntfs") {
     arguments.push_back("--quick");
     arguments.push_back("--label");
-    arguments.push_back(kDefaultLabel);
+    arguments.push_back(options.label);
   }
   return arguments;
 }
@@ -119,9 +159,11 @@ FormatManager::FormatManager(brillo::ProcessReaper* process_reaper)
 
 FormatManager::~FormatManager() {}
 
-FormatErrorType FormatManager::StartFormatting(const std::string& device_path,
-                                               const std::string& device_file,
-                                               const std::string& filesystem) {
+FormatErrorType FormatManager::StartFormatting(
+    const std::string& device_path,
+    const std::string& device_file,
+    const std::string& filesystem,
+    const std::vector<std::string>& options) {
   // Check if the file system is supported for formatting
   if (!IsFilesystemSupported(filesystem)) {
     LOG(WARNING) << filesystem << " filesystem is not supported for formatting";
@@ -136,6 +178,17 @@ FormatErrorType FormatManager::StartFormatting(const std::string& device_path,
     return FORMAT_ERROR_FORMAT_PROGRAM_NOT_FOUND;
   }
 
+  FormatOptions format_options;
+  if (!ExtractFormatOptions(options, &format_options)) {
+    return FORMAT_ERROR_INVALID_OPTIONS;
+  }
+
+  LabelErrorType label_error =
+      ValidateVolumeLabel(format_options.label, filesystem);
+  if (label_error != LabelErrorType::kLabelErrorNone) {
+    return LabelErrorToFormatError(label_error);
+  }
+
   if (base::ContainsKey(format_process_, device_path)) {
     LOG(WARNING) << "Device '" << device_path << "' is already being formatted";
     return FORMAT_ERROR_DEVICE_BEING_FORMATTED;
@@ -144,7 +197,8 @@ FormatErrorType FormatManager::StartFormatting(const std::string& device_path,
   SandboxedProcess* process = &format_process_[device_path];
 
   FormatErrorType error = StartFormatProcess(
-      device_file, format_program, CreateFormatArguments(filesystem), process);
+      device_file, format_program,
+      CreateFormatArguments(filesystem, format_options), process);
   if (error == FORMAT_ERROR_NONE) {
     process_reaper_->WatchForChild(
         FROM_HERE, process->pid(),
