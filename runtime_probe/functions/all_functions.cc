@@ -11,6 +11,7 @@
 #include "runtime_probe/functions/ectool_i2cread.h"
 #include "runtime_probe/functions/generic_battery.h"
 #include "runtime_probe/functions/generic_storage.h"
+#include "runtime_probe/functions/mmc_storage.h"
 #include "runtime_probe/functions/sequence.h"
 #include "runtime_probe/functions/shell.h"
 #include "runtime_probe/functions/sysfs.h"

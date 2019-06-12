@@ -47,6 +47,7 @@ static_library("libruntime_probe") {
     "functions/ectool_i2cread.cc",
     "functions/generic_battery.cc",
     "functions/generic_storage.cc",
+    "functions/mmc_storage.cc",
     "functions/sequence.cc",
     "functions/sysfs.cc",
     "functions/vpd_cached.cc",
@@ -58,6 +59,7 @@ static_library("libruntime_probe") {
     "utils/config_utils.cc",
     "utils/file_utils.cc",
     "utils/type_utils.cc",
+    "utils/value_utils.cc",
   ]
 }
 
