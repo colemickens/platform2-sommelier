@@ -5,6 +5,18 @@
 This directory contains various tools for managing the lifetime of VM instances
 and for providing any services those VMs may need while they are running.
 
+## chunnel
+
+`chunnel` tunnels traffic for servers that listen on `localhost`. This is a
+common developer use case since `localhost` is whitelisted as a secure origin
+in Chrome.
+
+The `chunneld` binary runs on the Chrome OS host, and receives updates from
+`vm_cicerone` notifying it of ports that should be listened to. When Chrome
+connects to `localhost:port`, `chunneld` will accept the connection, open a
+vsock listener, and launch the `chunnel` binary in the target container which
+will connect back to `chunneld`.
+
 ## vm_concierge
 
 `vm_concierge` is a system daemon that runs in Chrome OS userspace and is

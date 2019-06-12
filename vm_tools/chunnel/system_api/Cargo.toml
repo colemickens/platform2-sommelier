@@ -1,0 +1,11 @@
+[package]
+name = "system_api"
+version = "0.1.0"
+authors = ["The Chromium OS Authors"]
+build = "build.rs"
+
+[dependencies]
+protobuf = "2"
+
+[build-dependencies]
+protoc-rust = "2"
