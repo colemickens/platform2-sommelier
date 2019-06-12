@@ -5,8 +5,10 @@
 #include "bluetooth/common/util.h"
 
 #include <newblue/bt.h>
+#include <newblue/uuid.h>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <regex>  // NOLINT(build/c++11)
 
@@ -309,6 +311,18 @@ Uuid ConvertToUuid(const struct uuid& uuid) {
     uuid_value.emplace(uuid_value.begin(), static_cast<uint8_t>(hi));
 
   return Uuid(uuid_value);
+}
+
+struct uuid ConvertToRawUuid(const Uuid& uuid) {
+  struct uuid u;
+  uuidZero(&u);
+
+  if (uuid.format() == UuidFormat::UUID_INVALID)
+    return u;
+
+  u.hi = be64toh(*reinterpret_cast<const uint64_t*>(&uuid.value()[0]));
+  u.lo = be64toh(*reinterpret_cast<const uint64_t*>(&uuid.value()[8]));
+  return u;
 }
 
 void OnInterfaceExported(std::string object_path,

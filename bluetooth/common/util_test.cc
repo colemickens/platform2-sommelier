@@ -6,6 +6,7 @@
 
 #include <vector>
 
+#include <bits/stdint-uintn.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
@@ -299,6 +300,26 @@ TEST(UtilTest, ConvertToUuid) {
   EXPECT_EQ(UuidFormat::UUID128, result.format());
   EXPECT_EQ(expected_value, result.value());
   EXPECT_EQ(expected_canonical_value, result.canonical_value());
+}
+
+TEST(UtilTest, ConvertToRawUuid) {
+  Uuid uuid_invalid;
+  Uuid uuid_16(std::vector<uint8_t>({0x1a, 0x2b}));
+  Uuid uuid_32(std::vector<uint8_t>({0x00, 0x00, 0x1a, 0x2b}));
+  Uuid uuid_128(
+      std::vector<uint8_t>({0x00, 0x00, 0x1a, 0x2b, 0x00, 0x00, 0x10, 0x00,
+                            0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb}));
+
+  struct uuid u_invalid = ConvertToRawUuid(uuid_invalid);
+  struct uuid u_16 = ConvertToRawUuid(uuid_16);
+  struct uuid u_32 = ConvertToRawUuid(uuid_32);
+  struct uuid u_128 = ConvertToRawUuid(uuid_128);
+
+  EXPECT_TRUE(uuidIsZero(&u_invalid));
+  EXPECT_EQ(0x00001a2b00001000, u_16.hi);
+  EXPECT_EQ(0x800000805f9b34fb, u_16.lo);
+  EXPECT_TRUE(uuidCmp(&u_16, &u_32));
+  EXPECT_TRUE(uuidCmp(&u_16, &u_128));
 }
 
 }  // namespace

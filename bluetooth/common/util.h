@@ -110,7 +110,11 @@ std::string ConvertDescriptorHandleToObjectPath(const std::string& address,
                                                 uint16_t desc_handle);
 
 // Converts struct uuid to bluetooth::Uuid.
-Uuid ConvertToUuid(const struct uuid& from);
+Uuid ConvertToUuid(const struct uuid& uuid);
+
+// Converts bluetooth::Uuid to struct uuid. If |uuid| is invalid, the return
+// will be zeros.
+struct uuid ConvertToRawUuid(const Uuid& uuid);
 
 // Called when an interface of a D-Bus object is exported.
 // At the moment this function only does VLOG, but it's commonly used by some
