@@ -150,7 +150,7 @@ class SambaInterface {
                              off_t* bytes_written) WARN_UNUSED_RESULT = 0;
 
   // Returns the SambaInterfaceId of this interface.
-  virtual SambaInterface::SambaInterfaceId GetSambaInterfaceId() = 0;
+  virtual SambaInterfaceId GetSambaInterfaceId() = 0;
 
   // Weak pointer type.
   using WeakPtr = ::base::WeakPtr<SambaInterface>;

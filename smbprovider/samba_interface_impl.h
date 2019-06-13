@@ -22,15 +22,14 @@ namespace smbprovider {
 class SambaInterfaceImpl : public SambaInterface {
  public:
   // SMB authentication callback.
-  using AuthCallback =
-      base::Callback<void(SambaInterface::SambaInterfaceId samba_interface_id,
-                          const std::string& share_path,
-                          char* workgroup,
-                          int32_t workgroup_length,
-                          char* username,
-                          int32_t username_length,
-                          char* password,
-                          int32_t password_length)>;
+  using AuthCallback = base::Callback<void(SambaInterfaceId samba_interface_id,
+                                           const std::string& share_path,
+                                           char* workgroup,
+                                           int32_t workgroup_length,
+                                           char* username,
+                                           int32_t username_length,
+                                           char* password,
+                                           int32_t password_length)>;
   ~SambaInterfaceImpl() override;
 
   // This should be called instead of constructor.
@@ -58,7 +57,7 @@ class SambaInterfaceImpl : public SambaInterface {
   int32_t GetEntryStatus(const std::string& full_path,
                          struct stat* stat) override;
 
-  SambaInterface::SambaInterfaceId GetSambaInterfaceId() override;
+  SambaInterfaceId GetSambaInterfaceId() override;
 
   WeakPtr AsWeakPtr() override;
 

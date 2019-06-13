@@ -71,9 +71,9 @@ std::unique_ptr<SambaInterfaceImpl> SambaInterfaceImpl::Create(
       context,
       +[](SMBCCTX* context, const char* srv, const char* shr, char* wg,
           int32_t wglen, char* un, int32_t unlen, char* pw, int32_t pwlen) {
-        static_auth_callback->Run(
-            reinterpret_cast<SambaInterface::SambaInterfaceId>(context),
-            GetMountRoot(srv, shr), wg, wglen, un, unlen, pw, pwlen);
+        static_auth_callback->Run(reinterpret_cast<SambaInterfaceId>(context),
+                                  GetMountRoot(srv, shr), wg, wglen, un, unlen,
+                                  pw, pwlen);
       });
 
   return base::WrapUnique(new SambaInterfaceImpl(context));
@@ -173,7 +173,7 @@ int32_t SambaInterfaceImpl::GetEntryStatus(const std::string& full_path,
 SambaInterface::SambaInterfaceId SambaInterfaceImpl::GetSambaInterfaceId() {
   // Cast the SMBCCTX* to an opaque ID type. Callers only care that this
   // uniquely identifies the object.
-  return reinterpret_cast<SambaInterface::SambaInterfaceId>(context_);
+  return reinterpret_cast<SambaInterfaceId>(context_);
 }
 
 SambaInterface::WeakPtr SambaInterfaceImpl::AsWeakPtr() {
