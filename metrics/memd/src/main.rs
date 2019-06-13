@@ -22,7 +22,7 @@ extern crate libc;
 #[macro_use]
 extern crate log;
 extern crate syslog;
-extern crate tempdir;
+extern crate tempfile;
 
 extern crate protobuf; // needed by proto_include.rs
 include!(concat!(env!("OUT_DIR"), "/proto_include.rs"));
@@ -47,7 +47,7 @@ use std::thread;
 use std::{io, mem, str};
 // Not to be confused with chrono::Duration or the deprecated time::Duration.
 use std::time::Duration;
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 #[cfg(test)]
 mod test;
@@ -1430,7 +1430,7 @@ fn main() {
 // returns None
 fn make_testing_dir() -> Option<TempDir> {
     if cfg!(test) {
-        Some(TempDir::new("memd").expect("cannot create temp dir"))
+        Some(TempDir::new().expect("cannot create temp dir"))
     } else {
         None
     }
