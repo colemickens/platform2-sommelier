@@ -4,6 +4,7 @@
 
 #include "login_manager/validator_utils.h"
 
+#include <base/compiler_specific.h>
 #include <base/strings/string_util.h>
 #include <brillo/cryptohome.h>
 
@@ -121,7 +122,7 @@ bool ValidatePolicyDescriptor(const PolicyDescriptor& descriptor,
       // Can only retrieve policy for sessionless users, i.e. from login screen.
       if (usage != PolicyDescriptorUsage::kRetrieve)
         return false;
-    // Fall through.
+      FALLTHROUGH;
     case ACCOUNT_TYPE_USER:
       if (!ValidateAccountId(descriptor.account_id(), nullptr))
         return false;

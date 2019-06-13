@@ -22,6 +22,7 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/command_line.h>
+#include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -2190,6 +2191,7 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
   switch (GetParam()) {
     case UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT:
       skip_packages_cache_setup = true;
+      FALLTHROUGH;
     case UpgradeArcContainerRequest_PackageCacheMode_COPY_ON_INIT:
       copy_cache_setup = true;
       break;
