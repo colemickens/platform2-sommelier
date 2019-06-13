@@ -49,7 +49,7 @@ class DefaultProfileTest : public PropertyStoreTest {
                                     properties_)),
         device_(new MockDevice(manager(), "null0", "addr0", 0)) {}
 
-  virtual ~DefaultProfileTest() = default;
+  ~DefaultProfileTest() override = default;
 
  protected:
   static const char kTestStoragePath[];

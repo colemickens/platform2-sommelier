@@ -622,7 +622,7 @@ const uint8_t KIPV6ProtocolTypeSuffixBytesForUDP[] = {
 class WakeOnWiFiTest : public ::testing::Test {
  public:
   WakeOnWiFiTest() = default;
-  virtual ~WakeOnWiFiTest() = default;
+  ~WakeOnWiFiTest() override = default;
 
   void SetUp() override {
     Nl80211Message::SetMessageType(kNl80211FamilyId);

@@ -52,7 +52,7 @@ const char kStorageID[] = "vpn_service_id";
 class VPNDriverUnderTest : public VPNDriver {
  public:
   explicit VPNDriverUnderTest(Manager* manager);
-  virtual ~VPNDriverUnderTest() = default;
+  ~VPNDriverUnderTest() override = default;
 
   // Inherited from VPNDriver.
   MOCK_METHOD2(ClaimInterface, bool(const string& link_name,
@@ -91,7 +91,7 @@ class VPNDriverTest : public Test {
         device_info_(&manager_),
         driver_(&manager_) {}
 
-  virtual ~VPNDriverTest() = default;
+  ~VPNDriverTest() override = default;
 
  protected:
   const base::CancelableClosure& connect_timeout_callback() const {

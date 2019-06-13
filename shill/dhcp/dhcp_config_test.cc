@@ -58,7 +58,7 @@ class TestDHCPConfig : public DHCPConfig {
                   type,
                   lease_file_suffix) {}
 
-  ~TestDHCPConfig() = default;
+  ~TestDHCPConfig() override = default;
 
   void ProcessEventSignal(const std::string& reason,
                           const KeyValueStore& configuration) override {}

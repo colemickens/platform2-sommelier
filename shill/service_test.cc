@@ -91,7 +91,7 @@ class ServiceTest : public PropertyStoreTest {
     mock_manager_.set_power_manager(power_manager_);  // Passes ownership.
   }
 
-  virtual ~ServiceTest() = default;
+  ~ServiceTest() override = default;
 
   MOCK_METHOD1(TestCallback, void(const Error& error));
 
@@ -216,7 +216,7 @@ class AllMockServiceTest : public testing::Test {
   AllMockServiceTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
         service_(new ServiceUnderTest(&manager_)) { }
-  virtual ~AllMockServiceTest() = default;
+  ~AllMockServiceTest() override = default;
 
  protected:
   MockControl control_interface_;

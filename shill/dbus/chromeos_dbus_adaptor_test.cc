@@ -15,7 +15,7 @@ class ChromeosDBusAdaptorTest : public PropertyStoreTest {
  public:
   ChromeosDBusAdaptorTest() = default;
 
-  virtual ~ChromeosDBusAdaptorTest() = default;
+  ~ChromeosDBusAdaptorTest() override = default;
 };
 
 TEST_F(ChromeosDBusAdaptorTest, SanitizePathElement) {

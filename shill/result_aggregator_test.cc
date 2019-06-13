@@ -31,7 +31,7 @@ class ResultAggregatorTest : public ::testing::Test {
   ResultAggregatorTest()
       : aggregator_(new ResultAggregator(
             Bind(&ResultAggregatorTest::ReportResult, Unretained(this)))) {}
-  virtual ~ResultAggregatorTest() = default;
+  ~ResultAggregatorTest() override = default;
 
   void TearDown() override {
     aggregator_ = nullptr;  // Ensure ReportResult is invoked before our dtor.
@@ -46,7 +46,7 @@ class ResultAggregatorTest : public ::testing::Test {
 class ResultAggregatorTestWithDispatcher : public ResultAggregatorTest {
  public:
   ResultAggregatorTestWithDispatcher() = default;
-  virtual ~ResultAggregatorTestWithDispatcher() = default;
+  ~ResultAggregatorTestWithDispatcher() override = default;
 
   void InitializeResultAggregatorWithTimeout() {
     aggregator_ = new ResultAggregator(
@@ -61,7 +61,7 @@ class ResultAggregatorTestWithDispatcher : public ResultAggregatorTest {
 class ResultAggregatorTestWithMockDispatcher : public ResultAggregatorTest {
  public:
   ResultAggregatorTestWithMockDispatcher() = default;
-  virtual ~ResultAggregatorTestWithMockDispatcher() = default;
+  ~ResultAggregatorTestWithMockDispatcher() override = default;
 
  protected:
   StrictMock<MockEventDispatcher> dispatcher_;

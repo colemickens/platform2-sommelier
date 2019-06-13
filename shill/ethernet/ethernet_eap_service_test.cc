@@ -26,7 +26,7 @@ class EthernetEapServiceTest : public testing::Test {
   EthernetEapServiceTest()
       : manager_(&control_, &dispatcher_, &metrics_),
         service_(new EthernetEapService(&manager_)) {}
-  virtual ~EthernetEapServiceTest() = default;
+  ~EthernetEapServiceTest() override = default;
 
  protected:
   ServiceMockAdaptor* GetAdaptor() {

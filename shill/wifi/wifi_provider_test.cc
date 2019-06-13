@@ -93,7 +93,7 @@ class WiFiProviderTest : public testing::Test {
     profile_frequency_data_[kIllegalDayProfile].push_back("7002:2");
   }
 
-  virtual ~WiFiProviderTest() = default;
+  ~WiFiProviderTest() override = default;
 
   void SetUp() override {
     EXPECT_CALL(*default_profile_, IsDefault()).WillRepeatedly(Return(true));

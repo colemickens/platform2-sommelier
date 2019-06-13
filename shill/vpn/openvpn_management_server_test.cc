@@ -38,7 +38,7 @@ class OpenVPNManagementServerTest : public testing::Test {
     server_.io_handler_factory_ = &io_handler_factory_;
   }
 
-  virtual ~OpenVPNManagementServerTest() = default;
+  ~OpenVPNManagementServerTest() override = default;
 
  protected:
   static const int kConnectedSocket;

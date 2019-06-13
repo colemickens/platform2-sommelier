@@ -44,7 +44,7 @@ class VPNServiceTest : public testing::Test {
         connection_(new NiceMock<MockConnection>(&device_info_)),
         service_(new VPNService(&manager_, driver_)) {}
 
-  virtual ~VPNServiceTest() = default;
+  ~VPNServiceTest() override = default;
 
  protected:
   void SetUp() override {

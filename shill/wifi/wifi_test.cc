@@ -455,7 +455,7 @@ class WiFiPropertyTest : public PropertyStoreTest {
                          "",
                          kInterfaceIndex,
                          std::make_unique<MockWakeOnWiFi>())) {}
-  virtual ~WiFiPropertyTest() = default;
+  ~WiFiPropertyTest() override = default;
 
  protected:
   MockMetrics metrics_;

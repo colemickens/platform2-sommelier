@@ -33,7 +33,7 @@ using testing::WithArg;
 class PPPDaemonTest : public Test, public RpcTaskDelegate {
  public:
   PPPDaemonTest() : weak_ptr_factory_(this) {}
-  virtual ~PPPDaemonTest() = default;
+  ~PPPDaemonTest() override = default;
 
   std::unique_ptr<ExternalTask> Start(const PPPDaemon::Options& options,
                                       const std::string& device,

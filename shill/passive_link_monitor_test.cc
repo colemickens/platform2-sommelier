@@ -79,7 +79,7 @@ class PassiveLinkMonitorTest : public Test {
     link_monitor_.io_handler_factory_ = &io_handler_factory_;
   }
 
-  virtual ~PassiveLinkMonitorTest() = default;
+  ~PassiveLinkMonitorTest() override = default;
 
   void SetUp() override {
     ScopeLogger::GetInstance()->EnableScopesByName("link");

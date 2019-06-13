@@ -80,7 +80,7 @@ class DeviceInfoTest : public Test {
   DeviceInfoTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
         device_info_(&manager_) {}
-  virtual ~DeviceInfoTest() = default;
+  ~DeviceInfoTest() override = default;
 
   void SetUp() override {
     device_info_.rtnl_handler_ = &rtnl_handler_;
@@ -1314,7 +1314,7 @@ class DeviceInfoTechnologyTest : public DeviceInfoTest {
  public:
   DeviceInfoTechnologyTest()
       : DeviceInfoTest(), test_device_name_(kTestDeviceName) {}
-  virtual ~DeviceInfoTechnologyTest() = default;
+  ~DeviceInfoTechnologyTest() override = default;
 
   void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
@@ -1536,9 +1536,9 @@ class DeviceInfoForDelayedCreationTest : public DeviceInfo {
 class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
  public:
   DeviceInfoDelayedCreationTest() : test_device_info_(&manager_) {}
-  virtual ~DeviceInfoDelayedCreationTest() = default;
+  ~DeviceInfoDelayedCreationTest() override = default;
 
-  virtual std::set<int>& GetDelayedDevices() {
+  std::set<int>& GetDelayedDevices() override {
     return test_device_info_.delayed_devices_;
   }
 

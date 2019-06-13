@@ -136,7 +136,7 @@ class ManagerTest : public PropertyStoreTest {
     // ownership.
     manager()->upstart_.reset(upstart_);
   }
-  virtual ~ManagerTest() = default;
+  ~ManagerTest() override = default;
 
   void SetUp() override {
     mock_devices_.push_back(

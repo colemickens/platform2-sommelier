@@ -55,7 +55,7 @@ class L2TPIPSecDriverTest : public testing::Test,
     driver_->certificate_file_.reset(certificate_file_);  // Passes ownership.
   }
 
-  virtual ~L2TPIPSecDriverTest() = default;
+  ~L2TPIPSecDriverTest() override = default;
 
   void SetUp() override {
     manager_.vpn_provider_ = std::make_unique<MockVPNProvider>();

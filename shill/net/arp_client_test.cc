@@ -30,7 +30,7 @@ namespace shill {
 class ArpClientTest : public Test {
  public:
   ArpClientTest() : client_(kInterfaceIndex) {}
-  virtual ~ArpClientTest() = default;
+  ~ArpClientTest() override = default;
 
   void SetUp() override {
     sockets_ = new StrictMock<MockSockets>();

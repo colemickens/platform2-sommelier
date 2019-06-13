@@ -42,7 +42,7 @@ class ChromeosManagerDBusAdaptorTest : public Test {
         manager_(&control_interface_, &dispatcher_, &metrics_),
         manager_adaptor_(adaptor_bus_, proxy_bus_, &manager_) {}
 
-  virtual ~ChromeosManagerDBusAdaptorTest() = default;
+  ~ChromeosManagerDBusAdaptorTest() override = default;
 
   void SetUp() override {
     manager_adaptor_.dbus_service_watcher_factory_ =

@@ -33,7 +33,7 @@ class EthernetProviderTest : public testing::Test {
       : manager_(&control_, &dispatcher_, &metrics_),
         profile_(new MockProfile(&manager_, "")),
         provider_(&manager_) {}
-  virtual ~EthernetProviderTest() = default;
+  ~EthernetProviderTest() override = default;
 
  protected:
   using MockProfileRefPtr = scoped_refptr<MockProfile>;

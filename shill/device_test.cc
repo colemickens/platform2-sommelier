@@ -97,15 +97,15 @@ class TestDevice : public Device {
             &TestDevice::DeviceShouldBringNetworkInterfaceDownAfterDisabled));
   }
 
-  ~TestDevice() = default;
+  ~TestDevice() override = default;
 
-  virtual void Start(Error* error,
-                     const EnabledStateChangedCallback& callback) {
+  void Start(Error* error,
+             const EnabledStateChangedCallback& callback) override {
     DCHECK(error);
   }
 
-  virtual void Stop(Error* error,
-                    const EnabledStateChangedCallback& callback) {
+  void Stop(Error* error,
+            const EnabledStateChangedCallback& callback) override {
     DCHECK(error);
   }
 
@@ -165,7 +165,7 @@ class DeviceTest : public PropertyStoreTest {
     DHCPProvider::GetInstance()->dispatcher_ = dispatcher();
     device_->time_ = &time_;
   }
-  virtual ~DeviceTest() = default;
+  ~DeviceTest() override = default;
 
   void SetUp() override {
     device_->rtnl_handler_ = &rtnl_handler_;
@@ -1904,7 +1904,7 @@ class DevicePortalDetectionTest : public DeviceTest {
                  metrics()),
         service_(new StrictMock<MockService>(&manager_)),
         portal_detector_(new StrictMock<MockPortalDetector>(connection_)) {}
-    virtual ~DevicePortalDetectionTest() = default;
+    ~DevicePortalDetectionTest() override = default;
   void SetUp() override {
     DeviceTest::SetUp();
     SelectService(service_);
@@ -2580,7 +2580,7 @@ class DeviceByteCountTest : public DeviceTest {
         tx_byte_count_(0),
         rx_stored_byte_count_(0),
         tx_stored_byte_count_(0) {}
-  virtual ~DeviceByteCountTest() = default;
+  ~DeviceByteCountTest() override = default;
 
   void SetUp() override {
     DeviceTest::SetUp();

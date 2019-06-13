@@ -34,7 +34,7 @@ class EapListenerTest : public testing::Test {
     listener_.io_handler_factory_ = &io_handler_factory_;
   }
 
-  virtual ~EapListenerTest() = default;
+  ~EapListenerTest() override = default;
 
   void SetUp() override {
     sockets_ = new StrictMock<MockSockets>();

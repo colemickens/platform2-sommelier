@@ -80,7 +80,7 @@ class LinkMonitorTest : public Test {
                  &device_info_,
                  observer_.failure_callback(),
                  observer_.gateway_change_callback()) {}
-  virtual ~LinkMonitorTest() = default;
+  ~LinkMonitorTest() override = default;
 
   void SetUp() override {
     monitor_.active_link_monitor_.reset(active_link_monitor_);

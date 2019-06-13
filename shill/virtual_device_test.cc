@@ -36,7 +36,7 @@ class VirtualDeviceTest : public testing::Test {
                                   kTestInterfaceIndex,
                                   Technology::kVPN)) {}
 
-  virtual ~VirtualDeviceTest() = default;
+  ~VirtualDeviceTest() override = default;
 
   void SetUp() override {
     device_->rtnl_handler_ = &rtnl_handler_;

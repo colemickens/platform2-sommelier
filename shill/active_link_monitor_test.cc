@@ -140,7 +140,7 @@ class ActiveLinkMonitorTest : public Test {
     monitor_.io_handler_factory_ = &io_handler_factory_;
   }
 
-  virtual ~ActiveLinkMonitorTest() = default;
+  ~ActiveLinkMonitorTest() override = default;
 
   void SetUp() override {
     link_scope_logging_was_enabled_ = SLOG_IS_ON(Link, 0);

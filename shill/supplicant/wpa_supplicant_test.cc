@@ -17,7 +17,7 @@ namespace shill {
 class WPASupplicantTest : public testing::Test {
  public:
   WPASupplicantTest() = default;
-  virtual ~WPASupplicantTest() = default;
+  ~WPASupplicantTest() override = default;
 
  protected:
   KeyValueStore property_map_;

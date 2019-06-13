@@ -102,7 +102,7 @@ class OpenVPNDriverTest
         temporary_directory_.GetPath().Append(kOpenVPNConfigDirectory);
   }
 
-  virtual ~OpenVPNDriverTest() = default;
+  ~OpenVPNDriverTest() override = default;
 
   void SetUp() override {
     manager_.vpn_provider_ = std::make_unique<MockVPNProvider>();

@@ -31,7 +31,7 @@ const int kFakeFd = 99;
 class NetlinkSocketTest : public Test {
  public:
   NetlinkSocketTest() = default;
-  virtual ~NetlinkSocketTest() = default;
+  ~NetlinkSocketTest() override = default;
 
   void SetUp() override {
     mock_sockets_ = new MockSockets();

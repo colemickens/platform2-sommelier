@@ -50,7 +50,7 @@ class Mac80211MonitorTest : public testing::Test {
             &metrics_) {
     mac80211_monitor_.time_ = &time_;
   }
-  virtual ~Mac80211MonitorTest() = default;
+  ~Mac80211MonitorTest() override = default;
 
  protected:
   static const size_t kQueueLengthLimit = 5;

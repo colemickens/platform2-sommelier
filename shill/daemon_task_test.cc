@@ -48,7 +48,7 @@ class DaemonTaskForTest : public DaemonTask {
  public:
   DaemonTaskForTest(const Settings& setttings, Config* config)
       : DaemonTask(Settings(), config) {}
-  virtual ~DaemonTaskForTest() = default;
+  ~DaemonTaskForTest() override = default;
 
   bool quit_result() const { return quit_result_; }
 
@@ -77,7 +77,7 @@ class DaemonTaskTest : public Test {
 #endif  // DISABLE_WIFI
         device_info_(manager_) {
   }
-  virtual ~DaemonTaskTest() = default;
+  ~DaemonTaskTest() override = default;
   void SetUp() override {
     // Tests initialization done by the daemon's constructor
     daemon_.rtnl_handler_ = &rtnl_handler_;

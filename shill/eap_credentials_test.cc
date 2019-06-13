@@ -38,7 +38,7 @@ namespace shill {
 class EapCredentialsTest : public testing::Test {
  public:
   EapCredentialsTest() = default;
-  virtual ~EapCredentialsTest() = default;
+  ~EapCredentialsTest() override = default;
 
  protected:
   void PopulateSupplicantProperties() {

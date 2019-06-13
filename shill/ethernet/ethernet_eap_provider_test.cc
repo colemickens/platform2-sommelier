@@ -26,7 +26,7 @@ class EthernetEapProviderTest : public testing::Test {
   EthernetEapProviderTest()
       : manager_(&control_, &dispatcher_, &metrics_),
         provider_(&manager_) {}
-  virtual ~EthernetEapProviderTest() = default;
+  ~EthernetEapProviderTest() override = default;
 
   MOCK_METHOD0(Callback0, void());
   MOCK_METHOD0(Callback1, void());
