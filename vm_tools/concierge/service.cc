@@ -763,6 +763,13 @@ bool Service::Init() {
     return false;
   }
 
+  // Restore process' "dumpable" flag so that /proc will be writable.
+  // We need it to properly set up jail for Plugin VM helper process.
+  if (prctl(PR_SET_DUMPABLE, 1) < 0) {
+    PLOG(ERROR) << "Failed to set PR_SET_DUMPABLE";
+    return false;
+  }
+
   signal_fd_.reset(signalfd(-1, &mask, SFD_NONBLOCK | SFD_CLOEXEC));
   if (!signal_fd_.is_valid()) {
     PLOG(ERROR) << "Failed to create signalfd";

@@ -90,6 +90,7 @@ static_library("libconcierge") {
     "../concierge/arc_vm.cc",
     "../concierge/disk_image.cc",
     "../concierge/plugin_vm.cc",
+    "../concierge/plugin_vm_helper.cc",
     "../concierge/power_manager_client.cc",
     "../concierge/seneschal_server_proxy.cc",
     "../concierge/service.cc",
@@ -106,6 +107,7 @@ static_library("libconcierge") {
   libs = [ "gpr" ]
   all_dependent_pkg_deps = [
     "libarchive",
+    "libminijail",
     "libqcow_utils",
     "libshill-client",
     "system_api",
