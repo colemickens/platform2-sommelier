@@ -8,16 +8,15 @@
 #include <vector>
 
 #include <base/files/scoped_temp_dir.h>
-#include <base/message_loop/message_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/metrics_library_mock.h>
 #include <metrics/timer_mock.h>
 
 #include "shill/mock_control.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_service.h"
+#include "shill/test_event_dispatcher.h"
 
 #if !defined(DISABLE_WIFI)
 #include "shill/mock_eap_credentials.h"
@@ -126,7 +125,7 @@ class MetricsTest : public Test {
   }
 
   MockControl control_interface_;
-  MockEventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   MockManager manager_;
   Metrics metrics_;  // This must be destroyed after all |service_|s.
   MetricsLibraryMock library_;
@@ -1293,7 +1292,6 @@ TEST_F(MetricsTest, CumulativeCellWifiTest) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath backing_path(temp_dir.GetPath());
-  base::MessageLoopForIO message_loop;
   auto cumulative_metrics = std::make_unique<CumulativeMetricsMock>(
       backing_path,
       cumulative_names,

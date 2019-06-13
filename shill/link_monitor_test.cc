@@ -12,13 +12,13 @@
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_passive_link_monitor.h"
 #include "shill/net/byte_string.h"
 #include "shill/net/mock_time.h"
+#include "shill/test_event_dispatcher.h"
 
 using base::Bind;
 using base::Unretained;
@@ -129,7 +129,7 @@ class LinkMonitorTest : public Test {
   }
 
  protected:
-  MockEventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   StrictMock<MockMetrics> metrics_;
   MockControl control_;
   MockManager manager_;

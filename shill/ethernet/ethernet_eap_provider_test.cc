@@ -11,9 +11,9 @@
 #include "shill/ethernet/mock_ethernet.h"
 #include "shill/key_value_store.h"
 #include "shill/mock_control.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/test_event_dispatcher.h"
 
 using testing::_;
 using testing::Mock;
@@ -37,7 +37,7 @@ class EthernetEapProviderTest : public testing::Test {
   }
 
   MockControl control_;
-  MockEventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
   EthernetEapProvider provider_;

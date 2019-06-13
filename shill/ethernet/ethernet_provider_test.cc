@@ -12,11 +12,11 @@
 #include "shill/ethernet/mock_ethernet.h"
 #include "shill/key_value_store.h"
 #include "shill/mock_control.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_store.h"
+#include "shill/test_event_dispatcher.h"
 
 using testing::_;
 using testing::DoAll;
@@ -39,7 +39,7 @@ class EthernetProviderTest : public testing::Test {
   using MockProfileRefPtr = scoped_refptr<MockProfile>;
 
   MockControl control_;
-  MockEventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
   MockProfileRefPtr profile_;

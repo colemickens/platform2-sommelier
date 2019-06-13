@@ -16,7 +16,6 @@
 
 #include "shill/key_value_store.h"
 #include "shill/mock_certificate_file.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_store.h"
@@ -283,7 +282,6 @@ TEST_F(EapCredentialsTest, OutputConnectionMetrics) {
   SetEap(kEapMethodPEAP);
   SetInnerEap(kEapPhase2AuthPEAPMSCHAPV2);
 
-  MockEventDispatcher dispatcher;
   MockMetrics metrics;
   EXPECT_CALL(metrics, SendEnumToUMA("Network.Shill.Wifi.EapOuterProtocol",
                                      Metrics::kEapOuterProtocolPeap,

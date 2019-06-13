@@ -11,7 +11,6 @@
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_file_io.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -19,6 +18,7 @@
 #include "shill/mock_store.h"
 #include "shill/mock_virtual_device.h"
 #include "shill/net/mock_io_handler_factory.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_provider.h"
 #include "shill/vpn/mock_vpn_service.h"
 
@@ -64,7 +64,7 @@ class ThirdPartyVpnDriverTest : public testing::Test {
   static const int kInterfaceIndex;
 
   MockControl control_;
-  MockEventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockFileIO mock_file_io_;
   MockManager manager_;

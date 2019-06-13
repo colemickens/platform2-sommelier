@@ -5,12 +5,12 @@
 #include "shill/throttler.h"
 
 #include "shill/mock_control.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_file_io.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_process_manager.h"
 #include "shill/net/mock_io_handler_factory.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
 using testing::_;
@@ -41,7 +41,7 @@ class ThrottlerTest : public Test {
   static const uint32_t kThrottleRate;
 
   MockControl control_interface_;
-  MockEventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   StrictMock<MockManager> mock_manager_;
   NiceMock<MockProcessManager> mock_process_manager_;
   NiceMock<MockIOHandlerFactory> mock_io_factory_handler_;

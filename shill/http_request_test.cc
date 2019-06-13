@@ -26,10 +26,10 @@
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_dns_client.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/mock_sockets.h"
+#include "shill/test_event_dispatcher.h"
 
 using base::Bind;
 using base::Callback;
@@ -262,7 +262,7 @@ class HttpRequestTest : public Test {
   StrictMock<MockDnsClient>* dns_client_;
   std::shared_ptr<brillo::http::MockTransport> transport_;
   std::shared_ptr<brillo::http::MockConnection> brillo_connection_;
-  StrictMock<MockEventDispatcher> dispatcher_;
+  EventDispatcherForTest dispatcher_;
   MockControl control_;
   MockManager manager_;
   std::unique_ptr<MockDeviceInfo> device_info_;

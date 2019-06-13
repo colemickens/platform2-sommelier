@@ -11,11 +11,11 @@
 #include "shill/ethernet/mock_ethernet_eap_provider.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/service_property_change_test.h"
 #include "shill/technology.h"
+#include "shill/test_event_dispatcher.h"
 
 using testing::Return;
 
@@ -34,7 +34,7 @@ class EthernetEapServiceTest : public testing::Test {
   }
 
   MockControl control_;
-  MockEventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
   MockEthernetEapProvider provider_;

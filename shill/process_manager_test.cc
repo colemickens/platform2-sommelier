@@ -14,7 +14,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/mock_event_dispatcher.h"
+#include "shill/test_event_dispatcher.h"
 
 using base::Bind;
 using base::Callback;
@@ -95,7 +95,7 @@ class ProcessManagerTest : public testing::Test {
     Closure termination_timeout_callback_;
   };
 
-  MockEventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   brillo::MockMinijail minijail_;
   ProcessManager* process_manager_;
 };

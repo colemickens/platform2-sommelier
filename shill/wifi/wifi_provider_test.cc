@@ -18,7 +18,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_control.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
@@ -27,6 +26,7 @@
 #include "shill/net/mock_time.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/wifi/mock_wifi_service.h"
 #include "shill/wifi/wifi_endpoint.h"
 
@@ -399,7 +399,7 @@ class WiFiProviderTest : public testing::Test {
 
   map<string, vector<string>> profile_frequency_data_;
   MockControl control_;
-  MockEventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockTime time_;
   StrictMock<MockManager> manager_;

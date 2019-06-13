@@ -17,9 +17,9 @@
 #include "shill/dbus/mock_dbus_service_watcher_factory.h"
 #include "shill/error.h"
 #include "shill/mock_control.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/test_event_dispatcher.h"
 
 using dbus::MockBus;
 using dbus::Response;
@@ -55,7 +55,7 @@ class ChromeosManagerDBusAdaptorTest : public Test {
   scoped_refptr<MockBus> adaptor_bus_;
   scoped_refptr<MockBus> proxy_bus_;
   MockControl control_interface_;
-  MockEventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
   MockDBusServiceWatcherFactory dbus_service_watcher_factory_;
