@@ -24,7 +24,7 @@ namespace shill {
 
 class CertificateFileTest : public testing::Test {
  public:
-  CertificateFileTest() {}
+  CertificateFileTest() = default;
 
   void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());

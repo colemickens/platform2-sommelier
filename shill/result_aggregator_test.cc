@@ -31,7 +31,7 @@ class ResultAggregatorTest : public ::testing::Test {
   ResultAggregatorTest()
       : aggregator_(new ResultAggregator(
             Bind(&ResultAggregatorTest::ReportResult, Unretained(this)))) {}
-  virtual ~ResultAggregatorTest() {}
+  virtual ~ResultAggregatorTest() = default;
 
   void TearDown() override {
     aggregator_ = nullptr;  // Ensure ReportResult is invoked before our dtor.
@@ -45,8 +45,8 @@ class ResultAggregatorTest : public ::testing::Test {
 
 class ResultAggregatorTestWithDispatcher : public ResultAggregatorTest {
  public:
-  ResultAggregatorTestWithDispatcher() : ResultAggregatorTest() {}
-  virtual ~ResultAggregatorTestWithDispatcher() {}
+  ResultAggregatorTestWithDispatcher() = default;
+  virtual ~ResultAggregatorTestWithDispatcher() = default;
 
   void InitializeResultAggregatorWithTimeout() {
     aggregator_ = new ResultAggregator(
@@ -60,8 +60,8 @@ class ResultAggregatorTestWithDispatcher : public ResultAggregatorTest {
 
 class ResultAggregatorTestWithMockDispatcher : public ResultAggregatorTest {
  public:
-  ResultAggregatorTestWithMockDispatcher() : ResultAggregatorTest() {}
-  virtual ~ResultAggregatorTestWithMockDispatcher() {}
+  ResultAggregatorTestWithMockDispatcher() = default;
+  virtual ~ResultAggregatorTestWithMockDispatcher() = default;
 
  protected:
   StrictMock<MockEventDispatcher> dispatcher_;
@@ -71,7 +71,7 @@ class ResultGenerator {
  public:
   explicit ResultGenerator(const scoped_refptr<ResultAggregator>& aggregator)
       : aggregator_(aggregator) {}
-  ~ResultGenerator() {}
+  ~ResultGenerator() = default;
 
   void GenerateResult(const Error::Type error_type) {
     aggregator_->ReportResult(Error(error_type));

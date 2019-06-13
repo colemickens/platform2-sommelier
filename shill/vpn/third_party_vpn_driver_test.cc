@@ -43,7 +43,7 @@ class ThirdPartyVpnDriverTest : public testing::Test {
     driver_->io_handler_factory_ = &io_handler_factory_;
   }
 
-  virtual ~ThirdPartyVpnDriverTest() {}
+  virtual ~ThirdPartyVpnDriverTest() = default;
 
   void SetUp() override {
     driver_->adaptor_interface_.reset(adaptor_interface_);

@@ -45,7 +45,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
   WiFiEndpointTest()
       : wifi_(new NiceMock<MockWiFi>(
             manager(), "wifi", kDeviceAddress, 0, new MockWakeOnWiFi())) {}
-  virtual ~WiFiEndpointTest() {}
+  virtual ~WiFiEndpointTest() = default;
 
  protected:
   KeyValueStore MakeKeyManagementArgs(

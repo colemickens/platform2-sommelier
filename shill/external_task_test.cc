@@ -45,7 +45,7 @@ class ExternalTaskTest : public testing::Test,
                              death_callback_)),
         test_rpc_task_destroyed_(false) {}
 
-  virtual ~ExternalTaskTest() {}
+  virtual ~ExternalTaskTest() = default;
 
   void TearDown() override {
     if (!external_task_) {

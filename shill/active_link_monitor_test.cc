@@ -63,7 +63,7 @@ class ActiveLinkMonitorObserver {
         success_callback_(
             Bind(&ActiveLinkMonitorObserver::OnSuccessCallback,
                  Unretained(this))) {}
-  virtual ~ActiveLinkMonitorObserver() {}
+  virtual ~ActiveLinkMonitorObserver() = default;
 
   MOCK_METHOD3(OnFailureCallback,
                void(Metrics::LinkMonitorFailure failrue_code,
@@ -140,7 +140,7 @@ class ActiveLinkMonitorTest : public Test {
     monitor_.io_handler_factory_ = &io_handler_factory_;
   }
 
-  virtual ~ActiveLinkMonitorTest() {}
+  virtual ~ActiveLinkMonitorTest() = default;
 
   void SetUp() override {
     link_scope_logging_was_enabled_ = SLOG_IS_ON(Link, 0);

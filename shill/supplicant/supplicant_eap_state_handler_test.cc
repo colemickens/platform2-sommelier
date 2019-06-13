@@ -20,7 +20,7 @@ namespace shill {
 class SupplicantEAPStateHandlerTest : public testing::Test {
  public:
   SupplicantEAPStateHandlerTest() : failure_(Service::kFailureNone) {}
-  virtual ~SupplicantEAPStateHandlerTest() {}
+  virtual ~SupplicantEAPStateHandlerTest() = default;
 
  protected:
   void StartEAP() {

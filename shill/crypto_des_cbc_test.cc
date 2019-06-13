@@ -30,7 +30,7 @@ const char kCipherVersion1[] = "bKlHDISdHMFfmfgBTT5I0w==";
 
 class CryptoDesCbcTest : public Test {
  public:
-  CryptoDesCbcTest() {}
+  CryptoDesCbcTest() = default;
 
  protected:
   CryptoDesCbc crypto_;

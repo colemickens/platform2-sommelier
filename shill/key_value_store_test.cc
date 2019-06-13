@@ -64,7 +64,7 @@ namespace shill {
 
 class KeyValueStoreTest : public Test {
  public:
-  KeyValueStoreTest() {}
+  KeyValueStoreTest() = default;
 
   void SetOneOfEachType(KeyValueStore* store,
                         const KeyValueStore& nested_key_value_store_value) {

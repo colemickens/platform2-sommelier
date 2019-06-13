@@ -87,7 +87,7 @@ FilePath CreateTempDatabase(const unsigned char database_data[],
 
 class MockMobileOperatorInfoObserver : public MobileOperatorInfo::Observer {
  public:
-  MockMobileOperatorInfoObserver() {}
+  MockMobileOperatorInfoObserver() = default;
 
   MOCK_METHOD0(OnOperatorChanged, void());
 };

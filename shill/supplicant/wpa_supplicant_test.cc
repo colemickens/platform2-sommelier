@@ -16,8 +16,8 @@ namespace shill {
 
 class WPASupplicantTest : public testing::Test {
  public:
-  WPASupplicantTest() {}
-  virtual ~WPASupplicantTest() {}
+  WPASupplicantTest() = default;
+  virtual ~WPASupplicantTest() = default;
 
  protected:
   KeyValueStore property_map_;

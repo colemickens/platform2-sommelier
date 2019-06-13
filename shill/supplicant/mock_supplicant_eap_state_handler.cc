@@ -6,8 +6,7 @@
 
 namespace shill {
 
-MockSupplicantEAPStateHandler::MockSupplicantEAPStateHandler()
-    : SupplicantEAPStateHandler() {}
+MockSupplicantEAPStateHandler::MockSupplicantEAPStateHandler() = default;
 
 MockSupplicantEAPStateHandler::~MockSupplicantEAPStateHandler() = default;
 

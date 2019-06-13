@@ -44,7 +44,7 @@ class ArpPacketTest : public Test {
         mac_address0_(kMACAddress0, arraysize(kMACAddress0)),
         mac_address1_(kMACAddress1, arraysize(kMACAddress1)),
         inserted_byte_(kInsertedByte, arraysize(kInsertedByte)) {}
-  virtual ~ArpPacketTest() {}
+  virtual ~ArpPacketTest() = default;
 
   void SetUp() override {
     EXPECT_TRUE(ipv4_address0_.SetAddressFromString(kIPv4Address0));

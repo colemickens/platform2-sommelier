@@ -62,7 +62,7 @@ MATCHER_P(IsIPAddress, address, "") {
 class IcmpSessionTest : public Test {
  public:
   IcmpSessionTest() : icmp_session_(&dispatcher_) {}
-  virtual ~IcmpSessionTest() {}
+  virtual ~IcmpSessionTest() = default;
 
   void SetUp() override {
     icmp_session_.io_handler_factory_ = &io_handler_factory_;

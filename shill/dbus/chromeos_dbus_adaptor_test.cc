@@ -13,9 +13,9 @@ namespace shill {
 
 class ChromeosDBusAdaptorTest : public PropertyStoreTest {
  public:
-  ChromeosDBusAdaptorTest() {}
+  ChromeosDBusAdaptorTest() = default;
 
-  virtual ~ChromeosDBusAdaptorTest() {}
+  virtual ~ChromeosDBusAdaptorTest() = default;
 };
 
 TEST_F(ChromeosDBusAdaptorTest, SanitizePathElement) {

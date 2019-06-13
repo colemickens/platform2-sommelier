@@ -30,7 +30,7 @@ class EventHistoryTest : public ::testing::Test {
     event_history_->time_ = &time_;
   }
 
-  virtual ~EventHistoryTest() {}
+  virtual ~EventHistoryTest() = default;
 
   void SetMaxEventsSaved(int num_events) {
     event_history_->max_events_saved_ = num_events;

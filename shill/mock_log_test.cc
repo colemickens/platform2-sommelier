@@ -22,7 +22,7 @@ static string ObjectID(testing::Test* m) { return "(mock_log_test)"; }
 
 class MockLogTest : public testing::Test {
  protected:
-  MockLogTest() {}
+  MockLogTest() = default;
 
   void LogSomething(const string& message) const {
     LOG(INFO) << message;

@@ -67,7 +67,7 @@ class WiFiServiceTest : public PropertyStoreTest {
             manager(), "wifi", fake_mac, 0, new MockWakeOnWiFi())),
         simple_ssid_(1, 'a'),
         simple_ssid_string_("a") {}
-  virtual ~WiFiServiceTest() {}
+  virtual ~WiFiServiceTest() = default;
 
  protected:
   static const char fake_mac[];

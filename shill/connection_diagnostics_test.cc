@@ -156,7 +156,7 @@ class ConnectionDiagnosticsTest : public Test {
     connection_diagnostics_.io_handler_factory_ = &io_handler_factory_;
   }
 
-  virtual ~ConnectionDiagnosticsTest() {}
+  virtual ~ConnectionDiagnosticsTest() = default;
 
   void SetUp() override {
     ASSERT_EQ(IPAddress::kFamilyIPv4, kIPv4LocalAddress.family());

@@ -223,7 +223,7 @@ TEST_F(HookTableTest, IsEmpty) {
 
 class SomeClass : public base::RefCounted<SomeClass> {
  public:
-  SomeClass() {}
+  SomeClass() = default;
   void StartAction() {}
 
  private:

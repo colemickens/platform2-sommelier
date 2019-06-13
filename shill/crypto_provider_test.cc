@@ -31,7 +31,7 @@ const char kDESCBCText[] = "des-cbc:02:bKlHDISdHMFc0teQd4mAVrXgwlSj6iA+";
 
 class CryptoProviderTest : public Test {
  public:
-  CryptoProviderTest() {}
+  CryptoProviderTest() = default;
 
  protected:
   FilePath InitKeyMatterFile(const FilePath& dir);

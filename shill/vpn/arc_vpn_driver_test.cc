@@ -59,7 +59,7 @@ class ArcVpnDriverTest : public testing::Test {
         driver_(new ArcVpnDriver(&manager_, &device_info_)),
         service_(new MockVPNService(&manager_, driver_)) {}
 
-  virtual ~ArcVpnDriverTest() {}
+  virtual ~ArcVpnDriverTest() = default;
 
   void SetUp() override {
     manager_.vpn_provider_ = std::make_unique<MockVPNProvider>();

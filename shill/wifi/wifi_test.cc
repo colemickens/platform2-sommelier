@@ -455,7 +455,7 @@ class WiFiPropertyTest : public PropertyStoreTest {
                          "",
                          kInterfaceIndex,
                          std::make_unique<MockWakeOnWiFi>())) {}
-  virtual ~WiFiPropertyTest() {}
+  virtual ~WiFiPropertyTest() = default;
 
  protected:
   MockMetrics metrics_;
@@ -702,7 +702,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
    public:
     EndpointRemovalHandler(WiFiRefPtr wifi, const WiFiServiceRefPtr& service)
         : wifi_(wifi), service_(service) {}
-    virtual ~EndpointRemovalHandler() {}
+    virtual ~EndpointRemovalHandler() = default;
 
     WiFiServiceRefPtr OnEndpointRemoved(
         const WiFiEndpointConstRefPtr& endpoint) {

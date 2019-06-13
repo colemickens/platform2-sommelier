@@ -621,8 +621,8 @@ const uint8_t KIPV6ProtocolTypeSuffixBytesForUDP[] = {
 
 class WakeOnWiFiTest : public ::testing::Test {
  public:
-  WakeOnWiFiTest() {}
-  virtual ~WakeOnWiFiTest() {}
+  WakeOnWiFiTest() = default;
+  virtual ~WakeOnWiFiTest() = default;
 
   void SetUp() override {
     Nl80211Message::SetMessageType(kNl80211FamilyId);
@@ -1123,7 +1123,7 @@ class WakeOnWiFiTestWithDispatcher : public WakeOnWiFiTest {
                        Bind(&WakeOnWiFiTest::RecordDarkResumeWakeReasonCallback,
                             Unretained(this))));
   }
-  virtual ~WakeOnWiFiTestWithDispatcher() {}
+  virtual ~WakeOnWiFiTestWithDispatcher() = default;
 
  protected:
   EventDispatcherForTest dispatcher_;
@@ -1138,7 +1138,7 @@ class WakeOnWiFiTestWithMockDispatcher : public WakeOnWiFiTest {
                        Bind(&WakeOnWiFiTest::RecordDarkResumeWakeReasonCallback,
                             Unretained(this))));
   }
-  virtual ~WakeOnWiFiTestWithMockDispatcher() {}
+  virtual ~WakeOnWiFiTestWithMockDispatcher() = default;
 
  protected:
   // TODO(zqiu): message loop is needed by AlarmTimer, should restructure the

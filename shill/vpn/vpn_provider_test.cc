@@ -38,7 +38,7 @@ class VPNProviderTest : public testing::Test {
         device_info_(&manager_),
         provider_(&manager_) {}
 
-  virtual ~VPNProviderTest() {}
+  virtual ~VPNProviderTest() = default;
 
  protected:
   static const char kHost[];

@@ -21,7 +21,7 @@ const char kIPAddress_7_7_7_7[] = "7.7.7.7";
 
 class IPAddressStoreTest : public Test {
  public:
-  IPAddressStoreTest() {}
+  IPAddressStoreTest() = default;
 
  protected:
   IPAddress StringToIPv4Address(const string& address_string) {

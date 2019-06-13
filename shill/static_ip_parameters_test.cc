@@ -51,7 +51,7 @@ const IPConfig::Route kIncludedRoute0("0.0.0.0", 0, "10.0.0.254");
 
 class StaticIPParametersTest : public Test {
  public:
-  StaticIPParametersTest() {}
+  StaticIPParametersTest() = default;
 
   void ExpectEmptyIPConfig() {
     EXPECT_TRUE(ipconfig_props_.address.empty());

@@ -18,7 +18,7 @@ namespace shill {
 
 class ScopeLoggerTest : public testing::Test {
  protected:
-  ScopeLoggerTest() {}
+  ScopeLoggerTest() = default;
 
   void TearDown() {
     logger_.set_verbose_level(0);
@@ -170,7 +170,7 @@ TEST_F(ScopeLoggerTest, SetVerboseLevel) {
 class ScopeChangeTarget {
  public:
   ScopeChangeTarget() : weak_ptr_factory_(this) {}
-  virtual ~ScopeChangeTarget() {}
+  virtual ~ScopeChangeTarget() = default;
   MOCK_METHOD1(Callback, void(bool enabled));
   ScopeLogger::ScopeEnableChangedCallback GetCallback() {
     return base::Bind(

@@ -38,7 +38,7 @@ const char kROT47Text[] = "rot47:%9:D :D 2 E6DEP";
 
 class KeyFileStoreTest : public Test {
  public:
-  KeyFileStoreTest() {}
+  KeyFileStoreTest() = default;
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());

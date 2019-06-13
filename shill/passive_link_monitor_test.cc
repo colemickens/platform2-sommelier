@@ -52,7 +52,7 @@ class ResultCallbackObserver {
       : result_callback_(
           Bind(&ResultCallbackObserver::OnResultCallback,
                Unretained(this))) {}
-  virtual ~ResultCallbackObserver() {}
+  virtual ~ResultCallbackObserver() = default;
 
   MOCK_METHOD1(OnResultCallback, void(bool status));
 
@@ -79,7 +79,7 @@ class PassiveLinkMonitorTest : public Test {
     link_monitor_.io_handler_factory_ = &io_handler_factory_;
   }
 
-  virtual ~PassiveLinkMonitorTest() {}
+  virtual ~PassiveLinkMonitorTest() = default;
 
   void SetUp() override {
     ScopeLogger::GetInstance()->EnableScopesByName("link");

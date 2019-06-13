@@ -43,8 +43,8 @@ const uint8_t kIcmpEchoRequestOddLenChecksum[] = {0x4a, 0xae};
 
 class IcmpTest : public Test {
  public:
-  IcmpTest() {}
-  virtual ~IcmpTest() {}
+  IcmpTest() = default;
+  virtual ~IcmpTest() = default;
 
   void SetUp() override {
     sockets_ = new StrictMock<MockSockets>();

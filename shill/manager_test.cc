@@ -136,7 +136,7 @@ class ManagerTest : public PropertyStoreTest {
     // ownership.
     manager()->upstart_.reset(upstart_);
   }
-  virtual ~ManagerTest() {}
+  virtual ~ManagerTest() = default;
 
   void SetUp() override {
     mock_devices_.push_back(
@@ -314,8 +314,8 @@ class ManagerTest : public PropertyStoreTest {
 
   class ServiceWatcher : public base::SupportsWeakPtr<ServiceWatcher> {
    public:
-    ServiceWatcher() {}
-    virtual ~ServiceWatcher() {}
+    ServiceWatcher() = default;
+    virtual ~ServiceWatcher() = default;
 
     MOCK_METHOD1(OnDefaultServiceChanged, void(const ServiceRefPtr& service));
 
@@ -329,7 +329,7 @@ class ManagerTest : public PropertyStoreTest {
     static const char kActionName[];
 
     TerminationActionTest() : manager_(nullptr) {}
-    virtual ~TerminationActionTest() {}
+    virtual ~TerminationActionTest() = default;
 
     MOCK_METHOD1(Done, void(const Error& error));
 
@@ -347,8 +347,8 @@ class ManagerTest : public PropertyStoreTest {
   class DestinationVerificationTest :
       public base::SupportsWeakPtr<DestinationVerificationTest> {
    public:
-    DestinationVerificationTest() {}
-    virtual ~DestinationVerificationTest() {}
+    DestinationVerificationTest() = default;
+    virtual ~DestinationVerificationTest() = default;
 
     MOCK_METHOD2(ResultBoolCallbackStub, void(const Error& result, bool flag));
     MOCK_METHOD2(ResultStringCallbackStub, void(const Error& result,
@@ -360,8 +360,8 @@ class ManagerTest : public PropertyStoreTest {
   class DisableTechnologyReplyHandler :
       public base::SupportsWeakPtr<DisableTechnologyReplyHandler> {
    public:
-    DisableTechnologyReplyHandler() {}
-    virtual ~DisableTechnologyReplyHandler() {}
+    DisableTechnologyReplyHandler() = default;
+    virtual ~DisableTechnologyReplyHandler() = default;
 
     MOCK_METHOD1(ReportResult, void(const Error&));
 
@@ -375,7 +375,7 @@ class ManagerTest : public PropertyStoreTest {
         : result_callback_(
               Bind(&ResultCallbackObserver::OnResultCallback,
                    Unretained(this))) {}
-    virtual ~ResultCallbackObserver() {}
+    virtual ~ResultCallbackObserver() = default;
 
     MOCK_METHOD1(OnResultCallback, void(const Error& error));
 

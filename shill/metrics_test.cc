@@ -93,7 +93,7 @@ class MetricsTest : public Test {
 #endif  // DISABLE_WIFI
         service_(new MockService(&manager_)) {}
 
-  virtual ~MetricsTest() {}
+  virtual ~MetricsTest() = default;
 
   void SetUp() override {
     metrics_.set_library(&library_);

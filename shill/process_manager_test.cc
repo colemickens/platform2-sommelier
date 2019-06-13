@@ -86,7 +86,7 @@ class ProcessManagerTest : public testing::Test {
           termination_timeout_callback_(
               Bind(&CallbackObserver::OnTerminationTimeout,
                    Unretained(this))) {}
-    virtual ~CallbackObserver() {}
+    virtual ~CallbackObserver() = default;
 
     MOCK_METHOD1(OnProcessExited, void(int exit_status));
     MOCK_METHOD0(OnTerminationTimeout, void());

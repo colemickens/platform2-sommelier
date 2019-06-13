@@ -46,7 +46,7 @@ class LinkMonitorObserver {
         gateway_change_callback_(
             Bind(&LinkMonitorObserver::OnGatewayChangeCallback,
                  Unretained(this))) {}
-  virtual ~LinkMonitorObserver() {}
+  virtual ~LinkMonitorObserver() = default;
 
   MOCK_METHOD0(OnFailureCallback, void());
   MOCK_METHOD0(OnGatewayChangeCallback, void());
@@ -80,7 +80,7 @@ class LinkMonitorTest : public Test {
                  &device_info_,
                  observer_.failure_callback(),
                  observer_.gateway_change_callback()) {}
-  virtual ~LinkMonitorTest() {}
+  virtual ~LinkMonitorTest() = default;
 
   void SetUp() override {
     monitor_.active_link_monitor_.reset(active_link_monitor_);
