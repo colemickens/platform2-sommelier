@@ -12,6 +12,7 @@
 
 #include <utility>
 
+#include <base/compiler_specific.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
 
@@ -58,7 +59,7 @@ int FsData::GetStatForJail(const std::string& path, struct stat* file_stat) {
     return -ENOENT;
   case DeviceJailControl::AddResult::CREATED:
     owned_devices_.push_back(jail_path);
-    /* fallthrough */
+    FALLTHROUGH;
   case DeviceJailControl::AddResult::ALREADY_EXISTS:
     return stat(jail_path.c_str(), file_stat);
   }

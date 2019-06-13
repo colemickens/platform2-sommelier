@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <base/compiler_specific.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
@@ -82,6 +83,10 @@ int main(int argc, char** argv) {
     switch (jail_control->AddDevice(FLAGS_add, &jail_path)) {
     case DeviceJailControl::AddResult::ERROR:
       LOG(FATAL) << "could not create jail device";
+      NOTREACHED();
+      // TODO(denik): Remove break after fall-through check
+      // is fixed with NOTREACHED().
+      break;
     case DeviceJailControl::AddResult::ALREADY_EXISTS:
       LOG(INFO) << "jail already exists at " << jail_path;
       break;
