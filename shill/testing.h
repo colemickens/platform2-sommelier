@@ -8,6 +8,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <tuple>
+
 #include "shill/error.h"
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
@@ -85,7 +87,7 @@ class SetErrorTypeInArgumentAction {
 
   template <typename Result, typename ArgumentTuple>
   Result Perform(const ArgumentTuple& args) const {
-    Error* error_arg = ::std::tr1::get<error_argument_index>(args);
+    Error* error_arg = ::std::get<error_argument_index>(args);
     if (error_arg)
       error_arg->Populate(error_type_);
 
