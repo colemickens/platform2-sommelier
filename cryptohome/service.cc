@@ -25,6 +25,8 @@
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
 #include <chromeos/constants/cryptohome.h>
+#include <dbus/bus.h>
+#include <dbus/dbus.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,6 +54,7 @@
 #include "cryptohome/install_attributes.h"
 #include "cryptohome/interface.h"
 #include "cryptohome/key_challenge_service.h"
+#include "cryptohome/key_challenge_service_impl.h"
 #include "cryptohome/mount.h"
 #include "cryptohome/obfuscated_username.h"
 #include "cryptohome/platform.h"
@@ -688,7 +691,9 @@ bool Service::Initialize() {
         G_TYPE_UINT64);
   }
 
-  mount_thread_.Start();
+  base::Thread::Options options;
+  options.message_loop_type = base::MessageLoop::TYPE_IO;
+  mount_thread_.StartWithOptions(options);
 
   // Add task observer, message_loop is only availible after the thread start.
   // We can only add observer inside the thread.
@@ -2073,8 +2078,23 @@ void Service::DoChallengeResponseMountEx(
       BuildObfuscatedUsername(account_id, system_salt_);
   const KeyData key_data = authorization->key().data();
 
-  // TODO(crbug.com/842791): Create and pass KeyChallengeService.
-  std::unique_ptr<KeyChallengeService> key_challenge_service;
+  scoped_refptr<dbus::Bus> system_dbus_bus = system_dbus_connection_.Connect();
+  if (!system_dbus_bus) {
+    LOG(ERROR) << "Cannot do challenge-response mount without system D-Bus bus";
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
+    SendReply(context, reply);
+    return;
+  }
+  if (!authorization->has_key_delegate() ||
+      !authorization->key_delegate().has_dbus_service_name()) {
+    LOG(ERROR) << "Cannot do challenge-response mount without key delegate "
+                  "information";
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
+    SendReply(context, reply);
+    return;
+  }
+  auto key_challenge_service = std::make_unique<KeyChallengeServiceImpl>(
+      system_dbus_bus, authorization->key_delegate().dbus_service_name());
 
   std::unique_ptr<VaultKeyset> vault_keyset(homedirs_->GetVaultKeyset(
       obfuscated_username, authorization->key().data().label()));

@@ -19,6 +19,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
 #include <base/threading/thread.h>
+#include <brillo/dbus/dbus_connection.h>
 #include <brillo/glib/abstract_dbus_service.h>
 #include <brillo/glib/dbus.h>
 #include <brillo/glib/object.h>
@@ -928,6 +929,8 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
                                  bool has_create_request,
                                  bool* is_ephemeral,
                                  MountError* error) const;
+
+  brillo::DBusConnection system_dbus_connection_;
 
   // Tracks Mount objects for each user by username.
   typedef std::map<const std::string, scoped_refptr<cryptohome::Mount>>
