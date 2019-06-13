@@ -516,8 +516,8 @@ bool AttestationService::MigrateAttestationDatabase() {
             database_pb->credentials().endorsement_key_type(),
             database_pb->credentials().legacy_endorsement_public_key(),
             &public_key_info)) {
-      database_pb->mutable_credentials()
-          ->set_endorsement_public_key_subjectpublickeyinfo(public_key_info);
+      database_pb->mutable_credentials()->set_endorsement_public_key(
+          public_key_info);
     } else {
       // If the format conversion fails, that means the EK public key is broken
       // somehow, which should not happen. If it does, that means EK data
@@ -673,10 +673,8 @@ base::Optional<std::string> AttestationService::GetEndorsementPublicKey()
     const {
   const auto& database_pb = database_->GetProtobuf();
   if (database_pb.has_credentials() &&
-      database_pb.credentials()
-          .has_endorsement_public_key_subjectpublickeyinfo()) {
-    return database_pb.credentials()
-        .endorsement_public_key_subjectpublickeyinfo();
+      database_pb.credentials().has_endorsement_public_key()) {
+    return database_pb.credentials().endorsement_public_key();
   }
 
   // Try to read the public key directly.
@@ -1604,8 +1602,7 @@ void AttestationService::PrepareForEnrollment() {
   auto* database_pb = database_->GetMutableProtobuf();
   TPMCredentials* credentials_pb = database_pb->mutable_credentials();
   credentials_pb->set_endorsement_key_type(key_type);
-  credentials_pb->set_endorsement_public_key_subjectpublickeyinfo(
-      ek_public_key);
+  credentials_pb->set_endorsement_public_key(ek_public_key);
   credentials_pb->set_endorsement_credential(ek_certificate);
 
   // Encrypt the endorsement credential for all the ACAs we know of.
@@ -2908,8 +2905,7 @@ KeyType AttestationService::GetEndorsementKeyType() const {
   // If some EK information already exists in the database, we need to keep the
   // key type consistent.
   const auto& database_pb = database_->GetProtobuf();
-  if (database_pb.credentials()
-          .has_endorsement_public_key_subjectpublickeyinfo() ||
+  if (database_pb.credentials().has_endorsement_public_key() ||
       database_pb.credentials().has_endorsement_credential()) {
     // We use the default value of key_type for backward compatibility, no need
     // to check if endorsement_key_type is set.

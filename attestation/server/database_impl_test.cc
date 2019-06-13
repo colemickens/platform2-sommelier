@@ -71,8 +71,7 @@ class DatabaseImplTest : public testing::Test, public DatabaseIO {
   // Initializes fake_persistent_data_ with a default value.
   void InitializeFakeData() {
     AttestationDatabase proto;
-    proto.mutable_credentials()
-        ->set_endorsement_public_key_subjectpublickeyinfo(kFakeCredential);
+    proto.mutable_credentials()->set_endorsement_public_key(kFakeCredential);
     proto.SerializeToString(&fake_persistent_data_);
   }
 
@@ -89,9 +88,7 @@ TEST_F(DatabaseImplTest, ReadSuccess) {
   database_->GetMutableProtobuf()->Clear();
   EXPECT_TRUE(database_->Reload());
   EXPECT_EQ(std::string(kFakeCredential),
-            database_->GetProtobuf()
-                .credentials()
-                .endorsement_public_key_subjectpublickeyinfo());
+            database_->GetProtobuf().credentials().endorsement_public_key());
 }
 
 TEST_F(DatabaseImplTest, ReadFailure) {
@@ -140,9 +137,7 @@ TEST_F(DatabaseImplTest, IgnoreLegacyEncryptJunk) {
   // Legacy encryption scheme appended a SHA-1 hash before encrypting.
   fake_persistent_data_ += std::string(20, 'A');
   EXPECT_EQ(std::string(kFakeCredential),
-            database_->GetProtobuf()
-                .credentials()
-                .endorsement_public_key_subjectpublickeyinfo());
+            database_->GetProtobuf().credentials().endorsement_public_key());
 }
 
 TEST_F(DatabaseImplTest, Reload) {

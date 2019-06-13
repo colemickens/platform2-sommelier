@@ -21,7 +21,7 @@ message TPMCredentials {
   // |endorsement_credential|.
   optional KeyType endorsement_key_type = 10 [default = KEY_TYPE_RSA];
   // The DER encoded SubjectPublicKeyInfo for endorsement key.
-  optional bytes endorsement_public_key_subjectpublickeyinfo = 11;
+  optional bytes endorsement_public_key = 11;
   // The DER encoded X.509 certificate of endorsement key.
   optional bytes endorsement_credential = 2;
 
