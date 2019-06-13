@@ -160,10 +160,13 @@ enum ChromeOSError {
     FailedStartContainerStatus(StartLxdContainerResponse_Status, String),
     FailedStopVm { vm_name: String, reason: String },
     InvalidExportPath,
+    InvalidImportPath,
+    InvalidSourcePath,
     NoVmTechnologyEnabled,
     NotAvailableForPluginVm,
     PluginVmDisabled,
     RetrieveActiveSessions,
+    SourcePathDoesNotExist,
     TpmOnStable,
 }
 
@@ -225,10 +228,13 @@ impl fmt::Display for ChromeOSError {
                 write!(f, "failed to stop vm `{}`: {}", vm_name, reason)
             }
             InvalidExportPath => write!(f, "disk export path is invalid"),
+            InvalidImportPath => write!(f, "disk import path is invalid"),
+            InvalidSourcePath => write!(f, "source media path is invalid"),
             NoVmTechnologyEnabled => write!(f, "neither Crostini nor Plugin VMs are enabled"),
             NotAvailableForPluginVm => write!(f, "this command is not available for Plugin VM"),
             PluginVmDisabled => write!(f, "Plugin VMs are currently disabled"),
             RetrieveActiveSessions => write!(f, "failed to retrieve active sessions"),
+            SourcePathDoesNotExist => write!(f, "source media path does not exist"),
             TpmOnStable => write!(f, "TPM device is not available on stable channel"),
         }
     }
@@ -468,6 +474,88 @@ impl ChromeOS {
         }
     }
 
+    /// Request that concierge create a new VM image.
+    fn create_vm_image(
+        &mut self,
+        vm_name: &str,
+        user_id_hash: &str,
+        plugin_vm: bool,
+        source_name: Option<&str>,
+        removable_media: Option<&str>,
+        params: &[&str],
+    ) -> Result<Option<String>, Box<Error>> {
+        let mut request = CreateDiskImageRequest::new();
+        request.disk_path = vm_name.to_owned();
+        request.cryptohome_id = user_id_hash.to_owned();
+        request.image_type = DiskImageType::DISK_IMAGE_AUTO;
+        request.storage_location = if plugin_vm {
+            if !self.is_plugin_vm_enabled(user_id_hash)? {
+                return Err(PluginVmDisabled.into());
+            }
+            StorageLocation::STORAGE_CRYPTOHOME_PLUGINVM
+        } else {
+            if !self.is_crostini_enabled(user_id_hash)? {
+                return Err(CrostiniVmDisabled.into());
+            }
+            StorageLocation::STORAGE_CRYPTOHOME_ROOT
+        };
+
+        let source_fd = match source_name {
+            Some(source) => {
+                let source_path = match removable_media {
+                    Some(media_path) => Path::new(REMOVABLE_MEDIA_ROOT)
+                        .join(media_path)
+                        .join(source),
+                    None => Path::new(CRYPTOHOME_USER)
+                        .join(user_id_hash)
+                        .join(DOWNLOADS_DIR)
+                        .join(source),
+                };
+
+                if source_path.components().any(|c| c == Component::ParentDir) {
+                    return Err(InvalidSourcePath.into());
+                }
+
+                if !source_path.exists() {
+                    return Err(SourcePathDoesNotExist.into());
+                }
+
+                let source_file = OpenOptions::new().read(true).open(source_path)?;
+                request.source_size = source_file.metadata()?.len();
+                Some(OwnedFd::new(source_file.into_raw_fd()))
+            }
+            None => None,
+        };
+
+        for param in params {
+            request.mut_params().push(param.to_string());
+        }
+
+        // We can't use sync_protobus because we need to append the file descriptor out of band from
+        // the protobuf message.
+        let mut method = Message::new_method_call(
+            VM_CONCIERGE_SERVICE_NAME,
+            VM_CONCIERGE_SERVICE_PATH,
+            VM_CONCIERGE_INTERFACE,
+            CREATE_DISK_IMAGE_METHOD,
+        )?
+        .append1(request.write_to_bytes()?);
+        if let Some(fd) = source_fd {
+            method = method.append1(fd);
+        }
+
+        let message = self
+            .connection
+            .send_with_reply_and_block(method, DEFAULT_TIMEOUT_MS)?;
+
+        let response: CreateDiskImageResponse = dbus_message_to_proto(&message)?;
+        match response.status {
+            DiskImageStatus::DISK_STATUS_CREATED => Ok(None),
+            DiskImageStatus::DISK_STATUS_IN_PROGRESS => Ok(Some(response.command_uuid)),
+            _ => Err(BadDiskImageStatus(response.status, response.failure_reason).into()),
+        }
+    }
+
     /// Request that concierge create a disk image.
     fn destroy_disk_image(&mut self, vm_name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {
         let mut request = DestroyDiskImageRequest::new();
@@ -576,7 +664,7 @@ impl ChromeOS {
         };
 
         if import_path.components().any(|c| c == Component::ParentDir) {
-            return Err(InvalidExportPath.into());
+            return Err(InvalidImportPath.into());
         }
 
         if !import_path.exists() {
@@ -1179,6 +1267,26 @@ impl Backend for ChromeOS {
             Some(sessions) => Ok(sessions.into_iter().collect()),
             _ => Err(RetrieveActiveSessions.into()),
         }
+    }
+
+    fn vm_create(
+        &mut self,
+        name: &str,
+        user_id_hash: &str,
+        plugin_vm: bool,
+        source_name: Option<&str>,
+        removable_media: Option<&str>,
+        params: &[&str],
+    ) -> Result<Option<String>, Box<Error>> {
+        self.start_vm_infrastructure(user_id_hash)?;
+        self.create_vm_image(
+            name,
+            user_id_hash,
+            plugin_vm,
+            source_name,
+            removable_media,
+            params,
+        )
     }
 
     fn vm_start(

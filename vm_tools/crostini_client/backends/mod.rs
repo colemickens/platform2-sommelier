@@ -153,6 +153,16 @@ impl_backend! {
 
         // Vm
 
+        /// Creates a VM called `name` with the given `user_id_hash`.
+        fn vm_create(
+            &mut self,
+            name: &str,
+            user_id_hash: &str,
+            plugin_vm: bool,
+            source_name: Option<&str>,
+            removable_media: Option<&str>,
+            params: &[&str],
+        ) -> Result<Option<String>, Box<Error>>;
         /// Starts a VM called `name` with the given `user_id_hash`.
         fn vm_start(
             &mut self,

@@ -23,6 +23,7 @@ enum VmcError {
     ExpectedUUID,
     ExpectedVmAndContainer,
     ExpectedVmAndFileName,
+    ExpectedVmAndMaybeFileName,
     ExpectedVmAndPath,
     ExpectedVmBusDevice,
     ExpectedVmPort,
@@ -59,6 +60,9 @@ impl fmt::Display for VmcError {
             ),
             ExpectedVmAndFileName => {
                 write!(f, "expected <vm name> <file name> [removable storage name]")
+            }
+            ExpectedVmAndMaybeFileName => {
+                write!(f, "expected <vm name> [<file name> [removable storage name]]")
             }
             ExpectedVmAndPath => write!(f, "expected <vm name> <path>"),
             ExpectedVmBusDevice => write!(f, "expected <vm name> <bus>:<device>"),
@@ -160,6 +164,43 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 
         try_command!(self.backend.vm_stop(vm_name, user_id_hash));
 
+        Ok(())
+    }
+
+    fn create(&mut self) -> VmcResult {
+        let plugin_vm = self.args.len() > 0 && self.args[0] == "-p";
+        if plugin_vm {
+            // Discard the first argument (-p).
+            self.args = &self.args[1..];
+        }
+
+        let mut s = self.args.splitn(2, |arg| *arg == "--");
+        let args = s.next().expect("failed to split argument list");
+        let params = s.next().unwrap_or(&[]);
+
+        let (vm_name, file_name, removable_media) = match args.len() {
+            1 => (args[0], None, None),
+            2 => (args[0], Some(args[1]), None),
+            3 => (args[0], Some(args[1]), Some(args[2])),
+            _ => return Err(ExpectedVmAndMaybeFileName.into()),
+        };
+
+        let user_id_hash = self
+            .environ
+            .get("CROS_USER_ID_HASH")
+            .ok_or(ExpectedCrosUserIdHash)?;
+
+        if let Some(uuid) = try_command!(self.backend.vm_create(
+            vm_name,
+            user_id_hash,
+            plugin_vm,
+            file_name,
+            removable_media,
+            params,
+        )) {
+            println!("VM creation in progress: {}", uuid);
+            self.wait_disk_op_completion(&uuid, user_id_hash)?;
+        }
         Ok(())
     }
 
@@ -449,10 +490,11 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 const USAGE: &str = r#"
    [ start [--enable-gpu] <name> |
      stop <name> |
+     create [-p] <name> [<source media> [<removable storage name>]] [-- additional parameters]
      destroy <name> |
      disk-op-status <command UUID> |
-     export <vm name> <file name> [removable storage name] |
-     import [-p] <vm name> <file name> [removable storage name] |
+     export <vm name> <file name> [<removable storage name>] |
+     import [-p] <vm name> <file name> [<removable storage name>] |
      list |
      share <vm name> <path> |
      unshare <vm name> <path> |
@@ -503,6 +545,7 @@ impl Frontend for Vmc {
         match command_name {
             "start" => command.start(),
             "stop" => command.stop(),
+            "create" => command.create(),
             "destroy" => command.destroy(),
             "export" => command.export(),
             "import" => command.import(),
@@ -533,6 +576,18 @@ mod tests {
             &["vmc", "start", "termina", "--software-tpm"],
             &["vmc", "start", "termina", "--enable-gpu", "--software-tpm"],
             &["vmc", "stop", "termina"],
+            &["vmc", "create", "termina"],
+            &["vmc", "create", "-p", "termina"],
+            &[
+                "vmc",
+                "create",
+                "-p",
+                "termina",
+                "file name",
+                "removable media",
+            ],
+            &["vmc", "create", "-p", "termina", "--"],
+            &["vmc", "create", "-p", "termina", "--", "param"],
             &["vmc", "destroy", "termina"],
             &["vmc", "disk-op-status", "12345"],
             &["vmc", "export", "termina", "file name"],
@@ -565,6 +620,17 @@ mod tests {
             &["vmc", "start", "termina", "extra args"],
             &["vmc", "stop"],
             &["vmc", "stop", "termina", "extra args"],
+            &["vmc", "create"],
+            &["vmc", "create", "-p"],
+            &[
+                "vmc",
+                "create",
+                "-p",
+                "termina",
+                "file name",
+                "removable media",
+                "extra args",
+            ],
             &["vmc", "destroy"],
             &["vmc", "destroy", "termina", "extra args"],
             &["vmc", "disk-op-status"],
