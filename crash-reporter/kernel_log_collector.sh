@@ -18,8 +18,8 @@ if [ $# -ne 2 ]; then
   exit 1
 fi
 
-search_key=$1
-time_duration=$2
+search_key="$1"
+time_duration="$2"
 msg_pattern="^[0-9-]*T[0-9:.+-]* [A-Z]* kernel"
 
 die() {
@@ -28,25 +28,25 @@ die() {
 }
 
 get_timestamp() {
-  timestamp="$(echo $1 | cut -d " " -f 1)"
+  timestamp="$(echo "$1" | cut -d " " -f 1)"
   timestamp="$(date -d "${timestamp}" +%s)" || exit $?
   echo "${timestamp}"
 }
 
-last_line=$(grep -a "${msg_pattern}" /var/log/messages | \
-    grep -- "${search_key}" | tail -n 1)
+last_line="$(grep -a "${msg_pattern}" /var/log/messages | \
+    grep -- "${search_key}" | tail -n 1)"
 
 if [ -n "${last_line}" ]; then
-  if ! allowed_timestamp=$(get_timestamp "${last_line}"); then
+  if ! allowed_timestamp="$(get_timestamp "${last_line}")"; then
     die "coule not get timestamp from: ${last_line}"
   fi
-  : $(( allowed_timestamp -= ${time_duration} ))
+  : $(( allowed_timestamp -= time_duration ))
   grep -a "${msg_pattern}" /var/log/messages | grep -- "${search_key}" |
-      while read line; do
-        if ! timestamp=$(get_timestamp "${line}"); then
+      while read -r line; do
+        if ! timestamp="$(get_timestamp "${line}")"; then
           die "could not get timestamp from: ${line}"
         fi
-        if [ ${timestamp} -gt ${allowed_timestamp} ]; then
+        if [ "${timestamp}" -gt "${allowed_timestamp}" ]; then
           echo "${line}"
         fi
       done
