@@ -13,8 +13,11 @@
 
 #include "cryptohome/cert/cert_provision_util.h"
 
+#ifndef LIBCRYPTO_COMPAT_H
 namespace {
 
+// TODO(djkurtz): Remove when <crypto/libcrypto-compat.h> has landed
+// (https://crrev.com/c/555072)
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 static inline void RSA_get0_key(const RSA *rsa, const BIGNUM **n,
                                 const BIGNUM **e, const BIGNUM **d) {
@@ -25,6 +28,7 @@ static inline void RSA_get0_key(const RSA *rsa, const BIGNUM **n,
 #endif
 
 }  // namespace
+#endif  // LIBCRYPTO_COMPAT_H
 
 namespace cert_provision {
 
