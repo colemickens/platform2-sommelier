@@ -6,5 +6,5 @@ include = ["*.rs", "Cargo.toml"]
 edition = "2018"
 
 [dependencies]
-trace_events = { path = "../trace_events" }
-trace_events_macros = { path = "../trace_events_macros" }
+trace_events = { version = "0.1.0", path = "../trace_events" }
+trace_events_macros = { version = "0.1.0", path = "../trace_events_macros" }

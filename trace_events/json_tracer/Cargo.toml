@@ -10,7 +10,7 @@ path = "json_tracer.rs"
 
 [dependencies]
 libc = "0.2.44"
-trace_events = { path = "../trace_events" }
+trace_events = { version = "0.1.0", path = "../trace_events" }
 
 [dev-dependencies]
 criterion = "0.2"
