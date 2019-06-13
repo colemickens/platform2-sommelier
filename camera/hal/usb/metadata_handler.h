@@ -13,6 +13,7 @@
 #include <hardware/camera3.h>
 
 #include "hal/usb/common_types.h"
+#include "hal/usb/sensor_handler.h"
 
 namespace cros {
 
@@ -29,7 +30,9 @@ typedef std::unique_ptr<camera_metadata_t, CameraMetadataDeleter>
 // CameraDevice.
 class MetadataHandler {
  public:
-  explicit MetadataHandler(const camera_metadata_t& metadata);
+  MetadataHandler(const camera_metadata_t& metadata,
+                  const DeviceInfo& device_info,
+                  const SupportedFormats& supported_formats);
   ~MetadataHandler();
 
   static int FillDefaultMetadata(android::CameraMetadata* metadata);
@@ -57,7 +60,8 @@ class MetadataHandler {
   // required metadata which can be gotton from 3A or image processor.
   int PostHandleRequest(int frame_number,
                         int64_t timestamp,
-                        android::CameraMetadata* metadata);
+                        android::CameraMetadata* metadata,
+                        const Size& resolution);
 
  private:
   // Check |template_type| is valid or not.
@@ -83,9 +87,15 @@ class MetadataHandler {
   // thread.
   base::ThreadChecker thread_checker_;
 
+  // Camera device information.
+  const DeviceInfo device_info_;
+
   int current_frame_number_;
 
   bool af_trigger_;
+
+  // Sensor handler to get sensor related metadata.
+  std::unique_ptr<SensorHandler> sensor_handler_;
 };
 
 }  // namespace cros

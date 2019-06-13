@@ -26,8 +26,10 @@
 
 namespace cros {
 
-MetadataHandler::MetadataHandler(const camera_metadata_t& metadata)
-    : af_trigger_(false) {
+MetadataHandler::MetadataHandler(const camera_metadata_t& metadata,
+                                 const DeviceInfo& device_info,
+                                 const SupportedFormats& supported_formats)
+    : device_info_(device_info), af_trigger_(false) {
   // MetadataBase::operator= will make a copy of camera_metadata_t.
   metadata_ = &metadata;
 
@@ -35,6 +37,8 @@ MetadataHandler::MetadataHandler(const camera_metadata_t& metadata)
   for (int i = 1; i < CAMERA3_TEMPLATE_COUNT; i++) {
     template_settings_[i] = CreateDefaultRequestSettings(i);
   }
+
+  sensor_handler_ = SensorHandler::Create(device_info, supported_formats);
 
   thread_checker_.DetachFromThread();
 }
@@ -655,7 +659,8 @@ void MetadataHandler::PreHandleRequest(
 
 int MetadataHandler::PostHandleRequest(int frame_number,
                                        int64_t timestamp,
-                                       android::CameraMetadata* metadata) {
+                                       android::CameraMetadata* metadata,
+                                       const Size& resolution) {
   DCHECK(thread_checker_.CalledOnValidThread());
   if (current_frame_number_ != frame_number) {
     LOGF(ERROR)
@@ -720,11 +725,11 @@ int MetadataHandler::PostHandleRequest(int frame_number,
 
   // Rolling shutter skew and exposure time values are fake due to ARCore
   // test requirement.
-  // TODO(henryhsu): Read the two values from camera.
-  const int64_t rolling_shutter_skew = 33'300'000;  // 33.3ms
+  const int64_t rolling_shutter_skew =
+      sensor_handler_->GetRollingShutterSkew(resolution);
   UPDATE(ANDROID_SENSOR_ROLLING_SHUTTER_SKEW, &rolling_shutter_skew, 1);
 
-  const int64_t exposure_time = 16'600'000;  // 16.6ms
+  const int64_t exposure_time = sensor_handler_->GetExposureTime(resolution);
   UPDATE(ANDROID_SENSOR_EXPOSURE_TIME, &exposure_time, 1);
 
   // android.statistics

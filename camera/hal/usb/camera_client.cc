@@ -40,7 +40,6 @@ CameraClient::CameraClient(int id,
       device_info_(device_info),
       device_(new V4L2CameraDevice(device_info)),
       callback_ops_(nullptr),
-      metadata_handler_(new MetadataHandler(static_info)),
       request_thread_("Capture request thread") {
   memset(&camera3_device_, 0, sizeof(camera3_device_));
   camera3_device_.common.tag = HARDWARE_DEVICE_TAG;
@@ -56,6 +55,9 @@ CameraClient::CameraClient(int id,
   SupportedFormats supported_formats =
       device_->GetDeviceSupportedFormats(device_info_.device_path);
   qualified_formats_ = GetQualifiedFormats(supported_formats);
+
+  metadata_handler_ = std::make_unique<MetadataHandler>(
+      static_info, device_info, qualified_formats_);
 }
 
 CameraClient::~CameraClient() {}
@@ -681,8 +683,9 @@ void CameraClient::RequestHandler::HandleRequest(
   }
 
   NotifyShutter(capture_result.frame_number);
-  ret = metadata_handler_->PostHandleRequest(
-      capture_result.frame_number, CurrentBufferTimestamp(), metadata);
+  ret = metadata_handler_->PostHandleRequest(capture_result.frame_number,
+                                             CurrentBufferTimestamp(), metadata,
+                                             stream_on_resolution_);
   if (ret) {
     LOGFID(WARNING, device_id_)
         << "Update metadata in PostHandleRequest failed";

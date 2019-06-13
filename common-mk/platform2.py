@@ -76,6 +76,7 @@ _IUSE = [
     'tpm2_simulator',
     'ubsan',
     'udev',
+    'usb_camera_monocle',
     'vpn',
     'wake_on_wifi',
     'wifi',

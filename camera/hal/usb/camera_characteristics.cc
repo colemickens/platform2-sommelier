@@ -67,6 +67,8 @@ void SetEntry(const std::string& key,
   } else if (key == "constant_framerate_unsupported") {
     std::istringstream(value) >> std::boolalpha >>
         info->constant_framerate_unsupported;
+  } else if (key == "monocle_quirks") {
+    std::istringstream(value) >> std::boolalpha >> info->monocle_quirks;
   } else if (key == "lens_facing") {
     info->lens_facing = stoi(value);
   } else if (key == "sensor_orientation") {

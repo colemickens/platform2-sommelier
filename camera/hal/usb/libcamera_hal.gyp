@@ -17,6 +17,16 @@
         'libyuv',
         're2',
       ],
+      'conditions': [
+        ['USE_usb_camera_monocle == 1', {
+          'deps': [
+            'librealtek-sdk',
+          ],
+          'defines': [
+            'MONOCLE_QUIRKS=1',
+          ],
+        }],
+      ],
     },
   },
   'targets': [
@@ -39,10 +49,18 @@
         'frame_buffer.cc',
         'image_processor.cc',
         'metadata_handler.cc',
+        'sensor_handler.cc',
         'stream_format.cc',
         'test_pattern.cc',
         'v4l2_camera_device.cc',
         'vendor_tag.cc',
+      ],
+      'conditions': [
+        ['USE_usb_camera_monocle == 1', {
+          'sources': [
+            'sensor_handler_monocle.cc',
+          ],
+        }],
       ],
     },
   ],
