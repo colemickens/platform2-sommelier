@@ -225,6 +225,9 @@ class ArcSetup {
   // TODO(ejcaruso, b/78300746): remove this when we can use genfs_contexts
   void SetUpPowerSysfsContext();
 
+  // Initialize the testharness directory and key file inside for testharness.
+  void SetUpTestharness(bool is_dev_mode);
+
   // TODO(b/68814859): Remove this function once WiFi works again.  Creates
   // /data/misc/ethernet/ipconfig.txt so that the container can set up
   // networking by itself.

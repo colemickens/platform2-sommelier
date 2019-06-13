@@ -95,6 +95,7 @@ constexpr char kBinFmtMiscDirectory[] = "/proc/sys/fs/binfmt_misc";
 constexpr char kCameraProfileDir[] =
     "/mnt/stateful_partition/encrypted/var/cache/camera";
 constexpr char kCrasSocketDirectory[] = "/run/cras";
+constexpr char kTestharnessDirectory[] = "/run/arc/testharness";
 constexpr char kDebugfsDirectory[] = "/run/arc/debugfs";
 constexpr char kDefaultAppsBoardDirectory[] = "/var/cache/arc_default_apps";
 constexpr char kDefaultAppsDirectory[] =
@@ -490,6 +491,7 @@ struct ArcPaths {
   const base::FilePath binfmt_misc_directory{kBinFmtMiscDirectory};
   const base::FilePath camera_profile_dir{kCameraProfileDir};
   const base::FilePath cras_socket_directory{kCrasSocketDirectory};
+  const base::FilePath testharness_directory{kTestharnessDirectory};
   const base::FilePath debugfs_directory{kDebugfsDirectory};
   const base::FilePath fake_kptr_restrict{kFakeKptrRestrict};
   const base::FilePath fake_mmap_rnd_bits{kFakeMmapRndBits};
@@ -1939,6 +1941,27 @@ void ArcSetup::EnsureContainerDirectories() {
                               arc_paths_->cras_socket_directory));
 }
 
+void ArcSetup::SetUpTestharness(bool is_dev_mode) {
+  if (base::DirectoryExists(arc_paths_->testharness_directory))
+    return;
+
+  if (is_dev_mode) {
+    EXIT_IF(!InstallDirectory(07770, kSystemUid, kSystemGid,
+                              arc_paths_->testharness_directory));
+    const base::FilePath key_file =
+        arc_paths_->testharness_directory.Append("keys");
+    EXIT_IF(!WriteToFile(key_file, 0777, ""));
+    EXIT_IF(!Chown(kSystemUid, kSystemGid, key_file));
+  } else {
+    // Even in non-Developer mode, we still need the directory so
+    // config.json bind-mounting can happen correctly.
+    // We will just restrict access to it and make sure no key file
+    // is generated.
+    EXIT_IF(!InstallDirectory(0000, kHostRootUid, kHostRootGid,
+                              arc_paths_->testharness_directory));
+  }
+}
+
 void ArcSetup::MountOnOnetimeSetup() {
   const bool is_writable = config_.GetBoolOrDie("WRITABLE_MOUNT");
   const unsigned long writable_flag =  // NOLINT(runtime/int)
@@ -2099,6 +2122,8 @@ void ArcSetup::OnSetup() {
   SetUpGraphicsSysfsContext();
   if (GetSdkVersion() >= AndroidSdkVersion::ANDROID_P)
     SetUpPowerSysfsContext();
+  if (GetSdkVersion() >= AndroidSdkVersion::ANDROID_Q)
+    SetUpTestharness(is_dev_mode);
   MakeMountPointsReadOnly();
   SetUpCameraProperty();
   SetUpSharedApkDirectory();

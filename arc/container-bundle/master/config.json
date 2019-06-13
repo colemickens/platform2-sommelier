@@ -310,6 +310,14 @@
 				"rbind"
 			]
 		},
+                {
+			"destination": "/var/run/arc/testharness",
+			"type": "bind",
+			"source": "/run/arc/testharness",
+			"options": [
+				"rbind"
+			]
+		},
 		{
 			"destination": "/var/run/arc/shared_mounts",
 			"type": "bind",
