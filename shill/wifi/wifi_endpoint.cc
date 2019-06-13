@@ -484,6 +484,7 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
         if (ie_len >= 4) {
           *country_code = string(it + 2, it + 4);
         }
+        break;
       case IEEE_80211::kElemIdErp:
         found_erp = true;
         break;

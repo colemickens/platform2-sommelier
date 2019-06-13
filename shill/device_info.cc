@@ -22,6 +22,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/compiler_specific.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -550,6 +551,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string& link_name,
     case Technology::kArc:
       // shill doesn't touch the IP configuration for kArc devices.
       flush = false;
+      FALLTHROUGH;
     case Technology::kPPP:
     case Technology::kTunnel:
       // Tunnel and PPP devices are managed by the VPN code (PPP for

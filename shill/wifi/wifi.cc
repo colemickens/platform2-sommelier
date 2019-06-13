@@ -2859,6 +2859,9 @@ string WiFi::ScanStateString(ScanState state, ScanMethod method) {
         default:
           NOTREACHED();
       }
+      // TODO(denik): Remove break after fall-through check
+      // is fixed with NOTREACHED(), https://crbug.com/973960.
+      break;
     case kScanBackgroundScanning:
       return "BACKGROUND_START";
     case kScanTransitionToConnecting:
@@ -2872,6 +2875,9 @@ string WiFi::ScanStateString(ScanState state, ScanMethod method) {
         default:
           NOTREACHED();
       }
+      // TODO(denik): Remove break after fall-through check
+      // is fixed with NOTREACHED(), https://crbug.com/973960.
+      break;
     case kScanConnected:
       switch (method) {
         case kScanMethodNone:
@@ -2881,6 +2887,9 @@ string WiFi::ScanStateString(ScanState state, ScanMethod method) {
         default:
           NOTREACHED();
       }
+      // TODO(denik): Remove break after fall-through check
+      // is fixed with NOTREACHED(), https://crbug.com/973960.
+      break;
     case kScanFoundNothing:
       switch (method) {
         case kScanMethodNone:
@@ -2890,6 +2899,9 @@ string WiFi::ScanStateString(ScanState state, ScanMethod method) {
         default:
           NOTREACHED();
       }
+      // TODO(denik): Remove break after fall-through check
+      // is fixed with NOTREACHED(), https://crbug.com/973960.
+      break;
     default:
       NOTREACHED();
   }
