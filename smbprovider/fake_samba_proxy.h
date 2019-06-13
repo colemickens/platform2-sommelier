@@ -15,13 +15,12 @@
 
 namespace smbprovider {
 
-// Proxy for FakeSambaInterface. Allows us to take a unqiue_ptr to this class
+// Proxy for FakeSambaInterface. Allows us to take a unique_ptr to this class
 // all backed by one FakeSambaInterface. All calls are direct pass throughs to
 // FakeSambaInterface.
 class FakeSambaProxy : public SambaInterface {
  public:
   explicit FakeSambaProxy(FakeSambaInterface* fake_samba_interface);
-  ~FakeSambaProxy() override;
 
   // FakeSambaInterface overrides.
   int32_t OpenDirectory(const std::string& directory_path,
@@ -76,13 +75,16 @@ class FakeSambaProxy : public SambaInterface {
                      off_t length,
                      off_t* bytes_written) override;
 
-  SambaInterface::SambaInterfaceId GetSambaInterfaceId() override;
+  SambaInterfaceId GetSambaInterfaceId() override;
 
   WeakPtr AsWeakPtr() override;
 
  private:
-  FakeSambaInterface* fake_samba_interface_;  // Not owned.
-  SambaInterface::SambaInterfaceId samba_interface_id_;
+  FakeSambaInterface* const fake_samba_interface_;  // Not owned.
+
+  // Every fake samba proxy interface must have its own unique id.
+  static SambaInterfaceId count_;
+  const SambaInterfaceId samba_interface_id_ = ++count_;
 
   // Weak pointer factory. Should be the last member.
   base::WeakPtrFactory<FakeSambaProxy> weak_factory_{this};
