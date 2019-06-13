@@ -1,3 +1,6 @@
+# Caution!: GYP to GN migration is happening. If you update this file, please
+# also update //camera/common/BUILD.gn accordingly.
+
 {
   'includes': [
     '../build/cros-camera-common.gypi',

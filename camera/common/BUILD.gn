@@ -1,0 +1,21 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+static_library("libcamera_metrics") {
+  sources = [
+    "camera_metrics_impl.cc",
+  ]
+  include_dirs = [
+    "//camera/",
+    "//camera/include",
+  ]
+  configs += [ "//common-mk:pic" ]
+  configs -= [ "//common-mk:pie" ]
+  public_pkg_deps = [ "libmetrics-${libbase_ver}" ]
+  pkg_deps = [
+    "cros-camera-android-headers",
+    "libcamera_metadata",
+    "libchrome-${libbase_ver}",
+  ]
+}

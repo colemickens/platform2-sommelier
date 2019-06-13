@@ -1,3 +1,6 @@
+# Caution!: GYP to GN migration is happening. If you update this file, please
+# also update //camera/common/libcamera_common/BUILD.gn accordingly.
+
 {
   'includes': ['../build/cros-camera-common.gypi'],
   'target_defaults': {
@@ -28,7 +31,7 @@
           ],
           'sources': [
             'future.cc',
-            'future_unittest.cc',
+            'future_test.cc',
           ],
         },
       ],

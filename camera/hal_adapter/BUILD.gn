@@ -1,0 +1,82 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/mojom_bindings_generator.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":cros_camera_service",
+  ]
+}
+
+pkg_config("target_defaults") {
+  include_dirs = [
+    "//camera",
+    "//camera/include",
+  ]
+  pkg_deps = [
+    "cros-camera-android-headers",
+    "libbrillo-${libbase_ver}",
+    "libcamera_client",
+    "libcamera_common",
+    "libcamera_metadata",
+    "libcbm",
+    "libdrm",
+    "libmojo-${libbase_ver}",
+    "libsync",
+    "libyuv",
+    "re2",
+  ]
+}
+
+generate_mojom_bindings("cros_camera_service_mojom") {
+  sources = [
+    "//camera/mojo/algorithm/camera_algorithm.mojom",
+    "//camera/mojo/camera3.mojom",
+    "//camera/mojo/camera_common.mojom",
+    "//camera/mojo/camera_metadata.mojom",
+    "//camera/mojo/camera_metadata_tags.mojom",
+    "//camera/mojo/cros_camera_service.mojom",
+    "//camera/mojo/jda/mjpeg_decode_accelerator.mojom",
+    "//camera/mojo/jda/time.mojom",
+    "//camera/mojo/jea/jpeg_encode_accelerator.mojom",
+  ]
+  mojo_root = "//camera/"
+}
+
+executable("cros_camera_service") {
+  sources = [
+    "//camera/common/ipc_util.cc",
+    "//camera/common/utils/camera_config_impl.cc",
+    "//camera/common/utils/camera_hal_enumerator.cc",
+    "//camera/common/vendor_tag_manager.cc",
+    "//camera/mojo/CameraMetadataTagsVerifier.cc",
+    "camera3_callback_ops_delegate.cc",
+    "camera3_device_ops_delegate.cc",
+    "camera_device_adapter.cc",
+    "camera_hal_adapter.cc",
+    "camera_hal_server_impl.cc",
+    "camera_hal_test_adapter.cc",
+    "camera_metadata_inspector.cc",
+    "camera_module_callbacks_delegate.cc",
+    "camera_module_delegate.cc",
+    "camera_trace_event.cc",
+    "cros_camera_main.cc",
+    "cros_camera_mojo_utils.cc",
+    "reprocess_effect/portrait_mode_effect.cc",
+    "reprocess_effect/reprocess_effect_manager.cc",
+    "scoped_yuv_buffer_handle.cc",
+    "vendor_tag_ops_delegate.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  libs = [
+    "dl",
+    "rt",
+  ]
+  deps = [
+    ":cros_camera_service_mojom",
+    "//camera/common:libcamera_metrics",
+  ]
+}
