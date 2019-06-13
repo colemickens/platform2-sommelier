@@ -140,9 +140,25 @@ int V4L2Device::DequeueEvent(struct v4l2_event* event) {
   return ret;
 }
 
+int V4L2Device::SetControl(struct v4l2_control* control) {
+  if (!IsOpened()) {
+    LOGF(ERROR) << "Invalid device state (CLOSED)";
+    return -EINVAL;
+  }
+  if (!control) {
+    LOGF(ERROR) << "Null pointer of control";
+    return -EINVAL;
+  }
+  return ::ioctl(fd_, VIDIOC_S_CTRL, control);
+}
+
 int V4L2Device::SetControl(struct v4l2_ext_control* ext_control) {
   if (!IsOpened()) {
     LOGF(ERROR) << "Invalid device state (CLOSED)";
+    return -EINVAL;
+  }
+  if (!ext_control) {
+    LOGF(ERROR) << "Null pointer of ext_control";
     return -EINVAL;
   }
   struct v4l2_ext_controls controls = {};
@@ -155,10 +171,12 @@ int V4L2Device::SetControl(struct v4l2_ext_control* ext_control) {
 int V4L2Device::SetControl(int id, int32_t value) {
   VLOGF_ENTER();
   VLOGF(2) << "Setting attribute " << id << " to " << value;
+  int ret = 0;
+
   struct v4l2_ext_control ext_control = {};
   ext_control.id = id;
   ext_control.value = value;
-  int ret = SetControl(&ext_control);
+  ret = SetControl(&ext_control);
   if (ret != 0) {
     PLOGF(ERROR) << "Failed to set value " << value << " for control " << id
                  << " on device " << name_.c_str();
@@ -290,6 +308,35 @@ int V4L2Device::QueryControl(v4l2_queryctrl* control) {
     PLOGF(ERROR) << "Failed to get values for query control (" << control->id
                  << ") on device " << name_.c_str();
   }
+  return ret;
+}
+
+int V4L2Device::Poll(int timeout) {
+  VLOGF_ENTER();
+  struct pollfd pfd = {0};
+  int ret(0);
+
+  if (fd_ == -1) {
+    LOGF(ERROR) << "Device " << name_.c_str() << " already closed. Do nothing.";
+    return -1;
+  }
+
+  pfd.fd = fd_;
+  pfd.events = POLLPRI | POLLIN | POLLERR;
+
+  ret = ::poll(&pfd, 1, timeout);
+
+  if (ret < 0) {
+    LOGF(ERROR) << "poll error ret=" << ret << ", mFd= " << fd_
+                << ", error:" << strerror(errno);
+    return ret;
+  }
+
+  if (pfd.revents & POLLERR) {
+    LOGF(ERROR) << "received POLLERR";
+    return -1;
+  }
+
   return ret;
 }
 

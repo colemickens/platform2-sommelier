@@ -104,6 +104,34 @@ void V4L2Buffer::SetUserptr(uintptr_t userptr, uint32_t plane) {
     v4l2_buf_.m.userptr = userptr;
 }
 
+int V4L2Buffer::RequestFd() const {
+  DCHECK(IsValidV4L2BufferType(v4l2_buf_.type));
+
+  return (v4l2_buf_.flags & V4L2_BUF_FLAG_REQUEST_FD) ? v4l2_buf_.request_fd : -1;
+}
+
+int V4L2Buffer::SetRequestFd(int fd) {
+  DCHECK(IsValidV4L2BufferType(v4l2_buf_.type));
+
+  if (fd <= 0) {
+    return -EINVAL;
+  }
+
+  v4l2_buf_.flags |= V4L2_BUF_FLAG_REQUEST_FD;
+  v4l2_buf_.request_fd = fd;
+
+  return 0;
+}
+
+int V4L2Buffer::ResetRequestFd() {
+  DCHECK(IsValidV4L2BufferType(v4l2_buf_.type));
+
+  v4l2_buf_.flags &= ~V4L2_BUF_FLAG_REQUEST_FD;
+  v4l2_buf_.request_fd = 0;
+
+  return 0;
+}
+
 int V4L2Buffer::Fd(uint32_t plane) const {
   DCHECK(IsValidV4L2BufferType(v4l2_buf_.type));
   bool mp = V4L2_TYPE_IS_MULTIPLANAR(v4l2_buf_.type);
@@ -189,6 +217,8 @@ V4L2Format::V4L2Format(const v4l2_format& fmt) {
     height_ = fmt.fmt.pix_mp.height;
     pixel_fmt_ = fmt.fmt.pix_mp.pixelformat;
     field_ = fmt.fmt.pix_mp.field;
+    color_space_ = fmt.fmt.pix_mp.colorspace;
+    quantization_ = fmt.fmt.pix_mp.quantization;
     for (uint8_t plane = 0; plane < fmt.fmt.pix_mp.num_planes; plane++) {
       plane_bytes_per_line_.push_back(
           fmt.fmt.pix_mp.plane_fmt[plane].bytesperline);
@@ -199,6 +229,8 @@ V4L2Format::V4L2Format(const v4l2_format& fmt) {
     height_ = fmt.fmt.pix.height;
     pixel_fmt_ = fmt.fmt.pix.pixelformat;
     field_ = fmt.fmt.pix.field;
+    color_space_ = fmt.fmt.pix.colorspace;
+    quantization_ = fmt.fmt.pix.quantization;
     plane_bytes_per_line_.push_back(fmt.fmt.pix.bytesperline);
     plane_size_image_.push_back(fmt.fmt.pix.sizeimage);
   }
@@ -273,6 +305,22 @@ void V4L2Format::SetSizeImage(uint32_t size, uint32_t plane) {
   plane_size_image_[plane] = size;
 }
 
+uint32_t V4L2Format::ColorSpace() const {
+  return color_space_;
+}
+
+void V4L2Format::SetColorSpace(uint32_t profile) {
+  color_space_ = profile;
+}
+
+uint32_t V4L2Format::Quantization() const {
+  return quantization_;
+}
+
+void V4L2Format::SetQuantization(uint32_t quantization) {
+  quantization_ = quantization;
+}
+
 v4l2_format* V4L2Format::Get() {
   DCHECK(IsValidV4L2BufferType(type_));
 
@@ -289,6 +337,8 @@ v4l2_format* V4L2Format::Get() {
     v4l2_fmt_.fmt.pix_mp.height = height_;
     v4l2_fmt_.fmt.pix_mp.pixelformat = pixel_fmt_;
     v4l2_fmt_.fmt.pix_mp.field = field_;
+    v4l2_fmt_.fmt.pix_mp.colorspace = color_space_;
+    v4l2_fmt_.fmt.pix_mp.quantization = quantization_;
     v4l2_fmt_.fmt.pix_mp.num_planes = plane_bytes_per_line_.size();
     for (size_t plane = 0; plane < plane_bytes_per_line_.size(); plane++) {
       v4l2_fmt_.fmt.pix_mp.plane_fmt[plane].bytesperline =
@@ -306,6 +356,8 @@ v4l2_format* V4L2Format::Get() {
     v4l2_fmt_.fmt.pix.height = height_;
     v4l2_fmt_.fmt.pix.pixelformat = pixel_fmt_;
     v4l2_fmt_.fmt.pix.field = field_;
+    v4l2_fmt_.fmt.pix.colorspace = color_space_;
+    v4l2_fmt_.fmt.pix.quantization = quantization_;
     v4l2_fmt_.fmt.pix.bytesperline = plane_bytes_per_line_[0];
     v4l2_fmt_.fmt.pix.sizeimage = plane_size_image_[0];
   }
@@ -386,6 +438,10 @@ enum v4l2_memory V4L2VideoNode::GetMemoryType() {
   return memory_type_;
 }
 
+enum v4l2_buf_type V4L2VideoNode::GetBufferType() {
+  return buffer_type_;
+}
+
 int V4L2VideoNode::Stop() {
   VLOGF(1) << "Stoping device " << name_;
   base::AutoLock l(state_lock_);
@@ -401,7 +457,7 @@ int V4L2VideoNode::StopLocked() {
     // stream off
     int ret = ::ioctl(fd_, VIDIOC_STREAMOFF, &buffer_type_);
     if (ret < 0) {
-      PLOGF(ERROR) << "VIDIOC_STREAMOFF returned: " << ret;
+      PLOGF(ERROR) << name_ << " VIDIOC_STREAMOFF returned: " << ret;
       return ret;
     }
     state_ = VideoNodeState::PREPARED;
@@ -426,7 +482,7 @@ int V4L2VideoNode::Start() {
   // stream on
   int ret = ::ioctl(fd_, VIDIOC_STREAMON, &buffer_type_);
   if (ret < 0) {
-    PLOGF(ERROR) << "VIDIOC_STREAMON returned: " << ret;
+    PLOGF(ERROR) << name_ << " VIDIOC_STREAMON returned: " << ret;
     return ret;
   }
 
@@ -605,6 +661,7 @@ int V4L2VideoNode::ExportFrame(unsigned int index, std::vector<int>* fds) {
   struct v4l2_exportbuffer ebuf = {};
   ebuf.type = buffer_type_;
   ebuf.index = index;
+  ebuf.flags = O_RDWR;
   for (uint32_t i = 0; i < num_planes; i++) {
     ret = ::ioctl(fd_, VIDIOC_EXPBUF, &ebuf);
     if (ret < 0) {
@@ -705,6 +762,8 @@ int V4L2VideoNode::RequestBuffers(size_t num_buffers,
     LOGF(WARNING) << name_ << " got less buffers than requested! "
                   << req_buf.count << " < " << num_buffers;
 
+  memory_type_ = memory_type;
+  state_ = VideoNodeState::PREPARED;
   return req_buf.count;
 }
 
@@ -817,4 +876,5 @@ int V4L2VideoNode::GetFormat(V4L2Format* format) {
 
   return 0;
 }
+
 }  // namespace cros

@@ -71,6 +71,9 @@ class CROS_CAMERA_EXPORT V4L2Buffer {
   void SetOffset(uint32_t offset, uint32_t plane);
   uintptr_t Userptr(uint32_t plane) const;
   void SetUserptr(uintptr_t userptr, uint32_t plane);
+  int RequestFd() const;
+  int SetRequestFd(int fd);
+  int ResetRequestFd();
   int Fd(uint32_t plane) const;
   void SetFd(int fd, uint32_t plane);
   uint32_t BytesUsed(uint32_t plane) const;
@@ -109,6 +112,10 @@ class CROS_CAMERA_EXPORT V4L2Format {
   void SetBytesPerLine(uint32_t bytesperline, uint32_t plane);
   uint32_t SizeImage(uint32_t plane) const;
   void SetSizeImage(uint32_t size, uint32_t plane);
+  uint32_t ColorSpace() const;
+  void SetColorSpace(uint32_t profile);
+  uint32_t Quantization() const;
+  void SetQuantization(uint32_t quantization);
   struct v4l2_format* Get();
 
  private:
@@ -117,6 +124,8 @@ class CROS_CAMERA_EXPORT V4L2Format {
   uint32_t height_;
   uint32_t pixel_fmt_;
   uint32_t field_;
+  uint32_t color_space_;
+  uint32_t quantization_;
   std::vector<uint32_t> plane_bytes_per_line_;
   std::vector<uint32_t> plane_size_image_;
   struct v4l2_format v4l2_fmt_;
@@ -165,6 +174,7 @@ class CROS_CAMERA_EXPORT V4L2Device {
   int SetControl(int id, int32_t value);
   int SetControl(int id, int64_t value);
   int SetControl(int id, const std::string value);
+  int SetControl(struct v4l2_control* control);
 
   // These methods gets the control of V4L2 device.
   //
@@ -228,6 +238,8 @@ class CROS_CAMERA_EXPORT V4L2Device {
   // Returns:
   //    True if it is opened.
   bool IsOpened() { return fd_ != -1; }
+
+  int Poll(int timeout);
 
   // This method gets the name of V4L2 device.
   //
@@ -340,6 +352,12 @@ class CROS_CAMERA_EXPORT V4L2VideoNode final : public V4L2Device {
   //    V4L2 memory type.
   enum v4l2_memory GetMemoryType();
 
+  // This method get the buffer type of video device.
+  //
+  // Returns:
+  //    V4L2 buffer type.
+  enum v4l2_buf_type GetBufferType();
+
   // This method maps video device buffers into memory.
   //
   // Args:
@@ -412,7 +430,6 @@ class CROS_CAMERA_EXPORT V4L2VideoNode final : public V4L2Device {
   //    0 on success; corresponding error code on failure.
   int ExportFrame(unsigned int index, std::vector<int>* fds);
 
- private:
   // This method queries the capabilities of the video device.
   //
   // Args:
@@ -422,6 +439,7 @@ class CROS_CAMERA_EXPORT V4L2VideoNode final : public V4L2Device {
   //    0 on success; corresponding error code on failure.
   int QueryCap(struct v4l2_capability* cap);
 
+ private:
   int Qbuf(V4L2Buffer* buf);
 
   int Dqbuf(V4L2Buffer* buf);
@@ -525,6 +543,7 @@ class CROS_CAMERA_EXPORT V4L2Subdevice final : public V4L2Device {
     CLOSED = 0, /*!< kernel device closed */
     OPEN,       /*!< device node opened */
     CONFIGURED, /*!< device format set, IOC_S_FMT */
+    STARTED,    /*!< device has been started */
     ERROR       /*!< undefined state */
   };
 
