@@ -422,6 +422,8 @@ int CreateDiskImage(dbus::ObjectProxy* proxy,
                     uint64_t disk_size,
                     string image_type,
                     StorageLocation storage_location,
+                    string source_name,
+                    const std::vector<string>& params,
                     string* result_path) {
   if (cryptohome_id.empty()) {
     LOG(ERROR) << "Cryptohome id cannot be empty";
@@ -438,6 +440,32 @@ int CreateDiskImage(dbus::ObjectProxy* proxy,
   dbus::MessageWriter writer(&method_call);
 
   vm_tools::concierge::CreateDiskImageRequest request;
+
+  base::ScopedFD source_fd;
+  if (!source_name.empty()) {
+    base::FilePath source_path = base::FilePath(kCryptohomeUser)
+                                     .Append(cryptohome_id)
+                                     .Append(kDownloadsDir)
+                                     .Append(source_name);
+    if (!base::PathExists(source_path)) {
+      LOG(ERROR) << "Source media does not exist";
+      return -1;
+    }
+
+    source_fd.reset(HANDLE_EINTR(open(source_path.value().c_str(), O_RDONLY)));
+    if (!source_fd.is_valid()) {
+      LOG(ERROR) << "Failed opening source media "
+                 << source_path.MaybeAsASCII();
+      return -1;
+    }
+
+    struct stat st;
+    if (fstat(source_fd.get(), &st) == 0) {
+      // stat's block size is always 512 bytes.
+      request.set_source_size(st.st_blocks * 512);
+    }
+  }
+
   request.set_cryptohome_id(std::move(cryptohome_id));
   request.set_disk_path(std::move(disk_path));
   request.set_disk_size(std::move(disk_size));
@@ -455,9 +483,17 @@ int CreateDiskImage(dbus::ObjectProxy* proxy,
 
   request.set_storage_location(storage_location);
 
+  for (const string& param : params) {
+    request.add_params(param);
+  }
+
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode CreateDiskImageRequest protobuf";
     return -1;
+  }
+
+  if (source_fd.is_valid()) {
+    writer.AppendFileDescriptor(source_fd.get());
   }
 
   std::unique_ptr<dbus::Response> dbus_response =
@@ -474,13 +510,21 @@ int CreateDiskImage(dbus::ObjectProxy* proxy,
     return -1;
   }
 
-  if (response.status() == vm_tools::concierge::DISK_STATUS_EXISTS) {
-    LOG(INFO) << "Disk image already exists: " << response.disk_path();
-  } else if (response.status() == vm_tools::concierge::DISK_STATUS_CREATED) {
-    LOG(INFO) << "Disk image created: " << response.disk_path();
-  } else {
-    LOG(ERROR) << "Failed to create disk image: " << response.failure_reason();
-    return -1;
+  switch (response.status()) {
+    case vm_tools::concierge::DISK_STATUS_EXISTS:
+      LOG(INFO) << "Disk image already exists: " << response.disk_path();
+      break;
+    case vm_tools::concierge::DISK_STATUS_CREATED:
+      LOG(INFO) << "Disk image created: " << response.disk_path();
+      break;
+    case vm_tools::concierge::DISK_STATUS_IN_PROGRESS:
+      LOG(INFO) << "Disk image being created: " << response.disk_path() << " ("
+                << response.command_uuid() << ")";
+      break;
+    default:
+      LOG(ERROR) << "Failed to create disk image: "
+                 << response.failure_reason();
+      return -1;
   }
 
   if (result_path)
@@ -827,7 +871,7 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
 
     string disk_path;
     if (CreateDiskImage(proxy, cryptohome_id, name, disk_size, image_type,
-                        vm_tools::concierge::STORAGE_CRYPTOHOME_ROOT,
+                        vm_tools::concierge::STORAGE_CRYPTOHOME_ROOT, "", {},
                         &disk_path) != 0) {
       return -1;
     }
@@ -1270,6 +1314,8 @@ int main(int argc, char** argv) {
   DEFINE_string(image_type, "auto", "Disk image type");
   DEFINE_string(storage_location, "cryptohome-root",
                 "Location to store the disk image");
+  DEFINE_string(source_name, "",
+                "Name of source media associated with the new VM image");
 
   // USB parameters.
   DEFINE_int32(bus_number, -1, "USB bus number");
@@ -1343,10 +1389,11 @@ int main(int argc, char** argv) {
     return GetVmCid(proxy, std::move(FLAGS_cryptohome_id),
                     std::move(FLAGS_name));
   } else if (FLAGS_create_disk) {
-    return CreateDiskImage(proxy, std::move(FLAGS_cryptohome_id),
-                           std::move(FLAGS_disk_path), FLAGS_disk_size,
-                           std::move(FLAGS_image_type), storage_location,
-                           nullptr);
+    return CreateDiskImage(
+        proxy, std::move(FLAGS_cryptohome_id), std::move(FLAGS_disk_path),
+        FLAGS_disk_size, std::move(FLAGS_image_type), storage_location,
+        std::move(FLAGS_source_name),
+        base::CommandLine::ForCurrentProcess()->GetArgs(), nullptr);
   } else if (FLAGS_create_external_disk) {
     return CreateExternalDiskImage(std::move(FLAGS_removable_media),
                                    std::move(FLAGS_name),

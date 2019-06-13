@@ -1899,6 +1899,54 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     return dbus_response;
   }
 
+  if (request.storage_location() == STORAGE_CRYPTOHOME_PLUGINVM) {
+    // Get the FD to fill with disk image data.
+    base::ScopedFD in_fd;
+    if (!reader.PopFileDescriptor(&in_fd)) {
+      LOG(ERROR) << "CreateDiskImage: no fd found";
+      response.set_failure_reason("no source fd found");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+
+    // Get the name of directory for ISO images. Do not create it - it will be
+    // created by the PluginVmCreateOperation code.
+    base::FilePath iso_dir;
+    if (!GetPluginIsoDirectory(request.disk_path(), request.cryptohome_id(),
+                               false /* create */, &iso_dir)) {
+      LOG(ERROR) << "Unable to determine directory for ISOs";
+
+      response.set_failure_reason("Unable to determine ISO directory");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+
+    std::vector<string> params(
+        std::make_move_iterator(request.mutable_params()->begin()),
+        std::make_move_iterator(request.mutable_params()->end()));
+
+    auto op = PluginVmCreateOperation::Create(
+        std::move(in_fd), iso_dir, request.source_size(),
+        VmId(request.cryptohome_id(), request.disk_path()), std::move(params));
+
+    response.set_disk_path(disk_path.value());
+    response.set_status(op->status());
+    response.set_command_uuid(op->uuid());
+    response.set_failure_reason(op->failure_reason());
+
+    if (op->status() == DISK_STATUS_IN_PROGRESS) {
+      std::string uuid = op->uuid();
+      disk_image_ops_.emplace_back(DiskOpInfo(std::move(op)));
+      base::ThreadTaskRunnerHandle::Get()->PostTask(
+          FROM_HERE,
+          base::Bind(&Service::RunDiskImageOperation,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
+    }
+
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
   uint64_t disk_size =
       request.disk_size() ? request.disk_size() : CalculateDesiredDiskSize(0);
 

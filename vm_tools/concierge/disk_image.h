@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
@@ -73,6 +74,50 @@ class DiskImageOperation {
   uint64_t processed_size_;
 
   DISALLOW_COPY_AND_ASSIGN(DiskImageOperation);
+};
+
+class PluginVmCreateOperation : public DiskImageOperation {
+ public:
+  static std::unique_ptr<PluginVmCreateOperation> Create(
+      base::ScopedFD in_fd,
+      const base::FilePath& iso_dir,
+      uint64_t source_size,
+      const VmId vm_id,
+      const std::vector<std::string> params);
+
+ protected:
+  bool ExecuteIo(uint64_t io_limit) override;
+  void Finalize() override;
+
+ private:
+  PluginVmCreateOperation(base::ScopedFD in_fd,
+                          uint64_t source_size,
+                          const VmId vm_id_,
+                          const std::vector<std::string> params);
+
+  bool PrepareOutput(const base::FilePath& iso_dir);
+
+  void MarkFailed(const char* msg, int error_code);
+
+  // VM owner and name. Used when registering imported image with the
+  // dispatcher.
+  const VmId vm_id_;
+
+  // Parameters that need to be passed to the Plugin VM helper when
+  // creating the VM.
+  const std::vector<std::string> params_;
+
+  // File descriptor from which to fetch the source image.
+  base::ScopedFD in_fd_;
+
+  // File descriptor to where the data from source image will
+  // be written to.
+  base::ScopedFD out_fd_;
+
+  // Destination directory object.
+  base::ScopedTempDir output_dir_;
+
+  DISALLOW_COPY_AND_ASSIGN(PluginVmCreateOperation);
 };
 
 struct ArchiveReadDeleter {

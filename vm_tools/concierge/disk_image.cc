@@ -4,6 +4,7 @@
 
 #include <archive.h>
 #include <archive_entry.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -16,6 +17,7 @@
 #include <base/strings/stringprintf.h>
 
 #include "vm_tools/concierge/disk_image.h"
+#include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
 namespace {
@@ -52,6 +54,126 @@ int DiskImageOperation::GetProgress() const {
   // Any other status indicates completed operation (successfully or not)
   // so return 100%.
   return 100;
+}
+
+std::unique_ptr<PluginVmCreateOperation> PluginVmCreateOperation::Create(
+    base::ScopedFD fd,
+    const base::FilePath& iso_dir,
+    uint64_t source_size,
+    const VmId vm_id,
+    const std::vector<std::string> params) {
+  auto op = base::WrapUnique(new PluginVmCreateOperation(
+      std::move(fd), source_size, std::move(vm_id), std::move(params)));
+
+  if (op->PrepareOutput(iso_dir)) {
+    op->set_status(DISK_STATUS_IN_PROGRESS);
+  }
+
+  return op;
+}
+
+PluginVmCreateOperation::PluginVmCreateOperation(
+    base::ScopedFD in_fd,
+    uint64_t source_size,
+    const VmId vm_id,
+    const std::vector<std::string> params)
+    : vm_id_(std::move(vm_id)),
+      params_(std::move(params)),
+      in_fd_(std::move(in_fd)) {
+  set_source_size(source_size);
+}
+
+bool PluginVmCreateOperation::PrepareOutput(const base::FilePath& iso_dir) {
+  base::File::Error dir_error;
+
+  if (!base::CreateDirectoryAndGetError(iso_dir, &dir_error)) {
+    set_failure_reason(std::string("failed to create ISO directory: ") +
+                       base::File::ErrorToString(dir_error));
+    return false;
+  }
+
+  CHECK(output_dir_.Set(iso_dir));
+
+  base::FilePath iso_path = iso_dir.Append("install.iso");
+  out_fd_.reset(open(iso_path.value().c_str(), O_CREAT | O_WRONLY, 0660));
+  if (!out_fd_.is_valid()) {
+    PLOG(ERROR) << "Failed to create output ISO file " << iso_path.value();
+    set_failure_reason("failed to create ISO file");
+    return false;
+  }
+
+  return true;
+}
+
+void PluginVmCreateOperation::MarkFailed(const char* msg, int error_code) {
+  set_status(DISK_STATUS_FAILED);
+
+  if (error_code != 0) {
+    set_failure_reason(base::StringPrintf("%s: %s", msg, strerror(error_code)));
+  } else {
+    set_failure_reason(msg);
+  }
+
+  LOG(ERROR) << vm_id_.name()
+             << " PluginVm create operation failed: " << failure_reason();
+
+  in_fd_.reset();
+  out_fd_.reset();
+
+  if (output_dir_.IsValid() && !output_dir_.Delete()) {
+    LOG(WARNING) << "Failed to delete output directory on error";
+  }
+}
+
+bool PluginVmCreateOperation::ExecuteIo(uint64_t io_limit) {
+  do {
+    uint8_t buf[65536];
+    int count = HANDLE_EINTR(read(in_fd_.get(), buf, sizeof(buf)));
+    if (count == 0) {
+      // No more data
+      return true;
+    }
+
+    if (count < 0) {
+      MarkFailed("failed to read data block", errno);
+      break;
+    }
+
+    int ret = HANDLE_EINTR(write(out_fd_.get(), buf, count));
+    if (ret != count) {
+      MarkFailed("failed to write data block", errno);
+      break;
+    }
+
+    io_limit -= std::min(static_cast<uint64_t>(count), io_limit);
+    AccumulateProcessedSize(count);
+  } while (status() == DISK_STATUS_IN_PROGRESS && io_limit > 0);
+
+  // More copying is to be done (or there was a failure).
+  return false;
+}
+
+void PluginVmCreateOperation::Finalize() {
+  // Close the file descriptors.
+  in_fd_.reset();
+  out_fd_.reset();
+
+  if (!pvm::helper::CreateVm(vm_id_, std::move(params_))) {
+    MarkFailed("Failed to create Plugin VM", 0);
+    return;
+  }
+
+  if (!pvm::helper::AttachIso(vm_id_, "install.iso")) {
+    MarkFailed("Failed to attach ISO to Plugin VM", 0);
+    pvm::helper::DeleteVm(vm_id_);
+    return;
+  }
+
+  // Tell it not to try cleaning directory containing our ISO as we are
+  // committed to using the image.
+  output_dir_.Take();
+
+  set_status(DISK_STATUS_CREATED);
 }
 
 std::unique_ptr<PluginVmExportOperation> PluginVmExportOperation::Create(
