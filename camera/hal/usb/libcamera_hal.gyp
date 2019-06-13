@@ -28,7 +28,7 @@
         '../../common/libcamera_metrics.gyp:libcamera_metrics',
       ],
       'sources': [
-        '../../common/utils/camera_config.cc',
+        '../../common/utils/camera_config_impl.cc',
         '../../common/vendor_tag_manager.cc',
         'cached_frame.cc',
         'camera_characteristics.cc',

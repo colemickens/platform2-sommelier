@@ -32,11 +32,11 @@
 #include <mojo/edk/embedder/platform_channel_utils_posix.h>
 #include <mojo/edk/embedder/platform_handle_vector.h>
 
-#include "common/utils/camera_config.h"
 #include "common/utils/camera_hal_enumerator.h"
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
 #include "cros-camera/ipc_util.h"
+#include "cros-camera/utils/camera_config.h"
 #include "hal_adapter/camera_hal_test_adapter.h"
 #include "hal_adapter/camera_trace_event.h"
 
@@ -129,13 +129,14 @@ void CameraHalServerImpl::RegisterCameraHal() {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   std::vector<camera_module_t*> camera_modules;
-  CameraConfig config(constants::kCrosCameraTestConfigPathString);
+  std::unique_ptr<CameraConfig> config =
+      CameraConfig::Create(constants::kCrosCameraTestConfigPathString);
   bool enable_front =
-           config.GetBoolean(constants::kCrosEnableFrontCameraOption, true),
+           config->GetBoolean(constants::kCrosEnableFrontCameraOption, true),
        enable_back =
-           config.GetBoolean(constants::kCrosEnableBackCameraOption, true),
+           config->GetBoolean(constants::kCrosEnableBackCameraOption, true),
        enable_external =
-           config.GetBoolean(constants::kCrosEnableExternalCameraOption, true);
+           config->GetBoolean(constants::kCrosEnableExternalCameraOption, true);
 
   for (const auto& dll : GetCameraHalPaths()) {
     LOGF(INFO) << "Try to load camera hal " << dll.value();

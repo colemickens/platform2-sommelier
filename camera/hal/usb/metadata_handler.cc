@@ -10,8 +10,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "common/utils/camera_config.h"
 #include "cros-camera/common.h"
+#include "cros-camera/utils/camera_config.h"
 #include "hal/usb/stream_format.h"
 #include "hal/usb/v4l2_camera_device.h"
 
@@ -262,24 +262,25 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
 
   std::unordered_map<int, int> max_hal_width_by_format;
   std::unordered_map<int, int> max_hal_height_by_format;
-  CameraConfig camera_config(constants::kCrosCameraConfigPathString);
-  max_hal_width_by_format[HAL_PIXEL_FORMAT_BLOB] = camera_config.GetInteger(
+  std::unique_ptr<CameraConfig> camera_config =
+      CameraConfig::Create(constants::kCrosCameraConfigPathString);
+  max_hal_width_by_format[HAL_PIXEL_FORMAT_BLOB] = camera_config->GetInteger(
       constants::kCrosMaxBlobWidth, std::numeric_limits<int>::max());
   max_hal_width_by_format[HAL_PIXEL_FORMAT_YCbCr_420_888] =
-      camera_config.GetInteger(constants::kCrosMaxYuvWidth,
-                               std::numeric_limits<int>::max());
+      camera_config->GetInteger(constants::kCrosMaxYuvWidth,
+                                std::numeric_limits<int>::max());
   max_hal_width_by_format[HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED] =
-      camera_config.GetInteger(constants::kCrosMaxPrivateWidth,
-                               std::numeric_limits<int>::max());
+      camera_config->GetInteger(constants::kCrosMaxPrivateWidth,
+                                std::numeric_limits<int>::max());
 
-  max_hal_height_by_format[HAL_PIXEL_FORMAT_BLOB] = camera_config.GetInteger(
+  max_hal_height_by_format[HAL_PIXEL_FORMAT_BLOB] = camera_config->GetInteger(
       constants::kCrosMaxBlobHeight, std::numeric_limits<int>::max());
   max_hal_height_by_format[HAL_PIXEL_FORMAT_YCbCr_420_888] =
-      camera_config.GetInteger(constants::kCrosMaxYuvHeight,
-                               std::numeric_limits<int>::max());
+      camera_config->GetInteger(constants::kCrosMaxYuvHeight,
+                                std::numeric_limits<int>::max());
   max_hal_height_by_format[HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED] =
-      camera_config.GetInteger(constants::kCrosMaxPrivateHeight,
-                               std::numeric_limits<int>::max());
+      camera_config->GetInteger(constants::kCrosMaxPrivateHeight,
+                                std::numeric_limits<int>::max());
 
   for (const auto& supported_format : supported_formats) {
     int64_t min_frame_duration = std::numeric_limits<int64_t>::max();

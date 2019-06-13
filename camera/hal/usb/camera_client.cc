@@ -13,8 +13,8 @@
 #include <sync/sync.h>
 #include <system/camera_metadata.h>
 
-#include "common/utils/camera_config.h"
 #include "cros-camera/common.h"
+#include "cros-camera/utils/camera_config.h"
 #include "hal/usb/cached_frame.h"
 #include "hal/usb/camera_hal.h"
 #include "hal/usb/camera_hal_device_ops.h"
@@ -457,11 +457,12 @@ bool CameraClient::ShouldUseNativeSensorRatio(
   resolution->width = std::numeric_limits<int>::max();
   resolution->height = std::numeric_limits<int>::max();
 
-  CameraConfig camera_config(constants::kCrosCameraConfigPathString);
+  std::unique_ptr<CameraConfig> camera_config =
+      CameraConfig::Create(constants::kCrosCameraConfigPathString);
 
-  int max_native_width = camera_config.GetInteger(
+  int max_native_width = camera_config->GetInteger(
       constants::kCrosMaxNativeWidth, std::numeric_limits<int>::max());
-  int max_native_height = camera_config.GetInteger(
+  int max_native_height = camera_config->GetInteger(
       constants::kCrosMaxNativeHeight, std::numeric_limits<int>::max());
 
   VLOGFID(1, id_) << "native aspect ratio:" << target_aspect_ratio << ",("

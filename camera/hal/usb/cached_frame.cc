@@ -13,9 +13,9 @@
 #include <hardware/camera3.h>
 
 #include <base/timer/elapsed_timer.h>
-#include "common/utils/camera_config.h"
 #include "cros-camera/common.h"
 #include "cros-camera/exif_utils.h"
+#include "cros-camera/utils/camera_config.h"
 #include "hal/usb/common_types.h"
 
 namespace cros {
@@ -45,12 +45,12 @@ CachedFrame::CachedFrame()
   jpeg_compressor_ = JpegCompressor::GetInstance();
 
   // Read force_jpeg_hw_(enc|dec) configs
-  force_jpeg_hw_encode_ =
-      CameraConfig(constants::kCrosCameraTestConfigPathString)
-          .GetBoolean(constants::kCrosForceJpegHardwareEncodeOption, false);
-  force_jpeg_hw_decode_ =
-      CameraConfig(constants::kCrosCameraTestConfigPathString)
-          .GetBoolean(constants::kCrosForceJpegHardwareDecodeOption, false);
+  std::unique_ptr<CameraConfig> camera_config =
+      CameraConfig::Create(constants::kCrosCameraTestConfigPathString);
+  force_jpeg_hw_encode_ = camera_config->GetBoolean(
+      constants::kCrosForceJpegHardwareEncodeOption, false);
+  force_jpeg_hw_decode_ = camera_config->GetBoolean(
+      constants::kCrosForceJpegHardwareDecodeOption, false);
   LOGF(INFO) << "Force JPEG hardware encode: " << force_jpeg_hw_encode_;
   LOGF(INFO) << "Force JPEG hardware decode: " << force_jpeg_hw_decode_;
 }

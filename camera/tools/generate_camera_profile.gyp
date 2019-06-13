@@ -14,7 +14,7 @@
       'target_name': 'generate_camera_profile',
       'type': 'executable',
       'sources': [
-        '../common/utils/camera_config.cc',
+        '../common/utils/camera_config_impl.cc',
         'generate_camera_profile.cc',
       ],
     },

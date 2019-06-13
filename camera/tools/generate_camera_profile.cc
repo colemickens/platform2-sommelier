@@ -5,6 +5,7 @@
 
 #include "tools/generate_camera_profile.h"
 
+#include <memory>
 #include <vector>
 
 #include <base/at_exit.h>
@@ -17,8 +18,8 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/syslog_logging.h>
 
-#include "common/utils/camera_config.h"
 #include "cros-camera/constants.h"
+#include "cros-camera/utils/camera_config.h"
 
 constexpr char kDestinationDir[] =
     "/mnt/stateful_partition/encrypted/var/cache/camera";
@@ -141,10 +142,11 @@ bool GenerateCameraProfile(int num_cameras) {
 }
 
 bool HasCameraFilter() {
-  cros::CameraConfig config(cros::constants::kCrosCameraTestConfigPathString);
-  return config.HasKey(cros::constants::kCrosEnableFrontCameraOption) ||
-         config.HasKey(cros::constants::kCrosEnableBackCameraOption) ||
-         config.HasKey(cros::constants::kCrosEnableExternalCameraOption);
+  std::unique_ptr<cros::CameraConfig> config = cros::CameraConfig::Create(
+      cros::constants::kCrosCameraTestConfigPathString);
+  return config->HasKey(cros::constants::kCrosEnableFrontCameraOption) ||
+         config->HasKey(cros::constants::kCrosEnableBackCameraOption) ||
+         config->HasKey(cros::constants::kCrosEnableExternalCameraOption);
 }
 
 int main(int argc, char* argv[]) {
