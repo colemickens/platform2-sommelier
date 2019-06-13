@@ -57,7 +57,7 @@ TEST_F(IdMapTest, TestInsertAndContains) {
   EXPECT_FALSE(map_.Contains(id + 1));
 }
 
-TEST_F(IdMapTest, TestInsertandFindNonExistant) {
+TEST_F(IdMapTest, TestInsertandFindNonExistent) {
   const std::string expected = "Foo";
   const int32_t id = map_.Insert(expected);
 
@@ -87,7 +87,7 @@ TEST_F(IdMapTest, TestRemoveOnEmpty) {
   EXPECT_FALSE(map_.Remove(0));
 }
 
-TEST_F(IdMapTest, TestRemoveNonExistant) {
+TEST_F(IdMapTest, TestRemoveNonExistent) {
   const std::string expected = "Foo";
   const int32_t id = map_.Insert(expected);
 

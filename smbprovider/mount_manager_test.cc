@@ -603,7 +603,7 @@ TEST_F(MountManagerTest, TestUpdateMountCredentials) {
                          password2);
 }
 
-TEST_F(MountManagerTest, TestUpdateMountCredentialsOnNonExistantMount) {
+TEST_F(MountManagerTest, TestUpdateMountCredentialsOnNonExistentMount) {
   int mount_id = 999;
   const std::string workgroup2 = "updated_workgroup";
   const std::string username2 = "updated_user";
@@ -665,7 +665,7 @@ TEST_F(MountManagerTest, TestUpdateSharePathDoesNotAddANewMount) {
   EXPECT_EQ(1, mounts_->MountCount());
 }
 
-TEST_F(MountManagerTest, TestUpdateShareFailsOnNonExistantMount) {
+TEST_F(MountManagerTest, TestUpdateShareFailsOnNonExistentMount) {
   EXPECT_EQ(0, mounts_->MountCount());
 
   const std::string new_path = "smb://192.168.50.105/testshare";

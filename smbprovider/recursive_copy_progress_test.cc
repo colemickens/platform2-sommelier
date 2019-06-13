@@ -34,7 +34,7 @@ class RecursiveCopyProgressTest : public testing::Test {
 };
 
 TEST_F(RecursiveCopyProgressTest, CopyFailsWhenSourceDoesNotExist) {
-  const std::string source_path = GetDefaultFullPath("non_existant_source_dir");
+  const std::string source_path = GetDefaultFullPath("non_existent_source_dir");
   const std::string target_path = GetDefaultFullPath("target");
 
   PrepareFileSystem();

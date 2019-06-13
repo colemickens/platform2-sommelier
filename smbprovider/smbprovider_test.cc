@@ -1238,8 +1238,8 @@ TEST_F(SmbProviderTest, CloseFileFailsWhenFileIsNotOpen) {
   EXPECT_EQ(ERROR_NOT_FOUND, smbprovider_->CloseFile(close_file_blob));
 }
 
-// CloseFile fails when called with a non-existant file handler.
-TEST_F(SmbProviderTest, CloseFileFailsOnNonExistantFileHandler) {
+// CloseFile fails when called with a non-existent file handler.
+TEST_F(SmbProviderTest, CloseFileFailsOnNonExistentFileHandler) {
   ProtoBlob close_file_blob =
       CreateCloseFileOptionsBlob(1 /* mount_id */, 1564 /* file_id */);
 
@@ -2753,7 +2753,7 @@ TEST_F(SmbProviderTest, GetDeleteListFailsOnNonFileNonDirectory) {
 }
 
 // GetDeleteList fails on non-existent path.
-TEST_F(SmbProviderTest, GetDeleteListFailsOnNonExistantEntry) {
+TEST_F(SmbProviderTest, GetDeleteListFailsOnNonExistentEntry) {
   int32_t mount_id = PrepareMount();
 
   ProtoBlob blob = CreateGetDeleteListOptionsBlob(mount_id, "/non-existent");
@@ -3064,7 +3064,7 @@ TEST_F(SmbProviderTest, ParseNetBiosPacketFailsOnInvalidPacket) {
   EXPECT_EQ(0, hostnames_proto.hostnames().size());
 }
 
-TEST_F(SmbProviderTest, StartCopyFailsOnNonExistantSouce) {
+TEST_F(SmbProviderTest, StartCopyFailsOnNonExistentSouce) {
   const int32_t mount_id = PrepareMount();
 
   ProtoBlob copy_blob =
@@ -3171,7 +3171,7 @@ TEST_F(SmbProviderTest, ContinueCopyFailsWhenCalledWithInvalidToken) {
   EXPECT_EQ(ERROR_COPY_FAILED, error_code);
 }
 
-TEST_F(SmbProviderTest, StartReadDirectoryFailsOnNonExistantSource) {
+TEST_F(SmbProviderTest, StartReadDirectoryFailsOnNonExistentSource) {
   const int32_t mount_id = PrepareMount();
 
   ProtoBlob read_dir_blob =
@@ -3453,7 +3453,7 @@ TEST_F(SmbProviderTest, UpdateMountCredentialsSucceedsOnValidMount) {
                          updated_workgroup, updated_username, updated_password);
 }
 
-TEST_F(SmbProviderTest, UpdateMountCredentialsFailsOnNonExistantMount) {
+TEST_F(SmbProviderTest, UpdateMountCredentialsFailsOnNonExistentMount) {
   const std::string updated_workgroup = "chrome";
   const std::string updated_username = "player1";
   const std::string updated_password = "password2";
@@ -3484,7 +3484,7 @@ TEST_F(SmbProviderTest, TestUpdateSharePathSucceeds) {
   EXPECT_EQ(new_path, updated_path);
 }
 
-TEST_F(SmbProviderTest, TestUpdateSharePathFailsOnNonExistantMount) {
+TEST_F(SmbProviderTest, TestUpdateSharePathFailsOnNonExistentMount) {
   EXPECT_EQ(0, mount_manager_->MountCount());
 
   const std::string new_path = "smb://192.168.1.1/testshare";

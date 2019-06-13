@@ -526,7 +526,7 @@ TEST_F(MountTrackerTest, TestAddRemoveSambaInterfaceId) {
   EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(samba_interface_id));
 }
 
-TEST_F(MountTrackerTest, TestNonExistantSambaInterfaceId) {
+TEST_F(MountTrackerTest, TestNonExistentSambaInterfaceId) {
   uintptr_t samba_interface_id = 1;
   SambaInterface::SambaInterfaceId non_existent_id =
       reinterpret_cast<SambaInterface::SambaInterfaceId>(samba_interface_id);
@@ -578,7 +578,7 @@ TEST_F(MountTrackerTest, TestUpdateMountCredentials) {
   ExpectCredentialsEqual(mount_id, workgroup2, username2, password2);
 }
 
-TEST_F(MountTrackerTest, TestUpdateMountCredentialsOnNontExistantMountId) {
+TEST_F(MountTrackerTest, TestUpdateMountCredentialsOnNontExistentMountId) {
   int32_t mount_id = 999;
 
   const std::string workgroup2 = "updated_workgroup";

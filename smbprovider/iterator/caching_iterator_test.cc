@@ -44,8 +44,8 @@ class CachingIteratorTest : public testing::Test {
   DISALLOW_COPY_AND_ASSIGN(CachingIteratorTest);
 };
 
-TEST_F(CachingIteratorTest, NonExistantDir) {
-  auto it = GetIterator("smb://non-existant-path/");
+TEST_F(CachingIteratorTest, NonExistentDir) {
+  auto it = GetIterator("smb://non-existent-path/");
   EXPECT_EQ(ENOENT, it.Init());
 }
 

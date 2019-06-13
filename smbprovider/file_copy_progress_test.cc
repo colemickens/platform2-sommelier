@@ -35,7 +35,7 @@ class FileCopyProgressTest : public testing::Test {
 
 // The copy fails if the source does not exist.
 TEST_F(FileCopyProgressTest, CopyFailsWhenSourceDoesNotExist) {
-  const std::string source_path = GetDefaultFullPath("non_existant_source");
+  const std::string source_path = GetDefaultFullPath("non_existent_source");
   const std::string target_path = GetDefaultFullPath("target");
 
   PrepareFileSystem();

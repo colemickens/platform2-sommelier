@@ -40,9 +40,9 @@ class DepthFirstIteratorTest : public testing::Test {
   DISALLOW_COPY_AND_ASSIGN(DepthFirstIteratorTest);
 };
 
-// DepthFirstIterator fails to initialize on a non-existant directory.
-TEST_F(DepthFirstIteratorTest, InitFailsOnNonExistantDir) {
-  TestDepthFirstIterator it("smb://non-existant-path/", &fake_samba_);
+// DepthFirstIterator fails to initialize on a non-existent directory.
+TEST_F(DepthFirstIteratorTest, InitFailsOnNonExistentDir) {
+  TestDepthFirstIterator it("smb://non-existent-path/", &fake_samba_);
 
   EXPECT_EQ(ENOENT, it.Init());
 }
