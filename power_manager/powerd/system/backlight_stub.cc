@@ -52,6 +52,10 @@ bool BacklightStub::SetBrightnessLevel(int64_t level,
   return true;
 }
 
+BacklightInterface::BrightnessScale BacklightStub::GetBrightnessScale() {
+  return BrightnessScale::kUnknown;
+}
+
 bool BacklightStub::TransitionInProgress() const {
   return transition_in_progress_;
 }

@@ -209,9 +209,20 @@ void InternalBacklightController::Init(
   }
   CHECK_GT(step_percent_, 0.0);
 
-  level_to_percent_exponent_ = max_level_ >= kMinLevelsForNonLinearMapping
-                                   ? kDefaultLevelToPercentExponent
-                                   : 1.0;
+  system::BacklightInterface::BrightnessScale brightness_scale =
+      backlight_->GetBrightnessScale();
+  switch (brightness_scale) {
+    case system::BacklightInterface::BrightnessScale::kLinear:
+      level_to_percent_exponent_ = kDefaultLevelToPercentExponent;
+      break;
+    case system::BacklightInterface::BrightnessScale::kNonLinear:
+      level_to_percent_exponent_ = 1.0;
+      break;
+    default:
+      level_to_percent_exponent_ = max_level_ >= kMinLevelsForNonLinearMapping
+                                       ? kDefaultLevelToPercentExponent
+                                       : 1.0;
+  }
 
   dimmed_brightness_percent_ = ClampPercentToVisibleRange(
       LevelToPercent(lround(kDimmedBrightnessFraction * max_level_)));

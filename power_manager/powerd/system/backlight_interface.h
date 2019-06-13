@@ -22,6 +22,12 @@ class BacklightInterface {
   BacklightInterface() {}
   virtual ~BacklightInterface() {}
 
+  enum class BrightnessScale {
+    kUnknown,
+    kLinear,
+    kNonLinear,
+  };
+
   // Adds or removes an observer.
   virtual void AddObserver(BacklightObserver* observer) = 0;
   virtual void RemoveObserver(BacklightObserver* observer) = 0;
@@ -40,6 +46,9 @@ class BacklightInterface {
 
   // Sets the backlight to |level| over |interval|. Returns false on failure.
   virtual bool SetBrightnessLevel(int64_t level, base::TimeDelta interval) = 0;
+
+  // Gets the scale of the brightness curve (linear, non-linear or unknown)
+  virtual BrightnessScale GetBrightnessScale() = 0;
 
   // Returns true if the brightness is currently being animated.
   virtual bool TransitionInProgress() const = 0;

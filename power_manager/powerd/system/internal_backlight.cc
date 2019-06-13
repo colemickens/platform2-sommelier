@@ -33,11 +33,13 @@ const char InternalBacklight::kBrightnessFilename[] = "brightness";
 const char InternalBacklight::kMaxBrightnessFilename[] = "max_brightness";
 const char InternalBacklight::kActualBrightnessFilename[] = "actual_brightness";
 const char InternalBacklight::kBlPowerFilename[] = "bl_power";
+const char InternalBacklight::kScaleFilename[] = "scale";
 
 InternalBacklight::InternalBacklight()
     : clock_(new Clock),
       max_brightness_level_(0),
       current_brightness_level_(0),
+      brightness_scale_(BrightnessScale::kUnknown),
       transition_start_level_(0),
       transition_end_level_(0) {}
 
@@ -90,6 +92,19 @@ bool InternalBacklight::Init(const base::FilePath& base_path,
     const base::FilePath power_path = device_path.Append(kBlPowerFilename);
     if (base::PathExists(power_path))
       bl_power_path_ = power_path;
+
+    const base::FilePath scale_path = device_path.Append(kScaleFilename);
+    if (base::PathExists(scale_path)) {
+      std::string scale;
+      base::ReadFileToString(scale_path, &scale);
+      base::TrimWhitespaceASCII(scale, base::TRIM_TRAILING, &scale);
+      if (scale == "linear")
+        brightness_scale_ = BrightnessScale::kLinear;
+      else if (scale == "non-linear")
+        brightness_scale_ = BrightnessScale::kNonLinear;
+      else
+        brightness_scale_ = BrightnessScale::kUnknown;
+    }
   }
 
   if (max_brightness_level_ <= 0)
@@ -149,6 +164,10 @@ bool InternalBacklight::SetBrightnessLevel(int64_t level,
     transition_timer_start_time_ = transition_start_time_;
   }
   return true;
+}
+
+BacklightInterface::BrightnessScale InternalBacklight::GetBrightnessScale() {
+  return brightness_scale_;
 }
 
 bool InternalBacklight::TransitionInProgress() const {

@@ -31,6 +31,7 @@ class InternalBacklight : public BacklightInterface {
   static const char kMaxBrightnessFilename[];
   static const char kActualBrightnessFilename[];
   static const char kBlPowerFilename[];
+  static const char kScaleFilename[];
 
   InternalBacklight();
   ~InternalBacklight() override;
@@ -67,6 +68,7 @@ class InternalBacklight : public BacklightInterface {
   int64_t GetMaxBrightnessLevel() override;
   int64_t GetCurrentBrightnessLevel() override;
   bool SetBrightnessLevel(int64_t level, base::TimeDelta interval) override;
+  BrightnessScale GetBrightnessScale() override;
   bool TransitionInProgress() const override;
 
  private:
@@ -102,6 +104,9 @@ class InternalBacklight : public BacklightInterface {
   // Cached maximum and last-set brightness levels.
   int64_t max_brightness_level_;
   int64_t current_brightness_level_;
+
+  // Scale of the brightness curve (linear, non-linear or unknown).
+  BrightnessScale brightness_scale_;
 
   // Calls HandleTransitionTimeout().
   base::RepeatingTimer transition_timer_;
