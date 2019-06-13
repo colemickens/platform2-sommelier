@@ -97,7 +97,6 @@ class LogTool {
  private:
   friend class LogToolTest;
 
-  void AnonymizeLogMap(LogMap* log_map);
   void CreateConnectivityReport(bool wait_for_results);
 
   scoped_refptr<dbus::Bus> bus_;

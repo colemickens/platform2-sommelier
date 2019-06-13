@@ -744,9 +744,4 @@ string LogTool::EncodeString(string value,
   return "<base64>: " + value;
 }
 
-void LogTool::AnonymizeLogMap(LogMap* log_map) {
-  for (auto& entry : *log_map)
-    entry.second = anonymizer_.Anonymize(entry.second);
-}
-
 }  // namespace debugd
