@@ -106,7 +106,7 @@ bool PluginVm::StopVm() {
     return true;
   }
 
-  if (VmpluginSuspendVm(vmplugin_service_proxy_, id_)) {
+  if (pvm::dispatcher::SuspendVm(vmplugin_service_proxy_, id_)) {
     process_.Release();
     return true;
   }
@@ -130,7 +130,7 @@ bool PluginVm::StopVm() {
 
 bool PluginVm::Shutdown() {
   return !CheckProcessExists(process_.pid()) ||
-         VmpluginShutdownVm(vmplugin_service_proxy_, id_);
+         pvm::dispatcher::ShutdownVm(vmplugin_service_proxy_, id_);
 }
 
 VmInterface::Info PluginVm::GetInfo() {

@@ -16,6 +16,10 @@
 
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
+namespace vm_tools {
+namespace concierge {
+namespace pvm {
+namespace dispatcher {
 namespace {
 
 constexpr char kVmpluginImageDir[] = "/run/pvm-images";
@@ -25,19 +29,16 @@ constexpr base::TimeDelta kVmSuspendTimeout = base::TimeDelta::FromSeconds(20);
 
 }  // namespace
 
-namespace vm_tools {
-namespace concierge {
-
-dbus::ObjectProxy* GetVmpluginServiceProxy(scoped_refptr<dbus::Bus> bus) {
+dbus::ObjectProxy* GetServiceProxy(scoped_refptr<dbus::Bus> bus) {
   return bus->GetObjectProxy(
       vm_tools::plugin_dispatcher::kVmPluginDispatcherServiceName,
       dbus::ObjectPath(
           vm_tools::plugin_dispatcher::kVmPluginDispatcherServicePath));
 }
 
-bool VmpluginRegisterVm(dbus::ObjectProxy* proxy,
-                        const VmId& vm_id,
-                        const base::FilePath& image_path) {
+bool RegisterVm(dbus::ObjectProxy* proxy,
+                const VmId& vm_id,
+                const base::FilePath& image_path) {
   dbus::MethodCall method_call(
       vm_tools::plugin_dispatcher::kVmPluginDispatcherInterface,
       vm_tools::plugin_dispatcher::kRegisterVmMethod);
@@ -85,7 +86,7 @@ bool VmpluginRegisterVm(dbus::ObjectProxy* proxy,
   return true;
 }
 
-bool VmpluginUnregisterVm(dbus::ObjectProxy* proxy, const VmId& vm_id) {
+bool UnregisterVm(dbus::ObjectProxy* proxy, const VmId& vm_id) {
   LOG(INFO) << "Unregistering VM " << vm_id;
 
   dbus::MethodCall method_call(
@@ -125,9 +126,7 @@ bool VmpluginUnregisterVm(dbus::ObjectProxy* proxy, const VmId& vm_id) {
   return true;
 }
 
-bool VmpluginIsVmRegistered(dbus::ObjectProxy* proxy,
-                            const VmId& vm_id,
-                            bool* result) {
+bool IsVmRegistered(dbus::ObjectProxy* proxy, const VmId& vm_id, bool* result) {
   LOG(INFO) << "Checking whether VM " << vm_id << " is registered";
 
   dbus::MethodCall method_call(
@@ -175,7 +174,7 @@ bool VmpluginIsVmRegistered(dbus::ObjectProxy* proxy,
   return true;
 }
 
-bool VmpluginShutdownVm(dbus::ObjectProxy* proxy, const VmId& vm_id) {
+bool ShutdownVm(dbus::ObjectProxy* proxy, const VmId& vm_id) {
   LOG(INFO) << "Shutting down VM " << vm_id;
 
   dbus::MethodCall method_call(
@@ -217,7 +216,7 @@ bool VmpluginShutdownVm(dbus::ObjectProxy* proxy, const VmId& vm_id) {
   return true;
 }
 
-bool VmpluginSuspendVm(dbus::ObjectProxy* proxy, const VmId& vm_id) {
+bool SuspendVm(dbus::ObjectProxy* proxy, const VmId& vm_id) {
   LOG(INFO) << "Suspending VM " << vm_id;
 
   dbus::MethodCall method_call(
@@ -257,5 +256,7 @@ bool VmpluginSuspendVm(dbus::ObjectProxy* proxy, const VmId& vm_id) {
   return true;
 }
 
+}  // namespace dispatcher
+}  // namespace pvm
 }  // namespace concierge
 }  // namespace vm_tools

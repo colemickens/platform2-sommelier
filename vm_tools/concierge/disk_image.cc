@@ -651,7 +651,8 @@ void PluginVmImportOperation::Finalize() {
   // image.
   output_dir_.Take();
 
-  if (!VmpluginRegisterVm(vmplugin_service_proxy_, vm_id_, dest_image_path_)) {
+  if (!pvm::dispatcher::RegisterVm(vmplugin_service_proxy_, vm_id_,
+                                   dest_image_path_)) {
     MarkFailed("Unable to register imported VM image", NULL);
     DeleteFile(dest_image_path_, true /* recursive */);
     return;

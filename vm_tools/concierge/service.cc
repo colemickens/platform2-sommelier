@@ -729,10 +729,9 @@ bool Service::Init() {
   }
 
   // Get the D-Bus proxy for communicating with Plugin VM dispatcher.
-  vmplugin_service_proxy_ = GetVmpluginServiceProxy(bus_);
+  vmplugin_service_proxy_ = pvm::dispatcher::GetServiceProxy(bus_);
   if (!vmplugin_service_proxy_) {
-    LOG(ERROR) << "Unable to get dbus proxy for "
-               << vm_tools::plugin_dispatcher::kVmPluginDispatcherServiceName;
+    LOG(ERROR) << "Unable to get dbus proxy for Plugin VM dispatcher service";
     return false;
   }
 
@@ -2095,7 +2094,8 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
     // Plugin VMs need to be unregistered before we can delete them.
     VmId vm_id(request.cryptohome_id(), request.disk_path());
     bool registered;
-    if (!VmpluginIsVmRegistered(vmplugin_service_proxy_, vm_id, &registered)) {
+    if (!pvm::dispatcher::IsVmRegistered(vmplugin_service_proxy_, vm_id,
+                                         &registered)) {
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason(
           "failed to check Plugin VM registration status");
@@ -2104,7 +2104,8 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
       return dbus_response;
     }
 
-    if (registered && !VmpluginUnregisterVm(vmplugin_service_proxy_, vm_id)) {
+    if (registered &&
+        !pvm::dispatcher::UnregisterVm(vmplugin_service_proxy_, vm_id)) {
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason("failed to unregister Plugin VM");
       writer.AppendProtoAsArrayOfBytes(response);
