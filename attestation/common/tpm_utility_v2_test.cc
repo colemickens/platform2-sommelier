@@ -119,8 +119,7 @@ class TpmUtilityTest : public testing::Test {
         "E6DEFA7EEE5A6FC717EB0FF103CB8049F693A2C8A5039EF1F5C025DC44BD8435"
         "E8D8375DADE00E0C0F5C196E04B8483CC98B1D5B03DCD7E0048B2AB343FFC11F";
 
-    trunks::TPMT_PUBLIC public_area;
-    memset(&public_area, 0, sizeof(public_area));
+    trunks::TPMT_PUBLIC public_area = {};
     public_area.type = trunks::TPM_ALG_RSA;
     public_area.name_alg = trunks::TPM_ALG_SHA256;
     public_area.parameters.rsa_detail.key_bits = 2048;
@@ -139,9 +138,8 @@ class TpmUtilityTest : public testing::Test {
     constexpr char kValidECPointY[] =
         "0400e219928d45093b3d7ff3cae43468e24684454f318b83b12304d1194a3286";
 
-    trunks::TPMT_PUBLIC public_area;
+    trunks::TPMT_PUBLIC public_area = {};
     std::vector<uint8_t> point_tmp_buffer;
-
     CHECK(base::HexStringToBytes(kValidECPointX, &point_tmp_buffer));
     CHECK_EQ(point_tmp_buffer.size(), arraysize(kValidECPointX) / 2);
     public_area.unique.ecc.x.size = point_tmp_buffer.size();
@@ -156,6 +154,7 @@ class TpmUtilityTest : public testing::Test {
            point_tmp_buffer.size());
 
     public_area.type = trunks::TPM_ALG_ECC;
+    public_area.name_alg = trunks::TPM_ALG_SHA256;
     public_area.parameters.ecc_detail.curve_id = trunks::TPM_ECC_NIST_P256;
     public_area.parameters.ecc_detail.kdf.scheme = trunks::TPM_ALG_NULL;
     public_area.parameters.ecc_detail.scheme.scheme = trunks::TPM_ALG_NULL;
