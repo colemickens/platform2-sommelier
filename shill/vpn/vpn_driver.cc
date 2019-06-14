@@ -91,7 +91,7 @@ bool VPNDriver::Save(StoreInterface* storage,
         storage->DeleteKey(storage_id, property);
         continue;
       }
-      Strings value = args_.GetStrings(property);
+      Strings value = args_.Get<Strings>(property);
       storage->SetStringList(storage_id, property, value);
     } else {
       if (!args_.Contains<string>(property) ||
@@ -99,7 +99,7 @@ bool VPNDriver::Save(StoreInterface* storage,
         storage->DeleteKey(storage_id, property);
         continue;
       }
-      string value = args_.GetString(property);
+      string value = args_.Get<string>(property);
       if (credential) {
         storage->SetCryptedString(storage_id, property, value);
       } else {
@@ -197,7 +197,7 @@ bool VPNDriver::SetMappedStringProperty(
     const size_t& index, const string& value, Error* error) {
   CHECK(index < property_count_);
   if (args_.Contains<string>(properties_[index].property) &&
-      args_.GetString(properties_[index].property) == value) {
+      args_.Get<string>(properties_[index].property) == value) {
     return false;
   }
   args_.SetString(properties_[index].property, value);
@@ -208,7 +208,7 @@ bool VPNDriver::SetMappedStringsProperty(
     const size_t& index, const Strings& value, Error* error) {
   CHECK(index < property_count_);
   if (args_.Contains<Strings>(properties_[index].property) &&
-      args_.GetStrings(properties_[index].property) == value) {
+      args_.Get<Strings>(properties_[index].property) == value) {
     return false;
   }
   args_.SetStrings(properties_[index].property, value);
@@ -239,13 +239,13 @@ KeyValueStore VPNDriver::GetProvider(Error* error) {
       if (!args_.Contains<Strings>(prop)) {
         continue;
       }
-      Strings value = args_.GetStrings(prop);
+      Strings value = args_.Get<Strings>(prop);
       provider_properties.SetStrings(chopped_prop, value);
     } else {
       if (!args_.Contains<string>(prop)) {
         continue;
       }
-      string value = args_.GetString(prop);
+      string value = args_.Get<string>(prop);
       provider_properties.SetString(chopped_prop, value);
     }
   }

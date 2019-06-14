@@ -330,7 +330,8 @@ TEST_F(EapCredentialsTest, PopulateSupplicantProperties) {
   PopulateSupplicantProperties();
   EXPECT_TRUE(
       params_.Contains<string>(WPASupplicant::kNetworkPropertyEapOuterEap));
-  string phase1 = params_.GetString(WPASupplicant::kNetworkPropertyEapOuterEap);
+  string phase1 =
+      params_.Get<string>(WPASupplicant::kNetworkPropertyEapOuterEap);
   EXPECT_EQ(string::npos, phase1.find("disable_tlsv1_0=1"));
   EXPECT_NE(string::npos, phase1.find("disable_tlsv1_1=1"));
   EXPECT_NE(string::npos, phase1.find("disable_tlsv1_2=1"));
@@ -355,7 +356,7 @@ TEST_F(EapCredentialsTest,
   const uint32_t kProactiveKeyCachingDisabled(0);
 
   EXPECT_EQ(kProactiveKeyCachingDisabled,
-            params_.GetUint(
+            params_.Get<uint32_t>(
                 WPASupplicant::kNetworkPropertyEapProactiveKeyCaching));
 }
 
@@ -371,7 +372,7 @@ TEST_F(EapCredentialsTest,
   const uint32_t kProactiveKeyCachingEnabled(1);
 
   EXPECT_EQ(kProactiveKeyCachingEnabled,
-            params_.GetUint(
+            params_.Get<uint32_t>(
                 WPASupplicant::kNetworkPropertyEapProactiveKeyCaching));
 }
 
@@ -387,7 +388,7 @@ TEST_F(EapCredentialsTest,
   const uint32_t kProactiveKeyCachingDisabled(0);
 
   EXPECT_EQ(kProactiveKeyCachingDisabled,
-            params_.GetUint(
+            params_.Get<uint32_t>(
                 WPASupplicant::kNetworkPropertyEapProactiveKeyCaching));
 }
 
@@ -463,7 +464,7 @@ TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesPEM) {
       params_.Contains<string>(WPASupplicant::kNetworkPropertyEapCaCert));
   if (params_.Contains<string>(WPASupplicant::kNetworkPropertyEapCaCert)) {
     EXPECT_EQ(kPEMCertfile,
-              params_.GetString(WPASupplicant::kNetworkPropertyEapCaCert));
+              params_.Get<string>(WPASupplicant::kNetworkPropertyEapCaCert));
   }
 }
 
@@ -543,7 +544,7 @@ TEST_F(EapCredentialsTest, TestUseLoginPassword) {
   EXPECT_TRUE(
       params_.Contains<string>(WPASupplicant::kNetworkPropertyEapCaPassword));
   string used_password =
-      params_.GetString(WPASupplicant::kNetworkPropertyEapCaPassword);
+      params_.Get<string>(WPASupplicant::kNetworkPropertyEapCaPassword);
   EXPECT_EQ(used_password, kPasswordStr);
 }
 

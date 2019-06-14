@@ -92,7 +92,7 @@ void CellularBearer::GetIPConfigMethodAndProperties(
 
   uint32_t method = MM_BEARER_IP_METHOD_UNKNOWN;
   if (properties.Contains<uint32_t>(kPropertyMethod)) {
-    method = properties.GetUint(kPropertyMethod);
+    method = properties.Get<uint32_t>(kPropertyMethod);
   } else {
     SLOG(this, 2) << "Bearer '" << dbus_path_.value()
                   << "' does not specify an IP configuration method.";
@@ -115,8 +115,8 @@ void CellularBearer::GetIPConfigMethodAndProperties(
 
   ipconfig_properties->reset(new IPConfig::Properties);
   (*ipconfig_properties)->address_family = address_family;
-  (*ipconfig_properties)->address = properties.GetString(kPropertyAddress);
-  (*ipconfig_properties)->gateway = properties.GetString(kPropertyGateway);
+  (*ipconfig_properties)->address = properties.Get<string>(kPropertyAddress);
+  (*ipconfig_properties)->gateway = properties.Get<string>(kPropertyGateway);
 
   // Set method string for kMethodStatic
   if ((*ipconfig_properties)->address_family == IPAddress::kFamilyIPv4) {
@@ -129,21 +129,21 @@ void CellularBearer::GetIPConfigMethodAndProperties(
   if (!properties.Contains<uint32_t>(kPropertyPrefix)) {
     prefix = IPAddress::GetMaxPrefixLength(address_family);
   } else {
-    prefix = properties.GetUint(kPropertyPrefix);
+    prefix = properties.Get<uint32_t>(kPropertyPrefix);
   }
   (*ipconfig_properties)->subnet_prefix = prefix;
 
   if (properties.Contains<string>(kPropertyDNS1)) {
-    (*ipconfig_properties)->dns_servers.push_back(
-        properties.GetString(kPropertyDNS1));
+    (*ipconfig_properties)
+        ->dns_servers.push_back(properties.Get<string>(kPropertyDNS1));
   }
   if (properties.Contains<string>(kPropertyDNS2)) {
-    (*ipconfig_properties)->dns_servers.push_back(
-        properties.GetString(kPropertyDNS2));
+    (*ipconfig_properties)
+        ->dns_servers.push_back(properties.Get<string>(kPropertyDNS2));
   }
   if (properties.Contains<string>(kPropertyDNS3)) {
-    (*ipconfig_properties)->dns_servers.push_back(
-        properties.GetString(kPropertyDNS3));
+    (*ipconfig_properties)
+        ->dns_servers.push_back(properties.Get<string>(kPropertyDNS3));
   }
 }
 
@@ -186,19 +186,19 @@ void CellularBearer::OnPropertiesChanged(
     return;
 
   if (changed_properties.Contains<bool>(MM_BEARER_PROPERTY_CONNECTED)) {
-    connected_ = changed_properties.GetBool(MM_BEARER_PROPERTY_CONNECTED);
+    connected_ = changed_properties.Get<bool>(MM_BEARER_PROPERTY_CONNECTED);
   }
 
   string data_interface;
   if (changed_properties.Contains<string>(MM_BEARER_PROPERTY_INTERFACE)) {
     data_interface_ =
-        changed_properties.GetString(MM_BEARER_PROPERTY_INTERFACE);
+        changed_properties.Get<string>(MM_BEARER_PROPERTY_INTERFACE);
   }
 
   if (changed_properties.Contains<KeyValueStore>(
           MM_BEARER_PROPERTY_IP4CONFIG)) {
     KeyValueStore ipconfig =
-        changed_properties.GetKeyValueStore(MM_BEARER_PROPERTY_IP4CONFIG);
+        changed_properties.Get<KeyValueStore>(MM_BEARER_PROPERTY_IP4CONFIG);
     GetIPConfigMethodAndProperties(ipconfig,
                                    IPAddress::kFamilyIPv4,
                                    &ipv4_config_method_,
@@ -207,7 +207,7 @@ void CellularBearer::OnPropertiesChanged(
   if (changed_properties.Contains<KeyValueStore>(
           MM_BEARER_PROPERTY_IP6CONFIG)) {
     KeyValueStore ipconfig =
-        changed_properties.GetKeyValueStore(MM_BEARER_PROPERTY_IP6CONFIG);
+        changed_properties.Get<KeyValueStore>(MM_BEARER_PROPERTY_IP6CONFIG);
     GetIPConfigMethodAndProperties(ipconfig,
                                    IPAddress::kFamilyIPv6,
                                    &ipv6_config_method_,
