@@ -29,6 +29,8 @@
 #include <brillo/http/http_proxy.h>
 #include <brillo/http/http_transport.h>
 #include <brillo/http/http_utils.h>
+#include <brillo/variant_dictionary.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/paths.h"
@@ -522,7 +524,8 @@ Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
                std::unique_ptr<base::Clock> clock,
                const Sender::Options& options)
     : metrics_lib_(std::move(metrics_lib)),
-      proxy_(options.proxy),
+      session_manager_proxy_(options.session_manager_proxy),
+      shill_proxy_(options.shill_proxy),
       form_data_boundary_(options.form_data_boundary),
       always_write_uploads_log_(options.always_write_uploads_log),
       max_crash_rate_(options.max_crash_rate),
@@ -665,6 +668,12 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
       return;
     }
 
+    // If we are offline, then don't try to send any crashes.
+    if (!IsMock() && !IsNetworkOnline()) {
+      LOG(INFO) << "Stopping crash sending; network is offline";
+      return;
+    }
+
     const CrashDetails details = {
         .meta_file = meta_file,
         .payload_file = info.payload_file,
@@ -685,13 +694,14 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
 
 std::vector<base::FilePath> Sender::GetUserCrashDirectories() {
   // Set up the session manager proxy if it's not given from the options.
-  if (!proxy_) {
+  if (!session_manager_proxy_) {
     EnsureDBusIsReady();
-    proxy_.reset(new org::chromium::SessionManagerInterfaceProxy(bus_));
+    session_manager_proxy_.reset(
+        new org::chromium::SessionManagerInterfaceProxy(bus_));
   }
 
   std::vector<base::FilePath> directories;
-  util::GetUserCrashDirectories(proxy_.get(), &directories);
+  util::GetUserCrashDirectories(session_manager_proxy_.get(), &directories);
 
   return directories;
 }
@@ -977,6 +987,35 @@ base::Optional<std::string> Sender::GetOsReleaseValue(
       return base::Optional<std::string>(value);
   }
   return base::Optional<std::string>();
+}
+
+bool Sender::IsNetworkOnline() {
+  if (!shill_proxy_) {
+    EnsureDBusIsReady();
+    shill_proxy_ =
+        std::make_unique<org::chromium::flimflam::ManagerProxy>(bus_);
+  }
+  brillo::VariantDictionary dict;
+  brillo::ErrorPtr err;
+  if (!shill_proxy_->GetProperties(&dict, &err)) {
+    // If we don't know, then just assume we are connected.
+    LOG(WARNING) << "Failed making D-Bus call for network state; attempting "
+                 << "upload anyways";
+    return true;
+  }
+  const std::string state = brillo::GetVariantValueOrDefault<std::string>(
+      dict, shill::kConnectionStateProperty);
+  if (state.empty()) {
+    // If we didn't get a valid value back, then assume we are connected.
+    LOG(WARNING) << "Received empty ConnectionState property from shill; "
+                 << "attempting upload anyways";
+    return true;
+  }
+  // Possible values for this are defined in platform2/shill/service.cc, but the
+  // only one that means we have an Internet connection is "online". All of the
+  // other values represent some other reduced (or no) level of connectivity or
+  // the process of establishing a connection.
+  return base::EqualsCaseInsensitiveASCII(state, "online");
 }
 
 }  // namespace util

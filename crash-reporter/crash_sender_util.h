@@ -21,6 +21,7 @@
 #include <brillo/osrelease_reader.h>
 #include <metrics/metrics_library.h>
 #include <session_manager/dbus-proxies.h>
+#include <shill/dbus-proxies.h>
 
 namespace util {
 
@@ -184,7 +185,11 @@ class Sender {
  public:
   struct Options {
     // Session manager client for locating the user-specific crash directories.
-    org::chromium::SessionManagerInterfaceProxyInterface* proxy = nullptr;
+    org::chromium::SessionManagerInterfaceProxyInterface*
+        session_manager_proxy = nullptr;
+
+    // Shill FlimFlam Manager proxy interface for determining network state.
+    org::chromium::flimflam::ManagerProxyInterface* shill_proxy = nullptr;
 
     // Maximum crashes to send per 24 hours.
     int max_crash_rate = kMaxCrashRate;
@@ -258,6 +263,8 @@ class Sender {
   const base::FilePath& temp_dir() const { return scoped_temp_dir_.GetPath(); }
 
  private:
+  friend class IsNetworkOnlineTest;
+
   // Requests to send a crash report represented with the given crash details.
   bool RequestToSendCrash(const CrashDetails& details);
 
@@ -270,8 +277,14 @@ class Sender {
   base::Optional<std::string> GetOsReleaseValue(
       const std::vector<std::string>& keys);
 
+  // Checks if we have an online connection state so we can try sending crash
+  // reports.
+  bool IsNetworkOnline();
+
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
-  std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface> proxy_;
+  std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
+      session_manager_proxy_;
+  std::unique_ptr<org::chromium::flimflam::ManagerProxyInterface> shill_proxy_;
   std::vector<std::string> proxy_servers_;
   std::string form_data_boundary_;
   bool always_write_uploads_log_;

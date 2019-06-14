@@ -226,6 +226,9 @@ While there are multiple local crash queues, these are global limits.
 Before we upload any report, we check to see if consent is still granted.
 This way we stop uploading reports right away if things change.
 
+We also check if the network is online before uploading a crash report and stop
+uploading reports until the next run of [crash_sender] if we are offline.
+
 If an upload fails for any reason (flaky network, system going to sleep,
 etc...), then the report is left in the local queue and retried later.
 

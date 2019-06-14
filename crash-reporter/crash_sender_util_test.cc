@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/command_line.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
@@ -26,14 +27,17 @@
 #include <brillo/flag_helper.h>
 #include <brillo/key_value_store.h>
 #include <brillo/process.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
+#include <shill/dbus-proxy-mocks.h>
 
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 
+using ::testing::_;
 using ::testing::ExitedWithCode;
 using ::testing::HasSubstr;
 using ::testing::Invoke;
@@ -50,6 +54,10 @@ enum SessionType { kSignInMode, kGuestMode };
 enum MetricsFlag { kMetricsEnabled, kMetricsDisabled };
 
 constexpr char kFakeClientId[] = "00112233445566778899aabbccddeeff";
+
+// This is what the kConnectionState property will get set to for mocked calls
+// into shill flimflam manager.
+std::string* g_connection_state;
 
 // Simple mock for Clock. We can't use SimpleTestClock in some places because
 // we need Now to return different values on different calls, and we don't have
@@ -162,6 +170,15 @@ bool SetMockCrashSending(bool success) {
                                             paths::kMockCrashSending),
                                success ? "" : "0") &&
          base::CreateDirectory(paths::Get(paths::kChromeCrashLog).DirName());
+}
+
+// Handles calls for getting the network state.
+bool GetShillProperties(
+    brillo::VariantDictionary* dict,
+    brillo::ErrorPtr* error,
+    int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+  dict->emplace(shill::kConnectionStateProperty, *g_connection_state);
+  return true;
 }
 
 class CrashSenderUtilTest : public testing::Test {
@@ -749,7 +766,7 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   MetricsLibraryMock* raw_metrics_lib = metrics_lib_.get();
 
   Sender::Options options;
-  options.proxy = mock.release();
+  options.session_manager_proxy = mock.release();
   Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),
                 options);
   ASSERT_TRUE(sender.Init());
@@ -1122,7 +1139,7 @@ TEST_F(CrashSenderUtilTest, GetUserCrashDirectories) {
   test_util::SetActiveSessions(mock.get(),
                                {{"user1", "hash1"}, {"user2", "hash2"}});
   Sender::Options options;
-  options.proxy = mock.release();
+  options.session_manager_proxy = mock.release();
   Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),
                 options);
   ASSERT_TRUE(sender.Init());
@@ -1369,7 +1386,7 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   // Set up the sender.
   std::vector<base::TimeDelta> sleep_times;
   Sender::Options options;
-  options.proxy = mock.release();
+  options.session_manager_proxy = mock.release();
   options.max_crash_rate = 2;
   options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
@@ -1460,7 +1477,7 @@ TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
   // Set up the sender.
   std::vector<base::TimeDelta> sleep_times;
   Sender::Options options;
-  options.proxy = mock.release();
+  options.session_manager_proxy = mock.release();
   options.max_crash_rate = 2;
   options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
@@ -1586,6 +1603,43 @@ TEST_F(CrashSenderUtilTest, CreateClientId) {
 TEST_F(CrashSenderUtilTest, RetrieveClientId) {
   CreateClientIdFile();
   EXPECT_EQ(kFakeClientId, GetClientId());
+}
+
+class IsNetworkOnlineTest : public CrashSenderUtilTest {
+ public:
+  void TestIsNetworkOnline(std::string connection_state,
+                           bool get_properties_retval,
+                           bool expected_result);
+};
+
+void IsNetworkOnlineTest::TestIsNetworkOnline(std::string connection_state,
+                                              bool get_properties_retval,
+                                              bool expected_result) {
+  g_connection_state = &connection_state;
+  // Set up the shill flimflam manager client.
+  auto mock = std::make_unique<org::chromium::flimflam::ManagerProxyMock>();
+  EXPECT_CALL(*mock, GetProperties(_, _, _))
+      .WillOnce(
+          DoAll(Invoke(&GetShillProperties), Return(get_properties_retval)));
+
+  Sender::Options options;
+  options.shill_proxy = mock.release();
+  Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),
+                options);
+  ASSERT_TRUE(sender.Init());
+  EXPECT_EQ(sender.IsNetworkOnline(), expected_result);
+}
+
+TEST_F(IsNetworkOnlineTest, Online) {
+  TestIsNetworkOnline("online", true, true);
+}
+
+TEST_F(IsNetworkOnlineTest, Offline) {
+  TestIsNetworkOnline("offline", true, false);
+}
+
+TEST_F(IsNetworkOnlineTest, Fail) {
+  TestIsNetworkOnline("", false, true);
 }
 
 }  // namespace util
