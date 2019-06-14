@@ -28,7 +28,10 @@ class FakeProxy : public ProxyBase {
     instance = nullptr;
   }
 
-  void Initialize() override { initialized_ = true; }
+  bool Initialize() override {
+    initialized_ = true;
+    return true;
+  }
 
   bool is_initialized() const { return initialized_; }
 

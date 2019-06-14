@@ -36,11 +36,16 @@ bool ProxyService::Start() {
   }
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
+  bool result = false;
   thread->task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(&ProxyService::Initialize, base::Unretained(this),
-                     base::Unretained(&event)));
+                     base::Unretained(&event), &result));
   event.Wait();
+  if (!result) {
+    LOG(ERROR) << "Failed to initialize proxy.";
+    return false;
+  }
   thread_ = std::move(thread);
   LOG(INFO) << "ProxyService thread is ready";
   return true;
@@ -61,9 +66,9 @@ scoped_refptr<base::TaskRunner> ProxyService::GetTaskRunner() {
   return thread_->task_runner();
 }
 
-void ProxyService::Initialize(base::WaitableEvent* event) {
+void ProxyService::Initialize(base::WaitableEvent* event, bool* out) {
   proxy_ = factory_->Create();
-  proxy_->Initialize();
+  *out = proxy_->Initialize();
   event->Signal();
 }
 

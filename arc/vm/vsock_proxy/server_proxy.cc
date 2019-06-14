@@ -64,7 +64,7 @@ ServerProxy::ServerProxy(ProxyFileSystem* proxy_file_system)
 
 ServerProxy::~ServerProxy() = default;
 
-void ServerProxy::Initialize() {
+bool ServerProxy::Initialize() {
   // The connection is established as follows.
   // 1) Chrome creates a socket at /run/chrome/arc_bridge.sock (in host).
   // 2) Start ARCVM, then starts host proxy in host OS.
@@ -81,13 +81,20 @@ void ServerProxy::Initialize() {
   //    and register the file descriptor with the returned handle.
   //    Now ArcBridge connection between ARCVM and host is established.
   auto vsock = CreateVSock();
+  if (!vsock.is_valid())
+    return false;
+
   LOG(INFO) << "Start observing VSOCK";
   auto accepted = AcceptSocket(vsock.get());
+  if (!accepted.is_valid())
+    return false;
+
   vsock.reset();
   LOG(INFO) << "Initial socket connection comes";
   vsock_proxy_ = std::make_unique<VSockProxy>(
       VSockProxy::Type::SERVER, proxy_file_system_, std::move(accepted));
   LOG(INFO) << "ServerProxy has started to work.";
+  return true;
 }
 
 }  // namespace arc

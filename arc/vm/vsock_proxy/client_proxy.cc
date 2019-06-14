@@ -82,18 +82,22 @@ ClientProxy::ClientProxy() = default;
 
 ClientProxy::~ClientProxy() = default;
 
-void ClientProxy::Initialize() {
+bool ClientProxy::Initialize() {
   // For the details of connection procedure, please find the comment in
   // ServerProxy::Initialize().
   vsock_proxy_ = std::make_unique<VSockProxy>(VSockProxy::Type::CLIENT, nullptr,
                                               ConnectVSock());
 
   arc_bridge_socket_ = CreateUnixDomainSocket(base::FilePath(kGuestSocketPath));
+  if (!arc_bridge_socket_.is_valid())
+    return false;
+
   LOG(INFO) << "Start observing " << kGuestSocketPath;
   arc_bridge_socket_controller_ = base::FileDescriptorWatcher::WatchReadable(
       arc_bridge_socket_.get(),
       base::BindRepeating(&ClientProxy::OnLocalSocketReadReady,
                           weak_factory_.GetWeakPtr()));
+  return true;
 }
 
 void ClientProxy::OnLocalSocketReadReady() {

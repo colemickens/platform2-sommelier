@@ -57,7 +57,7 @@ class FakeProxy : public ProxyBase {
 
   ~FakeProxy() override = default;
 
-  void Initialize() override {}
+  bool Initialize() override { return true; }
   VSockProxy* GetVSockProxy() override { return vsock_proxy_.get(); }
 
  private:

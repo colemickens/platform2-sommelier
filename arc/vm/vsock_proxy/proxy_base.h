@@ -14,9 +14,8 @@ class ProxyBase {
  public:
   virtual ~ProxyBase() = default;
 
-  // Initializes the instance. For details, please find comments for the
-  // individual implementation.
-  virtual void Initialize() = 0;
+  // Initializes the instance. Returns true on success.
+  virtual bool Initialize() = 0;
 
   // Returns VSockProxy instance.
   virtual VSockProxy* GetVSockProxy() = 0;

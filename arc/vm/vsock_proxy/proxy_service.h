@@ -49,7 +49,7 @@ class ProxyService {
   scoped_refptr<base::TaskRunner> GetTaskRunner();
 
  private:
-  void Initialize(base::WaitableEvent* event);
+  void Initialize(base::WaitableEvent* event, bool* out);
   void ShutDown();
 
   std::unique_ptr<ProxyFactory> factory_;

@@ -32,7 +32,7 @@ class ClientProxy : public ProxyBase {
   // Sets up the ClientProxy. Specifically, wait for VSOCK gets ready,
   // creates a unix domain socket at /var/run/chrome/arc_bridge.sock,
   // then starts watching it.
-  void Initialize() override;
+  bool Initialize() override;
 
  private:
   // Called when /var/run/chrome/arc_bridge.sock gets ready to read.

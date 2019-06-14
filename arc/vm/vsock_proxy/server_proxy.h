@@ -28,7 +28,7 @@ class ServerProxy : public ProxyBase {
   // Sets up the ServerProxy. Specifically, start listening VSOCK.
   // Then, connect to /run/chrome/arc_bridge.sock, when an initial connection
   // comes to the vsock.
-  void Initialize() override;
+  bool Initialize() override;
 
  private:
   ProxyFileSystem* const proxy_file_system_;
