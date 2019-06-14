@@ -817,13 +817,13 @@ void CameraDeviceAdapter::ReprocessEffectsOnReprocessEffectThread(
         device_adapter->Notify(device_adapter, &msg);
       }
       if (result != 0 || !need_hal_reprocessing) {
-        camera3_capture_result_t result{
+        camera3_capture_result_t capture_result{
             .frame_number = capture_request->frame_number,
             .result = capture_request->settings,
             .num_output_buffers = capture_request->num_output_buffers,
             .output_buffers = capture_request->output_buffers,
             .input_buffer = capture_request->input_buffer};
-        device_adapter->ProcessCaptureResult(device_adapter, &result);
+        device_adapter->ProcessCaptureResult(device_adapter, &capture_result);
       }
     }
 
