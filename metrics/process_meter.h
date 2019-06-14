@@ -147,19 +147,20 @@ class ProcessInfo {
   DISALLOW_COPY_AND_ASSIGN(ProcessInfo);
 };
 
-// Accumulates memory usage stats for a group of processes.  Processes that no
-// longer exist are ignored.  |status_has_details| is true when
-// /proc/<pid>/status contains stats for anon, file, and shmem.  Otherwise
-// /proc/<pid>/statm is used, and shmem includes file (and file is reported as
-// 0).  This depends on the kernel version.
+// Accumulates memory usage stats for a group of processes.  |procfs_path|
+// contains /proc or the path of a mock /proc filesystem.  Processes that no
+// longer exist are ignored.
 void AccumulateProcessGroupStats(const base::FilePath& procfs_path,
                                  const std::vector<ProcessNode*>& processes,
                                  ProcessMemoryStats* stats);
 
-// GetMemoryUsage fills |stats| with memory usage stats for |pid|.  The data is
-// found in /proc/<pid>/smaps_rollup if |has_smaps_rollup| is true; otherwise in
-// /proc/<pid>/totmaps.
-bool GetMemoryUsage(const base::FilePath& procfs_path,
+// GetMemoryUsage fills |stats| with memory usage stats for |pid|.  The
+// information is from /proc/<pid>/totmaps or /proc/<pid>/smaps_rollup,
+// depending on which is available.  These files are expected to contain some
+// chromiumos-specific kernel changes (the smaps_rollup changes have been
+// upstreamed).  If some fields are missing, only some of the stats wil be
+// valid.
+void GetMemoryUsage(const base::FilePath& procfs_path,
                     int pid,
                     ProcessMemoryStats* stats);
 

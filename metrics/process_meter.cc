@@ -343,7 +343,7 @@ const std::vector<ProcessNode*>& ProcessInfo::GetGroup(
   return groups_[group_kind];
 }
 
-bool GetMemoryUsage(const base::FilePath& procfs_path,
+void GetMemoryUsage(const base::FilePath& procfs_path,
                     int pid,
                     ProcessMemoryStats* stats) {
   static bool has_smaps_rollup =
@@ -355,7 +355,7 @@ bool GetMemoryUsage(const base::FilePath& procfs_path,
                                     : base::StringPrintf("%d/totmaps", pid);
   const base::FilePath file_path = procfs_path.Append(file_name);
   if (!base::ReadFileToString(file_path, &file_content))
-    return false;
+    return;
   const std::vector<std::string> lines = base::SplitString(
       file_content, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   struct NameValuePair {
@@ -383,9 +383,8 @@ bool GetMemoryUsage(const base::FilePath& procfs_path,
     }
   }
   if (index < pairs.size() && index != 0) {
-    // We expect to find either all fields, or none (for kernel threads).
-    LOG(FATAL) << "found " << index << " fields in smaps, wanted "
-               << pairs.size() << " or 0";
+    // If some fields aren't present, return zeros instead of crashing.
+    return;
   }
 
   stats->rss_sizes[MEM_TOTAL] = pairs[0].value * 1024;
@@ -393,7 +392,6 @@ bool GetMemoryUsage(const base::FilePath& procfs_path,
   stats->rss_sizes[MEM_FILE] = pairs[2].value * 1024;
   stats->rss_sizes[MEM_SHMEM] = pairs[3].value * 1024;
   stats->rss_sizes[MEM_SWAP] = pairs[4].value * 1024;
-  return true;
 }
 
 void AccumulateProcessGroupStats(const base::FilePath& procfs_path,
