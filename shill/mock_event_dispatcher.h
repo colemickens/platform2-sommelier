@@ -5,6 +5,7 @@
 #ifndef SHILL_MOCK_EVENT_DISPATCHER_H_
 #define SHILL_MOCK_EVENT_DISPATCHER_H_
 
+#include <base/location.h>
 #include <base/macros.h>
 #include <gmock/gmock.h>
 
@@ -19,9 +20,9 @@ class MockEventDispatcher : public EventDispatcher {
 
   MOCK_METHOD0(DispatchForever, void());
   MOCK_METHOD0(DispatchPendingEvents, void());
-  MOCK_METHOD2(PostTask, void(const tracked_objects::Location& location,
+  MOCK_METHOD2(PostTask, void(const base::Location& location,
                               const base::Closure& task));
-  MOCK_METHOD3(PostDelayedTask, void(const tracked_objects::Location& location,
+  MOCK_METHOD3(PostDelayedTask, void(const base::Location& location,
                                      const base::Closure& task,
                                      int64_t delay_ms));
 

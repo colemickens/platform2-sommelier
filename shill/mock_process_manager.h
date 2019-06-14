@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include <base/location.h>
 #include <base/macros.h>
 #include <gmock/gmock.h>
 
@@ -24,14 +25,14 @@ class MockProcessManager : public ProcessManager {
   MOCK_METHOD1(Init, void(EventDispatcher* dispatcher));
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD6(StartProcess,
-               pid_t(const tracked_objects::Location& spawn_source,
+               pid_t(const base::Location& spawn_source,
                      const base::FilePath& program,
                      const std::vector<std::string>& arguments,
                      const std::map<std::string, std::string>& env,
                      bool terminate_with_parent,
                      const base::Callback<void(int)>& exit_callback));
   MOCK_METHOD9(StartProcessInMinijail,
-               pid_t(const tracked_objects::Location& spawn_source,
+               pid_t(const base::Location& spawn_source,
                      const base::FilePath& program,
                      const std::vector<std::string>& arguments,
                      const std::string& user,
@@ -41,7 +42,7 @@ class MockProcessManager : public ProcessManager {
                      bool close_nonstd_fds,
                      const base::Callback<void(int)>& exit_callback));
   MOCK_METHOD10(StartProcessInMinijailWithPipes,
-                pid_t(const tracked_objects::Location& spawn_source,
+                pid_t(const base::Location& spawn_source,
                       const base::FilePath& program,
                       const std::vector<std::string>& arguments,
                       const std::string& user,

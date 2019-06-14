@@ -61,7 +61,7 @@ namespace internal {
 
 template <typename... ArgTypes>
 inline void RunCallbackOnTaskRunner(scoped_refptr<base::TaskRunner> task_runner,
-                                    const tracked_objects::Location& location,
+                                    const base::Location& location,
                                     base::Callback<void(ArgTypes...)> callback,
                                     ArgTypes... args) {
   task_runner->PostTask(location, base::Bind(std::move(callback),
@@ -74,7 +74,7 @@ inline void RunCallbackOnTaskRunner(scoped_refptr<base::TaskRunner> task_runner,
 // posts |callback| to it (with all arguments forwarded).
 template <typename... ArgTypes>
 inline base::Callback<void(ArgTypes...)> MakeOriginTaskRunnerPostingCallback(
-    const tracked_objects::Location& location,
+    const base::Location& location,
     base::Callback<void(ArgTypes...)> callback) {
   return base::Bind(&internal::RunCallbackOnTaskRunner<ArgTypes...>,
                     base::ThreadTaskRunnerHandle::Get(), location,

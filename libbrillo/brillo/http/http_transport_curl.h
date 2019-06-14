@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 
+#include <base/location.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/brillo_export.h>
 #include <brillo/http/curl_api.h>
@@ -49,7 +50,7 @@ class BRILLO_EXPORT Transport : public http::Transport {
       const std::string& referer,
       brillo::ErrorPtr* error) override;
 
-  void RunCallbackAsync(const tracked_objects::Location& from_here,
+  void RunCallbackAsync(const base::Location& from_here,
                         const base::Closure& callback) override;
 
   RequestID StartAsyncTransfer(http::Connection* connection,
@@ -73,12 +74,12 @@ class BRILLO_EXPORT Transport : public http::Transport {
   // Helper methods to convert CURL error codes (CURLcode and CURLMcode)
   // into brillo::Error object.
   static void AddEasyCurlError(brillo::ErrorPtr* error,
-                               const tracked_objects::Location& location,
+                               const base::Location& location,
                                CURLcode code,
                                CurlInterface* curl_interface);
 
   static void AddMultiCurlError(brillo::ErrorPtr* error,
-                                const tracked_objects::Location& location,
+                                const base::Location& location,
                                 CURLMcode code,
                                 CurlInterface* curl_interface);
 

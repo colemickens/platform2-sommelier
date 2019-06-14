@@ -210,7 +210,7 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
   return connection;
 }
 
-void Transport::RunCallbackAsync(const tracked_objects::Location& from_here,
+void Transport::RunCallbackAsync(const base::Location& from_here,
                                  const base::Closure& callback) {
   base::MessageLoopForIO::current()->task_runner()->PostTask(
       from_here, callback);
@@ -302,7 +302,7 @@ void Transport::ClearHost() {
 }
 
 void Transport::AddEasyCurlError(brillo::ErrorPtr* error,
-                                 const tracked_objects::Location& location,
+                                 const base::Location& location,
                                  CURLcode code,
                                  CurlInterface* curl_interface) {
   brillo::Error::AddTo(error, location, "curl_easy_error",
@@ -311,7 +311,7 @@ void Transport::AddEasyCurlError(brillo::ErrorPtr* error,
 }
 
 void Transport::AddMultiCurlError(brillo::ErrorPtr* error,
-                                  const tracked_objects::Location& location,
+                                  const base::Location& location,
                                   CURLMcode code,
                                   CurlInterface* curl_interface) {
   brillo::Error::AddTo(error, location, "curl_multi_error",

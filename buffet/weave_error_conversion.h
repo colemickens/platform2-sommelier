@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <base/location.h>
 #include <brillo/errors/error.h>
 #include <weave/error.h>
 
@@ -23,9 +24,8 @@ void ConvertError(const Source& source,
   const auto& location = source.GetLocation();
   Destination::AddTo(
       destination,
-      tracked_objects::Location{
-          location.function_name.c_str(), location.file_name.c_str(),
-          location.line_number, tracked_objects::GetProgramCounter()},
+      base::Location{location.function_name.c_str(), location.file_name.c_str(),
+                     location.line_number, base::GetProgramCounter()},
       source.GetDomain(), source.GetCode(), source.GetMessage());
 }
 

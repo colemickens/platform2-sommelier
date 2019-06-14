@@ -81,7 +81,7 @@ BaseMessageLoop::~BaseMessageLoop() {
 }
 
 MessageLoop::TaskId BaseMessageLoop::PostDelayedTask(
-    const tracked_objects::Location& from_here,
+    const base::Location& from_here,
     const Closure &task,
     base::TimeDelta delay) {
   TaskId task_id =  NextTaskId();
@@ -101,7 +101,7 @@ MessageLoop::TaskId BaseMessageLoop::PostDelayedTask(
 }
 
 MessageLoop::TaskId BaseMessageLoop::WatchFileDescriptor(
-    const tracked_objects::Location& from_here,
+    const base::Location& from_here,
     int fd,
     WatchMode mode,
     bool persistent,
@@ -306,7 +306,7 @@ unsigned int BaseMessageLoop::GetBinderMinor() {
   return binder_minor_;
 }
 
-BaseMessageLoop::IOTask::IOTask(const tracked_objects::Location& location,
+BaseMessageLoop::IOTask::IOTask(const base::Location& location,
                                 BaseMessageLoop* loop,
                                 MessageLoop::TaskId task_id,
                                 int fd,

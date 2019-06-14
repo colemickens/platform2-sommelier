@@ -60,7 +60,7 @@ class Error {
   void Populate(Type type, const std::string& message);
   void Populate(Type type,
                 const std::string& message,
-                const tracked_objects::Location& location);
+                const base::Location& location);
 
   void Reset();
 
@@ -82,14 +82,14 @@ class Error {
 
   // Log an error message from |from_here|.  If |error| is non-NULL, also
   // populate it.
-  static void PopulateAndLog(const tracked_objects::Location& from_here,
+  static void PopulateAndLog(const base::Location& from_here,
                              Error* error, Type type,
                              const std::string& message);
 
  private:
   Type type_;
   std::string message_;
-  tracked_objects::Location location_;
+  base::Location location_;
 
   DISALLOW_COPY_AND_ASSIGN(Error);
 };

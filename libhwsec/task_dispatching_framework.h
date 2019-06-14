@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/location.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/dbus/dbus_method_response.h>
 
@@ -30,7 +31,7 @@ class ThreadSafeDBusMethodResponse
 
   ThreadSafeDBusMethodResponse(ThreadSafeDBusMethodResponse&& callback) =
       default;
-  ThreadSafeDBusMethodResponse(BaseClass&& original_callback)
+  explicit ThreadSafeDBusMethodResponse(BaseClass&& original_callback)
       : BaseClass::DBusMethodResponse(
             nullptr,
             base::Bind([](std::unique_ptr<dbus::Response>) { NOTREACHED(); })),
@@ -81,7 +82,7 @@ class ThreadSafeDBusMethodResponse
     }
   }
 
-  void ReplyWithError(const tracked_objects::Location& location,
+  void ReplyWithError(const base::Location& location,
                       const std::string& error_domain,
                       const std::string& error_code,
                       const std::string& error_message) override {
@@ -94,7 +95,7 @@ class ThreadSafeDBusMethodResponse
           FROM_HERE,
           base::BindOnce(
               [](std::unique_ptr<BaseClass> original_callback,
-                 const tracked_objects::Location& location,
+                 const base::Location& location,
                  const std::string& error_domain, const std::string& error_code,
                  const std::string& error_message) {
                 original_callback->ReplyWithError(location, error_domain,

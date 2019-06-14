@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/location.h>
 #include <base/macros.h>
 #include <brillo/brillo_export.h>
 #include <brillo/dbus/dbus_param_writer.h>
@@ -54,7 +55,7 @@ class BRILLO_EXPORT DBusMethodResponseBase {
 
   // Constructs brillo::Error object from the parameters specified and send
   // the error information over D-Bus using the method above.
-  virtual void ReplyWithError(const tracked_objects::Location& location,
+  virtual void ReplyWithError(const base::Location& location,
                               const std::string& error_domain,
                               const std::string& error_code,
                               const std::string& error_message);

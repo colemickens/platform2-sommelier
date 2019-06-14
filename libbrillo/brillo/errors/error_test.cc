@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/location.h>
 #include <gtest/gtest.h>
 
 using brillo::Error;
@@ -13,10 +14,10 @@ using brillo::Error;
 namespace {
 
 brillo::ErrorPtr GenerateNetworkError() {
-  tracked_objects::Location loc("GenerateNetworkError",
-                                "error_test.cc",
-                                15,
-                                ::tracked_objects::GetProgramCounter());
+  base::Location loc("GenerateNetworkError",
+                     "error_test.cc",
+                     15,
+                     ::base::GetProgramCounter());
   return Error::Create(loc, "network", "not_found", "Resource not found");
 }
 

@@ -4,11 +4,11 @@
 
 #include "mtpd/mtpd_server_impl.h"
 
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/tracked_objects.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace mtpd {
@@ -21,7 +21,7 @@ namespace {
 const uint32_t kMaxReadCount = 1024 * 1024;
 
 void AddError(brillo::ErrorPtr* error,
-              const tracked_objects::Location& location,
+              const base::Location& location,
               const std::string& message) {
   brillo::Error::AddTo(error,
                        location,
@@ -31,7 +31,7 @@ void AddError(brillo::ErrorPtr* error,
 }
 
 void AddInvalidHandleError(brillo::ErrorPtr* error,
-                           const tracked_objects::Location& location,
+                           const base::Location& location,
                            const std::string& handle) {
   brillo::Error::AddToPrintf(error,
                              location,

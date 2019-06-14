@@ -85,7 +85,7 @@ bool UserDataAuth::Initialize() {
 }
 
 bool UserDataAuth::PostTaskToOriginThread(
-    const tracked_objects::Location& from_here, base::OnceClosure task) {
+    const base::Location& from_here, base::OnceClosure task) {
   if (disable_threading_) {
     std::move(task).Run();
     return true;
@@ -94,7 +94,7 @@ bool UserDataAuth::PostTaskToOriginThread(
 }
 
 bool UserDataAuth::PostTaskToMountThread(
-    const tracked_objects::Location& from_here, base::OnceClosure task) {
+    const base::Location& from_here, base::OnceClosure task) {
   if (disable_threading_) {
     std::move(task).Run();
     return true;

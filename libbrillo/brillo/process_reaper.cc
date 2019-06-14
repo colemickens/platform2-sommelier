@@ -37,7 +37,7 @@ void ProcessReaper::Unregister() {
   async_signal_handler_ = nullptr;
 }
 
-bool ProcessReaper::WatchForChild(const tracked_objects::Location& from_here,
+bool ProcessReaper::WatchForChild(const base::Location& from_here,
                                   pid_t pid,
                                   const ChildCallback& callback) {
   if (watched_processes_.find(pid) != watched_processes_.end())

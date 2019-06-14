@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/location.h>
 #include <base/values.h>
 #include <brillo/http/http_transport.h>
 #include <brillo/http/http_utils.h>
@@ -93,7 +94,7 @@ class Transport : public http::Transport {
       const std::string& referer,
       brillo::ErrorPtr* error) override;
 
-  void RunCallbackAsync(const tracked_objects::Location& from_here,
+  void RunCallbackAsync(const base::Location& from_here,
                         const base::Closure& callback) override;
 
   RequestID StartAsyncTransfer(http::Connection* connection,

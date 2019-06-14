@@ -14,6 +14,7 @@
 #include <base/atomic_sequence_num.h>
 #include <base/files/file_path.h>
 #include <base/gtest_prod_util.h>
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
@@ -803,7 +804,7 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
   virtual bool UnloadPkcs11Tokens(const std::vector<base::FilePath>& exclude);
 
   // A wrapper for PostTask to mount_thread_ which also count some metrics
-  virtual void PostTask(const tracked_objects::Location& from_here,
+  virtual void PostTask(const base::Location& from_here,
                         base::OnceClosure task);
 
   // Posts a message back from the mount_thread_ to the main thread to

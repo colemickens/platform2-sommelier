@@ -355,7 +355,7 @@ CryptohomeErrorCode Service::MountErrorToCryptohomeError(
   }
 }
 
-void Service::PostTask(const tracked_objects::Location& from_here,
+void Service::PostTask(const base::Location& from_here,
                        base::OnceClosure task) {
   int task_count = mount_thread_observer_.GetParallelTaskCount();
   if (task_count > 1) {

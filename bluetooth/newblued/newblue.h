@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/location.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/single_thread_task_runner.h>
@@ -227,8 +228,7 @@ class Newblue {
   // Posts task to the thread which created this Newblue object.
   // libnewblue callbacks should always post task using this method rather
   // than doing any processing in the callback's thread.
-  bool PostTask(const tracked_objects::Location& from_here,
-                const base::Closure& task);
+  bool PostTask(const base::Location& from_here, const base::Closure& task);
 
   // Called by NewBlue when it's ready to bring up the stack. This is called
   // on one of NewBlue's threads, so we shouldn't do anything on this thread

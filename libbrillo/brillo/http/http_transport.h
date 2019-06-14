@@ -77,7 +77,7 @@ class BRILLO_EXPORT Transport : public std::enable_shared_from_this<Transport> {
   // Runs |callback| on the task runner (message loop) associated with the
   // transport. For transports that do not contain references to real message
   // loops (e.g. a fake transport), calls the callback immediately.
-  virtual void RunCallbackAsync(const tracked_objects::Location& from_here,
+  virtual void RunCallbackAsync(const base::Location& from_here,
                                 const base::Closure& callback) = 0;
 
   // Initiates an asynchronous transfer on the given |connection|.

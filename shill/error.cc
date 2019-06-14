@@ -80,7 +80,7 @@ void Error::Populate(Type type, const string& message) {
 
 void Error::Populate(Type type,
                      const string& message,
-                     const tracked_objects::Location& location) {
+                     const base::Location& location) {
   CHECK(type < kNumErrors) << "Error type out of range: " << type;
   type_ = type;
   message_ = message;
@@ -120,7 +120,7 @@ string Error::GetDefaultMessage(Type type) {
 }
 
 // static
-void Error::PopulateAndLog(const tracked_objects::Location& from_here,
+void Error::PopulateAndLog(const base::Location& from_here,
                            Error* error, Type type, const string& message) {
   string file_name = base::FilePath(from_here.file_name()).BaseName().value();
   LOG(ERROR) << "[" << file_name << "("

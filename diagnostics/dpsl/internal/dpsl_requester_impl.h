@@ -74,7 +74,7 @@ class DpslRequesterImpl final : public DpslRequester {
             typename RequestType,
             typename ResponseType>
   void ScheduleGrpcClientMethodCall(
-      const tracked_objects::Location& location,
+      const base::Location& location,
       GrpcStubMethod grpc_stub_method,
       std::unique_ptr<RequestType> request,
       std::function<void(std::unique_ptr<ResponseType>)> response_callback);

@@ -122,7 +122,7 @@ void LoadStateDefaults(const BuffetConfig::Options& options,
 
 class Manager::TaskRunner : public weave::provider::TaskRunner {
  public:
-  void PostDelayedTask(const tracked_objects::Location& from_here,
+  void PostDelayedTask(const base::Location& from_here,
                        const base::Closure& task,
                        base::TimeDelta delay) override {
     brillo::MessageLoop::current()->PostDelayedTask(from_here, task, delay);

@@ -287,7 +287,7 @@ GattClientOperationStatus Newblue::GattClientEnumServices(
 
 /*** Private Methods ***/
 
-bool Newblue::PostTask(const tracked_objects::Location& from_here,
+bool Newblue::PostTask(const base::Location& from_here,
                        const base::Closure& task) {
   CHECK(origin_task_runner_.get());
   return origin_task_runner_->PostTask(from_here, task);

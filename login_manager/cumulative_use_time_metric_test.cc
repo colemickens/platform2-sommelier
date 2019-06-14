@@ -93,7 +93,7 @@ class FakeSingleThreadTaskRunner : public base::SingleThreadTaskRunner {
 
   ~FakeSingleThreadTaskRunner() override = default;
 
-  bool PostDelayedTask(const tracked_objects::Location& from_here,
+  bool PostDelayedTask(const base::Location& from_here,
                        base::OnceClosure task,
                        base::TimeDelta delay) final {
     pending_tasks_.emplace_back(tick_clock_->NowTicks() + delay,
@@ -103,7 +103,7 @@ class FakeSingleThreadTaskRunner : public base::SingleThreadTaskRunner {
 
   bool RunsTasksOnCurrentThread() const final { return true; }
 
-  bool PostNonNestableDelayedTask(const tracked_objects::Location& from_here,
+  bool PostNonNestableDelayedTask(const base::Location& from_here,
                                   base::OnceClosure task,
                                   base::TimeDelta delay) final {
     return false;

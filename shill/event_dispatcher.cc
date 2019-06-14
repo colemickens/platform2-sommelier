@@ -10,7 +10,7 @@
 
 using base::Callback;
 using base::Closure;
-using tracked_objects::Location;
+using base::Location;
 
 namespace shill {
 

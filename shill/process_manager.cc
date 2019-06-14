@@ -77,7 +77,7 @@ void ProcessManager::Stop() {
 }
 
 pid_t ProcessManager::StartProcess(
-    const tracked_objects::Location& spawn_source,
+    const base::Location& spawn_source,
     const base::FilePath& program,
     const vector<string>& arguments,
     const map<string, string>& environment,
@@ -118,7 +118,7 @@ pid_t ProcessManager::StartProcess(
 }
 
 pid_t ProcessManager::StartProcessInMinijailWithPipes(
-    const tracked_objects::Location& spawn_source,
+    const base::Location& spawn_source,
     const base::FilePath& program,
     const std::vector<std::string>& arguments,
     const std::string& user,

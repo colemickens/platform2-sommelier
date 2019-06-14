@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 
+#include <base/location.h>
 #include <base/threading/thread.h>
 #include <brillo/secure_blob.h>
 
@@ -81,14 +82,14 @@ class UserDataAuth {
   // macro, while task is a callback function to be posted. Will return true if
   // the task may be run sometime in the future, false if it will definitely not
   // run.
-  bool PostTaskToOriginThread(const tracked_objects::Location& from_here,
+  bool PostTaskToOriginThread(const base::Location& from_here,
                               base::OnceClosure task);
 
   // Post Task to mount thread. For the caller, from_here is usually FROM_HERE
   // macro, while task is a callback function to be posted. Will return true if
   // the task may be run sometime in the future, false if it will definitely not
   // run.
-  bool PostTaskToMountThread(const tracked_objects::Location& from_here,
+  bool PostTaskToMountThread(const base::Location& from_here,
                              base::OnceClosure task);
 
   // ================= Testing Utilities ==================

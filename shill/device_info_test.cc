@@ -70,7 +70,7 @@ namespace shill {
 
 class TestEventDispatcherForDeviceInfo : public EventDispatcherForTest {
  public:
-  MOCK_METHOD3(PostDelayedTask, void(const tracked_objects::Location& location,
+  MOCK_METHOD3(PostDelayedTask, void(const base::Location& location,
                                      const base::Closure& task,
                                      int64_t delay_ms));
 };

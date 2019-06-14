@@ -10,6 +10,7 @@
 #include <string>
 #include <unordered_map>
 
+#include <base/location.h>
 #include <base/threading/thread.h>
 
 #include "cros-camera/common.h"
@@ -46,7 +47,7 @@ class CROS_CAMERA_EXPORT CameraThread {
   // from callee will be stored in |result|. Return 0 if succeed. Otherwise
   // return -EIO.
   template <typename T>
-  int PostTaskSync(const tracked_objects::Location& from_here,
+  int PostTaskSync(const base::Location& from_here,
                    base::Callback<T()> task,
                    T* result) {
     VLOGF_ENTER();
@@ -71,8 +72,7 @@ class CROS_CAMERA_EXPORT CameraThread {
   // Posts the given task to be run asynchronously. Return 0 if succeed.
   // Otherwise return -EIO.
   template <typename T>
-  int PostTaskAsync(const tracked_objects::Location& from_here,
-                    base::Callback<T()> task) {
+  int PostTaskAsync(const base::Location& from_here, base::Callback<T()> task) {
     VLOGF_ENTER();
     if (!thread_.task_runner()) {
       LOG(ERROR) << "Thread is not started";
@@ -91,8 +91,7 @@ class CROS_CAMERA_EXPORT CameraThread {
 
   // Posts the given task to be run and wait till it is finished.
   // Return 0 if succeed. Otherwise return -EIO.
-  int PostTaskSync(const tracked_objects::Location& from_here,
-                   base::Closure task) {
+  int PostTaskSync(const base::Location& from_here, base::Closure task) {
     VLOGF_ENTER();
     if (!thread_.task_runner()) {
       LOG(ERROR) << "Thread is not started";

@@ -40,11 +40,11 @@ class BRILLO_EXPORT BaseMessageLoop : public MessageLoop {
   ~BaseMessageLoop() override;
 
   // MessageLoop overrides.
-  TaskId PostDelayedTask(const tracked_objects::Location& from_here,
+  TaskId PostDelayedTask(const base::Location& from_here,
                          const base::Closure& task,
                          base::TimeDelta delay) override;
   using MessageLoop::PostDelayedTask;
-  TaskId WatchFileDescriptor(const tracked_objects::Location& from_here,
+  TaskId WatchFileDescriptor(const base::Location& from_here,
                              int fd,
                              WatchMode mode,
                              bool persistent,
@@ -87,7 +87,7 @@ class BRILLO_EXPORT BaseMessageLoop : public MessageLoop {
   unsigned int GetBinderMinor();
 
   struct DelayedTask {
-    tracked_objects::Location location;
+    base::Location location;
 
     MessageLoop::TaskId task_id;
     base::Closure closure;
@@ -95,7 +95,7 @@ class BRILLO_EXPORT BaseMessageLoop : public MessageLoop {
 
   class IOTask : public base::MessageLoopForIO::Watcher {
    public:
-    IOTask(const tracked_objects::Location& location,
+    IOTask(const base::Location& location,
            BaseMessageLoop* loop,
            MessageLoop::TaskId task_id,
            int fd,
@@ -103,7 +103,7 @@ class BRILLO_EXPORT BaseMessageLoop : public MessageLoop {
            bool persistent,
            const base::Closure& task);
 
-    const tracked_objects::Location& location() const { return location_; }
+    const base::Location& location() const { return location_; }
 
     // Used to start/stop watching the file descriptor while keeping the
     // IOTask entry available.
@@ -123,7 +123,7 @@ class BRILLO_EXPORT BaseMessageLoop : public MessageLoop {
     void RunImmediately() { immediate_run_ = true; }
 
    private:
-    tracked_objects::Location location_;
+    base::Location location_;
     BaseMessageLoop* loop_;
 
     // These are the arguments passed in the constructor, basically forwarding

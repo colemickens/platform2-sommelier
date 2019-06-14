@@ -14,8 +14,8 @@
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/lazy_instance.h>
+#include <base/location.h>
 #include <base/memory/weak_ptr.h>
-#include <base/tracked_objects.h>
 #include <brillo/minijail/minijail.h>
 #include <brillo/process.h>
 #include <brillo/process_reaper.h>
@@ -55,7 +55,7 @@ class ProcessManager {
   // if failed to start the process, otherwise, return the pid of the child
   // process.
   virtual pid_t StartProcess(
-      const tracked_objects::Location& spawn_source,
+      const base::Location& spawn_source,
       const base::FilePath& program,
       const std::vector<std::string>& arguments,
       const std::map<std::string, std::string>& environment,
@@ -72,7 +72,7 @@ class ProcessManager {
   //   inherit supplementary groups from uid, equivalent to using '-G' on the
   //   minijail command line.
   virtual pid_t StartProcessInMinijail(
-      const tracked_objects::Location& spawn_source,
+      const base::Location& spawn_source,
       const base::FilePath& program,
       const std::vector<std::string>& arguments,
       const std::string& user,
@@ -93,7 +93,7 @@ class ProcessManager {
   // member in std file descriptor struct. If no pipes are needed, use
   // StartProcessInMinijail().
   virtual pid_t StartProcessInMinijailWithPipes(
-      const tracked_objects::Location& spawn_source,
+      const base::Location& spawn_source,
       const base::FilePath& program,
       const std::vector<std::string>& arguments,
       const std::string& user,

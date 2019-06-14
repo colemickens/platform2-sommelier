@@ -13,6 +13,7 @@
 #include <attestation/proto_bindings/interface.pb.h>
 #include <attestation-client/attestation/dbus-proxies.h>
 #include <base/atomic_sequence_num.h>
+#include <base/location.h>
 #include <base/optional.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
@@ -42,7 +43,7 @@ class SharedDBusMethodResponse {
     response_.reset(nullptr);
   }
 
-  void ReplyWithError(const tracked_objects::Location& location,
+  void ReplyWithError(const base::Location& location,
                       const std::string& error_domain,
                       const std::string& error_code,
                       const std::string& error_message) {

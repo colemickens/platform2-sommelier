@@ -8,8 +8,8 @@
 #include <stdint.h>
 
 #include <base/callback.h>
+#include <base/location.h>
 #include <base/macros.h>
-#include <base/tracked_objects.h>
 
 namespace shill {
 
@@ -28,9 +28,9 @@ class EventDispatcher {
 
   // These are thin wrappers around calls of the same name in
   // <base/message_loop_proxy.h>
-  virtual void PostTask(const tracked_objects::Location& location,
+  virtual void PostTask(const base::Location& location,
                         const base::Closure& task);
-  virtual void PostDelayedTask(const tracked_objects::Location& location,
+  virtual void PostDelayedTask(const base::Location& location,
                                const base::Closure& task, int64_t delay_ms);
 
  private:

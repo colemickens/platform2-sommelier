@@ -518,7 +518,7 @@ TPM_RC ResourceManager::LoadContext(const MessageInfo& command_info,
 }
 
 TPM_RC ResourceManager::MakeError(TPM_RC tpm_error,
-                                  const ::tracked_objects::Location& location) {
+                                  const ::base::Location& location) {
   LOG(ERROR) << "ResourceManager::" << location.function_name() << ":"
              << location.line_number() << ": " << GetErrorString(tpm_error);
   return tpm_error + kResourceManagerTpmErrorBase;

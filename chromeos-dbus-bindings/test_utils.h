@@ -21,7 +21,7 @@ namespace test_utils {
 // meaningful line diff between |actual_str| and |expected_str| is displayed in
 // stderr. Use this function instead of EXPECT_EQ() when the compared values are
 // long texts.
-void ExpectTextContained(const tracked_objects::Location& from_here,
+void ExpectTextContained(const base::Location& from_here,
                          const std::string& expected_str,
                          const std::string& expected_expr,
                          const std::string& actual_str,

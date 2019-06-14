@@ -178,7 +178,7 @@ class ResourceManager : public CommandTransceiver {
   // Returns a resource manager error code given a particular |tpm_error| and
   // logs the occurrence of the error.
   TPM_RC MakeError(TPM_RC tpm_error,
-                   const ::tracked_objects::Location& location);
+                   const ::base::Location& location);
 
   // Parses a |command|, sanity checking its format and extracting
   // |message_info| on success. Returns TPM_RC_SUCCESS on success.

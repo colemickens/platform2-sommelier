@@ -63,7 +63,7 @@ string GetUnifiedDiff(const string& a, const string& b) {
 namespace chromeos_dbus_bindings {
 namespace test_utils {
 
-void ExpectTextContained(const tracked_objects::Location& from_here,
+void ExpectTextContained(const base::Location& from_here,
                          const string& expected_str,
                          const string& expected_expr,
                          const string& actual_str,
