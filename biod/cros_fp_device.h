@@ -150,19 +150,21 @@ class EcCommand {
       // This is important for subsequent retries using the same data_.req.
       int result = ioctl(ec_fd, CROS_EC_DEV_IOCXCMD_V2, &data_);
       if (result >= 0) {
-        LOG_IF(INFO, retry > 0) << "FPMCU ioctl command " << data_.cmd.command
-                                << " succeeded on attempt " << retry + 1 << "/"
-                                << num_attempts << ".";
+        LOG_IF(INFO, retry > 0)
+            << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
+            << std::dec << " succeeded on attempt " << retry + 1 << "/"
+            << num_attempts << ".";
         return (static_cast<uint32_t>(result) == data_.cmd.insize);
       }
       if (errno != ETIMEDOUT) {
-        PLOG(ERROR) << "FPMCU ioctl command " << data_.cmd.command
-                    << " failed on attempt " << retry + 1 << "/" << num_attempts
-                    << ", retry is not allowed for error";
+        PLOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
+                    << std::dec << " failed on attempt " << retry + 1 << "/"
+                    << num_attempts << ", retry is not allowed for error";
         return false;
       }
-      PLOG(ERROR) << "FPMCU ioctl command " << data_.cmd.command
-                  << " failed on attempt " << retry + 1 << "/" << num_attempts;
+      PLOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
+                  << std::dec << " failed on attempt " << retry + 1 << "/"
+                  << num_attempts;
     }
 
     return false;
