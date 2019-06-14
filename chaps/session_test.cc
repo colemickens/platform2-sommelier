@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <crypto/scoped_openssl_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <openssl/bn.h>
@@ -966,21 +967,21 @@ TEST_F(TestSession, ImportRSAWithTPM) {
   EXPECT_CALL(tpm_, MaxRSAKeyBits()).WillRepeatedly(Return(2048));
   EXPECT_CALL(tpm_, WrapRSAKey(_, _, _, _, _, _, _)).WillOnce(Return(true));
 
-  RSA* rsa = RSA_generate_key(2048, 0x10001, NULL, NULL);
+  crypto::ScopedRSA rsa(RSA_generate_key(2048, 0x10001, NULL, NULL));
   CK_OBJECT_CLASS priv_class = CKO_PRIVATE_KEY;
   CK_KEY_TYPE key_type = CKK_RSA;
   CK_BBOOL false_value = CK_FALSE;
   CK_BBOOL true_value = CK_TRUE;
   string id = "test_id";
   string label = "test_label";
-  string n = bn2bin(rsa->n);
-  string e = bn2bin(rsa->e);
-  string d = bn2bin(rsa->d);
-  string p = bn2bin(rsa->p);
-  string q = bn2bin(rsa->q);
-  string dmp1 = bn2bin(rsa->dmp1);
-  string dmq1 = bn2bin(rsa->dmq1);
-  string iqmp = bn2bin(rsa->iqmp);
+  string n = bn2bin(rsa.get()->n);
+  string e = bn2bin(rsa.get()->e);
+  string d = bn2bin(rsa.get()->d);
+  string p = bn2bin(rsa.get()->p);
+  string q = bn2bin(rsa.get()->q);
+  string dmp1 = bn2bin(rsa.get()->dmp1);
+  string dmq1 = bn2bin(rsa.get()->dmq1);
+  string iqmp = bn2bin(rsa.get()->iqmp);
 
   CK_ATTRIBUTE private_attributes[] = {
       {CKA_CLASS, &priv_class, sizeof(priv_class)},
@@ -1016,27 +1017,26 @@ TEST_F(TestSession, ImportRSAWithTPM) {
   EXPECT_FALSE(object->IsAttributePresent(CKA_EXPONENT_1));
   EXPECT_FALSE(object->IsAttributePresent(CKA_EXPONENT_2));
   EXPECT_FALSE(object->IsAttributePresent(CKA_COEFFICIENT));
-  RSA_free(rsa);
 }
 
 TEST_F(TestSession, ImportRSAWithNoTPM) {
   EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
 
-  RSA* rsa = RSA_generate_key(2048, 0x10001, NULL, NULL);
+  crypto::ScopedRSA rsa(RSA_generate_key(2048, 0x10001, NULL, NULL));
   CK_OBJECT_CLASS priv_class = CKO_PRIVATE_KEY;
   CK_KEY_TYPE key_type = CKK_RSA;
   CK_BBOOL false_value = CK_FALSE;
   CK_BBOOL true_value = CK_TRUE;
   string id = "test_id";
   string label = "test_label";
-  string n = bn2bin(rsa->n);
-  string e = bn2bin(rsa->e);
-  string d = bn2bin(rsa->d);
-  string p = bn2bin(rsa->p);
-  string q = bn2bin(rsa->q);
-  string dmp1 = bn2bin(rsa->dmp1);
-  string dmq1 = bn2bin(rsa->dmq1);
-  string iqmp = bn2bin(rsa->iqmp);
+  string n = bn2bin(rsa.get()->n);
+  string e = bn2bin(rsa.get()->e);
+  string d = bn2bin(rsa.get()->d);
+  string p = bn2bin(rsa.get()->p);
+  string q = bn2bin(rsa.get()->q);
+  string dmp1 = bn2bin(rsa.get()->dmp1);
+  string dmq1 = bn2bin(rsa.get()->dmq1);
+  string iqmp = bn2bin(rsa.get()->iqmp);
 
   CK_ATTRIBUTE private_attributes[] = {
       {CKA_CLASS, &priv_class, sizeof(priv_class)},
@@ -1072,7 +1072,6 @@ TEST_F(TestSession, ImportRSAWithNoTPM) {
   EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_1));
   EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_2));
   EXPECT_TRUE(object->IsAttributePresent(CKA_COEFFICIENT));
-  RSA_free(rsa);
 }
 
 TEST_F(TestSession, ImportECCWithTPM) {
