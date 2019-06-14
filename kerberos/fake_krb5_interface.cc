@@ -27,6 +27,9 @@ ErrorType FakeKrb5Interface::AcquireTgt(const std::string& principal_name,
   if (password.empty())
     return ERROR_BAD_PASSWORD;
 
+  if (!expected_password_.empty() && password != expected_password_)
+    return ERROR_BAD_PASSWORD;
+
   const int size = strlen(kFakeKrb5cc);
   CHECK(base::WriteFile(krb5cc_path, kFakeKrb5cc, strlen(kFakeKrb5cc)) == size);
   return acquire_tgt_error_;

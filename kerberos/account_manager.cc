@@ -11,6 +11,8 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <libpasswordprovider/password.h>
+#include <libpasswordprovider/password_provider.h>
 
 #include "kerberos/krb5_interface.h"
 
@@ -69,10 +71,13 @@ ErrorType SaveFile(const base::FilePath& path, const std::string& data) {
 AccountManager::AccountManager(
     base::FilePath storage_dir,
     KerberosFilesChangedCallback kerberos_files_changed,
-    std::unique_ptr<Krb5Interface> krb5)
+    std::unique_ptr<Krb5Interface> krb5,
+    std::unique_ptr<password_provider::PasswordProviderInterface>
+        password_provider)
     : storage_dir_(std::move(storage_dir)),
       kerberos_files_changed_(std::move(kerberos_files_changed)),
-      krb5_(std::move(krb5)) {}
+      krb5_(std::move(krb5)),
+      password_provider_(std::move(password_provider)) {}
 
 AccountManager::~AccountManager() = default;
 
@@ -192,6 +197,8 @@ ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) const {
     account.set_is_managed(it.is_managed());
     account.set_password_was_remembered(
         base::PathExists(GetPasswordPath(it.principal_name())));
+    account.set_use_login_password(it.use_login_password());
+
     // TODO(https://crbug.com/952239): Set additional properties.
 
     // Do a best effort reporting results, don't bail on the first error. If
@@ -239,33 +246,24 @@ ErrorType AccountManager::SetConfig(const std::string& principal_name,
 
 ErrorType AccountManager::AcquireTgt(const std::string& principal_name,
                                      std::string password,
-                                     bool remember_password) const {
-  const AccountData* data = GetAccountData(principal_name);
+                                     bool remember_password,
+                                     bool use_login_password) {
+  AccountData* data = GetMutableAccountData(principal_name);
   if (!data)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
-  // Decision table what to do with the password:
-  // pw empty / remember| false                      | true
-  // -------------------+----------------------------+------------------------
-  // false              | use given, erase file      | use given, save to file
-  // true               | load from file, erase file | load from file
-
-  // Remember password even if authentication failed.
-  const base::FilePath password_path = GetPasswordPath(principal_name);
-  if (!password.empty() && remember_password)
-    SaveFile(password_path, password);
-
-  // Try to load a saved password if available and none is given.
-  ErrorType error;
-  if (password.empty() && base::PathExists(password_path)) {
-    error = LoadFile(password_path, &password);
-    if (error != ERROR_NONE)
-      return error;
+  // Remember whether to use the login password.
+  if (data->use_login_password() != use_login_password) {
+    data->set_use_login_password(use_login_password);
+    SaveAccounts();
   }
 
-  // Erase a previously remembered password.
-  if (!remember_password)
-    base::DeleteFile(password_path, false /* recursive */);
+  ErrorType error = use_login_password
+                        ? UpdatePasswordFromLogin(principal_name, &password)
+                        : UpdatePasswordFromSaved(principal_name,
+                                                  remember_password, &password);
+  if (error != ERROR_NONE)
+    return error;
 
   // Acquire a Kerberos ticket-granting-ticket.
   error =
@@ -343,6 +341,52 @@ base::FilePath AccountManager::GetAccountsPath() const {
   return storage_dir_.Append(kAccountsFile);
 }
 
+ErrorType AccountManager::UpdatePasswordFromLogin(
+    const std::string& principal_name, std::string* password) {
+  // Erase a previously remembered password.
+  base::DeleteFile(GetPasswordPath(principal_name), false /* recursive */);
+
+  // Get login password from |password_provider_|.
+  std::unique_ptr<password_provider::Password> login_password =
+      password_provider_->GetPassword();
+  if (!login_password || login_password->size() == 0) {
+    password->clear();
+    LOG(WARNING) << "Unable to retrieve login password";
+  } else {
+    *password = std::string(login_password->GetRaw(), login_password->size());
+  }
+  return ERROR_NONE;
+}
+
+ErrorType AccountManager::UpdatePasswordFromSaved(
+    const std::string& principal_name,
+    bool remember_password,
+    std::string* password) {
+  // Decision table what to do with the password:
+  // pw empty / remember| false                      | true
+  // -------------------+----------------------------+------------------------
+  // false              | use given, erase file      | use given, save to file
+  // true               | load from file, erase file | load from file
+
+  // Remember password (even if authentication is going to fail below).
+  const base::FilePath password_path = GetPasswordPath(principal_name);
+  if (!password->empty() && remember_password)
+    SaveFile(password_path, *password);
+
+  // Try to load a saved password if available and none is given.
+  if (password->empty() && base::PathExists(password_path)) {
+    ErrorType error = LoadFile(password_path, password);
+    if (error != ERROR_NONE)
+      return error;
+  }
+
+  // Erase a previously remembered password.
+  if (!remember_password)
+    base::DeleteFile(password_path, false /* recursive */);
+
+  return ERROR_NONE;
+}
+
 int AccountManager::GetAccountIndex(const std::string& principal_name) const {
   for (size_t n = 0; n < accounts_.size(); ++n) {
     if (accounts_[n].principal_name() == principal_name) {
@@ -355,6 +399,12 @@ int AccountManager::GetAccountIndex(const std::string& principal_name) const {
 
 const AccountData* AccountManager::GetAccountData(
     const std::string& principal_name) const {
+  int index = GetAccountIndex(principal_name);
+  return index != kInvalidIndex ? &accounts_[index] : nullptr;
+}
+
+AccountData* AccountManager::GetMutableAccountData(
+    const std::string& principal_name) {
   int index = GetAccountIndex(principal_name);
   return index != kInvalidIndex ? &accounts_[index] : nullptr;
 }

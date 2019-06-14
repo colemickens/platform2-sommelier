@@ -18,6 +18,10 @@
 #include "bindings/kerberos_containers.pb.h"
 #include "kerberos/proto_bindings/kerberos_service.pb.h"
 
+namespace password_provider {
+class PasswordProviderInterface;
+}
+
 namespace kerberos {
 
 class Krb5Interface;
@@ -34,10 +38,13 @@ class AccountManager {
   // Kerberos credential cache or the configuration file changes for a specific
   // account. Use in combination with GetKerberosFiles() to get the latest
   // files. |krb5| interacts with lower level Kerberos libraries. It can be
-  // overridden for tests.
+  // overridden for tests. |password_provider| is used to retrieve the login
+  // password. It can be overridden for tests.
   AccountManager(base::FilePath storage_dir,
                  KerberosFilesChangedCallback kerberos_files_changed,
-                 std::unique_ptr<Krb5Interface> krb5);
+                 std::unique_ptr<Krb5Interface> krb5,
+                 std::unique_ptr<password_provider::PasswordProviderInterface>
+                     password_provider);
   ~AccountManager();
 
   // Saves all accounts to disk. Returns ERROR_LOCAL_IO and logs on error.
@@ -79,10 +86,14 @@ class AccountManager {
   // Acquires a Kerberos ticket-granting-ticket for the account keyed by
   // |principal_name| using |password|. If |password| is empty, a stored
   // password is used if available. If |remember_password| is true and
-  // |password| is not empty, the password is stored on disk.
+  // |password| is not empty, the password is stored on disk. If
+  // |use_login_password| is true, the primary user's login password is used to
+  // authenticate. Both |password| and |remember_password| are ignored by the
+  // daemon in this case.
   ErrorType AcquireTgt(const std::string& principal_name,
                        std::string password,
-                       bool remember_password) const WARN_UNUSED_RESULT;
+                       bool remember_password,
+                       bool use_login_password) WARN_UNUSED_RESULT;
 
   // Retrieves the Kerberos credential cache and the configuration file for the
   // account keyed by |principal_name|. Returns ERROR_NONE if both files could
@@ -123,6 +134,19 @@ class AccountManager {
   // Calls |kerberos_files_changed_| if set.
   void TriggerKerberosFilesChanged(const std::string& principal_name) const;
 
+  // Sets |password| to the login password. Removes a remembered password for
+  // |principal_name| if there is any.
+  ErrorType UpdatePasswordFromLogin(const std::string& principal_name,
+                                    std::string* password);
+
+  // If |password| is empty, loads it from the password file if that exists. If
+  // |password| is not empty and |remember_password| is true, saves |password|
+  // to the password file. If |remember_password| is false, deletes the password
+  // file.
+  ErrorType UpdatePasswordFromSaved(const std::string& principal_name,
+                                    bool remember_password,
+                                    std::string* password);
+
   // Directory where all account data is stored.
   const base::FilePath storage_dir_;
 
@@ -141,9 +165,14 @@ class AccountManager {
   // otherwise. The returned pointer may lose validity if |accounts_| gets
   // modified.
   const AccountData* GetAccountData(const std::string& principal_name) const;
+  AccountData* GetMutableAccountData(const std::string& principal_name);
 
   // List of all accounts. Stored in a vector to keep order of addition.
   std::vector<AccountData> accounts_;
+
+  // Interface to retrieve the login password.
+  std::unique_ptr<password_provider::PasswordProviderInterface>
+      password_provider_;
 
   DISALLOW_COPY_AND_ASSIGN(AccountManager);
 };

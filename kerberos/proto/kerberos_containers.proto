@@ -12,6 +12,9 @@ message AccountData {
   // Whether the account is managed by policy.
   optional bool is_managed = 2;
 
+  // Whether the account uses the Chrome OS login password for authentication.
+  optional bool use_login_password = 3;
+
   // TODO(https://crbug.com/952239): Add additional properties.
 }
 

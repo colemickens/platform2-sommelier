@@ -13,6 +13,7 @@
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/errors/error.h>
 #include <dbus/login_manager/dbus-constants.h>
+#include <libpasswordprovider/password_provider.h>
 #include <session_manager/dbus-proxies.h>
 
 #include "kerberos/account_manager.h"
@@ -113,7 +114,8 @@ void KerberosAdaptor::RegisterAsync(
       storage_dir,
       base::BindRepeating(&KerberosAdaptor::OnKerberosFilesChanged,
                           base::Unretained(this)),
-      std::make_unique<Krb5InterfaceImpl>());
+      std::make_unique<Krb5InterfaceImpl>(),
+      std::make_unique<password_provider::PasswordProvider>());
   manager_->LoadAccounts();
 }
 
@@ -210,7 +212,8 @@ ByteArray KerberosAdaptor::AcquireKerberosTgt(
 
   if (error == ERROR_NONE) {
     error = manager_->AcquireTgt(request.principal_name(), password.value(),
-                                 request.remember_password());
+                                 request.remember_password(),
+                                 request.use_login_password());
   }
 
   PrintResult(__FUNCTION__, error);

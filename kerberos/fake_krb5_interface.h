@@ -57,10 +57,17 @@ class FakeKrb5Interface : public Krb5Interface {
     get_tgt_status_error_ = error;
   }
 
+  // Sets the expected password for AcquireTgt. If not empty, ERROR_BAD_PASSWORD
+  // is returned on mismatch.
+  void set_expected_password(const std::string& expected_password) {
+    expected_password_ = expected_password;
+  }
+
   // Sets the status that GetTgtStatus returns.
   void set_tgt_status(TgtStatus status) { tgt_status_ = std::move(status); }
 
  private:
+  std::string expected_password_;
   ErrorType acquire_tgt_error_ = ERROR_NONE;
   ErrorType renew_tgt_error_ = ERROR_NONE;
   ErrorType get_tgt_status_error_ = ERROR_NONE;
