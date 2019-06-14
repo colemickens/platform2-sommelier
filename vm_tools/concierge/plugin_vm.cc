@@ -300,10 +300,11 @@ bool PluginVm::ListUsbDevice(std::vector<UsbDevice>* device) {
 void PluginVm::HandleUsbControlResponse() {
   UsbCtrlResponse resp;
   int ret = HANDLE_EINTR(read(usb_vm_fd_.get(), &resp, sizeof(resp)));
-  if (ret < 0) {
-    // On any error besides EAGAIN disconnect the socket and wait for new
-    // connection.
-    if (errno != EAGAIN) {
+  if (ret <= 0) {
+    // If we get 0 bytes from read() that means that the other side closed
+    // the connection. Disconnect the socket and wait for new connection.
+    // Do the same if we get any error besides EAGAIN.
+    if (ret == 0 || errno != EAGAIN) {
       usb_fd_watcher_.StopWatchingFileDescriptor();
       usb_vm_fd_.reset();
 
