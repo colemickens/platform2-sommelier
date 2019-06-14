@@ -81,15 +81,17 @@ class Tpm2NvramTest : public testing::Test {
     ON_CALL(mock_trial_session_, GetDigest(_))
         .WillByDefault(
             DoAll(SetArgPointee<0>(kFakePolicyDigest), Return(TPM_RC_SUCCESS)));
-    ON_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
-        .WillByDefault(Return(TpmStatus::kTpmUnowned));
+    ON_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_))
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
   }
 
   void SetupOwnerPassword() {
     LocalData& local_data = mock_data_store_.GetMutableFakeData();
     local_data.set_owner_password(kTestOwnerPassword);
-    ON_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
-        .WillByDefault(Return(TpmStatus::kTpmOwned));
+    ON_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_))
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)));
   }
 
   enum ExpectAuth { NO_EXPECT_AUTH, EXPECT_AUTH };
@@ -259,6 +261,18 @@ TEST_F(Tpm2NvramTest, DefineSpaceFailure) {
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_NE(
       NVRAM_RESULT_SUCCESS,
+      tpm_nvram_->DefineSpace(kSomeNvramIndex, kSomeNvramSize,
+                              attributes, "", NVRAM_POLICY_NONE));
+}
+
+TEST_F(Tpm2NvramTest, DefineSpaceOwnershipStatusFailure) {
+  SetupOwnerPassword();
+  std::vector<NvramSpaceAttribute> attributes{NVRAM_PERSISTENT_WRITE_LOCK};
+  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_))
+      .WillOnce(Return(false));
+  EXPECT_CALL(mock_tpm_utility_, DefineNVSpace(_, _, _, _, _, _)).Times(0);
+  EXPECT_EQ(
+      NVRAM_RESULT_OPERATION_DISABLED,
       tpm_nvram_->DefineSpace(kSomeNvramIndex, kSomeNvramSize,
                               attributes, "", NVRAM_POLICY_NONE));
 }
@@ -445,6 +459,18 @@ TEST_F(Tpm2NvramTest, WriteSpaceFailure) {
                                    kFakeAuthorizationValue));
 }
 
+TEST_F(Tpm2NvramTest, WriteSpaceAuthwriteOwnershipStatusFailure) {
+  SetupOwnerPassword();
+  SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, kNoExtraAttributes,
+                     NO_EXPECT_AUTH, NORMAL_AUTH);
+  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_))
+      .WillOnce(Return(false));
+  EXPECT_CALL(mock_tpm_utility_, WriteNVSpace(_, _, _, _, _, _)).Times(0);
+  EXPECT_EQ(NVRAM_RESULT_DEVICE_ERROR,
+            tpm_nvram_->WriteSpace(kSomeNvramIndex, "data",
+                                   kFakeAuthorizationValue));
+}
+
 TEST_F(Tpm2NvramTest, WriteSpacePolicy) {
   SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, kNoExtraAttributes,
                      EXPECT_AUTH, POLICY_AUTH);
@@ -467,6 +493,18 @@ TEST_F(Tpm2NvramTest, WriteSpaceOwner) {
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(NVRAM_RESULT_SUCCESS,
             tpm_nvram_->WriteSpace(kSomeNvramIndex, kSomeData,
+                                   kFakeAuthorizationValue));
+}
+
+TEST_F(Tpm2NvramTest, WriteSpaceOwnerwriteOwnershipStatusFailure) {
+  SetupOwnerPassword();
+  SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, kNoExtraAttributes,
+                     NO_EXPECT_AUTH, OWNER_AUTH);
+  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_))
+      .WillOnce(Return(false));
+  EXPECT_CALL(mock_tpm_utility_, WriteNVSpace(_, _, _, _, _, _)).Times(0);
+  EXPECT_EQ(NVRAM_RESULT_DEVICE_ERROR,
+            tpm_nvram_->WriteSpace(kSomeNvramIndex, "data",
                                    kFakeAuthorizationValue));
 }
 
@@ -506,6 +544,19 @@ TEST_F(Tpm2NvramTest, ReadSpaceFailure) {
                                   kFakeAuthorizationValue));
 }
 
+TEST_F(Tpm2NvramTest, ReadSpaceAuthreadOwnershipStatusFailure) {
+  SetupOwnerPassword();
+  SetupExistingSpace(kSomeNvramIndex, kSomeData.size(), trunks::TPMA_NV_WRITTEN,
+                     NO_EXPECT_AUTH, NORMAL_AUTH);
+  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_))
+      .WillOnce(Return(false));
+  EXPECT_CALL(mock_tpm_utility_, ReadNVSpace(_, _, _, _, _, _)).Times(0);
+  std::string read_data;
+  EXPECT_EQ(NVRAM_RESULT_DEVICE_ERROR,
+            tpm_nvram_->ReadSpace(kSomeNvramIndex, &read_data,
+                                  kFakeAuthorizationValue));
+}
+
 TEST_F(Tpm2NvramTest, ReadSpacePolicy) {
   SetupExistingSpace(kSomeNvramIndex, kSomeData.size(), trunks::TPMA_NV_WRITTEN,
                      EXPECT_AUTH, POLICY_AUTH);
@@ -533,6 +584,19 @@ TEST_F(Tpm2NvramTest, ReadSpaceOwner) {
             tpm_nvram_->ReadSpace(kSomeNvramIndex, &read_data,
                                   kFakeAuthorizationValue));
   EXPECT_EQ(kSomeData, read_data);
+}
+
+TEST_F(Tpm2NvramTest, ReadSpaceOwnerreadOwnershipStatusFailure) {
+  SetupOwnerPassword();
+  SetupExistingSpace(kSomeNvramIndex, kSomeData.size(), trunks::TPMA_NV_WRITTEN,
+                     NO_EXPECT_AUTH, OWNER_AUTH);
+  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_))
+      .WillOnce(Return(false));
+  EXPECT_CALL(mock_tpm_utility_, ReadNVSpace(_, _, _, _, _, _)).Times(0);
+  std::string read_data;
+  EXPECT_EQ(NVRAM_RESULT_DEVICE_ERROR,
+            tpm_nvram_->ReadSpace(kSomeNvramIndex, &read_data,
+                                  kFakeAuthorizationValue));
 }
 
 TEST_F(Tpm2NvramTest, ReadWriteSpaceBeforeTpmIsOwned) {

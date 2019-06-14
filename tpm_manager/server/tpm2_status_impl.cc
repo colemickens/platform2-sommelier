@@ -40,12 +40,16 @@ bool Tpm2StatusImpl::IsTpmEnabled() {
   return true;
 }
 
-TpmStatus::TpmOwnershipStatus Tpm2StatusImpl::CheckAndNotifyIfTpmOwned() {
+bool Tpm2StatusImpl::CheckAndNotifyIfTpmOwned(
+    TpmStatus::TpmOwnershipStatus* status) {
   if (kTpmOwned == ownership_status_) {
-    return kTpmOwned;
+    *status = kTpmOwned;
+    return true;
   }
 
-  Refresh();
+  if (!Refresh()) {
+    return false;
+  }
 
   if (trunks_tpm_state_->IsOwned()) {
     ownership_status_ = kTpmOwned;
@@ -60,7 +64,8 @@ TpmStatus::TpmOwnershipStatus Tpm2StatusImpl::CheckAndNotifyIfTpmOwned() {
     ownership_taken_callback_.Reset();
   }
 
-  return ownership_status_;
+  *status = ownership_status_;
+  return true;
 }
 
 bool Tpm2StatusImpl::GetDictionaryAttackInfo(uint32_t* counter,
@@ -125,8 +130,8 @@ bool Tpm2StatusImpl::GetVersionInfo(uint32_t* family,
 bool Tpm2StatusImpl::Refresh() {
   TPM_RC result = trunks_tpm_state_->Initialize();
   if (result != TPM_RC_SUCCESS) {
-    LOG(WARNING) << "Error initializing trunks tpm state: "
-                 << trunks::GetErrorString(result);
+    LOG(ERROR) << "Error initializing trunks tpm state: "
+               << trunks::GetErrorString(result);
     return false;
   }
   initialized_ = true;

@@ -127,9 +127,11 @@ class TpmManagerServiceTest_Preinit : public TpmManagerServiceTest {
 
 TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitialize) {
   // Called in InitializeTask() and GetTpmStatus()
-  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
+  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_))
       .Times(2)
-      .WillRepeatedly(Return(TpmStatus::kTpmUnowned));
+      .WillRepeatedly(
+          DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
+
   // Make sure InitializeTpm doesn't get multiple calls.
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(1);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
@@ -139,9 +141,10 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitialize) {
 
 TEST_F(TpmManagerServiceTest_NoWaitForOwnership, NoNeedToInitialize) {
   // Called in InitializeTask() and GetTpmStatus()
-  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
+  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_))
       .Times(2)
-      .WillRepeatedly(Return(TpmStatus::kTpmOwned));
+      .WillRepeatedly(
+          DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)));
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
   SetupService();
@@ -150,7 +153,7 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership, NoNeedToInitialize) {
 
 TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitializeNoTpm) {
   // Called in GetTpmStatus()
-  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned()).Times(1);
+  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_)).Times(1);
   EXPECT_CALL(mock_tpm_status_, IsTpmEnabled()).WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
@@ -160,9 +163,10 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitializeNoTpm) {
 
 TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitializeFailure) {
   // Called in InitializeTask() and GetTpmStatus()
-  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
+  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_))
       .Times(2)
-      .WillRepeatedly(Return(TpmStatus::kTpmUnowned));
+      .WillRepeatedly(
+          DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm())
       .WillRepeatedly(Return(false));
   SetupService();
@@ -172,8 +176,8 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitializeFailure) {
 TEST_F(TpmManagerServiceTest_NoWaitForOwnership,
        TakeOwnershipAfterAutoInitialize) {
   // Called in InitializeTask()
-  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
-      .WillOnce(Return(TpmStatus::kTpmUnowned));
+  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_))
+      .WillOnce(DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(AtLeast(2));
   SetupService();
   auto callback = [](TpmManagerServiceTest* self,
@@ -187,8 +191,9 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership,
 }
 
 TEST_F(TpmManagerServiceTest_Preinit, NoAutoInitialize) {
-  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
-      .WillRepeatedly(Return(TpmStatus::kTpmUnowned));
+  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(1);
   SetupService();
@@ -197,9 +202,10 @@ TEST_F(TpmManagerServiceTest_Preinit, NoAutoInitialize) {
 
 TEST_F(TpmManagerServiceTest_Preinit, TpmAlreadyOwned) {
   // Called in InitializeTask() and GetTpmStatus()
-  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
+  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_))
       .Times(2)
-      .WillRepeatedly(Return(TpmStatus::kTpmOwned));
+      .WillRepeatedly(
+          DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)));
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
   SetupService();
@@ -291,14 +297,31 @@ TEST_F(TpmManagerServiceTest, GetTpmStatusLocalDataFailure) {
 
 TEST_F(TpmManagerServiceTest, GetTpmStatusNoTpm) {
   EXPECT_CALL(mock_tpm_status_, IsTpmEnabled()).WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_status_, GetDictionaryAttackInfo(_, _, _, _))
-      .WillRepeatedly(Return(false));
   auto callback = [](TpmManagerServiceTest* self,
                      const GetTpmStatusReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.enabled());
     EXPECT_TRUE(reply.owned());
     EXPECT_TRUE(reply.has_local_data());
+    self->Quit();
+  };
+  GetTpmStatusRequest request;
+  service_->GetTpmStatus(request, base::Bind(callback, this));
+  Run();
+}
+
+TEST_F(TpmManagerServiceTest, GetTpmStatusOwnershipStatusFailure) {
+  // Simulating failure in the 2nd call, which is in GetTpmStatusTask(). The 1st
+  // call is in InitializeTask().
+  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_))
+      .WillOnce(Return(true))
+      .WillOnce(Return(false));
+  EXPECT_CALL(mock_local_data_store_, Read(_)).Times(0);
+  EXPECT_CALL(mock_tpm_status_, GetVersionInfo(_, _, _, _, _, _)).Times(0);
+
+  auto callback = [](TpmManagerServiceTest* self,
+                     const GetTpmStatusReply& reply) {
+    EXPECT_EQ(STATUS_DEVICE_ERROR, reply.status());
     self->Quit();
   };
   GetTpmStatusRequest request;
@@ -405,7 +428,7 @@ TEST_F(TpmManagerServiceTest, TakeOwnershipFailure) {
 
 TEST_F(TpmManagerServiceTest, TakeOwnershipNoTpm) {
   EXPECT_CALL(mock_tpm_status_, IsTpmEnabled()).WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned()).Times(0);
+  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_)).Times(0);
   auto callback = [](TpmManagerServiceTest* self,
                      const TakeOwnershipReply& reply) {
     EXPECT_EQ(STATUS_NOT_AVAILABLE, reply.status());

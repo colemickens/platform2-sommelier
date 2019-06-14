@@ -46,13 +46,15 @@ class TpmStatus {
   // Returns true iff the TPM is enabled.
   virtual bool IsTpmEnabled() = 0;
 
-  // Returns current TPM ownership status. The status will be kTpmOwned iff the
-  // entire TPM initialization process has finished, including all the password
-  // set up.
+  // Gets current TPM ownership status and stores it in |status|. The status
+  // will be kTpmOwned iff the entire TPM initialization process has finished,
+  // including all the password set up.
   //
   // Sends out a signal to the dbus if the TPM state is changed to owned from a
   // different state.
-  virtual TpmOwnershipStatus CheckAndNotifyIfTpmOwned() = 0;
+  //
+  // Returns whether the operation is successful or not.
+  virtual bool CheckAndNotifyIfTpmOwned(TpmOwnershipStatus* status) = 0;
 
   // Reports the current state of the TPM dictionary attack logic.
   virtual bool GetDictionaryAttackInfo(uint32_t* counter,

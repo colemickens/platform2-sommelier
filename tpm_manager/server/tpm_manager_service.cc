@@ -126,7 +126,12 @@ void TpmManagerService::InitializeTask() {
   // CheckAndNotifyIfTpmOwned() sends a signal if the TPM is already owned at
   // boot time and needs to be called no matter what value wait_for_ownership_
   // is.
-  if (TpmStatus::kTpmOwned == tpm_status_->CheckAndNotifyIfTpmOwned()) {
+  TpmStatus::TpmOwnershipStatus ownership_status;
+  if (!tpm_status_->CheckAndNotifyIfTpmOwned(&ownership_status)) {
+    LOG(ERROR) << __func__ << ": failed to get tpm ownership status";
+    return;
+  }
+  if (ownership_status == TpmStatus::kTpmOwned) {
     VLOG(1) << "Tpm is already owned.";
     if (!tpm_initializer_->EnsurePersistentOwnerDelegate()) {
       // Only treat the failure as a warning because the daemon can be partly
@@ -168,8 +173,14 @@ void TpmManagerService::GetTpmStatusTask(
   }
 
   reply->set_enabled(tpm_status_->IsTpmEnabled());
-  reply->set_owned(
-      TpmStatus::kTpmOwned == tpm_status_->CheckAndNotifyIfTpmOwned());
+
+  TpmStatus::TpmOwnershipStatus ownership_status;
+  if (!tpm_status_->CheckAndNotifyIfTpmOwned(&ownership_status)) {
+    LOG(ERROR) << __func__ << ": failed to get tpm ownership status";
+    reply->set_status(STATUS_DEVICE_ERROR);
+    return;
+  }
+  reply->set_owned(TpmStatus::kTpmOwned == ownership_status);
 
   LocalData local_data;
   if (local_data_store_ && local_data_store_->Read(&local_data)) {

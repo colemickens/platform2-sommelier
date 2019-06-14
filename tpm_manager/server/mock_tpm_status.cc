@@ -18,6 +18,7 @@
 
 using testing::Invoke;
 using testing::Return;
+using testing::SetArgPointee;
 using testing::_;
 
 namespace tpm_manager {
@@ -50,8 +51,11 @@ bool GetDefaultVersionInfo(uint32_t* family,
 
 MockTpmStatus::MockTpmStatus() {
   ON_CALL(*this, IsTpmEnabled()).WillByDefault(Return(true));
-  ON_CALL(*this, CheckAndNotifyIfTpmOwned())
-      .WillByDefault(Return(TpmStatus::kTpmOwned));
+
+  ON_CALL(*this, CheckAndNotifyIfTpmOwned(_))
+      .WillByDefault(
+          DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)));
+
   ON_CALL(*this, GetDictionaryAttackInfo(_, _, _, _))
       .WillByDefault(Invoke(GetDefaultDictionaryAttackInfo));
   ON_CALL(*this, GetVersionInfo(_, _, _, _, _, _))

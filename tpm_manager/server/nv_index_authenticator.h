@@ -51,19 +51,37 @@ class NvIndexAuthenticator {
 
   trunks::AuthorizationDelegate* GetDirectAuthDelegate(
       const std::string& authorization_value) {
-    if (authorization_value.empty() ||
-        tpm_status_->CheckAndNotifyIfTpmOwned() != TpmStatus::kTpmOwned) {
-      password_delegate_ =
-          trunks_factory_.GetPasswordAuthorization(authorization_value);
-      return password_delegate_.get();
+    bool use_hmac_session;
+    if (authorization_value.empty()) {
+      use_hmac_session = false;
     } else {
+      TpmStatus::TpmOwnershipStatus ownership_status;
+      if (!tpm_status_->CheckAndNotifyIfTpmOwned(&ownership_status)) {
+        LOG(ERROR) << __func__ << ": failed to get tpm ownership status";
+        return nullptr;
+      }
+
+      use_hmac_session = ownership_status == TpmStatus::kTpmOwned;
+    }
+
+    if (use_hmac_session) {
       return SetupHMACSession(authorization_value);
     }
+
+    password_delegate_ =
+        trunks_factory_.GetPasswordAuthorization(authorization_value);
+    return password_delegate_.get();
   }
 
   trunks::AuthorizationDelegate* GetOwnerAuthDelegate(
       const std::string& owner_password) {
-    switch (tpm_status_->CheckAndNotifyIfTpmOwned()) {
+    TpmStatus::TpmOwnershipStatus ownership_status;
+    if (!tpm_status_->CheckAndNotifyIfTpmOwned(&ownership_status)) {
+      LOG(ERROR) << __func__ << ": failed to get tpm ownership status";
+      return nullptr;
+    }
+
+    switch (ownership_status) {
       case TpmStatus::kTpmUnowned:
         password_delegate_ = trunks_factory_.GetPasswordAuthorization("");
         return password_delegate_.get();
@@ -72,7 +90,7 @@ class NvIndexAuthenticator {
             trunks::kWellKnownPassword);
         return password_delegate_.get();
       case TpmStatus::kTpmOwned:
-        // return error if TPM is owned but the owner_password is not availible
+        // return error if TPM is owned but the owner_password is not available
         if (owner_password.empty()) {
           // The owner password has been destroyed.
           return nullptr;

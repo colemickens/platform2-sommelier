@@ -43,7 +43,7 @@ class Tpm2StatusImpl : public TpmStatus {
 
   // TpmStatus methods.
   bool IsTpmEnabled() override;
-  TpmOwnershipStatus CheckAndNotifyIfTpmOwned() override;
+  bool CheckAndNotifyIfTpmOwned(TpmOwnershipStatus* status) override;
   bool GetDictionaryAttackInfo(uint32_t* counter,
                                uint32_t* threshold,
                                bool* lockout,

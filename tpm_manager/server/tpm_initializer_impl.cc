@@ -59,7 +59,12 @@ bool TpmInitializerImpl::PreInitializeTpm() {
 }
 
 bool TpmInitializerImpl::InitializeTpm() {
-  if (TpmStatus::kTpmOwned == tpm_status_->CheckAndNotifyIfTpmOwned()) {
+  TpmStatus::TpmOwnershipStatus ownership_status;
+  if (!tpm_status_->CheckAndNotifyIfTpmOwned(&ownership_status)) {
+    LOG(ERROR) << __func__ << ": failed to get tpm ownership status";
+    return false;
+  }
+  if (ownership_status == TpmStatus::kTpmOwned) {
     // Tpm is already owned, so we do not need to do anything.
     VLOG(1) << "Tpm already owned.";
     return true;
@@ -126,7 +131,12 @@ bool TpmInitializerImpl::ResetDictionaryAttackLock() {
     return false;
   }
 
-  if (tpm_status_->CheckAndNotifyIfTpmOwned() != TpmStatus::kTpmOwned) {
+  TpmStatus::TpmOwnershipStatus ownership_status;
+  if (!tpm_status_->CheckAndNotifyIfTpmOwned(&ownership_status)) {
+    LOG(ERROR) << __func__ << ": failed to get tpm ownership status";
+    return false;
+  }
+  if (ownership_status != TpmStatus::kTpmOwned) {
     LOG(ERROR) << __func__ << ": TPM is not initialized yet.";
     return false;
   }
