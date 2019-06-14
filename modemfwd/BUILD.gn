@@ -34,6 +34,7 @@ proto_library("modemfw-protos") {
   proto_out_dir = "include/modemfwd/proto_bindings"
   sources = [
     "${proto_in_dir}/firmware_manifest.proto",
+    "${proto_in_dir}/firmware_manifest_v2.proto",
     "${proto_in_dir}/helper_manifest.proto",
     "${proto_in_dir}/journal_entry.proto",
   ]

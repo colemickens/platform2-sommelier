@@ -1,0 +1,36 @@
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+package modemfwd;
+
+// For Compression. Will be moved when manifest v1 is removed.
+import "firmware_manifest.proto";
+
+message MainFirmwareV2 {
+  string filename = 1;
+  string version = 2;
+  Compression compression = 3;
+}
+
+message CarrierFirmwareV2 {
+  string filename = 1;
+  repeated string carrier_id = 2;
+  string version = 3;
+  string main_firmware_version = 4;
+  Compression compression = 5;
+}
+
+message Device {
+  string device_id = 1;
+  string variant = 2;
+  string default_main_firmware_version = 3;
+  repeated MainFirmwareV2 main_firmware = 4;
+  repeated CarrierFirmwareV2 carrier_firmware = 5;
+}
+
+message FirmwareManifestV2 {
+  repeated Device device = 1;
+}
