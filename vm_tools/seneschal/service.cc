@@ -504,6 +504,7 @@ std::unique_ptr<dbus::Response> Service::StartServer(
       break;
     case StartServerRequest::LISTEN_ADDRESS_NOT_SET:
       LOG(ERROR) << "Listen address not set";
+      break;
     default:
       LOG(ERROR) << "Unknown listen address: " << request.listen_address_case();
       break;
