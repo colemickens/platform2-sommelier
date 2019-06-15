@@ -1373,6 +1373,7 @@ int container_start(struct container* c,
 
   if (!c->pid_file_path.empty())
     minijail_write_pid_file(c->jail.get(), c->pid_file_path.value().c_str());
+  minijail_forward_signals(c->jail.get());
   minijail_reset_signal_mask(c->jail.get());
   minijail_reset_signal_handlers(c->jail.get());
 

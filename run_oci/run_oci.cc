@@ -568,53 +568,48 @@ int RunOci(const base::FilePath& bundle_dir,
         base::FilePath("/" + container_options.cgroup_parent);
   }
 
-  base::ScopedClosureRunner cleanup;
-  if (detach_after_start) {
-    container_dir = base::FilePath(kRunContainersPath).Append(container_id);
-    // Not using base::CreateDirectory() since we want to error out when the
-    // directory exists a priori.
-    if (mkdir(container_dir.value().c_str(), 0755) != 0) {
-      PLOG(ERROR) << "Failed to create the container directory";
-      return -1;
-    }
+  container_dir = base::FilePath(kRunContainersPath).Append(container_id);
+  base::ScopedClosureRunner cleanup(
+      base::Bind(CleanUpContainer, container_dir));
+  // Not using base::CreateDirectory() since we want to error out when the
+  // directory exists a priori.
+  if (mkdir(container_dir.value().c_str(), 0755) != 0) {
+    PLOG(ERROR) << "Failed to create the container directory";
+    return -1;
+  }
 
-    cleanup.ReplaceClosure(base::Bind(CleanUpContainer, container_dir));
+  if (!base::CreateSymbolicLink(container_config_file,
+                                container_dir.Append(kConfigJsonFilename))) {
+    PLOG(ERROR) << "Failed to create the config.json symlink";
+    return -1;
+  }
 
-    if (!base::CreateSymbolicLink(container_config_file,
-                                  container_dir.Append(kConfigJsonFilename))) {
-      PLOG(ERROR) << "Failed to create the config.json symlink";
-      return -1;
-    }
+  // Create an empty file, just to tag this container as being
+  // run_oci-managed.
+  const base::FilePath tag_file = container_dir.Append(kRunOciFilename);
+  if (base::WriteFile(tag_file, "", 0) != 0) {
+    LOG(ERROR) << "Failed to create tag file: " << tag_file.value();
+    return -1;
+  }
 
-    // Create an empty file, just to tag this container as being
-    // run_oci-managed.
-    const base::FilePath tag_file = container_dir.Append(kRunOciFilename);
-    if (base::WriteFile(tag_file, "", 0) != 0) {
-      LOG(ERROR) << "Failed to create tag file: " << tag_file.value();
-      return -1;
-    }
-
-    // Create a symlink to quickly be able to navigate to the root of the
-    // container.
-    base::FilePath rootfs_path =
-        MakeAbsoluteFilePathRelativeTo(bundle_dir, oci_config->root.path);
-    base::FilePath rootfs_symlink =
-        container_dir.Append("mountpoints/container-root");
-    if (!base::CreateDirectory(rootfs_symlink.DirName())) {
-      PLOG(ERROR) << "Failed to create mountpoints directory";
-      return -1;
-    }
-    if (!base::CreateSymbolicLink(rootfs_path, rootfs_symlink)) {
-      PLOG(ERROR) << "Failed to create mountpoints/container-root symlink";
-      return -1;
-    }
-    if (!container_options.log_file.empty() &&
-        !base::CreateSymbolicLink(container_options.log_file,
-                                  container_dir.Append(kLogFilename))) {
-      PLOG(ERROR) << "Failed to create log symlink";
-    }
-  } else {
-    container_dir = bundle_dir;
+  // Create a symlink to quickly be able to navigate to the root of the
+  // container.
+  base::FilePath rootfs_path =
+      MakeAbsoluteFilePathRelativeTo(bundle_dir, oci_config->root.path);
+  base::FilePath rootfs_symlink =
+      container_dir.Append("mountpoints/container-root");
+  if (!base::CreateDirectory(rootfs_symlink.DirName())) {
+    PLOG(ERROR) << "Failed to create mountpoints directory";
+    return -1;
+  }
+  if (!base::CreateSymbolicLink(rootfs_path, rootfs_symlink)) {
+    PLOG(ERROR) << "Failed to create mountpoints/container-root symlink";
+    return -1;
+  }
+  if (!container_options.log_file.empty() &&
+      !base::CreateSymbolicLink(container_options.log_file,
+                                container_dir.Append(kLogFilename))) {
+    PLOG(ERROR) << "Failed to create log symlink";
   }
 
   bool needs_intermediate_mount_ns = false;
@@ -779,27 +774,25 @@ int RunOci(const base::FilePath& bundle_dir,
   }
 
   child_pid = container_pid(container.get());
-  if (detach_after_start) {
-    const base::FilePath container_pid_path =
-        container_dir.Append(kContainerPidFilename);
-    std::string child_pid_str = base::StringPrintf("%d\n", child_pid);
-    if (base::WriteFile(container_pid_path, child_pid_str.c_str(),
-                        child_pid_str.size()) != child_pid_str.size()) {
-      PLOG(ERROR) << "Failed to write the container PID to "
-                  << container_pid_path.value();
-      return -1;
-    }
+  const base::FilePath container_pid_path =
+      container_dir.Append(kContainerPidFilename);
+  std::string child_pid_str = base::StringPrintf("%d\n", child_pid);
+  if (base::WriteFile(container_pid_path, child_pid_str.c_str(),
+                      child_pid_str.size()) != child_pid_str.size()) {
+    PLOG(ERROR) << "Failed to write the container PID to "
+                << container_pid_path.value();
+    return -1;
+  }
 
-    // Create another symlink similar to mountpoints/container-root. Unlike
-    // mountpoints/container-root, this one provides the view from inside the
-    // container.
-    base::FilePath procfs_path(base::StringPrintf("/proc/%d/root", child_pid));
-    base::FilePath symlink_path = container_dir.Append("root");
-    if (!base::CreateSymbolicLink(procfs_path, symlink_path)) {
-      PLOG(ERROR) << "Failed to create root/ symlink";
-      container_kill(container.get());
-      return -1;
-    }
+  // Create another symlink similar to mountpoints/container-root. Unlike
+  // mountpoints/container-root, this one provides the view from inside the
+  // container.
+  base::FilePath procfs_path(base::StringPrintf("/proc/%d/root", child_pid));
+  base::FilePath symlink_path = container_dir.Append("root");
+  if (!base::CreateSymbolicLink(procfs_path, symlink_path)) {
+    PLOG(ERROR) << "Failed to create root/ symlink";
+    container_kill(container.get());
+    return -1;
   }
 
   if (!RunHooks(oci_config->post_start_hooks, &child_pid, container_id,
@@ -819,6 +812,9 @@ int RunOci(const base::FilePath& bundle_dir,
     ignore_result(cleanup.Release());
     return 0;
   }
+
+  if (container_options.sigstop_when_ready)
+    raise(SIGSTOP);
 
   return container_wait(container.get());
 }
@@ -950,6 +946,7 @@ const struct option longopts[] = {
     {"container_path", required_argument, nullptr, 'c'},
     {"log_dir", required_argument, nullptr, 'l'},
     {"log_tag", required_argument, nullptr, 't'},
+    {"sigstop_when_ready", no_argument, nullptr, 's'},
     {0, 0, 0, 0},
 };
 
@@ -989,6 +986,10 @@ void print_help(const char* argv0) {
       "  -p, --cgroup_parent=<NAME>     Set parent cgroup for container.\n"
       "  -u, --use_current_user         Map the current user/group only.\n"
       "  -i, --dont_run_as_init         Do not run the command as init.\n"
+      "\n"
+      "Options for run:\n"
+      "  -s, --sigstop_when_ready      raise SIGSTOP on container is ready.\n"
+      "                                 For use with Upstart's 'expect stop'.\n"
       "\n"
       "kill:\n"
       "\n"
@@ -1072,6 +1073,9 @@ int main(int argc, char** argv) {
           }
           log_dir = current_directory.Append(log_dir);
         }
+        break;
+      case 's':
+        container_options.sigstop_when_ready = true;
         break;
       case 't':
         container_options.log_tag = optarg;

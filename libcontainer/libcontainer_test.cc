@@ -664,6 +664,10 @@ int minijail_add_to_cgroup(struct minijail* j, const char* cg_path) {
   return 0;
 }
 
+int minijail_forward_signals(struct minijail* j) {
+  return 0;
+}
+
 void minijail_reset_signal_mask(struct minijail* j) {
   ++libcontainer::g_mock_minijail_state->reset_signal_mask_called_count;
 }
