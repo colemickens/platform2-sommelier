@@ -7,16 +7,28 @@
 
 # TODO(b/131121671): Change this when cid becomes dynamic.
 target='vsock:5:5555'
+logged_in_file='/run/state/logged-in'
 
 is_connected() {
   [ -n "$(adb devices 2>/dev/null | grep "${target}")" ]
 }
 
-command=
-if [ "$1" = "-c" ]; then
-  shift
-  command=$@
+# The user might still be logging in.
+# The loop below will wait for ~15 seconds at most.
+attempts=0
+while [ "${attempts}" -le 30 ] && [ ! -f "${logged_in_file}" ]; do
+  sleep 0.5
+  : $(( attempts += 1 ))
+done
+
+if [ ! -f "${logged_in_file}" ]; then
+  echo "$0: Could not connect, user is not logged in." >&2
+  exit 1
 fi
+
+# 'adb shell' always passes the command line to /bin/sh, so we need to
+# escape arguments.
+command="$(/usr/bin/printf "%q " "$@")"
 
 # adb tries to create .android in the home directory, pass it
 # a temporary directory instead.
@@ -36,16 +48,17 @@ attempts=0
 while [ "${attempts}" -le 10 ] && ! is_connected; do
   adb connect ${target} >/dev/null
   sleep 0.5
-  attempts=$(( attempts + 1 ))
+  : $(( attempts += 1 ))
 done
 
 if ! is_connected; then
-  echo "$0: Could not connect, is the VM running?"
+  echo "$0: Could not connect, is the VM running?" >&2
   rm -rf "${tmpdir}"
   exit 1
 fi
 
-adb shell ${command}
+# Run /system/bin/sh to be consistent with 'android-sh'.
+adb shell /system/bin/sh "${command}"
 ret=$?
 rm -rf "${tmpdir}"
 exit $ret

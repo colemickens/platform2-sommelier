@@ -5,7 +5,7 @@
 
 # TODO(b/129426200): Update how this detects ARCVM is active.
 if [ -n "$(egrep '^arcvm$' /etc/ui_use_flags.txt)" ]; then
-  exec android-sh-vm $@
+  exec android-sh-vm "$@"
 fi
 
 die() {
