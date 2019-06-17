@@ -23,7 +23,7 @@ eval set -- "${FLAGS_ARGV}"
 
 set -e
 
-if [ ${FLAGS_test} -eq ${FLAGS_FALSE} ]; then
+if [ "${FLAGS_test}" -eq "${FLAGS_FALSE}" ]; then
   . /usr/share/misc/chromeos-common.sh
   . /usr/share/cros/disk_utils.sh
   . /usr/share/cros/trim_utils.sh
@@ -129,8 +129,10 @@ get_disk_time_ms() {
 # Wait a little longer if we are, and bails if the process takes
 # too long.
 do_trim() {
-  local partition_size=$(get_stateful_total_space_blocks "1M")
-  local start_time=$(date +%s)
+  local partition_size
+  partition_size="$(get_stateful_total_space_blocks "1M")"
+  local start_time
+  start_time="$(date +%s)"
   local current_duration=0
   local before_time_spent_io_ms
   local after_time_spent_io_ms
@@ -141,13 +143,13 @@ do_trim() {
   read_status_file
   trim_status="${TRIM_IN_PROGRESS}"
 
-  if [ ${current_offset} -eq 0 ]; then
+  if [ "${current_offset}" -eq 0 ]; then
     trimmed_amount=0
     duration=0
   fi
 
-  while [ ${current_offset} -lt ${partition_size} -a \
-          ${current_duration} -lt ${MAX_TRIM_WORKER_TIME_SEC} ]; do
+  while [ "${current_offset}" -lt "${partition_size}" ] && \
+          [ "${current_duration}" -lt "${MAX_TRIM_WORKER_TIME_SEC}" ]; do
     before_time_spent_io_ms=$(get_disk_time_ms)
     sleep "${DELAY_BTW_FSTRIM_SEC}"
     after_time_spent_io_ms=$(get_disk_time_ms)
@@ -182,9 +184,9 @@ do_trim() {
   : $(( duration += current_duration ))
 
   # Prepare to save status in status file.
-  if [ ${current_offset} -eq ${partition_size} ]; then
+  if [ "${current_offset}" -eq "${partition_size}" ]; then
     current_offset=0
-    write_last_trim=$(awk '{print $7}' "${PARTITION_DEV_STATS}")
+    write_last_trim="$(awk '{print $7}' "${PARTITION_DEV_STATS}")"
     trim_status="${TRIM_COMPLETED}"
     log_msg "${STATEFUL} fully trimmed in ${duration} seconds"
   else
@@ -207,13 +209,13 @@ main() {
   if [ -f "${CHROMEOS_TRIM_DATA}" ]; then
     read_status_file
 
-    if [ ${current_offset} -ne 0 ]; then
+    if [ "${current_offset}" -ne 0 ]; then
       # Trim was interrupted due to intense disk activity, resume.
       trigger_trim=true
     fi
 
     # Last trim was completed a long time ago.
-    if [ $(( date_last_trim + MAX_DELAY )) -lt $(date +%s) ]; then
+    if [ "$(( date_last_trim + MAX_DELAY ))" -lt "$(date +%s)" ]; then
       trigger_trim=true
     fi
 
@@ -224,9 +226,9 @@ main() {
 
   if ! ${trigger_trim}; then
     block_size="$(get_device_block_size)"
-    free_blocks=$(get_stateful_free_space_blocks ${block_size})
+    free_blocks="$(get_stateful_free_space_blocks "${block_size}")"
     written_blocks=$(awk '{print $7}' "${PARTITION_DEV_STATS}")
-    if [ $(date +%s -d "$(uptime -s)") -gt ${date_last_trim} ]; then
+    if [ "$(date +%s -d "$(uptime -s)")" -gt "${date_last_trim}" ]; then
       # Machine has rebooted since last trim, the amount of writes since
       # last trim is irrelevant.
       write_last_trim=0
@@ -241,13 +243,13 @@ main() {
     fi
   fi
 
-  if ${trigger_trim}; then
+  if "${trigger_trim}"; then
       do_trim
   fi
 }
 
 # Invoke main if not in test mode, otherwise let the test code call.
-if [ ${FLAGS_test} -eq ${FLAGS_FALSE} ]; then
+if [ "${FLAGS_test}" -eq "${FLAGS_FALSE}" ]; then
   (
   if ! flock -n 9; then
     log_msg "Already running; quitting."
