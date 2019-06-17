@@ -454,9 +454,9 @@ TEST_F(TpmUtilityTest, UnsealFail) {
 TEST_F(TpmUtilityTest, GetEndorsementPublicKey) {
   std::string key;
   EXPECT_TRUE(tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_RSA, &key));
-  ON_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
-      .WillByDefault(DoAll(SetArgPointee<1>(GetValidEccPublicKey(nullptr)),
-                           Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(GetValidEccPublicKey(nullptr)),
+                      Return(TPM_RC_SUCCESS)));
   EXPECT_TRUE(tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_ECC, &key));
 }
 
@@ -639,9 +639,9 @@ TEST_F(TpmUtilityTest, QuotePCRWithRsa) {
 }
 
 TEST_F(TpmUtilityTest, QuotePCRWithEcc) {
-  ON_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
-      .WillByDefault(DoAll(SetArgPointee<1>(GetValidEccPublicKey(nullptr)),
-                           Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(GetValidEccPublicKey(nullptr)),
+                      Return(TPM_RC_SUCCESS)));
 
   EXPECT_CALL(mock_tpm_utility_, ReadPCR(5, _))
       .WillRepeatedly(
@@ -741,9 +741,9 @@ TEST_F(TpmUtilityTest, CertifyNVWithEcc) {
   constexpr int kFakeNvIndex = 0x123;
   constexpr int kFakeNvSize = 0x456;
 
-  ON_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
-      .WillByDefault(DoAll(SetArgPointee<1>(GetValidEccPublicKey(nullptr)),
-                           Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(GetValidEccPublicKey(nullptr)),
+                      Return(TPM_RC_SUCCESS)));
 
   trunks::TPMT_SIGNATURE fake_signature;
   fake_signature.sig_alg = trunks::TPM_ALG_ECDSA;
