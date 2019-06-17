@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/optional.h>
 
 #include "modemfwd/firmware_file_info.h"
 
@@ -16,25 +17,23 @@ namespace modemfwd {
 
 class FirmwareDirectory {
  public:
+  struct Files {
+    base::Optional<FirmwareFileInfo> main_firmware;
+    base::Optional<FirmwareFileInfo> carrier_firmware;
+  };
+
   static const char kGenericCarrierId[];
 
   virtual ~FirmwareDirectory() = default;
 
   // Finds main firmware in the firmware directory for modems with device ID
-  // |device_id|. Returns true and sets fields of |out_info| on success and
-  // false otherwise.
-  virtual bool FindMainFirmware(const std::string& device_id,
-                                FirmwareFileInfo* out_info) = 0;
-
-  // Finds carrier firmware in the firmware directory for modems with device ID
-  // |device_id| for the carrier |carrier_name|. Returns true and sets fields of
-  // |out_info| on success and false otherwise.
+  // |device_id|, and carrier firmware for the carrier |carrier_id| if it
+  // is not null.
   //
   // |carrier_id| may be changed if we find a different carrier firmware
   // that supports the carrier |carrier_id|, such as a generic one.
-  virtual bool FindCarrierFirmware(const std::string& device_id,
-                                   std::string* carrier_id,
-                                   FirmwareFileInfo* out_info) = 0;
+  virtual Files FindFirmware(const std::string& device_id,
+                             std::string* carrier_id) = 0;
 };
 
 std::unique_ptr<FirmwareDirectory> CreateFirmwareDirectory(

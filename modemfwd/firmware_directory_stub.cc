@@ -37,10 +37,17 @@ void FirmwareDirectoryStub::AddCarrierFirmware(const std::string& device_id,
       std::make_pair(std::make_pair(device_id, carrier_id), info));
 }
 
-// modemfwd::FirmwareDirectory overrides.
-bool FirmwareDirectoryStub::FindMainFirmware(const std::string& device_id,
-                                             FirmwareFileInfo* out_info) {
-  return GetValue(main_fw_info_, device_id, out_info);
+FirmwareDirectory::Files FirmwareDirectoryStub::FindFirmware(
+    const std::string& device_id, std::string* carrier_id) {
+  FirmwareDirectory::Files res;
+
+  FirmwareFileInfo info;
+  if (GetValue(main_fw_info_, device_id, &info))
+    res.main_firmware = info;
+  if (carrier_id && FindCarrierFirmware(device_id, carrier_id, &info))
+    res.carrier_firmware = info;
+
+  return res;
 }
 
 bool FirmwareDirectoryStub::FindCarrierFirmware(const std::string& device_id,

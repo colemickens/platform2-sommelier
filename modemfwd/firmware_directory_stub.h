@@ -25,13 +25,14 @@ class FirmwareDirectoryStub : public FirmwareDirectory {
                           FirmwareFileInfo info);
 
   // modemfwd::FirmwareDirectory overrides.
-  bool FindMainFirmware(const std::string& device_id,
-                        FirmwareFileInfo* out_info) override;
-  bool FindCarrierFirmware(const std::string& device_id,
-                           std::string* carrier_id,
-                           FirmwareFileInfo* out_info) override;
+  FirmwareDirectory::Files FindFirmware(const std::string& device_id,
+                                        std::string* carrier_id) override;
 
  private:
+  bool FindCarrierFirmware(const std::string& device_id,
+                           std::string* carrier_id,
+                           FirmwareFileInfo* out_info);
+
   std::map<std::string, FirmwareFileInfo> main_fw_info_;
   std::map<std::pair<std::string, std::string>, FirmwareFileInfo>
       carrier_fw_info_;

@@ -62,27 +62,33 @@ TEST_F(FirmwareDirectoryTest, FindFirmware) {
   const base::FilePath kManifest("test_protos/find_firmware.prototxt");
   SetUpDirectory(kManifest);
 
-  FirmwareFileInfo info;
-  EXPECT_TRUE(firmware_directory_->FindMainFirmware(kDeviceId, &info));
-  EXPECT_EQ(kMainFirmwareFile, info.firmware_path.BaseName().value());
-  EXPECT_EQ(kMainFirmwareVersion, info.version);
   std::string carrier_a(kCarrierA);
-  EXPECT_TRUE(
-      firmware_directory_->FindCarrierFirmware(kDeviceId, &carrier_a, &info));
+  FirmwareDirectory::Files res =
+      firmware_directory_->FindFirmware(kDeviceId, &carrier_a);
+
+  EXPECT_TRUE(res.main_firmware.has_value());
+  const FirmwareFileInfo& main_info = res.main_firmware.value();
+  EXPECT_EQ(kMainFirmwareFile, main_info.firmware_path.BaseName().value());
+  EXPECT_EQ(kMainFirmwareVersion, main_info.version);
+
+  EXPECT_TRUE(res.carrier_firmware.has_value());
+  const FirmwareFileInfo& carrier_info = res.carrier_firmware.value();
   EXPECT_EQ(kCarrierA, carrier_a);
-  EXPECT_EQ(kCarrierFirmwareFile1, info.firmware_path.BaseName().value());
-  EXPECT_EQ(kCarrierFirmwareVersion1, info.version);
+  EXPECT_EQ(kCarrierFirmwareFile1,
+            carrier_info.firmware_path.BaseName().value());
+  EXPECT_EQ(kCarrierFirmwareVersion1, carrier_info.version);
 }
 
 TEST_F(FirmwareDirectoryTest, NoFirmwareForDevice) {
   const base::FilePath kManifest("/dev/null");
   SetUpDirectory(kManifest);
 
-  FirmwareFileInfo info;
-  EXPECT_FALSE(firmware_directory_->FindMainFirmware(kDeviceId, &info));
   std::string carrier_a(kCarrierA);
-  EXPECT_FALSE(
-      firmware_directory_->FindCarrierFirmware(kDeviceId, &carrier_a, &info));
+  FirmwareDirectory::Files res =
+      firmware_directory_->FindFirmware(kDeviceId, &carrier_a);
+
+  EXPECT_FALSE(res.main_firmware.has_value());
+  EXPECT_FALSE(res.carrier_firmware.has_value());
 }
 
 TEST_F(FirmwareDirectoryTest, FirmwareForDifferentCarrier) {
@@ -90,10 +96,10 @@ TEST_F(FirmwareDirectoryTest, FirmwareForDifferentCarrier) {
       "test_protos/firmware_for_different_carrier.prototxt");
   SetUpDirectory(kManifest);
 
-  FirmwareFileInfo info;
   std::string carrier_b(kCarrierB);
-  EXPECT_FALSE(
-      firmware_directory_->FindCarrierFirmware(kDeviceId, &carrier_b, &info));
+  FirmwareDirectory::Files res =
+      firmware_directory_->FindFirmware(kDeviceId, &carrier_b);
+  EXPECT_FALSE(res.carrier_firmware.has_value());
 }
 
 TEST_F(FirmwareDirectoryTest, FirmwareForDifferentDevice) {
@@ -101,8 +107,9 @@ TEST_F(FirmwareDirectoryTest, FirmwareForDifferentDevice) {
       "test_protos/firmware_for_different_device.prototxt");
   SetUpDirectory(kManifest);
 
-  FirmwareFileInfo info;
-  EXPECT_FALSE(firmware_directory_->FindMainFirmware(kDeviceId, &info));
+  FirmwareDirectory::Files res =
+      firmware_directory_->FindFirmware(kDeviceId, nullptr);
+  EXPECT_FALSE(res.main_firmware.has_value());
 }
 
 TEST_F(FirmwareDirectoryTest, MultipleCarrierFirmware) {
@@ -110,30 +117,33 @@ TEST_F(FirmwareDirectoryTest, MultipleCarrierFirmware) {
       "test_protos/multiple_carrier_firmware.prototxt");
   SetUpDirectory(kManifest);
 
-  FirmwareFileInfo info;
   std::string carrier_a(kCarrierA);
-  EXPECT_TRUE(
-      firmware_directory_->FindCarrierFirmware(kDeviceId, &carrier_a, &info));
+  FirmwareDirectory::Files res =
+      firmware_directory_->FindFirmware(kDeviceId, &carrier_a);
+  EXPECT_TRUE(res.carrier_firmware.has_value());
+  const FirmwareFileInfo& info_a = res.carrier_firmware.value();
   EXPECT_EQ(kCarrierA, carrier_a);
-  EXPECT_EQ(kCarrierFirmwareFile1, info.firmware_path.BaseName().value());
-  EXPECT_EQ(kCarrierFirmwareVersion1, info.version);
+  EXPECT_EQ(kCarrierFirmwareFile1, info_a.firmware_path.BaseName().value());
+  EXPECT_EQ(kCarrierFirmwareVersion1, info_a.version);
 
   std::string carrier_b(kCarrierB);
-  EXPECT_TRUE(
-      firmware_directory_->FindCarrierFirmware(kDeviceId, &carrier_b, &info));
+  res = firmware_directory_->FindFirmware(kDeviceId, &carrier_b);
+  EXPECT_TRUE(res.carrier_firmware.has_value());
+  const FirmwareFileInfo& info_b = res.carrier_firmware.value();
   EXPECT_EQ(kCarrierB, carrier_b);
-  EXPECT_EQ(kCarrierFirmwareFile2, info.firmware_path.BaseName().value());
-  EXPECT_EQ(kCarrierFirmwareVersion2, info.version);
+  EXPECT_EQ(kCarrierFirmwareFile2, info_b.firmware_path.BaseName().value());
+  EXPECT_EQ(kCarrierFirmwareVersion2, info_b.version);
 }
 
 TEST_F(FirmwareDirectoryTest, GenericFirmware) {
   const base::FilePath kManifest("test_protos/generic_firmware.prototxt");
   SetUpDirectory(kManifest);
 
-  FirmwareFileInfo info;
   std::string carrier_a(kCarrierA);
-  EXPECT_TRUE(
-      firmware_directory_->FindCarrierFirmware(kDeviceId, &carrier_a, &info));
+  FirmwareDirectory::Files res =
+      firmware_directory_->FindFirmware(kDeviceId, &carrier_a);
+  EXPECT_TRUE(res.carrier_firmware.has_value());
+  const FirmwareFileInfo& info = res.carrier_firmware.value();
   EXPECT_EQ(FirmwareDirectory::kGenericCarrierId, carrier_a);
   EXPECT_EQ(kGenericCarrierFirmwareFile, info.firmware_path.BaseName().value());
   EXPECT_EQ(kGenericCarrierFirmwareVersion, info.version);
@@ -144,10 +154,11 @@ TEST_F(FirmwareDirectoryTest, SpecificBeforeGeneric) {
       "test_protos/specific_before_generic.prototxt");
   SetUpDirectory(kManifest);
 
-  FirmwareFileInfo info;
   std::string carrier_a(kCarrierA);
-  EXPECT_TRUE(
-      firmware_directory_->FindCarrierFirmware(kDeviceId, &carrier_a, &info));
+  FirmwareDirectory::Files res =
+      firmware_directory_->FindFirmware(kDeviceId, &carrier_a);
+  EXPECT_TRUE(res.carrier_firmware.has_value());
+  const FirmwareFileInfo& info = res.carrier_firmware.value();
   EXPECT_EQ(kCarrierA, carrier_a);
   EXPECT_EQ(kCarrierFirmwareFile1, info.firmware_path.BaseName().value());
   EXPECT_EQ(kCarrierFirmwareVersion1, info.version);
@@ -157,24 +168,26 @@ TEST_F(FirmwareDirectoryTest, FirmwareSupportsTwoCarriers) {
   const base::FilePath kManifest("test_protos/two_carrier_firmware.prototxt");
   SetUpDirectory(kManifest);
 
-  FirmwareFileInfo info;
   std::string carrier_a(kCarrierA);
-  EXPECT_TRUE(
-      firmware_directory_->FindCarrierFirmware(kDeviceId, &carrier_a, &info));
+  FirmwareDirectory::Files res =
+      firmware_directory_->FindFirmware(kDeviceId, &carrier_a);
+  EXPECT_TRUE(res.carrier_firmware.has_value());
+  const FirmwareFileInfo& info_a = res.carrier_firmware.value();
   EXPECT_EQ(kCarrierA, carrier_a);
-  EXPECT_EQ(kCarrierFirmwareFile1, info.firmware_path.BaseName().value());
-  EXPECT_EQ(kCarrierFirmwareVersion1, info.version);
+  EXPECT_EQ(kCarrierFirmwareFile1, info_a.firmware_path.BaseName().value());
+  EXPECT_EQ(kCarrierFirmwareVersion1, info_a.version);
 
   std::string carrier_b(kCarrierB);
-  EXPECT_TRUE(
-      firmware_directory_->FindCarrierFirmware(kDeviceId, &carrier_b, &info));
+  res = firmware_directory_->FindFirmware(kDeviceId, &carrier_b);
+  EXPECT_TRUE(res.carrier_firmware.has_value());
+  const FirmwareFileInfo& info_b = res.carrier_firmware.value();
   EXPECT_EQ(kCarrierB, carrier_b);
-  EXPECT_EQ(kCarrierFirmwareFile1, info.firmware_path.BaseName().value());
-  EXPECT_EQ(kCarrierFirmwareVersion1, info.version);
+  EXPECT_EQ(kCarrierFirmwareFile1, info_b.firmware_path.BaseName().value());
+  EXPECT_EQ(kCarrierFirmwareVersion1, info_b.version);
 
   std::string carrier_c(kCarrierC);
-  EXPECT_FALSE(
-      firmware_directory_->FindCarrierFirmware(kDeviceId, &carrier_c, &info));
+  res = firmware_directory_->FindFirmware(kDeviceId, &carrier_c);
+  EXPECT_FALSE(res.carrier_firmware.has_value());
 }
 
 TEST_F(FirmwareDirectoryTest, MalformedMainEntry) {
@@ -182,8 +195,9 @@ TEST_F(FirmwareDirectoryTest, MalformedMainEntry) {
       "test_protos/malformed_main_firmware.prototxt");
   SetUpDirectory(kManifest);
 
-  FirmwareFileInfo info;
-  EXPECT_FALSE(firmware_directory_->FindMainFirmware(kDeviceId, &info));
+  FirmwareDirectory::Files res =
+      firmware_directory_->FindFirmware(kDeviceId, nullptr);
+  EXPECT_FALSE(res.main_firmware.has_value());
 }
 
 TEST_F(FirmwareDirectoryTest, MalformedCarrierEntry) {
@@ -191,10 +205,10 @@ TEST_F(FirmwareDirectoryTest, MalformedCarrierEntry) {
       "test_protos/malformed_carrier_firmware.prototxt");
   SetUpDirectory(kManifest);
 
-  FirmwareFileInfo info;
   std::string carrier_a(kCarrierA);
-  EXPECT_FALSE(
-      firmware_directory_->FindCarrierFirmware(kDeviceId, &carrier_a, &info));
+  FirmwareDirectory::Files res =
+      firmware_directory_->FindFirmware(kDeviceId, &carrier_a);
+  EXPECT_FALSE(res.carrier_firmware.has_value());
 }
 
 }  // namespace modemfwd

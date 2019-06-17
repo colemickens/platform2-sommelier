@@ -28,12 +28,16 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
                  << "\" failed to flash too many times; not flashing";
     return base::Closure();
   }
-  std::string device_id = modem->GetDeviceId();
 
-  FirmwareFileInfo file_info;
+  std::string device_id = modem->GetDeviceId();
+  std::string current_carrier = modem->GetCarrierId();
+  FirmwareDirectory::Files files = firmware_directory_->FindFirmware(
+      device_id, current_carrier.empty() ? nullptr : &current_carrier);
+
   // Check if we need to update the main firmware.
   if (flash_state->ShouldFlashMainFirmware() &&
-      firmware_directory_->FindMainFirmware(device_id, &file_info)) {
+      files.main_firmware.has_value()) {
+    const FirmwareFileInfo& file_info = files.main_firmware.value();
     DLOG(INFO) << "Found main firmware blob " << file_info.version
                << ", currently installed main firmware version: "
                << modem->GetMainFirmwareVersion();
@@ -66,7 +70,6 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
   }
 
   // If there's no SIM, we can stop here.
-  std::string current_carrier = modem->GetCarrierId();
   if (current_carrier.empty()) {
     DLOG(INFO) << "No carrier found. Is a SIM card inserted?";
     return base::Closure();
@@ -74,12 +77,12 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
 
   // Check if we have carrier firmware matching the SIM's carrier. If not,
   // there's nothing to flash.
-  if (!firmware_directory_->FindCarrierFirmware(device_id, &current_carrier,
-                                                &file_info)) {
+  if (!files.carrier_firmware.has_value()) {
     DLOG(INFO) << "No carrier firmware found for carrier " << current_carrier;
     return base::Closure();
   }
 
+  const FirmwareFileInfo& file_info = files.carrier_firmware.value();
   if (!flash_state->ShouldFlashCarrierFirmware(file_info.firmware_path)) {
     DLOG(INFO) << "Already flashed carrier firmware for " << current_carrier;
     return base::Closure();

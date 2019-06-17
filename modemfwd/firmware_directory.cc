@@ -69,8 +69,22 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
         variant_(GetModemFirmwareVariant()) {}
 
   // modemfwd::FirmwareDirectory overrides.
+  FirmwareDirectory::Files FindFirmware(const std::string& device_id,
+                                        std::string* carrier_id) override {
+    FirmwareDirectory::Files result;
+
+    FirmwareFileInfo info;
+    if (FindMainFirmware(device_id, &info))
+      result.main_firmware = info;
+    if (carrier_id && FindCarrierFirmware(device_id, carrier_id, &info))
+      result.carrier_firmware = info;
+
+    return result;
+  }
+
+ private:
   bool FindMainFirmware(const std::string& device_id,
-                        FirmwareFileInfo* out_info) override {
+                        FirmwareFileInfo* out_info) {
     DCHECK(out_info);
     for (const MainFirmware& file_info : manifest_.main_firmware()) {
       if (file_info.device_id() == device_id &&
@@ -89,7 +103,7 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
 
   bool FindCarrierFirmware(const std::string& device_id,
                            std::string* carrier_id,
-                           FirmwareFileInfo* out_info) override {
+                           FirmwareFileInfo* out_info) {
     DCHECK(carrier_id);
     if (FindSpecificCarrierFirmware(device_id, *carrier_id, out_info))
       return true;
@@ -102,7 +116,6 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
     return false;
   }
 
- private:
   bool FindSpecificCarrierFirmware(const std::string& device_id,
                                    const std::string& carrier_id,
                                    FirmwareFileInfo* out_info) {

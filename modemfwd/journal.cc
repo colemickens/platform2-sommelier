@@ -31,25 +31,27 @@ bool RestartOperation(const JournalEntry& entry,
     return false;
   }
 
-  FirmwareFileInfo firmware_file;
-  if (!entry.carrier_id().empty()) {
-    std::string carrier_id(entry.carrier_id());
-    if (!firmware_dir->FindCarrierFirmware(entry.device_id(), &carrier_id,
-                                           &firmware_file)) {
+  std::string carrier_id(entry.carrier_id());
+  FirmwareDirectory::Files res = firmware_dir->FindFirmware(
+      entry.device_id(), carrier_id.empty() ? nullptr : &carrier_id);
+  if (!carrier_id.empty()) {
+    if (!res.carrier_firmware.has_value()) {
       LOG(ERROR) << "Unfinished carrier firmware flash for device with ID \""
                  << entry.device_id() << "\" but no firmware was found";
       return false;
     }
+    const FirmwareFileInfo& firmware_file = res.carrier_firmware.value();
     DLOG(INFO) << "Journal reflashing carrier firmware "
                << firmware_file.firmware_path.value();
     return helper->FlashCarrierFirmware(firmware_file.firmware_path);
   }
 
-  if (!firmware_dir->FindMainFirmware(entry.device_id(), &firmware_file)) {
+  if (!res.main_firmware.has_value()) {
     LOG(ERROR) << "Unfinished main firmware flash for device with ID \""
                << entry.device_id() << "\" but no firmware was found";
     return false;
   }
+  const FirmwareFileInfo& firmware_file = res.main_firmware.value();
   DLOG(INFO) << "Journal reflashing main firmware "
              << firmware_file.firmware_path.value();
   return helper->FlashMainFirmware(firmware_file.firmware_path);
