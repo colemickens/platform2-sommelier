@@ -26,7 +26,9 @@ namespace {
 
 const char kTextFmtExt[] = ".prototxt";
 
-bool CheckProbeResultHasError(const runtime_probe::ProbeResult& pr) {
+bool LogProbeResultAndCheckHasError(const runtime_probe::ProbeResult& pr) {
+  VLogProtobuf(2, "ProbeResult", pr);
+  LOG(INFO) << "Recorded probe config checksum: " << pr.probe_config_checksum();
   if (pr.error()) {
     LOG(ERROR) << "The error code in the probe result message is set ("
                << pr.error() << ").";
@@ -67,8 +69,7 @@ ProbeResultGetterImpl::GetFromRuntimeProbe() const {
   if (!runtime_probe_proxy_->ProbeCategories(probe_request, &probe_result)) {
     return base::nullopt;
   }
-  VLogProtobuf(2, "ProbeResult", probe_result);
-  if (!CheckProbeResultHasError(probe_result)) {
+  if (!LogProbeResultAndCheckHasError(probe_result)) {
     return base::nullopt;
   }
   return probe_result;
@@ -96,8 +97,7 @@ base::Optional<runtime_probe::ProbeResult> ProbeResultGetterImpl::GetFromFile(
     LOG(ERROR) << "Failed to parse the probe result in text format.";
     return base::nullopt;
   }
-  VLogProtobuf(2, "ProbeResult", probe_result);
-  if (!CheckProbeResultHasError(probe_result)) {
+  if (!LogProbeResultAndCheckHasError(probe_result)) {
     return base::nullopt;
   }
   return probe_result;

@@ -161,8 +161,10 @@ void Daemon::ProbeCategories(
   // Convert JSON to Protocol Buffer.
   auto options = google::protobuf::util::JsonParseOptions();
   options.ignore_unknown_fields = true;
-  auto json_parse_status =
-      google::protobuf::util::JsonStringToMessage(output_js, &reply, options);
+  ProbeResult placeholder;
+  auto json_parse_status = google::protobuf::util::JsonStringToMessage(
+      output_js, &placeholder, options);
+  reply.MergeFrom(placeholder);
   VLOG(3) << "serialize JSON to Protobuf status: " << json_parse_status;
 
   return SendProbeResult(reply, method_call, &response_sender);
