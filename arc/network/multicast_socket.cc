@@ -7,8 +7,6 @@
 
 #include <arpa/inet.h>
 #include <net/if.h>
-#include <string.h>
-#include <sys/ioctl.h>
 #include <unistd.h>
 
 #include <utility>
@@ -112,7 +110,6 @@ bool MulticastSocket::Bind(const std::string& ifname,
       fd.get(), true, MessageLoopForIO::WATCH_READ, &watcher_, parent);
 
   fd_ = std::move(fd);
-  ifname_ = ifname;
   return true;
 }
 
@@ -128,22 +125,4 @@ bool MulticastSocket::SendTo(const void* data,
   last_used_ = time(NULL);
   return true;
 }
-
-struct in_addr const MulticastSocket::GetInterfaceIp() {
-  struct ifreq ifr;
-  memset(&ifr, 0, sizeof(ifr));
-  strncpy(ifr.ifr_name, ifname_.c_str(), IFNAMSIZ);
-  if (ioctl(fd_.get(), SIOCGIFADDR, &ifr) < 0) {
-    // Ignore EADDRNOTAVAIL: layer 3 was not provisioned.
-    if (errno != EADDRNOTAVAIL) {
-      PLOG(ERROR) << "SIOCGIFADDR failed for " << ifname_;
-    }
-    return {0};
-  }
-
-  struct sockaddr_in* if_addr =
-      reinterpret_cast<struct sockaddr_in*>(&ifr.ifr_addr);
-  return if_addr->sin_addr;
-}
-
 }  // namespace arc_networkd

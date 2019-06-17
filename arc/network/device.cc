@@ -115,16 +115,24 @@ void Device::Enable(const std::string& ifname) {
   }
 
   if (options_.fwd_multicast) {
-    mdns_forwarder_.reset(new MulticastForwarder());
-    mdns_forwarder_->Start(config_->host_ifname(), ifname,
-                           config_->guest_ipv4_addr(), kMdnsMcastAddress,
-                           kMdnsPort,
-                           /* allow_stateless */ true);
+    auto mdns_fwd = std::make_unique<MulticastForwarder>();
+    if (mdns_fwd->Start(config_->host_ifname(), ifname,
+                        config_->guest_ipv4_addr(), kMdnsMcastAddress,
+                        kMdnsPort,
+                        /* allow_stateless */ true)) {
+      mdns_forwarder_ = std::move(mdns_fwd);
+    } else {
+      LOG(WARNING) << "mDNS forwarder could not be started on " << ifname_;
+    }
 
-    ssdp_forwarder_.reset(new MulticastForwarder());
-    ssdp_forwarder_->Start(config_->host_ifname(), ifname, htonl(INADDR_ANY),
-                           kSsdpMcastAddress, kSsdpPort,
-                           /* allow_stateless */ false);
+    auto ssdp_fwd = std::make_unique<MulticastForwarder>();
+    if (ssdp_fwd->Start(config_->host_ifname(), ifname, htonl(INADDR_ANY),
+                        kSsdpMcastAddress, kSsdpPort,
+                        /* allow_stateless */ false)) {
+      ssdp_forwarder_ = std::move(ssdp_fwd);
+    } else {
+      LOG(WARNING) << "SSDP forwarder could not be started on " << ifname_;
+    }
   }
 
   if (options_.find_ipv6_routes) {

@@ -32,9 +32,6 @@ class MulticastSocket {
             unsigned short port,
             MessageLoopForIO::Watcher* parent);
   bool SendTo(const void* data, size_t len, const struct sockaddr_in& addr);
-  // Returns the IPv4 address assigned to the interface on which this socket is
-  // bound. Or returns INADDR_ANY if the interface has no IPv4 address.
-  struct in_addr const GetInterfaceIp();
 
   int fd() const { return fd_.get(); }
   time_t last_used() const { return last_used_; }
@@ -42,7 +39,6 @@ class MulticastSocket {
   struct sockaddr_in int_addr;
 
  protected:
-  std::string ifname_;
   base::ScopedFD fd_;
   time_t last_used_;
   MessageLoopForIO::FileDescriptorWatcher watcher_;
