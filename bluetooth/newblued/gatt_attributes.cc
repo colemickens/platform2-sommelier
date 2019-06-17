@@ -4,6 +4,8 @@
 
 #include "bluetooth/newblued/gatt_attributes.h"
 
+#include <utility>
+
 #include <base/logging.h>
 #include <base/macros.h>
 
@@ -21,6 +23,44 @@ GattService::GattService(const std::string& device_address,
       uuid_(uuid) {
   CHECK(!device_address.empty());
   CHECK(first_handle <= last_handle);
+}
+
+GattService::GattService(uint16_t first_handle,
+                         uint16_t last_handle,
+                         bool primary,
+                         const Uuid& uuid)
+    : first_handle_(first_handle),
+      last_handle_(last_handle),
+      primary_(primary),
+      uuid_(uuid) {
+  CHECK(first_handle <= last_handle);
+}
+
+void GattService::SetDeviceAddress(const std::string& device_address) {
+  CHECK(!device_address.empty());
+  device_address_ = device_address;
+}
+
+void GattService::AddIncludedService(
+    std::unique_ptr<GattIncludedService> included_service) {
+  CHECK(included_service != nullptr);
+  CHECK(included_service->service() == this);
+
+  included_services_.emplace(included_service->first_handle(),
+                             std::move(included_service));
+}
+
+void GattService::AddCharacteristic(
+    std::unique_ptr<GattCharacteristic> characteristic) {
+  CHECK(characteristic != nullptr);
+  CHECK(characteristic->service() == this);
+
+  characteristics_.emplace(characteristic->first_handle(),
+                           std::move(characteristic));
+}
+
+bool GattService::HasOwner() const {
+  return !device_address_.empty();
 }
 
 GattIncludedService::GattIncludedService(GattService* service,
@@ -52,6 +92,13 @@ GattCharacteristic::GattCharacteristic(GattService* service,
   CHECK(service != nullptr);
   CHECK(first_handle <= last_handle);
   service_ = service;
+}
+
+void GattCharacteristic::AddDescriptor(
+    std::unique_ptr<GattDescriptor> descriptor) {
+  CHECK(descriptor != nullptr);
+  CHECK(descriptor->characteristic() == this);
+  descriptors_.emplace(descriptor->handle(), std::move(descriptor));
 }
 
 GattDescriptor::GattDescriptor(GattCharacteristic* characteristic,
