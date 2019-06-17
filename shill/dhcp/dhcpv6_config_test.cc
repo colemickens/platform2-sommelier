@@ -18,9 +18,7 @@
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/dhcp/mock_dhcp_proxy.h"
 #include "shill/event_dispatcher.h"
-#include "shill/mock_control.h"
 #include "shill/mock_log.h"
-#include "shill/mock_metrics.h"
 #include "shill/mock_process_manager.h"
 #include "shill/property_store_test.h"
 #include "shill/testing.h"
@@ -52,7 +50,7 @@ class DHCPv6ConfigTest : public PropertyStoreTest {
  public:
   DHCPv6ConfigTest()
       : proxy_(new MockDHCPProxy()),
-        config_(new DHCPv6Config(&control_,
+        config_(new DHCPv6Config(control_interface(),
                                  dispatcher(),
                                  &provider_,
                                  kDeviceName,
@@ -83,7 +81,6 @@ class DHCPv6ConfigTest : public PropertyStoreTest {
   FilePath pid_file_;
   ScopedTempDir temp_dir_;
   std::unique_ptr<MockDHCPProxy> proxy_;
-  MockControl control_;
   MockProcessManager process_manager_;
   MockDHCPProvider provider_;
   DHCPv6ConfigRefPtr config_;
@@ -94,7 +91,7 @@ const unsigned int DHCPv6ConfigTest::kTag = 77;
 
 DHCPv6ConfigRefPtr DHCPv6ConfigTest::CreateMockMinijailConfig(
     const string& lease_suffix) {
-  DHCPv6ConfigRefPtr config(new DHCPv6Config(&control_,
+  DHCPv6ConfigRefPtr config(new DHCPv6Config(control_interface(),
                                              dispatcher(),
                                              &provider_,
                                              kDeviceName,
@@ -106,7 +103,7 @@ DHCPv6ConfigRefPtr DHCPv6ConfigTest::CreateMockMinijailConfig(
 
 DHCPv6ConfigRefPtr DHCPv6ConfigTest::CreateRunningConfig(
     const string& lease_suffix) {
-  DHCPv6ConfigRefPtr config(new DHCPv6Config(&control_,
+  DHCPv6ConfigRefPtr config(new DHCPv6Config(control_interface(),
                                              dispatcher(),
                                              &provider_,
                                              kDeviceName,

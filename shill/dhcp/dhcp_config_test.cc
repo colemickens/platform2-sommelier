@@ -15,9 +15,7 @@
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/dhcp/mock_dhcp_proxy.h"
 #include "shill/event_dispatcher.h"
-#include "shill/mock_control.h"
 #include "shill/mock_log.h"
-#include "shill/mock_metrics.h"
 #include "shill/mock_process_manager.h"
 #include "shill/property_store_test.h"
 #include "shill/testing.h"
@@ -74,7 +72,7 @@ class DHCPConfigTest : public PropertyStoreTest {
  public:
   DHCPConfigTest()
       : proxy_(new MockDHCPProxy()),
-        config_(new TestDHCPConfig(&control_,
+        config_(new TestDHCPConfig(control_interface(),
                                    dispatcher(),
                                    &provider_,
                                    kDeviceName,
@@ -95,7 +93,6 @@ class DHCPConfigTest : public PropertyStoreTest {
   static const int kPID;
 
   unique_ptr<MockDHCPProxy> proxy_;
-  MockControl control_;
   MockProcessManager process_manager_;
   TestDHCPConfigRefPtr config_;
   MockDHCPProvider provider_;
@@ -105,7 +102,7 @@ const int DHCPConfigTest::kPID = 123456;
 
 TestDHCPConfigRefPtr DHCPConfigTest::CreateMockMinijailConfig(
     const string& lease_suffix) {
-  TestDHCPConfigRefPtr config(new TestDHCPConfig(&control_,
+  TestDHCPConfigRefPtr config(new TestDHCPConfig(control_interface(),
                                                  dispatcher(),
                                                  &provider_,
                                                  kDeviceName,
@@ -120,7 +117,7 @@ TEST_F(DHCPConfigTest, InitProxy) {
   static const char kService[] = ":1.200";
   EXPECT_NE(nullptr, proxy_);
   EXPECT_EQ(nullptr, config_->proxy_);
-  EXPECT_CALL(control_, CreateDHCPProxy(kService))
+  EXPECT_CALL(*control_interface(), CreateDHCPProxy(kService))
       .WillOnce(Return(ByMove(std::move(proxy_))));
   config_->InitProxy(kService);
   EXPECT_EQ(nullptr, proxy_);

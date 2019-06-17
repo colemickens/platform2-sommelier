@@ -18,9 +18,7 @@
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/dhcp/mock_dhcp_proxy.h"
 #include "shill/event_dispatcher.h"
-#include "shill/mock_control.h"
 #include "shill/mock_log.h"
-#include "shill/mock_metrics.h"
 #include "shill/mock_process_manager.h"
 #include "shill/mock_store.h"
 #include "shill/property_store_test.h"
@@ -59,14 +57,14 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
  public:
   DHCPv4ConfigTest()
       : proxy_(new MockDHCPProxy()),
-        config_(new DHCPv4Config(&control_,
+        config_(new DHCPv4Config(control_interface(),
                                  dispatcher(),
                                  &provider_,
                                  kDeviceName,
                                  kLeaseFileSuffix,
                                  kArpGateway,
                                  dhcp_props_,
-                                 &metrics_)) {}
+                                 metrics())) {}
 
   void SetUp() override {
     config_->process_manager_ = &process_manager_;
@@ -98,9 +96,7 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
   FilePath pid_file_;
   ScopedTempDir temp_dir_;
   std::unique_ptr<MockDHCPProxy> proxy_;
-  MockControl control_;
   MockProcessManager process_manager_;
-  MockMetrics metrics_;
   MockDHCPProvider provider_;
   MockDhcpProperties dhcp_props_;
   DHCPv4ConfigRefPtr config_;
@@ -132,14 +128,14 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateMockMinijailConfig(
         .WillOnce(Return(false));
   }
   dhcp_props.Load(&storage, kStorageID);
-  DHCPv4ConfigRefPtr config(new DHCPv4Config(&control_,
+  DHCPv4ConfigRefPtr config(new DHCPv4Config(control_interface(),
                                              dispatcher(),
                                              &provider_,
                                              kDeviceName,
                                              lease_suffix,
                                              arp_gateway,
                                              dhcp_props,
-                                             &metrics_));
+                                             metrics()));
   config->process_manager_ = &process_manager_;
 
   return config;
@@ -167,14 +163,14 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateRunningConfig(
         .WillOnce(Return(false));
   }
   dhcp_props.Load(&storage, kStorageID);
-  DHCPv4ConfigRefPtr config(new DHCPv4Config(&control_,
+  DHCPv4ConfigRefPtr config(new DHCPv4Config(control_interface(),
                                              dispatcher(),
                                              &provider_,
                                              kDeviceName,
                                              lease_suffix,
                                              arp_gateway,
                                              dhcp_props,
-                                             &metrics_));
+                                             metrics()));
   config->process_manager_ = &process_manager_;
   EXPECT_CALL(process_manager_,
               StartProcessInMinijail(_, _, _, _, _, _, _, _, _))
@@ -305,7 +301,7 @@ TEST_F(DHCPv4ConfigTest, ParseConfiguration) {
   ByteArray isns_data{0x1, 0x2, 0x3, 0x4};
   conf.SetUint8s(DHCPv4Config::kConfigurationKeyiSNSOptionData, isns_data);
 
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, 600));
   IPConfig::Properties properties;
   ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
@@ -333,27 +329,27 @@ TEST_F(DHCPv4ConfigTest, ParseConfigurationWithMinimumMTU) {
   conf.SetUint16(DHCPv4Config::kConfigurationKeyMTU, 576);
 
   IPConfig::Properties properties;
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, 576));
   ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
   EXPECT_EQ(IPConfig::kUndefinedMTU, properties.mtu);
-  Mock::VerifyAndClearExpectations(&metrics_);
+  Mock::VerifyAndClearExpectations(metrics());
 
   // With a minimum MTU set, values below the minimum should be ignored.
   config_->set_minimum_mtu(1500);
   conf.Remove(DHCPv4Config::kConfigurationKeyMTU);
   conf.SetUint16(DHCPv4Config::kConfigurationKeyMTU, 1499);
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, 1499));
   ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
   EXPECT_EQ(IPConfig::kUndefinedMTU, properties.mtu);
-  Mock::VerifyAndClearExpectations(&metrics_);
+  Mock::VerifyAndClearExpectations(metrics());
 
   // A value (other than 576) should be accepted if it is >= mimimum_mtu.
   config_->set_minimum_mtu(577);
   conf.Remove(DHCPv4Config::kConfigurationKeyMTU);
   conf.SetUint16(DHCPv4Config::kConfigurationKeyMTU, 577);
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics(),
               SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, 577));
   ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
   EXPECT_EQ(577, properties.mtu);
@@ -629,7 +625,7 @@ TEST_F(DHCPv4ConfigCallbackTest, ProcessEventSignalGatewayArpNak) {
 }
 
 TEST_F(DHCPv4ConfigTest, ProcessStatusChangeSingal) {
-  EXPECT_CALL(metrics_, NotifyDhcpClientStatus(
+  EXPECT_CALL(*metrics(), NotifyDhcpClientStatus(
       Metrics::kDhcpClientStatusBound));
   config_->ProcessStatusChangeSignal(DHCPv4Config::kStatusBound);
 }

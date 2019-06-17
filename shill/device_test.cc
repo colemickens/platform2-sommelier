@@ -29,7 +29,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_connection.h"
-#include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
@@ -271,7 +270,6 @@ class DeviceTest : public PropertyStoreTest {
     return device_->SetHostname(hostname);
   }
 
-  MockControl control_interface_;
   scoped_refptr<TestDevice> device_;
   MockDeviceInfo device_info_;
   MockTime time_;
@@ -964,7 +962,7 @@ TEST_F(DeviceTest, Start) {
 TEST_F(DeviceTest, Stop) {
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
-  device_->ipconfig_ = new IPConfig(&control_interface_, kDeviceName);
+  device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);
   scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
   SelectService(service);
 
@@ -984,7 +982,7 @@ TEST_F(DeviceTest, StopWithFixedIpParams) {
   device_->SetFixedIpParams(true);
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
-  device_->ipconfig_ = new IPConfig(&control_interface_, kDeviceName);
+  device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);
   scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
   SelectService(service);
 
@@ -1003,7 +1001,7 @@ TEST_F(DeviceTest, StopWithFixedIpParams) {
 TEST_F(DeviceTest, StopWithNetworkInterfaceDisabledAfterward) {
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
-  device_->ipconfig_ = new IPConfig(&control_interface_, kDeviceName);
+  device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);
   scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
   SelectService(service);
 
