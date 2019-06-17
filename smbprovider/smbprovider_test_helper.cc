@@ -17,8 +17,8 @@
 namespace smbprovider {
 namespace {
 
-template <typename ProtoType>
-ProtoBlob SerializeProtoToBlobAndCheck(const ProtoType& proto) {
+ProtoBlob SerializeProtoToBlobAndCheck(
+    const google::protobuf::MessageLite& proto) {
   ProtoBlob proto_blob;
   EXPECT_EQ(ERROR_OK, SerializeProtoToBlob(proto, &proto_blob));
   return proto_blob;
@@ -28,30 +28,16 @@ ProtoBlob SerializeProtoToBlobAndCheck(const ProtoType& proto) {
 
 MountOptionsProto CreateMountOptionsProto(const std::string& path,
                                           const std::string& workgroup,
-                                          const std::string& username) {
+                                          const std::string& username,
+                                          const MountConfig& mount_config) {
   MountOptionsProto mount_options;
   mount_options.set_path(path);
   mount_options.set_workgroup(workgroup);
   mount_options.set_username(username);
 
-  // Default to enable NTLM authentication.
   std::unique_ptr<MountConfigProto> config =
-      CreateMountConfigProto(true /* enable_ntlm */);
-
-  mount_options.set_allocated_mount_config(config.release());
-
-  return mount_options;
-}
-
-MountOptionsProto CreateMountOptionsProto(const std::string& path,
-                                          const std::string& workgroup,
-                                          const std::string& username,
-                                          const MountConfig& mount_config) {
-  MountOptionsProto mount_options =
-      CreateMountOptionsProto(path, workgroup, username);
-
-  std::unique_ptr<MountConfigProto> config =
-      CreateMountConfigProto(mount_config.enable_ntlm);
+      std::make_unique<MountConfigProto>();
+  config->set_enable_ntlm(mount_config.enable_ntlm);
 
   mount_options.set_allocated_mount_config(config.release());
 
@@ -488,15 +474,6 @@ std::vector<uint8_t> CreateValidNetBiosHostname(const std::string& hostname,
   hostname_bytes[17] = 0x00;
 
   return hostname_bytes;
-}
-
-std::unique_ptr<MountConfigProto> CreateMountConfigProto(bool enable_ntlm) {
-  // set_allocated_mount_config() transfers ownership of |mount_config| to
-  // |mount_options| so |mount_config| needs to be created in the heap.
-  auto mount_config = std::make_unique<MountConfigProto>();
-  mount_config->set_enable_ntlm(enable_ntlm);
-
-  return mount_config;
 }
 
 }  // namespace smbprovider

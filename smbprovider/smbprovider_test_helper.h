@@ -26,12 +26,8 @@ class TempFileManager;
 
 MountOptionsProto CreateMountOptionsProto(const std::string& path,
                                           const std::string& workgroup,
-                                          const std::string& username);
-
-MountOptionsProto CreateMountOptionsProto(const std::string& path,
-                                          const std::string& workgroup,
                                           const std::string& username,
-                                          MountConfig* mount_config);
+                                          const MountConfig& mount_config);
 
 UnmountOptionsProto CreateUnmountOptionsProto(int32_t mount_id);
 
@@ -243,8 +239,6 @@ std::vector<uint8_t> CreateNetBiosResponsePacket(
 // less than or equal to 15 bytes.
 std::vector<uint8_t> CreateValidNetBiosHostname(const std::string& hostname,
                                                 uint8_t type);
-
-std::unique_ptr<MountConfigProto> CreateMountConfigProto(bool enable_ntlm);
 
 }  // namespace smbprovider
 
