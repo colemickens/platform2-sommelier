@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <libpasswordprovider/password.h>
 #include <libpasswordprovider/password_provider.h>
@@ -120,25 +121,26 @@ void EapCredentials::PopulateSupplicantProperties(
         WPASupplicant::kEnginePKCS11));
     // We can't use the propertyvals vector for this since this argument
     // is a uint32_t, not a string.
-    params->SetUint(WPASupplicant::kNetworkPropertyEngine,
-                   WPASupplicant::kDefaultEngine);
+    params->Set<uint32_t>(WPASupplicant::kNetworkPropertyEngine,
+                          WPASupplicant::kDefaultEngine);
   }
 
   if (use_proactive_key_caching_) {
-    params->SetUint(WPASupplicant::kNetworkPropertyEapProactiveKeyCaching,
-                   WPASupplicant::kProactiveKeyCachingEnabled);
+    params->Set<uint32_t>(WPASupplicant::kNetworkPropertyEapProactiveKeyCaching,
+                          WPASupplicant::kProactiveKeyCachingEnabled);
   } else {
-    params->SetUint(WPASupplicant::kNetworkPropertyEapProactiveKeyCaching,
-                   WPASupplicant::kProactiveKeyCachingDisabled);
+    params->Set<uint32_t>(WPASupplicant::kNetworkPropertyEapProactiveKeyCaching,
+                          WPASupplicant::kProactiveKeyCachingDisabled);
   }
 
   if (tls_version_max_ == kEapTLSVersion1p0) {
-    params->SetString(WPASupplicant::kNetworkPropertyEapOuterEap,
-                      string(WPASupplicant::kFlagDisableEapTLS1p1) + " " +
-                          string(WPASupplicant::kFlagDisableEapTLS1p2));
+    params->Set<string>(
+        WPASupplicant::kNetworkPropertyEapOuterEap,
+        base::StringPrintf("%s %s", WPASupplicant::kFlagDisableEapTLS1p1,
+                           WPASupplicant::kFlagDisableEapTLS1p2));
   } else if (tls_version_max_ == kEapTLSVersion1p1) {
-    params->SetString(WPASupplicant::kNetworkPropertyEapOuterEap,
-                      WPASupplicant::kFlagDisableEapTLS1p2);
+    params->Set<string>(WPASupplicant::kNetworkPropertyEapOuterEap,
+                        WPASupplicant::kFlagDisableEapTLS1p2);
   }
 
   if (use_login_password_) {
@@ -147,19 +149,19 @@ void EapCredentials::PopulateSupplicantProperties(
     if (password == nullptr || password->size() == 0) {
       LOG(WARNING) << "Unable to retrieve user password";
     } else {
-      params->SetString(WPASupplicant::kNetworkPropertyEapCaPassword,
-                        std::string(password->GetRaw(), password->size()));
+      params->Set<string>(WPASupplicant::kNetworkPropertyEapCaPassword,
+                          std::string(password->GetRaw(), password->size()));
     }
   } else {
     if (!password_.empty()) {
-      params->SetString(WPASupplicant::kNetworkPropertyEapCaPassword,
-                        password_);
+      params->Set<string>(WPASupplicant::kNetworkPropertyEapCaPassword,
+                          password_);
     }
   }
 
   for (const auto& keyval : propertyvals) {
     if (strlen(keyval.second) > 0) {
-      params->SetString(keyval.first, keyval.second);
+      params->Set<string>(keyval.first, keyval.second);
     }
   }
 }
