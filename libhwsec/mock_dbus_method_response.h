@@ -9,10 +9,60 @@
 #include <string>
 #include <utility>
 
+#include <base/optional.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <gmock/gmock.h>
 
 namespace hwsec {
+
+namespace MockDBusMethodResponseUtils {
+
+// CreateSaveArgsOnceFn is simple helper template for generating function that
+// will save the content of its parameter into the pointers given to
+// CreateSaveArgsOnceFn().
+
+// This is the terminal, boundary condition template when there's only one
+// template parameter left.
+template <typename T>
+base::Callback<void(const T&)> CreateSaveArgsOnceFn(base::Optional<T>* dest) {
+  // This create a Callback by binding in the |dest| pointer so that once the
+  // callback is called, it'll save the argument into |dest|.
+  return base::Bind(
+      [](base::Optional<T>* dest_ptr, const T& orig) {
+        // Ensure that this is called no more than once.
+        CHECK(!dest_ptr->has_value());
+        *dest_ptr = orig;
+      },
+      dest);
+}
+
+// This is the variadic template that recurse by removing one parameter at a
+// time.
+template <typename First, typename... Rest>
+base::Callback<void(const First&, const Rest&...)> CreateSaveArgsOnceFn(
+    base::Optional<First>* first_dest, base::Optional<Rest>*... rest_dest) {
+  // This create a callback by binding in |first_dest|, which is where we are
+  // going to save the first parameter when called. After that, this also binds
+  // into the callback another callback, named |rest_callback|, that is created
+  // by recursively calling CreateSaveArgsOnceFn() with the |rest_dest|
+  // pointers. The callback created in this function will only save the first
+  // parameter into |first_dest| and call |rest_callback|, which will deal with
+  // saving the rest of the parameters into |rest_dest|.
+  return base::Bind(
+      [](base::Callback<void(const Rest&...)> rest_callback,
+         base::Optional<First>* local_first_dest, const First& first_orig,
+         const Rest&... rest_orig) {
+        // Ensure that this is called no more than once.
+        CHECK(!local_first_dest->has_value());
+        *local_first_dest = first_orig;
+
+        // Let |rest_callback| deal with saving |rest_orig| into |rest_dest|.
+        rest_callback.Run(rest_orig...);
+      },
+      CreateSaveArgsOnceFn<Rest...>(rest_dest...), first_dest);
+}
+
+}  // namespace MockDBusMethodResponseUtils
 
 // Mock DBusMethodResponse for capturing the output of async dbus calls.
 // There are 2 ways to use this class:
@@ -123,6 +173,14 @@ class MockDBusMethodResponse
   void set_return_callback(
       base::Callback<void(const Types&...)> return_callback) {
     return_callback_ = return_callback;
+  }
+
+  // Set the return callback to save all arguments passed to the return callback
+  // into |destination|.
+  void save_return_args(base::Optional<Types>*... destination) {
+    set_return_callback(
+        hwsec::MockDBusMethodResponseUtils::CreateSaveArgsOnceFn<Types...>(
+            destination...));
   }
 
  private:
