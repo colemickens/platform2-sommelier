@@ -330,6 +330,7 @@ static void sl_data_device_start_drag(struct wl_client* client,
       origin_resource ? wl_resource_get_user_data(origin_resource) : NULL;
   struct sl_host_surface* host_icon =
       icon_resource ? wl_resource_get_user_data(icon_resource) : NULL;
+  host_icon->has_role = 1;
 
   wl_data_device_start_drag(host->proxy,
                             host_source ? host_source->proxy : NULL,
