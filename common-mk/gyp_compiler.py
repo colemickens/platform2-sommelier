@@ -11,19 +11,12 @@ None of this is written by Chromium OS.  We have a copy here so people don't
 have to install a copy of gyp itself in their system.
 
 Last synced from:
-https://chromium.googlesource.com/external/gyp/
-940a15ee3f1c89f193cb4c19373b3f6e9ad15b95
+https://chromium.googlesource.com/external/gyp/aca1e2c3d346d704adfa60944e6b4dd06f4728be
 """
 
 from __future__ import print_function
 
-from compiler.ast import Const
-from compiler.ast import Dict
-from compiler.ast import Discard
-from compiler.ast import List
-from compiler.ast import Module
-from compiler.ast import Stmt
-import compiler
+import ast
 
 
 class GypError(Exception):
@@ -41,43 +34,38 @@ def CheckedEval(file_contents):
   Note that this is slower than eval() is.
   """
 
-  ast = compiler.parse(file_contents)
-  assert isinstance(ast, Module)
-  c1 = ast.getChildren()
-  assert c1[0] is None
-  assert isinstance(c1[1], Stmt)
-  c2 = c1[1].getChildren()
-  assert isinstance(c2[0], Discard)
-  c3 = c2[0].getChildren()
-  assert len(c3) == 1
-  return CheckNode(c3[0], [])
+  syntax_tree = ast.parse(file_contents)
+  assert isinstance(syntax_tree, ast.Module)
+  c1 = syntax_tree.body
+  assert len(c1) == 1
+  c2 = c1[0]
+  assert isinstance(c2, ast.Expr)
+  return CheckNode(c2.value, [])
 
 
 def CheckNode(node, keypath):
-  if isinstance(node, Dict):
-    c = node.getChildren()
+  if isinstance(node, ast.Dict):
     dict = {}
-    for n in range(0, len(c), 2):
-      assert isinstance(c[n], Const)
-      key = c[n].getChildren()[0]
+    for key, value in zip(node.keys, node.values):
+      assert isinstance(key, ast.Str)
+      key = key.s
       if key in dict:
         raise GypError("Key '" + key + "' repeated at level " +
               repr(len(keypath) + 1) + " with key path '" +
               '.'.join(keypath) + "'")
       kp = list(keypath)  # Make a copy of the list for descending this node.
       kp.append(key)
-      dict[key] = CheckNode(c[n + 1], kp)
+      dict[key] = CheckNode(value, kp)
     return dict
-  elif isinstance(node, List):
-    c = node.getChildren()
+  elif isinstance(node, ast.List):
     children = []
-    for index, child in enumerate(c):
+    for index, child in enumerate(node.elts):
       kp = list(keypath)  # Copy list.
       kp.append(repr(index))
       children.append(CheckNode(child, kp))
     return children
-  elif isinstance(node, Const):
-    return node.getChildren()[0]
+  elif isinstance(node, ast.Str):
+    return node.s
   else:
     raise TypeError("Unknown AST node at key path '" + '.'.join(keypath) +
          "': " + repr(node))
