@@ -574,6 +574,46 @@ TEST_F(TpmUtilityTest, ReadPCRFail) {
   EXPECT_EQ("", value);
 }
 
+TEST_F(TpmUtilityTest, CertifyNVWithRsa) {
+  constexpr int kFakeNvIndex = 0x123;
+  constexpr int kFakeNvSize = 0x456;
+
+  trunks::TPMT_SIGNATURE fake_signature;
+  fake_signature.sig_alg = trunks::TPM_ALG_RSASSA;
+  fake_signature.signature.rsassa.sig =
+      trunks::Make_TPM2B_PUBLIC_KEY_RSA("fake_quote");
+  EXPECT_CALL(mock_tpm_, NV_CertifySyncShort(_, _, _, _, _, _, _, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<7>(trunks::Make_TPM2B_ATTEST("fake_quoted_data")),
+                SetArgPointee<8>(fake_signature), Return(TPM_RC_SUCCESS)));
+
+  std::string quoted_data;
+  std::string quote;
+  EXPECT_TRUE(tpm_utility_->CertifyNV(kFakeNvIndex, kFakeNvSize,
+                                      "fake_key_blob", &quoted_data, &quote));
+  EXPECT_EQ(quoted_data, "fake_quoted_data");
+  EXPECT_NE(quote.find("fake_quote"), std::string::npos);
+}
+
+TEST_F(TpmUtilityTest, CertifyNVFail) {
+  constexpr int kFakeNvIndex = 0x123;
+  constexpr int kFakeNvSize = 0x456;
+
+  trunks::TPMT_SIGNATURE fake_signature;
+  fake_signature.sig_alg = trunks::TPM_ALG_RSASSA;
+  fake_signature.signature.rsassa.sig =
+      trunks::Make_TPM2B_PUBLIC_KEY_RSA("fake_quote");
+  EXPECT_CALL(mock_tpm_, NV_CertifySyncShort(_, _, _, _, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+
+  std::string quoted_data;
+  std::string quote;
+  EXPECT_FALSE(tpm_utility_->CertifyNV(kFakeNvIndex, kFakeNvSize,
+                                       "fake_key_blob", &quoted_data, &quote));
+  EXPECT_EQ(quoted_data, "");
+  EXPECT_EQ(quote, "");
+}
+
 TEST_F(TpmUtilityTest, RemoveOwnerDependency) {
   EXPECT_TRUE(tpm_utility_->RemoveOwnerDependency());
   EXPECT_EQ(tpm_manager::kTpmOwnerDependency_Attestation,
