@@ -53,17 +53,18 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
       // We found different firmware! Flash the modem, and since it will
       // reboot afterwards, we can wait to get called again to check the
       // carrier firmware.
-      journal_->MarkStartOfFlashingMainFirmware(device_id);
+      journal_->MarkStartOfFlashingMainFirmware(device_id, current_carrier);
       if (modem->FlashMainFirmware(firmware_file.path_on_filesystem())) {
         // Refer to |firmware_file.path_for_logging()| in the log and journal.
         flash_state->OnFlashedMainFirmware();
         DLOG(INFO) << "Flashed " << firmware_file.path_for_logging().value()
                    << " to the modem";
         return base::Bind(&Journal::MarkEndOfFlashingMainFirmware,
-                          base::Unretained(journal_.get()), device_id);
+                          base::Unretained(journal_.get()), device_id,
+                          current_carrier);
       } else {
         flash_state->OnFlashFailed();
-        journal_->MarkEndOfFlashingMainFirmware(device_id);
+        journal_->MarkEndOfFlashingMainFirmware(device_id, current_carrier);
         return base::Closure();
       }
     }

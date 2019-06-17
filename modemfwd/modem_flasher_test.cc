@@ -482,8 +482,9 @@ TEST_F(ModemFlasherTest, WritesToJournal) {
   EXPECT_CALL(*modem, GetMainFirmwareVersion()).Times(AtLeast(1));
   EXPECT_CALL(*modem, FlashMainFirmware(new_firmware)).WillOnce(Return(true));
   EXPECT_CALL(*modem, FlashCarrierFirmware(_)).Times(0);
-  EXPECT_CALL(*journal_, MarkStartOfFlashingMainFirmware(kDeviceId1)).Times(1);
-  EXPECT_CALL(*journal_, MarkEndOfFlashingMainFirmware(kDeviceId1)).Times(1);
+  EXPECT_CALL(*journal_, MarkStartOfFlashingMainFirmware(kDeviceId1, _))
+      .Times(1);
+  EXPECT_CALL(*journal_, MarkEndOfFlashingMainFirmware(kDeviceId1, _)).Times(1);
   EXPECT_CALL(*journal_, MarkStartOfFlashingCarrierFirmware(kDeviceId1, _))
       .Times(0);
   EXPECT_CALL(*journal_, MarkEndOfFlashingCarrierFirmware(kDeviceId1, _))
@@ -503,8 +504,9 @@ TEST_F(ModemFlasherTest, WritesToJournalOnFailure) {
   EXPECT_CALL(*modem, GetMainFirmwareVersion()).Times(AtLeast(1));
   EXPECT_CALL(*modem, FlashMainFirmware(new_firmware)).WillOnce(Return(false));
   EXPECT_CALL(*modem, FlashCarrierFirmware(_)).Times(0);
-  EXPECT_CALL(*journal_, MarkStartOfFlashingMainFirmware(kDeviceId1)).Times(1);
-  EXPECT_CALL(*journal_, MarkEndOfFlashingMainFirmware(kDeviceId1)).Times(1);
+  EXPECT_CALL(*journal_, MarkStartOfFlashingMainFirmware(kDeviceId1, _))
+      .Times(1);
+  EXPECT_CALL(*journal_, MarkEndOfFlashingMainFirmware(kDeviceId1, _)).Times(1);
   EXPECT_CALL(*journal_, MarkStartOfFlashingCarrierFirmware(kDeviceId1, _))
       .Times(0);
   EXPECT_CALL(*journal_, MarkEndOfFlashingCarrierFirmware(kDeviceId1, _))
@@ -531,8 +533,10 @@ TEST_F(ModemFlasherTest, WritesCarrierSwitchesToJournal) {
   EXPECT_CALL(*modem, FlashMainFirmware(_)).Times(0);
   EXPECT_CALL(*modem, FlashCarrierFirmware(other_firmware))
       .WillOnce(Return(true));
-  EXPECT_CALL(*journal_, MarkStartOfFlashingMainFirmware(kDeviceId1)).Times(0);
-  EXPECT_CALL(*journal_, MarkEndOfFlashingMainFirmware(kDeviceId1)).Times(0);
+  EXPECT_CALL(*journal_, MarkStartOfFlashingMainFirmware(kDeviceId1, kCarrier2))
+      .Times(0);
+  EXPECT_CALL(*journal_, MarkEndOfFlashingMainFirmware(kDeviceId1, kCarrier2))
+      .Times(0);
   EXPECT_CALL(*journal_,
               MarkStartOfFlashingCarrierFirmware(kDeviceId1, kCarrier2))
       .Times(1);
@@ -559,8 +563,9 @@ TEST_F(ModemFlasherTest, WritesCarrierSwitchesToJournal) {
   EXPECT_CALL(*modem, FlashMainFirmware(_)).Times(0);
   EXPECT_CALL(*modem, FlashCarrierFirmware(original_firmware))
       .WillOnce(Return(true));
-  EXPECT_CALL(*journal_, MarkStartOfFlashingMainFirmware(kDeviceId1)).Times(0);
-  EXPECT_CALL(*journal_, MarkEndOfFlashingMainFirmware(kDeviceId1)).Times(0);
+  EXPECT_CALL(*journal_, MarkStartOfFlashingMainFirmware(kDeviceId1, _))
+      .Times(0);
+  EXPECT_CALL(*journal_, MarkEndOfFlashingMainFirmware(kDeviceId1, _)).Times(0);
   EXPECT_CALL(*journal_,
               MarkStartOfFlashingCarrierFirmware(kDeviceId1, kCarrier1))
       .Times(1);

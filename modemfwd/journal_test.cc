@@ -86,8 +86,8 @@ TEST_F(JournalTest, EmptyJournal) {
 
 TEST_F(JournalTest, PriorRunWasNotInterrupted_Main) {
   auto journal = GetJournal();
-  journal->MarkStartOfFlashingMainFirmware(kDeviceId);
-  journal->MarkEndOfFlashingMainFirmware(kDeviceId);
+  journal->MarkStartOfFlashingMainFirmware(kDeviceId, kCarrierId);
+  journal->MarkEndOfFlashingMainFirmware(kDeviceId, kCarrierId);
 
   EXPECT_CALL(modem_helper_, FlashMainFirmware(_)).Times(0);
   EXPECT_CALL(modem_helper_, FlashCarrierFirmware(_)).Times(0);
@@ -100,7 +100,7 @@ TEST_F(JournalTest, PriorRunWasInterrupted_Main) {
   AddMainFirmwareFile(main_fw_path, kMainFirmwareVersion);
 
   auto journal = GetJournal();
-  journal->MarkStartOfFlashingMainFirmware(kDeviceId);
+  journal->MarkStartOfFlashingMainFirmware(kDeviceId, kCarrierId);
 
   EXPECT_CALL(modem_helper_, FlashMainFirmware(main_fw_path))
       .WillOnce(Return(true));
@@ -153,8 +153,8 @@ TEST_F(JournalTest, IgnoreMalformedJournalEntries) {
 
 TEST_F(JournalTest, MultipleEntries) {
   auto journal = GetJournal();
-  journal->MarkStartOfFlashingMainFirmware(kDeviceId);
-  journal->MarkEndOfFlashingMainFirmware(kDeviceId);
+  journal->MarkStartOfFlashingMainFirmware(kDeviceId, kCarrierId);
+  journal->MarkEndOfFlashingMainFirmware(kDeviceId, kCarrierId);
   journal->MarkStartOfFlashingCarrierFirmware(kDeviceId, kCarrierId);
   journal->MarkEndOfFlashingCarrierFirmware(kDeviceId, kCarrierId);
 

@@ -26,8 +26,9 @@ class Journal {
   // The file path to the relevant firmware has now changed, so we need to
   // be able to load from the new location.
   virtual void MarkStartOfFlashingMainFirmware(
-      const std::string& device_id) = 0;
-  virtual void MarkEndOfFlashingMainFirmware(const std::string& device_id) = 0;
+      const std::string& device_id, const std::string& carrier_id) = 0;
+  virtual void MarkEndOfFlashingMainFirmware(const std::string& device_id,
+                                             const std::string& carrier_id) = 0;
 
   virtual void MarkStartOfFlashingCarrierFirmware(
       const std::string& device_id, const std::string& carrier_id) = 0;

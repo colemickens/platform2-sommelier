@@ -19,8 +19,10 @@ class MockJournal : public Journal {
   MockJournal() {}
   ~MockJournal() override = default;
 
-  MOCK_METHOD1(MarkStartOfFlashingMainFirmware, void(const std::string&));
-  MOCK_METHOD1(MarkEndOfFlashingMainFirmware, void(const std::string&));
+  MOCK_METHOD2(MarkStartOfFlashingMainFirmware,
+               void(const std::string&, const std::string&));
+  MOCK_METHOD2(MarkEndOfFlashingMainFirmware,
+               void(const std::string&, const std::string&));
   MOCK_METHOD2(MarkStartOfFlashingCarrierFirmware,
                void(const std::string&, const std::string&));
   MOCK_METHOD2(MarkEndOfFlashingCarrierFirmware,

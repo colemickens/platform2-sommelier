@@ -6,7 +6,14 @@ syntax = "proto3";
 
 package modemfwd;
 
+enum JournalEntryType {
+  UNKNOWN = 0;
+  MAIN = 1;
+  CARRIER = 2;
+}
+
 message JournalEntry {
   string device_id = 1;
   string carrier_id = 2;
+  JournalEntryType type = 3;
 };
