@@ -76,6 +76,7 @@ static_library("libnewblued") {
     "newblued/newblue.cc",
     "newblued/newblue_daemon.cc",
     "newblued/stack_sync_monitor.cc",
+    "newblued/util.cc",
   ]
 }
 
@@ -132,6 +133,7 @@ if (use.test) {
       "newblued/newblue_test.cc",
       "newblued/property_test.cc",
       "newblued/stack_sync_monitor_test.cc",
+      "newblued/util_test.cc",
     ]
     deps = [
       ":libcommon",

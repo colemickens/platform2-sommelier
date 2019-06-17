@@ -65,6 +65,7 @@ class GattService {
   std::map<uint16_t, std::unique_ptr<GattIncludedService>> included_services_;
 
   FRIEND_TEST(GattAttributesTest, GattServiceAddIncludedServiceCharacteristic);
+  FRIEND_TEST(UtilTest, ConvertToGattService);
 
   DISALLOW_COPY_AND_ASSIGN(GattService);
 };
@@ -139,6 +140,7 @@ class GattCharacteristic {
   NotifySetting notify_setting_;
 
   FRIEND_TEST(GattAttributesTest, GattCharacteristicAddDescriptor);
+  FRIEND_TEST(UtilTest, ConvertToGattService);
 
   DISALLOW_COPY_AND_ASSIGN(GattCharacteristic);
 };
