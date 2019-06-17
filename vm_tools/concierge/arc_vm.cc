@@ -124,8 +124,6 @@ bool ArcVm::Start(base::FilePath kernel,
     "--syslog-tag",   base::StringPrintf("ARCVM(%u)", vsock_cid_),
     "--cras-audio",
     "--cras-capture",
-    // TODO(yusukes): Enable sandbox.
-    "--disable-sandbox",
     "--params",       base::JoinString(params, " "),
   };
   // clang-format on
