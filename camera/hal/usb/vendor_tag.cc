@@ -14,8 +14,10 @@ const VendorTagManager& VendorTagOps::GetVendorTagManager() {
     VendorTagManager m;
     m.Add(kVendorTagVendorId, kVendorUsbSectionName, "vendorId", TYPE_BYTE);
     m.Add(kVendorTagProductId, kVendorUsbSectionName, "productId", TYPE_BYTE);
-    m.Add(kVendorTagDevicePath, kVendorUsbSectionName, "devicePath", TYPE_BYTE);
     m.Add(kVendorTagModelName, kVendorUsbSectionName, "modelName", TYPE_BYTE);
+    m.Add(kVendorTagDevicePath, kVendorUsbSectionName, "devicePath", TYPE_BYTE);
+    m.Add(kVendorTagTimestampSync, kVendorUsbSectionName, "timestampSync",
+          TYPE_INT32);
     return m;
   }();
   return manager;

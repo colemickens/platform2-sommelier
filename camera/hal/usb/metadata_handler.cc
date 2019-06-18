@@ -14,6 +14,8 @@
 #include "cros-camera/utils/camera_config.h"
 #include "hal/usb/stream_format.h"
 #include "hal/usb/v4l2_camera_device.h"
+#include "hal/usb/vendor_tag.h"
+#include "mojo/cros_camera_enum.mojom.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 #define UPDATE(tag, data, size)                      \
@@ -630,6 +632,13 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
   UPDATE(ANDROID_CONTROL_AE_AVAILABLE_ANTIBANDING_MODES, &ae_antibanding_mode,
          1);
   UPDATE(ANDROID_CONTROL_AE_ANTIBANDING_MODE, &ae_antibanding_mode, 1);
+
+  // Set vendor tags for specified boards.
+  if (device_info.monocle_quirks) {
+    int32_t timestamp_sync =
+        static_cast<int32_t>(mojom::CameraSensorSyncTimestamp::NEAREST);
+    UPDATE(kVendorTagTimestampSync, &timestamp_sync, 1);
+  }
 
   return 0;
 }

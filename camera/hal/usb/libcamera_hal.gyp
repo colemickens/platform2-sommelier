@@ -37,9 +37,16 @@
         '../../common/libcamera_jpeg.gyp:libcamera_jpeg',
         '../../common/libcamera_metrics.gyp:libcamera_metrics',
       ],
+      'variables': {
+        'mojo_root': '../../',
+      },
+      'includes': [
+        '../../../common-mk/mojom_bindings_generator.gypi',
+      ],
       'sources': [
         '../../common/utils/camera_config_impl.cc',
         '../../common/vendor_tag_manager.cc',
+        '../../mojo/cros_camera_enum.mojom',
         'cached_frame.cc',
         'camera_characteristics.cc',
         'camera_client.cc',

@@ -22,9 +22,11 @@ enum VendorTags : uint32_t {
   kVendorTagProductId,
   kVendorTagModelName,
   kVendorTagDevicePath,
+  kVendorTagTimestampSync,
+  kVendorTagEnd = kVendorTagTimestampSync,
 };
 
-static_assert(kVendorTagModelName < kUsbHalVendorTagEnd,
+static_assert(kVendorTagEnd < kUsbHalVendorTagEnd,
               "The vendor tag is out-of-range.");
 
 class VendorTagOps {
