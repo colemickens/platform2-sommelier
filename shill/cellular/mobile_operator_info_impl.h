@@ -174,10 +174,10 @@ class MobileOperatorInfoImpl {
   // using SID.  At any one time, we only expect one of these operator codes to
   // be updated by the user. We use |operator_code_type_| to keep track of which
   // update we have received and warn the user if we receive both.
-  enum OperatorCodeType {
-    kOperatorCodeTypeUnknown = 0,
-    kOperatorCodeTypeMCCMNC,
-    kOperatorCodeTypeSID,
+  enum class OperatorCodeType {
+    kUnknown,
+    kMCCMNC,
+    kSID,
   };
   OperatorCodeType operator_code_type_;
   std::vector<const mobile_operator_db::MobileNetworkOperator*>

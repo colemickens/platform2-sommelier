@@ -82,7 +82,7 @@ MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
                                                const string& override_db_path)
     : dispatcher_(dispatcher),
       info_owner_(info_owner),
-      operator_code_type_(kOperatorCodeTypeUnknown),
+      operator_code_type_(OperatorCodeType::kUnknown),
       current_mno_(nullptr),
       current_mvno_(nullptr),
       requires_roaming_(false),
@@ -390,7 +390,7 @@ void MobileOperatorInfoImpl::Reset() {
 
   current_mno_ = nullptr;
   current_mvno_ = nullptr;
-  operator_code_type_ = kOperatorCodeTypeUnknown;
+  operator_code_type_ = OperatorCodeType::kUnknown;
   candidates_by_operator_code_.clear();
   candidates_by_name_.clear();
 
@@ -459,13 +459,13 @@ void MobileOperatorInfoImpl::InsertIntoStringToMNOListMap(
 
 bool MobileOperatorInfoImpl::AppendToCandidatesByMCCMNC(const string& mccmnc) {
   // First check that we haven't determined candidates using SID.
-  if (operator_code_type_ == kOperatorCodeTypeSID) {
+  if (operator_code_type_ == OperatorCodeType::kSID) {
     LOG(WARNING) << "SID update will be overridden by the MCCMNC update for "
                     "determining MNO.";
     candidates_by_operator_code_.clear();
   }
 
-  operator_code_type_ = kOperatorCodeTypeMCCMNC;
+  operator_code_type_ = OperatorCodeType::kMCCMNC;
   StringToMNOListMap::const_iterator cit = mccmnc_to_mnos_.find(mccmnc);
   if (cit == mccmnc_to_mnos_.end()) {
     LOG(WARNING) << "Unknown MCCMNC value [" << mccmnc << "].";
@@ -482,13 +482,13 @@ bool MobileOperatorInfoImpl::AppendToCandidatesByMCCMNC(const string& mccmnc) {
 
 bool MobileOperatorInfoImpl::AppendToCandidatesBySID(const string& sid) {
   // First check that we haven't determined candidates using MCCMNC.
-  if (operator_code_type_ == kOperatorCodeTypeMCCMNC) {
+  if (operator_code_type_ == OperatorCodeType::kMCCMNC) {
     LOG(WARNING) << "MCCMNC update will be overriden by the SID update for "
                     "determining MNO.";
     candidates_by_operator_code_.clear();
   }
 
-  operator_code_type_ = kOperatorCodeTypeSID;
+  operator_code_type_ = OperatorCodeType::kSID;
   StringToMNOListMap::const_iterator cit = sid_to_mnos_.find(sid);
   if (cit == sid_to_mnos_.end()) {
     LOG(WARNING) << "Unknown SID value [" << sid << "].";
@@ -505,12 +505,11 @@ bool MobileOperatorInfoImpl::AppendToCandidatesBySID(const string& sid) {
 
 string MobileOperatorInfoImpl::OperatorCodeString() const {
   switch (operator_code_type_) {
-    case kOperatorCodeTypeMCCMNC:
+    case OperatorCodeType::kMCCMNC:
       return "MCCMNC";
-    case kOperatorCodeTypeSID:
+    case OperatorCodeType::kSID:
       return "SID";
-    case kOperatorCodeTypeUnknown:  // FALLTHROUGH
-    default:
+    case OperatorCodeType::kUnknown:
       return "UnknownOperatorCodeType";
   }
 }
@@ -519,10 +518,10 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
   SLOG(this, 3) << __func__;
   const MobileNetworkOperator* candidate = nullptr;
 
-  // The only way |operator_code_type_| can be |kOperatorCodeTypeUnknown| is
+  // The only way |operator_code_type_| can be |OperatorCodeType::kUnknown| is
   // that we haven't received any operator_code updates yet.
-  DCHECK(operator_code_type_ == kOperatorCodeTypeMCCMNC ||
-         operator_code_type_ == kOperatorCodeTypeSID ||
+  DCHECK(operator_code_type_ == OperatorCodeType::kMCCMNC ||
+         operator_code_type_ == OperatorCodeType::kSID ||
          (user_mccmnc_.empty() && user_sid_.empty()));
 
   // TODO(pprabhu) Remove this despicable hack. (crosbug.com/p/30200)
@@ -553,7 +552,7 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
       }
       if (!found_match) {
         const string& operator_code =
-            (operator_code_type_ == kOperatorCodeTypeMCCMNC) ? user_mccmnc_ :
+            (operator_code_type_ == OperatorCodeType::kMCCMNC) ? user_mccmnc_ :
                                                                user_sid_;
         SLOG(this, 1) << "MNO determined by "
                       << OperatorCodeString() << " [" << operator_code
@@ -579,7 +578,7 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
     }
     if (candidate == nullptr) {
       const string& operator_code =
-          (operator_code_type_ == kOperatorCodeTypeMCCMNC) ? user_mccmnc_ :
+          (operator_code_type_ == OperatorCodeType::kMCCMNC) ? user_mccmnc_ :
                                                              user_sid_;
       SLOG(this, 1) << "MNOs suggested by "
                     << OperatorCodeString() << " [" << operator_code
@@ -593,9 +592,9 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
     // Special case: In case we had a *wrong* operator_code update, we want
     // to override the suggestions from |user_operator_name_|. We should not
     // determine an MNO in this case.
-    if ((operator_code_type_ == kOperatorCodeTypeMCCMNC &&
+    if ((operator_code_type_ == OperatorCodeType::kMCCMNC &&
          !user_mccmnc_.empty()) ||
-        (operator_code_type_ == kOperatorCodeTypeSID && !user_sid_.empty())) {
+        (operator_code_type_ == OperatorCodeType::kSID && !user_sid_.empty())) {
       SLOG(this, 1) << "A non-matching "
                     << OperatorCodeString() << " "
                     << "was reported by the user."
