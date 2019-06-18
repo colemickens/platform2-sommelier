@@ -10,6 +10,7 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 #include <brillo/process.h>
+#include <crypto/scoped_openssl_types.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 
@@ -52,7 +53,7 @@ bool Sign(const FilePath& priv_key,
   }
 
   // Creating the context.
-  crypto::ScopedEVP_MD_CTX mdctx(EVP_MD_CTX_create());
+  crypto::ScopedEVP_MD_CTX mdctx(EVP_MD_CTX_new());
   if (!mdctx) {
     LOG(ERROR) << "Failed to create a EVP_MD context.";
     return false;
@@ -119,7 +120,7 @@ bool ReadPublicKey(const FilePath& pub_key_file, ScopedEVP_PKEY* pub_key) {
 bool VerifySignature(const string& message,
                      const string& signature,
                      const ScopedEVP_PKEY& pub_key) {
-  crypto::ScopedEVP_MD_CTX mdctx(EVP_MD_CTX_create());
+  crypto::ScopedEVP_MD_CTX mdctx(EVP_MD_CTX_new());
   if (!mdctx) {
     LOG(ERROR) << "Failed to create a EVP_MD context.";
     return false;
