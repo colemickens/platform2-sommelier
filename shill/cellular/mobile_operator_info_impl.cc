@@ -82,8 +82,6 @@ MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
                                                const string& override_db_path)
     : dispatcher_(dispatcher),
       info_owner_(info_owner),
-      observers_(
-          base::ObserverList<MobileOperatorInfo::Observer, true>::NOTIFY_ALL),
       operator_code_type_(kOperatorCodeTypeUnknown),
       current_mno_(nullptr),
       current_mvno_(nullptr),
