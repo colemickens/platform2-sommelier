@@ -17,6 +17,7 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 
+#include "arc/network/datapath.h"
 #include "arc/network/device.h"
 #include "arc/network/minijailed_process_runner.h"
 
@@ -33,7 +34,8 @@ class ArcIpConfig {
   ArcIpConfig(const std::string& ifname, const DeviceConfig& config);
   ArcIpConfig(const std::string& ifname,
               const DeviceConfig& config,
-              std::unique_ptr<MinijailedProcessRunner> process_runner);
+              std::unique_ptr<MinijailedProcessRunner> process_runner,
+              std::unique_ptr<Datapath> datapath);
   virtual ~ArcIpConfig();
 
   // Open up the file descriptors needed to access the host and guest
@@ -63,9 +65,10 @@ class ArcIpConfig {
   static void GenerateRandom(struct in6_addr* prefix, int prefix_len);
 
  private:
-  // Initial host bridge and iptables configuration.
   void Setup();
   void Teardown();
+  bool AddBridge(const std::string& ifname, const std::string& ipv4_addr) const;
+  void RemoveBridge(const std::string& ifname) const;
 
   void AssignTableIdForArcInterface();
 
@@ -91,6 +94,7 @@ class ArcIpConfig {
   std::string ipv6_router_;
 
   std::unique_ptr<MinijailedProcessRunner> process_runner_;
+  std::unique_ptr<Datapath> datapath_;
 
   base::WeakPtrFactory<ArcIpConfig> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(ArcIpConfig);

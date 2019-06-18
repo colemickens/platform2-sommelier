@@ -57,6 +57,7 @@ static_library("libarcnetwork") {
     "adb_proxy.cc",
     "arc_helper.cc",
     "arc_ip_config.cc",
+    "datapath.cc",
     "device.cc",
     "device_manager.cc",
     "dns/big_endian.cc",
@@ -106,6 +107,7 @@ if (use.test) {
     sources = [
       "address_manager_test.cc",
       "arc_ip_config_test.cc",
+      "datapath_test.cc",
       "device_manager_test.cc",
       "device_test.cc",
       "mac_address_generator_test.cc",

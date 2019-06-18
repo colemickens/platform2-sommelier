@@ -30,6 +30,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "arc/network/datapath.h"
 #include "arc/network/scoped_ns.h"
 
 namespace {
@@ -74,13 +75,16 @@ std::string ArcVethPeerName(std::string ifname) {
 namespace arc_networkd {
 
 ArcIpConfig::ArcIpConfig(const std::string& ifname, const DeviceConfig& config)
-    : ArcIpConfig(ifname, config, std::make_unique<MinijailedProcessRunner>()) {
-}
+    : ArcIpConfig(ifname,
+                  config,
+                  std::make_unique<MinijailedProcessRunner>(),
+                  nullptr) {}
 
 ArcIpConfig::ArcIpConfig(
     const std::string& ifname,
     const DeviceConfig& config,
-    std::unique_ptr<MinijailedProcessRunner> process_runner)
+    std::unique_ptr<MinijailedProcessRunner> process_runner,
+    std::unique_ptr<Datapath> datapath)
     : ifname_(ifname),
       config_(config),
       con_netns_(kInvalidNs),
@@ -91,6 +95,10 @@ ArcIpConfig::ArcIpConfig(
       inbound_configured_(false),
       ipv6_dev_ifname_(ifname),
       process_runner_(std::move(process_runner)) {
+  if (!datapath) {
+    datapath = std::make_unique<Datapath>(process_runner_.get());
+  }
+  datapath_ = std::move(datapath);
   Setup();
 }
 
@@ -102,59 +110,32 @@ void ArcIpConfig::Setup() {
   LOG(INFO) << "Setting up " << ifname_ << " bridge: " << config_.br_ifname()
             << " guest_iface: " << config_.arc_ifname();
 
-  // Configure the persistent Chrome OS bridge interface with static IP.
-  process_runner_->Run({kBrctlPath, "addbr", config_.br_ifname()});
-  process_runner_->Run({kIfConfigPath, config_.br_ifname(), config_.br_ipv4(),
-                        "netmask", kDefaultNetmask, "up"});
-  // See nat.conf in chromeos-nat-init for the rest of the NAT setup rules.
-  process_runner_->Run({kIpTablesPath, "-t", "mangle", "-A", "PREROUTING", "-i",
-                        config_.br_ifname(), "-j", "MARK", "--set-mark", "1",
-                        "-w"});
-
-  // The legacy Android device is configured to support container traffic
-  // coming from the default (shill) interface but this isn't necessary in
-  // the mutli-net case where this interface is really just preserving the
-  // known address mapping for the arc0 interface.
-  if (ifname_ == kAndroidLegacyDevice) {
-    // Sanity check.
-    CHECK_EQ("arcbr0", config_.br_ifname());
-    CHECK_EQ("arc0", config_.arc_ifname());
-
-    // Forward "unclaimed" packets to Android to allow inbound connections
-    // from devices on the LAN.
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-N", "dnat_arc", "-w"});
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "dnat_arc", "-j",
-                          "DNAT", "--to-destination", config_.arc_ipv4(),
-                          "-w"});
-
-    // This chain is dynamically updated whenever the default interface
-    // changes.
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-N", "try_arc", "-w"});
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "PREROUTING", "-m",
-                          "socket", "--nowildcard", "-j", "ACCEPT", "-w"});
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "PREROUTING", "-p",
-                          "tcp", "-j", "try_arc", "-w"});
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "PREROUTING", "-p",
-                          "udp", "-j", "try_arc", "-w"});
-
-    process_runner_->Run({kIpTablesPath, "-t", "filter", "-A", "FORWARD", "-o",
-                          config_.br_ifname(), "-j", "ACCEPT", "-w"});
-  } else if (ifname_ != kAndroidDevice) {
-    // Direct ingress IP traffic to existing sockets.
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "PREROUTING", "-i",
-                          ifname_, "-m", "socket", "--nowildcard", "-j",
-                          "ACCEPT", "-w"});
-    // Direct ingress TCP & UDP traffic to ARC interface for new connections.
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "PREROUTING", "-i",
-                          ifname_, "-p", "tcp", "-j", "DNAT",
-                          "--to-destination", config_.arc_ipv4(), "-w"});
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "PREROUTING", "-i",
-                          ifname_, "-p", "udp", "-j", "DNAT",
-                          "--to-destination", config_.arc_ipv4(), "-w"});
-    // TODO(garrick): Verify this is still needed.
-    process_runner_->Run({kIpTablesPath, "-t", "filter", "-A", "FORWARD", "-o",
-                          config_.br_ifname(), "-j", "ACCEPT", "-w"});
+  if (!AddBridge(config_.br_ifname(), config_.br_ipv4())) {
+    LOG(ERROR) << "Failed to create ARC bridge " << config_.br_ifname();
+    return;
   }
+
+  if (ifname_ == kAndroidDevice)
+    return;
+
+  if (ifname_ == kAndroidLegacyDevice) {
+    if (!datapath_->AddLegacyIPv4DNAT(config_.arc_ipv4()))
+      LOG(ERROR) << "Failed to configure ARC traffic rules";
+
+    if (!datapath_->AddOutboundIPv4(config_.br_ifname()))
+      LOG(ERROR) << "Failed to configure egress traffic rules";
+
+    return;
+  }
+
+  if (!datapath_->AddInboundIPv4DNAT(ifname_, config_.arc_ipv4())) {
+    LOG(ERROR) << "Failed to configure ingress traffic rules for " << ifname_;
+    return;
+  }
+
+  // TODO(garrick): Verify this is still needed.
+  if (!datapath_->AddOutboundIPv4(config_.br_ifname()))
+    LOG(ERROR) << "Failed to configure egresstraffic rules";
 }
 
 void ArcIpConfig::Teardown() {
@@ -164,46 +145,48 @@ void ArcIpConfig::Teardown() {
 
   if (ifname_ == kAndroidLegacyDevice) {
     DisableInbound();
-
-    process_runner_->Run({kIpTablesPath, "-t", "filter", "-D", "FORWARD", "-o",
-                          config_.br_ifname(), "-j", "ACCEPT", "-w"});
-
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-D", "PREROUTING", "-p",
-                          "udp", "-j", "try_arc", "-w"});
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-D", "PREROUTING", "-p",
-                          "tcp", "-j", "try_arc", "-w"});
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-D", "PREROUTING", "-m",
-                          "socket", "--nowildcard", "-j", "ACCEPT", "-w"});
-
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-F", "try_arc", "-w"});
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-X", "try_arc", "-w"});
-
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-F", "dnat_arc", "-w"});
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-X", "dnat_arc", "-w"});
+    datapath_->RemoveOutboundIPv4(config_.br_ifname());
+    datapath_->RemoveLegacyIPv4DNAT();
   } else if (ifname_ != kAndroidDevice) {
-    process_runner_->Run({kIpTablesPath, "-t", "filter", "-D", "FORWARD", "-o",
-                          config_.br_ifname(), "-j", "ACCEPT", "-w"});
-
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-D", "PREROUTING", "-i",
-                          ifname_, "-p", "udp", "-j", "DNAT",
-                          "--to-destination", config_.arc_ipv4(), "-w"});
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-D", "PREROUTING", "-i",
-                          ifname_, "-p", "tcp", "-j", "DNAT",
-                          "--to-destination", config_.arc_ipv4(), "-w"});
-    process_runner_->Run({kIpTablesPath, "-t", "nat", "-D", "PREROUTING", "-i",
-                          ifname_, "-m", "socket", "--nowildcard", "-j",
-                          "ACCEPT", "-w"});
+    datapath_->RemoveOutboundIPv4(config_.br_ifname());
+    datapath_->RemoveInboundIPv4DNAT(ifname_, config_.arc_ipv4());
 
     process_runner_->Run({kIpPath, "link", "delete", ArcVethHostName(ifname_)},
                          true /* log_failures */);
   }
 
-  process_runner_->Run({kIpTablesPath, "-t", "mangle", "-D", "PREROUTING", "-i",
-                        config_.br_ifname(), "-j", "MARK", "--set-mark", "1",
-                        "-w"});
+  RemoveBridge(config_.br_ifname());
+}
 
-  process_runner_->Run({kIfConfigPath, config_.br_ifname(), "down"});
-  process_runner_->Run({kBrctlPath, "delbr", config_.br_ifname()});
+bool ArcIpConfig::AddBridge(const std::string& ifname,
+                            const std::string& ipv4_addr) const {
+  // Configure the persistent Chrome OS bridge interface with static IP.
+  if (process_runner_->Run({kBrctlPath, "addbr", ifname}) != 0) {
+    return false;
+  }
+
+  if (process_runner_->Run({kIfConfigPath, ifname, ipv4_addr, "netmask",
+                            kDefaultNetmask, "up"}) != 0) {
+    RemoveBridge(ifname);
+    return false;
+  }
+
+  // See nat.conf in chromeos-nat-init for the rest of the NAT setup rules.
+  if (process_runner_->Run({kIpTablesPath, "-t", "mangle", "-A", "PREROUTING",
+                            "-i", ifname, "-j", "MARK", "--set-mark", "1",
+                            "-w"}) != 0) {
+    RemoveBridge(ifname);
+    return false;
+  }
+
+  return true;
+}
+
+void ArcIpConfig::RemoveBridge(const std::string& ifname) const {
+  process_runner_->Run({kIpTablesPath, "-t", "mangle", "-D", "PREROUTING", "-i",
+                        ifname, "-j", "MARK", "--set-mark", "1", "-w"});
+  process_runner_->Run({kIfConfigPath, ifname, "down"});
+  process_runner_->Run({kBrctlPath, "delbr", ifname});
 }
 
 bool ArcIpConfig::Init(pid_t con_netns) {
@@ -212,7 +195,7 @@ bool ArcIpConfig::Init(pid_t con_netns) {
               << " bridge: " << config_.br_ifname()
               << " guest_iface: " << config_.arc_ifname();
     ContainerReady(false);
-    con_netns_ = 0;
+    con_netns_ = kInvalidNs;
     return true;
   }
 

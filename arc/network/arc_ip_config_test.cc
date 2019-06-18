@@ -9,96 +9,17 @@
 
 #include <base/strings/string_util.h>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "arc/network/fake_process_runner.h"
+#include "arc/network/mock_datapath.h"
+
+using testing::_;
+using testing::Return;
+using testing::StrEq;
+
 namespace arc_networkd {
-
-namespace {
-
-class FakeProcessRunner : public MinijailedProcessRunner {
- public:
-  explicit FakeProcessRunner(std::vector<std::string>* runs = nullptr)
-      : runs_(runs ? runs : &runs_vec_) {}
-  ~FakeProcessRunner() = default;
-
-  int Run(const std::vector<std::string>& argv, bool log_failures) override {
-    if (capture_)
-      runs_->emplace_back(base::JoinString(argv, " "));
-    return 0;
-  }
-
-  int AddInterfaceToContainer(const std::string& host_ifname,
-                              const std::string& con_ifname,
-                              const std::string& con_ipv4,
-                              const std::string& con_nmask,
-                              bool enable_multicast,
-                              const std::string& con_pid) override {
-    add_host_ifname_ = host_ifname;
-    add_con_ifname_ = con_ifname;
-    add_con_ipv4_ = con_ipv4;
-    add_con_nmask_ = con_nmask;
-    add_enable_multicast_ = enable_multicast;
-    add_con_pid_ = con_pid;
-    return 0;
-  }
-
-  int WriteSentinelToContainer(const std::string& con_pid) override {
-    wr_con_pid_ = con_pid;
-    return 0;
-  }
-
-  void Capture(bool on, std::vector<std::string>* runs = nullptr) {
-    capture_ = on;
-    if (runs)
-      runs_ = runs;
-  }
-
-  void VerifyRuns(const std::vector<std::string>& expected) {
-    VerifyRuns(*runs_, expected);
-  }
-
-  static void VerifyRuns(const std::vector<std::string>& got,
-                         const std::vector<std::string>& expected) {
-    ASSERT_EQ(got.size(), expected.size());
-    for (int i = 0; i < got.size(); ++i) {
-      EXPECT_EQ(got[i], expected[i]);
-    }
-  }
-
-  void VerifyAddInterface(const std::string& host_ifname,
-                          const std::string& con_ifname,
-                          const std::string& con_ipv4,
-                          const std::string& con_nmask,
-                          bool enable_multicast,
-                          const std::string& con_pid) {
-    EXPECT_EQ(host_ifname, add_host_ifname_);
-    EXPECT_EQ(con_ifname, add_con_ifname_);
-    EXPECT_EQ(con_ipv4, add_con_ipv4_);
-    EXPECT_EQ(con_nmask, add_con_nmask_);
-    EXPECT_EQ(enable_multicast, add_enable_multicast_);
-    EXPECT_EQ(con_pid, add_con_pid_);
-  }
-
-  void VerifyWriteSentinel(const std::string& con_pid) {
-    EXPECT_EQ(con_pid, wr_con_pid_);
-  }
-
- private:
-  bool capture_ = false;
-  std::vector<std::string>* runs_;
-  std::vector<std::string> runs_vec_;
-  std::string add_host_ifname_;
-  std::string add_con_ifname_;
-  std::string add_con_ipv4_;
-  std::string add_con_nmask_;
-  bool add_enable_multicast_;
-  std::string add_con_pid_;
-  std::string wr_con_pid_;
-
-  DISALLOW_COPY_AND_ASSIGN(FakeProcessRunner);
-};
-
-}  // namespace
 
 class ArcIpConfigTest : public testing::Test {
  protected:
@@ -122,52 +43,58 @@ class ArcIpConfigTest : public testing::Test {
     fpr_ = std::make_unique<FakeProcessRunner>();
     runner_ = fpr_.get();
     runner_->Capture(false);
+    dp_ = std::make_unique<MockDatapath>(runner_);
+    datapath_ = dp_.get();
   }
 
   std::unique_ptr<ArcIpConfig> Config() {
-    return std::make_unique<ArcIpConfig>("eth0", dc_, std::move(fpr_));
+    return std::make_unique<ArcIpConfig>("eth0", dc_, std::move(fpr_),
+                                         std::move(dp_));
   }
 
   std::unique_ptr<ArcIpConfig> AndroidConfig() {
     return std::make_unique<ArcIpConfig>(kAndroidDevice, android_dc_,
-                                         std::move(fpr_));
+                                         std::move(fpr_), std::move(dp_));
   }
 
   std::unique_ptr<ArcIpConfig> LegacyAndroidConfig() {
     return std::make_unique<ArcIpConfig>(kAndroidLegacyDevice,
-                                         legacy_android_dc_, std::move(fpr_));
+                                         legacy_android_dc_, std::move(fpr_),
+                                         std::move(dp_));
   }
 
  protected:
   FakeProcessRunner* runner_;  // Owned by |fpr_|
+  MockDatapath* datapath_;     // Owned by |dp_|
 
  private:
   DeviceConfig dc_;
   DeviceConfig android_dc_;
   DeviceConfig legacy_android_dc_;
+  std::unique_ptr<MockDatapath> dp_;
   std::unique_ptr<FakeProcessRunner> fpr_;
   std::vector<std::string> runs_;
 };
 
 TEST_F(ArcIpConfigTest, VerifySetupCmds) {
+  EXPECT_CALL(*datapath_, AddInboundIPv4DNAT(StrEq("eth0"), StrEq("6.7.8.9")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddOutboundIPv4(StrEq("br"))).WillOnce(Return(true));
+
   // Setup called in ctor.
   runner_->Capture(true);
   auto cfg = Config();
   runner_->VerifyRuns(
       {"/sbin/brctl addbr br",
        "/bin/ifconfig br 1.2.3.4 netmask 255.255.255.252 up",
-       "/sbin/iptables -t mangle -A PREROUTING -i br -j MARK --set-mark 1 -w",
-       "/sbin/iptables -t nat -A PREROUTING -i eth0 -m socket --nowildcard -j "
-       "ACCEPT "
-       "-w",
-       "/sbin/iptables -t nat -A PREROUTING -i eth0 -p tcp -j DNAT "
-       "--to-destination 6.7.8.9 -w",
-       "/sbin/iptables -t nat -A PREROUTING -i eth0 -p udp -j DNAT "
-       "--to-destination 6.7.8.9 -w",
-       "/sbin/iptables -t filter -A FORWARD -o br -j ACCEPT -w"});
+       "/sbin/iptables -t mangle -A PREROUTING -i br -j MARK --set-mark 1 -w"});
 }
 
 TEST_F(ArcIpConfigTest, VerifyTeardownCmds) {
+  EXPECT_CALL(*datapath_, RemoveOutboundIPv4(StrEq("br")));
+  EXPECT_CALL(*datapath_,
+              RemoveInboundIPv4DNAT(StrEq("eth0"), StrEq("6.7.8.9")));
+
   std::vector<std::string> runs;
   {
     // Teardown called in dtor.
@@ -175,14 +102,7 @@ TEST_F(ArcIpConfigTest, VerifyTeardownCmds) {
     runner_->Capture(true, &runs);
   }
   FakeProcessRunner::VerifyRuns(
-      {"/sbin/iptables -t filter -D FORWARD -o br -j ACCEPT -w",
-       "/sbin/iptables -t nat -D PREROUTING -i eth0 -p udp -j DNAT "
-       "--to-destination 6.7.8.9 -w",
-       "/sbin/iptables -t nat -D PREROUTING -i eth0 -p tcp -j DNAT "
-       "--to-destination 6.7.8.9 -w",
-       "/sbin/iptables -t nat -D PREROUTING -i eth0 -m socket --nowildcard "
-       "-j ACCEPT -w",
-       "/bin/ip link delete veth_eth0",
+      {"/bin/ip link delete veth_eth0",
        "/sbin/iptables -t mangle -D PREROUTING -i br -j MARK --set-mark 1 "
        "-w",
        "/bin/ifconfig br down", "/sbin/brctl delbr br"},
@@ -200,22 +120,19 @@ TEST_F(ArcIpConfigTest, VerifySetupCmdsForAndroidDevice) {
 }
 
 TEST_F(ArcIpConfigTest, VerifySetupCmdsForLegacyAndroidDevice) {
+  EXPECT_CALL(*datapath_, AddLegacyIPv4DNAT(StrEq("100.115.92.2")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddOutboundIPv4(StrEq("arcbr0")))
+      .WillOnce(Return(true));
+
   runner_->Capture(true);
   auto cfg = LegacyAndroidConfig();
-  runner_->VerifyRuns(
-      {"/sbin/brctl addbr arcbr0",
-       "/bin/ifconfig arcbr0 100.115.92.1 netmask 255.255.255.252 up",
-       "/sbin/iptables -t mangle -A PREROUTING -i arcbr0 -j MARK --set-mark 1 "
-       "-w",
-       "/sbin/iptables -t nat -N dnat_arc -w",
-       "/sbin/iptables -t nat -A dnat_arc -j DNAT --to-destination "
-       "100.115.92.2 -w",
-       "/sbin/iptables -t nat -N try_arc -w",
-       "/sbin/iptables -t nat -A PREROUTING -m socket --nowildcard -j ACCEPT "
-       "-w",
-       "/sbin/iptables -t nat -A PREROUTING -p tcp -j try_arc -w",
-       "/sbin/iptables -t nat -A PREROUTING -p udp -j try_arc -w",
-       "/sbin/iptables -t filter -A FORWARD -o arcbr0 -j ACCEPT -w"});
+  runner_->VerifyRuns({
+      "/sbin/brctl addbr arcbr0",
+      "/bin/ifconfig arcbr0 100.115.92.1 netmask 255.255.255.252 up",
+      "/sbin/iptables -t mangle -A PREROUTING -i arcbr0 -j MARK --set-mark 1 "
+      "-w",
+  });
 }
 
 TEST_F(ArcIpConfigTest, VerifyTeardownCmdsForAndroidDevice) {
@@ -235,22 +152,15 @@ TEST_F(ArcIpConfigTest, VerifyTeardownCmdsForAndroidDevice) {
 }
 
 TEST_F(ArcIpConfigTest, VerifyTeardownCmdsForLegacyAndroidDevice) {
+  EXPECT_CALL(*datapath_, RemoveOutboundIPv4(StrEq("arcbr0")));
+  EXPECT_CALL(*datapath_, RemoveLegacyIPv4DNAT());
   std::vector<std::string> runs;
   {
     auto cfg = LegacyAndroidConfig();
     runner_->Capture(true, &runs);
   }
   FakeProcessRunner::VerifyRuns(
-      {"/sbin/iptables -t filter -D FORWARD -o arcbr0 -j ACCEPT -w",
-       "/sbin/iptables -t nat -D PREROUTING -p udp -j try_arc -w",
-       "/sbin/iptables -t nat -D PREROUTING -p tcp -j try_arc -w",
-       "/sbin/iptables -t nat -D PREROUTING -m socket --nowildcard -j "
-       "ACCEPT -w",
-       "/sbin/iptables -t nat -F try_arc -w",
-       "/sbin/iptables -t nat -X try_arc -w",
-       "/sbin/iptables -t nat -F dnat_arc -w",
-       "/sbin/iptables -t nat -X dnat_arc -w",
-       "/sbin/iptables -t mangle -D PREROUTING -i arcbr0 -j MARK --set-mark "
+      {"/sbin/iptables -t mangle -D PREROUTING -i arcbr0 -j MARK --set-mark "
        "1 -w",
        "/bin/ifconfig arcbr0 down", "/sbin/brctl delbr arcbr0"},
       runs);
