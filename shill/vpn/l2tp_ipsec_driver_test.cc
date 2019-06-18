@@ -631,7 +631,7 @@ TEST_F(L2TPIPSecDriverTest, InitPropertyStore) {
   Error error;
   EXPECT_TRUE(store.SetStringProperty(kL2tpIpsecUserProperty, kUser, &error));
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ(kUser, GetArgs()->LookupString(kL2tpIpsecUserProperty, ""));
+  EXPECT_EQ(kUser, GetArgs()->Lookup<string>(kL2tpIpsecUserProperty, ""));
 }
 
 TEST_F(L2TPIPSecDriverTest, GetProvider) {
@@ -643,8 +643,8 @@ TEST_F(L2TPIPSecDriverTest, GetProvider) {
     SetArg(kL2tpIpsecClientCertIdProperty, "");
     EXPECT_TRUE(
         store.GetKeyValueStoreProperty(kProviderProperty, &props, &error));
-    EXPECT_TRUE(props.LookupBool(kPassphraseRequiredProperty, false));
-    EXPECT_TRUE(props.LookupBool(kL2tpIpsecPskRequiredProperty, false));
+    EXPECT_TRUE(props.Lookup<bool>(kPassphraseRequiredProperty, false));
+    EXPECT_TRUE(props.Lookup<bool>(kL2tpIpsecPskRequiredProperty, false));
   }
   {
     KeyValueStore props;
@@ -652,8 +652,8 @@ TEST_F(L2TPIPSecDriverTest, GetProvider) {
     SetArg(kL2tpIpsecClientCertIdProperty, "some-cert-id");
     EXPECT_TRUE(
         store.GetKeyValueStoreProperty(kProviderProperty, &props, &error));
-    EXPECT_TRUE(props.LookupBool(kPassphraseRequiredProperty, false));
-    EXPECT_FALSE(props.LookupBool(kL2tpIpsecPskRequiredProperty, true));
+    EXPECT_TRUE(props.Lookup<bool>(kPassphraseRequiredProperty, false));
+    EXPECT_FALSE(props.Lookup<bool>(kL2tpIpsecPskRequiredProperty, true));
     SetArg(kL2tpIpsecClientCertIdProperty, "");
   }
   {
@@ -663,9 +663,8 @@ TEST_F(L2TPIPSecDriverTest, GetProvider) {
     Error error;
     EXPECT_TRUE(
         store.GetKeyValueStoreProperty(kProviderProperty, &props, &error));
-    EXPECT_FALSE(props.LookupBool(kPassphraseRequiredProperty, true));
-    EXPECT_FALSE(
-        props.LookupBool(kL2tpIpsecPskRequiredProperty, true));
+    EXPECT_FALSE(props.Lookup<bool>(kPassphraseRequiredProperty, true));
+    EXPECT_FALSE(props.Lookup<bool>(kL2tpIpsecPskRequiredProperty, true));
     EXPECT_FALSE(props.Contains<string>(kL2tpIpsecPasswordProperty));
   }
 }

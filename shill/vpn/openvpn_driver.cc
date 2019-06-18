@@ -657,7 +657,7 @@ void OpenVPNDriver::Connect(const VPNServiceRefPtr& service, Error* error) {
 }
 
 void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
-  string vpnhost = args()->LookupString(kProviderHostProperty, "");
+  string vpnhost = args()->Lookup<string>(kProviderHostProperty, "");
   if (vpnhost.empty()) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInvalidArguments, "VPN host not specified.");
@@ -690,7 +690,7 @@ void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
   AppendValueOption(kOpenVPNTLSAuthProperty, "tls-auth", options);
   {
     string contents =
-        args()->LookupString(kOpenVPNTLSAuthContentsProperty, "");
+        args()->Lookup<string>(kOpenVPNTLSAuthContentsProperty, "");
     if (!contents.empty()) {
       if (!base::CreateTemporaryFile(&tls_auth_file_) ||
           base::WriteFile(tls_auth_file_, contents.data(), contents.size()) !=
@@ -709,7 +709,7 @@ void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
                  args()->Get<string>(kOpenVPNTLSVersionMinProperty), options);
   }
 
-  string tls_remote = args()->LookupString(kOpenVPNTLSRemoteProperty, "");
+  string tls_remote = args()->Lookup<string>(kOpenVPNTLSRemoteProperty, "");
   if (!tls_remote.empty()) {
     AppendOption("verify-x509-name", tls_remote, "name-prefix", options);
   }
@@ -748,7 +748,7 @@ void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
 
   // TLS suport.
   string remote_cert_tls =
-      args()->LookupString(kOpenVPNRemoteCertTLSProperty, "");
+      args()->Lookup<string>(kOpenVPNRemoteCertTLSProperty, "");
   if (remote_cert_tls.empty()) {
     remote_cert_tls = "server";
   }
@@ -814,9 +814,10 @@ bool OpenVPNDriver::InitCAOptions(
 void OpenVPNDriver::InitCertificateVerifyOptions(
     std::vector<std::vector<std::string>>* options) {
   AppendValueOption(kOpenVPNVerifyHashProperty, "verify-hash", options);
-  string x509_name = args()->LookupString(kOpenVPNVerifyX509NameProperty, "");
+  string x509_name = args()->Lookup<string>(kOpenVPNVerifyX509NameProperty, "");
   if (!x509_name.empty()) {
-    string x509_type = args()->LookupString(kOpenVPNVerifyX509TypeProperty, "");
+    string x509_type =
+        args()->Lookup<string>(kOpenVPNVerifyX509TypeProperty, "");
     if (x509_type.empty()) {
       AppendOption("verify-x509-name", x509_name, options);
     } else {
@@ -855,7 +856,7 @@ bool OpenVPNDriver::InitExtraCertOptions(
 }
 
 void OpenVPNDriver::InitPKCS11Options(vector<vector<string>>* options) {
-  string id = args()->LookupString(kOpenVPNClientCertIdProperty, "");
+  string id = args()->Lookup<string>(kOpenVPNClientCertIdProperty, "");
   if (!id.empty()) {
     AppendOption("pkcs11-providers", kDefaultPKCS11Provider, options);
     AppendOption("pkcs11-id", id, options);
@@ -867,8 +868,8 @@ void OpenVPNDriver::InitClientAuthOptions(vector<vector<string>>* options) {
   // a client cert was not provided, specify user-password client
   // authentication.
   if (args()->Contains<string>(kOpenVPNAuthUserPassProperty) ||
-      !args()->LookupString(kOpenVPNUserProperty, "").empty() ||
-      args()->LookupString(kOpenVPNClientCertIdProperty, "").empty()) {
+      !args()->Lookup<string>(kOpenVPNUserProperty, "").empty() ||
+      args()->Lookup<string>(kOpenVPNClientCertIdProperty, "").empty()) {
     AppendOption("auth-user-pass", options);
   }
 }
@@ -894,7 +895,7 @@ bool OpenVPNDriver::InitManagementChannelOptions(
 void OpenVPNDriver::InitLoggingOptions(vector<vector<string>>* options) {
   AppendOption("syslog", options);
 
-  string verb = args()->LookupString(kOpenVPNVerbProperty, "");
+  string verb = args()->Lookup<string>(kOpenVPNVerbProperty, "");
   if (!verb.empty()) {
     AppendOption("verb", verb, options);
     return;
@@ -958,7 +959,7 @@ bool OpenVPNDriver::AppendValueOption(
     const string& property,
     const string& option,
     vector<vector<string>>* options) {
-  string value = args()->LookupString(property, "");
+  string value = args()->Lookup<string>(property, "");
   if (!value.empty()) {
     AppendOption(option, value, options);
     return true;
@@ -971,7 +972,7 @@ bool OpenVPNDriver::AppendDelimitedValueOption(
     const string& option,
     char delimiter,
     vector<vector<string>>* options) {
-  string value = args()->LookupString(property, "");
+  string value = args()->Lookup<string>(property, "");
   if (!value.empty()) {
     vector<string> parts = SplitString(
         value, std::string{delimiter}, base::TRIM_WHITESPACE,
@@ -1058,9 +1059,10 @@ string OpenVPNDriver::GetProviderType() const {
 KeyValueStore OpenVPNDriver::GetProvider(Error* error) {
   SLOG(this, 2) << __func__;
   KeyValueStore props = VPNDriver::GetProvider(error);
-  props.Set<bool>(kPassphraseRequiredProperty,
-                  args()->LookupString(kOpenVPNPasswordProperty, "").empty() &&
-                      args()->LookupString(kOpenVPNTokenProperty, "").empty());
+  props.Set<bool>(
+      kPassphraseRequiredProperty,
+      args()->Lookup<string>(kOpenVPNPasswordProperty, "").empty() &&
+          args()->Lookup<string>(kOpenVPNTokenProperty, "").empty());
   return props;
 }
 
@@ -1158,29 +1160,29 @@ void OpenVPNDriver::ReportConnectionMetrics() {
   }
 
   bool has_user_authentication = false;
-  if (args()->LookupString(kOpenVPNTokenProperty, "") != "") {
+  if (args()->Lookup<string>(kOpenVPNTokenProperty, "") != "") {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnUsernameToken,
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
-  if (args()->LookupString(kOpenVPNOTPProperty, "") != "") {
+  if (args()->Lookup<string>(kOpenVPNOTPProperty, "") != "") {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp,
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
-  if (args()->LookupString(kOpenVPNAuthUserPassProperty, "") != "" ||
-      args()->LookupString(kOpenVPNUserProperty, "") != "")  {
+  if (args()->Lookup<string>(kOpenVPNAuthUserPassProperty, "") != "" ||
+      args()->Lookup<string>(kOpenVPNUserProperty, "") != "") {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword,
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
-  if (args()->LookupString(kOpenVPNClientCertIdProperty, "") != "") {
+  if (args()->Lookup<string>(kOpenVPNClientCertIdProperty, "") != "") {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,

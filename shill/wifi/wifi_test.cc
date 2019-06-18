@@ -3406,10 +3406,10 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   ASSERT_TRUE(link_statistics.Contains<uint32_t>(kTransmitRetriesProperty));
   EXPECT_EQ(kTransmitRetries,
             link_statistics.Get<uint32_t>(kTransmitRetriesProperty));
-  EXPECT_EQ(StringPrintf("%d.%d MBit/s MCS %d 40MHz",
-                         kBitrate / 10, kBitrate % 10, kMCS),
-            link_statistics.LookupString(kTransmitBitrateProperty, ""));
-  EXPECT_EQ("", link_statistics.LookupString(kReceiveBitrateProperty, ""));
+  EXPECT_EQ(StringPrintf("%d.%d MBit/s MCS %d 40MHz", kBitrate / 10,
+                         kBitrate % 10, kMCS),
+            link_statistics.Lookup<string>(kTransmitBitrateProperty, ""));
+  EXPECT_EQ("", link_statistics.Lookup<string>(kReceiveBitrateProperty, ""));
 
   // New station info with VHT rate parameters.
   NewStationMessage new_vht_station;
@@ -3473,8 +3473,10 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
     string rate = StringPrintf("%d.%d MBit/s VHT-MCS %d 80MHz VHT-NSS %d",
                                kVhtBitrate / 10, kVhtBitrate % 10, kVhtMCS,
                                kVhtNSS);
-    EXPECT_EQ(rate, link_statistics.LookupString(kTransmitBitrateProperty, ""));
-    EXPECT_EQ(rate, link_statistics.LookupString(kReceiveBitrateProperty, ""));
+    EXPECT_EQ(rate,
+              link_statistics.Lookup<string>(kTransmitBitrateProperty, ""));
+    EXPECT_EQ(rate,
+              link_statistics.Lookup<string>(kReceiveBitrateProperty, ""));
   }
 }
 
