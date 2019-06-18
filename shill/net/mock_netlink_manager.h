@@ -13,8 +13,6 @@
 
 namespace shill {
 
-class NetlinkMessage;
-
 class MockNetlinkManager : public NetlinkManager {
  public:
   MockNetlinkManager() = default;

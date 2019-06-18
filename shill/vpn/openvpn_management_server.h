@@ -16,7 +16,6 @@
 
 namespace shill {
 
-class Error;
 struct InputData;
 class IOHandler;
 class IOHandlerFactory;

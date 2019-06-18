@@ -12,10 +12,7 @@
 
 namespace shill {
 
-class ControlInterface;
-class EventDispatcher;
 class Manager;
-class Metrics;
 class PPPDevice;
 
 class PPPDeviceFactory {

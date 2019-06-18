@@ -21,7 +21,6 @@
 namespace shill {
 
 class ByteString;
-class ControlInterface;
 class Error;
 class KeyValueStore;
 class Manager;

@@ -18,12 +18,9 @@
 
 namespace shill {
 
-class ControlInterface;
 class Error;
-class EventDispatcher;
 class ExternalTask;
 class Manager;
-class Metrics;
 class PPPDeviceFactory;
 class ProcessManager;
 class StoreInterface;

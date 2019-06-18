@@ -11,10 +11,7 @@
 
 namespace shill {
 
-class ControlInterface;
-class EventDispatcher;
 class Manager;
-class Metrics;
 
 // This is only use for loading non-active Ethernet service entries from the
 // profile.

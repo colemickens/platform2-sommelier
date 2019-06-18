@@ -13,11 +13,8 @@
 
 namespace shill {
 
-class ControlInterface;
 class Error;
-class EventDispatcher;
 class Manager;
-class Metrics;
 
 // This is a simple Service subclass with all the pure-virtual methods stubbed.
 class ServiceUnderTest : public Service {

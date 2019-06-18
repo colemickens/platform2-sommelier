@@ -16,11 +16,8 @@
 namespace shill {
 
 class ByteString;
-class ControlInterface;
-class EventDispatcher;
 class IPAddress;
 class Manager;
-class Metrics;
 
 class MockDeviceInfo : public DeviceInfo {
  public:

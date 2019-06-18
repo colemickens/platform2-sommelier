@@ -15,8 +15,6 @@ namespace shill {
 
 class ByteString;
 class Error;
-class EventDispatcher;
-class Metrics;
 class Nl80211Message;
 class PropertyStore;
 

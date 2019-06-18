@@ -14,9 +14,7 @@
 
 namespace shill {
 
-class ControlInterface;
 class Error;
-class EventDispatcher;
 
 class MockEthernet : public Ethernet {
  public:

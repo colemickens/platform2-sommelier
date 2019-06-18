@@ -103,7 +103,6 @@ class Metrics;
 class NetlinkManager;
 class NetlinkMessage;
 class Nl80211Message;
-class ScanSession;
 class SupplicantEAPStateHandler;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;

@@ -18,7 +18,6 @@
 
 namespace shill {
 
-class ControlInterface;
 #if !defined(DISABLE_WIFI)
 class WiFiProvider;
 #endif  // DISABLE_WIFI

@@ -19,9 +19,7 @@
 
 namespace shill {
 
-class ControlInterface;
 class Error;
-class EventDispatcher;
 
 class MockWiFi : public WiFi {
  public:

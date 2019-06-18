@@ -22,7 +22,6 @@ namespace shill {
 
 class ControlInterface;
 class DBusObjectManagerProxyInterface;
-class DBusPropertiesProxyInterface;
 class Modem1;
 class Modem;
 

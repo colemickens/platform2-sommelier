@@ -12,7 +12,6 @@
 
 namespace shill {
 
-class ControlInterface;
 class Manager;
 
 // An in-memory profile that is not persisted to disk, but allows the
