@@ -96,7 +96,7 @@ dev_unmount_packages
 # runtime data) through /var.
 umount -n /var/run /var/lock
 
-# Unmount /var, /usr/local, /home and encrypted mountpoints, then try to
+# Unmount /var, /home and encrypted mountpoints, then try to
 # unmount /mnt/stateful_partition.  Log to /mnt/stateful_partition if any of
 # them failed to unmount.
 # Note that the other mounts are submounts of /mnt/stateful_partition on
@@ -116,11 +116,11 @@ if [ -e /dev/mapper/encstateful ]; then
     fi
     sleep 0.1
   done
-  umount -n /usr/local /home
+  umount -n /home
   # Merge the exit status with the earlier mount-encrypted call.
   : "$(( rc |= $? ))"
 else
-  umount -n /var /usr/local /home
+  umount -n /var /home
   rc="$?"
 fi
 # Unmount /mnt/stateful_partition only if the previous unmounts succeeded.

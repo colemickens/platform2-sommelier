@@ -219,6 +219,9 @@ dev_unmount_packages() {
       fi
     done
   fi
+
+  # unmount /usr/local to match dev_mount_package.
+  umount -n /usr/local
 }
 
 # Load more utilities on test image.
