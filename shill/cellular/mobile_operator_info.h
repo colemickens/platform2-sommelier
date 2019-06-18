@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include <base/files/file_util.h>
+#include <base/files/file_path.h>
 
 namespace shill {
 

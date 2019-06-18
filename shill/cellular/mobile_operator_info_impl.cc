@@ -6,9 +6,6 @@
 
 #include <regex.h>
 
-#include <algorithm>
-#include <cctype>
-#include <iostream>
 #include <memory>
 #include <utility>
 

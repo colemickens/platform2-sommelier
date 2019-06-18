@@ -4,10 +4,8 @@
 
 #include "shill/cellular/mobile_operator_info.h"
 
-#include <fstream>
 #include <map>
 #include <memory>
-#include <ostream>
 #include <set>
 #include <utility>
 #include <vector>
