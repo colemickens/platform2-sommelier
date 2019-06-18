@@ -6,7 +6,7 @@
 # A script to install from removable media to hard disk.
 
 # If we're not running as root, restart as root.
-if [ ${UID:-$(id -u)} -ne 0 ]; then
+if [ "${UID:-$(id -u)}" -ne 0 ]; then
   exec sudo "$0" "$@"
 fi
 
@@ -86,9 +86,9 @@ fast_dd() {
   set -- "$@" status=progress
   # Find the largest block size that all the parameters are a factor of.
   local block_size=$((2 * 1024 * 1024))
-  while [ $(((user_count * SRC_BLKSIZE) % block_size)) -ne 0 -o \
-          $(((user_skip * SRC_BLKSIZE) % block_size)) -ne 0 -o \
-          $(((user_seek * DST_BLKSIZE) % block_size)) -ne 0 ]; do
+  while [ $(((user_count * SRC_BLKSIZE) % block_size)) -ne 0 ] || \
+         [ $(((user_skip * SRC_BLKSIZE) % block_size)) -ne 0 ] || \
+         [ $(((user_seek * DST_BLKSIZE) % block_size)) -ne 0 ]; do
 
     : $((block_size /= 2))
   done
@@ -97,8 +97,8 @@ fast_dd() {
   # loudly if it's really small (and the partition is big).
   if [ "${block_size}" -ne $((2 * 1024 * 1024)) ]; then
     echo "DD with block size ${block_size}"
-    if [ "${block_size}" -lt $((128 * 1024)) -a \
-         $((user_count * SRC_BLKSIZE)) -gt $((128 * 1024 * 1024)) ]; then
+    if [ "${block_size}" -lt $((128 * 1024)) ] && \
+        [ $((user_count * SRC_BLKSIZE)) -gt $((128 * 1024 * 1024)) ]; then
       echo
       echo "WARNING: DOING A SLOW MISALIGNED dd OPERATION. PLEASE FIX"
       echo "count=${user_count} seek=${user_seek} skip=${user_skip}"
@@ -172,7 +172,7 @@ init_ubi_volume() {
   if [ ! -e "${phy_ubi}" ]; then
     ubiformat -y -e 0 "/dev/mtd${part_no}"
     ubiattach -d "${part_no}" -m "${part_no}" \
-              --max-beb-per1024 $(calculate_max_beb_per_1024 "${part_no}")
+              --max-beb-per1024 "$(calculate_max_beb_per_1024 "${part_no}")"
   fi
   if [ ! -e "${log_ubi}" ]; then
     local volume_size
@@ -191,12 +191,12 @@ write_partition() {
   local dst="$6"
   local format fs_format
 
-  if [ ${user_count} -eq 0 ]; then
+  if [ "${user_count}" -eq 0 ]; then
     echo "Skipping partition as it does not exist"
     return 0
   fi
 
-  format=$(get_format ${user_part})
+  format="$(get_format "${user_part}")"
   case ${format} in
   nand)
     flash_erase "/dev/mtd${user_part}" 0 0
@@ -212,7 +212,7 @@ write_partition() {
 
     init_ubi_volume "${user_part}" "$(cat "${sysfs_name}")"
 
-    fs_format=$(get_fs_format ${user_part})
+    fs_format="$(get_fs_format "${user_part}")"
     case ${fs_format} in
     ubifs)
       local src_mnt="${TMPMNT}/src" dst_mnt="${TMPMNT}/dst"
@@ -233,7 +233,7 @@ write_partition() {
       ;;
     *)
       ubiupdatevol --skip $((user_skip * SRC_BLKSIZE)) \
-        --size $((user_count * SRC_BLKSIZE)) ${log_ubi} "${src}"
+        --size $((user_count * SRC_BLKSIZE)) "${log_ubi}" "${src}"
       ;;
     esac
     ;;
@@ -252,14 +252,14 @@ get_root_device() {
 
 # Check for optional payload image
 check_payload_image() {
-  if [ "${FLAGS_skip_rootfs}" -eq "${FLAGS_TRUE}" -a \
-       -s "${FLAGS_gpt_layout}" ]; then
+  if [ "${FLAGS_skip_rootfs}" -eq "${FLAGS_TRUE}" ] && \
+      [ -s "${FLAGS_gpt_layout}" ]; then
     # Usually this is used for partition setup.
     SRC=""
     ROOT=""
   elif [ -z "${FLAGS_payload_image}" ]; then
     # Find root partition of the root block device
-    SRC=$(get_block_dev_from_partition_dev $(get_root_device))
+    SRC=$(get_block_dev_from_partition_dev "$(get_root_device)")
     ROOT=""
   else
     if [ ! -e "${FLAGS_payload_image}" ]; then
@@ -319,13 +319,12 @@ loop_offset_setup() {
   local offset=$2
   local blocksize=$3
 
-  if [ "${blocksize}" -eq 512 ]; then
-    local param=""
-  else
-    local param="-b ${blocksize}"
+  set --
+  if [ "${blocksize}" -ne 512 ]; then
+    set -- "$@" -b "${blocksize}"
   fi
 
-  LOOP_DEV=$(losetup -f ${param} --show -o $(($offset * blocksize)) ${filename})
+  LOOP_DEV=$(losetup -f "$@" --show -o $((offset * blocksize)) "${filename}")
   if [ -z "$LOOP_DEV" ]; then
     die "No free loop device. Free up a loop device or reboot. Exiting."
   fi
@@ -347,23 +346,23 @@ loop_offset_cleanup() {
   # losetup -a doesn't always show every active device, so we'll always try to
   # delete what we think is the active one without checking first. Report
   # success no matter what.
-  losetup -d ${LOOP_DEV} || /bin/true
+  losetup -d "${LOOP_DEV}" || /bin/true
 }
 
 # Mount the existing loop device at the mountpoint in $TMPMNT.
 # Args: optional 'readwrite'. If present, mount read-write, otherwise read-only.
 mount_on_loop_dev() {
   local rw_flag=${1-readonly}
-  local mount_flags=""
+  set --
   if [ "${rw_flag}" != "readwrite" ]; then
-    mount_flags="-o ro"
+    set -- "$@" -o ro
   fi
-  tracked_mount ${mount_flags} ${LOOP_DEV} ${TMPMNT}
+  tracked_mount "$@" "${LOOP_DEV}" "${TMPMNT}"
 }
 
 # Unmount loop-mounted device.
 umount_from_loop_dev() {
-  mount | grep -q " on ${TMPMNT} " && tracked_umount ${TMPMNT}
+  mount | grep -q " on ${TMPMNT} " && tracked_umount "${TMPMNT}"
 }
 
 # Check if all arguments are non-empty values
@@ -381,7 +380,7 @@ check_non_empty_values() {
 cleanup_on_failure() {
   set +e
 
-  if [ ${FLAGS_storage_diags} -eq ${FLAGS_TRUE} ]; then
+  if [ "${FLAGS_storage_diags}" -eq "${FLAGS_TRUE}" ]; then
     if [ -b "${DST-}" ]; then
       # Generate the diagnostics log that can be used by a caller.
       echo "Running a hw diagnostics test -- this might take a couple minutes."
@@ -405,29 +404,29 @@ cleanup() {
 
   local mount_point
   for mount_point in ${MOUNTS:-}; do
-    umount "$mount_point" || /bin/true
+    umount "${mount_point}" || /bin/true
   done
   MOUNTS=""
 
   local loop_dev
   for loop_dev in ${LOOPS:-}; do
-    losetup -d "$loop_dev" || /bin/true
+    losetup -d "${loop_dev}" || /bin/true
   done
   LOOPS=""
 
-  if [ ! -z "$ROOT" ]; then
-    rmdir "$ROOT"
+  if [ -n "${ROOT}" ]; then
+    rmdir "${ROOT}"
   fi
 }
 
 check_removable() {
-  if [ ${FLAGS_skip_dst_removable} -eq ${FLAGS_TRUE} ]; then
+  if [ "${FLAGS_skip_dst_removable}" -eq "${FLAGS_TRUE}" ]; then
     return
   fi
 
   local removable
 
-  if ! removable=$(cat /sys/block/${DST#/dev/}/removable); then
+  if ! removable="$(cat "/sys/block/${DST#/dev/}/removable")"; then
     die "Error: Invalid destination device (must be whole device): ${DST}"
   fi
 
@@ -439,10 +438,12 @@ check_removable() {
 # Wipes and expands the stateful partition.
 wipe_stateful() {
   echo "Clearing the stateful partition..."
-  local stateful_fs_format=$(get_fs_format ${PARTITION_NUM_STATE})
-  local state_options=""
+  local stateful_fs_format
+  stateful_fs_format="$(get_fs_format "${PARTITION_NUM_STATE}")"
+  # state options are stored in $@.
+  set --
 
-  case ${STATEFUL_FORMAT} in
+  case "${STATEFUL_FORMAT}" in
   ubi)
     local phy_ubi="/dev/ubi${PARTITION_NUM_STATE}"
     local log_ubi="${phy_ubi}_0"
@@ -451,13 +452,13 @@ wipe_stateful() {
     init_ubi_volume "${PARTITION_NUM_STATE}" "$(cat "${sysfs_name}")"
     ;;
   *)
-    loop_offset_setup ${DST} ${START_STATEFUL} ${DST_BLKSIZE}
+    loop_offset_setup "${DST}" "${START_STATEFUL}" "${DST_BLKSIZE}"
     ;;
   esac
 
   # Check if the kernel we are going to install support ext4 crypto.
   if ext4_dir_encryption_supported; then
-    state_options="-O encrypt"
+    set -- "$@" -O encrypt
   fi
 
   local num_4k_sectors
@@ -468,13 +469,13 @@ wipe_stateful() {
   fi
 
   # We always make any ext* stateful partitions ext4.
-  case ${stateful_fs_format} in
+  case "${stateful_fs_format}" in
   ext[234])
-    mkfs.ext4 -F -b 4096 -L "H-STATE" ${state_options} ${LOOP_DEV} \
+    mkfs.ext4 -F -b 4096 -L "H-STATE" "$@" "${LOOP_DEV}" \
       ${num_4k_sectors}
     ;;
   ubifs)
-    mkfs.ubifs -y -x none -R 0 /dev/ubi${PARTITION_NUM_STATE}_0
+    mkfs.ubifs -y -x none -R 0 "/dev/ubi${PARTITION_NUM_STATE}_0"
     ;;
   esac
 
@@ -518,13 +519,13 @@ install_stateful() {
   # the release image, which could mask bugs.  Make sure every
   # item you add here is well justified.
   echo "Installing the stateful partition..."
-  case ${STATEFUL_FORMAT} in
+  case "${STATEFUL_FORMAT}" in
   ubi)
     # We modify the global used here as it affects how we unmount later.
     LOOP_DEV="/dev/ubi${PARTITION_NUM_STATE}_0"
     ;;
   *)
-    loop_offset_setup ${DST} ${START_STATEFUL} ${DST_BLKSIZE}
+    loop_offset_setup "${DST}" "${START_STATEFUL}" "${DST_BLKSIZE}"
     ;;
   esac
   mount_on_loop_dev readwrite
@@ -604,7 +605,8 @@ install_stateful() {
     if [ ! -d "${ROOT}/mnt/stateful_partition/${dir}" ]; then
       continue
     fi
-    local parent=$(dirname "${dir}")
+    local parent
+    parent=$(dirname "${dir}")
     mkdir -p "${TMPMNT}/${parent}"
     cp -au "${ROOT}/mnt/stateful_partition/${dir}" "${TMPMNT}/${dir}"
   done
@@ -618,7 +620,8 @@ install_stateful() {
     udevadm trigger
     udevadm settle
 
-    local stateful_device="$(cgpt find -l STATE "${FLAGS_payload_image}")"
+    local stateful_device
+    stateful_device="$(cgpt find -l STATE "${FLAGS_payload_image}")"
 
     finish_oobe_auto_config \
       --private_key="${FLAGS_oobe_priv_key}" \
@@ -647,42 +650,48 @@ copy_partition() {
   local part_num=$1
   local src=$2
   local dst=$3
-  local part_size=$(partsize ${src} ${part_num})
-  local src_offset=$(partoffset ${src} ${part_num})
-  local dst_offset=$(partoffset ${dst} ${part_num})
+  local part_size
+  local src_offset
+  local dst_offset
+
+  part_size="$(partsize "${src}" "${part_num}")"
+  src_offset="$(partoffset "${src}" "${part_num}")"
+  dst_offset="$(partoffset "${dst}" "${part_num}")"
 
   echo "Installing partition ${part_num} to ${dst}"
 
-  case ${part_num} in
-  ${PARTITION_NUM_STATE})
+  case "${part_num}" in
+  "${PARTITION_NUM_STATE}")
     install_stateful
     ;;
-  ${PARTITION_NUM_ROOT_A}|${PARTITION_NUM_ROOT_B})
+  "${PARTITION_NUM_ROOT_A}"|"${PARTITION_NUM_ROOT_B}")
     # Always copy from ROOT_A for rootfs partitions.
-    part_size=$(partsize ${src} ${PARTITION_NUM_ROOT_A})
-    src_offset=$(partoffset ${src} ${PARTITION_NUM_ROOT_A})
-    write_partition ${part_num} ${part_size} ${dst_offset} \
-      ${src_offset} ${src} ${dst}
+    part_size=$(partsize "${src}" "${PARTITION_NUM_ROOT_A}")
+    src_offset=$(partoffset "${src}" "${PARTITION_NUM_ROOT_A}")
+    write_partition "${part_num}" "${part_size}" "${dst_offset}" \
+      "${src_offset}" "${src}" "${dst}"
     ;;
-  ${PARTITION_NUM_KERN_A}|${PARTITION_NUM_KERN_B})
+  "${PARTITION_NUM_KERN_A}"|"${PARTITION_NUM_KERN_B}")
     # Use kernel B from the source into both kernel A and B in the destination.
-    part_size=$(partsize ${src} ${PARTITION_NUM_KERN_B})
-    src_offset=$(partoffset ${src} ${PARTITION_NUM_KERN_B})
-    write_partition ${part_num} ${part_size} ${dst_offset} \
-      ${src_offset} ${src} ${dst}
+    part_size="$(partsize "${src}" "${PARTITION_NUM_KERN_B}")"
+    src_offset="$(partoffset "${src}" "${PARTITION_NUM_KERN_B}")"
+    write_partition "${part_num}" "${part_size}" "${dst_offset}" \
+      "${src_offset}" "${src}" "${dst}"
     ;;
   *)
-    local src_part_size="$((part_size * SRC_BLKSIZE))"
-    local dst_part_size="$(partsize ${dst} ${part_num})"
+    local src_part_size
+    local dst_part_size
+    src_part_size="$((part_size * SRC_BLKSIZE))"
+    dst_part_size="$(partsize "${dst}" "${part_num}")"
     dst_part_size="$((dst_part_size * DST_BLKSIZE))"
-    if [ "${src_part_size}" -ne "${dst_part_size}" -o \
-         "${src_part_size}" -le 4096 ]; then
+    if [ "${src_part_size}" -ne "${dst_part_size}" ] || \
+        [ "${src_part_size}" -le 4096 ]; then
       # We only copy partitions that are equally sized and greater than the
       # min fs block size. This matches the build_image logic.
       return
     fi
-    write_partition ${part_num} ${part_size} ${dst_offset} \
-      ${src_offset} ${src} ${dst}
+    write_partition "${part_num}" "${part_size}" "${dst_offset}" \
+      "${src_offset}" "${src}" "${dst}"
     ;;
   esac
 }
@@ -694,9 +703,14 @@ recreate_nand_partitions() {
   local dst=$1
   local blocksize=$2
   local part_no
-  for part_no in $(ls /dev | grep 'mtd[0-9]*$' | grep -v mtd0 | cut -c 4-); do
+
+  for part_no in /dev/mtd*; do
+    part_no="$(echo "${part_no}" | cut -b9- | grep '^[0-9]*$' || :)"
+    if [ -z "${part_no}" ] || [ "${part_no}" = "0" ]; then
+      continue
+    fi
     # Ignore any error in case no UBI volume is attached.
-    ubidetach -m "${part_no}" 2>&1 > /dev/null || true
+    ubidetach -m "${part_no}" > /dev/null 2>&1 || true
     nand_partition del "${dst}" "${part_no}"
   done
 
@@ -705,7 +719,8 @@ recreate_nand_partitions() {
   flashrom -r "-iRW_GPT:${gpt_file}"
   mtd_size=$(cat "/sys/class/mtd/$(basename "${dst}")/size")
   mtd_gpt_file="-D ${mtd_size} ${gpt_file}"
-  for part_no in $(seq ${PARTITION_NUM_STATE} ${PARTITION_NUM_EFI_SYSTEM}); do
+  for part_no in $(seq "${PARTITION_NUM_STATE}" \
+      "${PARTITION_NUM_EFI_SYSTEM}"); do
     part_size=$(partsize "${mtd_gpt_file}" "${part_no}")
     : $(( part_size *= blocksize ))
     part_offset=$(partoffset "${mtd_gpt_file}" "${part_no}")
@@ -729,7 +744,7 @@ check_dst() {
   fi
 
   # Check out the dst device.
-  if [ ${FLAGS_mtd_layout} -eq ${FLAGS_TRUE} ]; then
+  if [ "${FLAGS_mtd_layout}" -eq "${FLAGS_TRUE}" ]; then
     FLAGS_skip_dst_removable=${FLAGS_TRUE}
   elif [ ! -b "${DST}" ]; then
     die "Error: Unable to find destination block device: ${DST}"
@@ -748,7 +763,7 @@ get_pmbr_code() {
 
   if [ -n "${FLAGS_pmbr_code}" ]; then
     echo "${FLAGS_pmbr_code}"
-  elif [ ${FLAGS_mtd_layout} -eq ${FLAGS_TRUE} ]; then
+  elif [ "${FLAGS_mtd_layout}" -eq "${FLAGS_TRUE}" ]; then
     # We don't use PMBR if this is on MTD.
     dd bs="${DST_BLKSIZE}" \
       count=1 if=/dev/zero of="${pmbr_code}" >/dev/null 2>&1
@@ -764,7 +779,7 @@ get_pmbr_code() {
 # Reload the system partitions after the partition table was modified (so the
 # device nodes like /dev/sda1 can be accessed).
 reload_partitions() {
-  if [ ${FLAGS_mtd_layout} -eq ${FLAGS_FALSE} ]; then
+  if [ "${FLAGS_mtd_layout}" -eq "${FLAGS_FALSE}" ]; then
     # Reload the partition table on block devices only.
     # On MTD, the ChromeOS kernel loads the partition table at boot time.
     #
@@ -782,12 +797,12 @@ reload_partitions() {
 
 # Post partition copying work and special casing
 do_post_install() {
-  local args=""
+  set --
   if [ -n "${FLAGS_target_bios}" ]; then
-    args="${args} --bios ${FLAGS_target_bios}"
+    set -- "$@" --bios "${FLAGS_target_bios}"
   fi
   if [ "${FLAGS_debug}" -eq "${FLAGS_TRUE}" ]; then
-    args="${args} --debug"
+    set -- "$@" --debug
   fi
   local dst_rootfs_dev=""
 
@@ -804,14 +819,14 @@ do_post_install() {
       # We need to pass the __writable__ device to postinst, hence ubiX_0.
       dst_rootfs_dev="/dev/ubi${PARTITION_NUM_ROOT_A}_0"
     else
-      loop_offset_setup ${DST} ${START_ROOTFS_A} ${DST_BLKSIZE}
-      dst_rootfs_dev=$(make_partition_dev ${DST} ${PARTITION_NUM_ROOT_A})
+      loop_offset_setup "${DST}" "${START_ROOTFS_A}" "${DST_BLKSIZE}"
+      dst_rootfs_dev="$(make_partition_dev "${DST}" "${PARTITION_NUM_ROOT_A}")"
     fi
 
     mount_on_loop_dev
-    IS_INSTALL="1" ${TMPMNT}/postinst "${dst_rootfs_dev}" ${args}
+    IS_INSTALL="1" "${TMPMNT}/postinst" "${dst_rootfs_dev}" "$@"
     umount_from_loop_dev
-    if [ ${FLAGS_mtd_layout} -eq ${FLAGS_FALSE} ]; then
+    if [ "${FLAGS_mtd_layout}" -eq "${FLAGS_FALSE}" ]; then
       loop_offset_cleanup
     fi
   fi
@@ -822,10 +837,10 @@ legacy_offset_size_export() {
   # This should disappear eventually, but it's here to make existing
   # code work for now.
 
-  START_STATEFUL=$(partoffset $1 ${PARTITION_NUM_STATE})
-  START_ROOTFS_A=$(partoffset $1 ${PARTITION_NUM_ROOT_A})
+  START_STATEFUL="$(partoffset "$1" "${PARTITION_NUM_STATE}")"
+  START_ROOTFS_A="$(partoffset "$1" "${PARTITION_NUM_ROOT_A}")"
 
-  NUM_STATEFUL_SECTORS=$(partsize $1 ${PARTITION_NUM_STATE})
+  NUM_STATEFUL_SECTORS="$(partsize "$1" "${PARTITION_NUM_STATE}")"
 }
 
 main() {
@@ -855,11 +870,11 @@ main() {
 
     SRC="${FLAGS_payload_image}"
     # Mount files that are required to be referenced (when not already mounted).
-    loop_offset_setup "${SRC}" $(partoffset "${SRC}" ${PARTITION_NUM_ROOT_A}) \
-      512
+    loop_offset_setup "${SRC}" \
+      "$(partoffset "${SRC}" "${PARTITION_NUM_ROOT_A}")" 512
     tracked_mount -o ro "${LOOP_DEV}" "${ROOT}"
-    loop_offset_setup "${SRC}" $(partoffset "${SRC}" ${PARTITION_NUM_STATE}) \
-      512
+    loop_offset_setup "${SRC}"
+      "$(partoffset "${SRC}" "${PARTITION_NUM_STATE}")" 512
     tracked_mount -o ro "${LOOP_DEV}" "${ROOT}"/mnt/stateful_partition
   fi
 
@@ -870,7 +885,7 @@ main() {
   # This was moved out of check_payload_image because DEFAULT_ROOTDEV
   # is not defined until after the GPT helper functions are loaded.
   if [ "${FLAGS_skip_src_removable}" -eq "${FLAGS_FALSE}" ]; then
-    if [ "$(cat /sys/block/${SRC#/dev/}/removable)" != "1" ]; then
+    if [ "$(cat "/sys/block/${SRC#/dev/}/removable")" != "1" ]; then
       # Removable flag is implemented inconsistently for ARM sdcard reader.
       # Allow all devices except the default fixed drive.
       if [ "${SRC}" = "$(get_fixed_dst_drive)" ]; then
@@ -883,7 +898,7 @@ main() {
 
   # Now that we have loaded the partition table we can actually read the format
   # and partition information.
-  STATEFUL_FORMAT=$(get_format ${PARTITION_NUM_STATE})
+  STATEFUL_FORMAT="$(get_format "${PARTITION_NUM_STATE}")"
 
   DST=${FLAGS_dst:-$(get_fixed_dst_drive)}
   check_dst
@@ -895,8 +910,8 @@ main() {
   echo "This will install from '${SRC}' to '${DST}'."
   echo "This will erase all data at this destination: ${DST}"
   local sure
-  if [ ${FLAGS_yes} -eq ${FLAGS_FALSE} ]; then
-    read -p "Are you sure (y/N)? " sure
+  if [ "${FLAGS_yes}" -eq "${FLAGS_FALSE}" ]; then
+    read -r -p "Are you sure (y/N)? " sure
     if [ "${sure}" != "y" ]; then
       # Don't run diagnostics if the user explicitly bailed out.
       trap - EXIT
@@ -911,13 +926,13 @@ main() {
   legacy_offset_size_export "${DST}"
   reload_partitions
 
-  if [ ${FLAGS_skip_rootfs} -eq ${FLAGS_TRUE} ]; then
+  if [ "${FLAGS_skip_rootfs}" -eq "${FLAGS_TRUE}" ]; then
     echo "Done installing partitions."
     exit 0
   fi
 
-  if [ ${FLAGS_preserve_stateful} -eq ${FLAGS_FALSE} -a \
-       ! -n "${FLAGS_lab_preserve_logs}" ]; then
+  if [ "${FLAGS_preserve_stateful}" -eq "${FLAGS_FALSE}" ] && \
+      [ -z "${FLAGS_lab_preserve_logs}" ]; then
     wipe_stateful
   fi
 
@@ -925,8 +940,9 @@ main() {
   # last. The order shouldn't matter but legacy behavior has us go in reverse
   # order.
   local current_part
-  for current_part in $(seq ${PARTITION_NUM_EFI_SYSTEM} -1 ${PARTITION_NUM_STATE}); do
-    copy_partition ${current_part} ${SRC} ${DST}
+  for current_part in $(seq "${PARTITION_NUM_EFI_SYSTEM}" -1 \
+      "${PARTITION_NUM_STATE}"); do
+    copy_partition "${current_part}" "${SRC}" "${DST}"
   done
 
   do_post_install
