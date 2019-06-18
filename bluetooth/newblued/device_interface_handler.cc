@@ -16,8 +16,8 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "bluetooth/common/util.h"
 #include "bluetooth/newblued/adapter_interface_handler.h"
+#include "bluetooth/newblued/util.h"
 
 namespace bluetooth {
 

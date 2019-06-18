@@ -14,7 +14,7 @@
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>
 
-#include "bluetooth/common/uuid.h"
+#include "bluetooth/newblued/uuid.h"
 
 namespace bluetooth {
 

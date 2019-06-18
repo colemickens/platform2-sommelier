@@ -9,7 +9,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "bluetooth/common/uuid.h"
+#include "bluetooth/newblued/uuid.h"
 
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;

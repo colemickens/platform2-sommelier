@@ -13,7 +13,7 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
-#include "bluetooth/common/util.h"
+#include "bluetooth/newblued/util.h"
 
 namespace bluetooth {
 

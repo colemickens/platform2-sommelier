@@ -17,9 +17,9 @@
 #include <dbus/bus.h>
 
 #include "bluetooth/common/exported_object_manager_wrapper.h"
-#include "bluetooth/common/uuid.h"
 #include "bluetooth/newblued/newblue.h"
 #include "bluetooth/newblued/property.h"
+#include "bluetooth/newblued/uuid.h"
 
 namespace bluetooth {
 

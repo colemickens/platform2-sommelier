@@ -14,8 +14,8 @@
 #include <dbus/object_path.h>
 
 #include "bluetooth/common/exported_object_manager_wrapper.h"
-#include "bluetooth/common/util.h"
 #include "bluetooth/newblued/newblue.h"
+#include "bluetooth/newblued/util.h"
 
 namespace bluetooth {
 

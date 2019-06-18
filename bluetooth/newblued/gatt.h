@@ -13,10 +13,10 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 
-#include "bluetooth/common/uuid.h"
 #include "bluetooth/newblued/device_interface_handler.h"
 #include "bluetooth/newblued/gatt_attributes.h"
 #include "bluetooth/newblued/newblue.h"
+#include "bluetooth/newblued/uuid.h"
 
 namespace bluetooth {
 
