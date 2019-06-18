@@ -2,21 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MEMS_SETUP_IIO_CONTEXT_H_
-#define MEMS_SETUP_IIO_CONTEXT_H_
+#ifndef LIBMEMS_IIO_CONTEXT_H_
+#define LIBMEMS_IIO_CONTEXT_H_
 
 #include <string>
 
 #include <base/macros.h>
 
-namespace mems_setup {
+#include "libmems/export.h"
+
+namespace libmems {
 
 class IioDevice;
 
 // The IioContext is the root of the tree of IIO devices on the system.
 // A context is - at its core - a container of devices, which can be
 // retrieved via GetDevice(), providing the device's name as input.
-class IioContext {
+class LIBMEMS_EXPORT IioContext {
  public:
   virtual ~IioContext() = default;
 
@@ -40,6 +42,6 @@ class IioContext {
   DISALLOW_COPY_AND_ASSIGN(IioContext);
 };
 
-}  // namespace mems_setup
+}  // namespace libmems
 
-#endif  // MEMS_SETUP_IIO_CONTEXT_H_
+#endif  // LIBMEMS_IIO_CONTEXT_H_

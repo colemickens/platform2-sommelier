@@ -17,7 +17,6 @@ pkg_config("target_defaults_pkg_deps") {
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
-    "libiio",
   ]
 }
 
@@ -30,12 +29,9 @@ static_library("libmems_setup") {
   sources = [
     "configuration.cc",
     "delegate_impl.cc",
-    "iio_channel_impl.cc",
-    "iio_context_impl.cc",
-    "iio_device.cc",
-    "iio_device_impl.cc",
     "sensor_kind.cc",
   ]
+  pkg_deps = [ "libmems" ]
 }
 
 executable("mems_setup") {
@@ -46,6 +42,7 @@ executable("mems_setup") {
   deps = [
     ":libmems_setup",
   ]
+  pkg_deps = [ "libmems" ]
 }
 
 if (use.test) {
@@ -64,7 +61,12 @@ if (use.test) {
     ]
     deps = [
       ":libmems_setup",
-      "../../common-mk/testrunner:testrunner",
+      "//common-mk/testrunner",
+    ]
+
+    pkg_deps = [
+      "libmems",
+      "libmems_test_support",
     ]
 
     sources = [

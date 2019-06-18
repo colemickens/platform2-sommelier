@@ -8,18 +8,19 @@
 
 #include <gtest/gtest.h>
 
+#include <libmems/iio_context.h>
+#include <libmems/iio_device.h>
+#include <libmems/test_mocks.h>
 #include "mems_setup/configuration.h"
 #include "mems_setup/delegate.h"
-#include "mems_setup/iio_context.h"
-#include "mems_setup/iio_device.h"
 #include "mems_setup/sensor_location.h"
 #include "mems_setup/test_helper.h"
 #include "mems_setup/test_mocks.h"
 
+using libmems::mocks::MockIioChannel;
+using libmems::mocks::MockIioContext;
+using libmems::mocks::MockIioDevice;
 using mems_setup::mocks::MockDelegate;
-using mems_setup::mocks::MockIioChannel;
-using mems_setup::mocks::MockIioContext;
-using mems_setup::mocks::MockIioDevice;
 using mems_setup::testing::SensorTestBase;
 
 namespace mems_setup {

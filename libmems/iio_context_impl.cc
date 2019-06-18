@@ -7,11 +7,11 @@
 
 #include <base/logging.h>
 
-#include "mems_setup/iio_channel_impl.h"
-#include "mems_setup/iio_context_impl.h"
-#include "mems_setup/iio_device_impl.h"
+#include "libmems/iio_channel_impl.h"
+#include "libmems/iio_context_impl.h"
+#include "libmems/iio_device_impl.h"
 
-namespace mems_setup {
+namespace libmems {
 
 IioContextImpl::IioContextImpl() {
   Reload();
@@ -48,4 +48,4 @@ IioDevice* IioContextImpl::GetDevice(const std::string& name) {
   return devices_[name].get();
 }
 
-}  // namespace mems_setup
+}  // namespace libmems

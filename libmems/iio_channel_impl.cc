@@ -8,10 +8,10 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
-#include "mems_setup/iio_channel_impl.h"
-#include "mems_setup/iio_device.h"
+#include "libmems/iio_channel_impl.h"
+#include "libmems/iio_device.h"
 
-namespace mems_setup {
+namespace libmems {
 
 IioChannelImpl::IioChannelImpl(iio_channel* channel) : channel_(channel) {
   CHECK(channel_);
@@ -78,4 +78,4 @@ base::Optional<int64_t> IioChannelImpl::ReadNumberAttribute(
   return val;
 }
 
-}  // namespace mems_setup
+}  // namespace libmems

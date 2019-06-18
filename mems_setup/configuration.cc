@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "mems_setup/configuration.h"
+
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -9,10 +11,9 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 
-#include "mems_setup/configuration.h"
-#include "mems_setup/iio_channel.h"
-#include "mems_setup/iio_context.h"
-#include "mems_setup/iio_device.h"
+#include <libmems/iio_channel.h>
+#include <libmems/iio_context.h>
+#include <libmems/iio_device.h>
 #include "mems_setup/sensor_location.h"
 
 namespace mems_setup {
@@ -28,11 +29,13 @@ struct VpdCalibrationEntry {
 constexpr char kCalibrationBias[] = "bias";
 
 constexpr int kGyroMaxVpdCalibration = 16384;  // 16dps
-constexpr int kAccelMaxVpdCalibration = 256;  // .250g
+constexpr int kAccelMaxVpdCalibration = 256;   // .250g
 constexpr int kAccelSysfsTriggerId = 0;
 }  // namespace
 
-Configuration::Configuration(IioDevice* sensor, SensorKind kind, Delegate* del)
+Configuration::Configuration(libmems::IioDevice* sensor,
+                             SensorKind kind,
+                             Delegate* del)
     : delegate_(del), kind_(kind), sensor_(sensor) {}
 
 bool Configuration::Configure() {
@@ -56,10 +59,9 @@ bool Configuration::CopyCalibrationBiasFromVpd(int max_value) {
     }
     return CopyCalibrationBiasFromVpd(max_value, location->c_str());
   } else {
-    bool base_config = CopyCalibrationBiasFromVpd(max_value,
-                                                  kBaseSensorLocation);
-    bool lid_config = CopyCalibrationBiasFromVpd(max_value,
-                                                 kLidSensorLocation);
+    bool base_config =
+        CopyCalibrationBiasFromVpd(max_value, kBaseSensorLocation);
+    bool lid_config = CopyCalibrationBiasFromVpd(max_value, kLidSensorLocation);
     return base_config && lid_config;
   }
 }

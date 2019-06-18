@@ -45,7 +45,7 @@ bool LoadVpdFromString(const std::string& vpd_data,
 
     // VPD entries come in "key"="value" form, including the quotes;
     // the purpose of the substring operations here is to remove those
-    // quotes, as they are be inconvenient to deal with from C++ code.
+    // quotes, as they are inconvenient to deal with from C++ code.
     const auto key = vpd_data.substr(nl_pos + 1, i_eq - nl_pos - 2);
     const auto value = vpd_data.substr(i_eq + 2, i_nl - i_eq - 3);
     cache->emplace(key, value);

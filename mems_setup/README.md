@@ -10,22 +10,7 @@ The goals of introducing this tool vs. using a shell script include:
  - more readable;
  - better performance.
 
-This tool is based on libiio, and exposes a small wrapper on top of the library
-to aid in writing test cases.
-
-## Class hierarchy
-
-At the root of the hierarchy, there exists the `IioContext`, which represents
-the IIO devices currently available on the system. These can be retrieved by
-name and inspected, via instances of `IioDevice`.
-
-An `IioDevice` allows reading and writing attributes of an IIO device via
-type-safe helper APIs. It also offers support for configuring the buffer
-and trigger of an IIO device, which we use in order to allow the Chrome UI
-to read accelerometer data and support screen rotation.
-
-An `IioDevice` also exposes a list of `IioChannel`s, which can individually be
-enabled and disabled.
+This tool is based on `libmems`.
 
 ## Configuration
 

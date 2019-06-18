@@ -2,21 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MEMS_SETUP_IIO_CHANNEL_IMPL_H_
-#define MEMS_SETUP_IIO_CHANNEL_IMPL_H_
+#ifndef LIBMEMS_IIO_CHANNEL_IMPL_H_
+#define LIBMEMS_IIO_CHANNEL_IMPL_H_
 
 #include <iio.h>
 
 #include <memory>
 #include <string>
 
-#include "mems_setup/iio_channel.h"
+#include "libmems/export.h"
+#include "libmems/iio_channel.h"
 
-namespace mems_setup {
+namespace libmems {
 
 class IioDevice;
 
-class IioChannelImpl : public IioChannel {
+class LIBMEMS_EXPORT IioChannelImpl : public IioChannel {
  public:
   // iio_channel objects are kept alive by the IioContextImpl.
   explicit IioChannelImpl(iio_channel* channel);
@@ -38,6 +39,6 @@ class IioChannelImpl : public IioChannel {
   DISALLOW_COPY_AND_ASSIGN(IioChannelImpl);
 };
 
-}  // namespace mems_setup
+}  // namespace libmems
 
-#endif  // MEMS_SETUP_IIO_CHANNEL_IMPL_H_
+#endif  // LIBMEMS_IIO_CHANNEL_IMPL_H_

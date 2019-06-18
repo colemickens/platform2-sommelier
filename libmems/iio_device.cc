@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "mems_setup/iio_device.h"
+#include "libmems/iio_device.h"
 
-namespace mems_setup {
+namespace libmems {
 
 bool IioDevice::IsSingleSensor() const {
   return ReadStringAttribute("location").has_value();
 }
 
-}  // namespace mems_setup
+}  // namespace libmems

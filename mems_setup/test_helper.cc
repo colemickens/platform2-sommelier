@@ -4,10 +4,10 @@
 
 #include "mems_setup/test_helper.h"
 
+using libmems::mocks::MockIioChannel;
+using libmems::mocks::MockIioContext;
+using libmems::mocks::MockIioDevice;
 using mems_setup::mocks::MockDelegate;
-using mems_setup::mocks::MockIioChannel;
-using mems_setup::mocks::MockIioContext;
-using mems_setup::mocks::MockIioDevice;
 
 namespace mems_setup {
 namespace testing {

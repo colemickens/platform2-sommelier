@@ -10,15 +10,17 @@
 
 #include <base/macros.h>
 
+#include <libmems/iio_device.h>
 #include "mems_setup/delegate.h"
-#include "mems_setup/iio_device.h"
 #include "mems_setup/sensor_kind.h"
 
 namespace mems_setup {
 
 class Configuration {
  public:
-  Configuration(IioDevice* sensor, SensorKind kind, Delegate* delegate);
+  Configuration(libmems::IioDevice* sensor,
+                SensorKind kind,
+                Delegate* delegate);
 
   bool Configure();
 
@@ -33,7 +35,7 @@ class Configuration {
 
   Delegate* delegate_;  // non-owned
   SensorKind kind_;
-  IioDevice* sensor_;  // non-owned
+  libmems::IioDevice* sensor_;  // non-owned
 
   DISALLOW_COPY_AND_ASSIGN(Configuration);
 };

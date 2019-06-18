@@ -8,11 +8,11 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
-#include "mems_setup/iio_channel_impl.h"
-#include "mems_setup/iio_context_impl.h"
-#include "mems_setup/iio_device_impl.h"
+#include "libmems/iio_channel_impl.h"
+#include "libmems/iio_context_impl.h"
+#include "libmems/iio_device_impl.h"
 
-namespace mems_setup {
+namespace libmems {
 
 IioDeviceImpl::IioDeviceImpl(IioContextImpl* ctx, iio_device* dev)
     : IioDevice(), context_(ctx), device_(dev) {
@@ -156,4 +156,4 @@ bool IioDeviceImpl::IsBufferEnabled(size_t* count) const {
   return enabled;
 }
 
-}  // namespace mems_setup
+}  // namespace libmems

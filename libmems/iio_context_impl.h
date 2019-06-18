@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MEMS_SETUP_IIO_CONTEXT_IMPL_H_
-#define MEMS_SETUP_IIO_CONTEXT_IMPL_H_
+#ifndef LIBMEMS_IIO_CONTEXT_IMPL_H_
+#define LIBMEMS_IIO_CONTEXT_IMPL_H_
 
 #include <iio.h>
 
@@ -12,11 +12,12 @@
 #include <string>
 #include <vector>
 
-#include "mems_setup/iio_context.h"
+#include "libmems/export.h"
+#include "libmems/iio_context.h"
 
-namespace mems_setup {
+namespace libmems {
 
-class IioContextImpl : public IioContext {
+class LIBMEMS_EXPORT IioContextImpl : public IioContext {
  public:
   IioContextImpl();
   ~IioContextImpl() override = default;
@@ -36,6 +37,6 @@ class IioContextImpl : public IioContext {
   DISALLOW_COPY_AND_ASSIGN(IioContextImpl);
 };
 
-}  // namespace mems_setup
+}  // namespace libmems
 
-#endif  // MEMS_SETUP_IIO_CONTEXT_IMPL_H_
+#endif  // LIBMEMS_IIO_CONTEXT_IMPL_H_

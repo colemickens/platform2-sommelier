@@ -2,17 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MEMS_SETUP_IIO_CHANNEL_H_
-#define MEMS_SETUP_IIO_CHANNEL_H_
+#ifndef LIBMEMS_IIO_CHANNEL_H_
+#define LIBMEMS_IIO_CHANNEL_H_
 
 #include <string>
 
 #include <base/macros.h>
 #include <base/optional.h>
 
-namespace mems_setup {
+#include "libmems/export.h"
 
-class IioDevice;
+namespace libmems {
+
+class LIBMEMS_EXPORT IioDevice;
 
 // The IioChannel represents a channel on an IIO device, for example the
 // X axis on an accelerometer.
@@ -50,6 +52,6 @@ class IioChannel {
   DISALLOW_COPY_AND_ASSIGN(IioChannel);
 };
 
-}  // namespace mems_setup
+}  // namespace libmems
 
-#endif  // MEMS_SETUP_IIO_CHANNEL_H_
+#endif  // LIBMEMS_IIO_CHANNEL_H_

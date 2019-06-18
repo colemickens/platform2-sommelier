@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MEMS_SETUP_IIO_DEVICE_H_
-#define MEMS_SETUP_IIO_DEVICE_H_
+#ifndef LIBMEMS_IIO_DEVICE_H_
+#define LIBMEMS_IIO_DEVICE_H_
 
 #include <iio.h>
 
@@ -13,7 +13,9 @@
 #include <base/macros.h>
 #include <base/optional.h>
 
-namespace mems_setup {
+#include "libmems/export.h"
+
+namespace libmems {
 
 class IioContext;
 class IioChannel;
@@ -21,7 +23,7 @@ class IioChannel;
 // The IioDevice represents a single IIO device, such as a gyroscope.
 // It offers facilities to read and write attributes on the device, as well as
 // configure channels, trigger and buffer for a sensor.
-class IioDevice {
+class LIBMEMS_EXPORT IioDevice {
  public:
   virtual ~IioDevice() = default;
 
@@ -101,6 +103,6 @@ class IioDevice {
   DISALLOW_COPY_AND_ASSIGN(IioDevice);
 };
 
-}  // namespace mems_setup
+}  // namespace libmems
 
-#endif  // MEMS_SETUP_IIO_DEVICE_H_
+#endif  // LIBMEMS_IIO_DEVICE_H_

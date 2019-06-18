@@ -13,20 +13,21 @@
 
 #include <gtest/gtest.h>
 
+#include <libmems/iio_context.h>
+#include <libmems/iio_device.h>
+#include <libmems/test_mocks.h>
 #include "mems_setup/configuration.h"
 #include "mems_setup/delegate.h"
-#include "mems_setup/iio_context.h"
-#include "mems_setup/iio_device.h"
 #include "mems_setup/sensor_kind.h"
 #include "mems_setup/test_mocks.h"
 
 namespace mems_setup {
 namespace testing {
 
-class MockSysfsTrigger : public mems_setup::mocks::MockIioDevice {
+class MockSysfsTrigger : public libmems::mocks::MockIioDevice {
  public:
-  MockSysfsTrigger(mems_setup::mocks::MockIioContext* ctx,
-                   mems_setup::mocks::MockIioDevice* trigger0)
+  MockSysfsTrigger(libmems::mocks::MockIioContext* ctx,
+                   libmems::mocks::MockIioDevice* trigger0)
       : MockIioDevice(ctx, "iio_sysfs_trigger", "iio_sysfs_trigger"),
         mock_context_(ctx),
         mock_trigger0_(trigger0) {}
@@ -34,8 +35,8 @@ class MockSysfsTrigger : public mems_setup::mocks::MockIioDevice {
   bool WriteNumberAttribute(const std::string& name, int64_t value) override;
 
  private:
-  mems_setup::mocks::MockIioContext* mock_context_;
-  mems_setup::mocks::MockIioDevice* mock_trigger0_;
+  libmems::mocks::MockIioContext* mock_context_;
+  libmems::mocks::MockIioDevice* mock_trigger0_;
 };
 
 class SensorTestBase : public ::testing::Test {
@@ -43,11 +44,11 @@ class SensorTestBase : public ::testing::Test {
   Configuration* GetConfiguration();
 
  protected:
-  std::unique_ptr<mems_setup::mocks::MockIioContext> mock_context_;
+  std::unique_ptr<libmems::mocks::MockIioContext> mock_context_;
   std::unique_ptr<mems_setup::mocks::MockDelegate> mock_delegate_;
-  std::unique_ptr<mems_setup::mocks::MockIioDevice> mock_device_;
+  std::unique_ptr<libmems::mocks::MockIioDevice> mock_device_;
 
-  std::unique_ptr<mems_setup::mocks::MockIioDevice> mock_trigger0_;
+  std::unique_ptr<libmems::mocks::MockIioDevice> mock_trigger0_;
   std::unique_ptr<MockSysfsTrigger> mock_sysfs_trigger_;
 
   std::unique_ptr<Configuration> config_;

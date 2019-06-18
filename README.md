@@ -74,6 +74,7 @@ copies.
 | [libcontainer](./libcontainer/) ||
 | [libhwsec](./libhwsec/) | Library for the utility functions of all TPM related daemons |
 | [libipproto](./libipproto/) | Library for building and parsing IPP (Internet Printing Protocol) frames |
+| [libmems](./libmems/) | Utility library to configure, manage and retrieve events from IIO sensors |
 | [libpasswordprovider](./libpasswordprovider/) | Password Provider library for securely managing credentials with system services |
 | [libtpmcrypto](./libtpmcrypto/) | Library for AES256-GCM encryption with TPM sealed keys |
 | [login_manager](./login_manager/) | Session manager for handling the life cycle of the main session (e.g. Chrome) |

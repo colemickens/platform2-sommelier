@@ -1,0 +1,40 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":libmems",
+    ":libmems_test_support",
+  ]
+}
+
+pkg_config("target_defaults_pkg_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libiio",
+  ]
+}
+
+shared_library("libmems") {
+  configs += [ ":target_defaults_pkg_deps" ]
+  sources = [
+    "iio_channel_impl.cc",
+    "iio_context_impl.cc",
+    "iio_device.cc",
+    "iio_device_impl.cc",
+  ]
+}
+
+shared_library("libmems_test_support") {
+  configs += [ ":target_defaults_pkg_deps" ]
+  deps = [
+    ":libmems",
+  ]
+  sources = [
+    "test_mocks.cc",
+  ]
+}

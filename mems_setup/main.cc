@@ -11,10 +11,10 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
+#include <libmems/iio_context_impl.h>
+#include <libmems/iio_device.h>
 #include "mems_setup/configuration.h"
 #include "mems_setup/delegate_impl.h"
-#include "mems_setup/iio_context_impl.h"
-#include "mems_setup/iio_device.h"
 #include "mems_setup/sensor_kind.h"
 
 int main(int argc, char** argv) {
@@ -63,8 +63,8 @@ int main(int argc, char** argv) {
     }
   }
 
-  std::unique_ptr<mems_setup::IioContext> context(
-      new mems_setup::IioContextImpl());
+  std::unique_ptr<libmems::IioContext> context(
+      new libmems::IioContextImpl());
   auto device = context->GetDevice(FLAGS_device_name);
   if (device == nullptr) {
     LOG(ERROR) << "device" << FLAGS_device_name << " not found";

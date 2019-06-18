@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MEMS_SETUP_IIO_DEVICE_IMPL_H_
-#define MEMS_SETUP_IIO_DEVICE_IMPL_H_
+#ifndef LIBMEMS_IIO_DEVICE_IMPL_H_
+#define LIBMEMS_IIO_DEVICE_IMPL_H_
 
 #include <iio.h>
 
@@ -13,15 +13,16 @@
 
 #include <base/optional.h>
 
-#include "mems_setup/iio_device.h"
+#include "libmems/export.h"
+#include "libmems/iio_device.h"
 
-namespace mems_setup {
+namespace libmems {
 
 class IioChannelImpl;
 class IioContext;
 class IioContextImpl;
 
-class IioDeviceImpl : public IioDevice {
+class LIBMEMS_EXPORT IioDeviceImpl : public IioDevice {
  public:
   // iio_device objects are kept alive by the IioContextImpl.
   IioDeviceImpl(IioContextImpl* ctx, iio_device* dev);
@@ -61,6 +62,6 @@ class IioDeviceImpl : public IioDevice {
   DISALLOW_COPY_AND_ASSIGN(IioDeviceImpl);
 };
 
-}  // namespace mems_setup
+}  // namespace libmems
 
-#endif  // MEMS_SETUP_IIO_DEVICE_IMPL_H_
+#endif  // LIBMEMS_IIO_DEVICE_IMPL_H_
