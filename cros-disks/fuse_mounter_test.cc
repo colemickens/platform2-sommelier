@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <brillo/process_reaper.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -116,12 +117,14 @@ class MockSandboxedProcess : public SandboxedProcess {
 
 class FUSEMounterForTesting : public FUSEMounter {
  public:
-  explicit FUSEMounterForTesting(const Platform* platform)
+  FUSEMounterForTesting(const Platform* platform,
+                        brillo::ProcessReaper* process_reaper)
       : FUSEMounter(kSomeSource,
                     kMountDir,
                     kFUSEType,
                     MountOptions(),
                     platform,
+                    process_reaper,
                     kMountProgram,
                     kMountUser,
                     {},
@@ -147,7 +150,8 @@ class FUSEMounterForTesting : public FUSEMounter {
 
 TEST(FUSEMounterTest, Sandboxing_Unprivileged) {
   MockFUSEPlatform platform;
-  FUSEMounterForTesting mounter(&platform);
+  brillo::ProcessReaper process_reaper;
+  FUSEMounterForTesting mounter(&platform, &process_reaper);
   EXPECT_CALL(mounter, InvokeMountTool(ElementsAre(
                            kMountProgram, "-o", MountOptions().ToString(),
                            kSomeSource, StartsWith("/dev/fd/"))))
@@ -172,7 +176,8 @@ TEST(FUSEMounterTest, Sandboxing_Unprivileged) {
 
 TEST(FUSEMounterTest, AppFailed) {
   MockFUSEPlatform platform;
-  FUSEMounterForTesting mounter(&platform);
+  brillo::ProcessReaper process_reaper;
+  FUSEMounterForTesting mounter(&platform, &process_reaper);
   EXPECT_CALL(mounter, InvokeMountTool(_)).WillOnce(Return(1));
 
   EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mounter.Mount());

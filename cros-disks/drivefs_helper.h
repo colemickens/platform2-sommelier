@@ -32,7 +32,8 @@ class Platform;
 // a base::UnguessableToken, used to lookup a pending DriveFS mount in Chrome.
 class DrivefsHelper : public FUSEHelper {
  public:
-  explicit DrivefsHelper(const Platform* platform);
+  DrivefsHelper(const Platform* platform,
+                brillo::ProcessReaper* process_reaper);
   ~DrivefsHelper() override;
 
   // FUSEHelper overrides:

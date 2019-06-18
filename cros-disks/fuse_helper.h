@@ -14,6 +14,10 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 
+namespace brillo {
+class ProcessReaper;
+}  // namespace brillo
+
 namespace cros_disks {
 
 class FUSEMounter;
@@ -41,6 +45,7 @@ class FUSEHelper {
 
   FUSEHelper(const std::string& fuse_type,
              const Platform* platform,
+             brillo::ProcessReaper* process_reaper,
              const base::FilePath& mount_program_path,
              const std::string& mount_user);
   virtual ~FUSEHelper();
@@ -70,9 +75,13 @@ class FUSEHelper {
       const base::FilePath& target_path,
       const std::vector<std::string>& options) const;
 
+ protected:
+  brillo::ProcessReaper* process_reaper() const { return process_reaper_; }
+
  private:
   const std::string fuse_type_;
   const Platform* const platform_;
+  brillo::ProcessReaper* const process_reaper_;
   const base::FilePath mount_program_path_;
   const std::string mount_user_;
 

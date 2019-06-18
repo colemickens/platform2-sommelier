@@ -15,6 +15,10 @@
 
 #include "cros-disks/mounter.h"
 
+namespace brillo {
+class ProcessReaper;
+}  // namespace brillo
+
 namespace cros_disks {
 
 class Platform;
@@ -34,6 +38,7 @@ class FUSEMounter : public MounterCompat {
               const std::string& filesystem_type,
               const MountOptions& mount_options,
               const Platform* platform,
+              brillo::ProcessReaper* process_reaper,
               const std::string& mount_program_path,
               const std::string& mount_user,
               const std::string& seccomp_policy,
@@ -50,6 +55,9 @@ class FUSEMounter : public MounterCompat {
 
   // An object that provides platform service.
   const Platform* const platform_;
+
+  // An object to monitor FUSE daemons.
+  brillo::ProcessReaper* const process_reaper_;
 
   // Path of the FUSE mount program.
   const std::string mount_program_path_;

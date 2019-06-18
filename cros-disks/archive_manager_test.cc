@@ -4,6 +4,7 @@
 
 #include "cros-disks/archive_manager.h"
 
+#include <brillo/process_reaper.h>
 #include <gtest/gtest.h>
 
 #include "cros-disks/metrics.h"
@@ -19,11 +20,14 @@ namespace cros_disks {
 
 class ArchiveManagerTest : public ::testing::Test {
  public:
-  ArchiveManagerTest() : manager_(kMountRootDirectory, &platform_, &metrics_) {}
+  ArchiveManagerTest()
+      : manager_(kMountRootDirectory, &platform_, &metrics_, &process_reaper_) {
+  }
 
  protected:
   Metrics metrics_;
   Platform platform_;
+  brillo::ProcessReaper process_reaper_;
   ArchiveManager manager_;
 };
 

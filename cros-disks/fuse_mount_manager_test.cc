@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/strings/string_util.h>
+#include <brillo/process_reaper.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -68,9 +69,14 @@ class MockPlatform : public Platform {
 // Mock implementation of FUSEHelper.
 class MockHelper : public FUSEHelper {
  public:
-  MockHelper(const std::string& tag, const Platform* platform)
-      : FUSEHelper(
-            tag, platform, base::FilePath("/sbin/" + tag), "fuse-" + tag) {}
+  MockHelper(const std::string& tag,
+             const Platform* platform,
+             brillo::ProcessReaper* process_reaper)
+      : FUSEHelper(tag,
+                   platform,
+                   process_reaper,
+                   base::FilePath("/sbin/" + tag),
+                   "fuse-" + tag) {}
 
   MOCK_CONST_METHOD1(CanMount, bool(const Uri& src));
   MOCK_CONST_METHOD1(GetTargetSuffix, std::string(const Uri& src));
@@ -84,12 +90,13 @@ class MockHelper : public FUSEHelper {
 
 class MockMounter : public FUSEMounter {
  public:
-  explicit MockMounter(const Platform* platform)
+  MockMounter(const Platform* platform, brillo::ProcessReaper* process_reaper)
       : FUSEMounter("foobar",
                     "/mnt",
                     "fuse",
                     MountOptions(),
                     platform,
+                    process_reaper,
                     "/bin/sh",
                     "root",
                     "",
@@ -103,10 +110,14 @@ class MockMounter : public FUSEMounter {
 class FUSEMountManagerTest : public ::testing::Test {
  public:
   FUSEMountManagerTest()
-      : manager_(kMountRoot, kWorkingDirRoot, &platform_, &metrics_),
-        foo_(new MockHelper("foo", &platform_)),
-        bar_(new MockHelper("bar", &platform_)),
-        baz_(new MockHelper("baz", &platform_)) {
+      : manager_(kMountRoot,
+                 kWorkingDirRoot,
+                 &platform_,
+                 &metrics_,
+                 &process_reaper_),
+        foo_(new MockHelper("foo", &platform_, &process_reaper_)),
+        bar_(new MockHelper("bar", &platform_, &process_reaper_)),
+        baz_(new MockHelper("baz", &platform_, &process_reaper_)) {
     ON_CALL(platform_, Unmount(_, _))
         .WillByDefault(Return(MOUNT_ERROR_INVALID_ARGUMENT));
     ON_CALL(platform_, DirectoryExists(_)).WillByDefault(Return(true));
@@ -124,6 +135,7 @@ class FUSEMountManagerTest : public ::testing::Test {
 
   Metrics metrics_;
   MockPlatform platform_;
+  brillo::ProcessReaper process_reaper_;
   FUSEMountManager manager_;
   std::unique_ptr<MockHelper> foo_;
   std::unique_ptr<MockHelper> bar_;
@@ -216,7 +228,7 @@ TEST_F(FUSEMountManagerTest, DoMount_BySource) {
   EXPECT_CALL(platform_, CreateTemporaryDirInDir(kWorkingDirRoot, _, _))
       .WillOnce(DoAll(SetArgPointee<2>("/blah"), Return(true)));
   EXPECT_CALL(platform_, SetPermissions("/blah", 0755)).WillOnce(Return(true));
-  MockMounter* mounter = new MockMounter(&platform_);
+  MockMounter* mounter = new MockMounter(&platform_, &process_reaper_);
   EXPECT_CALL(*mounter, MountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
   std::unique_ptr<FUSEMounter> ptr(mounter);
   EXPECT_CALL(*bar_, CreateMounter(base::FilePath("/blah"), kSomeSource,

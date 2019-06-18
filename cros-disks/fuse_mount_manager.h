@@ -27,7 +27,8 @@ class FUSEMountManager : public MountManager {
   FUSEMountManager(const std::string& mount_root,
                    const std::string& working_dirs_root,
                    Platform* platform,
-                   Metrics* metrics);
+                   Metrics* metrics,
+                   brillo::ProcessReaper* process_reaper);
   ~FUSEMountManager() override;
 
   bool Initialize() override;

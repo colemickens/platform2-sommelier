@@ -12,6 +12,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/macros.h>
 #include <base/bind.h>
@@ -20,6 +21,7 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
+#include <brillo/process_reaper.h>
 
 #include "cros-disks/platform.h"
 #include "cros-disks/sandboxed_process.h"
@@ -33,6 +35,10 @@ const mode_t kSourcePathPermissions = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
 const char kFuseDeviceFile[] = "/dev/fuse";
 const MountOptions::Flags kRequiredFuseMountFlags =
     MS_NODEV | MS_NOEXEC | MS_NOSUID;
+
+void CleanUpCallback(base::Closure cleanup, const siginfo_t&) {
+  std::move(cleanup).Run();
+}
 
 MountErrorType ConfigureCommonSandbox(SandboxedProcess* sandbox,
                                       const Platform* platform,
@@ -166,6 +172,7 @@ FUSEMounter::FUSEMounter(const std::string& source_path,
                          const std::string& filesystem_type,
                          const MountOptions& mount_options,
                          const Platform* platform,
+                         brillo::ProcessReaper* process_reaper,
                          const std::string& mount_program_path,
                          const std::string& mount_user,
                          const std::string& seccomp_policy,
@@ -177,6 +184,7 @@ FUSEMounter::FUSEMounter(const std::string& source_path,
                     base::FilePath(target_path),
                     mount_options),
       platform_(platform),
+      process_reaper_(process_reaper),
       mount_program_path_(mount_program_path),
       mount_user_(mount_user),
       mount_group_(mount_group),
@@ -214,10 +222,7 @@ MountErrorType FUSEMounter::MountImpl() const {
   }
   mount_process->AddArgument(mount_program_path_);
 
-  base::ScopedClosureRunner fuse_failure_unmounter;
-  base::File fuse_file;
-
-  fuse_file = base::File(
+  const base::File fuse_file = base::File(
       base::FilePath(kFuseDeviceFile),
       base::File::FLAG_OPEN | base::File::FLAG_READ | base::File::FLAG_WRITE);
   if (!fuse_file.IsValid()) {
@@ -235,14 +240,14 @@ MountErrorType FUSEMounter::MountImpl() const {
     return error;
   }
 
-  // Unmount the FUSE filesystem if any later part fails.
-  fuse_failure_unmounter.ReplaceClosure(base::Bind(
+  // The |fuse_failure_unmounter| closure runner is used to unmount the FUSE
+  // filesystem if any part of starting the FUSE helper process fails.
+  base::ScopedClosureRunner fuse_cleanup_runner(base::Bind(
       [](const Platform* platform, const std::string& target_path) {
         MountErrorType unmount_error = platform->Unmount(target_path, 0);
         if (unmount_error != MountErrorType::MOUNT_ERROR_NONE) {
-          LOG(ERROR) << "Failed to unmount " << target_path
-                     << " on deprivileged fuse mount failure, error code: "
-                     << unmount_error;
+          LOG(ERROR) << "Failed to unmount a FUSE mount '" << target_path
+                     << "', error code: " << unmount_error;
         }
       },
       platform_, target_path().value()));
@@ -302,12 +307,16 @@ MountErrorType FUSEMounter::MountImpl() const {
     }
     return MountErrorType::MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
   }
-  // The |fuse_failure_unmounter| closure runner is used to unmount the FUSE
-  // filesystem (for unprivileged mounts) if any part of starting the FUSE
-  // helper process fails. At this point, the process has successfully started,
-  // so release the closure runner to prevent the FUSE mount point from being
-  // unmounted.
-  ignore_result(fuse_failure_unmounter.Release());
+
+  // At this point, the FUSE daemon has successfully started, so repurpose
+  // the FUSE cleanup closure runner to run on daemon quitting.
+  // This is defined as in-jail "init" process, denoted by pid(),
+  // terminates, which happens only when the last process in the jailed PID
+  // namespace terminates.
+  process_reaper_->WatchForChild(
+      FROM_HERE, mount_process->pid(),
+      base::Bind(CleanUpCallback, fuse_cleanup_runner.Release()));
+
   return MountErrorType::MOUNT_ERROR_NONE;
 }
 

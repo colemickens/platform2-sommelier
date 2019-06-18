@@ -16,7 +16,7 @@ namespace cros_disks {
 // Invokes sshfs to provide access to files over SFTP protocol.
 class SshfsHelper : public FUSEHelper {
  public:
-  explicit SshfsHelper(const Platform* platform);
+  SshfsHelper(const Platform* platform, brillo::ProcessReaper* process_reaper);
   ~SshfsHelper() override;
 
   std::unique_ptr<FUSEMounter> CreateMounter(

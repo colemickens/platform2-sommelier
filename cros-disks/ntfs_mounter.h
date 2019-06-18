@@ -21,7 +21,8 @@ class NTFSMounter : public FUSEMounter {
               const std::string& target_path,
               const std::string& filesystem_type,
               const MountOptions& mount_options,
-              const Platform* platform);
+              const Platform* platform,
+              brillo::ProcessReaper* process_reaper);
 };
 
 }  // namespace cros_disks

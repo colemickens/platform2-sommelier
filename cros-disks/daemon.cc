@@ -26,11 +26,13 @@ Daemon::Daemon(bool has_session_manager)
     : brillo::DBusServiceDaemon(kCrosDisksServiceName),
       has_session_manager_(has_session_manager),
       device_ejector_(&process_reaper_),
-      archive_manager_(kArchiveMountRootDirectory, &platform_, &metrics_),
+      archive_manager_(
+          kArchiveMountRootDirectory, &platform_, &metrics_, &process_reaper_),
       disk_monitor_(),
       disk_manager_(kDiskMountRootDirectory,
                     &platform_,
                     &metrics_,
+                    &process_reaper_,
                     &disk_monitor_,
                     &device_ejector_),
       format_manager_(&process_reaper_),
@@ -38,7 +40,8 @@ Daemon::Daemon(bool has_session_manager)
       fuse_manager_(kFUSEMountRootDirectory,
                     kFUSEWritableRootDirectory,
                     &platform_,
-                    &metrics_),
+                    &metrics_,
+                    &process_reaper_),
       device_event_task_id_(brillo::MessageLoop::kTaskIdNull) {
   CHECK(platform_.SetMountUser(kNonPrivilegedMountUser))
       << "'" << kNonPrivilegedMountUser

@@ -8,6 +8,7 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <brillo/process_reaper.h>
 
 #include "cros-disks/drivefs_helper.h"
 #include "cros-disks/fuse_helper.h"
@@ -21,8 +22,9 @@ namespace cros_disks {
 FUSEMountManager::FUSEMountManager(const std::string& mount_root,
                                    const std::string& working_dirs_root,
                                    Platform* platform,
-                                   Metrics* metrics)
-    : MountManager(mount_root, platform, metrics),
+                                   Metrics* metrics,
+                                   brillo::ProcessReaper* process_reaper)
+    : MountManager(mount_root, platform, metrics, process_reaper),
       working_dirs_root_(working_dirs_root) {}
 
 FUSEMountManager::~FUSEMountManager() {
@@ -45,8 +47,8 @@ bool FUSEMountManager::Initialize() {
   }
 
   // Register specific FUSE mount helpers here.
-  RegisterHelper(std::make_unique<DrivefsHelper>(platform()));
-  RegisterHelper(std::make_unique<SshfsHelper>(platform()));
+  RegisterHelper(std::make_unique<DrivefsHelper>(platform(), process_reaper()));
+  RegisterHelper(std::make_unique<SshfsHelper>(platform(), process_reaper()));
 
   return true;
 }

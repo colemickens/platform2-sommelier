@@ -22,6 +22,10 @@
 #include "cros-disks/mount_entry.h"
 #include "cros-disks/mount_options.h"
 
+namespace brillo {
+class ProcessReaper;
+}  // namespace brillo
+
 namespace cros_disks {
 
 class Metrics;
@@ -50,7 +54,8 @@ class MountManager {
   // construction. Initialization is performed when Initializes() is called.
   MountManager(const std::string& mount_root,
                Platform* platform,
-               Metrics* metrics);
+               Metrics* metrics,
+               brillo::ProcessReaper* process_reaper);
 
   // Destructor that performs no specific operations and does not unmount
   // any mounted or reserved mount paths. A derived class should override
@@ -250,15 +255,21 @@ class MountManager {
   // Returns an object that collects UMA metrics.
   Metrics* metrics() const { return metrics_; }
 
+  // Returns an object that monitors children processes.
+  brillo::ProcessReaper* process_reaper() const { return process_reaper_; }
+
  private:
   // The root directory under which mount directories are created.
   std::string mount_root_;
 
   // An object that provides platform service.
-  Platform* platform_;
+  Platform* const platform_;
 
   // An object that collects UMA metrics.
-  Metrics* metrics_;
+  Metrics* const metrics_;
+
+  // Object that monitors children processes.
+  brillo::ProcessReaper* const process_reaper_;
 
   // A cache mapping a source path to its mount state of filesystems mounted
   // by the manager.

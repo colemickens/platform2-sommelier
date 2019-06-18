@@ -47,8 +47,12 @@ namespace cros_disks {
 
 MountManager::MountManager(const std::string& mount_root,
                            Platform* platform,
-                           Metrics* metrics)
-    : mount_root_(mount_root), platform_(platform), metrics_(metrics) {
+                           Metrics* metrics,
+                           brillo::ProcessReaper* process_reaper)
+    : mount_root_(mount_root),
+      platform_(platform),
+      metrics_(metrics),
+      process_reaper_(process_reaper) {
   CHECK(!mount_root_.empty()) << "Invalid mount root directory";
   CHECK(platform_) << "Invalid platform object";
   CHECK(metrics_) << "Invalid metrics object";

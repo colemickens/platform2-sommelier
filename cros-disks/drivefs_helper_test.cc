@@ -9,6 +9,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_util.h>
+#include <brillo/process_reaper.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -123,8 +124,9 @@ class MockPlatform : public Platform {
 
 class TestDrivefsHelper : public DrivefsHelper {
  public:
-  explicit TestDrivefsHelper(const Platform* platform)
-      : DrivefsHelper(platform) {
+  TestDrivefsHelper(const Platform* platform,
+                    brillo::ProcessReaper* process_reaper)
+      : DrivefsHelper(platform, process_reaper) {
     ON_CALL(*this, SetupDirectoryForFUSEAccess(_))
         .WillByDefault(Invoke(
             this,
@@ -151,7 +153,7 @@ class TestDrivefsHelper : public DrivefsHelper {
 
 class DrivefsHelperTest : public ::testing::Test {
  public:
-  DrivefsHelperTest() : helper_(&platform_) {}
+  DrivefsHelperTest() : helper_(&platform_, &process_reaper_) {}
 
   void SetUp() override { ASSERT_TRUE(platform_.SetUp()); }
 
@@ -165,6 +167,7 @@ class DrivefsHelperTest : public ::testing::Test {
   }
 
   MockPlatform platform_;
+  brillo::ProcessReaper process_reaper_;
   TestDrivefsHelper helper_;
 };
 

@@ -21,7 +21,8 @@ class ArchiveManager : public MountManager {
  public:
   ArchiveManager(const std::string& mount_root,
                  Platform* platform,
-                 Metrics* metrics);
+                 Metrics* metrics,
+                 brillo::ProcessReaper* process_reaper);
   ~ArchiveManager() override;
 
   // Initializes the manager and registers default file extensions.

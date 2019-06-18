@@ -38,6 +38,7 @@ class DiskManager : public MountManager {
   DiskManager(const std::string& mount_root,
               Platform* platform,
               Metrics* metrics,
+              brillo::ProcessReaper* process_reaper,
               DiskMonitor* disk_monitor,
               DeviceEjector* device_ejector);
   ~DiskManager() override;

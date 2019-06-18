@@ -59,8 +59,10 @@ namespace cros_disks {
 
 ArchiveManager::ArchiveManager(const std::string& mount_root,
                                Platform* platform,
-                               Metrics* metrics)
-    : MountManager(mount_root, platform, metrics), avfs_started_(false) {}
+                               Metrics* metrics,
+                               brillo::ProcessReaper* process_reaper)
+    : MountManager(mount_root, platform, metrics, process_reaper),
+      avfs_started_(false) {}
 
 ArchiveManager::~ArchiveManager() {
   // StopAVFS() unmounts all mounted archives as well as AVFS mount points.
@@ -356,8 +358,8 @@ MountErrorType ArchiveManager::MountAVFSPath(
   mount_options.Initialize(options, false, "", "");
 
   std::unique_ptr<FUSEMounter> fuse_mounter = std::make_unique<FUSEMounter>(
-      "", avfs_path, "avfs", mount_options, platform(), kAVFSMountProgram,
-      kAVFSMountUser, kAVFSSeccompFilterPolicyFile,
+      "", avfs_path, "avfs", mount_options, platform(), process_reaper(),
+      kAVFSMountProgram, kAVFSMountUser, kAVFSSeccompFilterPolicyFile,
       std::vector<FUSEMounter::BindPath>({
           // This needs to be recursively bind mounted so that any external
           // media (mounted under /media) or user (under /home/chronos) mounts

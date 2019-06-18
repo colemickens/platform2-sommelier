@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <brillo/process_reaper.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -59,12 +60,17 @@ class MockDiskMonitor : public DiskMonitor {
 class DiskManagerTest : public ::testing::Test {
  public:
   DiskManagerTest()
-      : manager_(
-            kMountRootDirectory, &platform_, &metrics_, &monitor_, &ejector_) {}
+      : manager_(kMountRootDirectory,
+                 &platform_,
+                 &metrics_,
+                 &process_reaper_,
+                 &monitor_,
+                 &ejector_) {}
 
  protected:
   Metrics metrics_;
   Platform platform_;
+  brillo::ProcessReaper process_reaper_;
   MockDeviceEjector ejector_;
   MockDiskMonitor monitor_;
   DiskManager manager_;

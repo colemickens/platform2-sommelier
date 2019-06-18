@@ -10,6 +10,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/process_reaper.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -88,7 +89,7 @@ class MockPlatform : public Platform {
 
 class SshfsHelperTest : public ::testing::Test {
  public:
-  SshfsHelperTest() : helper_(&platform_) {
+  SshfsHelperTest() : helper_(&platform_, &process_reaper_) {
     ON_CALL(platform_, SetOwnership(_, kMountUID, getgid()))
         .WillByDefault(Return(true));
     ON_CALL(platform_, SetPermissions(_, 0770)).WillByDefault(Return(true));
@@ -97,6 +98,7 @@ class SshfsHelperTest : public ::testing::Test {
 
  protected:
   MockPlatform platform_;
+  brillo::ProcessReaper process_reaper_;
   SshfsHelper helper_;
 };
 

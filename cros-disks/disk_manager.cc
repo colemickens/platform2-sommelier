@@ -37,9 +37,10 @@ namespace cros_disks {
 DiskManager::DiskManager(const std::string& mount_root,
                          Platform* platform,
                          Metrics* metrics,
+                         brillo::ProcessReaper* process_reaper,
                          DiskMonitor* disk_monitor,
                          DeviceEjector* device_ejector)
-    : MountManager(mount_root, platform, metrics),
+    : MountManager(mount_root, platform, metrics, process_reaper),
       disk_monitor_(disk_monitor),
       device_ejector_(device_ejector),
       eject_device_on_unmount_(true) {}
@@ -180,12 +181,12 @@ std::unique_ptr<MounterCompat> DiskManager::CreateMounter(
   if (filesystem.mounter_type == ExFATMounter::kMounterType)
     return std::make_unique<ExFATMounter>(disk.device_file, target_path,
                                           filesystem.mount_type, mount_options,
-                                          platform());
+                                          platform(), process_reaper());
 
   if (filesystem.mounter_type == NTFSMounter::kMounterType)
     return std::make_unique<NTFSMounter>(disk.device_file, target_path,
                                          filesystem.mount_type, mount_options,
-                                         platform());
+                                         platform(), process_reaper());
 
   LOG(FATAL) << "Invalid mounter type '" << filesystem.mounter_type << "'";
   return nullptr;

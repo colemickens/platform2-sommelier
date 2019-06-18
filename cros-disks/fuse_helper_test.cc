@@ -9,6 +9,7 @@
 
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <brillo/process_reaper.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -33,11 +34,15 @@ const base::FilePath kMountDir("/mnt");
 class FUSEHelperTest : public ::testing::Test {
  public:
   FUSEHelperTest()
-      : helper_(
-            kFUSEType, &platform_, base::FilePath(kMountProgram), kMountUser) {}
+      : helper_(kFUSEType,
+                &platform_,
+                &process_reaper_,
+                base::FilePath(kMountProgram),
+                kMountUser) {}
 
  protected:
   Platform platform_;
+  brillo::ProcessReaper process_reaper_;
   FUSEHelper helper_;
 };
 

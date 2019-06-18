@@ -102,8 +102,13 @@ bool EnsureOwnership(const Platform& platform,
 
 }  // namespace
 
-DrivefsHelper::DrivefsHelper(const Platform* platform)
-    : FUSEHelper(kType, platform, base::FilePath(kHelperTool), kFilesUser) {}
+DrivefsHelper::DrivefsHelper(const Platform* platform,
+                             brillo::ProcessReaper* process_reaper)
+    : FUSEHelper(kType,
+                 platform,
+                 process_reaper,
+                 base::FilePath(kHelperTool),
+                 kFilesUser) {}
 
 DrivefsHelper::~DrivefsHelper() = default;
 
@@ -162,7 +167,7 @@ std::unique_ptr<FUSEMounter> DrivefsHelper::CreateMounter(
   }
   return std::make_unique<FUSEMounter>(
       "", target_path.value(), type(), mount_options, platform(),
-      program_path().value(), user(), seccomp, paths, true);
+      process_reaper(), program_path().value(), user(), seccomp, paths, true);
 }
 
 base::FilePath DrivefsHelper::GetValidatedDirectory(

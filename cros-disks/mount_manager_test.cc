@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+#include <brillo/process_reaper.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -64,8 +65,10 @@ class MockPlatform : public Platform {
 // A mock mount manager class for testing the mount manager base class.
 class MountManagerUnderTest : public MountManager {
  public:
-  MountManagerUnderTest(Platform* platform, Metrics* metrics)
-      : MountManager(kMountRootDirectory, platform, metrics) {}
+  MountManagerUnderTest(Platform* platform,
+                        Metrics* metrics,
+                        brillo::ProcessReaper* process_reaper)
+      : MountManager(kMountRootDirectory, platform, metrics, process_reaper) {}
 
   MOCK_CONST_METHOD1(CanMount, bool(const std::string& source_path));
   MOCK_CONST_METHOD0(GetMountSourceType, MountSourceType());
@@ -86,11 +89,12 @@ class MountManagerUnderTest : public MountManager {
 
 class MountManagerTest : public ::testing::Test {
  public:
-  MountManagerTest() : manager_(&platform_, &metrics_) {}
+  MountManagerTest() : manager_(&platform_, &metrics_, &process_reaper_) {}
 
  protected:
   Metrics metrics_;
   MockPlatform platform_;
+  brillo::ProcessReaper process_reaper_;
   MountManagerUnderTest manager_;
   std::string filesystem_type_;
   std::string mount_path_;

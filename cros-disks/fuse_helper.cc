@@ -24,10 +24,12 @@ const char FUSEHelper::kOptionDefaultPermissions[] = "default_permissions";
 
 FUSEHelper::FUSEHelper(const std::string& fuse_type,
                        const Platform* platform,
+                       brillo::ProcessReaper* process_reaper,
                        const base::FilePath& mount_program_path,
                        const std::string& mount_user)
     : fuse_type_(fuse_type),
       platform_(platform),
+      process_reaper_(process_reaper),
       mount_program_path_(mount_program_path),
       mount_user_(mount_user) {}
 
@@ -53,8 +55,8 @@ std::unique_ptr<FUSEMounter> FUSEHelper::CreateMounter(
   mount_options.Initialize(options, false, "", "");
   return std::make_unique<FUSEMounter>(
       source.path(), target_path.value(), type(), mount_options, platform(),
-      program_path().value(), user(), "", std::vector<FUSEMounter::BindPath>(),
-      false);
+      process_reaper(), program_path().value(), user(), "",
+      std::vector<FUSEMounter::BindPath>(), false);
 }
 
 }  // namespace cros_disks
