@@ -1161,7 +1161,7 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
     int width = 0, height = 0, format = 0;
     int enabled = 1;
 
-    string imguIndex = enableStill ? "1" : "0";
+    string imguIndex = enableStill ? std::to_string(STILL_PIPE_INDEX) : std::to_string(VIDEO_PIPE_INDEX);
     string kImguName = imguWithoutPort + imguIndex;
     string inputName = imguWithoutPort + imguIndex + MEDIACTL_INPUTNAME;
     string statName = imguWithoutPort + imguIndex + MEDIACTL_STATNAME;
@@ -1329,7 +1329,7 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
     addImguVideoNode(IMGU_NODE_PARAM, parameterName, mediaCtlConfig);
     addLinkParams(parameterName, 0, kImguName, 1, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
 
-    std::string runningMode = std::to_string(enableStill ? IPU3_RUNNING_MODE_STILL : IPU3_RUNNING_MODE_VIDEO);
+    std::string runningMode = std::to_string(enableStill ? STILL_PIPE_INDEX : VIDEO_PIPE_INDEX);
     addCtlParams(kImguName, 0, V4L2_CID_INTEL_IPU3_MODE, runningMode, mediaCtlConfig);
 
     return ret;
@@ -1340,8 +1340,8 @@ void GraphConfig::setMediaCtlConfig(std::shared_ptr<MediaController> mediaCtl,
 {
     mMediaCtl = mediaCtl;
 
-    // imgu 0 for video pipe, imgu 1 for still pipe
-    string imguIndex = enableStill ? "1" : "0";
+    // "ipu3-imgu 0" for video pipe, "ipu3-imgu 1" for still pipe
+    string imguIndex = enableStill ? std::to_string(STILL_PIPE_INDEX) : std::to_string(VIDEO_PIPE_INDEX);
     const string mainName = imguWithoutPort + imguIndex + MEDIACTL_MAIN_NAME;
     const string vfName = imguWithoutPort + imguIndex + MEDIACTL_VF_NAME;
     const string inputName = imguWithoutPort + imguIndex + MEDIACTL_INPUTNAME;

@@ -20,6 +20,7 @@
 #include "cros-camera/v4l2_device.h"
 #include "LogHelper.h"
 #include "SysCall.h"
+#include <linux/intel-ipu3.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -379,6 +380,40 @@ status_t MediaController::setControl(const char* entityName, int controlId, int 
         return status;
     }
     return subdev->SetControl(controlId, value);
+}
+
+status_t MediaController::queryIPU3ImguMode(const char* entityName, const std::string& mode, int* value)
+{
+    LOG1("@%s entity %s", __FUNCTION__, entityName);
+    std::shared_ptr<MediaEntity> entity;
+    std::shared_ptr<cros::V4L2Device> dev;
+
+    status_t status = getMediaEntity(entity, entityName);
+    CheckError(status != NO_ERROR, UNKNOWN_ERROR, "@%s: getting MediaEntity \"%s\" failed", __FUNCTION__, entityName);
+
+    status = entity->getDevice(dev);
+    CheckError((!dev || status != NO_ERROR), UNKNOWN_ERROR,
+               "@%s: error: %d, opening device \"%s\"", __FUNCTION__, status, entityName);
+
+    v4l2_queryctrl qCtrl = {};
+    qCtrl.id = V4L2_CID_INTEL_IPU3_MODE;
+    int ret = dev->QueryControl(&qCtrl);
+    CheckError(ret != 0, UNKNOWN_ERROR, "@%s, QueryControl fails", __FUNCTION__);
+
+    v4l2_querymenu qMenu = {};
+    qMenu.id = V4L2_CID_INTEL_IPU3_MODE;
+    for (qMenu.index = qCtrl.minimum; qMenu.index <= qCtrl.maximum; qMenu.index += qCtrl.step) {
+        ret = (dev->QueryMenu(&qMenu));
+        CheckError(ret != 0, UNKNOWN_ERROR, "@%s, QueryMenu fails", __FUNCTION__);
+
+        if (!mode.compare(reinterpret_cast<char*>(qMenu.name))) {
+            *value = qMenu.index;
+            LOG2("@%s mode:%s, value:%d", __FUNCTION__, mode.c_str(), *value);
+            return NO_ERROR;
+        }
+    }
+
+    return UNKNOWN_ERROR;
 }
 
 /**

@@ -55,6 +55,10 @@ const std::string GC_MAIN = "main";
 const std::string GC_VF = "vf";
 const std::string GC_RAW = "raw";
 
+// pipe index, video pipe: "ipu3-imgu 0", still pipe: "ipu3-imgu 1"
+#define VIDEO_PIPE_INDEX 0
+#define STILL_PIPE_INDEX 1
+
 /**
  * Stream id associated with the ISA PG that runs on Psys.
  */

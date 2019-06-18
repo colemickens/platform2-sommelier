@@ -26,8 +26,6 @@
 namespace cros {
 namespace intel {
 
-class GraphConfigNodes;
-
 class IPU3CameraCapInfo : public CameraCapInfo {
 public:
     IPU3CameraCapInfo(SensorType type);

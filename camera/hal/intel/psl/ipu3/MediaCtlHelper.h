@@ -17,6 +17,7 @@
 #ifndef PSL_IPU3_MEDIACTLHELPER_H_
 #define PSL_IPU3_MEDIACTLHELPER_H_
 
+#include "GraphConfig.h"
 #include "GraphConfigManager.h"
 #include "MediaController.h"
 #include "cros-camera/v4l2_device.h"
@@ -87,6 +88,8 @@ private:
 
     std::vector<std::shared_ptr<cros::V4L2VideoNode>> mConfiguredNodes;
     std::map<IPU3NodeNames, std::shared_ptr<cros::V4L2VideoNode>> mConfiguredNodesPerName;
+
+    std::unordered_map<int, std::string> mIPU3ImguModes;
 };
 
 } /* namespace intel */

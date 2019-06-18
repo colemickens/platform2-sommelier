@@ -33,6 +33,10 @@ MediaCtlHelper::MediaCtlHelper(std::shared_ptr<MediaController> mediaCtl,
         mMediaCtlConfig(nullptr),
         mPipeType(IStreamConfigProvider::MEDIA_TYPE_MAX_COUNT)
 {
+    mIPU3ImguModes = {
+        {VIDEO_PIPE_INDEX, "Video mode"},
+        {STILL_PIPE_INDEX, "Still mode"}
+    };
 }
 
 MediaCtlHelper::~MediaCtlHelper()
@@ -81,15 +85,21 @@ status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr,
 
     // PIPE_MODE must be set before setting formats. Other controls need to be set after formats.
     for (unsigned int i = 0; i < mMediaCtlConfig->mControlParams.size(); i++) {
-        MediaCtlControlParams pipeControl = mMediaCtlConfig->mControlParams[i];
-        if (pipeControl.controlId == V4L2_CID_INTEL_IPU3_MODE) {
-            status = mMediaCtl->setControl(pipeControl.entityName.c_str(),
-                    pipeControl.controlId, pipeControl.value,
-                    pipeControl.controlName.c_str());
-            if (status != NO_ERROR) {
-                LOGE("Cannot set PIPE_MODE control (ret = %d)", status);
-                return status;
-            }
+        MediaCtlControlParams pipeCtrl = mMediaCtlConfig->mControlParams[i];
+        if (pipeCtrl.controlId == V4L2_CID_INTEL_IPU3_MODE) {
+            int ctrlVal = 0;
+            CheckError(mIPU3ImguModes.find(pipeCtrl.value) == mIPU3ImguModes.end(), UNKNOWN_ERROR,
+                       "pipeCtrl.value:%d is uncorrect", pipeCtrl.value);
+            status = mMediaCtl->queryIPU3ImguMode(pipeCtrl.entityName.c_str(),
+                                                  mIPU3ImguModes[pipeCtrl.value],
+                                                  &ctrlVal);
+            CheckError(status != NO_ERROR, status, "queryIPU3ImguMode fails, status:%d", status);
+
+            status = mMediaCtl->setControl(pipeCtrl.entityName.c_str(),
+                                           pipeCtrl.controlId, ctrlVal,
+                                           pipeCtrl.controlName.c_str());
+            CheckError(status != NO_ERROR, status, "Cannot set PIPE_MODE control (ret = %d)", status);
+
             break;
         }
     }

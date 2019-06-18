@@ -55,6 +55,7 @@ public:
     status_t setFormat(const MediaCtlFormatParams &formatParams);
     status_t setSelection(const char* entityName, int pad, int target, int top, int left, int width, int height);
     status_t setControl(const char* entityName, int controlId, int value, const char *controlName);
+    status_t queryIPU3ImguMode(const char* entityName, const std::string& mode, int* value);
     status_t getSinkNamesForEntity(std::shared_ptr<MediaEntity> mediaEntity, std::vector<std::string> &names);
     status_t getMediaDevInfo(media_device_info &info);
     status_t findMediaEntityById(int index, struct media_entity_desc &mediaEntityDesc);
@@ -80,7 +81,6 @@ private:
     std::map<std::string, struct media_entity_desc> mEntityDesciptors;
     /*!< MediaEntities, Key: entity name */
     std::map<std::string, std::shared_ptr<MediaEntity>>  mEntities;
-
 }; // class MediaController
 
 } /* namespace intel */
