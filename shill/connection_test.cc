@@ -117,16 +117,13 @@ class ConnectionTest : public Test {
     properties_.subnet_prefix = kPrefix0;
     properties_.gateway = kGatewayAddress0;
     properties_.broadcast_address = kBroadcastAddress0;
-    properties_.dns_servers.push_back(kNameServer0);
-    properties_.dns_servers.push_back(kNameServer1);
-    properties_.domain_search.push_back(kSearchDomain0);
-    properties_.domain_search.push_back(kSearchDomain1);
+    properties_.dns_servers = {kNameServer0, kNameServer1};
+    properties_.domain_search = {kSearchDomain0, kSearchDomain1};
     properties_.address_family = IPAddress::kFamilyIPv4;
     UpdateProperties();
 
     ipv6_properties_.address = kIPv6Address;
-    ipv6_properties_.dns_servers.push_back(kIPv6NameServer0);
-    ipv6_properties_.dns_servers.push_back(kIPv6NameServer1);
+    ipv6_properties_.dns_servers = {kIPv6NameServer0, kIPv6NameServer1};
     ipv6_properties_.address_family = IPAddress::kFamilyIPv6;
     UpdateIPv6Properties();
 
@@ -184,13 +181,13 @@ class ConnectionTest : public Test {
     EXPECT_CALL(*device_info_, GetDevice(device->interface_index()))
       .WillRepeatedly(Return(device));
     ON_CALL(*device_info_, GetAddresses(device->interface_index(), _))
-      .WillByDefault(WithArg<1>(testing::Invoke(
-        [](std::vector<DeviceInfo::AddressData>* addresses) {
-          addresses->clear();
-          addresses->push_back(DeviceInfo::AddressData(
-                                 IPAddress(kIPAddress0), 0, 0));
-          return true;
-        })));
+        .WillByDefault(WithArg<1>(testing::Invoke(
+            [](std::vector<DeviceInfo::AddressData>* addresses) {
+              *addresses = {
+                  DeviceInfo::AddressData(IPAddress(kIPAddress0), 0, 0),
+              };
+              return true;
+            })));
     return device;
   }
 
@@ -456,10 +453,9 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
   EXPECT_TRUE(address1.SetAddressAndPrefixFromString(kExcludeAddress1));
   EXPECT_TRUE(address2.SetAddressAndPrefixFromString(kExcludeAddress2));
 
-  properties_.allowed_uids.push_back(uid);
+  properties_.allowed_uids = {uid};
   properties_.default_route = false;
-  properties_.exclusion_list.push_back(kExcludeAddress1);
-  properties_.exclusion_list.push_back(kExcludeAddress2);
+  properties_.exclusion_list = {kExcludeAddress1, kExcludeAddress2};
   UpdateProperties();
 
   // UpdateFromIPConfig creates a per-device table for all devices.
@@ -780,8 +776,7 @@ TEST_F(ConnectionTest, AddConfigWithDNSDomain) {
   connection_->UpdateFromIPConfig(ipconfig_);
 
   AddNonPhysicalRoutingPolicyExpectations(device);
-  std::vector<std::string> domain_search_list;
-  domain_search_list.push_back(kDomainName + ".");
+  std::vector<std::string> domain_search_list = {kDomainName + "."};
   EXPECT_CALL(resolver_, SetDNSFromLists(_, domain_search_list));
   EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
