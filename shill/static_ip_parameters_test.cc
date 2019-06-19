@@ -13,7 +13,6 @@
 #include "shill/property_store.h"
 
 using std::string;
-using std::vector;
 using testing::_;
 using testing::DoAll;
 using testing::Return;
@@ -168,15 +167,12 @@ class StaticIPParametersTest : public Test {
     ipconfig_props_.address = kAddress;
     ipconfig_props_.gateway = kGateway;
     ipconfig_props_.mtu = kMtu;
-    ipconfig_props_.dns_servers.push_back(kNameServer0);
-    ipconfig_props_.dns_servers.push_back(kNameServer1);
-    ipconfig_props_.domain_search.push_back(kSearchDomain0);
-    ipconfig_props_.domain_search.push_back(kSearchDomain1);
+    ipconfig_props_.dns_servers = {kNameServer0, kNameServer1};
+    ipconfig_props_.domain_search = {kSearchDomain0, kSearchDomain1};
     ipconfig_props_.peer_address = kPeerAddress;
     ipconfig_props_.subnet_prefix = kPrefixLen;
-    ipconfig_props_.exclusion_list.push_back(kExcludedRoute0);
-    ipconfig_props_.exclusion_list.push_back(kExcludedRoute1);
-    ipconfig_props_.routes.push_back(kIncludedRoute0);
+    ipconfig_props_.exclusion_list = {kExcludedRoute0, kExcludedRoute1};
+    ipconfig_props_.routes = {kIncludedRoute0};
   }
   void SetStaticPropertiesWithVersion(PropertyStore* store, int version) {
     Error error;
@@ -219,29 +215,20 @@ class StaticIPParametersTest : public Test {
     args.SetString(kAddressProperty, VersionedAddress(kAddress, version));
     args.SetString(kGatewayProperty, VersionedAddress(kGateway, version));
     args.SetInt(kMtuProperty, kMtu + version);
-
-    vector<string> name_servers;
-    name_servers.push_back(VersionedAddress(kNameServer0, version));
-    name_servers.push_back(VersionedAddress(kNameServer1, version));
-    args.SetStrings(kNameServersProperty, name_servers);
-
-    vector<string> search_domains;
-    search_domains.push_back(VersionedAddress(kSearchDomain0, version));
-    search_domains.push_back(VersionedAddress(kSearchDomain1, version));
-    args.SetStrings(kSearchDomainsProperty, search_domains);
-
+    args.SetStrings(kNameServersProperty,
+                    {VersionedAddress(kNameServer0, version),
+                     VersionedAddress(kNameServer1, version)});
+    args.SetStrings(kSearchDomainsProperty,
+                    {VersionedAddress(kSearchDomain0, version),
+                     VersionedAddress(kSearchDomain1, version)});
     args.SetString(kPeerAddressProperty,
                    VersionedAddress(kPeerAddress, version));
     args.SetInt(kPrefixlenProperty, kPrefixLen + version);
-
-    vector<string> excluded_routes;
-    excluded_routes.push_back(VersionedAddress(kExcludedRoute0, version));
-    excluded_routes.push_back(VersionedAddress(kExcludedRoute1, version));
-    args.SetStrings(kExcludedRoutesProperty, excluded_routes);
-
-    vector<string> included_routes;
-    included_routes.push_back(VersionedAddress(kIncludedRoutes, version));
-    args.SetStrings(kIncludedRoutesProperty, included_routes);
+    args.SetStrings(kExcludedRoutesProperty,
+                    {VersionedAddress(kExcludedRoute0, version),
+                     VersionedAddress(kExcludedRoute1, version)});
+    args.SetStrings(kIncludedRoutesProperty,
+                    {VersionedAddress(kIncludedRoutes, version)});
 
     Error error;
     store->SetKeyValueStoreProperty(kStaticIPConfigProperty, args, &error);
