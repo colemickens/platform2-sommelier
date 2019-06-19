@@ -36,18 +36,6 @@ constexpr char kExtendMagic[] = "SealedStorage";
 constexpr size_t kPolicySize = crypto::kSHA256Length;
 constexpr size_t kPCRSize = crypto::kSHA256Length;
 
-// RAII version of EVP_CIPHER_CTX, with auto-initialization on instantiation
-// and auto-cleanup on leaving scope.
-class SecureEVP_CIPHER_CTX {
- public:
-  SecureEVP_CIPHER_CTX() { EVP_CIPHER_CTX_init(&ctx_); }
-  ~SecureEVP_CIPHER_CTX() { EVP_CIPHER_CTX_cleanup(&ctx_); }
-  EVP_CIPHER_CTX* get() { return &ctx_; }
-
- private:
-  EVP_CIPHER_CTX ctx_;
-};
-
 // RAII version of SHA256_CTX, with auto-initialization on instantiation
 // and auto-cleanup on leaving scope.
 class SecureSHA256_CTX {
@@ -668,7 +656,11 @@ base::Optional<Data> Key::Encrypt(const SecretData& plain_data) const {
     return base::nullopt;
   }
 
-  SecureEVP_CIPHER_CTX ctx;
+  crypto::ScopedEVP_CIPHER_CTX ctx(EVP_CIPHER_CTX_new());
+  if (!ctx) {
+    ReportOpenSSLError("allocate encryption context");
+    return base::nullopt;
+  }
   if (!EVP_EncryptInit_ex(ctx.get(), GetCipher(), nullptr, key_.data(),
                           iv_.data())) {
     ReportOpenSSLError("initialize encryption context");
@@ -717,7 +709,12 @@ base::Optional<Data> Key::Encrypt(const SecretData& plain_data) const {
 }
 
 base::Optional<SecretData> Key::Decrypt(const Data& encrypted_data) const {
-  SecureEVP_CIPHER_CTX ctx;
+  crypto::ScopedEVP_CIPHER_CTX ctx(EVP_CIPHER_CTX_new());
+  if (!ctx) {
+    ReportOpenSSLError("allocate decryption context");
+    return base::nullopt;
+  }
+
   if (!EVP_DecryptInit_ex(ctx.get(), GetCipher(), nullptr, key_.data(),
                           iv_.data())) {
     ReportOpenSSLError("initialize decryption context");
