@@ -68,29 +68,30 @@ class WiFiProviderTest : public testing::Test {
         storage_entry_index_(0) {
     provider_.time_ = &time_;
 
-    string freq_string = StringPrintf("%s%d", WiFiProvider::kStorageFrequencies,
-                                      0);
-    profile_frequency_data_[freq_string].push_back(
-        base::StringPrintf("@%" PRIu64, static_cast<uint64_t>(kFirstWeek)));
-    profile_frequency_data_[freq_string].push_back("5001:1");
-    profile_frequency_data_[freq_string].push_back("5002:2");
+    string freq_string =
+        StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 0);
+    profile_frequency_data_[freq_string] = {
+        base::StringPrintf("@%" PRIu64, static_cast<uint64_t>(kFirstWeek)),
+        "5001:1",
+        "5002:2",
+    };
 
     freq_string = StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 1);
-    profile_frequency_data_[freq_string].push_back(
-        base::StringPrintf("@%" PRIu64, static_cast<uint64_t>(kFirstWeek) + 1));
-    // Overlap one entry with previous block.
-    profile_frequency_data_[freq_string].push_back("5001:1");
-    profile_frequency_data_[freq_string].push_back("6001:1");
-    profile_frequency_data_[freq_string].push_back("6002:2");
+    profile_frequency_data_[freq_string] = {
+        base::StringPrintf("@%" PRIu64, static_cast<uint64_t>(kFirstWeek) + 1),
+        "5001:1",  // Overlap one entry with previous block.
+        "6001:1",
+        "6002:2",
+    };
 
     freq_string = StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 2);
-    profile_frequency_data_[freq_string].push_back(
-        base::StringPrintf("@%" PRIu64, static_cast<uint64_t>(kFirstWeek) + 2));
-    profile_frequency_data_[freq_string].push_back("7001:1");
-    profile_frequency_data_[freq_string].push_back("7002:2");
+    profile_frequency_data_[freq_string] = {
+        base::StringPrintf("@%" PRIu64, static_cast<uint64_t>(kFirstWeek) + 2),
+        "7001:1",
+        "7002:2",
+    };
 
-    profile_frequency_data_[kIllegalDayProfile].push_back("7001:1");
-    profile_frequency_data_[kIllegalDayProfile].push_back("7002:2");
+    profile_frequency_data_[kIllegalDayProfile] = {"7001:1", "7002:2"};
   }
 
   ~WiFiProviderTest() override = default;
@@ -1677,8 +1678,7 @@ TEST_F(WiFiProviderTest, StringListToFrequencyMap) {
 }
 
 TEST_F(WiFiProviderTest, StringListToFrequencyMapEmpty) {
-  vector<string> strings;
-  strings.push_back("@50");
+  vector<string> strings = {"@50"};
   WiFiProvider::ConnectFrequencyMap frequencies_result;
   time_t days = WiFiProvider::StringListToFrequencyMap(strings,
                                                        &frequencies_result);
@@ -1741,9 +1741,9 @@ TEST_F(WiFiProviderTest, FrequencyMapBasicAging) {
                     Eq(profile_frequency_data_[
                         StringPrintf(
                             "%s%d", WiFiProvider::kStorageFrequencies, 2)])));
-  vector<string> frequencies;
-  frequencies.push_back(base::StringPrintf("@%" PRIu64,
-                                           static_cast<uint64_t>(kThisWeek)));
+  vector<string> frequencies = {
+      base::StringPrintf("@%" PRIu64, static_cast<uint64_t>(kThisWeek)),
+  };
   EXPECT_CALL(
       default_profile_storage_,
       SetStringList(WiFiProvider::kStorageId, _, Eq(frequencies))).Times(0);
@@ -1807,9 +1807,9 @@ TEST_F(WiFiProviderTest, FrequencyMapAgingIllegalDay) {
                     Eq(profile_frequency_data_[
                         StringPrintf(
                             "%s%d", WiFiProvider::kStorageFrequencies, 2)])));
-  vector<string> frequencies;
-  frequencies.push_back(base::StringPrintf("@%" PRIu64,
-                                           static_cast<uint64_t>(kThisWeek)));
+  vector<string> frequencies = {
+      base::StringPrintf("@%" PRIu64, static_cast<uint64_t>(kThisWeek)),
+  };
   EXPECT_CALL(default_profile_storage_,
               SetStringList(WiFiProvider::kStorageId, _, Eq(frequencies)))
       .Times(0);

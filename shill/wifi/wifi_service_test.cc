@@ -432,9 +432,7 @@ TEST_F(WiFiServiceTest, PassphraseSetPropertyOpenNetwork) {
 }
 
 TEST_F(WiFiServiceTest, NonUTF8SSID) {
-  vector<uint8_t> ssid;
-
-  ssid.push_back(0xff);  // not a valid UTF-8 byte-sequence
+  vector<uint8_t> ssid = {0xff};  // not a valid UTF-8 byte-sequence
   WiFiServiceRefPtr wifi_service = new WiFiService(manager(),
                                                    provider(),
                                                    ssid,
