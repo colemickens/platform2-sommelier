@@ -44,12 +44,13 @@ class FirmwareDirectoryTest : public ::testing::Test {
   ~FirmwareDirectoryTest() override = default;
 
  protected:
-  void SetUpDirectory(const base::FilePath& manifest) {
+  void SetUpDirectory(const base::FilePath& manifest,
+                      bool manifest_is_valid = true) {
     base::FilePath manifest_in_dir =
         temp_dir_.GetPath().Append("firmware_manifest.prototxt");
     CHECK(base::CopyFile(manifest, manifest_in_dir));
     firmware_directory_ = CreateFirmwareDirectory(temp_dir_.GetPath());
-    CHECK(firmware_directory_);
+    ASSERT_EQ(!!firmware_directory_, manifest_is_valid);
   }
 
   std::unique_ptr<FirmwareDirectory> firmware_directory_;
@@ -193,22 +194,13 @@ TEST_F(FirmwareDirectoryTest, FirmwareSupportsTwoCarriers) {
 TEST_F(FirmwareDirectoryTest, MalformedMainEntry) {
   const base::FilePath kManifest(
       "test_protos/malformed_main_firmware.prototxt");
-  SetUpDirectory(kManifest);
-
-  FirmwareDirectory::Files res =
-      firmware_directory_->FindFirmware(kDeviceId, nullptr);
-  EXPECT_FALSE(res.main_firmware.has_value());
+  SetUpDirectory(kManifest, false);
 }
 
 TEST_F(FirmwareDirectoryTest, MalformedCarrierEntry) {
   const base::FilePath kManifest(
       "test_protos/malformed_carrier_firmware.prototxt");
-  SetUpDirectory(kManifest);
-
-  std::string carrier_a(kCarrierA);
-  FirmwareDirectory::Files res =
-      firmware_directory_->FindFirmware(kDeviceId, &carrier_a);
-  EXPECT_FALSE(res.carrier_firmware.has_value());
+  SetUpDirectory(kManifest, false);
 }
 
 }  // namespace modemfwd

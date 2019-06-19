@@ -10,10 +10,9 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include <brillo/proto_file_io.h>
 #include <cros_config/cros_config.h>
 
-#include "modemfwd/proto_bindings/firmware_manifest.pb.h"
+#include "modemfwd/firmware_manifest.h"
 
 namespace modemfwd {
 
@@ -43,28 +42,14 @@ std::string GetModemFirmwareVariant() {
   return variant;
 }
 
-FirmwareFileInfo::Compression ToFirmwareFileInfoCompression(
-    Compression compression) {
-  switch (compression) {
-    case Compression::NONE:
-      return FirmwareFileInfo::Compression::NONE;
-    case Compression::XZ:
-      return FirmwareFileInfo::Compression::XZ;
-    default:
-      LOG(FATAL) << "Invalid compression: " << compression;
-      return FirmwareFileInfo::Compression::NONE;
-  }
-}
-
 }  // namespace
 
 const char FirmwareDirectory::kGenericCarrierId[] = "generic";
 
 class FirmwareDirectoryImpl : public FirmwareDirectory {
  public:
-  FirmwareDirectoryImpl(const FirmwareManifest& manifest,
-                        const base::FilePath& directory)
-      : manifest_(manifest),
+  FirmwareDirectoryImpl(FirmwareIndex index, const base::FilePath& directory)
+      : index_(std::move(index)),
         directory_(directory),
         variant_(GetModemFirmwareVariant()) {}
 
@@ -73,42 +58,43 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
                                         std::string* carrier_id) override {
     FirmwareDirectory::Files result;
 
+    DeviceType type{device_id, variant_};
+    auto device_it = index_.find(type);
+    if (device_it == index_.end()) {
+      DLOG(INFO) << "Firmware directory has no firmware for device ID ["
+                 << device_id << "]";
+      return result;
+    }
+
+    const DeviceFirmwareCache& cache = device_it->second;
     FirmwareFileInfo info;
-    if (FindMainFirmware(device_id, &info))
-      result.main_firmware = info;
-    if (carrier_id && FindCarrierFirmware(device_id, carrier_id, &info))
+
+    // Null carrier ID -> just go for generic main firmware.
+    if (!carrier_id) {
+      if (FindSpecificFirmware(cache.main_firmware, kGenericCarrierId, &info))
+        result.main_firmware = info;
+      return result;
+    }
+
+    // Searching for carrier firmware may change the carrier to generic. This
+    // is fine, and the main firmware should use the same one in that case.
+    if (FindFirmwareForCarrier(cache.carrier_firmware, carrier_id, &info))
       result.carrier_firmware = info;
+    if (FindFirmwareForCarrier(cache.main_firmware, carrier_id, &info))
+      result.main_firmware = info;
 
     return result;
   }
 
  private:
-  bool FindMainFirmware(const std::string& device_id,
-                        FirmwareFileInfo* out_info) {
-    DCHECK(out_info);
-    for (const MainFirmware& file_info : manifest_.main_firmware()) {
-      if (file_info.device_id() == device_id &&
-          (file_info.variant().empty() || file_info.variant() == variant_) &&
-          !file_info.filename().empty() && !file_info.version().empty()) {
-        out_info->firmware_path = directory_.Append(file_info.filename());
-        out_info->version = file_info.version();
-        out_info->compression =
-            ToFirmwareFileInfoCompression(file_info.compression());
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  bool FindCarrierFirmware(const std::string& device_id,
-                           std::string* carrier_id,
-                           FirmwareFileInfo* out_info) {
-    DCHECK(carrier_id);
-    if (FindSpecificCarrierFirmware(device_id, *carrier_id, out_info))
+  bool FindFirmwareForCarrier(
+      const DeviceFirmwareCache::CarrierIndex& carrier_index,
+      std::string* carrier_id,
+      FirmwareFileInfo* out_info) {
+    if (FindSpecificFirmware(carrier_index, *carrier_id, out_info))
       return true;
 
-    if (FindSpecificCarrierFirmware(device_id, kGenericCarrierId, out_info)) {
+    if (FindSpecificFirmware(carrier_index, kGenericCarrierId, out_info)) {
       *carrier_id = kGenericCarrierId;
       return true;
     }
@@ -116,32 +102,19 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
     return false;
   }
 
-  bool FindSpecificCarrierFirmware(const std::string& device_id,
-                                   const std::string& carrier_id,
-                                   FirmwareFileInfo* out_info) {
-    DCHECK(out_info);
-    for (const CarrierFirmware& file_info : manifest_.carrier_firmware()) {
-      if (file_info.device_id() != device_id ||
-          (!file_info.variant().empty() && file_info.variant() != variant_) ||
-          file_info.filename().empty() || file_info.version().empty()) {
-        continue;
-      }
+  bool FindSpecificFirmware(
+      const DeviceFirmwareCache::CarrierIndex& carrier_index,
+      const std::string& carrier_id,
+      FirmwareFileInfo* out_info) {
+    auto it = carrier_index.find(carrier_id);
+    if (it == carrier_index.end())
+      return false;
 
-      for (const std::string& supported_carrier : file_info.carrier_id()) {
-        if (supported_carrier == carrier_id) {
-          out_info->firmware_path = directory_.Append(file_info.filename());
-          out_info->version = file_info.version();
-          out_info->compression =
-              ToFirmwareFileInfoCompression(file_info.compression());
-          return true;
-        }
-      }
-    }
-
-    return false;
+    *out_info = *it->second;
+    return true;
   }
 
-  FirmwareManifest manifest_;
+  FirmwareIndex index_;
   base::FilePath directory_;
   std::string variant_;
 
@@ -150,12 +123,11 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
 
 std::unique_ptr<FirmwareDirectory> CreateFirmwareDirectory(
     const base::FilePath& directory) {
-  FirmwareManifest parsed_manifest;
-  if (!brillo::ReadTextProtobuf(directory.Append(kManifestName),
-                                &parsed_manifest))
+  FirmwareIndex index;
+  if (!ParseFirmwareManifest(directory.Append(kManifestName), &index))
     return nullptr;
 
-  return std::make_unique<FirmwareDirectoryImpl>(parsed_manifest, directory);
+  return std::make_unique<FirmwareDirectoryImpl>(std::move(index), directory);
 }
 
 }  // namespace modemfwd

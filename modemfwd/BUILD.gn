@@ -48,6 +48,7 @@ static_library("libmodemfw") {
     "file_decompressor.cc",
     "firmware_directory.cc",
     "firmware_file.cc",
+    "firmware_manifest.cc",
     "journal.cc",
     "modem.cc",
     "modem_flasher.cc",
