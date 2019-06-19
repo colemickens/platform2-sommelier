@@ -135,7 +135,7 @@
 
     <signal name="KerberosFilesChanged">
       <tp:docstring>
-        Signal emitted if either the Kerberos credential cache (krb5cc) or
+        Signal emitted when either the Kerberos credential cache (krb5cc) or
         configuration (krb5.conf) files change for the account that corresponds
         to |principal_name|.
       </tp:docstring>
@@ -145,5 +145,19 @@
         </tp:docstring>
       </arg>
     </signal>
-  </interface>
+
+    <signal name="KerberosTicketExpiring">
+      <tp:docstring>
+        Signal emitted when a Kerberos TGT is about to expire within the next
+        couple of minutes for the account that corresponds to |principal_name|.
+        Also emitted if the ticket already expired, e.g. after a system restart.
+        The signal is only emitted once per ticket unless the ticket is
+        refreshed.
+      </tp:docstring>
+      <arg name="principal_name" type="s">
+        <tp:docstring>
+          Principal name (user@REALM.COM) that identifies the account.
+        </tp:docstring>
+      </arg>
+    </signal>  </interface>
 </node>

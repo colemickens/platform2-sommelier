@@ -10,6 +10,8 @@
 #include <base/compiler_specific.h>
 #include <base/files/file_util.h>
 #include <base/optional.h>
+#include <base/threading/thread_task_runner_handle.h>
+#include <base/time/time.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/errors/error.h>
 #include <dbus/login_manager/dbus-constants.h>
@@ -25,6 +27,9 @@
 namespace kerberos {
 
 namespace {
+
+constexpr base::TimeDelta kTicketExpiryCheckDelay =
+    base::TimeDelta::FromSeconds(3);
 
 using ByteArray = KerberosAdaptor::ByteArray;
 
@@ -114,9 +119,23 @@ void KerberosAdaptor::RegisterAsync(
       storage_dir,
       base::BindRepeating(&KerberosAdaptor::OnKerberosFilesChanged,
                           base::Unretained(this)),
+      base::BindRepeating(&KerberosAdaptor::OnKerberosTicketExpiring,
+                          base::Unretained(this)),
       std::make_unique<Krb5InterfaceImpl>(),
       std::make_unique<password_provider::PasswordProvider>());
   manager_->LoadAccounts();
+
+  // Wait a little before calling CheckForExpiredTickets. Apparently, signals
+  // are not quite wired up properly at this point. If signals are emitted here,
+  // they never reach Chrome, even if Chrome made sure it connected to the
+  // signal.
+  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE,
+      base::BindRepeating(&KerberosAdaptor::CheckForExpiredTickets,
+                          weak_ptr_factory_.GetWeakPtr()),
+      kTicketExpiryCheckDelay);
+
+  // TODO(https://crbug.com/952245): Set up a watcher for ticket expiry.
 }
 
 ByteArray KerberosAdaptor::AddAccount(const ByteArray& request_blob) {
@@ -238,10 +257,20 @@ ByteArray KerberosAdaptor::GetKerberosFiles(const ByteArray& request_blob) {
   return SerializeProto(response);
 }
 
+void KerberosAdaptor::CheckForExpiredTickets() {
+  manager_->TriggerKerberosTicketExpiringForExpiredTickets();
+}
+
 void KerberosAdaptor::OnKerberosFilesChanged(
     const std::string& principal_name) {
-  LOG(INFO) << "Firing signal UserKerberosFilesChanged";
+  LOG(INFO) << "Firing signal KerberosFilesChanged";
   SendKerberosFilesChangedSignal(principal_name);
+}
+
+void KerberosAdaptor::OnKerberosTicketExpiring(
+    const std::string& principal_name) {
+  LOG(INFO) << "Firing signal KerberosTicketExpiring";
+  SendKerberosTicketExpiringSignal(principal_name);
 }
 
 }  // namespace kerberos

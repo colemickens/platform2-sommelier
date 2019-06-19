@@ -50,6 +50,9 @@ class AccountManagerTest : public ::testing::Test {
   AccountManagerTest()
       : kerberos_files_changed_(
             base::BindRepeating(&AccountManagerTest::OnKerberosFilesChanged,
+                                base::Unretained(this))),
+        kerberos_ticket_expiring_(
+            base::BindRepeating(&AccountManagerTest::OnKerberosTicketExpiring,
                                 base::Unretained(this))) {}
   ~AccountManagerTest() override = default;
 
@@ -72,7 +75,8 @@ class AccountManagerTest : public ::testing::Test {
     krb5_ = krb5.get();
     password_provider_ = password_provider.get();
     manager_ = std::make_unique<AccountManager>(
-        storage_dir_.GetPath(), kerberos_files_changed_, std::move(krb5),
+        storage_dir_.GetPath(), kerberos_files_changed_,
+        kerberos_ticket_expiring_, std::move(krb5),
         std::move(password_provider));
   }
 
@@ -86,7 +90,7 @@ class AccountManagerTest : public ::testing::Test {
 
       AccountManager other_manager(
           storage_dir_.GetPath(), kerberos_files_changed_,
-          std::make_unique<FakeKrb5Interface>(),
+          kerberos_ticket_expiring_, std::make_unique<FakeKrb5Interface>(),
           std::make_unique<password_provider::FakePasswordProvider>());
       other_manager.LoadAccounts();
       std::vector<Account> other_accounts;
@@ -120,6 +124,10 @@ class AccountManagerTest : public ::testing::Test {
     kerberos_files_changed_count_[principal_name]++;
   }
 
+  void OnKerberosTicketExpiring(const std::string& principal_name) {
+    kerberos_ticket_expiring_count_[principal_name]++;
+  }
+
   void ExpectAccountsEqual(const std::vector<Account>& account_list_1,
                            const std::vector<Account>& account_list_2) {
     ASSERT_EQ(account_list_1.size(), account_list_2.size());
@@ -150,7 +158,10 @@ class AccountManagerTest : public ::testing::Test {
   base::FilePath password_path_;
 
   AccountManager::KerberosFilesChangedCallback kerberos_files_changed_;
+  AccountManager::KerberosTicketExpiringCallback kerberos_ticket_expiring_;
+
   std::map<std::string, int> kerberos_files_changed_count_;
+  std::map<std::string, int> kerberos_ticket_expiring_count_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AccountManagerTest);
@@ -586,7 +597,7 @@ TEST_F(AccountManagerTest, SerializationSuccess) {
   EXPECT_EQ(ERROR_NONE, manager_->SaveAccounts());
   AccountManager other_manager(
       storage_dir_.GetPath(), kerberos_files_changed_,
-      std::make_unique<FakeKrb5Interface>(),
+      kerberos_ticket_expiring_, std::make_unique<FakeKrb5Interface>(),
       std::make_unique<password_provider::FakePasswordProvider>());
   other_manager.LoadAccounts();
   std::vector<Account> accounts;
@@ -603,6 +614,27 @@ TEST_F(AccountManagerTest, SerializationSuccess) {
   EXPECT_FALSE(accounts[1].use_login_password());
 
   // TODO(https://crbug.com/952239): Check additional Account properties.
+}
+
+// The TriggerKerberosTicketExpiringForExpiredTickets() method works fine.
+TEST_F(AccountManagerTest, TriggerKerberosTicketExpiringForExpiredTickets) {
+  ignore_result(AddAccount());
+  ignore_result(SetConfig());
+  ignore_result(AcquireTgt());
+  EXPECT_EQ(0, kerberos_ticket_expiring_count_[kUser]);
+
+  // Fake an expired ticket.
+  Krb5Interface::TgtStatus status;
+  status.validity_seconds = 0;
+  krb5_->set_tgt_status(status);
+  manager_->TriggerKerberosTicketExpiringForExpiredTickets();
+  EXPECT_EQ(1, kerberos_ticket_expiring_count_[kUser]);
+
+  // Fake a valid ticket.
+  status.validity_seconds = 1;
+  krb5_->set_tgt_status(status);
+  manager_->TriggerKerberosTicketExpiringForExpiredTickets();
+  EXPECT_EQ(1, kerberos_ticket_expiring_count_[kUser]);
 }
 
 }  // namespace kerberos

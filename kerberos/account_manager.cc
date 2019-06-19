@@ -71,13 +71,18 @@ ErrorType SaveFile(const base::FilePath& path, const std::string& data) {
 AccountManager::AccountManager(
     base::FilePath storage_dir,
     KerberosFilesChangedCallback kerberos_files_changed,
+    KerberosTicketExpiringCallback kerberos_ticket_expiring,
     std::unique_ptr<Krb5Interface> krb5,
     std::unique_ptr<password_provider::PasswordProviderInterface>
         password_provider)
     : storage_dir_(std::move(storage_dir)),
       kerberos_files_changed_(std::move(kerberos_files_changed)),
+      kerberos_ticket_expiring_(std::move(kerberos_ticket_expiring)),
       krb5_(std::move(krb5)),
-      password_provider_(std::move(password_provider)) {}
+      password_provider_(std::move(password_provider)) {
+  DCHECK(kerberos_files_changed_);
+  DCHECK(kerberos_ticket_expiring_);
+}
 
 AccountManager::~AccountManager() = default;
 
@@ -305,6 +310,21 @@ ErrorType AccountManager::GetKerberosFiles(const std::string& principal_name,
   return ERROR_NONE;
 }
 
+void AccountManager::TriggerKerberosTicketExpiringForExpiredTickets() {
+  for (const auto& it : accounts_) {
+    const base::FilePath krb5cc_path = GetKrb5CCPath(it.principal_name());
+    if (!base::PathExists(krb5cc_path))
+      continue;
+
+    // A ticket where GetTgtStatus fails is considered broken and hence invalid.
+    Krb5Interface::TgtStatus tgt_status;
+    if (krb5_->GetTgtStatus(krb5cc_path, &tgt_status) != ERROR_NONE ||
+        tgt_status.validity_seconds <= 0) {
+      TriggerKerberosTicketExpiring(it.principal_name());
+    }
+  }
+}
+
 // static
 std::string AccountManager::GetSafeFilenameForTesting(
     const std::string& principal_name) {
@@ -313,8 +333,12 @@ std::string AccountManager::GetSafeFilenameForTesting(
 
 void AccountManager::TriggerKerberosFilesChanged(
     const std::string& principal_name) const {
-  if (!kerberos_files_changed_.is_null())
-    kerberos_files_changed_.Run(principal_name);
+  kerberos_files_changed_.Run(principal_name);
+}
+
+void AccountManager::TriggerKerberosTicketExpiring(
+    const std::string& principal_name) const {
+  kerberos_ticket_expiring_.Run(principal_name);
 }
 
 base::FilePath AccountManager::GetAccountDir(

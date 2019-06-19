@@ -9,6 +9,7 @@
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
+#include <base/run_loop.h>
 #include <dbus/login_manager/dbus-constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
@@ -153,6 +154,7 @@ class KerberosAdaptorTest : public ::testing::Test {
   scoped_refptr<MockBus> mock_bus_;
   scoped_refptr<MockExportedObject> mock_exported_object_;
   std::unique_ptr<KerberosAdaptor> adaptor_;
+  base::MessageLoop loop_;
 
   base::ScopedTempDir storage_dir_;
 

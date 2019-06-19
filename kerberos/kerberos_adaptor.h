@@ -11,6 +11,7 @@
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 #include <base/optional.h>
 #include <brillo/dbus/async_event_sequencer.h>
 
@@ -60,10 +61,18 @@ class KerberosAdaptor : public org::chromium::KerberosAdaptor,
   }
 
  private:
+  // TriggersKerberosTicketExpiring for expired tickets.
+  void CheckForExpiredTickets();
+
   // Gets triggered by when the Kerberos credential cache or the configuration
   // file changes of the given principal. Triggers the KerberosFilesChanged
   // signal.
   void OnKerberosFilesChanged(const std::string& principal_name);
+
+  // Gets called when the a Kerberos ticket is about to expire in the next
+  // coupld of minutes or if it already expired. Triggers the
+  // KerberosTicketExpiring signal.
+  void OnKerberosTicketExpiring(const std::string& principal_name);
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
@@ -73,6 +82,7 @@ class KerberosAdaptor : public org::chromium::KerberosAdaptor,
   // If set, overrides the directory where data is stored.
   base::Optional<base::FilePath> storage_dir_for_testing_;
 
+  base::WeakPtrFactory<KerberosAdaptor> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(KerberosAdaptor);
 };
 

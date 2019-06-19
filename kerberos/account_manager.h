@@ -32,16 +32,21 @@ class AccountManager {
  public:
   using KerberosFilesChangedCallback =
       base::RepeatingCallback<void(const std::string& principal_name)>;
+  using KerberosTicketExpiringCallback =
+      base::RepeatingCallback<void(const std::string& principal_name)>;
 
   // |storage_dir| is the path where configs and credential caches are stored.
   // |kerberos_files_changed| is a callback that gets called when either the
   // Kerberos credential cache or the configuration file changes for a specific
   // account. Use in combination with GetKerberosFiles() to get the latest
-  // files. |krb5| interacts with lower level Kerberos libraries. It can be
-  // overridden for tests. |password_provider| is used to retrieve the login
-  // password. It can be overridden for tests.
+  // files. |kerberos_ticket_expiring| is a callback that gets called when a
+  // Kerberos TGT is about to expire. It should be used to notify the user.
+  // |krb5| interacts with lower level Kerberos libraries. It can be overridden
+  // for tests. |password_provider| is used to retrieve the login password. It
+  // can be overridden for tests.
   AccountManager(base::FilePath storage_dir,
                  KerberosFilesChangedCallback kerberos_files_changed,
+                 KerberosTicketExpiringCallback kerberos_ticket_expiring,
                  std::unique_ptr<Krb5Interface> krb5,
                  std::unique_ptr<password_provider::PasswordProviderInterface>
                      password_provider);
@@ -102,6 +107,9 @@ class AccountManager {
   ErrorType GetKerberosFiles(const std::string& principal_name,
                              KerberosFiles* files) const WARN_UNUSED_RESULT;
 
+  // Sends KerberosTicketExpiring signals for each expired Kerberos ticket.
+  void TriggerKerberosTicketExpiringForExpiredTickets();
+
   const base::FilePath& GetStorageDirForTesting() { return storage_dir_; }
 
   // Returns the base64-encoded |principal_name|.
@@ -131,8 +139,11 @@ class AccountManager {
   // deleted.
   void DeleteAllFilesFor(const std::string& principal_name);
 
-  // Calls |kerberos_files_changed_| if set.
+  // Calls |kerberos_files_changed_|.
   void TriggerKerberosFilesChanged(const std::string& principal_name) const;
+
+  // Calls |kerberos_ticket_expiring_|.
+  void TriggerKerberosTicketExpiring(const std::string& principal_name) const;
 
   // Sets |password| to the login password. Removes a remembered password for
   // |principal_name| if there is any.
@@ -153,6 +164,10 @@ class AccountManager {
   // Gets called when the Kerberos configuration or credential cache changes for
   // a specific account.
   const KerberosFilesChangedCallback kerberos_files_changed_;
+
+  // Gets called when the a Kerberos ticket is about to expire in the next
+  // couple of minutes or if it already expired.
+  const KerberosTicketExpiringCallback kerberos_ticket_expiring_;
 
   // Interface for Kerberos methods (may be overridden for tests).
   const std::unique_ptr<Krb5Interface> krb5_;
