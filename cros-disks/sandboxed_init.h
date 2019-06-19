@@ -37,6 +37,8 @@ class SandboxedInit {
 
   static bool PollLauncherStatus(base::ScopedFD* ctrl_fd, int* wstatus);
 
+  static int WStatusToStatus(int wstatus);
+
  private:
   int RunInitLoop(pid_t root_pid, base::ScopedFD ctrl_fd);
   pid_t StartLauncher(base::Callback<int()> launcher);

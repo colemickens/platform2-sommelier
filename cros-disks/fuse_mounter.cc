@@ -36,7 +36,18 @@ const char kFuseDeviceFile[] = "/dev/fuse";
 const MountOptions::Flags kRequiredFuseMountFlags =
     MS_NODEV | MS_NOEXEC | MS_NOSUID;
 
-void CleanUpCallback(base::Closure cleanup, const siginfo_t&) {
+void CleanUpCallback(base::Closure cleanup,
+                     const base::FilePath& mount_path,
+                     const siginfo_t& info) {
+  CHECK_EQ(SIGCHLD, info.si_signo);
+  if (info.si_code != CLD_EXITED || info.si_status != 0) {
+    LOG(WARNING) << "FUSE daemon for '" << mount_path.value()
+                 << "' exited with code " << info.si_code << " and status "
+                 << info.si_status;
+  } else {
+    LOG(INFO) << "FUSE daemon for '" << mount_path.value()
+              << "' exited normally";
+  }
   std::move(cleanup).Run();
 }
 
@@ -315,7 +326,8 @@ MountErrorType FUSEMounter::MountImpl() const {
   // namespace terminates.
   process_reaper_->WatchForChild(
       FROM_HERE, mount_process->pid(),
-      base::Bind(CleanUpCallback, fuse_cleanup_runner.Release()));
+      base::Bind(CleanUpCallback, fuse_cleanup_runner.Release(),
+                 target_path()));
 
   return MountErrorType::MOUNT_ERROR_NONE;
 }

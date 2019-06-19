@@ -148,7 +148,7 @@ TEST_F(SandboxedInitTest, RunInitWithDaemon) {
     }
     char buffer[4] = {0};
     EXPECT_EQ(4, read(comm[0], buffer, 4));
-    return 12;
+    return 42;
   });
   usleep(kUSleepDelay);
 
@@ -165,7 +165,7 @@ TEST_F(SandboxedInitTest, RunInitWithDaemon) {
   close(comm[1]);
 
   EXPECT_TRUE(Wait(&status, true));
-  EXPECT_EQ(0, WEXITSTATUS(status));
+  EXPECT_EQ(42, WEXITSTATUS(status));
 }
 
 }  // namespace cros_disks

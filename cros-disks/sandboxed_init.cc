@@ -6,6 +6,7 @@
 
 #include <utility>
 #include <stdlib.h>
+#include <sys/prctl.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -21,10 +22,11 @@ constexpr size_t kCtrlFileIndex = 3;
 constexpr size_t kReadEnd = 0;
 constexpr size_t kWriteEnd = 1;
 
-int g_root_pid_exit_status = 0;
-
 void SigTerm(int sig) {
-  _exit(WEXITSTATUS(g_root_pid_exit_status));
+  if (kill(-1, sig) == -1) {
+    RAW_LOG(FATAL, "Can't broadcast signal");
+    _exit(errno + 128);
+  }
 }
 
 }  // namespace
@@ -80,6 +82,11 @@ void SandboxedInit::RunInsideSandboxNoReturn(base::Callback<int()> launcher) {
     PLOG(FATAL) << "Can't dup2 " << STDIN_FILENO;
   }
 
+  // Set an identifyable process name.
+  if (prctl(PR_SET_NAME, "cros-disks-INIT") == -1) {
+    PLOG(WARNING) << "Can't set init's process name";
+  }
+
   // Close unused sides of the pipes.
   for (int i = STDIN_FILENO; i <= STDERR_FILENO; ++i) {
     fds_[i][kReadEnd].reset();
@@ -107,39 +114,51 @@ int SandboxedInit::RunInitLoop(pid_t root_pid, base::ScopedFD ctrl_fd) {
   // Most of this is mirroring minijail's embedded "init" (exit status handling)
   // with addition of piping the "root" status code to the calling process.
 
-  // So that we exit with the right status when terminated.
-  signal(SIGTERM, SigTerm);
+  // Forward SIGTERM to all children instead of handling it directly.
+  if (signal(SIGTERM, SigTerm) == SIG_ERR) {
+    PLOG(FATAL) << "Can't install signal handler";
+  }
 
   // This loop will only end when either there are no processes left inside
   // our PID namespace or we get a signal.
   pid_t pid;
   int wstatus;
+  int last_failure_code = 0;
 
   // Wait for any child to terminate.
   while ((pid = wait(&wstatus)) > 0) {
     if (WIFEXITED(wstatus) || WIFSIGNALED(wstatus)) {
-      // Something quit. Check if that's the launcher.
+      // Something quit.
+      const int exit_code = WStatusToStatus(wstatus);
+      if (exit_code) {
+        last_failure_code = exit_code;
+      }
+
+      // Check if that's the launcher.
       if (pid == root_pid) {
-        g_root_pid_exit_status = wstatus;
-        if (write(ctrl_fd.get(), &wstatus, sizeof(wstatus)) !=
-            sizeof(wstatus)) {
+        ssize_t written =
+            HANDLE_EINTR(write(ctrl_fd.get(), &wstatus, sizeof(wstatus)));
+        if (written != sizeof(wstatus)) {
           PLOG(ERROR) << "Failed to write exit code";
           return MINIJAIL_ERR_INIT;
         }
         ctrl_fd.reset();
+
+        // Mark launcher finished.
         root_pid = -1;
       }
     }
   }
 
-  if (!WIFEXITED(g_root_pid_exit_status)) {
+  if (root_pid != -1) {
     return MINIJAIL_ERR_INIT;
   }
-  return WEXITSTATUS(g_root_pid_exit_status);
+  return last_failure_code;
 }
 
 pid_t SandboxedInit::StartLauncher(base::Callback<int()> launcher) {
   pid_t exec_child = fork();
+
   if (exec_child == -1) {
     PLOG(FATAL) << "Can't fork";
   }
@@ -161,6 +180,16 @@ bool SandboxedInit::PollLauncherStatus(base::ScopedFD* ctrl_fd, int* wstatus) {
     ctrl_fd->reset();
   }
   return read_bytes == sizeof(*wstatus);
+}
+
+int SandboxedInit::WStatusToStatus(int wstatus) {
+  if (WIFEXITED(wstatus)) {
+    return WEXITSTATUS(wstatus);
+  } else if (WIFSIGNALED(wstatus)) {
+    // Mirrors minijail_wait().
+    return 128 + WTERMSIG(wstatus);
+  }
+  return -1;
 }
 
 }  // namespace cros_disks

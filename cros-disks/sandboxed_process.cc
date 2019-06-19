@@ -23,16 +23,6 @@ namespace cros_disks {
 
 namespace {
 
-int WStatusToStatus(int wstatus) {
-  if (WIFEXITED(wstatus)) {
-    return WEXITSTATUS(wstatus);
-  } else if (WIFSIGNALED(wstatus)) {
-    // Mirrors minijail_wait().
-    return 128 + WTERMSIG(wstatus);
-  }
-  return -1;
-}
-
 int Exec(char** args) {
   execv(args[0], args);
   PLOG(FATAL) << "Can't exec " << args[0];
@@ -69,6 +59,8 @@ void SandboxedProcess::NewMountNamespace() {
 void SandboxedProcess::NewPidNamespace() {
   minijail_namespace_pids(jail_);
   minijail_run_as_init(jail_);
+  minijail_reset_signal_mask(jail_);
+  minijail_reset_signal_handlers(jail_);
   run_custom_init_ = true;
 }
 
@@ -188,7 +180,7 @@ int SandboxedProcess::WaitImpl() {
 
 bool SandboxedProcess::WaitNonBlockingImpl(int* status) {
   if (run_custom_init_ && PollStatus(status)) {
-    *status = WStatusToStatus(*status);
+    *status = SandboxedInit::WStatusToStatus(*status);
     return true;
   }
 
@@ -205,7 +197,7 @@ bool SandboxedProcess::WaitNonBlockingImpl(int* status) {
   }
 
   if (WIFEXITED(*status) || WIFSIGNALED(*status)) {
-    *status = WStatusToStatus(*status);
+    *status = SandboxedInit::WStatusToStatus(*status);
     return true;
   }
 
