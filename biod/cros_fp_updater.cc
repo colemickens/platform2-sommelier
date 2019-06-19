@@ -193,7 +193,7 @@ bool CrosFpBootUpdateCtrl::ScheduleReboot() const {
                   base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
   if (!file.IsValid()) {
     LOG(ERROR) << "Failed to schedule post update reboot: "
-               << file.ErrorToString(file.error_details());
+               << base::File::ErrorToString(file.error_details());
     return false;
   }
   return true;
