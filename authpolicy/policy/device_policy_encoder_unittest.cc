@@ -219,6 +219,10 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeString(&policy, key::kDeviceUpdateStagingSchedule, kString);
   EXPECT_EQ(kString, policy.auto_update_settings().staging_schedule());
 
+  EncodeString(&policy, key::kDeviceWebUsbAllowDevicesForUrls, kString);
+  EXPECT_EQ(kString, policy.device_webusb_allow_devices_for_urls()
+                         .device_webusb_allow_devices_for_urls());
+
   //
   // Accessibility policies.
   //
@@ -429,6 +433,30 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
                 em::DeviceDockMacAddressSourceProto::DOCK_NIC_MAC_ADDRESS);
   EXPECT_EQ(em::DeviceDockMacAddressSourceProto::DOCK_NIC_MAC_ADDRESS,
             policy.device_dock_mac_address_source().source());
+
+  EncodeBoolean(&policy, key::kDeviceAdvancedBatteryChargeModeEnabled, kBool);
+  EXPECT_EQ(kBool, policy.device_advanced_battery_charge_mode().enabled());
+
+  EncodeString(&policy, key::kDeviceAdvancedBatteryChargeModeDayConfig,
+               kString);
+  EXPECT_EQ(kString,
+            policy.device_advanced_battery_charge_mode().day_configs());
+
+  // The encoder of this policy converts ints to
+  // DeviceBatteryChargeMode::BatteryChardeMode enums.
+  EncodeInteger(&policy, key::kDeviceBatteryChargeMode,
+                em::DeviceBatteryChargeModeProto::CUSTOM);
+  EXPECT_EQ(em::DeviceBatteryChargeModeProto::CUSTOM,
+            policy.device_battery_charge_mode().battery_charge_mode());
+
+  EncodeInteger(&policy, key::kDeviceBatteryChargeCustomStartCharging, kInt);
+  EXPECT_EQ(kInt, policy.device_battery_charge_mode().custom_charge_start());
+
+  EncodeInteger(&policy, key::kDeviceBatteryChargeCustomStopCharging, kInt);
+  EXPECT_EQ(kInt, policy.device_battery_charge_mode().custom_charge_stop());
+
+  EncodeBoolean(&policy, key::kDeviceUsbPowerShareEnabled, kBool);
+  EXPECT_EQ(kBool, policy.device_usb_power_share().enabled());
 
   // The encoder of this policy converts ints to
   // DeviceUserPolicyLoopbackProcessingModeProto::Mode enums.

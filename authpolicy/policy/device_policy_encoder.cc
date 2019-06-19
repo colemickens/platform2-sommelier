@@ -331,6 +331,11 @@ void DevicePolicyEncoder::EncodeAutoUpdatePolicies(
     policy->mutable_auto_update_settings()->set_device_quick_fix_build_token(
         value);
   });
+  EncodeString(key::kDeviceWebUsbAllowDevicesForUrls,
+               [policy](const std::string& value) {
+                 policy->mutable_device_webusb_allow_devices_for_urls()
+                     ->set_device_webusb_allow_devices_for_urls(value);
+               });
 }
 
 void DevicePolicyEncoder::EncodeAccessibilityPolicies(
@@ -646,6 +651,38 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   EncodeInteger(key::kDeviceDockMacAddressSource, [policy](int value) {
     policy->mutable_device_dock_mac_address_source()->set_source(
         static_cast<em::DeviceDockMacAddressSourceProto::Source>(value));
+  });
+
+  EncodeBoolean(key::kDeviceAdvancedBatteryChargeModeEnabled, [policy](
+                                                                  bool value) {
+    policy->mutable_device_advanced_battery_charge_mode()->set_enabled(value);
+  });
+
+  EncodeString(
+      key::kDeviceAdvancedBatteryChargeModeDayConfig,
+      [policy](const std::string& value) {
+        policy->mutable_device_advanced_battery_charge_mode()->set_day_configs(
+            value);
+      });
+
+  EncodeInteger(key::kDeviceBatteryChargeMode, [policy](int value) {
+    policy->mutable_device_battery_charge_mode()->set_battery_charge_mode(
+        static_cast<em::DeviceBatteryChargeModeProto_BatteryChargeMode>(value));
+  });
+
+  EncodeInteger(
+      key::kDeviceBatteryChargeCustomStartCharging, [policy](int value) {
+        policy->mutable_device_battery_charge_mode()->set_custom_charge_start(
+            value);
+      });
+
+  EncodeInteger(key::kDeviceBatteryChargeCustomStopCharging, [policy](
+                                                                 int value) {
+    policy->mutable_device_battery_charge_mode()->set_custom_charge_stop(value);
+  });
+
+  EncodeBoolean(key::kDeviceUsbPowerShareEnabled, [policy](bool value) {
+    policy->mutable_device_usb_power_share()->set_enabled(value);
   });
 }
 
