@@ -5,10 +5,13 @@
 # TODO(b/131121671): Update this when script with a method that works for
 #   user images.
 
+# Use arc-networkd ADB proxy.
+# Reference: src/platform2/arc/network/adb_proxy.cc
+target='127.0.0.1:5550'
 logged_in_file='/run/state/logged-in'
 
 is_connected() {
-  [ -n "$(adb devices 2>/dev/null | grep "${target}")" ]
+  [ -n "$(adb devices 2>/dev/null | grep "${target}\sdevice")" ]
 }
 
 # The user might still be logging in.
@@ -32,26 +35,6 @@ command="$(/usr/bin/printf "%q " "$@")"
 # a temporary directory instead.
 tmpdir=$(mktemp -d)
 export HOME="${tmpdir}"
-
-# Concierge dynamically assigns a VSOCK CID for each VM. Ask the service which
-# CID is currently assigned to ARCVM.
-ID="$(cryptohome --action=status | jq -r '.mounts[0].owner')"
-if [ "$?" != "0" ]; then
-  echo "$0: Failed to get cryptohome ID, exiting."
-  exit 1
-fi
-
-CID="$(/usr/bin/concierge_client --get_vm_cid --name=arcvm \
-         --cryptohome_id="${ID}")"
-if [ "$?" != "0" ]; then
-  echo "$0: Failed to get CID from concierge, exiting."
-  exit 1
-elif [ -z "${CID}" ]; then
-  echo "$0: Empty CID value returned from concierge, exiting."
-  exit 1
-fi
-
-target="vsock:${CID}:5555"
 
 # Try to start the server first if it's not started.
 adb start-server 2>/dev/null
