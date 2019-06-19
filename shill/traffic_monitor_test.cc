@@ -165,8 +165,7 @@ TEST_F(TrafficMonitorTest, StartAndStop) {
 }
 
 TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthValid) {
-  vector<SocketInfo> socket_infos;
-  socket_infos.push_back(
+  vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort1,
@@ -174,7 +173,8 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthValid) {
                  TrafficMonitorTest::kRemotePort,
                  TrafficMonitorTest::kTxQueueLength1,
                  0,
-                 SocketInfo::kTimerStateRetransmitTimerPending));
+                 SocketInfo::kTimerStateRetransmitTimerPending),
+  };
   TrafficMonitor::IPPortToTxQueueLengthMap tx_queue_lengths =
       monitor_.BuildIPPortToTxQueueLength(socket_infos);
   EXPECT_EQ(1, tx_queue_lengths.size());
@@ -183,10 +183,9 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthValid) {
 }
 
 TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidDevice) {
-  vector<SocketInfo> socket_infos;
   IPAddress foreign_ip_addr(IPAddress::kFamilyIPv4);
   foreign_ip_addr.SetAddressFromString("192.167.1.1");
-  socket_infos.push_back(
+  vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished,
                  foreign_ip_addr,
                  TrafficMonitorTest::kLocalPort1,
@@ -194,15 +193,15 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidDevice) {
                  TrafficMonitorTest::kRemotePort,
                  TrafficMonitorTest::kTxQueueLength1,
                  0,
-                 SocketInfo::kTimerStateRetransmitTimerPending));
+                 SocketInfo::kTimerStateRetransmitTimerPending),
+  };
   TrafficMonitor::IPPortToTxQueueLengthMap tx_queue_lengths =
       monitor_.BuildIPPortToTxQueueLength(socket_infos);
   EXPECT_EQ(0, tx_queue_lengths.size());
 }
 
 TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthZero) {
-  vector<SocketInfo> socket_infos;
-  socket_infos.push_back(
+  vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort1,
@@ -210,15 +209,15 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthZero) {
                  TrafficMonitorTest::kRemotePort,
                  0,
                  0,
-                 SocketInfo::kTimerStateRetransmitTimerPending));
+                 SocketInfo::kTimerStateRetransmitTimerPending),
+  };
   TrafficMonitor::IPPortToTxQueueLengthMap tx_queue_lengths =
       monitor_.BuildIPPortToTxQueueLength(socket_infos);
   EXPECT_EQ(0, tx_queue_lengths.size());
 }
 
 TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidConnectionState) {
-  vector<SocketInfo> socket_infos;
-  socket_infos.push_back(
+  vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateSynSent,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort1,
@@ -226,15 +225,15 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidConnectionState) {
                  TrafficMonitorTest::kRemotePort,
                  TrafficMonitorTest::kTxQueueLength1,
                  0,
-                 SocketInfo::kTimerStateRetransmitTimerPending));
+                 SocketInfo::kTimerStateRetransmitTimerPending),
+  };
   TrafficMonitor::IPPortToTxQueueLengthMap tx_queue_lengths =
       monitor_.BuildIPPortToTxQueueLength(socket_infos);
   EXPECT_EQ(0, tx_queue_lengths.size());
 }
 
 TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidTimerState) {
-  vector<SocketInfo> socket_infos;
-  socket_infos.push_back(
+  vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort1,
@@ -242,15 +241,15 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidTimerState) {
                  TrafficMonitorTest::kRemotePort,
                  TrafficMonitorTest::kTxQueueLength1,
                  0,
-                 SocketInfo::kTimerStateNoTimerPending));
+                 SocketInfo::kTimerStateNoTimerPending),
+  };
   TrafficMonitor::IPPortToTxQueueLengthMap tx_queue_lengths =
       monitor_.BuildIPPortToTxQueueLength(socket_infos);
   EXPECT_EQ(0, tx_queue_lengths.size());
 }
 
 TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthMultipleEntries) {
-  vector<SocketInfo> socket_infos;
-  socket_infos.push_back(
+  vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateSynSent,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort1,
@@ -258,8 +257,7 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthMultipleEntries) {
                  TrafficMonitorTest::kRemotePort,
                  TrafficMonitorTest::kTxQueueLength1,
                  0,
-                 SocketInfo::kTimerStateNoTimerPending));
-  socket_infos.push_back(
+                 SocketInfo::kTimerStateNoTimerPending),
       SocketInfo(SocketInfo::kConnectionStateEstablished,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort2,
@@ -267,8 +265,7 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthMultipleEntries) {
                  TrafficMonitorTest::kRemotePort,
                  TrafficMonitorTest::kTxQueueLength2,
                  0,
-                 SocketInfo::kTimerStateRetransmitTimerPending));
-  socket_infos.push_back(
+                 SocketInfo::kTimerStateRetransmitTimerPending),
       SocketInfo(SocketInfo::kConnectionStateEstablished,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort3,
@@ -276,8 +273,7 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthMultipleEntries) {
                  TrafficMonitorTest::kRemotePort,
                  TrafficMonitorTest::kTxQueueLength3,
                  0,
-                 SocketInfo::kTimerStateRetransmitTimerPending));
-  socket_infos.push_back(
+                 SocketInfo::kTimerStateRetransmitTimerPending),
       SocketInfo(SocketInfo::kConnectionStateEstablished,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort4,
@@ -285,8 +281,7 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthMultipleEntries) {
                  TrafficMonitorTest::kRemotePort,
                  TrafficMonitorTest::kTxQueueLength4,
                  0,
-                 SocketInfo::kTimerStateNoTimerPending));
-  socket_infos.push_back(
+                 SocketInfo::kTimerStateNoTimerPending),
       SocketInfo(SocketInfo::kConnectionStateEstablished,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort5,
@@ -294,7 +289,8 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthMultipleEntries) {
                  TrafficMonitorTest::kRemotePort,
                  0,
                  0,
-                 SocketInfo::kTimerStateRetransmitTimerPending));
+                 SocketInfo::kTimerStateRetransmitTimerPending),
+  };
   TrafficMonitor::IPPortToTxQueueLengthMap tx_queue_lengths =
       monitor_.BuildIPPortToTxQueueLength(socket_infos);
   EXPECT_EQ(2, tx_queue_lengths.size());
@@ -305,8 +301,7 @@ TEST_F(TrafficMonitorTest, BuildIPPortToTxQueueLengthMultipleEntries) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueSameQueueLength) {
-  vector<SocketInfo> socket_infos;
-  socket_infos.push_back(
+  vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort1,
@@ -314,7 +309,8 @@ TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueSameQueueLength) {
                  TrafficMonitorTest::kRemotePort,
                  TrafficMonitorTest::kTxQueueLength1,
                  0,
-                 SocketInfo::kTimerStateRetransmitTimerPending));
+                 SocketInfo::kTimerStateRetransmitTimerPending),
+  };
   SetupMockSocketInfos(socket_infos);
   EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   monitor_.SampleTraffic();
@@ -333,8 +329,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueSameQueueLength) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueIncreasingQueueLength) {
-  vector<SocketInfo> socket_infos;
-  socket_infos.push_back(
+  vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort1,
@@ -342,14 +337,14 @@ TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueIncreasingQueueLength) {
                  TrafficMonitorTest::kRemotePort,
                  TrafficMonitorTest::kTxQueueLength1,
                  0,
-                 SocketInfo::kTimerStateRetransmitTimerPending));
+                 SocketInfo::kTimerStateRetransmitTimerPending),
+  };
   SetupMockSocketInfos(socket_infos);
   EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   monitor_.SampleTraffic();
   Mock::VerifyAndClearExpectations(this);
 
-  socket_infos.clear();
-  socket_infos.push_back(
+  socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort1,
@@ -357,7 +352,8 @@ TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueIncreasingQueueLength) {
                  TrafficMonitorTest::kRemotePort,
                  TrafficMonitorTest::kTxQueueLength1 + 1,
                  0,
-                 SocketInfo::kTimerStateRetransmitTimerPending));
+                 SocketInfo::kTimerStateRetransmitTimerPending),
+  };
   SetupMockSocketInfos(socket_infos);
   EXPECT_CALL(*this, OnNoOutgoingPackets(
       TrafficMonitor::kNetworkProblemCongestedTxQueue));
@@ -365,8 +361,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueIncreasingQueueLength) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueVariousQueueLengths) {
-  vector<SocketInfo> socket_infos;
-  socket_infos.push_back(
+  vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort1,
@@ -374,14 +369,14 @@ TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueVariousQueueLengths) {
                  TrafficMonitorTest::kRemotePort,
                  TrafficMonitorTest::kTxQueueLength2,
                  0,
-                 SocketInfo::kTimerStateRetransmitTimerPending));
+                 SocketInfo::kTimerStateRetransmitTimerPending),
+  };
   SetupMockSocketInfos(socket_infos);
   EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   monitor_.SampleTraffic();
   Mock::VerifyAndClearExpectations(this);
 
-  socket_infos.clear();
-  socket_infos.push_back(
+  socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort1,
@@ -389,14 +384,14 @@ TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueVariousQueueLengths) {
                  TrafficMonitorTest::kRemotePort,
                  TrafficMonitorTest::kTxQueueLength1,
                  0,
-                 SocketInfo::kTimerStateRetransmitTimerPending));
+                 SocketInfo::kTimerStateRetransmitTimerPending),
+  };
   SetupMockSocketInfos(socket_infos);
   EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   monitor_.SampleTraffic();
   Mock::VerifyAndClearExpectations(this);
 
-  socket_infos.clear();
-  socket_infos.push_back(
+  socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort1,
@@ -404,7 +399,8 @@ TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueVariousQueueLengths) {
                  TrafficMonitorTest::kRemotePort,
                  TrafficMonitorTest::kTxQueueLength2,
                  0,
-                 SocketInfo::kTimerStateRetransmitTimerPending));
+                 SocketInfo::kTimerStateRetransmitTimerPending),
+  };
   SetupMockSocketInfos(socket_infos);
   EXPECT_CALL(*this, OnNoOutgoingPackets(
       TrafficMonitor::kNetworkProblemCongestedTxQueue));
@@ -412,8 +408,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficStuckTxQueueVariousQueueLengths) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficUnstuckTxQueueZeroQueueLength) {
-  vector<SocketInfo> socket_infos;
-  socket_infos.push_back(
+  vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort1,
@@ -421,13 +416,13 @@ TEST_F(TrafficMonitorTest, SampleTrafficUnstuckTxQueueZeroQueueLength) {
                  TrafficMonitorTest::kRemotePort,
                  TrafficMonitorTest::kTxQueueLength1,
                  0,
-                 SocketInfo::kTimerStateRetransmitTimerPending));
+                 SocketInfo::kTimerStateRetransmitTimerPending),
+  };
   SetupMockSocketInfos(socket_infos);
   EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   monitor_.SampleTraffic();
 
-  socket_infos.clear();
-  socket_infos.push_back(
+  socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort1,
@@ -435,15 +430,15 @@ TEST_F(TrafficMonitorTest, SampleTrafficUnstuckTxQueueZeroQueueLength) {
                  TrafficMonitorTest::kRemotePort,
                  0,
                  0,
-                 SocketInfo::kTimerStateRetransmitTimerPending));
+                 SocketInfo::kTimerStateRetransmitTimerPending),
+  };
   SetupMockSocketInfos(socket_infos);
   monitor_.SampleTraffic();
   EXPECT_EQ(0, monitor_.accummulated_congested_tx_queues_samples_);
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficUnstuckTxQueueNoConnection) {
-  vector<SocketInfo> socket_infos;
-  socket_infos.push_back(
+  vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort1,
@@ -451,7 +446,8 @@ TEST_F(TrafficMonitorTest, SampleTrafficUnstuckTxQueueNoConnection) {
                  TrafficMonitorTest::kRemotePort,
                  TrafficMonitorTest::kTxQueueLength1,
                  0,
-                 SocketInfo::kTimerStateRetransmitTimerPending));
+                 SocketInfo::kTimerStateRetransmitTimerPending),
+  };
   SetupMockSocketInfos(socket_infos);
   EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   monitor_.SampleTraffic();
@@ -463,8 +459,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficUnstuckTxQueueNoConnection) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficUnstuckTxQueueStateChanged) {
-  vector<SocketInfo> socket_infos;
-  socket_infos.push_back(
+  vector<SocketInfo> socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateEstablished,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort1,
@@ -472,13 +467,13 @@ TEST_F(TrafficMonitorTest, SampleTrafficUnstuckTxQueueStateChanged) {
                  TrafficMonitorTest::kRemotePort,
                  TrafficMonitorTest::kTxQueueLength1,
                  0,
-                 SocketInfo::kTimerStateRetransmitTimerPending));
+                 SocketInfo::kTimerStateRetransmitTimerPending),
+  };
   SetupMockSocketInfos(socket_infos);
   EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   monitor_.SampleTraffic();
 
-  socket_infos.clear();
-  socket_infos.push_back(
+  socket_infos = {
       SocketInfo(SocketInfo::kConnectionStateClose,
                  local_addr_,
                  TrafficMonitorTest::kLocalPort1,
@@ -486,21 +481,22 @@ TEST_F(TrafficMonitorTest, SampleTrafficUnstuckTxQueueStateChanged) {
                  TrafficMonitorTest::kRemotePort,
                  0,
                  0,
-                 SocketInfo::kTimerStateNoTimerPending));
+                 SocketInfo::kTimerStateNoTimerPending),
+  };
   SetupMockSocketInfos(socket_infos);
   monitor_.SampleTraffic();
   EXPECT_EQ(0, monitor_.accummulated_congested_tx_queues_samples_);
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOut) {
-  vector<ConnectionInfo> connection_infos;
-  connection_infos.push_back(
+  vector<ConnectionInfo> connection_infos = {
     ConnectionInfo(IPPROTO_UDP,
                    TrafficMonitor::kDnsTimedOutThresholdSeconds - 1,
                    true, local_addr_, TrafficMonitorTest::kLocalPort1,
                    remote_addr_, TrafficMonitor::kDnsPort,
                    remote_addr_, TrafficMonitor::kDnsPort,
-                   local_addr_, TrafficMonitorTest::kLocalPort1));
+                   local_addr_, TrafficMonitorTest::kLocalPort1),
+  };
   SetupMockConnectionInfos(connection_infos);
   // Make sure the no routing event is not fired before the threshold is
   // exceeded.
@@ -523,14 +519,14 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOut) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficDnsOutstanding) {
-  vector<ConnectionInfo> connection_infos;
-  connection_infos.push_back(
+  vector<ConnectionInfo> connection_infos = {
     ConnectionInfo(IPPROTO_UDP,
                    TrafficMonitor::kDnsTimedOutThresholdSeconds + 1,
                    true, local_addr_, TrafficMonitorTest::kLocalPort1,
                    remote_addr_, TrafficMonitor::kDnsPort,
                    remote_addr_, TrafficMonitor::kDnsPort,
-                   local_addr_, TrafficMonitorTest::kLocalPort1));
+                   local_addr_, TrafficMonitorTest::kLocalPort1),
+  };
   SetupMockConnectionInfos(connection_infos);
   EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   for (int count = 0; count < TrafficMonitor::kMinimumFailedSamplesToTrigger;
@@ -540,14 +536,14 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsOutstanding) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficDnsSuccessful) {
-  vector<ConnectionInfo> connection_infos;
-  connection_infos.push_back(
+  vector<ConnectionInfo> connection_infos = {
     ConnectionInfo(IPPROTO_UDP,
                    TrafficMonitor::kDnsTimedOutThresholdSeconds - 1,
                    false, local_addr_, TrafficMonitorTest::kLocalPort1,
                    remote_addr_, TrafficMonitor::kDnsPort,
                    remote_addr_, TrafficMonitor::kDnsPort,
-                   local_addr_, TrafficMonitorTest::kLocalPort1));
+                   local_addr_, TrafficMonitorTest::kLocalPort1),
+  };
   SetupMockConnectionInfos(connection_infos);
   EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   for (int count = 1; count < TrafficMonitor::kMinimumFailedSamplesToTrigger;
@@ -557,14 +553,14 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsSuccessful) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficDnsFailureThenSuccess) {
-  vector<ConnectionInfo> connection_infos;
-  connection_infos.push_back(
+  vector<ConnectionInfo> connection_infos = {
     ConnectionInfo(IPPROTO_UDP,
                    TrafficMonitor::kDnsTimedOutThresholdSeconds - 1,
                    true, local_addr_, TrafficMonitorTest::kLocalPort1,
                    remote_addr_, TrafficMonitor::kDnsPort,
                    remote_addr_, TrafficMonitor::kDnsPort,
-                   local_addr_, TrafficMonitorTest::kLocalPort1));
+                   local_addr_, TrafficMonitorTest::kLocalPort1),
+  };
   SetupMockConnectionInfos(connection_infos);
   EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   for (int count = 1; count < TrafficMonitor::kMinimumFailedSamplesToTrigger;
@@ -573,14 +569,14 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsFailureThenSuccess) {
   }
   Mock::VerifyAndClearExpectations(this);
 
-  connection_infos.clear();
-  connection_infos.push_back(
+  connection_infos = {
     ConnectionInfo(IPPROTO_UDP,
                    TrafficMonitor::kDnsTimedOutThresholdSeconds - 1,
                    false, local_addr_, TrafficMonitorTest::kLocalPort1,
                    remote_addr_, TrafficMonitor::kDnsPort,
                    remote_addr_, TrafficMonitor::kDnsPort,
-                   local_addr_, TrafficMonitorTest::kLocalPort1));
+                   local_addr_, TrafficMonitorTest::kLocalPort1),
+  };
   SetupMockConnectionInfos(connection_infos);
   EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   monitor_.SampleTraffic();
@@ -588,14 +584,14 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsFailureThenSuccess) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOutInvalidProtocol) {
-  vector<ConnectionInfo> connection_infos;
-  connection_infos.push_back(
+  vector<ConnectionInfo> connection_infos = {
     ConnectionInfo(IPPROTO_TCP,
                    TrafficMonitor::kDnsTimedOutThresholdSeconds - 1,
                    true, local_addr_, TrafficMonitorTest::kLocalPort1,
                    remote_addr_, TrafficMonitor::kDnsPort,
                    remote_addr_, TrafficMonitor::kDnsPort,
-                   local_addr_, TrafficMonitorTest::kLocalPort1));
+                   local_addr_, TrafficMonitorTest::kLocalPort1),
+  };
   SetupMockConnectionInfos(connection_infos);
   EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   for (int count = 0; count < TrafficMonitor::kMinimumFailedSamplesToTrigger;
@@ -605,14 +601,14 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOutInvalidProtocol) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOutInvalidSourceIp) {
-  vector<ConnectionInfo> connection_infos;
-  connection_infos.push_back(
+  vector<ConnectionInfo> connection_infos = {
     ConnectionInfo(IPPROTO_UDP,
                    TrafficMonitor::kDnsTimedOutThresholdSeconds - 1,
                    true, remote_addr_, TrafficMonitorTest::kLocalPort1,
                    remote_addr_, TrafficMonitor::kDnsPort,
                    remote_addr_, TrafficMonitor::kDnsPort,
-                   remote_addr_, TrafficMonitorTest::kLocalPort1));
+                   remote_addr_, TrafficMonitorTest::kLocalPort1),
+  };
   SetupMockConnectionInfos(connection_infos);
   EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   for (int count = 0; count < TrafficMonitor::kMinimumFailedSamplesToTrigger;
@@ -622,15 +618,15 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOutInvalidSourceIp) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOutOutsideTimeWindow) {
-  vector<ConnectionInfo> connection_infos;
-  connection_infos.push_back(
+  vector<ConnectionInfo> connection_infos = {
     ConnectionInfo(IPPROTO_UDP,
                    TrafficMonitor::kDnsTimedOutThresholdSeconds -
                    TrafficMonitor::kSamplingIntervalMilliseconds / 1000,
                    true, remote_addr_, TrafficMonitorTest::kLocalPort1,
                    remote_addr_, TrafficMonitor::kDnsPort,
                    remote_addr_, TrafficMonitor::kDnsPort,
-                   remote_addr_, TrafficMonitorTest::kLocalPort1));
+                   remote_addr_, TrafficMonitorTest::kLocalPort1),
+  };
   SetupMockConnectionInfos(connection_infos);
   EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   for (int count = 0; count < TrafficMonitor::kMinimumFailedSamplesToTrigger;
@@ -641,14 +637,14 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOutOutsideTimeWindow) {
 
 TEST_F(TrafficMonitorTest, SampleTrafficNonDnsTimedOut) {
   const uint16_t kNonDnsPort = 54;
-  vector<ConnectionInfo> connection_infos;
-  connection_infos.push_back(
+  vector<ConnectionInfo> connection_infos = {
     ConnectionInfo(IPPROTO_UDP,
                    TrafficMonitor::kDnsTimedOutThresholdSeconds - 1,
                    true, local_addr_, TrafficMonitorTest::kLocalPort1,
                    remote_addr_, kNonDnsPort,
                    remote_addr_, kNonDnsPort,
-                   local_addr_, TrafficMonitorTest::kLocalPort1));
+                   local_addr_, TrafficMonitorTest::kLocalPort1),
+  };
   SetupMockConnectionInfos(connection_infos);
   EXPECT_CALL(*this, OnNoOutgoingPackets(_)).Times(0);
   for (int count = 0; count < TrafficMonitor::kMinimumFailedSamplesToTrigger;
