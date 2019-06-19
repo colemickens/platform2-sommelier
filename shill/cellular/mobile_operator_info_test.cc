@@ -1180,31 +1180,19 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     country_ = "us";
     requires_roaming_ = true;
     activation_code_ = "open sesame";
-
-    mccmnc_list_.clear();
-    mccmnc_list_.push_back("200001");
-    mccmnc_list_.push_back("200002");
-    mccmnc_list_.push_back("200003");
-
-    operator_name_list_.clear();
-    operator_name_list_.push_back({"name200001", "en"});
-    operator_name_list_.push_back({"name200002", ""});
+    mccmnc_list_ = {"200001", "200002", "200003"};
+    operator_name_list_ = {{"name200001", "en"}, {"name200002", ""}};
 
     apn_list_.clear();
     auto apn = std::make_unique<MobileOperatorInfo::MobileAPN>();
     apn->apn = "test@test.com";
     apn->username = "testuser";
     apn->password = "is_public_boohoohoo";
-    apn->operator_name_list.push_back({"name200003", "hi"});
+    apn->operator_name_list = {{"name200003", "hi"}};
     apn_list_.push_back(std::move(apn));
 
-    olp_list_.clear();
-    olp_list_.push_back({"some@random.com", "POST", "random_data"});
-
-    sid_list_.clear();
-    sid_list_.push_back("200123");
-    sid_list_.push_back("200234");
-    sid_list_.push_back("200345");
+    olp_list_ = {{"some@random.com", "POST", "random_data"}};
+    sid_list_ = {"200123", "200234", "200345"};
   }
 
   // Use this function to pre-populate all the data members of this object with
@@ -1213,14 +1201,8 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     country_ = "ca";
     requires_roaming_ = false;
     activation_code_ = "khul ja sim sim";
-
-    mccmnc_list_.clear();
-    mccmnc_list_.push_back("200001");
-    mccmnc_list_.push_back("200102");
-
-    operator_name_list_.clear();
-    operator_name_list_.push_back({"name200101", "en"});
-    operator_name_list_.push_back({"name200102", ""});
+    mccmnc_list_ = {"200001", "200102"};
+    operator_name_list_ = {{"name200101", "en"}, {"name200102", ""}};
 
     apn_list_.clear();
     auto apn = std::make_unique<MobileOperatorInfo::MobileAPN>();
@@ -1229,11 +1211,8 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     apn->password = "is_public_boohoohoo_too";
     apn_list_.push_back(std::move(apn));
 
-    olp_list_.clear();
-    olp_list_.push_back({"someother@random.com", "GET", ""});
-
-    sid_list_.clear();
-    sid_list_.push_back("200345");
+    olp_list_ = {{"someother@random.com", "GET", ""}};
+    sid_list_ = {"200345"};
   }
 
   // Data to be verified against the database.

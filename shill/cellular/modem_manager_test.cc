@@ -21,7 +21,6 @@
 #include "shill/testing.h"
 
 using std::string;
-using std::vector;
 using testing::_;
 using testing::ByMove;
 using testing::Return;
@@ -201,16 +200,13 @@ TEST_F(ModemManager1Test, AddRemoveInterfaces) {
   EXPECT_EQ(1, modem_manager_.modems_.size());
 
   // Remove an irrelevant interface
-  vector<string> not_including_modem_interface;
-  not_including_modem_interface.push_back("not.a.modem.interface");
   modem_manager_.OnInterfacesRemovedSignal(kModemPath,
-                                           not_including_modem_interface);
+                                           {"not.a.modem.interface"});
   EXPECT_EQ(1, modem_manager_.modems_.size());
 
   // Remove the modem
-  vector<string> with_modem_interface;
-  with_modem_interface.push_back(MM_DBUS_INTERFACE_MODEM);
-  modem_manager_.OnInterfacesRemovedSignal(kModemPath, with_modem_interface);
+  modem_manager_.OnInterfacesRemovedSignal(kModemPath,
+                                           {MM_DBUS_INTERFACE_MODEM});
   EXPECT_EQ(0, modem_manager_.modems_.size());
 }
 

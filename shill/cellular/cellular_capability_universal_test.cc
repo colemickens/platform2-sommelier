@@ -1478,7 +1478,6 @@ TEST_F(CellularCapabilityUniversalMainTest, ConnectApns) {
   SetSimpleProxy();
   Error error;
   KeyValueStore properties;
-  capability_->apn_try_list_.clear();
   ResultCallback callback =
       Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
   RpcIdentifier bearer("/bearer0");
@@ -1489,10 +1488,9 @@ TEST_F(CellularCapabilityUniversalMainTest, ConnectApns) {
       .WillOnce(SaveArg<2>(&connect_callback_));
   Stringmap apn1;
   apn1[kApnProperty] = apn_name_foo;
-  capability_->apn_try_list_.push_back(apn1);
   Stringmap apn2;
   apn2[kApnProperty] = apn_name_bar;
-  capability_->apn_try_list_.push_back(apn2);
+  capability_->apn_try_list_ = {apn1, apn2};
   capability_->FillConnectPropertyMap(&properties);
   capability_->Connect(properties, &error, callback);
   EXPECT_TRUE(error.IsSuccess());
