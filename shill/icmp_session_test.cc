@@ -231,10 +231,11 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
   base::TimeTicks kWrongEchoIDRecvTime = base::TimeTicks::FromInternalValue(60);
   base::TimeTicks kRecvTime3 = base::TimeTicks::FromInternalValue(70);
 
-  IcmpSession::IcmpSessionResult expected_result;
-  expected_result.push_back(kRecvTime1 - kSentTime1);
-  expected_result.push_back(kRecvTime2 - kSentTime2);
-  expected_result.push_back(kRecvTime3 - kSentTime3);
+  IcmpSession::IcmpSessionResult expected_result = {
+      kRecvTime1 - kSentTime1,
+      kRecvTime2 - kSentTime2,
+      kRecvTime3 - kSentTime3,
+  };
 
   // Initiate session.
   IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
@@ -386,9 +387,10 @@ TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
   base::TimeTicks kRecvTime1 = base::TimeTicks::FromInternalValue(30);
   base::TimeTicks kResendTime1 = base::TimeTicks::FromInternalValue(40);
 
-  IcmpSession::IcmpSessionResult expected_partial_result;
-  expected_partial_result.push_back(kRecvTime1 - kSentTime1);
-  expected_partial_result.push_back(base::TimeDelta());
+  IcmpSession::IcmpSessionResult expected_partial_result = {
+      kRecvTime1 - kSentTime1,
+      base::TimeDelta(),
+  };
 
   // Initiate session.
   IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
@@ -473,18 +475,21 @@ TEST_F(IcmpSessionTest, AnyRepliesReceived) {
   IcmpSession::IcmpSessionResult none_sent;
   EXPECT_FALSE(IcmpSession::AnyRepliesReceived(none_sent));
 
-  IcmpSession::IcmpSessionResult two_sent_none_received;
-  two_sent_none_received.push_back(base::TimeDelta());
-  two_sent_none_received.push_back(base::TimeDelta());
+  IcmpSession::IcmpSessionResult two_sent_none_received = {
+      base::TimeDelta(),
+      base::TimeDelta(),
+  };
   EXPECT_FALSE(IcmpSession::AnyRepliesReceived(two_sent_none_received));
 
-  IcmpSession::IcmpSessionResult one_sent_one_received;
-  one_sent_one_received.push_back(base::TimeDelta::FromSeconds(10));
+  IcmpSession::IcmpSessionResult one_sent_one_received = {
+      base::TimeDelta::FromSeconds(10),
+  };
   EXPECT_TRUE(IcmpSession::AnyRepliesReceived(one_sent_one_received));
 
-  IcmpSession::IcmpSessionResult two_sent_one_received;
-  two_sent_one_received.push_back(base::TimeDelta::FromSeconds(20));
-  two_sent_one_received.push_back(base::TimeDelta());
+  IcmpSession::IcmpSessionResult two_sent_one_received = {
+      base::TimeDelta::FromSeconds(20),
+      base::TimeDelta(),
+  };
   EXPECT_TRUE(IcmpSession::AnyRepliesReceived(two_sent_one_received));
 }
 
@@ -496,18 +501,20 @@ TEST_F(IcmpSessionTest, IsPacketLossPercentageGreaterThan) {
       none_sent_none_received, 0));
 
   // If we receive all replies, we experience 0% packet loss.
-  IcmpSession::IcmpSessionResult three_sent_three_received;
-  three_sent_three_received.push_back(base::TimeDelta::FromSeconds(10));
-  three_sent_three_received.push_back(base::TimeDelta::FromSeconds(10));
-  three_sent_three_received.push_back(base::TimeDelta::FromSeconds(10));
+  IcmpSession::IcmpSessionResult three_sent_three_received = {
+      base::TimeDelta::FromSeconds(10),
+      base::TimeDelta::FromSeconds(10),
+      base::TimeDelta::FromSeconds(10),
+  };
   EXPECT_FALSE(IcmpSession::IsPacketLossPercentageGreaterThan(
       three_sent_three_received, 0));
 
   // If we sent 3 requests and received 2 replies, we have ~33% packet loss.
-  IcmpSession::IcmpSessionResult three_sent_two_received;
-  three_sent_two_received.push_back(base::TimeDelta::FromSeconds(10));
-  three_sent_two_received.push_back(base::TimeDelta::FromSeconds(10));
-  three_sent_two_received.push_back(base::TimeDelta());
+  IcmpSession::IcmpSessionResult three_sent_two_received = {
+      base::TimeDelta::FromSeconds(10),
+      base::TimeDelta::FromSeconds(10),
+      base::TimeDelta(),
+  };
   EXPECT_FALSE(IcmpSession::IsPacketLossPercentageGreaterThan(
       three_sent_two_received, 60));
   EXPECT_FALSE(IcmpSession::IsPacketLossPercentageGreaterThan(
