@@ -259,8 +259,7 @@ class DeviceTest : public PropertyStoreTest {
     const char kDnsServer2[] = "2001:db8::3";
     IPConfig::Properties properties;
     properties.address = kAddress;
-    properties.dns_servers.push_back(kDnsServer1);
-    properties.dns_servers.push_back(kDnsServer2);
+    properties.dns_servers = {kDnsServer1, kDnsServer2};
 
     device_->ip6config_ = new MockIPConfig(control_interface(), kDeviceName);
     device_->ip6config_->set_properties(properties);
@@ -1439,12 +1438,8 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   IPAddress ipv6_address2(IPAddress::kFamilyIPv6);
   ASSERT_TRUE(ipv6_address1.SetAddressFromString(kAddress1));
   ASSERT_TRUE(ipv6_address2.SetAddressFromString(kAddress2));
-  vector<IPAddress> dns_server_addresses;
-  dns_server_addresses.push_back(ipv6_address1);
-  dns_server_addresses.push_back(ipv6_address2);
-  vector<string> dns_server_addresses_str;
-  dns_server_addresses_str.push_back(kAddress1);
-  dns_server_addresses_str.push_back(kAddress2);
+  vector<IPAddress> dns_server_addresses = {ipv6_address1, ipv6_address2};
+  vector<string> dns_server_addresses_str = {kAddress1, kAddress2};
 
   // Add IPv6 DNS server addresses while ip6config_ is nullptr.
   EXPECT_CALL(device_info_,
