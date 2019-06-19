@@ -6,7 +6,6 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
@@ -28,7 +27,6 @@ using base::FilePath;
 using base::ScopedTempDir;
 using base::Unretained;
 using std::string;
-using std::vector;
 using testing::_;
 using testing::InvokeWithoutArgs;
 using testing::Mock;
@@ -176,16 +174,9 @@ TEST_F(DHCPv6ConfigTest, ParseConfiguration) {
   conf.SetUint(
       DHCPv6Config::kConfigurationKeyDelegatedPrefixPreferredLeaseTime + kOne,
       kConfigDelegatedPrefixPreferredLeaseTime);
-  {
-    vector<string> dns;
-    dns.push_back(kConfigNameServer);
-    conf.SetStrings(DHCPv6Config::kConfigurationKeyDNS, dns);
-  }
-  {
-    vector<string> domain_search;
-    domain_search.push_back(kConfigDomainSearch);
-    conf.SetStrings(DHCPv6Config::kConfigurationKeyDomainSearch, domain_search);
-  }
+  conf.SetStrings(DHCPv6Config::kConfigurationKeyDNS, {kConfigNameServer});
+  conf.SetStrings(DHCPv6Config::kConfigurationKeyDomainSearch,
+                  {kConfigDomainSearch});
   conf.SetString("UnknownKey", "UnknownValue");
 
   ASSERT_TRUE(config_->ParseConfiguration(conf));

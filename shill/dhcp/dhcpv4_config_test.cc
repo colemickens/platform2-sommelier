@@ -6,7 +6,6 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
@@ -29,7 +28,6 @@ using base::FilePath;
 using base::ScopedTempDir;
 using base::Unretained;
 using std::string;
-using std::vector;
 using testing::_;
 using testing::DoAll;
 using testing::InvokeWithoutArgs;
@@ -275,25 +273,12 @@ TEST_F(DHCPv4ConfigTest, ParseConfiguration) {
   conf.SetUint(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
   conf.SetUint8(DHCPv4Config::kConfigurationKeySubnetCIDR, 16);
   conf.SetUint(DHCPv4Config::kConfigurationKeyBroadcastAddress, 0x10203040);
-  {
-    vector<uint32_t> routers;
-    routers.push_back(0x02040608);
-    routers.push_back(0x03050709);
-    conf.SetUint32s(DHCPv4Config::kConfigurationKeyRouters, routers);
-  }
-  {
-    vector<uint32_t> dns;
-    dns.push_back(0x09070503);
-    dns.push_back(0x08060402);
-    conf.SetUint32s(DHCPv4Config::kConfigurationKeyDNS, dns);
-  }
+  conf.SetUint32s(DHCPv4Config::kConfigurationKeyRouters,
+                  {0x02040608, 0x03050709});
+  conf.SetUint32s(DHCPv4Config::kConfigurationKeyDNS, {0x09070503, 0x08060402});
   conf.SetString(DHCPv4Config::kConfigurationKeyDomainName, "domain-name");
-  {
-    vector<string> search;
-    search.push_back("foo.com");
-    search.push_back("bar.com");
-    conf.SetStrings(DHCPv4Config::kConfigurationKeyDomainSearch, search);
-  }
+  conf.SetStrings(DHCPv4Config::kConfigurationKeyDomainSearch,
+                  {"foo.com", "bar.com"});
   conf.SetUint16(DHCPv4Config::kConfigurationKeyMTU, 600);
   conf.SetString(DHCPv4Config::kConfigurationKeyHostname, "hostname");
   conf.SetString("UnknownKey", "UnknownValue");
