@@ -559,36 +559,13 @@ TEST_F(KeyFileStoreTest, SetStringList) {
   static const char kValue2[] = "pqr";
   static const char kValue3[] = "xyz";
   ASSERT_TRUE(store_->Open());
-  {
-    vector<string> value;
-    ASSERT_TRUE(store_->SetStringList(kGroup, kKeyEmpty, value));
-  }
-  {
-    vector<string> value;
-    value.push_back("");
-    value.push_back(kValue);
-    ASSERT_TRUE(store_->SetStringList(kGroup, kKeyEmptyValue, value));
-  }
-  {
-    vector<string> value;
-    value.push_back(kValue);
-    value.push_back("");
-    ASSERT_TRUE(store_->SetStringList(kGroup, kKeyValueEmpty, value));
-  }
-  {
-    vector<string> value;
-    value.push_back(kValue);
-    value.push_back("");
-    value.push_back(kValue2);
-    ASSERT_TRUE(store_->SetStringList(kGroup, kKeyValueEmptyValue, value));
-  }
-  {
-    vector<string> value;
-    value.push_back(kValue);
-    value.push_back(kValue2);
-    value.push_back(kValue3);
-    ASSERT_TRUE(store_->SetStringList(kGroup, kKeyValues, value));
-  }
+  ASSERT_TRUE(store_->SetStringList(kGroup, kKeyEmpty, {}));
+  ASSERT_TRUE(store_->SetStringList(kGroup, kKeyEmptyValue, {"", kValue}));
+  ASSERT_TRUE(store_->SetStringList(kGroup, kKeyValueEmpty, {kValue, ""}));
+  ASSERT_TRUE(store_->SetStringList(kGroup, kKeyValueEmptyValue,
+                                    {kValue, "", kValue2}));
+  ASSERT_TRUE(
+      store_->SetStringList(kGroup, kKeyValues, {kValue, kValue2, kValue3}));
   ASSERT_TRUE(store_->Close());
   EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "%s=\n"
