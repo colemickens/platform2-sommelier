@@ -1660,39 +1660,6 @@ cmd_verify_ro() (
     "fd:1" "string:${cr50_image}" "string:${ro_db}"
 )
 
-USAGE_c='<container name> [args]'
-HELP_c='
-  Run a program inside a container
-'
-EXEC_c='/usr/bin/run_oci'
-cmd_c() (
-  cleanup() {
-    trap : INT QUIT
-    debugd ContainerStopped
-  }
-  trap cleanup INT QUIT
-
-  local container="$1"
-  if [ -z "${container}" ]; then
-    echo "No container specified"
-    return 1
-  fi
-  shift
-
-  local mount_dir="$(/usr/bin/mount_extension_image --name="${container}")"
-  if [ -z "${mount_dir}" ]; then
-    echo "Could not find container"
-    return 1
-  fi
-  debugd ContainerStarted
-  HOME=/home/user /usr/bin/run_oci \
-    --cgroup_parent=chronos_containers \
-    --bind_mount="/home/user/${CROS_USER_ID_HASH}/Downloads:/home/user" \
-    --bind_mount=/run/djfs:/dev \
-    run -c "${mount_dir}" "${container}" -- "$@"
-  cleanup
-)
-
 USAGE_evtest='evtest'
 EXEC_evtest='/usr/bin/evtest'
 HELP_evtest='
