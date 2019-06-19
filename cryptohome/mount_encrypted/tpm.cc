@@ -98,17 +98,19 @@ result_code NvramSpace::Read(uint32_t size) {
     return RESULT_FAIL_FATAL;
   }
 
-  // Ignore defined but unwritten NVRAM area.
-  uint8_t bytes_ored = 0x0;
-  uint8_t bytes_anded = 0xff;
-  for (uint8_t byte : buffer) {
-    bytes_ored |= byte;
-    bytes_anded &= byte;
-  }
-  if (bytes_ored == 0x0 || bytes_anded == 0xff) {
-    status_ = Status::kAbsent;
-    LOG(INFO) << "NVRAM area has been defined but not written.";
-    return RESULT_FAIL_FATAL;
+  if (!USE_TPM2) {
+    // Ignore defined but unwritten NVRAM area.
+    uint8_t bytes_ored = 0x0;
+    uint8_t bytes_anded = 0xff;
+    for (uint8_t byte : buffer) {
+      bytes_ored |= byte;
+      bytes_anded &= byte;
+    }
+    if (bytes_ored == 0x0 || bytes_anded == 0xff) {
+      status_ = Status::kAbsent;
+      LOG(INFO) << "NVRAM area has been defined but not written.";
+      return RESULT_FAIL_FATAL;
+    }
   }
 
   contents_.swap(buffer);
