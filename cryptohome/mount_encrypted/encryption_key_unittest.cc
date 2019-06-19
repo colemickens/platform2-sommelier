@@ -376,16 +376,15 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceBadKey) {
 }
 
 TEST_F(EncryptionKeyTest, TpmExistingSpaceBadAttributes) {
-  // TODO(crbug.com/840361): See bug description.
   uint32_t attributes = kEncStatefulAttributesTpm2 | TPMA_NV_PLATFORMCREATE;
   SetupSpace(kEncStatefulIndex, attributes, false,
              kEncStatefulTpm2Contents, sizeof(kEncStatefulTpm2Contents));
+  WriteWrappedKey(key_->key_path(), kWrappedKeyEncStatefulTpm2);
 
   ExpectFreshKey();
   EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
-  ExpectFinalized(true);
-  EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
-  CheckSpace(kEncStatefulIndex, attributes, kEncStatefulSize);
+  ExpectNeedsFinalization();
+  EXPECT_EQ(SystemKeyStatus::kFinalizationPending, key_->system_key_status());
 }
 
 TEST_F(EncryptionKeyTest, TpmExistingSpaceNotYetWritten) {

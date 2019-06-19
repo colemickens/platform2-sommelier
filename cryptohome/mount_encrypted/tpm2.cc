@@ -28,6 +28,13 @@ const uint32_t kNvramAreaTpm2Magic = 0x54504D32;
 const uint32_t kNvramAreaTpm2VersionMask = 0x000000FF;
 const uint32_t kNvramAreaTpm2CurrentVersion = 1;
 
+constexpr uint32_t kAttributesMask =
+    TPMA_NV_PPWRITE | TPMA_NV_OWNERWRITE | TPMA_NV_AUTHWRITE |
+    TPMA_NV_POLICYWRITE | TPMA_NV_POLICY_DELETE | TPMA_NV_WRITEALL |
+    TPMA_NV_WRITEDEFINE | TPMA_NV_WRITE_STCLEAR | TPMA_NV_GLOBALLOCK |
+    TPMA_NV_PPREAD | TPMA_NV_OWNERREAD | TPMA_NV_AUTHREAD | TPMA_NV_POLICYREAD |
+    TPMA_NV_NO_DA | TPMA_NV_ORDERLY | TPMA_NV_CLEAR_STCLEAR |
+    TPMA_NV_PLATFORMCREATE | TPMA_NV_READ_STCLEAR;
 const uint32_t kAttributes = TPMA_NV_AUTHWRITE | TPMA_NV_AUTHREAD |
                              TPMA_NV_WRITEDEFINE | TPMA_NV_READ_STCLEAR;
 
@@ -37,9 +44,20 @@ struct nvram_area_tpm2 {
   uint8_t key_material[DIGEST_LENGTH];
 };
 
-bool IsSpacePresent(NvramSpace* space) {
+result_code IsSpaceDefinedCorrectly(NvramSpace* space) {
   uint32_t attributes = 0;
-  return space->GetAttributes(&attributes) == RESULT_SUCCESS;
+  result_code rc = space->GetAttributes(&attributes);
+  if (rc != RESULT_SUCCESS) {
+    LOG(ERROR) << "Failed to get NVRAM space attributes: " << rc;
+    return rc;
+  }
+
+  if ((attributes & kAttributesMask) != kAttributes) {
+    LOG(ERROR) << "Bad NVRAM space attributes: " << attributes;
+    return RESULT_FAIL_FATAL;
+  }
+
+  return RESULT_SUCCESS;
 }
 
 // Derive the system key from the key material in |area|.
@@ -115,12 +133,21 @@ result_code Tpm2SystemKeyLoader::Load(brillo::SecureBlob* system_key) {
   }
 
   NvramSpace* encstateful_space = tpm_->GetEncStatefulSpace();
-  if (!IsSpacePresent(encstateful_space) || !encstateful_space->is_valid() ||
-      encstateful_space->contents().size() < sizeof(struct nvram_area_tpm2)) {
+  if (!encstateful_space->is_valid()) {
     LOG(INFO) << "NVRAM area doesn't exist or is invalid";
     return RESULT_FAIL_FATAL;
   }
 
+  result_code rc = IsSpaceDefinedCorrectly(encstateful_space);
+  if (rc != RESULT_SUCCESS) {
+    return rc;
+  }
+
+  if (encstateful_space->contents().size() < sizeof(struct nvram_area_tpm2)) {
+    LOG(ERROR) << "Too small NVRAM space: "
+               << encstateful_space->contents().size();
+    return RESULT_FAIL_FATAL;
+  }
   const struct nvram_area_tpm2* area =
       reinterpret_cast<const struct nvram_area_tpm2*>(
           encstateful_space->contents().data());
@@ -132,7 +159,7 @@ result_code Tpm2SystemKeyLoader::Load(brillo::SecureBlob* system_key) {
 
   *system_key = DeriveSystemKey(area);
   return RESULT_SUCCESS;
-  }
+}
 
 brillo::SecureBlob Tpm2SystemKeyLoader::Generate() {
   provisional_contents_ =
@@ -155,7 +182,7 @@ result_code Tpm2SystemKeyLoader::Persist() {
   CHECK(provisional_contents_);
 
   NvramSpace* encstateful_space = tpm_->GetEncStatefulSpace();
-  if (!IsSpacePresent(encstateful_space)) {
+  if (IsSpaceDefinedCorrectly(encstateful_space) != RESULT_SUCCESS) {
     result_code rc = encstateful_space->Define(
         kAttributes, sizeof(struct nvram_area_tpm2), 0);
     if (rc != RESULT_SUCCESS) {
