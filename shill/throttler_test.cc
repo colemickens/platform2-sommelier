@@ -58,9 +58,7 @@ const pid_t ThrottlerTest::kPID3 = 9902;
 const uint32_t ThrottlerTest::kThrottleRate = 100;
 
 TEST_F(ThrottlerTest, ThrottleCallsTCExpectedTimesAndSetsState) {
-  std::vector<std::string> interfaces;
-  interfaces.push_back(kIfaceName0);
-  interfaces.push_back(kIfaceName1);
+  std::vector<std::string> interfaces = {kIfaceName0, kIfaceName1};
   EXPECT_CALL(mock_manager_, GetDeviceInterfaceNames())
       .WillOnce(Return(interfaces));
   EXPECT_CALL(mock_process_manager_,
@@ -100,8 +98,7 @@ TEST_F(ThrottlerTest, DisablingThrottleClearsState) {
   throttler_.desired_throttling_enabled_ = true;
   throttler_.desired_upload_rate_kbits_ = kThrottleRate;
   throttler_.desired_download_rate_kbits_ = kThrottleRate;
-  std::vector<std::string> interfaces;
-  interfaces.push_back(kIfaceName0);
+  std::vector<std::string> interfaces = {kIfaceName0};
   EXPECT_CALL(mock_manager_, GetDeviceInterfaceNames())
       .WillOnce(Return(interfaces));
   EXPECT_CALL(mock_process_manager_,

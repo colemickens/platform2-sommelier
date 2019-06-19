@@ -180,9 +180,7 @@ class ServiceTest : public PropertyStoreTest {
   bool SortingOrderIs(const ServiceRefPtr& service0,
                       const ServiceRefPtr& service1,
                       bool should_compare_connectivity_state) {
-    vector<ServiceRefPtr> services;
-    services.push_back(service1);
-    services.push_back(service0);
+    vector<ServiceRefPtr> services = {service1, service0};
     std::sort(services.begin(), services.end(),
               ServiceSorter(&mock_manager_, should_compare_connectivity_state,
                             technology_order_for_sorting_));

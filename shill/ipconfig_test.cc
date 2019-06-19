@@ -154,11 +154,9 @@ TEST_F(IPConfigTest, UpdateProperties) {
   properties.address = "1.2.3.4";
   properties.subnet_prefix = 24;
   properties.broadcast_address = "11.22.33.44";
-  properties.dns_servers.push_back("10.20.30.40");
-  properties.dns_servers.push_back("20.30.40.50");
+  properties.dns_servers = {"10.20.30.40", "20.30.40.50"};
   properties.domain_name = "foo.org";
-  properties.domain_search.push_back("zoo.org");
-  properties.domain_search.push_back("zoo.com");
+  properties.domain_search = {"zoo.org", "zoo.com"};
   properties.gateway = "5.6.7.8";
   properties.blackhole_ipv6 = true;
   properties.mtu = 700;

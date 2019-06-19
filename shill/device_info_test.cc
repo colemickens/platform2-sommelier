@@ -1252,9 +1252,7 @@ TEST_F(DeviceInfoTest, IPv6DnsServerAddressesChanged) {
   IPAddress ipv6_address2(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ipv6_address1.SetAddressFromString(kTestIPAddress1));
   EXPECT_TRUE(ipv6_address2.SetAddressFromString(kTestIPAddress2));
-  vector<IPAddress> dns_server_addresses_in;
-  dns_server_addresses_in.push_back(ipv6_address1);
-  dns_server_addresses_in.push_back(ipv6_address2);
+  vector<IPAddress> dns_server_addresses_in = {ipv6_address1, ipv6_address2};
 
   // Infinite lifetime
   const uint32_t kInfiniteLifetime = 0xffffffff;

@@ -140,8 +140,7 @@ class DnsClientTest : public Test {
   }
 
   void SetupRequest(const string& name, const string& server) {
-    vector<string> dns_servers;
-    dns_servers.push_back(server);
+    vector<string> dns_servers = {server};
     CreateClient(dns_servers, kAresTimeoutMS);
     // These expectations are fulfilled when dns_client_->Start() is called.
     EXPECT_CALL(ares_, InitOptions(_, _, _))
@@ -241,9 +240,8 @@ class SentinelIOHandler : public IOHandler {
 };
 
 TEST_F(DnsClientTest, Constructor) {
-  vector<string> dns_servers;
-  dns_servers.push_back(kGoodServer);
-  CreateClient(dns_servers, kAresTimeoutMS);
+  vector<string> dns_servers = {kGoodServer};
+  CreateClient({kGoodServer}, kAresTimeoutMS);
   ExpectReset();
 }
 
@@ -280,8 +278,7 @@ TEST_F(DnsClientTest, NoServers) {
 
 // Setup error because SetServersCsv failed due to invalid DNS servers.
 TEST_F(DnsClientTest, SetServersCsvInvalidServer) {
-  vector<string> dns_servers;
-  dns_servers.push_back(kBadServer);
+  vector<string> dns_servers = {kBadServer};
   CreateClient(dns_servers, kAresTimeoutMS);
   EXPECT_CALL(ares_, InitOptions(_, _, _))
       .WillOnce(Return(ARES_SUCCESS));
@@ -294,8 +291,7 @@ TEST_F(DnsClientTest, SetServersCsvInvalidServer) {
 
 // Setup error because InitOptions failed.
 TEST_F(DnsClientTest, InitOptionsFailure) {
-  vector<string> dns_servers;
-  dns_servers.push_back(kGoodServer);
+  vector<string> dns_servers = {kGoodServer};
   CreateClient(dns_servers, kAresTimeoutMS);
   EXPECT_CALL(ares_, InitOptions(_, _, _))
       .WillOnce(Return(ARES_EBADFLAGS));
