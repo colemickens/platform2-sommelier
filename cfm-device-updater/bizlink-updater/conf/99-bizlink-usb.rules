@@ -1,4 +1,0 @@
-KERNEL=="drm_dp_aux*", MODE="0660", GROUP="cfm-peripherals"
-
-SUBSYSTEM=="usb", ACTION=="add", ENV{ID_VENDOR_ID}=="06c4", ENV{ID_MODEL_ID}=="c002", \
-RUN+="/sbin/minijail0 -u cfm-firmware-updaters -g cfm-peripherals -e -i -l -N -p -n -t /usr/sbin/bizlink-updater --update=true"
