@@ -1,21 +1,11 @@
-2017-07-05T09:20:39.324549-07:00 INFO laptop-mode[2340]: Laptop mode 
-2017-07-05T09:20:39.326257-07:00 INFO laptop-mode[2341]: enabled, 
-2017-07-05T09:20:39.328033-07:00 INFO laptop-mode[2342]: not active [unchanged]
-2017-07-05T09:20:39.362302-07:00 INFO permission_broker[1296]: ProcessPath(/dev/bus/usb/002/002)
-2017-07-05T09:20:39.491113-07:00 INFO permission_broker[1296]:   AllowUsbDeviceRule: ALLOW
-2017-07-05T09:20:39.491353-07:00 INFO permission_broker[1296]:   AllowTtyDeviceRule: IGNORE
-2017-07-05T09:20:39.059508-07:00 WARNING kernel: [    7.758127] init: crash-crash main process (2563) terminated with status 2
-2017-07-05T09:20:39.059537-07:00 WARNING kernel: [    7.758160] init: crash-crash main process ended, respawning
-2017-07-05T09:20:39.069496-07:00 WARNING kernel: [    7.768567] init: crash-crash main process (2571) terminated with status 2
-2017-07-05T09:20:39.069526-07:00 WARNING kernel: [    7.768601] init: crash-crash main process ended, respawning
-2017-07-05T09:20:39.082592-07:00 WARNING kernel: [    7.780880] init: crash-crash main process (2580) terminated with status 2
-2017-07-05T09:20:39.082619-07:00 WARNING kernel: [    7.780911] init: crash-crash main process ended, respawning
-2017-07-05T09:20:39.089617-07:00 WARNING kernel: [    7.788337] init: crash-crash main process (2591) terminated with status 2
-2017-07-05T09:20:39.089643-07:00 WARNING kernel: [    7.788369] init: crash-crash respawning too fast, stopped
-2017-07-05T09:20:39.056686-07:00 WARNING permission_broker[1296]: Could not load the device policy file.
-2017-07-05T09:20:39.056995-07:00 INFO permission_broker[1296]:   DenyClaimedUsbDeviceRule: DENY
-2017-07-05T09:20:39.057056-07:00 INFO permission_broker[1296]: Verdict for /dev/bus/usb/002/002: DENY
-2017-07-05T09:20:39.057281-07:00 ERR permission_broker[1296]: OpenPath(...): Domain=permission_broker, Code=permission_denied, Message=Permission to open '/dev/bus/usb/002/002' denied
-2019-04-10T12:50:08.545039-07:00 NOTICE kernel: [61456.759561] init: pre-shutdown goal changed from stop to start
-2019-04-10T12:50:08.547048-07:00 NOTICE kernel: [61456.761497] init: oobe_config_save main process (17113) started
-2019-04-10T12:50:08.591587-07:00 NOTICE kernel: [61456.806244] init: arc-boot-continue stopped
+crash-crash main process (2563) terminated with status 2
+crash-crash main process ended, respawning
+crash-crash main process (2571) terminated with status 2
+crash-crash main process ended, respawning
+crash-crash main process (2580) terminated with status 2
+crash-crash main process ended, respawning
+crash-crash main process (2591) terminated with status 2
+crash-crash respawning too fast, stopped
+pre-shutdown goal changed from stop to start
+oobe_config_save main process (17113) started
+arc-boot-continue stopped

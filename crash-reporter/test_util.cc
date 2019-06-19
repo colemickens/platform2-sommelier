@@ -58,4 +58,8 @@ bool DirectoryHasFileWithPattern(const base::FilePath& directory,
   return !path.empty();
 }
 
+base::FilePath GetTestDataPath(const std::string& name) {
+  return base::FilePath(getenv("SRC")).Append(name);
+}
+
 }  // namespace test_util

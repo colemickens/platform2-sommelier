@@ -1,2 +1,1 @@
-2018-02-26T23:06:40.136165-08:00 NOTICE kernel: [   21.456819] audit: type=1400 audit(1519715200.135:6): avc:  denied  { module_request } for  pid=1795 comm="init" kmod="fs-cgroup2" scontext=u:r:init:s0 tcontext=u:r:kernel:s0 tclass=system permissive=0
-
+AVC avc:  denied  { module_request } for  pid=1795 comm="init" kmod="fs-cgroup2" scontext=u:r:init:s0 tcontext=u:r:kernel:s0 tclass=system permissive=0

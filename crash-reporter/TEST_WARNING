@@ -1,42 +1,41 @@
-2016-11-25T10:51:13.622164+00:00 WARNING kernel: [    8.621608]  [<ffffffff87c6f978>] ? __set_current_blocked+0x49/0x4e
-2016-11-25T10:51:13.622167+00:00 WARNING kernel: [    8.621613]  [<ffffffff87c621ba>] SyS_clone+0x16/0x18
-2016-11-25T10:51:13.622169+00:00 WARNING kernel: [    8.621618]  [<ffffffff882a0869>] stub_clone+0x69/0x90
-2016-11-25T10:51:13.622172+00:00 WARNING kernel: [    8.621623]  [<ffffffff882a055c>] ? system_call_fastpath+0x1c/0x21
-2016-11-25T10:51:13.622173+00:00 WARNING kernel: [    8.621626] ---[ end trace 3a3ab835b30b8937 ]---
-2016-11-25T10:51:13.621053+00:00 DEBUG kernel: [    9.620283] SELinux: initialized (dev proc, type proc), uses genfs_contexts
-2016-11-25T10:51:13.622112+00:00 WARNING kernel: [    9.621489] ------------[ cut here ]------------
-2016-11-25T10:51:13.622126+00:00 WARNING kernel: [    9.621506] WARNING: CPU: 2 PID: 750 at /mnt/host/source/src/third_party/kernel/v3.18/drivers/gpu/drm/ttm/ttm_bo_vm.c:265 ttm_bo_mmap+0x19e/0x1ab [ttm]()
-2016-11-25T10:51:13.622129+00:00 WARNING kernel: [    9.621509] Modules linked in: cfg80211 snd_seq_midi snd_seq_midi_event snd_rawmidi snd_seq ip6table_filter snd_seq_device cirrus ttm
-2016-11-25T10:51:13.622132+00:00 WARNING kernel: [    9.621524] CPU: 2 PID: 750 Comm: Chrome_ProcessL Not tainted 3.18.0 #55
-2016-11-25T10:51:13.622135+00:00 WARNING kernel: [    9.621527] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
-2016-11-25T10:51:13.622137+00:00 WARNING kernel: [    9.621530]  0000000000000000 0000000000be519d ffff8800afed7d50 ffffffff8829b327
-2016-11-25T10:51:13.622138+00:00 WARNING kernel: [    9.621535]  0000000000000000 0000000000000000 ffff8800afed7d90 ffffffff87c62c3c
-2016-11-25T10:51:13.622140+00:00 WARNING kernel: [    9.621539]  00007f8198b3d000 ffffffffc010ccc0 ffff8800a93e9c00 ffff8800bb139a40
-2016-11-25T10:51:13.622142+00:00 WARNING kernel: [    9.621544] Call Trace:
-2016-11-25T10:51:13.622145+00:00 WARNING kernel: [    9.621555]  [<ffffffff8829b327>] dump_stack+0x4e/0x71
-2016-11-25T10:51:13.622148+00:00 WARNING kernel: [    9.621563]  [<ffffffff87c62c3c>] warn_slowpath_common+0x81/0x9b
-2016-11-25T10:51:13.622151+00:00 WARNING kernel: [    9.621570]  [<ffffffffc010ccc0>] ? ttm_bo_mmap+0x19e/0x1ab [ttm]
-2016-11-25T10:51:13.622153+00:00 WARNING kernel: [    9.621576]  [<ffffffff87c62d3f>] warn_slowpath_null+0x1a/0x1c
-2016-11-25T10:51:13.622155+00:00 WARNING kernel: [    9.621581]  [<ffffffffc010ccc0>] ttm_bo_mmap+0x19e/0x1ab [ttm]
-2016-11-25T10:51:13.622158+00:00 WARNING kernel: [    9.621587]  [<ffffffff87c61534>] copy_process.part.41+0xf2b/0x179a
-2016-11-25T10:51:13.622159+00:00 WARNING kernel: [    9.621592]  [<ffffffff87c61f49>] do_fork+0xc9/0x2c0
-2016-11-25T10:51:13.622162+00:00 WARNING kernel: [    9.621600]  [<ffffffff8829feb3>] ? _raw_spin_unlock_irq+0xe/0x22
-2016-11-25T10:51:13.622164+00:00 WARNING kernel: [    9.621608]  [<ffffffff87c6f978>] ? __set_current_blocked+0x49/0x4e
-2016-11-25T10:51:13.622167+00:00 WARNING kernel: [    9.621613]  [<ffffffff87c621ba>] SyS_clone+0x16/0x18
-2016-11-25T10:51:13.622169+00:00 WARNING kernel: [    9.621618]  [<ffffffff882a0869>] stub_clone+0x69/0x90
-2016-11-25T10:51:13.622172+00:00 WARNING kernel: [    9.621623]  [<ffffffff882a055c>] ? system_call_fastpath+0x1c/0x21
-2016-11-25T10:51:13.622173+00:00 WARNING kernel: [    9.621626] ---[ end trace 3a3ab835b30b8933 ]---
-2016-11-25T10:51:13.622175+00:00 WARNING kernel: [    9.621631] ------------[ cut here ]------------
-
-2016-11-25T10:51:13.622126+00:00 WARNING kernel: [   10.621506] BARNING: CPU: 2 PID: 750 at /mnt/host/source/src/third_party/kernel/v3.18/drivers/gpu/drm/ttm/ttm_bo_vm.c:265 ttm_bo_mmap+0x19e/0x1ab [ttm]()
-2016-11-25T10:51:13.622126+00:00 WARNING kernel: [   10.621506] ("BARNING" above is intentional)
-2016-11-25T10:51:13.622129+00:00 WARNING kernel: [   10.621509] Modules linked in: cfg80211 snd_seq_midi snd_seq_midi_event snd_rawmidi snd_seq ip6table_filter snd_seq_device cirrus ttm
-2016-11-25T10:51:13.622132+00:00 WARNING kernel: [   10.621524] CPU: 2 PID: 750 Comm: Chrome_ProcessL Not tainted 3.18.0 #55
-2016-11-25T10:51:13.622135+00:00 WARNING kernel: [   10.621527] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
-2016-11-25T10:51:13.622137+00:00 WARNING kernel: [   10.621530]  0000000000000000 0000000000be519d ffff8800afed7d50 ffffffff8829b327
-2016-11-25T10:51:13.622138+00:00 WARNING kernel: [   10.621535]  0000000000000000 0000000000000000 ffff8800afed7d90 ffffffff87c62c3c
-2016-11-25T10:51:13.622140+00:00 WARNING kernel: [   10.621539]  00007f8198b3d000 ffffffffc010ccc0 ffff8800a93e9c00 ffff8800bb139a40
-2016-11-25T10:51:13.622142+00:00 WARNING kernel: [   10.621544] Call Trace:
-2016-11-25T10:51:13.622145+00:00 WARNING kernel: [   10.621555]  [<ffffffff8829b327>] dump_stack+0x4e/0x71
-2016-11-25T10:51:13.622148+00:00 WARNING kernel: [   10.621563]  [<ffffffff87c62c3c>] warn_slowpath_common+0x81/0x9b
-2016-11-25T10:51:13.622151+00:00 WARNING kernel: [   10.621570]  [<ffffffffc010ccc0>] ? ttm_bo_mmap+0x19e/0x1ab [ttm]
+ [<ffffffff87c6f978>] ? __set_current_blocked+0x49/0x4e
+ [<ffffffff87c621ba>] SyS_clone+0x16/0x18
+ [<ffffffff882a0869>] stub_clone+0x69/0x90
+ [<ffffffff882a055c>] ? system_call_fastpath+0x1c/0x21
+---[ end trace 3a3ab835b30b8937 ]---
+SELinux: initialized (dev proc, type proc), uses genfs_contexts
+------------[ cut here ]------------
+WARNING: CPU: 2 PID: 750 at /mnt/host/source/src/third_party/kernel/v3.18/drivers/gpu/drm/ttm/ttm_bo_vm.c:265 ttm_bo_mmap+0x19e/0x1ab [ttm]()
+Modules linked in: cfg80211 snd_seq_midi snd_seq_midi_event snd_rawmidi snd_seq ip6table_filter snd_seq_device cirrus ttm
+CPU: 2 PID: 750 Comm: Chrome_ProcessL Not tainted 3.18.0 #55
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
+ 0000000000000000 0000000000be519d ffff8800afed7d50 ffffffff8829b327
+ 0000000000000000 0000000000000000 ffff8800afed7d90 ffffffff87c62c3c
+ 00007f8198b3d000 ffffffffc010ccc0 ffff8800a93e9c00 ffff8800bb139a40
+Call Trace:
+ [<ffffffff8829b327>] dump_stack+0x4e/0x71
+ [<ffffffff87c62c3c>] warn_slowpath_common+0x81/0x9b
+ [<ffffffffc010ccc0>] ? ttm_bo_mmap+0x19e/0x1ab [ttm]
+ [<ffffffff87c62d3f>] warn_slowpath_null+0x1a/0x1c
+ [<ffffffffc010ccc0>] ttm_bo_mmap+0x19e/0x1ab [ttm]
+ [<ffffffff87c61534>] copy_process.part.41+0xf2b/0x179a
+ [<ffffffff87c61f49>] do_fork+0xc9/0x2c0
+ [<ffffffff8829feb3>] ? _raw_spin_unlock_irq+0xe/0x22
+ [<ffffffff87c6f978>] ? __set_current_blocked+0x49/0x4e
+ [<ffffffff87c621ba>] SyS_clone+0x16/0x18
+ [<ffffffff882a0869>] stub_clone+0x69/0x90
+ [<ffffffff882a055c>] ? system_call_fastpath+0x1c/0x21
+---[ end trace 3a3ab835b30b8933 ]---
+------------[ cut here ]------------
+BARNING: CPU: 2 PID: 750 at /mnt/host/source/src/third_party/kernel/v3.18/drivers/gpu/drm/ttm/ttm_bo_vm.c:265 ttm_bo_mmap+0x19e/0x1ab [ttm]()
+("BARNING" above is intentional)
+Modules linked in: cfg80211 snd_seq_midi snd_seq_midi_event snd_rawmidi snd_seq ip6table_filter snd_seq_device cirrus ttm
+CPU: 2 PID: 750 Comm: Chrome_ProcessL Not tainted 3.18.0 #55
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
+ 0000000000000000 0000000000be519d ffff8800afed7d50 ffffffff8829b327
+ 0000000000000000 0000000000000000 ffff8800afed7d90 ffffffff87c62c3c
+ 00007f8198b3d000 ffffffffc010ccc0 ffff8800a93e9c00 ffff8800bb139a40
+Call Trace:
+ [<ffffffff8829b327>] dump_stack+0x4e/0x71
+ [<ffffffff87c62c3c>] warn_slowpath_common+0x81/0x9b
+ [<ffffffffc010ccc0>] ? ttm_bo_mmap+0x19e/0x1ab [ttm]

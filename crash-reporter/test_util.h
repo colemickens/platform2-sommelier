@@ -31,6 +31,9 @@ bool DirectoryHasFileWithPattern(const base::FilePath& directory,
                                  const std::string& pattern,
                                  base::FilePath* found_file_path);
 
+// Return path to an input files used by unit tests.
+base::FilePath GetTestDataPath(const std::string& name);
+
 }  // namespace test_util
 
 #endif  // CRASH_REPORTER_TEST_UTIL_H_

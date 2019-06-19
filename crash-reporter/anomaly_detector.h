@@ -5,31 +5,61 @@
 #ifndef CRASH_REPORTER_ANOMALY_DETECTOR_H_
 #define CRASH_REPORTER_ANOMALY_DETECTOR_H_
 
+#include <base/optional.h>
+
+#include <string>
+
 #include <inttypes.h>
-#include <stdbool.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace anomaly {
 
-// Sends a D-Bus signal indicating a kernel OOM-kill has happened.
-// |oom_timestamp_ms| is the system uptime in milliseconds logged by the kernel
-// for the OOM-kill.
-extern void CDBusSendOomSignal(const int64_t oom_timestamp_ms);
+struct CrashReport {
+  std::string text;
+  std::string flag;
+};
 
-// Scans the syslog as it grows, looking for anomalies, and takes various
-// actions depending on each anomaly that it finds.  If |flag_filter| is true,
-// the lexer reads from stdin instead of the syslog.  |flag_test| changes the
-// behavior slightly, for the purpose of running the integration test.
-extern int AnomalyLexer(bool flag_filter, bool flag_test);
+using MaybeCrashReport = base::Optional<CrashReport>;
 
-// Callback to run crash-reporter.
-extern void RunCrashReporter(int filter,
-                             const char* flag,
-                             const char* input_path);
+constexpr size_t HASH_BITMAP_SIZE(1 << 15);
 
-#ifdef __cplusplus
-}
-#endif
+class Parser {
+ public:
+  virtual ~Parser() = 0;
+
+  virtual MaybeCrashReport ParseLogEntry(const std::string& line) = 0;
+
+  virtual bool WasAlreadySeen(uint32_t hash);
+
+ private:
+  std::bitset<HASH_BITMAP_SIZE> hash_bitmap_;
+};
+
+class ServiceParser : public Parser {
+ public:
+  MaybeCrashReport ParseLogEntry(const std::string& line) override;
+};
+
+class SELinuxParser : public Parser {
+ public:
+  MaybeCrashReport ParseLogEntry(const std::string& line) override;
+};
+
+class KernelParser : public Parser {
+ public:
+  MaybeCrashReport ParseLogEntry(const std::string& line) override;
+
+ private:
+  enum class LineType {
+    None,
+    Start,
+    Body,
+  };
+
+  LineType last_line_ = LineType::None;
+  std::string text_;
+  std::string flag_;
+};
+
+}  // namespace anomaly
 
 #endif  // CRASH_REPORTER_ANOMALY_DETECTOR_H_

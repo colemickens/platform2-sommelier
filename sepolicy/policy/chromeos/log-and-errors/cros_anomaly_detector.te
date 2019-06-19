@@ -10,6 +10,8 @@ tmp_file(cros_anomaly_detector, file, , cros_minijail_minijail_tmp_file);
 
 allow cros_anomaly_detector cros_anomaly_detector_tmp_file:file create_file_perms;
 
+log_reader(cros_anomaly_detector);
+
 # minijail mounts it.
 minijail_mounts(
   minijail,

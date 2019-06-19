@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//common-mk/lex.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
@@ -131,10 +130,14 @@ executable("crash_sender") {
 }
 
 pkg_config("anomaly_detector_config") {
+  # Laikitu uses systemd, while the rest of Chrome OS uses only the journald
+  # part of it, which has a different pkg-config name, but the same library.
+  libs = [ "systemd" ]
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
     "libmetrics-${libbase_ver}",
+    "re2",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear
     # before protobuf here or the linker flags won't be in the right
@@ -144,23 +147,11 @@ pkg_config("anomaly_detector_config") {
   ]
 }
 
-lex("anomaly_detector_lex") {
-  lexer_out_dir = "crash-reporter"
-  sources = [
-    "anomaly_detector.l",
-  ]
-
-  # -D_GNU_SOURCE is needed for asprintf in anomaly_detector.l
-  defines = [ "_GNU_SOURCE" ]
-}
-
 executable("anomaly_detector") {
   configs += [ ":anomaly_detector_config" ]
-  deps = [
-    ":anomaly_detector_lex",
-  ]
   sources = [
     "anomaly_detector.cc",
+    "anomaly_detector_main.cc",
   ]
   libs = [
     "fl",
@@ -271,19 +262,20 @@ if (use.test) {
     }
   }
 
-  copy("anomaly_detector_test") {
-    sources = [
-      "TEST_SELINUX",
-      "TEST_SERVICE_FAILURE",
-      "TEST_WARNING",
-      "TEST_WARNING_OLD",
-      "TEST_WARNING_OLD_ARM64",
-      "anomaly_detector_test.sh",
-      "anomaly_detector_test_reporter.sh",
-      "crash_reporter_logs.conf",
+  executable("anomaly_detector_test") {
+    configs += [
+      "//common-mk:test",
+      ":anomaly_detector_config",
+      ":crash_reporter_test_config",
     ]
-    outputs = [
-      "${root_out_dir}/{{source_file_part}}",
+    sources = [
+      "anomaly_detector.cc",
+      "anomaly_detector_test.cc",
+      "test_util.cc",
+    ]
+    deps = [
+      ":libcrash",
+      "//common-mk/testrunner:testrunner",
     ]
   }
 }
