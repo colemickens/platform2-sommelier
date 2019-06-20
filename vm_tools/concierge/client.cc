@@ -4,6 +4,7 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -23,6 +24,7 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
+#include <base/optional.h>
 #include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
@@ -349,9 +351,8 @@ int StopAllVms(dbus::ObjectProxy* proxy) {
   return 0;
 }
 
-int GetVmInfo(dbus::ObjectProxy* proxy, string owner_id, string name) {
-  LOG(INFO) << "Getting VM info";
-
+base::Optional<vm_tools::concierge::VmInfo> GetVmInfoInternal(
+    dbus::ObjectProxy* proxy, string owner_id, string name) {
   dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
                                vm_tools::concierge::kGetVmInfoMethod);
   dbus::MessageWriter writer(&method_call);
@@ -362,39 +363,57 @@ int GetVmInfo(dbus::ObjectProxy* proxy, string owner_id, string name) {
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode GetVmInfo protobuf";
-    return -1;
+    return base::nullopt;
   }
 
   std::unique_ptr<dbus::Response> dbus_response =
       proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to concierge service";
-    return -1;
+    return base::nullopt;
   }
 
   dbus::MessageReader reader(dbus_response.get());
   vm_tools::concierge::GetVmInfoResponse response;
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << "Failed to parse response protobuf";
-    return -1;
+    return base::nullopt;
   }
 
   if (!response.success()) {
     LOG(ERROR) << "Failed to get VM info";
-    return -1;
+    return base::nullopt;
   }
 
-  vm_tools::concierge::VmInfo vm_info = response.vm_info();
+  return base::make_optional(response.vm_info());
+}
+
+int GetVmInfo(dbus::ObjectProxy* proxy, string owner_id, string name) {
+  LOG(INFO) << "Getting VM info";
+
+  auto vm_info = GetVmInfoInternal(proxy, owner_id, name);
+  if (!vm_info.has_value())
+    return -1;
   string address;
-  IPv4AddressToString(vm_info.ipv4_address(), &address);
+  IPv4AddressToString(vm_info->ipv4_address(), &address);
 
   LOG(INFO) << "VM:                      " << name;
   LOG(INFO) << "IPv4 address:            " << address;
-  LOG(INFO) << "pid:                     " << vm_info.pid();
-  LOG(INFO) << "vsock cid:               " << vm_info.cid();
-  LOG(INFO) << "seneschal server handle: " << vm_info.seneschal_server_handle();
+  LOG(INFO) << "pid:                     " << vm_info->pid();
+  LOG(INFO) << "vsock cid:               " << vm_info->cid();
+  LOG(INFO) << "seneschal server handle: "
+            << vm_info->seneschal_server_handle();
   LOG(INFO) << "Done";
   return 0;
+}
+
+int GetVmCid(dbus::ObjectProxy* proxy, string owner_id, string name) {
+  auto vm_info = GetVmInfoInternal(proxy, owner_id, name);
+  if (!vm_info.has_value())
+    return -1;
+  const std::string cid = base::StringPrintf("%" PRId64 "\n", vm_info->cid());
+  return base::WriteFileDescriptor(STDERR_FILENO, cid.data(), cid.size()) ? 0
+                                                                          : -1;
 }
 
 int CreateDiskImage(dbus::ObjectProxy* proxy,
@@ -1212,6 +1231,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(stop, false, "Stop a running VM");
   DEFINE_bool(stop_all, false, "Stop all running VMs");
   DEFINE_bool(get_vm_info, false, "Get info for the given VM");
+  DEFINE_bool(get_vm_cid, false, "Get vsock cid for the given VM");
   DEFINE_bool(create_disk, false, "Create a disk image");
   DEFINE_bool(create_external_disk, false,
               "Create a disk image on removable media");
@@ -1285,18 +1305,18 @@ int main(int argc, char** argv) {
   // false => 0 and true => 1.
   // clang-format off
   if (FLAGS_start + FLAGS_stop + FLAGS_stop_all + FLAGS_get_vm_info +
-      FLAGS_create_disk + FLAGS_create_external_disk + FLAGS_start_termina_vm +
-      FLAGS_destroy_disk + FLAGS_export_disk + FLAGS_import_disk +
-      FLAGS_list_disks + FLAGS_sync_time + FLAGS_attach_usb +
-      FLAGS_detach_usb + FLAGS_list_usb_devices + FLAGS_start_plugin_vm +
-      FLAGS_start_arc_vm != 1) {
+      FLAGS_get_vm_cid + FLAGS_create_disk + FLAGS_create_external_disk +
+      FLAGS_start_termina_vm + FLAGS_destroy_disk + FLAGS_export_disk +
+      FLAGS_import_disk + FLAGS_list_disks + FLAGS_sync_time +
+      FLAGS_attach_usb + FLAGS_detach_usb + FLAGS_list_usb_devices +
+      FLAGS_start_plugin_vm + FLAGS_start_arc_vm != 1) {
     // clang-format on
     LOG(ERROR)
         << "Exactly one of --start, --stop, --stop_all, --get_vm_info, "
-        << "--create_disk, --create_external_disk --destroy_disk, "
-        << "--export_disk --import_disk --list_disks, --start_termina_vm, "
-        << "--sync_time, --attach_usb, --detach_usb, "
-        << "--start_plugin_vm, --start_arc_vm, or --list_usb_devices must "
+        << "--get_vm_cid, --create_disk, --create_external_disk, "
+        << "--destroy_disk, --export_disk --import_disk --list_disks, "
+        << "--start_termina_vm, --sync_time, --attach_usb, --detach_usb, "
+        << "--list_usb_devices, --start_plugin_vm, or --start_arc_vm must "
         << "be provided";
     return -1;
   }
@@ -1319,6 +1339,9 @@ int main(int argc, char** argv) {
   } else if (FLAGS_get_vm_info) {
     return GetVmInfo(proxy, std::move(FLAGS_cryptohome_id),
                      std::move(FLAGS_name));
+  } else if (FLAGS_get_vm_cid) {
+    return GetVmCid(proxy, std::move(FLAGS_cryptohome_id),
+                    std::move(FLAGS_name));
   } else if (FLAGS_create_disk) {
     return CreateDiskImage(proxy, std::move(FLAGS_cryptohome_id),
                            std::move(FLAGS_disk_path), FLAGS_disk_size,
