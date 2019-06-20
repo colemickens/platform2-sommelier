@@ -255,6 +255,7 @@ class GpuVdaContext : public VdaContext, arc::mojom::VideoDecodeClient {
                                base::ScopedFD fd,
                                size_t num_planes,
                                video_frame_plane_t* planes) override;
+  vda_result_t ReuseOutputBuffer(int32_t picture_buffer_id) override;
   vda_result_t Reset() override;
   vda_result_t Flush() override;
 
@@ -300,6 +301,10 @@ class GpuVdaContext : public VdaContext, arc::mojom::VideoDecodeClient {
                                   vda_pixel_format_t format,
                                   base::ScopedFD fd,
                                   std::vector<video_frame_plane_t> planes);
+
+  // Handles a ReuseOutputBuffer request by invoking a VideoDecodeAccelerator
+  // mojo function. Called on |ipc_task_runner_|.
+  void ReuseOutputBufferOnIpcThread(int32_t picture_buffer_id);
 
   // Handles a Reset request by invoking a VideoDecodeAccelerator mojo function.
   // Called on |ipc_task_runner_|.
@@ -469,6 +474,18 @@ void GpuVdaContext::UseOutputBufferOnIpcThread(
   vda_ptr_->ImportBufferForPicture(
       picture_buffer_id, ConvertPixelFormatToHalPixelFormat(format),
       std::move(handle_fd), std::move(mojo_planes));
+}
+
+vda_result_t GpuVdaContext::ReuseOutputBuffer(int32_t picture_buffer_id) {
+  ipc_task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(&GpuVdaContext::ReuseOutputBufferOnIpcThread,
+                                base::Unretained(this), picture_buffer_id));
+  return SUCCESS;
+}
+
+void GpuVdaContext::ReuseOutputBufferOnIpcThread(int32_t picture_buffer_id) {
+  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  vda_ptr_->ReusePictureBuffer(picture_buffer_id);
 }
 
 vda_result GpuVdaContext::Reset() {

@@ -248,6 +248,10 @@ vda_result_t LIBVDA_EXPORT vda_use_output_buffer(void* ctx,
                                                  size_t num_planes,
                                                  video_frame_plane_t* planes);
 
+// Returns output buffer with id |picture_buffer_id| for reuse.
+vda_result_t LIBVDA_EXPORT vda_reuse_output_buffer(void* ctx,
+                                                   int32_t picture_buffer_id);
+
 // Flushes the decode session context |ctx|. When this operation has completed,
 // an event of type FLUSH_RESPONSE is sent.
 vda_result_t LIBVDA_EXPORT vda_flush(void* ctx);

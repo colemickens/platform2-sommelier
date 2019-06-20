@@ -163,7 +163,7 @@ void DecodeEventThread::OnPictureReady(const picture_ready_event_data_t& data) {
     return;
   }
 
-  CallUseOutputBuffer(data.picture_buffer_id, iter->second.get());
+  vda_reuse_output_buffer(session_->ctx, data.picture_buffer_id);
 }
 
 void DecodeEventThread::CallUseOutputBuffer(int32_t picture_buffer_id,

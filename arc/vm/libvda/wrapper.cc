@@ -206,6 +206,11 @@ vda_result_t vda_use_output_buffer(void* ctx,
       picture_buffer_id, format, base::ScopedFD(fd), num_planes, planes);
 }
 
+vda_result_t vda_reuse_output_buffer(void* ctx, int32_t picture_buffer_id) {
+  return static_cast<arc::VdaContext*>(ctx)->ReuseOutputBuffer(
+      picture_buffer_id);
+}
+
 vda_result vda_reset(void* ctx) {
   return static_cast<arc::VdaContext*>(ctx)->Reset();
 }
