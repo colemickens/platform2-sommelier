@@ -5,8 +5,6 @@
 # TODO(b/131121671): Update this when script with a method that works for
 #   user images.
 
-# TODO(b/131121671): Change this when cid becomes dynamic.
-target='vsock:5:5555'
 logged_in_file='/run/state/logged-in'
 
 is_connected() {
@@ -34,6 +32,16 @@ command="$(/usr/bin/printf "%q " "$@")"
 # a temporary directory instead.
 tmpdir=$(mktemp -d)
 export HOME="${tmpdir}"
+
+# Concierge dynamically assigns a VSOCK CID for each VM. Ask the service which
+# CID is currently assigned to ARCVM.
+target="vsock:5:5555"
+ID="$(cryptohome --action=status | jq -r '.mounts[0].owner')"
+CID="$(/usr/bin/concierge_client --get_vm_cid --name=arcvm \
+         --cryptohome_id="${ID}" 2>&1)"
+if [ -n "${CID}" ]; then
+  target="vsock:${CID}:5555"
+fi
 
 # Try to start the server first if it's not started.
 adb start-server 2>/dev/null
