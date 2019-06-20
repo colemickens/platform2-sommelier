@@ -1,0 +1,46 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":libcamera_common",
+  ]
+  if (use.test) {
+    deps += [ ":future_test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libchrome-${libbase_ver}",
+    "libudev",
+  ]
+}
+
+shared_library("libcamera_common") {
+  sources = [
+    "//camera/common/future.cc",
+    "//camera/common/udev_watcher.cc",
+  ]
+  include_dirs = [
+    "//camera",
+    "//camera/include",
+  ]
+  configs += [ ":target_defaults" ]
+}
+
+if (use.test) {
+  executable("future_test") {
+    sources = [
+      "//camera/common/future.cc",
+      "//camera/common/future_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+  }
+}
