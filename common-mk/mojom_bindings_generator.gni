@@ -52,9 +52,6 @@ import("//common-mk/pkg_config.gni")
 # This gn generates header files under ${root_gen_dir}/include.
 _mojo_output_base = "${root_gen_dir}/include"
 
-# Path to the directory which contains mojo template files.
-_mojo_templates_dir = "${root_gen_dir}/templates"
-
 # Thin wrapper to launch mojom_bindings_generator.py.
 _mojom_bindings_generator_wrapper =
     "${platform2_root}/common-mk/mojom_bindings_generator_wrapper.py"
@@ -67,6 +64,9 @@ template("generate_mojom_bindings_gen") {
                            "mojo_root",
                            "mojom_bindings_generator",
                          ])
+
+  # Path to the directory which contains mojo template files.
+  mojo_templates_dir = "${target_gen_dir}/${target_name}_templates"
 
   if (defined(mojom_bindings_generator)) {
     mojom_bindings_generator = rebase_path(mojom_bindings_generator)
@@ -83,27 +83,29 @@ template("generate_mojom_bindings_gen") {
   }
   mojo_root = rebase_path(mojo_root)
 
-  action("mojo_templates_dir") {
+  mojo_templates_dir_action_name = "${target_name}_mojo_templates_dir"
+  action(mojo_templates_dir_action_name) {
     inputs = []
     outputs = [
-      _mojo_templates_dir,
+      mojo_templates_dir,
     ]
     print("Creating mojo C++ templates dir")
     script = "//common-mk/file_generator_wrapper.py"
     args = [
       "mkdir",
       "-p",
-      _mojo_templates_dir,
+      mojo_templates_dir,
     ]
   }
 
-  action("mojo_templates") {
+  mojo_templates_action_name = "${target_name}_mojo_templates"
+  action(mojo_templates_action_name) {
     inputs = [
       mojom_bindings_generator,
-      _mojo_templates_dir,
+      mojo_templates_dir,
     ]
     outputs = [
-      "${_mojo_templates_dir}/cpp_templates.zip",
+      "${mojo_templates_dir}/cpp_templates.zip",
     ]
     print("Generating mojo C++ templates")
     script = mojom_bindings_generator
@@ -111,10 +113,10 @@ template("generate_mojom_bindings_gen") {
       "--use_bundled_pylibs",
       "precompile",
       "-o",
-      _mojo_templates_dir,
+      mojo_templates_dir,
     ]
     deps = [
-      ":mojo_templates_dir",
+      ":${mojo_templates_dir_action_name}",
     ]
   }
 
@@ -123,7 +125,7 @@ template("generate_mojom_bindings_gen") {
     inputs = [
                _mojom_bindings_generator_wrapper,
                mojom_bindings_generator,
-             ] + get_target_outputs(":mojo_templates")
+             ] + get_target_outputs(":${mojo_templates_action_name}")
 
     # Generated files are referred using relative path from |mojo_root|,
     # separated from this target's path.
@@ -148,7 +150,7 @@ template("generate_mojom_bindings_gen") {
              "--output_dir",
              _mojo_output_base,
              "--bytecode_path",
-             _mojo_templates_dir,
+             mojo_templates_dir,
              "-I",
              mojo_root,  # Mojo include path.
              "-d",
@@ -157,7 +159,7 @@ template("generate_mojom_bindings_gen") {
              "c++",
            ] + mojo_extra_args
     deps = [
-      ":mojo_templates",
+      ":${mojo_templates_action_name}",
     ]
   }
 }
