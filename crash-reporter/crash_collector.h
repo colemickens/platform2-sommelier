@@ -82,7 +82,6 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, CreateDirectoryWithSettingsNonDir);
   FRIEND_TEST(CrashCollectorTest, CreateDirectoryWithSettingsSubdir);
   FRIEND_TEST(CrashCollectorTest, CreateDirectoryWithSettingsSymlinks);
-  FRIEND_TEST(CrashCollectorTest, ForkExecAndPipe);
   FRIEND_TEST(CrashCollectorTest, FormatDumpBasename);
   FRIEND_TEST(CrashCollectorTest, GetCrashDirectoryInfo);
   FRIEND_TEST(CrashCollectorTest, GetCrashPath);
@@ -101,15 +100,6 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, WriteNewFile);
   FRIEND_TEST(CrashCollectorTest, WriteNewCompressedFile);
   FRIEND_TEST(CrashCollectorTest, WriteNewCompressedFileFailsIfFileExists);
-  FRIEND_TEST(ForkExecAndPipeTest, BadExecutable);
-  FRIEND_TEST(ForkExecAndPipeTest, BadOutputFile);
-  FRIEND_TEST(ForkExecAndPipeTest, Basic);
-  FRIEND_TEST(ForkExecAndPipeTest, ExistingOutputFile);
-  FRIEND_TEST(ForkExecAndPipeTest, NULLParam);
-  FRIEND_TEST(ForkExecAndPipeTest, NoParams);
-  FRIEND_TEST(ForkExecAndPipeTest, NonZeroReturnValue);
-  FRIEND_TEST(ForkExecAndPipeTest, SegFaultHandling);
-  FRIEND_TEST(ForkExecAndPipeTest, StderrCaptured);
 
   // Default value if OS version/description cannot be determined.
   static const char* const kUnknownValue;

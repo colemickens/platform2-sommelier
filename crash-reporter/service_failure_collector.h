@@ -34,7 +34,6 @@ class ServiceFailureCollector : public CrashCollector {
  private:
   friend class ServiceFailureCollectorTest;
   friend class ArcServiceFailureCollectorTest;
-  FRIEND_TEST(ServiceFailureCollectorTest, CollectOK);
 
   // Service failure dump consists only of the signature.
   bool LoadServiceFailure(std::string* signature);

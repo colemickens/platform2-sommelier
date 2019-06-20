@@ -37,7 +37,6 @@ class SELinuxViolationCollector : public CrashCollector {
   friend class SELinuxViolationCollectorTest;
   FRIEND_TEST(SELinuxViolationCollectorTest, CollectOK);
   FRIEND_TEST(SELinuxViolationCollectorTest, CollectSample);
-  FRIEND_TEST(SELinuxViolationCollectorTest, DroppedSample);
 
   base::FilePath violation_report_path_;
   bool developer_image_for_testing_ = false;
