@@ -1,0 +1,89 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/mojom_bindings_generator.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":libcamera_hal",
+  ]
+
+  if (use.test) {
+    deps += [ ":image_processor_test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "cros-camera-android-headers",
+    "libcbm",
+    "libcamera_client",
+    "libcamera_common",
+    "libcamera_exif",
+    "libcamera_metadata",
+    "libcamera_timezone",
+    "libjda",
+    "libsync",
+    "libyuv",
+    "re2",
+  ]
+  configs = [ "//camera/build:cros_camera_common" ]
+  if (use.usb_camera_monocle) {
+    pkg_deps += [ "librealtek-sdk" ]
+    defines = [ "MONOCLE_QUIRKS=1" ]
+  }
+}
+
+generate_mojom_bindings("libcamera_hal_mojom") {
+  sources = [
+    "//camera/mojo/cros_camera_enum.mojom",
+  ]
+  mojo_root = "//camera"
+}
+
+shared_library("libcamera_hal") {
+  sources = [
+    "//camera/common/utils/camera_config_impl.cc",
+    "//camera/common/vendor_tag_manager.cc",
+    "cached_frame.cc",
+    "camera_characteristics.cc",
+    "camera_client.cc",
+    "camera_hal.cc",
+    "camera_hal_device_ops.cc",
+    "capture_request.cc",
+    "frame_buffer.cc",
+    "image_processor.cc",
+    "metadata_handler.cc",
+    "quirks.cc",
+    "sensor_handler.cc",
+    "stream_format.cc",
+    "test_pattern.cc",
+    "v4l2_camera_device.cc",
+    "vendor_tag.cc",
+  ]
+  if (use.usb_camera_monocle) {
+    sources += [ "sensor_handler_monocle.cc" ]
+  }
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":libcamera_hal_mojom",
+    "//camera/common:libcamera_jpeg",
+    "//camera/common:libcamera_metrics",
+  ]
+}
+
+if (use.test) {
+  executable("image_processor_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "frame_buffer.cc",
+      "image_processor.cc",
+      "unittest/image_processor_test.cc",
+    ]
+  }
+}

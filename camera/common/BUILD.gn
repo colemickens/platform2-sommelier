@@ -2,16 +2,24 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+config("libcamera_metrics_config") {
+  libs = [ "metrics-${libbase_ver}" ]
+}
+
 static_library("libcamera_metrics") {
   sources = [
     "camera_metrics_impl.cc",
   ]
-  include_dirs = [
-    "//camera/",
-    "//camera/include",
+  configs += [
+    "//camera/build:cros_camera_common",
+    "//common-mk:pic",
+    "//common-mk:nouse_thin_archive",
   ]
-  configs += [ "//common-mk:pic" ]
-  configs -= [ "//common-mk:pie" ]
+  configs -= [
+    "//common-mk:pie",
+    "//common-mk:use_thin_archive",
+  ]
+  public_configs = [ ":libcamera_metrics_config" ]
   all_dependent_pkg_deps = [ "libmetrics-${libbase_ver}" ]
   pkg_deps = [
     "cros-camera-android-headers",
