@@ -24,11 +24,8 @@
 
 using testing::ByMove;
 using testing::DoAll;
-using testing::Eq;
-using testing::Invoke;
 using testing::Return;
 using testing::SetArgPointee;
-using testing::UnorderedElementsAre;
 using testing::_;
 
 namespace base {

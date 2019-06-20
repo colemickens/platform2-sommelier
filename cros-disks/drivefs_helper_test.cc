@@ -24,12 +24,10 @@ namespace {
 using testing::_;
 using testing::DoAll;
 using testing::EndsWith;
-using testing::Eq;
 using testing::HasSubstr;
 using testing::Invoke;
 using testing::Return;
 using testing::SetArgPointee;
-using testing::StrEq;
 
 const uid_t kOldUID = 200;
 const uid_t kOldGID = 201;

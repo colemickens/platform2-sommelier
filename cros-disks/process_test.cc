@@ -17,10 +17,8 @@ namespace cros_disks {
 
 using testing::_;
 using testing::Contains;
-using testing::DoAll;
 using testing::ElementsAre;
 using testing::Return;
-using testing::SetArgPointee;
 
 // A mock process class for testing the process base class.
 class ProcessUnderTest : public Process {

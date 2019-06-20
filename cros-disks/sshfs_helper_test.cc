@@ -19,12 +19,9 @@
 #include "cros-disks/platform.h"
 #include "cros-disks/uri.h"
 
-using testing::DoAll;
-using testing::Eq;
 using testing::HasSubstr;
 using testing::Not;
 using testing::Return;
-using testing::SetArgPointee;
 using testing::StrEq;
 using testing::_;
 

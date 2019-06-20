@@ -14,9 +14,6 @@
 
 namespace cros_disks {
 
-using testing::_;
-using testing::Return;
-
 class DiskMonitorTest : public ::testing::Test {
  public:
   DiskMonitorTest() {}

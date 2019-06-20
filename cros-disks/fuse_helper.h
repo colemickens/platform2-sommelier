@@ -21,7 +21,6 @@ class ProcessReaper;
 namespace cros_disks {
 
 class FUSEMounter;
-class MountOptions;
 class Platform;
 class Uri;
 
