@@ -286,7 +286,6 @@ class MountManager {
   FRIEND_TEST(MountManagerTest, ExtractUnsupportedUnmountOptions);
   FRIEND_TEST(MountManagerTest, IsPathImmediateChildOfParent);
   FRIEND_TEST(MountManagerTest, IsValidMountPath);
-  FRIEND_TEST(MountManagerTest, IsUri);
 
   DISALLOW_COPY_AND_ASSIGN(MountManager);
 };

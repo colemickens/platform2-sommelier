@@ -94,8 +94,6 @@ class Process {
 
   FRIEND_TEST(ProcessTest, GetArguments);
   FRIEND_TEST(ProcessTest, GetArgumentsWithNoArgumentsAdded);
-  FRIEND_TEST(ProcessTest, ReadStdout);
-  FRIEND_TEST(ProcessTest, ReadStderr);
   FRIEND_TEST(ProcessTest, Communicate);
 
   DISALLOW_COPY_AND_ASSIGN(Process);
