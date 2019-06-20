@@ -873,7 +873,7 @@ main() {
     loop_offset_setup "${SRC}" \
       "$(partoffset "${SRC}" "${PARTITION_NUM_ROOT_A}")" 512
     tracked_mount -o ro "${LOOP_DEV}" "${ROOT}"
-    loop_offset_setup "${SRC}"
+    loop_offset_setup "${SRC}" \
       "$(partoffset "${SRC}" "${PARTITION_NUM_STATE}")" 512
     tracked_mount -o ro "${LOOP_DEV}" "${ROOT}"/mnt/stateful_partition
   fi
