@@ -67,7 +67,7 @@ RenameManager::RenameManager(Platform* platform,
       process_reaper_(process_reaper),
       weak_ptr_factory_(this) {}
 
-RenameManager::~RenameManager() {}
+RenameManager::~RenameManager() = default;
 
 RenameErrorType RenameManager::StartRenaming(
     const std::string& device_path,

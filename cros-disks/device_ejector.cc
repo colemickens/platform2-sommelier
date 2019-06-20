@@ -23,7 +23,7 @@ namespace cros_disks {
 DeviceEjector::DeviceEjector(brillo::ProcessReaper* process_reaper)
     : process_reaper_(process_reaper), weak_ptr_factory_(this) {}
 
-DeviceEjector::~DeviceEjector() {}
+DeviceEjector::~DeviceEjector() = default;
 
 bool DeviceEjector::Eject(const std::string& device_path) {
   CHECK(!device_path.empty()) << "Invalid device path";

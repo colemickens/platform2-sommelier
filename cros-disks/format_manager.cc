@@ -157,7 +157,7 @@ FormatErrorType StartFormatProcess(const std::string& device_file,
 FormatManager::FormatManager(brillo::ProcessReaper* process_reaper)
     : process_reaper_(process_reaper), weak_ptr_factory_(this) {}
 
-FormatManager::~FormatManager() {}
+FormatManager::~FormatManager() = default;
 
 FormatErrorType FormatManager::StartFormatting(
     const std::string& device_path,

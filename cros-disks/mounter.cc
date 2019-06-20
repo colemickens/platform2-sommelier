@@ -35,7 +35,7 @@ MounterCompat::MounterCompat(const std::string& filesystem_type,
       target_path_(target_path),
       mount_options_(mount_options) {}
 
-MounterCompat::~MounterCompat() {}
+MounterCompat::~MounterCompat() = default;
 
 MountErrorType MounterCompat::Mount() {
   MountErrorType error = MOUNT_ERROR_NONE;

@@ -36,9 +36,9 @@ pid_t RunInFork(std::function<int()> func) {
 
 class SandboxedInitTest : public testing::Test {
  public:
-  SandboxedInitTest() {}
+  SandboxedInitTest() = default;
 
-  ~SandboxedInitTest() override {}
+  ~SandboxedInitTest() override = default;
 
  protected:
   void TearDown() override {

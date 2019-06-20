@@ -19,9 +19,9 @@ struct USBDeviceEntry {
   DeviceMediaType media_type;
 };
 
-USBDeviceInfo::USBDeviceInfo() {}
+USBDeviceInfo::USBDeviceInfo() = default;
 
-USBDeviceInfo::~USBDeviceInfo() {}
+USBDeviceInfo::~USBDeviceInfo() = default;
 
 DeviceMediaType USBDeviceInfo::GetDeviceMediaType(
     const std::string& vendor_id, const std::string& product_id) const {

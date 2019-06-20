@@ -26,9 +26,9 @@ struct MountInfo::MountPointData {
   std::string filesystem_type;
 };
 
-MountInfo::MountInfo() {}
+MountInfo::MountInfo() = default;
 
-MountInfo::~MountInfo() {}
+MountInfo::~MountInfo() = default;
 
 int MountInfo::ConvertOctalStringToInt(const std::string& octal) const {
   if (octal.size() == 3 && IsOctalDigit(octal[0]) && IsOctalDigit(octal[1]) &&

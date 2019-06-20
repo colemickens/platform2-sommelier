@@ -16,7 +16,7 @@ namespace cros_disks {
 
 class DiskMonitorTest : public ::testing::Test {
  public:
-  DiskMonitorTest() {}
+  DiskMonitorTest() = default;
 
  protected:
   DiskMonitor monitor_;
