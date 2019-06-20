@@ -17,7 +17,7 @@ cleanup_mounts()
   chromeos-boot-alert self_repair
   clobber-log -- \
     "Self-repair incoherent stateful partition: $*. History: ${UNDO_MOUNTS}"
-  exec clobber-state "fast keepimg preserve_clobber_logs"
+  exec clobber-state "fast keepimg"
 }
 remember_mount()
 {
@@ -269,7 +269,7 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] && [ "$ROOTDEV_TYPE" != "/dev/ram" ]; then
     chromeos-boot-alert self_repair
     clobber-log --repair "${STATE_DEV}" \
         "Self-repair corrupted stateful partition"
-    exec clobber-state "keepimg preserve_clobber_logs"
+    exec clobber-state "keepimg"
   fi
 
   if [ "${DISABLE_STATEFUL_SECURITY_HARDENING}" = "false" ]; then
@@ -368,7 +368,7 @@ elif crossystem 'devsw_boot?1' && ! crossystem 'mainfw_type?recovery'; then
 fi
 
 if [ -n "${CLOBBER_ARGS}" ]; then
-  exec clobber-state "${CLOBBER_ARGS} preserve_clobber_logs"
+  exec clobber-state "${CLOBBER_ARGS}"
 fi
 
 # Walk the specified path and reset any file attributes (like immutable bit).
@@ -389,7 +389,7 @@ force_clean_file_attrs() {
   if ! file_attrs_cleaner_tool "${path}"; then
     chromeos-boot-alert self_repair
     clobber-log -- "Bad file attrs under ${path}"
-    exec clobber-state "keepimg preserve_clobber_logs"
+    exec clobber-state "keepimg"
   fi
 }
 

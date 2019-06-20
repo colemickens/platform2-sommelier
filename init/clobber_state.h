@@ -29,8 +29,6 @@ class ClobberState {
     bool safe_wipe = false;
     // Preserve rollback data, attestation DB, and don't clear TPM
     bool rollback_wipe = false;
-    // Preserve crash and logs from the clobber run.
-    bool preserve_clobber_crash_logs = false;
     // Preserve initial reason for triggering clobber, if available.
     // Assume that the reason string is already sanitized by session
     // manager (non-alphanumeric characters replaced with '_').
@@ -139,6 +137,8 @@ class ClobberState {
 
   // Run the clobber state routine.
   int Run();
+
+  bool IsInDeveloperMode();
 
   bool MarkDeveloperMode();
 

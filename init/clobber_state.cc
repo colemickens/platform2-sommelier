@@ -46,6 +46,10 @@ constexpr char kClobberLogPath[] = "/tmp/clobber-state.log";
 constexpr char kBioWashPath[] = "/usr/bin/bio_wash";
 constexpr char kPreservedFilesTarPath[] = "/tmp/preserve.tar";
 constexpr char kPreservedCrashPath[] = "unencrypted/preserve/crash";
+// The presence of this file indicates that crash report collection across
+// clobber is disabled in developer mode.
+constexpr char kDisableClobberCrashCollectionPath[] =
+    "/run/disable-clobber-crash-collection";
 
 constexpr char kUbiRootDisk[] = "/dev/mtd0";
 constexpr char kUbiDevicePrefix[] = "/dev/ubi";
@@ -207,7 +211,7 @@ void ReplayLogsIntoClobber() {
 
 // Attempt to save logs from the boot when the clobber happened into the
 // stateful partition.
-void PreserveClobberCrashReports() {
+void CollectClobberCrashReports() {
   // Check for the creation of the preserve crash directory.
   base::FilePath preserved_crash_directory =
       base::FilePath(kStatefulPath).AppendASCII(kPreservedCrashPath);
@@ -223,10 +227,29 @@ void PreserveClobberCrashReports() {
   crash_reporter_early_collect.AddArg("--log_to_stderr");
   crash_reporter_early_collect.AddArg("--preserve_across_clobber");
   crash_reporter_early_collect.AddArg("--boot_collect");
-  if (!crash_reporter_early_collect.Run())
+  if (crash_reporter_early_collect.Run() != 0)
     LOG(WARNING) << "Unable to collect logs and crashes from current run.";
 
   return;
+}
+
+// Check if device is enrolled.
+bool IsDeviceEnrolled() {
+  brillo::ProcessImpl vpd_enrollment_check;
+  base::FilePath temp_output_file;
+  base::CreateTemporaryFile(&temp_output_file);
+
+  vpd_enrollment_check.AddArg("/usr/sbin/vpd_get_value");
+  vpd_enrollment_check.AddArg("check_enrollment");
+  vpd_enrollment_check.RedirectOutput(temp_output_file.value());
+
+  if (vpd_enrollment_check.Run() != 0)
+    return false;
+
+  int enrollment_check_value = 0;
+
+  return ReadFileToInt(temp_output_file, &enrollment_check_value) &&
+         enrollment_check_value == 1;
 }
 
 }  // namespace
@@ -256,8 +279,6 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
       args.safe_wipe = true;
     } else if (arg == "rollback") {
       args.rollback_wipe = true;
-    } else if (arg == "preserve_clobber_logs") {
-      args.preserve_clobber_crash_logs = true;
     } else if (base::StartsWith(
                    arg, "reason=", base::CompareCase::INSENSITIVE_ASCII)) {
       args.reason = arg;
@@ -965,6 +986,10 @@ int ClobberState::Run() {
       },
       stateful_));
 
+  bool is_developer_mode =
+      IsInDeveloperMode() &&
+      !base::PathExists(base::FilePath(kDisableClobberCrashCollectionPath));
+
   LOG(INFO) << "Beginning clobber-state run";
   LOG(INFO) << "Factory wipe: " << args_.factory_wipe;
   LOG(INFO) << "Fast wipe: " << args_.fast_wipe;
@@ -1134,10 +1159,10 @@ int ClobberState::Run() {
     LOG(WARNING) << "Restoring clobber.log failed with code " << ret;
   }
 
-  // Attempt to get crashes into the preserved crash directory.
-  if (args_.preserve_clobber_crash_logs) {
+  // Attempt to collect crashes into the preserved crash directory.
+  if (is_developer_mode || IsDeviceEnrolled()) {
     ReplayLogsIntoClobber();
-    PreserveClobberCrashReports();
+    CollectClobberCrashReports();
   }
 
   // Destroy less sensitive data.
@@ -1172,16 +1197,20 @@ int ClobberState::Run() {
   return Reboot();
 }
 
-bool ClobberState::MarkDeveloperMode() {
+bool ClobberState::IsInDeveloperMode() {
   std::string firmware_name;
   int dev_mode_flag;
-  if (cros_system_->GetInt(CrosSystem::kDevSwitchBoot, &dev_mode_flag) &&
-      dev_mode_flag == 1 &&
-      cros_system_->GetString(CrosSystem::kMainFirmwareActive,
-                              &firmware_name) &&
-      firmware_name != "recovery") {
+  return cros_system_->GetInt(CrosSystem::kDevSwitchBoot, &dev_mode_flag) &&
+         dev_mode_flag == 1 &&
+         cros_system_->GetString(CrosSystem::kMainFirmwareActive,
+                                 &firmware_name) &&
+         firmware_name != "recovery";
+}
+
+bool ClobberState::MarkDeveloperMode() {
+  if (IsInDeveloperMode())
     return base::WriteFile(stateful_.Append(".developer_mode"), "", 0) == 0;
-  }
+
   return true;
 }
 
