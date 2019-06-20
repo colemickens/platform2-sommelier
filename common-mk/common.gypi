@@ -32,7 +32,6 @@
     'USE_arm%': 0,
     'USE_asan%': 0,
     'USE_attestation%': 0,
-    'USE_binder%': 0,
     'USE_buffet%': 0,
     'USE_cellular%': 0,
     'USE_cfm_enabled_device%': 0,
