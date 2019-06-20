@@ -1,0 +1,31 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+static_library("libjea") {
+  sources = [
+    "jpeg_encode_accelerator_impl.cc",
+  ]
+  output_name = "libjea.pic"
+  include_dirs = [
+    "//camera",
+    "//camera/include",
+  ]
+  configs += [
+    "//common-mk:pic",
+    "//common-mk:nouse_thin_archive",
+  ]
+  configs -= [
+    "//common-mk:pie",
+    "//common-mk:use_thin_archive",
+  ]
+  pkg_deps = [
+    "libchrome-${libbase_ver}",
+    "cros-camera-android-headers",
+    "libcamera_common",
+    "libmojo-${libbase_ver}",
+  ]
+  deps = [
+    "../libcamera_ipc",
+  ]
+}
