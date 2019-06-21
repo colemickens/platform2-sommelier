@@ -20,6 +20,8 @@ void StubHandleMethod(const std::string& expected_interface_name,
                       const std::string& expected_method_name,
                       const std::string& expected_payload,
                       const std::string& response_string,
+                      const std::string& error_name,
+                      const std::string& error_message,
                       dbus::MethodCall* method_call,
                       int timeout_ms,
                       dbus::ObjectProxy::ResponseCallback callback,
@@ -37,11 +39,18 @@ void StubHandleMethod(const std::string& expected_interface_name,
     return;
 
   method_call->SetSerial(kTestSerial);
-  std::unique_ptr<dbus::Response> response =
-      dbus::Response::FromMethodCall(method_call);
-  dbus::MessageWriter writer(response.get());
-  writer.AppendString(response_string);
-  callback.Run(response.get());
+  if (!error_name.empty()) {
+    std::unique_ptr<dbus::ErrorResponse> error_response =
+        dbus::ErrorResponse::FromMethodCall(method_call, error_name,
+                                            error_message);
+    error_callback.Run(error_response.get());
+  } else {
+    std::unique_ptr<dbus::Response> response =
+        dbus::Response::FromMethodCall(method_call);
+    dbus::MessageWriter writer(response.get());
+    writer.AppendString(response_string);
+    callback.Run(response.get());
+  }
 }
 
 }  // namespace bluetooth

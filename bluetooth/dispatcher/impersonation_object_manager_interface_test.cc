@@ -152,7 +152,8 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
       dbus::ObjectProxy::ResponseCallback callback,
       dbus::ObjectProxy::ErrorCallback error_callback) {
     StubHandleMethod(dbus::kPropertiesInterface, dbus::kPropertiesSet,
-                     kTestMethodCallString, kTestResponseString, method_call,
+                     kTestMethodCallString, kTestResponseString,
+                     /* error_name */ "", /* error_message */ "", method_call,
                      timeout_ms, callback, error_callback);
   }
 
@@ -161,7 +162,8 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
                              dbus::ObjectProxy::ResponseCallback callback,
                              dbus::ObjectProxy::ErrorCallback error_callback) {
     StubHandleMethod(kTestInterfaceName1, kTestMethodName1,
-                     kTestMethodCallString, kTestResponseString, method_call,
+                     kTestMethodCallString, kTestResponseString,
+                     /* error_name */ "", /* error_message */ "", method_call,
                      timeout_ms, callback, error_callback);
   }
 
@@ -170,7 +172,8 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
                              dbus::ObjectProxy::ResponseCallback callback,
                              dbus::ObjectProxy::ErrorCallback error_callback) {
     StubHandleMethod(kTestInterfaceName1, kTestMethodName2,
-                     kTestMethodCallString, kTestResponseString, method_call,
+                     kTestMethodCallString, kTestResponseString,
+                     /* error_name */ "", /* error_message */ "", method_call,
                      timeout_ms, callback, error_callback);
   }
 

@@ -35,6 +35,9 @@ constexpr char kTestSender[] = ":1.1";
 constexpr char kTestMethodCallString[] = "The Method Call";
 constexpr char kTestResponseString[] = "The Response";
 
+constexpr char kTestErrorName[] = "org.example.Error";
+constexpr char kTestErrorResponseString[] = "Example Error";
+
 constexpr int kTestSerial = 10;
 
 }  // namespace
@@ -54,8 +57,20 @@ class CatchAllForwarderTest : public ::testing::Test {
                             dbus::ObjectProxy::ResponseCallback callback,
                             dbus::ObjectProxy::ErrorCallback error_callback) {
     StubHandleMethod(kTestInterface, kTestMethod, kTestMethodCallString,
-                     kTestResponseString, method_call, timeout_ms, callback,
+                     kTestResponseString, "" /* error_name */,
+                     "" /* error_message */, method_call, timeout_ms, callback,
                      error_callback);
+  }
+
+  void StubHandleTestMethodError(
+      dbus::MethodCall* method_call,
+      int timeout_ms,
+      dbus::ObjectProxy::ResponseCallback callback,
+      dbus::ObjectProxy::ErrorCallback error_callback) {
+    StubHandleMethod(kTestInterface, kTestMethod, kTestMethodCallString,
+                     kTestResponseString, kTestErrorName,
+                     kTestErrorResponseString, method_call, timeout_ms,
+                     callback, error_callback);
   }
 
  protected:
@@ -109,6 +124,30 @@ TEST_F(CatchAllForwarderTest, ForwardMethod) {
   EXPECT_EQ(kTestSender, response->GetDestination());
   EXPECT_EQ(kTestSerial, response->GetReplySerial());
   EXPECT_EQ(kTestResponseString, response_string);
+
+  // Test message forwarding again, but this time the method returns error.
+  EXPECT_CALL(*to_bus_,
+              GetObjectProxy(kServiceDestination, dbus::ObjectPath(kTestPath)))
+      .WillOnce(Return(object_proxy.get()));
+  EXPECT_CALL(*object_proxy, CallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(
+          Invoke(this, &CatchAllForwarderTest::StubHandleTestMethodError));
+  EXPECT_CALL(*from_bus_, Send(_, _))
+      .WillOnce(Invoke([&raw_response](DBusMessage* msg, uint32_t* serial) {
+        raw_response = dbus_message_copy(msg);
+      }));
+  vtable.message_function(nullptr /* connection */, method_call.raw_message(),
+                          catch_all_forwarder_.get());
+  ASSERT_NE(nullptr, raw_response);
+  response = dbus::ErrorResponse::FromRawMessage(raw_response);
+  dbus::MessageReader error_reader(response.get());
+  error_reader.PopString(&response_string);
+  // Check that the response is the forwarded response of the stub method
+  // handler.
+  EXPECT_EQ(kTestSender, response->GetDestination());
+  EXPECT_EQ(kTestSerial, response->GetReplySerial());
+  EXPECT_EQ(kTestErrorName, response->GetErrorName());
+  EXPECT_EQ(kTestErrorResponseString, response_string);
 }
 
 }  // namespace bluetooth
