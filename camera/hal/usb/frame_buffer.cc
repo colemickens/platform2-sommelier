@@ -171,7 +171,7 @@ int V4L2FrameBuffer::Map() {
   }
   void* addr = mmap(NULL, buffer_size_, PROT_READ, MAP_SHARED, fd_.get(), 0);
   if (addr == MAP_FAILED) {
-    LOGF(ERROR) << "mmap() failed: " << strerror(errno);
+    PLOGF(ERROR) << "mmap() failed";
     return -EINVAL;
   }
   data_[0] = static_cast<uint8_t*>(addr);
@@ -182,7 +182,7 @@ int V4L2FrameBuffer::Map() {
 int V4L2FrameBuffer::Unmap() {
   base::AutoLock l(lock_);
   if (is_mapped_ && munmap(data_[0], buffer_size_)) {
-    LOGF(ERROR) << "mummap() failed: " << strerror(errno);
+    PLOGF(ERROR) << "mummap() failed";
     return -EINVAL;
   }
   is_mapped_ = false;

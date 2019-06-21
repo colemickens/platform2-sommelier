@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
   base::ScopedFD socket_fd(fd);
   int flags = HANDLE_EINTR(fcntl(socket_fd.get(), F_GETFL));
   if (flags == -1) {
-    PLOGF(ERROR) << "fcntl(F_GETFL) : " << strerror(errno);
+    PLOGF(ERROR) << "fcntl(F_GETFL)";
     return EXIT_FAILURE;
   }
   if (HANDLE_EINTR(fcntl(socket_fd.get(), F_SETFL, flags & ~O_NONBLOCK)) ==

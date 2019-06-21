@@ -724,7 +724,7 @@ void CameraDeviceAdapter::RemoveBufferLocked(
   if (release_fence != -1) {
     release_fence = dup(release_fence);
     if (release_fence == -1) {
-      LOGF(ERROR) << "Failed to dup release_fence: " << strerror(errno);
+      PLOGF(ERROR) << "Failed to dup release_fence";
       return;
     }
     scoped_release_fence.reset(release_fence);

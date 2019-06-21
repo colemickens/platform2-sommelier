@@ -361,8 +361,7 @@ int CameraBufferManagerImpl::Register(buffer_handle_t buffer) {
     // and munmap on Deregister.
     off_t size = lseek(handle->fds[0], 0, SEEK_END);
     if (size == -1) {
-      LOGF(ERROR) << "Failed to get shm buffer size through lseek: "
-                  << strerror(errno);
+      PLOGF(ERROR) << "Failed to get shm buffer size through lseek";
       return -errno;
     }
     buffer_context->shm_buffer_size = static_cast<uint32_t>(size);
@@ -371,7 +370,7 @@ int CameraBufferManagerImpl::Register(buffer_handle_t buffer) {
         mmap(nullptr, buffer_context->shm_buffer_size, PROT_READ | PROT_WRITE,
              MAP_SHARED, handle->fds[0], 0);
     if (buffer_context->mapped_addr == MAP_FAILED) {
-      LOGF(ERROR) << "Failed to mmap shm buffer: " << strerror(errno);
+      PLOGF(ERROR) << "Failed to mmap shm buffer";
       return -errno;
     }
   } else {
@@ -416,7 +415,7 @@ int CameraBufferManagerImpl::Deregister(buffer_handle_t buffer) {
       int ret =
           munmap(buffer_context->mapped_addr, buffer_context->shm_buffer_size);
       if (ret == -1) {
-        LOGF(ERROR) << "Failed to munmap shm buffer: " << strerror(errno);
+        PLOGF(ERROR) << "Failed to munmap shm buffer";
       }
       buffer_context_.erase(context_it);
     }
@@ -699,7 +698,7 @@ void* CameraBufferManagerImpl::Map(buffer_handle_t buffer,
       info->addr = gbm_bo_map(info->bo, 0, 0, handle->width, handle->height,
                               flags, &stride, &info->map_data, plane);
       if (info->addr == MAP_FAILED) {
-        LOGF(ERROR) << "Failed to map buffer: " << strerror(errno);
+        PLOGF(ERROR) << "Failed to map buffer";
         return MAP_FAILED;
       }
       info->usage = 1;

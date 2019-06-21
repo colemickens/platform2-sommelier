@@ -14,6 +14,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/posix/safe_strerror.h>
 #include <base/logging.h>
 #include <base/threading/thread.h>
 #include <base/timer/elapsed_timer.h>
@@ -89,7 +90,7 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
 
   v4l2_capability cap = {};
   if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_QUERYCAP, &cap)) != 0) {
-    LOG(ERROR) << __func__ << ": VIDIOC_QUERYCAP fail: " << strerror(errno);
+    PLOG(ERROR) << __func__ << ": VIDIOC_QUERYCAP fail";
     device_fd_.reset();
     return -errno;
   }
@@ -112,12 +113,13 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_G_FMT, &fmt));
   if (ret < 0) {
-    LOG(ERROR) << __func__ << ": Unable to G_FMT: " << strerror(errno);
+    PLOG(ERROR) << __func__ << ": Unable to G_FMT";
     return -errno;
   }
   ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_S_FMT, &fmt));
   if (ret < 0) {
-    LOG(WARNING) << __func__ << ": Unable to S_FMT: " << strerror(errno)
+    LOG(WARNING) << __func__
+                 << ": Unable to S_FMT: " << base::safe_strerror(errno)
                  << ", maybe camera is being used by another app.";
     return -errno;
   }
@@ -168,7 +170,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
   fmt.fmt.pix.pixelformat = pixel_format;
   ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_S_FMT, &fmt));
   if (ret < 0) {
-    LOG(ERROR) << __func__ << ": Unable to S_FMT: " << strerror(errno);
+    PLOG(ERROR) << __func__ << ": Unable to S_FMT";
     return -errno;
   }
   VLOG(1) << __func__ << ": Actual width: " << fmt.fmt.pix.width
@@ -221,7 +223,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
   req_buffers.count = kNumVideoBuffers;
   if (TEMP_FAILURE_RETRY(
           ioctl(device_fd_.get(), VIDIOC_REQBUFS, &req_buffers)) < 0) {
-    LOG(ERROR) << __func__ << ": REQBUFS fails: " << strerror(errno);
+    PLOG(ERROR) << __func__ << ": REQBUFS fails";
     return -errno;
   }
   VLOG(1) << "Requested buffer number: " << req_buffers.count;
@@ -235,8 +237,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
     expbuf.index = i;
     if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_EXPBUF, &expbuf)) <
         0) {
-      LOG(ERROR) << __func__ << ": EXPBUF (" << i
-                 << ") fails: " << strerror(errno);
+      PLOG(ERROR) << __func__ << ": EXPBUF (" << i << ") fails";
       return -errno;
     }
     VLOG(1) << "Exported frame buffer fd: " << expbuf.fd;
@@ -249,8 +250,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
     buffer.memory = V4L2_MEMORY_MMAP;
 
     if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_QBUF, &buffer)) < 0) {
-      LOG(ERROR) << __func__ << ": QBUF (" << i
-                 << ") fails: " << strerror(errno);
+      PLOG(ERROR) << __func__ << ": QBUF (" << i << ") fails";
       return -errno;
     }
   }
@@ -258,7 +258,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
   v4l2_buf_type capture_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   if (TEMP_FAILURE_RETRY(
           ioctl(device_fd_.get(), VIDIOC_STREAMON, &capture_type)) < 0) {
-    LOG(ERROR) << __func__ << ": STREAMON fails: " << strerror(errno);
+    PLOG(ERROR) << __func__ << ": STREAMON fails";
     return -errno;
   }
 
@@ -284,7 +284,7 @@ int V4L2CameraDevice::StreamOff() {
   v4l2_buf_type capture_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   if (TEMP_FAILURE_RETRY(
           ioctl(device_fd_.get(), VIDIOC_STREAMOFF, &capture_type)) < 0) {
-    LOG(ERROR) << __func__ << ": STREAMOFF fails: " << strerror(errno);
+    PLOG(ERROR) << __func__ << ": STREAMOFF fails";
     return -errno;
   }
   v4l2_requestbuffers req_buffers;
@@ -294,7 +294,7 @@ int V4L2CameraDevice::StreamOff() {
   req_buffers.count = 0;
   if (TEMP_FAILURE_RETRY(
           ioctl(device_fd_.get(), VIDIOC_REQBUFS, &req_buffers)) < 0) {
-    LOG(ERROR) << __func__ << ": REQBUFS fails: " << strerror(errno);
+    PLOG(ERROR) << __func__ << ": REQBUFS fails";
     return -errno;
   }
   buffers_at_client_.clear();
@@ -318,7 +318,7 @@ int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
   buffer.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   buffer.memory = V4L2_MEMORY_MMAP;
   if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_DQBUF, &buffer)) < 0) {
-    LOG(ERROR) << __func__ << ": DQBUF fails: " << strerror(errno);
+    PLOG(ERROR) << __func__ << ": DQBUF fails";
     return -errno;
   }
   VLOG(1) << "DQBUF returns index " << buffer.index << " length "
@@ -357,7 +357,7 @@ int V4L2CameraDevice::ReuseFrameBuffer(uint32_t buffer_id) {
   buffer.memory = V4L2_MEMORY_MMAP;
   buffer.index = buffer_id;
   if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_QBUF, &buffer)) < 0) {
-    LOG(ERROR) << __func__ << ": QBUF fails: " << strerror(errno);
+    PLOG(ERROR) << __func__ << ": QBUF fails";
     return -errno;
   }
   buffers_at_client_[buffer.index] = false;
@@ -586,8 +586,7 @@ int V4L2CameraDevice::RetryDeviceOpen(const std::string& device_path,
       if (ret == -1) {
         close(fd);
         if (errno != EPERM) {
-          LOG(ERROR) << __func__ << ": Failed to ioctl " << device_path << " : "
-                     << strerror(errno);
+          PLOG(ERROR) << __func__ << ": Failed to ioctl " << device_path;
           break;
         } else {
           VLOG(1) << __func__ << ": Camera ioctl is not ready";
@@ -601,8 +600,7 @@ int V4L2CameraDevice::RetryDeviceOpen(const std::string& device_path,
         return fd;
       }
     } else if (errno != ENOENT) {
-      LOG(ERROR) << __func__ << ": Failed to open " << device_path << " : "
-                 << strerror(errno);
+      PLOG(ERROR) << __func__ << ": Failed to open " << device_path;
       break;
     }
     base::PlatformThread::Sleep(
@@ -610,8 +608,7 @@ int V4L2CameraDevice::RetryDeviceOpen(const std::string& device_path,
     elapsed_time = timer.Elapsed().InMillisecondsRoundedUp();
   }
   if (elapsed_time >= kDeviceOpenTimeOutInMilliseconds) {
-    LOG(ERROR) << __func__ << ": Timeout to open " << device_path << " : "
-               << strerror(errno);
+    PLOG(ERROR) << __func__ << ": Timeout to open " << device_path;
   }
   return -1;
 }

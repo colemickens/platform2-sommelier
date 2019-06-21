@@ -411,8 +411,7 @@ int V4L2VideoNode::StopLocked() {
     // stream off
     int ret = ::ioctl(fd_, VIDIOC_STREAMOFF, &buffer_type_);
     if (ret < 0) {
-      LOGF(ERROR) << "VIDIOC_STREAMOFF returned: " << ret << " ("
-                  << strerror(errno) << ")";
+      PLOGF(ERROR) << "VIDIOC_STREAMOFF returned: " << ret;
       return ret;
     }
     state_ = VideoNodeState::PREPARED;
@@ -437,8 +436,7 @@ int V4L2VideoNode::Start() {
   // stream on
   int ret = ::ioctl(fd_, VIDIOC_STREAMON, &buffer_type_);
   if (ret < 0) {
-    LOGF(ERROR) << "VIDIOC_STREAMON returned: " << ret << " ("
-                << strerror(errno) << ")";
+    PLOGF(ERROR) << "VIDIOC_STREAMON returned: " << ret;
     return ret;
   }
 
@@ -476,8 +474,7 @@ int V4L2VideoNode::SetFormat(const V4L2Format& format) {
 
   int ret = ::ioctl(fd_, VIDIOC_S_FMT, fmt.Get());
   if (ret < 0) {
-    LOGF(ERROR) << "VIDIOC_S_FMT returned: " << ret << " (" << strerror(errno)
-                << ")";
+    PLOGF(ERROR) << "VIDIOC_S_FMT returned: " << ret;
     return ret;
   }
 
@@ -521,8 +518,7 @@ int V4L2VideoNode::SetSelection(const struct v4l2_selection& selection) {
 
   int ret = ::ioctl(fd_, VIDIOC_S_SELECTION, sel);
   if (ret < 0) {
-    LOGF(ERROR) << "VIDIOC_S_SELECTION returned: " << ret << " ("
-                << strerror(errno) << ")";
+    PLOGF(ERROR) << "VIDIOC_S_SELECTION returned: " << ret;
   }
   return ret;
 }
@@ -560,7 +556,7 @@ int V4L2VideoNode::MapMemory(unsigned int index,
     void* res =
         ::mmap(nullptr, buffer.Length(i), prot, flags, fd_, buffer.Offset(i));
     if (res == MAP_FAILED) {
-      LOGF(ERROR) << "mmap failed: " << strerror(errno);
+      PLOGF(ERROR) << "mmap failed";
       return -EINVAL;
     }
     mapped->push_back(res);
@@ -622,8 +618,7 @@ int V4L2VideoNode::ExportFrame(unsigned int index, std::vector<int>* fds) {
   for (uint32_t i = 0; i < num_planes; i++) {
     ret = ::ioctl(fd_, VIDIOC_EXPBUF, &ebuf);
     if (ret < 0) {
-      LOGF(ERROR) << name_ << " VIDIOC_EXPBUF failed ret " << ret << " : "
-                  << strerror(errno);
+      PLOGF(ERROR) << name_ << " VIDIOC_EXPBUF failed ret " << ret;
       return ret;
     } else {
       fds->push_back(ebuf.fd);
@@ -680,8 +675,7 @@ int V4L2VideoNode::QueryCap(struct v4l2_capability* cap) {
   int ret = ::ioctl(fd_, VIDIOC_QUERYCAP, cap);
 
   if (ret < 0) {
-    LOGF(ERROR) << name_ << " VIDIOC_QUERYCAP returned: " << ret << " ("
-                << strerror(errno) << ")";
+    PLOGF(ERROR) << name_ << " VIDIOC_QUERYCAP returned: " << ret;
     return ret;
   }
 
@@ -712,8 +706,8 @@ int V4L2VideoNode::RequestBuffers(size_t num_buffers,
   int ret = ::ioctl(fd_, VIDIOC_REQBUFS, &req_buf);
 
   if (ret < 0) {
-    LOGF(ERROR) << name_ << " VIDIOC_REQBUFS(" << num_buffers
-                << ") returned: " << ret << " (" << strerror(errno);
+    PLOGF(ERROR) << name_ << " VIDIOC_REQBUFS(" << num_buffers
+                 << ") returned: " << ret;
     return ret;
   }
 
@@ -748,7 +742,7 @@ int V4L2VideoNode::Qbuf(V4L2Buffer* buf) {
 
   int ret = ::ioctl(fd_, VIDIOC_QBUF, buf->Get());
   if (ret < 0) {
-    LOGF(ERROR) << name_ << " VIDIOC_QBUF failed:" << strerror(errno);
+    PLOGF(ERROR) << name_ << " VIDIOC_QBUF failed";
   }
   return ret;
 }
@@ -760,7 +754,7 @@ int V4L2VideoNode::Dqbuf(V4L2Buffer* buf) {
 
   int ret = ::ioctl(fd_, VIDIOC_DQBUF, buf->Get());
   if (ret < 0) {
-    LOGF(ERROR) << name_ << " VIDIOC_DQBUF failed: " << strerror(errno);
+    PLOGF(ERROR) << name_ << " VIDIOC_DQBUF failed";
   }
   return ret;
 }
@@ -776,7 +770,7 @@ int V4L2VideoNode::QueryBuffer(int index,
   int ret = ::ioctl(fd_, VIDIOC_QUERYBUF, buf->Get());
 
   if (ret < 0) {
-    LOGF(ERROR) << name_ << " VIDIOC_QUERYBUF failed: " << strerror(errno);
+    PLOGF(ERROR) << name_ << " VIDIOC_QUERYBUF failed";
     return ret;
   }
 
@@ -812,7 +806,7 @@ int V4L2VideoNode::GetFormat(V4L2Format* format) {
   int ret = ::ioctl(fd_, VIDIOC_G_FMT, format->Get());
 
   if (ret < 0) {
-    LOGF(ERROR) << name_ << " VIDIOC_G_FMT failed: " << strerror(errno);
+    PLOGF(ERROR) << name_ << " VIDIOC_G_FMT failed";
     return -EINVAL;
   }
 

@@ -241,7 +241,7 @@ MojoResult CreateMojoChannelToChildByUnixDomainSocket(
   if (mojo::edk::PlatformChannelSendmsgWithHandles(
           mojo::edk::PlatformHandle(client_socket_fd.get()), &iov, 1,
           handles->data(), handles->size()) == -1) {
-    LOGF(ERROR) << "Failed to send token and handle: " << strerror(errno);
+    PLOGF(ERROR) << "Failed to send token and handle";
     return MOJO_RESULT_INTERNAL;
   }
 

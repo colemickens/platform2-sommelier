@@ -77,7 +77,7 @@ int V4L2Subdevice::SetFormat(const struct v4l2_subdev_format& format) {
 
   int ret = ::ioctl(fd_, VIDIOC_SUBDEV_S_FMT, &format);
   if (ret < 0) {
-    LOGF(ERROR) << "VIDIOC_SUBDEV_S_FMT failed: " << strerror(errno);
+    PLOGF(ERROR) << "VIDIOC_SUBDEV_S_FMT failed";
     return -EINVAL;
   }
 
@@ -103,7 +103,7 @@ int V4L2Subdevice::GetFormat(struct v4l2_subdev_format* format) {
 
   int ret = ::ioctl(fd_, VIDIOC_SUBDEV_G_FMT, format);
   if (ret < 0) {
-    LOGF(ERROR) << "VIDIOC_SUBDEV_G_FMT failed: " << strerror(errno);
+    PLOGF(ERROR) << "VIDIOC_SUBDEV_G_FMT failed";
     return -EINVAL;
   }
 
@@ -157,7 +157,7 @@ int V4L2Subdevice::SetSelection(const struct v4l2_subdev_selection& selection) {
 
   int ret = ::ioctl(fd_, VIDIOC_SUBDEV_S_SELECTION, &selection);
   if (ret < 0) {
-    LOGF(ERROR) << "VIDIOC_SUBDEV_S_SELECTION failed: " << strerror(errno);
+    PLOGF(ERROR) << "VIDIOC_SUBDEV_S_SELECTION failed";
   }
   return ret;
 }
