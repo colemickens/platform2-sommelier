@@ -130,9 +130,9 @@ void Error::PopulateAndLog(const base::Location& from_here,
   }
 }
 
-}  // namespace shill
-
-std::ostream& operator<<(std::ostream& stream, const shill::Error& error) {
+std::ostream& operator<<(std::ostream& stream, const Error& error) {
   stream << error.GetDBusResult(error.type()) << ": " << error.message();
   return stream;
 }
+
+}  // namespace shill

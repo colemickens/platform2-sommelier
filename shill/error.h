@@ -94,9 +94,9 @@ class Error {
   DISALLOW_COPY_AND_ASSIGN(Error);
 };
 
-}  // namespace shill
-
 // stream operator provided to facilitate logging
 std::ostream& operator<<(std::ostream& stream, const shill::Error& error);
+
+}  // namespace shill
 
 #endif  // SHILL_ERROR_H_

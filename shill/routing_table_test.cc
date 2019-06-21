@@ -293,15 +293,11 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
 
   int metric = 10;
 
-  RoutingTableEntry entry0(default_address,
-                           default_address,
-                           gateway_address0,
-                           metric,
-                           RT_SCOPE_UNIVERSE,
-                           true,
-                           kTestTableId,
-                           RTN_UNICAST,
-                           RoutingTableEntry::kDefaultTag);
+  auto entry0 = RoutingTableEntry::Create(default_address, default_address,
+                                          gateway_address0)
+                    .SetMetric(metric)
+                    .SetTable(kTestTableId);
+  entry0.from_rtnl = true;
   // Add a single entry.
   SendRouteEntry(RTNLMessage::kModeAdd,
                  kTestDeviceIndex0,
@@ -335,12 +331,10 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   IPAddress gateway_address1(IPAddress::kFamilyIPv4);
   gateway_address1.SetAddressFromString(kTestNetAddress1);
 
-  RoutingTableEntry entry1(default_address,
-                           default_address,
-                           gateway_address1,
-                           metric,
-                           RT_SCOPE_UNIVERSE,
-                           true);
+  auto entry1 = RoutingTableEntry::Create(default_address, default_address,
+                                          gateway_address1)
+                    .SetMetric(metric);
+  entry1.from_rtnl = true;
 
   // Add a second gateway route to the second interface.
   SendRouteEntry(RTNLMessage::kModeAdd,
@@ -575,15 +569,11 @@ TEST_F(RoutingTableTest, LowestMetricDefault) {
   IPAddress gateway_address0(IPAddress::kFamilyIPv4);
   gateway_address0.SetAddressFromString(kTestNetAddress0);
 
-  RoutingTableEntry entry(default_address,
-                          default_address,
-                          gateway_address0,
-                          2 /* metric */,
-                          RT_SCOPE_UNIVERSE,
-                          true /* from_rtnl_in */,
-                          kTestTableId,
-                          RTN_UNICAST,
-                          RoutingTableEntry::kDefaultTag);
+  auto entry = RoutingTableEntry::Create(default_address, default_address,
+                                         gateway_address0)
+                   .SetMetric(2)
+                   .SetTable(kTestTableId);
+  entry.from_rtnl = true;
 
   // Add the same entry three times, with different metrics.
   SendRouteEntry(RTNLMessage::kModeAdd,
@@ -619,15 +609,11 @@ TEST_F(RoutingTableTest, IPv6StatelessAutoconfiguration) {
   IPAddress gateway_address(IPAddress::kFamilyIPv6);
   gateway_address.SetAddressFromString(kTestV6NetAddress0);
 
-  RoutingTableEntry entry0(default_address,
-                           default_address,
-                           gateway_address,
-                           1024 /* metric_in */,
-                           RT_SCOPE_UNIVERSE,
-                           true /* from_rtnl_in */,
-                           kTestTableId,
-                           RTN_UNICAST,
-                           RoutingTableEntry::kDefaultTag);
+  auto entry0 = RoutingTableEntry::Create(default_address, default_address,
+                                          gateway_address)
+                    .SetMetric(1024)
+                    .SetTable(kTestTableId);
+  entry0.from_rtnl = true;
   entry0.protocol = RTPROT_RA;
 
   // Simulate an RTPROT_RA kernel message indicating that it processed a
@@ -656,15 +642,11 @@ TEST_F(RoutingTableTest, IPv6StatelessAutoconfiguration) {
   IPAddress non_default_address(IPAddress::kFamilyIPv6);
   non_default_address.SetAddressFromString(kTestV6NetAddress1);
 
-  RoutingTableEntry entry1(non_default_address,
-                           default_address,
-                           gateway_address,
-                           1024 /* metric_in */,
-                           RT_SCOPE_UNIVERSE,
-                           true /* from_rtnl_in */,
-                           kTestTableId,
-                           RTN_UNICAST,
-                           RoutingTableEntry::kDefaultTag);
+  auto entry1 = RoutingTableEntry::Create(non_default_address, default_address,
+                                          gateway_address)
+                    .SetMetric(1024)
+                    .SetTable(kTestTableId);
+  entry1.from_rtnl = true;
 
   // Simulate an RTPROT_RA kernel message.
   SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd,
@@ -705,15 +687,10 @@ TEST_F(RoutingTableTest, ConfigureRoutes) {
   destination_address.set_prefix(kTestRemotePrefix4);
   ASSERT_TRUE(gateway_address.SetAddressFromString(kTestGatewayAddress4));
 
-  RoutingTableEntry entry(destination_address,
-                          source_address,
-                          gateway_address,
-                          kMetric,
-                          RT_SCOPE_UNIVERSE,
-                          false,
-                          kTestTableId,
-                          RTN_UNICAST,
-                          RoutingTableEntry::kDefaultTag);
+  auto entry = RoutingTableEntry::Create(destination_address, source_address,
+                                         gateway_address)
+                   .SetMetric(kMetric)
+                   .SetTable(kTestTableId);
 
   EXPECT_CALL(rtnl_handler_,
               DoSendMessage(IsRoutingPacket(RTNLMessage::kModeAdd,
@@ -800,15 +777,11 @@ TEST_F(RoutingTableTest, RequestHostRoute) {
   local_address.SetAddressFromString(kTestDeviceNetAddress4);
 
   const int kMetric = 10;
-  RoutingTableEntry entry(destination_address,
-                          local_address,
-                          gateway_address,
-                          kMetric,
-                          RT_SCOPE_UNIVERSE,
-                          true,
-                          kTestTableId,
-                          RTN_UNICAST,
-                          RoutingTableEntry::kDefaultTag);
+  auto entry = RoutingTableEntry::Create(destination_address, local_address,
+                                         gateway_address)
+                   .SetMetric(kMetric)
+                   .SetTable(kTestTableId);
+  entry.from_rtnl = true;
 
   EXPECT_CALL(rtnl_handler_,
               DoSendMessage(IsRoutingPacket(RTNLMessage::kModeAdd,
@@ -874,12 +847,10 @@ TEST_F(RoutingTableTest, RequestHostRouteWithoutGateway) {
   local_address.SetAddressFromString(kTestDeviceNetAddress4);
 
   const int kMetric = 10;
-  RoutingTableEntry entry(destination_address,
-                          local_address,
-                          gateway_address,
-                          kMetric,
-                          RT_SCOPE_UNIVERSE,
-                          true);
+  auto entry = RoutingTableEntry::Create(destination_address, local_address,
+                                         gateway_address)
+                   .SetMetric(kMetric);
+  entry.from_rtnl = true;
 
   // Ensure that without a gateway entry, we don't create a route.
   EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _)).Times(0);
@@ -907,12 +878,9 @@ TEST_F(RoutingTableTest, RequestHostRouteBadSequence) {
                                          kTestTableId));
   EXPECT_FALSE(GetQueries()->empty());
 
-  RoutingTableEntry entry(destination_address,
-                          destination_address,
-                          destination_address,
-                          0,
-                          RT_SCOPE_UNIVERSE,
-                          true);
+  auto entry = RoutingTableEntry::Create(
+      destination_address, destination_address, destination_address);
+  entry.from_rtnl = true;
 
   // Try a sequence arriving before the one RoutingTable is looking for.
   // This should be a no-op.
@@ -951,12 +919,11 @@ TEST_F(RoutingTableTest, RequestHostRouteWithCallback) {
   gateway_address.SetAddressFromString(kTestGatewayAddress4);
 
   const int kMetric = 10;
-  RoutingTableEntry entry(destination_address,
-                          IPAddress(IPAddress::kFamilyIPv4),
-                          gateway_address,
-                          kMetric,
-                          RT_SCOPE_UNIVERSE,
-                          true);
+  auto entry = RoutingTableEntry::Create(destination_address,
+                                         IPAddress(IPAddress::kFamilyIPv4),
+                                         gateway_address)
+                   .SetMetric(kMetric);
+  entry.from_rtnl = true;
 
   EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _));
   EXPECT_CALL(target,
@@ -984,12 +951,11 @@ TEST_F(RoutingTableTest, RequestHostRouteWithoutGatewayWithCallback) {
                                          kTestTableId));
 
   const int kMetric = 10;
-  RoutingTableEntry entry(destination_address,
-                          IPAddress(IPAddress::kFamilyIPv4),
-                          IPAddress(IPAddress::kFamilyIPv4),
-                          kMetric,
-                          RT_SCOPE_UNIVERSE,
-                          true);
+  auto entry = RoutingTableEntry::Create(destination_address,
+                                         IPAddress(IPAddress::kFamilyIPv4),
+                                         IPAddress(IPAddress::kFamilyIPv4))
+                   .SetMetric(kMetric);
+  entry.from_rtnl = true;
 
   EXPECT_CALL(target,
               MockedTarget(kTestDeviceIndex0,
@@ -1018,12 +984,11 @@ TEST_F(RoutingTableTest, CancelQueryCallback) {
   // Cancels the callback by destroying the owner object.
   target.reset();
   const int kMetric = 10;
-  RoutingTableEntry entry(IPAddress(IPAddress::kFamilyIPv4),
-                          IPAddress(IPAddress::kFamilyIPv4),
-                          IPAddress(IPAddress::kFamilyIPv4),
-                          kMetric,
-                          RT_SCOPE_UNIVERSE,
-                          true);
+  auto entry = RoutingTableEntry::Create(IPAddress(IPAddress::kFamilyIPv4),
+                                         IPAddress(IPAddress::kFamilyIPv4),
+                                         IPAddress(IPAddress::kFamilyIPv4))
+                   .SetMetric(kMetric);
+  entry.from_rtnl = true;
   SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd,
                                 kTestDeviceIndex0,
                                 entry,
@@ -1054,15 +1019,10 @@ TEST_F(RoutingTableTest, CreateLinkRoute) {
   IPAddress remote_address_with_prefix(remote_address);
   remote_address_with_prefix.set_prefix(
       IPAddress::GetMaxPrefixLength(remote_address_with_prefix.family()));
-  RoutingTableEntry entry(remote_address_with_prefix,
-                          local_address,
-                          default_address,
-                          0,
-                          RT_SCOPE_LINK,
-                          false,
-                          kTestTableId,
-                          RTN_UNICAST,
-                          RoutingTableEntry::kDefaultTag);
+  auto entry = RoutingTableEntry::Create(remote_address_with_prefix,
+                                         local_address, default_address)
+                   .SetScope(RT_SCOPE_LINK)
+                   .SetTable(kTestTableId);
   EXPECT_CALL(rtnl_handler_,
               DoSendMessage(IsRoutingPacket(RTNLMessage::kModeAdd,
                                             kTestDeviceIndex0,

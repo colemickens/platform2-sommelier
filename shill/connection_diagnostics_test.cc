@@ -4,6 +4,7 @@
 
 #include "shill/connection_diagnostics.h"
 
+#include <linux/rtnetlink.h>
 #include <net/if_arp.h>
 
 #include <memory>
@@ -481,9 +482,11 @@ class ConnectionDiagnosticsTest : public Test {
     // the local IPv4 web server, or find a neighbor table entry for the local
     // IPv6 web server.
     EXPECT_CALL(dispatcher_, PostTask(_, _));
-    RoutingTableEntry entry(
-        address_queried, IPAddress(address_queried.family()), gateway, 0,
-        RT_SCOPE_UNIVERSE, true, connection_->table_id(), RTN_UNICAST, -1);
+    auto entry =
+        RoutingTableEntry::Create(address_queried,
+                                  IPAddress(address_queried.family()), gateway)
+            .SetTable(connection_->table_id());
+    entry.from_rtnl = true;
     connection_diagnostics_.OnRouteQueryResponse(connection_->interface_index(),
                                                  entry);
   }

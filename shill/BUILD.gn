@@ -348,6 +348,7 @@ static_library("libshill") {
     "resolver.cc",
     "result_aggregator.cc",
     "routing_table.cc",
+    "routing_table_entry.cc",
     "rpc_task.cc",
     "scope_logger.cc",
     "scoped_umask.cc",

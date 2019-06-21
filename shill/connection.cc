@@ -139,15 +139,10 @@ bool Connection::SetupExcludedRoutes(const IPConfig::Properties& properties,
   // Traffic that matches the RTN_THROW entry will cause the kernel to
   // stop traversing our routing table and try the next rule in the list.
   IPAddress empty_ip(properties.address_family);
-  RoutingTableEntry entry(empty_ip,
-                          empty_ip,
-                          empty_ip,
-                          0,
-                          RT_SCOPE_LINK,
-                          false,
-                          table_id_,
-                          RTN_THROW,
-                          RoutingTableEntry::kDefaultTag);
+  auto entry = RoutingTableEntry::Create(empty_ip, empty_ip, empty_ip)
+                   .SetScope(RT_SCOPE_LINK)
+                   .SetTable(table_id_)
+                   .SetType(RTN_THROW);
   for (const auto& excluded_ip : excluded_ips_cidr_) {
     if (!entry.dst.SetAddressAndPrefixFromString(excluded_ip) ||
         !entry.dst.IsValid() ||
@@ -581,15 +576,11 @@ bool Connection::FixGatewayReachability(const IPAddress& local,
   gateway_with_max_prefix.set_prefix(
       IPAddress::GetMaxPrefixLength(gateway_with_max_prefix.family()));
   IPAddress default_address(gateway->family());
-  RoutingTableEntry entry(gateway_with_max_prefix,
-                          default_address,
-                          default_address,
-                          0,
-                          RT_SCOPE_LINK,
-                          false,
-                          table_id_,
-                          RTN_UNICAST,
-                          RoutingTableEntry::kDefaultTag);
+  auto entry = RoutingTableEntry::Create(gateway_with_max_prefix,
+                                         default_address, default_address)
+                   .SetScope(RT_SCOPE_LINK)
+                   .SetTable(table_id_)
+                   .SetType(RTN_UNICAST);
 
   if (!routing_table_->AddRoute(interface_index_, entry)) {
     LOG(ERROR) << "Unable to add link-scoped route to gateway.";

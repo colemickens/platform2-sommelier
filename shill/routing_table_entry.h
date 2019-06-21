@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,158 +8,28 @@
 #include <iostream>
 #include <string>
 
-#include <base/strings/stringprintf.h>
-#include <linux/rtnetlink.h>
-
 #include "shill/net/ip_address.h"
 
 namespace shill {
 
 // Represents a single entry in a routing table.
 struct RoutingTableEntry {
- public:
-  static const int kDefaultTag = -1;
+  static const int kDefaultTag;
 
-  RoutingTableEntry()
-      : dst(IPAddress::kFamilyUnknown),
-        src(IPAddress::kFamilyUnknown),
-        gateway(IPAddress::kFamilyUnknown),
-        metric(0),
-        scope(0),
-        from_rtnl(false),
-        table(RT_TABLE_MAIN),
-        type(RTN_UNICAST),
-        protocol(RTPROT_BOOT),
-        tag(kDefaultTag) {}
+  RoutingTableEntry();
 
-  RoutingTableEntry(const IPAddress& dst_in,
-                    const IPAddress& src_in,
-                    const IPAddress& gateway_in,
-                    uint32_t metric_in,
-                    unsigned char scope_in,
-                    bool from_rtnl_in)
-      : dst(dst_in),
-        src(src_in),
-        gateway(gateway_in),
-        metric(metric_in),
-        scope(scope_in),
-        from_rtnl(from_rtnl_in),
-        table(RT_TABLE_MAIN),
-        type(RTN_UNICAST),
-        protocol(RTPROT_BOOT),
-        tag(kDefaultTag) {}
+  static RoutingTableEntry Create(IPAddress::Family family);
+  static RoutingTableEntry Create(const IPAddress& dst_in,
+                                  const IPAddress& src_in,
+                                  const IPAddress& gateway_in);
 
-  RoutingTableEntry(const IPAddress& dst_in,
-                    const IPAddress& src_in,
-                    const IPAddress& gateway_in,
-                    uint32_t metric_in,
-                    unsigned char scope_in,
-                    bool from_rtnl_in,
-                    int tag_in)
-      : dst(dst_in),
-        src(src_in),
-        gateway(gateway_in),
-        metric(metric_in),
-        scope(scope_in),
-        from_rtnl(from_rtnl_in),
-        table(RT_TABLE_MAIN),
-        type(RTN_UNICAST),
-        protocol(RTPROT_BOOT),
-        tag(tag_in) {}
+  RoutingTableEntry& SetMetric(uint32_t metric_in);
+  RoutingTableEntry& SetScope(unsigned char scope_in);
+  RoutingTableEntry& SetTable(uint8_t table_in);
+  RoutingTableEntry& SetType(unsigned char type_in);
+  RoutingTableEntry& SetTag(uint8_t tag_in);
 
-  RoutingTableEntry(const IPAddress& dst_in,
-                    const IPAddress& src_in,
-                    const IPAddress& gateway_in,
-                    uint32_t metric_in,
-                    unsigned char scope_in,
-                    bool from_rtnl_in,
-                    unsigned char table_in,
-                    unsigned char type_in,
-                    int tag_in)
-      : dst(dst_in),
-        src(src_in),
-        gateway(gateway_in),
-        metric(metric_in),
-        scope(scope_in),
-        from_rtnl(from_rtnl_in),
-        table(table_in),
-        type(type_in),
-        protocol(RTPROT_BOOT),
-        tag(tag_in) {}
-
-  bool operator==(const RoutingTableEntry& b) const {
-    return (dst.Equals(b.dst) &&
-            src.Equals(b.src) &&
-            gateway.Equals(b.gateway) &&
-            metric == b.metric &&
-            scope == b.scope &&
-            from_rtnl == b.from_rtnl &&
-            table == b.table &&
-            type == b.type &&
-            protocol == b.protocol &&
-            tag == b.tag);
-  }
-
-  // Print out an entry in a format similar to that of ip route.
-  friend std::ostream& operator<<(std::ostream& os,
-                                  const RoutingTableEntry& entry) {
-    std::string dest_address =
-      entry.dst.IsDefault() ? "default" : entry.dst.ToString();
-    const char *dest_prefix;
-    switch (entry.type) {
-      case RTN_LOCAL:
-        dest_prefix = "local ";
-        break;
-      case RTN_BROADCAST:
-        dest_prefix = "broadcast ";
-        break;
-      case RTN_BLACKHOLE:
-        dest_prefix = "blackhole";
-        dest_address = "";  // Don't print the address.
-        break;
-      case RTN_UNREACHABLE:
-        dest_prefix = "unreachable";
-        dest_address = "";  // Don't print the address.
-        break;
-      default:
-        dest_prefix = "";
-        break;
-    }
-    std::string gateway;
-    if (!entry.gateway.IsDefault()) {
-      gateway = " via " + entry.gateway.ToString();
-    }
-    std::string protocol;
-    switch (entry.protocol) {
-      case RTPROT_BOOT:
-        // Use existing ip route behavior and don't show the protocol if it is
-        // the default RTPROT_BOOT.
-        break;
-      case RTPROT_KERNEL:
-        protocol = " proto kernel";
-        break;
-      case RTPROT_STATIC:
-        protocol = " proto static";
-        break;
-      case RTPROT_RA:
-        protocol = " proto ra";
-        break;
-      default:
-        protocol = " proto " + std::to_string(entry.protocol);
-        break;
-    }
-    std::string src;
-    if (!entry.src.IsDefault()) {
-      src = " src " + entry.src.ToString();
-    }
-
-    os << base::StringPrintf(
-      "%s%s%s%s metric %d %s table %d%s",
-      dest_prefix, dest_address.c_str(), gateway.c_str(), protocol.c_str(),
-      entry.metric, IPAddress::GetAddressFamilyName(entry.dst.family()).c_str(),
-      static_cast<int>(entry.table), src.c_str());
-    return os;
-  }
+  bool operator==(const RoutingTableEntry& b) const;
 
   IPAddress dst;
   IPAddress src;
@@ -167,15 +37,17 @@ struct RoutingTableEntry {
   uint32_t metric;
   unsigned char scope;
   bool from_rtnl;
-  unsigned char table;
+  uint8_t table;
   unsigned char type;
   unsigned char protocol;
   int tag;
 };
 
+// Print out an entry in a format similar to that of ip route.
+std::ostream& operator<<(std::ostream& os, const RoutingTableEntry& entry);
+
 // Represents a single policy routing rule.
 struct RoutingPolicyEntry {
- public:
   RoutingPolicyEntry() = default;
 
   RoutingPolicyEntry(IPAddress::Family family_in,
@@ -218,8 +90,8 @@ struct RoutingPolicyEntry {
             uidrange_start == b.uidrange_start &&
             uidrange_end == b.uidrange_end &&
             interface_name == b.interface_name &&
-            dst.Equals(b.dst) &&
-            src.Equals(b.src));
+            dst == b.dst &&
+            src == b.src);
   }
 
   IPAddress::Family family{IPAddress::kFamilyUnknown};

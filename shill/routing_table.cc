@@ -273,15 +273,10 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
   default_address.SetAddressToDefault();
 
   return AddRoute(interface_index,
-                  RoutingTableEntry(default_address,
-                                    default_address,
-                                    gateway_address,
-                                    metric,
-                                    RT_SCOPE_UNIVERSE,
-                                    false,
-                                    table_id,
-                                    RTN_UNICAST,
-                                    RoutingTableEntry::kDefaultTag));
+                  RoutingTableEntry::Create(default_address, default_address,
+                                            gateway_address)
+                      .SetMetric(metric)
+                      .SetTable(table_id));
 }
 
 bool RoutingTable::ConfigureRoutes(int interface_index,
@@ -315,15 +310,10 @@ bool RoutingTable::ConfigureRoutes(int interface_index,
     }
     destination_address.set_prefix(route.prefix);
     if (!AddRoute(interface_index,
-                  RoutingTableEntry(destination_address,
-                                    source_address,
-                                    gateway_address,
-                                    metric,
-                                    RT_SCOPE_UNIVERSE,
-                                    false,
-                                    table_id,
-                                    RTN_UNICAST,
-                                    RoutingTableEntry::kDefaultTag))) {
+                  RoutingTableEntry::Create(destination_address, source_address,
+                                            gateway_address)
+                      .SetMetric(metric)
+                      .SetTable(table_id))) {
       ret = false;
     }
   }
@@ -668,16 +658,11 @@ bool RoutingTable::CreateBlackholeRoute(int interface_index,
       "%s: family %s metric %d",
       __func__, IPAddress::GetAddressFamilyName(family).c_str(), metric);
 
-  IPAddress any_addr(family);
-  RoutingTableEntry entry(any_addr,
-                          any_addr,
-                          any_addr,
-                          metric,
-                          RT_SCOPE_UNIVERSE,
-                          false,
-                          table_id,
-                          RTN_BLACKHOLE,
-                          0);
+  auto entry = RoutingTableEntry::Create(family)
+                   .SetMetric(metric)
+                   .SetTable(table_id)
+                   .SetType(RTN_BLACKHOLE)
+                   .SetTag(0);
   return AddRoute(interface_index, entry);
 }
 
@@ -701,15 +686,10 @@ bool RoutingTable::CreateLinkRoute(int interface_index,
                 << " from " << local_address.ToString()
                 << " on interface index " << interface_index;
   return AddRoute(interface_index,
-                  RoutingTableEntry(destination_address,
-                                    local_address,
-                                    default_address,
-                                    0,
-                                    RT_SCOPE_LINK,
-                                    false,
-                                    table_id,
-                                    RTN_UNICAST,
-                                    RoutingTableEntry::kDefaultTag));
+                  RoutingTableEntry::Create(destination_address, local_address,
+                                            default_address)
+                      .SetScope(RT_SCOPE_LINK)
+                      .SetTable(table_id));
 }
 
 bool RoutingTable::ApplyRule(uint32_t interface_index,

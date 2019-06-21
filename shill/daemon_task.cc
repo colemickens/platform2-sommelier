@@ -4,6 +4,8 @@
 
 #include "shill/daemon_task.h"
 
+#include <linux/rtnetlink.h>
+
 #include <base/bind.h>
 
 #include "shill/control_interface.h"

@@ -4,6 +4,8 @@
 
 #include "shill/connection_diagnostics.h"
 
+#include <linux/rtnetlink.h>
+
 #include <base/bind.h>
 #include <base/strings/stringprintf.h>
 
