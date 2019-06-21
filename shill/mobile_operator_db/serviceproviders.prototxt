@@ -13831,6 +13831,7 @@ mno {
       post_data : "mdn=${mdn}&meid=${meid}"
     }
     mccmnc : "310995"
+    mccmnc : "311270"
     mccmnc : "311480"
     mobile_apn {
       apn : "vzwinternet"
