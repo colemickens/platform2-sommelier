@@ -13094,13 +13094,21 @@ mno {
     localized_name {
       name : "AT&T"
     }
+    mccmnc : "310030"
     mccmnc : "310038"
+    mccmnc : "310070"
     mccmnc : "310090"
     mccmnc : "310150"
     mccmnc : "310170"
+    mccmnc : "310280"
+    mccmnc : "310380"
     mccmnc : "310410"
     mccmnc : "310560"
+    mccmnc : "310670"
     mccmnc : "310680"
+    mccmnc : "310950"
+    mccmnc : "310980"
+    mccmnc : "311180"
     mobile_apn {
       apn : "broadband"
       localized_name {
