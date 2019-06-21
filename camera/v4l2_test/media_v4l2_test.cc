@@ -12,15 +12,15 @@
 #include <string>
 #include <vector>
 
-#include "base/at_exit.h"
-#include "base/command_line.h"
-#include "base/files/file_path.h"
-#include "base/files/file_util.h"
-#include "gtest/gtest.h"
+#include <base/at_exit.h>
+#include <base/command_line.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <gtest/gtest.h>
 
-#include "camera_characteristics.h"
-#include "common_types.h"
-#include "media_v4l2_device.h"
+#include "v4l2_test/camera_characteristics.h"
+#include "v4l2_test/common_types.h"
+#include "v4l2_test/media_v4l2_device.h"
 
 struct TestCropping {
   bool check_cropping = false;
@@ -115,20 +115,20 @@ bool GetSupportedFormats(V4L2Device* device,
     if (!device->EnumFrameSize(format.fourcc, &num_frame_size, false)) {
       printf("[Error] Enumerate frame size error\n");
       return false;
-    };
+    }
 
     for (uint32_t j = 0; j < num_frame_size; ++j) {
       if (!device->GetFrameSize(j, format.fourcc, &format.width,
                                 &format.height)) {
         printf("[Error] Get frame size error\n");
         return false;
-      };
+      }
       uint32_t num_frame_rate;
       if (!device->EnumFrameInterval(format.fourcc, format.width, format.height,
                                      &num_frame_rate, false)) {
         printf("[Error] Enumerate frame interval error\n");
         return false;
-      };
+      }
 
       format.frame_rates.clear();
       float frame_rate;
@@ -137,7 +137,7 @@ bool GetSupportedFormats(V4L2Device* device,
                                       format.height, &frame_rate)) {
           printf("[Error] Get frame interval error\n");
           return false;
-        };
+        }
         // All supported resolution should have at least 1 fps.
         if (frame_rate < 1.0) {
           printf("[Error] Frame rate should be at least 1.\n");
@@ -498,8 +498,9 @@ bool TestFirstFrameAfterStreamOn(const std::string& dev_name,
 
     uint32_t buf_index, data_size;
     int ret;
-    while ((ret = device->ReadOneFrame(&buf_index, &data_size)) == 0)
-      ;
+    do {
+      ret = device->ReadOneFrame(&buf_index, &data_size);
+    } while (ret == 0);
     if (ret < 0) {
       return false;
     }

@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_CHARACTERISTICS_H_
-#define CAMERA_CHARACTERISTICS_H_
+#ifndef CAMERA_V4L2_TEST_CAMERA_CHARACTERISTICS_H_
+#define CAMERA_V4L2_TEST_CAMERA_CHARACTERISTICS_H_
 
 #include <map>
 #include <string>
@@ -14,7 +14,7 @@
 #include <base/files/file.h>
 #include <base/macros.h>
 
-#include "common_types.h"
+#include "v4l2_test/common_types.h"
 
 // /etc/camera/camera_characteristics.conf contains camera information which
 // driver cannot provide.
@@ -66,4 +66,4 @@ class CameraCharacteristics {
   DISALLOW_COPY_AND_ASSIGN(CameraCharacteristics);
 };
 
-#endif  // CAMERA_CHARACTERISTICS_H_
+#endif  // CAMERA_V4L2_TEST_CAMERA_CHARACTERISTICS_H_

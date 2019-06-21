@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "camera_characteristics.h"
+#include "v4l2_test/camera_characteristics.h"
 
 #include <fstream>
 #include <map>

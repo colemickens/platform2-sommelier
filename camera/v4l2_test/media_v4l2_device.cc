@@ -2,17 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "media_v4l2_device.h"
+#include "v4l2_test/media_v4l2_device.h"
 
-#include <assert.h>
 #include <poll.h>
-#include <time.h>
 #include <sys/stat.h>
 
+#include <cassert>
+#include <ctime>
 #include <string>
 #include <utility>
 
 #define CHECK(a) assert(a)
+#define CHECK_EQ(a, b) assert(a == b)
 #define MAJOR(dev) (((uint32_t)(dev)) >> 8)
 #define MINOR(dev) (((uint32_t)(dev)) & 0xff)
 #define V4L2_VIDEO_CAPTURE_MAJOR 81
@@ -241,8 +242,9 @@ bool V4L2Device::StartCapture() {
   uint32_t buf_index, data_size;
   for (size_t i = 0; i < num_skip_frames_; i++) {
     int ret;
-    while ((ret = ReadOneFrame(&buf_index, &data_size)) == 0)
-      ;
+    do {
+      ret = ReadOneFrame(&buf_index, &data_size);
+    } while (ret == 0);
     if (ret < 0)
       return false;
     if (!EnqueueBuffer(buf_index))
@@ -368,7 +370,7 @@ int32_t V4L2Device::ReadOneFrame(uint32_t* buffer_index, uint32_t* data_size) {
       ts = buf.timestamp.tv_sec * 1000000000LL + buf.timestamp.tv_usec * 1000;
       frame_timestamps_.push_back(ts);
       CHECK(buf.index < num_buffers_);
-      // TODO: uvcvideo driver ignores this field. This is negligible,
+      // TODO(henryhsu): uvcvideo driver ignores this field. This is negligible,
       // so disabling this for now until we get a fix into the upstream driver.
       // CHECK(buf.field == V4L2_FIELD_NONE);  // progressive only.
       break;
@@ -419,7 +421,8 @@ bool V4L2Device::EnqueueBuffer(uint32_t buffer_index) {
       buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
       buf.memory = V4L2_MEMORY_USERPTR;
       buf.index = buffer_index;
-      buf.m.userptr = (unsigned long)v4l2_buffers_[buffer_index].start;
+      buf.m.userptr =
+          reinterpret_cast<uintptr_t>(v4l2_buffers_[buffer_index].start);
       buf.length = v4l2_buffers_[buffer_index].length;
       if (-1 == DoIoctl(VIDIOC_QBUF, &buf)) {
         printf("<<< Error: VIDIOC_QBUF failed on %s.>>>\n", dev_name_);
@@ -1004,6 +1007,6 @@ bool V4L2Device::GetV4L2Format(v4l2_format* format) {
 uint64_t V4L2Device::Now() {
   struct timespec ts;
   int res = clock_gettime(CLOCK_MONOTONIC, &ts);
-  CHECK(res == 0);
+  CHECK_EQ(res, 0);
   return ts.tv_sec * 1000000000ULL + ts.tv_nsec;
 }

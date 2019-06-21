@@ -4,7 +4,8 @@
 
 PKG_CONFIG ?= pkg-config
 DEP_LIBS = libchrome-$(BASE_VER) libyuv
-CXXFLAGS += $(shell $(PKG_CONFIG) --cflags $(DEP_LIBS)) -std=c++14 -DUNIT_TEST
+CXXFLAGS += -std=c++14 -DUNIT_TEST -I../
+CXXFLAGS += $(shell $(PKG_CONFIG) --cflags $(DEP_LIBS))
 
 LDFLAGS = -lrt -ldl -lgtest -ljpeg -lre2
 LDFLAGS += $(shell $(PKG_CONFIG) --libs $(DEP_LIBS))

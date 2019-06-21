@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "media_v4l2_device.h"
+#include "v4l2_test/media_v4l2_device.h"
 
 /* Test lists */
 static const char kDefaultTestList[] = "default";
@@ -217,7 +217,7 @@ void TestEnumFrameSize(const char* dev_name) {
     if (!v4l2_dev.EnumFrameSize(pixfmt, NULL)) {
       printf("[Warning] Enumerate frame size error on device '%s'\n", dev_name);
       exit(EXIT_FAILURE);
-    };
+    }
   }
   v4l2_dev.CloseDevice();
   printf("[OK ] V4L2DeviceTest.EnumFrameSize\n");
@@ -244,19 +244,19 @@ void TestEnumFrameInterval(const char* dev_name) {
     if (!v4l2_dev.EnumFrameSize(pixfmt, &size_count)) {
       printf("[Error] Enumerate frame size error on device '%s'\n", dev_name);
       exit(EXIT_FAILURE);
-    };
+    }
 
     for (uint32_t j = 0; j < size_count; ++j) {
       uint32_t width, height;
       if (!v4l2_dev.GetFrameSize(j, pixfmt, &width, &height)) {
         printf("[Error] Get frame size error on device '%s'\n", dev_name);
         exit(EXIT_FAILURE);
-      };
+      }
       if (!v4l2_dev.EnumFrameInterval(pixfmt, width, height, NULL)) {
         printf("[Error] Enumerate frame interval error on device '%s'\n",
                dev_name);
         exit(EXIT_FAILURE);
-      };
+      }
     }
   }
   v4l2_dev.CloseDevice();

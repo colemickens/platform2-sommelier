@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef COMMON_TYPES_H_
-#define COMMON_TYPES_H_
+#ifndef CAMERA_V4L2_TEST_COMMON_TYPES_H_
+#define CAMERA_V4L2_TEST_COMMON_TYPES_H_
 
 #include <string>
 #include <vector>
@@ -87,4 +87,4 @@ struct SupportedFormat {
 
 typedef std::vector<SupportedFormat> SupportedFormats;
 
-#endif
+#endif  // CAMERA_V4L2_TEST_COMMON_TYPES_H_
