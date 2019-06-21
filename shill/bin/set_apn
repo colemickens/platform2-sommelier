@@ -28,8 +28,9 @@ ISERVICE=${FLIMFLAM}.Service
 APN_PROPERTY=Cellular.APN
 LAST_GOOD_APN_PROPERTY=Cellular.LastGoodAPN
 
-SET_APN_HELPER=$(ls /usr/lib*/shill/shims/set-apn-helper | head -1)
-if [ -z "$SET_APN_HELPER" ] ; then
+SET_APN_HELPER=$(find /usr/lib*/shill/shims/ -name set-apn-helper -type f | \
+    head -1)
+if [ -z "${SET_APN_HELPER}" ] ; then
   echo "set-apn-helper script was not found!"
   exit 1
 fi
