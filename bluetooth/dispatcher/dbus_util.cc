@@ -36,8 +36,15 @@ void OnMessageForwardError(uint32_t serial,
                            const std::string& sender,
                            bluetooth::DBusUtil::ResponseSender response_sender,
                            dbus::ErrorResponse* response) {
-  // Relay the error return back to the original client.
-  OnMessageForwardResponse(serial, sender, response_sender, response);
+  // Same as OnMessageForwardResponse, but use
+  // dbus::ErrorResponse::FromRawMessage because we know that |response| is a
+  // D-Bus message of type METHOD_RETURN.
+  std::unique_ptr<dbus::Response> response_copy(
+      dbus::ErrorResponse::FromRawMessage(
+          dbus_message_copy(response->raw_message())));
+  response_copy->SetReplySerial(serial);
+  response_copy->SetDestination(sender);
+  response_sender.Run(std::move(response_copy));
 }
 
 }  // namespace
