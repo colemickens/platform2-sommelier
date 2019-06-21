@@ -176,7 +176,7 @@ void TestProbeCaps(const char* dev_name) {
   }
   if (!(caps.capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
     printf("<<< Info: %s does not support video capture interface.>>>\n",
-        dev_name);
+           dev_name);
     exit(EXIT_FAILURE);
   }
   v4l2_dev.CloseDevice();
@@ -254,7 +254,7 @@ void TestEnumFrameInterval(const char* dev_name) {
       };
       if (!v4l2_dev.EnumFrameInterval(pixfmt, width, height, NULL)) {
         printf("[Error] Enumerate frame interval error on device '%s'\n",
-            dev_name);
+               dev_name);
         exit(EXIT_FAILURE);
       };
     }
@@ -289,25 +289,24 @@ void TestFrameRate(const char* dev_name) {
 }
 
 static void PrintUsage(int argc, char** argv) {
-  printf("Usage: %s [options]\n\n"
-         "Options:\n"
-         "--help               Print usage\n"
-         "--device=DEVICE_NAME Video device name [/dev/video]\n"
-         "--usb-info=VID:PID   Device vendor id and product id\n"
-         "--test-list=TEST     Select different test list\n"
-         "                     [%s | %s | %s]\n",
-         argv[0], kDefaultTestList, kHalv3TestList,
-         kCertificationTestList);
+  printf(
+      "Usage: %s [options]\n\n"
+      "Options:\n"
+      "--help               Print usage\n"
+      "--device=DEVICE_NAME Video device name [/dev/video]\n"
+      "--usb-info=VID:PID   Device vendor id and product id\n"
+      "--test-list=TEST     Select different test list\n"
+      "                     [%s | %s | %s]\n",
+      argv[0], kDefaultTestList, kHalv3TestList, kCertificationTestList);
 }
 
 static const char short_options[] = "?d:u:t:";
 static const struct option long_options[] = {
-        { "help",      no_argument,       NULL, '?' },
-        { "device",    required_argument, NULL, 'd' },
-        { "usb-info",  required_argument, NULL, 'u' },
-        { "test-list", required_argument, NULL, 't' },
-        { 0, 0, 0, 0 }
-};
+    {"help", no_argument, NULL, '?'},
+    {"device", required_argument, NULL, 'd'},
+    {"usb-info", required_argument, NULL, 'u'},
+    {"test-list", required_argument, NULL, 't'},
+    {0, 0, 0, 0}};
 
 int main(int argc, char** argv) {
   std::string dev_name = "/dev/video";

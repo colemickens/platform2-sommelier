@@ -79,8 +79,8 @@ void SetEntry(const std::string& key,
   } else if (key == "vertical_view_angle_4_3") {
     info->vertical_view_angle_4_3 = stof(value);
   } else {
-    LOGF(WARNING) << "Unknown or deprecated key: " << key << " value: "
-                  << value;
+    LOGF(WARNING) << "Unknown or deprecated key: " << key
+                  << " value: " << value;
   }
 }
 

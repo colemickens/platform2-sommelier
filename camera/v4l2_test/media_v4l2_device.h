@@ -38,8 +38,7 @@ class V4L2Device {
     size_t length;
   };
 
-  V4L2Device(const char* dev_name,
-             uint32_t buffers);
+  V4L2Device(const char* dev_name, uint32_t buffers);
   virtual ~V4L2Device();
 
   virtual bool OpenDevice();
@@ -68,10 +67,14 @@ class V4L2Device {
   bool EnumControl(bool show_menu = true);
   bool EnumControlMenu(const v4l2_queryctrl& query_ctrl);
   bool EnumFormat(uint32_t* num_formats, bool show_fmt = true);
-  bool EnumFrameSize(
-      uint32_t pixfmt, uint32_t* num_sizes, bool show_frmsize = true);
-  bool EnumFrameInterval(uint32_t pixfmt, uint32_t width, uint32_t height,
-                         uint32_t* num_intervals, bool show_intervals = true);
+  bool EnumFrameSize(uint32_t pixfmt,
+                     uint32_t* num_sizes,
+                     bool show_frmsize = true);
+  bool EnumFrameInterval(uint32_t pixfmt,
+                         uint32_t width,
+                         uint32_t height,
+                         uint32_t* num_intervals,
+                         bool show_intervals = true);
 
   bool QueryControl(uint32_t id, v4l2_queryctrl* ctrl);
   bool SetControl(uint32_t id, int32_t value);
@@ -83,11 +86,15 @@ class V4L2Device {
   bool SetParam(v4l2_streamparm* param);
   bool SetFrameRate(float fps);
   bool GetPixelFormat(uint32_t index, uint32_t* pixfmt);
-  bool GetFrameSize(
-      uint32_t index, uint32_t pixfmt, uint32_t *width, uint32_t *height);
-  bool GetFrameInterval(
-      uint32_t index, uint32_t pixfmt, uint32_t width, uint32_t height,
-      float* frame_rate);
+  bool GetFrameSize(uint32_t index,
+                    uint32_t pixfmt,
+                    uint32_t* width,
+                    uint32_t* height);
+  bool GetFrameInterval(uint32_t index,
+                        uint32_t pixfmt,
+                        uint32_t width,
+                        uint32_t height,
+                        float* frame_rate);
   float GetFrameRate();
   bool GetV4L2Format(v4l2_format* format);
   bool Stop();
@@ -99,9 +106,7 @@ class V4L2Device {
     return frame_timestamps_;
   }
 
-  const Buffer& GetBufferInfo(uint32_t index) {
-    return v4l2_buffers_[index];
-  }
+  const Buffer& GetBufferInfo(uint32_t index) { return v4l2_buffers_[index]; }
 
   static uint32_t MapFourCC(const char* fourcc);
 
