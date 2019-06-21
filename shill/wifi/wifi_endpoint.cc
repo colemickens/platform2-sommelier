@@ -484,9 +484,15 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
         break;
       case IEEE_80211::kElemIdCountry:
         // Retrieve 2-character country code from the beginning of the element.
-        found_country = true;
         if (ie_len >= 4) {
-          *country_code = string(it + 2, it + 4);
+          string country(it + 2, it + 4);
+          // ISO 3166 alpha-2 codes must be ASCII. There are probably other
+          // restrictions we should honor too, but this is at least a minimum
+          // sanity check.
+          if (base::IsStringASCII(country)) {
+            found_country = true;
+            *country_code = country;
+          }
         }
         break;
       case IEEE_80211::kElemIdErp:
