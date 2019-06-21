@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//common-mk/pkg_config.gni")
 import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
@@ -28,10 +28,7 @@ pkg_config("target_defaults_deps") {
 }
 
 config("target_defaults") {
-  defines = [
-    "USE_CONTAINERS=${use.containers}",
-    "USE_CFM_ENABLED_DEVICE=${use.cfm_enabled_device}",
-  ]
+  defines = [ "USE_CFM_ENABLED_DEVICE=${use.cfm_enabled_device}" ]
   configs = [ ":target_defaults_deps" ]
 }
 
@@ -75,9 +72,6 @@ static_library("libpermission_broker") {
     "usb_driver_tracker.cc",
     "usb_subsystem_udev_rule.cc",
   ]
-  if (use.containers) {
-    deps += [ "../container_utils:libdevice_jail" ]
-  }
 }
 
 executable("permission_broker") {
