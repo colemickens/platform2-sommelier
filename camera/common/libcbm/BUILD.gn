@@ -1,0 +1,50 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":libcbm",
+  ]
+  if (use.test) {
+    deps += [ ":cbm_test" ]
+  }
+}
+
+pkg_config("target_defaults_pkg_config") {
+  pkg_deps = [
+    "cros-camera-android-headers",
+    "gbm",
+    "libdrm",
+  ]
+}
+
+config("target_defaults") {
+  configs = [
+    "//camera/build:cros_camera_common",
+    ":target_defaults_pkg_config",
+  ]
+}
+
+shared_library("libcbm") {
+  sources = [
+    "//camera/common/camera_buffer_manager_impl.cc",
+    "//camera/common/camera_buffer_manager_internal.cc",
+  ]
+  configs += [ ":target_defaults" ]
+}
+
+if (use.test) {
+  executable("cbm_test") {
+    sources = [
+      "//camera/common/camera_buffer_manager_impl.cc",
+      "//camera/common/camera_buffer_manager_impl_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+  }
+}
