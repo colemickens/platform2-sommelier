@@ -18,6 +18,7 @@
 #include "arc/network/address_manager.h"
 #include "arc/network/arc_ip_config.h"
 #include "arc/network/device_manager.h"
+#include "arc/network/guest_events.h"
 #include "arc/network/helper_process.h"
 #include "arc/network/shill_client.h"
 #include "arc/network/socket.h"
@@ -52,6 +53,7 @@ class Manager final : public brillo::DBusDaemon,
 
   // Processes notification messages received from guests.
   void OnGuestNotification(const std::string& notification);
+  void OnGuestEvent(const ArcGuestEvent& event);
 
   // Relays guest messages to the helper processes.
   void SendGuestMessage(const GuestMessage& msg);

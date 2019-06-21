@@ -114,11 +114,19 @@ std::unique_ptr<Socket> Socket::Accept(struct sockaddr* addr,
   return std::make_unique<Socket>(std::move(fd));
 }
 
-ssize_t Socket::SendTo(const void* data, size_t len, struct sockaddr* addr) {
+ssize_t Socket::SendTo(const void* data,
+                       size_t len,
+                       const struct sockaddr* addr,
+                       socklen_t addrlen) {
   if (!fd_.is_valid()) {
     return -1;
   }
-  socklen_t addrlen = addr ? sizeof(*addr) : 0;
+  if (!addr) {
+    addrlen = 0;
+  } else if (addrlen == 0) {
+    addrlen = sizeof(*addr);
+  }
+
   ssize_t bytes = sendto(fd_.get(), data, len, MSG_NOSIGNAL, addr, addrlen);
   if (bytes >= 0)
     return bytes;

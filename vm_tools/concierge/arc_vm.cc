@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <arc/network/guest_events.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -156,12 +157,22 @@ bool ArcVm::Start(base::FilePath kernel,
     return false;
   }
 
+  // Notify arc-networkd that ARCVM is up.
+  if (!arc_networkd::NotifyArcVmStart(vsock_cid_)) {
+    LOG(WARNING) << "Unable to notify networking services";
+  }
+
   // TODO(yusukes|cmtm): Create a stub for talking to Android init inside the
   // VM.
   return true;
 }
 
 bool ArcVm::Shutdown() {
+  // Notify arc-networkd that ARCVM is down.
+  if (!arc_networkd::NotifyArcVmStop()) {
+    LOG(WARNING) << "Unable to notify networking services";
+  }
+
   // Do a sanity check here to make sure the process is still around.  It may
   // have crashed and we don't want to be waiting around for an RPC response
   // that's never going to come.  kill with a signal value of 0 is explicitly

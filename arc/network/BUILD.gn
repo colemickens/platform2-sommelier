@@ -38,8 +38,10 @@ proto_library("protos") {
 
 util_sources = [
   "address_manager.cc",
+  "guest_events.cc",
   "mac_address_generator.cc",
   "net_util.cc",
+  "socket.cc",
   "subnet.cc",
   "subnet_pool.cc",
 ]
@@ -72,7 +74,6 @@ static_library("libarcnetwork") {
     "router_finder.cc",
     "scoped_ns.cc",
     "shill_client.cc",
-    "socket.cc",
     "socket_forwarder.cc",
   ]
   sources += util_sources

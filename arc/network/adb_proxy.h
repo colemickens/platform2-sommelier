@@ -51,6 +51,7 @@ class AdbProxy : public brillo::Daemon, public base::MessageLoopForIO::Watcher {
   base::MessageLoopForIO::FileDescriptorWatcher src_watcher_;
 
   GuestMessage::GuestType arc_type_;
+  uint32_t arcvm_vsock_cid_;
 
   base::WeakPtrFactory<AdbProxy> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(AdbProxy);

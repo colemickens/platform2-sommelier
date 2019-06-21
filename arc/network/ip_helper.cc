@@ -51,8 +51,10 @@ void IpHelper::OnParentProcessExit() {
 }
 
 void IpHelper::OnGuestMessage(const GuestMessage& msg) {
-  if (msg.type() != GuestMessage::ARC)
+  if (msg.type() == GuestMessage::UNKNOWN_GUEST) {
+    LOG(DFATAL) << "Unexpected message from unknown guest";
     return;
+  }
 
   if (msg.event() == GuestMessage::START && msg.has_arc_pid()) {
     arc_helper_->Start(msg.arc_pid());

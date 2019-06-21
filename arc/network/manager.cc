@@ -25,20 +25,13 @@
 #include <base/strings/string_util.h>
 #include <brillo/minijail/minijail.h>
 
+#include "arc/network/guest_events.h"
 #include "arc/network/ipc.pb.h"
 
 namespace {
 
 constexpr uint64_t kManagerCapMask = CAP_TO_MASK(CAP_NET_RAW);
 constexpr char kUnprivilegedUser[] = "arc-networkd";
-constexpr char kGuestSocketPath[] = "/run/arc/network.gsock";
-// These values are used to make guest event messages:
-// Indicates the ARC guest (either ARC++ or ARCVM) is the source of the event.
-constexpr char kGuestArc[] = "ARC";
-// Indicates the guest is starting up.
-constexpr char kEventUp[] = "UP";
-// Indicates the guest is shutting down.
-constexpr char kEventDown[] = "DOWN";
 
 // TODO(garrick): Remove this workaround ASAP.
 int GetContainerPID() {
@@ -110,13 +103,8 @@ int Manager::OnInit() {
 
   // Setup the socket for guests to connect and notify certain events.
   struct sockaddr_un addr = {0};
-  addr.sun_family = AF_UNIX;
-  // Start at pos 1 to make this an abstract socket. Note that SUN_LEN does not
-  // work in this case since it uses strlen, so this is the correct way to
-  // compute the length of addr.
-  strncpy(&addr.sun_path[1], kGuestSocketPath, strlen(kGuestSocketPath));
-  socklen_t addrlen =
-      offsetof(struct sockaddr_un, sun_path) + strlen(kGuestSocketPath) + 1;
+  socklen_t addrlen = 0;
+  FillGuestSocketAddr(&addr, &addrlen);
   if (!gsock_.Bind((const struct sockaddr*)&addr, addrlen)) {
     LOG(ERROR) << "Cannot bind guest socket @" << kGuestSocketPath
                << "; exiting";
@@ -164,69 +152,46 @@ void Manager::OnFileCanReadWithoutBlocking(int fd) {
 
 // TODO(garrick): Remove this workaround ASAP.
 bool Manager::OnSignal(const struct signalfd_siginfo& info) {
-  std::string msg;
+  // Only ARC++ scripts send signals so noting to do for VM.
   if (info.ssi_signo == SIGUSR1) {
     arc_pid_ = GetContainerPID();
     if (arc_pid_ > 0) {
-      msg = base::StringPrintf("ARC UP %d", arc_pid_);
-    } else {
-      msg = "ARC UP";
+      OnGuestEvent(ArcGuestEvent(false /* vm */, true /* start */, arc_pid_));
     }
   } else {
     if (arc_pid_ > 0) {
-      msg = base::StringPrintf("ARC DOWN %d", arc_pid_);
-      arc_pid_ = -1;
-    } else {
-      msg = "ARC DOWN";
+      OnGuestEvent(ArcGuestEvent(false /* vm */, false /* start */, arc_pid_));
     }
   }
-  OnGuestNotification(msg);
+
   return false;
 }
 
 void Manager::OnGuestNotification(const std::string& notification) {
-  // Notification strings are in the form:
-  //   guest_type event_type [container_pid]
-  // where the first two fields are required and the thrid is only for ARC++.
-  const auto args = base::SplitString(notification, " ", base::TRIM_WHITESPACE,
-                                      base::SPLIT_WANT_NONEMPTY);
-  if (args.size() < 2 || args.size() > 3) {
-    LOG(WARNING) << "Unexpected notification: " << notification;
-    return;
+  if (auto event = ArcGuestEvent::Parse(notification)) {
+    OnGuestEvent(*event.get());
   }
+}
 
-  if (args[0] != kGuestArc) {
-    LOG(DFATAL) << "Unexpected guest: " << args[0];
-    return;
-  }
-
+void Manager::OnGuestEvent(const ArcGuestEvent& event) {
   GuestMessage msg;
 
-  if (args[1] == kEventUp) {
-    msg.set_event(GuestMessage::START);
-  } else if (args[1] == kEventDown) {
-    msg.set_event(GuestMessage::STOP);
-  } else {
-    LOG(DFATAL) << "Unexpected event: " << args[1];
-    return;
-  }
-
-  if (args.size() == 2) {
+  if (event.isVm()) {
     msg.set_type(GuestMessage::ARC_VM);
+    msg.set_arcvm_vsock_cid(event.id());
   } else {
-    int pid = 0;
-    if (!base::StringToInt(args[2], &pid)) {
-      LOG(DFATAL) << "Invalid ARC++ pid: " << args[2];
-      return;
-    }
-    msg.set_type(GuestMessage::ARC);
-    msg.set_arc_pid(pid);
+    msg.set_type(enable_multinet_ ? GuestMessage::ARC
+                                  : GuestMessage::ARC_LEGACY);
+    msg.set_arc_pid(event.id());
   }
 
-  if (msg.event() == GuestMessage::START)
+  if (event.isStarting()) {
+    msg.set_event(GuestMessage::START);
     device_mgr_->OnGuestStart();
-  else if (msg.event() == GuestMessage::STOP)
+  } else {
+    msg.set_event(GuestMessage::STOP);
     device_mgr_->OnGuestStop();
+  }
 
   SendGuestMessage(msg);
 }

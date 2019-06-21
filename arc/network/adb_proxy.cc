@@ -27,9 +27,6 @@ constexpr uint16_t kTcpListenPort = 5550;
 constexpr uint16_t kTcpConnectPort = 5555;
 constexpr uint32_t kTcpAddr = Ipv4Addr(100, 115, 92, 2);
 constexpr uint32_t kVsockPort = 5555;
-// Reference: (./src/private-overlays/project-cheets-private/
-// chromeos-base/android-vm-pi/files/run-arcvm)
-constexpr uint32_t kVsockCid = 5;
 constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_RAW);
 constexpr char kUnprivilegedUser[] = "arc-networkd";
 constexpr int kMaxConn = 16;
@@ -39,7 +36,8 @@ constexpr int kMaxConn = 16;
 AdbProxy::AdbProxy(base::ScopedFD control_fd)
     : msg_dispatcher_(std::move(control_fd)),
       src_watcher_(FROM_HERE),
-      arc_type_(GuestMessage::UNKNOWN_GUEST) {
+      arc_type_(GuestMessage::UNKNOWN_GUEST),
+      arcvm_vsock_cid_(-1) {
   msg_dispatcher_.RegisterFailureHandler(
       base::Bind(&AdbProxy::OnParentProcessExit, weak_factory_.GetWeakPtr()));
 
@@ -81,6 +79,8 @@ void AdbProxy::Reset() {
   src_watcher_.StopWatchingFileDescriptor();
   src_.reset();
   fwd_.clear();
+  arcvm_vsock_cid_ = -1;
+  arc_type_ = GuestMessage::UNKNOWN_GUEST;
 }
 
 void AdbProxy::OnParentProcessExit() {
@@ -112,7 +112,8 @@ void AdbProxy::OnFileCanReadWithoutBlocking(int fd) {
 
 std::unique_ptr<Socket> AdbProxy::Connect() const {
   switch (arc_type_) {
-    case GuestMessage::ARC: {
+    case GuestMessage::ARC:
+    case GuestMessage::ARC_LEGACY: {
       struct sockaddr_in addr_in = {0};
       addr_in.sin_family = AF_INET;
       addr_in.sin_port = htons(kTcpConnectPort);
@@ -126,7 +127,7 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
       struct sockaddr_vm addr_vm = {0};
       addr_vm.svm_family = AF_VSOCK;
       addr_vm.svm_port = kVsockPort;
-      addr_vm.svm_cid = kVsockCid;
+      addr_vm.svm_cid = arcvm_vsock_cid_;
       auto dst = std::make_unique<Socket>(AF_VSOCK, SOCK_STREAM);
       return dst->Connect((const struct sockaddr*)&addr_vm, sizeof(addr_vm))
                  ? std::move(dst)
@@ -139,10 +140,13 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
 }
 
 void AdbProxy::OnGuestMessage(const GuestMessage& msg) {
-  if (msg.type() != GuestMessage::ARC && msg.type() != GuestMessage::ARC_VM)
+  if (msg.type() == GuestMessage::UNKNOWN_GUEST) {
+    LOG(DFATAL) << "Unexpected message from unknown guest";
     return;
+  }
 
   arc_type_ = msg.type();
+  arcvm_vsock_cid_ = msg.arcvm_vsock_cid();
 
   // On ARC up, start accepting connections.
   if (msg.event() == GuestMessage::START) {

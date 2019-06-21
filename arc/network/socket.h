@@ -30,7 +30,10 @@ class Socket {
   std::unique_ptr<Socket> Accept(struct sockaddr* addr = nullptr,
                                  socklen_t* addrlen = nullptr) const;
 
-  ssize_t SendTo(const void* data, size_t len, struct sockaddr* addr = nullptr);
+  ssize_t SendTo(const void* data,
+                 size_t len,
+                 const struct sockaddr* addr = nullptr,
+                 socklen_t addrlen = 0);
   ssize_t RecvFrom(void* data,
                    size_t len,
                    struct sockaddr* addr = nullptr,
