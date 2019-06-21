@@ -6,7 +6,7 @@
 # A script to mark the current kernel partition as successfully booted.
 
 # If we're not running as root, restart as root.
-if [ $(id -u) -ne 0 ]; then
+if [ "$(id -u)" -ne 0 ]; then
   exec sudo "$0" "$@"
 fi
 
@@ -25,7 +25,7 @@ get_dev_by_part_uuid() {
 }
 
 FAFT_LOCKFILE="/var/tmp/faft/lock"
-if [ -f "$FAFT_LOCKFILE" ]; then
+if [ -f "${FAFT_LOCKFILE}" ]; then
   echo "FAFT lockfile exists, skipping chromeos-setgoodkernel actions"
   exit
 fi
@@ -37,7 +37,7 @@ else
 fi
 
 # Extract the kernel partition's UniqueGuid from the command line.
-if [ $is_efi -eq 1 ]; then
+if [ "${is_efi}" -eq 1 ]; then
   guid=$(sed -n 's/.*root=PARTUUID=\([0-9a-fA-F-]\+\).*/\1/p' /proc/cmdline)
   if [ -n "${guid}" ]; then
     root_dev=$(get_dev_by_part_uuid "${guid}")
