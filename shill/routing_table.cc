@@ -106,6 +106,7 @@ bool ParseRoutingTableMessage(const RTNLMessage& message,
   entry->scope = route_status.scope;
   entry->from_rtnl = true;
   entry->table = route_status.table;
+  entry->protocol = route_status.protocol;
   entry->type = route_status.type;
 
   return true;
@@ -409,8 +410,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     return;
   }
 
-  if (!route_queries_.empty() &&
-      message.route_status().protocol == RTPROT_UNSPEC) {
+  if (!route_queries_.empty() && entry.protocol == RTPROT_UNSPEC) {
     SLOG(this, 3) << __func__ << ": Message seq: " << message.seq()
                   << " mode " << message.mode()
                   << ", next query seq: " << route_queries_.front().sequence;
@@ -434,6 +434,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
       add_entry.from_rtnl = false;
       add_entry.tag = query.tag;
       add_entry.table = query.table_id;
+      add_entry.protocol = RTPROT_BOOT;
       bool added = true;
       if (add_entry.gateway.IsDefault()) {
         SLOG(this, 2) << __func__ << ": Ignoring route result with no gateway "
@@ -450,13 +451,13 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
       route_queries_.pop_front();
     }
     return;
-  } else if (message.route_status().protocol == RTPROT_RA) {
+  } else if (entry.protocol == RTPROT_RA) {
     // The kernel sends one of these messages pretty much every time it
     // connects to another IPv6 host.  The only interesting message is the
     // one containing the default gateway.
     if (!entry.dst.IsDefault() || !entry.gateway.IsValid())
       return;
-  } else if (message.route_status().protocol != RTPROT_BOOT) {
+  } else if (entry.protocol != RTPROT_BOOT) {
     // Responses to route queries come back with a protocol of
     // RTPROT_UNSPEC.  Otherwise, normal route updates that we are
     // interested in come with a protocol of RTPROT_BOOT.
@@ -555,7 +556,7 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
       entry.dst.prefix(),
       entry.src.prefix(),
       entry.table,
-      RTPROT_BOOT,
+      entry.protocol,
       entry.scope,
       entry.type,
       0));

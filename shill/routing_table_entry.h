@@ -31,6 +31,7 @@ struct RoutingTableEntry {
         from_rtnl(false),
         table(RT_TABLE_MAIN),
         type(RTN_UNICAST),
+        protocol(RTPROT_BOOT),
         tag(kDefaultTag) {}
 
   RoutingTableEntry(const IPAddress& dst_in,
@@ -47,6 +48,7 @@ struct RoutingTableEntry {
         from_rtnl(from_rtnl_in),
         table(RT_TABLE_MAIN),
         type(RTN_UNICAST),
+        protocol(RTPROT_BOOT),
         tag(kDefaultTag) {}
 
   RoutingTableEntry(const IPAddress& dst_in,
@@ -64,6 +66,7 @@ struct RoutingTableEntry {
         from_rtnl(from_rtnl_in),
         table(RT_TABLE_MAIN),
         type(RTN_UNICAST),
+        protocol(RTPROT_BOOT),
         tag(tag_in) {}
 
   RoutingTableEntry(const IPAddress& dst_in,
@@ -83,6 +86,7 @@ struct RoutingTableEntry {
         from_rtnl(from_rtnl_in),
         table(table_in),
         type(type_in),
+        protocol(RTPROT_BOOT),
         tag(tag_in) {}
 
   RoutingTableEntry(const RoutingTableEntry& b)
@@ -94,6 +98,7 @@ struct RoutingTableEntry {
         from_rtnl(b.from_rtnl),
         table(b.table),
         type(b.type),
+        protocol(b.protocol),
         tag(b.tag) {}
 
   RoutingTableEntry& operator=(const RoutingTableEntry& b) {
@@ -105,6 +110,7 @@ struct RoutingTableEntry {
     from_rtnl = b.from_rtnl;
     table = b.table;
     type = b.type;
+    protocol = b.protocol;
     tag = b.tag;
 
     return *this;
@@ -121,6 +127,7 @@ struct RoutingTableEntry {
             from_rtnl == b.from_rtnl &&
             table == b.table &&
             type == b.type &&
+            protocol == b.protocol &&
             tag == b.tag);
   }
 
@@ -153,15 +160,34 @@ struct RoutingTableEntry {
     if (!entry.gateway.IsDefault()) {
       gateway = " via " + entry.gateway.ToString();
     }
+    std::string protocol;
+    switch (entry.protocol) {
+      case RTPROT_BOOT:
+        // Use existing ip route behavior and don't show the protocol if it is
+        // the default RTPROT_BOOT.
+        break;
+      case RTPROT_KERNEL:
+        protocol = " proto kernel";
+        break;
+      case RTPROT_STATIC:
+        protocol = " proto static";
+        break;
+      case RTPROT_RA:
+        protocol = " proto ra";
+        break;
+      default:
+        protocol = " proto " + std::to_string(entry.protocol);
+        break;
+    }
     std::string src;
     if (!entry.src.IsDefault()) {
       src = " src " + entry.src.ToString();
     }
 
     os << base::StringPrintf(
-      "%s%s%s metric %d %s table %d%s",
-      dest_prefix, dest_address.c_str(), gateway.c_str(), entry.metric,
-      IPAddress::GetAddressFamilyName(entry.dst.family()).c_str(),
+      "%s%s%s%s metric %d %s table %d%s",
+      dest_prefix, dest_address.c_str(), gateway.c_str(), protocol.c_str(),
+      entry.metric, IPAddress::GetAddressFamilyName(entry.dst.family()).c_str(),
       static_cast<int>(entry.table), src.c_str());
     return os;
   }
@@ -174,6 +200,7 @@ struct RoutingTableEntry {
   bool from_rtnl;
   unsigned char table;
   unsigned char type;
+  unsigned char protocol;
   int tag;
 };
 

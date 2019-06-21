@@ -628,6 +628,7 @@ TEST_F(RoutingTableTest, IPv6StatelessAutoconfiguration) {
                            kTestTableId,
                            RTN_UNICAST,
                            RoutingTableEntry::kDefaultTag);
+  entry0.protocol = RTPROT_RA;
 
   // Simulate an RTPROT_RA kernel message indicating that it processed a
   // valid IPv6 router advertisement.
