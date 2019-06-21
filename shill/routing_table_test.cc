@@ -316,7 +316,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   EXPECT_EQ(1, (*tables)[kTestDeviceIndex0].size());
 
   RoutingTableEntry test_entry = (*tables)[kTestDeviceIndex0][0];
-  EXPECT_TRUE(entry0.Equals(test_entry));
+  EXPECT_EQ(entry0, test_entry);
 
   // Add a second entry for a different interface.
   SendRouteEntry(RTNLMessage::kModeAdd,
@@ -330,7 +330,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   EXPECT_EQ(1, (*tables)[kTestDeviceIndex1].size());
 
   test_entry = (*tables)[kTestDeviceIndex1][0];
-  EXPECT_TRUE(entry0.Equals(test_entry));
+  EXPECT_EQ(entry0, test_entry);
 
   IPAddress gateway_address1(IPAddress::kFamilyIPv4);
   gateway_address1.SetAddressFromString(kTestNetAddress1);
@@ -354,7 +354,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   EXPECT_EQ(2, (*tables)[kTestDeviceIndex1].size());
 
   test_entry = (*tables)[kTestDeviceIndex1][1];
-  EXPECT_TRUE(entry1.Equals(test_entry));
+  EXPECT_EQ(entry1, test_entry);
 
   // Remove the first gateway route from the second interface.
   SendRouteEntry(RTNLMessage::kModeDelete,
@@ -367,7 +367,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   EXPECT_EQ(1, (*tables)[kTestDeviceIndex1].size());
 
   test_entry = (*tables)[kTestDeviceIndex1][0];
-  EXPECT_TRUE(entry1.Equals(test_entry));
+  EXPECT_EQ(entry1, test_entry);
 
   // Send a duplicate of the second gateway route message, changing the metric.
   RoutingTableEntry entry2(entry1);
@@ -379,15 +379,15 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   // Both entries should show up.
   EXPECT_EQ(2, (*tables)[kTestDeviceIndex1].size());
   test_entry = (*tables)[kTestDeviceIndex1][0];
-  EXPECT_TRUE(entry1.Equals(test_entry));
+  EXPECT_EQ(entry1, test_entry);
   test_entry = (*tables)[kTestDeviceIndex1][1];
-  EXPECT_TRUE(entry2.Equals(test_entry));
+  EXPECT_EQ(entry2, test_entry);
 
   // Find a matching entry.
   EXPECT_TRUE(routing_table_->GetDefaultRoute(kTestDeviceIndex1,
                                               IPAddress::kFamilyIPv4,
                                               &test_entry));
-  EXPECT_TRUE(entry1.Equals(test_entry));
+  EXPECT_EQ(entry1, test_entry);
 
   // Test that a search for a non-matching family fails.
   EXPECT_FALSE(routing_table_->GetDefaultRoute(kTestDeviceIndex1,
@@ -428,7 +428,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   EXPECT_TRUE(routing_table_->GetDefaultRoute(kTestDeviceIndex1,
                                               IPAddress::kFamilyIPv4,
                                               &test_entry));
-  EXPECT_TRUE(entry3.Equals(test_entry));
+  EXPECT_EQ(entry3, test_entry);
 
   // Setting the same route on the interface with a different metric should
   // push the route with different flags to indicate we are replacing it,
@@ -606,7 +606,7 @@ TEST_F(RoutingTableTest, LowestMetricDefault) {
                                               IPAddress::kFamilyIPv4,
                                               &test_entry));
   entry.metric = 1;
-  EXPECT_TRUE(entry.Equals(test_entry));
+  EXPECT_EQ(entry, test_entry);
 }
 
 TEST_F(RoutingTableTest, IPv6StatelessAutoconfiguration) {
@@ -647,7 +647,7 @@ TEST_F(RoutingTableTest, IPv6StatelessAutoconfiguration) {
   EXPECT_EQ(1, (*tables)[kTestDeviceIndex0].size());
 
   RoutingTableEntry test_entry = (*tables)[kTestDeviceIndex0][0];
-  EXPECT_TRUE(entry0.Equals(test_entry));
+  EXPECT_EQ(entry0, test_entry);
 
   // Now send an RTPROT_RA netlink message advertising some other random
   // host.  shill should ignore these because they are frequent, and

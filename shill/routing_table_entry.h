@@ -87,7 +87,7 @@ struct RoutingTableEntry {
         protocol(RTPROT_BOOT),
         tag(tag_in) {}
 
-  bool Equals(const RoutingTableEntry& b) const {
+  bool operator==(const RoutingTableEntry& b) const {
     return (dst.Equals(b.dst) &&
             src.Equals(b.src) &&
             gateway.Equals(b.gateway) &&
@@ -206,7 +206,7 @@ struct RoutingPolicyEntry {
         table(table_in),
         interface_name(interface_name_in) {}
 
-  bool Equals(const RoutingPolicyEntry& b) {
+  bool operator==(const RoutingPolicyEntry& b) const {
     return (family == b.family &&
             priority == b.priority &&
             table == b.table &&

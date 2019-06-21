@@ -180,7 +180,7 @@ bool RoutingTable::RemoveRoute(int interface_index,
   }
   RouteTableEntryVector& table = tables_[interface_index];
   for (auto nent = table.begin(); nent != table.end(); ++nent) {
-    if (nent->Equals(entry)) {
+    if (*nent == entry) {
       table.erase(nent);
       return true;
     }
@@ -857,7 +857,7 @@ bool RoutingTable::HandleRoutingPolicyMessage(const RTNLMessage& message) {
   // assume it is left over from an old run and delete it.
   for (auto& table : policy_tables_) {
     for (auto nent = table.second.begin(); nent != table.second.end(); ++nent) {
-      if (nent->Equals(entry)) {
+      if (*nent == entry) {
         return true;
       }
     }
