@@ -15,9 +15,7 @@
 
 namespace shill {
 
-// Holds table entries for routing.  These are held in an STL vector
-// in the RoutingTable object, hence the need for copy contructor and
-// operator=.
+// Represents a single entry in a routing table.
 struct RoutingTableEntry {
  public:
   static const int kDefaultTag = -1;
@@ -88,35 +86,6 @@ struct RoutingTableEntry {
         type(type_in),
         protocol(RTPROT_BOOT),
         tag(tag_in) {}
-
-  RoutingTableEntry(const RoutingTableEntry& b)
-      : dst(b.dst),
-        src(b.src),
-        gateway(b.gateway),
-        metric(b.metric),
-        scope(b.scope),
-        from_rtnl(b.from_rtnl),
-        table(b.table),
-        type(b.type),
-        protocol(b.protocol),
-        tag(b.tag) {}
-
-  RoutingTableEntry& operator=(const RoutingTableEntry& b) {
-    dst = b.dst;
-    src = b.src;
-    gateway = b.gateway;
-    metric = b.metric;
-    scope = b.scope;
-    from_rtnl = b.from_rtnl;
-    table = b.table;
-    type = b.type;
-    protocol = b.protocol;
-    tag = b.tag;
-
-    return *this;
-  }
-
-  ~RoutingTableEntry() = default;
 
   bool Equals(const RoutingTableEntry& b) const {
     return (dst.Equals(b.dst) &&
@@ -204,6 +173,7 @@ struct RoutingTableEntry {
   int tag;
 };
 
+// Represents a single policy routing rule.
 struct RoutingPolicyEntry {
  public:
   RoutingPolicyEntry() = default;
@@ -235,26 +205,6 @@ struct RoutingPolicyEntry {
         priority(priority_in),
         table(table_in),
         interface_name(interface_name_in) {}
-
-  RoutingPolicyEntry& operator=(const RoutingPolicyEntry& b) {
-    family = b.family;
-    priority = b.priority;
-    table = b.table;
-    invert_rule = b.invert_rule;
-    has_fwmark = b.has_fwmark;
-    fwmark_value = b.fwmark_value;
-    fwmark_mask = b.fwmark_mask;
-    has_uidrange = b.has_uidrange;
-    uidrange_start = b.uidrange_start;
-    uidrange_end = b.uidrange_end;
-    interface_name = b.interface_name;
-    dst = b.dst;
-    src = b.src;
-
-    return *this;
-  }
-
-  ~RoutingPolicyEntry() = default;
 
   bool Equals(const RoutingPolicyEntry& b) {
     return (family == b.family &&
