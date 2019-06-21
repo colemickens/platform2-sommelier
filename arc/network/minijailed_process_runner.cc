@@ -39,14 +39,14 @@ int RunSyncDestroy(const std::vector<std::string>& argv,
     LOG(ERROR) << "Could not execute '" << base::JoinString(argv, " ") << "'";
   } else if (log_failures && (!WIFEXITED(status) || WEXITSTATUS(status) != 0)) {
     if (WIFEXITED(status)) {
-      PLOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
-                    << "' exited with code " << WEXITSTATUS(status);
+      LOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
+                   << "' exited with code " << WEXITSTATUS(status);
     } else if (WIFSIGNALED(status)) {
-      PLOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
-                    << "' exited with signal " << WTERMSIG(status);
+      LOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
+                   << "' exited with signal " << WTERMSIG(status);
     } else {
-      PLOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
-                    << "' exited with unknown status " << status;
+      LOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
+                   << "' exited with unknown status " << status;
     }
   }
   return ran && WIFEXITED(status) ? WEXITSTATUS(status) : -1;

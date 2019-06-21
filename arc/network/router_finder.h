@@ -39,12 +39,14 @@ class RouterFinder : public NdpHandler {
 
   void SendRouterSolicitation();
   void CheckForRouter();
+  void AssignPrefix(const struct in6_addr& prefix,
+                    int prefix_len,
+                    const struct in6_addr& router);
 
   std::string ifname_;
   bool have_prefix_;
   struct in6_addr prefix_;
   int prefix_len_;
-  struct in6_addr router_;
 
   unsigned int rs_attempts_;
 

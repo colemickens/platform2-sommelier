@@ -6,6 +6,7 @@
 
 #include <errno.h>
 #include <stdint.h>
+#include <string.h>
 
 #include <ndp.h>
 
@@ -20,6 +21,12 @@ const int kInitialRtrSolicitationIntervalMs = 4000;
 const int kRtrSolicitationIntervalMs = 4000;
 const int kMaxRtrSolicitations = 3;
 
+bool ArePrefixesEqual(const struct in6_addr& addr1,
+                      int len1,
+                      const struct in6_addr& addr2,
+                      int len2) {
+  return len1 == len2 && memcmp(&addr1, &addr2, sizeof(addr1)) == 0;
+}
 }  // namespace
 
 namespace arc_networkd {
@@ -35,6 +42,8 @@ bool RouterFinder::Start(
   result_callback_ = callback;
 
   have_prefix_ = false;
+  prefix_ = IN6ADDR_ANY_INIT;
+  prefix_len_ = 0;
   ifname_ = ifname;
 
   // FIXME: This magic delay is needed or else the sendto() may return
@@ -98,6 +107,10 @@ int RouterFinder::OnNdpMsg(struct ndp* ndp, struct ndp_msg* msg) {
   }
 
   int offset;
+  struct in6_addr* router = ndp_msg_addrto(msg);
+  if (!router) {
+    return 0;
+  }
 
   // TODO(cernekee): Validate RA fields per the RFC.
   // (I think some of this happens in libndp, although our version
@@ -105,24 +118,37 @@ int RouterFinder::OnNdpMsg(struct ndp* ndp, struct ndp_msg* msg) {
 
   ndp_msg_opt_for_each_offset(offset, msg, NDP_MSG_OPT_PREFIX) {
     struct in6_addr* prefix = ndp_msg_opt_prefix(msg, offset);
+    if (!prefix) {
+      continue;
+    }
+
+    int prefix_len = ndp_msg_opt_prefix_len(msg, offset);
     uint32_t valid_time = ndp_msg_opt_prefix_valid_time(msg, offset);
 
     // TODO(cernekee): handle expiration and other special cases.
-    // For now just try to stick with the first prefix that was found.
-    if (valid_time && !have_prefix_) {
-      memcpy(&prefix_, prefix, sizeof(prefix_));
-      prefix_len_ = ndp_msg_opt_prefix_len(msg, offset);
-      memcpy(&router_, ndp_msg_addrto(msg), sizeof(router_));
-      have_prefix_ = true;
-      result_callback_.Run(prefix_, prefix_len_, router_);
-    } else if (!valid_time) {
-      memcpy(&prefix_, prefix, sizeof(prefix_));
-      have_prefix_ = false;
-      result_callback_.Run(prefix_, 0, router_);
+    // For now just use any prefix found.
+    if (valid_time &&
+        (!have_prefix_ ||
+         !ArePrefixesEqual(prefix_, prefix_len_, *prefix, prefix_len))) {
+      AssignPrefix(*prefix, prefix_len, *router);
+      break;
+    }
+
+    if (!valid_time) {
+      AssignPrefix(IN6ADDR_ANY_INIT, 0, IN6ADDR_ANY_INIT);
+      break;
     }
   }
 
   return 0;
 }
 
+void RouterFinder::AssignPrefix(const struct in6_addr& prefix,
+                                int prefix_len,
+                                const struct in6_addr& router) {
+  memcpy(&prefix_, &prefix, sizeof(prefix));
+  prefix_len_ = prefix_len;
+  have_prefix_ = (prefix_len != 0);
+  result_callback_.Run(prefix_, prefix_len_, router);
+}
 }  // namespace arc_networkd
