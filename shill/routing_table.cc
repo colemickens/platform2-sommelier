@@ -463,6 +463,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     return;
   }
 
+  bool entry_exists = false;
   uint8_t target_table = RT_TABLE_MAIN;
   auto per_device_iter = per_device_tables_.find(interface_index);
   if (per_device_iter != per_device_tables_.end()) {
@@ -497,7 +498,11 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
         if (nent->table != entry.table && entry.table == RT_TABLE_MAIN) {
           // Kernel added a routing entry that we have in a per-device table,
           // but placed the entry in the main routing table.
-          RemoveRouteFromKernelTable(interface_index, entry);
+          //
+          // This will cause the per-device table route to be replaced with
+          // the kernel-added route.
+          entry_exists = true;
+          break;
         }
       }
       return;
@@ -523,7 +528,10 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
                NLM_F_CREATE | NLM_F_REPLACE);
     RemoveRouteFromKernelTable(interface_index, oldEntry);
   }
-  table.push_back(entry);
+
+  if (!entry_exists) {
+    table.push_back(entry);
+  }
 }
 
 bool RoutingTable::ApplyRoute(uint32_t interface_index,
