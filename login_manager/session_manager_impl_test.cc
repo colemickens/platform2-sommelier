@@ -16,6 +16,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -153,17 +154,32 @@ class FakeBus : public dbus::Bus {
 // Storing T value. Iff T is const char*, instead std::string value.
 template <typename T>
 struct PayloadStorage {
-  T value;
+  // gtest/gmock 1.8.1 and later add an extra const that needs to be stripped.
+  typename std::remove_const<T>::type value;
 };
 
+// For gtest/gmock < 1.8.1
 template <>
 struct PayloadStorage<const char*> {
   std::string value;
 };
 
+// For gtest/gmock >= 1.8.1
+template <>
+struct PayloadStorage<const char* const> {
+  std::string value;
+};
+
 #if USE_CHEETS
+// For gtest/gmock < 1.8.1
 template <>
 struct PayloadStorage<ArcContainerStopReason> {
+  uint32_t value;
+};
+
+// For gtest/gmock >= 1.8.1
+template <>
+struct PayloadStorage<const ArcContainerStopReason> {
   uint32_t value;
 };
 
