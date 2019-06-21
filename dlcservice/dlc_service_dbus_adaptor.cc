@@ -222,12 +222,7 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
   dlc_parameters.set_omaha_url(omaha_url_in);
   dlcservice::DlcModuleInfo* dlc_info = dlc_parameters.add_dlc_module_infos();
   dlc_info->set_dlc_id(id_in);
-  std::string dlc_request;
-  if (!dlc_parameters.SerializeToString(&dlc_request)) {
-    LogAndSetError(err, "protobuf can not be serialized.");
-    return false;
-  }
-  if (!update_engine_proxy_->AttemptInstall(dlc_request, nullptr)) {
+  if (!update_engine_proxy_->AttemptInstall(dlc_parameters, nullptr)) {
     LogAndSetError(err, "Update Engine failed to schedule install operations.");
     return false;
   }
@@ -294,23 +289,19 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
 }
 
 bool DlcServiceDBusAdaptor::GetInstalled(brillo::ErrorPtr* err,
-                                         std::string* dlc_module_list_out) {
-  // Initialize supported DLC module id list.
+                                         DlcModuleList* dlc_module_list_out) {
+  // Initialize supported DLC module ID list.
   std::vector<std::string> dlc_module_ids = ScanDlcModules();
 
   // Find installed DLC modules.
-  DlcModuleList dlc_module_list;
   for (const auto& dlc_module_id : dlc_module_ids) {
     auto dlc_module_content_path =
         utils::GetDlcModulePath(content_dir_, dlc_module_id);
     if (base::PathExists(dlc_module_content_path)) {
-      DlcModuleInfo* dlc_module_info = dlc_module_list.add_dlc_module_infos();
+      DlcModuleInfo* dlc_module_info =
+          dlc_module_list_out->add_dlc_module_infos();
       dlc_module_info->set_dlc_id(dlc_module_id);
     }
-  }
-  if (!dlc_module_list.SerializeToString(dlc_module_list_out)) {
-    LogAndSetError(err, "Failed to serialize the protobuf.");
-    return false;
   }
   return true;
 }
@@ -347,11 +338,8 @@ bool DlcServiceDBusAdaptor::CheckForUpdateEngineStatus(
 
 void DlcServiceDBusAdaptor::SendOnInstalledSignal(
     const InstallResult& install_result) {
-  std::string output;
-  if (!install_result.SerializeToString(&output)) {
-    LOG(ERROR) << "Failed to serialize InstallResult protobuf.";
-  }
-  org::chromium::DlcServiceInterfaceAdaptor::SendOnInstalledSignal(output);
+  org::chromium::DlcServiceInterfaceAdaptor::SendOnInstalledSignal(
+      install_result);
 }
 
 void DlcServiceDBusAdaptor::OnStatusUpdateSignal(

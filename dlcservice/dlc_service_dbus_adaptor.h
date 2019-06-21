@@ -13,6 +13,7 @@
 #include <base/memory/weak_ptr.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <imageloader/dbus-proxies.h>
+#include <update_engine/proto_bindings/update_engine.pb.h>
 #include <update_engine/dbus-proxies.h>
 
 #include "dlcservice/dbus_adaptors/org.chromium.DlcServiceInterface.h"
@@ -47,7 +48,7 @@ class DlcServiceDBusAdaptor
                const std::string& omaha_url_in) override;
   bool Uninstall(brillo::ErrorPtr* err, const std::string& id_in) override;
   bool GetInstalled(brillo::ErrorPtr* err,
-                    std::string* dlc_module_list_out) override;
+                    DlcModuleList* dlc_module_list_out) override;
 
  private:
   // Scans manifest_dir_ for a list of supported DLC modules and returns them.

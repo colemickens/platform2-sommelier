@@ -125,11 +125,8 @@ class DlcServiceUtil : public brillo::Daemon {
   }
 
   // Callback invoked on receiving |OnInstalled| signal.
-  void OnInstalled(const std::string& install_result_str) {
-    dlcservice::InstallResult install_result;
-    if (!install_result.ParseFromString(install_result_str)) {
-      LOG(ERROR) << "Error parsing protobuf OnInstalledSignal";
-    } else if (!install_result.success()) {
+  void OnInstalled(const dlcservice::InstallResult& install_result) {
+    if (!install_result.success()) {
       LOG(ERROR) << "Failed to install " << install_result.dlc_id()
                  << " with error code:" << install_result.error_code();
     } else {
@@ -201,18 +198,10 @@ class DlcServiceUtil : public brillo::Daemon {
   // failure.
   bool GetInstalled(dlcservice::DlcModuleList* dlc_module_list,
                     int* error_ptr) {
-    std::string dlc_module_list_string;
     brillo::ErrorPtr error;
-
-    if (!dlc_service_proxy_->GetInstalled(&dlc_module_list_string, &error)) {
+    if (!dlc_service_proxy_->GetInstalled(dlc_module_list, &error)) {
       LOG(ERROR) << "Failed to get the list of installed DLC modules, "
                  << error->GetMessage();
-      *error_ptr = EX_SOFTWARE;
-      return false;
-    }
-
-    if (!dlc_module_list->ParseFromString(dlc_module_list_string)) {
-      LOG(ERROR) << "Failed to parse DlcModuleList protobuf.";
       *error_ptr = EX_SOFTWARE;
       return false;
     }
@@ -225,7 +214,7 @@ class DlcServiceUtil : public brillo::Daemon {
     base::FilePath manifest_root =
         base::FilePath(imageloader::kDlcManifestRootpath);
     // TODO(ahassani): This is a workaround. We need to get the list of packages
-    // in the GetInstalled() or a separate signal. But for now since we just
+    // in the |GetInstalled()| or a separate signal. But for now since we just
     // have one package per DLC, this would work.
     std::vector<std::string> packages =
         dlcservice::utils::ScanDirectory(manifest_root);

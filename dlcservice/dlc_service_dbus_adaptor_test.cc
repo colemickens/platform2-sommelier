@@ -9,6 +9,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/run_loop.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
+#include <update_engine/proto_bindings/update_engine.pb.h>
 #include <gtest/gtest.h>
 #include <imageloader/dbus-proxy-mocks.h>
 #include <update_engine/dbus-constants.h>
@@ -32,11 +33,7 @@ constexpr char kManifestName[] = "imageloader.json";
 MATCHER_P(ProtoHasUrl,
           url,
           std::string("The protobuf provided does not have url: ") + url) {
-  dlcservice::DlcModuleList dlc_parameters;
-  if (!dlc_parameters.ParseFromString(arg)) {
-    return false;
-  }
-  return url == dlc_parameters.omaha_url();
+  return url == arg.omaha_url();
 }
 
 }  // namespace
@@ -122,12 +119,9 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
 };
 
 TEST_F(DlcServiceDBusAdaptorTest, GetInstalledTest) {
-  std::string dlc_module_list_str;
-
-  EXPECT_TRUE(
-      dlc_service_dbus_adaptor_->GetInstalled(nullptr, &dlc_module_list_str));
   DlcModuleList dlc_module_list;
-  EXPECT_TRUE(dlc_module_list.ParseFromString(dlc_module_list_str));
+  EXPECT_TRUE(
+      dlc_service_dbus_adaptor_->GetInstalled(nullptr, &dlc_module_list));
   EXPECT_EQ(dlc_module_list.dlc_module_infos_size(), 1);
   EXPECT_EQ(dlc_module_list.dlc_module_infos(0).dlc_id(), kFirstDlc);
 }

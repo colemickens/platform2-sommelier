@@ -36,21 +36,25 @@
     <tp:docstring>
       Returns a list of installed Downloadable Content (DLC) modules.
     </tp:docstring>
-    <arg name="dlc_module_list" type="s" direction="out">
+    <arg name="dlc_module_list" type="ay" direction="out">
       <tp:docstring>
         A serialized protobuf (DlcModuleList,
         src/platform2/system_api/dbus/dlcservice/dlcservice.proto) of a list of
         installed DLC modules.
       </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="dlcservice::DlcModuleList"/>
     </arg>
   </method>
   <signal name="OnInstalled">
-    <arg type="s" name="on_installed_signal">
+    <arg name="install_result" type="ay" >
       <tp:docstring>
-        A serialized protobuf (OnInstalledSignal,
+        A serialized protobuf (InstallResult,
         src/platform2/system_api/dbus/dlcservice/dlcservice.proto) of install
         operation result.
       </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="dlcservice::InstallResult"/>
     </arg>
   </signal>
 </interface>
