@@ -44,7 +44,8 @@ do_mount_var_and_home_chronos() {
       # This should be same as platform2/init/unencrypted/startup_utils.sh
       mkdir -p /mnt/stateful_partition/var || return 1
       mount -n --bind /mnt/stateful_partition/var /var || return 1
-      mount -n --bind /mnt/stateful_partition/home/chronos /home/chronos
+      mount -n --bind /mnt/stateful_partition/home/chronos /home/chronos || \
+        return 1
       ;;
     tmpfs)
       # Mount tmpfs to /var/.  When booting from USB disk, writing to /var/
@@ -53,10 +54,12 @@ do_mount_var_and_home_chronos() {
       # tmpfs on /var to improve performance.  (especially when running tests
       # like touchpad, touchscreen).
       mount -n -t tmpfs tmpfs_var /var || return 1
-      mount -n --bind /mnt/stateful_partition/home/chronos /home/chronos
+      mount -n --bind /mnt/stateful_partition/home/chronos /home/chronos || \
+        return 1
       ;;
     *)
-      mount_var_and_home_chronos
+      # Return immediately on failure.
+      mount_var_and_home_chronos || return
       ;;
   esac
 
