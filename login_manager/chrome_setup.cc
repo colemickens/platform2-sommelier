@@ -528,6 +528,9 @@ void SetUpWallpaperFlags(
   if (cros_config &&
       cros_config->GetString("/", kWallpaperProperty, &filename) &&
       AddWallpaperFlags(builder, "default", filename, path_exists)) {
+    // If there's a wallpaper defined in cros config, mark this as an OEM
+    // wallpaper.
+    builder->AddArg("--default-wallpaper-is-oem");
     return;
   }
 

@@ -132,7 +132,7 @@ TEST_F(ChromeSetupTest, TestModelExists) {
   login_manager::SetUpWallpaperFlags(&builder_, &cros_config_,
                                      kPathInSetCallback);
   std::vector<std::string> argv = builder_.arguments();
-  ASSERT_EQ(6, argv.size());
+  ASSERT_EQ(7, argv.size());
   for (std::string size : kSizes) {
     EXPECT_EQ(GetPath(kModel, size),
               GetFlag(argv, GetFlagName("default", size)));
@@ -141,7 +141,7 @@ TEST_F(ChromeSetupTest, TestModelExists) {
     EXPECT_EQ(GetPath("guest", size),
               GetFlag(argv, GetFlagName("guest", size)));
   }
-  EXPECT_EQ(kNotPresent, GetFlag(argv, "--default-wallpaper-is-oem"));
+  EXPECT_EQ("", GetFlag(argv, "--default-wallpaper-is-oem"));
 }
 
 TEST_F(ChromeSetupTest, TestPowerButtonPosition) {
