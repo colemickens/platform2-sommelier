@@ -103,6 +103,14 @@ BluezInputInterfaceHandler::BluezInputInterfaceHandler() {
   AddPropertyFactory<std::string>(bluetooth_input::kReconnectModeProperty);
 }
 
+
+BluezMediaInterfaceHandler::BluezMediaInterfaceHandler() {
+  AddMethodForwarding(bluetooth_media::kRegisterEndpoint);
+  AddMethodForwarding(bluetooth_media::kUnregisterEndpoint);
+  AddMethodForwarding(bluetooth_media::kRegisterPlayer);
+  AddMethodForwarding(bluetooth_media::kUnregisterPlayer);
+}
+
 BluezGattServiceInterfaceHandler::BluezGattServiceInterfaceHandler() {
   AddPropertyFactory<std::string>(bluetooth_gatt_service::kUUIDProperty);
   AddPropertyFactory<dbus::ObjectPath>(bluetooth_gatt_service::kDeviceProperty);
@@ -140,6 +148,10 @@ BluezMediaTransportInterfaceHandler::BluezMediaTransportInterfaceHandler() {
   AddPropertyFactory<std::string>(bluetooth_media_transport::kStateProperty);
   AddPropertyFactory<uint16_t>(bluetooth_media_transport::kDelayProperty);
   AddPropertyFactory<uint16_t>(bluetooth_media_transport::kVolumeProperty);
+
+  AddMethodForwarding(bluetooth_media_transport::kAcquire);
+  AddMethodForwarding(bluetooth_media_transport::kTryAcquire);
+  AddMethodForwarding(bluetooth_media_transport::kRelease);
 }
 
 BluezAgentManagerInterfaceHandler::BluezAgentManagerInterfaceHandler() {

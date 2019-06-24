@@ -99,7 +99,7 @@ class BluezInputInterfaceHandler : public BluezInterfaceHandler {
 // org.bluez.Media1 interface.
 class BluezMediaInterfaceHandler : public BluezInterfaceHandler {
  public:
-  BluezMediaInterfaceHandler() = default;
+  BluezMediaInterfaceHandler();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BluezMediaInterfaceHandler);
