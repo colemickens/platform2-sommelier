@@ -260,6 +260,9 @@ MountErrorType FUSEMounter::MountImpl() const {
           LOG(ERROR) << "Failed to unmount a FUSE mount '" << target_path
                      << "', error code: " << unmount_error;
         }
+        if (!platform->RemoveEmptyDirectory(target_path)) {
+          PLOG(ERROR) << "Couldn't remove FUSE mountpoint '" << target_path;
+        }
       },
       platform_, target_path().value()));
 

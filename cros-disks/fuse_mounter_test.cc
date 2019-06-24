@@ -61,6 +61,7 @@ class MockFUSEPlatform : public Platform {
                                     const std::string&));
   MOCK_CONST_METHOD2(Unmount, MountErrorType(const std::string&, int flags));
   MOCK_CONST_METHOD1(PathExists, bool(const std::string& path));
+  MOCK_CONST_METHOD1(RemoveEmptyDirectory, bool(const std::string& path));
   MOCK_CONST_METHOD3(SetOwnership,
                      bool(const std::string& path,
                           uid_t user_id,
@@ -170,6 +171,7 @@ TEST(FUSEMounterTest, Sandboxing_Unprivileged) {
       .WillOnce(Return(true));
   EXPECT_CALL(platform, SetOwnership(kMountDir, _, _)).Times(0);
   EXPECT_CALL(platform, SetPermissions(kMountDir, _)).Times(0);
+  EXPECT_CALL(platform, Unmount(_, _)).Times(0);
 
   EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
 }
@@ -178,6 +180,11 @@ TEST(FUSEMounterTest, AppFailed) {
   MockFUSEPlatform platform;
   brillo::ProcessReaper process_reaper;
   FUSEMounterForTesting mounter(&platform, &process_reaper);
+
+  EXPECT_CALL(platform, Mount(kSomeSource, kMountDir, _, _, _))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform, Unmount(_, _)).WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform, RemoveEmptyDirectory(_)).WillOnce(Return(true));
   EXPECT_CALL(mounter, InvokeMountTool(_)).WillOnce(Return(1));
 
   EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mounter.Mount());
