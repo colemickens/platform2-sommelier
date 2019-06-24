@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/utsname.h>
 #include <unistd.h>
 
 #include <linux/vm_sockets.h>
@@ -604,6 +605,26 @@ grpc::Status ServiceImpl::SetTime(grpc::ServerContext* ctx,
   }
 
   LOG(INFO) << "Successfully set time.";
+  return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::GetKernelVersion(
+    grpc::ServerContext* ctx,
+    const EmptyMessage* request,
+    vm_tools::GetKernelVersionResponse* response) {
+  LOG(INFO) << "Received request to get kernel version information.";
+
+  struct utsname buffer;
+  if (uname(&buffer) < 0) {
+    const std::string error_message = base::StringPrintf(
+        "Failed to retrieve kernel version: %s", strerror(errno));
+    LOG(ERROR) << error_message;
+    return grpc::Status(grpc::INTERNAL, error_message);
+  }
+
+  response->set_kernel_release(buffer.release);
+  response->set_kernel_version(buffer.version);
+
   return grpc::Status::OK;
 }
 

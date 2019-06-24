@@ -9,6 +9,8 @@
 #include <google/protobuf/text_format.h>
 #include <gtest/gtest.h>
 
+#include <string>
+
 #include "vm_tools/maitred/service_impl.h"
 
 namespace vm_tools {
@@ -108,6 +110,17 @@ TEST_F(ServiceTest, SetTime_GoodTime) {
 
   // Can't set time in gtest env.
   EXPECT_EQ(result.error_code(), grpc::INTERNAL);
+}
+
+TEST_F(ServiceTest, GetKernelVersion) {
+  grpc::ServerContext ctx;
+  vm_tools::EmptyMessage empty;
+  vm_tools::GetKernelVersionResponse grpc_response;
+  grpc::Status result =
+      service_impl_.GetKernelVersion(&ctx, &empty, &grpc_response);
+  EXPECT_TRUE(result.ok());
+  EXPECT_NE(std::string(), grpc_response.kernel_release());
+  EXPECT_NE(std::string(), grpc_response.kernel_version());
 }
 
 }  // namespace maitred

@@ -62,6 +62,11 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
                        const vm_tools::SetTimeRequest* request,
                        vm_tools::EmptyMessage* response) override;
 
+  grpc::Status GetKernelVersion(
+      grpc::ServerContext* ctx,
+      const vm_tools::EmptyMessage* request,
+      vm_tools::GetKernelVersionResponse* response) override;
+
  private:
   std::unique_ptr<vm_tools::maitred::Init> init_;
 
