@@ -1,0 +1,17 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+pkg_config("cros_camera_common_pkg_config") {
+  pkg_deps = [ "libchrome-${libbase_ver}" ]
+}
+
+config("cros_camera_common") {
+  include_dirs = [
+    "//camera",
+    "//camera/include",
+  ]
+  configs = [ ":cros_camera_common_pkg_config" ]
+}
