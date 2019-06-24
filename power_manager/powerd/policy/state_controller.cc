@@ -349,12 +349,6 @@ void StateController::Init(Delegate* delegate,
       kGetInactivityDelaysMethod,
       base::Bind(&StateController::HandleGetInactivityDelaysMethodCall,
                  weak_ptr_factory_.GetWeakPtr()));
-  // TODO(alanlxl): remove this ExportMethod after chrome is uprevved.
-  // https://crrev.com/c/1598921
-  dbus_wrapper->ExportMethod(
-      kDeferScreenDimMethod,
-      base::Bind(&StateController::HandleDeferScreenDimMethodCall,
-                 weak_ptr_factory_.GetWeakPtr()));
 
   update_engine_dbus_proxy_ =
       dbus_wrapper_->GetObjectProxy(update_engine::kUpdateEngineServiceName,
@@ -787,6 +781,13 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenDim(
   return last_time;
 }
 
+base::TimeTicks StateController::GetLastActivityTimeForRequestSmartDim(
+    base::TimeTicks now) const {
+  base::TimeTicks last_time = GetLastActivityTimeForScreenDim(now);
+  last_time = std::max(last_time, last_smart_dim_decision_request_time_);
+  return last_time;
+}
+
 base::TimeTicks StateController::GetLastActivityTimeForScreenOff(
     base::TimeTicks now) const {
   base::TimeTicks last_time = GetLastActivityTimeForScreenDim(now);
@@ -962,13 +963,8 @@ void StateController::UpdateSettingsAndState() {
 
   SanitizeDelays(&delays_);
 
-  // TODO(alanlxl): Calculate delays.screen_dim_imminent anyway, move the check
-  // of request_smart_dim_decision_ to UpdateState, before
-  // RequestSmartDimDecision.
-  if (request_smart_dim_decision_) {
-    delays_.screen_dim_imminent = std::max(
-        delays_.screen_dim - kScreenDimImminentInterval, base::TimeDelta());
-  }
+  delays_.screen_dim_imminent = std::max(
+      delays_.screen_dim - kScreenDimImminentInterval, base::TimeDelta());
 
   // If the idle or lid-closed actions changed, make sure that we perform
   // the new actions in the event that the system is already idle or the
@@ -1062,6 +1058,8 @@ StateController::Action StateController::GetIdleAction() const {
 void StateController::UpdateState() {
   base::TimeTicks now = clock_->GetCurrentTime();
   base::TimeDelta idle_duration = now - GetLastActivityTimeForIdle(now);
+  base::TimeDelta request_smart_dim_decision_duration =
+      now - GetLastActivityTimeForRequestSmartDim(now);
   base::TimeDelta screen_dim_duration =
       now - GetLastActivityTimeForScreenDim(now);
   base::TimeDelta screen_off_duration =
@@ -1069,27 +1067,12 @@ void StateController::UpdateState() {
   base::TimeDelta screen_lock_duration =
       now - GetLastActivityTimeForScreenLock(now);
 
-  // TODO(alanlxl): Replace the first condition with
-  // request_smart_dim_decision_. And audio activity like playing ended between
-  // delays_.screen_dim_imminent and delays.screen_dim may cause unexpected
-  // requests here. Add a new timestamp to fix this.
-  if (delays_.screen_dim_imminent > base::TimeDelta() &&
-      screen_dim_duration >= delays_.screen_dim_imminent) {
-    if (ml_decision_service_available_ && !waiting_for_smart_dim_decision_ &&
-        !screen_dimmed_) {
-      RequestSmartDimDecision();
-      waiting_for_smart_dim_decision_ = true;
-    }
-    // TODO(alanlxl): Remove EmitBareSignal after chrome is uprevved.
-    // https://crrev.com/c/1598921
-    if (!sent_screen_dim_imminent_ && !screen_dimmed_) {
-      dbus_wrapper_->EmitBareSignal(kScreenDimImminentSignal);
-      sent_screen_dim_imminent_ = true;
-    }
-  } else {
-    waiting_for_smart_dim_decision_ = false;
-    // TODO(alanlxl): Remove this part after chrome is uprevved.
-    sent_screen_dim_imminent_ = false;
+  if (request_smart_dim_decision_ && ml_decision_service_available_ &&
+      request_smart_dim_decision_duration >= delays_.screen_dim_imminent &&
+      !waiting_for_smart_dim_decision_ && !screen_dimmed_) {
+    RequestSmartDimDecision();
+    last_smart_dim_decision_request_time_ = clock_->GetCurrentTime();
+    waiting_for_smart_dim_decision_ = true;
   }
 
   const bool screen_was_dimmed = screen_dimmed_;
@@ -1211,8 +1194,10 @@ void StateController::ScheduleActionTimeout(base::TimeTicks now) {
   // Find the minimum of the delays that haven't yet occurred.
   base::TimeDelta timeout_delay;
   if (!IsScreenDimBlocked()) {
-    UpdateActionTimeout(now, GetLastActivityTimeForScreenDim(now),
-                        delays_.screen_dim_imminent, &timeout_delay);
+    if (request_smart_dim_decision_) {
+      UpdateActionTimeout(now, GetLastActivityTimeForScreenDim(now),
+                          delays_.screen_dim_imminent, &timeout_delay);
+    }
     UpdateActionTimeout(now, GetLastActivityTimeForScreenDim(now),
                         delays_.screen_dim, &timeout_delay);
   }
@@ -1268,26 +1253,6 @@ void StateController::HandleGetInactivityDelaysMethodCall(
   dbus::MessageWriter writer(response.get());
   writer.AppendProtoAsArrayOfBytes(CreateInactivityDelaysProto());
   response_sender.Run(std::move(response));
-}
-
-// TODO(alanlxl): remove this method after chrome is uprevved.
-// https://crrev.com/c/1598921
-void StateController::HandleDeferScreenDimMethodCall(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  if (!sent_screen_dim_imminent_ || screen_dimmed_) {
-    LOG(WARNING) << "Rejected request from " << method_call->GetSender()
-                 << " to defer screen dimming";
-    response_sender.Run(dbus::ErrorResponse::FromMethodCall(
-        method_call, DBUS_ERROR_FAILED, "Screen dim is not imminent"));
-    return;
-  }
-
-  LOG(INFO) << "Got request from " << method_call->GetSender()
-            << " to defer screen dimming";
-  last_defer_screen_dim_time_ = clock_->GetCurrentTime();
-  UpdateState();
-  response_sender.Run(dbus::Response::FromMethodCall(method_call));
 }
 
 void StateController::HandleUpdateEngineAvailable(bool available) {
@@ -1369,8 +1334,15 @@ void StateController::RequestSmartDimDecision() {
 
 void StateController::HandleSmartDimResponse(dbus::Response* response) {
   screen_dim_deferred_for_testing_ = false;
-  if (!waiting_for_smart_dim_decision_ || screen_dimmed_) {
-    VLOG(1) << "Smart dim decision is not being waited for";
+  if (!waiting_for_smart_dim_decision_) {
+    LOG(WARNING) << "Smart dim decision is not being waited for";
+    return;
+  }
+
+  waiting_for_smart_dim_decision_ = false;
+
+  if (screen_dimmed_) {
+    VLOG(1) << "Screen is already dimmed";
     return;
   }
 

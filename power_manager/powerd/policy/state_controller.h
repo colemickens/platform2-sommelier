@@ -286,8 +286,10 @@ class StateController : public PrefsObserver {
   // |use_video_activity_|, and |*_wake_lock_| into account.
   base::TimeTicks GetLastActivityTimeForIdle(base::TimeTicks now) const;
 
-  // Returns the last time at which activity occurred that should defer the
-  // screen getting dimmed, turned off, or locked.
+  // Returns the last time at which activity occurred that should defer a screen
+  // timeout.
+  base::TimeTicks GetLastActivityTimeForRequestSmartDim(
+      base::TimeTicks now) const;
   base::TimeTicks GetLastActivityTimeForScreenDim(base::TimeTicks now) const;
   base::TimeTicks GetLastActivityTimeForScreenOff(base::TimeTicks now) const;
   base::TimeTicks GetLastActivityTimeForScreenLock(base::TimeTicks now) const;
@@ -347,11 +349,6 @@ class StateController : public PrefsObserver {
 
   // Handles various D-Bus method calls.
   void HandleGetInactivityDelaysMethodCall(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
-  // TODO(alanlxl): remove this method declaration after chrome is uprevved.
-  // https://crrev.com/c/1598921
-  void HandleDeferScreenDimMethodCall(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
 
@@ -427,9 +424,6 @@ class StateController : public PrefsObserver {
 
   // These track whether various actions have already been performed by
   // UpdateState().
-  // TODO(alanlxl): Remove sent_screen_dim_imminent_ when chrome is uprevved.
-  // https://crrev.com/c/1598921
-  bool sent_screen_dim_imminent_ = false;
   bool waiting_for_smart_dim_decision_ = false;
   bool screen_dimmed_ = false;
   bool screen_turned_off_ = false;
@@ -504,7 +498,9 @@ class StateController : public PrefsObserver {
   base::TimeTicks last_video_activity_time_;
   base::TimeTicks last_wake_notification_time_;
 
-  // Time of the last DeferScreenDim D-Bus method call.
+  // Time of the last request of RequestSmartDimDecision.
+  base::TimeTicks last_smart_dim_decision_request_time_;
+  // Time of the last deferring screen dim.
   base::TimeTicks last_defer_screen_dim_time_;
 
   // Information about audio activity and full-brightness, screen-on-but-dimmed,
