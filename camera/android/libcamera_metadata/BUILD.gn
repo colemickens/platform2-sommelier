@@ -1,0 +1,20 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("all") {
+  deps = [
+    ":libcamera_metadata",
+  ]
+}
+
+shared_library("libcamera_metadata") {
+  sources = [
+    "//camera/android/libcamera_metadata/src/camera_metadata.c",
+  ]
+  configs += [ "//camera/build:cros_camera_common" ]
+  include_dirs = [ "//camera/android/libcamera_metadata/include" ]
+  pkg_deps = [
+    "cros-camera-android-headers",
+  ]
+}
