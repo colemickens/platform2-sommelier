@@ -22,22 +22,6 @@ struct DeviceEntries {
   std::vector<const CarrierFirmware*> carrier_firmware;
 };
 
-base::Optional<FirmwareFileInfo::Compression> ToFirmwareFileInfoCompression(
-    Compression compression) {
-  switch (compression) {
-    case Compression::NONE:
-      return FirmwareFileInfo::Compression::NONE;
-    case Compression::XZ:
-      return FirmwareFileInfo::Compression::XZ;
-    default:
-      std::string name = Compression_Name(compression);
-      if (name.empty())
-        name = base::IntToString(compression);
-      LOG(ERROR) << "Unsupported compression: " << name;
-      return base::nullopt;
-  }
-}
-
 bool SortByDevice(const FirmwareManifest& manifest,
                   std::map<DeviceType, DeviceEntries>* out_sorted) {
   for (const MainFirmware& info : manifest.main_firmware()) {
@@ -135,6 +119,22 @@ bool ConstructCache(const DeviceEntries& entries,
 }
 
 }  // namespace
+
+base::Optional<FirmwareFileInfo::Compression> ToFirmwareFileInfoCompression(
+    Compression compression) {
+  switch (compression) {
+    case Compression::NONE:
+      return FirmwareFileInfo::Compression::NONE;
+    case Compression::XZ:
+      return FirmwareFileInfo::Compression::XZ;
+    default:
+      std::string name = Compression_Name(compression);
+      if (name.empty())
+        name = base::IntToString(compression);
+      LOG(ERROR) << "Unsupported compression: " << name;
+      return base::nullopt;
+  }
+}
 
 bool ParseFirmwareManifest(const base::FilePath& manifest,
                            FirmwareIndex* index) {

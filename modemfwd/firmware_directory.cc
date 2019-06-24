@@ -124,8 +124,11 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
 std::unique_ptr<FirmwareDirectory> CreateFirmwareDirectory(
     const base::FilePath& directory) {
   FirmwareIndex index;
-  if (!ParseFirmwareManifest(directory.Append(kManifestName), &index))
-    return nullptr;
+  if (!ParseFirmwareManifestV2(directory.Append(kManifestName), &index)) {
+    LOG(INFO) << "Firmware manifest did not parse as V2, falling back to V1";
+    if (!ParseFirmwareManifest(directory.Append(kManifestName), &index))
+      return nullptr;
+  }
 
   return std::make_unique<FirmwareDirectoryImpl>(std::move(index), directory);
 }

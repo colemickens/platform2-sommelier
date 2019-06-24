@@ -11,10 +11,16 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/optional.h>
 
 #include "modemfwd/firmware_file_info.h"
 
+#include "modemfwd/proto_bindings/firmware_manifest.pb.h"
+
 namespace modemfwd {
+
+base::Optional<FirmwareFileInfo::Compression> ToFirmwareFileInfoCompression(
+    Compression compression);
 
 struct DeviceType {
   explicit DeviceType(const std::string& device_id) : device_id_(device_id) {}
@@ -46,6 +52,9 @@ using FirmwareIndex = std::map<DeviceType, DeviceFirmwareCache>;
 
 bool ParseFirmwareManifest(const base::FilePath& manifest,
                            FirmwareIndex* index);
+
+bool ParseFirmwareManifestV2(const base::FilePath& manifest,
+                             FirmwareIndex* index);
 
 }  // namespace modemfwd
 
