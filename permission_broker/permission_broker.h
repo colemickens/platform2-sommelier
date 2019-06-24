@@ -60,6 +60,20 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
   bool ReleaseUdpPort(uint16_t in_port,
                       const std::string& in_interface) override;
   bool ReleaseLoopbackTcpPort(uint16_t in_port) override;
+  bool RequestTcpPortForward(uint16_t in_port,
+                             const std::string& in_interface,
+                             const std::string& dst_ip,
+                             uint16_t dst_port,
+                             const base::ScopedFD& dbus_fd) override;
+  bool RequestUdpPortForward(uint16_t in_port,
+                             const std::string& in_interface,
+                             const std::string& dst_ip,
+                             uint16_t dst_port,
+                             const base::ScopedFD& dbus_fd) override;
+  bool ReleaseTcpPortForward(uint16_t in_port,
+                             const std::string& in_interface) override;
+  bool ReleaseUdpPortForward(uint16_t in_port,
+                             const std::string& in_interface) override;
   void PowerCycleUsbPorts(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
       uint16_t in_vid,

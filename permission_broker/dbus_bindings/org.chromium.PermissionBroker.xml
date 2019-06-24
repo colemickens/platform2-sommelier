@@ -66,5 +66,35 @@
       <arg name="allowed" type="b" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="RequestTcpPortForward">
+      <arg type="q" name="port" direction="in"/>
+      <arg type="s" name="interface" direction="in"/>
+      <arg type="s" name="dst_ip" direction="in"/>
+      <arg type="q" name="dst_port" direction="in"/>
+      <arg type="h" name="lifeline_fd" direction="in"/>
+      <arg name="allowed" type="b" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="RequestUdpPortForward">
+      <arg type="q" name="port" direction="in"/>
+      <arg type="s" name="interface" direction="in"/>
+      <arg type="s" name="dst_ip" direction="in"/>
+      <arg type="q" name="dst_port" direction="in"/>
+      <arg type="h" name="lifeline_fd" direction="in"/>
+      <arg name="allowed" type="b" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="ReleaseTcpPortForward">
+      <arg type="q" name="port" direction="in"/>
+      <arg type="s" name="interface" direction="in"/>
+      <arg name="success" type="b" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="ReleaseUdpPortForward">
+      <arg type="q" name="port" direction="in"/>
+      <arg type="s" name="interface" direction="in"/>
+      <arg name="success" type="b" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>

@@ -178,6 +178,37 @@ bool PermissionBroker::ReleaseUdpPort(uint16_t in_port,
 bool PermissionBroker::ReleaseLoopbackTcpPort(uint16_t in_port) {
   return port_tracker_.ReleaseLoopbackTcpPort(in_port);
 }
+
+bool PermissionBroker::RequestTcpPortForward(
+    uint16_t in_port,
+    const std::string& in_interface,
+    const std::string& dst_ip,
+    uint16_t dst_port,
+    const base::ScopedFD& dbus_fd) {
+  return port_tracker_.StartTcpPortForwarding(
+      in_port, in_interface, dst_ip, dst_port, dbus_fd.get());
+}
+
+bool PermissionBroker::RequestUdpPortForward(
+    uint16_t in_port,
+    const std::string& in_interface,
+    const std::string& dst_ip,
+    uint16_t dst_port,
+    const base::ScopedFD& dbus_fd) {
+  return port_tracker_.StartUdpPortForwarding(
+      in_port, in_interface, dst_ip, dst_port, dbus_fd.get());
+}
+
+bool PermissionBroker::ReleaseTcpPortForward(uint16_t in_port,
+                                             const std::string& in_interface) {
+  return port_tracker_.StopTcpPortForwarding(in_port, in_interface);
+}
+
+bool PermissionBroker::ReleaseUdpPortForward(uint16_t in_port,
+                                             const std::string& in_interface) {
+  return port_tracker_.StopUdpPortForwarding(in_port, in_interface);
+}
+
 void PowerCycleUsbPortsResultCallback(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     bool result) {
