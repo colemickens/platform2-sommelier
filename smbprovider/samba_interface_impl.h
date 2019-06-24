@@ -32,10 +32,9 @@ class SambaInterfaceImpl : public SambaInterface {
                                            int32_t password_length)>;
   ~SambaInterfaceImpl() override;
 
-  // This should be called instead of constructor.
-  template <typename T = SambaInterfaceImpl::AuthCallback>
-  static std::unique_ptr<SambaInterfaceImpl> Create(
-      T auth_callback, const MountConfig& mount_config);
+  // Creates a SambaInterfaceImpl.
+  static std::unique_ptr<SambaInterface> Create(
+      AuthCallback auth_callback, const MountConfig& mount_config);
 
   int32_t OpenFile(const std::string& file_path,
                    int32_t flags,

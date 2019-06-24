@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -34,11 +35,34 @@ int CopyProgressHandler(off_t upto, void* callback_context) {
   return 1;
 }
 
+// Global repository of authentication callbacks indexed by Samba context.
+using AuthCallbacks =
+    std::unordered_map<SMBCCTX*, SambaInterfaceImpl::AuthCallback>;
+
+// Warning: Access to this global repository is not synchronized. This code is
+// not thread-safe.
+static AuthCallbacks* auth_callbacks = nullptr;
+
+// Calls the registered authentication callback for the given Samba context.
+void CallAuthCallback(SMBCCTX* context,
+                      const char* srv,
+                      const char* shr,
+                      char* wg,
+                      int32_t wglen,
+                      char* un,
+                      int32_t unlen,
+                      char* pw,
+                      int32_t pwlen) {
+  DCHECK(auth_callbacks);
+  auth_callbacks->at(context).Run(
+      reinterpret_cast<SambaInterface::SambaInterfaceId>(context),
+      GetMountRoot(srv, shr), wg, wglen, un, unlen, pw, pwlen);
+}
+
 }  // namespace
 
-template <typename T>
-std::unique_ptr<SambaInterfaceImpl> SambaInterfaceImpl::Create(
-    T auth_callback, const MountConfig& mount_config) {
+std::unique_ptr<SambaInterface> SambaInterfaceImpl::Create(
+    AuthCallback auth_callback, const MountConfig& mount_config) {
   SMBCCTX* context = smbc_new_context();
   if (!context) {
     LOG(ERROR) << "Could not create smbc context";
@@ -59,22 +83,18 @@ std::unique_ptr<SambaInterfaceImpl> SambaInterfaceImpl::Create(
 
   smbc_set_context(context);
 
-  // Change auth_callback to a static pointer. This is a simplified version
-  // of base::NoDestructor which does not exist in libchrome.
-  static uint8_t static_auth_callback_memory alignas(T)[sizeof(T)];
-  static T* static_auth_callback =
-      new (static_auth_callback_memory) T(std::move(auth_callback));
+  // Create global repository of authentication callbacks if necessary.
+  if (!auth_callbacks) {
+    auth_callbacks = new AuthCallbacks();
+  }
 
-  // Use static_auth_callback as a C function pointer by converting it to a
-  // lambda.
-  smbc_setFunctionAuthDataWithContext(
-      context,
-      +[](SMBCCTX* context, const char* srv, const char* shr, char* wg,
-          int32_t wglen, char* un, int32_t unlen, char* pw, int32_t pwlen) {
-        static_auth_callback->Run(reinterpret_cast<SambaInterfaceId>(context),
-                                  GetMountRoot(srv, shr), wg, wglen, un, unlen,
-                                  pw, pwlen);
-      });
+  // Store auth_callback in global repository of authentication callbacks.
+  const bool inserted =
+      auth_callbacks->emplace(context, std::move(auth_callback)).second;
+  DCHECK(inserted);
+
+  // Set auth callback on Samba context.
+  smbc_setFunctionAuthDataWithContext(context, &CallAuthCallback);
 
   return base::WrapUnique(new SambaInterfaceImpl(context));
 }
@@ -417,6 +437,9 @@ void SambaInterfaceImpl::CloseOutstandingFileDescriptors() {
 
 SambaInterfaceImpl::~SambaInterfaceImpl() {
   CloseOutstandingFileDescriptors();
+  DCHECK(auth_callbacks);
+  const size_t removed = auth_callbacks->erase(context_);
+  DCHECK_EQ(removed, 1);
   smbc_free_context(context_, 0);
 }
 
@@ -442,10 +465,5 @@ SambaInterfaceImpl::SambaInterfaceImpl(SMBCCTX* context)
   smbc_unlink_ctx_ = smbc_getFunctionUnlink(context);
   smbc_write_ctx_ = smbc_getFunctionWrite(context);
 }
-
-// This is required to explicitly instantiate the template function.
-template std::unique_ptr<SambaInterfaceImpl>
-SambaInterfaceImpl::Create<SambaInterfaceImpl::AuthCallback>(
-    SambaInterfaceImpl::AuthCallback, const MountConfig& mount_config);
 
 }  // namespace smbprovider
