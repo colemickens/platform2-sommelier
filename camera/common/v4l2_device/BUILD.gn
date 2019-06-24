@@ -1,0 +1,18 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("all") {
+  deps = [
+    ":libcamera_v4l2_device",
+  ]
+}
+
+shared_library("libcamera_v4l2_device") {
+  sources = [
+    "v4l2_device.cc",
+    "v4l2_subdevice.cc",
+    "v4l2_video_node.cc",
+  ]
+  configs += [ "//camera/build:cros_camera_common" ]
+}
