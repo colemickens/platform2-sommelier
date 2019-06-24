@@ -55,23 +55,17 @@
           'target_name': 'cros_camera_fuzzer',
           'type': 'executable',
           'includes': [
+            '../../common-mk/common_fuzzer.gypi',
             '../../common-mk/common_test.gypi',
           ],
           'defines': [
-            '-DFUZZER',
+            'FUZZER',
           ],
           'cflags': [
             '-g',
-            '-fsanitize=address',
-            '-fsanitize-coverage=trace-pc-guard',
-          ],
-          'ldflags': [
-            '-fsanitize=address',
-            '-fsanitize-coverage=trace-pc-guard',
           ],
           'libraries': [
             '-ldl',
-            '-lFuzzer',
             '-ljpeg',
           ],
           'sources': [
