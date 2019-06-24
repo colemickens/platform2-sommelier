@@ -62,13 +62,13 @@ bool CanInputCredential(int32_t workgroup_length,
                         const SmbCredential& credential) {
   if (!CanBufferHoldString(credential.workgroup, workgroup_length) ||
       !CanBufferHoldString(credential.username, username_length)) {
-    LOG(ERROR) << "Credential buffers are too small for input.";
+    LOG(ERROR) << "Credential buffers are too small for input";
     return false;
   }
 
   if (credential.password &&
       !CanBufferHoldPassword(credential.password, password_length)) {
-    LOG(ERROR) << "Password buffer is too small for input.";
+    LOG(ERROR) << "Password buffer is too small for input";
     return false;
   }
 
@@ -107,7 +107,7 @@ std::unique_ptr<password_provider::Password> GetPassword(
   if (!base::ReadFromFD(password_fd.get(),
                         reinterpret_cast<char*>(&password_length),
                         sizeof(password_length))) {
-    LOG(ERROR) << "Could not read password from file";
+    LOG(ERROR) << "Cannot read password from file";
     return nullptr;
   }
 

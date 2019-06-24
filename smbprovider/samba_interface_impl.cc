@@ -65,7 +65,7 @@ std::unique_ptr<SambaInterface> SambaInterfaceImpl::Create(
     AuthCallback auth_callback, const MountConfig& mount_config) {
   SMBCCTX* context = smbc_new_context();
   if (!context) {
-    LOG(ERROR) << "Could not create smbc context";
+    LOG(ERROR) << "Cannot create smbc context";
     return nullptr;
   }
 
@@ -73,11 +73,11 @@ std::unique_ptr<SambaInterface> SambaInterfaceImpl::Create(
 
   bool enable_ntlm = mount_config.enable_ntlm;
   smbc_setOptionFallbackAfterKerberos(context, enable_ntlm);
-  LOG(INFO) << "Enable NTLM protocol is set to: " << enable_ntlm;
+  LOG(INFO) << "NTLM protocol is " << (enable_ntlm ? "enabled" : "disabled");
 
   if (!smbc_init_context(context)) {
     smbc_free_context(context, 0);
-    LOG(ERROR) << "Could not initialize smbc context";
+    LOG(ERROR) << "Cannot initialize smbc context";
     return nullptr;
   }
 
@@ -416,20 +416,19 @@ void SambaInterfaceImpl::CloseOutstandingFileDescriptors() {
 
   LOG(WARNING)
       << "Closing " << fds_.Count()
-      << " file descriptors that were left open at unmount or shutdown.";
+      << " file descriptors that were left open at unmount or shutdown";
 
   std::vector<int32_t> open_fds;
   open_fds.reserve(fds_.Count());
+
   for (auto it = fds_.Begin(); it != fds_.End(); ++it) {
     open_fds.push_back(it->first);
   }
-  for (const int32_t fd : open_fds) {
-    const int32_t result = CloseFile(fd);
 
-    if (result != 0) {
-      LOG(WARNING) << "Closing file descriptor " << fd
-                   << " during shutdown failed: " << GetErrorFromErrno(result);
-    }
+  for (const int32_t fd : open_fds) {
+    const int32_t error = CloseFile(fd);
+    LOG_IF(WARNING, error != 0)
+        << "Cannot close file [" << fd << "]: " << GetErrorFromErrno(error);
   }
 
   fds_.Reset();

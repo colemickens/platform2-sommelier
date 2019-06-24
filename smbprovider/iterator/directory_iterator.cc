@@ -117,8 +117,8 @@ void BaseDirectoryIterator::CloseDirectory() {
 
   const int32_t error = samba_interface_->CloseDirectory(dir_id);
   if (error != 0) {
-    LOG(ERROR) << "Cannot close directory [" << dir_id << "]: Error "
-               << GetErrorFromErrno(error);
+    LOG(ERROR) << "Cannot close directory [" << dir_id
+               << "]: " << GetErrorFromErrno(error);
   }
 }
 

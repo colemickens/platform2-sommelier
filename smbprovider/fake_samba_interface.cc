@@ -7,6 +7,7 @@
 #include <errno.h>
 
 #include <algorithm>
+#include <iomanip>
 
 #include <base/bits.h>
 #include <base/macros.h>
@@ -80,9 +81,14 @@ int32_t FakeSambaInterface::OpenDirectory(const std::string& directory_path,
 
 int32_t FakeSambaInterface::CloseDirectory(int32_t dir_id) {
   if (!IsDirectoryFDOpen(dir_id)) {
+    LOG(ERROR) << "Cannot close directory [" << dir_id
+               << "]: Bad file descriptor";
     return EBADF;
   }
+
   auto open_info_iter = FindOpenFD(dir_id);
+  LOG(INFO) << "Closed directory [" << dir_id << "] "
+            << std::quoted(open_info_iter->second.full_path);
   open_fds.erase(open_info_iter);
   return 0;
 }
@@ -178,14 +184,20 @@ int32_t FakeSambaInterface::OpenFile(const std::string& file_path,
 
 int32_t FakeSambaInterface::CloseFile(int32_t file_id) {
   if (close_file_error_ != 0) {
+    LOG(ERROR) << "Cannot close file [" << file_id << "]: Error "
+               << close_file_error_;
     return close_file_error_;
   }
 
   DCHECK_GT(file_id, 0);
   if (!IsFileFDOpen(file_id)) {
+    LOG(ERROR) << "Cannot close file [" << file_id << "]: Bad file descriptor";
     return EBADF;
   }
+
   auto open_info_iter = FindOpenFD(file_id);
+  LOG(INFO) << "Closed file [" << file_id << "] "
+            << std::quoted(open_info_iter->second.full_path);
   open_fds.erase(open_info_iter);
   return 0;
 }
@@ -756,6 +768,7 @@ FakeSambaInterface::FakeEntry* FakeSambaInterface::GetEntry(
 int32_t FakeSambaInterface::AddOpenDirectory(const std::string& path) {
   DCHECK(!IsFDOpen(next_fd));
   open_fds.emplace(next_fd, OpenInfo(path, SMBC_DIR));
+  LOG(INFO) << "Opened directory [" << next_fd << "] " << std::quoted(path);
   return next_fd++;
 }
 
@@ -764,6 +777,7 @@ int32_t FakeSambaInterface::AddOpenFile(const std::string& path,
                                         bool writeable) {
   DCHECK(!IsFDOpen(next_fd));
   open_fds.emplace(next_fd, OpenInfo(path, SMBC_FILE, readable, writeable));
+  LOG(INFO) << "Opened file [" << next_fd << "] " << std::quoted(path);
   return next_fd++;
 }
 
