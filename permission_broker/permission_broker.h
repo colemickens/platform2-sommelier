@@ -17,7 +17,6 @@
 #include <base/time/time.h>
 #include <dbus/bus.h>
 
-#include "container_utils/device_jail_server.h"
 #include "permission_broker/dbus_adaptors/org.chromium.PermissionBroker.h"
 #include "permission_broker/firewall.h"
 #include "permission_broker/port_tracker.h"
@@ -68,7 +67,6 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
       uint16_t in_pid,
       int64_t in_delay) override;
 
-  std::unique_ptr<device_jail::DeviceJailServer> jail_server_;
   RuleEngine rule_engine_;
   brillo::dbus_utils::DBusObject dbus_object_;
   Firewall firewall_;
