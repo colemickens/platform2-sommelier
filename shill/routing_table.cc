@@ -894,7 +894,7 @@ void RoutingTable::FlushRules(int interface_index) {
 
 uint8_t RoutingTable::AllocTableId() {
   if (available_table_ids_.empty()) {
-    return 0;
+    return RT_TABLE_UNSPEC;
   } else {
     uint8_t table_id = available_table_ids_.back();
     available_table_ids_.pop_back();

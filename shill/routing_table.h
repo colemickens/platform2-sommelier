@@ -126,7 +126,7 @@ class RoutingTable {
                                   uint8_t table_id);
 
   // Allocates a routing table, and returns the ID.  If no IDs are available,
-  // returns 0.
+  // returns RT_TABLE_UNSPEC.
   virtual uint8_t AllocTableId();
   // Sets a table as the per-device table for the specified index. |table_id|
   // must not already be used as the per device table of a different interface,

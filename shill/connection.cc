@@ -165,10 +165,11 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   allowed_uids_ = properties.allowed_uids;
   allowed_iifs_ = properties.allowed_iifs;
 
-  routing_table_->FreeTableId(table_id_);
-  table_id_ = routing_table_->AllocTableId();
-  CHECK(table_id_);
-  routing_table_->SetPerDeviceTable(interface_index_, table_id_);
+  if (table_id_ == RT_TABLE_MAIN) {
+    table_id_ = routing_table_->AllocTableId();
+    CHECK_NE(table_id_, RT_TABLE_UNSPEC);
+    routing_table_->SetPerDeviceTable(interface_index_, table_id_);
+  }
 
   IPAddress gateway(properties.address_family);
   if (!properties.gateway.empty() &&
