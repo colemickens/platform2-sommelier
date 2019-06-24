@@ -186,6 +186,9 @@ class TerminaVm final : public VmInterface {
             base::FilePath runtime_dir,
             VmFeatures features);
 
+  // Returns the path to the VM control socket.
+  std::string GetVmSocketPath() const;
+
   // Starts the VM with the given kernel and root file system.
   bool Start(base::FilePath kernel,
              base::FilePath rootfs,

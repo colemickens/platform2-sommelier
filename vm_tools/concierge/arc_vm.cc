@@ -92,6 +92,10 @@ std::unique_ptr<ArcVm> ArcVm::Create(
   return vm;
 }
 
+std::string ArcVm::GetVmSocketPath() const {
+  return runtime_dir_.GetPath().Append(kCrosvmSocket).value();
+}
+
 bool ArcVm::Start(base::FilePath kernel,
                   base::FilePath rootfs,
                   std::vector<ArcVm::Disk> disks,
@@ -113,7 +117,7 @@ bool ArcVm::Start(base::FilePath kernel,
     "--disk",         rootfs.value(),
     "--tap-fd",       std::to_string(tap_fd.get()),
     "--cid",          std::to_string(vsock_cid_),
-    "--socket",       runtime_dir_.GetPath().Append(kCrosvmSocket).value(),
+    "--socket",       GetVmSocketPath(),
     "--wayland-sock", kWaylandSocket,
     "--wayland-dmabuf",
     "--serial",       "type=syslog,num=1",
@@ -177,8 +181,7 @@ bool ArcVm::Shutdown() {
   // down the OS.
 
   // Try to shut it down via the crosvm socket.
-  RunCrosvmCommand("stop",
-                   runtime_dir_.GetPath().Append(kCrosvmSocket).value());
+  RunCrosvmCommand("stop", GetVmSocketPath());
 
   // We can't actually trust the exit codes that crosvm gives us so just see if
   // it exited.
@@ -206,13 +209,11 @@ bool ArcVm::Shutdown() {
 }
 
 void ArcVm::HandleSuspendImminent() {
-  RunCrosvmCommand("suspend",
-                   runtime_dir_.GetPath().Append(kCrosvmSocket).value());
+  RunCrosvmCommand("suspend", GetVmSocketPath());
 }
 
 void ArcVm::HandleSuspendDone() {
-  RunCrosvmCommand("suspend",
-                   runtime_dir_.GetPath().Append(kCrosvmSocket).value());
+  RunCrosvmCommand("suspend", GetVmSocketPath());
 }
 
 uint32_t ArcVm::GatewayAddress() const {

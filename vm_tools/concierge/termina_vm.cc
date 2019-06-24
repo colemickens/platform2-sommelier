@@ -115,6 +115,10 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(
   return vm;
 }
 
+std::string TerminaVm::GetVmSocketPath() const {
+  return runtime_dir_.GetPath().Append(kCrosvmSocket).value();
+}
+
 bool TerminaVm::Start(base::FilePath kernel,
                       base::FilePath rootfs,
                       std::vector<TerminaVm::Disk> disks) {
@@ -135,10 +139,10 @@ bool TerminaVm::Start(base::FilePath kernel,
       "--root",         rootfs.value(),
       "--tap-fd",       std::to_string(tap_fd.get()),
       "--cid",          std::to_string(vsock_cid_),
-      "--socket",       runtime_dir_.GetPath().Append(kCrosvmSocket).value(),
+      "--socket",       GetVmSocketPath(),
       "--wayland-sock", kWaylandSocket,
       "--cras-audio",
-      "--params",       "snd_intel8x0.inside_vm=1 snd_intel8x0.ac97_clock=48000",
+      "--params",      "snd_intel8x0.inside_vm=1 snd_intel8x0.ac97_clock=48000",
   };
   // clang-format on
 
@@ -310,8 +314,7 @@ bool TerminaVm::ConfigureNetwork(const std::vector<string>& nameservers,
 }
 
 void TerminaVm::RunCrosvmCommand(string command) {
-  vm_tools::concierge::RunCrosvmCommand(
-      std::move(command), runtime_dir_.GetPath().Append(kCrosvmSocket).value());
+  vm_tools::concierge::RunCrosvmCommand(std::move(command), GetVmSocketPath());
 }
 
 bool TerminaVm::Mount(string source,
@@ -491,7 +494,7 @@ bool TerminaVm::AttachUsbDevice(uint8_t bus,
   crosvm.AddArg("attach");
   crosvm.AddArg(base::StringPrintf("%d:%d:%x:%x", bus, addr, vid, pid));
   crosvm.AddArg("/proc/self/fd/" + std::to_string(fd));
-  crosvm.AddArg(runtime_dir_.GetPath().Append(kCrosvmSocket).value());
+  crosvm.AddArg(GetVmSocketPath());
   crosvm.BindFd(fd, fd);
   fcntl(fd, F_SETFD, 0);  // Remove the CLOEXEC
 
@@ -506,7 +509,7 @@ bool TerminaVm::DetachUsbDevice(uint8_t port, UsbControlResponse* response) {
   crosvm.AddArg("usb");
   crosvm.AddArg("detach");
   crosvm.AddArg(std::to_string(port));
-  crosvm.AddArg(runtime_dir_.GetPath().Append(kCrosvmSocket).value());
+  crosvm.AddArg(GetVmSocketPath());
 
   CallUsbControl(std::move(crosvm), response);
 
@@ -518,7 +521,7 @@ bool TerminaVm::ListUsbDevice(std::vector<UsbDevice>* device) {
   crosvm.AddArg(kCrosvmBin);
   crosvm.AddArg("usb");
   crosvm.AddArg("list");
-  crosvm.AddArg(runtime_dir_.GetPath().Append(kCrosvmSocket).value());
+  crosvm.AddArg(GetVmSocketPath());
 
   UsbControlResponse response;
   CallUsbControl(std::move(crosvm), &response);
