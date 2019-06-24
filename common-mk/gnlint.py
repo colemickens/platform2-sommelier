@@ -318,6 +318,35 @@ def GnLintDefineFlags(gndata):
   return issues
 
 
+def GnLintDefines(gndata):
+  """Flags in 'defines' should have valid names.
+
+  Args:
+    gndata: A dict representing a token tree.
+
+  Returns:
+    List of detected LintResult.
+  """
+
+  def CheckNode(node):
+    flags = ExtractLiteralAssignment(node, ['defines'])
+    for flag in flags:
+      if flag.startswith('-D'):
+        # People sometimes typo the name.
+        if flag.startswith('-D'):
+          issues.append('defines do not use -D prefixes: use "%s" instead of '
+                        '"%s"' % (flag[2:], flag))
+        else:
+          # Make sure the name is valid CPP.
+          name = flag.split('=', 1)[0]
+          if not re.match(r'^[a-zA-Z0-9_]+$', name):
+            issues.append('invalid define name: %s' % (name,))
+
+  issues = []
+  WalkGn(CheckNode, gndata)
+  return issues
+
+
 def GnLintCommonTesting(gndata):
   """Packages should use //common-mk:test instead of -lgtest/-lgmock.
 
@@ -561,6 +590,7 @@ _ALL_LINTERS = {
     'GnLintLibFlags': GnLintLibFlags,
     'GnLintVisibilityFlags': GnLintVisibilityFlags,
     'GnLintDefineFlags': GnLintDefineFlags,
+    'GnLintDefines': GnLintDefines,
     'GnLintCommonTesting': GnLintCommonTesting,
     'GnLintStaticSharedLibMixing': GnLintStaticSharedLibMixing,
     'GnLintSourceFileNames': GnLintSourceFileNames,

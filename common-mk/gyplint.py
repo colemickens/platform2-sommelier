@@ -95,6 +95,26 @@ def GypLintDefineFlags(gypdata):
   return WalkGyp(CheckNode, gypdata)
 
 
+def GypLintDefines(gypdata):
+  """Flags in 'defines' should have valid names."""
+  def CheckNode(key, value):
+    ret = []
+    if key.startswith('defines'):
+      for flag in value:
+        # People sometimes typo the name.
+        if flag.startswith('-D'):
+          ret.append('defines do not use -D prefixes: use "%s" instead of "%s"'
+                     % (flag[2:], flag))
+        else:
+          # Make sure the name is valid CPP.
+          name = flag.split('=', 1)[0]
+          if not re.match(r'^[a-zA-Z0-9_]+$', name):
+            ret.append('invalid define name: %s' % (name,))
+    return ret
+
+  return WalkGyp(CheckNode, gypdata)
+
+
 def GypLintCommonTesting(gypdata):
   """Packages should use common_test.gypi instead of -lgtest/-lgmock."""
   def CheckNode(key, value):
