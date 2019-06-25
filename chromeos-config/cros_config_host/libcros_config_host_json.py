@@ -209,12 +209,19 @@ class CrosConfigJson(CrosConfigBaseImpl):
               wl_key_id = wl_config.GetValue(fw_signer_config, 'key-id')
               wl_sig_id = wl_config.GetValue(fw_signer_config, 'signature-id')
               wl_fw_info = copy.deepcopy(info)
-              wl_config.firmware_info[wl_sig_id] = wl_fw_info._replace(
-                  model=wl_sig_id,
-                  key_id=wl_key_id,
-                  have_image=False,
-                  sig_id=wl_sig_id,
-                  brand_code=wl_brand_code)
+              # Firmware info associated with model name should be kept with
+              # have_image=True so following process will generate one firmware
+              # entry for this model.
+              if wl_sig_id == name:
+                wl_config.firmware_info[wl_sig_id] = wl_fw_info._replace(
+                    brand_code=wl_brand_code)
+              else:
+                wl_config.firmware_info[wl_sig_id] = wl_fw_info._replace(
+                    model=wl_sig_id,
+                    key_id=wl_key_id,
+                    have_image=False,
+                    sig_id=wl_sig_id,
+                    brand_code=wl_brand_code)
 
   def GetDeviceConfigs(self):
     return self._configs
