@@ -1,0 +1,28 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("all") {
+  deps = [
+    ":libcamera_client",
+  ]
+}
+
+shared_library("libcamera_client") {
+  sources = [
+    "src/camera_metadata.cc",
+  ]
+  include_dirs = [ "//camera/android/libcamera_client/include" ]
+  configs += [
+    "//camera/build:cros_camera_common",
+
+    # We don"t want to modify the Android sources to add the visibility
+    # attributes, so allow -fvisibility=default here.
+    # gnlint: disable=GnLintVisibilityFlags
+    "//common-mk:visibility_default",
+  ]
+  pkg_deps = [
+    "cros-camera-android-headers",
+    "libcamera_metadata",
+  ]
+}
