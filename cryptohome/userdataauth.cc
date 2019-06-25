@@ -5,6 +5,7 @@
 #include <base/bind.h>
 #include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <brillo/cryptohome.h>
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
 #include <vector>
@@ -32,10 +33,14 @@ UserDataAuth::UserDataAuth()
       crypto_(default_crypto_.get()),
       default_chaps_client_(new chaps::TokenManagerClient()),
       chaps_client_(default_chaps_client_.get()),
+      default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
+      install_attrs_(default_install_attrs_.get()),
+      enterprise_owned_(false),
       reported_pkcs11_init_fail_(false),
       default_homedirs_(new cryptohome::HomeDirs()),
       homedirs_(default_homedirs_.get()),
       user_timestamp_cache_(new UserOldestActivityTimestampCache()),
+      guest_user_(brillo::cryptohome::home::kGuestUserName),
       force_ecryptfs_(true),
       legacy_mount_(true) {}
 
@@ -81,6 +86,11 @@ bool UserDataAuth::Initialize() {
   if (!homedirs_->GetSystemSalt(&system_salt_)) {
     return false;
   }
+
+  // If the TPM is unowned or doesn't exist, it's safe for
+  // this function to be called again. However, it shouldn't
+  // be called across multiple threads in parallel.
+  InitializeInstallAttributes();
 
   if (!disable_threading_) {
     base::Thread::Options options;
@@ -535,6 +545,80 @@ void UserDataAuth::OwnershipCallback(bool status, bool took_ownership) {
     PostTaskToMountThread(
         FROM_HERE, base::BindOnce(&UserDataAuth::ResumeAllPkcs11Initialization,
                                   base::Unretained(this)));
+
+    // Initialize the install-time locked attributes since we can't do it prior
+    // to ownership.
+    PostTaskToOriginThread(
+        FROM_HERE, base::BindOnce(&UserDataAuth::InitializeInstallAttributes,
+                                  base::Unretained(this)));
+
+    // If we mounted before the TPM finished initialization, we must finalize
+    // the install attributes now too, otherwise it takes a full re-login cycle
+    // to finalize.
+    PostTaskToMountThread(
+        FROM_HERE,
+        base::BindOnce(&UserDataAuth::FinalizeInstallAttributesIfMounted,
+                       base::Unretained(this)));
+  }
+}
+
+void UserDataAuth::SetEnterpriseOwned(bool enterprise_owned) {
+  AssertOnMountThread();
+
+  enterprise_owned_ = enterprise_owned;
+  for (const auto& mount_pair : mounts_) {
+    mount_pair.second->set_enterprise_owned(enterprise_owned);
+  }
+  homedirs_->set_enterprise_owned(enterprise_owned);
+}
+
+void UserDataAuth::DetectEnterpriseOwnership() {
+  AssertOnOriginThread();
+
+  static const std::string true_str = "true";
+  brillo::Blob true_value(true_str.begin(), true_str.end());
+  true_value.push_back(0);
+
+  brillo::Blob value;
+  if (install_attrs_->Get("enterprise.owned", &value) && value == true_value) {
+    // Update any active mounts with the state, have to be done on mount thread.
+    PostTaskToOriginThread(FROM_HERE,
+                           base::BindOnce(&UserDataAuth::SetEnterpriseOwned,
+                                          base::Unretained(this), true));
+  }
+  // Note: Right now there's no way to convert an enterprise owned machine to a
+  // non-enterprise owned machine without clearing the TPM, so we don't try
+  // calling SetEnterpriseOwned() with false.
+}
+
+void UserDataAuth::InitializeInstallAttributes() {
+  AssertOnOriginThread();
+
+  // The TPM owning instance may have changed since initialization.
+  // InstallAttributes can handle a NULL or !IsEnabled Tpm object.
+  install_attrs_->SetTpm(tpm_);
+  install_attrs_->Init(tpm_init_);
+
+  // Check if the machine is enterprise owned and report to mount_ then.
+  DetectEnterpriseOwnership();
+}
+
+void UserDataAuth::FinalizeInstallAttributesIfMounted() {
+  AssertOnMountThread();
+
+  bool is_mounted = IsMounted();
+  if (is_mounted &&
+      install_attrs_->status() == InstallAttributes::Status::kFirstInstall) {
+    scoped_refptr<cryptohome::Mount> guest_mount = GetMountForUser(guest_user_);
+    bool guest_mounted = guest_mount.get() && guest_mount->IsMounted();
+    if (!guest_mounted) {
+      PostTaskToOriginThread(FROM_HERE,
+                             base::BindOnce(
+                                 [](UserDataAuth* userdataauth) {
+                                   userdataauth->install_attrs_->Finalize();
+                                 },
+                                 base::Unretained(this)));
+    }
   }
 }
 

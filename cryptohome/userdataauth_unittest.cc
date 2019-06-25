@@ -11,6 +11,7 @@
 
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_homedirs.h"
+#include "cryptohome/mock_install_attributes.h"
 #include "cryptohome/mock_mount.h"
 #include "cryptohome/mock_mount_factory.h"
 #include "cryptohome/mock_platform.h"
@@ -57,6 +58,7 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
 
     userdataauth_.set_crypto(&crypto_);
     userdataauth_.set_homedirs(&homedirs_);
+    userdataauth_.set_install_attrs(&attrs_);
     userdataauth_.set_tpm(&tpm_);
     userdataauth_.set_tpm_init(&tpm_init_);
     userdataauth_.set_platform(&platform_);
@@ -89,6 +91,10 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
 
   // Mock HomeDirs object, will be passed to UserDataAuth for its internal use.
   NiceMock<MockHomeDirs> homedirs_;
+
+  // Mock InstallAttributes object, will be passed to UserDataAuth for its
+  // internal use.
+  NiceMock<MockInstallAttributes> attrs_;
 
   // Mock Platform object, will be passed to UserDataAuth for its internal use.
   NiceMock<MockPlatform> platform_;
@@ -279,6 +285,34 @@ TEST_F(UserDataAuthTest, InitializePkcs11Unmounted) {
   userdataauth_.InitializePkcs11(mount_.get());
 
   EXPECT_EQ(mount_->pkcs11_state(), cryptohome::Mount::kUninitialized);
+}
+
+TEST_F(UserDataAuthTestNotInitialized, InstallAttributesEnterpriseOwned) {
+  EXPECT_CALL(attrs_, Init(_)).WillOnce(Return(true));
+
+  std::string str_true = "true";
+  std::vector<uint8_t> blob_true(str_true.begin(), str_true.end());
+  blob_true.push_back(0);
+
+  EXPECT_CALL(attrs_, Get("enterprise.owned", _))
+      .WillOnce(DoAll(SetArgPointee<1>(blob_true), Return(true)));
+  userdataauth_.Initialize();
+
+  EXPECT_TRUE(userdataauth_.IsEnterpriseOwned());
+}
+
+TEST_F(UserDataAuthTestNotInitialized, InstallAttributesNotEnterpriseOwned) {
+  EXPECT_CALL(attrs_, Init(_)).WillOnce(Return(true));
+
+  std::string str_true = "false";
+  std::vector<uint8_t> blob_true(str_true.begin(), str_true.end());
+  blob_true.push_back(0);
+
+  EXPECT_CALL(attrs_, Get("enterprise.owned", _))
+      .WillOnce(DoAll(SetArgPointee<1>(blob_true), Return(true)));
+  userdataauth_.Initialize();
+
+  EXPECT_FALSE(userdataauth_.IsEnterpriseOwned());
 }
 
 // ======================= CleanUpStaleMounts tests ==========================

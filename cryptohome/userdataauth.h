@@ -19,6 +19,7 @@
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/homedirs.h"
+#include "cryptohome/install_attributes.h"
 #include "cryptohome/mount.h"
 #include "cryptohome/platform.h"
 
@@ -97,6 +98,11 @@ class UserDataAuth {
   // functionalities after mounting.
   void InitializePkcs11(cryptohome::Mount* mount);
 
+  // =============== Install Attributes Related Utilities ===============
+
+  // Return true if this device is enterprise owned.
+  bool IsEnterpriseOwned() { return enterprise_owned_; }
+
   // =============== Miscellaneous ===============
 
   // This is called by tpm_init_ when there's any update on ownership status
@@ -171,6 +177,12 @@ class UserDataAuth {
   void set_chaps_client(chaps::TokenManagerClient* chaps_client) {
     chaps_client_ = chaps_client;
   }
+
+  // Override |install_attrs_| for testing purpose
+  void set_install_attrs(InstallAttributes* install_attrs) {
+    install_attrs_ = install_attrs;
+  }
+
   // Associate a particular mount object |mount| with the username |username|
   // for testing purpose
   void set_mount_for_user(const std::string& username,
@@ -235,6 +247,25 @@ class UserDataAuth {
   // the initialization of any PKCS#11 that was paused because TPM wasn't
   // ready.
   void ResumeAllPkcs11Initialization();
+
+  // =============== Install Attributes Related Utilities ===============
+
+  // Set whether this device is enterprise owned. Calling this method will have
+  // effect on all currently mounted mounts. This can only be called on
+  // mount_thread_.
+  void SetEnterpriseOwned(bool enterprise_owned);
+
+  // Detect whether this device is enterprise owned, and call
+  // SetEnterpriseOwned(). This can only be called on origin thread.
+  void DetectEnterpriseOwnership();
+
+  // Call this method to initialize the install attributes functionality. This
+  // can only be called on origin thread.
+  void InitializeInstallAttributes();
+
+  // Calling this method will finalize the install attributes if we current have
+  // a non-guest mount mounted. This can only be called on mount thread.
+  void FinalizeInstallAttributesIfMounted();
 
   // =============== Threading Related Variables ===============
 
@@ -301,6 +332,21 @@ class UserDataAuth {
   // KeyChallengeService.
   scoped_refptr<::dbus::Bus> bus_;
 
+  // =============== Install Attributes Related Variables ===============
+
+  // The default install attributes object, for accessing install attributes
+  // related functionality.
+  std::unique_ptr<cryptohome::InstallAttributes> default_install_attrs_;
+
+  // The actual install attributes object used by this class, usually set to
+  // |default_install_attrs_|, but can be overriden for testing. This object
+  // should only be accessed on the origin thread.
+  cryptohome::InstallAttributes* install_attrs_;
+
+  // Whether this device is an enterprise owned device. Write access should only
+  // happen on mount thread.
+  bool enterprise_owned_;
+
   // =============== Mount Related Variables ===============
 
   // Defines a type for tracking Mount objects for each user by username.
@@ -334,6 +380,9 @@ class UserDataAuth {
   // This holds a timestamp for each user that is the time that the user was
   // active.
   std::unique_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
+
+  // Guest user's username.
+  std::string guest_user_;
 
   // Force the use of eCryptfs. If eCryptfs is not used, then dircrypto -- the
   // native ext4 directory encryption is used.
