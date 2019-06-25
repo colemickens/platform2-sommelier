@@ -22,6 +22,7 @@
 #include <base/macros.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/cryptolib.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_init.h"
@@ -33,6 +34,13 @@ namespace cryptohome {
 class VaultKeyset;
 
 extern const char kSystemSaltFile[];
+
+// This struct is populated by the various authentication methods.
+struct KeyBlobs {
+  KeyBlobs() : vkk_key(kAesBlockSize), vkk_iv(kAesBlockSize) {}
+  brillo::SecureBlob vkk_key;
+  brillo::SecureBlob vkk_iv;
+};
 
 class Crypto {
  public:
@@ -297,11 +305,33 @@ class Crypto {
                                   const std::string& obfuscated_username,
                                   SerializedVaultKeyset* serialized) const;
 
+  // DecryptTPM takes a user credential, which is TPM protected, and produces
+  // the resulting vault keyset key (VKK) and IV.
+  //
+  // |serialized| is the vault keyset (VK) stored in protobuf format.
+  // |key| is the passkey used for decryption.
+  // |error| is populated with any errors returned.
+  // |key_out_data| is the struct populated with the VKK and IV.
+  //
+  // Returns true on success, and false on failure.
   bool DecryptTPM(const SerializedVaultKeyset& serialized,
                   const brillo::SecureBlob& key,
                   bool is_pcr_extended,
                   CryptoError* error,
-                  VaultKeyset* vault_keyset) const;
+                  KeyBlobs* key_out_data) const;
+
+  // This function consumes the Vault Keyset Key (VKK) and IV, and produces the
+  // unwrapped secrets from the Vault Keyset.
+  // |serialized| is the serialized vault keyset protobuf.
+  // |vkk_data| is the VKK and the VKK IV.
+  // |keyset| is the C++ class populated with the |serialized| protobuf.
+  // |error| is populated upon failure.
+  //
+  // Returns true on success, and false on failure.
+  bool UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
+                         const KeyBlobs& vkk_data,
+                         VaultKeyset* keyset,
+                         CryptoError* error) const;
 
   // Companion decryption function for Crypto::EncryptScryptBlob()
   // This is a helper function used by DecryptScrypt() to decrypt

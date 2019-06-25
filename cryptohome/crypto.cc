@@ -397,20 +397,12 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
                         const SecureBlob& vault_key,
                         bool is_pcr_extended,
                         CryptoError* error,
-                        VaultKeyset* keyset) const {
+                        KeyBlobs* key_out_data) const {
   CHECK(tpm_);
   CHECK(serialized.flags() & SerializedVaultKeyset::TPM_WRAPPED);
-  SecureBlob local_encrypted_keyset(serialized.wrapped_keyset().length());
-  serialized.wrapped_keyset().copy(
-      local_encrypted_keyset.char_data(),
-      serialized.wrapped_keyset().length(), 0);
-  SecureBlob salt(serialized.salt().length());
-  serialized.salt().copy(salt.char_data(), serialized.salt().length(), 0);
-  bool chaps_key_present = serialized.has_wrapped_chaps_key();
-  SecureBlob local_wrapped_chaps_key;
-  if (chaps_key_present) {
-    local_wrapped_chaps_key = SecureBlob(serialized.wrapped_chaps_key());
-  }
+
+  SecureBlob salt(serialized.salt().begin(), serialized.salt().end());
+
   if (!serialized.has_tpm_key()) {
     LOG(ERROR) << "Decrypting with TPM, but no tpm key present";
     ReportCryptohomeError(kDecryptAttemptButTpmKeyMissing);
@@ -433,7 +425,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
     return false;
   }
 
-  Crypto::CryptoError local_error = EnsureTpm(false);
+  Crypto::CryptoError local_error = EnsureTpm(/*reload_key=*/false);
   if (!is_cryptohome_key_loaded()) {
     LOG(ERROR) << "Vault keyset is wrapped by the TPM, but the TPM is "
                << "unavailable";
@@ -443,6 +435,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
     return false;
   }
 
+  // This is a sanity check that the keys still match.
   if (serialized.has_tpm_public_key_hash()) {
     if (!IsTPMPubkeyHash(serialized.tpm_public_key_hash(), error)) {
       LOG(ERROR) << "TPM public key hash mismatch.";
@@ -452,22 +445,39 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
   }
 
   SecureBlob tpm_key = GetTpmKeyFromSerialized(serialized, is_pcr_extended);
-  SecureBlob vkk_key;
-  SecureBlob vkk_iv(kAesBlockSize);
-  bool is_pcr_bound =
-      serialized.flags() & SerializedVaultKeyset::PCR_BOUND;
+  bool is_pcr_bound = serialized.flags() & SerializedVaultKeyset::PCR_BOUND;
   if (is_pcr_bound) {
-    if (!DecryptTpmBoundToPcr(vault_key, tpm_key, salt, error, &vkk_iv,
-                              &vkk_key)) {
+    if (!DecryptTpmBoundToPcr(vault_key, tpm_key, salt, error,
+                              &key_out_data->vkk_iv, &key_out_data->vkk_key)) {
       return false;
     }
   } else {
     if (!DecryptTpmNotBoundToPcr(serialized, vault_key, tpm_key, salt, error,
-                                 &vkk_iv, &vkk_key)) {
+                                 &key_out_data->vkk_iv,
+                                 &key_out_data->vkk_key)) {
       return false;
     }
   }
+
+  if (!serialized.has_tpm_public_key_hash() && error) {
+    *error = CE_NO_PUBLIC_KEY_HASH;
+  }
+
+  return true;
+}
+
+bool Crypto::UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
+                               const KeyBlobs& vkk_data,
+                               VaultKeyset* keyset,
+                               CryptoError* error) const {
+  const SecureBlob& vkk_key = vkk_data.vkk_key;
+  const SecureBlob& vkk_iv = vkk_data.vkk_iv;
+
+  // Decrypt the keyset protobuf.
+  SecureBlob local_encrypted_keyset(serialized.wrapped_keyset().begin(),
+                                    serialized.wrapped_keyset().end());
   SecureBlob plain_text;
+
   if (!CryptoLib::AesDecrypt(local_encrypted_keyset, vkk_key, vkk_iv,
                              &plain_text)) {
     LOG(ERROR) << "AES decryption failed for vault keyset.";
@@ -475,22 +485,38 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
       *error = CE_OTHER_CRYPTO;
     return false;
   }
-  SecureBlob unwrapped_chaps_key;
-  if (chaps_key_present && !CryptoLib::AesDecrypt(local_wrapped_chaps_key,
-                                                  vkk_key,
-                                                  vkk_iv,
-                                                  &unwrapped_chaps_key)) {
-    LOG(ERROR) << "AES decryption failed for chaps key.";
+  if (!keyset->FromKeysBlob(plain_text)) {
+    LOG(ERROR) << "Failed to decode the keys blob.";
     if (error)
       *error = CE_OTHER_CRYPTO;
     return false;
   }
 
-  SecureBlob unwrapped_reset_seed;
-  SecureBlob local_wrapped_reset_seed =
-      SecureBlob(serialized.wrapped_reset_seed());
-  SecureBlob local_reset_iv = SecureBlob(serialized.reset_iv());
-  if (!local_wrapped_reset_seed.empty()) {
+  // Decrypt the chaps key.
+  if (serialized.has_wrapped_chaps_key()) {
+    SecureBlob local_wrapped_chaps_key(serialized.wrapped_chaps_key());
+    SecureBlob unwrapped_chaps_key;
+
+    if (!CryptoLib::AesDecrypt(local_wrapped_chaps_key,
+                               vkk_key,
+                               vkk_iv,
+                               &unwrapped_chaps_key)) {
+      LOG(ERROR) << "AES decryption failed for chaps key.";
+      if (error)
+        *error = CE_OTHER_CRYPTO;
+      return false;
+    }
+
+    keyset->set_chaps_key(unwrapped_chaps_key);
+  }
+
+  // Decrypt the reset secret.
+  if (!serialized.wrapped_reset_seed().empty()) {
+    SecureBlob unwrapped_reset_seed;
+    SecureBlob local_wrapped_reset_seed =
+        SecureBlob(serialized.wrapped_reset_seed());
+    SecureBlob local_reset_iv = SecureBlob(serialized.reset_iv());
+
     if (!CryptoLib::AesDecrypt(local_wrapped_reset_seed, vkk_key,
                                local_reset_iv, &unwrapped_reset_seed)) {
       LOG(ERROR) << "AES decryption failed for reset seed.";
@@ -498,28 +524,12 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
         *error = CE_OTHER_CRYPTO;
       return false;
     }
-  }
 
-  DecryptAuthorizationData(serialized, keyset, vkk_key, vkk_iv);
-
-  keyset->FromKeysBlob(plain_text);
-  if (chaps_key_present) {
-    keyset->set_chaps_key(unwrapped_chaps_key);
-  }
-
-  if (!local_wrapped_reset_seed.empty()) {
     keyset->set_reset_seed(unwrapped_reset_seed);
   }
 
-  if (!serialized.has_tpm_public_key_hash() && error) {
-    *error = CE_NO_PUBLIC_KEY_HASH;
-  }
-
-  // By this point we know that the TPM is successfully owned, everything
-  // is initialized, and we were able to successfully decrypted a
-  // tpm-wrapped keyset. So, for TPMs with updateable firmware, we assume
-  // that it is stable (and the TPM can invalidate the old version).
-  tpm_->DeclareTpmFirmwareStable();
+  // TODO(kerrnel): Audit if authorization data is used anywhere.
+  DecryptAuthorizationData(serialized, keyset, vkk_key, vkk_iv);
 
   return true;
 }
@@ -876,8 +886,23 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
       return false;
   }
   if (flags & SerializedVaultKeyset::TPM_WRAPPED) {
-    return DecryptTPM(serialized, vault_key, is_pcr_extended, error,
-                      vault_keyset);
+    KeyBlobs vkk_data;
+    if (!DecryptTPM(serialized, vault_key, is_pcr_extended, error,
+                    &vkk_data)) {
+      return false;
+    }
+
+    if (!UnwrapVaultKeyset(serialized, vkk_data, vault_keyset, error)) {
+      return false;
+    }
+
+    // By this point we know that the TPM is successfully owned, everything
+    // is initialized, and we were able to successfully decrypt a
+    // TPM-wrapped keyset. So, for TPMs with updateable firmware, we assume
+    // that it is stable (and the TPM can invalidate the old version).
+    tpm_->DeclareTpmFirmwareStable();
+
+    return true;
   } else {
     LOG(ERROR) << "Keyset wrapped with neither TPM nor Scrypt?";
     return false;
