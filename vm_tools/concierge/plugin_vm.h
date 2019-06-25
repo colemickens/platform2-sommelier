@@ -55,6 +55,9 @@ class PluginVm final : public VmInterface, base::MessageLoopForIO::Watcher {
   // VmInterface overrides.
   bool Shutdown() override;
   VmInterface::Info GetInfo() override;
+  // Currently only implemented for termina, returns "Not implemented".
+  bool GetVmEnterpriseReportingInfo(
+      GetVmEnterpriseReportingInfoResponse* response) override;
   bool AttachUsbDevice(uint8_t bus,
                        uint8_t addr,
                        uint16_t vid,

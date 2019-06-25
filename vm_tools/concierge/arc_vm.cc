@@ -254,5 +254,12 @@ VmInterface::Info ArcVm::GetInfo() {
   return info;
 }
 
+bool ArcVm::GetVmEnterpriseReportingInfo(
+    GetVmEnterpriseReportingInfoResponse* response) {
+  response->set_success(false);
+  response->set_failure_reason("Not implemented");
+  return false;
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

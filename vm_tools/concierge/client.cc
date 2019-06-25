@@ -1265,6 +1265,58 @@ int ListUsbDevices(dbus::ObjectProxy* proxy, string vm_name, string owner_id) {
   }
 }
 
+int GetEnterpriseReportingInfo(dbus::ObjectProxy* proxy,
+                               string vm_name,
+                               string owner_id) {
+  if (vm_name.empty()) {
+    LOG(ERROR) << "--name is required";
+    return -1;
+  }
+
+  if (owner_id.empty()) {
+    LOG(ERROR) << "--cryptohome_id is required";
+    return -1;
+  }
+
+  LOG(INFO) << "Get VM enterprise reporting info.";
+  dbus::MethodCall method_call(
+      vm_tools::concierge::kVmConciergeInterface,
+      vm_tools::concierge::kGetVmEnterpriseReportingInfoMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::concierge::GetVmEnterpriseReportingInfoRequest request;
+  request.set_vm_name(vm_name);
+  request.set_owner_id(owner_id);
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode GetEnterpriseReportingInfo protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::GetVmEnterpriseReportingInfoResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  if (!response.success()) {
+    LOG(ERROR) << "Could not retrieve kernel version: "
+               << response.failure_reason();
+    return -1;
+  }
+
+  LOG(INFO) << "Kernel version: " << response.vm_kernel_version();
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -1294,6 +1346,8 @@ int main(int argc, char** argv) {
   DEFINE_bool(attach_usb, false, "Attach a USB device to a VM");
   DEFINE_bool(detach_usb, false, "Detach a USB device from a VM");
   DEFINE_bool(list_usb_devices, false, "List all USB devices attached to a VM");
+  DEFINE_bool(get_vm_enterprise_reporting_info, false,
+              "Enterprise reporting info for the given VM");
 
   // Parameters.
   DEFINE_string(kernel, "", "Path to the VM kernel");
@@ -1355,15 +1409,17 @@ int main(int argc, char** argv) {
       FLAGS_start_termina_vm + FLAGS_destroy_disk + FLAGS_export_disk +
       FLAGS_import_disk + FLAGS_list_disks + FLAGS_sync_time +
       FLAGS_attach_usb + FLAGS_detach_usb + FLAGS_list_usb_devices +
-      FLAGS_start_plugin_vm + FLAGS_start_arc_vm != 1) {
+      FLAGS_start_plugin_vm + FLAGS_start_arc_vm +
+      FLAGS_get_vm_enterprise_reporting_info != 1) {
     // clang-format on
     LOG(ERROR)
         << "Exactly one of --start, --stop, --stop_all, --get_vm_info, "
         << "--get_vm_cid, --create_disk, --create_external_disk, "
         << "--destroy_disk, --export_disk --import_disk --list_disks, "
         << "--start_termina_vm, --sync_time, --attach_usb, --detach_usb, "
-        << "--list_usb_devices, --start_plugin_vm, or --start_arc_vm must "
-        << "be provided";
+        << "--list_usb_devices, --start_plugin_vm, --start_arc_vm, or "
+        << "--get_vm_enterprise_reporting_info must be provided";
+
     return -1;
   }
 
@@ -1438,6 +1494,9 @@ int main(int argc, char** argv) {
   } else if (FLAGS_list_usb_devices) {
     return ListUsbDevices(proxy, std::move(FLAGS_name),
                           std::move(FLAGS_cryptohome_id));
+  } else if (FLAGS_get_vm_enterprise_reporting_info) {
+    return GetEnterpriseReportingInfo(proxy, std::move(FLAGS_name),
+                                      std::move(FLAGS_cryptohome_id));
   }
 
   // Unreachable.

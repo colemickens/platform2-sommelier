@@ -11,6 +11,8 @@
 #include <string>
 #include <vector>
 
+#include <vm_concierge/proto_bindings/service.pb.h>
+
 #include "vm_tools/concierge/usb_control.h"
 
 namespace vm_tools {
@@ -84,6 +86,11 @@ class VmInterface {
 
   // Set the guest time to the current time as given by gettimeofday.
   virtual bool SetTime(std::string* failure_reason) = 0;
+
+  // Get enterprise reporting information. Also sets the
+  // response fields for success and failure_reason.
+  virtual bool GetVmEnterpriseReportingInfo(
+      GetVmEnterpriseReportingInfoResponse* response) = 0;
 
   // Notes that TremplinStartedSignal has been received for the VM.
   virtual void SetTremplinStarted() = 0;

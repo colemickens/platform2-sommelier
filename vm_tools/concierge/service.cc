@@ -658,6 +658,8 @@ bool Service::Init() {
       {kStopVmMethod, &Service::StopVm},
       {kStopAllVmsMethod, &Service::StopAllVms},
       {kGetVmInfoMethod, &Service::GetVmInfo},
+      {kGetVmEnterpriseReportingInfoMethod,
+       &Service::GetVmEnterpriseReportingInfo},
       {kCreateDiskImageMethod, &Service::CreateDiskImage},
       {kDestroyDiskImageMethod, &Service::DestroyDiskImage},
       {kExportDiskImageMethod, &Service::ExportDiskImage},
@@ -1700,6 +1702,48 @@ std::unique_ptr<dbus::Response> Service::GetVmInfo(
   response.set_success(true);
   writer.AppendProtoAsArrayOfBytes(response);
 
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::GetVmEnterpriseReportingInfo(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received GetVmEnterpriseReportingInfo request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  GetVmEnterpriseReportingInfoRequest request;
+  GetVmEnterpriseReportingInfoResponse response;
+
+  response.set_success(false);
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    const std::string error_message =
+        "Unable to parse GetVmEnterpriseReportingInfo from message";
+    LOG(ERROR) << error_message;
+    response.set_failure_reason(error_message);
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto iter = FindVm(request.owner_id(), request.vm_name());
+  if (iter == vms_.end()) {
+    const std::string error_message = "Requested VM does not exist";
+    LOG(ERROR) << error_message;
+    response.set_failure_reason(error_message);
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // failure_reason and success will be set by GetVmEnterpriseReportingInfo.
+  if (!iter->second->GetVmEnterpriseReportingInfo(&response)) {
+    LOG(ERROR) << "Failed to get VM enterprise reporting info";
+  }
+  writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
 

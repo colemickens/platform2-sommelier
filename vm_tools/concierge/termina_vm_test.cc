@@ -68,6 +68,9 @@ bool IPv4AddressToString(uint32_t addr, string* address) {
 // Name of the unix domain socket for the grpc server.
 constexpr char kServerSocket[] = "server";
 
+// Sample Termina kernel version.
+constexpr char kKernelVersion[] = "some kernel version";
+
 // Test fixture for actually testing the TerminaVm functionality.
 class TerminaVmTest : public ::testing::Test {
  public:
@@ -385,7 +388,7 @@ void TerminaVmTest::SetUp() {
   // Create the TerminaVm.
   vm_ = TerminaVm::CreateForTesting(std::move(mac_addr), std::move(subnet),
                                     vsock_cid, temp_dir_.GetPath(),
-                                    std::move(stub));
+                                    kKernelVersion, std::move(stub));
   ASSERT_TRUE(vm_);
 }
 
@@ -468,6 +471,13 @@ TEST_F(TerminaVmTest, Mount) {
 
     EXPECT_FALSE(failed_) << "Failure reason: " << failure_reason_;
   }
+}
+
+TEST_F(TerminaVmTest, GetVmEnterpriseReportingInfo) {
+  GetVmEnterpriseReportingInfoResponse response;
+  bool result = vm_->GetVmEnterpriseReportingInfo(&response);
+  EXPECT_TRUE(result);
+  EXPECT_EQ(kKernelVersion, response.vm_kernel_version());
 }
 
 }  // namespace concierge

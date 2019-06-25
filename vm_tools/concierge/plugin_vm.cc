@@ -142,6 +142,13 @@ VmInterface::Info PluginVm::GetInfo() {
   return info;
 }
 
+bool PluginVm::GetVmEnterpriseReportingInfo(
+    GetVmEnterpriseReportingInfoResponse* response) {
+  response->set_success(false);
+  response->set_failure_reason("Not implemented");
+  return false;
+}
+
 // static
 base::ScopedFD PluginVm::CreateUnixSocket(const base::FilePath& path,
                                           int type) {

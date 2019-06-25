@@ -168,6 +168,9 @@ class TerminaVm final : public VmInterface {
   bool ListUsbDevice(std::vector<UsbDevice>* devices) override;
   void HandleSuspendImminent() override;
   void HandleSuspendDone() override;
+  bool GetVmEnterpriseReportingInfo(
+      GetVmEnterpriseReportingInfoResponse* response) override;
+
   void SetTremplinStarted() override { is_tremplin_started_ = true; }
 
   static std::unique_ptr<TerminaVm> CreateForTesting(
@@ -175,6 +178,7 @@ class TerminaVm final : public VmInterface {
       std::unique_ptr<arc_networkd::Subnet> subnet,
       uint32_t vsock_cid,
       base::FilePath runtime_dir,
+      std::string kernel_version,
       std::unique_ptr<vm_tools::Maitred::Stub> stub);
 
  private:
@@ -196,6 +200,10 @@ class TerminaVm final : public VmInterface {
   // Runs a crosvm subcommend.
   void RunCrosvmCommand(std::string command);
 
+  // Helper version to record the VM kernel version at startup.
+  void RecordKernelVersionForEnterpriseReporting();
+
+  void set_kernel_version_for_testing(std::string kernel_version);
   void set_stub_for_testing(std::unique_ptr<vm_tools::Maitred::Stub> stub);
 
   // EUI-48 mac address for the VM's network interface.
@@ -230,6 +238,9 @@ class TerminaVm final : public VmInterface {
 
   // Whether a TremplinStartedSignal has been received for the VM.
   bool is_tremplin_started_ = false;
+
+  // Kernel version retrieved at startup.
+  std::string kernel_version_;
 
   DISALLOW_COPY_AND_ASSIGN(TerminaVm);
 };

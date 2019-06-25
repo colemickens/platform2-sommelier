@@ -348,6 +348,10 @@ bool TerminaVm::Mount(string source,
 bool TerminaVm::StartTermina(std::string lxd_subnet,
                              std::string stateful_device,
                              std::string* out_error) {
+  // We record the kernel version early to ensure that no container has
+  // been started and the VM can still be trusted.
+  RecordKernelVersionForEnterpriseReporting();
+
   vm_tools::StartTerminaRequest request;
   vm_tools::StartTerminaResponse response;
 
@@ -368,6 +372,24 @@ bool TerminaVm::StartTermina(std::string lxd_subnet,
   }
 
   return true;
+}
+
+void TerminaVm::RecordKernelVersionForEnterpriseReporting() {
+  grpc::ClientContext ctx_get_kernel_version;
+  ctx_get_kernel_version.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kStartTerminaTimeoutSeconds, GPR_TIMESPAN)));
+  vm_tools::EmptyMessage empty;
+  vm_tools::GetKernelVersionResponse grpc_response;
+  grpc::Status get_kernel_version_status =
+      stub_->GetKernelVersion(&ctx_get_kernel_version, empty, &grpc_response);
+  if (!get_kernel_version_status.ok()) {
+    LOG(WARNING) << "Failed to retrieve kernel version for VM " << vsock_cid_
+                 << ": " << get_kernel_version_status.error_message();
+  } else {
+    kernel_version_ =
+        grpc_response.kernel_release() + " " + grpc_response.kernel_version();
+  }
 }
 
 bool TerminaVm::AttachUsbDevice(uint8_t bus,
@@ -484,6 +506,21 @@ bool TerminaVm::SetTime(string* failure_reason) {
   return true;
 }
 
+bool TerminaVm::GetVmEnterpriseReportingInfo(
+    GetVmEnterpriseReportingInfoResponse* response) {
+  LOG(INFO) << "Get enterprise reporting info";
+  if (kernel_version_.empty()) {
+    response->set_success(false);
+    response->set_failure_reason(
+        "Kernel version could not be recorded at startup.");
+    return false;
+  }
+
+  response->set_success(true);
+  response->set_vm_kernel_version(kernel_version_);
+  return true;
+}
+
 void TerminaVm::SetContainerSubnet(
     std::unique_ptr<arc_networkd::Subnet> subnet) {
   container_subnet_ = std::move(subnet);
@@ -535,6 +572,10 @@ VmInterface::Info TerminaVm::GetInfo() {
   return info;
 }
 
+void TerminaVm::set_kernel_version_for_testing(std::string kernel_version) {
+  kernel_version_ = kernel_version;
+}
+
 void TerminaVm::set_stub_for_testing(
     std::unique_ptr<vm_tools::Maitred::Stub> stub) {
   stub_ = std::move(stub);
@@ -545,6 +586,7 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
     std::unique_ptr<arc_networkd::Subnet> subnet,
     uint32_t vsock_cid,
     base::FilePath runtime_dir,
+    std::string kernel_version,
     std::unique_ptr<vm_tools::Maitred::Stub> stub) {
   VmFeatures features{
       .gpu = false,
@@ -553,7 +595,7 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
   auto vm = base::WrapUnique(
       new TerminaVm(std::move(mac_addr), std::move(subnet), vsock_cid, nullptr,
                     std::move(runtime_dir), features));
-
+  vm->set_kernel_version_for_testing(kernel_version);
   vm->set_stub_for_testing(std::move(stub));
 
   return vm;
