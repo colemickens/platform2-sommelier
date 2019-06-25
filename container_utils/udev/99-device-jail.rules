@@ -1,3 +1,0 @@
-KERNEL=="jail-control", MODE="0660", GROUP="devicejail"
-KERNEL=="jail-request", MODE="0660", GROUP="devbroker"
-SUBSYSTEM=="device_jail", MODE="0660", GROUP="chronos"

@@ -40,7 +40,6 @@ copies.
 | [chromeos-config](./chromeos-config/) | CrOS unified build runtime config manager |
 | [chromeos-dbus-bindings](./chromeos-dbus-bindings/) | Simplifies the implementation of D-Bus daemons and proxies |
 | [common-mk](./common-mk/) | Common build & test logic for platform2 projects |
-| [container_utils](./container_utils/) | Support tools for containers (e.g. device-jail) |
 | [crash-reporter](./crash-reporter/) | The system crash handler & reporter |
 | [cros-disks](./cros-disks/) | Daemon for mounting removable media (e.g. USB sticks and SD cards) |
 | [cros-fuzz](./cros-fuzz/) | Support crate for fuzzing rust code |
