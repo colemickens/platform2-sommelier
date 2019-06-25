@@ -763,7 +763,15 @@ void DeviceManager::AddOrUpdateDevices(
                 << storage_map_ptr->size() << " storages";
       return;
     }
-
+    if (storage_map_ptr->empty()) {
+      // Devices such as the Pixel 2 may expose a fake PTP interface in "No data
+      // transfer" mode (b/135955589) with 0 storage. In this case mtpd
+      // shouldn't keep the handle open ideally.
+      device_map_.erase(usb_bus_str);
+      LIBMTP_Release_Device(mtp_device);
+      LOG(INFO) << "Ignoring device with 0 storage " << usb_bus_str;
+      return;
+    }
     mtp_poller_->WaitForEvent(mtp_device,
                               base::Bind(&DeviceManager::HandleMtpEvent,
                                          weak_ptr_factory_.GetWeakPtr(),
