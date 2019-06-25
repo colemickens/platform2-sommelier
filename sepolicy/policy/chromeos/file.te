@@ -22,6 +22,7 @@ type cros_apk_cache_cleaner_jailed_exec, exec_type, file_type, cros_file_type, c
 type cros_arc_oemcrypto_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_setup_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_auditd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_audispd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_avahi_daemon_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_bluetoothd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_bootstat_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
