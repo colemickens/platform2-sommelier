@@ -15,6 +15,7 @@ allow cros_journald cros_run_journal:sock_file create_file_perms;
 allow cros_journald cros_run_journal:dir rw_dir_perms;
 
 allow cros_journald proc_kmsg:file rw_file_perms;
+allow cros_journald proc_meminfo:file r_file_perms;
 
 filetrans_pattern(cros_journald, cros_var_log, cros_var_log_journal, dir, "journal");
 allow cros_journald cros_var_log_journal:file create_file_perms;
@@ -35,6 +36,7 @@ allow cros_journald kmsg_device:chr_file { open read write };
 
 allow cros_journald cros_rsyslogd:process signull;
 
-allow cros_journald self:netlink_audit_socket create_socket_perms;
+allow cros_journald self:netlink_audit_socket { create_socket_perms nlmsg_write };
+allow cros_journald self:capability2 audit_read;
 
 pid_file(minijail, cros_run, "systemd-journald.pid", cros_journald_pid_file);
