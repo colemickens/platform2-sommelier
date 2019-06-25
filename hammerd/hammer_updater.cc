@@ -495,6 +495,7 @@ HammerUpdater::RunStatus HammerUpdater::Pair() {
       // Do not send UMA if the base is disconnected.
       metric_result = PairResult::kCount;
       ret = HammerUpdater::RunStatus::kLostConnection;
+      break;
 
     case ChallengeStatus::kUnknownError:
       break;
