@@ -1,0 +1,64 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/mojom_bindings_generator.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":cros_camera_algo",
+    ":libcab",
+  ]
+}
+
+pkg_config("target_defaults_pkg") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libcamera_common",
+    "libmojo-${libbase_ver}",
+  ]
+}
+
+config("target_defaults") {
+  configs = [
+    ":target_defaults_pkg",
+    "//camera/build:cros_camera_common",
+  ]
+}
+
+executable("cros_camera_algo") {
+  sources = [
+    "//camera/common/camera_algorithm_adapter.cc",
+    "//camera/common/camera_algorithm_main.cc",
+    "//camera/common/camera_algorithm_ops_impl.cc",
+    "//camera/common/ipc_util.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  libs = [ "dl" ]
+  deps = [
+    # We only need //camera/mojo/algorithm/camera_algorithm.mojom,
+    # libcamera_ipc provides a superset mojom library containing it.
+    "//camera/common/libcamera_ipc:libcamera_ipc_mojom",
+  ]
+}
+
+static_library("libcab") {
+  output_name = "libcab.pic"
+  sources = [
+    "//camera/common/camera_algorithm_bridge_impl.cc",
+    "//camera/common/camera_algorithm_callback_ops_impl.cc",
+  ]
+  configs -= [
+    "//common-mk:pie",
+    "//common-mk:use_thin_archive",
+  ]
+  configs += [
+    ":target_defaults",
+    "//common-mk:nouse_thin_archive",
+    "//common-mk:pic",
+  ]
+  deps = [
+    "//camera/common/libcamera_ipc",
+  ]
+}
