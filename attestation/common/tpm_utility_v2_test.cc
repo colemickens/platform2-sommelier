@@ -525,13 +525,39 @@ TEST_F(TpmUtilityTest, UnbindFail) {
   EXPECT_EQ("", data);
 }
 
-TEST_F(TpmUtilityTest, Sign) {
-  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _, "fake_to_sign", true, _, _))
+TEST_F(TpmUtilityTest, SignWithRsa) {
+  EXPECT_CALL(mock_tpm_utility_,
+              Sign(_, trunks::TPM_ALG_RSASSA, _, "fake_to_sign", true, _, _))
       .WillOnce(
           DoAll(SetArgPointee<6>("fake_signature"), Return(TPM_RC_SUCCESS)));
   std::string signature;
   EXPECT_TRUE(tpm_utility_->Sign("fake_key_blob", "fake_to_sign", &signature));
   EXPECT_EQ("fake_signature", signature);
+}
+
+TEST_F(TpmUtilityTest, SignWithEcc) {
+  // Sign() have to return a Serialized TPMT_SIGNATURE string for ECDSA
+  trunks::TPMT_SIGNATURE fake_signature = {};
+  fake_signature.sig_alg = trunks::TPM_ALG_ECDSA;
+  fake_signature.signature.ecdsa.signature_r =
+      trunks::Make_TPM2B_ECC_PARAMETER("fake_signature_r");
+  fake_signature.signature.ecdsa.signature_s =
+      trunks::Make_TPM2B_ECC_PARAMETER("fake_signature_s");
+  std::string fake_signature_string;
+  trunks::Serialize_TPMT_SIGNATURE(fake_signature, &fake_signature_string);
+  EXPECT_CALL(mock_tpm_utility_,
+              Sign(_, trunks::TPM_ALG_ECDSA, _, "fake_to_sign", true, _, _))
+      .WillOnce(DoAll(SetArgPointee<6>(fake_signature_string),
+                      Return(TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(GetValidEccPublicKey(nullptr)),
+                      Return(TPM_RC_SUCCESS)));
+
+  std::string signature;
+  EXPECT_TRUE(tpm_utility_->Sign("fake_key_blob", "fake_to_sign", &signature));
+  EXPECT_NE(signature.find("fake_signature_r"), std::string::npos);
+  EXPECT_NE(signature.find("fake_signature_s"), std::string::npos);
 }
 
 TEST_F(TpmUtilityTest, SignFail) {

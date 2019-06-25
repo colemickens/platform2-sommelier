@@ -806,8 +806,30 @@ bool TpmUtilityV2::Sign(const std::string& key_blob,
                << ": Failed to load key: " << trunks::GetErrorString(result);
     return false;
   }
+
+  trunks::TPMT_PUBLIC public_area;
+  result = trunks_utility_->GetKeyPublicArea(key_handle, &public_area);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to get key public area: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+
+  trunks::TPM_ALG_ID sign_algorithm;
+  switch (public_area.type) {
+    case trunks::TPM_ALG_RSA:
+      sign_algorithm = trunks::TPM_ALG_RSASSA;
+      break;
+    case trunks::TPM_ALG_ECC:
+      sign_algorithm = trunks::TPM_ALG_ECDSA;
+      break;
+    default:
+      LOG(ERROR) << __func__ << ": Unknown TPM key type: " << public_area.type;
+      return false;
+  }
+
   TpmObjectScoper scoper(trunks_factory_, key_handle);
-  result = trunks_utility_->Sign(key_handle, trunks::TPM_ALG_RSASSA,
+  result = trunks_utility_->Sign(key_handle, sign_algorithm,
                                  trunks::TPM_ALG_SHA256, data_to_sign,
                                  true /* generate_hash */,
                                  empty_password_authorization.get(), signature);
@@ -815,6 +837,19 @@ bool TpmUtilityV2::Sign(const std::string& key_blob,
     LOG(ERROR) << __func__
                << ": Failed to sign data: " << trunks::GetErrorString(result);
     return false;
+  }
+
+  // For ECDSA, trunks_utility_->Sign will return serialized TPM_SIGNATURE
+  // instead of signal signature data.
+  if (sign_algorithm == trunks::TPM_ALG_ECDSA) {
+    trunks::TPMT_SIGNATURE tpm_signature;
+    trunks::TPM_RC result =
+      trunks::Parse_TPMT_SIGNATURE(signature, &tpm_signature, nullptr);
+    if (result != trunks::TPM_RC_SUCCESS) {
+      LOG(ERROR) << "Error when parse TPM signing result.";
+      return -1;
+    }
+    *signature = SerializeFromTpmSignature(tpm_signature).value_or("");
   }
   return true;
 }
