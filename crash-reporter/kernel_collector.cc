@@ -26,8 +26,13 @@ namespace {
 // Name for extra BIOS dump attached to report. Also used as metadata key.
 constexpr char kBiosDumpName[] = "bios_log";
 const FilePath kBiosLogPath("/sys/firmware/log");
-// Names of the three BIOS stages in which the BIOS log can start.
-const char* const kBiosStageNames[] = {"bootblock", "romstage", "ramstage"};
+// Names of the four BIOS stages in which the BIOS log can start.
+const char* const kBiosStageNames[] = {
+    "bootblock",
+    "verstage",
+    "romstage",
+    "ramstage",
+};
 constexpr char kDefaultKernelStackSignature[] =
     "kernel-UnspecifiedStackSignature";
 constexpr char kDumpParentPath[] = "/sys/fs";
@@ -231,7 +236,7 @@ bool KernelCollector::LoadLastBootBiosLog(std::string* contents) {
         StringPrintf("(.*?)(?="
                      "\n\\*\\*\\* Pre-CBMEM %s console overflow"
                      "|"
-                     "\n\ncoreboot-[^\n]* %s starting\\.\\.\\.\n"
+                     "\n\ncoreboot-[^\n]* %s starting.*\\.\\.\\.\n"
                      ")",
                      stage, stage),
         pcrecpp::RE_Options().set_multiline(true).set_dotall(true));

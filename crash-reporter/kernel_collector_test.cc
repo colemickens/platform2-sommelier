@@ -188,9 +188,11 @@ TEST_F(KernelCollectorTest, LoadBiosLog) {
   dump.clear();
 
   std::string bootblock_boot_1 =
-      "\n\ncoreboot-dc417eb Tue Nov 2 20:47:41 UTC 2016 bootblock starting...\n"
+      "\n\ncoreboot-dc417eb Tue Nov 2 20:47:41 UTC 2016 bootblock starting"
+      " (log level: 7)...\n"
       "This is boot 1 bootblock!\n"
-      "\n\ncoreboot-dc417eb Tue Nov 2 20:47:41 UTC 2016 verstage starting...\n"
+      "\n\ncoreboot-dc417eb Tue Nov 2 20:47:41 UTC 2016 verstage starting"
+      " (log level: 7)...\n"
       "This is boot 1 verstage!\n";
   std::string romstage_boot_1 =
       "\n\ncoreboot-e8dd2d8 Tue Mar 14 23:29:43 UTC 2017 romstage starting...\n"
