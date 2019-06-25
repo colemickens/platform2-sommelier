@@ -1,1 +1,4 @@
-semenzato@chromium.org
+set noparent
+
+# All OWNERS have left the project
+*
