@@ -328,8 +328,8 @@ TEST_F(InputWatcherTest, LidSwitch) {
   Init();
   EXPECT_EQ(kNoActions, observer_->GetActions());
 
-  // Check ACPI lid switch is not monitored for wake events.
-  EXPECT_FALSE(wakeup_device_factory_->WasDeviceCreated(kAcpiLidSysfsFile));
+  // Check ACPI lid switch is monitored for wake events.
+  EXPECT_TRUE(wakeup_device_factory_->WasDeviceCreated(kAcpiLidSysfsFile));
 
   EXPECT_EQ(LidState::CLOSED, input_watcher_->QueryLidState());
 

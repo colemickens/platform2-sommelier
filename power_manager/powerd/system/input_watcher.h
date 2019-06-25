@@ -154,10 +154,6 @@ class InputWatcher : public InputWatcherInterface,
   // Notifies observers about |event| if came from a lid switch or power button.
   void NotifyObserversAboutEvent(const input_event& event);
 
-  // Returns true if |device| should be monitored to identify user-driven wake
-  // events.
-  bool ShouldMonitorForWakeEvents(linked_ptr<EventDeviceInterface> device);
-
   base::FilePath dev_input_path_;
   base::FilePath sys_class_input_path_;
 

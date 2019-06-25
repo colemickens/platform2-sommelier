@@ -494,8 +494,7 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
   }
 
   // Any input device should also be a valid wake source (if wake enabled).
-  if (ShouldMonitorForWakeEvents(device) &&
-      MonitorWakeupDevice(input_num, wakeup_device_path)) {
+  if (MonitorWakeupDevice(input_num, wakeup_device_path)) {
     LOG(INFO) << "Monitoring input device " << input_name
               << " with wakeup path " << wakeup_device_path.value()
               << " to identify the wake source";
@@ -543,17 +542,6 @@ void InputWatcher::SendQueuedEvents() {
   for (auto event_pair : queued_events_)
     ProcessEvent(event_pair.first, event_pair.second);
   queued_events_.clear();
-}
-
-bool InputWatcher::ShouldMonitorForWakeEvents(
-    linked_ptr<EventDeviceInterface> device) {
-  // ACPI lid device claims itself as a wake source if the lid is open on
-  // resume (b/69118395).
-  if (base::StartsWith(device->GetPhysPath(), acpi_lid_device_,
-                       base::CompareCase::SENSITIVE))
-    return false;
-
-  return true;
 }
 
 }  // namespace system
