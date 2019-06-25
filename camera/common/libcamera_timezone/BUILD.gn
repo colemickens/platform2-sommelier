@@ -1,0 +1,16 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("all") {
+  deps = [
+    ":libcamera_timezone",
+  ]
+}
+
+shared_library("libcamera_timezone") {
+  sources = [
+    "//camera/common/timezone.cc",
+  ]
+  configs += [ "//camera/build:cros_camera_common" ]
+}
