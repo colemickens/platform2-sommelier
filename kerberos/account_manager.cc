@@ -181,18 +181,52 @@ void AccountManager::DeleteAllFilesFor(const std::string& principal_name) {
     TriggerKerberosFilesChanged(principal_name);
 }
 
-ErrorType AccountManager::ClearAccounts() {
+ErrorType AccountManager::ClearAccounts(ClearMode mode) {
   // Early out.
   if (accounts_.size() == 0)
     return ERROR_NONE;
 
-  // Delete all teh dataz.
+  switch (mode) {
+    case CLEAR_ALL: {
+      ClearAllAccounts();
+      break;
+    }
+    case CLEAR_ONLY_UNMANAGED_ACCOUNTS: {
+      ClearUnmanagedAccounts();
+      break;
+    }
+    case CLEAR_ONLY_UNMANAGED_REMEMBERED_PASSWORDS: {
+      ClearRememberedPasswordsForUnmanagedAccounts();
+      break;
+    }
+  }
+  return ERROR_NONE;
+}
+
+void AccountManager::ClearAllAccounts() {
   for (const auto& account : accounts_)
     DeleteAllFilesFor(account.principal_name());
   accounts_.clear();
-
   SaveAccounts();
-  return ERROR_NONE;
+}
+
+void AccountManager::ClearUnmanagedAccounts() {
+  for (int n = static_cast<int>(accounts_.size()) - 1; n >= 0; --n) {
+    if (accounts_[n].is_managed())
+      continue;
+    DeleteAllFilesFor(accounts_[n].principal_name());
+    accounts_.erase(accounts_.begin() + n);
+  }
+  SaveAccounts();
+}
+
+void AccountManager::ClearRememberedPasswordsForUnmanagedAccounts() {
+  for (const auto& account : accounts_) {
+    if (account.is_managed())
+      continue;
+    CHECK(base::DeleteFile(GetPasswordPath(account.principal_name()),
+                           false /* recursive */));
+  }
 }
 
 ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) const {

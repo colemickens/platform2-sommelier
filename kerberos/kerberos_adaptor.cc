@@ -174,7 +174,7 @@ ByteArray KerberosAdaptor::ClearAccounts(const ByteArray& request_blob) {
   ErrorType error = ParseProto(&request, request_blob);
 
   if (error == ERROR_NONE)
-    error = manager_->ClearAccounts();
+    error = manager_->ClearAccounts(request.mode());
 
   PrintResult(__FUNCTION__, error);
   ClearAccountsResponse response;
