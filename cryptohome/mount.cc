@@ -1318,8 +1318,8 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
   //
   // migrate         Y   N   Y   Y   Y   Y   N   Y   Y
   //
-  // If the vault keyset represents an LE credential, we should not re-encrypt
-  // it at all (that is unnecessary).
+  // If the vault keyset is signature-challenge protected, we should not
+  // re-encrypt it at all (that is unnecessary).
   const unsigned crypt_flags = serialized->flags();
   bool pcr_bound =
       (crypt_flags & SerializedVaultKeyset::PCR_BOUND) != 0;
@@ -1329,11 +1329,16 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
       (crypt_flags & SerializedVaultKeyset::SCRYPT_WRAPPED) != 0;
   bool scrypt_derived =
       (crypt_flags & SerializedVaultKeyset::SCRYPT_DERIVED) != 0;
+  bool is_signature_challenge_protected =
+      (crypt_flags & SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED) != 0;
   bool should_tpm = (crypto_->has_tpm() && use_tpm_ &&
-                     crypto_->is_cryptohome_key_loaded());
+                     crypto_->is_cryptohome_key_loaded() &&
+                     !is_signature_challenge_protected);
   bool is_le_credential =
       (crypt_flags & SerializedVaultKeyset::LE_CREDENTIAL) != 0;
   do {
+    if (is_signature_challenge_protected)
+      break;
     // If the keyset was TPM-wrapped, but there was no public key hash,
     // always re-save.  Otherwise, check the table.
     if (serialized->has_tpm_public_key_hash() || is_le_credential) {
