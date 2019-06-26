@@ -1021,9 +1021,9 @@ void Service::ConfigureOwnedTpm(bool status, bool took_ownership) {
   }
 }
 
-void Service::DoCheckKeyEx(AccountIdentifier* identifier,
-                           AuthorizationRequest* authorization,
-                           CheckKeyRequest* check_key_request,
+void Service::DoCheckKeyEx(std::unique_ptr<AccountIdentifier> identifier,
+                           std::unique_ptr<AuthorizationRequest> authorization,
+                           std::unique_ptr<CheckKeyRequest> check_key_request,
                            DBusGMethodInvocation* context) {
   if (!identifier || !authorization || !check_key_request) {
     SendInvalidArgsReply(context, "Failed to parse parameters.");
@@ -1098,9 +1098,9 @@ gboolean Service::CheckKeyEx(GArray* account_id,
 
   // If PBs don't parse, the validation in the handler will catch it.
   PostTask(FROM_HERE, base::Bind(&Service::DoCheckKeyEx, base::Unretained(this),
-                                 base::Owned(identifier.release()),
-                                 base::Owned(authorization.release()),
-                                 base::Owned(request.release()),
+                                 base::Passed(std::move(identifier)),
+                                 base::Passed(std::move(authorization)),
+                                 base::Passed(std::move(request)),
                                  base::Unretained(context)));
   return TRUE;
 }

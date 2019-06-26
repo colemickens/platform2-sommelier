@@ -279,10 +279,11 @@ class Service : public brillo::dbus::AbstractDbusService,
                                GArray *authorization_request,
                                GArray *update_key_request,
                                DBusGMethodInvocation *response);
-  virtual void DoCheckKeyEx(AccountIdentifier* account_id,
-                            AuthorizationRequest*  authorization_request,
-                            CheckKeyRequest* check_key_request,
-                            DBusGMethodInvocation* context);
+  virtual void DoCheckKeyEx(
+      std::unique_ptr<AccountIdentifier> account_id,
+      std::unique_ptr<AuthorizationRequest> authorization_request,
+      std::unique_ptr<CheckKeyRequest> check_key_request,
+      DBusGMethodInvocation* context);
   virtual gboolean CheckKeyEx(GArray *account_id,
                               GArray *authorization_request,
                               GArray *check_key_request,

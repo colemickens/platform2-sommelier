@@ -321,14 +321,14 @@ TEST_F(ServiceTestNotInitialized, CheckAsyncTestCredentials) {
   service_.set_crypto(&real_crypto);
   service_.Initialize();
 
-  AccountIdentifier id;
-  id.set_account_id(user->username);
-  AuthorizationRequest auth;
-  auth.mutable_key()->set_secret(passkey_string.c_str());
-  CheckKeyRequest req;
+  auto id = std::make_unique<AccountIdentifier>();
+  id->set_account_id(user->username);
+  auto auth = std::make_unique<AuthorizationRequest>();
+  auth->mutable_key()->set_secret(passkey_string.c_str());
+  auto req = std::make_unique<CheckKeyRequest>();
 
   // Run will never be called because we aren't running the event loop.
-  service_.DoCheckKeyEx(&id, &auth, &req, NULL);
+  service_.DoCheckKeyEx(std::move(id), std::move(auth), std::move(req), NULL);
 
   // Expect an empty reply as success.
   DispatchEvents();
@@ -1079,7 +1079,8 @@ TEST_F(ServiceExTest, CheckKeySuccessTest) {
       .WillOnce(Return(true));
   EXPECT_CALL(homedirs_, AreCredentialsValid(_))
       .WillOnce(Return(true));
-  service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), nullptr);
+  service_.DoCheckKeyEx(std::move(id_), std::move(auth_), std::move(check_req_),
+                        nullptr);
 
   // Expect an empty reply as success.
   DispatchEvents();
@@ -1098,7 +1099,10 @@ TEST_F(ServiceExTest, CheckKeyMountTest) {
 
   EXPECT_CALL(*mount_, AreSameUser(_)).WillOnce(Return(true));
   EXPECT_CALL(*mount_, AreValid(_)).WillOnce(Return(true));
-  service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), nullptr);
+  service_.DoCheckKeyEx(std::make_unique<AccountIdentifier>(*id_),
+                        std::make_unique<AuthorizationRequest>(*auth_),
+                        std::make_unique<CheckKeyRequest>(*check_req_),
+                        nullptr);
 
   // Expect an empty reply as success.
   DispatchEvents();
@@ -1111,7 +1115,10 @@ TEST_F(ServiceExTest, CheckKeyMountTest) {
   EXPECT_CALL(*mount_, AreValid(_)).WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(homedirs_, AreCredentialsValid(_)).WillOnce(Return(false));
-  service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), nullptr);
+  service_.DoCheckKeyEx(std::make_unique<AccountIdentifier>(*id_),
+                        std::make_unique<AuthorizationRequest>(*auth_),
+                        std::make_unique<CheckKeyRequest>(*check_req_),
+                        nullptr);
 
   DispatchEvents();
   ASSERT_TRUE(reply());
@@ -1167,7 +1174,10 @@ TEST_F(ServiceExTest, CheckKeyHomedirsTest) {
   EXPECT_CALL(*mount_, AreSameUser(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(homedirs_, AreCredentialsValid(_)).WillOnce(Return(true));
-  service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), nullptr);
+  service_.DoCheckKeyEx(std::make_unique<AccountIdentifier>(*id_),
+                        std::make_unique<AuthorizationRequest>(*auth_),
+                        std::make_unique<CheckKeyRequest>(*check_req_),
+                        nullptr);
 
   // Expect an empty reply as success.
   DispatchEvents();
@@ -1178,7 +1188,10 @@ TEST_F(ServiceExTest, CheckKeyHomedirsTest) {
   ClearReplies();
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(homedirs_, AreCredentialsValid(_)).WillOnce(Return(false));
-  service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), nullptr);
+  service_.DoCheckKeyEx(std::make_unique<AccountIdentifier>(*id_),
+                        std::make_unique<AuthorizationRequest>(*auth_),
+                        std::make_unique<CheckKeyRequest>(*check_req_),
+                        nullptr);
 
   DispatchEvents();
   ASSERT_TRUE(reply());
@@ -1189,7 +1202,8 @@ TEST_F(ServiceExTest, CheckKeyInvalidArgsNoEmail) {
   PrepareArguments();
   // Run will never be called because we aren't running the event loop.
   // For the same reason, DoMountEx is called directly.
-  service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), NULL);
+  service_.DoCheckKeyEx(std::move(id_), std::move(auth_), std::move(check_req_),
+                        NULL);
   DispatchEvents();
   ASSERT_TRUE(error_reply());
   EXPECT_EQ("No email supplied", *error_reply());
@@ -1198,7 +1212,8 @@ TEST_F(ServiceExTest, CheckKeyInvalidArgsNoEmail) {
 TEST_F(ServiceExTest, CheckKeyInvalidArgsNoSecret) {
   PrepareArguments();
   id_->set_account_id("foo@gmail.com");
-  service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), NULL);
+  service_.DoCheckKeyEx(std::move(id_), std::move(auth_), std::move(check_req_),
+                        NULL);
   DispatchEvents();
   ASSERT_TRUE(error_reply());
   EXPECT_EQ("No key secret supplied", *error_reply());
@@ -1208,7 +1223,8 @@ TEST_F(ServiceExTest, CheckKeyInvalidArgsEmptySecret) {
   PrepareArguments();
   id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("");
-  service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), NULL);
+  service_.DoCheckKeyEx(std::move(id_), std::move(auth_), std::move(check_req_),
+                        NULL);
   DispatchEvents();
   ASSERT_TRUE(error_reply());
   EXPECT_EQ("No key secret supplied", *error_reply());
