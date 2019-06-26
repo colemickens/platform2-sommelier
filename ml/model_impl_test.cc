@@ -14,7 +14,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/interface_request.h>
-#include <tensorflow/contrib/lite/model.h>
+#include <tensorflow/lite/model.h>
 
 #include "ml/model_impl.h"
 #include "ml/mojom/graph_executor.mojom.h"

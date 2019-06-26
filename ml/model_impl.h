@@ -12,7 +12,7 @@
 
 #include <base/macros.h>
 #include <mojo/public/cpp/bindings/binding.h>
-#include <tensorflow/contrib/lite/model.h>
+#include <tensorflow/lite/model.h>
 
 #include "ml/graph_executor_impl.h"
 #include "ml/mojom/model.mojom.h"

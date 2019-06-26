@@ -10,7 +10,7 @@
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
-#include <tensorflow/contrib/lite/model.h>
+#include <tensorflow/lite/model.h>
 
 #include "ml/model_impl.h"
 #include "ml/mojom/model.mojom.h"

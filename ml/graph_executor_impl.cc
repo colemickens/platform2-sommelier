@@ -71,7 +71,7 @@ ExecuteResult InvalidInput(const TensorPtr&, int, tflite::Interpreter*) {
 // input of each TF lite type.
 //
 // This table is indexed by TfLiteType, the possible values of which can be
-// found at <tensorflow/contrib/lite/context.h>. We make the following
+// found at <tensorflow/lite/context.h>. We make the following
 // assumptions about index values:
 //   1) They will remain consistent across TF lite releases, and
 //   2) They will always start from (close to) 0 and be (mostly) consecutive.
@@ -137,7 +137,7 @@ ExecuteResult InvalidOutput(int, const tflite::Interpreter&, const TensorPtr&) {
 // type.
 //
 // This table is indexed by TfLiteType, the possible values of which can be
-// found at <tensorflow/contrib/lite/context.h>. See the caveats discussed in
+// found at <tensorflow/lite/context.h>. See the caveats discussed in
 // the comment above |kPopulateInputFns|.
 constexpr decltype(&InvalidOutput) kPopulateOutputFns[] = {
     &InvalidOutput,                     // kTfLiteNoType

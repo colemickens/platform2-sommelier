@@ -15,8 +15,8 @@
 #include <brillo/test_helpers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <tensorflow/contrib/lite/context.h>
-#include <tensorflow/contrib/lite/interpreter.h>
+#include <tensorflow/lite/context.h>
+#include <tensorflow/lite/interpreter.h>
 
 #include "ml/graph_executor_impl.h"
 #include "ml/mojom/graph_executor.mojom.h"

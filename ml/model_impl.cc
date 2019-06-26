@@ -9,9 +9,9 @@
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
-#include <tensorflow/contrib/lite/context.h>
-#include <tensorflow/contrib/lite/interpreter.h>
-#include <tensorflow/contrib/lite/kernels/register.h>
+#include <tensorflow/lite/context.h>
+#include <tensorflow/lite/interpreter.h>
+#include <tensorflow/lite/kernels/register.h>
 
 namespace ml {
 

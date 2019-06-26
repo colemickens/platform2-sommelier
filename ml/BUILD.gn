@@ -38,7 +38,7 @@ static_library("ml_common") {
     "${sysroot}/usr/include/tensorflow",
     "${sysroot}/usr/include/tensorflow/third_party/flatbuffers",
   ]
-  libs = [ "tensorflow_lite" ]
+  libs = [ "tensorflowlite" ]
   deps = [
     ":ml_mojo_bindings",
   ]
