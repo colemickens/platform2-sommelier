@@ -43,6 +43,19 @@ using brillo::SecureBlob;
 
 namespace cryptohome {
 
+namespace {
+
+// The maximum number of times to try decryption with the TPM.
+constexpr int kTpmDecryptMaxRetries = 2;
+
+bool TpmErrorIsRetriable(Tpm::TpmRetryAction retry_action) {
+  return retry_action == Tpm::kTpmRetryLoadFail ||
+         retry_action == Tpm::kTpmRetryInvalidHandle ||
+         retry_action == Tpm::kTpmRetryCommFailure;
+}
+
+}  // namespace
+
 // File name of the system salt file.
 const char kSystemSaltFile[] = "salt";
 
@@ -518,31 +531,32 @@ bool Crypto::DecryptTpmBoundToPcr(const SecureBlob& vault_key,
                                   SecureBlob* vkk_iv,
                                   SecureBlob* vkk_key) const {
   SecureBlob pass_blob(kDefaultPassBlobSize);
-  if (!DeriveSecretsSCrypt(vault_key, salt, { &pass_blob, vkk_iv })) {
+  if (!DeriveSecretsSCrypt(vault_key, salt, {&pass_blob, vkk_iv})) {
     return false;
   }
-  std::map<uint32_t, std::string> pcr_map({{kTpmSingleUserPCR, ""}});
-  Tpm::TpmRetryAction retry_action =
-      tpm_->UnsealWithAuthorization(tpm_init_->GetCryptohomeKey(), tpm_key,
-                                    pass_blob, pcr_map, vkk_key);
-  if (retry_action == Tpm::kTpmRetryLoadFail ||
-      retry_action == Tpm::kTpmRetryInvalidHandle ||
-      retry_action == Tpm::kTpmRetryCommFailure) {
+
+  Tpm::TpmRetryAction retry_action;
+  for (int i = 0; i < kTpmDecryptMaxRetries; ++i) {
+    std::map<uint32_t, std::string> pcr_map({{kTpmSingleUserPCR, ""}});
+    retry_action = tpm_->UnsealWithAuthorization(
+        tpm_init_->GetCryptohomeKey(), tpm_key, pass_blob, pcr_map, vkk_key);
+
+    if (retry_action == Tpm::kTpmRetryNone)
+      return true;
+
+    if (!TpmErrorIsRetriable(retry_action))
+      break;
+
+    // If the error is retriable, reload the key first.
     if (!tpm_init_->ReloadCryptohomeKey()) {
       LOG(ERROR) << "Unable to reload Cryptohome key.";
-      retry_action = Tpm::kTpmRetryFailNoRetry;
-    } else {
-      retry_action =
-          tpm_->UnsealWithAuthorization(tpm_init_->GetCryptohomeKey(), tpm_key,
-                                        pass_blob, pcr_map, vkk_key);
+      break;
     }
   }
-  if (retry_action != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "Failed to unwrap vkk with creds.";
-    *error = TpmErrorToCrypto(retry_action);
-    return false;
-  }
-  return true;
+
+  LOG(ERROR) << "Failed to unwrap vkk with creds.";
+  *error = TpmErrorToCrypto(retry_action);
+  return false;
 }
 
 bool Crypto::DecryptTpmNotBoundToPcr(const SerializedVaultKeyset& serialized,
