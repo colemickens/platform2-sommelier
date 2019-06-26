@@ -258,6 +258,9 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
       args.rollback_wipe = true;
     } else if (arg == "preserve_clobber_logs") {
       args.preserve_clobber_crash_logs = true;
+    } else if (base::StartsWith(
+                   arg, "reason=", base::CompareCase::INSENSITIVE_ASCII)) {
+      args.reason = arg;
     }
   }
 
@@ -968,6 +971,7 @@ int ClobberState::Run() {
   LOG(INFO) << "Keepimg: " << args_.keepimg;
   LOG(INFO) << "Safe wipe: " << args_.safe_wipe;
   LOG(INFO) << "Rollback wipe: " << args_.rollback_wipe;
+  LOG(INFO) << "Reason: " << args_.reason;
 
   // Most effective means of destroying user data is run at the start: Throwing
   // away the key to encrypted stateful by requesting the TPM to be cleared at
@@ -1070,6 +1074,8 @@ int ClobberState::Run() {
     log_preserve.AddArg("safe");
   if (args_.rollback_wipe)
     log_preserve.AddArg("rollback");
+  if (!args_.reason.empty())
+    log_preserve.AddArg(args_.reason);
   log_preserve.RedirectOutput(temp_file.value());
   log_preserve.Run();
   AppendFileToLog(temp_file);

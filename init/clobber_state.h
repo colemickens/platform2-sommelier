@@ -31,6 +31,10 @@ class ClobberState {
     bool rollback_wipe = false;
     // Preserve crash and logs from the clobber run.
     bool preserve_clobber_crash_logs = false;
+    // Preserve initial reason for triggering clobber, if available.
+    // Assume that the reason string is already sanitized by session
+    // manager (non-alphanumeric characters replaced with '_').
+    std::string reason = "";
   };
 
   // The index of each partition within the gpt partition table.
