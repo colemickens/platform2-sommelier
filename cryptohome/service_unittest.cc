@@ -972,6 +972,114 @@ TEST_F(ServiceExTest, AddDataRestoreKeyAccountExistAddSuccess) {
             .data_restore_key().length());
 }
 
+TEST_F(ServiceExTest, MassRemoveKeysInvalidArgsNoEmail) {
+  PrepareArguments();
+  std::unique_ptr<MassRemoveKeysRequest>
+      mrk_req(new MassRemoveKeysRequest);
+  service_.DoMassRemoveKeys(id_.get(),
+                            auth_.get(),
+                            mrk_req.get(),
+                            NULL);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No email supplied", *error_reply());
+}
+
+TEST_F(ServiceExTest, MassRemoveKeysInvalidArgsNoSecret) {
+  PrepareArguments();
+  id_->set_account_id("foo@gmail.com");
+  std::unique_ptr<MassRemoveKeysRequest>
+      mrk_req(new MassRemoveKeysRequest);
+  service_.DoMassRemoveKeys(id_.get(),
+                            auth_.get(),
+                            mrk_req.get(),
+                            NULL);
+  DispatchEvents();
+  ASSERT_TRUE(error_reply());
+  EXPECT_EQ("No key secret supplied", *error_reply());
+}
+
+TEST_F(ServiceExTest, MassRemoveKeysAccountNotExist) {
+  PrepareArguments();
+  id_->set_account_id("foo@gmail.com");
+  auth_->mutable_key()->set_secret("blerg");
+  std::unique_ptr<MassRemoveKeysRequest>
+      mrk_req(new MassRemoveKeysRequest);
+  EXPECT_CALL(homedirs_, Exists(_))
+      .WillRepeatedly(Return(false));
+  service_.DoMassRemoveKeys(id_.get(),
+                            auth_.get(),
+                            mrk_req.get(),
+                            NULL);
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_TRUE(reply()->has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND, reply()->error());
+}
+
+TEST_F(ServiceExTest, MassRemoveKeysAuthFailed) {
+  PrepareArguments();
+  id_->set_account_id("foo@gmail.com");
+  auth_->mutable_key()->set_secret("blerg");
+  EXPECT_CALL(homedirs_, Exists(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, AreCredentialsValid(_))
+      .WillRepeatedly(Return(false));
+  std::unique_ptr<MassRemoveKeysRequest>
+      mrk_req(new MassRemoveKeysRequest);
+  service_.DoMassRemoveKeys(id_.get(),
+                            auth_.get(),
+                            mrk_req.get(),
+                            NULL);
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_TRUE(reply()->has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED, reply()->error());
+}
+
+TEST_F(ServiceExTest, MassRemoveKeysGetLabelsFailed) {
+  PrepareArguments();
+  id_->set_account_id("foo@gmail.com");
+  auth_->mutable_key()->set_secret("blerg");
+  EXPECT_CALL(homedirs_, Exists(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, AreCredentialsValid(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, GetVaultKeysetLabels(_, _))
+      .WillRepeatedly(Return(false));
+  std::unique_ptr<MassRemoveKeysRequest>
+      mrk_req(new MassRemoveKeysRequest);
+  service_.DoMassRemoveKeys(id_.get(),
+                            auth_.get(),
+                            mrk_req.get(),
+                            NULL);
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_TRUE(reply()->has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_KEY_NOT_FOUND, reply()->error());
+}
+
+TEST_F(ServiceExTest, MassRemoveKeysForceSuccess) {
+  PrepareArguments();
+  id_->set_account_id("foo@gmail.com");
+  auth_->mutable_key()->set_secret("blerg");
+  EXPECT_CALL(homedirs_, Exists(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, AreCredentialsValid(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, GetVaultKeysetLabels(_, _))
+      .WillRepeatedly(Return(true));
+  std::unique_ptr<MassRemoveKeysRequest>
+      mrk_req(new MassRemoveKeysRequest);
+  service_.DoMassRemoveKeys(id_.get(),
+                            auth_.get(),
+                            mrk_req.get(),
+                            NULL);
+  DispatchEvents();
+  ASSERT_TRUE(reply());
+  EXPECT_FALSE(reply()->has_error());
+}
+
 TEST_F(ServiceExTest, MountInvalidArgsNoEmail) {
   PrepareArguments();
   // Run will never be called because we aren't running the event loop.

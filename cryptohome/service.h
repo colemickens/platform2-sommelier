@@ -302,6 +302,15 @@ class Service : public brillo::dbus::AbstractDbusService,
                                GArray *authorization_request,
                                GArray *remove_key_request,
                                DBusGMethodInvocation *context);
+  virtual void DoMassRemoveKeys(AccountIdentifier* account_id,
+                                AuthorizationRequest* authorization_request,
+                                MassRemoveKeysRequest*
+                                    mass_remove_keys_request,
+                                DBusGMethodInvocation* context);
+  virtual gboolean MassRemoveKeys(GArray *account_id,
+                                  GArray *authorization_request,
+                                  GArray *mass_remove_keys_request,
+                                  DBusGMethodInvocation *context);
   virtual void DoGetKeyDataEx(AccountIdentifier* account_id,
                               AuthorizationRequest*  authorization_request,
                               GetKeyDataRequest* get_key_data_request,

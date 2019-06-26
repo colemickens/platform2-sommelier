@@ -77,6 +77,17 @@ gboolean cryptohome_get_key_data_ex(Cryptohome* self,
   // Leave the response called error to reuse WRAP.
   CRYPTOHOME_WRAP_METHOD(GetKeyDataEx, identifier, authorization, request);
 }
+gboolean cryptohome_mass_remove_keys(Cryptohome* self,
+                                     GArray* identifier,
+                                     GArray* authorization,
+                                     GArray* request,
+                                     DBusGMethodInvocation* error) {
+  // Leave the response called error to reuse WRAP.
+  CRYPTOHOME_WRAP_METHOD(MassRemoveKeys,
+                         identifier,
+                         authorization,
+                         request);
+}
 gboolean cryptohome_list_keys_ex(Cryptohome* self,
                                  GArray* identifier,
                                  GArray* authorization,

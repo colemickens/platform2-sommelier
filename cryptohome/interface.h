@@ -43,6 +43,11 @@ gboolean cryptohome_remove_key_ex(Cryptohome* self,
                                   GArray* authorization,
                                   GArray* request,
                                   DBusGMethodInvocation* resp);
+gboolean cryptohome_mass_remove_keys(Cryptohome* self,
+                                     GArray* identifier,
+                                     GArray* authorization,
+                                     GArray* request,
+                                     DBusGMethodInvocation* resp);
 gboolean cryptohome_get_key_data_ex(Cryptohome* self,
                                     GArray* identifier,
                                     GArray* authorization,

@@ -121,6 +121,13 @@ class LegacyCryptohomeInterfaceAdaptor
       const cryptohome::AccountIdentifier& in_account_id,
       const cryptohome::AuthorizationRequest& in_authorization_request,
       const cryptohome::RemoveKeyRequest& in_remove_key_request) override;
+  void MassRemoveKeys(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          cryptohome::BaseReply>> response,
+      const cryptohome::AccountIdentifier& in_account_id,
+      const cryptohome::AuthorizationRequest& in_authorization_request,
+      const cryptohome::MassRemoveKeysRequest&
+          in_mass_remove_keys_request) override;
   void GetKeyDataEx(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           cryptohome::BaseReply>> response,

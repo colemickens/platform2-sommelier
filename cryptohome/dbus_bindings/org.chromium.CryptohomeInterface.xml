@@ -88,6 +88,30 @@
                     value="cryptohome::BaseReply" />
       </arg>
     </method>
+    <!-- This method removes every existing keyset that is not exempted
+         in MassRemoveKeysReqeust.
+    -->
+    <method name="MassRemoveKeys">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="account_id" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AccountIdentifier" />
+      </arg>
+      <arg type="ay" name="authorization_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::AuthorizationRequest" />
+      </arg>
+      <arg type="ay" name="mass_remove_keys_request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::MassRemoveKeysRequest" />
+      </arg>
+      <arg type="ay" name="mass_remove_keys_reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BaseReply" />
+      </arg>
+    </method>
     <method name="GetKeyDataEx">
       <annotation name="org.chromium.DBus.Method.Kind"
                   value="async"/>

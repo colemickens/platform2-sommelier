@@ -37,6 +37,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -1185,6 +1186,100 @@ gboolean Service::RemoveKeyEx(GArray* account_id,
                  base::Owned(identifier.release()),
                  base::Owned(authorization.release()),
                  base::Owned(request.release()), base::Unretained(context)));
+  return TRUE;
+}
+
+void Service::DoMassRemoveKeys(
+    AccountIdentifier* account_id,
+    AuthorizationRequest* authorization_request,
+    MassRemoveKeysRequest* mass_remove_keys_request,
+    DBusGMethodInvocation* context) {
+  if (!account_id || !authorization_request || !mass_remove_keys_request) {
+    SendInvalidArgsReply(context, "Failed to parse parameters.");
+    return;
+  }
+  const std::string username = GetAccountId(*account_id);
+  if (username.empty()) {
+    SendInvalidArgsReply(context, "No email supplied");
+    return;
+  }
+  if (authorization_request->key().secret().empty()) {
+    SendInvalidArgsReply(context, "No key secret supplied");
+    return;
+  }
+  BaseReply reply;
+  Credentials credentials(
+      username.c_str(),
+      SecureBlob(authorization_request->key().secret().begin(),
+                 authorization_request->key().secret().end()));
+  credentials.set_key_data(authorization_request->key().data());
+  const std::string obfuscated_username =
+      BuildObfuscatedUsername(username, system_salt_);
+  if (!homedirs_->Exists(obfuscated_username)) {
+    reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+    SendReply(context, reply);
+    return;
+  }
+  if (!homedirs_->AreCredentialsValid(credentials)) {
+    reply.set_error(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+    SendReply(context, reply);
+    return;
+  }
+  // get all labels under the username
+  std::vector<std::string> labels;
+  if (!homedirs_->GetVaultKeysetLabels(obfuscated_username, &labels)) {
+    reply.set_error(CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+    SendReply(context, reply);
+    return;
+  }
+  // get all exempt labels from mass_remove_keys_request
+  std::unordered_set<std::string> exempt_labels;
+  for (int i = 0; i < mass_remove_keys_request->exempt_key_data_size(); i++) {
+    exempt_labels.insert(
+        mass_remove_keys_request->exempt_key_data(i).label());
+  }
+  for (std::string label : labels) {
+    if (exempt_labels.find(label) == exempt_labels.end()) {
+      // non-exempt label, should be removed
+      std::unique_ptr<VaultKeyset> remove_vk(
+          homedirs_->GetVaultKeyset(obfuscated_username, label));
+      if (!homedirs_->ForceRemoveKeyset(obfuscated_username,
+                                        remove_vk->legacy_index())) {
+        LOG(ERROR) << "MassRemoveKeys: failed to remove keyset " << label;
+        reply.set_error(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+        SendReply(context, reply);
+        return;
+      }
+    }
+  }
+  SendReply(context, reply);
+}
+
+gboolean Service::MassRemoveKeys(GArray* account_id,
+                                 GArray* authorization_request,
+                                 GArray* mass_remove_keys_request,
+                                 DBusGMethodInvocation *context) {
+  auto identifier = std::make_unique<AccountIdentifier>();
+  auto authorization = std::make_unique<AuthorizationRequest>();
+  auto request = std::make_unique<MassRemoveKeysRequest>();
+  // On parsing failure, pass along a NULL.
+  if (!identifier->ParseFromArray(account_id->data, account_id->len))
+    identifier.reset(nullptr);
+  if (!authorization->ParseFromArray(authorization_request->data,
+                                     authorization_request->len))
+    authorization.reset(nullptr);
+  if (!request->ParseFromArray(mass_remove_keys_request->data,
+                               mass_remove_keys_request->len))
+    request.reset(nullptr);
+
+  // If PBs don't parse, the validation in the handler will catch it.
+    PostTask(
+      FROM_HERE,
+      base::Bind(&Service::DoMassRemoveKeys, base::Unretained(this),
+                 base::Owned(identifier.release()),
+                 base::Owned(authorization.release()),
+                 base::Owned(request.release()), base::Unretained(context)));
+
   return TRUE;
 }
 
