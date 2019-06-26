@@ -64,14 +64,12 @@ class MockCryptoUtility : public CryptoUtility {
                bool(const std::string&, const EncryptedData&, std::string*));
   MOCK_METHOD3(EncryptForUnbind,
                bool(const std::string&, const std::string&, std::string*));
-  MOCK_METHOD3(VerifySignature,
-               bool(const std::string&,
-                    const std::string&,
-                    const std::string&));
-  MOCK_METHOD3(VerifySignatureUsingHexKey,
-               bool(const std::string&,
-                    const std::string&,
-                    const std::string&));
+  MOCK_METHOD4(
+      VerifySignature,
+      bool(int, const std::string&, const std::string&, const std::string&));
+  MOCK_METHOD4(
+      VerifySignatureUsingHexKey,
+      bool(int, const std::string&, const std::string&, const std::string&));
   MOCK_METHOD4(EncryptDataForGoogle,
                bool(const std::string&,
                     const std::string&,
@@ -91,6 +89,7 @@ class MockCryptoUtility : public CryptoUtility {
                bool(const std::string&, std::string*));
   MOCK_METHOD2(HmacSha256, std::string(const std::string&, const std::string&));
   MOCK_METHOD2(HmacSha512, std::string(const std::string&, const std::string&));
+  MOCK_METHOD0(DefaultDigestAlgoForSingature, int());
 };
 
 }  // namespace attestation

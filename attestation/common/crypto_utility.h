@@ -94,15 +94,19 @@ class CryptoUtility {
                                 const std::string& data,
                                 std::string* encrypted_data) = 0;
 
-  // Verifies a PKCS #1 v1.5 SHA-256 |signature| over |data|. The |public_key|
-  // must be provided in X.509 SubjectPublicKeyInfo format.
-  virtual bool VerifySignature(const std::string& public_key,
+  // Verifies a PKCS #1 v1.5 |signature| over |data| with digest algorithm
+  // |digest_nid|. The |public_key| must be provided in X.509
+  // SubjectPublicKeyInfo format.
+  virtual bool VerifySignature(int digest_nid,
+                               const std::string& public_key,
                                const std::string& data,
                                const std::string& signature) = 0;
 
-  // Verifies a PKCS #1 v1.5 SHA-256 |signature| over |data|.
-  // The |public_key_hex| contains a modulus in hex format.
-  virtual bool VerifySignatureUsingHexKey(const std::string& public_key_hex,
+  // Verifies a PKCS #1 v1.5 SHA-256 |signature| over |data| with digest
+  // algorithm |digest_nid|. The |public_key_hex| contains a modulus in hex
+  // format.
+  virtual bool VerifySignatureUsingHexKey(int digest_nid,
+                                          const std::string& public_key_hex,
                                           const std::string& data,
                                           const std::string& signature) = 0;
 
@@ -153,6 +157,10 @@ class CryptoUtility {
   // Computes and returns an HMAC of |data| using |key| and SHA-512.
   virtual std::string HmacSha512(const std::string& key,
                                  const std::string& data) = 0;
+
+  // Get the default signature hash algorithm according to TPM version.
+  // TPM 1.2 use SHA1. TPM 2.0 use SHA256.
+  virtual int DefaultDigestAlgoForSingature() = 0;
 };
 
 }  // namespace attestation

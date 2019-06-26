@@ -763,8 +763,9 @@ TEST_P(AttestationServiceEnterpriseTest, SignEnterpriseChallengeSuccess) {
   KeyInfo key_info = CreateChallengeKeyInfo();
   std::string key_info_str;
   key_info.SerializeToString(&key_info_str);
-  EXPECT_CALL(mock_crypto_utility_, VerifySignatureUsingHexKey(
-      service_->GetEnterpriseSigningHexKey(va_type_), _, _))
+  EXPECT_CALL(mock_crypto_utility_,
+              VerifySignatureUsingHexKey(
+                  _, service_->GetEnterpriseSigningHexKey(va_type_), _, _))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_crypto_utility_,
               EncryptDataForGoogle(key_info_str,
@@ -811,7 +812,7 @@ TEST_P(AttestationServiceEnterpriseTest,
   KeyInfo key_info = CreateChallengeKeyInfo();
   std::string key_info_str;
   key_info.SerializeToString(&key_info_str);
-  EXPECT_CALL(mock_crypto_utility_, VerifySignatureUsingHexKey(_, _, _))
+  EXPECT_CALL(mock_crypto_utility_, VerifySignatureUsingHexKey(_, _, _, _))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
       .WillRepeatedly(Return(false));
@@ -838,7 +839,7 @@ TEST_P(AttestationServiceEnterpriseTest, SignEnterpriseChallengeBadPrefix) {
   KeyInfo key_info = CreateChallengeKeyInfo();
   std::string key_info_str;
   key_info.SerializeToString(&key_info_str);
-  EXPECT_CALL(mock_crypto_utility_, VerifySignatureUsingHexKey(_, _, _))
+  EXPECT_CALL(mock_crypto_utility_, VerifySignatureUsingHexKey(_, _, _, _))
       .WillRepeatedly(Return(true));
   auto callback = [](const base::Closure& quit_closure,
                      const SignEnterpriseChallengeReply& reply) {

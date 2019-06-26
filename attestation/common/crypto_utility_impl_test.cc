@@ -22,6 +22,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <openssl/objects.h>
 
 #include "attestation/common/crypto_utility_impl.h"
 #include "attestation/common/mock_tpm_utility.h"
@@ -293,12 +294,13 @@ TEST_F(CryptoUtilityImplTest, VerifySignatureBadSignature) {
   EXPECT_TRUE(crypto_utility_->GetRSASubjectPublicKeyInfo(public_key,
                                                           &public_key_info));
   std::string output;
-  EXPECT_FALSE(
-      crypto_utility_->VerifySignature(public_key_info, "input", "signature"));
+  EXPECT_FALSE(crypto_utility_->VerifySignature(NID_sha256, public_key_info,
+                                                "input", "signature"));
 }
 
 TEST_F(CryptoUtilityImplTest, VerifySignatureBadKey) {
-  EXPECT_FALSE(crypto_utility_->VerifySignature("bad_key", "input", ""));
+  EXPECT_FALSE(
+      crypto_utility_->VerifySignature(NID_sha256, "bad_key", "input", ""));
 }
 
 TEST_F(CryptoUtilityImplTest, EncryptDataForGoogle) {

@@ -29,6 +29,7 @@
 #include <brillo/cryptohome.h>
 #include <brillo/data_encoding.h>
 #include <crypto/sha2.h>
+#include <openssl/objects.h>
 #if USE_TPM2
 #include <trunks/tpm_utility.h>
 #endif
@@ -2007,6 +2008,7 @@ bool AttestationService::VerifyIdentityBinding(
       return false;
     }
     if (!crypto_utility_->VerifySignature(
+            crypto_utility_->DefaultDigestAlgoForSingature(),
             identity_public_key_info,
             header + digest + binding.identity_public_key_tpm_format(),
             binding.identity_binding())) {
@@ -2027,9 +2029,9 @@ bool AttestationService::VerifyQuoteSignature(
     const std::string& aik_public_key_info,
     const Quote& quote,
     uint32_t pcr_index) {
-  if (!crypto_utility_->VerifySignature(aik_public_key_info,
-                                        quote.quoted_data(),
-                                        quote.quote())) {
+  if (!crypto_utility_->VerifySignature(
+          crypto_utility_->DefaultDigestAlgoForSingature(), aik_public_key_info,
+          quote.quoted_data(), quote.quote())) {
     LOG(ERROR) << __func__ << ": Signature mismatch.";
     return false;
   }
@@ -2118,7 +2120,9 @@ bool AttestationService::VerifyCertifiedKey(
     const std::string& public_key_tpm_format,
     const std::string& key_info,
     const std::string& proof) {
-  if (!crypto_utility_->VerifySignature(aik_public_key_info, key_info, proof)) {
+  if (!crypto_utility_->VerifySignature(
+          crypto_utility_->DefaultDigestAlgoForSingature(), aik_public_key_info,
+          key_info, proof)) {
     LOG(ERROR) << __func__ << ": Bad key signature.";
     return false;
   }
@@ -2505,10 +2509,10 @@ bool AttestationService::ValidateEnterpriseChallenge(
     VAType va_type,
     const SignedData& signed_challenge) {
   const char kExpectedChallengePrefix[] = "EnterpriseKeyChallenge";
+  // VA server always use SHA256 as digest algorithm for signature.
   if (!crypto_utility_->VerifySignatureUsingHexKey(
-      GetEnterpriseSigningHexKey(va_type),
-      signed_challenge.data(),
-      signed_challenge.signature())) {
+          NID_sha256, GetEnterpriseSigningHexKey(va_type),
+          signed_challenge.data(), signed_challenge.signature())) {
     LOG(ERROR) << __func__ << ": Failed to verify challenge signature.";
     return false;
   }

@@ -64,13 +64,14 @@ class CryptoUtilityImpl : public CryptoUtility {
   bool EncryptForUnbind(const std::string& public_key,
                         const std::string& data,
                         std::string* encrypted_data) override;
-  bool VerifySignature(const std::string& public_key,
+  bool VerifySignature(int digest_nid,
+                       const std::string& public_key,
                        const std::string& data,
                        const std::string& signature) override;
-  bool VerifySignatureUsingHexKey(
-      const std::string& public_key_hex,
-      const std::string& data,
-      const std::string& signature) override;
+  bool VerifySignatureUsingHexKey(int digest_nid,
+                                  const std::string& public_key_hex,
+                                  const std::string& data,
+                                  const std::string& signature) override;
   bool EncryptDataForGoogle(
       const std::string& data,
       const std::string& public_key_hex,
@@ -93,6 +94,8 @@ class CryptoUtilityImpl : public CryptoUtility {
 
   std::string HmacSha512(const std::string& key,
                          const std::string& data) override;
+
+  int DefaultDigestAlgoForSingature() override;
 
  private:
   friend class CryptoUtilityImplTest;
@@ -188,8 +191,9 @@ class CryptoUtilityImpl : public CryptoUtility {
                             std::string* output);
 
   // Verifies the |signature| for the provided |data| using the |key|.
-  // The digest algorithm depends on the TPM version.
-  bool VerifySignatureRSA(RSA* key,
+  // The digest algorithm depends on OpenSSL nid |digest_nid|.
+  bool VerifySignatureRSA(int digest_nid,
+                          RSA* key,
                           const std::string& data,
                           const std::string& signature);
 

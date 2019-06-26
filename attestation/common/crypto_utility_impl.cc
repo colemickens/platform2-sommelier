@@ -361,25 +361,28 @@ bool CryptoUtilityImpl::EncryptForUnbind(const std::string& public_key,
   return true;
 }
 
-bool CryptoUtilityImpl::VerifySignatureRSA(RSA* key,
+bool CryptoUtilityImpl::VerifySignatureRSA(int digest_nid,
+                                           RSA* key,
                                            const std::string& data,
                                            const std::string& signature) {
   std::string digest;
-  int alg_type;
-  if (tpm_utility_->GetVersion() == TPM_1_2) {
-    alg_type = NID_sha1;
-    digest = base::SHA1HashString(data);
-  } else if (tpm_utility_->GetVersion() == TPM_2_0) {
-    alg_type = NID_sha256;
-    digest = crypto::SHA256HashString(data);
-  } else {
-    LOG(ERROR) << __func__ << ": Unsupported TPM version.";
-    return false;
+  switch (digest_nid) {
+    case NID_sha1:
+      digest = base::SHA1HashString(data);
+      break;
+    case NID_sha256:
+      digest = crypto::SHA256HashString(data);
+      break;
+
+    default:
+      LOG(ERROR) << __func__
+                 << ": Unsupported digest algorithm: " << digest_nid;
+      return false;
   }
   auto digest_buffer = reinterpret_cast<const unsigned char*>(digest.data());
   std::string mutable_signature(signature);
   unsigned char* signature_buffer = StringAsOpenSSLBuffer(&mutable_signature);
-  if (RSA_verify(alg_type, digest_buffer, digest.size(), signature_buffer,
+  if (RSA_verify(digest_nid, digest_buffer, digest.size(), signature_buffer,
                  signature.size(), key) != 1) {
     LOG(ERROR) << __func__ << ": Invalid signature: " << GetOpenSSLError();
     return false;
@@ -387,7 +390,8 @@ bool CryptoUtilityImpl::VerifySignatureRSA(RSA* key,
   return true;
 }
 
-bool CryptoUtilityImpl::VerifySignature(const std::string& public_key,
+bool CryptoUtilityImpl::VerifySignature(int digest_nid,
+                                        const std::string& public_key,
                                         const std::string& data,
                                         const std::string& signature) {
   auto asn1_ptr = reinterpret_cast<const unsigned char*>(public_key.data());
@@ -397,10 +401,11 @@ bool CryptoUtilityImpl::VerifySignature(const std::string& public_key,
                << ": Failed to decode public key: " << GetOpenSSLError();
     return false;
   }
-  return VerifySignatureRSA(rsa.get(), data, signature);
+  return VerifySignatureRSA(digest_nid, rsa.get(), data, signature);
 }
 
 bool CryptoUtilityImpl::VerifySignatureUsingHexKey(
+    int digest_nid,
     const std::string& public_key_hex,
     const std::string& data,
     const std::string& signature) {
@@ -409,7 +414,7 @@ bool CryptoUtilityImpl::VerifySignatureUsingHexKey(
     LOG(ERROR) << __func__ << ": Failed to decode public key.";
     return false;
   }
-  return VerifySignatureRSA(rsa.get(), data, signature);
+  return VerifySignatureRSA(digest_nid, rsa.get(), data, signature);
 }
 
 bool CryptoUtilityImpl::EncryptDataForGoogle(
@@ -557,6 +562,15 @@ std::string CryptoUtilityImpl::HmacSha512(const std::string& key,
   HMAC(EVP_sha512(), key.data(), key.size(), data_buffer, data.size(), mac,
        nullptr);
   return std::string(std::begin(mac), std::end(mac));
+}
+
+int CryptoUtilityImpl::DefaultDigestAlgoForSingature() {
+  switch (tpm_utility_->GetVersion()) {
+    case attestation::TPM_2_0:
+      return NID_sha256;
+    case attestation::TPM_1_2:
+      return NID_sha1;
+  }
 }
 
 bool CryptoUtilityImpl::TssCompatibleEncrypt(const std::string& input,
