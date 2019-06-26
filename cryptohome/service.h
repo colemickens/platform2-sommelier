@@ -891,6 +891,11 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
   // exactly once (i.e. records one sample) with the status of the operation.
   void ResetDictionaryAttackMitigation();
 
+  // Performs the lazy part of the initialization that is required for
+  // performing operations with challenge-response keys. Returns whether
+  // succeeded.
+  bool InitForChallengeResponseAuth(CryptohomeErrorCode* error_code);
+
   // Called on Mount thread. This triggers the credentials generation steps that
   // are specific to challenge-response keys, before scheduling
   // ContinueMountExWithCredentials().

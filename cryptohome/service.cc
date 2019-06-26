@@ -2029,6 +2029,45 @@ void Service::DoMountEx(std::unique_ptr<AccountIdentifier> identifier,
                                  std::move(credentials), mount_args, context);
 }
 
+bool Service::InitForChallengeResponseAuth(CryptohomeErrorCode* error_code) {
+  if (!tpm_) {
+    LOG(ERROR) << "Cannot do challenge-response authentication without TPM";
+    *error_code = CRYPTOHOME_ERROR_MOUNT_FATAL;
+    return false;
+  }
+  if (!tpm_init_->IsTpmReady()) {
+    LOG(ERROR) << "TPM must be initialized in order to do challenge-response "
+                  "authentication";
+    *error_code = CRYPTOHOME_ERROR_MOUNT_FATAL;
+    return false;
+  }
+
+  if (!challenge_credentials_helper_) {
+    // Lazily create the helper object that manages generation/decryption of
+    // credentials for challenge-protected vaults.
+    Blob delegate_blob, delegate_secret;
+    bool has_reset_lock_permissions = false;
+    if (!AttestationGetDelegateCredentials(&delegate_blob, &delegate_secret,
+                                           &has_reset_lock_permissions)) {
+      LOG(ERROR)
+          << "Cannot do challenge-response authentication without TPM delegate";
+      *error_code = CRYPTOHOME_ERROR_MOUNT_FATAL;
+      return false;
+    }
+    challenge_credentials_helper_ =
+        std::make_unique<ChallengeCredentialsHelper>(tpm_, delegate_blob,
+                                                     delegate_secret);
+  }
+
+  if (!system_dbus_connection_.Connect()) {
+    LOG(ERROR) << "Cannot do challenge-response mount without system D-Bus bus";
+    *error_code = CRYPTOHOME_ERROR_MOUNT_FATAL;
+    return false;
+  }
+
+  return true;
+}
+
 void Service::DoChallengeResponseMountEx(
     std::unique_ptr<AccountIdentifier> identifier,
     std::unique_ptr<AuthorizationRequest> authorization,
@@ -2042,35 +2081,11 @@ void Service::DoChallengeResponseMountEx(
   BaseReply reply;
   reply.MutableExtension(MountReply::reply)->set_recreated(false);
 
-  if (!tpm_) {
-    LOG(ERROR) << "Cannot do challenge-response mount without TPM";
-    reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
+  CryptohomeErrorCode error_code = CRYPTOHOME_ERROR_NOT_SET;
+  if (!InitForChallengeResponseAuth(&error_code)) {
+    reply.set_error(error_code);
     SendReply(context, reply);
     return;
-  }
-  if (!tpm_init_->IsTpmReady()) {
-    LOG(ERROR)
-        << "TPM must be initialized in order to do challenge-response mount";
-    reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
-    SendReply(context, reply);
-    return;
-  }
-
-  if (!challenge_credentials_helper_) {
-    // Lazily create the helper object that manages generation/decryption of
-    // credentials for challenge-protected vaults.
-    Blob delegate_blob, delegate_secret;
-    bool has_reset_lock_permissions = false;
-    if (!AttestationGetDelegateCredentials(&delegate_blob, &delegate_secret,
-                                           &has_reset_lock_permissions)) {
-      LOG(ERROR) << "Cannot do challenge-response mount without TPM delegate";
-      reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
-      SendReply(context, reply);
-      return;
-    }
-    challenge_credentials_helper_ =
-        std::make_unique<ChallengeCredentialsHelper>(tpm_, delegate_blob,
-                                                     delegate_secret);
   }
 
   const std::string& account_id = GetAccountId(*identifier);
@@ -2078,13 +2093,6 @@ void Service::DoChallengeResponseMountEx(
       BuildObfuscatedUsername(account_id, system_salt_);
   const KeyData key_data = authorization->key().data();
 
-  scoped_refptr<dbus::Bus> system_dbus_bus = system_dbus_connection_.Connect();
-  if (!system_dbus_bus) {
-    LOG(ERROR) << "Cannot do challenge-response mount without system D-Bus bus";
-    reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
-    SendReply(context, reply);
-    return;
-  }
   if (!authorization->has_key_delegate() ||
       !authorization->key_delegate().has_dbus_service_name()) {
     LOG(ERROR) << "Cannot do challenge-response mount without key delegate "
@@ -2094,7 +2102,8 @@ void Service::DoChallengeResponseMountEx(
     return;
   }
   auto key_challenge_service = std::make_unique<KeyChallengeServiceImpl>(
-      system_dbus_bus, authorization->key_delegate().dbus_service_name());
+      system_dbus_connection_.Connect(),
+      authorization->key_delegate().dbus_service_name());
 
   if (!homedirs_->Exists(obfuscated_username) &&
       !mount_args.create_if_missing) {
