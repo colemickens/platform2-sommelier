@@ -896,6 +896,16 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
   // succeeded.
   bool InitForChallengeResponseAuth(CryptohomeErrorCode* error_code);
 
+  // Called on Mount thread. This triggers the credentials verification steps
+  // that are specific to challenge-response keys, before scheduling
+  // CompleteChallengeResponseCheckKeyEx().
+  void DoChallengeResponseCheckKeyEx(
+      std::unique_ptr<AccountIdentifier> identifier,
+      std::unique_ptr<AuthorizationRequest> authorization,
+      DBusGMethodInvocation* context);
+  void CompleteChallengeResponseCheckKeyEx(
+      DBusGMethodInvocation* context, std::unique_ptr<Credentials> credentials);
+
   // Called on Mount thread. This triggers the credentials generation steps that
   // are specific to challenge-response keys, before scheduling
   // ContinueMountExWithCredentials().

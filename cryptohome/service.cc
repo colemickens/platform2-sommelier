@@ -1035,6 +1035,14 @@ void Service::DoCheckKeyEx(std::unique_ptr<AccountIdentifier> identifier,
     return;
   }
 
+  // Process challenge-response credentials asynchronously.
+  if (authorization->key().data().type() ==
+      KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
+    DoChallengeResponseCheckKeyEx(std::move(identifier),
+                                  std::move(authorization), context);
+    return;
+  }
+
   // An AuthorizationRequest key without a label will test against
   // all VaultKeysets of a compatible key().data().type().
   if (authorization->key().secret().empty()) {
@@ -2066,6 +2074,78 @@ bool Service::InitForChallengeResponseAuth(CryptohomeErrorCode* error_code) {
   }
 
   return true;
+}
+
+void Service::DoChallengeResponseCheckKeyEx(
+    std::unique_ptr<AccountIdentifier> identifier,
+    std::unique_ptr<AuthorizationRequest> authorization,
+    DBusGMethodInvocation* context) {
+  DCHECK_EQ(authorization->key().data().type(),
+            KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
+
+  BaseReply reply;
+
+  CryptohomeErrorCode error_code = CRYPTOHOME_ERROR_NOT_SET;
+  if (!InitForChallengeResponseAuth(&error_code)) {
+    reply.set_error(error_code);
+    SendReply(context, reply);
+    return;
+  }
+
+  const std::string& account_id = GetAccountId(*identifier);
+  const std::string obfuscated_username =
+      BuildObfuscatedUsername(account_id, system_salt_);
+  const KeyData key_data = authorization->key().data();
+
+  if (!authorization->has_key_delegate() ||
+      !authorization->key_delegate().has_dbus_service_name()) {
+    LOG(ERROR) << "Cannot do challenge-response authentication without key "
+                  "delegate information";
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
+    SendReply(context, reply);
+    return;
+  }
+  auto key_challenge_service = std::make_unique<KeyChallengeServiceImpl>(
+      system_dbus_connection_.Connect(),
+      authorization->key_delegate().dbus_service_name());
+
+  if (!homedirs_->Exists(obfuscated_username)) {
+    reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+    SendReply(context, reply);
+    return;
+  }
+
+  std::unique_ptr<VaultKeyset> vault_keyset(homedirs_->GetVaultKeyset(
+      obfuscated_username, authorization->key().data().label()));
+  if (!vault_keyset) {
+    LOG(ERROR) << "No existing challenge-response vault keyset found";
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
+    SendReply(context, reply);
+    return;
+  }
+  challenge_credentials_helper_->Decrypt(
+      account_id, key_data,
+      vault_keyset->serialized().signature_challenge_info(),
+      std::move(key_challenge_service),
+      base::Bind(&Service::CompleteChallengeResponseCheckKeyEx,
+                 base::Unretained(this), base::Unretained(context)));
+}
+
+void Service::CompleteChallengeResponseCheckKeyEx(
+    DBusGMethodInvocation* context, std::unique_ptr<Credentials> credentials) {
+  if (!credentials) {
+    LOG(ERROR) << "Key checking failed due to failure to obtain "
+                  "challenge-response credentials";
+    BaseReply reply;
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
+    SendReply(context, reply);
+    return;
+  }
+
+  // Entered the right creds, so reset LE credentials.
+  homedirs_->ResetLECredentials(*credentials);
+
+  SendReply(context, BaseReply());
 }
 
 void Service::DoChallengeResponseMountEx(
