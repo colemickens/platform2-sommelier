@@ -381,9 +381,14 @@ void Connection::UpdateRoutingPolicy() {
       entry.priority -= 1;
       entry.table = RT_TABLE_MAIN;
       routing_table_->AddRule(interface_index_, entry);
+      entry.family = IPAddress::kFamilyIPv6;
+      entry.src = IPAddress(IPAddress::kFamilyIPv6);
+      routing_table_->AddRule(interface_index_, entry);
       // Add a default routing rule to use the primary interface if there is
       // nothing better.
       entry.table = table_id_;
+      entry.family = IPAddress::kFamilyIPv4;
+      entry.src = IPAddress(IPAddress::kFamilyIPv4);
       entry.priority = RoutingTable::kRulePriorityMain - 1;
       routing_table_->AddRule(interface_index_, entry);
       entry.family = IPAddress::kFamilyIPv6;

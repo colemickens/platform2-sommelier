@@ -233,12 +233,18 @@ class ConnectionTest : public Test {
     EXPECT_CALL(routing_table_, FlushRules(device->interface_index()));
 
     // Primary physical interface will create catch-all for IPv4 and v6.
-    // It will also add a main routing table rule above its other rules.
+    // It will also add a main routing table rule above its other rules for both
+    // IPv4 and v6.
     if (is_primary_physical) {
       EXPECT_CALL(routing_table_,
                   AddRule(device->interface_index(), IsValidRoutingRule(
-                            IPAddress::kFamilyIPv4, priority-1)))
+                            IPAddress::kFamilyIPv4, priority - 1)))
           .WillOnce(Return(true));
+      EXPECT_CALL(routing_table_,
+                  AddRule(device->interface_index(), IsValidRoutingRule(
+                            IPAddress::kFamilyIPv6, priority - 1)))
+          .WillOnce(Return(true));
+
       EXPECT_CALL(routing_table_,
                   AddRule(device->interface_index(), IsValidRoutingRule(
                             IPAddress::kFamilyIPv4,
