@@ -37,10 +37,12 @@ class PPPDevice : public VirtualDevice {
   ~PPPDevice() override;
 
   // Set IPConfig for this device, based on the dictionary of
-  // configuration strings received from our PPP plugin.
+  // configuration strings received from our PPP plugin. This also
+  // ensures that the Connection for this device will have routing rules
+  // sending traffic with matching source addresses to the per-device
+  // routing table.
   virtual void UpdateIPConfigFromPPP(
-      const std::map<std::string, std::string>& configuration,
-      bool blackhole_ipv6);
+      const std::map<std::string, std::string>& configuration, bool blackhole_ipv6);
 
   // Return an IPConfig::Properties struct parsed from |configuration|,
   // but don't set the IPConfig.  This lets the caller tweak or inspect

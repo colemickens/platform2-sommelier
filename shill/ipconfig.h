@@ -48,6 +48,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
                    blackholed_addrs(nullptr),
                    default_route(true),
                    blackhole_ipv6(false),
+                   use_if_addrs(false),
                    mtu(kUndefinedMTU),
                    lease_duration_seconds(0) {}
 
@@ -86,6 +87,11 @@ class IPConfig : public base::RefCounted<IPConfig> {
     std::vector<std::string> exclusion_list;
     // Block IPv6 traffic.  Used if connected to an IPv4-only VPN.
     bool blackhole_ipv6;
+    // Should traffic whose source address matches one of this interface's
+    // addresses be sent to the interface's per-device table. This field is only
+    // used for non-physical interfaces--physical interfaces will always act as
+    // if this were true.
+    bool use_if_addrs;
     // MTU to set on the interface.  If unset, defaults to |kDefaultMTU|.
     int32_t mtu;
     // A list of (host,prefix,gateway) tuples for this connection.

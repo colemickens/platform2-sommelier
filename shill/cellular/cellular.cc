@@ -1161,10 +1161,10 @@ void Cellular::OnPPPConnected(const map<string, string>& params) {
   CHECK(service_);
   // For PPP, we only SelectService on the |ppp_device_|.
   CHECK(!selected_service());
-  const bool kBlackholeIPv6 = false;
   ppp_device_->SetEnabled(true);
   ppp_device_->SelectService(service_);
-  ppp_device_->UpdateIPConfigFromPPP(params, kBlackholeIPv6);
+  ppp_device_->UpdateIPConfigFromPPP(params,
+                                     false /* blackhole_ipv6 */);
 }
 
 void Cellular::OnPPPDied(pid_t pid, int exit) {

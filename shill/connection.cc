@@ -95,6 +95,7 @@ Connection::Connection(int interface_index,
       interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
+      use_if_addrs_(false),
       blackholed_addrs_(nullptr),
       fixed_ip_params_(fixed_ip_params),
       table_id_(RT_TABLE_MAIN),
@@ -164,6 +165,8 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   const IPConfig::Properties& properties = config->properties();
   allowed_uids_ = properties.allowed_uids;
   allowed_iifs_ = properties.allowed_iifs;
+  use_if_addrs_ = properties.use_if_addrs ||
+      Technology::IsPrimaryConnectivityTechnology(technology_);
 
   if (table_id_ == RT_TABLE_MAIN) {
     table_id_ = routing_table_->AllocTableId();
@@ -366,9 +369,7 @@ void Connection::UpdateRoutingPolicy() {
     routing_table_->AddRule(interface_index_, entry);
   }
 
-  DeviceRefPtr device = device_info_->GetDevice(interface_index_);
-  if (device &&
-      Technology::IsPrimaryConnectivityTechnology(device->technology())) {
+  if (use_if_addrs_) {
     RoutingPolicyEntry entry(
       IPAddress::kFamilyIPv4, metric_ + blackhole_offset, table_id_);
     if (is_primary_physical_) {

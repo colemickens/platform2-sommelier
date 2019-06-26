@@ -204,6 +204,9 @@ class Connection : public base::RefCounted<Connection> {
   std::string dns_domain_name_;
   RpcIdentifier ipconfig_rpc_identifier_;
 
+  // True if this device should have rules sending traffic whose src address
+  // matches one of the interface's addresses to the per-device table.
+  bool use_if_addrs_;
   // If |allowed_uids_|, |allowed_iifs_|, and/or |allowed_addrs_| is set, IP
   // policy rules will be created so that only traffic from the whitelisted
   // UIDs, input interfaces, and/or source IP addresses can use this connection,

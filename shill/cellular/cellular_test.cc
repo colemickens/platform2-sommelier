@@ -1489,7 +1489,8 @@ TEST_P(CellularTest, Notify) {
       .WillOnce(Return(ppp_device.get()));
   EXPECT_CALL(*ppp_device, SetEnabled(true));
   EXPECT_CALL(*ppp_device, SelectService(_));
-  EXPECT_CALL(*ppp_device, UpdateIPConfigFromPPP(ppp_config, false));
+  EXPECT_CALL(*ppp_device, UpdateIPConfigFromPPP(ppp_config,
+                                                 false /* blackhole_ipv6 */));
   device_->Notify(kPPPReasonConnect, ppp_config);
   Mock::VerifyAndClearExpectations(&device_info_);
   Mock::VerifyAndClearExpectations(ppp_device.get());
@@ -1500,7 +1501,8 @@ TEST_P(CellularTest, Notify) {
       .WillOnce(Return(kInterfaceIndex));
   EXPECT_CALL(*ppp_device, SetEnabled(true));
   EXPECT_CALL(*ppp_device, SelectService(_));
-  EXPECT_CALL(*ppp_device, UpdateIPConfigFromPPP(ppp_config, false));
+  EXPECT_CALL(*ppp_device, UpdateIPConfigFromPPP(ppp_config,
+                                                 false /* blackhole_ipv6 */));
   device_->Notify(kPPPReasonConnect, ppp_config);
   Mock::VerifyAndClearExpectations(&device_info_);
   Mock::VerifyAndClearExpectations(ppp_device.get());
@@ -1525,7 +1527,8 @@ TEST_P(CellularTest, Notify) {
   EXPECT_CALL(*ppp_device, SelectService(ServiceRefPtr(nullptr)));
   EXPECT_CALL(*ppp_device2, SetEnabled(true));
   EXPECT_CALL(*ppp_device2, SelectService(_));
-  EXPECT_CALL(*ppp_device2, UpdateIPConfigFromPPP(ppp_config2, false));
+  EXPECT_CALL(*ppp_device2, UpdateIPConfigFromPPP(ppp_config2,
+                                                 false /* blackhole_ipv6 */));
   device_->Notify(kPPPReasonConnect, ppp_config2);
   Mock::VerifyAndClearExpectations(&device_info_);
   Mock::VerifyAndClearExpectations(ppp_device.get());

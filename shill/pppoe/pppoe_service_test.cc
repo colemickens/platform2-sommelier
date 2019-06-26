@@ -124,7 +124,8 @@ TEST_F(PPPoEServiceTest, OnPPPConnected) {
   EXPECT_CALL(device_info_, RegisterDevice(IsRefPtrTo(device)));
   EXPECT_CALL(*device, SetEnabled(true));
   EXPECT_CALL(*device, SelectService(_));
-  EXPECT_CALL(*device, UpdateIPConfigFromPPP(params, false));
+  EXPECT_CALL(*device, UpdateIPConfigFromPPP(params,
+                                             false /* blackhole_ipv6 */));
 #ifndef DISABLE_DHCPV6
   EXPECT_CALL(manager_, IsDHCPv6EnabledForDevice(StrEq(kLinkName)))
       .WillOnce(Return(true));
