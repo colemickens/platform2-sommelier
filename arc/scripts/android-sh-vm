@@ -65,8 +65,12 @@ if ! is_connected; then
   exit 1
 fi
 
-# Run /system/bin/sh to be consistent with 'android-sh'.
-adb shell /system/bin/sh "${command}"
+if [ $# -eq 0 ]; then
+  adb shell
+else
+  # Run /system/bin/sh to be consistent with 'android-sh'.
+  adb shell /system/bin/sh "${command}"
+fi
 ret=$?
 rm -rf "${tmpdir}"
 exit $ret
