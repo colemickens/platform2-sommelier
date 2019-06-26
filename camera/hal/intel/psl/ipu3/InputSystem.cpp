@@ -694,8 +694,8 @@ status_t InputSystem::handlePollEvent(MessagePollEvent msg)
         if (mBufferSeqNbr == 0) {
             mBufferSeqNbr = outBuf.Sequence();
         } else if (mBufferSeqNbr != outBuf.Sequence()) {
-            LOGW("Sequence number mismatch, expecting %d but received %d",
-                  mBufferSeqNbr, outBuf.Sequence());
+            LOG2("@%s: sequence number mismatch, expecting %d but received %d",
+                 __FUNCTION__, mBufferSeqNbr, outBuf.Sequence());
             mBufferSeqNbr = outBuf.Sequence();
         }
         LOG2("input system outBuf.sequence %u", outBuf.Sequence());
