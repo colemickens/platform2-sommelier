@@ -2096,6 +2096,13 @@ void Service::DoChallengeResponseMountEx(
   auto key_challenge_service = std::make_unique<KeyChallengeServiceImpl>(
       system_dbus_bus, authorization->key_delegate().dbus_service_name());
 
+  if (!homedirs_->Exists(obfuscated_username) &&
+      !mount_args.create_if_missing) {
+    reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+    SendReply(context, reply);
+    return;
+  }
+
   std::unique_ptr<VaultKeyset> vault_keyset(homedirs_->GetVaultKeyset(
       obfuscated_username, authorization->key().data().label()));
   const bool use_existing_credentials =
