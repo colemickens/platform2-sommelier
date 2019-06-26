@@ -88,14 +88,15 @@ using ArchiveWriter = std::unique_ptr<struct archive, ArchiveWriteDeleter>;
 class PluginVmExportOperation : public DiskImageOperation {
  public:
   static std::unique_ptr<PluginVmExportOperation> Create(
-      const base::FilePath disk_path, base::ScopedFD out_fd);
+      const VmId vm_id, const base::FilePath disk_path, base::ScopedFD out_fd);
 
  protected:
   bool ExecuteIo(uint64_t io_limit) override;
   void Finalize() override;
 
  private:
-  PluginVmExportOperation(const base::FilePath disk_path,
+  PluginVmExportOperation(const VmId vm_id,
+                          const base::FilePath disk_path,
                           base::ScopedFD out_fd);
 
   bool PrepareInput();
@@ -106,6 +107,9 @@ class PluginVmExportOperation : public DiskImageOperation {
   // Copies up to |io_limit| bytes of one file of the image.
   // Returns number of bytes read.
   uint64_t CopyEntry(uint64_t io_limit);
+
+  // VM owner and name.
+  const VmId vm_id_;
 
   // Path to the directory containing source image.
   const base::FilePath src_image_path_;

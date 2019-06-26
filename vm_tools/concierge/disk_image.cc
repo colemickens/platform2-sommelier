@@ -55,9 +55,9 @@ int DiskImageOperation::GetProgress() const {
 }
 
 std::unique_ptr<PluginVmExportOperation> PluginVmExportOperation::Create(
-    const base::FilePath disk_path, base::ScopedFD fd) {
-  auto op = base::WrapUnique(
-      new PluginVmExportOperation(std::move(disk_path), std::move(fd)));
+    const VmId vm_id, const base::FilePath disk_path, base::ScopedFD fd) {
+  auto op = base::WrapUnique(new PluginVmExportOperation(
+      std::move(vm_id), std::move(disk_path), std::move(fd)));
 
   if (op->PrepareInput() && op->PrepareOutput()) {
     op->set_status(DISK_STATUS_IN_PROGRESS);
@@ -66,9 +66,11 @@ std::unique_ptr<PluginVmExportOperation> PluginVmExportOperation::Create(
   return op;
 }
 
-PluginVmExportOperation::PluginVmExportOperation(const base::FilePath disk_path,
+PluginVmExportOperation::PluginVmExportOperation(const VmId vm_id,
+                                                 const base::FilePath disk_path,
                                                  base::ScopedFD out_fd)
-    : src_image_path_(std::move(disk_path)),
+    : vm_id_(std::move(vm_id)),
+      src_image_path_(std::move(disk_path)),
       out_fd_(std::move(out_fd)),
       copying_data_(false) {
   set_source_size(ComputeDirectorySize(src_image_path_));
@@ -170,8 +172,9 @@ bool PluginVmExportOperation::ExecuteIo(uint64_t io_limit) {
         continue;
       }
 
-      // Strip the leading directory data as we want relative path.
-      base::FilePath dest_path;
+      // Strip the leading directory data as we want relative path,
+      // and replace it with <vm_name>.pvm prefix.
+      base::FilePath dest_path(vm_id_.name() + ".pvm");
       if (!src_image_path_.AppendRelativePath(path, &dest_path)) {
         MarkFailed("failed to transform archive entry name", NULL);
         break;
@@ -399,7 +402,19 @@ bool PluginVmImportOperation::ExecuteIo(uint64_t io_limit) {
         break;
       }
 
-      auto dest_path = output_dir_.GetPath().Append(path);
+      // Drop the top level <directory>.pvm prefix, if it is present.
+      std::vector<std::string> path_parts;
+      path.GetComponents(&path_parts);
+      DCHECK(!path_parts.empty());
+
+      auto dest_path = output_dir_.GetPath();
+      auto i = path_parts.begin();
+      if (base::FilePath(*i).FinalExtension() == ".pvm")
+        i++;
+      for (; i != path_parts.end(); i++) {
+        dest_path = dest_path.Append(*i);
+      }
+
       archive_entry_set_pathname(entry, dest_path.value().c_str());
 
       archive_entry_set_uid(entry, getuid());
