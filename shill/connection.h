@@ -204,9 +204,6 @@ class Connection : public base::RefCounted<Connection> {
   std::string dns_domain_name_;
   RpcIdentifier ipconfig_rpc_identifier_;
 
-  // True if this device has its own dedicated routing table.  False if
-  // this device uses the global routing table.
-  bool per_device_routing_;
   // If |allowed_uids_|, |allowed_iifs_|, and/or |allowed_addrs_| is set, IP
   // policy rules will be created so that only traffic from the whitelisted
   // UIDs, input interfaces, and/or source IP addresses can use this connection,
