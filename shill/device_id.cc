@@ -54,29 +54,52 @@ std::string DeviceId::AsString() const {
     case BusType::kUsb:
       bus_name = "usb";
       break;
+    case BusType::kPci:
+      bus_name = "pci";
+      break;
   }
 
-  if (!has_product_id_) {
-    return base::StringPrintf("%s:%04" PRIx16 ":*", bus_name, vendor_id_);
+  if (!vendor_id_.has_value()) {
+    return base::StringPrintf("%s:*:*", bus_name);
+  }
+
+  if (!product_id_.has_value()) {
+    return base::StringPrintf("%s:%04" PRIx16 ":*",
+                              bus_name,
+                              vendor_id_.value());
   }
 
   return base::StringPrintf("%s:%04" PRIx16 ":%04" PRIx16,
                             bus_name,
-                            vendor_id_,
-                            product_id_);
+                            vendor_id_.value(),
+                            product_id_.value());
 }
 
-bool DeviceId::Match(const DeviceId& other) const {
-  if (bus_type_ != other.bus_type_ || vendor_id_ != other.vendor_id_) {
+bool DeviceId::Match(const DeviceId& pattern) const {
+  if (bus_type_ != pattern.bus_type_) {
     return false;
   }
 
-  // If one or both is a VID:* ID, then they don't have to match PID
+  // If |pattern| vendor id is *, then they don't have to match VID and PID
   // values.
-  if (!has_product_id_ || !other.has_product_id_) {
+  if (!pattern.vendor_id_.has_value()) {
     return true;
   }
-  return product_id_ == other.product_id_;
+  // If |this| vendor id is *, then it can not match to |pattern| with specific
+  // vendor id.
+  if (!vendor_id_.has_value() ||
+      vendor_id_.value() != pattern.vendor_id_.value()) {
+    return false;
+  }
+
+  // If |pattern| product id is *, then they don't have to match PID values.
+  if (!pattern.product_id_.has_value()) {
+    return true;
+  }
+  // If |this| product id is *, then it can not match to |pattern| with specific
+  // product id.
+  return product_id_.has_value() &&
+         product_id_.value() == pattern.product_id_.value();
 }
 
 std::unique_ptr<DeviceId> ReadDeviceIdFromSysfs(
@@ -94,15 +117,24 @@ std::unique_ptr<DeviceId> ReadDeviceIdFromSysfs(
   if (bus_type == "usb") {
     std::string vendor_id, product_id;
     uint16_t parsed_vendor_id, parsed_product_id;
+
     if (!ReadDeviceIdFile(syspath.Append("idVendor"), &vendor_id) ||
-        !HextetToUInt16(vendor_id, &parsed_vendor_id) ||
-        !ReadDeviceIdFile(syspath.Append("idProduct"), &product_id) ||
+        !HextetToUInt16(vendor_id, &parsed_vendor_id)) {
+      return std::make_unique<DeviceId>(DeviceId::BusType::kUsb);
+    }
+
+    if (!ReadDeviceIdFile(syspath.Append("idProduct"), &product_id) ||
         !HextetToUInt16(product_id, &parsed_product_id)) {
-      return nullptr;
+      return std::make_unique<DeviceId>(
+          DeviceId::BusType::kUsb, parsed_vendor_id);
     }
 
     return std::make_unique<DeviceId>(
         DeviceId::BusType::kUsb, parsed_vendor_id, parsed_product_id);
+  }
+
+  if (bus_type == "pci") {
+    return std::make_unique<DeviceId>(DeviceId::BusType::kPci);
   }
 
   return nullptr;

@@ -11,6 +11,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/optional.h>
 
 namespace shill {
 
@@ -20,38 +21,42 @@ class DeviceId {
  public:
   // Add more bus types here as they need to be supported.
   enum class BusType {
+    kPci,
     kUsb,
   };
 
-  // DeviceId matching all products by a particular vendor.
+  // DeviceId matching all devices by a particular bus type.
+  explicit constexpr DeviceId(BusType bus_type)
+      : bus_type_(bus_type) {}
+  // DeviceId matching all devices by a particular bus type and vendor id.
   constexpr DeviceId(BusType bus_type, uint16_t vendor_id)
       : bus_type_(bus_type),
-        vendor_id_(vendor_id),
-        has_product_id_(false),
-        product_id_(0) {}
-  // DeviceId matching a specific product.
+        vendor_id_(vendor_id) {}
+  // DeviceId matching device by a particular bus type, vendor id and
+  // product id.
   constexpr DeviceId(BusType bus_type, uint16_t vendor_id, uint16_t product_id)
       : bus_type_(bus_type),
         vendor_id_(vendor_id),
-        has_product_id_(true),
         product_id_(product_id) {}
 
-  // Returns true iff |this| describes all products by a vendor, and |other|
-  // has the same vendor, or vice versa; or |this| and |other| describe exactly
-  // the same product.
-  bool Match(const DeviceId& other) const;
+  // Returns true if |this| matches |pattern|.
+  //
+  // If |pattern| vendor id is *, then they don't have to match VID and PID
+  // values.
+  //
+  // If |pattern| product id is *, then they don't have to match PID values.
+  bool Match(const DeviceId& pattern) const;
 
   // This string should be unique for each value of DeviceId, so it can
   // be used to index maps, etc.
-  // Format: [bus type]:[vendor id]:[product id, or "*" if unspecified]
+  // Format: [bus type]:[vendor id, or "*" if unspecified]:
+  //         [product id, or "*" if unspecified]
   std::string AsString() const;
 
  private:
   BusType bus_type_;
-  uint16_t vendor_id_;
-  // TODO(ejcaruso): replace with std::optional when available
-  bool has_product_id_;
-  uint16_t product_id_;
+  base::Optional<uint16_t> vendor_id_;
+  base::Optional<uint16_t> product_id_;
 };
 
 // Takes a device |syspath| as would be given by e.g. udev and tries to read
