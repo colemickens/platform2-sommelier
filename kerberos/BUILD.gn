@@ -73,6 +73,7 @@ static_library("libkerberos") {
     "kerberos_daemon.cc",
     "krb5_interface_impl.cc",
     "platform_helper.cc",
+    "tgt_renewal_scheduler.cc",
   ]
   deps = [
     ":container-protos",
@@ -134,6 +135,7 @@ if (use.test) {
     sources = [
       "account_manager_test.cc",
       "kerberos_adaptor_test.cc",
+      "tgt_renewal_scheduler_test.cc",
     ]
     defines = [ "UNIT_TEST" ]
     deps = [

@@ -30,6 +30,12 @@ class Krb5Interface {
 
     // For how many seconds the ticket can be renewed.
     int64_t renewal_seconds = 0;
+
+    constexpr TgtStatus() = default;
+
+    constexpr TgtStatus(int64_t validity_seconds, int64_t renewal_seconds)
+        : validity_seconds(validity_seconds),
+          renewal_seconds(renewal_seconds) {}
   };
 
   // Gets a Kerberos ticket-granting-ticket for the given |principal_name|
