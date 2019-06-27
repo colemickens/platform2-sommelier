@@ -1414,6 +1414,12 @@ bool HomeDirs::Rename(const std::string& account_id_from,
 }
 
 int64_t HomeDirs::ComputeSize(const std::string& account_id) {
+  // BuildObfuscatedUsername below doesn't accept empty username.
+  if (account_id.empty()) {
+    // Empty account is always non-existent, return 0 as specified.
+    return 0;
+  }
+
   std::string obfuscated = BuildObfuscatedUsername(account_id, system_salt_);
   FilePath user_dir = FilePath(shadow_root_).Append(obfuscated);
   FilePath user_path = brillo::cryptohome::home::GetUserPath(account_id);

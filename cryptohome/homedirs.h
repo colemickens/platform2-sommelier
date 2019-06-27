@@ -121,6 +121,9 @@ class HomeDirs {
                       const std::string& account_id_to);
 
   // Computes the size of cryptohome for the named user.
+  // Return 0 if the given user is invalid of non-existent.
+  // Negative values are reserved for future cases whereby we need to do some
+  // form of error reporting.
   virtual int64_t ComputeSize(const std::string& account_id);
 
   // Returns true if the supplied Credentials are a valid (username, passkey)

@@ -402,7 +402,23 @@ void UserDataAuthAdaptor::GetAccountDiskUsage(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::GetAccountDiskUsageReply>> response,
     const user_data_auth::GetAccountDiskUsageRequest& in_request) {
+  // Note that this is a long running call, so we're posting it to mount thread.
+  service_->PostTaskToMountThread(
+      FROM_HERE, base::BindOnce(&UserDataAuthAdaptor::DoGetAccountDiskUsage,
+                                base::Unretained(this),
+                                ThreadSafeDBusMethodResponse<
+                                    user_data_auth::GetAccountDiskUsageReply>::
+                                    MakeThreadSafe(std::move(response)),
+                                in_request));
+}
+
+void UserDataAuthAdaptor::DoGetAccountDiskUsage(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetAccountDiskUsageReply>> response,
+    const user_data_auth::GetAccountDiskUsageRequest& in_request) {
   user_data_auth::GetAccountDiskUsageReply reply;
+  // Note that for now, this call always succeeds, so |reply.error| is unset.
+  reply.set_size(service_->GetAccountDiskUsage(in_request.identifier()));
   response->Return(reply);
 }
 

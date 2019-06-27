@@ -95,6 +95,12 @@ class UserDataAuth {
   user_data_auth::CryptohomeErrorCode NeedsDircryptoMigration(
       const cryptohome::AccountIdentifier& account, bool* result);
 
+  // Return the size of the user's home directory in number of bytes. If the
+  // |account| given is non-existent, then 0 is returned.
+  // Negative values are reserved for future cases whereby we need to do some
+  // form of error reporting.
+  int64_t GetAccountDiskUsage(const cryptohome::AccountIdentifier& account);
+
   // =============== Mount Related Public Utilities ===============
 
   // Called during initialization (and on mount events) to ensure old mounts

@@ -34,6 +34,7 @@ class MockHomeDirs : public HomeDirs {
                bool(const Credentials&, VaultKeyset*, int*, MountError*));
   MOCK_METHOD1(Remove, bool(const std::string&));
   MOCK_METHOD2(Rename, bool(const std::string&, const std::string&));
+  MOCK_METHOD1(ComputeSize, int64_t(const std::string&));
   MOCK_METHOD3(Migrate, bool(const Credentials&,
                              const brillo::SecureBlob&,
                              scoped_refptr<Mount>));

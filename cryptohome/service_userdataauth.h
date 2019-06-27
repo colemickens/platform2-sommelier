@@ -145,10 +145,15 @@ class UserDataAuthAdaptor
           user_data_auth::GetSupportedKeyPoliciesReply>> response,
       const user_data_auth::GetSupportedKeyPoliciesRequest& in_request)
       override;
+
   void GetAccountDiskUsage(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::GetAccountDiskUsageReply>> response,
       const user_data_auth::GetAccountDiskUsageRequest& in_request) override;
+  void DoGetAccountDiskUsage(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetAccountDiskUsageReply>> response,
+      const user_data_auth::GetAccountDiskUsageRequest& in_request);
 
  private:
   brillo::dbus_utils::DBusObject* dbus_object_;

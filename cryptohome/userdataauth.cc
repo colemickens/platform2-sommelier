@@ -1732,4 +1732,11 @@ bool UserDataAuth::IsLowEntropyCredentialSupported() {
          tpm_->GetLECredentialBackend()->IsSupported();
 }
 
+int64_t UserDataAuth::GetAccountDiskUsage(
+    const cryptohome::AccountIdentifier& account) {
+  // Note that if the given |account| is invalid or non-existent, then HomeDirs'
+  // implementation of ComputeSize is specified to return 0.
+  return homedirs_->ComputeSize(GetAccountId(account));
+}
+
 }  // namespace cryptohome

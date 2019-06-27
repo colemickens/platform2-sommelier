@@ -892,6 +892,23 @@ TEST_F(UserDataAuthTest, LowEntropyCredentialSupported) {
   EXPECT_TRUE(userdataauth_.IsLowEntropyCredentialSupported());
 }
 
+TEST_F(UserDataAuthTest, GetAccountDiskUsage) {
+  // Test when the user is non-existent.
+  AccountIdentifier account;
+  account.set_account_id("non_existent_user");
+
+  EXPECT_EQ(0, userdataauth_.GetAccountDiskUsage(account));
+
+  // Test when the user exists and home directory is not empty.
+  constexpr char kUsername1[] = "foo@gmail.com";
+  account.set_account_id(kUsername1);
+
+  constexpr int64_t kHomedirSize = 12345678912345;
+  EXPECT_CALL(homedirs_, ComputeSize(kUsername1))
+      .WillOnce(Return(kHomedirSize));
+  EXPECT_EQ(kHomedirSize, userdataauth_.GetAccountDiskUsage(account));
+}
+
 // ==================== Mount and Keys related tests =======================
 
 // A test fixture with some utility functions for testing mount and keys related
