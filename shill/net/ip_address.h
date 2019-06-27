@@ -15,6 +15,8 @@
 
 namespace shill {
 
+// Class to represent an IP address, whether v4 or v6.
+// Is both copyable and movable.
 class SHILL_EXPORT IPAddress {
  public:
   using Family = unsigned char;
@@ -42,11 +44,7 @@ class SHILL_EXPORT IPAddress {
 
   ~IPAddress();
 
-  // Since this is a copyable datatype...
-  IPAddress(const IPAddress& b)
-    : family_(b.family_),
-      address_(b.address_),
-      prefix_(b.prefix_) {}
+  IPAddress(const IPAddress& b) = default;
   IPAddress(IPAddress&& b)
       : family_(b.family_),
         address_(std::move(b.address_)),
@@ -54,14 +52,7 @@ class SHILL_EXPORT IPAddress {
     b.family_ = kFamilyUnknown;
   }
 
-  IPAddress& operator=(const IPAddress& b) {
-    if (this != &b) {
-      family_ = b.family_;
-      address_ = b.address_;
-      prefix_ = b.prefix_;
-    }
-    return *this;
-  }
+  IPAddress& operator=(const IPAddress& b) = default;
   IPAddress& operator=(IPAddress&& b) {
     if (this != &b) {
       family_ = b.family_;
@@ -186,7 +177,6 @@ class SHILL_EXPORT IPAddress {
   Family family_;
   ByteString address_;
   unsigned int prefix_;
-  // NO DISALLOW_COPY_AND_ASSIGN -- we assign IPAddresses in STL datatypes
 };
 
 }  // namespace shill
