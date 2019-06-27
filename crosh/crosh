@@ -1811,7 +1811,7 @@ usage() {
     exec 1>&2
   fi
   cat <<EOF
-Usage: crosh [options]
+Usage: crosh [options] [-- [args]]
 
 Options:
   --dash        Force running through dash.
@@ -1819,6 +1819,8 @@ Options:
   --removable   Force removable (USB) mode.
   --usb         Same as above.
   --help, -h    Show this help string.
+  -- <all args after this are a command to run>
+                Execute a single command and exit.
 EOF
   if [ $# -ne 0 ]; then
     echo "ERROR: $*"
@@ -1835,6 +1837,7 @@ main() {
     echo "Loading from local paths instead: ${CROSH_MODPATH}"
   fi
 
+  local single_command=0
   while [ $# -gt 0 ]; do
     case $1 in
     --dash)
@@ -1849,6 +1852,11 @@ main() {
     --help|-h)
       usage
       ;;
+    --)
+      single_command=1
+      shift
+      break
+      ;;
     *)
       usage "Unknown option: $1"
       ;;
@@ -1857,6 +1865,14 @@ main() {
   done
 
   load_extra_crosh
+
+  if [ "${single_command}" -eq 1 ]; then
+    # Don't trap anymore.
+    trap 'exit 1' INT QUIT
+
+    dispatch "$@"
+    exit $?
+  fi
 
   INPUTRC="${CROSH_MODPATH}/inputrc.crosh"
 
