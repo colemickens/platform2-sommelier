@@ -588,34 +588,32 @@ bool Crypto::DecryptTpmNotBoundToPcr(const SerializedVaultKeyset& serialized,
   } else {
     CryptoLib::PasskeyToAesKey(vault_key, salt, rounds, &aes_skey, NULL);
   }
-  Tpm::TpmRetryAction retry_action = tpm_->DecryptBlob(
-      tpm_init_->GetCryptohomeKey(),
-      tpm_key,
-      aes_skey,
-      std::map<uint32_t, std::string>(),
-      &local_vault_key);
-  if (retry_action == Tpm::kTpmRetryLoadFail ||
-      retry_action == Tpm::kTpmRetryInvalidHandle ||
-      retry_action == Tpm::kTpmRetryCommFailure) {
+
+  for (int i = 0; i < kTpmDecryptMaxRetries; i++) {
+    Tpm::TpmRetryAction retry_action = tpm_->DecryptBlob(
+        tpm_init_->GetCryptohomeKey(),
+        tpm_key,
+        aes_skey,
+        std::map<uint32_t, std::string>(),
+        &local_vault_key);
+
+    if (retry_action == Tpm::kTpmRetryNone)
+      break;
+
+    if (!TpmErrorIsRetriable(retry_action)) {
+      LOG(ERROR) << "Failed to unwrap vkk with creds.";
+      ReportCryptohomeError(kDecryptAttemptWithTpmKeyFailed);
+      *error = TpmErrorToCrypto(retry_action);
+      return false;
+    }
+
+    // If the error is retriable, reload the key first.
     if (!tpm_init_->ReloadCryptohomeKey()) {
       LOG(ERROR) << "Unable to reload Cryptohome key.";
-      retry_action = Tpm::kTpmRetryFailNoRetry;
-    } else {
-      retry_action = tpm_->DecryptBlob(tpm_init_->GetCryptohomeKey(),
-                                       tpm_key,
-                                       aes_skey,
-                                       std::map<uint32_t, std::string>(),
-                                       &local_vault_key);
+      ReportCryptohomeError(kDecryptAttemptWithTpmKeyFailed);
+      *error = TpmErrorToCrypto(Tpm::kTpmRetryFailNoRetry);
+      return false;
     }
-  }
-  if (retry_action != Tpm::kTpmRetryNone) {
-    LOG(ERROR) << "The TPM failed to unwrap the intermediate key with the "
-               << "supplied credentials";
-    ReportCryptohomeError(kDecryptAttemptWithTpmKeyFailed);
-    if (error) {
-      *error = TpmErrorToCrypto(retry_action);
-    }
-    return false;
   }
 
   if (scrypt_derived) {
