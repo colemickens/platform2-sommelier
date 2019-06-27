@@ -72,6 +72,10 @@ constexpr const char kPerfDataDescription[] =
 using Log = LogTool::Log;
 constexpr Log::LogType kCommand = Log::kCommand;
 constexpr Log::LogType kFile = Log::kFile;
+// NOTE: IF YOU ADD AN ENTRY TO THIS LIST, PLEASE:
+// * add a row to http://go/cros-feedback-audit and fill it out
+// * email cros-monitoring-forensics@
+// (Eventually we'll have a better process, but for now please do this.)
 const std::vector<Log> kCommandLogs {
   // We need to enter init's mount namespace because it has /home/chronos
   // mounted which is where the consent knob lives.  We don't have that mount
