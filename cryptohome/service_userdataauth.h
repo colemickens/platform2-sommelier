@@ -9,7 +9,11 @@
 #include <string>
 
 #include <dbus/cryptohome/dbus-constants.h>
-#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <brillo/dbus/dbus_method_response.h>
+
+#include "UserDataAuth.pb.h"
+// Note that cryptohome generates its own copy of UserDataAuth.pb.h, so we
+// shouldn't include from the system's version.
 
 #include "cryptohome/userdataauth.h"
 #include "dbus_adaptors/org.chromium.UserDataAuth.h"
@@ -73,6 +77,10 @@ class UserDataAuthAdaptor
   void GetKeyData(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                       user_data_auth::GetKeyDataReply>> response,
                   const user_data_auth::GetKeyDataRequest& in_request) override;
+  void DoGetKeyData(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                        user_data_auth::GetKeyDataReply>> response,
+                    const user_data_auth::GetKeyDataRequest& in_request);
+
   void CheckKey(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                     user_data_auth::CheckKeyReply>> response,
                 const user_data_auth::CheckKeyRequest& in_request) override;

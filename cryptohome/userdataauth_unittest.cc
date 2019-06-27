@@ -783,6 +783,7 @@ class UserDataAuthExTest : public UserDataAuthTest {
     mount_req_.reset(new user_data_auth::MountRequest);
     remove_req_.reset(new user_data_auth::RemoveKeyRequest);
     list_keys_req_.reset(new user_data_auth::ListKeysRequest);
+    get_key_data_req_.reset(new user_data_auth::GetKeyDataRequest);
   }
 
   template <class ProtoBuf>
@@ -804,6 +805,7 @@ class UserDataAuthExTest : public UserDataAuthTest {
   std::unique_ptr<user_data_auth::MountRequest> mount_req_;
   std::unique_ptr<user_data_auth::RemoveKeyRequest> remove_req_;
   std::unique_ptr<user_data_auth::ListKeysRequest> list_keys_req_;
+  std::unique_ptr<user_data_auth::GetKeyDataRequest> get_key_data_req_;
 
   static constexpr char kUser[] = "chromeos-user";
   static constexpr char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
@@ -1175,6 +1177,65 @@ TEST_F(UserDataAuthExTest, ListKeysInvalidArgs) {
   list_keys_req_->mutable_account_id()->set_account_id("");
   EXPECT_EQ(userdataauth_.ListKeys(*list_keys_req_, &labels),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
+TEST_F(UserDataAuthExTest, GetKeyDataExNoMatch) {
+  PrepareArguments();
+
+  EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
+
+  get_key_data_req_->mutable_account_id()->set_account_id(
+      "unittest@example.com");
+  get_key_data_req_->mutable_key()->mutable_data()->set_label(
+      "non-existent label");
+
+  // Ensure there are no matches.
+  EXPECT_CALL(homedirs_, GetVaultKeyset(_, _))
+      .Times(1)
+      .WillRepeatedly(Return(static_cast<VaultKeyset*>(NULL)));
+
+  cryptohome::KeyData keydata_out;
+  bool found = false;
+  EXPECT_EQ(userdataauth_.GetKeyData(*get_key_data_req_, &keydata_out, &found),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  // In case of no matching key, we should still return no error.
+
+  EXPECT_FALSE(found);
+}
+
+TEST_F(UserDataAuthExTest, GetKeyDataExOneMatch) {
+  // Request the single key by label.
+  PrepareArguments();
+
+  static const char* kExpectedLabel = "find-me";
+  get_key_data_req_->mutable_key()->mutable_data()->set_label(kExpectedLabel);
+  get_key_data_req_->mutable_account_id()->set_account_id(
+      "unittest@example.com");
+
+  EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, GetVaultKeyset(_, _))
+      .Times(1)
+      .WillRepeatedly(
+          Invoke(this, &UserDataAuthExTest::GetNiceMockVaultKeyset));
+
+  cryptohome::KeyData keydata_out;
+  bool found = false;
+  EXPECT_EQ(userdataauth_.GetKeyData(*get_key_data_req_, &keydata_out, &found),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  EXPECT_TRUE(found);
+  EXPECT_EQ(std::string(kExpectedLabel), keydata_out.label());
+}
+
+TEST_F(UserDataAuthExTest, GetKeyDataInvalidArgs) {
+  PrepareArguments();
+
+  // No email.
+  cryptohome::KeyData keydata_out;
+  bool found = false;
+  EXPECT_EQ(userdataauth_.GetKeyData(*get_key_data_req_, &keydata_out, &found),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  EXPECT_FALSE(found);
 }
 
 }  // namespace cryptohome

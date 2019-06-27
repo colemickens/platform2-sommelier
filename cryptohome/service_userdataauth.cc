@@ -149,7 +149,29 @@ void UserDataAuthAdaptor::GetKeyData(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::GetKeyDataReply>> response,
     const user_data_auth::GetKeyDataRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &UserDataAuthAdaptor::DoGetKeyData, base::Unretained(this),
+          ThreadSafeDBusMethodResponse<user_data_auth::GetKeyDataReply>::
+              MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void UserDataAuthAdaptor::DoGetKeyData(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetKeyDataReply>> response,
+    const user_data_auth::GetKeyDataRequest& in_request) {
   user_data_auth::GetKeyDataReply reply;
+  cryptohome::KeyData data_out;
+  bool found = false;
+  auto status = service_->GetKeyData(in_request, &data_out, &found);
+  // Note, if there's no error, then |status| is set to CRYPTOHOME_ERROR_NOT_SET
+  // to indicate that.
+  reply.set_error(status);
+  if (reply.error() == user_data_auth::CRYPTOHOME_ERROR_NOT_SET && found) {
+    *reply.add_key_data() = data_out;
+  }
   response->Return(reply);
 }
 

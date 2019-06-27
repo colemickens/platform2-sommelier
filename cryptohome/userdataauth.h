@@ -27,6 +27,8 @@
 #include "cryptohome/platform.h"
 
 #include "UserDataAuth.pb.h"
+// Note that cryptohome generates its own copy of UserDataAuth.pb.h, so we
+// shouldn't include from the system's version.
 
 namespace cryptohome {
 
@@ -129,6 +131,18 @@ class UserDataAuth {
   user_data_auth::CryptohomeErrorCode ListKeys(
       const user_data_auth::ListKeysRequest& request,
       std::vector<std::string>* labels_out);
+
+  // Get the KeyData associated with key that have the label specified in
+  // |request.key.data.label|. If there's an error processing this request, then
+  // an error code will be returned, and |found|/|data_out| will be untouched.
+  // If there's no key with the lable found, then no error will be returned, and
+  // |found| will be set to false. Otherwise, the key's keydata will be written
+  // to |data_out| and |found| will be set to true. Note that KeyData is
+  // actually the key's metadata.
+  user_data_auth::CryptohomeErrorCode GetKeyData(
+      const user_data_auth::GetKeyDataRequest& request,
+      cryptohome::KeyData* data_out,
+      bool* found);
 
   // =============== PKCS#11 Related Public Methods ===============
 

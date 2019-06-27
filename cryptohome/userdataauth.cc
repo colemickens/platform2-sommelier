@@ -1491,4 +1491,55 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::ListKeys(
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
+user_data_auth::CryptohomeErrorCode UserDataAuth::GetKeyData(
+    const user_data_auth::GetKeyDataRequest& request,
+    cryptohome::KeyData* data_out,
+    bool* found) {
+  if (!request.has_account_id()) {
+    // Note that authorization request is currently not required.
+    LOG(ERROR) << "GetKeyDataRequest must have account_id.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  std::string account_id = GetAccountId(request.account_id());
+  if (account_id.empty()) {
+    LOG(ERROR) << "GetKeyDataRequest must have vaid account_id.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  if (!request.has_key()) {
+    LOG(ERROR) << "No key attributes provided in GetKeyDataRequest.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  const std::string obfuscated_username =
+      BuildObfuscatedUsername(account_id, system_salt_);
+  if (!homedirs_->Exists(obfuscated_username)) {
+    return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
+  }
+
+  // Requests only support using the key label at present.
+  std::unique_ptr<VaultKeyset> vk(homedirs_->GetVaultKeyset(
+      obfuscated_username, request.key().data().label()));
+  if (vk) {
+    *data_out = vk->serialized().key_data();
+
+    // Clear any symmetric KeyAuthorizationSecrets even if they are wrapped.
+    for (int a = 0; a < data_out->authorization_data_size(); ++a) {
+      KeyAuthorizationData* auth_data = data_out->mutable_authorization_data(a);
+      for (int s = 0; s < auth_data->secrets_size(); ++s) {
+        auth_data->mutable_secrets(s)->clear_symmetric_key();
+        auth_data->mutable_secrets(s)->set_wrapped(false);
+      }
+    }
+
+    *found = true;
+  } else {
+    // No error is thrown if there is no match.
+    *found = false;
+  }
+
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+}
+
 }  // namespace cryptohome
