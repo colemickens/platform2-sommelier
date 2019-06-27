@@ -129,6 +129,8 @@ const std::vector<Log> kCommandLogs {
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   {kFile, "cros_fp.previous", "/var/log/cros_fp.previous"},
   {kFile, "cros_fp.log", "/var/log/cros_fp.log"},
+  {kFile, "cros_ish.previous", "/var/log/cros_ish.previous"},
+  {kFile, "cros_ish.log", "/var/log/cros_ish.log"},
   {kCommand, "dmesg", "/bin/dmesg"},
   {kFile, "ec_info", "/var/log/ec_info.txt"},
   // The sed command replaces the EDID serial number (4 bytes at position 12)
