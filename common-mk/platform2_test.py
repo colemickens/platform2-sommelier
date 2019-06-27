@@ -369,6 +369,10 @@ class Platform2Test(object):
         os.environ['USER'] = user
       sys.exit(os.execvp(cmd, argv))
 
+    if sys.stdin.isatty():
+      # Make the child's process group the foreground process group.
+      os.tcsetpgrp(sys.stdin.fileno(), child)
+
     proctitle.settitle('sysroot watcher', cmd)
 
     # Mask SIGINT with the assumption that the child will catch & process it.
