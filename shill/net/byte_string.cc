@@ -17,15 +17,6 @@ using std::vector;
 
 namespace shill {
 
-ByteString::ByteString(const ByteString& b) {
-  data_ = b.data_;
-}
-
-ByteString& ByteString::operator=(const ByteString& b) {
-  data_ = b.data_;
-  return *this;
-}
-
 unsigned char* ByteString::GetData() {
   return (GetLength() == 0) ? nullptr : &data_.front();
 }

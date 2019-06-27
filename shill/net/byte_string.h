@@ -14,12 +14,12 @@
 
 namespace shill {
 
-// Provides a holder of a string of bytes
+// Holder of a vector of bytes that can be manipulated both as a string and as a
+// contiguous array of unsigned chars.
+// Is both copyable and movable.
 class SHILL_EXPORT ByteString {
  public:
   ByteString() = default;
-  ByteString(const ByteString& b);
-  ByteString(ByteString&&) = default;
 
   explicit ByteString(const std::vector<unsigned char>& data) : data_(data) {}
 
@@ -40,9 +40,6 @@ class SHILL_EXPORT ByteString {
                                                     data.length() +
                                                     (copy_terminator ?
                                                      1 : 0))) {}
-
-  ByteString& operator=(const ByteString& b);
-  ByteString& operator=(ByteString&&) = default;
 
   unsigned char* GetData();
   const unsigned char* GetConstData() const;
@@ -121,17 +118,13 @@ class SHILL_EXPORT ByteString {
   bool operator<(const ByteString& b) const { return IsLessThan(*this, b); }
 
  private:
-  using Vector = std::vector<unsigned char>;
-
   // Converts the string of bytes stored in the ByteString by treating it as
   // an array of unsigned integer of type T and applying |converter| on each
   // unsigned value of type T. Return true on success or false if the length
   // ByteString is not a multiple of sizeof(T).
   template <typename T> bool ConvertByteOrderAsUIntArray(T (*converter)(T));
 
-  Vector data_;
-
-  // NO DISALLOW_COPY_AND_ASSIGN -- we assign ByteStrings in STL hashes
+  std::vector<unsigned char> data_;
 };
 
 }  // namespace shill
