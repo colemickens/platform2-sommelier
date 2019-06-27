@@ -24,6 +24,7 @@ ErrorType FakeKrb5Interface::AcquireTgt(const std::string& principal_name,
                                         const std::string& password,
                                         const base::FilePath& krb5cc_path,
                                         const base::FilePath& krb5conf_path) {
+  acquire_tgt_call_count_++;
   if (password.empty())
     return ERROR_BAD_PASSWORD;
 
@@ -38,11 +39,13 @@ ErrorType FakeKrb5Interface::AcquireTgt(const std::string& principal_name,
 ErrorType FakeKrb5Interface::RenewTgt(const std::string& principal_name,
                                       const base::FilePath& krb5cc_path,
                                       const base::FilePath& krb5conf_path) {
+  renew_tgt_call_count_++;
   return renew_tgt_error_;
 }
 
 ErrorType FakeKrb5Interface::GetTgtStatus(const base::FilePath& krb5cc_path,
                                           TgtStatus* status) {
+  get_tgt_status_call_count_++;
   *status = tgt_status_;
   return get_tgt_status_error_;
 }

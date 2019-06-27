@@ -12,13 +12,15 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <gmock/gmock.h>
+#include <base/memory/ref_counted.h>
+#include <base/test/test_mock_time_task_runner.h>
 #include <gtest/gtest.h>
 #include <libpasswordprovider/fake_password_provider.h>
 #include <libpasswordprovider/password_provider_test_utils.h>
 
 #include "kerberos/fake_krb5_interface.h"
 
+namespace kerberos {
 namespace {
 
 constexpr char kUser[] = "user@REALM.COM";
@@ -28,6 +30,9 @@ constexpr char kPassword2[] = "ih4zf00d";
 constexpr char kKrb5Conf[] = R"(
   [libdefaults]
     default_realm = REALM.COM)";
+
+constexpr Krb5Interface::TgtStatus kValidTgt(3600, 3600);
+constexpr Krb5Interface::TgtStatus kExpiredTgt(0, 0);
 
 // Convenience defines to make code more readable
 constexpr bool kManaged = true;
@@ -42,8 +47,6 @@ constexpr bool kDontUseLoginPassword = false;
 constexpr char kEmptyPassword[] = "";
 
 }  // namespace
-
-namespace kerberos {
 
 class AccountManagerTest : public ::testing::Test {
  public:
@@ -119,6 +122,15 @@ class AccountManagerTest : public ::testing::Test {
     password_provider_->SavePassword(*password_ptr);
   }
 
+  // Fast forwards to the next scheduled task (assumed to be the renewal task)
+  // and verifies expectation that |krb5_->RenewTgt() was called|.
+  void RunScheduledRenewalTask() {
+    int initial_count = krb5_->renew_tgt_call_count();
+    EXPECT_EQ(1, task_runner_->GetPendingTaskCount());
+    task_runner_->FastForwardBy(task_runner_->NextPendingTaskDelay());
+    EXPECT_EQ(initial_count + 1, krb5_->renew_tgt_call_count());
+  }
+
  protected:
   void OnKerberosFilesChanged(const std::string& principal_name) {
     kerberos_files_changed_count_[principal_name]++;
@@ -162,6 +174,10 @@ class AccountManagerTest : public ::testing::Test {
 
   std::map<std::string, int> kerberos_files_changed_count_;
   std::map<std::string, int> kerberos_ticket_expiring_count_;
+
+  scoped_refptr<base::TestMockTimeTaskRunner> task_runner_{
+      new base::TestMockTimeTaskRunner()};
+  base::TestMockTimeTaskRunner::ScopedContext scoped_context_{task_runner_};
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AccountManagerTest);
@@ -540,10 +556,8 @@ TEST_F(AccountManagerTest, ListAccountsSuccess) {
   // Set a fake tgt status.
   constexpr int kRenewalSeconds = 10;
   constexpr int kValiditySeconds = 90;
-  Krb5Interface::TgtStatus status;
-  status.renewal_seconds = kRenewalSeconds;
-  status.validity_seconds = kValiditySeconds;
-  krb5_->set_tgt_status(std::move(status));
+  krb5_->set_tgt_status(
+      Krb5Interface::TgtStatus(kValiditySeconds, kRenewalSeconds));
 
   // Verify that ListAccounts returns the expected account.
   std::vector<Account> accounts;
@@ -656,25 +670,144 @@ TEST_F(AccountManagerTest, SerializationSuccess) {
   // TODO(https://crbug.com/952239): Check additional Account properties.
 }
 
-// The TriggerKerberosTicketExpiringForExpiredTickets() method works fine.
-TEST_F(AccountManagerTest, TriggerKerberosTicketExpiringForExpiredTickets) {
+// The StartObservingTickets() method triggers KerberosTicketExpiring for
+// expired signals and starts observing valid tickets.
+TEST_F(AccountManagerTest, StartObservingTickets) {
+  krb5_->set_tgt_status(kValidTgt);
   ignore_result(AddAccount());
   ignore_result(SetConfig());
   ignore_result(AcquireTgt());
   EXPECT_EQ(0, kerberos_ticket_expiring_count_[kUser]);
+  task_runner_->ClearPendingTasks();
 
-  // Fake an expired ticket.
-  Krb5Interface::TgtStatus status;
-  status.validity_seconds = 0;
-  krb5_->set_tgt_status(status);
-  manager_->TriggerKerberosTicketExpiringForExpiredTickets();
+  // Fake an expired ticket. Check that KerberosTicketExpiring is triggered, but
+  // no renewal task is scheduled.
+  krb5_->set_tgt_status(kExpiredTgt);
+  manager_->StartObservingTickets();
   EXPECT_EQ(1, kerberos_ticket_expiring_count_[kUser]);
+  EXPECT_EQ(0, task_runner_->GetPendingTaskCount());
 
-  // Fake a valid ticket.
-  status.validity_seconds = 1;
-  krb5_->set_tgt_status(status);
-  manager_->TriggerKerberosTicketExpiringForExpiredTickets();
+  // Fake a valid ticket. Check that KerberosTicketExpiring is NOT triggered,
+  // but a renewal task is scheduled.
+  krb5_->set_tgt_status(kValidTgt);
+  EXPECT_EQ(0, task_runner_->GetPendingTaskCount());
+  manager_->StartObservingTickets();
+  EXPECT_EQ(1, task_runner_->GetPendingTaskCount());
   EXPECT_EQ(1, kerberos_ticket_expiring_count_[kUser]);
+  EXPECT_EQ(0, krb5_->renew_tgt_call_count());
+  task_runner_->FastForwardBy(task_runner_->NextPendingTaskDelay());
+  EXPECT_EQ(1, krb5_->renew_tgt_call_count());
+}
+
+// When a TGT is acquired successfully, automatic renewal is scheduled.
+TEST_F(AccountManagerTest, AcquireTgtSchedulesRenewalOnSuccess) {
+  ignore_result(AddAccount());
+
+  krb5_->set_tgt_status(kValidTgt);
+  EXPECT_EQ(0, task_runner_->GetPendingTaskCount());
+  EXPECT_EQ(ERROR_NONE, AcquireTgt());
+  EXPECT_EQ(1, task_runner_->GetPendingTaskCount());
+}
+
+// When a TGT fails to be acquired, no automatic renewal is scheduled.
+TEST_F(AccountManagerTest, AcquireTgtDoesNotScheduleRenewalOnFailure) {
+  ignore_result(AddAccount());
+
+  krb5_->set_tgt_status(kValidTgt);
+  krb5_->set_acquire_tgt_error(ERROR_UNKNOWN);
+  EXPECT_EQ(0, task_runner_->GetPendingTaskCount());
+  EXPECT_EQ(ERROR_UNKNOWN, AcquireTgt());
+  EXPECT_EQ(0, task_runner_->GetPendingTaskCount());
+}
+
+// A scheduled TGT renewal task calls |krb5_->RenewTgt()|.
+TEST_F(AccountManagerTest, AutoRenewalCallsRenewTgt) {
+  krb5_->set_tgt_status(kValidTgt);
+  ignore_result(AddAccount());
+  ignore_result(AcquireTgt());
+  int initial_acquire_tgt_call_count = krb5_->acquire_tgt_call_count();
+
+  // Set some return value for the RenewTgt() call and fast forward to scheduled
+  // renewal task.
+  const ErrorType expected_error = ERROR_UNKNOWN;
+  krb5_->set_renew_tgt_error(expected_error);
+  RunScheduledRenewalTask();
+
+  EXPECT_EQ(initial_acquire_tgt_call_count, krb5_->acquire_tgt_call_count());
+  EXPECT_EQ(expected_error, manager_->last_renew_tgt_error_for_testing());
+}
+
+// A scheduled TGT renewal task calls |krb5_->AcquireTgt()| using the login
+// password if the call to |krb5_->RenewTgt()| fails and the login password was
+// used for the initial AcquireTgt() call.
+TEST_F(AccountManagerTest, AutoRenewalUsesLoginPasswordIfRenewalFails) {
+  krb5_->set_tgt_status(kValidTgt);
+  ignore_result(AddAccount());
+
+  // Acquire TGT with login password.
+  SaveLoginPassword(kPassword);
+  krb5_->set_expected_password(kPassword);
+  EXPECT_EQ(ERROR_NONE,
+            manager_->AcquireTgt(kUser, std::string(), kDontRememberPassword,
+                                 kUseLoginPassword));
+  int initial_acquire_tgt_call_count = krb5_->acquire_tgt_call_count();
+
+  krb5_->set_renew_tgt_error(ERROR_UNKNOWN);
+  RunScheduledRenewalTask();
+
+  // The scheduled renewal task should have called AcquireTgt() with the login
+  // password and succeeded.
+  EXPECT_EQ(initial_acquire_tgt_call_count + 1,
+            krb5_->acquire_tgt_call_count());
+  EXPECT_EQ(ERROR_NONE, manager_->last_renew_tgt_error_for_testing());
+}
+
+// A scheduled TGT renewal task calls |krb5_->AcquireTgt()| using the remembered
+// password if the call to |krb5_->RenewTgt()| fails and the password was
+// remembered for the initial AcquireTgt() call.
+TEST_F(AccountManagerTest, AutoRenewalUsesRememberedPasswordIfRenewalFails) {
+  krb5_->set_tgt_status(kValidTgt);
+  ignore_result(AddAccount());
+
+  // Acquire TGT and remember password.
+  krb5_->set_expected_password(kPassword);
+  EXPECT_EQ(ERROR_NONE,
+            manager_->AcquireTgt(kUser, kPassword, kRememberPassword,
+                                 kDontUseLoginPassword));
+  int initial_acquire_tgt_call_count = krb5_->acquire_tgt_call_count();
+
+  krb5_->set_renew_tgt_error(ERROR_UNKNOWN);
+  RunScheduledRenewalTask();
+
+  // The scheduled renewal task should have called AcquireTgt() with the
+  // remembered password and succeeded.
+  EXPECT_EQ(initial_acquire_tgt_call_count + 1,
+            krb5_->acquire_tgt_call_count());
+  EXPECT_EQ(ERROR_NONE, manager_->last_renew_tgt_error_for_testing());
+}
+
+// A scheduled TGT renewal task does not call |krb5_->AcquireTgt()| using the
+// remembered password if the call to |krb5_->RenewTgt()| succeeds and the
+// password was remembered for the initial AcquireTgt() call (similar for login
+// password, but we don't test that).
+TEST_F(AccountManagerTest, AutoRenewalDoesNotCallAcquireTgtIfRenewalSucceeds) {
+  krb5_->set_tgt_status(kValidTgt);
+  ignore_result(AddAccount());
+
+  // Acquire TGT and remember password.
+  krb5_->set_expected_password(kPassword);
+  EXPECT_EQ(ERROR_NONE,
+            manager_->AcquireTgt(kUser, kPassword, kRememberPassword,
+                                 kDontUseLoginPassword));
+  int initial_acquire_tgt_call_count = krb5_->acquire_tgt_call_count();
+
+  krb5_->set_renew_tgt_error(ERROR_NONE);
+  RunScheduledRenewalTask();
+
+  // The scheduled renewal task should NOT have called AcquireTgt() again since
+  // |krb5_->RenewTgt()|.
+  EXPECT_EQ(initial_acquire_tgt_call_count, krb5_->acquire_tgt_call_count());
+  EXPECT_EQ(ERROR_NONE, manager_->last_renew_tgt_error_for_testing());
 }
 
 }  // namespace kerberos

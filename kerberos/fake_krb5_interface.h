@@ -66,11 +66,22 @@ class FakeKrb5Interface : public Krb5Interface {
   // Sets the status that GetTgtStatus returns.
   void set_tgt_status(TgtStatus status) { tgt_status_ = std::move(status); }
 
+  // Call counts for the corresponding methods.
+  int acquire_tgt_call_count() const { return acquire_tgt_call_count_; }
+  int renew_tgt_call_count() const { return renew_tgt_call_count_; }
+  int get_tgt_status_call_count() const { return get_tgt_status_call_count_; }
+
  private:
   std::string expected_password_;
+
   ErrorType acquire_tgt_error_ = ERROR_NONE;
   ErrorType renew_tgt_error_ = ERROR_NONE;
   ErrorType get_tgt_status_error_ = ERROR_NONE;
+
+  int acquire_tgt_call_count_ = 0;
+  int renew_tgt_call_count_ = 0;
+  int get_tgt_status_call_count_ = 0;
+
   TgtStatus tgt_status_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeKrb5Interface);

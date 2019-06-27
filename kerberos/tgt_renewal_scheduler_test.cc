@@ -97,14 +97,14 @@ class TgtRenewalSchedulerTest : public ::testing::Test {
 TEST_F(TgtRenewalSchedulerTest, GetTgtStatusErrorTriggersNotify) {
   ExpectGetTgtStatus(ERROR_UNKNOWN, kDefaultTgtStatus);
   ExpectNotifyTgtExpiration(TgtRenewalScheduler::TgtExpiration::kExpired);
-  scheduler_.ScheduleRenewal();
+  scheduler_.ScheduleRenewal(true /* notify_expiration */);
 }
 
 // If the TGT is expired, there should be an expiry notification.
 TEST_F(TgtRenewalSchedulerTest, ExpiredTgtTriggersNotify) {
   ExpectGetTgtStatus(ERROR_NONE, kExpiredTgtStatus);
   ExpectNotifyTgtExpiration(TgtRenewalScheduler::TgtExpiration::kExpired);
-  scheduler_.ScheduleRenewal();
+  scheduler_.ScheduleRenewal(true /* notify_expiration */);
 }
 
 // If the TGT is about to expire, there should be an about-to-expire
@@ -112,13 +112,13 @@ TEST_F(TgtRenewalSchedulerTest, ExpiredTgtTriggersNotify) {
 TEST_F(TgtRenewalSchedulerTest, AboutToExpiredTgtTriggersNotify) {
   ExpectGetTgtStatus(ERROR_NONE, kAboutToExpireTgtStatus);
   ExpectNotifyTgtExpiration(TgtRenewalScheduler::TgtExpiration::kAboutToExpire);
-  scheduler_.ScheduleRenewal();
+  scheduler_.ScheduleRenewal(true /* notify_expiration */);
 }
 
 // A valid TGT schedules a renewal task, even if the ticket is not renewable.
 TEST_F(TgtRenewalSchedulerTest, NotRenewableTgtSchedulesTask) {
   ExpectGetTgtStatus(ERROR_NONE, kNotRenewableTgtStatus);
-  scheduler_.ScheduleRenewal();
+  scheduler_.ScheduleRenewal(true /* notify_expiration */);
   EXPECT_EQ(1, task_runner_->GetPendingTaskCount());
 }
 
@@ -128,7 +128,7 @@ TEST_F(TgtRenewalSchedulerTest, ValidTgtTriggersRescheduleAtSpecificDelays) {
   // Trigger initial reschedule with a valid TGT.
   Krb5Interface::TgtStatus tgt_status = kValidTgtStatus;
   ExpectGetTgtStatus(ERROR_NONE, tgt_status);
-  scheduler_.ScheduleRenewal();
+  scheduler_.ScheduleRenewal(true /* notify_expiration */);
 
   // To make sure there's not an excessive number of scheduled tasks.
   // Note: Currently, the sequence of delays is 2160s, 864s, 345s and 138s.
@@ -175,7 +175,7 @@ TEST_F(TgtRenewalSchedulerTest, ValidTgtTriggersRescheduleAtSpecificDelays) {
 // Rescheduling in the middle of a task delay should reset the task delay.
 TEST_F(TgtRenewalSchedulerTest, Reschedule) {
   ExpectGetTgtStatus(ERROR_NONE, kValidTgtStatus);
-  scheduler_.ScheduleRenewal();
+  scheduler_.ScheduleRenewal(true /* notify_expiration */);
   EXPECT_EQ(1, task_runner_->GetPendingTaskCount());
   Mock::VerifyAndClearExpectations(&scheduler_delegate_);
 
@@ -184,7 +184,7 @@ TEST_F(TgtRenewalSchedulerTest, Reschedule) {
   task_runner_->FastForwardBy(delay / 2);
 
   ExpectGetTgtStatus(ERROR_NONE, kValidTgtStatus);
-  scheduler_.ScheduleRenewal();
+  scheduler_.ScheduleRenewal(true /* notify_expiration */);
 
   // Note: The old callback is technically still scheduled, but it should be
   // canceled and not execute.

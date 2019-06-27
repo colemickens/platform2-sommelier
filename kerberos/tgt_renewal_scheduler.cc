@@ -50,7 +50,7 @@ TgtRenewalScheduler::TgtRenewalScheduler(const std::string& principal_name,
                                          Delegate* delegate)
     : principal_name_(principal_name), delegate_(delegate) {}
 
-void TgtRenewalScheduler::ScheduleRenewal() {
+void TgtRenewalScheduler::ScheduleRenewal(bool notify_expiration) {
   // Cancel an existing callback if there is any.
   if (!tgt_renewal_callback_.IsCancelled())
     tgt_renewal_callback_.Cancel();
@@ -59,14 +59,16 @@ void TgtRenewalScheduler::ScheduleRenewal() {
   Krb5Interface::TgtStatus tgt_status;
   if (delegate_->GetTgtStatus(principal_name_, &tgt_status) != ERROR_NONE) {
     VLOG(1) << kLogHeader << "Failed to get TGT status";
-    delegate_->NotifyTgtExpiration(principal_name_, TgtExpiration::kExpired);
+    if (notify_expiration)
+      delegate_->NotifyTgtExpiration(principal_name_, TgtExpiration::kExpired);
     return;
   }
 
   // Is the TGT expired?
   if (tgt_status.validity_seconds <= 0) {
     VLOG(1) << kLogHeader << "TGT about to expire or expired";
-    delegate_->NotifyTgtExpiration(principal_name_, TgtExpiration::kExpired);
+    if (notify_expiration)
+      delegate_->NotifyTgtExpiration(principal_name_, TgtExpiration::kExpired);
     return;
   }
 
@@ -74,8 +76,9 @@ void TgtRenewalScheduler::ScheduleRenewal() {
   // notification in Chrome, so the user can relog.
   if (tgt_status.validity_seconds <= kExpirationHeadsUpTimeSeconds) {
     VLOG(1) << kLogHeader << "TGT about to expire";
-    delegate_->NotifyTgtExpiration(principal_name_,
-                                   TgtExpiration::kAboutToExpire);
+    if (notify_expiration)
+      delegate_->NotifyTgtExpiration(principal_name_,
+                                     TgtExpiration::kAboutToExpire);
     return;
   }
 
@@ -110,7 +113,7 @@ void TgtRenewalScheduler::RunScheduledTgtRenewal() {
 
   // No matter if it worked or not, reschedule auto-renewal. We might be offline
   // and want to try again later.
-  ScheduleRenewal();
+  ScheduleRenewal(true /* notify_expiration */);
 
   if (error == ERROR_NONE)
     VLOG(1) << kLogHeader << "Succeeded";

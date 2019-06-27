@@ -14,6 +14,7 @@
 #include <libpasswordprovider/password.h>
 #include <libpasswordprovider/password_provider.h>
 
+#include "kerberos/error_strings.h"
 #include "kerberos/krb5_interface.h"
 
 namespace kerberos {
@@ -90,7 +91,7 @@ ErrorType AccountManager::SaveAccounts() const {
   // Copy |accounts_| into proto message.
   AccountDataList storage_accounts;
   for (const auto& account : accounts_)
-    *storage_accounts.add_accounts() = account;
+    *storage_accounts.add_accounts() = account.data;
 
   // Store serialized proto message on disk.
   std::string accounts_blob;
@@ -124,8 +125,10 @@ ErrorType AccountManager::LoadAccounts() {
 
   // Copy data into |accounts_|.
   accounts_.reserve(storage_accounts.accounts_size());
-  for (int n = 0; n < storage_accounts.accounts_size(); ++n)
-    accounts_.push_back(storage_accounts.accounts(n));
+  for (int n = 0; n < storage_accounts.accounts_size(); ++n) {
+    accounts_.emplace_back(std::move(*storage_accounts.mutable_accounts(n)),
+                           this);
+  }
 
   return ERROR_NONE;
 }
@@ -136,9 +139,9 @@ ErrorType AccountManager::AddAccount(const std::string& principal_name,
   if (index != kInvalidIndex) {
     // Policy should overwrite user-added accounts, but user-added accounts
     // should not overwrite policy accounts.
-    if (!accounts_[index].is_managed() && is_managed) {
+    if (!accounts_[index].data.is_managed() && is_managed) {
       DeleteAllFilesFor(principal_name);
-      accounts_[index].set_is_managed(is_managed);
+      accounts_[index].data.set_is_managed(is_managed);
       SaveAccounts();
     }
     return ERROR_DUPLICATE_PRINCIPAL_NAME;
@@ -157,7 +160,7 @@ ErrorType AccountManager::AddAccount(const std::string& principal_name,
   AccountData data;
   data.set_principal_name(principal_name);
   data.set_is_managed(is_managed);
-  accounts_.push_back(std::move(data));
+  accounts_.emplace_back(std::move(data), this);
   SaveAccounts();
   return ERROR_NONE;
 }
@@ -205,16 +208,16 @@ ErrorType AccountManager::ClearAccounts(ClearMode mode) {
 
 void AccountManager::ClearAllAccounts() {
   for (const auto& account : accounts_)
-    DeleteAllFilesFor(account.principal_name());
+    DeleteAllFilesFor(account.data.principal_name());
   accounts_.clear();
   SaveAccounts();
 }
 
 void AccountManager::ClearUnmanagedAccounts() {
   for (int n = static_cast<int>(accounts_.size()) - 1; n >= 0; --n) {
-    if (accounts_[n].is_managed())
+    if (accounts_[n].data.is_managed())
       continue;
-    DeleteAllFilesFor(accounts_[n].principal_name());
+    DeleteAllFilesFor(accounts_[n].data.principal_name());
     accounts_.erase(accounts_.begin() + n);
   }
   SaveAccounts();
@@ -222,9 +225,9 @@ void AccountManager::ClearUnmanagedAccounts() {
 
 void AccountManager::ClearRememberedPasswordsForUnmanagedAccounts() {
   for (const auto& account : accounts_) {
-    if (account.is_managed())
+    if (account.data.is_managed())
       continue;
-    CHECK(base::DeleteFile(GetPasswordPath(account.principal_name()),
+    CHECK(base::DeleteFile(GetPasswordPath(account.data.principal_name()),
                            false /* recursive */));
   }
 }
@@ -232,11 +235,11 @@ void AccountManager::ClearRememberedPasswordsForUnmanagedAccounts() {
 ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) const {
   for (const auto& it : accounts_) {
     Account account;
-    account.set_principal_name(it.principal_name());
-    account.set_is_managed(it.is_managed());
+    account.set_principal_name(it.data.principal_name());
+    account.set_is_managed(it.data.is_managed());
     account.set_password_was_remembered(
-        base::PathExists(GetPasswordPath(it.principal_name())));
-    account.set_use_login_password(it.use_login_password());
+        base::PathExists(GetPasswordPath(it.data.principal_name())));
+    account.set_use_login_password(it.data.use_login_password());
 
     // TODO(https://crbug.com/952239): Set additional properties.
 
@@ -244,19 +247,18 @@ ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) const {
     // there's a broken account, the user is able to recover the situation
     // this way (reauthenticate or remove account and add back).
 
-    // Check PathExists, so that no error is printed if the file doesn't
-    // exist.
+    // Check PathExists, so that no error is printed if the file doesn't exist.
     std::string krb5conf;
-    const base::FilePath krb5conf_path = GetKrb5ConfPath(it.principal_name());
+    const base::FilePath krb5conf_path =
+        GetKrb5ConfPath(it.data.principal_name());
     if (base::PathExists(krb5conf_path) &&
         LoadFile(krb5conf_path, &krb5conf) == ERROR_NONE) {
       account.set_krb5conf(krb5conf);
     }
 
-    // A missing krb5cc file just translates to an invalid ticket (lifetime
-    // 0).
+    // A missing krb5cc file just translates to an invalid ticket (lifetime 0).
     Krb5Interface::TgtStatus tgt_status;
-    const base::FilePath krb5cc_path = GetKrb5CCPath(it.principal_name());
+    const base::FilePath krb5cc_path = GetKrb5CCPath(it.data.principal_name());
     if (base::PathExists(krb5cc_path) &&
         krb5_->GetTgtStatus(krb5cc_path, &tgt_status) == ERROR_NONE) {
       account.set_tgt_validity_seconds(tgt_status.validity_seconds);
@@ -271,8 +273,8 @@ ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) const {
 
 ErrorType AccountManager::SetConfig(const std::string& principal_name,
                                     const std::string& krb5conf) const {
-  const AccountData* data = GetAccountData(principal_name);
-  if (!data)
+  const InternalAccount* account = GetAccount(principal_name);
+  if (!account)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
   ErrorType error = SaveFile(GetKrb5ConfPath(principal_name), krb5conf);
@@ -287,13 +289,13 @@ ErrorType AccountManager::AcquireTgt(const std::string& principal_name,
                                      std::string password,
                                      bool remember_password,
                                      bool use_login_password) {
-  AccountData* data = GetMutableAccountData(principal_name);
-  if (!data)
+  InternalAccount* account = GetMutableAccount(principal_name);
+  if (!account)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
   // Remember whether to use the login password.
-  if (data->use_login_password() != use_login_password) {
-    data->set_use_login_password(use_login_password);
+  if (account->data.use_login_password() != use_login_password) {
+    account->data.set_use_login_password(use_login_password);
     SaveAccounts();
   }
 
@@ -309,9 +311,18 @@ ErrorType AccountManager::AcquireTgt(const std::string& principal_name,
       krb5_->AcquireTgt(principal_name, password, GetKrb5CCPath(principal_name),
                         GetKrb5ConfPath(principal_name));
 
-  // Assume the ticket changed if AcquireTgt() was successful.
-  if (error == ERROR_NONE)
+  if (error == ERROR_NONE) {
+    // Schedule task to automatically renew the ticket. If the ticket is invalid
+    // for whatever reason, don't notify expiration immediately. This might lead
+    // to an infinite loop when a password is stored and MaybeAutoAcquireTgt
+    // tries to acquire a new TGT immediately.
+    account->tgt_renewal_scheduler_->ScheduleRenewal(
+        false /* notify_expiration */);
+
+    // Assume the ticket changed if AcquireTgt() was successful.
     TriggerKerberosFilesChanged(principal_name);
+  }
+
   return error;
 }
 
@@ -320,8 +331,8 @@ ErrorType AccountManager::GetKerberosFiles(const std::string& principal_name,
   files->clear_krb5cc();
   files->clear_krb5conf();
 
-  const AccountData* data = GetAccountData(principal_name);
-  if (!data)
+  const InternalAccount* account = GetAccount(principal_name);
+  if (!account)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
   // By convention, no credential cache means no error.
@@ -344,9 +355,13 @@ ErrorType AccountManager::GetKerberosFiles(const std::string& principal_name,
   return ERROR_NONE;
 }
 
-void AccountManager::TriggerKerberosTicketExpiringForExpiredTickets() {
-  for (const auto& it : accounts_) {
-    const base::FilePath krb5cc_path = GetKrb5CCPath(it.principal_name());
+void AccountManager::StartObservingTickets() {
+  for (const auto& account : accounts_) {
+    const base::FilePath krb5cc_path =
+        GetKrb5CCPath(account.data.principal_name());
+
+    // Might happen for managed accounts (e.g. misconfigured password). Chrome
+    // only allows adding unmanaged accounts if a ticket can be acquired.
     if (!base::PathExists(krb5cc_path))
       continue;
 
@@ -354,8 +369,14 @@ void AccountManager::TriggerKerberosTicketExpiringForExpiredTickets() {
     Krb5Interface::TgtStatus tgt_status;
     if (krb5_->GetTgtStatus(krb5cc_path, &tgt_status) != ERROR_NONE ||
         tgt_status.validity_seconds <= 0) {
-      TriggerKerberosTicketExpiring(it.principal_name());
+      NotifyTgtExpiration(account.data.principal_name(),
+                          TgtRenewalScheduler::TgtExpiration::kExpired);
+      continue;
     }
+
+    // Ticket is valid. Schedule task to automatically renew it.
+    account.tgt_renewal_scheduler_->ScheduleRenewal(
+        true /* notify_expiration */);
   }
 }
 
@@ -373,6 +394,70 @@ void AccountManager::TriggerKerberosFilesChanged(
 void AccountManager::TriggerKerberosTicketExpiring(
     const std::string& principal_name) const {
   kerberos_ticket_expiring_.Run(principal_name);
+}
+
+ErrorType AccountManager::GetTgtStatus(const std::string& principal_name,
+                                       Krb5Interface::TgtStatus* tgt_status) {
+  return krb5_->GetTgtStatus(GetKrb5CCPath(principal_name), tgt_status);
+}
+
+ErrorType AccountManager::RenewTgt(const std::string& principal_name) {
+  ErrorType error =
+      krb5_->RenewTgt(principal_name, GetKrb5CCPath(principal_name),
+                      GetKrb5ConfPath(principal_name));
+
+  if (error != ERROR_NONE) {
+    VLOG(1) << "RenewTgt failed with " << GetErrorString(error);
+
+    // Renewal didn't work. See if we have a password stored and try to
+    // auto-renew.
+    MaybeAutoAcquireTgt(principal_name, &error);
+  }
+
+  last_renew_tgt_error_for_testing_ = error;
+  return error;
+}
+
+void AccountManager::NotifyTgtExpiration(
+    const std::string& principal_name,
+    TgtRenewalScheduler::TgtExpiration expiration) {
+  // First try to auto-acquire the TGT (usually works if password is stored).
+  // Only if that isn't possible or doesn't work, trigger the signal.
+  ErrorType error = ERROR_NONE;
+  if (!MaybeAutoAcquireTgt(principal_name, &error) || error != ERROR_NONE) {
+    // TODO(https://crbug.com/952245): Distinguish between "about to expire" and
+    // "expired" in the KerberosTicketExpiring signal and in the Chrome
+    // notification.
+    TriggerKerberosTicketExpiring(principal_name);
+  }
+}
+
+bool AccountManager::MaybeAutoAcquireTgt(const std::string& principal_name,
+                                         ErrorType* error) {
+  InternalAccount* account = GetMutableAccount(principal_name);
+  DCHECK(account);
+
+  // Check if |account| has access to the password.
+  const bool use_login_password = account->data.use_login_password();
+  const bool password_was_remembered =
+      base::PathExists(GetPasswordPath(principal_name));
+  if (!use_login_password && !password_was_remembered)
+    return false;
+
+  // Should not have remembered login password ourselves.
+  DCHECK(!(use_login_password && password_was_remembered));
+
+  VLOG(1) << "Auto-acquiring new TGT using "
+          << (use_login_password ? "login" : "remembered") << " password";
+
+  *error = AcquireTgt(principal_name, std::string() /* password */,
+                      password_was_remembered /* keep remembering */,
+                      use_login_password);
+
+  if (*error != ERROR_NONE)
+    VLOG(1) << "Auto-acquiring TGT failed with " << GetErrorString(*error);
+
+  return true;
 }
 
 base::FilePath AccountManager::GetAccountDir(
@@ -445,9 +530,15 @@ ErrorType AccountManager::UpdatePasswordFromSaved(
   return ERROR_NONE;
 }
 
+AccountManager::InternalAccount::InternalAccount(
+    AccountData&& _data, TgtRenewalScheduler::Delegate* delegate)
+    : data(std::move(_data)),
+      tgt_renewal_scheduler_(std::make_unique<TgtRenewalScheduler>(
+          data.principal_name(), delegate)) {}
+
 int AccountManager::GetAccountIndex(const std::string& principal_name) const {
   for (size_t n = 0; n < accounts_.size(); ++n) {
-    if (accounts_[n].principal_name() == principal_name) {
+    if (accounts_[n].data.principal_name() == principal_name) {
       CHECK(n <= std::numeric_limits<int>::max());
       return static_cast<int>(n);
     }
@@ -455,13 +546,13 @@ int AccountManager::GetAccountIndex(const std::string& principal_name) const {
   return kInvalidIndex;
 }
 
-const AccountData* AccountManager::GetAccountData(
+const AccountManager::InternalAccount* AccountManager::GetAccount(
     const std::string& principal_name) const {
   int index = GetAccountIndex(principal_name);
   return index != kInvalidIndex ? &accounts_[index] : nullptr;
 }
 
-AccountData* AccountManager::GetMutableAccountData(
+AccountManager::InternalAccount* AccountManager::GetMutableAccount(
     const std::string& principal_name) {
   int index = GetAccountIndex(principal_name);
   return index != kInvalidIndex ? &accounts_[index] : nullptr;

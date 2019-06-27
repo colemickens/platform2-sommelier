@@ -16,7 +16,9 @@
 #include <base/optional.h>
 
 #include "bindings/kerberos_containers.pb.h"
+#include "kerberos/krb5_interface.h"
 #include "kerberos/proto_bindings/kerberos_service.pb.h"
+#include "kerberos/tgt_renewal_scheduler.h"
 
 namespace password_provider {
 class PasswordProviderInterface;
@@ -24,11 +26,9 @@ class PasswordProviderInterface;
 
 namespace kerberos {
 
-class Krb5Interface;
-
 // Manages Kerberos tickets for a set of accounts keyed by principal name
 // (user@REALM.COM).
-class AccountManager {
+class AccountManager : public TgtRenewalScheduler::Delegate {
  public:
   using KerberosFilesChangedCallback =
       base::RepeatingCallback<void(const std::string& principal_name)>;
@@ -50,7 +50,7 @@ class AccountManager {
                  std::unique_ptr<Krb5Interface> krb5,
                  std::unique_ptr<password_provider::PasswordProviderInterface>
                      password_provider);
-  ~AccountManager();
+  ~AccountManager() override;
 
   // Saves all accounts to disk. Returns ERROR_LOCAL_IO and logs on error.
   ErrorType SaveAccounts() const;
@@ -107,8 +107,9 @@ class AccountManager {
   ErrorType GetKerberosFiles(const std::string& principal_name,
                              KerberosFiles* files) const WARN_UNUSED_RESULT;
 
-  // Sends KerberosTicketExpiring signals for each expired Kerberos ticket.
-  void TriggerKerberosTicketExpiringForExpiredTickets();
+  // Sends KerberosTicketExpiring signals for each expired Kerberos ticket and
+  // starts scheduling renewal tasks for valid tickets.
+  void StartObservingTickets();
 
   const base::FilePath& GetStorageDirForTesting() { return storage_dir_; }
 
@@ -116,8 +117,25 @@ class AccountManager {
   static std::string GetSafeFilenameForTesting(
       const std::string& principal_name);
 
+  int last_renew_tgt_error_for_testing() const {
+    return last_renew_tgt_error_for_testing_;
+  }
+
  private:
   // File path helpers. All paths are relative to |storage_dir_|.
+
+  // TgtRenewalScheduler::Delegate:
+  ErrorType GetTgtStatus(const std::string& principal_name,
+                         Krb5Interface::TgtStatus* tgt_status) override;
+  ErrorType RenewTgt(const std::string& principal_name) override;
+  void NotifyTgtExpiration(
+      const std::string& principal_name,
+      TgtRenewalScheduler::TgtExpiration expiration) override;
+
+  // Acquires a TGT, sets |error| and returns true if the |principal_name|
+  // account has access to the password (either the login password or a
+  // remembered one). Returns false if no password is accessible.
+  bool MaybeAutoAcquireTgt(const std::string& principal_name, ErrorType* error);
 
   // Directory where files specific to the |principal_name| account are stored.
   base::FilePath GetAccountDir(const std::string& principal_name) const;
@@ -181,18 +199,31 @@ class AccountManager {
   // the account does not exist.
   int GetAccountIndex(const std::string& principal_name) const;
 
-  // Returns the AccountData for |principal_name| if available or nullptr
+  struct InternalAccount {
+    // Account state. Gets serialized to disk.
+    AccountData data;
+
+    // Scheduler for automatic TGT renewal.
+    std::unique_ptr<TgtRenewalScheduler> tgt_renewal_scheduler_;
+
+    InternalAccount(AccountData&& data,
+                    TgtRenewalScheduler::Delegate* delegate);
+  };
+
+  // Returns the InternalAccount for |principal_name| if available or nullptr
   // otherwise. The returned pointer may lose validity if |accounts_| gets
   // modified.
-  const AccountData* GetAccountData(const std::string& principal_name) const;
-  AccountData* GetMutableAccountData(const std::string& principal_name);
+  const InternalAccount* GetAccount(const std::string& principal_name) const;
+  InternalAccount* GetMutableAccount(const std::string& principal_name);
 
   // List of all accounts. Stored in a vector to keep order of addition.
-  std::vector<AccountData> accounts_;
+  std::vector<InternalAccount> accounts_;
 
   // Interface to retrieve the login password.
   std::unique_ptr<password_provider::PasswordProviderInterface>
       password_provider_;
+
+  ErrorType last_renew_tgt_error_for_testing_ = ERROR_NONE;
 
   DISALLOW_COPY_AND_ASSIGN(AccountManager);
 };

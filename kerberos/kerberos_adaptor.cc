@@ -125,13 +125,13 @@ void KerberosAdaptor::RegisterAsync(
       std::make_unique<password_provider::PasswordProvider>());
   manager_->LoadAccounts();
 
-  // Wait a little before calling CheckForExpiredTickets. Apparently, signals
+  // Wait a little before calling StartObservingTickets. Apparently, signals
   // are not quite wired up properly at this point. If signals are emitted here,
   // they never reach Chrome, even if Chrome made sure it connected to the
   // signal.
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::BindRepeating(&KerberosAdaptor::CheckForExpiredTickets,
+      base::BindRepeating(&KerberosAdaptor::StartObservingTickets,
                           weak_ptr_factory_.GetWeakPtr()),
       kTicketExpiryCheckDelay);
 
@@ -257,8 +257,8 @@ ByteArray KerberosAdaptor::GetKerberosFiles(const ByteArray& request_blob) {
   return SerializeProto(response);
 }
 
-void KerberosAdaptor::CheckForExpiredTickets() {
-  manager_->TriggerKerberosTicketExpiringForExpiredTickets();
+void KerberosAdaptor::StartObservingTickets() {
+  manager_->StartObservingTickets();
 }
 
 void KerberosAdaptor::OnKerberosFilesChanged(

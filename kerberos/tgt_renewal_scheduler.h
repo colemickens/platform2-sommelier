@@ -66,11 +66,11 @@ class TgtRenewalScheduler {
 
   TgtRenewalScheduler(const std::string& principal_name, Delegate* delegate);
 
-  // If the ticket is expired or about to expire, calls
-  // delegate_->NotifyTgtExpiration(). Otherwise, schedules
+  // If the ticket is valid and not about to expire soon, schedules
   // RunScheduledTgtRenewal() with a delay of a fraction of the TGT's remaining
-  // lifetime.
-  void ScheduleRenewal();
+  // lifetime. Otherwise, calls delegate_->NotifyTgtExpiration() if
+  // |notify_expiration| is true.
+  void ScheduleRenewal(bool notify_expiration);
 
  private:
   // Callback scheduled to renew the TGT. Calls |delegate_->RenewTgt()| and

@@ -61,8 +61,8 @@ class KerberosAdaptor : public org::chromium::KerberosAdaptor,
   }
 
  private:
-  // TriggersKerberosTicketExpiring for expired tickets.
-  void CheckForExpiredTickets();
+  // Calls |manager_|->StartObservingTickets().
+  void StartObservingTickets();
 
   // Gets triggered by when the Kerberos credential cache or the configuration
   // file changes of the given principal. Triggers the KerberosFilesChanged
