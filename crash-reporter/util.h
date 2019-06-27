@@ -84,6 +84,9 @@ int RunAndCaptureOutput(brillo::ProcessImpl* process,
 // individual line.
 void LogMultilineError(const std::string& error);
 
+// Read the memfd file contents. Return false on failure.
+bool ReadMemfdToString(int mem_fd, std::string* contents);
+
 }  // namespace util
 
 #endif  // CRASH_REPORTER_UTIL_H_

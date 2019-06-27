@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include <memory>
+#include <sys/mman.h>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -18,6 +19,15 @@
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
+
+// The QEMU emulator we use to run unit tests on simulated ARM boards does not
+// support memfd_create. (https://bugs.launchpad.net/qemu/+bug/1734792) Skip
+// tests that rely on memfd_create on ARM boards.
+#if defined(ARCH_CPU_ARM_FAMILY)
+#define DISABLED_ON_QEMU_FOR_MEMFD_CREATE(test_name) DISABLED_##test_name
+#else
+#define DISABLED_ON_QEMU_FOR_MEMFD_CREATE(test_name) test_name
+#endif
 
 namespace util {
 namespace {
@@ -338,6 +348,24 @@ TEST_F(CrashCommonUtilTest, GzipStream) {
   }
   EXPECT_TRUE(VerifyCompression(raw_file, compressed_file_name))
       << "Random input data: " << content;
+}
+
+TEST_F(CrashCommonUtilTest,
+       DISABLED_ON_QEMU_FOR_MEMFD_CREATE(ReadMemfdToStringEmpty)) {
+  int memfd = memfd_create("test_memfd", 0);
+  std::string read_outs;
+  EXPECT_FALSE(ReadMemfdToString(memfd, &read_outs));
+}
+
+TEST_F(CrashCommonUtilTest,
+       DISABLED_ON_QEMU_FOR_MEMFD_CREATE(ReadMemfdToStringSuccess)) {
+  int memfd = memfd_create("test_memfd", 0);
+  const std::string write_ins = "Test data to write into memfd";
+  ASSERT_EQ(write(memfd, write_ins.c_str(), strlen(write_ins.c_str())),
+            strlen(write_ins.c_str()));
+  std::string read_outs;
+  EXPECT_TRUE(ReadMemfdToString(memfd, &read_outs));
+  EXPECT_EQ(read_outs, write_ins);
 }
 
 }  // namespace util

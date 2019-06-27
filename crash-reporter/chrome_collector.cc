@@ -62,10 +62,10 @@ ChromeCollector::ChromeCollector(CrashSendingMode crash_sending_mode)
 
 ChromeCollector::~ChromeCollector() {}
 
-bool ChromeCollector::HandleCrash(const FilePath& file_path,
-                                  pid_t pid,
-                                  uid_t uid,
-                                  const std::string& exe_name) {
+bool ChromeCollector::HandleCrashWithDumpData(const std::string& data,
+                                              pid_t pid,
+                                              uid_t uid,
+                                              const std::string& exe_name) {
   if (!is_feedback_allowed_function_())
     return true;
 
@@ -86,12 +86,6 @@ bool ChromeCollector::HandleCrash(const FilePath& file_path,
   std::string dump_basename = FormatDumpBasename(exe_name, time(nullptr), pid);
   FilePath meta_path = GetCrashPath(dir, dump_basename, "meta");
   FilePath minidump_path = GetCrashPath(dir, dump_basename, "dmp");
-
-  std::string data;
-  if (!base::ReadFileToString(file_path, &data)) {
-    PLOG(ERROR) << "Can't read crash log: " << file_path.value();
-    return false;
-  }
 
   if (!ParseCrashLog(data, dir, minidump_path, dump_basename)) {
     LOG(ERROR) << "Failed to parse Chrome's crash log";
@@ -128,6 +122,32 @@ bool ChromeCollector::HandleCrash(const FilePath& file_path,
   fflush(output_file_ptr_);
 
   return true;
+}
+
+bool ChromeCollector::HandleCrash(const FilePath& file_path,
+                                  pid_t pid,
+                                  uid_t uid,
+                                  const std::string& exe_name) {
+  std::string data;
+  if (!base::ReadFileToString(base::FilePath(file_path), &data)) {
+    PLOG(ERROR) << "Can't read crash log: " << file_path.value();
+    return false;
+  }
+
+  return HandleCrashWithDumpData(data, pid, uid, exe_name);
+}
+
+bool ChromeCollector::HandleCrashThroughMemfd(int memfd,
+                                              pid_t pid,
+                                              uid_t uid,
+                                              const std::string& exe_name) {
+  std::string data;
+  if (!util::ReadMemfdToString(memfd, &data)) {
+    PLOG(ERROR) << "Can't read crash log from memfd: " << memfd;
+    return false;
+  }
+
+  return HandleCrashWithDumpData(data, pid, uid, exe_name);
 }
 
 bool ChromeCollector::ParseCrashLog(const std::string& data,

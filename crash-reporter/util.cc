@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 #include <map>
+#include <memory>
 
 #include <base/files/file_util.h>
 #include <base/strings/string_split.h>
@@ -277,6 +278,43 @@ void LogMultilineError(const std::string& error) {
       error, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   for (auto line : lines)
     LOG(ERROR) << line;
+}
+
+bool ReadMemfdToString(int mem_fd, std::string* contents) {
+  if (contents)
+    contents->clear();
+  base::ScopedFILE file(fdopen(mem_fd, "r"));
+  if (!file) {
+    PLOG(ERROR) << "Failed to fdopen(" << mem_fd << ")";
+    return false;
+  }
+  if (fseeko(file.get(), 0, SEEK_END) != 0) {
+    PLOG(ERROR) << "fseeko() error";
+    return false;
+  }
+  off_t file_size = ftello(file.get());
+  if (file_size < 0) {
+    PLOG(ERROR) << "ftello() error";
+    return false;
+  } else if (file_size == 0) {
+    LOG(ERROR) << "Minidump memfd has size of 0";
+    return false;
+  }
+
+  if (fseeko(file.get(), 0, SEEK_SET) != 0) {
+    PLOG(ERROR) << "fseeko() error";
+    return false;
+  }
+
+  std::unique_ptr<char[]> buf(new char[file_size]);
+  if (fread(buf.get(), 1, file_size, file.get()) != file_size) {
+    PLOG(ERROR) << "fread() error";
+    return false;
+  }
+  if (contents)
+    contents->assign(buf.get(), file_size);
+
+  return true;
 }
 
 }  // namespace util

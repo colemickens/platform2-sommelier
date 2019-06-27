@@ -30,6 +30,13 @@ class ChromeCollector : public CrashCollector {
                    uid_t uid,
                    const std::string& exe_name);
 
+  // Handle a specific chrome crash through a memfd instead of a file.
+  // Returns true on success.
+  bool HandleCrashThroughMemfd(int memfd,
+                               pid_t pid,
+                               uid_t uid,
+                               const std::string& exe_name);
+
   void set_max_upload_bytes_for_test(int max_upload_bytes) {
     max_upload_bytes_ = max_upload_bytes;
   }
@@ -42,6 +49,13 @@ class ChromeCollector : public CrashCollector {
   FRIEND_TEST(ChromeCollectorTest, File);
   FRIEND_TEST(ChromeCollectorTest, HandleCrash);
   FRIEND_TEST(ChromeCollectorTest, HandleCrashWithEmbeddedNuls);
+
+  // Handle a specific chrome crash with dump data.
+  // Returns true on success.
+  bool HandleCrashWithDumpData(const std::string& data,
+                               pid_t pid,
+                               uid_t uid,
+                               const std::string& exe_name);
 
   // Crashes are expected to be in a TLV-style format of:
   // <name>:<length>:<value>

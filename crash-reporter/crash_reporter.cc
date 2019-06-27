@@ -179,6 +179,25 @@ int HandleChromeCrash(ChromeCollector* chrome_collector,
   return 0;
 }
 
+int HandleChromeCrashThroughMemfd(ChromeCollector* chrome_collector,
+                                  int memfd,
+                                  pid_t pid,
+                                  uid_t uid,
+                                  const std::string& exe) {
+  CHECK(memfd >= 0) << "--chrome_memfd= must be set";
+  CHECK(pid >= (pid_t)0) << "--pid= must be set";
+  CHECK(uid >= (uid_t)0) << "--uid= must be set";
+  CHECK(!exe.empty()) << "--exe= must be set";
+
+  brillo::LogToString(true);
+  bool handled =
+      chrome_collector->HandleCrashThroughMemfd(memfd, pid, uid, exe);
+  brillo::LogToString(false);
+  if (!handled)
+    return 1;
+  return 0;
+}
+
 int HandleUdevCrash(UdevCollector* udev_collector,
                     const std::string& udev_event) {
   // Handle a crash indicated by a udev event.
@@ -299,6 +318,7 @@ int main(int argc, char* argv[]) {
   DEFINE_string(service_failure, "", "The specific service name that failed");
   DEFINE_bool(selinux_violation, false, "Report collected SELinux violation");
   DEFINE_string(chrome, "", "Chrome crash dump file");
+  DEFINE_int32(chrome_memfd, -1, "Chrome crash dump memfd");
   DEFINE_int32(pid, -1, "PID of crashing process");
   DEFINE_int32(uid, -1, "UID of crashing process");
   DEFINE_string(exe, "", "Executable name of crashing process");
@@ -455,8 +475,15 @@ int main(int argc, char* argv[]) {
   }
 
   if (!FLAGS_chrome.empty()) {
+    CHECK(FLAGS_chrome_memfd == -1)
+        << "--chrome= and --chrome_memfd= cannot be both set";
     return HandleChromeCrash(&chrome_collector, FLAGS_chrome, FLAGS_pid,
                              FLAGS_uid, FLAGS_exe);
+  }
+
+  if (FLAGS_chrome_memfd != -1) {
+    return HandleChromeCrashThroughMemfd(&chrome_collector, FLAGS_chrome_memfd,
+                                         FLAGS_pid, FLAGS_uid, FLAGS_exe);
   }
 
 #if USE_CHEETS
