@@ -2,11 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-declare_args() {
-  # Subdir in platform2 where the package is located.
-  platform_subdir = ""
-}
-
 assert(platform_subdir != "", "platform_subdir must be set")
 
 group("root") {

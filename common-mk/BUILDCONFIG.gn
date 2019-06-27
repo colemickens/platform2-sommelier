@@ -48,6 +48,13 @@ declare_args() {
 
   # Set this to true if you want to activate the debug mode.
   is_debug = false
+
+  # Subdir in platform2 where the package is located.
+  # TODO(oka): This value is public because it is used in ap/ package for common
+  # targets to use different default flags based on the package to be built.
+  # This is hacky, so remove such usages and move this variable back to
+  # gn_root/BUILD.gn .
+  platform_subdir = ""
 }
 import("//common-mk/use.gni")
 
