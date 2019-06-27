@@ -265,13 +265,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
     kInvalidState,  // We should never be in this state.
   } Pkcs11State;
 
-  void set_pkcs11_state(Pkcs11State value) {
-    pkcs11_state_ = value;
-  }
+  virtual void set_pkcs11_state(Pkcs11State value) { pkcs11_state_ = value; }
 
-  Pkcs11State pkcs11_state() {
-    return pkcs11_state_;
-  }
+  virtual Pkcs11State pkcs11_state() { return pkcs11_state_; }
 
   // Returns the status of this mount as a Value
   //

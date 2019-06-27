@@ -453,7 +453,22 @@ void Pkcs11Adaptor::Pkcs11IsTpmTokenReady(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::Pkcs11IsTpmTokenReadyReply>> response,
     const user_data_auth::Pkcs11IsTpmTokenReadyRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(&Pkcs11Adaptor::DoPkcs11IsTpmTokenReady,
+                     base::Unretained(this),
+                     ThreadSafeDBusMethodResponse<
+                         user_data_auth::Pkcs11IsTpmTokenReadyReply>::
+                         MakeThreadSafe(std::move(response)),
+                     in_request));
+}
+
+void Pkcs11Adaptor::DoPkcs11IsTpmTokenReady(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::Pkcs11IsTpmTokenReadyReply>> response,
+    const user_data_auth::Pkcs11IsTpmTokenReadyRequest& in_request) {
   user_data_auth::Pkcs11IsTpmTokenReadyReply reply;
+  reply.set_ready(service_->Pkcs11IsTpmTokenReady());
   response->Return(reply);
 }
 

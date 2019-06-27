@@ -224,6 +224,9 @@ class UserDataAuth {
   // functionalities after mounting.
   void InitializePkcs11(cryptohome::Mount* mount);
 
+  // Returns true if and only if PKCS#11 tokens are ready for all mounts.
+  bool Pkcs11IsTpmTokenReady();
+
   // =============== Install Attributes Related Utilities ===============
 
   // Return true if this device is enterprise owned.

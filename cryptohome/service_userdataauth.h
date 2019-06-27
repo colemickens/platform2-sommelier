@@ -232,10 +232,19 @@ class Pkcs11Adaptor : public org::chromium::CryptohomePkcs11InterfaceInterface,
   void RegisterAsync() { RegisterWithDBusObject(dbus_object_); }
 
   // Interface overrides and related implementations
+  // Note that the documentation for all of the methods below can be found in
+  // either the DBus Introspection XML
+  // (cryptohome/dbus_bindings/org.chromium.UserDataAuth.xml), or the protobuf
+  // definition file (system_api/dbus/cryptohome/UserDataAuth.proto)
   void Pkcs11IsTpmTokenReady(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::Pkcs11IsTpmTokenReadyReply>> response,
       const user_data_auth::Pkcs11IsTpmTokenReadyRequest& in_request) override;
+  void DoPkcs11IsTpmTokenReady(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::Pkcs11IsTpmTokenReadyReply>> response,
+      const user_data_auth::Pkcs11IsTpmTokenReadyRequest& in_request);
+
   void Pkcs11GetTpmTokeInfo(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::Pkcs11GetTpmTokeInfoReply>> response,

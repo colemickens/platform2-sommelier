@@ -1757,4 +1757,19 @@ int64_t UserDataAuth::GetCurrentSpaceForArcGid(uid_t android_gid) {
   return arc_disk_quota_->GetCurrentSpaceForGid(android_gid);
 }
 
+bool UserDataAuth::Pkcs11IsTpmTokenReady() {
+  AssertOnMountThread();
+  // We touched the mounts_ object, so we need to be on mount thread.
+
+  bool ready = true;
+  for (const auto& mount_pair : mounts_) {
+    cryptohome::Mount* mount = mount_pair.second.get();
+    bool ok = (mount->pkcs11_state() == cryptohome::Mount::kIsInitialized);
+
+    ready = ready && ok;
+  }
+
+  return ready;
+}
+
 }  // namespace cryptohome

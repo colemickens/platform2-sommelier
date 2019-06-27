@@ -513,6 +513,67 @@ TEST_F(UserDataAuthTest, InitializePkcs11Unmounted) {
   EXPECT_EQ(mount_->pkcs11_state(), cryptohome::Mount::kUninitialized);
 }
 
+TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
+  // When there's no mount at all, it should be true.
+  EXPECT_TRUE(userdataauth_.Pkcs11IsTpmTokenReady());
+
+  constexpr char kUsername1[] = "foo@gmail.com";
+  constexpr char kUsername2[] = "bar@gmail.com";
+
+  // Check when there's 1 mount, and it's initialized.
+  scoped_refptr<NiceMock<MockMount>> mount1 = new NiceMock<MockMount>();
+  userdataauth_.set_mount_for_user(kUsername1, mount1.get());
+  EXPECT_CALL(*mount1, pkcs11_state())
+      .WillOnce(Return(cryptohome::Mount::kIsInitialized));
+  EXPECT_TRUE(userdataauth_.Pkcs11IsTpmTokenReady());
+
+  // Check various other PKCS#11 states.
+  EXPECT_CALL(*mount1, pkcs11_state())
+      .WillOnce(Return(cryptohome::Mount::kUninitialized));
+  EXPECT_FALSE(userdataauth_.Pkcs11IsTpmTokenReady());
+
+  EXPECT_CALL(*mount1, pkcs11_state())
+      .WillOnce(Return(cryptohome::Mount::kIsWaitingOnTPM));
+  EXPECT_FALSE(userdataauth_.Pkcs11IsTpmTokenReady());
+
+  EXPECT_CALL(*mount1, pkcs11_state())
+      .WillOnce(Return(cryptohome::Mount::kIsBeingInitialized));
+  EXPECT_FALSE(userdataauth_.Pkcs11IsTpmTokenReady());
+
+  EXPECT_CALL(*mount1, pkcs11_state())
+      .WillOnce(Return(cryptohome::Mount::kIsFailed));
+  EXPECT_FALSE(userdataauth_.Pkcs11IsTpmTokenReady());
+
+  EXPECT_CALL(*mount1, pkcs11_state())
+      .WillOnce(Return(cryptohome::Mount::kInvalidState));
+  EXPECT_FALSE(userdataauth_.Pkcs11IsTpmTokenReady());
+
+  // Check when there's another mount.
+  scoped_refptr<NiceMock<MockMount>> mount2 = new NiceMock<MockMount>();
+  userdataauth_.set_mount_for_user(kUsername2, mount2.get());
+
+  // Both is initialized.
+  EXPECT_CALL(*mount1, pkcs11_state())
+      .WillOnce(Return(cryptohome::Mount::kIsInitialized));
+  EXPECT_CALL(*mount2, pkcs11_state())
+      .WillOnce(Return(cryptohome::Mount::kIsInitialized));
+  EXPECT_TRUE(userdataauth_.Pkcs11IsTpmTokenReady());
+
+  // Only one is initialized.
+  EXPECT_CALL(*mount1, pkcs11_state())
+      .WillOnce(Return(cryptohome::Mount::kIsInitialized));
+  EXPECT_CALL(*mount2, pkcs11_state())
+      .WillOnce(Return(cryptohome::Mount::kUninitialized));
+  EXPECT_FALSE(userdataauth_.Pkcs11IsTpmTokenReady());
+
+  // Both uninitialized.
+  EXPECT_CALL(*mount1, pkcs11_state())
+      .WillOnce(Return(cryptohome::Mount::kUninitialized));
+  EXPECT_CALL(*mount2, pkcs11_state())
+      .WillOnce(Return(cryptohome::Mount::kUninitialized));
+  EXPECT_FALSE(userdataauth_.Pkcs11IsTpmTokenReady());
+}
+
 TEST_F(UserDataAuthTestNotInitialized, InstallAttributesEnterpriseOwned) {
   EXPECT_CALL(attrs_, Init(_)).WillOnce(Return(true));
 
