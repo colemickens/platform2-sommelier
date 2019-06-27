@@ -29,6 +29,7 @@ using tpm_manager::TpmOwnershipInterface;
 constexpr uint8_t kRandomByte = 0x12;
 constexpr uint16_t kExpectedIVSize = 16; /* AES IV size */
 constexpr uint8_t kDftPolicyFill = 0x23;
+constexpr uint8_t kWrongPolicyFill = 0x45;
 constexpr size_t kPolicyDigestSize = 32; /* SHA-256 digest */
 constexpr size_t kPcrValueSize = 32;     /* SHA-256 digest */
 
@@ -62,6 +63,10 @@ class SealedStorageTest : public ::testing::Test {
     return std::string(kPolicyDigestSize, kDftPolicyFill);
   }
 
+  static std::string WrongPolicyDigest() {
+    return std::string(kPolicyDigestSize, kWrongPolicyFill);
+  }
+
   static trunks::TPM2B_ECC_POINT GetECPointWithFilledXY(uint8_t x_fill,
                                                         uint8_t y_fill) {
     const trunks::TPMS_ECC_POINT point = {
@@ -84,6 +89,10 @@ class SealedStorageTest : public ::testing::Test {
     return GetECPointWithFilledXY(0x55, 0x66);
   }
 
+  static Policy ConstructEmptyPolicy() {
+    return {};
+  }
+
   static Policy ConstructPcrBoundPolicy() {
     Policy::PcrMap pcr_map;
 
@@ -96,6 +105,29 @@ class SealedStorageTest : public ::testing::Test {
 
   static std::string ConstructPcrValue(uint8_t pcr) {
     return std::string(kPcrValueSize, pcr ^ 0xFF);
+  }
+
+  // Convert the sealed data blob of the default version produced by Seal()
+  // into V1 blob.
+  static void ConvertToV1(Data* sealed_data) {
+    constexpr size_t kAdditionalV2DataSize =
+        /* plain size */ sizeof(uint16_t) +
+        /* policy digest */ sizeof(uint16_t) + kPolicyDigestSize;
+    (*sealed_data)[0] = 0x01;
+    sealed_data->erase(sealed_data->cbegin() + 1,
+                       sealed_data->cbegin() + 1 + kAdditionalV2DataSize);
+  }
+
+  // Sets up a pair of ZPoints returned from KeyGen and ZGen with the following
+  // properties: if you encrypt a particular data_to_seal with the first ZPoint
+  // (returned from KeyGen) and then decrypt it with the second ZPoint (returned
+  // from ZGen), decryption returns success as it produces valid padding (but
+  // not the same data, of course).
+  // Returns data_to_sign to be used with the setup ZPoints.
+  const SecretData SetupWrongZPointWithGarbageData() {
+    z_point_ = GetECPointWithFilledXY(0x11, 0x11);  // KeyGen
+    z_gen_out_point_ = GetECPointWithFilledXY(0x0F, 0x00);  // ZGen
+    return SecretData("testdata");
   }
 
   void SetUp() override {
@@ -379,6 +411,116 @@ TEST_F(SealedStorageTest, WrongDeviceStateError) {
   policy_pcr_result_ = trunks::TPM_RC_VALUE;
   ExpectCommandSequence();
   SealUnseal(true, false, DftDataToSeal());
+}
+
+TEST_F(SealedStorageTest, WrongRestoredZPointGarbage) {
+  const auto data_to_seal = SetupWrongZPointWithGarbageData();
+  policy_ = ConstructPcrBoundPolicy();
+  ExpectCommandSequence();
+  SealUnseal(true, false, data_to_seal);
+}
+
+TEST_F(SealedStorageTest, WrongPolicy) {
+  const auto data_to_seal = SetupWrongZPointWithGarbageData();
+  policy_ = ConstructPcrBoundPolicy();
+  sealed_storage_.reset_policy(policy_);
+
+  // Set up sealed_data with some initial policy digest.
+  policy_digest_ = DftPolicyDigest();
+  ExpectCommandSequence(true, false);
+  auto sealed_data = sealed_storage_.Seal(data_to_seal);
+  EXPECT_TRUE(sealed_data.has_value());
+  ResetMocks();
+
+  // Try unsealing with a different policy, resulting in a different digest.
+  policy_digest_ = WrongPolicyDigest();
+  EXPECT_CALL(tpm_ownership_, GetTpmStatus(_, _)).Times(AtLeast(0));
+  EXPECT_CALL(tpm_utility_, GetPolicyDigestForPcrValues(_, _, _)).Times(1);
+  EXPECT_CALL(tpm_, CreatePrimarySyncShort(_, _, _, _, _, _, _, _, _, _))
+      .Times(0);
+  EXPECT_CALL(tpm_, ECDH_ZGenSync(_, _, _, _, _)).Times(0);
+  auto result = sealed_storage_.Unseal(sealed_data.value());
+  EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(SealedStorageTest, NonEmptySealEmptyUnsealPolicy) {
+  const auto data_to_seal = SetupWrongZPointWithGarbageData();
+  policy_ = ConstructPcrBoundPolicy();
+  sealed_storage_.reset_policy(policy_);
+
+  // Set up sealed_data with some initial non-empty policy digest.
+  policy_digest_ = DftPolicyDigest();
+  ExpectCommandSequence(true, false);
+  auto sealed_data = sealed_storage_.Seal(data_to_seal);
+  EXPECT_TRUE(sealed_data.has_value());
+  ResetMocks();
+
+  // Try unsealing with an empty policy.
+  policy_ = ConstructEmptyPolicy();
+  sealed_storage_.reset_policy(policy_);
+  EXPECT_CALL(tpm_ownership_, GetTpmStatus(_, _)).Times(AtLeast(0));
+  EXPECT_CALL(tpm_utility_, GetPolicyDigestForPcrValues(_, _, _)).Times(0);
+  EXPECT_CALL(tpm_, CreatePrimarySyncShort(_, _, _, _, _, _, _, _, _, _))
+      .Times(0);
+  EXPECT_CALL(tpm_, ECDH_ZGenSync(_, _, _, _, _)).Times(0);
+  auto result = sealed_storage_.Unseal(sealed_data.value());
+  EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(SealedStorageTest, EmptySealNonEmptyUnsealPolicy) {
+  const auto data_to_seal = SetupWrongZPointWithGarbageData();
+  policy_ = ConstructEmptyPolicy();
+  sealed_storage_.reset_policy(policy_);
+
+  // Set up sealed_data with initial empty policy.
+  ExpectCommandSequence(true, false);
+  auto sealed_data = sealed_storage_.Seal(data_to_seal);
+  EXPECT_TRUE(sealed_data.has_value());
+  ResetMocks();
+
+  // Try unsealing with some non-empty policy.
+  policy_ = ConstructPcrBoundPolicy();
+  sealed_storage_.reset_policy(policy_);
+  EXPECT_CALL(tpm_ownership_, GetTpmStatus(_, _)).Times(AtLeast(0));
+  EXPECT_CALL(tpm_utility_, GetPolicyDigestForPcrValues(_, _, _)).Times(1);
+  EXPECT_CALL(tpm_, CreatePrimarySyncShort(_, _, _, _, _, _, _, _, _, _))
+      .Times(0);
+  EXPECT_CALL(tpm_, ECDH_ZGenSync(_, _, _, _, _)).Times(0);
+  auto result = sealed_storage_.Unseal(sealed_data.value());
+  EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(SealedStorageTest, CanUnsealV1) {
+  const auto data_to_seal = DftDataToSeal();
+  policy_ = ConstructPcrBoundPolicy();
+  sealed_storage_.reset_policy(policy_);
+  ExpectCommandSequence();
+
+  auto sealed_data = sealed_storage_.Seal(data_to_seal);
+  ASSERT_TRUE(sealed_data.has_value());
+  ConvertToV1(&sealed_data.value());
+
+  // Now set the correct expected plaintext size and unseal the V1 blob.
+  sealed_storage_.set_plain_size_for_v1(data_to_seal.size());
+  auto result = sealed_storage_.Unseal(sealed_data.value());
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result.value(), data_to_seal);
+}
+
+TEST_F(SealedStorageTest, WrongSizeForV1) {
+  const auto data_to_seal = DftDataToSeal();
+  policy_ = ConstructPcrBoundPolicy();
+  sealed_storage_.reset_policy(policy_);
+  ExpectCommandSequence();
+
+  auto sealed_data = sealed_storage_.Seal(data_to_seal);
+  ASSERT_TRUE(sealed_data.has_value());
+  ConvertToV1(&sealed_data.value());
+
+  // Now set a wrong expected plaintext size and try unsealing the V1 blob.
+  sealed_storage_.set_plain_size_for_v1(data_to_seal.size() + 10);
+  auto result = sealed_storage_.Unseal(sealed_data.value());
+  ASSERT_FALSE(result.has_value());
 }
 
 }  // namespace sealed_storage

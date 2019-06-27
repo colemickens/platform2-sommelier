@@ -54,10 +54,13 @@ using Data = brillo::Blob;
 using SecretData = brillo::SecureBlob;
 
 // Public seeds: data that will go into the resulting blob to allow later
-// decryption. Contains pub point and IV. See README.
+// decryption. Contains pub point, IV, plaintext size and policy digest.
+// See README.
 struct PubSeeds {
   trunks::TPM2B_ECC_POINT pub_point;
   trunks::TPM2B_DIGEST iv;
+  uint16_t plain_size;
+  base::Optional<std::string> policy_digest;
 };
 
 // Private seeds: the ephemeral private part that is "sealed" using the sealing
@@ -90,6 +93,10 @@ class SealedStorage {
     return tpm_ownership_;
   }
 
+  void set_plain_size_for_v1(uint16_t size) {
+    plain_size_for_v1_ = size;
+  }
+
   void reset_policy(const Policy& policy) { policy_ = policy; }
   const Policy& policy() const { return policy_; }
 
@@ -116,11 +123,15 @@ class SealedStorage {
 
  private:
   // Creates the TPM-bound ECC sealing key with the attached policy specified
-  // in the constructor.
-  // On success, returns true and fills |key_handle| and |key_name| with the
-  // handle and name of the created key object. On failure, returns false.
-  bool PrepareSealingKeyObject(trunks::TPM_HANDLE* key_handle,
-                               std::string* key_name) const;
+  // in the constructor. If |expected_digest| is specified checks that the
+  // resulting policy digest matches it, and returns false in case of mismatch.
+  // On success, returns true and fills |key_handle|, |key_name| and
+  // |resulting_digest| with the handle, name and policy digest of the created
+  // key object. On failure, returns false.
+  bool PrepareSealingKeyObject(
+      const base::Optional<std::string>& expected_digest,
+      trunks::TPM_HANDLE* key_handle, std::string* key_name,
+      std::string* resulting_digest) const;
 
   // Retrieves the endorsement password.
   // On success, returns true and fills the |password|.
@@ -172,6 +183,12 @@ class SealedStorage {
                              Data* encrypted_data) const;
 
   Policy policy_;
+
+  // What is the expected plaintext size for data sealed with version 1 of
+  // SealedStorage. In practice, v1 was only supposed to be used for 16 byte
+  // buffers, but can be manually reset, if some application used it for other
+  // data.
+  uint16_t plain_size_for_v1_ = 16;
 
   // dft_* memmbers must go before TrunksFactory* and pmOwnershipInterface*
   // to be deleted last during destruction.

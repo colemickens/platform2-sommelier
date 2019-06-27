@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
@@ -24,10 +25,16 @@
 namespace {
 
 // Version tag at the start of serialized sealed blob.
-constexpr char kSerializedVer = 0x01;
+enum SerializedVer : char {
+  kSerializedVer1 = 0x01,
+  kSerializedVer2 = 0x02
+};
 
 // Magic value, sha256 of which is extended to PCRs when requested.
 constexpr char kExtendMagic[] = "SealedStorage";
+
+constexpr size_t kPolicySize = crypto::kSHA256Length;
+constexpr size_t kPCRSize = crypto::kSHA256Length;
 
 // RAII version of EVP_CIPHER_CTX, with auto-initialization on instantiation
 // and auto-cleanup on leaving scope.
@@ -55,7 +62,7 @@ class SecureSHA256_CTX {
 
 // Get an 'empty policy' digest for the case when no PCR bindings are specified.
 std::string GetEmptyPolicy() {
-  return std::string(crypto::kSHA256Length, 0);
+  return std::string(kPolicySize, 0);
 }
 
 // Get value to extend to a requested PCR.
@@ -65,7 +72,7 @@ std::string GetExtendValue() {
 
 // Get the expected initial PCR value before anything is extended to it.
 std::string GetInitialPCRValue() {
-  return std::string(crypto::kSHA256Length, 0);
+  return std::string(kPCRSize, 0);
 }
 
 // Generate AES-256 key from Z point: key = SHA256(z.x)
@@ -82,7 +89,7 @@ brillo::SecureBlob GetKeyFromZ(const trunks::TPM2B_ECC_POINT& z) {
 std::string GetPCR0ValueForMode(const sealed_storage::BootMode& mode) {
   std::string mode_str(std::cbegin(mode), std::cend(mode));
   std::string mode_digest = base::SHA1HashString(mode_str);
-  mode_digest.resize(crypto::kSHA256Length);
+  mode_digest.resize(kPCRSize);
   return crypto::SHA256HashString(GetInitialPCRValue() + mode_digest);
 }
 
@@ -136,6 +143,34 @@ void ReportOpenSSLError(const std::string& op_name) {
   VLOG(1) << "Error details: " << GetOpenSSLError();
 }
 
+// Gets policy data from serialized blob.
+// Returns base::nullopt in case of error.
+base::Optional<std::string> DeserializePolicyDigest(
+    std::string* serialized_data) {
+  DCHECK(serialized_data);
+
+  uint16_t size;
+  if (trunks::Parse_uint16_t(serialized_data, &size,
+                             nullptr /* value_bytes */) !=
+      trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Failed to parse policy digest size";
+    return base::nullopt;
+  }
+  if (serialized_data->size() < size) {
+    LOG(ERROR) << "Policy digest longer than the remaining sealed data: "
+                << serialized_data->size() << " < " << size;
+    return base::nullopt;
+  }
+
+  std::string policy_digest = serialized_data->substr(0, size);
+  serialized_data->erase(0, size);
+  if (policy_digest.size() != kPolicySize) {
+    LOG(ERROR) << "Unexpected policy digest size: " << policy_digest.size();
+    return base::nullopt;
+  }
+  return policy_digest;
+}
+
 }  // namespace
 
 namespace sealed_storage {
@@ -157,13 +192,15 @@ struct Key {
   // returns nullopt.
   base::Optional<Data> Encrypt(const SecretData& plain_data) const;
 
-  // Decrypts the data using the initialized key and IV. In case of error,
+  // Decrypts the data using the initialized key and IV. Verifies that the
+  // resulting plaintext size matches the |expected size_|. In case of error,
   // returns nullopt.
   base::Optional<SecretData> Decrypt(const Data& encrypted_data) const;
 
  private:
   brillo::SecureBlob key_;
   brillo::Blob iv_;
+  uint16_t expected_size_;
 };
 
 Policy::PcrMap::value_type Policy::BootModePCR(const BootMode& mode) {
@@ -222,6 +259,7 @@ base::Optional<Data> SealedStorage::Seal(const SecretData& plain_data) const {
   if (!CreateEncryptionSeeds(&priv_seeds, &pub_seeds)) {
     return base::nullopt;
   }
+  pub_seeds.plain_size = plain_data.size();
   VLOG(2) << "Created encryption seeds";
 
   Key key;
@@ -300,8 +338,10 @@ base::Optional<bool> SealedStorage::CheckState() const {
   return true;
 }
 
-bool SealedStorage::PrepareSealingKeyObject(trunks::TPM_HANDLE* key_handle,
-                                            std::string* key_name) const {
+bool SealedStorage::PrepareSealingKeyObject(
+    const base::Optional<std::string>& expected_digest,
+    trunks::TPM_HANDLE* key_handle, std::string* key_name,
+    std::string* resulting_digest) const {
   CHECK(key_handle);
   CHECK(key_name);
 
@@ -323,6 +363,15 @@ bool SealedStorage::PrepareSealingKeyObject(trunks::TPM_HANDLE* key_handle,
     policy_digest = GetEmptyPolicy();
   }
   VLOG(2) << "Created policy digest: " << HexDump(policy_digest);
+  if (expected_digest.has_value() &&
+      expected_digest.value() != policy_digest) {
+    VLOG(2) << "Expected policy digest: " << HexDump(expected_digest.value());
+    LOG(ERROR) << "Policy mismatch";
+    return false;
+  }
+  if (resulting_digest) {
+    *resulting_digest = policy_digest;
+  }
 
   trunks::TPMS_SENSITIVE_CREATE sensitive = {};
   memset(&sensitive, 0, sizeof(sensitive));
@@ -426,9 +475,12 @@ bool SealedStorage::CreateEncryptionSeeds(PrivSeeds* priv_seeds,
 
   trunks::TPM_HANDLE key_handle;
   std::string key_name;
-  if (!PrepareSealingKeyObject(&key_handle, &key_name)) {
+  std::string resulting_digest;
+  if (!PrepareSealingKeyObject(base::nullopt, &key_handle, &key_name,
+                               &resulting_digest)) {
     return false;
   }
+  pub_seeds->policy_digest = std::move(resulting_digest);
 
   auto result = trunks_factory_->GetTpm()->ECDH_KeyGenSync(
       key_handle, key_name, &priv_seeds->z_point, &pub_seeds->pub_point,
@@ -454,7 +506,8 @@ bool SealedStorage::RestoreEncryptionSeeds(const PubSeeds& pub_seeds,
 
   trunks::TPM_HANDLE key_handle;
   std::string key_name;
-  if (!PrepareSealingKeyObject(&key_handle, &key_name)) {
+  if (!PrepareSealingKeyObject(pub_seeds.policy_digest, &key_handle, &key_name,
+                               nullptr)) {
     return false;
   }
 
@@ -485,7 +538,23 @@ bool SealedStorage::RestoreEncryptionSeeds(const PubSeeds& pub_seeds,
 
 base::Optional<Data> SealedStorage::SerializeSealedBlob(
     const PubSeeds& pub_seeds, const Data& encrypted_data) const {
-  std::string serialized_data(1, kSerializedVer);
+  std::string serialized_data(1, kSerializedVer2);
+
+  trunks::Serialize_uint16_t(pub_seeds.plain_size, &serialized_data);
+
+  if (!pub_seeds.policy_digest.has_value()) {
+    LOG(ERROR) << "Missing policy digest during serialization";
+    return base::nullopt;
+  }
+  if (pub_seeds.policy_digest->size() != kPolicySize) {
+    LOG(ERROR) << "Unexpected policy digest size during serialization: "
+               << pub_seeds.policy_digest->size();
+    return base::nullopt;
+  }
+  trunks::Serialize_uint16_t(pub_seeds.policy_digest->size(), &serialized_data);
+  serialized_data.append(pub_seeds.policy_digest->begin(),
+                         pub_seeds.policy_digest->end());
+
   if (trunks::Serialize_TPM2B_ECC_POINT(
           pub_seeds.pub_point, &serialized_data) != trunks::TPM_RC_SUCCESS) {
     LOG(ERROR) << "Failed to serialize public point";
@@ -518,12 +587,31 @@ bool SealedStorage::DeserializeSealedBlob(const Data& sealed_data,
     LOG(ERROR) << "Empty sealed data";
     return false;
   }
-  if (serialized_data[0] != kSerializedVer) {
-    LOG(ERROR) << "Unexpected serialized version: "
-               << base::HexEncode(serialized_data.data(), 1);
-    return false;
-  }
+
+  uint8_t version = serialized_data[0];
   serialized_data.erase(0, 1);
+  switch (version) {
+    case kSerializedVer1:
+      pub_seeds->plain_size = plain_size_for_v1_;
+      pub_seeds->policy_digest.reset();
+      break;
+    case kSerializedVer2:
+      if (trunks::Parse_uint16_t(&serialized_data, &pub_seeds->plain_size,
+                                 nullptr /* value_bytes */) !=
+          trunks::TPM_RC_SUCCESS) {
+        LOG(ERROR) << "Failed to parse plain data size";
+        return false;
+      }
+      pub_seeds->policy_digest = DeserializePolicyDigest(&serialized_data);
+      if (!pub_seeds->policy_digest.has_value()) {
+        LOG(ERROR) << "Failed to parse policy digest";
+        return false;
+      }
+      break;
+    default:
+      LOG(ERROR) << "Unexpected serialized version: " << version;
+      return false;
+  }
 
   if (trunks::Parse_TPM2B_ECC_POINT(&serialized_data, &pub_seeds->pub_point,
                                     nullptr /* value_bytes */) !=
@@ -569,10 +657,17 @@ bool Key::Init(const PrivSeeds& priv_seeds, const PubSeeds& pub_seeds) {
     LOG(ERROR) << "Unexpected key size: " << key_.size();
     return false;
   }
+  expected_size_ = pub_seeds.plain_size;
   return true;
 }
 
 base::Optional<Data> Key::Encrypt(const SecretData& plain_data) const {
+  if (plain_data.size() != expected_size_) {
+    LOG(ERROR) << "Unexpected plain data size: " << plain_data.size() << " != "
+               << expected_size_;
+    return base::nullopt;
+  }
+
   SecureEVP_CIPHER_CTX ctx;
   if (!EVP_EncryptInit_ex(ctx.get(), GetCipher(), nullptr, key_.data(),
                           iv_.data())) {
@@ -630,6 +725,12 @@ base::Optional<SecretData> Key::Decrypt(const Data& encrypted_data) const {
   }
 
   const size_t max_decrypted_size = encrypted_data.size() + GetBlockSize();
+  if (max_decrypted_size < expected_size_) {
+    LOG(ERROR) << "Not enough data for expected size: "
+               << encrypted_data.size() << " leads to max "
+               << max_decrypted_size << " < " << expected_size_;
+    return base::nullopt;
+  }
   SecretData decrypted_data(max_decrypted_size);
   int decrypted_size;
   if (!EVP_DecryptUpdate(
@@ -660,9 +761,9 @@ base::Optional<SecretData> Key::Decrypt(const Data& encrypted_data) const {
     return base::nullopt;
   }
   decrypted_size += decrypted_size_final;
-  if (decrypted_size > max_decrypted_size) {
-    LOG(ERROR) << "Unexpected decrypted data size after finalization: "
-               << decrypted_size << " > " << max_decrypted_size;
+  if (decrypted_size != expected_size_) {
+    LOG(ERROR) << "Unexpected decrypted data size: "
+               << decrypted_size << " != " << expected_size_;
     return base::nullopt;
   }
   decrypted_data.resize(decrypted_size);
