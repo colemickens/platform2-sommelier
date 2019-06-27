@@ -8,6 +8,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <brillo/cryptohome.h>
 #include <chromeos/libhwsec/task_dispatching_framework.h>
 
 #include "cryptohome/service_userdataauth.h"
@@ -648,6 +649,8 @@ void CryptohomeMiscAdaptor::GetSanitizedUsername(
         user_data_auth::GetSanitizedUsernameReply>> response,
     const user_data_auth::GetSanitizedUsernameRequest& in_request) {
   user_data_auth::GetSanitizedUsernameReply reply;
+  reply.set_sanitized_username(
+      brillo::cryptohome::home::SanitizeUserName(in_request.username()));
   response->Return(reply);
 }
 
