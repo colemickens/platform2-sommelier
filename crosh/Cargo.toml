@@ -1,0 +1,13 @@
+[package]
+name = "crosh"
+version = "0.24.52"
+authors = ["The Chromium OS Authors"]
+edition = "2018"
+
+[profile.release]
+panic = "abort"
+overflow-checks = true
+
+[dependencies]
+libc = "0.2.44"
+sys_util = "*"
