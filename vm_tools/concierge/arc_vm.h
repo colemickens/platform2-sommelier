@@ -83,7 +83,6 @@ class ArcVm final : public VmInterface {
   uint32_t Netmask() const;
 
   // VmInterface overrides.
-  // TODO(yusukes): Implement USB and SetTime calls.
   bool Shutdown() override;
   VmInterface::Info GetInfo() override;
   bool AttachUsbDevice(uint8_t bus,
@@ -91,13 +90,9 @@ class ArcVm final : public VmInterface {
                        uint16_t vid,
                        uint16_t pid,
                        int fd,
-                       UsbControlResponse* response) override {
-    return true;
-  }
-  bool DetachUsbDevice(uint8_t port, UsbControlResponse* response) override {
-    return true;
-  }
-  bool ListUsbDevice(std::vector<UsbDevice>* devices) override { return true; }
+                       UsbControlResponse* response) override;
+  bool DetachUsbDevice(uint8_t port, UsbControlResponse* response) override;
+  bool ListUsbDevice(std::vector<UsbDevice>* devices) override;
   void HandleSuspendImminent() override;
   void HandleSuspendDone() override;
   bool SetResolvConfig(
@@ -105,6 +100,7 @@ class ArcVm final : public VmInterface {
       const std::vector<std::string>& search_domains) override {
     return true;
   }
+  // TODO(b/136143058): Implement SetTime calls.
   bool SetTime(std::string* failure_reason) override { return true; }
   void SetTremplinStarted() override { NOTREACHED(); }
 

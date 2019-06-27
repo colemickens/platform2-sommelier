@@ -30,9 +30,6 @@ namespace vm_tools {
 namespace concierge {
 namespace {
 
-// Path to the crosvm binary.
-constexpr char kCrosvmBin[] = "/usr/bin/crosvm";
-
 // Name of the plugin dispatcher runtime directory.
 constexpr char kDispatcherRuntimeDir[] = "/run/pvm";
 

@@ -27,9 +27,6 @@ namespace vm_tools {
 namespace concierge {
 namespace {
 
-// Path to the crosvm binary.
-constexpr char kCrosvmBin[] = "/usr/bin/crosvm";
-
 // Name of the control socket used for controlling crosvm.
 constexpr char kCrosvmSocket[] = "arcvm.sock";
 
@@ -204,6 +201,25 @@ bool ArcVm::Shutdown() {
 
   LOG(ERROR) << "Failed to kill VM " << vsock_cid_ << " with SIGKILL";
   return false;
+}
+
+bool ArcVm::AttachUsbDevice(uint8_t bus,
+                            uint8_t addr,
+                            uint16_t vid,
+                            uint16_t pid,
+                            int fd,
+                            UsbControlResponse* response) {
+  return vm_tools::concierge::AttachUsbDevice(GetVmSocketPath(), bus, addr, vid,
+                                              pid, fd, response);
+}
+
+bool ArcVm::DetachUsbDevice(uint8_t port, UsbControlResponse* response) {
+  return vm_tools::concierge::DetachUsbDevice(GetVmSocketPath(), port,
+                                              response);
+}
+
+bool ArcVm::ListUsbDevice(std::vector<UsbDevice>* devices) {
+  return vm_tools::concierge::ListUsbDevice(GetVmSocketPath(), devices);
 }
 
 void ArcVm::HandleSuspendImminent() {

@@ -8,11 +8,16 @@
 #include <sys/types.h>
 
 #include <string>
+#include <vector>
 
 #include <base/time/time.h>
+#include <vm_tools/concierge/usb_control.h>
 
 namespace vm_tools {
 namespace concierge {
+
+// Path to the crosvm binary.
+const char kCrosvmBin[] = "/usr/bin/crosvm";
 
 // Calculates the amount of memory to give the virtual machine. Currently
 // configured to provide 75% of system memory. This is deliberately over
@@ -32,8 +37,26 @@ bool WaitForChild(pid_t child, base::TimeDelta timeout);
 // Returns true if a process with |pid| exists.
 bool CheckProcessExists(pid_t pid);
 
-// Runs a crosvm subcommend.
+// Runs a crosvm subcommand.
 void RunCrosvmCommand(std::string command, std::string socket_path);
+
+// Attaches an usb device at host |bus|:|addr|, with |vid|, |pid| and an opened
+// |fd|.
+bool AttachUsbDevice(std::string socket_path,
+                     uint8_t bus,
+                     uint8_t addr,
+                     uint16_t vid,
+                     uint16_t pid,
+                     int fd,
+                     UsbControlResponse* response);
+
+// Detaches the usb device at guest |port|.
+bool DetachUsbDevice(std::string socket_path,
+                     uint8_t port,
+                     UsbControlResponse* response);
+
+// Lists all usb devices attached to guest.
+bool ListUsbDevice(std::string socket_path, std::vector<UsbDevice>* devices);
 
 }  // namespace concierge
 }  // namespace vm_tools
