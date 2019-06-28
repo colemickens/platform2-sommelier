@@ -90,7 +90,7 @@ class CellularCapabilityCdma : public CellularCapability3gpp {
               UpdateServiceActivationStateProperty);
 
   // CDMA property change handlers
-  virtual void OnModemCdmaPropertiesChanged(
+  void OnModemCdmaPropertiesChanged(
       const KeyValueStore& properties,
       const std::vector<std::string>& invalidated_properties);
   void OnCdmaRegistrationChanged(MMModemCdmaRegistrationState state_1x,
