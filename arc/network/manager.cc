@@ -14,12 +14,15 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <base/posix/unix_domain_socket_linux.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <brillo/minijail/minijail.h>
 
 #include "arc/network/ipc.pb.h"
@@ -37,6 +40,24 @@ constexpr char kEventUp[] = "UP";
 // Indicates the guest is shutting down.
 constexpr char kEventDown[] = "DOWN";
 
+// TODO(garrick): Remove this workaround ASAP.
+int GetContainerPID() {
+  const base::FilePath path("/run/containers/android-run_oci/container.pid");
+  std::string pid_str;
+  if (!base::ReadFileToStringWithMaxSize(path, &pid_str, 16 /* max size */)) {
+    LOG(ERROR) << "Failed to read pid file";
+    return -1;
+  }
+  int pid;
+  if (!base::StringToInt(base::TrimWhitespaceASCII(pid_str, base::TRIM_ALL),
+                         &pid)) {
+    LOG(ERROR) << "Failed to convert container pid string";
+    return -1;
+  }
+  LOG(INFO) << "Read container pid as " << pid;
+  return pid;
+}
+
 }  // namespace
 
 namespace arc_networkd {
@@ -51,6 +72,7 @@ Manager::Manager(std::unique_ptr<HelperProcess> ip_helper,
           AddressManager::Guest::ARC_NET,
       }),
       enable_multinet_(enable_multinet),
+      arc_pid_(-1),
       gsock_(AF_UNIX, SOCK_DGRAM),
       gsock_watcher_(FROM_HERE) {}
 
@@ -101,6 +123,12 @@ int Manager::OnInit() {
     return -1;
   }
 
+  // TODO(garrick): Remove this workaround ASAP.
+  // Handle signals for ARC lifecycle.
+  RegisterHandler(SIGUSR1,
+                  base::Bind(&Manager::OnSignal, base::Unretained(this)));
+  RegisterHandler(SIGUSR2,
+                  base::Bind(&Manager::OnSignal, base::Unretained(this)));
   base::MessageLoopForIO::current()->WatchFileDescriptor(
       gsock_.fd(), true, base::MessageLoopForIO::WATCH_READ, &gsock_watcher_,
       this);
@@ -132,6 +160,28 @@ void Manager::OnFileCanReadWithoutBlocking(int fd) {
 
   std::string msg(buf);
   OnGuestNotification(msg);
+}
+
+// TODO(garrick): Remove this workaround ASAP.
+bool Manager::OnSignal(const struct signalfd_siginfo& info) {
+  std::string msg;
+  if (info.ssi_signo == SIGUSR1) {
+    arc_pid_ = GetContainerPID();
+    if (arc_pid_ > 0) {
+      msg = base::StringPrintf("ARC UP %d", arc_pid_);
+    } else {
+      msg = "ARC UP";
+    }
+  } else {
+    if (arc_pid_ > 0) {
+      msg = base::StringPrintf("ARC DOWN %d", arc_pid_);
+      arc_pid_ = -1;
+    } else {
+      msg = "ARC DOWN";
+    }
+  }
+  OnGuestNotification(msg);
+  return false;
 }
 
 void Manager::OnGuestNotification(const std::string& notification) {

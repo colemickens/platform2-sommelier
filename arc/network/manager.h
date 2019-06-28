@@ -59,6 +59,8 @@ class Manager final : public brillo::DBusDaemon,
   // Relays device messages to the IpHelper process.
   void SendDeviceMessage(const DeviceMessage& msg);
 
+  bool OnSignal(const struct signalfd_siginfo& info);
+
   friend std::ostream& operator<<(std::ostream& stream, const Manager& manager);
 
   std::unique_ptr<HelperProcess> ip_helper_;
@@ -69,6 +71,7 @@ class Manager final : public brillo::DBusDaemon,
   std::unique_ptr<DeviceManager> device_mgr_;
 
   bool enable_multinet_;
+  int arc_pid_;
 
   Socket gsock_;
   base::MessageLoopForIO::FileDescriptorWatcher gsock_watcher_;

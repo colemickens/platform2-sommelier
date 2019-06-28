@@ -36,6 +36,10 @@ class AdbProxy : public brillo::Daemon, public base::MessageLoopForIO::Watcher {
   void OnGuestMessage(const GuestMessage& msg);
 
  private:
+  // Detects when the guest OS is turned up and torn down and cleans up any
+  // existing forwarders and connections.
+  bool OnSignal(const struct signalfd_siginfo& info);
+
   void Reset();
 
   // Attempts to establish a connection to ADB at well-known destinations.
