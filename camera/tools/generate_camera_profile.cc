@@ -152,14 +152,8 @@ bool HasCameraFilter() {
 int main(int argc, char* argv[]) {
   // Init CommandLine for InitLogging.
   base::CommandLine::Init(argc, argv);
-  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   base::AtExitManager at_exit_manager;
-
-  int log_flags = brillo::kLogToSyslog;
-  if (cl->HasSwitch("foreground")) {
-    log_flags |= brillo::kLogToStderr;
-  }
-  brillo::InitLog(log_flags);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
 
   if (HasCameraFilter()) {
     // If camera filter flag is presented, autotest toggling camera filter

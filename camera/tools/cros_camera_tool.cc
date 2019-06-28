@@ -154,16 +154,11 @@ bool StringEqualsCaseInsensitiveASCII(const std::string& a,
 int main(int argc, char* argv[]) {
   // Init CommandLine for InitLogging.
   base::CommandLine::Init(argc, argv);
-  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   base::AtExitManager at_exit_manager;
-
-  int log_flags = brillo::kLogToSyslog;
-  if (cl->HasSwitch("foreground")) {
-    log_flags |= brillo::kLogToStderr;
-  }
-  brillo::InitLog(log_flags);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
   // FIXME: Currently only "modules list" command is supported
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   const std::vector<std::string>& args = cl->GetArgs();
   if (cl->GetArgs().empty() ||
       !std::equal(kArgsPattern.begin(), kArgsPattern.end(), args.begin(),

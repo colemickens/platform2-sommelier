@@ -21,13 +21,7 @@ int main(int argc, char* argv[]) {
   // Init CommandLine for InitLogging.
   brillo::OpenLog("arc-camera-service", true /* log_pid */);
   base::CommandLine::Init(argc, argv);
-  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
-
-  int log_flags = brillo::kLogToSyslog;
-  if (cl->HasSwitch("foreground")) {
-    log_flags |= brillo::kLogToStderr;
-  }
-  brillo::InitLog(log_flags);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
   const bool kOptionPID = true;
   const bool kOptionTID = true;
@@ -36,6 +30,7 @@ int main(int argc, char* argv[]) {
   logging::SetLogItems(kOptionPID, kOptionTID, kOptionTimestamp,
                        kOptionTickcount);
 
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   if (cl->HasSwitch("child")) {
     // This process was launched in the child mode.
     std::string token = cl->GetSwitchValueASCII("child");
