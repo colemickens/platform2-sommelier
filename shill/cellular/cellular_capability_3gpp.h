@@ -139,18 +139,6 @@ class CellularCapability3gpp : public CellularCapability {
   std::string GetMdnForOLP(const MobileOperatorInfo* operator_info) const;
 
  private:
-  struct ModemModes {
-    ModemModes()
-        : allowed_modes(MM_MODEM_MODE_NONE),
-          preferred_mode(MM_MODEM_MODE_NONE) {}
-
-    ModemModes(uint32_t allowed, MMModemMode preferred)
-        : allowed_modes(allowed), preferred_mode(preferred) {}
-
-    uint32_t allowed_modes;      // Bits based on MMModemMode.
-    MMModemMode preferred_mode;  // A single MMModemMode bit.
-  };
-
   // Constants used in scan results.  Make available to unit tests.
   // TODO(jglasgow): Generate from modem manager into ModemManager-names.h.
   // See http://crbug.com/212909.
