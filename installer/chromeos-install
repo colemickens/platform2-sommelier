@@ -595,9 +595,8 @@ install_stateful() {
     # partition to be reported after next boot. See:
     # init/upstart/send-recovery-metrics.conf
     local recovery_histograms="${TMPMNT}/.recovery_histograms"
-
-    echo "Installer.Recovery.Reason $(crossystem recovery_reason) 255" \
-      > "${recovery_histograms}"
+    metrics_client -W "${recovery_histograms}" -e "Installer.Recovery.Reason" \
+      "$(crossystem recovery_reason)" 255
   fi
 
   local dir
