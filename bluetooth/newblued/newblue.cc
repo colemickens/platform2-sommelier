@@ -67,6 +67,11 @@ bool Newblue::ListenReadyForUp(base::Closure callback) {
 }
 
 bool Newblue::BringUp() {
+  // The public LTKs that we should block.
+  static const struct smKey blockedLtks[] = {
+      {0xbf, 0x01, 0xfb, 0x9d, 0x4e, 0xf3, 0xbc, 0x36, 0xd8, 0x74, 0xf5, 0x39,
+       0x41, 0x38, 0x68, 0x4c}};
+
   if (!libnewblue_->HciIsUp()) {
     LOG(ERROR) << "HCI is not ready for up";
     return false;
@@ -94,6 +99,11 @@ bool Newblue::BringUp() {
 
   if (!libnewblue_->SmInit()) {
     LOG(ERROR) << "Failed to init SM";
+    return false;
+  }
+
+  if (!libnewblue_->SmSetBlockedLtks(blockedLtks, 1 /* count */)) {
+    LOG(ERROR) << "Failed to set blocked LTKs";
     return false;
   }
 

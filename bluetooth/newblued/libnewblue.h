@@ -139,6 +139,10 @@ class LibNewblue {
   LIBNEWBLUE_METHOD1(SmKnownDevicesFree,
                      smKnownDevicesFree,
                      void(struct smKnownDevNode*));
+  LIBNEWBLUE_METHOD2(SmSetBlockedLtks,
+                     smSetBlockedLtks,
+                     /* NOLINTNEXTLINE(readability/casting) */
+                     bool(const struct smKey*, uint8_t));
 
   // btleHid.h
   LIBNEWBLUE_METHOD2(BtleHidInit,
