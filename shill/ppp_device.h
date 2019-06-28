@@ -42,7 +42,8 @@ class PPPDevice : public VirtualDevice {
   // sending traffic with matching source addresses to the per-device
   // routing table.
   virtual void UpdateIPConfigFromPPP(
-      const std::map<std::string, std::string>& configuration, bool blackhole_ipv6);
+      const std::map<std::string, std::string>& configuration,
+      bool blackhole_ipv6);
 
   // Return an IPConfig::Properties struct parsed from |configuration|,
   // but don't set the IPConfig.  This lets the caller tweak or inspect
