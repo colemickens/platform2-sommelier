@@ -27,7 +27,7 @@ void InitMojo() {
   mojo::edk::InitIPCSupport(base::ThreadTaskRunnerHandle::Get());
 }
 
-constexpr char kCupsProxySocketPath[] = "/run/cups_proxy/cups_proxy.sock";
+constexpr char kCupsProxySocketPath[] = "/run/cups_proxy/cups.sock";
 
 base::ScopedFD InitSocket() {
   base::ScopedFD fd(socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0));
