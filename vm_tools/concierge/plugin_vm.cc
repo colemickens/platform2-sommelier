@@ -582,8 +582,7 @@ bool PluginVm::Start(uint32_t cpus,
       "/dev/log:/dev/log:true",
       "/lib64:/lib64:false",
       "/run/camera:/run/camera:true",
-      // TODO(b:117218264) replace with CUPS proxy socket directory when ready.
-      "/run/cups:/run/cups:true",
+      "/run/cups_proxy:/run/cups:true",
       // TODO(b:127478233) replace with CRAS proxy socket directory when ready.
       "/run/cras:/run/cras:true",
       base::StringPrintf("%s:%s:false", kPluginBinDir, kPluginBinDir),
