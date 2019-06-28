@@ -234,8 +234,8 @@ if (use.test) {
       "../syslog/scrubber_test.cc",
     ]
     configs += [
-      ":host_target_defaults",
       "//common-mk:test",
+      ":host_target_defaults",
     ]
     deps = [
       ":libforwarder",

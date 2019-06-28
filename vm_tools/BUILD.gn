@@ -150,9 +150,12 @@ if (use.fuzzer) {
     sources = [
       "cicerone/container_listener_impl_fuzzer.cc",
     ]
+
+    # //common-mk:test should be on the top.
+    # TODO(crbug.com/887845): Remove this comment after library ordering issue is fixed.
     configs += [
-      "//common-mk/common_fuzzer:common_fuzzer",
       "//common-mk:test",
+      "//common-mk/common_fuzzer:common_fuzzer",
     ]
     pkg_deps = [
       "libchrome-test-${libbase_ver}",  # For FuzzedDataProvider
