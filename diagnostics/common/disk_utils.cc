@@ -143,42 +143,40 @@ bool GetDriveDeviceSizeInBytes(const base::FilePath& dev_path,
   return true;
 }
 
-// TODO(wbbradley): address testing concerns https://crbug.com/969746
-bool GetUdevDiskTypeFromSubsystemChain(udev_device* input_device,
-                                       std::string* subsystem_output) {
-  udev_device* device = input_device;
-  VLOG(1) << "GetUdevDeviceSubsystems(...)";
-  while (device != nullptr) {
-    const char* subsystem = udev_device_get_subsystem(device);
-    const char* driver = udev_device_get_driver(device);
-    VLOG(1) << "GetUdevDeviceSubsystems(...) .. {subsystem: "
-            << (subsystem ? subsystem : "<none>")
-            << ", DRIVER: " << (driver ? driver : "<none>") << "}";
+// Fill the output with a colon-separated list of subsystems. For example,
+// "block:mmc:mmc_host:pci". Similar output is returned by `lsblk -o SUBSYSTEMS`
+bool GetUdevDeviceSubsystems(udev_device* input_device,
+                             std::string* subsystem_output) {
+  // |subsystems| will track the stack of subsystems that this device uses.
+  std::vector<std::string> subsystems;
 
-    // If we found a subsystem that is not "block" or "pci". Let's call this
-    // subsystem the "type" of the device.
-    if (subsystem != nullptr && strcmp(subsystem, "block") != 0 &&
-        strcmp(subsystem, "pci") != 0) {
-      if (subsystem_output) {
-        *subsystem_output = subsystem;
-      }
-      VLOG(1) << "Found subsystem " << subsystem << " for device "
-              << udev_device_get_syspath(input_device);
-      return true;
+  for (udev_device* device = input_device; device != nullptr;
+       device = udev_device_get_parent(device)) {
+    const char* subsystem = udev_device_get_subsystem(device);
+    if (subsystem != nullptr) {
+      subsystems.push_back(subsystem);
     }
-    device = udev_device_get_parent(device);
   }
 
-  VLOG(1) << "Unable to get a non-\"block\" subsystem from device";
-  return false;
+  if (subsystems.empty()) {
+    const char* devnode = udev_device_get_devnode(input_device);
+    VLOG(1) << "Unable to collect any subsystems for device "
+            << (devnode ? devnode : "<unknown>");
+    return false;
+  }
+
+  if (subsystem_output) {
+    *subsystem_output = base::JoinString(subsystems, ":");
+  }
+  return true;
 }
 
 // Return the /dev/... name for |sys_path|, which should be a
 // /sys/class/block/... name. This utilizes libudev. Also returns the driver
-// |subsystem| for use in determining the "type" of the block device.
+// |subsystems| for use in determining the "type" of the block device.
 bool GatherSysPathRelatedInfo(const base::FilePath& sys_path,
                               base::FilePath* devnode_path,
-                              std::string* disk_type) {
+                              std::string* subsystems) {
   udev* udev = udev_new();
   if (udev == nullptr) {
     LOG(ERROR) << "Unable to get udev.";
@@ -192,7 +190,7 @@ bool GatherSysPathRelatedInfo(const base::FilePath& sys_path,
       udev_device_new_from_syspath(udev, sys_path.value().c_str());
 
   if (device != nullptr) {
-    if (!GetUdevDiskTypeFromSubsystemChain(device, disk_type)) {
+    if (!GetUdevDeviceSubsystems(device, subsystems)) {
       VLOG(1) << "Unable to get a disk type from the subsystem chain.";
     } else {
       if (devnode_path) {
@@ -215,7 +213,8 @@ bool FetchNonRemovableBlockDeviceInfo(
   NonRemovableBlockDeviceInfo info;
 
   base::FilePath devnode_path;
-  if (!GatherSysPathRelatedInfo(sys_path, &devnode_path, &info.type)) {
+  if (!GatherSysPathRelatedInfo(sys_path, &devnode_path,
+                                /*subsystems=*/&info.type)) {
     VLOG(1) << "Unable to get the dev node path for " << sys_path.value();
     return false;
   }
