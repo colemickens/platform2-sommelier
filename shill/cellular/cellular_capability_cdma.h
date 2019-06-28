@@ -108,9 +108,6 @@ class CellularCapabilityCdma : public CellularCapability3gpp {
 
   void UpdateServiceActivationStateProperty();
 
-  static std::string GetActivationStateString(uint32_t state);
-  static std::string GetActivationErrorString(uint32_t error);
-
   std::unique_ptr<mm1::ModemModemCdmaProxyInterface> modem_cdma_proxy_;
 
   // CDMA ActivationState property.

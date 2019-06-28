@@ -340,8 +340,6 @@ class CellularCapability3gpp : public CellularCapability {
   void UpdateServiceActivationState();
   void OnResetAfterActivationReply(const Error& error);
 
-  static bool IsRegisteredState(MMModem3gppRegistrationState state);
-
   void set_active_bearer_for_test(std::unique_ptr<CellularBearer> bearer) {
     active_bearer_ = std::move(bearer);
   }

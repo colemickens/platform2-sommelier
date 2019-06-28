@@ -28,6 +28,43 @@ static string ObjectID(CellularCapabilityCdma* c) {
 }
 }  // namespace Logging
 
+namespace {
+
+string GetActivationStateString(uint32_t state) {
+  switch (state) {
+    case MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED:
+      return kActivationStateActivated;
+    case MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING:
+      return kActivationStateActivating;
+    case MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED:
+      return kActivationStateNotActivated;
+    case MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED:
+      return kActivationStatePartiallyActivated;
+    default:
+      return kActivationStateUnknown;
+  }
+}
+
+string GetActivationErrorString(uint32_t error) {
+  switch (error) {
+    case MM_CDMA_ACTIVATION_ERROR_WRONG_RADIO_INTERFACE:
+      return kErrorNeedEvdo;
+    case MM_CDMA_ACTIVATION_ERROR_ROAMING:
+      return kErrorNeedHomeNetwork;
+    case MM_CDMA_ACTIVATION_ERROR_COULD_NOT_CONNECT:
+    case MM_CDMA_ACTIVATION_ERROR_SECURITY_AUTHENTICATION_FAILED:
+    case MM_CDMA_ACTIVATION_ERROR_PROVISIONING_FAILED:
+      return kErrorOtaspFailed;
+    case MM_CDMA_ACTIVATION_ERROR_NONE:
+      return "";
+    case MM_CDMA_ACTIVATION_ERROR_NO_SIGNAL:
+    default:
+      return kErrorActivationFailed;
+  }
+}
+
+}  // namespace
+
 CellularCapabilityCdma::CellularCapabilityCdma(Cellular* cellular,
                                                ModemInfo* modem_info)
     : CellularCapability3gpp(cellular, modem_info),
@@ -280,41 +317,6 @@ void CellularCapabilityCdma::HandleNewActivationStatus(uint32_t error) {
       GetActivationStateString(activation_state_));
   cellular()->service()->set_error(GetActivationErrorString(error));
   UpdateServiceOLP();
-}
-
-// static
-string CellularCapabilityCdma::GetActivationStateString(uint32_t state) {
-  switch (state) {
-    case MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED:
-      return kActivationStateActivated;
-    case MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING:
-      return kActivationStateActivating;
-    case MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED:
-      return kActivationStateNotActivated;
-    case MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED:
-      return kActivationStatePartiallyActivated;
-    default:
-      return kActivationStateUnknown;
-  }
-}
-
-// static
-string CellularCapabilityCdma::GetActivationErrorString(uint32_t error) {
-  switch (error) {
-    case MM_CDMA_ACTIVATION_ERROR_WRONG_RADIO_INTERFACE:
-      return kErrorNeedEvdo;
-    case MM_CDMA_ACTIVATION_ERROR_ROAMING:
-      return kErrorNeedHomeNetwork;
-    case MM_CDMA_ACTIVATION_ERROR_COULD_NOT_CONNECT:
-    case MM_CDMA_ACTIVATION_ERROR_SECURITY_AUTHENTICATION_FAILED:
-    case MM_CDMA_ACTIVATION_ERROR_PROVISIONING_FAILED:
-      return kErrorOtaspFailed;
-    case MM_CDMA_ACTIVATION_ERROR_NONE:
-      return "";
-    case MM_CDMA_ACTIVATION_ERROR_NO_SIGNAL:
-    default:
-      return kErrorActivationFailed;
-  }
 }
 
 void CellularCapabilityCdma::RegisterOnNetwork(const string& network_id,

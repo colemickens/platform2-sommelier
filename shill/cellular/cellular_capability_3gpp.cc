@@ -127,6 +127,11 @@ MMBearerAllowedAuth ApnAuthenticationToMMBearerAllowedAuth(
   return MM_BEARER_ALLOWED_AUTH_UNKNOWN;
 }
 
+bool IsRegisteredState(MMModem3gppRegistrationState state) {
+  return (state == MM_MODEM_3GPP_REGISTRATION_STATE_HOME ||
+          state == MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING);
+}
+
 }  // namespace
 
 CellularCapability3gpp::CellularCapability3gpp(Cellular* cellular,
@@ -856,12 +861,6 @@ void CellularCapability3gpp::OnRegisterReply(const ResultCallback& callback,
 
 bool CellularCapability3gpp::IsRegistered() const {
   return IsRegisteredState(registration_state_);
-}
-
-bool CellularCapability3gpp::IsRegisteredState(
-    MMModem3gppRegistrationState state) {
-  return (state == MM_MODEM_3GPP_REGISTRATION_STATE_HOME ||
-          state == MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING);
 }
 
 void CellularCapability3gpp::SetUnregistered(bool searching) {
