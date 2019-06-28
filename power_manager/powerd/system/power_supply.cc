@@ -256,6 +256,10 @@ void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
     proto->set_battery_vendor(status.battery_vendor);
     proto->set_battery_voltage(status.battery_voltage);
     proto->set_battery_cycle_count(status.battery_cycle_count);
+    proto->set_battery_serial_number(status.battery_serial_number);
+    proto->set_battery_charge_full_design(status.battery_charge_full_design);
+    proto->set_battery_charge_full(status.battery_charge_full);
+    proto->set_battery_voltage_min_design(status.battery_voltage_min_design);
   }
 
   for (auto port : status.ports) {
@@ -950,16 +954,22 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
     status->battery_cycle_count = cycle_count;
   }
 
+  ReadAndTrimString(path, "serial_number", &status->battery_serial_number);
+
   // Attempt to determine nominal voltage for time-remaining calculations. This
   // may or may not be the same as the instantaneous voltage |battery_voltage|,
   // as voltage levels vary over the time the battery is charged or discharged.
   // Some batteries don't have a voltage_min/max_design attribute, so just use
   // the current voltage in that case.
   double nominal_voltage = voltage;
-  if (base::PathExists(path.Append("voltage_min_design")))
-    nominal_voltage = ReadScaledDouble(path, "voltage_min_design");
-  else if (base::PathExists(path.Append("voltage_max_design")))
+  // TODO(khegde): https://crbug.com/980246
+  if (base::PathExists(path.Append("voltage_min_design"))) {
+    status->battery_voltage_min_design =
+        ReadScaledDouble(path, "voltage_min_design");
+    nominal_voltage = status->battery_voltage_min_design;
+  } else if (base::PathExists(path.Append("voltage_max_design"))) {
     nominal_voltage = ReadScaledDouble(path, "voltage_max_design");
+  }
 
   // Nominal voltage is not required to obtain the charge level; if it's
   // missing, just use |battery_voltage|.

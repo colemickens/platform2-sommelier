@@ -54,7 +54,9 @@ constexpr double kDefaultSecondCharge = 2.0;
 constexpr double kDefaultSecondChargeFull = 3.0;
 constexpr double kDefaultSecondChargeFullDesign = 4.0;
 constexpr double kVoltage = 2.5;
+constexpr double kVoltageMinDesign = 2.0;
 constexpr int64_t kCycleCount = 10000;
+constexpr char kSerialNumber[] = "1000";
 // Default value for kPowerSupplyFullFactorPref.
 constexpr double kFullFactor = 0.98;
 
@@ -172,6 +174,7 @@ class PowerSupplyTest : public ::testing::Test {
     WriteDoubleValue(battery_dir_, "voltage_now", kVoltage);
     WriteDoubleValue(battery_dir_, "voltage_min_design", kVoltage);
     WriteValue(battery_dir_, "cycle_count", base::IntToString(kCycleCount));
+    WriteValue(battery_dir_, "serial_number", kSerialNumber);
   }
 
   // Updates the files describing the power source and battery status.
@@ -425,6 +428,11 @@ TEST_F(PowerSupplyTest, ChargingAndDischarging) {
   EXPECT_DOUBLE_EQ(kCurrent * kVoltage, power_status.battery_energy_rate);
   EXPECT_DOUBLE_EQ(50.0, power_status.battery_percentage);
   EXPECT_EQ(kCycleCount, power_status.battery_cycle_count);
+  EXPECT_EQ(kSerialNumber, power_status.battery_serial_number);
+  EXPECT_DOUBLE_EQ(kDefaultChargeFullDesign,
+                   power_status.battery_charge_full_design);
+  EXPECT_DOUBLE_EQ(kDefaultChargeFull, power_status.battery_charge_full);
+  EXPECT_DOUBLE_EQ(kVoltage, power_status.battery_voltage_min_design);
 
   // Test with a negative current.
   UpdateChargeAndCurrent(kCharge, -kCurrent);
@@ -1743,8 +1751,12 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   status.battery_state = PowerSupplyProperties_BatteryState_CHARGING;
   status.supports_dual_role_devices = false;
   status.battery_vendor = "TEST_MFR";
-  status.battery_voltage = 12.792;
-  status.battery_cycle_count = 2;
+  status.battery_voltage = kVoltage;
+  status.battery_cycle_count = kCycleCount;
+  status.battery_serial_number = kSerialNumber;
+  status.battery_charge_full_design = kDefaultChargeFullDesign;
+  status.battery_charge_full = kDefaultChargeFull;
+  status.battery_voltage_min_design = kVoltageMinDesign;
 
   PowerSupplyProperties proto;
   CopyPowerStatusToProtocolBuffer(status, &proto);
@@ -1760,6 +1772,12 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   EXPECT_EQ(status.battery_vendor, proto.battery_vendor());
   EXPECT_EQ(status.battery_voltage, proto.battery_voltage());
   EXPECT_EQ(status.battery_cycle_count, proto.battery_cycle_count());
+  EXPECT_EQ(status.battery_serial_number, proto.battery_serial_number());
+  EXPECT_DOUBLE_EQ(status.battery_charge_full_design,
+                   proto.battery_charge_full_design());
+  EXPECT_DOUBLE_EQ(status.battery_charge_full, proto.battery_charge_full());
+  EXPECT_DOUBLE_EQ(status.battery_voltage_min_design,
+                   proto.battery_voltage_min_design());
 
   // Check that power source details are copied, but that ports that don't have
   // anything connected are ignored.
