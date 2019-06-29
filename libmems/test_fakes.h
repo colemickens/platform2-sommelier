@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBMEMS_TEST_MOCKS_H_
-#define LIBMEMS_TEST_MOCKS_H_
+#ifndef LIBMEMS_TEST_FAKES_H_
+#define LIBMEMS_TEST_FAKES_H_
 
 #include <algorithm>
 #include <functional>
@@ -20,10 +20,10 @@
 #include "libmems/iio_device.h"
 
 namespace libmems {
-namespace mocks {
-class LIBMEMS_EXPORT MockIioChannel : public IioChannel {
+namespace fakes {
+class LIBMEMS_EXPORT FakeIioChannel : public IioChannel {
  public:
-  MockIioChannel(const std::string& id, bool enabled);
+  FakeIioChannel(const std::string& id, bool enabled);
 
   const char* GetId() const override { return id_.c_str(); }
 
@@ -35,11 +35,11 @@ class LIBMEMS_EXPORT MockIioChannel : public IioChannel {
   bool enabled_;
 };
 
-class MockIioContext;
+class FakeIioContext;
 
-class LIBMEMS_EXPORT MockIioDevice : public IioDevice {
+class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
  public:
-  MockIioDevice(MockIioContext* ctx,
+  FakeIioDevice(FakeIioContext* ctx,
                 const std::string& name,
                 const std::string& id);
 
@@ -77,7 +77,7 @@ class LIBMEMS_EXPORT MockIioDevice : public IioDevice {
   bool IsBufferEnabled(size_t* n = nullptr) const override;
 
  private:
-  MockIioContext* context_;
+  FakeIioContext* context_;
   std::string name_;
   std::string id_;
   std::map<std::string, int> numeric_attributes_;
@@ -88,22 +88,22 @@ class LIBMEMS_EXPORT MockIioDevice : public IioDevice {
   bool buffer_enabled_ = false;
 };
 
-class LIBMEMS_EXPORT MockIioContext : public IioContext {
+class LIBMEMS_EXPORT FakeIioContext : public IioContext {
  public:
-  MockIioContext() = default;
+  FakeIioContext() = default;
 
-  void AddDevice(MockIioDevice* device);
+  void AddDevice(FakeIioDevice* device);
 
   void Reload() override {}
 
   IioDevice* GetDevice(const std::string& name) override;
 
  private:
-  std::map<std::string, MockIioDevice*> devices_;
+  std::map<std::string, FakeIioDevice*> devices_;
 };
 
-}  // namespace mocks
+}  // namespace fakes
 
 }  // namespace libmems
 
-#endif  // LIBMEMS_TEST_MOCKS_H_
+#endif  // LIBMEMS_TEST_FAKES_H_

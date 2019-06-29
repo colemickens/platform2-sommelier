@@ -10,17 +10,17 @@
 
 #include <libmems/iio_context.h>
 #include <libmems/iio_device.h>
-#include <libmems/test_mocks.h>
+#include <libmems/test_fakes.h>
 #include "mems_setup/configuration.h"
 #include "mems_setup/delegate.h"
 #include "mems_setup/sensor_location.h"
+#include "mems_setup/test_fakes.h"
 #include "mems_setup/test_helper.h"
-#include "mems_setup/test_mocks.h"
 
-using libmems::mocks::MockIioChannel;
-using libmems::mocks::MockIioContext;
-using libmems::mocks::MockIioDevice;
-using mems_setup::mocks::MockDelegate;
+using libmems::fakes::FakeIioChannel;
+using libmems::fakes::FakeIioContext;
+using libmems::fakes::FakeIioDevice;
+using mems_setup::fakes::FakeDelegate;
 using mems_setup::testing::SensorTestBase;
 
 namespace mems_setup {

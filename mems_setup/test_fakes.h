@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MEMS_SETUP_TEST_MOCKS_H_
-#define MEMS_SETUP_TEST_MOCKS_H_
+#ifndef MEMS_SETUP_TEST_FAKES_H_
+#define MEMS_SETUP_TEST_FAKES_H_
 
 #include <algorithm>
 #include <functional>
@@ -17,9 +17,9 @@
 #include "mems_setup/delegate.h"
 
 namespace mems_setup {
-namespace mocks {
+namespace fakes {
 
-class MockDelegate : public Delegate {
+class FakeDelegate : public Delegate {
  public:
   void SetVpdValue(const std::string& name, const std::string& value) {
     CHECK(!name.empty());
@@ -57,8 +57,8 @@ class MockDelegate : public Delegate {
   std::map<std::string, std::pair<uid_t, gid_t>> ownerships_;
 };
 
-}  // namespace mocks
+}  // namespace fakes
 
 }  // namespace mems_setup
 
-#endif  // MEMS_SETUP_TEST_MOCKS_H_
+#endif  // MEMS_SETUP_TEST_FAKES_H_

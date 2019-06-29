@@ -35,6 +35,6 @@ shared_library("libmems_test_support") {
     ":libmems",
   ]
   sources = [
-    "test_mocks.cc",
+    "test_fakes.cc",
   ]
 }

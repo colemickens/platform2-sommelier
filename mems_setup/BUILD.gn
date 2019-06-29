@@ -72,8 +72,8 @@ if (use.test) {
     sources = [
       "accelerometer_test.cc",
       "gyroscope_test.cc",
+      "test_fakes.cc",
       "test_helper.cc",
-      "test_mocks.cc",
       "vpd_loader_test.cc",
     ]
   }

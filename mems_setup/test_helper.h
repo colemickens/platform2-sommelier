@@ -15,28 +15,28 @@
 
 #include <libmems/iio_context.h>
 #include <libmems/iio_device.h>
-#include <libmems/test_mocks.h>
+#include <libmems/test_fakes.h>
 #include "mems_setup/configuration.h"
 #include "mems_setup/delegate.h"
 #include "mems_setup/sensor_kind.h"
-#include "mems_setup/test_mocks.h"
+#include "mems_setup/test_fakes.h"
 
 namespace mems_setup {
 namespace testing {
 
-class MockSysfsTrigger : public libmems::mocks::MockIioDevice {
+class FakeSysfsTrigger : public libmems::fakes::FakeIioDevice {
  public:
-  MockSysfsTrigger(libmems::mocks::MockIioContext* ctx,
-                   libmems::mocks::MockIioDevice* trigger0)
-      : MockIioDevice(ctx, "iio_sysfs_trigger", "iio_sysfs_trigger"),
+  FakeSysfsTrigger(libmems::fakes::FakeIioContext* ctx,
+                   libmems::fakes::FakeIioDevice* trigger0)
+      : FakeIioDevice(ctx, "iio_sysfs_trigger", "iio_sysfs_trigger"),
         mock_context_(ctx),
         mock_trigger0_(trigger0) {}
 
   bool WriteNumberAttribute(const std::string& name, int64_t value) override;
 
  private:
-  libmems::mocks::MockIioContext* mock_context_;
-  libmems::mocks::MockIioDevice* mock_trigger0_;
+  libmems::fakes::FakeIioContext* mock_context_;
+  libmems::fakes::FakeIioDevice* mock_trigger0_;
 };
 
 class SensorTestBase : public ::testing::Test {
@@ -44,12 +44,12 @@ class SensorTestBase : public ::testing::Test {
   Configuration* GetConfiguration();
 
  protected:
-  std::unique_ptr<libmems::mocks::MockIioContext> mock_context_;
-  std::unique_ptr<mems_setup::mocks::MockDelegate> mock_delegate_;
-  std::unique_ptr<libmems::mocks::MockIioDevice> mock_device_;
+  std::unique_ptr<libmems::fakes::FakeIioContext> mock_context_;
+  std::unique_ptr<mems_setup::fakes::FakeDelegate> mock_delegate_;
+  std::unique_ptr<libmems::fakes::FakeIioDevice> mock_device_;
 
-  std::unique_ptr<libmems::mocks::MockIioDevice> mock_trigger0_;
-  std::unique_ptr<MockSysfsTrigger> mock_sysfs_trigger_;
+  std::unique_ptr<libmems::fakes::FakeIioDevice> mock_trigger0_;
+  std::unique_ptr<FakeSysfsTrigger> mock_sysfs_trigger_;
 
   std::unique_ptr<Configuration> config_;
 
