@@ -31,7 +31,7 @@ static_library("libmems_setup") {
     "delegate_impl.cc",
     "sensor_kind.cc",
   ]
-  pkg_deps = [ "libmems" ]
+  public_pkg_deps = [ "libmems" ]
 }
 
 executable("mems_setup") {
@@ -42,7 +42,6 @@ executable("mems_setup") {
   deps = [
     ":libmems_setup",
   ]
-  pkg_deps = [ "libmems" ]
 }
 
 if (use.test) {
@@ -64,10 +63,7 @@ if (use.test) {
       "//common-mk/testrunner",
     ]
 
-    pkg_deps = [
-      "libmems",
-      "libmems_test_support",
-    ]
+    pkg_deps = [ "libmems_test_support" ]
 
     sources = [
       "accelerometer_test.cc",
