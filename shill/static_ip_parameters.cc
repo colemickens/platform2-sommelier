@@ -188,19 +188,19 @@ void StaticIPParameters::Save(
     bool property_exists = false;
     switch (property.type) {
       case Property::kTypeInt32:
-        if (args_.Contains<int32_t>(property.name)) {
+        if (args_.ContainsInt(property.name)) {
           property_exists = true;
           storage->SetInt(storage_id, name, args_.GetInt(property.name));
         }
         break;
       case Property::kTypeString:
-        if (args_.Contains<string>(property.name)) {
+        if (args_.ContainsString(property.name)) {
           property_exists = true;
           storage->SetString(storage_id, name, args_.GetString(property.name));
         }
         break;
       case Property::kTypeStrings:
-        if (args_.Contains<Strings>(property.name)) {
+        if (args_.ContainsStrings(property.name)) {
           property_exists = true;
           // Name servers field is stored in storage as comma separated string.
           // Keep it as is to be backward compatible.
@@ -222,7 +222,7 @@ void StaticIPParameters::Save(
 void StaticIPParameters::ApplyInt(
     const string& property, int32_t* value_out) {
   saved_args_.SetInt(property, *value_out);
-  if (args_.Contains<int32_t>(property)) {
+  if (args_.ContainsInt(property)) {
     *value_out = args_.GetInt(property);
   }
 }
@@ -230,7 +230,7 @@ void StaticIPParameters::ApplyInt(
 void StaticIPParameters::ApplyString(
     const string& property, string* value_out) {
   saved_args_.SetString(property, *value_out);
-  if (args_.Contains<string>(property)) {
+  if (args_.ContainsString(property)) {
     *value_out = args_.GetString(property);
   }
 }
@@ -238,14 +238,14 @@ void StaticIPParameters::ApplyString(
 void StaticIPParameters::ApplyStrings(
     const string& property, vector<string>* value_out) {
   saved_args_.SetStrings(property, *value_out);
-  if (args_.Contains<Strings>(property)) {
+  if (args_.ContainsStrings(property)) {
     *value_out = args_.GetStrings(property);
   }
 }
 
 void StaticIPParameters::RestoreStrings(
     const string& property, vector<string>* value_out) {
-  if (saved_args_.Contains<Strings>(property)) {
+  if (saved_args_.ContainsStrings(property)) {
     *value_out = saved_args_.GetStrings(property);
   } else {
     value_out->clear();
@@ -283,7 +283,7 @@ void StaticIPParameters::ApplyRoutes(const string& property,
   }
   saved_args_.SetStrings(property, saved_routes);
 
-  if (!args_.Contains<Strings>(property)) {
+  if (!args_.ContainsStrings(property)) {
     return;
   }
   value_out->clear();
@@ -294,7 +294,7 @@ void StaticIPParameters::RestoreRoutes(const string& property,
                                        const string& gateway,
                                        vector<IPConfig::Route>* value_out) {
   value_out->clear();
-  if (saved_args_.Contains<Strings>(property)) {
+  if (saved_args_.ContainsStrings(property)) {
     ParseRoutes(saved_args_.GetStrings(property), gateway, value_out);
   }
 }
@@ -336,12 +336,12 @@ void StaticIPParameters::ClearSavedParameters() {
 }
 
 bool StaticIPParameters::ContainsAddress() const {
-  return args_.Contains<string>(kAddressProperty) &&
-         args_.Contains<int32_t>(kPrefixlenProperty);
+  return args_.ContainsString(kAddressProperty) &&
+      args_.ContainsInt(kPrefixlenProperty);
 }
 
 bool StaticIPParameters::ContainsNameServers() const {
-  return args_.Contains<Strings>(kNameServersProperty);
+  return args_.ContainsStrings(kNameServersProperty);
 }
 
 void StaticIPParameters::ClearMappedProperty(
@@ -351,21 +351,21 @@ void StaticIPParameters::ClearMappedProperty(
   const Property& property = kProperties[index];
   switch (property.type) {
     case Property::kTypeInt32:
-      if (args_.Contains<int32_t>(property.name)) {
+      if (args_.ContainsInt(property.name)) {
         args_.Remove(property.name);
       } else {
         error->Populate(Error::kNotFound, "Property is not set");
       }
       break;
     case Property::kTypeString:
-      if (args_.Contains<string>(property.name)) {
+      if (args_.ContainsString(property.name)) {
         args_.Remove(property.name);
       } else {
         error->Populate(Error::kNotFound, "Property is not set");
       }
       break;
     case Property::kTypeStrings:
-      if (args_.Contains<Strings>(property.name)) {
+      if (args_.ContainsStrings(property.name)) {
         args_.Remove(property.name);
       } else {
         error->Populate(Error::kNotFound, "Property is not set");
@@ -387,7 +387,7 @@ int32_t StaticIPParameters::GetMappedInt32Property(
   CHECK(index < arraysize(kProperties));
 
   const string& key = kProperties[index].name;
-  if (!args_.Contains<int32_t>(key)) {
+  if (!args_.ContainsInt(key)) {
     error->Populate(Error::kNotFound, "Property is not set");
     return 0;
   }
@@ -399,7 +399,7 @@ int32_t StaticIPParameters::GetMappedSavedInt32Property(
   CHECK(index < arraysize(kProperties));
 
   const string& key = kProperties[index].name;
-  if (!saved_args_.Contains<int32_t>(key)) {
+  if (!saved_args_.ContainsInt(key)) {
     error->Populate(Error::kNotFound, "Property is not set");
     return 0;
   }
@@ -411,7 +411,7 @@ string StaticIPParameters::GetMappedStringProperty(
   CHECK(index < arraysize(kProperties));
 
   const string& key = kProperties[index].name;
-  if (!args_.Contains<string>(key)) {
+  if (!args_.ContainsString(key)) {
     error->Populate(Error::kNotFound, "Property is not set");
     return string();
   }
@@ -423,7 +423,7 @@ string StaticIPParameters::GetMappedSavedStringProperty(
   CHECK(index < arraysize(kProperties));
 
   const string& key = kProperties[index].name;
-  if (!saved_args_.Contains<string>(key)) {
+  if (!saved_args_.ContainsString(key)) {
     error->Populate(Error::kNotFound, "Property is not set");
     return string();
   }
@@ -435,7 +435,7 @@ string StaticIPParameters::GetMappedStringsProperty(
   CHECK(index < arraysize(kProperties));
 
   const string& key = kProperties[index].name;
-  if (!args_.Contains<Strings>(key)) {
+  if (!args_.ContainsStrings(key)) {
     error->Populate(Error::kNotFound, "Property is not set");
     return string();
   }
@@ -447,7 +447,7 @@ string StaticIPParameters::GetMappedSavedStringsProperty(
   CHECK(index < arraysize(kProperties));
 
   const string& key = kProperties[index].name;
-  if (!saved_args_.Contains<Strings>(key)) {
+  if (!saved_args_.ContainsStrings(key)) {
     error->Populate(Error::kNotFound, "Property is not set");
     return string();
   }
@@ -457,7 +457,7 @@ string StaticIPParameters::GetMappedSavedStringsProperty(
 bool StaticIPParameters::SetMappedInt32Property(
     const size_t& index, const int32_t& value, Error* error) {
   CHECK(index < arraysize(kProperties));
-  if (args_.Contains<int32_t>(kProperties[index].name) &&
+  if (args_.ContainsInt(kProperties[index].name) &&
       args_.GetInt(kProperties[index].name) == value) {
     return false;
   }
@@ -474,7 +474,7 @@ bool StaticIPParameters::SetMappedSavedInt32Property(
 bool StaticIPParameters::SetMappedStringProperty(
     const size_t& index, const string& value, Error* error) {
   CHECK(index < arraysize(kProperties));
-  if (args_.Contains<string>(kProperties[index].name) &&
+  if (args_.ContainsString(kProperties[index].name) &&
       args_.GetString(kProperties[index].name) == value) {
     return false;
   }
@@ -494,7 +494,7 @@ bool StaticIPParameters::SetMappedStringsProperty(
 
   vector<string> string_list = base::SplitString(
       value, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-  if (args_.Contains<Strings>(kProperties[index].name) &&
+  if (args_.ContainsStrings(kProperties[index].name) &&
       args_.GetStrings(kProperties[index].name) == string_list) {
     return false;
   }

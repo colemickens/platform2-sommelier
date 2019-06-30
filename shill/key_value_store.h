@@ -9,42 +9,15 @@
 #include <string>
 #include <vector>
 
-#include <brillo/type_list.h>
 #include <brillo/variant_dictionary.h>
 
 #include "shill/data_types.h"
 
 namespace shill {
 
-class KeyValueStore;
-
-using KeyValueTypes = brillo::TypeList<bool,
-                                       uint8_t,
-                                       uint16_t,
-                                       uint32_t,
-                                       int16_t,
-                                       int32_t,
-                                       int64_t,
-                                       double,
-
-                                       std::vector<bool>,
-                                       std::vector<uint8_t>,
-                                       std::vector<std::vector<uint8_t>>,
-                                       std::vector<uint32_t>,
-                                       std::vector<int32_t>,
-                                       std::vector<int64_t>,
-                                       std::vector<double>,
-
-                                       KeyValueStore,
-                                       std::string,
-                                       Stringmap,
-                                       Strings,
-                                       RpcIdentifier,
-                                       RpcIdentifiers>;
-
 class KeyValueStore {
   // A simple store for key-value pairs, which supports (a limited set of)
-  // heterogenous value types, as defined in the KeyValueTypes typelist above.
+  // heterogenous value types.
   //
   // Compare to PropertyStore, which enables a class to (selectively)
   // expose its instance members as properties accessible via
@@ -68,11 +41,27 @@ class KeyValueStore {
   void CopyFrom(const KeyValueStore& b);
   bool IsEmpty();
 
-  template <typename T, typename = brillo::EnableIfIsOneOf<T, KeyValueTypes>>
-  bool Contains(const std::string& name) const {
-    return ContainsVariant(name) &&
-           properties_.find(name)->second.IsTypeCompatible<T>();
-  }
+  bool ContainsBool(const std::string& name) const;
+  bool ContainsBools(const std::string& name) const;
+  bool ContainsByteArrays(const std::string& name) const;
+  bool ContainsInt(const std::string& name) const;
+  bool ContainsInts(const std::string& name) const;
+  bool ContainsInt16(const std::string& name) const;
+  bool ContainsInt64(const std::string& name) const;
+  bool ContainsInt64s(const std::string& name) const;
+  bool ContainsDouble(const std::string& name) const;
+  bool ContainsDoubles(const std::string& name) const;
+  bool ContainsKeyValueStore(const std::string& name) const;
+  bool ContainsRpcIdentifier(const std::string& name) const;
+  bool ContainsRpcIdentifiers(const std::string& name) const;
+  bool ContainsString(const std::string& name) const;
+  bool ContainsStringmap(const std::string& name) const;
+  bool ContainsStrings(const std::string& name) const;
+  bool ContainsUint(const std::string& name) const;
+  bool ContainsUint16(const std::string& name) const;
+  bool ContainsUint8(const std::string& name) const;
+  bool ContainsUint8s(const std::string& name) const;
+  bool ContainsUint32s(const std::string& name) const;
   bool ContainsVariant(const std::string& name) const;
 
   bool GetBool(const std::string& name) const;

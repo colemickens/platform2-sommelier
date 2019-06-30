@@ -129,7 +129,7 @@ TEST_F(DhcpPropertiesTest, ClearMappedStringPropertyWithSetValue) {
   Error error;
   string value_in_prop_store;
   store.ClearProperty("DHCPProperty.Hostname", &error);
-  EXPECT_FALSE(dhcp_properties_.properties_.Contains<string>("Hostname"));
+  EXPECT_FALSE(dhcp_properties_.properties_.ContainsString("Hostname"));
 }
 
 TEST_F(DhcpPropertiesTest, ClearMappedStringPropertyNoExistingValue) {

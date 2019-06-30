@@ -533,14 +533,14 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore& args,
   }
 
   vector<uint8_t> ssid;
-  if (args.Contains<string>(kWifiHexSsid)) {
+  if (args.ContainsString(kWifiHexSsid)) {
     string ssid_hex_string = args.GetString(kWifiHexSsid);
     if (!base::HexStringToBytes(ssid_hex_string, &ssid)) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                             "Hex SSID parameter is not valid");
       return false;
     }
-  } else if (args.Contains<string>(kSSIDProperty)) {
+  } else if (args.ContainsString(kSSIDProperty)) {
     string ssid_string = args.GetString(kSSIDProperty);
     ssid = vector<uint8_t>(ssid_string.begin(), ssid_string.end());
   } else {
@@ -562,15 +562,15 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore& args,
   }
 
   const string kDefaultSecurity = kSecurityNone;
-  if (args.Contains<string>(kSecurityProperty) &&
-      args.Contains<string>(kSecurityClassProperty) &&
+  if (args.ContainsString(kSecurityProperty) &&
+      args.ContainsString(kSecurityClassProperty) &&
       args.LookupString(kSecurityClassProperty, kDefaultSecurity) !=
-          args.LookupString(kSecurityProperty, kDefaultSecurity)) {
+      args.LookupString(kSecurityProperty, kDefaultSecurity)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           kManagerErrorArgumentConflict);
     return false;
   }
-  if (args.Contains<string>(kSecurityClassProperty)) {
+  if (args.ContainsString(kSecurityClassProperty)) {
     string security_class_test =
         args.LookupString(kSecurityClassProperty, kDefaultSecurity);
     if (!WiFiService::IsValidSecurityClass(security_class_test)) {
@@ -579,7 +579,7 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore& args,
       return false;
     }
     *security_method = security_class_test;
-  } else if (args.Contains<string>(kSecurityProperty)) {
+  } else if (args.ContainsString(kSecurityProperty)) {
     string security_method_test =
         args.LookupString(kSecurityProperty, kDefaultSecurity);
     if (!WiFiService::IsValidSecurityMethod(security_method_test)) {

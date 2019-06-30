@@ -1032,7 +1032,7 @@ TEST_P(CellularTest, StorageIdentifier) {
 namespace {
 
 MATCHER(ContainsPhoneNumber, "") {
-  return arg.Contains<string>(
+  return arg.ContainsString(
       CellularCapabilityClassic::kConnectPropertyPhoneNumber);
 }
 

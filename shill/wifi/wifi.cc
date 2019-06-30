@@ -1545,18 +1545,18 @@ void WiFi::PropertiesChangedTask(
   // Note that order matters here. In particular, we want to process
   // changes in the current BSS before changes in state. This is so
   // that we update the state of the correct Endpoint/Service.
-  if (properties.Contains<RpcIdentifier>(
-          WPASupplicant::kInterfacePropertyCurrentBSS)) {
+  if (properties.ContainsRpcIdentifier(
+      WPASupplicant::kInterfacePropertyCurrentBSS)) {
     CurrentBSSChanged(
         properties.GetRpcIdentifier(
             WPASupplicant::kInterfacePropertyCurrentBSS));
   }
 
-  if (properties.Contains<string>(WPASupplicant::kInterfacePropertyState)) {
+  if (properties.ContainsString(WPASupplicant::kInterfacePropertyState)) {
     StateChanged(properties.GetString(WPASupplicant::kInterfacePropertyState));
 
     // These properties should only be updated when there is a state change.
-    if (properties.Contains<string>(
+    if (properties.ContainsString(
             WPASupplicant::kInterfacePropertyCurrentAuthMode)) {
       CurrentAuthModeChanged(properties.GetString(
           WPASupplicant::kInterfacePropertyCurrentAuthMode));
@@ -1564,8 +1564,7 @@ void WiFi::PropertiesChangedTask(
 
     string suffix = GetSuffixFromAuthMode(supplicant_auth_mode_);
     if (!suffix.empty()) {
-      if (properties.Contains<int32_t>(
-              WPASupplicant::kInterfacePropertyRoamTime)) {
+      if (properties.ContainsInt(WPASupplicant::kInterfacePropertyRoamTime)) {
         // Network.Shill.WiFi.RoamTime.{PSK,FTPSK,EAP,FTEAP}
         metrics()->SendToUMA(
             base::StringPrintf(
@@ -1576,7 +1575,7 @@ void WiFi::PropertiesChangedTask(
             Metrics::kMetricWifiRoamTimeNumBuckets);
       }
 
-      if (properties.Contains<bool>(
+      if (properties.ContainsBool(
               WPASupplicant::kInterfacePropertyRoamComplete)) {
         // Network.Shill.WiFi.RoamComplete.{PSK,FTPSK,EAP,FTEAP}
         metrics()->SendEnumToUMA(
@@ -1589,7 +1588,7 @@ void WiFi::PropertiesChangedTask(
             Metrics::kWiFiRoamCompleteMax);
       }
 
-      if (properties.Contains<int32_t>(
+      if (properties.ContainsInt(
               WPASupplicant::kInterfacePropertySessionLength)) {
         // Network.Shill.WiFi.SessionLength.{PSK,FTPSK,EAP,FTEAP}
         metrics()->SendToUMA(
@@ -1604,20 +1603,20 @@ void WiFi::PropertiesChangedTask(
     }
   }
 
-  if (properties.Contains<int32_t>(
-          WPASupplicant::kInterfacePropertyAssocStatusCode)) {
+  if (properties.ContainsInt(
+        WPASupplicant::kInterfacePropertyAssocStatusCode)) {
     AssocStatusChanged(
         properties.GetInt(WPASupplicant::kInterfacePropertyAssocStatusCode));
   }
 
-  if (properties.Contains<int32_t>(
-          WPASupplicant::kInterfacePropertyAuthStatusCode)) {
+  if (properties.ContainsInt(
+        WPASupplicant::kInterfacePropertyAuthStatusCode)) {
     AuthStatusChanged(
         properties.GetInt(WPASupplicant::kInterfacePropertyAuthStatusCode));
   }
 
-  if (properties.Contains<int32_t>(
-          WPASupplicant::kInterfacePropertyDisconnectReason)) {
+  if (properties.ContainsInt(
+      WPASupplicant::kInterfacePropertyDisconnectReason)) {
     DisconnectReasonChanged(
         properties.GetInt(WPASupplicant::kInterfacePropertyDisconnectReason));
   }

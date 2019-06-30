@@ -241,9 +241,9 @@ void CellularCapabilityUniversalCdma::OnActivationStateChangedSignal(
       static_cast<MMModemCdmaActivationState>(activation_state);
 
   string value;
-  if (status_changes.Contains<string>("mdn"))
+  if (status_changes.ContainsString("mdn"))
     cellular()->set_mdn(status_changes.GetString("mdn"));
-  if (status_changes.Contains<string>("min"))
+  if (status_changes.ContainsString("min"))
     cellular()->set_min(status_changes.GetString("min"));
   SLOG(this, 2) << "Activation state: "
                 << GetActivationStateString(activation_state_);
@@ -444,11 +444,11 @@ void CellularCapabilityUniversalCdma::OnModemCdmaPropertiesChanged(
     const std::vector<std::string>& /*invalidated_properties*/) {
   SLOG(this, 2) << __func__;
   string str_value;
-  if (properties.Contains<string>(MM_MODEM_MODEMCDMA_PROPERTY_MEID)) {
+  if (properties.ContainsString(MM_MODEM_MODEMCDMA_PROPERTY_MEID)) {
     cellular()->set_meid(
         properties.GetString(MM_MODEM_MODEMCDMA_PROPERTY_MEID));
   }
-  if (properties.Contains<string>(MM_MODEM_MODEMCDMA_PROPERTY_ESN)) {
+  if (properties.ContainsString(MM_MODEM_MODEMCDMA_PROPERTY_ESN)) {
     cellular()->set_esn(properties.GetString(MM_MODEM_MODEMCDMA_PROPERTY_ESN));
   }
 
@@ -457,29 +457,28 @@ void CellularCapabilityUniversalCdma::OnModemCdmaPropertiesChanged(
   MMModemCdmaRegistrationState state_1x = cdma_1x_registration_state_;
   MMModemCdmaRegistrationState state_evdo = cdma_evdo_registration_state_;
   bool registration_changed = false;
-  if (properties.Contains<uint32_t>(
-          MM_MODEM_MODEMCDMA_PROPERTY_CDMA1XREGISTRATIONSTATE)) {
+  if (properties.ContainsUint(
+      MM_MODEM_MODEMCDMA_PROPERTY_CDMA1XREGISTRATIONSTATE)) {
     state_1x = static_cast<MMModemCdmaRegistrationState>(
         properties.GetUint(
             MM_MODEM_MODEMCDMA_PROPERTY_CDMA1XREGISTRATIONSTATE));
     registration_changed = true;
   }
-  if (properties.Contains<uint32_t>(
-          MM_MODEM_MODEMCDMA_PROPERTY_EVDOREGISTRATIONSTATE)) {
+  if (properties.ContainsUint(
+      MM_MODEM_MODEMCDMA_PROPERTY_EVDOREGISTRATIONSTATE)) {
     state_evdo = static_cast<MMModemCdmaRegistrationState>(
         properties.GetUint(MM_MODEM_MODEMCDMA_PROPERTY_EVDOREGISTRATIONSTATE));
     registration_changed = true;
   }
-  if (properties.Contains<uint32_t>(MM_MODEM_MODEMCDMA_PROPERTY_SID)) {
+  if (properties.ContainsUint(MM_MODEM_MODEMCDMA_PROPERTY_SID)) {
     sid = properties.GetUint(MM_MODEM_MODEMCDMA_PROPERTY_SID);
     registration_changed = true;
   }
-  if (properties.Contains<uint32_t>(MM_MODEM_MODEMCDMA_PROPERTY_NID)) {
+  if (properties.ContainsUint(MM_MODEM_MODEMCDMA_PROPERTY_NID)) {
     nid = properties.GetUint(MM_MODEM_MODEMCDMA_PROPERTY_NID);
     registration_changed = true;
   }
-  if (properties.Contains<uint32_t>(
-          MM_MODEM_MODEMCDMA_PROPERTY_ACTIVATIONSTATE)) {
+  if (properties.ContainsUint(MM_MODEM_MODEMCDMA_PROPERTY_ACTIVATIONSTATE)) {
     activation_state_ = static_cast<MMModemCdmaActivationState>(
         properties.GetUint(MM_MODEM_MODEMCDMA_PROPERTY_ACTIVATIONSTATE));
     HandleNewActivationStatus(MM_CDMA_ACTIVATION_ERROR_NONE);

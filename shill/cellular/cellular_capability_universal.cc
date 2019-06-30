@@ -1015,7 +1015,7 @@ Stringmap CellularCapabilityUniversal::ParseScanResult(
   */
   Stringmap parsed;
 
-  if (result.Contains<uint32_t>(kStatusProperty)) {
+  if (result.ContainsUint(kStatusProperty)) {
     uint32_t status = result.GetUint(kStatusProperty);
     // numerical values are taken from 3GPP TS 27.007 Section 7.3.
     static const char* const kStatusString[] = {
@@ -1028,18 +1028,18 @@ Stringmap CellularCapabilityUniversal::ParseScanResult(
   }
 
   // MMModemAccessTechnology
-  if (result.Contains<uint32_t>(kOperatorAccessTechnologyProperty)) {
+  if (result.ContainsUint(kOperatorAccessTechnologyProperty)) {
     parsed[kTechnologyProperty] =
         AccessTechnologyToString(
             result.GetUint(kOperatorAccessTechnologyProperty));
   }
 
   string operator_long, operator_short, operator_code;
-  if (result.Contains<string>(kOperatorLongProperty))
+  if (result.ContainsString(kOperatorLongProperty))
     parsed[kLongNameProperty] = result.GetString(kOperatorLongProperty);
-  if (result.Contains<string>(kOperatorShortProperty))
+  if (result.ContainsString(kOperatorShortProperty))
     parsed[kShortNameProperty] = result.GetString(kOperatorShortProperty);
-  if (result.Contains<string>(kOperatorCodeProperty))
+  if (result.ContainsString(kOperatorCodeProperty))
     parsed[kNetworkIdProperty] = result.GetString(kOperatorCodeProperty);
 
   // If the long name is not available but the network ID is, look up the long
@@ -1140,7 +1140,7 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   // Update the bearers property before the modem state property as
   // OnModemStateChanged may call UpdateActiveBearer, which reads the bearers
   // property.
-  if (properties.Contains<RpcIdentifiers>(MM_MODEM_PROPERTY_BEARERS)) {
+  if (properties.ContainsRpcIdentifiers(MM_MODEM_PROPERTY_BEARERS)) {
     RpcIdentifiers bearers =
         properties.GetRpcIdentifiers(MM_MODEM_PROPERTY_BEARERS);
     OnBearersChanged(bearers);
@@ -1157,46 +1157,46 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   // is Unknown), we simply update the state, and rely on the Manager to
   // enable the device when it is registered with the Manager. On subsequent
   // changes to State, we need to explicitly enable the device ourselves.
-  if (properties.Contains<int32_t>(MM_MODEM_PROPERTY_STATE)) {
+  if (properties.ContainsInt(MM_MODEM_PROPERTY_STATE)) {
     int32_t istate = properties.GetInt(MM_MODEM_PROPERTY_STATE);
     Cellular::ModemState state = static_cast<Cellular::ModemState>(istate);
     OnModemStateChanged(state);
   }
-  if (properties.Contains<RpcIdentifier>(MM_MODEM_PROPERTY_SIM))
+  if (properties.ContainsRpcIdentifier(MM_MODEM_PROPERTY_SIM))
     OnSimPathChanged(properties.GetRpcIdentifier(MM_MODEM_PROPERTY_SIM));
 
-  if (properties.Contains<uint32_t>(MM_MODEM_PROPERTY_CURRENTCAPABILITIES)) {
+  if (properties.ContainsUint(MM_MODEM_PROPERTY_CURRENTCAPABILITIES)) {
     OnModemCurrentCapabilitiesChanged(
         properties.GetUint(MM_MODEM_PROPERTY_CURRENTCAPABILITIES));
   }
-  if (properties.Contains<string>(MM_MODEM_PROPERTY_MANUFACTURER)) {
+  if (properties.ContainsString(MM_MODEM_PROPERTY_MANUFACTURER)) {
     cellular()->set_manufacturer(
         properties.GetString(MM_MODEM_PROPERTY_MANUFACTURER));
   }
-  if (properties.Contains<string>(MM_MODEM_PROPERTY_MODEL)) {
+  if (properties.ContainsString(MM_MODEM_PROPERTY_MODEL)) {
     cellular()->set_model_id(properties.GetString(MM_MODEM_PROPERTY_MODEL));
   }
-  if (properties.Contains<string>(MM_MODEM_PROPERTY_PLUGIN)) {
+  if (properties.ContainsString(MM_MODEM_PROPERTY_PLUGIN)) {
     cellular()->set_mm_plugin(properties.GetString(MM_MODEM_PROPERTY_PLUGIN));
   }
-  if (properties.Contains<string>(MM_MODEM_PROPERTY_REVISION)) {
+  if (properties.ContainsString(MM_MODEM_PROPERTY_REVISION)) {
     OnModemRevisionChanged(properties.GetString(MM_MODEM_PROPERTY_REVISION));
   }
-  if (properties.Contains<string>(MM_MODEM_PROPERTY_HARDWAREREVISION)) {
+  if (properties.ContainsString(MM_MODEM_PROPERTY_HARDWAREREVISION)) {
     OnModemHardwareRevisionChanged(
         properties.GetString(MM_MODEM_PROPERTY_HARDWAREREVISION));
   }
-  if (properties.Contains<string>(MM_MODEM_PROPERTY_DEVICE)) {
+  if (properties.ContainsString(MM_MODEM_PROPERTY_DEVICE)) {
     OnModemDevicePathChanged(properties.GetString(MM_MODEM_PROPERTY_DEVICE));
   }
-  if (properties.Contains<string>(MM_MODEM_PROPERTY_EQUIPMENTIDENTIFIER)) {
+  if (properties.ContainsString(MM_MODEM_PROPERTY_EQUIPMENTIDENTIFIER)) {
     cellular()->set_equipment_id(
         properties.GetString(MM_MODEM_PROPERTY_EQUIPMENTIDENTIFIER));
   }
 
   // Unlock required and SimLock
   bool lock_status_changed = false;
-  if (properties.Contains<uint32_t>(MM_MODEM_PROPERTY_UNLOCKREQUIRED)) {
+  if (properties.ContainsUint(MM_MODEM_PROPERTY_UNLOCKREQUIRED)) {
     uint32_t unlock_required =
         properties.GetUint(MM_MODEM_PROPERTY_UNLOCKREQUIRED);
     OnLockTypeChanged(static_cast<MMModemLock>(unlock_required));
@@ -1213,7 +1213,7 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   if (lock_status_changed)
     OnSimLockStatusChanged();
 
-  if (properties.Contains<uint32_t>(MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES)) {
+  if (properties.ContainsUint(MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES)) {
     OnAccessTechnologiesChanged(
         properties.GetUint(MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES));
   }
@@ -1224,7 +1224,7 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
     OnSignalQualityChanged(std::get<0>(quality));
   }
 
-  if (properties.Contains<Strings>(MM_MODEM_PROPERTY_OWNNUMBERS)) {
+  if (properties.ContainsStrings(MM_MODEM_PROPERTY_OWNNUMBERS)) {
     vector<string> numbers =
         properties.GetStrings(MM_MODEM_PROPERTY_OWNNUMBERS);
     string mdn;
@@ -1436,7 +1436,7 @@ void CellularCapabilityUniversal::OnModem3gppPropertiesChanged(
     const KeyValueStore& properties,
     const vector<string>& /* invalidated_properties */) {
   SLOG(this, 3) << __func__;
-  if (properties.Contains<string>(MM_MODEM_MODEM3GPP_PROPERTY_IMEI))
+  if (properties.ContainsString(MM_MODEM_MODEM3GPP_PROPERTY_IMEI))
     cellular()->set_imei(
         properties.GetString(MM_MODEM_MODEM3GPP_PROPERTY_IMEI));
 
@@ -1453,18 +1453,17 @@ void CellularCapabilityUniversal::OnModem3gppPropertiesChanged(
 
   MMModem3gppRegistrationState state = registration_state_;
   bool registration_changed = false;
-  if (properties.Contains<uint32_t>(
-          MM_MODEM_MODEM3GPP_PROPERTY_REGISTRATIONSTATE)) {
+  if (properties.ContainsUint(MM_MODEM_MODEM3GPP_PROPERTY_REGISTRATIONSTATE)) {
     state = static_cast<MMModem3gppRegistrationState>(
         properties.GetUint(MM_MODEM_MODEM3GPP_PROPERTY_REGISTRATIONSTATE));
     registration_changed = true;
   }
-  if (properties.Contains<string>(MM_MODEM_MODEM3GPP_PROPERTY_OPERATORCODE)) {
+  if (properties.ContainsString(MM_MODEM_MODEM3GPP_PROPERTY_OPERATORCODE)) {
     operator_code =
         properties.GetString(MM_MODEM_MODEM3GPP_PROPERTY_OPERATORCODE);
     registration_changed = true;
   }
-  if (properties.Contains<string>(MM_MODEM_MODEM3GPP_PROPERTY_OPERATORNAME)) {
+  if (properties.ContainsString(MM_MODEM_MODEM3GPP_PROPERTY_OPERATORNAME)) {
     operator_name =
         properties.GetString(MM_MODEM_MODEM3GPP_PROPERTY_OPERATORNAME);
     registration_changed = true;
@@ -1472,8 +1471,7 @@ void CellularCapabilityUniversal::OnModem3gppPropertiesChanged(
   if (registration_changed)
     On3gppRegistrationChanged(state, operator_code, operator_name);
 
-  if (properties.Contains<uint32_t>(
-          MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS))
+  if (properties.ContainsUint(MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS))
     OnFacilityLocksChanged(
         properties.GetUint(MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS));
 
@@ -1643,13 +1641,13 @@ void CellularCapabilityUniversal::OnSimPropertiesChanged(
     const KeyValueStore& props,
     const vector<string>& /* invalidated_properties */) {
   SLOG(this, 3) << __func__;
-  if (props.Contains<string>(MM_SIM_PROPERTY_SIMIDENTIFIER))
+  if (props.ContainsString(MM_SIM_PROPERTY_SIMIDENTIFIER))
     OnSimIdentifierChanged(props.GetString(MM_SIM_PROPERTY_SIMIDENTIFIER));
-  if (props.Contains<string>(MM_SIM_PROPERTY_OPERATORIDENTIFIER))
+  if (props.ContainsString(MM_SIM_PROPERTY_OPERATORIDENTIFIER))
     OnOperatorIdChanged(props.GetString(MM_SIM_PROPERTY_OPERATORIDENTIFIER));
-  if (props.Contains<string>(MM_SIM_PROPERTY_OPERATORNAME))
+  if (props.ContainsString(MM_SIM_PROPERTY_OPERATORNAME))
     OnSpnChanged(props.GetString(MM_SIM_PROPERTY_OPERATORNAME));
-  if (props.Contains<string>(MM_SIM_PROPERTY_IMSI)) {
+  if (props.ContainsString(MM_SIM_PROPERTY_IMSI)) {
     string imsi = props.GetString(MM_SIM_PROPERTY_IMSI);
     cellular()->set_imsi(imsi);
     cellular()->home_provider_info()->UpdateIMSI(imsi);

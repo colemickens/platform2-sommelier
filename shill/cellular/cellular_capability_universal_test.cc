@@ -57,44 +57,37 @@ using testing::_;
 namespace shill {
 
 MATCHER_P(HasApn, expected_apn, "") {
-  return arg.template Contains<string>(
-             CellularCapabilityUniversal::kConnectApn) &&
+  return arg.ContainsString(CellularCapabilityUniversal::kConnectApn) &&
          expected_apn ==
              arg.GetString(CellularCapabilityUniversal::kConnectApn);
 }
 
 MATCHER(HasNoUser, "") {
-  return !arg.template Contains<string>(
-      CellularCapabilityUniversal::kConnectUser);
+  return !arg.ContainsString(CellularCapabilityUniversal::kConnectUser);
 }
 
 MATCHER_P(HasUser, expected_user, "") {
-  return arg.template Contains<string>(
-             CellularCapabilityUniversal::kConnectUser) &&
+  return arg.ContainsString(CellularCapabilityUniversal::kConnectUser) &&
          expected_user ==
              arg.GetString(CellularCapabilityUniversal::kConnectUser);
 }
 
 MATCHER(HasNoPassword, "") {
-  return !arg.template Contains<string>(
-      CellularCapabilityUniversal::kConnectPassword);
+  return !arg.ContainsString(CellularCapabilityUniversal::kConnectPassword);
 }
 
 MATCHER_P(HasPassword, expected_password, "") {
-  return arg.template Contains<string>(
-             CellularCapabilityUniversal::kConnectPassword) &&
+  return arg.ContainsString(CellularCapabilityUniversal::kConnectPassword) &&
          expected_password ==
              arg.GetString(CellularCapabilityUniversal::kConnectPassword);
 }
 
 MATCHER(HasNoAllowedAuth, "") {
-  return !arg.template Contains<string>(
-      CellularCapabilityUniversal::kConnectAllowedAuth);
+  return !arg.ContainsString(CellularCapabilityUniversal::kConnectAllowedAuth);
 }
 
 MATCHER_P(HasAllowedAuth, expected_authentication, "") {
-  return arg.template Contains<uint32_t>(
-             CellularCapabilityUniversal::kConnectAllowedAuth) &&
+  return arg.ContainsUint(CellularCapabilityUniversal::kConnectAllowedAuth) &&
          expected_authentication ==
              arg.GetUint(CellularCapabilityUniversal::kConnectAllowedAuth);
 }

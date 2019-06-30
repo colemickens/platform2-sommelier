@@ -31,9 +31,9 @@ using testing::StrEq;
 namespace shill {
 
 MATCHER_P2(ContainsCellularProperties, key, value, "") {
-  return arg.template Contains<string>(CellularService::kStorageType) &&
+  return arg.ContainsString(CellularService::kStorageType) &&
          arg.GetString(CellularService::kStorageType) == kTypeCellular &&
-         arg.template Contains<string>(key) && arg.GetString(key) == value;
+         arg.ContainsString(key) && arg.GetString(key) == value;
 }
 
 class CellularServiceTest : public testing::Test {

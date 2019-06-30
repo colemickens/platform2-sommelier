@@ -491,7 +491,7 @@ void OpenVPNDriver::ParseIPConfiguration(
   properties->gateway = properties->address;
 
   if (redirect_gateway &&
-      const_args()->Contains<string>(kOpenVPNIgnoreDefaultRouteProperty)) {
+      const_args()->ContainsString(kOpenVPNIgnoreDefaultRouteProperty)) {
     LOG(INFO) << "Ignoring default route parameter as requested by "
               << "configuration.";
     redirect_gateway = false;
@@ -667,7 +667,7 @@ void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
   AppendOption("tls-client", options);
 
   AppendRemoteOption(vpnhost, options);
-  if (args()->Contains<Strings>(kOpenVPNExtraHostsProperty)) {
+  if (args()->ContainsStrings(kOpenVPNExtraHostsProperty)) {
     for (const auto& host : args()->GetStrings(kOpenVPNExtraHostsProperty)) {
       AppendRemoteOption(host, options);
     }
@@ -703,7 +703,7 @@ void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
     }
   }
 
-  if (args()->Contains<string>(kOpenVPNTLSVersionMinProperty)) {
+  if (args()->ContainsString(kOpenVPNTLSVersionMinProperty)) {
     AppendOption("tls-version-min",
                  args()->GetString(kOpenVPNTLSVersionMinProperty),
                  options);
@@ -790,7 +790,7 @@ void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
 bool OpenVPNDriver::InitCAOptions(
     vector<vector<string>>* options, Error* error) {
   vector<string> ca_cert_pem;
-  if (args()->Contains<Strings>(kOpenVPNCaCertPemProperty)) {
+  if (args()->ContainsStrings(kOpenVPNCaCertPemProperty)) {
     ca_cert_pem = args()->GetStrings(kOpenVPNCaCertPemProperty);
   }
   if (ca_cert_pem.empty()) {
@@ -827,7 +827,7 @@ void OpenVPNDriver::InitCertificateVerifyOptions(
 
 bool OpenVPNDriver::InitExtraCertOptions(
     vector<vector<string>>* options, Error* error) {
-  if (!args()->Contains<Strings>(kOpenVPNExtraCertPemProperty)) {
+  if (!args()->ContainsStrings(kOpenVPNExtraCertPemProperty)) {
     // It's okay for this parameter to be unspecified.
     return true;
   }
@@ -865,7 +865,7 @@ void OpenVPNDriver::InitClientAuthOptions(vector<vector<string>>* options) {
   // If the AuthUserPass property is set, or the User property is non-empty, or
   // a client cert was not provided, specify user-password client
   // authentication.
-  if (args()->Contains<string>(kOpenVPNAuthUserPassProperty) ||
+  if (args()->ContainsString(kOpenVPNAuthUserPassProperty) ||
       !args()->LookupString(kOpenVPNUserProperty, "").empty() ||
       args()->LookupString(kOpenVPNClientCertIdProperty, "").empty()) {
     AppendOption("auth-user-pass", options);
@@ -986,7 +986,7 @@ bool OpenVPNDriver::AppendFlag(
     const string& property,
     const string& option,
     vector<vector<string>>* options) {
-  if (args()->Contains<string>(property)) {
+  if (args()->ContainsString(property)) {
     AppendOption(option, options);
     return true;
   }
@@ -1143,7 +1143,7 @@ void OpenVPNDriver::ReportConnectionMetrics() {
       Metrics::kVpnDriverOpenVpn,
       Metrics::kMetricVpnDriverMax);
 
-  if (args()->Contains<Strings>(kOpenVPNCaCertPemProperty) &&
+  if (args()->ContainsStrings(kOpenVPNCaCertPemProperty) &&
       !args()->GetStrings(kOpenVPNCaCertPemProperty).empty()) {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,

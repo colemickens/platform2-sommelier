@@ -2236,12 +2236,12 @@ PortalDetector::Properties Manager::GetPortalCheckProperties() const {
 
 // called via RPC (e.g., from ManagerDBusAdaptor)
 ServiceRefPtr Manager::GetService(const KeyValueStore& args, Error* error) {
-  if (args.Contains<string>(kTypeProperty) &&
+  if (args.ContainsString(kTypeProperty) &&
       args.GetString(kTypeProperty) == kTypeVPN) {
-    // GetService on a VPN service should actually perform ConfigureService.
-    // TODO(pstew): Remove this hack and change Chrome to use ConfigureService
-    // instead, when we no longer need to support flimflam.  crbug.com/213802
-    return ConfigureService(args, error);
+     // GetService on a VPN service should actually perform ConfigureService.
+     // TODO(pstew): Remove this hack and change Chrome to use ConfigureService
+     // instead, when we no longer need to support flimflam.  crbug.com/213802
+     return ConfigureService(args, error);
   }
 
   ServiceRefPtr service = GetServiceInner(args, error);
@@ -2255,7 +2255,7 @@ ServiceRefPtr Manager::GetService(const KeyValueStore& args, Error* error) {
 
 ServiceRefPtr Manager::GetServiceInner(const KeyValueStore& args,
                                        Error* error) {
-  if (args.Contains<string>(kGuidProperty)) {
+  if (args.ContainsString(kGuidProperty)) {
     SLOG(this, 2) << __func__ << ": searching by GUID";
     ServiceRefPtr service =
         GetServiceWithGUID(args.GetString(kGuidProperty), nullptr);
@@ -2264,7 +2264,7 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore& args,
     }
   }
 
-  if (!args.Contains<string>(kTypeProperty)) {
+  if (!args.ContainsString(kTypeProperty)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInvalidArguments, kErrorTypeRequired);
     return nullptr;
@@ -2286,7 +2286,7 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore& args,
 ServiceRefPtr Manager::ConfigureService(const KeyValueStore& args,
                                         Error* error) {
   ProfileRefPtr profile = ActiveProfile();
-  bool profile_specified = args.Contains<string>(kProfileProperty);
+  bool profile_specified = args.ContainsString(kProfileProperty);
   if (profile_specified) {
     RpcIdentifier profile_rpcid(args.GetString(kProfileProperty));
     profile = LookupProfileByRpcIdentifier(profile_rpcid);
@@ -2357,7 +2357,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
     const RpcIdentifier& profile_rpcid,
     const KeyValueStore& args,
     Error* error) {
-  if (!args.Contains<string>(kTypeProperty)) {
+  if (!args.ContainsString(kTypeProperty)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInvalidArguments, kErrorTypeRequired);
     return nullptr;
@@ -2389,7 +2389,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
   }
 
   ServiceRefPtr service;
-  if (args.Contains<string>(kGuidProperty)) {
+  if (args.ContainsString(kGuidProperty)) {
     SLOG(this, 2) << __func__ << ": searching by GUID";
     service = GetServiceWithGUID(args.GetString(kGuidProperty), nullptr);
     if (service && service->technology() != technology) {
