@@ -51,6 +51,7 @@ using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::SetArgPointee;
+using testing::StrEq;
 using testing::StrictMock;
 
 namespace shill {
@@ -487,7 +488,7 @@ TEST_F(EthernetTest, StartEapAuthentication) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFirstNetworkPath),
                 Return(true)));
-  EXPECT_CALL(*interface_proxy, SelectNetwork(kFirstNetworkPath));
+  EXPECT_CALL(*interface_proxy, SelectNetwork(StrEq(kFirstNetworkPath)));
   EXPECT_CALL(*interface_proxy, EAPLogon());
   EXPECT_TRUE(InvokeStartEapAuthentication());
   Mock::VerifyAndClearExpectations(mock_service_.get());
@@ -497,7 +498,7 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   EXPECT_EQ(kFirstNetworkPath, GetSupplicantNetworkPath());
 
   EXPECT_CALL(*mock_service_, ClearEAPCertification());
-  EXPECT_CALL(*interface_proxy, RemoveNetwork(kFirstNetworkPath))
+  EXPECT_CALL(*interface_proxy, RemoveNetwork(StrEq(kFirstNetworkPath)))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_eap_service_, eap())
       .WillOnce(Return(&mock_eap_credentials));
@@ -507,7 +508,7 @@ TEST_F(EthernetTest, StartEapAuthentication) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kSecondNetworkPath),
                 Return(true)));
-  EXPECT_CALL(*interface_proxy, SelectNetwork(kSecondNetworkPath));
+  EXPECT_CALL(*interface_proxy, SelectNetwork(StrEq(kSecondNetworkPath)));
   EXPECT_CALL(*interface_proxy, EAPLogon());
   EXPECT_TRUE(InvokeStartEapAuthentication());
   EXPECT_EQ(kSecondNetworkPath, GetSupplicantNetworkPath());
@@ -521,7 +522,7 @@ TEST_F(EthernetTest, StopSupplicant) {
   SetIsEapAuthenticated(true);
   SetSupplicantNetworkPath(RpcIdentifier("/network/1"));
   EXPECT_CALL(*interface_proxy, EAPLogoff()).WillOnce(Return(true));
-  EXPECT_CALL(*process_proxy, RemoveInterface(kInterfacePath))
+  EXPECT_CALL(*process_proxy, RemoveInterface(StrEq(kInterfacePath)))
       .WillOnce(Return(true));
   InvokeStopSupplicant();
   EXPECT_EQ(nullptr, GetSupplicantInterfaceProxy());

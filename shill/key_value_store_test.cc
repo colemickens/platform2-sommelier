@@ -715,7 +715,7 @@ TEST_F(KeyValueStoreTest, ConvertToVariantDictionary) {
             dict[kByteArraysKey].Get<vector<vector<uint8_t>>>());
   EXPECT_EQ(kInt16Value, dict[kInt16Key].Get<int16_t>());
   EXPECT_EQ(kRpcIdentifierValue,
-            dict[kRpcIdentifierKey].Get<dbus::ObjectPath>());
+            dict[kRpcIdentifierKey].Get<dbus::ObjectPath>().value());
   EXPECT_EQ(kUint16Value, dict[kUint16Key].Get<uint16_t>());
   EXPECT_EQ(kInt64Value, dict[kInt64Key].Get<int64_t>());
   EXPECT_EQ(kInt64sValue, dict[kInt64sKey].Get<vector<int64_t>>());
@@ -803,6 +803,18 @@ TEST_F(KeyValueStoreTest, ConvertFromVariantDictionary) {
   KeyValueStore nested_store;
   nested_store.SetInt(kNestedInt32Key, kNestedInt32Value);
   EXPECT_EQ(nested_store, store.GetKeyValueStore(kKeyValueStoreKey));
+}
+
+TEST_F(KeyValueStoreTest, ConvertPathsToRpcIdentifiers) {
+  const RpcIdentifier kRpcIdentifier1("/test1");
+  const RpcIdentifier kRpcIdentifier2("/test2");
+  vector<dbus::ObjectPath> paths = {dbus::ObjectPath(kRpcIdentifier1),
+                                    dbus::ObjectPath(kRpcIdentifier2)};
+  vector<RpcIdentifier> actual_rpc_identifiers =
+      KeyValueStore::ConvertPathsToRpcIdentifiers(paths);
+  vector<RpcIdentifier> expected_rpc_identifiers = {kRpcIdentifier1,
+                                                    kRpcIdentifier2};
+  EXPECT_EQ(expected_rpc_identifiers, actual_rpc_identifiers);
 }
 
 }  // namespace shill

@@ -296,8 +296,8 @@ TEST_F(ServiceTest, GetProperties) {
     service_->store().GetProperties(&props, &error);
     ASSERT_FALSE(props.find(kDeviceProperty) == props.end());
     EXPECT_TRUE(props[kDeviceProperty].IsTypeCompatible<dbus::ObjectPath>());
-    EXPECT_EQ(props[kDeviceProperty].Get<dbus::ObjectPath>(),
-              ServiceUnderTest::kDeviceRpcId);
+    EXPECT_EQ(props[kDeviceProperty].Get<dbus::ObjectPath>().value(),
+              ServiceUnderTest::kRpcId);
   }
 }
 

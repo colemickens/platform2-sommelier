@@ -99,7 +99,7 @@ void ModemManager1::OnInterfacesAddedSignal(
 void ModemManager1::OnInterfacesRemovedSignal(
     const RpcIdentifier& object_path,
     const vector<string>& interfaces) {
-  LOG(INFO) << "MM1:  Removing interfaces from " << object_path.value();
+  LOG(INFO) << "MM1:  Removing interfaces from " << object_path;
   if (base::ContainsValue(interfaces, MM_DBUS_INTERFACE_MODEM)) {
     RemoveModem(object_path);
   } else {

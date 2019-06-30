@@ -44,7 +44,7 @@ class MockService : public Service {
   MOCK_CONST_METHOD0(failure, ConnectFailure());
   MOCK_CONST_METHOD1(GetDeviceRpcId, RpcIdentifier(Error* error));
   MOCK_CONST_METHOD0(GetInnerDeviceRpcIdentifier, RpcIdentifier());
-  MOCK_CONST_METHOD0(GetRpcIdentifier, const RpcIdentifier&());
+  MOCK_CONST_METHOD0(GetRpcIdentifier, RpcIdentifier());
   MOCK_CONST_METHOD1(IsAlwaysOnVpn, bool(const std::string& package));
   MOCK_CONST_METHOD0(GetStorageIdentifier, std::string());
   MOCK_CONST_METHOD1(GetLoadableStorageIdentifier,
@@ -90,7 +90,6 @@ class MockService : public Service {
 
  private:
   ConnectionRefPtr mock_connection_;
-  RpcIdentifier rpcid_;
   DISALLOW_COPY_AND_ASSIGN(MockService);
 };
 

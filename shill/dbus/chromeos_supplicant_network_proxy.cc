@@ -42,7 +42,7 @@ ChromeosSupplicantNetworkProxy::ChromeosSupplicantNetworkProxy(
         new fi::w1::wpa_supplicant1::NetworkProxy(
             bus,
             WPASupplicant::kDBusAddr,
-            object_path)) {
+            dbus::ObjectPath(object_path))) {
   // Register properties.
   properties_.reset(
       new PropertySet(

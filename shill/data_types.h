@@ -11,8 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <dbus/object_path.h>
-
 namespace shill {
 
 using ByteArray = std::vector<uint8_t>;
@@ -22,8 +20,8 @@ using ByteArrays = std::vector<ByteArray>;
 // differently. Accordingly, PropertyStore tracks RpcIdentifiers
 // separately from Strings. We create a separate typedef here, to make
 // the PropertyStore-related code read more simply.
-using RpcIdentifier = dbus::ObjectPath;
-using RpcIdentifiers = std::vector<RpcIdentifier>;
+using RpcIdentifier = std::string;
+using RpcIdentifiers = std::vector<std::string>;
 using Strings = std::vector<std::string>;
 using Stringmap = std::map<std::string, std::string>;
 using Stringmaps = std::vector<Stringmap>;

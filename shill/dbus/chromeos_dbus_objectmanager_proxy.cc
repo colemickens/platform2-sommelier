@@ -26,7 +26,7 @@ ChromeosDBusObjectManagerProxy::ChromeosDBusObjectManagerProxy(
     const base::Closure& service_vanished_callback)
     : proxy_(
         new org::freedesktop::DBus::ObjectManagerProxy(
-            bus, service, path)),
+            bus, service, dbus::ObjectPath(path))),
       dispatcher_(dispatcher),
       service_appeared_callback_(service_appeared_callback),
       service_vanished_callback_(service_vanished_callback),
@@ -118,7 +118,7 @@ void ChromeosDBusObjectManagerProxy::InterfacesAdded(
   InterfaceToProperties interface_to_properties;
   ConvertDBusInterfaceProperties(dbus_interface_to_properties,
                                  &interface_to_properties);
-  interfaces_added_callback_.Run(object_path, interface_to_properties);
+  interfaces_added_callback_.Run(object_path.value(), interface_to_properties);
 }
 
 void ChromeosDBusObjectManagerProxy::InterfacesRemoved(
@@ -126,7 +126,7 @@ void ChromeosDBusObjectManagerProxy::InterfacesRemoved(
     const std::vector<std::string>& interfaces) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "("
       << object_path.value() << ")";
-  interfaces_removed_callback_.Run(object_path, interfaces);
+  interfaces_removed_callback_.Run(object_path.value(), interfaces);
 }
 
 void ChromeosDBusObjectManagerProxy::OnGetManagedObjectsSuccess(
@@ -137,7 +137,7 @@ void ChromeosDBusObjectManagerProxy::OnGetManagedObjectsSuccess(
   for (const auto& object : dbus_objects_with_properties) {
     InterfaceToProperties interface_to_properties;
     ConvertDBusInterfaceProperties(object.second, &interface_to_properties);
-    objects_with_properties.emplace(object.first,
+    objects_with_properties.emplace(object.first.value(),
                                     interface_to_properties);
   }
   callback.Run(objects_with_properties, Error());

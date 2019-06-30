@@ -22,10 +22,8 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(CellularService* c) {
-  return c->GetRpcIdentifier().value();
+static string ObjectID(CellularService* c) { return c->GetRpcIdentifier(); }
 }
-}  // namespace Logging
 
 // statics
 const char CellularService::kAutoConnActivating[] = "activating";

@@ -37,8 +37,8 @@ class ChromeosServiceDBusAdaptor
   ~ChromeosServiceDBusAdaptor() override;
 
   // Implementation of ServiceAdaptorInterface.
-  const RpcIdentifier& GetRpcIdentifier() const override {
-    return dbus_path();
+  RpcIdentifier GetRpcIdentifier() const override {
+    return RpcIdentifier(dbus_path().value());
   }
   void EmitBoolChanged(const std::string& name, bool value) override;
   void EmitUint8Changed(const std::string& name, uint8_t value) override;

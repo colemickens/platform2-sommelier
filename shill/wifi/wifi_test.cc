@@ -821,7 +821,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     WiFiEndpointRefPtr endpoint;
     RpcIdentifier bss_path(
         MakeNewEndpointAndService(0, 0, &endpoint, &service));
-    if (!network_path.value().empty()) {
+    if (!network_path.empty()) {
       EXPECT_CALL(*service, GetSupplicantConfigurationParameters());
       EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddNetwork(_, _))
           .WillOnce(DoAll(SetArgPointee<1>(network_path), Return(true)));

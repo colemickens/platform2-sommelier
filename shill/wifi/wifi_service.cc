@@ -40,10 +40,8 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kService;
-static string ObjectID(const WiFiService* w) {
-  return w->GetRpcIdentifier().value();
+static string ObjectID(const WiFiService* w) { return w->GetRpcIdentifier(); }
 }
-}  // namespace Logging
 
 const char WiFiService::kAutoConnNoEndpoint[] = "no endpoints";
 const char WiFiService::kAnyDeviceAddress[] = "any";

@@ -137,7 +137,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   const std::string& type() const { return type_; }
   uint32_t serial() const { return serial_; }
 
-  const RpcIdentifier& GetRpcIdentifier() const;
+  RpcIdentifier GetRpcIdentifier() const;
 
   // Registers a callback that's executed every time the configuration
   // properties are acquired. Takes ownership of |callback|.  Pass NULL

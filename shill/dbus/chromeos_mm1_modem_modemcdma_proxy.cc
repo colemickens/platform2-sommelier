@@ -24,7 +24,7 @@ ChromeosModemModemCdmaProxy::ChromeosModemModemCdmaProxy(
     const string& service)
     : proxy_(
         new org::freedesktop::ModemManager1::Modem::ModemCdmaProxy(
-            bus, service, path)) {
+            bus, service, dbus::ObjectPath(path))) {
   // Register signal handlers.
   proxy_->RegisterActivationStateChangedSignalHandler(
       base::Bind(&ChromeosModemModemCdmaProxy::ActivationStateChanged,

@@ -43,8 +43,8 @@ class ChromeosManagerDBusAdaptor
   // Implementation of ManagerAdaptorInterface.
   void RegisterAsync(
       const base::Callback<void(bool)>& completion_callback) override;
-  const RpcIdentifier& GetRpcIdentifier() const override {
-    return dbus_path();
+  RpcIdentifier GetRpcIdentifier() const override {
+    return RpcIdentifier(dbus_path().value());
   }
   void EmitBoolChanged(const std::string& name, bool value) override;
   void EmitUintChanged(const std::string& name, uint32_t value) override;

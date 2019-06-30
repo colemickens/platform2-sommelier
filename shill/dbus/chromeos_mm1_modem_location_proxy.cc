@@ -26,7 +26,7 @@ ChromeosModemLocationProxy::ChromeosModemLocationProxy(
     const string& service)
     : proxy_(
         new org::freedesktop::ModemManager1::Modem::LocationProxy(
-            bus, service, path)) {
+            bus, service, dbus::ObjectPath(path))) {
 }
 
 ChromeosModemLocationProxy::~ChromeosModemLocationProxy() = default;

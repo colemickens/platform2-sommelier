@@ -384,7 +384,7 @@ void Manager::InitializeProfiles() {
 
   // Push the default profile onto the stack.
   Error error;
-  RpcIdentifier path;
+  string path;
   Profile::Identifier default_profile_id;
   CHECK(Profile::ParseIdentifier(
       DefaultProfile::kDefaultId, &default_profile_id));
@@ -594,8 +594,8 @@ void Manager::PopProfileInternal() {
 void Manager::OnProfilesChanged() {
   Error unused_error;
 
-  adaptor_->EmitRpcIdentifierArrayChanged(kProfilesProperty,
-                                          EnumerateProfiles(&unused_error));
+  adaptor_->EmitStringsChanged(kProfilesProperty,
+                               EnumerateProfiles(&unused_error));
   Profile::SaveUserProfileList(user_profile_list_path_, profiles_);
 }
 
@@ -1035,10 +1035,9 @@ void Manager::SetProfileForService(const ServiceRefPtr& to_set,
                                    Error* error) {
   ProfileRefPtr profile = LookupProfileByRpcIdentifier(profile_rpcid);
   if (!profile) {
-    Error::PopulateAndLog(
-      FROM_HERE, error, Error::kInvalidArguments,
-      StringPrintf("Unknown Profile %s requested for Service",
-                   profile_rpcid.value().c_str()));
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          StringPrintf("Unknown Profile %s requested for "
+                                       "Service", profile_rpcid.c_str()));
     return;
   }
 
@@ -1306,7 +1305,7 @@ RpcIdentifiers Manager::EnumerateDevices(Error* /*error*/) {
   }
   // Enumerate devices that are internal to the services, such as PPPoE devices.
   for (const auto& service : services_) {
-    if (!service->GetInnerDeviceRpcIdentifier().value().empty()) {
+    if (!service->GetInnerDeviceRpcIdentifier().empty()) {
       device_rpc_ids.push_back(service->GetInnerDeviceRpcIdentifier());
     }
   }
@@ -2177,7 +2176,7 @@ RpcIdentifiers Manager::EnumerateWatchedServices(Error* /*error*/) {
 }
 
 string Manager::GetActiveProfileRpcIdentifier(Error* /*error*/) {
-  return ActiveProfile()->GetRpcIdentifier().value();
+  return ActiveProfile()->GetRpcIdentifier();
 }
 
 string Manager::GetCheckPortalList(Error* /*error*/) {
@@ -2292,7 +2291,7 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore& args,
     profile = LookupProfileByRpcIdentifier(profile_rpcid);
     if (!profile) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                            "Invalid profile name " + profile_rpcid.value());
+                            "Invalid profile name " + profile_rpcid);
       return nullptr;
     }
   }
@@ -2380,8 +2379,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
                           "Profile specified was not found");
     return nullptr;
   }
-  if (args.LookupString(kProfileProperty, profile_rpcid.value()) !=
-      profile_rpcid.value()) {
+  if (args.LookupString(kProfileProperty, profile_rpcid) != profile_rpcid) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Profile argument does not match that in "
                           "the configuration arguments");
@@ -2410,7 +2408,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
   if (!service) {
     KeyValueStore configure_args;
     configure_args.CopyFrom(args);
-    configure_args.SetString(kProfileProperty, profile_rpcid.value());
+    configure_args.SetString(kProfileProperty, profile_rpcid);
     return ConfigureService(configure_args, error);
   }
 

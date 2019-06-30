@@ -132,14 +132,18 @@ bool PropertyStore::GetProperties(brillo::VariantDictionary* out,
     ReadablePropertyConstIterator<RpcIdentifier> it =
         GetRpcIdentifierPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      (*out)[it.Key()] = brillo::Any(it.value());
+      (*out)[it.Key()] = brillo::Any(dbus::ObjectPath(it.value()));
     }
   }
   {
     ReadablePropertyConstIterator<RpcIdentifiers> it =
         GetRpcIdentifiersPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      (*out)[it.Key()] = brillo::Any(it.value());
+      vector<dbus::ObjectPath> rpc_identifiers_as_paths;
+      for (const auto& path : it.value()) {
+        rpc_identifiers_as_paths.push_back(dbus::ObjectPath(path));
+      }
+      (*out)[it.Key()] = brillo::Any(rpc_identifiers_as_paths);
     }
   }
   {

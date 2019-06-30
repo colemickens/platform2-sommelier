@@ -237,7 +237,7 @@ class Service : public base::RefCounted<Service> {
   // instance.
   const std::string& unique_name() const { return unique_name_; }
 
-  virtual const RpcIdentifier& GetRpcIdentifier() const;
+  virtual RpcIdentifier GetRpcIdentifier() const;
 
   // Returns the unique persistent storage identifier for the service.
   virtual std::string GetStorageIdentifier() const = 0;
@@ -745,8 +745,8 @@ class Service : public base::RefCounted<Service> {
 
   int32_t GetPriority(Error* error);
 
-  std::string GetProfileRpcId(Error* error);
-  bool SetProfileRpcId(const std::string& profile, Error* error);
+  RpcIdentifier GetProfileRpcId(Error* error);
+  bool SetProfileRpcId(const RpcIdentifier& profile, Error* error);
 
   std::string GetProxyConfig(Error* error);
   bool SetProxyConfig(const std::string& proxy_config, Error* error);

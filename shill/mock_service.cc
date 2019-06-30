@@ -20,11 +20,10 @@ using testing::ReturnRef;
 namespace shill {
 
 MockService::MockService(Manager* manager)
-    : Service(manager, Technology::kUnknown),
-      rpcid_(unique_name()) {
-  EXPECT_CALL(*this, GetRpcIdentifier()).WillRepeatedly(ReturnRef(rpcid_));
-  EXPECT_CALL(*this, GetStorageIdentifier())
-      .WillRepeatedly(Return(rpcid_.value()));
+    : Service(manager, Technology::kUnknown) {
+  const RpcIdentifier id(unique_name());
+  EXPECT_CALL(*this, GetRpcIdentifier()).WillRepeatedly(Return(id));
+  EXPECT_CALL(*this, GetStorageIdentifier()).WillRepeatedly(Return(id));
   ON_CALL(*this, IsVisible()).WillByDefault(Return(true));
   ON_CALL(*this, state()).WillByDefault(Return(kStateUnknown));
   ON_CALL(*this, failure()).WillByDefault(Return(kFailureUnknown));

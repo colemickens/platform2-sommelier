@@ -78,8 +78,6 @@ class VPNService : public Service {
   std::unique_ptr<VPNDriver> driver_;
   std::unique_ptr<Connection::Binder> connection_binder_;
 
-  ControlInterface* control_interface_;
-
   DISALLOW_COPY_AND_ASSIGN(VPNService);
 };
 

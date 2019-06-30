@@ -22,9 +22,9 @@ namespace shill {
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosIPConfigDBusAdaptor* i) {
-  return i->GetRpcIdentifier().value();
+  return i->GetRpcIdentifier();
 }
-}  // namespace Logging
+}
 
 // static
 const char ChromeosIPConfigDBusAdaptor::kPath[] = "/ipconfig/";

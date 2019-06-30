@@ -52,7 +52,7 @@ ChromeosSupplicantInterfaceProxy::ChromeosSupplicantInterfaceProxy(
           new fi::w1::wpa_supplicant1::InterfaceProxy(
               bus,
               WPASupplicant::kDBusAddr,
-              object_path)),
+              dbus::ObjectPath(object_path))),
       delegate_(delegate) {
   // Register properites.
   properties_.reset(
@@ -137,7 +137,7 @@ bool ChromeosSupplicantInterfaceProxy::AddNetwork(const KeyValueStore& args,
                << error->GetCode() << " " << error->GetMessage();
     return false;
   }
-  *network = path;
+  *network = path.value();
   return true;
 }
 
@@ -190,11 +190,9 @@ bool ChromeosSupplicantInterfaceProxy::NetworkReply(
     const string& field,
     const string& value) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__
-                                              << " network: " << network.value()
-                                              << " field: " << field
-                                              << " value: " << value;
+      << " network: " << network << " field: " << field << " value: " << value;
   brillo::ErrorPtr error;
-  if (!interface_proxy_->NetworkReply(network,
+  if (!interface_proxy_->NetworkReply(dbus::ObjectPath(network),
                                       field,
                                       value,
                                       &error)) {
@@ -251,10 +249,9 @@ bool ChromeosSupplicantInterfaceProxy::RemoveAllNetworks() {
 
 bool ChromeosSupplicantInterfaceProxy::RemoveNetwork(
     const RpcIdentifier& network) {
-  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": "
-                                              << network.value();
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << network;
   brillo::ErrorPtr error;
-  if (!interface_proxy_->RemoveNetwork(network,
+  if (!interface_proxy_->RemoveNetwork(dbus::ObjectPath(network),
                                        &error)) {
     LOG(ERROR) << "Failed to remove network: "
                << error->GetCode() << " " << error->GetMessage();
@@ -290,10 +287,9 @@ bool ChromeosSupplicantInterfaceProxy::Scan(const KeyValueStore& args) {
 
 bool ChromeosSupplicantInterfaceProxy::SelectNetwork(
     const RpcIdentifier& network) {
-  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": "
-                                              << network.value();
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << network;
   brillo::ErrorPtr error;
-  if (!interface_proxy_->SelectNetwork(network, &error)) {
+  if (!interface_proxy_->SelectNetwork(dbus::ObjectPath(network), &error)) {
     LOG(ERROR) << "Failed to select network: "
                << error->GetCode() << " " << error->GetMessage();
     return false;
@@ -305,10 +301,9 @@ bool ChromeosSupplicantInterfaceProxy::SetHT40Enable(
     const RpcIdentifier& network,
     bool enable) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__
-                                              << " network: " << network.value()
-                                              << " enable: " << enable;
+      << " network: " << network << " enable: " << enable;
   brillo::ErrorPtr error;
-  if (!interface_proxy_->SetHT40Enable(network,
+  if (!interface_proxy_->SetHT40Enable(dbus::ObjectPath(network),
                                        enable,
                                        &error)) {
     LOG(ERROR) << "Failed to set HT40 enable: "
@@ -448,7 +443,7 @@ void ChromeosSupplicantInterfaceProxy::BSSAdded(
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   KeyValueStore store =
       KeyValueStore::ConvertFromVariantDictionary(properties);
-  delegate_->BSSAdded(BSS, store);
+  delegate_->BSSAdded(BSS.value(), store);
 }
 
 void ChromeosSupplicantInterfaceProxy::Certification(
@@ -468,7 +463,7 @@ void ChromeosSupplicantInterfaceProxy::EAP(
 
 void ChromeosSupplicantInterfaceProxy::BSSRemoved(const dbus::ObjectPath& BSS) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
-  delegate_->BSSRemoved(BSS);
+  delegate_->BSSRemoved(BSS.value());
 }
 
 void ChromeosSupplicantInterfaceProxy::NetworkAdded(

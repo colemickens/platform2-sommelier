@@ -25,10 +25,9 @@ namespace shill {
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosServiceDBusAdaptor* s) {
-  return s->GetRpcIdentifier().value() +
-    " (" + s->service()->unique_name() + ")";
+  return s->GetRpcIdentifier() + " (" + s->service()->unique_name() + ")";
 }
-}  // namespace Logging
+}
 
 // static
 const char ChromeosServiceDBusAdaptor::kPath[] = "/service/";
@@ -87,7 +86,7 @@ void ChromeosServiceDBusAdaptor::EmitIntChanged(const string& name, int value) {
 void ChromeosServiceDBusAdaptor::EmitRpcIdentifierChanged(
     const string& name, const RpcIdentifier& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, brillo::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(dbus::ObjectPath(value)));
 }
 
 void ChromeosServiceDBusAdaptor::EmitStringChanged(const string& name,
@@ -194,7 +193,9 @@ bool ChromeosServiceDBusAdaptor::GetLoadableProfileEntries(
   SLOG(this, 2) << __func__;
   map<RpcIdentifier, string> profile_entry_strings =
       service_->GetLoadableProfileEntries();
-  entries->insert(profile_entry_strings.begin(), profile_entry_strings.end());
+  for (const auto& entry : profile_entry_strings) {
+    (*entries)[dbus::ObjectPath(entry.first)] = entry.second;
+  }
   return true;
 }
 

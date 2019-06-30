@@ -72,7 +72,7 @@ class Profile : public base::RefCounted<Profile> {
 
   virtual std::string GetFriendlyName() const;
 
-  virtual const RpcIdentifier& GetRpcIdentifier() const;
+  virtual RpcIdentifier GetRpcIdentifier() const;
 
   PropertyStore* mutable_store() { return &store_; }
   const PropertyStore& store() const { return store_; }
@@ -122,7 +122,7 @@ class Profile : public base::RefCounted<Profile> {
   // Return whether |service| can configure itself from the profile.
   bool ContainsService(const ServiceConstRefPtr& service);
 
-  std::vector<std::string> EnumerateAvailableServices(Error* error);
+  RpcIdentifiers EnumerateAvailableServices(Error* error);
   std::vector<std::string> EnumerateEntries(Error* error);
 
   // Clobbers persisted notion of |device| with data from |device|. Returns true

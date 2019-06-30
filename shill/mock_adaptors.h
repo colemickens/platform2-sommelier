@@ -24,7 +24,7 @@ class DeviceMockAdaptor : public DeviceAdaptorInterface {
 
   DeviceMockAdaptor();
   ~DeviceMockAdaptor() override;
-  const RpcIdentifier& GetRpcIdentifier() const override;
+  RpcIdentifier GetRpcIdentifier() const override;
 
   MOCK_METHOD2(EmitBoolChanged, void(const std::string& name, bool value));
   MOCK_METHOD2(EmitUintChanged, void(const std::string& name, uint32_t value));
@@ -60,7 +60,7 @@ class IPConfigMockAdaptor : public IPConfigAdaptorInterface {
 
   IPConfigMockAdaptor();
   ~IPConfigMockAdaptor() override;
-  const RpcIdentifier& GetRpcIdentifier() const override;
+  RpcIdentifier GetRpcIdentifier() const override;
 
   MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
   MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32_t));
@@ -80,7 +80,7 @@ class ManagerMockAdaptor : public ManagerAdaptorInterface {
 
   ManagerMockAdaptor();
   ~ManagerMockAdaptor() override;
-  const RpcIdentifier& GetRpcIdentifier() const override;
+  RpcIdentifier GetRpcIdentifier() const override;
 
   MOCK_METHOD1(RegisterAsync,
                void(const base::Callback<void(bool)>& completion_callback));
@@ -106,7 +106,7 @@ class ProfileMockAdaptor : public ProfileAdaptorInterface {
 
   ProfileMockAdaptor();
   ~ProfileMockAdaptor() override;
-  const RpcIdentifier& GetRpcIdentifier() const override;
+  RpcIdentifier GetRpcIdentifier() const override;
 
   MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
   MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32_t));
@@ -126,8 +126,8 @@ class RpcTaskMockAdaptor : public RpcTaskAdaptorInterface {
   RpcTaskMockAdaptor();
   ~RpcTaskMockAdaptor() override;
 
-  const RpcIdentifier& GetRpcIdentifier() const override;
-  const RpcIdentifier& GetRpcConnectionIdentifier() const override;
+  RpcIdentifier GetRpcIdentifier() const override;
+  RpcIdentifier GetRpcConnectionIdentifier() const override;
 
  private:
   const RpcIdentifier rpc_id_;
@@ -141,7 +141,7 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
 
   ServiceMockAdaptor();
   ~ServiceMockAdaptor() override;
-  const RpcIdentifier& GetRpcIdentifier() const override;
+  RpcIdentifier GetRpcIdentifier() const override;
 
   MOCK_METHOD2(EmitBoolChanged, void(const std::string& name, bool value));
   MOCK_METHOD2(EmitUint8Changed, void(const std::string& name, uint8_t value));

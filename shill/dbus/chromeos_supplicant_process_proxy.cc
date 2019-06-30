@@ -119,24 +119,24 @@ bool ChromeosSupplicantProcessProxy::CreateInterface(
                << error->GetCode() << " " << error->GetMessage();
     return false;
   }
-  *rpc_identifier = path;
+  *rpc_identifier = path.value();
   return true;
 }
 
 bool ChromeosSupplicantProcessProxy::RemoveInterface(
     const RpcIdentifier& rpc_identifier) {
   SLOG(&supplicant_proxy_->GetObjectPath(), 2) << __func__ << ": "
-                                               << rpc_identifier.value();
+                                               << rpc_identifier;
   if (!service_available_) {
     LOG(ERROR) << "Supplicant process not present";
     return false;
   }
 
   brillo::ErrorPtr error;
-  if (!supplicant_proxy_->RemoveInterface(rpc_identifier,
+  if (!supplicant_proxy_->RemoveInterface(dbus::ObjectPath(rpc_identifier),
                                           &error)) {
-    LOG(FATAL) << "Failed to remove interface " << rpc_identifier.value()
-               << ": " << error->GetCode() << " " << error->GetMessage();
+    LOG(FATAL) << "Failed to remove interface " << rpc_identifier << ": "
+               << error->GetCode() << " " << error->GetMessage();
     return false;  // Make the compiler happy.
   }
   return true;
@@ -157,7 +157,7 @@ bool ChromeosSupplicantProcessProxy::GetInterface(
                << error->GetCode() << " " << error->GetMessage();
     return false;
   }
-  *rpc_identifier = path;
+  *rpc_identifier = path.value();
   return rpc_identifier;
 }
 

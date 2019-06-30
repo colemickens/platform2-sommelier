@@ -61,10 +61,8 @@ const char kServiceSortTechnology[] = "Technology";
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kService;
-static string ObjectID(const Service* s) {
-  return s->GetRpcIdentifier().value();
+static string ObjectID(const Service* s) { return s->GetRpcIdentifier(); }
 }
-}  // namespace Logging
 
 const char Service::kAutoConnBusy[] = "busy";
 const char Service::kAutoConnConnected[] = "connected";
@@ -486,7 +484,7 @@ void Service::SetFailureSilent(ConnectFailure failure) {
   failed_time_ = time(nullptr);
 }
 
-const RpcIdentifier& Service::GetRpcIdentifier() const {
+RpcIdentifier Service::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 
@@ -1205,9 +1203,9 @@ RpcIdentifier Service::GetIPConfigRpcIdentifier(Error* error) const {
     return control_interface()->NullRpcIdentifier();
   }
 
-  const RpcIdentifier& id = connection_->ipconfig_rpc_identifier();
+  RpcIdentifier id = connection_->ipconfig_rpc_identifier();
 
-  if (id.value().empty()) {
+  if (id.empty()) {
     // Do not return an empty IPConfig.
     error->Populate(Error::kNotFound);
     return control_interface()->NullRpcIdentifier();
@@ -1550,23 +1548,23 @@ bool Service::SetPriority(const int32_t& priority, Error* error) {
   return true;
 }
 
-std::string Service::GetProfileRpcId(Error* error) {
+RpcIdentifier Service::GetProfileRpcId(Error* error) {
   if (!profile_) {
     // This happens in some unit tests where profile_ is not set.
     error->Populate(Error::kNotFound);
-    return "";
+    return RpcIdentifier();
   }
-  return profile_->GetRpcIdentifier().value();
+  return profile_->GetRpcIdentifier();
 }
 
-bool Service::SetProfileRpcId(const std::string& profile, Error* error) {
-  if (profile_ && profile_->GetRpcIdentifier().value() == profile) {
+bool Service::SetProfileRpcId(const RpcIdentifier& profile, Error* error) {
+  if (profile_ && profile_->GetRpcIdentifier() == profile) {
     return false;
   }
   ProfileConstRefPtr old_profile = profile_;
   // No need to Emit afterwards, since SetProfileForService will call
   // into SetProfile (if the profile actually changes).
-  manager_->SetProfileForService(this, RpcIdentifier(profile), error);
+  manager_->SetProfileForService(this, profile, error);
   // Can't just use error.IsSuccess(), because that also requires saving
   // the profile to succeed. (See Profile::AdoptService)
   return (profile_ != old_profile);

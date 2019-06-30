@@ -14,8 +14,7 @@ using testing::NiceMock;
 
 namespace shill {
 
-MockControl::MockControl()
-    : null_identifier_("/") {}
+MockControl::MockControl() = default;
 
 MockControl::~MockControl() = default;
 

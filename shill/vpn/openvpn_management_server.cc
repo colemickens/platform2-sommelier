@@ -34,9 +34,9 @@ namespace shill {
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
 static string ObjectID(OpenVPNManagementServer* o) {
-  return o->GetServiceRpcIdentifier().value();
+  return o->GetServiceRpcIdentifier();
 }
-}  // namespace Logging
+}
 
 namespace {
 const char kPasswordTagAuth[] = "Auth";

@@ -18,9 +18,9 @@ namespace shill {
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosDeviceDBusAdaptor* d) {
-  return d->GetRpcIdentifier().value() + " (" + d->device()->UniqueName() + ")";
+  return d->GetRpcIdentifier() + " (" + d->device()->UniqueName() + ")";
 }
-}  // namespace Logging
+}
 
 // static
 const char ChromeosDeviceDBusAdaptor::kPath[] = "/device/";
@@ -42,8 +42,8 @@ ChromeosDeviceDBusAdaptor::~ChromeosDeviceDBusAdaptor() {
   device_ = nullptr;
 }
 
-const RpcIdentifier& ChromeosDeviceDBusAdaptor::GetRpcIdentifier() const {
-  return dbus_path();
+RpcIdentifier ChromeosDeviceDBusAdaptor::GetRpcIdentifier() const {
+  return RpcIdentifier(dbus_path().value());
 }
 
 void ChromeosDeviceDBusAdaptor::EmitBoolChanged(const string& name,
@@ -104,13 +104,18 @@ void ChromeosDeviceDBusAdaptor::EmitKeyValueStoreChanged(
 void ChromeosDeviceDBusAdaptor::EmitRpcIdentifierChanged(
     const std::string& name, const RpcIdentifier& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, brillo::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(dbus::ObjectPath(value)));
 }
 
 void ChromeosDeviceDBusAdaptor::EmitRpcIdentifierArrayChanged(
     const string& name, const RpcIdentifiers& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, brillo::Any(value));
+  vector<dbus::ObjectPath> paths;
+  for (const auto& element : value) {
+    paths.push_back(dbus::ObjectPath(element));
+  }
+
+  SendPropertyChangedSignal(name, brillo::Any(paths));
 }
 
 bool ChromeosDeviceDBusAdaptor::GetProperties(

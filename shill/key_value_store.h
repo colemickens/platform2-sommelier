@@ -141,6 +141,9 @@ class KeyValueStore {
   static KeyValueStore ConvertFromVariantDictionary(
       const brillo::VariantDictionary& in_dict);
 
+  static RpcIdentifiers ConvertPathsToRpcIdentifiers(
+      const std::vector<dbus::ObjectPath>& paths);
+
  private:
   brillo::VariantDictionary properties_;
 };

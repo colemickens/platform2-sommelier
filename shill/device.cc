@@ -65,8 +65,8 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDevice;
-static string ObjectID(Device* d) { return d->GetRpcIdentifier().value(); }
-}  // namespace Logging
+static string ObjectID(Device* d) { return d->GetRpcIdentifier(); }
+}
 
 namespace {
 
@@ -404,7 +404,7 @@ bool Device::IsConnectedViaTether() const {
               vendor_encapsulated_options.size());
 }
 
-const RpcIdentifier& Device::GetRpcIdentifier() const {
+RpcIdentifier Device::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 

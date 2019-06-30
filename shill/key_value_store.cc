@@ -234,7 +234,7 @@ const RpcIdentifier& KeyValueStore::GetRpcIdentifier(const string& name) const {
   CHECK(it != properties_.end() &&
         it->second.IsTypeCompatible<dbus::ObjectPath>())
       << "for rpc identifier property " << name;
-  return it->second.Get<dbus::ObjectPath>();
+  return it->second.Get<dbus::ObjectPath>().value();
 }
 
 RpcIdentifiers KeyValueStore::GetRpcIdentifiers(const string& name) const {
@@ -242,7 +242,9 @@ RpcIdentifiers KeyValueStore::GetRpcIdentifiers(const string& name) const {
   CHECK(it != properties_.end() &&
         it->second.IsTypeCompatible<vector<dbus::ObjectPath>>())
       << "for rpc identifier property " << name;
-  return it->second.Get<vector<dbus::ObjectPath>>();
+  RpcIdentifiers ids = KeyValueStore::ConvertPathsToRpcIdentifiers(
+      it->second.Get<vector<dbus::ObjectPath>>());
+  return ids;
 }
 
 const string& KeyValueStore::GetString(const string& name) const {
@@ -360,12 +362,16 @@ void KeyValueStore::SetKeyValueStore(const string& name,
 
 void KeyValueStore::SetRpcIdentifier(const string& name,
                                      const RpcIdentifier& value) {
-  properties_[name] = brillo::Any(value);
+  properties_[name] = brillo::Any(dbus::ObjectPath(value));
 }
 
 void KeyValueStore::SetRpcIdentifiers(const string& name,
                                       const vector<RpcIdentifier>& value) {
-  properties_[name] = brillo::Any(value);
+  vector<dbus::ObjectPath> paths;
+  for (const auto& rpcid : value) {
+    paths.push_back(dbus::ObjectPath(rpcid));
+  }
+  properties_[name] = brillo::Any(paths);
 }
 
 void KeyValueStore::SetString(const string& name, const string& value) {
@@ -474,6 +480,16 @@ KeyValueStore KeyValueStore::ConvertFromVariantDictionary(
     }
   }
   return out_store;
+}
+
+// static.
+RpcIdentifiers KeyValueStore::ConvertPathsToRpcIdentifiers(
+  const vector<dbus::ObjectPath>& paths) {
+  RpcIdentifiers rpc_identifiers;
+  for (const auto& path : paths) {
+    rpc_identifiers.push_back(path.value());
+  }
+  return rpc_identifiers;
 }
 
 }  // namespace shill

@@ -19,15 +19,15 @@ class Manager;
 // This is a simple Service subclass with all the pure-virtual methods stubbed.
 class ServiceUnderTest : public Service {
  public:
-  static const RpcIdentifier kDeviceRpcId;
   static const char kKeyValueStoreProperty[];
+  static const RpcIdentifier kRpcId;
   static const char kStringsProperty[];
   static const char kStorageId[];
 
   explicit ServiceUnderTest(Manager* manager);
   ~ServiceUnderTest() override;
 
-  const RpcIdentifier& GetRpcIdentifier() const override;
+  RpcIdentifier GetRpcIdentifier() const override;
   RpcIdentifier GetDeviceRpcId(Error* error) const override;
   std::string GetStorageIdentifier() const override;
 

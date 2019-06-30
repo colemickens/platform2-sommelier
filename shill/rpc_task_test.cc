@@ -53,10 +53,8 @@ void RpcTaskTest::Notify(const string& reason,
 TEST_F(RpcTaskTest, GetEnvironment) {
   map<string, string> env = task_.GetEnvironment();
   ASSERT_EQ(2, env.size());
-  EXPECT_EQ(env[kRpcTaskServiceVariable],
-            RpcTaskMockAdaptor::kRpcConnId.value());
-  EXPECT_EQ(env[kRpcTaskPathVariable],
-            RpcTaskMockAdaptor::kRpcId.value());
+  EXPECT_EQ(env[kRpcTaskServiceVariable], RpcTaskMockAdaptor::kRpcConnId);
+  EXPECT_EQ(env[kRpcTaskPathVariable], RpcTaskMockAdaptor::kRpcId);
 }
 
 TEST_F(RpcTaskTest, GetRpcIdentifiers) {

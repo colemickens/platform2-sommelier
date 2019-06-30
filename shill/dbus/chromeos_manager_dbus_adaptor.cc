@@ -27,9 +27,9 @@ namespace shill {
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosManagerDBusAdaptor* m) {
-  return m->GetRpcIdentifier().value();
+  return m->GetRpcIdentifier();
 }
-}  // namespace Logging
+}
 
 // static
 const char ChromeosManagerDBusAdaptor::kPath[] = "/";
@@ -87,7 +87,7 @@ void ChromeosManagerDBusAdaptor::EmitRpcIdentifierChanged(
     const string& name,
     const RpcIdentifier& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, brillo::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(dbus::ObjectPath(value)));
 }
 
 void ChromeosManagerDBusAdaptor::EmitRpcIdentifierArrayChanged(
@@ -95,7 +95,11 @@ void ChromeosManagerDBusAdaptor::EmitRpcIdentifierArrayChanged(
     const RpcIdentifiers& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   vector<dbus::ObjectPath> paths;
-  SendPropertyChangedSignal(name, brillo::Any(value));
+  for (const auto& element : value) {
+    paths.push_back(dbus::ObjectPath(element));
+  }
+
+  SendPropertyChangedSignal(name, brillo::Any(paths));
 }
 
 bool ChromeosManagerDBusAdaptor::GetProperties(
@@ -128,12 +132,12 @@ bool ChromeosManagerDBusAdaptor::CreateProfile(brillo::ErrorPtr* error,
                                                dbus::ObjectPath* profile_path) {
   SLOG(this, 2) << __func__ << ": " << name;
   Error e;
-  RpcIdentifier path;
+  string path;
   manager_->CreateProfile(name, &path, &e);
   if (e.ToChromeosError(error)) {
     return false;
   }
-  *profile_path = path;
+  *profile_path = dbus::ObjectPath(path);
   return true;
 }
 
@@ -150,12 +154,12 @@ bool ChromeosManagerDBusAdaptor::PushProfile(brillo::ErrorPtr* error,
                                              dbus::ObjectPath* profile_path) {
   SLOG(this, 2) << __func__ << ": " << name;
   Error e;
-  RpcIdentifier path;
+  string path;
   manager_->PushProfile(name, &path, &e);
   if (e.ToChromeosError(error)) {
     return false;
   }
-  *profile_path = path;
+  *profile_path = dbus::ObjectPath(path);
   return true;
 }
 
@@ -166,12 +170,12 @@ bool ChromeosManagerDBusAdaptor::InsertUserProfile(
     dbus::ObjectPath* profile_path) {
   SLOG(this, 2) << __func__ << ": " << name;
   Error e;
-  RpcIdentifier path;
+  string path;
   manager_->InsertUserProfile(name, user_hash, &path, &e);
   if (e.ToChromeosError(error)) {
     return false;
   }
-  *profile_path = path;
+  *profile_path = dbus::ObjectPath(path);
   return true;
 }
 
@@ -260,7 +264,7 @@ bool ChromeosManagerDBusAdaptor::GetService(
   if (e.ToChromeosError(error)) {
     return false;
   }
-  *service_path = service->GetRpcIdentifier();
+  *service_path = dbus::ObjectPath(service->GetRpcIdentifier());
   return true;
 }
 
@@ -277,7 +281,7 @@ bool ChromeosManagerDBusAdaptor::ConfigureService(
   if (configure_error.ToChromeosError(error)) {
     return false;
   }
-  *service_path = service->GetRpcIdentifier();
+  *service_path = dbus::ObjectPath(service->GetRpcIdentifier());
   return true;
 }
 
@@ -292,12 +296,12 @@ bool ChromeosManagerDBusAdaptor::ConfigureServiceForProfile(
       KeyValueStore::ConvertFromVariantDictionary(args);
   Error configure_error;
   service = manager_->ConfigureServiceForProfile(
-      profile_rpcid, args_store, &configure_error);
+      profile_rpcid.value(), args_store, &configure_error);
   if (configure_error.ToChromeosError(error)) {
     return false;
   }
   CHECK(service);
-  *service_path = service->GetRpcIdentifier();
+  *service_path = dbus::ObjectPath(service->GetRpcIdentifier());
   return true;
 }
 
@@ -316,7 +320,7 @@ bool ChromeosManagerDBusAdaptor::FindMatchingService(
     return false;
   }
 
-  *service_path = service->GetRpcIdentifier();
+  *service_path = dbus::ObjectPath(service->GetRpcIdentifier());
   return true;
 }
 
