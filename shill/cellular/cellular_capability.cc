@@ -9,8 +9,8 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/cellular/cellular.h"
-#include "shill/cellular/cellular_capability_universal.h"
-#include "shill/cellular/cellular_capability_universal_cdma.h"
+#include "shill/cellular/cellular_capability_3gpp.h"
+#include "shill/cellular/cellular_capability_cdma.h"
 #include "shill/error.h"
 
 using std::string;
@@ -33,13 +33,11 @@ const int CellularCapability::kTimeoutSetupLocation = 45000;
 std::unique_ptr<CellularCapability> CellularCapability::Create(
     Cellular::Type type, Cellular* cellular, ModemInfo* modem_info) {
   switch (type) {
-    case Cellular::kTypeUniversal:
-      return std::make_unique<CellularCapabilityUniversal>(cellular,
-                                                           modem_info);
+    case Cellular::kType3gpp:
+      return std::make_unique<CellularCapability3gpp>(cellular, modem_info);
 
-    case Cellular::kTypeUniversalCdma:
-      return std::make_unique<CellularCapabilityUniversalCdma>(cellular,
-                                                               modem_info);
+    case Cellular::kTypeCdma:
+      return std::make_unique<CellularCapabilityCdma>(cellular, modem_info);
 
     default:
       NOTREACHED();

@@ -26,7 +26,7 @@ class ModemInfo;
 // handle the specific modem technologies and capabilities.
 //
 // The CellularCapability is directly subclassed by:
-// *  CelllularCapabilityUniversal which handles all modems managed by
+// *  CelllularCapability3gpp which handles all modems managed by
 //    a modem manager using the the org.freedesktop.ModemManager1 DBUS
 //    interface.
 //
@@ -34,12 +34,12 @@ class ModemInfo;
 //
 // CellularCapability
 //       |
-//       |-- CellularCapabilityUniversal
+//       |-- CellularCapability3gpp
 //                    |
-//                    |-- CellularCapabilityUniversalCdma
+//                    |-- CellularCapabilityCdma
 //
 // TODO(armansito): Currently, 3GPP logic is handled by
-// CellularCapabilityUniversal. Eventually CellularCapabilityUniversal will
+// CellularCapability3gpp. Eventually CellularCapability3gpp will
 // only serve as the abstract base class for ModemManager1 3GPP and CDMA
 // capabilities.
 class CellularCapability {
@@ -236,10 +236,10 @@ class CellularCapability {
   static void OnUnsupportedOperation(const char* operation, Error* error);
 
  private:
-  friend class CellularCapabilityUniversalTest;
-  friend class CellularCapabilityUniversalCdmaTest;
+  friend class CellularCapability3gppTest;
+  friend class CellularCapabilityCdmaTest;
   friend class CellularTest;
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateActiveBearer);
+  FRIEND_TEST(CellularCapability3gppMainTest, UpdateActiveBearer);
   FRIEND_TEST(CellularTest, Connect);
 
   Cellular* cellular_;

@@ -524,7 +524,7 @@ void Cellular::OnAfterResume() {
     // |state_| here.
     //
     // TODO(quiche): Remove this hack. Maybe
-    // CellularCapabilityUniversal should generate separate
+    // CellularCapability3gpp should generate separate
     // notifications for Stop_Disable, and Stop_PowerDown. Then we'd
     // update our state to kStateDisabled when Stop_Disable completes.
     state_ = kStateDisabled;

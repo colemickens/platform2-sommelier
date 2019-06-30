@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/cellular/cellular_capability_universal_cdma.h"
+#include "shill/cellular/cellular_capability_cdma.h"
 
 #include <string>
 #include <utility>
@@ -35,17 +35,17 @@
 using std::string;
 using std::unique_ptr;
 using std::vector;
+using testing::_;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
-using testing::_;
 
 namespace shill {
 
-class CellularCapabilityUniversalCdmaTest : public testing::Test {
+class CellularCapabilityCdmaTest : public testing::Test {
  public:
-  explicit CellularCapabilityUniversalCdmaTest(EventDispatcher* dispatcher)
+  explicit CellularCapabilityCdmaTest(EventDispatcher* dispatcher)
       : dispatcher_(dispatcher),
         control_interface_(this),
         capability_(nullptr),
@@ -61,22 +61,22 @@ class CellularCapabilityUniversalCdmaTest : public testing::Test {
                                "",
                                kMachineAddress,
                                0,
-                               Cellular::kTypeUniversalCdma,
+                               Cellular::kTypeCdma,
                                "",
                                RpcIdentifier(""))),
         service_(new MockCellularService(modem_info_.manager(), cellular_)),
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr) {}
 
-  ~CellularCapabilityUniversalCdmaTest() override {
+  ~CellularCapabilityCdmaTest() override {
     cellular_->service_ = nullptr;
     capability_ = nullptr;
     device_adaptor_ = nullptr;
   }
 
   void SetUp() override {
-    capability_ = static_cast<CellularCapabilityUniversalCdma*>(
-        cellular_->capability_.get());
+    capability_ =
+        static_cast<CellularCapabilityCdma*>(cellular_->capability_.get());
     device_adaptor_ =
         static_cast<NiceMock<DeviceMockAdaptor>*>(cellular_->adaptor());
     cellular_->service_ = service_;
@@ -104,11 +104,10 @@ class CellularCapabilityUniversalCdmaTest : public testing::Test {
 
   class TestControl : public MockControl {
    public:
-    explicit TestControl(CellularCapabilityUniversalCdmaTest* test)
-        : test_(test) {}
+    explicit TestControl(CellularCapabilityCdmaTest* test) : test_(test) {}
 
     // TODO(armansito): Some of these methods won't be necessary after 3GPP
-    // gets refactored out of CellularCapabilityUniversal.
+    // gets refactored out of CellularCapability3gpp.
     std::unique_ptr<mm1::ModemModem3gppProxyInterface>
     CreateMM1ModemModem3gppProxy(const RpcIdentifier& /*path*/,
                                  const std::string& /*service*/) override {
@@ -146,12 +145,12 @@ class CellularCapabilityUniversalCdmaTest : public testing::Test {
     }
 
    private:
-    CellularCapabilityUniversalCdmaTest* test_;
+    CellularCapabilityCdmaTest* test_;
   };
 
   EventDispatcher* dispatcher_;
   TestControl control_interface_;
-  CellularCapabilityUniversalCdma* capability_;
+  CellularCapabilityCdma* capability_;
   NiceMock<DeviceMockAdaptor>* device_adaptor_;
   MockModemInfo modem_info_;
   // TODO(armansito): Remove |modem_3gpp_proxy_| after refactor.
@@ -170,31 +169,27 @@ class CellularCapabilityUniversalCdmaTest : public testing::Test {
 };
 
 // static
-const char CellularCapabilityUniversalCdmaTest::kEsn[] = "0000";
+const char CellularCapabilityCdmaTest::kEsn[] = "0000";
 // static
-const char CellularCapabilityUniversalCdmaTest::kMachineAddress[] =
-    "TestMachineAddress";
+const char CellularCapabilityCdmaTest::kMachineAddress[] = "TestMachineAddress";
 // static
-const char CellularCapabilityUniversalCdmaTest::kMeid[] = "11111111111111";
+const char CellularCapabilityCdmaTest::kMeid[] = "11111111111111";
 
-class CellularCapabilityUniversalCdmaMainTest
-    : public CellularCapabilityUniversalCdmaTest {
+class CellularCapabilityCdmaMainTest : public CellularCapabilityCdmaTest {
  public:
-  CellularCapabilityUniversalCdmaMainTest()
-      : CellularCapabilityUniversalCdmaTest(&dispatcher_) {}
+  CellularCapabilityCdmaMainTest() : CellularCapabilityCdmaTest(&dispatcher_) {}
 
  private:
   EventDispatcherForTest dispatcher_;
 };
 
-class CellularCapabilityUniversalCdmaDispatcherTest
-    : public CellularCapabilityUniversalCdmaTest {
+class CellularCapabilityCdmaDispatcherTest : public CellularCapabilityCdmaTest {
  public:
-  CellularCapabilityUniversalCdmaDispatcherTest()
-      : CellularCapabilityUniversalCdmaTest(nullptr) {}
+  CellularCapabilityCdmaDispatcherTest()
+      : CellularCapabilityCdmaTest(nullptr) {}
 };
 
-TEST_F(CellularCapabilityUniversalCdmaMainTest, PropertiesChanged) {
+TEST_F(CellularCapabilityCdmaMainTest, PropertiesChanged) {
   // Set up mock modem CDMA properties.
   KeyValueStore modem_cdma_properties;
   modem_cdma_properties.SetString(MM_MODEM_MODEMCDMA_PROPERTY_MEID, kMeid);
@@ -207,21 +202,19 @@ TEST_F(CellularCapabilityUniversalCdmaMainTest, PropertiesChanged) {
 
   // Changing properties on wrong interface will not have an effect
   capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
-                                   modem_cdma_properties,
-                                   vector<string>());
+                                   modem_cdma_properties, vector<string>());
   EXPECT_TRUE(cellular_->meid().empty());
   EXPECT_TRUE(cellular_->esn().empty());
 
   // Changing properties on the right interface gets reflected in the
   // capabilities object
   capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_MODEMCDMA,
-                                   modem_cdma_properties,
-                                   vector<string>());
+                                   modem_cdma_properties, vector<string>());
   EXPECT_EQ(kMeid, cellular_->meid());
   EXPECT_EQ(kEsn, cellular_->esn());
 }
 
-TEST_F(CellularCapabilityUniversalCdmaMainTest, OnCdmaRegistrationChanged) {
+TEST_F(CellularCapabilityCdmaMainTest, OnCdmaRegistrationChanged) {
   EXPECT_EQ(0, capability_->sid_);
   EXPECT_EQ(0, capability_->nid_);
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
@@ -238,9 +231,7 @@ TEST_F(CellularCapabilityUniversalCdmaMainTest, OnCdmaRegistrationChanged) {
               UpdateNID(base::UintToString(kNid)));
   capability_->OnCdmaRegistrationChanged(
       MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
-      MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
-      kSid,
-      kNid);
+      MM_MODEM_CDMA_REGISTRATION_STATE_HOME, kSid, kNid);
   EXPECT_EQ(kSid, capability_->sid_);
   EXPECT_EQ(kNid, capability_->nid_);
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
@@ -251,12 +242,10 @@ TEST_F(CellularCapabilityUniversalCdmaMainTest, OnCdmaRegistrationChanged) {
   EXPECT_TRUE(capability_->IsRegistered());
 }
 
-TEST_F(CellularCapabilityUniversalCdmaMainTest, UpdateServiceOLP) {
-  const MobileOperatorInfo::OnlinePortal kOlp {
-      "http://testurl",
-      "POST",
-      "esn=${esn}&mdn=${mdn}&meid=${meid}"};
-  const vector<MobileOperatorInfo::OnlinePortal> kOlpList {kOlp};
+TEST_F(CellularCapabilityCdmaMainTest, UpdateServiceOLP) {
+  const MobileOperatorInfo::OnlinePortal kOlp{
+      "http://testurl", "POST", "esn=${esn}&mdn=${mdn}&meid=${meid}"};
+  const vector<MobileOperatorInfo::OnlinePortal> kOlpList{kOlp};
   const string kUuidVzw = "c83d6597-dc91-4d48-a3a7-d86b80123751";
   const string kUuidFoo = "foo";
 
@@ -277,8 +266,7 @@ TEST_F(CellularCapabilityUniversalCdmaMainTest, UpdateServiceOLP) {
   Stringmap vzw_olp = cellular_->service()->olp();
   EXPECT_EQ("http://testurl", vzw_olp[kPaymentPortalURL]);
   EXPECT_EQ("POST", vzw_olp[kPaymentPortalMethod]);
-  EXPECT_EQ("esn=0&mdn=0123456789&meid=4",
-            vzw_olp[kPaymentPortalPostData]);
+  EXPECT_EQ("esn=0&mdn=0123456789&meid=4", vzw_olp[kPaymentPortalPostData]);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
 
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
@@ -292,12 +280,11 @@ TEST_F(CellularCapabilityUniversalCdmaMainTest, UpdateServiceOLP) {
   Stringmap olp = cellular_->service()->olp();
   EXPECT_EQ("http://testurl", olp[kPaymentPortalURL]);
   EXPECT_EQ("POST", olp[kPaymentPortalMethod]);
-  EXPECT_EQ("esn=0&mdn=10123456789&meid=4",
-            olp[kPaymentPortalPostData]);
+  EXPECT_EQ("esn=0&mdn=10123456789&meid=4", olp[kPaymentPortalPostData]);
 }
 
-TEST_F(CellularCapabilityUniversalCdmaMainTest, ActivateAutomatic) {
-  const string activation_code {"1234"};
+TEST_F(CellularCapabilityCdmaMainTest, ActivateAutomatic) {
+  const string activation_code{"1234"};
   SetMockMobileOperatorInfoObjects();
 
   mm1::MockModemModemCdmaProxy* cdma_proxy = modem_cdma_proxy_.get();
@@ -351,22 +338,19 @@ TEST_F(CellularCapabilityUniversalCdmaMainTest, ActivateAutomatic) {
   Mock::VerifyAndClearExpectations(modem_cdma_proxy_.get());
 }
 
-TEST_F(CellularCapabilityUniversalCdmaMainTest, IsServiceActivationRequired) {
+TEST_F(CellularCapabilityCdmaMainTest, IsServiceActivationRequired) {
   const vector<MobileOperatorInfo::OnlinePortal> empty_list;
-  const vector<MobileOperatorInfo::OnlinePortal> olp_list {
-    {"some@url", "some_method", "some_post_data"}
-  };
+  const vector<MobileOperatorInfo::OnlinePortal> olp_list{
+      {"some@url", "some_method", "some_post_data"}};
   SetMockMobileOperatorInfoObjects();
 
-  capability_->activation_state_ =
-      MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
+  capability_->activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(false));
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
 
-  capability_->activation_state_ =
-      MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
+  capability_->activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_serving_operator_info_, olp_list())
@@ -380,22 +364,17 @@ TEST_F(CellularCapabilityUniversalCdmaMainTest, IsServiceActivationRequired) {
   EXPECT_CALL(*mock_serving_operator_info_, olp_list())
       .WillRepeatedly(ReturnRef(olp_list));
 
-  capability_->activation_state_ =
-      MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
+  capability_->activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
   EXPECT_TRUE(capability_->IsServiceActivationRequired());
-  capability_->activation_state_ =
-      MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
+  capability_->activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
-  capability_->activation_state_ =
-      MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
+  capability_->activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
 }
 
-TEST_F(CellularCapabilityUniversalCdmaMainTest,
-       UpdateServiceActivationStateProperty) {
-  const vector<MobileOperatorInfo::OnlinePortal> olp_list {
-    {"some@url", "some_method", "some_post_data"}
-  };
+TEST_F(CellularCapabilityCdmaMainTest, UpdateServiceActivationStateProperty) {
+  const vector<MobileOperatorInfo::OnlinePortal> olp_list{
+      {"some@url", "some_method", "some_post_data"}};
   SetMockMobileOperatorInfoObjects();
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
@@ -432,7 +411,7 @@ TEST_F(CellularCapabilityUniversalCdmaMainTest,
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 }
 
-TEST_F(CellularCapabilityUniversalCdmaMainTest, IsActivating) {
+TEST_F(CellularCapabilityCdmaMainTest, IsActivating) {
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(_, _))
       .WillOnce(Return(PendingActivationStore::kStatePending))
@@ -440,19 +419,17 @@ TEST_F(CellularCapabilityUniversalCdmaMainTest, IsActivating) {
       .WillOnce(Return(PendingActivationStore::kStateFailureRetry))
       .WillRepeatedly(Return(PendingActivationStore::kStateUnknown));
 
-  capability_->activation_state_ =
-      MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
+  capability_->activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
   EXPECT_TRUE(capability_->IsActivating());
   EXPECT_TRUE(capability_->IsActivating());
   capability_->activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
   EXPECT_TRUE(capability_->IsActivating());
   EXPECT_TRUE(capability_->IsActivating());
-  capability_->activation_state_ =
-      MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
+  capability_->activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
   EXPECT_FALSE(capability_->IsActivating());
 }
 
-TEST_F(CellularCapabilityUniversalCdmaMainTest, IsRegistered) {
+TEST_F(CellularCapabilityCdmaMainTest, IsRegistered) {
   capability_->cdma_1x_registration_state_ =
       MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
   capability_->cdma_evdo_registration_state_ =
@@ -526,14 +503,13 @@ TEST_F(CellularCapabilityUniversalCdmaMainTest, IsRegistered) {
   EXPECT_TRUE(capability_->IsRegistered());
 }
 
-TEST_F(CellularCapabilityUniversalCdmaMainTest, SetupConnectProperties) {
+TEST_F(CellularCapabilityCdmaMainTest, SetupConnectProperties) {
   KeyValueStore map;
   capability_->SetupConnectProperties(&map);
   EXPECT_TRUE(map.properties().empty());
 }
 
-TEST_F(CellularCapabilityUniversalCdmaDispatcherTest,
-       UpdatePendingActivationState) {
+TEST_F(CellularCapabilityCdmaDispatcherTest, UpdatePendingActivationState) {
   capability_->activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(), RemoveEntry(_, _))
       .Times(1);

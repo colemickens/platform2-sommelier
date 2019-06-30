@@ -44,7 +44,7 @@ class CellularServiceTest : public testing::Test {
                                  "usb0",
                                  kAddress,
                                  3,
-                                 Cellular::kTypeUniversalCdma,
+                                 Cellular::kTypeCdma,
                                  "",
                                  RpcIdentifier(""))),
         service_(new CellularService(modem_info_.manager(), device_)),

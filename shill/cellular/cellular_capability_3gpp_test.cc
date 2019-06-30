@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/cellular/cellular_capability_universal.h"
+#include "shill/cellular/cellular_capability_3gpp.h"
 
 #include <memory>
 #include <string>
@@ -45,6 +45,7 @@ using base::Unretained;
 using std::string;
 using std::unique_ptr;
 using std::vector;
+using testing::_;
 using testing::AnyNumber;
 using testing::InSequence;
 using testing::Invoke;
@@ -52,49 +53,46 @@ using testing::Mock;
 using testing::Return;
 using testing::ReturnRef;
 using testing::SaveArg;
-using testing::_;
 
 namespace shill {
 
 MATCHER_P(HasApn, expected_apn, "") {
-  return arg.ContainsString(CellularCapabilityUniversal::kConnectApn) &&
-         expected_apn ==
-             arg.GetString(CellularCapabilityUniversal::kConnectApn);
+  return arg.ContainsString(CellularCapability3gpp::kConnectApn) &&
+         expected_apn == arg.GetString(CellularCapability3gpp::kConnectApn);
 }
 
 MATCHER(HasNoUser, "") {
-  return !arg.ContainsString(CellularCapabilityUniversal::kConnectUser);
+  return !arg.ContainsString(CellularCapability3gpp::kConnectUser);
 }
 
 MATCHER_P(HasUser, expected_user, "") {
-  return arg.ContainsString(CellularCapabilityUniversal::kConnectUser) &&
-         expected_user ==
-             arg.GetString(CellularCapabilityUniversal::kConnectUser);
+  return arg.ContainsString(CellularCapability3gpp::kConnectUser) &&
+         expected_user == arg.GetString(CellularCapability3gpp::kConnectUser);
 }
 
 MATCHER(HasNoPassword, "") {
-  return !arg.ContainsString(CellularCapabilityUniversal::kConnectPassword);
+  return !arg.ContainsString(CellularCapability3gpp::kConnectPassword);
 }
 
 MATCHER_P(HasPassword, expected_password, "") {
-  return arg.ContainsString(CellularCapabilityUniversal::kConnectPassword) &&
+  return arg.ContainsString(CellularCapability3gpp::kConnectPassword) &&
          expected_password ==
-             arg.GetString(CellularCapabilityUniversal::kConnectPassword);
+             arg.GetString(CellularCapability3gpp::kConnectPassword);
 }
 
 MATCHER(HasNoAllowedAuth, "") {
-  return !arg.ContainsString(CellularCapabilityUniversal::kConnectAllowedAuth);
+  return !arg.ContainsString(CellularCapability3gpp::kConnectAllowedAuth);
 }
 
 MATCHER_P(HasAllowedAuth, expected_authentication, "") {
-  return arg.ContainsUint(CellularCapabilityUniversal::kConnectAllowedAuth) &&
+  return arg.ContainsUint(CellularCapability3gpp::kConnectAllowedAuth) &&
          expected_authentication ==
-             arg.GetUint(CellularCapabilityUniversal::kConnectAllowedAuth);
+             arg.GetUint(CellularCapability3gpp::kConnectAllowedAuth);
 }
 
-class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
+class CellularCapability3gppTest : public testing::TestWithParam<string> {
  public:
-  explicit CellularCapabilityUniversalTest(EventDispatcher* dispatcher)
+  explicit CellularCapability3gppTest(EventDispatcher* dispatcher)
       : dispatcher_(dispatcher),
         control_interface_(this),
         modem_info_(&control_interface_, dispatcher, nullptr, nullptr),
@@ -111,7 +109,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
                                "",
                                "00:01:02:03:04:05",
                                0,
-                               Cellular::kTypeUniversal,
+                               Cellular::kType3gpp,
                                "",
                                RpcIdentifier(""))),
         service_(new MockCellularService(modem_info_.manager(), cellular_)),
@@ -121,17 +119,16 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
                                           Technology::kCellular);
   }
 
-  ~CellularCapabilityUniversalTest() override {
+  ~CellularCapability3gppTest() override {
     cellular_->service_ = nullptr;
     capability_ = nullptr;
     device_adaptor_ = nullptr;
   }
 
   void SetUp() override {
-    capability_ = static_cast<CellularCapabilityUniversal*>(
-        cellular_->capability_.get());
-    device_adaptor_ =
-        static_cast<DeviceMockAdaptor*>(cellular_->adaptor());
+    capability_ =
+        static_cast<CellularCapability3gpp*>(cellular_->capability_.get());
+    device_adaptor_ = static_cast<DeviceMockAdaptor*>(cellular_->adaptor());
     cellular_->service_ = service_;
 
     // kStateUnknown leads to minimal extra work in maintaining
@@ -171,7 +168,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
 
     modem_properties.SetUint(MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES,
                              kAccessTechnologies);
-    std::tuple<uint32_t, bool> signal_signal { 90, true };
+    std::tuple<uint32_t, bool> signal_signal{90, true};
     modem_properties.Set(MM_MODEM_PROPERTY_SIGNALQUALITY,
                          brillo::Any(signal_signal));
 
@@ -181,28 +178,34 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
         MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS, 0);
     modem3gpp_properties.SetString(MM_MODEM_MODEM3GPP_PROPERTY_IMEI, kImei);
 
-    EXPECT_CALL(*properties_proxy_,
-                GetAll(MM_DBUS_INTERFACE_MODEM))
+    EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_MODEM))
         .WillOnce(Return(modem_properties));
-    EXPECT_CALL(*properties_proxy_,
-                GetAll(MM_DBUS_INTERFACE_MODEM_MODEM3GPP))
+    EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_MODEM_MODEM3GPP))
         .WillOnce(Return(modem3gpp_properties));
   }
 
-  void InvokeEnable(bool enable, Error* error,
-                    const ResultCallback& callback, int timeout) {
+  void InvokeEnable(bool enable,
+                    Error* error,
+                    const ResultCallback& callback,
+                    int timeout) {
     callback.Run(Error());
   }
-  void InvokeEnableFail(bool enable, Error* error,
-                        const ResultCallback& callback, int timeout) {
+  void InvokeEnableFail(bool enable,
+                        Error* error,
+                        const ResultCallback& callback,
+                        int timeout) {
     callback.Run(Error(Error::kOperationFailed));
   }
-  void InvokeEnableInWrongState(bool enable, Error* error,
-                                const ResultCallback& callback, int timeout) {
+  void InvokeEnableInWrongState(bool enable,
+                                Error* error,
+                                const ResultCallback& callback,
+                                int timeout) {
     callback.Run(Error(Error::kWrongState));
   }
-  void InvokeRegister(const string& operator_id, Error* error,
-                      const ResultCallback& callback, int timeout) {
+  void InvokeRegister(const string& operator_id,
+                      Error* error,
+                      const ResultCallback& callback,
+                      int timeout) {
     callback.Run(Error());
   }
   void InvokeSetPowerState(const uint32_t& power_state,
@@ -251,8 +254,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
 
   void SetMockRegistrationDroppedUpdateCallback() {
     capability_->registration_dropped_update_callback_.Reset(
-        Bind(&CellularCapabilityUniversalTest::DummyCallback,
-             Unretained(this)));
+        Bind(&CellularCapability3gppTest::DummyCallback, Unretained(this)));
   }
 
  protected:
@@ -265,16 +267,15 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
 
   class TestControl : public MockControl {
    public:
-    explicit TestControl(CellularCapabilityUniversalTest* test)
-        : test_(test) {
+    explicit TestControl(CellularCapability3gppTest* test) : test_(test) {
       active_bearer_properties_.SetBool(MM_BEARER_PROPERTY_CONNECTED, true);
       active_bearer_properties_.SetString(MM_BEARER_PROPERTY_INTERFACE,
                                           "/dev/fake");
 
       KeyValueStore ip4config;
       ip4config.SetUint("method", MM_BEARER_IP_METHOD_DHCP);
-      active_bearer_properties_.SetKeyValueStore(
-          MM_BEARER_PROPERTY_IP4CONFIG, ip4config);
+      active_bearer_properties_.SetKeyValueStore(MM_BEARER_PROPERTY_IP4CONFIG,
+                                                 ip4config);
 
       inactive_bearer_properties_.SetBool(MM_BEARER_PROPERTY_CONNECTED, false);
     }
@@ -327,8 +328,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     }
 
     std::unique_ptr<DBusPropertiesProxyInterface> CreateDBusPropertiesProxy(
-        const RpcIdentifier& path,
-        const std::string& /*service*/) override {
+        const RpcIdentifier& path, const std::string& /*service*/) override {
       std::unique_ptr<MockDBusPropertiesProxy> properties_proxy =
           std::move(test_->properties_proxy_);
       if (path.find(kActiveBearerPathPrefix) != std::string::npos) {
@@ -345,7 +345,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     }
 
    private:
-    CellularCapabilityUniversalTest* test_;
+    CellularCapability3gppTest* test_;
     KeyValueStore active_bearer_properties_;
     KeyValueStore inactive_bearer_properties_;
   };
@@ -360,8 +360,8 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   unique_ptr<mm1::MockModemSimpleProxy> modem_simple_proxy_;
   unique_ptr<mm1::MockSimProxy> sim_proxy_;
   unique_ptr<MockDBusPropertiesProxy> properties_proxy_;
-  CellularCapabilityUniversal* capability_;  // Owned by |cellular_|.
-  DeviceMockAdaptor* device_adaptor_;  // Owned by |cellular_|.
+  CellularCapability3gpp* capability_;  // Owned by |cellular_|.
+  DeviceMockAdaptor* device_adaptor_;   // Owned by |cellular_|.
   CellularRefPtr cellular_;
   MockCellularService* service_;  // owned by cellular_
   // saved for testing connect operations.
@@ -373,11 +373,9 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
 };
 
 // Most of our tests involve using a real EventDispatcher object.
-class CellularCapabilityUniversalMainTest
-    : public CellularCapabilityUniversalTest {
+class CellularCapability3gppMainTest : public CellularCapability3gppTest {
  public:
-  CellularCapabilityUniversalMainTest() :
-      CellularCapabilityUniversalTest(&dispatcher_) {}
+  CellularCapability3gppMainTest() : CellularCapability3gppTest(&dispatcher_) {}
 
  protected:
   EventDispatcherForTest dispatcher_;
@@ -385,41 +383,38 @@ class CellularCapabilityUniversalMainTest
 
 // Tests that involve timers will (or may) use a mock of the event dispatcher
 // instead of a real one.
-class CellularCapabilityUniversalTimerTest
-    : public CellularCapabilityUniversalTest {
+class CellularCapability3gppTimerTest : public CellularCapability3gppTest {
  public:
-  CellularCapabilityUniversalTimerTest()
-      : CellularCapabilityUniversalTest(&mock_dispatcher_) {}
+  CellularCapability3gppTimerTest()
+      : CellularCapability3gppTest(&mock_dispatcher_) {}
 
  protected:
   ::testing::StrictMock<MockEventDispatcher> mock_dispatcher_;
 };
 
-const char CellularCapabilityUniversalTest::kActiveBearerPathPrefix[] =
+const char CellularCapability3gppTest::kActiveBearerPathPrefix[] =
     "/bearer/active";
-const char CellularCapabilityUniversalTest::kImei[] = "999911110000";
-const char CellularCapabilityUniversalTest::kInactiveBearerPathPrefix[] =
+const char CellularCapability3gppTest::kImei[] = "999911110000";
+const char CellularCapability3gppTest::kInactiveBearerPathPrefix[] =
     "/bearer/inactive";
-const RpcIdentifier CellularCapabilityUniversalTest::kSimPath =
-  RpcIdentifier("/foo/sim");
-const uint32_t CellularCapabilityUniversalTest::kAccessTechnologies =
-    MM_MODEM_ACCESS_TECHNOLOGY_LTE |
-    MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS;
-const char CellularCapabilityUniversalTest::kTestMobileProviderDBPath[] =
+const RpcIdentifier CellularCapability3gppTest::kSimPath =
+    RpcIdentifier("/foo/sim");
+const uint32_t CellularCapability3gppTest::kAccessTechnologies =
+    MM_MODEM_ACCESS_TECHNOLOGY_LTE | MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS;
+const char CellularCapability3gppTest::kTestMobileProviderDBPath[] =
     "provider_db_unittest.bfd";
 
-TEST_F(CellularCapabilityUniversalMainTest, StartModem) {
+TEST_F(CellularCapability3gppMainTest, StartModem) {
   ExpectModemAndModem3gppProperties();
 
   EXPECT_CALL(*modem_proxy_,
               Enable(true, _, _, CellularCapability::kTimeoutEnable))
-      .WillOnce(Invoke(
-           this, &CellularCapabilityUniversalTest::InvokeEnable));
+      .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
 
   Error error;
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   ResultCallback callback =
-      Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
+      Bind(&CellularCapability3gppTest::TestCallback, Unretained(this));
   capability_->StartModem(&error, callback);
 
   EXPECT_TRUE(error.IsOngoing());
@@ -427,11 +422,10 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModem) {
   EXPECT_EQ(kAccessTechnologies, capability_->access_technologies_);
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, StartModemFailure) {
+TEST_F(CellularCapability3gppMainTest, StartModemFailure) {
   EXPECT_CALL(*modem_proxy_,
               Enable(true, _, _, CellularCapability::kTimeoutEnable))
-      .WillOnce(Invoke(
-           this, &CellularCapabilityUniversalTest::InvokeEnableFail));
+      .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnableFail));
   EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_MODEM)).Times(0);
   EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_MODEM_MODEM3GPP))
       .Times(0);
@@ -439,25 +433,24 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModemFailure) {
   Error error;
   EXPECT_CALL(*this, TestCallback(IsFailure()));
   ResultCallback callback =
-      Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
+      Bind(&CellularCapability3gppTest::TestCallback, Unretained(this));
   capability_->StartModem(&error, callback);
   EXPECT_TRUE(error.IsOngoing());
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, StartModemInWrongState) {
+TEST_F(CellularCapability3gppMainTest, StartModemInWrongState) {
   ExpectModemAndModem3gppProperties();
 
   EXPECT_CALL(*modem_proxy_,
               Enable(true, _, _, CellularCapability::kTimeoutEnable))
-      .WillOnce(Invoke(
-           this, &CellularCapabilityUniversalTest::InvokeEnableInWrongState))
-      .WillOnce(Invoke(
-           this, &CellularCapabilityUniversalTest::InvokeEnable));
+      .WillOnce(
+          Invoke(this, &CellularCapability3gppTest::InvokeEnableInWrongState))
+      .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
 
   Error error;
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
   ResultCallback callback =
-      Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
+      Bind(&CellularCapability3gppTest::TestCallback, Unretained(this));
   capability_->StartModem(&error, callback);
   EXPECT_TRUE(error.IsOngoing());
 
@@ -488,13 +481,12 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModemInWrongState) {
   EXPECT_EQ(kAccessTechnologies, capability_->access_technologies_);
 }
 
-TEST_F(CellularCapabilityUniversalMainTest,
-       StartModemWithDeferredEnableFailure) {
+TEST_F(CellularCapability3gppMainTest, StartModemWithDeferredEnableFailure) {
   EXPECT_CALL(*modem_proxy_,
               Enable(true, _, _, CellularCapability::kTimeoutEnable))
       .Times(2)
-      .WillRepeatedly(Invoke(
-           this, &CellularCapabilityUniversalTest::InvokeEnableInWrongState));
+      .WillRepeatedly(
+          Invoke(this, &CellularCapability3gppTest::InvokeEnableInWrongState));
   EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_MODEM)).Times(0);
   EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_MODEM_MODEM3GPP))
       .Times(0);
@@ -502,7 +494,7 @@ TEST_F(CellularCapabilityUniversalMainTest,
   Error error;
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
   ResultCallback callback =
-      Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
+      Bind(&CellularCapability3gppTest::TestCallback, Unretained(this));
   capability_->StartModem(&error, callback);
   EXPECT_TRUE(error.IsOngoing());
   Mock::VerifyAndClearExpectations(this);
@@ -514,7 +506,7 @@ TEST_F(CellularCapabilityUniversalMainTest,
   capability_->OnModemStateChanged(Cellular::kModemStateDisabled);
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, StopModem) {
+TEST_F(CellularCapability3gppMainTest, StopModem) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   mm1::MockModemProxy* modem_proxy = modem_proxy_.get();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
@@ -522,7 +514,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModem) {
 
   Error error;
   ResultCallback callback =
-      Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
+      Bind(&CellularCapability3gppTest::TestCallback, Unretained(this));
   capability_->StopModem(&error, callback);
   EXPECT_TRUE(error.IsSuccess());
 
@@ -535,9 +527,8 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModem) {
   ResultCallback set_power_state_callback;
   EXPECT_CALL(
       *modem_proxy,
-      SetPowerState(
-          MM_MODEM_POWER_STATE_LOW, _, _,
-          CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds))
+      SetPowerState(MM_MODEM_POWER_STATE_LOW, _, _,
+                    CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds))
       .WillOnce(SaveArg<2>(&set_power_state_callback));
   disable_callback.Run(Error(Error::kSuccess));
 
@@ -551,7 +542,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModem) {
   set_power_state_callback.Run(Error(Error::kOperationFailed));
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, StopModemAltair) {
+TEST_F(CellularCapability3gppMainTest, StopModemAltair) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   mm1::MockModemProxy* modem_proxy = modem_proxy_.get();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
@@ -561,18 +552,17 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModemAltair) {
   capability_->set_active_bearer_for_test(std::make_unique<CellularBearer>(
       &control_interface_, kBearerDBusPath, cellular_->dbus_service()));
 
-  cellular_->set_mm_plugin(CellularCapabilityUniversal::kAltairLTEMMPlugin);
+  cellular_->set_mm_plugin(CellularCapability3gpp::kAltairLTEMMPlugin);
 
   Error error;
   ResultCallback callback =
-      Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
+      Bind(&CellularCapability3gppTest::TestCallback, Unretained(this));
   capability_->StopModem(&error, callback);
   EXPECT_TRUE(error.IsSuccess());
 
   ResultCallback delete_bearer_callback;
-  EXPECT_CALL(*modem_proxy,
-              DeleteBearer(kBearerDBusPath, _, _,
-                           CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*modem_proxy, DeleteBearer(kBearerDBusPath, _, _,
+                                         CellularCapability::kTimeoutDefault))
       .WillOnce(SaveArg<2>(&delete_bearer_callback));
   dispatcher_.DispatchPendingEvents();
 
@@ -585,9 +575,8 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModemAltair) {
   ResultCallback set_power_state_callback;
   EXPECT_CALL(
       *modem_proxy,
-      SetPowerState(
-          MM_MODEM_POWER_STATE_LOW, _, _,
-          CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds))
+      SetPowerState(MM_MODEM_POWER_STATE_LOW, _, _,
+                    CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds))
       .WillOnce(SaveArg<2>(&set_power_state_callback));
   disable_callback.Run(Error(Error::kSuccess));
 
@@ -595,8 +584,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModemAltair) {
   set_power_state_callback.Run(Error(Error::kSuccess));
 }
 
-TEST_F(CellularCapabilityUniversalMainTest,
-       StopModemAltairDeleteBearerFailure) {
+TEST_F(CellularCapability3gppMainTest, StopModemAltairDeleteBearerFailure) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   mm1::MockModemProxy* modem_proxy = modem_proxy_.get();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
@@ -606,18 +594,17 @@ TEST_F(CellularCapabilityUniversalMainTest,
   capability_->set_active_bearer_for_test(std::make_unique<CellularBearer>(
       &control_interface_, kBearerDBusPath, cellular_->dbus_service()));
 
-  cellular_->set_mm_plugin(CellularCapabilityUniversal::kAltairLTEMMPlugin);
+  cellular_->set_mm_plugin(CellularCapability3gpp::kAltairLTEMMPlugin);
 
   Error error;
   ResultCallback callback =
-      Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
+      Bind(&CellularCapability3gppTest::TestCallback, Unretained(this));
   capability_->StopModem(&error, callback);
   EXPECT_TRUE(error.IsSuccess());
 
   ResultCallback delete_bearer_callback;
-  EXPECT_CALL(*modem_proxy,
-              DeleteBearer(kBearerDBusPath, _, _,
-                           CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*modem_proxy, DeleteBearer(kBearerDBusPath, _, _,
+                                         CellularCapability::kTimeoutDefault))
       .WillOnce(SaveArg<2>(&delete_bearer_callback));
   dispatcher_.DispatchPendingEvents();
 
@@ -630,9 +617,8 @@ TEST_F(CellularCapabilityUniversalMainTest,
   ResultCallback set_power_state_callback;
   EXPECT_CALL(
       *modem_proxy,
-      SetPowerState(
-          MM_MODEM_POWER_STATE_LOW, _, _,
-          CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds))
+      SetPowerState(MM_MODEM_POWER_STATE_LOW, _, _,
+                    CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds))
       .WillOnce(SaveArg<2>(&set_power_state_callback));
   disable_callback.Run(Error(Error::kSuccess));
 
@@ -640,17 +626,17 @@ TEST_F(CellularCapabilityUniversalMainTest,
   set_power_state_callback.Run(Error(Error::kSuccess));
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, StopModemAltairNotConnected) {
+TEST_F(CellularCapability3gppMainTest, StopModemAltairNotConnected) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   mm1::MockModemProxy* modem_proxy = modem_proxy_.get();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   capability_->InitProxies();
   capability_->set_active_bearer_for_test(nullptr);
-  cellular_->set_mm_plugin(CellularCapabilityUniversal::kAltairLTEMMPlugin);
+  cellular_->set_mm_plugin(CellularCapability3gpp::kAltairLTEMMPlugin);
 
   Error error;
   ResultCallback callback =
-      Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
+      Bind(&CellularCapability3gppTest::TestCallback, Unretained(this));
   capability_->StopModem(&error, callback);
   EXPECT_TRUE(error.IsSuccess());
 
@@ -663,9 +649,8 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModemAltairNotConnected) {
   ResultCallback set_power_state_callback;
   EXPECT_CALL(
       *modem_proxy,
-      SetPowerState(
-          MM_MODEM_POWER_STATE_LOW, _, _,
-          CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds))
+      SetPowerState(MM_MODEM_POWER_STATE_LOW, _, _,
+                    CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds))
       .WillOnce(SaveArg<2>(&set_power_state_callback));
   disable_callback.Run(Error(Error::kSuccess));
 
@@ -679,7 +664,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModemAltairNotConnected) {
   set_power_state_callback.Run(Error(Error::kOperationFailed));
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, TerminationAction) {
+TEST_F(CellularCapability3gppMainTest, TerminationAction) {
   ExpectModemAndModem3gppProperties();
 
   {
@@ -687,17 +672,16 @@ TEST_F(CellularCapabilityUniversalMainTest, TerminationAction) {
 
     EXPECT_CALL(*modem_proxy_,
                 Enable(true, _, _, CellularCapability::kTimeoutEnable))
-        .WillOnce(Invoke(this, &CellularCapabilityUniversalTest::InvokeEnable));
+        .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
     EXPECT_CALL(*modem_proxy_,
                 Enable(false, _, _, CellularCapability::kTimeoutEnable))
-        .WillOnce(Invoke(this, &CellularCapabilityUniversalTest::InvokeEnable));
-    EXPECT_CALL(
-        *modem_proxy_,
-        SetPowerState(
-            MM_MODEM_POWER_STATE_LOW, _, _,
-            CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds))
-        .WillOnce(Invoke(
-             this, &CellularCapabilityUniversalTest::InvokeSetPowerState));
+        .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
+    EXPECT_CALL(*modem_proxy_,
+                SetPowerState(
+                    MM_MODEM_POWER_STATE_LOW, _, _,
+                    CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds))
+        .WillOnce(
+            Invoke(this, &CellularCapability3gppTest::InvokeSetPowerState));
   }
   EXPECT_CALL(*this, TestCallback(IsSuccess())).Times(2);
 
@@ -714,8 +698,8 @@ TEST_F(CellularCapabilityUniversalMainTest, TerminationAction) {
   EXPECT_FALSE(modem_info_.manager()->termination_actions_.IsEmpty());
 
   // Running the termination action should disable the modem.
-  modem_info_.manager()->RunTerminationActions(Bind(
-      &CellularCapabilityUniversalMainTest::TestCallback, Unretained(this)));
+  modem_info_.manager()->RunTerminationActions(
+      Bind(&CellularCapability3gppMainTest::TestCallback, Unretained(this)));
   dispatcher_.DispatchPendingEvents();
   // Here we mimic the modem state change from ModemManager. When the modem is
   // disabled, the termination action should be removed.
@@ -726,13 +710,12 @@ TEST_F(CellularCapabilityUniversalMainTest, TerminationAction) {
   EXPECT_TRUE(modem_info_.manager()->termination_actions_.IsEmpty());
 
   // No termination action should be called here.
-  modem_info_.manager()->RunTerminationActions(Bind(
-      &CellularCapabilityUniversalMainTest::TestCallback, Unretained(this)));
+  modem_info_.manager()->RunTerminationActions(
+      Bind(&CellularCapability3gppMainTest::TestCallback, Unretained(this)));
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_F(CellularCapabilityUniversalMainTest,
-       TerminationActionRemovedByStopModem) {
+TEST_F(CellularCapability3gppMainTest, TerminationActionRemovedByStopModem) {
   ExpectModemAndModem3gppProperties();
 
   {
@@ -740,17 +723,16 @@ TEST_F(CellularCapabilityUniversalMainTest,
 
     EXPECT_CALL(*modem_proxy_,
                 Enable(true, _, _, CellularCapability::kTimeoutEnable))
-        .WillOnce(Invoke(this, &CellularCapabilityUniversalTest::InvokeEnable));
+        .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
     EXPECT_CALL(*modem_proxy_,
                 Enable(false, _, _, CellularCapability::kTimeoutEnable))
-        .WillOnce(Invoke(this, &CellularCapabilityUniversalTest::InvokeEnable));
-    EXPECT_CALL(
-        *modem_proxy_,
-        SetPowerState(
-            MM_MODEM_POWER_STATE_LOW, _, _,
-            CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds))
-        .WillOnce(Invoke(
-             this, &CellularCapabilityUniversalTest::InvokeSetPowerState));
+        .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
+    EXPECT_CALL(*modem_proxy_,
+                SetPowerState(
+                    MM_MODEM_POWER_STATE_LOW, _, _,
+                    CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds))
+        .WillOnce(
+            Invoke(this, &CellularCapability3gppTest::InvokeSetPowerState));
   }
   EXPECT_CALL(*this, TestCallback(IsSuccess())).Times(1);
 
@@ -774,12 +756,12 @@ TEST_F(CellularCapabilityUniversalMainTest,
   EXPECT_TRUE(modem_info_.manager()->termination_actions_.IsEmpty());
 
   // No termination action should be called here.
-  modem_info_.manager()->RunTerminationActions(Bind(
-      &CellularCapabilityUniversalMainTest::TestCallback, Unretained(this)));
+  modem_info_.manager()->RunTerminationActions(
+      Bind(&CellularCapability3gppMainTest::TestCallback, Unretained(this)));
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, DisconnectModemNoBearer) {
+TEST_F(CellularCapability3gppMainTest, DisconnectModemNoBearer) {
   Error error;
   ResultCallback disconnect_callback;
   EXPECT_CALL(*modem_simple_proxy_,
@@ -788,7 +770,7 @@ TEST_F(CellularCapabilityUniversalMainTest, DisconnectModemNoBearer) {
   capability_->Disconnect(&error, disconnect_callback);
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, DisconnectNoProxy) {
+TEST_F(CellularCapability3gppMainTest, DisconnectNoProxy) {
   Error error;
   ResultCallback disconnect_callback;
   EXPECT_CALL(*modem_simple_proxy_,
@@ -798,7 +780,7 @@ TEST_F(CellularCapabilityUniversalMainTest, DisconnectNoProxy) {
   capability_->Disconnect(&error, disconnect_callback);
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
+TEST_F(CellularCapability3gppMainTest, SimLockStatusChanged) {
   // Set up mock SIM properties
   const char kImsi[] = "310100000001";
   const char kSimIdentifier[] = "9999888";
@@ -855,13 +837,14 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   EXPECT_EQ(kOperatorName, capability_->spn_);
 
   // SIM is missing and SIM path is "/".
-  capability_->OnSimPathChanged(CellularCapabilityUniversal::kRootPath);
+  capability_->OnSimPathChanged(CellularCapability3gpp::kRootPath);
   EXPECT_FALSE(cellular_->sim_present());
   EXPECT_EQ(nullptr, capability_->sim_proxy_);
-  EXPECT_EQ(CellularCapabilityUniversal::kRootPath, capability_->sim_path_);
+  EXPECT_EQ(CellularCapability3gpp::kRootPath, capability_->sim_path_);
 
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
-              GetActivationState(_, _)).Times(0);
+              GetActivationState(_, _))
+      .Times(0);
   capability_->OnSimLockStatusChanged();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
@@ -876,7 +859,8 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   EXPECT_EQ(RpcIdentifier(""), capability_->sim_path_);
 
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
-              GetActivationState(_, _)).Times(0);
+              GetActivationState(_, _))
+      .Times(0);
   capability_->OnSimLockStatusChanged();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
@@ -885,7 +869,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   EXPECT_EQ("", capability_->spn_);
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, PropertiesChanged) {
+TEST_F(CellularCapability3gppMainTest, PropertiesChanged) {
   // Set up mock modem properties
   KeyValueStore modem_properties;
   modem_properties.SetUint(MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES,
@@ -901,34 +885,31 @@ TEST_F(CellularCapabilityUniversalMainTest, PropertiesChanged) {
   // Set up mock modem sim properties
   KeyValueStore sim_properties;
 
-  EXPECT_CALL(*properties_proxy_,
-              GetAll(MM_DBUS_INTERFACE_SIM))
+  EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_SIM))
       .WillOnce(Return(sim_properties));
 
   EXPECT_EQ("", cellular_->imei());
   EXPECT_EQ(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN,
             capability_->access_technologies_);
   EXPECT_EQ(nullptr, capability_->sim_proxy_);
-  EXPECT_CALL(*device_adaptor_, EmitStringChanged(
-      kTechnologyFamilyProperty, kTechnologyFamilyGsm));
+  EXPECT_CALL(*device_adaptor_, EmitStringChanged(kTechnologyFamilyProperty,
+                                                  kTechnologyFamilyGsm));
   EXPECT_CALL(*device_adaptor_, EmitStringChanged(kImeiProperty, kImei));
-  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
-                                   modem_properties, vector<string>());
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties,
+                                   vector<string>());
   EXPECT_EQ(kAccessTechnologies, capability_->access_technologies_);
   EXPECT_EQ(kSimPath, capability_->sim_path_);
   EXPECT_NE(nullptr, capability_->sim_proxy_);
 
   // Changing properties on wrong interface will not have an effect
   capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
-                                   modem3gpp_properties,
-                                   vector<string>());
+                                   modem3gpp_properties, vector<string>());
   EXPECT_EQ("", cellular_->imei());
 
   // Changing properties on the right interface gets reflected in the
   // capabilities object
   capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_MODEM3GPP,
-                                   modem3gpp_properties,
-                                   vector<string>());
+                                   modem3gpp_properties, vector<string>());
   EXPECT_EQ(kImei, cellular_->imei());
   Mock::VerifyAndClearExpectations(device_adaptor_);
 
@@ -936,38 +917,35 @@ TEST_F(CellularCapabilityUniversalMainTest, PropertiesChanged) {
   modem_properties.Clear();
   modem_properties.SetUint(MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES,
                            MM_MODEM_ACCESS_TECHNOLOGY_1XRTT);
-  EXPECT_CALL(*device_adaptor_, EmitStringChanged(
-      kTechnologyFamilyProperty, kTechnologyFamilyCdma)).
-      Times(1);
-  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
-                                       modem_properties,
-                                       vector<string>());
+  EXPECT_CALL(*device_adaptor_, EmitStringChanged(kTechnologyFamilyProperty,
+                                                  kTechnologyFamilyCdma))
+      .Times(1);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties,
+                                   vector<string>());
   Mock::VerifyAndClearExpectations(device_adaptor_);
 
   // Back to LTE
   modem_properties.Clear();
   modem_properties.SetUint(MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES,
                            MM_MODEM_ACCESS_TECHNOLOGY_LTE);
-  EXPECT_CALL(*device_adaptor_, EmitStringChanged(
-      kTechnologyFamilyProperty, kTechnologyFamilyGsm)).
-      Times(1);
-  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
-                                   modem_properties,
+  EXPECT_CALL(*device_adaptor_, EmitStringChanged(kTechnologyFamilyProperty,
+                                                  kTechnologyFamilyGsm))
+      .Times(1);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties,
                                    vector<string>());
   Mock::VerifyAndClearExpectations(device_adaptor_);
 
   // LTE & CDMA - the device adaptor should not be called!
   modem_properties.Clear();
-  modem_properties.SetUint(MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES,
-                           MM_MODEM_ACCESS_TECHNOLOGY_LTE |
-                           MM_MODEM_ACCESS_TECHNOLOGY_1XRTT);
+  modem_properties.SetUint(
+      MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES,
+      MM_MODEM_ACCESS_TECHNOLOGY_LTE | MM_MODEM_ACCESS_TECHNOLOGY_1XRTT);
   EXPECT_CALL(*device_adaptor_, EmitStringChanged(_, _)).Times(0);
-  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
-                                   modem_properties,
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties,
                                    vector<string>());
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
+TEST_F(CellularCapability3gppMainTest, UpdateRegistrationState) {
   capability_->InitProxies();
 
   CreateService();
@@ -981,71 +959,53 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
   string ota_name = cellular_->service_->friendly_name();
 
   // Home --> Roaming should be effective immediately.
-  capability_->On3gppRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
-      home_provider,
-      ota_name);
+  capability_->On3gppRegistrationChanged(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+                                         home_provider, ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
             capability_->registration_state_);
   capability_->On3gppRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING,
-      home_provider,
-      ota_name);
+      MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING, home_provider, ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING,
             capability_->registration_state_);
 
   // Idle --> Roaming should be effective immediately.
-  capability_->On3gppRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_IDLE,
-      home_provider,
-      ota_name);
+  capability_->On3gppRegistrationChanged(MM_MODEM_3GPP_REGISTRATION_STATE_IDLE,
+                                         home_provider, ota_name);
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_IDLE,
             capability_->registration_state_);
   capability_->On3gppRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING,
-      home_provider,
-      ota_name);
+      MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING, home_provider, ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING,
             capability_->registration_state_);
 
   // Idle --> Searching should be effective immediately.
-  capability_->On3gppRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_IDLE,
-      home_provider,
-      ota_name);
+  capability_->On3gppRegistrationChanged(MM_MODEM_3GPP_REGISTRATION_STATE_IDLE,
+                                         home_provider, ota_name);
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_IDLE,
             capability_->registration_state_);
   capability_->On3gppRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
-      home_provider,
-      ota_name);
+      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING, home_provider, ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
             capability_->registration_state_);
 
   // Home --> Searching --> Home should never see Searching.
   EXPECT_CALL(*(modem_info_.mock_metrics()),
-      Notify3GPPRegistrationDelayedDropPosted());
+              Notify3GPPRegistrationDelayedDropPosted());
   EXPECT_CALL(*(modem_info_.mock_metrics()),
-      Notify3GPPRegistrationDelayedDropCanceled());
+              Notify3GPPRegistrationDelayedDropCanceled());
 
-  capability_->On3gppRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
-      home_provider,
-      ota_name);
+  capability_->On3gppRegistrationChanged(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+                                         home_provider, ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
             capability_->registration_state_);
   capability_->On3gppRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
-      home_provider,
-      ota_name);
+      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING, home_provider, ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
             capability_->registration_state_);
-  capability_->On3gppRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
-      home_provider,
-      ota_name);
+  capability_->On3gppRegistrationChanged(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+                                         home_provider, ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
             capability_->registration_state_);
   dispatcher_.DispatchPendingEvents();
@@ -1055,17 +1015,13 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
 
   // Home --> Searching --> wait till dispatch should see Searching
   EXPECT_CALL(*(modem_info_.mock_metrics()),
-      Notify3GPPRegistrationDelayedDropPosted());
-  capability_->On3gppRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
-      home_provider,
-      ota_name);
+              Notify3GPPRegistrationDelayedDropPosted());
+  capability_->On3gppRegistrationChanged(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+                                         home_provider, ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
             capability_->registration_state_);
   capability_->On3gppRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
-      home_provider,
-      ota_name);
+      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING, home_provider, ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
             capability_->registration_state_);
   dispatcher_.DispatchPendingEvents();
@@ -1077,23 +1033,17 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
   // Searching *and* the first callback should be cancelled.
   EXPECT_CALL(*this, DummyCallback()).Times(0);
   EXPECT_CALL(*(modem_info_.mock_metrics()),
-      Notify3GPPRegistrationDelayedDropPosted());
+              Notify3GPPRegistrationDelayedDropPosted());
 
-  capability_->On3gppRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
-      home_provider,
-      ota_name);
+  capability_->On3gppRegistrationChanged(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+                                         home_provider, ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
             capability_->registration_state_);
   capability_->On3gppRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
-      home_provider,
-      ota_name);
+      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING, home_provider, ota_name);
   SetMockRegistrationDroppedUpdateCallback();
   capability_->On3gppRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
-      home_provider,
-      ota_name);
+      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING, home_provider, ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
             capability_->registration_state_);
   dispatcher_.DispatchPendingEvents();
@@ -1101,7 +1051,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
             capability_->registration_state_);
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, IsRegistered) {
+TEST_F(CellularCapability3gppMainTest, IsRegistered) {
   capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_IDLE;
   EXPECT_FALSE(capability_->IsRegistered());
 
@@ -1121,7 +1071,7 @@ TEST_F(CellularCapabilityUniversalMainTest, IsRegistered) {
   EXPECT_TRUE(capability_->IsRegistered());
 }
 
-TEST_F(CellularCapabilityUniversalMainTest,
+TEST_F(CellularCapability3gppMainTest,
        UpdateRegistrationStateModemNotConnected) {
   capability_->InitProxies();
   CreateService();
@@ -1136,21 +1086,17 @@ TEST_F(CellularCapabilityUniversalMainTest,
   string ota_name = cellular_->service_->friendly_name();
 
   // Home --> Searching should be effective immediately.
-  capability_->On3gppRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
-      home_provider,
-      ota_name);
+  capability_->On3gppRegistrationChanged(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+                                         home_provider, ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
             capability_->registration_state_);
   capability_->On3gppRegistrationChanged(
-      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
-      home_provider,
-      ota_name);
+      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING, home_provider, ota_name);
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
             capability_->registration_state_);
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, IsValidSimPath) {
+TEST_F(CellularCapability3gppMainTest, IsValidSimPath) {
   // Invalid paths
   EXPECT_FALSE(capability_->IsValidSimPath(RpcIdentifier("")));
   EXPECT_FALSE(capability_->IsValidSimPath(RpcIdentifier("/")));
@@ -1165,7 +1111,7 @@ TEST_F(CellularCapabilityUniversalMainTest, IsValidSimPath) {
   EXPECT_TRUE(capability_->IsValidSimPath(RpcIdentifier("path")));
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, NormalizeMdn) {
+TEST_F(CellularCapability3gppMainTest, NormalizeMdn) {
   EXPECT_EQ("", capability_->NormalizeMdn(""));
   EXPECT_EQ("12345678901", capability_->NormalizeMdn("12345678901"));
   EXPECT_EQ("12345678901", capability_->NormalizeMdn("+1 234 567 8901"));
@@ -1175,7 +1121,7 @@ TEST_F(CellularCapabilityUniversalMainTest, NormalizeMdn) {
   EXPECT_EQ("2345678901", capability_->NormalizeMdn("(234) 567-8901"));
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
+TEST_F(CellularCapability3gppMainTest, SimPathChanged) {
   // Set up mock modem SIM properties
   const char kImsi[] = "310100000001";
   const char kSimIdentifier[] = "9999888";
@@ -1189,7 +1135,8 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   sim_properties.SetString(MM_SIM_PROPERTY_OPERATORNAME, kOperatorName);
 
   EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_SIM))
-      .Times(1).WillOnce(Return(sim_properties));
+      .Times(1)
+      .WillOnce(Return(sim_properties));
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
       .Times(4);
@@ -1229,7 +1176,8 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   EXPECT_EQ("", capability_->spn_);
 
   EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_SIM))
-      .Times(1).WillOnce(Return(sim_properties));
+      .Times(1)
+      .WillOnce(Return(sim_properties));
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
       .Times(4);
@@ -1251,7 +1199,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   EXPECT_EQ("", capability_->spn_);
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
+TEST_F(CellularCapability3gppMainTest, SimPropertiesChanged) {
   // Set up mock modem properties
   KeyValueStore modem_properties;
   modem_properties.SetRpcIdentifier(MM_MODEM_PROPERTY_SIM, kSimPath);
@@ -1268,8 +1216,8 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
       .Times(0);
 
   EXPECT_EQ(nullptr, capability_->sim_proxy_);
-  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
-                                   modem_properties, vector<string>());
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties,
+                                   vector<string>());
   EXPECT_EQ(kSimPath, capability_->sim_path_);
   EXPECT_NE(nullptr, capability_->sim_proxy_);
   EXPECT_EQ(kImsi, cellular_->imsi());
@@ -1289,21 +1237,19 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
   new_properties.SetString(MM_SIM_PROPERTY_SIMIDENTIFIER, kSimIdentifier);
   new_properties.SetString(MM_SIM_PROPERTY_OPERATORIDENTIFIER,
                            kOperatorIdentifier);
-  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_SIM,
-                                   new_properties,
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_SIM, new_properties,
                                    vector<string>());
   EXPECT_EQ(kNewImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
   EXPECT_EQ("", capability_->spn_);
 
   new_properties.SetString(MM_SIM_PROPERTY_OPERATORNAME, kOperatorName);
-  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_SIM,
-                                   new_properties,
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_SIM, new_properties,
                                    vector<string>());
   EXPECT_EQ(kOperatorName, capability_->spn_);
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, Reset) {
+TEST_F(CellularCapability3gppMainTest, Reset) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   mm1::MockModemProxy* modem_proxy = modem_proxy_.get();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
@@ -1321,43 +1267,37 @@ TEST_F(CellularCapabilityUniversalMainTest, Reset) {
   EXPECT_FALSE(capability_->resetting_);
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, UpdateActiveBearer) {
+TEST_F(CellularCapability3gppMainTest, UpdateActiveBearer) {
   // Common resources.
   const size_t kPathCount = 3;
   RpcIdentifier active_paths[kPathCount], inactive_paths[kPathCount];
   for (size_t i = 0; i < kPathCount; ++i) {
     active_paths[i] =
-      RpcIdentifier(base::StringPrintf("%s/%zu", kActiveBearerPathPrefix, i));
-    inactive_paths[i] =
-      RpcIdentifier(base::StringPrintf("%s/%zu", kInactiveBearerPathPrefix, i));
+        RpcIdentifier(base::StringPrintf("%s/%zu", kActiveBearerPathPrefix, i));
+    inactive_paths[i] = RpcIdentifier(
+        base::StringPrintf("%s/%zu", kInactiveBearerPathPrefix, i));
   }
 
   EXPECT_EQ(nullptr, capability_->GetActiveBearer());
 
   // Check that |active_bearer_| is set correctly when an active bearer is
   // returned.
-  capability_->OnBearersChanged({inactive_paths[0],
-                                 inactive_paths[1],
-                                 active_paths[2],
-                                 inactive_paths[1],
+  capability_->OnBearersChanged({inactive_paths[0], inactive_paths[1],
+                                 active_paths[2], inactive_paths[1],
                                  inactive_paths[2]});
   capability_->UpdateActiveBearer();
   ASSERT_NE(nullptr, capability_->GetActiveBearer());
   EXPECT_EQ(active_paths[2], capability_->GetActiveBearer()->dbus_path());
 
   // Check that |active_bearer_| is nullptr if no active bearers are returned.
-  capability_->OnBearersChanged({inactive_paths[0],
-                                 inactive_paths[1],
-                                 inactive_paths[2],
-                                 inactive_paths[1]});
+  capability_->OnBearersChanged({inactive_paths[0], inactive_paths[1],
+                                 inactive_paths[2], inactive_paths[1]});
   capability_->UpdateActiveBearer();
   EXPECT_EQ(nullptr, capability_->GetActiveBearer());
 
   // Check that returning multiple bearers causes death.
-  capability_->OnBearersChanged({active_paths[0],
-                                 inactive_paths[1],
-                                 inactive_paths[2],
-                                 active_paths[1],
+  capability_->OnBearersChanged({active_paths[0], inactive_paths[1],
+                                 inactive_paths[2], active_paths[1],
                                  inactive_paths[1]});
   EXPECT_DEATH(capability_->UpdateActiveBearer(),
                "Found more than one active bearer.");
@@ -1368,7 +1308,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateActiveBearer) {
 }
 
 // Validates FillConnectPropertyMap
-TEST_F(CellularCapabilityUniversalMainTest, FillConnectPropertyMap) {
+TEST_F(CellularCapability3gppMainTest, FillConnectPropertyMap) {
   constexpr char kTestApn[] = "test_apn";
   constexpr char kTestUser[] = "test_user";
   constexpr char kTestPassword[] = "test_password";
@@ -1433,14 +1373,14 @@ TEST_F(CellularCapabilityUniversalMainTest, FillConnectPropertyMap) {
 }
 
 // Validates expected behavior of Connect function
-TEST_F(CellularCapabilityUniversalMainTest, Connect) {
+TEST_F(CellularCapability3gppMainTest, Connect) {
   mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
   Error error;
   KeyValueStore properties;
   capability_->apn_try_list_.clear();
   ResultCallback callback =
-      Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
+      Bind(&CellularCapability3gppTest::TestCallback, Unretained(this));
   RpcIdentifier bearer("/foo");
 
   // Test connect failures
@@ -1473,13 +1413,13 @@ TEST_F(CellularCapabilityUniversalMainTest, Connect) {
 }
 
 // Validates Connect iterates over APNs
-TEST_F(CellularCapabilityUniversalMainTest, ConnectApns) {
+TEST_F(CellularCapability3gppMainTest, ConnectApns) {
   mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
   Error error;
   KeyValueStore properties;
   ResultCallback callback =
-      Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
+      Bind(&CellularCapability3gppTest::TestCallback, Unretained(this));
   RpcIdentifier bearer("/bearer0");
 
   const char apn_name_foo[] = "foo";
@@ -1507,37 +1447,37 @@ TEST_F(CellularCapabilityUniversalMainTest, ConnectApns) {
 }
 
 // Validates GetTypeString and AccessTechnologyToTechnologyFamily
-TEST_F(CellularCapabilityUniversalMainTest, GetTypeString) {
+TEST_F(CellularCapability3gppMainTest, GetTypeString) {
   static const uint32_t kGsmTechnologies[] = {
-    MM_MODEM_ACCESS_TECHNOLOGY_LTE,
-    MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS,
-    MM_MODEM_ACCESS_TECHNOLOGY_HSPA,
-    MM_MODEM_ACCESS_TECHNOLOGY_HSUPA,
-    MM_MODEM_ACCESS_TECHNOLOGY_HSDPA,
-    MM_MODEM_ACCESS_TECHNOLOGY_UMTS,
-    MM_MODEM_ACCESS_TECHNOLOGY_EDGE,
-    MM_MODEM_ACCESS_TECHNOLOGY_GPRS,
-    MM_MODEM_ACCESS_TECHNOLOGY_GSM_COMPACT,
-    MM_MODEM_ACCESS_TECHNOLOGY_GSM,
-    MM_MODEM_ACCESS_TECHNOLOGY_LTE | MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
-    MM_MODEM_ACCESS_TECHNOLOGY_GSM | MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
-    MM_MODEM_ACCESS_TECHNOLOGY_LTE | MM_MODEM_ACCESS_TECHNOLOGY_EVDOA,
-    MM_MODEM_ACCESS_TECHNOLOGY_GSM | MM_MODEM_ACCESS_TECHNOLOGY_EVDOA,
-    MM_MODEM_ACCESS_TECHNOLOGY_LTE | MM_MODEM_ACCESS_TECHNOLOGY_EVDOB,
-    MM_MODEM_ACCESS_TECHNOLOGY_GSM | MM_MODEM_ACCESS_TECHNOLOGY_EVDOB,
-    MM_MODEM_ACCESS_TECHNOLOGY_GSM | MM_MODEM_ACCESS_TECHNOLOGY_1XRTT,
+      MM_MODEM_ACCESS_TECHNOLOGY_LTE,
+      MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS,
+      MM_MODEM_ACCESS_TECHNOLOGY_HSPA,
+      MM_MODEM_ACCESS_TECHNOLOGY_HSUPA,
+      MM_MODEM_ACCESS_TECHNOLOGY_HSDPA,
+      MM_MODEM_ACCESS_TECHNOLOGY_UMTS,
+      MM_MODEM_ACCESS_TECHNOLOGY_EDGE,
+      MM_MODEM_ACCESS_TECHNOLOGY_GPRS,
+      MM_MODEM_ACCESS_TECHNOLOGY_GSM_COMPACT,
+      MM_MODEM_ACCESS_TECHNOLOGY_GSM,
+      MM_MODEM_ACCESS_TECHNOLOGY_LTE | MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
+      MM_MODEM_ACCESS_TECHNOLOGY_GSM | MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
+      MM_MODEM_ACCESS_TECHNOLOGY_LTE | MM_MODEM_ACCESS_TECHNOLOGY_EVDOA,
+      MM_MODEM_ACCESS_TECHNOLOGY_GSM | MM_MODEM_ACCESS_TECHNOLOGY_EVDOA,
+      MM_MODEM_ACCESS_TECHNOLOGY_LTE | MM_MODEM_ACCESS_TECHNOLOGY_EVDOB,
+      MM_MODEM_ACCESS_TECHNOLOGY_GSM | MM_MODEM_ACCESS_TECHNOLOGY_EVDOB,
+      MM_MODEM_ACCESS_TECHNOLOGY_GSM | MM_MODEM_ACCESS_TECHNOLOGY_1XRTT,
   };
   for (auto gsm_technology : kGsmTechnologies) {
     capability_->access_technologies_ = gsm_technology;
     ASSERT_EQ(capability_->GetTypeString(), kTechnologyFamilyGsm);
   }
   static const uint32_t kCdmaTechnologies[] = {
-    MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
-    MM_MODEM_ACCESS_TECHNOLOGY_EVDOA,
-    MM_MODEM_ACCESS_TECHNOLOGY_EVDOA | MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
-    MM_MODEM_ACCESS_TECHNOLOGY_EVDOB,
-    MM_MODEM_ACCESS_TECHNOLOGY_EVDOB | MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
-    MM_MODEM_ACCESS_TECHNOLOGY_1XRTT,
+      MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
+      MM_MODEM_ACCESS_TECHNOLOGY_EVDOA,
+      MM_MODEM_ACCESS_TECHNOLOGY_EVDOA | MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
+      MM_MODEM_ACCESS_TECHNOLOGY_EVDOB,
+      MM_MODEM_ACCESS_TECHNOLOGY_EVDOB | MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
+      MM_MODEM_ACCESS_TECHNOLOGY_1XRTT,
   };
   for (auto cdma_technology : kCdmaTechnologies) {
     capability_->access_technologies_ = cdma_technology;
@@ -1547,11 +1487,10 @@ TEST_F(CellularCapabilityUniversalMainTest, GetTypeString) {
   ASSERT_EQ(capability_->GetTypeString(), "");
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, GetMdnForOLP) {
+TEST_F(CellularCapability3gppMainTest, GetMdnForOLP) {
   const string kVzwUUID = "c83d6597-dc91-4d48-a3a7-d86b80123751";
   const string kFooUUID = "foo";
-  MockMobileOperatorInfo mock_operator_info(&dispatcher_,
-                                            "MobileOperatorInfo");
+  MockMobileOperatorInfo mock_operator_info(&dispatcher_, "MobileOperatorInfo");
 
   EXPECT_CALL(mock_operator_info, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
@@ -1582,12 +1521,11 @@ TEST_F(CellularCapabilityUniversalMainTest, GetMdnForOLP) {
   EXPECT_EQ("10123456789", capability_->GetMdnForOLP(&mock_operator_info));
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceOLP) {
-  const MobileOperatorInfo::OnlinePortal kOlp {
-      "http://testurl",
-      "POST",
+TEST_F(CellularCapability3gppMainTest, UpdateServiceOLP) {
+  const MobileOperatorInfo::OnlinePortal kOlp{
+      "http://testurl", "POST",
       "imei=${imei}&imsi=${imsi}&mdn=${mdn}&min=${min}&iccid=${iccid}"};
-  const vector<MobileOperatorInfo::OnlinePortal> kOlpList {kOlp};
+  const vector<MobileOperatorInfo::OnlinePortal> kOlpList{kOlp};
   const string kUuidVzw = "c83d6597-dc91-4d48-a3a7-d86b80123751";
   const string kUuidFoo = "foo";
 
@@ -1628,7 +1566,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceOLP) {
             olp[kPaymentPortalPostData]);
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, IsMdnValid) {
+TEST_F(CellularCapability3gppMainTest, IsMdnValid) {
   cellular_->set_mdn("");
   EXPECT_FALSE(capability_->IsMdnValid());
   cellular_->set_mdn("0000000");
@@ -1639,18 +1577,17 @@ TEST_F(CellularCapabilityUniversalMainTest, IsMdnValid) {
   EXPECT_TRUE(capability_->IsMdnValid());
 }
 
-TEST_F(CellularCapabilityUniversalTimerTest, CompleteActivation) {
+TEST_F(CellularCapability3gppTimerTest, CompleteActivation) {
   const char kIccid[] = "1234567";
 
   cellular_->set_sim_identifier(kIccid);
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               SetActivationState(PendingActivationStore::kIdentifierICCID,
-                                 kIccid,
-                                 PendingActivationStore::kStatePending))
+                                 kIccid, PendingActivationStore::kStatePending))
       .Times(1);
-  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
-              GetActivationState(PendingActivationStore::kIdentifierICCID,
-                                 kIccid))
+  EXPECT_CALL(
+      *modem_info_.mock_pending_activation_store(),
+      GetActivationState(PendingActivationStore::kIdentifierICCID, kIccid))
       .WillOnce(Return(PendingActivationStore::kStatePending));
   EXPECT_CALL(*service_, SetActivationState(kActivationStateActivating))
       .Times(1);
@@ -1663,11 +1600,10 @@ TEST_F(CellularCapabilityUniversalTimerTest, CompleteActivation) {
   Mock::VerifyAndClearExpectations(&mock_dispatcher_);
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
+TEST_F(CellularCapability3gppMainTest, UpdateServiceActivationState) {
   const char kIccid[] = "1234567";
-  const vector<MobileOperatorInfo::OnlinePortal> olp_list {
-    {"some@url", "some_method", "some_post_data"}
-  };
+  const vector<MobileOperatorInfo::OnlinePortal> olp_list{
+      {"some@url", "some_method", "some_post_data"}};
   capability_->subscription_state_ = SubscriptionState::kUnprovisioned;
   cellular_->set_sim_identifier("");
   cellular_->set_mdn("0000000000");
@@ -1707,9 +1643,9 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   service_->SetAutoConnect(false);
   cellular_->set_mdn("0000000000");
   cellular_->set_sim_identifier(kIccid);
-  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
-              GetActivationState(PendingActivationStore::kIdentifierICCID,
-                                 kIccid))
+  EXPECT_CALL(
+      *modem_info_.mock_pending_activation_store(),
+      GetActivationState(PendingActivationStore::kIdentifierICCID, kIccid))
       .Times(1)
       .WillRepeatedly(Return(PendingActivationStore::kStatePending));
   EXPECT_CALL(*service_, SetActivationState(kActivationStateActivating))
@@ -1719,9 +1655,9 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
   EXPECT_FALSE(service_->auto_connect());
 
-  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
-              GetActivationState(PendingActivationStore::kIdentifierICCID,
-                                 kIccid))
+  EXPECT_CALL(
+      *modem_info_.mock_pending_activation_store(),
+      GetActivationState(PendingActivationStore::kIdentifierICCID, kIccid))
       .Times(2)
       .WillRepeatedly(Return(PendingActivationStore::kStateActivated));
   EXPECT_CALL(*service_, SetActivationState(kActivationStateActivated))
@@ -1754,12 +1690,11 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   EXPECT_TRUE(service_->auto_connect());
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
+TEST_F(CellularCapability3gppMainTest, UpdatePendingActivationState) {
   const char kIccid[] = "1234567";
 
   capability_->InitProxies();
-  capability_->registration_state_ =
-      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING;
+  capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING;
 
   // No MDN, no ICCID.
   cellular_->set_mdn("0000000");
@@ -1786,32 +1721,32 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
 
   // After the modem has reset.
   capability_->reset_done_ = true;
-  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
-              GetActivationState(PendingActivationStore::kIdentifierICCID,
-                                 kIccid))
-      .Times(1).WillOnce(Return(PendingActivationStore::kStatePending));
-  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
-              SetActivationState(PendingActivationStore::kIdentifierICCID,
-                                 kIccid,
-                                 PendingActivationStore::kStateActivated))
+  EXPECT_CALL(
+      *modem_info_.mock_pending_activation_store(),
+      GetActivationState(PendingActivationStore::kIdentifierICCID, kIccid))
+      .Times(1)
+      .WillOnce(Return(PendingActivationStore::kStatePending));
+  EXPECT_CALL(
+      *modem_info_.mock_pending_activation_store(),
+      SetActivationState(PendingActivationStore::kIdentifierICCID, kIccid,
+                         PendingActivationStore::kStateActivated))
       .Times(1);
   capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
   // Not registered.
-  capability_->registration_state_ =
-      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING;
-  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
-              GetActivationState(PendingActivationStore::kIdentifierICCID,
-                                 kIccid))
-      .Times(2).WillRepeatedly(Return(PendingActivationStore::kStateActivated));
+  capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING;
+  EXPECT_CALL(
+      *modem_info_.mock_pending_activation_store(),
+      GetActivationState(PendingActivationStore::kIdentifierICCID, kIccid))
+      .Times(2)
+      .WillRepeatedly(Return(PendingActivationStore::kStateActivated));
   EXPECT_CALL(*service_, AutoConnect()).Times(0);
   capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(service_);
 
   // Service, registered.
-  capability_->registration_state_ =
-      MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
+  capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
   EXPECT_CALL(*service_, AutoConnect()).Times(1);
   capability_->UpdatePendingActivationState();
 
@@ -1847,11 +1782,10 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {
+TEST_F(CellularCapability3gppMainTest, IsServiceActivationRequired) {
   const vector<MobileOperatorInfo::OnlinePortal> empty_list;
-  const vector<MobileOperatorInfo::OnlinePortal> olp_list {
-    {"some@url", "some_method", "some_post_data"}
-  };
+  const vector<MobileOperatorInfo::OnlinePortal> olp_list{
+      {"some@url", "some_method", "some_post_data"}};
 
   capability_->subscription_state_ = SubscriptionState::kProvisioned;
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
@@ -1890,9 +1824,9 @@ TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {
 
   const char kIccid[] = "1234567890";
   cellular_->set_sim_identifier(kIccid);
-  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
-              GetActivationState(PendingActivationStore::kIdentifierICCID,
-                                 kIccid))
+  EXPECT_CALL(
+      *modem_info_.mock_pending_activation_store(),
+      GetActivationState(PendingActivationStore::kIdentifierICCID, kIccid))
       .WillOnce(Return(PendingActivationStore::kStateActivated))
       .WillOnce(Return(PendingActivationStore::kStatePending))
       .WillOnce(Return(PendingActivationStore::kStateUnknown));
@@ -1902,7 +1836,7 @@ TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, OnModemCurrentCapabilitiesChanged) {
+TEST_F(CellularCapability3gppMainTest, OnModemCurrentCapabilitiesChanged) {
   EXPECT_FALSE(cellular_->scanning_supported());
   capability_->OnModemCurrentCapabilitiesChanged(MM_MODEM_CAPABILITY_LTE);
   EXPECT_FALSE(cellular_->scanning_supported());
@@ -1910,12 +1844,12 @@ TEST_F(CellularCapabilityUniversalMainTest, OnModemCurrentCapabilitiesChanged) {
   EXPECT_FALSE(cellular_->scanning_supported());
   capability_->OnModemCurrentCapabilitiesChanged(MM_MODEM_CAPABILITY_GSM_UMTS);
   EXPECT_TRUE(cellular_->scanning_supported());
-  capability_->OnModemCurrentCapabilitiesChanged(
-      MM_MODEM_CAPABILITY_GSM_UMTS | MM_MODEM_CAPABILITY_CDMA_EVDO);
+  capability_->OnModemCurrentCapabilitiesChanged(MM_MODEM_CAPABILITY_GSM_UMTS |
+                                                 MM_MODEM_CAPABILITY_CDMA_EVDO);
   EXPECT_TRUE(cellular_->scanning_supported());
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusToProperty) {
+TEST_F(CellularCapability3gppMainTest, SimLockStatusToProperty) {
   Error error;
   KeyValueStore store = capability_->SimLockStatusToProperty(&error);
   EXPECT_FALSE(store.GetBool(kSIMLockEnabledProperty));
@@ -1943,8 +1877,8 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusToProperty) {
   EXPECT_TRUE(store.GetString(kSIMLockTypeProperty).empty());
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, OnLockRetriesChanged) {
-  CellularCapabilityUniversal::LockRetryData data;
+TEST_F(CellularCapability3gppMainTest, OnLockRetriesChanged) {
+  CellularCapability3gpp::LockRetryData data;
   const uint32_t kDefaultRetries = 999;
 
   capability_->OnLockRetriesChanged(data);
@@ -1968,7 +1902,7 @@ TEST_F(CellularCapabilityUniversalMainTest, OnLockRetriesChanged) {
   EXPECT_EQ(kDefaultRetries, capability_->sim_lock_status_.retries_left);
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, OnLockTypeChanged) {
+TEST_F(CellularCapability3gppMainTest, OnLockTypeChanged) {
   EXPECT_EQ(MM_MODEM_LOCK_UNKNOWN, capability_->sim_lock_status_.lock_type);
 
   capability_->OnLockTypeChanged(MM_MODEM_LOCK_NONE);
@@ -1985,7 +1919,7 @@ TEST_F(CellularCapabilityUniversalMainTest, OnLockTypeChanged) {
   EXPECT_TRUE(capability_->sim_lock_status_.enabled);
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, OnSimLockPropertiesChanged) {
+TEST_F(CellularCapability3gppMainTest, OnSimLockPropertiesChanged) {
   EXPECT_EQ(MM_MODEM_LOCK_UNKNOWN, capability_->sim_lock_status_.lock_type);
   EXPECT_EQ(0, capability_->sim_lock_status_.retries_left);
 
@@ -1997,7 +1931,7 @@ TEST_F(CellularCapabilityUniversalMainTest, OnSimLockPropertiesChanged) {
   EXPECT_EQ(0, capability_->sim_lock_status_.retries_left);
 
   // Unlock retries changed, but the SIM wasn't locked.
-  CellularCapabilityUniversal::LockRetryData retry_data;
+  CellularCapability3gpp::LockRetryData retry_data;
   retry_data[MM_MODEM_LOCK_SIM_PIN] = 3;
   changed.Set(MM_MODEM_PROPERTY_UNLOCKRETRIES, brillo::Any(retry_data));
 

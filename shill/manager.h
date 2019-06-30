@@ -534,8 +534,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   friend class VPNServiceTest;
   friend class WiFiObjectTest;
 
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, TerminationAction);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+  FRIEND_TEST(CellularCapability3gppMainTest, TerminationAction);
+  FRIEND_TEST(CellularCapability3gppMainTest,
               TerminationActionRemovedByStopModem);
   FRIEND_TEST(CellularTest, LinkEventWontDestroyService);
   FRIEND_TEST(DefaultProfileTest, LoadManagerDefaultProperties);

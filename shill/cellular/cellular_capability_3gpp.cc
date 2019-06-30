@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/cellular/cellular_capability_universal.h"
+#include "shill/cellular/cellular_capability_3gpp.h"
 
 #include <algorithm>
 #include <memory>
@@ -41,36 +41,31 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(CellularCapabilityUniversal* c) {
+static string ObjectID(CellularCapability3gpp* c) {
   return c->cellular()->GetRpcIdentifier();
 }
-}
+}  // namespace Logging
 
 // static
-const char CellularCapabilityUniversal::kConnectApn[] = "apn";
-const char CellularCapabilityUniversal::kConnectUser[] = "user";
-const char CellularCapabilityUniversal::kConnectPassword[] = "password";
-const char CellularCapabilityUniversal::kConnectAllowedAuth[] = "allowed-auth";
-const char CellularCapabilityUniversal::kConnectAllowRoaming[] =
-    "allow-roaming";
-const int64_t CellularCapabilityUniversal::kEnterPinTimeoutMilliseconds = 20000;
+const char CellularCapability3gpp::kConnectApn[] = "apn";
+const char CellularCapability3gpp::kConnectUser[] = "user";
+const char CellularCapability3gpp::kConnectPassword[] = "password";
+const char CellularCapability3gpp::kConnectAllowedAuth[] = "allowed-auth";
+const char CellularCapability3gpp::kConnectAllowRoaming[] = "allow-roaming";
+const int64_t CellularCapability3gpp::kEnterPinTimeoutMilliseconds = 20000;
 const int64_t
-CellularCapabilityUniversal::kRegistrationDroppedUpdateTimeoutMilliseconds =
-    15000;
-const char CellularCapabilityUniversal::kRootPath[] = "/";
-const char CellularCapabilityUniversal::kStatusProperty[] = "status";
-const char CellularCapabilityUniversal::kOperatorLongProperty[] =
-    "operator-long";
-const char CellularCapabilityUniversal::kOperatorShortProperty[] =
-    "operator-short";
-const char CellularCapabilityUniversal::kOperatorCodeProperty[] =
-    "operator-code";
-const char CellularCapabilityUniversal::kOperatorAccessTechnologyProperty[] =
+    CellularCapability3gpp::kRegistrationDroppedUpdateTimeoutMilliseconds =
+        15000;
+const char CellularCapability3gpp::kRootPath[] = "/";
+const char CellularCapability3gpp::kStatusProperty[] = "status";
+const char CellularCapability3gpp::kOperatorLongProperty[] = "operator-long";
+const char CellularCapability3gpp::kOperatorShortProperty[] = "operator-short";
+const char CellularCapability3gpp::kOperatorCodeProperty[] = "operator-code";
+const char CellularCapability3gpp::kOperatorAccessTechnologyProperty[] =
     "access-technology";
-const char CellularCapabilityUniversal::kAltairLTEMMPlugin[] = "Altair LTE";
-const char CellularCapabilityUniversal::kTelitMMPlugin[] = "Telit";
-const int CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds =
-    20000;
+const char CellularCapability3gpp::kAltairLTEMMPlugin[] = "Altair LTE";
+const char CellularCapability3gpp::kTelitMMPlugin[] = "Telit";
+const int CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds = 20000;
 
 namespace {
 
@@ -82,17 +77,17 @@ string AccessTechnologyToString(uint32_t access_technologies) {
   // Order is important. Return the highest radio access technology.
   if (access_technologies & MM_MODEM_ACCESS_TECHNOLOGY_LTE)
     return kNetworkTechnologyLte;
-  if (access_technologies & (MM_MODEM_ACCESS_TECHNOLOGY_EVDO0 |
-                              MM_MODEM_ACCESS_TECHNOLOGY_EVDOA |
-                              MM_MODEM_ACCESS_TECHNOLOGY_EVDOB))
+  if (access_technologies &
+      (MM_MODEM_ACCESS_TECHNOLOGY_EVDO0 | MM_MODEM_ACCESS_TECHNOLOGY_EVDOA |
+       MM_MODEM_ACCESS_TECHNOLOGY_EVDOB))
     return kNetworkTechnologyEvdo;
   if (access_technologies & MM_MODEM_ACCESS_TECHNOLOGY_1XRTT)
     return kNetworkTechnology1Xrtt;
   if (access_technologies & MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS)
     return kNetworkTechnologyHspaPlus;
-  if (access_technologies & (MM_MODEM_ACCESS_TECHNOLOGY_HSPA |
-                              MM_MODEM_ACCESS_TECHNOLOGY_HSUPA |
-                              MM_MODEM_ACCESS_TECHNOLOGY_HSDPA))
+  if (access_technologies &
+      (MM_MODEM_ACCESS_TECHNOLOGY_HSPA | MM_MODEM_ACCESS_TECHNOLOGY_HSUPA |
+       MM_MODEM_ACCESS_TECHNOLOGY_HSDPA))
     return kNetworkTechnologyHspa;
   if (access_technologies & MM_MODEM_ACCESS_TECHNOLOGY_UMTS)
     return kNetworkTechnologyUmts;
@@ -100,28 +95,23 @@ string AccessTechnologyToString(uint32_t access_technologies) {
     return kNetworkTechnologyEdge;
   if (access_technologies & MM_MODEM_ACCESS_TECHNOLOGY_GPRS)
     return kNetworkTechnologyGprs;
-  if (access_technologies & (MM_MODEM_ACCESS_TECHNOLOGY_GSM_COMPACT |
-                              MM_MODEM_ACCESS_TECHNOLOGY_GSM))
-      return kNetworkTechnologyGsm;
+  if (access_technologies &
+      (MM_MODEM_ACCESS_TECHNOLOGY_GSM_COMPACT | MM_MODEM_ACCESS_TECHNOLOGY_GSM))
+    return kNetworkTechnologyGsm;
   return "";
 }
 
 string AccessTechnologyToTechnologyFamily(uint32_t access_technologies) {
-  if (access_technologies & (MM_MODEM_ACCESS_TECHNOLOGY_LTE |
-                             MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS |
-                             MM_MODEM_ACCESS_TECHNOLOGY_HSPA |
-                             MM_MODEM_ACCESS_TECHNOLOGY_HSUPA |
-                             MM_MODEM_ACCESS_TECHNOLOGY_HSDPA |
-                             MM_MODEM_ACCESS_TECHNOLOGY_UMTS |
-                             MM_MODEM_ACCESS_TECHNOLOGY_EDGE |
-                             MM_MODEM_ACCESS_TECHNOLOGY_GPRS |
-                             MM_MODEM_ACCESS_TECHNOLOGY_GSM_COMPACT |
-                             MM_MODEM_ACCESS_TECHNOLOGY_GSM))
+  if (access_technologies &
+      (MM_MODEM_ACCESS_TECHNOLOGY_LTE | MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS |
+       MM_MODEM_ACCESS_TECHNOLOGY_HSPA | MM_MODEM_ACCESS_TECHNOLOGY_HSUPA |
+       MM_MODEM_ACCESS_TECHNOLOGY_HSDPA | MM_MODEM_ACCESS_TECHNOLOGY_UMTS |
+       MM_MODEM_ACCESS_TECHNOLOGY_EDGE | MM_MODEM_ACCESS_TECHNOLOGY_GPRS |
+       MM_MODEM_ACCESS_TECHNOLOGY_GSM_COMPACT | MM_MODEM_ACCESS_TECHNOLOGY_GSM))
     return kTechnologyFamilyGsm;
-  if (access_technologies & (MM_MODEM_ACCESS_TECHNOLOGY_EVDO0 |
-                             MM_MODEM_ACCESS_TECHNOLOGY_EVDOA |
-                             MM_MODEM_ACCESS_TECHNOLOGY_EVDOB |
-                             MM_MODEM_ACCESS_TECHNOLOGY_1XRTT))
+  if (access_technologies &
+      (MM_MODEM_ACCESS_TECHNOLOGY_EVDO0 | MM_MODEM_ACCESS_TECHNOLOGY_EVDOA |
+       MM_MODEM_ACCESS_TECHNOLOGY_EVDOB | MM_MODEM_ACCESS_TECHNOLOGY_1XRTT))
     return kTechnologyFamilyCdma;
   return "";
 }
@@ -139,8 +129,8 @@ MMBearerAllowedAuth ApnAuthenticationToMMBearerAllowedAuth(
 
 }  // namespace
 
-CellularCapabilityUniversal::CellularCapabilityUniversal(Cellular* cellular,
-                                                         ModemInfo* modem_info)
+CellularCapability3gpp::CellularCapability3gpp(Cellular* cellular,
+                                               ModemInfo* modem_info)
     : CellularCapability(cellular, modem_info),
       mobile_operator_info_(
           new MobileOperatorInfo(cellular->dispatcher(), "ParseScanResult")),
@@ -156,13 +146,12 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(Cellular* cellular,
   SLOG(this, 2) << "Cellular capability constructed: Universal";
   mobile_operator_info_->Init();
   HelpRegisterConstDerivedKeyValueStore(
-      kSIMLockStatusProperty,
-      &CellularCapabilityUniversal::SimLockStatusToProperty);
+      kSIMLockStatusProperty, &CellularCapability3gpp::SimLockStatusToProperty);
 }
 
-CellularCapabilityUniversal::~CellularCapabilityUniversal() = default;
+CellularCapability3gpp::~CellularCapability3gpp() = default;
 
-KeyValueStore CellularCapabilityUniversal::SimLockStatusToProperty(
+KeyValueStore CellularCapability3gpp::SimLockStatusToProperty(
     Error* /*error*/) {
   KeyValueStore status;
   string lock_type;
@@ -183,17 +172,16 @@ KeyValueStore CellularCapabilityUniversal::SimLockStatusToProperty(
   return status;
 }
 
-void CellularCapabilityUniversal::HelpRegisterConstDerivedKeyValueStore(
+void CellularCapability3gpp::HelpRegisterConstDerivedKeyValueStore(
     const string& name,
-    KeyValueStore(CellularCapabilityUniversal::*get)(Error* error)) {
+    KeyValueStore (CellularCapability3gpp::*get)(Error* error)) {
   cellular()->mutable_store()->RegisterDerivedKeyValueStore(
-      name,
-      KeyValueStoreAccessor(
-          new CustomAccessor<CellularCapabilityUniversal, KeyValueStore>(
-              this, get, nullptr)));
+      name, KeyValueStoreAccessor(
+                new CustomAccessor<CellularCapability3gpp, KeyValueStore>(
+                    this, get, nullptr)));
 }
 
-void CellularCapabilityUniversal::InitProxies() {
+void CellularCapability3gpp::InitProxies() {
   modem_3gpp_proxy_ = control_interface()->CreateMM1ModemModem3gppProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
   modem_proxy_ = control_interface()->CreateMM1ModemProxy(
@@ -205,15 +193,15 @@ void CellularCapabilityUniversal::InitProxies() {
       cellular()->dbus_path(), cellular()->dbus_service());
 
   modem_proxy_->set_state_changed_callback(
-      Bind(&CellularCapabilityUniversal::OnModemStateChangedSignal,
+      Bind(&CellularCapability3gpp::OnModemStateChangedSignal,
            weak_ptr_factory_.GetWeakPtr()));
   // Do not create a SIM proxy until the device is enabled because we
   // do not yet know the object path of the sim object.
   // TODO(jglasgow): register callbacks
 }
 
-void CellularCapabilityUniversal::StartModem(Error* error,
-                                             const ResultCallback& callback) {
+void CellularCapability3gpp::StartModem(Error* error,
+                                        const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
   InitProxies();
 
@@ -221,18 +209,17 @@ void CellularCapabilityUniversal::StartModem(Error* error,
   EnableModem(true, error, callback);
 }
 
-void CellularCapabilityUniversal::EnableModem(bool deferrable,
-                                              Error* error,
-                                              const ResultCallback& callback) {
+void CellularCapability3gpp::EnableModem(bool deferrable,
+                                         Error* error,
+                                         const ResultCallback& callback) {
   SLOG(this, 3) << __func__ << "(deferrable=" << deferrable << ")";
   CHECK(!callback.is_null());
   Error local_error(Error::kOperationInitiated);
   modem_info()->metrics()->NotifyDeviceEnableStarted(
       cellular()->interface_index());
   modem_proxy_->Enable(
-      true,
-      &local_error,
-      Bind(&CellularCapabilityUniversal::EnableModemCompleted,
+      true, &local_error,
+      Bind(&CellularCapability3gpp::EnableModemCompleted,
            weak_ptr_factory_.GetWeakPtr(), deferrable, callback),
       kTimeoutEnable);
   if (local_error.IsFailure()) {
@@ -243,10 +230,10 @@ void CellularCapabilityUniversal::EnableModem(bool deferrable,
   }
 }
 
-void CellularCapabilityUniversal::EnableModemCompleted(
+void CellularCapability3gpp::EnableModemCompleted(
     bool deferrable, const ResultCallback& callback, const Error& error) {
   SLOG(this, 3) << __func__ << "(deferrable=" << deferrable
-                            << ", error=" << error << ")";
+                << ", error=" << error << ")";
 
   // If the enable operation failed with Error::kWrongState, the modem is not
   // in the expected state (i.e. disabled). If |deferrable| indicates that the
@@ -268,17 +255,15 @@ void CellularCapabilityUniversal::EnableModemCompleted(
     if (deferred_enable_modem_callback_.is_null()) {
       SLOG(this, 2) << "Defer enable operation.";
       // The Enable operation to be deferred should not be further deferrable.
-      deferred_enable_modem_callback_ =
-          Bind(&CellularCapabilityUniversal::EnableModem,
-               weak_ptr_factory_.GetWeakPtr(),
-               false,  // non-deferrable
-               nullptr,
-               callback);
+      deferred_enable_modem_callback_ = Bind(
+          &CellularCapability3gpp::EnableModem, weak_ptr_factory_.GetWeakPtr(),
+          false,  // non-deferrable
+          nullptr, callback);
     }
 
     if (IsLocationUpdateSupported()) {
       ResultCallback setup_callback =
-          Bind(&CellularCapabilityUniversal::OnSetupLocationReply,
+          Bind(&CellularCapability3gpp::OnSetupLocationReply,
                weak_ptr_factory_.GetWeakPtr());
       SetupLocation(MM_MODEM_LOCATION_SOURCE_3GPP_LAC_CI, false,
                     setup_callback);
@@ -299,8 +284,8 @@ void CellularCapabilityUniversal::EnableModemCompleted(
   callback.Run(error);
 }
 
-void CellularCapabilityUniversal::StopModem(Error* error,
-                                            const ResultCallback& callback) {
+void CellularCapability3gpp::StopModem(Error* error,
+                                       const ResultCallback& callback) {
   CHECK(!callback.is_null());
   CHECK(error);
   // If there is an outstanding registration change, simply ignore it since
@@ -316,19 +301,17 @@ void CellularCapabilityUniversal::StopModem(Error* error,
   // ModemManager doesn't try to disconnect it during disable.
   Closure task;
   if (cellular()->mm_plugin() == kAltairLTEMMPlugin) {
-    task = Bind(&CellularCapabilityUniversal::Stop_DeleteActiveBearer,
-                weak_ptr_factory_.GetWeakPtr(),
-                callback);
+    task = Bind(&CellularCapability3gpp::Stop_DeleteActiveBearer,
+                weak_ptr_factory_.GetWeakPtr(), callback);
   } else {
-    task = Bind(&CellularCapabilityUniversal::Stop_Disable,
-                weak_ptr_factory_.GetWeakPtr(),
-                callback);
+    task = Bind(&CellularCapability3gpp::Stop_Disable,
+                weak_ptr_factory_.GetWeakPtr(), callback);
   }
   cellular()->dispatcher()->PostTask(FROM_HERE, task);
   deferred_enable_modem_callback_.Reset();
 }
 
-void CellularCapabilityUniversal::Stop_DeleteActiveBearer(
+void CellularCapability3gpp::Stop_DeleteActiveBearer(
     const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
 
@@ -340,14 +323,14 @@ void CellularCapabilityUniversal::Stop_DeleteActiveBearer(
   Error error;
   modem_proxy_->DeleteBearer(
       active_bearer_->dbus_path(), &error,
-      Bind(&CellularCapabilityUniversal::Stop_DeleteActiveBearerCompleted,
+      Bind(&CellularCapability3gpp::Stop_DeleteActiveBearerCompleted,
            weak_ptr_factory_.GetWeakPtr(), callback),
       kTimeoutDefault);
   if (error.IsFailure())
     callback.Run(error);
 }
 
-void CellularCapabilityUniversal::Stop_DeleteActiveBearerCompleted(
+void CellularCapability3gpp::Stop_DeleteActiveBearerCompleted(
     const ResultCallback& callback, const Error& error) {
   SLOG(this, 3) << __func__;
   // Disregard the error from the bearer deletion since the disable will clean
@@ -355,21 +338,20 @@ void CellularCapabilityUniversal::Stop_DeleteActiveBearerCompleted(
   Stop_Disable(callback);
 }
 
-void CellularCapabilityUniversal::Stop_Disable(const ResultCallback& callback) {
+void CellularCapability3gpp::Stop_Disable(const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
   Error error;
   modem_info()->metrics()->NotifyDeviceDisableStarted(
       cellular()->interface_index());
-  modem_proxy_->Enable(
-      false, &error,
-      Bind(&CellularCapabilityUniversal::Stop_DisableCompleted,
-           weak_ptr_factory_.GetWeakPtr(), callback),
-      kTimeoutEnable);
+  modem_proxy_->Enable(false, &error,
+                       Bind(&CellularCapability3gpp::Stop_DisableCompleted,
+                            weak_ptr_factory_.GetWeakPtr(), callback),
+                       kTimeoutEnable);
   if (error.IsFailure())
     callback.Run(error);
 }
 
-void CellularCapabilityUniversal::Stop_DisableCompleted(
+void CellularCapability3gpp::Stop_DisableCompleted(
     const ResultCallback& callback, const Error& error) {
   SLOG(this, 3) << __func__;
 
@@ -383,14 +365,12 @@ void CellularCapabilityUniversal::Stop_DisableCompleted(
   }
 }
 
-void CellularCapabilityUniversal::Stop_PowerDown(
-    const ResultCallback& callback) {
+void CellularCapability3gpp::Stop_PowerDown(const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
   Error error;
   modem_proxy_->SetPowerState(
-      MM_MODEM_POWER_STATE_LOW,
-      &error,
-      Bind(&CellularCapabilityUniversal::Stop_PowerDownCompleted,
+      MM_MODEM_POWER_STATE_LOW, &error,
+      Bind(&CellularCapability3gpp::Stop_PowerDownCompleted,
            weak_ptr_factory_.GetWeakPtr(), callback),
       kSetPowerStateTimeoutMilliseconds);
 
@@ -406,9 +386,8 @@ void CellularCapabilityUniversal::Stop_PowerDown(
 // system suspended, we might not get this event from
 // ModemManager. And we might not even get a timeout from dbus-c++,
 // because StartModem re-initializes proxies.
-void CellularCapabilityUniversal::Stop_PowerDownCompleted(
-    const ResultCallback& callback,
-    const Error& error) {
+void CellularCapability3gpp::Stop_PowerDownCompleted(
+    const ResultCallback& callback, const Error& error) {
   SLOG(this, 3) << __func__;
 
   if (error.IsFailure())
@@ -423,31 +402,28 @@ void CellularCapabilityUniversal::Stop_PowerDownCompleted(
   callback.Run(Error());
 }
 
-void CellularCapabilityUniversal::Connect(const KeyValueStore& properties,
-                                          Error* error,
-                                          const ResultCallback& callback) {
+void CellularCapability3gpp::Connect(const KeyValueStore& properties,
+                                     Error* error,
+                                     const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
-  RpcIdentifierCallback cb = Bind(&CellularCapabilityUniversal::OnConnectReply,
-                                  weak_ptr_factory_.GetWeakPtr(),
-                                  callback);
+  RpcIdentifierCallback cb = Bind(&CellularCapability3gpp::OnConnectReply,
+                                  weak_ptr_factory_.GetWeakPtr(), callback);
   modem_simple_proxy_->Connect(properties, error, cb, kTimeoutConnect);
 }
 
-void CellularCapabilityUniversal::Disconnect(Error* error,
-                                             const ResultCallback& callback) {
+void CellularCapability3gpp::Disconnect(Error* error,
+                                        const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
   if (modem_simple_proxy_) {
     SLOG(this, 2) << "Disconnect all bearers.";
     // If "/" is passed as the bearer path, ModemManager will disconnect all
     // bearers.
-    modem_simple_proxy_->Disconnect(kRootPath,
-                                    error,
-                                    callback,
+    modem_simple_proxy_->Disconnect(kRootPath, error, callback,
                                     kTimeoutDisconnect);
   }
 }
 
-void CellularCapabilityUniversal::CompleteActivation(Error* error) {
+void CellularCapability3gpp::CompleteActivation(Error* error) {
   SLOG(this, 3) << __func__;
 
   // Persist the ICCID as "Pending Activation".
@@ -461,8 +437,7 @@ void CellularCapabilityUniversal::CompleteActivation(Error* error) {
   }
 
   modem_info()->pending_activation_store()->SetActivationState(
-      PendingActivationStore::kIdentifierICCID,
-      sim_identifier,
+      PendingActivationStore::kIdentifierICCID, sim_identifier,
       PendingActivationStore::kStatePending);
   UpdatePendingActivationState();
 
@@ -470,21 +445,20 @@ void CellularCapabilityUniversal::CompleteActivation(Error* error) {
   ResetAfterActivation();
 }
 
-void CellularCapabilityUniversal::ResetAfterActivation() {
+void CellularCapability3gpp::ResetAfterActivation() {
   SLOG(this, 3) << __func__;
 
   // Here the initial call to Reset might fail in rare cases. Simply ignore.
   Error error;
-  ResultCallback callback = Bind(
-      &CellularCapabilityUniversal::OnResetAfterActivationReply,
-      weak_ptr_factory_.GetWeakPtr());
+  ResultCallback callback =
+      Bind(&CellularCapability3gpp::OnResetAfterActivationReply,
+           weak_ptr_factory_.GetWeakPtr());
   Reset(&error, callback);
   if (error.IsFailure())
     SLOG(this, 2) << "Failed to reset after activation.";
 }
 
-void CellularCapabilityUniversal::OnResetAfterActivationReply(
-    const Error& error) {
+void CellularCapability3gpp::OnResetAfterActivationReply(const Error& error) {
   SLOG(this, 3) << __func__;
   if (error.IsFailure()) {
     SLOG(this, 2) << "Failed to reset after activation. Try again later.";
@@ -495,7 +469,7 @@ void CellularCapabilityUniversal::OnResetAfterActivationReply(
   UpdatePendingActivationState();
 }
 
-void CellularCapabilityUniversal::UpdatePendingActivationState() {
+void CellularCapability3gpp::UpdatePendingActivationState() {
   SLOG(this, 3) << __func__;
 
   const string& sim_identifier = cellular()->sim_identifier();
@@ -512,9 +486,8 @@ void CellularCapabilityUniversal::UpdatePendingActivationState() {
       ((subscription_state_ == SubscriptionState::kUnknown) && IsMdnValid());
 
   if (activated && !sim_identifier.empty())
-      modem_info()->pending_activation_store()->RemoveEntry(
-          PendingActivationStore::kIdentifierICCID,
-          sim_identifier);
+    modem_info()->pending_activation_store()->RemoveEntry(
+        PendingActivationStore::kIdentifierICCID, sim_identifier);
 
   CellularServiceRefPtr service = cellular()->service();
 
@@ -522,8 +495,8 @@ void CellularCapabilityUniversal::UpdatePendingActivationState() {
     return;
 
   if (service->activation_state() == kActivationStateActivated)
-      // Either no service or already activated. Nothing to do.
-      return;
+    // Either no service or already activated. Nothing to do.
+    return;
 
   // If the ICCID is not available, the following logic can be delayed until it
   // becomes available.
@@ -532,8 +505,7 @@ void CellularCapabilityUniversal::UpdatePendingActivationState() {
 
   PendingActivationStore::State state =
       modem_info()->pending_activation_store()->GetActivationState(
-          PendingActivationStore::kIdentifierICCID,
-          sim_identifier);
+          PendingActivationStore::kIdentifierICCID, sim_identifier);
   switch (state) {
     case PendingActivationStore::kStatePending:
       // Always mark the service as activating here, as the ICCID could have
@@ -542,8 +514,7 @@ void CellularCapabilityUniversal::UpdatePendingActivationState() {
       if (reset_done_) {
         SLOG(this, 2) << "Post-payment activation reset complete.";
         modem_info()->pending_activation_store()->SetActivationState(
-            PendingActivationStore::kIdentifierICCID,
-            sim_identifier,
+            PendingActivationStore::kIdentifierICCID, sim_identifier,
             PendingActivationStore::kStateActivated);
       }
       break;
@@ -563,7 +534,7 @@ void CellularCapabilityUniversal::UpdatePendingActivationState() {
   }
 }
 
-string CellularCapabilityUniversal::GetMdnForOLP(
+string CellularCapability3gpp::GetMdnForOLP(
     const MobileOperatorInfo* operator_info) const {
   // TODO(benchan): This is ugly. Remove carrier specific code once we move
   // mobile activation logic to carrier-specifc extensions (crbug.com/260073).
@@ -587,7 +558,7 @@ string CellularCapabilityUniversal::GetMdnForOLP(
   return mdn;
 }
 
-void CellularCapabilityUniversal::ReleaseProxies() {
+void CellularCapability3gpp::ReleaseProxies() {
   SLOG(this, 3) << __func__;
   modem_3gpp_proxy_.reset();
   modem_proxy_.reset();
@@ -598,13 +569,13 @@ void CellularCapabilityUniversal::ReleaseProxies() {
   // cleared here in order to keep it in sync with |sim_path_|.
 }
 
-bool CellularCapabilityUniversal::AreProxiesInitialized() const {
+bool CellularCapability3gpp::AreProxiesInitialized() const {
   return (modem_3gpp_proxy_.get() && modem_proxy_.get() &&
           modem_simple_proxy_.get() && sim_proxy_.get() &&
           modem_location_proxy_.get());
 }
 
-void CellularCapabilityUniversal::UpdateServiceActivationState() {
+void CellularCapability3gpp::UpdateServiceActivationState() {
   CellularServiceRefPtr service = cellular()->service();
   if (!service)
     return;
@@ -637,7 +608,7 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
   service->SetActivationState(activation_state);
 }
 
-void CellularCapabilityUniversal::OnServiceCreated() {
+void CellularCapability3gpp::OnServiceCreated() {
   // ModemManager might have issued some property updates before the service
   // object was created to receive the udpates, so we explicitly refresh the
   // properties here.
@@ -651,14 +622,12 @@ void CellularCapabilityUniversal::OnServiceCreated() {
   cellular()->service()->SetNetworkTechnology(GetNetworkTechnologyString());
 }
 
-void CellularCapabilityUniversal::SetupConnectProperties(
-    KeyValueStore* properties) {
+void CellularCapability3gpp::SetupConnectProperties(KeyValueStore* properties) {
   apn_try_list_ = cellular()->BuildApnTryList();
   FillConnectPropertyMap(properties);
 }
 
-void CellularCapabilityUniversal::FillConnectPropertyMap(
-    KeyValueStore* properties) {
+void CellularCapability3gpp::FillConnectPropertyMap(KeyValueStore* properties) {
   properties->SetBool(kConnectAllowRoaming,
                       cellular()->IsRoamingAllowedOrRequired());
 
@@ -682,9 +651,9 @@ void CellularCapabilityUniversal::FillConnectPropertyMap(
   }
 }
 
-void CellularCapabilityUniversal::OnConnectReply(const ResultCallback& callback,
-                                                 const RpcIdentifier& bearer,
-                                                 const Error& error) {
+void CellularCapability3gpp::OnConnectReply(const ResultCallback& callback,
+                                            const RpcIdentifier& bearer,
+                                            const Error& error) {
   SLOG(this, 3) << __func__ << "(" << error << ")";
 
   CellularServiceRefPtr service = cellular()->service();
@@ -722,22 +691,21 @@ void CellularCapabilityUniversal::OnConnectReply(const ResultCallback& callback,
   UpdatePendingActivationState();
 }
 
-void CellularCapabilityUniversal::GetProperties() {
+void CellularCapability3gpp::GetProperties() {
   SLOG(this, 3) << __func__;
 
   std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy =
       control_interface()->CreateDBusPropertiesProxy(
           cellular()->dbus_path(), cellular()->dbus_service());
 
-  KeyValueStore properties(
-      properties_proxy->GetAll(MM_DBUS_INTERFACE_MODEM));
+  KeyValueStore properties(properties_proxy->GetAll(MM_DBUS_INTERFACE_MODEM));
   OnModemPropertiesChanged(properties, vector<string>());
 
   properties = properties_proxy->GetAll(MM_DBUS_INTERFACE_MODEM_MODEM3GPP);
   OnModem3gppPropertiesChanged(properties, vector<string>());
 }
 
-void CellularCapabilityUniversal::UpdateServiceOLP() {
+void CellularCapability3gpp::UpdateServiceOLP() {
   SLOG(this, 3) << __func__;
 
   // OLP is based off of the Home Provider.
@@ -755,28 +723,28 @@ void CellularCapabilityUniversal::UpdateServiceOLP() {
     SLOG(this, 1) << "Found multiple online portals. Choosing the first.";
   }
   string post_data = olp_list[0].post_data;
-  base::ReplaceSubstringsAfterOffset(
-      &post_data, 0, "${iccid}", cellular()->sim_identifier());
-  base::ReplaceSubstringsAfterOffset(
-      &post_data, 0, "${imei}", cellular()->imei());
-  base::ReplaceSubstringsAfterOffset(
-      &post_data, 0, "${imsi}", cellular()->imsi());
+  base::ReplaceSubstringsAfterOffset(&post_data, 0, "${iccid}",
+                                     cellular()->sim_identifier());
+  base::ReplaceSubstringsAfterOffset(&post_data, 0, "${imei}",
+                                     cellular()->imei());
+  base::ReplaceSubstringsAfterOffset(&post_data, 0, "${imsi}",
+                                     cellular()->imsi());
   base::ReplaceSubstringsAfterOffset(
       &post_data, 0, "${mdn}", GetMdnForOLP(cellular()->home_provider_info()));
-  base::ReplaceSubstringsAfterOffset(
-      &post_data, 0, "${min}", cellular()->min());
+  base::ReplaceSubstringsAfterOffset(&post_data, 0, "${min}",
+                                     cellular()->min());
   cellular()->service()->SetOLP(olp_list[0].url, olp_list[0].method, post_data);
 }
 
-void CellularCapabilityUniversal::UpdateActiveBearer() {
+void CellularCapability3gpp::UpdateActiveBearer() {
   SLOG(this, 3) << __func__;
 
   // Look for the first active bearer and use its path as the connected
   // one. Right now, we don't allow more than one active bearer.
   active_bearer_.reset();
   for (const auto& path : bearer_paths_) {
-    auto bearer = std::make_unique<CellularBearer>(
-        control_interface(), path, cellular()->dbus_service());
+    auto bearer = std::make_unique<CellularBearer>(control_interface(), path,
+                                                   cellular()->dbus_service());
     // The bearer object may have vanished before ModemManager updates the
     // 'Bearers' property.
     if (!bearer->Init())
@@ -794,7 +762,7 @@ void CellularCapabilityUniversal::UpdateActiveBearer() {
     SLOG(this, 2) << "No active bearer found.";
 }
 
-bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
+bool CellularCapability3gpp::IsServiceActivationRequired() const {
   const string& sim_identifier = cellular()->sim_identifier();
   // subscription_state_ is the definitive answer. If that does not work,
   // fallback on MDN based logic.
@@ -806,8 +774,8 @@ bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
   // network and use our own knowledge about the activation state.
   if (!sim_identifier.empty() &&
       modem_info()->pending_activation_store()->GetActivationState(
-          PendingActivationStore::kIdentifierICCID,
-          sim_identifier) != PendingActivationStore::kStateUnknown)
+          PendingActivationStore::kIdentifierICCID, sim_identifier) !=
+          PendingActivationStore::kStateUnknown)
     return false;
 
   // Network notification that the service needs to be activated.
@@ -826,11 +794,11 @@ bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
   return !IsMdnValid();
 }
 
-bool CellularCapabilityUniversal::IsActivating() const {
+bool CellularCapability3gpp::IsActivating() const {
   return false;
 }
 
-bool CellularCapabilityUniversal::IsMdnValid() const {
+bool CellularCapability3gpp::IsMdnValid() const {
   const string& mdn = cellular()->mdn();
   // Note that |mdn| is normalized to contain only digits in OnMdnChanged().
   for (size_t i = 0; i < mdn.size(); ++i) {
@@ -841,34 +809,31 @@ bool CellularCapabilityUniversal::IsMdnValid() const {
 }
 
 // always called from an async context
-void CellularCapabilityUniversal::Register(const ResultCallback& callback) {
-  SLOG(this, 3) << __func__ << " \"" << cellular()->selected_network()
-                            << "\"";
+void CellularCapability3gpp::Register(const ResultCallback& callback) {
+  SLOG(this, 3) << __func__ << " \"" << cellular()->selected_network() << "\"";
   CHECK(!callback.is_null());
   Error error;
-  ResultCallback cb = Bind(&CellularCapabilityUniversal::OnRegisterReply,
-                                weak_ptr_factory_.GetWeakPtr(), callback);
+  ResultCallback cb = Bind(&CellularCapability3gpp::OnRegisterReply,
+                           weak_ptr_factory_.GetWeakPtr(), callback);
   modem_3gpp_proxy_->Register(cellular()->selected_network(), &error, cb,
                               kTimeoutRegister);
   if (error.IsFailure())
     callback.Run(error);
 }
 
-void CellularCapabilityUniversal::RegisterOnNetwork(
-    const string& network_id,
-    Error* error,
-    const ResultCallback& callback) {
+void CellularCapability3gpp::RegisterOnNetwork(const string& network_id,
+                                               Error* error,
+                                               const ResultCallback& callback) {
   SLOG(this, 3) << __func__ << "(" << network_id << ")";
   CHECK(error);
   desired_network_ = network_id;
-  ResultCallback cb = Bind(&CellularCapabilityUniversal::OnRegisterReply,
-                                weak_ptr_factory_.GetWeakPtr(), callback);
+  ResultCallback cb = Bind(&CellularCapability3gpp::OnRegisterReply,
+                           weak_ptr_factory_.GetWeakPtr(), callback);
   modem_3gpp_proxy_->Register(network_id, error, cb, kTimeoutRegister);
 }
 
-void CellularCapabilityUniversal::OnRegisterReply(
-    const ResultCallback& callback,
-    const Error& error) {
+void CellularCapability3gpp::OnRegisterReply(const ResultCallback& callback,
+                                             const Error& error) {
   SLOG(this, 3) << __func__ << "(" << error << ")";
 
   if (error.IsSuccess()) {
@@ -889,58 +854,60 @@ void CellularCapabilityUniversal::OnRegisterReply(
   callback.Run(error);
 }
 
-bool CellularCapabilityUniversal::IsRegistered() const {
+bool CellularCapability3gpp::IsRegistered() const {
   return IsRegisteredState(registration_state_);
 }
 
-bool CellularCapabilityUniversal::IsRegisteredState(
+bool CellularCapability3gpp::IsRegisteredState(
     MMModem3gppRegistrationState state) {
   return (state == MM_MODEM_3GPP_REGISTRATION_STATE_HOME ||
           state == MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING);
 }
 
-void CellularCapabilityUniversal::SetUnregistered(bool searching) {
+void CellularCapability3gpp::SetUnregistered(bool searching) {
   // If we're already in some non-registered state, don't override that
   if (registration_state_ == MM_MODEM_3GPP_REGISTRATION_STATE_HOME ||
-          registration_state_ == MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING) {
+      registration_state_ == MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING) {
     registration_state_ =
-        (searching ? MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING :
-                     MM_MODEM_3GPP_REGISTRATION_STATE_IDLE);
+        (searching ? MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING
+                   : MM_MODEM_3GPP_REGISTRATION_STATE_IDLE);
   }
 }
 
-void CellularCapabilityUniversal::RequirePIN(
-    const string& pin, bool require,
-    Error* error, const ResultCallback& callback) {
+void CellularCapability3gpp::RequirePIN(const string& pin,
+                                        bool require,
+                                        Error* error,
+                                        const ResultCallback& callback) {
   CHECK(error);
   sim_proxy_->EnablePin(pin, require, error, callback, kTimeoutDefault);
 }
 
-void CellularCapabilityUniversal::EnterPIN(const string& pin,
-                                           Error* error,
-                                           const ResultCallback& callback) {
+void CellularCapability3gpp::EnterPIN(const string& pin,
+                                      Error* error,
+                                      const ResultCallback& callback) {
   CHECK(error);
   SLOG(this, 3) << __func__;
   sim_proxy_->SendPin(pin, error, callback, kEnterPinTimeoutMilliseconds);
 }
 
-void CellularCapabilityUniversal::UnblockPIN(const string& unblock_code,
-                                             const string& pin,
-                                             Error* error,
-                                             const ResultCallback& callback) {
+void CellularCapability3gpp::UnblockPIN(const string& unblock_code,
+                                        const string& pin,
+                                        Error* error,
+                                        const ResultCallback& callback) {
   CHECK(error);
   sim_proxy_->SendPuk(unblock_code, pin, error, callback, kTimeoutDefault);
 }
 
-void CellularCapabilityUniversal::ChangePIN(
-    const string& old_pin, const string& new_pin,
-    Error* error, const ResultCallback& callback) {
+void CellularCapability3gpp::ChangePIN(const string& old_pin,
+                                       const string& new_pin,
+                                       Error* error,
+                                       const ResultCallback& callback) {
   CHECK(error);
   sim_proxy_->ChangePin(old_pin, new_pin, error, callback, kTimeoutDefault);
 }
 
-void CellularCapabilityUniversal::Reset(Error* error,
-                                        const ResultCallback& callback) {
+void CellularCapability3gpp::Reset(Error* error,
+                                   const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
   CHECK(error);
   if (resetting_) {
@@ -948,7 +915,7 @@ void CellularCapabilityUniversal::Reset(Error* error,
                           "Already resetting");
     return;
   }
-  ResultCallback cb = Bind(&CellularCapabilityUniversal::OnResetReply,
+  ResultCallback cb = Bind(&CellularCapability3gpp::OnResetReply,
                            weak_ptr_factory_.GetWeakPtr(), callback);
   modem_proxy_->Reset(error, cb, kTimeoutReset);
   if (!error->IsFailure()) {
@@ -956,23 +923,22 @@ void CellularCapabilityUniversal::Reset(Error* error,
   }
 }
 
-void CellularCapabilityUniversal::OnResetReply(const ResultCallback& callback,
-                                               const Error& error) {
+void CellularCapability3gpp::OnResetReply(const ResultCallback& callback,
+                                          const Error& error) {
   SLOG(this, 3) << __func__;
   resetting_ = false;
   if (!callback.is_null())
     callback.Run(error);
 }
 
-void CellularCapabilityUniversal::Scan(
-    Error* error,
-    const ResultStringmapsCallback& callback) {
-  KeyValueStoresCallback cb = Bind(&CellularCapabilityUniversal::OnScanReply,
+void CellularCapability3gpp::Scan(Error* error,
+                                  const ResultStringmapsCallback& callback) {
+  KeyValueStoresCallback cb = Bind(&CellularCapability3gpp::OnScanReply,
                                    weak_ptr_factory_.GetWeakPtr(), callback);
   modem_3gpp_proxy_->Scan(error, cb, kTimeoutScan);
 }
 
-void CellularCapabilityUniversal::OnScanReply(
+void CellularCapability3gpp::OnScanReply(
     const ResultStringmapsCallback& callback,
     const ScanResults& results,
     const Error& error) {
@@ -982,9 +948,7 @@ void CellularCapabilityUniversal::OnScanReply(
   callback.Run(found_networks, error);
 }
 
-Stringmap CellularCapabilityUniversal::ParseScanResult(
-    const ScanResult& result) {
-
+Stringmap CellularCapability3gpp::ParseScanResult(const ScanResult& result) {
   /* ScanResults contain the following keys:
 
      "status"
@@ -1018,19 +982,18 @@ Stringmap CellularCapabilityUniversal::ParseScanResult(
     uint32_t status = result.GetUint(kStatusProperty);
     // numerical values are taken from 3GPP TS 27.007 Section 7.3.
     static const char* const kStatusString[] = {
-      "unknown",    // MM_MODEM_3GPP_NETWORK_AVAILABILITY_UNKNOWN
-      "available",  // MM_MODEM_3GPP_NETWORK_AVAILABILITY_AVAILABLE
-      "current",    // MM_MODEM_3GPP_NETWORK_AVAILABILITY_CURRENT
-      "forbidden",  // MM_MODEM_3GPP_NETWORK_AVAILABILITY_FORBIDDEN
+        "unknown",    // MM_MODEM_3GPP_NETWORK_AVAILABILITY_UNKNOWN
+        "available",  // MM_MODEM_3GPP_NETWORK_AVAILABILITY_AVAILABLE
+        "current",    // MM_MODEM_3GPP_NETWORK_AVAILABILITY_CURRENT
+        "forbidden",  // MM_MODEM_3GPP_NETWORK_AVAILABILITY_FORBIDDEN
     };
     parsed[kStatusProperty] = kStatusString[status];
   }
 
   // MMModemAccessTechnology
   if (result.ContainsUint(kOperatorAccessTechnologyProperty)) {
-    parsed[kTechnologyProperty] =
-        AccessTechnologyToString(
-            result.GetUint(kOperatorAccessTechnologyProperty));
+    parsed[kTechnologyProperty] = AccessTechnologyToString(
+        result.GetUint(kOperatorAccessTechnologyProperty));
   }
 
   string operator_long, operator_short, operator_code;
@@ -1056,16 +1019,15 @@ Stringmap CellularCapabilityUniversal::ParseScanResult(
   return parsed;
 }
 
-void CellularCapabilityUniversal::SetupLocation(
-    uint32_t sources,
-    bool signal_location,
-    const ResultCallback& callback) {
+void CellularCapability3gpp::SetupLocation(uint32_t sources,
+                                           bool signal_location,
+                                           const ResultCallback& callback) {
   Error error;
   modem_location_proxy_->Setup(sources, signal_location, &error, callback,
                                kTimeoutSetupLocation);
 }
 
-void CellularCapabilityUniversal::OnSetupLocationReply(const Error& error) {
+void CellularCapability3gpp::OnSetupLocationReply(const Error& error) {
   SLOG(this, 3) << __func__;
   if (error.IsFailure()) {
     // Not fatal: most devices already enable this when
@@ -1076,14 +1038,14 @@ void CellularCapabilityUniversal::OnSetupLocationReply(const Error& error) {
   }
 }
 
-void CellularCapabilityUniversal::GetLocation(const StringCallback& callback) {
-  BrilloAnyCallback cb = Bind(&CellularCapabilityUniversal::OnGetLocationReply,
+void CellularCapability3gpp::GetLocation(const StringCallback& callback) {
+  BrilloAnyCallback cb = Bind(&CellularCapability3gpp::OnGetLocationReply,
                               weak_ptr_factory_.GetWeakPtr(), callback);
   Error error;
   modem_location_proxy_->GetLocation(&error, cb, kTimeoutGetLocation);
 }
 
-void CellularCapabilityUniversal::OnGetLocationReply(
+void CellularCapability3gpp::OnGetLocationReply(
     const StringCallback& callback,
     const std::map<uint32_t, brillo::Any>& results,
     const Error& error) {
@@ -1103,20 +1065,20 @@ void CellularCapabilityUniversal::OnGetLocationReply(
   }
 }
 
-bool CellularCapabilityUniversal::IsLocationUpdateSupported() const {
+bool CellularCapability3gpp::IsLocationUpdateSupported() const {
   // Whitelist modems as they're tested / needed
   return cellular()->mm_plugin() == kTelitMMPlugin;
 }
 
-CellularBearer* CellularCapabilityUniversal::GetActiveBearer() const {
+CellularBearer* CellularCapability3gpp::GetActiveBearer() const {
   return active_bearer_.get();
 }
 
-string CellularCapabilityUniversal::GetNetworkTechnologyString() const {
+string CellularCapability3gpp::GetNetworkTechnologyString() const {
   return AccessTechnologyToString(access_technologies_);
 }
 
-string CellularCapabilityUniversal::GetRoamingStateString() const {
+string CellularCapability3gpp::GetRoamingStateString() const {
   switch (registration_state_) {
     case MM_MODEM_3GPP_REGISTRATION_STATE_HOME:
       return kRoamingStateHome;
@@ -1128,14 +1090,13 @@ string CellularCapabilityUniversal::GetRoamingStateString() const {
   return kRoamingStateUnknown;
 }
 
-string CellularCapabilityUniversal::GetTypeString() const {
+string CellularCapability3gpp::GetTypeString() const {
   return AccessTechnologyToTechnologyFamily(access_technologies_);
 }
 
-void CellularCapabilityUniversal::OnModemPropertiesChanged(
+void CellularCapability3gpp::OnModemPropertiesChanged(
     const KeyValueStore& properties,
     const vector<string>& /* invalidated_properties */) {
-
   // Update the bearers property before the modem state property as
   // OnModemStateChanged may call UpdateActiveBearer, which reads the bearers
   // property.
@@ -1233,7 +1194,7 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   }
 }
 
-void CellularCapabilityUniversal::OnPropertiesChanged(
+void CellularCapability3gpp::OnPropertiesChanged(
     const string& interface,
     const KeyValueStore& changed_properties,
     const vector<string>& invalidated_properties) {
@@ -1249,17 +1210,16 @@ void CellularCapabilityUniversal::OnPropertiesChanged(
   }
 }
 
-bool CellularCapabilityUniversal::RetriableConnectError(
-    const Error& error) const {
+bool CellularCapability3gpp::RetriableConnectError(const Error& error) const {
   return error.type() == Error::kInvalidApn;
 }
 
-bool CellularCapabilityUniversal::IsValidSimPath(
+bool CellularCapability3gpp::IsValidSimPath(
     const RpcIdentifier& sim_path) const {
   return !sim_path.empty() && sim_path != kRootPath;
 }
 
-string CellularCapabilityUniversal::NormalizeMdn(const string& mdn) const {
+string CellularCapability3gpp::NormalizeMdn(const string& mdn) const {
   string normalized_mdn;
   for (size_t i = 0; i < mdn.size(); ++i) {
     if (base::IsAsciiDigit(mdn[i]))
@@ -1268,8 +1228,7 @@ string CellularCapabilityUniversal::NormalizeMdn(const string& mdn) const {
   return normalized_mdn;
 }
 
-void CellularCapabilityUniversal::OnSimPathChanged(
-    const RpcIdentifier& sim_path) {
+void CellularCapability3gpp::OnSimPathChanged(const RpcIdentifier& sim_path) {
   if (sim_path == sim_path_)
     return;
 
@@ -1299,7 +1258,7 @@ void CellularCapabilityUniversal::OnSimPathChanged(
   }
 }
 
-void CellularCapabilityUniversal::OnModemCurrentCapabilitiesChanged(
+void CellularCapability3gpp::OnModemCurrentCapabilitiesChanged(
     uint32_t current_capabilities) {
   current_capabilities_ = current_capabilities;
 
@@ -1312,29 +1271,26 @@ void CellularCapabilityUniversal::OnModemCurrentCapabilitiesChanged(
       (current_capabilities & MM_MODEM_CAPABILITY_GSM_UMTS) != 0);
 }
 
-void CellularCapabilityUniversal::OnMdnChanged(
-    const string& mdn) {
+void CellularCapability3gpp::OnMdnChanged(const string& mdn) {
   cellular()->set_mdn(NormalizeMdn(mdn));
   UpdateServiceActivationState();
   UpdatePendingActivationState();
 }
 
-void CellularCapabilityUniversal::OnModemRevisionChanged(
-    const string& revision) {
+void CellularCapability3gpp::OnModemRevisionChanged(const string& revision) {
   cellular()->set_firmware_revision(revision);
 }
 
-void CellularCapabilityUniversal::OnModemHardwareRevisionChanged(
+void CellularCapability3gpp::OnModemHardwareRevisionChanged(
     const string& hardware_revision) {
   cellular()->set_hardware_revision(hardware_revision);
 }
 
-void CellularCapabilityUniversal::OnModemDevicePathChanged(const string& path) {
+void CellularCapability3gpp::OnModemDevicePathChanged(const string& path) {
   cellular()->set_device_id(ReadDeviceIdFromSysfs(base::FilePath(path)));
 }
 
-void CellularCapabilityUniversal::OnModemStateChanged(
-    Cellular::ModemState state) {
+void CellularCapability3gpp::OnModemStateChanged(Cellular::ModemState state) {
   SLOG(this, 3) << __func__ << ": " << Cellular::GetModemStateString(state);
 
   if (state == Cellular::kModemStateConnected) {
@@ -1355,7 +1311,7 @@ void CellularCapabilityUniversal::OnModemStateChanged(
   }
 }
 
-void CellularCapabilityUniversal::OnAccessTechnologiesChanged(
+void CellularCapability3gpp::OnAccessTechnologiesChanged(
     uint32_t access_technologies) {
   if (access_technologies_ != access_technologies) {
     const string old_type_string(GetTypeString());
@@ -1364,8 +1320,8 @@ void CellularCapabilityUniversal::OnAccessTechnologiesChanged(
     if (new_type_string != old_type_string) {
       // TODO(jglasgow): address layering violation of emitting change
       // signal here for a property owned by Cellular.
-      cellular()->adaptor()->EmitStringChanged(
-          kTechnologyFamilyProperty, new_type_string);
+      cellular()->adaptor()->EmitStringChanged(kTechnologyFamilyProperty,
+                                               new_type_string);
     }
     if (cellular()->service().get()) {
       cellular()->service()->SetNetworkTechnology(GetNetworkTechnologyString());
@@ -1373,12 +1329,11 @@ void CellularCapabilityUniversal::OnAccessTechnologiesChanged(
   }
 }
 
-void CellularCapabilityUniversal::OnBearersChanged(
-    const RpcIdentifiers& bearers) {
+void CellularCapability3gpp::OnBearersChanged(const RpcIdentifiers& bearers) {
   bearer_paths_ = bearers;
 }
 
-void CellularCapabilityUniversal::OnLockRetriesChanged(
+void CellularCapability3gpp::OnLockRetriesChanged(
     const LockRetryData& lock_retries) {
   SLOG(this, 3) << __func__;
 
@@ -1388,7 +1343,7 @@ void CellularCapabilityUniversal::OnLockRetriesChanged(
   LockRetryData::const_iterator it =
       lock_retries.find(sim_lock_status_.lock_type);
   if (it == lock_retries.end())
-      it = lock_retries.begin();
+    it = lock_retries.begin();
   if (it != lock_retries.end())
     sim_lock_status_.retries_left = it->second;
   else
@@ -1396,8 +1351,7 @@ void CellularCapabilityUniversal::OnLockRetriesChanged(
     sim_lock_status_.retries_left = 999;
 }
 
-void CellularCapabilityUniversal::OnLockTypeChanged(
-    MMModemLock lock_type) {
+void CellularCapability3gpp::OnLockTypeChanged(MMModemLock lock_type) {
   SLOG(this, 3) << __func__ << ": " << lock_type;
   sim_lock_status_.lock_type = lock_type;
 
@@ -1405,13 +1359,12 @@ void CellularCapabilityUniversal::OnLockTypeChanged(
   // This is because the corresponding property 'EnabledFacilityLocks' is on
   // the 3GPP interface and the 3GPP interface is not available while the Modem
   // is in the 'LOCKED' state.
-  if (lock_type != MM_MODEM_LOCK_NONE &&
-      lock_type != MM_MODEM_LOCK_UNKNOWN &&
+  if (lock_type != MM_MODEM_LOCK_NONE && lock_type != MM_MODEM_LOCK_UNKNOWN &&
       !sim_lock_status_.enabled)
     sim_lock_status_.enabled = true;
 }
 
-void CellularCapabilityUniversal::OnSimLockStatusChanged() {
+void CellularCapability3gpp::OnSimLockStatusChanged() {
   SLOG(this, 3) << __func__;
   cellular()->adaptor()->EmitKeyValueStoreChanged(
       kSIMLockStatusProperty, SimLockStatusToProperty(nullptr));
@@ -1425,13 +1378,12 @@ void CellularCapabilityUniversal::OnSimLockStatusChanged() {
     std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy =
         control_interface()->CreateDBusPropertiesProxy(
             sim_path_, cellular()->dbus_service());
-    KeyValueStore properties(
-        properties_proxy->GetAll(MM_DBUS_INTERFACE_SIM));
+    KeyValueStore properties(properties_proxy->GetAll(MM_DBUS_INTERFACE_SIM));
     OnSimPropertiesChanged(properties, vector<string>());
   }
 }
 
-void CellularCapabilityUniversal::OnModem3gppPropertiesChanged(
+void CellularCapability3gpp::OnModem3gppPropertiesChanged(
     const KeyValueStore& properties,
     const vector<string>& /* invalidated_properties */) {
   SLOG(this, 3) << __func__;
@@ -1480,13 +1432,13 @@ void CellularCapabilityUniversal::OnModem3gppPropertiesChanged(
   }
 }
 
-void CellularCapabilityUniversal::On3gppRegistrationChanged(
+void CellularCapability3gpp::On3gppRegistrationChanged(
     MMModem3gppRegistrationState state,
     const string& operator_code,
     const string& operator_name) {
   SLOG(this, 3) << __func__ << ": regstate=" << state
-                            << ", opercode=" << operator_code
-                            << ", opername=" << operator_name;
+                << ", opercode=" << operator_code
+                << ", opername=" << operator_name;
 
   // While the modem is connected, if the state changed from a registered state
   // to a non registered state, defer the state change by 15 seconds.
@@ -1502,15 +1454,11 @@ void CellularCapabilityUniversal::On3gppRegistrationChanged(
       modem_info()->metrics()->Notify3GPPRegistrationDelayedDropPosted();
     }
     SLOG(this, 2) << "Posted deferred registration state update";
-    registration_dropped_update_callback_.Reset(
-        Bind(&CellularCapabilityUniversal::Handle3gppRegistrationChange,
-             weak_ptr_factory_.GetWeakPtr(),
-             state,
-             operator_code,
-             operator_name));
+    registration_dropped_update_callback_.Reset(Bind(
+        &CellularCapability3gpp::Handle3gppRegistrationChange,
+        weak_ptr_factory_.GetWeakPtr(), state, operator_code, operator_name));
     cellular()->dispatcher()->PostDelayedTask(
-        FROM_HERE,
-        registration_dropped_update_callback_.callback(),
+        FROM_HERE, registration_dropped_update_callback_.callback(),
         registration_dropped_update_timeout_milliseconds_);
   } else {
     if (!registration_dropped_update_callback_.IsCancelled()) {
@@ -1524,13 +1472,13 @@ void CellularCapabilityUniversal::On3gppRegistrationChanged(
   }
 }
 
-void CellularCapabilityUniversal::Handle3gppRegistrationChange(
+void CellularCapability3gpp::Handle3gppRegistrationChange(
     MMModem3gppRegistrationState updated_state,
     const string& updated_operator_code,
     const string& updated_operator_name) {
   SLOG(this, 3) << __func__ << ": regstate=" << updated_state
-                            << ", opercode=" << updated_operator_code
-                            << ", opername=" << updated_operator_name;
+                << ", opercode=" << updated_operator_code
+                << ", opername=" << updated_operator_name;
 
   registration_state_ = updated_state;
   serving_operator_[kOperatorCodeKey] = updated_operator_code;
@@ -1554,7 +1502,7 @@ void CellularCapabilityUniversal::Handle3gppRegistrationChange(
   UpdatePendingActivationState();
 }
 
-void CellularCapabilityUniversal::OnSubscriptionStateChanged(
+void CellularCapability3gpp::OnSubscriptionStateChanged(
     SubscriptionState updated_subscription_state) {
   SLOG(this, 3) << __func__ << ": Updated subscription state = "
                 << SubscriptionStateToString(updated_subscription_state);
@@ -1568,21 +1516,20 @@ void CellularCapabilityUniversal::OnSubscriptionStateChanged(
   UpdatePendingActivationState();
 }
 
-void CellularCapabilityUniversal::OnModemStateChangedSignal(
-    int32_t old_state, int32_t new_state, uint32_t reason) {
+void CellularCapability3gpp::OnModemStateChangedSignal(int32_t old_state,
+                                                       int32_t new_state,
+                                                       uint32_t reason) {
   Cellular::ModemState old_modem_state =
       static_cast<Cellular::ModemState>(old_state);
   Cellular::ModemState new_modem_state =
       static_cast<Cellular::ModemState>(new_state);
   SLOG(this, 3) << __func__ << "("
-                            << Cellular::GetModemStateString(old_modem_state)
-                            << ", "
-                            << Cellular::GetModemStateString(new_modem_state)
-                            << ", "
-                            << reason << ")";
+                << Cellular::GetModemStateString(old_modem_state) << ", "
+                << Cellular::GetModemStateString(new_modem_state) << ", "
+                << reason << ")";
 }
 
-void CellularCapabilityUniversal::OnSignalQualityChanged(uint32_t quality) {
+void CellularCapability3gpp::OnSignalQualityChanged(uint32_t quality) {
   // Chrome OS UI uses signal quality values set by this method to draw network
   // icons. UI code maps |quality| to to number of bars: [1-25] 1 bar,
   // [26-50] 2 bars, [51-75] 3 bars and [76-100] 4 bars.
@@ -1600,7 +1547,7 @@ void CellularCapabilityUniversal::OnSignalQualityChanged(uint32_t quality) {
   cellular()->HandleNewSignalQuality(scaled_quality);
 }
 
-void CellularCapabilityUniversal::OnFacilityLocksChanged(uint32_t locks) {
+void CellularCapability3gpp::OnFacilityLocksChanged(uint32_t locks) {
   bool sim_enabled = !!(locks & MM_MODEM_3GPP_FACILITY_SIM);
   if (sim_lock_status_.enabled != sim_enabled) {
     sim_lock_status_.enabled = sim_enabled;
@@ -1608,7 +1555,7 @@ void CellularCapabilityUniversal::OnFacilityLocksChanged(uint32_t locks) {
   }
 }
 
-void CellularCapabilityUniversal::OnPcoChanged(const PcoList& pco_list) {
+void CellularCapability3gpp::OnPcoChanged(const PcoList& pco_list) {
   SLOG(this, 3) << __func__;
 
   for (const auto& pco_info : pco_list) {
@@ -1636,7 +1583,7 @@ void CellularCapabilityUniversal::OnPcoChanged(const PcoList& pco_list) {
   }
 }
 
-void CellularCapabilityUniversal::OnSimPropertiesChanged(
+void CellularCapability3gpp::OnSimPropertiesChanged(
     const KeyValueStore& props,
     const vector<string>& /* invalidated_properties */) {
   SLOG(this, 3) << __func__;
@@ -1656,12 +1603,12 @@ void CellularCapabilityUniversal::OnSimPropertiesChanged(
   }
 }
 
-void CellularCapabilityUniversal::OnSpnChanged(const std::string& spn) {
+void CellularCapability3gpp::OnSpnChanged(const std::string& spn) {
   spn_ = spn;
   cellular()->home_provider_info()->UpdateOperatorName(spn);
 }
 
-void CellularCapabilityUniversal::OnSimIdentifierChanged(const string& id) {
+void CellularCapability3gpp::OnSimIdentifierChanged(const string& id) {
   cellular()->set_sim_identifier(id);
   cellular()->home_provider_info()->UpdateICCID(id);
   // Provide ICCID to serving operator as well to aid in MVNO identification.
@@ -1670,8 +1617,7 @@ void CellularCapabilityUniversal::OnSimIdentifierChanged(const string& id) {
   UpdatePendingActivationState();
 }
 
-void CellularCapabilityUniversal::OnOperatorIdChanged(
-    const string& operator_id) {
+void CellularCapability3gpp::OnOperatorIdChanged(const string& operator_id) {
   SLOG(this, 2) << "Operator ID = '" << operator_id << "'";
   cellular()->home_provider_info()->UpdateMCCMNC(operator_id);
 }

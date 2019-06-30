@@ -78,7 +78,7 @@ class PendingActivationStore {
 
  private:
   friend class PendingActivationStoreTest;
-  friend class CellularCapabilityUniversalTest;
+  friend class CellularCapability3gppTest;
   FRIEND_TEST(PendingActivationStoreTest, FileInteractions);
   FRIEND_TEST(PendingActivationStoreTest, GetActivationState);
   FRIEND_TEST(PendingActivationStoreTest, RemoveEntry);

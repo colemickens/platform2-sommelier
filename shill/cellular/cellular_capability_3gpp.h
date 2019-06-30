@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CELLULAR_CELLULAR_CAPABILITY_UNIVERSAL_H_
-#define SHILL_CELLULAR_CELLULAR_CAPABILITY_UNIVERSAL_H_
+#ifndef SHILL_CELLULAR_CELLULAR_CAPABILITY_3GPP_H_
+#define SHILL_CELLULAR_CELLULAR_CAPABILITY_3GPP_H_
 
 #include <deque>
 #include <map>
@@ -33,10 +33,10 @@ namespace shill {
 
 class ModemInfo;
 
-// CellularCapabilityUniversal handles modems using the
+// CellularCapability3gpp handles modems using the
 // org.freedesktop.ModemManager1 DBUS interface.  This class is used for
 // all types of modems, i.e. CDMA, GSM, and LTE modems.
-class CellularCapabilityUniversal : public CellularCapability {
+class CellularCapability3gpp : public CellularCapability {
  public:
   using ScanResults = std::vector<KeyValueStore>;
   using ScanResult = KeyValueStore;
@@ -56,8 +56,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kConnectAllowedAuth[];
   static const char kConnectAllowRoaming[];
 
-  CellularCapabilityUniversal(Cellular* cellular, ModemInfo* modem_info);
-  ~CellularCapabilityUniversal() override;
+  CellularCapability3gpp(Cellular* cellular, ModemInfo* modem_info);
+  ~CellularCapability3gpp() override;
 
   // Inherited from CellularCapability.
   std::string GetTypeString() const override;
@@ -145,10 +145,9 @@ class CellularCapabilityUniversal : public CellularCapability {
           preferred_mode(MM_MODEM_MODE_NONE) {}
 
     ModemModes(uint32_t allowed, MMModemMode preferred)
-        : allowed_modes(allowed),
-          preferred_mode(preferred) {}
+        : allowed_modes(allowed), preferred_mode(preferred) {}
 
-    uint32_t allowed_modes;        // Bits based on MMModemMode.
+    uint32_t allowed_modes;      // Bits based on MMModemMode.
     MMModemMode preferred_mode;  // A single MMModemMode bit.
   };
 
@@ -169,61 +168,57 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const int64_t kRegistrationDroppedUpdateTimeoutMilliseconds;
   static const int kSetPowerStateTimeoutMilliseconds;
 
-
   // Root path. The SIM path is reported by ModemManager to be the root path
   // when no SIM is present.
   static const char kRootPath[];
 
   friend class CellularTest;
-  friend class CellularCapabilityUniversalTest;
-  friend class CellularCapabilityUniversalCdmaTest;
-  FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest, PropertiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, Connect);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, ConnectApns);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, DisconnectNoProxy);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, FillConnectPropertyMap);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, GetMdnForOLP);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, GetTypeString);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, IsMdnValid);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, IsRegistered);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, IsValidSimPath);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, NormalizeMdn);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, OnLockRetriesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, OnLockTypeChanged);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+  friend class CellularCapability3gppTest;
+  friend class CellularCapabilityCdmaTest;
+  FRIEND_TEST(CellularCapabilityCdmaMainTest, PropertiesChanged);
+  FRIEND_TEST(CellularCapability3gppMainTest, Connect);
+  FRIEND_TEST(CellularCapability3gppMainTest, ConnectApns);
+  FRIEND_TEST(CellularCapability3gppMainTest, DisconnectNoProxy);
+  FRIEND_TEST(CellularCapability3gppMainTest, FillConnectPropertyMap);
+  FRIEND_TEST(CellularCapability3gppMainTest, GetMdnForOLP);
+  FRIEND_TEST(CellularCapability3gppMainTest, GetTypeString);
+  FRIEND_TEST(CellularCapability3gppMainTest, IsMdnValid);
+  FRIEND_TEST(CellularCapability3gppMainTest, IsRegistered);
+  FRIEND_TEST(CellularCapability3gppMainTest, IsServiceActivationRequired);
+  FRIEND_TEST(CellularCapability3gppMainTest, IsValidSimPath);
+  FRIEND_TEST(CellularCapability3gppMainTest, NormalizeMdn);
+  FRIEND_TEST(CellularCapability3gppMainTest, OnLockRetriesChanged);
+  FRIEND_TEST(CellularCapability3gppMainTest, OnLockTypeChanged);
+  FRIEND_TEST(CellularCapability3gppMainTest,
               OnModemCurrentCapabilitiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, OnSimLockPropertiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, PropertiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, Reset);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, SimLockStatusChanged);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, SimLockStatusToProperty);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, SimPathChanged);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, SimPropertiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, StartModem);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, StartModemFailure);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, StartModemInWrongState);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+  FRIEND_TEST(CellularCapability3gppMainTest, OnSimLockPropertiesChanged);
+  FRIEND_TEST(CellularCapability3gppMainTest, PropertiesChanged);
+  FRIEND_TEST(CellularCapability3gppMainTest, Reset);
+  FRIEND_TEST(CellularCapability3gppMainTest, SimLockStatusChanged);
+  FRIEND_TEST(CellularCapability3gppMainTest, SimLockStatusToProperty);
+  FRIEND_TEST(CellularCapability3gppMainTest, SimPathChanged);
+  FRIEND_TEST(CellularCapability3gppMainTest, SimPropertiesChanged);
+  FRIEND_TEST(CellularCapability3gppMainTest, StartModem);
+  FRIEND_TEST(CellularCapability3gppMainTest, StartModemFailure);
+  FRIEND_TEST(CellularCapability3gppMainTest, StartModemInWrongState);
+  FRIEND_TEST(CellularCapability3gppMainTest,
               StartModemWithDeferredEnableFailure);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModem);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemAltair);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+  FRIEND_TEST(CellularCapability3gppMainTest, StopModem);
+  FRIEND_TEST(CellularCapability3gppMainTest, StopModemAltair);
+  FRIEND_TEST(CellularCapability3gppMainTest,
               StopModemAltairDeleteBearerFailure);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemAltairNotConnected);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, TerminationAction);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+  FRIEND_TEST(CellularCapability3gppMainTest, StopModemAltairNotConnected);
+  FRIEND_TEST(CellularCapability3gppMainTest, TerminationAction);
+  FRIEND_TEST(CellularCapability3gppMainTest,
               TerminationActionRemovedByStopModem);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateActiveBearer);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
-              UpdatePendingActivationState);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
-              UpdateRegistrationState);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+  FRIEND_TEST(CellularCapability3gppMainTest, UpdateActiveBearer);
+  FRIEND_TEST(CellularCapability3gppMainTest, UpdatePendingActivationState);
+  FRIEND_TEST(CellularCapability3gppMainTest, UpdateRegistrationState);
+  FRIEND_TEST(CellularCapability3gppMainTest,
               UpdateRegistrationStateModemNotConnected);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
-              UpdateServiceActivationState);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceOLP);
-  FRIEND_TEST(CellularCapabilityUniversalTimerTest, CompleteActivation);
+  FRIEND_TEST(CellularCapability3gppMainTest, UpdateServiceActivationState);
+  FRIEND_TEST(CellularCapability3gppMainTest, UpdateServiceOLP);
+  FRIEND_TEST(CellularCapability3gppTimerTest, CompleteActivation);
   FRIEND_TEST(CellularTest, ModemStateChangeLostRegistration);
   FRIEND_TEST(CellularTest, OnPPPDied);
 
@@ -231,9 +226,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   // DBUS property of the shill device.
   struct SimLockStatus {
    public:
-    SimLockStatus() : enabled(false),
-                      lock_type(MM_MODEM_LOCK_UNKNOWN),
-                      retries_left(0) {}
+    SimLockStatus()
+        : enabled(false), lock_type(MM_MODEM_LOCK_UNKNOWN), retries_left(0) {}
 
     bool enabled;
     MMModemLock lock_type;
@@ -272,7 +266,7 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   void HelpRegisterConstDerivedKeyValueStore(
       const std::string& name,
-      KeyValueStore(CellularCapabilityUniversal::*get)(Error* error));
+      KeyValueStore (CellularCapability3gpp::*get)(Error* error));
 
   // Returns true if a connect error should be retried.  This function
   // abstracts modem specific behavior for modems which do a lousy job
@@ -331,8 +325,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnOperatorNameChanged(const std::string& operator_name);
 
   // Method callbacks
-  void OnRegisterReply(const ResultCallback& callback,
-                       const Error& error);
+  void OnRegisterReply(const ResultCallback& callback, const Error& error);
   void OnResetReply(const ResultCallback& callback, const Error& error);
   void OnScanReply(const ResultStringmapsCallback& callback,
                    const ScanResults& results,
@@ -405,11 +398,11 @@ class CellularCapabilityUniversal : public CellularCapability {
   base::CancelableClosure registration_dropped_update_callback_;
   int64_t registration_dropped_update_timeout_milliseconds_;
 
-  base::WeakPtrFactory<CellularCapabilityUniversal> weak_ptr_factory_;
+  base::WeakPtrFactory<CellularCapability3gpp> weak_ptr_factory_;
 
-  DISALLOW_COPY_AND_ASSIGN(CellularCapabilityUniversal);
+  DISALLOW_COPY_AND_ASSIGN(CellularCapability3gpp);
 };
 
 }  // namespace shill
 
-#endif  // SHILL_CELLULAR_CELLULAR_CAPABILITY_UNIVERSAL_H_
+#endif  // SHILL_CELLULAR_CELLULAR_CAPABILITY_3GPP_H_

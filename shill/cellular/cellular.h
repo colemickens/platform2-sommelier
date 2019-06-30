@@ -38,8 +38,8 @@ class Cellular : public Device,
                  public MobileOperatorInfo::Observer {
  public:
   enum Type {
-    kTypeUniversal,  // ModemManager1
-    kTypeUniversalCdma,
+    kType3gpp,  // ModemManager1
+    kTypeCdma,
     kTypeInvalid,
   };
 
@@ -316,20 +316,17 @@ class Cellular : public Device,
 
  private:
   friend class CellularTest;
-  friend class CellularCapabilityUniversalTest;
-  friend class CellularCapabilityUniversalCdmaTest;
+  friend class CellularCapability3gppTest;
+  friend class CellularCapabilityCdmaTest;
   friend class CellularServiceTest;
   friend class ModemTest;
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, Connect);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
-              UpdatePendingActivationState);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
-              UpdateRegistrationState);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+  FRIEND_TEST(CellularCapability3gppMainTest, Connect);
+  FRIEND_TEST(CellularCapability3gppMainTest, IsServiceActivationRequired);
+  FRIEND_TEST(CellularCapability3gppMainTest, UpdatePendingActivationState);
+  FRIEND_TEST(CellularCapability3gppMainTest, UpdateRegistrationState);
+  FRIEND_TEST(CellularCapability3gppMainTest,
               UpdateRegistrationStateModemNotConnected);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
-              UpdateServiceActivationState);
+  FRIEND_TEST(CellularCapability3gppMainTest, UpdateServiceActivationState);
   FRIEND_TEST(CellularTest, ChangeServiceState);
   FRIEND_TEST(CellularTest, ChangeServiceStatePPP);
   FRIEND_TEST(CellularTest, Connect);

@@ -63,7 +63,7 @@ pkg_config("target_defaults") {
   } else {
     # TODO(chromium:954634) Temporarily disable tests that depend on
     # CellularCapabilityClassic until they are ported to use
-    # CellularCapabilityUniversal.
+    # CellularCapability3gpp.
     defines += [ "DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS" ]
   }
 
@@ -389,8 +389,8 @@ static_library("libshill") {
       "cellular/cellular.cc",
       "cellular/cellular_bearer.cc",
       "cellular/cellular_capability.cc",
-      "cellular/cellular_capability_universal.cc",
-      "cellular/cellular_capability_universal_cdma.cc",
+      "cellular/cellular_capability_3gpp.cc",
+      "cellular/cellular_capability_cdma.cc",
       "cellular/cellular_error.cc",
       "cellular/cellular_pco.cc",
       "cellular/cellular_service.cc",
@@ -780,8 +780,8 @@ if (use.test) {
     if (use.cellular) {
       sources += [
         "cellular/cellular_bearer_test.cc",
-        "cellular/cellular_capability_universal_cdma_test.cc",
-        "cellular/cellular_capability_universal_test.cc",
+        "cellular/cellular_capability_3gpp_test.cc",
+        "cellular/cellular_capability_cdma_test.cc",
         "cellular/cellular_error_test.cc",
         "cellular/cellular_pco_test.cc",
         "cellular/cellular_service_test.cc",

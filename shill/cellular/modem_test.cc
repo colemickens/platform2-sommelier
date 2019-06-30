@@ -119,13 +119,8 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
 
   // modem will take ownership
   MockCellular* cellular = new MockCellular(
-      &modem_info_,
-      kLinkName,
-      kAddressAsString,
-      kTestInterfaceIndex,
-      Cellular::kTypeUniversal,
-      kService,
-      kPath);
+      &modem_info_, kLinkName, kAddressAsString, kTestInterfaceIndex,
+      Cellular::kType3gpp, kService, kPath);
 
   EXPECT_CALL(*modem_,
               ConstructCellular(StrEq(kLinkName),
@@ -203,13 +198,8 @@ TEST_F(ModemTest, CreateDevicePPP) {
 
   // |modem_| will take ownership.
   MockCellular* cellular = new MockCellular(
-      &modem_info_,
-      dev_name,
-      Modem::kFakeDevAddress,
-      Modem::kFakeDevInterfaceIndex,
-      Cellular::kTypeUniversal,
-      kService,
-      kPath);
+      &modem_info_, dev_name, Modem::kFakeDevAddress,
+      Modem::kFakeDevInterfaceIndex, Cellular::kType3gpp, kService, kPath);
 
   EXPECT_CALL(*modem_, GetModemInterface()).
       WillRepeatedly(Return(MM_DBUS_INTERFACE_MODEM));

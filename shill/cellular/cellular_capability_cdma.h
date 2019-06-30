@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CELLULAR_CELLULAR_CAPABILITY_UNIVERSAL_CDMA_H_
-#define SHILL_CELLULAR_CELLULAR_CAPABILITY_UNIVERSAL_CDMA_H_
+#ifndef SHILL_CELLULAR_CELLULAR_CAPABILITY_CDMA_H_
+#define SHILL_CELLULAR_CELLULAR_CAPABILITY_CDMA_H_
 
 #include <memory>
 #include <string>
@@ -13,15 +13,15 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/cellular/cellular.h"
-#include "shill/cellular/cellular_capability_universal.h"
+#include "shill/cellular/cellular_capability_3gpp.h"
 #include "shill/cellular/mm1_modem_modemcdma_proxy_interface.h"
 
 namespace shill {
 
-class CellularCapabilityUniversalCdma : public CellularCapabilityUniversal {
+class CellularCapabilityCdma : public CellularCapability3gpp {
  public:
-  CellularCapabilityUniversalCdma(Cellular* cellular, ModemInfo* modem_info);
-  ~CellularCapabilityUniversalCdma() override;
+  CellularCapabilityCdma(Cellular* cellular, ModemInfo* modem_info);
+  ~CellularCapabilityCdma() override;
 
   // Returns true if the service is activated.
   bool IsActivated() const;
@@ -41,27 +41,33 @@ class CellularCapabilityUniversalCdma : public CellularCapabilityUniversal {
   std::string GetRoamingStateString() const override;
   void SetupConnectProperties(KeyValueStore* properties) override;
 
-  void RegisterOnNetwork(const std::string& network_id, Error* error,
+  void RegisterOnNetwork(const std::string& network_id,
+                         Error* error,
                          const ResultCallback& callback) override;
-  void RequirePIN(const std::string& pin, bool require, Error* error,
+  void RequirePIN(const std::string& pin,
+                  bool require,
+                  Error* error,
                   const ResultCallback& callback) override;
-  void EnterPIN(const std::string& pin, Error* error,
+  void EnterPIN(const std::string& pin,
+                Error* error,
                 const ResultCallback& callback) override;
   void UnblockPIN(const std::string& unblock_code,
-                  const std::string& pin, Error* error,
+                  const std::string& pin,
+                  Error* error,
                   const ResultCallback& callback) override;
-  void ChangePIN(const std::string& old_pin, const std::string& new_pin,
-                 Error* error, const ResultCallback& callback) override;
+  void ChangePIN(const std::string& old_pin,
+                 const std::string& new_pin,
+                 Error* error,
+                 const ResultCallback& callback) override;
   void Reset(Error* error, const ResultCallback& callback) override;
-  void Scan(Error* error,
-            const ResultStringmapsCallback& callback) override;
+  void Scan(Error* error, const ResultStringmapsCallback& callback) override;
   // TODO(armansito): Remove once 3GPP is implemented in its own class
   void OnSimPathChanged(const RpcIdentifier& sim_path) override;
 
   void GetProperties() override;
 
  protected:
-  // Inherited from CellularCapabilityUniversal.
+  // Inherited from CellularCapability3gpp.
   void InitProxies() override;
   void ReleaseProxies() override;
   void UpdateServiceOLP() override;
@@ -70,19 +76,17 @@ class CellularCapabilityUniversalCdma : public CellularCapabilityUniversal {
   void UpdatePendingActivationState() override;
 
  private:
-  friend class CellularCapabilityUniversalCdmaTest;
-  FRIEND_TEST(CellularCapabilityUniversalCdmaDispatcherTest,
+  friend class CellularCapabilityCdmaTest;
+  FRIEND_TEST(CellularCapabilityCdmaDispatcherTest,
               UpdatePendingActivationState);
-  FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest, ActivateAutomatic);
-  FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest, IsActivating);
-  FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest, IsRegistered);
-  FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest,
-              IsServiceActivationRequired);
-  FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest,
-              OnCdmaRegistrationChanged);
-  FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest, PropertiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest, UpdateServiceOLP);
-  FRIEND_TEST(CellularCapabilityUniversalCdmaMainTest,
+  FRIEND_TEST(CellularCapabilityCdmaMainTest, ActivateAutomatic);
+  FRIEND_TEST(CellularCapabilityCdmaMainTest, IsActivating);
+  FRIEND_TEST(CellularCapabilityCdmaMainTest, IsRegistered);
+  FRIEND_TEST(CellularCapabilityCdmaMainTest, IsServiceActivationRequired);
+  FRIEND_TEST(CellularCapabilityCdmaMainTest, OnCdmaRegistrationChanged);
+  FRIEND_TEST(CellularCapabilityCdmaMainTest, PropertiesChanged);
+  FRIEND_TEST(CellularCapabilityCdmaMainTest, UpdateServiceOLP);
+  FRIEND_TEST(CellularCapabilityCdmaMainTest,
               UpdateServiceActivationStateProperty);
 
   // CDMA property change handlers
@@ -91,15 +95,15 @@ class CellularCapabilityUniversalCdma : public CellularCapabilityUniversal {
       const std::vector<std::string>& invalidated_properties);
   void OnCdmaRegistrationChanged(MMModemCdmaRegistrationState state_1x,
                                  MMModemCdmaRegistrationState state_evdo,
-                                 uint32_t sid, uint32_t nid);
+                                 uint32_t sid,
+                                 uint32_t nid);
 
   // CDMA activation handlers
   void ActivateAutomatic();
   void OnActivationStateChangedSignal(uint32_t activation_state,
                                       uint32_t activation_error,
                                       const KeyValueStore& status_changes);
-  void OnActivateReply(const ResultCallback& callback,
-                       const Error& error);
+  void OnActivateReply(const ResultCallback& callback, const Error& error);
   void HandleNewActivationStatus(uint32_t error);
 
   void UpdateServiceActivationStateProperty();
@@ -120,11 +124,11 @@ class CellularCapabilityUniversalCdma : public CellularCapabilityUniversal {
 
   // TODO(armansito): Should probably call this |weak_ptr_factory_| after
   // 3gpp refactor
-  base::WeakPtrFactory<CellularCapabilityUniversalCdma> weak_cdma_ptr_factory_;
+  base::WeakPtrFactory<CellularCapabilityCdma> weak_cdma_ptr_factory_;
 
-  DISALLOW_COPY_AND_ASSIGN(CellularCapabilityUniversalCdma);
+  DISALLOW_COPY_AND_ASSIGN(CellularCapabilityCdma);
 };
 
 }  // namespace shill
 
-#endif  // SHILL_CELLULAR_CELLULAR_CAPABILITY_UNIVERSAL_CDMA_H_
+#endif  // SHILL_CELLULAR_CELLULAR_CAPABILITY_CDMA_H_

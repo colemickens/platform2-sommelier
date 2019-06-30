@@ -105,14 +105,13 @@ class CellularService : public Service {
   uint64_t GetMaxAutoConnectCooldownTimeMilliseconds() const override;
 
  private:
-  friend class CellularCapabilityUniversalTest;
+  friend class CellularCapability3gppTest;
   friend class CellularServiceTest;
 
   template <typename key_type, typename value_type>
   friend class ContainsCellularPropertiesMatcherP2;
 
-  FRIEND_TEST(CellularCapabilityUniversalMainTest,
-              UpdatePendingActivationState);
+  FRIEND_TEST(CellularCapability3gppMainTest, UpdatePendingActivationState);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, FriendlyServiceName);
   FRIEND_TEST(CellularTest, GetLogin);  // ppp_username_, ppp_password_
