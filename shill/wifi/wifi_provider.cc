@@ -534,14 +534,14 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore& args,
 
   vector<uint8_t> ssid;
   if (args.Contains<string>(kWifiHexSsid)) {
-    string ssid_hex_string = args.Get<string>(kWifiHexSsid);
+    string ssid_hex_string = args.GetString(kWifiHexSsid);
     if (!base::HexStringToBytes(ssid_hex_string, &ssid)) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                             "Hex SSID parameter is not valid");
       return false;
     }
   } else if (args.Contains<string>(kSSIDProperty)) {
-    string ssid_string = args.Get<string>(kSSIDProperty);
+    string ssid_string = args.GetString(kSSIDProperty);
     ssid = vector<uint8_t>(ssid_string.begin(), ssid_string.end());
   } else {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,

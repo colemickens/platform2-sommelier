@@ -1547,18 +1547,18 @@ void WiFi::PropertiesChangedTask(
   // that we update the state of the correct Endpoint/Service.
   if (properties.Contains<RpcIdentifier>(
           WPASupplicant::kInterfacePropertyCurrentBSS)) {
-    CurrentBSSChanged(properties.Get<RpcIdentifier>(
-        WPASupplicant::kInterfacePropertyCurrentBSS));
+    CurrentBSSChanged(
+        properties.GetRpcIdentifier(
+            WPASupplicant::kInterfacePropertyCurrentBSS));
   }
 
   if (properties.Contains<string>(WPASupplicant::kInterfacePropertyState)) {
-    StateChanged(
-        properties.Get<string>(WPASupplicant::kInterfacePropertyState));
+    StateChanged(properties.GetString(WPASupplicant::kInterfacePropertyState));
 
     // These properties should only be updated when there is a state change.
     if (properties.Contains<string>(
             WPASupplicant::kInterfacePropertyCurrentAuthMode)) {
-      CurrentAuthModeChanged(properties.Get<string>(
+      CurrentAuthModeChanged(properties.GetString(
           WPASupplicant::kInterfacePropertyCurrentAuthMode));
     }
 
@@ -1568,9 +1568,9 @@ void WiFi::PropertiesChangedTask(
               WPASupplicant::kInterfacePropertyRoamTime)) {
         // Network.Shill.WiFi.RoamTime.{PSK,FTPSK,EAP,FTEAP}
         metrics()->SendToUMA(
-            base::StringPrintf("%s.%s", Metrics::kMetricWifiRoamTimePrefix,
-                               suffix.c_str()),
-            properties.Get<int32_t>(WPASupplicant::kInterfacePropertyRoamTime),
+            base::StringPrintf(
+                "%s.%s", Metrics::kMetricWifiRoamTimePrefix, suffix.c_str()),
+            properties.GetInt(WPASupplicant::kInterfacePropertyRoamTime),
             Metrics::kMetricWifiRoamTimeMillisecondsMin,
             Metrics::kMetricWifiRoamTimeMillisecondsMax,
             Metrics::kMetricWifiRoamTimeNumBuckets);
@@ -1580,9 +1580,10 @@ void WiFi::PropertiesChangedTask(
               WPASupplicant::kInterfacePropertyRoamComplete)) {
         // Network.Shill.WiFi.RoamComplete.{PSK,FTPSK,EAP,FTEAP}
         metrics()->SendEnumToUMA(
-            base::StringPrintf("%s.%s", Metrics::kMetricWifiRoamCompletePrefix,
+            base::StringPrintf("%s.%s",
+                               Metrics::kMetricWifiRoamCompletePrefix,
                                suffix.c_str()),
-            properties.Get<bool>(WPASupplicant::kInterfacePropertyRoamComplete)
+            properties.GetBool(WPASupplicant::kInterfacePropertyRoamComplete)
                 ? Metrics::kWiFiRoamSuccess
                 : Metrics::kWiFiRoamFailure,
             Metrics::kWiFiRoamCompleteMax);
@@ -1592,10 +1593,10 @@ void WiFi::PropertiesChangedTask(
               WPASupplicant::kInterfacePropertySessionLength)) {
         // Network.Shill.WiFi.SessionLength.{PSK,FTPSK,EAP,FTEAP}
         metrics()->SendToUMA(
-            base::StringPrintf("%s.%s", Metrics::kMetricWifiSessionLengthPrefix,
+            base::StringPrintf("%s.%s",
+                               Metrics::kMetricWifiSessionLengthPrefix,
                                suffix.c_str()),
-            properties.Get<int32_t>(
-                WPASupplicant::kInterfacePropertySessionLength),
+            properties.GetInt(WPASupplicant::kInterfacePropertySessionLength),
             Metrics::kMetricWifiSessionLengthMillisecondsMin,
             Metrics::kMetricWifiSessionLengthMillisecondsMax,
             Metrics::kMetricWifiSessionLengthNumBuckets);
@@ -1605,20 +1606,20 @@ void WiFi::PropertiesChangedTask(
 
   if (properties.Contains<int32_t>(
           WPASupplicant::kInterfacePropertyAssocStatusCode)) {
-    AssocStatusChanged(properties.Get<int32_t>(
-        WPASupplicant::kInterfacePropertyAssocStatusCode));
+    AssocStatusChanged(
+        properties.GetInt(WPASupplicant::kInterfacePropertyAssocStatusCode));
   }
 
   if (properties.Contains<int32_t>(
           WPASupplicant::kInterfacePropertyAuthStatusCode)) {
-    AuthStatusChanged(properties.Get<int32_t>(
-        WPASupplicant::kInterfacePropertyAuthStatusCode));
+    AuthStatusChanged(
+        properties.GetInt(WPASupplicant::kInterfacePropertyAuthStatusCode));
   }
 
   if (properties.Contains<int32_t>(
           WPASupplicant::kInterfacePropertyDisconnectReason)) {
-    DisconnectReasonChanged(properties.Get<int32_t>(
-        WPASupplicant::kInterfacePropertyDisconnectReason));
+    DisconnectReasonChanged(
+        properties.GetInt(WPASupplicant::kInterfacePropertyDisconnectReason));
   }
 }
 

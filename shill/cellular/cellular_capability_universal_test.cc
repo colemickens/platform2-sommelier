@@ -60,7 +60,7 @@ MATCHER_P(HasApn, expected_apn, "") {
   return arg.template Contains<string>(
              CellularCapabilityUniversal::kConnectApn) &&
          expected_apn ==
-             arg.template Get<string>(CellularCapabilityUniversal::kConnectApn);
+             arg.GetString(CellularCapabilityUniversal::kConnectApn);
 }
 
 MATCHER(HasNoUser, "") {
@@ -71,8 +71,8 @@ MATCHER(HasNoUser, "") {
 MATCHER_P(HasUser, expected_user, "") {
   return arg.template Contains<string>(
              CellularCapabilityUniversal::kConnectUser) &&
-         expected_user == arg.template Get<string>(
-                              CellularCapabilityUniversal::kConnectUser);
+         expected_user ==
+             arg.GetString(CellularCapabilityUniversal::kConnectUser);
 }
 
 MATCHER(HasNoPassword, "") {
@@ -84,8 +84,7 @@ MATCHER_P(HasPassword, expected_password, "") {
   return arg.template Contains<string>(
              CellularCapabilityUniversal::kConnectPassword) &&
          expected_password ==
-             arg.template Get<string>(
-                 CellularCapabilityUniversal::kConnectPassword);
+             arg.GetString(CellularCapabilityUniversal::kConnectPassword);
 }
 
 MATCHER(HasNoAllowedAuth, "") {
@@ -97,8 +96,7 @@ MATCHER_P(HasAllowedAuth, expected_authentication, "") {
   return arg.template Contains<uint32_t>(
              CellularCapabilityUniversal::kConnectAllowedAuth) &&
          expected_authentication ==
-             arg.template Get<uint32_t>(
-                 CellularCapabilityUniversal::kConnectAllowedAuth);
+             arg.GetUint(CellularCapabilityUniversal::kConnectAllowedAuth);
 }
 
 class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
@@ -1927,29 +1925,29 @@ TEST_F(CellularCapabilityUniversalMainTest, OnModemCurrentCapabilitiesChanged) {
 TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusToProperty) {
   Error error;
   KeyValueStore store = capability_->SimLockStatusToProperty(&error);
-  EXPECT_FALSE(store.Get<bool>(kSIMLockEnabledProperty));
-  EXPECT_TRUE(store.Get<string>(kSIMLockTypeProperty).empty());
-  EXPECT_EQ(0, store.Get<int32_t>(kSIMLockRetriesLeftProperty));
+  EXPECT_FALSE(store.GetBool(kSIMLockEnabledProperty));
+  EXPECT_TRUE(store.GetString(kSIMLockTypeProperty).empty());
+  EXPECT_EQ(0, store.GetInt(kSIMLockRetriesLeftProperty));
 
   capability_->sim_lock_status_.enabled = true;
   capability_->sim_lock_status_.retries_left = 3;
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PIN;
   store = capability_->SimLockStatusToProperty(&error);
-  EXPECT_TRUE(store.Get<bool>(kSIMLockEnabledProperty));
-  EXPECT_EQ("sim-pin", store.Get<string>(kSIMLockTypeProperty));
-  EXPECT_EQ(3, store.Get<int32_t>(kSIMLockRetriesLeftProperty));
+  EXPECT_TRUE(store.GetBool(kSIMLockEnabledProperty));
+  EXPECT_EQ("sim-pin", store.GetString(kSIMLockTypeProperty));
+  EXPECT_EQ(3, store.GetInt(kSIMLockRetriesLeftProperty));
 
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PUK;
   store = capability_->SimLockStatusToProperty(&error);
-  EXPECT_EQ("sim-puk", store.Get<string>(kSIMLockTypeProperty));
+  EXPECT_EQ("sim-puk", store.GetString(kSIMLockTypeProperty));
 
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PIN2;
   store = capability_->SimLockStatusToProperty(&error);
-  EXPECT_TRUE(store.Get<string>(kSIMLockTypeProperty).empty());
+  EXPECT_TRUE(store.GetString(kSIMLockTypeProperty).empty());
 
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PUK2;
   store = capability_->SimLockStatusToProperty(&error);
-  EXPECT_TRUE(store.Get<string>(kSIMLockTypeProperty).empty());
+  EXPECT_TRUE(store.GetString(kSIMLockTypeProperty).empty());
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, OnLockRetriesChanged) {

@@ -198,14 +198,13 @@ const char WiFiServiceTest::fake_mac[] = "AaBBcCDDeeFF";
 MATCHER_P3(ContainsWiFiProperties, ssid, mode, security, "") {
   string hex_ssid = base::HexEncode(ssid.data(), ssid.size());
   return arg.template Contains<string>(WiFiService::kStorageType) &&
-         arg.template Get<string>(WiFiService::kStorageType) == kTypeWifi &&
+         arg.GetString(WiFiService::kStorageType) == kTypeWifi &&
          arg.template Contains<string>(WiFiService::kStorageSSID) &&
-         arg.template Get<string>(WiFiService::kStorageSSID) == hex_ssid &&
+         arg.GetString(WiFiService::kStorageSSID) == hex_ssid &&
          arg.template Contains<string>(WiFiService::kStorageMode) &&
-         arg.template Get<string>(WiFiService::kStorageMode) == mode &&
+         arg.GetString(WiFiService::kStorageMode) == mode &&
          arg.template Contains<string>(WiFiService::kStorageSecurityClass) &&
-         arg.template Get<string>(WiFiService::kStorageSecurityClass) ==
-             security;
+         arg.GetString(WiFiService::kStorageSecurityClass) == security;
 }
 
 class WiFiServiceSecurityTest : public WiFiServiceTest {
@@ -447,7 +446,7 @@ TEST_F(WiFiServiceTest, NonUTF8SSID) {
 MATCHER(PSKSecurityArgs, "") {
   return arg.template Contains<string>(
              WPASupplicant::kPropertySecurityProtocol) &&
-         arg.template Get<string>(WPASupplicant::kPropertySecurityProtocol) ==
+         arg.GetString(WPASupplicant::kPropertySecurityProtocol) ==
              string("WPA RSN") &&
          arg.template Contains<string>(WPASupplicant::kPropertyPreSharedKey);
 }
@@ -597,8 +596,7 @@ MATCHER_P(WEPSecurityArgsKeyIndex, index, "") {
                                                 base::IntToString(index)) &&
          arg.template Contains<uint32_t>(
              WPASupplicant::kPropertyWEPTxKeyIndex) &&
-         (arg.template Get<uint32_t>(WPASupplicant::kPropertyWEPTxKeyIndex) ==
-          index_u32);
+         (arg.GetUint(WPASupplicant::kPropertyWEPTxKeyIndex) == index_u32);
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskWEP) {
@@ -662,21 +660,23 @@ TEST_F(WiFiServiceTest, ConnectTaskFT) {
     wifi_service->ft_enabled_ = false;
     wifi_service->Connect(nullptr, "in test");
     KeyValueStore params = wifi_service->GetSupplicantConfigurationParameters();
-    EXPECT_EQ("WPA-PSK", params.Get<string>(
-                             WPASupplicant::kNetworkPropertyEapKeyManagement));
+    EXPECT_EQ(
+        "WPA-PSK",
+        params.GetString(WPASupplicant::kNetworkPropertyEapKeyManagement));
 
     wifi_service->ft_enabled_ = true;
     wifi_service->Connect(nullptr, "in test");
     params = wifi_service->GetSupplicantConfigurationParameters();
-    EXPECT_EQ("WPA-PSK", params.Get<string>(
-                             WPASupplicant::kNetworkPropertyEapKeyManagement));
+    EXPECT_EQ(
+        "WPA-PSK",
+        params.GetString(WPASupplicant::kNetworkPropertyEapKeyManagement));
 
     manager()->ft_enabled_ = true;
     wifi_service->Connect(nullptr, "in test");
     params = wifi_service->GetSupplicantConfigurationParameters();
     EXPECT_EQ(
         "WPA-PSK FT-PSK",
-        params.Get<string>(WPASupplicant::kNetworkPropertyEapKeyManagement));
+        params.GetString(WPASupplicant::kNetworkPropertyEapKeyManagement));
   }
   {
     WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurity8021x);
@@ -688,21 +688,23 @@ TEST_F(WiFiServiceTest, ConnectTaskFT) {
     wifi_service->ft_enabled_ = false;
     wifi_service->Connect(nullptr, "in test");
     KeyValueStore params = wifi_service->GetSupplicantConfigurationParameters();
-    EXPECT_EQ("WPA-EAP", params.Get<string>(
-                             WPASupplicant::kNetworkPropertyEapKeyManagement));
+    EXPECT_EQ(
+        "WPA-EAP",
+        params.GetString(WPASupplicant::kNetworkPropertyEapKeyManagement));
 
     wifi_service->ft_enabled_ = true;
     wifi_service->Connect(nullptr, "in test");
     params = wifi_service->GetSupplicantConfigurationParameters();
-    EXPECT_EQ("WPA-EAP", params.Get<string>(
-                             WPASupplicant::kNetworkPropertyEapKeyManagement));
+    EXPECT_EQ(
+        "WPA-EAP",
+        params.GetString(WPASupplicant::kNetworkPropertyEapKeyManagement));
 
     manager()->ft_enabled_ = true;
     wifi_service->Connect(nullptr, "in test");
     params = wifi_service->GetSupplicantConfigurationParameters();
     EXPECT_EQ(
         "WPA-EAP FT-EAP",
-        params.Get<string>(WPASupplicant::kNetworkPropertyEapKeyManagement));
+        params.GetString(WPASupplicant::kNetworkPropertyEapKeyManagement));
   }
 }
 

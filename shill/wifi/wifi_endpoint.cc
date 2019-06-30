@@ -47,18 +47,17 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
       control_interface_(control_interface),
       device_(device),
       rpc_id_(rpc_id) {
-  ssid_ = properties.Get<vector<uint8_t>>(WPASupplicant::kBSSPropertySSID);
-  bssid_ = properties.Get<vector<uint8_t>>(WPASupplicant::kBSSPropertyBSSID);
-  signal_strength_ = properties.Get<int16_t>(WPASupplicant::kBSSPropertySignal);
+  ssid_ = properties.GetUint8s(WPASupplicant::kBSSPropertySSID);
+  bssid_ = properties.GetUint8s(WPASupplicant::kBSSPropertyBSSID);
+  signal_strength_ = properties.GetInt16(WPASupplicant::kBSSPropertySignal);
   if (properties.Contains<uint32_t>(WPASupplicant::kBSSPropertyAge)) {
-    last_seen_ = base::TimeTicks::Now() -
-                 base::TimeDelta::FromSeconds(
-                     properties.Get<uint32_t>(WPASupplicant::kBSSPropertyAge));
+    last_seen_ = base::TimeTicks::Now() - base::TimeDelta::FromSeconds(
+        properties.GetUint(WPASupplicant::kBSSPropertyAge));
   } else {
     last_seen_ = base::TimeTicks();
   }
   if (properties.Contains<uint16_t>(WPASupplicant::kBSSPropertyFrequency)) {
-    frequency_ = properties.Get<uint16_t>(WPASupplicant::kBSSPropertyFrequency);
+    frequency_ = properties.GetUint16(WPASupplicant::kBSSPropertyFrequency);
   }
 
   Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
@@ -73,8 +72,8 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
   }
   physical_mode_ = phy_mode;
 
-  network_mode_ =
-      ParseMode(properties.Get<string>(WPASupplicant::kBSSPropertyMode));
+  network_mode_ = ParseMode(
+      properties.GetString(WPASupplicant::kBSSPropertyMode));
   set_security_mode(ParseSecurity(properties, &security_flags_));
   has_rsn_property_ =
       properties.Contains<KeyValueStore>(WPASupplicant::kPropertyRSN);
@@ -101,21 +100,19 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
   SLOG(this, 2) << __func__;
   bool should_notify = false;
   if (properties.Contains<int16_t>(WPASupplicant::kBSSPropertySignal)) {
-    signal_strength_ =
-        properties.Get<int16_t>(WPASupplicant::kBSSPropertySignal);
+    signal_strength_ = properties.GetInt16(WPASupplicant::kBSSPropertySignal);
     should_notify = true;
   }
 
   if (properties.Contains<uint32_t>(WPASupplicant::kBSSPropertyAge)) {
-    last_seen_ = base::TimeTicks::Now() -
-                 base::TimeDelta::FromSeconds(
-                     properties.Get<uint32_t>(WPASupplicant::kBSSPropertyAge));
+    last_seen_ = base::TimeTicks::Now() - base::TimeDelta::FromSeconds(
+        properties.GetUint(WPASupplicant::kBSSPropertyAge));
     should_notify = true;
   }
 
   if (properties.Contains<string>(WPASupplicant::kBSSPropertyMode)) {
     string new_mode =
-        ParseMode(properties.Get<string>(WPASupplicant::kBSSPropertyMode));
+        ParseMode(properties.GetString(WPASupplicant::kBSSPropertyMode));
     if (!new_mode.empty() && new_mode != network_mode_) {
       network_mode_ = new_mode;
       SLOG(this, 2) << "WiFiEndpoint " << bssid_string_ << " mode is now "
@@ -126,7 +123,7 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
 
   if (properties.Contains<uint16_t>(WPASupplicant::kBSSPropertyFrequency)) {
     uint16_t new_frequency =
-        properties.Get<uint16_t>(WPASupplicant::kBSSPropertyFrequency);
+        properties.GetUint16(WPASupplicant::kBSSPropertyFrequency);
     if (new_frequency != frequency_) {
       if (metrics_) {
         metrics_->NotifyApChannelSwitch(frequency_, new_frequency);
@@ -353,7 +350,7 @@ const char* WiFiEndpoint::ParseSecurity(
     const KeyValueStore& properties, SecurityFlags* flags) {
   if (properties.Contains<KeyValueStore>(WPASupplicant::kPropertyRSN)) {
     KeyValueStore rsn_properties =
-        properties.Get<KeyValueStore>(WPASupplicant::kPropertyRSN);
+        properties.GetKeyValueStore(WPASupplicant::kPropertyRSN);
     set<KeyManagement> key_management;
     ParseKeyManagementMethods(rsn_properties, &key_management);
     flags->rsn_8021x = base::ContainsKey(key_management, kKeyManagement802_1x);
@@ -362,7 +359,7 @@ const char* WiFiEndpoint::ParseSecurity(
 
   if (properties.Contains<KeyValueStore>(WPASupplicant::kPropertyWPA)) {
     KeyValueStore rsn_properties =
-        properties.Get<KeyValueStore>(WPASupplicant::kPropertyWPA);
+        properties.GetKeyValueStore(WPASupplicant::kPropertyWPA);
     set<KeyManagement> key_management;
     ParseKeyManagementMethods(rsn_properties, &key_management);
     flags->wpa_8021x = base::ContainsKey(key_management, kKeyManagement802_1x);
@@ -370,7 +367,7 @@ const char* WiFiEndpoint::ParseSecurity(
   }
 
   if (properties.Contains<bool>(WPASupplicant::kPropertyPrivacy)) {
-    flags->privacy = properties.Get<bool>(WPASupplicant::kPropertyPrivacy);
+    flags->privacy = properties.GetBool(WPASupplicant::kPropertyPrivacy);
   }
 
   if (flags->rsn_8021x || flags->wpa_8021x) {
@@ -396,7 +393,7 @@ void WiFiEndpoint::ParseKeyManagementMethods(
   }
 
   const vector<string> key_management_vec =
-      security_method_properties.Get<Strings>(
+      security_method_properties.GetStrings(
           WPASupplicant::kSecurityMethodPropertyKeyManagement);
 
   for (const auto& method : key_management_vec) {
@@ -417,7 +414,7 @@ Metrics::WiFiNetworkPhyMode WiFiEndpoint::DeterminePhyModeFromFrequency(
   uint32_t max_rate = 0;
   if (properties.Contains<vector<uint32_t>>(WPASupplicant::kBSSPropertyRates)) {
     vector<uint32_t> rates =
-        properties.Get<vector<uint32_t>>(WPASupplicant::kBSSPropertyRates);
+        properties.GetUint32s(WPASupplicant::kBSSPropertyRates);
     if (!rates.empty()) {
       max_rate = rates[0];  // Rates are sorted in descending order
     }
@@ -450,8 +447,7 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
     SLOG(nullptr, 2) << __func__ << ": No IE property in BSS.";
     return false;
   }
-  vector<uint8_t> ies =
-      properties.Get<vector<uint8_t>>(WPASupplicant::kBSSPropertyIEs);
+  vector<uint8_t> ies = properties.GetUint8s(WPASupplicant::kBSSPropertyIEs);
 
   // Format of an information element:
   //    1       1          1 - 252

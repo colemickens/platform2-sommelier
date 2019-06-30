@@ -181,9 +181,8 @@ bool WPASupplicant::ExtractRemoteCertification(const KeyValueStore& properties,
     return false;
   }
 
-  *depth = properties.Get<uint32_t>(WPASupplicant::kInterfacePropertyDepth);
-  *subject =
-      properties.Get<std::string>(WPASupplicant::kInterfacePropertySubject);
+  *depth = properties.GetUint(WPASupplicant::kInterfacePropertyDepth);
+  *subject = properties.GetString(WPASupplicant::kInterfacePropertySubject);
   return true;
 }
 

@@ -147,7 +147,7 @@ bool VPNDriverTest::GetProviderPropertyString(const PropertyStore& store,
     return false;
   }
   if (value != nullptr) {
-    *value = provider_properties.Get<string>(key);
+    *value = provider_properties.GetString(key);
   }
   return true;
 }
@@ -163,7 +163,7 @@ bool VPNDriverTest::GetProviderPropertyStrings(const PropertyStore& store,
     return false;
   }
   if (value != nullptr) {
-    *value = provider_properties.Get<Strings>(key);
+    *value = provider_properties.GetStrings(key);
   }
   return true;
 }
@@ -196,7 +196,7 @@ TEST_F(VPNDriverTest, Load) {
   EXPECT_TRUE(driver_.Load(&storage, kStorageID));
   EXPECT_TRUE(GetArgs()->Contains<Strings>(kEapCaCertPemProperty));
   if (GetArgs()->Contains<Strings>(kEapCaCertPemProperty)) {
-    EXPECT_EQ(kCaCerts, GetArgs()->Get<Strings>(kEapCaCertPemProperty));
+    EXPECT_EQ(kCaCerts, GetArgs()->GetStrings(kEapCaCertPemProperty));
   }
   EXPECT_EQ(kPort, GetArgs()->LookupString(kPortProperty, ""));
   EXPECT_EQ(kPIN, GetArgs()->LookupString(kPINProperty, ""));
@@ -381,14 +381,14 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
     const string kValue = "some-value";
     Error error;
     EXPECT_TRUE(store.SetStringProperty(kPINProperty, kValue, &error));
-    EXPECT_EQ(kValue, GetArgs()->Get<string>(kPINProperty));
+    EXPECT_EQ(kValue, GetArgs()->GetString(kPINProperty));
   }
   {
     const vector<string> kValue{ "some-value" };
     Error error;
     EXPECT_TRUE(store.SetStringsProperty(kEapCaCertPemProperty, kValue,
                                          &error));
-    EXPECT_EQ(kValue, GetArgs()->Get<Strings>(kEapCaCertPemProperty));
+    EXPECT_EQ(kValue, GetArgs()->GetStrings(kEapCaCertPemProperty));
   }
 }
 

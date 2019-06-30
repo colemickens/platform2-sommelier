@@ -2237,7 +2237,7 @@ PortalDetector::Properties Manager::GetPortalCheckProperties() const {
 // called via RPC (e.g., from ManagerDBusAdaptor)
 ServiceRefPtr Manager::GetService(const KeyValueStore& args, Error* error) {
   if (args.Contains<string>(kTypeProperty) &&
-      args.Get<string>(kTypeProperty) == kTypeVPN) {
+      args.GetString(kTypeProperty) == kTypeVPN) {
     // GetService on a VPN service should actually perform ConfigureService.
     // TODO(pstew): Remove this hack and change Chrome to use ConfigureService
     // instead, when we no longer need to support flimflam.  crbug.com/213802
@@ -2258,7 +2258,7 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore& args,
   if (args.Contains<string>(kGuidProperty)) {
     SLOG(this, 2) << __func__ << ": searching by GUID";
     ServiceRefPtr service =
-        GetServiceWithGUID(args.Get<string>(kGuidProperty), nullptr);
+        GetServiceWithGUID(args.GetString(kGuidProperty), nullptr);
     if (service) {
       return service;
     }
@@ -2270,7 +2270,7 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore& args,
     return nullptr;
   }
 
-  string type = args.Get<string>(kTypeProperty);
+  string type = args.GetString(kTypeProperty);
   Technology::Identifier technology = Technology::IdentifierFromName(type);
   if (!base::ContainsKey(providers_, technology)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
@@ -2288,7 +2288,7 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore& args,
   ProfileRefPtr profile = ActiveProfile();
   bool profile_specified = args.Contains<string>(kProfileProperty);
   if (profile_specified) {
-    RpcIdentifier profile_rpcid(args.Get<string>(kProfileProperty));
+    RpcIdentifier profile_rpcid(args.GetString(kProfileProperty));
     profile = LookupProfileByRpcIdentifier(profile_rpcid);
     if (!profile) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
@@ -2363,7 +2363,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
     return nullptr;
   }
 
-  string type = args.Get<string>(kTypeProperty);
+  string type = args.GetString(kTypeProperty);
   Technology::Identifier technology = Technology::IdentifierFromName(type);
 
   if (!base::ContainsKey(providers_, technology)) {
@@ -2391,7 +2391,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
   ServiceRefPtr service;
   if (args.Contains<string>(kGuidProperty)) {
     SLOG(this, 2) << __func__ << ": searching by GUID";
-    service = GetServiceWithGUID(args.Get<string>(kGuidProperty), nullptr);
+    service = GetServiceWithGUID(args.GetString(kGuidProperty), nullptr);
     if (service && service->technology() != technology) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                             StringPrintf("This GUID matches a non-%s service",

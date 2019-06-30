@@ -164,16 +164,16 @@ bool DHCPv6Config::ParseConfiguration(const KeyValueStore& configuration) {
         configuration.Contains<uint32_t>(prefix_length_key) &&
         configuration.Contains<uint32_t>(prefix_lease_time_key) &&
         configuration.Contains<uint32_t>(prefix_preferred_lease_time_key)) {
-      uint32_t lease_time = configuration.Get<uint32_t>(prefix_lease_time_key);
+      uint32_t lease_time = configuration.GetUint(prefix_lease_time_key);
       uint32_t preferred_lease_time =
-          configuration.Get<uint32_t>(prefix_preferred_lease_time_key);
+          configuration.GetUint(prefix_preferred_lease_time_key);
       properties_.dhcpv6_delegated_prefixes.push_back({
-          {kDhcpv6AddressProperty, configuration.Get<string>(prefix_key)},
+          {kDhcpv6AddressProperty, configuration.GetString(prefix_key)},
           {kDhcpv6LengthProperty,
-           base::UintToString(configuration.Get<uint32_t>(prefix_length_key))},
+              base::UintToString(configuration.GetUint(prefix_length_key))},
           {kDhcpv6LeaseDurationSecondsProperty, base::UintToString(lease_time)},
           {kDhcpv6PreferredLeaseDurationSecondsProperty,
-           base::UintToString(preferred_lease_time)},
+              base::UintToString(preferred_lease_time)},
       });
       UpdateLeaseTime(lease_time);
     }
@@ -189,26 +189,27 @@ bool DHCPv6Config::ParseConfiguration(const KeyValueStore& configuration) {
     if (configuration.Contains<string>(address_key) &&
         configuration.Contains<uint32_t>(address_lease_time_key) &&
         configuration.Contains<uint32_t>(address_preferred_lease_time_key)) {
-      uint32_t lease_time = configuration.Get<uint32_t>(address_lease_time_key);
+      uint32_t lease_time = configuration.GetUint(address_lease_time_key);
       uint32_t preferred_lease_time =
-          configuration.Get<uint32_t>(address_preferred_lease_time_key);
+          configuration.GetUint(address_preferred_lease_time_key);
       properties_.dhcpv6_addresses.push_back({
-          {kDhcpv6AddressProperty, configuration.Get<string>(address_key)},
+          {kDhcpv6AddressProperty, configuration.GetString(address_key)},
           {kDhcpv6LengthProperty, "128"},  // IPv6 addresses are 128 bits long.
           {kDhcpv6LeaseDurationSecondsProperty, base::UintToString(lease_time)},
           {kDhcpv6PreferredLeaseDurationSecondsProperty,
-           base::UintToString(preferred_lease_time)},
+              base::UintToString(preferred_lease_time)},
       });
       UpdateLeaseTime(lease_time);
     }
   }
 
   if (configuration.Contains<Strings>(kConfigurationKeyDNS)) {
-    properties_.dns_servers = configuration.Get<Strings>(kConfigurationKeyDNS);
+    properties_.dns_servers =
+        configuration.GetStrings(kConfigurationKeyDNS);
   }
   if (configuration.Contains<Strings>(kConfigurationKeyDomainSearch)) {
     properties_.domain_search =
-        configuration.Get<Strings>(kConfigurationKeyDomainSearch);
+        configuration.GetStrings(kConfigurationKeyDomainSearch);
   }
 
   return true;
