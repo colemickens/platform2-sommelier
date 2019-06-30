@@ -164,7 +164,7 @@ class WiFiServiceTest : public PropertyStoreTest {
     WiFiServiceRefPtr service = MakeSimpleService(security);
     KeyValueStore args;
     if (passphrase) {
-      args.Set<string>(kPassphraseProperty, passphrase);
+      args.SetString(kPassphraseProperty, passphrase);
     }
     Error error;
     service->Configure(args, &error);
@@ -1062,10 +1062,10 @@ TEST_F(WiFiServiceTest, LoadPassphraseClearCredentials) {
 TEST_F(WiFiServiceTest, ConfigureMakesConnectable) {
   string guid("legit_guid");
   KeyValueStore args;
-  args.Set<string>(kEapIdentityProperty, "legit_identity");
-  args.Set<string>(kEapPasswordProperty, "legit_password");
-  args.Set<string>(kEapMethodProperty, "PEAP");
-  args.Set<string>(kGuidProperty, guid);
+  args.SetString(kEapIdentityProperty, "legit_identity");
+  args.SetString(kEapPasswordProperty, "legit_password");
+  args.SetString(kEapMethodProperty, "PEAP");
+  args.SetString(kGuidProperty, guid);
   Error error;
 
   WiFiServiceRefPtr service = MakeSimpleService(kSecurity8021x);
@@ -1153,12 +1153,12 @@ TEST_F(WiFiServiceTest, ConfigurePassphrase) {
 TEST_F(WiFiServiceTest, ConfigureRedundantProperties) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityNone);
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
-  args.Set<string>(kSSIDProperty, simple_ssid_string());
-  args.Set<string>(kSecurityProperty, kSecurityNone);
-  args.Set<string>(kWifiHexSsid, "This is ignored even if it is invalid hex.");
+  args.SetString(kTypeProperty, kTypeWifi);
+  args.SetString(kSSIDProperty, simple_ssid_string());
+  args.SetString(kSecurityProperty, kSecurityNone);
+  args.SetString(kWifiHexSsid, "This is ignored even if it is invalid hex.");
   const string kGUID = "aguid";
-  args.Set<string>(kGuidProperty, kGUID);
+  args.SetString(kGuidProperty, kGUID);
 
   EXPECT_EQ("", service->guid());
   Error error;
@@ -2086,7 +2086,7 @@ TEST_F(WiFiServiceTest, ConfigurePreferredDevice) {
 
   WiFiServiceRefPtr service = MakeGenericService();
   KeyValueStore args;
-  args.Set<string>(kWifiPreferredDeviceProperty, kDeviceName);
+  args.SetString(kWifiPreferredDeviceProperty, kDeviceName);
 
   // With no wifi device.
   Error error;

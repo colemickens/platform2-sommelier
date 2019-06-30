@@ -1112,7 +1112,7 @@ TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
 
 TEST_F(ServiceTest, ConfigureBadProperty) {
   KeyValueStore args;
-  args.Set<string>("XXXInvalid", "Value");
+  args.SetString("XXXInvalid", "Value");
   Error error;
   service_->Configure(args, &error);
   EXPECT_FALSE(error.IsSuccess());
@@ -1123,7 +1123,7 @@ TEST_F(ServiceTest, ConfigureBoolProperty) {
   service_->SetAutoConnect(false);
   ASSERT_FALSE(service_->auto_connect());
   KeyValueStore args;
-  args.Set<bool>(kAutoConnectProperty, true);
+  args.SetBool(kAutoConnectProperty, true);
   Error error;
   service_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1136,7 +1136,7 @@ TEST_F(ServiceTest, ConfigureStringProperty) {
   service_->SetGuid(kGuid0, nullptr);
   ASSERT_EQ(kGuid0, service_->guid());
   KeyValueStore args;
-  args.Set<string>(kGuidProperty, kGuid1);
+  args.SetString(kGuidProperty, kGuid1);
   Error error;
   service_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1149,7 +1149,7 @@ TEST_F(ServiceTest, ConfigureStringsProperty) {
   service_->set_strings(kStrings0);
   ASSERT_EQ(kStrings0, service_->strings());
   KeyValueStore args;
-  args.Set<Strings>(ServiceUnderTest::kStringsProperty, kStrings1);
+  args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings1);
   Error error;
   service_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1170,7 +1170,7 @@ TEST_F(ServiceTest, ConfigureEapStringProperty) {
   ASSERT_EQ(kEAPManagement0, service2_->GetEAPKeyManagement());
   KeyValueStore args;
   EXPECT_CALL(*eap, SetKeyManagement(kEAPManagement1, _));
-  args.Set<string>(kEapKeyMgmtProperty, kEAPManagement1);
+  args.SetString(kEapKeyMgmtProperty, kEAPManagement1);
   Error error;
   service2_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1183,7 +1183,7 @@ TEST_F(ServiceTest, ConfigureIntProperty) {
   service_->SetPriority(kPriority0, nullptr);
   ASSERT_EQ(kPriority0, service_->priority());
   KeyValueStore args;
-  args.Set<int32_t>(kPriorityProperty, kPriority1);
+  args.SetInt(kPriorityProperty, kPriority1);
   Error error;
   service_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1195,7 +1195,7 @@ TEST_F(ServiceTest, ConfigureIgnoredProperty) {
   service_->SetAutoConnect(false);
   ASSERT_FALSE(service_->auto_connect());
   KeyValueStore args;
-  args.Set<bool>(kAutoConnectProperty, true);
+  args.SetBool(kAutoConnectProperty, true);
   Error error;
   service_->IgnoreParameterForConfigure(kAutoConnectProperty);
   service_->Configure(args, &error);
@@ -1206,7 +1206,7 @@ TEST_F(ServiceTest, ConfigureIgnoredProperty) {
 TEST_F(ServiceTest, ConfigureProfileProperty) {
   // Ensure that the Profile property is always ignored.
   KeyValueStore args;
-  args.Set<string>(kProfileProperty, "profile");
+  args.SetString(kProfileProperty, "profile");
   Error error;
   EXPECT_CALL(mock_manager_, SetProfileForService(_, _, _)).Times(0);
   service_->Configure(args, &error);
@@ -1215,14 +1215,14 @@ TEST_F(ServiceTest, ConfigureProfileProperty) {
 
 TEST_F(ServiceTest, ConfigureKeyValueStoreProperty) {
   KeyValueStore key_value_store0;
-  key_value_store0.Set<bool>("key0", true);
+  key_value_store0.SetBool("key0", true);
   KeyValueStore key_value_store1;
-  key_value_store1.Set<int32_t>("key1", 1);
+  key_value_store1.SetInt("key1", 1);
   service_->SetKeyValueStore(key_value_store0, nullptr);
   ASSERT_EQ(key_value_store0, service_->GetKeyValueStore(nullptr));
   KeyValueStore args;
-  args.Set<KeyValueStore>(ServiceUnderTest::kKeyValueStoreProperty,
-                          key_value_store1);
+  args.SetKeyValueStore(
+      ServiceUnderTest::kKeyValueStoreProperty, key_value_store1);
   Error error;
   service_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1241,69 +1241,69 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
   const vector<string> kStrings1{ "string2", "string3" };
   service_->set_strings(kStrings0);
   KeyValueStore key_value_store0;
-  key_value_store0.Set<bool>("key0", true);
+  key_value_store0.SetBool("key0", true);
   KeyValueStore key_value_store1;
-  key_value_store1.Set<int32_t>("key1", 1);
+  key_value_store1.SetInt("key1", 1);
   service_->SetKeyValueStore(key_value_store0, nullptr);
 
   {
     KeyValueStore args;
-    args.Set<string>(kGuidProperty, kGUID0);
-    args.Set<bool>(kAutoConnectProperty, false);
-    args.Set<int32_t>(kPriorityProperty, kPriority0);
-    args.Set<Strings>(ServiceUnderTest::kStringsProperty, kStrings0);
-    args.Set<KeyValueStore>(ServiceUnderTest::kKeyValueStoreProperty,
-                            key_value_store0);
+    args.SetString(kGuidProperty, kGUID0);
+    args.SetBool(kAutoConnectProperty, false);
+    args.SetInt(kPriorityProperty, kPriority0);
+    args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings0);
+    args.SetKeyValueStore(ServiceUnderTest::kKeyValueStoreProperty,
+                          key_value_store0);
     EXPECT_TRUE(service_->DoPropertiesMatch(args));
   }
   {
     KeyValueStore args;
-    args.Set<string>(kGuidProperty, kGUID1);
-    args.Set<bool>(kAutoConnectProperty, false);
-    args.Set<int32_t>(kPriorityProperty, kPriority0);
-    args.Set<Strings>(ServiceUnderTest::kStringsProperty, kStrings0);
-    args.Set<KeyValueStore>(ServiceUnderTest::kKeyValueStoreProperty,
-                            key_value_store0);
+    args.SetString(kGuidProperty, kGUID1);
+    args.SetBool(kAutoConnectProperty, false);
+    args.SetInt(kPriorityProperty, kPriority0);
+    args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings0);
+    args.SetKeyValueStore(ServiceUnderTest::kKeyValueStoreProperty,
+                          key_value_store0);
     EXPECT_FALSE(service_->DoPropertiesMatch(args));
   }
   {
     KeyValueStore args;
-    args.Set<string>(kGuidProperty, kGUID0);
-    args.Set<bool>(kAutoConnectProperty, true);
-    args.Set<int32_t>(kPriorityProperty, kPriority0);
-    args.Set<Strings>(ServiceUnderTest::kStringsProperty, kStrings0);
-    args.Set<KeyValueStore>(ServiceUnderTest::kKeyValueStoreProperty,
-                            key_value_store0);
+    args.SetString(kGuidProperty, kGUID0);
+    args.SetBool(kAutoConnectProperty, true);
+    args.SetInt(kPriorityProperty, kPriority0);
+    args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings0);
+    args.SetKeyValueStore(ServiceUnderTest::kKeyValueStoreProperty,
+                          key_value_store0);
     EXPECT_FALSE(service_->DoPropertiesMatch(args));
   }
   {
     KeyValueStore args;
-    args.Set<string>(kGuidProperty, kGUID0);
-    args.Set<bool>(kAutoConnectProperty, false);
-    args.Set<int32_t>(kPriorityProperty, kPriority1);
-    args.Set<Strings>(ServiceUnderTest::kStringsProperty, kStrings0);
-    args.Set<KeyValueStore>(ServiceUnderTest::kKeyValueStoreProperty,
-                            key_value_store0);
+    args.SetString(kGuidProperty, kGUID0);
+    args.SetBool(kAutoConnectProperty, false);
+    args.SetInt(kPriorityProperty, kPriority1);
+    args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings0);
+    args.SetKeyValueStore(ServiceUnderTest::kKeyValueStoreProperty,
+                          key_value_store0);
     EXPECT_FALSE(service_->DoPropertiesMatch(args));
   }
   {
     KeyValueStore args;
-    args.Set<string>(kGuidProperty, kGUID0);
-    args.Set<bool>(kAutoConnectProperty, false);
-    args.Set<int32_t>(kPriorityProperty, kPriority0);
-    args.Set<Strings>(ServiceUnderTest::kStringsProperty, kStrings1);
-    args.Set<KeyValueStore>(ServiceUnderTest::kKeyValueStoreProperty,
-                            key_value_store0);
+    args.SetString(kGuidProperty, kGUID0);
+    args.SetBool(kAutoConnectProperty, false);
+    args.SetInt(kPriorityProperty, kPriority0);
+    args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings1);
+    args.SetKeyValueStore(ServiceUnderTest::kKeyValueStoreProperty,
+                          key_value_store0);
     EXPECT_FALSE(service_->DoPropertiesMatch(args));
   }
   {
     KeyValueStore args;
-    args.Set<string>(kGuidProperty, kGUID0);
-    args.Set<bool>(kAutoConnectProperty, false);
-    args.Set<int32_t>(kPriorityProperty, kPriority0);
-    args.Set<Strings>(ServiceUnderTest::kStringsProperty, kStrings0);
-    args.Set<KeyValueStore>(ServiceUnderTest::kKeyValueStoreProperty,
-                            key_value_store1);
+    args.SetString(kGuidProperty, kGUID0);
+    args.SetBool(kAutoConnectProperty, false);
+    args.SetInt(kPriorityProperty, kPriority0);
+    args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings0);
+    args.SetKeyValueStore(ServiceUnderTest::kKeyValueStoreProperty,
+                          key_value_store1);
     EXPECT_FALSE(service_->DoPropertiesMatch(args));
   }
 }
@@ -1994,8 +1994,8 @@ TEST_F(ServiceTest, ConfigureServiceTriggersOnPropertyChanged) {
   auto service(
       make_scoped_refptr(new ServiceWithMockOnPropertyChanged(&mock_manager_)));
   KeyValueStore args;
-  args.Set<string>(kUIDataProperty, "terpsichorean ejectamenta");
-  args.Set<bool>(kSaveCredentialsProperty, false);
+  args.SetString(kUIDataProperty, "terpsichorean ejectamenta");
+  args.SetBool(kSaveCredentialsProperty, false);
 
   // Calling Configure with different values from before triggers a single
   // OnPropertyChanged call per property.

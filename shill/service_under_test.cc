@@ -42,8 +42,8 @@ RpcIdentifier ServiceUnderTest::GetDeviceRpcId(Error* /*error*/) const {
 
 string ServiceUnderTest::GetStorageIdentifier() const { return kStorageId; }
 
-bool ServiceUnderTest::SetKeyValueStore(const KeyValueStore& value,
-    Error* error) {
+bool ServiceUnderTest::SetKeyValueStore(
+    const KeyValueStore& value, Error* error) {
   key_value_store_.Clear();
   key_value_store_.CopyFrom(value);
   return true;

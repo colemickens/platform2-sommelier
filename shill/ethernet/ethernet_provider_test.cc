@@ -78,7 +78,7 @@ TEST_F(EthernetProviderTest, ServiceConstructors) {
       .WillOnce(DoAll(SaveArg<0>(&service), Return(true)));
   provider_.Start();
   KeyValueStore args;
-  args.Set<std::string>(kTypeProperty, kTypeEthernet);
+  args.SetString(kTypeProperty, kTypeEthernet);
   {
     Error error;
     EXPECT_EQ(service, provider_.GetService(args, &error));

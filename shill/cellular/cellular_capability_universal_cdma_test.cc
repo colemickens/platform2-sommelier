@@ -197,8 +197,8 @@ class CellularCapabilityUniversalCdmaDispatcherTest
 TEST_F(CellularCapabilityUniversalCdmaMainTest, PropertiesChanged) {
   // Set up mock modem CDMA properties.
   KeyValueStore modem_cdma_properties;
-  modem_cdma_properties.Set<string>(MM_MODEM_MODEMCDMA_PROPERTY_MEID, kMeid);
-  modem_cdma_properties.Set<string>(MM_MODEM_MODEMCDMA_PROPERTY_ESN, kEsn);
+  modem_cdma_properties.SetString(MM_MODEM_MODEMCDMA_PROPERTY_MEID, kMeid);
+  modem_cdma_properties.SetString(MM_MODEM_MODEMCDMA_PROPERTY_ESN, kEsn);
 
   SetUp();
 

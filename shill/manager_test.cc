@@ -1553,7 +1553,7 @@ TEST_F(ManagerTest, GetServiceNoType) {
 TEST_F(ManagerTest, GetServiceUnknownType) {
   KeyValueStore args;
   Error e;
-  args.Set<string>(kTypeProperty, kTypePPPoE);
+  args.SetString(kTypeProperty, kTypePPPoE);
   manager()->GetService(args, &e);
   EXPECT_EQ(Error::kNotSupported, e.type());
   EXPECT_EQ("service type is unsupported", e.message());
@@ -1563,7 +1563,7 @@ TEST_F(ManagerTest, GetServiceEthernet) {
   KeyValueStore args;
   Error e;
   EthernetServiceRefPtr service;
-  args.Set<string>(kTypeProperty, kTypeEthernet);
+  args.SetString(kTypeProperty, kTypeEthernet);
   EXPECT_CALL(*ethernet_provider_, GetService(_, _))
       .WillRepeatedly(Return(service));
   manager()->GetService(args, &e);
@@ -1575,7 +1575,7 @@ TEST_F(ManagerTest, GetServiceEthernetEap) {
   KeyValueStore args;
   Error e;
   ServiceRefPtr service = new NiceMock<MockService>(manager());
-  args.Set<string>(kTypeProperty, kTypeEthernetEap);
+  args.SetString(kTypeProperty, kTypeEthernetEap);
   SetEapProviderService(service);
   EXPECT_EQ(service, manager()->GetService(args, &e));
   EXPECT_TRUE(e.IsSuccess());
@@ -1587,7 +1587,7 @@ TEST_F(ManagerTest, GetServiceWifi) {
   KeyValueStore args;
   Error e;
   WiFiServiceRefPtr wifi_service;
-  args.Set<string>(kTypeProperty, kTypeWifi);
+  args.SetString(kTypeProperty, kTypeWifi);
   EXPECT_CALL(*wifi_provider_, GetService(_, _))
       .WillRepeatedly(Return(wifi_service));
   manager()->GetService(args, &e);
@@ -1598,7 +1598,7 @@ TEST_F(ManagerTest, GetServiceWifi) {
 TEST_F(ManagerTest, GetServiceVPNUnknownType) {
   KeyValueStore args;
   Error e;
-  args.Set<string>(kTypeProperty, kTypeVPN);
+  args.SetString(kTypeProperty, kTypeVPN);
   scoped_refptr<MockProfile> profile(
       new StrictMock<MockProfile>(manager(), ""));
   AdoptProfile(manager(), profile);
@@ -1610,10 +1610,10 @@ TEST_F(ManagerTest, GetServiceVPNUnknownType) {
 TEST_F(ManagerTest, GetServiceVPN) {
   KeyValueStore args;
   Error e;
-  args.Set<string>(kTypeProperty, kTypeVPN);
-  args.Set<string>(kProviderTypeProperty, kProviderOpenVpn);
-  args.Set<string>(kProviderHostProperty, "10.8.0.1");
-  args.Set<string>(kNameProperty, "vpn-name");
+  args.SetString(kTypeProperty, kTypeVPN);
+  args.SetString(kProviderTypeProperty, kProviderOpenVpn);
+  args.SetString(kProviderHostProperty, "10.8.0.1");
+  args.SetString(kNameProperty, "vpn-name");
   scoped_refptr<MockProfile> profile(
       new StrictMock<MockProfile>(manager(), ""));
   AdoptProfile(manager(), profile);
@@ -1653,7 +1653,7 @@ TEST_F(ManagerTest, ConfigureServiceWithInvalidProfile) {
   AdoptProfile(manager(), profile);
 
   KeyValueStore args;
-  args.Set<string>(kProfileProperty, "xxx");
+  args.SetString(kProfileProperty, "xxx");
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_EQ(Error::kInvalidArguments, error.type());
@@ -1705,7 +1705,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithoutProfile) {
       .WillOnce(Return(true));
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
+  args.SetString(kTypeProperty, kTypeWifi);
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1753,8 +1753,8 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
       .WillOnce(Return(true));
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
-  args.Set<string>(kProfileProperty, kProfileName0.value());
+  args.SetString(kTypeProperty, kTypeWifi);
+  args.SetString(kProfileProperty, kProfileName0.value());
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1796,8 +1796,8 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithSameProfile) {
       .Times(0);
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
-  args.Set<string>(kProfileProperty, kProfileName0.value());
+  args.SetString(kTypeProperty, kTypeWifi);
+  args.SetString(kProfileProperty, kProfileName0.value());
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1842,8 +1842,8 @@ TEST_F(ManagerTest, ConfigureUnregisteredServiceWithProfile) {
       .Times(0);
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
-  args.Set<string>(kProfileProperty, kProfileName0.value());
+  args.SetString(kTypeProperty, kTypeWifi);
+  args.SetString(kProfileProperty, kProfileName0.value());
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1861,7 +1861,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithNoType) {
 
 TEST_F(ManagerTest, ConfigureServiceForProfileWithWrongType) {
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeCellular);
+  args.SetString(kTypeProperty, kTypeCellular);
   Error error;
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile(RpcIdentifier(""), args, &error);
@@ -1872,7 +1872,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithWrongType) {
 
 TEST_F(ManagerTest, ConfigureServiceForProfileWithMissingProfile) {
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
+  args.SetString(kTypeProperty, kTypeWifi);
   Error error;
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile(RpcIdentifier("/profile/foo"),
@@ -1889,8 +1889,8 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithProfileMismatch) {
       AddNamedMockProfileToManager(manager(), kProfileName0));
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
-  args.Set<string>(kProfileProperty, kProfileName1.value());
+  args.SetString(kTypeProperty, kTypeWifi);
+  args.SetString(kProfileProperty, kProfileName1.value());
   Error error;
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile(kProfileName0, args, &error);
@@ -1906,8 +1906,8 @@ TEST_F(ManagerTest,
   scoped_refptr<MockProfile> profile0(
       AddNamedMockProfileToManager(manager(), kProfileName0));
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
-  args.Set<string>(kProfileProperty, kProfileName0.value());
+  args.SetString(kTypeProperty, kTypeWifi);
+  args.SetString(kProfileProperty, kProfileName0.value());
 
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
       .WillOnce(Return(WiFiServiceRefPtr()));
@@ -1927,7 +1927,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileCreateNewService) {
       AddNamedMockProfileToManager(manager(), kProfileName0));
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
+  args.SetString(kTypeProperty, kTypeWifi);
 
   scoped_refptr<MockWiFiService> mock_service(
       new NiceMock<MockWiFiService>(manager(),
@@ -1972,8 +1972,8 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
   EXPECT_CALL(*profile, AdoptService(mock_service_generic)).Times(0);
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
-  args.Set<string>(kGuidProperty, kGUID);
+  args.SetString(kTypeProperty, kTypeWifi);
+  args.SetString(kGuidProperty, kGUID);
 
   // The first attempt should fail because the service reports a technology
   // other than "WiFi".
@@ -2016,7 +2016,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceAndProfile) {
   ServiceRefPtr mock_service_generic(mock_service.get());
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
+  args.SetString(kTypeProperty, kTypeWifi);
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
       .WillOnce(Return(mock_service));
   EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
@@ -2049,7 +2049,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceEphemeralProfile) {
   ServiceRefPtr mock_service_generic(mock_service.get());
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
+  args.SetString(kTypeProperty, kTypeWifi);
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
       .WillOnce(Return(mock_service));
   EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
@@ -2085,7 +2085,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServicePrecedingProfile) {
   ServiceRefPtr mock_service_generic(mock_service.get());
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
+  args.SetString(kTypeProperty, kTypeWifi);
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
       .WillOnce(Return(mock_service));
   EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
@@ -2141,7 +2141,7 @@ TEST_F(ManagerTest,
   MockWiFiService* mock_service_ptr = temp_mock_service_.get();
 
   KeyValueStore args;
-  args.Set<string>(kTypeProperty, kTypeWifi);
+  args.SetString(kTypeProperty, kTypeWifi);
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
       .WillOnce(Return(matching_service));
   EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
@@ -3107,7 +3107,7 @@ TEST_F(ManagerTest, GetServiceWithGUID) {
   }
 
   KeyValueStore args;
-  args.Set<string>(kGuidProperty, kGUID1);
+  args.SetString(kGuidProperty, kGUID1);
 
   {
     Error error;

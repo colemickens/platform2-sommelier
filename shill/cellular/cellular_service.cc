@@ -393,8 +393,8 @@ set<string> CellularService::GetStorageGroupsWithProperty(
     const std::string& key,
     const std::string& value) const {
   KeyValueStore properties;
-  properties.Set<string>(kStorageType, kTypeCellular);
-  properties.Set<string>(key, value);
+  properties.SetString(kStorageType, kTypeCellular);
+  properties.SetString(key, value);
   return storage.GetGroupsWithProperties(properties);
 }
 

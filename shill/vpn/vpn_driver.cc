@@ -55,7 +55,7 @@ bool VPNDriver::Load(StoreInterface* storage, const string& storage_id) {
           << "Property cannot be both an array and a credential";
       vector<string> value;
       if (storage->GetStringList(storage_id, property, &value)) {
-        args_.Set<Strings>(property, value);
+        args_.SetStrings(property, value);
       } else {
         args_.Remove(property);
       }
@@ -65,7 +65,7 @@ bool VPNDriver::Load(StoreInterface* storage, const string& storage_id) {
           storage->GetCryptedString(storage_id, property, &value) :
           storage->GetString(storage_id, property, &value);
       if (loaded) {
-        args_.Set<string>(property, value);
+        args_.SetString(property, value);
       } else {
         args_.Remove(property);
       }
@@ -200,7 +200,7 @@ bool VPNDriver::SetMappedStringProperty(
       args_.Get<string>(properties_[index].property) == value) {
     return false;
   }
-  args_.Set<string>(properties_[index].property, value);
+  args_.SetString(properties_[index].property, value);
   return true;
 }
 
@@ -211,7 +211,7 @@ bool VPNDriver::SetMappedStringsProperty(
       args_.Get<Strings>(properties_[index].property) == value) {
     return false;
   }
-  args_.Set<Strings>(properties_[index].property, value);
+  args_.SetStrings(properties_[index].property, value);
   return true;
 }
 
@@ -240,13 +240,13 @@ KeyValueStore VPNDriver::GetProvider(Error* error) {
         continue;
       }
       Strings value = args_.Get<Strings>(prop);
-      provider_properties.Set<Strings>(chopped_prop, value);
+      provider_properties.SetStrings(chopped_prop, value);
     } else {
       if (!args_.Contains<string>(prop)) {
         continue;
       }
       string value = args_.Get<string>(prop);
-      provider_properties.Set<string>(chopped_prop, value);
+      provider_properties.SetString(chopped_prop, value);
     }
   }
 

@@ -69,7 +69,7 @@ void DhcpProperties::Load(StoreInterface* storage, const string& id) {
   for (const auto& name : kPropertyNames) {
     string property_value;
     if (storage->GetString(id, GetFullPropertyName(name), &property_value)) {
-      properties_.Set<string>(name, property_value);
+      properties_.SetString(name, property_value);
       SLOG(this, 3) << "found DhcpProperty: setting " << name;
     }
   }
@@ -142,7 +142,7 @@ bool DhcpProperties::SetMappedStringProperty(
       properties_.Get<string>(kPropertyNames[index]) == value) {
     return false;
   }
-  properties_.Set<string>(kPropertyNames[index], value);
+  properties_.SetString(kPropertyNames[index], value);
   return true;
 }
 

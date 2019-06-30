@@ -178,10 +178,9 @@ KeyValueStore CellularCapabilityUniversal::SimLockStatusToProperty(
       lock_type = "";
       break;
   }
-  status.Set<bool>(kSIMLockEnabledProperty, sim_lock_status_.enabled);
-  status.Set<string>(kSIMLockTypeProperty, lock_type);
-  status.Set<int32_t>(kSIMLockRetriesLeftProperty,
-                      sim_lock_status_.retries_left);
+  status.SetBool(kSIMLockEnabledProperty, sim_lock_status_.enabled);
+  status.SetString(kSIMLockTypeProperty, lock_type);
+  status.SetInt(kSIMLockRetriesLeftProperty, sim_lock_status_.retries_left);
   return status;
 }
 
@@ -661,24 +660,24 @@ void CellularCapabilityUniversal::SetupConnectProperties(
 
 void CellularCapabilityUniversal::FillConnectPropertyMap(
     KeyValueStore* properties) {
-  properties->Set<bool>(kConnectAllowRoaming,
-                        cellular()->IsRoamingAllowedOrRequired());
+  properties->SetBool(kConnectAllowRoaming,
+                      cellular()->IsRoamingAllowedOrRequired());
 
   if (!apn_try_list_.empty()) {
     // Leave the APN at the front of the list, so that it can be recorded
     // if the connect attempt succeeds.
     Stringmap apn_info = apn_try_list_.front();
     SLOG(this, 2) << __func__ << ": Using APN " << apn_info[kApnProperty];
-    properties->Set<string>(kConnectApn, apn_info[kApnProperty]);
+    properties->SetString(kConnectApn, apn_info[kApnProperty]);
     if (base::ContainsKey(apn_info, kApnUsernameProperty))
-      properties->Set<string>(kConnectUser, apn_info[kApnUsernameProperty]);
+      properties->SetString(kConnectUser, apn_info[kApnUsernameProperty]);
     if (base::ContainsKey(apn_info, kApnPasswordProperty))
-      properties->Set<string>(kConnectPassword, apn_info[kApnPasswordProperty]);
+      properties->SetString(kConnectPassword, apn_info[kApnPasswordProperty]);
     if (base::ContainsKey(apn_info, kApnAuthenticationProperty)) {
       MMBearerAllowedAuth allowed_auth = ApnAuthenticationToMMBearerAllowedAuth(
           apn_info[kApnAuthenticationProperty]);
       if (allowed_auth != MM_BEARER_ALLOWED_AUTH_UNKNOWN) {
-        properties->Set<uint32_t>(kConnectAllowedAuth, allowed_auth);
+        properties->SetUint(kConnectAllowedAuth, allowed_auth);
       }
     }
   }

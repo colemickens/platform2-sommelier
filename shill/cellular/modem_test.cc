@@ -95,7 +95,7 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   static const uint32_t kSentinelValue = 17;
 
   InterfaceToProperties properties;
-  properties[MM_DBUS_INTERFACE_MODEM].Set<uint32_t>(kSentinel, kSentinelValue);
+  properties[MM_DBUS_INTERFACE_MODEM].SetUint(kSentinel, kSentinelValue);
 
   EXPECT_CALL(*modem_, GetLinkName(_, _)).WillRepeatedly(DoAll(
       SetArgPointee<1>(string(kLinkName)),

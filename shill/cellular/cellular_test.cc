@@ -210,8 +210,8 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
                             const KeyValueStoreCallback& callback,
                             int timeout) {
     KeyValueStore props;
-    props.Set<string>("carrier", kTestCarrier);
-    props.Set<string>("unknown-property", "irrelevant-value");
+    props.SetString("carrier", kTestCarrier);
+    props.SetString("unknown-property", "irrelevant-value");
     callback.Run(props, Error());
   }
   void InvokeConnect(KeyValueStore props, Error* error,
@@ -1240,7 +1240,7 @@ TEST_P(CellularTest, ModemStateChangeEnable) {
   device_->set_modem_state(Cellular::kModemStateDisabled);
 
   KeyValueStore props;
-  props.Set<bool>(CellularCapabilityClassic::kModemPropertyEnabled, true);
+  props.SetBool(CellularCapabilityClassic::kModemPropertyEnabled, true);
   device_->OnPropertiesChanged(MM_MODEM_INTERFACE, props, vector<string>());
   dispatcher_.DispatchPendingEvents();
 
@@ -1864,8 +1864,8 @@ TEST_P(CellularTest, OnAfterResumeDisableQueuedWantEnabled) {
 
   // Set up state that we need.
   KeyValueStore modem_properties;
-  modem_properties.Set<int32_t>(MM_MODEM_PROPERTY_STATE,
-                                Cellular::kModemStateDisabled);
+  modem_properties.SetInt(MM_MODEM_PROPERTY_STATE,
+                          Cellular::kModemStateDisabled);
 
   // Let the disable complete.
   EXPECT_CALL(*mm1_proxy, Enable(false, _, _, _))
@@ -1968,8 +1968,8 @@ TEST_P(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
 
   // Set up state that we need.
   KeyValueStore modem_properties;
-  modem_properties.Set<int32_t>(MM_MODEM_PROPERTY_STATE,
-                                Cellular::kModemStateEnabled);
+  modem_properties.SetInt(MM_MODEM_PROPERTY_STATE,
+                          Cellular::kModemStateEnabled);
 
   // Let the enable complete.
   ASSERT_TRUE(error.IsSuccess());

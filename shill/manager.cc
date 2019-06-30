@@ -2410,7 +2410,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
   if (!service) {
     KeyValueStore configure_args;
     configure_args.CopyFrom(args);
-    configure_args.Set<string>(kProfileProperty, profile_rpcid.value());
+    configure_args.SetString(kProfileProperty, profile_rpcid.value());
     return ConfigureService(configure_args, error);
   }
 

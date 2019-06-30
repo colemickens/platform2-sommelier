@@ -158,28 +158,26 @@ TEST_F(DHCPv6ConfigTest, ParseConfiguration) {
   const std::string kOne = "1";
 
   KeyValueStore conf;
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyIPAddress + kOne,
-                   kConfigIPAddress);
-  conf.Set<uint32_t>(DHCPv6Config::kConfigurationKeyIPAddressLeaseTime + kOne,
-                     kConfigIPAddressLeaseTime);
-  conf.Set<uint32_t>(
+  conf.SetString(DHCPv6Config::kConfigurationKeyIPAddress + kOne,
+                 kConfigIPAddress);
+  conf.SetUint(DHCPv6Config::kConfigurationKeyIPAddressLeaseTime + kOne,
+               kConfigIPAddressLeaseTime);
+  conf.SetUint(
       DHCPv6Config::kConfigurationKeyIPAddressPreferredLeaseTime + kOne,
       kConfigIPAddressPreferredLeaseTime);
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
-                   kConfigDelegatedPrefix);
-  conf.Set<uint32_t>(
-      DHCPv6Config::kConfigurationKeyDelegatedPrefixLength + kOne,
-      kConfigDelegatedPrefixLength);
-  conf.Set<uint32_t>(
-      DHCPv6Config::kConfigurationKeyDelegatedPrefixLeaseTime + kOne,
-      kConfigDelegatedPrefixLeaseTime);
-  conf.Set<uint32_t>(
+  conf.SetString(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
+                 kConfigDelegatedPrefix);
+  conf.SetUint(DHCPv6Config::kConfigurationKeyDelegatedPrefixLength + kOne,
+               kConfigDelegatedPrefixLength);
+  conf.SetUint(DHCPv6Config::kConfigurationKeyDelegatedPrefixLeaseTime + kOne,
+               kConfigDelegatedPrefixLeaseTime);
+  conf.SetUint(
       DHCPv6Config::kConfigurationKeyDelegatedPrefixPreferredLeaseTime + kOne,
       kConfigDelegatedPrefixPreferredLeaseTime);
-  conf.Set<Strings>(DHCPv6Config::kConfigurationKeyDNS, {kConfigNameServer});
-  conf.Set<Strings>(DHCPv6Config::kConfigurationKeyDomainSearch,
-                    {kConfigDomainSearch});
-  conf.Set<string>("UnknownKey", "UnknownValue");
+  conf.SetStrings(DHCPv6Config::kConfigurationKeyDNS, {kConfigNameServer});
+  conf.SetStrings(DHCPv6Config::kConfigurationKeyDomainSearch,
+                  {kConfigDomainSearch});
+  conf.SetString("UnknownKey", "UnknownValue");
 
   ASSERT_TRUE(config_->ParseConfiguration(conf));
   const Stringmaps kAddresses = {{{kDhcpv6AddressProperty, kConfigIPAddress},
@@ -262,9 +260,9 @@ class DHCPv6ConfigCallbackTest : public DHCPv6ConfigTest {
 
 TEST_F(DHCPv6ConfigCallbackTest, ProcessEventSignalFail) {
   KeyValueStore conf;
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyIPAddress, kIPAddress);
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyDelegatedPrefix,
-                   kDelegatedPrefix);
+  conf.SetString(DHCPv6Config::kConfigurationKeyIPAddress, kIPAddress);
+  conf.SetString(DHCPv6Config::kConfigurationKeyDelegatedPrefix,
+                 kDelegatedPrefix);
   EXPECT_CALL(*this, SuccessCallback(_, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(ConfigRef()));
   config_->ProcessEventSignal(DHCPv6Config::kReasonFail, conf);
@@ -279,15 +277,15 @@ TEST_F(DHCPv6ConfigCallbackTest, ProcessEventSignalSuccess) {
                               DHCPv6Config::kReasonReboot,
                               DHCPv6Config::kReasonRenew }) {
     KeyValueStore conf;
-    conf.Set<string>(DHCPv6Config::kConfigurationKeyIPAddress + kOne,
-                     kIPAddress);
+    conf.SetString(DHCPv6Config::kConfigurationKeyIPAddress + kOne,
+                   kIPAddress);
     const uint32_t kLeaseTime = 1;
-    conf.Set<uint32_t>(DHCPv6Config::kConfigurationKeyIPAddressLeaseTime + kOne,
-                       kLeaseTime);
-    conf.Set<uint32_t>(
+    conf.SetUint(DHCPv6Config::kConfigurationKeyIPAddressLeaseTime + kOne,
+                 kLeaseTime);
+    conf.SetUint(
         DHCPv6Config::kConfigurationKeyIPAddressPreferredLeaseTime + kOne,
         kLeaseTime);
-    conf.Set<uint32_t>(DHCPv6Config::kConfigurationKeyIPAddressIaid, 0);
+    conf.SetUint(DHCPv6Config::kConfigurationKeyIPAddressIaid, 0);
 
     EXPECT_CALL(*this, SuccessCallback(ConfigRef(), true));
     EXPECT_CALL(*this, FailureCallback(_)).Times(0);
@@ -306,9 +304,9 @@ TEST_F(DHCPv6ConfigCallbackTest, ProcessEventSignalSuccess) {
 TEST_F(DHCPv6ConfigCallbackTest, StoppedDuringFailureCallback) {
   const std::string kOne = "1";
   KeyValueStore conf;
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyIPAddress + kOne, kIPAddress);
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
-                   kDelegatedPrefix);
+  conf.SetString(DHCPv6Config::kConfigurationKeyIPAddress + kOne, kIPAddress);
+  conf.SetString(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
+                 kDelegatedPrefix);
   // Stop the DHCP config while it is calling the failure callback.  We
   // need to ensure that no callbacks are left running inadvertently as
   // a result.
@@ -321,12 +319,11 @@ TEST_F(DHCPv6ConfigCallbackTest, StoppedDuringFailureCallback) {
 TEST_F(DHCPv6ConfigCallbackTest, StoppedDuringSuccessCallback) {
   const std::string kOne = "1";
   KeyValueStore conf;
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyIPAddress + kOne, kIPAddress);
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
-                   kDelegatedPrefix);
+  conf.SetString(DHCPv6Config::kConfigurationKeyIPAddress + kOne, kIPAddress);
+  conf.SetString(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
+                 kDelegatedPrefix);
   const uint32_t kLeaseTime = 1;
-  conf.Set<uint32_t>(DHCPv6Config::kConfigurationKeyIPAddressLeaseTime,
-                     kLeaseTime);
+  conf.SetUint(DHCPv6Config::kConfigurationKeyIPAddressLeaseTime, kLeaseTime);
   // Stop the DHCP config while it is calling the success callback.  This
   // can happen if the device has a static IP configuration and releases
   // the lease after accepting other network parameters from the DHCP
@@ -341,9 +338,9 @@ TEST_F(DHCPv6ConfigCallbackTest, StoppedDuringSuccessCallback) {
 TEST_F(DHCPv6ConfigCallbackTest, ProcessEventSignalUnknown) {
   const std::string kOne = "1";
   KeyValueStore conf;
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyIPAddress + kOne, kIPAddress);
-  conf.Set<string>(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
-                   kDelegatedPrefix);
+  conf.SetString(DHCPv6Config::kConfigurationKeyIPAddress + kOne, kIPAddress);
+  conf.SetString(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
+                 kDelegatedPrefix);
   static const char kReasonUnknown[] = "UNKNOWN_REASON";
   EXPECT_CALL(*this, SuccessCallback(_, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(_)).Times(0);
