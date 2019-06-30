@@ -17,13 +17,13 @@ namespace shill {
 ScopedMockLog* ScopedMockLog::instance_ = nullptr;
 
 ScopedMockLog::ScopedMockLog() {
-  previous_handler_ = logging::GetLogMessageHandler();
-  logging::SetLogMessageHandler(HandleLogMessages);
+  previous_handler_ = ::logging::GetLogMessageHandler();
+  ::logging::SetLogMessageHandler(HandleLogMessages);
   instance_ = this;
 }
 
 ScopedMockLog::~ScopedMockLog() {
-  logging::SetLogMessageHandler(previous_handler_);
+  ::logging::SetLogMessageHandler(previous_handler_);
   instance_ = nullptr;
 }
 

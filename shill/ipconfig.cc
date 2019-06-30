@@ -21,10 +21,10 @@ using std::string;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kInet;
 static string ObjectID(IPConfig* i) { return i->GetRpcIdentifier().value(); }
-}  // namespace log_scope
+}  // namespace Logging
 
 namespace {
 

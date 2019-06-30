@@ -24,10 +24,10 @@ using std::vector;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
 static string ObjectID(VPNDriver* v) { return "(vpn_driver)"; }
-}  // namespace log_scope
+}
 
 // static
 const int VPNDriver::kDefaultConnectTimeoutSeconds = 60;

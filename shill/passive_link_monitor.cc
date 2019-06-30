@@ -21,10 +21,10 @@ using base::Unretained;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kLink;
 static std::string ObjectID(Connection* c) { return c->interface_name(); }
-}  // namespace log_scope
+}
 
 namespace {
 

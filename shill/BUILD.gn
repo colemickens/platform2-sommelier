@@ -181,7 +181,7 @@ shared_library("libshill-net-${libbase_ver}") {
   defines = [ "SLOG_MEANS_VLOG=1" ]
   sources = net_sources
   cflags_cc = [
-    # for shill::log_scope declarations
+    # for shill::Logging declarations
     "-Wno-unused-variable",
     "-Wno-unused-function",
   ]

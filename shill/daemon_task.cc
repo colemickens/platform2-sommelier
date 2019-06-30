@@ -28,10 +28,10 @@ using base::Unretained;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDaemon;
 static std::string ObjectID(DaemonTask* d) { return "(chromeos_daemon)"; }
-}  // namespace log_scope
+}
 
 DaemonTask::DaemonTask(const Settings& settings, Config* config)
     : settings_(settings),

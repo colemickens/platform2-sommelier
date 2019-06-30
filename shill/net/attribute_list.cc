@@ -22,12 +22,12 @@ using std::string;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kRTNL;
 static std::string ObjectID(const AttributeList* obj) {
   return "(attribute_list)";
 }
-}  // namespace log_scope
+}  // namespace Logging
 
 AttributeList::AttributeList() = default;
 

@@ -18,10 +18,10 @@ using std::vector;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
 static string ObjectID(const CellularBearer* c) { return "(cellular_bearer)"; }
-}  // namespace log_scope
+}
 
 namespace {
 

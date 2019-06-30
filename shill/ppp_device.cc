@@ -26,10 +26,10 @@ using std::string;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kPPP;
 static string ObjectID(PPPDevice* p) { return p->link_name(); }
-}  // namespace log_scope
+}
 
 PPPDevice::PPPDevice(Manager* manager,
                      const string& link_name,

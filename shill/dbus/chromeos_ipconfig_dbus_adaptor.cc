@@ -19,12 +19,12 @@ using std::vector;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosIPConfigDBusAdaptor* i) {
   return i->GetRpcIdentifier().value();
 }
-}  // namespace log_scope
+}  // namespace Logging
 
 // static
 const char ChromeosIPConfigDBusAdaptor::kPath[] = "/ipconfig/";

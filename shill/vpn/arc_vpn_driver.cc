@@ -34,12 +34,12 @@ const char* const kDnsAndRoutingProperties[] = {
 
 }  // namespace
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
 static std::string ObjectID(const ArcVpnDriver* v) {
   return "(arc_vpn_driver)";
 }
-}  // namespace log_scope
+}  // namespace Logging
 
 const VPNDriver::Property ArcVpnDriver::kProperties[] = {
     {kProviderHostProperty, 0},

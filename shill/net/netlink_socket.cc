@@ -22,12 +22,12 @@
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kRTNL;
 static std::string ObjectID(const NetlinkSocket* obj) {
   return "(netlink_socket)";
 }
-}  // namespace log_scope
+}  // namespace Logging
 
 NetlinkSocket::NetlinkSocket()
     : sequence_number_(0), file_descriptor_(Sockets::kInvalidFileDescriptor) {}

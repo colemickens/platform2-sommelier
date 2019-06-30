@@ -20,12 +20,12 @@ using base::StringPrintf;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kRTNL;
 static std::string ObjectID(const GenericNetlinkMessage* obj) {
   return "(generic_netlink_message)";
 }
-}  // namespace log_scope
+}  // namespace Logging
 
 ByteString GenericNetlinkMessage::EncodeHeader(uint32_t sequence_number) {
   // Build nlmsghdr.

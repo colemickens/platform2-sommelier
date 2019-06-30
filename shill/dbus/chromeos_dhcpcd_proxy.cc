@@ -9,10 +9,10 @@
 using std::string;
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
 static string ObjectID(ChromeosDHCPCDProxy* d) { return "(dhcpcd_proxy)"; }
-}  // namespace log_scope
+}
 
 ChromeosDHCPCDProxy::ChromeosDHCPCDProxy(const scoped_refptr<dbus::Bus>& bus,
                                          const std::string& service_name)

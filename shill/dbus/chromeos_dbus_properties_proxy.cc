@@ -11,10 +11,10 @@ namespace shill {
 using std::string;
 using std::vector;
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
-}  // namespace log_scope
+}
 
 ChromeosDBusPropertiesProxy::ChromeosDBusPropertiesProxy(
     const scoped_refptr<dbus::Bus>& bus,

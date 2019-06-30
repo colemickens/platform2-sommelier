@@ -14,12 +14,12 @@ using std::string;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
 static string ObjectID(const PendingActivationStore* p) {
   return "(pending_activation_store)";
 }
-}  // namespace log_scope
+}
 
 const char PendingActivationStore::kIccidGroupId[] = "iccid_list";
 const char PendingActivationStore::kMeidGroupId[] = "meid_list";

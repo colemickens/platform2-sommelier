@@ -14,10 +14,10 @@ using std::string;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
-}  // namespace log_scope
+}
 
 const char ChromeosSupplicantProcessProxy::kInterfaceName[] =
     "fi.w1.wpa_supplicant1";

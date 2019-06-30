@@ -23,10 +23,10 @@ const int kIPHeaderLengthUnitBytes = 4;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
 static std::string ObjectID(IcmpSession* i) { return "(icmp_session)"; }
-}  // namespace log_scope
+}
 
 uint16_t IcmpSession::kNextUniqueEchoId = 0;
 const int IcmpSession::kTotalNumEchoRequests = 3;

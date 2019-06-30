@@ -26,14 +26,14 @@ using std::string;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kConnection;
 static string ObjectID(Connection* c) {
   if (c == nullptr)
     return "(connection)";
   return c->interface_name();
 }
-}  // namespace log_scope
+}  // namespace Logging
 
 // static
 const uint32_t Connection::kDefaultMetric = 10;

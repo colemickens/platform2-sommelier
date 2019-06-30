@@ -14,12 +14,12 @@
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
 static std::string ObjectID(const Callback80211Metrics* c) {
   return "(callback80211metrics)";
 }
-}  // namespace log_scope
+}
 
 Callback80211Metrics::Callback80211Metrics(Metrics* metrics)
     : metrics_(metrics) {}

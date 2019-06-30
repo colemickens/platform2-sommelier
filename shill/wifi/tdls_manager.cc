@@ -18,12 +18,12 @@ using std::string;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
 static string ObjectID(const TDLSManager* c) {
   return "(" + c->interface_name() + "-tdlsmanager)";
 }
-}  // namespace log_scope
+}
 
 const int TDLSManager::kPeerDiscoveryCleanupTimeoutSeconds = 30;
 

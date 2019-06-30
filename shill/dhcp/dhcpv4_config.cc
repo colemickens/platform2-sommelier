@@ -21,7 +21,7 @@ using std::vector;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
 static string ObjectID(DHCPv4Config* d) {
   if (d == nullptr)
@@ -29,7 +29,7 @@ static string ObjectID(DHCPv4Config* d) {
   else
     return d->device_name();
 }
-}  // namespace log_scope
+}
 
 // static
 const char DHCPv4Config::kDHCPCDPathFormatPID[] =

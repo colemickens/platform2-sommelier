@@ -25,10 +25,10 @@ using std::vector;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kStorage;
 static string ObjectID(const KeyFileStore* k) { return "(key_file_store)"; }
-}  // namespace log_scope
+}
 
 namespace {
 string ConvertErrorToMessage(GError* error) {

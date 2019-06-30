@@ -13,12 +13,14 @@
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
+
 static auto kModuleLogScope = ScopeLogger::kVPN;
 static std::string ObjectID(const ChromeosThirdPartyVpnDBusAdaptor* v) {
   return "(third_party_vpn_dbus_adaptor)";
 }
-}  // namespace log_scope
+
+}  // namespace Logging
 
 namespace {
 

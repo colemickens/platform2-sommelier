@@ -15,10 +15,10 @@ using ::testing::_;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kManager;
 static string ObjectID(testing::Test* m) { return "(mock_log_test)"; }
-}  // namespace log_scope
+}
 
 class MockLogTest : public testing::Test {
  protected:
@@ -91,7 +91,7 @@ TEST_F(MockLogTest, MatchSlogWithObject) {
 TEST_F(MockLogTest, MatchWithGmockMatchers) {
   ScopedMockLog log;
   const string kMessage("Something");
-  EXPECT_CALL(log, Log(::testing::Lt(logging::LOG_ERROR),
+  EXPECT_CALL(log, Log(::testing::Lt(::logging::LOG_ERROR),
                        ::testing::EndsWith(".cc"),
                        ::testing::StartsWith("Some")));
   LogSomething(kMessage);

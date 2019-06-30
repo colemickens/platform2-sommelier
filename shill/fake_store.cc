@@ -15,12 +15,14 @@ using std::vector;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
+
 static auto kModuleLogScope = ScopeLogger::kStorage;
 static string ObjectID(const FakeStore* j) {
   return "(unknown)";
 }
-}  // namespace log_scope
+
+}  // namespace Logging
 
 namespace {
 

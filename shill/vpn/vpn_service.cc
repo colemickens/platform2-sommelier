@@ -26,12 +26,12 @@ using std::string;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
 static string ObjectID(const VPNService* s) {
   return s->GetRpcIdentifier().value();
 }
-}  // namespace log_scope
+}  // namespace Logging
 
 const char VPNService::kAutoConnNeverConnected[] = "never connected";
 const char VPNService::kAutoConnVPNAlreadyActive[] = "vpn already active";

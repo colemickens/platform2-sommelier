@@ -20,10 +20,10 @@ using std::vector;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kLink;
 static string ObjectID(SocketInfoReader* s) { return "(socket_info_reader)"; }
-}  // namespace log_scope
+}
 
 namespace {
 

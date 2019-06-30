@@ -13,12 +13,12 @@ using std::string;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosRpcTaskDBusAdaptor* r) {
   return r->GetRpcIdentifier().value();
 }
-}  // namespace log_scope
+}  // namespace Logging
 
 // static
 const char ChromeosRpcTaskDBusAdaptor::kPath[] = "/task/";

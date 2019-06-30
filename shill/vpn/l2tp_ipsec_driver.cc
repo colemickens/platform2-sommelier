@@ -56,12 +56,12 @@ using std::vector;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
 static string ObjectID(L2TPIPSecDriver* l) {
   return l->GetServiceRpcIdentifier().value();
 }
-}  // namespace log_scope
+}  // namespace Logging
 
 namespace {
 const char kL2TPIPSecIPSecTimeoutProperty[] = "L2TPIPsec.IPsecTimeout";

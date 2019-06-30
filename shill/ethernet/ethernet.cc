@@ -46,10 +46,10 @@ using std::string;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kEthernet;
 static string ObjectID(Ethernet* e) { return e->GetRpcIdentifier().value(); }
-}  // namespace log_scope
+}  // namespace Logging
 
 Ethernet::Ethernet(Manager* manager,
                    const string& link_name,

@@ -63,10 +63,10 @@ using std::vector;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDevice;
 static string ObjectID(Device* d) { return d->GetRpcIdentifier().value(); }
-}  // namespace log_scope
+}  // namespace Logging
 
 namespace {
 

@@ -24,12 +24,12 @@ using std::vector;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosManagerDBusAdaptor* m) {
   return m->GetRpcIdentifier().value();
 }
-}  // namespace log_scope
+}  // namespace Logging
 
 // static
 const char ChromeosManagerDBusAdaptor::kPath[] = "/";

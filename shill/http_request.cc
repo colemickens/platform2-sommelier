@@ -36,10 +36,10 @@ const char kCurlEasyError[] = "curl_easy_error";
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kHTTP;
 static string ObjectID(Connection* c) { return c->interface_name(); }
-}  // namespace log_scope
+}
 
 const int HttpRequest::kRequestTimeoutSeconds = 10;
 

@@ -27,9 +27,7 @@ TEST_F(WPASupplicantTest, ExtractRemoteCertificationEmpty) {
   string subject;
   uint32_t depth = 0;
   ScopedMockLog log;
-  EXPECT_CALL(log, Log(logging::LOG_ERROR,
-                       _,
-                       EndsWith("no depth parameter.")));
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("no depth parameter.")));
   EXPECT_FALSE(WPASupplicant::ExtractRemoteCertification(
       property_map_, &subject, &depth));
   EXPECT_EQ("", subject);
@@ -57,9 +55,7 @@ TEST_F(WPASupplicantTest, ExtractRemoteCertificationSubjectOnly) {
   property_map_.SetString(WPASupplicant::kInterfacePropertySubject,
                           kSubjectName);
   ScopedMockLog log;
-  EXPECT_CALL(log, Log(logging::LOG_ERROR,
-                       _,
-                       EndsWith("no depth parameter.")));
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("no depth parameter.")));
   EXPECT_FALSE(WPASupplicant::ExtractRemoteCertification(
       property_map_, &subject, &depth));
   EXPECT_EQ("", subject);

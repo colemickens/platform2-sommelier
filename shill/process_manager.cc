@@ -20,10 +20,10 @@ using std::vector;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kManager;
 static string ObjectID(const ProcessManager* pm) { return "process_manager"; }
-}  // namespace log_scope
+}
 
 namespace {
 

@@ -17,12 +17,12 @@ using std::string;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kEthernet;
 static string ObjectID(VirtioEthernet* v) {
   return v->GetRpcIdentifier().value();
 }
-}  // namespace log_scope
+}  // namespace Logging
 
 VirtioEthernet::VirtioEthernet(Manager* manager,
                                const string& link_name,

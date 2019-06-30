@@ -40,10 +40,10 @@ using std::vector;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
 static std::string ObjectID(WakeOnWiFi* w) { return "(wake_on_wifi)"; }
-}  // namespace log_scope
+}
 
 const char WakeOnWiFi::kWakeOnIPAddressPatternsNotSupported[] =
     "Wake on IP address patterns not supported by this WiFi device";

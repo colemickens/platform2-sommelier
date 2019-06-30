@@ -64,10 +64,10 @@ using std::vector;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
 static string ObjectID(WiFi* w) { return w->GetRpcIdentifier().value(); }
-}  // namespace log_scope
+}  // namespace Logging
 
 // statics
 const char* const WiFi::kDefaultBgscanMethod =

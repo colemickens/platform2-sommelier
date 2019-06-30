@@ -46,14 +46,14 @@
 #define SLOG_2ARG(object, verbose_level) \
   LAZY_STREAM(SLOG_STREAM(verbose_level), \
     ::shill::ScopeLogger::GetInstance()->IsLogEnabled( \
-        ::shill::log_scope::kModuleLogScope, verbose_level)) \
-  << (object ? ::shill::log_scope::ObjectID(object) : "(anon)") << " "
+        ::shill::Logging::kModuleLogScope, verbose_level)) \
+  << (object ? ::shill::Logging::ObjectID(object) : "(anon)") << " "
 
 #define SLOG_3ARG(scope, object, verbose_level) \
   LAZY_STREAM(SLOG_STREAM(verbose_level), \
     ::shill::ScopeLogger::GetInstance()->IsLogEnabled( \
         ::shill::ScopeLogger::k##scope, verbose_level)) \
-  << (object ? ::shill::log_scope::ObjectID(object) : "(anon)") << " "
+  << (object ? ::shill::Logging::ObjectID(object) : "(anon)") << " "
 
 #define SLOG(...) \
   GET_MACRO_OVERLOAD2(__VA_ARGS__, SLOG_3ARG, SLOG_2ARG)(__VA_ARGS__)
@@ -63,7 +63,7 @@
               SLOG_IS_ON(scope, verbose_level) && (condition))
 
 #define SPLOG_STREAM(verbose_level) \
-  ::logging::ErrnoLogMessage(__FILE__, __LINE__, -verbose_level,        \
+  ::logging::ErrnoLogMessage(__FILE__, __LINE__, -verbose_level, \
                              ::logging::GetLastSystemErrorCode()).stream()
 
 #define SPLOG(scope, verbose_level) \

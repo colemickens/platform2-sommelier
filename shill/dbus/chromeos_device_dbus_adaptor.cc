@@ -15,12 +15,12 @@ using std::vector;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosDeviceDBusAdaptor* d) {
   return d->GetRpcIdentifier().value() + " (" + d->device()->UniqueName() + ")";
 }
-}  // namespace log_scope
+}  // namespace Logging
 
 // static
 const char ChromeosDeviceDBusAdaptor::kPath[] = "/device/";

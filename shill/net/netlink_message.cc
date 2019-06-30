@@ -24,12 +24,12 @@ using base::StringPrintf;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kRTNL;
 static std::string ObjectID(const NetlinkMessage* obj) {
   return "(netlink_message)";
 }
-}  // namespace log_scope
+}  // namespace Logging
 
 const uint32_t NetlinkMessage::kBroadcastSequenceNumber = 0;
 const uint16_t NetlinkMessage::kIllegalMessageType = UINT16_MAX;

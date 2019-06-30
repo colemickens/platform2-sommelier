@@ -22,10 +22,10 @@ using std::vector;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kLink;
 static string ObjectID(Device* d) { return d->link_name(); }
-}  // namespace log_scope
+}
 
 // static
 const uint16_t TrafficMonitor::kDnsPort = 53;

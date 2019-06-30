@@ -29,10 +29,10 @@ using std::vector;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
 static string ObjectID(WiFiEndpoint* w) { return "(wifi_endpoint)"; }
-}  // namespace log_scope
+}
 
 WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
                            const WiFiRefPtr& device,

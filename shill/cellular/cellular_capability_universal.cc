@@ -39,12 +39,12 @@ using std::vector;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
 static string ObjectID(CellularCapabilityUniversal* c) {
   return c->cellular()->GetRpcIdentifier().value();
 }
-}  // namespace log_scope
+}  // namespace Logging
 
 // static
 const char CellularCapabilityUniversal::kConnectApn[] = "apn";

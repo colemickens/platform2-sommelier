@@ -75,10 +75,10 @@ using std::vector;
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kManager;
 static string ObjectID(const Manager* m) { return "manager"; }
-}  // namespace log_scope
+}
 
 namespace {
 

@@ -12,12 +12,12 @@
 
 namespace shill {
 
-namespace log_scope {
+namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kProfile;
 static std::string ObjectID(EphemeralProfile* e) {
   return e->GetRpcIdentifier().value();
 }
-}  // namespace log_scope
+}
 
 namespace {
 
