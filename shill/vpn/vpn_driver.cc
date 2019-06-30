@@ -293,7 +293,7 @@ void VPNDriver::OnDefaultServiceStateChanged(const ServiceRefPtr& service) {
 }
 
 string VPNDriver::GetHost() const {
-  return args_.Lookup<string>(kProviderHostProperty, "");
+  return args_.LookupString(kProviderHostProperty, "");
 }
 
 ControlInterface* VPNDriver::control_interface() const {

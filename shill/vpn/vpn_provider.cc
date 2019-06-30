@@ -47,23 +47,23 @@ bool VPNProvider::GetServiceParametersFromArgs(const KeyValueStore& args,
                                                string* host_ptr,
                                                Error* error) {
   SLOG(nullptr, 2) << __func__;
-  string type = args.Lookup<string>(kProviderTypeProperty, "");
+  string type = args.LookupString(kProviderTypeProperty, "");
   if (type.empty()) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kNotSupported, "Missing VPN type property.");
     return false;
   }
 
-  string host = args.Lookup<string>(kProviderHostProperty, "");
+  string host = args.LookupString(kProviderHostProperty, "");
   if (host.empty()) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kNotSupported, "Missing VPN host property.");
     return false;
   }
 
-  *type_ptr = type;
-  *host_ptr = host;
-  *name_ptr = args.Lookup<string>(kNameProperty, "");
+  *type_ptr = type,
+  *host_ptr = host,
+  *name_ptr = args.LookupString(kNameProperty, "");
 
   return true;
 }

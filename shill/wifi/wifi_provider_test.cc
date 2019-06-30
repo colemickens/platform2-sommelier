@@ -413,7 +413,8 @@ class WiFiProviderTest : public testing::Test {
 };
 
 MATCHER(TypeWiFiPropertyMatch, "") {
-  return arg.template Lookup<string>(kTypeProperty, "") == kTypeWifi;
+  return arg.properties().size() == 1 &&
+      arg.LookupString(kTypeProperty, "") == kTypeWifi;
 }
 
 MATCHER_P(RefPtrMatch, ref, "") {
