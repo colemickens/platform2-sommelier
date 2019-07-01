@@ -92,6 +92,8 @@ namespace switches {
                                    "list_keys_ex",
                                    "migrate_key_ex",
                                    "add_key_ex",
+                                   "add_data_restore_key",
+                                   "mass_remove_keys",
                                    "update_key_ex",
                                    "remove",
                                    "obfuscate_user",
@@ -154,6 +156,8 @@ namespace switches {
     ACTION_LIST_KEYS_EX,
     ACTION_MIGRATE_KEY_EX,
     ACTION_ADD_KEY_EX,
+    ACTION_ADD_DATA_RESTORE_KEY,
+    ACTION_MASS_REMOVE_KEYS,
     ACTION_UPDATE_KEY_EX,
     ACTION_REMOVE,
     ACTION_OBFUSCATE_USER,
@@ -235,6 +239,8 @@ namespace switches {
   static const char kKeyPolicyLECredential[] = "le";
   static const char kProfileSwitch[] = "profile";
   static const char kIgnoreCache[] = "ignore_cache";
+  static const char kRestoreKeyInHexSwitch[] = "restore_key_in_hex";
+  static const char kMassRemoveExemptLabelsSwitch[] = "exempt_key_labels";
 }  // namespace switches
 
 #define DBUS_METHOD(method_name) \
@@ -409,12 +415,24 @@ bool BuildAuthorization(base::CommandLine* cl,
                         bool need_password,
                         cryptohome::AuthorizationRequest* auth) {
   if (need_password) {
-    std::string password;
-    GetPassword(proxy, cl, switches::kPasswordSwitch,
-                "Enter the password",
-                &password);
+    // Check if restore key is provided
+    if (cl->HasSwitch(switches::kRestoreKeyInHexSwitch)) {
+      brillo::SecureBlob raw_byte(cl->
+          GetSwitchValueASCII(switches::kRestoreKeyInHexSwitch));
+      if (raw_byte.to_string().length() == 0) {
+        printf("No hex string specified\n");
+        return false;
+      }
+      SecureBlob::HexStringToSecureBlob(raw_byte.to_string(), &raw_byte);
+      auth->mutable_key()->set_secret(raw_byte.to_string());
+    } else {
+      std::string password;
+      GetPassword(proxy, cl, switches::kPasswordSwitch,
+                  "Enter the password",
+                  &password);
 
-    auth->mutable_key()->set_secret(password);
+      auth->mutable_key()->set_secret(password);
+    }
   }
 
   if (cl->HasSwitch(switches::kKeyLabelSwitch)) {
@@ -1067,6 +1085,127 @@ int main(int argc, char **argv) {
       return reply.error();
     }
     printf("Key authenticated.\n");
+  } else if (!strcmp(switches::kActions[switches::ACTION_ADD_DATA_RESTORE_KEY],
+                     action.c_str())) {
+    cryptohome::AccountIdentifier id;
+    if (!BuildAccountId(cl, &id))
+      return 1;
+    cryptohome::AuthorizationRequest auth;
+    if (!BuildAuthorization(cl, proxy, true /* need_password */, &auth))
+      return 1;
+
+    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
+    brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
+    if (!account_ary.get() || !auth_ary.get())
+      return 1;
+
+    cryptohome::BaseReply reply;
+    brillo::glib::ScopedError error;
+    if (cl->HasSwitch(switches::kAsyncSwitch)) {
+      ClientLoop loop;
+      loop.Initialize(&proxy);
+      DBusGProxyCall* call =
+           org_chromium_CryptohomeInterface_add_data_restore_key_async(
+               proxy.gproxy(),
+               account_ary.get(),
+               auth_ary.get(),
+               &ClientLoop::ParseReplyThunk,
+               static_cast<gpointer>(&loop));
+      if (!call)
+        return 1;
+      loop.Run();
+      reply = loop.reply();
+    } else {
+      GArray* out_reply = NULL;
+      if (!org_chromium_CryptohomeInterface_add_data_restore_key(proxy.gproxy(),
+          account_ary.get(),
+          auth_ary.get(),
+          &out_reply,
+          &brillo::Resetter(&error).lvalue())) {
+        printf("Restore key addition failed: %s", error->message);
+        return 1;
+      }
+      ParseBaseReply(out_reply, &reply, true /* print_reply */);
+    }
+    if (reply.has_error()) {
+      printf("Restore key addition failed.\n");
+      return reply.error();
+    }
+    SecureBlob data_restore_key_raw(
+        reply.GetExtension(
+            cryptohome::AddDataRestoreKeyReply::reply)
+        .data_restore_key());
+    printf("Restore key addition succeeded.\n");
+    printf("Here's the data restore key in hex: %s\n",
+        brillo::SecureBlobToSecureHex(data_restore_key_raw)
+            .to_string().c_str());
+  } else if (!strcmp(
+                switches::kActions[switches::ACTION_MASS_REMOVE_KEYS],
+                action.c_str())) {
+    cryptohome::AccountIdentifier id;
+    if (!BuildAccountId(cl, &id))
+      return 1;
+    cryptohome::AuthorizationRequest auth;
+    if (!BuildAuthorization(cl, proxy, true /* need_password */, &auth))
+      return 1;
+
+    cryptohome::MassRemoveKeysRequest mass_remove_keys_request;
+    // Since it's unlikely to have comma in a label string,
+    // exempt_key_labels are seperated by comma from command line input
+    // ( e.g. --exempt_key_labels=label1,label2,label3 )
+    std::vector<std::string> exempt_labels = SplitString(
+        cl->GetSwitchValueASCII(switches::kMassRemoveExemptLabelsSwitch),
+        ",",
+        base::TRIM_WHITESPACE,
+        base::SPLIT_WANT_NONEMPTY);
+    for (std::string label : exempt_labels) {
+      cryptohome::KeyData* data =
+          mass_remove_keys_request.add_exempt_key_data();
+      data->set_label(label);
+    }
+    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
+    brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
+    brillo::glib::ScopedArray req_ary(
+        GArrayFromProtoBuf(mass_remove_keys_request));
+    if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
+      return 1;
+
+    cryptohome::BaseReply reply;
+    brillo::glib::ScopedError error;
+    if (cl->HasSwitch(switches::kAsyncSwitch)) {
+      ClientLoop loop;
+      loop.Initialize(&proxy);
+      DBusGProxyCall* call =
+           org_chromium_CryptohomeInterface_mass_remove_keys_async(
+               proxy.gproxy(),
+               account_ary.get(),
+               auth_ary.get(),
+               req_ary.get(),
+               &ClientLoop::ParseReplyThunk,
+               static_cast<gpointer>(&loop));
+      if (!call)
+        return 1;
+      loop.Run();
+      reply = loop.reply();
+    } else {
+      GArray* out_reply = NULL;
+      if (!org_chromium_CryptohomeInterface_mass_remove_keys(
+          proxy.gproxy(),
+          account_ary.get(),
+          auth_ary.get(),
+          req_ary.get(),
+          &out_reply,
+          &brillo::Resetter(&error).lvalue())) {
+        printf("MassRemoveKeys call failed: %s", error->message);
+        return 1;
+      }
+      ParseBaseReply(out_reply, &reply, true /* print_reply */);
+    }
+    if (reply.has_error()) {
+      printf("MassRemoveKeys failed.\n");
+      return reply.error();
+    }
+    printf("MassRemoveKeys succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MIGRATE_KEY_EX],
                      action.c_str())) {
     std::string account_id, password, old_password;
