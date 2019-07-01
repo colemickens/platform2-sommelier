@@ -285,7 +285,7 @@ void MetricsDaemon::RunUploaderTest() {
   upload_service_.reset(new UploadService(
       new SystemProfileCache(true, config_root_), metrics_lib_, server_));
   upload_service_->Init(upload_interval_, metrics_file_,
-                        true /* is_official_build */);
+                        true /* uploads_enabled */);
   upload_service_->UploadEvent();
 }
 
@@ -470,7 +470,8 @@ int MetricsDaemon::OnInit() {
               << (is_official ? "" : " (dummy mode for unofficial build)");
     upload_service_.reset(
         new UploadService(new SystemProfileCache(), metrics_lib_, server_));
-    upload_service_->Init(upload_interval_, metrics_file_, is_official);
+    upload_service_->Init(upload_interval_, metrics_file_,
+                          is_official /* uploads_enabled */);
   }
 
   return EX_OK;
