@@ -173,7 +173,10 @@ static void sl_data_offer_receive(struct wl_client* client,
   switch (host->ctx->data_driver) {
     case DATA_DRIVER_VIRTWL: {
       struct virtwl_ioctl_new new_pipe = {
-          .type = VIRTWL_IOCTL_NEW_PIPE_READ, .fd = -1, .flags = 0, .size = 0,
+          .type = VIRTWL_IOCTL_NEW_PIPE_READ,
+          .fd = -1,
+          .flags = 0,
+          .size = 0,
       };
       int rv;
 
@@ -306,8 +309,32 @@ static void sl_data_source_cancelled(void* data,
   wl_data_source_send_cancelled(host->resource);
 }
 
+void sl_data_source_dnd_drop_performed(void* data,
+                                       struct wl_data_source* data_source) {
+  struct sl_host_data_source* host = wl_data_source_get_user_data(data_source);
+
+  wl_data_source_send_dnd_drop_performed(host->resource);
+}
+
+void sl_data_source_dnd_finished(void* data,
+                                 struct wl_data_source* data_source) {
+  struct sl_host_data_source* host = wl_data_source_get_user_data(data_source);
+
+  wl_data_source_send_dnd_finished(host->resource);
+}
+
+void sl_data_source_actions(void* data,
+                            struct wl_data_source* data_source,
+                            uint32_t dnd_action) {
+  struct sl_host_data_source* host = wl_data_source_get_user_data(data_source);
+
+  wl_data_source_send_action(host->resource, dnd_action);
+}
+
 static const struct wl_data_source_listener sl_data_source_listener = {
-    sl_data_source_target, sl_data_source_send, sl_data_source_cancelled};
+    sl_data_source_target,       sl_data_source_send,
+    sl_data_source_cancelled,    sl_data_source_dnd_drop_performed,
+    sl_data_source_dnd_finished, sl_data_source_actions};
 
 static void sl_destroy_host_data_source(struct wl_resource* resource) {
   struct sl_host_data_source* host = wl_resource_get_user_data(resource);
