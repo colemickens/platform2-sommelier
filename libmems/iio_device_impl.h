@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/optional.h>
 
@@ -51,13 +52,27 @@ class LIBMEMS_EXPORT IioDeviceImpl : public IioDevice {
 
   IioChannel* GetChannel(const std::string& name) override;
 
+  base::Optional<size_t> GetSampleSize() const override;
+
   bool EnableBuffer(size_t num) override;
   bool DisableBuffer() override;
   bool IsBufferEnabled(size_t* num = nullptr) const override;
 
+  bool ReadEvents(uint32_t num_samples, std::vector<uint8_t>* events) override;
+
  private:
+  static void IioBufferDeleter(iio_buffer* buffer);
+
+  bool CreateBuffer(uint32_t num_samples);
+
   IioContextImpl* context_;  // non-owned
   iio_device* const device_;       // non-owned
+
+  using ScopedBuffer = std::unique_ptr<iio_buffer, decltype(&IioBufferDeleter)>;
+  ScopedBuffer buffer_;
+
+  uint32_t buffer_size_;
+
   std::map<std::string, std::unique_ptr<IioChannelImpl>> channels_;
   DISALLOW_COPY_AND_ASSIGN(IioDeviceImpl);
 };

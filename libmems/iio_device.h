@@ -8,6 +8,7 @@
 #include <iio.h>
 
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
@@ -85,6 +86,10 @@ class LIBMEMS_EXPORT IioDevice {
   // return nullptr if no such channel can be found.
   virtual IioChannel* GetChannel(const std::string& name) = 0;
 
+  // Returns the sample size in this device.
+  // Returns base::nullopt on failure.
+  virtual base::Optional<size_t> GetSampleSize() const = 0;
+
   // Enables the IIO buffer on this device and configures it to return
   // |num| samples on access. It returns false on failure.
   virtual bool EnableBuffer(size_t num) = 0;
@@ -95,6 +100,12 @@ class LIBMEMS_EXPORT IioDevice {
   // Returns true if the IIO buffer is enabled for this device.
   // If it is enabled, it sets |num| to the number of samples.
   virtual bool IsBufferEnabled(size_t* num = nullptr) const = 0;
+
+  // Creates a buffer to read exactly |num_samples| events , and fills |events|
+  // with the samples payload.
+  // Returns false on failure.
+  virtual bool ReadEvents(uint32_t num_samples,
+                          std::vector<uint8_t>* events) = 0;
 
  protected:
   IioDevice() = default;

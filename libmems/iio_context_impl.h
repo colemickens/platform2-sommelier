@@ -31,8 +31,8 @@ class LIBMEMS_EXPORT IioContextImpl : public IioContext {
 
   iio_context* GetCurrentContext() const;
 
-  std::map<std::string, std::unique_ptr<IioDevice>> devices_;
   std::vector<ContextUniquePtr> context_;
+  std::map<std::string, std::unique_ptr<IioDevice>> devices_;
 
   DISALLOW_COPY_AND_ASSIGN(IioContextImpl);
 };

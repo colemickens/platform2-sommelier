@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -12,10 +13,16 @@
 #include "libmems/iio_context_impl.h"
 #include "libmems/iio_device_impl.h"
 
+#define ERROR_BUFFER_SIZE 256
+
 namespace libmems {
 
 IioDeviceImpl::IioDeviceImpl(IioContextImpl* ctx, iio_device* dev)
-    : IioDevice(), context_(ctx), device_(dev) {
+    : IioDevice(),
+      context_(ctx),
+      device_(dev),
+      buffer_(nullptr, IioBufferDeleter),
+      buffer_size_(0) {
   CHECK(context_);
   CHECK(device_);
 }
@@ -135,6 +142,18 @@ IioChannel* IioDeviceImpl::GetChannel(const std::string& name) {
   return channels_[name].get();
 }
 
+base::Optional<size_t> IioDeviceImpl::GetSampleSize() const {
+  ssize_t sample_size = iio_device_get_sample_size(device_);
+  if (sample_size < 0) {
+    char errMsg[ERROR_BUFFER_SIZE];
+    iio_strerror(errno, errMsg, sizeof(errMsg));
+    LOG(WARNING) << "Unable to get sample size: " << errMsg;
+    return base::nullopt;
+  }
+
+  return static_cast<size_t>(sample_size);
+}
+
 bool IioDeviceImpl::EnableBuffer(size_t count) {
   if (!WriteNumberAttribute("buffer/length", count))
     return false;
@@ -154,6 +173,73 @@ bool IioDeviceImpl::IsBufferEnabled(size_t* count) const {
     *count = ReadNumberAttribute("buffer/length").value_or(0);
 
   return enabled;
+}
+
+bool IioDeviceImpl::ReadEvents(uint32_t num_samples,
+                               std::vector<uint8_t>* events) {
+  if (!CreateBuffer(num_samples))
+    return false;
+
+  events->clear();
+
+  ssize_t ret = iio_buffer_refill(buffer_.get());
+  if (ret < 0) {
+    char errMsg[ERROR_BUFFER_SIZE];
+    iio_strerror(-ret, errMsg, sizeof(errMsg));
+    LOG(ERROR) << "Unable to refill buffer: " << errMsg;
+    return false;
+  }
+
+  const auto buf_step = iio_buffer_step(buffer_.get());
+  size_t sample_size = GetSampleSize().value_or(0);
+
+  // There is something wrong when refilling the buffer.
+  if (buf_step != sample_size) {
+    LOG(ERROR) << "sample_size doesn't match in refill: " << buf_step
+               << ", sample_size: " << sample_size;
+
+    return false;
+  }
+
+  uint8_t* start = reinterpret_cast<uint8_t*>(iio_buffer_start(buffer_.get()));
+  size_t len = reinterpret_cast<intptr_t>(iio_buffer_end(buffer_.get())) -
+               reinterpret_cast<intptr_t>(start);
+
+  events->reserve(len);
+  events->insert(events->begin(), start, start + len);
+
+  return true;
+}
+
+// static
+void IioDeviceImpl::IioBufferDeleter(iio_buffer* buffer) {
+  iio_buffer_cancel(buffer);
+  iio_buffer_destroy(buffer);
+}
+
+bool IioDeviceImpl::CreateBuffer(uint32_t num_samples) {
+  if (num_samples == 0) {
+    LOG(WARNING) << "Buffer size should not be zero.";
+    return false;
+  }
+
+  if (buffer_ && num_samples == buffer_size_ &&
+      iio_device_get_sample_size(device_) == iio_buffer_step(buffer_.get()))
+    return true;
+
+  buffer_size_ = num_samples;
+
+  buffer_.reset();
+  buffer_.reset(iio_device_create_buffer(device_, num_samples, false));
+
+  if (!buffer_) {
+    char errMsg[ERROR_BUFFER_SIZE];
+    iio_strerror(errno, errMsg, sizeof(errMsg));
+    LOG(ERROR) << "Unable to allocate buffer: " << errMsg;
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace libmems
