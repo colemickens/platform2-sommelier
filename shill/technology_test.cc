@@ -23,6 +23,8 @@ TEST(TechnologyTest, CreateFromName) {
   EXPECT_EQ(Technology::kLoopback, Technology::CreateFromName("loopback"));
   EXPECT_EQ(Technology::kVPN, Technology::CreateFromName("vpn"));
   EXPECT_EQ(Technology::kPPP, Technology::CreateFromName("ppp"));
+  EXPECT_EQ(Technology::kGuestInterface,
+            Technology::CreateFromName("guest_interface"));
   EXPECT_EQ(Technology::kUnknown, Technology::CreateFromName("bluetooth"));
   EXPECT_EQ(Technology::kUnknown, Technology::CreateFromName("foo"));
   EXPECT_EQ(Technology::kUnknown, Technology::CreateFromName(""));
@@ -38,6 +40,8 @@ TEST(TechnologyTest, GetName) {
   EXPECT_EQ("vpn", Technology(Technology::kVPN).GetName());
   EXPECT_EQ("ppp", Technology(Technology::kPPP).GetName());
   EXPECT_EQ("pppoe", Technology(Technology::kPPPoE).GetName());
+  EXPECT_EQ("guest_interface",
+            Technology(Technology::kGuestInterface).GetName());
   EXPECT_EQ("unknown", Technology(Technology::kUnknown).GetName());
 }
 

@@ -26,6 +26,7 @@ namespace {
 constexpr char kLoopbackName[] = "loopback";
 constexpr char kTunnelName[] = "tunnel";
 constexpr char kPPPName[] = "ppp";
+constexpr char kGuestInterfaceName[] = "guest_interface";
 constexpr char kUnknownName[] = "unknown";
 
 }  // namespace
@@ -90,6 +91,8 @@ Technology Technology::CreateFromName(const string& name) {
     return kTunnel;
   } else if (name == kPPPName) {
     return kPPP;
+  } else if (name == kGuestInterfaceName) {
+    return kGuestInterface;
   } else {
     return kUnknown;
   }
@@ -124,6 +127,8 @@ string Technology::GetName() const {
     return kPPPName;
   } else if (type_ == kPPPoE) {
     return kTypePPPoE;
+  } else if (type_ == kGuestInterface) {
+    return kGuestInterfaceName;
   } else {
     return kUnknownName;
   }
