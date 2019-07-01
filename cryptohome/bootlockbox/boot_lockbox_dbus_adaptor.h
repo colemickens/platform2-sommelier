@@ -10,6 +10,11 @@
 
 #include "cryptohome/bootlockbox/nvram_boot_lockbox.h"
 
+// Note that boot_lockbox_rpc.pb.h have to be included before
+// dbus_adaptors/org.chromium.BootLockboxInterface.h because it is used in
+// there.
+#include "boot_lockbox_rpc.pb.h"  // NOLINT(build/include)
+
 #include "dbus_adaptors/org.chromium.BootLockboxInterface.h"
 
 namespace cryptohome {
@@ -27,21 +32,23 @@ class BootLockboxDBusAdaptor
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
   // Stores a digest in bootlockbox.
-  void StoreBootLockbox(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                            std::vector<uint8_t>>> response,
-                        const std::vector<uint8_t>& in_request) override;
+  void StoreBootLockbox(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          cryptohome::BootLockboxBaseReply>> response,
+      const cryptohome::StoreBootLockboxRequest& in_request) override;
 
   // Reads a digest from bootlockbox.
-  void ReadBootLockbox(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                           std::vector<uint8_t>>> response,
-                       const std::vector<uint8_t>& in_request) override;
+  void ReadBootLockbox(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          cryptohome::BootLockboxBaseReply>> response,
+      const cryptohome::ReadBootLockboxRequest& in_request) override;
 
   // Finalizes the BootLockbox and locks the signing key. |response| is of type
   // BaseReply.
   void FinalizeBootLockbox(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          std::vector<uint8_t>>> response,
-      const std::vector<uint8_t>& in_request) override;
+          cryptohome::BootLockboxBaseReply>> response,
+      const cryptohome::FinalizeNVRamBootLockboxRequest& in_request) override;
 
  private:
   NVRamBootLockbox* boot_lockbox_;

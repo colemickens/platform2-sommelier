@@ -24,14 +24,6 @@ brillo::ErrorPtr CreateError(const std::string& code,
                                code, message);
 }
 
-// Serializes BaseReply protobuf to vector.
-std::vector<uint8_t> ReplyToVector(
-    const cryptohome::BootLockboxBaseReply& reply) {
-  std::vector<uint8_t> reply_vec(reply.ByteSize());
-  reply.SerializeToArray(reply_vec.data(), reply_vec.size());
-  return reply_vec;
-}
-
 }  // namespace
 
 namespace cryptohome {
@@ -52,12 +44,10 @@ void BootLockboxDBusAdaptor::RegisterAsync(
 }
 
 void BootLockboxDBusAdaptor::StoreBootLockbox(
-    std::unique_ptr<
-        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
-    const std::vector<uint8_t>& in_request) {
-  cryptohome::StoreBootLockboxRequest request_pb;
-  if (!request_pb.ParseFromArray(in_request.data(), in_request.size()) ||
-      !request_pb.has_key() || !request_pb.has_data()) {
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        cryptohome::BootLockboxBaseReply>> response,
+    const cryptohome::StoreBootLockboxRequest& in_request) {
+  if (!in_request.has_key() || !in_request.has_data()) {
     brillo::ErrorPtr error =
         CreateError(DBUS_ERROR_INVALID_ARGS,
                     "StoreBootLockboxRequest has invalid argument(s).");
@@ -66,19 +56,17 @@ void BootLockboxDBusAdaptor::StoreBootLockbox(
   }
 
   cryptohome::BootLockboxBaseReply reply;
-  if (!boot_lockbox_->Store(request_pb.key(), request_pb.data())) {
+  if (!boot_lockbox_->Store(in_request.key(), in_request.data())) {
     reply.set_error(cryptohome::BOOTLOCKBOX_ERROR_CANNOT_STORE);
   }
-  response->Return(ReplyToVector(reply));
+  response->Return(reply);
 }
 
 void BootLockboxDBusAdaptor::ReadBootLockbox(
-    std::unique_ptr<
-        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
-    const std::vector<uint8_t>& in_request) {
-  cryptohome::ReadBootLockboxRequest request_pb;
-  if (!request_pb.ParseFromArray(in_request.data(), in_request.size()) ||
-      !request_pb.has_key()) {
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        cryptohome::BootLockboxBaseReply>> response,
+    const cryptohome::ReadBootLockboxRequest& in_request) {
+  if (!in_request.has_key()) {
     brillo::ErrorPtr error =
         CreateError(DBUS_ERROR_INVALID_ARGS,
                     "ReadBootLockboxRequest has invalid argument(s).");
@@ -87,31 +75,24 @@ void BootLockboxDBusAdaptor::ReadBootLockbox(
   }
   cryptohome::BootLockboxBaseReply reply;
   std::string data;
-  if (!boot_lockbox_->Read(request_pb.key(), &data)) {
+  if (!boot_lockbox_->Read(in_request.key(), &data)) {
     reply.set_error(cryptohome::BOOTLOCKBOX_ERROR_CANNOT_READ);
   } else {
     reply.MutableExtension(cryptohome::ReadBootLockboxReply::reply)
         ->set_data(data);
   }
-  response->Return(ReplyToVector(reply));
+  response->Return(reply);
 }
 
 void BootLockboxDBusAdaptor::FinalizeBootLockbox(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-      std::vector<uint8_t>>> response,
-    const std::vector<uint8_t>& in_request) {
-  cryptohome::FinalizeNVRamBootLockboxRequest request_pb;
-  if (!request_pb.ParseFromArray(in_request.data(), in_request.size())) {
-    brillo::ErrorPtr error = CreateError(DBUS_ERROR_INVALID_ARGS,
-        "FinalizeBootLockbox has invalid argument(s).");
-    response->ReplyWithError(error.get());
-    return;
-  }
+        cryptohome::BootLockboxBaseReply>> response,
+    const cryptohome::FinalizeNVRamBootLockboxRequest& in_request) {
   cryptohome::BootLockboxBaseReply reply;
   if (!boot_lockbox_->Finalize()) {
     reply.set_error(cryptohome::BOOTLOCKBOX_ERROR_TPM_COMM_ERROR);
   }
-  response->Return(ReplyToVector(reply));
+  response->Return(reply);
 }
 
 }  // namespace cryptohome

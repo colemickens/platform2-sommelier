@@ -14,8 +14,14 @@
     -->
     <method name="StoreBootLockbox">
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::StoreBootLockboxRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BootLockboxBaseReply" />
+      </arg>
     </method>
     <!-- May be called asynchronously. Both arguments are protobufs:
          request: ReadBootLockboxRequest
@@ -23,8 +29,14 @@
     -->
     <method name="ReadBootLockbox">
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::ReadBootLockboxRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BootLockboxBaseReply" />
+      </arg>
     </method>
    <!-- May be called asynchronously.  Both arguments are protobufs:
          request: FinalizeBootLockboxRequest
@@ -32,8 +44,14 @@
     -->
     <method name="FinalizeBootLockbox">
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
-      <arg type="ay" name="request" direction="in" />
-      <arg type="ay" name="reply" direction="out" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::FinalizeNVRamBootLockboxRequest" />
+      </arg>
+      <arg type="ay" name="reply" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="cryptohome::BootLockboxBaseReply" />
+      </arg>
     </method>
   </interface>
 </node>

@@ -98,41 +98,35 @@ TEST_F(BootLockboxDBusAdaptorTest, StoreBootLockbox) {
   cryptohome::StoreBootLockboxRequest store_request;
   store_request.set_key("test_key");
   store_request.set_data("test_data");
-  std::vector<uint8_t> request_array(store_request.ByteSize());
-  store_request.SerializeToArray(request_array.data(), request_array.size());
 
   EXPECT_CALL(boot_lockbox_, Store("test_key", "test_data"))
       .WillOnce(Return(true));
   ResponseCapturer capturer;
   boot_lockbox_dbus_adaptor_->StoreBootLockbox(
-      capturer.CreateMethodResponse<std::vector<uint8_t>>(),
-      request_array);
+      capturer.CreateMethodResponse<cryptohome::BootLockboxBaseReply>(),
+      store_request);
 }
 
 TEST_F(BootLockboxDBusAdaptorTest, ReadBootLockbox) {
   // Read the data back.
   cryptohome::ReadBootLockboxRequest read_request;
   read_request.set_key("test_key");
-  std::vector<uint8_t> read_request_array(read_request.ByteSize());
-  read_request.SerializeToArray(read_request_array.data(),
-                                read_request_array.size());
+
   EXPECT_CALL(boot_lockbox_, Read("test_key", _))
       .WillOnce(Return(true));
   ResponseCapturer capturer;
   boot_lockbox_dbus_adaptor_->ReadBootLockbox(
-      capturer.CreateMethodResponse<std::vector<uint8_t>>(),
-      read_request_array);
+      capturer.CreateMethodResponse<cryptohome::BootLockboxBaseReply>(),
+      read_request);
 }
 
 TEST_F(BootLockboxDBusAdaptorTest, FinalizeBootLockbox) {
   cryptohome::FinalizeNVRamBootLockboxRequest request;
-  std::vector<uint8_t> request_array(request.ByteSize());
-  request.SerializeToArray(request_array.data(), request_array.size());
   EXPECT_CALL(boot_lockbox_, Finalize());
   ResponseCapturer capturer;
   boot_lockbox_dbus_adaptor_->FinalizeBootLockbox(
-      capturer.CreateMethodResponse<std::vector<uint8_t>>(),
-      request_array);
+      capturer.CreateMethodResponse<cryptohome::BootLockboxBaseReply>(),
+      request);
 }
 
 }  // namespace cryptohome

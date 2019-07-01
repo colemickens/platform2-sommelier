@@ -13,9 +13,12 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus.h>
 
-#include "bootlockbox/dbus-proxies.h"
-
+// Note that boot_lockbox_rpc.pb.h have to be included before
+// dbus_adaptors/org.chromium.BootLockboxInterface.h because it is used in
+// there.
 #include "boot_lockbox_rpc.pb.h"  // NOLINT(build/include)
+
+#include "bootlockbox/dbus-proxies.h"
 
 namespace cryptohome {
 
@@ -49,22 +52,15 @@ bool BootLockboxClient::Store(const std::string& key,
   cryptohome::StoreBootLockboxRequest request;
   request.set_key(key);
   request.set_data(digest);
-  std::vector<uint8_t> request_array(request.ByteSize());
-  CHECK(request.SerializeToArray(request_array.data(), request_array.size()));
 
-  std::vector<uint8_t> reply_array;
+  cryptohome::BootLockboxBaseReply reply;
   brillo::ErrorPtr error;
-  if (!bootlockbox_->StoreBootLockbox(request_array, &reply_array, &error)) {
+  if (!bootlockbox_->StoreBootLockbox(request, &reply, &error)) {
     LOG(ERROR) << "Failed to call StoreBootLockbox, error: "
                << error->GetMessage();
     return false;
   }
 
-  cryptohome::BootLockboxBaseReply reply;
-  if (!reply.ParseFromArray(reply_array.data(), reply_array.size())) {
-    LOG(ERROR) << "Failed to parse StoreBootLockbox Reply";
-    return false;
-  }
   if (reply.has_error()) {
     LOG(ERROR) << "Failed to call Store, error code: " << reply.error();
     return false;
@@ -80,20 +76,12 @@ bool BootLockboxClient::Read(const std::string& key,
   base::ElapsedTimer timer;
   cryptohome::ReadBootLockboxRequest request;
   request.set_key(key);
-  std::vector<uint8_t> request_array(request.ByteSize());
-  CHECK(request.SerializeToArray(request_array.data(), request_array.size()));
-
-  std::vector<uint8_t> reply_array;
-  brillo::ErrorPtr error;
-  if (!bootlockbox_->ReadBootLockbox(request_array, &reply_array, &error)) {
-    LOG(ERROR) << "Failed to call ReadBootLockbox, error: "
-               << error->GetMessage();
-    return false;
-  }
 
   cryptohome::BootLockboxBaseReply base_reply;
-  if (!base_reply.ParseFromArray(reply_array.data(), reply_array.size())) {
-    LOG(ERROR) << "Failed to parse ReadBootLockbox reply";
+  brillo::ErrorPtr error;
+  if (!bootlockbox_->ReadBootLockbox(request, &base_reply, &error)) {
+    LOG(ERROR) << "Failed to call ReadBootLockbox, error: "
+               << error->GetMessage();
     return false;
   }
 
@@ -119,19 +107,11 @@ bool BootLockboxClient::Read(const std::string& key,
 bool BootLockboxClient::Finalize() {
   base::ElapsedTimer timer;
   cryptohome::FinalizeNVRamBootLockboxRequest request;
-  std::vector<uint8_t> request_array(request.ByteSize());
-  CHECK(request.SerializeToArray(request_array.data(), request_array.size()));
-
-  std::vector<uint8_t> reply_array;
-  brillo::ErrorPtr error;
-  if (!bootlockbox_->FinalizeBootLockbox(request_array, &reply_array, &error)) {
-    LOG(ERROR) << "Failed to call FinalizeBootLockbox";
-    return false;
-  }
 
   cryptohome::BootLockboxBaseReply base_reply;
-  if (!base_reply.ParseFromArray(reply_array.data(), reply_array.size())) {
-    LOG(ERROR) << "Failed to parse FinalizeBootLockbox reply";
+  brillo::ErrorPtr error;
+  if (!bootlockbox_->FinalizeBootLockbox(request, &base_reply, &error)) {
+    LOG(ERROR) << "Failed to call FinalizeBootLockbox";
     return false;
   }
 
