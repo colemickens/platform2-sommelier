@@ -12,6 +12,7 @@
 #include <base/macros.h>
 #include <brillo/proto_file_io.h>
 
+#include "modemfwd/logging.h"
 #include "modemfwd/modem_helper.h"
 #include "modemfwd/proto_bindings/helper_manifest.pb.h"
 
@@ -38,7 +39,7 @@ class ModemHelperDirectoryImpl : public ModemHelperDirectory {
 
       auto helper = CreateModemHelper(helper_info);
       for (const std::string& device_id : entry.device_id()) {
-        DLOG(INFO) << "Adding helper " << helper_info.executable_path.value()
+        ELOG(INFO) << "Adding helper " << helper_info.executable_path.value()
                    << " for [" << device_id << "]";
         helpers_by_id_[device_id] = helper.get();
       }

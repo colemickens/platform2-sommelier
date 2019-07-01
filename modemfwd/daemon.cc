@@ -15,6 +15,7 @@
 #include <base/time/time.h>
 
 #include "modemfwd/firmware_directory.h"
+#include "modemfwd/logging.h"
 #include "modemfwd/modem.h"
 #include "modemfwd/modem_flasher.h"
 #include "modemfwd/modem_helper_directory.h"
@@ -104,7 +105,7 @@ void Daemon::OnModemAppeared(
     return;
 
   std::string equipment_id = modem->GetEquipmentId();
-  DLOG(INFO) << "Modem appeared with equipment ID \"" << equipment_id << "\"";
+  ELOG(INFO) << "Modem appeared with equipment ID \"" << equipment_id << "\"";
   if (modem_reappear_callbacks_.count(equipment_id) > 0) {
     modem_reappear_callbacks_[equipment_id].Run();
     modem_reappear_callbacks_.erase(equipment_id);

@@ -13,6 +13,7 @@
 #include <cros_config/cros_config.h>
 
 #include "modemfwd/firmware_manifest.h"
+#include "modemfwd/logging.h"
 
 namespace modemfwd {
 
@@ -61,7 +62,7 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
     DeviceType type{device_id, variant_};
     auto device_it = index_.find(type);
     if (device_it == index_.end()) {
-      DLOG(INFO) << "Firmware directory has no firmware for device ID ["
+      ELOG(INFO) << "Firmware directory has no firmware for device ID ["
                  << device_id << "]";
       return result;
     }

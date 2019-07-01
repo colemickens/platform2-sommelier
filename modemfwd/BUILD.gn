@@ -52,6 +52,7 @@ static_library("libmodemfw") {
     "firmware_manifest.cc",
     "firmware_manifest_v2.cc",
     "journal.cc",
+    "logging.cc",
     "modem.cc",
     "modem_flasher.cc",
     "modem_helper.cc",

@@ -10,6 +10,7 @@
 #include <base/stl_util.h>
 
 #include "modemfwd/firmware_file.h"
+#include "modemfwd/logging.h"
 #include "modemfwd/modem.h"
 
 namespace modemfwd {
@@ -39,7 +40,7 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
   if (flash_state->ShouldFlashMainFirmware() &&
       files.main_firmware.has_value()) {
     const FirmwareFileInfo& file_info = files.main_firmware.value();
-    DLOG(INFO) << "Found main firmware blob " << file_info.version
+    ELOG(INFO) << "Found main firmware blob " << file_info.version
                << ", currently installed main firmware version: "
                << modem->GetMainFirmwareVersion();
     if (file_info.version == modem->GetMainFirmwareVersion()) {
@@ -58,7 +59,7 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
       if (modem->FlashMainFirmware(firmware_file.path_on_filesystem())) {
         // Refer to |firmware_file.path_for_logging()| in the log and journal.
         flash_state->OnFlashedMainFirmware();
-        DLOG(INFO) << "Flashed " << firmware_file.path_for_logging().value()
+        ELOG(INFO) << "Flashed " << firmware_file.path_for_logging().value()
                    << " to the modem";
         return base::Bind(&Journal::MarkEndOfFlashingMainFirmware,
                           base::Unretained(journal_.get()), device_id,
@@ -73,24 +74,24 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
 
   // If there's no SIM, we can stop here.
   if (current_carrier.empty()) {
-    DLOG(INFO) << "No carrier found. Is a SIM card inserted?";
+    ELOG(INFO) << "No carrier found. Is a SIM card inserted?";
     return base::Closure();
   }
 
   // Check if we have carrier firmware matching the SIM's carrier. If not,
   // there's nothing to flash.
   if (!files.carrier_firmware.has_value()) {
-    DLOG(INFO) << "No carrier firmware found for carrier " << current_carrier;
+    ELOG(INFO) << "No carrier firmware found for carrier " << current_carrier;
     return base::Closure();
   }
 
   const FirmwareFileInfo& file_info = files.carrier_firmware.value();
   if (!flash_state->ShouldFlashCarrierFirmware(file_info.firmware_path)) {
-    DLOG(INFO) << "Already flashed carrier firmware for " << current_carrier;
+    ELOG(INFO) << "Already flashed carrier firmware for " << current_carrier;
     return base::Closure();
   }
 
-  DLOG(INFO) << "Found carrier firmware blob " << file_info.version
+  ELOG(INFO) << "Found carrier firmware blob " << file_info.version
              << " for carrier " << current_carrier;
 
   // Carrier firmware operates a bit differently. We need to flash if
@@ -100,10 +101,10 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
   std::string carrier_fw_version = modem->GetCarrierFirmwareVersion();
   bool has_carrier_fw = !(carrier_fw_id.empty() || carrier_fw_version.empty());
   if (has_carrier_fw) {
-    DLOG(INFO) << "Currently installed carrier firmware version "
+    ELOG(INFO) << "Currently installed carrier firmware version "
                << carrier_fw_version << " for carrier " << carrier_fw_id;
   } else {
-    DLOG(INFO) << "No carrier firmware is currently installed";
+    ELOG(INFO) << "No carrier firmware is currently installed";
   }
 
   if (!has_carrier_fw || carrier_fw_id != current_carrier ||
@@ -116,7 +117,7 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
     if (modem->FlashCarrierFirmware(firmware_file.path_on_filesystem())) {
       // Refer to |firmware_file.path_for_logging()| in the log and journal.
       flash_state->OnFlashedCarrierFirmware(firmware_file.path_for_logging());
-      DLOG(INFO) << "Flashed " << firmware_file.path_for_logging().value()
+      ELOG(INFO) << "Flashed " << firmware_file.path_for_logging().value()
                  << " to the modem";
       return base::Bind(&Journal::MarkEndOfFlashingCarrierFirmware,
                         base::Unretained(journal_.get()), device_id,
