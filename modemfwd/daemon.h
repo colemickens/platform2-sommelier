@@ -12,7 +12,9 @@
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
+#include <dbus/bus.h>
 
+#include "modemfwd/dbus_adaptors/org.chromium.Modemfwd.h"
 #include "modemfwd/journal.h"
 #include "modemfwd/modem.h"
 #include "modemfwd/modem_flasher.h"
@@ -20,7 +22,24 @@
 
 namespace modemfwd {
 
-class Daemon : public brillo::DBusDaemon {
+class DBusAdaptor : public org::chromium::ModemfwdInterface,
+                    public org::chromium::ModemfwdAdaptor {
+ public:
+  explicit DBusAdaptor(scoped_refptr<dbus::Bus> bus);
+
+  void RegisterAsync(
+      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+
+  // org::chromium::ModemfwdInterface overrides.
+  void SetDebugMode(bool debug_mode) override;
+
+ private:
+  brillo::dbus_utils::DBusObject dbus_object_;
+
+  DISALLOW_COPY_AND_ASSIGN(DBusAdaptor);
+};
+
+class Daemon : public brillo::DBusServiceDaemon {
  public:
   // Constructor for Daemon which loads the cellular DLC to get firmware.
   Daemon(const std::string& journal_file, const std::string& helper_directory);
@@ -35,6 +54,10 @@ class Daemon : public brillo::DBusDaemon {
   // brillo::Daemon overrides.
   int OnInit() override;
   int OnEventLoopStarted() override;
+
+  // brillo::DBusServiceDaemon overrides.
+  void RegisterDBusObjectsAsync(
+      brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
  private:
   // Once we have a path for the firmware directory we can set up the
@@ -57,6 +80,8 @@ class Daemon : public brillo::DBusDaemon {
   std::unique_ptr<ModemFlasher> modem_flasher_;
 
   std::map<std::string, base::Closure> modem_reappear_callbacks_;
+
+  std::unique_ptr<DBusAdaptor> dbus_adaptor_;
 
   base::WeakPtrFactory<Daemon> weak_ptr_factory_;
 

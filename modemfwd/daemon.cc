@@ -13,6 +13,7 @@
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/time/time.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "modemfwd/firmware_directory.h"
 #include "modemfwd/logging.h"
@@ -21,7 +22,30 @@
 #include "modemfwd/modem_helper_directory.h"
 #include "modemfwd/modem_tracker.h"
 
+namespace {
+
+std::string ToOnOffString(bool b) {
+  return b ? "on" : "off";
+}
+
+}  // namespace
+
 namespace modemfwd {
+
+DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus)
+    : org::chromium::ModemfwdAdaptor(this),
+      dbus_object_(nullptr, bus, dbus::ObjectPath(kModemfwdServicePath)) {}
+
+void DBusAdaptor::RegisterAsync(
+    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+  RegisterWithDBusObject(&dbus_object_);
+  dbus_object_.RegisterAsync(cb);
+}
+
+void DBusAdaptor::SetDebugMode(bool debug_mode) {
+  g_extra_logging = debug_mode;
+  LOG(INFO) << "Debug mode is now " << ToOnOffString(ELOG_IS_ON());
+}
 
 Daemon::Daemon(const std::string& journal_file,
                const std::string& helper_directory)
@@ -30,13 +54,14 @@ Daemon::Daemon(const std::string& journal_file,
 Daemon::Daemon(const std::string& journal_file,
                const std::string& helper_directory,
                const std::string& firmware_directory)
-    : journal_file_path_(journal_file),
+    : DBusServiceDaemon(kModemfwdServiceName),
+      journal_file_path_(journal_file),
       helper_dir_path_(helper_directory),
       firmware_dir_path_(firmware_directory),
       weak_ptr_factory_(this) {}
 
 int Daemon::OnInit() {
-  int exit_code = brillo::DBusDaemon::OnInit();
+  int exit_code = brillo::DBusServiceDaemon::OnInit();
   if (exit_code != EX_OK)
     return exit_code;
   DCHECK(!helper_dir_path_.empty());
@@ -115,6 +140,13 @@ void Daemon::OnModemAppeared(
   base::Closure cb = modem_flasher_->TryFlash(modem.get());
   if (!cb.is_null())
     modem_reappear_callbacks_[equipment_id] = cb;
+}
+
+void Daemon::RegisterDBusObjectsAsync(
+    brillo::dbus_utils::AsyncEventSequencer* sequencer) {
+  dbus_adaptor_.reset(new DBusAdaptor(bus_));
+  dbus_adaptor_->RegisterAsync(
+      sequencer->GetHandler("RegisterAsync() failed", true));
 }
 
 }  // namespace modemfwd
