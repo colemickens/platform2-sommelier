@@ -5,6 +5,7 @@
 #include "cryptohome/signature_sealing_backend_tpm1_impl.h"
 
 #include <algorithm>
+#include <iterator>
 #include <string>
 #include <utility>
 
@@ -839,10 +840,10 @@ crypto::ScopedRSA ExtractCmkPrivateKeyFromMigratedBlob(
   // Perform the RSA OAEP decryption of the encrypted TPM_MIGRATE_ASYMKEY blob,
   // using the custom OAEP label parameter as prescribed by the TPM 1.2 specs.
   SecureBlob decrypted_tpm_migrate_asymkey_blob;
-  if (!CryptoLib::RsaOaepDecrypt(SecureBlob(encrypted_tpm_migrate_asymkey_blob),
-                                 SecureBlob(kTpmRsaOaepLabel),
-                                 migration_destination_rsa,
-                                 &decrypted_tpm_migrate_asymkey_blob)) {
+  if (!CryptoLib::RsaOaepDecrypt(
+          SecureBlob(encrypted_tpm_migrate_asymkey_blob),
+          SecureBlob(std::begin(kTpmRsaOaepLabel), std::end(kTpmRsaOaepLabel)),
+          migration_destination_rsa, &decrypted_tpm_migrate_asymkey_blob)) {
     LOG(ERROR)
         << "Failed to RSA-decrypt the encrypted TPM_MIGRATE_ASYMKEY blob";
     return nullptr;
