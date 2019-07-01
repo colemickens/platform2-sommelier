@@ -139,11 +139,8 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--arc-transition-migration-required");
   if (builder->UseFlagIsSet("arc_force_2x_scaling"))
     builder->AddArg("--force-remote-shell-scale=2");
-  if (builder->UseFlagIsSet("arcvm")) {
+  if (builder->UseFlagIsSet("arcvm"))
     builder->AddArg("--enable-arcvm");
-    // TODO(b:120576081): Support opt-in and remove the flag.
-    builder->AddArg("--disable-arc-opt-in-verification");
-  }
 }
 
 void AddCrostiniFlags(ChromiumCommandBuilder* builder) {
