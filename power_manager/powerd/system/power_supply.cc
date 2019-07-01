@@ -81,6 +81,29 @@ double ReadScaledDouble(const base::FilePath& directory,
                                                 : 0.0;
 }
 
+// Returns the string surrounded by brackets via the |out| parameter.
+// For example, returns "fun" given the string: "This format is not so [fun]"
+// The return value is a boolean indicating true on success or false on failure.
+bool ReadBracketSelectedString(const base::FilePath& directory,
+                               const std::string& filename,
+                               std::string* out) {
+  std::string buffer;
+
+  DCHECK(out);
+
+  if (!ReadAndTrimString(directory, filename, &buffer))
+    return false;
+  size_t start = buffer.find("[");
+  if (start == std::string::npos)
+    return false;
+  start++;
+  size_t end = buffer.find("]", start);
+  if (end == std::string::npos)
+    return false;
+  *out = buffer.substr(start, end - start);
+  return true;
+}
+
 // Returns true if |type|, a power supply type read from a "type" file in
 // sysfs, indicates USB BC1.2 types.
 bool IsLowPowerUsbChargerType(const std::string& type) {
@@ -88,10 +111,25 @@ bool IsLowPowerUsbChargerType(const std::string& type) {
          type == PowerSupply::kUsbCdpType || type == PowerSupply::kUsbAcaType;
 }
 
+// Returns true if |type| ends with with the PD_DRP common suffix.
+bool IsPdDrpType(const std::string& type) {
+  return base::EndsWith(type, PowerSupply::kUsbPdDrpType,
+                        base::CompareCase::SENSITIVE);
+}
+
 // Returns true if |type|, a power supply type read from a "type" file in
 // sysfs, indicates USB_PD_DRP, meaning a USB Power Delivery Dual Role Port.
-bool IsDualRoleType(const std::string& type) {
-  return type == PowerSupply::kUsbPdDrpType;
+bool IsDualRoleType(const std::string& type, const base::FilePath& path) {
+  // 4.19+ kernels have the type as just "USB", and an extra usb_type file
+  // in the form:
+  // Unknown SDP DCP CDP C PD [PD_DRP] BrickID
+  if (type == PowerSupply::kUsbType) {
+    std::string usb_type;
+    if (ReadBracketSelectedString(path, "usb_type", &usb_type))
+      return IsPdDrpType(usb_type);
+  }
+
+  return IsPdDrpType(type);
 }
 
 // Returns true if |path|, a sysfs directory, corresponds to an external
@@ -169,8 +207,7 @@ PowerSupplyProperties::PowerSource::Type GetPowerSourceTypeFromString(
   if (type == PowerSupply::kMainsType) {
     return PowerSupplyProperties_PowerSource_Type_MAINS;
   } else if (type == PowerSupply::kUsbCType ||
-             type == PowerSupply::kUsbPdType ||
-             type == PowerSupply::kUsbPdDrpType ||
+             type == PowerSupply::kUsbPdType || IsPdDrpType(type) ||
              type == PowerSupply::kBrickIdType) {
     return PowerSupplyProperties_PowerSource_Type_USB_C;
   } else if (type == PowerSupply::kUsbType ||
@@ -335,7 +372,7 @@ metrics::PowerSupplyType GetPowerSupplyTypeMetric(const std::string& type) {
     return metrics::PowerSupplyType::USB_C;
   else if (type == PowerSupply::kUsbPdType)
     return metrics::PowerSupplyType::USB_PD;
-  else if (type == PowerSupply::kUsbPdDrpType)
+  else if (IsPdDrpType(type))
     return metrics::PowerSupplyType::USB_PD_DRP;
   else if (type == PowerSupply::kBrickIdType)
     return metrics::PowerSupplyType::BRICK_ID;
@@ -416,7 +453,9 @@ const char PowerSupply::kUsbCdpType[] = "USB_CDP";
 const char PowerSupply::kUsbDcpType[] = "USB_DCP";
 const char PowerSupply::kUsbCType[] = "USB_C";
 const char PowerSupply::kUsbPdType[] = "USB_PD";
-const char PowerSupply::kUsbPdDrpType[] = "USB_PD_DRP";
+// Cover both USB_PD_DRP in the "type" file of older kernels, as well as
+// PD_DRP in the "usb_type" file of 4.19+ kernels.
+const char PowerSupply::kUsbPdDrpType[] = "PD_DRP";
 const char PowerSupply::kBrickIdType[] = "BrickID";
 
 const char PowerSupply::kBatteryStatusCharging[] = "Charging";
@@ -768,7 +807,8 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   ReadAndTrimString(path, "type", &port->type);
   if (port->type == kUnknownType)
     return;
-  const bool dual_role_connected = IsDualRoleType(port->type);
+
+  const bool dual_role_connected = IsDualRoleType(port->type, path);
 
   // If "online" is 0, nothing is connected unless it is USB_PD_DRP, in which
   // case a value of 0 indicates we're connected to a dual-role device but not
