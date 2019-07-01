@@ -2,5 +2,42 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/pkg_config.gni")
+
 group("all") {
+  deps = [
+    ":tpm_softclear",
+  ]
+}
+
+executable("tpm_softclear") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "main.cc",
+  ]
+  deps = [
+    ":utility_library",
+  ]
+}
+
+pkg_config("target_defaults") {
+  if (use.tpm2) {
+    defines = [ "USE_TPM2" ]
+  }
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+static_library("utility_library") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "tpm.cc",
+  ]
+  if (use.tpm2) {
+    sources += [ "tpm2_impl.cc" ]
+  } else {
+    sources += [ "tpm_impl.cc" ]
+  }
 }
