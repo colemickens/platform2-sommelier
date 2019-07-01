@@ -211,8 +211,14 @@ grpc::Status TremplinListenerImpl::UpdateExportStatus(
       static_cast<ExportLxdContainerProgressSignal::Status>(request->status()));
   progress_signal.set_container_name(request->container_name());
   progress_signal.set_progress_percent(request->progress_percent());
+  // TODO(juwa): progress_percent and progress_speed are deprecated and can be
+  // removed when crosreview.com/1681479 lands.
   progress_signal.set_progress_speed(request->progress_speed());
   progress_signal.set_failure_reason(request->failure_reason());
+  progress_signal.set_total_input_files(request->total_input_files());
+  progress_signal.set_total_input_bytes(request->total_input_bytes());
+  progress_signal.set_input_files_streamed(request->input_files_streamed());
+  progress_signal.set_input_bytes_streamed(request->input_bytes_streamed());
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool result = false;
