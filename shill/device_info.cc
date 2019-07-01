@@ -1228,7 +1228,8 @@ void DeviceInfo::DelayedDeviceCreationTask() {
         technology = Technology::kEthernet;
       }
     } else if (technology != Technology::kCellular &&
-               technology != Technology::kTunnel) {
+               technology != Technology::kTunnel &&
+               technology != Technology::kGuestInterface) {
       LOG(WARNING) << "In " << __func__ << ": device " << link_name
                    << " is unexpected technology " << technology;
     }

@@ -1612,6 +1612,11 @@ TEST_F(DeviceInfoDelayedCreationTest, NoDeviceSymlinkIgnored) {
   EnsureDelayedDevice(Technology::kNoDeviceSymlink, Technology::kUnknown);
 }
 
+TEST_F(DeviceInfoDelayedCreationTest, GuestInterface) {
+  AddDelayedDevice(Technology::kNoDeviceSymlink);
+  EnsureDelayedDevice(Technology::kGuestInterface, Technology::kGuestInterface);
+}
+
 #if !defined(DISABLE_WIFI)
 TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
   ScopedMockLog log;
