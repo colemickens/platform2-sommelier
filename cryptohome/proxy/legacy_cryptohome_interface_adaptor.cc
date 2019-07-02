@@ -416,20 +416,53 @@ void LegacyCryptohomeInterfaceAdaptor::RenameCryptohome(
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::AccountIdentifier& in_cryptohome_id_from,
     const cryptohome::AccountIdentifier& in_cryptohome_id_to) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
+          std::move(response));
+
+  user_data_auth::RenameRequest request;
+  *request.mutable_id_from() = in_cryptohome_id_from;
+  *request.mutable_id_to() = in_cryptohome_id_to;
+  userdataauth_proxy_->RenameAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
+                     user_data_auth::RenameReply>,
+                 response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response_shared));
 }
 
 void LegacyCryptohomeInterfaceAdaptor::GetAccountDiskUsage(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::AccountIdentifier& in_account_id) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
+          std::move(response));
+
+  user_data_auth::GetAccountDiskUsageRequest request;
+  *request.mutable_identifier() = in_account_id;
+  userdataauth_proxy_->GetAccountDiskUsageAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::GetAccountDiskUsageOnSuccess,
+          base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::GetAccountDiskUsageOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+    const user_data_auth::GetAccountDiskUsageReply& reply) {
+  cryptohome::BaseReply result;
+  result.set_error(
+      static_cast<cryptohome::CryptohomeErrorCode>(result.error()));
+  cryptohome::GetAccountDiskUsageReply* result_extension =
+      result.MutableExtension(cryptohome::GetAccountDiskUsageReply::reply);
+  result_extension->set_size(reply.size());
+  response->Return(result);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::UnmountEx(

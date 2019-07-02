@@ -554,6 +554,9 @@ class LegacyCryptohomeInterfaceAdaptor
   void MountExOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
       const user_data_auth::MountReply& reply);
+  void GetAccountDiskUsageOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+      const user_data_auth::GetAccountDiskUsageReply& reply);
   void UpdateCurrentUserActivityTimestampOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<>> response,
       const user_data_auth::UpdateCurrentUserActivityTimestampReply& reply);
