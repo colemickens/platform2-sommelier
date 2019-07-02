@@ -29,6 +29,11 @@
 #if USE_TPM2
 #include <trunks/tpm_utility.h>
 #endif
+#if USE_TPM2
+extern "C" {
+#include <trunks/cr50_headers/virtual_nvmem.h>
+}
+#endif
 
 #include "attestation/common/mock_crypto_utility.h"
 #include "attestation/common/mock_tpm_utility.h"
@@ -943,8 +948,6 @@ class AttestationServiceTest
     };
     CreateCertificateRequestRequest request;
     request.set_certificate_profile(ENTERPRISE_MACHINE_CERTIFICATE);
-    request.set_username("user");
-    request.set_request_origin("origin");
     AttestationCertificateRequest pca_request;
     service_->CreateCertificateRequest(
         request, base::Bind(callback, &loop, &pca_request));
@@ -1960,6 +1963,53 @@ TEST_P(AttestationServiceTest, CreateCertificateRequestSuccess) {
 
 TEST_P(AttestationServiceTest, CreateEnrollmentCertificateRequestSuccess) {
 #if USE_TPM2
+  EXPECT_CALL(mock_tpm_utility_,
+              CertifyNV(VIRTUAL_NV_INDEX_RSU_DEV_ID, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<3>("rsu_device_id_quoted_data"),
+                            SetArgPointee<4>("rsu_device_id"),
+                            Return(true)));
+#endif
+  SetUpIdentity(identity_);
+  SetUpIdentityCertificate(identity_, aca_type_);
+  auto callback = [](const std::string& cert_name,
+                     const base::Closure& quit_closure,
+                     const CreateCertificateRequestReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.has_pca_request());
+    AttestationCertificateRequest pca_request;
+    EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
+    EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
+    EXPECT_EQ(ENTERPRISE_ENROLLMENT_CERTIFICATE, pca_request.profile());
+#if USE_TPM2
+    EXPECT_EQ(3, pca_request.nvram_quotes().size());
+    EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
+    EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
+    EXPECT_EQ("rsu_device_id",
+              pca_request.nvram_quotes().at(RSU_DEVICE_ID).quote());
+    EXPECT_EQ("rsu_device_id_quoted_data",
+              pca_request.nvram_quotes().at(RSU_DEVICE_ID).quoted_data());
+#else
+  EXPECT_TRUE(pca_request.nvram_quotes().empty());
+#endif
+    EXPECT_EQ(cert_name, pca_request.identity_credential());
+    quit_closure.Run();
+  };
+  CreateCertificateRequestRequest request;
+  request.set_aca_type(aca_type_);
+  request.set_certificate_profile(ENTERPRISE_ENROLLMENT_CERTIFICATE);
+  request.set_username("user");
+  request.set_request_origin("origin");
+  service_->CreateCertificateRequest(request, base::Bind(callback,
+      GetCertificateName(identity_, aca_type_), QuitClosure()));
+  Run();
+}
+
+TEST_P(AttestationServiceTest,
+       CreateEnrollmentCertificateRequestSuccessWithUnattestedRsuDeviceId) {
+#if USE_TPM2
+  EXPECT_CALL(mock_tpm_utility_,
+              CertifyNV(VIRTUAL_NV_INDEX_RSU_DEV_ID, _, _, _, _))
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_utility_, GetRsuDeviceId(_))
       .WillRepeatedly(DoAll(SetArgPointee<0>("rsu_device_id"),
                             Return(true)));
@@ -2001,6 +2051,9 @@ TEST_P(AttestationServiceTest, CreateEnrollmentCertificateRequestSuccess) {
 TEST_P(AttestationServiceTest,
        CreateEnrollmentCertificateRequestWithoutRsuDeviceIdSuccess) {
 #if USE_TPM2
+  EXPECT_CALL(mock_tpm_utility_,
+              CertifyNV(VIRTUAL_NV_INDEX_RSU_DEV_ID, _, _, _, _))
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_utility_, GetRsuDeviceId(_))
       .WillRepeatedly(Return(false));
 #endif

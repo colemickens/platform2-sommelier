@@ -501,13 +501,16 @@ class AttestationService : public AttestationInterface {
   // created.
   int CreateIdentity(int identity_features);
 
+  // Quote NVRAM data. Returns the quoted data in |quote| and |true| if
+  // success, |false| otherwise.
+  bool QuoteNvramData(NVRAMQuoteType quote_type,
+                      const IdentityKey& identity_key,
+                      Quote* quote);
+
   // Certify NVRAM data and insert it into the given |identity|. Returns false
   // if data cannot be inserted, or if |must_be_present| is true and the data
   // cannot be certified.
   bool InsertCertifiedNvramData(NVRAMQuoteType quote_type,
-                                const char* quote_name,
-                                uint32_t nv_index,
-                                int nv_size,
                                 bool must_be_present,
                                 AttestationDatabase::Identity* identity);
 
@@ -659,6 +662,9 @@ class AttestationService : public AttestationInterface {
   // Default identity features for newly created identities.
   int default_identity_features_ =
       attestation::IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID;
+  // Maps NVRAMQuoteType indices to indices into the static NVRAM data we
+  // use for NVRAM quotes.
+  std::map<NVRAMQuoteType, int> nvram_quote_type_to_index_data_;
 
   // Default implementations for the above interfaces. These will be setup
   // during Initialize() if the corresponding interface has not been set with a
