@@ -14,17 +14,21 @@
 // limitations under the License.
 //
 
+#include "tpm_manager/client/tpm_ownership_dbus_proxy.h"
+
 #include <string>
 
 #include <base/bind.h>
+#include <brillo/dbus/dbus_param_writer.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "tpm_manager/client/tpm_ownership_dbus_proxy.h"
+#include "tpm_manager/client/mock_tpm_ownership_signal_handler.h"
+#include "tpm_manager/common/tpm_ownership_dbus_interface.h"
 
 using testing::_;
 using testing::Invoke;
+using testing::SaveArg;
 using testing::StrictMock;
 using testing::WithArgs;
 
@@ -43,6 +47,38 @@ class TpmOwnershipDBusProxyTest : public testing::Test {
   scoped_refptr<StrictMock<dbus::MockObjectProxy>> mock_object_proxy_;
   TpmOwnershipDBusProxy proxy_;
 };
+
+TEST_F(TpmOwnershipDBusProxyTest, ConnectToSignal) {
+  MockTpmOwnershipTakenSignalHandler mock_signal_handler;
+  // set up the signal here
+  OwnershipTakenSignal expected_signal;
+  OwnershipTakenSignal result_signal;
+  expected_signal.mutable_local_data()->set_owner_password("owner password");
+  expected_signal.mutable_local_data()->set_endorsement_password(
+      "endorsement password");
+  dbus::ObjectProxy::SignalCallback ownership_taken_callback;
+  dbus::ObjectProxy::OnConnectedCallback signal_connected_callback;
+  EXPECT_CALL(*mock_object_proxy_, ConnectToSignal(kTpmOwnershipInterface,
+                                                   kOwnershipTakenSignal, _, _))
+      .WillOnce(DoAll(SaveArg<2>(&ownership_taken_callback),
+                      SaveArg<3>(&signal_connected_callback)));
+  EXPECT_CALL(mock_signal_handler, OnOwnershipTaken(_))
+      .WillOnce(SaveArg<0>(&result_signal));
+  EXPECT_CALL(
+      mock_signal_handler,
+      OnSignalConnected(kTpmOwnershipInterface, kOwnershipTakenSignal, true))
+      .Times(1);
+
+  proxy_.ConnectToSignal(&mock_signal_handler);
+  dbus::Signal signal(kTpmOwnershipInterface, kOwnershipTakenSignal);
+  dbus::MessageWriter writer(&signal);
+  brillo::dbus_utils::DBusParamWriter::Append(&writer, expected_signal);
+  ownership_taken_callback.Run(&signal);
+  signal_connected_callback.Run(kTpmOwnershipInterface, kOwnershipTakenSignal,
+                                true);
+  EXPECT_EQ(expected_signal.SerializeAsString(),
+            result_signal.SerializeAsString());
+}
 
 TEST_F(TpmOwnershipDBusProxyTest, GetTpmStatus) {
   auto fake_dbus_call = [](

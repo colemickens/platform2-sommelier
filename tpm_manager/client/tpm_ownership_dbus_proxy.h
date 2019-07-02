@@ -20,12 +20,14 @@
 #include "tpm_manager/common/tpm_ownership_interface.h"
 
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 
+#include "tpm_manager/client/tpm_ownership_signal_handler.h"
 #include "tpm_manager/common/export.h"
 
 namespace tpm_manager {
@@ -43,6 +45,12 @@ class TPM_MANAGER_EXPORT TpmOwnershipDBusProxy : public TpmOwnershipInterface {
   // Performs initialization tasks. This method must be called before calling
   // any other method in this class. Returns true on success.
   bool Initialize();
+
+  // Connects ownership taken signal. |handler| is used to handle the dbus
+  // signal. Returns |false| iff |handler| is null or this function is called
+  // before already. Note that the signal connection failure doesn't make this
+  // functions return |false| becuase the failure is handled by callback.
+  bool ConnectToSignal(TpmOwnershipTakenSignalHandler* handler);
 
   // TpmOwnershipInterface methods.
   void GetTpmStatus(const GetTpmStatusRequest& request,
@@ -77,6 +85,9 @@ class TPM_MANAGER_EXPORT TpmOwnershipDBusProxy : public TpmOwnershipInterface {
 
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* object_proxy_;
+
+  TpmOwnershipTakenSignalHandler* ownership_taken_signal_handler_{nullptr};
+
   DISALLOW_COPY_AND_ASSIGN(TpmOwnershipDBusProxy);
 };
 

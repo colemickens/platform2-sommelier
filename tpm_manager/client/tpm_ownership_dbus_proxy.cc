@@ -18,6 +18,7 @@
 
 #include <base/bind.h>
 #include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/dbus/dbus_signal_handler.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
 #include "tpm_manager/common/tpm_ownership_dbus_interface.h"
@@ -45,6 +46,26 @@ bool TpmOwnershipDBusProxy::Initialize() {
       tpm_manager::kTpmManagerServiceName,
       dbus::ObjectPath(tpm_manager::kTpmManagerServicePath));
   return (object_proxy_ != nullptr);
+}
+
+bool TpmOwnershipDBusProxy::ConnectToSignal(
+    TpmOwnershipTakenSignalHandler* handler) {
+  if (ownership_taken_signal_handler_) {
+    LOG(ERROR) << __func__ << ": |handler| is set already.";
+    return false;
+  }
+  if (!handler) {
+    LOG(ERROR) << __func__ << ": null handler.";
+    return false;
+  }
+  ownership_taken_signal_handler_ = handler;
+  brillo::dbus_utils::ConnectToSignal(
+      object_proxy_, kTpmOwnershipInterface, kOwnershipTakenSignal,
+      base::Bind(&TpmOwnershipTakenSignalHandler::OnOwnershipTaken,
+                 base::Unretained(handler)),
+      base::Bind(&TpmOwnershipTakenSignalHandler::OnSignalConnected,
+                 base::Unretained(handler)));
+  return true;
 }
 
 void TpmOwnershipDBusProxy::GetTpmStatus(const GetTpmStatusRequest& request,
