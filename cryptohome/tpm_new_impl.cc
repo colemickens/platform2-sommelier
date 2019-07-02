@@ -39,6 +39,38 @@ bool TpmNewImpl::CacheTpmManagerStatus() {
                                             &last_tpm_manager_data_);
 }
 
+bool TpmNewImpl::UpdateLocalDataFromTpmManager() {
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": Failed to initialize |TpmMangerUtility|.";
+    return false;
+  }
+
+  bool is_successful = false;
+  bool has_received = false;
+
+  // Repeats data copy into |last_tpm_manager_data_|; reasonable trade-off due
+  // to low ROI to avoid that.
+  bool is_connected = tpm_manager_utility_->GetOwnershipTakenSignalStatus(
+      &is_successful, &has_received, &last_tpm_manager_data_);
+
+  // When we need explicitly query tpm status either because the signal is not
+  // ready for any reason, or because the signal is not received yet so we need
+  // to run it once in case the signal is sent by tpm_manager before already.
+  if (!is_connected || !is_successful ||
+      (!has_received && shall_cache_tpm_manager_status_)) {
+    // Retains |shall_cache_tpm_manager_status_| to be |true| if the signal
+    // cannot be relied on (yet). Actually |!is_successful| suffices to update
+    // |shall_cache_tpm_manager_status_|; by design, uses the redundancy just to
+    // avoid confusion.
+    shall_cache_tpm_manager_status_ &= (!is_connected || !is_successful);
+    return CacheTpmManagerStatus();
+  } else if (has_received) {
+    is_enabled_ = true;
+    is_owned_ = true;
+  }
+  return true;
+}
+
 bool TpmNewImpl::IsEnabled() {
   if (!is_enabled_) {
     if (!CacheTpmManagerStatus()) {
@@ -52,9 +84,9 @@ bool TpmNewImpl::IsEnabled() {
 
 bool TpmNewImpl::IsOwned() {
   if (!is_owned_) {
-    if (!CacheTpmManagerStatus()) {
+    if (!UpdateLocalDataFromTpmManager()) {
       LOG(ERROR) << __func__
-                 << ": Failed to update TPM status from tpm manager.";
+                 << ": Failed to call |UpdateLocalDataFromTpmManager|.";
       return false;
     }
   }
@@ -92,9 +124,9 @@ bool TpmNewImpl::GetDelegate(brillo::Blob* blob,
   secret->clear();
   if (last_tpm_manager_data_.owner_delegate().blob().empty() ||
       last_tpm_manager_data_.owner_delegate().secret().empty()) {
-    if (!CacheTpmManagerStatus()) {
+    if (!UpdateLocalDataFromTpmManager()) {
       LOG(ERROR) << __func__
-                 << ": Failed to update TPM status from tpm manager.";
+                 << ": Failed to call |UpdateLocalDataFromTpmManager|.";
       return false;
     }
   }

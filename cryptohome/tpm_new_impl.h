@@ -50,6 +50,17 @@ class TpmNewImpl : public TpmImpl {
   // |is_enabled_|, |is_owned_|, and |last_tpm_manager_data_| for later use.
   bool CacheTpmManagerStatus();
 
+  // Attempts to get |tpm_manager::LocalData| from signal or by explicitly
+  // querying it. Returns |true| iff either approach succeeds. Behind the scene,
+  // the function attempts to update the local data when it's available from
+  // ownership taken signal. Otherwise, for any reason why we don't have it from
+  // ownership taken signal, it actively query tpm status by a dbus request.
+  // This intuitive way can be seen an  overkill sometimes(e.g. The signal is
+  // waiting to be connected); however this conservative approach can avoid the
+  // data loss due to some potential issues (e.g. unexpectedly long waiting time
+  // until the signal is confirmed to be connected).
+  bool UpdateLocalDataFromTpmManager();
+
   tpm_manager::TpmManagerUtility default_tpm_manager_utility_;
 
   //  wrapped tpm_manager proxy to get information from |tpm_manager|.
@@ -62,6 +73,12 @@ class TpmNewImpl : public TpmImpl {
   bool is_enabled_{false};
   bool is_owned_{false};
 
+  // This flag indicates |CacheTpmManagerStatus| shall be called when the
+  // ownership taken signal is confirmed to be connected.
+  bool shall_cache_tpm_manager_status_{true};
+
+  // Records |LocalData| from tpm_manager last time we query, either by
+  // explicitly requesting the update or from dbus signal.
   tpm_manager::LocalData last_tpm_manager_data_;
 
   // The following fields are for testing purpose.
