@@ -1,0 +1,5 @@
+type cros_esif_ufd, domain, chromeos_domain;
+
+permissive cros_esif_ufd;
+
+domain_auto_trans(cros_init_scripts, cros_esif_ufd_exec, cros_esif_ufd);

@@ -39,6 +39,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /bin/sh                         u:object_r:sh_exec:s0
 
 /usr/bin/anomaly_detector       u:object_r:cros_anomaly_detector_exec:s0
+/usr/bin/arc-networkd           u:object_r:cros_arc_networkd_exec:s0
+/usr/bin/arc_camera_service     u:object_r:cros_arc_camera_service_exec:s0
 /usr/bin/btdispatch             u:object_r:cros_btdispatch_exec:s0
 /usr/bin/chrt                   u:object_r:cros_chrt_exec:s0
 /usr/bin/core_collector[0-9]*   u:object_r:cros_core_collector_exec:s0
@@ -49,6 +51,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/dbus-daemon            u:object_r:cros_dbus_daemon_exec:s0
 /usr/bin/dbus-send              u:object_r:cros_dbus_send_exec:s0
 /usr/bin/dbus-uuidgen           u:object_r:cros_dbus_uuidgen_exec:s0
+/usr/bin/esif_ufd               u:object_r:cros_esif_ufd_exec:s0
 /usr/bin/find                   u:object_r:cros_system_file:s0
 /usr/bin/ionice                 u:object_r:cros_ionice_exec:s0
 /usr/bin/logger                 u:object_r:cros_logger_exec:s0
@@ -56,20 +59,25 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/metrics_client         u:object_r:cros_metrics_client_exec:s0
 /usr/bin/metrics_daemon         u:object_r:cros_metrics_daemon_exec:s0
 /usr/bin/midis                  u:object_r:cros_midis_exec:s0
+/usr/bin/ml_service             u:object_r:cros_ml_service_exec:s0
 /usr/bin/newblued               u:object_r:cros_newblued_exec:s0
 /usr/bin/periodic_scheduler     u:object_r:cros_periodic_scheduler_exec:s0
 /usr/bin/permission_broker      u:object_r:cros_permission_broker_exec:s0
 /usr/bin/powerd                 u:object_r:cros_powerd_exec:s0
 /usr/bin/run_oci                u:object_r:cros_run_oci_exec:s0
 /usr/bin/shill                  u:object_r:cros_shill_exec:s0
+/usr/bin/timberslide            u:object_r:cros_timberslide_exec:s0
 /usr/bin/tlsdated               u:object_r:cros_tlsdated_exec:s0
+/usr/bin/u2fd                   u:object_r:cros_u2fd_exec:s0
 
 /usr/sbin/ModemManager          u:object_r:cros_modem_manager_exec:s0
 /usr/sbin/accelerator-logs      u:object_r:cros_accelerator_logs_exec:s0
 /usr/sbin/apk-cache-cleaner-jailed u:object_r:cros_apk_cache_cleaner_jailed_exec:s0
-/usr/sbin/arc-oemcrypto         u:object_r:cros_arc_oemcrypto:s0
+/usr/sbin/arc-oemcrypto         u:object_r:cros_arc_oemcrypto_exec:s0
 /usr/sbin/arc-setup             u:object_r:cros_arc_setup_exec:s0
+/usr/sbin/attestationd          u:object_r:cros_attestationd_exec:s0
 /usr/sbin/avahi-daemon          u:object_r:cros_avahi_daemon_exec:s0
+/usr/sbin/bootlockboxd          u:object_r:cros_bootlockboxd_exec:s0
 /usr/sbin/bootstat              u:object_r:cros_bootstat_exec:s0
 /usr/sbin/chapsd                u:object_r:cros_chapsd_exec:s0
 /usr/sbin/chromeos-cleanup-logs u:object_r:cros_chromeos_cleanup_logs_exec:s0
@@ -77,12 +85,17 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/conntrackd            u:object_r:cros_conntrackd_exec:s0
 /usr/sbin/cros-machine-id-regen u:object_r:cros_machine_id_regen_exec:s0
 /usr/sbin/cryptohomed           u:object_r:cros_cryptohomed_exec:s0
+/usr/sbin/daisydog              u:object_r:cros_daisydog_exec:s0
+/usr/sbin/dlcservice            u:object_r:cros_dlcservice_exec:s0
 /usr/sbin/jetstream-update-stats u:object_r:cros_jetstream_update_stats_exec:s0
 /usr/sbin/mtpd                  u:object_r:cros_mtpd_exec:s0
+/usr/sbin/oobe_config_restore   u:object_r:cros_oobe_config_restore_exec:s0
 /usr/sbin/rsyslogd              u:object_r:cros_rsyslogd_exec:s0
 /usr/sbin/sshd                  u:object_r:cros_sshd_exec:s0
 /usr/sbin/sslh(-fork|-select)?  u:object_r:cros_sslh_exec:s0
 /usr/sbin/tcsd                  u:object_r:cros_tcsd_exec:s0
+/usr/sbin/tpm_managerd          u:object_r:cros_tpm_managerd_exec:s0
+/usr/sbin/trunksd               u:object_r:cros_trunksd_exec:s0
 /usr/sbin/update_engine         u:object_r:cros_update_engine_exec:s0
 /usr/sbin/wpa_supplicant        u:object_r:cros_wpa_supplicant_exec:s0
 

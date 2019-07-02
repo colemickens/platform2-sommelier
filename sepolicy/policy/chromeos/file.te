@@ -19,12 +19,16 @@ type cros_arc_sdcard_mountpoint, file_type, cros_file_type, cros_system_file_typ
 type cros_accelerator_logs_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_anomaly_detector_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_apk_cache_cleaner_jailed_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_arc_camera_service_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_arc_networkd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_oemcrypto_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_setup_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
-type cros_auditd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_attestationd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_audispd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_auditd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_avahi_daemon_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_bluetoothd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_bootlockboxd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_bootstat_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_btdispatch_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_camera_algo_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -39,12 +43,15 @@ type cros_cras_exec, exec_type, file_type, cros_file_type, cros_system_file_type
 type cros_crash_reporter_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_crash_sender_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_cryptohomed_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_daisydog_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_dbus_daemon_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_dbus_send_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_dbus_uuidgen_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_debugd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_dhcpcd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_disks_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_dlcservice_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_esif_ufd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_hwclock_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_jetstream_update_stats_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_journald_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -55,10 +62,12 @@ type cros_metrics_client_exec, exec_type, file_type, cros_file_type, cros_system
 type cros_metrics_daemon_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_midis_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_minijail_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_ml_service_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_modem_manager_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_modprobe_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_mtpd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_newblued_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_oobe_config_restore_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_periodic_scheduler_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_permission_broker_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_powerd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -70,7 +79,11 @@ type cros_shill_exec, exec_type, file_type, cros_file_type, cros_system_file_typ
 type cros_sshd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_sslh_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_tcsd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_timberslide_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_tlsdated_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_tpm_managerd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_trunksd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_u2fd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_udevd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_update_engine_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_userfeedback_file, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -266,4 +279,5 @@ neverallow domain cros_system_file_type:file { unlink append write };
 allow chromeos_domain cros_system_file_type:dir { read search getattr open };
 allow chromeos_domain cros_system_file_type:file { read open getattr };
 allow chromeos_domain cros_system_file_type:lnk_file { read getattr };
+
 
