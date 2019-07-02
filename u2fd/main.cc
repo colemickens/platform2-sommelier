@@ -75,7 +75,9 @@ bool U2fPolicyReady() {
 U2fMode ReadU2fPolicy() {
   policy::PolicyProvider policy_provider;
 
-  DCHECK(policy_provider.Reload());
+  if (!policy_provider.Reload()) {
+    LOG(DFATAL) << "Failed to load device policy";
+  }
 
   int mode = 0;
   const policy::DevicePolicy* policy = &policy_provider.GetDevicePolicy();
