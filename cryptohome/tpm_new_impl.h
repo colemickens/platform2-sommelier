@@ -56,8 +56,8 @@ class TpmNewImpl : public TpmImpl {
   tpm_manager::TpmManagerUtility* tpm_manager_utility_{
       &default_tpm_manager_utility_};
 
-  // give |TpmNewImpl| a new set of members of status from tpm manager so we can
-  // touch the already working code as little as possible. Otherwise need to
+  // Gives |TpmNewImpl| a new set of members of status from tpm manager so we
+  // can touch the already working code as little as possible. Otherwise need to
   // move data members in |TpmImpl| to |protected| field.
   bool is_enabled_{false};
   bool is_owned_{false};
