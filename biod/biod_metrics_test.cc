@@ -171,5 +171,17 @@ TEST_F(BiodMetricsTest, SendIgnoreMatchEventOnPowerButtonPress) {
   testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
 }
 
+TEST_F(BiodMetricsTest, SendResetContextMode) {
+  constexpr int kExpectedResetSensorEnum = 10;
+  constexpr int kExpectedMaxEnum = 12;
+
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendEnumToUMA(metrics::kResetContextMode,
+                            kExpectedResetSensorEnum, kExpectedMaxEnum))
+      .Times(1);
+  biod_metrics_.SendResetContextMode(FpMode(FpMode::Mode::kResetSensor));
+  testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
+}
+
 }  // namespace
 }  // namespace biod

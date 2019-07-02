@@ -30,6 +30,7 @@ constexpr char kFpNoMatchDurationOverall[] =
     "Fingerprint.Unlock.NoMatch.Duration.Overall";
 constexpr char kFpMatchIgnoredDueToPowerButtonPress[] =
     "Fingerprint.Unlock.MatchIgnoredDueToPowerButtonPress";
+constexpr char kResetContextMode[] = "Fingerprint.Reset.ResetContextMode";
 constexpr char kUpdaterStatus[] = "Fingerprint.Updater.Status";
 constexpr char kUpdaterReason[] = "Fingerprint.Updater.Reason";
 constexpr char kUpdaterDurationNoUpdate[] =
@@ -123,6 +124,11 @@ bool BiodMetrics::SendIgnoreMatchEventOnPowerButtonPress(bool is_ignored) {
 void BiodMetrics::SetMetricsLibraryForTesting(
     std::unique_ptr<MetricsLibraryInterface> metrics_lib) {
   metrics_lib_ = std::move(metrics_lib);
+}
+
+bool BiodMetrics::SendResetContextMode(const FpMode& mode) {
+  return metrics_lib_->SendEnumToUMA(metrics::kResetContextMode, mode.EnumVal(),
+                                     mode.MaxEnumVal());
 }
 
 }  // namespace biod

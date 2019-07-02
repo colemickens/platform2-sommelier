@@ -39,8 +39,6 @@ CrosFpDevice::~CrosFpDevice() {
   // Current session is gone, clean-up temporary state in the FP MCU.
   if (cros_fd_.is_valid())
     ResetContext();
-
-  biod_metrics_ = nullptr;
 }
 
 std::unique_ptr<CrosFpDevice> CrosFpDevice::Open(const MkbpCallback& callback,
@@ -527,6 +525,21 @@ bool CrosFpDevice::SetContext(std::string user_hex) {
 }
 
 bool CrosFpDevice::ResetContext() {
+  FpMode cur_mode;
+  if (!GetFpMode(&cur_mode)) {
+    LOG(ERROR) << "Unable to get FP Mode.";
+  }
+
+  // ResetContext is called when we no longer expect any session to be running
+  // (such as when the user logs out or biod is starting/stopping). This check
+  // exists to make sure that we have disabled any matching in the firmware
+  // when this is called. See https://crbug.com/980614 for details.
+  if (cur_mode != FpMode(FpMode::Mode::kNone)) {
+    LOG(ERROR) << "Attempting to reset context with mode: " << cur_mode;
+  }
+
+  biod_metrics_->SendResetContextMode(cur_mode);
+
   return SetContext(std::string());
 }
 

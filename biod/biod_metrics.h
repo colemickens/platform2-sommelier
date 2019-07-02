@@ -11,6 +11,7 @@
 #include <base/macros.h>
 #include <metrics/metrics_library.h>
 
+#include "biod/fp_mode.h"
 #include "biod/update_reason.h"
 
 namespace biod {
@@ -23,6 +24,7 @@ extern const char kFpMatchDurationOverall[];
 extern const char kFpNoMatchDurationCapture[];
 extern const char kFpNoMatchDurationMatcher[];
 extern const char kFpNoMatchDurationOverall[];
+extern const char kResetContextMode[];
 extern const char kUpdaterStatus[];
 extern const char kUpdaterReason[];
 extern const char kUpdaterDurationNoUpdate[];
@@ -72,6 +74,9 @@ class BiodMetrics {
 
   // Is fingerprint ignored due to parallel power button press?
   bool SendIgnoreMatchEventOnPowerButtonPress(bool is_ignored);
+
+  // Was CrosFpDevice::ResetContext called while the FPMCU was in correct mode?
+  bool SendResetContextMode(const FpMode& mode);
 
   void SetMetricsLibraryForTesting(
       std::unique_ptr<MetricsLibraryInterface> metrics_lib);

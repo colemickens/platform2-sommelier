@@ -30,7 +30,7 @@ using dbus::ObjectPath;
 namespace dbus_constants {
 const int kDbusTimeoutMs = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
 const char kSessionStateStarted[] = "started";
-const char kSessionStateStopping[] = "stopping";
+constexpr char kSessionStateStopped[] = "stopped";
 }  // namespace dbus_constants
 
 namespace errors {
@@ -521,7 +521,7 @@ void BiometricsDaemon::OnSessionStateChanged(dbus::Signal* signal) {
         biometrics_manager_wrapper->get().SendStatsOnLogin();
       }
     }
-  } else if (state == dbus_constants::kSessionStateStopping) {
+  } else if (state == dbus_constants::kSessionStateStopped) {
     // Assuming that log out will always log out all users at the same time.
     for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
       biometrics_manager_wrapper->get().SetDiskAccesses(false);
