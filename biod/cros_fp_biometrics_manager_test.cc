@@ -18,12 +18,24 @@ namespace biod {
 
 namespace {
 constexpr int kMaxTemplateCount = 5;
-const std::vector<uint8_t> kFakePositiveMatchSecret({0x00, 0x01, 0x02});
+constexpr char kUserID[] = "0123456789";
+const std::vector<uint8_t> kFakePositiveMatchSecret1 = {0x00, 0x01, 0x02};
+const std::vector<uint8_t> kFakePositiveMatchSecret2 = {0xcc, 0xdd, 0xee, 0xff};
+const std::vector<uint8_t> kFakeValidationValue1 = {
+    0x90, 0xea, 0xfb, 0x75, 0xee, 0x37, 0xeb, 0xb1, 0xb5, 0xe7, 0x81,
+    0x47, 0xac, 0xdd, 0xff, 0xbe, 0x20, 0x59, 0x25, 0x24, 0x82, 0xe0,
+    0x05, 0xdd, 0x95, 0x09, 0x8e, 0x5a, 0xdc, 0xcc, 0x12, 0x9f,
+};
+const std::vector<uint8_t> kFakeValidationValue2 = {
+    0xde, 0xe9, 0x4d, 0xbd, 0xbe, 0x63, 0x8b, 0x9e, 0xc9, 0x25, 0x27,
+    0xf1, 0xf6, 0x86, 0x6f, 0xb3, 0x31, 0xf6, 0xb6, 0x52, 0x99, 0x66,
+    0x89, 0x88, 0x73, 0x0a, 0xd4, 0x0b, 0xd2, 0x34, 0x7b, 0x71,
+};
 }  // namespace
 
 class FakeCrosFpDevice : public CrosFpDeviceInterface {
  public:
-  FakeCrosFpDevice() { positive_match_secret_ = kFakePositiveMatchSecret; }
+  FakeCrosFpDevice() { positive_match_secret_ = kFakePositiveMatchSecret1; }
   // CrosFpDeviceInterface overrides:
   ~FakeCrosFpDevice() override = default;
 
@@ -102,9 +114,37 @@ class CrosFpBiometricsManagerPeer {
     return cros_fp_biometrics_manager_->use_positive_match_secret_;
   }
 
+  bool ComputeValidationValue(const std::vector<uint8_t>& secret,
+                              const std::string& user_id,
+                              std::vector<uint8_t>* out) {
+    const brillo::SecureBlob secret_blob(secret);
+    return cros_fp_biometrics_manager_->ComputeValidationValue(secret_blob,
+                                                               user_id, out);
+  }
+
  private:
   std::unique_ptr<CrosFpBiometricsManager> cros_fp_biometrics_manager_;
   FakeCrosFpDevice* fake_cros_dev_;
 };
+
+class CrosFpBiometricsManagerTest : public ::testing::Test {
+ protected:
+  CrosFpBiometricsManagerPeer cros_fp_biometrics_manager_peer_;
+};
+
+TEST_F(CrosFpBiometricsManagerTest, TestComputeValidationValue) {
+  EXPECT_TRUE(cros_fp_biometrics_manager_peer_.SupportsPositiveMatchSecret());
+  const std::vector<std::pair<std::vector<uint8_t>, std::vector<uint8_t>>>
+      kSecretValidationValuePairs = {
+          std::make_pair(kFakePositiveMatchSecret1, kFakeValidationValue1),
+          std::make_pair(kFakePositiveMatchSecret2, kFakeValidationValue2),
+      };
+  for (const auto& pair : kSecretValidationValuePairs) {
+    std::vector<uint8_t> validation_value;
+    EXPECT_TRUE(cros_fp_biometrics_manager_peer_.ComputeValidationValue(
+        pair.first, kUserID, &validation_value));
+    EXPECT_EQ(validation_value, pair.second);
+  }
+}
 
 }  // namespace biod

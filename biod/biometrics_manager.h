@@ -11,6 +11,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include <base/base64.h>
 #include <base/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/service_constants.h>
@@ -103,12 +104,21 @@ class BiometricsManager {
     virtual const std::string& GetId() const = 0;
     virtual const std::string& GetUserId() const = 0;
     virtual const std::string& GetLabel() const = 0;
+    virtual const std::vector<uint8_t>& GetValidationVal() const = 0;
 
     // Returns true on success.
     virtual bool SetLabel(std::string label) = 0;
 
     // Returns true on success.
     virtual bool Remove() = 0;
+
+    virtual const std::string GetValidationValBase64() const {
+      const auto& validation_val_bytes = GetValidationVal();
+      std::string validation_val(validation_val_bytes.begin(),
+                                 validation_val_bytes.end());
+      base::Base64Encode(validation_val, &validation_val);
+      return validation_val;
+    }
   };
 
   virtual ~BiometricsManager() {}

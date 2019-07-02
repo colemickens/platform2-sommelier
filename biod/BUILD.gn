@@ -34,6 +34,7 @@ pkg_config("target_defaults") {
     "libmetrics-${libbase_ver}",
     "libpower_manager-client",
     "fmap",
+    "openssl",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear
     # before protobuf here or the linker flags won't be in the right

@@ -14,11 +14,14 @@
 #include <base/base64.h>
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <crypto/random.h>
 #include <metrics/metrics_library.h>
+#include <openssl/hmac.h>
+#include <openssl/sha.h>
 
 #include "biod/biod_metrics.h"
 #include "biod/cros_fp_device_factory_impl.h"
@@ -75,22 +78,26 @@ using Mode = FpMode::Mode;
 const std::string& CrosFpBiometricsManager::Record::GetId() const {
   CHECK(biometrics_manager_);
   CHECK(index_ < biometrics_manager_->records_.size());
-  local_record_id_ = biometrics_manager_->records_[index_].record_id;
-  return local_record_id_;
+  return biometrics_manager_->records_[index_].record_id;
 }
 
 const std::string& CrosFpBiometricsManager::Record::GetUserId() const {
   CHECK(biometrics_manager_);
   CHECK(index_ <= biometrics_manager_->records_.size());
-  local_user_id_ = biometrics_manager_->records_[index_].user_id;
-  return local_user_id_;
+  return biometrics_manager_->records_[index_].user_id;
 }
 
 const std::string& CrosFpBiometricsManager::Record::GetLabel() const {
   CHECK(biometrics_manager_);
   CHECK(index_ < biometrics_manager_->records_.size());
-  local_label_ = biometrics_manager_->records_[index_].label;
-  return local_label_;
+  return biometrics_manager_->records_[index_].label;
+}
+
+const std::vector<uint8_t>& CrosFpBiometricsManager::Record::GetValidationVal()
+    const {
+  CHECK(biometrics_manager_);
+  CHECK(index_ <= biometrics_manager_->records_.size());
+  return biometrics_manager_->records_[index_].validation_val;
 }
 
 bool CrosFpBiometricsManager::Record::SetLabel(std::string label) {
@@ -163,8 +170,10 @@ BiometricsManager::EnrollSession CrosFpBiometricsManager::StartEnrollSession(
     return BiometricsManager::EnrollSession();
   }
 
+  std::vector<uint8_t> validation_val;
   if (!RequestEnrollImage(InternalRecord{biod_storage_.GenerateNewRecordId(),
-                                         std::move(user_id), std::move(label)}))
+                                         std::move(user_id), std::move(label),
+                                         std::move(validation_val)}))
     return BiometricsManager::EnrollSession();
 
   return BiometricsManager::EnrollSession(session_weak_factory_.GetWeakPtr());
@@ -406,6 +415,23 @@ bool CrosFpBiometricsManager::RequestMatchFingerUp() {
     return false;
   }
   return true;
+}
+
+bool CrosFpBiometricsManager::ComputeValidationValue(
+    const brillo::SecureBlob& secret,
+    const std::string& user_id,
+    std::vector<uint8_t>* out) {
+  std::vector<uint8_t> user_id_bytes;
+
+  if (!base::HexStringToBytes(user_id, &user_id_bytes))
+    return false;
+  // Pad user_id so that we have exactly the same user_id as FPMCU has.
+  // Otherwise the user_id length is different and validation value is wrong.
+  user_id_bytes.resize(FP_CONTEXT_USERID_WORDS * sizeof(uint32_t));
+  out->resize(SHA256_DIGEST_LENGTH);
+
+  return HMAC(EVP_sha256(), secret.data(), secret.size(), user_id_bytes.data(),
+              user_id_bytes.size(), out->data(), nullptr) != nullptr;
 }
 
 void CrosFpBiometricsManager::DoEnrollImageEvent(InternalRecord record,
@@ -657,10 +683,12 @@ void CrosFpBiometricsManager::OnTaskComplete() {
   next_session_action_ = SessionAction();
 }
 
-bool CrosFpBiometricsManager::LoadRecord(const std::string& user_id,
-                                         const std::string& label,
-                                         const std::string& record_id,
-                                         const base::Value& data) {
+bool CrosFpBiometricsManager::LoadRecord(
+    const std::string& user_id,
+    const std::string& label,
+    const std::string& record_id,
+    const std::vector<uint8_t>& validation_val,
+    const base::Value& data) {
   std::string tmpl_data_base64;
   if (!data.GetAsString(&tmpl_data_base64)) {
     LOG(ERROR) << "Cannot load data string from record " << record_id << ".";
@@ -692,7 +720,7 @@ bool CrosFpBiometricsManager::LoadRecord(const std::string& user_id,
     return false;
   }
 
-  InternalRecord internal_record = {record_id, user_id, label};
+  InternalRecord internal_record = {record_id, user_id, label, validation_val};
   records_.emplace_back(std::move(internal_record));
   return true;
 }

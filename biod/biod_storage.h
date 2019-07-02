@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <unordered_set>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
@@ -20,10 +21,12 @@ namespace biod {
 
 class BiodStorage {
  public:
-  using ReadRecordsCallback = base::Callback<bool(const std::string& user_id,
-                                                  const std::string& label,
-                                                  const std::string& record_id,
-                                                  const base::Value& data)>;
+  using ReadRecordsCallback =
+      base::Callback<bool(const std::string& user_id,
+                          const std::string& label,
+                          const std::string& record_id,
+                          const std::vector<uint8_t>& validation_val,
+                          const base::Value& data)>;
 
   // Constructor set the file path to be
   // /home/root/<hash of user id>/biod/<BiometricsManager>/RecordUUID.

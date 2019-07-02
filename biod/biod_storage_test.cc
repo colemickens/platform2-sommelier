@@ -23,15 +23,18 @@ const char kBiometricsManagerName[] = "BiometricsManager";
 const char kRecordId1[] = "00000000_0000_0000_0000_000000000001";
 const char kUserId1[] = "0000000000000000000000000000000000000001";
 const char kLabel1[] = "record1";
+const std::vector<uint8_t> kValidationVal1 = {0x00, 0x01};
 const char kData1[] = "Hello, world1!";
 
 const char kRecordId2[] = "00000000_0000_0000_0000_000000000002";
 const char kUserId2[] = "0000000000000000000000000000000000000002";
 const char kLabel2[] = "record2";
+const std::vector<uint8_t> kValidationVal2 = {0x00, 0x02};
 const char kData2[] = "Hello, world2!";
 
 const char kRecordId3[] = "00000000_0000_0000_0000_000000000003";
 const char kLabel3[] = "record3";
+const std::vector<uint8_t> kValidationVal3 = {0x00, 0x03};
 const char kData3[] = "Hello, world3!";
 
 class TestRecord : public BiometricsManager::Record {
@@ -39,26 +42,39 @@ class TestRecord : public BiometricsManager::Record {
   TestRecord(const std::string& id,
              const std::string& user_id,
              const std::string& label,
+             const std::vector<uint8_t>& validation_val,
              const std::string& data)
-      : id_(id), user_id_(user_id), label_(label), data_(data) {}
+      : id_(id),
+        user_id_(user_id),
+        label_(label),
+        validation_val_(validation_val),
+        data_(data) {}
 
   // BiometricsManager::Record overrides:
   const std::string& GetId() const override { return id_; }
   const std::string& GetUserId() const override { return user_id_; }
   const std::string& GetLabel() const override { return label_; }
+  const std::vector<uint8_t>& GetValidationVal() const override {
+    return validation_val_;
+  }
   const std::string& GetData() const { return data_; }
   bool SetLabel(std::string label) override { return true; }
   bool Remove() override { return true; }
 
   friend bool operator==(const TestRecord& lhs, const TestRecord& rhs) {
     return lhs.id_ == rhs.id_ && lhs.user_id_ == rhs.user_id_ &&
+           lhs.validation_val_ == rhs.validation_val_ &&
            lhs.label_ == rhs.label_ && lhs.data_ == rhs.data_;
+  }
+  friend inline bool operator!=(const TestRecord& lhs, const TestRecord& rhs) {
+    return !(lhs == rhs);
   }
 
  private:
   std::string id_;
   std::string user_id_;
   std::string label_;
+  std::vector<uint8_t> validation_val_;
   std::string data_;
 };
 }  // namespace
@@ -93,10 +109,12 @@ class BiodStorageTest : public ::testing::Test {
   bool LoadRecord(const std::string& user_id,
                   const std::string& label,
                   const std::string& record_id,
+                  const std::vector<uint8_t>& validation_val,
                   const base::Value& data_value) {
     std::string data;
     data_value.GetAsString(&data);
-    records_.push_back(TestRecord(record_id, user_id, label, data));
+    records_.push_back(
+        TestRecord(record_id, user_id, label, validation_val, data));
     return true;
   }
 
@@ -105,9 +123,9 @@ class BiodStorageTest : public ::testing::Test {
 
 TEST_F(BiodStorageTest, WriteAndReadRecords) {
   const std::vector<TestRecord> kRecords = {
-      TestRecord(kRecordId1, kUserId1, kLabel1, kData1),
-      TestRecord(kRecordId2, kUserId2, kLabel2, kData2),
-      TestRecord(kRecordId3, kUserId2, kLabel3, kData3)};
+      TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1),
+      TestRecord(kRecordId2, kUserId2, kLabel2, kValidationVal2, kData2),
+      TestRecord(kRecordId3, kUserId2, kLabel3, kValidationVal3, kData3)};
 
   // Write the record.
   for (auto const& record : kRecords) {
@@ -123,7 +141,8 @@ TEST_F(BiodStorageTest, WriteAndReadRecords) {
 }
 
 TEST_F(BiodStorageTest, DeleteRecord) {
-  const TestRecord kRecord(kRecordId1, kUserId1, kLabel1, kData1);
+  const TestRecord kRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1,
+                           kData1);
 
   // Delete a non-existent record.
   EXPECT_TRUE(biod_storage_->DeleteRecord(kUserId1, kRecordId1));
@@ -152,5 +171,13 @@ TEST_F(BiodStorageTest, GenerateNewRecordId) {
   std::string record_id1(biod_storage_->GenerateNewRecordId());
   std::string record_id2(biod_storage_->GenerateNewRecordId());
   EXPECT_NE(record_id1, record_id2);
+}
+
+TEST_F(BiodStorageTest, TestEqualOperator) {
+  EXPECT_EQ(TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1),
+            TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1));
+
+  EXPECT_NE(TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1),
+            TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal2, kData1));
 }
 }  // namespace biod

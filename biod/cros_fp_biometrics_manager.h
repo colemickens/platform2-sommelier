@@ -72,6 +72,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
     std::string record_id;
     std::string user_id;
     std::string label;
+    std::vector<uint8_t> validation_val;
   };
 
   class Record : public BiometricsManager::Record {
@@ -84,18 +85,13 @@ class CrosFpBiometricsManager : public BiometricsManager {
     const std::string& GetId() const override;
     const std::string& GetUserId() const override;
     const std::string& GetLabel() const override;
+    const std::vector<uint8_t>& GetValidationVal() const override;
     bool SetLabel(std::string label) override;
     bool Remove() override;
 
    private:
     base::WeakPtr<CrosFpBiometricsManager> biometrics_manager_;
     int index_;
-
-    // These are mutable because the const GetId, GetUserId and GetLabel methods
-    // use them as storage for the their respective return string refs.
-    mutable std::string local_record_id_;
-    mutable std::string local_user_id_;
-    mutable std::string local_label_;
   };
 
   explicit CrosFpBiometricsManager(
@@ -123,6 +119,9 @@ class CrosFpBiometricsManager : public BiometricsManager {
   void DoEnrollFingerUpEvent(InternalRecord record, uint32_t event);
   void DoMatchEvent(int attempt, uint32_t event);
   void DoMatchFingerUpEvent(uint32_t event);
+  bool ComputeValidationValue(const brillo::SecureBlob& secret,
+                              const std::string& user_id,
+                              std::vector<uint8_t>* out);
 
   void KillMcuSession();
 
@@ -131,6 +130,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
   bool LoadRecord(const std::string& user_id,
                   const std::string& label,
                   const std::string& record_id,
+                  const std::vector<uint8_t>& validation_val,
                   const base::Value& data);
   bool WriteRecord(const BiometricsManager::Record& record,
                    uint8_t* tmpl_data,

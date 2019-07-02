@@ -12,6 +12,7 @@
 #include <sstream>
 #include <utility>
 
+#include <base/base64.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -38,6 +39,7 @@ constexpr char kBioManagerMember[] = "biomanager";
 constexpr char kData[] = "data";
 constexpr char kLabel[] = "label";
 constexpr char kRecordId[] = "record_id";
+constexpr char kValidationVal[] = "match_validation_value";
 constexpr char kVersionMember[] = "version";
 // Version of the file format.
 constexpr int kFormatVersion = 1;
@@ -65,6 +67,9 @@ bool BiodStorage::WriteRecord(const BiometricsManager::Record& record,
   base::DictionaryValue record_value;
   record_value.SetString(kLabel, record.GetLabel());
   record_value.SetString(kRecordId, record_id);
+
+  record_value.SetString(kValidationVal, record.GetValidationValBase64());
+
   record_value.Set(kData, std::move(data));
   record_value.SetInteger(kVersionMember, kFormatVersion);
   record_value.SetString(kBioManagerMember, biometrics_manager_name_);
@@ -173,6 +178,18 @@ bool BiodStorage::ReadRecordsForSingleUser(const std::string& user_id) {
       continue;
     }
 
+    std::string validation_val_str;
+
+    if (!record_dictionary->GetString(kValidationVal, &validation_val_str)) {
+      LOG(ERROR) << "Cannot read validation value from " << record_path.value();
+      read_all_records_successfully = false;
+      continue;
+    }
+
+    base::Base64Decode(validation_val_str, &validation_val_str);
+    std::vector<uint8_t> validation_val(validation_val_str.begin(),
+                                        validation_val_str.end());
+
     base::Value* data = nullptr;
 
     if (!(record_dictionary->Get(kData, &data))) {
@@ -181,7 +198,7 @@ bool BiodStorage::ReadRecordsForSingleUser(const std::string& user_id) {
       continue;
     }
 
-    if (!load_record_.Run(user_id, label, record_id, *data)) {
+    if (!load_record_.Run(user_id, label, record_id, validation_val, *data)) {
       LOG(ERROR) << "Cannot load record from " << record_path.value() << ".";
       read_all_records_successfully = false;
       continue;
