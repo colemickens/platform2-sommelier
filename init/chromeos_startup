@@ -209,10 +209,12 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] && [ "$ROOTDEV_TYPE" != "/dev/ram" ]; then
       STATE_DEV="/dev/ubi0_${PARTITION_NUM_STATE}"
     fi
   else
-    DIRTY_EXPIRE_CENTISECS="$(sysctl -n vm.dirty_expire_centisecs)"
-    COMMIT_INTERVAL="$(( DIRTY_EXPIRE_CENTISECS / 100 ))"
     STATE_DEV="${ROOTDEV_TYPE}${PARTITION_NUM_STATE}"
-    STATE_FLAGS="${STATE_FLAGS},commit=${COMMIT_INTERVAL}"
+    if [ "${FORMAT_STATE}" = "ext4" ]; then
+      DIRTY_EXPIRE_CENTISECS="$(sysctl -n vm.dirty_expire_centisecs)"
+      COMMIT_INTERVAL="$(( DIRTY_EXPIRE_CENTISECS / 100 ))"
+      STATE_FLAGS="${STATE_FLAGS},commit=${COMMIT_INTERVAL}"
+    fi
   fi
 
   # Check if we enable ext4 crypto.
