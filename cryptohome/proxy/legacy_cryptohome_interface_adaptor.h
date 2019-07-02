@@ -572,11 +572,17 @@ class LegacyCryptohomeInterfaceAdaptor
   void TpmIsOwnedOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool>> response,
       const tpm_manager::GetTpmStatusReply& reply);
+  void TpmCanAttemptOwnershipOnSuccess(
+      const tpm_manager::TakeOwnershipReply& reply);
+  void TpmCanAttemptOwnershipOnFailure(brillo::Error* err);
   void TpmClearStoredPasswordOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<>> response,
       const tpm_manager::ClearStoredOwnerPasswordReply& reply);
   void TpmIsAttestationPreparedOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool>> response_raw,
+      const attestation::GetEnrollmentPreparationsReply& reply);
+  void TpmAttestationGetEnrollmentPreparationsExOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
       const attestation::GetEnrollmentPreparationsReply& reply);
   void TpmAttestationCreateEnrollRequestOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>>> response,

@@ -597,17 +597,44 @@ void LegacyCryptohomeInterfaceAdaptor::TpmIsOwnedOnSuccess(
 
 void LegacyCryptohomeInterfaceAdaptor::TpmIsBeingOwned(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  // Not implemented yet
   LOG(WARNING) << "Deprecated TpmIsBeingOwned is called.";
   response->Return(false);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmCanAttemptOwnership(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  tpm_manager::TakeOwnershipRequest request;
+  tpm_ownership_proxy_->TakeOwnershipAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::TpmCanAttemptOwnershipOnSuccess,
+          base::Unretained(this)),
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::TpmCanAttemptOwnershipOnFailure,
+          base::Unretained(this)));
+
+  // Note that this method is special in the sense that this call will return
+  // immediately as soon as the target method is called on the UserDataAuth
+  // side. The result from the target method on UserDataAuth side is not passed
+  // back to the caller of this method, but instead is logged if there's any
+  // failure.
+  response->Return();
+}
+
+void LegacyCryptohomeInterfaceAdaptor::TpmCanAttemptOwnershipOnSuccess(
+    const tpm_manager::TakeOwnershipReply& reply) {
+  if (reply.status() != tpm_manager::STATUS_SUCCESS) {
+    LOG(WARNING) << "TakeOwnership failure observed in "
+                    "TpmCanAttemptOwnership() of cryptohome-proxy. Status: "
+                 << static_cast<int>(reply.status());
+  }
+}
+
+void LegacyCryptohomeInterfaceAdaptor::TpmCanAttemptOwnershipOnFailure(
+    brillo::Error* err) {
+  // Note that creation of Error object already logs the error.
+  LOG(WARNING) << "TakeOwnership encountered an error, observed in "
+                  "TpmCanAttemptOwnership() of cryptohome-proxy.";
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmClearStoredPassword(
@@ -667,10 +694,55 @@ void LegacyCryptohomeInterfaceAdaptor::
             cryptohome::BaseReply>> response,
         const cryptohome::AttestationGetEnrollmentPreparationsRequest&
             in_request) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  base::Optional<attestation::ACAType> aca_type;
+  const int in_pca_type = in_request.pca_type();
+  aca_type = IntegerToACAType(in_pca_type);
+  if (!aca_type.has_value()) {
+    std::string error_msg =
+        "Requested ACA type " + std::to_string(in_pca_type) +
+        " is not supported in TpmAttestationGetEnrollmentPreparationsEx()";
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_NOT_SUPPORTED, error_msg);
+    return;
+  }
+
+  std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>>
+      response_shared(new SharedDBusMethodResponse<cryptohome::BaseReply>(
+          std::move(response)));
+
+  attestation::GetEnrollmentPreparationsRequest request;
+  request.set_aca_type(aca_type.value());
+
+  attestation_proxy_->GetEnrollmentPreparationsAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
+                     TpmAttestationGetEnrollmentPreparationsExOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::
+    TpmAttestationGetEnrollmentPreparationsExOnSuccess(
+        std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>>
+            response,
+        const attestation::GetEnrollmentPreparationsReply& reply) {
+  cryptohome::BaseReply result;
+  AttestationGetEnrollmentPreparationsReply* extension =
+      result.MutableExtension(AttestationGetEnrollmentPreparationsReply::reply);
+
+  if (reply.status() != attestation::STATUS_SUCCESS) {
+    // Failure.
+    result.set_error(CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
+  } else {
+    auto map = reply.enrollment_preparations();
+    for (auto it = map.cbegin(), end = map.cend(); it != end; ++it) {
+      (*extension->mutable_enrollment_preparations())[it->first] = it->second;
+    }
+  }
+
+  response->Return(result);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmVerifyAttestationData(
