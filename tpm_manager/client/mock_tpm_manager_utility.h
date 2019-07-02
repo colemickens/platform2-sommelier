@@ -5,12 +5,12 @@
 #ifndef TPM_MANAGER_CLIENT_MOCK_TPM_MANAGER_UTILITY_H_
 #define TPM_MANAGER_CLIENT_MOCK_TPM_MANAGER_UTILITY_H_
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include "tpm_manager/client/tpm_manager_utility.h"
 
 #include <string>
 
-#include "tpm_manager/client/tpm_manager_utility.h"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 namespace tpm_manager {
 
@@ -27,6 +27,8 @@ class TPM_MANAGER_EXPORT MockTpmManagerUtility : public TpmManagerUtility {
         .WillByDefault(Return(true));
     ON_CALL(*this, ResetDictionaryAttackLock()).WillByDefault(Return(true));
     ON_CALL(*this, ReadSpace(_, _, _)).WillByDefault(Return(true));
+    ON_CALL(*this, GetOwnershipTakenSignalStatus(_, _, _))
+        .WillByDefault(Return(true));
   }
   ~MockTpmManagerUtility() override = default;
 
@@ -37,6 +39,10 @@ class TPM_MANAGER_EXPORT MockTpmManagerUtility : public TpmManagerUtility {
   MOCK_METHOD4(GetDictionaryAttackInfo, bool(int*, int*, bool*, int*));
   MOCK_METHOD0(ResetDictionaryAttackLock, bool());
   MOCK_METHOD3(ReadSpace, bool(uint32_t, bool, std::string*));
+  MOCK_METHOD3(GetOwnershipTakenSignalStatus, bool(bool*, bool*, LocalData*));
+  MOCK_METHOD1(OnOwnershipTaken, void(const OwnershipTakenSignal&));
+  MOCK_METHOD3(OnSignalConnected,
+               void(const std::string&, const std::string&, bool));
 };
 
 }  // namespace tpm_manager

@@ -93,6 +93,7 @@ void TpmManagerUtility::InitializationTask(base::WaitableEvent* completion) {
   default_tpm_owner_ = std::make_unique<tpm_manager::TpmOwnershipDBusProxy>();
   default_tpm_nvram_ = std::make_unique<tpm_manager::TpmNvramDBusProxy>();
   if (default_tpm_owner_->Initialize()) {
+    default_tpm_owner_->ConnectToSignal(this);
     tpm_owner_ = default_tpm_owner_.get();
   }
   if (default_tpm_nvram_->Initialize()) {
@@ -170,6 +171,45 @@ bool TpmManagerUtility::ReadSpace(uint32_t index,
   // implementation is ready.
   DCHECK(false) << "Not implemented";
   return false;
+}
+
+bool TpmManagerUtility::GetOwnershipTakenSignalStatus(bool* is_successful,
+                                                      bool* has_received,
+                                                      LocalData* local_data) {
+  base::AutoLock lock(ownership_signal_lock_);
+  if (!is_connected_) {
+    return false;
+  }
+  if (is_successful) {
+    *is_successful = is_connection_successful_;
+  }
+  if (has_received) {
+    *has_received = static_cast<bool>(ownership_taken_signal_);
+  }
+  // Copies |LocalData| when both the data source and destination is ready.
+  if (ownership_taken_signal_ && local_data) {
+    *local_data = ownership_taken_signal_->local_data();
+  }
+  return true;
+}
+
+void TpmManagerUtility::OnOwnershipTaken(const OwnershipTakenSignal& signal) {
+  LOG(INFO) << __func__ << ": Received |OwnershipTakenSignal|.";
+  base::AutoLock lock(ownership_signal_lock_);
+  ownership_taken_signal_ = signal;
+}
+
+void TpmManagerUtility::OnSignalConnected(const std::string& /*interface_name*/,
+                                          const std::string& /*signal_name*/,
+                                          bool is_successful) {
+  if (!is_successful) {
+    LOG(ERROR) << __func__ << ": Failed to connect dbus signal.";
+  } else {
+    LOG(INFO) << __func__ << ": Connected dbus signal successfully.";
+  }
+  base::AutoLock lock(ownership_signal_lock_);
+  is_connected_ = true;
+  is_connection_successful_ = is_successful;
 }
 
 }  // namespace tpm_manager

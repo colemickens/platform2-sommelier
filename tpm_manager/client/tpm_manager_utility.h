@@ -5,21 +5,24 @@
 #ifndef TPM_MANAGER_CLIENT_TPM_MANAGER_UTILITY_H_
 #define TPM_MANAGER_CLIENT_TPM_MANAGER_UTILITY_H_
 
-#include <base/macros.h>
-#include <base/threading/thread.h>
-#include <stdint.h>
-
+#include <cstdint>
 #include <memory>
 #include <string>
 
+#include <base/macros.h>
+#include <base/optional.h>
+#include <base/synchronization/lock.h>
+#include <base/threading/thread.h>
 #include "tpm_manager/client/tpm_nvram_dbus_proxy.h"
 #include "tpm_manager/client/tpm_ownership_dbus_proxy.h"
+#include "tpm_manager/client/tpm_ownership_signal_handler.h"
 #include "tpm_manager/common/export.h"
 
 namespace tpm_manager {
 
 // A TpmUtility implementation for version-independent functions.
-class TPM_MANAGER_EXPORT TpmManagerUtility {
+class TPM_MANAGER_EXPORT TpmManagerUtility
+    : public TpmOwnershipTakenSignalHandler {
  public:
   TpmManagerUtility() = default;
   // a constructor which enables injection of mock interfaces.
@@ -75,6 +78,23 @@ class TPM_MANAGER_EXPORT TpmManagerUtility {
   virtual bool ReadSpace(uint32_t index,
                          bool use_owner_auth,
                          std::string* output);
+
+  // Gets the current status of the ownership taken signal. Returns |true| iff
+  // the signal is connected, no matter if it's connected successfully or not.
+  // |is_successful| indicates if the dbus signal connection is successful or
+  // not. |has_received| indicates if this instance has received the ownership
+  // taken signal. Once |has_received| is set as |true|,|local_data| gets
+  // updated. Any output parameter will be ignored to be set if the value is
+  // |nullptr|.
+  virtual bool GetOwnershipTakenSignalStatus(bool* is_successful,
+                                             bool* has_received,
+                                             LocalData* local_data);
+
+  void OnOwnershipTaken(const OwnershipTakenSignal& signal) override;
+
+  void OnSignalConnected(const std::string& interface_name,
+                         const std::string& signal_name,
+                         bool is_successful) override;
 
  private:
   // Tpm_manager communication thread class that cleans up after stopping.
@@ -133,6 +153,27 @@ class TPM_MANAGER_EXPORT TpmManagerUtility {
   // tpm_managerd. Declared last, so that it is destroyed before the
   // objects it uses.
   TpmManagerThread tpm_manager_thread_{this};
+
+  // Data structures for the dbus signal handling.
+
+  // |ownership_signal_lock_| is used when the signal-handling data is
+  // accessed; the mutex is necessary because the user of this class could read
+  // the signal data.
+  base::Lock ownership_signal_lock_;
+
+  // Only uses |is_connected_| to indicate if we can rely on the dbus signal to
+  // get the local data though it could mean "not connected", "being
+  // connected". Note that |is_connected_| could also mean the connection has
+  // been attempted but not successfully. For naming reference, see arguments of
+  // |brillo::dbus_utils::ConnectToSignal|.
+  bool is_connected_{false};
+
+  // Records if it's a successful signal connection once connected.
+  bool is_connection_successful_{false};
+
+  // |ownership_taken_signal_| stores the data once the ownership
+  // taken signal is received.
+  base::Optional<OwnershipTakenSignal> ownership_taken_signal_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmManagerUtility);
 };

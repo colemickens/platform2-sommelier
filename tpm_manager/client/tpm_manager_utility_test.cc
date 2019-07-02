@@ -200,4 +200,42 @@ TEST_F(TpmManagerUtilityTest, ExtraInitializationCall) {
   EXPECT_TRUE(tpm_manager_utility_.Initialize());
 }
 
+TEST_F(TpmManagerUtilityTest, OwnershipTakenSignal) {
+  bool result_is_successful;
+  bool result_has_received;
+  LocalData result_local_data;
+
+  // Tests the initial state.
+  EXPECT_FALSE(tpm_manager_utility_.GetOwnershipTakenSignalStatus(
+      &result_is_successful, &result_has_received, &result_local_data));
+
+  // Tests the signal connection failure.
+  tpm_manager_utility_.OnSignalConnected("", "", false);
+  EXPECT_TRUE(tpm_manager_utility_.GetOwnershipTakenSignalStatus(
+      &result_is_successful, &result_has_received, &result_local_data));
+  EXPECT_FALSE(result_is_successful);
+
+  // Tests the signal connection success.
+  tpm_manager_utility_.OnSignalConnected("", "", true);
+  EXPECT_TRUE(tpm_manager_utility_.GetOwnershipTakenSignalStatus(
+      &result_is_successful, &result_has_received, &result_local_data));
+  EXPECT_TRUE(result_is_successful);
+  EXPECT_FALSE(result_has_received);
+
+  OwnershipTakenSignal signal;
+  signal.mutable_local_data()->set_owner_password("owner password");
+  signal.mutable_local_data()->set_endorsement_password("endorsement password");
+  tpm_manager_utility_.OnOwnershipTaken(signal);
+  EXPECT_TRUE(tpm_manager_utility_.GetOwnershipTakenSignalStatus(
+      &result_is_successful, &result_has_received, &result_local_data));
+  EXPECT_TRUE(result_is_successful);
+  EXPECT_TRUE(result_has_received);
+  EXPECT_EQ(result_local_data.SerializeAsString(),
+            signal.local_data().SerializeAsString());
+
+  // Tests if the null parameters break the code.
+  EXPECT_TRUE(tpm_manager_utility_.GetOwnershipTakenSignalStatus(
+      nullptr, nullptr, nullptr));
+}
+
 }  // namespace tpm_manager
