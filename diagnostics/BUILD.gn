@@ -72,15 +72,18 @@ pkg_config("libcros_healthd_pkg_deps") {
     "libchrome-${libbase_ver}",
     "libmojo-${libbase_ver}",
     "libudev",
+    "system_api",
   ]
 }
 
 static_library("libcros_healthd") {
   deps = [
     ":diagnostics_mojo_bindings",
+    "//diagnostics/grpc:diagnostics_grpc_protos",
   ]
   all_dependent_configs = [ ":libcros_healthd_pkg_deps" ]
   sources = [
+    "common/battery_utils.cc",
     "common/disk_utils.cc",
     "cros_healthd/cros_healthd_mojo_service.cc",
     "cros_healthd/cros_healthd_routine_service_impl.cc",
@@ -181,6 +184,7 @@ executable("cros_healthd") {
     ":libcros_healthd",
   ]
   sources = [
+    "common/battery_utils.cc",
     "common/disk_utils.cc",
     "cros_healthd/main.cc",
   ]
@@ -289,6 +293,7 @@ if (use.test) {
       "../common-mk/testrunner:testrunner",
     ]
     sources = [
+      "common/battery_utils_test.cc",
       "cros_healthd/cros_healthd_mojo_service_test.cc",
     ]
   }

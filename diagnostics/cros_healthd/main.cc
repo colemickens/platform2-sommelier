@@ -2,18 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <string>
 
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
+#include "diagnostics/common/battery_utils.h"
 #include "diagnostics/common/disk_utils.h"
 
 int main(int argc, char** argv) {
   DEFINE_bool(probe_block_devices, false,
               "Exercise the ProbeNonRemovableBlockDeviceInfo routine");
-  DEFINE_bool(probe_batteries, false, "Exercise the ProbeBatteryInfo routine");
+  DEFINE_bool(probe_battery_metrics, false,
+              "Exercise the ProbeBatteryInfo routine");
 
   brillo::FlagHelper::Init(
       argc, argv, "cros_healthd - Device telemetry and diagnostics daemon.");
@@ -26,16 +30,27 @@ int main(int argc, char** argv) {
         diagnostics::disk_utils::FetchNonRemovableBlockDevicesInfo(root_dir);
     VLOG(1) << "Found " << devices.size() << " non-removable block device(s)."
             << std::endl;
-    std::cout << "path,size,type,manfid,name,serial" << std::endl;
-    for (auto& device : devices) {
-      std::cout << device->path << "," << std::dec << device->size << ","
-                << device->type << ",0x" << std::hex
-                << static_cast<int>(device->manufacturer_id) << ","
-                << device->name << ",0x" << std::hex << device->serial
-                << std::endl;
+    printf("path,size,type,manfid,name,serial\n");
+    for (const auto& device : devices) {
+      printf("%s,%ld,%s,0x%x,%s,0x%x\n", device->path.c_str(), device->size,
+             device->type.c_str(), static_cast<int>(device->manufacturer_id),
+             device->name.c_str(), device->serial);
     }
-  } else if (FLAGS_probe_batteries) {
-    NOTIMPLEMENTED();
+  } else if (FLAGS_probe_battery_metrics) {
+    auto batteries = diagnostics::FetchBatteryInfo();
+    if (batteries.size() != 1) {
+      LOG(ERROR) << "Did not properly fetch information for main battery.";
+      return EXIT_FAILURE;
+    }
+    VLOG(1) << "Found information for main battery.";
+    printf(
+        "charge_full,charge_full_design,cycle_count,serial_number,"
+        "vendor(manufacturer),voltage_now,voltage_min_design\n");
+    const auto& battery = batteries[0];
+    printf("%f,%f,%ld,%s,%s,%f,%f\n", battery->charge_full,
+           battery->charge_full_design, battery->cycle_count,
+           battery->serial_number.c_str(), battery->vendor.c_str(),
+           battery->voltage_now, battery->voltage_min_design);
   } else {
     // TODO(pmoy): implement daemon
   }
