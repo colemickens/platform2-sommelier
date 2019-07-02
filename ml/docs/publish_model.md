@@ -8,12 +8,32 @@ Design doc for model publishing: [go/cros-ml-service-models].
 
 ## Model format
 
-Currently the ML Service supports **TensorFlow Lite** models.
-Each model needs to be a single file.
-The file format is a TFLite flat buffers (extension .tflite).
+Currently the ML Service supports **TensorFlow Lite** models. Each model needs
+to be a single file. The file format is a TFLite flat buffers (extension
+.tflite).
 
-Handy tool: you can convert a TF model into a TFLite model using the internal
-tool Toco (see [go/toco]).
+You can convert a TF model into a TFLite model using the [TensorFlow Lite
+Converter (Toco)][toco] tool.
+
+### TFLite runtime version
+
+You need to be aware what (minimum) version of the TFLite runtime your model
+requires.
+> TODO(amoylan): Show an example of how to verify this using Toco.
+
+The following table shows the version of ML Service's TFLite runtime for each
+CrOS major version:
+
+| CrOS version    | TFLite version   |
+|:---------------:|:----------------:|
+| M71 (and prior) | (none)           |
+| M72             | 1.9.0            |
+| M73             | 1.9.0            |
+| M74             | 1.9.0            |
+| M75             | 1.9.0            |
+| M76             | 1.9.0            |
+| M77             | 1.14.0 (planned) |
+
 
 ## Two methods to publish your models
 
@@ -178,7 +198,7 @@ Finch rollout. Optionally, you can also take this shortcut (with caveats):
 [go/cros-ml-service-models]: http://go/cros-ml-service-models
 [go/dlc-service-proposal]: http://go/dlc-service-proposal
 [go/finch-best-practices]: http://go/finch-best-practices
-[go/toco]: http://go/toco
+[toco]: https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/toco
 [loading & inference test]: https://cs.corp.google.com/chromeos_public/src/platform2/ml/machine_learning_service_impl_test.cc
 [ML Service ebuild]: https://cs.corp.google.com/chromeos_public/src/third_party/chromiumos-overlay/chromeos-base/ml/ml-9999.ebuild
 [model.mojom]: https://cs.corp.google.com/chromeos_public/src/platform2/ml/mojom/model.mojom
