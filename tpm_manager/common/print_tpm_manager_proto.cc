@@ -299,20 +299,12 @@ std::string GetProtoDebugStringWithIndent(const OwnershipTakenSignal& value,
   std::string output =
       base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
 
-  if (value.has_owner_password()) {
-    output += indent + "  owner_password: ";
-    base::StringAppendF(&output, "%s",
-                        base::HexEncode(value.owner_password().data(),
-                                        value.owner_password().size())
-                            .c_str());
-    output += "\n";
-  }
-  if (value.has_endorsement_password()) {
-    output += indent + "  endorsement_password: ";
-    base::StringAppendF(&output, "%s",
-                        base::HexEncode(value.endorsement_password().data(),
-                                        value.endorsement_password().size())
-                            .c_str());
+  if (value.has_local_data()) {
+    output += indent + "  local_data: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.local_data(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   output += indent + "}\n";
