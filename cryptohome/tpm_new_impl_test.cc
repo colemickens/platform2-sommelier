@@ -203,11 +203,18 @@ TEST_F(TpmNewImplTest, SignalCache) {
 
   ON_CALL(mock_tpm_manager_utility_, GetOwnershipTakenSignalStatus(_, _, _))
       .WillByDefault(Return(false));
-  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _)).Times(3);
+  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _)).Times(2);
   EXPECT_CALL(mock_tpm_manager_utility_, GetOwnershipTakenSignalStatus(_, _, _))
-      .Times(3);
+      .Times(2);
   EXPECT_FALSE(GetTpm()->GetOwnerPassword(&result_owner_password));
   EXPECT_FALSE(GetTpm()->IsOwned());
+
+  // |GetDelegate| doesn't fully rely on the signal. Thus, expects to call
+  // |GetTpmStatus| but not |GetOwnershipTakenSignalStatus| when the auth
+  // delegate is not found.
+  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _)).Times(1);
+  EXPECT_CALL(mock_tpm_manager_utility_, GetOwnershipTakenSignalStatus(_, _, _))
+      .Times(0);
   EXPECT_FALSE(GetTpm()->GetDelegate(&result_blob, &result_secret,
                                      &result_has_reset_lock_permissions));
 
@@ -215,7 +222,7 @@ TEST_F(TpmNewImplTest, SignalCache) {
       .WillByDefault(DoAll(SetArgPointee<0>(false), Return(true)));
   EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _)).Times(3);
   EXPECT_CALL(mock_tpm_manager_utility_, GetOwnershipTakenSignalStatus(_, _, _))
-      .Times(3);
+      .Times(2);
   EXPECT_FALSE(GetTpm()->GetOwnerPassword(&result_owner_password));
   EXPECT_FALSE(GetTpm()->IsOwned());
   EXPECT_FALSE(GetTpm()->GetDelegate(&result_blob, &result_secret,
@@ -226,9 +233,10 @@ TEST_F(TpmNewImplTest, SignalCache) {
           DoAll(SetArgPointee<0>(true), SetArgPointee<1>(false), Return(true)));
   EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _)).Times(1);
   EXPECT_CALL(mock_tpm_manager_utility_, GetOwnershipTakenSignalStatus(_, _, _))
-      .Times(3);
+      .Times(2);
   EXPECT_FALSE(GetTpm()->IsOwned());
   EXPECT_FALSE(GetTpm()->GetOwnerPassword(&result_owner_password));
+  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _)).Times(1);
   EXPECT_FALSE(GetTpm()->GetDelegate(&result_blob, &result_secret,
                                      &result_has_reset_lock_permissions));
 

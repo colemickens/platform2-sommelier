@@ -145,7 +145,7 @@ bool TpmNewImpl::GetDelegate(brillo::Blob* blob,
   secret->clear();
   if (last_tpm_manager_data_.owner_delegate().blob().empty() ||
       last_tpm_manager_data_.owner_delegate().secret().empty()) {
-    if (!UpdateLocalDataFromTpmManager()) {
+    if (!CacheTpmManagerStatus()) {
       LOG(ERROR) << __func__
                  << ": Failed to call |UpdateLocalDataFromTpmManager|.";
       return false;
