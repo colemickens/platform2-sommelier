@@ -185,8 +185,7 @@ bool DBusService::MaybeSendOwnershipTakenSignal() {
   }
 
   OwnershipTakenSignal payload;
-  payload.set_owner_password(local_data.owner_password());
-  payload.set_endorsement_password(local_data.endorsement_password());
+  *payload.mutable_local_data() = local_data;
 
   // The proto message |payload| will be converted to array of bytes by Send().
   if (!signal->Send(payload)) {
