@@ -187,6 +187,14 @@ class SessionManagerImpl
       std::string* out_filepath) override;
   bool SaveLoginPassword(brillo::ErrorPtr* error,
                          const base::ScopedFD& in_password_fd) override;
+  bool LoginScreenStorageStore(brillo::ErrorPtr* error,
+                               const std::string& in_key,
+                               const std::vector<uint8_t>& in_metadata,
+                               const base::ScopedFD& in_value_fd) override;
+  bool LoginScreenStorageRetrieve(
+      brillo::ErrorPtr* error,
+      const std::string& in_key,
+      brillo::dbus_utils::FileDescriptor* out_value_fd) override;
   bool StartSession(brillo::ErrorPtr* error,
                     const std::string& in_account_id,
                     const std::string& in_unique_identifier) override;
@@ -435,6 +443,8 @@ class SessionManagerImpl
 
   std::unique_ptr<password_provider::PasswordProviderInterface>
       password_provider_;
+
+  std::map<std::string, std::vector<uint8_t>> login_screen_storage_;
 
   base::WeakPtrFactory<SessionManagerImpl> weak_ptr_factory_;
 

@@ -93,6 +93,40 @@
     </method>
 
     <!--
+        LoginScreenStore:
+        @key: Key to store a given value for.
+        @metadata: Metadata specifying settings for a given key/value pair.
+        @value_fd: File descriptor pointing at a pipe containing value to
+            store with a given key.
+
+        Saves a given key/value pair to the session manager for later access
+        either from the login screen or the user session using
+        |LoginScreenRetrieve()|. This method can only be called when no user
+        sessions are running.
+
+        If |metadata.clear_on_session_exit| is set to 'true', the saved
+        key/value pair is deleted on session exit.
+    -->
+    <method name="LoginScreenStorageStore">
+      <arg type="s" name="key" direction="in" />
+      <arg type="ay" name="metadata" direction="in" />
+      <arg type="h" name="value_fd" direction="in" />
+    </method>
+
+    <!--
+        LoginScreenRetrieve:
+        @key: Key the requested value was stored for.
+        @value_fd: File decriptor pointing at a pipe containing the requested
+            value.
+
+        Retrieves a value previously stored with |LoginScreenStore()|.
+    -->
+    <method name="LoginScreenStorageRetrieve">
+      <arg type="s" name="key" direction="in" />
+      <arg type="h" name="value_fd" direction="out" />
+    </method>
+
+    <!--
         StartSession:
         @account_id: Account ID of the user to start a session for.
         @unique_identifier: Unused.

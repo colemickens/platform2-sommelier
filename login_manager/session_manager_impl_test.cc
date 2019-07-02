@@ -75,7 +75,9 @@
 #include "login_manager/mock_user_policy_service_factory.h"
 #include "login_manager/mock_vpd_process.h"
 #include "login_manager/proto_bindings/arc.pb.h"
+#include "login_manager/proto_bindings/login_screen_storage.pb.h"
 #include "login_manager/proto_bindings/policy_descriptor.pb.h"
+#include "login_manager/secret_util.h"
 #include "login_manager/system_utils_impl.h"
 
 using ::testing::_;
@@ -298,21 +300,11 @@ std::vector<uint8_t> MakePolicyDescriptor(PolicyAccountType account_type,
   return StringToBlob(descriptor.SerializeAsString());
 }
 
-// Create a file descriptor pointing to a pipe that contains the given data.
-// The data size (of type size_t) will be inserted into the pipe first, followed
-// by the actual data.
-base::ScopedFD WriteSizeAndDataToPipe(const std::string& data) {
-  int fds[2];
-  EXPECT_TRUE(base::CreateLocalNonBlockingPipe(fds));
-  base::ScopedFD read_dbus_fd(fds[0]);
-  base::ScopedFD write_scoped_fd(fds[1]);
-
-  size_t size = data.size();
-  EXPECT_TRUE(base::WriteFileDescriptor(
-      write_scoped_fd.get(), reinterpret_cast<char*>(&size), sizeof(size_t)));
-  EXPECT_TRUE(base::WriteFileDescriptor(write_scoped_fd.get(), data.c_str(),
-                                        data.size()));
-  return read_dbus_fd;
+std::vector<uint8_t> MakeLoginScreenStorageMetadata(
+    bool clear_on_session_exit) {
+  LoginScreenStorageMetadata metadata;
+  metadata.set_clear_on_session_exit(clear_on_session_exit);
+  return StringToBlob(metadata.SerializeAsString());
 }
 
 #if USE_CHEETS
@@ -1126,7 +1118,8 @@ TEST_F(SessionManagerImplTest, StartSession_ActiveDirectorManaged) {
 
 TEST_F(SessionManagerImplTest, SaveLoginPassword) {
   const string kPassword("thepassword");
-  base::ScopedFD password_fd = WriteSizeAndDataToPipe(kPassword);
+  base::ScopedFD password_fd = secret_util::WriteSizeAndDataToPipe(
+      std::vector<uint8_t>(kPassword.begin(), kPassword.end()));
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->SaveLoginPassword(&error, password_fd));
   EXPECT_FALSE(error.get());
@@ -1142,6 +1135,46 @@ TEST_F(SessionManagerImplTest, DiscardPasswordOnStopSession) {
 TEST_F(SessionManagerImplTest, StopSession) {
   EXPECT_CALL(manager_, ScheduleShutdown()).Times(1);
   impl_->StopSession("");
+}
+
+TEST_F(SessionManagerImplTest, LoginScreenStorage_StoreRetrieve) {
+  const string kTestKey("testkey");
+  const string kTestValue("testvalue");
+  const vector<uint8_t> kTestValueVector =
+      std::vector<uint8_t>(kTestValue.begin(), kTestValue.end());
+  base::ScopedFD value_fd =
+      secret_util::WriteSizeAndDataToPipe(kTestValueVector);
+
+  brillo::ErrorPtr error;
+  impl_->LoginScreenStorageStore(
+      &error, kTestKey,
+      MakeLoginScreenStorageMetadata(/*clear_on_session_exit=*/true), value_fd);
+  EXPECT_FALSE(error.get());
+
+  brillo::dbus_utils::FileDescriptor out_value_fd;
+  impl_->LoginScreenStorageRetrieve(&error, kTestKey, &out_value_fd);
+  EXPECT_FALSE(error.get());
+
+  std::vector<uint8_t> value;
+  EXPECT_TRUE(secret_util::ReadSecretFromPipe(out_value_fd.get(), &value));
+  EXPECT_EQ(kTestValueVector, value);
+}
+
+TEST_F(SessionManagerImplTest, LoginScreenStorage_StoreFailsInSession) {
+  const string kTestKey("testkey");
+  const string kTestValue("testvalue");
+  const vector<uint8_t> kTestValueVector =
+      std::vector<uint8_t>(kTestValue.begin(), kTestValue.end());
+  base::ScopedFD value_fd =
+      secret_util::WriteSizeAndDataToPipe(kTestValueVector);
+
+  ExpectAndRunStartSession(kSaneEmail);
+
+  brillo::ErrorPtr error;
+  impl_->LoginScreenStorageStore(
+      &error, kTestKey,
+      MakeLoginScreenStorageMetadata(/*clear_on_session_exit=*/true), value_fd);
+  EXPECT_TRUE(error.get());
 }
 
 TEST_F(SessionManagerImplTest, StorePolicyEx_NoSession) {

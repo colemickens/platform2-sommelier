@@ -56,8 +56,10 @@
 #include "login_manager/policy_service.h"
 #include "login_manager/process_manager_service_interface.h"
 #include "login_manager/proto_bindings/arc.pb.h"
+#include "login_manager/proto_bindings/login_screen_storage.pb.h"
 #include "login_manager/proto_bindings/policy_descriptor.pb.h"
 #include "login_manager/regen_mitigator.h"
+#include "login_manager/secret_util.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/user_policy_service_factory.h"
 #include "login_manager/validator_utils.h"
@@ -672,29 +674,64 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
 
 bool SessionManagerImpl::SaveLoginPassword(
     brillo::ErrorPtr* error, const base::ScopedFD& in_password_fd) {
-  size_t data_size = 0;
-  if (!base::ReadFromFD(in_password_fd.get(),
-                        reinterpret_cast<char*>(&data_size), sizeof(size_t))) {
-    PLOG(ERROR) << "Could not read password size from file.";
-    return false;
-  }
-
-  if (data_size <= 0) {
-    LOG(ERROR) << "Invalid data size read from file descriptor. Size read: "
-               << data_size;
-    return false;
-  }
-
-  auto password = password_provider::Password::CreateFromFileDescriptor(
-      in_password_fd.get(), data_size);
-
-  if (!password) {
-    LOG(ERROR) << "Could not create Password from file descriptor.";
-    return false;
-  }
-
-  if (!password_provider_->SavePassword(*password.get())) {
+  if (!secret_util::SaveSecretFromFileDescriptor(password_provider_.get(),
+                                                 in_password_fd)) {
     LOG(ERROR) << "Could not save password.";
+    return false;
+  }
+  return true;
+}
+
+bool SessionManagerImpl::LoginScreenStorageStore(
+    brillo::ErrorPtr* error,
+    const std::string& in_key,
+    const std::vector<uint8_t>& in_metadata,
+    const base::ScopedFD& in_value_fd) {
+  if (!user_sessions_.empty()) {
+    *error = CreateError(
+        DBUS_ERROR_FAILED,
+        "can't store login screen data while there are active user sessions.");
+    return false;
+  }
+
+  std::vector<uint8_t> value;
+  if (!secret_util::ReadSecretFromPipe(in_value_fd.get(), &value)) {
+    *error = CreateError(DBUS_ERROR_IO_ERROR, "couldn't read value from pipe.");
+    return false;
+  }
+  LoginScreenStorageMetadata metadata;
+  if (!metadata.ParseFromArray(in_metadata.data(), in_metadata.size())) {
+    *error = CreateError(DBUS_ERROR_INVALID_ARGS, "metadata parsing failed.");
+    return false;
+  }
+
+  // TODO(voit): Add support for the |in_metadata.clear_on_session_exit| =
+  // 'false' use case. Currently value is always cleared on session exit,
+  // because the SessionManager's process is terminated.
+  if (!metadata.clear_on_session_exit()) {
+    *error = CreateError(DBUS_ERROR_FAILED,
+                         "persistent storage is not supported "
+                         "at the moment.");
+    return false;
+  }
+  login_screen_storage_[in_key] = std::move(value);
+  return true;
+}
+
+bool SessionManagerImpl::LoginScreenStorageRetrieve(
+    brillo::ErrorPtr* error,
+    const std::string& in_key,
+    brillo::dbus_utils::FileDescriptor* out_value_fd) {
+  auto value_iter = login_screen_storage_.find(in_key);
+  if (value_iter == login_screen_storage_.end()) {
+    *error = CreateError(DBUS_ERROR_INVALID_ARGS,
+                         "no value was found for the given key.");
+    return false;
+  }
+
+  *out_value_fd = secret_util::WriteSizeAndDataToPipe(value_iter->second);
+  if (!out_value_fd->get()) {
+    *error = CreateError(DBUS_ERROR_IO_ERROR, "couldn't create a pipe");
     return false;
   }
 

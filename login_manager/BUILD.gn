@@ -83,6 +83,7 @@ static_library("libsession_manager") {
     "policy_store.cc",
     "regen_mitigator.cc",
     "resilient_policy_store.cc",
+    "secret_util.cc",
     "server_backed_state_key_generator.cc",
     "session_manager_impl.cc",
     "session_manager_service.cc",
