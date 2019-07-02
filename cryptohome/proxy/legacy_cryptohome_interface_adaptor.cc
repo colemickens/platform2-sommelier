@@ -307,10 +307,24 @@ void LegacyCryptohomeInterfaceAdaptor::GetSanitizedUsername(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::string>>
         response,
     const std::string& in_username) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<std::string>>(
+          std::move(response));
+
+  user_data_auth::GetSanitizedUsernameRequest request;
+  misc_proxy_->GetSanitizedUsernameAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::GetSanitizedUsernameOnSuccess,
+          base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<std::string>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::GetSanitizedUsernameOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<std::string>> response,
+    const user_data_auth::GetSanitizedUsernameReply& reply) {
+  response->Return(reply.sanitized_username());
 }
 
 void LegacyCryptohomeInterfaceAdaptor::MountEx(
@@ -440,10 +454,30 @@ void LegacyCryptohomeInterfaceAdaptor::UnmountEx(
 void LegacyCryptohomeInterfaceAdaptor::UpdateCurrentUserActivityTimestamp(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     int32_t in_time_shift_sec) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<>>(std::move(response));
+
+  user_data_auth::UpdateCurrentUserActivityTimestampRequest request;
+  request.set_time_shift_sec(in_time_shift_sec);
+  misc_proxy_->UpdateCurrentUserActivityTimestampAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
+                     UpdateCurrentUserActivityTimestampOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::
+    UpdateCurrentUserActivityTimestampOnSuccess(
+        std::shared_ptr<SharedDBusMethodResponse<>> response,
+        const user_data_auth::UpdateCurrentUserActivityTimestampReply& reply) {
+  if (reply.error() != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    LOG(WARNING) << "UpdateCurrentUserActivityTimestamp() failure received by "
+                    "cryptohome-proxy, error "
+                 << static_cast<int>(reply.error());
+  }
+  response->Return();
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmIsReady(

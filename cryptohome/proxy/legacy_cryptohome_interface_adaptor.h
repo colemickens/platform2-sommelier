@@ -548,9 +548,15 @@ class LegacyCryptohomeInterfaceAdaptor
   void GetSystemSaltOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>>> response,
       const user_data_auth::GetSystemSaltReply& reply);
+  void GetSanitizedUsernameOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<std::string>> response,
+      const user_data_auth::GetSanitizedUsernameReply& reply);
   void MountExOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
       const user_data_auth::MountReply& reply);
+  void UpdateCurrentUserActivityTimestampOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<>> response,
+      const user_data_auth::UpdateCurrentUserActivityTimestampReply& reply);
   void TpmIsReadyOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool>> response,
       const tpm_manager::GetTpmStatusReply& reply);
