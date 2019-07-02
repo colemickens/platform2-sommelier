@@ -46,7 +46,9 @@ class CameraDevice : public mojom::IpCameraFrameListener {
   void StartStreamingOnIpcThread(scoped_refptr<Future<void>> return_val);
   void StopStreamingOnIpcThread(scoped_refptr<Future<void>> return_val);
   bool ValidateStream(camera3_stream_t* stream);
-  void OnFrameCaptured(mojo::ScopedHandle shm_handle, uint32_t size) override;
+  void OnFrameCaptured(mojo::ScopedHandle shm_handle,
+                       int32_t id,
+                       uint32_t size) override;
   void OnConnectionError();
 
   std::atomic<bool> open_;

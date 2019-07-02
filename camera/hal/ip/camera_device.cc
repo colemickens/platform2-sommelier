@@ -335,8 +335,10 @@ int CameraDevice::Flush() {
 }
 
 void CameraDevice::OnFrameCaptured(mojo::ScopedHandle shm_handle,
+                                   int32_t id,
                                    uint32_t size) {
   if (request_queue_.IsEmpty()) {
+    ip_device_->ReturnBuffer(id);
     return;
   }
 
@@ -372,6 +374,7 @@ void CameraDevice::OnFrameCaptured(mojo::ScopedHandle shm_handle,
 
   buffer_manager_->Unlock(*output_buffer);
   buffer_manager_->Deregister(*output_buffer);
+  ip_device_->ReturnBuffer(id);
 
   shm.Unmap();
   shm.Close();
