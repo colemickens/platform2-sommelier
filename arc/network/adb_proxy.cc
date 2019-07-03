@@ -68,10 +68,6 @@ int AdbProxy::OnInit() {
   m->Enter(jail);
   m->Destroy(jail);
 
-  RegisterHandler(SIGUSR1,
-                  base::Bind(&AdbProxy::OnSignal, base::Unretained(this)));
-  RegisterHandler(SIGUSR2,
-                  base::Bind(&AdbProxy::OnSignal, base::Unretained(this)));
   return Daemon::OnInit();
 }
 
@@ -184,12 +180,6 @@ void AdbProxy::OnGuestMessage(const GuestMessage& msg) {
   if (msg.event() == GuestMessage::STOP) {
     Reset();
   }
-}
-
-// TODO(garrick): Remove this workaround ASAP.
-bool AdbProxy::OnSignal(const struct signalfd_siginfo& info) {
-  // Do nothing. This is only here to prevent the process from crashing.
-  return false;
 }
 
 }  // namespace arc_networkd

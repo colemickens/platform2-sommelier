@@ -21,12 +21,6 @@ int IpHelper::OnInit() {
     return -1;
   }
 
-  // Handle signals for ARC lifecycle.
-  RegisterHandler(SIGUSR1,
-                  base::Bind(&IpHelper::OnSignal, base::Unretained(this)));
-  RegisterHandler(SIGUSR2,
-                  base::Bind(&IpHelper::OnSignal, base::Unretained(this)));
-
   msg_dispatcher_.RegisterFailureHandler(
       base::Bind(&IpHelper::OnParentProcessExit, weak_factory_.GetWeakPtr()));
 
@@ -67,12 +61,6 @@ void IpHelper::OnGuestMessage(const GuestMessage& msg) {
 
 void IpHelper::OnDeviceMessage(const DeviceMessage& msg) {
   arc_helper_->HandleCommand(msg);
-}
-
-// TODO(garrick): Remove this workaround ASAP.
-bool IpHelper::OnSignal(const struct signalfd_siginfo& info) {
-  // Do nothing. This is only here to prevent the process from crashing.
-  return false;
 }
 
 }  // namespace arc_networkd

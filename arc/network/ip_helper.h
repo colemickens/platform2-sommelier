@@ -33,10 +33,6 @@ class IpHelper : public brillo::Daemon {
   void OnDeviceMessage(const DeviceMessage& msg);
 
  private:
-  // Callback from system to notify that a signal was received
-  // indicating that ARC is either booting up or going down.
-  bool OnSignal(const struct signalfd_siginfo& info);
-
   MessageDispatcher msg_dispatcher_;
   std::unique_ptr<ArcHelper> arc_helper_;
 
