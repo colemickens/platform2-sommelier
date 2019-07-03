@@ -812,6 +812,9 @@ Nl80211AttributeStaInfo::Nl80211AttributeStaInfo()
       AttrDataPair(NL80211_STA_INFO_BEACON_SIGNAL_AVG,
                    NestedData(kTypeU8, "NL80211_STA_INFO_BEACON_SIGNAL_AVG",
                               false)));
+  nested_template_.insert(AttrDataPair(
+      NL80211_STA_INFO_AIRTIME_LINK_METRIC,
+      NestedData(kTypeU32, "NL80211_STA_INFO_AIRTIME_LINK_METRIC", false)));
 }
 
 const int Nl80211AttributeSupportedCommands::kName =
