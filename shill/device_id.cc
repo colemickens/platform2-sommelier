@@ -46,6 +46,34 @@ bool HextetToUInt16(const std::string& input, uint16_t* output) {
   return true;
 }
 
+bool HexToUInt16(const std::string& input, uint16_t* output) {
+  DCHECK(output);
+  if (base::StartsWith(input, "0x", base::CompareCase::INSENSITIVE_ASCII)) {
+    return HextetToUInt16(input.substr(2), output);
+  }
+  return HextetToUInt16(input, output);
+}
+
+std::unique_ptr<DeviceId> ReadDeviceId(DeviceId::BusType bus_type,
+    const base::FilePath& vendor_path, const base::FilePath& product_path) {
+  std::string vendor_id, product_id;
+  uint16_t parsed_vendor_id, parsed_product_id;
+
+  if (!ReadDeviceIdFile(vendor_path, &vendor_id) ||
+      !HexToUInt16(vendor_id, &parsed_vendor_id)) {
+    return std::make_unique<DeviceId>(bus_type);
+  }
+
+  if (!ReadDeviceIdFile(product_path, &product_id) ||
+      !HexToUInt16(product_id, &parsed_product_id)) {
+    return std::make_unique<DeviceId>(
+        bus_type, parsed_vendor_id);
+  }
+
+  return std::make_unique<DeviceId>(
+      bus_type, parsed_vendor_id, parsed_product_id);
+}
+
 }  // namespace
 
 std::string DeviceId::AsString() const {
@@ -112,31 +140,16 @@ std::unique_ptr<DeviceId> ReadDeviceIdFromSysfs(
   if (!base::ReadSymbolicLink(syspath.Append("subsystem"), &subsystem)) {
     return nullptr;
   }
+
   std::string bus_type = subsystem.BaseName().value();
-
-  if (bus_type == "usb") {
-    std::string vendor_id, product_id;
-    uint16_t parsed_vendor_id, parsed_product_id;
-
-    if (!ReadDeviceIdFile(syspath.Append("idVendor"), &vendor_id) ||
-        !HextetToUInt16(vendor_id, &parsed_vendor_id)) {
-      return std::make_unique<DeviceId>(DeviceId::BusType::kUsb);
-    }
-
-    if (!ReadDeviceIdFile(syspath.Append("idProduct"), &product_id) ||
-        !HextetToUInt16(product_id, &parsed_product_id)) {
-      return std::make_unique<DeviceId>(
-          DeviceId::BusType::kUsb, parsed_vendor_id);
-    }
-
-    return std::make_unique<DeviceId>(
-        DeviceId::BusType::kUsb, parsed_vendor_id, parsed_product_id);
-  }
-
   if (bus_type == "pci") {
-    return std::make_unique<DeviceId>(DeviceId::BusType::kPci);
+    return ReadDeviceId(DeviceId::BusType::kPci, syspath.Append("vendor"),
+                        syspath.Append("product"));
   }
-
+  if (bus_type == "usb") {
+    return ReadDeviceId(DeviceId::BusType::kUsb, syspath.Append("idVendor"),
+                        syspath.Append("idProduct"));
+  }
   return nullptr;
 }
 
