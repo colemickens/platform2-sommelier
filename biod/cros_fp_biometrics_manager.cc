@@ -139,9 +139,16 @@ bool CrosFpBiometricsManager::Record::Remove() {
 
   // We cannot remove only one record if we want to stay in sync with the MCU,
   // Clear and reload everything.
-  biometrics_manager_->records_.clear();
-  biometrics_manager_->cros_dev_->SetContext(user_id);
-  return biometrics_manager_->biod_storage_.ReadRecordsForSingleUser(user_id);
+  return biometrics_manager_->ReloadAllRecords(user_id);
+}
+
+bool CrosFpBiometricsManager::ReloadAllRecords(std::string user_id) {
+  // Here we need a copy of user_id because the user_id could be part of
+  // records_ which is cleared in this method.
+  records_.clear();
+  suspicious_templates_.clear();
+  cros_dev_->SetContext(user_id);
+  return biod_storage_.ReadRecordsForSingleUser(user_id);
 }
 
 std::unique_ptr<CrosFpBiometricsManager> CrosFpBiometricsManager::Create(
@@ -219,6 +226,7 @@ bool CrosFpBiometricsManager::DestroyAllRecords() {
 
 void CrosFpBiometricsManager::RemoveRecordsFromMemory() {
   records_.clear();
+  suspicious_templates_.clear();
   cros_dev_->ResetContext();
 }
 
@@ -548,6 +556,52 @@ void CrosFpBiometricsManager::DoMatchFingerUpEvent(uint32_t event) {
     OnSessionFailed();
 }
 
+bool CrosFpBiometricsManager::ValidationValueIsCorrect(uint32_t match_idx) {
+  brillo::SecureBlob secret(FP_POSITIVE_MATCH_SECRET_BYTES);
+  if (!cros_dev_->GetPositiveMatchSecret(match_idx, &secret)) {
+    LOG(ERROR) << "Failed to read positive match secret on match for finger "
+               << match_idx << ".";
+    return false;
+  }
+
+  std::vector<uint8_t> validation_value;
+  if (!ComputeValidationValue(secret, records_[match_idx].user_id,
+                              &validation_value)) {
+    LOG(ERROR) << "Got positive match secret but failed to compute validation "
+                  "value for finger "
+               << match_idx << ".";
+    return false;
+  }
+
+  if (validation_value != records_[match_idx].validation_val) {
+    LOG(ERROR) << "Validation value does not match for finger " << match_idx;
+    suspicious_templates_.emplace(match_idx);
+    return false;
+  }
+
+  LOG(INFO) << "Verified validation value for finger " << match_idx;
+  suspicious_templates_.erase(match_idx);
+  return true;
+}
+
+BiometricsManager::AttemptMatches CrosFpBiometricsManager::CalculateMatches(
+    int match_idx, bool matched) {
+  BiometricsManager::AttemptMatches matches;
+  if (!matched)
+    return matches;
+
+  if (match_idx >= records_.size()) {
+    LOG(ERROR) << "Invalid finger index " << match_idx;
+    return matches;
+  }
+
+  if (!use_positive_match_secret_ || ValidationValueIsCorrect(match_idx)) {
+    matches.emplace(records_[match_idx].user_id,
+                    std::vector<std::string>({records_[match_idx].record_id}));
+  }
+  return matches;
+}
+
 void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
   if (!(event & EC_MKBP_FP_MATCH)) {
     LOG(WARNING) << "Unexpected MKBP event: 0x" << std::hex << event;
@@ -628,8 +682,7 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
       }
   }
 
-  BiometricsManager::AttemptMatches matches;
-  std::vector<std::string> records;
+  bool matched = false;
 
   uint32_t match_idx = EC_MKBP_FP_MATCH_IDX(event);
   LOG(INFO) << __func__ << " result: '" << MatchResultToString(match_result)
@@ -652,13 +705,7 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
     case EC_MKBP_FP_ERR_MATCH_YES_UPDATED:
     case EC_MKBP_FP_ERR_MATCH_YES_UPDATE_FAILED:
       result = ScanResult::SCAN_RESULT_SUCCESS;
-
-      if (match_idx < records_.size()) {
-        records.push_back(records_[match_idx].record_id);
-        matches.emplace(records_[match_idx].user_id, std::move(records));
-      } else {
-        LOG(ERROR) << "Invalid finger index " << match_idx;
-      }
+      matched = true;
       break;
     case EC_MKBP_FP_ERR_MATCH_NO_LOW_QUALITY:
       result = ScanResult::SCAN_RESULT_INSUFFICIENT;
@@ -673,14 +720,16 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
       return;
   }
 
+  BiometricsManager::AttemptMatches matches =
+      CalculateMatches(match_idx, matched);
+  if (matches.empty())
+    matched = false;
+
   // Send back the result directly (as we are running on the main thread).
   OnAuthScanDone(result, std::move(matches));
 
   int capture_ms, matcher_ms, overall_ms;
   if (cros_dev_->GetFpStats(&capture_ms, &matcher_ms, &overall_ms)) {
-    // SCAN_RESULT_SUCCESS and EC_MKBP_FP_ERR_MATCH_NO means "no match".
-    bool matched = (result == ScanResult::SCAN_RESULT_SUCCESS &&
-                    match_result != EC_MKBP_FP_ERR_MATCH_NO);
     biod_metrics_->SendFpLatencyStats(matched, capture_ms, matcher_ms,
                                       overall_ms);
   }
@@ -688,6 +737,10 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
   // Record updated templates
   // TODO(vpalatin): this is slow, move to end of session ?
   for (int i : dirty_list) {
+    // If the template previously came with wrong validation value, do not
+    // accept it until it comes with correct validation value.
+    if (suspicious_templates_.find(i) != suspicious_templates_.end())
+      continue;
     VendorTemplate templ;
     bool rc = cros_dev_->GetTemplate(i, &templ);
     LOG(INFO) << "Retrieve updated template " << i << " -> " << rc;

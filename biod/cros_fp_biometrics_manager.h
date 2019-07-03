@@ -124,6 +124,10 @@ class CrosFpBiometricsManager : public BiometricsManager {
   bool ComputeValidationValue(const brillo::SecureBlob& secret,
                               const std::string& user_id,
                               std::vector<uint8_t>* out);
+  bool GetValidationValue(InternalRecord* record, int index);
+  bool ValidationValueIsCorrect(uint32_t match_idx);
+  BiometricsManager::AttemptMatches CalculateMatches(int match_idx,
+                                                     bool matched);
 
   void KillMcuSession();
 
@@ -138,6 +142,8 @@ class CrosFpBiometricsManager : public BiometricsManager {
   bool WriteRecord(const BiometricsManager::Record& record,
                    uint8_t* tmpl_data,
                    size_t tmpl_size);
+  // Clear FPMCU context and re-upload all records from storage.
+  bool ReloadAllRecords(std::string user_id);
 
   // BiodMetrics must come before CrosFpDevice, since CrosFpDevice has a
   // raw pointer to BiodMetrics. We must ensure CrosFpDevice is destructed
@@ -149,6 +155,9 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   // This list of records should be matching the templates loaded on the MCU.
   std::vector<InternalRecord> records_;
+
+  // Set of templates that came with a wrong validation value in matching.
+  std::unordered_set<uint32_t> suspicious_templates_;
 
   BiometricsManager::EnrollScanDoneCallback on_enroll_scan_done_;
   BiometricsManager::AuthScanDoneCallback on_auth_scan_done_;
