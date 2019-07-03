@@ -134,6 +134,34 @@ bool ParseCpuTime(std::istream* input, CpuTimeRecord* record) {
   return true;
 }
 
+base::Optional<std::vector<int>> GetOnlineCpus(std::istream& proc_cpuinfo) {
+  if (!proc_cpuinfo) {
+    return base::nullopt;
+  }
+
+  // Search for lines like "processor : 0" in /proc/cpuinfo and add the CPU ID
+  // part to the result list.
+  std::vector<int> cpus;
+  for (std::string line; std::getline(proc_cpuinfo, line);) {
+    auto tokens = base::SplitString(line, ":", base::TRIM_WHITESPACE,
+                                    base::SPLIT_WANT_ALL);
+    if (tokens.size() != 2) {
+      continue;
+    }
+
+    if (tokens[0] != "processor") {
+      continue;
+    }
+
+    int cpu = 0;
+    if (base::StringToInt(tokens[1], &cpu)) {
+      cpus.push_back(cpu);
+    }
+  }
+
+  return cpus;
+}
+
 VmlogFile::VmlogFile(const base::FilePath& live_path,
                      const base::FilePath& rotated_path,
                      const uint64_t max_size,
@@ -253,8 +281,22 @@ void VmlogWriter::Init(const base::FilePath& vmlog_dir,
     timer_.Start(FROM_HERE, log_interval, this, &VmlogWriter::WriteCallback);
   }
 
-  const int n_cpus = sysconf(_SC_NPROCESSORS_ONLN);
-  for (int cpu = 0; cpu != n_cpus; ++cpu) {
+  // The IDs of online CPUs are not necessarily in the set of [0,
+  // sysconf(_SC_NPROCESSORS_ONLN) - 1]. Query the system to get the set of
+  // online CPUs.
+  std::ifstream proc_cpuinfo("/proc/cpuinfo");
+  auto online_cpus = GetOnlineCpus(proc_cpuinfo);
+  if (!online_cpus.has_value() || online_cpus->size() == 0) {
+    PLOG(WARNING) << "Failed to get the list of online CPUs.";
+
+    // Failed to parse online CPUs - fallback use the set of [0, n_cpus).
+    const int n_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+    for (int cpu = 0; cpu != n_cpus; ++cpu) {
+      online_cpus->emplace_back(cpu);
+    }
+  }
+
+  for (auto cpu : *online_cpus) {
     std::ostringstream path;
     path << "/sys/devices/system/cpu/cpufreq/policy" << cpu
          << "/scaling_cur_freq";

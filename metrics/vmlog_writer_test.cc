@@ -183,4 +183,24 @@ TEST(VmlogWriterTest, WriteCallbackSuccess) {
   EXPECT_FALSE(base::PathExists(writer.vmlog_->rotated_path_));
 }
 
+TEST(VmlogWriterTest, GetOnlineCpus) {
+  const char kProcCpuInfo[] =
+      R"(processor       : 0
+vendor_id       : GenuineIntel
+model name      : Intel(R) Core(TM) i5-7Y57 CPU @ 1.20GHz
+bugs            : cpu_meltdown spectre_v1 spectre_v2 spec_store_bypass
+
+processor       : 2
+vendor_id       : GenuineIntel
+model name      : Intel(R) Core(TM) i5-7Y57 CPU @ 1.20GHz
+bugs            : cpu_meltdown spectre_v1 spectre_v2 spec_store_bypass)";
+
+  std::istringstream input_stream(kProcCpuInfo);
+  auto cpus = GetOnlineCpus(input_stream);
+
+  EXPECT_TRUE(cpus.has_value());
+  std::vector<int> expected_cpus = {0, 2};
+  EXPECT_EQ(*cpus, expected_cpus);
+}
+
 }  // namespace chromeos_metrics
