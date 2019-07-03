@@ -49,8 +49,8 @@ class RequestQueue {
   void Push(camera3_capture_request_t* request);
 
   // If no request is available this will block until one does become available.
-  // This shouldn't be called a second time if the first call has not yet
-  // returned.
+  // This can return null if the queue is flushed. This shouldn't be called a
+  // second time if the first call has not yet returned.
   std::unique_ptr<CaptureRequest> Pop();
 
   // Checks if a request is currently available.
@@ -63,6 +63,10 @@ class RequestQueue {
   // Returns a popped request back to the queue, this should be called after the
   // request has been filled.
   void NotifyCapture(std::unique_ptr<CaptureRequest> request);
+
+  // Returns a popped request back to the queue, but signals that an error has
+  // occured and the request has not been filled.
+  void NotifyError(std::unique_ptr<CaptureRequest> request);
 
  private:
   void NotifyShutter(uint32_t frame_number, uint64_t timestamp);

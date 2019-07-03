@@ -113,5 +113,16 @@ TEST_F(RequestQueueTest, Flush) {
   EXPECT_EQ(num_error_callbacks_, 1);
 }
 
+TEST_F(RequestQueueTest, OneError) {
+  PushFrame(1);
+  std::unique_ptr<CaptureRequest> request = request_queue_->Pop();
+  ASSERT_EQ(request->GetFrameNumber(), 1);
+  request_queue_->NotifyError(std::move(request));
+
+  EXPECT_EQ(num_shutter_callbacks_, 1);
+  EXPECT_EQ(num_capture_callbacks_, 1);
+  EXPECT_EQ(num_error_callbacks_, 1);
+}
+
 }  // namespace
 }  // namespace cros

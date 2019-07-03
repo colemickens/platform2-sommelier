@@ -41,11 +41,15 @@ shared_library("libcamera_hal") {
     "libbrillo-${libbase_ver}",
     "libcamera_common",
     "libcamera_metadata",
+    "libcbm",
+    "libjda",
     "libsync",
+    "libyuv",
   ]
   deps = [
     ":libcamera_hal_dbus",
     ":libcamera_hal_mojom",
+    "//camera/common:libcamera_metrics",
     "//camera/common/libcamera_ipc:libcamera_ipc",
   ]
 }

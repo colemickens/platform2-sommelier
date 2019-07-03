@@ -6,6 +6,9 @@
 #ifndef CAMERA_HAL_IP_CAMERA_DEVICE_H_
 #define CAMERA_HAL_IP_CAMERA_DEVICE_H_
 
+#include <memory>
+
+#include <base/memory/shared_memory.h>
 #include <base/threading/thread.h>
 #include <camera/camera_metadata.h>
 #include <hardware/camera3.h>
@@ -15,6 +18,7 @@
 
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/future.h"
+#include "cros-camera/jpeg_decode_accelerator.h"
 #include "hal/ip/request_queue.h"
 #include "mojo/ip/ip_camera.mojom.h"
 
@@ -50,9 +54,13 @@ class CameraDevice : public mojom::IpCameraFrameListener {
                        int32_t id,
                        uint32_t size) override;
   void OnConnectionError();
+  void CopyFromShmToOutputBuffer(base::SharedMemory* shm,
+                                 buffer_handle_t* buffer);
+  void StartJpegProcessor();
+  void DecodeJpeg(mojo::ScopedHandle shm_handle, int32_t id, uint32_t size);
+  void ReturnBufferOnIpcThread(int32_t id);
 
   std::atomic<bool> open_;
-
   const int id_;
   mojom::IpCameraDevicePtr ip_device_;
   camera3_device_t camera3_device_;
@@ -66,6 +74,13 @@ class CameraDevice : public mojom::IpCameraFrameListener {
   mojo::Binding<IpCameraFrameListener> binding_;
   CameraBufferManager* buffer_manager_;
   android::CameraMetadata static_metadata_;
+
+  // for JPEG decoding
+  bool jpeg_;
+  // The JPEG decoder will deadlock if it's called from the MOJO IPC thread, so
+  // we need a separate thread to call it.
+  base::Thread jpeg_thread_;
+  std::unique_ptr<JpegDecodeAccelerator> jda_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraDevice);
 };

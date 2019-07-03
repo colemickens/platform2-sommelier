@@ -6,6 +6,7 @@ module cros.mojom;
 
 enum PixelFormat {
   YUV_420,
+  JPEG,
 };
 
 struct IpCameraStream {

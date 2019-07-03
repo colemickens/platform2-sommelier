@@ -7,6 +7,7 @@
 #define CAMERA_HAL_IP_CAMERA_HAL_H_
 
 #include <base/macros.h>
+#include <base/synchronization/atomic_flag.h>
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
 #include <camera/camera_metadata.h>
@@ -15,6 +16,7 @@
 #include <string>
 #include <sys/types.h>
 
+#include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/future.h"
 #include "hal/ip/camera_device.h"
 #include "mojo/ip/ip_camera.mojom.h"
@@ -46,7 +48,8 @@ class CameraHal : public mojom::IpCameraConnectionListener {
   void DestroyOnIpcThread();
   void OnConnectionError();
 
-  base::Thread ipc_thread_;
+  base::AtomicFlag initialized_;
+  std::unique_ptr<CameraMojoChannelManager> mojo_channel_;
   mojom::IpCameraDetectorPtr detector_;
   mojo::Binding<IpCameraConnectionListener> binding_;
   std::string peer_token_;

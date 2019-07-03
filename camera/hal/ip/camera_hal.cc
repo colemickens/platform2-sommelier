@@ -21,23 +21,15 @@
 namespace cros {
 
 CameraHal::CameraHal()
-    : ipc_thread_("IP Camera HAL IPC"),
-      binding_(this),
+    : binding_(this),
       next_camera_id_(0),
       callbacks_set_(base::WaitableEvent::ResetPolicy::MANUAL,
                      base::WaitableEvent::InitialState::NOT_SIGNALED),
-      callbacks_(nullptr) {}
-
-CameraHal::~CameraHal() {
-  if (ipc_thread_.IsRunning()) {
-    ipc_thread_.task_runner()->PostTask(
-        FROM_HERE,
-        base::BindOnce(&CameraHal::DestroyOnIpcThread, base::Unretained(this)));
-    ipc_thread_.Stop();
-  }
-
-  mojo::edk::ShutdownIPCSupport(base::Bind(&base::DoNothing));
+      callbacks_(nullptr) {
+  mojo_channel_ = CameraMojoChannelManager::CreateInstance();
 }
+
+CameraHal::~CameraHal() {}
 
 CameraHal& CameraHal::GetInstance() {
   static CameraHal camera_hal;
@@ -94,26 +86,18 @@ int CameraHal::SetCallbacks(const camera_module_callbacks_t* callbacks) {
 }
 
 int CameraHal::Init() {
-  if (ipc_thread_.IsRunning()) {
+  if (initialized_.IsSet()) {
     LOGF(ERROR) << "Init called more than once";
     return -EBUSY;
   }
-
-  if (!ipc_thread_.StartWithOptions(
-          base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
-    LOGF(ERROR) << "Failed to start IP Camera HAL IPC thread";
-    return -ENODEV;
-  }
-
-  mojo::edk::Init();
-  mojo::edk::InitIPCSupport(ipc_thread_.task_runner());
 
   auto return_val = Future<int>::Create(nullptr);
   mojo::edk::GetIOTaskRunner()->PostTask(
       FROM_HERE, base::BindOnce(&CameraHal::InitOnIpcThread,
                                 base::Unretained(this), return_val));
-
-  return return_val->Get();
+  int ret = return_val->Get();
+  initialized_.Set();
+  return ret;
 }
 
 void CameraHal::InitOnIpcThread(scoped_refptr<Future<int>> return_val) {

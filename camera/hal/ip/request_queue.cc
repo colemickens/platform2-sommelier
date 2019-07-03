@@ -170,4 +170,11 @@ void RequestQueue::CancelRequestLocked(
   NotifyCaptureInternal(std::move(request));
 }
 
+void RequestQueue::NotifyError(std::unique_ptr<CaptureRequest> request) {
+  base::AutoLock l(lock_);
+  CancelRequestLocked(std::move(request));
+  requests_being_filled_--;
+  request_filled_.Signal();
+}
+
 }  // namespace cros
