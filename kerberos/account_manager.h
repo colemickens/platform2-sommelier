@@ -117,6 +117,9 @@ class AccountManager : public TgtRenewalScheduler::Delegate {
   static std::string GetSafeFilenameForTesting(
       const std::string& principal_name);
 
+  // Wraps |krb5_| in a Krb5JailWrapper.
+  void WrapKrb5ForTesting();
+
   int last_renew_tgt_error_for_testing() const {
     return last_renew_tgt_error_for_testing_;
   }
@@ -193,7 +196,7 @@ class AccountManager : public TgtRenewalScheduler::Delegate {
   const KerberosTicketExpiringCallback kerberos_ticket_expiring_;
 
   // Interface for Kerberos methods (may be overridden for tests).
-  const std::unique_ptr<Krb5Interface> krb5_;
+  std::unique_ptr<Krb5Interface> krb5_;
 
   // Returns the index of the account for |principal_name| or |kInvalidIndex| if
   // the account does not exist.

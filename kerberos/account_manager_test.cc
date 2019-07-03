@@ -19,6 +19,7 @@
 #include <libpasswordprovider/password_provider_test_utils.h>
 
 #include "kerberos/fake_krb5_interface.h"
+#include "kerberos/krb5_jail_wrapper.h"
 
 namespace kerberos {
 namespace {
@@ -65,11 +66,11 @@ class AccountManagerTest : public ::testing::Test {
     // Create temp directory for files written during tests.
     CHECK(storage_dir_.CreateUniqueTempDir());
     accounts_path_ = storage_dir_.GetPath().Append("accounts");
-    const base::FilePath account_dir = storage_dir_.GetPath().Append(
+    account_dir_ = storage_dir_.GetPath().Append(
         AccountManager::GetSafeFilenameForTesting(kUser));
-    krb5cc_path_ = account_dir.Append("krb5cc");
-    krb5conf_path_ = account_dir.Append("krb5.conf");
-    password_path_ = account_dir.Append("password");
+    krb5cc_path_ = account_dir_.Append("krb5cc");
+    krb5conf_path_ = account_dir_.Append("krb5.conf");
+    password_path_ = account_dir_.Append("password");
 
     // Create the manager with a fake krb5 interface.
     auto krb5 = std::make_unique<FakeKrb5Interface>();
@@ -165,6 +166,7 @@ class AccountManagerTest : public ::testing::Test {
   // Paths of files stored by |manager_|.
   base::ScopedTempDir storage_dir_;
   base::FilePath accounts_path_;
+  base::FilePath account_dir_;
   base::FilePath krb5conf_path_;
   base::FilePath krb5cc_path_;
   base::FilePath password_path_;
@@ -808,6 +810,52 @@ TEST_F(AccountManagerTest, AutoRenewalDoesNotCallAcquireTgtIfRenewalSucceeds) {
   // |krb5_->RenewTgt()|.
   EXPECT_EQ(initial_acquire_tgt_call_count, krb5_->acquire_tgt_call_count());
   EXPECT_EQ(ERROR_NONE, manager_->last_renew_tgt_error_for_testing());
+}
+
+// Verifies that all files written have the expected access permissions.
+// Unfortunately, file ownership can't be tested as the test won't run as
+// kerberosd user nor can it switch to it.
+TEST_F(AccountManagerTest, FilePermissions) {
+  constexpr int kFileMode_rw =
+      base::FILE_PERMISSION_READ_BY_USER | base::FILE_PERMISSION_WRITE_BY_USER;
+  constexpr int kFileMode_rw_r =
+      kFileMode_rw | base::FILE_PERMISSION_READ_BY_GROUP;
+  constexpr int kFileMode_rw_r__r =
+      kFileMode_rw_r | base::FILE_PERMISSION_READ_BY_OTHERS;
+  constexpr int kFileMode_rwxrwx =
+      base::FILE_PERMISSION_USER_MASK | base::FILE_PERMISSION_GROUP_MASK;
+
+  // Wrap the fake krb5 in a jail wrapper to get the file permissions of krb5cc
+  // right. Note that we can't use a Krb5JailWrapper for the whole test since
+  // that would break the counters in FakeKrb5Interface (they would be inc'ed in
+  // another process!).
+  manager_->WrapKrb5ForTesting();
+
+  // Can't set user in this test.
+  Krb5JailWrapper::DisableChangeUserForTesting(true);
+
+  EXPECT_EQ(ERROR_NONE, AddAccount());
+  EXPECT_EQ(ERROR_NONE, SetConfig());
+  EXPECT_EQ(ERROR_NONE,
+            manager_->AcquireTgt(kUser, kPassword, kRememberPassword,
+                                 kDontUseLoginPassword));
+
+  int mode;
+
+  EXPECT_TRUE(GetPosixFilePermissions(accounts_path_, &mode));
+  EXPECT_EQ(kFileMode_rw, mode);
+
+  EXPECT_TRUE(GetPosixFilePermissions(account_dir_, &mode));
+  EXPECT_EQ(kFileMode_rwxrwx, mode);
+
+  EXPECT_TRUE(GetPosixFilePermissions(krb5cc_path_, &mode));
+  EXPECT_EQ(kFileMode_rw_r, mode);
+
+  EXPECT_TRUE(GetPosixFilePermissions(krb5conf_path_, &mode));
+  EXPECT_EQ(kFileMode_rw_r__r, mode);
+
+  EXPECT_TRUE(GetPosixFilePermissions(password_path_, &mode));
+  EXPECT_EQ(kFileMode_rw, mode);
 }
 
 }  // namespace kerberos

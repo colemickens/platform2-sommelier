@@ -21,6 +21,7 @@
 #include "kerberos/account_manager.h"
 #include "kerberos/error_strings.h"
 #include "kerberos/krb5_interface_impl.h"
+#include "kerberos/krb5_jail_wrapper.h"
 #include "kerberos/platform_helper.h"
 #include "kerberos/proto_bindings/kerberos_service.pb.h"
 
@@ -121,7 +122,7 @@ void KerberosAdaptor::RegisterAsync(
                           base::Unretained(this)),
       base::BindRepeating(&KerberosAdaptor::OnKerberosTicketExpiring,
                           base::Unretained(this)),
-      std::make_unique<Krb5InterfaceImpl>(),
+      std::make_unique<Krb5JailWrapper>(std::make_unique<Krb5InterfaceImpl>()),
       std::make_unique<password_provider::PasswordProvider>());
   manager_->LoadAccounts();
 
@@ -134,8 +135,6 @@ void KerberosAdaptor::RegisterAsync(
       base::BindRepeating(&KerberosAdaptor::StartObservingTickets,
                           weak_ptr_factory_.GetWeakPtr()),
       kTicketExpiryCheckDelay);
-
-  // TODO(https://crbug.com/952245): Set up a watcher for ticket expiry.
 }
 
 ByteArray KerberosAdaptor::AddAccount(const ByteArray& request_blob) {

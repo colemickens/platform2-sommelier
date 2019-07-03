@@ -16,12 +16,19 @@
 
 #include "kerberos/error_strings.h"
 #include "kerberos/krb5_interface.h"
+#include "kerberos/krb5_jail_wrapper.h"
 
 namespace kerberos {
 
 namespace {
 
 constexpr int kInvalidIndex = -1;
+
+constexpr int kFileMode_rw =
+    base::FILE_PERMISSION_READ_BY_USER | base::FILE_PERMISSION_WRITE_BY_USER;
+
+constexpr int kFileMode_rwxrwx =
+    base::FILE_PERMISSION_USER_MASK | base::FILE_PERMISSION_GROUP_MASK;
 
 // Kerberos config files are stored as storage_dir/account_dir/this.
 constexpr char kKrb5ConfFilePart[] = "krb5.conf";
@@ -67,6 +74,16 @@ ErrorType SaveFile(const base::FilePath& path, const std::string& data) {
   return ERROR_NONE;
 }
 
+// Sets file permissions for a given |path|. Returns ERROR_LOCAL_IO on error.
+WARN_UNUSED_RESULT ErrorType SetFilePermissions(const base::FilePath& path,
+                                                int mode) {
+  if (!base::SetPosixFilePermissions(path, mode)) {
+    LOG(ERROR) << "Failed to set permissions on '" << path.value() << "'";
+    return ERROR_LOCAL_IO;
+  }
+  return ERROR_NONE;
+}
+
 }  // namespace
 
 AccountManager::AccountManager(
@@ -99,7 +116,15 @@ ErrorType AccountManager::SaveAccounts() const {
     LOG(ERROR) << "Failed to serialize accounts list to string";
     return ERROR_LOCAL_IO;
   }
-  return SaveFile(GetAccountsPath(), accounts_blob);
+
+  const base::FilePath accounts_path = GetAccountsPath();
+  ErrorType error = SaveFile(accounts_path, accounts_blob);
+  if (error != ERROR_NONE)
+    return error;
+
+  // Remove group and other read access. This prevents kerberosd-exec from
+  // reading it (it's none of its business).
+  return SetFilePermissions(accounts_path, kFileMode_rw);
 }
 
 ErrorType AccountManager::LoadAccounts() {
@@ -149,12 +174,18 @@ ErrorType AccountManager::AddAccount(const std::string& principal_name,
 
   // Create the account directory.
   const base::FilePath account_dir = GetAccountDir(principal_name);
-  base::File::Error error;
-  if (!base::CreateDirectoryAndGetError(account_dir, &error)) {
+  base::File::Error ferror;
+  if (!base::CreateDirectoryAndGetError(account_dir, &ferror)) {
     LOG(ERROR) << "Failed to create directory '" << account_dir.value()
-               << "': " << base::File::ErrorToString(error);
+               << "': " << base::File::ErrorToString(ferror);
     return ERROR_LOCAL_IO;
   }
+
+  // The account directory needs to be group accessible since kinit runs as
+  // kerberosd-exec user and wants to write krbcc into that directory.
+  ErrorType error = SetFilePermissions(account_dir, kFileMode_rwxrwx);
+  if (error != ERROR_NONE)
+    return error;
 
   // Create account record.
   AccountData data;
@@ -386,6 +417,10 @@ std::string AccountManager::GetSafeFilenameForTesting(
   return GetSafeFilename(principal_name);
 }
 
+void AccountManager::WrapKrb5ForTesting() {
+  krb5_ = std::make_unique<Krb5JailWrapper>(std::move(krb5_));
+}
+
 void AccountManager::TriggerKerberosFilesChanged(
     const std::string& principal_name) const {
   kerberos_files_changed_.Run(principal_name);
@@ -513,8 +548,18 @@ ErrorType AccountManager::UpdatePasswordFromSaved(
 
   // Remember password (even if authentication is going to fail below).
   const base::FilePath password_path = GetPasswordPath(principal_name);
-  if (!password->empty() && remember_password)
+  if (!password->empty() && remember_password) {
     SaveFile(password_path, *password);
+
+    // Remove group and other read access, just keep kerberosd rw. This prevents
+    // kerberosd-exec from accessing the password.
+    ErrorType error = SetFilePermissions(password_path, kFileMode_rw);
+    if (error != ERROR_NONE) {
+      // Do a best effort removing the password.
+      base::DeleteFile(password_path, false /* recursive */);
+      return error;
+    }
+  }
 
   // Try to load a saved password if available and none is given.
   if (password->empty() && base::PathExists(password_path)) {
