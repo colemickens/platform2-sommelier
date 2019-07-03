@@ -663,6 +663,7 @@ if (use.test) {
       "dbus/chromeos_manager_dbus_adaptor_test.cc",
       "default_profile_test.cc",
       "device_claimer_test.cc",
+      "device_id_test.cc",
       "device_info_test.cc",
       "device_test.cc",
       "dhcp/dhcp_config_test.cc",

@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <memory>
+#include <ostream>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -64,5 +65,8 @@ class DeviceId {
 std::unique_ptr<DeviceId> ReadDeviceIdFromSysfs(const base::FilePath& syspath);
 
 }  // namespace shill
+
+std::ostream& operator<<(std::ostream& stream,
+                         const shill::DeviceId& device_id);
 
 #endif  // SHILL_DEVICE_ID_H_

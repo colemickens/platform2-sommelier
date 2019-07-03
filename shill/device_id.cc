@@ -154,3 +154,8 @@ std::unique_ptr<DeviceId> ReadDeviceIdFromSysfs(
 }
 
 }  // namespace shill
+
+std::ostream& operator<<(std::ostream& stream,
+                         const shill::DeviceId& device_id) {
+  return stream << device_id.AsString();
+}
