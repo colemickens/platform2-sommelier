@@ -5,11 +5,11 @@
 #ifndef KERBEROS_FAKE_KRB5_INTERFACE_H_
 #define KERBEROS_FAKE_KRB5_INTERFACE_H_
 
-#include <base/compiler_specific.h>
-#include <base/macros.h>
-
 #include <string>
 #include <utility>
+
+#include <base/compiler_specific.h>
+#include <base/macros.h>
 
 #include "kerberos/krb5_interface.h"
 #include "kerberos/proto_bindings/kerberos_service.pb.h"

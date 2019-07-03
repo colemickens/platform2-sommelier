@@ -2,12 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef KERBEROS_KRB5_INTERFACE_IMPL_H_
-#define KERBEROS_KRB5_INTERFACE_IMPL_H_
+#ifndef KERBEROS_KRB5_JAIL_WRAPPER_H_
+#define KERBEROS_KRB5_JAIL_WRAPPER_H_
 
+#include <memory>
 #include <string>
+#include <utility>
 
 #include <base/macros.h>
+#include <libminijail.h>
+#include <scoped_minijail.h>
 
 #include "kerberos/krb5_interface.h"
 #include "kerberos/proto_bindings/kerberos_service.pb.h"
@@ -18,10 +22,12 @@ class FilePath;
 
 namespace kerberos {
 
-class Krb5InterfaceImpl : public Krb5Interface {
+// Wraps all calls to a Krb5Interface in a minijail that changes the user to
+// kerberosd-exec.
+class Krb5JailWrapper : public Krb5Interface {
  public:
-  Krb5InterfaceImpl();
-  ~Krb5InterfaceImpl() override;
+  explicit Krb5JailWrapper(std::unique_ptr<Krb5Interface> krb5);
+  ~Krb5JailWrapper() override;
 
   // Krb5Interface:
   ErrorType AcquireTgt(const std::string& principal_name,
@@ -38,10 +44,17 @@ class Krb5InterfaceImpl : public Krb5Interface {
   ErrorType GetTgtStatus(const base::FilePath& krb5cc_path,
                          TgtStatus* status) override;
 
+  // If |disabled|, will not setuid to kerberosd-exec. This is needed in some
+  // environments where setuid is not permitted.
+  static void DisableChangeUserForTesting(bool disabled);
+
  private:
-  DISALLOW_COPY_AND_ASSIGN(Krb5InterfaceImpl);
+  // Inner interface where calls are forwarded to after they've been jailed.
+  std::unique_ptr<Krb5Interface> krb5_;
+
+  DISALLOW_COPY_AND_ASSIGN(Krb5JailWrapper);
 };
 
 }  // namespace kerberos
 
-#endif  // KERBEROS_KRB5_INTERFACE_IMPL_H_
+#endif  // KERBEROS_KRB5_JAIL_WRAPPER_H_

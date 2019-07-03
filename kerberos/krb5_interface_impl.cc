@@ -329,12 +329,12 @@ ErrorType Krb5InterfaceImpl::AcquireTgt(const std::string& principal_name,
 
 ErrorType Krb5InterfaceImpl::RenewTgt(const std::string& principal_name,
                                       const base::FilePath& krb5cc_path,
-                                      const base::FilePath& config_path) {
+                                      const base::FilePath& krb5conf_path) {
   Options options;
   options.action = Action::RenewTgt;
   options.principal_name = principal_name;
   options.krb5cc_path = krb5cc_path.value();
-  setenv(kKrb5ConfigEnvVar, config_path.value().c_str(), 1);
+  setenv(kKrb5ConfigEnvVar, krb5conf_path.value().c_str(), 1);
   ErrorType error = KinitContext(std::move(options)).Run();
   unsetenv(kKrb5ConfigEnvVar);
   return error;

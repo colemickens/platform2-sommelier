@@ -5,10 +5,10 @@
 #ifndef KERBEROS_KRB5_INTERFACE_H_
 #define KERBEROS_KRB5_INTERFACE_H_
 
+#include <string>
+
 #include <base/compiler_specific.h>
 #include <base/macros.h>
-
-#include <string>
 
 #include "kerberos/proto_bindings/kerberos_service.pb.h"
 
@@ -36,6 +36,12 @@ class Krb5Interface {
     constexpr TgtStatus(int64_t validity_seconds, int64_t renewal_seconds)
         : validity_seconds(validity_seconds),
           renewal_seconds(renewal_seconds) {}
+
+    bool operator==(const TgtStatus& other) const {
+      return validity_seconds == other.validity_seconds &&
+             renewal_seconds == other.renewal_seconds;
+    }
+    bool operator!=(const TgtStatus& other) const { return !(*this == other); }
   };
 
   // Gets a Kerberos ticket-granting-ticket for the given |principal_name|
