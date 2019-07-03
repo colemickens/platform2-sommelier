@@ -147,38 +147,36 @@ config("pic") {
   cflags = [ "-fPIC" ]
 }
 
-if (use.test || use.fuzzer) {
-  # This config should be at the top in the configs list, especially before
-  # the config for libchrome-${libbase-ver} to avoid weird heap-buffer-overflow
-  # error from happening when ASAN is enabled.
-  # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
-  config("test") {
-    # Don't worry about overlinking, ld.gold's --as-needed will
-    # deal with that.
-    # TODO(crbug.com/912432): Consider use {gtest,gmock}-config --ldflags.
-    # '--ldflags' is not used here. It adds, e.g., -L/usr/lib64,
-    # so the test executable will be linked against host libraries if exists.
-    # Specifically, libchrome for host is linked. For host, it is built with
-    # -DNDEBUG, but the target built without, which causes a link error.
-    # cf) BaseInitLoggingImpl definition in
-    #     aosp/external/libchrome/base/logging.h
-    # gtest-config and gmock-config are not installed by gtest-1.8.1.
-    ldflags = [
-      "-pthread",
+# This config should be at the top in the configs list, especially before
+# the config for libchrome-${libbase-ver} to avoid weird heap-buffer-overflow
+# error from happening when ASAN is enabled.
+# TODO(crbug.com/887845): Remove this note after library order issue is resolved.
+config("test") {
+  # Don't worry about overlinking, ld.gold's --as-needed will
+  # deal with that.
+  # TODO(crbug.com/912432): Consider use {gtest,gmock}-config --ldflags.
+  # '--ldflags' is not used here. It adds, e.g., -L/usr/lib64,
+  # so the test executable will be linked against host libraries if exists.
+  # Specifically, libchrome for host is linked. For host, it is built with
+  # -DNDEBUG, but the target built without, which causes a link error.
+  # cf) BaseInitLoggingImpl definition in
+  #     aosp/external/libchrome/base/logging.h
+  # gtest-config and gmock-config are not installed by gtest-1.8.1.
+  ldflags = [
+    "-pthread",
 
-      # Allow unit tests of a shared library to link against the depended .so
-      # under the output directory, instead of the ones installed in the system
-      # dir. -rpath and -rpath-link has higher priority than the system library
-      # directory.
-      "-Wl,-rpath=\$ORIGIN/lib/",
-      "-Wl,-rpath-link=lib/",
-    ]
+    # Allow unit tests of a shared library to link against the depended .so
+    # under the output directory, instead of the ones installed in the system
+    # dir. -rpath and -rpath-link has higher priority than the system library
+    # directory.
+    "-Wl,-rpath=\$ORIGIN/lib/",
+    "-Wl,-rpath-link=lib/",
+  ]
 
-    # gnlint: disable=GnLintCommonTesting
-    libs = [
-      "gmock",
-      "gtest",
-      "pthread",
-    ]
-  }
+  # gnlint: disable=GnLintCommonTesting
+  libs = [
+    "gmock",
+    "gtest",
+    "pthread",
+  ]
 }
