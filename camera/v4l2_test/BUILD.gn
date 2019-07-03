@@ -1,0 +1,55 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":media_v4l2_is_capture_device",
+    ":media_v4l2_test",
+    ":media_v4l2_unittest",
+  ]
+}
+
+executable("media_v4l2_is_capture_device") {
+  sources = [
+    "media_v4l2_device.cc",
+    "media_v4l2_is_capture_device.cc",
+  ]
+  configs += [ "//camera/build:cros_camera_common" ]
+}
+
+executable("media_v4l2_test") {
+  sources = [
+    "camera_characteristics.cc",
+    "media_v4l2_device.cc",
+    "media_v4l2_test.cc",
+  ]
+
+  # For base::ShadowingAtExitManager.
+  defines = [ "UNIT_TEST" ]
+
+  configs += [
+    "//common-mk:test",
+    "//camera/build:cros_camera_common",
+  ]
+
+  pkg_deps = [
+    "libyuv",
+    "re2",
+  ]
+}
+
+executable("media_v4l2_unittest") {
+  sources = [
+    "media_v4l2_device.cc",
+
+    # TODO(shik): We cannot rename it to media_v4l2_test.cc because the file
+    # already exists. These two files and the corresponding binaries should be
+    # merged in the future.
+    # gnlint: disable=GnLintSourceFileNames
+    "media_v4l2_unittest.cc",
+  ]
+  configs += [ "//camera/build:cros_camera_common" ]
+}

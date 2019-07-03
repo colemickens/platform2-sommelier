@@ -12,8 +12,8 @@
 #include <string>
 #include <utility>
 
-#define CHECK(a) assert(a)
-#define CHECK_EQ(a, b) assert(a == b)
+#include "cros-camera/common.h"
+
 #define MAJOR(dev) (((uint32_t)(dev)) >> 8)
 #define MINOR(dev) (((uint32_t)(dev)) & 0xff)
 #define V4L2_VIDEO_CAPTURE_MAJOR 81
