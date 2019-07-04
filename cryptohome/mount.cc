@@ -387,14 +387,14 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     if (!mount_args.create_if_missing) {
       NOTREACHED() << "An ephemeral cryptohome can only be mounted when its "
                       "creation on-the-fly is allowed.";
-      *mount_error = MOUNT_ERROR_FATAL;
+      *mount_error = MOUNT_ERROR_INVALID_ARGS;
       return false;
     }
 
     if (is_owner) {
       LOG(ERROR) << "An ephemeral cryptohome can only be mounted when the user "
                     "is not the owner.";
-      *mount_error = MOUNT_ERROR_FATAL;
+      *mount_error = MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER;
       return false;
     }
 
@@ -420,7 +420,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   bool created = false;
   if (!EnsureCryptohome(credentials, mount_args, &created)) {
     LOG(ERROR) << "Error creating cryptohome.";
-    *mount_error = MOUNT_ERROR_FATAL;
+    *mount_error = MOUNT_ERROR_CREATE_CRYPTOHOME_FAILED;
     return false;
   }
 
@@ -433,12 +433,13 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   if (!DecryptVaultKeyset(credentials, &vault_keyset, &serialized, &index,
                           &local_mount_error)) {
     *mount_error = local_mount_error;
-    if (recreate_on_decrypt_fatal && (local_mount_error & MOUNT_ERROR_FATAL)) {
+    if (recreate_on_decrypt_fatal && local_mount_error == MOUNT_ERROR_FATAL) {
       LOG(ERROR) << "Error, cryptohome must be re-created because of fatal "
                  << "error.";
       if (!homedirs_->Remove(credentials.username())) {
         LOG(ERROR) << "Fatal decryption error, but unable to remove "
                    << "cryptohome.";
+        *mount_error = MOUNT_ERROR_REMOVE_INVALID_USER_FAILED;
         return false;
       }
       // Allow one recursion into MountCryptohomeInner by blocking re-create on
@@ -485,7 +486,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     // TODO(wad): Expose the safe-printable label rather than the Chrome
     //            supplied one for log output.
     LOG(INFO) << "Mount attempt with unprivileged key";
-    *mount_error = MOUNT_ERROR_KEY_FAILURE;
+    *mount_error = MOUNT_ERROR_UNPRIVILEGED_KEY;
     return false;
   }
 
@@ -512,7 +513,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   if (!platform_->SetupProcessKeyring()) {
     LOG(INFO) << "Failed to set up a process keyring.";
-    *mount_error = MOUNT_ERROR_FATAL;
+    *mount_error = MOUNT_ERROR_SETUP_PROCESS_KEYRING_FAILED;
     return false;
   }
   // When migrating, mount both eCryptfs and dircrypto.
@@ -521,7 +522,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   const bool should_mount_dircrypto = mount_type_ == MountType::DIR_CRYPTO;
   if (!should_mount_ecryptfs && !should_mount_dircrypto) {
     NOTREACHED() << "Unexpected mount type " << static_cast<int>(mount_type_);
-    *mount_error = MOUNT_ERROR_FATAL;
+    *mount_error = MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE;
     return false;
   }
   std::string ecryptfs_options;
@@ -531,7 +532,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     if (!AddEcryptfsAuthToken(vault_keyset, &key_signature,
                               &fnek_signature)) {
       LOG(INFO) << "Cryptohome mount failed because of keyring failure.";
-      *mount_error = MOUNT_ERROR_FATAL;
+      *mount_error = MOUNT_ERROR_KEYRING_FAILED;
       return false;
     }
     // Specify the ecryptfs options for mounting the user's cryptohome.
@@ -552,7 +553,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
             vault_keyset.fek(), vault_keyset.fek_sig(), &dircrypto_key_id_)) {
       LOG(INFO) << "Error adding dircrypto key.";
       UnmountAll();
-      *mount_error = MOUNT_ERROR_FATAL;
+      *mount_error = MOUNT_ERROR_KEYRING_FAILED;
       return false;
     }
   }
@@ -576,7 +577,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   if (!platform_->CreateDirectory(mount_point_)) {
     PLOG(ERROR) << "Directory creation failed for " << mount_point_.value();
     UnmountAll();
-    *mount_error = MOUNT_ERROR_FATAL;
+    *mount_error = MOUNT_ERROR_DIR_CREATION_FAILED;
     return false;
   }
   if (mount_args.to_migrate_from_ecryptfs) {
@@ -586,7 +587,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
       PLOG(ERROR) << "Directory creation failed for "
                   << temporary_mount_point.value();
       UnmountAll();
-      *mount_error = MOUNT_ERROR_FATAL;
+      *mount_error = MOUNT_ERROR_DIR_CREATION_FAILED;
       return false;
     }
   }
@@ -611,7 +612,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
       LOG(ERROR) << "Failed to set directory encryption policy "
                  << mount_point_.value();
       UnmountAll();
-      *mount_error = MOUNT_ERROR_FATAL;
+      *mount_error = MOUNT_ERROR_SET_DIR_CRYPTO_KEY_FAILED;
       return false;
     }
     // Create user & root directories.
@@ -641,7 +642,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     if (!RememberMount(vault_path, dest, "ecryptfs", ecryptfs_options)) {
       LOG(ERROR) << "Cryptohome mount failed";
       UnmountAll();
-      *mount_error = MOUNT_ERROR_FATAL;
+      *mount_error = MOUNT_ERROR_MOUNT_ECRYPTFS_FAILED;
       return false;
     }
   }
@@ -651,7 +652,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   if (!SetupGroupAccess(FilePath(user_home))) {
     UnmountAll();
-    *mount_error = MOUNT_ERROR_FATAL;
+    *mount_error = MOUNT_ERROR_SETUP_GROUP_ACCESS_FAILED;
     return false;
   }
 
@@ -663,7 +664,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
       !MountHomesAndDaemonStores(username, obfuscated_username, user_home,
                                  root_home)) {
     UnmountAll();
-    *mount_error = MOUNT_ERROR_FATAL;
+    *mount_error = MOUNT_ERROR_MOUNT_HOMES_AND_DAEMON_STORES_FAILED;
     return false;
   }
 

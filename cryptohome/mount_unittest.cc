@@ -722,7 +722,7 @@ TEST_P(MountTest, MountCryptohomeNoPrivileges) {
   MountError error = MOUNT_ERROR_NONE;
   EXPECT_FALSE(
       mount_->MountCryptohome(credentials, GetDefaultMountArgs(), &error));
-  EXPECT_EQ(MOUNT_ERROR_KEY_FAILURE, error);
+  EXPECT_EQ(MOUNT_ERROR_UNPRIVILEGED_KEY, error);
 }
 
 TEST_P(MountTest, MountCryptohomeHasPrivileges) {
@@ -2792,7 +2792,7 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountIsEphemeralTest) {
   MountError error;
   Credentials credentials(user->username, user->passkey);
   ASSERT_FALSE(mount_->MountCryptohome(credentials, mount_args, &error));
-  ASSERT_EQ(MOUNT_ERROR_FATAL, error);
+  ASSERT_EQ(MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER, error);
 }
 
 TEST_P(EphemeralNoUserSystemTest, EnterpriseMountIsEphemeralTest) {
@@ -3186,7 +3186,7 @@ TEST_P(EphemeralOwnerOnlySystemTest, OwnerMountIsEphemeralTest) {
   mount_args.is_ephemeral = true;
   MountError error;
   ASSERT_FALSE(mount_->MountCryptohome(credentials, mount_args, &error));
-  ASSERT_EQ(MOUNT_ERROR_FATAL, error);
+  ASSERT_EQ(MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER, error);
 }
 
 class EphemeralExistingUserSystemTest : public AltImageTest {
