@@ -148,7 +148,7 @@ CellularCapability3gpp::CellularCapability3gpp(Cellular* cellular,
       registration_dropped_update_timeout_milliseconds_(
           kRegistrationDroppedUpdateTimeoutMilliseconds),
       weak_ptr_factory_(this) {
-  SLOG(this, 2) << "Cellular capability constructed: Universal";
+  SLOG(this, 2) << "Cellular capability constructed: 3GPP";
   mobile_operator_info_->Init();
   HelpRegisterConstDerivedKeyValueStore(
       kSIMLockStatusProperty, &CellularCapability3gpp::SimLockStatusToProperty);

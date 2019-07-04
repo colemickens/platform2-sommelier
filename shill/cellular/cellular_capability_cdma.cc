@@ -74,7 +74,7 @@ CellularCapabilityCdma::CellularCapabilityCdma(Cellular* cellular,
       nid_(0),
       sid_(0),
       weak_cdma_ptr_factory_(this) {
-  SLOG(this, 2) << "Cellular capability constructed: Universal CDMA";
+  SLOG(this, 2) << "Cellular capability constructed: CDMA";
   // TODO(armansito): Update PRL for activation over cellular.
   // See crbug.com/197330.
 }
