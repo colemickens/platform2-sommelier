@@ -848,8 +848,6 @@ struct sl_host_buffer* sl_create_host_buffer(struct wl_client* client,
 
 static void sl_internal_data_offer_destroy(struct sl_data_offer* host) {
   wl_data_offer_destroy(host->internal);
-  wl_array_release(&host->atoms);
-  wl_array_release(&host->cookies);
   free(host);
 }
 
@@ -869,21 +867,6 @@ static void sl_set_selection(struct sl_context* ctx,
       return;
     }
 
-    int atoms = data_offer->cookies.size / sizeof(xcb_intern_atom_cookie_t);
-    wl_array_add(&data_offer->atoms, sizeof(xcb_atom_t) * (atoms + 2));
-    ((xcb_atom_t*)data_offer->atoms.data)[0] = ctx->atoms[ATOM_TARGETS].value;
-    ((xcb_atom_t*)data_offer->atoms.data)[1] = ctx->atoms[ATOM_TIMESTAMP].value;
-    for (int i = 0; i < atoms; i++) {
-      xcb_intern_atom_cookie_t cookie =
-          ((xcb_intern_atom_cookie_t*)data_offer->cookies.data)[i];
-      xcb_intern_atom_reply_t* reply =
-          xcb_intern_atom_reply(ctx->connection, cookie, NULL);
-      if (reply) {
-        ((xcb_atom_t*)data_offer->atoms.data)[i + 2] = reply->atom;
-        free(reply);
-      }
-    }
-
     xcb_set_selection_owner(ctx->connection, ctx->selection_window,
                             ctx->atoms[ATOM_CLIPBOARD].value, XCB_CURRENT_TIME);
   }
@@ -891,13 +874,15 @@ static void sl_set_selection(struct sl_context* ctx,
   ctx->selection_data_offer = data_offer;
 }
 
+static const char* sl_utf8_mime_type = "text/plain;charset=utf-8";
+
 static void sl_internal_data_offer_offer(void* data,
                                          struct wl_data_offer* data_offer,
                                          const char* type) {
   struct sl_data_offer* host = data;
-  xcb_intern_atom_cookie_t* cookie =
-      wl_array_add(&host->cookies, sizeof(xcb_intern_atom_cookie_t));
-  *cookie = xcb_intern_atom(host->ctx->connection, 0, strlen(type), type);
+
+  if (strcmp(type, sl_utf8_mime_type) == 0)
+    host->utf8_text = 1;
 }
 
 static void sl_internal_data_offer_source_actions(
@@ -923,8 +908,7 @@ static void sl_internal_data_device_data_offer(
 
   host_data_offer->ctx = ctx;
   host_data_offer->internal = data_offer;
-  wl_array_init(&host_data_offer->atoms);
-  wl_array_init(&host_data_offer->cookies);
+  host_data_offer->utf8_text = 0;
 
   wl_data_offer_add_listener(host_data_offer->internal,
                              &sl_internal_data_offer_listener, host_data_offer);
@@ -2064,50 +2048,6 @@ static void sl_handle_focus_in(struct sl_context* ctx,
 static void sl_handle_focus_out(struct sl_context* ctx,
                                 xcb_focus_out_event_t* event) {}
 
-int sl_begin_data_source_send(struct sl_context* ctx,
-                              int fd,
-                              xcb_intern_atom_cookie_t cookie,
-                              struct sl_data_source* data_source) {
-  xcb_intern_atom_reply_t* reply =
-      xcb_intern_atom_reply(ctx->connection, cookie, NULL);
-
-  if (reply) {
-    int flags, rv;
-
-    xcb_convert_selection(ctx->connection, ctx->selection_window,
-                          ctx->atoms[ATOM_CLIPBOARD].value, reply->atom,
-                          ctx->atoms[ATOM_WL_SELECTION].value,
-                          XCB_CURRENT_TIME);
-
-    flags = fcntl(fd, F_GETFL, 0);
-    rv = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-    assert(!rv);
-    UNUSED(rv);
-
-    ctx->selection_data_source_send_fd = fd;
-    free(reply);
-    return 1;
-  } else {
-    close(fd);
-    return 0;
-  }
-}
-
-void sl_process_data_source_send_pending_list(struct sl_context* ctx) {
-  while (!wl_list_empty(&ctx->selection_data_source_send_pending)) {
-    struct wl_list* next = ctx->selection_data_source_send_pending.next;
-    struct sl_data_source_send_request* request;
-    request = wl_container_of(next, request, link);
-    wl_list_remove(next);
-
-    int rv = sl_begin_data_source_send(ctx, request->fd, request->cookie,
-                                       request->data_source);
-    free(request);
-    if (rv)
-      break;
-  }
-}
-
 static int sl_handle_selection_fd_writable(int fd, uint32_t mask, void* data) {
   struct sl_context* ctx = data;
   uint8_t *value;
@@ -2121,14 +2061,12 @@ static int sl_handle_selection_fd_writable(int fd, uint32_t mask, void* data) {
   if (bytes == -1) {
     fprintf(stderr, "write error to target fd: %m\n");
     close(fd);
-    fd = -1;
   } else if (bytes == bytes_left) {
     if (ctx->selection_incremental_transfer) {
       xcb_delete_property(ctx->connection, ctx->selection_window,
                           ctx->atoms[ATOM_WL_SELECTION].value);
     } else {
       close(fd);
-      fd = -1;
     }
   } else {
     ctx->selection_property_offset += bytes;
@@ -2140,10 +2078,6 @@ static int sl_handle_selection_fd_writable(int fd, uint32_t mask, void* data) {
   if (ctx->selection_send_event_source) {
     wl_event_source_remove(ctx->selection_send_event_source);
     ctx->selection_send_event_source = NULL;
-  }
-  if (fd == -1) {
-    ctx->selection_data_source_send_fd = -1;
-    sl_process_data_source_send_pending_list(ctx);
   }
   return 1;
 }
@@ -2185,8 +2119,8 @@ static void sl_send_selection_data(struct sl_context* ctx) {
   assert(!ctx->selection_data_ack_pending);
   xcb_change_property(
       ctx->connection, XCB_PROP_MODE_REPLACE, ctx->selection_request.requestor,
-      ctx->selection_request.property, ctx->selection_data_type,
-      /*format=*/8, ctx->selection_data.size, ctx->selection_data.data);
+      ctx->selection_request.property, ctx->atoms[ATOM_UTF8_STRING].value, 8,
+      ctx->selection_data.size, ctx->selection_data.data);
   ctx->selection_data_ack_pending = 1;
   ctx->selection_data.size = 0;
 }
@@ -2413,10 +2347,7 @@ static void sl_handle_property_notify(struct sl_context* ctx,
       } else {
         assert(!ctx->selection_send_event_source);
         close(ctx->selection_data_source_send_fd);
-        ctx->selection_data_source_send_fd = -1;
         free(reply);
-
-        sl_process_data_source_send_pending_list(ctx);
       }
     }
   } else if (event->atom == ctx->selection_request.property) {
@@ -2464,19 +2395,23 @@ static void sl_internal_data_source_send(void* data,
   struct sl_data_source* host = data;
   struct sl_context* ctx = host->ctx;
 
-  xcb_intern_atom_cookie_t cookie =
-      xcb_intern_atom(ctx->connection, false, strlen(mime_type), mime_type);
+  if (strcmp(mime_type, sl_utf8_mime_type) == 0) {
+    int flags;
+    int rv;
 
-  if (ctx->selection_data_source_send_fd == -1) {
-    sl_begin_data_source_send(ctx, fd, cookie, host);
+    xcb_convert_selection(
+        ctx->connection, ctx->selection_window,
+        ctx->atoms[ATOM_CLIPBOARD].value, ctx->atoms[ATOM_UTF8_STRING].value,
+        ctx->atoms[ATOM_WL_SELECTION].value, XCB_CURRENT_TIME);
+
+    flags = fcntl(fd, F_GETFL, 0);
+    rv = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    assert(!rv);
+    UNUSED(rv);
+
+    ctx->selection_data_source_send_fd = fd;
   } else {
-    struct sl_data_source_send_request* request =
-        malloc(sizeof(struct sl_data_source_send_request));
-
-    request->fd = fd;
-    request->cookie = cookie;
-    request->data_source = host;
-    wl_list_insert(&ctx->selection_data_source_send_pending, &request->link);
+    close(fd);
   }
 }
 
@@ -2493,18 +2428,6 @@ static void sl_internal_data_source_cancelled(
 static const struct wl_data_source_listener sl_internal_data_source_listener = {
     sl_internal_data_source_target, sl_internal_data_source_send,
     sl_internal_data_source_cancelled};
-
-char* sl_copy_atom_name(xcb_get_atom_name_reply_t* reply) {
-  // The string produced by xcb_get_atom_name_name isn't null terminated, so we
-  // have to copy |name_len| bytes into a new buffer and add the null character
-  // ourselves.
-  char* name_start = xcb_get_atom_name_name(reply);
-  int name_len = xcb_get_atom_name_name_length(reply);
-  char* name = malloc(name_len + 1);
-  memcpy(name, name_start, name_len);
-  name[name_len] = '\0';
-  return name;
-}
 
 static void sl_get_selection_targets(struct sl_context* ctx) {
   struct sl_data_source* data_source = NULL;
@@ -2537,29 +2460,10 @@ static void sl_get_selection_targets(struct sl_context* ctx) {
                                 &sl_internal_data_source_listener, data_source);
 
     value = xcb_get_property_value(reply);
-
-    // We need to convert all of the offered target types from X11 atoms to
-    // strings (i.e. getting the names of the atoms). Each conversion requires a
-    // round trip to the X server, but none of the requests depend on each
-    // other. Therefore, we can speed things up by sending out all the requests
-    // as a batch with xcb_get_atom_name, and then read all the replies as a
-    // batch with xcb_get_atom_name_reply.
-    xcb_get_atom_name_cookie_t* atom_name_cookies =
-        malloc(sizeof(xcb_get_atom_name_cookie_t) * reply->value_len);
     for (i = 0; i < reply->value_len; i++) {
-      atom_name_cookies[i] = xcb_get_atom_name(ctx->connection, value[i]);
+      if (value[i] == ctx->atoms[ATOM_UTF8_STRING].value)
+        wl_data_source_offer(data_source->internal, sl_utf8_mime_type);
     }
-    for (i = 0; i < reply->value_len; i++) {
-      xcb_get_atom_name_reply_t* atom_name_reply =
-          xcb_get_atom_name_reply(ctx->connection, atom_name_cookies[i], NULL);
-      if (atom_name_reply) {
-        char* name = sl_copy_atom_name(atom_name_reply);
-        wl_data_source_offer(data_source->internal, name);
-        free(atom_name_reply);
-        free(name);
-      }
-    }
-    free(atom_name_cookies);
 
     if (ctx->selection_data_device && ctx->default_seat) {
       wl_data_device_set_selection(ctx->selection_data_device,
@@ -2608,11 +2512,15 @@ static void sl_handle_selection_notify(struct sl_context* ctx,
 }
 
 static void sl_send_targets(struct sl_context* ctx) {
+  xcb_atom_t targets[] = {
+      ctx->atoms[ATOM_TIMESTAMP].value, ctx->atoms[ATOM_TARGETS].value,
+      ctx->atoms[ATOM_UTF8_STRING].value, ctx->atoms[ATOM_TEXT].value,
+  };
+
   xcb_change_property(ctx->connection, XCB_PROP_MODE_REPLACE,
                       ctx->selection_request.requestor,
                       ctx->selection_request.property, XCB_ATOM_ATOM, 32,
-                      ctx->selection_data_offer->atoms.size,
-                      ctx->selection_data_offer->atoms.data);
+                      ARRAY_SIZE(targets), targets);
 
   sl_send_selection_notify(ctx, ctx->selection_request.property);
 }
@@ -2626,10 +2534,10 @@ static void sl_send_timestamp(struct sl_context* ctx) {
   sl_send_selection_notify(ctx, ctx->selection_request.property);
 }
 
-static void sl_send_data(struct sl_context* ctx, xcb_atom_t data_type) {
-  int rv, fd_to_receive, fd_to_wayland;
+static void sl_send_data(struct sl_context* ctx) {
+  int rv;
 
-  if (!ctx->selection_data_offer) {
+  if (!ctx->selection_data_offer || !ctx->selection_data_offer->utf8_text) {
     sl_send_selection_notify(ctx, XCB_ATOM_NONE);
     return;
   }
@@ -2639,13 +2547,6 @@ static void sl_send_data(struct sl_context* ctx, xcb_atom_t data_type) {
     sl_send_selection_notify(ctx, XCB_ATOM_NONE);
     return;
   }
-
-  ctx->selection_data_type = data_type;
-
-  // We will need the name of this atom later to tell the wayland server what
-  // type of data to send us, so start the request now.
-  xcb_get_atom_name_cookie_t atom_name_cookie =
-      xcb_get_atom_name(ctx->connection, data_type);
 
   wl_array_init(&ctx->selection_data);
   ctx->selection_data_ack_pending = 0;
@@ -2664,9 +2565,9 @@ static void sl_send_data(struct sl_context* ctx, xcb_atom_t data_type) {
         return;
       }
 
-      fd_to_receive = new_pipe.fd;
-      fd_to_wayland = new_pipe.fd;
-
+      ctx->selection_data_offer_receive_fd = new_pipe.fd;
+      wl_data_offer_receive(ctx->selection_data_offer->internal,
+                            sl_utf8_mime_type, new_pipe.fd);
     } break;
     case DATA_DRIVER_NOOP: {
       int p[2];
@@ -2674,40 +2575,17 @@ static void sl_send_data(struct sl_context* ctx, xcb_atom_t data_type) {
       rv = pipe2(p, O_CLOEXEC | O_NONBLOCK);
       assert(!rv);
 
-      fd_to_receive = p[0];
-      fd_to_wayland = p[1];
-
+      ctx->selection_data_offer_receive_fd = p[0];
+      wl_data_offer_receive(ctx->selection_data_offer->internal,
+                            sl_utf8_mime_type, p[1]);
+      close(p[1]);
     } break;
   }
 
-  xcb_get_atom_name_reply_t* atom_name_reply =
-      xcb_get_atom_name_reply(ctx->connection, atom_name_cookie, NULL);
-  if (atom_name_reply) {
-    // If we got the atom name, then send the request to wayland and add our end
-    // of the pipe to the wayland event loop.
-    ctx->selection_data_offer_receive_fd = fd_to_receive;
-    char* name = sl_copy_atom_name(atom_name_reply);
-    wl_data_offer_receive(ctx->selection_data_offer->internal, name,
-                          fd_to_wayland);
-    free(atom_name_reply);
-    free(name);
-
-    ctx->selection_event_source = wl_event_loop_add_fd(
-        wl_display_get_event_loop(ctx->host_display),
-        ctx->selection_data_offer_receive_fd, WL_EVENT_READABLE,
-        sl_handle_selection_fd_readable, ctx);
-  } else {
-    // If getting the atom name failed, notify the requestor that there won't be
-    // any data, and close our end of the pipe.
-    close(fd_to_receive);
-    sl_send_selection_notify(ctx, XCB_ATOM_NONE);
-  }
-
-  // Close the wayland end of the pipe, now that it's either been sent or not
-  // going to be sent. The VIRTWL driver uses the same fd for both ends of the
-  // pipe, so don't close the fd if both ends are the same.
-  if (fd_to_receive != fd_to_wayland)
-    close(fd_to_wayland);
+  ctx->selection_event_source = wl_event_loop_add_fd(
+      wl_display_get_event_loop(ctx->host_display),
+      ctx->selection_data_offer_receive_fd, WL_EVENT_READABLE,
+      sl_handle_selection_fd_readable, ctx);
 }
 
 static void sl_handle_selection_request(struct sl_context* ctx,
@@ -2724,19 +2602,11 @@ static void sl_handle_selection_request(struct sl_context* ctx,
     sl_send_targets(ctx);
   } else if (event->target == ctx->atoms[ATOM_TIMESTAMP].value) {
     sl_send_timestamp(ctx);
+  } else if (event->target == ctx->atoms[ATOM_UTF8_STRING].value ||
+             event->target == ctx->atoms[ATOM_TEXT].value) {
+    sl_send_data(ctx);
   } else {
-    int success = 0;
-    xcb_atom_t* atom;
-    wl_array_for_each(atom, &ctx->selection_data_offer->atoms) {
-      if (event->target == *atom) {
-        success = 1;
-        sl_send_data(ctx, *atom);
-        break;
-      }
-    }
-    if (!success) {
-      sl_send_selection_notify(ctx, XCB_ATOM_NONE);
-    }
+    sl_send_selection_notify(ctx, XCB_ATOM_NONE);
   }
 }
 
@@ -3952,7 +3822,6 @@ int main(int argc, char **argv) {
   wl_list_init(&ctx.windows);
   wl_list_init(&ctx.unpaired_windows);
   wl_list_init(&ctx.host_outputs);
-  wl_list_init(&ctx.selection_data_source_send_pending);
 
   // Parse the list of accelerators that should be reserved by the
   // compositor. Format is "|MODIFIERS|KEYSYM", where MODIFIERS is a

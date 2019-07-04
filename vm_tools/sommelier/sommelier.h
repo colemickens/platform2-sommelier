@@ -155,12 +155,10 @@ struct sl_context {
   struct sl_data_offer* selection_data_offer;
   struct sl_data_source* selection_data_source;
   int selection_data_source_send_fd;
-  struct wl_list selection_data_source_send_pending;
   struct wl_event_source* selection_send_event_source;
   xcb_get_property_reply_t* selection_property_reply;
   int selection_property_offset;
   struct wl_event_source* selection_event_source;
-  xcb_atom_t selection_data_type;
   struct wl_array selection_data;
   int selection_data_offer_receive_fd;
   int selection_data_ack_pending;
@@ -256,13 +254,6 @@ struct sl_host_buffer {
   struct sl_sync_point* sync_point;
 };
 
-struct sl_data_source_send_request {
-  int fd;
-  xcb_intern_atom_cookie_t cookie;
-  struct sl_data_source* data_source;
-  struct wl_list link;
-};
-
 struct sl_subcompositor {
   struct sl_context* ctx;
   uint32_t id;
@@ -338,8 +329,7 @@ struct sl_data_device_manager {
 struct sl_data_offer {
   struct sl_context* ctx;
   struct wl_data_offer* internal;
-  struct wl_array atoms;    // Contains xcb_atom_t
-  struct wl_array cookies;  // Contains xcb_intern_atom_cookie_t
+  int utf8_text;
 };
 
 struct sl_text_input_manager {
