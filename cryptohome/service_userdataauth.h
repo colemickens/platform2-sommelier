@@ -43,6 +43,9 @@ class UserDataAuthAdaptor
   void Unmount(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                    user_data_auth::UnmountReply>> response,
                const user_data_auth::UnmountRequest& in_request) override;
+  void DoUnmount(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                     user_data_auth::UnmountReply>> response);
+
   void Mount(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                  user_data_auth::MountReply>> response,
              const user_data_auth::MountRequest& in_request) override;

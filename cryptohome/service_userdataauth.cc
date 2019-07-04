@@ -47,7 +47,26 @@ void UserDataAuthAdaptor::Unmount(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::UnmountReply>> response,
     const user_data_auth::UnmountRequest& in_request) {
+  // Unmount request doesn't have any parameters
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &UserDataAuthAdaptor::DoUnmount, base::Unretained(this),
+          ThreadSafeDBusMethodResponse<user_data_auth::UnmountReply>::
+              MakeThreadSafe(std::move(response))));
+}
+
+void UserDataAuthAdaptor::DoUnmount(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<user_data_auth::UnmountReply>>
+        response) {
+  bool unmount_ok = service_->Unmount();
+
   user_data_auth::UnmountReply reply;
+  if (!unmount_ok) {
+    reply.set_error(
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
+  }
   response->Return(reply);
 }
 

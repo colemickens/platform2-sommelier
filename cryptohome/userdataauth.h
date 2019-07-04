@@ -9,7 +9,9 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
+#include <base/files/file_path.h>
 #include <base/location.h>
 #include <base/threading/thread.h>
 #include <brillo/secure_blob.h>
@@ -30,7 +32,8 @@ class UserDataAuth {
   // object, so that |origin_task_runner_| is initialized correctly.
   bool Initialize();
 
-  // =============== Mount Related Public API ===============
+  // =============== Mount Related Public DBus API ===============
+  // Methods below are used directly by the DBus interface
 
   // If username is empty, returns true if any mount is mounted, otherwise,
   // returns true if the mount associated with the given |username| is mounted.
@@ -50,6 +53,23 @@ class UserDataAuth {
   // mount is cleared once the user logs out.
   bool IsMountedForUser(const std::string& username,
                         bool* is_ephemeral_out = nullptr);
+
+  // Calling this function will unmount all mounted cryptohomes. It'll return
+  // true if all mounts are cleanly unmounted.
+  // Note: This must only be called on mount thread
+  bool Unmount();
+
+  // =============== Mount Related Public Utilities ===============
+
+  // Called during initialization (and on mount events) to ensure old mounts
+  // are marked for unmount when possible by the kernel.  Returns true if any
+  // mounts were stale and not cleaned up (because of open files).
+  // Note: This must only be called on mount thread
+  //
+  // Parameters
+  // - force: if true, unmounts all existing shadow mounts.
+  //          if false, unmounts shadows mounts with no open files.
+  bool CleanUpStaleMounts(bool force);
 
   // ================= Threading Utilities ==================
 
@@ -111,6 +131,10 @@ class UserDataAuth {
   // Override |platform_| for testing purpose
   void set_platform(cryptohome::Platform* platform) { platform_ = platform; }
 
+  // override |chaps_client_| for testing purpose
+  void set_chaps_client(chaps::TokenManagerClient* chaps_client) {
+    chaps_client_ = chaps_client;
+  }
   // Associate a particular mount object |mount| with the username |username|
   // for testing purpose
   void set_mount_for_user(const std::string& username,
@@ -136,6 +160,38 @@ class UserDataAuth {
   // =============== Mount Related Utilities ===============
   // Returns the mount object associated with the given username
   scoped_refptr<cryptohome::Mount> GetMountForUser(const std::string& username);
+
+  // Filters out active mounts from |mounts|, populating |active_mounts| set.
+  // If |include_busy_mount| is false, then stale mounts with open files will be
+  // treated as active mount, and be moved from |mounts| to |active_mounts|.
+  // Otherwise,  all stale mounts are included in |mounts|. Returns true if
+  // |include_busy_mount| is true and there's at least one stale mount with open
+  // file(s) and treated as active mount during the process.
+  bool FilterActiveMounts(
+      std::multimap<const base::FilePath, const base::FilePath>* mounts,
+      std::multimap<const base::FilePath, const base::FilePath>* active_mounts,
+      bool include_busy_mount);
+
+  // Populates |mounts| with ephemeral cryptohome mount points.
+  void GetEphemeralLoopDevicesMounts(
+      std::multimap<const base::FilePath, const base::FilePath>* mounts);
+
+  // Unload any user pkcs11 tokens _not_ belonging to one of the mounts in
+  // |exclude|. This is used to clean up any stale loaded tokens after a
+  // cryptohome crash.
+  // Note that system tokens are not affected.
+  bool UnloadPkcs11Tokens(const std::vector<base::FilePath>& exclude);
+
+  // Safely empties the MountMap and may request unmounting. If |unmount| is
+  // true, the return value will reflect if all mounts unmounted cleanly or not.
+  // That is, it'll be true if all unmounts are clean and successful.
+  // Note: This must only be called on mount thread
+  bool RemoveAllMounts(bool unmount);
+
+  // Returns true if any of the path in |prefixes| starts with |path|
+  // Note that this function is case insensitive
+  static bool PrefixPresent(const std::vector<base::FilePath>& prefixes,
+                            const std::string path);
 
   // =============== Threading Related Variables ===============
 
@@ -190,6 +246,13 @@ class UserDataAuth {
   // default_crypto_, but can be overridden for testing
   cryptohome::Crypto* crypto_;
 
+  // The default token manager client for accessing chapsd's PKCS#11 interface
+  std::unique_ptr<chaps::TokenManagerClient> default_chaps_client_;
+
+  // The actual token manager client used by this class, usually set to
+  // default_chaps_client_, but can be overridden for testing.
+  chaps::TokenManagerClient* chaps_client_;
+
   // =============== Mount Related Variables ===============
 
   // Defines a type for tracking Mount objects for each user by username.
@@ -198,12 +261,19 @@ class UserDataAuth {
 
   // Records the Mount objects associated with each username.
   // This and its content should only be accessed from the mount thread.
+  // TODO(b/126022424): Verify that this access paradigm doesn't cause
+  // measurable performance impact.
   MountMap mounts_;
 
   // Note: In Service class (the class that this class is refactored from),
   // there is a mounts_lock_ lock for inserting/removal of mounts_ map. However,
   // in this class, all accesses to mounts_ should happen on the mount thread,
   // so no lock is needed.
+
+  // This is an unused variable that's lifted over from service.cc. It is kept
+  // here for the purpose of keeping the code in userdatauth.h/.cc as close as
+  // possible to the version in service.cc.
+  bool reported_pkcs11_init_fail_;
 
   // The homedirs_ object in normal operation
   std::unique_ptr<HomeDirs> default_homedirs_;
