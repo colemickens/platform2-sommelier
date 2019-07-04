@@ -21,12 +21,8 @@ void ConvertError(const Source& source,
   if (inner_error)
     ConvertError(*inner_error, destination);
 
-  const auto& location = source.GetLocation();
-  Destination::AddTo(
-      destination,
-      base::Location{location.function_name.c_str(), location.file_name.c_str(),
-                     location.line_number, base::GetProgramCounter()},
-      source.GetDomain(), source.GetCode(), source.GetMessage());
+  Destination::AddTo(destination, source.GetLocation(), source.GetDomain(),
+                     source.GetCode(), source.GetMessage());
 }
 
 }  // namespace buffet

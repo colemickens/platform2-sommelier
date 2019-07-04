@@ -98,18 +98,6 @@ Error::Error(const base::Location& location,
              const std::string& code,
              const std::string& message,
              ErrorPtr inner_error)
-    : Error{tracked_objects::LocationSnapshot{location},
-            domain,
-            code,
-            message,
-            std::move(inner_error)} {
-}
-
-Error::Error(const tracked_objects::LocationSnapshot& location,
-             const std::string& domain,
-             const std::string& code,
-             const std::string& message,
-             ErrorPtr inner_error)
     : domain_(domain),
       code_(code),
       message_(message),

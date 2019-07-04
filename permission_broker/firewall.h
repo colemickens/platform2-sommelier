@@ -14,6 +14,7 @@
 
 #include <base/macros.h>
 #include <brillo/errors/error.h>
+#include <gtest/gtest_prod.h>
 
 namespace permission_broker {
 

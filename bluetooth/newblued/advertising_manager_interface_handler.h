@@ -12,9 +12,10 @@
 
 #include <base/memory/ref_counted.h>
 #include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
-#include <brillo/variant_dictionary.h>
+#include <gtest/gtest_prod.h>
 
 #include "bluetooth/common/exported_object_manager_wrapper.h"
 #include "bluetooth/newblued/libnewblue.h"
