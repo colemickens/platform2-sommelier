@@ -343,7 +343,7 @@ REGIONS_LIST = [
         'us', 'xkb:us::eng', 'America/Los_Angeles', 'en-US', KML.ANSI,
         'United States'),
     Region(
-        'jp', 'xkb:jp::jpn', 'Asia/Tokyo', 'ja', KML.JIS,
+        'jp', ['xkb:jp::jpn', 'ime:jp:mozc_jp'], 'Asia/Tokyo', 'ja', KML.JIS,
         'Japan'),
     Region(
         'za', 'xkb:gb:extd:eng', 'Africa/Johannesburg', 'en-ZA', KML.ISO,
@@ -464,8 +464,8 @@ REGIONS_LIST = [
             'bg', 'tr', 'en-US'], KML.ANSI,
         'Bulgaria'),
     Region(
-        'jp.us', 'xkb:us::eng', 'Asia/Tokyo', 'ja', KML.ANSI,
-        'Japan with US keyboard'),
+        'jp.us', ['xkb:us::eng', 'ime:jp:mozc_us'], 'Asia/Tokyo', 'ja',
+        KML.ANSI, 'Japan with US keyboard'),
     Region(
         'is', 'xkb:is::ice', 'Atlantic/Reykjavik', ['is', 'en-GB'], KML.ISO,
         'Iceland'),
