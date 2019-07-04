@@ -1,0 +1,55 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":cros_camera_test",
+  ]
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "cros-camera-android-headers",
+    "gbm",
+    "libcamera_client",
+    "libcamera_common",
+    "libcamera_metadata",
+    "libcbm",
+    "libdrm",
+    "libexif",
+    "libsync",
+    "libyuv",
+  ]
+  configs = [ "//camera/build:cros_camera_common" ]
+}
+
+executable("cros_camera_test") {
+  sources = [
+    "//camera/common/utils/camera_hal_enumerator.cc",
+    "camera3_device_impl.cc",
+    "camera3_device_test.cc",
+    "camera3_exif_validator.cc",
+    "camera3_frame_test.cc",
+    "camera3_module_test.cc",
+    "camera3_perf_log.cc",
+    "camera3_preview_test.cc",
+    "camera3_recording_test.cc",
+    "camera3_reprocessing_test.cc",
+    "camera3_service.cc",
+    "camera3_still_capture_test.cc",
+    "camera3_stream_test.cc",
+    "camera3_test_data_forwarder.cc",
+    "camera3_test_gralloc.cc",
+  ]
+  configs += [
+    "//common-mk:test",
+    ":target_defaults",
+  ]
+  libs = [
+    "dl",
+    "jpeg",
+  ]
+}
