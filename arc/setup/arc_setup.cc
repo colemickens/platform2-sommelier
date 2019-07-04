@@ -1185,8 +1185,7 @@ void ArcSetup::CreateAndroidCmdlineFile(
   const int arc_print_spooler =
       config_.GetIntOrDie("ARC_PRINT_SPOOLER_EXPERIMENT");
   LOG(INFO) << "arc_print_spooler is " << arc_print_spooler;
-  const std::string arc_camera_mode =
-      GetSdkVersion() == AndroidSdkVersion::ANDROID_P ? "arcbridge" : "legacy";
+  const std::string arc_camera_mode = "arcbridge";
   LOG(INFO) << "arc_camera_mode is " << arc_camera_mode;
 
   std::string native_bridge;
