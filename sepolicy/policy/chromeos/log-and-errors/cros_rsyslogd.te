@@ -1,8 +1,5 @@
 type cros_rsyslogd, chromeos_domain, cros_log_file_creator_domain, domain;
 
-# rsyslogd attempting to write net.log was denied, and denials audit messages are spamming syslog.
-permissive cros_rsyslogd;
-
 from_minijail_static(cros_rsyslogd, cros_rsyslogd_exec);
 log_writer(cros_rsyslogd);
 cros_net(cros_rsyslogd);
@@ -22,3 +19,7 @@ allow cros_rsyslogd kernel:system syslog_mod;
 allow cros_rsyslogd self:capability2 syslog;
 
 allow cros_rsyslogd self:capability { setuid setgid };
+
+# TODO: until all log creators are confined and has logs in separate log file type
+# This will be necessary to allow "unknown" new logs to be written.
+allow cros_rsyslogd cros_var_log:file rw_file_perms;
