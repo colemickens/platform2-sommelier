@@ -384,6 +384,9 @@ message ExportContainerResponse {
 
   // Details relating to the failure state.
   string failure_reason = 2;
+
+  // A unique id generated for the export request.
+  uint64 transaction_id = 3;
 }
 
 // Sent by tremplin to update the host on the export progress of a container.
@@ -444,6 +447,9 @@ message ContainerExportProgress {
 
   // Size of the files in the input container that have been downloaded.
   uint64 input_bytes_streamed = 9;
+
+  // A unique id generated for the export request.
+  uint64 transaction_id = 10;
 }
 
 message ImportContainerRequest {
@@ -478,6 +484,9 @@ message ImportContainerResponse {
 
   // Details relating to the failure state.
   string failure_reason = 2;
+
+  // A unique id generated for the import request.
+  uint64 transaction_id = 3;
 }
 
 // Sent by tremplin to update the host on the import progress of a container.
@@ -532,6 +541,9 @@ message ContainerImportProgress {
 
   // Disk space required. Set when status is FAILED_SPACE.
   uint64 disk_space_required_bytes = 9;
+
+  // A unique id generated for the import request.
+  uint64 transaction_id = 10;
 }
 
 // Sent by tremplin to update the host that a container has shutdown.
