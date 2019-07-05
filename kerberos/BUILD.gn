@@ -68,6 +68,7 @@ static_library("libkerberos") {
   ]
   sources = [
     "account_manager.cc",
+    "config_validator.cc",
     "error_strings.cc",
     "fake_krb5_interface.cc",
     "kerberos_adaptor.cc",
@@ -136,6 +137,7 @@ if (use.test) {
     ]
     sources = [
       "account_manager_test.cc",
+      "config_validator_test.cc",
       "kerberos_adaptor_test.cc",
       "krb5_jail_wrapper_test.cc",
       "tgt_renewal_scheduler_test.cc",
