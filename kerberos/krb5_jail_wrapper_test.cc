@@ -19,6 +19,7 @@ namespace {
 
 constexpr char kPrincipal[] = "user@EXAMPLE.COM";
 constexpr char kPassword[] = "pzzwutt";
+constexpr char kEmptyConfig[] = "";
 
 }  // namespace
 
@@ -95,6 +96,32 @@ TEST_F(Krb5JailWrapperTest, GetTgtStatusReturnsTgtStatus) {
   Krb5Interface::TgtStatus tgt_status;
   EXPECT_EQ(ERROR_NONE, krb5_wrapper_->GetTgtStatus(krb5cc_path_, &tgt_status));
   EXPECT_EQ(kExpectedTgtStatus, tgt_status);
+}
+
+TEST_F(Krb5JailWrapperTest, ValidateConfigSucceeds) {
+  ConfigErrorInfo error_info;
+  EXPECT_EQ(ERROR_NONE,
+            krb5_wrapper_->ValidateConfig(kEmptyConfig, &error_info));
+}
+
+TEST_F(Krb5JailWrapperTest, ValidateConfigReturnsErrorType) {
+  fake_krb5_->set_validate_config_error(ERROR_UNKNOWN);
+  ConfigErrorInfo error_info;
+  EXPECT_EQ(ERROR_UNKNOWN,
+            krb5_wrapper_->ValidateConfig(kEmptyConfig, &error_info));
+}
+
+TEST_F(Krb5JailWrapperTest, ValidateConfigReturnsErrorInfo) {
+  ConfigErrorInfo expected_error_info;
+  fake_krb5_->set_validate_config_error(ERROR_BAD_CONFIG);
+  expected_error_info.set_code(CONFIG_ERROR_EXTRA_CURLY_BRACE);
+  expected_error_info.set_line_index(42);
+  fake_krb5_->set_config_error_info(expected_error_info);
+  ConfigErrorInfo error_info;
+  EXPECT_EQ(ERROR_BAD_CONFIG,
+            krb5_wrapper_->ValidateConfig(kEmptyConfig, &error_info));
+  EXPECT_EQ(expected_error_info.SerializeAsString(),
+            error_info.SerializeAsString());
 }
 
 // Setting uid should fail in unit tests. This test verifies that things don't

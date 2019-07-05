@@ -44,6 +44,10 @@ class Krb5JailWrapper : public Krb5Interface {
   ErrorType GetTgtStatus(const base::FilePath& krb5cc_path,
                          TgtStatus* status) override;
 
+  // Krb5Interface:
+  ErrorType ValidateConfig(const std::string& krb5conf,
+                           ConfigErrorInfo* error_info) override;
+
   // If |disabled|, will not setuid to kerberosd-exec. This is needed in some
   // environments where setuid is not permitted.
   static void DisableChangeUserForTesting(bool disabled);

@@ -13,7 +13,6 @@
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/optional.h>
 
 #include "bindings/kerberos_containers.pb.h"
 #include "kerberos/krb5_interface.h"
@@ -84,9 +83,16 @@ class AccountManager : public TgtRenewalScheduler::Delegate {
       WARN_UNUSED_RESULT;
 
   // Sets the Kerberos configuration (krb5.conf) used for the given
-  // |principal_name|.
+  // |principal_name|. Validates the config before setting it.
   ErrorType SetConfig(const std::string& principal_name,
-                      const std::string& krb5_conf) const WARN_UNUSED_RESULT;
+                      const std::string& krb5conf) const WARN_UNUSED_RESULT;
+
+  // Validates the Kerberos configuration data |krb5conf|. If the config has
+  // syntax errors or uses non-whitelisted options, returns ERROR_BAD_CONFIG
+  // and fills |error_info| with error information.
+  ErrorType ValidateConfig(const std::string& krb5conf,
+                           ConfigErrorInfo* error_info) const
+      WARN_UNUSED_RESULT;
 
   // Acquires a Kerberos ticket-granting-ticket for the account keyed by
   // |principal_name| using |password|. If |password| is empty, a stored

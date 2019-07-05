@@ -44,7 +44,13 @@ class FakeKrb5Interface : public Krb5Interface {
   ErrorType GetTgtStatus(const base::FilePath& krb5cc_path,
                          TgtStatus* status) override;
 
+  // Krb5Interface:
+  ErrorType ValidateConfig(const std::string& krb5conf,
+                           ConfigErrorInfo* error_info) override;
+
+  //
   // Testing interface.
+  //
 
   // Sets the error that AcquireTgt() returns.
   void set_acquire_tgt_error(ErrorType error) { acquire_tgt_error_ = error; }
@@ -57,6 +63,11 @@ class FakeKrb5Interface : public Krb5Interface {
     get_tgt_status_error_ = error;
   }
 
+  // Sets the error that ValidateConfig() returns.
+  void set_validate_config_error(ErrorType error) {
+    validate_config_error_ = error;
+  }
+
   // Sets the expected password for AcquireTgt. If not empty, ERROR_BAD_PASSWORD
   // is returned on mismatch.
   void set_expected_password(const std::string& expected_password) {
@@ -66,10 +77,20 @@ class FakeKrb5Interface : public Krb5Interface {
   // Sets the status that GetTgtStatus returns.
   void set_tgt_status(TgtStatus status) { tgt_status_ = std::move(status); }
 
+  // Sets the error info that ValidateConfig returns.
+  void set_config_error_info(ConfigErrorInfo error_info) {
+    error_info_ = std::move(error_info);
+  }
+
   // Call counts for the corresponding methods.
   int acquire_tgt_call_count() const { return acquire_tgt_call_count_; }
   int renew_tgt_call_count() const { return renew_tgt_call_count_; }
-  int get_tgt_status_call_count() const { return get_tgt_status_call_count_; }
+  int get_get_tgt_status_call_count() const {
+    return get_tgt_status_call_count_;
+  }
+  int get_validate_config_call_count_() const {
+    return validate_config_call_count_;
+  }
 
  private:
   std::string expected_password_;
@@ -77,12 +98,15 @@ class FakeKrb5Interface : public Krb5Interface {
   ErrorType acquire_tgt_error_ = ERROR_NONE;
   ErrorType renew_tgt_error_ = ERROR_NONE;
   ErrorType get_tgt_status_error_ = ERROR_NONE;
+  ErrorType validate_config_error_ = ERROR_NONE;
 
   int acquire_tgt_call_count_ = 0;
   int renew_tgt_call_count_ = 0;
   int get_tgt_status_call_count_ = 0;
+  int validate_config_call_count_ = 0;
 
   TgtStatus tgt_status_;
+  ConfigErrorInfo error_info_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeKrb5Interface);
 };

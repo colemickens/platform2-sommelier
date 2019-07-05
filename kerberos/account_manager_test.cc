@@ -369,6 +369,14 @@ TEST_F(AccountManagerTest, SetConfigSuccess) {
   EXPECT_EQ(krb5_conf, kKrb5Conf);
 }
 
+// SetConfig() calls ValidateConfig on the Kerberos interface.
+TEST_F(AccountManagerTest, SetConfigValidatesConfig) {
+  ignore_result(AddAccount());
+
+  krb5_->set_validate_config_error(ERROR_BAD_CONFIG);
+  EXPECT_EQ(ERROR_BAD_CONFIG, SetConfig());
+}
+
 // SetConfig() triggers KerberosFilesChanged if the credential cache exists.
 TEST_F(AccountManagerTest, SetConfigTriggersKFCIfCCExists) {
   ignore_result(AddAccount());
@@ -396,6 +404,30 @@ TEST_F(AccountManagerTest, RemoveAccountRemovesConfig) {
   EXPECT_TRUE(base::PathExists(krb5conf_path_));
   EXPECT_EQ(ERROR_NONE, manager_->RemoveAccount(kUser));
   EXPECT_FALSE(base::PathExists(krb5conf_path_));
+}
+
+// ValidateConfig() validates a good config successfully.
+TEST_F(AccountManagerTest, ValidateConfigSuccess) {
+  constexpr char kValidKrb5Conf[] = "";
+  ConfigErrorInfo error_info;
+  EXPECT_EQ(ERROR_NONE, manager_->ValidateConfig(kValidKrb5Conf, &error_info));
+  EXPECT_EQ(CONFIG_ERROR_NONE, error_info.code());
+}
+
+// ValidateConfig() returns the correct error for a bad config.
+TEST_F(AccountManagerTest, ValidateConfigFailure) {
+  ConfigErrorInfo expected_error_info;
+  expected_error_info.set_code(CONFIG_ERROR_SECTION_SYNTAX);
+  krb5_->set_config_error_info(expected_error_info);
+  krb5_->set_validate_config_error(ERROR_BAD_CONFIG);
+
+  constexpr char kBadKrb5Conf[] =
+      "[libdefaults]'); DROP TABLE KerberosTickets;--";
+  ConfigErrorInfo error_info;
+  EXPECT_EQ(ERROR_BAD_CONFIG,
+            manager_->ValidateConfig(kBadKrb5Conf, &error_info));
+  EXPECT_EQ(expected_error_info.SerializeAsString(),
+            error_info.SerializeAsString());
 }
 
 // AcquireTgt() succeeds and writes a credential cache file.

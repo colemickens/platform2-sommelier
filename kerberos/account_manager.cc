@@ -184,8 +184,10 @@ ErrorType AccountManager::AddAccount(const std::string& principal_name,
   // The account directory needs to be group accessible since kinit runs as
   // kerberosd-exec user and wants to write krbcc into that directory.
   ErrorType error = SetFilePermissions(account_dir, kFileMode_rwxrwx);
-  if (error != ERROR_NONE)
+  if (error != ERROR_NONE) {
+    base::DeleteFile(account_dir, true /* recursive */);
     return error;
+  }
 
   // Create account record.
   AccountData data;
@@ -308,12 +310,24 @@ ErrorType AccountManager::SetConfig(const std::string& principal_name,
   if (!account)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
-  ErrorType error = SaveFile(GetKrb5ConfPath(principal_name), krb5conf);
+  // Validate configuration before setting it to make sure it doesn't contain
+  // invalid options.
+  ConfigErrorInfo error_info;
+  ErrorType error = krb5_->ValidateConfig(krb5conf, &error_info);
+  if (error != ERROR_NONE)
+    return error;
+
+  error = SaveFile(GetKrb5ConfPath(principal_name), krb5conf);
 
   // Triggering the signal is only necessary if the credential cache exists.
   if (error == ERROR_NONE && base::PathExists(GetKrb5CCPath(principal_name)))
     TriggerKerberosFilesChanged(principal_name);
   return error;
+}
+
+ErrorType AccountManager::ValidateConfig(const std::string& krb5conf,
+                                         ConfigErrorInfo* error_info) const {
+  return krb5_->ValidateConfig(krb5conf, error_info);
 }
 
 ErrorType AccountManager::AcquireTgt(const std::string& principal_name,

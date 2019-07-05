@@ -69,6 +69,13 @@ class Krb5Interface {
   virtual ErrorType GetTgtStatus(const base::FilePath& krb5cc_path,
                                  TgtStatus* status) WARN_UNUSED_RESULT = 0;
 
+  // Validates the Kerberos configuration data |krb5conf|. If the config has
+  // syntax errors or uses non-whitelisted options, returns ERROR_BAD_CONFIG
+  // and fills |error_info| with error information.
+  virtual ErrorType ValidateConfig(const std::string& krb5conf,
+                                   ConfigErrorInfo* error_info)
+      WARN_UNUSED_RESULT = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(Krb5Interface);
 };

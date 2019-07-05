@@ -9,6 +9,7 @@
 
 #include <base/macros.h>
 
+#include "kerberos/config_validator.h"
 #include "kerberos/krb5_interface.h"
 #include "kerberos/proto_bindings/kerberos_service.pb.h"
 
@@ -38,7 +39,18 @@ class Krb5InterfaceImpl : public Krb5Interface {
   ErrorType GetTgtStatus(const base::FilePath& krb5cc_path,
                          TgtStatus* status) override;
 
+  // Krb5Interface:
+  ErrorType ValidateConfig(const std::string& krb5conf,
+                           ConfigErrorInfo* error_info) override;
+
+  void DisableConfigValidatorForTesting() {
+    config_validator_disabled_for_testing = true;
+  }
+
  private:
+  ConfigValidator config_validator_;
+  bool config_validator_disabled_for_testing = false;
+
   DISALLOW_COPY_AND_ASSIGN(Krb5InterfaceImpl);
 };
 

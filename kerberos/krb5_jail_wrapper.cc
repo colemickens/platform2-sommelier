@@ -4,6 +4,8 @@
 
 #include "kerberos/krb5_jail_wrapper.h"
 
+#include <vector>
+
 #include <sys/wait.h>
 
 #include <base/files/file_util.h>
@@ -50,6 +52,9 @@ class MinijailForker {
   // Writes the |tgt_status| code to the data pipe.
   void Child_WriteTgtStatus(const Krb5Interface::TgtStatus& tgt_status);
 
+  // Writes the config validation |error_info| to the data pipe.
+  void Child_WriteErrorInfo(const ConfigErrorInfo& error_info);
+
   // Exits the process with code 0 if no error occurred and 1 otherwise.
   void Child_Exit();
 
@@ -66,6 +71,9 @@ class MinijailForker {
 
   // Reads a TGT status from the data pipe.
   Krb5Interface::TgtStatus Parent_ReadTgtStatus();
+
+  // Reads config validation error info from the data pipe.
+  ConfigErrorInfo Parent_ReadErrorInfo();
 
  private:
   // Writes |data| of size |data_size| to the data pipe. Sets |error_| on error.
@@ -124,6 +132,14 @@ void MinijailForker::Child_WriteTgtStatus(
   Child_Write(&tgt_status.renewal_seconds, sizeof(tgt_status.renewal_seconds));
 }
 
+void MinijailForker::Child_WriteErrorInfo(const ConfigErrorInfo& error_info) {
+  std::vector<uint8_t> buffer(error_info.ByteSizeLong());
+  CHECK(error_info.SerializeToArray(buffer.data(), buffer.size()));
+  int buffer_size = static_cast<int>(buffer.size());
+  Child_Write(&buffer_size, sizeof(buffer_size));
+  Child_Write(buffer.data(), buffer.size());
+}
+
 void MinijailForker::Child_Exit() {
   DCHECK(IsChild());
   exit(error_ ? 1 : 0);
@@ -149,25 +165,42 @@ void MinijailForker::Parent_Wait() {
 
 ErrorType MinijailForker::Parent_ReadError() {
   // Handle internal errors, don't try to read ErrorType, it might block.
+  ErrorType error = ERROR_JAIL_FAILURE;
   if (error_)
-    return ERROR_JAIL_FAILURE;
+    return error;
 
-  ErrorType error;
   Parent_Read(&error, sizeof(error));
   return error_ ? ERROR_JAIL_FAILURE : error;
 }
 
 Krb5Interface::TgtStatus MinijailForker::Parent_ReadTgtStatus() {
-  // Handle internal errors, don't try to read Krb5Interface::TgtStatus, it
-  // might block.
-  if (error_)
-    return Krb5Interface::TgtStatus();
-
+  // Handle internal errors, don't try to read the TGT status, it might block.
   Krb5Interface::TgtStatus tgt_status;
+  if (error_)
+    return tgt_status;
+
   Parent_Read(&tgt_status.validity_seconds,
               sizeof(tgt_status.validity_seconds));
   Parent_Read(&tgt_status.renewal_seconds, sizeof(tgt_status.renewal_seconds));
   return tgt_status;
+}
+
+ConfigErrorInfo MinijailForker::Parent_ReadErrorInfo() {
+  // Handle internal errors, don't try to read the error info, it might block.
+  ConfigErrorInfo error_info;
+  if (error_)
+    return error_info;
+
+  int buffer_size = 0;
+  Parent_Read(&buffer_size, sizeof(buffer_size));
+  if (buffer_size == 0)
+    return error_info;
+
+  std::vector<uint8_t> buffer;
+  buffer.resize(buffer_size);
+  Parent_Read(buffer.data(), buffer_size);
+  error_info.ParseFromArray(buffer.data(), buffer_size);
+  return error_info;
 }
 
 void MinijailForker::Child_Write(const void* data, size_t data_size) {
@@ -250,6 +283,22 @@ ErrorType Krb5JailWrapper::GetTgtStatus(const base::FilePath& krb5cc_path,
 
   forker.Parent_Wait();
   *status = forker.Parent_ReadTgtStatus();
+  return forker.Parent_ReadError();
+}
+
+ErrorType Krb5JailWrapper::ValidateConfig(const std::string& krb5conf,
+                                          ConfigErrorInfo* error_info) {
+  MinijailForker forker;
+
+  if (forker.IsChild()) {
+    ErrorType error = krb5_->ValidateConfig(krb5conf, error_info);
+    forker.Child_WriteErrorInfo(*error_info);
+    forker.Child_WriteError(error);
+    forker.Child_Exit();
+  }
+
+  forker.Parent_Wait();
+  *error_info = forker.Parent_ReadErrorInfo();
   return forker.Parent_ReadError();
 }
 

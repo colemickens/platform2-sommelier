@@ -213,6 +213,23 @@ ByteArray KerberosAdaptor::SetConfig(const ByteArray& request_blob) {
   return SerializeProto(response);
 }
 
+ByteArray KerberosAdaptor::ValidateConfig(const ByteArray& request_blob) {
+  PrintRequest(__FUNCTION__);
+  ValidateConfigRequest request;
+  ErrorType error = ParseProto(&request, request_blob);
+
+  ConfigErrorInfo error_info;
+  if (error == ERROR_NONE) {
+    error = manager_->ValidateConfig(request.krb5conf(), &error_info);
+  }
+
+  PrintResult(__FUNCTION__, error);
+  ValidateConfigResponse response;
+  response.set_error(error);
+  *response.mutable_error_info() = error_info;
+  return SerializeProto(response);
+}
+
 ByteArray KerberosAdaptor::AcquireKerberosTgt(
     const ByteArray& request_blob, const base::ScopedFD& password_fd) {
   PrintRequest(__FUNCTION__);

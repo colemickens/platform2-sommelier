@@ -48,6 +48,7 @@ class KerberosAdaptor : public org::chromium::KerberosAdaptor,
   ByteArray RemoveAccount(const ByteArray& request_blob) override;
   ByteArray ClearAccounts(const ByteArray& request_blob) override;
   ByteArray SetConfig(const ByteArray& request_blob) override;
+  ByteArray ValidateConfig(const ByteArray& request_blob) override;
   ByteArray AcquireKerberosTgt(const ByteArray& request_blob,
                                const base::ScopedFD& password_fd) override;
   ByteArray GetKerberosFiles(const ByteArray& request_blob) override;

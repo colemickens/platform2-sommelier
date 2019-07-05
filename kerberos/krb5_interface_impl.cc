@@ -8,9 +8,12 @@
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <krb5.h>
+
+#include "kerberos/error_strings.h"
 
 namespace kerberos {
 
@@ -306,6 +309,38 @@ class KinitContext {
   bool did_run_ = false;
 };
 
+// Runs the Kerberos configuration |krb5conf| through the krb5 code to see if it
+// can be parsed.
+ErrorType ValidateConfigViaKrb5(const std::string& krb5conf) {
+  // Since krb5 doesn't accept config passed as string, write it to disk.
+  base::FilePath krb5conf_path;
+  if (!base::CreateTemporaryFile(&krb5conf_path)) {
+    LOG(ERROR) << "Failed to create temp file for validating config";
+    return ERROR_LOCAL_IO;
+  }
+
+  const int size = static_cast<int>(krb5conf.size());
+  if (base::WriteFile(krb5conf_path, krb5conf.data(), size) != size) {
+    LOG(ERROR) << "Failed to write config to disk at " << krb5conf_path.value()
+               << " for validating config";
+    return ERROR_LOCAL_IO;
+  }
+
+  // krb5_init_context parses the config file.
+  setenv(kKrb5ConfigEnvVar, krb5conf_path.value().c_str(), 1);
+  ScopedKrb5Context ctx;
+  krb5_error_code ret = krb5_init_context(ctx.get_mutable_ptr());
+  unsetenv(kKrb5ConfigEnvVar);
+  base::DeleteFile(krb5conf_path, false /* recursive */);
+
+  if (ret) {
+    LOG(ERROR) << ctx.GetErrorMessage(ret) << " while initializing context";
+    return TranslateErrorCode(ret);
+  }
+
+  return ERROR_NONE;
+}
+
 }  // namespace
 
 Krb5InterfaceImpl::Krb5InterfaceImpl() = default;
@@ -410,6 +445,32 @@ ErrorType Krb5InterfaceImpl::GetTgtStatus(const base::FilePath& krb5cc_path,
   }
 
   return ERROR_NONE;
+}
+
+ErrorType Krb5InterfaceImpl::ValidateConfig(const std::string& krb5conf,
+                                            ConfigErrorInfo* error_info) {
+  if (!config_validator_disabled_for_testing) {
+    *error_info = config_validator_.Validate(krb5conf);
+    if (error_info->code() != CONFIG_ERROR_NONE)
+      return ERROR_BAD_CONFIG;
+  }
+
+  // Also try the mit krb5 code to parse the config.
+  error_info->Clear();
+  ErrorType error = ValidateConfigViaKrb5(krb5conf);
+  if (error == ERROR_BAD_CONFIG) {
+    error_info->set_code(CONFIG_ERROR_KRB5_FAILED_TO_PARSE);
+    return error;
+  }
+
+  // Ignore all other errors, they're most likely unrelated. The
+  // |config_validator_| should already cover pretty much everything, anyway.
+  error_info->set_code(CONFIG_ERROR_NONE);
+  if (error != ERROR_NONE) {
+    LOG(WARNING) << "Ignoring unrelated error " << GetErrorString(error)
+                 << " while validating config";
+  }
+  return error;
 }
 
 }  // namespace kerberos

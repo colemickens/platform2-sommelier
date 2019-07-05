@@ -74,7 +74,7 @@
 
     <method name="SetConfig">
       <tp:docstring>
-        Sets the Kerberos configuration for the given account.
+        Validates and sets the Kerberos configuration for the given account.
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <tp:docstring>
@@ -84,6 +84,23 @@
       <arg name="response" type="ay" direction="out">
         <tp:docstring>
           Serialized SetConfigResponse message.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
+    <method name="ValidateConfig">
+      <tp:docstring>
+        Validates Kerberos configuration data.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <tp:docstring>
+          Serialized ValidateConfigRequest message.
+        </tp:docstring>
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <tp:docstring>
+          Serialized ValidateConfigRequest message.
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>

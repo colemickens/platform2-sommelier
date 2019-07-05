@@ -55,4 +55,11 @@ ErrorType FakeKrb5Interface::GetTgtStatus(const base::FilePath& krb5cc_path,
   return get_tgt_status_error_;
 }
 
+ErrorType FakeKrb5Interface::ValidateConfig(const std::string& krb5conf,
+                                            ConfigErrorInfo* error_info) {
+  validate_config_call_count_++;
+  *error_info = error_info_;
+  return validate_config_error_;
+}
+
 }  // namespace kerberos
