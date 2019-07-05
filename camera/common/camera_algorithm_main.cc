@@ -16,6 +16,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <brillo/syslog_logging.h>
 #include <mojo/edk/embedder/platform_channel_utils_posix.h>
 
 #include "common/camera_algorithm_adapter.h"
@@ -32,6 +33,8 @@ int main(int argc, char** argv) {
   logging::LoggingSettings settings;
   settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
   LOG_ASSERT(logging::InitLogging(settings));
+
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
   int ret = setpriority(PRIO_PROCESS, 0, kCameraProcessPriority);
   if (ret) {

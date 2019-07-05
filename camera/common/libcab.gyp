@@ -5,6 +5,7 @@
   'target_defaults': {
     'variables': {
       'deps': [
+        'libbrillo-<(libbase_ver)',
         'libcamera_common',
         'libmojo-<(libbase_ver)',
       ],

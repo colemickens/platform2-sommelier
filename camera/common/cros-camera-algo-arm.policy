@@ -9,6 +9,7 @@ brk: 1
 clock_gettime: 1
 clone: 1
 close: 1
+creat: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1
@@ -26,6 +27,7 @@ gettid: 1
 gettimeofday: 1
 getuid32: 1
 inotify_init: 1
+ioctl: arg1 == TCGETS
 kill: 1
 listen: 1
 lstat64: 1
