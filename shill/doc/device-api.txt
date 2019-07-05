@@ -181,6 +181,26 @@ Methods		dict GetProperties()
 				[service].Error.OperationFailed
 					The TDLS or ARP operation failed.
 
+		void SetUsbEthernetMacAddressSource(string source)
+
+			(Ethernet only) Set MAC address source for USB Ethernet
+			adapter. The |source| parameter should be one of the
+			following:
+
+				"designated_dock_mac" : Computer's designated dock MAC
+							address.
+				"builtin_adapter_mac" : Computer's built-in NIC MAC
+							address.
+				"usb_adapter_mac" : USB Ethernet adapter's built-in NIC
+						    MAC address.
+
+			Possible Errors:
+				[service].Error.InvalidArguments
+					The |source| is unknown.
+				[service].Error.NotSupported
+					Device does not support MAC address
+					change.
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
@@ -452,6 +472,19 @@ Properties	string Address [readonly]
 			the carrier for a PPPoE connection.  Changing this
 			property can tear down the Ethernet/PPPoE service
 			associated with the Ethernet device.
+
+		string Ethernet.DeviceBusType [readonly]
+
+			(Ethernet only) Device bus type. Possible values are
+			"pci", "usb" and "". Equals to "" only in the error
+			case.
+
+		string Ethernet.UsbAdapterMacAddressSource [readonly]
+
+			(Ethernet only) MAC address source for USB Ethernet
+			adapter. Possible values are "designated_dock_mac",
+			"builtin_adapter_mac", "usb_adapter_mac" and "".
+			Equals to "" only if unset.
 
 		string Interface [readonly]
 

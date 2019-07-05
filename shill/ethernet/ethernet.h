@@ -13,6 +13,7 @@
 
 #include "shill/certificate_file.h"
 #include "shill/device.h"
+#include "shill/device_id.h"
 #include "shill/event_dispatcher.h"
 #include "shill/refptr_types.h"
 
@@ -47,7 +48,7 @@ class Ethernet
  public:
   Ethernet(Manager* manager,
            const std::string& link_name,
-           const std::string& address,
+           const std::string& mac_address,
            int interface_index);
   ~Ethernet() override;
 
@@ -128,6 +129,9 @@ class Ethernet
   bool ConfigurePPPoEMode(const bool& mode, Error* error);
   void ClearPPPoEMode(Error* error);
 
+  // Accessors for the UsbEthernetMacAddressSource property.
+  std::string GetUsbEthernetMacAddressSource(Error* error);
+
   // Helpers for creating services with |this| as their device.
   EthernetServiceRefPtr CreateEthernetService();
   EthernetServiceRefPtr CreatePPPoEService();
@@ -137,8 +141,13 @@ class Ethernet
 
   void SetupWakeOnLan();
 
+  // Returns device bus type on success. Otherwise, returns empty string.
+  std::string GetDeviceBusType() const;
+
   EthernetServiceRefPtr service_;
   bool link_up_;
+
+  std::string usb_ethernet_mac_address_source_;
 
 #if !defined(DISABLE_WIRED_8021X)
   // Track whether we have completed EAP authentication successfully.
@@ -168,6 +177,10 @@ class Ethernet
 #endif  // DISABLE_WIRED_8021X
 
   std::unique_ptr<Sockets> sockets_;
+
+  std::unique_ptr<DeviceId> device_id_;
+
+  std::string bus_type_;
 
   base::WeakPtrFactory<Ethernet> weak_ptr_factory_;
 

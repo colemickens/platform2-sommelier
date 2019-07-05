@@ -16,6 +16,9 @@
 #include <string>
 
 #include <base/bind.h>
+#include <base/files/file_path.h>
+#include <base/strings/stringprintf.h>
+#include <chromeos/dbus/shill/dbus-constants.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
@@ -55,10 +58,13 @@ static string ObjectID(Ethernet* e) {
 
 Ethernet::Ethernet(Manager* manager,
                    const string& link_name,
-                   const string& address,
+                   const string& mac_address,
                    int interface_index)
-    : Device(
-          manager, link_name, address, interface_index, Technology::kEthernet),
+    : Device(manager,
+             link_name,
+             mac_address,
+             interface_index,
+             Technology::kEthernet),
       link_up_(false),
 #if !defined(DISABLE_WIRED_8021X)
       is_eap_authenticated_(false),
@@ -69,6 +75,9 @@ Ethernet::Ethernet(Manager* manager,
                                                             base::Closure())),
 #endif  // DISABLE_WIRED_8021X
       sockets_(new Sockets()),
+      device_id_(DeviceId::CreateFromSysfs(base::FilePath(
+          base::StringPrintf("/sys/class/net/%s/device", link_name.c_str())))),
+      bus_type_(GetDeviceBusType()),
       weak_ptr_factory_(this) {
   PropertyStore* store = this->mutable_store();
 #if !defined(DISABLE_WIRED_8021X)
@@ -78,11 +87,16 @@ Ethernet::Ethernet(Manager* manager,
                            &is_eap_detected_);
 #endif  // DISABLE_WIRED_8021X
   store->RegisterConstBool(kLinkUpProperty, &link_up_);
+  store->RegisterConstString(kDeviceBusTypeProperty, &bus_type_);
   store->RegisterDerivedBool(
       kPPPoEProperty,
       BoolAccessor(new CustomAccessor<Ethernet, bool>(
           this, &Ethernet::GetPPPoEMode, &Ethernet::ConfigurePPPoEMode,
           &Ethernet::ClearPPPoEMode)));
+  store->RegisterDerivedString(
+      kUsbEthernetMacAddressSourceProperty,
+      StringAccessor(new CustomAccessor<Ethernet, std::string>(
+          this, &Ethernet::GetUsbEthernetMacAddressSource, nullptr)));
 
 #if !defined(DISABLE_WIRED_8021X)
   eap_listener_->set_request_received_callback(
@@ -492,6 +506,10 @@ void Ethernet::ClearPPPoEMode(Error* error) {
   ConfigurePPPoEMode(false, error);
 }
 
+std::string Ethernet::GetUsbEthernetMacAddressSource(Error* error) {
+  return usb_ethernet_mac_address_source_;
+}
+
 EthernetServiceRefPtr Ethernet::CreateEthernetService() {
   return GetProvider()->CreateService(weak_ptr_factory_.GetWeakPtr());
 }
@@ -520,6 +538,18 @@ void Ethernet::DeregisterService(EthernetServiceRefPtr service) {
   } else {
     GetProvider()->DeregisterService(service);
   }
+}
+
+std::string Ethernet::GetDeviceBusType() const {
+  constexpr DeviceId kPciDevicePattern{DeviceId::BusType::kPci};
+  if (device_id_ && device_id_->Match(kPciDevicePattern)) {
+    return kDeviceBusTypePci;
+  }
+  constexpr DeviceId kUsbDevicePattern{DeviceId::BusType::kUsb};
+  if (device_id_ && device_id_->Match(kUsbDevicePattern)) {
+    return kDeviceBusTypeUsb;
+  }
+  return "";
 }
 
 }  // namespace shill
