@@ -1,0 +1,31 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("all") {
+  deps = [
+    ":libjda",
+  ]
+}
+
+static_library("libjda") {
+  sources = [
+    "//camera/common/jpeg/jpeg_decode_accelerator_impl.cc",
+  ]
+  output_name = "libjda.pic"
+  configs += [
+    "//common-mk:pic",
+    "//common-mk:nouse_thin_archive",
+    "//camera/build:cros_camera_common",
+  ]
+  configs -= [ "//common-mk:use_thin_archive" ]
+  pkg_deps = [
+    "libcamera_common",
+    "libmojo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+  deps = [
+    "//camera/common:libcamera_metrics",
+    "//camera/common/libcamera_ipc",
+  ]
+}
