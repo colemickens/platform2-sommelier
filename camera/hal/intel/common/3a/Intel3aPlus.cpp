@@ -621,6 +621,21 @@ status_t Intel3aPlus::fillAeInputParams(const android::CameraMetadata *settings,
             aeCtrl->aeTargetFpsRange[0] = minFps;
             aeCtrl->aeTargetFpsRange[1] = maxFps;
             /*
+             *  Select different operation modes to change AE limit under various fps conditions.
+             *  When camera uses 30fps operation mode, the exposure time will raise in high gain at
+             *  low light environment to get less noise for better image quality.
+             *  But it can't be used at high fps, so we need to create and use another operation mode
+             *  for 60fps.
+             */
+            if (minFps >= 60 && maxFps < 120){
+                aiqInputParams->aeInputParams.operation_mode = ia_aiq_ae_operation_mode_custom_1;
+            } else if (minFps >= 120) {
+                aiqInputParams->aeInputParams.operation_mode = ia_aiq_ae_operation_mode_custom_2;
+            } else {
+                aiqInputParams->aeInputParams.operation_mode = ia_aiq_ae_operation_mode_automatic;
+            }
+
+            /*
              * There is computational accuracy in 3a library, we can not get the perfectly matched frame
              * duration if the fps range is a fix value(eg:30~30). So we calulate the frame length line
              * align to one whole line to add a margin value for manual_frame_time_us_max.
