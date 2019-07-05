@@ -420,9 +420,8 @@ bool CryptoUtilityImpl::VerifySignatureInner(
     return false;
   }
 
-  return EVP_DigestVerifyFinal(mdctx.get(),
-                               StringAsConstOpenSSLBuffer(signature.data()),
-                               signature.size());
+  return EVP_DigestVerifyFinal(
+      mdctx.get(), StringAsConstOpenSSLBuffer(signature), signature.size());
 }
 
 bool CryptoUtilityImpl::EncryptDataForGoogle(
