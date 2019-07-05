@@ -746,6 +746,8 @@ class Tpm {
   virtual bool SetUserType(Tpm::UserType type) = 0;
 
   // Obtains RSU device id from TPM for the Remote Server Unlock process.
+  // Due to the privacy reasons, this id must not be used for any purpose other
+  // than verifying RMA unlock eligibility.
   virtual bool GetRsuDeviceId(std::string* device_id) = 0;
 
   // Get a pointer to the LECredentialBackend object, which is used to call the

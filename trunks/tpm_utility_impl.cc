@@ -58,7 +58,7 @@ const std::string kEKTemplateAuthPolicy(
   "\x83\x71\x97\x67\x44\x84\xB3\xF8\x1A\x90\xCC\x8D\x46\xA5\xD7\x24"
   "\xFD\x52\xD7\x6E\x06\x52\x0B\x64\xF2\xA1\xDA\x1B\x33\x14\x69\xAA");
 
-// Salt used exclusively for the Remote Server Unlock process.
+// Salt used exclusively for the Remote Server Unlock process due to the privacy reasons.
 const char kRsuSalt[] = "Wu8oGt0uu0H8uSGxfo75uSDrGcRk2BXh";
 
 // Returns a serialized representation of the unmodified handle. This is useful
