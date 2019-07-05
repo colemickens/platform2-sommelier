@@ -117,6 +117,8 @@ USB_IDS += [
   "8087:0a2a",
   # Intel (octopus)
   "8087:0aaa",
+  # Intel (hatch)
+  "8087:0026",
 ]
 
 # WWAN (3G/LTE)
