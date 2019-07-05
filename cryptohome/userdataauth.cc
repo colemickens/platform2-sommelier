@@ -1598,4 +1598,32 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::UpdateKey(
   return static_cast<user_data_auth::CryptohomeErrorCode>(result);
 }
 
+user_data_auth::CryptohomeErrorCode UserDataAuth::MigrateKey(
+    const user_data_auth::MigrateKeyRequest& request) {
+  AssertOnMountThread();
+
+  if (!request.has_account_id() || !request.has_authorization_request()) {
+    LOG(ERROR)
+        << "MigrateKeyRequest must have account_id and authorization_request.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  std::string account_id = GetAccountId(request.account_id());
+  if (account_id.empty()) {
+    LOG(ERROR) << "MigrateKeyRequest must have valid account_id.";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  Credentials credentials(account_id.c_str(), SecureBlob(request.secret()));
+
+  scoped_refptr<cryptohome::Mount> mount = GetMountForUser(account_id);
+  if (!homedirs_->Migrate(
+          credentials,
+          SecureBlob(request.authorization_request().key().secret()), mount)) {
+    return user_data_auth::CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED;
+  }
+
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+}
+
 }  // namespace cryptohome

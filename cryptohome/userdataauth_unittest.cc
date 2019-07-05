@@ -28,6 +28,7 @@ using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::ElementsAre;
 using ::testing::EndsWith;
+using ::testing::Eq;
 using ::testing::Invoke;
 using ::testing::Mock;
 using ::testing::NiceMock;
@@ -796,6 +797,7 @@ class UserDataAuthExTest : public UserDataAuthTest {
     list_keys_req_.reset(new user_data_auth::ListKeysRequest);
     get_key_data_req_.reset(new user_data_auth::GetKeyDataRequest);
     update_req_.reset(new user_data_auth::UpdateKeyRequest);
+    migrate_req_.reset(new user_data_auth::MigrateKeyRequest);
   }
 
   template <class ProtoBuf>
@@ -819,6 +821,7 @@ class UserDataAuthExTest : public UserDataAuthTest {
   std::unique_ptr<user_data_auth::ListKeysRequest> list_keys_req_;
   std::unique_ptr<user_data_auth::GetKeyDataRequest> get_key_data_req_;
   std::unique_ptr<user_data_auth::UpdateKeyRequest> update_req_;
+  std::unique_ptr<user_data_auth::MigrateKeyRequest> migrate_req_;
 
   static constexpr char kUser[] = "chromeos-user";
   static constexpr char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
@@ -1319,6 +1322,45 @@ TEST_F(UserDataAuthExTest, UpdateKeyError) {
 
   EXPECT_EQ(userdataauth_.UpdateKey(*update_req_),
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+}
+
+TEST_F(UserDataAuthExTest, MigrateKeySanity) {
+  PrepareArguments();
+
+  constexpr char kUsername1[] = "foo@gmail.com";
+  constexpr char kSecret1[] = "some secret";
+  migrate_req_->mutable_account_id()->set_account_id(kUsername1);
+  migrate_req_->mutable_authorization_request()->mutable_key()->set_secret(
+      kSecret1);
+  migrate_req_->set_secret("blerg");
+
+  SetupMount(kUsername1);
+
+  // Test for successful case.
+  EXPECT_CALL(homedirs_, Migrate(Property(&Credentials::username, kUsername1),
+                                 brillo::SecureBlob(kSecret1), Eq(mount_)))
+      .WillOnce(Return(true));
+  EXPECT_EQ(userdataauth_.MigrateKey(*migrate_req_),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Test for unsuccessful case.
+  EXPECT_CALL(homedirs_, Migrate(_, brillo::SecureBlob(kSecret1), Eq(mount_)))
+      .WillOnce(Return(false));
+  EXPECT_EQ(userdataauth_.MigrateKey(*migrate_req_),
+            user_data_auth::CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED);
+}
+
+TEST_F(UserDataAuthExTest, MigrateKeyInvalidArguments) {
+  PrepareArguments();
+
+  // No email.
+  EXPECT_EQ(userdataauth_.MigrateKey(*migrate_req_),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+
+  // No authorization request key secret.
+  migrate_req_->mutable_account_id()->set_account_id("foo@gmail.com");
+  EXPECT_EQ(userdataauth_.MigrateKey(*migrate_req_),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
 }  // namespace cryptohome

@@ -112,6 +112,10 @@ class UserDataAuthAdaptor
   void MigrateKey(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                       user_data_auth::MigrateKeyReply>> response,
                   const user_data_auth::MigrateKeyRequest& in_request) override;
+  void DoMigrateKey(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                        user_data_auth::MigrateKeyReply>> response,
+                    const user_data_auth::MigrateKeyRequest& in_request);
+
   void StartMigrateToDircrypto(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::StartMigrateToDircryptoReply>> response,

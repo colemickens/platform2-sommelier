@@ -152,6 +152,15 @@ class UserDataAuth {
   user_data_auth::CryptohomeErrorCode UpdateKey(
       const user_data_auth::UpdateKeyRequest& request);
 
+  // This will migrate, or rather say, change the underlying secret that is used
+  // to protect the user's home directory. The home directory key to change is
+  // specified by |request.account_id|, the change is authorized by
+  // |request.authorization_request| and the new secret is specified by
+  // |request.secret|. This function will return CRYPTOHOME_ERROR_NOT_SET if the
+  // operation is successful, and other error code if it failed.
+  user_data_auth::CryptohomeErrorCode MigrateKey(
+      const user_data_auth::MigrateKeyRequest& request);
+
   // =============== PKCS#11 Related Public Methods ===============
 
   // This initializes the PKCS#11 for a particular mount. Note that this is
