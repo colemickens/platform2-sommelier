@@ -181,10 +181,6 @@ class Daemon::StateControllerDelegate
                : false;
   }
 
-  LidState QueryLidState() override {
-    return daemon_->input_watcher_->QueryLidState();
-  }
-
   void DimScreen() override { daemon_->SetBacklightsDimmedForInactivity(true); }
 
   void UndimScreen() override {
@@ -692,9 +688,10 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
 }
 
 void Daemon::UndoPrepareToSuspend(bool success, int num_suspend_attempts) {
+  LidState lid_state = input_watcher_->QueryLidState();
   // Do this first so we have the correct settings (including for the
   // backlight).
-  state_controller_->HandleResume();
+  state_controller_->HandleResume(lid_state);
 
   // Resume the backlight right after announcing resume. This might be where we
   // turn on the display, so we want to do this as early as possible. This

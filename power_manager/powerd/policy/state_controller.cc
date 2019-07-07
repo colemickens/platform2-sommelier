@@ -409,9 +409,12 @@ void StateController::HandleLidStateChange(LidState state) {
     return;
 
   lid_state_ = state;
-  if (state == LidState::OPEN)
+
+  if (lid_state_ == LidState::OPEN) {
+    StopWaitForExternalDisplayTimer();
     UpdateLastUserActivityTime();
-  UpdateState();
+  }
+  UpdateSettingsAndState();
 }
 
 void StateController::HandleTabletModeChange(TabletMode mode) {
@@ -452,41 +455,25 @@ void StateController::HandleDisplayModeChange(DisplayMode mode) {
   UpdateSettingsAndState();
 }
 
-void StateController::HandleResume() {
+void StateController::HandleResume(LidState state) {
   CHECK(initialized_);
-  switch (delegate_->QueryLidState()) {
-    case LidState::OPEN:  // fallthrough
-    case LidState::NOT_PRESENT:
-      // Undim the screen and turn it back on immediately after the user
-      // opens the lid or wakes the system through some other means.
-      UpdateLastUserActivityTime();
-      break;
-    case LidState::CLOSED:
-      // This can happen if:
-      //   1. An external display is connected to wake the device.
-      //   2. Lid is closed to suspend and then very quickly opened and closed
-      //      again. Lid open and close events might be suppresed by the kernel
-      //      in this scenario.
-      // Ensure that we suspend again in the case of scenario 2 by giving enough
-      // time for external display to be enumerated if it is scenario 1.
-      if (lid_state_ == LidState::CLOSED) {
-        LOG(INFO) << "Lid still closed after resume";
-        if (lid_closed_action_ == Action::SUSPEND &&
-            lid_closed_action_performed_) {
-          LOG(INFO)
-              << "lid-close-triggered suspend; repeating lid-closed action";
-          lid_closed_action_performed_ = false;
-        }
 
-        LOG(INFO) << "Waiting for external display before performing idle or "
-                     "lid closed action";
-        wait_for_external_display_timer_.Start(
-            FROM_HERE, KWaitForExternalDisplayTimeout, this,
-            &StateController::HandleWaitForExternalDisplayTimeout);
-      }
-      break;
+  lid_state_ = state;
+  // If resumed with closed lid and not in docked mode, let us wait for docked
+  // mode before resuspending again.
+  if (lid_state_ == LidState::CLOSED && !in_docked_mode()) {
+    LOG(INFO) << "Waiting for external display before performing idle or "
+                 "lid closed action";
+    wait_for_external_display_timer_.Start(
+        FROM_HERE, KWaitForExternalDisplayTimeout, this,
+        &StateController::HandleWaitForExternalDisplayTimeout);
+    lid_closed_action_performed_ = false;
+  } else if (lid_state_ == LidState::OPEN ||
+             lid_state_ == LidState::NOT_PRESENT || in_docked_mode()) {
+    // Treat resume as a user activity if the lid is not closed or if we are in
+    // docked mode.
+    UpdateLastUserActivityTime();
   }
-
   UpdateSettingsAndState();
 }
 

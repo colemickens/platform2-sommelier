@@ -71,9 +71,6 @@ class StateController : public PrefsObserver {
     // Returns true if a cable is currently plugged in to the headphone jack.
     virtual bool IsHeadphoneJackPlugged() = 0;
 
-    // Returns the current lid state.
-    virtual LidState QueryLidState() = 0;
-
     // Dims the screen in response to the system being idle.
     virtual void DimScreen() = 0;
 
@@ -183,7 +180,8 @@ class StateController : public PrefsObserver {
   void HandleTabletModeChange(TabletMode mode);
   void HandleSessionStateChange(SessionState state);
   void HandleDisplayModeChange(DisplayMode mode);
-  void HandleResume();
+  // Handles Resume. |State| is the latest lid state after resume.
+  void HandleResume(LidState state);
   void HandlePolicyChange(const PowerManagementPolicy& policy);
 
   // Handles notification of different types of activity.
