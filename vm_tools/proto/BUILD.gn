@@ -48,6 +48,10 @@ proto_library("fuzzer-protos") {
   proto_in_dir = "./"
   proto_out_dir = "include/vm_protos/proto_bindings"
   gen_grpc = true
+  deps = [
+    ":container-rpcs",
+    ":tremplin-rpcs",
+  ]
   sources = [
     "${proto_in_dir}/fuzzer.proto",
   ]
