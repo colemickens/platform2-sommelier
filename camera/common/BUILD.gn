@@ -12,7 +12,7 @@ static_library("libcamera_metrics") {
   ]
   configs += [ "//common-mk:pic" ]
   configs -= [ "//common-mk:pie" ]
-  public_pkg_deps = [ "libmetrics-${libbase_ver}" ]
+  all_dependent_pkg_deps = [ "libmetrics-${libbase_ver}" ]
   pkg_deps = [
     "cros-camera-android-headers",
     "libcamera_metadata",

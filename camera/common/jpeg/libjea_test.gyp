@@ -5,9 +5,12 @@
   'target_defaults': {
     'variables': {
       'deps': [
+        'cros-camera-android-headers',
         'libcamera_common',
         'libcamera_exif',
         'libcamera_ipc',
+        # TODO(crrev.com/981829): Remove dependency to libcbm after crrev.com/c/1710248 landed.
+        'libcbm',
         'libyuv',
       ],
     },

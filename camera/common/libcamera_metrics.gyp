@@ -22,7 +22,7 @@
       'libraries': [
         '-lmetrics-<(libbase_ver)',
       ],
-      'direct_dependent_settings': {
+      'all_dependent_settings': {
         'libraries': [
           '-lmetrics-<(libbase_ver)',
         ],
