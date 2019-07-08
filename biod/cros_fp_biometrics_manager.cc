@@ -322,7 +322,8 @@ CrosFpBiometricsManager::CrosFpBiometricsManager(
       cros_fp_device_factory_(std::move(cros_fp_device_factory)),
       biod_storage_(kCrosFpBiometricsManagerName,
                     base::Bind(&CrosFpBiometricsManager::LoadRecord,
-                               base::Unretained(this))) {}
+                               base::Unretained(this))),
+      use_positive_match_secret_(false) {}
 
 CrosFpBiometricsManager::~CrosFpBiometricsManager() {}
 
@@ -330,7 +331,11 @@ bool CrosFpBiometricsManager::Init() {
   cros_dev_ = cros_fp_device_factory_->Create(
       base::Bind(&CrosFpBiometricsManager::OnMkbpEvent, base::Unretained(this)),
       biod_metrics_.get());
-  return cros_dev_ != nullptr;
+  if (cros_dev_ == nullptr)
+    return false;
+
+  use_positive_match_secret_ = cros_dev_->SupportsPositiveMatchSecret();
+  return true;
 }
 
 void CrosFpBiometricsManager::OnEnrollScanDone(

@@ -33,6 +33,7 @@ class FakeCrosFpDevice : public CrosFpDeviceInterface {
     return false;
   }
   bool GetDirtyMap(std::bitset<32>* bitmap) override { return false; }
+  bool SupportsPositiveMatchSecret() override { return true; }
   bool GetTemplate(int index, VendorTemplate* out) override { return true; }
   bool UploadTemplate(const VendorTemplate& tmpl) override { return false; }
   bool SetContext(std::string user_id) override { return false; }
@@ -87,6 +88,10 @@ class CrosFpBiometricsManagerPeer {
     // Keep a pointer to the fake device to manipulate it later.
     fake_cros_dev_ = static_cast<FakeCrosFpDevice*>(
         cros_fp_biometrics_manager_->cros_dev_.get());
+  }
+
+  bool SupportsPositiveMatchSecret() {
+    return cros_fp_biometrics_manager_->use_positive_match_secret_;
   }
 
  private:

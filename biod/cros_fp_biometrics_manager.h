@@ -158,6 +158,8 @@ class CrosFpBiometricsManager : public BiometricsManager {
   std::unique_ptr<CrosFpDeviceFactory> cros_fp_device_factory_;
   BiodStorage biod_storage_;
 
+  bool use_positive_match_secret_;
+
   DISALLOW_COPY_AND_ASSIGN(CrosFpBiometricsManager);
 };
 

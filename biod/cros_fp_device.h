@@ -51,6 +51,7 @@ class CrosFpDevice : public CrosFpDeviceInterface {
   bool GetFpMode(FpMode* mode) override;
   bool GetFpStats(int* capture_ms, int* matcher_ms, int* overall_ms) override;
   bool GetDirtyMap(std::bitset<32>* bitmap) override;
+  bool SupportsPositiveMatchSecret() override;
   bool GetTemplate(int index, VendorTemplate* out) override;
   bool UploadTemplate(const VendorTemplate& tmpl) override;
   bool SetContext(std::string user_id) override;

@@ -233,6 +233,21 @@ EcCmdVersionSupportStatus CrosFpDevice::EcCmdVersionSupported(uint16_t cmd_code,
   return EcCmdVersionSupportStatus::SUPPORTED;
 }
 
+bool CrosFpDevice::SupportsPositiveMatchSecret() {
+  switch (EcCmdVersionSupported(EC_CMD_FP_READ_MATCH_SECRET, 0)) {
+    case EcCmdVersionSupportStatus::SUPPORTED:
+      LOG(INFO) << "Positive match secret is supported.";
+      return true;
+    case EcCmdVersionSupportStatus::UNSUPPORTED:
+      LOG(INFO) << "Positive match secret is not supported.";
+      return false;
+    case EcCmdVersionSupportStatus::UNKNOWN:
+      LOG(WARNING) << "Failed to check support for positive match secret. "
+                      "Defaulting to not supporting.";
+      return false;
+  }
+}
+
 bool CrosFpDevice::UpdateFpInfo() {
   EcCommand<EmptyParam, struct ec_response_fp_info> cmd(EC_CMD_FP_INFO,
                                                         kVersionOne);
