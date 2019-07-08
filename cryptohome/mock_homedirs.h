@@ -60,6 +60,8 @@ class MockHomeDirs : public HomeDirs {
   MOCK_CONST_METHOD0(AmountOfFreeDiskSpace, int64_t(void));
   MOCK_METHOD0(GetUnmountedAndroidDataCount, int32_t());
 
+  MOCK_CONST_METHOD1(NeedsDircryptoMigration, bool(const std::string&));
+
   // Some unit tests require that MockHomeDirs actually call the real
   // GetPlainOwner() function. In those cases, you can use this function
   // to forward the mocked GetOwner() to ActualGetOwner().

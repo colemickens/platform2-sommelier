@@ -88,6 +88,13 @@ class UserDataAuth {
       base::Callback<void(const user_data_auth::DircryptoMigrationProgress&)>
           progress_callback);
 
+  // Determine if the account specified by |account| needs to do Dircrypto
+  // migration. Returns CRYPTOHOME_ERROR_NOT_SET if the query is successful, and
+  // the result is stored in |result| (true for migration needed). Otherwise, an
+  // error code is returned and result is in an undefined state.
+  user_data_auth::CryptohomeErrorCode NeedsDircryptoMigration(
+      const cryptohome::AccountIdentifier& account, bool* result);
+
   // =============== Mount Related Public Utilities ===============
 
   // Called during initialization (and on mount events) to ensure old mounts

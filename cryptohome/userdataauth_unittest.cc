@@ -839,6 +839,41 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoFailure) {
   EXPECT_EQ(call_cnt, 1);
 }
 
+TEST_F(UserDataAuthTest, NeedsDircryptoMigration) {
+  bool result;
+  AccountIdentifier account;
+  account.set_account_id("foo@gmail.com");
+
+  // Test the case when we are forced to use eCryptfs, and thus no migration is
+  // needed.
+  userdataauth_.set_force_ecryptfs(true);
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
+  EXPECT_EQ(userdataauth_.NeedsDircryptoMigration(account, &result),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_FALSE(result);
+
+  // Test the case when dircrypto is already in use.
+  userdataauth_.set_force_ecryptfs(false);
+  EXPECT_CALL(homedirs_, NeedsDircryptoMigration(_)).WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
+  EXPECT_EQ(userdataauth_.NeedsDircryptoMigration(account, &result),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_FALSE(result);
+
+  // Test the case when eCryptfs is being used.
+  userdataauth_.set_force_ecryptfs(false);
+  EXPECT_CALL(homedirs_, NeedsDircryptoMigration(_)).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
+  EXPECT_EQ(userdataauth_.NeedsDircryptoMigration(account, &result),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_TRUE(result);
+
+  // Test for account not found.
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(false));
+  EXPECT_EQ(userdataauth_.NeedsDircryptoMigration(account, &result),
+            user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+}
+
 // ==================== Mount and Keys related tests =======================
 
 // A test fixture with some utility functions for testing mount and keys related

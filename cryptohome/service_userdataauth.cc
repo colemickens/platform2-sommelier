@@ -363,7 +363,28 @@ void UserDataAuthAdaptor::NeedsDircryptoMigration(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::NeedsDircryptoMigrationReply>> response,
     const user_data_auth::NeedsDircryptoMigrationRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(&UserDataAuthAdaptor::DoNeedsDircryptoMigration,
+                     base::Unretained(this),
+                     ThreadSafeDBusMethodResponse<
+                         user_data_auth::NeedsDircryptoMigrationReply>::
+                         MakeThreadSafe(std::move(response)),
+                     in_request));
+}
+
+void UserDataAuthAdaptor::DoNeedsDircryptoMigration(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::NeedsDircryptoMigrationReply>> response,
+    const user_data_auth::NeedsDircryptoMigrationRequest& in_request) {
   user_data_auth::NeedsDircryptoMigrationReply reply;
+  bool result = false;
+  auto status =
+      service_->NeedsDircryptoMigration(in_request.account_id(), &result);
+  // Note, if there's no error, then |status| is set to CRYPTOHOME_ERROR_NOT_SET
+  // to indicate that.
+  reply.set_error(status);
+  reply.set_needs_dircrypto_migration(result);
   response->Return(reply);
 }
 

@@ -129,11 +129,17 @@ class UserDataAuthAdaptor
           user_data_auth::StartMigrateToDircryptoReply>> response,
       const user_data_auth::StartMigrateToDircryptoRequest& in_request)
       override;
+
   void NeedsDircryptoMigration(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::NeedsDircryptoMigrationReply>> response,
       const user_data_auth::NeedsDircryptoMigrationRequest& in_request)
       override;
+  void DoNeedsDircryptoMigration(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::NeedsDircryptoMigrationReply>> response,
+      const user_data_auth::NeedsDircryptoMigrationRequest& in_request);
+
   void GetSupportedKeyPolicies(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::GetSupportedKeyPoliciesReply>> response,

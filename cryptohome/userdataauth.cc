@@ -1713,4 +1713,18 @@ void UserDataAuth::StartMigrateToDircrypto(
   progress_callback.Run(progress);
 }
 
+user_data_auth::CryptohomeErrorCode UserDataAuth::NeedsDircryptoMigration(
+    const cryptohome::AccountIdentifier& account, bool* result) {
+  const std::string obfuscated_username =
+      BuildObfuscatedUsername(GetAccountId(account), system_salt_);
+  if (!homedirs_->Exists(obfuscated_username)) {
+    LOG(ERROR) << "Unknown user in NeedsDircryptoMigration.";
+    return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
+  }
+
+  *result = !force_ecryptfs_ &&
+            homedirs_->NeedsDircryptoMigration(obfuscated_username);
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+}
+
 }  // namespace cryptohome
