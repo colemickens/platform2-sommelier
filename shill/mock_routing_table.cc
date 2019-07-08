@@ -4,8 +4,6 @@
 
 #include "shill/mock_routing_table.h"
 
-#include "shill/routing_table_entry.h"
-
 namespace shill {
 
 MockRoutingTable::MockRoutingTable() = default;

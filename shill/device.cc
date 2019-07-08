@@ -46,6 +46,7 @@
 #include "shill/net/rtnl_handler.h"
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
+#include "shill/routing_table.h"
 #include "shill/routing_table_entry.h"
 #include "shill/service.h"
 #include "shill/socket_info_reader.h"

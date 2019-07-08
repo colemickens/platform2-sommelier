@@ -19,6 +19,7 @@
 #include "shill/logging.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/resolver.h"
+#include "shill/routing_policy_entry.h"
 #include "shill/routing_table.h"
 #include "shill/routing_table_entry.h"
 
@@ -319,20 +320,21 @@ void Connection::UpdateRoutingPolicy() {
   if (blackhole_table_id_ != RT_TABLE_UNSPEC) {
     blackhole_offset = 1;
     for (const auto& uid : blackholed_uids_) {
-      RoutingPolicyEntry entry(
-          IPAddress::kFamilyIPv4, metric_, blackhole_table_id_, uid, uid);
+      auto entry = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                                  .SetPriority(metric_)
+                                  .SetTable(blackhole_table_id_)
+                                  .SetUidRange({uid, uid});
       routing_table_->AddRule(interface_index_, entry);
-      entry.family = IPAddress::kFamilyIPv6;
-      routing_table_->AddRule(interface_index_, entry);
+      routing_table_->AddRule(interface_index_, entry.FlipFamily());
     }
 
     if (blackholed_addrs_) {
       blackholed_addrs_->Apply(base::Bind(
           [](Connection* connection, const IPAddress& addr) {
             // Add |addr| to blackhole table.
-            RoutingPolicyEntry entry(addr.family(), connection->metric_,
-                                     connection->blackhole_table_id_);
-            entry.src = addr;
+            auto entry = RoutingPolicyEntry::CreateFromSrc(addr)
+                .SetPriority(connection->metric_)
+                .SetTable(connection->blackhole_table_id_);
             connection->routing_table_->AddRule(connection->interface_index_,
                                                 entry);
           },
@@ -341,55 +343,50 @@ void Connection::UpdateRoutingPolicy() {
   }
 
   for (const auto& uid : allowed_uids_) {
-    RoutingPolicyEntry entry(IPAddress::kFamilyIPv4,
-        metric_ + blackhole_offset, table_id_, uid, uid);
+    auto entry = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                     .SetPriority(metric_ + blackhole_offset)
+                     .SetTable(table_id_)
+                     .SetUid(uid);
     routing_table_->AddRule(interface_index_, entry);
-    entry.family = IPAddress::kFamilyIPv6;
-    routing_table_->AddRule(interface_index_, entry);
+    routing_table_->AddRule(interface_index_, entry.FlipFamily());
   }
 
   for (const auto& interface_name : allowed_iifs_) {
-    RoutingPolicyEntry entry(IPAddress::kFamilyIPv4,
-        metric_ + blackhole_offset, table_id_, interface_name);
+    auto entry = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                     .SetPriority(metric_ + blackhole_offset)
+                     .SetTable(table_id_)
+                     .SetIif(interface_name);
     routing_table_->AddRule(interface_index_, entry);
-    entry.family = IPAddress::kFamilyIPv6;
-    routing_table_->AddRule(interface_index_, entry);
+    routing_table_->AddRule(interface_index_, entry.FlipFamily());
   }
 
   for (const auto& source_address : allowed_addrs_) {
-    RoutingPolicyEntry entry(
-      IPAddress::kFamilyIPv4, metric_ + blackhole_offset, table_id_);
-    entry.src = source_address;
-    entry.family = source_address.family();
-    routing_table_->AddRule(interface_index_, entry);
+    routing_table_->AddRule(interface_index_,
+                            RoutingPolicyEntry::CreateFromSrc(source_address)
+                                .SetPriority(metric_ + blackhole_offset)
+                                .SetTable(table_id_));
   }
 
   if (use_if_addrs_) {
-    RoutingPolicyEntry entry(
-      IPAddress::kFamilyIPv4, metric_ + blackhole_offset, table_id_);
     if (is_primary_physical_) {
       // Main routing table contains kernel-added routes for source address
       // selection. Sending traffic there before all other rules for physical
       // interfaces (but after any VPN rules) ensures that physical interface
       // rules are not inadvertently too aggressive.
-      entry.src = IPAddress(IPAddress::kFamilyIPv4);
-      entry.priority -= 1;
-      entry.table = RT_TABLE_MAIN;
-      routing_table_->AddRule(interface_index_, entry);
-      entry.family = IPAddress::kFamilyIPv6;
-      entry.src = IPAddress(IPAddress::kFamilyIPv6);
-      routing_table_->AddRule(interface_index_, entry);
+      auto main_table_rule =
+          RoutingPolicyEntry::CreateFromSrc(IPAddress(IPAddress::kFamilyIPv4))
+              .SetPriority(metric_ + blackhole_offset - 1)
+              .SetTable(RT_TABLE_MAIN);
+      routing_table_->AddRule(interface_index_, main_table_rule);
+      routing_table_->AddRule(interface_index_, main_table_rule.FlipFamily());
       // Add a default routing rule to use the primary interface if there is
       // nothing better.
-      entry.table = table_id_;
-      entry.family = IPAddress::kFamilyIPv4;
-      entry.src = IPAddress(IPAddress::kFamilyIPv4);
-      entry.priority = RoutingTable::kRulePriorityMain - 1;
-      routing_table_->AddRule(interface_index_, entry);
-      entry.family = IPAddress::kFamilyIPv6;
-      entry.src = IPAddress(IPAddress::kFamilyIPv6);
-      routing_table_->AddRule(interface_index_, entry);
-      entry.priority = metric_ + blackhole_offset;
+      auto catch_all_rule = RoutingPolicyEntry::CreateFromSrc(
+          IPAddress(IPAddress::kFamilyIPv4))
+          .SetTable(table_id_)
+          .SetPriority(RoutingTable::kRulePriorityMain - 1);
+      routing_table_->AddRule(interface_index_, catch_all_rule);
+      routing_table_->AddRule(interface_index_, catch_all_rule.FlipFamily());
     }
 
     // Otherwise, only select the per-device table if the outgoing packet's
@@ -402,17 +399,18 @@ void Connection::UpdateRoutingPolicy() {
     bool ok = device_info_->GetAddresses(interface_index_, &addr_data);
     DCHECK(ok);
     for (const auto& data : addr_data) {
-      entry.src = data.address;
-      entry.family = data.address.family();
-      routing_table_->AddRule(interface_index_, entry);
+      routing_table_->AddRule(interface_index_,
+                              RoutingPolicyEntry::CreateFromSrc(data.address)
+                                  .SetTable(table_id_)
+                                  .SetPriority(metric_ + blackhole_offset));
     }
-    entry.family = IPAddress::kFamilyIPv4;
-    entry.src = IPAddress(entry.family);
-    entry.interface_name = interface_name_;
-    routing_table_->AddRule(interface_index_, entry);
-    entry.family = IPAddress::kFamilyIPv6;
-    entry.src = IPAddress(entry.family);
-    routing_table_->AddRule(interface_index_, entry);
+    auto iif_rule = RoutingPolicyEntry::CreateFromSrc(
+        IPAddress(IPAddress::kFamilyIPv4))
+        .SetTable(table_id_)
+        .SetPriority(metric_ + blackhole_offset)
+        .SetIif(interface_name_);
+    routing_table_->AddRule(interface_index_, iif_rule);
+    routing_table_->AddRule(interface_index_, iif_rule.FlipFamily());
   }
 }
 

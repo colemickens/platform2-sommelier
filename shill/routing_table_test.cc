@@ -24,7 +24,6 @@
 #include "shill/net/byte_string.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/rtnl_message.h"
-#include "shill/routing_table_entry.h"
 
 using base::Bind;
 using base::Unretained;
@@ -516,30 +515,28 @@ TEST_F(RoutingTableTest, PolicyRuleAddFlush) {
   const int iface_id0 = 3;
   const int iface_id1 = 4;
 
-  RoutingPolicyEntry entry0(IPAddress::kFamilyIPv4,
-                            100,     // priority
-                            table0,  // table
-                            1000,    // uidrange_start
-                            2000);   // uidrange_end
   EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _)).WillOnce(Return(true));
-  EXPECT_TRUE(routing_table_->AddRule(iface_id0, entry0));
+  EXPECT_TRUE(routing_table_->AddRule(
+      iface_id0, RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                     .SetPriority(100)
+                     .SetTable(table0)
+                     .SetUidRange({1000, 2000})));
   EXPECT_EQ(CountRoutingPolicyEntries(), 1);
 
-  RoutingPolicyEntry entry1(IPAddress::kFamilyIPv4,
-                            101,        // priority
-                            table1,     // table
-                            "arcbr0");  // interface_name
   EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _)).WillOnce(Return(true));
-  EXPECT_TRUE(routing_table_->AddRule(iface_id0, entry1));
+  EXPECT_TRUE(routing_table_->AddRule(
+      iface_id0, RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                     .SetPriority(101)
+                     .SetTable(table1)
+                     .SetIif("arcbr0")));
   EXPECT_EQ(CountRoutingPolicyEntries(), 2);
 
-  RoutingPolicyEntry entry2(IPAddress::kFamilyIPv4,
-                            102,     // priority
-                            table2,  // table
-                            100,     // uidrange_start
-                            101);    // uidrange_end
   EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _)).WillOnce(Return(true));
-  EXPECT_TRUE(routing_table_->AddRule(iface_id1, entry2));
+  EXPECT_TRUE(routing_table_->AddRule(
+      iface_id1, RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                     .SetPriority(102)
+                     .SetTable(table2)
+                     .SetUidRange({100, 101})));
   EXPECT_EQ(CountRoutingPolicyEntries(), 3);
 
   EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _))

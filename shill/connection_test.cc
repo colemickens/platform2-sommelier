@@ -23,6 +23,7 @@
 #include "shill/mock_resolver.h"
 #include "shill/mock_routing_table.h"
 #include "shill/net/mock_rtnl_handler.h"
+#include "shill/routing_policy_entry.h"
 #include "shill/routing_table_entry.h"
 
 using testing::_;
@@ -80,13 +81,13 @@ MATCHER_P2(IsValidRoutingRule, family, priority, "") {
 }
 
 MATCHER_P3(IsValidUidRule, family, priority, uid, "") {
-  return arg.family == family && arg.priority == priority && arg.has_uidrange &&
-         arg.uidrange_start == uid && arg.uidrange_end == uid;
+  return arg.family == family && arg.priority == priority &&
+         arg.uid_range == fib_rule_uid_range{uid, uid};
 }
 
 MATCHER_P3(IsValidIifRule, family, priority, iif, "") {
   return arg.family == family && arg.priority == priority &&
-         arg.interface_name == iif;
+         arg.iif_name == iif;
 }
 
 MATCHER_P(IsLinkRouteTo, dst, "") {

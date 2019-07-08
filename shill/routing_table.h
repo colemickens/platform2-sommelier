@@ -18,13 +18,13 @@
 #include "shill/net/ip_address.h"
 #include "shill/net/rtnl_message.h"
 #include "shill/refptr_types.h"
+#include "shill/routing_policy_entry.h"
+#include "shill/routing_table_entry.h"
 
 namespace shill {
 
 class RTNLHandler;
 class RTNLListener;
-struct RoutingPolicyEntry;
-struct RoutingTableEntry;
 
 // This singleton maintains an in-process copy of the routing table on
 // a per-interface basis.  It offers the ability for other modules to

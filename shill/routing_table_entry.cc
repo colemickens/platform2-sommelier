@@ -4,8 +4,11 @@
 
 #include "shill/routing_table_entry.h"
 
-#include <base/strings/stringprintf.h>
 #include <linux/rtnetlink.h>
+
+#include <string>
+
+#include <base/strings/stringprintf.h>
 
 namespace shill {
 

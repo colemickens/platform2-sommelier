@@ -27,7 +27,6 @@
 #include "shill/portal_detector.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
-#include "shill/routing_table.h"
 #include "shill/service.h"
 #include "shill/technology.h"
 
@@ -41,6 +40,7 @@ class EventDispatcher;
 class LinkMonitor;
 class Manager;
 class Metrics;
+class RoutingTable;
 class RTNLHandler;
 class TrafficMonitor;
 

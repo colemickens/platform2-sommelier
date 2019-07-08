@@ -347,6 +347,7 @@ static_library("libshill") {
     "property_store.cc",
     "resolver.cc",
     "result_aggregator.cc",
+    "routing_policy_entry.cc",
     "routing_table.cc",
     "routing_table_entry.cc",
     "rpc_task.cc",

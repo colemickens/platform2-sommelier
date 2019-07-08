@@ -34,7 +34,6 @@
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
-#include "shill/routing_table_entry.h"
 
 using base::Bind;
 using base::FilePath;
@@ -721,23 +720,21 @@ bool RoutingTable::ApplyRule(uint32_t interface_index,
 
   message->SetAttribute(FRA_PRIORITY,
                        ByteString::CreateFromCPUUInt32(entry.priority));
-  if (entry.has_fwmark) {
+  if (entry.fw_mark.has_value()) {
+    const RoutingPolicyEntry::FwMark& mark = entry.fw_mark.value();
     message->SetAttribute(FRA_FWMARK,
-                         ByteString::CreateFromCPUUInt32(entry.fwmark_value));
+                          ByteString::CreateFromCPUUInt32(mark.value));
     message->SetAttribute(FRA_FWMASK,
-                         ByteString::CreateFromCPUUInt32(entry.fwmark_mask));
+                          ByteString::CreateFromCPUUInt32(mark.mask));
   }
-  if (entry.has_uidrange) {
-    struct fib_rule_uid_range r = {
-        .start = entry.uidrange_start, .end = entry.uidrange_end,
-    };
-    message->SetAttribute(
-        FRA_UID_RANGE,
-        ByteString(reinterpret_cast<const unsigned char*>(&r), sizeof(r)));
+  if (entry.uid_range.has_value()) {
+    message->SetAttribute(FRA_UID_RANGE,
+                          ByteString(reinterpret_cast<const unsigned char*>(
+                                         &entry.uid_range.value()),
+                                     sizeof(entry.uid_range.value())));
   }
-  if (!entry.interface_name.empty()) {
-    message->SetAttribute(FRA_IFNAME,
-                         ByteString(entry.interface_name, true));
+  if (entry.iif_name.has_value()) {
+    message->SetAttribute(FRA_IFNAME, ByteString(entry.iif_name.value(), true));
   }
   if (!entry.dst.IsDefault()) {
     message->SetAttribute(FRA_DST, entry.dst.address());
@@ -774,17 +771,16 @@ bool RoutingTable::ParseRoutingPolicyMessage(const RTNLMessage& message,
   }
 
   if (message.HasAttribute(FRA_FWMARK)) {
-    entry->has_fwmark = true;
-    if (!message.GetAttribute(FRA_FWMARK)
-             .ConvertToCPUUInt32(&entry->fwmark_value)) {
+    RoutingPolicyEntry::FwMark fw_mark;
+    if (!message.GetAttribute(FRA_FWMARK).ConvertToCPUUInt32(&fw_mark.value)) {
       return false;
     }
     if (message.HasAttribute(FRA_FWMASK)) {
-      if (!message.GetAttribute(FRA_FWMASK)
-               .ConvertToCPUUInt32(&entry->fwmark_mask)) {
+      if (!message.GetAttribute(FRA_FWMASK).ConvertToCPUUInt32(&fw_mark.mask)) {
         return false;
       }
     }
+    entry->SetFwMark(fw_mark);
   }
 
   if (message.HasAttribute(FRA_UID_RANGE)) {
@@ -792,14 +788,12 @@ bool RoutingTable::ParseRoutingPolicyMessage(const RTNLMessage& message,
     if (!message.GetAttribute(FRA_UID_RANGE).CopyData(sizeof(r), &r)) {
       return false;
     }
-    entry->has_uidrange = true;
-    entry->uidrange_start = r.start;
-    entry->uidrange_end = r.end;
+    entry->SetUidRange(r);
   }
 
   if (message.HasAttribute(FRA_IFNAME)) {
-    entry->interface_name = reinterpret_cast<const char*>(
-        message.GetAttribute(FRA_IFNAME).GetConstData());
+    entry->SetIif(reinterpret_cast<const char*>(
+        message.GetAttribute(FRA_IFNAME).GetConstData()));
   }
 
   IPAddress default_addr(message.family());
