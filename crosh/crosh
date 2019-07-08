@@ -1729,7 +1729,38 @@ check_command_available() {
   [ -z "${exec}" ] || command -v "${exec}" >/dev/null
 }
 
+# Run a command with its args as an array.
 dispatch() {
+  local command="$1"
+  shift
+  local p
+
+  if ! registered_crosh_command "${command}"; then
+    help "unknown command: ${command}"
+  elif ! check_command_available "${command}"; then
+    help "command '${command}' is not available"
+  else
+    # Only add valid commands to the history.
+    if [ -n "${LINE_}" ]; then
+      shell_history -s "${LINE_}"
+    fi
+
+    # See if --help was requested; if so, handle it directly so each command
+    # doesn't have to deal with it directly.
+    for p in "$@"; do
+      if [ "${p}" = "-h" -o "${p}" = "--help" ]; then
+        cmd_help "${command}"
+        return 0
+      fi
+    done
+
+    # Set CURRENT_COMMAND for the `help` helper.
+    CURRENT_COMMAND="${command}" "cmd_${command}" "$@"
+  fi
+}
+
+# Run a command with the argv in a single string.
+dispatch_line() {
   local line="$1"
   local command=""
   local params=""
@@ -1745,26 +1776,7 @@ dispatch() {
     params="$(substr "$line" "$space_pos")"
   fi
 
-  if ! registered_crosh_command "${command}"; then
-    help "unknown command: ${command}"
-  elif ! check_command_available "${command}"; then
-    help "command '${command}' is not available"
-  else
-    # Only add valid commands to the history.
-    shell_history -s "$LINE_"
-
-    # See if --help was requested; if so, handle it directly so each command
-    # doesn't have to deal with it directly.
-    for p in ${params}; do
-      if [ "${p}" = "-h" -o "${p}" = "--help" ]; then
-        cmd_help "${command}"
-        return 0
-      fi
-    done
-
-    # Set CURRENT_COMMAND for the `help` helper.
-    CURRENT_COMMAND="${command}" "cmd_${command}" ${params}
-  fi
+  dispatch "${command}" ${params}
 }
 
 repl() {
@@ -1784,7 +1796,7 @@ repl() {
   while [ -z "${exit}" ]; do
     if shell_read "${prompt}" LINE_; then
       if [ ! -z "$LINE_" ]; then
-        dispatch "$LINE_"
+        dispatch_line "$LINE_"
       fi
     else
       echo
