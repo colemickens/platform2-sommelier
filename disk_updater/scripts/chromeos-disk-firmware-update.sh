@@ -11,7 +11,7 @@
 . /usr/share/misc/shflags
 . /usr/share/misc/chromeos-common.sh
 
-# Temperaray directory to put device information
+# Temporary directory to put device information
 DEFINE_string 'tmp_dir' '' "Use existing temporary directory."
 DEFINE_string 'fw_package_dir' '' "Location of the firmware package."
 DEFINE_string 'hdparm' 'hdparm' "hdparm binary to use."
@@ -102,9 +102,9 @@ disk_fw_select() {
     if [ "${disk_fw_rev}" != "${rule_fw_rev}" ]; then
       continue
     fi
-    disk_exp_fw_rev=${rule_exp_fw_rev}
-    disk_fw_opt=${rule_fw_opt}
-    disk_fw_file=${rule_fw_file}
+    disk_exp_fw_rev="${rule_exp_fw_rev}"
+    disk_fw_opt="${rule_fw_opt}"
+    disk_fw_file="${rule_fw_file}"
   done < "${disk_rules}"
 
   # If we got here, then no DISK firmware matched.
@@ -167,8 +167,8 @@ disk_nvme_id_info() {
 #
 disk_mmc_info() {
   # Some vendor use hexa decimal character for indentification.
-  disk_model=$(cat "/sys/block/$1/device/cid" | cut -c 7-18)
-  disk_fw_rev=$(cat "/sys/block/$1/device/fwrev")
+  disk_model="$(cat "/sys/block/$1/device/cid" | cut -c 7-18)"
+  disk_fw_rev="$(cat "/sys/block/$1/device/fwrev")"
 
   # Test if we have the tool needed for an upgrade.
   if ! program_installed "${FLAGS_mmc}"; then
@@ -279,7 +279,7 @@ disk_nvme_info() {
 disk_info() {
   local device="$1"
   local device_type
-  device_type=$(get_device_type "/dev/${device}")
+  device_type="$(get_device_type "/dev/${device}")"
   case ${device_type} in
     "ATA")
       disk_ata_info "$@"
@@ -371,15 +371,16 @@ disk_ata_power_cycle() {
   local old_pwr_cycle_count
   local new_pwr_cycle_count
 
-  old_pwr_cycle_count=$(disk_ata_power_cnt "${device}")
-  new_pwr_cycle_count=${old_pwr_cycle_count}
+  old_pwr_cycle_count="$(disk_ata_power_cnt "${device}")"
+  new_pwr_cycle_count="${old_pwr_cycle_count}"
   # Gather power cycle count.
-  while [ ${old_pwr_cycle_count} -eq ${new_pwr_cycle_count} -a ${tries} -gt 0 ]; do
+  while [ "${old_pwr_cycle_count}" -eq "${new_pwr_cycle_count}" ] && \
+        [ "${tries}" -gt 0 ]; do
      : $(( tries -= 1 ))
      "${FLAGS_pwr_suspend}" --wakeup_timeout=4 --timeout=10
-     new_pwr_cycle_count=$(disk_ata_power_cnt "${device}")
+     new_pwr_cycle_count="$(disk_ata_power_cnt "${device}")"
   done
-  if [ ${old_pwr_cycle_count} -eq ${new_pwr_cycle_count} ]; then
+  if [ "${old_pwr_cycle_count}" -eq "${new_pwr_cycle_count}" ]; then
     log_msg "Unable to power cycle ${device}"
   fi
 }
@@ -461,7 +462,7 @@ disk_mmc_upgrade() {
   if [ "${fw_options}" != "-" ]; then
      # Options for mmc in the config files are separated with commas.
      # Translate the option for the command line.
-     options=$(echo "${fw_options}" | sed 's/,/ -k /g')
+     options="$(echo "${fw_options}" | sed 's/,/ -k /g')"
      options="-k ${options}"
   fi
 
@@ -565,13 +566,13 @@ disk_nvme_upgrade() {
   local max_slot="$(disk_nvme_get_max_writable_slot "${frmw}")"
   local new_slot rc
 
-  if [ ${curr_slot} -eq ${max_slot} ]; then
-    new_slot=${min_slot}
+  if [ "${curr_slot}" -eq "${max_slot}" ]; then
+    new_slot="${min_slot}"
   else
-    new_slot=$((curr_slot + 1))
+    new_slot="$((curr_slot + 1))"
   fi
   if echo "${fw_options}" | grep -q "separate_slot"; then
-    if [ ${new_slot} -eq ${curr_slot} ]; then
+    if [ "${new_slot}" -eq "${curr_slot}" ]; then
       log_msg "Unable to find proper slot: current ${curr_slot}, " \
               "min: ${min_slot}, max: ${max_slot}"
       return 1
@@ -580,26 +581,26 @@ disk_nvme_upgrade() {
 
   "${FLAGS_nvme}" fw-download "/dev/${device}" --fw="${fw_file}"
   rc=$?
-  if [ ${rc} -ne 0 ]; then
+  if [ "${rc}" -ne 0 ]; then
     log_msg "Unable to download ${fw_file} to ${device}"
-    return ${rc}
+    return "${rc}"
   fi
 
   # Use action 0 to download image into slot.
   "${FLAGS_nvme}" fw-activate "/dev/${device}" --slot="${new_slot}" --action=0
   rc=$?
-  if [ ${rc} -ne 0 ]; then
+  if [ "${rc}" -ne 0 ]; then
      log_msg "Unable to load ${fw_file} to ${device}"
-     return ${rc}
+     return "${rc}"
   fi
   "${FLAGS_nvme}" fw-activate "/dev/${device}" --slot="${new_slot}" \
     --action="${action}"
   rc=$?
-  if [ ${rc} -eq 11 -a ${action} -eq 2 ]; then
+  if [ "${rc}" -eq 11 -a "${action}" -eq 2 ]; then
     disk_nmve_reset "${device}"
-  elif [ ${rc} -ne 0 ]; then
+  elif [ "${rc}" -ne 0 ]; then
     log_msg "Unable to activate ${fw_file} to ${device}"
-    return ${rc}
+    return "${rc}"
   fi
 }
 
@@ -618,7 +619,7 @@ disk_nvme_upgrade() {
 disk_upgrade() {
   local device="$1"
   local device_type
-  device_type=$(get_device_type "/dev/${device}")
+  device_type="$(get_device_type "/dev/${device}")"
   case ${device_type} in
     "ATA")
       disk_hdparm_upgrade "$@"
@@ -672,7 +673,7 @@ disk_upgrade_devices() {
       rc=$?
       if [ ${rc} -ne 0 ]; then
         # Nothing to do, go to next drive if any.
-        : ${success:="No need to upgrade ${device}:${disk_model}"}
+        : "${success:="No need to upgrade ${device}:${disk_model}"}"
         log_msg "${success}"
         rc=0
         break
@@ -690,7 +691,7 @@ disk_upgrade_devices() {
       disk_old_fw_rev="${disk_fw_rev}"
       disk_upgrade "${device}" "${fw_file}" "${disk_fw_opt}"
       rc=$?
-      if [ ${rc} -ne 0 ]; then
+      if [ "${rc}" -ne 0 ]; then
         # Will change in the future if we need to power cycle, reboot...
         log_msg "Unable to upgrade ${device} from ${disk_fw_rev} to ${disk_exp_fw_rev}"
         break
@@ -699,16 +700,16 @@ disk_upgrade_devices() {
         tries=4
         rc=1
         # Verify that's the firmware upgrade stuck It may take some time.
-        while [ ${tries} -ne 0 -a ${rc} -ne 0 ]; do
+        while [ "${tries}" -ne 0 -a "${rc}" -ne 0 ]; do
           : $(( tries -= 1 ))
           # Allow the error handler to block the scsi queue if it is working.
-          if [ ${FLAGS_test} -eq ${FLAGS_FALSE} ]; then
+          if [ "${FLAGS_test}" -eq "${FLAGS_FALSE}" ]; then
             sleep 1
           fi
           disk_info "${device}"
           rc=$?
         done
-        if [ ${rc} -ne 0 ]; then
+        if [ "${rc}" -ne 0 ]; then
           # We are in trouble. The disk was expected to come back but did not.
           # TODO(gwendal): Shall we have a preemptive message to ask to
           # powercycle?
@@ -733,10 +734,10 @@ disk_upgrade_devices() {
     done
   done
   # Leave a trace of a successful run.
-  if [ ${rc} -eq 0 -a -n "${FLAGS_status}" ]; then
-    echo ${success} > "${FLAGS_status}"
+  if [ "${rc}" -eq 0 -a -n "${FLAGS_status}" ]; then
+    echo "${success}" > "${FLAGS_status}"
   fi
-  return ${rc}
+  return "${rc}"
 }
 
 main() {
@@ -746,7 +747,7 @@ main() {
 
   if [ ! -d "${FLAGS_tmp_dir}" ]; then
     erase_tmp_dir=${FLAGS_TRUE}
-    FLAGS_tmp_dir=$(mktemp -d)
+    FLAGS_tmp_dir="$(mktemp -d)"
   fi
   if [ ! -f "${disk_rules_raw}" ]; then
     log_msg "Unable to find rules file in ${FLAGS_fw_package_dir}"
@@ -757,22 +758,23 @@ main() {
   # remove unnecessary lines
   sed '/^#/d;/^[[:space:]]*$/d' "${disk_rules_raw}" > "${disk_rules}"
 
+  # Unquote call to list_fixed_* as they can return several device each.
   disk_upgrade_devices "${disk_rules}" \
     $(list_fixed_ata_disks) $(list_fixed_mmc_disks) $(list_fixed_nvme_disks)
   rc=$?
 
-  if [ ${erase_tmp_dir} -eq ${FLAGS_TRUE} ]; then
+  if [ "${erase_tmp_dir}" -eq "${FLAGS_TRUE}" ]; then
     rm -rf "${FLAGS_tmp_dir}"
   fi
   # Append a cksum to prevent multiple calls to this script.
-  if [ ${rc} -eq 0 -a -n "${FLAGS_status}" ]; then
+  if [ "${rc}" -eq 0 -a -n "${FLAGS_status}" ]; then
     cksum "${disk_rules_raw}" >> "${FLAGS_status}"
   fi
-  return ${rc}
+  return "${rc}"
 }
 
 # invoke main if not in test mode, otherwise let the test code call.
-if [ ${FLAGS_test} -eq ${FLAGS_FALSE} ]; then
+if [ "${FLAGS_test}" -eq "${FLAGS_FALSE}" ]; then
   main "$@"
 fi
 
