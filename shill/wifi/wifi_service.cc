@@ -166,8 +166,8 @@ WiFiService::WiFiService(Manager* manager,
 
   // Log the |unique_name| to |friendly_name| mapping for debugging purposes.
   // The latter will be tagged for scrubbing.
-  LOG(INFO) << "Constructed WiFi service " << unique_name()
-            << " name: " << WiFi::LogSSID(friendly_name());
+  SLOG(this, 1) << "Constructed WiFi service " << unique_name()
+                << " name: " << WiFi::LogSSID(friendly_name());
 }
 
 WiFiService::~WiFiService() = default;

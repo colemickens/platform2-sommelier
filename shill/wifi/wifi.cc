@@ -307,7 +307,7 @@ void WiFi::Scan(Error* /*error*/, const string& reason) {
     SLOG(this, 2) << "Ignoring scan request while scanning or connecting.";
     return;
   }
-  LOG(INFO) << __func__ << " on " << link_name() << " from " << reason;
+  SLOG(this, 1) << __func__ << " on " << link_name() << " from " << reason;
   // Needs to send a D-Bus message, but may be called from D-Bus
   // signal handler context (via Manager::RequestScan). So defer work
   // to event loop.
@@ -378,6 +378,8 @@ void WiFi::PropertiesChanged(const KeyValueStore& properties) {
 }
 
 void WiFi::ScanDone(const bool& success) {
+  // This log line should be kept at INFO level to support the Shill log
+  // processor.
   LOG(INFO) << __func__;
 
   // Defer handling of scan result processing, because that processing

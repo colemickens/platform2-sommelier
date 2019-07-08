@@ -258,13 +258,13 @@ Service::Service(Manager* manager, Technology::Identifier technology)
 
   dhcp_properties_->InitPropertyStore(&store_);
 
-  LOG(INFO) << Technology::NameFromIdentifier(technology) << " service "
-            << unique_name_ << " constructed.";
+  SLOG(this, 1) << Technology::NameFromIdentifier(technology) << " service "
+                << unique_name_ << " constructed.";
 }
 
 Service::~Service() {
   metrics()->DeregisterService(*this);
-  LOG(INFO) << "Service " << unique_name_ << " destroyed.";
+  SLOG(this, 1) << "Service " << unique_name_ << " destroyed.";
 }
 
 void Service::AutoConnect() {
