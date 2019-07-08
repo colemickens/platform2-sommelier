@@ -10,16 +10,17 @@
 
 #include <sys/types.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
+#include <brillo/process.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "cryptohome/credentials.h"
-#include "cryptohome/homedirs.h"
 #include "cryptohome/mount_constants.h"
 #include "cryptohome/mount_stack.h"
 #include "cryptohome/platform.h"
@@ -28,7 +29,33 @@ using base::FilePath;
 
 namespace cryptohome {
 
-class MountHelper {
+extern const char kDefaultHomeDir[];
+
+// Objects that implement EphemeralMountHelperInterface can perform an ephemeral
+// mount operation. This interface will be used as we transition all cryptohome
+// mounts to be performed out-of-process.
+class EphemeralMountHelperInterface {
+ public:
+  virtual ~EphemeralMountHelperInterface() {}
+
+  // Ephemeral mounts cannot be performed twice, so cryptohome needs to be able
+  // to check whether an ephemeral mount can be performed.
+  virtual bool CanPerformEphemeralMount() const = 0;
+
+  // Returns whether an ephemeral mount has been performed.
+  virtual bool MountPerformed() const = 0;
+
+  // Returns whether |path| is currently mounted as part of the ephemeral mount.
+  virtual bool IsPathMounted(const base::FilePath& path) const = 0;
+
+  // Carries out an ephemeral mount for user |username|.
+  virtual bool PerformEphemeralMount(const std::string& username) = 0;
+
+  // Tears down the existing ephemeral mount.
+  virtual void TearDownEphemeralMount() = 0;
+};
+
+class MountHelper : public EphemeralMountHelperInterface {
  public:
   MountHelper(uid_t uid,
               gid_t gid,
@@ -37,8 +64,7 @@ class MountHelper {
               const base::FilePath& skel_source,
               const brillo::SecureBlob& system_salt,
               bool legacy_mount,
-              Platform* platform,
-              HomeDirs* homedirs)
+              Platform* platform)
       : default_uid_(uid),
         default_gid_(gid),
         default_access_gid_(access_gid),
@@ -46,8 +72,7 @@ class MountHelper {
         skeleton_source_(skel_source),
         system_salt_(system_salt),
         legacy_mount_(legacy_mount),
-        platform_(platform),
-        homedirs_(homedirs) {}
+        platform_(platform) {}
   ~MountHelper() = default;
 
   struct Options {
@@ -98,7 +123,10 @@ class MountHelper {
 
   // Carries out dircrypto mount(2) operations for an ephemeral cryptohome.
   // Does not clean up on failure.
-  bool PerformEphemeralMount(const std::string& username);
+  bool PerformEphemeralMount(const std::string& username) override;
+
+  // Tears down an ephemeral cryptohome mount in-process by calling umount(2).
+  void TearDownEphemeralMount() override;
 
   // Unmounts all mount points.
   // Relies on ForceUnmount() internally; see the caveat listed for it.
@@ -109,13 +137,13 @@ class MountHelper {
   bool CleanUpEphemeral();
 
   // Returns whether an ephemeral mount operation can be performed.
-  bool CanPerformEphemeralMount();
+  bool CanPerformEphemeralMount() const override;
 
   // Returns whether a mount operation has been performed.
-  bool MountPerformed();
+  bool MountPerformed() const override;
 
   // Returns whether |path| is the destination of an existing mount.
-  bool IsPathMounted(const base::FilePath& path);
+  bool IsPathMounted(const base::FilePath& path) const override;
 
  private:
   // Returns the names of all tracked subdirectories.
@@ -287,7 +315,6 @@ class MountHelper {
   base::FilePath ephemeral_file_path_;
 
   Platform* platform_;  // Un-owned.
-  HomeDirs* homedirs_;  // Un-owned.
 
   FRIEND_TEST(MountTest, BindMyFilesDownloadsSuccess);
   FRIEND_TEST(MountTest, BindMyFilesDownloadsMissingUserHome);

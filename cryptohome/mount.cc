@@ -62,7 +62,6 @@ using chaps::IsolateCredentialManager;
 
 namespace cryptohome {
 
-const char kDefaultShadowRoot[] = "/home/.shadow";
 const char kChapsUserName[] = "chaps";
 const char kDefaultSharedAccessGroup[] = "chronos-access";
 
@@ -192,7 +191,7 @@ bool Mount::Init(Platform* platform, Crypto* crypto,
 
   mounter_.reset(new MountHelper(
       default_user_, default_group_, default_access_group_, shadow_root_,
-      skel_source_, system_salt_, legacy_mount_, platform_, homedirs_));
+      skel_source_, system_salt_, legacy_mount_, platform_));
 
   return result;
 }
@@ -654,8 +653,7 @@ bool Mount::MountEphemeralCryptohome(const std::string& username,
   base::ScopedClosureRunner cleanup_runner(cleanup);
 
   if (!mounter_->PerformEphemeralMount(username)) {
-    LOG(ERROR) << "MountHelper::PerformEphemeralMount failed, aborting"
-               << " ephemeral mount";
+    LOG(ERROR) << "PerformEphemeralMount failed, aborting ephemeral mount";
     return false;
   }
 

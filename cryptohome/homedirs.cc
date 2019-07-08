@@ -104,6 +104,18 @@ HomeDirs::HomeDirs()
 
 HomeDirs::~HomeDirs() { }
 
+// static
+FilePath HomeDirs::GetEcryptfsUserVaultPath(
+    const FilePath& shadow_root, const std::string& obfuscated_username) {
+  return shadow_root.Append(obfuscated_username).Append(kEcryptfsVaultDir);
+}
+
+// static
+FilePath HomeDirs::GetUserMountDirectory(
+    const FilePath& shadow_root, const std::string& obfuscated_username) {
+  return shadow_root.Append(obfuscated_username).Append(kMountDir);
+}
+
 bool HomeDirs::Init(Platform* platform, Crypto* crypto,
                     UserOldestActivityTimestampCache *cache) {
   platform_ = platform;
@@ -460,12 +472,12 @@ bool HomeDirs::DircryptoCryptohomeExists(
 
 FilePath HomeDirs::GetEcryptfsUserVaultPath(
     const std::string& obfuscated_username) const {
-  return shadow_root_.Append(obfuscated_username).Append(kEcryptfsVaultDir);
+  return GetEcryptfsUserVaultPath(shadow_root_, obfuscated_username);
 }
 
 FilePath HomeDirs::GetUserMountDirectory(
     const std::string& obfuscated_username) const {
-  return shadow_root_.Append(obfuscated_username).Append(kMountDir);
+  return GetUserMountDirectory(shadow_root_, obfuscated_username);
 }
 
 VaultKeyset* HomeDirs::GetVaultKeyset(const std::string& obfuscated_username,

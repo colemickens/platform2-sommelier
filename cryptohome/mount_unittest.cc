@@ -791,7 +791,7 @@ TEST_P(MountTest, BindMyFilesDownloadsSuccess) {
 
   MountHelper mnt_helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
                          kSkelDir, helper_.system_salt, true /*legacy_mount*/,
-                         &platform_, &homedirs_);
+                         &platform_);
 
   EXPECT_TRUE(mnt_helper.BindMyFilesDownloads(dest_dir));
 }
@@ -804,7 +804,7 @@ TEST_P(MountTest, BindMyFilesDownloadsMissingUserHome) {
 
   MountHelper mnt_helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
                          kSkelDir, helper_.system_salt, true /*legacy_mount*/,
-                         &platform_, &homedirs_);
+                         &platform_);
 
   EXPECT_FALSE(mnt_helper.BindMyFilesDownloads(dest_dir));
 }
@@ -820,7 +820,7 @@ TEST_P(MountTest, BindMyFilesDownloadsMissingDownloads) {
 
   MountHelper mnt_helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
                          kSkelDir, helper_.system_salt, true /*legacy_mount*/,
-                         &platform_, &homedirs_);
+                         &platform_);
 
   EXPECT_FALSE(mnt_helper.BindMyFilesDownloads(dest_dir));
 }
@@ -839,7 +839,7 @@ TEST_P(MountTest, BindMyFilesDownloadsMissingMyFilesDownloads) {
 
   MountHelper mnt_helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
                          kSkelDir, helper_.system_salt, true /*legacy_mount*/,
-                         &platform_, &homedirs_);
+                         &platform_);
 
   EXPECT_FALSE(mnt_helper.BindMyFilesDownloads(dest_dir));
 }
@@ -1803,7 +1803,7 @@ TEST_P(MountTest, RememberMountOrderingTest) {
   // right order.
   MountHelper mnt_helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
                          kSkelDir, helper_.system_salt, true /*legacy_mount*/,
-                         &platform_, &homedirs_);
+                         &platform_);
 
   FilePath src("/src");
   FilePath dest0("/dest/foo");
@@ -2562,7 +2562,7 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloads) {
 
   MountHelper mnt_helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
                          kSkelDir, helper_.system_salt, true /*legacy_mount*/,
-                         &platform_, &homedirs_);
+                         &platform_);
 
   ASSERT_TRUE(mnt_helper.SetUpEphemeralCryptohome(base_path));
 }
@@ -2607,7 +2607,7 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloadsAlreadyExists) {
 
   MountHelper mnt_helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
                          kSkelDir, helper_.system_salt, true /*legacy_mount*/,
-                         &platform_, &homedirs_);
+                         &platform_);
 
   ASSERT_TRUE(mnt_helper.SetUpEphemeralCryptohome(base_path));
 }

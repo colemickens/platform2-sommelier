@@ -9,6 +9,8 @@
 #include <memory>
 #include <vector>
 
+#include <base/bind.h>
+#include <base/callback_helpers.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -17,6 +19,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/cryptohome_common.h"
+#include "cryptohome/homedirs.h"
 #include "cryptohome/mount_utils.h"
 #include "cryptohome/obfuscated_username.h"
 
@@ -32,8 +35,6 @@ constexpr gid_t kMountOwnerGid = 0;
 constexpr gid_t kDaemonStoreGid = 400;
 
 const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
-
-constexpr char kDefaultHomeDir[] = "/home/chronos/user";
 
 FilePath GetUserEphemeralMountDirectory(
     const std::string& obfuscated_username) {
@@ -65,6 +66,8 @@ FilePath VaultPathToRootPath(const FilePath& vault) {
 }  // namespace
 
 namespace cryptohome {
+
+const char kDefaultHomeDir[] = "/home/chronos/user";
 
 std::vector<FilePath> MountHelper::GetTrackedSubdirectories() {
   return std::vector<FilePath>{
@@ -112,13 +115,13 @@ FilePath MountHelper::GetUserTemporaryMountDirectory(
 
 FilePath MountHelper::GetMountedUserHomePath(
     const std::string& obfuscated_username) const {
-  return homedirs_->GetUserMountDirectory(obfuscated_username)
+  return HomeDirs::GetUserMountDirectory(shadow_root_, obfuscated_username)
       .Append(kUserHomeSuffix);
 }
 
 FilePath MountHelper::GetMountedRootHomePath(
     const std::string& obfuscated_username) const {
-  return homedirs_->GetUserMountDirectory(obfuscated_username)
+  return HomeDirs::GetUserMountDirectory(shadow_root_, obfuscated_username)
       .Append(kRootHomeSuffix);
 }
 
@@ -609,15 +612,16 @@ bool MountHelper::CreateTrackedSubdirectories(const Credentials& credentials,
       credentials.GetObfuscatedUsername(system_salt_);
   const FilePath dest_dir(
       mount_type == MountType::ECRYPTFS
-          ? homedirs_->GetEcryptfsUserVaultPath(obfuscated_username)
-          : homedirs_->GetUserMountDirectory(obfuscated_username));
+          ? HomeDirs::GetEcryptfsUserVaultPath(shadow_root_,
+                                               obfuscated_username)
+          : HomeDirs::GetUserMountDirectory(shadow_root_, obfuscated_username));
   if (!platform_->DirectoryExists(dest_dir)) {
      LOG(ERROR) << "Can't create tracked subdirectories for a missing user.";
      return false;
   }
 
   const FilePath mount_dir(
-      homedirs_->GetUserMountDirectory(obfuscated_username));
+      HomeDirs::GetUserMountDirectory(shadow_root_, obfuscated_username));
 
   // The call is allowed to partially fail if directory creation fails, but we
   // want to have as many of the specified tracked directories created as
@@ -676,9 +680,9 @@ bool MountHelper::PerformMount(const Options& mount_opts,
   const std::string obfuscated_username =
       credentials.GetObfuscatedUsername(system_salt_);
   const FilePath vault_path =
-      homedirs_->GetEcryptfsUserVaultPath(obfuscated_username);
+      HomeDirs::GetEcryptfsUserVaultPath(shadow_root_, obfuscated_username);
   const FilePath mount_point =
-      homedirs_->GetUserMountDirectory(obfuscated_username);
+      HomeDirs::GetUserMountDirectory(shadow_root_, obfuscated_username);
 
   std::string ecryptfs_options;
   bool should_mount_ecryptfs = mount_opts.type == MountType::ECRYPTFS ||
@@ -832,6 +836,11 @@ bool MountHelper::PerformEphemeralMount(const std::string& username) {
   return true;
 }
 
+void MountHelper::TearDownEphemeralMount() {
+  UnmountAll();
+  CleanUpEphemeral();
+}
+
 void MountHelper::UnmountAll() {
   FilePath src, dest;
   const FilePath ephemeral_mount_path =
@@ -898,15 +907,15 @@ void MountHelper::ForceUnmount(const FilePath& src, const FilePath& dest) {
   }
 }
 
-bool MountHelper::CanPerformEphemeralMount() {
+bool MountHelper::CanPerformEphemeralMount() const {
   return ephemeral_file_path_.empty() && ephemeral_loop_device_.empty();
 }
 
-bool MountHelper::MountPerformed() {
+bool MountHelper::MountPerformed() const {
   return stack_.size() > 0;
 }
 
-bool MountHelper::IsPathMounted(const base::FilePath& path) {
+bool MountHelper::IsPathMounted(const base::FilePath& path) const {
   return stack_.ContainsDest(path);
 }
 

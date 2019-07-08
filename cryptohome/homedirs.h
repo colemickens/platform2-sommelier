@@ -59,6 +59,17 @@ class HomeDirs {
   HomeDirs();
   virtual ~HomeDirs();
 
+  // Gets the user's eCryptfs vault directory for the given shadow root path and
+  // obfuscated username.
+  static base::FilePath GetEcryptfsUserVaultPath(
+      const base::FilePath& shadow_root,
+      const std::string& obfuscated_username);
+
+  // Gets the directory to mount the user's cryptohome at given the shadow root
+  // path and obfuscated username.
+  static base::FilePath GetUserMountDirectory(const base::FilePath& shadow_root,
+      const std::string& obfuscated_username);
+
   // Initializes this HomeDirs object. Returns true for success.
   virtual bool Init(Platform* platform, Crypto* crypto,
                     UserOldestActivityTimestampCache *cache);

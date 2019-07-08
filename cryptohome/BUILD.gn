@@ -12,6 +12,7 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":cryptohome",
+    ":cryptohome-namespace-mounter",
     ":cryptohome-path",
     ":cryptohome-proxy",
     ":cryptohomed",
@@ -136,6 +137,27 @@ executable("cryptohomed") {
     "system_api",
     "protobuf",
     "vboot_host",
+  ]
+}
+
+# This executable is used to mount cryptohomes.
+executable("cryptohome-namespace-mounter") {
+  configs += [ "libs:target_defaults" ]
+  sources = [
+    "cryptohome_namespace_mounter/cryptohome_namespace_mounter.cc",
+  ]
+  deps = [
+    "libs:libcryptohome",
+  ]
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
   ]
 }
 
@@ -409,6 +431,7 @@ if (use.test) {
       "mount_task_unittest.cc",
       "mount_unittest.cc",
       "obfuscated_username_unittest.cc",
+      "out_of_process_mount_helper_test.cc",
       "persistent_lookup_table_unittest.cc",
       "pkcs11_keystore_unittest.cc",
       "platform_unittest.cc",
