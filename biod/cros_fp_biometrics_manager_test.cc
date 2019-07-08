@@ -34,6 +34,14 @@ class FakeCrosFpDevice : public CrosFpDeviceInterface {
   }
   bool GetDirtyMap(std::bitset<32>* bitmap) override { return false; }
   bool SupportsPositiveMatchSecret() override { return true; }
+  bool GetPositiveMatchSecret(int index, brillo::SecureBlob* secret) override {
+    secret->resize(FP_POSITIVE_MATCH_SECRET_BYTES);
+    // Zero-pad the secret if it's too short.
+    std::fill(secret->begin(), secret->end(), 0);
+    std::copy(positive_match_secret_.begin(), positive_match_secret_.end(),
+              secret->begin());
+    return true;
+  }
   bool GetTemplate(int index, VendorTemplate* out) override { return true; }
   bool UploadTemplate(const VendorTemplate& tmpl) override { return false; }
   bool SetContext(std::string user_id) override { return false; }

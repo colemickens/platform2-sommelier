@@ -32,6 +32,9 @@ class MockCrosFpDevice : public CrosFpDeviceInterface {
               EcCmdVersionSupported,
               (uint16_t cmd, uint32_t ver));
   MOCK_METHOD(bool, SupportsPositiveMatchSecret, ());
+  MOCK_METHOD(bool,
+              GetPositiveMatchSecret,
+              (int index, brillo::SecureBlob* secret));
 };
 
 }  // namespace biod

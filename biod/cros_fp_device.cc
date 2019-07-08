@@ -248,6 +248,32 @@ bool CrosFpDevice::SupportsPositiveMatchSecret() {
   }
 }
 
+bool CrosFpDevice::FpReadMatchSecret(uint16_t index,
+                                     brillo::SecureBlob* secret) {
+  EcCommand<struct ec_params_fp_read_match_secret,
+            struct ec_response_fp_read_match_secret>
+      cmd(EC_CMD_FP_READ_MATCH_SECRET, 0, {.fgr = index});
+
+  if (!cmd.Run(cros_fd_.get()) &&
+      cmd.Result() == kEcCommandUninitializedResult) {
+    LOG(ERROR) << "Failed to run EC_CMD_FP_READ_MATCH_SECRET command.";
+    return false;
+  }
+  if (cmd.Result() != EC_RES_SUCCESS) {
+    LOG(ERROR) << "Failed to read positive match secret, result: "
+               << cmd.Result() << ".";
+    return false;
+  }
+  secret->resize(sizeof(cmd.Resp()->positive_match_secret));
+  std::copy(cmd.Resp()->positive_match_secret,
+            cmd.Resp()->positive_match_secret +
+                sizeof(cmd.Resp()->positive_match_secret),
+            secret->begin());
+  brillo::SecureMemset(cmd.Resp()->positive_match_secret, 0,
+                       sizeof(cmd.Resp()->positive_match_secret));
+  return true;
+}
+
 bool CrosFpDevice::UpdateFpInfo() {
   EcCommand<EmptyParam, struct ec_response_fp_info> cmd(EC_CMD_FP_INFO,
                                                         kVersionOne);
@@ -494,13 +520,30 @@ bool CrosFpDevice::GetDirtyMap(std::bitset<32>* bitmap) {
   return true;
 }
 
+bool CrosFpDevice::GetIndexOfLastTemplate(int* index) {
+  if (!UpdateFpInfo())
+    return false;
+  *index = info_.template_valid - 1;
+  if (*index < 0 || *index >= MaxTemplateCount()) {
+    LOG(ERROR) << "Invalid index of last template: " << *index << ".";
+    return false;
+  }
+  return true;
+}
+
+bool CrosFpDevice::GetPositiveMatchSecret(int index,
+                                          brillo::SecureBlob* secret) {
+  if (index == kLastTemplate) {
+    if (!GetIndexOfLastTemplate(&index))
+      return false;
+  }
+  return FpReadMatchSecret(static_cast<uint16_t>(index), secret);
+}
+
 bool CrosFpDevice::GetTemplate(int index, VendorTemplate* out) {
   if (index == kLastTemplate) {
-    // Get the count of valid templates and the dirty bitmap.
-    if (!UpdateFpInfo())
+    if (!GetIndexOfLastTemplate(&index))
       return false;
-    // Use the last template.
-    index = info_.template_valid - 1;
     // Is the last one really a new created one ?
     if (!(info_.template_dirty & (1 << index)))
       return false;
