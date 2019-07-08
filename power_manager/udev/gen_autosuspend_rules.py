@@ -125,8 +125,6 @@ USB_IDS += [
 USB_IDS += [
   # Huawei (ME936) (kip, nyan_blaze)
   "12d1:15bb",
-  # Altair (LTE) (spring, quawks)
-  "216f:0047",
   # Fibocom (L850-GL) (coral, nautilus)
   "2cb7:0007",
 ]
