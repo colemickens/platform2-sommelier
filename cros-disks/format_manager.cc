@@ -95,6 +95,9 @@ std::vector<std::string> CreateFormatArguments(const std::string& filesystem,
     arguments.push_back("-n");
     arguments.push_back(options.label);
   } else if (filesystem == "ntfs") {
+    // --force is used to allow creating a filesystem on devices without a
+    // partition table.
+    arguments.push_back("--force");
     arguments.push_back("--quick");
     arguments.push_back("--label");
     arguments.push_back(options.label);
