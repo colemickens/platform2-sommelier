@@ -149,7 +149,6 @@ class CellularCapability3gpp : public CellularCapability {
   static const char kOperatorAccessTechnologyProperty[];
 
   // Plugin strings via ModemManager.
-  static const char kAltairLTEMMPlugin[];
   static const char kTelitMMPlugin[];
 
   static const int64_t kEnterPinTimeoutMilliseconds;
@@ -192,10 +191,6 @@ class CellularCapability3gpp : public CellularCapability {
   FRIEND_TEST(CellularCapability3gppMainTest,
               StartModemWithDeferredEnableFailure);
   FRIEND_TEST(CellularCapability3gppMainTest, StopModem);
-  FRIEND_TEST(CellularCapability3gppMainTest, StopModemAltair);
-  FRIEND_TEST(CellularCapability3gppMainTest,
-              StopModemAltairDeleteBearerFailure);
-  FRIEND_TEST(CellularCapability3gppMainTest, StopModemAltairNotConnected);
   FRIEND_TEST(CellularCapability3gppMainTest, TerminationAction);
   FRIEND_TEST(CellularCapability3gppMainTest,
               TerminationActionRemovedByStopModem);
@@ -231,9 +226,6 @@ class CellularCapability3gpp : public CellularCapability {
                             const Error& error);
 
   // Methods used in stopping a modem
-  void Stop_DeleteActiveBearer(const ResultCallback& callback);
-  void Stop_DeleteActiveBearerCompleted(const ResultCallback& callback,
-                                        const Error& error);
   void Stop_Disable(const ResultCallback& callback);
   void Stop_DisableCompleted(const ResultCallback& callback,
                              const Error& error);

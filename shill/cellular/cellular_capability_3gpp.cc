@@ -63,7 +63,6 @@ const char CellularCapability3gpp::kOperatorShortProperty[] = "operator-short";
 const char CellularCapability3gpp::kOperatorCodeProperty[] = "operator-code";
 const char CellularCapability3gpp::kOperatorAccessTechnologyProperty[] =
     "access-technology";
-const char CellularCapability3gpp::kAltairLTEMMPlugin[] = "Altair LTE";
 const char CellularCapability3gpp::kTelitMMPlugin[] = "Telit";
 const int CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds = 20000;
 
@@ -300,47 +299,10 @@ void CellularCapability3gpp::StopModem(Error* error,
     SLOG(this, 2) << __func__ << " Cancelled delayed deregister.";
   }
 
-  // Some modems will implicitly disconnect the bearer when transitioning to
-  // low power state. For such modems, it's faster to let the modem disconnect
-  // the bearer. To do that, we just remove the bearer from the list so
-  // ModemManager doesn't try to disconnect it during disable.
-  Closure task;
-  if (cellular()->mm_plugin() == kAltairLTEMMPlugin) {
-    task = Bind(&CellularCapability3gpp::Stop_DeleteActiveBearer,
-                weak_ptr_factory_.GetWeakPtr(), callback);
-  } else {
-    task = Bind(&CellularCapability3gpp::Stop_Disable,
-                weak_ptr_factory_.GetWeakPtr(), callback);
-  }
-  cellular()->dispatcher()->PostTask(FROM_HERE, task);
+  cellular()->dispatcher()->PostTask(
+      FROM_HERE, Bind(&CellularCapability3gpp::Stop_Disable,
+                      weak_ptr_factory_.GetWeakPtr(), callback));
   deferred_enable_modem_callback_.Reset();
-}
-
-void CellularCapability3gpp::Stop_DeleteActiveBearer(
-    const ResultCallback& callback) {
-  SLOG(this, 3) << __func__;
-
-  if (!active_bearer_) {
-    Stop_Disable(callback);
-    return;
-  }
-
-  Error error;
-  modem_proxy_->DeleteBearer(
-      active_bearer_->dbus_path(), &error,
-      Bind(&CellularCapability3gpp::Stop_DeleteActiveBearerCompleted,
-           weak_ptr_factory_.GetWeakPtr(), callback),
-      kTimeoutDefault);
-  if (error.IsFailure())
-    callback.Run(error);
-}
-
-void CellularCapability3gpp::Stop_DeleteActiveBearerCompleted(
-    const ResultCallback& callback, const Error& error) {
-  SLOG(this, 3) << __func__;
-  // Disregard the error from the bearer deletion since the disable will clean
-  // up any remaining bearers.
-  Stop_Disable(callback);
 }
 
 void CellularCapability3gpp::Stop_Disable(const ResultCallback& callback) {
