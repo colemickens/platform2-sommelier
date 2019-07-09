@@ -13,9 +13,16 @@ namespace cryptohome {
 class Mount;
 class MockMountFactory : public MountFactory {
  public:
-  MockMountFactory() {}
+  MockMountFactory() {
+    ON_CALL(*this, New())
+        .WillByDefault(testing::Invoke(this, &MockMountFactory::NewConcrete));
+  }
+
   virtual ~MockMountFactory() {}
   MOCK_METHOD0(New, Mount*());
+
+  // Backdoor to access real method, for delegating calls to parent class
+  Mount* NewConcrete() { return MountFactory::New(); }
 };
 }  // namespace cryptohome
 

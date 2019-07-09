@@ -6,6 +6,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <brillo/cryptohome.h>
 #include <chaps/token_manager_client_mock.h>
 #include <vector>
 
@@ -79,6 +80,7 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
     userdataauth_.set_firmware_management_parameters(&fwmp_);
     userdataauth_.set_arc_disk_quota(&arc_disk_quota_);
     userdataauth_.set_pkcs11_init(&pkcs11_init_);
+    userdataauth_.set_mount_factory(&mount_factory_);
     userdataauth_.set_disable_threading(true);
     homedirs_.set_crypto(&crypto_);
     homedirs_.set_platform(&platform_);
@@ -146,6 +148,10 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
   // Mock Firmware Management Parameters object, will be passed to UserDataAuth
   // for its internal use.
   NiceMock<MockFirmwareManagementParameters> fwmp_;
+
+  // Mock Mount Factory object, will be passed to UserDataAuth for its internal
+  // use.
+  NiceMock<MockMountFactory> mount_factory_;
 
   // This is used to hold the mount object when we create a mock mount with
   // SetupMount().
@@ -1448,6 +1454,102 @@ class UserDataAuthExTest : public UserDataAuthTest {
 
 constexpr char UserDataAuthExTest::kUser[];
 constexpr char UserDataAuthExTest::kKey[];
+
+TEST_F(UserDataAuthExTest, MountGuestSanity) {
+  PrepareArguments();
+
+  mount_req_->set_guest_mount(true);
+
+  SetupMount(kUser);
+  // Expect that existing mounts will be removed.
+  EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
+  EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(true));
+
+  EXPECT_CALL(mount_factory_, New()).WillOnce(Invoke([]() {
+    NiceMock<MockMount>* res = new NiceMock<MockMount>();
+    EXPECT_CALL(*res, Init(_, _, _, _)).WillOnce(Return(true));
+    EXPECT_CALL(*res, MountGuestCryptohome()).WillOnce(Return(true));
+    return reinterpret_cast<Mount*>(res);
+  }));
+
+  bool called = false;
+  userdataauth_.DoMount(
+      *mount_req_,
+      base::BindOnce(
+          [](bool* called_ptr, const user_data_auth::MountReply& reply) {
+            *called_ptr = true;
+            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, reply.error());
+          },
+          base::Unretained(&called)));
+
+  EXPECT_TRUE(called);
+
+  EXPECT_NE(userdataauth_.get_mount_for_user(
+                brillo::cryptohome::home::kGuestUserName),
+            nullptr);
+}
+
+TEST_F(UserDataAuthExTest, MountGuestMountPointBusy) {
+  PrepareArguments();
+
+  mount_req_->set_guest_mount(true);
+
+  SetupMount(kUser);
+  // Expect that existing mounts will be removed, but unmounting will fail.
+  EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
+  EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(false));
+
+  EXPECT_CALL(mount_factory_, New()).WillOnce(Invoke([]() {
+    NiceMock<MockMount>* res = new NiceMock<MockMount>();
+    EXPECT_CALL(*res, Init(_, _, _, _)).WillOnce(Return(true));
+    // The guest mount should NOT be mounted.
+    EXPECT_CALL(*res, MountGuestCryptohome()).Times(0);
+    return reinterpret_cast<Mount*>(res);
+  }));
+
+  bool called = false;
+  userdataauth_.DoMount(
+      *mount_req_,
+      base::BindOnce(
+          [](bool* called_ptr, const user_data_auth::MountReply& reply) {
+            *called_ptr = true;
+            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY,
+                      reply.error());
+          },
+          base::Unretained(&called)));
+
+  EXPECT_TRUE(called);
+
+  EXPECT_EQ(userdataauth_.get_mount_for_user(
+                brillo::cryptohome::home::kGuestUserName),
+            nullptr);
+}
+
+TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
+  PrepareArguments();
+
+  mount_req_->set_guest_mount(true);
+
+  EXPECT_CALL(mount_factory_, New()).WillOnce(Invoke([]() {
+    NiceMock<MockMount>* res = new NiceMock<MockMount>();
+    EXPECT_CALL(*res, Init(_, _, _, _)).WillOnce(Return(true));
+    EXPECT_CALL(*res, MountGuestCryptohome()).WillOnce(Return(false));
+    return reinterpret_cast<Mount*>(res);
+  }));
+
+  bool called = false;
+  userdataauth_.DoMount(
+      *mount_req_,
+      base::BindOnce(
+          [](bool* called_ptr, const user_data_auth::MountReply& reply) {
+            *called_ptr = true;
+            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL,
+                      reply.error());
+          },
+          base::Unretained(&called)));
+
+  EXPECT_TRUE(called);
+}
 
 TEST_F(UserDataAuthExTest, MountInvalidArgs) {
   // Note that this test doesn't distinguish between different causes of invalid

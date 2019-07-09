@@ -414,6 +414,18 @@ class UserDataAuth {
     firmware_management_parameters_ = fwmp;
   }
 
+  // Override |mount_factory_| for testing purpose
+  void set_mount_factory(MountFactory* mount_factory) {
+    mount_factory_ = mount_factory;
+  }
+
+  // Retrieve the mount associated with a given user, for testing purpose only.
+  cryptohome::Mount* get_mount_for_user(const std::string& username) {
+    if (mounts_.count(username) == 0)
+      return nullptr;
+    return mounts_[username].get();
+  }
+
   // Associate a particular mount object |mount| with the username |username|
   // for testing purpose
   void set_mount_for_user(const std::string& username,
@@ -509,6 +521,19 @@ class UserDataAuth {
   void GetChallengeCredentialsPcrRestrictions(
       const std::string& obfuscated_username,
       std::vector<std::map<uint32_t, brillo::Blob>>* pcr_restrictions);
+
+  // Safely removes the MountMap reference for the Mount belonging to given
+  // user. This method returns true if the mount belonging to the user is
+  // successfully removed, including the case when there is no mounts associated
+  // with the given username.
+  bool RemoveMountForUser(const std::string& username);
+
+  // Calling this method will mount the home directory for guest users.
+  // This is usually called by DoMount(). Note that this method is asynchronous,
+  // and will call |on_done| exactly once to deliver the result regardless of
+  // whether the operation is successful.
+  void MountGuest(
+      base::OnceCallback<void(const user_data_auth::MountReply&)> on_done);
 
   // This is a utility function used by DoMount(). It is called if the request
   // mounting operation requires challenge response authentication. i.e. The key

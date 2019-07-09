@@ -831,19 +831,73 @@ void UserDataAuth::GetChallengeCredentialsPcrRestrictions(
   }
 }
 
+bool UserDataAuth::RemoveMountForUser(const std::string& username) {
+  AssertOnMountThread();
+
+  if (mounts_.count(username) != 0) {
+    return (1U == mounts_.erase(username));
+  }
+  return true;
+}
+
+void UserDataAuth::MountGuest(
+    base::OnceCallback<void(const user_data_auth::MountReply&)> on_done) {
+  AssertOnMountThread();
+
+  if (mounts_.size() != 0) {
+    LOG(WARNING) << "Guest mount requested with other mounts active.";
+  }
+  // Rather than make it safe to check the size, then clean up, just always
+  // clean up.
+  bool ok = RemoveAllMounts(true);
+  // Create a ref-counted guest mount for async use and then throw it away.
+  scoped_refptr<cryptohome::Mount> guest_mount =
+      GetOrCreateMountForUser(guest_user_);
+  user_data_auth::MountReply reply;
+  if (!ok) {
+    LOG(ERROR) << "Could not unmount cryptohomes for Guest use";
+    if (!RemoveMountForUser(guest_user_)) {
+      LOG(ERROR) << "Unexpectedly cannot drop unused Guest mount from map.";
+    }
+    reply.set_error(user_data_auth::CryptohomeErrorCode::
+                        CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+    std::move(on_done).Run(reply);
+    return;
+  }
+  ReportTimerStart(kAsyncGuestMountTimer);
+
+  if (!guest_mount->MountGuestCryptohome()) {
+    reply.set_error(
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
+  }
+
+  // TODO(b/137073669): Cleanup guest_mount if mount failed.
+  std::move(on_done).Run(reply);
+}
+
 void UserDataAuth::DoMount(
     user_data_auth::MountRequest request,
     base::OnceCallback<void(const user_data_auth::MountReply&)> on_done) {
-  // DoMount current supports normal plaintext password login and challenge
-  // response login. Both of these will flow through this method. This method
+  AssertOnMountThread();
+
+  // DoMount current supports guest login/mount, normal plaintext password login
+  // and challenge response login. For guest mount, a special process
+  // (MountGuest()) is used. Meanwhile, for normal plaintext password login and
+  // challenge response login, both will flow through this method. This method
   // generally does some parameter sanity checking, then pass the request onto
   // ContinueMountWithCredentials() for plaintext password login and
   // DoChallengeResponseMount() for challenge response login.
   // DoChallengeResponseMount() will contact a dbus service and transmit the
   // challenge, and once the response is received and checked with the TPM,
-  // it'll pass the request to ContinueMountWithCredentials(), which is the
-  // same as password login case, and in ContinueMountWithCredentials(), the
-  // mount is actually mounted through system call.
+  // it'll pass the request to ContinueMountWithCredentials(), which is the same
+  // as password login case, and in ContinueMountWithCredentials(), the mount is
+  // actually mounted through system call.
+
+  // Check for guest mount case.
+  if (request.guest_mount()) {
+    MountGuest(std::move(on_done));
+    return;
+  }
 
   user_data_auth::MountReply reply;
 
