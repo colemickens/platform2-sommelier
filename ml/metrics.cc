@@ -13,6 +13,8 @@
 #include <base/sys_info.h>
 #include <base/time/time.h>
 
+#include "ml/util.h"
+
 namespace ml {
 
 namespace {
@@ -22,10 +24,10 @@ constexpr char kCpuUsageMetricName[] =
     "MachineLearningService.CpuUsageMilliPercent";
 constexpr char kMojoConnectionEventMetricName[] =
     "MachineLearningService.MojoConnectionEvent";
-constexpr char kPrivateMemoryMetricName[] =
-    "MachineLearningService.PrivateMemoryKb";
-constexpr char kPeakPrivateMemoryMetricName[] =
-    "MachineLearningService.PeakPrivateMemoryKb";
+constexpr char kTotalMemoryMetricName[] =
+    "MachineLearningService.TotalMemoryKb";
+constexpr char kPeakTotalMemoryMetricName[] =
+    "MachineLearningService.PeakTotalMemoryKb";
 
 // UMA histogram ranges:
 constexpr int kCpuUsageMinMilliPercent = 1;       // 0.001%
@@ -37,8 +39,8 @@ constexpr int kMemoryUsageBuckets = 100;
 
 // chromeos_metrics::CumulativeMetrics constants:
 constexpr char kCumulativeMetricsBackingDir[] = "/var/lib/ml_service/metrics";
-constexpr char kPeakPrivateMemoryCumulativeStatName[] =
-    "peak_private_memory_kb";
+constexpr char kPeakTotalMemoryCumulativeStatName[] =
+    "peak_total_memory_kb";
 
 constexpr base::TimeDelta kCumulativeMetricsUpdatePeriod =
     base::TimeDelta::FromMinutes(5);
@@ -49,8 +51,8 @@ void RecordCumulativeMetrics(
     MetricsLibrary* const metrics_library,
     chromeos_metrics::CumulativeMetrics* const cumulative_metrics) {
   metrics_library->SendToUMA(
-      kPeakPrivateMemoryMetricName,
-      cumulative_metrics->Get(kPeakPrivateMemoryCumulativeStatName),
+      kPeakTotalMemoryMetricName,
+      cumulative_metrics->Get(kPeakTotalMemoryCumulativeStatName),
       kMemoryUsageMinKb, kMemoryUsageMaxKb, kMemoryUsageBuckets);
 }
 
@@ -70,7 +72,7 @@ void Metrics::StartCollectingProcessMetrics() {
 
   cumulative_metrics_ = std::make_unique<chromeos_metrics::CumulativeMetrics>(
       base::FilePath(kCumulativeMetricsBackingDir),
-      std::vector<std::string>{kPeakPrivateMemoryCumulativeStatName},
+      std::vector<std::string>{kPeakTotalMemoryCumulativeStatName},
       kCumulativeMetricsUpdatePeriod,
       base::Bind(&Metrics::UpdateAndRecordMetrics, base::Unretained(this),
                  true /*record_current_metrics*/),
@@ -90,14 +92,15 @@ void Metrics::UpdateCumulativeMetricsNow() {
 void Metrics::UpdateAndRecordMetrics(
     const bool record_current_metrics,
     chromeos_metrics::CumulativeMetrics* const cumulative_metrics) {
-
-  // Query memory usage.
-  base::WorkingSetKBytes usage;
-  process_metrics_->GetWorkingSetKBytes(&usage);
+  size_t usage = 0;
+  if (!GetTotalProcessMemoryUsage(&usage)) {
+    LOG(DFATAL) << "Getting process memory usage failed";
+    return;
+  }
 
   // Update max memory stats.
-  cumulative_metrics->Max(kPeakPrivateMemoryCumulativeStatName,
-                          static_cast<int64_t>(usage.priv));
+  cumulative_metrics->Max(kPeakTotalMemoryCumulativeStatName,
+                          static_cast<int64_t>(usage));
 
   if (record_current_metrics) {
     // Record CPU usage (units = milli-percent i.e. 0.001%):
@@ -108,7 +111,7 @@ void Metrics::UpdateAndRecordMetrics(
                                kCpuUsageMinMilliPercent,
                                kCpuUsageMaxMilliPercent, kCpuUsageBuckets);
     // Record memory usage:
-    metrics_library_.SendToUMA(kPrivateMemoryMetricName, usage.priv,
+    metrics_library_.SendToUMA(kTotalMemoryMetricName, usage,
                                kMemoryUsageMinKb, kMemoryUsageMaxKb,
                                kMemoryUsageBuckets);
   }

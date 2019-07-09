@@ -51,6 +51,7 @@ static_library("ml_common") {
     "model_impl.cc",
     "model_metadata.cc",
     "tensor_view.cc",
+    "util.cc",
   ]
 }
 
@@ -79,6 +80,7 @@ if (use.test) {
       "model_impl_test.cc",
       "test_utils.cc",
       "testrunner.cc",
+      "util_test.cc",
     ]
   }
 }

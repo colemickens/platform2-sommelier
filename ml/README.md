@@ -29,10 +29,10 @@ understand its resource costs in the wild:
 
 * MachineLearningService.MojoConnectionEvent: Success/failure of the
   D-Bus->Mojo bootstrap.
-* MachineLearningService.PrivateMemoryKb: Private (unshared) memory footprint
+* MachineLearningService.TotalMemoryKb: Total (shared+unshared) memory footprint
   every 5 minutes.
-* MachineLearningService.PeakPrivateMemoryKb: Peak value of
-  MachineLearningService.PrivateMemoryKb per 24 hour period. Daemon code can
+* MachineLearningService.PeakTotalMemoryKb: Peak value of
+  MachineLearningService.TotalMemoryKb per 24 hour period. Daemon code can
   also call ml::Metrics::UpdateCumulativeMetricsNow() at any time to take a
   peak-memory observation, to catch short-lived memory usage spikes.
 * MachineLearningService.CpuUsageMilliPercent: Fraction of total CPU resources
@@ -42,7 +42,7 @@ Additional metrics added in order to understand the resource costs of each
 request:
 
 * MachineLearningService.|request|.Event: OK/ErrorType of the request.
-* MachineLearningService.|request|.PrivateMemoryDeltaKb: Private (unshared)
+* MachineLearningService.|request|.TotalMemoryDeltaKb: Total (shared+unshared)
   memory delta caused by the request.
 * MachineLearningService.|request|.ElapsedTimeMicrosec: Time cost of the
   request.

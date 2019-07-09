@@ -5,8 +5,6 @@
 #ifndef ML_REQUEST_METRICS_H_
 #define ML_REQUEST_METRICS_H_
 
-#include "metrics/timer.h"
-
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -20,6 +18,9 @@
 #include <base/sys_info.h>
 #include <base/time/time.h>
 #include <metrics/metrics_library.h>
+
+#include "metrics/timer.h"
+#include "ml/util.h"
 
 namespace ml {
 
@@ -64,7 +65,7 @@ class RequestMetrics {
 // UMA metric names:
 constexpr char kGlobalMetricsPrefix[] = "MachineLearningService.";
 constexpr char kEventSuffix[] = ".Event";
-constexpr char kPrivateMemoryDeltaSuffix[] = ".PrivateMemoryDeltaKb";
+constexpr char kTotalMemoryDeltaSuffix[] = ".TotalMemoryDeltaKb";
 constexpr char kElapsedTimeSuffix[] = ".ElapsedTimeMicrosec";
 constexpr char kCpuTimeSuffix[] = ".CpuTimeMicrosec";
 
@@ -102,9 +103,12 @@ void RequestMetrics<RequestEventEnum>::StartRecordingPerformanceMetrics() {
   process_metrics_->GetCPUUsage();
   timer_.Start();
   // Query memory usage.
-  base::WorkingSetKBytes usage;
-  process_metrics_->GetWorkingSetKBytes(&usage);
-  initial_memory_ = static_cast<int64_t>(usage.priv);
+  size_t usage = 0;
+  if (!GetTotalProcessMemoryUsage(&usage)) {
+    LOG(DFATAL) << "Getting process memory usage failed.";
+    return;
+  }
+  initial_memory_ = static_cast<int64_t>(usage);
 }
 
 template <class RequestEventEnum>
@@ -128,12 +132,15 @@ void RequestMetrics<RequestEventEnum>::FinishRecordingPerformanceMetrics() {
       static_cast<int64_t>(cpu_usage_percent * elapsed_time_microsec / 100.);
 
   // Memory usage
-  base::WorkingSetKBytes usage;
-  process_metrics_->GetWorkingSetKBytes(&usage);
+  size_t usage = 0;
+  if (!GetTotalProcessMemoryUsage(&usage)) {
+    LOG(DFATAL) << "Getting process memory usage failed.";
+    return;
+  }
   const int64_t memory_usage_kb =
-      static_cast<int64_t>(usage.priv) - initial_memory_;
+      static_cast<int64_t>(usage) - initial_memory_;
 
-  metrics_library_.SendToUMA(name_base_ + kPrivateMemoryDeltaSuffix,
+  metrics_library_.SendToUMA(name_base_ + kTotalMemoryDeltaSuffix,
                              memory_usage_kb,
                              kMemoryDeltaMinKb,
                              kMemoryDeltaMaxKb,
