@@ -201,12 +201,46 @@ PCI_IDS += [
   "8086:9d4b",
   # PCH SPI
   "8086:9d24",
+  # SATA
+  "8086:02d3",
+  # RAM memory
+  "8086:02ef",
+  # ISA bridge
+  "8086:0284",
+  # Communication controller
+  "8086:02e0",
+  # Network controller
+  "8086:02f0",
+  # Serial bus controller
+  "8086:02a4",
+  # USB controller
+  "8086:02ed",
+  # Graphics
+  "8086:9b41",
+  # DSP
+  "8086:02f9",
+  # Host bridge
+  "8086:9b61",
 ]
 
 # Samsung
 PCI_IDS += [
   # NVMe KUS030205M-B001
   "144d:a806",
+  # NVMe MZVLB256HAHQ
+  "144d:a808",
+]
+
+# Lite-on
+PCI_IDS += [
+  # 3C07110288
+  "14a4:9100",
+]
+
+# Seagate
+PCI_IDS += [
+  # ZP256CM30011
+  "7089:5012",
 ]
 
 ################################################################################
