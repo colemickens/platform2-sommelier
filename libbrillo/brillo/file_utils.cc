@@ -354,7 +354,6 @@ base::ScopedFD OpenFifoSafely(const base::FilePath& path,
 base::ScopedFD MkdirRecursively(const base::FilePath& full_path, mode_t mode) {
   std::vector<std::string> components;
   full_path.GetComponents(&components);
-  LOG(INFO) << "MkdirRecursively(" << full_path.value() << ", " << mode << ");";
 
   auto itr = components.begin();
   if (!full_path.IsAbsolute() || itr == components.end()) {
