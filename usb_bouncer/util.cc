@@ -163,6 +163,11 @@ bool ValidateRule(const std::string& rule) {
 }
 
 base::FilePath GetUserDBDir() {
+  // If D-Bus is inaccessible, it is early boot and the user hasn't logged in.
+  if (!base::DirectoryExists(base::FilePath(kDBusPath))) {
+    return base::FilePath("");
+  }
+
   scoped_refptr<dbus::Bus> bus;
   auto session_manager_proxy = SetUpDBus(bus);
 
@@ -186,6 +191,11 @@ base::FilePath GetUserDBDir() {
 }
 
 bool IsLockscreenShown() {
+  // If D-Bus is inaccessible, it is early boot and the lock-screen isn't shown.
+  if (!base::DirectoryExists(base::FilePath(kDBusPath))) {
+    return false;
+  }
+
   scoped_refptr<dbus::Bus> bus;
   auto session_manager_proxy = SetUpDBus(bus);
 

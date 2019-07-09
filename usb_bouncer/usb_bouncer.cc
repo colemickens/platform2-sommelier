@@ -28,6 +28,8 @@ void PrintUsage() {
 )");
 }
 
+static constexpr char kLogPath[] = "/dev/log";
+
 void DropPrivileges() {
   ScopedMinijail j(minijail_new());
   minijail_change_user(j.get(), usb_bouncer::kUsbBouncerUser);
@@ -44,16 +46,19 @@ void DropPrivileges() {
   minijail_namespace_uts(j.get());
   minijail_namespace_vfs(j.get());
   if (minijail_enter_pivot_root(j.get(), "/mnt/empty") != 0) {
-    PLOG(FATAL) << "minijail_enter_pivot_root() failed.";
+    PLOG(FATAL) << "minijail_enter_pivot_root() failed";
   }
   if (minijail_bind(j.get(), "/", "/", 0 /*writable*/)) {
-    PLOG(FATAL) << "minijail_bind(\"/\") failed.";
+    PLOG(FATAL) << "minijail_bind(\"/\") failed";
   }
   if (minijail_bind(j.get(), "/proc", "/proc", 0 /*writable*/)) {
-    PLOG(FATAL) << "minijail_bind(\"/\") failed.";
+    PLOG(FATAL) << "minijail_bind(\"/\") failed";
   }
-  if (minijail_bind(j.get(), "/dev/log", "/dev/log", 0 /*writable*/)) {
-    PLOG(FATAL) << "minijail_bind(\"/dev/log\") failed.";
+  if (!base::PathExists(base::FilePath(kLogPath))) {
+    LOG(WARNING) << "Path \"" << kLogPath << "\" doesn't exist; "
+                 << "logging via syslog won't work for this run.";
+  } else if (minijail_bind(j.get(), kLogPath, kLogPath, 0 /*writable*/)) {
+    PLOG(FATAL) << "minijail_bind(\"" << kLogPath << "\") failed";
   }
 
   // "usb_bouncer genrules" writes to stdout.
@@ -62,27 +67,34 @@ void DropPrivileges() {
   minijail_mount_dev(j.get());
   minijail_mount_tmp(j.get());
   if (minijail_bind(j.get(), "/sys", "/sys", 0 /*writable*/) != 0) {
-    PLOG(FATAL) << "minijail_bind(\"/sys\") failed.";
+    PLOG(FATAL) << "minijail_bind(\"/sys\") failed";
   }
   if (minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs",
                                MS_NOSUID | MS_NOEXEC | MS_NODEV,
                                "mode=0755,size=10M") != 0) {
-    PLOG(FATAL) << "minijail_mount_with_data(\"/run\") failed.";
+    PLOG(FATAL) << "minijail_mount_with_data(\"/run\") failed";
   }
   std::string global_db_path("/");
   global_db_path.append(usb_bouncer::kDefaultGlobalDir);
   if (minijail_bind(j.get(), global_db_path.c_str(), global_db_path.c_str(),
                     1 /*writable*/) != 0) {
-    PLOG(FATAL) << "minijail_bind(\"" << global_db_path << "\") failed.";
+    PLOG(FATAL) << "minijail_bind(\"" << global_db_path << "\") failed";
   }
-  constexpr char dbus_path[] = "/run/dbus";
-  if (minijail_bind(j.get(), dbus_path, dbus_path, 0 /*writable*/) != 0) {
-    PLOG(FATAL) << "minijail_bind(\"" << dbus_path << "\") failed.";
+
+  if (!base::DirectoryExists(base::FilePath(usb_bouncer::kDBusPath))) {
+    LOG(WARNING) << "Path \"" << usb_bouncer::kDBusPath << "\" doesn't exist; "
+                 << "assuming user is not yet logged in to the system.";
+  } else if (minijail_bind(j.get(), usb_bouncer::kDBusPath,
+                           usb_bouncer::kDBusPath, 0 /*writable*/) != 0) {
+    PLOG(FATAL) << "minijail_bind(\"" << usb_bouncer::kDBusPath << "\") failed";
   }
 
   minijail_remount_mode(j.get(), MS_SLAVE);
   // minijail_bind was not used because the MS_REC flag is needed.
-  if (minijail_mount(j.get(), usb_bouncer::kUserDbParentDir,
+  if (!base::DirectoryExists(base::FilePath(usb_bouncer::kUserDbParentDir))) {
+    LOG(WARNING) << "Path \"" << usb_bouncer::kUserDbParentDir
+                 << "\" doesn't exist; userdb will be inaccessible this run.";
+  } else if (minijail_mount(j.get(), usb_bouncer::kUserDbParentDir,
                      usb_bouncer::kUserDbParentDir, "none",
                      MS_BIND | MS_REC) != 0) {
     PLOG(FATAL) << "minijail_mount(\"/" << usb_bouncer::kUserDbParentDir
@@ -99,7 +111,7 @@ void DropPrivileges() {
 
 EntryManager* GetEntryManagerOrDie() {
   if (!EntryManager::CreateDefaultGlobalDB()) {
-    LOG(FATAL) << "Unable to create default global DB";
+    LOG(FATAL) << "Unable to create default global DB!";
   }
   DropPrivileges();
   EntryManager* entry_manager = EntryManager::GetInstance();
@@ -187,7 +199,15 @@ int HandleUserLogin(const std::vector<std::string>& argv) {
 
 int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
-  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
+
+  // Logging may not be ready at early boot in which case it is ok if the logs
+  // are lost.
+  int log_flags = brillo::kLogToStderr;
+  if (base::PathExists(base::FilePath(kLogPath))) {
+    log_flags |= brillo::kLogToSyslog;
+  }
+  brillo::InitLog(log_flags);
+
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   const auto& args = cl->argv();
 
