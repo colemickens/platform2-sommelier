@@ -2393,6 +2393,7 @@ void AttestationService::CreateCertificateRequestTask(
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
   }
+  KeyType key_type = request.key_type();
   std::string key_blob;
   std::string public_key_der;
   std::string public_key_tpm_format;
@@ -2401,7 +2402,7 @@ void AttestationService::CreateCertificateRequestTask(
   CertifiedKey key;
   const auto& identity_data = database_pb.identities().Get(identity);
   if (!tpm_utility_->CreateCertifiedKey(
-          KEY_TYPE_RSA, KEY_USAGE_SIGN,
+          key_type, KEY_USAGE_SIGN,
           identity_data.identity_key().identity_key_blob(), nonce, &key_blob,
           &public_key_der, &public_key_tpm_format, &key_info, &proof)) {
     LOG(ERROR) << __func__ << ": Failed to create a key.";
@@ -2414,7 +2415,7 @@ void AttestationService::CreateCertificateRequestTask(
   key.set_public_key_tpm_format(public_key_tpm_format);
   key.set_certified_key_info(key_info);
   key.set_certified_key_proof(proof);
-  key.set_key_type(KEY_TYPE_RSA);
+  key.set_key_type(key_type);
   key.set_key_usage(KEY_USAGE_SIGN);
   std::string message_id;
   if (!CreateCertificateRequestInternal(request.aca_type(),
