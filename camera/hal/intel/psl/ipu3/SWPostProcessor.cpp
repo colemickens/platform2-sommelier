@@ -309,6 +309,11 @@ status_t SWPostProcessor::processFrame(std::shared_ptr<CameraBuffer>& input,
             if (status != OK) {
                 LOGE("@%s, convertJpeg fails, status:%d", __FUNCTION__, status);
             }
+        } else {
+            // We should still put the result into |output| even if it is not encoded to Jpeg.
+            lockBuffer(finalScaledBuf);
+            lockBuffer(output);
+            ImageScalerCore::scaleFrame(finalScaledBuf, output);
         }
     }
 
