@@ -291,7 +291,7 @@ bool Platform::Unmount(const FilePath& path, bool lazy, bool* was_busy) {
 void Platform::LazyUnmount(const FilePath& path) {
   if (umount2(path.value().c_str(), MNT_DETACH | UMOUNT_NOFOLLOW)) {
     if (errno != EBUSY) {
-      PLOG(ERROR) << "Lazy unmount failed!";
+      PLOG(ERROR) << "Lazy unmount failed";
     }
   }
 }

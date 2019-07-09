@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Contains the implementation of class Mount
+// Contains the implementation of class Mount.
 
 #include "cryptohome/mount.h"
 
@@ -162,7 +162,7 @@ Mount::~Mount() {
 }
 
 bool Mount::Init(Platform* platform, Crypto* crypto,
-                 UserOldestActivityTimestampCache *cache,
+                 UserOldestActivityTimestampCache* cache,
                  PreMountCallback pre_mount_callback) {
   platform_ = platform;
   crypto_ = crypto;
@@ -185,7 +185,7 @@ bool Mount::Init(Platform* platform, Crypto* crypto,
 
   // Get the user id and group id of the default user
   if (!platform_->GetUserId(kDefaultSharedUser, &default_user_,
-                           &default_group_)) {
+                            &default_group_)) {
     result = false;
   }
 
@@ -839,7 +839,7 @@ bool Mount::SetUpEphemeralCryptohome(const FilePath& source_path) {
   };
   for (const auto& path : user_files_paths) {
     if (platform_->DirectoryExists(path))
-        continue;
+      continue;
 
     if (!platform_->CreateDirectory(path) ||
         !platform_->SetOwnership(path, default_user_, default_group_, true)) {
@@ -910,7 +910,8 @@ void Mount::ForceUnmount(const FilePath& src, const FilePath& dest) {
   // Try an immediate unmount.
   bool was_busy;
   if (!platform_->Unmount(dest, false, &was_busy)) {
-    LOG(ERROR) << "Couldn't unmount vault immediately, was_busy = " << was_busy;
+    LOG(ERROR) << "Couldn't unmount '" << dest.value()
+               << "' immediately, was_busy=" << std::boolalpha << was_busy;
     if (was_busy) {
       std::vector<ProcessInformation> processes;
       platform_->GetProcessesWithOpenFiles(dest, &processes);
@@ -2086,7 +2087,7 @@ bool Mount::MountHomesAndDaemonStores(const std::string& username,
   if (legacy_mount_ && !MountLegacyHome(user_home))
     return false;
 
-  // Mount  /home/chronos/u-<user_hash>
+  // Mount /home/chronos/u-<user_hash>
   const FilePath new_user_path = GetNewUserPath(username);
   if (!RememberBind(user_home, new_user_path))
     return false;
