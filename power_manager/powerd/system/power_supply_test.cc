@@ -701,6 +701,35 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_EQ(Role::DEDICATED_SOURCE, status.ports[1].role);
   EXPECT_TRUE(status.ports[1].active_by_default);
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
+
+  // USB_PD_DRP should report as dual role.
+  WriteValue(line2_dir, "type", "USB_PD_DRP");
+  ASSERT_TRUE(UpdateStatus(&status));
+  ASSERT_EQ(Role::DUAL_ROLE, status.ports[1].role);
+
+  // USB should report as dual role if usb_type selects PD_DRP.
+  WriteValue(line2_dir, "type", "USB");
+  WriteValue(line2_dir, "usb_type",
+             "Unknown SDP DCP CDP C PD [PD_DRP] BrickID");
+  ASSERT_TRUE(UpdateStatus(&status));
+  ASSERT_EQ(Role::DUAL_ROLE, status.ports[1].role);
+
+  // USB should not report as dual role if usb_type is craaaazy.
+  const char* const kInvalidUsbTypeValues[] = {
+      "Unknown SDP DCP CDP C PD PD_DRP BrickID",
+      "Unknown SDP DCP CDP C PD [] BrickID",
+      "Unknown SDP DCP CDP C [PD] PD_DRP BrickID",
+      "Unknown SDP DCP CDP C PD ]PD_DRP[ BrickID",
+      "[",
+      "]",
+      "[]"};
+  for (size_t i = 0; i < arraysize(kInvalidUsbTypeValues); ++i) {
+    const char* kType = kInvalidUsbTypeValues[i];
+    SCOPED_TRACE(kType);
+    WriteValue(line2_dir, "usb_type", kType);
+    ASSERT_TRUE(UpdateStatus(&status));
+    ASSERT_EQ(Role::DEDICATED_SOURCE, status.ports[1].role);
+  }
 }
 
 TEST_F(PowerSupplyTest, ChargingPortNames) {
