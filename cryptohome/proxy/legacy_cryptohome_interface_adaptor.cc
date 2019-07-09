@@ -9,9 +9,29 @@
 
 #include <base/bind.h>
 
+#include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 #include "cryptohome/proxy/legacy_cryptohome_interface_adaptor.h"
 
 namespace cryptohome {
+
+void LegacyCryptohomeInterfaceAdaptor::RegisterAsync(
+    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
+        completion_callback) {
+  // completion_callback is a callback that will be run when all method
+  // registration have finished. We don't have anything to run after completion
+  // so we'll just pass this along to libbrillo. This callback is typically used
+  // to signal to the DBus Daemon that method registration is complete
+  RegisterWithDBusObject(&dbus_object_);
+  dbus_object_.RegisterAsync(completion_callback);
+
+  // Register the dbus signal handlers
+  userdataauth_proxy_->RegisterDircryptoMigrationProgressSignalHandler(
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::OnDircryptoMigrationProgressSignal,
+          base::Unretained(this)),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::OnSignalConnectedHandler,
+                 base::Unretained(this)));
+}
 
 void LegacyCryptohomeInterfaceAdaptor::IsMounted(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
@@ -1454,10 +1474,28 @@ void LegacyCryptohomeInterfaceAdaptor::MigrateToDircrypto(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     const cryptohome::AccountIdentifier& in_account_id,
     const cryptohome::MigrateToDircryptoRequest& in_migrate_request) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<>>(std::move(response));
+
+  user_data_auth::StartMigrateToDircryptoRequest request;
+  *request.mutable_account_id() = in_account_id;
+  request.set_minimal_migration(in_migrate_request.minimal_migration());
+  userdataauth_proxy_->StartMigrateToDircryptoAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::MigrateToDircryptoOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::MigrateToDircryptoOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<>> response,
+    const user_data_auth::StartMigrateToDircryptoReply& reply) {
+  if (reply.error() != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    LOG(WARNING) << "StartMigrateToDircryptoAsync() failed with error code "
+                 << static_cast<int>(reply.error());
+  }
+  response->Return();
 }
 
 void LegacyCryptohomeInterfaceAdaptor::NeedsDircryptoMigration(
@@ -1559,6 +1597,23 @@ void LegacyCryptohomeInterfaceAdaptor::LockToSingleUserMountUntilReboot(
   response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
                            DBUS_ERROR_NOT_SUPPORTED,
                            "Method unimplemented yet");
+}
+
+void LegacyCryptohomeInterfaceAdaptor::OnDircryptoMigrationProgressSignal(
+    const user_data_auth::DircryptoMigrationProgress& progress) {
+  VirtualSendDircryptoMigrationProgressSignal(
+      dircrypto_data_migrator::MigrationHelper::ConvertDircryptoMigrationStatus(
+          progress.status()),
+      progress.current_bytes(), progress.total_bytes());
+}
+
+void LegacyCryptohomeInterfaceAdaptor::OnSignalConnectedHandler(
+    const std::string& interface, const std::string& signal, bool success) {
+  if (!success) {
+    LOG(ERROR)
+        << "Failure to connect DBus signal in cryptohome-proxy, interface="
+        << interface << ", signal=" << signal;
+  }
 }
 
 // A helper function which maps an integer to a valid CertificateProfile.

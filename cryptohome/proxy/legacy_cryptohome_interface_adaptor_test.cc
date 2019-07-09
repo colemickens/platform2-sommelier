@@ -50,6 +50,8 @@ class LegacyCryptohomeInterfaceAdaptorForTesting
   MOCK_METHOD3(VirtualSendAsyncCallStatusSignal, void(int32_t, bool, int32_t));
   MOCK_METHOD3(VirtualSendAsyncCallStatusWithDataSignal,
                void(int32_t, bool, const std::vector<uint8_t>&));
+  MOCK_METHOD3(VirtualSendDircryptoMigrationProgressSignal,
+               void(int32_t, uint64_t, uint64_t));
 };
 
 // Some common constants used for testing.
@@ -548,6 +550,71 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
   EXPECT_EQ(proxied_request.request_origin(), kRequestOrigin);
   EXPECT_EQ(proxied_request.certificate_profile(),
             attestation::ENTERPRISE_USER_CERTIFICATE);
+}
+
+// -------------------- MigrateToDircrypto Related Tests --------------------
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest, MigrateToDircryptoSuccess) {
+  // Note that failure case is NOT tested because this method does not return
+  // anything so the failure case is no different from the success case.
+
+  user_data_auth::StartMigrateToDircryptoRequest proxied_request;
+  EXPECT_CALL(userdataauth_, StartMigrateToDircryptoAsync(_, _, _, _))
+      .WillOnce(DoAll(
+          SaveArg<0>(&proxied_request),
+          Invoke([](const user_data_auth::StartMigrateToDircryptoRequest&
+                        in_request,
+                    const base::Callback<void(
+                        const user_data_auth::StartMigrateToDircryptoReply&)>&
+                        success_callback,
+                    const base::Callback<void(brillo::Error*)>& error_callback,
+                    int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+            user_data_auth::StartMigrateToDircryptoReply proxied_reply;
+            proxied_reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+            success_callback.Run(proxied_reply);
+          })));
+
+  bool called = false;
+  std::unique_ptr<MockDBusMethodResponse<>> response(
+      new MockDBusMethodResponse<>(nullptr));
+  response->set_return_callback(base::Bind(
+      [](bool* called_ptr) {
+        // Return can only be called once
+        ASSERT_FALSE(*called_ptr);
+        *called_ptr = true;
+      },
+      &called));
+
+  MigrateToDircryptoRequest request;
+  request.set_minimal_migration(true);
+  adaptor_->MigrateToDircrypto(std::move(response), account_, request);
+
+  // Verify that Return() is indeed called at least once.
+  ASSERT_TRUE(called);
+
+  // Verify that the parameters passed to DBus Proxy (New interface) is correct.
+  EXPECT_TRUE(proxied_request.minimal_migration());
+  EXPECT_EQ(proxied_request.account_id().account_id(), kUsername1);
+}
+
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
+       DircryptoMigrationProgressSignalSanity) {
+  constexpr uint64_t kCurrentBytes = 1234567890123ULL;
+  constexpr uint64_t kTotalBytes = 9876543210987ULL;
+  static_assert(kTotalBytes > kCurrentBytes,
+                "Incorrect constant test values in "
+                "DircryptoMigrationProgressSignalSanity");
+
+  user_data_auth::DircryptoMigrationProgress progress;
+  progress.set_status(user_data_auth::DIRCRYPTO_MIGRATION_SUCCESS);
+  progress.set_current_bytes(kCurrentBytes);
+  progress.set_total_bytes(kTotalBytes);
+
+  EXPECT_CALL(*adaptor_,
+              VirtualSendDircryptoMigrationProgressSignal(
+                  DIRCRYPTO_MIGRATION_SUCCESS, kCurrentBytes, kTotalBytes))
+      .WillOnce(Return());
+
+  adaptor_->OnDircryptoMigrationProgressSignalForTestingOnly(progress);
 }
 
 }  // namespace

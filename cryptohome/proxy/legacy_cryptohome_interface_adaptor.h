@@ -94,15 +94,7 @@ class LegacyCryptohomeInterfaceAdaptor
 
   void RegisterAsync(
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
-          completion_callback) {
-    // completion_callback is a callback that will be run when all method
-    // registration have finished. We don't have anything to run after
-    // completion so we'll just pass this along to libbrillo.
-    // This callback is typically used to signal to the DBus Daemon that method
-    // registration is complete
-    RegisterWithDBusObject(&dbus_object_);
-    dbus_object_.RegisterAsync(completion_callback);
-  }
+          completion_callback);
 
   // The actual dbus methods
   void IsMounted(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>>
@@ -486,6 +478,14 @@ class LegacyCryptohomeInterfaceAdaptor
           cryptohome::BaseReply>> response,
       const cryptohome::GetRsuDeviceIdRequest& in_request) override;
 
+  // This is a public version of OnDircryptoMigrationProgressSignal() that
+  // simply calls the protected version. This is only used for testing because
+  // the unit test cannot call the real protected version.
+  void OnDircryptoMigrationProgressSignalForTestingOnly(
+      const user_data_auth::DircryptoMigrationProgress& progress) {
+    OnDircryptoMigrationProgressSignal(progress);
+  }
+
  protected:
   // This constructor is reserved only for testing.
   LegacyCryptohomeInterfaceAdaptor(
@@ -525,6 +525,25 @@ class LegacyCryptohomeInterfaceAdaptor
       const std::vector<uint8_t>& in_data) {
     SendAsyncCallStatusWithDataSignal(in_async_id, in_return_status, in_data);
   }
+
+  // This is used in testing to be able to mock
+  // SendDircryptoMigrationProgressSignal
+  virtual void VirtualSendDircryptoMigrationProgressSignal(
+      int32_t in_status, uint64_t in_current_bytes, uint64_t in_total_bytes) {
+    SendDircryptoMigrationProgressSignal(in_status, in_current_bytes,
+                                         in_total_bytes);
+  }
+
+  // Signal forwarders
+
+  // Forwards DircryptoMigrationProgress Signal
+  void OnDircryptoMigrationProgressSignal(
+      const user_data_auth::DircryptoMigrationProgress& progress);
+
+  // Handles signal registration failure
+  void OnSignalConnectedHandler(const std::string& interface,
+                                const std::string& signal,
+                                bool success);
 
  private:
   // Method used as callbacks once the call to the new interface returns
@@ -603,6 +622,9 @@ class LegacyCryptohomeInterfaceAdaptor
   void Pkcs11TerminateOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<>> response,
       const user_data_auth::Pkcs11TerminateReply& reply);
+  void MigrateToDircryptoOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<>> response,
+      const user_data_auth::StartMigrateToDircryptoReply& reply);
   void NeedsDircryptoMigrationOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool>> response,
       const user_data_auth::NeedsDircryptoMigrationReply& reply);
