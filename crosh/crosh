@@ -1055,23 +1055,37 @@ cmd_connectivity() (
   /usr/bin/connectivity "$@"
 )
 
-USAGE_autest='[-scheduled]'
+USAGE_autest='[--scheduled]'
 HELP_autest='
   Trigger an auto-update against a **test** update server.
 
   WARNING: This may update to an untested version of Chrome OS which was never
   intended for end users!
 
-  To fake a scheduled update check use -scheduled.
+  The --scheduled option fakes a scheduled update.
 '
 cmd_autest() (
   local omaha_url="autest"
 
-  if [ "$1" = "-scheduled" ]; then
+  if [ "$1" = "--scheduled" ]; then
     # pretend that this is a scheduled check as opposed to an user-initiated
     # check for testing features that get enabled only on scheduled checks.
     omaha_url="autest-scheduled"
   fi
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      "--scheduled")
+        omaha_url="autest-scheduled"
+        ;;
+
+      *)
+        help "unknown option: $1"
+        return 1
+        ;;
+    esac
+    shift
+  done
 
   echo "Calling update_engine_client with omaha_url = $omaha_url"
   /usr/bin/update_engine_client "--omaha_url=$omaha_url"
