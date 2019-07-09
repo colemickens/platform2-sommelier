@@ -93,6 +93,7 @@ const char kSetCellularTransmitPowerDprGpioPref[] =
 const char kEnableConsoleDuringSuspendPref[] = "enable_console_during_suspend";
 const char kMaxDarkSuspendDelayTimeoutMsPref[] =
     "max_dark_suspend_delay_timeout_ms";
+const char kSuspendModePref[] = "suspend_mode";
 
 // Miscellaneous constants.
 const char kCrosFpInputDevName[] = "cros_fp_input";

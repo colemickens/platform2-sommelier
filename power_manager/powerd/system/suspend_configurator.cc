@@ -13,6 +13,22 @@
 namespace power_manager {
 namespace system {
 
+namespace {
+// Path to write to configure system suspend mode.
+static constexpr char kSuspendModePath[] = "/sys/power/mem_sleep";
+
+// suspend to idle (S0iX) suspend mode
+static constexpr char kSuspendModeFreeze[] = "s2idle";
+
+// shallow/standby(S1) suspend mode
+static constexpr char kSuspendModeShallow[] = "shallow";
+
+// deep sleep(S3) suspend mode
+static constexpr char kSuspendModeDeep[] = "deep";
+
+}  // namespace
+
+// Static.
 const base::FilePath SuspendConfigurator::kConsoleSuspendPath(
     "/sys/module/printk/parameters/console_suspend");
 
@@ -20,11 +36,27 @@ void SuspendConfigurator::Init(PrefsInterface* prefs) {
   DCHECK(prefs);
   prefs_ = prefs;
   ConfigureConsoleForSuspend();
+  ReadSuspendMode();
 }
 
 // TODO(crbug.com/941298) Move powerd_suspend script here eventually.
 void SuspendConfigurator::PrepareForSuspend(
     const base::TimeDelta& suspend_duration) {
+  base::FilePath suspend_mode_path = base::FilePath(kSuspendModePath);
+  if (!base::PathExists(GetPrefixedFilePath(suspend_mode_path))) {
+    LOG(INFO) << "File " << kSuspendModePath
+              << " does not exist. Not configuring suspend mode";
+  } else if (base::WriteFile(GetPrefixedFilePath(suspend_mode_path),
+                             suspend_mode_.c_str(),
+                             suspend_mode_.size()) != suspend_mode_.size()) {
+    PLOG(ERROR) << "Failed to write " << suspend_mode_ << " to "
+                << kSuspendModePath;
+  } else {
+    LOG(INFO) << "Suspend mode configured to " << suspend_mode_;
+  }
+
+  // Do this at the end so that system spends close to |suspend_duration| in
+  // suspend.
   if (suspend_duration != base::TimeDelta()) {
     alarm_.Start(FROM_HERE, suspend_duration, base::Bind(&base::DoNothing));
   }
@@ -53,6 +85,25 @@ void SuspendConfigurator::ConfigureConsoleForSuspend() {
   }
   LOG(INFO) << "Console during suspend is "
             << (enable_console ? "enabled" : "disabled");
+}
+
+void SuspendConfigurator::ReadSuspendMode() {
+  bool pref_val = true;
+
+  // If s2idle is enabled, we write "freeze" to "/sys/power/state". Let us also
+  // write "s2idle" to "/sys/power/mem_sleep" just to be safe.
+  if (prefs_->GetBool(kSuspendToIdlePref, &pref_val) && pref_val) {
+    suspend_mode_ = kSuspendModeFreeze;
+  } else if (prefs_->GetString(kSuspendModePref, &suspend_mode_)) {
+    if (suspend_mode_ != kSuspendModeDeep &&
+        suspend_mode_ != kSuspendModeShallow &&
+        suspend_mode_ != kSuspendModeFreeze) {
+      LOG(WARNING) << "Invalid suspend mode pref : " << suspend_mode_;
+      suspend_mode_ = kSuspendModeDeep;
+    }
+  } else {
+    suspend_mode_ = kSuspendModeDeep;
+  }
 }
 
 base::FilePath SuspendConfigurator::GetPrefixedFilePath(

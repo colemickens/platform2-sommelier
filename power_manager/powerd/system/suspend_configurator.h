@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_SUSPEND_CONFIGURATOR_H_
 #define POWER_MANAGER_POWERD_SYSTEM_SUSPEND_CONFIGURATOR_H_
 
+#include <string>
+
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/time/time.h>
@@ -56,6 +58,10 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
  private:
   // Configures whether console should be enabled/disabled during suspend.
   void ConfigureConsoleForSuspend();
+
+  // Reads preferences and sets |suspend_mode_|.
+  void ReadSuspendMode();
+
   // Returns new FilePath after prepending |prefix_path_for_testing_| to
   // given file path.
   base::FilePath GetPrefixedFilePath(const base::FilePath& file_path) const;
@@ -68,6 +74,10 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
   // Timer to wake the system from suspend. Set when suspend_duration is passed
   // to  PrepareForSuspend().
   timers::SimpleAlarmTimer alarm_;
+
+  // Mode for suspend. One of Suspend-to-idle, Power-on-suspend, or
+  // Suspend-to-RAM.
+  std::string suspend_mode_;
 
   DISALLOW_COPY_AND_ASSIGN(SuspendConfigurator);
 };

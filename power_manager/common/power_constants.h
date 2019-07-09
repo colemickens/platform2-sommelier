@@ -236,6 +236,11 @@ extern const char kEnableConsoleDuringSuspendPref[];
 // delays) after a dark resume.
 extern const char kMaxDarkSuspendDelayTimeoutMsPref[];
 
+// Mode for system suspend. Valid values are "s2idle", "shallow" and "deep".
+// Please look at https://www.kernel.org/doc/Documentation/power/states.txt for
+// more information.
+extern const char kSuspendModePref[];
+
 // Miscellaneous constants.
 
 // Name of the cros_fp fingerprint sensor input device.

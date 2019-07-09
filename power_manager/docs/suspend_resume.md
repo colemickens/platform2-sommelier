@@ -95,6 +95,22 @@ debugging S0iX, perform the following steps
 # restart powerd
 ```
 
+## Configuring suspend mode
+
+Please look at [power states] documentation for info on suspend modes. If
+`suspend_to_idle` preference is set then suspend mode is defaulted to 's2idle'.
+Otherwise suspend mode can be configured using `suspend_mode` preference.
+Currently valid suspend modes are `s2idle`, `shallow` and `deep`. To configure
+suspend mode temporarily for debugging, perform the following steps
+
+```sh
+# echo mode > /var/lib/power_manager/suspend_mode
+# restart powerd
+```
+
+Note that if suspend_to_idle is enabled, `suspend_mode` preference will not
+matter.
+
 ## Firmware Updates
 
 powerd will avoid suspending (or shutting down) if it believes that the firmware
@@ -107,3 +123,4 @@ including `flashrom` and `battery_tool`. There are additional details on the
 [suspend delays]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/power_manager/suspend.proto
 [/sys/power/wakeup_count]: https://lwn.net/Articles/393314/
 [flashrom]: https://dev.chromium.org/chromium-os/packages/cros-flashrom
+[power states]: https://www.kernel.org/doc/Documentation/power/states.txt

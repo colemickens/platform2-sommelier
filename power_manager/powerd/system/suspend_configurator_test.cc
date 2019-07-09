@@ -17,6 +17,20 @@
 namespace power_manager {
 namespace system {
 
+namespace {
+// Path to write to configure system suspend mode.
+static constexpr char kSuspendModePath[] = "/sys/power/mem_sleep";
+
+// suspend to idle (S0iX) suspend mode
+static constexpr char kSuspendModeFreeze[] = "s2idle";
+
+// shallow/standby(S1) suspend mode
+static constexpr char kSuspendModeShallow[] = "shallow";
+
+// deep sleep(S3) suspend mode
+static constexpr char kSuspendModeDeep[] = "deep";
+}  // namespace
+
 class SuspendConfiguratorTest : public ::testing::Test {
  public:
   SuspendConfiguratorTest() {
@@ -26,9 +40,14 @@ class SuspendConfiguratorTest : public ::testing::Test {
 
     base::FilePath console_suspend_path = temp_root_dir_.GetPath().Append(
         SuspendConfigurator::kConsoleSuspendPath.value().substr(1));
+    base::FilePath suspend_mode_path = temp_root_dir_.GetPath().Append(
+        std::string(kSuspendModePath).substr(1));
+
+    // Creates empty files.
     CHECK(base::CreateDirectory(console_suspend_path.DirName()));
-    // Creates empty file.
     CHECK_EQ(base::WriteFile(console_suspend_path, "", 0), 0);
+    CHECK(base::CreateDirectory(suspend_mode_path.DirName()));
+    CHECK_EQ(base::WriteFile(suspend_mode_path, "", 0), 0);
   }
 
   ~SuspendConfiguratorTest() override = default;
@@ -37,6 +56,12 @@ class SuspendConfiguratorTest : public ::testing::Test {
   // Returns |orig| rooted within the temporary root dir created for testing.
   base::FilePath GetPath(const base::FilePath& orig) const {
     return temp_root_dir_.GetPath().Append(orig.value().substr(1));
+  }
+
+  std::string ReadFile(const base::FilePath& file) {
+    std::string file_contents;
+    EXPECT_TRUE(base::ReadFileToString(file, &file_contents));
+    return file_contents;
   }
 
   base::ScopedTempDir temp_root_dir_;
@@ -50,10 +75,8 @@ TEST_F(SuspendConfiguratorTest, TestDefaultConsoleSuspendForS3) {
       GetPath(SuspendConfigurator::kConsoleSuspendPath);
   prefs_.SetInt64(kSuspendToIdlePref, 0);
   suspend_configurator_.Init(&prefs_);
-  std::string file_contents;
-  ASSERT_TRUE(base::ReadFileToString(console_suspend_path, &file_contents));
   // Make sure console is enabled if system suspends to S3.
-  EXPECT_EQ("N", file_contents);
+  EXPECT_EQ("N", ReadFile(console_suspend_path));
 }
 
 // Test console is disabled during supend to S0iX by default.
@@ -62,10 +85,8 @@ TEST_F(SuspendConfiguratorTest, TestDefaultConsoleSuspendForS0ix) {
       GetPath(SuspendConfigurator::kConsoleSuspendPath);
   prefs_.SetInt64(kSuspendToIdlePref, 1);
   suspend_configurator_.Init(&prefs_);
-  std::string file_contents;
-  ASSERT_TRUE(base::ReadFileToString(console_suspend_path, &file_contents));
   // Make sure console is disabled if S0ix is enabled.
-  EXPECT_EQ("Y", file_contents);
+  EXPECT_EQ("Y", ReadFile(console_suspend_path));
 }
 
 // Test default value to suspend console is overwritten if
@@ -76,10 +97,46 @@ TEST_F(SuspendConfiguratorTest, TestDefaultConsoleSuspendOverwritten) {
   prefs_.SetInt64(kSuspendToIdlePref, 1);
   prefs_.SetInt64(kEnableConsoleDuringSuspendPref, 1);
   suspend_configurator_.Init(&prefs_);
-  std::string file_contents;
-  ASSERT_TRUE(base::ReadFileToString(console_suspend_path, &file_contents));
   // Make sure console is not disabled though the default is to disable it.
-  EXPECT_EQ("N", file_contents);
+  EXPECT_EQ("N", ReadFile(console_suspend_path));
+}
+
+// Test that suspend mode is set to |kSuspendModeFreeze| if suspend_to_idle is
+// enabled.
+TEST_F(SuspendConfiguratorTest, TestSuspendModeIdle) {
+  base::FilePath suspend_mode_path = GetPath(base::FilePath(kSuspendModePath));
+  // Suspend mode should be configured to |kSuspendModeFreeze| even when
+  // |kSuspendModePref| is configured to something else.
+  prefs_.SetInt64(kSuspendToIdlePref, 1);
+  prefs_.SetString(kSuspendModePref, kSuspendModeShallow);
+  suspend_configurator_.Init(&prefs_);
+
+  suspend_configurator_.PrepareForSuspend(base::TimeDelta());
+  EXPECT_EQ(kSuspendModeFreeze, ReadFile(suspend_mode_path));
+}
+
+// Test that suspend mode is set to |kSuspendModeShallow| if |kSuspendModePref|
+// is set to same when s0ix is not enabled.
+TEST_F(SuspendConfiguratorTest, TestSuspendModeShallow) {
+  base::FilePath suspend_mode_path = GetPath(base::FilePath(kSuspendModePath));
+  prefs_.SetInt64(kSuspendToIdlePref, 0);
+  prefs_.SetString(kSuspendModePref, kSuspendModeShallow);
+  suspend_configurator_.Init(&prefs_);
+
+  suspend_configurator_.PrepareForSuspend(base::TimeDelta());
+  EXPECT_EQ(kSuspendModeShallow, ReadFile(suspend_mode_path));
+}
+
+// Test that suspend mode is set to |kSuspendModeDeep| if |kSuspendModePref|
+// is invalid .
+TEST_F(SuspendConfiguratorTest, TestSuspendModeDeep) {
+  base::FilePath suspend_mode_path = GetPath(base::FilePath(kSuspendModePath));
+  prefs_.SetInt64(kSuspendToIdlePref, 0);
+  prefs_.SetString(kSuspendModePref, "Junk");
+  suspend_configurator_.Init(&prefs_);
+
+  suspend_configurator_.PrepareForSuspend(base::TimeDelta());
+  EXPECT_EQ(kSuspendModeDeep, ReadFile(suspend_mode_path));
 }
 
 }  // namespace system
