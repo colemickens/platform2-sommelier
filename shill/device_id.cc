@@ -76,6 +76,29 @@ std::unique_ptr<DeviceId> ReadDeviceId(DeviceId::BusType bus_type,
 
 }  // namespace
 
+// static
+std::unique_ptr<DeviceId> DeviceId::CreateFromSysfs(
+    const base::FilePath& syspath) {
+  if (syspath.empty()) {
+    return nullptr;
+  }
+
+  base::FilePath subsystem;
+  if (!base::ReadSymbolicLink(syspath.Append("subsystem"), &subsystem)) {
+    return nullptr;
+  }
+
+  std::string bus_type = subsystem.BaseName().value();
+  if (bus_type == "pci") {
+    return ReadDeviceId(DeviceId::BusType::kPci, syspath.Append("vendor"),
+                        syspath.Append("product"));
+  } else if (bus_type == "usb") {
+    return ReadDeviceId(DeviceId::BusType::kUsb, syspath.Append("idVendor"),
+                        syspath.Append("idProduct"));
+  }
+  return nullptr;
+}
+
 std::string DeviceId::AsString() const {
   const char* bus_name;
   switch (bus_type_) {
@@ -128,29 +151,6 @@ bool DeviceId::Match(const DeviceId& pattern) const {
   // product id.
   return product_id_.has_value() &&
          product_id_.value() == pattern.product_id_.value();
-}
-
-std::unique_ptr<DeviceId> ReadDeviceIdFromSysfs(
-    const base::FilePath& syspath) {
-  if (syspath.empty()) {
-    return nullptr;
-  }
-
-  base::FilePath subsystem;
-  if (!base::ReadSymbolicLink(syspath.Append("subsystem"), &subsystem)) {
-    return nullptr;
-  }
-
-  std::string bus_type = subsystem.BaseName().value();
-  if (bus_type == "pci") {
-    return ReadDeviceId(DeviceId::BusType::kPci, syspath.Append("vendor"),
-                        syspath.Append("product"));
-  }
-  if (bus_type == "usb") {
-    return ReadDeviceId(DeviceId::BusType::kUsb, syspath.Append("idVendor"),
-                        syspath.Append("idProduct"));
-  }
-  return nullptr;
 }
 
 }  // namespace shill

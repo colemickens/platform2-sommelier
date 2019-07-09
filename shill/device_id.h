@@ -26,6 +26,11 @@ class DeviceId {
     kUsb,
   };
 
+  // Takes a device |syspath| as would be given by e.g. udev and tries to read
+  // the bus type and device identifiers.
+  static std::unique_ptr<DeviceId> CreateFromSysfs(
+      const base::FilePath& syspath);
+
   // DeviceId matching all devices by a particular bus type.
   explicit constexpr DeviceId(BusType bus_type)
       : bus_type_(bus_type) {}
@@ -59,10 +64,6 @@ class DeviceId {
   base::Optional<uint16_t> vendor_id_;
   base::Optional<uint16_t> product_id_;
 };
-
-// Takes a device |syspath| as would be given by e.g. udev and tries to read
-// the bus type and device identifiers.
-std::unique_ptr<DeviceId> ReadDeviceIdFromSysfs(const base::FilePath& syspath);
 
 }  // namespace shill
 

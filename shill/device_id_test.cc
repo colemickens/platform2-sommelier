@@ -115,7 +115,8 @@ class DeviceIdFromSysfsTest : public testing::Test {
 
   void ExpectDeviceId(const std::string& device_name,
                       const DeviceId& expected_device_id) const {
-    const auto device_id = ReadDeviceIdFromSysfs(GetDevicePath(device_name));
+    const auto device_id =
+        DeviceId::CreateFromSysfs(GetDevicePath(device_name));
     ASSERT_TRUE(device_id);
     EXPECT_TRUE(device_id->Match(expected_device_id))
         << *device_id << " does not match " << expected_device_id;
@@ -142,7 +143,7 @@ const char DeviceIdFromSysfsTest::kDeviceName1[] = "eth1";
 
 TEST_F(DeviceIdFromSysfsTest, UnknownSubsystem) {
   CreateDeviceSysfs(kDeviceName1, "unknown_subsystem");
-  EXPECT_FALSE(ReadDeviceIdFromSysfs(GetDevicePath(kDeviceName1)));
+  EXPECT_FALSE(DeviceId::CreateFromSysfs(GetDevicePath(kDeviceName1)));
 }
 
 TEST_F(DeviceIdFromSysfsTest, PciDevice) {

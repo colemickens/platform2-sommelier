@@ -1248,7 +1248,7 @@ void CellularCapability3gpp::OnModemHardwareRevisionChanged(
 }
 
 void CellularCapability3gpp::OnModemDevicePathChanged(const string& path) {
-  cellular()->set_device_id(ReadDeviceIdFromSysfs(base::FilePath(path)));
+  cellular()->set_device_id(DeviceId::CreateFromSysfs(base::FilePath(path)));
 }
 
 void CellularCapability3gpp::OnModemStateChanged(Cellular::ModemState state) {
