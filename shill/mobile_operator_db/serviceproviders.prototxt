@@ -7261,17 +7261,33 @@ mno {
     uuid : "3f473ca4-ec5a-49bf-9b0d-3643cccf6a3e"
     country : "jp"
     localized_name {
-      name : "au(KDDI)"
+      name : "au by KDDI"
     }
+    mccmnc : "44007"
+    mccmnc : "44008"
+    mccmnc : "44050"
+    mccmnc : "44051"
+    mccmnc : "44052"
+    mccmnc : "44053"
+    mccmnc : "44054"
+    mccmnc : "44055"
+    mccmnc : "44056"
+    mccmnc : "44070"
+    mccmnc : "44071"
+    mccmnc : "44072"
+    mccmnc : "44073"
+    mccmnc : "44074"
+    mccmnc : "44075"
+    mccmnc : "44076"
+    mccmnc : "44077"
+    mccmnc : "44079"
+    mccmnc : "44088"
+    mccmnc : "44089"
+    mccmnc : "44170"
     mobile_apn {
-      apn : ""
-      localized_name {
-        name : "au(KDDI)"
-      }
-      username : "au@au-win.ne.jp"
+      apn : "au.au-net.ne.jp"
+      username : "user@au.au-net.ne.jp"
       password : "au"
-      dns : "210.196.3.183"
-      dns : "210.141.112.163"
     }
   }
 }
