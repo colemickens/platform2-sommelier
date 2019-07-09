@@ -30,6 +30,14 @@ void FirmwareDirectoryStub::AddMainFirmware(const std::string& device_id,
   main_fw_info_.insert(std::make_pair(device_id, info));
 }
 
+void FirmwareDirectoryStub::AddMainFirmwareForCarrier(
+    const std::string& device_id,
+    const std::string& carrier_id,
+    FirmwareFileInfo info) {
+  main_fw_info_for_carrier_.insert(
+      std::make_pair(std::make_pair(device_id, carrier_id), info));
+}
+
 void FirmwareDirectoryStub::AddCarrierFirmware(const std::string& device_id,
                                                const std::string& carrier_id,
                                                FirmwareFileInfo info) {
@@ -40,12 +48,21 @@ void FirmwareDirectoryStub::AddCarrierFirmware(const std::string& device_id,
 FirmwareDirectory::Files FirmwareDirectoryStub::FindFirmware(
     const std::string& device_id, std::string* carrier_id) {
   FirmwareDirectory::Files res;
-
   FirmwareFileInfo info;
-  if (GetValue(main_fw_info_, device_id, &info))
+
+  if (carrier_id) {
+    if (FindCarrierFirmware(device_id, carrier_id, &info))
+      res.carrier_firmware = info;
+    if (GetValue(main_fw_info_for_carrier_,
+                 std::make_pair(device_id, *carrier_id), &info)) {
+      res.main_firmware = info;
+    }
+  }
+
+  if (!res.main_firmware.has_value() &&
+      GetValue(main_fw_info_, device_id, &info)) {
     res.main_firmware = info;
-  if (carrier_id && FindCarrierFirmware(device_id, carrier_id, &info))
-    res.carrier_firmware = info;
+  }
 
   return res;
 }

@@ -20,6 +20,9 @@ class FirmwareDirectoryStub : public FirmwareDirectory {
   FirmwareDirectoryStub() = default;
 
   void AddMainFirmware(const std::string& device_id, FirmwareFileInfo info);
+  void AddMainFirmwareForCarrier(const std::string& device_id,
+                                 const std::string& carrier_id,
+                                 FirmwareFileInfo info);
   void AddCarrierFirmware(const std::string& device_id,
                           const std::string& carrier_id,
                           FirmwareFileInfo info);
@@ -29,13 +32,16 @@ class FirmwareDirectoryStub : public FirmwareDirectory {
                                         std::string* carrier_id) override;
 
  private:
+  using CarrierFirmwareMap =
+      std::map<std::pair<std::string, std::string>, FirmwareFileInfo>;
+
   bool FindCarrierFirmware(const std::string& device_id,
                            std::string* carrier_id,
                            FirmwareFileInfo* out_info);
 
   std::map<std::string, FirmwareFileInfo> main_fw_info_;
-  std::map<std::pair<std::string, std::string>, FirmwareFileInfo>
-      carrier_fw_info_;
+  CarrierFirmwareMap main_fw_info_for_carrier_;
+  CarrierFirmwareMap carrier_fw_info_;
 
   DISALLOW_COPY_AND_ASSIGN(FirmwareDirectoryStub);
 };

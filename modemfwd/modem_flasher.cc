@@ -31,6 +31,7 @@ base::Closure ModemFlasher::TryFlash(Modem* modem) {
 
   std::string device_id = modem->GetDeviceId();
   std::string current_carrier = modem->GetCarrierId();
+  flash_state->OnCarrierSeen(current_carrier);
   FirmwareDirectory::Files files = firmware_directory_->FindFirmware(
       device_id, current_carrier.empty() ? nullptr : &current_carrier);
 
