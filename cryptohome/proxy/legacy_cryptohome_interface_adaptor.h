@@ -628,6 +628,13 @@ class LegacyCryptohomeInterfaceAdaptor
   void Pkcs11TerminateOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<>> response,
       const user_data_auth::Pkcs11TerminateReply& reply);
+  void InstallAttributesGetOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>
+          response,
+      const user_data_auth::InstallAttributesGetReply& reply);
+  void InstallAttributesSetOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+      const user_data_auth::InstallAttributesSetReply& reply);
   void MigrateToDircryptoOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<>> response,
       const user_data_auth::StartMigrateToDircryptoReply& reply);
