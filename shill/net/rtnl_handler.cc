@@ -363,7 +363,7 @@ void RTNLHandler::ParseRTNL(InputData* data) {
           DispatchEvent(kRequestNeighbor, msg);
           break;
         case RTNLMessage::kTypeDnssl:
-          NOTIMPLEMENTED();
+          // DNSSL support is not implemented. Just ignore it.
           break;
         default:
           NOTIMPLEMENTED() << "Unknown RTNL message type.";
