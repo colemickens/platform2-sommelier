@@ -1191,10 +1191,43 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetCertificate(
     bool in_is_user_specific,
     const std::string& in_username,
     const std::string& in_key_name) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>
+  response_shared(new SharedDBusMethodResponse<std::vector<uint8_t>, bool>(
+      std::move(response)));
+
+  attestation::GetKeyInfoRequest request;
+  request.set_key_label(in_key_name);
+  if (in_is_user_specific) {
+    request.set_username(in_username);
+  }
+
+  attestation_proxy_->GetKeyInfoAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
+                     TpmAttestationGetCertificateOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::vector<uint8_t>,
+                                                          bool>,
+          base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetCertificateOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>
+        response,
+    const attestation::GetKeyInfoReply& reply) {
+  if (reply.status() != attestation::AttestationStatus::STATUS_SUCCESS) {
+    std::string error_msg =
+        "TpmAttestationGetCertificate(): Attestation daemon returned status " +
+        std::to_string(static_cast<int>(reply.status()));
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_FAILED, error_msg);
+    return;
+  }
+  std::vector<uint8_t> cert(reply.certificate().begin(),
+                            reply.certificate().end());
+  response->Return(
+      cert, reply.status() == attestation::AttestationStatus::STATUS_SUCCESS);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetPublicKey(
@@ -1203,10 +1236,44 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetPublicKey(
     bool in_is_user_specific,
     const std::string& in_username,
     const std::string& in_key_name) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>
+  response_shared(new SharedDBusMethodResponse<std::vector<uint8_t>, bool>(
+      std::move(response)));
+
+  attestation::GetKeyInfoRequest request;
+  request.set_key_label(in_key_name);
+  if (in_is_user_specific) {
+    request.set_username(in_username);
+  }
+
+  attestation_proxy_->GetKeyInfoAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
+                     TpmAttestationGetPublicKeyOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::vector<uint8_t>,
+                                                          bool>,
+          base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetPublicKeyOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>
+        response,
+    const attestation::GetKeyInfoReply& reply) {
+  if (reply.status() != attestation::AttestationStatus::STATUS_SUCCESS) {
+    std::string error_msg =
+        "TpmAttestationGetPublicKey(): Attestation daemon returned status " +
+        std::to_string(static_cast<int>(reply.status()));
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_FAILED, error_msg);
+    return;
+  }
+  std::vector<uint8_t> public_key(reply.public_key().begin(),
+                                  reply.public_key().end());
+  response->Return(
+      public_key,
+      reply.status() == attestation::AttestationStatus::STATUS_SUCCESS);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetEnrollmentId(
