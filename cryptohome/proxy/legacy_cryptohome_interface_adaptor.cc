@@ -987,7 +987,6 @@ void LegacyCryptohomeInterfaceAdaptor::AsyncTpmAttestationCreateCertRequest(
     int32_t in_certificate_profile,
     const std::string& in_username,
     const std::string& in_request_origin) {
-  // Not implemented yet
   attestation::CreateCertificateRequestRequest request;
 
   base::Optional<attestation::ACAType> aca_type;
@@ -1004,8 +1003,8 @@ void LegacyCryptohomeInterfaceAdaptor::AsyncTpmAttestationCreateCertRequest(
       IntegerToCertificateProfile(in_certificate_profile));
   request.set_username(in_username);
   request.set_request_origin(in_request_origin);
-  int async_id = HandleAsync<attestation::CreateCertificateRequestRequest,
-                             attestation::CreateCertificateRequestReply>(
+  int async_id = HandleAsyncData<attestation::CreateCertificateRequestRequest,
+                                 attestation::CreateCertificateRequestReply>(
       &attestation::CreateCertificateRequestReply::pca_request, request,
       base::BindOnce(&org::chromium::AttestationProxyInterface::
                          CreateCertificateRequestAsync,

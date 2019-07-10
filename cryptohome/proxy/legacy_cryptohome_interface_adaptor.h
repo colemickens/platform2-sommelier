@@ -664,11 +664,13 @@ class LegacyCryptohomeInterfaceAdaptor
   }
 
   // This serves as the on_failure callback after calling the actual method
-  // in attestationd
+  // in attestationd.
+  // Note that this is for the version of async call that have data result.
   template <typename ReplyProtoType>
-  void AsyncForwardError(const std::string& (ReplyProtoType::*func)() const,
-                         int async_id,
-                         brillo::Error* err) {
+  void AsyncForwardErrorWithData(const std::string& (ReplyProtoType::*func)()
+                                     const,
+                                 int async_id,
+                                 brillo::Error* err) {
     // Error is ignored because there is no mechanism to forward the dbus
     // error through signal, and the current implementation in
     // service_distributed class handles the error by sending
@@ -678,8 +680,22 @@ class LegacyCryptohomeInterfaceAdaptor
     AsyncReplyWithData(func, async_id, reply);
   }
 
-  // This serves as the on_success callback after calling the actual method
+  // This serves as the on_failure callback after calling the actual method
   // in attestationd
+  // Note that this is for the version of async call that have no data result.
+  template <typename ReplyProtoType>
+  void AsyncForwardErrorWithNoData(int async_id, brillo::Error* err) {
+    // Error is ignored because there is no mechanism to forward the dbus
+    // error through signal, and the current implementation in
+    // service_distributed class handles the error by sending
+    // STATUS_NOT_AVAILABLE instead, so we follow this behaviour.
+    ReplyProtoType reply;
+    reply.set_status(attestation::AttestationStatus::STATUS_NOT_AVAILABLE);
+    AsyncReplyWithNoData(async_id, reply);
+  }
+
+  // This serves as the on_success callback for async methods with data after
+  // calling the actual method in attestationd.
   template <typename ReplyProtoType>
   void AsyncReplyWithData(const std::string& (ReplyProtoType::*func)() const,
                           int async_id,
@@ -691,27 +707,69 @@ class LegacyCryptohomeInterfaceAdaptor
     VirtualSendAsyncCallStatusWithDataSignal(async_id, return_status, data);
   }
 
+  // This serves as the on_success callback for async methods with no data after
+  // calling the actual method in attestationd.
+  template <typename ReplyProtoType>
+  void AsyncReplyWithNoData(int async_id, const ReplyProtoType& reply) {
+    bool return_status =
+        reply.status() == attestation::AttestationStatus::STATUS_SUCCESS;
+    VirtualSendAsyncCallStatusSignal(async_id, return_status, 0);
+  }
+
   // This is a function that handles an async request received on the legacy
   // cryptohome interface. The code that calls this function resides in
   // the actual method handler, and it only needs to assemble the request
   // proto and pass it to this function, and this function will take care
   // of the rest.
+  // Note that this version deals with async method calls that return byte array
+  // data.
   template <typename RequestProtoType, typename ReplyProtoType>
-  int HandleAsync(const std::string& (ReplyProtoType::*func)() const,
-                  RequestProtoType request,
-                  base::OnceCallback<
-                      void(const RequestProtoType&,
-                           const base::Callback<void(const ReplyProtoType&)>&,
-                           const base::Callback<void(brillo::Error*)>&,
-                           int)> target_method) {
+  int HandleAsyncData(const std::string& (ReplyProtoType::*func)() const,
+                      RequestProtoType request,
+                      base::OnceCallback<void(
+                          const RequestProtoType&,
+                          const base::Callback<void(const ReplyProtoType&)>&,
+                          const base::Callback<void(brillo::Error*)>&,
+                          int)> target_method) {
     int async_id = NextSequence();
 
     base::Callback<void(const ReplyProtoType&)> on_success = base::Bind(
         &LegacyCryptohomeInterfaceAdaptor::AsyncReplyWithData<ReplyProtoType>,
         base::Unretained(this), func, async_id);
+    base::Callback<void(brillo::Error*)> on_failure =
+        base::Bind(&LegacyCryptohomeInterfaceAdaptor::AsyncForwardErrorWithData<
+                       ReplyProtoType>,
+                   base::Unretained(this), func, async_id);
+    std::move(target_method)
+        .Run(request, on_success, on_failure,
+             dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+
+    return async_id;
+  }
+
+  // This is a function that handles an async request received on the legacy
+  // cryptohome interface. The code that calls this function resides in
+  // the actual method handler, and it only needs to assemble the request
+  // proto and pass it to this function, and this function will take care
+  // of the rest.
+  // Note that this version deals with async method calls that return only
+  // status but not data.
+  template <typename RequestProtoType, typename ReplyProtoType>
+  int HandleAsyncStatus(RequestProtoType request,
+                        base::OnceCallback<void(
+                            const RequestProtoType&,
+                            const base::Callback<void(const ReplyProtoType&)>&,
+                            const base::Callback<void(brillo::Error*)>&,
+                            int)> target_method) {
+    int async_id = NextSequence();
+
+    base::Callback<void(const ReplyProtoType&)> on_success = base::Bind(
+        &LegacyCryptohomeInterfaceAdaptor::AsyncReplyWithNoData<ReplyProtoType>,
+        base::Unretained(this), async_id);
     base::Callback<void(brillo::Error*)> on_failure = base::Bind(
-        &LegacyCryptohomeInterfaceAdaptor::AsyncForwardError<ReplyProtoType>,
-        base::Unretained(this), func, async_id);
+        &LegacyCryptohomeInterfaceAdaptor::AsyncForwardErrorWithNoData<
+            ReplyProtoType>,
+        base::Unretained(this), async_id);
     std::move(target_method)
         .Run(request, on_success, on_failure,
              dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
