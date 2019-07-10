@@ -1463,18 +1463,48 @@ void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsSecureOnSuccess(
 
 void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsInvalid(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
+
+  user_data_auth::InstallAttributesGetStatusRequest request;
+  install_attributes_proxy_->InstallAttributesGetStatusAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
+                     InstallAttributesIsInvalidOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsInvalidOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+    const user_data_auth::InstallAttributesGetStatusReply& reply) {
+  bool is_invalid =
+      (reply.state() == user_data_auth::InstallAttributesState::INVALID);
+  response->Return(is_invalid);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsFirstInstall(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
+
+  user_data_auth::InstallAttributesGetStatusRequest request;
+  install_attributes_proxy_->InstallAttributesGetStatusAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
+                     InstallAttributesIsFirstInstallOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsFirstInstallOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+    const user_data_auth::InstallAttributesGetStatusReply& reply) {
+  bool is_first_install =
+      (reply.state() == user_data_auth::InstallAttributesState::FIRST_INSTALL);
+  response->Return(is_first_install);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::SignBootLockbox(
