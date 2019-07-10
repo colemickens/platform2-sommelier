@@ -1502,19 +1502,64 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationDeleteKeys(
     bool in_is_user_specific,
     const std::string& in_username,
     const std::string& in_key_prefix) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  std::shared_ptr<SharedDBusMethodResponse<bool>> response_shared(
+      new SharedDBusMethodResponse<bool>(std::move(response)));
+
+  attestation::DeleteKeysRequest request;
+  request.set_key_prefix(in_key_prefix);
+  if (in_is_user_specific) {
+    request.set_username(in_username);
+  }
+
+  attestation_proxy_->DeleteKeysAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::TpmAttestationDeleteKeysOnSuccess,
+          base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::TpmAttestationDeleteKeysOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+    const attestation::DeleteKeysReply& reply) {
+  if (reply.status() != attestation::AttestationStatus::STATUS_SUCCESS) {
+    LOG(WARNING)
+        << "TpmAttestationDeleteKeys(): Attestation daemon returned status "
+        << static_cast<int>(reply.status());
+  }
+  response->Return(reply.status() ==
+                   attestation::AttestationStatus::STATUS_SUCCESS);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetEK(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::string, bool>>
         response) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  std::shared_ptr<SharedDBusMethodResponse<std::string, bool>> response_shared(
+      new SharedDBusMethodResponse<std::string, bool>(std::move(response)));
+
+  attestation::GetEndorsementInfoRequest request;
+
+  attestation_proxy_->GetEndorsementInfoAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetEKOnSuccess,
+          base::Unretained(this), response_shared),
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::string, bool>,
+          base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetEKOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<std::string, bool>> response,
+    const attestation::GetEndorsementInfoReply& reply) {
+  if (reply.status() != attestation::AttestationStatus::STATUS_SUCCESS) {
+    LOG(WARNING) << "TpmAttestationGetEK(): Attestation daemon returned status "
+                 << static_cast<int>(reply.status());
+  }
+  response->Return(
+      reply.ek_info(),
+      reply.status() == attestation::AttestationStatus::STATUS_SUCCESS);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmAttestationResetIdentity(
