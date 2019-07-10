@@ -1623,30 +1623,75 @@ void LegacyCryptohomeInterfaceAdaptor::GetFirmwareManagementParameters(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::GetFirmwareManagementParametersRequest& in_request) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
+          std::move(response));
+
+  user_data_auth::GetFirmwareManagementParametersRequest request;
+  install_attributes_proxy_->GetFirmwareManagementParametersAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
+                     GetFirmwareManagementParametersOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::GetFirmwareManagementParametersOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+    const user_data_auth::GetFirmwareManagementParametersReply& reply) {
+  cryptohome::BaseReply result;
+  result.set_error(
+      static_cast<cryptohome::CryptohomeErrorCode>(result.error()));
+  cryptohome::GetFirmwareManagementParametersReply* result_extension =
+      result.MutableExtension(
+          cryptohome::GetFirmwareManagementParametersReply::reply);
+  result_extension->set_flags(reply.fwmp().flags());
+  *result_extension->mutable_developer_key_hash() =
+      reply.fwmp().developer_key_hash();
+  response->Return(result);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::SetFirmwareManagementParameters(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::SetFirmwareManagementParametersRequest& in_request) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
+          std::move(response));
+
+  user_data_auth::SetFirmwareManagementParametersRequest request;
+  request.mutable_fwmp()->set_flags(in_request.flags());
+  *request.mutable_fwmp()->mutable_developer_key_hash() =
+      in_request.developer_key_hash();
+  install_attributes_proxy_->SetFirmwareManagementParametersAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
+                     user_data_auth::SetFirmwareManagementParametersReply>,
+                 response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response_shared));
 }
 
 void LegacyCryptohomeInterfaceAdaptor::RemoveFirmwareManagementParameters(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::RemoveFirmwareManagementParametersRequest& in_request) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
+          std::move(response));
+
+  user_data_auth::RemoveFirmwareManagementParametersRequest request;
+  install_attributes_proxy_->RemoveFirmwareManagementParametersAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
+                     user_data_auth::RemoveFirmwareManagementParametersReply>,
+                 response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response_shared));
 }
 
 void LegacyCryptohomeInterfaceAdaptor::MigrateToDircrypto(

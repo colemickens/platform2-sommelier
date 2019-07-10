@@ -660,6 +660,9 @@ class LegacyCryptohomeInterfaceAdaptor
   void InstallAttributesIsFirstInstallOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool>> response,
       const user_data_auth::InstallAttributesGetStatusReply& reply);
+  void GetFirmwareManagementParametersOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+      const user_data_auth::GetFirmwareManagementParametersReply& reply);
   void MigrateToDircryptoOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<>> response,
       const user_data_auth::StartMigrateToDircryptoReply& reply);
