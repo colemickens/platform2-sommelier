@@ -59,3 +59,5 @@ recvmsg: 1
 set_robust_list: 1
 pipe2: 1
 getpid: 1
+prctl: arg0 == PR_SET_NAME
+kill: arg1 == SIGTERM
