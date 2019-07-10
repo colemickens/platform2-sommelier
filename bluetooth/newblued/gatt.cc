@@ -37,7 +37,9 @@ void Gatt::OnGattConnected(const std::string& device_address,
 
   // Start GATT browsing.
   UniqueId transaction_id = GetNextId();
-  transactions_.emplace(transaction_id, GattClientOperationType::SERVICES_ENUM);
+  ClientOperation operation = {.type = GattClientOperationType::SERVICES_ENUM,
+                               .conn_id = conn_id};
+  transactions_.emplace(transaction_id, std::move(operation));
 
   GattClientOperationStatus status = newblue_->GattClientEnumServices(
       conn_id, true, transaction_id,
@@ -56,6 +58,20 @@ void Gatt::OnGattConnected(const std::string& device_address,
 void Gatt::OnGattDisconnected(const std::string& device_address,
                               gatt_client_conn_t conn_id) {
   CHECK(!device_address.empty());
+
+  // TODO(b:137581907): Investigate if the removal of transaction can rely on
+  // the callbacks of GATT operations.
+  for (std::map<UniqueId, ClientOperation>::iterator transaction =
+           transactions_.begin();
+       transaction != transactions_.end();) {
+    if (transaction->second.conn_id == conn_id) {
+      VLOG(2) << "Clear ongoing GATT client transaction " << transaction->first
+              << " with device " << device_address;
+      transactions_.erase(transaction++);
+    } else {
+      ++transaction;
+    }
+  }
 
   VLOG(1) << "Clear the cached GATT services of device " << device_address;
   remote_services_.erase(device_address);
@@ -78,8 +94,10 @@ void Gatt::TravPrimaryServices(const std::string& device_address,
       continue;
 
     UniqueId transaction_id = GetNextId();
-    transactions_.emplace(transaction_id,
-                          GattClientOperationType::PRIMARY_SERVICE_TRAV);
+    ClientOperation operation = {
+        .type = GattClientOperationType::PRIMARY_SERVICE_TRAV,
+        .conn_id = conn_id};
+    transactions_.emplace(transaction_id, std::move(operation));
 
     GattClientOperationStatus status = newblue_->GattClientTravPrimaryService(
         conn_id, service->uuid(), transaction_id,

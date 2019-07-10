@@ -33,6 +33,11 @@ class Gatt : DeviceInterfaceHandler::DeviceObserver {
                           gatt_client_conn_t conn_id) override;
 
  private:
+  struct ClientOperation {
+    GattClientOperationType type;
+    gatt_client_conn_t conn_id;
+  };
+
   // Traverses all primary services to retrieve complete structure of remote
   // GATT attributes.
   void TravPrimaryServices(const std::string& device_address,
@@ -63,7 +68,7 @@ class Gatt : DeviceInterfaceHandler::DeviceObserver {
   std::map<std::string, std::map<uint16_t, std::unique_ptr<GattService>>>
       remote_services_;
 
-  std::map<UniqueId, GattClientOperationType> transactions_;
+  std::map<UniqueId, ClientOperation> transactions_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.
