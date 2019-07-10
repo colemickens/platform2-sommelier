@@ -292,11 +292,15 @@ class LegacyCryptohomeInterfaceAdaptor
           brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>, bool>>
           response,
       bool in_ignore_cache) override;
+
+  // NOTE: Despite its name, it's an async method that will emit signal when
+  // finished.
   void TpmAttestationRegisterKey(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int32_t>> response,
       bool in_is_user_specific,
       const std::string& in_username,
       const std::string& in_key_name) override;
+
   void TpmAttestationSignEnterpriseChallenge(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int32_t>> response,
       bool in_is_user_specific,
@@ -643,6 +647,10 @@ class LegacyCryptohomeInterfaceAdaptor
       std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>
           response,
       const attestation::GetKeyInfoReply& reply);
+  void TpmAttestationGetEnrollmentIdOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>
+          response,
+      const attestation::GetEnrollmentIdReply& reply);
   void Pkcs11IsTpmTokenReadyOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool>> response,
       const user_data_auth::Pkcs11IsTpmTokenReadyReply& reply);
