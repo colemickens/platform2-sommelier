@@ -892,10 +892,27 @@ void LegacyCryptohomeInterfaceAdaptor::
 void LegacyCryptohomeInterfaceAdaptor::AsyncTpmAttestationCreateEnrollRequest(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int32_t>> response,
     int32_t in_pca_type) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  attestation::CreateEnrollRequestRequest request;
+
+  base::Optional<attestation::ACAType> aca_type;
+  aca_type = IntegerToACAType(in_pca_type);
+  if (!aca_type.has_value()) {
+    std::string error_msg =
+        "AsyncTpmAttestationCreateEnrollRequest(): Requested ACA type " +
+        std::to_string(in_pca_type) + " is not supported";
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_NOT_SUPPORTED, error_msg);
+    return;
+  }
+  request.set_aca_type(aca_type.value());
+
+  int async_id = HandleAsyncData<attestation::CreateEnrollRequestRequest,
+                                 attestation::CreateEnrollRequestReply>(
+      &attestation::CreateEnrollRequestReply::pca_request, request,
+      base::BindOnce(
+          &org::chromium::AttestationProxyInterface::CreateEnrollRequestAsync,
+          base::Unretained(attestation_proxy_)));
+  response->Return(async_id);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmAttestationEnroll(
@@ -936,10 +953,26 @@ void LegacyCryptohomeInterfaceAdaptor::AsyncTpmAttestationEnroll(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int32_t>> response,
     int32_t in_pca_type,
     const std::vector<uint8_t>& in_pca_response) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  attestation::FinishEnrollRequest request;
+  request.set_pca_response(in_pca_response.data(), in_pca_response.size());
+  base::Optional<attestation::ACAType> aca_type;
+  aca_type = IntegerToACAType(in_pca_type);
+  if (!aca_type.has_value()) {
+    std::string error_msg = "Requested ACA type " +
+                            std::to_string(in_pca_type) + " is not supported";
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_NOT_SUPPORTED, error_msg);
+    return;
+  }
+  request.set_aca_type(aca_type.value());
+
+  int async_id = HandleAsyncStatus<attestation::FinishEnrollRequest,
+                                   attestation::FinishEnrollReply>(
+      request, base::BindOnce(
+                   &org::chromium::AttestationProxyInterface::FinishEnrollAsync,
+                   base::Unretained(attestation_proxy_)));
+
+  response->Return(async_id);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmAttestationCreateCertRequest(
