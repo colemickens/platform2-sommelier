@@ -1420,10 +1420,44 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetKeyPayload(
     bool in_is_user_specific,
     const std::string& in_username,
     const std::string& in_key_name) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>
+  response_shared(new SharedDBusMethodResponse<std::vector<uint8_t>, bool>(
+      std::move(response)));
+
+  attestation::GetKeyInfoRequest request;
+  request.set_key_label(in_key_name);
+  if (in_is_user_specific) {
+    request.set_username(in_username);
+  }
+
+  attestation_proxy_->GetKeyInfoAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
+                     TpmAttestationGetKeyPayloadOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::vector<uint8_t>,
+                                                          bool>,
+          base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetKeyPayloadOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>
+        response,
+    const attestation::GetKeyInfoReply& reply) {
+  if (reply.status() != attestation::AttestationStatus::STATUS_SUCCESS) {
+    std::string error_msg =
+        "TpmAttestationGetKeyPayload(): Attestation daemon returned status " +
+        std::to_string(static_cast<int>(reply.status()));
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_FAILED, error_msg);
+    return;
+  }
+  std::vector<uint8_t> public_key(reply.public_key().begin(),
+                                  reply.public_key().end());
+  response->Return(
+      public_key,
+      reply.status() == attestation::AttestationStatus::STATUS_SUCCESS);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmAttestationSetKeyPayload(
@@ -1432,10 +1466,35 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationSetKeyPayload(
     const std::string& in_username,
     const std::string& in_key_name,
     const std::vector<uint8_t>& in_payload) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  std::shared_ptr<SharedDBusMethodResponse<bool>> response_shared(
+      new SharedDBusMethodResponse<bool>(std::move(response)));
+
+  attestation::SetKeyPayloadRequest request;
+  request.set_key_label(in_key_name);
+  if (in_is_user_specific) {
+    request.set_username(in_username);
+  }
+  *request.mutable_payload() = {in_payload.begin(), in_payload.end()};
+
+  attestation_proxy_->SetKeyPayloadAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
+                     TpmAttestationSetKeyPayloadOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::TpmAttestationSetKeyPayloadOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+    const attestation::SetKeyPayloadReply& reply) {
+  if (reply.status() != attestation::AttestationStatus::STATUS_SUCCESS) {
+    LOG(WARNING)
+        << "TpmAttestationSetKeyPayload(): Attestation daemon returned status "
+        << static_cast<int>(reply.status());
+  }
+  response->Return(reply.status() ==
+                   attestation::AttestationStatus::STATUS_SUCCESS);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmAttestationDeleteKeys(
