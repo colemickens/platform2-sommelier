@@ -18,6 +18,7 @@
 
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <chromeos/switches/chrome_switches.h>
 
@@ -31,6 +32,7 @@ namespace login_manager {
 const char BrowserJobInterface::kLoginManagerFlag[] = "--login-manager";
 const char BrowserJobInterface::kLoginUserFlag[] = "--login-user=";
 const char BrowserJobInterface::kLoginProfileFlag[] = "--login-profile=";
+const char BrowserJobInterface::kCrashLoopBeforeFlag[] = "--crash-loop-before=";
 
 const char BrowserJob::kFirstExecAfterBootFlag[] = "--first-exec-after-boot";
 
@@ -131,8 +133,7 @@ bool BrowserJob::ShouldRunBrowser() {
 }
 
 bool BrowserJob::ShouldStop() const {
-  return (system_->time(nullptr) - start_times_.front() <
-          kRestartWindowSeconds);
+  return system_->time(nullptr) - start_times_.front() < kRestartWindowSeconds;
 }
 
 void BrowserJob::RecordTime() {
@@ -146,14 +147,33 @@ bool BrowserJob::RunInBackground() {
   bool first_boot = !login_metrics_->HasRecordedChromeExec();
   login_metrics_->RecordStats("chrome-exec");
 
+  RecordTime();
+
   extra_one_time_arguments_.clear();
   if (first_boot)
     extra_one_time_arguments_.push_back(kFirstExecAfterBootFlag);
 
+  // Must happen after RecordTime(). After RecordTime(), ShouldStop() is
+  // basically returning what it would return if this instance of the browser
+  // crashed and wanted to be restarted again.
+  if (ShouldStop()) {
+    // This might be the last restart left in a crash-loop. If so, we don't want
+    // crash_reporter to do its normal behavior of writing the crash dump into
+    // the user directory, because after that next Chrome crash, the user will
+    // be logged out, at which point the crash dump will become inaccessible.
+    // Instead, instruct crash_reporter to keep the crash dump in-memory and
+    // immediately upload it using UploadSingleCrash.
+    time_t crash_loop_before = start_times_.front() + kRestartWindowSeconds;
+    std::string crash_loop_before_arg =
+        kCrashLoopBeforeFlag +
+        base::Uint64ToString(static_cast<uint64_t>(crash_loop_before));
+    extra_one_time_arguments_.push_back(crash_loop_before_arg);
+  }
+
   const std::vector<std::string> argv(ExportArgv());
   const std::vector<std::string> env_vars(ExportEnvironmentVariables());
   LOG(INFO) << "Running browser " << base::JoinString(argv, " ");
-  RecordTime();
+
   if (config_.new_mount_namespace_for_guest && IsGuestSession()) {
     LOG(INFO) << "Entering new mount namespace for browser.";
     subprocess_->UseNewMountNamespace();

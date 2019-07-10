@@ -31,9 +31,12 @@ namespace login_manager {
 
 using ::testing::_;
 using ::testing::AnyNumber;
+using ::testing::Contains;
 using ::testing::ElementsAre;
+using ::testing::HasSubstr;
 using ::testing::InSequence;
 using ::testing::Mock;
+using ::testing::Not;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 using ::testing::StrEq;
@@ -54,26 +57,19 @@ class BrowserJobTest : public ::testing::Test {
   void ExpectArgsToContainFlag(const std::vector<std::string>& argv,
                                const char name[],
                                const char value[]) {
-    std::vector<std::string>::const_iterator user_flag = std::find(
-        argv.begin(), argv.end(), base::StringPrintf("%s%s", name, value));
-    EXPECT_NE(user_flag, argv.end()) << "argv should contain " << name << value;
+    EXPECT_THAT(argv, Contains(base::StringPrintf("%s%s", name, value)));
   }
 
   void ExpectArgsNotToContainFlag(const std::vector<std::string>& argv,
                                   const char name[],
                                   const char value[]) {
-    std::vector<std::string>::const_iterator user_flag = std::find(
-        argv.begin(), argv.end(), base::StringPrintf("%s%s", name, value));
-    EXPECT_EQ(user_flag, argv.end())
-        << "argv shouldn't contain " << name << value;
+    EXPECT_THAT(argv, Not(Contains(base::StringPrintf("%s%s", name, value))));
   }
 
   void ExpectArgsToContainAll(const std::vector<std::string>& argv,
                               const std::vector<std::string>& contained) {
-    std::set<std::string> argv_set(argv.begin(), argv.end());
-    for (std::vector<std::string>::const_iterator it = contained.begin();
-         it != contained.end(); ++it) {
-      EXPECT_EQ(argv_set.count(*it), 1) << "argv should contain " << *it;
+    for (auto it = contained.begin(); it != contained.end(); ++it) {
+      EXPECT_THAT(argv, Contains(*it));
     }
   }
 
@@ -179,6 +175,35 @@ TEST_F(BrowserJobTest, ShouldDropExtraArgumentsAndEnvironmentVariablesTest) {
   // One more restart and extra args and env vars should be dropped.
   job_->RecordTime();
   EXPECT_TRUE(job_->ShouldDropExtraArgumentsAndEnvironmentVariables());
+}
+
+TEST_F(BrowserJobTest, ShouldAddCrashLoopArgBeforeStopping) {
+  const gid_t kDummyGid = 1000;
+  const pid_t kDummyPid = 4;
+  EXPECT_CALL(utils_, GetGidAndGroups(getuid(), _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDummyGid), Return(true)));
+  EXPECT_CALL(utils_, RunInMinijail(_, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<3>(kDummyPid), Return(true)));
+  EXPECT_CALL(utils_, time(NULL))
+      .WillRepeatedly(Return(BrowserJob::kRestartWindowSeconds + 1));
+  for (int i = 0; i < BrowserJob::kRestartTries - 1; ++i) {
+    EXPECT_FALSE(job_->ShouldStop());
+    EXPECT_TRUE(job_->RunInBackground());
+    EXPECT_THAT(
+        job_->ExportArgv(),
+        Not(Contains(HasSubstr(BrowserJobInterface::kCrashLoopBeforeFlag))));
+    job_->WaitAndAbort(base::TimeDelta::FromSeconds(0));
+  }
+
+  EXPECT_FALSE(job_->ShouldStop());
+  EXPECT_TRUE(job_->RunInBackground());
+  // 121 = 61 (the time time(NULL) is returning) + 60 (kRestartWindowSeconds).
+  ASSERT_EQ(BrowserJob::kRestartWindowSeconds, 60)
+      << "Need to change expected value if kRestartWindowSeconds changes";
+  ExpectArgsToContainFlag(job_->ExportArgv(),
+                          BrowserJobInterface::kCrashLoopBeforeFlag, "121");
+  job_->WaitAndAbort(base::TimeDelta::FromSeconds(0));
+  EXPECT_TRUE(job_->ShouldStop());
 }
 
 TEST_F(BrowserJobTest, ShouldNotRunTest) {

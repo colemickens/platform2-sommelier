@@ -82,6 +82,10 @@ class BrowserJobInterface : public ChildJobInterface {
 
   // The flag to pass to Chrome to tell it to run in Guest mode.
   static const char kGuestSessionFlag[];
+
+  // The flag to pass to Chrome to tell it that, if it crashes, it should tell
+  // crash_reporter to run in crash-loop mode.
+  static const char kCrashLoopBeforeFlag[];
 };
 
 class BrowserJob : public BrowserJobInterface {
