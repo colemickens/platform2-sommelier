@@ -768,19 +768,66 @@ void LegacyCryptohomeInterfaceAdaptor::
 void LegacyCryptohomeInterfaceAdaptor::TpmVerifyAttestationData(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     bool in_is_cros_core) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  std::shared_ptr<SharedDBusMethodResponse<bool>> response_shared(
+      new SharedDBusMethodResponse<bool>(std::move(response)));
+
+  attestation::VerifyRequest request;
+  request.set_cros_core(in_is_cros_core);
+  request.set_ek_only(false);
+
+  attestation_proxy_->VerifyAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::TpmVerifyAttestationDataOnSuccess,
+          base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::TpmVerifyAttestationDataOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+    const attestation::VerifyReply& reply) {
+  if (reply.status() != attestation::STATUS_SUCCESS) {
+    std::string error_msg =
+        "TpmVerifyAttestationData(): Attestation daemon returned status " +
+        std::to_string(static_cast<int>(reply.status()));
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_FAILED, error_msg);
+    return;
+  }
+  response->Return(reply.verified());
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmVerifyEK(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     bool in_is_cros_core) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  std::shared_ptr<SharedDBusMethodResponse<bool>> response_shared(
+      new SharedDBusMethodResponse<bool>(std::move(response)));
+
+  attestation::VerifyRequest request;
+  request.set_cros_core(in_is_cros_core);
+  request.set_ek_only(true);
+
+  attestation_proxy_->VerifyAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::TpmVerifyEKOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::TpmVerifyEKOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+    const attestation::VerifyReply& reply) {
+  if (reply.status() != attestation::STATUS_SUCCESS) {
+    std::string error_msg =
+        "TpmVerifyEK(): Attestation daemon returned status " +
+        std::to_string(static_cast<int>(reply.status()));
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_FAILED, error_msg);
+    return;
+  }
+  response->Return(reply.verified());
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmAttestationCreateEnrollRequest(

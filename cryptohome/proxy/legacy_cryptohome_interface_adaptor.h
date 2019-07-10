@@ -603,6 +603,12 @@ class LegacyCryptohomeInterfaceAdaptor
   void TpmAttestationGetEnrollmentPreparationsExOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
       const attestation::GetEnrollmentPreparationsReply& reply);
+  void TpmVerifyAttestationDataOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+      const attestation::VerifyReply& reply);
+  void TpmVerifyEKOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+      const attestation::VerifyReply& reply);
   void TpmAttestationCreateEnrollRequestOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>>> response,
       const attestation::CreateEnrollRequestReply& reply);
