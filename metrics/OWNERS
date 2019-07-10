@@ -1,4 +1,3 @@
 set noparent
-
-# All OWNERS have left the project
-*
+jkardatzke@chromium.org
+mutexlox@chromium.org
