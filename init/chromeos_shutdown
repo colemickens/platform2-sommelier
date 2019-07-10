@@ -18,7 +18,7 @@ mount -n -o remount,ro /
 # Kill any that may prevent us from unmounting the stateful partition
 # or the crypto-home and then unmount. These should be all that we need
 # to unmount for a clean shutdown.
-kill_with_open_files_on /mnt/stateful_partition /home/chronos /var
+kill_with_open_files_on "shutdown" /mnt/stateful_partition /home/chronos /var
 
 # CROS_DEBUG equals one if we've booted in developer mode or we've booted a
 # developer image.

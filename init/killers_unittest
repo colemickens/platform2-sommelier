@@ -73,7 +73,7 @@ doKillWithOpenFilesTest() {
   runBackgroundProcess "$@"
   pid2=$!
 
-  kill_with_open_files_on "${SHUNIT_TMPDIR}"/*
+  kill_with_open_files_on "" "${SHUNIT_TMPDIR}"/*
 
   assertNoPid "${pid1}"
   assertNoPid "${pid2}"
@@ -89,7 +89,7 @@ testKillWithOpenFiles_NonTERMable() {
 
 testKillWithOpenFiles_EmptyParams() {
   local before_pids=$(getAllPids)
-  local error_out=$(kill_with_open_files_on "" 2>&1)
+  local error_out=$(kill_with_open_files_on "" "" 2>&1)
   local after_pids=$(getAllPids)
 
   assertNotNull "${before_pids}"
@@ -99,7 +99,7 @@ testKillWithOpenFiles_EmptyParams() {
 
 testKillWithOpenFiles_UnresolvedGlob() {
   local before_pids=$(getAllPids)
-  local error_out=$(kill_with_open_files_on "${SHUNIT_TMPDIR}"/* 2>&1)
+  local error_out=$(kill_with_open_files_on "" "${SHUNIT_TMPDIR}"/* 2>&1)
   local after_pids=$(getAllPids)
 
   assertNotNull "${before_pids}"
@@ -114,7 +114,7 @@ testKillWithOpenFiles_PathFilter() {
   runBackgroundProcess bar
   pid2=$!
 
-  kill_with_open_files_on_path_and_mountpoints ".*_foo_" "${SHUNIT_TMPDIR}"/*
+  kill_with_open_files_on_path_and_mountpoints ".*_foo_" "" "${SHUNIT_TMPDIR}"/*
 
   assertNoPid "${pid1}"
   assertPid "${pid2}"

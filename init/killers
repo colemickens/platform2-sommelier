@@ -83,6 +83,11 @@ kill_with_open_files_on_path_and_mountpoints() {
   local pids pid i
   local path_regex="$1"
   shift
+  local log_path_label="$1"
+  shift
+
+  # Remove old log files.
+  rm -f "${LOGPATH}" "${LOGPATH}.${log_path_label}"
 
   pids="$(lsof -n -Fn "$@" | _lsofFn_filter "${path_regex}")"
   if [ -z "${pids}" ] ; then
@@ -90,7 +95,7 @@ kill_with_open_files_on_path_and_mountpoints() {
   fi
 
   # pids should have been empty. Since it is not, we log for future inspection.
-  lsof -n "$@" >"${LOGPATH}"
+  lsof -n "$@" >"${LOGPATH}.${log_path_label}"
 
   # First try a gentle kill -TERM
   for i in 1 2 3 4 5 6 7 8 9 10; do
