@@ -629,7 +629,9 @@ void LegacyCryptohomeInterfaceAdaptor::TpmIsOwnedOnSuccess(
 
 void LegacyCryptohomeInterfaceAdaptor::TpmIsBeingOwned(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  LOG(WARNING) << "Deprecated TpmIsBeingOwned is called.";
+  // Note that TpmIsBeingOwned is no longer available. External owners can no
+  // longer query whether TPM Ownership is currently being taken.
+  LOG(WARNING) << "Obsolete TpmIsBeingOwned is called.";
   response->Return(false);
 }
 
@@ -1913,60 +1915,63 @@ void LegacyCryptohomeInterfaceAdaptor::SignBootLockbox(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::SignBootLockboxRequest& in_request) {
-  // Not implemented yet
+  // Note that this version of Boot Lockbox is deprecated for security and
+  // performance issue. Please use the version in bootlockboxd instead.
   response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
                            DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+                           "Deprecated method SignBootLockbox() called");
 }
 
 void LegacyCryptohomeInterfaceAdaptor::VerifyBootLockbox(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::VerifyBootLockboxRequest& in_request) {
-  // Not implemented yet
+  // Note that this version of Boot Lockbox is deprecated for security and
+  // performance issue. Please use the version in bootlockboxd instead.
   response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
                            DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+                           "Deprecated method VerifyBootLockbox() called");
 }
 
 void LegacyCryptohomeInterfaceAdaptor::FinalizeBootLockbox(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::FinalizeBootLockboxRequest& in_request) {
-  // Not implemented yet
+  // Note that this version of Boot Lockbox is deprecated for security and
+  // performance issue. Please use the version in bootlockboxd instead.
   response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
                            DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+                           "Deprecated method FinalizeBootLockbox() called");
 }
 
 void LegacyCryptohomeInterfaceAdaptor::GetBootAttribute(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::GetBootAttributeRequest& in_request) {
-  // Not implemented yet
+  // BootAttribute series methods are no longer available.
   response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
                            DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+                           "Obsolete method GetBootAttribute() called");
 }
 
 void LegacyCryptohomeInterfaceAdaptor::SetBootAttribute(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::SetBootAttributeRequest& in_request) {
-  // Not implemented yet
+  // BootAttribute series methods are no longer available.
   response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
                            DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+                           "Obsolete method SetBootAttribute() called");
 }
 
 void LegacyCryptohomeInterfaceAdaptor::FlushAndSignBootAttributes(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::FlushAndSignBootAttributesRequest& in_request) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  // BootAttribute series methods are no longer available.
+  response->ReplyWithError(
+      FROM_HERE, brillo::errors::dbus::kDomain, DBUS_ERROR_NOT_SUPPORTED,
+      "Obsolete method FlushAndSignBootAttributes() called");
 }
 
 void LegacyCryptohomeInterfaceAdaptor::GetLoginStatus(
@@ -2031,10 +2036,10 @@ void LegacyCryptohomeInterfaceAdaptor::InitializeCastKey(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::InitializeCastKeyRequest& in_request) {
-  // Not implemented yet
+  // InitializeCastKey() is no longer available.
   response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
                            DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+                           "Obsolete method InitializeCastKey() called");
 }
 
 void LegacyCryptohomeInterfaceAdaptor::GetFirmwareManagementParameters(
