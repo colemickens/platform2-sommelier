@@ -1419,18 +1419,46 @@ void LegacyCryptohomeInterfaceAdaptor::InstallAttributesFinalizeOnSuccess(
 
 void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsReady(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
+
+  user_data_auth::InstallAttributesGetStatusRequest request;
+  install_attributes_proxy_->InstallAttributesGetStatusAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsReadyOnSuccess,
+          base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsReadyOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+    const user_data_auth::InstallAttributesGetStatusReply& reply) {
+  bool ready =
+      (reply.state() != user_data_auth::InstallAttributesState::UNKNOWN);
+  response->Return(ready);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsSecure(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
+
+  user_data_auth::InstallAttributesGetStatusRequest request;
+  install_attributes_proxy_->InstallAttributesGetStatusAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsSecureOnSuccess,
+          base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsSecureOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+    const user_data_auth::InstallAttributesGetStatusReply& reply) {
+  response->Return(reply.is_secure());
 }
 
 void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsInvalid(
