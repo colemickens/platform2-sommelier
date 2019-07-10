@@ -629,6 +629,12 @@ class LegacyCryptohomeInterfaceAdaptor
       std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>
           response,
       const attestation::FinishCertificateRequestReply& reply);
+  void TpmIsAttestationEnrolledOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+      const attestation::GetStatusReply& reply);
+  void TpmAttestationDoesKeyExistOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+      const attestation::GetKeyInfoReply& reply);
   void Pkcs11IsTpmTokenReadyOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool>> response,
       const user_data_auth::Pkcs11IsTpmTokenReadyReply& reply);
