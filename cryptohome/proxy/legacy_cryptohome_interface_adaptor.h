@@ -858,6 +858,9 @@ class LegacyCryptohomeInterfaceAdaptor
   // A helper function which maps an integer to a valid ACAType.
   static base::Optional<attestation::ACAType> IntegerToACAType(int type);
 
+  // A helper function which maps an integer to a valid VAType.
+  static base::Optional<attestation::VAType> IntegerToVAType(int type);
+
   brillo::dbus_utils::DBusObject dbus_object_;
 
   // Below are the DBus proxy objects that are used in this class. The default_*

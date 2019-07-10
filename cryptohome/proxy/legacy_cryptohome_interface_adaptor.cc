@@ -1345,10 +1345,10 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationSignEnterpriseChallenge(
     const std::vector<uint8_t>& in_device_id,
     bool in_include_signed_public_key,
     const std::vector<uint8_t>& in_challenge) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  TpmAttestationSignEnterpriseVaChallenge(
+      std::move(response), static_cast<int32_t>(attestation::DEFAULT_VA),
+      in_is_user_specific, in_username, in_key_name, in_domain, in_device_id,
+      in_include_signed_public_key, in_challenge);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmAttestationSignEnterpriseVaChallenge(
@@ -1361,10 +1361,34 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationSignEnterpriseVaChallenge(
     const std::vector<uint8_t>& in_device_id,
     bool in_include_signed_public_key,
     const std::vector<uint8_t>& in_challenge) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  base::Optional<attestation::VAType> va_type;
+  va_type = IntegerToVAType(in_va_type);
+  if (!va_type.has_value()) {
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_NOT_SUPPORTED,
+                             "Requested VA type is not supported");
+    return;
+  }
+
+  attestation::SignEnterpriseChallengeRequest request;
+  request.set_va_type(va_type.value());
+  request.set_key_label(in_key_name);
+  if (in_is_user_specific) {
+    request.set_username(in_username);
+  }
+  request.set_domain(in_domain);
+  *request.mutable_device_id() = {in_device_id.begin(), in_device_id.end()};
+  request.set_include_signed_public_key(in_include_signed_public_key);
+  *request.mutable_challenge() = {in_challenge.begin(), in_challenge.end()};
+
+  int async_id = HandleAsyncData<attestation::SignEnterpriseChallengeRequest,
+                                 attestation::SignEnterpriseChallengeReply>(
+      &attestation::SignEnterpriseChallengeReply::challenge_response, request,
+      base::BindOnce(&org::chromium::AttestationProxyInterface::
+                         SignEnterpriseChallengeAsync,
+                     base::Unretained(attestation_proxy_)));
+
+  response->Return(async_id);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmAttestationSignSimpleChallenge(
@@ -1373,10 +1397,21 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationSignSimpleChallenge(
     const std::string& in_username,
     const std::string& in_key_name,
     const std::vector<uint8_t>& in_challenge) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  attestation::SignSimpleChallengeRequest request;
+  request.set_key_label(in_key_name);
+  if (in_is_user_specific) {
+    request.set_username(in_username);
+  }
+  *request.mutable_challenge() = {in_challenge.begin(), in_challenge.end()};
+
+  int async_id = HandleAsyncData<attestation::SignSimpleChallengeRequest,
+                                 attestation::SignSimpleChallengeReply>(
+      &attestation::SignSimpleChallengeReply::challenge_response, request,
+      base::BindOnce(
+          &org::chromium::AttestationProxyInterface::SignSimpleChallengeAsync,
+          base::Unretained(attestation_proxy_)));
+
+  response->Return(async_id);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetKeyPayload(
@@ -2130,6 +2165,15 @@ LegacyCryptohomeInterfaceAdaptor::IntegerToACAType(int type) {
     return base::nullopt;
   }
   return static_cast<attestation::ACAType>(type);
+}
+
+// A helper function which maps an integer to a valid VAType.
+base::Optional<attestation::VAType>
+LegacyCryptohomeInterfaceAdaptor::IntegerToVAType(int type) {
+  if (!attestation::VAType_IsValid(type)) {
+    return base::nullopt;
+  }
+  return static_cast<attestation::VAType>(type);
 }
 
 }  // namespace cryptohome
