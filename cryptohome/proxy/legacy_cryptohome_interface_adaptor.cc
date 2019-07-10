@@ -1065,10 +1065,41 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationFinishCertRequest(
     bool in_is_user_specific,
     const std::string& in_username,
     const std::string& in_key_name) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  attestation::FinishCertificateRequestRequest request;
+  request.set_pca_response(in_pca_response.data(), in_pca_response.size());
+  request.set_key_label(in_key_name);
+  if (in_is_user_specific) {
+    request.set_username(in_username);
+  }
+
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>(
+          std::move(response));
+  attestation_proxy_->FinishCertificateRequestAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
+                     TpmAttestationFinishCertRequestOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::vector<uint8_t>,
+                                                          bool>,
+          base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::TpmAttestationFinishCertRequestOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>
+        response,
+    const attestation::FinishCertificateRequestReply& reply) {
+  std::vector<uint8_t> cert;
+  if (reply.status() == attestation::AttestationStatus::STATUS_SUCCESS) {
+    cert.assign(reply.certificate().begin(), reply.certificate().end());
+  } else {
+    LOG(WARNING) << "TpmAttestationFinishCertRequest(): Attestation daemon "
+                    "returned status "
+                 << static_cast<int>(reply.status());
+  }
+  response->Return(
+      cert, reply.status() == attestation::AttestationStatus::STATUS_SUCCESS);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::AsyncTpmAttestationFinishCertRequest(
@@ -1077,10 +1108,20 @@ void LegacyCryptohomeInterfaceAdaptor::AsyncTpmAttestationFinishCertRequest(
     bool in_is_user_specific,
     const std::string& in_username,
     const std::string& in_key_name) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  attestation::FinishCertificateRequestRequest request;
+  request.set_pca_response(in_pca_response.data(), in_pca_response.size());
+  request.set_key_label(in_key_name);
+  if (in_is_user_specific) {
+    request.set_username(in_username);
+  }
+
+  int async_id = HandleAsyncData<attestation::FinishCertificateRequestRequest,
+                                 attestation::FinishCertificateRequestReply>(
+      &attestation::FinishCertificateRequestReply::certificate, request,
+      base::BindOnce(&org::chromium::AttestationProxyInterface::
+                         FinishCertificateRequestAsync,
+                     base::Unretained(attestation_proxy_)));
+  response->Return(async_id);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmIsAttestationEnrolled(
