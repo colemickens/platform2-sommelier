@@ -664,6 +664,10 @@ class LegacyCryptohomeInterfaceAdaptor
   void TpmAttestationGetEKOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<std::string, bool>> response,
       const attestation::GetEndorsementInfoReply& reply);
+  void TpmAttestationResetIdentityOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>
+          response,
+      const attestation::ResetIdentityReply& reply);
   void Pkcs11IsTpmTokenReadyOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool>> response,
       const user_data_auth::Pkcs11IsTpmTokenReadyReply& reply);
@@ -699,6 +703,9 @@ class LegacyCryptohomeInterfaceAdaptor
   void InstallAttributesIsFirstInstallOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool>> response,
       const user_data_auth::InstallAttributesGetStatusReply& reply);
+  void GetEndorsementInfoOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+      const attestation::GetEndorsementInfoReply& reply);
   void GetFirmwareManagementParametersOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
       const user_data_auth::GetFirmwareManagementParametersReply& reply);

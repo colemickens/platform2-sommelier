@@ -1566,10 +1566,39 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationResetIdentity(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>,
                                                            bool>> response,
     const std::string& in_reset_token) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  attestation::ResetIdentityRequest request;
+  request.set_reset_token(in_reset_token);
+
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>(
+          std::move(response));
+  attestation_proxy_->ResetIdentityAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
+                     TpmAttestationResetIdentityOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::vector<uint8_t>,
+                                                          bool>,
+          base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::TpmAttestationResetIdentityOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>
+        response,
+    const attestation::ResetIdentityReply& reply) {
+  std::vector<uint8_t> reset_request;
+  if (reply.status() == attestation::AttestationStatus::STATUS_SUCCESS) {
+    reset_request.assign(reply.reset_request().begin(),
+                         reply.reset_request().end());
+  } else {
+    LOG(WARNING)
+        << "TpmAttestationResetIdentity(): Attestation daemon returned status "
+        << static_cast<int>(reply.status());
+  }
+  response->Return(
+      reset_request,
+      reply.status() == attestation::AttestationStatus::STATUS_SUCCESS);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::TpmGetVersionStructured(
@@ -1964,10 +1993,38 @@ void LegacyCryptohomeInterfaceAdaptor::GetEndorsementInfo(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::GetEndorsementInfoRequest& in_request) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>>
+      response_shared(new SharedDBusMethodResponse<cryptohome::BaseReply>(
+          std::move(response)));
+
+  attestation::GetEndorsementInfoRequest request;
+
+  attestation_proxy_->GetEndorsementInfoAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::GetEndorsementInfoOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::GetEndorsementInfoOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+    const attestation::GetEndorsementInfoReply& reply) {
+  cryptohome::BaseReply result;
+  if (reply.status() != attestation::AttestationStatus::STATUS_SUCCESS) {
+    LOG(WARNING) << "GetEndorsementInfo(): Attestation daemon returned status "
+                 << static_cast<int>(reply.status());
+    result.set_error(cryptohome::CRYPTOHOME_ERROR_TPM_EK_NOT_AVAILABLE);
+  } else {
+    GetEndorsementInfoReply* extension =
+        result.MutableExtension(cryptohome::GetEndorsementInfoReply::reply);
+    extension->set_ek_public_key(reply.ek_public_key());
+    if (!reply.ek_certificate().empty()) {
+      extension->set_ek_certificate(reply.ek_certificate());
+    }
+  }
+  response->Return(result);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::InitializeCastKey(
