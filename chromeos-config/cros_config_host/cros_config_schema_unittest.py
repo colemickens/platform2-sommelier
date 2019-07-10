@@ -407,6 +407,9 @@ class GetValidSchemaProperties(cros_test_lib.TestCase):
     schema_props = cros_config_schema.GetValidSchemaProperties()
     self.assertIn('cras-config-dir', schema_props['/audio/main'])
     self.assertIn('key-id', schema_props['/firmware-signing'])
+    self.assertIn('files', schema_props['/audio/main'])
+    self.assertIn('has-touchscreen', schema_props['/hardware-properties'])
+    self.assertIn('count', schema_props['/camera'])
 
 
 class MainTests(cros_test_lib.TempDirTestCase):

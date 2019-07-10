@@ -559,6 +559,7 @@ def _GetValidSchemaProperties(schema_node, path, result):
     result: Running collection of results
   """
   full_path = '/%s' % '/'.join(path)
+  valid_schema_property_types = {'array', 'boolean', 'integer', 'string'}
   for key in schema_node:
     new_path = path + [key]
     node_type = schema_node[key]['type']
@@ -567,7 +568,7 @@ def _GetValidSchemaProperties(schema_node, path, result):
       if 'properties' in schema_node[key]:
         _GetValidSchemaProperties(
             schema_node[key]['properties'], new_path, result)
-    elif node_type == 'string':
+    elif node_type in valid_schema_property_types:
       all_props = result.get(full_path, [])
       all_props.append(key)
       result[full_path] = all_props

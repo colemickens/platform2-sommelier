@@ -49,29 +49,6 @@ def FormatJson(config):
   return json.dumps(config, sort_keys=True, indent=2, separators=(',', ': '))
 
 
-def GetValidSchemaProperties(schema_node, path, result):
-  """Recursively finds the valid properties for a given node
-
-  Args:
-    schema_node: Single node from the schema
-    path: Running path that a given node maps to
-    result: Running collection of results
-  """
-  full_path = '/%s' % '/'.join(path)
-  for key in schema_node:
-    new_path = path + [key]
-    schema_type = schema_node[key]['type']
-
-    if schema_type == 'object':
-      if 'properties' in schema_node[key]:
-        GetValidSchemaProperties(
-            schema_node[key]['properties'], new_path, result)
-    elif schema_type == 'string':
-      all_props = result.get(full_path, [])
-      all_props.append(key)
-      result[full_path] = all_props
-
-
 def ValidateConfigSchema(schema, config):
   """Validates a transformed config against the schema specified.
 
