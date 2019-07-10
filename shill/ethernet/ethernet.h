@@ -82,7 +82,13 @@ class Ethernet
   void TDLSDiscoverResponse(const std::string& peer_address) override;
 #endif  // DISABLE_WIRED_8021X
 
+  std::string GetStorageIdentifier() const override;
+
   virtual bool link_up() const { return link_up_; }
+
+  const std::string& permanent_mac_address() const {
+    return permanent_mac_address_;
+  }
 
  private:
   friend class EthernetTest;
@@ -144,10 +150,18 @@ class Ethernet
   // Returns device bus type on success. Otherwise, returns empty string.
   std::string GetDeviceBusType() const;
 
+  // Queries the kernel for a permanent MAC address. Returns a permanent MAC
+  // address in lower case on success. Otherwise returns an empty string.
+  std::string GetPermanentMacAddressFromKernel();
+
   EthernetServiceRefPtr service_;
   bool link_up_;
 
   std::string usb_ethernet_mac_address_source_;
+
+  std::unique_ptr<DeviceId> device_id_;
+
+  std::string bus_type_;
 
 #if !defined(DISABLE_WIRED_8021X)
   // Track whether we have completed EAP authentication successfully.
@@ -178,9 +192,7 @@ class Ethernet
 
   std::unique_ptr<Sockets> sockets_;
 
-  std::unique_ptr<DeviceId> device_id_;
-
-  std::string bus_type_;
+  std::string permanent_mac_address_;
 
   base::WeakPtrFactory<Ethernet> weak_ptr_factory_;
 

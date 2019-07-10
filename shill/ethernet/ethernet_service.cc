@@ -85,8 +85,13 @@ string EthernetService::GetStorageIdentifier() const {
   if (!props_.ethernet_ || !props_.storage_id_.empty()) {
     return props_.storage_id_;
   }
+
+  const std::string* mac_address = &props_.ethernet_->permanent_mac_address();
+  if (mac_address->empty()) {
+    mac_address = &props_.ethernet_->mac_address();
+  }
   return base::StringPrintf("%s_%s", technology().GetName().c_str(),
-                            props_.ethernet_->mac_address().c_str());
+                            mac_address->c_str());
 }
 
 bool EthernetService::IsAutoConnectByDefault() const {

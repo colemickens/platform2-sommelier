@@ -8,15 +8,15 @@
 #include <netinet/ether.h>
 #include <netinet/in.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/ether.h
+#include <linux/netdevice.h>
 #include <linux/sockios.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 
-#include <string>
-
 #include <base/bind.h>
 #include <base/files/file_path.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 
@@ -66,6 +66,9 @@ Ethernet::Ethernet(Manager* manager,
              interface_index,
              Technology::kEthernet),
       link_up_(false),
+      device_id_(DeviceId::CreateFromSysfs(base::FilePath(
+          base::StringPrintf("/sys/class/net/%s/device", link_name.c_str())))),
+      bus_type_(GetDeviceBusType()),
 #if !defined(DISABLE_WIRED_8021X)
       is_eap_authenticated_(false),
       is_eap_detected_(false),
@@ -75,9 +78,7 @@ Ethernet::Ethernet(Manager* manager,
                                                             base::Closure())),
 #endif  // DISABLE_WIRED_8021X
       sockets_(new Sockets()),
-      device_id_(DeviceId::CreateFromSysfs(base::FilePath(
-          base::StringPrintf("/sys/class/net/%s/device", link_name.c_str())))),
-      bus_type_(GetDeviceBusType()),
+      permanent_mac_address_(GetPermanentMacAddressFromKernel()),
       weak_ptr_factory_(this) {
   PropertyStore* store = this->mutable_store();
 #if !defined(DISABLE_WIRED_8021X)
@@ -202,6 +203,13 @@ void Ethernet::ConnectTo(EthernetService* service) {
     SetServiceState(Service::kStateFailure);
     DestroyIPConfig();
   }
+}
+
+std::string Ethernet::GetStorageIdentifier() const {
+  if (!permanent_mac_address_.empty()) {
+    return "device_" + permanent_mac_address_;
+  }
+  return Device::GetStorageIdentifier();
 }
 
 void Ethernet::DisconnectFrom(EthernetService* service) {
@@ -550,6 +558,50 @@ std::string Ethernet::GetDeviceBusType() const {
     return kDeviceBusTypeUsb;
   }
   return "";
+}
+
+std::string Ethernet::GetPermanentMacAddressFromKernel() {
+  struct ifreq ifr;
+  if (link_name().length() >= sizeof(ifr.ifr_name)) {
+    LOG(WARNING) << "Interface name " << link_name()
+                 << " too long: " << link_name().size()
+                 << " >= " << sizeof(ifr.ifr_name);
+    return std::string();
+  }
+
+  memset(&ifr, 0, sizeof(ifr));
+  memcpy(ifr.ifr_name, link_name().data(), link_name().length());
+
+  constexpr int kPermAddrBufferSize =
+      sizeof(struct ethtool_perm_addr) + MAX_ADDR_LEN;
+  char perm_addr_buffer[kPermAddrBufferSize];
+  memset(perm_addr_buffer, 0, kPermAddrBufferSize);
+  struct ethtool_perm_addr* perm_addr = static_cast<struct ethtool_perm_addr*>(
+      static_cast<void*>(perm_addr_buffer));
+  perm_addr->cmd = ETHTOOL_GPERMADDR;
+  perm_addr->size = MAX_ADDR_LEN;
+
+  ifr.ifr_data = perm_addr;
+
+  const int fd = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+  if (fd < 0) {
+    PLOG(WARNING) << "Failed to allocate socket";
+    return std::string();
+  }
+
+  ScopedSocketCloser socket_closer(sockets_.get(), fd);
+  int err = sockets_->Ioctl(fd, SIOCETHTOOL, &ifr);
+  if (err < 0) {
+    PLOG(WARNING) << "Failed to read permanent MAC address";
+    return std::string();
+  }
+
+  if (perm_addr->size != ETH_ALEN) {
+    LOG(WARNING) << "Invalid permanent MAC address size: " << perm_addr->size;
+    return std::string();
+  }
+
+  return base::ToLowerASCII(ByteString(perm_addr->data, ETH_ALEN).HexEncode());
 }
 
 }  // namespace shill
