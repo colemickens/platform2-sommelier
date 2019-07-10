@@ -524,11 +524,12 @@ bool DebugdDBusAdaptor::SetSchedulerConfiguration(brillo::ErrorPtr* error,
 }
 
 bool DebugdDBusAdaptor::EvaluateProbeFunction(
-    brillo::ErrorPtr* error, const std::string& sandbox_info,
-    const std::string& probe_statement, std::string* probe_result,
-    int32_t* exit_code) {
+    brillo::ErrorPtr* error,
+    const std::string& sandbox_info,
+    const std::string& probe_statement,
+    brillo::dbus_utils::FileDescriptor *outfd) {
   return probe_tool_->EvaluateProbeFunction(
-          error, sandbox_info, probe_statement, probe_result, exit_code);
+          error, sandbox_info, probe_statement, outfd);
 }
 
 }  // namespace debugd

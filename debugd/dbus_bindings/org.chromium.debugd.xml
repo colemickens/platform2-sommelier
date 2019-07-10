@@ -1037,14 +1037,9 @@
           executable.
         </tp:docstring>
       </arg>
-      <arg name="probe_result" type="s" direction="out">
+      <arg name="outfd" type="h" direction="out">
         <tp:docstring>
-          Probe result for the given probe statement in JSON string format.
-        </tp:docstring>
-      </arg>
-      <arg name="exit_code" type="i" direction="out">
-        <tp:docstring>
-          Probe result for the given probe statement in integer format.
+          File descriptor to send output to.
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>

@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/macros.h>
+#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 
 namespace debugd {
@@ -19,9 +20,9 @@ class ProbeTool {
 
   // Executes the function defined for runtime_probe.
   bool EvaluateProbeFunction(
-      brillo::ErrorPtr* error, const std::string& sandbox_info,
-      const std::string& probe_statement, std::string* probe_result,
-      int32_t* exit_code);
+      brillo::ErrorPtr* error, const std::string&
+      sandbox_info, const std::string& probe_statement,
+      brillo::dbus_utils::FileDescriptor *outfd);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ProbeTool);

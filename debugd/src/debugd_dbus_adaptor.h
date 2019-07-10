@@ -188,11 +188,11 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   bool SetSchedulerConfiguration(brillo::ErrorPtr* error,
                                  const std::string& policy,
                                  bool* out) override;
-  bool EvaluateProbeFunction(brillo::ErrorPtr* error,
-                             const std::string& sandbox_info,
-                             const std::string& probe_statement,
-                             std::string* probe_result,
-                             int32_t* exit_code) override;
+  bool EvaluateProbeFunction(
+      brillo::ErrorPtr* error,
+      const std::string& sandbox_info,
+      const std::string& probe_statement,
+      brillo::dbus_utils::FileDescriptor *outfd) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;

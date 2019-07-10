@@ -2,18 +2,89 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/probe_function.h"
+
+#include <sys/select.h>
+#include <sys/time.h>
+#include <unistd.h>
+
+#include <algorithm>
 #include <vector>
 
-#include <base/values.h>
+#include <base/files/file_util.h>
 #include <base/json/json_writer.h>
+#include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
-#include "runtime_probe/probe_function.h"
-
 namespace runtime_probe {
+
+namespace {
+
+enum class PipeState {
+  PENDING,
+  ERROR,
+  DONE
+};
+
+// The system-defined size of buffer used to read from a pipe.
+const size_t kBufferSize = PIPE_BUF;
+// Seconds to wait for runtime_probe_helper to send probe results.
+const time_t kWaitSeconds = 5;
+
+PipeState ReadPipe(int src_fd, std::string* dst_str) {
+  char buffer[kBufferSize];
+  const ssize_t bytes_read = HANDLE_EINTR(read(src_fd, buffer, kBufferSize));
+  if (bytes_read < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+    PLOG(ERROR) << "read() from fd " << src_fd << " failed";
+    return PipeState::ERROR;
+  }
+  if (bytes_read == 0) {
+    return PipeState::DONE;
+  }
+  if (bytes_read > 0) {
+    dst_str->append(buffer, bytes_read);
+  }
+  return PipeState::PENDING;
+}
+
+bool ReadNonblockingPipeToString(int fd, std::string* out) {
+  fd_set read_fds;
+  struct timeval timeout;
+
+  FD_ZERO(&read_fds);
+  FD_SET(fd, &read_fds);
+
+  timeout.tv_sec = kWaitSeconds;
+  timeout.tv_usec = 0;
+
+  while (true) {
+    int retval = select(fd + 1, &read_fds, nullptr, nullptr, &timeout);
+    if (retval < 0) {
+      PLOG(ERROR) << "select() failed from runtime_probe_helper";
+      return false;
+    }
+
+    // Should only happen on timeout. Log a warning here, so we get at least a
+    // log if the process is stale.
+    if (retval == 0) {
+      LOG(WARNING) << "select() timed out. Process might be stale.";
+      return false;
+    }
+
+    PipeState state = ReadPipe(fd, out);
+    if (state == PipeState::DONE) {
+      return true;
+    }
+    if (state == PipeState::ERROR) {
+      return false;
+    }
+  }
+}
+
+}  // namespace
 
 using DataType = typename ProbeFunction::DataType;
 
@@ -95,24 +166,16 @@ bool ProbeFunction::InvokeHelper(std::string* result) const {
   }
 
   dbus::MessageReader reader(response.get());
-  if (!reader.PopString(result)) {
-    LOG(ERROR) << "Failed to read probe_result from debugd.";
+  base::ScopedFD read_fd{};
+  if (!reader.PopFileDescriptor(&read_fd)) {
+    LOG(ERROR) << "Failed to read fd that represents the read end of the pipe"
+                  " from debugd.";
     return false;
   }
-
-  int32_t exit_code = -1;
-  if (!reader.PopInt32(&exit_code)) {
-    LOG(ERROR) << "Failed to read exit_code from debugd.";
+  if (!ReadNonblockingPipeToString(read_fd.get(), result)) {
+    LOG(ERROR) << "Cannot read result from helper";
     return false;
   }
-
-  if (exit_code) {
-    VLOG(1) << "Helper returns non-zero value (" << exit_code << ") when "
-            << "processing statement " << result;
-    return false;
-  }
-
-  VLOG(1) << "EvalInHelper returns " << *result;
   return true;
 }
 

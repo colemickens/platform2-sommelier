@@ -4,28 +4,31 @@
 
 #include "debugd/src/probe_tool.h"
 
-#include "debugd/src/error_utils.h"
-#include "debugd/src/sandboxed_process.h"
+#include <fcntl.h>
 
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/files/file_path.h>
-#include <base/logging.h>
-#include <base/values.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/json/json_reader.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_split.h>
+#include <base/values.h>
 #include <brillo/errors/error_codes.h>
 #include <build/build_config.h>
 #include <build/buildflag.h>
 #include <chromeos/dbus/service_constants.h>
 #include <vboot/crossystem.h>
+
+#include "debugd/src/error_utils.h"
+#include "debugd/src/sandboxed_process.h"
 
 using base::ListValue;
 
@@ -37,19 +40,32 @@ constexpr char kSandboxInfoDir[] = "/etc/runtime_probe/sandbox";
 constexpr char kBinary[] = "/usr/bin/runtime_probe_helper";
 constexpr char kRunAs[] = "runtime_probe";
 
+bool CreateNonblockingPipe(base::ScopedFD* read_fd,
+                           base::ScopedFD* write_fd) {
+  int pipe_fd[2];
+  int ret = pipe2(pipe_fd, O_CLOEXEC | O_NONBLOCK);
+  if (ret != 0) {
+    PLOG(ERROR) << "Cannot create a pipe.";
+    return false;
+  }
+  read_fd->reset(pipe_fd[0]);
+  write_fd->reset(pipe_fd[1]);
+  return true;
+}
+
 }  // namespace
 
-bool ProbeTool::EvaluateProbeFunction(brillo::ErrorPtr* error,
-                                      const std::string& sandbox_info,
-                                      const std::string& probe_statement,
-                                      std::string* probe_result,
-                                      int32_t* exit_code) {
+bool ProbeTool::EvaluateProbeFunction(
+    brillo::ErrorPtr* error,
+    const std::string& sandbox_info,
+    const std::string& probe_statement,
+    brillo::dbus_utils::FileDescriptor *outfd) {
   std::unique_ptr<brillo::Process> process;
 
   // Details of sandboxing for probing should be centralized in a single
   // directory. Sandboxing is mandatory when we don't allow debug features.
   if (VbGetSystemPropertyInt("cros_debug") != 1) {
-    std::unique_ptr<SandboxedProcess> sandboxed_process(new SandboxedProcess());
+    std::unique_ptr<SandboxedProcess> sandboxed_process{new SandboxedProcess()};
 
     const auto seccomp_path = base::FilePath{kSandboxInfoDir}.Append(
         base::StringPrintf("%s-seccomp.policy", sandbox_info.c_str()));
@@ -126,25 +142,18 @@ bool ProbeTool::EvaluateProbeFunction(brillo::ErrorPtr* error,
     // Explicitly running it without sandboxing.
     LOG(ERROR) << "Running " << sandbox_info << " without sandbox";
   }
+  base::ScopedFD read_fd, write_fd;
+  if (!CreateNonblockingPipe(&read_fd, &write_fd)) {
+    DEBUGD_ADD_ERROR(error, kErrorPath, "Cannot create a pipe.");
+    return false;
+  }
 
   process->AddArg(kBinary);
   process->AddArg(probe_statement);
-
-  base::ScopedTempDir temp_dir;
-  CHECK(temp_dir.CreateUniqueTempDir())
-      << "Fail to create unique temporary directory.";
-  std::string output_file = temp_dir.GetPath().Append(kRunAs).value();
-  process->RedirectOutput(output_file);
-  // TODO(itspeter): switch to Start() so to allow time consuming probe
-  // statement and possibility of multiprocesing. (b/129508946)
-  *exit_code = static_cast<int32_t>(process->Run());
-  base::ReadFileToString(base::FilePath(output_file), probe_result);
-  if (*exit_code) {
-    DEBUGD_ADD_ERROR(
-        error, kErrorPath,
-        base::StringPrintf("Helper returns non-zero (%d)", *exit_code));
-    return false;
-  }
+  process->BindFd(write_fd.get(), STDOUT_FILENO);
+  process->Start();
+  process->Release();
+  *outfd = std::move(read_fd);
   return true;
 }
 
