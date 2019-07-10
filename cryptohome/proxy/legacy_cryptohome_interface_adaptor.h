@@ -635,6 +635,12 @@ class LegacyCryptohomeInterfaceAdaptor
   void InstallAttributesSetOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool>> response,
       const user_data_auth::InstallAttributesSetReply& reply);
+  void InstallAttributesCountOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<int32_t>> response,
+      const user_data_auth::InstallAttributesGetStatusReply& reply);
+  void InstallAttributesFinalizeOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+      const user_data_auth::InstallAttributesFinalizeReply& reply);
   void MigrateToDircryptoOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<>> response,
       const user_data_auth::StartMigrateToDircryptoReply& reply);
