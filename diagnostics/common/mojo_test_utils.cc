@@ -1,8 +1,8 @@
-// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/mojo_test_utils.h"
+#include "diagnostics/common/mojo_test_utils.h"
 
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -16,7 +16,7 @@
 #include <base/logging.h>
 #include <base/memory/shared_memory.h>
 #include <base/posix/eintr_wrapper.h>
-#include <diagnostics/wilco_dtc_supportd/mojo_utils.h>
+#include <diagnostics/common/mojo_utils.h>
 
 namespace diagnostics {
 

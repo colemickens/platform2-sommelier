@@ -1,9 +1,9 @@
-// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOJO_UTILS_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOJO_UTILS_H_
+#ifndef DIAGNOSTICS_COMMON_MOJO_UTILS_H_
+#define DIAGNOSTICS_COMMON_MOJO_UTILS_H_
 
 #include <memory>
 
@@ -34,4 +34,4 @@ mojo::ScopedHandle CreateReadOnlySharedMemoryMojoHandle(
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOJO_UTILS_H_
+#endif  // DIAGNOSTICS_COMMON_MOJO_UTILS_H_

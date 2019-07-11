@@ -20,9 +20,9 @@
 #include <mojo/public/cpp/bindings/interface_ptr.h>
 #include <mojo/public/cpp/system/buffer.h>
 
+#include "diagnostics/common/mojo_test_utils.h"
+#include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/wilco_dtc_supportd/mock_mojom_wilco_dtc_supportd_client.h"
-#include "diagnostics/wilco_dtc_supportd/mojo_test_utils.h"
-#include "diagnostics/wilco_dtc_supportd/mojo_utils.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_mojo_service.h"
 
 #include "mojo/wilco_dtc_supportd.mojom.h"

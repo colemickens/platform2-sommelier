@@ -42,12 +42,12 @@
 #include <mojo/public/cpp/bindings/interface_ptr.h>
 
 #include "diagnostics/common/file_test_utils.h"
+#include "diagnostics/common/mojo_test_utils.h"
+#include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/wilco_dtc_supportd/bind_utils.h"
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
 #include "diagnostics/wilco_dtc_supportd/fake_browser.h"
 #include "diagnostics/wilco_dtc_supportd/fake_wilco_dtc.h"
-#include "diagnostics/wilco_dtc_supportd/mojo_test_utils.h"
-#include "diagnostics/wilco_dtc_supportd/mojo_utils.h"
 #include "diagnostics/wilco_dtc_supportd/protobuf_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
