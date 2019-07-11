@@ -131,9 +131,9 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   const SmbCredential& GetCredential(
       SambaInterface::SambaInterfaceId samba_interface_id) const;
 
-  std::unique_ptr<MountTracker> mount_tracker_;
-  std::unique_ptr<SambaInterface> system_samba_interface_;
-  SambaInterfaceFactory samba_interface_factory_;
+  const std::unique_ptr<MountTracker> mount_tracker_;
+  const SambaInterfaceFactory samba_interface_factory_;
+  const std::unique_ptr<SambaInterface> system_samba_interface_;
 
   DISALLOW_COPY_AND_ASSIGN(MountManager);
 };

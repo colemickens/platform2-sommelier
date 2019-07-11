@@ -27,21 +27,18 @@ bool CanBufferHoldPassword(
     const std::unique_ptr<password_provider::Password>& password,
     int32_t buffer_length) {
   DCHECK(password);
-
   return static_cast<int32_t>(password->size()) + 1 <= buffer_length;
 }
 
 // Sets the first element in the buffer to be a null terminator.
 void SetBufferEmpty(char* buffer) {
   DCHECK(buffer);
-
   buffer[0] = '\0';
 }
 
 // Copies |str| to |buffer| and adds a null terminator at the end.
 void CopyStringToBuffer(const std::string& str, char* buffer) {
   DCHECK(buffer);
-
   strncpy(buffer, str.c_str(), str.size());
   buffer[str.size()] = '\0';
 }
@@ -107,17 +104,16 @@ std::unique_ptr<password_provider::Password> GetPassword(
   size_t password_length = 0;
 
   // Read sizeof(size_t) bytes from the file to get the password length.
-  bool success = base::ReadFromFD(password_fd.get(),
-                                  reinterpret_cast<char*>(&password_length),
-                                  sizeof(password_length));
-  if (!success) {
-    LOG(ERROR) << "Could not read password from file.";
-    return std::unique_ptr<password_provider::Password>();
+  if (!base::ReadFromFD(password_fd.get(),
+                        reinterpret_cast<char*>(&password_length),
+                        sizeof(password_length))) {
+    LOG(ERROR) << "Could not read password from file";
+    return nullptr;
   }
 
   if (password_length == 0) {
     // Return empty password since there is no password.
-    return std::unique_ptr<password_provider::Password>();
+    return nullptr;
   }
 
   return password_provider::Password::CreateFromFileDescriptor(
@@ -127,16 +123,14 @@ std::unique_ptr<password_provider::Password> GetPassword(
 MountManager::MountManager(std::unique_ptr<MountTracker> mount_tracker,
                            SambaInterfaceFactory samba_interface_factory)
     : mount_tracker_(std::move(mount_tracker)),
-      samba_interface_factory_(std::move(samba_interface_factory)) {
-  system_samba_interface_ =
-      CreateSambaInterface(MountConfig(false /* enable_ntlm */));
-}
+      samba_interface_factory_(std::move(samba_interface_factory)),
+      system_samba_interface_(
+          CreateSambaInterface(MountConfig(false /* enable_ntlm */))) {}
 
 MountManager::~MountManager() = default;
 
 bool MountManager::IsAlreadyMounted(int32_t mount_id) const {
   DCHECK_GE(mount_id, 0);
-
   return mount_tracker_->IsAlreadyMounted(mount_id);
 }
 
@@ -145,14 +139,12 @@ void MountManager::AddMount(const std::string& mount_root,
                             const MountConfig& mount_config,
                             int32_t* mount_id) {
   DCHECK(mount_id);
-
   mount_tracker_->AddMount(mount_root, std::move(credential),
                            CreateSambaInterface(mount_config), mount_id);
 }
 
 bool MountManager::RemoveMount(int32_t mount_id) {
   DCHECK_GE(mount_id, 0);
-
   return mount_tracker_->RemoveMount(mount_id);
 }
 
@@ -160,14 +152,12 @@ bool MountManager::GetFullPath(int32_t mount_id,
                                const std::string& entry_path,
                                std::string* full_path) const {
   DCHECK(full_path);
-
   return mount_tracker_->GetFullPath(mount_id, entry_path, full_path);
 }
 
 bool MountManager::GetMetadataCache(int32_t mount_id,
                                     MetadataCache** cache) const {
   DCHECK(cache);
-
   return mount_tracker_->GetMetadataCache(mount_id, cache);
 }
 
@@ -179,7 +169,6 @@ std::string MountManager::GetRelativePath(int32_t mount_id,
 bool MountManager::GetSambaInterface(int32_t mount_id,
                                      SambaInterface** samba_interface) const {
   DCHECK(samba_interface);
-
   return mount_tracker_->GetSambaInterface(mount_id, samba_interface);
 }
 
