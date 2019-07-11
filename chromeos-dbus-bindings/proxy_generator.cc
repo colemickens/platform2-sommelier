@@ -552,7 +552,7 @@ void ProxyGenerator::AddSignalHandlerRegistration(
     block.AddLine(StringPrintf("\"%s\",", interface_name.c_str()));
     block.AddLine(StringPrintf("\"%s\",", signal.name.c_str()));
     block.AddLine("signal_callback,");
-    block.AddLine("on_connected_callback);");
+    block.AddLine("std::move(on_connected_callback));");
     block.PopOffset();  // Function call line continuation
     block.PopOffset();  // Method body
     block.AddLine("}");

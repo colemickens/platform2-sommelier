@@ -166,7 +166,7 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
         "org.chromium.TestInterface",
         "Closer",
         signal_callback,
-        on_connected_callback);
+        std::move(on_connected_callback));
   }
 
   void RegisterTheCurseOfKaZarSignalHandler(
@@ -178,7 +178,7 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
         "org.chromium.TestInterface",
         "TheCurseOfKaZar",
         signal_callback,
-        on_connected_callback);
+        std::move(on_connected_callback));
   }
 
   void ReleaseObjectProxy(const base::Closure& callback) {
@@ -523,7 +523,7 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
         "org.chromium.TestInterface",
         "Closer",
         signal_callback,
-        on_connected_callback);
+        std::move(on_connected_callback));
   }
 
   void ReleaseObjectProxy(const base::Closure& callback) {
@@ -713,7 +713,7 @@ class Itf1Proxy final : public Itf1ProxyInterface {
         "org.chromium.Itf1",
         "Closer",
         signal_callback,
-        on_connected_callback);
+        std::move(on_connected_callback));
   }
 
   void ReleaseObjectProxy(const base::Closure& callback) {
@@ -1238,7 +1238,7 @@ class Itf1Proxy final : public Itf1ProxyInterface {
         "org.chromium.Itf1",
         "Closer",
         signal_callback,
-        on_connected_callback);
+        std::move(on_connected_callback));
   }
 
   void ReleaseObjectProxy(const base::Closure& callback) {
@@ -1581,7 +1581,7 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
         "org.chromium.TestInterface",
         "File",
         signal_callback,
-        on_connected_callback);
+        std::move(on_connected_callback));
   }
 
   void ReleaseObjectProxy(const base::Closure& callback) {
