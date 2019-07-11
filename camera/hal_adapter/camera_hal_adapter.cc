@@ -468,7 +468,11 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
     return;
   }
 
-  vendor_tag_manager_.Add(&reprocess_effect_manager_);
+  if (!vendor_tag_manager_.Add(&reprocess_effect_manager_)) {
+    LOGF(ERROR) << "Failed to add the vendor tags of reprocess effect manager";
+    callback.Run(false);
+    return;
+  }
 
   // The setup sequence for each camera HAL:
   //   1. get_vendor_tag_ops()
@@ -492,8 +496,14 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
     if (m->get_vendor_tag_ops) {
       vendor_tag_ops ops = {};
       m->get_vendor_tag_ops(&ops);
-      if (ops.get_tag_count != nullptr) {
-        vendor_tag_manager_.Add(&ops);
+      if (ops.get_tag_count == nullptr) {
+        continue;
+      }
+      if (!vendor_tag_manager_.Add(&ops)) {
+        LOGF(ERROR) << "Failed to add the vendor tags of camera module "
+                    << std::quoted(m->common.name);
+        callback.Run(false);
+        return;
       }
     }
   }

@@ -93,7 +93,7 @@ bool VendorTagManager::Add(uint32_t tag,
 
   TagInfo info = {section_name, tag_name, type};
   if (!tags_.emplace(tag, info).second) {
-    LOGF(ERROR) << "Duplicated tag" << std::showbase << std::hex << tag;
+    LOGF(ERROR) << "Duplicated tag " << std::showbase << std::hex << tag;
     return false;
   }
 
