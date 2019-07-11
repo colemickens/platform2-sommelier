@@ -1130,17 +1130,26 @@ bool MetricsDaemon::ReadFileToUint64(const base::FilePath& path,
 }
 
 // static
-bool MetricsDaemon::ReadMMStat(const base::FilePath& zram_dir,
-                               uint64_t* compr_data_size_out,
-                               uint64_t* orig_data_size_out,
-                               uint64_t* zero_pages_out,
-                               uint64_t* incompr_pages_out) {
+bool MetricsDaemon::ReadZramStat(const base::FilePath& zram_dir,
+                                 uint64_t* compr_data_size_out,
+                                 uint64_t* orig_data_size_out,
+                                 uint64_t* zero_pages_out,
+                                 uint64_t* incompr_pages_out) {
   const base::FilePath mm_stat_path = zram_dir.Append(kMMStatName);
   std::string content;
 
-  // No warning here since older systems won't have this new file
   if (!base::ReadFileToString(mm_stat_path, &content)) {
-    return false;
+    // If mm_stat is not present, try to read zram stat from the old stat files.
+    if (!ReadFileToUint64(zram_dir.Append(kComprDataSizeName),
+                          compr_data_size_out) ||
+        !ReadFileToUint64(zram_dir.Append(kOrigDataSizeName),
+                          orig_data_size_out) ||
+        !ReadFileToUint64(zram_dir.Append(kZeroPagesName), zero_pages_out)) {
+      LOG(WARNING) << "Cannot open zram stat files";
+      return false;
+    }
+    *incompr_pages_out = 0;
+    return true;
   }
 
   int num_items =
@@ -1171,12 +1180,8 @@ bool MetricsDaemon::ReportZram(const base::FilePath& zram_dir) {
   uint64_t compr_data_size, orig_data_size, zero_pages, incompr_pages;
   const size_t page_size = 4096;
 
-  if (!ReadMMStat(zram_dir, &compr_data_size, &orig_data_size, &zero_pages,
-                  &incompr_pages) &&
-      (!ReadFileToUint64(zram_dir.Append(kComprDataSizeName),
-                         &compr_data_size) ||
-       !ReadFileToUint64(zram_dir.Append(kOrigDataSizeName), &orig_data_size) ||
-       !ReadFileToUint64(zram_dir.Append(kZeroPagesName), &zero_pages))) {
+  if (!ReadZramStat(zram_dir, &compr_data_size, &orig_data_size, &zero_pages,
+                    &incompr_pages)) {
     return false;
   }
 

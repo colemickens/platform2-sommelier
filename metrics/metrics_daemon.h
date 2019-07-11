@@ -392,12 +392,12 @@ class MetricsDaemon : public brillo::DBusDaemon {
                                uint64_t* value,
                                bool warn_on_read_failure = true);
 
-  // Reads /sys/devices/virtual/block/zram0/mm_stat.
-  static bool ReadMMStat(const base::FilePath& zram_dir,
-                         uint64_t* compr_data_size_out,
-                         uint64_t* orig_data_size_out,
-                         uint64_t* zero_pages_out,
-                         uint64_t* incompr_pages_out);
+  // Reads zram stat.
+  static bool ReadZramStat(const base::FilePath& zram_dir,
+                           uint64_t* compr_data_size_out,
+                           uint64_t* orig_data_size_out,
+                           uint64_t* zero_pages_out,
+                           uint64_t* incompr_pages_out);
 
   // VARIABLES
 

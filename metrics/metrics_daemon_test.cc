@@ -483,13 +483,13 @@ TEST_F(MetricsDaemonTest, SendZramMetrics) {
   EXPECT_TRUE(daemon_.testing_);
 
   // |compr_data_size| is the size in bytes of compressed data.
-  const uint64_t compr_data_size = 50 * 1000 * 1000;
+  const uint64_t compr_data_size = 40 * 1000 * 1000;
   // The constant '3' is a realistic but random choice.
   // |orig_data_size| does not include zero pages.
   const uint64_t orig_data_size = compr_data_size * 3;
   const uint64_t page_size = 4096;
   const uint64_t zero_pages = 10 * 1000 * 1000 / page_size;
-  std::string value_string = "150000000 50000000 0 0 0 2441 0";
+  std::string value_string = "120000000 40000000 0 0 0 2441 0";
 
   ASSERT_EQ(value_string.length(),
             base::WriteFile(base::FilePath(MetricsDaemon::kMMStatName),
@@ -520,8 +520,9 @@ TEST_F(MetricsDaemonTest, SendZramMetricsOld) {
   // |orig_data_size| does not include zero pages.
   const uint64_t orig_data_size = compr_data_size * 3;
   const uint64_t page_size = 4096;
-  const uint64_t zero_pages = 10 * 1000 * 1000 / page_size;
+  const uint64_t zero_pages = 20 * 1000 * 1000 / page_size;
 
+  base::DeleteFile(base::FilePath(MetricsDaemon::kMMStatName), false);
   CreateUint64ValueFile(base::FilePath(MetricsDaemon::kComprDataSizeName),
                         compr_data_size);
   CreateUint64ValueFile(base::FilePath(MetricsDaemon::kOrigDataSizeName),
@@ -534,6 +535,7 @@ TEST_F(MetricsDaemonTest, SendZramMetricsOld) {
       zero_pages * page_size * 100 / real_orig_size;
   // Ratio samples are in percents.
   const uint64_t actual_ratio_sample = real_orig_size * 100 / compr_data_size;
+  const char uma_incompressible[] = "Platform.ZramIncompressiblePages";
 
   EXPECT_CALL(metrics_lib_, SendToUMA(_, compr_data_size >> 20, _, _, _));
   EXPECT_CALL(metrics_lib_,
@@ -541,6 +543,7 @@ TEST_F(MetricsDaemonTest, SendZramMetricsOld) {
   EXPECT_CALL(metrics_lib_, SendToUMA(_, actual_ratio_sample, _, _, _));
   EXPECT_CALL(metrics_lib_, SendToUMA(_, zero_pages, _, _, _));
   EXPECT_CALL(metrics_lib_, SendToUMA(_, zero_ratio_percent, _, _, _));
+  EXPECT_CALL(metrics_lib_, SendToUMA(uma_incompressible, _, _, _, _)).Times(0);
 
   EXPECT_TRUE(daemon_.ReportZram(base::FilePath(".")));
 }
@@ -549,14 +552,14 @@ TEST_F(MetricsDaemonTest, SendZramMetricsWithIncompressiblePageStats) {
   EXPECT_TRUE(daemon_.testing_);
 
   // |compr_data_size| is the size in bytes of compressed data.
-  const uint64_t compr_data_size = 50 * 1000 * 1000;
+  const uint64_t compr_data_size = 60 * 1000 * 1000;
   // The constant '3' is a realistic but random choice.
   // |orig_data_size| does not include zero pages.
   const uint64_t orig_data_size = compr_data_size * 3;
   const uint64_t page_size = 4096;
-  const uint64_t zero_pages = 10 * 1000 * 1000 / page_size;
+  const uint64_t zero_pages = 30 * 1000 * 1000 / page_size;
   const uint64_t incompr_pages = 5 * 1000 * 1000 / page_size;
-  std::string value_string = "150000000 50000000 0 0 0 2441 0 1220";
+  std::string value_string = "180000000 60000000 0 0 0 7324 0 1220";
 
   ASSERT_EQ(value_string.length(),
             base::WriteFile(base::FilePath(MetricsDaemon::kMMStatName),
