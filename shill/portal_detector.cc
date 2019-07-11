@@ -122,12 +122,17 @@ bool PortalDetector::StartTrial(const Properties& props,
   if (http_request_ || https_request_) {
     CleanupTrial();
   } else {
-    http_request_ = std::make_unique<HttpRequest>(connection_, dispatcher_);
+    IPAddress::Family ip_family =
+        connection_->IsIPv6() ? IPAddress::kFamilyIPv6 : IPAddress::kFamilyIPv4;
+    const std::string& iface = connection_->interface_name();
+    const std::vector<std::string>& dns_list = connection_->dns_servers();
+    http_request_ =
+        std::make_unique<HttpRequest>(dispatcher_, iface, ip_family, dns_list);
     // For non-default URLs, allow for secure communication with both Google and
     // non-Google servers.
     bool allow_non_google_https = (https_url_string_ != kDefaultHttpsUrl);
-    https_request_ = std::make_unique<HttpRequest>(connection_, dispatcher_,
-                                                   allow_non_google_https);
+    https_request_ = std::make_unique<HttpRequest>(
+        dispatcher_, iface, ip_family, dns_list, allow_non_google_https);
   }
   StartTrialAfterDelay(start_delay_milliseconds);
   attempt_count_++;

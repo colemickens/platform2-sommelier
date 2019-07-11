@@ -156,7 +156,7 @@ bool DnsClient::Start(const string& hostname, Error* error) {
                        address_.family(), ReceiveDnsReplyCB, this);
 
   if (!RefreshHandles()) {
-    LOG(ERROR) << "Impossibly short timeout.";
+    LOG(ERROR) << interface_name_ << ": Impossibly short timeout.";
     error->CopyFrom(error_);
     Stop();
     return false;
@@ -275,9 +275,11 @@ void DnsClient::ReceiveDnsReply(int status, struct hostent* hostent) {
       default:
         error_.Populate(Error::kOperationFailed, kErrorUnknown);
         if (status == ARES_SUCCESS) {
-          LOG(ERROR) << "ARES returned success but hostent was invalid!";
+          LOG(ERROR) << interface_name_
+                     << ": ARES returned success but hostent was invalid!";
         } else {
-          LOG(ERROR) << "ARES returned unhandled error status " << status;
+          LOG(ERROR) << interface_name_
+                     << ": ARES returned unhandled error status " << status;
         }
         break;
     }

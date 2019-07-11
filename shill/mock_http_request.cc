@@ -4,12 +4,15 @@
 
 #include "shill/mock_http_request.h"
 
-#include "shill/connection.h"
+namespace {
+constexpr const char kMockInterfaceName[] = "mock0";
+}  // namespace
 
 namespace shill {
 
-MockHttpRequest::MockHttpRequest(ConnectionRefPtr connection)
-    : HttpRequest(connection, nullptr, true) {}
+MockHttpRequest::MockHttpRequest()
+    : HttpRequest(
+          nullptr, kMockInterfaceName, IPAddress::kFamilyIPv4, {}, true) {}
 
 MockHttpRequest::~MockHttpRequest() = default;
 

@@ -18,7 +18,7 @@ namespace shill {
 
 class MockHttpRequest : public HttpRequest {
  public:
-  explicit MockHttpRequest(ConnectionRefPtr connection);
+  MockHttpRequest();
   ~MockHttpRequest() override;
 
   MOCK_METHOD4(

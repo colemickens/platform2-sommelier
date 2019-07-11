@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
@@ -15,9 +16,7 @@
 #include <brillo/errors/error.h>
 #include <brillo/http/http_transport.h>
 
-#include "shill/net/byte_string.h"
-
-#include "shill/net/shill_time.h"
+#include "shill/net/ip_address.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
@@ -25,7 +24,6 @@ namespace shill {
 class DnsClient;
 class Error;
 class EventDispatcher;
-class IPAddress;
 
 // The HttpRequest class implements facilities for performing a simple "GET"
 // request and returning the contents via a callback. By default, this class
@@ -48,8 +46,10 @@ class HttpRequest {
   // |allow_non_google_https| determines whether or not secure (HTTPS)
   // communication with a non-Google server is allowed. Note that this
   // will not change any behavior for HTTP communication.
-  HttpRequest(ConnectionRefPtr connection,
-              EventDispatcher* dispatcher,
+  HttpRequest(EventDispatcher* dispatcher,
+              const std::string& interface_name,
+              IPAddress::Family family,
+              const std::vector<std::string>& dns_list,
               bool allow_non_google_https = false);
   virtual ~HttpRequest();
 
@@ -71,6 +71,8 @@ class HttpRequest {
   // effect of this function.
   virtual void Stop();
 
+  virtual const std::string& interface_name() const { return interface_name_; }
+
  private:
   friend class HttpRequestTest;
 
@@ -85,7 +87,8 @@ class HttpRequest {
                      const brillo::Error* error);
   void SendStatus(Result result);
 
-  ConnectionRefPtr connection_;
+  std::string interface_name_;
+  IPAddress::Family ip_family_;
 
   base::WeakPtrFactory<HttpRequest> weak_ptr_factory_;
   base::Callback<void(const Error&, const IPAddress&)> dns_client_callback_;

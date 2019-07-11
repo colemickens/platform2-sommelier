@@ -5,7 +5,6 @@
 #include "shill/http_request.h"
 
 #include <curl/curl.h>
-#include <string>
 #include <utility>
 
 #include <base/bind.h>
@@ -13,13 +12,11 @@
 #include <base/time/time.h>
 #include <brillo/http/http_utils.h>
 
-#include "shill/connection.h"
 #include "shill/dns_client.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/http_url.h"
 #include "shill/logging.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/sockets.h"
 
 using base::Bind;
@@ -38,17 +35,20 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kHTTP;
-static string ObjectID(Connection* c) {
-  return c->interface_name();
+static string ObjectID(HttpRequest* r) {
+  return r->interface_name();
 }
 }  // namespace Logging
 
 const int HttpRequest::kRequestTimeoutSeconds = 10;
 
-HttpRequest::HttpRequest(ConnectionRefPtr connection,
-                         EventDispatcher* dispatcher,
+HttpRequest::HttpRequest(EventDispatcher* dispatcher,
+                         const std::string& interface_name,
+                         IPAddress::Family ip_family,
+                         const std::vector<std::string>& dns_list,
                          bool allow_non_google_https)
-    : connection_(connection),
+    : interface_name_(interface_name),
+      ip_family_(ip_family),
       weak_ptr_factory_(this),
       dns_client_callback_(
           Bind(&HttpRequest::GetDNSResult, weak_ptr_factory_.GetWeakPtr())),
@@ -56,10 +56,9 @@ HttpRequest::HttpRequest(ConnectionRefPtr connection,
           Bind(&HttpRequest::SuccessCallback, weak_ptr_factory_.GetWeakPtr())),
       error_callback_(
           Bind(&HttpRequest::ErrorCallback, weak_ptr_factory_.GetWeakPtr())),
-      dns_client_(new DnsClient(connection->IsIPv6() ? IPAddress::kFamilyIPv6
-                                                     : IPAddress::kFamilyIPv4,
-                                connection->interface_name(),
-                                connection->dns_servers(),
+      dns_client_(new DnsClient(ip_family_,
+                                interface_name_,
+                                dns_list,
                                 DnsClient::kDnsTimeoutMilliseconds,
                                 dispatcher,
                                 dns_client_callback_)),
@@ -83,13 +82,14 @@ HttpRequest::Result HttpRequest::Start(
     const Callback<void(std::shared_ptr<brillo::http::Response>)>&
         request_success_callback,
     const Callback<void(Result)>& request_error_callback) {
-  SLOG(connection_.get(), 3) << "In " << __func__;
+  SLOG(this, 3) << "In " << __func__;
 
   DCHECK(!is_running_);
 
   HttpUrl url;
   if (!url.ParseFromString(url_string)) {
-    LOG(ERROR) << "Failed to parse URL string: " << url_string;
+    LOG(ERROR) << interface_name_
+               << ": Failed to parse URL string: " << url_string;
     return kResultInvalidInput;
   }
   url_string_ = url_string;
@@ -101,10 +101,7 @@ HttpRequest::Result HttpRequest::Start(
   transport_->SetDefaultTimeout(
       base::TimeDelta::FromSeconds(kRequestTimeoutSeconds));
 
-  IPAddress addr(IPAddress::kFamilyIPv4);
-  if (connection_->IsIPv6()) {
-    addr.set_family(IPAddress::kFamilyIPv6);
-  }
+  IPAddress addr(ip_family_);
 
   request_success_callback_ = request_success_callback;
   request_error_callback_ = request_error_callback;
@@ -112,10 +109,11 @@ HttpRequest::Result HttpRequest::Start(
   if (addr.SetAddressFromString(server_hostname_)) {
     StartRequest();
   } else {
-    SLOG(connection_.get(), 3) << "Looking up host: " << server_hostname_;
+    SLOG(this, 3) << "Looking up host: " << server_hostname_;
     Error error;
     if (!dns_client_->Start(server_hostname_, &error)) {
-      LOG(ERROR) << "Failed to start DNS client: " << error.message();
+      LOG(ERROR) << interface_name_
+                 << ": Failed to start DNS client: " << error.message();
       Stop();
       return kResultDNSFailure;
     }
@@ -133,8 +131,8 @@ void HttpRequest::SuccessCallback(
     brillo::http::RequestID request_id,
     std::unique_ptr<brillo::http::Response> response) {
   if (request_id != request_id_) {
-    LOG(ERROR) << "Expected request ID " << request_id_ << " but got "
-               << request_id;
+    LOG(ERROR) << interface_name_ << ": Expected request ID " << request_id_
+               << " but got " << request_id;
     SendStatus(kResultUnknown);
     return;
   }
@@ -152,20 +150,20 @@ void HttpRequest::ErrorCallback(brillo::http::RequestID request_id,
                                 const brillo::Error* error) {
   int error_code;
   if (error->GetDomain() != kCurlEasyError) {
-    LOG(ERROR) << "Expected error domain " << kCurlEasyError << " but got "
-               << error->GetDomain();
+    LOG(ERROR) << interface_name_ << ": Expected error domain "
+               << kCurlEasyError << " but got " << error->GetDomain();
     SendStatus(kResultUnknown);
     return;
   }
   if (request_id != request_id_) {
-    LOG(ERROR) << "Expected request ID " << request_id_ << " but got "
-               << request_id;
+    LOG(ERROR) << interface_name_ << ": Expected request ID " << request_id_
+               << " but got " << request_id;
     SendStatus(kResultUnknown);
     return;
   }
   if (!StringToInt(error->GetCode(), &error_code)) {
-    LOG(ERROR) << "Unable to convert error code " << error->GetCode()
-               << " to Int";
+    LOG(ERROR) << interface_name_ << ": Unable to convert error code "
+               << error->GetCode() << " to Int";
     SendStatus(kResultUnknown);
     return;
   }
@@ -189,8 +187,7 @@ void HttpRequest::ErrorCallback(brillo::http::RequestID request_id,
 }
 
 void HttpRequest::Stop() {
-  SLOG(connection_.get(), 3)
-      << "In " << __func__ << "; running is " << is_running_;
+  SLOG(this, 3) << "In " << __func__ << "; running is " << is_running_;
 
   if (!is_running_) {
     return;
@@ -210,10 +207,10 @@ void HttpRequest::Stop() {
 
 // DnsClient callback that fires when the DNS request completes.
 void HttpRequest::GetDNSResult(const Error& error, const IPAddress& address) {
-  SLOG(connection_.get(), 3) << "In " << __func__;
+  SLOG(this, 3) << "In " << __func__;
   if (!error.IsSuccess()) {
-    LOG(ERROR) << "Could not resolve hostname " << server_hostname_ << ": "
-               << error.message();
+    LOG(ERROR) << interface_name_ << ": Could not resolve hostname "
+               << server_hostname_ << ": " << error.message();
     if (error.message() == DnsClient::kErrorTimedOut) {
       SendStatus(kResultDNSTimeout);
     } else {

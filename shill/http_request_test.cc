@@ -22,7 +22,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/http_url.h"
-#include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_dns_client.h"
@@ -82,14 +81,13 @@ class HttpRequestTest : public Test {
  public:
   HttpRequestTest()
       : interface_name_(kInterfaceName),
-        dns_servers_(kDNSServers, kDNSServers + 2),
+        dns_list_(kDNSServers, kDNSServers + 2),
         dns_client_(new StrictMock<MockDnsClient>()),
         transport_(std::make_shared<brillo::http::MockTransport>()),
         brillo_connection_(
             std::make_shared<brillo::http::MockConnection>(transport_)),
         manager_(&control_, &dispatcher_, nullptr),
-        device_info_(new NiceMock<MockDeviceInfo>(&manager_)),
-        connection_(new StrictMock<MockConnection>(device_info_.get())) {}
+        device_info_(new NiceMock<MockDeviceInfo>(&manager_)) {}
 
  protected:
   class CallbackTarget {
@@ -120,13 +118,8 @@ class HttpRequestTest : public Test {
   };
 
   void SetUp() override {
-    EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
-    EXPECT_CALL(*connection_, interface_name())
-        .WillRepeatedly(ReturnRef(interface_name_));
-    EXPECT_CALL(*connection_, dns_servers())
-        .WillRepeatedly(ReturnRef(dns_servers_));
-
-    request_.reset(new HttpRequest(connection_, &dispatcher_, true));
+    request_.reset(new HttpRequest(&dispatcher_, interface_name_,
+                                   IPAddress::kFamilyIPv4, dns_list_, true));
     // Passes ownership.
     request_->dns_client_.reset(dns_client_);
     request_->transport_ = transport_;
@@ -148,7 +141,6 @@ class HttpRequestTest : public Test {
 
   // Expectations
   void ExpectReset() {
-    EXPECT_EQ(connection_, request_->connection_);
     EXPECT_TRUE(request_->request_error_callback_.is_null());
     EXPECT_TRUE(request_->request_success_callback_.is_null());
     EXPECT_FALSE(request_->dns_client_callback_.is_null());
@@ -251,7 +243,7 @@ class HttpRequestTest : public Test {
 
  private:
   const string interface_name_;
-  vector<string> dns_servers_;
+  vector<string> dns_list_;
   // Owned by the HttpRequest, but tracked here for EXPECT().
   StrictMock<MockDnsClient>* dns_client_;
   std::shared_ptr<brillo::http::MockTransport> transport_;
@@ -260,7 +252,6 @@ class HttpRequestTest : public Test {
   MockControl control_;
   MockManager manager_;
   std::unique_ptr<MockDeviceInfo> device_info_;
-  scoped_refptr<MockConnection> connection_;
   std::unique_ptr<HttpRequest> request_;
   StrictMock<CallbackTarget> target_;
   string expected_response_;

@@ -131,8 +131,8 @@ class PortalDetectorTest : public Test {
   };
 
   void AssignHttpRequest() {
-    http_request_ = new StrictMock<MockHttpRequest>(connection_);
-    https_request_ = new StrictMock<MockHttpRequest>(connection_);
+    http_request_ = new StrictMock<MockHttpRequest>();
+    https_request_ = new StrictMock<MockHttpRequest>();
     portal_detector_->http_request_.reset(http_request_);
     portal_detector_->https_request_.reset(
         https_request_);  // Passes ownership.
