@@ -324,8 +324,8 @@ const std::vector<Log> kExtraLogs {
 #endif  // USE_CELLULAR
   {kCommand, "network-devices", "/usr/bin/connectivity show devices"},
   {kCommand, "network-services", "/usr/bin/connectivity show services"},
-  {kCommand, "wifi_status_show_macs",
-    "/usr/bin/network_diag --wifi-internal --no-log --show-macs"},
+  {kCommand, "wifi_status_no_anonymize",
+    "/usr/bin/network_diag --wifi-internal --no-log"},
   // --processes requires root.
   {kCommand, "netstat",
     "/sbin/ss --all --query inet --numeric --processes", kRoot, kRoot},
@@ -341,7 +341,8 @@ const std::vector<Log> kFeedbackLogs {
       "/usr/bin/connectivity show-feedback devices"},
   {kCommand, "network-services",
       "/usr/bin/connectivity show-feedback services"},
-  {kCommand, "wifi_status", "/usr/bin/network_diag --wifi-internal --no-log"},
+  {kCommand, "wifi_status",
+      "/usr/bin/network_diag --wifi-internal --no-log --anonymize"},
 };
 
 // List of log files needed to be part of the feedback report that are huge and

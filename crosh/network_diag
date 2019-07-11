@@ -12,7 +12,7 @@ ARP=/sbin/arp
 ARPING=/sbin/arping
 TLSDATE=/usr/bin/tlsdate
 ETHTOOL=/usr/sbin/ethtool
-anonymize_macs="${ANONYMIZE_MACS-yes}"
+anonymize_output="${ANONYMIZE_OUTPUT-no}"
 fail_count=0
 CROS_CERTS=/usr/share/chromeos-ca-certificates/
 declare -A fn_entry
@@ -258,15 +258,13 @@ read_dhcp_lease () {
   done
 }
 
-# Anonymize MAC addresses so they are not transmitted
-mac_anonymize () {
-  if [ "${anonymize_macs}" != "yes" ]; then
+# Anonymize PII (except MAC addresses) so they are not transmitted.
+output_anonymize () {
+  if [ "${anonymize_output}" != "yes" ]; then
     cat
     return
   fi
-  sed -e \
-    's/\([0-9A-Fa-f][0-9A-Fa-f]\):\([0-9A-Fa-f][0-9A-Fa-f]\):\([0-9A-Fa-f][0-9A-Fa-f]\):[0-9A-Fa-f][0-9A-Fa-f]:[0-9A-Fa-f][0-9A-Fa-f]:[0-9A-Fa-f][0-9A-Fa-f]/\1:\2:\3:##:##:##/' \
-      -e 's/\([^0-9a-fA-F][0-9a-fA-F]\{8,11\}\)[0-9a-fA-F]\{4\}$/\1####/' \
+  sed -e 's/\([^0-9a-fA-F][0-9a-fA-F]\{8,11\}\)[0-9a-fA-F]\{4\}$/\1####/' \
       -e 's/\([^0-9a-fA-F][0-9a-fA-F]\{8\}\)[0-9a-fA-F]\{4\}\([^0-9a-fA-F]\)/\1####\2/' \
       -e 's/\(\/[0-9a-fA-F]\{8\}\)[0-9a-fA-F]\{4\}\([^0-9a-fA-F]\)/\1####\2/' \
       -e 's/\(\/.*Passphrase \).*/\1[removed]/' \
@@ -281,9 +279,9 @@ tail_logs () {
     [ -f "${f}" ] && echo "${f}";
     done)"
   if [ -n "$*" ] ; then
-    tail "$@" ${files} | mac_anonymize
+    tail "$@" ${files} | output_anonymize
   else
-    cat ${files} | mac_anonymize
+    cat ${files} | output_anonymize
   fi
 }
 
@@ -377,11 +375,11 @@ diag_arp () {
       diag_ip_collision "${ifc}"
       failures="$((failures + 1))"
     else
-      pass "ARP for ${ip} is ${arp}" | mac_anonymize
+      pass "ARP for ${ip} is ${arp}" | output_anonymize
     fi
   fi
 
-  fn_enter_once "${FUNCNAME}_table" && "${ARP}" -an | mac_anonymize
+  fn_enter_once "${FUNCNAME}_table" && "${ARP}" -an | output_anonymize
 
   return "${failures}"
 }
@@ -511,10 +509,10 @@ diag_wifi () {
   # Call out to debugd (which in turn calls this script's diag_wifi_internal
   # function with the debugd privileges needed to read debugfs contents).
   local log_name
-  if [ "${anonymize_macs}" = "yes" ]; then
+  if [ "${anonymize_output}" = "yes" ]; then
     log_name="wifi_status"
   else
-    log_name="wifi_status_show_macs"
+    log_name="wifi_status_no_anonymize"
   fi
   dbus-send --system --print-reply --fixed --dest=org.chromium.debugd \
         /org/chromium/debugd org.chromium.debugd.GetLog "string:${log_name}"
@@ -524,18 +522,18 @@ diag_wifi_internal () {
   # Only callable by debugd or root, since debugfs is locked down.
   for dir in /sys/kernel/debug/ieee80211/phy*/ath9k; do
     [ -d "${dir}" ] && head -1000 "${dir}"/{dma,interrupt,recv,xmit,samples} | \
-      mac_anonymize
+      output_anonymize
   done
   for ifc in $(get_iflist); do
     if is_wifi "${ifc}" ; then
       echo "iw dev ${ifc} survey dump:"
-      "${IW}" dev "${ifc}" survey dump | mac_anonymize
+      "${IW}" dev "${ifc}" survey dump | output_anonymize
       echo "iw dev ${ifc} station dump:"
-      "${IW}" dev "${ifc}" station dump | mac_anonymize
+      "${IW}" dev "${ifc}" station dump | output_anonymize
       echo "iw dev ${ifc} scan dump:"
-      "${IW}" dev "${ifc}" scan dump | mac_anonymize | grep -v SSID
+      "${IW}" dev "${ifc}" scan dump | output_anonymize | grep -v SSID
       echo "iw dev ${ifc} link:"
-      "${IW}" dev "${ifc}" link | mac_anonymize | grep -v SSID
+      "${IW}" dev "${ifc}" link | output_anonymize | grep -v SSID
     fi
   done
 }
@@ -625,7 +623,7 @@ diag_if () {
   ifc="$1"
   config="$("${IFCONFIG}" "${ifc}")"
   ret=0
-  ${IFCONFIG} "${ifc}" | mac_anonymize
+  ${IFCONFIG} "${ifc}" | output_anonymize
   if ! echo "${config}" | grep -q ' UP '; then
     fail "${ifc} is not listed as up"
     ret=1
@@ -734,7 +732,7 @@ diag_flimflam_dbus () {
   local ff="org.chromium.flimflam"
   if [ -z "$1" ] ; then
     echo "Flimflam Manager:"
-    dbus_get_object_properties "${ff}" Manager / | mac_anonymize
+    dbus_get_object_properties "${ff}" Manager / | output_anonymize
     # For each Service defined on the Manager, list its properties
     diag_flimflam_dbus Manager Service
     # For each Device defined in the Manager, list its properties
@@ -746,8 +744,8 @@ diag_flimflam_dbus () {
     for path in \
       $(dbus_get_object_list "${ff}" "${parent}" "${child}s" \
         "${parent_path}"); do
-      echo "${child} ${path}" | mac_anonymize
-      dbus_get_object_properties "${ff}" "${child}" "${path}" | mac_anonymize
+      echo "${child} ${path}" | output_anonymize
+      dbus_get_object_properties "${ff}" "${child}" "${path}" | output_anonymize
       if [ "${child}" = Device ] ; then
         # For each Network defined in each Device, list its properties
         diag_flimflam_dbus Device Network "${path}"
@@ -771,7 +769,7 @@ diag_dhcp_lease () {
   local lease_dir=/var/lib/dhcpcd
   for file in "${lease_dir}/"*.lease; do
     echo "DHCP Lease file ${file}"
-    read_dhcp_lease "${file}" | mac_anonymize
+    read_dhcp_lease "${file}" | output_anonymize
   done
 }
 
@@ -1119,7 +1117,7 @@ valid_host () {
 }
 
 usage () {
-  echo "Usage: $0 [--date|--flimflam|--link|--show-macs|--wifi|--help|"
+  echo "Usage: $0 [--date|--flimflam|--link|--wifi|--help|"
   echo "           --wifi-mon] [host]"
   echo "    --date:      Diagnose time-of-day"
   echo "                 ([host] must support SSL)"
@@ -1132,7 +1130,6 @@ usage () {
   echo "    --no-log:    Do not log output"
   echo "    --proxy:     Specify proxy to use with tests"
   echo "    --route:     Diagnose routes to each host"
-  echo "    --show-macs: Display full MAC addresses"
   echo "    --wifi:      Display driver-specific debugging information"
   echo "    --wifi-mon:  Monitor WiFi performance metrics"
   echo "    --help:      Display this message"
@@ -1170,8 +1167,8 @@ main () {
         fi
         shift
         ;;
-      --show-macs)
-        anonymize_macs=no
+      --anonymize)
+        anonymize_output=yes
         ;;
       --no-log)
         # Handled below before starting main
