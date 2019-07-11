@@ -5,6 +5,7 @@
 #include "shill/vpn/vpn_service.h"
 
 #include <algorithm>
+#include <utility>
 
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -33,8 +34,8 @@ static string ObjectID(const VPNService* s) { return s->GetRpcIdentifier(); }
 const char VPNService::kAutoConnNeverConnected[] = "never connected";
 const char VPNService::kAutoConnVPNAlreadyActive[] = "vpn already active";
 
-VPNService::VPNService(Manager* manager, VPNDriver* driver)
-    : Service(manager, Technology::kVPN), driver_(driver) {
+VPNService::VPNService(Manager* manager, std::unique_ptr<VPNDriver> driver)
+    : Service(manager, Technology::kVPN), driver_(std::move(driver)) {
   SetConnectable(true);
   set_save_credentials(false);
   mutable_store()->RegisterDerivedString(

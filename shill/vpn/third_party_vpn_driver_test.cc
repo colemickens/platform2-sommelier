@@ -5,6 +5,7 @@
 #include "shill/vpn/third_party_vpn_driver.h"
 
 #include <base/bind.h>
+#include <base/memory/ptr_util.h>
 #include <gtest/gtest.h>
 
 #include "shill/callbacks.h"
@@ -37,7 +38,7 @@ class ThirdPartyVpnDriverTest : public testing::Test {
         device_info_(&manager_),
         driver_(new ThirdPartyVpnDriver(&manager_, &device_info_)),
         adaptor_interface_(new ThirdPartyVpnMockAdaptor()),
-        service_(new MockVPNService(&manager_, driver_)),
+        service_(new MockVPNService(&manager_, base::WrapUnique(driver_))),
         device_(new MockVirtualDevice(
             &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN)) {
     driver_->io_handler_factory_ = &io_handler_factory_;

@@ -4,10 +4,15 @@
 
 #include "shill/vpn/mock_vpn_service.h"
 
+#include <utility>
+
+#include "shill/vpn/vpn_driver.h"
+
 namespace shill {
 
-MockVPNService::MockVPNService(Manager* manager, VPNDriver* driver)
-    : VPNService(manager, driver) {}
+MockVPNService::MockVPNService(Manager* manager,
+                               std::unique_ptr<VPNDriver> driver)
+    : VPNService(manager, std::move(driver)) {}
 
 MockVPNService::~MockVPNService() = default;
 

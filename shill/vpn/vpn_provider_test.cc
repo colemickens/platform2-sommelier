@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <set>
+#include <utility>
 
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -180,7 +181,7 @@ TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {
       .Times(2)
       .WillRepeatedly(Return(false));
   provider_.services_.push_back(
-      new VPNService(&manager_, bad_driver.release()));
+      new VPNService(&manager_, std::move(bad_driver)));
 
   EXPECT_FALSE(provider_.OnDeviceInfoAvailable(
       kInterfaceName, kInterfaceIndex, Technology::kTunnel));
@@ -188,12 +189,12 @@ TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {
   auto good_driver = std::make_unique<MockVPNDriver>();
   EXPECT_CALL(*good_driver, ClaimInterface(_, _)).WillOnce(Return(true));
   provider_.services_.push_back(
-      new VPNService(&manager_, good_driver.release()));
+      new VPNService(&manager_, std::move(good_driver)));
 
   auto dup_driver = std::make_unique<MockVPNDriver>();
   EXPECT_CALL(*dup_driver, ClaimInterface(_, _)).Times(0);
   provider_.services_.push_back(
-      new VPNService(&manager_, dup_driver.release()));
+      new VPNService(&manager_, std::move(dup_driver)));
 
   EXPECT_TRUE(provider_.OnDeviceInfoAvailable(
       kInterfaceName, kInterfaceIndex, Technology::kTunnel));

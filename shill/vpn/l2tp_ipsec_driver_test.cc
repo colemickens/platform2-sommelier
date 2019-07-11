@@ -6,6 +6,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ptr_util.h>
 #include <base/memory/weak_ptr.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
@@ -48,7 +49,7 @@ class L2TPIPSecDriverTest : public testing::Test,
         device_info_(&manager_),
         driver_(
             new L2TPIPSecDriver(&manager_, &device_info_, &process_manager_)),
-        service_(new MockVPNService(&manager_, driver_)),
+        service_(new MockVPNService(&manager_, base::WrapUnique(driver_))),
         device_(new MockPPPDevice(&manager_, kInterfaceName, kInterfaceIndex)),
         certificate_file_(new MockCertificateFile()),
         weak_ptr_factory_(this) {

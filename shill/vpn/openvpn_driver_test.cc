@@ -9,6 +9,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -87,7 +88,7 @@ class OpenVPNDriverTest
       : manager_(&control_, &dispatcher_, &metrics_),
         device_info_(&manager_),
         driver_(new OpenVPNDriver(&manager_, &device_info_, &process_manager_)),
-        service_(new MockVPNService(&manager_, driver_)),
+        service_(new MockVPNService(&manager_, base::WrapUnique(driver_))),
         device_(new MockVirtualDevice(
             &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN)),
         certificate_file_(new MockCertificateFile()),

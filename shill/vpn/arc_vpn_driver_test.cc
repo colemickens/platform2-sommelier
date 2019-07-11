@@ -7,6 +7,7 @@
 #include <memory>
 
 #include <base/bind.h>
+#include <base/memory/ptr_util.h>
 #include <gtest/gtest.h>
 
 #include "shill/mock_adaptors.h"
@@ -57,7 +58,7 @@ class ArcVpnDriverTest : public testing::Test {
             &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN)),
         store_(),
         driver_(new ArcVpnDriver(&manager_, &device_info_)),
-        service_(new MockVPNService(&manager_, driver_)) {}
+        service_(new MockVPNService(&manager_, base::WrapUnique(driver_))) {}
 
   ~ArcVpnDriverTest() override = default;
 

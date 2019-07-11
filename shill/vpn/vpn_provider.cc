@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <utility>
 
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
@@ -279,7 +280,7 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string& type,
     return nullptr;
   }
 
-  VPNServiceRefPtr service = new VPNService(manager_, driver.release());
+  VPNServiceRefPtr service = new VPNService(manager_, std::move(driver));
   service->set_storage_id(storage_id);
   service->InitDriverPropertyStore();
   if (!name.empty()) {

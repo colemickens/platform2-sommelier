@@ -21,8 +21,7 @@ class VPNDriver;
 
 class VPNService : public Service {
  public:
-  VPNService(Manager* manager,
-             VPNDriver* driver);  // Takes ownership of |driver|.
+  VPNService(Manager* manager, std::unique_ptr<VPNDriver> driver);
   ~VPNService() override;
 
   // Inherited from Service.

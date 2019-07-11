@@ -5,6 +5,8 @@
 #ifndef SHILL_VPN_MOCK_VPN_SERVICE_H_
 #define SHILL_VPN_MOCK_VPN_SERVICE_H_
 
+#include <memory>
+
 #include <gmock/gmock.h>
 
 #include "shill/vpn/vpn_service.h"
@@ -13,7 +15,7 @@ namespace shill {
 
 class MockVPNService : public VPNService {
  public:
-  MockVPNService(Manager* manager, VPNDriver* driver);
+  MockVPNService(Manager* manager, std::unique_ptr<VPNDriver> driver);
   ~MockVPNService() override;
 
   MOCK_METHOD1(SetState, void(ConnectState state));

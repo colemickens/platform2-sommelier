@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
@@ -42,7 +43,7 @@ class VPNServiceTest : public testing::Test {
         manager_(&control_, nullptr, &metrics_),
         device_info_(&manager_),
         connection_(new NiceMock<MockConnection>(&device_info_)),
-        service_(new VPNService(&manager_, driver_)) {}
+        service_(new VPNService(&manager_, base::WrapUnique(driver_))) {}
 
   ~VPNServiceTest() override = default;
 
