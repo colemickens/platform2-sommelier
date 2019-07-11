@@ -340,7 +340,6 @@ TEST_F(ConnectionTest, InitState) {
   EXPECT_EQ(device->interface_index(), connection_->interface_index_);
   EXPECT_EQ(device->link_name(), connection_->interface_name_);
   EXPECT_FALSE(connection_->IsDefault());
-  EXPECT_FALSE(connection_->routing_request_count_);
 }
 
 TEST_F(ConnectionTest, AddNonPhysicalDeviceConfig) {
@@ -882,23 +881,6 @@ TEST_F(ConnectionTest, UpdateDNSServers) {
   EXPECT_CALL(resolver_, SetDNSFromLists(dns_servers, _));
   connection_->UpdateDNSServers(dns_servers);
   Mock::VerifyAndClearExpectations(&resolver_);
-}
-
-TEST_F(ConnectionTest, RouteRequest) {
-  auto device = CreateDevice(Technology::kEthernet);
-  connection_ = CreateConnection(device);
-
-  EXPECT_CALL(*device, SetLooseRouting(true)).Times(1);
-  connection_->RequestRouting();
-  connection_->RequestRouting();
-
-  // The first release should only decrement the reference counter.
-  connection_->ReleaseRouting();
-
-  // Another release will re-enable reverse-path filter.
-  EXPECT_CALL(*device, SetLooseRouting(false));
-  EXPECT_CALL(routing_table_, FlushCache());
-  connection_->ReleaseRouting();
 }
 
 TEST_F(ConnectionTest, BlackholeIPv6) {

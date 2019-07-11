@@ -105,12 +105,6 @@ class Connection : public base::RefCounted<Connection> {
   // sort ranking is respected.
   virtual void UpdateRoutingPolicy();
 
-  // Request to accept traffic routed to this connection even if it is not
-  // the default.  This request is ref-counted so the caller must call
-  // ReleaseRouting() when they no longer need this facility.
-  virtual void RequestRouting();
-  virtual void ReleaseRouting();
-
   // Return the subnet name for this connection.
   virtual std::string GetSubnetName() const;
 
@@ -155,7 +149,6 @@ class Connection : public base::RefCounted<Connection> {
   uint32_t metric_;
   bool is_primary_physical_;
   bool has_broadcast_domain_;
-  int routing_request_count_;
   int interface_index_;
   const std::string interface_name_;
   Technology technology_;

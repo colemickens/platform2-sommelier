@@ -59,7 +59,6 @@ Connection::Connection(int interface_index,
       metric_(kLowestPriorityMetric),
       is_primary_physical_(false),
       has_broadcast_domain_(false),
-      routing_request_count_(0),
       interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
@@ -82,7 +81,6 @@ Connection::Connection(int interface_index,
 Connection::~Connection() {
   SLOG(this, 2) << __func__ << " " << interface_name_;
 
-  DCHECK(!routing_request_count_);
   routing_table_->FlushRoutes(interface_index_);
   routing_table_->FlushRoutesWithTag(interface_index_);
   if (!fixed_ip_params_) {
@@ -448,35 +446,6 @@ void Connection::PushDNSConfig() {
     domain_search.push_back(dns_domain_name_ + ".");
   }
   resolver_->SetDNSFromLists(dns_servers_, domain_search);
-}
-
-void Connection::RequestRouting() {
-  if (routing_request_count_++ == 0) {
-    DeviceRefPtr device = device_info_->GetDevice(interface_index_);
-    DCHECK(device.get());
-    if (!device) {
-      LOG(ERROR) << "Device is NULL!";
-      return;
-    }
-    device->SetLooseRouting(true);
-  }
-}
-
-void Connection::ReleaseRouting() {
-  DCHECK_GT(routing_request_count_, 0);
-  if (--routing_request_count_ == 0) {
-    DeviceRefPtr device = device_info_->GetDevice(interface_index_);
-    DCHECK(device.get());
-    if (!device) {
-      LOG(ERROR) << "Device is NULL!";
-      return;
-    }
-    device->SetLooseRouting(false);
-
-    // Clear any cached routes that might have accumulated while reverse-path
-    // filtering was disabled.
-    routing_table_->FlushCache();
-  }
 }
 
 string Connection::GetSubnetName() const {

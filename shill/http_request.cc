@@ -96,7 +96,6 @@ HttpRequest::Result HttpRequest::Start(
   server_hostname_ = url.host();
   server_port_ = url.port();
   server_path_ = url.path();
-  connection_->RequestRouting();
   transport_->SetDefaultTimeout(
       base::TimeDelta::FromSeconds(kRequestTimeoutSeconds));
 
@@ -197,7 +196,6 @@ void HttpRequest::Stop() {
 
   // Clear IO handlers first so that closing the socket doesn't cause
   // events to fire.
-  connection_->ReleaseRouting();
   dns_client_->Stop();
   is_running_ = false;
   request_id_ = -1;

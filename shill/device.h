@@ -561,6 +561,11 @@ class Device : public base::RefCounted<Device> {
   // Initiate portal detection, if enabled for this device type.
   bool StartPortalDetection();
 
+  // Schedule a single portal detection trial, and set loose routing.
+  bool StartPortalDetectionTrial(PortalDetector* portal_detector,
+                                 const PortalDetector::Properties& props,
+                                 int delay_seconds);
+
   // Stop portal detection if it is running.
   void StopPortalDetection();
 

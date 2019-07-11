@@ -156,16 +156,11 @@ class HttpRequestTest : public Test {
     EXPECT_TRUE(request_->server_hostname_.empty());
     EXPECT_FALSE(request_->is_running_);
   }
-  void ExpectStop() {
-    EXPECT_CALL(*dns_client_, Stop()).Times(AtLeast(1));
-    EXPECT_CALL(*connection_, ReleaseRouting());
-  }
+  void ExpectStop() { EXPECT_CALL(*dns_client_, Stop()).Times(AtLeast(1)); }
   void ExpectDNSRequest(const string& host, bool return_value) {
     EXPECT_CALL(*dns_client_, Start(StrEq(host), _))
         .WillOnce(Return(return_value));
   }
-  void ExpectRouteRequest() { EXPECT_CALL(*connection_, RequestRouting()); }
-  void ExpectRouteRelease() { EXPECT_CALL(*connection_, ReleaseRouting()); }
   void ExpectRequestErrorCallback(HttpRequest::Result result) {
     EXPECT_CALL(target_, RequestErrorCallTarget(result));
   }
@@ -277,8 +272,6 @@ TEST_F(HttpRequestTest, Constructor) {
 }
 
 TEST_F(HttpRequestTest, NumericRequestSuccess) {
-  ExpectRouteRequest();
-
   const string resp{"Sample response."};
   ExpectRequestSuccessCallback(resp);
 
@@ -291,8 +284,6 @@ TEST_F(HttpRequestTest, NumericRequestSuccess) {
 }
 
 TEST_F(HttpRequestTest, RequestFail) {
-  ExpectRouteRequest();
-
   ExpectRequestErrorCallback(HttpRequest::kResultConnectionFailure);
 
   ExpectCreateConnection(kNumericURL);
@@ -304,7 +295,6 @@ TEST_F(HttpRequestTest, RequestFail) {
 }
 
 TEST_F(HttpRequestTest, TextRequestSuccess) {
-  ExpectRouteRequest();
   ExpectDNSRequest(kTextSiteName, true);
 
   const string resp{"Sample response."};
@@ -324,7 +314,6 @@ TEST_F(HttpRequestTest, TextRequestSuccess) {
 }
 
 TEST_F(HttpRequestTest, FailDNSStart) {
-  ExpectRouteRequest();
   ExpectDNSRequest(kTextSiteName, false);
   ExpectStop();
   EXPECT_EQ(HttpRequest::kResultDNSFailure, StartRequest(kTextURL));
@@ -332,7 +321,6 @@ TEST_F(HttpRequestTest, FailDNSStart) {
 }
 
 TEST_F(HttpRequestTest, FailDNSFailure) {
-  ExpectRouteRequest();
   ExpectDNSRequest(kTextSiteName, true);
   EXPECT_EQ(HttpRequest::kResultInProgress, StartRequest(kTextURL));
   ExpectRequestErrorCallback(HttpRequest::kResultDNSFailure);
@@ -342,7 +330,6 @@ TEST_F(HttpRequestTest, FailDNSFailure) {
 }
 
 TEST_F(HttpRequestTest, FailDNSTimeout) {
-  ExpectRouteRequest();
   ExpectDNSRequest(kTextSiteName, true);
   EXPECT_EQ(HttpRequest::kResultInProgress, StartRequest(kTextURL));
   ExpectRequestErrorCallback(HttpRequest::kResultDNSTimeout);

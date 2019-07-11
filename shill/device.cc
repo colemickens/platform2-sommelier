@@ -342,6 +342,9 @@ void Device::DisableReversePathFilter() {
 void Device::EnableReversePathFilter() {
   SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagReversePathFilter,
             kIPFlagReversePathFilterEnabled);
+  // Clear any cached routes that might have accumulated while reverse-path
+  // filtering was disabled.
+  routing_table_->FlushCache();
 }
 
 void Device::SetIsMultiHomed(bool is_multi_homed) {
@@ -890,7 +893,8 @@ void Device::ConnectionTesterCallback(
       PortalDetector::PhaseToString(https_result.phase).c_str(),
       PortalDetector::StatusToString(https_result.status).c_str());
   LOG(INFO) << "Device " << link_name() << ": Completed Connectivity Test";
-  return;
+
+  SetLooseRouting(false);
 }
 
 void Device::ConfigureStaticIPTask() {
@@ -1368,7 +1372,7 @@ bool Device::StartPortalDetection() {
       connection_, dispatcher(), metrics(),
       Bind(&Device::PortalDetectorCallback, weak_ptr_factory_.GetWeakPtr())));
   PortalDetector::Properties props = manager_->GetPortalCheckProperties();
-  if (!portal_detector_->StartAfterDelay(props, 0)) {
+  if (!StartPortalDetectionTrial(portal_detector_.get(), props, 0)) {
     LOG(ERROR) << "Device " << link_name()
                << ": Portal detection failed to start: likely bad URL: "
                << props.http_url_string << " or " << props.https_url_string;
@@ -1422,7 +1426,8 @@ bool Device::StartConnectivityTest() {
   connection_tester_.reset(new PortalDetector(
       connection_, dispatcher(), metrics(),
       Bind(&Device::ConnectionTesterCallback, weak_ptr_factory_.GetWeakPtr())));
-  connection_tester_->StartAfterDelay(PortalDetector::Properties(), 0);
+  StartPortalDetectionTrial(connection_tester_.get(),
+                            PortalDetector::Properties(), 0);
   return true;
 }
 
@@ -1676,7 +1681,8 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
     PortalDetector::Properties props = manager_->GetPortalCheckProperties();
     int start_delay =
         portal_detector_->AdjustStartDelay(portal_check_interval_seconds_);
-    if (!portal_detector_->StartAfterDelay(props, start_delay)) {
+    if (!StartPortalDetectionTrial(portal_detector_.get(), props,
+                                   start_delay)) {
       LOG(ERROR) << "Device " << link_name()
                  << ": Portal detection failed to restart: likely bad URL: "
                  << props.http_url_string << " or " << props.https_url_string;
@@ -1684,6 +1690,7 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
       StopPortalDetection();
       return;
     }
+
     portal_check_interval_seconds_ =
         std::min(portal_check_interval_seconds_ * 2,
                  PortalDetector::kMaxPortalCheckIntervalSeconds);
@@ -1696,11 +1703,24 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
   SetServiceState(state);
 }
 
+bool Device::StartPortalDetectionTrial(PortalDetector* portal_detector,
+                                       const PortalDetector::Properties& props,
+                                       int delay_seconds) {
+  if (portal_detector->StartAfterDelay(props, delay_seconds)) {
+    // Accept traffic routed to this connection even if it is not the default.
+    SetLooseRouting(true);
+    return true;
+  }
+  return false;
+}
+
 void Device::PortalDetectorCallback(
     const PortalDetector::Result& http_result,
     const PortalDetector::Result& https_result) {
   SLOG(this, 2) << "Device " << link_name() << ": Received status: "
                 << PortalDetector::StatusToString(http_result.status);
+
+  SetLooseRouting(false);
 
   int portal_status = Metrics::PortalDetectionResultToEnum(http_result);
   metrics()->SendEnumToUMA(

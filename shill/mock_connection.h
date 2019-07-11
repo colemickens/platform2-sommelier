@@ -25,8 +25,6 @@ class MockConnection : public Connection {
   MOCK_METHOD2(SetMetric, void(uint32_t metric, bool is_primary_physical));
   MOCK_METHOD1(SetUseDNS, void(bool enable));
   MOCK_CONST_METHOD0(ipconfig_rpc_identifier, const RpcIdentifier&());
-  MOCK_METHOD0(RequestRouting, void());
-  MOCK_METHOD0(ReleaseRouting, void());
   MOCK_CONST_METHOD0(interface_name, const std::string&());
   MOCK_CONST_METHOD0(dns_servers, const std::vector<std::string>&());
   MOCK_CONST_METHOD0(local, const IPAddress&());
