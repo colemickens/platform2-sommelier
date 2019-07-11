@@ -13,6 +13,7 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
 
+#include "cros-disks/error_logger.h"
 #include "cros-disks/fuse_helper.h"
 #include "cros-disks/fuse_mounter.h"
 #include "cros-disks/metrics.h"
@@ -139,7 +140,7 @@ MountErrorType ArchiveManager::DoMount(const std::string& source_path,
 
   MountErrorType avfs_start_error = StartAVFS();
   if (avfs_start_error != MOUNT_ERROR_NONE) {
-    LOG(ERROR) << "Failed to start AVFS mounts.";
+    LOG(ERROR) << "Failed to start AVFS mounts: " << avfs_start_error;
     return avfs_start_error;
   }
 
@@ -306,7 +307,8 @@ MountErrorType ArchiveManager::StartAVFS() {
     MountErrorType mount_error =
         MountAVFSPath(mapping.base_path, mapping.avfs_path);
     if (mount_error != MOUNT_ERROR_NONE) {
-      LOG(ERROR) << "Failed to mount AVFS path " << mapping.avfs_path;
+      LOG(ERROR) << "Failed to mount AVFS path " << mapping.avfs_path << ": "
+                 << mount_error;
       StopAVFS();
       return mount_error;
     }

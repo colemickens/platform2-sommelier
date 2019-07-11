@@ -10,6 +10,7 @@
 
 #include <base/logging.h>
 
+#include "cros-disks/error_logger.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/mount_point.h"
 #include "cros-disks/platform.h"
@@ -48,7 +49,7 @@ MountErrorType MounterCompat::Mount() {
     LOG(ERROR) << "Failed to mount '" << source_ << "' to '"
                << target_path_.value() << "' as filesystem '"
                << filesystem_type() << "' with options '"
-               << mount_options_.ToString() << "'";
+               << mount_options_.ToString() << "': " << error;
   }
   return error;
 }

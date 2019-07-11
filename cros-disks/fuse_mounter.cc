@@ -23,6 +23,7 @@
 #include <base/strings/string_util.h>
 #include <brillo/process_reaper.h>
 
+#include "cros-disks/error_logger.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/sandboxed_process.h"
 
@@ -247,7 +248,7 @@ MountErrorType FUSEMounter::MountImpl() const {
                           base::FilePath(target_path()), fuse_file,
                           mount_user_id, mount_group_id, mount_options());
   if (error != MountErrorType::MOUNT_ERROR_NONE) {
-    LOG(ERROR) << "Can't perform unprivileged FUSE mount";
+    LOG(ERROR) << "Can't perform unprivileged FUSE mount: " << error;
     return error;
   }
 
@@ -258,7 +259,7 @@ MountErrorType FUSEMounter::MountImpl() const {
         MountErrorType unmount_error = platform->Unmount(target_path, 0);
         if (unmount_error != MountErrorType::MOUNT_ERROR_NONE) {
           LOG(ERROR) << "Failed to unmount a FUSE mount '" << target_path
-                     << "', error code: " << unmount_error;
+                     << "': " << unmount_error;
         }
         if (!platform->RemoveEmptyDirectory(target_path)) {
           PLOG(ERROR) << "Couldn't remove FUSE mountpoint '" << target_path;

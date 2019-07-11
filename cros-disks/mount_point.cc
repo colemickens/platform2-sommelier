@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "cros-disks/error_logger.h"
 #include "cros-disks/mounter.h"
 
 namespace cros_disks {
@@ -29,7 +30,7 @@ MountErrorType MountPoint::Unmount() {
   MountErrorType error = unmounter_->Unmount(*this);
   if (error != MountErrorType::MOUNT_ERROR_NONE) {
     LOG(ERROR) << "Failed to unmount mount point '" << path_.value()
-               << "' with error " << error;
+               << "': " << error;
     // Leave |unmounter_| as we might want to retry later.
   } else {
     unmounter_.reset();

@@ -18,6 +18,7 @@
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 
+#include "cros-disks/error_logger.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/uri.h"
@@ -130,7 +131,8 @@ MountErrorType MountManager::Remount(const std::string& source_path,
       DoMount(source_path, filesystem_type, updated_options, *mount_path,
               &applied_options);
   if (error_type != MOUNT_ERROR_NONE) {
-    LOG(ERROR) << "Failed to remount path '" << source_path << "'";
+    LOG(ERROR) << "Failed to remount path '" << source_path
+               << "': " << error_type;
     return error_type;
   }
 
@@ -227,7 +229,8 @@ MountErrorType MountManager::MountNewSource(
               << source_path << "'";
     ReserveMountPath(actual_mount_path, error_type);
   } else {
-    LOG(ERROR) << "Failed to mount path '" << source_path << "'";
+    LOG(ERROR) << "Failed to mount path '" << source_path
+               << "': " << error_type;
     platform_->RemoveEmptyDirectory(actual_mount_path);
     return error_type;
   }
@@ -265,7 +268,7 @@ MountErrorType MountManager::Unmount(const std::string& path,
     if (error_type == MOUNT_ERROR_NONE) {
       LOG(INFO) << "Unmounted '" << mount_path << "'";
     } else {
-      LOG(ERROR) << "Failed to unmount '" << mount_path << "'";
+      LOG(ERROR) << "Failed to unmount '" << mount_path << "': " << error_type;
       return error_type;
     }
   }
