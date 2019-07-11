@@ -38,8 +38,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kHTTP;
-static string ObjectID(Connection* c) { return c->interface_name(); }
+static string ObjectID(Connection* c) {
+  return c->interface_name();
 }
+}  // namespace Logging
 
 const int HttpRequest::kRequestTimeoutSeconds = 10;
 
@@ -67,7 +69,7 @@ HttpRequest::HttpRequest(ConnectionRefPtr connection,
       is_running_(false) {
   if (allow_non_google_https) {
     transport_->UseCustomCertificate(
-      brillo::http::Transport::Certificate::kNss);
+        brillo::http::Transport::Certificate::kNss);
   }
 }
 
@@ -186,8 +188,8 @@ void HttpRequest::ErrorCallback(brillo::http::RequestID request_id,
 }
 
 void HttpRequest::Stop() {
-  SLOG(connection_.get(), 3) << "In " << __func__ << "; running is "
-                             << is_running_;
+  SLOG(connection_.get(), 3)
+      << "In " << __func__ << "; running is " << is_running_;
 
   if (!is_running_) {
     return;
@@ -210,9 +212,7 @@ void HttpRequest::Stop() {
 void HttpRequest::GetDNSResult(const Error& error, const IPAddress& address) {
   SLOG(connection_.get(), 3) << "In " << __func__;
   if (!error.IsSuccess()) {
-    LOG(ERROR) << "Could not resolve hostname "
-               << server_hostname_
-               << ": "
+    LOG(ERROR) << "Could not resolve hostname " << server_hostname_ << ": "
                << error.message();
     if (error.message() == DnsClient::kErrorTimedOut) {
       SendStatus(kResultDNSTimeout);

@@ -105,18 +105,24 @@ class Device : public base::RefCounted<Device> {
   virtual void Scan(Error* error, const std::string& reason);
   // The default implementation sets |error| to kNotSupported.
   virtual void SetSchedScan(bool enable, Error* error);
-  virtual void RegisterOnNetwork(const std::string& network_id, Error* error,
+  virtual void RegisterOnNetwork(const std::string& network_id,
+                                 Error* error,
                                  const ResultCallback& callback);
-  virtual void RequirePIN(const std::string& pin, bool require,
-                          Error* error, const ResultCallback& callback);
+  virtual void RequirePIN(const std::string& pin,
+                          bool require,
+                          Error* error,
+                          const ResultCallback& callback);
   virtual void EnterPIN(const std::string& pin,
-                        Error* error, const ResultCallback& callback);
+                        Error* error,
+                        const ResultCallback& callback);
   virtual void UnblockPIN(const std::string& unblock_code,
                           const std::string& pin,
-                          Error* error, const ResultCallback& callback);
+                          Error* error,
+                          const ResultCallback& callback);
   virtual void ChangePIN(const std::string& old_pin,
                          const std::string& new_pin,
-                         Error* error, const ResultCallback& callback);
+                         Error* error,
+                         const ResultCallback& callback);
   virtual void Reset(Error* error, const ResultCallback& callback);
 
   // Returns true if IPv6 is allowed and should be enabled when the device
@@ -628,21 +634,17 @@ class Device : public base::RefCounted<Device> {
   // Indicates if the selected service is configured with static nameservers.
   bool IsUsingStaticNameServers() const;
 
-  void HelpRegisterConstDerivedString(
-      const std::string& name,
-      std::string(Device::*get)(Error*));
+  void HelpRegisterConstDerivedString(const std::string& name,
+                                      std::string (Device::*get)(Error*));
 
   void HelpRegisterConstDerivedRpcIdentifier(
-      const std::string& name,
-      RpcIdentifier(Device::*get)(Error*));
+      const std::string& name, RpcIdentifier (Device::*get)(Error*));
 
   void HelpRegisterConstDerivedRpcIdentifiers(
-      const std::string& name,
-      RpcIdentifiers(Device::*get)(Error*));
+      const std::string& name, RpcIdentifiers (Device::*get)(Error*));
 
-  void HelpRegisterConstDerivedUint64(
-      const std::string& name,
-      uint64_t(Device::*get)(Error*));
+  void HelpRegisterConstDerivedUint64(const std::string& name,
+                                      uint64_t (Device::*get)(Error*));
 
   // Called by the ConnectionTester whenever a connectivity test completes.
   virtual void ConnectionTesterCallback(

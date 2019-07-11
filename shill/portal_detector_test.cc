@@ -59,7 +59,6 @@ MATCHER_P(IsResult, result, "") {
           result.probe_url_string == arg.probe_url_string);
 }
 
-
 class PortalDetectorTest : public Test {
  public:
   PortalDetectorTest()
@@ -114,9 +113,8 @@ class PortalDetectorTest : public Test {
   class CallbackTarget {
    public:
     CallbackTarget()
-        : result_callback_(Bind(&CallbackTarget::ResultCallback,
-                                Unretained(this))) {
-    }
+        : result_callback_(
+              Bind(&CallbackTarget::ResultCallback, Unretained(this))) {}
 
     MOCK_METHOD2(ResultCallback,
                  void(const PortalDetector::Result& http_result,
@@ -171,14 +169,14 @@ class PortalDetectorTest : public Test {
 
   void ExpectReset() {
     EXPECT_FALSE(portal_detector_->attempt_count_);
-    EXPECT_TRUE(callback_target_.result_callback().
-                Equals(portal_detector_->portal_result_callback_));
+    EXPECT_TRUE(callback_target_.result_callback().Equals(
+        portal_detector_->portal_result_callback_));
     EXPECT_EQ(nullptr, portal_detector_->http_request_);
     EXPECT_EQ(nullptr, portal_detector_->https_request_);
   }
 
   void AdvanceTime(int milliseconds) {
-    struct timeval tv = { milliseconds / 1000, (milliseconds % 1000) * 1000 };
+    struct timeval tv = {milliseconds / 1000, (milliseconds % 1000) * 1000};
     timeradd(&current_time_, &tv, &current_time_);
   }
 

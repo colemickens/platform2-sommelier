@@ -30,8 +30,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kPortal;
-static string ObjectID(Connection* c) { return c->interface_name(); }
+static string ObjectID(Connection* c) {
+  return c->interface_name();
 }
+}  // namespace Logging
 
 const int PortalDetector::kInitialCheckIntervalSeconds = 3;
 const int PortalDetector::kMaxPortalCheckIntervalSeconds = 5 * 60;
@@ -319,7 +321,7 @@ void PortalDetector::CompleteAttempt(Result http_result, Result https_result) {
 
 void PortalDetector::UpdateAttemptTime(int delay_seconds) {
   time_->GetTimeMonotonic(&attempt_start_time_);
-  struct timeval delay_timeval = { delay_seconds, 0 };
+  struct timeval delay_timeval = {delay_seconds, 0};
   timeradd(&attempt_start_time_, &delay_timeval, &attempt_start_time_);
 }
 

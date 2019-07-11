@@ -39,32 +39,16 @@ namespace {
 // These strings are dependent on ConnectionDiagnostics::Type. Any changes to
 // this array should be synced with ConnectionDiagnostics::Type.
 const char* const kEventNames[] = {
-    "Portal detection",
-    "Ping DNS servers",
-    "DNS resolution",
-    "Ping (target web server)",
-    "Ping (gateway)",
-    "Find route",
-    "ARP table lookup",
-    "Neighbor table lookup",
-    "IP collision check"
-};
+    "Portal detection",         "Ping DNS servers",      "DNS resolution",
+    "Ping (target web server)", "Ping (gateway)",        "Find route",
+    "ARP table lookup",         "Neighbor table lookup", "IP collision check"};
 // These strings are dependent on ConnectionDiagnostics::Phase. Any changes to
 // this array should be synced with ConnectionDiagnostics::Phase.
-const char* const kPhaseNames[] = {
-    "Start",
-    "End",
-    "End (Content)",
-    "End (DNS)",
-    "End (HTTP/CXN)"
-};
+const char* const kPhaseNames[] = {"Start", "End", "End (Content)", "End (DNS)",
+                                   "End (HTTP/CXN)"};
 // These strings are dependent on ConnectionDiagnostics::Result. Any changes to
 // this array should be synced with ConnectionDiagnostics::Result.
-const char* const kResultNames[] = {
-    "Success",
-    "Failure",
-    "Timeout"
-};
+const char* const kResultNames[] = {"Success", "Failure", "Timeout"};
 // After we fail to ping the gateway, we 1) start ARP lookup, 2) fail ARP
 // lookup, 3) start IP collision check, 4) end IP collision check.
 const int kNumEventsFromPingGatewayEndToIpCollisionCheckEnd = 4;
@@ -80,7 +64,7 @@ static auto kModuleLogScope = ScopeLogger::kWiFi;
 static string ObjectID(ConnectionDiagnostics* n) {
   return "(connection_diagnostics)";
 }
-}
+}  // namespace Logging
 
 const char ConnectionDiagnostics::kIssueIPCollision[] =
     "IP collision detected. Another host on the local network has been "
@@ -246,10 +230,9 @@ void ConnectionDiagnostics::Stop() {
 
 // static
 string ConnectionDiagnostics::EventToString(const Event& event) {
-  string message = StringPrintf("Event: %-26sPhase: %-17sResult: %-10s",
-                                kEventNames[event.type],
-                                kPhaseNames[event.phase],
-                                kResultNames[event.result]);
+  string message = StringPrintf(
+      "Event: %-26sPhase: %-17sResult: %-10s", kEventNames[event.type],
+      kPhaseNames[event.phase], kResultNames[event.result]);
   if (!event.message.empty()) {
     message.append(StringPrintf("Msg: %s", event.message.c_str()));
   }
@@ -260,7 +243,8 @@ void ConnectionDiagnostics::AddEvent(Type type, Phase phase, Result result) {
   AddEventWithMessage(type, phase, result, "");
 }
 
-void ConnectionDiagnostics::AddEventWithMessage(Type type, Phase phase,
+void ConnectionDiagnostics::AddEventWithMessage(Type type,
+                                                Phase phase,
                                                 Result result,
                                                 const string& message) {
   diagnostic_events_.push_back(Event(type, phase, result, message));
@@ -273,8 +257,7 @@ void ConnectionDiagnostics::ReportResultAndStop(const string& issue) {
   if (!result_callback_.is_null()) {
     LOG(INFO) << "Connection diagnostics events:";
     for (size_t i = 0; i < diagnostic_events_.size(); ++i) {
-      LOG(INFO) << "  #" << i << ": "
-                << EventToString(diagnostic_events_[i]);
+      LOG(INFO) << "  #" << i << ": " << EventToString(diagnostic_events_[i]);
     }
     LOG(INFO) << "Connection diagnostics completed. Connection issue: "
               << issue;
@@ -309,8 +292,9 @@ void ConnectionDiagnostics::StartAfterPortalDetectionInternal(
     case PortalDetector::Phase::kDNS: {
       AddEvent(kTypePortalDetection, kPhasePortalDetectionEndDNS, result_type);
       if (http_result.status == PortalDetector::Status::kSuccess) {
-        LOG(ERROR) << __func__ << ": portal detection should not end with "
-                                  "success status in DNS phase";
+        LOG(ERROR) << __func__
+                   << ": portal detection should not end with "
+                      "success status in DNS phase";
         ReportResultAndStop(kIssueInternalError);
       } else if (http_result.status == PortalDetector::Status::kTimeout) {
         // DNS timeout occurred in portal detection. Ping DNS servers to make
@@ -405,11 +389,9 @@ void ConnectionDiagnostics::PingDNSServers() {
             .second;
     if (emplace_success &&
         id_to_pending_dns_server_icmp_session_.at(i)->Start(
-            dns_server_ip_addr,
-            connection_->interface_index(),
+            dns_server_ip_addr, connection_->interface_index(),
             Bind(&ConnectionDiagnostics::OnPingDNSServerComplete,
-                 weak_ptr_factory_.GetWeakPtr(),
-                 i))) {
+                 weak_ptr_factory_.GetWeakPtr(), i))) {
       SLOG(this, 3) << __func__ << ": pinging DNS server at "
                     << dns_server_ip_addr.ToString();
     } else {
@@ -563,8 +545,7 @@ void ConnectionDiagnostics::CheckIpCollision() {
            weak_ptr_factory_.GetWeakPtr())));
 
   // Create an 'Arp Probe' Packet.
-  ArpPacket request(IPAddress(string(kIPv4ZeroAddress)),
-                    connection_->local(),
+  ArpPacket request(IPAddress(string(kIPv4ZeroAddress)), connection_->local(),
                     local_mac_address_,
                     ByteString(kMACZeroAddress, sizeof(kMACZeroAddress)));
   if (!arp_client_->TransmitRequest(request)) {
@@ -592,12 +573,10 @@ void ConnectionDiagnostics::PingHost(const IPAddress& address) {
   Type event_type = address.Equals(connection_->gateway())
                         ? kTypePingGateway
                         : kTypePingTargetServer;
-  if (!icmp_session_->Start(address,
-                            connection_->interface_index(),
-                            Bind(&ConnectionDiagnostics::OnPingHostComplete,
-                                 weak_ptr_factory_.GetWeakPtr(),
-                                 event_type,
-                                 address))) {
+  if (!icmp_session_->Start(
+          address, connection_->interface_index(),
+          Bind(&ConnectionDiagnostics::OnPingHostComplete,
+               weak_ptr_factory_.GetWeakPtr(), event_type, address))) {
     LOG(ERROR) << __func__ << ": failed to start ICMP session with "
                << address.ToString();
     AddEventWithMessage(event_type, kPhaseStart, kResultFailure,
@@ -655,10 +634,10 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
         StringPrintf(
             "No DNS servers responded to pings. Pinging first DNS server at %s",
             first_dns_server_ip_addr.ToString().c_str()));
-    dispatcher_->PostTask(FROM_HERE,
-                          Bind(&ConnectionDiagnostics::FindRouteToHost,
-                               weak_ptr_factory_.GetWeakPtr(),
-                               first_dns_server_ip_addr));
+    dispatcher_->PostTask(
+        FROM_HERE,
+        Bind(&ConnectionDiagnostics::FindRouteToHost,
+             weak_ptr_factory_.GetWeakPtr(), first_dns_server_ip_addr));
     return;
   }
 
@@ -672,9 +651,8 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
 
   if (num_dns_attempts_ < kMaxDNSRetries) {
     dispatcher_->PostTask(
-        FROM_HERE,
-        Bind(&ConnectionDiagnostics::ResolveTargetServerIPAddress,
-             weak_ptr_factory_.GetWeakPtr(), pingable_dns_servers_));
+        FROM_HERE, Bind(&ConnectionDiagnostics::ResolveTargetServerIPAddress,
+                        weak_ptr_factory_.GetWeakPtr(), pingable_dns_servers_));
   } else {
     SLOG(this, 3) << __func__ << ": max DNS resolution attempts reached";
     ReportResultAndStop(kIssueDNSServerNoResponse);
@@ -708,7 +686,8 @@ void ConnectionDiagnostics::OnDNSResolutionComplete(const Error& error,
 }
 
 void ConnectionDiagnostics::OnPingHostComplete(
-    Type ping_event_type, const IPAddress& address_pinged,
+    Type ping_event_type,
+    const IPAddress& address_pinged,
     const vector<base::TimeDelta>& result) {
   SLOG(this, 3) << __func__;
 
@@ -765,8 +744,7 @@ void ConnectionDiagnostics::OnArpReplyReceived(int fd) {
     return;
   }
   // According to RFC 5227, we only check the sender's ip address.
-  if (connection_->local().Equals(
-          packet.local_ip_address())) {
+  if (connection_->local().Equals(packet.local_ip_address())) {
     arp_reply_timeout_callback_.Cancel();
     AddEventWithMessage(kTypeIPCollisionCheck, kPhaseEnd, kResultSuccess,
                         "IP collision found");
@@ -888,7 +866,8 @@ void ConnectionDiagnostics::OnRouteQueryTimeout() {
   ReportResultAndStop(kIssueRouting);
 }
 
-bool ConnectionDiagnostics::DoesPreviousEventMatch(Type type, Phase phase,
+bool ConnectionDiagnostics::DoesPreviousEventMatch(Type type,
+                                                   Phase phase,
                                                    Result result,
                                                    size_t num_events_ago) {
   int event_index = diagnostic_events_.size() - 1 - num_events_ago;

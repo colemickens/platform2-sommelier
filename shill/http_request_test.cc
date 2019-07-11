@@ -157,8 +157,7 @@ class HttpRequestTest : public Test {
     EXPECT_FALSE(request_->is_running_);
   }
   void ExpectStop() {
-    EXPECT_CALL(*dns_client_, Stop())
-        .Times(AtLeast(1));
+    EXPECT_CALL(*dns_client_, Stop()).Times(AtLeast(1));
     EXPECT_CALL(*connection_, ReleaseRouting());
   }
   void ExpectDNSRequest(const string& host, bool return_value) {

@@ -88,7 +88,6 @@ class Connection : public base::RefCounted<Connection> {
   // address+gateway have been configured.
   virtual void UpdateGatewayMetric(const IPConfigRefPtr& config);
 
-
   // Adds |interface_name| to the whitelisted input interfaces that are
   // allowed to use the connection and updates the routing table.
   virtual void AddInputInterfaceToRoutingTable(

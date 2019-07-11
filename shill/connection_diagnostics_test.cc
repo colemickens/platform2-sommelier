@@ -94,8 +94,9 @@ MATCHER_P(IsEventList, expected_events, "") {
                        << ConnectionDiagnostics::EventToString(arg[i]);
       *result_listener << "\nExpected connection diagnostics events:";
       for (const auto& expected_event : expected_events) {
-        *result_listener << "\n" << ConnectionDiagnostics::EventToString(
-                                        expected_event);
+        *result_listener << "\n"
+                         << ConnectionDiagnostics::EventToString(
+                                expected_event);
       }
       *result_listener << "\nActual connection diagnostics events:";
       for (const auto& actual_event : expected_events) {
@@ -151,7 +152,9 @@ class ConnectionDiagnosticsTest : public Test {
         manager_(&control_, &dispatcher_, &metrics_),
         device_info_(&manager_),
         connection_(new NiceMock<MockConnection>(&device_info_)),
-        connection_diagnostics_(connection_, &dispatcher_, &metrics_,
+        connection_diagnostics_(connection_,
+                                &dispatcher_,
+                                &metrics_,
                                 &device_info_,
                                 callback_target_.result_callback()),
         portal_detector_(new NiceMock<MockPortalDetector>(connection_)) {
@@ -212,9 +215,7 @@ class ConnectionDiagnosticsTest : public Test {
         result_callback_;
   };
 
-  CallbackTarget& callback_target() {
-    return callback_target_;
-  }
+  CallbackTarget& callback_target() { return callback_target_; }
 
   void UseIPv6Gateway() {
     EXPECT_CALL(*connection_, gateway())
@@ -243,12 +244,12 @@ class ConnectionDiagnosticsTest : public Test {
                                                           num_events_ago);
   }
 
-      // This direct call to ConnectionDiagnostics::Start does not mock the
-      // return
-      // value of MockPortalDetector::CreatePortalDetector, so this will crash
-      // the
-      // test if PortalDetector::Start is actually called. Use only for testing
-      // bad input to ConnectionDiagnostics::Start.
+  // This direct call to ConnectionDiagnostics::Start does not mock the
+  // return
+  // value of MockPortalDetector::CreatePortalDetector, so this will crash
+  // the
+  // test if PortalDetector::Start is actually called. Use only for testing
+  // bad input to ConnectionDiagnostics::Start.
   bool Start(const PortalDetector::Properties& props) {
     return connection_diagnostics_.Start(props);
   }
@@ -275,9 +276,7 @@ class ConnectionDiagnosticsTest : public Test {
                     .IsCancelled());
   }
 
-  void ExpectIcmpSessionStop() {
-    EXPECT_CALL(*icmp_session_, Stop());
-  }
+  void ExpectIcmpSessionStop() { EXPECT_CALL(*icmp_session_, Stop()); }
 
   void ExpectPortalDetectionStartSuccess(PortalDetector::Properties props) {
     AddExpectedEvent(ConnectionDiagnostics::kTypePortalDetection,
@@ -374,8 +373,7 @@ class ConnectionDiagnosticsTest : public Test {
     EXPECT_CALL(
         *MockDnsClientFactory::GetInstance(),
         CreateDnsClient(family, kInterfaceName, dns_servers_,
-                        DnsClient::kDnsTimeoutMilliseconds,
-                        &dispatcher_, _))
+                        DnsClient::kDnsTimeoutMilliseconds, &dispatcher_, _))
         .WillOnce(Return(ByMove(std::move(dns_client))));
     connection_diagnostics_.ResolveTargetServerIPAddress(dns_servers_);
   }
@@ -560,20 +558,18 @@ class ConnectionDiagnosticsTest : public Test {
                      ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultSuccess);
     EXPECT_CALL(device_info_, GetMACAddress(connection_->interface_index(), _))
-        .WillOnce(
-            DoAll(SetArgPointee<1>(local_mac_address_), Return(true)));
+        .WillOnce(DoAll(SetArgPointee<1>(local_mac_address_), Return(true)));
     EXPECT_CALL(*arp_client_, StartReplyListener()).WillOnce(Return(true));
     // We should send an ARP probe request for our own local IP address.
-    EXPECT_CALL(*arp_client_, TransmitRequest(IsArpRequest(
-                                  kIPv4ZeroAddress,
-                                  local_ip_address_,
-                                  local_mac_address_,
-                                  ByteString(kMACZeroAddress,
-                                             sizeof(kMACZeroAddress)))))
+    EXPECT_CALL(*arp_client_,
+                TransmitRequest(IsArpRequest(
+                    kIPv4ZeroAddress, local_ip_address_, local_mac_address_,
+                    ByteString(kMACZeroAddress, sizeof(kMACZeroAddress)))))
         .WillOnce(Return(true));
-    EXPECT_CALL(dispatcher_,
-                PostDelayedTask(_, _,
-                    ConnectionDiagnostics::kArpReplyTimeoutSeconds * 1000));
+    EXPECT_CALL(
+        dispatcher_,
+        PostDelayedTask(_, _,
+                        ConnectionDiagnostics::kArpReplyTimeoutSeconds * 1000));
     connection_diagnostics_.CheckIpCollision();
   }
 
@@ -753,7 +749,8 @@ class ConnectionDiagnosticsTest : public Test {
     connection_diagnostics_.OnPingDNSServerComplete(1, kNonEmptyResult);
   }
 
-  void ExpectArpTableLookup(const IPAddress& address, bool success,
+  void ExpectArpTableLookup(const IPAddress& address,
+                            bool success,
                             bool is_gateway) {
     AddExpectedEvent(ConnectionDiagnostics::kTypeArpTableLookup,
                      ConnectionDiagnostics::kPhaseStart,
@@ -791,7 +788,8 @@ class ConnectionDiagnosticsTest : public Test {
   }
 
   void ExpectNeighborTableLookupEndFailure(const IPAddress& address_queried,
-                                           bool is_gateway, bool is_timeout) {
+                                           bool is_gateway,
+                                           bool is_timeout) {
     AddExpectedEvent(ConnectionDiagnostics::kTypeNeighborTableLookup,
                      ConnectionDiagnostics::kPhaseEnd,
                      ConnectionDiagnostics::kResultFailure);
@@ -809,10 +807,8 @@ class ConnectionDiagnosticsTest : public Test {
               ? ConnectionDiagnostics::kIssueGatewayNeighborEntryNotConnected
               : ConnectionDiagnostics::kIssueServerNeighborEntryNotConnected;
       EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(issue));
-      EXPECT_CALL(
-          callback_target(),
-          ResultCallback(issue,
-                         IsEventList(expected_events_)));
+      EXPECT_CALL(callback_target(),
+                  ResultCallback(issue, IsEventList(expected_events_)));
       RTNLMessage msg(RTNLMessage::kTypeNeighbor, RTNLMessage::kModeAdd, 0, 0,
                       0, connection_->interface_index(),
                       IPAddress::kFamilyIPv6);

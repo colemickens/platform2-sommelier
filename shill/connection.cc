@@ -23,8 +23,8 @@
 #include "shill/routing_table.h"
 #include "shill/routing_table_entry.h"
 
-using std::vector;
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -44,14 +44,13 @@ const uint32_t Connection::kDefaultMetric = 10;
 // UINT_MAX is also a valid priority metric, but we reserve this as a sentinel
 // value, as in RoutingTable::GetDefaultRouteInternal.
 const uint32_t Connection::kLowestPriorityMetric =
-  std::numeric_limits<uint32_t>::max() - 1;
+    std::numeric_limits<uint32_t>::max() - 1;
 // static
 const uint32_t Connection::kMetricIncrement = 10;
 
 Connection::Binder::Binder(const string& name,
                            const base::Closure& disconnect_callback)
-    : name_(name),
-      client_disconnect_callback_(disconnect_callback) {}
+    : name_(name), client_disconnect_callback_(disconnect_callback) {}
 
 Connection::Binder::~Binder() {
   Attach(nullptr);
@@ -60,15 +59,15 @@ Connection::Binder::~Binder() {
 void Connection::Binder::Attach(const ConnectionRefPtr& to_connection) {
   if (connection_) {
     connection_->DetachBinder(this);
-    LOG(INFO) << name_ << ": unbound from connection: "
-              << connection_->interface_name();
+    LOG(INFO) << name_
+              << ": unbound from connection: " << connection_->interface_name();
     connection_.reset();
   }
   if (to_connection) {
     connection_ = to_connection->weak_ptr_factory_.GetWeakPtr();
     connection_->AttachBinder(this);
-    LOG(INFO) << name_ << ": bound to connection: "
-              << connection_->interface_name();
+    LOG(INFO) << name_
+              << ": bound to connection: " << connection_->interface_name();
   }
 }
 
@@ -200,8 +199,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   IPAddress peer(properties.address_family);
   if (!properties.peer_address.empty() &&
       !peer.SetAddressFromString(properties.peer_address)) {
-    LOG(ERROR) << "Peer address " << properties.peer_address
-               << " is invalid";
+    LOG(ERROR) << "Peer address " << properties.peer_address << " is invalid";
     return;
   }
 
@@ -228,14 +226,13 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
               << " peer=" << peer.ToString()
               << " gateway=" << gateway.ToString();
 
-    rtnl_handler_->AddInterfaceAddress(
-        interface_index_, local, broadcast, peer);
+    rtnl_handler_->AddInterfaceAddress(interface_index_, local, broadcast,
+                                       peer);
     SetMTU(properties.mtu);
   }
 
   if (gateway.IsValid() && properties.default_route) {
-    routing_table_->SetDefaultRoute(interface_index_, gateway,
-                                    metric_,
+    routing_table_->SetDefaultRoute(interface_index_, gateway, metric_,
                                     table_id_);
   }
 
@@ -252,14 +249,10 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   if (!blackholed_uids_.empty() || has_blackholed_addrs) {
     blackhole_table_id_ = routing_table_->AllocTableId();
     CHECK(blackhole_table_id_);
-    routing_table_->CreateBlackholeRoute(interface_index_,
-                                         IPAddress::kFamilyIPv4,
-                                         0,
-                                         blackhole_table_id_);
-    routing_table_->CreateBlackholeRoute(interface_index_,
-                                         IPAddress::kFamilyIPv6,
-                                         0,
-                                         blackhole_table_id_);
+    routing_table_->CreateBlackholeRoute(
+        interface_index_, IPAddress::kFamilyIPv4, 0, blackhole_table_id_);
+    routing_table_->CreateBlackholeRoute(
+        interface_index_, IPAddress::kFamilyIPv6, 0, blackhole_table_id_);
   }
 
   UpdateRoutingPolicy();
@@ -270,9 +263,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
 
   if (properties.blackhole_ipv6) {
     routing_table_->CreateBlackholeRoute(interface_index_,
-                                         IPAddress::kFamilyIPv6,
-                                         0,
-                                         table_id_);
+                                         IPAddress::kFamilyIPv6, 0, table_id_);
   }
 
   // Save a copy of the last non-null DNS config.
@@ -306,8 +297,7 @@ void Connection::UpdateGatewayMetric(const IPConfigRefPtr& config) {
     return;
   }
   if (gateway.IsValid() && properties.default_route) {
-    routing_table_->SetDefaultRoute(interface_index_, gateway,
-                                    metric_,
+    routing_table_->SetDefaultRoute(interface_index_, gateway, metric_,
                                     table_id_);
     routing_table_->FlushCache();
   }
@@ -321,9 +311,9 @@ void Connection::UpdateRoutingPolicy() {
     blackhole_offset = 1;
     for (const auto& uid : blackholed_uids_) {
       auto entry = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
-                                  .SetPriority(metric_)
-                                  .SetTable(blackhole_table_id_)
-                                  .SetUidRange({uid, uid});
+                       .SetPriority(metric_)
+                       .SetTable(blackhole_table_id_)
+                       .SetUidRange({uid, uid});
       routing_table_->AddRule(interface_index_, entry);
       routing_table_->AddRule(interface_index_, entry.FlipFamily());
     }
@@ -333,8 +323,8 @@ void Connection::UpdateRoutingPolicy() {
           [](Connection* connection, const IPAddress& addr) {
             // Add |addr| to blackhole table.
             auto entry = RoutingPolicyEntry::CreateFromSrc(addr)
-                .SetPriority(connection->metric_)
-                .SetTable(connection->blackhole_table_id_);
+                             .SetPriority(connection->metric_)
+                             .SetTable(connection->blackhole_table_id_);
             connection->routing_table_->AddRule(connection->interface_index_,
                                                 entry);
           },
@@ -381,10 +371,10 @@ void Connection::UpdateRoutingPolicy() {
       routing_table_->AddRule(interface_index_, main_table_rule.FlipFamily());
       // Add a default routing rule to use the primary interface if there is
       // nothing better.
-      auto catch_all_rule = RoutingPolicyEntry::CreateFromSrc(
-          IPAddress(IPAddress::kFamilyIPv4))
-          .SetTable(table_id_)
-          .SetPriority(RoutingTable::kRulePriorityMain - 1);
+      auto catch_all_rule =
+          RoutingPolicyEntry::CreateFromSrc(IPAddress(IPAddress::kFamilyIPv4))
+              .SetTable(table_id_)
+              .SetPriority(RoutingTable::kRulePriorityMain - 1);
       routing_table_->AddRule(interface_index_, catch_all_rule);
       routing_table_->AddRule(interface_index_, catch_all_rule.FlipFamily());
     }
@@ -404,11 +394,11 @@ void Connection::UpdateRoutingPolicy() {
                                   .SetTable(table_id_)
                                   .SetPriority(metric_ + blackhole_offset));
     }
-    auto iif_rule = RoutingPolicyEntry::CreateFromSrc(
-        IPAddress(IPAddress::kFamilyIPv4))
-        .SetTable(table_id_)
-        .SetPriority(metric_ + blackhole_offset)
-        .SetIif(interface_name_);
+    auto iif_rule =
+        RoutingPolicyEntry::CreateFromSrc(IPAddress(IPAddress::kFamilyIPv4))
+            .SetTable(table_id_)
+            .SetPriority(metric_ + blackhole_offset)
+            .SetIif(interface_name_);
     routing_table_->AddRule(interface_index_, iif_rule);
     routing_table_->AddRule(interface_index_, iif_rule.FlipFamily());
   }
@@ -435,9 +425,8 @@ void Connection::RemoveInputInterfaceFromRoutingTable(
 }
 
 void Connection::SetMetric(uint32_t metric, bool is_primary_physical) {
-  SLOG(this, 2) << __func__ << " " << interface_name_
-                << " (index " << interface_index_ << ")"
-                << metric_ << " -> " << metric;
+  SLOG(this, 2) << __func__ << " " << interface_name_ << " (index "
+                << interface_index_ << ")" << metric_ << " -> " << metric;
   if (metric == metric_) {
     return;
   }
@@ -461,9 +450,8 @@ bool Connection::IsDefault() const {
 }
 
 void Connection::SetUseDNS(bool enable) {
-  SLOG(this, 2) << __func__ << " " << interface_name_
-                << " (index " << interface_index_ << ")"
-                << use_dns_ << " -> " << enable;
+  SLOG(this, 2) << __func__ << " " << interface_name_ << " (index "
+                << interface_index_ << ")" << use_dns_ << " -> " << enable;
   use_dns_ = enable;
 }
 
@@ -519,9 +507,8 @@ string Connection::GetSubnetName() const {
   if (!local().IsValid()) {
     return "";
   }
-  return base::StringPrintf("%s/%d",
-                            local().GetNetworkPart().ToString().c_str(),
-                            local().prefix());
+  return base::StringPrintf(
+      "%s/%d", local().GetNetworkPart().ToString().c_str(), local().prefix());
 }
 
 void Connection::set_allowed_addrs(std::vector<IPAddress> addresses) {
@@ -531,10 +518,8 @@ void Connection::set_allowed_addrs(std::vector<IPAddress> addresses) {
 bool Connection::FixGatewayReachability(const IPAddress& local,
                                         IPAddress* peer,
                                         IPAddress* gateway) {
-  SLOG(nullptr, 2) << __func__
-                   << " local " << local.ToString()
-                   << ", peer " << peer->ToString()
-                   << ", gateway " << gateway->ToString();
+  SLOG(nullptr, 2) << __func__ << " local " << local.ToString() << ", peer "
+                   << peer->ToString() << ", gateway " << gateway->ToString();
 
   if (peer->IsValid()) {
     // For a PPP connection:
@@ -564,8 +549,7 @@ bool Connection::FixGatewayReachability(const IPAddress& local,
     return true;
   }
 
-  LOG(WARNING) << "Gateway "
-               << gateway->ToString()
+  LOG(WARNING) << "Gateway " << gateway->ToString()
                << " is unreachable from local address/prefix "
                << local.ToString() << "/" << local.prefix();
   LOG(WARNING) << "Mitigating this by creating a link route to the gateway.";
@@ -619,14 +603,14 @@ void Connection::NotifyBindersOnDisconnect() {
 }
 
 void Connection::AttachBinder(Binder* binder) {
-  SLOG(this, 2) << __func__ << "(" << binder->name() << ")" << " @ "
-                            << interface_name_;
+  SLOG(this, 2) << __func__ << "(" << binder->name() << ")"
+                << " @ " << interface_name_;
   binders_.push_back(binder);
 }
 
 void Connection::DetachBinder(Binder* binder) {
-  SLOG(this, 2) << __func__ << "(" << binder->name() << ")" << " @ "
-                            << interface_name_;
+  SLOG(this, 2) << __func__ << "(" << binder->name() << ")"
+                << " @ " << interface_name_;
   for (auto it = binders_.begin(); it != binders_.end(); ++it) {
     if (binder == *it) {
       binders_.erase(it);

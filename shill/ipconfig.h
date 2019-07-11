@@ -42,14 +42,15 @@ class IPConfig : public base::RefCounted<IPConfig> {
   };
 
   struct Properties {
-    Properties() : address_family(IPAddress::kFamilyUnknown),
-                   subnet_prefix(0),
-                   blackholed_addrs(nullptr),
-                   default_route(true),
-                   blackhole_ipv6(false),
-                   use_if_addrs(false),
-                   mtu(kUndefinedMTU),
-                   lease_duration_seconds(0) {}
+    Properties()
+        : address_family(IPAddress::kFamilyUnknown),
+          subnet_prefix(0),
+          blackholed_addrs(nullptr),
+          default_route(true),
+          blackhole_ipv6(false),
+          use_if_addrs(false),
+          mtu(kUndefinedMTU),
+          lease_duration_seconds(0) {}
 
     IPAddress::Family address_family;
     std::string address;
@@ -105,17 +106,9 @@ class IPConfig : public base::RefCounted<IPConfig> {
     uint32_t lease_duration_seconds;
   };
 
-  enum Method {
-    kMethodUnknown,
-    kMethodPPP,
-    kMethodStatic,
-    kMethodDHCP
-  };
+  enum Method { kMethodUnknown, kMethodPPP, kMethodStatic, kMethodDHCP };
 
-  enum ReleaseReason {
-    kReleaseReasonDisconnect,
-    kReleaseReasonStaticIP
-  };
+  enum ReleaseReason { kReleaseReasonDisconnect, kReleaseReasonStaticIP };
 
   using UpdateCallback = base::Callback<void(const IPConfigRefPtr&, bool)>;
   using Callback = base::Callback<void(const IPConfigRefPtr&)>;
