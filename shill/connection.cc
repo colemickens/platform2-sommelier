@@ -20,6 +20,7 @@
 #include "shill/net/rtnl_handler.h"
 #include "shill/resolver.h"
 #include "shill/routing_table.h"
+#include "shill/routing_table_entry.h"
 
 using std::vector;
 using std::string;

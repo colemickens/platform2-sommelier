@@ -30,6 +30,7 @@
 #include "shill/net/mock_arp_client.h"
 #include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_rtnl_handler.h"
+#include "shill/routing_table_entry.h"
 
 using base::Bind;
 using base::Callback;

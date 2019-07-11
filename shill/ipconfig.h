@@ -17,7 +17,6 @@
 #include "shill/net/ip_address.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
-#include "shill/routing_table_entry.h"
 #include "shill/timeout_set.h"
 
 namespace shill {

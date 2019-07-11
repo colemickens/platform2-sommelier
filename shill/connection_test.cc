@@ -23,6 +23,7 @@
 #include "shill/mock_resolver.h"
 #include "shill/mock_routing_table.h"
 #include "shill/net/mock_rtnl_handler.h"
+#include "shill/routing_table_entry.h"
 
 using testing::_;
 using testing::AnyNumber;
