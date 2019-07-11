@@ -138,24 +138,39 @@ class EcCommand {
   void SetReqSize(uint32_t outsize) { data_.cmd.outsize = outsize; }
   void SetReq(const O& req) { data_.req = req; }
 
-  // Optionally retry the command when the underlying ioctl
-  // returns ETIMEDOUT.
-  // The caller must be careful to only retry EC state-less
-  // commands, that can be rerun without consequence.
-  bool Run(int ec_fd, int num_attempts = 1) {
+  /**
+   * Run an EC command. Optionally retry the command when the underlying ioctl
+   * returns ETIMEDOUT.
+   *
+   * @param ec_fd file descriptor for the EC device
+   * @param num_attempts number of attempts to try, optional
+   * @param result pointer to variable to hold the return code of the command,
+   * optional
+   * @return true if command runs successfully and response size is same as
+   * expected, false otherwise
+   *
+   * The caller must be careful to only retry EC state-less
+   * commands, that can be rerun without consequence.
+   */
+  bool Run(int ec_fd, int num_attempts = 1, uint16_t* result = nullptr) {
     CHECK_GT(num_attempts, 0);
     for (int retry = 0; retry < num_attempts; retry++) {
       data_.cmd.result = 0xff;
       // We rely on the ioctl preserving data_.req when the command fails.
       // This is important for subsequent retries using the same data_.req.
-      int result = ioctl(ec_fd, CROS_EC_DEV_IOCXCMD_V2, &data_);
-      if (result >= 0) {
+      int ret = ioctl(ec_fd, CROS_EC_DEV_IOCXCMD_V2, &data_);
+      if (ret >= 0) {
         LOG_IF(INFO, retry > 0)
             << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
             << std::dec << " succeeded on attempt " << retry + 1 << "/"
             << num_attempts << ".";
-        return (static_cast<uint32_t>(result) == data_.cmd.insize);
+        if (result != nullptr)
+          *result = data_.cmd.result;
+        return (static_cast<uint32_t>(ret) == data_.cmd.insize);
       }
+      if (result != nullptr)
+        // 0xff means Run() failed and we don't have any result.
+        *result = 0xff;
       if (errno != ETIMEDOUT) {
         PLOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
                     << std::dec << " failed on attempt " << retry + 1 << "/"
