@@ -11,8 +11,8 @@
 module chromeos.cros_healthd.mojom;
 
 import "cros_healthd_diagnostics.mojom";
-import "cros_healthd_telemetry.mojom";
 import "cros_healthd_probe.mojom";
+import "cros_healthd_telemetry.mojom";
 
 // Interface exposed by the cros_healthd daemon.
 interface CrosHealthdService {
@@ -20,12 +20,12 @@ interface CrosHealthdService {
 
   // Retrieves telemetry data corresponding to |item|. The returned data will be
   // null if |item| was invalid, or if there was an error retrieving the data.
-  GetTelemetryItem@0(TelemetryItemEnum item) => (TelemetryItemData? item_data);
+  GetTelemetryItem(TelemetryItemEnum item) => (TelemetryItemData? item_data);
 
   // Retrieves telemetry data for every telemetry item in |group|. Any
   // individual piece of data will be omitted from the response if there was an
   // error retrieving data for that item.
-  GetTelemetryGroup@1(TelemetryGroupEnum group)
+  GetTelemetryGroup(TelemetryGroupEnum group)
       => (array<TelemetryItemWithValue> group_data);
 
   // ------------------- End of telemetry definitions -------------------------
@@ -33,7 +33,7 @@ interface CrosHealthdService {
   // ------------------- Start of diagnostics definitions ---------------------
 
   // Returns an array of all diagnostic routines that the platform supports.
-  GetAvailableRoutines@2()
+  GetAvailableRoutines()
       => (array<DiagnosticRoutineEnum> available_routines);
 
   // Requests that a new diagnostic routine is created and started on the
@@ -50,7 +50,7 @@ interface CrosHealthdService {
   //            created.
   // * |status| - current status of the newly-created routine. A status of
   //              kFailedToStart means the routine was unable to be created.
-  RunRoutine@3(DiagnosticRoutineEnum routine, RoutineParameters params)
+  RunRoutine(DiagnosticRoutineEnum routine, RoutineParameters params)
       => (int32 uuid, DiagnosticRoutineStatusEnum status);
 
   // Sends commands to an existing routine. Also returns status information for
@@ -67,7 +67,7 @@ interface CrosHealthdService {
   // The response:
   // * |routine_update| - status information for the specified routine. See
   //                      cros_healthd_diagnostics.mojom for the structure.
-  GetRoutineUpdate@4(int32 uuid, DiagnosticRoutineCommandEnum command,
+  GetRoutineUpdate(int32 uuid, DiagnosticRoutineCommandEnum command,
                      bool include_output)
       => (RoutineUpdate routine_update);
 
@@ -76,12 +76,12 @@ interface CrosHealthdService {
   // ------------------- Start of probe definitions ---------------------
 
   // Returns an array of all batteries and associated up-to-date info.
-  ProbeBatteryInfo@5()
+  ProbeBatteryInfo()
       => (array<BatteryInfo> batteries);
 
   // Returns an array of all non-removable block devices and associated
   // up-to-date info.
-  ProbeNonRemovableBlockDeviceInfo@6()
+  ProbeNonRemovableBlockDeviceInfo()
       => (array<NonRemovableBlockDeviceInfo> devices);
 
   // ------------------- End of probe definitions -----------------------

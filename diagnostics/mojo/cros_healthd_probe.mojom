@@ -52,15 +52,15 @@ struct BatteryInfo {
 struct NonRemovableBlockDeviceInfo {
   // The path of this storage in system. It is useful if caller needs to
   // correlate with other information.
-  string path@0;
+  string path;
   // Exact size of this storage, reported in bytes
-  int64 size@1;
+  uint64 size;
   // Storage type, could be MMC / NVMe / ATA, based on udev subsystem.
-  string type@2;
+  string type;
   // Manufacturer ID, 8 bits.
-  uint8 manfid@3;
+  uint8 manufacturer_id;
   // PNM: Product name, ASCII characters for 6 bytes.
-  string name@4;
+  string name;
   // PSN: Product serial number, 32 bits
-  uint32 serial@5;
+  uint32 serial;
 };

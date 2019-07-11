@@ -54,15 +54,15 @@ bool ReadInt64(const base::FilePath& directory,
   return base::StringToInt64(buffer, out);
 }
 
-// Reads a 64-bit hex-encoded integer value from a text file and returns true on
-// success.
-bool ReadHexInt64(const base::FilePath& directory,
-                  const std::string& filename,
-                  int64_t* out) {
+// Reads a 64-bit hex-encoded unsigned integer value from a text file and
+// returns true on success.
+bool ReadHexUInt64(const base::FilePath& directory,
+                   const std::string& filename,
+                   uint64_t* out) {
   std::string buffer;
   if (!ReadAndTrimString(directory, filename, &buffer))
     return false;
-  return base::HexStringToInt64(buffer, out);
+  return base::HexStringToUInt64(buffer, out);
 }
 
 // Reads a 32-bit hex-encoded unsigned integer value from a file and returns
@@ -116,7 +116,7 @@ std::vector<base::FilePath> GetNonRemovableBlockDevices(
 
 // Gets the size of the drive in bytes, given the /dev node.
 bool GetDriveDeviceSizeInBytes(const base::FilePath& dev_path,
-                               int64_t* size_in_bytes) {
+                               uint64_t* size_in_bytes) {
   int fd = open(dev_path.value().c_str(), O_RDONLY, 0);
 
   if (fd < 0) {
@@ -125,7 +125,7 @@ bool GetDriveDeviceSizeInBytes(const base::FilePath& dev_path,
   }
 
   base::ScopedFD scoped_fd(fd);
-  int64_t size = 0;
+  uint64_t size = 0;
   int res = ioctl(fd, BLKGETSIZE64, &size);
   if (res != 0) {
     LOG(ERROR) << "Unable to run ioctl(" << fd << ", BLKGETSIZE64, &size) => "
@@ -237,10 +237,10 @@ bool FetchNonRemovableBlockDeviceInfo(
   // Not all devices in sysfs have a serial, so ignore the return code.
   ReadHexUint32(device_path, "serial", &info.serial);
 
-  int64_t manfid = 0;
-  if (ReadHexInt64(device_path, "manfid", &manfid)) {
+  uint64_t manfid = 0;
+  if (ReadHexUInt64(device_path, "manfid", &manfid)) {
     DCHECK_EQ(manfid & 0xFF, manfid);
-    info.manfid = manfid;
+    info.manufacturer_id = manfid;
   }
 
   if (output_info) {

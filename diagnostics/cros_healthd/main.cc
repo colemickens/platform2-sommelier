@@ -30,8 +30,9 @@ int main(int argc, char** argv) {
     for (auto& device : devices) {
       std::cout << device->path << "," << std::dec << device->size << ","
                 << device->type << ",0x" << std::hex
-                << static_cast<int>(device->manfid) << "," << device->name
-                << ",0x" << std::hex << device->serial << std::endl;
+                << static_cast<int>(device->manufacturer_id) << ","
+                << device->name << ",0x" << std::hex << device->serial
+                << std::endl;
     }
   } else if (FLAGS_probe_batteries) {
     NOTIMPLEMENTED();

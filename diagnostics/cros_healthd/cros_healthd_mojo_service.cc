@@ -13,6 +13,7 @@
 #include <dbus/cros_healthd/dbus-constants.h>
 #include <mojo/edk/embedder/embedder.h>
 
+#include "diagnostics/common/disk_utils.h"
 #include "mojo/cros_healthd_telemetry.mojom.h"
 
 namespace diagnostics {
@@ -58,11 +59,11 @@ mojo_ipc::TelemetryItemEnum GetMojoEnumFromTelemetryItemEnum(
     case TelemetryItemEnum::kBatteryCycleCount:    // FALLTHROUGH
     case TelemetryItemEnum::kBatteryVoltage:       // FALLTHROUGH
     case TelemetryItemEnum::kBatteryManufacturer:  // FALLTHROUGH
-    case TelemetryItemEnum::kUptime:   // FALLTHROUGH
-    case TelemetryItemEnum::kNetStat:  // FALLTHROUGH
-    case TelemetryItemEnum::kNetDev:   // FALLTHROUGH
-    case TelemetryItemEnum::kHwmon:    // FALLTHROUGH
-    case TelemetryItemEnum::kThermal:  // FALLTHROUGH
+    case TelemetryItemEnum::kUptime:               // FALLTHROUGH
+    case TelemetryItemEnum::kNetStat:              // FALLTHROUGH
+    case TelemetryItemEnum::kNetDev:               // FALLTHROUGH
+    case TelemetryItemEnum::kHwmon:                // FALLTHROUGH
+    case TelemetryItemEnum::kThermal:              // FALLTHROUGH
     case TelemetryItemEnum::kDmiTables:
       NOTIMPLEMENTED();
       // We'll return a dummy value just to satisfy the compiler.
@@ -157,13 +158,10 @@ CrosHealthdMojoService::CrosHealthdMojoService(
     mojo::ScopedMessagePipeHandle mojo_pipe_handle)
     : routine_service_(routine_service),
       telemetry_service_(telemetry_service),
-      self_binding_(
-          std::make_unique<mojo::Binding<mojo_ipc::CrosHealthdService>>(
-              this /* impl */, std::move(mojo_pipe_handle))) {
+      self_binding_(this /* impl */, std::move(mojo_pipe_handle)) {
   DCHECK(routine_service_);
   DCHECK(telemetry_service_);
-  DCHECK(self_binding_);
-  DCHECK(self_binding_->is_bound());
+  DCHECK(self_binding_.is_bound());
 }
 
 CrosHealthdMojoService::~CrosHealthdMojoService() = default;
@@ -220,8 +218,7 @@ void CrosHealthdMojoService::GetRoutineUpdate(
 
 void CrosHealthdMojoService::set_connection_error_handler(
     const base::Closure& error_handler) {
-  DCHECK(self_binding_);
-  self_binding_->set_connection_error_handler(error_handler);
+  self_binding_.set_connection_error_handler(error_handler);
 }
 
 void CrosHealthdMojoService::ProbeBatteryInfo(
@@ -232,7 +229,8 @@ void CrosHealthdMojoService::ProbeBatteryInfo(
 void CrosHealthdMojoService::ProbeNonRemovableBlockDeviceInfo(
     const ProbeNonRemovableBlockDeviceInfoCallback& callback) {
   // Gather various info on non-removeable block devices.
-  NOTIMPLEMENTED();
+  callback.Run(
+      disk_utils::FetchNonRemovableBlockDevicesInfo(base::FilePath("/")));
 }
 
 }  // namespace diagnostics

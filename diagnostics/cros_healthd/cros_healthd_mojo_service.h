@@ -63,8 +63,7 @@ class CrosHealthdMojoService final
 
   // Mojo binding that connects |this| with the message pipe, allowing the
   // remote end to call our methods.
-  std::unique_ptr<
-      mojo::Binding<chromeos::cros_healthd::mojom::CrosHealthdService>>
+  mojo::Binding<chromeos::cros_healthd::mojom::CrosHealthdService>
       self_binding_;
 
   DISALLOW_COPY_AND_ASSIGN(CrosHealthdMojoService);
