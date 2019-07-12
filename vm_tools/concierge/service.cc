@@ -2240,25 +2240,7 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
   }
 
   switch (location) {
-    case STORAGE_CRYPTOHOME_ROOT: {
-      base::ScopedFD disk_fd(HANDLE_EINTR(
-          open(disk_path.value().c_str(), O_RDWR | O_NOFOLLOW | O_CLOEXEC)));
-      if (!disk_fd.is_valid()) {
-        LOG(ERROR) << "Failed opening VM disk for export";
-        response.set_failure_reason("Failed opening VM disk for export");
-        break;
-      }
-
-      int convert_res = convert_to_qcow2(disk_fd.get(), storage_fd.get());
-      if (convert_res < 0) {
-        response.set_failure_reason("convert_to_qcow2 failed");
-        break;
-      }
-
-      response.set_status(DISK_STATUS_CREATED);
-      break;
-    }
-
+    case STORAGE_CRYPTOHOME_ROOT:
     case STORAGE_CRYPTOHOME_PLUGINVM: {
       auto op = VmExportOperation::Create(
           VmId(request.cryptohome_id(), request.disk_path()), disk_path,
