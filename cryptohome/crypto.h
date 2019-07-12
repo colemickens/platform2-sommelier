@@ -37,9 +37,22 @@ extern const char kSystemSaltFile[];
 
 // This struct is populated by the various authentication methods.
 struct KeyBlobs {
-  KeyBlobs() : vkk_key(kAesBlockSize), vkk_iv(kAesBlockSize) {}
+  KeyBlobs()
+      : vkk_key(kAesBlockSize),
+        vkk_iv(kAesBlockSize),
+        chaps_iv(kAesBlockSize),
+        wrapped_reset_seed(),
+        authorization_data_iv(kAesBlockSize) {}
+  // The file encryption key.
   brillo::SecureBlob vkk_key;
+  // The file encryption IV.
   brillo::SecureBlob vkk_iv;
+  // The IV to use with the chaps key.
+  brillo::SecureBlob chaps_iv;
+  // The wrapped reset seet, if it should be unwrapped.
+  brillo::SecureBlob wrapped_reset_seed;
+  // The IV used to decrypt the authorization data.
+  brillo::SecureBlob authorization_data_iv;
 };
 
 class Crypto {
@@ -351,8 +364,9 @@ class Crypto {
 
   bool DecryptLECredential(const SerializedVaultKeyset& serialized,
                            const brillo::SecureBlob& key,
-                           CryptoError* error,
-                           VaultKeyset* vault_keyset) const;
+                           KeyBlobs* vkk_data,
+                           brillo::SecureBlob* reset_secret,
+                           CryptoError* error) const;
 
   bool DecryptChallengeCredential(const SerializedVaultKeyset& serialized,
                                   const brillo::SecureBlob& key,

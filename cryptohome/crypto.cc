@@ -54,6 +54,26 @@ bool TpmErrorIsRetriable(Tpm::TpmRetryAction retry_action) {
          retry_action == Tpm::kTpmRetryCommFailure;
 }
 
+Crypto::CryptoError ConvertLeError(int le_error) {
+  switch (le_error) {
+    case LE_CRED_ERROR_INVALID_LE_SECRET:
+      return Crypto::CE_LE_INVALID_SECRET;
+    case LE_CRED_ERROR_TOO_MANY_ATTEMPTS:
+      return Crypto::CE_TPM_DEFEND_LOCK;
+    case LE_CRED_ERROR_INVALID_LABEL:
+      return Crypto::CE_OTHER_FATAL;
+    case LE_CRED_ERROR_HASH_TREE:
+      return Crypto::CE_OTHER_FATAL;
+    case LE_CRED_ERROR_PCR_NOT_MATCH:
+      // We might want to return an error here that will make the device
+      // reboot.
+      LOG(ERROR) << "PCR in unexpected state.";
+      return Crypto::CE_LE_INVALID_SECRET;
+    default:
+      return Crypto::CE_OTHER_FATAL;
+  }
+}
+
 }  // namespace
 
 // File name of the system salt file.
@@ -401,8 +421,6 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
   CHECK(tpm_);
   CHECK(serialized.flags() & SerializedVaultKeyset::TPM_WRAPPED);
 
-  SecureBlob salt(serialized.salt().begin(), serialized.salt().end());
-
   if (!serialized.has_tpm_key()) {
     LOG(ERROR) << "Decrypting with TPM, but no tpm key present";
     ReportCryptohomeError(kDecryptAttemptButTpmKeyMissing);
@@ -444,6 +462,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
     }
   }
 
+  SecureBlob salt(serialized.salt().begin(), serialized.salt().end());
   SecureBlob tpm_key = GetTpmKeyFromSerialized(serialized, is_pcr_extended);
   bool is_pcr_bound = serialized.flags() & SerializedVaultKeyset::PCR_BOUND;
   if (is_pcr_bound) {
@@ -459,6 +478,12 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
     }
   }
 
+  key_out_data->chaps_iv = key_out_data->vkk_iv;
+  key_out_data->authorization_data_iv = key_out_data->vkk_iv;
+  key_out_data->wrapped_reset_seed.assign(
+      serialized.wrapped_reset_seed().begin(),
+      serialized.wrapped_reset_seed().end());
+
   if (!serialized.has_tpm_public_key_hash() && error) {
     *error = CE_NO_PUBLIC_KEY_HASH;
   }
@@ -472,6 +497,8 @@ bool Crypto::UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
                                CryptoError* error) const {
   const SecureBlob& vkk_key = vkk_data.vkk_key;
   const SecureBlob& vkk_iv = vkk_data.vkk_iv;
+  const SecureBlob& chaps_iv = vkk_data.chaps_iv;
+  const SecureBlob& auth_data_iv = vkk_data.authorization_data_iv;
 
   // Decrypt the keyset protobuf.
   SecureBlob local_encrypted_keyset(serialized.wrapped_keyset().begin(),
@@ -499,7 +526,7 @@ bool Crypto::UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
 
     if (!CryptoLib::AesDecrypt(local_wrapped_chaps_key,
                                vkk_key,
-                               vkk_iv,
+                               chaps_iv,
                                &unwrapped_chaps_key)) {
       LOG(ERROR) << "AES decryption failed for chaps key.";
       if (error)
@@ -510,8 +537,8 @@ bool Crypto::UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
     keyset->set_chaps_key(unwrapped_chaps_key);
   }
 
-  // Decrypt the reset secret.
-  if (!serialized.wrapped_reset_seed().empty()) {
+  // Decrypt the reset seed.
+  if (!vkk_data.wrapped_reset_seed.empty()) {
     SecureBlob unwrapped_reset_seed;
     SecureBlob local_wrapped_reset_seed =
         SecureBlob(serialized.wrapped_reset_seed());
@@ -529,7 +556,7 @@ bool Crypto::UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
   }
 
   // TODO(kerrnel): Audit if authorization data is used anywhere.
-  DecryptAuthorizationData(serialized, keyset, vkk_key, vkk_iv);
+  DecryptAuthorizationData(serialized, keyset, vkk_key, auth_data_iv);
 
   return true;
 }
@@ -731,8 +758,9 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
 
 bool Crypto::DecryptLECredential(const SerializedVaultKeyset& serialized,
                                  const SecureBlob& vault_key,
-                                 CryptoError* error,
-                                 VaultKeyset* keyset) const {
+                                 KeyBlobs* vkk_data,
+                                 SecureBlob* reset_secret,
+                                 CryptoError* error) const {
   if (!use_tpm_ || !tpm_)
     return false;
 
@@ -744,95 +772,39 @@ bool Crypto::DecryptLECredential(const SerializedVaultKeyset& serialized,
   }
 
   CHECK(serialized.flags() & SerializedVaultKeyset::LE_CREDENTIAL);
-  SecureBlob local_encrypted_keyset(serialized.wrapped_keyset().begin(),
-                                    serialized.wrapped_keyset().end());
-  SecureBlob salt(serialized.salt().begin(), serialized.salt().end());
-  SecureBlob local_vault_key(vault_key.begin(), vault_key.end());
-
-  bool chaps_key_present = serialized.has_wrapped_chaps_key();
-  SecureBlob local_wrapped_chaps_key(serialized.wrapped_chaps_key());
 
   SecureBlob le_secret(kDefaultAesKeySize);
   SecureBlob kdf_skey(kDefaultAesKeySize);
   SecureBlob le_iv(kAesBlockSize);
+  SecureBlob salt(serialized.salt().begin(), serialized.salt().end());
   if (!DeriveSecretsSCrypt(vault_key, salt, {&le_secret, &kdf_skey, &le_iv})) {
     if (error)
       *error = CE_OTHER_FATAL;
     return false;
   }
 
+  vkk_data->authorization_data_iv = le_iv;
+  vkk_data->chaps_iv.assign(serialized.le_chaps_iv().begin(),
+                            serialized.le_chaps_iv().end());
+
   // Try to obtain the HE Secret from the LECredentialManager.
   SecureBlob he_secret;
-  SecureBlob reset_secret;
   int ret = le_manager_->CheckCredential(serialized.le_label(), le_secret,
-                                         &he_secret, &reset_secret);
+                                         &he_secret, reset_secret);
 
   if (ret != LE_CRED_SUCCESS) {
     if (error) {
-      if (ret == LE_CRED_ERROR_INVALID_LE_SECRET) {
-        *error = CE_LE_INVALID_SECRET;
-      } else if (ret == LE_CRED_ERROR_TOO_MANY_ATTEMPTS) {
-        *error = CE_TPM_DEFEND_LOCK;
-      } else if (ret == LE_CRED_ERROR_INVALID_LABEL) {
-        *error = CE_OTHER_FATAL;
-      } else if (ret == LE_CRED_ERROR_HASH_TREE) {
-        *error = CE_OTHER_FATAL;
-      } else if (ret == LE_CRED_ERROR_PCR_NOT_MATCH) {
-        // We might want to return an error here that will make the device
-        // reboot.
-        LOG(ERROR) << "PCR in unexpected state.";
-        *error = CE_LE_INVALID_SECRET;
-      } else {
-        *error = CE_OTHER_FATAL;
-      }
+      *error = ConvertLeError(ret);
     }
     return false;
   }
 
+  vkk_data->vkk_iv.assign(serialized.le_fek_iv().begin(),
+                          serialized.le_fek_iv().end());
+
   SecureBlob vkk_seed = CryptoLib::HmacSha256(
       he_secret, brillo::BlobFromString(kHESecretHmacData));
-
-  // We use separate IVs for decrypting the chaps keys and the file-encryption
-  // keys from the corresponding encrypted blobs.
-  SecureBlob local_fek_iv(serialized.le_fek_iv().begin(),
-                          serialized.le_fek_iv().end());
-  SecureBlob local_chaps_iv(serialized.le_chaps_iv().begin(),
-                            serialized.le_chaps_iv().end());
-
-  SecureBlob vkk_key;
-  vkk_key = CryptoLib::HmacSha256(kdf_skey, vkk_seed);
-  SecureBlob plain_text;
-  if (!CryptoLib::AesDecrypt(local_encrypted_keyset, vkk_key, local_fek_iv,
-                             &plain_text)) {
-    LOG(ERROR) << "AES decryption failed for vault keyset.";
-    if (error)
-      *error = CE_OTHER_CRYPTO;
-    return false;
-  }
-
-  SecureBlob unwrapped_chaps_key;
-  if (!local_wrapped_chaps_key.empty() &&
-      !CryptoLib::AesDecrypt(local_wrapped_chaps_key, vkk_key, local_chaps_iv,
-                             &unwrapped_chaps_key)) {
-    LOG(ERROR) << "AES decryption failed for chaps key.";
-    if (error)
-      *error = CE_OTHER_CRYPTO;
-    return false;
-  }
-
-  // For Authorization data, use the IV which was generated from
-  // the original Scrypt operations on the LE passphrase.
-  DecryptAuthorizationData(serialized, keyset, vkk_key, le_iv);
-
-  keyset->FromKeysBlob(plain_text);
-  if (chaps_key_present) {
-    keyset->set_chaps_key(unwrapped_chaps_key);
-  }
-
-  // This is possible to be empty if an old version of CR50 is running.
-  if (!reset_secret.empty()) {
-    keyset->set_reset_secret(reset_secret);
-  }
+  vkk_data->vkk_key = CryptoLib::HmacSha256(kdf_skey, vkk_seed);
 
   return true;
 }
@@ -862,14 +834,30 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
     *crypt_flags = serialized.flags();
   if (error)
     *error = CE_NONE;
+
   unsigned int flags = serialized.flags();
+
   if (flags & SerializedVaultKeyset::LE_CREDENTIAL) {
-    return DecryptLECredential(serialized, vault_key, error, vault_keyset);
+    SecureBlob reset_secret;
+    KeyBlobs vkk_data;
+    if (!DecryptLECredential(serialized, vault_key, &vkk_data, &reset_secret,
+                             error)) {
+      return false;
+    }
+
+    // This is possible to be empty if an old version of CR50 is running.
+    if (!reset_secret.empty()) {
+      vault_keyset->set_reset_secret(reset_secret);
+    }
+
+    return UnwrapVaultKeyset(serialized, vkk_data, vault_keyset, error);
   }
+
   if (flags & SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED) {
     return DecryptChallengeCredential(serialized, vault_key, error,
                                       vault_keyset);
   }
+
   // For non-LE credentials: Check if the vault keyset was Scrypt-wrapped
   // (start with Scrypt to avoid reaching to TPM if both flags are set)
   if (flags & SerializedVaultKeyset::SCRYPT_WRAPPED) {
@@ -885,6 +873,7 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
     if (!should_try_tpm)
       return false;
   }
+
   if (flags & SerializedVaultKeyset::TPM_WRAPPED) {
     KeyBlobs vkk_data;
     if (!DecryptTPM(serialized, vault_key, is_pcr_extended, error,
@@ -903,10 +892,10 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
     tpm_->DeclareTpmFirmwareStable();
 
     return true;
-  } else {
-    LOG(ERROR) << "Keyset wrapped with neither TPM nor Scrypt?";
-    return false;
   }
+
+  LOG(ERROR) << "Keyset wrapped with unknown method.";
+  return false;
 }
 
 bool Crypto::GenerateEncryptedRawKeyset(const VaultKeyset& vault_keyset,
