@@ -31,18 +31,18 @@ class MockUnmounter : public Unmounter {
 TEST(MountPointTest, Unmount) {
   auto unmounter = std::make_unique<MockUnmounter>();
   EXPECT_CALL(*unmounter, UnmountImpl(base::FilePath("/mnt/path")))
-      .WillOnce(Return(MountErrorType::MOUNT_ERROR_INVALID_ARCHIVE))
-      .WillOnce(Return(MountErrorType::MOUNT_ERROR_NONE));
+      .WillOnce(Return(MOUNT_ERROR_INVALID_ARCHIVE))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
   MountPoint mp(base::FilePath("/mnt/path"), std::move(unmounter));
-  EXPECT_EQ(MountErrorType::MOUNT_ERROR_INVALID_ARCHIVE, mp.Unmount());
-  EXPECT_EQ(MountErrorType::MOUNT_ERROR_NONE, mp.Unmount());
-  EXPECT_EQ(MountErrorType::MOUNT_ERROR_PATH_NOT_MOUNTED, mp.Unmount());
+  EXPECT_EQ(MOUNT_ERROR_INVALID_ARCHIVE, mp.Unmount());
+  EXPECT_EQ(MOUNT_ERROR_NONE, mp.Unmount());
+  EXPECT_EQ(MOUNT_ERROR_PATH_NOT_MOUNTED, mp.Unmount());
 }
 
 TEST(MountPointTest, UnmountOnDestroy) {
   auto unmounter = std::make_unique<MockUnmounter>();
   EXPECT_CALL(*unmounter, UnmountImpl(base::FilePath("/mnt/path")))
-      .WillOnce(Return(MountErrorType::MOUNT_ERROR_INVALID_ARCHIVE));
+      .WillOnce(Return(MOUNT_ERROR_INVALID_ARCHIVE));
   MountPoint mp(base::FilePath("/mnt/path"), std::move(unmounter));
 }
 

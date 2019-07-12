@@ -39,7 +39,7 @@ SystemUnmounter::~SystemUnmounter() = default;
 MountErrorType SystemUnmounter::Unmount(const MountPoint& mountpoint) {
   MountErrorType error = UnmountImpl(platform_, mountpoint.path(),
                                      unmount_type_ == UnmountType::kLazy);
-  if (error == MountErrorType::MOUNT_ERROR_PATH_ALREADY_MOUNTED &&
+  if (error == MOUNT_ERROR_PATH_ALREADY_MOUNTED &&
       unmount_type_ == UnmountType::kLazyFallback) {
     LOG(WARNING) << "Device is busy, trying lazy unmount on "
                  << mountpoint.path().value();
@@ -70,7 +70,7 @@ std::unique_ptr<MountPoint> SystemMounter::Mount(
 
   *error = platform_->Mount(source, target_path.value(), filesystem_type(),
                             flags_and_data.first, flags_and_data.second);
-  if (*error != MountErrorType::MOUNT_ERROR_NONE) {
+  if (*error != MOUNT_ERROR_NONE) {
     return nullptr;
   }
 

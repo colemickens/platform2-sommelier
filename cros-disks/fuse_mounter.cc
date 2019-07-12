@@ -82,7 +82,7 @@ MountErrorType ConfigureCommonSandbox(SandboxedProcess* sandbox,
   if (!seccomp.empty()) {
     if (!platform->PathExists(seccomp.value())) {
       LOG(ERROR) << "Seccomp policy '" << seccomp.value() << "' is missing";
-      return MountErrorType::MOUNT_ERROR_INTERNAL;
+      return MOUNT_ERROR_INTERNAL;
     }
     sandbox->LoadSeccompFilterPolicy(seccomp.value());
   }
@@ -90,38 +90,38 @@ MountErrorType ConfigureCommonSandbox(SandboxedProcess* sandbox,
   // Prepare mounts for pivot_root.
   if (!sandbox->SetUpMinimalMounts()) {
     LOG(ERROR) << "Can't set up minijail mounts";
-    return MountErrorType::MOUNT_ERROR_INTERNAL;
+    return MOUNT_ERROR_INTERNAL;
   }
 
   // Data dirs if any are mounted inside /run/fuse.
   if (!sandbox->Mount("tmpfs", "/run", "tmpfs", "mode=0755,size=10M")) {
     LOG(ERROR) << "Can't mount /run";
-    return MountErrorType::MOUNT_ERROR_INTERNAL;
+    return MOUNT_ERROR_INTERNAL;
   }
   if (!sandbox->BindMount("/run/fuse", "/run/fuse", false, false)) {
     LOG(ERROR) << "Can't bind /run/fuse";
-    return MountErrorType::MOUNT_ERROR_INTERNAL;
+    return MOUNT_ERROR_INTERNAL;
   }
 
   if (!network_ns) {
     // Network DNS configs are in /run/shill.
     if (!sandbox->BindMount("/run/shill", "/run/shill", false, false)) {
       LOG(ERROR) << "Can't bind /run/shill";
-      return MountErrorType::MOUNT_ERROR_INTERNAL;
+      return MOUNT_ERROR_INTERNAL;
     }
     // Hardcoded hosts are mounted into /etc/hosts.d when Crostini is enabled.
     if (platform->PathExists("/etc/hosts.d") &&
         !sandbox->BindMount("/etc/hosts.d", "/etc/hosts.d", false, false)) {
       LOG(ERROR) << "Can't bind /etc/hosts.d";
-      return MountErrorType::MOUNT_ERROR_INTERNAL;
+      return MOUNT_ERROR_INTERNAL;
     }
   }
   if (!sandbox->EnterPivotRoot()) {
     LOG(ERROR) << "Can't pivot root";
-    return MountErrorType::MOUNT_ERROR_INTERNAL;
+    return MOUNT_ERROR_INTERNAL;
   }
 
-  return MountErrorType::MOUNT_ERROR_NONE;
+  return MOUNT_ERROR_NONE;
 }
 
 MountErrorType MountFuseDevice(const Platform* platform,
@@ -209,7 +209,7 @@ MountErrorType FUSEMounter::MountImpl() const {
   MountErrorType error = ConfigureCommonSandbox(
       mount_process.get(), platform_, !permit_network_access_,
       base::FilePath(seccomp_policy_));
-  if (error != MountErrorType::MOUNT_ERROR_NONE) {
+  if (error != MOUNT_ERROR_NONE) {
     return error;
   }
 
@@ -218,7 +218,7 @@ MountErrorType FUSEMounter::MountImpl() const {
   if (!platform_->GetUserAndGroupId(mount_user_, &mount_user_id,
                                     &mount_group_id)) {
     LOG(ERROR) << "Can't resolve user '" << mount_user_ << "'";
-    return MountErrorType::MOUNT_ERROR_INTERNAL;
+    return MOUNT_ERROR_INTERNAL;
   }
   if (!mount_group_.empty() &&
       !platform_->GetGroupId(mount_group_, &mount_group_id)) {
@@ -230,7 +230,7 @@ MountErrorType FUSEMounter::MountImpl() const {
 
   if (!platform_->PathExists(mount_program_path_)) {
     LOG(ERROR) << "Mount program '" << mount_program_path_ << "' not found.";
-    return MountErrorType::MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND;
+    return MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND;
   }
   mount_process->AddArgument(mount_program_path_);
 
@@ -241,13 +241,13 @@ MountErrorType FUSEMounter::MountImpl() const {
     LOG(ERROR) << "Unable to open FUSE device file. Error: "
                << fuse_file.error_details() << " "
                << base::File::ErrorToString(fuse_file.error_details());
-    return MountErrorType::MOUNT_ERROR_INTERNAL;
+    return MOUNT_ERROR_INTERNAL;
   }
 
   error = MountFuseDevice(platform_, source(), filesystem_type(),
                           base::FilePath(target_path()), fuse_file,
                           mount_user_id, mount_group_id, mount_options());
-  if (error != MountErrorType::MOUNT_ERROR_NONE) {
+  if (error != MOUNT_ERROR_NONE) {
     LOG(ERROR) << "Can't perform unprivileged FUSE mount: " << error;
     return error;
   }
@@ -257,7 +257,7 @@ MountErrorType FUSEMounter::MountImpl() const {
   base::ScopedClosureRunner fuse_cleanup_runner(base::Bind(
       [](const Platform* platform, const std::string& target_path) {
         MountErrorType unmount_error = platform->Unmount(target_path, 0);
-        if (unmount_error != MountErrorType::MOUNT_ERROR_NONE) {
+        if (unmount_error != MOUNT_ERROR_NONE) {
           LOG(ERROR) << "Failed to unmount a FUSE mount '" << target_path
                      << "': " << unmount_error;
         }
@@ -273,7 +273,7 @@ MountErrorType FUSEMounter::MountImpl() const {
     if (!platform_->SetOwnership(source(), getuid(), mount_group_id) ||
         !platform_->SetPermissions(source(), kSourcePathPermissions)) {
       LOG(ERROR) << "Can't set up permissions on the source";
-      return MountErrorType::MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+      return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
     }
   }
 
@@ -281,14 +281,14 @@ MountErrorType FUSEMounter::MountImpl() const {
   if (base::StartsWith(source(), "/dev/", base::CompareCase::SENSITIVE)) {
     if (!mount_process->BindMount(source(), source(), true, false)) {
       LOG(ERROR) << "Unable to bind mount device " << source();
-      return MountErrorType::MOUNT_ERROR_INVALID_ARGUMENT;
+      return MOUNT_ERROR_INVALID_ARGUMENT;
     }
   }
 
   // TODO(crbug.com/933018): Remove when DriveFS helper is refactored.
   if (!mount_process->Mount("tmpfs", "/home", "tmpfs", "mode=0755,size=10M")) {
     LOG(ERROR) << "Can't mount /home";
-    return MountErrorType::MOUNT_ERROR_INTERNAL;
+    return MOUNT_ERROR_INTERNAL;
   }
 
   // This is for additional data dirs.
@@ -296,7 +296,7 @@ MountErrorType FUSEMounter::MountImpl() const {
     if (!mount_process->BindMount(path.path, path.path, path.writable,
                                   path.recursive)) {
       LOG(ERROR) << "Can't bind " << path.path;
-      return MountErrorType::MOUNT_ERROR_INVALID_ARGUMENT;
+      return MOUNT_ERROR_INVALID_ARGUMENT;
     }
   }
 
@@ -320,7 +320,7 @@ MountErrorType FUSEMounter::MountImpl() const {
     for (const auto& line : output) {
       LOG(WARNING) << line;
     }
-    return MountErrorType::MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
+    return MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
   }
 
   // At this point, the FUSE daemon has successfully started, so repurpose
@@ -333,7 +333,7 @@ MountErrorType FUSEMounter::MountImpl() const {
       base::Bind(CleanUpCallback, fuse_cleanup_runner.Release(),
                  target_path()));
 
-  return MountErrorType::MOUNT_ERROR_NONE;
+  return MOUNT_ERROR_NONE;
 }
 
 std::unique_ptr<SandboxedProcess> FUSEMounter::CreateSandboxedProcess() const {

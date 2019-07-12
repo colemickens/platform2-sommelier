@@ -212,15 +212,15 @@ MountErrorType Platform::Unmount(const std::string& path, int flags) const {
   }
   switch (error) {
     case 0:
-      return MountErrorType::MOUNT_ERROR_NONE;
+      return MOUNT_ERROR_NONE;
     case ENOENT:
-      return MountErrorType::MOUNT_ERROR_PATH_NOT_MOUNTED;
+      return MOUNT_ERROR_PATH_NOT_MOUNTED;
     case EPERM:
-      return MountErrorType::MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+      return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
     case EBUSY:
-      return MountErrorType::MOUNT_ERROR_PATH_ALREADY_MOUNTED;
+      return MOUNT_ERROR_PATH_ALREADY_MOUNTED;
     default:
-      return MountErrorType::MOUNT_ERROR_UNKNOWN;
+      return MOUNT_ERROR_UNKNOWN;
   }
 }
 
@@ -242,17 +242,17 @@ MountErrorType Platform::Mount(const std::string& source_path,
   }
   switch (error) {
     case 0:
-      return MountErrorType::MOUNT_ERROR_NONE;
+      return MOUNT_ERROR_NONE;
     case ENODEV:
-      return MountErrorType::MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
+      return MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
     case ENOENT:
     case ENOTBLK:
     case ENOTDIR:
-      return MountErrorType::MOUNT_ERROR_INVALID_PATH;
+      return MOUNT_ERROR_INVALID_PATH;
     case EPERM:
-      return MountErrorType::MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+      return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
     default:
-      return MountErrorType::MOUNT_ERROR_UNKNOWN;
+      return MOUNT_ERROR_UNKNOWN;
   }
 }
 

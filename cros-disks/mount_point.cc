@@ -25,10 +25,10 @@ void MountPoint::Release() {
 
 MountErrorType MountPoint::Unmount() {
   if (!unmounter_) {
-    return MountErrorType::MOUNT_ERROR_PATH_NOT_MOUNTED;
+    return MOUNT_ERROR_PATH_NOT_MOUNTED;
   }
   MountErrorType error = unmounter_->Unmount(*this);
-  if (error != MountErrorType::MOUNT_ERROR_NONE) {
+  if (error != MOUNT_ERROR_NONE) {
     LOG(ERROR) << "Failed to unmount mount point '" << path_.value()
                << "': " << error;
     // Leave |unmounter_| as we might want to retry later.

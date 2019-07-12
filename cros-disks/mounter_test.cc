@@ -42,7 +42,7 @@ class MounterForTest : public Mounter {
                                     std::vector<std::string> options,
                                     MountErrorType* error) const override {
     *error = MountImpl(source, target_path);
-    if (*error == MountErrorType::MOUNT_ERROR_NONE) {
+    if (*error == MOUNT_ERROR_NONE) {
       return std::make_unique<MountPoint>(
           target_path, std::make_unique<MockUnmounter>(this));
     }
@@ -79,28 +79,28 @@ class MounterCompatForTest : public MounterCompat {
 TEST(MounterTest, Basics) {
   MounterForTest mounter;
   EXPECT_CALL(mounter, MountImpl("src", base::FilePath(kPath)))
-      .WillOnce(Return(MountErrorType::MOUNT_ERROR_NONE));
+      .WillOnce(Return(MOUNT_ERROR_NONE));
 
-  MountErrorType error = MountErrorType::MOUNT_ERROR_NONE;
+  MountErrorType error = MOUNT_ERROR_NONE;
   auto mount = mounter.Mount("src", base::FilePath(kPath), {}, &error);
   EXPECT_TRUE(mount);
-  EXPECT_EQ(MountErrorType::MOUNT_ERROR_NONE, error);
+  EXPECT_EQ(MOUNT_ERROR_NONE, error);
 
   EXPECT_CALL(mounter, UnmountImpl(base::FilePath(kPath)))
-      .WillOnce(Return(MountErrorType::MOUNT_ERROR_INVALID_ARCHIVE))
-      .WillOnce(Return(MountErrorType::MOUNT_ERROR_NONE));
-  EXPECT_EQ(MountErrorType::MOUNT_ERROR_INVALID_ARCHIVE, mount->Unmount());
+      .WillOnce(Return(MOUNT_ERROR_INVALID_ARCHIVE))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_EQ(MOUNT_ERROR_INVALID_ARCHIVE, mount->Unmount());
 }
 
 TEST(MounterTest, Leaking) {
   MounterForTest mounter;
   EXPECT_CALL(mounter, MountImpl("src", base::FilePath(kPath)))
-      .WillOnce(Return(MountErrorType::MOUNT_ERROR_NONE));
+      .WillOnce(Return(MOUNT_ERROR_NONE));
 
-  MountErrorType error = MountErrorType::MOUNT_ERROR_NONE;
+  MountErrorType error = MOUNT_ERROR_NONE;
   auto mount = mounter.Mount("src", base::FilePath(kPath), {}, &error);
   EXPECT_TRUE(mount);
-  EXPECT_EQ(MountErrorType::MOUNT_ERROR_NONE, error);
+  EXPECT_EQ(MOUNT_ERROR_NONE, error);
 
   EXPECT_CALL(mounter, UnmountImpl(_)).Times(0);
   mount->Release();
@@ -115,16 +115,14 @@ TEST(MounterCompatTest, Properties) {
 
 TEST(MounterCompatTest, MountSuccess) {
   MounterCompatForTest mounter("fstype", "foo", base::FilePath("/mnt"), {});
-  EXPECT_CALL(mounter, MountImpl())
-      .WillOnce(Return(MountErrorType::MOUNT_ERROR_NONE));
-  EXPECT_EQ(MountErrorType::MOUNT_ERROR_NONE, mounter.Mount());
+  EXPECT_CALL(mounter, MountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
 }
 
 TEST(MounterCompatTest, MountFail) {
   MounterCompatForTest mounter("fstype", "foo", base::FilePath("/mnt"), {});
-  EXPECT_CALL(mounter, MountImpl())
-      .WillOnce(Return(MountErrorType::MOUNT_ERROR_UNKNOWN));
-  EXPECT_EQ(MountErrorType::MOUNT_ERROR_UNKNOWN, mounter.Mount());
+  EXPECT_CALL(mounter, MountImpl()).WillOnce(Return(MOUNT_ERROR_UNKNOWN));
+  EXPECT_EQ(MOUNT_ERROR_UNKNOWN, mounter.Mount());
 }
 
 }  // namespace cros_disks
