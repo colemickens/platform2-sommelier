@@ -167,6 +167,10 @@ class VmExportOperation : public DiskImageOperation {
   // entry.
   bool copying_data_;
 
+  // If true, disk image is a directory potentially containing multiple files.
+  // If false, disk image is a single file.
+  bool image_is_directory_;
+
   // Source directory "archive".
   ArchiveReader in_;
 

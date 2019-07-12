@@ -11,6 +11,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/guid.h>
 #include <base/memory/ptr_util.h>
@@ -195,7 +196,14 @@ VmExportOperation::VmExportOperation(const VmId vm_id,
       src_image_path_(std::move(disk_path)),
       out_fd_(std::move(out_fd)),
       copying_data_(false) {
-  set_source_size(ComputeDirectorySize(src_image_path_));
+  base::File::Info info;
+  if (GetFileInfo(src_image_path_, &info) && !info.is_directory) {
+    set_source_size(info.size);
+    image_is_directory_ = false;
+  } else {
+    set_source_size(ComputeDirectorySize(src_image_path_));
+    image_is_directory_ = true;
+  }
 }
 
 bool VmExportOperation::PrepareInput() {
@@ -288,20 +296,24 @@ bool VmExportOperation::ExecuteIo(uint64_t io_limit) {
       }
 
       base::FilePath path(c_path);
-      if (path == src_image_path_) {
-        // Skip the image directory entry itself, as we will be storing
-        // and restoring relative paths.
-        continue;
-      }
+      if (image_is_directory_) {
+        if (path == src_image_path_) {
+          // Skip the image directory entry itself, as we will be storing
+          // and restoring relative paths.
+          continue;
+        }
 
-      // Strip the leading directory data as we want relative path,
-      // and replace it with <vm_name>.pvm prefix.
-      base::FilePath dest_path(vm_id_.name() + ".pvm");
-      if (!src_image_path_.AppendRelativePath(path, &dest_path)) {
-        MarkFailed("failed to transform archive entry name", NULL);
-        break;
+        // Strip the leading directory data as we want relative path,
+        // and replace it with <vm_name>.pvm prefix.
+        base::FilePath dest_path(vm_id_.name() + ".pvm");
+        if (!src_image_path_.AppendRelativePath(path, &dest_path)) {
+          MarkFailed("failed to transform archive entry name", NULL);
+          break;
+        }
+        archive_entry_set_pathname(entry, dest_path.value().c_str());
+      } else {
+        archive_entry_set_pathname(entry, path.BaseName().value().c_str());
       }
-      archive_entry_set_pathname(entry, dest_path.value().c_str());
 
       ret = archive_write_header(out_.get(), entry);
       if (ret != ARCHIVE_OK) {
