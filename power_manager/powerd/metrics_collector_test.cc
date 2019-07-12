@@ -56,6 +56,8 @@ class MetricsCollectorTest : public Test {
     collector_.set_prefix_path_for_testing(temp_root_dir_.GetPath());
 
     power_status_.battery_percentage = 100.0;
+    power_status_.battery_charge_full = 100.0;
+    power_status_.battery_charge_full_design = 100.0;
     power_status_.battery_is_present = true;
     power_status_.line_power_type = "Mains";
   }
