@@ -490,6 +490,17 @@ void FormatDiskImageStatus(const DiskImageOperation* op,
   status->set_progress(op->GetProgress());
 }
 
+uint64_t GetFileUsage(const base::FilePath& path) {
+  struct stat st;
+  if (stat(path.value().c_str(), &st) == 0) {
+    // Use the st_blocks value to get the space usage (as in 'du') of the file.
+    // st_blocks is always in units of 512 bytes, regardless of the underlying
+    // filesystem and block device block size.
+    return st.st_blocks * 512;
+  }
+  return 0;
+}
+
 bool ListVmDisksInLocation(const string& cryptohome_id,
                            StorageLocation location,
                            const string& lookup_name,
@@ -555,7 +566,7 @@ bool ListVmDisksInLocation(const string& cryptohome_id,
 
     uint64_t size = dir_enum.GetInfo().IsDirectory()
                         ? ComputeDirectorySize(path)
-                        : dir_enum.GetInfo().GetSize();
+                        : GetFileUsage(path);
     total_size += size;
 
     VmDiskInfo* image = response->add_images();
