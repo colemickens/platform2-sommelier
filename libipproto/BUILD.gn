@@ -11,6 +11,9 @@ group("all") {
   if (use.test) {
     deps += [ ":libipproto_test" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":libipproto_fuzzer" ]
+  }
 }
 
 shared_library("libipproto") {
@@ -51,6 +54,27 @@ if (use.test) {
     deps = [
       ":libipproto",
       "//common-mk/testrunner",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  pkg_config("libchrome_test_config") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+  executable("libipproto_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":libchrome_test_config",
+    ]
+    sources = [
+      "ipp_fuzzer.cc",
+    ]
+    deps = [
+      ":libipproto",
     ]
   }
 }
