@@ -51,7 +51,7 @@ class Device : public base::RefCounted<Device> {
   // A constructor for the Device object
   Device(Manager* manager,
          const std::string& link_name,
-         const std::string& address,
+         const std::string& mac_address,
          int interface_index,
          Technology technology);
 
@@ -558,6 +558,8 @@ class Device : public base::RefCounted<Device> {
   // DHCP lease renewal, true otherwise.
   bool TimeToNextDHCPLeaseRenewal(uint32_t* result);
 
+  virtual void set_mac_address(const std::string& mac_address);
+
  private:
   friend class CellularTest;
   friend class DeviceAdaptorInterface;
@@ -809,8 +811,7 @@ class Device : public base::RefCounted<Device> {
   bool enabled_persistent_;
   bool enabled_pending_;
 
-  // Other properties
-  const std::string mac_address_;
+  std::string mac_address_;
 
   PropertyStore store_;
 

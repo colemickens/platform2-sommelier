@@ -131,13 +131,13 @@ const char Device::kStorageTransmitByteCount[] = "TransmitByteCount";
 
 Device::Device(Manager* manager,
                const string& link_name,
-               const string& address,
+               const string& mac_address,
                int interface_index,
                Technology technology)
     : enabled_(false),
       enabled_persistent_(true),
       enabled_pending_(enabled_),
-      mac_address_(base::ToLowerASCII(address)),
+      mac_address_(base::ToLowerASCII(mac_address)),
       interface_index_(interface_index),
       running_(false),
       link_name_(link_name),
@@ -1438,6 +1438,11 @@ void Device::StopConnectivityTest() {
 
 void Device::set_link_monitor(LinkMonitor* link_monitor) {
   link_monitor_.reset(link_monitor);
+}
+
+void Device::set_mac_address(const std::string& mac_address) {
+  mac_address_ = mac_address;
+  adaptor_->EmitStringChanged(kAddressProperty, mac_address_);
 }
 
 bool Device::StartLinkMonitor() {

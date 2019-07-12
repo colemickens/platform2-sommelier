@@ -54,6 +54,7 @@ class EthernetService : public Service {
     props_.ethernet_ = ethernet;
   }
   void ResetEthernet() { SetEthernet(nullptr); }
+  bool HasStorageIdentifier() const { return !props_.storage_id_.empty(); }
   void SetStorageIdentifier(std::string storage_id) {
     props_.storage_id_ = std::move(storage_id);
   }

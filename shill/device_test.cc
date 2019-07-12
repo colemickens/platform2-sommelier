@@ -149,6 +149,10 @@ class TestDevice : public Device {
   virtual bool DeviceShouldBringNetworkInterfaceDownAfterDisabled() const {
     return Device::ShouldBringNetworkInterfaceDownAfterDisabled();
   }
+
+  void device_set_mac_address(const std::string& mac_address) {
+    Device::set_mac_address(mac_address);
+  }
 };
 
 class DeviceTest : public PropertyStoreTest {
@@ -1818,6 +1822,15 @@ TEST_F(DeviceTest, SetHostnameTruncateHostname) {
       .WillOnce(Return(true));
   EXPECT_TRUE(SetHostname(
       "wilson-was-a-great-ball-and-was-an-excellent-swimmer-in-high-sea-chop"));
+}
+
+TEST_F(DeviceTest, SetMacAddress) {
+  constexpr char mac_address[] = "abcdefabcdef";
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitStringChanged(kAddressProperty, mac_address));
+  EXPECT_NE(mac_address, device_->mac_address());
+  device_->device_set_mac_address(mac_address);
+  EXPECT_EQ(mac_address, device_->mac_address());
 }
 
 class DevicePortalDetectionTest : public DeviceTest {

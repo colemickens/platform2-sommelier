@@ -12,7 +12,11 @@
 #include <utility>
 #include <vector>
 
+#include <base/callback.h>
+#include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "shill/dhcp/mock_dhcp_config.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
@@ -24,6 +28,7 @@
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/mock_sockets.h"
@@ -47,21 +52,40 @@ using testing::ByMove;
 using testing::EndsWith;
 using testing::Eq;
 using testing::InSequence;
+using testing::Invoke;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
+using testing::SaveArg;
 using testing::SetArgPointee;
 using testing::StrEq;
 using testing::StrictMock;
+using testing::WithArg;
 
 namespace shill {
+
+class TestEthernet : public Ethernet {
+ public:
+  TestEthernet(Manager* manager,
+               const string& link_name,
+               const string& mac_address,
+               int interface_index)
+      : Ethernet(manager, link_name, mac_address, interface_index) {}
+
+  ~TestEthernet() override = default;
+
+  MOCK_METHOD(std::string,
+              ReadMacAddressFromFile,
+              (const base::FilePath& file_path),
+              (override));
+};
 
 class EthernetTest : public testing::Test {
  public:
   EthernetTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
         device_info_(&manager_),
-        ethernet_(new Ethernet(
+        ethernet_(new TestEthernet(
             &manager_, kDeviceName, kDeviceAddress, kInterfaceIndex)),
         dhcp_config_(new MockDHCPConfig(&control_interface_, kDeviceName)),
 #if !defined(DISABLE_WIRED_8021X)
@@ -113,6 +137,8 @@ class EthernetTest : public testing::Test {
     Mock::VerifyAndClearExpectations(&manager_);
   }
 
+  MOCK_METHOD(void, ErrorCallback, (const Error& error));
+
  protected:
   static const char kDeviceName[];
   static const char kDeviceAddress[];
@@ -133,6 +159,22 @@ class EthernetTest : public testing::Test {
     EXPECT_CALL(rtnl_handler_,
                 SetInterfaceFlags(kInterfaceIndex, IFF_UP, IFF_UP));
     ethernet_->Start(nullptr, EnabledStateChangedCallback());
+  }
+  void SetUsbEthernetMacAddressSource(const std::string& source,
+                                      Error* error,
+                                      const ResultCallback& callback) {
+    ethernet_->SetUsbEthernetMacAddressSource(source, error, callback);
+  }
+  std::string GetUsbEthernetMacAddressSource(Error* error) {
+    return ethernet_->GetUsbEthernetMacAddressSource(error);
+  }
+
+  void SetMacAddress(const std::string& mac_address) {
+    ethernet_->set_mac_address(mac_address);
+  }
+
+  void SetBusType(const std::string& bus_type) {
+    ethernet_->bus_type_ = bus_type;
   }
 
 #if !defined(DISABLE_WIRED_8021X)
@@ -190,7 +232,7 @@ class EthernetTest : public testing::Test {
   NiceMock<MockMetrics> metrics_;
   MockManager manager_;
   MockDeviceInfo device_info_;
-  EthernetRefPtr ethernet_;
+  scoped_refptr<TestEthernet> ethernet_;
   MockDHCPProvider dhcp_provider_;
   scoped_refptr<MockDHCPConfig> dhcp_config_;
 
@@ -575,5 +617,127 @@ TEST_F(EthernetTest, PPPoEDisabled) {
 }
 
 #endif  // DISABLE_PPPOE
+
+TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceInvalidArguments) {
+  SetBusType(kDeviceBusTypeUsb);
+  Error error(Error::kOperationInitiated);
+  SetUsbEthernetMacAddressSource(
+      "invalid_value", &error,
+      base::Bind(&EthernetTest::ErrorCallback, base::Unretained(this)));
+  EXPECT_EQ(error.type(), Error::kInvalidArguments);
+}
+
+TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceNotSupportedForNonUsb) {
+  SetBusType(kDeviceBusTypePci);
+  Error error(Error::kOperationInitiated);
+  EXPECT_CALL(*this, ErrorCallback(_)).Times(0);
+  SetUsbEthernetMacAddressSource(
+      kUsbEthernetMacAddressSourceUsbAdapterMac, &error,
+      base::Bind(&EthernetTest::ErrorCallback, base::Unretained(this)));
+  EXPECT_EQ(error.type(), Error::kNotSupported);
+}
+
+TEST_F(EthernetTest,
+       SetUsbEthernetMacAddressSourceNotSupportedEmptyFileWithMac) {
+  SetBusType(kDeviceBusTypeUsb);
+  Error error(Error::kOperationInitiated);
+  EXPECT_CALL(*this, ErrorCallback(_)).Times(0);
+  SetUsbEthernetMacAddressSource(
+      kUsbEthernetMacAddressSourceDesignatedDockMac, &error,
+      base::Bind(&EthernetTest::ErrorCallback, base::Unretained(this)));
+  EXPECT_EQ(error.type(), Error::kNotSupported);
+}
+
+MATCHER_P(ErrorEquals, expected_error_type, "") {
+  return arg.type() == expected_error_type;
+}
+
+TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceNetlinkError) {
+  SetBusType(kDeviceBusTypeUsb);
+
+  constexpr char kBuiltinAdapterMacAddress[] = "abcdef123456";
+  EXPECT_CALL(*ethernet_.get(), ReadMacAddressFromFile(_))
+      .WillOnce(Return(kBuiltinAdapterMacAddress));
+
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMac(ethernet_->interface_index(),
+                                             ByteString::CreateFromHexString(
+                                                 kBuiltinAdapterMacAddress),
+                                             _))
+      .WillOnce(WithArg<2>(
+          Invoke([](base::OnceCallback<void(int32_t)> response_callback) {
+            ASSERT_TRUE(!response_callback.is_null());
+            std::move(response_callback).Run(1 /* error */);
+          })));
+
+  EXPECT_CALL(*this, ErrorCallback(ErrorEquals(Error::kNotSupported)));
+
+  Error error(Error::kOperationInitiated);
+  SetUsbEthernetMacAddressSource(
+      kUsbEthernetMacAddressSourceBuiltinAdapterMac, &error,
+      base::Bind(&EthernetTest::ErrorCallback, base::Unretained(this)));
+
+  EXPECT_EQ(kDeviceAddress, ethernet_->mac_address());
+}
+
+TEST_F(EthernetTest, SetUsbEthernetMacAddressSource) {
+  SetBusType(kDeviceBusTypeUsb);
+
+  constexpr char kBuiltinAdapterMacAddress[] = "abcdef123456";
+  EXPECT_CALL(*ethernet_.get(), ReadMacAddressFromFile(_))
+      .WillOnce(Return(kBuiltinAdapterMacAddress));
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMac(ethernet_->interface_index(),
+                                             ByteString::CreateFromHexString(
+                                                 kBuiltinAdapterMacAddress),
+                                             _))
+      .WillOnce(WithArg<2>(
+          Invoke([](base::OnceCallback<void(int32_t)> response_callback) {
+            ASSERT_FALSE(response_callback.is_null());
+            std::move(response_callback).Run(0 /* error */);
+          })));
+
+  EXPECT_CALL(*this, ErrorCallback(ErrorEquals(Error::kSuccess)));
+
+  Error error(Error::kOperationInitiated);
+  SetUsbEthernetMacAddressSource(
+      kUsbEthernetMacAddressSourceBuiltinAdapterMac, &error,
+      base::Bind(&EthernetTest::ErrorCallback, base::Unretained(this)));
+
+  EXPECT_EQ(kBuiltinAdapterMacAddress, ethernet_->mac_address());
+  EXPECT_EQ(GetUsbEthernetMacAddressSource(nullptr),
+            kUsbEthernetMacAddressSourceBuiltinAdapterMac);
+}
+
+TEST_F(EthernetTest, SetMacAddressNoServiceStorageIdentifierChange) {
+  constexpr char kMacAddress[] = "123456abcdef";
+
+  scoped_refptr<StrictMock<MockProfile>> mock_profile(
+      new StrictMock<MockProfile>(&manager_));
+  mock_service_->set_profile(mock_profile);
+  mock_service_->SetStorageIdentifier("some_ethernet_identifier");
+  EXPECT_CALL(*mock_profile.get(), AbandonService(_)).Times(0);
+  EXPECT_CALL(*mock_profile.get(), AdoptService(_)).Times(0);
+
+  SetMacAddress(kMacAddress);
+  EXPECT_EQ(kMacAddress, ethernet_->mac_address());
+
+  // Must set nullptr to avoid mock objects leakage.
+  mock_service_->set_profile(nullptr);
+}
+
+TEST_F(EthernetTest, SetMacAddressServiceStorageIdentifierChange) {
+  constexpr char kMacAddress[] = "123456abcdef";
+
+  scoped_refptr<StrictMock<MockProfile>> mock_profile(
+      new StrictMock<MockProfile>(&manager_));
+  mock_service_->set_profile(mock_profile);
+  EXPECT_CALL(*mock_profile.get(), AbandonService(IsRefPtrTo(mock_service_)));
+  EXPECT_CALL(*mock_profile.get(), AdoptService(IsRefPtrTo(mock_service_)));
+
+  SetMacAddress(kMacAddress);
+  EXPECT_EQ(kMacAddress, ethernet_->mac_address());
+
+  // Must set nullptr to avoid mock objects leakage.
+  mock_service_->set_profile(nullptr);
+}
 
 }  // namespace shill

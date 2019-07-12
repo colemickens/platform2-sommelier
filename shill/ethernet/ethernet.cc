@@ -16,6 +16,8 @@
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/location.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
@@ -23,6 +25,7 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
 #include "shill/device.h"
+#include "shill/device_id.h"
 #include "shill/device_info.h"
 #include "shill/ethernet/ethernet_provider.h"
 #include "shill/ethernet/ethernet_service.h"
@@ -59,6 +62,22 @@ static string ObjectID(Ethernet* e) {
 }
 }  // namespace Logging
 
+namespace {
+
+// Path to file with |ethernet_mac0| VPD field value.
+constexpr char kVpdEthernetMacFilePath[] = "/sys/firmware/vpd/ro/ethernet_mac0";
+// Path to file with |dock_mac| VPD field value.
+constexpr char kVpdDockMacFilePath[] = "/sys/firmware/vpd/ro/dock_mac";
+
+bool IsValidMac(const std::string& mac_address) {
+  if (mac_address.length() != 12) {
+    return false;
+  }
+  return base::ContainsOnlyChars(mac_address, "0123456789abcdef");
+}
+
+}  // namespace
+
 Ethernet::Ethernet(Manager* manager,
                    const string& link_name,
                    const string& mac_address,
@@ -69,8 +88,6 @@ Ethernet::Ethernet(Manager* manager,
              interface_index,
              Technology::kEthernet),
       link_up_(false),
-      device_id_(DeviceId::CreateFromSysfs(base::FilePath(
-          base::StringPrintf("/sys/class/net/%s/device", link_name.c_str())))),
       bus_type_(GetDeviceBusType()),
 #if !defined(DISABLE_WIRED_8021X)
       is_eap_authenticated_(false),
@@ -108,6 +125,13 @@ Ethernet::Ethernet(Manager* manager,
 #endif  // DISABLE_WIRED_8021X
   service_ = CreateEthernetService();
   SLOG(this, 2) << "Ethernet device " << link_name << " initialized.";
+
+  if (bus_type_ == kDeviceBusTypeUsb) {
+    // Force change MAC address to |permanent_mac_address_| if
+    // |mac_address_| != |permanent_mac_address_|.
+    SetUsbEthernetMacAddressSource(kUsbEthernetMacAddressSourceUsbAdapterMac,
+                                   nullptr, ResultCallback());
+  }
 }
 
 Ethernet::~Ethernet() {}
@@ -556,16 +580,121 @@ void Ethernet::DeregisterService(EthernetServiceRefPtr service) {
   }
 }
 
-std::string Ethernet::GetDeviceBusType() const {
-  constexpr DeviceId kPciDevicePattern{DeviceId::BusType::kPci};
-  if (device_id_ && device_id_->Match(kPciDevicePattern)) {
-    return kDeviceBusTypePci;
+void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
+                                              Error* error,
+                                              const ResultCallback& callback) {
+  SLOG(this, 2) << __func__ << " " << source;
+
+  if (bus_type_ != kDeviceBusTypeUsb) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                          "Not supported for non-USB devices: " + bus_type_);
+    return;
   }
-  constexpr DeviceId kUsbDevicePattern{DeviceId::BusType::kUsb};
-  if (device_id_ && device_id_->Match(kUsbDevicePattern)) {
-    return kDeviceBusTypeUsb;
+
+  std::string new_mac_address;
+  if (source == kUsbEthernetMacAddressSourceDesignatedDockMac) {
+    new_mac_address =
+        ReadMacAddressFromFile(base::FilePath(kVpdDockMacFilePath));
+  } else if (source == kUsbEthernetMacAddressSourceBuiltinAdapterMac) {
+    new_mac_address =
+        ReadMacAddressFromFile(base::FilePath(kVpdEthernetMacFilePath));
+  } else if (source == kUsbEthernetMacAddressSourceUsbAdapterMac) {
+    new_mac_address = permanent_mac_address_;
+  } else {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Unknown source: " + source);
+    return;
   }
-  return "";
+
+  if (new_mac_address.empty()) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kNotSupported,
+        "Failed to find out new MAC address for source: " + source);
+    return;
+  }
+
+  if (new_mac_address == mac_address()) {
+    SLOG(this, 4) << __func__ << " new MAC address is equal to the old one";
+    if (usb_ethernet_mac_address_source_ != source) {
+      usb_ethernet_mac_address_source_ = source;
+      adaptor()->EmitStringChanged(kUsbEthernetMacAddressSourceProperty,
+                                   usb_ethernet_mac_address_source_);
+    }
+    if (error) {
+      error->Populate(Error::kSuccess);
+    }
+    return;
+  }
+
+  SLOG(this, 2) << "Send netlink request to change MAC address for "
+                << link_name() << " device from " << mac_address() << " to "
+                << new_mac_address;
+
+  rtnl_handler()->SetInterfaceMac(
+      interface_index(), ByteString::CreateFromHexString(new_mac_address),
+      base::BindOnce(&Ethernet::OnSetInterfaceMacResponse,
+                     weak_ptr_factory_.GetWeakPtr(), source, new_mac_address,
+                     callback));
+}
+
+std::string Ethernet::ReadMacAddressFromFile(const base::FilePath& file_path) {
+  std::string mac_address;
+  if (!base::ReadFileToString(file_path, &mac_address)) {
+    PLOG(ERROR) << "Unable to read MAC address from file: "
+                << file_path.value();
+    return std::string();
+  }
+  base::RemoveChars(base::ToLowerASCII(mac_address), ":", &mac_address);
+  if (!IsValidMac(mac_address)) {
+    LOG(ERROR) << "MAC address from file " << file_path.value()
+               << " is invalid: " << mac_address;
+    return std::string();
+  }
+  return mac_address;
+}
+
+void Ethernet::OnSetInterfaceMacResponse(const std::string& mac_address_source,
+                                         const std::string& new_mac_address,
+                                         const ResultCallback& callback,
+                                         int32_t error) {
+  if (error) {
+    LOG(ERROR) << __func__ << " received response with error "
+               << strerror(error);
+    if (!callback.is_null()) {
+      callback.Run(Error(Error::kNotSupported));
+    }
+    return;
+  }
+
+  SLOG(this, 2) << __func__ << " received successful response";
+
+  usb_ethernet_mac_address_source_ = mac_address_source;
+  adaptor()->EmitStringChanged(kUsbEthernetMacAddressSourceProperty,
+                               usb_ethernet_mac_address_source_);
+
+  set_mac_address(new_mac_address);
+  if (!callback.is_null()) {
+    callback.Run(Error(Error::kSuccess));
+  }
+}
+
+void Ethernet::set_mac_address(const std::string& new_mac_address) {
+  SLOG(this, 2) << __func__ << " " << new_mac_address;
+
+  ProfileRefPtr profile = service_->profile();
+  // Abandon and adopt service if service storage identifier will change after
+  // changing ethernet MAC address.
+  if (permanent_mac_address_.empty() && profile &&
+      !service_->HasStorageIdentifier()) {
+    profile->AbandonService(service_);
+    Device::set_mac_address(new_mac_address);
+    profile->AdoptService(service_);
+  } else {
+    Device::set_mac_address(new_mac_address);
+  }
+
+  DisconnectFrom(service_.get());
+  ConnectTo(service_.get());
 }
 
 std::string Ethernet::GetPermanentMacAddressFromKernel() {
@@ -609,7 +738,28 @@ std::string Ethernet::GetPermanentMacAddressFromKernel() {
     return std::string();
   }
 
-  return base::ToLowerASCII(ByteString(perm_addr->data, ETH_ALEN).HexEncode());
+  std::string mac_address =
+      base::ToLowerASCII(ByteString(perm_addr->data, ETH_ALEN).HexEncode());
+  if (!IsValidMac(mac_address)) {
+    LOG(ERROR) << "Invalid permanent MAC address: " << mac_address;
+    return std::string();
+  }
+  return mac_address;
+}
+
+std::string Ethernet::GetDeviceBusType() const {
+  auto device_id = DeviceId::CreateFromSysfs(base::FilePath(
+      base::StringPrintf("/sys/class/net/%s/device", link_name().c_str())));
+
+  constexpr DeviceId kPciDevicePattern{DeviceId::BusType::kPci};
+  if (device_id && device_id->Match(kPciDevicePattern)) {
+    return kDeviceBusTypePci;
+  }
+  constexpr DeviceId kUsbDevicePattern{DeviceId::BusType::kUsb};
+  if (device_id && device_id->Match(kUsbDevicePattern)) {
+    return kDeviceBusTypeUsb;
+  }
+  return std::string();
 }
 
 }  // namespace shill

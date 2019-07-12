@@ -5,15 +5,16 @@
 #ifndef SHILL_ETHERNET_ETHERNET_H_
 #define SHILL_ETHERNET_ETHERNET_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 
 #include <base/cancelable_callback.h>
+#include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 
 #include "shill/certificate_file.h"
 #include "shill/device.h"
-#include "shill/device_id.h"
 #include "shill/event_dispatcher.h"
 #include "shill/refptr_types.h"
 
@@ -147,19 +148,36 @@ class Ethernet
 
   void SetupWakeOnLan();
 
-  // Returns device bus type on success. Otherwise, returns empty string.
-  std::string GetDeviceBusType() const;
+  void SetUsbEthernetMacAddressSource(const std::string& source,
+                                      Error* error,
+                                      const ResultCallback& callback) override;
+
+  // Returns hex coded MAC address in lower case and without colons on success.
+  // Otherwise returns an empty string.
+  virtual std::string ReadMacAddressFromFile(const base::FilePath& file_path);
+
+  // Callback for when netlink sends response on SetInterfaceMac.
+  // It runs |callback| with on success or failure. Updates Ethernet MAC address
+  // if |error == 0|;
+  void OnSetInterfaceMacResponse(const std::string& mac_address_source,
+                                 const std::string& new_mac_address,
+                                 const ResultCallback& callback,
+                                 int32_t error);
+  // Sets new MAC address and reconnects to the |service_| to renew IP address
+  // if needed.
+  void set_mac_address(const std::string& mac_address) override;
 
   // Queries the kernel for a permanent MAC address. Returns a permanent MAC
   // address in lower case on success. Otherwise returns an empty string.
   std::string GetPermanentMacAddressFromKernel();
 
+  // Returns device bus type on success. Otherwise, returns empty string.
+  std::string GetDeviceBusType() const;
+
   EthernetServiceRefPtr service_;
   bool link_up_;
 
   std::string usb_ethernet_mac_address_source_;
-
-  std::unique_ptr<DeviceId> device_id_;
 
   std::string bus_type_;
 
