@@ -130,9 +130,9 @@ struct ArchiveWriteDeleter {
 };
 using ArchiveWriter = std::unique_ptr<struct archive, ArchiveWriteDeleter>;
 
-class PluginVmExportOperation : public DiskImageOperation {
+class VmExportOperation : public DiskImageOperation {
  public:
-  static std::unique_ptr<PluginVmExportOperation> Create(
+  static std::unique_ptr<VmExportOperation> Create(
       const VmId vm_id, const base::FilePath disk_path, base::ScopedFD out_fd);
 
  protected:
@@ -140,9 +140,9 @@ class PluginVmExportOperation : public DiskImageOperation {
   void Finalize() override;
 
  private:
-  PluginVmExportOperation(const VmId vm_id,
-                          const base::FilePath disk_path,
-                          base::ScopedFD out_fd);
+  VmExportOperation(const VmId vm_id,
+                    const base::FilePath disk_path,
+                    base::ScopedFD out_fd);
 
   bool PrepareInput();
   bool PrepareOutput();
@@ -173,7 +173,7 @@ class PluginVmExportOperation : public DiskImageOperation {
   // Output archive backed by the file descriptor.
   ArchiveWriter out_;
 
-  DISALLOW_COPY_AND_ASSIGN(PluginVmExportOperation);
+  DISALLOW_COPY_AND_ASSIGN(VmExportOperation);
 };
 
 class PluginVmImportOperation : public DiskImageOperation {

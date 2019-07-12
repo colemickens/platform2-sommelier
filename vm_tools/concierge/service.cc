@@ -2260,7 +2260,7 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     }
 
     case STORAGE_CRYPTOHOME_PLUGINVM: {
-      auto op = PluginVmExportOperation::Create(
+      auto op = VmExportOperation::Create(
           VmId(request.cryptohome_id(), request.disk_path()), disk_path,
           std::move(storage_fd));
 

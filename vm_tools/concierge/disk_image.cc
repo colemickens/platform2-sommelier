@@ -176,9 +176,9 @@ void PluginVmCreateOperation::Finalize() {
   set_status(DISK_STATUS_CREATED);
 }
 
-std::unique_ptr<PluginVmExportOperation> PluginVmExportOperation::Create(
+std::unique_ptr<VmExportOperation> VmExportOperation::Create(
     const VmId vm_id, const base::FilePath disk_path, base::ScopedFD fd) {
-  auto op = base::WrapUnique(new PluginVmExportOperation(
+  auto op = base::WrapUnique(new VmExportOperation(
       std::move(vm_id), std::move(disk_path), std::move(fd)));
 
   if (op->PrepareInput() && op->PrepareOutput()) {
@@ -188,9 +188,9 @@ std::unique_ptr<PluginVmExportOperation> PluginVmExportOperation::Create(
   return op;
 }
 
-PluginVmExportOperation::PluginVmExportOperation(const VmId vm_id,
-                                                 const base::FilePath disk_path,
-                                                 base::ScopedFD out_fd)
+VmExportOperation::VmExportOperation(const VmId vm_id,
+                                     const base::FilePath disk_path,
+                                     base::ScopedFD out_fd)
     : vm_id_(std::move(vm_id)),
       src_image_path_(std::move(disk_path)),
       out_fd_(std::move(out_fd)),
@@ -198,7 +198,7 @@ PluginVmExportOperation::PluginVmExportOperation(const VmId vm_id,
   set_source_size(ComputeDirectorySize(src_image_path_));
 }
 
-bool PluginVmExportOperation::PrepareInput() {
+bool VmExportOperation::PrepareInput() {
   in_ = ArchiveReader(archive_read_disk_new());
   if (!in_) {
     set_failure_reason("libarchive: failed to create reader");
@@ -220,7 +220,7 @@ bool PluginVmExportOperation::PrepareInput() {
   return true;
 }
 
-bool PluginVmExportOperation::PrepareOutput() {
+bool VmExportOperation::PrepareOutput() {
   out_ = ArchiveWriter(archive_write_new());
   if (!out_) {
     set_failure_reason("libarchive: failed to create writer");
@@ -244,7 +244,7 @@ bool PluginVmExportOperation::PrepareOutput() {
   return true;
 }
 
-void PluginVmExportOperation::MarkFailed(const char* msg, struct archive* a) {
+void VmExportOperation::MarkFailed(const char* msg, struct archive* a) {
   set_status(DISK_STATUS_FAILED);
 
   if (a) {
@@ -254,7 +254,7 @@ void PluginVmExportOperation::MarkFailed(const char* msg, struct archive* a) {
     set_failure_reason(msg);
   }
 
-  LOG(ERROR) << "PluginVm export failed: " << failure_reason();
+  LOG(ERROR) << "Vm export failed: " << failure_reason();
 
   // Release resources.
   out_.reset();
@@ -262,7 +262,7 @@ void PluginVmExportOperation::MarkFailed(const char* msg, struct archive* a) {
   in_.reset();
 }
 
-bool PluginVmExportOperation::ExecuteIo(uint64_t io_limit) {
+bool VmExportOperation::ExecuteIo(uint64_t io_limit) {
   do {
     if (!copying_data_) {
       struct archive_entry* entry;
@@ -331,7 +331,7 @@ bool PluginVmExportOperation::ExecuteIo(uint64_t io_limit) {
   return false;
 }
 
-uint64_t PluginVmExportOperation::CopyEntry(uint64_t io_limit) {
+uint64_t VmExportOperation::CopyEntry(uint64_t io_limit) {
   uint64_t bytes_read = 0;
 
   do {
@@ -360,7 +360,7 @@ uint64_t PluginVmExportOperation::CopyEntry(uint64_t io_limit) {
   return bytes_read;
 }
 
-void PluginVmExportOperation::Finalize() {
+void VmExportOperation::Finalize() {
   archive_read_close(in_.get());
   // Free the input archive.
   in_.reset();
@@ -580,7 +580,7 @@ bool PluginVmImportOperation::ExecuteIo(uint64_t io_limit) {
   return false;
 }
 
-// Note that this is extremely similar to PluginVmExportOperation::CopyEntry()
+// Note that this is extremely similar to VmExportOperation::CopyEntry()
 // implementation. The difference is the disk writer supports
 // archive_write_data_block() API that handles sparse files, whereas generic
 // writer does not, so we have to use separate implementations.
