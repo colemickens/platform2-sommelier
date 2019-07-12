@@ -25,6 +25,7 @@
 
 #include "cros-disks/error_logger.h"
 #include "cros-disks/platform.h"
+#include "cros-disks/quote.h"
 #include "cros-disks/sandboxed_process.h"
 
 namespace cros_disks {
@@ -314,11 +315,13 @@ MountErrorType FUSEMounter::MountImpl() const {
   std::vector<std::string> output;
   int return_code = mount_process->Run(&output);
   if (return_code != 0) {
-    LOG(WARNING) << "FUSE mount program failed with a return code "
-                 << return_code << " and output:";
-    // Logging escapes newline chars so we need to process it line by line.
-    for (const auto& line : output) {
-      LOG(WARNING) << line;
+    LOG(ERROR) << "FUSE mount program failed with return code " << return_code;
+    if (!output.empty()) {
+      LOG(ERROR) << "FUSE mount program outputted " << output.size()
+                 << " lines:";
+      for (const std::string& line : output) {
+        LOG(ERROR) << "  " << line;
+      }
     }
     return MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
   }

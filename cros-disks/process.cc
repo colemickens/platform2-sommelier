@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <string>
+#include <utility>
 
 #include <poll.h>
 
@@ -15,6 +16,8 @@
 #include <base/strings/string_util.h>
 #include <base/strings/string_split.h>
 #include <base/time/time.h>
+
+#include "cros-disks/quote.h"
 
 namespace cros_disks {
 
@@ -149,6 +152,7 @@ bool Process::Start() {
   CHECK(!finished_);
   char** arguments = GetArguments();
   CHECK(arguments) << "No arguments provided.";
+  LOG(INFO) << "Starting process " << quote(arguments_);
   pid_ = StartImpl(arguments_array_, &in_fd_, &out_fd_, &err_fd_);
   return pid_ != kInvalidProcessId;
 }
@@ -187,7 +191,17 @@ int Process::Run(std::vector<std::string>* output) {
     err_fd_.reset();
   }
 
-  return Wait();
+  const int result = Wait();
+
+  LOG(INFO) << "Process finished with return code " << result;
+  if (LOG_IS_ON(INFO) && output && !output->empty()) {
+    LOG(INFO) << "Process outputted " << output->size() << " lines:";
+    for (const std::string& line : *output) {
+      LOG(INFO) << "  " << line;
+    }
+  }
+
+  return result;
 }
 
 void Process::Communicate(std::vector<std::string>* output) {
