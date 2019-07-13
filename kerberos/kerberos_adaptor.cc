@@ -5,6 +5,7 @@
 #include "kerberos/kerberos_adaptor.h"
 
 #include <string>
+#include <unordered_set>
 #include <utility>
 
 #include <base/compiler_specific.h>
@@ -172,8 +173,14 @@ ByteArray KerberosAdaptor::ClearAccounts(const ByteArray& request_blob) {
   ClearAccountsRequest request;
   ErrorType error = ParseProto(&request, request_blob);
 
-  if (error == ERROR_NONE)
-    error = manager_->ClearAccounts(request.mode());
+  if (error == ERROR_NONE) {
+    std::unordered_set<std::string> keep_list(
+        request.principal_names_to_ignore_size());
+    for (int n = 0; n < request.principal_names_to_ignore_size(); ++n)
+      keep_list.insert(request.principal_names_to_ignore(n));
+
+    error = manager_->ClearAccounts(request.mode(), std::move(keep_list));
+  }
 
   PrintResult(__FUNCTION__, error);
   ClearAccountsResponse response;

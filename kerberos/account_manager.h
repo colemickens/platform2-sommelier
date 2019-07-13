@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include <base/callback.h>
@@ -73,8 +74,11 @@ class AccountManager : public TgtRenewalScheduler::Delegate {
   // Removes the account keyed by |principal_name| from the list of accounts.
   ErrorType RemoveAccount(const std::string& principal_name) WARN_UNUSED_RESULT;
 
-  // Removes account data or full accounts, depending on |mode|..
-  ErrorType ClearAccounts(ClearMode mode) WARN_UNUSED_RESULT;
+  // Removes account data or full accounts, depending on |mode|. Accounts in
+  // |keep_list| are not touched.
+  ErrorType ClearAccounts(ClearMode mode,
+                          std::unordered_set<std::string> keep_list)
+      WARN_UNUSED_RESULT;
 
   // Returns a list of all existing accounts, including current status like
   // remaining Kerberos ticket lifetime. Does a best effort returning results.
@@ -185,11 +189,6 @@ class AccountManager : public TgtRenewalScheduler::Delegate {
                                     bool remember_password,
                                     std::string* password);
 
-  // Different modes of clearing accounts, see ClearAccounts().
-  void ClearAllAccounts();
-  void ClearUnmanagedAccounts();
-  void ClearRememberedPasswordsForUnmanagedAccounts();
-
   // Directory where all account data is stored.
   const base::FilePath storage_dir_;
 
@@ -224,6 +223,12 @@ class AccountManager : public TgtRenewalScheduler::Delegate {
   // modified.
   const InternalAccount* GetAccount(const std::string& principal_name) const;
   InternalAccount* GetMutableAccount(const std::string& principal_name);
+
+  enum class WhatToRemove { kNothing, kPassword, kAccount };
+
+  // Determines what data to remove, depending on |mode| and |account|.
+  WhatToRemove DetermineWhatToRemove(ClearMode mode,
+                                     const InternalAccount& account);
 
   // List of all accounts. Stored in a vector to keep order of addition.
   std::vector<InternalAccount> accounts_;

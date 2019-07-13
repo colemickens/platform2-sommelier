@@ -10,6 +10,7 @@
 #include <base/base64.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <libpasswordprovider/password.h>
 #include <libpasswordprovider/password_provider.h>
@@ -217,52 +218,38 @@ void AccountManager::DeleteAllFilesFor(const std::string& principal_name) {
     TriggerKerberosFilesChanged(principal_name);
 }
 
-ErrorType AccountManager::ClearAccounts(ClearMode mode) {
+ErrorType AccountManager::ClearAccounts(
+    ClearMode mode, std::unordered_set<std::string> keep_list) {
   // Early out.
   if (accounts_.size() == 0)
     return ERROR_NONE;
 
-  switch (mode) {
-    case CLEAR_ALL: {
-      ClearAllAccounts();
-      break;
+  for (auto it = accounts_.begin(); it != accounts_.end(); /* empty */) {
+    if (base::ContainsKey(keep_list, it->data.principal_name())) {
+      ++it;
+      continue;
     }
-    case CLEAR_ONLY_UNMANAGED_ACCOUNTS: {
-      ClearUnmanagedAccounts();
-      break;
-    }
-    case CLEAR_ONLY_UNMANAGED_REMEMBERED_PASSWORDS: {
-      ClearRememberedPasswordsForUnmanagedAccounts();
-      break;
+
+    switch (DetermineWhatToRemove(mode, *it)) {
+      case WhatToRemove::kNothing:
+        ++it;
+        continue;
+
+      case WhatToRemove::kPassword:
+        CHECK(base::DeleteFile(GetPasswordPath(it->data.principal_name()),
+                               false /* recursive */));
+        ++it;
+        continue;
+
+      case WhatToRemove::kAccount:
+        DeleteAllFilesFor(it->data.principal_name());
+        it = accounts_.erase(it);
+        continue;
     }
   }
+
+  SaveAccounts();
   return ERROR_NONE;
-}
-
-void AccountManager::ClearAllAccounts() {
-  for (const auto& account : accounts_)
-    DeleteAllFilesFor(account.data.principal_name());
-  accounts_.clear();
-  SaveAccounts();
-}
-
-void AccountManager::ClearUnmanagedAccounts() {
-  for (int n = static_cast<int>(accounts_.size()) - 1; n >= 0; --n) {
-    if (accounts_[n].data.is_managed())
-      continue;
-    DeleteAllFilesFor(accounts_[n].data.principal_name());
-    accounts_.erase(accounts_.begin() + n);
-  }
-  SaveAccounts();
-}
-
-void AccountManager::ClearRememberedPasswordsForUnmanagedAccounts() {
-  for (const auto& account : accounts_) {
-    if (account.data.is_managed())
-      continue;
-    CHECK(base::DeleteFile(GetPasswordPath(account.data.principal_name()),
-                           false /* recursive */));
-  }
 }
 
 ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) const {
@@ -615,6 +602,27 @@ AccountManager::InternalAccount* AccountManager::GetMutableAccount(
     const std::string& principal_name) {
   int index = GetAccountIndex(principal_name);
   return index != kInvalidIndex ? &accounts_[index] : nullptr;
+}
+
+AccountManager::WhatToRemove AccountManager::DetermineWhatToRemove(
+    ClearMode mode, const InternalAccount& account) {
+  switch (mode) {
+    case CLEAR_ALL:
+      return WhatToRemove::kAccount;
+
+    case CLEAR_ONLY_MANAGED_ACCOUNTS:
+      return account.data.is_managed() ? WhatToRemove::kAccount
+                                       : WhatToRemove::kNothing;
+
+    case CLEAR_ONLY_UNMANAGED_ACCOUNTS:
+      return !account.data.is_managed() ? WhatToRemove::kAccount
+                                        : WhatToRemove::kNothing;
+
+    case CLEAR_ONLY_UNMANAGED_REMEMBERED_PASSWORDS:
+      return !account.data.is_managed() ? WhatToRemove::kPassword
+                                        : WhatToRemove::kNothing;
+  }
+  return WhatToRemove::kNothing;
 }
 
 }  // namespace kerberos

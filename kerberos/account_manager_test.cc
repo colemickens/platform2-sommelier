@@ -26,6 +26,7 @@ namespace {
 
 constexpr char kUser[] = "user@REALM.COM";
 constexpr char kUser2[] = "user2@REALM2.COM";
+constexpr char kUser3[] = "user3@REALM3.COM";
 constexpr char kPassword[] = "i<3k3R8e5Oz";
 constexpr char kPassword2[] = "ih4zf00d";
 constexpr char kKrb5Conf[] = R"(
@@ -281,7 +282,7 @@ TEST_F(AccountManagerTest, ClearAccountsSuccess) {
   ignore_result(manager_->AddAccount(kUser, kUnmanaged));
   ignore_result(manager_->AddAccount(kUser2, kManaged));
 
-  EXPECT_EQ(ERROR_NONE, manager_->ClearAccounts(CLEAR_ALL));
+  EXPECT_EQ(ERROR_NONE, manager_->ClearAccounts(CLEAR_ALL, {}));
   std::vector<Account> accounts;
   EXPECT_EQ(ERROR_NONE, manager_->ListAccounts(&accounts));
   EXPECT_EQ(0u, accounts.size());
@@ -295,7 +296,7 @@ TEST_F(AccountManagerTest, ClearAccountsRemovesKerberosFiles) {
   EXPECT_EQ(ERROR_NONE, AcquireTgt());
   EXPECT_TRUE(base::PathExists(krb5conf_path_));
   EXPECT_TRUE(base::PathExists(krb5cc_path_));
-  EXPECT_EQ(ERROR_NONE, manager_->ClearAccounts(CLEAR_ALL));
+  EXPECT_EQ(ERROR_NONE, manager_->ClearAccounts(CLEAR_ALL, {}));
   EXPECT_FALSE(base::PathExists(krb5conf_path_));
   EXPECT_FALSE(base::PathExists(krb5cc_path_));
 }
@@ -307,7 +308,7 @@ TEST_F(AccountManagerTest, ClearAccountsTriggersKFCIfCCExists) {
 
   EXPECT_EQ(ERROR_NONE, AcquireTgt());
   EXPECT_EQ(1, kerberos_files_changed_count_[kUser]);
-  EXPECT_EQ(ERROR_NONE, manager_->ClearAccounts(CLEAR_ALL));
+  EXPECT_EQ(ERROR_NONE, manager_->ClearAccounts(CLEAR_ALL, {}));
   EXPECT_EQ(2, kerberos_files_changed_count_[kUser]);
 }
 
@@ -316,7 +317,7 @@ TEST_F(AccountManagerTest, ClearAccountsTriggersKFCIfCCExists) {
 TEST_F(AccountManagerTest, ClearAccountsDoesNotTriggerKFCIfDoesNotCCExist) {
   ignore_result(AddAccount());
 
-  EXPECT_EQ(ERROR_NONE, manager_->ClearAccounts(CLEAR_ALL));
+  EXPECT_EQ(ERROR_NONE, manager_->ClearAccounts(CLEAR_ALL, {}));
   EXPECT_EQ(0, kerberos_files_changed_count_[kUser]);
 }
 
@@ -325,7 +326,8 @@ TEST_F(AccountManagerTest, ClearUnmanagedAccountsSuccess) {
   ignore_result(manager_->AddAccount(kUser, kUnmanaged));
   ignore_result(manager_->AddAccount(kUser2, kManaged));
 
-  EXPECT_EQ(ERROR_NONE, manager_->ClearAccounts(CLEAR_ONLY_UNMANAGED_ACCOUNTS));
+  EXPECT_EQ(ERROR_NONE,
+            manager_->ClearAccounts(CLEAR_ONLY_UNMANAGED_ACCOUNTS, {}));
   std::vector<Account> accounts;
   EXPECT_EQ(ERROR_NONE, manager_->ListAccounts(&accounts));
   ASSERT_EQ(1u, accounts.size());
@@ -350,13 +352,30 @@ TEST_F(AccountManagerTest, ClearUnmanagedPasswordsSuccess) {
   EXPECT_TRUE(base::PathExists(password_path_));
   EXPECT_TRUE(base::PathExists(password_path_2));
 
-  EXPECT_EQ(ERROR_NONE,
-            manager_->ClearAccounts(CLEAR_ONLY_UNMANAGED_REMEMBERED_PASSWORDS));
+  EXPECT_EQ(ERROR_NONE, manager_->ClearAccounts(
+                            CLEAR_ONLY_UNMANAGED_REMEMBERED_PASSWORDS, {}));
   std::vector<Account> accounts;
   EXPECT_EQ(ERROR_NONE, manager_->ListAccounts(&accounts));
   ASSERT_EQ(2u, accounts.size());
   EXPECT_FALSE(base::PathExists(password_path_));
   EXPECT_TRUE(base::PathExists(password_path_2));
+}
+
+// ClearAccounts(CLEAR_ONLY_MANAGED_ACCOUNTS) clears only managed accounts that
+// are not on the keep list.
+TEST_F(AccountManagerTest, ClearManagedPasswordsWithKeepListSuccess) {
+  ignore_result(manager_->AddAccount(kUser, kManaged));
+  ignore_result(manager_->AddAccount(kUser2, kManaged));
+  ignore_result(manager_->AddAccount(kUser3, kUnmanaged));
+
+  // Keep the managed kUser-account.
+  EXPECT_EQ(ERROR_NONE,
+            manager_->ClearAccounts(CLEAR_ONLY_MANAGED_ACCOUNTS, {kUser}));
+  std::vector<Account> accounts;
+  EXPECT_EQ(ERROR_NONE, manager_->ListAccounts(&accounts));
+  ASSERT_EQ(2u, accounts.size());
+  EXPECT_EQ(kUser, accounts[0].principal_name());
+  EXPECT_EQ(kUser3, accounts[1].principal_name());
 }
 
 // SetConfig() succeeds and writes the config to |krb5conf_path_|.
