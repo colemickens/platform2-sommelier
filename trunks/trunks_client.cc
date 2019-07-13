@@ -30,6 +30,7 @@
 #include <base/timer/elapsed_timer.h>
 #include <brillo/file_utils.h>
 #include <brillo/syslog_logging.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 
 #include "trunks/error_codes.h"
@@ -594,12 +595,11 @@ int main(int argc, char** argv) {
       if (!BN_bin2bn(tpm_signature.signature.ecdsa.signature_r.buffer,
                      tpm_signature.signature.ecdsa.signature_r.size, r.get()) ||
           !BN_bin2bn(tpm_signature.signature.ecdsa.signature_s.buffer,
-                     tpm_signature.signature.ecdsa.signature_s.size, s.get())) {
+                     tpm_signature.signature.ecdsa.signature_s.size, s.get()) ||
+          !ECDSA_SIG_set0(openssl_ecdsa.get(), r.release(), s.release())) {
         LOG(ERROR) << "Error when parse TPM signing result.";
         return -1;
       }
-      openssl_ecdsa->r = r.release();
-      openssl_ecdsa->s = s.release();
 
       // Dump ECDSA_SIG to DER format
       unsigned char* openssl_buffer = nullptr;

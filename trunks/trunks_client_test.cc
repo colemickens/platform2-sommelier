@@ -30,6 +30,7 @@
 #include <base/rand_util.h>
 #include <base/stl_util.h>
 #include <crypto/openssl_util.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <openssl/bn.h>
@@ -1200,10 +1201,12 @@ void TrunksClientTest::GenerateRSAKeyPair(std::string* modulus,
   CHECK(RSA_generate_key_ex(rsa.get(), 2048, exponent.get(), nullptr))
       << "Failed to generate RSA key: " << GetOpenSSLError();
   modulus->resize(RSA_size(rsa.get()), 0);
-  const BIGNUM* n = rsa.get()->n;
+  const BIGNUM* n;
+  RSA_get0_key(rsa.get(), &n, nullptr, nullptr);
   CHECK(BN_bn2bin(n,
       reinterpret_cast<unsigned char*>(base::string_as_array(modulus))));
-  const BIGNUM* p = rsa.get()->p;
+  const BIGNUM* p;
+  RSA_get0_factors(rsa.get(), &p, nullptr);
   prime_factor->resize(BN_num_bytes(p), 0);
   CHECK(BN_bn2bin(p,
       reinterpret_cast<unsigned char*>(base::string_as_array(prime_factor))));
@@ -1300,8 +1303,7 @@ bool TrunksClientTest::GetRSAPublicKeyFromHandle(
   CHECK(BN_bin2bn(public_area.unique.rsa.buffer,
                   public_area.unique.rsa.size,
                   n.get())) << "Error setting modulus for RSA.";
-  rsa->n = n.release();
-  rsa->e = e.release();
+  CHECK(RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr));
 
   int der_length = i2d_RSAPublicKey(rsa.get(), nullptr);
   if (der_length < 0) {

@@ -24,6 +24,7 @@
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/sys_byteorder.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/openssl_util.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/secure_hash.h>
@@ -1953,7 +1954,7 @@ TPM_RC TpmUtilityImpl::GetPublicRSAEndorsementKeyModulus(
 
   // Get the public key.
   crypto::ScopedEVP_PKEY pubkey(X509_get_pubkey(xcert.get()));
-  if (!pubkey || pubkey->type != EVP_PKEY_RSA) {
+  if (!pubkey || EVP_PKEY_base_id(pubkey.get()) != EVP_PKEY_RSA) {
     LOG(ERROR) << "Failed to get EK public key from NVRAM";
     return SAPI_RC_CORRUPTED_DATA;
   }
@@ -1971,7 +1972,8 @@ TPM_RC TpmUtilityImpl::GetPublicRSAEndorsementKeyModulus(
   }
 
   std::vector<unsigned char> key(buf_len);
-  const BIGNUM* bn = rsa->n;
+  const BIGNUM* bn;
+  RSA_get0_key(rsa.get(), &bn, nullptr, nullptr);
   BN_bn2bin(bn, key.data());
   ekm->assign(reinterpret_cast<const char*>(key.data()), buf_len);
 

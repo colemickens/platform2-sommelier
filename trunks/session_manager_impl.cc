@@ -21,6 +21,7 @@
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <crypto/openssl_util.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -184,8 +185,11 @@ TPM_RC SessionManagerImpl::EncryptSalt(const std::string& salt,
     LOG(ERROR) << "Error setting public area of rsa key: " << GetOpenSSLError();
     return TRUNKS_RC_SESSION_SETUP_ERROR;
   }
-  salting_key_rsa.get()->n = n.release();
-  salting_key_rsa.get()->e = e.release();
+  if (!RSA_set0_key(salting_key_rsa.get(), n.release(), e.release(),
+                    nullptr)) {
+    LOG(ERROR) << "Failed to set exponent or modulus.";
+    return TRUNKS_RC_SESSION_SETUP_ERROR;
+  }
 
   crypto::ScopedEVP_PKEY salting_key(EVP_PKEY_new());
   if (!salting_key) {
