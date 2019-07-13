@@ -7,6 +7,7 @@
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libtpmcrypto/tpm.h>
@@ -66,27 +67,27 @@ bool AesEncrypt(const EVP_CIPHER* cipher,
   encrypted_data->resize(data.size() + kAesBlockSize);
   unsigned char* output_buffer = SecureBlobAsSSLBuffer(*encrypted_data);
   int output_size = 0;
-  EVP_CIPHER_CTX encryption_context;
-  EVP_CIPHER_CTX_init(&encryption_context);
-  if (!EVP_EncryptInit_ex(&encryption_context, cipher, nullptr, key_buffer,
-                          iv_buffer)) {
+  crypto::ScopedEVP_CIPHER_CTX encryption_context(EVP_CIPHER_CTX_new());
+  if (!encryption_context) {
     return false;
   }
-  if (!EVP_EncryptUpdate(&encryption_context, output_buffer, &output_size,
+  if (!EVP_EncryptInit_ex(encryption_context.get(), cipher, nullptr,
+                          key_buffer, iv_buffer)) {
+    return false;
+  }
+  if (!EVP_EncryptUpdate(encryption_context.get(), output_buffer, &output_size,
                          input_buffer, data.size())) {
-    EVP_CIPHER_CTX_cleanup(&encryption_context);
     return false;
   }
   size_t total_size = output_size;
   output_buffer += output_size;
   output_size = 0;
-  if (!EVP_EncryptFinal_ex(&encryption_context, output_buffer, &output_size)) {
-    EVP_CIPHER_CTX_cleanup(&encryption_context);
+  if (!EVP_EncryptFinal_ex(encryption_context.get(), output_buffer,
+                           &output_size)) {
     return false;
   }
   total_size += output_size;
   encrypted_data->resize(total_size);
-  EVP_CIPHER_CTX_cleanup(&encryption_context);
   return true;
 }
 

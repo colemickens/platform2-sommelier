@@ -8,6 +8,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 #include <crypto/secure_util.h>
 #include <libtpmcrypto/tpm.h>
 #include <openssl/bio.h>
@@ -80,30 +81,31 @@ bool AesDecrypt(const EVP_CIPHER* cipher,
   data->resize(encrypted_data.size());
   unsigned char* output_buffer = SecureBlobAsSSLBuffer(*data);
   int output_size = 0;
-  EVP_CIPHER_CTX decryption_context;
-  EVP_CIPHER_CTX_init(&decryption_context);
-  if (!EVP_DecryptInit_ex(&decryption_context, cipher, nullptr, key_buffer,
-                          iv_buffer)) {
+  crypto::ScopedEVP_CIPHER_CTX decryption_context(EVP_CIPHER_CTX_new());
+  if (!decryption_context) {
     LOG(ERROR) << __func__ << ": " << GetOpenSSLError();
     return false;
   }
-  if (!EVP_DecryptUpdate(&decryption_context, output_buffer, &output_size,
+  if (!EVP_DecryptInit_ex(decryption_context.get(), cipher, nullptr,
+                          key_buffer, iv_buffer)) {
+    LOG(ERROR) << __func__ << ": " << GetOpenSSLError();
+    return false;
+  }
+  if (!EVP_DecryptUpdate(decryption_context.get(), output_buffer, &output_size,
                          input_buffer, encrypted_data.size())) {
     LOG(ERROR) << __func__ << ": " << GetOpenSSLError();
-    EVP_CIPHER_CTX_cleanup(&decryption_context);
     return false;
   }
   size_t total_size = output_size;
   output_buffer += output_size;
   output_size = 0;
-  if (!EVP_DecryptFinal_ex(&decryption_context, output_buffer, &output_size)) {
+  if (!EVP_DecryptFinal_ex(decryption_context.get(), output_buffer,
+      &output_size)) {
     LOG(ERROR) << __func__ << ": " << GetOpenSSLError();
-    EVP_CIPHER_CTX_cleanup(&decryption_context);
     return false;
   }
   total_size += output_size;
   data->resize(total_size);
-  EVP_CIPHER_CTX_cleanup(&decryption_context);
   return true;
 }
 
