@@ -177,10 +177,12 @@ dev_mount_packages() {
   if [ ! -e /usr/share/cros/startup/disable_stateful_security_hardening ]; then
     # Add exceptions to allow symlink traversal and opening of FIFOs in the
     # dev_image subtree.
-    printf "/mnt/stateful_partition/dev_image" \
-        > /sys/kernel/security/chromiumos/inode_security_policies/allow_symlink
-    printf "/mnt/stateful_partition/dev_image" \
-        > /sys/kernel/security/chromiumos/inode_security_policies/allow_fifo
+    local d
+    for d in "/mnt/stateful_partition/dev_image" "/var/tmp/portage"; do
+      mkdir "${d}"
+      allow_symlink "${d}"
+      allow_fifo "${d}"
+    done
   fi
 
   # Set up /var elements needed by gmerge.
