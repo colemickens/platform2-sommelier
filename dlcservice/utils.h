@@ -5,8 +5,8 @@
 #ifndef DLCSERVICE_UTILS_H_
 #define DLCSERVICE_UTILS_H_
 
+#include <set>
 #include <string>
-#include <vector>
 
 #include <base/files/file_path.h>
 #include <libimageloader/manifest.h>
@@ -41,7 +41,7 @@ bool GetDlcManifest(const base::FilePath& dlc_manifest_path,
 base::FilePath GetDlcRootInModulePath(const base::FilePath& dlc_mount_point);
 
 // Scans a directory and returns all its subdirectory names in a list.
-std::vector<std::string> ScanDirectory(const base::FilePath& dir);
+std::set<std::string> ScanDirectory(const base::FilePath& dir);
 
 }  // namespace utils
 }  // namespace dlcservice

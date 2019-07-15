@@ -106,22 +106,23 @@ DlcServiceDBusAdaptor::DlcServiceDBusAdaptor(
                  weak_ptr_factory_.GetWeakPtr()),
       base::Bind(&DlcServiceDBusAdaptor::OnStatusUpdateSignalConnected,
                  weak_ptr_factory_.GetWeakPtr()));
+
+  // Initalize installed DLC modules.
+  installed_dlc_modules_ = utils::ScanDirectory(content_dir_);
+
+  // Initialize supported DLC modules.
+  supported_dlc_modules_ = utils::ScanDirectory(manifest_dir_);
 }
 
 DlcServiceDBusAdaptor::~DlcServiceDBusAdaptor() {}
 
 void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
-  // Initialize supported DLC module id list.
-  std::vector<std::string> dlc_module_ids = ScanDlcModules();
-
   // Load all installed DLC modules.
-  for (const auto& dlc_module_id : dlc_module_ids) {
+  for (const auto& dlc_module_id : installed_dlc_modules_) {
     std::string package = ScanDlcModulePackage(dlc_module_id);
-
     auto dlc_module_content_path =
         utils::GetDlcModulePackagePath(content_dir_, dlc_module_id, package);
-    if (!base::PathExists(dlc_module_content_path))
-      continue;
+
     // Mount the installed DLC image.
     std::string path;
     image_loader_proxy_->LoadDlcImage(dlc_module_id, package,
@@ -139,19 +140,8 @@ void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
 bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
                                     const std::string& id_in,
                                     const std::string& omaha_url_in) {
-  // TODO(xiaochu): change API to accept a list of DLC module ids.
-  // https://crbug.com/905075
-  // Initialize supported DLC module id list.
-  //
-  // TODO(ahassani): This is inefficient. We don't need to know about all DLCs
-  // in order to install one of them. We need to add a function that checks the
-  // existence of a DLC (in rootfs) given a DLC ID. Other solution is to read
-  // and keep a list of DLCs on the start up and just add a function to look up
-  // the DLC ID from there.
-  std::vector<std::string> dlc_module_ids = ScanDlcModules();
-  if (std::find(dlc_module_ids.begin(), dlc_module_ids.end(), id_in) ==
-      dlc_module_ids.end()) {
-    LogAndSetError(err, "The DLC ID provided is invalid.");
+  if (supported_dlc_modules_.find(id_in) == supported_dlc_modules_.end()) {
+    LogAndSetError(err, "The DLC ID provided is not supported.");
     return false;
   }
   std::string package = ScanDlcModulePackage(id_in);
@@ -228,24 +218,16 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
   }
 
   dlc_id_being_installed_ = id_in;
+  // Note: Do NOT add to installed indication. Let |OnStatusUpdateSignaled()|
+  // handle since hat's truly when the DLC(s) are installed.
 
   return true;
 }
 
 bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
                                       const std::string& id_in) {
-  // Initialize supported DLC module id list.
-  //
-  // TODO(ahassani): This is inefficient. We don't need to know about all DLCs
-  // in order to uninstall one of them. We need to add a function that checks
-  // the existence of a DLC (in rootfs) given a DLC ID. Other solution is to
-  // read and keep a list of DLCs on the start up and just add a function to
-  // look up the DLC ID from there.
-  std::vector<std::string> dlc_module_ids = ScanDlcModules();
-
-  if (std::find(dlc_module_ids.begin(), dlc_module_ids.end(), id_in) ==
-      dlc_module_ids.end()) {
-    LogAndSetError(err, "The DLC ID provided is invalid.");
+  if (installed_dlc_modules_.find(id_in) == installed_dlc_modules_.end()) {
+    LogAndSetError(err, "The DLC ID provided is not installed");
     return false;
   }
   std::string package = ScanDlcModulePackage(id_in);
@@ -285,33 +267,27 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
     LogAndSetError(err, "DLC image folder could not be deleted.");
     return false;
   }
+
+  LOG(INFO) << "Uninstalling DLC id:" << id_in;
+  installed_dlc_modules_.erase(id_in);
   return true;
 }
 
 bool DlcServiceDBusAdaptor::GetInstalled(brillo::ErrorPtr* err,
                                          DlcModuleList* dlc_module_list_out) {
-  // Initialize supported DLC module ID list.
-  std::vector<std::string> dlc_module_ids = ScanDlcModules();
-
-  // Find installed DLC modules.
-  for (const auto& dlc_module_id : dlc_module_ids) {
-    auto dlc_module_content_path =
-        utils::GetDlcModulePath(content_dir_, dlc_module_id);
-    if (base::PathExists(dlc_module_content_path)) {
-      DlcModuleInfo* dlc_module_info =
-          dlc_module_list_out->add_dlc_module_infos();
-      dlc_module_info->set_dlc_id(dlc_module_id);
-    }
-  }
+  const auto InsertIntoDlcModuleListOut =
+      [dlc_module_list_out](const std::string& dlc_module_id) {
+        DlcModuleInfo* dlc_module_info =
+            dlc_module_list_out->add_dlc_module_infos();
+        dlc_module_info->set_dlc_id(dlc_module_id);
+      };
+  for_each(begin(installed_dlc_modules_), end(installed_dlc_modules_),
+           InsertIntoDlcModuleListOut);
   return true;
 }
 
-std::vector<std::string> DlcServiceDBusAdaptor::ScanDlcModules() {
-  return utils::ScanDirectory(manifest_dir_);
-}
-
 std::string DlcServiceDBusAdaptor::ScanDlcModulePackage(const std::string& id) {
-  return utils::ScanDirectory(manifest_dir_.Append(id))[0];
+  return *(utils::ScanDirectory(manifest_dir_.Append(id)).begin());
 }
 
 bool DlcServiceDBusAdaptor::CheckForUpdateEngineStatus(
@@ -383,6 +359,9 @@ void DlcServiceDBusAdaptor::OnStatusUpdateSignal(
     SendOnInstalledSignal(install_result);
     return;
   }
+
+  // Install was a success so keep track.
+  installed_dlc_modules_.insert(dlc_id);
 
   install_result.set_success(true);
   install_result.set_error_code(

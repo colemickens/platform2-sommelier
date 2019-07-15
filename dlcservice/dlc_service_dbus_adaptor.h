@@ -6,6 +6,7 @@
 #define DLCSERVICE_DLC_SERVICE_DBUS_ADAPTOR_H_
 
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -51,9 +52,6 @@ class DlcServiceDBusAdaptor
                     DlcModuleList* dlc_module_list_out) override;
 
  private:
-  // Scans manifest_dir_ for a list of supported DLC modules and returns them.
-  std::vector<std::string> ScanDlcModules();
-
   // Scans a specific DLC |id| to discover all its packages. Currently, we only
   // support one package per DLC. If at some point in the future we decided to
   // support multiple packages, then appropriate changes to this function is
@@ -92,6 +90,14 @@ class DlcServiceDBusAdaptor
   std::string dlc_id_being_installed_;
 
   std::string current_boot_slot_name_;
+
+  // List of currently existing DLC modules. Use a set in order to handle
+  // repeats implicitly.
+  std::set<std::string> installed_dlc_modules_;
+
+  // List of allowed DLC modules based on manifest. Use a set in order to handle
+  // repeats implicitly.
+  std::set<std::string> supported_dlc_modules_;
 
   base::WeakPtrFactory<DlcServiceDBusAdaptor> weak_ptr_factory_;
 

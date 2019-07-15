@@ -4,6 +4,7 @@
 
 #include <sysexits.h>
 #include <iostream>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -216,9 +217,13 @@ class DlcServiceUtil : public brillo::Daemon {
     // TODO(ahassani): This is a workaround. We need to get the list of packages
     // in the |GetInstalled()| or a separate signal. But for now since we just
     // have one package per DLC, this would work.
-    std::vector<std::string> packages =
+    std::set<std::string> packages =
         dlcservice::utils::ScanDirectory(manifest_root);
-    auto package = packages[0];
+    if (packages.empty()) {
+      LOG(ERROR) << "Failed to get DLC package";
+      return false;
+    }
+    std::string package = *(packages.begin());
 
     imageloader::Manifest manifest;
     // TODO(ahassani): We have imported the entire dlcservice library just to

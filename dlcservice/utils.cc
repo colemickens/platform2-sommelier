@@ -76,13 +76,13 @@ base::FilePath GetDlcRootInModulePath(const base::FilePath& dlc_mount_point) {
   return dlc_mount_point.Append(kRootDirectoryInsideDlcModule);
 }
 
-std::vector<std::string> ScanDirectory(const base::FilePath& dir) {
-  std::vector<std::string> result;
+std::set<std::string> ScanDirectory(const base::FilePath& dir) {
+  std::set<std::string> result;
   base::FileEnumerator file_enumerator(dir, false,
                                        base::FileEnumerator::DIRECTORIES);
   for (base::FilePath dir_path = file_enumerator.Next(); !dir_path.empty();
        dir_path = file_enumerator.Next()) {
-    result.emplace_back(dir_path.BaseName().value());
+    result.emplace(dir_path.BaseName().value());
   }
   return result;
 }
