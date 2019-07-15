@@ -714,6 +714,9 @@ class LegacyCryptohomeInterfaceAdaptor
   void InstallAttributesIsFirstInstallOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool>> response,
       const user_data_auth::InstallAttributesGetStatusReply& reply);
+  void GetLoginStatusOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+      const user_data_auth::GetLoginStatusReply& reply);
   void GetEndorsementInfoOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
       const attestation::GetEndorsementInfoReply& reply);

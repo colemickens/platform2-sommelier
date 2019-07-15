@@ -659,6 +659,7 @@ void CryptohomeMiscAdaptor::GetLoginStatus(
         user_data_auth::GetLoginStatusReply>> response,
     const user_data_auth::GetLoginStatusRequest& in_request) {
   user_data_auth::GetLoginStatusReply reply;
+  reply.set_owner_user_exists(service_->OwnerUserExists());
   response->Return(reply);
 }
 

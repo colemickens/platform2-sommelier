@@ -1997,10 +1997,31 @@ void LegacyCryptohomeInterfaceAdaptor::GetLoginStatus(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::GetLoginStatusRequest& in_request) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
+          std::move(response));
+
+  user_data_auth::GetLoginStatusRequest request;
+  misc_proxy_->GetLoginStatusAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::GetLoginStatusOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::GetLoginStatusOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+    const user_data_auth::GetLoginStatusReply& reply) {
+  cryptohome::BaseReply result;
+  result.set_error(static_cast<cryptohome::CryptohomeErrorCode>(reply.error()));
+  result.MutableExtension(cryptohome::GetLoginStatusReply::reply)
+      ->set_owner_user_exists(reply.owner_user_exists());
+
+  // See definition of user_data_auth::GetLoginStatusReply for more information
+  // on why |boot_lockbox_finalized| is not included here.
+  response->Return(result);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::GetTpmStatus(

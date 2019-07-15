@@ -2044,4 +2044,9 @@ UserDataAuth::LockToSingleUserMountUntilReboot(
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
+bool UserDataAuth::OwnerUserExists() {
+  std::string owner;
+  return homedirs_->GetPlainOwner(&owner);
+}
+
 }  // namespace cryptohome
