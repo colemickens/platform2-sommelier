@@ -271,12 +271,7 @@ class Crypto {
     le_manager_ = std::move(le_manager);
   }
 
-  static const int64_t kSaltMax;
-
  private:
-  // Converts a TPM error to a Crypto error
-  CryptoError TpmErrorToCrypto(Tpm::TpmRetryAction retry_action) const;
-
   bool GenerateEncryptedRawKeyset(const VaultKeyset& vault_keyset,
                                   const brillo::SecureBlob& vkk_key,
                                   const brillo::SecureBlob& fek_iv,

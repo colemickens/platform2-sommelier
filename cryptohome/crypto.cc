@@ -74,10 +74,27 @@ Crypto::CryptoError ConvertLeError(int le_error) {
   }
 }
 
-}  // namespace
-
-// File name of the system salt file.
-const char kSystemSaltFile[] = "salt";
+Crypto::CryptoError TpmErrorToCrypto(Tpm::TpmRetryAction retry_action) {
+  switch (retry_action) {
+    case Tpm::kTpmRetryFatal:
+      // All errors mapped here will cause re-creating the cryptohome if
+      // they occur when decrypting the keyset.
+      return Crypto::CE_TPM_FATAL;
+    case Tpm::kTpmRetryCommFailure:
+    case Tpm::kTpmRetryInvalidHandle:
+    case Tpm::kTpmRetryLoadFail:
+    case Tpm::kTpmRetryLater:
+      return Crypto::CE_TPM_COMM_ERROR;
+    case Tpm::kTpmRetryDefendLock:
+      return Crypto::CE_TPM_DEFEND_LOCK;
+    case Tpm::kTpmRetryReboot:
+      return Crypto::CE_TPM_REBOOT;
+    default:
+      // TODO(chromium:709646): kTpmRetryFailNoRetry maps here now. Find
+      // a better corresponding CryptoError.
+      return Crypto::CE_NONE;
+  }
+}
 
 // Location where we store the Low Entropy (LE) credential manager related
 // state.
@@ -122,7 +139,7 @@ const unsigned int kDefaultAesKeySize = 32;
 const unsigned int kDefaultPassBlobSize = 256;
 
 // Maximum size of the salt file.
-const int64_t Crypto::kSaltMax = (1 << 20);  // 1 MB
+const int64_t kSystemSaltMaxSize = (1 << 20);  // 1 MB
 
 // File permissions of salt file (modulo umask).
 const mode_t kSaltFilePermissions = 0644;
@@ -170,6 +187,11 @@ HashDescription GetHashDescription(Tpm* tpm) {
       return { 0, nullptr };
   }
 }
+
+}  // namespace
+
+// File name of the system salt file.
+const char kSystemSaltFile[] = "salt";
 
 Crypto::Crypto(Platform* platform)
     : use_tpm_(false),
@@ -299,7 +321,7 @@ bool Crypto::GetOrCreateSalt(const FilePath& path,
     }
   }
   SecureBlob local_salt;
-  if (force || file_len == 0 || file_len > kSaltMax) {
+  if (force || file_len == 0 || file_len > kSystemSaltMaxSize) {
     LOG(ERROR) << "Creating new salt at " << path.value()
                << " (" << force << ", " << file_len << ")";
     // If this salt doesn't exist, automatically create it.
@@ -319,29 +341,6 @@ bool Crypto::GetOrCreateSalt(const FilePath& path,
   }
   salt->swap(local_salt);
   return true;
-}
-
-Crypto::CryptoError Crypto::TpmErrorToCrypto(
-    Tpm::TpmRetryAction retry_action) const {
-  switch (retry_action) {
-    case Tpm::kTpmRetryFatal:
-      // All errors mapped here will cause re-creating the cryptohome if
-      // they occur when decrypting the keyset.
-      return Crypto::CE_TPM_FATAL;
-    case Tpm::kTpmRetryCommFailure:
-    case Tpm::kTpmRetryInvalidHandle:
-    case Tpm::kTpmRetryLoadFail:
-    case Tpm::kTpmRetryLater:
-      return Crypto::CE_TPM_COMM_ERROR;
-    case Tpm::kTpmRetryDefendLock:
-      return Crypto::CE_TPM_DEFEND_LOCK;
-    case Tpm::kTpmRetryReboot:
-      return Crypto::CE_TPM_REBOOT;
-    default:
-      // TODO(chromium:709646): kTpmRetryFailNoRetry maps here now. Find
-      // a better corresponding CryptoError.
-      return Crypto::CE_NONE;
-  }
 }
 
 void Crypto::PasswordToPasskey(const char* password,
