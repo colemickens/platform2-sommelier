@@ -2285,10 +2285,31 @@ void LegacyCryptohomeInterfaceAdaptor::GetRsuDeviceId(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::GetRsuDeviceIdRequest& in_request) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
+          std::move(response));
+
+  user_data_auth::GetRsuDeviceIdRequest request;
+  misc_proxy_->GetRsuDeviceIdAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::GetRsuDeviceIdOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::GetRsuDeviceIdOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+    const user_data_auth::GetRsuDeviceIdReply& reply) {
+  cryptohome::BaseReply result;
+  result.set_error(static_cast<cryptohome::CryptohomeErrorCode>(reply.error()));
+  if (reply.error() == user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    cryptohome::GetRsuDeviceIdReply* result_extension =
+        result.MutableExtension(cryptohome::GetRsuDeviceIdReply::reply);
+    *result_extension->mutable_rsu_device_id() = reply.rsu_device_id();
+  }
+  response->Return(result);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::OnDircryptoMigrationProgressSignal(

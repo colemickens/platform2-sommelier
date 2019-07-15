@@ -727,6 +727,9 @@ class LegacyCryptohomeInterfaceAdaptor
   void GetCurrentSpaceForGidOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<int64_t>> response,
       const user_data_auth::GetCurrentSpaceForArcGidReply& reply);
+  void GetRsuDeviceIdOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+      const user_data_auth::GetRsuDeviceIdReply& reply);
 
   // This method forwards the error received from calling the new interface back
   // to the old interface

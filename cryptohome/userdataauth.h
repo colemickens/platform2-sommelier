@@ -317,6 +317,10 @@ class UserDataAuth {
   // used.
   bool UpdateCurrentUserActivityTimestamp(int time_shift_sec);
 
+  // Retrieve the RSU Device ID, return true if and only if |rsu_device_id| is
+  // set to the RSU Device ID.
+  bool GetRsuDeviceId(std::string* rsu_device_id);
+
   // =============== Miscellaneous ===============
 
   // This is called by tpm_init_ when there's any update on ownership status

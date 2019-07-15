@@ -670,4 +670,20 @@ void CryptohomeMiscAdaptor::GetStatusString(
   response->Return(reply);
 }
 
+void CryptohomeMiscAdaptor::GetRsuDeviceId(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetRsuDeviceIdReply>> response,
+    const user_data_auth::GetRsuDeviceIdRequest& in_request) {
+  user_data_auth::GetRsuDeviceIdReply reply;
+  std::string rsu_device_id;
+  if (!service_->GetRsuDeviceId(&rsu_device_id)) {
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_FAILED,
+                             "Unable to retrieve lookup key!");
+    return;
+  }
+  *reply.mutable_rsu_device_id() = rsu_device_id;
+  response->Return(reply);
+}
+
 }  // namespace cryptohome

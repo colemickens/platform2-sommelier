@@ -962,7 +962,7 @@
                     value="cryptohome::BaseReply" />
       </arg>
     </method>
-    <!-- Get the lookup key required for Remote Server unlock.
+    <!-- Get the device id required for Remote Server unlock.
          Returns protobuf which is GetRsuDeviceIdReply. -->
     <method name="GetRsuDeviceId">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>

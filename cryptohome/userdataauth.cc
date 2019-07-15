@@ -2007,4 +2007,8 @@ bool UserDataAuth::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
   return success;
 }
 
+bool UserDataAuth::GetRsuDeviceId(std::string* rsu_device_id) {
+  return tpm_->GetRsuDeviceId(rsu_device_id);
+}
+
 }  // namespace cryptohome
